@@ -70,6 +70,7 @@ beforeEach(async () => {
 
 afterEach(() => {
   jest.restoreAllMocks();
+  mockFetchFullTafseer.mockReset();
 });
 
 describe('tafseerStore (characterization, develop behavior)', () => {

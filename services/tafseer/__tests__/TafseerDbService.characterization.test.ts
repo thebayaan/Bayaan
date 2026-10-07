@@ -15,8 +15,14 @@ function freshService(): Service {
   return service;
 }
 
+// freshService() isolates the module (new instance); resetDatabases() gives each
+// test an empty database directory so rows never leak between tests.
 beforeEach(async () => {
   await resetDatabases();
+});
+
+afterEach(() => {
+  jest.restoreAllMocks();
 });
 
 describe('TafseerDbService (characterization, develop behavior)', () => {
@@ -39,10 +45,30 @@ describe('TafseerDbService (characterization, develop behavior)', () => {
     await svc.initialize();
     const group = {text: 'G', groupVerseKey: '2:8', fromAyah: 8, toAyah: 10};
     await svc.saveTafseer('169', 'n', 'n', 'English', 'ltr', [
+      {surahNumber: 2, ayahNumber: 7, verseKey: '2:7', text: 'seven'},
       {surahNumber: 2, ayahNumber: 8, verseKey: '2:8', ...group},
       {surahNumber: 2, ayahNumber: 9, verseKey: '2:9', ...group},
       {surahNumber: 2, ayahNumber: 10, verseKey: '2:10', ...group},
+      {surahNumber: 2, ayahNumber: 11, verseKey: '2:11', text: 'eleven'},
     ]);
+    const expected = {text: 'G', fromAyah: 8, toAyah: 10, surahNumber: 2};
+    expect(await svc.getTafseerForVerse('2:9', '169')).toEqual(expected);
+    expect(await svc.getTafseerForVerse('2:10', '169')).toEqual(expected);
+    expect((await svc.getTafseerForVerse('2:7', '169'))?.text).toBe('seven');
+    expect((await svc.getTafseerForVerse('2:11', '169'))?.text).toBe('eleven');
+    expect(await svc.getTafseerForVerse('2:9', '16')).toBeNull();
+  });
+
+  it('falls back from beyond a group to the group row', async () => {
+    const svc = freshService();
+    await svc.initialize();
+    const group = {text: 'G', groupVerseKey: '2:8', fromAyah: 8, toAyah: 10};
+    await svc.saveTafseer('169', 'n', 'n', 'English', 'ltr', [
+      {surahNumber: 2, ayahNumber: 7, verseKey: '2:7', text: 'seven'},
+      {surahNumber: 2, ayahNumber: 8, verseKey: '2:8', ...group},
+      {surahNumber: 2, ayahNumber: 10, verseKey: '2:10', ...group},
+    ]);
+    // 2:9 has no row of its own: nearest previous row is 2:8 (group G)
     expect(await svc.getTafseerForVerse('2:9', '169')).toEqual({
       text: 'G',
       fromAyah: 8,
@@ -76,6 +102,7 @@ describe('TafseerDbService (characterization, develop behavior)', () => {
     expect(await svc.isDownloaded('16')).toBe(false);
   });
 
+  // Bundled data has 5 fewer rows than QF's 6236; the content-sync parity check will name them.
   it('imports the bundled Ibn Kathir once with 6231 rows', async () => {
     const svc = freshService();
     await svc.initialize();

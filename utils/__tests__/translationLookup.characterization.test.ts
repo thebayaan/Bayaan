@@ -54,27 +54,74 @@ describe('translationLookup (characterization, develop behavior)', () => {
   });
 });
 
+interface Isolated {
+  rebuildEnhancedVerses: typeof import('../enhancedVerseData').rebuildEnhancedVerses;
+  enhancedVersesBySurah: typeof import('../enhancedVerseData').enhancedVersesBySurah;
+  getTranslationText: typeof import('../translationLookup').getTranslationText;
+  getBundledTranslation: typeof import('../translationLookup').getBundledTranslation;
+}
+
+function loadIsolated(): Isolated {
+  let loaded: Isolated | undefined;
+  jest.isolateModules(() => {
+    const enhanced = require('../enhancedVerseData');
+    const lookup = require('../translationLookup');
+    loaded = {
+      rebuildEnhancedVerses: enhanced.rebuildEnhancedVerses,
+      enhancedVersesBySurah: enhanced.enhancedVersesBySurah,
+      getTranslationText: lookup.getTranslationText,
+      getBundledTranslation: lookup.getBundledTranslation,
+    };
+  });
+  if (!loaded) throw new Error('modules not loaded');
+  return loaded;
+}
+
 describe('rebuildEnhancedVerses (characterization, develop behavior)', () => {
-  it('falls back to Saheeh text when a remote translation has no verses', async () => {
-    jest.spyOn(console, 'warn').mockImplementation(() => undefined);
-    mockGetAllVerses.mockResolvedValue({});
-    const {rebuildEnhancedVerses, enhancedVersesBySurah} =
-      require('../enhancedVerseData') as typeof import('../enhancedVerseData');
-    expect(await rebuildEnhancedVerses('unknown.remote')).toBe(true);
-    expect(enhancedVersesBySurah[1][0].translation).toBe(
-      getBundledTranslation('1:1', 'saheeh'),
-    );
-    expect(getTranslationText('1:1', 'unknown.remote')).toBe('');
+  let warnSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    mockGetAllVerses.mockReset();
+    warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
   });
 
-  it('falls back to Saheeh text when the remote load throws', async () => {
-    jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('uses a successful remote map and serves it from the sync cache', async () => {
+    const m = loadIsolated();
+    mockGetAllVerses.mockResolvedValue({'1:1': 'remote text'});
+    expect(await m.rebuildEnhancedVerses('remote.ok')).toBe(true);
+    expect(m.enhancedVersesBySurah[1][0].translation).toBe('remote text');
+    expect(m.enhancedVersesBySurah[1][1].translation).toBe('');
+    expect(m.getTranslationText('1:1', 'remote.ok')).toBe('remote text');
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  it('falls back to Saheeh when a remote translation has no verses', async () => {
+    const m = loadIsolated();
+    const saheeh = m.getBundledTranslation('1:1', 'saheeh');
+    await m.rebuildEnhancedVerses('clear-quran');
+    expect(m.enhancedVersesBySurah[1][0].translation).not.toBe(saheeh);
+
+    mockGetAllVerses.mockResolvedValue({});
+    expect(await m.rebuildEnhancedVerses('unknown.remote')).toBe(true);
+    expect(m.enhancedVersesBySurah[1][0].translation).toBe(saheeh);
+    expect(warnSpy).toHaveBeenCalled();
+    expect(m.getTranslationText('1:1', 'unknown.remote')).toBe('');
+  });
+
+  it('falls back to Saheeh when the remote load throws', async () => {
+    const m = loadIsolated();
+    const saheeh = m.getBundledTranslation('1:1', 'saheeh');
+    await m.rebuildEnhancedVerses('clear-quran');
+    expect(m.enhancedVersesBySurah[1][0].translation).not.toBe(saheeh);
+
     mockGetAllVerses.mockRejectedValue(new Error('db'));
-    const {rebuildEnhancedVerses, enhancedVersesBySurah} =
-      require('../enhancedVerseData') as typeof import('../enhancedVerseData');
-    expect(await rebuildEnhancedVerses('another.remote')).toBe(true);
-    expect(enhancedVersesBySurah[1][0].translation).toBe(
-      getBundledTranslation('1:1', 'saheeh'),
-    );
+    expect(await m.rebuildEnhancedVerses('another.remote')).toBe(true);
+    expect(m.enhancedVersesBySurah[1][0].translation).toBe(saheeh);
+    expect(warnSpy).toHaveBeenCalled();
+    expect(m.getTranslationText('1:1', 'another.remote')).toBe('');
   });
 });
