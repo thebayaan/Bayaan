@@ -22,15 +22,18 @@ NOT highlighted (the reading_key() normalizations):
               sukun / rounded-zero shapes, open vs closed tanween, tanween
               written after a final alef, ى / ي / ے, ٱ / آ / ا, full vs
               dagger alef, the unmarked assimilated lam of الذين / لله,
-              shadda, hamza seat on a tatweel vs on the ya, CGJ / ZWJ /
-              tatweel, iqlab meem forms, waqf and sajdah signs, rub' el-hizb.
+              shadda, hamza seat on a tatweel vs on the ya, a long vowel
+              written small inside a word (دَاوُۥدَ), an assimilated nun
+              written or not ('وَأَن لَّوِ' / 'وَأَلَّوِ'), CGJ / ZWJ / tatweel,
+              iqlab meem forms, waqf and sajdah signs, rub' el-hizb.
   usul        rules marked by diacritics or by the hamza's carrier only:
               madd length (U+0653), imala / taqlil dots (a dot written
               instead of the fatha counts as the fatha), the second of two
               hamzas and the dropped first of two hamzas across words
               (non-Kufi rewayat), and for Warsh and al-Susi the softened
               hamza (ibdal, naql, tashil), a case ending added by naql
-              (Warsh) or dropped by idgham kabir (al-Susi).
+              (Warsh) or dropped by idgham kabir (al-Susi); for these two the
+              softened hamza is compared as the long vowel it becomes.
   silah       the 'silah' category instead (a Hafs-only silah, e.g. 25:69
               فِيهِۦ in Warsh, is a whole-word difference: there is no mark
               to colour).
@@ -56,7 +59,8 @@ DOT_BELOW = "\u065C"
 TATWEEL = "\u0640"
 SHADDA = "\u0651"
 DAGGER_ALEF = "\u0670"
-ALEF, WAW, YEH, LAM, HAMZA = "\u0627", "\u0648", "\u064A", "\u0644", "\u0621"
+ALEF, WAW, YEH, LAM, HAMZA, NOON = "\u0627", "\u0648", "\u064A", "\u0644", "\u0621", "\u0646"
+ASSIMILATING = frozenset("\u0644\u0631\u0645\u0646\u0648\u064A")  # ل ر م ن و ي
 HAMZA_SEATS = frozenset("\u064A\u0649\u0648\u0627")  # ي ى و ا
 SILAH_CHARS = frozenset("\u06E5\u06E6")
 SILAH_CARRIER_VOWELS = frozenset("\u064F\u0650")
@@ -119,9 +123,26 @@ def _is_letter(c: str) -> bool:
     return c in _LETTER_CANON or (c != TATWEEL and unicodedata.category(c) == "Lo")
 
 
+def _is_final_small_letter(token: str, i: int) -> bool:
+    """A small waw / yeh is a silah (or a ya' zawa'id) mark when no letter
+    follows it in its token; inside a word it is a long-vowel letter written
+    small (دَاوُۥدَ, إِۦلَٰفِهِمْ)."""
+    return not any(unicodedata.category(c) == "Lo" for c in token[i + 1 :])
+
+
 def _units(text: str, rid: str) -> tuple[list[_Unit], int]:
     """-> (letter units with their marks, number of hamza signs)."""
-    t = text.replace(" ", "")
+    units: list[_Unit] = []
+    hamzas = 0
+    for token in text.split(" "):
+        u, h = _token_units(token, rid)
+        units.extend(u)
+        hamzas += h
+    return units, hamzas
+
+
+def _token_units(token: str, rid: str) -> tuple[list[_Unit], int]:
+    t = token
     for src, dst in _DECOMPOSE.items():
         t = t.replace(src, dst)
     t = _WASL.sub(ALEF, t)
@@ -130,8 +151,11 @@ def _units(text: str, rid: str) -> tuple[list[_Unit], int]:
     n = len(t)
     for i, c in enumerate(t):
         if c in SILAH_CHARS:
-            if units:
-                units[-1].silah = True
+            if _is_final_small_letter(t, i):
+                if units:
+                    units[-1].silah = True
+            else:
+                units.append(_Unit(WAW if c == "\u06E5" else YEH))
             continue
         if c == TATWEEL:
             j = i + 1
@@ -188,16 +212,33 @@ def reading_key(text: str, rid: str) -> tuple[list[_Unit], int]:
         if len(units) > k + 3 and units[k].letter == ALEF and units[k + 1].letter == LAM and units[k + 2].dagger:
             del units[k + 2]
     softening = rid in HAMZA_SOFTENING
+    prev_vowels = ""
     for u in units:
         has_hamza = any(x in HAMZA_MARKS for x in u.marks)
         vowels = "".join(sorted(x for x in u.marks if x in VOWELS))
         if softening:
-            if u.letter == HAMZA:  # ibdal / tashil: the hamza becomes a long alef
-                u.letter = ALEF
+            if u.letter == HAMZA:
+                # ibdal / tashil: the hamza becomes the long vowel of the vowel
+                # before it (رُءْيَا -> رُويَا), otherwise an alef
+                u.letter = WAW if DAMMA in prev_vowels else YEH if KASRA in prev_vowels else ALEF
                 vowels = "".join(x for x in vowels if x in TANWEEN)
             u.marks = vowels
         else:
             u.marks = (HAMZA_MARK if has_hamza else "") + vowels
+        prev_vowels = vowels
+    # a vowelless nun assimilated into a doubled letter is not pronounced: the
+    # rasm may write it ('وَأَن لَّوِ', KFGQPC Nafi' / Abu 'Amr) or not ('وَأَلَّوِ')
+    units = [
+        u
+        for k, u in enumerate(units)
+        if not (
+            u.letter == NOON
+            and not u.marks
+            and k + 1 < len(units)
+            and units[k + 1].shadda
+            and units[k + 1].letter in ASSIMILATING
+        )
+    ]
     if rid not in KUFI:
         # the second of two hamzas is softened / changed in every non-Kufi rewayah
         for i in range(1, len(units)):
@@ -284,10 +325,14 @@ def silah_char_indices(text: str) -> list[int]:
 
 
 def _silah_sites(text: str) -> list[tuple[int, str, str]]:
-    """(char index, preceding base letter, silah char) for every silah mark."""
+    """(char index, preceding base letter, silah char) for every silah mark
+    (a small waw / yeh at the end of its token)."""
     out = []
     for i, c in enumerate(text):
-        if c in SILAH_CHARS:
+        if c not in SILAH_CHARS:
+            continue
+        end = text.find(" ", i)
+        if _is_final_small_letter(text[: end if end >= 0 else len(text)], i):
             j = i - 1
             while j >= 0 and not _is_letter(text[j]):
                 j -= 1
