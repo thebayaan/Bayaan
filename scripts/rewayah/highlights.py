@@ -25,7 +25,8 @@ NOT highlighted (the reading_key() normalizations):
               written after a final alef, ى / ي / ے, ٱ / آ / ا, full vs
               dagger alef, the unmarked assimilated lam of الذين / لله, the
               doubled ta' of an idgham naqis (بَسَطتَ / بَسَط۟تَّ), hamza seat on
-              a tatweel vs on the ya, a long vowel written small inside a
+              a tatweel vs on the ya, a vowelless hamza on an alef, tatweel or
+              dagger alef seat (Qalun يَسْتَٰٔذِنُكَ), a long vowel written small inside a
               word (دَاوُۥدَ), an assimilated nun written or not ('وَأَن لَّوِ' /
               'وَأَلَّوِ'), the upright zero in the Nafi' texts (never written),
               CGJ / ZWJ / tatweel, iqlab meem forms, waqf and sajdah signs,
@@ -185,11 +186,20 @@ def _token_units(token: str, rid: str) -> tuple[list[_Unit], int]:
             continue
         if c in _REMOVE:
             continue
+        if c == DAGGER_ALEF:
+            j = i + 1
+            while j < n and t[j] in _REMOVE:
+                j += 1
+            if j < n and t[j] in HAMZA_MARKS:
+                # a dagger alef carrying the hamza is its seat, not a long vowel:
+                # Qalun 'يَسْتَٰٔذِنُكَ' reads like Hafs 'يَسْتَـْٔذِنُكَ'
+                units.append(_Unit(HAMZA))
+                continue
         if _is_letter(c):
             units.append(_Unit(_LETTER_CANON.get(c, c), dagger=c == DAGGER_ALEF))
         elif units:
             units[-1].marks += _MARK_CANON.get(c, c)
-    for u in units:
+    for k, u in enumerate(units):
         marks = u.marks
         u.hamza = any(c in HAMZA_MARKS for c in marks)
         u.dot = DOT_BELOW in marks
@@ -205,6 +215,11 @@ def _token_units(token: str, rid: str) -> tuple[list[_Unit], int]:
             # is also a naql'd hamza keeping its own vowel ('قَدَ اَفْلَحَ'),
             # compared against the Hafs hamza vowel, so Warsh keeps it.
             marks = "".join(c for c in marks if c not in (FATHA, DAMMA, KASRA))
+        vowelless = not any(c in VOWELS or c == DOT_BELOW for c in marks)
+        if k and u.letter == ALEF and u.hamza and not u.dagger and vowelless:
+            # a vowelless hamza inside a word is the same on an alef seat
+            # (Hafs 'يَسْتَأْخِرُونَ') as on a tatweel or dagger seat
+            u.letter = HAMZA
         u.marks = marks
     return units, hamzas
 
