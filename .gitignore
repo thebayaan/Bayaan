@@ -39,6 +39,9 @@ assets/data/timestamps.db
 assets/data/timestamps.db-shm
 assets/data/timestamps.db-wal
 
+# Parity test snapshots (production QF content)
+.parity/
+
 # Ignore app-example folder
 app-example/
 
