@@ -17,6 +17,7 @@ import {Feather} from '@expo/vector-icons';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
 import SkiaVersePreview from '@/components/share/SkiaVersePreview';
+import type {RewayahId} from '@/store/mushafSettingsStore'; // @ai
 
 export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
   const {theme} = useTheme();
@@ -32,6 +33,17 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
 
   const [noteText, setNoteText] = useState('');
   const [isEditMode, setIsEditMode] = useState(false);
+  // @ai-start
+  // An existing note opened from the Notes list carries no rewayah in the
+  // payload; preview it in the rewayah it was saved in (legacy notes without
+  // one follow the active rewayah). Hold the preview until the note loads so
+  // it never flashes another rewayah's text first.
+  const [savedNoteRewayah, setSavedNoteRewayah] = useState<
+    RewayahId | undefined
+  >(undefined);
+  const [noteLoaded, setNoteLoaded] = useState(!noteId);
+  const previewRewayah = rewayah ?? savedNoteRewayah;
+  // @ai-end
 
   // Compute range-aware reference text
   const verseRefText = useMemo(() => {
@@ -50,12 +62,18 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
     if (!verseKey) return;
 
     if (noteId) {
-      verseAnnotationService.getNoteById(noteId).then(note => {
-        if (note) {
-          setNoteText(note.content);
-          setIsEditMode(true);
-        }
-      });
+      // @ai-start
+      verseAnnotationService
+        .getNoteById(noteId)
+        .then(note => {
+          if (note) {
+            setNoteText(note.content);
+            setIsEditMode(true);
+            setSavedNoteRewayah(note.rewayahId ?? undefined);
+          }
+        })
+        .finally(() => setNoteLoaded(true));
+      // @ai-end
     }
   }, [verseKey, noteId]);
 
@@ -121,12 +139,16 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
         </Text>
 
         <View style={styles.ayahContainer}>
-          <SkiaVersePreview
-            verseKey={verseKey}
-            verseKeys={verseKeys}
-            numberOfLines={isRange ? 3 : 2}
-            rewayah={rewayah}
-          />
+          {/* @ai-start */}
+          {noteLoaded ? (
+            <SkiaVersePreview
+              verseKey={verseKey}
+              verseKeys={verseKeys}
+              numberOfLines={isRange ? 3 : 2}
+              rewayah={previewRewayah}
+            />
+          ) : null}
+          {/* @ai-end */}
         </View>
 
         <TextInput

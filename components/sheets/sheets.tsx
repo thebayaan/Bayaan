@@ -209,6 +209,11 @@ declare module 'react-native-actions-sheet' {
         surahNumber: number;
         ayahNumber: number;
         verseKeys?: string[];
+        // @ai-start
+        // Ignored. The sheet reads the Arabic text from the words DB of
+        // `rewayah` itself, so a caller cannot attach one rewayah's text to
+        // another rewayah's label. Kept so existing payloads type-check.
+        // @ai-end
         arabicText?: string;
         translation?: string;
         transliteration?: string;

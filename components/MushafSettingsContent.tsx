@@ -14,10 +14,7 @@ import {
   FullscreenPillIcon,
 } from '@/components/Icons';
 import {useTajweedStore} from '@/store/tajweedStore';
-import {
-  tajweedColors,
-  REWAYAH_DIFF_BACKGROUND,
-} from '@/constants/tajweedColors';
+import {tajweedColors} from '@/constants/tajweedColors';
 import FormattedTextRenderer from '@/components/utils/FormattedText';
 import {LinearGradient} from 'expo-linear-gradient';
 import SkiaVerseText from '@/components/player/v2/PlayerContent/QuranView/SkiaVerseText';
@@ -42,12 +39,14 @@ import {
   hasTextData,
   type RewayahWithDiffs,
 } from '@/services/rewayah/RewayahIdentity';
+import {getRewayahDiffLegend} from '@/components/sheets/rewayahDiffLegend'; // @ai
 import {
   useMushafSettingsStore,
   getActualFontSize,
   getDisplayValue,
   DISPLAY_MIN,
   DISPLAY_MAX,
+  REWAYAH_FALLBACK_RENDERER_LABEL, // @ai
   type MushafRenderer,
   type MushafScrollDirection,
   type MushafArabicTextWeight,
@@ -607,6 +606,7 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
 
   const verseKey = '1:1';
   const isQCF1440 = mushafRenderer === 'qcf_v2';
+  const hafsOnlyFontDescription = `Hafs only. This font lacks marks used by ${getRewayahShortLabel(rewayah)}.`; // @ai
   const allahNameHighlightHex = getAllahNameHighlightColorHex(
     allahNameHighlightColor,
     theme.isDarkMode,
@@ -668,6 +668,9 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
 
   const handleFontSelect = useCallback(
     async (value: MushafRenderer) => {
+      // IndoPak draws Hafs only; its row is disabled for other rewayat and
+      // the store refuses the pair as well.
+      if (value === 'dk_indopak' && rewayah !== 'hafs') return; // @ai
       const switchingToQCF = value === 'qcf_v2' && mushafRenderer !== 'qcf_v2';
       if (switchingToQCF && rewayah !== 'hafs') {
         try {
@@ -677,6 +680,29 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
             '[MushafSettings] Failed to reset rewayah for QCF:',
             error,
           );
+          // @ai-start
+          // Mushaf 1440 is Hafs only. Without Hafs in the data service the
+          // store and the service would disagree (pages and highlights built
+          // from one rewayah under the other's label), so stay on the
+          // current font and rewayah, putting the service back if the
+          // failed switch moved it.
+          if (digitalKhattDataService.rewayah !== rewayah) {
+            await digitalKhattDataService
+              .switchRewayah(rewayah)
+              .catch(restoreError =>
+                console.error(
+                  '[MushafSettings] Failed to restore rewayah:',
+                  restoreError,
+                ),
+              );
+          }
+          showToast(
+            "Couldn't switch to Mushaf 1440",
+            'Please try again.',
+            'error',
+          );
+          return;
+          // @ai-end
         }
         setRewayah('hafs');
       }
@@ -1128,6 +1154,11 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
       <View style={styles.card}>
         {FONT_OPTIONS.map((option, idx) => {
           const isSelected = mushafRenderer === option.value;
+          // IndoPak's font lacks marks every non-Hafs rewayah uses, so it is
+          // offered for Hafs only (Mushaf 1440 stays selectable: choosing it
+          // returns the reader to Hafs).
+          const isHafsOnly =
+            option.value === 'dk_indopak' && rewayah !== 'hafs'; // @ai
           return (
             <React.Fragment key={option.value}>
               {idx > 0 && <View style={styles.divider} />}
@@ -1135,7 +1166,14 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
                 style={({pressed}) => [
                   styles.radioRow,
                   pressed && styles.radioRowPressed,
+                  isHafsOnly && styles.radioRowDisabled, // @ai
                 ]}
+                disabled={isHafsOnly} // @ai
+                accessibilityRole="radio" // @ai
+                accessibilityState={{
+                  selected: isSelected,
+                  disabled: isHafsOnly,
+                }} // @ai
                 onPress={() => handleFontSelect(option.value)}>
                 <View
                   style={[
@@ -1153,7 +1191,7 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
                     {option.label}
                   </Text>
                   <Text style={styles.radioDescription}>
-                    {option.description}
+                    {isHafsOnly ? hafsOnlyFontDescription : option.description}
                   </Text>
                 </View>
               </Pressable>
@@ -1184,9 +1222,25 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
           />
         )
       )}
+      {/* @ai-start */}
+      {mushafRenderer === 'dk_indopak' && (
+        <Text style={styles.helperText}>
+          IndoPak shows Hafs only. Choosing another rewayah switches the font to{' '}
+          {REWAYAH_FALLBACK_RENDERER_LABEL}.
+        </Text>
+      )}
+      {/* @ai-end */}
       <RewayahAccordion
         selectedId={rewayah}
-        onSelect={handleRewayahSelect}
+        onSelect={value => {
+          // @ai-start
+          // Mushaf 1440 pins the text to Hafs and the store refuses another
+          // rewayah, so a row left expanded across a renderer switch must not
+          // move the data service on its own.
+          if (isQCF1440) return;
+          // @ai-end
+          handleRewayahSelect(value);
+        }}
         styles={styles}
         theme={theme}
         disabled={isQCF1440}
@@ -1321,7 +1375,7 @@ const RewayahDiffCard: React.FC<RewayahDiffCardProps> = ({
   theme,
 }) => {
   const [showLegend, setShowLegend] = useState(false);
-  const legend = REWAYAH_LEGEND[rewayah];
+  const legend = useMemo(() => getRewayahDiffLegend(rewayah), [rewayah]); // @ai
 
   return (
     <View style={styles.card}>
@@ -1337,26 +1391,30 @@ const RewayahDiffCard: React.FC<RewayahDiffCardProps> = ({
         />
       </View>
       <Text style={styles.helperText}>{legend.summary}</Text>
-      <View style={styles.divider} />
-      <Pressable
-        style={({pressed}) => [
-          styles.settingRow,
-          pressed && styles.settingRowPressed,
-        ]}
-        onPress={() => setShowLegend(!showLegend)}>
-        <Feather
-          name="info"
-          size={moderateScale(16)}
-          color={Color(theme.colors.text).alpha(0.7).toString()}
-        />
-        <Text style={styles.settingRowLabel}>Color legend</Text>
-        <Feather
-          name={showLegend ? 'chevron-up' : 'chevron-down'}
-          size={moderateScale(18)}
-          color={Color(theme.colors.text).alpha(0.4).toString()}
-        />
-      </Pressable>
-      {showLegend && (
+      {/* @ai-start */}
+      {legend.entries.length > 0 && <View style={styles.divider} />}
+      {legend.entries.length > 0 && (
+        <Pressable
+          style={({pressed}) => [
+            styles.settingRow,
+            pressed && styles.settingRowPressed,
+          ]}
+          onPress={() => setShowLegend(!showLegend)}>
+          <Feather
+            name="info"
+            size={moderateScale(16)}
+            color={Color(theme.colors.text).alpha(0.7).toString()}
+          />
+          <Text style={styles.settingRowLabel}>Color legend</Text>
+          <Feather
+            name={showLegend ? 'chevron-up' : 'chevron-down'}
+            size={moderateScale(18)}
+            color={Color(theme.colors.text).alpha(0.4).toString()}
+          />
+        </Pressable>
+      )}
+      {/* @ai-end */}
+      {showLegend && legend.entries.length > 0 && (
         <>
           <View style={styles.divider} />
           <View style={styles.legendContainer}>
@@ -1387,183 +1445,6 @@ const RewayahDiffCard: React.FC<RewayahDiffCardProps> = ({
       )}
     </View>
   );
-};
-
-interface LegendEntry {
-  color: string;
-  isBackground?: boolean;
-  label: string;
-  description: string;
-}
-
-interface RewayahLegend {
-  summary: string;
-  entries: LegendEntry[];
-}
-
-// Per-rewayah disclosure of what 'Show Differences' actually highlights.
-// The summary is factual; describes which rules we do and don't cover so
-// users can calibrate expectations vs a printed color-coded mushaf.
-const REWAYAH_LEGEND: Record<RewayahWithDiffs, RewayahLegend> = {
-  shubah: {
-    summary:
-      'Flags words that differ from Hafs. Letter-level tajweed rules are not highlighted for this rewayah.',
-    entries: [
-      {
-        color: REWAYAH_DIFF_BACKGROUND,
-        isBackground: true,
-        label: 'Word variant',
-        description: 'Letter-level difference from Hafs',
-      },
-      {
-        color: tajweedColors.minor,
-        label: 'Vowel / mood shift',
-        description: 'Trailing-vowel or mood change only',
-      },
-    ],
-  },
-  'al-bazzi': {
-    summary:
-      "Flags words that differ from Hafs and highlights Ibn Kathir's silah (pronoun lengthening). Letter-level tajweed rules are not highlighted.",
-    entries: [
-      {
-        color: REWAYAH_DIFF_BACKGROUND,
-        isBackground: true,
-        label: 'Word variant',
-        description: 'Letter-level difference from Hafs',
-      },
-      {
-        color: tajweedColors.minor,
-        label: 'Vowel / mood shift',
-        description: 'Trailing-vowel or mood change only',
-      },
-      {
-        color: tajweedColors.silah,
-        label: 'Silah',
-        description: 'Pronoun-lengthening mark (ۥ / ۦ)',
-      },
-    ],
-  },
-  qunbul: {
-    summary:
-      "Flags words that differ from Hafs and highlights Ibn Kathir's silah (pronoun lengthening). Letter-level tajweed rules are not highlighted.",
-    entries: [
-      {
-        color: REWAYAH_DIFF_BACKGROUND,
-        isBackground: true,
-        label: 'Word variant',
-        description: 'Letter-level difference from Hafs',
-      },
-      {
-        color: tajweedColors.minor,
-        label: 'Vowel / mood shift',
-        description: 'Trailing-vowel or mood change only',
-      },
-      {
-        color: tajweedColors.silah,
-        label: 'Silah',
-        description: 'Pronoun-lengthening mark (ۥ / ۦ)',
-      },
-    ],
-  },
-  warsh: {
-    summary:
-      'Highlights the published-mushaf rules KFGQPC encodes: tashil, ibdal, madd al-badal, taghliz al-lam, silah, and genuine word variants. Taqlil, tarqiq ar-ra, and naql are not yet supported.',
-    entries: [
-      {
-        color: tajweedColors.madd,
-        label: 'Madd al-Badal',
-        description: 'Prolonged vowel after hamza',
-      },
-      {
-        color: tajweedColors.tashil,
-        label: 'Tashil / Musahhala',
-        description: 'Softened hamza pronunciation',
-      },
-      {
-        color: tajweedColors.ibdal,
-        label: 'Ibdal',
-        description: 'Hamza replaced by long vowel',
-      },
-      {
-        color: tajweedColors.taghliz,
-        label: 'Taghliz al-Lam',
-        description: 'Heavy lam in Allah after emphatic letters',
-      },
-      {
-        color: tajweedColors.silah,
-        label: 'Silah',
-        description: 'Pronoun-lengthening mark (ۥ / ۦ)',
-      },
-      {
-        color: REWAYAH_DIFF_BACKGROUND,
-        isBackground: true,
-        label: 'Word variant',
-        description: 'Genuine letter-level difference from Hafs',
-      },
-    ],
-  },
-  qalun: {
-    summary:
-      'Highlights the published-mushaf rules KFGQPC encodes: tashil, ibdal, madd al-badal, taghliz al-lam, silah, and genuine word variants. Taqlil, tarqiq ar-ra, and naql are not yet supported.',
-    entries: [
-      {
-        color: tajweedColors.madd,
-        label: 'Madd al-Badal',
-        description: 'Prolonged vowel after hamza',
-      },
-      {
-        color: tajweedColors.tashil,
-        label: 'Tashil / Musahhala',
-        description: 'Softened hamza pronunciation',
-      },
-      {
-        color: tajweedColors.ibdal,
-        label: 'Ibdal',
-        description: 'Hamza replaced by long vowel',
-      },
-      {
-        color: tajweedColors.taghliz,
-        label: 'Taghliz al-Lam',
-        description: 'Heavy lam in Allah after emphatic letters',
-      },
-      {
-        color: tajweedColors.silah,
-        label: 'Silah',
-        description: 'Pronoun-lengthening mark (ۥ / ۦ)',
-      },
-      {
-        color: REWAYAH_DIFF_BACKGROUND,
-        isBackground: true,
-        label: 'Word variant',
-        description: 'Genuine letter-level difference from Hafs',
-      },
-    ],
-  },
-  'al-duri-abi-amr': {
-    summary:
-      'Flags only genuine letter-level word variants from Hafs. Abu Amr-specific tajweed rules (idgham kabeer, imalah) are not yet highlighted.',
-    entries: [
-      {
-        color: REWAYAH_DIFF_BACKGROUND,
-        isBackground: true,
-        label: 'Word variant',
-        description: 'Genuine letter-level difference from Hafs',
-      },
-    ],
-  },
-  'al-susi': {
-    summary:
-      'Flags only genuine letter-level word variants from Hafs. Abu Amr-specific tajweed rules (idgham kabeer, imalah) are not yet highlighted.',
-    entries: [
-      {
-        color: REWAYAH_DIFF_BACKGROUND,
-        isBackground: true,
-        label: 'Word variant',
-        description: 'Genuine letter-level difference from Hafs',
-      },
-    ],
-  },
 };
 
 // The mushaf-settings picker is generated from ALL_REWAYAH_IDS. IDs with
