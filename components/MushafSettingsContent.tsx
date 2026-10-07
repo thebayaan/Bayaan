@@ -607,6 +607,11 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
   const verseKey = '1:1';
   const isQCF1440 = mushafRenderer === 'qcf_v2';
   const hafsOnlyFontDescription = `Hafs only. This font lacks marks used by ${getRewayahShortLabel(rewayah)}.`; // @ai
+  // @ai-start
+  // Tajweed colors are Hafs rules and are never drawn on another rewayah's
+  // text, so the toggle only applies while reading Hafs.
+  const hafsOnlyTajweedDescription = `Hafs only. Not shown for ${getRewayahShortLabel(rewayah)}.`;
+  // @ai-end
   const allahNameHighlightHex = getAllahNameHighlightColorHex(
     allahNameHighlightColor,
     theme.isDarkMode,
@@ -1139,7 +1144,9 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
             <Text style={styles.tajweedSubLabel}>
               {isQCF1440
                 ? 'Unavailable in Mushaf 1440 beta'
-                : 'Highlight rules with colors'}
+                : rewayah !== 'hafs'
+                  ? hafsOnlyTajweedDescription // @ai
+                  : 'Highlight rules with colors'}
             </Text>
           </View>
           <TajweedToggle
