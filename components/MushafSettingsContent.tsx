@@ -14,10 +14,7 @@ import {
   FullscreenPillIcon,
 } from '@/components/Icons';
 import {useTajweedStore} from '@/store/tajweedStore';
-import {
-  tajweedColors,
-  REWAYAH_DIFF_BACKGROUND,
-} from '@/constants/tajweedColors';
+import {tajweedColors} from '@/constants/tajweedColors';
 import FormattedTextRenderer from '@/components/utils/FormattedText';
 import {LinearGradient} from 'expo-linear-gradient';
 import SkiaVerseText from '@/components/player/v2/PlayerContent/QuranView/SkiaVerseText';
@@ -42,6 +39,7 @@ import {
   hasTextData,
   type RewayahWithDiffs,
 } from '@/services/rewayah/RewayahIdentity';
+import {getRewayahDiffLegend} from '@/components/sheets/rewayahDiffLegend'; // @ai
 import {
   useMushafSettingsStore,
   getActualFontSize,
@@ -1377,7 +1375,7 @@ const RewayahDiffCard: React.FC<RewayahDiffCardProps> = ({
   theme,
 }) => {
   const [showLegend, setShowLegend] = useState(false);
-  const legend = REWAYAH_LEGEND[rewayah];
+  const legend = useMemo(() => getRewayahDiffLegend(rewayah), [rewayah]); // @ai
 
   return (
     <View style={styles.card}>
@@ -1393,26 +1391,30 @@ const RewayahDiffCard: React.FC<RewayahDiffCardProps> = ({
         />
       </View>
       <Text style={styles.helperText}>{legend.summary}</Text>
-      <View style={styles.divider} />
-      <Pressable
-        style={({pressed}) => [
-          styles.settingRow,
-          pressed && styles.settingRowPressed,
-        ]}
-        onPress={() => setShowLegend(!showLegend)}>
-        <Feather
-          name="info"
-          size={moderateScale(16)}
-          color={Color(theme.colors.text).alpha(0.7).toString()}
-        />
-        <Text style={styles.settingRowLabel}>Color legend</Text>
-        <Feather
-          name={showLegend ? 'chevron-up' : 'chevron-down'}
-          size={moderateScale(18)}
-          color={Color(theme.colors.text).alpha(0.4).toString()}
-        />
-      </Pressable>
-      {showLegend && (
+      {/* @ai-start */}
+      {legend.entries.length > 0 && <View style={styles.divider} />}
+      {legend.entries.length > 0 && (
+        <Pressable
+          style={({pressed}) => [
+            styles.settingRow,
+            pressed && styles.settingRowPressed,
+          ]}
+          onPress={() => setShowLegend(!showLegend)}>
+          <Feather
+            name="info"
+            size={moderateScale(16)}
+            color={Color(theme.colors.text).alpha(0.7).toString()}
+          />
+          <Text style={styles.settingRowLabel}>Color legend</Text>
+          <Feather
+            name={showLegend ? 'chevron-up' : 'chevron-down'}
+            size={moderateScale(18)}
+            color={Color(theme.colors.text).alpha(0.4).toString()}
+          />
+        </Pressable>
+      )}
+      {/* @ai-end */}
+      {showLegend && legend.entries.length > 0 && (
         <>
           <View style={styles.divider} />
           <View style={styles.legendContainer}>
@@ -1443,183 +1445,6 @@ const RewayahDiffCard: React.FC<RewayahDiffCardProps> = ({
       )}
     </View>
   );
-};
-
-interface LegendEntry {
-  color: string;
-  isBackground?: boolean;
-  label: string;
-  description: string;
-}
-
-interface RewayahLegend {
-  summary: string;
-  entries: LegendEntry[];
-}
-
-// Per-rewayah disclosure of what 'Show Differences' actually highlights.
-// The summary is factual; describes which rules we do and don't cover so
-// users can calibrate expectations vs a printed color-coded mushaf.
-const REWAYAH_LEGEND: Record<RewayahWithDiffs, RewayahLegend> = {
-  shubah: {
-    summary:
-      'Flags words that differ from Hafs. Letter-level tajweed rules are not highlighted for this rewayah.',
-    entries: [
-      {
-        color: REWAYAH_DIFF_BACKGROUND,
-        isBackground: true,
-        label: 'Word variant',
-        description: 'Letter-level difference from Hafs',
-      },
-      {
-        color: tajweedColors.minor,
-        label: 'Vowel / mood shift',
-        description: 'Trailing-vowel or mood change only',
-      },
-    ],
-  },
-  'al-bazzi': {
-    summary:
-      "Flags words that differ from Hafs and highlights Ibn Kathir's silah (pronoun lengthening). Letter-level tajweed rules are not highlighted.",
-    entries: [
-      {
-        color: REWAYAH_DIFF_BACKGROUND,
-        isBackground: true,
-        label: 'Word variant',
-        description: 'Letter-level difference from Hafs',
-      },
-      {
-        color: tajweedColors.minor,
-        label: 'Vowel / mood shift',
-        description: 'Trailing-vowel or mood change only',
-      },
-      {
-        color: tajweedColors.silah,
-        label: 'Silah',
-        description: 'Pronoun-lengthening mark (ۥ / ۦ)',
-      },
-    ],
-  },
-  qunbul: {
-    summary:
-      "Flags words that differ from Hafs and highlights Ibn Kathir's silah (pronoun lengthening). Letter-level tajweed rules are not highlighted.",
-    entries: [
-      {
-        color: REWAYAH_DIFF_BACKGROUND,
-        isBackground: true,
-        label: 'Word variant',
-        description: 'Letter-level difference from Hafs',
-      },
-      {
-        color: tajweedColors.minor,
-        label: 'Vowel / mood shift',
-        description: 'Trailing-vowel or mood change only',
-      },
-      {
-        color: tajweedColors.silah,
-        label: 'Silah',
-        description: 'Pronoun-lengthening mark (ۥ / ۦ)',
-      },
-    ],
-  },
-  warsh: {
-    summary:
-      'Highlights the published-mushaf rules KFGQPC encodes: tashil, ibdal, madd al-badal, taghliz al-lam, silah, and genuine word variants. Taqlil, tarqiq ar-ra, and naql are not yet supported.',
-    entries: [
-      {
-        color: tajweedColors.madd,
-        label: 'Madd al-Badal',
-        description: 'Prolonged vowel after hamza',
-      },
-      {
-        color: tajweedColors.tashil,
-        label: 'Tashil / Musahhala',
-        description: 'Softened hamza pronunciation',
-      },
-      {
-        color: tajweedColors.ibdal,
-        label: 'Ibdal',
-        description: 'Hamza replaced by long vowel',
-      },
-      {
-        color: tajweedColors.taghliz,
-        label: 'Taghliz al-Lam',
-        description: 'Heavy lam in Allah after emphatic letters',
-      },
-      {
-        color: tajweedColors.silah,
-        label: 'Silah',
-        description: 'Pronoun-lengthening mark (ۥ / ۦ)',
-      },
-      {
-        color: REWAYAH_DIFF_BACKGROUND,
-        isBackground: true,
-        label: 'Word variant',
-        description: 'Genuine letter-level difference from Hafs',
-      },
-    ],
-  },
-  qalun: {
-    summary:
-      'Highlights the published-mushaf rules KFGQPC encodes: tashil, ibdal, madd al-badal, taghliz al-lam, silah, and genuine word variants. Taqlil, tarqiq ar-ra, and naql are not yet supported.',
-    entries: [
-      {
-        color: tajweedColors.madd,
-        label: 'Madd al-Badal',
-        description: 'Prolonged vowel after hamza',
-      },
-      {
-        color: tajweedColors.tashil,
-        label: 'Tashil / Musahhala',
-        description: 'Softened hamza pronunciation',
-      },
-      {
-        color: tajweedColors.ibdal,
-        label: 'Ibdal',
-        description: 'Hamza replaced by long vowel',
-      },
-      {
-        color: tajweedColors.taghliz,
-        label: 'Taghliz al-Lam',
-        description: 'Heavy lam in Allah after emphatic letters',
-      },
-      {
-        color: tajweedColors.silah,
-        label: 'Silah',
-        description: 'Pronoun-lengthening mark (ۥ / ۦ)',
-      },
-      {
-        color: REWAYAH_DIFF_BACKGROUND,
-        isBackground: true,
-        label: 'Word variant',
-        description: 'Genuine letter-level difference from Hafs',
-      },
-    ],
-  },
-  'al-duri-abi-amr': {
-    summary:
-      'Flags only genuine letter-level word variants from Hafs. Abu Amr-specific tajweed rules (idgham kabeer, imalah) are not yet highlighted.',
-    entries: [
-      {
-        color: REWAYAH_DIFF_BACKGROUND,
-        isBackground: true,
-        label: 'Word variant',
-        description: 'Genuine letter-level difference from Hafs',
-      },
-    ],
-  },
-  'al-susi': {
-    summary:
-      'Flags only genuine letter-level word variants from Hafs. Abu Amr-specific tajweed rules (idgham kabeer, imalah) are not yet highlighted.',
-    entries: [
-      {
-        color: REWAYAH_DIFF_BACKGROUND,
-        isBackground: true,
-        label: 'Word variant',
-        description: 'Genuine letter-level difference from Hafs',
-      },
-    ],
-  },
 };
 
 // The mushaf-settings picker is generated from ALL_REWAYAH_IDS. IDs with
