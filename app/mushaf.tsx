@@ -7,6 +7,7 @@ import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
 import {mushafSessionStore} from '@/services/mushaf/MushafSessionStore';
 import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
+import {useMushafSettingsStore} from '@/store/mushafSettingsStore'; // @ai
 import {mushafAudioService} from '@/services/audio/MushafAudioService';
 import {SheetManager} from 'react-native-actions-sheet';
 import {SURAHS} from '@/data/surahData';
@@ -84,6 +85,26 @@ export default function MushafScreen() {
       });
     };
   }, []);
+
+  // @ai-start
+  // Mushaf 1440 (qcf_v2) draws Hafs only and the settings store pins the
+  // rewayah to Hafs there. The DigitalKhatt data service must agree: its
+  // words feed the QCF Allah-name highlights now, and the DigitalKhatt pages
+  // and their saved layouts after a later switch back. A path that switched
+  // the service without the store (opening a bookmark saved in another
+  // rewayah used to) would otherwise leave that rewayah's text under a Hafs
+  // header, so put the service back on the store's rewayah.
+  const mushafRenderer = useMushafSettingsStore(s => s.mushafRenderer);
+  const settingsRewayah = useMushafSettingsStore(s => s.rewayah);
+  useEffect(() => {
+    if (mushafRenderer !== 'qcf_v2') return;
+    if (!digitalKhattDataService.initialized) return;
+    if (digitalKhattDataService.rewayah === settingsRewayah) return;
+    digitalKhattDataService.switchRewayah(settingsRewayah).catch(error => {
+      console.error('[MushafScreen] Failed to resync rewayah:', error);
+    });
+  }, [mushafRenderer, settingsRewayah]);
+  // @ai-end
 
   // Set verse highlight on mount, auto-clear after 3s, clear on unmount
   useEffect(() => {
