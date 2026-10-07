@@ -1,0 +1,43 @@
+{
+  "envelope": 1,
+  "key": "qf:tafsirs:169",
+  "version": 1,
+  "source": "qf",
+  "fetched_at": "2026-01-01T00:00:00.000Z",
+  "snapshot": {
+    "resource_group": "tafsirs",
+    "resource_id": 169,
+    "resource_content_id": 169,
+    "schema_version": 1,
+    "sync_sequence": 1,
+    "records": [
+      {
+        "id": 1,
+        "verse_id": 1,
+        "verse_key": "1:1",
+        "start_verse_id": 1,
+        "end_verse_id": 2,
+        "group_verses_count": 2,
+        "text": "<p>Synthetic tafsir group for verses one and two</p>"
+      },
+      {
+        "id": 2,
+        "verse_id": 2,
+        "verse_key": "1:2",
+        "start_verse_id": 1,
+        "end_verse_id": 2,
+        "group_verses_count": 2,
+        "text": ""
+      },
+      {
+        "id": 3,
+        "verse_id": 3,
+        "verse_key": "1:3",
+        "start_verse_id": 3,
+        "end_verse_id": 3,
+        "group_verses_count": 1,
+        "text": "<p>Synthetic tafsir for verse three</p>"
+      }
+    ]
+  }
+}

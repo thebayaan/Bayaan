@@ -1,0 +1,45 @@
+{
+  "format": 1,
+  "generated_at": "2026-01-01T00:00:00.000Z",
+  "paused": false,
+  "resources": [
+    {
+      "key": "qf:tafsirs:169",
+      "kind": "tafsir",
+      "source": "qf",
+      "version": 1,
+      "status": "active",
+      "upstream_schema_version": 1,
+      "bytes": 292,
+      "sha256": "783f40ae135f045f446f158611fe78302f116e48fbd45e644d925317cd692ffe",
+      "meta": {
+        "name": "Synthetic Tafsir",
+        "language": "en",
+        "direction": "ltr"
+      }
+    },
+    {
+      "key": "qf:translations:20",
+      "kind": "translation",
+      "source": "qf",
+      "version": 1,
+      "status": "active",
+      "upstream_schema_version": 1,
+      "bytes": 275,
+      "sha256": "807d96a625d103c7a298b410e627a0df10f512d02925344e7d9b811adba746b7",
+      "meta": {
+        "name": "Synthetic Translation",
+        "language": "en",
+        "direction": "ltr"
+      }
+    },
+    {
+      "key": "qf:translations:21",
+      "kind": "translation",
+      "source": "qf",
+      "version": 1,
+      "status": "withdrawn",
+      "withdrawn_reason": "copyright_holder_request"
+    }
+  ]
+}
