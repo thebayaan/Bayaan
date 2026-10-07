@@ -21,7 +21,7 @@ jobs:
   android:
     name: Gradle assembleDebug
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     # No secrets are used. android/ is committed, so no prebuild step is needed.
     # The Sentry Expo plugin is only wired when EXPO_PUBLIC_SENTRY_DSN is set
     # (it is not here), and the debug build uses the committed debug.keystore.
