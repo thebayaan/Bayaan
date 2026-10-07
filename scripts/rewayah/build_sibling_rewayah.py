@@ -1,597 +1,627 @@
+#!/usr/bin/env python3
 """
-Build a Bayaan-compatible Mushaf words DB by patching a base rewayah's words
-DB with another rewayah's text — the same approach used for Shu'bah on top
-of Hafs, generalized to any (base, target) pair.
+Build Bayaan's non-Hafs DigitalKhatt words DBs, highlight maps and verse maps
+from the official KFGQPC v2.x texts (Release 1: every rewayah keeps the Hafs
+word ids, verse keys and 604-page layout; only words.text changes).
 
-Strategy
---------
-The base DB has Hafs's word IDs and layout. We walk both streams in parallel:
-  - Hafs words include ayah-marker tokens (۝N) that delimit verses.
-  - Target rewayah words are the same content sequence, just with different
-    spelling (Bazzi: Jibril → Jabra'il, etc.) and a different number of
-    intra-verse markers (Bazzi merges some Hafs verse pairs).
+Usage (from the repo root):
+  python3 scripts/rewayah/build_sibling_rewayah.py              # all 7 rewayat
+  python3 scripts/rewayah/build_sibling_rewayah.py warsh bazzi  # a subset
+  python3 scripts/rewayah/build_sibling_rewayah.py --out-dir DIR   # write elsewhere, repo untouched
+  python3 scripts/rewayah/build_sibling_rewayah.py --report     # also print every non-trivial alignment
 
-For each Hafs word slot:
-  - If it's an ayah marker, keep Hafs's marker text (preserving Hafs's
-    verse numbering even when the target merges verses — see README).
-  - Otherwise, advance through the target's content stream and substitute
-    the corresponding token's text.
+For each rewayah <id> the builder writes, into a fresh temporary directory:
+  dk_words_<id>.db     CREATE TABLE + INSERT in id order + VACUUM (deterministic bytes)
+  <id>-diff.json       highlight map, format 2 (contract C2)
+  <id>-versemap.json   rewayah <-> Hafs verse map, format 1 (contract C3)
+then runs the hard validator (validate_rewayah_db.validate) on them and only
+if every rewayah passes replaces the files in data/mushaf/digitalkhatt/
+atomically (os.replace). Any failure exits non-zero and leaves the repo files
+untouched. Running the builder twice produces byte-identical files.
 
-Output is a copy of the base DB with `words.text` updated; word IDs are
-unchanged so the existing layout DB still references valid ranges. The
-runtime layer only needs to know the words DB path is different.
-
-Limitations
------------
-~7 surahs in some rewayat have ±1-2 content word count differences from
-Hafs (typically due to spelling causing whitespace tokenization to split
-or merge a word). Those surahs are skipped — Hafs text is left in those
-slots — and logged so they can be addressed manually later if needed.
-
-Usage
------
-    python3 build_sibling_rewayah.py <rewayah_id> <kfgqpc_json> [base_db]
-
-    # Defaults base_db to digital-khatt-v2.db (Hafs):
-    python3 scripts/rewayah/build_sibling_rewayah.py bazzi \\
-        scripts/rewayah/bazzi.json
+Algorithm (the reconciled prototype of the 2026-10 audit, adapted to v2.x)
+--------------------------------------------------------------------------
+1. Sources: scripts/rewayah/sources/<id>.json, verified against
+   sources/sources.lock.json (SHA-256) before anything is read.
+   normalize.load_source/parse_verse tokenize each verse; normalize.dk_token
+   converts each token to DK encoding (conventions + RENDER_POLICY).
+2. Alignment key = rasm skeleton (base letters only; hamza seats, wasla/madda
+   alef and final ya unified; hamza and tatweel dropped).
+3. Per surah: skeleton-equality anchors (difflib matching blocks) + a banded
+   dynamic programme between anchors with the moves 1:1, 1:0, 0:1, 2:1, 1:2
+   (1:1 cost = normalized Levenshtein of the skeletons, gap 0.7, merges cost
+   of the concatenation + 0.2).
+4. Slot text = the target tokens assigned to the Hafs slot, joined by one
+   space. Policies:
+     P2  a Hafs-only word -> blank slot ''          (Hafs text never leaks)
+     P3  one target token over two Hafs slots -> first slot, second blank
+     P4  an extra target token -> appended to the previous slot
+     A2  two target tokens in one Hafs slot are joined WITHOUT a space only
+         when the Hafs slot is one word, skel(t1+t2) == skel(Hafs) and t1 ends
+         in a right-non-joining letter; otherwise one space
+     P12 37:130 'إِلْ يَاسِينَ' (a Hafs slot with a space) keeps both words
+     P10 Fatiha, sources without a basmala verse (Madani/Basri counts): the
+         exact Hafs basmala words stay in 1:1:1-4, the 1:1 marker is blank and
+         numbering starts at al-hamdu
+5. Markers: a Hafs marker slot receives the target marker of verse v iff the
+   last target token consumed so far is the last token of v; otherwise ''
+   (P7). A target verse end with no Hafs marker slot is written inline after
+   the verse's last token inside its slot ('عَلَيْهِمْ ۝٦', P6), so every surah
+   displays 1..N.
+6. Highlights (format 2) and the verse map are computed from the same final
+   assignment (see make_diff / make_versemap).
 """
 from __future__ import annotations
 
+import argparse
+import hashlib
 import json
-import re
+import os
 import shutil
 import sqlite3
 import sys
+import tempfile
+from collections import Counter
+from dataclasses import dataclass, field
 from difflib import SequenceMatcher
+from functools import lru_cache
 from pathlib import Path
 
-from normalize import normalize_verse, strip_for_render
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
 
-# Classification markers that strip_for_render removes. Mirrored here so the
-# anchor helpers can walk pre-strip text and compute post-strip char indices.
-_STRIP_SET = set("\u06E4\u06EA")
+import highlights as HL  # noqa: E402
+import normalize as N  # noqa: E402
 
-HERE = Path(__file__).parent
 REPO = HERE.parents[1]
-OUT_DIR = REPO / "data" / "mushaf" / "digitalkhatt"
-DEFAULT_BASE = OUT_DIR / "digital-khatt-v2.db"
+DATA_DIR = REPO / "data" / "mushaf" / "digitalkhatt"
+HAFS_DB = DATA_DIR / "digital-khatt-v2.db"
+SOURCES_DIR = HERE / "sources"
+LOCK_FILE = SOURCES_DIR / "sources.lock.json"
 
-# An ayah marker word is "۝" + Arabic-Indic digits, OR (rarely) a bare
-# digit run with no other letters. Matches both Hafs and KFGQPC conventions.
-_AYAH_MARKER_RE = re.compile(r"^[\u06DD\u06DE]?[\u0660-\u0669]+$")
+DIFF_FORMAT = 2
+VERSEMAP_FORMAT = 1
+WHOLE_WORD_CATEGORY = {rid: ("major" if rid in N.CLOSE else "mukhtalif") for rid in N.REWAYAT}
 
+# ---------------------------------------------------------------------------
+# Skeleton key
+# ---------------------------------------------------------------------------
 
-def is_ayah_marker(text: str) -> bool:
-    return bool(_AYAH_MARKER_RE.match(text)) or text.startswith("\u06DD")
-
-
-# Silah characters: small high waw (ۥ) and small high yeh (ۦ) that sit above
-# a preceding heh. Bazzi uses these pervasively on third-person pronouns;
-# treating every occurrence as a "word diff" would flag nearly every pronoun
-# in the Quran.
-#
-# Silah also triggers a secondary vocalization change: where Hafs ends a
-# pronoun with sukun (ْ), Bazzi uses damma (ُ) or kasra (ِ) to carry the silah
-# mark. To match these cases up as "silah-only", we normalize both sides:
-#   - Drop silah marks AND the damma/kasra they attach to.
-#   - Drop trailing sukun (Hafs's equivalent when there's no silah).
-# Genuine letter swaps like Jibril → Jabra'il still differ after normalization.
-_SILAH_CHARS = "\u06E5\u06E6"
-_PRECEDING_VOWELS = "\u064F\u0650"  # damma, kasra
-_TRAILING_VOWELS = set("\u064E\u064F\u0650")  # fatha, damma, kasra
-# Marks stripped from both sides during substantive-change comparison.
-# These are dominated by Madinah-vs-KFGQPC typographic convention differences
-# (Hafs's madda marks, shadda placements, waqf stops) that don't reflect a
-# genuine Bazzi reading difference. Stripping them leaves only the letter
-# skeleton + internal vowel choices, so only content-level changes trigger
-# highlights. Trailing vowels are also stripped because word-final damma/
-# kasra differences are almost always silah-adjacent vocalization swaps.
-_STRIPPABLE_MARKS = set(
-    "\u0651"  # shadda
-    "\u0652"  # sukun
-    "\u0653"  # madda
-    "\u06D6\u06D7\u06D8\u06D9\u06DA\u06DB\u06DC"  # small high waqf signs
-)
-
-
-def _strip_base(text: str) -> tuple[str, bool]:
-    """Strip silah (+ its preceding damma/kasra) and typographic marks.
-    Returns (stripped_text, had_silah)."""
-    result: list[str] = []
-    had_silah = False
-    for ch in text:
-        if ch in _SILAH_CHARS:
-            had_silah = True
-            if result and result[-1] in _PRECEDING_VOWELS:
-                result.pop()
-            continue
-        if ch in _STRIPPABLE_MARKS:
-            continue
-        result.append(ch)
-    return "".join(result), had_silah
-
-
-def categorize_diff(
-    hafs_text: str, bazzi_text: str
-) -> tuple[str, list[int]] | None:
-    """Legacy two-tier categorizer for close-to-Hafs rewayat (Shu'bah,
-    Bazzi, Qumbul). Use classify_word() for Warsh/Qaloon/Doori/Soosi
-    where the published mushaf color scheme applies.
-
-    Returns (category, char_indices). char_indices is always an empty
-    list — close rewayat use whole-word background/foreground highlights
-    for major/minor. The renderer treats [] as 'color the whole word'."""
-    h_norm, h_silah = _strip_base(hafs_text)
-    b_norm, b_silah = _strip_base(bazzi_text)
-    if h_silah or b_silah:
-        while h_norm and h_norm[-1] in _TRAILING_VOWELS:
-            h_norm = h_norm[:-1]
-        while b_norm and b_norm[-1] in _TRAILING_VOWELS:
-            b_norm = b_norm[:-1]
-    if h_norm == b_norm:
-        return None
-    h_trail = h_norm
-    b_trail = b_norm
-    while h_trail and h_trail[-1] in _TRAILING_VOWELS:
-        h_trail = h_trail[:-1]
-    while b_trail and b_trail[-1] in _TRAILING_VOWELS:
-        b_trail = b_trail[:-1]
-    if h_trail == b_trail:
-        return ("minor", [])
-    return ("major", [])
-
-
-# === Published-mushaf classification for Warsh/Qaloon/Doori/Soosi ===
-# Categories map to specific tajweed rules with established pedagogical
-# color conventions. See Unicode L2/19-306 for KFGQPC encoding details
-# of the markers we detect here.
-
-_HAMZA_LETTERS = set("\u0621\u0623\u0624\u0625\u0626")  # ء أ ؤ إ ئ
-_IBDAL_LONG_VOWELS = set("\u0627\u0648\u064A")  # ا و ي
-_ARABIC_LETTERS = set(
-    "\u0627\u0628\u0629\u062A\u062B\u062C\u062D\u062E"
-    "\u062F\u0630\u0631\u0632\u0633\u0634\u0635\u0636"
-    "\u0637\u0638\u0639\u063A\u0641\u0642\u0643\u0644"
-    "\u0645\u0646\u0647\u0648\u0649\u064A"
-    "\u0621\u0623\u0624\u0625\u0626"  # hamzas
-    "\u0622\u0671"  # alef madda, alef wasla
-)
-_TAFKHIM_TRIGGERS = set("\u0637\u0638\u0635")  # ط ظ ص
-_ALLAH_SUBSTR = "\u0644\u0644\u0651\u064E\u0647"  # للَّه
-
-
-# Orthographic letter variants that represent the same underlying letter
-# across rewayat spelling conventions. Normalized for mukhtalif filtering so
-# typographic-only diffs (hamzat al-wasl ٱ vs ا, alef maksura ى vs yeh ي,
-# alef madda آ vs alef ا) don't register as content variants.
-_LETTER_EQUIVALENTS = {
-    "\u0671": "\u0627",  # alef wasla -> alef
-    "\u0622": "\u0627",  # alef madda -> alef
-    "\u0649": "\u064A",  # alef maksura -> yeh
+_LETTERS = {chr(c) for c in range(0x0621, 0x064B)} | {"\u0671"}
+_VARIANT = {
+    "\u0671": "\u0627",  # ٱ
+    "\u0622": "\u0627",  # آ
+    "\u0623": "\u0627",  # أ
+    "\u0625": "\u0627",  # إ
+    "\u0649": "\u064A",  # ى
+    "\u0626": "\u064A",  # ئ
+    "\u0624": "\u0648",  # ؤ
+    "\u0629": "\u0647",  # ة
 }
+_DROP = {"\u0621", "\u0640"}  # ء, tatweel
+# Letters that do not join to the following letter (A2).
+_NONJOIN = set("\u0627\u0623\u0625\u0622\u0671\u062F\u0630\u0631\u0632\u0648\u0624")
 
 
-def _letters_only(text: str) -> str:
-    out: list[str] = []
-    for c in text:
-        if c not in _ARABIC_LETTERS:
-            continue
-        out.append(_LETTER_EQUIVALENTS.get(c, c))
-    return "".join(out)
+def skel(text: str) -> str:
+    return "".join(_VARIANT.get(c, c) for c in text if c in _LETTERS and c not in _DROP)
 
 
-def _marker_anchors(target_raw: str, marker: str) -> list[int]:
-    """For each occurrence of `marker` in `target_raw`, return the post-strip
-    char index of the nearest preceding base Arabic letter. Classification
-    markers are skipped (they'll be stripped before DB insert). The anchor
-    is the letter the combining mark visually sits on."""
-    anchors: list[int] = []
-    post_idx = 0
-    last_base_post = -1
-    for ch in target_raw:
-        if ch == marker:
-            if last_base_post >= 0:
-                anchors.append(last_base_post)
-            continue
-        if ch in _STRIP_SET:
-            continue
-        if ch in _ARABIC_LETTERS:
-            last_base_post = post_idx
-        post_idx += 1
-    return anchors
+def _last_letter(text: str) -> str:
+    for c in reversed(text):
+        if c in _LETTERS:
+            return c
+    return ""
 
 
-def _nth_letter_post_idx(target_raw: str, n: int) -> int:
-    """Post-strip char index of the n-th (0-based) Arabic base letter in
-    target_raw. Returns -1 if out of range."""
-    post_idx = 0
-    letter_count = 0
-    for ch in target_raw:
-        if ch in _STRIP_SET:
-            continue
-        if ch in _ARABIC_LETTERS:
-            if letter_count == n:
-                return post_idx
-            letter_count += 1
-        post_idx += 1
-    return -1
+def can_join(t1: str, t2: str, hafs_slot_text: str) -> bool:
+    """A2: join two target tokens without a space inside one Hafs slot."""
+    return " " not in hafs_slot_text and _last_letter(t1) in _NONJOIN and skel(t1 + t2) == skel(hafs_slot_text)
 
 
-def classify_word(
-    hafs_raw: str,
-    target_raw: str,
-    hafs_prev_raw: str | None,
-    target_prev_raw: str | None,
-) -> tuple[str, list[int]] | None:
-    """Classify a patched word into one of the published-mushaf tajweed
-    categories. Returns (category, post_strip_char_indices) or None.
+# ---------------------------------------------------------------------------
+# Alignment
+# ---------------------------------------------------------------------------
 
-    Categories (first match wins):
-      'madd'      — Madd al-Badal or Madd al-Lin (U+06E4 marker present)
-      'tashil'    — Hamza tashil / musahhala (U+06EA or U+06EC marker)
-      'ibdal'     — Hafs hamza → Warsh long vowel at same position
-      'taghliz'   — Allah following a tafkhim-trigger (ط/ظ/ص + vowel)
-      'mukhtalif' — Any other word-level text diff (fall-through)
-
-    char_indices are into the DB-stored (post-strip) word text. Empty list
-    means 'whole word' — the renderer treats it as legacy word-level.
-    Silah is detected at runtime from stored text (U+06E5/U+06E6).
-    """
-    # Is there actually a diff?
-    h_strip = strip_for_render(hafs_raw)
-    t_strip = strip_for_render(target_raw)
-    if h_strip == t_strip:
-        return None
-
-    # 1. Madd al-Badal / Madd al-Lin — U+06E4 explicitly marks this in
-    #    KFGQPC Warsh/Qaloon data. Anchor on the letter it sits above.
-    if "\u06E4" in target_raw:
-        anchors = _marker_anchors(target_raw, "\u06E4")
-        if anchors:
-            return ("madd", sorted(set(anchors)))
-
-    # 2. Tashil — U+06EA (dot below) or U+06EC (ring above) indicates
-    #    hamza tashil / musahhala. Anchor on the carrier letter.
-    tashil_anchors: list[int] = []
-    if "\u06EA" in target_raw:
-        tashil_anchors.extend(_marker_anchors(target_raw, "\u06EA"))
-    if "\u06EC" in target_raw:
-        tashil_anchors.extend(_marker_anchors(target_raw, "\u06EC"))
-    if tashil_anchors:
-        return ("tashil", sorted(set(tashil_anchors)))
-
-    # 3. Ibdal — Hafs hamza in same letter position as Warsh long vowel.
-    #    Letter-count-preserving substitution: أ→ا, ؤ→و, ئ→ي. Color just
-    #    the substituted letter in the target word.
-    h_letters = _letters_only(hafs_raw)
-    t_letters = _letters_only(target_raw)
-    if len(h_letters) == len(t_letters):
-        ibdal_anchors: list[int] = []
-        for i, (h_c, t_c) in enumerate(zip(h_letters, t_letters)):
-            if h_c in _HAMZA_LETTERS and t_c in _IBDAL_LONG_VOWELS:
-                idx = _nth_letter_post_idx(target_raw, i)
-                if idx >= 0:
-                    ibdal_anchors.append(idx)
-        if ibdal_anchors:
-            return ("ibdal", sorted(set(ibdal_anchors)))
-
-    # 4. Taghliz al-Lam — Allah following a tafkhim trigger on the
-    #    preceding word. Color the lam+lam+shadda in للّه.
-    if _ALLAH_SUBSTR in target_raw and target_prev_raw:
-        prev_letters = _letters_only(target_prev_raw)
-        if prev_letters and prev_letters[-1] in _TAFKHIM_TRIGGERS:
-            post_target = strip_for_render(target_raw)
-            idx = post_target.find(_ALLAH_SUBSTR)
-            if idx >= 0:
-                return ("taghliz", [idx, idx + 1, idx + 2])
-
-    # 5. Mukhtalif fall-through — but only if there's a SUBSTANTIVE diff.
-    #    Filter out typographic-only variations (alef wasla style, trailing
-    #    vowel mood shifts, silah-adjacent changes) that would otherwise
-    #    flood the page with red. The published mushaf reserves the red
-    #    "mukhtalif" tag for genuine reading variants. Whole-word highlight.
-    h_norm, h_silah = _strip_base(hafs_raw)
-    t_norm, t_silah = _strip_base(target_raw)
-    if h_silah or t_silah:
-        while h_norm and h_norm[-1] in _TRAILING_VOWELS:
-            h_norm = h_norm[:-1]
-        while t_norm and t_norm[-1] in _TRAILING_VOWELS:
-            t_norm = t_norm[:-1]
-    if h_norm == t_norm:
-        return None
-    h_letters = _letters_only(h_norm)
-    t_letters = _letters_only(t_norm)
-    if h_letters == t_letters:
-        return None
-    return ("mukhtalif", [])
+GAP = 0.7
+MERGE = 0.2
+BAND = 60
 
 
-def classify_mukhtalif_only(
-    hafs_raw: str, target_raw: str
-) -> tuple[str, list[int]] | None:
-    """Strict content-variant-only classifier for Abu Amr rewayat (Doori,
-    Soosi). Skips all marker-based rule inference — those markers encode
-    Abu Amr's own hamza rules, not the Nafi' published-mushaf palette.
-    Emits only 'mukhtalif' for genuine letter-level differences."""
-    h_strip = strip_for_render(hafs_raw)
-    t_strip = strip_for_render(target_raw)
-    if h_strip == t_strip:
-        return None
-    h_norm, h_silah = _strip_base(hafs_raw)
-    t_norm, t_silah = _strip_base(target_raw)
-    if h_silah or t_silah:
-        while h_norm and h_norm[-1] in _TRAILING_VOWELS:
-            h_norm = h_norm[:-1]
-        while t_norm and t_norm[-1] in _TRAILING_VOWELS:
-            t_norm = t_norm[:-1]
-    if h_norm == t_norm:
-        return None
-    h_letters = _letters_only(h_norm)
-    t_letters = _letters_only(t_norm)
-    if h_letters == t_letters:
-        return None
-    return ("mukhtalif", [])
+@lru_cache(maxsize=None)
+def _cost(a: str, b: str) -> float:
+    if a == b:
+        return 0.0
+    if not a or not b:
+        return 1.0
+    prev = list(range(len(b) + 1))
+    for i, ca in enumerate(a, 1):
+        cur = [i] + [0] * len(b)
+        for j, cb in enumerate(b, 1):
+            cur[j] = min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (ca != cb))
+        prev = cur
+    return prev[-1] / max(len(a), len(b))
 
 
-def align_content(
-    base_texts: list[str], target_texts: list[str]
-) -> list[int | None]:
-    """For each base content index, return the aligned target content index
-    (or None if no alignment). Uses difflib's SequenceMatcher — efficient
-    for mostly-similar sequences. Unaligned base slots keep the base text;
-    unaligned target words are dropped."""
-    mapping: list[int | None] = [None] * len(base_texts)
-    matcher = SequenceMatcher(a=base_texts, b=target_texts, autojunk=False)
-    for op, b_i, b_j, t_i, t_j in matcher.get_opcodes():
-        if op in ("equal", "replace"):
-            common = min(b_j - b_i, t_j - t_i)
-            for k in range(common):
-                mapping[b_i + k] = t_i + k
-        # 'delete': base has extra words target doesn't cover — keep base text
-        # 'insert': target has extra words with no base slot — drop them
-    return mapping
+def _align_dp(h: list[str], t: list[str]) -> list[tuple[int, int]]:
+    """Banded DP between two skeleton lists. Returns the moves (di, dj)."""
+    n, m = len(h), len(t)
+    if n == 0 or m == 0:
+        return [(1, 0)] * n + [(0, 1)] * m
+    inf = float("inf")
+    lo = [0] * (n + 1)
+    hi = [0] * (n + 1)
+    for i in range(n + 1):
+        c = round(i * m / n)
+        lo[i] = max(0, c - BAND)
+        hi[i] = min(m, c + BAND)
+    dist = [[inf] * (hi[i] - lo[i] + 1) for i in range(n + 1)]
+    back: list[list[tuple[int, int] | None]] = [[None] * (hi[i] - lo[i] + 1) for i in range(n + 1)]
+
+    def get(i: int, j: int) -> float:
+        if i < 0 or j < lo[i] or j > hi[i]:
+            return inf
+        return dist[i][j - lo[i]]
+
+    dist[0][0] = 0.0
+    for i in range(n + 1):
+        for j in range(lo[i], hi[i] + 1):
+            if i == 0 and j == 0:
+                continue
+            best, arg = inf, None
+            if i >= 1 and j >= 1:
+                v = get(i - 1, j - 1)
+                if v < inf:
+                    v += _cost(h[i - 1], t[j - 1])
+                    if v < best:
+                        best, arg = v, (1, 1)
+            if i >= 1:
+                v = get(i - 1, j)
+                if v + GAP < best:
+                    best, arg = v + GAP, (1, 0)
+            if j >= 1:
+                v = get(i, j - 1)
+                if v + GAP < best:
+                    best, arg = v + GAP, (0, 1)
+            if i >= 2 and j >= 1:
+                v = get(i - 2, j - 1)
+                if v < inf:
+                    v += _cost(h[i - 2] + h[i - 1], t[j - 1]) + MERGE
+                    if v < best:
+                        best, arg = v, (2, 1)
+            if i >= 1 and j >= 2:
+                v = get(i - 1, j - 2)
+                if v < inf:
+                    v += _cost(h[i - 1], t[j - 2] + t[j - 1]) + MERGE
+                    if v < best:
+                        best, arg = v, (1, 2)
+            dist[i][j - lo[i]] = best
+            back[i][j - lo[i]] = arg
+    if get(n, m) == inf:
+        raise BuildError("alignment band too narrow")
+    moves: list[tuple[int, int]] = []
+    i, j = n, m
+    while i or j:
+        mv = back[i][j - lo[i]]
+        assert mv is not None
+        moves.append(mv)
+        i, j = i - mv[0], j - mv[1]
+    moves.reverse()
+    return moves
 
 
-def main() -> None:
-    if len(sys.argv) < 3 or len(sys.argv) > 4:
-        print(
-            f"Usage: {sys.argv[0]} <rewayah_id> <kfgqpc_json> [base_db]",
-            file=sys.stderr,
-        )
-        sys.exit(2)
+def align(h: list[str], t: list[str]) -> list[tuple[int, int]]:
+    """Skeleton-equality anchors (difflib matching blocks), banded DP between them."""
+    sm = SequenceMatcher(a=h, b=t, autojunk=False)
+    moves: list[tuple[int, int]] = []
+    pi = pj = 0
+    for a, b, size in sm.get_matching_blocks():
+        if a > pi or b > pj:
+            moves.extend(_align_dp(h[pi:a], t[pj:b]))
+        moves.extend([(1, 1)] * size)
+        pi, pj = a + size, b + size
+    return moves
 
-    rewayah_id = sys.argv[1]
-    source_json = Path(sys.argv[2])
-    base_db = Path(sys.argv[3]) if len(sys.argv) == 4 else DEFAULT_BASE
 
-    out_db = OUT_DIR / f"dk_words_{rewayah_id}.db"
-    print(f"Copying {base_db.name} -> {out_db.name}")
-    shutil.copy(base_db, out_db)
+# ---------------------------------------------------------------------------
+# Build
+# ---------------------------------------------------------------------------
 
-    # Load Hafs (base) words in order. Keep the full tuple so we can build
-    # the diff JSON with (surah, ayah, word) keys at the same time as the
-    # patching runs.
-    conn = sqlite3.connect(out_db)
-    base_rows = conn.execute(
-        "SELECT id, surah, ayah, word, text FROM words ORDER BY id"
-    ).fetchall()
-    base_verse_key_by_id: dict[int, tuple[int, int, int]] = {
-        r[0]: (r[1], r[2], r[3]) for r in base_rows
+
+class BuildError(Exception):
+    pass
+
+
+@dataclass(frozen=True)
+class HafsRow:
+    id: int
+    location: str
+    surah: int
+    ayah: int
+    word: int
+    text: str
+
+    @property
+    def is_marker(self) -> bool:
+        return N.is_marker(self.text)
+
+
+@dataclass
+class Token:
+    raw: str  # KFGQPC token ('' for the P10 pseudo basmala words)
+    dk: str  # stored DK text
+    verse: int  # target ayah number; 0 for the P10 basmala words
+    last_of_verse: bool
+
+
+@dataclass
+class SlotInfo:
+    tokens: list[int] = field(default_factory=list)  # target token indexes (surah-local)
+    covers_next: bool = False  # P3: this slot's token also covers the next Hafs slot
+
+
+@dataclass
+class Result:
+    rid: str
+    texts: dict[int, str]  # word id -> stored text
+    diff: dict
+    versemap: dict
+    stats: Counter
+    events: list[str]
+
+
+def load_hafs(db: Path = HAFS_DB) -> list[HafsRow]:
+    con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+    try:
+        rows = [HafsRow(*r) for r in con.execute("SELECT id, location, surah, ayah, word, text FROM words ORDER BY id")]
+    finally:
+        con.close()
+    if [r.id for r in rows] != list(range(1, len(rows) + 1)):
+        raise BuildError("Hafs DB ids are not 1..N")
+    return rows
+
+
+def hafs_schema(db: Path = HAFS_DB) -> str:
+    con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+    try:
+        (sql,) = con.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='words'").fetchone()
+        others = con.execute("SELECT name FROM sqlite_master WHERE name != 'words'").fetchall()
+    finally:
+        con.close()
+    if others:
+        raise BuildError(f"Hafs DB has unexpected schema objects {others}")
+    return sql
+
+
+def sha256_file(path: Path) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def verify_source(rid: str) -> Path:
+    """Check sources/<rid>.json against sources.lock.json before it is read."""
+    lock = json.loads(LOCK_FILE.read_text(encoding="utf-8"))
+    entry = lock["sources"].get(rid)
+    if entry is None:
+        raise BuildError(f"{rid}: no entry in {LOCK_FILE.name}")
+    path = SOURCES_DIR / entry["file"]
+    got = sha256_file(path)
+    if got != entry["sha256"]:
+        raise BuildError(f"{rid}: {path.name} sha256 {got} != locked {entry['sha256']}")
+    errata = lock.get("errata", {})
+    if errata.get("sha256") and sha256_file(SOURCES_DIR / errata["file"]) != errata["sha256"]:
+        raise BuildError(f"{errata['file']} sha256 differs from {LOCK_FILE.name}")
+    return path
+
+
+def build(rid: str, hafs: list[HafsRow] | None = None, source: Path | None = None) -> Result:
+    hafs = hafs if hafs is not None else load_hafs()
+    source = source if source is not None else verify_source(rid)
+    verses = N.load_source(source, rid)
+    by_surah_t: dict[int, list[N.Verse]] = {}
+    for v in verses:
+        by_surah_t.setdefault(v.surah, []).append(v)
+    by_surah_h: dict[int, list[HafsRow]] = {}
+    for r in hafs:
+        by_surah_h.setdefault(r.surah, []).append(r)
+
+    texts: dict[int, str] = {}
+    stats: Counter = Counter()
+    events: list[str] = []
+    diff_entries: dict[tuple[int, int], dict[str, list]] = {}
+    r2h: dict[str, list[str]] = {}
+    category = WHOLE_WORD_CATEGORY[rid]
+
+    for surah in range(1, 115):
+        rows = by_surah_h[surah]
+        content = [r for r in rows if not r.is_marker]
+        tverses = by_surah_t[surah]
+
+        # --- target token stream -------------------------------------------
+        toks: list[Token] = []
+        if surah == 1 and skel(N.dk_token(tverses[0].tokens[0], rid)) != "\u0628\u0633\u0645":
+            # P10: keep the exact Hafs basmala words, unnumbered.
+            basmala = [r for r in rows if r.ayah == 1 and not r.is_marker]
+            for r in basmala:
+                toks.append(Token("", r.text, 0, False))
+            stats["P10 fatiha basmala words kept"] += len(basmala)
+        for v in tverses:
+            for k, raw in enumerate(v.tokens):
+                toks.append(Token(raw, N.dk_token(raw, rid), v.ayah, k == len(v.tokens) - 1))
+        last_tok_of_verse = {t.verse: i for i, t in enumerate(toks) if t.last_of_verse}
+
+        # --- alignment ------------------------------------------------------
+        h_sk = [skel(r.text) for r in content]
+        t_sk = [skel(t.dk) for t in toks]
+        moves = align(h_sk, t_sk)
+        slots = [SlotInfo() for _ in content]
+        i = j = 0
+        for di, dj in moves:
+            if (di, dj) == (1, 1):
+                slots[i].tokens.append(j)
+                if h_sk[i] != t_sk[j]:
+                    stats["1:1 different skeleton"] += 1
+                    events.append(f"1:1  {content[i].location} hafs={content[i].text} target={toks[j].dk}")
+                else:
+                    stats["1:1 same skeleton"] += 1
+            elif (di, dj) == (1, 0):
+                stats["P2 1:0 Hafs-only slot left blank"] += 1
+                events.append(f"1:0  {content[i].location} hafs={content[i].text} -> ''")
+            elif (di, dj) == (0, 1):
+                tgt = max(i - 1, 0)
+                slots[tgt].tokens.append(j)
+                stats["P4 0:1 extra target token appended to previous slot"] += 1
+                events.append(f"0:1  {content[tgt].location} += {toks[j].dk}")
+            elif (di, dj) == (2, 1):
+                slots[i].tokens.append(j)
+                slots[i].covers_next = True
+                stats["P3 2:1 one target token over two Hafs slots"] += 1
+                events.append(
+                    f"2:1  {content[i].location}+{content[i + 1].location} "
+                    f"hafs={content[i].text} {content[i + 1].text} target={toks[j].dk}"
+                )
+            elif (di, dj) == (1, 2):
+                slots[i].tokens.extend([j, j + 1])
+                stats["1:2 two target tokens in one Hafs slot"] += 1
+                events.append(f"1:2  {content[i].location} hafs={content[i].text} target={toks[j].dk} {toks[j + 1].dk}")
+            i += di
+            j += dj
+        if i != len(content) or j != len(toks):
+            raise BuildError(f"{rid} surah {surah}: alignment did not consume both streams")
+        for s in slots:
+            s.tokens.sort()
+
+        # --- markers on Hafs marker slots (P7) -----------------------------
+        placed: set[int] = set()
+        run = -1
+        k = -1
+        running_max: list[int] = []
+        for s in slots:
+            if s.tokens:
+                run = max(run, s.tokens[-1])
+            running_max.append(run)
+        last_to_verse = {idx: vn for vn, idx in last_tok_of_verse.items()}
+        for r in rows:
+            if r.is_marker:
+                p = running_max[k] if k >= 0 else -1
+                vn = last_to_verse.get(p)
+                if vn is not None and vn not in placed:
+                    texts[r.id] = N.marker(vn)
+                    placed.add(vn)
+                    stats["Hafs marker slot <- target marker"] += 1
+                else:
+                    texts[r.id] = ""
+                    stats["P7 Hafs marker slot blank (no target verse end here)"] += 1
+            else:
+                k += 1
+
+        # --- content slot texts (A2 joins, P6 inline markers) ---------------
+        for ci, (row, s) in enumerate(zip(content, slots)):
+            parts: list[str] = []
+            content_parts: list[str] = []
+            idx = 0
+            while idx < len(s.tokens):
+                tj = s.tokens[idx]
+                text = toks[tj].dk
+                step = 1
+                if (
+                    idx + 1 < len(s.tokens)
+                    and s.tokens[idx + 1] == tj + 1
+                    and toks[tj].verse != 0
+                    and not toks[tj].last_of_verse
+                    and can_join(toks[tj].dk, toks[tj + 1].dk, row.text)
+                ):
+                    text = toks[tj].dk + toks[tj + 1].dk
+                    step = 2
+                    stats["A2 token pairs joined without a space"] += 1
+                    events.append(f"A2   {row.location} hafs={row.text} -> {text}")
+                parts.append(text)
+                content_parts.append(text)
+                vn = last_to_verse.get(tj + step - 1)
+                if vn is not None and vn not in placed:
+                    parts.append(N.marker(vn))
+                    placed.add(vn)
+                    stats["P6 target-only verse number written inline"] += 1
+                    events.append(f"P6   {row.location} inline {N.marker(vn)}")
+                idx += step
+            texts[row.id] = " ".join(parts)
+            if len(content_parts) > 1:
+                stats["multi-token slots"] += 1
+            if not s.tokens:
+                stats["blank content slots"] += 1
+
+        missing = set(last_tok_of_verse) - placed
+        if missing:
+            raise BuildError(f"{rid} surah {surah}: verse markers never placed: {sorted(missing)}")
+
+        # --- verse map (r2h: rewayah verse -> Hafs verse keys, in order) -----
+        tv_hafs: dict[int, list[str]] = {}
+        for row, s in zip(content, slots):
+            hk = f"{row.surah}:{row.ayah}"
+            for tj in s.tokens:
+                vn = toks[tj].verse
+                if vn == 0:
+                    continue
+                lst = tv_hafs.setdefault(vn, [])
+                if hk not in lst:
+                    lst.append(hk)
+        for vn in sorted(tv_hafs):
+            r2h[f"{surah}:{vn}"] = tv_hafs[vn]
+
+        # --- highlight map ---------------------------------------------------
+        for ci, (row, s) in enumerate(zip(content, slots)):
+            if not s.tokens:
+                continue
+            stored = texts[row.id]
+            if stored == row.text:
+                continue
+            content_text = " ".join(t for t in stored.split() if not N.is_marker(t))
+            base = row.text if not s.covers_next else row.text + " " + content[ci + 1].text
+            cats = HL.classify(base, content_text, rid)
+            if not cats:
+                stats["differs from Hafs, encoding only (no highlight)"] += 1
+                continue
+            key = (row.surah, row.ayah)
+            for cat, chars in cats:
+                cat_name = category if cat == "word" else cat
+                diff_entries.setdefault(key, {}).setdefault(cat_name, []).append([row.word, chars])
+                stats[f"highlight {cat_name}"] += 1
+
+    diff: dict = {"__format": DIFF_FORMAT}
+    for key in sorted(diff_entries):
+        ordered = {}
+        for cat in (category, "silah"):
+            if cat in diff_entries[key]:
+                ordered[cat] = sorted(diff_entries[key][cat], key=lambda e: e[0])
+        diff[f"{key[0]}:{key[1]}"] = ordered
+
+    versemap = make_versemap(rid, verses, r2h, hafs)
+    return Result(rid, texts, diff, versemap, stats, events)
+
+
+def make_versemap(rid: str, verses: list[N.Verse], r2h_full: dict[str, list[str]], hafs: list[HafsRow]) -> dict:
+    counts = N.verse_counts(verses)
+    h2r_full: dict[str, list[str]] = {}
+    for rk, hks in r2h_full.items():
+        for hk in hks:
+            h2r_full.setdefault(hk, []).append(rk)
+    # Contract C3: entries equal to [same key] are omitted; an empty h2r list
+    # is kept for a Hafs verse with no rewayah words (e.g. 1:1 for P10).
+    r2h = {k: v for k, v in r2h_full.items() if v != [k]}
+    h2r: dict[str, list[str]] = {}
+    for hk in dict.fromkeys(f"{r.surah}:{r.ayah}" for r in hafs):
+        got = h2r_full.get(hk, [])
+        if got != [hk]:
+            h2r[hk] = got
+
+    def order(k: str) -> tuple[int, int]:
+        s, a = k.split(":")
+        return int(s), int(a)
+
+    return {
+        "__format": VERSEMAP_FORMAT,
+        "rewayah": rid,
+        "verseCounts": {str(s): counts[s] for s in range(1, 115)},
+        "r2h": {k: r2h[k] for k in sorted(r2h, key=order)},
+        "h2r": {k: h2r[k] for k in sorted(h2r, key=order)},
     }
-    # Diff map: {verseKey: {category: [[wordPos, [charIdx, ...]], ...]}}
-    # Empty char list = whole-word highlight (close-rewayat major/minor and
-    # mukhtalif fallback). Specific char indices = letter-level highlight
-    # for madd/tashil/ibdal/taghliz on far rewayat.
-    diff_map: dict[str, dict[str, list[list]]] = {}
 
-    # Build target streams per surah. We need TWO views of the target:
-    #   - content stream (no markers) for word-by-word substitution
-    #   - full token stream (with markers in their Bazzi-native positions),
-    #     used to decide what marker text to emit for each Hafs marker slot
-    #     so users see Bazzi's verse numbers, not Hafs's.
-    # Standalone ruku' marker (U+06DE ۞) that appears mid-verse in some KFGQPC
-    # source files (e.g. "... جَمِيعاً ۞ وَلَقَدْ ..."). After split() it becomes
-    # a bare '۞' token. It is NOT an ayah marker (no digits), so the old code
-    # included it in the content stream, confusing the sequence aligner: it would
-    # be matched to a Hafs '۞word' slot and the following content word would be
-    # dropped. Fix: treat a standalone ruku' token as a structural marker and
-    # exclude it from the content stream, just like ayah markers.
-    _STANDALONE_RUKU = "۞"  # ۞ alone (no following letters in same token)
 
-    target_data = json.loads(source_json.read_text(encoding="utf-8"))
-    target_by_surah: dict[int, list[str]] = {}
-    target_full_by_surah: dict[int, list[str]] = {}  # tokens in Bazzi order
-    for row in sorted(target_data, key=lambda r: (r.get("sura_no", r.get("sora")), r["aya_no"])):
-        s = row.get("sura_no", row.get("sora"))
-        normalized = normalize_verse(row["aya_text"], wrap_ayah=True)
-        for tok in normalized.split():
-            target_full_by_surah.setdefault(s, []).append(tok)
-            if not is_ayah_marker(tok) and tok != _STANDALONE_RUKU:
-                target_by_surah.setdefault(s, []).append(tok)
+# ---------------------------------------------------------------------------
+# Output
+# ---------------------------------------------------------------------------
 
-    # Group base rows by surah preserving (id, original_text, is_marker).
-    base_by_surah: dict[int, list[tuple[int, str, bool]]] = {}
-    for row_id, surah, _ayah, _word, text in base_rows:
-        base_by_surah.setdefault(surah, []).append(
-            (row_id, text, is_ayah_marker(text))
+
+def write_db(path: Path, hafs: list[HafsRow], texts: dict[int, str], schema_sql: str) -> None:
+    if path.exists():
+        path.unlink()
+    con = sqlite3.connect(path)
+    try:
+        con.execute("PRAGMA page_size = 4096")
+        con.execute(schema_sql)
+        con.executemany(
+            "INSERT INTO words (id, location, surah, ayah, word, text) VALUES (?, ?, ?, ?, ?, ?)",
+            [(r.id, r.location, r.surah, r.ayah, r.word, texts[r.id]) for r in hafs],
         )
+        con.commit()
+        con.execute("VACUUM")
+    finally:
+        con.close()
 
-    # Pre-compute target markers as (content_position, marker_text). The
-    # content_position is the count of content tokens that precede the
-    # marker in Bazzi's stream — i.e., where in the content sequence this
-    # marker should appear.
-    target_markers_by_surah: dict[int, list[tuple[int, str]]] = {}
-    for s, full_tokens in target_full_by_surah.items():
-        markers: list[tuple[int, str]] = []
-        content_count = 0
-        for tok in full_tokens:
-            if is_ayah_marker(tok):
-                markers.append((content_count, tok))
-            else:
-                content_count += 1
-        target_markers_by_surah[s] = markers
 
-    # Three classifier modes, picked by rewayah:
-    #   close  (shouba/bazzi/qumbul) — legacy two-tier major/minor. Text
-    #          stored verbatim (no markers to strip).
-    #   nafi   (warsh/qaloon)        — full published-mushaf classifier.
-    #          Markers drive letter-level madd/tashil/ibdal/taghliz.
-    #   abu_amr (doori/soosi)        — only mukhtalif (genuine content
-    #          variants). The KFGQPC U+06EA/U+06EC markers in these
-    #          sources describe Abu Amr's own hamza rules, which don't
-    #          map onto the Nafi' published mushaf; inferring rules
-    #          from them produces wrong highlights. Author a proper
-    #          Abu Amr rule classifier later.
-    # Far rewayat (non-close) all strip U+06E4/U+06EA from stored text
-    # since DK can't render them.
-    _CLOSE_REWAYAT = {"shouba", "bazzi", "qumbul"}
-    _NAFI_REWAYAT = {"warsh", "qaloon"}
-    strip_markers = rewayah_id not in _CLOSE_REWAYAT
-    if rewayah_id in _CLOSE_REWAYAT:
-        classifier_mode = "close"
-    elif rewayah_id in _NAFI_REWAYAT:
-        classifier_mode = "nafi"
-    else:
-        classifier_mode = "abu_amr"
+def write_json(path: Path, obj: dict) -> None:
+    path.write_text(json.dumps(obj, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8")
 
-    patched_words = 0
-    blanked_markers = 0  # Hafs marker slots with no matching target marker (merged verses)
-    unmatched_base = 0  # Hafs slots the aligner couldn't map
-    dropped_target = 0  # Bazzi content words that fell outside alignment
 
-    cur = conn.cursor()
-    for surah in sorted(base_by_surah.keys()):
-        base_rows_s = base_by_surah[surah]
-        target_content = target_by_surah.get(surah, [])
-        target_markers_by_pos = {
-            pos: txt for pos, txt in target_markers_by_surah.get(surah, [])
-        }
+def output_names(rid: str) -> tuple[str, str, str]:
+    return f"dk_words_{rid}.db", f"{rid}-diff.json", f"{rid}-versemap.json"
 
-        # Extract base content view (same order as base_rows_s, markers stripped)
-        base_content_texts = [t for _, t, m in base_rows_s if not m]
 
-        # Align content streams. mapping[i] = target content index for base
-        # content index i (or None if unaligned — in which case we keep the
-        # base text at that slot).
-        mapping = align_content(base_content_texts, target_content)
-        if base_content_texts:
-            target_indices_used = {i for i in mapping if i is not None}
-            dropped_target += len(target_content) - len(target_indices_used)
-            unmatched_base += mapping.count(None)
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("rewayat", nargs="*", help=f"subset of {', '.join(N.REWAYAT)} (default: all)")
+    ap.add_argument("--out-dir", type=Path, help="write the outputs here instead of data/mushaf/digitalkhatt")
+    ap.add_argument("--report", action="store_true", help="print every non-trivial alignment event")
+    a = ap.parse_args(argv)
 
-        # Walk base rows, emitting actions. Track the highest target content
-        # index consumed so far so we can line up markers against Bazzi's
-        # marker positions.
-        base_content_cursor = 0
-        last_target_idx = -1
-        prev_base_text: str | None = None
-        prev_target_raw: str | None = None
+    rids = a.rewayat or list(N.REWAYAT)
+    unknown = [r for r in rids if r not in N.REWAYAT]
+    if unknown:
+        print(f"unknown rewayah id(s): {unknown}", file=sys.stderr)
+        return 2
+    out_dir = (a.out_dir or DATA_DIR).resolve()
+    out_dir.mkdir(parents=True, exist_ok=True)
 
-        for row_id, base_text, is_marker in base_rows_s:
-            if not is_marker:
-                target_idx = mapping[base_content_cursor]
-                if target_idx is not None:
-                    new_text_raw = target_content[target_idx]
-                    last_target_idx = max(last_target_idx, target_idx)
-                    # DB stores render-safe text (classification-only markers
-                    # stripped so DK font doesn't fall back to system font
-                    # for U+06E4/U+06EA which it doesn't ship glyphs for).
-                    new_text_render = (
-                        strip_for_render(new_text_raw)
-                        if strip_markers
-                        else new_text_raw
-                    )
-                    if new_text_render != base_text:
-                        cur.execute(
-                            "UPDATE words SET text = ? WHERE id = ?",
-                            (new_text_render, row_id),
-                        )
-                        patched_words += 1
-                        # Classify using RAW text (with markers) so the
-                        # Nafi' classifier can see U+06E4/U+06EA.
-                        if classifier_mode == "nafi":
-                            result = classify_word(
-                                base_text,
-                                new_text_raw,
-                                prev_base_text,
-                                prev_target_raw,
-                            )
-                        elif classifier_mode == "abu_amr":
-                            result = classify_mukhtalif_only(
-                                base_text, new_text_raw
-                            )
-                        else:
-                            result = categorize_diff(base_text, new_text_raw)
-                        if result is not None:
-                            cat, char_indices = result
-                            s, a, w = base_verse_key_by_id[row_id]
-                            verse_key = f"{s}:{a}"
-                            diff_map.setdefault(verse_key, {}).setdefault(
-                                cat, []
-                            ).append([w, char_indices])
-                    prev_target_raw = new_text_raw
-                else:
-                    prev_target_raw = None
-                prev_base_text = base_text
-                base_content_cursor += 1
-            else:
-                # Marker slot. The "target content position" we've reached
-                # is last_target_idx + 1. If the target has a marker at that
-                # position, use it (preserving the target rewayah's verse
-                # number). If not, blank it — this Hafs verse boundary does
-                # not exist in the target rewayah (merged verses / different
-                # verse-count tradition). A blank word renders as nothing,
-                # which is correct: no verse number should appear here.
-                target_pos = last_target_idx + 1
-                target_marker_text = target_markers_by_pos.get(target_pos)
-                if target_marker_text is not None:
-                    if target_marker_text != base_text:
-                        cur.execute(
-                            "UPDATE words SET text = ? WHERE id = ?",
-                            (target_marker_text, row_id),
-                        )
-                        patched_words += 1
-                    # Consume this marker so it's not used again
-                    del target_markers_by_pos[target_pos]
-                else:
-                    cur.execute(
-                        "UPDATE words SET text = ? WHERE id = ?",
-                        ("", row_id),
-                    )
-                    blanked_markers += 1
+    import validate_rewayah_db as V  # noqa: E402
 
-    conn.commit()
-    conn.close()
-
-    # Drop empty-list keys to keep the JSON compact.
-    compact_diff_map: dict[str, dict[str, list[list]]] = {}
-    for k, tiers in diff_map.items():
-        kept = {t: v for t, v in tiers.items() if v}
-        if kept:
-            compact_diff_map[k] = kept
-
-    diff_path = OUT_DIR / f"{rewayah_id}-diff.json"
-    diff_path.write_text(
-        json.dumps(compact_diff_map, ensure_ascii=False, separators=(",", ":"))
-    )
-
-    category_counts: dict[str, int] = {}
-    for tiers in compact_diff_map.values():
-        for cat, positions in tiers.items():
-            category_counts[cat] = category_counts.get(cat, 0) + len(positions)
-
-    print(f"Patched words: {patched_words}")
-    for cat in sorted(category_counts.keys()):
-        print(f"  -> {cat}: {category_counts[cat]}")
-    print(f"  -> total flagged verses: {len(compact_diff_map)}")
-    print(f"Blanked markers (merged verses / no target boundary): {blanked_markers}")
-    print(f"Unmatched base slots (kept Hafs text): {unmatched_base}")
-    print(f"Dropped target words (no base slot): {dropped_target}")
-    print()
-    print(f"Wrote {out_db.name} ({out_db.stat().st_size // 1024} KB)")
-    print(f"Wrote {diff_path.name} ({diff_path.stat().st_size} bytes)")
+    hafs = load_hafs()
+    schema = hafs_schema()
+    tmp = Path(tempfile.mkdtemp(prefix=".rewayah-build-", dir=out_dir))
+    try:
+        failures = 0
+        for rid in rids:
+            try:
+                res = build(rid, hafs)
+            except (BuildError, N.SourceError) as e:
+                print(f"[{rid}] BUILD FAILED: {e}", file=sys.stderr)
+                failures += 1
+                continue
+            db_name, diff_name, map_name = output_names(rid)
+            write_db(tmp / db_name, hafs, res.texts, schema)
+            write_json(tmp / diff_name, res.diff)
+            write_json(tmp / map_name, res.versemap)
+            print(f"[{rid}] built:")
+            for k, v in sorted(res.stats.items()):
+                print(f"    {k}: {v}")
+            if a.report:
+                for ev in res.events:
+                    print(f"    | {ev}")
+            ok = V.validate(
+                rid,
+                db_path=tmp / db_name,
+                diff_path=tmp / diff_name,
+                versemap_path=tmp / map_name,
+                source_path=SOURCES_DIR / f"{rid}.json",
+                hafs_db=HAFS_DB,
+                glyphs=False,
+                out=sys.stdout,
+            )
+            if not ok:
+                failures += 1
+        if failures:
+            print(f"FAILED: {failures} rewayah build(s) failed; nothing was replaced in {out_dir}", file=sys.stderr)
+            return 1
+        for rid in rids:
+            for name in output_names(rid):
+                os.replace(tmp / name, out_dir / name)
+        print(f"OK: wrote {len(rids) * 3} files to {out_dir}")
+        return 0
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

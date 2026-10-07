@@ -1,0 +1,155 @@
+# Rewayah data pipeline
+
+Builds the seven non-Hafs DigitalKhatt words DBs, highlight maps and verse
+maps in `data/mushaf/digitalkhatt/` from the official KFGQPC v2.x texts, and
+proves them correct. Quran text is zero-tolerance: every word and every verse
+number must match the official source exactly, and the gates below fail the
+build or CI on any difference.
+
+| file id | app `RewayahId` | source |
+|---|---|---|
+| `warsh` | `warsh` | Warsh v2.1 |
+| `qaloon` | `qalun` | Qalun v2.1 |
+| `bazzi` | `al-bazzi` | al-Bazzi v2.0 (qc2) |
+| `qumbul` | `qunbul` | Qunbul v2.0 (qc2) + 1 erratum |
+| `doori` | `al-duri-abi-amr` | al-Duri v2.0 |
+| `soosi` | `al-susi` | al-Susi v2.0 |
+| `shouba` | `shubah` | Shu'bah v2.0 |
+
+## Files
+
+| path | role |
+|---|---|
+| `sources/<id>.json` | official KFGQPC JSON, byte for byte (see `sources/SOURCES.md`) |
+| `sources/errata.json` | corrections backed by another official KFGQPC artifact (one: Qunbul 67:17) |
+| `sources/sources.lock.json` | SHA-256 of every source and of `errata.json`, plus provenance |
+| `vendor_sources.py` | extracts and verifies the official zips; `--check` verifies the lock (CI) |
+| `normalize.py` | the definition of "the normalized official source": parsing, tokenization, KFGQPC → DK conventions, per-rewayah render policy (`--policy` prints it) |
+| `build_sibling_rewayah.py` | the builder (alignment, slot policies, markers, highlights, verse maps) |
+| `highlights.py` | Release 1 highlight classification (diff JSON format 2) |
+| `validate_rewayah_db.py` | independent exact-match validator (+ `--glyphs`, `--marks`) |
+| `validate.py` | round-trip self-test of the convention map against the DK Hafs DB |
+| `compare_outputs.py` | a fresh build must equal the committed files (CI drift check) |
+
+## Rebuild
+
+```sh
+python3 scripts/rewayah/vendor_sources.py --check        # sources match the lock
+python3 scripts/rewayah/build_sibling_rewayah.py         # all 7 (or: ... warsh bazzi)
+python3 scripts/rewayah/validate_rewayah_db.py --glyphs  # needs: pip install uharfbuzz fonttools
+python3 scripts/rewayah/validate.py
+```
+
+The builder writes into a temporary directory, runs the validator on the
+result, and only then replaces `dk_words_<id>.db`, `<id>-diff.json` and
+`<id>-versemap.json` (atomic `os.replace`). A failure exits non-zero and
+leaves the committed files untouched. The output is deterministic: two runs
+give byte-identical files (`--out-dir DIR` builds elsewhere). After a rebuild,
+regenerate the asset manifest (`node scripts/rewayah/gen-manifest.mjs`, owned
+by the runtime) so installed apps re-import the new DBs.
+
+To update a source: put the new official zip in a directory, add its entry
+(URL, capture, SHA-256, published MD5 / SHA-1, member, SHA-256) to
+`PACKAGES` in `vendor_sources.py`, run `vendor_sources.py --zip-dir DIR`,
+rebuild, validate, and record the change in `sources/SOURCES.md`.
+
+## Data model (Release 1)
+
+Every rewayah DB has the same schema and the same 83,668 rows as
+`digital-khatt-v2.db` (id, location, surah, ayah, word unchanged): the Hafs
+word slots, verse keys and 604-page layout are shared. Only `words.text`
+changes:
+
+- `''`: a blank slot (renders nothing, no separator);
+- one token, or several tokens joined by single spaces (one word unit for
+  layout, taps and highlights);
+- a content slot may END with an inline verse marker `۝N` (a rewayah verse end
+  with no Hafs marker slot);
+- a Hafs marker slot holds the rewayah's `۝N` or `''`;
+- `۞` is attached to the following word.
+
+## Algorithm
+
+1. Tokenize each verse (`normalize.parse_verse`): NBSP is a space, RLM
+   dropped, the trailing verse number checked against `aya_no`, a standalone
+   `۞` attached to the next word, a letterless token glued to the previous
+   word (A1).
+2. Convert each token (`normalize.dk_token`): the KFGQPC → DK convention map
+   and the per-rewayah render policy (below).
+3. Align, per surah, the Hafs content slots with the rewayah tokens on their
+   rasm skeleton: skeleton-equality anchors plus a banded dynamic programme
+   with the moves 1:1, 1:0, 0:1, 2:1, 1:2.
+4. Assign slots:
+   - P2: a Hafs-only word leaves its slot `''`; Hafs text never leaks.
+   - P3: a token covering two Hafs slots goes in the first, the second is `''`
+     (15:7, 27:20, 36:22, 40:26, 73:20, 75:1).
+   - P4: an extra token is appended to the previous slot (Ibn Kathir 9:100
+     `تَجْرِي مِن`).
+   - A2: two tokens in one slot are joined without a space only if the Hafs
+     slot is one word, the skeletons match and the first ends in a
+     non-joining letter (no case with the v2.x texts).
+   - P12: 37:130 keeps both words in the Hafs slot `إِلْ يَاسِينَ`.
+   - P10: a source without a basmala verse (Madani and Basri counts) keeps
+     the exact Hafs basmala words in 1:1:1-4, the 1:1 marker slot is `''` and
+     numbering starts at al-hamdu.
+5. Markers: a Hafs marker slot gets `۝v` if the last token consumed so far
+   ends rewayah verse v, otherwise `''` (P7). A rewayah verse end with no Hafs
+   slot is written inline after its last word (P6), so every surah shows 1..N.
+6. Highlights and the verse map are derived from the same assignment.
+
+Per rewayah: blank Hafs marker slots 81 (Nafi'), 83 (Ibn Kathir), 76 (Abu
+'Amr), 0 (Shu'bah); inline verse numbers 59 / 67 / 57 / 0. Run the builder
+with `--report` to list every non-trivial alignment.
+
+## Render policy (DigitalKhatt font)
+
+`normalize.RENDER_POLICY`; `python3 scripts/rewayah/normalize.py --policy`
+prints the full table with meaning, what DK draws, decision and evidence.
+Summary:
+
+| rule | rewayat | decision |
+|---|---|---|
+| U+06D2 yeh barree | Warsh, Qalun | → U+0649 |
+| U+0652 Maghribi sukun | Warsh, Qalun | → U+06DF (circle shape, kept) |
+| U+06D6 Habti waqf `ص` | Warsh, Qalun | omitted (DK draws `صلى`, the opposite advice) |
+| U+06E4 sajdah overline | all but Nafi' | dropped (`۩` kept) |
+| U+06ED taqlil (hollow) dot | Duri, Susi | → U+065C dot below |
+| U+06EA dot below | all | → U+065C, incl. the wasl-alef start dot |
+| kasra + U+06E2 | far rewayat | → kasra + U+06ED (meem below, as KFGQPC draws it) |
+| U+200D hamza seat (17:7) | Duri, Susi | → U+0640 |
+| U+066E dotless tooth (6:19) | Bazzi, Qunbul | → U+0649 |
+| `ضظ` (81:24) | Bazzi, Qunbul, Duri, Susi | → `ظ` (DK has no small ظ) |
+
+Letters are only changed by the three listed mappings (U+06D2, U+066E, `ضظ`);
+the validator's letter gate enforces it.
+
+## Highlights (`<id>-diff.json`, format 2)
+
+`{"__format": 2, "s:a": {category: [[wordPos, [charIdx, ...]], ...]}}`, keyed by
+Hafs verse and word position:
+
+- `major` (Shu'bah, Bazzi, Qunbul) / `mukhtalif` (Warsh, Qalun, Duri, Susi):
+  whole word (`[]`), for words read differently from the Hafs word in that
+  slot (letters, long vowels, vowels, case ending). Encoding conventions and
+  general rules marked only by diacritics or by the hamza's carrier are not
+  highlighted; see the docstring of `highlights.py`.
+- `silah`: char indices (UTF-16 = code points here) of the silah marks
+  U+06E5 / U+06E6 and their damma / kasra that this rewayah pronounces where
+  Hafs does not.
+- No `tashil` / `madd` / `ibdal` / `taghliz` / `minor` in Release 1.
+
+## Verse map (`<id>-versemap.json`, format 1)
+
+`{"__format": 1, "rewayah": id, "verseCounts": {...}, "r2h": {...}, "h2r": {...}}`:
+`r2h["s:a"]` lists, in order, the Hafs verse keys of the slots holding that
+rewayah verse's words; `h2r` is the inverse (an empty list for a Hafs verse
+with no rewayah word, e.g. 1:1 under P10). Entries equal to `[same key]` are
+omitted; Shu'bah's maps are empty.
+
+## Gates (`validate_rewayah_db.py`)
+
+sources lock · row identity · slot format and DK cmap · exact reading stream
+per surah · verse numbers 1..N · letter preservation · diff JSON integrity ·
+verse map re-derived from the DB · (`--glyphs`) HarfBuzz: 0 `.notdef`, 0
+dotted circles, no unattached mark outside the listed render limitations.
+CI runs all of them (`.github/workflows/quran-data.yml`).
