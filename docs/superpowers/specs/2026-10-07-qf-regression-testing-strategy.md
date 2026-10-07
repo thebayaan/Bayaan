@@ -76,6 +76,8 @@ iOS is mandatory: no iOS validation has happened so far in this program.
   - Halting the phased release in App Store Connect and the Play Console.
 
 ## 3. Merge and deploy order (R6)
+All QF work lands on integration branches, not `develop` (decided 2026-10-07): mobile `feature/qf-integration` (CI runs Jest and lint on PRs into it) and backend `feature/qf-integration` (Railway staging deploys it). `develop` is merged into both after each `develop` merge to limit drift. The test harness (mobile #325) is test-only and goes to `develop` directly. Both integration branches merge to `develop` together once the exit criteria hold: Argent flows pass on iOS and Android, two-account sync verified on staging, and one week on testers' phones (TestFlight and Play internal builds from the integration branch) with no crash-free regression and content updates applying cleanly.
+
 1. Backend #24 merges first (after the weak-ETag fix).
 2. Backend #25 rebases onto it; its migrations are regenerated as 0005 to 0007 (Drizzle journal order), and its config keeps sharing `QF_CLIENT_ID`/`QF_CLIENT_SECRET`/`QF_OAUTH_BASE_URL`.
 3. Both deploy to staging; Layer 4 checks pass.
