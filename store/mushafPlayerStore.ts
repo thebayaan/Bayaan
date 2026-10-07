@@ -77,6 +77,9 @@ export const VERSE_TIMING_UNAVAILABLE_ERROR =
  */
 export const RANGE_UNPLAYABLE_ERROR =
   'This selection has no verses to play for this reciter. Try a different reciter or range.';
+
+/** Shown in place of a verse number while the surah has no verse tracking. */
+export const VERSE_TRACKING_UNAVAILABLE_LABEL = 'Verse tracking unavailable';
 // @ai-end
 
 const NO_KEYS: readonly string[] = Object.freeze([]);
@@ -819,5 +822,67 @@ export function selectPlaybackVerseKeysId(s: MushafPlayerStoreState): string {
 export function usePlaybackVerseKeys(): readonly string[] {
   const id = useMushafPlayerStore(selectPlaybackVerseKeysId);
   return useMemo(() => parseVerseKeyListId(id), [id]);
+}
+
+/**
+ * What the player is reciting, for the player bar and the iOS 26 toolbar:
+ * "Al-Baqarah 2:4" (verse in the numbering of the mushaf on screen),
+ * "Al-Mulk · Verse tracking unavailable", or just the surah name when no
+ * verse is being recited yet.
+ */
+export function formatPlaybackInfo(
+  surahName: string,
+  s: Pick<MushafPlayerStoreState, 'currentVerseLabel' | 'numberingMode'>,
+): string {
+  if (s.numberingMode === 'disabled') {
+    return `${surahName} · ${VERSE_TRACKING_UNAVAILABLE_LABEL}`;
+  }
+  if (s.currentVerseLabel) return `${surahName} ${s.currentVerseLabel}`;
+  return surahName;
+}
+
+export interface PlaybackNotice {
+  title: string;
+  message: string;
+  preset: 'error' | 'none';
+}
+
+type NoticeState = Pick<
+  MushafPlayerStoreState,
+  'playbackState' | 'timestampError' | 'numberingMode' | 'currentSurah'
+>;
+
+/**
+ * Messages the player bar shows inline, as a one-off notice for surfaces
+ * that have no room for them (the iOS 26 toolbar): a refused or impossible
+ * playback request, and a surah that plays without verse tracking. Null when
+ * the transition from `prev` to `next` shows nothing new.
+ */
+export function getPlaybackNotice(
+  prev: NoticeState,
+  next: NoticeState,
+  surahName: (surah: number) => string,
+): PlaybackNotice | null {
+  if (next.timestampError && next.timestampError !== prev.timestampError) {
+    return {
+      title: 'Playback unavailable',
+      message: next.timestampError,
+      preset: 'error',
+    };
+  }
+  if (
+    next.playbackState !== 'idle' &&
+    next.numberingMode === 'disabled' &&
+    (prev.numberingMode !== 'disabled' ||
+      prev.currentSurah !== next.currentSurah)
+  ) {
+    const name = surahName(next.currentSurah);
+    return {
+      title: VERSE_TRACKING_UNAVAILABLE_LABEL,
+      message: `${name ? `${name} plays` : 'This surah plays'} without verse highlighting for this reciter.`,
+      preset: 'none',
+    };
+  }
+  return null;
 }
 // @ai-end

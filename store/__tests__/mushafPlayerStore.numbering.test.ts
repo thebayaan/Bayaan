@@ -113,6 +113,9 @@ import {
   VERSE_TIMING_UNAVAILABLE_ERROR,
   // @ai-start
   RANGE_UNPLAYABLE_ERROR,
+  TIMESTAMPS_UNAVAILABLE_ERROR,
+  formatPlaybackInfo,
+  getPlaybackNotice,
   selectPlaybackVerseKeysId,
   usePlaybackVerseKeys,
   // @ai-end
@@ -681,6 +684,96 @@ describe('highlight keys for the renderers', () => {
     act(() => st().stop());
     expect(seen[seen.length - 1]).toEqual([]);
     act(() => renderer?.unmount());
+  });
+});
+
+describe('player info text and notices', () => {
+  it('formats the verse in the numbering of the mushaf on screen', () => {
+    expect(
+      formatPlaybackInfo('Al-Baqarah', {
+        currentVerseLabel: '2:4',
+        numberingMode: 'riwayah',
+      }),
+    ).toBe('Al-Baqarah 2:4');
+    expect(
+      formatPlaybackInfo('Al-Mulk', {
+        currentVerseLabel: null,
+        numberingMode: 'disabled',
+      }),
+    ).toBe('Al-Mulk · Verse tracking unavailable');
+    // no verse yet: the surah alone (never "2:0")
+    expect(
+      formatPlaybackInfo('Al-Baqarah', {
+        currentVerseLabel: null,
+        numberingMode: 'hafs',
+      }),
+    ).toBe('Al-Baqarah');
+  });
+
+  it('Hafs: the text is "<surah> <surah>:<ayah>" as before', async () => {
+    await play('hafs-clean', 2, '2:5');
+    expect(formatPlaybackInfo('Al-Baqarah', st())).toBe('Al-Baqarah 2:5');
+  });
+
+  const base = {
+    playbackState: 'idle' as const,
+    timestampError: null,
+    numberingMode: null,
+    currentSurah: 0,
+  };
+  const names = (n: number) => (n === 67 ? 'Al-Mulk' : '');
+
+  it('notices a refused request once per refusal', () => {
+    const refused = {...base, timestampError: VERSE_TIMING_UNAVAILABLE_ERROR};
+    expect(getPlaybackNotice(base, refused, names)).toEqual({
+      title: 'Playback unavailable',
+      message: VERSE_TIMING_UNAVAILABLE_ERROR,
+      preset: 'error',
+    });
+    expect(getPlaybackNotice(refused, refused, names)).toBeNull();
+    expect(
+      getPlaybackNotice(
+        refused,
+        {...base, timestampError: TIMESTAMPS_UNAVAILABLE_ERROR},
+        names,
+      )?.message,
+    ).toBe(TIMESTAMPS_UNAVAILABLE_ERROR);
+  });
+
+  it('notices a surah that plays without verse tracking, once', () => {
+    const loading = {
+      ...base,
+      playbackState: 'loading' as const,
+      numberingMode: 'disabled' as const,
+      currentSurah: 67,
+    };
+    const notice = getPlaybackNotice(base, loading, names);
+    expect(notice?.title).toBe('Verse tracking unavailable');
+    expect(notice?.message).toContain('Al-Mulk');
+    const playing = {...loading, playbackState: 'playing' as const};
+    expect(getPlaybackNotice(loading, playing, names)).toBeNull();
+    // tracked surahs never notice anything
+    const tracked = {...playing, numberingMode: 'hafs' as const};
+    expect(getPlaybackNotice(base, tracked, names)).toBeNull();
+  });
+
+  it('the store emits the notices the toolbar shows', async () => {
+    const notices: string[] = [];
+    const unsubscribe = useMushafPlayerStore.subscribe((s, prev) => {
+      const n = getPlaybackNotice(prev, s, names);
+      if (n) notices.push(n.title);
+    });
+    await play('doori-269', 562, '67:5');
+    st().stop();
+    st().setRange({surah: 67, ayah: 5}, {surah: 67, ayah: 5});
+    st().setVerseRepeatCount(0);
+    await play('doori-269', 562, '67:5');
+    await play('hafs-clean', 2, '2:5');
+    unsubscribe();
+    expect(notices).toEqual([
+      'Verse tracking unavailable',
+      'Playback unavailable',
+    ]);
   });
 });
 // @ai-end

@@ -435,7 +435,9 @@ export function formatVerseKeyRange(keys: readonly string[]): string | null {
  * Verse reference for the verse being recited, in the numbering of the mushaf
  * on screen: the reciter's own key when the mushaf shows the reciter's
  * rewayah, the Hafs key(s) in a Hafs mushaf, otherwise the Hafs keys mapped
- * into the mushaf's rewayah.
+ * into the mushaf's rewayah. Null when what is recited has no verse number in
+ * that mushaf (the Fatiha basmala in a Madani or Basri mushaf): a Hafs number
+ * there would name a different verse.
  */
 export function formatPlaybackVerseLabel(args: {
   hafsKeys: readonly string[];
@@ -463,5 +465,5 @@ export function formatPlaybackVerseLabel(args: {
       if (!mapped.includes(r)) mapped.push(r);
     }
   }
-  return formatVerseKeyRange(mapped.length ? mapped : hafsKeys);
+  return formatVerseKeyRange(mapped); // @ai
 }

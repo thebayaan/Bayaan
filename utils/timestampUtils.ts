@@ -1,5 +1,8 @@
 import type {AyahTimestamp} from '@/types/timestamps';
-import {getRegisteredTimingNumbering} from '@/utils/timestampNumbering';
+import {
+  getRegisteredTimingNumbering,
+  type MappedAyahTrackingState, // @ai
+} from '@/utils/timestampNumbering';
 
 export {getTrackedVerseKeys} from '@/utils/timestampNumbering';
 
@@ -70,3 +73,77 @@ export function findAyahTimestamp(
   // Fallback: linear scan (array is small, max 286)
   return timestamps.find(t => t.ayahNumber === ayahNumber) ?? null;
 }
+
+// @ai-start
+/** "Play from here" while the verse numbering of the surah is being resolved. */
+export const PLAY_FROM_HERE_PENDING = {
+  title: 'Preparing verse timing',
+  message: 'Try again in a moment.',
+} as const;
+
+/** "Play from here" where no verse of the timing set can be found. */
+export const PLAY_FROM_HERE_UNAVAILABLE = {
+  title: "Can't start at this verse",
+  message:
+    "This reciter's timings for this surah can't be matched to its verses.",
+} as const;
+
+export type PlayFromHereTarget =
+  | {
+      status: 'ready';
+      /** Timing entry to seek to (its start). */
+      entry: AyahTimestamp;
+      /** Follow-along state to publish: every Hafs verse the entry recites. */
+      tracking: MappedAyahTrackingState;
+    }
+  | {status: 'pending' | 'unavailable'; title: string; message: string};
+
+/**
+ * Where the main player's "Play from here" on Hafs verse `hafsVerseKey`
+ * starts, or why it cannot start, so the caller can tell the user instead of
+ * doing nothing: 'pending' while the surah's timings or their verse numbering
+ * are still loading, 'unavailable' when the numbering could not be
+ * established for the surah or the timings have no entry for the verse.
+ * Hafs-numbered timings resolve exactly as findAyahTimestamp always did.
+ */
+export function getPlayFromHereTarget(
+  timestamps: AyahTimestamp[] | null | undefined,
+  hafsVerseKey: string,
+): PlayFromHereTarget {
+  if (!timestamps) return {status: 'pending', ...PLAY_FROM_HERE_PENDING};
+  const numbering = getRegisteredTimingNumbering(timestamps);
+  if (numbering === 'pending') {
+    return {status: 'pending', ...PLAY_FROM_HERE_PENDING};
+  }
+  if (numbering && numbering.mode === 'disabled') {
+    return {status: 'unavailable', ...PLAY_FROM_HERE_UNAVAILABLE};
+  }
+  const [surahStr, ayahStr] = hafsVerseKey.split(':');
+  const hafsAyah = parseInt(ayahStr, 10);
+  const entry = Number.isNaN(hafsAyah)
+    ? null
+    : findAyahTimestamp(timestamps, hafsAyah);
+  if (!entry) return {status: 'unavailable', ...PLAY_FROM_HERE_UNAVAILABLE};
+
+  const surah = entry.surahNumber || parseInt(surahStr, 10);
+  const keys =
+    numbering && numbering.mode === 'riwayah'
+      ? numbering.hafsKeysForEntry(entry.ayahNumber)
+      : [`${surah}:${entry.ayahNumber}`];
+  const verseKeys = keys.length > 0 ? keys : [hafsVerseKey];
+  const primary = verseKeys[0];
+  return {
+    status: 'ready',
+    entry,
+    tracking: {
+      surahNumber: entry.surahNumber,
+      ayahNumber: parseInt(primary.split(':')[1], 10),
+      verseKey: primary,
+      timestampFrom: entry.timestampFrom,
+      timestampTo: entry.timestampTo,
+      verseKeys,
+      reciterVerseKey: `${entry.surahNumber}:${entry.ayahNumber}`,
+    },
+  };
+}
+// @ai-end

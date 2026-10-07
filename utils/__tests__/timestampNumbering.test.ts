@@ -357,6 +357,23 @@ describe('labels', () => {
     );
     expect(label([], '2:4', 'riwayah', 'warsh', 'warsh')).toBeNull();
   });
+
+  // @ai-start
+  it('gives no verse number to what has none in the mushaf on screen', () => {
+    // The Fatiha basmala (Hafs 1:1) is not a verse in a Warsh / Qalun / Duri /
+    // Susi mushaf: a "1:1" there would name al-hamdu.
+    expect(label(['1:1'], '1:1', 'hafs', 'hafs', 'warsh')).toBeNull();
+    expect(label(['1:1'], '1:1', 'hafs', 'warsh', 'al-duri-abi-amr')).toBe(
+      null,
+    );
+    expect(label(['1:2'], '1:2', 'hafs', 'hafs', 'warsh')).toBe('1:1');
+    // Hafs mushaf (and Hafs reciter): unchanged
+    expect(label(['1:1'], '1:1', 'hafs', 'hafs', 'hafs')).toBe('1:1');
+    expect(label(['112:0'], '112:0', 'hafs', 'hafs', 'hafs')).toBe('112:0');
+    // a mushaf whose numbering counts the basmala
+    expect(label(['1:1'], '1:1', 'hafs', 'hafs', 'al-bazzi')).toBe('1:1');
+  });
+  // @ai-end
 });
 
 // @ai-start

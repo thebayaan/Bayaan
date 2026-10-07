@@ -6,8 +6,13 @@ import {useTheme} from '@/hooks/useTheme';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
 import {mushafSessionStore} from '@/services/mushaf/MushafSessionStore';
-import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
+import {
+  formatPlaybackInfo, // @ai
+  getPlaybackNotice, // @ai
+  useMushafPlayerStore,
+} from '@/store/mushafPlayerStore';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore'; // @ai
+import {showToast} from '@/utils/toastUtils'; // @ai
 import {mushafAudioService} from '@/services/audio/MushafAudioService';
 import {SheetManager} from 'react-native-actions-sheet';
 import {SURAHS} from '@/data/surahData';
@@ -151,11 +156,23 @@ export default function MushafScreen() {
 // iOS Native Toolbar (Stack.Toolbar)
 // ============================================================================
 
-function MushafToolbar() {
+// @ai-start
+const surahNameOf = (surah: number): string =>
+  surah >= 1 && surah <= 114 ? SURAHS[surah - 1].name : '';
+// @ai-end
+
+// On iOS 26 this toolbar replaces MushafPlayerBar, so it carries what the bar
+// shows: the verse label in the numbering of the mushaf on screen, "Verse
+// tracking unavailable" (with prev / next disabled), and, as one-off notices,
+// refused playback requests.
+export function MushafToolbar() {
   const playbackState = useMushafPlayerStore(s => s.playbackState);
   const currentPage = useMushafPlayerStore(s => s.currentPage);
   const currentSurah = useMushafPlayerStore(s => s.currentSurah);
-  const currentAyah = useMushafPlayerStore(s => s.currentAyah);
+  // @ai-start
+  const currentVerseLabel = useMushafPlayerStore(s => s.currentVerseLabel);
+  const numberingMode = useMushafPlayerStore(s => s.numberingMode);
+  // @ai-end
   const isImmersive = useMushafPlayerStore(s => s.isImmersive);
   const isSearchMode = useMushafPlayerStore(s => s.isSearchMode);
 
@@ -163,12 +180,25 @@ function MushafToolbar() {
   const isPlaying = playbackState === 'playing';
   const isLoading = playbackState === 'loading';
 
-  const surahName =
-    currentSurah >= 1 && currentSurah <= 114
-      ? SURAHS[currentSurah - 1].name
-      : '';
+  // @ai-start
+  const surahName = surahNameOf(currentSurah);
   const verseLabel =
-    !isIdle && surahName ? `${surahName} ${currentSurah}:${currentAyah}` : '';
+    !isIdle && surahName
+      ? formatPlaybackInfo(surahName, {currentVerseLabel, numberingMode})
+      : '';
+  const verseNavDisabled = numberingMode === 'disabled';
+
+  // The player bar shows refusals and the tracking notice inline; this
+  // toolbar has no room for text, so they surface as toasts.
+  useEffect(
+    () =>
+      useMushafPlayerStore.subscribe((state, prev) => {
+        const notice = getPlaybackNotice(prev, state, surahNameOf);
+        if (notice) showToast(notice.title, notice.message, notice.preset);
+      }),
+    [],
+  );
+  // @ai-end
 
   const handlePlay = useCallback(() => {
     const page = useMushafPlayerStore.getState().currentPage || 1;
@@ -240,14 +270,22 @@ function MushafToolbar() {
         Stop
       </Stack.Toolbar.Button>
       <Stack.Toolbar.Spacer />
-      <Stack.Toolbar.Button icon="backward.end.fill" onPress={handlePrev} />
+      <Stack.Toolbar.Button
+        icon="backward.end.fill"
+        onPress={handlePrev}
+        disabled={verseNavDisabled} // @ai
+      />
       <Stack.Toolbar.Button
         icon={isPlaying ? 'pause.fill' : 'play.fill'}
         onPress={handlePlayPause}
         disabled={isLoading}>
         {verseLabel}
       </Stack.Toolbar.Button>
-      <Stack.Toolbar.Button icon="forward.end.fill" onPress={handleNext} />
+      <Stack.Toolbar.Button
+        icon="forward.end.fill"
+        onPress={handleNext}
+        disabled={verseNavDisabled} // @ai
+      />
       <Stack.Toolbar.Spacer />
       <Stack.Toolbar.Button icon="ellipsis.circle" onPress={handleOptions}>
         Options
