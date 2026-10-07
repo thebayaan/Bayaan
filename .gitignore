@@ -176,3 +176,7 @@ ExportOptions.plist
 **/sentry.properties
 .env.r2
 .env.r2-worker
+
+# Golden SQLite sidecars (goldens are copied before use, never opened in place)
+test-fixtures/golden/**/*.db-shm
+test-fixtures/golden/**/*.db-wal
