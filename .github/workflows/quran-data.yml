@@ -1,0 +1,47 @@
+name: Quran Data
+
+# Zero-tolerance gates for the non-Hafs rewayah data (scripts/rewayah/README.md):
+# the vendored official KFGQPC sources must match their lock file, and every
+# words DB / highlight map / verse map must match the normalized official text
+# exactly and render with the DigitalKhatt font.
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rewayah:
+    name: Rewayah data gates
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install shaping dependencies
+        run: python -m pip install --disable-pip-version-check uharfbuzz fonttools
+
+      - name: Verify sources.lock.json
+        run: python -B scripts/rewayah/vendor_sources.py --check
+
+      - name: KFGQPC -> DigitalKhatt convention round trip (Hafs)
+        run: python -B scripts/rewayah/validate.py
+
+      - name: Validate all 7 rewayat (with the glyph gate)
+        run: python -B scripts/rewayah/validate_rewayah_db.py --glyphs
+
+      - name: Rebuild from the sources and compare with the committed files
+        run: |
+          out="$(mktemp -d)"
+          python -B scripts/rewayah/build_sibling_rewayah.py --out-dir "$out"
+          python -B scripts/rewayah/compare_outputs.py "$out" data/mushaf/digitalkhatt
