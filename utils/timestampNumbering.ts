@@ -175,6 +175,13 @@ export function classifyTimingSet(
  * Translation of one surah of one timing set. "Entry ayah" always means the
  * ayahNumber carried by a timing entry (the set's own numbering); "Hafs ayah"
  * means the Hafs verse number used by the mushaf and the verse lists.
+ *
+ * A Hafs verse that no reciter verse contains (only the Fatiha basmala, Hafs
+ * 1:1, in the Madani and Basri counts: there it is recited before verse 1
+ * but is not a verse) resolves to the NEAREST REAL RECITER VERSE for every
+ * playback unit: a start, a range end and a repeat unit all land on a timing
+ * entry the reciter actually recites (for 1:1, the reciter's verse 1 =
+ * Hafs 1:2), never on nothing.
  */
 export interface TimingNumbering {
   readonly surah: number;
@@ -187,19 +194,23 @@ export interface TimingNumbering {
   entryAyahsForHafsAyah(hafsAyah: number): number[];
   /**
    * Entry where playback of Hafs verse `hafsAyah` starts: the first entry
-   * containing it; for a rewayah-numbered surah, the next entry when no entry
-   * contains it (e.g. the Fatiha basmala in the Madani count). Null when no
-   * verse-level start exists.
+   * containing it; for a rewayah-numbered surah, the nearest real reciter
+   * verse when no entry contains it (the next entry, else the previous one;
+   * e.g. the Fatiha basmala in the Madani count starts at the reciter's
+   * verse 1). Null when no verse-level start exists.
    */
   startEntryForHafsAyah(hafsAyah: number): AyahTimestamp | null;
   /**
-   * Last entry ayah of a range ending at Hafs verse `hafsAyah` (the last entry
-   * containing it, or the last entry before it). Null when unknown.
+   * Last entry ayah of a range ending at Hafs verse `hafsAyah`: the last entry
+   * containing it; when none does, the nearest real reciter verse (the last
+   * entry before it, else the first entry after it). Null when unknown.
    */
   endEntryAyahForHafsAyah(hafsAyah: number): number | null;
   /**
    * Entry ayah range that must be played to hear all of Hafs verse
    * `hafsAyah` (several entries when the rewayah splits that Hafs verse).
+   * When no entry contains it, the nearest real reciter verse (the entry
+   * playback starts at) as a one-entry unit. Null when unknown.
    */
   entryRangeForHafsAyah(hafsAyah: number): {start: number; end: number} | null;
 }
@@ -274,6 +285,19 @@ export function createTimingNumbering(args: {
       .map(k => parseVerseKey(k)!.ayah)
       .filter(a => byAyah.has(a));
 
+  // @ai-start
+  // Nearest real reciter verses around a Hafs verse that no entry contains.
+  const nextEntry = (hafsAyah: number): AyahTimestamp | null =>
+    ordered.find(o => o.first > hafsAyah)?.entry ?? null;
+  const previousEntry = (hafsAyah: number): AyahTimestamp | null => {
+    let prev: AyahTimestamp | null = null;
+    for (const o of ordered) {
+      if (o.last < hafsAyah) prev = o.entry;
+    }
+    return prev;
+  };
+  // @ai-end
+
   return {
     surah,
     mode,
@@ -285,21 +309,29 @@ export function createTimingNumbering(args: {
     startEntryForHafsAyah: hafsAyah => {
       const containing = entryAyahsForHafsAyah(hafsAyah);
       if (containing.length) return byAyah.get(containing[0]) ?? null;
-      const next = ordered.find(o => o.first > hafsAyah);
-      return next ? next.entry : null;
+      return nextEntry(hafsAyah) ?? previousEntry(hafsAyah); // @ai
     },
     endEntryAyahForHafsAyah: hafsAyah => {
       const containing = entryAyahsForHafsAyah(hafsAyah);
       if (containing.length) return containing[containing.length - 1];
-      let prev: number | null = null;
-      for (const o of ordered) {
-        if (o.last < hafsAyah) prev = o.entry.ayahNumber;
-      }
-      return prev;
+      // @ai-start
+      // The last entry before it; for a range ending on the Fatiha basmala
+      // (nothing before it) the reciter's first verse, so the range still
+      // plays the verse it starts at instead of ending before it begins.
+      const nearest = previousEntry(hafsAyah) ?? nextEntry(hafsAyah);
+      return nearest ? nearest.ayahNumber : null;
+      // @ai-end
     },
     entryRangeForHafsAyah: hafsAyah => {
       const containing = entryAyahsForHafsAyah(hafsAyah);
-      if (!containing.length) return null;
+      // @ai-start
+      if (!containing.length) {
+        const nearest = nextEntry(hafsAyah) ?? previousEntry(hafsAyah);
+        return nearest
+          ? {start: nearest.ayahNumber, end: nearest.ayahNumber}
+          : null;
+      }
+      // @ai-end
       return {start: containing[0], end: containing[containing.length - 1]};
     },
   };

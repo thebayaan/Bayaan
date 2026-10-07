@@ -66,6 +66,16 @@ export const TIMESTAMPS_UNAVAILABLE_ERROR =
 export const VERSE_TIMING_UNAVAILABLE_ERROR =
   "Verse-by-verse playback isn't available for this reciter on this surah. Try a different reciter.";
 
+// @ai-start
+/**
+ * Shown when a requested range resolves to no timing entry of the reciter
+ * (playback would end before it starts), instead of a silent stop or a
+ * 'playing' state with no audio.
+ */
+export const RANGE_UNPLAYABLE_ERROR =
+  'This selection has no verses to play for this reciter. Try a different reciter or range.';
+// @ai-end
+
 const NO_KEYS: readonly string[] = Object.freeze([]);
 
 export interface MushafPlayerStoreState {
@@ -208,7 +218,10 @@ function isIdentity(numbering: TimingNumbering | null): boolean {
 
 /**
  * Last timing entry inside the range for `surah`: +Infinity when the range
- * continues past this surah, -Infinity when it ended before it.
+ * continues past this surah, -Infinity when it ended before it. For a
+ * translated numbering both ends resolve to real reciter verses (see
+ * TimingNumbering), and a range never ends before the entry it starts at:
+ * Hafs 1:1-1:1 with a Madani reciter plays the reciter's verse 1.
  */
 function rangeEndEntry(
   state: MushafPlayerStoreState,
@@ -219,7 +232,12 @@ function rangeEndEntry(
   if (end.surah > surah) return Infinity;
   if (end.surah < surah) return -Infinity;
   if (isIdentity(numbering)) return end.ayah;
-  return numbering!.endEntryAyahForHafsAyah(end.ayah) ?? -Infinity;
+  // @ai-start
+  const last = numbering!.endEntryAyahForHafsAyah(end.ayah);
+  if (last === null) return -Infinity;
+  const first = rangeStartEntry(state, numbering, surah);
+  return first !== null ? Math.max(last, first) : last;
+  // @ai-end
 }
 
 /** First timing entry of the range when it starts in `surah`, else null. */
@@ -270,8 +288,14 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
   const jumpToEntry = (surah: number, entryAyah: number): boolean => {
     set({_entryAyah: 0});
     const ok = mushafAudioService.seekToAyah(entryAyah);
-    if (ok) set(verseStateFor(get()._numbering, surah, entryAyah));
-    return ok;
+    // @ai-start
+    // The seek dispatches the entry change synchronously, and a range that
+    // ends there finishes playback inside that dispatch: never republish a
+    // verse for playback that has already stopped.
+    if (!ok || get().playbackState === 'idle') return false;
+    set(verseStateFor(get()._numbering, surah, entryAyah));
+    return true;
+    // @ai-end
   };
 
   const finishPlayback = () => {
@@ -351,6 +375,13 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
         }
         if (start !== null) jumpToEntry(surah, start);
       }
+      // @ai-start
+      if (get().playbackState === 'idle') {
+        // The range ended at its first entry: nothing to play.
+        set({timestampError: RANGE_UNPLAYABLE_ERROR});
+        return;
+      }
+      // @ai-end
       mushafAudioService.play();
       set({playbackState: 'playing'});
     } catch (error) {
@@ -370,7 +401,7 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
     const entry = rangeStartEntry(state, state._numbering, surah);
     if (entry === null || !jumpToEntry(surah, entry)) {
       // No timing entry to return to: stop rather than loop on nothing.
-      finishPlayback();
+      if (get().playbackState !== 'idle') finishPlayback(); // @ai
       return;
     }
     if (resume) mushafAudioService.play();
@@ -466,6 +497,7 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
           mushafAudioService.play();
           return;
         }
+        if (get().playbackState === 'idle') return; // @ai
       }
       set({_versePlayCount: 1});
     }
@@ -666,6 +698,14 @@ export const useMushafPlayerStore = create<MushafPlayerStoreState>()(
               const start = numbering.startEntryForHafsAyah(ayahNumber);
               if (start) engine.jumpToEntry(surahNumber, start.ayahNumber);
             }
+            // @ai-start
+            if (get().playbackState === 'idle') {
+              // The range ended at its first entry (it resolved to no verse
+              // of this reciter): say so instead of claiming to play.
+              set({timestampError: RANGE_UNPLAYABLE_ERROR});
+              return;
+            }
+            // @ai-end
             mushafAudioService.play();
 
             set({playbackState: 'playing'});

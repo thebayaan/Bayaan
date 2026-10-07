@@ -109,6 +109,9 @@ import {
   isVerseKeyPlaying,
   selectPlaybackVerseKeys,
   VERSE_TIMING_UNAVAILABLE_ERROR,
+  // @ai-start
+  RANGE_UNPLAYABLE_ERROR,
+  // @ai-end
 } from '../mushafPlayerStore';
 import {mushafAudioService} from '@/services/audio/MushafAudioService';
 import {timingNumberingService} from '@/services/timestamps/TimingNumberingService';
@@ -532,3 +535,91 @@ describe('playback requests', () => {
     });
   });
 });
+
+// @ai-start
+/**
+ * Records every store update that claims 'playing' while no audio player
+ * exists (the "playing with no audio" state).
+ */
+function watchSilentPlaying() {
+  const violations: (string | null)[] = [];
+  const unsubscribe = useMushafPlayerStore.subscribe(s => {
+    if (s.playbackState === 'playing' && !mushafAudioService.hasPlayer()) {
+      violations.push(s.currentVerseKey);
+    }
+  });
+  return {violations, unsubscribe};
+}
+
+describe('Fatiha basmala (Hafs 1:1) with a Madani-numbered reciter', () => {
+  // The basmala is not a verse in the Madani count (Warsh 1:1 = Hafs 1:2):
+  // every range / repeat unit resolves to the nearest real reciter verse.
+
+  it('a range 1:1-1:1 plays the reciter verse 1 once, then stops', async () => {
+    st().setRange({surah: 1, ayah: 1}, {surah: 1, ayah: 1});
+    const watch = watchSilentPlaying();
+    await play('warsh-14', 1, '1:1');
+    expect(st().playbackState).toBe('playing');
+    expect(player().playing).toBe(true);
+    expect(player().seeks).toEqual([
+      entry('warsh-14', 1, 1).timestampFrom / 1000,
+    ]);
+    expect(st().currentVerseKeys).toEqual(['1:2']);
+    const heard = await listen('warsh-14', 1);
+    expect(heard).toEqual([1]);
+    expect(st().playbackState).toBe('idle');
+    expect(st().timestampError).toBeNull();
+    watch.unsubscribe();
+    expect(watch.violations).toEqual([]);
+  });
+
+  it('Repeat 1:1 loops the reciter verse 1 with real audio', async () => {
+    st().setRange({surah: 1, ayah: 1}, {surah: 1, ayah: 1});
+    st().setVerseRepeatCount(0);
+    st().setRangeRepeatCount(0);
+    const watch = watchSilentPlaying();
+    await play('warsh-14', 1, '1:1');
+    const heard = await listen('warsh-14', 1, 4);
+    expect(heard).toEqual([1, 1, 1, 1]);
+    expect(st().playbackState).toBe('playing');
+    expect(player().playing).toBe(true);
+    expect(st().currentVerseKeys).toEqual(['1:2']);
+    watch.unsubscribe();
+    expect(watch.violations).toEqual([]);
+  });
+
+  it('a range 1:1-1:3 plays Hafs 1:2 and 1:3 (reciter verses 1-2)', async () => {
+    st().setRange({surah: 1, ayah: 1}, {surah: 1, ayah: 3});
+    await play('warsh-14', 1, '1:1');
+    const heard = await listen('warsh-14', 1);
+    expect(heard).toEqual([1, 2]);
+    expect(heard.flatMap(a => warshHafs(1, a))).toEqual(['1:2', '1:3']);
+    expect(st().playbackState).toBe('idle');
+  });
+
+  it('Hafs: a range 1:1-1:1 still plays entry 1 once', async () => {
+    st().setRange({surah: 1, ayah: 1}, {surah: 1, ayah: 1});
+    await play('hafs-clean', 1, '1:1');
+    expect(st().currentVerseKeys).toEqual(['1:1']);
+    const heard = await listen('hafs-clean', 1);
+    expect(heard).toEqual([1]);
+    expect(st().playbackState).toBe('idle');
+  });
+});
+
+describe('a range that ends before it starts', () => {
+  it('reports it instead of claiming to play with no audio', async () => {
+    // Not reachable from the range pickers (they keep end >= start); this
+    // pins the guard: the engine used to release the player inside the
+    // first seek and then still set 'playing'.
+    st().setRange({surah: 2, ayah: 10}, {surah: 2, ayah: 5});
+    const watch = watchSilentPlaying();
+    await play('hafs-clean', 2, '2:10');
+    watch.unsubscribe();
+    expect(st().playbackState).toBe('idle');
+    expect(st().timestampError).toBe(RANGE_UNPLAYABLE_ERROR);
+    expect(st().currentVerseKey).toBeNull();
+    expect(watch.violations).toEqual([]);
+  });
+});
+// @ai-end
