@@ -1,5 +1,15 @@
 import React, {useMemo, useCallback, useState} from 'react';
-import {Alert, View, Text, StyleSheet, Switch, Pressable} from 'react-native';
+import {
+  ActivityIndicator, // @ai
+  Alert,
+  View,
+  Text,
+  StyleSheet,
+  Switch,
+  Pressable,
+  type StyleProp, // @ai
+  type ViewStyle, // @ai
+} from 'react-native';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
@@ -40,6 +50,7 @@ import {
   type RewayahWithDiffs,
 } from '@/services/rewayah/RewayahIdentity';
 import {getRewayahDiffLegend} from '@/components/sheets/rewayahDiffLegend'; // @ai
+import {chooseMushafRewayah} from '@/components/sheets/rewayahSelection'; // @ai
 import {
   useMushafSettingsStore,
   getActualFontSize,
@@ -722,31 +733,23 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
     [mushafRenderer, rewayah, setMushafRenderer, setRewayah],
   );
 
-  const handleRewayahSelect = useCallback(
-    async (value: RewayahId) => {
-      if (value === rewayah) return;
-      // Defense in depth: the UI should have already disabled the row for
-      // rewayat without bundled DK data, but guard here too so we never
-      // call switchRewayah for an id that will throw from
-      // requireRewayahAssets.
-      if (!hasTextData(value)) return;
-      // Load the new words DB BEFORE flipping the store so React re-renders
-      // with the correct text/layout already in place.
-      try {
-        await digitalKhattDataService.switchRewayah(value);
-      } catch (error) {
-        console.error('[MushafSettings] Failed to switch rewayah:', error);
-        return;
-      }
-      setRewayah(value);
-      showToast('Now reading', getRewayahShortLabel(value));
-    },
-    [rewayah, setRewayah],
-  );
+  // @ai-start
+  // Loads the new words DB before the store changes (so React re-renders with
+  // the right text and layout in place), ignores taps a newer tap overtook,
+  // and on a failure keeps the store on the rewayah the data service still
+  // serves and says so (components/sheets/rewayahSelection.ts). Rewayat
+  // without bundled text are refused there too.
+  const handleRewayahSelect = useCallback(async (value: RewayahId) => {
+    await chooseMushafRewayah(value);
+  }, []);
+  // @ai-end
 
   return (
     <View style={[styles.container, containerStyle]}>
       {showTitle && <Text style={styles.title}>Mushaf Settings</Text>}
+      {/* @ai-start */}
+      <RewayahFallbackBanner />
+      {/* @ai-end */}
 
       {/* VIEW TYPE Section (hidden from player context) */}
       {context !== 'player' && (
@@ -1255,6 +1258,152 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
     </View>
   );
 };
+
+// @ai-start
+interface RewayahFallbackBannerProps {
+  style?: StyleProp<ViewStyle>;
+}
+
+/**
+ * Shown while Hafs stands in for a saved rewayah that could not be loaded at
+ * startup (settings store `rewayahFallbackFrom`): says so and offers a retry
+ * or keeping Hafs. Renders nothing otherwise. Self-contained, so a screen
+ * other than these settings (the mushaf) can show it too.
+ */
+export const RewayahFallbackBanner: React.FC<RewayahFallbackBannerProps> = ({
+  style,
+}) => {
+  const {theme} = useTheme();
+  const styles = useMemo(() => createFallbackBannerStyles(theme), [theme]);
+  const failedRewayah = useMushafSettingsStore(s => s.rewayahFallbackFrom);
+  const [busy, setBusy] = useState(false);
+
+  const choose = useCallback(
+    async (value: RewayahId) => {
+      if (busy) return;
+      setBusy(true);
+      try {
+        await chooseMushafRewayah(value);
+      } finally {
+        setBusy(false);
+      }
+    },
+    [busy],
+  );
+
+  if (!failedRewayah) return null;
+  const label = getRewayahShortLabel(failedRewayah);
+  return (
+    <View style={[styles.banner, style]} accessibilityRole="alert">
+      <View style={styles.titleRow}>
+        <Feather
+          name="alert-circle"
+          size={moderateScale(16)}
+          color={Color(theme.colors.text).alpha(0.75).toString()}
+        />
+        <Text style={styles.title}>Couldn&apos;t load {label}</Text>
+      </View>
+      <Text style={styles.body}>
+        Hafs is shown instead. {label} stays your rewayah and is tried again the
+        next time the app opens.
+      </Text>
+      <View style={styles.actions}>
+        <Pressable
+          onPress={() => choose(failedRewayah)}
+          disabled={busy}
+          accessibilityRole="button"
+          accessibilityLabel={`Try loading ${label} again`}
+          accessibilityState={{disabled: busy, busy}}
+          hitSlop={6}
+          style={({pressed}) => [
+            styles.button,
+            styles.primaryButton,
+            (pressed || busy) && styles.buttonPressed,
+          ]}>
+          {busy ? (
+            <ActivityIndicator
+              size="small"
+              color={theme.colors.textSecondary}
+            />
+          ) : (
+            <Text style={styles.buttonText}>Try again</Text>
+          )}
+        </Pressable>
+        <Pressable
+          onPress={() => choose('hafs')}
+          disabled={busy}
+          accessibilityRole="button"
+          accessibilityLabel="Keep reading Hafs"
+          accessibilityState={{disabled: busy}}
+          hitSlop={6}
+          style={({pressed}) => [
+            styles.button,
+            pressed && styles.buttonPressed,
+          ]}>
+          <Text style={styles.buttonText}>Keep Hafs</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+};
+
+const createFallbackBannerStyles = (theme: Theme) =>
+  StyleSheet.create({
+    banner: {
+      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
+      borderWidth: 1,
+      borderColor: Color(theme.colors.text).alpha(0.12).toString(),
+      borderRadius: moderateScale(14),
+      paddingHorizontal: moderateScale(14),
+      paddingVertical: verticalScale(12),
+      marginBottom: verticalScale(16),
+      gap: verticalScale(6),
+    },
+    titleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: moderateScale(8),
+    },
+    title: {
+      flex: 1,
+      fontSize: moderateScale(13.5),
+      fontFamily: 'Manrope-SemiBold',
+      color: theme.colors.text,
+    },
+    body: {
+      fontSize: moderateScale(12),
+      fontFamily: 'Manrope-Regular',
+      color: Color(theme.colors.text).alpha(0.7).toString(),
+      lineHeight: moderateScale(17),
+    },
+    actions: {
+      flexDirection: 'row',
+      gap: moderateScale(10),
+      marginTop: verticalScale(4),
+    },
+    button: {
+      minWidth: moderateScale(88),
+      minHeight: moderateScale(30),
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: moderateScale(14),
+      paddingVertical: verticalScale(6),
+      borderRadius: moderateScale(8),
+      backgroundColor: Color(theme.colors.text).alpha(0.05).toString(),
+    },
+    primaryButton: {
+      backgroundColor: Color(theme.colors.text).alpha(0.12).toString(),
+    },
+    buttonPressed: {
+      opacity: 0.7,
+    },
+    buttonText: {
+      fontSize: moderateScale(12.5),
+      fontFamily: 'Manrope-SemiBold',
+      color: theme.colors.text,
+    },
+  });
+// @ai-end
 
 interface RewayahAccordionProps {
   selectedId: RewayahId;
