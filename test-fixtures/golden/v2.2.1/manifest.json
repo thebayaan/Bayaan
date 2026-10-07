@@ -1,0 +1,36 @@
+{
+  "tag": "v2.2.1",
+  "variant": "second-launch",
+  "commit": "8b0ccde1ceed79f25b337ef76bb7b0b45ee1cad6",
+  "generated_at": "2026-10-07T22:00:27.820Z",
+  "tables": {
+    "verse-annotations/bookmarks": 15,
+    "verse-annotations/highlights": 5,
+    "verse-annotations/notes": 6,
+    "verse-annotations/notes_new": 0,
+    "playlists/playlist_items": 6,
+    "playlists/user_playlists": 2,
+    "tafaseer/schema_version": 1,
+    "tafaseer/tafaseer": 12,
+    "tafaseer/tafseer_metadata": 2,
+    "translations/translation_metadata": 1,
+    "translations/translations": 10,
+    "adhkar/adhkar": 406,
+    "adhkar/adhkar_categories": 134,
+    "adhkar/adhkar_meta": 1,
+    "adhkar/adhkar_tags": 12,
+    "adhkar/category_tags": 143,
+    "adhkar/dhikr_counts": 2,
+    "adhkar/dhikr_favorites": 2,
+    "adhkar/super_categories": 29,
+    "uploads/custom_reciters": 1,
+    "uploads/uploaded_recitations": 3
+  },
+  "digests": {
+    "tafaseer/tafaseer": "ee3cf4928084ed7f46c1b8242163e7e217238e29e785eb2e2f67dded8cac2f6e",
+    "tafaseer/tafseer_metadata": "e571bd759eed9314a0bfd46fd85d37b39c0eb442fb8fca428ddc2666c8716e94",
+    "translations/translation_metadata": "ac784dfa1a8060008d7c1af3ce0767b9569e87be8e17b42dc0484fb8c6db5cce",
+    "translations/translations": "771c839e7d963c76ebbd7892b42a992ec8f891131c516a9807a09da8e6ba31f5"
+  },
+  "skipped": []
+}
