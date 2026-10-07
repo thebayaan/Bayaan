@@ -20,7 +20,10 @@ import {FlashList, type FlashListRef} from '@shopify/flash-list';
 import {useBottomSheetScrollableCreator} from '@gorhom/bottom-sheet';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
-import type {MushafArabicTextWeight} from '@/store/mushafSettingsStore';
+import type {
+  MushafArabicTextWeight,
+  RewayahId,
+} from '@/store/mushafSettingsStore';
 import {useTajweedStore} from '@/store/tajweedStore';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
 import {useMushafFontMgr} from '@/hooks/useMushafFontMgr';
@@ -72,6 +75,8 @@ interface QuranListHeaderProps {
   arabicTextWeight: MushafArabicTextWeight;
   showAllahNameHighlight: boolean;
   allahNameHighlightColor: string;
+  /** Rewayah of the verses below (the playing track's rewayah). */
+  rewayah: RewayahId;
 }
 
 const QuranListHeader = React.memo<QuranListHeaderProps>(
@@ -88,6 +93,7 @@ const QuranListHeader = React.memo<QuranListHeaderProps>(
     arabicTextWeight,
     showAllahNameHighlight,
     allahNameHighlightColor,
+    rewayah,
   }) => (
     <>
       <SurahDivider
@@ -107,6 +113,7 @@ const QuranListHeader = React.memo<QuranListHeaderProps>(
         arabicTextWeight={arabicTextWeight}
         showAllahNameHighlight={showAllahNameHighlight}
         allahNameHighlightColor={allahNameHighlightColor}
+        rewayah={rewayah}
       />
     </>
   ),
@@ -445,6 +452,7 @@ export const QuranView: React.FC<QuranViewProps> = ({
               arabicTextWeight={arabicTextWeight}
               showAllahNameHighlight={showAllahNameHighlight}
               allahNameHighlightColor={allahNameHighlightColor}
+              rewayah={trackRewayah}
             />
           </View>
         }

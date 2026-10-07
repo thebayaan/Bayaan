@@ -24,6 +24,7 @@ import {Feather} from '@expo/vector-icons';
 import Color from 'color';
 import {qulDataService} from '@/services/mushaf/QulDataService';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
+import {joinWholeWords} from '@/services/mushaf/lineWordSpans';
 import {useMushafNavigationStore} from '@/store/mushafNavigationStore';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {useTajweedStore} from '@/store/tajweedStore';
@@ -46,19 +47,23 @@ function parseVerseKey(verseKey: string): {surah: number; ayah: number} {
   return {surah: parseInt(s, 10), ayah: parseInt(a, 10)};
 }
 
+// The phrase's words (QUL Hafs word positions == slot positions in every
+// rewayah DB) as the active rewayah renders them: blank slots skipped, a
+// multi-token slot kept whole, inline verse numbers dropped (a phrase snippet
+// shows words only).
 function getPhraseText(
   sourceVerse: string,
   wordFrom: number,
   wordTo: number,
 ): string {
-  const words = digitalKhattDataService.getVerseWords(sourceVerse);
-  if (words.length === 0) return '';
-  return words
-    .filter(
-      w => w.wordPositionInVerse >= wordFrom && w.wordPositionInVerse <= wordTo,
-    )
-    .map(w => w.text)
-    .join(' ');
+  return joinWholeWords(
+    digitalKhattDataService
+      .getVerseWords(sourceVerse)
+      .filter(
+        w =>
+          w.wordPositionInVerse >= wordFrom && w.wordPositionInVerse <= wordTo,
+      ),
+  );
 }
 
 function getVersePreview(verseKey: string): string {
