@@ -483,6 +483,35 @@ RENDER_POLICY: tuple[RenderRule, ...] = (
         needs_confirmation=True,
     ),
     RenderRule(
+        id="wasl-alef",
+        codepoints="U+0627 + connecting vowel (+ start dot)",
+        rewayat=FAR,
+        kfgqpc_meaning=(
+            "Maghribi hamzat al-wasl (and Warsh's naql alef): a bare alef with the connecting vowel, i.e. the "
+            "vowel the previous word ends with, which the KFGQPC fonts draw as a stroke beside the alef, plus "
+            "the start dot (U+06EC above, U+06EA below, U+06DF beside). Words with such a cluster (glyph gate, "
+            "render_review.json family wasl-alef): Warsh 12,597, Qalun 10,682, Duri 12,767, Susi 12,767"
+        ),
+        dk_draws=(
+            "the connecting vowel as a Madani fatha / damma / kasra on the alef, so a Madani reader sees a "
+            "pronounced, hamzated vowel: Warsh 1:5 '\u0627\u064F\u065C\u0647\u06DF\u062F\u0650\u0646\u064E\u0627' "
+            "(damma above, dot below), Duri 46:19 '\u0648\u064E\u0627\u064E\u0633\u0652\u062A\u064E\u0645\u0652\u062A\u064E\u0639\u0652\u062A\u064F\u0645' (fatha)"
+        ),
+        decision=(
+            "keep verbatim (unchanged since develop). Evaluated DK-renderable alternatives: A) DK's wasl "
+            "alef U+0671 without the connecting vowel and start dot (the Madani convention: right in "
+            "connected reading, the start vowel is not shown; changes a letter, drops two marks); B) a bare "
+            "alef with the start dot only (closest to the KFGQPC drawing, but the start-with-damma dot is then "
+            "DK's 'silent' circle). A qualified reader should choose"
+        ),
+        evidence=(
+            "rendered comparison of the KFGQPC Warsh / Duri / Susi fonts with DK as stored and with A and B "
+            "(Warsh 1:5, 1:1, 2:20; Duri 46:19, 2:2; Susi 1:2)"
+        ),
+        apply=_keep,
+        needs_confirmation=True,
+    ),
+    RenderRule(
         id="yeh-barree",
         codepoints="U+06D2",
         rewayat=NAFI,
