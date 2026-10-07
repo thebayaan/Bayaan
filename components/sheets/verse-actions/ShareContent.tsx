@@ -40,7 +40,9 @@ import {useRewayahVerseTexts} from '@/components/share/useRewayahVerseTexts';
 import {
   formatQuranCitation,
   formatVerseRange,
+  hasNoOwnText,
   joinVerseTexts,
+  noOwnTextMessage,
   resolveVerseTexts,
 } from '@/components/share/rewayahVerseText';
 // @ai-end
@@ -102,6 +104,12 @@ export const ShareContent: React.FC<ShareContentProps> = ({
   // shows a spinner; if they cannot be loaded the sheet says so instead of
   // substituting Hafs.
   const verseTexts = useRewayahVerseTexts(verseKeys, rewayah);
+  // The card needs words to draw; a selection with no words of its own in
+  // this rewayah gets an explanation instead.
+  const cardTexts =
+    verseTexts.status === 'ready' && !hasNoOwnText(verseTexts.texts)
+      ? verseTexts.texts
+      : null;
   // @ai-end
 
   const previewWidth = screenWidth - moderateScale(48);
@@ -125,7 +133,7 @@ export const ShareContent: React.FC<ShareContentProps> = ({
   // @ai-end
 
   const handleShareAsImage = useCallback(async () => {
-    if (isCapturing || verseTexts.status !== 'ready') return; // @ai
+    if (isCapturing || !cardTexts) return; // @ai
     setIsCapturing(true);
     lightHaptics();
 
@@ -140,7 +148,7 @@ export const ShareContent: React.FC<ShareContentProps> = ({
     } finally {
       setIsCapturing(false);
     }
-  }, [isCapturing, captureCanvasRef, verseTexts.status]); // @ai
+  }, [isCapturing, captureCanvasRef, cardTexts]); // @ai
 
   // @ai-start
   const handleShareAsText = useCallback(async () => {
@@ -156,6 +164,14 @@ export const ShareContent: React.FC<ShareContentProps> = ({
         showToast(
           `Couldn't load the ${rewayahLabel} text`,
           'Nothing was shared. Please try again.',
+          'error',
+        );
+        return;
+      }
+      if (hasNoOwnText(result.texts)) {
+        showToast(
+          'Nothing to share',
+          noOwnTextMessage(result.rewayah),
           'error',
         );
         return;
@@ -202,10 +218,10 @@ export const ShareContent: React.FC<ShareContentProps> = ({
       {/* Visible preview */}
       <View style={styles.previewContent}>
         {/* @ai-start */}
-        {verseTexts.status === 'ready' ? (
+        {cardTexts ? (
           <ShareCardPreview
             verseKeys={verseKeys}
-            verseTexts={verseTexts.texts}
+            verseTexts={cardTexts}
             isDarkMode={isDarkMode}
             showWatermark={showWatermark}
             showBasmallah={showBasmallah}
@@ -227,6 +243,10 @@ export const ShareContent: React.FC<ShareContentProps> = ({
                   Loading the {rewayahLabel} text
                 </Text>
               </>
+            ) : verseTexts.status === 'ready' ? (
+              <Text style={styles.previewPlaceholderText}>
+                {noOwnTextMessage(verseTexts.rewayah)}
+              </Text>
             ) : (
               <>
                 <Text style={styles.previewPlaceholderText}>
@@ -251,12 +271,12 @@ export const ShareContent: React.FC<ShareContentProps> = ({
 
       {/* Hidden capture canvas */}
       {/* @ai-start */}
-      {verseTexts.status === 'ready' && (
+      {cardTexts && (
         <View style={styles.hiddenCanvas} pointerEvents="none">
           <ShareCardPreview
             canvasRef={captureCanvasRef}
             verseKeys={verseKeys}
-            verseTexts={verseTexts.texts}
+            verseTexts={cardTexts}
             isDarkMode={isDarkMode}
             showWatermark={showWatermark}
             showBasmallah={showBasmallah}
@@ -304,11 +324,11 @@ export const ShareContent: React.FC<ShareContentProps> = ({
         <Pressable
           style={({pressed}) => [
             styles.primaryButton,
-            (isCapturing || verseTexts.status !== 'ready') && {opacity: 0.6}, // @ai
+            (isCapturing || !cardTexts) && {opacity: 0.6}, // @ai
             pressed && !isCapturing && {opacity: 0.85},
           ]}
           onPress={handleShareAsImage}
-          disabled={isCapturing || verseTexts.status !== 'ready'}>
+          disabled={isCapturing || !cardTexts}>
           {isCapturing ? (
             <ActivityIndicator size="small" color={theme.colors.text} />
           ) : (

@@ -55,7 +55,9 @@ import {showToast} from '@/utils/toastUtils';
 import {useRewayahVerseTexts} from '@/components/share/useRewayahVerseTexts';
 import {
   formatQuranCitation,
+  hasNoOwnText,
   joinVerseTexts,
+  noOwnTextMessage,
   resolveVerseTexts,
 } from '@/components/share/rewayahVerseText';
 // @ai-end
@@ -277,6 +279,10 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
           'Nothing was copied. Please try again.',
           'error',
         );
+        return;
+      }
+      if (hasNoOwnText(result.texts)) {
+        showToast('Nothing to copy', noOwnTextMessage(result.rewayah), 'error');
         return;
       }
       const parts: string[] = [];

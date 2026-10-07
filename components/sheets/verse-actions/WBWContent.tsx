@@ -71,10 +71,11 @@ export const WBWContent: React.FC<WBWContentProps> = ({
 
   // The Hafs words come from the data service's side cache when the mushaf
   // is on another rewayah. WBWVerseView memoizes them per verse, so remount
-  // it once they arrive instead of leaving the grid empty.
+  // it once they arrive instead of leaving the grid empty. Readiness is the
+  // service's load state, not a non-empty word list.
   const hafsWordsReady = useSyncExternalStore(
     digitalKhattDataService.subscribeCacheChanges,
-    () => digitalKhattDataService.getVerseWords(verseKey, 'hafs').length > 0,
+    () => digitalKhattDataService.isRewayahReady('hafs'),
   );
   // @ai-end
 
