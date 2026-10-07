@@ -30,6 +30,58 @@ export const getDisplayValue = (actualFontSize: number): number => {
 };
 
 export type MushafRenderer = 'dk_v1' | 'dk_v2' | 'dk_indopak' | 'qcf_v2';
+
+// @ai-start
+// Renderer gating for non-Hafs rewayat.
+//
+// Mushaf 1440 (qcf_v2) draws Hafs glyph pages only, so it pins the rewayah to
+// Hafs (setMushafRenderer / setRewayah / persist v16 below). IndoPak is the
+// opposite case: its font lacks marks every non-Hafs rewayah needs (the wasl
+// dot U+06EC, the small waw U+06E5, U+06D7, U+06E0, U+06E7, ...), so about
+// one word in seven would come from a fallback font. Here the rewayah wins:
+// choosing a non-Hafs rewayah while IndoPak is selected moves the renderer to
+// a Madani DigitalKhatt font, and IndoPak cannot be chosen while a non-Hafs
+// rewayah is active.
+export const REWAYAH_FALLBACK_RENDERER: MushafRenderer = 'dk_v2';
+/** User-facing name of REWAYAH_FALLBACK_RENDERER (matches the font picker). */
+export const REWAYAH_FALLBACK_RENDERER_LABEL = 'Madani 1421';
+
+/** Whether `renderer` can draw `rewayah` text without fallback glyphs. */
+export function isRendererCompatibleWithRewayah(
+  renderer: MushafRenderer,
+  rewayah: RewayahId,
+): boolean {
+  return rewayah === 'hafs' || renderer === 'dk_v1' || renderer === 'dk_v2';
+}
+
+export type DkFontFamily =
+  | 'DigitalKhattV1'
+  | 'DigitalKhattV2'
+  | 'DigitalKhattIndoPak';
+
+/**
+ * Skia font family for drawing `rewayah` text under the user's renderer.
+ * Surfaces that can show a rewayah other than the active mushaf one (a
+ * reciter's rewayah in the player, a bookmark saved in another rewayah) must
+ * use this rather than mapping the renderer directly: IndoPak draws Hafs only.
+ * qcf_v2 has no DigitalKhatt face of its own, so it maps to Madani 1421 as
+ * before.
+ */
+export function getDkFontFamily(
+  renderer: MushafRenderer,
+  rewayah: RewayahId,
+): DkFontFamily {
+  if (renderer === 'dk_v1') return 'DigitalKhattV1';
+  if (renderer === 'dk_indopak' && rewayah === 'hafs') {
+    return 'DigitalKhattIndoPak';
+  }
+  return 'DigitalKhattV2';
+}
+
+const uthmaniFontForRenderer = (renderer: MushafRenderer): 'v1' | 'v2' =>
+  renderer === 'dk_v1' ? 'v1' : 'v2';
+// @ai-end
+
 export type MushafPageLayout = 'fullscreen' | 'book';
 export type MushafViewMode = 'mushaf' | 'list';
 export type MushafScrollDirection = 'horizontal' | 'vertical';
@@ -196,22 +248,27 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
         set({allahNameHighlightColor: color}),
       setArabicFontFamily: (font: 'Uthmani') => set({arabicFontFamily: font}),
       setUthmaniFont: (font: 'v1' | 'v2') => set({uthmaniFont: font}),
+      // @ai-start
       setMushafRenderer: (renderer: MushafRenderer) =>
-        set(state => ({
-          mushafRenderer: renderer,
-          arabicFontFamily: 'Uthmani',
-          showTajweed:
-            renderer === 'qcf_v2' ? false : state.showTajweed,
-          rewayah: renderer === 'qcf_v2' ? 'hafs' : state.rewayah,
-          showRewayahDiffs:
-            renderer === 'qcf_v2' ? false : state.showRewayahDiffs,
-          uthmaniFont:
-            renderer === 'dk_v1'
-              ? 'v1'
-              : renderer === 'dk_indopak'
-                ? 'v2'
-                : 'v2',
-        })),
+        set(state => {
+          // IndoPak cannot draw non-Hafs text, and the rewayah is never
+          // changed from here (the DigitalKhatt data service would keep the
+          // old rewayah's words). The settings UI disables the option; this
+          // keeps the pair valid for any other caller.
+          if (renderer === 'dk_indopak' && state.rewayah !== 'hafs') {
+            return state;
+          }
+          return {
+            mushafRenderer: renderer,
+            arabicFontFamily: 'Uthmani',
+            showTajweed: renderer === 'qcf_v2' ? false : state.showTajweed,
+            rewayah: renderer === 'qcf_v2' ? 'hafs' : state.rewayah,
+            showRewayahDiffs:
+              renderer === 'qcf_v2' ? false : state.showRewayahDiffs,
+            uthmaniFont: uthmaniFontForRenderer(renderer),
+          };
+        }),
+      // @ai-end
       setPageLayout: (layout: MushafPageLayout) => set({pageLayout: layout}),
       setViewMode: (mode: MushafViewMode) => set({viewMode: mode}),
       setScrollDirection: (direction: MushafScrollDirection) =>
@@ -252,10 +309,23 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
             ? {lightThemeId: themeId}
             : {darkThemeId: themeId};
         }),
+      // @ai-start
       setRewayah: (rewayah: RewayahId) =>
-        set(state =>
-          state.mushafRenderer === 'qcf_v2' ? state : {rewayah},
-        ),
+        set(state => {
+          if (state.mushafRenderer === 'qcf_v2') return state;
+          // Callers switch the DigitalKhatt data service before writing the
+          // store, so the rewayah is always accepted here and the renderer
+          // follows it (see REWAYAH_FALLBACK_RENDERER).
+          if (!isRendererCompatibleWithRewayah(state.mushafRenderer, rewayah)) {
+            return {
+              rewayah,
+              mushafRenderer: REWAYAH_FALLBACK_RENDERER,
+              uthmaniFont: uthmaniFontForRenderer(REWAYAH_FALLBACK_RENDERER),
+            };
+          }
+          return {rewayah};
+        }),
+      // @ai-end
       toggleRewayahDiffs: () =>
         set(state =>
           state.mushafRenderer === 'qcf_v2'
@@ -266,7 +336,7 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
     {
       name: 'mushaf-settings',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 17,
+      version: 18, // @ai
       migrate: (persistedState: unknown, version: number) => {
         const state = persistedState as Record<string, unknown>;
         if (version === 0) {
@@ -353,6 +423,21 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
           // RFC-018 — new opt-in inline community reflections, default off.
           state.showCommunityReflections = false;
         }
+        // @ai-start
+        if (
+          version < 18 &&
+          state.mushafRenderer === 'dk_indopak' &&
+          typeof state.rewayah === 'string' &&
+          state.rewayah !== 'hafs'
+        ) {
+          // IndoPak + a non-Hafs rewayah drew thousands of fallback glyphs.
+          // Keep the rewayah the reader chose (the text is what matters; the
+          // data service loads it from this value at startup) and move only
+          // the font.
+          state.mushafRenderer = REWAYAH_FALLBACK_RENDERER;
+          state.uthmaniFont = uthmaniFontForRenderer(REWAYAH_FALLBACK_RENDERER);
+        }
+        // @ai-end
         return state as unknown as MushafSettingsState;
       },
     },
