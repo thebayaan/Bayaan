@@ -41,7 +41,9 @@ import {useRewayahVerseTexts} from '@/components/share/useRewayahVerseTexts';
 import {
   formatQuranCitation,
   formatVerseRange,
+  hasNoOwnText,
   joinVerseTexts,
+  noOwnTextMessage,
   resolveVerseTexts,
 } from '@/components/share/rewayahVerseText';
 // @ai-end
@@ -93,6 +95,12 @@ export const VerseShareSheet = (props: SheetProps<'verse-share'>) => {
   const rewayah = useMushafSettingsStore(s => s.rewayah);
   const fontFamily = getDkFontFamily(mushafRenderer, rewayah);
   const verseTexts = useRewayahVerseTexts(verseKeys, rewayah);
+  // The card needs words to draw; a selection with no words of its own in
+  // this rewayah gets an explanation instead.
+  const cardTexts =
+    verseTexts.status === 'ready' && !hasNoOwnText(verseTexts.texts)
+      ? verseTexts.texts
+      : null;
 
   const {translation, verseRefText} = useMemo(() => {
     const translationParts: string[] = [];
@@ -111,7 +119,7 @@ export const VerseShareSheet = (props: SheetProps<'verse-share'>) => {
   // @ai-end
 
   const handleShareAsImage = useCallback(async () => {
-    if (isCapturing || verseTexts.status !== 'ready') return; // @ai
+    if (isCapturing || !cardTexts) return; // @ai
     setIsCapturing(true);
     lightHaptics();
 
@@ -126,7 +134,7 @@ export const VerseShareSheet = (props: SheetProps<'verse-share'>) => {
     } finally {
       setIsCapturing(false);
     }
-  }, [isCapturing, captureCanvasRef, verseTexts.status]); // @ai
+  }, [isCapturing, captureCanvasRef, cardTexts]); // @ai
 
   // @ai-start
   const handleShareAsText = useCallback(async () => {
@@ -141,6 +149,10 @@ export const VerseShareSheet = (props: SheetProps<'verse-share'>) => {
         'Nothing was shared. Please try again.',
         'error',
       );
+      return;
+    }
+    if (hasNoOwnText(result.texts)) {
+      showToast('Nothing to share', noOwnTextMessage(result.rewayah), 'error');
       return;
     }
     const parts = [
@@ -170,10 +182,10 @@ export const VerseShareSheet = (props: SheetProps<'verse-share'>) => {
         {/* Visible preview */}
         <View style={styles.previewContent}>
           {/* @ai-start */}
-          {verseTexts.status === 'ready' ? (
+          {cardTexts ? (
             <ShareCardPreview
               verseKeys={verseKeys}
-              verseTexts={verseTexts.texts}
+              verseTexts={cardTexts}
               isDarkMode={isDarkMode}
               showWatermark={showWatermark}
               showBasmallah={showBasmallah}
@@ -185,6 +197,10 @@ export const VerseShareSheet = (props: SheetProps<'verse-share'>) => {
             />
           ) : verseTexts.status === 'loading' ? (
             <ActivityIndicator size="small" color={theme.colors.text} />
+          ) : verseTexts.status === 'ready' ? (
+            <Text style={styles.toggleLabel}>
+              {noOwnTextMessage(verseTexts.rewayah)}
+            </Text>
           ) : (
             <Pressable onPress={verseTexts.retry} accessibilityRole="button">
               <Text style={styles.toggleLabel}>
@@ -198,12 +214,12 @@ export const VerseShareSheet = (props: SheetProps<'verse-share'>) => {
 
         {/* Hidden capture canvas — 1080px physical, positioned off-screen */}
         {/* @ai-start */}
-        {verseTexts.status === 'ready' && (
+        {cardTexts && (
           <View style={styles.hiddenCanvas} pointerEvents="none">
             <ShareCardPreview
               canvasRef={captureCanvasRef}
               verseKeys={verseKeys}
-              verseTexts={verseTexts.texts}
+              verseTexts={cardTexts}
               isDarkMode={isDarkMode}
               showWatermark={showWatermark}
               showBasmallah={showBasmallah}
@@ -259,12 +275,11 @@ export const VerseShareSheet = (props: SheetProps<'verse-share'>) => {
             // @ai-start
             style={[
               styles.primaryButton,
-              (isCapturing || verseTexts.status !== 'ready') &&
-                styles.buttonDisabled,
+              (isCapturing || !cardTexts) && styles.buttonDisabled,
             ]}
             // @ai-end
             onPress={handleShareAsImage}
-            disabled={isCapturing || verseTexts.status !== 'ready'}>
+            disabled={isCapturing || !cardTexts}>
             {isCapturing ? (
               <ActivityIndicator size="small" color={theme.colors.background} />
             ) : (

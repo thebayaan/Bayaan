@@ -1,8 +1,11 @@
 // @ai-generated
 // Copy/share text must be the text of the rewayah it is labelled with: wait
 // for a side cache, report failure, never substitute Hafs for a non-Hafs
-// request. Fixtures use placeholder words (W1, W2, ...) with real verse-end
-// markers (U+06DD + Arabic-Indic digits) rather than Quran text.
+// request. Readiness is the data service's load state, so a loaded verse
+// with no visible words never stalls a selection, and a Hafs request whose
+// words failed to load gets the bundled Hafs text at once. Fixtures use
+// placeholder words (W1, W2, ...) with real verse-end markers (U+06DD +
+// Arabic-Indic digits) rather than Quran text.
 import React from 'react';
 import TestRenderer, {act} from 'react-test-renderer';
 import {
@@ -13,14 +16,23 @@ import {
   formatQuranCitation,
   formatVerseRange,
   getBundledHafsVerseText,
+  hasNoOwnText,
+  isHafsTextFailed,
   isRewayahTextLoaded,
   joinVerseTexts,
+  noOwnTextMessage,
   readLoadedVerseTexts,
   resolveVerseTexts,
   waitForRewayahText,
   watchRewayahText,
 } from '../rewayahVerseText';
 
+// A stand-in for the data service's read API with the load-state semantics
+// of DigitalKhattDataService: the main cache serves `current` once
+// `mainReady`; side caches serve other rewayat once loaded; a failed load is
+// remembered ('error'). ensureRewayahLoaded resolves once the words are
+// readable, waits for a main load of `current` that is still running, and
+// rejects at once when that main load already failed.
 jest.mock('@/services/mushaf/DigitalKhattDataService', () => {
   type MockWord = {
     text: string;
@@ -28,16 +40,27 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => {
     wordPositionInVerse: number;
   };
   type MockVerses = Map<string, MockWord[]>;
+  type MockPending = {resolve: () => void; reject: (err: Error) => void};
+  const WITH_TEXT = new Set([
+    'hafs',
+    'shubah',
+    'al-bazzi',
+    'qunbul',
+    'warsh',
+    'qalun',
+    'al-duri-abi-amr',
+    'al-susi',
+  ]);
   const listeners = new Set<() => void>();
   const state = {
     current: 'hafs',
+    mainReady: true,
     version: 0,
     main: new Map() as MockVerses,
     side: new Map<string, MockVerses>(),
-    pendingSide: new Map<
-      string,
-      {resolve: () => void; reject: (err: Error) => void}
-    >(),
+    errors: new Set<string>(),
+    pendingSide: new Map<string, MockPending>(),
+    pendingMain: [] as MockPending[],
   };
   const notify = () => {
     state.version += 1;
@@ -48,19 +71,32 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => {
       return state.current;
     },
     get initialized() {
-      return true;
+      return state.mainReady;
     },
+    isRewayahReady(rewayah: string): boolean {
+      return rewayah === state.current
+        ? state.mainReady
+        : state.side.has(rewayah);
+    },
+    getRewayahLoadState(rewayah: string): string {
+      if (!WITH_TEXT.has(rewayah)) return 'unavailable';
+      if (service.isRewayahReady(rewayah)) return 'ready';
+      if (state.pendingSide.has(rewayah)) return 'loading';
+      if (state.errors.has(rewayah)) return 'error';
+      if (rewayah === state.current) return 'loading';
+      return 'idle';
+    },
+    // Contract: blank word slots are omitted (rt-overlay's getVerseWords).
     getVerseWords(verseKey: string, rewayah?: string): MockWord[] {
-      if (!rewayah || rewayah === state.current) {
-        return state.main.get(verseKey) ?? [];
-      }
-      return state.side.get(rewayah)?.get(verseKey) ?? [];
+      const verses =
+        !rewayah || rewayah === state.current
+          ? state.main
+          : state.side.get(rewayah);
+      return (verses?.get(verseKey) ?? []).filter(w => w.text !== '');
     },
-    // Contract: blank word slots contribute nothing (rt-overlay's join).
     getVerseText(verseKey: string, rewayah?: string): string {
       return service
         .getVerseWords(verseKey, rewayah)
-        .filter(w => w.text !== '')
         .map(w => w.text)
         .join(' ');
     },
@@ -74,8 +110,16 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => {
     ensureRewayahLoaded: jest.fn(
       (rewayah: string) =>
         new Promise<void>((resolve, reject) => {
-          if (rewayah === state.current || state.side.has(rewayah)) {
+          if (service.isRewayahReady(rewayah)) {
             resolve();
+            return;
+          }
+          if (rewayah === state.current && !state.mainReady) {
+            if (state.errors.has(rewayah)) {
+              reject(new Error('initial load failed'));
+              return;
+            }
+            state.pendingMain.push({resolve, reject});
             return;
           }
           state.pendingSide.set(rewayah, {resolve, reject});
@@ -97,42 +141,73 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => {
     __test: {
       state,
       listeners,
-      notify,
-      toVerses,
-      reset(current: string, main: Record<string, string[]>) {
+      reset(current: string, main: Record<string, string[]>, mainReady = true) {
         state.current = current;
+        state.mainReady = mainReady;
         state.main = toVerses(main);
         state.side.clear();
+        state.errors.clear();
         state.pendingSide.clear();
+        state.pendingMain = [];
         listeners.clear();
         service.ensureRewayahLoaded.mockClear();
       },
-      finishSideLoad(rewayah: string, slots: Record<string, string[]>) {
+      finishSideLoad(
+        rewayah: string,
+        slots: Record<string, string[]>,
+        {quiet = false}: {quiet?: boolean} = {},
+      ) {
         state.side.set(rewayah, toVerses(slots));
-        notify();
+        state.errors.delete(rewayah);
+        if (!quiet) notify();
         state.pendingSide.get(rewayah)?.resolve();
         state.pendingSide.delete(rewayah);
       },
       failSideLoad(rewayah: string) {
+        state.errors.add(rewayah);
         state.pendingSide.get(rewayah)?.reject(new Error('disk I/O error'));
         state.pendingSide.delete(rewayah);
+        notify();
       },
-      finishMainSwitch(rewayah: string, slots: Record<string, string[]>) {
+      finishMainLoad(rewayah: string, slots: Record<string, string[]>) {
         state.current = rewayah;
         state.main = toVerses(slots);
+        state.mainReady = true;
+        state.errors.delete(rewayah);
         notify();
+        for (const waiter of state.pendingMain.splice(0)) waiter.resolve();
+      },
+      failMainLoad() {
+        state.errors.add(state.current);
+        notify();
+        for (const waiter of state.pendingMain.splice(0)) {
+          waiter.reject(new Error('initial load failed'));
+        }
+      },
+      markFailed(rewayah: string) {
+        state.errors.add(rewayah);
       },
     },
   };
 });
 
 type TestHelpers = {
-  state: {current: string; main: Map<string, unknown>};
+  state: {pendingSide: Map<string, unknown>; pendingMain: unknown[]};
   listeners: Set<() => void>;
-  reset: (current: string, main: Record<string, string[]>) => void;
-  finishSideLoad: (rewayah: string, slots: Record<string, string[]>) => void;
+  reset: (
+    current: string,
+    main: Record<string, string[]>,
+    mainReady?: boolean,
+  ) => void;
+  finishSideLoad: (
+    rewayah: string,
+    slots: Record<string, string[]>,
+    options?: {quiet?: boolean},
+  ) => void;
   failSideLoad: (rewayah: string) => void;
-  finishMainSwitch: (rewayah: string, slots: Record<string, string[]>) => void;
+  finishMainLoad: (rewayah: string, slots: Record<string, string[]>) => void;
+  failMainLoad: () => void;
+  markFailed: (rewayah: string) => void;
 };
 const {__test: t, digitalKhattDataService: dk} = jest.requireMock(
   '@/services/mushaf/DigitalKhattDataService',
@@ -141,8 +216,9 @@ const {__test: t, digitalKhattDataService: dk} = jest.requireMock(
   digitalKhattDataService: {ensureRewayahLoaded: jest.Mock};
 };
 
-const M1 = '\u06DD\u0661'; // end of verse 1
-const M2 = '\u06DD\u0662'; // end of verse 2
+const M1 = '۝١'; // end of verse 1
+const M2 = '۝٢'; // end of verse 2
+const M3 = '۝٣'; // end of verse 3
 
 // Hafs-shaped slots (every verse ends in its own marker slot).
 const HAFS = {
@@ -155,6 +231,12 @@ const HAFS = {
 const REWAYAH = {
   '1:1': ['R1', 'R2', ''],
   '1:2': ['R3 R4', `R5 ${M1}`, 'R6', M2],
+};
+// A Hafs verse whose slots are all blank in the rewayah (its words are read
+// with the next verse). No bundled DB has one today; the slot model allows it.
+const MERGED = {
+  '1:2': ['', '', ''],
+  '1:3': ['R1 R2', 'R3', M1],
 };
 
 let warnSpy: jest.SpyInstance;
@@ -171,7 +253,7 @@ afterEach(() => {
 
 describe('readLoadedVerseTexts', () => {
   it('reads the active rewayah from the main cache', () => {
-    expect(isRewayahTextLoaded(['1:1', '1:2'], 'hafs')).toBe(true);
+    expect(isRewayahTextLoaded('hafs')).toBe(true);
     expect(readLoadedVerseTexts(['1:1', '1:2'], 'hafs')).toEqual([
       `H1 H2 ${M1}`,
       `H3 H4 ${M2}`,
@@ -179,12 +261,19 @@ describe('readLoadedVerseTexts', () => {
   });
 
   it('returns null, not Hafs, for a rewayah whose words are not loaded', () => {
-    expect(isRewayahTextLoaded(['1:1'], 'warsh')).toBe(false);
+    expect(isRewayahTextLoaded('warsh')).toBe(false);
     expect(readLoadedVerseTexts(['1:1'], 'warsh')).toBeNull();
   });
 
   it('returns null for a rewayah without bundled text data', () => {
+    expect(isRewayahTextLoaded('hisham')).toBe(false);
     expect(readLoadedVerseTexts(['1:1'], 'hisham')).toBeNull();
+  });
+
+  it('returns null while the active rewayah is still loading', () => {
+    t.reset('warsh', {}, false);
+    expect(isRewayahTextLoaded('warsh')).toBe(false);
+    expect(readLoadedVerseTexts(['1:1'], 'warsh')).toBeNull();
   });
 
   it('reads a loaded side cache, keeping slot structure from getVerseText', () => {
@@ -194,19 +283,35 @@ describe('readLoadedVerseTexts', () => {
       `R3 R4 R5 ${M1} R6 ${M2}`,
     ]);
   });
+
+  it('reads a verse with no visible words in a loaded rewayah as empty', () => {
+    t.finishSideLoad('warsh', MERGED);
+    expect(isRewayahTextLoaded('warsh')).toBe(true);
+    expect(readLoadedVerseTexts(['1:2', '1:3'], 'warsh')).toEqual([
+      '',
+      `R1 R2 R3 ${M1}`,
+    ]);
+  });
 });
 
 describe('waitForRewayahText', () => {
   it('starts a side load for a non-active rewayah and resolves when it lands', async () => {
-    const waiting = waitForRewayahText(['1:1'], 'warsh', 5000);
+    const waiting = waitForRewayahText('warsh', 5000);
     expect(dk.ensureRewayahLoaded).toHaveBeenCalledWith('warsh');
     t.finishSideLoad('warsh', REWAYAH);
     await expect(waiting).resolves.toBe(true);
     expect(t.listeners.size).toBe(0);
   });
 
+  it('settles as soon as the load request resolves, even without a cache notification', async () => {
+    jest.useFakeTimers();
+    const waiting = waitForRewayahText('warsh', 5000);
+    t.finishSideLoad('warsh', MERGED, {quiet: true});
+    await expect(waiting).resolves.toBe(true);
+  });
+
   it('resolves false when the load fails', async () => {
-    const waiting = waitForRewayahText(['1:1'], 'warsh', 5000);
+    const waiting = waitForRewayahText('warsh', 5000);
     t.failSideLoad('warsh');
     await expect(waiting).resolves.toBe(false);
     expect(t.listeners.size).toBe(0);
@@ -214,24 +319,45 @@ describe('waitForRewayahText', () => {
 
   it('resolves false when the load outlasts the timeout', async () => {
     jest.useFakeTimers();
-    const waiting = waitForRewayahText(['1:1'], 'warsh', 5000);
+    const waiting = waitForRewayahText('warsh', 5000);
     jest.advanceTimersByTime(5000);
     await expect(waiting).resolves.toBe(false);
     expect(t.listeners.size).toBe(0);
   });
 
-  it('waits for the main cache when the rewayah is the active one', async () => {
-    // Active rewayah mid-switch: its words are not in memory yet.
-    t.reset('warsh', {});
-    const waiting = waitForRewayahText(['1:1'], 'warsh', 5000);
-    expect(dk.ensureRewayahLoaded).not.toHaveBeenCalled();
-    t.finishMainSwitch('warsh', REWAYAH);
+  it('waits for the main cache when the rewayah is the one loading there', async () => {
+    // Active rewayah still loading (startup or a switch): no side load.
+    t.reset('warsh', {}, false);
+    const waiting = waitForRewayahText('warsh', 5000);
+    expect(t.state.pendingSide.has('warsh')).toBe(false);
+    expect(t.state.pendingMain).toHaveLength(1);
+    t.finishMainLoad('warsh', REWAYAH);
     await expect(waiting).resolves.toBe(true);
+  });
+
+  it('asks again for a non-Hafs rewayah whose last load failed', async () => {
+    t.markFailed('warsh');
+    const waiting = waitForRewayahText('warsh', 5000);
+    expect(dk.ensureRewayahLoaded).toHaveBeenCalledWith('warsh');
+    t.finishSideLoad('warsh', REWAYAH);
+    await expect(waiting).resolves.toBe(true);
+  });
+
+  it('gives up after a second request that still leaves the words missing', async () => {
+    jest.useFakeTimers();
+    // A service that reports success without the words becoming readable
+    // must not be asked forever (that would starve the timeout).
+    dk.ensureRewayahLoaded
+      .mockImplementationOnce(() => Promise.resolve())
+      .mockImplementationOnce(() => Promise.resolve());
+    await expect(waitForRewayahText('warsh', 5000)).resolves.toBe(false);
+    expect(dk.ensureRewayahLoaded).toHaveBeenCalledTimes(2);
+    expect(t.listeners.size).toBe(0);
   });
 
   it('stops listening when cancelled', () => {
     const onSettled = jest.fn();
-    const cancel = watchRewayahText(['1:1'], 'warsh', onSettled, 5000);
+    const cancel = watchRewayahText('warsh', onSettled, 5000);
     expect(t.listeners.size).toBe(1);
     cancel();
     expect(t.listeners.size).toBe(0);
@@ -240,7 +366,7 @@ describe('waitForRewayahText', () => {
   });
 
   it('resolves immediately when the text is already loaded', async () => {
-    await expect(waitForRewayahText(['1:1'], 'hafs', 5000)).resolves.toBe(true);
+    await expect(waitForRewayahText('hafs', 5000)).resolves.toBe(true);
     expect(dk.ensureRewayahLoaded).not.toHaveBeenCalled();
   });
 });
@@ -253,6 +379,24 @@ describe('resolveVerseTexts', () => {
       status: 'ready',
       rewayah: 'warsh',
       texts: ['R1 R2', `R3 R4 R5 ${M1} R6 ${M2}`],
+    });
+  });
+
+  it('never stalls on a verse with no visible words in a loaded rewayah', async () => {
+    jest.useFakeTimers();
+    t.finishSideLoad('warsh', MERGED);
+    // No timer is advanced: the result must not depend on the timeout.
+    await expect(
+      resolveVerseTexts(['1:2', '1:3'], 'warsh', 5000),
+    ).resolves.toEqual({
+      status: 'ready',
+      rewayah: 'warsh',
+      texts: ['', `R1 R2 R3 ${M1}`],
+    });
+    await expect(resolveVerseTexts(['1:2'], 'warsh', 5000)).resolves.toEqual({
+      status: 'ready',
+      rewayah: 'warsh',
+      texts: [''],
     });
   });
 
@@ -275,6 +419,37 @@ describe('resolveVerseTexts', () => {
     expect(result.rewayah).toBe('hafs');
     expect(result.texts).toEqual([getBundledHafsVerseText('1:1')]);
     expect(result.texts[0].length).toBeGreaterThan(0);
+  });
+
+  it('serves the bundled Hafs text at once when the Hafs words failed to load', async () => {
+    jest.useFakeTimers();
+    t.reset('hafs', {}, false);
+    t.failMainLoad();
+    expect(isHafsTextFailed('hafs')).toBe(true);
+    // No timer is advanced: the 10 s wait must not apply.
+    await expect(resolveVerseTexts(['1:1'], 'hafs')).resolves.toEqual({
+      status: 'ready',
+      rewayah: 'hafs',
+      texts: [getBundledHafsVerseText('1:1')],
+    });
+    expect(dk.ensureRewayahLoaded).not.toHaveBeenCalled();
+  });
+
+  it('serves the bundled Hafs text as soon as a Hafs load it waits for fails', async () => {
+    jest.useFakeTimers();
+    t.reset('hafs', {}, false);
+    const resolving = resolveVerseTexts(['1:2'], 'hafs');
+    t.failMainLoad();
+    await expect(resolving).resolves.toEqual({
+      status: 'ready',
+      rewayah: 'hafs',
+      texts: [getBundledHafsVerseText('1:2')],
+    });
+  });
+
+  it('never treats a failed non-Hafs load like the Hafs fallback', () => {
+    t.markFailed('warsh');
+    expect(isHafsTextFailed('warsh')).toBe(false);
   });
 });
 
@@ -304,16 +479,33 @@ describe('joinVerseTexts', () => {
   });
 
   it('treats the bare digits of the bundled Hafs JSON as a verse end', () => {
-    expect(joinVerseTexts(['H1 \u0661', 'H2 \u0662'])).toBe(
-      'H1 \u0661\nH2 \u0662',
-    );
+    expect(joinVerseTexts(['H1 ١', 'H2 ٢'])).toBe('H1 ١\nH2 ٢');
   });
 
   it('skips empty verses without leaving stray separators', () => {
     expect(joinVerseTexts(['', `H1 ${M1}`, '', `H2 ${M2}`, ''])).toBe(
       `H1 ${M1}\nH2 ${M2}`,
     );
+    expect(joinVerseTexts([`R1 ${M1}`, '', `R2 ${M3}`])).toBe(
+      `R1 ${M1}\nR2 ${M3}`,
+    );
     expect(joinVerseTexts([])).toBe('');
+  });
+});
+
+describe('selections without visible text', () => {
+  it('detects a selection with no words of its own', () => {
+    expect(hasNoOwnText(['', ''])).toBe(true);
+    expect(hasNoOwnText([''])).toBe(true);
+    expect(hasNoOwnText(['', `R1 ${M1}`])).toBe(false);
+    // An empty selection is not a selection without words.
+    expect(hasNoOwnText([])).toBe(false);
+  });
+
+  it('explains it without em dashes', () => {
+    const message = noOwnTextMessage('warsh');
+    expect(message).toContain('Warsh');
+    expect(message).not.toMatch(/[—–]/);
   });
 });
 
@@ -357,6 +549,7 @@ describe('useRewayahVerseTexts', () => {
       renderer = TestRenderer.create(element(props));
     });
     return {
+      results,
       latest: () => results[results.length - 1],
       rerender: (next: ProbeProps) =>
         act(() => {
@@ -394,6 +587,19 @@ describe('useRewayahVerseTexts', () => {
       status: 'ready',
       rewayah: 'warsh',
       texts: ['R1 R2', `R3 R4 R5 ${M1} R6 ${M2}`],
+    });
+    probe.unmount();
+  });
+
+  it('is ready for a selection holding a verse with no visible words', async () => {
+    const probe = renderProbe({verseKeys: ['1:2', '1:3'], rewayah: 'warsh'});
+    await act(async () => {
+      t.finishSideLoad('warsh', MERGED);
+    });
+    expect(probe.latest()).toMatchObject({
+      status: 'ready',
+      rewayah: 'warsh',
+      texts: ['', `R1 R2 R3 ${M1}`],
     });
     probe.unmount();
   });
@@ -441,6 +647,34 @@ describe('useRewayahVerseTexts', () => {
       status: 'ready',
       rewayah: 'hafs',
       texts: [getBundledHafsVerseText('1:1')],
+    });
+    probe.unmount();
+  });
+
+  it('serves the bundled Hafs text on the first render when the Hafs words already failed', () => {
+    t.reset('hafs', {}, false);
+    t.failMainLoad();
+    const probe = renderProbe({verseKeys: ['1:1'], rewayah: 'hafs'});
+    expect(probe.results.map(r => r.status)).not.toContain('loading');
+    expect(probe.latest()).toMatchObject({
+      status: 'ready',
+      rewayah: 'hafs',
+      texts: [getBundledHafsVerseText('1:1')],
+    });
+    expect(dk.ensureRewayahLoaded).not.toHaveBeenCalled();
+    probe.unmount();
+  });
+
+  it('waits for a Hafs startup load still running, then uses its words', async () => {
+    t.reset('hafs', {}, false);
+    const probe = renderProbe({verseKeys: ['1:1'], rewayah: 'hafs'});
+    expect(probe.latest().status).toBe('loading');
+    await act(async () => {
+      t.finishMainLoad('hafs', HAFS);
+    });
+    expect(probe.latest()).toMatchObject({
+      status: 'ready',
+      texts: [`H1 H2 ${M1}`],
     });
     probe.unmount();
   });

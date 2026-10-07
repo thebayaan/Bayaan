@@ -16,6 +16,12 @@
  *
  * Joining the words of one verse is the data service's job (getVerseText
  * skips blank word slots); this module only joins whole verses.
+ *
+ * Whether a rewayah's text is loaded comes from the data service's load
+ * state, never from a verse's word list: under the Release 1 slot model a
+ * loaded verse can legitimately have no visible words in a rewayah (every
+ * slot blank because its words are read with a neighbouring verse), and such
+ * a verse must not hold a copy or a preview hostage.
  */
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {
@@ -27,69 +33,95 @@ import {
 /** How long copy/share waits for a rewayah's words DB before giving up. */
 export const REWAYAH_TEXT_TIMEOUT_MS = 10000;
 
+/** Load requests one wait may make (see watchRewayahText). */
+const MAX_LOAD_REQUESTS = 2;
+
 export type VerseTextsResult =
   | {status: 'ready'; rewayah: RewayahId; texts: string[]}
   | {status: 'loading'; rewayah: RewayahId}
   | {status: 'unavailable'; rewayah: RewayahId};
 
 /**
- * True once the requested rewayah's words are in memory for every key. Every
- * words DB keeps the Hafs rows (one row per Hafs word slot, blank or not), so
- * an empty word list for a valid verse key means "not loaded yet", never
- * "this verse has no words".
+ * True once `rewayah`'s words are in memory (the active main cache or a side
+ * cache), per the data service's load state. Every verse key of a loaded
+ * rewayah is readable then, including a verse with no visible words.
  */
-export function isRewayahTextLoaded(
-  verseKeys: readonly string[],
-  rewayah: RewayahId,
-): boolean {
-  if (!hasTextData(rewayah)) return false;
-  for (const vk of verseKeys) {
-    if (digitalKhattDataService.getVerseWords(vk, rewayah).length === 0) {
-      return false;
-    }
-  }
-  return true;
+export function isRewayahTextLoaded(rewayah: RewayahId): boolean {
+  return (
+    hasTextData(rewayah) && digitalKhattDataService.isRewayahReady(rewayah)
+  );
 }
 
 /**
- * Synchronous read. Returns one text per key (a verse whose slots are all
- * blank in this rewayah yields '') when the rewayah's words are loaded, and
- * null otherwise. Never substitutes another rewayah.
+ * True when Hafs was requested but its words failed to load (the startup
+ * load or a side load). The bundled Hafs JSON is then served at once instead
+ * of waiting for a load that is not coming.
+ */
+export function isHafsTextFailed(rewayah: RewayahId): boolean {
+  return (
+    rewayah === 'hafs' &&
+    digitalKhattDataService.getRewayahLoadState('hafs') === 'error'
+  );
+}
+
+/**
+ * Synchronous read. Returns one text per key when the rewayah's words are
+ * loaded (a verse with no visible words in this rewayah yields ''), and null
+ * otherwise. Never substitutes another rewayah.
  */
 export function readLoadedVerseTexts(
   verseKeys: readonly string[],
   rewayah: RewayahId,
 ): string[] | null {
-  if (!isRewayahTextLoaded(verseKeys, rewayah)) return null;
+  if (!isRewayahTextLoaded(rewayah)) return null;
   return verseKeys.map(vk => digitalKhattDataService.getVerseText(vk, rewayah));
 }
 
 /**
+ * True when a selection of one or more verses has no words of its own in
+ * this rewayah: every text is ''. (An empty selection is not such a case.)
+ */
+export function hasNoOwnText(texts: readonly string[]): boolean {
+  return texts.length > 0 && texts.every(text => text.length === 0);
+}
+
+/**
+ * Why a loaded selection has no text: under the Release 1 slot model a Hafs
+ * verse whose slots are all blank in a rewayah is read there as part of a
+ * neighbouring verse. No bundled words DB has such a verse today; copy and
+ * share say this rather than sharing a bare citation.
+ */
+export function noOwnTextMessage(rewayah: RewayahId): string {
+  return `In ${getShortLabel(rewayah)}, this selection is read as part of a neighboring verse.`;
+}
+
+/**
  * Calls `onSettled(true)` as soon as the rewayah's words are in memory, or
- * `onSettled(false)` when the load fails or `timeoutMs` passes first. Starts
- * a side-cache load whenever the rewayah is not the active one; while it is
- * the active one (still initializing or mid-switch) it waits for the
- * service's next cache change. Returns a function that stops waiting (a side
+ * `onSettled(false)` when the load fails or `timeoutMs` passes first. Asks the
+ * data service for the words (ensureRewayahLoaded waits for an initial load
+ * or a switch already bringing them, and otherwise starts a side load) and
+ * settles as soon as that request does. A Hafs request whose words already
+ * failed to load settles at once. Returns a function that stops waiting (a
  * load already started still completes inside the service).
  */
 export function watchRewayahText(
-  verseKeys: readonly string[],
   rewayah: RewayahId,
   onSettled: (loaded: boolean) => void,
   timeoutMs: number = REWAYAH_TEXT_TIMEOUT_MS,
 ): () => void {
   const noop = () => undefined;
-  if (isRewayahTextLoaded(verseKeys, rewayah)) {
+  if (isRewayahTextLoaded(rewayah)) {
     onSettled(true);
     return noop;
   }
-  if (!hasTextData(rewayah)) {
+  if (!hasTextData(rewayah) || isHafsTextFailed(rewayah)) {
     onSettled(false);
     return noop;
   }
 
   let done = false;
-  let sideLoadStarted = false;
+  let requested = false;
+  let requests = 0;
   let unsubscribe: () => void = noop;
   let timer: ReturnType<typeof setTimeout> | null = null;
 
@@ -105,28 +137,38 @@ export function watchRewayahText(
   };
   const check = () => {
     if (done) return;
-    if (isRewayahTextLoaded(verseKeys, rewayah)) {
+    if (isRewayahTextLoaded(rewayah)) {
       settle(true);
       return;
     }
-    if (sideLoadStarted || rewayah === digitalKhattDataService.rewayah) {
+    if (requested) return;
+    // ensureRewayahLoaded resolves once the words are readable, so a second
+    // request only covers words dropped again in between (a mushaf switch
+    // evicting a side copy). Never more: a request that resolves at once
+    // must not turn into a loop that starves the timeout.
+    if (requests >= MAX_LOAD_REQUESTS) {
+      settle(false);
       return;
     }
-    sideLoadStarted = true;
-    digitalKhattDataService.ensureRewayahLoaded(rewayah).then(check, err => {
-      if (done) return;
-      console.warn(`[rewayahVerseText] Could not load ${rewayah}:`, err);
-      // A main-cache switch to this rewayah may have landed meanwhile;
-      // give up only if the text is still missing.
-      settle(isRewayahTextLoaded(verseKeys, rewayah));
-    });
+    requests += 1;
+    requested = true;
+    digitalKhattDataService.ensureRewayahLoaded(rewayah).then(
+      () => {
+        requested = false;
+        check();
+      },
+      err => {
+        if (done) return;
+        console.warn(`[rewayahVerseText] Could not load ${rewayah}:`, err);
+        // A main-cache switch to this rewayah may have landed meanwhile;
+        // give up only if the text is still missing.
+        settle(isRewayahTextLoaded(rewayah));
+      },
+    );
   };
 
   unsubscribe = digitalKhattDataService.subscribeCacheChanges(check);
-  timer = setTimeout(
-    () => settle(isRewayahTextLoaded(verseKeys, rewayah)),
-    timeoutMs,
-  );
+  timer = setTimeout(() => settle(isRewayahTextLoaded(rewayah)), timeoutMs);
   check();
   return () => {
     if (!done) stop();
@@ -135,12 +177,11 @@ export function watchRewayahText(
 
 /** Promise form of watchRewayahText. */
 export function waitForRewayahText(
-  verseKeys: readonly string[],
   rewayah: RewayahId,
   timeoutMs: number = REWAYAH_TEXT_TIMEOUT_MS,
 ): Promise<boolean> {
   return new Promise<boolean>(resolve => {
-    watchRewayahText(verseKeys, rewayah, resolve, timeoutMs);
+    watchRewayahText(rewayah, resolve, timeoutMs);
   });
 }
 
@@ -166,7 +207,8 @@ export function getBundledHafsVerseText(verseKey: string): string {
   return hafsJsonByKey.get(verseKey) ?? '';
 }
 
-/** What a caller gets once loading has failed or timed out. */
+/** What a caller gets once loading has failed or timed out (at once for a
+ *  Hafs request whose words failed to load). */
 export function unavailableResult(
   verseKeys: readonly string[],
   rewayah: RewayahId,
@@ -184,14 +226,16 @@ export function unavailableResult(
 /**
  * Async read for copy/share actions: waits (bounded) for the rewayah's text.
  * The result is 'ready' with that rewayah's text, or 'unavailable' for a
- * non-Hafs rewayah whose words could not be loaded. Never 'loading'.
+ * non-Hafs rewayah whose words could not be loaded. Never 'loading'. A 'ready'
+ * result can hold only '' texts when no selected verse has words of its own
+ * in this rewayah (see hasNoOwnText).
  */
 export async function resolveVerseTexts(
   verseKeys: readonly string[],
   rewayah: RewayahId,
   timeoutMs: number = REWAYAH_TEXT_TIMEOUT_MS,
 ): Promise<VerseTextsResult> {
-  const loaded = await waitForRewayahText(verseKeys, rewayah, timeoutMs);
+  const loaded = await waitForRewayahText(rewayah, timeoutMs);
   const texts = loaded ? readLoadedVerseTexts(verseKeys, rewayah) : null;
   if (texts) return {status: 'ready', rewayah, texts};
   return unavailableResult(verseKeys, rewayah);

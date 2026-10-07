@@ -36,6 +36,7 @@ import {MushafRepeatOptionsSheet} from './MushafRepeatOptionsSheet';
 import {FollowAlongSheet} from './FollowAlongSheet';
 import {WordDetailSheet} from './WordDetailSheet';
 import {HomeCardOptionsSheet} from './HomeCardOptionsSheet';
+import {installRewayahFallbackNotice} from './rewayahFallbackNotice'; // @ai
 
 // Register all sheets
 registerSheet('surah-options', SurahOptionsSheet);
@@ -68,6 +69,12 @@ registerSheet('mushaf-repeat-options', MushafRepeatOptionsSheet);
 registerSheet('follow-along', FollowAlongSheet);
 registerSheet('word-detail', WordDetailSheet);
 registerSheet('home-card-options', HomeCardOptionsSheet);
+
+// @ai-start
+// App-wide notice when the saved rewayah fails to load at startup and Hafs
+// is shown instead (the root layout imports this file before startup runs).
+installRewayahFallbackNotice();
+// @ai-end
 
 // Type definitions for payloads
 declare module 'react-native-actions-sheet' {

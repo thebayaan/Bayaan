@@ -9,6 +9,7 @@ import {
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import type {RewayahId} from '@/services/rewayah/RewayahIdentity';
 import {
+  isHafsTextFailed,
   readLoadedVerseTexts,
   unavailableResult,
   watchRewayahText,
@@ -25,8 +26,9 @@ export type UseRewayahVerseTextsResult = VerseTextsResult & {
  * share sheets. Subscribes to the data service's cache-change signal, so the
  * component re-renders when a side cache finishes loading, and starts that
  * load itself. 'loading' until the words are in memory; 'unavailable' when a
- * non-Hafs load fails or times out (a Hafs request falls back to the bundled
- * Hafs JSON instead). Never returns another rewayah's text.
+ * non-Hafs load fails or times out. A Hafs request falls back to the bundled
+ * Hafs JSON instead, at once when the Hafs words already failed to load.
+ * Never returns another rewayah's text.
  */
 export function useRewayahVerseTexts(
   verseKeys: readonly string[],
@@ -49,22 +51,27 @@ export function useRewayahVerseTexts(
   const [attempt, setAttempt] = useState(0);
   const [loadTick, setLoadTick] = useState(0);
 
+  // cacheVersion and loadTick are the reactivity signals for the data
+  // service's in-memory maps and load states, which are not React state.
   const texts = useMemo(
     () => readLoadedVerseTexts(keys, rewayah),
-    // cacheVersion and loadTick are the reactivity signals for the data
-    // service's in-memory maps, which are not React state.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [keys, rewayah, cacheVersion, loadTick],
   );
-  const loaded = texts !== null;
+  const hafsFailed = useMemo(
+    () => texts === null && isHafsTextFailed(rewayah),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [texts, rewayah, cacheVersion],
+  );
+  const waiting = texts === null && !hafsFailed;
 
   useEffect(() => {
-    if (loaded) return;
-    return watchRewayahText(keys, rewayah, ok => {
+    if (!waiting) return;
+    return watchRewayahText(rewayah, ok => {
       if (ok) setLoadTick(t => t + 1);
       else setFailedRequest(requestKey);
     });
-  }, [loaded, keys, rewayah, requestKey, attempt]);
+  }, [waiting, rewayah, requestKey, attempt]);
 
   const retry = useCallback(() => {
     setFailedRequest(null);
@@ -73,9 +80,9 @@ export function useRewayahVerseTexts(
 
   return useMemo((): UseRewayahVerseTextsResult => {
     if (texts) return {status: 'ready', rewayah, texts, retry};
-    if (failedRequest === requestKey) {
+    if (hafsFailed || failedRequest === requestKey) {
       return {...unavailableResult(keys, rewayah), retry};
     }
     return {status: 'loading', rewayah, retry};
-  }, [texts, failedRequest, requestKey, keys, rewayah, retry]);
+  }, [texts, hafsFailed, failedRequest, requestKey, keys, rewayah, retry]);
 }
