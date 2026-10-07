@@ -4,8 +4,8 @@ Round-trip self-test of the KFGQPC -> DigitalKhatt conventions in normalize.py.
 
 The official KFGQPC Hafs v2.0 text (sources/hafs.json, locked in
 sources/sources.lock.json), converted with normalize.apply_conventions() plus
-the two render rules that also apply to Hafs-style texts (sajdah overline,
-dot below), must reproduce the DigitalKhatt Hafs words DB
+the three render rules that also apply to Hafs-style texts (sajdah overline,
+dot below, sakt CGJ), must reproduce the DigitalKhatt Hafs words DB
 (data/mushaf/digitalkhatt/digital-khatt-v2.db) word for word, except for the
 DK-only encodings listed in KNOWN_RESIDUALS. Any other difference means a
 convention mapping changed and fails the test (exit 1).
@@ -35,9 +35,6 @@ KNOWN_RESIDUALS = {
     "2:97": "KFGQPC writes a tatweel after the lam of li-jibrila",
     "17:7": "DK adds CGJ + small high waw + madda before the hamza seat",
     "52:37": "DK small LOW seen (U+06E3), KFGQPC small high seen (U+06DC) drawn below by its font",
-    "69:28": "DK CGJ between sukun and the sakta seen",
-    "75:27": "DK CGJ between sukun and the sakta seen",
-    "83:14": "DK CGJ between sukun and the sakta seen",
     # hamza with kasra on a ya / waw seat: DK seat + hamza above + kasra,
     # KFGQPC seat + kasra + hamza below
     **{
@@ -62,11 +59,11 @@ def main() -> int:
     if sha256_file(SOURCE) != lock["sources"]["hafs"]["sha256"]:
         print(f"FAIL {SOURCE.name} does not match {LOCK_FILE.name}")
         return 1
-    rules = [r for r in N.RENDER_POLICY if r.id in ("sajdah-overline", "dot-below")]
+    rules = [r for r in N.RENDER_POLICY if r.id in ("sajdah-overline", "dot-below", "sakt-cgj")]
 
     def convert(tok: str) -> str:
         for r in rules:
-            tok = r.apply(tok)
+            tok = r.apply(tok, "")
         return N.apply_conventions(tok)
 
     con = sqlite3.connect(f"file:{HAFS_DB}?mode=ro", uri=True)

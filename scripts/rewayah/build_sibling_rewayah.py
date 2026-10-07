@@ -23,8 +23,9 @@ Algorithm (the reconciled prototype of the 2026-10 audit, adapted to v2.x)
 --------------------------------------------------------------------------
 1. Sources: scripts/rewayah/sources/<id>.json, verified against
    sources/sources.lock.json (SHA-256) before anything is read.
-   normalize.load_source/parse_verse tokenize each verse; normalize.dk_token
-   converts each token to DK encoding (conventions + RENDER_POLICY).
+   normalize.load_source/parse_verse tokenize each verse; normalize.dk_tokens
+   converts each token to DK encoding (conventions + RENDER_POLICY), with the
+   token read before it as context (the KFGQPC dot U+06DF).
 2. Alignment key = rasm skeleton (base letters only; hamza seats, wasla/madda
    alef and final ya unified; hamza and tatweel dropped).
 3. Per surah: skeleton-equality anchors (difflib matching blocks) + a banded
@@ -321,6 +322,7 @@ def build(rid: str, hafs: list[HafsRow] | None = None, source: Path | None = Non
     hafs = hafs if hafs is not None else load_hafs()
     source = source if source is not None else verify_source(rid)
     verses = N.load_source(source, rid)
+    dk_of = dict(zip(((v.surah, v.ayah) for v in verses), N.dk_tokens(verses, rid)))
     by_surah_t: dict[int, list[N.Verse]] = {}
     for v in verses:
         by_surah_t.setdefault(v.surah, []).append(v)
@@ -342,15 +344,16 @@ def build(rid: str, hafs: list[HafsRow] | None = None, source: Path | None = Non
 
         # --- target token stream -------------------------------------------
         toks: list[Token] = []
-        if surah == 1 and skel(N.dk_token(tverses[0].tokens[0], rid)) != "\u0628\u0633\u0645":
+        if surah == 1 and skel(dk_of[(1, 1)][0]) != "\u0628\u0633\u0645":
             # P10: keep the exact Hafs basmala words, unnumbered.
             basmala = [r for r in rows if r.ayah == 1 and not r.is_marker]
             for r in basmala:
                 toks.append(Token("", r.text, 0, False))
             stats["P10 fatiha basmala words kept"] += len(basmala)
         for v in tverses:
+            dks = dk_of[(v.surah, v.ayah)]
             for k, raw in enumerate(v.tokens):
-                toks.append(Token(raw, N.dk_token(raw, rid), v.ayah, k == len(v.tokens) - 1))
+                toks.append(Token(raw, dks[k], v.ayah, k == len(v.tokens) - 1))
         last_tok_of_verse = {t.verse: i for i, t in enumerate(toks) if t.last_of_verse}
 
         # --- alignment ------------------------------------------------------

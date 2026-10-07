@@ -22,17 +22,21 @@ used by the builder (build_sibling_rewayah.py) and by the validator
    - A token without any letter (e.g. a lone waqf sign, KFGQPC 2021 Doori
      4:44) is glued, without a space, to the previous word (policy A1).
 
-3. KFGQPC -> DK conversion (`dk_token`)
+3. KFGQPC -> DK conversion (`dk_token`, `dk_tokens`)
    a. CONVENTION_MAP: encoding conventions that differ between KFGQPC and
       DK for the same sign (sukun shapes, open tanween, precomposed hamza,
       'أٓ'). Derived from the Hafs round trip: applied to the official
-      KFGQPC Hafs v2.0 text (with the sajdah and dot-below rules) it
-      reproduces the DK Hafs DB in 77,385 of 77,429 words; the 25 verses
+      KFGQPC Hafs v2.0 text (with the sajdah, dot-below and sakt-cgj rules)
+      it reproduces the DK Hafs DB in 77,388 of 77,429 words; the 22 verses
       with DK-only encodings are listed in validate.py.
    b. RENDER_POLICY: the per-rewayah table of marks the DK font cannot draw
       or draws with a different meaning, with the decision taken for each
       (see the table below and docs/features/rewayat.md). Letters are never
       changed except by an explicitly listed rule (LETTER_MAPPINGS).
+      One rule needs context: the KFGQPC dot U+06DF means two different
+      things, and which one is decided from the token and the token read
+      before it (`side_dot_kinds`). `dk_tokens` converts whole verses with
+      that context; `dk_token` takes it as the `prev` argument.
 
 Run `python3 normalize.py --policy` to print the render-policy table.
 """
@@ -75,6 +79,16 @@ SMALL_HIGH_MEEM = "\u06E2"
 SMALL_LOW_MEEM = "\u06ED"
 DOT_BELOW = "\u065C"
 EMPTY_CENTRE_LOW_STOP = "\u06EA"
+SIDE_DOT = "\u06DF"  # KFGQPC 'side': a filled dot drawn on the line beside the letter
+TASHIL_DOT = "\u06EC"  # DK filled dot (Hafs 41:44 tashil)
+SUKUN_KFGQPC, SUKUN_DK = "\u06E1", "\u0652"
+SMALL_HIGH_SEEN = "\u06DC"
+CGJ = "\u034F"
+ALEF = "\u0627"
+SHORT_VOWELS = frozenset("\u064E\u064F\u0650")
+TANWEEN_MARKS = frozenset("\u064B\u064C\u064D\u0657\u065E\u0656")  # closed and KFGQPC open forms
+HAMZA_LETTERS = frozenset("\u0621\u0623\u0624\u0625\u0626")
+HAMZA_MARKS = frozenset("\u0654\u0655")
 
 MARKER_RE = re.compile(r"^\u06DD([\u0660-\u0669]+)$")
 
@@ -290,28 +304,184 @@ class RenderRule:
     dk_draws: str
     decision: str
     evidence: str
-    apply: Callable[[str], str]
+    apply: Callable[[str, str], str]  # (token, previous raw token) -> token
     changes_letters: bool = False
     needs_confirmation: bool = False
 
 
-def _drop(chars: str) -> Callable[[str], str]:
+def _drop(chars: str) -> Callable[[str, str], str]:
     table = str.maketrans({c: None for c in chars})
-    return lambda s: s.translate(table)
+    return lambda s, prev="": s.translate(table)
 
 
-def _replace(src: str, dst: str) -> Callable[[str], str]:
-    return lambda s: s.replace(src, dst)
+def _replace(src: str, dst: str) -> Callable[[str, str], str]:
+    return lambda s, prev="": s.replace(src, dst)
 
 
-def _iqlab_meem_below(s: str) -> str:
+def _keep(s: str, prev: str = "") -> str:
+    return s
+
+
+def _iqlab_meem_below(s: str, prev: str = "") -> str:
     # kasra followed by the small high meem: KFGQPC far-rewayah fonts draw
     # this meem BELOW the letter (iqlab of kasratan); DK only draws U+06E2
     # above, and writes the same sign as kasra + U+06ED.
     return s.replace(KASRA + SMALL_HIGH_MEEM, KASRA + SMALL_LOW_MEEM)
 
 
+def _sakt_cgj(s: str, prev: str = "") -> str:
+    # sukun + small high seen (69:28): DK stacks the sukun on the seen unless a
+    # CGJ separates them, which is how the DK Hafs DB writes 69:28, 75:27, 83:14.
+    for sukun in (SUKUN_KFGQPC, SUKUN_DK):
+        s = s.replace(sukun + SMALL_HIGH_SEEN, sukun + CGJ + SMALL_HIGH_SEEN)
+    return s
+
+
+def _is_mark(ch: str) -> bool:
+    return unicodedata.category(ch).startswith("M")
+
+
+def _final_letter_marks(tok: str) -> tuple[str, str]:
+    """(last letter, its marks without waqf signs) of a raw token."""
+    i = len(tok) - 1
+    while i >= 0 and not is_letter(tok[i]):
+        i -= 1
+    if i < 0:
+        return "", ""
+    return tok[i], "".join(c for c in tok[i + 1 :] if c not in WAQF_SIGNS)
+
+
+def _ends_with_hamza_vowel(tok: str) -> bool:
+    """The word ends in a hamza carrying a short vowel (no tanween): the first
+    of two hamzas meeting across words ('جَآءَ', 'هَٰٓؤُلَآءِ')."""
+    letter, marks = _final_letter_marks(tok)
+    hamza = letter in HAMZA_LETTERS or any(m in HAMZA_MARKS for m in marks)
+    return hamza and any(m in SHORT_VOWELS for m in marks) and not any(m in TANWEEN_MARKS for m in marks)
+
+
+def _ends_with_tanween(tok: str) -> bool:
+    """The word ends in a tanween, written on its last letter or (close
+    rewayat) on the letter before a final alef / alef maksura."""
+    i = len(tok) - 1
+    while i >= 0 and not is_letter(tok[i]):
+        i -= 1
+    while i >= 0:
+        j = i + 1
+        while j < len(tok) and _is_mark(tok[j]):
+            j += 1
+        marks = tok[i + 1 : j]
+        if any(m in TANWEEN_MARKS for m in marks):
+            return True
+        if tok[i] in (ALEF, "\u0649") and not any(m in SHORT_VOWELS for m in marks):
+            i -= 1
+            while i >= 0 and not is_letter(tok[i]):
+                i -= 1
+            continue
+        return False
+    return False
+
+
+def side_dot_kinds(raw: str, prev: str = "") -> list[str]:
+    """Classify every U+06DF of a raw KFGQPC token as 'start' or 'tashil'.
+
+    The KFGQPC riwayah fonts draw U+06DF as one filled dot on the line beside
+    the letter (glyph 'side'). It means:
+      start   on an alef that is silent in connected reading (hamzat al-wasl
+              of the far rewayat; a hamza dropped by Warsh's naql): start with
+              damma ('اُ۟عْبُدُواْ', Warsh 'كُفَّارٌ ا۟وْلَٰٓئِكَ');
+      tashil  a softened or changed hamza ('أَ۟ذَا', Qalun 'أَٰ۟نَّكَ', 'هَٰؤُلَآ۟',
+              Qunbul 'جَآءَ ا۟لَ', Warsh 'مُّبِينٌ اَ۟ذَا' after naql).
+    `prev` is the raw token read before this one ('' at the start of a surah)."""
+    if SIDE_DOT not in raw:
+        return []
+    letters = [i for i, c in enumerate(raw) if is_letter(c)]
+    first = letters[0] if letters else -1
+    end = first + 1
+    while 0 <= first and end < len(raw) and _is_mark(raw[end]):
+        end += 1
+    kinds: list[str] = []
+    for i, c in enumerate(raw):
+        if c != SIDE_DOT:
+            continue
+        if not (0 <= first < i < end) or raw[first] != ALEF:
+            kinds.append("tashil")  # on another letter, or after a hamza letter
+            continue
+        before, after = raw[first + 1 : i], raw[i + 1 : end]
+        if any(m in HAMZA_MARKS for m in before) or any(m in SHORT_VOWELS for m in after):
+            kinds.append("tashil")  # the dot carries the (softened) hamza's own vowel
+        elif any(m in SHORT_VOWELS for m in before):
+            # alef + connecting vowel + dot: a wasl alef, except Warsh's naql of
+            # a fatha hamza onto a tanween, where the dot is the second hamza
+            kinds.append("tashil" if FATHA in before and _ends_with_tanween(prev) else "start")
+        else:
+            # bare alef + dot: Warsh's naql (start dot), unless a hamza ends the
+            # previous word (the second of two hamzas across words, softened)
+            kinds.append("tashil" if _ends_with_hamza_vowel(prev) else "start")
+    return kinds
+
+
+def _tashil_dot(s: str, prev: str = "") -> str:
+    if SIDE_DOT not in s:
+        return s
+    kinds = iter(side_dot_kinds(s, prev))
+    out: list[str] = []
+    i = 0
+    while i < len(s):
+        if s[i] == SIDE_DOT and next(kinds) == "tashil":
+            j = i + 1
+            while j < len(s) and s[j] in WAQF_SIGNS:
+                j += 1
+            # a waqf sign after the dot goes first: DK attaches it to the dot
+            # otherwise and draws both on the line
+            out.append(s[i + 1 : j] + TASHIL_DOT)
+            i = j
+            continue
+        out.append(s[i])
+        i += 1
+    return "".join(out)
+
+
 RENDER_POLICY: tuple[RenderRule, ...] = (
+    # tashil-dot reads the raw marks, so it runs first.
+    RenderRule(
+        id="tashil-dot",
+        codepoints="U+06DF (tashil use)",
+        rewayat=frozenset(REWAYAT),
+        kfgqpc_meaning=(
+            "filled dot on the line (KFGQPC glyph 'side') in place of a softened or changed hamza: the second "
+            "hamza of \u0623\u0623 / \u0623\u0625 / \u0623\u0623\u064F ('\u0623\u064E\u06DF\u0630\u064E\u0627', Qalun "
+            "'\u0623\u064E\u0670\u06DF\u0646\u0651\u064E\u0643\u064E'), either hamza of a pair across words "
+            "('\u0647\u064E\u0670\u0624\u064F\u0644\u064E\u0627\u0653\u06DF', Qunbul '\u062C\u064E\u0627\u0653\u0621\u064E "
+            "\u0627\u06DF\u0644\u064E'); Warsh 26, Qalun 39, Bazzi 46, Qunbul 33, Duri 32, Susi 32"
+        ),
+        dk_draws="U+06DF = the Madani small circle above the letter: 'this letter is never pronounced' (meaning inverted)",
+        decision=(
+            "U+06EC, DK's tashil dot (Hafs 41:44 '\u0621\u064E\u0627\u06EC\u0639\u0652\u062C\u064E\u0645\u0650\u0649\u064C\u0651') and the sign "
+            "the KFGQPC Bazzi / Qunbul / Duri / Susi texts themselves use for the same tashil at 23:44; a waqf "
+            "sign after the dot is moved before it. Use decided by side_dot_kinds()"
+        ),
+        evidence=(
+            "renders of the KFGQPC Bazzi / Qalun / Warsh / Qunbul fonts (dot on the line) vs DK U+06DF (circle) "
+            "and U+06EC (dot); side_dot_kinds() agrees with a Hafs-alignment oracle on all 877 U+06DF"
+        ),
+        apply=_tashil_dot,
+        needs_confirmation=True,
+    ),
+    RenderRule(
+        id="start-dot-damma",
+        codepoints="U+06DF (start use)",
+        rewayat=FAR,
+        kfgqpc_meaning=(
+            "the same dot beside an alef that is silent in connected reading: start with damma. Hamzat al-wasl "
+            "('\u0627\u064F\u06DF\u0639\u0652\u0628\u064F\u062F\u064F\u0648\u0627\u0652', 138 per far rewayah) and Warsh's naql "
+            "('\u0643\u064F\u0641\u0651\u064E\u0627\u0631\u064C \u0627\u06DF\u0648\u0652\u0644\u064E\u0670\u0653\u0626\u0650\u0643\u064E', 117)"
+        ),
+        dk_draws="the small circle above the alef ('silent'): right for connected reading, the start vowel is lost",
+        decision="keep U+06DF (DK has no dot beside a letter)",
+        evidence="KFGQPC Warsh glyphs arabicalef_*_side vs DK U+06DF; side_dot_kinds() classification",
+        apply=_keep,
+        needs_confirmation=True,
+    ),
     RenderRule(
         id="yeh-barree",
         codepoints="U+06D2",
@@ -331,7 +501,7 @@ RENDER_POLICY: tuple[RenderRule, ...] = (
         dk_draws="U+0652 = Madani sukun; U+06DF = small circle",
         decision="U+06DF via CONVENTION_MAP (keeps the circle shape the Nafi' mushaf uses; existing behaviour)",
         evidence="KFGQPC Warsh font render of '\u0627\u064F\u06EA\u0647\u0652\u062F\u0650\u0646\u064E\u0627' (circle sukun); no evidence that the circle is wrong",
-        apply=lambda s: s,  # done by CONVENTION_MAP
+        apply=_keep,  # done by CONVENTION_MAP
     ),
     RenderRule(
         id="habti-waqf",
@@ -426,6 +596,16 @@ RENDER_POLICY: tuple[RenderRule, ...] = (
         changes_letters=True,
         needs_confirmation=True,
     ),
+    RenderRule(
+        id="sakt-cgj",
+        codepoints="U+034F before U+06DC",
+        rewayat=frozenset(REWAYAT),
+        kfgqpc_meaning="sukun followed by the small high seen of sakt (69:28 '\u0645\u064E\u0627\u0644\u0650\u064A\u064E\u0647\u06E1\u06DC' in Bazzi, Qunbul, Shu'bah)",
+        dk_draws="without a separator the sukun is stacked on top of the seen instead of on the ha",
+        decision="insert U+034F (CGJ) between them, exactly as the DK Hafs DB writes 69:28, 75:27 and 83:14",
+        evidence="DK render with and without CGJ; the Hafs round trip (validate.py) now matches DK in these three verses",
+        apply=_sakt_cgj,
+    ),
 )
 
 # Letter mappings a rule may perform. The validator canonicalizes BOTH the
@@ -442,14 +622,33 @@ _RULES_BY_REWAYAH: dict[str, tuple[RenderRule, ...]] = {
 }
 
 
-def dk_token(raw: str, rid: str) -> str:
-    """Raw KFGQPC token -> text stored in the DK words DB for rewayah `rid`."""
+def dk_token(raw: str, rid: str, prev: str = "") -> str:
+    """Raw KFGQPC token -> text stored in the DK words DB for rewayah `rid`.
+
+    `prev` is the raw token read before this one in the same surah ('' at the
+    start of a surah); only the tashil-dot rule looks at it."""
     if rid not in _RULES_BY_REWAYAH:
         raise ValueError(f"unknown rewayah id {rid!r}")
     s = raw
     for rule in _RULES_BY_REWAYAH[rid]:
-        s = rule.apply(s)
+        s = rule.apply(s, prev)
     return apply_conventions(s)
+
+
+def dk_tokens(verses: list[Verse], rid: str) -> list[tuple[str, ...]]:
+    """DK tokens of every verse (same order as `verses`), each converted with
+    the token read before it in its surah as context."""
+    out: list[tuple[str, ...]] = []
+    prev, surah = "", None
+    for v in verses:
+        if v.surah != surah:
+            prev, surah = "", v.surah
+        toks = []
+        for raw in v.tokens:
+            toks.append(dk_token(raw, rid, prev))
+            prev = raw
+        out.append(tuple(toks))
+    return out
 
 
 def policy_rows() -> list[dict[str, str]]:
