@@ -26,7 +26,9 @@ interface NameRow {
   name: string;
 }
 
-const TAGS = ['v2.3.0', 'v2.2.1'];
+const TAGS = ['v2.3.0', 'v2.2.1', 'v2.1.2'];
+// v2.1.2 predates rewayah_id: develop adds the column and backfills 'hafs'.
+const PRE_REWAYAH_TAG = 'v2.1.2';
 const SURAHS = [1, 2, 18, 114];
 const DB_FILES = [
   'verse-annotations.db',
@@ -54,6 +56,10 @@ const BOOKMARK_REWAYAH = [
   'al-susi',
   'hafs',
 ];
+
+function want(tag: string, seeded: string): string {
+  return tag === PRE_REWAYAH_TAG ? 'hafs' : seeded;
+}
 
 function loadServices(copyTag: string | null, shared?: MockModule): Services {
   let result: Services | undefined;
@@ -142,7 +148,7 @@ describe.each(TAGS)('develop code on %s databases', tag => {
       expect(bookmark).toBeDefined();
       expect(bookmark?.surahNumber).toBe(surah);
       expect(bookmark?.ayahNumber).toBe(i + 1);
-      expect(bookmark?.rewayahId).toBe(expected);
+      expect(bookmark?.rewayahId).toBe(want(tag, expected));
     });
     for (const b of all) {
       expect(isRewayahId(b.rewayahId)).toBe(true);
@@ -156,20 +162,20 @@ describe.each(TAGS)('develop code on %s databases', tag => {
     expect(all).toHaveLength(manifest.tables['verse-annotations/notes']);
     const byKey = new Map(all.map(n => [n.verseKey, n]));
     expect(byKey.get('1:1')?.content).toBe('Edited note body');
-    expect(byKey.get('1:1')?.rewayahId).toBe('hafs');
+    expect(byKey.get('1:1')?.rewayahId).toBe(want(tag, 'hafs'));
     expect(byKey.get('2:255')?.content).toBe('Ayat al-Kursi reflection');
-    expect(byKey.get('2:255')?.rewayahId).toBe('warsh');
+    expect(byKey.get('2:255')?.rewayahId).toBe(want(tag, 'warsh'));
     expect(byKey.get('2:1')?.content).toBe('Multi verse note');
     expect(byKey.get('2:1')?.verseKeys).toEqual(['2:1', '2:2', '2:3']);
-    expect(byKey.get('2:1')?.rewayahId).toBe('shubah');
+    expect(byKey.get('2:1')?.rewayahId).toBe(want(tag, 'shubah'));
     expect(byKey.get('18:10')?.content).toBe('x'.repeat(5000));
-    expect(byKey.get('18:10')?.rewayahId).toBe('hafs');
+    expect(byKey.get('18:10')?.rewayahId).toBe(want(tag, 'hafs'));
     expect(byKey.get('114:1')?.content).toBe(
       'قُلْ أَعُوذُ بِرَبِّ ٱلنَّاسِ \u{1F54B}\u{2728}',
     );
-    expect(byKey.get('114:1')?.rewayahId).toBe('al-duri-abi-amr');
+    expect(byKey.get('114:1')?.rewayahId).toBe(want(tag, 'al-duri-abi-amr'));
     expect(byKey.get('1:2')?.content).toBe('Original text');
-    expect(byKey.get('1:2')?.rewayahId).toBe('qalun');
+    expect(byKey.get('1:2')?.rewayahId).toBe(want(tag, 'qalun'));
     for (const n of all) {
       expect(isRewayahId(n.rewayahId)).toBe(true);
     }

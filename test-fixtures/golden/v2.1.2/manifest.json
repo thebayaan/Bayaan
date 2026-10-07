@@ -1,0 +1,20 @@
+{
+  "tag": "v2.1.2",
+  "commit": "2d07c7c5fbc32d6e1259c1e085123866a3f088f9",
+  "generated_at": "2026-10-07T19:32:37.729Z",
+  "tables": {
+    "verse-annotations/bookmarks": 15,
+    "verse-annotations/highlights": 5,
+    "verse-annotations/notes": 6,
+    "playlists/playlist_items": 6,
+    "playlists/user_playlists": 2,
+    "tafaseer/schema_version": 1,
+    "tafaseer/tafaseer": 12,
+    "tafaseer/tafseer_metadata": 2,
+    "translations/translation_metadata": 1,
+    "translations/translations": 10
+  },
+  "skipped": [
+    "rewayahId args: release has no rewayah_id column"
+  ]
+}

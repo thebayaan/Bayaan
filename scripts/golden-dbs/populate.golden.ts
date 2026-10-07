@@ -40,12 +40,25 @@ describe('golden database generation', () => {
     const dir = databaseDir();
 
     await annotations.initialize();
+    // Releases before v2.2.0 have no rewayah support: their methods take no
+    // rewayah argument. Only pass one when the release method declares it.
+    const hasRewayah = annotations.addBookmark.length >= 4;
+    if (!hasRewayah) {
+      skipped.push('rewayahId args: release has no rewayah_id column');
+    }
+    const rw = (id: string | undefined): string | undefined =>
+      hasRewayah ? id : undefined;
     // Bookmarks have UNIQUE(verse_key): distinct verse per rewayah id.
     const ids: Array<string | undefined> = [...CANONICAL, ...LEGACY, undefined];
     for (let i = 0; i < ids.length; i++) {
       const surah = SURAHS[i % SURAHS.length];
       const ayah = i + 1;
-      await annotations.addBookmark(`${surah}:${ayah}`, surah, ayah, ids[i]);
+      await annotations.addBookmark(
+        `${surah}:${ayah}`,
+        surah,
+        ayah,
+        rw(ids[i]),
+      );
     }
 
     const long = 'x'.repeat(5000);
@@ -55,7 +68,7 @@ describe('golden database generation', () => {
       1,
       'Plain note',
       undefined,
-      'hafs',
+      rw('hafs'),
     );
     await annotations.addNote(
       '2:255',
@@ -63,7 +76,7 @@ describe('golden database generation', () => {
       255,
       'Ayat al-Kursi reflection',
       undefined,
-      'warsh',
+      rw('warsh'),
     );
     await annotations.addNote(
       '2:1',
@@ -71,7 +84,7 @@ describe('golden database generation', () => {
       1,
       'Multi verse note',
       ['2:1', '2:2', '2:3'],
-      'shouba',
+      rw('shouba'),
     );
     await annotations.addNote('18:10', 18, 10, long);
     await annotations.addNote(
@@ -80,7 +93,7 @@ describe('golden database generation', () => {
       1,
       'قُلْ أَعُوذُ بِرَبِّ ٱلنَّاسِ \u{1F54B}\u{2728}',
       undefined,
-      'doori',
+      rw('doori'),
     );
     await annotations.addNote(
       '1:2',
@@ -88,7 +101,7 @@ describe('golden database generation', () => {
       2,
       'Original text',
       undefined,
-      'qaloon',
+      rw('qaloon'),
     );
     await annotations.updateNote(n1.id, 'Edited note body');
 
@@ -99,7 +112,7 @@ describe('golden database generation', () => {
           1,
           i + 1,
           COLORS[i],
-          i % 2 === 0 ? 'hafs' : undefined,
+          rw(i % 2 === 0 ? 'hafs' : undefined),
         );
       }
     } else {
