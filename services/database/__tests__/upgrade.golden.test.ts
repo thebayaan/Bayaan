@@ -85,6 +85,16 @@ const ADDED: Record<string, unknown> = {
   'verse-annotations.db/bookmarks.rewayah_id': 'hafs',
   'verse-annotations.db/notes.rewayah_id': 'hafs',
   'verse-annotations.db/highlights.rewayah_id': 'hafs',
+  // QF user sync (userSyncV1): pre-existing annotations become guest-owned
+  // and have no server identity until a signed-in import uploads them.
+  ...Object.fromEntries(
+    ANNOTATION_TABLES.flatMap(table => [
+      [`verse-annotations.db/${table}.owner_scope`, 'guest'],
+      [`verse-annotations.db/${table}.remote_id`, null],
+      [`verse-annotations.db/${table}.server_created_at`, null],
+      [`verse-annotations.db/${table}.server_updated_at`, null],
+    ]),
+  ),
 };
 
 // Seeded rewayah id per bookmark index (see scripts/golden-dbs/populate.golden.ts)

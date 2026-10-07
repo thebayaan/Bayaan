@@ -153,6 +153,8 @@ const REGISTRATIONS = [
   {name: 'Adhkar Store Data', priority: 6, critical: false},
   {name: 'Uploads Service', priority: 6, critical: false},
   {name: 'Verse Annotations', priority: 7, critical: false},
+  // Added by QF user sync (#320): opens the sync tables after annotations.
+  {name: 'QF Sync Storage', priority: 8, critical: false},
   {name: 'Timestamps', priority: 9, critical: false},
   {name: 'Theme Data', priority: 10, critical: false},
   {name: 'Arabic Fonts', priority: 10, critical: false},
