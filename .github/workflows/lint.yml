@@ -2,9 +2,9 @@ name: Lint & Typecheck
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, develop, feature/qf-integration]
   pull_request:
-    branches: [main, develop]
+    branches: [main, develop, feature/qf-integration]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
