@@ -38,8 +38,11 @@ function normalize(params: SqlParams): Bindable[] | Record<string, Bindable> {
     !(params[0] instanceof Uint8Array)
   ) {
     const named: Record<string, Bindable> = {};
-    for (const [key, value] of Object.entries(params[0]))
-      named[key.replace(/^[$:@]/, '')] = toBindable(value);
+    for (const [key, value] of Object.entries(params[0])) {
+      if (!/^[$:@]/.test(key))
+        throw new Error('named SQL parameters must be prefixed with $, : or @');
+      named[key.slice(1)] = toBindable(value);
+    }
     return named;
   }
   return (params as SqlValue[]).map(toBindable);
@@ -67,11 +70,11 @@ export function openAdapterDatabase(filePath: string): AdapterDatabase {
       return (row ?? null) as T | null;
     },
     async withTransactionAsync(task) {
-      // expo-sqlite runs the task inside BEGIN/COMMIT; nested calls join the outer transaction.
-      if (depth > 0) {
-        await task();
-        return;
-      }
+      // expo-sqlite does not support nested withTransactionAsync; fail loudly like it does.
+      if (depth > 0)
+        throw new Error(
+          'nested withTransactionAsync is not supported by expo-sqlite',
+        );
       depth++;
       db.exec('BEGIN');
       try {

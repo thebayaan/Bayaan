@@ -67,4 +67,44 @@ describe('sqlite adapter', () => {
       {v: 'kept'},
     ]);
   });
+
+  it('rejects nested withTransactionAsync and rolls the outer transaction back', async () => {
+    const db = openAdapterDatabase(tempFile());
+    await db.execAsync('CREATE TABLE t (v INTEGER)');
+    await expect(
+      db.withTransactionAsync(async () => {
+        await db.runAsync('INSERT INTO t (v) VALUES (1)');
+        await db.withTransactionAsync(async () => undefined);
+      }),
+    ).rejects.toThrow(
+      'nested withTransactionAsync is not supported by expo-sqlite',
+    );
+    expect(await db.getAllAsync('SELECT v FROM t')).toEqual([]);
+    await db.withTransactionAsync(async () => {
+      await db.runAsync('INSERT INTO t (v) VALUES (3)');
+    });
+    expect(await db.getAllAsync('SELECT v FROM t')).toEqual([{v: 3}]);
+  });
+
+  it('throws for named params without a $, : or @ prefix', async () => {
+    const db = openAdapterDatabase(tempFile());
+    await db.execAsync('CREATE TABLE t (a TEXT)');
+    await expect(
+      db.runAsync('INSERT INTO t (a) VALUES ($a)', {a: 'x'}),
+    ).rejects.toThrow('named SQL parameters must be prefixed with $, : or @');
+  });
+
+  it('round-trips Uint8Array blobs and null params', async () => {
+    const db = openAdapterDatabase(tempFile());
+    await db.execAsync('CREATE TABLE t (b BLOB, n TEXT)');
+    await db.runAsync('INSERT INTO t (b, n) VALUES (?, ?)', [
+      new Uint8Array([1, 2, 3]),
+      null,
+    ]);
+    const row = await db.getFirstAsync<{b: Uint8Array; n: string | null}>(
+      'SELECT b, n FROM t',
+    );
+    expect(Array.from(row?.b ?? [])).toEqual([1, 2, 3]);
+    expect(row?.n).toBeNull();
+  });
 });
