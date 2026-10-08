@@ -6,6 +6,11 @@
  * scheme has no ranges. The message sent with it cites that verse, not the
  * whole selection.
  *
+ * Share as Text: the message keeps its layout from before Release 1 (byte
+ * for byte for Hafs): Arabic, translation and citation paragraphs, the
+ * translation paragraph kept (empty) when the selected translation has no
+ * text for the verses.
+ *
  * Fixtures use placeholder words with real verse markers (U+06DD +
  * Arabic-Indic digits) rather than Quran text.
  */
@@ -115,6 +120,7 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => {
 
 import {ShareContent} from '../ShareContent';
 import {shareUrl} from '@/utils/shareUtils';
+import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 
 declare const global: {IS_REACT_ACT_ENVIRONMENT?: boolean};
@@ -202,5 +208,69 @@ describe('Share Link', () => {
     open(['2:255'], rewayah);
     await press('Share Link');
     expect(shareUrl).toHaveBeenCalledWith(url, message);
+  });
+});
+
+describe('Share as Text', () => {
+  // The share-as-text code from before Release 1, kept as the reference
+  // output for Hafs.
+  function previousMessage(verseKeys: string[], surahName: string): string {
+    const arabicText = verseKeys
+      .map(vk => digitalKhattDataService.getVerseText(vk, 'hafs'))
+      .filter(Boolean)
+      .join('\n');
+    const translation = verseKeys
+      .map(vk => mockTranslations.get(vk) ?? '')
+      .filter(Boolean)
+      .join('\n');
+    const [firstSurah, firstAyah] = verseKeys[0].split(':');
+    const [lastSurah, lastAyah] = verseKeys[verseKeys.length - 1].split(':');
+    const ref =
+      firstSurah === lastSurah
+        ? firstAyah === lastAyah
+          ? `${firstSurah}:${firstAyah}`
+          : `${firstSurah}:${firstAyah}-${lastAyah}`
+        : `${firstSurah}:${firstAyah} - ${lastSurah}:${lastAyah}`;
+    return `${arabicText}\n\n${translation}\n\n-- Quran ${surahName} ${ref}`;
+  }
+
+  const sharedMessage = (): string => {
+    expect(shareSpy).toHaveBeenCalledTimes(1);
+    return shareSpy.mock.calls[0][0].message;
+  };
+
+  it('keeps the empty translation paragraph when there is no translation', async () => {
+    open(['1:1'], 'hafs');
+    await press('Share as Text');
+    expect(sharedMessage()).toBe(
+      'HAFS-1a HAFS-1b ۝١\n\n\n\n-- Quran Al-Fatihah 1:1',
+    );
+  });
+
+  it.each<[string, boolean, string[], string]>([
+    ['one verse', false, ['1:1'], 'Al-Fatihah'],
+    ['one verse', true, ['1:1'], 'Al-Fatihah'],
+    ['a range', false, ['2:255', '2:256', '2:257'], 'Al-Baqarah'],
+    ['a range', true, ['2:255', '2:256', '2:257'], 'Al-Baqarah'],
+    ['two surahs', false, ['2:286', '3:1', '3:2'], 'Al-Baqarah'],
+    ['two surahs', true, ['2:286', '3:1', '3:2'], 'Al-Baqarah'],
+  ])(
+    'matches the Hafs message from before Release 1: %s, translation %s',
+    async (_label, withTranslation, verseKeys, surahName) => {
+      if (withTranslation) {
+        for (const vk of verseKeys) mockTranslations.set(vk, `T-${vk}`);
+      }
+      open(verseKeys, 'hafs');
+      await press('Share as Text');
+      expect(sharedMessage()).toBe(previousMessage(verseKeys, surahName));
+    },
+  );
+
+  it('uses the same layout for a rewayah, labelled with it', async () => {
+    open(['2:255'], 'warsh');
+    await press('Share as Text');
+    expect(sharedMessage()).toBe(
+      'WARSH-255a WARSH-255b ۝٢٥٥\n\n\n\n-- Quran Al-Baqarah 2:255 · Warsh',
+    );
   });
 });

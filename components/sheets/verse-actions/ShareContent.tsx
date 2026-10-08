@@ -184,12 +184,15 @@ export const ShareContent: React.FC<ShareContentProps> = ({
         );
         return;
       }
-      const parts = [
+      // The layout shared before Release 1, so Hafs text is shared byte for
+      // byte as before: the translation paragraph stays (empty) when there
+      // is no translation.
+      const message = [
         joinVerseTexts(result.texts),
         translation,
         `-- ${formatQuranCitation(verseRefText, result.rewayah)}`,
-      ].filter(Boolean);
-      await Share.share({message: parts.join('\n\n')});
+      ].join('\n\n');
+      await Share.share({message});
       SheetManager.hideAll();
     } finally {
       setIsPreparingText(false);
