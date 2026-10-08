@@ -561,6 +561,20 @@ describe('runContentCheck purge hardening', () => {
     expect((await registry.get(KEY))?.version).toBe(2);
   });
 
+  it('notifies again when a reinstated resource is withdrawn a second time', async () => {
+    const {deps, registry, api, setServed} = setup(manifest([active(2)]));
+    await registry.upsert({...installedRow(1), withdrawal_notified: true});
+    setServed(2);
+    await runContentCheck(deps);
+    expect(await registry.get(KEY)).toMatchObject({
+      version: 2,
+      withdrawal_notified: false,
+    });
+    api.fetchManifest.mockResolvedValue(manifest([withdrawnEntry()]));
+    await runContentCheck(deps, {force: true});
+    expect(deps.notify).toHaveBeenCalledTimes(1);
+  });
+
   it('does not repeat the notice when the final delete fails', async () => {
     const {deps, registry, installer} = setup(manifest([withdrawnEntry()]));
     await registry.upsert(installedRow(1));

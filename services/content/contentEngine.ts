@@ -116,6 +116,8 @@ export async function installResource(
       user_removed: false,
       failures: 0,
       next_retry_at: null,
+      // A fresh install must be able to notify again if it is withdrawn later.
+      withdrawal_notified: false,
     });
     deps.track('applied', {key, version: ticket.version});
   } catch (error) {
