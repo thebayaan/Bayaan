@@ -12,6 +12,7 @@ import {moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {qfSyncLifecycle} from '@/services/sync/qfSyncLifecycle';
 import {useQfSyncStore} from '@/store/qfSyncStore';
+import {formatCount} from '@/utils/pluralize';
 
 export function GuestDataMergeSheet() {
   const {theme} = useTheme();
@@ -57,8 +58,9 @@ export function GuestDataMergeSheet() {
           </Text>
           <View style={styles.counts}>
             <Text style={[styles.count, {color: theme.colors.textSecondary}]}>
-              {prompt.bookmarkCount} bookmarks · {prompt.noteCount} notes ·{' '}
-              {prompt.highlightCount} highlights
+              {formatCount(prompt.bookmarkCount, 'bookmark')} ·{' '}
+              {formatCount(prompt.noteCount, 'note')} ·{' '}
+              {formatCount(prompt.highlightCount, 'highlight')}
             </Text>
           </View>
           <Pressable
