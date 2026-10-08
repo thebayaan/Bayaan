@@ -244,6 +244,32 @@ const {__disk: disk, __size: SIZE} = jest.requireMock('expo-sqlite') as {
   __size: Record<string, number>;
 };
 
+const MiB = 1024 * 1024;
+
+function bytesOnDisk(): number {
+  return [...disk.files.values()].reduce((sum, file) => sum + file.bytes, 0);
+}
+
+/** Files an older release (unversioned on-device names) left behind. */
+function seedLegacyCopies(bases: readonly string[]): void {
+  for (const base of bases) {
+    disk.files.set(`${base}.db`, {
+      base,
+      bytes: SIZE[base],
+      state: 'ok',
+      old: true,
+    });
+  }
+}
+
+const LEGACY_DEVELOP_INSTALL = [
+  'dk_words',
+  'dk_layout',
+  'dk_words_warsh',
+  'dk_words_qaloon',
+  'dk_words_shouba',
+];
+
 async function flush(rounds = 10): Promise<void> {
   for (let i = 0; i < rounds; i++) {
     await new Promise(resolve => setTimeout(resolve, 0));
@@ -295,6 +321,95 @@ afterEach(async () => {
   for (const spy of consoleSpies) spy.mockRestore();
   // The service never tries to delete a DB that is open.
   expect(disk.violations).toEqual([]);
+});
+
+describe('low storage', () => {
+  it('upgrades a full device: the old copies make room for the current ones', async () => {
+    // An install of a release with unversioned copies, 2 MiB left free.
+    seedLegacyCopies(LEGACY_DEVELOP_INSTALL);
+    disk.quota = bytesOnDisk() + 2 * MiB;
+
+    const app = await launchApp('hafs');
+
+    expect(app.initResult).toBe('ok');
+    expect(app.service.rewayah).toBe('hafs');
+    expect(app.service.getVerseText('1:1')).toBe('H1 H2');
+    expect(app.service.getPageLines(1)).toHaveLength(1);
+    expect([...disk.files.keys()].sort()).toEqual(
+      [current('dk_words'), current('dk_layout')].sort(),
+    );
+    expect(disk.quota - bytesOnDisk()).toBeGreaterThan(2 * MiB);
+  });
+
+  it('imports Hafs on a device with no free space beyond the old Hafs copies', async () => {
+    seedLegacyCopies(['dk_words', 'dk_layout']);
+    disk.quota = bytesOnDisk();
+
+    const app = await launchApp('hafs');
+
+    expect(app.initResult).toBe('ok');
+    expect(app.service.getVerseText('1:2')).toBe('H3 H4');
+    expect([...disk.files.keys()].sort()).toEqual(
+      [current('dk_words'), current('dk_layout')].sort(),
+    );
+  });
+
+  it('shows the saved rewayah, not old text, after reclaiming its old copy', async () => {
+    seedLegacyCopies(LEGACY_DEVELOP_INSTALL);
+    disk.quota = bytesOnDisk();
+
+    const app = await launchApp('warsh');
+
+    expect(app.initResult).toBe('ok');
+    expect(app.service.rewayah).toBe('warsh');
+    expect(app.service.getVerseText('1:1')).toBe('W1 W2');
+    expect(useMushafSettingsStore.getState()).toMatchObject({
+      rewayah: 'warsh',
+      rewayahFallbackFrom: null,
+    });
+    expect(disk.files.has('dk_words_warsh.db')).toBe(false);
+  });
+
+  it('never leaves a failed copy behind, and fails with a clear error', async () => {
+    disk.quota = 2 * MiB; // too small for the Hafs words even when empty
+
+    const app = await launchApp('hafs');
+
+    expect(app.initResult).toMatch(/Could not load rewayah "hafs"/);
+    expect(app.initResult).toMatch(/ENOSPC/);
+    expect(app.service.initialized).toBe(false);
+    expect(app.service.getRewayahLoadState('hafs')).toBe('error');
+    expect(app.service.getRewayahLoadError('hafs')).not.toBeNull();
+    // Nothing of the failed copy stays on the device.
+    const wordsCopy = current('dk_words');
+    expect(disk.files.has(wordsCopy)).toBe(false);
+    expect(bytesOnDisk()).toBeLessThanOrEqual(SIZE.dk_layout);
+    // One delete + re-import, then the error.
+    expect(disk.log.filter(e => e === `import:${wordsCopy}`)).toHaveLength(2);
+    expect(useMushafSettingsStore.getState().rewayahFallbackFrom).toBeNull();
+  });
+
+  it('loads on the next launch once space was freed', async () => {
+    disk.quota = 2 * MiB;
+    const first = await launchApp('hafs');
+    expect(first.initResult).not.toBe('ok');
+
+    disk.quota = null;
+    const next = await launchApp('hafs');
+    expect(next.initResult).toBe('ok');
+    expect(next.service.getVerseText('1:1')).toBe('H1 H2');
+  });
+
+  it('retries an import that failed once', async () => {
+    disk.importErrors.set('dk_words', 1);
+
+    const app = await launchApp('hafs');
+
+    expect(app.initResult).toBe('ok');
+    const wordsCopy = current('dk_words');
+    expect(disk.log.filter(e => e === `import:${wordsCopy}`)).toHaveLength(2);
+    expect(disk.files.get(wordsCopy)?.state).toBe('ok');
+  });
 });
 
 describe('damaged copies', () => {

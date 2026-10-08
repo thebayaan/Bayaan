@@ -164,6 +164,10 @@ export interface DKWordInfo {
 // instead of being shadowed by the copy an older release left behind. Old
 // copies (unversioned names and other hashes) are deleted after a successful
 // open; a DB that is open or being imported is never deleted.
+// @ai-start
+// They are also deleted before any import, so a nearly full device has room
+// for the current copy, and a copy that fails part-way is never kept.
+// @ai-end
 
 const DB_EXTENSION = '.db';
 const SHA8_LENGTH = 8;
@@ -677,6 +681,7 @@ export class DigitalKhattDataService {
   private dbLocks: Map<string, Promise<void>> = new Map();
   private openDbCounts: Map<string, number> = new Map();
   private sweptBases: Set<string> = new Set();
+  private sweepsInFlight: Map<string, Promise<void>> = new Map(); // @ai
   // Bumped by resetDatabases so in-flight loads drop their results.
   private epoch = 0;
   // @ai-start
@@ -865,6 +870,7 @@ export class DigitalKhattDataService {
     this.loadErrors.clear();
     this.retainedSideRewayah = null;
     this.sweptBases.clear();
+    this.sweepsInFlight.clear(); // @ai
 
     const currentByBase = getCurrentDbNamesByBase();
     const names = new Set<string>();
@@ -1317,9 +1323,23 @@ export class DigitalKhattDataService {
         await this.closeDb(spec.name, db);
         db = null;
         await deleteDatabaseQuietly(spec.name);
-        await SQLite.importDatabaseFromAssetAsync(spec.name, {
-          assetId: spec.assetId,
-        });
+        // @ai-start
+        // Make room first: copies this build never opens (an older release's
+        // unversioned files, other data versions) go before the import, not
+        // only after a successful load, so a nearly full device can still
+        // take the current copy.
+        await this.sweepStaleCopies('all');
+        try {
+          await SQLite.importDatabaseFromAssetAsync(spec.name, {
+            assetId: spec.assetId,
+          });
+        } catch (error) {
+          // A copy that ran out of space leaves a partial file behind; it
+          // must not fill the disk until the next launch.
+          await deleteDatabaseQuietly(spec.name);
+          throw error;
+        }
+        // @ai-end
         db = await this.openDb(spec.name);
         if (!(await hasTable(db, spec.table))) {
           throw new Error(`table "${spec.table}" missing after import`);
@@ -1350,9 +1370,37 @@ export class DigitalKhattDataService {
       return;
     }
     const requested = bases === 'all' ? [...currentByBase.keys()] : bases;
+    // @ai-start
+    // A sweep of the same base that is still running (another loader's) is
+    // awaited too, so an import never starts before that space is free.
+    const running = requested.flatMap(
+      base => this.sweepsInFlight.get(base) ?? [],
+    );
     const todo = requested.filter(base => !this.sweptBases.has(base));
-    if (todo.length === 0) return;
+    if (todo.length === 0) {
+      await Promise.all(running);
+      return;
+    }
     for (const base of todo) this.sweptBases.add(base);
+    const sweep = this.deleteStaleCopies(todo, currentByBase);
+    for (const base of todo) this.sweepsInFlight.set(base, sweep);
+    try {
+      await Promise.all([...running, sweep]);
+    } finally {
+      for (const base of todo) {
+        if (this.sweepsInFlight.get(base) === sweep) {
+          this.sweepsInFlight.delete(base);
+        }
+      }
+    }
+  }
+
+  // The body of sweepStaleCopies for bases not swept yet. Never rejects.
+  private async deleteStaleCopies(
+    todo: readonly string[],
+    currentByBase: ReadonlyMap<string, string>,
+  ): Promise<void> {
+    // @ai-end
     const epoch = this.epoch;
     try {
       const dir = sqliteDirectoryUri();
