@@ -7,6 +7,9 @@ interface VerseAnnotationsState {
   scopeRevision: number;
   // Accumulate multi-surah pages and mounted neighbours within one scope.
   loadedSurahs: Set<number>;
+  // Surahs requested in this scope, including loads still in flight or queued,
+  // so a scope change can reload what the mounted views are waiting for.
+  requestedSurahs: Set<number>;
   bookmarkedVerseKeys: Set<string>;
   notedVerseKeys: Set<string>;
   highlights: Record<string, HighlightColor>;
@@ -37,6 +40,7 @@ export const useVerseAnnotationsStore = create<VerseAnnotationsState>()(
   (set, get) => ({
     scopeRevision: 0,
     loadedSurahs: new Set<number>(),
+    requestedSurahs: new Set<number>(),
     bookmarkedVerseKeys: new Set<string>(),
     notedVerseKeys: new Set<string>(),
     highlights: {},
@@ -50,6 +54,9 @@ export const useVerseAnnotationsStore = create<VerseAnnotationsState>()(
       const scopeRevision = get().scopeRevision;
       const wanted = [...new Set(surahNumbers)].sort((a, b) => a - b);
       if (wanted.length === 0) return;
+      if (!wanted.every(n => get().requestedSurahs.has(n))) {
+        set({requestedSurahs: new Set([...get().requestedSurahs, ...wanted])});
+      }
       if (wanted.every(n => get().loadedSurahs.has(n))) return;
 
       // Recheck the subset after waiting: a wider page load may already have
@@ -112,6 +119,7 @@ export const useVerseAnnotationsStore = create<VerseAnnotationsState>()(
       set(state => ({
         scopeRevision: state.scopeRevision + 1,
         loadedSurahs: new Set<number>(),
+        requestedSurahs: new Set<number>(),
         bookmarkedVerseKeys: new Set<string>(),
         notedVerseKeys: new Set<string>(),
         highlights: {},

@@ -707,7 +707,11 @@ export class QfSyncLifecycle {
 
   // @ai-start
   private invalidateActiveViews(advanceScopeRevision = false): number[] {
-    const loadedSurahs = [...useVerseAnnotationsStore.getState().loadedSurahs];
+    // Requested, not just loaded: a load still in flight is discarded by the
+    // clear below and its view will not ask again.
+    const loadedSurahs = [
+      ...useVerseAnnotationsStore.getState().requestedSurahs,
+    ];
     if (advanceScopeRevision) {
       useQfSyncStore.setState(state => ({
         scopeRevision: state.scopeRevision + 1,
@@ -738,8 +742,10 @@ export class QfSyncLifecycle {
     ) {
       return;
     }
-    this.clearActiveViews();
-    await this.reloadActiveViews(loadedSurah);
+    // Views may have requested surahs since the handoff began; the clear here
+    // discards those loads, so reload them with the earlier snapshot.
+    const requestedDuringHandoff = this.invalidateActiveViews();
+    await this.reloadActiveViews([...loadedSurah, ...requestedDuringHandoff]);
     if (nextAccountId) {
       this.trackMaintenance(this.hydratePersistedStatus(nextAccountId, epoch));
     }

@@ -354,6 +354,99 @@ it('reloads every painted surah after a pull and account handoff without leaking
 });
 // @ai-end
 
+describe('cold-start session restore while a mushaf page is requesting annotations', () => {
+  const initializing: QfSyncLifecycleContext = {
+    authStatus: 'initializing',
+    accountId: null,
+    online: false,
+    appActive: true,
+  };
+
+  async function seedAccountAndGuestAnnotations(): Promise<void> {
+    const {
+      verseAnnotationDatabaseService: database,
+    } = require('@/services/database/VerseAnnotationDatabaseService');
+    await database.addBookmarkForOwnerScope(
+      'qf:account-a',
+      '2:2',
+      2,
+      2,
+      'hafs',
+    );
+    await database.addBookmarkForOwnerScope(
+      'qf:account-a',
+      '2:3',
+      2,
+      3,
+      'hafs',
+    );
+    await database.upsertHighlightForOwnerScope(
+      'qf:account-a',
+      '2:4',
+      2,
+      4,
+      'green',
+      'hafs',
+    );
+    await database.addNoteForOwnerScope(
+      'qf:account-a',
+      '2:5',
+      2,
+      5,
+      'Account note',
+      ['2:5'],
+      'hafs',
+    );
+    await database.addBookmarkForOwnerScope('guest', '2:6', 2, 6, 'hafs');
+  }
+
+  function expectAccountAnnotationsOnly(): void {
+    const state = useVerseAnnotationsStore.getState();
+    expect([...state.loadedSurahs]).toEqual([2]);
+    expect([...state.bookmarkedVerseKeys].sort()).toEqual(['2:2', '2:3']);
+    expect(state.highlights).toEqual({'2:4': 'green'});
+    expect([...state.notedVerseKeys]).toEqual(['2:5']);
+    expect(state.isBookmarked('2:2')).toBe(true);
+    expect(state.isBookmarked('2:6')).toBe(false);
+  }
+
+  it('reloads a guest-scope page load that was still in flight when the account scope arrived', async () => {
+    await seedAccountAndGuestAnnotations();
+    const lifecycle = createLifecycle();
+    lifecycle.updateContext(initializing);
+    await lifecycle.waitForIdle();
+
+    // The restored page asks for its surah while the session is still restoring.
+    const pageLoad = useVerseAnnotationsStore
+      .getState()
+      .loadAnnotationsForSurahs([2]);
+    lifecycle.updateContext(authenticatedOffline);
+    await pageLoad;
+    await lifecycle.waitForIdle();
+
+    expectAccountAnnotationsOnly();
+    await lifecycle.stop();
+  });
+
+  it('keeps a page load requested during the scope handoff', async () => {
+    await seedAccountAndGuestAnnotations();
+    const lifecycle = createLifecycle();
+    lifecycle.updateContext(initializing);
+    await lifecycle.waitForIdle();
+
+    lifecycle.updateContext(authenticatedOffline);
+    // The restored page mounts before the annotation handoff has completed.
+    const pageLoad = useVerseAnnotationsStore
+      .getState()
+      .loadAnnotationsForSurahs([2]);
+    await pageLoad;
+    await lifecycle.waitForIdle();
+
+    expectAccountAnnotationsOnly();
+    await lifecycle.stop();
+  });
+});
+
 it.each(['recovered', 'synced', 'deferred', 'error'] as const)(
   'refreshes all loaded annotation views after push recovery persists remote rows (%s)',
   async outcome => {
