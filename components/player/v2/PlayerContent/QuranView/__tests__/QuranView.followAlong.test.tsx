@@ -23,6 +23,9 @@ interface VerseItemProps {
 const mockVerseItems: VerseItemProps[] = [];
 const mockTrack = {rewayah: 'hafs'};
 const mockHeaderFonts: string[] = [];
+// @ai-start
+const mockHeaderProps: {rewayah?: string; surahNumber?: number}[] = [];
+// @ai-end
 
 jest.mock('../VerseItem', () => ({
   VerseItem: (props: VerseItemProps) => {
@@ -33,8 +36,13 @@ jest.mock('../VerseItem', () => ({
 
 jest.mock('../BasmalaHeader', () => ({
   __esModule: true,
-  default: (props: {dkFontFamily: string}) => {
+  default: (props: {
+    dkFontFamily: string;
+    rewayah?: string; // @ai
+    surahNumber?: number; // @ai
+  }) => {
     mockHeaderFonts.push(props.dkFontFamily);
+    mockHeaderProps.push(props); // @ai
     return null;
   },
 }));
@@ -210,6 +218,7 @@ function track(state: object | null) {
 beforeEach(() => {
   mockVerseItems.length = 0;
   mockHeaderFonts.length = 0;
+  mockHeaderProps.length = 0; // @ai
   mockTrack.rewayah = 'hafs';
   useMushafSettingsStore.setState({
     mushafRenderer: 'dk_v2',
@@ -306,6 +315,13 @@ describe('player text font', () => {
     expect(row.wbwFontFamily).toBe('DigitalKhattIndoPak');
     // the basmala above the rewayah's verses matches them
     expect(mockHeaderFonts[mockHeaderFonts.length - 1]).toBe('DigitalKhattV2');
+    // @ai-start
+    // ...and is that rewayah's own basmala for the surah (contract C6)
+    expect(mockHeaderProps[mockHeaderProps.length - 1]).toMatchObject({
+      rewayah: 'warsh',
+      surahNumber: 2,
+    });
+    // @ai-end
   });
 
   it.each([

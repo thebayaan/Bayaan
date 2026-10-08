@@ -17,7 +17,7 @@ jest.mock('../DigitalKhattDataService', () => {
   );
   return {
     ...actual,
-    digitalKhattDataService: createFakeDKService(actual.BASMALLAH_TEXT),
+    digitalKhattDataService: createFakeDKService(), // @ai
   };
 });
 
@@ -65,6 +65,7 @@ import {rewayahDiffService} from '../RewayahDiffService';
 import {getLineWordSpans, layoutWords, wholeWordText} from '../lineWordSpans';
 import {
   FIXTURE_DBS,
+  FIXTURE_DB_REWAYAH, // @ai
   expectedSpans,
   findPage,
   fixture,
@@ -72,6 +73,7 @@ import {
   type FixtureDb,
   type FixturePage,
 } from '../__fixtures__/rewayahOverlayFixture';
+import {expectedDrawnBasmala} from '../__fixtures__/basmalaTexts'; // @ai
 import {
   computeLineCharRuleMaps,
   computeLineTajweedMaps,
@@ -265,10 +267,25 @@ describe('AllahNameHighlightService.getLineAllahNameCharMap', () => {
   });
 
   it('basmallah and surah-name lines', () => {
+    // @ai-start
+    // Each rewayah's own basmala, matched on the text the line draws.
+    for (const db of FIXTURE_DBS) {
+      dk.load(db);
+      const rewayah = FIXTURE_DB_REWAYAH[db];
+      const basmala = dk.getPageLines(2)[1];
+      expect(dk.getBasmalaSurah(basmala)).toBe(2);
+      const text = dk.getLineText(basmala);
+      expect([db, text]).toEqual([
+        db,
+        rewayah === 'hafs' ? BASMALLAH_TEXT : expectedDrawnBasmala(rewayah, 2),
+      ]);
+      const allah = getLineAllahNameCharMap(2, 1);
+      expect(allah).toEqual(getTextAllahNameCharMap(text));
+      // The name is found in every spelling ('ٱللَّهِ', 'اِ۬للَّهِ').
+      expect(new Set(allah?.values())).toEqual(new Set([text.split(' ')[1]]));
+    }
     dk.load('warsh');
-    expect(getLineAllahNameCharMap(2, 1)).toEqual(
-      getTextAllahNameCharMap(BASMALLAH_TEXT),
-    );
+    // @ai-end
     expect(getLineAllahNameCharMap(2, 0)).toBeNull();
     expect(getLineAllahNameCharMap(2, 99)).toBeNull();
   });

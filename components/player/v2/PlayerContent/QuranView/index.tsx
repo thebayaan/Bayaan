@@ -121,6 +121,7 @@ const QuranListHeader = React.memo<QuranListHeaderProps>(
         showAllahNameHighlight={showAllahNameHighlight}
         allahNameHighlightColor={allahNameHighlightColor}
         rewayah={rewayah}
+        surahNumber={surahNumber} // @ai
       />
     </>
   ),
