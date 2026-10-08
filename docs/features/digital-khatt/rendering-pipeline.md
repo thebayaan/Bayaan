@@ -14,8 +14,7 @@ This document traces one page render from `MushafViewer` to final Skia draw call
 6. `SkiaLine` builds a `Paragraph`:
    - text direction RTL
    - per-char OpenType features from justification map
-   - per-space font size giving each space its justified width, under a
-     forced strut at the words' size
+   - per-space letterSpacing based on space type
 7. `SkiaLine` computes x-position (centered vs justified) and renders `<Paragraph />`.
 8. `UthmaniPageView` overlays surah header text (RN `Text` with `SURAH_HEADERS` font).
 
@@ -152,31 +151,10 @@ This is how line-level justification is translated into glyph-level shaping chan
 After each word, if a trailing space exists:
 
 - check `lineTextInfo.spaces.get(wordEnd + 1)`
-- take the justified width (font units at `FONTSIZE`) from:
+- set `letterSpacing` from:
   - `justResult.ayaSpacing` for Aya space
   - `justResult.simpleSpacing` for Simple space
-- set the space's font size to `effectiveFontSize * spacing / SPACEWIDTH`
-  (`justifiedSpaceFontSize` in `components/mushaf/skia/justifiedSpace.ts`):
-  the font's space is `SPACEWIDTH` units, so its advance scales to the
-  justified width
-
-SkParagraph ignores `letterSpacing` and `wordSpacing` on Arabic runs. A space
-widened with `letterSpacing` kept its natural width, so every line that needed
-wider spaces ended short at its left end. The paragraph style forces a strut at
-the words' size, which keeps a larger space from moving the line box or the
-baseline. Background highlight rects are clamped to the words' band (the rect
-of the line's first character), since a larger space's rect spans that size's
-ascent and descent.
-
-A space set at its own size is shaped apart from its words, so a DigitalKhatt
-adjustment spanning two words and the space between them (it widens a few gaps,
-e.g. before a hamza below) no longer applies, although `JustService` measured
-the line with it. `SkiaLine` therefore measures a widened, justified line once
-built and, when it misses its width (`pageWidth - 2 * margin`) by more than a
-quarter pixel, rebuilds it with the residue spread evenly over its spaces
-(`spaceFitExtra`). A justified line at the words' spacing (a shrunk line, whose
-size can round) is rebuilt scaled to its width instead (`fitWordSize`), which
-keeps its spaces in the words' runs. Centered lines are built once.
+- values are normalized by `scale` relative to `SPACEWIDTH`
 
 ### Positioning (x-axis)
 
