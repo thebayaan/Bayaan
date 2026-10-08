@@ -42,6 +42,11 @@ Gates (each failure is reported; exit code 1 if any gate fails):
               on an existing non-blank content slot whose words (without an
               inline marker) differ from Hafs, whole-word entries [] and
               silah indices on silah marks before any inline marker
+  cases       every reviewed decision in highlight_cases.json holds: the
+              listed Hafs word slots have (tinted) or lack (plain) this
+              rewayah's whole-word tint (questions vs statements, a hamzat
+              qat' read as wasl, idkhal, the Maghribi lam rules, Warsh's hamza
+              farsh, encoding-only seats; one rule per group)
   versemap    <id>-versemap.json format 1 equals the map re-derived from the DB
   siblings    (whenever both rewayat of a pair are validated: Warsh / Qalun,
               al-Duri / al-Susi, al-Bazzi / Qunbul) a content slot holding the
@@ -126,6 +131,10 @@ PLACEMENT_MAX_DISTANCE = 0.34
 SIBLING_PAIRS = (("warsh", "qaloon"), ("doori", "soosi"), ("bazzi", "qumbul"))
 # (pair) -> {Hafs word location: reason} for an intended disagreement. Empty.
 SIBLING_EXCEPTIONS: dict[tuple[str, str], dict[str, str]] = {}
+
+# Reviewed whole-word highlight decisions (gate 'cases'): per group, the Hafs
+# word slots that must have / must not have each listed rewayah's tint.
+HIGHLIGHT_CASES_FILE = HERE / "highlight_cases.json"
 
 # Clusters (base + mark sequence) that never occur in the DK Hafs DB, visually
 # reviewed against the official KFGQPC fonts; see the glyph gate.
@@ -274,7 +283,7 @@ def validate(
     out: TextIO = sys.stdout,
 ) -> bool:
     rep = Report(rid, out)
-    gates = ["sources", "rows", "slots", "stream", "numbers", "markers", "letters", "placement", "diff", "versemap"]
+    gates = ["sources", "rows", "slots", "stream", "numbers", "markers", "letters", "placement", "diff", "cases", "versemap"]
     if glyphs:
         gates.append("glyphs")
 
@@ -571,6 +580,31 @@ def validate(
     for cat, n in sorted(cat_counts.items()):
         stats[f"diff {cat}"] = n
 
+    # --- reviewed highlight cases ---------------------------------------------
+    try:
+        groups = load_highlight_cases()
+    except (OSError, ValueError) as e:
+        rep.fail("cases", str(e))
+        groups = []
+    content_slots = {(h[2], h[3], h[4]) for h in hafs if not N.is_marker(h[5])}
+    whole_word = {(int(vk.split(":")[0]), int(vk.split(":")[1]), e[0]) for vk, cats in diff.items()
+                  if vk != "__format" and isinstance(cats, dict)
+                  for e in cats.get(WHOLE_WORD[rid], []) if isinstance(e, list) and e}
+    checked = 0
+    for g in groups:
+        want = True if rid in g["tinted"] else False if rid in g["plain"] else None
+        if want is None:
+            continue
+        for slot in g["slots"]:
+            key = tuple(int(x) for x in slot.split(":"))
+            if key not in content_slots:
+                rep.fail("cases", f"{slot} is not a Hafs content slot ({HIGHLIGHT_CASES_FILE.name})")
+                continue
+            checked += 1
+            if (key in whole_word) != want:
+                rep.fail("cases", f"{slot} {'lacks' if want else 'has'} the whole-word tint: {g['rule']}")
+    stats["reviewed highlight cases"] = checked
+
     # --- verse map ------------------------------------------------------------
     r2h_full: dict[str, list[str]] = {}
     for wid, loc, s, a, w, text in db:
@@ -647,6 +681,27 @@ def cluster_spans(token: str) -> list[tuple[int, int, str]]:
         out.append((i, j, " ".join(f"{ord(c):04X}" for c in token[i:j])))
         i = j
     return out
+
+
+def load_highlight_cases(path: Path | None = None) -> list[dict]:
+    """The groups of highlight_cases.json, checked for shape."""
+    path = path or HIGHLIGHT_CASES_FILE
+    doc = json.loads(path.read_text(encoding="utf-8"))
+    groups = doc.get("groups")
+    if not isinstance(groups, list) or not groups:
+        raise ValueError(f"{path.name}: 'groups' must be a non-empty list")
+    for k, g in enumerate(groups):
+        if not (isinstance(g, dict) and isinstance(g.get("rule"), str) and g["rule"]):
+            raise ValueError(f"{path.name}: group {k} needs a 'rule'")
+        slots, tinted, plain = g.get("slots"), g.get("tinted"), g.get("plain")
+        if not (isinstance(slots, list) and slots and all(isinstance(x, str) and len(x.split(":")) == 3 and all(p.isdigit() for p in x.split(":")) for x in slots)):
+            raise ValueError(f"{path.name}: group {k} 'slots' must be 's:a:w' locations")
+        if not (isinstance(tinted, list) and isinstance(plain, list) and (tinted or plain)):
+            raise ValueError(f"{path.name}: group {k} needs 'tinted' / 'plain' lists")
+        bad = [r for r in tinted + plain if r not in N.REWAYAT]
+        if bad or set(tinted) & set(plain):
+            raise ValueError(f"{path.name}: group {k} has unknown or contradictory rewayat {bad or sorted(set(tinted) & set(plain))}")
+    return groups
 
 
 def load_render_review(path: Path | None = None) -> dict:
