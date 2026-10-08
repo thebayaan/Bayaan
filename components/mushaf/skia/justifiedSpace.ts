@@ -96,6 +96,61 @@ export interface LineBand {
   bottom: number;
 }
 
+/** Band from the top of the highest to the bottom of the lowest of `rects`
+ *  (a word's rects: one per style run); null when there are none. */
+export function rectsBand(
+  rects: ReadonlyArray<{y: number; height: number}>,
+): LineBand | null {
+  if (rects.length === 0) return null;
+  let top = Infinity;
+  let bottom = -Infinity;
+  for (const r of rects) {
+    top = Math.min(top, r.y);
+    bottom = Math.max(bottom, r.y + r.height);
+  }
+  return {top, bottom};
+}
+
+/** Band of the shortest of `rects`: a word's rect is never taller than a
+ *  justified space's. Null when there are none. */
+export function shortestRectBand(
+  rects: ReadonlyArray<{y: number; height: number}>,
+): LineBand | null {
+  let best: {y: number; height: number} | null = null;
+  for (const r of rects) if (!best || r.height < best.height) best = r;
+  return best ? {top: best.y, bottom: best.y + best.height} : null;
+}
+
+/**
+ * Merges rects that touch or overlap side by side within `gap` px into one
+ * (the clamped rects of one highlight on one line share a band). A justified
+ * line shapes each space apart, so a highlight's range comes back as one rect
+ * per word and space; drawn one by one, their rounded corners seam the band.
+ */
+export function mergeTouchingRects<
+  T extends {x: number; y: number; width: number; height: number},
+>(rects: ReadonlyArray<T>, gap = 0.5): T[] {
+  const sorted = [...rects].sort((a, b) => a.x - b.x);
+  const merged: T[] = [];
+  for (const r of sorted) {
+    const last = merged[merged.length - 1];
+    if (last && r.x <= last.x + last.width + gap) {
+      const top = Math.min(last.y, r.y);
+      const right = Math.max(last.x + last.width, r.x + r.width);
+      const bottom = Math.max(last.y + last.height, r.y + r.height);
+      merged[merged.length - 1] = {
+        ...last,
+        y: top,
+        width: right - last.x,
+        height: bottom - top,
+      };
+    } else {
+      merged.push(r);
+    }
+  }
+  return merged;
+}
+
 /** Clamps a rect to the words' band (top and bottom of a word's rect). */
 export function clampRectToBand<T extends {y: number; height: number}>(
   rect: T,

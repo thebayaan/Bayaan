@@ -25,6 +25,9 @@ import {
   fitWordSize,
   justifiedLineStrut,
   justifiedSpaceFontSize,
+  mergeTouchingRects,
+  rectsBand,
+  shortestRectBand,
   spaceFitExtra,
   type LineBand,
 } from './justifiedSpace';
@@ -345,37 +348,54 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
     }> = [];
 
     // @ai-start
-    // The words' band, from the line's first character (a line never starts
-    // with a space). A justified space's rect spans its larger size's ascent
-    // and descent, so every rect is clamped to this band.
+    // The words' band, from the line's first word. Its whole range is asked
+    // for: SkParagraph returns no rect for part of a grapheme cluster, so a
+    // first letter carrying a mark gives nothing on its own. A justified
+    // space's rect spans its larger size's ascent and descent, so every rect
+    // is clamped to this band; without one, a highlight is clamped to its own
+    // shortest rect (a word's, never taller than a space's).
+    const firstWord = quranTextService.analyzeText(pageNumber, lineIndex)
+      .wordInfos[0];
     let band: LineBand | null = null;
-    try {
-      const [first] = paragraph.getRectsForRange(0, 1);
-      if (first) band = {top: first.y, bottom: first.y + first.height};
-    } catch {
-      band = null;
+    if (firstWord) {
+      try {
+        band = rectsBand(
+          paragraph.getRectsForRange(
+            firstWord.startIndex,
+            firstWord.endIndex + 1,
+          ),
+        );
+      } catch {
+        band = null;
+      }
     }
     // @ai-end
 
     for (const hl of backgroundHighlights) {
       try {
         const skRects = paragraph.getRectsForRange(hl.start, hl.end + 1);
-        for (const rect of skRects) {
-          // @ai-start
-          const clamped = clampRectToBand(
+        // @ai-start
+        // Clamp each rect to the band, then merge the ones that touch so the
+        // highlight draws as one band per run of words, not one rounded rect
+        // per word and space.
+        const hlBand = band ?? shortestRectBand(skRects);
+        const clamped = skRects.map(rect =>
+          clampRectToBand(
             {x: rect.x, y: rect.y, width: rect.width, height: rect.height},
-            band,
-          );
-          rects.push({...clamped, color: hl.color});
-          // @ai-end
+            hlBand,
+          ),
+        );
+        for (const rect of mergeTouchingRects(clamped)) {
+          rects.push({...rect, color: hl.color});
         }
+        // @ai-end
       } catch {
         // Ignore rect computation failures
       }
     }
 
     return rects.length > 0 ? rects : null;
-  }, [paragraph, backgroundHighlights]);
+  }, [paragraph, backgroundHighlights, pageNumber, lineIndex]); // @ai
 
   if (!paragraph) return null;
 

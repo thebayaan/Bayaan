@@ -148,6 +148,9 @@ import {
   fitWordSize,
   justifiedLineStrut,
   justifiedSpaceFontSize,
+  mergeTouchingRects,
+  rectsBand,
+  shortestRectBand,
   spaceFitExtra,
 } from '../justifiedSpace';
 
@@ -237,6 +240,43 @@ describe('justifiedSpace helpers', () => {
       fontFamilies: ['DigitalKhatt'],
       fontSize: 22,
     });
+  });
+
+  it('takes a band from rects', () => {
+    expect(
+      rectsBand([
+        {y: 0, height: 40},
+        {y: -2, height: 30},
+      ]),
+    ).toEqual({top: -2, bottom: 40});
+    expect(rectsBand([])).toBeNull();
+    expect(
+      shortestRectBand([
+        {y: -18, height: 80},
+        {y: 1, height: 44},
+      ]),
+    ).toEqual({top: 1, bottom: 45});
+    expect(shortestRectBand([])).toBeNull();
+  });
+
+  it('merges rects that touch side by side, and only those', () => {
+    const r = (x: number, width: number, y = 0, height = 40) => ({
+      x,
+      y,
+      width,
+      height,
+    });
+    // Unsorted, touching (within half a pixel) and overlapping: one rect.
+    expect(mergeTouchingRects([r(60, 20), r(0, 30), r(30.3, 30)])).toEqual([
+      r(0, 80),
+    ]);
+    // A real gap keeps two rects (two tinted words with an untinted one
+    // between them).
+    expect(mergeTouchingRects([r(0, 30), r(40, 20)])).toEqual([
+      r(0, 30),
+      r(40, 20),
+    ]);
+    expect(mergeTouchingRects([])).toEqual([]);
   });
 
   it('clamps a taller rect to the band and leaves a word rect alone', () => {
@@ -358,10 +398,13 @@ describe('SkiaLine justified spaces', () => {
     expect(mockSkia.built).toHaveLength(1);
   });
 
-  it('clamps highlight rects to the words band', () => {
+  it('clamps highlight rects to the band of the line first word', () => {
+    // Like SkParagraph: part of a grapheme cluster (the first letter without
+    // its marks) has no rect; the first word (0-2) has the words' band.
     mockSkia.rectsForRange = (start, end) => {
-      if (start === 0 && end === 1) {
-        return [{x: 380, y: -0.5, width: 8, height: 53.5}];
+      if (start === 0 && end === 1) return [];
+      if (start === 0 && end === 3) {
+        return [{x: 370, y: -0.5, width: 18, height: 53.5}];
       }
       // A word, then a justified space whose rect spans its larger size.
       return [
@@ -374,12 +417,32 @@ describe('SkiaLine justified spaces', () => {
       backgroundHighlights: [{start: 0, end: 3, color: 'tint'}],
     });
 
+    // Clamped to the band, the word and the space touch: one band, no seam.
     const rects = tree.root.findAll(n => (n.type as unknown) === 'RoundedRect');
-    expect(rects).toHaveLength(2);
-    for (const r of rects) {
-      expect(r.props.y).toBeCloseTo(100 - 0.5);
-      expect(r.props.height).toBeCloseTo(53.5);
-    }
-    expect(rects.map(r => r.props.width)).toEqual([48, 10]);
+    expect(rects).toHaveLength(1);
+    expect(rects[0].props.y).toBeCloseTo(100 - 0.5);
+    expect(rects[0].props.height).toBeCloseTo(53.5);
+    expect(rects[0].props.width).toBeCloseTo(58);
+  });
+
+  it('clamps a highlight to its shortest rect when the line has no band', () => {
+    // No rect for the first word: the highlight's own word rect bounds it.
+    mockSkia.rectsForRange = (start, end) => {
+      if (start === 0 && end === 3) return [];
+      return [
+        {x: 340, y: 2, width: 48, height: 40},
+        {x: 330, y: -18, width: 10, height: 80},
+      ];
+    };
+
+    const tree = renderLine(WIDENED, {
+      backgroundHighlights: [{start: 4, end: 9, color: 'tint'}],
+    });
+
+    const rects = tree.root.findAll(n => (n.type as unknown) === 'RoundedRect');
+    expect(rects).toHaveLength(1);
+    expect(rects[0].props.y).toBeCloseTo(100 + 2);
+    expect(rects[0].props.height).toBeCloseTo(40);
+    expect(rects[0].props.width).toBeCloseTo(58);
   });
 });
