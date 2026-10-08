@@ -191,9 +191,8 @@ describeParity('QF tafsir 169 parity with the bundled Ibn Kathir', () => {
     expect(
       crypto.createHash('sha256').update(tatweelKeys.join('\n')).digest('hex'),
     ).toBe(TATWEEL_ONLY_DIGEST);
-    // Logged for the parity report: verse-level totals behind the group lists.
-    process.stdout.write(
-      `parity: ${textDiffs.length} verse rows differ in text (${tatweelGroups.size} tatweel-only groups, ${editorialGroups.size} editorial groups)\n`,
-    );
+    // Verse-level total behind the group lists: 5286 rows in tatweel-only
+    // groups plus 575 rows in editorial groups.
+    expect(textDiffs).toHaveLength(5861);
   }, 120000);
 });

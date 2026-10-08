@@ -70,7 +70,7 @@ describe('parseTafsirSnapshot', () => {
       snapshot([
         {verse_id: 16, verse_key: '2:9', text: ''},
         {verse_id: 15, verse_key: '2:8', text: '<p>Group</p>'},
-        {verse_id: 17, verse_key: '2:10', text: null},
+        {verse_id: 17, verse_key: '2:10', text: '   '},
         {verse_id: 18, verse_key: '2:11', text: '<p>Next</p>'},
       ]),
     );
@@ -99,6 +99,93 @@ describe('parseTafsirSnapshot', () => {
       ]),
     );
     expect(verses.map(v => v.verseKey)).toEqual(['1:3']);
+  });
+
+  it('drops records without a finite verse_id', () => {
+    const verses = parseTafsirSnapshot(
+      snapshot([
+        {verse_id: 1, verse_key: '1:1', text: '<p>One</p>'},
+        {verse_id: NaN, verse_key: '1:2', text: '<p>nan</p>'},
+        {verse_key: '1:3', text: '<p>missing</p>'},
+        {verse_id: Infinity, verse_key: '1:4', text: '<p>inf</p>'},
+        {verse_id: '5', verse_key: '1:5', text: '<p>string</p>'},
+        {verse_id: 2, verse_key: '1:6', text: '<p>Six</p>'},
+      ]),
+    );
+    expect(verses.map(v => [v.verseKey, v.text])).toEqual([
+      ['1:1', '<p>One</p>'],
+      ['1:6', '<p>Six</p>'],
+    ]);
+  });
+
+  it('drops verse keys outside surah 1..114 or with ayah 0', () => {
+    const verses = parseTafsirSnapshot(
+      snapshot([
+        {verse_id: 1, verse_key: '0:1', text: '<p>a</p>'},
+        {verse_id: 2, verse_key: '115:1', text: '<p>b</p>'},
+        {verse_id: 3, verse_key: '2:0', text: '<p>c</p>'},
+        {verse_id: 4, verse_key: '114:1', text: '<p>d</p>'},
+      ]),
+    );
+    expect(verses.map(v => v.verseKey)).toEqual(['114:1']);
+  });
+
+  it('drops a non-string text record and does not let its rows join the previous head', () => {
+    const verses = parseTafsirSnapshot(
+      snapshot([
+        {verse_id: 1, verse_key: '2:1', text: '<p>Head</p>'},
+        {verse_id: 2, verse_key: '2:2', text: ''},
+        {verse_id: 3, verse_key: '2:3', text: null},
+        {verse_id: 4, verse_key: '2:4', text: ''},
+        {verse_id: 5, verse_key: '2:5', text: 42},
+        {verse_id: 6, verse_key: '2:6', text: '<p>Next</p>'},
+      ]),
+    );
+    expect(
+      verses.map(v => [v.verseKey, v.groupVerseKey, v.fromAyah, v.toAyah]),
+    ).toEqual([
+      ['2:1', '2:1', 1, 2],
+      ['2:2', '2:1', 1, 2],
+      ['2:6', '2:6', 6, 6],
+    ]);
+  });
+
+  it('breaks the group at an invalid-key head but not at an invalid-key continuation', () => {
+    const verses = parseTafsirSnapshot(
+      snapshot([
+        {verse_id: 1, verse_key: '3:1', text: '<p>A</p>'},
+        {verse_id: 2, verse_key: 'bad', text: ''},
+        {verse_id: 3, verse_key: '3:3', text: ''},
+        {verse_id: 4, verse_key: '0:0', text: '<p>lost head</p>'},
+        {verse_id: 5, verse_key: '3:5', text: ''},
+      ]),
+    );
+    expect(verses.map(v => [v.verseKey, v.groupVerseKey, v.toAyah])).toEqual([
+      ['3:1', '3:1', 3],
+      ['3:3', '3:1', 3],
+    ]);
+  });
+
+  it('keeps one record per verse key, deterministically', () => {
+    const records = [
+      {verse_id: 2, verse_key: '1:1', text: '<p>second</p>'},
+      {verse_id: 1, verse_key: '1:1', text: '<p>first</p>'},
+      {verse_id: 3, verse_key: '1:2', text: ''},
+      {verse_id: 4, verse_key: '1:2', text: '<p>has text</p>'},
+      {verse_id: 5, verse_key: '1:3', text: '<p>a</p>'},
+      {verse_id: 5, verse_key: '1:3', text: '<p>b</p>'},
+    ];
+    const verses = parseTafsirSnapshot(snapshot(records));
+    expect(verses.map(v => [v.verseKey, v.text])).toEqual([
+      ['1:1', '<p>first</p>'],
+      ['1:2', '<p>has text</p>'],
+      ['1:3', '<p>a</p>'],
+    ]);
+    expect(parseTafsirSnapshot(snapshot([...records].reverse()))).toEqual(
+      parseTafsirSnapshot(snapshot(records)).map(v =>
+        v.verseKey === '1:3' ? {...v, text: '<p>b</p>'} : v,
+      ),
+    );
   });
 
   it('parses the contract envelope fixture (a 2-verse group plus a single)', () => {
