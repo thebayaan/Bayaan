@@ -18,9 +18,10 @@
  *   a Hafs verse end the rewayah does not have) belongs to the verse being
  *   walked. A multi-token slot is one unit and never straddles two verses.
  *   P10: the Madani and Basri counts (Warsh, Qalun, al-Duri, al-Susi) do not
- *   count the Fatiha basmala. Their DBs keep the Hafs basmala, unnumbered, in
- *   the Hafs 1:1 slots (the 1:1 marker slot is blank). Those slots belong to
- *   NO unit: the basmala is shown but is not a verse there.
+ *   count the Fatiha basmala. Their DBs keep the basmala (the rewayah's own
+ *   spelling), unnumbered, in the Hafs 1:1 slots (the 1:1 marker slot is
+ *   blank). Those slots belong to NO unit: the basmala is shown but is not a
+ *   verse there.
  *
  * Every other slot belongs to exactly one unit; the units of a surah are
  * numbered 1..N exactly as the verse markers number them. For Hafs (and for

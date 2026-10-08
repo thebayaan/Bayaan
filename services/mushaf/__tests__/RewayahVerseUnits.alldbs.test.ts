@@ -15,8 +15,9 @@
  *
  * For every words DB it asserts, on every slot:
  *  - every slot belongs to exactly one unit, except the unnumbered Fatiha
- *    basmala of the Madani / Basri counts (exactly the Hafs 1:1 slots, the
- *    Hafs basmala words and a blank marker slot);
+ *    basmala of the Madani / Basri counts (exactly the Hafs 1:1 slots: the
+ *    basmala's four words and a blank marker slot; its spelling, the
+ *    rewayah's own basmala, is checked by rewayahOverlays.alldbs);
  *  - the units of every surah are numbered 1..N, N = the verse map's count
  *    (Hafs: the Hafs count), and the totals are 6236 / 6220 / 6214 / 6217;
  *  - each unit's text is the surah's token stream cut after each verse
@@ -226,10 +227,21 @@ run('verse units of every words DB (local only)', () => {
       const fatihaBasmala = slots.filter(s => hafsKeyOf(s) === '1:1');
       if (MADANI_BASRI.has(rewayah)) {
         expect([...unnumbered]).toEqual(fatihaBasmala.map(s => s.id));
-        expect(fatihaBasmala.map(s => s.text)).toEqual([
-          ...hafsSlots.slice(0, 4).map(s => s.text),
-          '',
+        // @ai — the basmala's four words (no verse number) and the blank 1:1
+        // marker slot. The words are the rewayah's own basmala in the
+        // release data (the Hafs basmala in data before the basmala merge);
+        // their spelling is the basmala gate's to check (EXPECTED_BASMALA in
+        // rewayahOverlays.alldbs), not the units'.
+        expect(fatihaBasmala.map(s => s.text === '')).toEqual([
+          false,
+          false,
+          false,
+          false,
+          true,
         ]);
+        for (const s of fatihaBasmala.slice(0, 4)) {
+          expect(s.text).not.toContain('\u06DD');
+        }
       } else {
         expect(unnumbered.size).toBe(0);
       }
