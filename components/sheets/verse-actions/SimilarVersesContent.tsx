@@ -21,6 +21,7 @@ import Color from 'color';
 import {qulDataService} from '@/services/mushaf/QulDataService';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {getSimilarPhraseText} from '@/components/sheets/similarVersePhrase'; // @ai
+import {similarVerseRef} from './verseUnitScreens'; // @ai
 import {useMushafNavigationStore} from '@/store/mushafNavigationStore';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {useTajweedStore} from '@/store/tajweedStore';
@@ -53,6 +54,11 @@ interface SimilarVersesContentProps {
   ayahNumber: number;
   section: 'similar' | 'phrases';
   onDone: () => void;
+  // @ai-start
+  /** The sheet shows another rewayah: results are Hafs verses (QUL data is
+   *  per Hafs verse), so their references read "Hafs 2:255". */
+  hafsReferences?: boolean;
+  // @ai-end
 }
 
 export const SimilarVersesContent: React.FC<SimilarVersesContentProps> = ({
@@ -61,6 +67,7 @@ export const SimilarVersesContent: React.FC<SimilarVersesContentProps> = ({
   ayahNumber,
   section,
   onDone,
+  hafsReferences = false, // @ai
 }) => {
   const {theme} = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -235,7 +242,9 @@ export const SimilarVersesContent: React.FC<SimilarVersesContentProps> = ({
                           size={moderateScale(14)}
                           color={theme.colors.textSecondary}
                         />
-                        <Text style={styles.matchRef}>{match.verseKey}</Text>
+                        <Text style={styles.matchRef}>
+                          {similarVerseRef(match.verseKey, hafsReferences)}
+                        </Text>
                         <Text style={styles.matchSurah}>{matchSurahName}</Text>
                       </Pressable>
                       {isVerseExpanded && (
@@ -314,7 +323,8 @@ export const SimilarVersesContent: React.FC<SimilarVersesContentProps> = ({
                   onPress={() => handleVersePress(similar.matchedVerseKey)}>
                   <View style={styles.similarHeader}>
                     <Text style={styles.similarRef}>
-                      {similar.matchedVerseKey} · {matchSurahName}
+                      {/* @ai: Hafs references prefixed in another rewayah */}
+                      {`${similarVerseRef(similar.matchedVerseKey, hafsReferences)} · ${matchSurahName}`}
                     </Text>
                     <Text style={styles.similarScore}>{similar.score}%</Text>
                   </View>
