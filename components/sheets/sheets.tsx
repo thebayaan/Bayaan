@@ -26,11 +26,7 @@ import {AddToCollectionSheet} from './AddToCollectionSheet';
 import {AmbientSoundsSheet} from './AmbientSoundsSheet';
 import {CollectionOptionsSheet} from './CollectionOptionsSheet';
 import {VerseActionsSheet} from './VerseActionsSheet';
-import {VerseCopySheet} from './VerseCopySheet';
-import {VerseHighlightSheet} from './VerseHighlightSheet';
 import {VerseNoteSheet} from './VerseNoteSheet';
-import {VerseShareSheet} from './VerseShareSheet';
-import {SimilarVersesSheet} from './SimilarVersesSheet';
 import {MushafPlayerOptionsSheet} from './MushafPlayerOptionsSheet';
 import {MushafRepeatOptionsSheet} from './MushafRepeatOptionsSheet';
 import {FollowAlongSheet} from './FollowAlongSheet';
@@ -59,11 +55,12 @@ registerSheet('add-to-collection', AddToCollectionSheet);
 registerSheet('ambient-sounds', AmbientSoundsSheet);
 registerSheet('collection-options', CollectionOptionsSheet);
 registerSheet('verse-actions', VerseActionsSheet);
-registerSheet('verse-copy', VerseCopySheet);
-registerSheet('verse-highlight', VerseHighlightSheet);
+// @ai-start
+// Copy, share, highlight and similar verses live inside 'verse-actions'.
+// Their old standalone sheets are not registered: nothing opened them, and
+// the copy sheet copied caller-supplied text with no rewayah.
+// @ai-end
 registerSheet('verse-note', VerseNoteSheet);
-registerSheet('verse-share', VerseShareSheet);
-registerSheet('similar-verses', SimilarVersesSheet);
 registerSheet('mushaf-player-options', MushafPlayerOptionsSheet);
 registerSheet('mushaf-repeat-options', MushafRepeatOptionsSheet);
 registerSheet('follow-along', FollowAlongSheet);
@@ -217,11 +214,10 @@ declare module 'react-native-actions-sheet' {
         ayahNumber: number;
         verseKeys?: string[];
         // @ai-start
-        // Ignored. The sheet reads the Arabic text from the words DB of
-        // `rewayah` itself, so a caller cannot attach one rewayah's text to
-        // another rewayah's label. Kept so existing payloads type-check.
+        // No Arabic text field: the sheet reads the text from the words DB
+        // of `rewayah` itself, so a caller cannot attach one rewayah's text
+        // to another rewayah's label.
         // @ai-end
-        arabicText?: string;
         translation?: string;
         transliteration?: string;
         source?: 'player' | 'mushaf';
@@ -230,6 +226,11 @@ declare module 'react-native-actions-sheet' {
         rewayah?: import('@/store/mushafSettingsStore').RewayahId;
       };
     }>;
+    // @ai-start
+    // 'verse-copy', 'verse-highlight' and 'verse-share' are not registered
+    // (see registerSheet above); these types remain only because their
+    // unused modules still reference them.
+    // @ai-end
     'verse-copy': SheetDefinition<{
       payload: {
         verseKey: string;
@@ -268,14 +269,6 @@ declare module 'react-native-actions-sheet' {
         verseKeys?: string[];
         arabicText?: string;
         translation?: string;
-      };
-    }>;
-    'similar-verses': SheetDefinition<{
-      payload: {
-        verseKey: string;
-        surahNumber: number;
-        ayahNumber: number;
-        section?: 'similar' | 'phrases';
       };
     }>;
     'mushaf-player-options': SheetDefinition<{
