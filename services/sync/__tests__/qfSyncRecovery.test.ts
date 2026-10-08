@@ -612,7 +612,7 @@ describe('SQLite push recovery store', () => {
     'changing-head',
     'single-page',
   ] as const)(
-    'projects unsupported non-ayah and Favorites reads across all provider pages without cloud writes (%s)',
+    'projects unsupported non-ayah reads across all provider pages without cloud writes (%s)',
     async mode => {
       const {database, sync, SqliteQfSyncPullStore, IntegratedCoordinator} =
         await createServices(`bookmark-projection-${mode}.db`);
@@ -642,28 +642,20 @@ describe('SQLite push recovery store', () => {
       const beforeB = await sync.getOutboxEntries('reader-b');
       const nonAyah = (type: string, index: number) => ({
         resource: 'BOOKMARK',
-        type: index % 2 ? 'UPDATE' : 'CREATE',
+        type: index % 4 < 2 ? 'CREATE' : 'UPDATE',
         resourceId: `unsupported-${index}`,
         timestamp: 7002 + index,
-        data: {bookmarkType: type, key: 10, verseNumber: null, isReading: null},
+        data: {
+          [index % 2 ? 'type' : 'bookmarkType']: type,
+          key: 10,
+          verseNumber: null,
+          isReading: null,
+          isInDefaultCollection: true,
+        },
       });
       const mutations: unknown[] = Array.from(
         {length: mode === 'single-page' ? 3 : 1000},
-        (_, index) =>
-          index % 2
-            ? {
-                resource: 'BOOKMARK',
-                type: index % 4 === 1 ? 'CREATE' : 'UPDATE',
-                resourceId: `favorite-${index}`,
-                timestamp: 7002 + index,
-                data: {
-                  type: 'ayah',
-                  key: 2,
-                  verseNumber: 255,
-                  isInDefaultCollection: true,
-                },
-              }
-            : nonAyah(['page', 'juz', 'surah'][index % 3], index),
+        (_, index) => nonAyah(['page', 'juz', 'surah'][index % 3], index),
       );
       // In paginated modes, the first page projects to zero effects but continues.
       mutations.push(nonAyah('surah', 1000));
@@ -841,6 +833,103 @@ describe('SQLite push recovery store', () => {
       await database.close();
     },
   );
+
+  it('applies a pulled Favorites ayah bookmark for the owner scope, then removes it on a pulled DELETE', async () => {
+    const {database, sync, SqliteQfSyncPullStore, IntegratedCoordinator} =
+      await createServices('favorites-bookmark.db');
+    const {
+      BayaanSyncApiClient,
+    } = require('@/services/sync/bayaanSyncApiClient');
+    await sync.initialize();
+    const store = new SqliteQfSyncPullStore(database);
+    // Real QF pre-live payload after the backend allowlist drops `metadata`.
+    const created = {
+      resource: 'BOOKMARK',
+      resourceId: 'jpu0ny6fgbvs0nsklupfsop3',
+      type: 'CREATE',
+      timestamp: 8000,
+      data: {
+        bookmarkType: 'ayah',
+        bookmarkGroup: 'verses_6236',
+        key: 1,
+        verseNumber: 3,
+        isInDefaultCollection: true,
+        isReading: null,
+        clientCreatedAt: '2026-10-08T20:45:31.483Z',
+        clientUpdatedAt: '2026-10-08T20:45:31.483Z',
+      },
+    };
+    const deleted = {
+      resource: 'BOOKMARK',
+      resourceId: 'jpu0ny6fgbvs0nsklupfsop3',
+      type: 'DELETE',
+      timestamp: 9000,
+    };
+    let feed: unknown[] = [created];
+    let head = 8000;
+    const fetchImpl = jest.fn(async (input: string) => {
+      const url = new URL(input);
+      const metadata = url.searchParams.get('metadataOnly') === 'true';
+      const page = Number(url.searchParams.get('page'));
+      const limit = Number(url.searchParams.get('limit'));
+      const data = metadata
+        ? {lastMutationAt: head}
+        : {
+            lastMutationAt: head,
+            mutations: feed,
+            page,
+            limit,
+            total: feed.length,
+            hasMore: false,
+          };
+      const bytes = new TextEncoder().encode(
+        JSON.stringify({success: true, data}),
+      );
+      return {
+        ok: true,
+        status: 200,
+        headers: new Headers({'content-length': String(bytes.length)}),
+        body: new ReadableStream({
+          start(c) {
+            c.enqueue(bytes);
+            c.close();
+          },
+        }),
+      } as Response;
+    });
+    const coordinator = new IntegratedCoordinator({
+      transport: new BayaanSyncApiClient({
+        apiUrl: 'https://dummy.test',
+        fetchImpl,
+      }),
+      store,
+      pushStore: sync,
+      sleep: async () => undefined,
+    });
+    const db = await database.getConnection();
+    const bookmarksFor = (scope: string) =>
+      db.getAllAsync(
+        'SELECT remote_id, verse_key FROM bookmarks WHERE owner_scope = ?',
+        [scope],
+      );
+
+    await expect(
+      coordinator.pull({accountId, sessionToken: 'dummy-a'}),
+    ).resolves.toMatchObject({status: 'synced', head: 8000});
+    expect(await bookmarksFor('qf:reader-a')).toEqual([
+      {remote_id: 'jpu0ny6fgbvs0nsklupfsop3', verse_key: '1:3'},
+    ]);
+    expect(await bookmarksFor('qf:reader-b')).toEqual([]);
+
+    feed = [deleted];
+    head = 9000;
+    await expect(
+      coordinator.pull({accountId, sessionToken: 'dummy-a'}),
+    ).resolves.toMatchObject({status: 'synced', head: 9000});
+    expect(await bookmarksFor('qf:reader-a')).toEqual([]);
+    expect(await sync.getOutboxEntries(accountId)).toEqual([]);
+    await database.close();
+  });
 
   it.each(['plain', 'escaped'] as const)(
     'restarts oversized %s note pages at a smaller limit and reaches the SQLite head',

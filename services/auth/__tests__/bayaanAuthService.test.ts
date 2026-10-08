@@ -251,6 +251,9 @@ describe('Bayaan BFF auth service', () => {
     expect(mockOpenBrowserAsync).toHaveBeenCalledWith(
       'https://api-prelive.thebayaan.com/v1/qf/auth/launch?state=state-123',
       'bayaan://oauth/callback',
+      // A private session per sign-in: QF cookies must not reuse the
+      // previous account after sign-out.
+      {preferEphemeralSession: true},
     );
   });
 
@@ -509,6 +512,7 @@ describe('Bayaan BFF auth service', () => {
     expect(mockOpenBrowserAsync).toHaveBeenCalledWith(
       `${apiUrl}/launch`,
       'qariah://oauth/callback',
+      {preferEphemeralSession: true},
     );
     await expect(
       service.handleCallbackUrl(

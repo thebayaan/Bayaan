@@ -692,8 +692,43 @@ describe('Bayaan Sync BFF client', () => {
     },
   );
 
+  it('applies a pulled default-collection ayah bookmark as forwarded by the backend', async () => {
+    // Real QF pre-live payload for a Bayaan-created bookmark. The backend
+    // projects data onto its allowlist, so `metadata` never reaches mobile.
+    const pulled = {
+      resource: 'BOOKMARK',
+      resourceId: 'jpu0ny6fgbvs0nsklupfsop3',
+      type: 'CREATE',
+      timestamp: 1_791_576_331_483,
+      data: {
+        bookmarkType: 'ayah',
+        bookmarkGroup: 'verses_6236',
+        key: 1,
+        verseNumber: 3,
+        isInDefaultCollection: true,
+        isReading: null,
+        clientCreatedAt: '2026-10-08T20:45:31.483Z',
+        clientUpdatedAt: '2026-10-08T20:45:31.483Z',
+      },
+    };
+    const fetchImpl = jest.fn().mockResolvedValue(
+      jsonResponse({
+        success: true,
+        data: {lastMutationAt: 1_791_576_331_483, mutations: [pulled]},
+      }),
+    );
+    await expect(
+      new BayaanSyncApiClient({apiUrl, fetchImpl}).pull(opaqueSession, {
+        mutationsSince: 0,
+      }),
+    ).resolves.toEqual({
+      lastMutationAt: 1_791_576_331_483,
+      mutations: [pulled],
+    });
+  });
+
   it.each(['CREATE', 'UPDATE'] as const)(
-    'excludes known Favorites %s reads without changing raw pagination or tombstones',
+    'applies Favorites %s reads alongside standalone bookmarks and tombstones',
     async type => {
       const favorite = {
         resource: 'BOOKMARK' as const,
@@ -741,15 +776,13 @@ describe('Bayaan Sync BFF client', () => {
         client.pull(opaqueSession, {mutationsSince: 0, page: 1, limit: 4}),
       ).resolves.toEqual({
         lastMutationAt: 3,
-        mutations: [live, legacy, tombstone],
-        receivedMutationCount: 4,
+        mutations: [favorite, live, legacy, tombstone],
         page: 1,
         limit: 4,
         total: 5,
         hasMore: true,
       });
-      // A successful push receipt is never projected away, even if it reveals
-      // collection membership. This does not authorize collection writes.
+      // A successful push receipt is never projected away.
       fetchImpl.mockResolvedValue(
         jsonResponse({
           success: true,

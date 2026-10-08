@@ -9,6 +9,7 @@ import {
 import {BayaanSyncApiError} from '@/services/sync/bayaanSyncApiClient';
 import {
   QfSyncLifecycle,
+  qfSyncRemoteRetryDelayMs,
   type QfSyncLifecycleContext,
 } from '@/services/sync/qfSyncLifecycle';
 import {
@@ -92,6 +93,8 @@ function createLifecycle(overrides: Record<string, unknown> = {}) {
     getReadingIntentRevision: jest.fn(() => 0),
     applyReadingProgress: jest.fn(async () => undefined),
     now: () => 6000,
+    // Midpoint jitter: the first remote retry waits exactly 1000ms.
+    random: () => 0.5,
     ...overrides,
   });
   return {lifecycle, coordinator, guestImportService, database, events};
@@ -118,6 +121,60 @@ const androidLockDiagnostics = [5, 6].flatMap(code =>
     ];
   }),
 );
+
+// Largest Math.random() value in practice: delays land on the jitter ceiling.
+const MAX_JITTER = 1 - 1e-9;
+
+function manualTimers() {
+  const pending = new Map<number, () => void>();
+  const delays: number[] = [];
+  let nextId = 1;
+  return {
+    delays,
+    live: () => pending.size,
+    // Fires the single pending timer; more than one means stacked timers.
+    async fireOnly(): Promise<void> {
+      expect(pending.size).toBe(1);
+      const [[id, callback]] = [...pending];
+      pending.delete(id);
+      callback();
+    },
+    options: {
+      setTimer: (callback: () => void, delayMs: number) => {
+        const id = nextId;
+        nextId += 1;
+        pending.set(id, callback);
+        delays.push(delayMs);
+        return id as unknown as ReturnType<typeof setTimeout>;
+      },
+      clearTimer: (timer: ReturnType<typeof setTimeout>) => {
+        pending.delete(timer as unknown as number);
+      },
+    },
+  };
+}
+
+describe('qfSyncRemoteRetryDelayMs', () => {
+  it('keeps full-jitter delays between the 1s floor and a 2s-doubling ceiling capped at 5 minutes', () => {
+    for (let failures = 0; failures <= 40; failures += 1) {
+      const ceiling = Math.min(300_000, 2000 * 2 ** failures);
+      for (const sample of [0, 0.1, 0.5, 0.9, MAX_JITTER]) {
+        const delay = qfSyncRemoteRetryDelayMs(failures, () => sample);
+        expect(delay).toBeGreaterThanOrEqual(1000);
+        expect(delay).toBeLessThan(ceiling);
+        expect(delay).toBe(Math.max(1000, Math.floor(sample * ceiling)));
+      }
+    }
+  });
+
+  it('never retries sooner than a provided Retry-After', () => {
+    expect(qfSyncRemoteRetryDelayMs(0, () => 0, 45_000)).toBe(45_000);
+    expect(qfSyncRemoteRetryDelayMs(20, () => MAX_JITTER, 3_600_000)).toBe(
+      3_600_000,
+    );
+    expect(qfSyncRemoteRetryDelayMs(4, () => 0.5, 1000)).toBe(16_000);
+  });
+});
 
 describe('QfSyncLifecycle', () => {
   it.each([
@@ -315,6 +372,138 @@ describe('QfSyncLifecycle', () => {
     await lifecycle.waitForIdle();
     expect(setTimer).toHaveBeenCalledWith(expect.any(Function), 45_000);
     expect(useQfSyncStore.getState().retryAt).toBe(51_000);
+    await lifecycle.stop();
+  });
+
+  it('backs off consecutive upstream failures up to the cap and resets after a successful sync', async () => {
+    const timers = manualTimers();
+    let failing = true;
+    const coordinator = {
+      pull: jest.fn(async () => {
+        if (failing) {
+          throw new BayaanSyncApiError('service_unavailable', 503);
+        }
+        return stablePull();
+      }),
+      push: jest.fn(async () => idlePush()),
+    };
+    const {lifecycle} = createLifecycle({
+      coordinator,
+      random: () => MAX_JITTER,
+      ...timers.options,
+    });
+    lifecycle.updateContext(authenticatedOnline);
+    await lifecycle.waitForIdle();
+    for (let fired = 0; fired < 9; fired += 1) {
+      await timers.fireOnly();
+      await lifecycle.waitForIdle();
+    }
+    expect(timers.delays).toEqual([
+      1999, 3999, 7999, 15_999, 31_999, 63_999, 127_999, 255_999, 299_999,
+      299_999,
+    ]);
+    expect(useQfSyncStore.getState().retryAt).toBe(6000 + 299_999);
+
+    failing = false;
+    await timers.fireOnly();
+    await lifecycle.waitForIdle();
+    expect(useQfSyncStore.getState()).toMatchObject({
+      status: 'idle',
+      retryAt: null,
+    });
+    expect(timers.live()).toBe(0);
+
+    failing = true;
+    lifecycle.requestSync();
+    await lifecycle.waitForIdle();
+    expect(timers.delays.at(-1)).toBe(1999);
+    await lifecycle.stop();
+  });
+
+  it('waits at least a later Retry-After than the backoff for 503 and 429', async () => {
+    const timers = manualTimers();
+    const coordinator = {
+      pull: jest
+        .fn()
+        .mockRejectedValueOnce(
+          new BayaanSyncApiError('service_unavailable', 503, 30_000),
+        )
+        .mockRejectedValueOnce(
+          new BayaanSyncApiError('rate_limited', 429, 600_000),
+        )
+        .mockRejectedValueOnce(new BayaanSyncApiError('rate_limited', 429, 1)),
+      push: jest.fn(),
+    };
+    const {lifecycle} = createLifecycle({coordinator, ...timers.options});
+    lifecycle.updateContext(authenticatedOnline);
+    await lifecycle.waitForIdle();
+    await timers.fireOnly();
+    await lifecycle.waitForIdle();
+    await timers.fireOnly();
+    await lifecycle.waitForIdle();
+    // Retry-After wins when longer, even beyond the backoff cap; otherwise the
+    // backoff (third failure, midpoint jitter of 8000ms) still applies.
+    expect(timers.delays).toEqual([30_000, 600_000, 4000]);
+    await lifecycle.stop();
+  });
+
+  it('lets a manual retry run immediately without stacking retry timers', async () => {
+    const timers = manualTimers();
+    let release: () => void = () => undefined;
+    let markStarted: () => void = () => undefined;
+    const started = new Promise<void>(resolve => {
+      markStarted = resolve;
+    });
+    const coordinator = {
+      pull: jest
+        .fn()
+        .mockRejectedValueOnce(new BayaanSyncApiError('service_unavailable', 0))
+        .mockRejectedValueOnce(new BayaanSyncApiError('service_unavailable', 0))
+        .mockImplementationOnce(
+          () =>
+            new Promise((_resolve, reject) => {
+              release = () =>
+                reject(new BayaanSyncApiError('service_unavailable', 503));
+              markStarted();
+            }),
+        )
+        .mockRejectedValue(new BayaanSyncApiError('service_unavailable', 503)),
+      push: jest.fn(),
+    };
+    const {lifecycle} = createLifecycle({
+      coordinator,
+      random: () => MAX_JITTER,
+      ...timers.options,
+    });
+    lifecycle.updateContext(authenticatedOnline);
+    await lifecycle.waitForIdle();
+    expect(timers.live()).toBe(1);
+
+    // Retry while a timer is pending: the timer is replaced, not duplicated,
+    // and the backoff keeps growing across the manual attempt.
+    lifecycle.retryNow();
+    await lifecycle.waitForIdle();
+    expect(coordinator.pull).toHaveBeenCalledTimes(2);
+    expect(timers.live()).toBe(1);
+    expect(timers.delays).toEqual([1999, 3999]);
+
+    // Retry while a run is in flight: one rerun, still one timer afterwards.
+    lifecycle.retryNow();
+    expect(timers.live()).toBe(0);
+    lifecycle.retryNow();
+    await started;
+    release();
+    await lifecycle.waitForIdle();
+    expect(coordinator.pull).toHaveBeenCalledTimes(4);
+    expect(timers.live()).toBe(1);
+
+    // Foregrounding also attempts immediately and leaves a single timer.
+    lifecycle.updateContext({...authenticatedOnline, appActive: false});
+    expect(timers.live()).toBe(0);
+    lifecycle.updateContext(authenticatedOnline);
+    await lifecycle.waitForIdle();
+    expect(coordinator.pull).toHaveBeenCalledTimes(5);
+    expect(timers.live()).toBe(1);
     await lifecycle.stop();
   });
 

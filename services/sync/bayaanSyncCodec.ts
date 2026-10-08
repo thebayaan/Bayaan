@@ -217,16 +217,13 @@ function decodeData(
         return invalid();
       }
     }
-    // Non-ayah and explicitly collection-backed bookmarks are valid provider
-    // reads, not standalone deletions. BOOKMARK DELETE cannot remove Favorites
-    // membership, and this client has no COLLECTION_BOOKMARK mutation contract.
+    // Non-ayah bookmarks are valid provider reads with no local equivalent.
     // Validate fully, then omit only the unsupported pull effect. Never filter
-    // push receipts or silently reinterpret the bookmark ID as a membership ID.
-    if (
-      unsupported ||
-      (projectBookmarks && value.isInDefaultCollection === true)
-    )
-      return null;
+    // push receipts. Ayah bookmarks in the default collection (Favorites) are
+    // ordinary bookmarks: QF places every /v1/sync bookmark there, and a
+    // BOOKMARK DELETE through /v1/sync removes the bookmark entirely, Favorites
+    // membership included (verified on QF pre-live, Oct 2026).
+    if (unsupported) return null;
   } else if (resource === 'NOTE') {
     if (
       typeof value.body !== 'string' ||
