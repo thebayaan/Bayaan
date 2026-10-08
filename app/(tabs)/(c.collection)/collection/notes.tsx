@@ -92,6 +92,11 @@ const NotesScreen = () => {
         surahNumber: item.note.surahNumber,
         ayahNumber: item.note.ayahNumber,
         noteId: item.note.id,
+        // The note's own rewayah names its verses (decision 3): the sheet
+        // labels them at once instead of after loading the note. A legacy
+        // note without one is a Hafs note (verse-units contract section 3),
+        // labelled from the first render as before Release 1. @ai
+        rewayah: item.note.rewayahId ?? 'hafs',
       },
     });
   }, []);
