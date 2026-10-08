@@ -78,7 +78,10 @@ jest.mock('@/services/audio/ExpoAudioService', () => ({
 
 import {useAyahTracker} from '../useAyahTracker';
 import {usePlayerStore} from '@/services/player/store/playerStore';
-import {useTimestampStore} from '@/store/timestampStore';
+import {
+  selectVerseTrackingUnavailable, // @ai
+  useTimestampStore,
+} from '@/store/timestampStore';
 import {useReciterStore} from '@/store/reciterStore';
 import {RECITERS} from '@/data/reciterData';
 import {timingNumberingService} from '@/services/timestamps/TimingNumberingService';
@@ -402,4 +405,69 @@ describe('useAyahTracker', () => {
     }
     expect(findAyahTimestamp(timings(), 286)?.ayahNumber).toBe(286);
   });
+
+  // @ai-start
+  describe('tells the player when verse tracking is unavailable', () => {
+    const unavailable = () =>
+      selectVerseTrackingUnavailable(useTimestampStore.getState());
+
+    beforeEach(() => {
+      // every fixture set has timestamps: follow-along is offered for it
+      useTimestampStore.getState().loadFollowAlongRegistry();
+      useTimestampStore.setState({followAlongEnabled: true});
+    });
+
+    it('al-Duri 269 al-Mulk (numbering disabled): unavailable', async () => {
+      await startTrack('doori-269', 67);
+      expect(unavailable()).toBe(true);
+      // follow-along switched off: nothing to say
+      await act(async () => {
+        useTimestampStore.getState().toggleFollowAlong();
+      });
+      expect(unavailable()).toBe(false);
+    });
+
+    it('a surah whose timings could not be loaded: unavailable', async () => {
+      await startTrack('hafs-clean', 3); // no such fixture: the load fails
+      expect(useTimestampStore.getState().timestampLoadStatus).toBe('failed');
+      expect(unavailable()).toBe(true);
+    });
+
+    it('tracked recitations (Hafs and rewayah-numbered): available', async () => {
+      await startTrack('hafs-clean', 2);
+      expect(unavailable()).toBe(false);
+      await act(async () => {
+        renderer?.unmount();
+      });
+      await startTrack('warsh-14', 2);
+      expect(unavailable()).toBe(false);
+    });
+
+    it('nothing is said while the numbering is still being resolved', async () => {
+      let release: (() => void) | undefined;
+      const gate = new Promise<void>(resolve => {
+        release = resolve;
+      });
+      const voteSpy = jest
+        .spyOn(timingNumberingService, 'getSetClass')
+        .mockImplementation(async () => {
+          await gate;
+          return 'unknown';
+        });
+      await startTrack('warsh-14', 1);
+      expect(unavailable()).toBe(false);
+      release?.();
+      await flush();
+      // the vote was inconclusive: al-Fatihah cannot be followed
+      expect(unavailable()).toBe(true);
+      voteSpy.mockRestore();
+    });
+
+    it('a reciter without follow-along support says nothing', async () => {
+      useTimestampStore.setState({supportedRewayatIds: new Set<string>()});
+      await startTrack('doori-269', 67);
+      expect(unavailable()).toBe(false);
+    });
+  });
+  // @ai-end
 });

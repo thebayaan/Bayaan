@@ -9,6 +9,7 @@ import {
   type PlayFromHereTarget,
   type TimingLoadStatus,
 } from '@/utils/timestampUtils';
+import type {TimingNumberingMode} from '@/utils/timestampNumbering';
 
 /** The main player track whose timings were last requested. */
 export interface TimestampRequest {
@@ -32,6 +33,11 @@ interface TimestampState {
    */
   timestampRequest: TimestampRequest | null;
   timestampLoadStatus: TimingLoadStatus;
+  /**
+   * Verse numbering the follow-along tracker resolved for the loaded
+   * timings ('disabled': they cannot be followed). Null while unknown.
+   */
+  trackingNumberingMode: TimingNumberingMode | null;
   // @ai-end
   isLocked: boolean;
 
@@ -51,6 +57,8 @@ interface TimestampState {
   clearCurrentTimestamps: () => void;
   /** Loads the current track's timings again after a failed load. @ai */
   retryTimestamps: () => Promise<void>;
+  /** Written by the follow-along tracker (useAyahTracker). @ai */
+  setTrackingNumberingMode: (mode: TimingNumberingMode | null) => void;
   loadFollowAlongRegistry: () => void;
   toggleFollowAlong: () => void;
 }
@@ -61,6 +69,7 @@ export const useTimestampStore = create<TimestampState>()((set, get) => ({
   currentTimestampKey: null,
   timestampRequest: null, // @ai
   timestampLoadStatus: 'idle', // @ai
+  trackingNumberingMode: null, // @ai
   isLocked: true,
 
   // Follow Along registry defaults
@@ -109,6 +118,7 @@ export const useTimestampStore = create<TimestampState>()((set, get) => ({
         : timestampFetchService.hasSurah(rewayatId, surahNumber)
           ? 'failed'
           : 'not-covered',
+      trackingNumberingMode: null, // the tracker resolves the new timings
       // @ai-end
     });
   },
@@ -120,6 +130,7 @@ export const useTimestampStore = create<TimestampState>()((set, get) => ({
       currentAyah: null,
       timestampRequest: null, // @ai
       timestampLoadStatus: 'idle', // @ai
+      trackingNumberingMode: null, // @ai
     }),
 
   // @ai-start
@@ -131,6 +142,8 @@ export const useTimestampStore = create<TimestampState>()((set, get) => ({
       timestampRequest.surahNumber,
     );
   },
+
+  setTrackingNumberingMode: mode => set({trackingNumberingMode: mode}),
   // @ai-end
 
   loadFollowAlongRegistry: () => {
@@ -177,5 +190,37 @@ export function resolvePlayFromHere(hafsVerseKey: string): PlayFromHereTarget {
     });
   }
   return target;
+}
+
+/**
+ * True when follow-along is on and offered for the playing reciter, but this
+ * surah's verses cannot be followed: it has no timing, its timing could not
+ * be loaded, or their verse numbering cannot be established. The player
+ * says so (as the mushaf player does: "Verse tracking unavailable") instead
+ * of silently highlighting nothing. Use with
+ * `useTimestampStore(selectVerseTrackingUnavailable)`.
+ */
+export function selectVerseTrackingUnavailable(
+  s: Pick<
+    TimestampState,
+    | 'followAlongEnabled'
+    | 'supportedRewayatIds'
+    | 'timestampRequest'
+    | 'timestampLoadStatus'
+    | 'trackingNumberingMode'
+  >,
+): boolean {
+  const request = s.timestampRequest;
+  if (!s.followAlongEnabled || !request) return false;
+  if (!s.supportedRewayatIds.has(request.rewayatId)) return false;
+  switch (s.timestampLoadStatus) {
+    case 'not-covered':
+    case 'failed':
+      return true;
+    case 'ready':
+      return s.trackingNumberingMode === 'disabled';
+    default:
+      return false;
+  }
 }
 // @ai-end

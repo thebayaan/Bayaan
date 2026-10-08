@@ -145,6 +145,13 @@ export function useAyahTracker() {
     ) {
       useTimestampStore.getState().clearCurrentAyah();
     }
+    // @ai-start
+    // Let the player say when this surah cannot be followed
+    // (selectVerseTrackingUnavailable).
+    useTimestampStore
+      .getState()
+      .setTrackingNumberingMode(numbering ? numbering.mode : null);
+    // @ai-end
   }, [numbering]);
 
   useEffect(() => {
