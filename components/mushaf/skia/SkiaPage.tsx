@@ -7,7 +7,12 @@ import React, {
   useSyncExternalStore,
 } from 'react';
 import {View, Platform} from 'react-native';
-import {Canvas, Skia, type SkParagraph} from '@shopify/react-native-skia';
+import {
+  Canvas,
+  Skia,
+  type SkParagraph,
+  type SkTypefaceFontProvider, // @ai
+} from '@shopify/react-native-skia';
 import {useMushafFontMgr} from '@/hooks/useMushafFontMgr';
 import {Gesture, GestureDetector} from 'react-native-gesture-handler';
 import {runOnJS} from 'react-native-worklets';
@@ -51,6 +56,7 @@ import {
   computeLineCharRuleMaps,
   computeLineTajweedMaps,
   computePageDiffBackgrounds,
+  getPageTextIdentity, // @ai
   isRewayahDiffPaintEnabled,
   isTajweedEnabled,
 } from './pageOverlays';
@@ -70,6 +76,52 @@ interface ParagraphInfo {
   paragraph: SkParagraph;
   xPos: number;
 }
+
+// @ai-start
+/** A page layout and the key of the text, font and size it belongs to. */
+interface PageLayout {
+  key: string;
+  results: JustResultByLine[];
+}
+
+function pageLayoutKey(
+  pageNumber: number,
+  fontFamily: string,
+  fontSizeLineWidthRatio: number,
+  textIdentity: string | null,
+): string {
+  return `${pageNumber}|${fontFamily}|${fontSizeLineWidthRatio}|${textIdentity}`;
+}
+
+/**
+ * Layout of a page for the text served now: the cached one (in-memory →
+ * MMKV, both sync), else computed and persisted to MMKV so it survives app
+ * restarts.
+ */
+function resolvePageLayout(
+  pageNumber: number,
+  fontSizeLineWidthRatio: number,
+  fontMgr: SkTypefaceFontProvider,
+  fontFamily: string,
+): JustResultByLine[] {
+  const cached = JustService.getCachedPageLayout(
+    fontSizeLineWidthRatio,
+    pageNumber,
+    fontFamily,
+  );
+  if (cached) return cached;
+  const result = JustService.getPageLayout(
+    pageNumber,
+    fontSizeLineWidthRatio,
+    fontMgr,
+    fontFamily,
+  );
+  if (result.length > 0) {
+    mushafLayoutCacheService.setPageLayout(pageNumber, fontFamily, result);
+  }
+  return result;
+}
+// @ai-end
 
 interface SkiaPageProps {
   pageNumber: number;
@@ -165,13 +217,17 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
   const rewayah = useMushafSettingsStore(s => s.rewayah);
   const showRewayahDiffs = useMushafSettingsStore(s => s.showRewayahDiffs);
   const indexedTajweedData = useTajweedStore(s => s.indexedTajweedData);
-  // Words-cache version: bumps whenever the DK words change (rewayah switch,
-  // data reload). Every char-offset memo below depends on it so no overlay
-  // computed for the previous text survives on a mounted page.
-  const dataVersion = useSyncExternalStore(
+  // @ai-start
+  // Identity of the text this page draws (see getPageTextIdentity): changes
+  // when the DK words change (rewayah switch, data reload), not on side-cache
+  // loads for other rewayat (the player), so those never re-render the page.
+  // Every char-offset memo below depends on it so no overlay computed for the
+  // previous text survives on a mounted page.
+  const textIdentity = useSyncExternalStore(
     digitalKhattDataService.subscribeCacheChanges,
-    digitalKhattDataService.getCacheVersion,
+    getPageTextIdentity,
   );
+  // @ai-end
   // Rewayah of the text this page renders (the active DK words cache). The
   // store value can lag it during a switch, so overlays gate on this one.
   const textRewayah = digitalKhattDataService.rewayah;
@@ -234,60 +290,78 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
   const fontSize = FONTSIZE * scale * 0.9;
   const fontSizeLineWidthRatio = fontSize / lineWidth;
 
+  // @ai-start
+  // Justification of this page for the text, font and size drawn now. A
+  // layout is kept with the key it was computed for and only drawn under that
+  // key: SkiaLine builds each paragraph from the current line text, and a
+  // layout of other text (the previous rewayah, right after a switch) would
+  // put its letter stretches and spacing on the wrong characters.
+  const layoutKey = pageLayoutKey(
+    pageNumber,
+    fontFamily,
+    fontSizeLineWidthRatio,
+    textIdentity,
+  );
   // Initialize from synchronous cache (in-memory → MMKV, both sync)
-  const [justResults, setJustResults] = useState<JustResultByLine[] | null>(
-    () =>
-      JustService.getCachedPageLayout(
-        fontSizeLineWidthRatio,
-        pageNumber,
-        fontFamily,
-      ) ?? null,
-  );
-
-  // Get page lines for layout calculation
-  const pageLines = useMemo<DKLine[]>(
-    () => digitalKhattDataService.getPageLines(pageNumber),
-    // dataVersion: re-read after a data reload.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [pageNumber, dataVersion],
-  );
-
-  // Compute layout if not already cached (first-launch race condition fallback)
-  useEffect(() => {
-    if (!fontMgr) return;
-
+  const [layout, setLayout] = useState<PageLayout | null>(() => {
     const cached = JustService.getCachedPageLayout(
       fontSizeLineWidthRatio,
       pageNumber,
       fontFamily,
     );
-    if (cached) {
-      setJustResults(cached);
-      return;
-    }
+    return cached ? {key: layoutKey, results: cached} : null;
+  });
+  if (layout && layout.key !== layoutKey && fontMgr) {
+    // The text, font or size of a page already drawn changed (e.g. a rewayah
+    // switch): take the matching layout during this render, cached or
+    // computed, so the previous frame stays up until it is ready instead of
+    // the new text being drawn with the old layout (or a blank page).
+    setLayout({
+      key: layoutKey,
+      results: resolvePageLayout(
+        pageNumber,
+        fontSizeLineWidthRatio,
+        fontMgr,
+        fontFamily,
+      ),
+    });
+  }
+  const justResults = layout?.key === layoutKey ? layout.results : null;
+  // @ai-end
 
-    // On-demand compute (first view of this page with this font)
-    const result = JustService.getPageLayout(
+  // Get page lines for layout calculation
+  const pageLines = useMemo<DKLine[]>(
+    () => digitalKhattDataService.getPageLines(pageNumber),
+    // textIdentity: re-read after a data reload.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [pageNumber, textIdentity], // @ai
+  );
+
+  // Compute layout if not already cached (first-launch race condition fallback)
+  // @ai-start
+  // Only for a page that has not been drawn yet: once it has, a change of
+  // text, font or size takes its new layout during render (above).
+  useEffect(() => {
+    if (!fontMgr || layout) return;
+    const results = resolvePageLayout(
       pageNumber,
       fontSizeLineWidthRatio,
       fontMgr,
       fontFamily,
     );
-    setJustResults(result);
-
-    // Persist to MMKV so the layout survives app restarts
-    if (result.length > 0) {
-      mushafLayoutCacheService.setPageLayout(pageNumber, fontFamily, result);
-    }
-    // rewayah/dataVersion: the layout depends on the line text.
-  }, [
-    fontMgr,
-    pageNumber,
-    fontSizeLineWidthRatio,
-    fontFamily,
-    rewayah,
-    dataVersion,
-  ]);
+    // Keyed by the text served at compute time; a render that shows other
+    // text never draws it (it takes its own layout above).
+    setLayout({
+      key: pageLayoutKey(
+        pageNumber,
+        fontFamily,
+        fontSizeLineWidthRatio,
+        getPageTextIdentity(),
+      ),
+      results,
+    });
+  }, [fontMgr, layout, pageNumber, fontSizeLineWidthRatio, fontFamily]);
+  // @ai-end
 
   // Calculate Y positions for each line
   const lineYPositions = useMemo(
@@ -310,7 +384,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
         indexedTajweedData,
         tajweedEnabled,
       ),
-    // rewayah/textRewayah/dataVersion: maps index into the rendered text.
+    // rewayah/textRewayah/textIdentity: maps index into the rendered text.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       tajweedEnabled,
@@ -319,7 +393,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
       pageLines,
       rewayah,
       textRewayah,
-      dataVersion,
+      textIdentity, // @ai
     ],
   );
 
@@ -331,7 +405,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
         allahNameHighlightColor,
         showAllahNameHighlight,
       ),
-    // rewayah/textRewayah/dataVersion: maps index into the rendered text.
+    // rewayah/textRewayah/textIdentity: maps index into the rendered text.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       showAllahNameHighlight,
@@ -340,7 +414,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
       allahNameHighlightColor,
       rewayah,
       textRewayah,
-      dataVersion,
+      textIdentity, // @ai
     ],
   );
 
@@ -356,7 +430,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
         lineTajweedMaps,
         rewayahDiffPaintEnabled,
       ),
-    // rewayah/textRewayah/dataVersion: rewayahDiffService is a singleton whose
+    // rewayah/textRewayah/textIdentity: rewayahDiffService is a singleton whose
     // state follows the active rewayah and words cache.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
@@ -366,7 +440,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
       rewayahDiffPaintEnabled,
       rewayah,
       textRewayah,
-      dataVersion,
+      textIdentity, // @ai
     ],
   );
 
@@ -386,9 +460,9 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
       }
     }
     return count;
-    // dataVersion: line text can change with the words cache.
+    // textIdentity: line text can change with the words cache.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [justResults, pageLines, pageNumber, dataVersion]);
+  }, [justResults, pageLines, pageNumber, textIdentity]); // @ai
 
   const expectedLineCountRef = useRef(expectedLineCount);
   expectedLineCountRef.current = expectedLineCount;
@@ -460,9 +534,9 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
   // Ordered verse keys for drag range computation
   const orderedVerseKeys = useMemo(
     () => mushafVerseMapService.getOrderedVerseKeysForPage(pageNumber),
-    // rewayah/dataVersion: segments follow the rendered text.
+    // rewayah/textIdentity: segments follow the rendered text.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [pageNumber, rewayah, dataVersion],
+    [pageNumber, rewayah, textIdentity], // @ai
   );
 
   // Refs for drag state (avoid re-renders during drag)
@@ -709,7 +783,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
     });
     return layers ?? EMPTY_BG_MAP;
     // @ai-end
-    // rewayah/textRewayah/dataVersion: verse segments and diff ranges follow
+    // rewayah/textRewayah/textIdentity: verse segments and diff ranges follow
     // the rendered text (singleton services; not read directly).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -727,7 +801,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
     rewayah,
     textRewayah,
     rewayahDiffPaintEnabled,
-    dataVersion,
+    textIdentity, // @ai
   ]);
 
   const pageStyle = {width: SCREEN_WIDTH, height: SCREEN_HEIGHT};
@@ -795,7 +869,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
               charToColor={lineAllahNameColorMaps?.[lineIndex] ?? undefined}
               fontFamily={fontFamily}
               arabicTextWeight={arabicTextWeight}
-              dataVersion={dataVersion}
+              textIdentity={textIdentity} // @ai
               onParagraphReady={handleParagraphReady}
               onParagraphDisposed={handleParagraphDisposed}
               backgroundHighlights={lineBackgroundHighlightsMap.get(lineIndex)}

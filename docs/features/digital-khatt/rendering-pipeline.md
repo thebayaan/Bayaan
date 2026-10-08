@@ -82,8 +82,11 @@ File: `components/mushaf/skia/SkiaPage.tsx`
 
 1. `useState` initializer calls `getCachedPageLayout()` — synchronous check of in-memory then MMKV
 2. `useEffect` fallback: if no cached result and `fontMgr` is ready, compute on-demand (first launch only)
+3. Each layout is kept with the key it was computed for (page, font family, `fontSizeLineWidthRatio` and the text identity) and is only drawn under that key. When the text (rewayah switch, data reload), font or size of a page already drawn changes, the matching layout is resolved during the render (cache, else compute), so the previous frame stays on screen until it is ready; a line is never built from new text with an old layout.
 
 No async storage, no pre-warming, no module-level shared state.
+
+The text identity is `getPageTextIdentity()` (`components/mushaf/skia/pageOverlays.ts`): the data identity of the active DK words cache (`getLayoutIdentityKey()`). `SkiaPage`, `ContinuousMushafView` and `SkiaLine` subscribe to it instead of `getCacheVersion()`, so side-cache loads (or failed loads) for other rewayat never re-render a mounted page or rebuild its lines.
 
 ### Line mapping behavior
 

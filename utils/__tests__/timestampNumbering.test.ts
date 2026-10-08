@@ -162,6 +162,161 @@ describe('decideSurahNumbering', () => {
   });
 });
 
+// @ai-start
+describe('a known set class checks the surah count', () => {
+  it("a rewayah-numbered set's surah with the Hafs count is not taken as Hafs", () => {
+    // Warsh al-Baqarah: 285 verses (Madani count), 286 in Hafs. One extra
+    // entry in a rewayah-numbered file also makes 286.
+    const extra = synthetic(2, range(286));
+    expect(decide('warsh', 2, extra, 'riwayah')).toMatchObject({
+      mode: 'disabled',
+      needsSetClass: false,
+    });
+    expect(decide('warsh', 2, extra, 'hafs').mode).toBe('hafs');
+    // a mixed set, or no vote yet: the surah's own count, as before
+    expect(decide('warsh', 2, extra, 'unknown').mode).toBe('hafs');
+    expect(decide('warsh', 2, extra, null).mode).toBe('hafs');
+  });
+
+  it("a Hafs-numbered set's surah with the rewayah count is not taken as rewayah-numbered", () => {
+    // one entry short of the Hafs count
+    const short = synthetic(2, range(285));
+    expect(decide('warsh', 2, short, 'hafs').mode).toBe('disabled');
+    expect(decide('warsh', 2, short, 'riwayah').mode).toBe('riwayah');
+    expect(decide('warsh', 2, short, 'unknown').mode).toBe('riwayah');
+    expect(decide('warsh', 2, short, null).mode).toBe('riwayah');
+  });
+
+  it('real sets agree with their class', () => {
+    expect(decide('warsh', 2, timings('warsh-14', 2), 'riwayah').mode).toBe(
+      'riwayah',
+    );
+    expect(decide('warsh', 2, timings('warsh-134', 2), 'hafs').mode).toBe(
+      'hafs',
+    );
+    expect(
+      decide('al-bazzi', 112, timings('bazzi-296', 112), 'riwayah').mode,
+    ).toBe('riwayah');
+    // identically numbered surahs need no class either way
+    expect(decide('warsh', 112, timings('warsh-14', 112), 'hafs').mode).toBe(
+      'hafs',
+    );
+  });
+});
+
+describe('explicitly numbered files (a verse missing or repeated)', () => {
+  const without = (n: number, missing: number[]) =>
+    range(n).filter(a => !missing.includes(a));
+
+  it("Shu'bah (numbered like Hafs throughout): a verse recited more than once in a row keeps the identity numbering", () => {
+    // a verse recited twice, or three times
+    expect(
+      decide('shubah', 2, synthetic(2, [...range(3), 3, ...range(283, 4)]))
+        .mode,
+    ).toBe('hafs');
+    expect(
+      decide(
+        'shubah',
+        2,
+        synthetic(2, [...range(10), 10, 10, ...range(276, 11)]),
+      ).mode,
+    ).toBe('hafs');
+    // the first or the last verse repeated
+    expect(decide('shubah', 112, synthetic(112, [1, 1, 2, 3, 4])).mode).toBe(
+      'hafs',
+    );
+    expect(decide('shubah', 112, synthetic(112, [1, 2, 3, 4, 4])).mode).toBe(
+      'hafs',
+    );
+    // an ayah-0 pre-roll, then a repeat
+    expect(decide('shubah', 112, synthetic(112, [0, 1, 2, 2, 3, 4])).mode).toBe(
+      'hafs',
+    );
+  });
+
+  it('a verse missing is refused: the previous verse would be highlighted while it is recited', () => {
+    // al-Ikhlas with no entry for 112:3: entry 112:2 would stay current
+    // through the recitation of 112:3
+    expect(decide('shubah', 112, synthetic(112, [1, 2, 4])).mode).toBe(
+      'disabled',
+    );
+    expect(decide('shubah', 2, synthetic(2, without(286, [100]))).mode).toBe(
+      'disabled',
+    );
+    // an ayah-0 pre-roll, then a gap
+    expect(decide('shubah', 112, synthetic(112, [0, 1, 2, 4])).mode).toBe(
+      'disabled',
+    );
+    // the first verse missing
+    expect(decide('shubah', 112, synthetic(112, [2, 3, 4])).mode).toBe(
+      'disabled',
+    );
+    // a repeat does not make up for a missing verse
+    expect(decide('shubah', 112, synthetic(112, [1, 1, 2, 4])).mode).toBe(
+      'disabled',
+    );
+    // the last verse missing: another count is possible too
+    expect(decide('shubah', 112, synthetic(112, [1, 2, 2, 3])).mode).toBe(
+      'disabled',
+    );
+    expect(decide('shubah', 2, synthetic(2, without(285, [100]))).mode).toBe(
+      'disabled',
+    );
+    // numbered 1..n but one short: a missing last verse, or every verse
+    // after a missing one renumbered; it cannot be told, so still refused
+    expect(decide('shubah', 2, synthetic(2, range(285))).mode).toBe('disabled');
+  });
+
+  it('...as are a step back, an entry past the last verse and a stray ayah 0', () => {
+    // a step back: the verses' entries are no longer one run each, so a
+    // verse repeat or a range would replay verses outside it
+    expect(decide('shubah', 112, synthetic(112, [1, 2, 3, 2, 3, 4])).mode).toBe(
+      'disabled',
+    );
+    expect(decide('shubah', 112, synthetic(112, [1, 2, 4, 3])).mode).toBe(
+      'disabled',
+    );
+    // an entry past the surah's last verse
+    expect(
+      decide('shubah', 2, synthetic(2, [...range(3), 3, ...range(283, 4), 287]))
+        .mode,
+    ).toBe('disabled');
+    // an ayah 0 that is not a pre-roll
+    expect(decide('shubah', 112, synthetic(112, [1, 0, 2, 3, 4])).mode).toBe(
+      'disabled',
+    );
+  });
+
+  it('rewayat that number some surahs differently, and unknown rewayat, still refuse', () => {
+    expect(decide('warsh', 112, synthetic(112, [1, 2, 4])).mode).toBe(
+      'disabled',
+    );
+    expect(decide('warsh', 112, synthetic(112, [1, 2, 2, 3, 4])).mode).toBe(
+      'disabled',
+    );
+    expect(decide('warsh', 2, synthetic(2, without(286, [100]))).mode).toBe(
+      'disabled',
+    );
+    expect(decide(null, 2, synthetic(2, without(286, [100]))).mode).toBe(
+      'disabled',
+    );
+    expect(decide(null, 112, synthetic(112, [1, 2, 2, 3, 4])).mode).toBe(
+      'disabled',
+    );
+  });
+
+  it('the identity numbering then answers for every verse, a repeated one from its first entry', () => {
+    const entries = synthetic(112, [1, 2, 3, 3, 4]);
+    expect(decide('shubah', 112, entries).mode).toBe('hafs');
+    const n = numbering('hafs', 'shubah', 112, entries);
+    expect(n.hafsKeysForEntry(3)).toEqual(['112:3']);
+    expect(n.startEntryForHafsAyah(3)).toBe(entries[2]);
+    expect(n.startEntryForHafsAyah(4)).toBe(entries[4]);
+    expect(n.entryRangeForHafsAyah(3)).toEqual({start: 3, end: 3});
+  });
+});
+// @ai-end
+
 describe('classifyTimingSet', () => {
   it('needs a 95% majority over enough observations', () => {
     expect(classifyTimingSet({hafs: 5, riwayah: 0, neither: 0})).toBe('hafs');

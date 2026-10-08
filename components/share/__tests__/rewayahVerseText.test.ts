@@ -107,6 +107,7 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => {
       };
     },
     getCacheVersion: () => state.version,
+    retainRewayah: jest.fn((_rewayah: string) => jest.fn()),
     ensureRewayahLoaded: jest.fn(
       (rewayah: string) =>
         new Promise<void>((resolve, reject) => {
@@ -151,6 +152,7 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => {
         state.pendingMain = [];
         listeners.clear();
         service.ensureRewayahLoaded.mockClear();
+        service.retainRewayah.mockClear();
       },
       finishSideLoad(
         rewayah: string,
@@ -187,6 +189,11 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => {
       markFailed(rewayah: string) {
         state.errors.add(rewayah);
       },
+      // The service trimming an idle side copy (another side load landed).
+      evictSide(rewayah: string) {
+        state.side.delete(rewayah);
+        notify();
+      },
     },
   };
 });
@@ -208,12 +215,16 @@ type TestHelpers = {
   finishMainLoad: (rewayah: string, slots: Record<string, string[]>) => void;
   failMainLoad: () => void;
   markFailed: (rewayah: string) => void;
+  evictSide: (rewayah: string) => void;
 };
 const {__test: t, digitalKhattDataService: dk} = jest.requireMock(
   '@/services/mushaf/DigitalKhattDataService',
 ) as {
   __test: TestHelpers;
-  digitalKhattDataService: {ensureRewayahLoaded: jest.Mock};
+  digitalKhattDataService: {
+    ensureRewayahLoaded: jest.Mock;
+    retainRewayah: jest.Mock;
+  };
 };
 
 const M1 = '۝١'; // end of verse 1
@@ -662,6 +673,33 @@ describe('useRewayahVerseTexts', () => {
       texts: [getBundledHafsVerseText('1:1')],
     });
     expect(dk.ensureRewayahLoaded).not.toHaveBeenCalled();
+    probe.unmount();
+  });
+
+  it('retains the shown rewayah while mounted and releases it on unmount', () => {
+    const probe = renderProbe({verseKeys: ['1:1'], rewayah: 'warsh'});
+    expect(dk.retainRewayah).toHaveBeenCalledTimes(1);
+    expect(dk.retainRewayah).toHaveBeenCalledWith('warsh');
+    const release = dk.retainRewayah.mock.results[0].value as jest.Mock;
+    expect(release).not.toHaveBeenCalled();
+    probe.unmount();
+    expect(release).toHaveBeenCalledTimes(1);
+  });
+
+  it('asks again when the words are dropped right after they landed', async () => {
+    const probe = renderProbe({verseKeys: ['1:1'], rewayah: 'warsh'});
+    // Both land before React renders: the watch settles, then the copy goes.
+    await act(async () => {
+      t.finishSideLoad('warsh', REWAYAH);
+      t.evictSide('warsh');
+    });
+    expect(probe.latest().status).toBe('loading');
+    expect(dk.ensureRewayahLoaded).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      t.finishSideLoad('warsh', REWAYAH);
+    });
+    expect(probe.latest()).toMatchObject({status: 'ready', texts: ['R1 R2']});
     probe.unmount();
   });
 

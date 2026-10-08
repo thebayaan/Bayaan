@@ -20,6 +20,13 @@
  * services/mushaf/__tests__/rewayahDataManifest.test.ts recomputes the
  * hashes and fails CI when the committed manifest is stale.
  *
+ * Release builds run the check as well (package.json): every EAS build, in
+ * the cloud or with --local, through the eas-build-pre-install hook, and
+ * local iOS archives through ios:archive / ios:archive:upload. Development
+ * scripts (start, ios, android, test) do not. By hand:
+ *
+ *   npm run check:rewayah-manifest
+ *
  * Plain Node (>= 18), no dependencies.
  */
 import {createHash} from 'node:crypto';
@@ -54,8 +61,19 @@ function listBundledAssets(serviceSource) {
   return [...files].sort();
 }
 
-function sha256OfFile(absPath) {
-  return createHash('sha256').update(readFileSync(absPath)).digest('hex');
+function hashOfFile(absPath, algorithm) {
+  return createHash(algorithm).update(readFileSync(absPath)).digest('hex');
+}
+
+// Prettier's output for this repo (80 columns): an entry too long for one
+// line moves its value to its own line.
+function pushEntry(lines, file, value) {
+  const oneLine = `  '${file}': '${value}',`;
+  if (oneLine.length <= 80) {
+    lines.push(oneLine);
+  } else {
+    lines.push(`  '${file}':`, `    '${value}',`);
+  }
 }
 
 function renderManifest(entries) {
@@ -73,16 +91,17 @@ function renderManifest(entries) {
     '',
     'export const REWAYAH_DATA_MANIFEST: Readonly<Record<string, string>> = {',
   ];
-  for (const [file, sha256] of entries) {
-    // Matches Prettier's output for this repo (80 columns): every entry is
-    // too long for one line, so the value moves to its own line.
-    const oneLine = `  '${file}': '${sha256}',`;
-    if (oneLine.length <= 80) {
-      lines.push(oneLine);
-    } else {
-      lines.push(`  '${file}':`, `    '${sha256}',`);
-    }
-  }
+  for (const [file, sha256] of entries) pushEntry(lines, file, sha256);
+  lines.push(
+    '};',
+    '',
+    '// md5 of the same assets: the platform file API reports md5, so the app',
+    '// checks each on-device copy against it once per session and re-imports',
+    '// a copy that was cut short (a copy can still open after that, with its',
+    '// last words silently altered).',
+    'export const REWAYAH_DATA_MD5: Readonly<Record<string, string>> = {',
+  );
+  for (const [file, , md5] of entries) pushEntry(lines, file, md5);
   lines.push('};', '');
   return lines.join('\n');
 }
@@ -106,7 +125,7 @@ function main() {
     const absPath = path.join(REPO_ROOT, ASSET_DIR, file);
     if (!existsSync(absPath)) fail(`${ASSET_DIR}/${file} does not exist`);
     if (statSync(absPath).size === 0) fail(`${ASSET_DIR}/${file} is empty`);
-    return [file, sha256OfFile(absPath)];
+    return [file, hashOfFile(absPath, 'sha256'), hashOfFile(absPath, 'md5')];
   });
 
   const rendered = renderManifest(entries);

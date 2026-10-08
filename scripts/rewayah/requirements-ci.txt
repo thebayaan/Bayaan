@@ -1,0 +1,6 @@
+# Pinned for the glyph gate (validate_rewayah_db.py --glyphs): its verdict depends
+# on HarfBuzz mark positioning (zero offsets, spacing glyphs), so a HarfBuzz or
+# fontTools upgrade must be a deliberate change, re-validated and reviewed.
+# Verified with CPython 3.12 (CI). uharfbuzz ships an abi3 wheel (cp310+).
+uharfbuzz==0.56.3
+fonttools==4.66.1

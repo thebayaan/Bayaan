@@ -1,6 +1,7 @@
 import React, {useCallback, useRef, useEffect, useState, useMemo} from 'react';
 import {
   View,
+  Text, // @ai
   StyleSheet,
   Pressable,
   useWindowDimensions,
@@ -33,10 +34,14 @@ import {useMushafFontMgr} from '@/hooks/useMushafFontMgr';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import type {SkTypefaceFontProvider} from '@shopify/react-native-skia';
 import type {IndexedTajweedData} from '@/utils/tajweedLoader';
-import {useTimestampStore} from '@/store/timestampStore';
+import {
+  selectVerseTrackingUnavailable, // @ai
+  useTimestampStore,
+} from '@/store/timestampStore';
 import {
   parseVerseKeyListId, // @ai
   selectTrackedVerseKeysId, // @ai
+  VERSE_TRACKING_UNAVAILABLE_LABEL, // @ai
 } from '@/utils/timestampNumbering';
 import {
   enhancedVersesBySurah,
@@ -121,6 +126,7 @@ const QuranListHeader = React.memo<QuranListHeaderProps>(
         showAllahNameHighlight={showAllahNameHighlight}
         allahNameHighlightColor={allahNameHighlightColor}
         rewayah={rewayah}
+        surahNumber={surahNumber} // @ai
       />
     </>
   ),
@@ -198,6 +204,14 @@ export const QuranView: React.FC<QuranViewProps> = ({
   );
   // @ai-end
   const isLocked = useTimestampStore(s => s.isLocked);
+  // @ai-start
+  // Follow-along is on, but this surah's verses cannot be followed (no
+  // timing, a failed load, or an unknown verse numbering): say so, as the
+  // mushaf player does, instead of silently highlighting nothing.
+  const verseTrackingUnavailable = useTimestampStore(
+    selectVerseTrackingUnavailable,
+  );
+  // @ai-end
   const setIsLocked = useTimestampStore(s => s.setIsLocked);
 
   // Granular mushaf settings selectors (avoid full-store subscription)
@@ -479,6 +493,18 @@ export const QuranView: React.FC<QuranViewProps> = ({
               allahNameHighlightColor={allahNameHighlightColor}
               rewayah={trackRewayah}
             />
+            {/* @ai-start */}
+            {verseTrackingUnavailable && (
+              <Text
+                style={[
+                  styles.trackingUnavailable,
+                  {color: readingColors.textSecondary},
+                ]}
+                numberOfLines={1}>
+                {VERSE_TRACKING_UNAVAILABLE_LABEL}
+              </Text>
+            )}
+            {/* @ai-end */}
           </View>
         }
         contentContainerStyle={{
@@ -545,4 +571,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 4,
   },
+  // @ai-start
+  trackingUnavailable: {
+    fontSize: moderateScale(11),
+    fontFamily: 'Manrope-Medium',
+    textAlign: 'center',
+    marginBottom: moderateScale(8),
+  },
+  // @ai-end
 });

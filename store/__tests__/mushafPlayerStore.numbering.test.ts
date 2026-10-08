@@ -116,6 +116,7 @@ import {
   TIMESTAMPS_UNAVAILABLE_ERROR,
   formatPlaybackInfo,
   getPlaybackNotice,
+  getPlayerBarNotice,
   selectPlaybackVerseKeysId,
   usePlaybackVerseKeys,
   // @ai-end
@@ -128,6 +129,7 @@ import {
   oracleHafsAyahs,
 } from '@/services/timestamps/__fixtures__/timingFixtures';
 import {createAudioPlayer} from 'expo-audio';
+import {timestampService} from '@/services/timestamps/TimestampService'; // @ai
 
 // Hafs pages as laid out in the mushaf (first verse keys only matter here)
 Object.assign(mockPageKeys, {
@@ -215,6 +217,24 @@ beforeEach(() => {
   timingNumberingService.reset();
   (createAudioPlayer as jest.Mock).mockClear();
 });
+
+// @ai-start
+const getTimestampsForSurah =
+  timestampService.getTimestampsForSurah as jest.Mock;
+const fixtureTimings = getTimestampsForSurah.getMockImplementation()!;
+
+/** Serve `files` (by `${set}-${surah}`) in place of the fixtures. */
+function serveTimings(files: Partial<Record<string, AyahTimestamp[]>>) {
+  getTimestampsForSurah.mockImplementation(
+    async (set: string, surah: number) =>
+      files[`${set}-${surah}`] ?? fixtureTimings(set, surah),
+  );
+}
+
+afterEach(() => {
+  getTimestampsForSurah.mockImplementation(fixtureTimings);
+});
+// @ai-end
 
 describe('Warsh (rewayah-numbered set 14)', () => {
   it('follow-along in al-Baqarah highlights exactly the Hafs verses being recited', async () => {
@@ -774,6 +794,212 @@ describe('player info text and notices', () => {
       'Verse tracking unavailable',
       'Playback unavailable',
     ]);
+  });
+
+  /** Messages of the notices the store emits while `run` runs. */
+  async function noticesDuring(run: () => Promise<void>) {
+    const messages: string[] = [];
+    const barMessages: string[] = [];
+    const unsubscribe = useMushafPlayerStore.subscribe((s, prev) => {
+      const n = getPlaybackNotice(prev, s, names);
+      if (n) messages.push(n.message);
+      const b = getPlayerBarNotice(prev, s, names);
+      if (b) barMessages.push(b.message);
+    });
+    await run();
+    unsubscribe();
+    return {messages, barMessages};
+  }
+
+  it('a requested verse a surah without verse tracking cannot start at: says it plays from the beginning', async () => {
+    const {messages, barMessages} = await noticesDuring(() =>
+      play('doori-269', 562, '67:5'),
+    );
+    // plain playback from the start of the audio, nothing highlighted
+    expect(st().playbackState).toBe('playing');
+    expect(player().seeks).toEqual([]);
+    expect(st().ignoredStartVerseKey).toBe('67:5');
+    const expected =
+      'Al-Mulk plays from the beginning without verse tracking for this reciter.';
+    expect(messages).toEqual([expected]);
+    // the player bar shows "Verse tracking unavailable" inline, not this
+    expect(barMessages).toEqual([expected]);
+  });
+
+  it("the page's first verse counts as a requested start too", async () => {
+    mockPageKeys[563] = ['67:13', '67:14'];
+    const {messages} = await noticesDuring(async () => {
+      st().setReciter('doori-269', 'Test Reciter');
+      await st().startPlayback(563);
+    });
+    expect(messages).toEqual([
+      'Al-Mulk plays from the beginning without verse tracking for this reciter.',
+    ]);
+  });
+
+  it('starting at the first verse: nothing was skipped, the notice is unchanged', async () => {
+    const {messages, barMessages} = await noticesDuring(() =>
+      play('doori-269', 562, '67:1'),
+    );
+    expect(st().ignoredStartVerseKey).toBeNull();
+    expect(messages).toEqual([
+      'Al-Mulk plays without verse highlighting for this reciter.',
+    ]);
+    expect(barMessages).toEqual([]);
+  });
+
+  it('a new start at a later verse of the surah already playing untracked says so again', async () => {
+    await play('doori-269', 562, '67:1');
+    expect(st().numberingMode).toBe('disabled');
+    // the repeat options sheet: a range without repeats, started without stop
+    const {messages, barMessages} = await noticesDuring(async () => {
+      st().setRange({surah: 67, ayah: 10}, {surah: 67, ayah: 12});
+      await st().startPlayback(562, '67:10');
+    });
+    expect(st().ignoredStartVerseKey).toBe('67:10');
+    const expected =
+      'Al-Mulk plays from the beginning without verse tracking for this reciter.';
+    expect(messages).toEqual([expected]);
+    expect(barMessages).toEqual([expected]);
+  });
+
+  it('Play after a range ended in the untracked surah says so again', async () => {
+    st().setRange({surah: 67, ayah: 5}, {surah: 67, ayah: 30});
+    await play('doori-269', 562, '67:5');
+    // the surah's audio ends, and with it the range
+    player().listeners.forEach(l => l({didJustFinish: true}));
+    expect(st()).toMatchObject({
+      playbackState: 'idle',
+      numberingMode: 'disabled',
+      currentSurah: 67,
+    });
+    // the bar's Play on a later page of the same surah
+    mockPageKeys[563] = ['67:13', '67:14'];
+    const {messages, barMessages} = await noticesDuring(async () => {
+      st().clearRange();
+      await st().startPlayback(563);
+    });
+    expect(st().ignoredStartVerseKey).toBe('67:13');
+    const expected =
+      'Al-Mulk plays from the beginning without verse tracking for this reciter.';
+    expect(messages).toEqual([expected]);
+    expect(barMessages).toEqual([expected]);
+  });
+
+  it('the same verse asked for twice is said twice, once per start', async () => {
+    const {barMessages} = await noticesDuring(async () => {
+      await play('doori-269', 562, '67:5');
+      await play('doori-269', 562, '67:5');
+    });
+    expect(barMessages).toHaveLength(2);
+  });
+
+  it('the bar only notices what it cannot show inline', () => {
+    const refused = {...base, timestampError: VERSE_TIMING_UNAVAILABLE_ERROR};
+    expect(getPlayerBarNotice(base, refused, names)).toBeNull();
+    const untracked = {
+      ...base,
+      playbackState: 'loading' as const,
+      numberingMode: 'disabled' as const,
+      currentSurah: 67,
+    };
+    expect(getPlayerBarNotice(base, untracked, names)).toBeNull();
+    const skipped = {...untracked, ignoredStartVerseKey: '67:5'};
+    expect(getPlayerBarNotice(base, skipped, names)).toEqual({
+      title: 'Verse tracking unavailable',
+      message:
+        'Al-Mulk plays from the beginning without verse tracking for this reciter.',
+      preset: 'none',
+    });
+    // once per start
+    expect(getPlayerBarNotice(skipped, skipped, names)).toBeNull();
+  });
+
+  it('stop, and a tracked start, forget the skipped verse', async () => {
+    await play('doori-269', 562, '67:5');
+    expect(st().ignoredStartVerseKey).toBe('67:5');
+    st().stop();
+    expect(st().ignoredStartVerseKey).toBeNull();
+    await play('doori-269', 562, '67:5');
+    await play('hafs-clean', 2, '2:5');
+    expect(st().ignoredStartVerseKey).toBeNull();
+  });
+});
+
+describe("Shu'bah files numbered like Hafs but not exactly 1..n", () => {
+  /** Al-Ikhlas, 3 s per entry from 0 s, numbered as given. */
+  const ikhlas = (ayahs: number[]): AyahTimestamp[] =>
+    ayahs.map((ayahNumber, i) => ({
+      surahNumber: 112,
+      ayahNumber,
+      timestampFrom: i * 3000,
+      timestampTo: (i + 1) * 3000,
+      durationMs: 3000,
+    }));
+  // no entry for 112:3, which is recited from 6 s to 9 s
+  const missingVerse3 = (): AyahTimestamp[] => [
+    ...ikhlas([1, 2]),
+    {...ikhlas([4])[0], timestampFrom: 9000, timestampTo: 12000},
+  ];
+  const names = (n: number) => (n === 112 ? 'Al-Ikhlas' : '');
+
+  it('a verse missing: plays untracked and says so, never naming the verse before it', async () => {
+    serveTimings({'shubah-305-112': missingVerse3()});
+    const notices: string[] = [];
+    const unsubscribe = useMushafPlayerStore.subscribe((s, prev) => {
+      const n = getPlaybackNotice(prev, s, names);
+      if (n) notices.push(n.message);
+    });
+    await play('shubah-305', 604, '112:3');
+    unsubscribe();
+    expect(st().numberingMode).toBe('disabled');
+    expect(st().playbackState).toBe('playing');
+    expect(player().seeks).toEqual([]); // from the start of the audio
+    expect(notices).toEqual([
+      'Al-Ikhlas plays from the beginning without verse tracking for this reciter.',
+    ]);
+    for (const ms of [500, 3500, 7000, 9500]) {
+      at(ms);
+      expect(st().currentVerseKeys).toEqual([]);
+      expect(st().currentVerseLabel).toBeNull();
+    }
+    expect(formatPlaybackInfo('Al-Ikhlas', st())).toBe(
+      'Al-Ikhlas · Verse tracking unavailable',
+    );
+  });
+
+  it('a verse missing: a repeat of the verse before it is refused', async () => {
+    serveTimings({'shubah-305-112': missingVerse3()});
+    st().setRange({surah: 112, ayah: 2}, {surah: 112, ayah: 2});
+    st().setVerseRepeatCount(2);
+    await play('shubah-305', 604, '112:2');
+    expect(st().playbackState).toBe('idle');
+    expect(st().timestampError).toBe(VERSE_TIMING_UNAVAILABLE_ERROR);
+    expect(createAudioPlayer).not.toHaveBeenCalled();
+  });
+
+  it('a verse recited twice in a row: started, highlighted and repeated as one verse', async () => {
+    serveTimings({'shubah-305-112': ikhlas([1, 2, 3, 3, 4])});
+    st().setRange({surah: 112, ayah: 3}, {surah: 112, ayah: 3});
+    st().setVerseRepeatCount(0);
+    st().setRangeRepeatCount(0);
+    await play('shubah-305', 604, '112:3');
+    expect(st().numberingMode).toBe('hafs');
+    expect(player().seeks).toEqual([6]); // its first recitation
+    // both recitations of 112:3, again and again, never 112:4
+    const heard = await listen('shubah-305', 112, 6);
+    expect(heard).toEqual([3, 3, 3, 3, 3, 3]);
+    expect(st().currentVerseKeys).toEqual(['112:3']);
+    expect(st().currentVerseLabel).toBe('112:3');
+  });
+
+  it('a verse recited twice in a row: a range of it plays both recitations, then stops', async () => {
+    serveTimings({'shubah-305-112': ikhlas([1, 2, 3, 3, 4])});
+    st().setRange({surah: 112, ayah: 3}, {surah: 112, ayah: 3});
+    await play('shubah-305', 604, '112:3');
+    const heard = await listen('shubah-305', 112);
+    expect(heard).toEqual([3, 3]);
+    expect(st().playbackState).toBe('idle');
   });
 });
 // @ai-end

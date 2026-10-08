@@ -44,8 +44,10 @@ import {
 import Color from 'color';
 import {router} from 'expo-router';
 import {usePlayerStore} from '@/services/player/store/playerStore';
-import {useTimestampStore} from '@/store/timestampStore';
-import {getPlayFromHereTarget} from '@/utils/timestampUtils'; // @ai
+import {
+  resolvePlayFromHere, // @ai
+  useTimestampStore,
+} from '@/store/timestampStore';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {getTranslationTextRaw} from '@/utils/translationLookup';
 import * as Clipboard from 'expo-clipboard';
@@ -456,13 +458,12 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     const firstKey = keys[0];
 
     // @ai-start
-    // While the reciter's verse numbering is still being resolved, or when
-    // it cannot be established for this surah, say so instead of silently
-    // keeping the sheet open.
-    const target = getPlayFromHereTarget(
-      useTimestampStore.getState().currentSurahTimestamps,
-      firstKey,
-    );
+    // While the surah's timings or the reciter's verse numbering are still
+    // loading, or when the surah has no timing, it failed to load (retried
+    // by this request), the numbering cannot be established or the player
+    // has moved on to another surah, say so instead of silently keeping the
+    // sheet open.
+    const target = resolvePlayFromHere(firstKey);
     if (target.status !== 'ready') {
       showToast(
         target.title,
@@ -707,6 +708,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                     surahNumber={surahNumber}
                     ayahNumber={ayahNumber}
                     section={activeScreen === 'similar' ? 'similar' : 'phrases'}
+                    rewayah={resolvedRewayah} // @ai
                     onDone={handleDismiss}
                   />
                 )}

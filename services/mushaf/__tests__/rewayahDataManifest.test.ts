@@ -13,12 +13,23 @@ jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
 );
 
-import {execFileSync} from 'child_process';
+import {execFileSync, spawnSync} from 'child_process'; // @ai
 import {createHash} from 'crypto';
-import {readFileSync, statSync} from 'fs';
+// @ai-start
+import {
+  copyFileSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'fs';
+import os from 'os';
+// @ai-end
 import path from 'path';
 
-import {REWAYAH_DATA_MANIFEST} from '../rewayahDataManifest';
+import {REWAYAH_DATA_MANIFEST, REWAYAH_DATA_MD5} from '../rewayahDataManifest';
 import {
   getBundledDkDbAssetFiles,
   getCurrentDbNamesByBase,
@@ -38,6 +49,14 @@ function sha256(file: string): string {
     .update(readFileSync(path.join(ASSET_DIR, file)))
     .digest('hex');
 }
+
+// @ai-start
+function md5(file: string): string {
+  return createHash('md5')
+    .update(readFileSync(path.join(ASSET_DIR, file)))
+    .digest('hex');
+}
+// @ai-end
 
 function requiredDbAssets(source: string): string[] {
   const re =
@@ -76,6 +95,16 @@ describe('rewayahDataManifest (contract C4)', () => {
     },
   );
 
+  // @ai-start
+  it('holds the md5 of exactly the same assets, matching the files on disk', () => {
+    expect(Object.keys(REWAYAH_DATA_MD5).sort()).toEqual(manifestFiles);
+    for (const [file, hash] of Object.entries(REWAYAH_DATA_MD5)) {
+      expect(hash).toMatch(/^[0-9a-f]{32}$/);
+      expect(md5(file)).toBe(hash);
+    }
+  });
+  // @ai-end
+
   it('resolves an identity and a unique on-device name for every rewayah with text', () => {
     const withText = ALL_REWAYAH_IDS.filter(hasTextData);
     expect(withText.length).toBe(8);
@@ -111,4 +140,58 @@ describe('rewayahDataManifest (contract C4)', () => {
     );
     expect(out).toContain('up to date');
   });
+
+  // @ai-start
+  it('is checked before every release build, but not in development', () => {
+    const {scripts} = JSON.parse(
+      readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf8'),
+    ) as {scripts: Record<string, string>};
+    const check = 'node scripts/rewayah/gen-manifest.mjs --check';
+    expect(scripts['check:rewayah-manifest']).toBe(check);
+    // EAS runs this npm hook first on every build, in the cloud or --local.
+    expect(scripts['eas-build-pre-install']).toBe(check);
+    // Local iOS release archives.
+    for (const name of ['ios:archive', 'ios:archive:upload']) {
+      expect(scripts[name].startsWith(`${check} && `)).toBe(true);
+    }
+    for (const name of ['start', 'ios', 'android', 'test', 'test:ci']) {
+      expect(scripts[name]).not.toContain('gen-manifest');
+    }
+  });
+
+  it('fails the check once a bundled DB changes without a new manifest', () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), 'gen-manifest-'));
+    try {
+      const assetDir = path.join(root, 'data', 'mushaf', 'digitalkhatt');
+      const script = path.join(root, 'scripts', 'rewayah', 'gen-manifest.mjs');
+      mkdirSync(assetDir, {recursive: true});
+      mkdirSync(path.dirname(script), {recursive: true});
+      mkdirSync(path.join(root, 'services', 'mushaf'), {recursive: true});
+      copyFileSync(
+        path.join(REPO_ROOT, 'scripts', 'rewayah', 'gen-manifest.mjs'),
+        script,
+      );
+      writeFileSync(
+        path.join(root, 'services', 'mushaf', 'DigitalKhattDataService.ts'),
+        "const DK = {'a.db': require('../../data/mushaf/digitalkhatt/a.db')};\n",
+      );
+      writeFileSync(path.join(assetDir, 'a.db'), 'first version');
+      const run = (...args: string[]) =>
+        spawnSync(process.execPath, [script, ...args], {
+          cwd: root,
+          encoding: 'utf8',
+        });
+
+      expect(run().status).toBe(0);
+      expect(run('--check').status).toBe(0);
+
+      writeFileSync(path.join(assetDir, 'a.db'), 'corrected version');
+      const stale = run('--check');
+      expect(stale.status).toBe(1);
+      expect(stale.stderr).toContain('is stale');
+    } finally {
+      rmSync(root, {recursive: true, force: true});
+    }
+  });
+  // @ai-end
 });

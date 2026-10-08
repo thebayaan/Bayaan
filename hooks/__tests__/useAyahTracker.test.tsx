@@ -77,13 +77,24 @@ jest.mock('@/services/audio/ExpoAudioService', () => ({
 }));
 
 import {useAyahTracker} from '../useAyahTracker';
+import {useTimestampLoader} from '../useTimestampLoader'; // @ai
+import {timestampService} from '@/services/timestamps/TimestampService'; // @ai
+import type {AyahTimestamp} from '@/types/timestamps'; // @ai
 import {usePlayerStore} from '@/services/player/store/playerStore';
-import {useTimestampStore} from '@/store/timestampStore';
+import {
+  resolvePlayFromHere, // @ai
+  selectVerseTrackingUnavailable, // @ai
+  useTimestampStore,
+} from '@/store/timestampStore';
 import {useReciterStore} from '@/store/reciterStore';
 import {RECITERS} from '@/data/reciterData';
 import {timingNumberingService} from '@/services/timestamps/TimingNumberingService';
 import {loadTimings} from '@/services/timestamps/__fixtures__/timingFixtures';
-import {findAyahTimestamp, getTrackedVerseKeys} from '@/utils/timestampUtils';
+import {
+  findAyahTimestamp,
+  getPlayFromHereTarget, // @ai
+  getTrackedVerseKeys,
+} from '@/utils/timestampUtils';
 import {
   selectTrackedVerseKeysId, // @ai
   type MappedAyahTrackingState,
@@ -129,6 +140,36 @@ async function startTrack(set: string, surah: number) {
   await flush();
 }
 
+// @ai-start
+const setPlayer = (state: object) =>
+  (usePlayerStore as unknown as {setState: (s: object) => void}).setState(
+    state,
+  );
+
+const getTimestampsForSurah =
+  timestampService.getTimestampsForSurah as jest.Mock;
+const fixtureTimings = getTimestampsForSurah.getMockImplementation()!;
+
+/**
+ * Serve `files` (by `${set}-${surah}`) in place of the fixtures, the same
+ * array on every load as TimestampService's memory cache does; a load whose
+ * key is in `gates` waits for that promise first.
+ */
+function serveTimings(
+  files: Partial<Record<string, AyahTimestamp[]>>,
+  gates: Partial<Record<string, Promise<void>>> = {},
+) {
+  getTimestampsForSurah.mockImplementation(
+    async (set: string, surah: number) => {
+      const key = `${set}-${surah}`;
+      const gate = gates[key];
+      if (gate) await gate;
+      return files[key] ?? fixtureTimings(set, surah);
+    },
+  );
+}
+// @ai-end
+
 async function tickAt(ms: number) {
   mockPosition.sec = ms / 1000;
   await act(async () => {
@@ -159,6 +200,7 @@ afterEach(async () => {
     renderer?.unmount();
   });
   renderer = null;
+  getTimestampsForSurah.mockImplementation(fixtureTimings); // @ai
 });
 
 describe('useAyahTracker', () => {
@@ -287,6 +329,168 @@ describe('useAyahTracker', () => {
   });
   // @ai-end
 
+  // @ai-start
+  describe('"Play from here" while its seek lands', () => {
+    /** Every verse key published from now on, in order. */
+    function recordPublished() {
+      const keys: (string | null)[] = [];
+      const unsubscribe = useTimestampStore.subscribe((s, prev) => {
+        if (s.currentAyah !== prev.currentAyah) {
+          keys.push(s.currentAyah?.verseKey ?? null);
+        }
+      });
+      return {keys, unsubscribe};
+    }
+
+    /** The verse-actions sheet: seek (still in flight) and publish. */
+    async function playFromHere(hafsKey: string) {
+      const target = getPlayFromHereTarget(timings(), hafsKey);
+      if (target.status !== 'ready') throw new Error(target.status);
+      await act(async () => {
+        useTimestampStore.getState().setCurrentAyah(target.tracking);
+      });
+      return target;
+    }
+
+    it('Hafs: the verse being left is not published again', async () => {
+      await startTrack('hafs-clean', 2);
+      const t = loadTimings('hafs-clean', 2)!;
+      await tickAt(t[9].timestampFrom + 50);
+      expect(current()?.verseKey).toBe('2:10');
+      const published = recordPublished();
+      await playFromHere('2:50');
+      // the native position still reports 2:10 for a few ticks
+      await tickAt(t[9].timestampFrom + 250);
+      await tickAt(t[9].timestampFrom + 450);
+      expect(current()?.verseKey).toBe('2:50');
+      // the seek lands, then the reciter moves on
+      await tickAt(t[49].timestampFrom + 50);
+      expect(current()).toMatchObject({verseKey: '2:50', verseKeys: ['2:50']});
+      await tickAt(t[50].timestampFrom + 50);
+      published.unsubscribe();
+      expect(published.keys).not.toContain('2:10');
+      expect(published.keys[0]).toBe('2:50');
+      expect(published.keys[published.keys.length - 1]).toBe('2:51');
+    });
+
+    it('Warsh: no flash back to the reciter verse being left', async () => {
+      await startTrack('warsh-14', 2);
+      const t = loadTimings('warsh-14', 2)!;
+      await tickAt(t[9].timestampFrom + 50); // Warsh 2:10 = Hafs 2:11
+      expect(current()?.verseKey).toBe('2:11');
+      const published = recordPublished();
+      const target = await playFromHere('2:2'); // Warsh 2:1 = Hafs 2:1 + 2:2
+      await tickAt(t[9].timestampFrom + 250);
+      expect(getTrackedVerseKeys(current())).toEqual(['2:1', '2:2']);
+      await tickAt(target.status === 'ready' ? target.entry.timestampFrom : 0);
+      expect(getTrackedVerseKeys(current())).toEqual(['2:1', '2:2']);
+      published.unsubscribe();
+      expect(published.keys).not.toContain('2:11');
+    });
+
+    it('started while paused: the first tick does not publish the old verse', async () => {
+      await startTrack('hafs-clean', 2);
+      const t = loadTimings('hafs-clean', 2)!;
+      await tickAt(t[9].timestampFrom + 50);
+      await act(async () => {
+        setPlayer({playback: {state: 'paused'}});
+      });
+      await playFromHere('2:50');
+      // the sheet starts playback; the native seek has not landed yet
+      await act(async () => {
+        setPlayer({playback: {state: 'playing'}});
+      });
+      await tickAt(t[9].timestampFrom + 250);
+      expect(current()?.verseKey).toBe('2:50');
+      await tickAt(t[49].timestampFrom + 50);
+      expect(current()?.verseKey).toBe('2:50');
+    });
+
+    it('a seek that never lands gives way to the verse actually recited', async () => {
+      await startTrack('hafs-clean', 2);
+      const t = loadTimings('hafs-clean', 2)!;
+      await tickAt(t[9].timestampFrom + 50);
+      await playFromHere('2:50');
+      for (let i = 1; i <= 20; i++) {
+        await tickAt(t[9].timestampFrom + 50 + i * 20);
+      }
+      expect(current()).toMatchObject({verseKey: '2:10', verseKeys: ['2:10']});
+    });
+  });
+  // @ai-end
+
+  // @ai-start
+  describe("Shu'bah files numbered like Hafs but not exactly 1..n", () => {
+    /** Al-Ikhlas, 3 s per entry from 0 s, numbered as given. */
+    function ikhlas(ayahs: number[]) {
+      return ayahs.map((ayahNumber, i) => ({
+        surahNumber: 112,
+        ayahNumber,
+        timestampFrom: i * 3000,
+        timestampTo: (i + 1) * 3000,
+        durationMs: 3000,
+      }));
+    }
+
+    beforeEach(() => {
+      useTimestampStore.getState().loadFollowAlongRegistry();
+      useTimestampStore.setState({followAlongEnabled: true});
+    });
+
+    it('a verse missing: nothing is highlighted rather than the verse before it', async () => {
+      // no entry for 112:3, recited from 6 s to 9 s
+      serveTimings({
+        'shubah-305-112': [
+          ...ikhlas([1, 2]),
+          {...ikhlas([4])[0], timestampFrom: 9000, timestampTo: 12000},
+        ],
+      });
+      await startTrack('shubah-305', 112);
+      const seen: Record<number, readonly string[]> = {};
+      for (const ms of [500, 3500, 6500, 8500, 9500]) {
+        await tickAt(ms);
+        seen[ms] = getTrackedVerseKeys(current());
+      }
+      expect(seen).toEqual({
+        500: [],
+        3500: [],
+        6500: [],
+        8500: [],
+        9500: [],
+      });
+      expect(selectVerseTrackingUnavailable(useTimestampStore.getState())).toBe(
+        true,
+      );
+      expect(resolvePlayFromHere('112:3').status).toBe('unavailable');
+      expect(resolvePlayFromHere('112:2').status).toBe('unavailable');
+    });
+
+    it('a verse recited twice in a row: every verse is followed', async () => {
+      serveTimings({'shubah-305-112': ikhlas([1, 2, 3, 3, 4])});
+      await startTrack('shubah-305', 112);
+      const seen: Record<number, string | null> = {};
+      for (const ms of [500, 3500, 6500, 9500, 12500]) {
+        await tickAt(ms);
+        seen[ms] = current()?.verseKey ?? null;
+      }
+      expect(seen).toEqual({
+        500: '112:1',
+        3500: '112:2',
+        6500: '112:3',
+        9500: '112:3',
+        12500: '112:4',
+      });
+      expect(selectVerseTrackingUnavailable(useTimestampStore.getState())).toBe(
+        false,
+      );
+      const target = resolvePlayFromHere('112:3');
+      expect(target.status === 'ready' && target.entry.timestampFrom).toBe(
+        6000,
+      );
+    });
+  });
+  // @ai-end
+
   it('Hafs recitations are unchanged', async () => {
     await startTrack('hafs-clean', 2);
     for (const e of loadTimings('hafs-clean', 2)!.slice(0, 40)) {
@@ -301,4 +505,115 @@ describe('useAyahTracker', () => {
     }
     expect(findAyahTimestamp(timings(), 286)?.ayahNumber).toBe(286);
   });
+
+  // @ai-start
+  describe('tells the player when verse tracking is unavailable', () => {
+    const unavailable = () =>
+      selectVerseTrackingUnavailable(useTimestampStore.getState());
+
+    beforeEach(() => {
+      // every fixture set has timestamps: follow-along is offered for it
+      useTimestampStore.getState().loadFollowAlongRegistry();
+      useTimestampStore.setState({followAlongEnabled: true});
+    });
+
+    it('al-Duri 269 al-Mulk (numbering disabled): unavailable', async () => {
+      await startTrack('doori-269', 67);
+      expect(unavailable()).toBe(true);
+      // follow-along switched off: nothing to say
+      await act(async () => {
+        useTimestampStore.getState().toggleFollowAlong();
+      });
+      expect(unavailable()).toBe(false);
+    });
+
+    it('a surah whose timings could not be loaded: unavailable', async () => {
+      await startTrack('hafs-clean', 3); // no such fixture: the load fails
+      expect(useTimestampStore.getState().timestampLoadStatus).toBe('failed');
+      expect(unavailable()).toBe(true);
+    });
+
+    it('tracked recitations (Hafs and rewayah-numbered): available', async () => {
+      await startTrack('hafs-clean', 2);
+      expect(unavailable()).toBe(false);
+      await act(async () => {
+        renderer?.unmount();
+      });
+      await startTrack('warsh-14', 2);
+      expect(unavailable()).toBe(false);
+    });
+
+    it('nothing is said while the numbering is still being resolved', async () => {
+      let release: (() => void) | undefined;
+      const gate = new Promise<void>(resolve => {
+        release = resolve;
+      });
+      const voteSpy = jest
+        .spyOn(timingNumberingService, 'getSetClass')
+        .mockImplementation(async () => {
+          await gate;
+          return 'unknown';
+        });
+      await startTrack('warsh-14', 1);
+      expect(unavailable()).toBe(false);
+      release?.();
+      await flush();
+      // the vote was inconclusive: al-Fatihah cannot be followed
+      expect(unavailable()).toBe(true);
+      voteSpy.mockRestore();
+    });
+
+    it('a reciter without follow-along support says nothing', async () => {
+      useTimestampStore.setState({supportedRewayatIds: new Set<string>()});
+      await startTrack('doori-269', 67);
+      expect(unavailable()).toBe(false);
+    });
+
+    it('a surah left and returned to before the next one loaded keeps saying so', async () => {
+      // the player's loader and tracker, as the main player mounts them
+      function PlayerHarness() {
+        useTimestampLoader();
+        useAyahTracker();
+        return null;
+      }
+      const playTrack = async (set: string, surah: number) => {
+        await act(async () => {
+          setPlayer({
+            playback: {state: 'playing'},
+            queue: {
+              tracks: [{rewayatId: set, surahId: String(surah)}],
+              currentIndex: 0,
+            },
+          });
+        });
+        await flush();
+      };
+      let release: () => void = () => undefined;
+      serveTimings(
+        {'doori-269-67': loadTimings('doori-269', 67)!},
+        {
+          'hafs-clean-2': new Promise<void>(resolve => {
+            release = resolve;
+          }),
+        },
+      );
+      await act(async () => {
+        renderer = TestRenderer.create(<PlayerHarness />);
+      });
+      await playTrack('doori-269', 67); // al-Mulk: numbering disabled
+      expect(unavailable()).toBe(true);
+      await playTrack('hafs-clean', 2); // its timings are slow to come
+      expect(useTimestampStore.getState().timestampLoadStatus).toBe('loading');
+      await playTrack('doori-269', 67); // back before they arrive
+      release();
+      await flush();
+      expect(useTimestampStore.getState()).toMatchObject({
+        currentTimestampKey: 'doori-269-67',
+        timestampLoadStatus: 'ready',
+        trackingNumberingMode: 'disabled',
+      });
+      expect(unavailable()).toBe(true);
+    });
+  });
+  // @ai-end
 });

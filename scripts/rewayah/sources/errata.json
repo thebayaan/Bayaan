@@ -1,0 +1,14 @@
+{
+  "__format": 1,
+  "about": "Corrections to the vendored official JSON files, each backed by another official KFGQPC artifact. Applied by normalize.load_source() before tokenization; the JSON files themselves stay byte-identical to the official packages.",
+  "errata": [
+    {
+      "rewayah": "qumbul",
+      "verse": "67:17",
+      "find": "ا۬مِنتُمُۥ",
+      "replace": "ۥَا۬مِنتُمُۥ",
+      "authority": "signed KFGQPC Word file 'UthmanicQunbul V20.docx' (SHA-256 9c737e7f52cd03998d633f142136d9a09b537c7a9ad8b8ed83336f3ed2d82a23) in https://fonts.qurancomplex.gov.sa/wp-content/uploads/2022/11/UthmanicQunbul_V20.zip (zip SHA-256 d33a35f7c9c6e416579d810e88c8ab9bfa7d72ff0a78e48e23fac48ae7b81d62, Internet Archive capture 20250424120222)",
+      "reason": "The qc2 Qunbul JSON drops the verse-initial small waw + fatha of Qunbul's ibdal of the hamza after 'ٱلنُّشُورُ' (read 'وَامِنتُم' when joined, Hafs 67:15-16). The signed Word file writes it, and the same JSON keeps the identical convention mid-verse at 7:122 'فِرۡعَوۡنُ ۥَاٰ۬مَنتُمُۥ'. JSON and Word agree on the other 6,219 verses."
+    }
+  ]
+}

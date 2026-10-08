@@ -206,6 +206,7 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
             />
             <BasmalaHeader
               visible={item.showBismillah}
+              surahNumber={item.surahNumber} // @ai
               width={contentItemWidth}
               textColor={textColor}
               showTajweed={showTajweed}

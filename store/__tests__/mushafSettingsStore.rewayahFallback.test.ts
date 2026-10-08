@@ -56,6 +56,25 @@ describe('startRewayahFallback', () => {
     expect(saved).not.toHaveProperty('rewayahFallbackFrom');
   });
 
+  // @ai-start
+  it('names the Hafs shown and keeps the saved rewayah in one update', async () => {
+    useMushafSettingsStore.setState({
+      mushafRenderer: 'dk_v2',
+      uthmaniFont: 'v2',
+      rewayah: 'warsh',
+      rewayahFallbackFrom: null,
+    });
+    const seen: [string, string | null][] = [];
+    const unsubscribe = useMushafSettingsStore.subscribe(state =>
+      seen.push([state.rewayah, state.rewayahFallbackFrom]),
+    );
+    useMushafSettingsStore.getState().startRewayahFallback('warsh');
+    unsubscribe();
+    expect(seen).toEqual([['hafs', 'warsh']]);
+    expect((await persisted()).rewayah).toBe('warsh');
+  });
+  // @ai-end
+
   it('never records Hafs, or anything under Mushaf 1440', () => {
     useMushafSettingsStore.setState({
       mushafRenderer: 'dk_v1',

@@ -87,9 +87,20 @@ export interface SurahNumberingDecision {
  *  - Rewayat with a verse map: count == Hafs count != rewayah count -> 'hafs';
  *    count == rewayah count != Hafs count -> 'riwayah'; both counts equal ->
  *    identity when the map is identity for the surah, else the set-level
- *    class; anything else -> 'disabled'.
+ *    class; anything else -> 'disabled'. A known set class that contradicts
+ *    the surah count ('riwayah' set, Hafs count; 'hafs' set, rewayah count)
+ *    -> 'disabled': an extra or a missing entry looks just like the other
+ *    numbering. @ai
  *  - Rewayat that should have a map but whose map is unavailable -> 'disabled'.
  *  - Unknown rewayat (no map): count == Hafs count -> 'hafs', else 'disabled'.
+ *  - Entries not numbered 1..n (a verse missing or repeated) -> 'disabled',
+ *    except for a rewayah that numbers every surah like Hafs (Shu'bah):
+ *    'hafs' when the only deviation is a verse recited more than once in a
+ *    row (every verse 1..n in order, each at least once), since each entry
+ *    then names its own Hafs verse. A missing verse stays 'disabled': while
+ *    it is recited the previous entry would still be the one playing, so the
+ *    previous verse would be highlighted, labelled and repeated in its place.
+ *    @ai
  */
 export function decideSurahNumbering(
   input: SurahNumberingInput,
@@ -109,15 +120,44 @@ export function decideSurahNumbering(
   if (hafsCount === 0) return decide('disabled', 'invalid surah');
   const {count, contiguous} = getTimingEntryStats(entries);
   if (!contiguous) {
+    // @ai-start
+    if (
+      reciterRewayah &&
+      verseMap.hasVerseMap(reciterRewayah) &&
+      numbersEverySurahLikeHafs(reciterRewayah, verseMap) &&
+      runsThroughEveryVerse(entries, hafsCount)
+    ) {
+      return decide(
+        'hafs',
+        'every verse in order, a verse recited more than once in a row; the rewayah numbers every surah like Hafs',
+      );
+    }
+    // @ai-end
     return decide('disabled', 'entries are not numbered 1..n');
   }
 
   if (reciterRewayah && verseMap.hasVerseMap(reciterRewayah)) {
     const riwayahCount = verseMap.verseCount(reciterRewayah, surah)!;
     if (count === hafsCount && count !== riwayahCount) {
+      // @ai-start
+      if (setClass === 'riwayah') {
+        return decide(
+          'disabled',
+          'entry count matches the Hafs count but the set is rewayah-numbered',
+        );
+      }
+      // @ai-end
       return decide('hafs', 'entry count matches the Hafs count');
     }
     if (count === riwayahCount && count !== hafsCount) {
+      // @ai-start
+      if (setClass === 'hafs') {
+        return decide(
+          'disabled',
+          'entry count matches the rewayah count but the set is Hafs-numbered',
+        );
+      }
+      // @ai-end
       return decide('riwayah', 'entry count matches the rewayah count');
     }
     if (count === hafsCount && count === riwayahCount) {
@@ -155,6 +195,47 @@ export function decideSurahNumbering(
     'unknown rewayah numbering and the entry count differs from Hafs',
   );
 }
+
+// @ai-start
+/**
+ * True when the entries (after an ayah-0 pre-roll) run through the verses
+ * 1..verseCount in order, each verse at least once: numbered 1..n except
+ * that a verse may be recited more than once in a row ([1, 2, 3, 3, 4]).
+ * Every verse then has its own entry, and each verse's entries are one run,
+ * as verse seeking, repeats and ranges expect. A verse missing ([1, 2, 4]),
+ * a step back ([1, 2, 3, 2, 3, 4]) or a number past the surah's end is
+ * refused.
+ */
+function runsThroughEveryVerse(
+  entries: readonly AyahTimestamp[],
+  verseCount: number,
+): boolean {
+  let started = false;
+  let last = 0;
+  for (const e of entries) {
+    if (!started && e.ayahNumber === 0) continue; // pre-roll (basmala)
+    started = true;
+    // the same verse again or the next one, never a verse skipped
+    if (e.ayahNumber !== last && e.ayahNumber !== last + 1) return false;
+    last = e.ayahNumber;
+  }
+  return last === verseCount;
+}
+
+/**
+ * True when the rewayah numbers every surah exactly like Hafs (Shu'bah: the
+ * same Kufi count and verse boundaries).
+ */
+function numbersEverySurahLikeHafs(
+  rewayah: RewayahId,
+  verseMap: RewayahVerseMapService,
+): boolean {
+  for (let surah = 1; surah <= 114; surah++) {
+    if (verseMap.isIdentitySurah(rewayah, surah) !== true) return false;
+  }
+  return true;
+}
+// @ai-end
 
 /**
  * Set-level verdict from per-surah observations on discriminating surahs.
@@ -418,6 +499,14 @@ export function selectTrackedVerseKeysId(s: {
 // @ai-end
 
 // ── Labels ─────────────────────────────────────────────────────────────────
+
+// @ai-start
+/**
+ * Said in place of a verse number while the surah's verses cannot be
+ * followed (the mushaf player bar and toolbar, the main player).
+ */
+export const VERSE_TRACKING_UNAVAILABLE_LABEL = 'Verse tracking unavailable';
+// @ai-end
 
 /** ['2:1','2:2'] -> '2:1-2'; ['2:286','3:1'] -> '2:286-3:1'; ['2:5'] -> '2:5'. */
 export function formatVerseKeyRange(keys: readonly string[]): string | null {

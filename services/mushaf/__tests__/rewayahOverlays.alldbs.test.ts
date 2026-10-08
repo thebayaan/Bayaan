@@ -18,6 +18,12 @@
  * rewayah; every whole-word diff tint is exactly a flagged slot's whole-word
  * part (no inline marker) and every foreground index lies inside a slot's
  * whole-word part.
+ *
+ * Basmala (contract C6, @ai): every one of the 112 basmallah lines draws the
+ * rewayah's basmala for the surah it opens (Hafs: BASMALLAH_TEXT unchanged),
+ * equal to the expected Word-file text and to <id>-basmala.json, with the
+ * Allah-name map on that text; and in each non-Hafs DB the Fatiha basmala
+ * slots (1:1:1-4) hold the same basmala.
  */
 import * as path from 'path';
 import * as fs from 'fs';
@@ -33,7 +39,7 @@ jest.mock('../DigitalKhattDataService', () => {
   );
   return {
     ...actual,
-    digitalKhattDataService: createFakeDKService(actual.BASMALLAH_TEXT),
+    digitalKhattDataService: createFakeDKService(), // @ai
   };
 });
 
@@ -75,7 +81,21 @@ jest.mock(
   () => mockDiffAssets['al-susi'],
 );
 
-import {digitalKhattDataService, type DKLine} from '../DigitalKhattDataService';
+import {
+  BASMALLAH_TEXT, // @ai
+  digitalKhattDataService,
+  type DKLine,
+} from '../DigitalKhattDataService';
+// @ai-start
+import {
+  BASMALA_FILE_IDS,
+  type RewayahBasmalaJson,
+} from '../RewayahBasmalaService';
+import {
+  EXPECTED_BASMALA,
+  expectedDrawnBasmala,
+} from '../__fixtures__/basmalaTexts';
+// @ai-end
 import {mushafVerseMapService} from '../MushafVerseMapService';
 import {
   getLineAllahNameCharMap,
@@ -332,4 +352,94 @@ run('overlay walkers on every line of every words DB (local only)', () => {
       expect(stats.lines).toBe(8820);
     });
   }
+
+  // @ai-start
+  // Surah-opening basmala (contract C6): every basmallah line of the layout,
+  // in every words DB, draws that rewayah's basmala for the surah it opens
+  // (Hafs: BASMALLAH_TEXT, unchanged), checked against the expected Word-file
+  // texts (__fixtures__/basmalaTexts.ts) and the bundled <id>-basmala.json.
+  for (const [file, rewayah] of present) {
+    it(`${file}: every basmallah line draws the rewayah's basmala`, () => {
+      const words = readRows(
+        path.join(DB_DIR!, file),
+        'SELECT id, location, text FROM words ORDER BY id',
+      ).map(r => [r.id, r.location, r.text] as [number, string, string]);
+      dk.loadData({rewayah, words, lines: layoutRows});
+      const fileId = BASMALA_FILE_IDS[rewayah];
+      const json = fileId
+        ? (JSON.parse(
+            fs.readFileSync(
+              path.join(DK_DIR, `${fileId}-basmala.json`),
+              'utf8',
+            ),
+          ) as RewayahBasmalaJson)
+        : null;
+
+      const failures: string[] = [];
+      const seen: number[] = [];
+      for (const [pageNumber, pageLines] of linesByPage) {
+        pageLines.forEach((line, lineIndex) => {
+          if (line.line_type !== 'basmallah') return;
+          const where = `${file} p${pageNumber} L${lineIndex + 1}`;
+          const surah = dk.getBasmalaSurah(line);
+          if (surah === null) {
+            failures.push(`${where}: no surah`);
+            return;
+          }
+          seen.push(surah);
+          // The next ayah line starts the surah.
+          const next = [
+            ...pageLines.slice(lineIndex + 1),
+            ...(linesByPage.get(pageNumber + 1) ?? []),
+          ].find(l => l.line_type === 'ayah');
+          const first = next ? dk.getWordInfo(next.first_word_id) : undefined;
+          if (first?.verseKey !== `${surah}:1`) {
+            failures.push(
+              `${where}: opens ${surah}, next is ${first?.verseKey}`,
+            );
+          }
+          const text = dk.getLineText(line);
+          const expected =
+            rewayah === 'hafs'
+              ? BASMALLAH_TEXT
+              : expectedDrawnBasmala(rewayah, surah);
+          if (text !== expected) failures.push(`${where} (${surah}): ${text}`);
+          if (json) {
+            const fromJson = json.bySurah?.[String(surah)]?.dk ?? json.dk;
+            if (text !== fromJson) failures.push(`${where}: not the JSON dk`);
+          }
+          if (rewayah !== 'hafs' && text === BASMALLAH_TEXT) {
+            failures.push(`${where}: Hafs basmala`);
+          }
+          const allah = getLineAllahNameCharMap(pageNumber, lineIndex);
+          if (
+            JSON.stringify([...(allah ?? [])]) !==
+            JSON.stringify([...(getTextAllahNameCharMap(text) ?? [])])
+          ) {
+            failures.push(`${where}: Allah-name map differs`);
+          }
+        });
+      }
+      expect(failures).toEqual([]);
+      expect(seen.sort((a, b) => a - b)).toEqual(
+        Array.from({length: 113}, (_, i) => i + 2).filter(s => s !== 9),
+      );
+    });
+
+    // The Fatiha basmala is verse text in the words DB (slots 1:1:1-4; data
+    // branch). It must be the same official basmala: verse 1 in the Kufi /
+    // Makki counts, unnumbered (blank 1:1 marker) in the Madani / Basri ones.
+    if (rewayah !== 'hafs') {
+      it(`${file}: the Fatiha basmala is the rewayah's basmala`, () => {
+        const fatiha = readRows(
+          path.join(DB_DIR!, file),
+          "SELECT location, text FROM words WHERE location LIKE '1:1:%' ORDER BY id",
+        ).map(r => String(r.text));
+        expect(fatiha.slice(0, 4).join(' ')).toBe(
+          EXPECTED_BASMALA[rewayah]!.dk,
+        );
+      });
+    }
+  }
+  // @ai-end
 });

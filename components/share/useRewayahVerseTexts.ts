@@ -7,7 +7,7 @@ import {
   useSyncExternalStore,
 } from 'react';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
-import type {RewayahId} from '@/services/rewayah/RewayahIdentity';
+import {hasTextData, type RewayahId} from '@/services/rewayah/RewayahIdentity';
 import {
   isHafsTextFailed,
   readLoadedVerseTexts,
@@ -65,13 +65,22 @@ export function useRewayahVerseTexts(
   );
   const waiting = texts === null && !hafsFailed;
 
+  // The data service keeps only one idle side copy, so the next side load
+  // can evict this one; retain it while this surface shows it.
+  useEffect(() => {
+    if (!hasTextData(rewayah)) return;
+    return digitalKhattDataService.retainRewayah(rewayah);
+  }, [rewayah]);
+
+  // loadTick re-arms the watch when the words are dropped again between a
+  // successful settle and the next render: `waiting` then never turns false.
   useEffect(() => {
     if (!waiting) return;
     return watchRewayahText(rewayah, ok => {
       if (ok) setLoadTick(t => t + 1);
       else setFailedRequest(requestKey);
     });
-  }, [waiting, rewayah, requestKey, attempt]);
+  }, [waiting, rewayah, requestKey, attempt, loadTick]);
 
   const retry = useCallback(() => {
     setFailedRequest(null);

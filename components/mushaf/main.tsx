@@ -977,7 +977,7 @@ export default function MushafViewer({
     [isVertical, surahStartPages, navigateToPage],
   );
 
-  // Subscribe to external navigation requests (e.g. from SimilarVersesSheet)
+  // Subscribe to external navigation requests (e.g. from Similar Verses)
   const navRequestId = useMushafNavigationStore(s => s.requestId);
   useEffect(() => {
     if (navRequestId === 0) return;

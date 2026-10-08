@@ -130,6 +130,14 @@ export const ShareContent: React.FC<ShareContentProps> = ({
       verseRefText: `${surahName} ${formatVerseRange(verseKeys)}`,
     };
   }, [verseKeys, selectedTranslationId]);
+
+  // A verse link opens one verse (the URL scheme has no ranges), so the
+  // message sent with it cites that verse, not the whole selection.
+  const linkRefText = useMemo(() => {
+    const surah = surahData.find(s => s.id === surahNumber);
+    const ref = formatVerseRange([`${surahNumber}:${ayahNumber}`]);
+    return `${surah?.name ?? ''} ${ref}`;
+  }, [surahNumber, ayahNumber]);
   // @ai-end
 
   const handleShareAsImage = useCallback(async () => {
@@ -176,12 +184,15 @@ export const ShareContent: React.FC<ShareContentProps> = ({
         );
         return;
       }
-      const parts = [
+      // The layout shared before Release 1, so Hafs text is shared byte for
+      // byte as before: the translation paragraph stays (empty) when there
+      // is no translation.
+      const message = [
         joinVerseTexts(result.texts),
         translation,
         `-- ${formatQuranCitation(verseRefText, result.rewayah)}`,
-      ].filter(Boolean);
-      await Share.share({message: parts.join('\n\n')});
+      ].join('\n\n');
+      await Share.share({message});
       SheetManager.hideAll();
     } finally {
       setIsPreparingText(false);
@@ -206,9 +217,9 @@ export const ShareContent: React.FC<ShareContentProps> = ({
       isDarkMode ? 'dark' : 'light',
       rewayah,
     );
-    await nativeShareUrl(url, formatQuranCitation(verseRefText, rewayah));
+    await nativeShareUrl(url, formatQuranCitation(linkRefText, rewayah));
     SheetManager.hideAll();
-  }, [surahNumber, ayahNumber, verseRefText, isDarkMode, rewayah]);
+  }, [surahNumber, ayahNumber, linkRefText, isDarkMode, rewayah]);
   // @ai-end
 
   if (!fontMgr) return null;

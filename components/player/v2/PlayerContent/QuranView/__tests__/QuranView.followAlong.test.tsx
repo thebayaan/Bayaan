@@ -23,6 +23,9 @@ interface VerseItemProps {
 const mockVerseItems: VerseItemProps[] = [];
 const mockTrack = {rewayah: 'hafs'};
 const mockHeaderFonts: string[] = [];
+// @ai-start
+const mockHeaderProps: {rewayah?: string; surahNumber?: number}[] = [];
+// @ai-end
 
 jest.mock('../VerseItem', () => ({
   VerseItem: (props: VerseItemProps) => {
@@ -33,8 +36,13 @@ jest.mock('../VerseItem', () => ({
 
 jest.mock('../BasmalaHeader', () => ({
   __esModule: true,
-  default: (props: {dkFontFamily: string}) => {
+  default: (props: {
+    dkFontFamily: string;
+    rewayah?: string; // @ai
+    surahNumber?: number; // @ai
+  }) => {
     mockHeaderFonts.push(props.dkFontFamily);
+    mockHeaderProps.push(props); // @ai
     return null;
   },
 }));
@@ -210,6 +218,7 @@ function track(state: object | null) {
 beforeEach(() => {
   mockVerseItems.length = 0;
   mockHeaderFonts.length = 0;
+  mockHeaderProps.length = 0; // @ai
   mockTrack.rewayah = 'hafs';
   useMushafSettingsStore.setState({
     mushafRenderer: 'dk_v2',
@@ -293,6 +302,53 @@ describe('player verse list follow-along', () => {
   });
 });
 
+// @ai-start
+describe('a surah whose verses cannot be followed', () => {
+  const says = () =>
+    JSON.stringify(renderer?.toJSON() ?? null).includes(
+      'Verse tracking unavailable',
+    );
+
+  function timings(state: object) {
+    act(() => {
+      useTimestampStore.setState(state as never);
+    });
+  }
+
+  afterEach(() => {
+    useTimestampStore.setState({
+      timestampRequest: null,
+      timestampLoadStatus: 'idle',
+      trackingNumberingMode: null,
+      supportedRewayatIds: new Set<string>(),
+      followAlongEnabled: true,
+    });
+  });
+
+  it('says "Verse tracking unavailable", as the mushaf player does', () => {
+    render();
+    expect(says()).toBe(false);
+    timings({
+      followAlongEnabled: true,
+      supportedRewayatIds: new Set(['set-1']),
+      timestampRequest: {key: 'set-1-2', rewayatId: 'set-1', surahNumber: 2},
+      timestampLoadStatus: 'ready',
+      trackingNumberingMode: 'disabled',
+    });
+    expect(says()).toBe(true);
+    // a surah that can be followed says nothing
+    timings({trackingNumberingMode: 'hafs'});
+    expect(says()).toBe(false);
+    // its timing could not be loaded
+    timings({timestampLoadStatus: 'failed'});
+    expect(says()).toBe(true);
+    // follow-along switched off
+    timings({followAlongEnabled: false});
+    expect(says()).toBe(false);
+  });
+});
+// @ai-end
+
 describe('player text font', () => {
   it('IndoPak + a rewayah track: the text is drawn with DigitalKhatt', () => {
     useMushafSettingsStore.setState({mushafRenderer: 'dk_indopak'});
@@ -306,6 +362,13 @@ describe('player text font', () => {
     expect(row.wbwFontFamily).toBe('DigitalKhattIndoPak');
     // the basmala above the rewayah's verses matches them
     expect(mockHeaderFonts[mockHeaderFonts.length - 1]).toBe('DigitalKhattV2');
+    // @ai-start
+    // ...and is that rewayah's own basmala for the surah (contract C6)
+    expect(mockHeaderProps[mockHeaderProps.length - 1]).toMatchObject({
+      rewayah: 'warsh',
+      surahNumber: 2,
+    });
+    // @ai-end
   });
 
   it.each([

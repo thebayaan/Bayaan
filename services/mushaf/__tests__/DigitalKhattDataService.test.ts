@@ -14,15 +14,21 @@
  */
 import {REWAYAH_DATA_MANIFEST} from '../rewayahDataManifest';
 import {
+  BASMALLAH_TEXT, // @ai
   contentAddressedDbName,
+  dataIdentityKey, // @ai
   dbBaseName,
   DigitalKhattDataService,
+  getRewayahDataIdentity, // @ai
+  getRewayahDataIdentityKey, // @ai
   isRewayahSwitchSuperseded,
   RewayahLoadError,
   RewayahSwitchSupersededError,
   selectStaleDbFiles,
   type DKLine,
 } from '../DigitalKhattDataService';
+import {rewayahBasmalaService} from '../RewayahBasmalaService'; // @ai
+import {EXPECTED_BASMALA} from '../__fixtures__/basmalaTexts'; // @ai
 
 interface FakeFile {
   base: string;
@@ -141,7 +147,8 @@ jest.mock('expo-file-system/legacy', () => ({
 jest.mock('@/store/mushafSettingsStore', () => {
   // @ai-start
   // Mirrors the real store's rewayah rules: setRewayah is refused under
-  // qcf_v2, and showing a non-Hafs rewayah ends a startup fallback.
+  // qcf_v2, showing a non-Hafs rewayah ends a startup fallback, and starting
+  // one names Hafs in the same update.
   const state = {
     rewayah: 'hafs',
     mushafRenderer: 'dk_v2',
@@ -153,6 +160,7 @@ jest.mock('@/store/mushafSettingsStore', () => {
     }),
     startRewayahFallback: jest.fn((from: string) => {
       if (from !== 'hafs' && state.mushafRenderer !== 'qcf_v2') {
+        state.rewayah = 'hafs';
         state.rewayahFallbackFrom = from;
       }
     }),
@@ -161,7 +169,14 @@ jest.mock('@/store/mushafSettingsStore', () => {
     }),
   };
   // @ai-end
-  return {useMushafSettingsStore: {getState: () => state}, __state: state};
+  return {
+    useMushafSettingsStore: {
+      getState: () => state,
+      subscribe: () => () => undefined, // @ai
+    },
+    rendererPinsHafs: (renderer: string) => renderer === 'qcf_v2', // @ai
+    __state: state,
+  };
 });
 
 const WORD_LOCATIONS = [
@@ -218,6 +233,13 @@ function line(
   };
 }
 
+// @ai-start
+// Like the layout DB, basmallah lines carry no surah number (NULL).
+const NO_SURAH = null as unknown as number;
+// Set by the basmallah-line tests: the layout then also has pages 3-4.
+let mockWithBasmalaPages = false;
+// @ai-end
+
 function mockPageRows(): DKLine[] {
   return [
     line(1, 1, 'surah_name', 0, 0, 1),
@@ -226,6 +248,18 @@ function mockPageRows(): DKLine[] {
     line(2, 1, 'surah_name', 0, 0, 2),
     line(2, 2, 'ayah', 9, 10, 2),
     line(2, 3, 'ayah', 11, 12, 2),
+    // @ai-start
+    // Basmallah lines: one under its header, one at the top of the page
+    // after its header (al-Susi writes the basmala of surah 14 'بِّسۡمِ').
+    ...(mockWithBasmalaPages
+      ? [
+          line(3, 1, 'surah_name', 0, 0, 13),
+          line(3, 2, 'basmallah', NO_SURAH, NO_SURAH, NO_SURAH),
+          line(3, 3, 'surah_name', 0, 0, 14),
+          line(4, 1, 'basmallah', NO_SURAH, NO_SURAH, NO_SURAH),
+        ]
+      : []),
+    // @ai-end
   ];
 }
 
@@ -536,9 +570,13 @@ describe('switchRewayah', () => {
     expect(service.getPageForVerse('2:1')).toBe(2);
     expect(service.getCacheVersion()).toBe(version + 1);
     expect(store.rewayah).toBe('warsh');
+    // @ai-start
+    // Warsh draws its own basmala lines: their data version is in the key.
     expect(service.getLayoutIdentityKey()).toBe(
-      `warsh@${sha8('dk_words_warsh.db')}.${sha8('digital-khatt-15-lines.db')}`,
+      `warsh@${sha8('dk_words_warsh.db')}.${sha8('digital-khatt-15-lines.db')}` +
+        `.${rewayahBasmalaService.getDataVersion('warsh')}`,
     );
+    // @ai-end
     // Shared layout DB: not read again.
     expect(count(`read:${N.layout}`)).toBe(1);
     // Listener first (after the swap, version already bumped), then cache
@@ -678,15 +716,13 @@ describe('initialization failures', () => {
     expect(texts(service, '1:1')).toEqual(H);
     expect(service.getRewayahLoadState('warsh')).toBe('error');
     // The label names the Hafs on screen; the saved Warsh is recorded as a
-    // fallback (which the real store persists instead of Hafs) before the
-    // commit relabels the store.
+    // fallback (which the real store persists instead of Hafs) by the Hafs
+    // commit itself, in the update that names Hafs.
     expect(store.rewayah).toBe('hafs');
     expect(store.rewayahFallbackFrom).toBe('warsh');
+    expect(store.startRewayahFallback).toHaveBeenCalledTimes(1);
     expect(store.startRewayahFallback).toHaveBeenCalledWith('warsh');
-    expect(store.setRewayah).toHaveBeenCalledWith('hafs');
-    expect(store.startRewayahFallback.mock.invocationCallOrder[0]).toBeLessThan(
-      store.setRewayah.mock.invocationCallOrder[0],
-    );
+    expect(store.setRewayah).not.toHaveBeenCalledWith('hafs');
   });
 
   it('retries the saved rewayah on demand after a startup fallback', async () => {
@@ -850,14 +886,56 @@ describe('side cache', () => {
     expect(service.getRewayahLoadState('hafs')).toBe('idle');
   });
 
-  it('pins a retained copy that a consumer requested explicitly', async () => {
+  // @ai-start
+  it('keeps a copy a mounted surface retains, however often the mushaf switches', async () => {
+    // The player shows a Warsh reciter while the mushaf moves on.
     const service = await initialized();
     await service.switchRewayah('warsh');
-    await service.ensureRewayahLoaded('hafs');
+    const release = service.retainRewayah('warsh');
     await service.switchRewayah('qalun');
-    expect(service.getRewayahLoadState('hafs')).toBe('ready');
+    await service.switchRewayah('shubah');
+    await service.ensureRewayahLoaded('al-bazzi');
     expect(service.getRewayahLoadState('warsh')).toBe('ready');
+    expect(texts(service, '1:1', 'warsh')).toEqual(W);
+    expect(count(`read:${N.warsh}`)).toBe(1);
+
+    // Once nothing shows it, it is bounded like any other copy.
+    release();
+    await service.switchRewayah('qunbul');
+    expect(service.getRewayahLoadState('warsh')).toBe('idle');
   });
+
+  it('keeps a copy until every surface that retains it is gone', async () => {
+    const service = await initialized();
+    await service.ensureRewayahLoaded('warsh');
+    const first = service.retainRewayah('warsh');
+    const second = service.retainRewayah('warsh');
+    first();
+    first(); // releasing twice counts once
+    await service.ensureRewayahLoaded('qalun');
+    await service.ensureRewayahLoaded('shubah');
+    expect(service.getRewayahLoadState('warsh')).toBe('ready');
+    second();
+    await service.ensureRewayahLoaded('al-bazzi');
+    expect(service.getRewayahLoadState('warsh')).toBe('idle');
+  });
+
+  it('bounds the side copies nothing shows', async () => {
+    const service = await initialized();
+    await service.ensureRewayahLoaded('warsh');
+    await service.ensureRewayahLoaded('qalun');
+    await service.ensureRewayahLoaded('shubah');
+    expect(service.getRewayahLoadState('shubah')).toBe('ready');
+    expect(service.getRewayahLoadState('warsh')).toBe('idle');
+    expect(service.getRewayahLoadState('qalun')).toBe('idle');
+    // An explicit request makes a copy the most recently used one.
+    await service.switchRewayah('al-bazzi');
+    await service.ensureRewayahLoaded('hafs');
+    await service.ensureRewayahLoaded('qunbul');
+    expect(service.getRewayahLoadState('qunbul')).toBe('ready');
+    expect(service.getRewayahLoadState('hafs')).toBe('idle');
+  });
+  // @ai-end
 
   it('before initialization the placeholder rewayah waits for init instead of loading a copy', async () => {
     const service = new DigitalKhattDataService();
@@ -891,3 +969,92 @@ describe('resetDatabases', () => {
     expect(texts(service, '1:1')).toEqual(H);
   });
 });
+
+// @ai-start
+describe('basmallah lines (contract C6)', () => {
+  const SUSI_14 = EXPECTED_BASMALA['al-susi']!.bySurah[14].dk;
+  const SUSI = EXPECTED_BASMALA['al-susi']!.dk;
+  const WARSH = EXPECTED_BASMALA.warsh!.dk;
+
+  beforeEach(() => {
+    mockWithBasmalaPages = true;
+  });
+  afterEach(() => {
+    mockWithBasmalaPages = false;
+  });
+
+  function basmalaLines(service: DigitalKhattDataService) {
+    return [service.getPageLines(3)[1], service.getPageLines(4)[0]];
+  }
+
+  it('finds the surah each basmallah line opens, across a page break', async () => {
+    const service = await initialized();
+    const [opens13, opens14] = basmalaLines(service);
+    expect(service.getBasmalaSurah(opens13)).toBe(13);
+    expect(service.getBasmalaSurah(opens14)).toBe(14);
+    expect(service.getBasmalaSurah(service.getPageLines(3)[0])).toBeNull();
+    expect(service.getBasmalaSurah(service.getPageLines(1)[1])).toBeNull();
+  });
+
+  it('Hafs draws BASMALLAH_TEXT on every basmallah line, byte for byte', async () => {
+    const service = await initialized();
+    for (const basmala of basmalaLines(service)) {
+      expect(service.getLineText(basmala)).toBe(BASMALLAH_TEXT);
+    }
+    expect(BASMALLAH_TEXT).toBe(
+      '\u0628\u0650\u0633\u0652\u0645\u0650 \u0671\u0644\u0644\u064E\u0651\u0647\u0650 ' +
+        '\u0671\u0644\u0631\u064E\u0651\u062D\u0652\u0645\u064E\u0670\u0646\u0650 ' +
+        '\u0671\u0644\u0631\u064E\u0651\u062D\u0650\u064A\u0645\u0650',
+    );
+  });
+
+  it("another rewayah draws its own basmala, in the surah's own spelling", async () => {
+    const service = await initialized();
+    await service.switchRewayah('warsh');
+    expect(basmalaLines(service).map(l => service.getLineText(l))).toEqual([
+      WARSH,
+      WARSH,
+    ]);
+    await service.switchRewayah('al-susi');
+    expect(basmalaLines(service).map(l => service.getLineText(l))).toEqual([
+      SUSI,
+      SUSI_14,
+    ]);
+    await service.switchRewayah('hafs');
+    expect(basmalaLines(service).map(l => service.getLineText(l))).toEqual([
+      BASMALLAH_TEXT,
+      BASMALLAH_TEXT,
+    ]);
+  });
+
+  it('a rewayah with its own basmala has its data version in the layout identity; Hafs keeps its key', async () => {
+    const service = await initialized();
+    const hafsKey = `hafs@${sha8('digital-khatt-v2.db')}.${sha8('digital-khatt-15-lines.db')}`;
+    expect(service.getLayoutIdentityKey()).toBe(hafsKey);
+    expect(getRewayahDataIdentityKey('hafs')).toBe(hafsKey);
+    expect(getRewayahDataIdentity('hafs')).not.toHaveProperty('basmalaVersion');
+
+    await service.switchRewayah('al-susi');
+    const version = rewayahBasmalaService.getDataVersion('al-susi');
+    expect(version).toMatch(/^[0-9a-f]{8}$/);
+    expect(service.getDataIdentity()).toEqual({
+      rewayah: 'al-susi',
+      wordsSha8: sha8('dk_words_soosi.db'),
+      layoutSha8: sha8('digital-khatt-15-lines.db'),
+      basmalaVersion: version,
+    });
+    // The identity the layout-cache pruning compares with is the same.
+    expect(getRewayahDataIdentityKey('al-susi')).toBe(
+      service.getLayoutIdentityKey(),
+    );
+    expect(
+      dataIdentityKey({
+        rewayah: 'al-susi',
+        wordsSha8: 'aaaaaaaa',
+        layoutSha8: 'bbbbbbbb',
+        basmalaVersion: 'cccccccc',
+      }),
+    ).toBe('al-susi@aaaaaaaa.bbbbbbbb.cccccccc');
+  });
+});
+// @ai-end
