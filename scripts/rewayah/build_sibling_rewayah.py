@@ -16,6 +16,7 @@ when that is on another filesystem):
   dk_words_<id>.db     CREATE TABLE + INSERT in id order + VACUUM (deterministic bytes)
   <id>-diff.json       highlight map, format 2 (contract C2)
   <id>-versemap.json   rewayah <-> Hafs verse map, format 1 (contract C3)
+  <id>-basmala.json    the official basmala lines, format 1 (contract C6)
 then runs the hard validator (validate_rewayah_db.validate, plus the sibling
 gate for every narrator pair it touches) on them and only if everything
 passes replaces the files in data/mushaf/digitalkhatt/ atomically
@@ -30,7 +31,8 @@ committed DBs were written by SQLite 3.53.3 (Python 3.14).
 
 Algorithm (the reconciled prototype of the 2026-10 audit, adapted to v2.x)
 --------------------------------------------------------------------------
-1. Sources: scripts/rewayah/sources/<id>.json, verified against
+1. Sources: scripts/rewayah/sources/<id>.json and sources/basmala.json (the
+   basmala lines of the signed KFGQPC Word files), verified against
    sources/sources.lock.json (SHA-256) before anything is read.
    normalize.load_source/parse_verse tokenize each verse; normalize.dk_tokens
    converts each token to DK encoding (conventions + RENDER_POLICY), with the
@@ -51,15 +53,17 @@ Algorithm (the reconciled prototype of the 2026-10 audit, adapted to v2.x)
          in a right-non-joining letter; otherwise one space
      P12 37:130 'إِلْ يَاسِينَ' (a Hafs slot with a space) keeps both words
      P10 Fatiha, sources without a basmala verse (Madani/Basri counts): the
-         exact Hafs basmala words stay in 1:1:1-4, the 1:1 marker is blank and
-         numbering starts at al-hamdu
+         official basmala of the signed Word file (sources/basmala.json,
+         converted like every word) fills 1:1:1-4, unnumbered: the 1:1 marker
+         is blank and numbering starts at al-hamdu. No Hafs word is kept
 5. Markers: a Hafs marker slot receives the target marker of verse v iff the
    last target token consumed so far is the last token of v; otherwise ''
    (P7). A target verse end with no Hafs marker slot is written inline after
    the verse's last token inside its slot ('عَلَيْهِمْ ۝٦', P6), so every surah
    displays 1..N.
-6. Highlights (format 2) and the verse map are computed from the same final
-   assignment (see make_diff / make_versemap). The highlight classifier
+6. Highlights (format 2), the verse map and the basmala file are computed
+   from the same final assignment (see make_diff / make_versemap /
+   make_basmala). The highlight classifier
    (highlights.py) gets each slot's next word in Hafs and in the rewayah, and
    Warsh / al-Susi also get the whole-word tint that Qalun / al-Duri give to
    the same stored words (highlights.SIBLING_BASE), so the builder aligns that
@@ -95,6 +99,7 @@ LOCK_FILE = SOURCES_DIR / "sources.lock.json"
 
 DIFF_FORMAT = 2
 VERSEMAP_FORMAT = 1
+BASMALA_FORMAT = 1
 WHOLE_WORD_CATEGORY = {rid: ("major" if rid in N.CLOSE else "mukhtalif") for rid in N.REWAYAT}
 
 # ---------------------------------------------------------------------------
@@ -262,7 +267,7 @@ class HafsRow:
 
 @dataclass
 class Token:
-    raw: str  # KFGQPC token ('' for the P10 pseudo basmala words)
+    raw: str  # KFGQPC token (Word-file basmala word for P10)
     dk: str  # stored DK text
     verse: int  # target ayah number; 0 for the P10 basmala words
     last_of_verse: bool
@@ -280,6 +285,7 @@ class Assignment:
 
     rid: str
     verses: list[N.Verse]
+    basmala: N.Basmala
     texts: dict[int, str]  # word id -> stored text
     # word id -> (surah, ayah, word, Hafs text, stored words, next words) for
     # every non-blank content slot whose words differ from the Hafs slot
@@ -295,6 +301,7 @@ class Result:
     texts: dict[int, str]  # word id -> stored text
     diff: dict
     versemap: dict
+    basmala: dict
     stats: Counter
     events: list[str]
 
@@ -340,9 +347,12 @@ def verify_source(rid: str) -> Path:
     got = sha256_file(path)
     if got != entry["sha256"]:
         raise BuildError(f"{rid}: {path.name} sha256 {got} != locked {entry['sha256']}")
-    errata = lock.get("errata", {})
-    if errata.get("sha256") and sha256_file(SOURCES_DIR / errata["file"]) != errata["sha256"]:
-        raise BuildError(f"{errata['file']} sha256 differs from {LOCK_FILE.name}")
+    for extra in ("errata", "basmala"):
+        locked = lock.get(extra, {})
+        if locked.get("sha256") and sha256_file(SOURCES_DIR / locked["file"]) != locked["sha256"]:
+            raise BuildError(f"{locked['file']} sha256 differs from {LOCK_FILE.name}")
+    if not lock.get("basmala", {}).get("sha256"):
+        raise BuildError(f"{LOCK_FILE.name} does not lock basmala.json")
     return path
 
 
@@ -350,6 +360,7 @@ def assign(rid: str, hafs: list[HafsRow], source: Path | None = None) -> Assignm
     """Align the official text of `rid` to the Hafs slots (steps 1-5)."""
     source = source if source is not None else verify_source(rid)
     verses = N.load_source(source, rid)
+    basmala = N.load_basmala(rid)
     dk_of = dict(zip(((v.surah, v.ayah) for v in verses), N.dk_tokens(verses, rid)))
     by_surah_t: dict[int, list[N.Verse]] = {}
     for v in verses:
@@ -373,11 +384,13 @@ def assign(rid: str, hafs: list[HafsRow], source: Path | None = None) -> Assignm
         # --- target token stream -------------------------------------------
         toks: list[Token] = []
         if surah == 1 and skel(dk_of[(1, 1)][0]) != "\u0628\u0633\u0645":
-            # P10: keep the exact Hafs basmala words, unnumbered.
-            basmala = [r for r in rows if r.ayah == 1 and not r.is_marker]
-            for r in basmala:
-                toks.append(Token("", r.text, 0, False))
-            stats["P10 fatiha basmala words kept"] += len(basmala)
+            # P10: the official basmala of the signed Word file, unnumbered.
+            if basmala.fatiha_numbered:
+                raise BuildError(f"{rid}: the Word file numbers al-Fatiha's basmala, the JSON source does not")
+            words = basmala.official.split(" ")
+            for raw, dk in zip(words, N.basmala_dk_tokens(basmala.official, rid), strict=True):
+                toks.append(Token(raw, dk, 0, False))
+            stats["P10 fatiha basmala words (signed Word file)"] += len(words)
         for v in tverses:
             dks = dk_of[(v.surah, v.ayah)]
             for k, raw in enumerate(v.tokens):
@@ -506,7 +519,9 @@ def assign(rid: str, hafs: list[HafsRow], source: Path | None = None) -> Assignm
 
     # --- highlight inputs: stored words + the words read after the slot ----
     # (across verse and surah ends: the KFGQPC texts join surahs, e.g. Warsh
-    # 93:11 'فَحَدِّثَ اَلَم۟', al-Susi's idgham into the next basmala)
+    # 93:11 'فَحَدِّثَ اَلَم۟', al-Susi's idgham into the next basmala, whose
+    # first word comes from the signed Word file: basmala_lead)
+    basmala_lead = {s: N.basmala_dk_tokens(w, rid)[0] for s, w in basmala.by_surah.items()}
     target_next = [""] * len(mushaf)
     following = ""
     for k in range(len(mushaf) - 1, -1, -1):
@@ -524,11 +539,11 @@ def assign(rid: str, hafs: list[HafsRow], source: Path | None = None) -> Assignm
         hn = k + (2 if s.covers_next else 1)
         hafs_next = mushaf[hn][0].text.split(" ")[0] if hn < len(mushaf) else ""
         surah_end = hn >= len(mushaf) or mushaf[hn][0].surah != row.surah
-        basmala_next = surah_end and row.surah < 114 and row.surah + 1 != 9
+        basmala_next = basmala_lead.get(row.surah + 1, "") if surah_end else ""
         ctx = HL.Context(hafs_next, target_next[k], basmala_next)
         hl_inputs[row.id] = (row.surah, row.ayah, row.word, base, words_text, ctx)
 
-    return Assignment(rid, verses, texts, hl_inputs, r2h, stats, events)
+    return Assignment(rid, verses, basmala, texts, hl_inputs, r2h, stats, events)
 
 
 def _whole_word(cats: list[tuple[str, list[int]]]) -> bool:
@@ -591,7 +606,26 @@ def build(
         sibling = cache[sib_rid]
     diff, diff_stats = make_diff(a, sibling)
     versemap = make_versemap(rid, a.verses, a.r2h, hafs)
-    return Result(rid, a.texts, diff, versemap, a.stats + diff_stats, list(a.events))
+    return Result(rid, a.texts, diff, versemap, make_basmala(rid, a.basmala), a.stats + diff_stats, list(a.events))
+
+
+def make_basmala(rid: str, b: N.Basmala) -> dict:
+    """Contract C6 (<id>-basmala.json, format 1): the official basmala of the
+    rewayah's signed Word file and its DK text (normalize.basmala_dk_tokens),
+    plus every surah whose basmala line differs from it (bySurah: al-Susi's
+    idgham into 14 / 15, the doubled ba after 94 / 96, the Nafi' waqf sign
+    before 75 / 83 / 90 / 104), and the Word file it comes from."""
+
+    def entry(words: str) -> dict[str, str]:
+        return {"official": words, "dk": " ".join(N.basmala_dk_tokens(words, rid))}
+
+    return {
+        "__format": BASMALA_FORMAT,
+        "rewayah": N.APP_IDS[rid],
+        **entry(b.official),
+        "bySurah": {str(s): entry(w) for s, w in sorted(b.by_surah.items()) if w != b.official},
+        "source": {"file": b.docx, "sha256": b.docx_sha256},
+    }
 
 
 def make_versemap(rid: str, verses: list[N.Verse], r2h_full: dict[str, list[str]], hafs: list[HafsRow]) -> dict:
@@ -697,8 +731,13 @@ def write_json(path: Path, obj: dict) -> None:
     path.write_text(json.dumps(obj, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8")
 
 
-def output_names(rid: str) -> tuple[str, str, str]:
-    return f"dk_words_{rid}.db", f"{rid}-diff.json", f"{rid}-versemap.json"
+def write_sorted_json(path: Path, obj: dict) -> None:
+    """Contract C6 serialization: sorted keys, 2-space indent, trailing newline."""
+    path.write_text(json.dumps(obj, ensure_ascii=False, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+
+
+def output_names(rid: str) -> tuple[str, str, str, str]:
+    return f"dk_words_{rid}.db", f"{rid}-diff.json", f"{rid}-versemap.json", f"{rid}-basmala.json"
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -731,10 +770,11 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"[{rid}] BUILD FAILED: {e}", file=sys.stderr)
                 failures += 1
                 continue
-            db_name, diff_name, map_name = output_names(rid)
+            db_name, diff_name, map_name, basmala_name = output_names(rid)
             write_db(tmp / db_name, hafs, res.texts, schema)
             write_json(tmp / diff_name, res.diff)
             write_json(tmp / map_name, res.versemap)
+            write_sorted_json(tmp / basmala_name, res.basmala)
             print(f"[{rid}] built:")
             for k, v in sorted(res.stats.items()):
                 print(f"    {k}: {v}")
@@ -746,6 +786,7 @@ def main(argv: list[str] | None = None) -> int:
                 db_path=tmp / db_name,
                 diff_path=tmp / diff_name,
                 versemap_path=tmp / map_name,
+                basmala_path=tmp / basmala_name,
                 source_path=SOURCES_DIR / f"{rid}.json",
                 hafs_db=HAFS_DB,
                 glyphs=False,

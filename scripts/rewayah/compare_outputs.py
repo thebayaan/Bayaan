@@ -4,7 +4,8 @@ Compare freshly built rewayah outputs with the committed ones (drift check).
 
 Usage: python3 scripts/rewayah/compare_outputs.py FRESH_DIR COMMITTED_DIR [rid ...]
 
-<id>-diff.json and <id>-versemap.json must be byte-identical. dk_words_<id>.db
+<id>-diff.json, <id>-versemap.json and <id>-basmala.json must be
+byte-identical. dk_words_<id>.db
 must have the same schema and rows; its bytes are compared too when both
 files were written by the same SQLite version (the header records it), since
 other SQLite builds may lay out pages differently. Exit 1 on any difference.
@@ -45,7 +46,7 @@ def main(argv: list[str]) -> int:
     rids = argv[2:] or list(N.REWAYAT)
     bad = 0
     for rid in rids:
-        for name in (f"{rid}-diff.json", f"{rid}-versemap.json"):
+        for name in (f"{rid}-diff.json", f"{rid}-versemap.json", f"{rid}-basmala.json"):
             a, b = fresh / name, committed / name
             if not b.exists() or a.read_bytes() != b.read_bytes():
                 print(f"DIFF {name}: committed file is not what the builder produces")

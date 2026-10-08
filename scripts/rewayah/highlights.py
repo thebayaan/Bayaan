@@ -65,8 +65,9 @@ NOT highlighted (the reading_key() normalizations):
                   letter is doubled in al-Susi but not in Hafs; a meem before
                   ba is concealed without its vowel and the ba is not doubled
                   ('أَعْلَم بِمَا'); a ba ending a surah merges into the ba of
-                  the next surah's basmala (13:43, 14:52; the signed al-Susi
-                  Word file writes that basmala 'بِّسۡمِ').
+                  the next surah's basmala when the signed al-Susi Word file
+                  writes that basmala with a doubled ba ('بِّسۡمِ' before 14
+                  and 15, after 13:43 and 14:52; Context.basmala_next).
               In the far rewayat the vowel of a final letter may also be
               written only as the connecting vowel of the next word's wasl
               alef (encoding: al-Susi 14:36 'مِّن اَ۬لنَّاسِ').
@@ -180,13 +181,15 @@ _WASL_START = re.compile("^(\u06DE?)\u0627[\u064E\u064F\u0650]?\u06DF[\u064E\u06
 class Context:
     """The words read after a slot: the first word of the next non-blank
     content slot in Hafs and in the rewayah (verse markers skipped, verse and
-    surah ends crossed; '' after 114:6). `basmala_next`: the slot is the last
-    word of a surah followed by a basmala (not before at-Tawbah), which is not
-    in the verse data."""
+    surah ends crossed; '' after 114:6). `basmala_next`: when the slot is the
+    last word of a surah followed by a basmala (not before at-Tawbah), which
+    is not in the verse data, the first word of that basmala line as the
+    rewayah's signed Word file writes it (DK text, sources/basmala.json);
+    otherwise ''."""
 
     hafs_next: str = ""
     target_next: str = ""
-    basmala_next: bool = False
+    basmala_next: str = ""
 
 
 class _Unit:
@@ -518,15 +521,17 @@ def _susi_merge(a: list[_Unit], ctx: Context) -> bool:
     the next word's first letter doubled (see _idgham_kabir_into_next);
     a meem before ba, concealed (ikhfa') without its vowel and without a
     doubled ba ('أَعْلَم بِمَا');
-    a ba at the end of a surah into the ba of the next surah's basmala (the
-    signed al-Susi Word file writes that basmala 'بِّسۡمِ': 13:43, 14:52)."""
+    a ba at the end of a surah into the ba of the next surah's basmala, which
+    the signed al-Susi Word file then writes with a doubled ba ('بِّسۡمِ':
+    13:43, 14:52)."""
     if _idgham_kabir_into_next(ctx):
         return True
     last = a[-1].letter
     nxt = _lead_unit(ctx.target_next, "soosi")
     if last == "\u0645" and nxt is not None and nxt.letter == "\u0628" and not ctx.basmala_next:
         return True
-    return ctx.basmala_next and last == "\u0628"
+    bas = _lead_unit(ctx.basmala_next, "soosi") if ctx.basmala_next else None
+    return last == "\u0628" and bas is not None and bas.letter == "\u0628" and bas.shadda
 
 
 def _final_vowel_excused(a: list[_Unit], b: list[_Unit], rid: str, ctx: Context) -> bool:

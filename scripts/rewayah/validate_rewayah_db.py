@@ -24,7 +24,10 @@ Gates (each failure is reported; exit code 1 if any gate fails):
               fonts have none, so this is checked on the text)
   stream      per surah, the slot tokens read in id order are EXACTLY the
               normalized source tokens (content + verse markers). Allowed:
-              Fatiha basmala exception (P10) and declared A2 joins
+              declared A2 joins and the Fatiha basmala (P10): a source without
+              a basmala verse has EXACTLY the official basmala words of its
+              signed Word file (sources/basmala.json, converted like every
+              word) in 1:1:1-4 and a blank 1:1 marker slot
   numbers     the displayed verse numbers of every surah are 1..N of the source
   markers     every verse number sits in the first Hafs marker slot after the
               verse's last word (P7); it is written inline at the end of the
@@ -43,6 +46,14 @@ Gates (each failure is reported; exit code 1 if any gate fails):
               inline marker) differ from Hafs, whole-word entries [] and
               silah indices on silah marks before any inline marker
   versemap    <id>-versemap.json format 1 equals the map re-derived from the DB
+  basmala     <id>-basmala.json (contract C6) is exactly the document
+              re-derived from sources/basmala.json (locked, from the signed
+              Word file) and the render policy, in canonical bytes; its DK
+              words are in the DK cmap and keep the official letters; al-Fatiha's
+              basmala is numbered in the Word file exactly when the JSON source
+              counts it as verse 1 (then with the same words); 1:1:1-4 hold its
+              DK words and carry no highlight; and when they differ from the
+              Hafs basmala, the Hafs basmala occurs nowhere in the DB
   siblings    (whenever both rewayat of a pair are validated: Warsh / Qalun,
               al-Duri / al-Susi, al-Bazzi / Qunbul) a content slot holding the
               same words in both DBs, differing from Hafs, gets the same
@@ -55,7 +66,8 @@ Gates (each failure is reported; exit code 1 if any gate fails):
               a mark left without an anchor (zero offset) or a mark turned
               into a spacing glyph where the Hafs DB has no such cluster is
               allowed only for a reviewed cluster that lists that issue;
-              with all 7 rewayat, a review entry no DB uses also fails
+              with all 7 rewayat, a review entry no DB uses also fails. The
+              DK words of <id>-basmala.json are shaped too
 """
 from __future__ import annotations
 
@@ -245,6 +257,120 @@ def check_source_lock(rid: str, source_path: Path, rep: Report) -> None:
     errata = lock.get("errata", {})
     if errata.get("sha256") and sha256_file(SOURCES_DIR / errata["file"]) != errata["sha256"]:
         rep.fail("sources", f"{errata['file']} sha256 differs from {LOCK_FILE.name}")
+    basmala = lock.get("basmala", {})
+    if not basmala.get("sha256"):
+        rep.fail("sources", f"{LOCK_FILE.name} does not lock basmala.json")
+    elif sha256_file(SOURCES_DIR / basmala["file"]) != basmala["sha256"]:
+        rep.fail("sources", f"{basmala['file']} sha256 differs from {LOCK_FILE.name}")
+
+
+# ---------------------------------------------------------------------------
+# Basmala (contract C6)
+# ---------------------------------------------------------------------------
+
+BASMALA_FORMAT = 1
+
+
+def load_official_basmala(
+    rid: str, verses: list[N.Verse], rep: Report
+) -> tuple[N.Basmala, tuple[str, ...]] | None:
+    """The official basmala of `rid` (sources/basmala.json) and the DK tokens
+    of its default line, or None (with a failure) when it cannot be used."""
+    try:
+        b = N.load_basmala(rid)
+    except N.SourceError as e:
+        rep.fail("basmala", f"sources/basmala.json: {e}")
+        return None
+    json_counts = _skel(verses[0].tokens[0]) == "\u0628\u0633\u0645"
+    if b.fatiha_numbered != json_counts:
+        rep.fail(
+            "basmala",
+            f"the Word file {'numbers' if b.fatiha_numbered else 'does not number'} al-Fatiha's basmala but the "
+            f"JSON source {'counts' if json_counts else 'does not count'} it as verse 1",
+        )
+    elif json_counts and verses[0].tokens != tuple(b.official.split(" ")):
+        rep.fail("basmala", f"al-Fatiha's basmala {b.official!r} differs from verse 1 of the JSON source")
+    return b, N.basmala_dk_tokens(b.official, rid)
+
+
+def basmala_gate(
+    rid: str,
+    path: Path,
+    basmala: tuple[N.Basmala, tuple[str, ...]],
+    db: list[tuple],
+    hafs: list[tuple],
+    basmala_ids: list[int],
+    diff: dict,
+    rep: Report,
+    stats: Counter,
+) -> list[str]:
+    """Check <id>-basmala.json and the basmala words of the DB (see the
+    module docstring). Returns the DK words of the file (for the glyph gate)."""
+    b, default_dk = basmala
+    locked = json.loads(LOCK_FILE.read_text(encoding="utf-8")).get("basmala", {}).get("docx", {}).get(rid, {})
+    if (b.docx, b.docx_sha256) != (locked.get("file"), locked.get("sha256")):
+        rep.fail("basmala", f"sources/basmala.json names {b.docx} {b.docx_sha256}, {LOCK_FILE.name} {locked}")
+    words: list[str] = []
+
+    def dk(text: str, where: str) -> str:
+        toks = N.basmala_dk_tokens(text, rid)
+        for raw, tok in zip(text.split(" "), toks):
+            bad = sorted({c for c in tok if c not in DK_CMAP})
+            if bad:
+                rep.fail("basmala", f"{where}: code points outside the DK cmap {[f'U+{ord(c):04X}' for c in bad]} in {tok!r}")
+            if unicodedata.category(tok[0]).startswith("M"):
+                rep.fail("basmala", f"{where}: token starts with a combining mark: {tok!r}")
+            if canonical_letters(tok) != canonical_letters(raw):
+                rep.fail("basmala", f"{where}: {tok!r} does not keep the letters of the official {raw!r}")
+        words.extend(toks)
+        return " ".join(toks)
+
+    expected = {
+        "__format": BASMALA_FORMAT,
+        "rewayah": N.APP_IDS[rid],
+        "official": b.official,
+        "dk": dk(b.official, "default"),
+        "bySurah": {
+            str(s): {"official": w, "dk": dk(w, f"surah {s}")} for s, w in sorted(b.by_surah.items()) if w != b.official
+        },
+        "source": {"file": b.docx, "sha256": b.docx_sha256},
+    }
+    try:
+        raw = Path(path).read_bytes()
+        got = json.loads(raw.decode("utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as e:
+        rep.fail("basmala", f"cannot read {path}: {e}")
+    else:
+        if got != expected:
+            keys = sorted(k for k in set(got) | set(expected) if got.get(k) != expected.get(k))
+            rep.fail("basmala", f"{Path(path).name} differs from the official basmala at {keys}")
+        elif raw != (json.dumps(expected, ensure_ascii=False, sort_keys=True, indent=2) + "\n").encode("utf-8"):
+            rep.fail("basmala", f"{Path(path).name} is not canonical JSON (sorted keys, 2-space indent, final newline)")
+    db_text = {r[0]: r[5] for r in db}
+    in_db = [db_text[i] for i in basmala_ids]
+    if in_db != list(default_dk):
+        rep.fail("basmala", f"1:1:1-4 hold {in_db}, not the official basmala {list(default_dk)}")
+    cats = diff.get("1:1", {})
+    tinted = sorted(
+        {
+            e[0]
+            for entries in (cats.values() if isinstance(cats, dict) else [])
+            for e in (entries if isinstance(entries, list) else [])
+            if isinstance(e, list) and e and e[0] in (1, 2, 3, 4)
+        }
+    )
+    if tinted:
+        rep.fail("basmala", f"the basmala words 1:1:{tinted} carry a highlight (the basmala reads as in Hafs)")
+    hafs_text = {h[0]: h[5] for h in hafs}
+    hafs_basmala = [hafs_text[i] for i in basmala_ids]
+    if hafs_basmala != list(default_dk):
+        stream = [(t, r[1]) for r in db if r[5] for t in r[5].split(" ") if not N.is_marker(t)]
+        n = len(hafs_basmala)
+        hits = [stream[k][1] for k in range(len(stream) - n + 1) if [t for t, _ in stream[k : k + n]] == hafs_basmala]
+        for loc in hits:
+            rep.fail("basmala", f"the Hafs basmala occurs at {loc}")
+    stats["basmala lines differing from the default"] = len(expected["bySurah"])
+    return words
 
 
 # ---------------------------------------------------------------------------
@@ -272,9 +398,15 @@ def validate(
     glyphs: bool = False,
     marks: bool = False,
     out: TextIO = sys.stdout,
+    basmala_path: Path | None = None,
 ) -> bool:
+    """`basmala_path` defaults to <id>-basmala.json next to the words DB."""
     rep = Report(rid, out)
-    gates = ["sources", "rows", "slots", "stream", "numbers", "markers", "letters", "placement", "diff", "versemap"]
+    basmala_path = basmala_path if basmala_path is not None else Path(db_path).parent / f"{rid}-basmala.json"
+    gates = [
+        "sources", "rows", "slots", "stream", "numbers", "markers", "letters", "placement", "diff", "versemap",
+        "basmala",
+    ]
     if glyphs:
         gates.append("glyphs")
 
@@ -350,18 +482,25 @@ def validate(
         if text:
             actual.setdefault(s, []).extend((t, wid) for t in text.split(" "))
 
+    basmala = load_official_basmala(rid, verses, rep)
+    basmala_ids = [loc_to_id[(1, 1, k)] for k in (1, 2, 3, 4)]
     fatiha_exception = False
     if _skel(expected[1][0][0]) != "\u0628\u0633\u0645":
-        basmala_ids = [loc_to_id[(1, 1, k)] for k in (1, 2, 3, 4)]
         act1 = actual.get(1, [])
-        if [t for t, _ in act1[:4]] == [hafs_text[i] for i in basmala_ids] and [i for _, i in act1[:4]] == basmala_ids:
+        if basmala is None:
+            rep.fail("stream", "P10: source has no basmala verse and sources/basmala.json is not usable")
+        elif [t for t, _ in act1[:4]] == list(basmala[1]) and [i for _, i in act1[:4]] == basmala_ids:
             actual[1] = act1[4:]
             fatiha_exception = True
             marker_11 = loc_to_id[(1, 1, 5)]
             if dict((r[0], r[5]) for r in db)[marker_11] != "":
                 rep.fail("stream", "P10: the Hafs 1:1 marker slot must be blank")
         else:
-            rep.fail("stream", "P10: source has no basmala verse but 1:1:1-4 are not the exact Hafs basmala words")
+            rep.fail(
+                "stream",
+                f"P10: source has no basmala verse but 1:1:1-4 {[t for t, _ in act1[:4]]} are not the official "
+                f"basmala words of the signed Word file {list(basmala[1])}",
+            )
 
     # pair every DB token with expected tokens (A2 joins consume two)
     token_verse: dict[int, list[int]] = {}  # word id -> rewayah verse numbers of its tokens
@@ -611,9 +750,14 @@ def validate(
         stats["versemap r2h entries"] = len(exp_r2h)
         stats["versemap h2r entries"] = len(exp_h2r)
 
+    # --- basmala (contract C6) ---------------------------------------------------
+    basmala_words: list[str] = []
+    if basmala is not None:
+        basmala_words = basmala_gate(rid, basmala_path, basmala, db, hafs, basmala_ids, diff, rep, stats)
+
     # --- glyph gate -------------------------------------------------------------
     if glyphs:
-        glyph_gate(rid, db, hafs, rep, stats)
+        glyph_gate(rid, db, hafs, rep, stats, extra_words=basmala_words)
 
     if marks:
         mark_report(rid, verses, db, rep)
@@ -738,7 +882,9 @@ def _baseline(path: Path, hafs_tokens: frozenset[str]) -> tuple[set[str], set[st
     return _BASELINE_CACHE[path]
 
 
-def glyph_gate(rid: str, db: list[tuple], hafs: list[tuple], rep: Report, stats: Counter) -> None:
+def glyph_gate(
+    rid: str, db: list[tuple], hafs: list[tuple], rep: Report, stats: Counter, extra_words: list[str] | None = None
+) -> None:
     import importlib.util
 
     if importlib.util.find_spec("uharfbuzz") is None or importlib.util.find_spec("fontTools") is None:
@@ -752,6 +898,7 @@ def glyph_gate(rid: str, db: list[tuple], hafs: list[tuple], rep: Report, stats:
     reviewed = review["clusters"]
     families = review["families"]
     words = Counter(t for r in db for t in r[5].split(" ") if r[5])
+    words.update(extra_words or [])  # the DK words of <id>-basmala.json (surah-opening lines)
     hafs_tokens = frozenset(t for r in hafs for t in r[5].split(" ") if r[5])
     fonts = [FONT_V2] + ([FONT_V1] if FONT_V1.exists() else [])
     family_occ: Counter = Counter()
@@ -813,7 +960,10 @@ def mark_report(rid: str, verses: list[N.Verse], db: list[tuple], rep: Report) -
     for c in sorted(set(src) | set(stored)):
         if src[c] != stored[c]:
             lines.append(f"U+{ord(c):04X} {src[c]}->{stored[c]}")
-    rep.note("mark accounting (source -> stored, changed only; Hafs basmala words in P10 count as stored): " + ", ".join(lines))
+    rep.note(
+        "mark accounting (source -> stored, changed only; the P10 basmala words of the Word file count as stored): "
+        + ", ".join(lines)
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -882,7 +1032,12 @@ def validate_siblings(
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("rewayat", nargs="*", help=f"subset of {', '.join(N.REWAYAT)} (default: all)")
-    ap.add_argument("--db-dir", type=Path, default=DATA_DIR, help="directory with dk_words_<id>.db, <id>-diff.json, <id>-versemap.json")
+    ap.add_argument(
+        "--db-dir",
+        type=Path,
+        default=DATA_DIR,
+        help="directory with dk_words_<id>.db, <id>-diff.json, <id>-versemap.json, <id>-basmala.json",
+    )
     ap.add_argument("--hafs-db", type=Path, default=HAFS_DB)
     ap.add_argument("--glyphs", action="store_true", help="run the HarfBuzz glyph gate")
     ap.add_argument("--marks", action="store_true", help="print the mark accounting report")
@@ -899,6 +1054,7 @@ def main(argv: list[str] | None = None) -> int:
             db_path=a.db_dir / f"dk_words_{rid}.db",
             diff_path=a.db_dir / f"{rid}-diff.json",
             versemap_path=a.db_dir / f"{rid}-versemap.json",
+            basmala_path=a.db_dir / f"{rid}-basmala.json",
             source_path=SOURCES_DIR / f"{rid}.json",
             hafs_db=a.hafs_db,
             glyphs=a.glyphs,
