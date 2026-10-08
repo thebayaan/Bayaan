@@ -14,6 +14,7 @@ interface MockState {
   installer: jest.Mocked<ContentInstaller>;
   downloaded: jest.Mock<Promise<{identifier: string}[]>, []>;
   track: jest.Mock;
+  notify: jest.Mock;
   listeners: ((status: string) => void)[];
   events: string[];
   now: number;
@@ -66,7 +67,9 @@ jest.mock('@/services/analytics/AnalyticsService', () => ({
 jest.mock('@/services/tafseer/TafseerDbService', () => ({
   tafseerDbService: {getDownloadedTafaseer: () => mockState.downloaded()},
 }));
-jest.mock('../contentNotices', () => ({showWithdrawalNotice: jest.fn()}));
+jest.mock('../contentNotices', () => ({
+  showWithdrawalNotice: (notice: unknown) => mockState.notify(notice),
+}));
 jest.mock('../tafsirInstaller', () => ({
   createTafsirInstaller: () => mockState.installer,
 }));
@@ -164,6 +167,7 @@ beforeEach(() => {
     listeners: [],
     registry: createMemoryContentRegistry(),
     track: jest.fn(),
+    notify: jest.fn(),
     downloaded: jest.fn(async () => {
       events.push('migrate');
       return [];
@@ -458,6 +462,57 @@ describe('user actions', () => {
     expect(mockState.installer.remove).toHaveBeenCalledWith('qf:tafsirs:16');
     expect(await mockState.registry.get('qf:tafsirs:16')).toMatchObject({
       user_removed: true,
+    });
+  });
+});
+
+describe('installs in flight', () => {
+  it('a user install of the key the auto-install is fetching joins it (one download)', async () => {
+    const g = gate();
+    mockState.api.getDownloadTicket.mockImplementationOnce(async () => {
+      await g.wait;
+      return {url: KEY, version: 3, sha256: 's', bytes: 1, expires_at: 'x'};
+    });
+    const sync = load();
+    const init = sync.initContentSync();
+    await settle();
+    const user = sync.installContent(KEY);
+    await settle();
+    g.open();
+    await Promise.all([init, user]);
+    expect(mockState.api.getDownloadTicket).toHaveBeenCalledTimes(1);
+    expect(mockState.installer.install).toHaveBeenCalledTimes(1);
+  });
+
+  it('a user install after a failed auto-install downloads and reports errors', async () => {
+    mockState.api.getDownloadTicket.mockRejectedValueOnce(new Error('offline'));
+    const sync = load();
+    await sync.initContentSync();
+    await expect(sync.installContent(KEY)).resolves.toBeUndefined();
+    expect(mockState.api.getDownloadTicket).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('unmanaged downloads', () => {
+  it('adopts saved rows whose registry write was lost, then purges them on withdrawal', async () => {
+    const sync = load();
+    await sync.initContentSync();
+    expect((await mockState.registry.getState()).migratedAt).not.toBeNull();
+
+    // tafaseer.db has tafsir 16, but the registry write never happened.
+    mockState.downloaded.mockResolvedValue([
+      {identifier: '16', name: 'Tafsir Muyassar'} as never,
+    ]);
+    mockState.api.fetchManifest.mockResolvedValue(
+      ok([entry(KEY), entry('qf:tafsirs:16', 'withdrawn')]),
+    );
+    mockState.now += DAY;
+    foreground();
+    await settle();
+    expect(mockState.installer.remove).toHaveBeenCalledWith('qf:tafsirs:16');
+    expect(mockState.notify).toHaveBeenCalledWith({
+      key: 'qf:tafsirs:16',
+      name: 'Tafsir Muyassar',
     });
   });
 });

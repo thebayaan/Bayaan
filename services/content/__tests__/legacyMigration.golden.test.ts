@@ -94,6 +94,7 @@ describe('legacy migration on v2.3.0 golden databases', () => {
   let s: Loaded;
   let registry: ReturnType<RegistryModule['createSqliteContentRegistry']>;
   let legacyIds: string[];
+  let legacyItems: {identifier: string; name: string}[];
 
   beforeAll(async () => {
     s = load();
@@ -109,6 +110,10 @@ describe('legacy migration on v2.3.0 golden databases', () => {
     legacyIds = (await s.tafseer.getDownloadedTafaseer()).map(
       item => item.identifier,
     );
+    legacyItems = (await s.tafseer.getDownloadedTafaseer()).map(item => ({
+      identifier: item.identifier,
+      name: item.name,
+    }));
     registry = s.registryModule.createSqliteContentRegistry();
   });
 
@@ -118,7 +123,7 @@ describe('legacy migration on v2.3.0 golden databases', () => {
 
   it('creates legacy version 0 rows in content.db and leaves tafaseer.db untouched', async () => {
     expect(
-      await s.migration.migrateLegacyContent(registry, legacyIds, 1000),
+      await s.migration.migrateLegacyContent(registry, legacyItems, 1000),
     ).toBe(2);
     for (const key of ['qf:tafsirs:169', 'qf:tafsirs:16']) {
       expect(await registry.get(key)).toMatchObject({
@@ -146,7 +151,7 @@ describe('legacy migration on v2.3.0 golden databases', () => {
     expect(
       await s.migration.migrateLegacyContent(
         registry,
-        [...legacyIds, '999'],
+        [...legacyItems, {identifier: '999'}],
         5000,
       ),
     ).toBe(0);

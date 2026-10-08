@@ -23,6 +23,7 @@ import {
 } from './contentRegistry';
 import {
   AUTO_INSTALL_KEY,
+  adoptUnmanagedContent,
   maybeAutoInstall,
   migrateLegacyContent,
 } from './legacyMigration';
@@ -94,14 +95,23 @@ function serialize(task: () => Promise<void>): Promise<void> {
   return running;
 }
 
-async function migrateIfNeeded(active: EngineDeps): Promise<boolean> {
-  const state = await active.registry.getState();
-  if (state.migratedAt !== null) return true;
-  const legacy = (await tafseerDbService.getDownloadedTafaseer()).map(
-    item => item.identifier,
+// Every cycle adopts downloaded tafsirs that have no registry row; the first
+// successful run also records migratedAt.
+async function adoptLocalContent(active: EngineDeps): Promise<boolean> {
+  const downloaded = (await tafseerDbService.getDownloadedTafaseer()).map(
+    item => ({identifier: item.identifier, name: item.name}),
   );
-  await migrateLegacyContent(active.registry, legacy, active.now());
+  const state = await active.registry.getState();
+  if (state.migratedAt === null) {
+    await migrateLegacyContent(active.registry, downloaded, active.now());
+  } else {
+    await adoptUnmanagedContent(active.registry, downloaded);
+  }
   return true;
+}
+
+async function isMigrated(active: EngineDeps): Promise<boolean> {
+  return (await active.registry.getState()).migratedAt !== null;
 }
 
 function manifestAllowsAutoInstall(manifest: Manifest): boolean {
@@ -111,10 +121,13 @@ function manifestAllowsAutoInstall(manifest: Manifest): boolean {
   return entry !== undefined && entry.status !== 'withdrawn';
 }
 
-// Order: migration (retried every cycle until it succeeds), then the check,
+// Order: adoption (the migration is retried every cycle until it succeeds), then the check,
 // then the first-launch install. Each step is isolated from the others.
 async function cycle(active: EngineDeps): Promise<void> {
-  const migrated = await attempt(active, () => migrateIfNeeded(active));
+  const adopted = await attempt(active, () => adoptLocalContent(active));
+  // A failed adoption after the first migration must not block the install.
+  const migrated =
+    adopted === true || (await attempt(active, () => isMigrated(active)));
   const seen: {manifest: Manifest | null} = {manifest: null};
   if (active.now() >= checkBlockedUntil) {
     const outcome = await attempt(active, () =>

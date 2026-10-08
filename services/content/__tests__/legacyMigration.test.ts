@@ -1,9 +1,14 @@
 import {createMemoryContentRegistry, emptyRow} from '../contentRegistry';
 import {
   AUTO_INSTALL_KEY,
+  adoptUnmanagedContent,
   maybeAutoInstall,
   migrateLegacyContent,
 } from '../legacyMigration';
+
+function items(ids: string[]): {identifier: string}[] {
+  return ids.map(identifier => ({identifier}));
+}
 import {BACKOFF_MS, type EngineDeps} from '../contentEngine';
 
 function deps(
@@ -59,13 +64,56 @@ function deps(
 describe('migrateLegacyContent', () => {
   it('marks existing tafsirs as legacy version 0, once', async () => {
     const registry = createMemoryContentRegistry();
-    expect(await migrateLegacyContent(registry, ['169', '16'], 5)).toBe(2);
+    expect(await migrateLegacyContent(registry, items(['169', '16']), 5)).toBe(
+      2,
+    );
     expect(await registry.get('qf:tafsirs:169')).toMatchObject({
       version: 0,
       legacy: true,
     });
-    expect(await migrateLegacyContent(registry, ['999'], 6)).toBe(0);
+    expect(await migrateLegacyContent(registry, items(['999']), 6)).toBe(0);
     expect(await registry.get('qf:tafsirs:999')).toBeNull();
+  });
+});
+
+describe('adoptUnmanagedContent', () => {
+  it('adopts rows without a registry row as legacy, with the stored name', async () => {
+    const registry = createMemoryContentRegistry();
+    await registry.setState({migratedAt: 5});
+    await registry.upsert({
+      ...emptyRow('qf:tafsirs:7', 'tafsir'),
+      user_removed: true,
+    });
+    await registry.upsert({
+      ...emptyRow('qf:tafsirs:169', 'tafsir'),
+      version: 2,
+    });
+    expect(
+      await adoptUnmanagedContent(registry, [
+        {identifier: '169', name: 'Ibn Kathir'},
+        {identifier: '16', name: 'Tafsir Muyassar'},
+        {identifier: '7', name: 'x'},
+      ]),
+    ).toBe(1);
+    expect(await registry.get('qf:tafsirs:16')).toMatchObject({
+      legacy: true,
+      version: 0,
+      name: 'Tafsir Muyassar',
+    });
+    expect(await registry.get('qf:tafsirs:169')).toMatchObject({
+      version: 2,
+      legacy: false,
+    });
+    expect(await registry.get('qf:tafsirs:7')).toMatchObject({
+      user_removed: true,
+    });
+    expect((await registry.getState()).migratedAt).toBe(5);
+  });
+
+  it('migrateLegacyContent stores the tafaseer.db name', async () => {
+    const registry = createMemoryContentRegistry();
+    await migrateLegacyContent(registry, [{identifier: '16', name: 'M'}], 5);
+    expect((await registry.get('qf:tafsirs:16'))?.name).toBe('M');
   });
 });
 
@@ -80,10 +128,12 @@ describe('migrateLegacyContent partial failure', () => {
       await upsert(row);
     };
     await expect(
-      migrateLegacyContent(registry, ['169', '16', '7'], 5),
+      migrateLegacyContent(registry, items(['169', '16', '7']), 5),
     ).rejects.toThrow('disk_full');
     expect((await registry.getState()).migratedAt).toBeNull();
-    expect(await migrateLegacyContent(registry, ['169', '16', '7'], 6)).toBe(2);
+    expect(
+      await migrateLegacyContent(registry, items(['169', '16', '7']), 6),
+    ).toBe(2);
     for (const id of ['169', '16', '7']) {
       expect(await registry.get(`qf:tafsirs:${id}`)).toMatchObject({
         version: 0,
