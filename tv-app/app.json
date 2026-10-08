@@ -23,7 +23,13 @@
           "removeFlipperOnAndroid": true
         }
       ],
-      ["expo-audio", { "enableBackgroundPlayback": true }]
+      [
+        "expo-audio",
+        {
+          "enableBackgroundPlayback": true
+        }
+      ],
+      "expo-image"
     ]
   }
 }
