@@ -6,7 +6,7 @@ import {
   type RewayahId,
 } from '@/store/mushafSettingsStore';
 import {migratePersistedId} from '@/services/rewayah/RewayahIdentity';
-import {REWAYAH_DATA_MANIFEST} from './rewayahDataManifest';
+import {REWAYAH_DATA_MANIFEST, REWAYAH_DATA_MD5} from './rewayahDataManifest';
 import {joinSlotTexts, layoutLineSlots, visibleWords} from './lineWordSpans';
 
 const TOTAL_PAGES = 604;
@@ -693,6 +693,8 @@ export class DigitalKhattDataService {
   private openDbCounts: Map<string, number> = new Map();
   private sweptBases: Set<string> = new Set();
   private sweepsInFlight: Map<string, Promise<void>> = new Map(); // @ai
+  // On-device copies whose bytes matched the bundled asset this session.
+  private verifiedCopies: Set<string> = new Set(); // @ai
   // Bumped by resetDatabases so in-flight loads drop their results.
   private epoch = 0;
   // @ai-start
@@ -901,6 +903,7 @@ export class DigitalKhattDataService {
     this.loadErrors.clear();
     this.sweptBases.clear();
     this.sweepsInFlight.clear(); // @ai
+    this.verifiedCopies.clear(); // @ai
 
     const currentByBase = getCurrentDbNamesByBase();
     const names = new Set<string>();
@@ -1351,6 +1354,7 @@ export class DigitalKhattDataService {
     read: (db: SQLite.SQLiteDatabase) => Promise<T>,
   ): Promise<T> {
     let db: SQLite.SQLiteDatabase | null = await this.openDb(spec.name);
+    let imported = false; // @ai
     try {
       if (!(await hasTable(db, spec.table))) {
         // First use of this data version (or a damaged copy): import the
@@ -1381,12 +1385,61 @@ export class DigitalKhattDataService {
         if (!(await hasTable(db, spec.table))) {
           throw new Error(`table "${spec.table}" missing after import`);
         }
+        imported = true; // @ai
       }
+      await this.verifyCopy(spec, imported); // @ai
       return await read(db);
     } finally {
       if (db) await this.closeDb(spec.name, db);
     }
   }
+
+  // @ai-start
+  // Checks a copy's bytes against the bundled asset once per session. The
+  // native import is a plain file copy (not atomic on Android), so an app
+  // killed in the middle of it leaves a copy that still opens: SQLite fills
+  // the missing end of the last page with zeros and the last words lose
+  // marks without any error. A copy left by an earlier launch that does not
+  // match throws, and readBundledDbLocked deletes and re-imports it. A copy
+  // made from the bundled asset by this call cannot be cut short (a copy that
+  // runs out of space throws), so a mismatch there points at the platform's
+  // md5 instead and never blocks reading. Skipped when no md5 is reported.
+  private async verifyCopy(
+    spec: BundledDbSpec,
+    freshImport: boolean,
+  ): Promise<void> {
+    if (this.verifiedCopies.has(spec.name)) return;
+    const expected = REWAYAH_DATA_MD5[spec.assetFile];
+    const dir = sqliteDirectoryUri();
+    if (!expected || !dir) return;
+    let md5: string | undefined;
+    try {
+      const info = await FileSystem.getInfoAsync(
+        `${dir}${encodeURIComponent(spec.name)}`,
+        {md5: true},
+      );
+      md5 = info.exists ? info.md5?.toLowerCase() : undefined;
+    } catch (error) {
+      console.warn(
+        `[DigitalKhattDataService] Could not check ${spec.name}:`,
+        error,
+      );
+      return;
+    }
+    if (!md5) return;
+    if (md5 !== expected && !freshImport) {
+      throw new Error(
+        `${spec.name} does not match ${spec.assetFile} (md5 ${md5})`,
+      );
+    }
+    if (md5 !== expected) {
+      console.warn(
+        `[DigitalKhattDataService] ${spec.name} was just imported but its md5 ${md5} is not ${expected}; reading it anyway`,
+      );
+    }
+    this.verifiedCopies.add(spec.name);
+  }
+  // @ai-end
 
   // Deletes on-device copies of `bases` (or of every base) other than their
   // current content-addressed name: unversioned files from older releases and
