@@ -419,6 +419,15 @@ describe('Hafs (unchanged)', () => {
     expect(removedHighlights()).toEqual(['2:286', '3:1']);
   });
 
+  it('a player Repeat routes to the Hafs verse without an anchor', async () => {
+    await openSheet({...payload, source: 'player'});
+    await press('Repeat');
+    expect(router.push).toHaveBeenCalledWith({
+      pathname: '/mushaf',
+      params: {page: '3', surah: '2', ayah: '255'},
+    });
+  });
+
   it('passes the screens the payload as before', async () => {
     await openSheet(payload);
     await press('Share');
@@ -540,6 +549,17 @@ describe('Warsh verses in their own numbering', () => {
     expect(router.push).toHaveBeenCalledWith({
       pathname: '/mushaf',
       params: {page: '3', surah: '1', ayah: '7', anchor: '1:7:5'},
+    });
+  });
+
+  it('a player Repeat of the first part of a split Hafs verse names it', async () => {
+    // Warsh 1:6 is Hafs 1:7 words 1-4: surah / ayah alone would name every
+    // Warsh verse holding Hafs 1:7 (1:6 and 1:7); its anchor names 1:6.
+    await openSheet(warshUnitPayload(['1:6'], {source: 'player'}));
+    await press('Repeat');
+    expect(router.push).toHaveBeenCalledWith({
+      pathname: '/mushaf',
+      params: {page: '3', surah: '1', ayah: '7', anchor: '1:7'},
     });
   });
 });

@@ -600,9 +600,12 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     const ready = readySelection ?? (await requireSelection('played'));
     if (!ready) return;
     const firstKey = selectionPlaybackKeys(ready).firstHafsKey;
-    // A rewayah verse starting inside a Hafs verse ("1:7:5") also passes its
-    // storage anchor (verse-units contract 4.4); surah / ayah stay Hafs.
-    const anchorKey = ready.anchors[0].key;
+    // Another rewayah's verse also passes its storage anchor (verse-units
+    // contract 4.4: "1:7" for Warsh 1:6, "1:7:5" for Warsh 1:7), so the
+    // mushaf selects exactly that verse rather than every verse holding Hafs
+    // surah:ayah (both Warsh 1:6 and 1:7). surah / ayah stay Hafs; Hafs
+    // passes no anchor, as before.
+    const anchorKey = ready.units ? ready.anchors[0].key : null;
     // @ai-end
     const [sStr, aStr] = firstKey.split(':');
     const sNum = parseInt(sStr, 10);
@@ -643,7 +646,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
         page: String(page),
         surah: String(sNum),
         ayah: String(aNum),
-        ...(anchorKey !== firstKey ? {anchor: anchorKey} : {}), // @ai
+        ...(anchorKey !== null ? {anchor: anchorKey} : {}), // @ai
       },
     });
 
