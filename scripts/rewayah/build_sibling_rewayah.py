@@ -63,11 +63,15 @@ Algorithm (the reconciled prototype of the 2026-10 audit, adapted to v2.x)
    displays 1..N.
 6. Highlights (format 2), the verse map and the basmala file are computed
    from the same final assignment (see make_diff / make_versemap /
-   make_basmala). The highlight classifier
-   (highlights.py) gets each slot's next word in Hafs and in the rewayah, and
-   Warsh / al-Susi also get the whole-word tint that Qalun / al-Duri give to
-   the same stored words (highlights.SIBLING_BASE), so the builder aligns that
-   sibling too.
+   make_basmala). The highlight classifier (highlights.py) gets each slot's
+   previous and next word in Hafs and in the rewayah (and whether a surah
+   starts there, and the first word of the next surah's basmala as the
+   signed Word file writes it), and Warsh / al-Susi also get the whole-word
+   tint that Qalun / al-Duri give to the same reading (the same stored words,
+   or words that differ only in encoding: highlights.same_reading;
+   highlights.SIBLING_BASE), so the builder aligns that sibling too. The
+   validator's 'cases' gate checks the reviewed decisions in
+   highlight_cases.json before any file is replaced.
 """
 from __future__ import annotations
 
@@ -517,18 +521,24 @@ def assign(rid: str, hafs: list[HafsRow], source: Path | None = None) -> Assignm
 
         mushaf.extend(zip(content, slots))
 
-    # --- highlight inputs: stored words + the words read after the slot ----
+    # --- highlight inputs: stored words + the words read around the slot ---
     # (across verse and surah ends: the KFGQPC texts join surahs, e.g. Warsh
     # 93:11 'فَحَدِّثَ اَلَم۟', al-Susi's idgham into the next basmala, whose
     # first word comes from the signed Word file: basmala_lead)
     basmala_lead = {s: N.basmala_dk_tokens(w, rid)[0] for s, w in basmala.by_surah.items()}
+    slot_words = [[t for t in texts[row.id].split(" ") if t and not N.is_marker(t)] for row, _ in mushaf]
     target_next = [""] * len(mushaf)
     following = ""
     for k in range(len(mushaf) - 1, -1, -1):
         target_next[k] = following
-        words = [t for t in texts[mushaf[k][0].id].split(" ") if t and not N.is_marker(t)]
-        if words:
-            following = words[0]
+        if slot_words[k]:
+            following = slot_words[k][0]
+    target_prev = [""] * len(mushaf)
+    preceding = ""
+    for k in range(len(mushaf)):
+        target_prev[k] = preceding
+        if slot_words[k]:
+            preceding = slot_words[k][-1]
     for k, (row, s) in enumerate(mushaf):
         if not s.tokens:
             continue
@@ -538,9 +548,11 @@ def assign(rid: str, hafs: list[HafsRow], source: Path | None = None) -> Assignm
         base = row.text if not s.covers_next else row.text + " " + mushaf[k + 1][0].text
         hn = k + (2 if s.covers_next else 1)
         hafs_next = mushaf[hn][0].text.split(" ")[0] if hn < len(mushaf) else ""
+        hafs_prev = mushaf[k - 1][0].text.split(" ")[-1] if k > 0 else ""
+        surah_start = k == 0 or mushaf[k - 1][0].surah != row.surah
         surah_end = hn >= len(mushaf) or mushaf[hn][0].surah != row.surah
         basmala_next = basmala_lead.get(row.surah + 1, "") if surah_end else ""
-        ctx = HL.Context(hafs_next, target_next[k], basmala_next)
+        ctx = HL.Context(hafs_next, target_next[k], basmala_next, hafs_prev, target_prev[k], surah_start)
         hl_inputs[row.id] = (row.surah, row.ayah, row.word, base, words_text, ctx)
 
     return Assignment(rid, verses, basmala, texts, hl_inputs, r2h, stats, events)
@@ -552,8 +564,10 @@ def _whole_word(cats: list[tuple[str, list[int]]]) -> bool:
 
 def make_diff(a: Assignment, sibling: Assignment | None = None) -> tuple[dict, Counter]:
     """Highlight map (contract C2, format 2) of an assignment. `sibling` is
-    the assignment of highlights.SIBLING_BASE[a.rid]: a slot with the same
-    stored words also gets its whole-word tint."""
+    the assignment of highlights.SIBLING_BASE[a.rid]: a slot where it reads
+    the same (the same stored words, or words that differ only in encoding
+    under the sibling's own rules: highlights.same_reading) also gets its
+    whole-word tint."""
     category = WHOLE_WORD_CATEGORY[a.rid]
     stats: Counter = Counter()
     entries: dict[tuple[int, int], dict[str, list]] = {}
@@ -562,9 +576,14 @@ def make_diff(a: Assignment, sibling: Assignment | None = None) -> tuple[dict, C
         cats = HL.classify(base, words, a.rid, ctx)
         if sibling is not None and not _whole_word(cats):
             sib = sibling.hl_inputs.get(wid)
-            if sib is not None and sib[4] == words and _whole_word(HL.classify(sib[3], sib[4], sibling.rid, sib[5])):
+            if (
+                sib is not None
+                and (sib[4] == words or HL.same_reading(sib[4], words, sibling.rid))
+                and _whole_word(HL.classify(sib[3], sib[4], sibling.rid, sib[5]))
+            ):
                 cats.insert(0, ("word", []))
-                stats[f"whole-word tint from {sibling.rid} (same stored words)"] += 1
+                how = "same stored words" if sib[4] == words else "same reading"
+                stats[f"whole-word tint from {sibling.rid} ({how})"] += 1
         if not cats:
             stats["differs from Hafs, encoding only (no highlight)"] += 1
             continue
