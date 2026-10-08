@@ -12,6 +12,18 @@ import {
   type TimingNumbering,
 } from '@/utils/timestampNumbering';
 
+// @ai-start
+/** Tracker interval: the audio position is read every 200 ms. */
+const TICK_MS = 200;
+
+/**
+ * Ticks a verse published by someone else ("Play from here") is kept while
+ * the audio position has not reached it, the native seek being in flight.
+ * Past that, the verse actually being recited is published again.
+ */
+export const SEEK_GRACE_TICKS = 10;
+// @ai-end
+
 /**
  * Main-player follow-along: publishes the verse being recited to
  * useTimestampStore.currentAyah.
@@ -32,9 +44,11 @@ import {
  * catalog has loaded, an unknown rewayat id counts as "not known yet".
  *
  * A verse written to the store by someone else ("Play from here" publishes
- * the tapped verse) is replaced on the next tick by the state of the timing
- * entry being recited, so the highlight always covers every Hafs verse the
- * reciter is reciting.
+ * the tapped verse) is replaced by the state of the timing entry being
+ * recited, so the highlight always covers every Hafs verse the reciter is
+ * reciting. While the seek that came with it has not landed yet (the audio
+ * position still names the verse being left) it is kept, for up to
+ * SEEK_GRACE_TICKS ticks, instead of flashing back to that verse.
  */
 export function useAyahTracker() {
   const playbackState = usePlayerStore(s => s.playback.state);
@@ -62,6 +76,13 @@ export function useAyahTracker() {
   const lastAyahRef = useRef<number | null>(null);
   // The state this tracker last wrote (null after clearing it). @ai
   const lastPublishedRef = useRef<AyahTrackingState | null>(null);
+  // @ai-start
+  // A state written by someone else whose seek has not landed yet, and the
+  // ticks it has been kept for.
+  const foreignRef = useRef<{state: AyahTrackingState; ticks: number} | null>(
+    null,
+  );
+  // @ai-end
 
   const surahNumber = surahId ? parseInt(surahId, 10) : NaN;
   const timestampsMatchTrack =
@@ -140,20 +161,35 @@ export function useAyahTracker() {
     const interval = setInterval(() => {
       const current = useTimestampStore.getState().currentSurahTimestamps;
       if (current !== timestamps) return;
-      // @ai-start
-      // Someone else wrote the current verse (e.g. "Play from here" with only
-      // the tapped key): publish the full state of the entry on this tick.
-      if (
-        useTimestampStore.getState().currentAyah !== lastPublishedRef.current
-      ) {
-        lastAyahRef.current = null;
-      }
-      // @ai-end
 
       const positionSec = expoAudioService.getCurrentTime(); // seconds (sync)
       const positionMs = positionSec * 1000;
 
       const entry = binarySearchAyah(timestamps, positionMs);
+      // @ai-start
+      // Someone else wrote the current verse ("Play from here" publishes the
+      // verse it seeks to): once the audio is there, publish the full state
+      // of the entry. Until then the position still names the verse being
+      // left; keep the written verse rather than flash back to it.
+      const written = useTimestampStore.getState().currentAyah;
+      if (written !== lastPublishedRef.current) {
+        const seekLanded =
+          !written ||
+          (entry !== null && entry.timestampFrom === written.timestampFrom);
+        if (!seekLanded) {
+          const ticks =
+            foreignRef.current?.state === written
+              ? foreignRef.current.ticks + 1
+              : 1;
+          if (ticks <= SEEK_GRACE_TICKS) {
+            foreignRef.current = {state: written, ticks};
+            return;
+          }
+        }
+        foreignRef.current = null;
+        lastAyahRef.current = null;
+      }
+      // @ai-end
       const keys = entry ? numbering.hafsKeysForEntry(entry.ayahNumber) : [];
 
       if (!entry || keys.length === 0) {
@@ -180,11 +216,12 @@ export function useAyahTracker() {
         lastPublishedRef.current = tracked; // @ai
         useTimestampStore.getState().setCurrentAyah(tracked);
       }
-    }, 200);
+    }, TICK_MS); // @ai
 
     return () => {
       clearInterval(interval);
       lastAyahRef.current = null;
+      foreignRef.current = null; // @ai
     };
   }, [playbackState, timestamps, numbering, followAlongEnabled]);
 }

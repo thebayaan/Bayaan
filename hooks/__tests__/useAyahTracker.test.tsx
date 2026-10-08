@@ -83,7 +83,11 @@ import {useReciterStore} from '@/store/reciterStore';
 import {RECITERS} from '@/data/reciterData';
 import {timingNumberingService} from '@/services/timestamps/TimingNumberingService';
 import {loadTimings} from '@/services/timestamps/__fixtures__/timingFixtures';
-import {findAyahTimestamp, getTrackedVerseKeys} from '@/utils/timestampUtils';
+import {
+  findAyahTimestamp,
+  getPlayFromHereTarget, // @ai
+  getTrackedVerseKeys,
+} from '@/utils/timestampUtils';
 import {
   selectTrackedVerseKeysId, // @ai
   type MappedAyahTrackingState,
@@ -128,6 +132,13 @@ async function startTrack(set: string, surah: number) {
   });
   await flush();
 }
+
+// @ai-start
+const setPlayer = (state: object) =>
+  (usePlayerStore as unknown as {setState: (s: object) => void}).setState(
+    state,
+  );
+// @ai-end
 
 async function tickAt(ms: number) {
   mockPosition.sec = ms / 1000;
@@ -284,6 +295,96 @@ describe('useAyahTracker', () => {
     expect(current()).toMatchObject({verseKey: '2:5', verseKeys: ['2:5']});
     // what the verse list highlights did not change
     expect(selectTrackedVerseKeysId(useTimestampStore.getState())).toBe('2:5');
+  });
+  // @ai-end
+
+  // @ai-start
+  describe('"Play from here" while its seek lands', () => {
+    /** Every verse key published from now on, in order. */
+    function recordPublished() {
+      const keys: (string | null)[] = [];
+      const unsubscribe = useTimestampStore.subscribe((s, prev) => {
+        if (s.currentAyah !== prev.currentAyah) {
+          keys.push(s.currentAyah?.verseKey ?? null);
+        }
+      });
+      return {keys, unsubscribe};
+    }
+
+    /** The verse-actions sheet: seek (still in flight) and publish. */
+    async function playFromHere(hafsKey: string) {
+      const target = getPlayFromHereTarget(timings(), hafsKey);
+      if (target.status !== 'ready') throw new Error(target.status);
+      await act(async () => {
+        useTimestampStore.getState().setCurrentAyah(target.tracking);
+      });
+      return target;
+    }
+
+    it('Hafs: the verse being left is not published again', async () => {
+      await startTrack('hafs-clean', 2);
+      const t = loadTimings('hafs-clean', 2)!;
+      await tickAt(t[9].timestampFrom + 50);
+      expect(current()?.verseKey).toBe('2:10');
+      const published = recordPublished();
+      await playFromHere('2:50');
+      // the native position still reports 2:10 for a few ticks
+      await tickAt(t[9].timestampFrom + 250);
+      await tickAt(t[9].timestampFrom + 450);
+      expect(current()?.verseKey).toBe('2:50');
+      // the seek lands, then the reciter moves on
+      await tickAt(t[49].timestampFrom + 50);
+      expect(current()).toMatchObject({verseKey: '2:50', verseKeys: ['2:50']});
+      await tickAt(t[50].timestampFrom + 50);
+      published.unsubscribe();
+      expect(published.keys).not.toContain('2:10');
+      expect(published.keys[0]).toBe('2:50');
+      expect(published.keys[published.keys.length - 1]).toBe('2:51');
+    });
+
+    it('Warsh: no flash back to the reciter verse being left', async () => {
+      await startTrack('warsh-14', 2);
+      const t = loadTimings('warsh-14', 2)!;
+      await tickAt(t[9].timestampFrom + 50); // Warsh 2:10 = Hafs 2:11
+      expect(current()?.verseKey).toBe('2:11');
+      const published = recordPublished();
+      const target = await playFromHere('2:2'); // Warsh 2:1 = Hafs 2:1 + 2:2
+      await tickAt(t[9].timestampFrom + 250);
+      expect(getTrackedVerseKeys(current())).toEqual(['2:1', '2:2']);
+      await tickAt(target.status === 'ready' ? target.entry.timestampFrom : 0);
+      expect(getTrackedVerseKeys(current())).toEqual(['2:1', '2:2']);
+      published.unsubscribe();
+      expect(published.keys).not.toContain('2:11');
+    });
+
+    it('started while paused: the first tick does not publish the old verse', async () => {
+      await startTrack('hafs-clean', 2);
+      const t = loadTimings('hafs-clean', 2)!;
+      await tickAt(t[9].timestampFrom + 50);
+      await act(async () => {
+        setPlayer({playback: {state: 'paused'}});
+      });
+      await playFromHere('2:50');
+      // the sheet starts playback; the native seek has not landed yet
+      await act(async () => {
+        setPlayer({playback: {state: 'playing'}});
+      });
+      await tickAt(t[9].timestampFrom + 250);
+      expect(current()?.verseKey).toBe('2:50');
+      await tickAt(t[49].timestampFrom + 50);
+      expect(current()?.verseKey).toBe('2:50');
+    });
+
+    it('a seek that never lands gives way to the verse actually recited', async () => {
+      await startTrack('hafs-clean', 2);
+      const t = loadTimings('hafs-clean', 2)!;
+      await tickAt(t[9].timestampFrom + 50);
+      await playFromHere('2:50');
+      for (let i = 1; i <= 20; i++) {
+        await tickAt(t[9].timestampFrom + 50 + i * 20);
+      }
+      expect(current()).toMatchObject({verseKey: '2:10', verseKeys: ['2:10']});
+    });
   });
   // @ai-end
 
