@@ -294,6 +294,33 @@ describe('setUnitsBookmarked', () => {
     expect(state().bookmarkedVerseKeys.size).toBe(0);
   });
 
+  it('un-bookmarking one part of a split Hafs verse keeps the other part', async () => {
+    db.bookmarks = [bookmark('1:7', 'hafs')];
+    const u = fixtureUnits('warsh');
+    await state().setUnitsBookmarked(u, [unitOf(u, '1:7')], false);
+    // The Hafs row marked both parts: it goes, and Warsh 1:6 gets its own.
+    expect(service.removeBookmark.mock.calls).toEqual([['1:7']]);
+    expect(service.addBookmark.mock.calls).toEqual([['1:7', 1, 7, 'warsh']]);
+    expect([...marksIn('warsh').bookmarkedUnitKeys]).toEqual(['1:6']);
+    expect(state().bookmarkRows['1:7']).toEqual({
+      verseKey: '1:7',
+      rewayahId: 'warsh',
+    });
+  });
+
+  it('un-bookmarking every part keeps nothing', async () => {
+    db.bookmarks = [bookmark('1:7', 'hafs')];
+    const u = fixtureUnits('warsh');
+    await state().setUnitsBookmarked(
+      u,
+      [unitOf(u, '1:6'), unitOf(u, '1:7')],
+      false,
+    );
+    expect(service.removeBookmark.mock.calls).toEqual([['1:7']]);
+    expect(service.addBookmark).not.toHaveBeenCalled();
+    expect(marksIn('warsh').bookmarkedUnitKeys.size).toBe(0);
+  });
+
   it('Hafs verses write exactly the rows of before', async () => {
     const u = fixtureUnits('hafs');
     await state().setUnitsBookmarked(
@@ -354,7 +381,50 @@ describe('setUnitsHighlight', () => {
       '106:4',
       '106:4:5',
     ]);
+    // The Hafs row also coloured Warsh 106:4, which keeps its colour.
+    expect(service.upsertHighlight.mock.calls).toEqual([
+      ['106:4', 106, 4, 'green', 'warsh'],
+    ]);
+    expect(marksIn('warsh').highlightColors).toEqual({'106:4': 'green'});
+  });
+
+  it('recolouring one part of a split Hafs verse keeps the other part', async () => {
+    db.highlights = [highlight('1:7', 'yellow', 'hafs')];
+    const u = fixtureUnits('warsh');
     expect(marksIn('warsh').highlightColors).toEqual({});
+    await state().setUnitsHighlight(u, [unitOf(u, '1:6')], 'green');
+    // Warsh 1:6's anchor is the Hafs row's key: the upsert restamps it, and
+    // Warsh 1:7 gets a row of its own with the colour it showed.
+    expect(service.upsertHighlight.mock.calls).toEqual([
+      ['1:7', 1, 7, 'green', 'warsh'],
+      ['1:7:5', 1, 7, 'yellow', 'warsh'],
+    ]);
+    expect(marksIn('warsh').highlightColors).toEqual({
+      '1:6': 'green',
+      '1:7': 'yellow',
+    });
+  });
+
+  it('removing one part of a split Hafs verse keeps the other part', async () => {
+    db.highlights = [highlight('1:7', 'yellow', 'hafs')];
+    const u = fixtureUnits('warsh');
+    await state().setUnitsHighlight(u, [unitOf(u, '1:6')], null);
+    expect(service.removeHighlight.mock.calls).toEqual([['1:7']]);
+    expect(service.upsertHighlight.mock.calls).toEqual([
+      ['1:7:5', 1, 7, 'yellow', 'warsh'],
+    ]);
+    expect(marksIn('warsh').highlightColors).toEqual({'1:7': 'yellow'});
+    // Both parts: nothing is kept.
+    resetStore();
+    service.removeHighlight.mockClear();
+    service.upsertHighlight.mockClear();
+    await state().setUnitsHighlight(
+      u,
+      [unitOf(u, '1:6'), unitOf(u, '1:7')],
+      null,
+    );
+    expect(service.removeHighlight.mock.calls).toEqual([['1:7']]);
+    expect(service.upsertHighlight).not.toHaveBeenCalled();
   });
 
   it('Hafs verses write exactly the rows of before', async () => {

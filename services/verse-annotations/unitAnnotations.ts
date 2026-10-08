@@ -113,6 +113,24 @@ function push(map: Map<string, string[]>, key: string, value: string) {
 }
 
 /**
+ * The units of `display` one stored row marks (contract section 3, see
+ * deriveUnitAnnotations). `savedUnits`: the units of the row's rewayah when
+ * it is a third rewayah whose units are at hand (exact), else none (no load).
+ */
+export function unitsMarkedBy(
+  display: RewayahVerseUnits,
+  row: StoredVerseRow,
+  savedUnits: RewayahVerseUnits | null = null,
+): readonly VerseUnit[] {
+  const saved: RewayahId = row.rewayahId ?? 'hafs';
+  return unitsForStoredVerse(
+    display,
+    {verseKey: row.verseKey, rewayahId: saved},
+    saved === display.rewayah || saved === 'hafs' ? null : savedUnits,
+  ).units;
+}
+
+/**
  * The units of `display` each row marks (contract section 3):
  *  - a row saved in the shown rewayah marks the unit its anchor names;
  *  - a Hafs row (and a legacy row without rewayah) marks every shown unit
@@ -136,15 +154,13 @@ export function deriveUnitAnnotations(
 ): UnitAnnotations {
   const unitsOf = (row: StoredVerseRow): readonly VerseUnit[] => {
     const saved: RewayahId = row.rewayahId ?? 'hafs';
-    const savedUnits =
+    return unitsMarkedBy(
+      display,
+      row,
       saved === display.rewayah || saved === 'hafs'
         ? null
-        : savedUnitsOf(saved);
-    return unitsForStoredVerse(
-      display,
-      {verseKey: row.verseKey, rewayahId: saved},
-      savedUnits,
-    ).units;
+        : savedUnitsOf(saved),
+    );
   };
 
   const bookmarked = new Set<string>();
