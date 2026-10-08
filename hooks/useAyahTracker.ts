@@ -1,7 +1,7 @@
-import {useEffect, useMemo, useRef, useState} from 'react';
+import {useCallback, useEffect, useMemo, useRef, useState} from 'react'; // @ai
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {useTimestampStore} from '@/store/timestampStore';
-import type {AyahTrackingState} from '@/types/timestamps'; // @ai
+import type {AyahTimestamp, AyahTrackingState} from '@/types/timestamps'; // @ai
 import {useReciterStore} from '@/store/reciterStore';
 import {expoAudioService} from '@/services/audio/ExpoAudioService';
 import {timingNumberingService} from '@/services/timestamps/TimingNumberingService';
@@ -10,7 +10,17 @@ import {
   registerTimingNumbering,
   type MappedAyahTrackingState,
   type TimingNumbering,
+  // @ai-start
+  getRegisteredTimingNumbering,
+  getTrackedUnitKeys,
+  parseVerseKeyListId,
+  verseKeyListId,
+  // @ai-end
 } from '@/utils/timestampNumbering';
+// @ai-start
+import {canShowRewayahVerses} from '@/utils/playbackVerseUnits';
+import type {RewayahId} from '@/services/rewayah/RewayahIdentity';
+// @ai-end
 
 // @ai-start
 /** Tracker interval: the audio position is read every 200 ms. */
@@ -234,3 +244,35 @@ export function useAyahTracker() {
     };
   }, [playbackState, timestamps, numbering, followAlongEnabled]);
 }
+
+// @ai-start
+/**
+ * The main player's follow-along band as verse unit keys of `rewayah`, the
+ * rewayah of the verse rows (e.g. useCurrentTrackRewayah()); see
+ * getTrackedUnitKeys: exactly the verse being recited when the reciter's
+ * timing entries are that rewayah's verses (a split Hafs verse lights one
+ * rewayah verse at a time), otherwise every verse holding a word of what is
+ * recited. Hafs: the tracked Hafs keys (selectTrackedVerseKeysId).
+ * Empty while that rewayah's verse units are not available: no band rather
+ * than Hafs numbers. Re-renders only when the keys change.
+ */
+export function useTrackedUnitKeys(rewayah: RewayahId): readonly string[] {
+  const selector = useCallback(
+    (s: {
+      currentAyah: AyahTrackingState | null;
+      currentSurahTimestamps: AyahTimestamp[] | null;
+    }) => {
+      if (!canShowRewayahVerses(rewayah)) return '';
+      const numbering = s.currentSurahTimestamps
+        ? getRegisteredTimingNumbering(s.currentSurahTimestamps)
+        : undefined;
+      return verseKeyListId(
+        getTrackedUnitKeys(s.currentAyah, rewayah, numbering),
+      );
+    },
+    [rewayah],
+  );
+  const id = useTimestampStore(selector);
+  return useMemo(() => parseVerseKeyListId(id), [id]);
+}
+// @ai-end

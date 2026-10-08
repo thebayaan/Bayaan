@@ -90,6 +90,16 @@ jest.mock('@/store/mushafSettingsStore', () => {
   return {useMushafSettingsStore: create(() => ({rewayah: 'hafs'}))};
 });
 
+// @ai-start
+// The mushaf's verse units are ready: its own verse numbers may be shown
+// (without them the label is withheld, see utils/playbackVerseUnits.ts).
+jest.mock('@/utils/playbackVerseUnits', () => ({
+  readyVerseUnits: () => null,
+  canShowRewayahVerses: () => true,
+  subscribeVerseUnitsChanges: () => () => undefined,
+}));
+// @ai-end
+
 import type {AyahTimestamp} from '@/types/timestamps';
 import {formatPlaybackInfo, useMushafPlayerStore} from '../mushafPlayerStore';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
