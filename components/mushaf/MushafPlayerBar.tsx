@@ -8,10 +8,11 @@
  * The verse reference comes from the store's currentVerseLabel, which is in
  * the numbering of the mushaf on screen (a Warsh reciter in a Warsh mushaf
  * shows Warsh numbers). Surahs whose timing numbering is unknown show no
- * verse and disable previous / next ayah.
+ * verse and disable previous / next ayah; when such a surah was asked to
+ * start at a later verse, a notice says it plays from the beginning.
  */
 
-import React, {useCallback} from 'react';
+import React, {useCallback, useEffect} from 'react'; // @ai
 import {
   View,
   Text,
@@ -26,11 +27,18 @@ import Color from 'color';
 import {useTheme} from '@/hooks/useTheme';
 import {
   formatPlaybackInfo, // @ai
+  getPlayerBarNotice, // @ai
   useMushafPlayerStore,
 } from '@/store/mushafPlayerStore';
 import {mushafAudioService} from '@/services/audio/MushafAudioService';
 import {SURAHS} from '@/data/surahData';
 import {PlayIcon, PauseIcon} from '@/components/Icons';
+import {showToast} from '@/utils/toastUtils'; // @ai
+
+// @ai-start
+const surahNameOf = (surah: number): string =>
+  surah >= 1 && surah <= 114 ? SURAHS[surah - 1].name : '';
+// @ai-end
 
 interface MushafPlayerBarProps {
   currentPage: number;
@@ -57,6 +65,20 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
     currentSurah >= 1 && currentSurah <= 114
       ? SURAHS[currentSurah - 1].name
       : '';
+
+  // @ai-start
+  // Refusals and "Verse tracking unavailable" are shown inline below; a
+  // requested start verse that was skipped (the surah plays from its
+  // beginning without verse tracking) needs a notice.
+  useEffect(
+    () =>
+      useMushafPlayerStore.subscribe((state, prev) => {
+        const notice = getPlayerBarNotice(prev, state, surahNameOf);
+        if (notice) showToast(notice.title, notice.message, notice.preset);
+      }),
+    [],
+  );
+  // @ai-end
 
   const handlePlayPress = useCallback(() => {
     const store = useMushafPlayerStore.getState();

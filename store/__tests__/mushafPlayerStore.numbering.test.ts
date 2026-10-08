@@ -116,6 +116,7 @@ import {
   TIMESTAMPS_UNAVAILABLE_ERROR,
   formatPlaybackInfo,
   getPlaybackNotice,
+  getPlayerBarNotice,
   selectPlaybackVerseKeysId,
   usePlaybackVerseKeys,
   // @ai-end
@@ -774,6 +775,89 @@ describe('player info text and notices', () => {
       'Verse tracking unavailable',
       'Playback unavailable',
     ]);
+  });
+
+  /** Messages of the notices the store emits while `run` runs. */
+  async function noticesDuring(run: () => Promise<void>) {
+    const messages: string[] = [];
+    const barMessages: string[] = [];
+    const unsubscribe = useMushafPlayerStore.subscribe((s, prev) => {
+      const n = getPlaybackNotice(prev, s, names);
+      if (n) messages.push(n.message);
+      const b = getPlayerBarNotice(prev, s, names);
+      if (b) barMessages.push(b.message);
+    });
+    await run();
+    unsubscribe();
+    return {messages, barMessages};
+  }
+
+  it('a requested verse a surah without verse tracking cannot start at: says it plays from the beginning', async () => {
+    const {messages, barMessages} = await noticesDuring(() =>
+      play('doori-269', 562, '67:5'),
+    );
+    // plain playback from the start of the audio, nothing highlighted
+    expect(st().playbackState).toBe('playing');
+    expect(player().seeks).toEqual([]);
+    expect(st().ignoredStartVerseKey).toBe('67:5');
+    const expected =
+      'Al-Mulk plays from the beginning without verse tracking for this reciter.';
+    expect(messages).toEqual([expected]);
+    // the player bar shows "Verse tracking unavailable" inline, not this
+    expect(barMessages).toEqual([expected]);
+  });
+
+  it("the page's first verse counts as a requested start too", async () => {
+    mockPageKeys[563] = ['67:13', '67:14'];
+    const {messages} = await noticesDuring(async () => {
+      st().setReciter('doori-269', 'Test Reciter');
+      await st().startPlayback(563);
+    });
+    expect(messages).toEqual([
+      'Al-Mulk plays from the beginning without verse tracking for this reciter.',
+    ]);
+  });
+
+  it('starting at the first verse: nothing was skipped, the notice is unchanged', async () => {
+    const {messages, barMessages} = await noticesDuring(() =>
+      play('doori-269', 562, '67:1'),
+    );
+    expect(st().ignoredStartVerseKey).toBeNull();
+    expect(messages).toEqual([
+      'Al-Mulk plays without verse highlighting for this reciter.',
+    ]);
+    expect(barMessages).toEqual([]);
+  });
+
+  it('the bar only notices what it cannot show inline', () => {
+    const refused = {...base, timestampError: VERSE_TIMING_UNAVAILABLE_ERROR};
+    expect(getPlayerBarNotice(base, refused, names)).toBeNull();
+    const untracked = {
+      ...base,
+      playbackState: 'loading' as const,
+      numberingMode: 'disabled' as const,
+      currentSurah: 67,
+    };
+    expect(getPlayerBarNotice(base, untracked, names)).toBeNull();
+    const skipped = {...untracked, ignoredStartVerseKey: '67:5'};
+    expect(getPlayerBarNotice(base, skipped, names)).toEqual({
+      title: 'Verse tracking unavailable',
+      message:
+        'Al-Mulk plays from the beginning without verse tracking for this reciter.',
+      preset: 'none',
+    });
+    // once per start
+    expect(getPlayerBarNotice(skipped, skipped, names)).toBeNull();
+  });
+
+  it('stop, and a tracked start, forget the skipped verse', async () => {
+    await play('doori-269', 562, '67:5');
+    expect(st().ignoredStartVerseKey).toBe('67:5');
+    st().stop();
+    expect(st().ignoredStartVerseKey).toBeNull();
+    await play('doori-269', 562, '67:5');
+    await play('hafs-clean', 2, '2:5');
+    expect(st().ignoredStartVerseKey).toBeNull();
   });
 });
 // @ai-end

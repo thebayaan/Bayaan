@@ -114,6 +114,14 @@ export interface MushafPlayerStoreState {
   rangeEnd: RangeEndpoint | null;
   availableReciters: AvailableReciter[];
   pendingStartVerseKey: string | null;
+  // @ai-start
+  /**
+   * The verse playback was asked to start at when the surah has no verse
+   * tracking: it plays from its beginning instead, and the notice says so.
+   * Null otherwise.
+   */
+  ignoredStartVerseKey: string | null;
+  // @ai-end
   timestampError: string | null;
   _versePlayCount: number;
   _rangePlayCount: number;
@@ -330,6 +338,7 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
     surah: number,
     timestamps: AyahTimestamp[],
     numbering: TimingNumbering,
+    startHafsAyah: number | null = null, // @ai
   ) => {
     const audioUrl = resolveMushafAudioUrl(rewayatId, surah);
     mushafAudioService.loadSurah(surah, audioUrl, timestamps);
@@ -341,6 +350,17 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
       timestamps,
       _numbering: numbering,
       numberingMode: numbering.mode,
+      // @ai-start
+      // Without verse tracking the surah plays from its beginning: a later
+      // start verse that was asked for is skipped (set with numberingMode so
+      // the notice for this surah can say so).
+      ignoredStartVerseKey:
+        numbering.mode === 'disabled' &&
+        startHafsAyah !== null &&
+        startHafsAyah > 1
+          ? `${surah}:${startHafsAyah}`
+          : null,
+      // @ai-end
     });
   };
 
@@ -383,7 +403,7 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
         return;
       }
       const {timestamps, numbering} = prepared;
-      loadSurahAudio(rewayatId, surah, timestamps, numbering);
+      loadSurahAudio(rewayatId, surah, timestamps, numbering, hafsAyah); // @ai
       if (numbering.mode !== 'disabled') {
         let start: number | null = 1; // first timing entry
         if (hafsAyah !== null) {
@@ -584,6 +604,7 @@ export const useMushafPlayerStore = create<MushafPlayerStoreState>()(
         rangeEnd: null,
         availableReciters: [],
         pendingStartVerseKey: null,
+        ignoredStartVerseKey: null, // @ai
         timestampError: null,
         _versePlayCount: 1,
         _rangePlayCount: 1,
@@ -642,6 +663,7 @@ export const useMushafPlayerStore = create<MushafPlayerStoreState>()(
             playbackState: 'loading',
             currentPage: page,
             pendingStartVerseKey: null,
+            ignoredStartVerseKey: null, // @ai
             timestampError: null,
             _versePlayCount: 1,
             _rangePlayCount: 1,
@@ -709,6 +731,7 @@ export const useMushafPlayerStore = create<MushafPlayerStoreState>()(
               surahNumber,
               timestamps,
               numbering,
+              ayahNumber, // @ai
             );
 
             if (numbering.mode !== 'disabled') {
@@ -748,6 +771,7 @@ export const useMushafPlayerStore = create<MushafPlayerStoreState>()(
             timestamps: null,
             rangeStart: null,
             rangeEnd: null,
+            ignoredStartVerseKey: null, // @ai
             timestampError: null,
             _versePlayCount: 1,
             _rangePlayCount: 1,
@@ -886,13 +910,45 @@ export interface PlaybackNotice {
 type NoticeState = Pick<
   MushafPlayerStoreState,
   'playbackState' | 'timestampError' | 'numberingMode' | 'currentSurah'
->;
+> &
+  Partial<Pick<MushafPlayerStoreState, 'ignoredStartVerseKey'>>;
+
+/**
+ * Notice for entering a surah that plays without verse tracking, or null.
+ * When playback was asked to start at a later verse it says the surah plays
+ * from its beginning instead.
+ */
+function untrackedSurahNotice(
+  prev: NoticeState,
+  next: NoticeState,
+  surahName: (surah: number) => string,
+): PlaybackNotice | null {
+  if (
+    next.playbackState === 'idle' ||
+    next.numberingMode !== 'disabled' ||
+    (prev.numberingMode === 'disabled' &&
+      prev.currentSurah === next.currentSurah)
+  ) {
+    return null;
+  }
+  const name = surahName(next.currentSurah);
+  const subject = name ? `${name} plays` : 'This surah plays';
+  return {
+    title: VERSE_TRACKING_UNAVAILABLE_LABEL,
+    message: next.ignoredStartVerseKey
+      ? `${subject} from the beginning without verse tracking for this reciter.`
+      : `${subject} without verse highlighting for this reciter.`,
+    preset: 'none',
+  };
+}
 
 /**
  * Messages the player bar shows inline, as a one-off notice for surfaces
  * that have no room for them (the iOS 26 toolbar): a refused or impossible
- * playback request, and a surah that plays without verse tracking. Null when
- * the transition from `prev` to `next` shows nothing new.
+ * playback request, and a surah that plays without verse tracking (from its
+ * beginning, when a later start verse was asked for; the bar shows that part
+ * as a notice too, see getPlayerBarNotice). Null when the transition from
+ * `prev` to `next` shows nothing new.
  */
 export function getPlaybackNotice(
   prev: NoticeState,
@@ -906,19 +962,20 @@ export function getPlaybackNotice(
       preset: 'error',
     };
   }
-  if (
-    next.playbackState !== 'idle' &&
-    next.numberingMode === 'disabled' &&
-    (prev.numberingMode !== 'disabled' ||
-      prev.currentSurah !== next.currentSurah)
-  ) {
-    const name = surahName(next.currentSurah);
-    return {
-      title: VERSE_TRACKING_UNAVAILABLE_LABEL,
-      message: `${name ? `${name} plays` : 'This surah plays'} without verse highlighting for this reciter.`,
-      preset: 'none',
-    };
-  }
-  return null;
+  return untrackedSurahNotice(prev, next, surahName);
+}
+
+/**
+ * The notices the player bar shows as toasts: it shows refusals and
+ * "Verse tracking unavailable" inline, but not that a requested start verse
+ * was skipped because the surah plays from its beginning.
+ */
+export function getPlayerBarNotice(
+  prev: NoticeState,
+  next: NoticeState,
+  surahName: (surah: number) => string,
+): PlaybackNotice | null {
+  if (!next.ignoredStartVerseKey) return null;
+  return untrackedSurahNotice(prev, next, surahName);
 }
 // @ai-end
