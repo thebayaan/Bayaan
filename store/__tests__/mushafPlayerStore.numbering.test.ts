@@ -106,6 +106,16 @@ jest.mock('@/store/mushafSettingsStore', () => ({
   useMushafSettingsStore: {getState: () => mockDisplay},
 }));
 
+// @ai-start
+// The mushaf's verse units are ready (the label may use its own numbering);
+// these tests use no page starts by verse unit.
+jest.mock('@/utils/playbackVerseUnits', () => ({
+  readyVerseUnits: () => null,
+  canShowRewayahVerses: () => true,
+  subscribeVerseUnitsChanges: () => () => undefined,
+}));
+// @ai-end
+
 import {
   useMushafPlayerStore,
   isVerseKeyPlaying,
