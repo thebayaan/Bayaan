@@ -11,6 +11,7 @@ import type {
 
 export const DAY_MS = 86_400_000;
 export const WIFI_THRESHOLD_BYTES = 5_000_000;
+// Accepted: unforced checks run daily, so the 1h and 6h steps only shorten retries for forced checks and user installs.
 export const BACKOFF_MS = [3_600_000, 21_600_000, 86_400_000];
 
 export interface EngineDeps {
@@ -40,6 +41,7 @@ function isEnvelope(value: unknown): value is ContentEnvelope {
   return (
     candidate.envelope === 1 &&
     typeof candidate.key === 'string' &&
+    typeof candidate.version === 'number' &&
     typeof candidate.snapshot === 'object' &&
     candidate.snapshot !== null
   );
@@ -47,6 +49,19 @@ function isEnvelope(value: unknown): value is ContentEnvelope {
 
 function backoffFor(failures: number): number {
   return BACKOFF_MS[Math.min(failures, BACKOFF_MS.length) - 1];
+}
+
+function checkIsDue(lastCheckedAt: number | null, now: number): boolean {
+  if (lastCheckedAt === null) return true;
+  const gap = now - lastCheckedAt;
+  // A negative gap means the clock moved backwards; treat the last check as stale.
+  return gap < 0 || gap >= DAY_MS;
+}
+
+function retryIsDue(nextRetryAt: number | null, now: number): boolean {
+  if (nextRetryAt === null || nextRetryAt <= now) return true;
+  // Further out than the longest backoff means the clock moved backwards.
+  return nextRetryAt - now > BACKOFF_MS[BACKOFF_MS.length - 1];
 }
 
 async function recordFailure(
@@ -70,6 +85,7 @@ export async function installResource(
   key: string,
   kind: ContentKind,
   reason: 'user' | 'auto',
+  expectedVersion?: number,
 ): Promise<void> {
   const installer = deps.installers[kind];
   if (!installer) throw new Error(`no_installer_${kind}`);
@@ -81,6 +97,11 @@ export async function installResource(
     const parsed: unknown = JSON.parse(text);
     if (!isEnvelope(parsed) || parsed.key !== key)
       throw new Error('envelope_mismatch');
+    if (
+      parsed.version !== ticket.version ||
+      (expectedVersion !== undefined && ticket.version !== expectedVersion)
+    )
+      throw new Error('version_mismatch');
     if (!installer.supportsSchemaVersion(parsed.snapshot.schema_version))
       throw new Error('unsupported_schema');
     const previous = (await deps.registry.get(key)) ?? emptyRow(key, kind);
@@ -127,8 +148,14 @@ export async function removeResource(
 }
 
 function isPlaceholder(row: LocalContentRow): boolean {
-  // A failure placeholder: a first install that never succeeded. Legacy rows are real local copies.
-  return !row.legacy && row.installed_at === null && row.version === 0;
+  // A failure placeholder: no install ever succeeded (installResource always sets
+  // upstream_schema_version). Legacy rows and half-purged rows are real copies.
+  return (
+    !row.legacy &&
+    row.installed_at === null &&
+    row.version === 0 &&
+    row.upstream_schema_version === null
+  );
 }
 
 async function purge(
@@ -142,10 +169,20 @@ async function purge(
     return;
   }
   await installer.remove(row.key);
+  // Data is gone: never let a later failure leave the row claiming an installed copy.
+  const removed: LocalContentRow = {
+    ...row,
+    version: 0,
+    sha256: null,
+    installed_at: null,
+  };
+  await deps.registry.upsert(removed);
   await installer.onWithdrawn(row.key);
-  // withdrawal_notified is never set here: the row is deleted below, so a later check cannot notify again.
-  if (!row.withdrawal_notified)
+  if (!row.withdrawal_notified) {
     deps.notify({key: row.key, name: row.name ?? entry?.meta?.name ?? row.key});
+    // Persisted before the delete so a failed delete cannot repeat the notice.
+    await deps.registry.upsert({...removed, withdrawal_notified: true});
+  }
   await deps.registry.delete(row.key);
   deps.track('withdrawn', {
     key: row.key,
@@ -167,17 +204,17 @@ async function applyRow(
     return;
   }
   const needsUpdate = row.legacy || entry.version > row.version;
-  const schemaOk = installer.supportsSchemaVersion(
-    entry.upstream_schema_version ?? 1,
-  );
-  const backoffOver =
-    row.next_retry_at === null || row.next_retry_at <= deps.now();
+  // A missing schema version is unknown, so treat it as unsupported.
+  const schemaOk =
+    entry.upstream_schema_version !== undefined &&
+    installer.supportsSchemaVersion(entry.upstream_schema_version);
+  const backoffOver = retryIsDue(row.next_retry_at, deps.now());
   if (!needsUpdate || !schemaOk || !backoffOver) return;
   const networkOk =
     (entry.bytes ?? 0) <= WIFI_THRESHOLD_BYTES || (await onWifi());
   if (!networkOk) return;
   await deps.registry.upsert({...row, name: entry.meta?.name ?? row.name});
-  await installResource(deps, row.key, row.kind, 'auto');
+  await installResource(deps, row.key, row.kind, 'auto', entry.version);
 }
 
 export async function runContentCheck(
@@ -185,11 +222,7 @@ export async function runContentCheck(
   opts: {force?: boolean} = {},
 ): Promise<CheckOutcome> {
   const state = await deps.registry.getState();
-  if (
-    !opts.force &&
-    state.lastCheckedAt !== null &&
-    deps.now() - state.lastCheckedAt < DAY_MS
-  )
+  if (!opts.force && !checkIsDue(state.lastCheckedAt, deps.now()))
     return 'skipped_recent';
 
   const kinds = (Object.keys(deps.installers) as ContentKind[]).filter(
