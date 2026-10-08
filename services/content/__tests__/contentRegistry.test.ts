@@ -33,6 +33,42 @@ describe('memory registry', () => {
 });
 
 describe('sqlite registry (stubbed db)', () => {
+  it('retries the open after a failure instead of caching it', async () => {
+    const opened = {
+      execAsync: jest.fn().mockResolvedValue(undefined),
+      runAsync: jest.fn().mockResolvedValue(undefined),
+      getAllAsync: jest.fn().mockResolvedValue([{name: 'manifest_json'}]),
+      getFirstAsync: jest.fn().mockResolvedValue(null),
+    };
+    const open = jest
+      .fn()
+      .mockRejectedValueOnce(new Error('disk busy'))
+      .mockResolvedValue(opened);
+    const registry = createSqliteContentRegistry(open);
+    await expect(registry.list()).rejects.toThrow('disk busy');
+    await expect(registry.getState()).resolves.toMatchObject({
+      manifestEtag: null,
+    });
+    expect(open).toHaveBeenCalledTimes(2);
+  });
+
+  it('tolerates a concurrent duplicate manifest_json column', async () => {
+    const opened = {
+      execAsync: jest.fn(async (sql: string) => {
+        if (sql.includes('ADD COLUMN manifest_json')) {
+          throw new Error('duplicate column name: manifest_json');
+        }
+      }),
+      runAsync: jest.fn().mockResolvedValue(undefined),
+      getAllAsync: jest.fn().mockResolvedValue([]),
+      getFirstAsync: jest.fn().mockResolvedValue(null),
+    };
+    const registry = createSqliteContentRegistry(async () => opened);
+    await expect(registry.getState()).resolves.toMatchObject({
+      manifestEtag: null,
+    });
+  });
+
   it('creates tables and maps rows to booleans', async () => {
     const execAsync = jest.fn().mockResolvedValue(undefined);
     const runAsync = jest.fn().mockResolvedValue(undefined);

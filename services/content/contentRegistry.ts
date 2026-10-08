@@ -110,9 +110,15 @@ async function ensureManifestColumn(opened: Db): Promise<void> {
     'PRAGMA table_info(content_state)',
   )) as RawColumn[];
   if (columns.some(column => column.name === 'manifest_json')) return;
-  await opened.execAsync(
-    'ALTER TABLE content_state ADD COLUMN manifest_json TEXT',
-  );
+  try {
+    await opened.execAsync(
+      'ALTER TABLE content_state ADD COLUMN manifest_json TEXT',
+    );
+  } catch (error) {
+    // Another connection may have added it between the check and the ALTER.
+    const message = error instanceof Error ? error.message : String(error);
+    if (!message.includes('duplicate column name')) throw error;
+  }
 }
 
 function parseManifest(text: string | null | undefined): Manifest | null {
@@ -147,11 +153,17 @@ export function createSqliteContentRegistry(
 ): ContentRegistry {
   let ready: Promise<Db> | null = null;
   function db(): Promise<Db> {
-    ready ??= open().then(async opened => {
-      await opened.execAsync(SCHEMA);
-      await ensureManifestColumn(opened);
-      return opened;
-    });
+    ready ??= open()
+      .then(async opened => {
+        await opened.execAsync(SCHEMA);
+        await ensureManifestColumn(opened);
+        return opened;
+      })
+      .catch((error: unknown) => {
+        // Do not cache a failed open; the next call retries.
+        ready = null;
+        throw error;
+      });
     return ready;
   }
   const registry: ContentRegistry = {

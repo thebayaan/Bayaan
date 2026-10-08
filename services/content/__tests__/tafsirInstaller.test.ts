@@ -260,6 +260,9 @@ describe('tafsir installer', () => {
 });
 
 describe('tafsir installer against real SQLite', () => {
+  // Real SQLite migrations per test can exceed the 5 s default under load.
+  jest.setTimeout(15000);
+
   type Service =
     typeof import('@/services/tafseer/TafseerDbService').tafseerDbService;
 
