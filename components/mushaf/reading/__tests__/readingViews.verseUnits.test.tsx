@@ -121,6 +121,7 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => {
     digitalKhattDataService: Object.assign(service, {
       getRewayahLoadState: () => 'loaded',
       ensureRewayahLoaded: async () => undefined,
+      retainRewayah: () => () => undefined,
     }),
   };
 });

@@ -129,6 +129,7 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => ({
     subscribeCacheChanges: () => () => undefined,
     getRewayahLoadState: () => 'loaded',
     ensureRewayahLoaded: async () => undefined,
+    retainRewayah: () => () => undefined,
     // Page 2 holds the slots of the synthetic surah 2 (mergedOpeningUnits).
     getPageLines: (page: number) =>
       page === 2

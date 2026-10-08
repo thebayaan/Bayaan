@@ -34,6 +34,13 @@ const UNAVAILABLE: RewayahVerseUnitsResult = {
  * cache version, loads the rewayah's words on demand whenever they are
  * 'idle' (also after a mushaf switch evicted them), and never retries a
  * failed load in a loop.
+ *
+ * Like useRewayahWords, it retains the rewayah while mounted, so its words
+ * are never evicted under it. The data service keeps only one idle side
+ * copy: without the retain, two surfaces showing two rewayat other than the
+ * mushaf's (Bookmarks list rows saved in Warsh and in al-Bazzi on a Hafs
+ * mushaf) would evict each other's words on every load and load them again
+ * on the next cache change, for as long as they stay mounted.
  */
 export function useRewayahVerseUnits(
   rewayah: RewayahId | null,
@@ -43,6 +50,13 @@ export function useRewayahVerseUnits(
     digitalKhattDataService.getCacheVersion,
   );
   const hasData = rewayah !== null && hasTextData(rewayah);
+
+  // Retained from mount, before the load below lands, until unmount or
+  // another rewayah: no other surface's load can evict it meanwhile.
+  useEffect(() => {
+    if (!rewayah || !hasData) return;
+    return digitalKhattDataService.retainRewayah(rewayah);
+  }, [rewayah, hasData]);
 
   useEffect(() => {
     if (!rewayah || !hasData) return;

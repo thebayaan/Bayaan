@@ -12,8 +12,10 @@ import {
 /**
  * How a bookmark or note reads in the rewayah it was saved in: its own verse
  * label and text (see describeSavedVerse). Loads that rewayah's words on
- * demand, as the row's text preview already did. Hafs rows need nothing:
- * they keep their Hafs label and preview ('hafs').
+ * demand and keeps them in memory while the row is mounted (as the row's
+ * text preview did before), so rows of several rewayat never evict each
+ * other's words. Hafs rows need nothing: they keep their Hafs label and
+ * preview ('hafs').
  */
 export function useSavedVerseDescription(
   row: SavedVerseRef,
