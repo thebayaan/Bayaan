@@ -7,6 +7,13 @@ import Color from 'color';
 import {SURAHS} from '@/data/surahData';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
 import type {VerseBookmark} from '@/types/verse-annotations';
+// @ai-start
+import {
+  bookmarkChipView,
+  type BookmarkChipView,
+  type ShownVerses,
+} from './mushafSearchVerses';
+// @ai-end
 
 // Module-level cache — warmed by AppInitializer after DB is ready
 let cachedBookmarks: VerseBookmark[] = [];
@@ -17,11 +24,18 @@ export async function warmBookmarkCache(): Promise<void> {
 }
 
 interface BookmarkChipsProps {
-  onPress: (surahId: number, ayahNumber: number) => void;
+  // @ai-start
+  /**
+   * The rewayah on screen and its verse units: each chip is labelled with,
+   * and opens, the verse of that rewayah the bookmark marks (decision 3).
+   */
+  shown: ShownVerses;
+  onPress: (view: BookmarkChipView, surahId: number) => void;
+  // @ai-end
 }
 
 export const BookmarkChips: React.FC<BookmarkChipsProps> = React.memo(
-  ({onPress}) => {
+  ({shown, onPress}) => {
     const {theme} = useTheme();
     const [bookmarks, setBookmarks] = useState(cachedBookmarks);
 
@@ -54,6 +68,7 @@ export const BookmarkChips: React.FC<BookmarkChipsProps> = React.memo(
                 ? SURAHS[bookmark.surahNumber - 1]
                 : null;
             if (!surah) return null;
+            const view = bookmarkChipView(bookmark, shown); // @ai
 
             return (
               <Pressable
@@ -69,9 +84,8 @@ export const BookmarkChips: React.FC<BookmarkChipsProps> = React.memo(
                       .toString(),
                   },
                 ]}
-                onPress={() =>
-                  onPress(bookmark.surahNumber, bookmark.ayahNumber)
-                }>
+                onPress={() => onPress(view, bookmark.surahNumber)} // @ai
+              >
                 <Feather
                   name="bookmark"
                   size={moderateScale(12)}
@@ -80,7 +94,8 @@ export const BookmarkChips: React.FC<BookmarkChipsProps> = React.memo(
                 <Text
                   style={[styles.chipText, {color: theme.colors.text}]}
                   numberOfLines={1}>
-                  {surah.name} {bookmark.surahNumber}:{bookmark.ayahNumber}
+                  {/* @ai: no number while the verses are not ready */}
+                  {view.label ? `${surah.name} ${view.label}` : surah.name}
                 </Text>
               </Pressable>
             );
