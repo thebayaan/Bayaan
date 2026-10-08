@@ -2,25 +2,27 @@
 // Similar-verse phrase snippets: Hafs shows exactly the text it showed before
 // Release 1 (a phrase reaching the verse-end slot keeps its marker); other
 // rewayat skip blank slots, keep multi-token slots whole and drop inline
-// rewayah markers. Fixtures use placeholder words with real verse markers
-// (U+06DD + Arabic-Indic digits) rather than Quran text.
+// rewayah markers. The snippet is read from the rewayah asked for (the
+// sheet's), never from whatever the mushaf shows. Fixtures use placeholder
+// words with real verse markers (U+06DD + Arabic-Indic digits) rather than
+// Quran text.
 import type {DKWordInfo} from '@/services/mushaf/DigitalKhattDataService';
 import {getSimilarPhraseText, joinPhraseWords} from '../similarVersePhrase';
 
+// Words in memory per rewayah; `rewayah` is the mushaf's (the main cache).
 jest.mock('@/services/mushaf/DigitalKhattDataService', () => {
   const state = {
     rewayah: 'hafs',
-    verses: new Map<string, DKWordInfo[]>(),
+    verses: new Map<string, Map<string, DKWordInfo[]>>(),
   };
   return {
     digitalKhattDataService: {
       get rewayah() {
         return state.rewayah;
       },
-      getVerseWords: jest.fn((verseKey: string, rewayah?: string) =>
-        !rewayah || rewayah === state.rewayah
-          ? (state.verses.get(verseKey) ?? [])
-          : [],
+      getVerseWords: jest.fn(
+        (verseKey: string, rewayah?: string) =>
+          state.verses.get(rewayah ?? state.rewayah)?.get(verseKey) ?? [],
       ),
     },
     __state: state,
@@ -29,9 +31,16 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => {
 
 const dk = (
   jest.requireMock('@/services/mushaf/DigitalKhattDataService') as {
-    __state: {rewayah: string; verses: Map<string, DKWordInfo[]>};
+    __state: {
+      rewayah: string;
+      verses: Map<string, Map<string, DKWordInfo[]>>;
+    };
   }
 ).__state;
+
+function load(rewayah: string, words: DKWordInfo[]) {
+  dk.verses.set(rewayah, new Map([[words[0].verseKey, words]]));
+}
 
 const M24 = '۝٢٤'; // end of verse 24
 const M3 = '۝٣'; // a rewayah verse end inside the Hafs verse
@@ -105,20 +114,31 @@ describe('getSimilarPhraseText', () => {
     dk.verses.clear();
   });
 
-  it('reads the active rewayah and keeps the Hafs verse marker', () => {
+  it('reads Hafs and keeps the Hafs verse marker', () => {
     dk.rewayah = 'hafs';
-    dk.verses.set('48:24', HAFS_VERSE);
-    expect(getSimilarPhraseText('48:24', 4, 6)).toBe(`h4 h5 ${M24}`);
+    load('hafs', HAFS_VERSE);
+    expect(getSimilarPhraseText('48:24', 4, 6, 'hafs')).toBe(`h4 h5 ${M24}`);
   });
 
-  it('drops rewayah verse markers when the mushaf shows another rewayah', () => {
+  it('drops rewayah verse markers in another rewayah', () => {
     dk.rewayah = 'warsh';
-    dk.verses.set('48:24', REWAYAH_VERSE);
-    expect(getSimilarPhraseText('48:24', 4, 6)).toBe('r4 r5');
+    load('warsh', REWAYAH_VERSE);
+    expect(getSimilarPhraseText('48:24', 4, 6, 'warsh')).toBe('r4 r5');
+  });
+
+  it('reads the rewayah asked for, not the one the mushaf shows', () => {
+    dk.rewayah = 'warsh';
+    load('warsh', REWAYAH_VERSE);
+    load('hafs', HAFS_VERSE);
+    expect(getSimilarPhraseText('48:24', 4, 6, 'hafs')).toBe(`h4 h5 ${M24}`);
+    dk.rewayah = 'hafs';
+    expect(getSimilarPhraseText('48:24', 1, 3, 'warsh')).toBe('r1 r3a r3b');
   });
 
   it('is empty for a verse with no words loaded', () => {
     dk.rewayah = 'hafs';
-    expect(getSimilarPhraseText('2:1', 1, 2)).toBe('');
+    expect(getSimilarPhraseText('2:1', 1, 2, 'hafs')).toBe('');
+    load('hafs', HAFS_VERSE);
+    expect(getSimilarPhraseText('48:24', 1, 2, 'qalun')).toBe('');
   });
 });
