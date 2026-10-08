@@ -129,6 +129,7 @@ import {
   oracleHafsAyahs,
 } from '@/services/timestamps/__fixtures__/timingFixtures';
 import {createAudioPlayer} from 'expo-audio';
+import {timestampService} from '@/services/timestamps/TimestampService'; // @ai
 
 // Hafs pages as laid out in the mushaf (first verse keys only matter here)
 Object.assign(mockPageKeys, {
@@ -216,6 +217,24 @@ beforeEach(() => {
   timingNumberingService.reset();
   (createAudioPlayer as jest.Mock).mockClear();
 });
+
+// @ai-start
+const getTimestampsForSurah =
+  timestampService.getTimestampsForSurah as jest.Mock;
+const fixtureTimings = getTimestampsForSurah.getMockImplementation()!;
+
+/** Serve `files` (by `${set}-${surah}`) in place of the fixtures. */
+function serveTimings(files: Partial<Record<string, AyahTimestamp[]>>) {
+  getTimestampsForSurah.mockImplementation(
+    async (set: string, surah: number) =>
+      files[`${set}-${surah}`] ?? fixtureTimings(set, surah),
+  );
+}
+
+afterEach(() => {
+  getTimestampsForSurah.mockImplementation(fixtureTimings);
+});
+// @ai-end
 
 describe('Warsh (rewayah-numbered set 14)', () => {
   it('follow-along in al-Baqarah highlights exactly the Hafs verses being recited', async () => {
@@ -858,6 +877,83 @@ describe('player info text and notices', () => {
     await play('doori-269', 562, '67:5');
     await play('hafs-clean', 2, '2:5');
     expect(st().ignoredStartVerseKey).toBeNull();
+  });
+});
+
+describe("Shu'bah files numbered like Hafs but not exactly 1..n", () => {
+  /** Al-Ikhlas, 3 s per entry from 0 s, numbered as given. */
+  const ikhlas = (ayahs: number[]): AyahTimestamp[] =>
+    ayahs.map((ayahNumber, i) => ({
+      surahNumber: 112,
+      ayahNumber,
+      timestampFrom: i * 3000,
+      timestampTo: (i + 1) * 3000,
+      durationMs: 3000,
+    }));
+  // no entry for 112:3, which is recited from 6 s to 9 s
+  const missingVerse3 = (): AyahTimestamp[] => [
+    ...ikhlas([1, 2]),
+    {...ikhlas([4])[0], timestampFrom: 9000, timestampTo: 12000},
+  ];
+  const names = (n: number) => (n === 112 ? 'Al-Ikhlas' : '');
+
+  it('a verse missing: plays untracked and says so, never naming the verse before it', async () => {
+    serveTimings({'shubah-305-112': missingVerse3()});
+    const notices: string[] = [];
+    const unsubscribe = useMushafPlayerStore.subscribe((s, prev) => {
+      const n = getPlaybackNotice(prev, s, names);
+      if (n) notices.push(n.message);
+    });
+    await play('shubah-305', 604, '112:3');
+    unsubscribe();
+    expect(st().numberingMode).toBe('disabled');
+    expect(st().playbackState).toBe('playing');
+    expect(player().seeks).toEqual([]); // from the start of the audio
+    expect(notices).toEqual([
+      'Al-Ikhlas plays from the beginning without verse tracking for this reciter.',
+    ]);
+    for (const ms of [500, 3500, 7000, 9500]) {
+      at(ms);
+      expect(st().currentVerseKeys).toEqual([]);
+      expect(st().currentVerseLabel).toBeNull();
+    }
+    expect(formatPlaybackInfo('Al-Ikhlas', st())).toBe(
+      'Al-Ikhlas · Verse tracking unavailable',
+    );
+  });
+
+  it('a verse missing: a repeat of the verse before it is refused', async () => {
+    serveTimings({'shubah-305-112': missingVerse3()});
+    st().setRange({surah: 112, ayah: 2}, {surah: 112, ayah: 2});
+    st().setVerseRepeatCount(2);
+    await play('shubah-305', 604, '112:2');
+    expect(st().playbackState).toBe('idle');
+    expect(st().timestampError).toBe(VERSE_TIMING_UNAVAILABLE_ERROR);
+    expect(createAudioPlayer).not.toHaveBeenCalled();
+  });
+
+  it('a verse recited twice in a row: started, highlighted and repeated as one verse', async () => {
+    serveTimings({'shubah-305-112': ikhlas([1, 2, 3, 3, 4])});
+    st().setRange({surah: 112, ayah: 3}, {surah: 112, ayah: 3});
+    st().setVerseRepeatCount(0);
+    st().setRangeRepeatCount(0);
+    await play('shubah-305', 604, '112:3');
+    expect(st().numberingMode).toBe('hafs');
+    expect(player().seeks).toEqual([6]); // its first recitation
+    // both recitations of 112:3, again and again, never 112:4
+    const heard = await listen('shubah-305', 112, 6);
+    expect(heard).toEqual([3, 3, 3, 3, 3, 3]);
+    expect(st().currentVerseKeys).toEqual(['112:3']);
+    expect(st().currentVerseLabel).toBe('112:3');
+  });
+
+  it('a verse recited twice in a row: a range of it plays both recitations, then stops', async () => {
+    serveTimings({'shubah-305-112': ikhlas([1, 2, 3, 3, 4])});
+    st().setRange({surah: 112, ayah: 3}, {surah: 112, ayah: 3});
+    await play('shubah-305', 604, '112:3');
+    const heard = await listen('shubah-305', 112);
+    expect(heard).toEqual([3, 3]);
+    expect(st().playbackState).toBe('idle');
   });
 });
 // @ai-end

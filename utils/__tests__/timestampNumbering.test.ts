@@ -208,33 +208,58 @@ describe('explicitly numbered files (a verse missing or repeated)', () => {
   const without = (n: number, missing: number[]) =>
     range(n).filter(a => !missing.includes(a));
 
-  it("Shu'bah (numbered like Hafs throughout): every entry names its own verse", () => {
-    // one verse has no entry: develop highlighted the others by identity
-    expect(decide('shubah', 2, synthetic(2, without(286, [100]))).mode).toBe(
-      'hafs',
-    );
-    // a verse recited twice
+  it("Shu'bah (numbered like Hafs throughout): a verse recited more than once in a row keeps the identity numbering", () => {
+    // a verse recited twice, or three times
     expect(
       decide('shubah', 2, synthetic(2, [...range(3), 3, ...range(283, 4)]))
         .mode,
     ).toBe('hafs');
-    // an ayah-0 pre-roll, then a gap
-    expect(decide('shubah', 112, synthetic(112, [0, 1, 2, 4])).mode).toBe(
+    expect(
+      decide(
+        'shubah',
+        2,
+        synthetic(2, [...range(10), 10, 10, ...range(276, 11)]),
+      ).mode,
+    ).toBe('hafs');
+    // the first or the last verse repeated
+    expect(decide('shubah', 112, synthetic(112, [1, 1, 2, 3, 4])).mode).toBe(
+      'hafs',
+    );
+    expect(decide('shubah', 112, synthetic(112, [1, 2, 3, 4, 4])).mode).toBe(
+      'hafs',
+    );
+    // an ayah-0 pre-roll, then a repeat
+    expect(decide('shubah', 112, synthetic(112, [0, 1, 2, 2, 3, 4])).mode).toBe(
       'hafs',
     );
   });
 
-  it("...as long as every entry names one of the surah's verses, up to its last", () => {
-    // an entry past the surah's last verse
-    expect(
-      decide('shubah', 2, synthetic(2, [...without(286, [100]), 287])).mode,
-    ).toBe('disabled');
-    // the numbering never reaches the last verse: another count is possible
-    expect(decide('shubah', 2, synthetic(2, without(285, [100]))).mode).toBe(
+  it('a verse missing is refused: the previous verse would be highlighted while it is recited', () => {
+    // al-Ikhlas with no entry for 112:3: entry 112:2 would stay current
+    // through the recitation of 112:3
+    expect(decide('shubah', 112, synthetic(112, [1, 2, 4])).mode).toBe(
       'disabled',
     );
-    // an ayah 0 that is not a pre-roll
-    expect(decide('shubah', 112, synthetic(112, [1, 0, 2, 3, 4])).mode).toBe(
+    expect(decide('shubah', 2, synthetic(2, without(286, [100]))).mode).toBe(
+      'disabled',
+    );
+    // an ayah-0 pre-roll, then a gap
+    expect(decide('shubah', 112, synthetic(112, [0, 1, 2, 4])).mode).toBe(
+      'disabled',
+    );
+    // the first verse missing
+    expect(decide('shubah', 112, synthetic(112, [2, 3, 4])).mode).toBe(
+      'disabled',
+    );
+    // a repeat does not make up for a missing verse
+    expect(decide('shubah', 112, synthetic(112, [1, 1, 2, 4])).mode).toBe(
+      'disabled',
+    );
+    // the last verse missing: another count is possible too
+    expect(decide('shubah', 112, synthetic(112, [1, 2, 2, 3])).mode).toBe(
+      'disabled',
+    );
+    expect(decide('shubah', 2, synthetic(2, without(285, [100]))).mode).toBe(
       'disabled',
     );
     // numbered 1..n but one short: a missing last verse, or every verse
@@ -242,8 +267,31 @@ describe('explicitly numbered files (a verse missing or repeated)', () => {
     expect(decide('shubah', 2, synthetic(2, range(285))).mode).toBe('disabled');
   });
 
+  it('...as are a step back, an entry past the last verse and a stray ayah 0', () => {
+    // a step back: the verses' entries are no longer one run each, so a
+    // verse repeat or a range would replay verses outside it
+    expect(decide('shubah', 112, synthetic(112, [1, 2, 3, 2, 3, 4])).mode).toBe(
+      'disabled',
+    );
+    expect(decide('shubah', 112, synthetic(112, [1, 2, 4, 3])).mode).toBe(
+      'disabled',
+    );
+    // an entry past the surah's last verse
+    expect(
+      decide('shubah', 2, synthetic(2, [...range(3), 3, ...range(283, 4), 287]))
+        .mode,
+    ).toBe('disabled');
+    // an ayah 0 that is not a pre-roll
+    expect(decide('shubah', 112, synthetic(112, [1, 0, 2, 3, 4])).mode).toBe(
+      'disabled',
+    );
+  });
+
   it('rewayat that number some surahs differently, and unknown rewayat, still refuse', () => {
     expect(decide('warsh', 112, synthetic(112, [1, 2, 4])).mode).toBe(
+      'disabled',
+    );
+    expect(decide('warsh', 112, synthetic(112, [1, 2, 2, 3, 4])).mode).toBe(
       'disabled',
     );
     expect(decide('warsh', 2, synthetic(2, without(286, [100]))).mode).toBe(
@@ -252,14 +300,19 @@ describe('explicitly numbered files (a verse missing or repeated)', () => {
     expect(decide(null, 2, synthetic(2, without(286, [100]))).mode).toBe(
       'disabled',
     );
+    expect(decide(null, 112, synthetic(112, [1, 2, 2, 3, 4])).mode).toBe(
+      'disabled',
+    );
   });
 
-  it('the identity numbering then answers for the entries present', () => {
-    const entries = synthetic(2, without(286, [100]));
-    const n = numbering('hafs', 'shubah', 2, entries);
-    expect(n.hafsKeysForEntry(101)).toEqual(['2:101']);
-    expect(n.startEntryForHafsAyah(101)?.ayahNumber).toBe(101);
-    expect(n.startEntryForHafsAyah(100)).toBeNull();
+  it('the identity numbering then answers for every verse, a repeated one from its first entry', () => {
+    const entries = synthetic(112, [1, 2, 3, 3, 4]);
+    expect(decide('shubah', 112, entries).mode).toBe('hafs');
+    const n = numbering('hafs', 'shubah', 112, entries);
+    expect(n.hafsKeysForEntry(3)).toEqual(['112:3']);
+    expect(n.startEntryForHafsAyah(3)).toBe(entries[2]);
+    expect(n.startEntryForHafsAyah(4)).toBe(entries[4]);
+    expect(n.entryRangeForHafsAyah(3)).toEqual({start: 3, end: 3});
   });
 });
 // @ai-end

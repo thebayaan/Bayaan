@@ -95,8 +95,12 @@ export interface SurahNumberingDecision {
  *  - Unknown rewayat (no map): count == Hafs count -> 'hafs', else 'disabled'.
  *  - Entries not numbered 1..n (a verse missing or repeated) -> 'disabled',
  *    except for a rewayah that numbers every surah like Hafs (Shu'bah):
- *    'hafs' when each entry names one of the surah's verses and the last
- *    verse is among them, since each entry then names its own Hafs verse. @ai
+ *    'hafs' when the only deviation is a verse recited more than once in a
+ *    row (every verse 1..n in order, each at least once), since each entry
+ *    then names its own Hafs verse. A missing verse stays 'disabled': while
+ *    it is recited the previous entry would still be the one playing, so the
+ *    previous verse would be highlighted, labelled and repeated in its place.
+ *    @ai
  */
 export function decideSurahNumbering(
   input: SurahNumberingInput,
@@ -121,11 +125,11 @@ export function decideSurahNumbering(
       reciterRewayah &&
       verseMap.hasVerseMap(reciterRewayah) &&
       numbersEverySurahLikeHafs(reciterRewayah, verseMap) &&
-      namesVersesUpTo(entries, hafsCount)
+      runsThroughEveryVerse(entries, hafsCount)
     ) {
       return decide(
         'hafs',
-        'entries name their own verses; the rewayah numbers every surah like Hafs',
+        'every verse in order, a verse recited more than once in a row; the rewayah numbers every surah like Hafs',
       );
     }
     // @ai-end
@@ -194,30 +198,28 @@ export function decideSurahNumbering(
 
 // @ai-start
 /**
- * True when every entry (after an ayah-0 pre-roll) names one of the verses
- * 1..verseCount and the last of them is among them: an explicitly numbered
- * file (a verse missing or repeated) whose numbering reaches the surah's
- * end, so no entry carries another count's number.
+ * True when the entries (after an ayah-0 pre-roll) run through the verses
+ * 1..verseCount in order, each verse at least once: numbered 1..n except
+ * that a verse may be recited more than once in a row ([1, 2, 3, 3, 4]).
+ * Every verse then has its own entry, and each verse's entries are one run,
+ * as verse seeking, repeats and ranges expect. A verse missing ([1, 2, 4]),
+ * a step back ([1, 2, 3, 2, 3, 4]) or a number past the surah's end is
+ * refused.
  */
-function namesVersesUpTo(
+function runsThroughEveryVerse(
   entries: readonly AyahTimestamp[],
   verseCount: number,
 ): boolean {
   let started = false;
-  let reachesEnd = false;
+  let last = 0;
   for (const e of entries) {
     if (!started && e.ayahNumber === 0) continue; // pre-roll (basmala)
     started = true;
-    if (
-      !Number.isInteger(e.ayahNumber) ||
-      e.ayahNumber < 1 ||
-      e.ayahNumber > verseCount
-    ) {
-      return false;
-    }
-    if (e.ayahNumber === verseCount) reachesEnd = true;
+    // the same verse again or the next one, never a verse skipped
+    if (e.ayahNumber !== last && e.ayahNumber !== last + 1) return false;
+    last = e.ayahNumber;
   }
-  return reachesEnd;
+  return last === verseCount;
 }
 
 /**

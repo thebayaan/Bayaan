@@ -77,8 +77,11 @@ jest.mock('@/services/audio/ExpoAudioService', () => ({
 }));
 
 import {useAyahTracker} from '../useAyahTracker';
+import {timestampService} from '@/services/timestamps/TimestampService'; // @ai
+import type {AyahTimestamp} from '@/types/timestamps'; // @ai
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {
+  resolvePlayFromHere, // @ai
   selectVerseTrackingUnavailable, // @ai
   useTimestampStore,
 } from '@/store/timestampStore';
@@ -141,6 +144,29 @@ const setPlayer = (state: object) =>
   (usePlayerStore as unknown as {setState: (s: object) => void}).setState(
     state,
   );
+
+const getTimestampsForSurah =
+  timestampService.getTimestampsForSurah as jest.Mock;
+const fixtureTimings = getTimestampsForSurah.getMockImplementation()!;
+
+/**
+ * Serve `files` (by `${set}-${surah}`) in place of the fixtures, the same
+ * array on every load as TimestampService's memory cache does; a load whose
+ * key is in `gates` waits for that promise first.
+ */
+function serveTimings(
+  files: Partial<Record<string, AyahTimestamp[]>>,
+  gates: Partial<Record<string, Promise<void>>> = {},
+) {
+  getTimestampsForSurah.mockImplementation(
+    async (set: string, surah: number) => {
+      const key = `${set}-${surah}`;
+      const gate = gates[key];
+      if (gate) await gate;
+      return files[key] ?? fixtureTimings(set, surah);
+    },
+  );
+}
 // @ai-end
 
 async function tickAt(ms: number) {
@@ -173,6 +199,7 @@ afterEach(async () => {
     renderer?.unmount();
   });
   renderer = null;
+  getTimestampsForSurah.mockImplementation(fixtureTimings); // @ai
 });
 
 describe('useAyahTracker', () => {
@@ -387,6 +414,78 @@ describe('useAyahTracker', () => {
         await tickAt(t[9].timestampFrom + 50 + i * 20);
       }
       expect(current()).toMatchObject({verseKey: '2:10', verseKeys: ['2:10']});
+    });
+  });
+  // @ai-end
+
+  // @ai-start
+  describe("Shu'bah files numbered like Hafs but not exactly 1..n", () => {
+    /** Al-Ikhlas, 3 s per entry from 0 s, numbered as given. */
+    function ikhlas(ayahs: number[]) {
+      return ayahs.map((ayahNumber, i) => ({
+        surahNumber: 112,
+        ayahNumber,
+        timestampFrom: i * 3000,
+        timestampTo: (i + 1) * 3000,
+        durationMs: 3000,
+      }));
+    }
+
+    beforeEach(() => {
+      useTimestampStore.getState().loadFollowAlongRegistry();
+      useTimestampStore.setState({followAlongEnabled: true});
+    });
+
+    it('a verse missing: nothing is highlighted rather than the verse before it', async () => {
+      // no entry for 112:3, recited from 6 s to 9 s
+      serveTimings({
+        'shubah-305-112': [
+          ...ikhlas([1, 2]),
+          {...ikhlas([4])[0], timestampFrom: 9000, timestampTo: 12000},
+        ],
+      });
+      await startTrack('shubah-305', 112);
+      const seen: Record<number, readonly string[]> = {};
+      for (const ms of [500, 3500, 6500, 8500, 9500]) {
+        await tickAt(ms);
+        seen[ms] = getTrackedVerseKeys(current());
+      }
+      expect(seen).toEqual({
+        500: [],
+        3500: [],
+        6500: [],
+        8500: [],
+        9500: [],
+      });
+      expect(selectVerseTrackingUnavailable(useTimestampStore.getState())).toBe(
+        true,
+      );
+      expect(resolvePlayFromHere('112:3').status).toBe('unavailable');
+      expect(resolvePlayFromHere('112:2').status).toBe('unavailable');
+    });
+
+    it('a verse recited twice in a row: every verse is followed', async () => {
+      serveTimings({'shubah-305-112': ikhlas([1, 2, 3, 3, 4])});
+      await startTrack('shubah-305', 112);
+      const seen: Record<number, string | null> = {};
+      for (const ms of [500, 3500, 6500, 9500, 12500]) {
+        await tickAt(ms);
+        seen[ms] = current()?.verseKey ?? null;
+      }
+      expect(seen).toEqual({
+        500: '112:1',
+        3500: '112:2',
+        6500: '112:3',
+        9500: '112:3',
+        12500: '112:4',
+      });
+      expect(selectVerseTrackingUnavailable(useTimestampStore.getState())).toBe(
+        false,
+      );
+      const target = resolvePlayFromHere('112:3');
+      expect(target.status === 'ready' && target.entry.timestampFrom).toBe(
+        6000,
+      );
     });
   });
   // @ai-end
