@@ -21,7 +21,11 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # @ai-start
+          # 22, not 20: the *.alldbs suites read the words DBs with node:sqlite
+          # (Node >= 22.5).
+          node-version: 22
+          # @ai-end
           cache: npm
 
       - name: Install dependencies
@@ -30,6 +34,12 @@ jobs:
       - name: Jest
         # jest-expo eagerly loads Metro's transform cache; the default ~1.7 GB
         # heap is enough today but very tight. Match lint.yml's bump for headroom.
+        # @ai-start
+        # BAYAAN_OVERLAY_DB_DIR=bundled also runs the *.alldbs suites on the
+        # bundled words DBs (every verse of every rewayah, a few minutes);
+        # test-utils/__tests__/allDbSuitesInCi.test.ts fails if they can't run.
+        # @ai-end
         env:
           NODE_OPTIONS: --max-old-space-size=4096
+          BAYAAN_OVERLAY_DB_DIR: bundled # @ai
         run: npm run test:ci
