@@ -53,9 +53,7 @@ describe('bayaan auth public config', () => {
     const {bayaanAuthConfig} = loadBayaanAuthConfig();
 
     expect(bayaanAuthConfig.qfSyncEnabled).toBe(true);
-    expect(bayaanAuthConfig.apiUrl).toBe(
-      'https://api-prelive.thebayaan.com',
-    );
+    expect(bayaanAuthConfig.apiUrl).toBe('https://api-prelive.thebayaan.com');
     expect(() => loadAppConfig()).not.toThrow();
   });
 
@@ -83,6 +81,7 @@ describe('bayaan auth public config', () => {
     ],
   ])('rejects forbidden public QF config %s', (key, value) => {
     setPublicEnv({
+      EXPO_PUBLIC_BAYAAN_QF_SYNC_ENABLED: 'true',
       [key]: value,
     });
 
@@ -90,4 +89,36 @@ describe('bayaan auth public config', () => {
     expect(() => loadBayaanAuthConfig()).toThrow(key);
     expect(() => loadAppConfig()).toThrow(key);
   });
+
+  it.each([undefined, '', 'false', ' FALSE ', '0', '1'])(
+    'allows a fork QF config when Bayaan sync is disabled (%s)',
+    flag => {
+      setPublicEnv({
+        EXPO_PUBLIC_BAYAAN_QF_SYNC_ENABLED: flag,
+        EXPO_PUBLIC_QF_CLIENT_ID: 'fork-public-client-id',
+        EXPO_PUBLIC_QF_CLIENT_SECRET: 'dummy-fork-secret',
+        EXPO_PUBLIC_QF_TOKEN: 'dummy-fork-token',
+        EXPO_PUBLIC_USER_API_URL: 'https://apis.quran.foundation',
+      });
+
+      const {bayaanAuthConfig} = loadBayaanAuthConfig();
+      expect(bayaanAuthConfig).toEqual({
+        qfSyncEnabled: false,
+        apiUrl: 'https://api-prelive.thebayaan.com',
+      });
+      expect(() => loadAppConfig()).not.toThrow();
+    },
+  );
+
+  it.each(['true', ' TRUE ', 'True'])(
+    'enforces both guards for every enabled flag spelling (%s)',
+    flag => {
+      setPublicEnv({
+        EXPO_PUBLIC_BAYAAN_QF_SYNC_ENABLED: flag,
+        EXPO_PUBLIC_QF_CLIENT_ID: 'fork-public-client-id',
+      });
+      expect(() => loadBayaanAuthConfig()).toThrow('EXPO_PUBLIC_QF_CLIENT_ID');
+      expect(() => loadAppConfig()).toThrow('EXPO_PUBLIC_QF_CLIENT_ID');
+    },
+  );
 });

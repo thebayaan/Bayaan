@@ -181,6 +181,53 @@ function loadServices(copyTag: string | null, shared?: MockModule): Services {
   return result;
 }
 
+describe.each(TAGS)('userSyncV1 fork columns on %s', tag => {
+  it('keeps Qariah-style identities through initialize and reopen with no queued uploads', async () => {
+    let s = loadServices(tag);
+    try {
+      const legacy = openAdapterDatabase(
+        path.join(s.mock.databaseDir(), DB_FILE),
+      );
+      let before: Dump;
+      try {
+        for (const table of ANNOTATION_TABLES) {
+          await legacy.execAsync(`
+            ALTER TABLE ${table} ADD COLUMN qf_note_id TEXT;
+            ALTER TABLE ${table} ADD COLUMN qf_post_id TEXT;
+            UPDATE ${table} SET qf_note_id = 'fork-note-' || id,
+              qf_post_id = 'fork-post-' || id;
+          `);
+        }
+        await legacy.execAsync(`UPDATE notes SET qf_post_id = NULL
+          WHERE id = (SELECT id FROM notes ORDER BY id LIMIT 1);`);
+        before = await dumpDb(legacy);
+      } finally {
+        await legacy.closeAsync();
+      }
+
+      await initAll(s);
+      const migrated = await dumpDb(await s.mock.openDatabaseAsync(DB_FILE));
+      for (const table of ANNOTATION_TABLES) {
+        const expected = before[table].rows.map(row => {
+          const {qf_note_id, qf_post_id, ...bayaanColumns} = row;
+          return {...expectedRow(table, bayaanColumns), qf_note_id, qf_post_id};
+        });
+        expect(migrated[table].rows).toEqual(expected);
+      }
+      for (const table of SYNC_TABLES) expect(migrated[table].rows).toEqual([]);
+      await s.database.close();
+      s = loadServices(null, s.mock);
+      await initAll(s);
+      expect(await dumpDb(await s.mock.openDatabaseAsync(DB_FILE))).toEqual(
+        migrated,
+      );
+    } finally {
+      await s.database.close();
+      await s.mock.resetDatabases();
+    }
+  });
+});
+
 // What AppInitializer runs for this database on launch.
 async function initAll(s: Services): Promise<void> {
   await s.annotations.initialize();

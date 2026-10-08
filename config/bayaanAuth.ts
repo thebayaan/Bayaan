@@ -10,8 +10,10 @@ export interface BayaanAuthConfig {
   apiUrl: string;
 }
 
-export interface PublicBayaanAuthEnv
-  extends Record<string, string | undefined> {
+export interface PublicBayaanAuthEnv extends Record<
+  string,
+  string | undefined
+> {
   EXPO_PUBLIC_BAYAAN_QF_SYNC_ENABLED?: string;
   EXPO_PUBLIC_BAYAAN_API_URL?: string;
   EXPO_PUBLIC_QF_CLIENT_ID?: string;
@@ -40,11 +42,11 @@ function parsePublicUrl(value: string) {
 
 function isForbiddenQfHost(url: URL) {
   const hostname = url.hostname.toLowerCase();
-  if (!hostname.endsWith("quran.foundation")) {
+  if (!hostname.endsWith('quran.foundation')) {
     return false;
   }
 
-  return hostname.includes("oauth") || hostname.startsWith("apis");
+  return hostname.includes('oauth') || hostname.startsWith('apis');
 }
 
 function isForbiddenPublicConfig(key: string, value: string) {
@@ -59,6 +61,11 @@ function isForbiddenPublicConfig(key: string, value: string) {
 export function assertNoForbiddenPublicBayaanAuthEnv(
   env: Record<string, string | undefined>,
 ) {
+  // Forks with their own QF integration do not use Bayaan's BFF contract.
+  if (env.EXPO_PUBLIC_BAYAAN_QF_SYNC_ENABLED?.trim().toLowerCase() !== 'true') {
+    return;
+  }
+
   const forbiddenKeys = Object.entries(env)
     .filter(([key, value]) => {
       if (!key.startsWith('EXPO_PUBLIC_')) {

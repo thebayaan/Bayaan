@@ -37,6 +37,11 @@ function isForbiddenPublicConfig(key, value) {
 }
 
 function assertNoForbiddenPublicBayaanAuthEnv(env) {
+  // Match the runtime guard: this contract applies only to Bayaan QF sync.
+  if (env.EXPO_PUBLIC_BAYAAN_QF_SYNC_ENABLED?.trim().toLowerCase() !== 'true') {
+    return;
+  }
+
   const forbiddenKeys = Object.entries(env)
     .filter(([key, value]) => {
       if (!key.startsWith('EXPO_PUBLIC_')) {

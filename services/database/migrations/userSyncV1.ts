@@ -25,6 +25,111 @@ interface TableRow {
 
 interface TableInfoRow {
   name: string;
+  pk: number;
+  hidden: number;
+}
+
+interface PreservedColumn {
+  name: string;
+  definition: string;
+}
+
+interface PreservedSchema {
+  columns: PreservedColumn[];
+  constraints: string[];
+  indexes: string[];
+}
+
+// Only these columns belong to Bayaan's new sync contract. Fork-owned columns
+// must keep their own identity rather than becoming remote_id/server_* fields.
+const COMMON_ANNOTATION_COLUMNS = [
+  'id',
+  'owner_scope',
+  'verse_key',
+  'surah_number',
+  'ayah_number',
+  'created_at',
+  'rewayah_id',
+  'remote_id',
+  'server_created_at',
+  'server_updated_at',
+];
+
+function quoteIdentifier(value: string): string {
+  return `"${value.replaceAll('"', '""')}"`;
+}
+
+// Split SQLite's CREATE TABLE column list without splitting nested expressions,
+// strings, quoted identifiers or comments. Copy definitions verbatim: PRAGMA
+// metadata alone loses UNIQUE/CHECK/COLLATE/REFERENCES and expression defaults.
+function sqlDefinitions(sql: string): string[] {
+  const opening = sql.indexOf('(');
+  if (opening < 0) throw new Error('Missing legacy schema definition');
+  const definitions: string[] = [];
+  let start = opening + 1;
+  let depth = 1;
+  let quote: string | null = null;
+  for (let i = start; i < sql.length; i += 1) {
+    const char = sql[i];
+    if (quote) {
+      if (char === quote) {
+        if (quote !== ']' && sql[i + 1] === quote) i += 1;
+        else quote = null;
+      }
+      continue;
+    }
+    if (char === '-' && sql[i + 1] === '-') {
+      const end = sql.indexOf('\n', i + 2);
+      if (end < 0) break;
+      i = end;
+    } else if (char === '/' && sql[i + 1] === '*') {
+      const end = sql.indexOf('*/', i + 2);
+      if (end < 0) break;
+      i = end + 1;
+    } else if (char === '"' || char === "'" || char === '`' || char === '[') {
+      quote = char === '[' ? ']' : char;
+    } else if (char === '(') {
+      depth += 1;
+    } else if (char === ')') {
+      depth -= 1;
+      if (depth === 0) {
+        definitions.push(sql.slice(start, i).trim());
+        return definitions;
+      }
+    } else if (char === ',' && depth === 1) {
+      definitions.push(sql.slice(start, i).trim());
+      start = i + 1;
+    }
+  }
+  throw new Error('Cannot safely parse legacy schema definition');
+}
+
+function firstSqlIdentifier(definition: string): {name: string; rest: string} {
+  const source = definition.replace(/^(?:\s|--[^\n]*\n|\/\*[\s\S]*?\*\/)+/, '');
+  const match =
+    /^(?:"((?:[^"]|"")*)"|`((?:[^`]|``)*)`|\[([^\]]*)\]|([^\s("'`[]+))/.exec(
+      source,
+    );
+  if (!match) throw new Error('Cannot safely identify legacy schema column');
+  const name = (match[1] ?? match[2] ?? match[3] ?? match[4])
+    .replaceAll('""', '"')
+    .replaceAll('``', '`');
+  return {name: name.toLowerCase(), rest: source.slice(match[0].length).trim()};
+}
+
+function extraColumnDefinitions(extra: PreservedSchema): string {
+  return [
+    ...extra.columns.map(column => column.definition),
+    ...extra.constraints,
+  ]
+    .map(definition => `, ${definition}`)
+    .join('');
+}
+
+function extraColumnProjection(extra: PreservedSchema): string {
+  return extra.columns
+    .map(column => `, ${quoteIdentifier(column.name)}`)
+    .join('');
 }
 
 function canonicalRewayahSql(columnName: string): string {
@@ -58,7 +163,8 @@ async function hasMigration(db: SQLiteLikeDatabase): Promise<boolean> {
 async function getTableColumns(
   db: SQLiteLikeDatabase,
   tableName: string,
-): Promise<Set<string>> {
+  additionalColumns: string[] = [],
+): Promise<{names: Set<string>; extra: PreservedSchema}> {
   if (!db.getAllAsync) {
     throw new Error(
       'Database does not support getAllAsync required for migration',
@@ -66,9 +172,77 @@ async function getTableColumns(
   }
 
   const rows = (await db.getAllAsync(
-    `PRAGMA table_info(${tableName})`,
+    `PRAGMA table_xinfo(${quoteIdentifier(tableName)})`,
   )) as TableInfoRow[];
-  return new Set(rows.map(row => row.name));
+  if (rows.length === 0) {
+    throw new Error('Cannot inspect legacy annotation columns safely');
+  }
+  const known = new Set([...COMMON_ANNOTATION_COLUMNS, ...additionalColumns]);
+  const extra = rows.filter(row => !known.has(row.name.toLowerCase()));
+  // PRAGMA cannot reconstruct generated expressions or another primary key.
+  // Roll back rather than silently lose an unsupported fork-owned column.
+  if (extra.some(column => column.hidden !== 0 || column.pk !== 0)) {
+    throw new Error(
+      'Cannot safely rebuild fork generated or primary-key columns',
+    );
+  }
+  const schema = (await db.getFirstAsync(
+    "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?",
+    [tableName],
+  )) as {sql: string} | null;
+  if (!schema?.sql) throw new Error('Missing legacy annotation schema');
+  const definitions = sqlDefinitions(schema.sql);
+  const byName = new Map<string, string>();
+  const constraints: string[] = [];
+  const names = new Set(rows.map(row => row.name.toLowerCase()));
+  for (const definition of definitions) {
+    const identifier = firstSqlIdentifier(definition);
+    if (names.has(identifier.name)) {
+      byName.set(identifier.name, definition);
+      continue;
+    }
+    const constraint =
+      identifier.name === 'constraint'
+        ? firstSqlIdentifier(identifier.rest).rest
+        : definition;
+    if (/^(?:UNIQUE|PRIMARY\s+KEY)\s*\(/i.test(constraint)) {
+      const columns = sqlDefinitions(constraint).map(
+        part => firstSqlIdentifier(part).name,
+      );
+      // Replace only Bayaan's old global uniqueness with owner-scoped indexes.
+      if (columns.every(column => known.has(column))) continue;
+    } else if (!/^(?:CHECK\s*\(|FOREIGN\s+KEY\s*\()/i.test(constraint)) {
+      throw new Error('Cannot safely rebuild legacy table constraint');
+    }
+    constraints.push(definition);
+  }
+  const columns = extra.map(column => {
+    const definition = byName.get(column.name.toLowerCase());
+    if (!definition) throw new Error('Missing fork column definition');
+    return {name: column.name, definition};
+  });
+  const indexRows = (await db.getAllAsync(
+    "SELECT name, sql FROM sqlite_master WHERE type = 'index' AND tbl_name = ? AND sql IS NOT NULL",
+    [tableName],
+  )) as {name: string; sql: string}[];
+  const extraNames = new Set(columns.map(column => column.name.toLowerCase()));
+  const indexes: string[] = [];
+  for (const index of indexRows) {
+    const indexColumns = (await db.getAllAsync(
+      `PRAGMA index_info(${quoteIdentifier(index.name)})`,
+    )) as {name: string | null}[];
+    if (indexColumns.some(column => column.name === null)) {
+      throw new Error('Cannot safely rebuild legacy expression index');
+    }
+    if (
+      indexColumns.some(
+        column => column.name && extraNames.has(column.name.toLowerCase()),
+      )
+    ) {
+      indexes.push(index.sql);
+    }
+  }
+  return {names, extra: {columns, constraints, indexes}};
 }
 
 function legacyRewayahSelect(columns: Set<string>): string {
@@ -81,7 +255,10 @@ function legacyVerseKeysSelect(columns: Set<string>): string {
   return columns.has('verse_keys') ? 'verse_keys' : 'NULL';
 }
 
-async function createFreshBookmarks(db: SQLiteLikeDatabase): Promise<void> {
+async function createFreshBookmarks(
+  db: SQLiteLikeDatabase,
+  extra: PreservedSchema = {columns: [], constraints: [], indexes: []},
+): Promise<void> {
   await db.execAsync(`
     CREATE TABLE bookmarks (
       id TEXT PRIMARY KEY,
@@ -93,12 +270,15 @@ async function createFreshBookmarks(db: SQLiteLikeDatabase): Promise<void> {
       rewayah_id TEXT NOT NULL DEFAULT 'hafs',
       remote_id TEXT,
       server_created_at INTEGER,
-      server_updated_at INTEGER
+      server_updated_at INTEGER${extraColumnDefinitions(extra)}
     );
   `);
 }
 
-async function createFreshNotes(db: SQLiteLikeDatabase): Promise<void> {
+async function createFreshNotes(
+  db: SQLiteLikeDatabase,
+  extra: PreservedSchema = {columns: [], constraints: [], indexes: []},
+): Promise<void> {
   await db.execAsync(`
     CREATE TABLE notes (
       id TEXT PRIMARY KEY,
@@ -113,12 +293,15 @@ async function createFreshNotes(db: SQLiteLikeDatabase): Promise<void> {
       rewayah_id TEXT NOT NULL DEFAULT 'hafs',
       remote_id TEXT,
       server_created_at INTEGER,
-      server_updated_at INTEGER
+      server_updated_at INTEGER${extraColumnDefinitions(extra)}
     );
   `);
 }
 
-async function createFreshHighlights(db: SQLiteLikeDatabase): Promise<void> {
+async function createFreshHighlights(
+  db: SQLiteLikeDatabase,
+  extra: PreservedSchema = {columns: [], constraints: [], indexes: []},
+): Promise<void> {
   await db.execAsync(`
     CREATE TABLE highlights (
       id TEXT PRIMARY KEY,
@@ -131,7 +314,7 @@ async function createFreshHighlights(db: SQLiteLikeDatabase): Promise<void> {
       rewayah_id TEXT NOT NULL DEFAULT 'hafs',
       remote_id TEXT,
       server_created_at INTEGER,
-      server_updated_at INTEGER
+      server_updated_at INTEGER${extraColumnDefinitions(extra)}
     );
   `);
 }
@@ -161,14 +344,12 @@ async function rebuildBookmarks(db: SQLiteLikeDatabase): Promise<void> {
     return;
   }
 
+  const legacyColumns = await getTableColumns(db, 'bookmarks');
   await db.execAsync(
     `ALTER TABLE bookmarks RENAME TO bookmarks_legacy_user_sync_v1;`,
   );
-  const legacyColumns = await getTableColumns(
-    db,
-    'bookmarks_legacy_user_sync_v1',
-  );
-  await createFreshBookmarks(db);
+  await createFreshBookmarks(db, legacyColumns.extra);
+  const extraProjection = extraColumnProjection(legacyColumns.extra);
   await db.execAsync(`
     INSERT INTO bookmarks (
       id,
@@ -180,7 +361,7 @@ async function rebuildBookmarks(db: SQLiteLikeDatabase): Promise<void> {
       rewayah_id,
       remote_id,
       server_created_at,
-      server_updated_at
+      server_updated_at${extraProjection}
     )
     SELECT
       id,
@@ -189,13 +370,14 @@ async function rebuildBookmarks(db: SQLiteLikeDatabase): Promise<void> {
       surah_number,
       ayah_number,
       created_at,
-      ${legacyRewayahSelect(legacyColumns)},
+      ${legacyRewayahSelect(legacyColumns.names)},
       NULL,
       NULL,
-      NULL
+      NULL${extraProjection}
     FROM bookmarks_legacy_user_sync_v1;
     DROP TABLE bookmarks_legacy_user_sync_v1;
   `);
+  for (const index of legacyColumns.extra.indexes) await db.execAsync(index);
 }
 
 async function rebuildNotes(db: SQLiteLikeDatabase): Promise<void> {
@@ -204,9 +386,14 @@ async function rebuildNotes(db: SQLiteLikeDatabase): Promise<void> {
     return;
   }
 
+  const legacyColumns = await getTableColumns(db, 'notes', [
+    'content',
+    'verse_keys',
+    'updated_at',
+  ]);
   await db.execAsync(`ALTER TABLE notes RENAME TO notes_legacy_user_sync_v1;`);
-  const legacyColumns = await getTableColumns(db, 'notes_legacy_user_sync_v1');
-  await createFreshNotes(db);
+  await createFreshNotes(db, legacyColumns.extra);
+  const extraProjection = extraColumnProjection(legacyColumns.extra);
   await db.execAsync(`
     INSERT INTO notes (
       id,
@@ -221,7 +408,7 @@ async function rebuildNotes(db: SQLiteLikeDatabase): Promise<void> {
       rewayah_id,
       remote_id,
       server_created_at,
-      server_updated_at
+      server_updated_at${extraProjection}
     )
     SELECT
       id,
@@ -230,16 +417,17 @@ async function rebuildNotes(db: SQLiteLikeDatabase): Promise<void> {
       surah_number,
       ayah_number,
       content,
-      ${legacyVerseKeysSelect(legacyColumns)},
+      ${legacyVerseKeysSelect(legacyColumns.names)},
       created_at,
       updated_at,
-      ${legacyRewayahSelect(legacyColumns)},
+      ${legacyRewayahSelect(legacyColumns.names)},
       NULL,
       NULL,
-      NULL
+      NULL${extraProjection}
     FROM notes_legacy_user_sync_v1;
     DROP TABLE notes_legacy_user_sync_v1;
   `);
+  for (const index of legacyColumns.extra.indexes) await db.execAsync(index);
 }
 
 async function rebuildHighlights(db: SQLiteLikeDatabase): Promise<void> {
@@ -248,14 +436,12 @@ async function rebuildHighlights(db: SQLiteLikeDatabase): Promise<void> {
     return;
   }
 
+  const legacyColumns = await getTableColumns(db, 'highlights', ['color']);
   await db.execAsync(
     `ALTER TABLE highlights RENAME TO highlights_legacy_user_sync_v1;`,
   );
-  const legacyColumns = await getTableColumns(
-    db,
-    'highlights_legacy_user_sync_v1',
-  );
-  await createFreshHighlights(db);
+  await createFreshHighlights(db, legacyColumns.extra);
+  const extraProjection = extraColumnProjection(legacyColumns.extra);
   await db.execAsync(`
     INSERT INTO highlights (
       id,
@@ -268,7 +454,7 @@ async function rebuildHighlights(db: SQLiteLikeDatabase): Promise<void> {
       rewayah_id,
       remote_id,
       server_created_at,
-      server_updated_at
+      server_updated_at${extraProjection}
     )
     SELECT
       id,
@@ -278,16 +464,38 @@ async function rebuildHighlights(db: SQLiteLikeDatabase): Promise<void> {
       ayah_number,
       color,
       created_at,
-      ${legacyRewayahSelect(legacyColumns)},
+      ${legacyRewayahSelect(legacyColumns.names)},
       NULL,
       NULL,
-      NULL
+      NULL${extraProjection}
     FROM highlights_legacy_user_sync_v1;
     DROP TABLE highlights_legacy_user_sync_v1;
   `);
+  for (const index of legacyColumns.extra.indexes) await db.execAsync(index);
 }
 
 async function rebuildAnnotations(db: SQLiteLikeDatabase): Promise<void> {
+  if (!db.getAllAsync) throw new Error('Missing migration schema inspection');
+  const tables = (await db.getAllAsync(
+    "SELECT name FROM sqlite_master WHERE type = 'table'",
+  )) as TableRow[];
+  // Rename-first rebuilds cannot safely retain references into annotation tables:
+  // SQLite rewrites them to the legacy name (and DROP may cascade). Detect them
+  // before changing any table, including references from fork-owned tables.
+  for (const table of tables) {
+    const keys = (await db.getAllAsync(
+      `PRAGMA foreign_key_list(${quoteIdentifier(table.name)})`,
+    )) as {table: string}[];
+    if (
+      keys.some(key =>
+        ['bookmarks', 'notes', 'highlights'].includes(key.table.toLowerCase()),
+      )
+    ) {
+      throw new Error(
+        'Cannot safely rebuild foreign keys referencing annotations',
+      );
+    }
+  }
   await rebuildBookmarks(db);
   await rebuildNotes(db);
   await rebuildHighlights(db);

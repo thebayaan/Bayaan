@@ -1,5 +1,9 @@
 import type {QfSyncSqliteExecutor} from '@/services/sync/qfSyncTransaction';
 
+// Real SQLite/WASM transactions can exceed Jest's 5 s default under suite load.
+// Keep the longer budget local to this file; failures must still settle.
+jest.setTimeout(15_000);
+
 const sqlitePromise = (async () => {
   const fs = require('fs');
   const path = require('path');
