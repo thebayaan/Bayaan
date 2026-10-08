@@ -38,6 +38,11 @@ used by the builder (build_sibling_rewayah.py) and by the validator
       before it (`side_dot_kinds`). `dk_tokens` converts whole verses with
       that context; `dk_token` takes it as the `prev` argument.
 
+4. Basmala (`load_basmala`, `basmala_words`, `basmala_dk_tokens`)
+   The basmala line of every surah, verbatim from the signed KFGQPC Word
+   files (sources/basmala.json): the default (al-Fatiha's) basmala and the
+   per-surah lines, converted to DK by the same conventions and render policy.
+
 Run `python3 normalize.py --policy` to print the render-policy table.
 """
 from __future__ import annotations
@@ -46,6 +51,7 @@ import json
 import re
 import sys
 import unicodedata
+from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
@@ -678,6 +684,113 @@ def dk_tokens(verses: list[Verse], rid: str) -> list[tuple[str, ...]]:
             prev = raw
         out.append(tuple(toks))
     return out
+
+
+# ---------------------------------------------------------------------------
+# 4. Basmala (sources/basmala.json, from the signed KFGQPC Word files)
+# ---------------------------------------------------------------------------
+
+# The official JSON texts have no basmala line (Madani / Basri counts) or only
+# al-Fatiha's as verse 1 (Kufi / Makki counts). The signed KFGQPC Word (.docx)
+# typesetting of each riwayah writes the basmala line of every surah but
+# at-Tawbah; vendor_sources.py --basmala copies those paragraphs verbatim into
+# sources/basmala.json (locked in sources.lock.json).
+
+BASMALA_FILE = Path(__file__).resolve().parent / "sources" / "basmala.json"
+SURAHS_WITH_BASMALA = tuple(s for s in range(1, 115) if s != 9)
+# Base letters of the four basmala words (wasl alef U+0671 counted as alef).
+BASMALA_LETTERS = (
+    "\u0628\u0633\u0645",
+    "\u0627\u0644\u0644\u0647",
+    "\u0627\u0644\u0631\u062D\u0645\u0646",
+    "\u0627\u0644\u0631\u062D\u064A\u0645",
+)
+# App RewayahId of each file id (contract C6 '<id>-basmala.json' "rewayah").
+APP_IDS = {
+    "warsh": "warsh",
+    "qaloon": "qalun",
+    "bazzi": "al-bazzi",
+    "qumbul": "qunbul",
+    "doori": "al-duri-abi-amr",
+    "soosi": "al-susi",
+    "shouba": "shubah",
+}
+
+
+@dataclass(frozen=True)
+class Basmala:
+    rid: str
+    official: str  # the default basmala words (al-Fatiha's), one space between words
+    by_surah: dict[int, str]  # every surah but 9 -> the official words of its basmala line
+    paragraphs: dict[int, int]  # surah -> index of its w:p in the Word file's document.xml
+    fatiha_numbered: bool  # al-Fatiha's basmala paragraph ends with the verse number 1
+    docx: str  # Word file name
+    docx_sha256: str
+
+
+def basmala_words(paragraph: str) -> tuple[str, bool]:
+    """Words of a basmala paragraph of a KFGQPC Word file, and whether the
+    paragraph ends with a verse number (al-Fatiha in the Kufi / Makki counts:
+    the basmala, NBSP, verse number 1). Surrounding whitespace and that
+    number are removed; nothing else is changed. Raises SourceError on any
+    other shape."""
+    t = paragraph.replace(RLM, "").replace(NBSP, " ").strip()
+    toks = t.split(" ")
+    if any(tok == "" for tok in toks):
+        raise SourceError(f"basmala paragraph with irregular spacing: {paragraph!r}")
+    numbered = _ayah_number_of(toks[-1]) is not None
+    if numbered:
+        if _ayah_number_of(toks[-1]) != 1:
+            raise SourceError(f"basmala paragraph numbered other than 1: {paragraph!r}")
+        toks = toks[:-1]
+    letters = tuple("".join(ALEF if c == "\u0671" else c for c in tok if is_letter(c)) for tok in toks)
+    if letters != BASMALA_LETTERS:
+        raise SourceError(f"not a basmala: {paragraph!r}")
+    return " ".join(toks), numbered
+
+
+def load_basmala(rid: str, path: Path = BASMALA_FILE) -> Basmala:
+    """The official basmala lines of rewayah `rid` (sources/basmala.json),
+    structurally validated. The default (`official`) is al-Fatiha's basmala."""
+    try:
+        doc = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as e:
+        raise SourceError(f"{path}: {e}") from e
+    if doc.get("__format") != 1:
+        raise SourceError(f"{path}: __format {doc.get('__format')!r} != 1")
+    entry = doc.get("rewayat", {}).get(rid)
+    if not isinstance(entry, dict):
+        raise SourceError(f"{path}: no entry for {rid}")
+    surahs = entry.get("surahs", {})
+    if sorted(surahs, key=int) != [str(s) for s in SURAHS_WITH_BASMALA]:
+        raise SourceError(f"{path}: {rid} must list the basmala of every surah but 9")
+    by_surah: dict[int, str] = {}
+    paragraphs: dict[int, int] = {}
+    numbered: dict[int, bool] = {}
+    for s in SURAHS_WITH_BASMALA:
+        para, raw = surahs[str(s)]
+        if not isinstance(para, int) or not isinstance(raw, str):
+            raise SourceError(f"{path}: {rid} surah {s}: expected [paragraph index, text]")
+        by_surah[s], numbered[s] = basmala_words(raw)
+        paragraphs[s] = para
+    if any(numbered[s] for s in SURAHS_WITH_BASMALA if s != 1):
+        raise SourceError(f"{path}: {rid}: only al-Fatiha's basmala may carry a verse number")
+    order = [paragraphs[s] for s in SURAHS_WITH_BASMALA]
+    if order != sorted(set(order)):
+        raise SourceError(f"{path}: {rid}: paragraphs are not in surah order")
+    if entry.get("official") != by_surah[1]:
+        raise SourceError(f"{path}: {rid}: 'official' is not al-Fatiha's basmala")
+    counts = Counter(by_surah.values())
+    if any(n >= counts[by_surah[1]] for w, n in counts.items() if w != by_surah[1]):
+        raise SourceError(f"{path}: {rid}: al-Fatiha's basmala is not the most common basmala line")
+    return Basmala(rid, by_surah[1], by_surah, paragraphs, numbered[1], entry.get("docx", ""), entry.get("sha256", ""))
+
+
+def basmala_dk_tokens(words: str, rid: str) -> tuple[str, ...]:
+    """DK tokens of an official basmala: dk_tokens() of its words read as one
+    unit (no previous word), i.e. the same conventions and render policy as
+    every verse word."""
+    return dk_tokens([Verse(1, 1, tuple(words.split(" ")))], rid)[0]
 
 
 def policy_rows() -> list[dict[str, str]]:
