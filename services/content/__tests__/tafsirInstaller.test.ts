@@ -12,7 +12,7 @@ jest.mock('@/services/content/contentSync', () => ({
 
 import {resetDatabases} from '@/test-utils/mockExpoSqlite';
 import type {ContentEnvelope} from '@/types/content';
-import {showWithdrawalNotice} from '../contentNotices';
+import {showWithdrawalNotice, tafseerDownloadFailure} from '../contentNotices';
 import {createTafsirInstaller, tafsirIdFromKey} from '../tafsirInstaller';
 
 function makeStore(selected: string | null, installed: string[] = []) {
@@ -387,5 +387,25 @@ describe('withdrawal notice', () => {
         message: 'Ibn Kathir is no longer available.',
       }),
     );
+  });
+});
+
+describe('tafseer download failure copy', () => {
+  it('says not available when the ticket is refused', () => {
+    expect(tafseerDownloadFailure(new Error('download_ticket_404'))).toEqual({
+      title: 'Not available',
+      message:
+        'This tafseer is no longer offered. It may have been withdrawn by its publisher.',
+    });
+  });
+
+  it('keeps the connection message for other failures', () => {
+    for (const error of [new Error('network'), new Error('timeout'), null]) {
+      expect(tafseerDownloadFailure(error)).toEqual({
+        title: 'Download Failed',
+        message:
+          'Unable to download this tafseer. Please check your internet connection and try again.',
+      });
+    }
   });
 });

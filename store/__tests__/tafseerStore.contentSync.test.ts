@@ -1,11 +1,13 @@
 const mockInstall = jest.fn().mockResolvedValue(undefined);
 const mockRemove = jest.fn().mockResolvedValue(undefined);
 let mockManaging = true;
+let mockOffered: ReadonlySet<string> | null = null;
 
 jest.mock('@/services/content/contentSync', () => ({
   installContent: (key: string) => mockInstall(key),
   removeContent: (key: string) => mockRemove(key),
   isEngineManagingTafsir: () => mockManaging,
+  getOfferedTafsirIds: async () => mockOffered,
 }));
 jest.mock('@/services/tafseer/TafseerDbService', () => ({
   tafseerDbService: {
@@ -21,7 +23,8 @@ jest.mock('@/services/tafseer/TafseerApiService', () => ({
   },
 }));
 
-import {useTafseerStore} from '../tafseerStore';
+import {browsableTafaseer, useTafseerStore} from '../tafseerStore';
+import type {DownloadedTafseerMeta, TafseerEdition} from '@/types/tafseer';
 import {tafseerDbService} from '@/services/tafseer/TafseerDbService';
 import {reportInstall} from '@/services/content/installActivity';
 
@@ -173,5 +176,73 @@ describe('tafseerStore during an engine auto-install', () => {
     await running;
     await joined;
     expect(useTafseerStore.getState().downloadingId).toBeNull();
+  });
+});
+
+describe('tafsir catalog offered by the manifest', () => {
+  const catalog: TafseerEdition[] = ['169', '15', '16', '17'].map(
+    identifier => ({
+      identifier,
+      language: 'English',
+      name: identifier,
+      englishName: identifier,
+      format: 'text',
+      type: 'tafsir',
+      direction: 'ltr',
+    }),
+  );
+  const ids = (list: {identifier: string}[]): string[] =>
+    list.map(item => item.identifier);
+
+  it('hides withdrawn and absent keys when a manifest is cached', () => {
+    // The manifest offers 169 and 16; 15 is withdrawn and 17 is absent.
+    const offered = new Set(['169', '16']);
+    expect(ids(browsableTafaseer(catalog, new Set(), offered))).toEqual([
+      '169',
+      '16',
+    ]);
+  });
+
+  it('shows the full catalog when no manifest is known', () => {
+    expect(ids(browsableTafaseer(catalog, new Set(), null))).toEqual([
+      '169',
+      '15',
+      '16',
+      '17',
+    ]);
+  });
+
+  it('leaves installed tafsirs to the installed sections', () => {
+    expect(
+      ids(browsableTafaseer(catalog, new Set(['15']), new Set(['16']))),
+    ).toEqual(['16']);
+  });
+
+  it('loads the offered ids without touching installed metadata', async () => {
+    const installed: DownloadedTafseerMeta[] = [
+      {
+        identifier: '15',
+        name: 'Tabari',
+        englishName: 'Tabari',
+        language: 'Arabic',
+        direction: 'rtl',
+        downloadedAt: 1,
+        verseCount: 6236,
+      },
+    ];
+    useTafseerStore.setState({
+      downloadedMeta: installed,
+      selectedTafseerId: '15',
+    });
+    mockOffered = new Set(['169']);
+    await useTafseerStore.getState().loadOfferedTafsirs();
+    expect(useTafseerStore.getState()).toMatchObject({
+      offeredTafsirIds: new Set(['169']),
+      downloadedMeta: installed,
+      selectedTafseerId: '15',
+    });
+    mockOffered = null;
+    await useTafseerStore.getState().loadOfferedTafsirs();
+    expect(useTafseerStore.getState().offeredTafsirIds).toBeNull();
   });
 });

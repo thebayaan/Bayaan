@@ -214,6 +214,23 @@ export async function installContent(key: string): Promise<void> {
   });
 }
 
+// The tafsir ids the last cached manifest offers for install. Null when the
+// engine is off or no manifest has loaded yet: the full static catalog shows.
+export async function getOfferedTafsirIds(): Promise<ReadonlySet<string> | null> {
+  if (!isEngineManagingTafsir()) return null;
+  fallbackRegistry ??= createSqliteContentRegistry();
+  const registry = deps?.registry ?? fallbackRegistry;
+  const {manifest} = await registry.getState();
+  if (!manifest) return null;
+  const ids = new Set<string>();
+  for (const entry of manifest.resources) {
+    if (entry.status !== 'active' || !entry.key.startsWith(TAFSIR_KEY_PREFIX))
+      continue;
+    ids.add(entry.key.slice(TAFSIR_KEY_PREFIX.length));
+  }
+  return ids;
+}
+
 // Before init (or after teardown) there are no engine deps, but the removal
 // must still stick: record the user_removed marker and delete the rows.
 export async function removeContent(key: string): Promise<void> {

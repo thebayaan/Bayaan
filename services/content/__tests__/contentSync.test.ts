@@ -1,4 +1,8 @@
-import type {ContentApi, ManifestResult} from '../contentApi';
+import {
+  isContentNotOffered,
+  type ContentApi,
+  type ManifestResult,
+} from '../contentApi';
 import {
   createMemoryContentRegistry,
   type ContentRegistry,
@@ -463,6 +467,57 @@ describe('user actions', () => {
     expect(await mockState.registry.get('qf:tafsirs:16')).toMatchObject({
       user_removed: true,
     });
+  });
+});
+
+describe('getOfferedTafsirIds', () => {
+  it('is null when no manifest has ever been loaded', async () => {
+    const sync = load();
+    expect(await sync.getOfferedTafsirIds()).toBeNull();
+  });
+
+  it('is null when the engine is not managing tafsir, even with a cached manifest', async () => {
+    mockState.branding.tafsirProvider = 'fork';
+    const cached = ok([entry(KEY)]);
+    if (cached.status !== 'ok') throw new Error('unreachable');
+    await mockState.registry.setState({manifest: cached.manifest});
+    const sync = load();
+    expect(await sync.getOfferedTafsirIds()).toBeNull();
+  });
+
+  it('offers only active tafsir keys of the cached manifest, before and after init', async () => {
+    mockState.api.fetchManifest.mockResolvedValue(
+      ok([
+        entry(KEY),
+        entry('qf:tafsirs:15', 'withdrawn'),
+        entry('qf:translations:20'),
+      ]),
+    );
+    const sync = load();
+    expect(await sync.getOfferedTafsirIds()).toBeNull();
+    await sync.initContentSync();
+    expect(await sync.getOfferedTafsirIds()).toEqual(new Set(['169']));
+    sync.teardownContentSync();
+    expect(await sync.getOfferedTafsirIds()).toEqual(new Set(['169']));
+  });
+});
+
+describe('a refused download ticket', () => {
+  it('reaches the caller as not offered, distinct from a network failure', async () => {
+    const sync = load();
+    await sync.initContentSync();
+    mockState.api.getDownloadTicket.mockRejectedValueOnce(
+      new Error('download_ticket_404'),
+    );
+    const refused = await sync
+      .installContent('qf:tafsirs:15')
+      .catch((error: unknown) => error);
+    expect(isContentNotOffered(refused)).toBe(true);
+    mockState.api.getDownloadTicket.mockRejectedValueOnce(new Error('network'));
+    const offline = await sync
+      .installContent('qf:tafsirs:15')
+      .catch((error: unknown) => error);
+    expect(isContentNotOffered(offline)).toBe(false);
   });
 });
 

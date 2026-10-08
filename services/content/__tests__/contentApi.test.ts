@@ -1,5 +1,6 @@
 import branding from '@/config/branding';
 import {
+  isContentNotOffered,
   createContentApi,
   isManifest,
   resolveContentApiBase,
@@ -175,6 +176,34 @@ describe('createContentApi', () => {
     await expect(api.getDownloadTicket('qf:tafsirs:1')).rejects.toThrow(
       'download_ticket_404',
     );
+  });
+});
+
+describe('isContentNotOffered', () => {
+  async function ticketError(fetchImpl: typeof fetch): Promise<unknown> {
+    const api = createContentApi('https://api.test', 'k', fetchImpl);
+    return api.getDownloadTicket('qf:tafsirs:15').catch((e: unknown) => e);
+  }
+
+  it('is true for a 404 ticket (withdrawn or unknown key)', async () => {
+    const error = await ticketError(
+      jest.fn(() => respond('', {status: 404})) as unknown as typeof fetch,
+    );
+    expect(isContentNotOffered(error)).toBe(true);
+  });
+
+  it('is false for server errors, network failures and non-errors', async () => {
+    const server = await ticketError(
+      jest.fn(() => respond('', {status: 500})) as unknown as typeof fetch,
+    );
+    const network = await ticketError(
+      jest.fn(() =>
+        Promise.reject(new TypeError('Network request failed')),
+      ) as unknown as typeof fetch,
+    );
+    expect(isContentNotOffered(server)).toBe(false);
+    expect(isContentNotOffered(network)).toBe(false);
+    expect(isContentNotOffered('download_ticket_404')).toBe(false);
   });
 });
 

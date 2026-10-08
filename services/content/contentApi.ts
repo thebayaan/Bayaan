@@ -23,6 +23,15 @@ export interface ContentApi {
   fetchText(url: string): Promise<string>;
 }
 
+// The ticket endpoint answers 404 for a withdrawn or unknown key.
+const TICKET_NOT_OFFERED = 'download_ticket_404';
+
+// True when an install failed because the backend no longer offers the key,
+// as opposed to a network or integrity failure.
+export function isContentNotOffered(error: unknown): boolean {
+  return error instanceof Error && error.message === TICKET_NOT_OFFERED;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -175,6 +184,7 @@ export function createContentApi(
             signal,
           },
         );
+        if (response.status === 404) throw new Error(TICKET_NOT_OFFERED);
         if (!response.ok) throw new Error(`download_ticket_${response.status}`);
         const body = parseJson(await response.text());
         if (!isRecord(body) || !isTicket(body.data))

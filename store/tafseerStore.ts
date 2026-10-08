@@ -1,11 +1,12 @@
 import {create} from 'zustand';
 import {persist, createJSONStorage} from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type {DownloadedTafseerMeta} from '@/types/tafseer';
+import type {DownloadedTafseerMeta, TafseerEdition} from '@/types/tafseer';
 import {tafseerApiService} from '@/services/tafseer/TafseerApiService';
 import {tafseerDbService} from '@/services/tafseer/TafseerDbService';
 import {AVAILABLE_TAFASEER} from '@/data/availableTafaseer';
 import {
+  getOfferedTafsirIds,
   installContent,
   isEngineManagingTafsir,
   removeContent,
@@ -16,6 +17,20 @@ const TAFSIR_KEY_PREFIX = 'qf:tafsirs:';
 // The id of an engine install the user did not start, while it runs.
 let engineDownloadingId: string | null = null;
 
+// Catalog editions the user can still download: not installed, and offered by
+// the last known manifest (every edition when no manifest is known).
+export function browsableTafaseer(
+  catalog: readonly TafseerEdition[],
+  installedIds: ReadonlySet<string>,
+  offeredIds: ReadonlySet<string> | null,
+): TafseerEdition[] {
+  return catalog.filter(
+    edition =>
+      !installedIds.has(edition.identifier) &&
+      (offeredIds === null || offeredIds.has(edition.identifier)),
+  );
+}
+
 interface TafseerStoreState {
   // Metadata for downloaded tafaseer (synced from SQLite)
   downloadedMeta: DownloadedTafseerMeta[];
@@ -24,11 +39,14 @@ interface TafseerStoreState {
   // Download state
   downloadingId: string | null;
   downloadProgress: number;
+  // Ids the cached content manifest offers; null shows the full catalog
+  offeredTafsirIds: ReadonlySet<string> | null;
 
   // Actions
   downloadTafseer: (editionId: string) => Promise<void>;
   deleteTafseer: (editionId: string) => Promise<void>;
   loadDownloadedMeta: () => Promise<void>;
+  loadOfferedTafsirs: () => Promise<void>;
   setSelectedTafseerId: (id: string | null) => void;
 }
 
@@ -39,6 +57,7 @@ export const useTafseerStore = create<TafseerStoreState>()(
       selectedTafseerId: '169',
       downloadingId: null,
       downloadProgress: 0,
+      offeredTafsirIds: null,
 
       downloadTafseer: async (editionId: string) => {
         const {downloadingId} = get();
@@ -125,6 +144,17 @@ export const useTafseerStore = create<TafseerStoreState>()(
           set({downloadedMeta: meta});
         } catch (error) {
           console.warn('[TafseerStore] Failed to load downloaded meta:', error);
+        }
+      },
+
+      loadOfferedTafsirs: async () => {
+        try {
+          set({offeredTafsirIds: await getOfferedTafsirIds()});
+        } catch (error) {
+          console.warn(
+            '[TafseerStore] Failed to load offered tafaseer:',
+            error,
+          );
         }
       },
 
