@@ -12,6 +12,7 @@
 import {
   anchorTarget,
   bookmarkChipView,
+  historyEntryLabel,
   verseHistoryLabel,
   verseQueryTarget,
   verseResultTexts,
@@ -19,6 +20,7 @@ import {
 } from '../mushafSearchVerses';
 import {
   fixtureUnits,
+  must,
   unitOf,
 } from '@/services/verse-annotations/__fixtures__/verseUnitsTestData';
 import {SURAHS} from '@/data/surahData';
@@ -99,7 +101,7 @@ describe('verseQueryTarget: "N:M" in the rewayah on screen', () => {
 
 describe('result and history texts', () => {
   it('Hafs exactly as before; another rewayah names its numbering', () => {
-    const hafsTarget = verseQueryTarget(1, 7, HAFS)!;
+    const hafsTarget = must(verseQueryTarget(1, 7, HAFS));
     expect(verseResultTexts(hafsTarget, 'Al-Fatihah')).toEqual({
       primary: 'Al-Fatihah 1:7',
       secondary: 'Verse 7',
@@ -107,7 +109,7 @@ describe('result and history texts', () => {
     expect(verseHistoryLabel(hafsTarget, 'Al-Fatihah 1:7')).toBe(
       'Al-Fatihah 1:7',
     );
-    const warshTarget = verseQueryTarget(106, 5, shownReady('warsh'))!;
+    const warshTarget = must(verseQueryTarget(106, 5, shownReady('warsh')));
     expect(verseResultTexts(warshTarget, 'Quraysh')).toEqual({
       primary: 'Quraysh 106:5',
       secondary: 'Verse 5 · Warsh',
@@ -115,6 +117,29 @@ describe('result and history texts', () => {
     expect(verseHistoryLabel(warshTarget, 'Quraysh 106:5')).toBe(
       'Quraysh 106:5 · Warsh',
     );
+  });
+});
+
+describe('historyEntryLabel', () => {
+  const hafsEntry = {type: 'verse', label: 'Al-Fatihah 1:7', verse: 7};
+  const warshEntry = {
+    type: 'verse',
+    label: 'Quraysh 106:5 · Warsh',
+    anchor: '106:4:5',
+  };
+  const pageEntry = {type: 'page', label: 'Page 5'};
+
+  it('Hafs on screen: every entry as saved', () => {
+    for (const entry of [hafsEntry, warshEntry, pageEntry]) {
+      expect(historyEntryLabel(entry, 'hafs')).toBe(entry.label);
+    }
+  });
+
+  it('another rewayah on screen: a Hafs verse entry says it is Hafs', () => {
+    expect(historyEntryLabel(hafsEntry, 'warsh')).toBe('Al-Fatihah 1:7 · Hafs');
+    expect(historyEntryLabel(warshEntry, 'warsh')).toBe(warshEntry.label);
+    expect(historyEntryLabel(warshEntry, 'qalun')).toBe(warshEntry.label);
+    expect(historyEntryLabel(pageEntry, 'warsh')).toBe('Page 5');
   });
 });
 

@@ -143,16 +143,17 @@ function results(renderer: TestRenderer.ReactTestRenderer) {
     }));
 }
 
-/** History rows (they have an item with a label and no primary). */
+/** History rows: their shown label and press. */
 function historyRows(renderer: TestRenderer.ReactTestRenderer) {
   return renderer.root
     .findAll(
       n =>
         typeof n.props.onPress === 'function' &&
-        typeof n.props.item?.label === 'string',
+        typeof n.props.label === 'string' &&
+        n.props.item !== undefined,
     )
     .map(n => ({
-      label: n.props.item.label as string,
+      label: n.props.label as string,
       press: n.props.onPress as () => void,
     }));
 }
@@ -280,7 +281,8 @@ describe('Warsh on screen: Warsh numbering', () => {
     const rows = historyRows(renderer);
     expect(rows.map(r => r.label)).toEqual([
       'Quraysh 106:5 · Warsh',
-      'Al-Fatihah 1:7',
+      // A Hafs entry says so with Warsh on screen.
+      'Al-Fatihah 1:7 · Hafs',
     ]);
     await act(async () => rows[0].press());
     await act(async () => rows[1].press());
@@ -291,9 +293,14 @@ describe('Warsh on screen: Warsh numbering', () => {
       ['1:7', 1],
     ]);
 
-    // The same anchor with Hafs on screen: the Hafs verse holding it.
+    // The same entries with Hafs on screen: labels as saved; the anchor
+    // opens the Hafs verse holding it.
     mockShownRewayah = 'hafs';
     const hafs = await renderSearch();
+    expect(historyRows(hafs.renderer).map(r => r.label)).toEqual([
+      'Quraysh 106:5 · Warsh',
+      'Al-Fatihah 1:7',
+    ]);
     await act(async () => historyRows(hafs.renderer)[0].press());
     expect(hafs.calls.onNavigateToVerse.mock.calls).toEqual([['106:4', 602]]);
   });

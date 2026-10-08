@@ -36,6 +36,7 @@ import {useRewayahVerseUnits} from '@/hooks/useRewayahVerseUnits';
 import type {RewayahId} from '@/services/rewayah/RewayahIdentity';
 import {
   anchorTarget,
+  historyEntryLabel,
   verseHistoryLabel,
   verseQueryTarget,
   verseResultTexts,
@@ -328,10 +329,12 @@ SearchResultRow.displayName = 'SearchResultRow';
 
 const HistoryRow: React.FC<{
   item: SearchHistoryItem;
+  /** The entry's label in the rewayah on screen (historyEntryLabel). @ai */
+  label: string;
   textColor: string;
   secondaryColor: string;
   onPress: () => void;
-}> = React.memo(({item, textColor, secondaryColor, onPress}) => (
+}> = React.memo(({label, textColor, secondaryColor, onPress}) => (
   <Pressable
     style={({pressed}) => [styles.historyRow, {opacity: pressed ? 0.5 : 1}]}
     onPress={onPress}>
@@ -346,7 +349,7 @@ const HistoryRow: React.FC<{
         {color: Color(textColor).alpha(0.85).toString()},
       ]}
       numberOfLines={1}>
-      {item.label}
+      {label /* @ai */}
     </Text>
   </Pressable>
 ));
@@ -1065,6 +1068,7 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
                   <HistoryRow
                     key={`${item.type}-${item.label}-${index}`}
                     item={item}
+                    label={historyEntryLabel(item, shown.rewayah)} // @ai
                     textColor={theme.colors.text}
                     secondaryColor={theme.colors.textSecondary}
                     onPress={() => handleHistoryPress(item)}

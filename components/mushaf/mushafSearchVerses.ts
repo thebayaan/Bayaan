@@ -158,6 +158,25 @@ export function verseHistoryLabel(
     : `${primary} · ${getShortLabel(target.rewayah)}`;
 }
 
+/**
+ * The label of a search-history entry with `shown` on screen. A verse entry
+ * in Hafs numbers (searched with Hafs on screen, or saved before verse
+ * units) says so when another rewayah is on screen ("Al-Fatihah 1:7 ·
+ * Hafs"): it opens that Hafs verse. Every other entry reads as it was saved
+ * (a non-Hafs verse entry already names its rewayah).
+ */
+export function historyEntryLabel(
+  entry: {type: string; label: string; verse?: number; anchor?: string},
+  shown: RewayahId,
+): string {
+  return entry.type === 'verse' &&
+    entry.verse !== undefined &&
+    !entry.anchor &&
+    shown !== 'hafs'
+    ? `${entry.label} · ${getShortLabel('hafs')}`
+    : entry.label;
+}
+
 /** What a bookmark chip shows and opens. */
 export interface BookmarkChipView {
   /**
