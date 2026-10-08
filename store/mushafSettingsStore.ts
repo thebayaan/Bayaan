@@ -202,7 +202,11 @@ interface MushafSettingsState {
   setRewayah: (rewayah: RewayahId) => void;
   toggleRewayahDiffs: () => void;
   // @ai-start
-  /** Records that the saved rewayah `from` failed to load and Hafs is shown. */
+  /**
+   * Records that the saved rewayah `from` failed to load and that Hafs is
+   * shown in its place: names Hafs and keeps `from` (persisted instead of
+   * Hafs) in one update.
+   */
   startRewayahFallback: (from: RewayahId) => void;
   /** Ends a startup fallback, making Hafs the saved rewayah. */
   clearRewayahFallback: () => void;
@@ -384,10 +388,12 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
       startRewayahFallback: (from: RewayahId) =>
         set(state =>
           // Mushaf 1440 pins Hafs, and a Hafs failure has nothing to fall
-          // back to, so neither is ever a fallback.
-          from === 'hafs' || state.mushafRenderer === 'qcf_v2'
+          // back to, so neither is ever a fallback. The data service calls
+          // this from its Hafs commit, so labels and the notice name the
+          // Hafs on screen in the same update.
+          from === 'hafs' || rendererPinsHafs(state.mushafRenderer)
             ? state
-            : {rewayahFallbackFrom: from},
+            : {rewayah: 'hafs', rewayahFallbackFrom: from},
         ),
       clearRewayahFallback: () => set({rewayahFallbackFrom: null}),
       // @ai-end

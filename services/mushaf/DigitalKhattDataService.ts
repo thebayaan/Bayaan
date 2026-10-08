@@ -688,6 +688,9 @@ export class DigitalKhattDataService {
   // Whether this instance follows the settings store's Hafs pin (installed
   // with the first main-cache request; see followSettingsStore).
   private followingSettings = false;
+  // The saved rewayah a startup fallback to Hafs stands in for, recorded in
+  // the settings store by the Hafs commit (runInitialLoad, swapMain).
+  private pendingFallbackFrom: RewayahId | null = null;
   // @ai-end
 
   get initialized(): boolean {
@@ -803,42 +806,59 @@ export class DigitalKhattDataService {
       );
       target = 'hafs';
     }
+    // @ai-start
+    // Rewayat whose load failed during this startup.
+    const failed = new Set<RewayahId>();
     try {
-      // Settles on the first commit, whichever rewayah wins: a switch
-      // requested meanwhile (e.g. opening a bookmark) takes precedence.
-      await this.requestMain(target, true);
-    } catch (error) {
-      if (this._initialized || epoch !== this.epoch) throw error;
-      const failed = error instanceof RewayahLoadError ? error.rewayah : target;
-      if (failed === 'hafs') throw error;
-      // A blank mushaf on every launch is worse than reading Hafs: fall back
-      // and keep the failure visible through getRewayahLoadState /
-      // getRewayahLoadError.
-      console.warn(
-        `[DigitalKhattDataService] Could not load "${failed}" at startup; falling back to Hafs`,
-        error,
-      );
-      // @ai-start
-      // The reader's saved rewayah is kept. Recording the fallback before the
-      // Hafs commit relabels the store makes the store persist the saved
-      // rewayah instead of Hafs (so the next launch tries it again) while
-      // `rewayah`, which every label reads, names the Hafs on screen. The UI
-      // tells the reader and offers a retry.
-      const saved = useMushafSettingsStore.getState().rewayah;
-      if (REWAYAH_DATA[saved]) {
-        useMushafSettingsStore.getState().startRewayahFallback(saved);
+      for (;;) {
+        try {
+          // Settles on the first commit, whichever rewayah wins: a switch
+          // requested meanwhile (e.g. opening a bookmark) takes precedence.
+          await this.requestMain(target, true);
+          return;
+        } catch (error) {
+          if (this._initialized || epoch !== this.epoch) throw error;
+          failed.add(
+            error instanceof RewayahLoadError ? error.rewayah : target,
+          );
+          const saved = this.savedRewayah();
+          if (!failed.has(saved)) {
+            // What failed was a switch requested during startup (its caller
+            // reports that), not the saved rewayah: load the saved one.
+            target = saved;
+            this.pendingFallbackFrom = null;
+            continue;
+          }
+          if (failed.has('hafs')) throw error;
+          // A blank mushaf on every launch is worse than reading Hafs: fall
+          // back and keep the failure visible through getRewayahLoadState /
+          // getRewayahLoadError. The reader's saved rewayah is kept: the
+          // Hafs commit records the fallback (swapMain), so the store goes on
+          // persisting the saved rewayah (the next launch tries it again)
+          // and the notice it triggers never claims Hafs before Hafs is on
+          // screen, or when Hafs cannot be loaded either.
+          console.warn(
+            `[DigitalKhattDataService] Could not load "${saved}" at startup; falling back to Hafs`,
+            error,
+          );
+          target = 'hafs';
+          this.pendingFallbackFrom = saved;
+        }
       }
-      try {
-        await this.requestMain('hafs', true);
-      } catch (hafsError) {
-        // Nothing can be shown; the saved rewayah was never overwritten, and
-        // no notice may claim that Hafs is on screen.
-        useMushafSettingsStore.getState().clearRewayahFallback();
-        throw hafsError;
-      }
-      // @ai-end
+    } finally {
+      this.pendingFallbackFrom = null;
     }
+    // @ai-end
   }
+
+  // @ai-start
+  // The rewayah the settings store keeps for the reader (labels read it; it
+  // is persisted), or Hafs when it has no bundled text.
+  private savedRewayah(): RewayahId {
+    const saved = useMushafSettingsStore.getState().rewayah;
+    return REWAYAH_DATA[saved] ? saved : 'hafs';
+  }
+  // @ai-end
 
   /**
    * Dev-only: delete every runtime SQLite copy this service manages (current
@@ -1200,6 +1220,16 @@ export class DigitalKhattDataService {
       }
     }
 
+    // @ai-start
+    // A startup fallback is recorded here, by the Hafs commit itself: one
+    // store update names the Hafs now served and keeps the saved rewayah to
+    // persist, and the notice it triggers is true when it shows.
+    const fallbackFrom = this.pendingFallbackFrom;
+    this.pendingFallbackFrom = null;
+    if (fallbackFrom !== null && next.rewayah === 'hafs') {
+      useMushafSettingsStore.getState().startRewayahFallback(fallbackFrom);
+    }
+    // @ai-end
     // Keep the settings store in step with the text actually served (a no-op
     // when the caller already set it, or under qcf_v2 where the store pins
     // Hafs).

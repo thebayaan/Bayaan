@@ -141,7 +141,8 @@ jest.mock('expo-file-system/legacy', () => ({
 jest.mock('@/store/mushafSettingsStore', () => {
   // @ai-start
   // Mirrors the real store's rewayah rules: setRewayah is refused under
-  // qcf_v2, and showing a non-Hafs rewayah ends a startup fallback.
+  // qcf_v2, showing a non-Hafs rewayah ends a startup fallback, and starting
+  // one names Hafs in the same update.
   const state = {
     rewayah: 'hafs',
     mushafRenderer: 'dk_v2',
@@ -153,6 +154,7 @@ jest.mock('@/store/mushafSettingsStore', () => {
     }),
     startRewayahFallback: jest.fn((from: string) => {
       if (from !== 'hafs' && state.mushafRenderer !== 'qcf_v2') {
+        state.rewayah = 'hafs';
         state.rewayahFallbackFrom = from;
       }
     }),
@@ -685,15 +687,13 @@ describe('initialization failures', () => {
     expect(texts(service, '1:1')).toEqual(H);
     expect(service.getRewayahLoadState('warsh')).toBe('error');
     // The label names the Hafs on screen; the saved Warsh is recorded as a
-    // fallback (which the real store persists instead of Hafs) before the
-    // commit relabels the store.
+    // fallback (which the real store persists instead of Hafs) by the Hafs
+    // commit itself, in the update that names Hafs.
     expect(store.rewayah).toBe('hafs');
     expect(store.rewayahFallbackFrom).toBe('warsh');
+    expect(store.startRewayahFallback).toHaveBeenCalledTimes(1);
     expect(store.startRewayahFallback).toHaveBeenCalledWith('warsh');
-    expect(store.setRewayah).toHaveBeenCalledWith('hafs');
-    expect(store.startRewayahFallback.mock.invocationCallOrder[0]).toBeLessThan(
-      store.setRewayah.mock.invocationCallOrder[0],
-    );
+    expect(store.setRewayah).not.toHaveBeenCalledWith('hafs');
   });
 
   it('retries the saved rewayah on demand after a startup fallback', async () => {
