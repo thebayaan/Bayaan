@@ -18,6 +18,7 @@ import {useTheme} from '@/hooks/useTheme';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService'; // @ai
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
+import {selectionForAnchor} from '@/services/mushaf/MushafVerseMapService'; // @ai
 import {mushafSessionStore} from '@/services/mushaf/MushafSessionStore';
 import {
   formatPlaybackInfo, // @ai
@@ -36,10 +37,18 @@ export type MushafScreenParams = {
   surah?: string;
   page?: string;
   ayah?: string;
+  // @ai-start
+  // A stored Hafs anchor ('S:A' or 'S:A:W': a bookmark / note / highlight
+  // row's verse_key). When given, the flash selects exactly the shown
+  // rewayah's verse holding that slot (verse-units contract 4.4) instead of
+  // every verse holding Hafs `surah`:`ayah`. Never a rewayah verse number.
+  anchor?: string;
+  // @ai-end
 };
 
 export default function MushafScreen() {
-  const {surah, page, ayah} = useLocalSearchParams<MushafScreenParams>();
+  const {surah, page, ayah, anchor} =
+    useLocalSearchParams<MushafScreenParams>(); // @ai
   const {theme} = useTheme();
 
   // Safety net — DK data is initialized at AppInitializer priority 4-5,
@@ -141,10 +150,21 @@ export default function MushafScreen() {
 
   // Set verse highlight on mount, auto-clear after 3s, clear on unmount
   useEffect(() => {
-    if (initialVerseKey) {
-      useMushafVerseSelectionStore
-        .getState()
-        .selectVerse(initialVerseKey, pageNumber);
+    // @ai-start
+    // The unit a stored anchor names, in the shown rewayah's numbering.
+    const unitSelection = anchor ? selectionForAnchor(anchor) : null;
+    if (unitSelection || initialVerseKey) {
+      const selection = useMushafVerseSelectionStore.getState();
+      if (unitSelection) {
+        selection.selectUnits(
+          unitSelection.rewayah,
+          unitSelection.units,
+          pageNumber,
+        );
+      } else if (initialVerseKey) {
+        selection.selectVerse(initialVerseKey, pageNumber);
+      }
+      // @ai-end
       const timer = setTimeout(() => {
         useMushafVerseSelectionStore.getState().clearSelection();
       }, 3000);
@@ -156,7 +176,7 @@ export default function MushafScreen() {
     return () => {
       useMushafVerseSelectionStore.getState().clearSelection();
     };
-  }, [initialVerseKey, pageNumber]);
+  }, [anchor, initialVerseKey, pageNumber]); // @ai: anchor
 
   if (!dkReady) {
     // @ai-start
