@@ -54,6 +54,7 @@ import {
   mushafVerseMapService,
   selectionForUnitKeys, // @ai
 } from '@/services/mushaf/MushafVerseMapService';
+import {parseAnchorKey} from '@/services/mushaf/RewayahVerseUnits'; // @ai
 import type {IndexedTajweedData} from '@/utils/tajweedLoader';
 import {getAllahNameHighlightColorHex} from '@/constants/mushafAllahHighlight';
 import SkiaLine from './SkiaLine';
@@ -840,7 +841,13 @@ const ContinuousMushafView = forwardRef<
         }
       },
       scrollToVerse: (verseKey: string, animated = false) => {
-        const page = getPageForVerse(verseKey);
+        // @ai — a stored anchor 'S:A:W' (a verse unit's first slot) is on
+        // the page of its Hafs verse's start (verse-units invariant 8).
+        const loc =
+          verseKey.split(':').length === 3 ? parseAnchorKey(verseKey) : null;
+        const page = getPageForVerse(
+          loc ? `${loc.surah}:${loc.ayah}` : verseKey,
+        );
         if (page) {
           flashListRef.current?.scrollToIndex({index: page - 1, animated});
         }
