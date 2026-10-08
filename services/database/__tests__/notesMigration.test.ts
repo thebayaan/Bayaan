@@ -5,7 +5,6 @@ jest.mock(
 import path from 'path';
 import {openAdapterDatabase} from '@/test-utils/sqliteAdapter';
 import {readTable, type Row} from '@/test-utils/goldenDb';
-import {hasVerseKeyUniqueConstraint} from '../migrations/legacyNotesCleanup';
 
 type MockModule = typeof import('@/test-utils/mockExpoSqlite');
 type Annotations =
@@ -231,27 +230,32 @@ describe('notes table migrations', () => {
     expect(await tableNames(mock)).not.toContain('notes_new');
   });
 
-  it('treats only a single-column UNIQUE(verse_key) as the legacy constraint', async () => {
-    const {mock} = loaded;
-    const cases: [string, boolean][] = [
-      ['verse_key TEXT NOT NULL UNIQUE, owner_scope TEXT', true],
-      ['verse_key TEXT, owner_scope TEXT, UNIQUE(verse_key)', true],
-      [
-        'verse_key TEXT, owner_scope TEXT, UNIQUE(owner_scope, verse_key)',
-        false,
-      ],
-      [
-        'verse_key TEXT, owner_scope TEXT, UNIQUE(verse_key, owner_scope)',
-        false,
-      ],
-    ];
-    for (const [columns, expected] of cases) {
-      const db = await mock.openDatabaseAsync(DB_FILE);
-      await db.execAsync(
-        `DROP TABLE IF EXISTS notes; CREATE TABLE notes (id TEXT PRIMARY KEY, ${columns});`,
-      );
-      expect(await hasVerseKeyUniqueConstraint(db)).toBe(expected);
-    }
+  it('keeps a fork column CHECK constraint and index when removing UNIQUE(verse_key)', async () => {
+    const {mock, annotations} = loaded;
+    await seed(
+      mock,
+      `${OLD_NOTES}
+       ALTER TABLE notes ADD COLUMN fork_rank INTEGER NOT NULL DEFAULT 1 CHECK (fork_rank > 0);
+       CREATE INDEX idx_notes_fork_rank ON notes(fork_rank);
+       INSERT INTO notes VALUES ('n', '3:1', 3, 1, 'kept', 1, 2, 5);`,
+    );
+
+    await annotations.initialize();
+
+    const db = await mock.openDatabaseAsync(DB_FILE);
+    const master = await db.getFirstAsync<{sql: string}>(
+      "SELECT sql FROM sqlite_master WHERE name='notes'",
+    );
+    expect(master?.sql).toMatch(/CHECK\s*\(\s*"?fork_rank"?\s*>\s*0\s*\)/);
+    const indexNames = (await notesIndexes(mock)).map(i => i.name);
+    expect(indexNames).toContain('idx_notes_fork_rank');
+    expect((await notesIndexes(mock)).some(i => i.origin === 'u')).toBe(false);
+    expect((await rawNotes(mock)).map(r => [r.id, r.fork_rank])).toEqual([
+      ['n', 5],
+    ]);
+    await expect(
+      db.execAsync("UPDATE notes SET fork_rank = 0 WHERE id = 'n'"),
+    ).rejects.toThrow();
   });
 
   it('does not rebuild an owner-scoped notes table with a composite UNIQUE on a later launch', async () => {
