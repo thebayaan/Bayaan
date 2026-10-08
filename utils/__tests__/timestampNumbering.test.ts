@@ -162,6 +162,67 @@ describe('decideSurahNumbering', () => {
   });
 });
 
+// @ai-start
+describe('explicitly numbered files (a verse missing or repeated)', () => {
+  const without = (n: number, missing: number[]) =>
+    range(n).filter(a => !missing.includes(a));
+
+  it("Shu'bah (numbered like Hafs throughout): every entry names its own verse", () => {
+    // one verse has no entry: develop highlighted the others by identity
+    expect(decide('shubah', 2, synthetic(2, without(286, [100]))).mode).toBe(
+      'hafs',
+    );
+    // a verse recited twice
+    expect(
+      decide('shubah', 2, synthetic(2, [...range(3), 3, ...range(283, 4)]))
+        .mode,
+    ).toBe('hafs');
+    // an ayah-0 pre-roll, then a gap
+    expect(decide('shubah', 112, synthetic(112, [0, 1, 2, 4])).mode).toBe(
+      'hafs',
+    );
+  });
+
+  it("...as long as every entry names one of the surah's verses, up to its last", () => {
+    // an entry past the surah's last verse
+    expect(
+      decide('shubah', 2, synthetic(2, [...without(286, [100]), 287])).mode,
+    ).toBe('disabled');
+    // the numbering never reaches the last verse: another count is possible
+    expect(decide('shubah', 2, synthetic(2, without(285, [100]))).mode).toBe(
+      'disabled',
+    );
+    // an ayah 0 that is not a pre-roll
+    expect(decide('shubah', 112, synthetic(112, [1, 0, 2, 3, 4])).mode).toBe(
+      'disabled',
+    );
+    // numbered 1..n but one short: a missing last verse, or every verse
+    // after a missing one renumbered; it cannot be told, so still refused
+    expect(decide('shubah', 2, synthetic(2, range(285))).mode).toBe('disabled');
+  });
+
+  it('rewayat that number some surahs differently, and unknown rewayat, still refuse', () => {
+    expect(decide('warsh', 112, synthetic(112, [1, 2, 4])).mode).toBe(
+      'disabled',
+    );
+    expect(decide('warsh', 2, synthetic(2, without(286, [100]))).mode).toBe(
+      'disabled',
+    );
+    expect(decide(null, 2, synthetic(2, without(286, [100]))).mode).toBe(
+      'disabled',
+    );
+  });
+
+  it('the identity numbering then answers for the entries present', () => {
+    const entries = synthetic(2, without(286, [100]));
+    const n = numbering('hafs', 'shubah', 2, entries);
+    expect(n.hafsKeysForEntry(101)).toEqual(['2:101']);
+    expect(n.startEntryForHafsAyah(101)?.ayahNumber).toBe(101);
+    expect(n.startEntryForHafsAyah(100)).toBeNull();
+  });
+});
+// @ai-end
+
 describe('classifyTimingSet', () => {
   it('needs a 95% majority over enough observations', () => {
     expect(classifyTimingSet({hafs: 5, riwayah: 0, neither: 0})).toBe('hafs');

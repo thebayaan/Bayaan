@@ -90,6 +90,10 @@ export interface SurahNumberingDecision {
  *    class; anything else -> 'disabled'.
  *  - Rewayat that should have a map but whose map is unavailable -> 'disabled'.
  *  - Unknown rewayat (no map): count == Hafs count -> 'hafs', else 'disabled'.
+ *  - Entries not numbered 1..n (a verse missing or repeated) -> 'disabled',
+ *    except for a rewayah that numbers every surah like Hafs (Shu'bah):
+ *    'hafs' when each entry names one of the surah's verses and the last
+ *    verse is among them, since each entry then names its own Hafs verse. @ai
  */
 export function decideSurahNumbering(
   input: SurahNumberingInput,
@@ -109,6 +113,19 @@ export function decideSurahNumbering(
   if (hafsCount === 0) return decide('disabled', 'invalid surah');
   const {count, contiguous} = getTimingEntryStats(entries);
   if (!contiguous) {
+    // @ai-start
+    if (
+      reciterRewayah &&
+      verseMap.hasVerseMap(reciterRewayah) &&
+      numbersEverySurahLikeHafs(reciterRewayah, verseMap) &&
+      namesVersesUpTo(entries, hafsCount)
+    ) {
+      return decide(
+        'hafs',
+        'entries name their own verses; the rewayah numbers every surah like Hafs',
+      );
+    }
+    // @ai-end
     return decide('disabled', 'entries are not numbered 1..n');
   }
 
@@ -155,6 +172,49 @@ export function decideSurahNumbering(
     'unknown rewayah numbering and the entry count differs from Hafs',
   );
 }
+
+// @ai-start
+/**
+ * True when every entry (after an ayah-0 pre-roll) names one of the verses
+ * 1..verseCount and the last of them is among them: an explicitly numbered
+ * file (a verse missing or repeated) whose numbering reaches the surah's
+ * end, so no entry carries another count's number.
+ */
+function namesVersesUpTo(
+  entries: readonly AyahTimestamp[],
+  verseCount: number,
+): boolean {
+  let started = false;
+  let reachesEnd = false;
+  for (const e of entries) {
+    if (!started && e.ayahNumber === 0) continue; // pre-roll (basmala)
+    started = true;
+    if (
+      !Number.isInteger(e.ayahNumber) ||
+      e.ayahNumber < 1 ||
+      e.ayahNumber > verseCount
+    ) {
+      return false;
+    }
+    if (e.ayahNumber === verseCount) reachesEnd = true;
+  }
+  return reachesEnd;
+}
+
+/**
+ * True when the rewayah numbers every surah exactly like Hafs (Shu'bah: the
+ * same Kufi count and verse boundaries).
+ */
+function numbersEverySurahLikeHafs(
+  rewayah: RewayahId,
+  verseMap: RewayahVerseMapService,
+): boolean {
+  for (let surah = 1; surah <= 114; surah++) {
+    if (verseMap.isIdentitySurah(rewayah, surah) !== true) return false;
+  }
+  return true;
+}
+// @ai-end
 
 /**
  * Set-level verdict from per-surah observations on discriminating surahs.
