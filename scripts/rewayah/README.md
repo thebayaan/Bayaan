@@ -160,25 +160,32 @@ Hafs verse and word position:
 - `major` (Shu'bah, Bazzi, Qunbul) / `mukhtalif` (Warsh, Qalun, Duri, Susi):
   whole word (`[]`), for words read differently from the Hafs word in that
   slot (letters, including a letter the rewayah never pronounces; long
-  vowels, doubling, vowels, case ending, ya' al-idafa and ha' al-kinaya
-  vowels; a question read as a statement or the reverse; a hamzat qat' read
-  as a wasl alef; imala dots in the close rewayat). Encoding conventions
-  (including the hamza's seat) and general rules marked only by diacritics or
-  by the hamza's carrier are not highlighted: madd length, imala / taqlil
+  vowels, including an alef Hafs reads in waqf only; doubling, including
+  al-Bazzi's doubled first ta'; vowels, case ending, ya' al-idafa and ha'
+  al-kinaya vowels; a question read as a statement or the reverse; a hamzat
+  qat' read as a wasl alef; imala dots in the close rewayat). Encoding
+  conventions (including the hamza's seat and a few reviewed Nafi'
+  spellings, `NAFI_SPELLINGS`) and general rules marked only by diacritics
+  or by the hamza's carrier are not highlighted: madd length, imala / taqlil
   dots, the two-hamza rules (idkhal included), Warsh's and al-Susi's ibdal of
-  a vowelless hamza, Warsh's naql. Each across-word rule applies only in its
-  context: a word-initial hamza may be dropped only as the second of two
-  hamzas across words (after a word ending in a voweled hamza) or by Warsh's
-  naql (the previous word takes its vowel); a vowel added or dropped on the
-  last letter is excused only by Warsh's naql into the next word or al-Susi's
-  idgham kabir (a doubled first letter, a meem before ba, a ba before the next
-  surah's basmala when the signed Word file doubles that basmala's ba, i.e.
-  before 14 and 15). Two narrators of one reader that read a slot the same way
-  (the same stored words, or encoding-only differences under the sibling's
-  rules) get the same decision. See the docstring of `highlights.py`; the
-  reviewed decisions in `highlight_cases.json` pin every rule. The Fatiha's
-  basmala words are never highlighted: their spelling differs from Hafs,
-  their reading does not.
+  a vowelless hamza, Warsh's naql, idgham. Each across-word rule applies only
+  in its context: a word-initial hamza may be dropped only as the second of
+  two hamzas across words (after a word ending in a voweled hamza) or by
+  Warsh's naql (the previous word takes its vowel); a vowel added or dropped
+  on the last letter is excused only by Warsh's naql into the next word or
+  al-Susi's idgham kabir (a doubled first letter, a meem before ba, a ba
+  before the next surah's basmala when the signed Word file doubles that
+  basmala's ba, i.e. before 14 and 15); a doubled first letter is excused only
+  when the previous word merges into it (a nun or tanween before
+  ي ر م ل و ن, a letter written without vowel or sukun, al-Susi's idgham
+  kabir), not after an alef, a sukun, a vowel, or a nun or tanween before
+  another letter (al-Bazzi `وَلَآ تَّيَمَّمُوا۟`, `فَإِن تَّوَلَّوْا۟`). Two
+  narrators of one reader that read a slot the same way (the same stored
+  words, encoding-only differences under the sibling's rules, or in al-Susi
+  a final vowel merged by the idgham kabir) get the same decision. See the
+  docstring of `highlights.py`; the reviewed decisions in
+  `highlight_cases.json` pin every rule. The Fatiha's basmala words are never
+  highlighted: their spelling differs from Hafs, their reading does not.
 - `silah`: char indices (UTF-16 = code points here) of the silah marks
   U+06E5 / U+06E6 and their damma / kasra that this rewayah pronounces where
   Hafs does not.
