@@ -707,6 +707,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                     surahNumber={surahNumber}
                     ayahNumber={ayahNumber}
                     section={activeScreen === 'similar' ? 'similar' : 'phrases'}
+                    rewayah={resolvedRewayah} // @ai
                     onDone={handleDismiss}
                   />
                 )}

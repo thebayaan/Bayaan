@@ -1,7 +1,9 @@
 // @ai-generated
 /**
  * Text of a similar-verses "shared phrase" snippet: the words a QUL phrase
- * covers in its source verse, read from the active mushaf rewayah.
+ * covers in its source verse, read from the rewayah the screen shows (the
+ * rewayah its verse actions sheet was opened for, which may differ from the
+ * active mushaf one).
  *
  * QUL word positions are Hafs positions, and every rewayah words DB keeps the
  * Hafs slot positions (Release 1 slot model), so the phrase is the slots in
@@ -34,13 +36,16 @@ export function joinPhraseWords(
   return joinWholeWords(inRange);
 }
 
-/** The phrase text of a QUL phrase in its source verse, as the mushaf shows it. */
+/**
+ * The phrase text of a QUL phrase in its source verse, in `rewayah`. The
+ * caller makes sure that rewayah's words are loaded; until then it is ''.
+ */
 export function getSimilarPhraseText(
   sourceVerse: string,
   wordFrom: number,
   wordTo: number,
+  rewayah: RewayahId,
 ): string {
-  const rewayah = digitalKhattDataService.rewayah;
   return joinPhraseWords(
     digitalKhattDataService.getVerseWords(sourceVerse, rewayah),
     wordFrom,

@@ -22,7 +22,15 @@ import {qulDataService} from '@/services/mushaf/QulDataService';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {getSimilarPhraseText} from '@/components/sheets/similarVersePhrase'; // @ai
 import {useMushafNavigationStore} from '@/store/mushafNavigationStore';
-import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import {
+  getDkFontFamily, // @ai
+  useMushafSettingsStore,
+  type RewayahId, // @ai
+} from '@/store/mushafSettingsStore';
+// @ai-start
+import {getRewayahShortLabel} from '@/utils/rewayahLabels';
+import {useRewayahVerseTexts} from '@/components/share/useRewayahVerseTexts';
+// @ai-end
 import {useTajweedStore} from '@/store/tajweedStore';
 import {useMushafFontMgr} from '@/hooks/useMushafFontMgr';
 import SkiaVerseText from '@/components/player/v2/PlayerContent/QuranView/SkiaVerseText';
@@ -43,8 +51,8 @@ function parseVerseKey(verseKey: string): {surah: number; ayah: number} {
   return {surah: parseInt(s, 10), ayah: parseInt(a, 10)};
 }
 
-function getVersePreview(verseKey: string): string {
-  return digitalKhattDataService.getVerseText(verseKey);
+function getVersePreview(verseKey: string, rewayah: RewayahId): string {
+  return digitalKhattDataService.getVerseText(verseKey, rewayah); // @ai
 }
 
 interface SimilarVersesContentProps {
@@ -52,6 +60,11 @@ interface SimilarVersesContentProps {
   surahNumber: number;
   ayahNumber: number;
   section: 'similar' | 'phrases';
+  // @ai-start
+  /** Rewayah the verse actions sheet was opened for (a player track's, or
+   *  the mushaf's): every snippet, preview and expanded match shows it. */
+  rewayah: RewayahId;
+  // @ai-end
   onDone: () => void;
 }
 
@@ -60,6 +73,7 @@ export const SimilarVersesContent: React.FC<SimilarVersesContentProps> = ({
   surahNumber,
   ayahNumber,
   section,
+  rewayah, // @ai
   onDone,
 }) => {
   const {theme} = useTheme();
@@ -84,12 +98,18 @@ export const SimilarVersesContent: React.FC<SimilarVersesContentProps> = ({
   );
   const indexedTajweedData = useTajweedStore(s => s.indexedTajweedData);
   const fontMgr = useMushafFontMgr();
-  const fontFamily =
-    mushafRenderer === 'dk_indopak'
-      ? 'DigitalKhattIndoPak'
-      : mushafRenderer === 'dk_v1'
-        ? 'DigitalKhattV1'
-        : 'DigitalKhattV2';
+  // @ai-start
+  // Snippets, previews and expanded matches show `rewayah`, read from that
+  // rewayah's words (loaded on demand), never the mushaf's text in another
+  // rewayah's sheet. QUL similarity data uses Hafs keys and word positions,
+  // which every rewayah words DB keeps (Release 1 slot model). Readiness is
+  // per rewayah, so the sheet's own verse is enough to track it.
+  const fontFamily = getDkFontFamily(mushafRenderer, rewayah);
+  const rewayahLabel = getRewayahShortLabel(rewayah);
+  const readinessKeys = useMemo(() => [verseKey], [verseKey]);
+  const rewayahText = useRewayahVerseTexts(readinessKeys, rewayah);
+  const textReady = rewayahText.status === 'ready';
+  // @ai-end
   const [contentWidth, setContentWidth] = useState(0);
 
   const handleContentLayout = useCallback((e: LayoutChangeEvent) => {
@@ -177,17 +197,53 @@ export const SimilarVersesContent: React.FC<SimilarVersesContentProps> = ({
       showsVerticalScrollIndicator={false}
       bounces={true}
       onLayout={handleContentLayout}>
+      {/* @ai-start */}
+      {!textReady && (
+        <View style={styles.textNotice}>
+          {rewayahText.status === 'loading' ? (
+            <>
+              <ActivityIndicator
+                size="small"
+                color={theme.colors.textSecondary}
+              />
+              <Text style={styles.textNoticeText}>
+                Loading the {rewayahLabel} text
+              </Text>
+            </>
+          ) : (
+            <>
+              <Text style={styles.textNoticeText}>
+                Couldn&apos;t load the {rewayahLabel} text.
+              </Text>
+              <Pressable
+                onPress={rewayahText.retry}
+                accessibilityRole="button"
+                hitSlop={8}
+                style={({pressed}) => [
+                  styles.retryButton,
+                  pressed && styles.retryButtonPressed,
+                ]}>
+                <Text style={styles.retryButtonText}>Try Again</Text>
+              </Pressable>
+            </>
+          )}
+        </View>
+      )}
+      {/* @ai-end */}
       {mutashabihat.length > 0 && (
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>SHARED PHRASES</Text>
 
           {mutashabihat.map(phrase => {
             // @ai-start
-            const phraseText = getSimilarPhraseText(
-              phrase.sourceVerse,
-              phrase.sourceWordRange[0],
-              phrase.sourceWordRange[1],
-            );
+            const phraseText = textReady
+              ? getSimilarPhraseText(
+                  phrase.sourceVerse,
+                  phrase.sourceWordRange[0],
+                  phrase.sourceWordRange[1],
+                  rewayah,
+                )
+              : '';
             // @ai-end
             const otherMatches = phrase.matches.filter(
               m => m.verseKey !== verseKey,
@@ -244,6 +300,7 @@ export const SimilarVersesContent: React.FC<SimilarVersesContentProps> = ({
                             <View style={styles.skiaVerseWrap}>
                               <SkiaVerseText
                                 verseKey={match.verseKey}
+                                rewayah={rewayah} // @ai
                                 fontMgr={fontMgr!}
                                 fontFamily={fontFamily}
                                 fontSize={moderateScale(18)}
@@ -303,7 +360,11 @@ export const SimilarVersesContent: React.FC<SimilarVersesContentProps> = ({
             similar => {
               const parsed = parseVerseKey(similar.matchedVerseKey);
               const matchSurahName = getSurahName(parsed.surah);
-              const preview = getVersePreview(similar.matchedVerseKey);
+              // @ai-start
+              const preview = textReady
+                ? getVersePreview(similar.matchedVerseKey, rewayah)
+                : '';
+              // @ai-end
               return (
                 <Pressable
                   key={similar.matchedVerseKey}
@@ -367,6 +428,36 @@ const createStyles = (theme: Theme) =>
     section: {
       marginBottom: verticalScale(16),
     },
+    // @ai-start
+    textNotice: {
+      alignItems: 'center',
+      gap: moderateScale(8),
+      paddingVertical: moderateScale(12),
+      marginBottom: verticalScale(12),
+      borderRadius: moderateScale(12),
+      backgroundColor: Color(theme.colors.text).alpha(0.04).toString(),
+    },
+    textNoticeText: {
+      fontSize: moderateScale(13),
+      fontFamily: 'Manrope-Medium',
+      color: Color(theme.colors.text).alpha(0.6).toString(),
+      textAlign: 'center',
+    },
+    retryButton: {
+      paddingHorizontal: moderateScale(14),
+      paddingVertical: verticalScale(6),
+      borderRadius: moderateScale(8),
+      backgroundColor: Color(theme.colors.text).alpha(0.08).toString(),
+    },
+    retryButtonPressed: {
+      opacity: 0.7,
+    },
+    retryButtonText: {
+      fontSize: moderateScale(13),
+      fontFamily: 'Manrope-SemiBold',
+      color: theme.colors.text,
+    },
+    // @ai-end
     sectionLabel: {
       fontSize: moderateScale(10),
       fontFamily: 'Manrope-SemiBold',
