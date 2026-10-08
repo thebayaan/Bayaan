@@ -32,7 +32,11 @@ import {
 import {ScrollView} from 'react-native-actions-sheet';
 import {SheetManager} from 'react-native-actions-sheet';
 import {getTranslationTextRaw} from '@/utils/translationLookup';
-import {verseShareUrl, shareUrl as nativeShareUrl} from '@/utils/shareUtils';
+import {
+  anchorShareUrl, // @ai
+  verseShareUrl,
+  shareUrl as nativeShareUrl,
+} from '@/utils/shareUtils';
 import {getRewayahShortLabel} from '@/utils/rewayahLabels';
 // @ai-start
 import {showToast} from '@/utils/toastUtils';
@@ -262,14 +266,18 @@ export const ShareContent: React.FC<ShareContentProps> = ({
     // resolves Hafs verses only (it checks the ayah against the Hafs verse
     // count and ignores the rewayah's numbering), so the link names the Hafs
     // verse holding the first selected verse's first word (Hafs: the
-    // payload's verse, as before); the message cites the selection in its
-    // own numbering.
-    const url = verseShareUrl(
-      ready.linkVerse.surah,
-      ready.linkVerse.ayah,
-      isDarkMode ? 'dark' : 'light',
-      rewayah,
-    );
+    // payload's verse, as before), plus word=W when the verse starts inside
+    // it (anchorShareUrl: the exact rewayah verse); the message cites the
+    // verse in its own numbering.
+    const theme = isDarkMode ? 'dark' : 'light';
+    const url =
+      anchorShareUrl(ready.anchors[0]?.key ?? '', theme, rewayah) ??
+      verseShareUrl(
+        ready.linkVerse.surah,
+        ready.linkVerse.ayah,
+        theme,
+        rewayah,
+      );
     await nativeShareUrl(
       url,
       formatQuranCitation(shareRefs(ready).linkRefText, rewayah),

@@ -241,12 +241,22 @@ describe('Warsh verses in their own numbering', () => {
 
   it('links the Hafs verse holding the verse, citing its own number', async () => {
     // Warsh 1:7 starts inside Hafs 1:7 (anchor 1:7:5): the web reader
-    // knows Hafs verses only, so the link names Hafs 1:7.
+    // knows Hafs verses only, so the path names Hafs 1:7 and word=5 names
+    // the exact Warsh verse.
     open({verseKeys: ['1:7'], rewayah: 'warsh', unitKeys: ['1:7']});
     await press('Share Link');
     expect(shareUrl).toHaveBeenCalledWith(
-      `${BASE}/quran/1/7?theme=light&rewayah=warsh`,
+      `${BASE}/quran/1/7?theme=light&rewayah=warsh&word=5`,
       'Quran Al-Fatihah 1:7 · Warsh',
+    );
+  });
+
+  it('links a verse starting a Hafs verse without a word', async () => {
+    open({verseKeys: ['1:7'], rewayah: 'warsh', unitKeys: ['1:6']});
+    await press('Share Link');
+    expect(shareUrl).toHaveBeenCalledWith(
+      `${BASE}/quran/1/7?theme=light&rewayah=warsh`,
+      'Quran Al-Fatihah 1:6 · Warsh',
     );
   });
 
