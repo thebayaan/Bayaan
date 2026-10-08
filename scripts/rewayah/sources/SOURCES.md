@@ -167,6 +167,23 @@ file, the Fatiha slots and the absence of the Hafs basmala against
   it); a correction needs a qualified reader's confirmation, ideally backed
   by an official artifact such as the printed Qalun mushaf, and is then one
   entry in `errata.json`.
+- **Warsh 43:58, word 10** reads `جَدَلاَ` without the iqlab meem in every
+  official Warsh artifact (`qc2_warsh_v2-1.json`, `warshData_v2-1.json` and
+  the Word file `uthmanic_warsh_v21.docx`), where both official Qalun JSONs
+  and the Qalun Word file have `جَدَلاَۢ`, and the other 303 Warsh words
+  where Hafs has a tanween with iqlab before a ba carry the meem. As written
+  the word has no tanween (`jadalā`), while Nafi' reads `jadalan` like Hafs.
+  The words DB keeps the official text and the highlight map tints it as
+  written (Warsh only; `highlight_cases.json` pins it).
+- **al-Duri 43:78, word 2** reads `لَقَدۡ جِّئۡنَٰكُم`, a sukun on the dal of
+  `لَقَدۡ` (read clearly) before a doubled jim (the dal merged into it), in
+  the JSON, the qc2 JSON and the Word file `uthmanic_douri_v20.docx`. Abu
+  'Amr merges the dal of `قَد` into a jim: al-Susi's text writes
+  `لَقَد جِّينَٰكُم`, and everywhere else al-Duri's own text writes a letter
+  merged into the next word without a sukun (`وَلَقَد جَّآءَكُم`). The words DB keeps
+  the official text; the highlight map reads it as written (a doubled first
+  letter after a letter read clearly) and tints `جِّئۡنَٰكُم` (al-Duri only;
+  `highlight_cases.json` pins it).
 
 ## Changes from the 2021 files used before
 
