@@ -57,6 +57,16 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => ({
   },
 }));
 
+// @ai-start
+jest.mock('@/services/mushaf/MushafPreloadService', () => ({
+  mushafPreloadService: {
+    state: 'ready',
+    subscribe: () => () => undefined,
+    initialize: jest.fn(() => Promise.resolve()),
+  },
+}));
+// @ai-end
+
 jest.mock('@/services/mushaf/MushafSessionStore', () => ({
   mushafSessionStore: {setLastScreenWasMushaf: jest.fn()},
 }));

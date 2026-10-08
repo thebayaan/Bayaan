@@ -1,9 +1,22 @@
-import React, {useEffect, useMemo, useCallback} from 'react';
-import {View, ActivityIndicator, StyleSheet} from 'react-native';
+import React, {
+  useEffect,
+  useMemo,
+  useCallback,
+  useState, // @ai
+  useSyncExternalStore, // @ai
+} from 'react';
+import {
+  View,
+  ActivityIndicator,
+  StyleSheet,
+  Pressable, // @ai
+  Text, // @ai
+} from 'react-native';
 import {Stack, useLocalSearchParams} from 'expo-router';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import {useTheme} from '@/hooks/useTheme';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
+import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService'; // @ai
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
 import {mushafSessionStore} from '@/services/mushaf/MushafSessionStore';
 import {
@@ -111,6 +124,21 @@ export default function MushafScreen() {
   }, [mushafRenderer, settingsRewayah]);
   // @ai-end
 
+  // @ai-start
+  // When the mushaf text cannot be loaded at all (e.g. no storage left to
+  // copy it to the device), say so and offer a retry instead of an endless
+  // spinner. The preload retries both the text and the fonts.
+  const preloadState = useSyncExternalStore(subscribePreload, getPreloadState);
+  const [retrying, setRetrying] = useState(false);
+  const retryLoad = useCallback(() => {
+    setRetrying(true);
+    mushafPreloadService
+      .initialize()
+      .catch(() => undefined)
+      .finally(() => setRetrying(false));
+  }, []);
+  // @ai-end
+
   // Set verse highlight on mount, auto-clear after 3s, clear on unmount
   useEffect(() => {
     if (initialVerseKey) {
@@ -131,6 +159,35 @@ export default function MushafScreen() {
   }, [initialVerseKey, pageNumber]);
 
   if (!dkReady) {
+    // @ai-start
+    if (preloadState === 'failed' && !retrying) {
+      return (
+        <View
+          style={[styles.loading, {backgroundColor: theme.colors.background}]}
+          accessibilityRole="alert">
+          <Text style={[styles.errorTitle, {color: theme.colors.text}]}>
+            Couldn&apos;t load the mushaf
+          </Text>
+          <Text style={[styles.errorBody, {color: theme.colors.text}]}>
+            Check that your device has some free storage, then try again.
+          </Text>
+          <Pressable
+            onPress={retryLoad}
+            accessibilityRole="button"
+            hitSlop={8}
+            style={({pressed}) => [
+              styles.retryButton,
+              {borderColor: theme.colors.text},
+              pressed && styles.retryButtonPressed,
+            ]}>
+            <Text style={[styles.retryText, {color: theme.colors.text}]}>
+              Try again
+            </Text>
+          </Pressable>
+        </View>
+      );
+    }
+    // @ai-end
     return (
       <View
         style={[styles.loading, {backgroundColor: theme.colors.background}]}>
@@ -157,6 +214,10 @@ export default function MushafScreen() {
 // ============================================================================
 
 // @ai-start
+const subscribePreload = (listener: () => void): (() => void) =>
+  mushafPreloadService.subscribe(listener);
+const getPreloadState = () => mushafPreloadService.state;
+
 const surahNameOf = (surah: number): string =>
   surah >= 1 && surah <= 114 ? SURAHS[surah - 1].name : '';
 // @ai-end
@@ -303,4 +364,34 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // @ai-start
+  errorTitle: {
+    fontSize: 17,
+    fontFamily: 'Manrope-SemiBold',
+    textAlign: 'center',
+    marginHorizontal: 24,
+  },
+  errorBody: {
+    fontSize: 14,
+    fontFamily: 'Manrope-Regular',
+    textAlign: 'center',
+    opacity: 0.7,
+    marginTop: 8,
+    marginHorizontal: 32,
+  },
+  retryButton: {
+    marginTop: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  retryButtonPressed: {
+    opacity: 0.6,
+  },
+  retryText: {
+    fontSize: 15,
+    fontFamily: 'Manrope-SemiBold',
+  },
+  // @ai-end
 });
