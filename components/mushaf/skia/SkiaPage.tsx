@@ -274,6 +274,11 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
   const bookmarkedVerseKeys = useVerseAnnotationsStore(
     s => s.bookmarkedVerseKeys,
   );
+  // @ai — the rows behind them, with the rewayah each was saved in, so
+  // every row marks the units the storage rule gives (verse-units
+  // contract, section 3): a Hafs row of a split Hafs verse marks both parts.
+  const bookmarkRows = useVerseAnnotationsStore(s => s.bookmarkRows);
+  const highlightRows = useVerseAnnotationsStore(s => s.highlightRows);
 
   // Mushaf playback highlighting
   const {isDarkMode} = useTheme();
@@ -680,6 +685,8 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
       sources: {
         bookmarkedVerseKeys,
         persistentHighlights,
+        bookmarkRows,
+        highlightRows,
         playback: playbackBand,
         selection:
           selectedVerseKeys.length > 0 && selectedPageNumber === pageNumber
@@ -699,6 +706,8 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
   }, [
     persistentHighlights,
     bookmarkedVerseKeys,
+    bookmarkRows, // @ai
+    highlightRows, // @ai
     playbackBand, // @ai
     playbackBgColor,
     selectedVerseKeys,

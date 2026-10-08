@@ -397,6 +397,11 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
     const bookmarkedVerseKeys = useVerseAnnotationsStore(
       s => s.bookmarkedVerseKeys,
     );
+    // @ai — the rows behind them, with the rewayah each was saved in, so
+    // every row marks the units the storage rule gives (verse-units
+    // contract, section 3): a Hafs row of a split Hafs verse marks both parts.
+    const bookmarkRows = useVerseAnnotationsStore(s => s.bookmarkRows);
+    const highlightRows = useVerseAnnotationsStore(s => s.highlightRows);
     // @ai — what the reciter is reciting, painted as verse units.
     const playbackBand = usePlaybackBand();
 
@@ -534,6 +539,8 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
         sources: {
           bookmarkedVerseKeys,
           persistentHighlights,
+          bookmarkRows,
+          highlightRows,
           playback: playbackBand,
           selection:
             selectedVerseKeys.length > 0 && selectedPageNumber === pageNumber
@@ -553,6 +560,8 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
     }, [
       persistentHighlights,
       bookmarkedVerseKeys,
+      bookmarkRows, // @ai
+      highlightRows, // @ai
       playbackBand, // @ai
       playbackBgColor,
       selectedVerseKeys,
