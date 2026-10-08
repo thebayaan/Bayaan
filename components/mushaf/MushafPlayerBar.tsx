@@ -9,7 +9,7 @@
  * the numbering of the mushaf on screen (a Warsh reciter in a Warsh mushaf
  * shows Warsh numbers). Surahs whose timing numbering is unknown show no
  * verse and disable previous / next ayah; when such a surah was asked to
- * start at a later verse, a notice says it plays from the beginning.
+ * start at a later verse, a notice says it plays from the beginning. @ai
  */
 
 import React, {useCallback, useEffect} from 'react'; // @ai

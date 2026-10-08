@@ -48,7 +48,7 @@ export const SEEK_GRACE_TICKS = 10;
  * recited, so the highlight always covers every Hafs verse the reciter is
  * reciting. While the seek that came with it has not landed yet (the audio
  * position still names the verse being left) it is kept, for up to
- * SEEK_GRACE_TICKS ticks, instead of flashing back to that verse.
+ * SEEK_GRACE_TICKS ticks, instead of flashing back to that verse. @ai
  */
 export function useAyahTracker() {
   const playbackState = usePlayerStore(s => s.playback.state);
