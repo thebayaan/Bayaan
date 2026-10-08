@@ -100,6 +100,11 @@ interface MushafSettingsState {
   rewayah: RewayahId;
   showRewayahDiffs: boolean;
 
+  // One-shot acknowledgement of the non-Hafs "experimental text" notice.
+  // Non-Hafs mushaf text is derived by diffing against Hafs and is still being
+  // verified, so the first switch to such a rewayah explains that once.
+  rewayahExperimentalNoticeSeen: boolean;
+
   // Actions
   toggleTranslation: () => void;
   toggleTransliteration: () => void;
@@ -129,6 +134,7 @@ interface MushafSettingsState {
   setReadingTheme: (themeId: string) => void;
   setRewayah: (rewayah: RewayahId) => void;
   toggleRewayahDiffs: () => void;
+  markRewayahExperimentalNoticeSeen: () => void;
 }
 
 export const useMushafSettingsStore = create<MushafSettingsState>()(
@@ -161,6 +167,7 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
       darkThemeId: 'dark-default',
       rewayah: 'hafs' as RewayahId,
       showRewayahDiffs: true,
+      rewayahExperimentalNoticeSeen: false,
 
       // Actions
       toggleTranslation: () =>
@@ -200,8 +207,7 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
         set(state => ({
           mushafRenderer: renderer,
           arabicFontFamily: 'Uthmani',
-          showTajweed:
-            renderer === 'qcf_v2' ? false : state.showTajweed,
+          showTajweed: renderer === 'qcf_v2' ? false : state.showTajweed,
           rewayah: renderer === 'qcf_v2' ? 'hafs' : state.rewayah,
           showRewayahDiffs:
             renderer === 'qcf_v2' ? false : state.showRewayahDiffs,
@@ -209,8 +215,8 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
             renderer === 'dk_v1'
               ? 'v1'
               : renderer === 'dk_indopak'
-                ? 'v2'
-                : 'v2',
+              ? 'v2'
+              : 'v2',
         })),
       setPageLayout: (layout: MushafPageLayout) => set({pageLayout: layout}),
       setViewMode: (mode: MushafViewMode) => set({viewMode: mode}),
@@ -253,15 +259,15 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
             : {darkThemeId: themeId};
         }),
       setRewayah: (rewayah: RewayahId) =>
-        set(state =>
-          state.mushafRenderer === 'qcf_v2' ? state : {rewayah},
-        ),
+        set(state => (state.mushafRenderer === 'qcf_v2' ? state : {rewayah})),
       toggleRewayahDiffs: () =>
         set(state =>
           state.mushafRenderer === 'qcf_v2'
             ? state
             : {showRewayahDiffs: !state.showRewayahDiffs},
         ),
+      markRewayahExperimentalNoticeSeen: () =>
+        set({rewayahExperimentalNoticeSeen: true}),
     }),
     {
       name: 'mushaf-settings',
