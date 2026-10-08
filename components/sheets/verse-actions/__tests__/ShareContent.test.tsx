@@ -113,6 +113,7 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => {
       (byRewayah.get(rewayah ?? 'hafs')?.get(verseKey) ?? []).join(' '),
     subscribeCacheChanges: () => () => undefined,
     getCacheVersion: () => 0,
+    retainRewayah: () => () => undefined,
     ensureRewayahLoaded: jest.fn(async () => undefined),
   };
   return {digitalKhattDataService: service};

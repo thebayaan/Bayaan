@@ -169,6 +169,7 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => {
       };
     },
     getCacheVersion: () => state.version,
+    retainRewayah: () => () => undefined,
     ensureRewayahLoaded: jest.fn(
       (rewayah: string) =>
         new Promise<void>((resolve, reject) => {
