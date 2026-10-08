@@ -6,6 +6,7 @@ import {useAmbientStore, type AmbientSound} from '../../store/ambientStore';
 import {useOverlayStore} from '../../store/overlayStore';
 import {colors} from '../../theme/colors';
 import {spacing, radius} from '../../theme/spacing';
+import {createScaledStyles} from '../../theme/scale';
 
 const SOUNDS: readonly AmbientSound[] = [
   'rain',
@@ -91,7 +92,7 @@ export function AmbientOverlay(): React.ReactElement | null {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createScaledStyles({
   scrim: {
     backgroundColor: colors.overlayScrim,
     alignItems: 'center',

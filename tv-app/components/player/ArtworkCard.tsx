@@ -2,15 +2,14 @@ import React, {useEffect, useRef} from 'react';
 import {Image} from 'expo-image';
 import {Animated, Easing, StyleSheet, Text, View} from 'react-native';
 import {colors} from '../../theme/colors';
+import {createScaledStyles, scale} from '../../theme/scale';
+import type {ArtworkSource} from '../../services/reciterArtwork';
 
-type Props = {imageUrl: string | null; reciterName: string};
+type Props = {artwork: ArtworkSource | null; reciterName: string};
 
-export function ArtworkCard({
-  imageUrl,
-  reciterName,
-}: Props): React.ReactElement {
+export function ArtworkCard({artwork, reciterName}: Props): React.ReactElement {
   const opacity = useRef(new Animated.Value(0)).current;
-  const translate = useRef(new Animated.Value(12)).current;
+  const translate = useRef(new Animated.Value(scale(12))).current;
 
   useEffect(() => {
     const anim = Animated.parallel([
@@ -30,16 +29,16 @@ export function ArtworkCard({
     ]);
     anim.start();
     return () => anim.stop();
-  }, [opacity, translate, imageUrl]);
+  }, [opacity, translate, artwork]);
 
   return (
     <Animated.View
       style={[styles.wrap, {opacity, transform: [{translateY: translate}]}]}
       pointerEvents="none">
       <View style={styles.card}>
-        {imageUrl ? (
+        {artwork ? (
           <Image
-            source={{uri: imageUrl}}
+            source={artwork}
             style={styles.img}
             contentFit="cover"
             cachePolicy="memory-disk"
@@ -58,7 +57,7 @@ export function ArtworkCard({
 
 const SIZE = 360;
 
-const styles = StyleSheet.create({
+const styles = createScaledStyles({
   wrap: {
     position: 'absolute',
     top: 140,

@@ -5,6 +5,8 @@ import {FocusableCard} from '../primitives/FocusableCard';
 import {colors} from '../../theme/colors';
 import type {ContinueEntry} from '../../services/continueListeningStore';
 import type {Reciter} from '../../types/reciter';
+import {createScaledStyles} from '../../theme/scale';
+import {getReciterArtwork} from '../../services/reciterArtwork';
 
 type Props = {
   entry: ContinueEntry;
@@ -25,15 +27,16 @@ export function ContinueCard({
     ? Math.min(1, entry.positionSeconds / entry.durationSeconds)
     : 0;
 
+  const artwork = getReciterArtwork(reciter);
   return (
     <FocusableCard
       style={styles.card}
       onPress={() => onSelect(entry)}
       hasTVPreferredFocus={hasTVPreferredFocus}
       accessibilityLabel={`Resume ${surahName} by ${reciter?.name ?? ''}`}>
-      {reciter?.image_url ? (
+      {artwork ? (
         <Image
-          source={{uri: reciter.image_url}}
+          source={artwork}
           style={styles.img}
           contentFit="cover"
           cachePolicy="memory-disk"
@@ -64,7 +67,7 @@ export function ContinueCard({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createScaledStyles({
   card: {
     width: 320,
     height: 200,

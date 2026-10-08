@@ -1,7 +1,8 @@
 import React from 'react';
-import {ScrollView, StyleSheet, View} from 'react-native';
+import {ScrollView, View} from 'react-native';
 import {RailHeader} from './RailHeader';
 import {spacing} from '../../theme/spacing';
+import {createScaledStyles} from '../../theme/scale';
 
 type Props = {
   title: string;
@@ -22,7 +23,7 @@ export function Rail({title, children}: Props): React.ReactElement {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createScaledStyles({
   section: {marginBottom: spacing.md},
   // The horizontal ScrollView clips to its own frame, so reserve enough padding
   // for a focused card's 1.05 scale + glow ring: extra vertical room top/bottom

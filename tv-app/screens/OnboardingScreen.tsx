@@ -1,6 +1,12 @@
 import React, {useMemo} from 'react';
 import {Image} from 'expo-image';
-import {ScrollView, StyleSheet, Text, TVFocusGuideView, View} from 'react-native';
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  TVFocusGuideView,
+  View,
+} from 'react-native';
 import {FocusableButton} from '../components/primitives/FocusableButton';
 import {FocusableCard} from '../components/primitives/FocusableCard';
 import {useDefaultReciter} from '../hooks/useDefaultReciter';
@@ -10,6 +16,8 @@ import type {Reciter} from '../types/reciter';
 import {colors} from '../theme/colors';
 import {spacing} from '../theme/spacing';
 import {fonts, typography} from '../theme/typography';
+import {createScaledStyles} from '../theme/scale';
+import {getReciterArtwork} from '../services/reciterArtwork';
 
 export function OnboardingScreen(): React.ReactElement {
   const {reciters} = useReciters();
@@ -90,6 +98,7 @@ function ReciterChoice({
   hasTVPreferredFocus,
 }: ChoiceProps): React.ReactElement {
   const subtitle = reciterSubtitle(reciter);
+  const artwork = getReciterArtwork(reciter);
   return (
     <FocusableCard
       style={[styles.card, selected && styles.cardSelected]}
@@ -97,9 +106,9 @@ function ReciterChoice({
       hasTVPreferredFocus={hasTVPreferredFocus}
       accessibilityLabel={reciter.name}>
       <View style={styles.artwork}>
-        {reciter.image_url ? (
+        {artwork ? (
           <Image
-            source={{uri: reciter.image_url}}
+            source={artwork}
             style={styles.img}
             contentFit="cover"
             cachePolicy="memory-disk"
@@ -131,7 +140,7 @@ function ReciterChoice({
 const CARD_W = 240;
 const CARD_H = 320;
 
-const styles = StyleSheet.create({
+const styles = createScaledStyles({
   container: {
     flex: 1,
     backgroundColor: colors.background,

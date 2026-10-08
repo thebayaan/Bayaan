@@ -1,11 +1,5 @@
 import React, {useState} from 'react';
-import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  TVFocusGuideView,
-  View,
-} from 'react-native';
+import {ScrollView, Text, TVFocusGuideView, View} from 'react-native';
 import {TopTabBar} from '../components/nav/TopTabBar';
 import {FocusableButton} from '../components/primitives/FocusableButton';
 import {FocusableCard} from '../components/primitives/FocusableCard';
@@ -19,6 +13,7 @@ import {useSettingsStore} from '../store/settingsStore';
 import {colors} from '../theme/colors';
 import {spacing} from '../theme/spacing';
 import {fonts, typography} from '../theme/typography';
+import {createScaledStyles, scale} from '../theme/scale';
 
 type ConfirmKey = 'history' | 'favorites' | null;
 
@@ -65,7 +60,7 @@ export function SettingsScreen(): React.ReactElement {
                 hasTVPreferredFocus={i === 0}>
                 <View style={styles.chipInner}>
                   {selected && (
-                    <CheckIcon color={colors.background} size={16} />
+                    <CheckIcon color={colors.background} size={scale(16)} />
                   )}
                   <Text
                     style={[
@@ -129,7 +124,7 @@ function ClearButton({
       <View style={styles.clearInner}>
         <TrashIcon
           color={confirming ? colors.background : colors.text}
-          size={16}
+          size={scale(16)}
         />
         <View>
           <Text
@@ -147,7 +142,7 @@ function ClearButton({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createScaledStyles({
   container: {flex: 1, backgroundColor: colors.background},
   scroll: {
     paddingHorizontal: spacing.xl,

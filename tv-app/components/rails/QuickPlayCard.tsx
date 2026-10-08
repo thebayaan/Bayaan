@@ -1,7 +1,8 @@
 import React from 'react';
-import {StyleSheet, Text, View} from 'react-native';
+import {Text, View} from 'react-native';
 import {FocusableCard} from '../primitives/FocusableCard';
 import {colors} from '../../theme/colors';
+import {createScaledStyles} from '../../theme/scale';
 
 type Props = {
   surahNumber: number;
@@ -29,7 +30,7 @@ export function QuickPlayCard({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createScaledStyles({
   card: {width: 170, height: 170, backgroundColor: colors.surface},
   inner: {flex: 1, padding: 18, justifyContent: 'space-between'},
   num: {

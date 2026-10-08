@@ -1,11 +1,5 @@
 import React, {useMemo, useState} from 'react';
-import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  TVFocusGuideView,
-  View,
-} from 'react-native';
+import {ScrollView, Text, TVFocusGuideView, View} from 'react-native';
 import {TopTabBar} from '../components/nav/TopTabBar';
 import {FocusableButton} from '../components/primitives/FocusableButton';
 import {ReciterCard} from '../components/rails/ReciterCard';
@@ -24,6 +18,7 @@ import SURAHS from '../../data/surahData.json';
 import {colors} from '../theme/colors';
 import {spacing} from '../theme/spacing';
 import {fonts, typography} from '../theme/typography';
+import {createScaledStyles, scale} from '../theme/scale';
 
 type TabKey = 'favorites' | 'continue' | 'recent';
 
@@ -92,7 +87,7 @@ export function CollectionScreen(): React.ReactElement {
     if (favoriteReciters.length === 0) {
       return (
         <EmptyState
-          icon={<HeartIcon color={colors.text} size={64} />}
+          icon={<HeartIcon color={colors.text} size={scale(64)} />}
           title="Nothing saved yet"
           sub="Open a reciter and tap Favorite to pin them here."
           cta={{
@@ -270,7 +265,7 @@ function EmptyState({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createScaledStyles({
   container: {flex: 1, backgroundColor: colors.background},
   content: {flex: 1},
   header: {paddingHorizontal: spacing.xl, paddingTop: spacing.sm, gap: 6},

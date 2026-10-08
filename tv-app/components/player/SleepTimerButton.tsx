@@ -1,10 +1,11 @@
 import React, {useEffect, useState} from 'react';
-import {StyleSheet, Text, View} from 'react-native';
+import {Text, View} from 'react-native';
 import {FocusableButton} from '../primitives/FocusableButton';
 import {useOverlayStore} from '../../store/overlayStore';
 import {useTVPlayerStore} from '../../store/tvPlayerStore';
 import {TimerIcon} from '../../../components/Icons';
 import {colors} from '../../theme/colors';
+import {createScaledStyles, scale} from '../../theme/scale';
 
 function formatRemaining(ms: number): string {
   if (ms <= 0) return '0m';
@@ -52,14 +53,14 @@ export function SleepTimerButton(): React.ReactElement {
       ]}
       accessibilityLabel={label ? `Sleep timer: ${label}` : 'Sleep timer'}>
       <View style={styles.inner}>
-        <TimerIcon color={colors.text} size={18} />
+        <TimerIcon color={colors.text} size={scale(18)} />
         {label ? <Text style={styles.label}>{label}</Text> : null}
       </View>
     </FocusableButton>
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createScaledStyles({
   btn: {
     width: 44,
     height: 44,

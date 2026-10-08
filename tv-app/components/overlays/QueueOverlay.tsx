@@ -1,5 +1,5 @@
 import React, {useMemo} from 'react';
-import {StyleSheet, Text, View} from 'react-native';
+import {Text, View} from 'react-native';
 import {FlashList} from '@shopify/flash-list';
 import {FocusableCard} from '../primitives/FocusableCard';
 import {useOverlayStore} from '../../store/overlayStore';
@@ -8,6 +8,7 @@ import {PlayIcon} from '../../../components/Icons';
 import type {QueueItem} from '../../types/player';
 import {colors} from '../../theme/colors';
 import {spacing} from '../../theme/spacing';
+import {createScaledStyles, scale} from '../../theme/scale';
 
 const ROW_HEIGHT = 72;
 
@@ -85,7 +86,7 @@ function QueueRow({
       <View style={styles.rowInner}>
         <View style={[styles.indexBadge, isCurrent && styles.indexBadgeActive]}>
           {isCurrent ? (
-            <PlayIcon color={colors.background} size={14} />
+            <PlayIcon color={colors.background} size={scale(14)} />
           ) : (
             <Text style={styles.indexText}>{index + 1}</Text>
           )}
@@ -106,7 +107,7 @@ function QueueRow({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createScaledStyles({
   wrap: {
     width: 820,
     maxHeight: '80%',

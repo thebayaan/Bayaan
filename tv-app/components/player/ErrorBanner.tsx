@@ -3,6 +3,7 @@ import {Animated, Easing, StyleSheet, Text, View} from 'react-native';
 import {FocusableButton} from '../primitives/FocusableButton';
 import {isNetworkError, useTVPlayerStore} from '../../store/tvPlayerStore';
 import {colors} from '../../theme/colors';
+import {createScaledStyles} from '../../theme/scale';
 
 type Copy = {kicker: string; title: string; body: string};
 
@@ -86,7 +87,7 @@ export function ErrorBanner(): React.ReactElement | null {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createScaledStyles({
   wrap: {
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',

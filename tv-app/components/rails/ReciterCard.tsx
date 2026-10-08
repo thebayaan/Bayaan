@@ -5,6 +5,8 @@ import {FocusableCard} from '../primitives/FocusableCard';
 import {useContextMenuStore} from '../../store/contextMenuStore';
 import {colors} from '../../theme/colors';
 import type {Reciter} from '../../types/reciter';
+import {createScaledStyles} from '../../theme/scale';
+import {getReciterArtwork} from '../../services/reciterArtwork';
 
 type Props = {
   reciter: Reciter;
@@ -17,6 +19,7 @@ function ReciterCardImpl({
   onSelect,
   hasTVPreferredFocus,
 }: Props): React.ReactElement {
+  const artwork = getReciterArtwork(reciter);
   return (
     <FocusableCard
       style={styles.card}
@@ -25,9 +28,9 @@ function ReciterCardImpl({
       hasTVPreferredFocus={hasTVPreferredFocus}
       accessibilityLabel={reciter.name}>
       <View style={styles.artwork}>
-        {reciter.image_url ? (
+        {artwork ? (
           <Image
-            source={{uri: reciter.image_url}}
+            source={artwork}
             style={styles.img}
             contentFit="cover"
             cachePolicy="memory-disk"
@@ -55,7 +58,7 @@ export const ReciterCard = React.memo(ReciterCardImpl);
 const CARD_WIDTH = 200;
 const CARD_HEIGHT = 280;
 
-const styles = StyleSheet.create({
+const styles = createScaledStyles({
   card: {
     width: CARD_WIDTH,
     height: CARD_HEIGHT,

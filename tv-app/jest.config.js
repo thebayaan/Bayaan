@@ -20,6 +20,7 @@ module.exports = {
       testMatch: [
         '<rootDir>/components/**/*.test.tsx',
         '<rootDir>/hooks/**/*.test.tsx',
+        '<rootDir>/theme/**/*.test.ts',
       ],
       setupFiles: ['<rootDir>/__tests__/setup.ts'],
       transformIgnorePatterns: [

@@ -7,6 +7,7 @@ import {useTVPlayerStore} from '../../store/tvPlayerStore';
 import type {SleepMode} from '../../store/tvPlayerStore';
 import {colors} from '../../theme/colors';
 import {spacing, radius} from '../../theme/spacing';
+import {createScaledStyles} from '../../theme/scale';
 
 type SleepOption = {label: string; minutes: number};
 
@@ -69,7 +70,7 @@ export function SleepTimerOverlay(): React.ReactElement | null {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createScaledStyles({
   scrim: {
     backgroundColor: colors.overlayScrim,
     alignItems: 'center',

@@ -1,8 +1,9 @@
 import React from 'react';
-import {StyleSheet, Text, View} from 'react-native';
+import {Text, View} from 'react-native';
 import {colors} from '../../theme/colors';
 import {typography} from '../../theme/typography';
 import {spacing} from '../../theme/spacing';
+import {createScaledStyles} from '../../theme/scale';
 
 type Props = {
   index: number;
@@ -39,7 +40,7 @@ export function NowPlayingTitle({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createScaledStyles({
   wrap: {
     position: 'absolute',
     left: spacing.xl,

@@ -1,8 +1,9 @@
 import React from 'react';
-import {StyleSheet, Text, View} from 'react-native';
+import {Text, View} from 'react-native';
 import {useTVPlayerStore} from '../../store/tvPlayerStore';
 import {colors} from '../../theme/colors';
 import {spacing} from '../../theme/spacing';
+import {createScaledStyles} from '../../theme/scale';
 
 export function UpNextHint(): React.ReactElement | null {
   const queue = useTVPlayerStore(s => s.queue);
@@ -39,7 +40,7 @@ export function UpNextHint(): React.ReactElement | null {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createScaledStyles({
   wrap: {
     position: 'absolute',
     right: spacing.xl,

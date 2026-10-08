@@ -3,7 +3,6 @@ import {
   Animated,
   Easing,
   Pressable,
-  StyleSheet,
   Text,
   TVFocusGuideView,
   useTVEventHandler,
@@ -13,6 +12,7 @@ import type {HWEvent} from 'react-native';
 import {useTVPlayerStore} from '../../store/tvPlayerStore';
 import {colors} from '../../theme/colors';
 import {spacing} from '../../theme/spacing';
+import {createScaledStyles} from '../../theme/scale';
 
 const SCRUBBER_STEP_SECONDS = 10;
 
@@ -120,7 +120,7 @@ export function Scrubber(): React.ReactElement {
 const TRACK_H = 6;
 const THUMB = 18;
 
-const styles = StyleSheet.create({
+const styles = createScaledStyles({
   wrap: {
     position: 'absolute',
     left: spacing.xl,

@@ -1,11 +1,5 @@
 import React, {useMemo} from 'react';
-import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  TVFocusGuideView,
-  View,
-} from 'react-native';
+import {ScrollView, Text, TVFocusGuideView, View} from 'react-native';
 import {TopTabBar} from '../components/nav/TopTabBar';
 import {Rail} from '../components/rails/Rail';
 import {ReciterCard} from '../components/rails/ReciterCard';
@@ -27,6 +21,8 @@ import SURAHS from '../../data/surahData.json';
 import {colors} from '../theme/colors';
 import {spacing} from '../theme/spacing';
 import {fonts} from '../theme/typography';
+import {createScaledStyles} from '../theme/scale';
+import {getReciterArtwork} from '../services/reciterArtwork';
 
 const QUICK_PLAY_SURAHS = [1, 18, 67, 55, 36, 112];
 
@@ -96,8 +92,13 @@ export function HomeScreen(): React.ReactElement {
   );
 
   const spotlight = useMemo(() => {
-    const featured = reciters.find(r => r.is_featured && r.image_url);
-    return featured ?? reciters.find(r => r.image_url) ?? reciters[0] ?? null;
+    const featured = reciters.find(r => r.is_featured && getReciterArtwork(r));
+    return (
+      featured ??
+      reciters.find(r => getReciterArtwork(r)) ??
+      reciters[0] ??
+      null
+    );
   }, [reciters]);
 
   const warshReciters = useMemo(
@@ -291,7 +292,7 @@ export function HomeScreen(): React.ReactElement {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createScaledStyles({
   container: {flex: 1, backgroundColor: colors.background},
   scroll: {
     paddingHorizontal: spacing.xl,

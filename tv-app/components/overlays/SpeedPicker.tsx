@@ -1,10 +1,11 @@
 import React from 'react';
-import {StyleSheet, Text, View} from 'react-native';
+import {Text, View} from 'react-native';
 import {FocusableButton} from '../primitives/FocusableButton';
 import {useTVPlayerStore} from '../../store/tvPlayerStore';
 import {useOverlayStore} from '../../store/overlayStore';
 import {colors} from '../../theme/colors';
 import {spacing} from '../../theme/spacing';
+import {createScaledStyles} from '../../theme/scale';
 
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 
@@ -41,7 +42,7 @@ export function SpeedPicker(): React.ReactElement {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createScaledStyles({
   wrap: {padding: spacing.xl, gap: 6, alignItems: 'center'},
   kicker: {
     color: colors.text,

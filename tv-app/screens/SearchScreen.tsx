@@ -1,7 +1,6 @@
 import React, {useState} from 'react';
 import {
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   TVFocusGuideView,
@@ -28,6 +27,7 @@ import {fetchRewayat} from '../services/tvDataService';
 import {colors} from '../theme/colors';
 import {spacing} from '../theme/spacing';
 import {fonts, typography} from '../theme/typography';
+import {createScaledStyles, scale} from '../theme/scale';
 
 export function SearchScreen(): React.ReactElement {
   const [query, setQuery] = useState('');
@@ -77,7 +77,7 @@ export function SearchScreen(): React.ReactElement {
         <Text style={styles.kicker}>CATALOG</Text>
         <Text style={styles.pageTitle}>Search</Text>
         <TVFocusGuideView autoFocus style={styles.inputRow}>
-          <SearchIcon color={colors.text} size={32} />
+          <SearchIcon color={colors.text} size={scale(32)} />
           <TextInput
             value={query}
             onChangeText={setQuery}
@@ -185,7 +185,7 @@ export function SearchScreen(): React.ReactElement {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createScaledStyles({
   container: {flex: 1, backgroundColor: colors.background},
   body: {
     flex: 1,

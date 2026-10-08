@@ -20,6 +20,8 @@ import type {Rewayah} from '../types/reciter';
 import {colors} from '../theme/colors';
 import {fonts, typography} from '../theme/typography';
 import {spacing} from '../theme/spacing';
+import {createScaledStyles} from '../theme/scale';
+import {getReciterArtwork} from '../services/reciterArtwork';
 
 const SEEK_STEP_SECONDS = 15;
 
@@ -82,7 +84,7 @@ export function NowPlayingScreen(): React.ReactElement {
   if (!item) {
     return (
       <View style={styles.container}>
-        <ArtworkBackdrop imageUrl={null} />
+        <ArtworkBackdrop artwork={null} />
         <View style={styles.empty}>
           <Text style={styles.emptyKicker}>NOTHING PLAYING</Text>
           <Text style={styles.emptyTitle}>Choose a reciter to begin</Text>
@@ -102,10 +104,11 @@ export function NowPlayingScreen(): React.ReactElement {
   }
 
   const reciterName = reciter?.name ?? item.subtitle;
+  const artwork = getReciterArtwork(reciter);
 
   return (
     <View style={styles.container}>
-      <ArtworkBackdrop imageUrl={reciter?.image_url ?? null} />
+      <ArtworkBackdrop artwork={artwork} />
       <FocusableButton
         onPress={pop}
         accessibilityLabel="Back"
@@ -113,10 +116,7 @@ export function NowPlayingScreen(): React.ReactElement {
         <Text style={styles.backText}>‹ Back</Text>
       </FocusableButton>
       <UpNextHint />
-      <ArtworkCard
-        imageUrl={reciter?.image_url ?? null}
-        reciterName={reciterName}
-      />
+      <ArtworkCard artwork={artwork} reciterName={reciterName} />
       <NowPlayingTitle
         index={currentIndex}
         total={queue.length}
@@ -135,7 +135,7 @@ export function NowPlayingScreen(): React.ReactElement {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createScaledStyles({
   container: {flex: 1, backgroundColor: colors.background},
   back: {
     position: 'absolute',

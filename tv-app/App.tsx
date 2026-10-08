@@ -1,7 +1,7 @@
 import React, {useEffect} from 'react';
 import {useFonts} from 'expo-font';
 import {StatusBar} from 'expo-status-bar';
-import {LogBox, StyleSheet, View} from 'react-native';
+import {LogBox, View} from 'react-native';
 import {ErrorBoundary} from './components/ErrorBoundary';
 import {Router} from './components/nav/Router';
 import {TVAudioProvider} from './components/providers/TVAudioProvider';
@@ -11,6 +11,7 @@ import {useOverlayStore} from './store/overlayStore';
 import {useTVPlayerStore} from './store/tvPlayerStore';
 import {colors} from './theme/colors';
 import {fonts} from './theme/typography';
+import {createScaledStyles} from './theme/scale';
 
 LogBox.ignoreAllLogs(true);
 
@@ -67,6 +68,6 @@ export default function App(): React.ReactElement {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createScaledStyles({
   root: {flex: 1, backgroundColor: colors.background},
 });

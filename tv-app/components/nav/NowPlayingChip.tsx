@@ -7,6 +7,8 @@ import {useReciters} from '../../hooks/useReciters';
 import {useNavStore} from '../../store/navStore';
 import {colors} from '../../theme/colors';
 import {PauseIcon, PlayIcon} from '../../../components/Icons';
+import {createScaledStyles, scale} from '../../theme/scale';
+import {getReciterArtwork} from '../../services/reciterArtwork';
 
 export function NowPlayingChip(): React.ReactElement | null {
   const status = useTVPlayerStore(s => s.status);
@@ -21,6 +23,7 @@ export function NowPlayingChip(): React.ReactElement | null {
   const reciter = reciters.find(r => r.id === item.reciterId);
   const isPlaying = status === 'playing';
 
+  const artwork = getReciterArtwork(reciter);
   return (
     <FocusableButton
       onPress={() => push({screen: 'nowPlaying'})}
@@ -31,9 +34,9 @@ export function NowPlayingChip(): React.ReactElement | null {
       focusScale={1.04}>
       <View style={styles.inner}>
         <View style={styles.artwork}>
-          {reciter?.image_url ? (
+          {artwork ? (
             <Image
-              source={{uri: reciter.image_url}}
+              source={artwork}
               style={StyleSheet.absoluteFillObject}
               contentFit="cover"
               cachePolicy="memory-disk"
@@ -41,9 +44,9 @@ export function NowPlayingChip(): React.ReactElement | null {
           ) : null}
           <View style={styles.artworkBadge}>
             {isPlaying ? (
-              <PauseIcon color={colors.background} size={10} />
+              <PauseIcon color={colors.background} size={scale(10)} />
             ) : (
-              <PlayIcon color={colors.background} size={10} />
+              <PlayIcon color={colors.background} size={scale(10)} />
             )}
           </View>
         </View>
@@ -60,7 +63,7 @@ export function NowPlayingChip(): React.ReactElement | null {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createScaledStyles({
   chip: {
     paddingHorizontal: 8,
     paddingVertical: 6,

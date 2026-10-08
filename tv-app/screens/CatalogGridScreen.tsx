@@ -1,12 +1,6 @@
 import {FlashList} from '@shopify/flash-list';
 import React, {useMemo} from 'react';
-import {
-  StyleSheet,
-  Text,
-  TVFocusGuideView,
-  useWindowDimensions,
-  View,
-} from 'react-native';
+import {Text, TVFocusGuideView, useWindowDimensions, View} from 'react-native';
 import {TopTabBar} from '../components/nav/TopTabBar';
 import {Rail} from '../components/rails/Rail';
 import {RailHeader} from '../components/rails/RailHeader';
@@ -17,6 +11,7 @@ import {colors} from '../theme/colors';
 import {spacing} from '../theme/spacing';
 import {fonts, typography} from '../theme/typography';
 import type {Reciter} from '../types/reciter';
+import {createScaledStyles, scale, scaleFactor} from '../theme/scale';
 
 const CELL_HEIGHT = 300;
 const MAX_PER_ROW = 16;
@@ -91,7 +86,7 @@ function buildCategories(reciters: Reciter[]): Category[] {
 
 function overrideItemLayout(layout: {span?: number; size?: number}): void {
   layout.span = 1;
-  layout.size = CELL_HEIGHT;
+  layout.size = scale(CELL_HEIGHT);
 }
 
 type HeaderProps = {
@@ -137,7 +132,9 @@ export function CatalogGridScreen(): React.ReactElement {
   const {reciters} = useReciters();
   const push = useNavStore(s => s.push);
   const {width} = useWindowDimensions();
-  const numColumns = width >= 1800 ? 6 : width >= 1400 ? 5 : 4;
+  // Breakpoints are in design pixels; convert the window width back to them.
+  const designWidth = width / scaleFactor;
+  const numColumns = designWidth >= 1800 ? 6 : designWidth >= 1400 ? 5 : 4;
 
   const categories = useMemo(() => buildCategories(reciters), [reciters]);
   const hasCategoryRows = categories.length > 0;
@@ -179,7 +176,7 @@ export function CatalogGridScreen(): React.ReactElement {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createScaledStyles({
   container: {flex: 1, backgroundColor: colors.background},
   listWrap: {flex: 1, paddingHorizontal: spacing.xl - 8},
   listContent: {paddingBottom: spacing.xxl},

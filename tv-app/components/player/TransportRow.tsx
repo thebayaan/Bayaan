@@ -1,5 +1,5 @@
 import React from 'react';
-import {StyleSheet, Text, TVFocusGuideView} from 'react-native';
+import {Text, TVFocusGuideView} from 'react-native';
 import {FocusableButton} from '../primitives/FocusableButton';
 import {SleepTimerButton} from './SleepTimerButton';
 import {useTVPlayerStore} from '../../store/tvPlayerStore';
@@ -18,6 +18,7 @@ import {
   SeekForward15Icon,
   ShuffleIcon,
 } from '../../../components/Icons';
+import {createScaledStyles, scale} from '../../theme/scale';
 
 export function TransportRow(): React.ReactElement {
   const status = useTVPlayerStore(s => s.status);
@@ -49,13 +50,13 @@ export function TransportRow(): React.ReactElement {
           onPress={() => useOverlayStore.getState().open('ambient')}
           style={styles.sBtn}
           accessibilityLabel="Ambient sound">
-          <AmbientIcon color={colors.text} size={20} />
+          <AmbientIcon color={colors.text} size={scale(20)} />
         </FocusableButton>
         <FocusableButton
           onPress={() => useOverlayStore.getState().open('queue')}
           style={styles.sBtn}
           accessibilityLabel="Queue">
-          <QueueIcon color={colors.text} size={20} />
+          <QueueIcon color={colors.text} size={scale(20)} />
         </FocusableButton>
       </TVFocusGuideView>
       <TVFocusGuideView autoFocus style={styles.row}>
@@ -63,19 +64,22 @@ export function TransportRow(): React.ReactElement {
           onPress={() => setShuffle(!shuffle)}
           accessibilityLabel="Shuffle"
           style={[styles.btn, shuffle && styles.btnActive]}>
-          <ShuffleIcon color={shuffle ? activeTint : idleTint} size={26} />
+          <ShuffleIcon
+            color={shuffle ? activeTint : idleTint}
+            size={scale(26)}
+          />
         </FocusableButton>
         <FocusableButton
           onPress={() => void prev()}
           accessibilityLabel="Previous"
           style={styles.btn}>
-          <PreviousIcon color={idleTint} size={30} />
+          <PreviousIcon color={idleTint} size={scale(30)} />
         </FocusableButton>
         <FocusableButton
           onPress={() => seekBy(-15)}
           accessibilityLabel="Back 15 seconds"
           style={styles.btn}>
-          <SeekBackward15Icon color={idleTint} size={30} />
+          <SeekBackward15Icon color={idleTint} size={scale(30)} />
         </FocusableButton>
         <FocusableButton
           onPress={toggle}
@@ -83,22 +87,22 @@ export function TransportRow(): React.ReactElement {
           style={styles.hero}
           hasTVPreferredFocus>
           {isPlaying ? (
-            <PauseIcon color={colors.background} size={32} />
+            <PauseIcon color={colors.background} size={scale(32)} />
           ) : (
-            <PlayIcon color={colors.background} size={32} />
+            <PlayIcon color={colors.background} size={scale(32)} />
           )}
         </FocusableButton>
         <FocusableButton
           onPress={() => seekBy(15)}
           accessibilityLabel="Forward 15 seconds"
           style={styles.btn}>
-          <SeekForward15Icon color={idleTint} size={30} />
+          <SeekForward15Icon color={idleTint} size={scale(30)} />
         </FocusableButton>
         <FocusableButton
           onPress={() => void next()}
           accessibilityLabel="Next"
           style={styles.btn}>
-          <NextIcon color={idleTint} size={30} />
+          <NextIcon color={idleTint} size={scale(30)} />
         </FocusableButton>
         <FocusableButton
           onPress={() =>
@@ -109,11 +113,11 @@ export function TransportRow(): React.ReactElement {
           accessibilityLabel="Repeat"
           style={[styles.btn, repeat !== 'off' && styles.btnActive]}>
           {repeat === 'one' ? (
-            <RepeatOneIcon color={activeTint} size={26} />
+            <RepeatOneIcon color={activeTint} size={scale(26)} />
           ) : (
             <RepeatAllIcon
               color={repeat === 'all' ? activeTint : idleTint}
-              size={26}
+              size={scale(26)}
             />
           )}
         </FocusableButton>
@@ -122,7 +126,7 @@ export function TransportRow(): React.ReactElement {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createScaledStyles({
   row: {
     position: 'absolute',
     left: 0,

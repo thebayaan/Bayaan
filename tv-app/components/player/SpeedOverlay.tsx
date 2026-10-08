@@ -6,6 +6,7 @@ import {useOverlayStore} from '../../store/overlayStore';
 import {useTVPlayerStore} from '../../store/tvPlayerStore';
 import {colors} from '../../theme/colors';
 import {spacing, radius} from '../../theme/spacing';
+import {createScaledStyles} from '../../theme/scale';
 
 const SPEEDS: readonly number[] = [0.5, 0.75, 1, 1.25, 1.5, 2];
 
@@ -59,7 +60,7 @@ export function SpeedOverlay(): React.ReactElement | null {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createScaledStyles({
   scrim: {
     backgroundColor: colors.overlayScrim,
     alignItems: 'center',

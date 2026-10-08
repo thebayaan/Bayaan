@@ -17,6 +17,8 @@ import {
 } from '../../../components/Icons';
 import {colors} from '../../theme/colors';
 import {spacing} from '../../theme/spacing';
+import {createScaledStyles, scale} from '../../theme/scale';
+import {getReciterArtwork} from '../../services/reciterArtwork';
 
 export function ReciterContextMenu(): React.ReactElement | null {
   const reciterId = useContextMenuStore(s => s.reciterId);
@@ -77,13 +79,14 @@ export function ReciterContextMenu(): React.ReactElement | null {
     push({screen: 'reciterDetail', reciterId});
   }
 
+  const artwork = getReciterArtwork(reciter);
   return (
     <View style={styles.scrim}>
       <View style={styles.sheet}>
         <View style={styles.header}>
-          {reciter.image_url ? (
+          {artwork ? (
             <Image
-              source={{uri: reciter.image_url}}
+              source={artwork}
               style={styles.portrait}
               contentFit="cover"
               cachePolicy="memory-disk"
@@ -104,23 +107,25 @@ export function ReciterContextMenu(): React.ReactElement | null {
         </View>
         <View style={styles.rows}>
           <MenuRow
-            icon={<PlayIcon color={colors.text} size={20} />}
+            icon={<PlayIcon color={colors.text} size={scale(20)} />}
             label="Play"
             onPress={handlePlay}
             hasTVPreferredFocus
           />
           <MenuRow
-            icon={<ShuffleIcon color={colors.text} size={20} />}
+            icon={<ShuffleIcon color={colors.text} size={scale(20)} />}
             label="Shuffle play"
             onPress={handleShuffle}
           />
           <MenuRow
-            icon={<HeartIcon color={colors.text} size={20} filled={isFav} />}
+            icon={
+              <HeartIcon color={colors.text} size={scale(20)} filled={isFav} />
+            }
             label={isFav ? 'Remove from favorites' : 'Add to favorites'}
             onPress={handleFavorite}
           />
           <MenuRow
-            icon={<InfoRoundedIcon color={colors.text} size={20} />}
+            icon={<InfoRoundedIcon color={colors.text} size={scale(20)} />}
             label="Open reciter page"
             onPress={handleOpenDetail}
           />
@@ -157,7 +162,7 @@ function MenuRow({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createScaledStyles({
   scrim: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.7)',

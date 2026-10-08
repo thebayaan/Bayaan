@@ -1,7 +1,8 @@
 import React from 'react';
-import {StyleSheet, Text, View} from 'react-native';
+import {Text, View} from 'react-native';
 import {FocusableCard} from '../primitives/FocusableCard';
 import {colors} from '../../theme/colors';
+import {createScaledStyles} from '../../theme/scale';
 
 type Props = {onSelect: () => void; height?: number; width?: number};
 
@@ -23,7 +24,7 @@ export function SeeAllCard({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createScaledStyles({
   card: {
     backgroundColor: 'rgba(255,255,255,0.04)',
     borderWidth: 1,

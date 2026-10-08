@@ -3,6 +3,7 @@ import React from 'react';
 import {StyleSheet, View} from 'react-native';
 import {useOverlayStore} from '../../store/overlayStore';
 import {QueueOverlay} from '../overlays/QueueOverlay';
+import {createScaledStyles} from '../../theme/scale';
 
 // The Speed, Sleep, and Ambient overlays now render their own scrim and
 // self-gate on overlayStore.active (mounted directly in NowPlayingScreen).
@@ -17,7 +18,7 @@ export function SecondaryOverlay(): React.ReactElement | null {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createScaledStyles({
   scrim: {
     backgroundColor: 'rgba(0,0,0,0.75)',
     alignItems: 'center',

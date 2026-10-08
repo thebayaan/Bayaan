@@ -1,5 +1,5 @@
 import React from 'react';
-import {StyleSheet, Text, TVFocusGuideView, View} from 'react-native';
+import {Text, TVFocusGuideView, View} from 'react-native';
 import {FocusableButton} from '../primitives/FocusableButton';
 import {NowPlayingChip} from './NowPlayingChip';
 import {colors} from '../../theme/colors';
@@ -12,6 +12,7 @@ import {
   SearchIcon,
   type IconProps,
 } from '../../../components/Icons';
+import {createScaledStyles, scale} from '../../theme/scale';
 
 type TabEntry = {
   key: TabKey;
@@ -48,7 +49,7 @@ export function TopTabBar(): React.ReactElement {
               accessibilityLabel={t.label}
               style={styles.tab}>
               <View style={styles.tabInner}>
-                <Icon color={colors.text} size={22} filled={active} />
+                <Icon color={colors.text} size={scale(22)} filled={active} />
                 <Text style={[styles.tabText, active && styles.tabActive]}>
                   {t.label}
                 </Text>
@@ -66,7 +67,7 @@ export function TopTabBar(): React.ReactElement {
           style={styles.settings}>
           <ProfileIcon
             color={colors.text}
-            size={24}
+            size={scale(24)}
             filled={current === 'settings'}
           />
         </FocusableButton>
@@ -75,7 +76,7 @@ export function TopTabBar(): React.ReactElement {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createScaledStyles({
   bar: {
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,

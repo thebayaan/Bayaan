@@ -1,6 +1,7 @@
 import React, {Component} from 'react';
-import {Pressable, StyleSheet, Text, View} from 'react-native';
+import {Pressable, Text, View} from 'react-native';
 import {colors} from '../theme/colors';
+import {createScaledStyles} from '../theme/scale';
 
 type Props = {children: React.ReactNode};
 type State = {error: Error | null};
@@ -44,7 +45,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 }
 
-const styles = StyleSheet.create({
+const styles = createScaledStyles({
   wrap: {
     flex: 1,
     backgroundColor: colors.background,

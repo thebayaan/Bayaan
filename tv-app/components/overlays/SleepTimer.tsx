@@ -1,10 +1,11 @@
 import React from 'react';
-import {StyleSheet, Text, View} from 'react-native';
+import {Text, View} from 'react-native';
 import {FocusableButton} from '../primitives/FocusableButton';
 import {useOverlayStore} from '../../store/overlayStore';
 import {useTVPlayerStore} from '../../store/tvPlayerStore';
 import {colors} from '../../theme/colors';
 import {spacing} from '../../theme/spacing';
+import {createScaledStyles} from '../../theme/scale';
 
 const OPTIONS = [
   {label: 'Off', minutes: 0},
@@ -55,7 +56,7 @@ export function SleepTimer(): React.ReactElement {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createScaledStyles({
   wrap: {padding: spacing.xl, gap: 6, alignItems: 'center'},
   kicker: {
     color: colors.text,

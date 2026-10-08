@@ -30,6 +30,8 @@ import {
 import {colors} from '../theme/colors';
 import {fonts, typography} from '../theme/typography';
 import {spacing} from '../theme/spacing';
+import {createScaledStyles, scale} from '../theme/scale';
+import {getReciterArtwork} from '../services/reciterArtwork';
 
 type Props = {reciterId: string};
 type SortMode = 'asc' | 'desc' | 'revelation';
@@ -158,6 +160,8 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
   );
   const totalSurahs = rewayat.reduce((sum, r) => sum + r.surah_list.length, 0);
 
+  const artwork = getReciterArtwork(reciter);
+
   return (
     <ScrollView
       ref={scrollRef}
@@ -168,9 +172,9 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
       onScroll={handleScroll}
       onContentSizeChange={handleContentSizeChange}>
       <View style={styles.hero}>
-        {reciter.image_url ? (
+        {artwork ? (
           <Image
-            source={{uri: reciter.image_url}}
+            source={artwork}
             style={styles.heroImg}
             contentFit="cover"
             blurRadius={80}
@@ -185,9 +189,9 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
           <Text style={styles.backText}>‹ Back</Text>
         </FocusableButton>
         <View style={styles.heroContent}>
-          {reciter.image_url ? (
+          {artwork ? (
             <Image
-              source={{uri: reciter.image_url}}
+              source={artwork}
               style={styles.portrait}
               contentFit="cover"
               cachePolicy="memory-disk"
@@ -228,7 +232,7 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
                   hasTVPreferredFocus
                   style={[styles.primaryBtn]}>
                   <View style={styles.favInner}>
-                    <PlayIcon color={colors.background} size={18} />
+                    <PlayIcon color={colors.background} size={scale(18)} />
                     <Text style={styles.primaryText}>
                       {resumeEntry
                         ? `Continue · ${
@@ -249,7 +253,7 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
                   accessibilityLabel="Shuffle play"
                   style={styles.ghostBtn}>
                   <View style={styles.favInner}>
-                    <ShuffleIcon color={colors.text} size={18} />
+                    <ShuffleIcon color={colors.text} size={scale(18)} />
                     <Text style={styles.favText}>Shuffle</Text>
                   </View>
                 </FocusableButton>
@@ -263,7 +267,7 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
                 <View style={styles.favInner}>
                   <HeartIcon
                     color={isFav ? colors.background : colors.text}
-                    size={18}
+                    size={scale(18)}
                     filled={isFav}
                   />
                   <Text style={[styles.favText, isFav && styles.favTextActive]}>
@@ -341,7 +345,7 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
                 }}>
                 <View style={styles.numBadge}>
                   {completed ? (
-                    <CheckIcon color={colors.text} size={20} />
+                    <CheckIcon color={colors.text} size={scale(20)} />
                   ) : (
                     <Text style={styles.num}>{n}</Text>
                   )}
@@ -402,7 +406,7 @@ function SortChip({label, active, onPress}: SortChipProps): React.ReactElement {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createScaledStyles({
   container: {flex: 1, backgroundColor: colors.background},
   scroll: {paddingBottom: spacing.xxl},
   back: {

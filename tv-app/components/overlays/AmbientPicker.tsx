@@ -1,10 +1,11 @@
 import React from 'react';
-import {StyleSheet, Text, View} from 'react-native';
+import {Text, View} from 'react-native';
 import {FocusableButton} from '../primitives/FocusableButton';
 import {useAmbientStore, type AmbientSound} from '../../store/ambientStore';
 import {useOverlayStore} from '../../store/overlayStore';
 import {colors} from '../../theme/colors';
 import {spacing} from '../../theme/spacing';
+import {createScaledStyles} from '../../theme/scale';
 
 const SOUNDS: AmbientSound[] = [
   'rain',
@@ -73,7 +74,7 @@ export function AmbientPicker(): React.ReactElement {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createScaledStyles({
   wrap: {padding: spacing.xl, gap: 4, alignItems: 'center'},
   kicker: {
     color: colors.text,

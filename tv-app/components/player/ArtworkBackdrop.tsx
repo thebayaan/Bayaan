@@ -9,8 +9,10 @@ import Svg, {
   Stop,
 } from 'react-native-svg';
 import {colors} from '../../theme/colors';
+import {createScaledStyles} from '../../theme/scale';
+import type {ArtworkSource} from '../../services/reciterArtwork';
 
-type Props = {imageUrl: string | null};
+type Props = {artwork: ArtworkSource | null};
 
 // Cinematic Now Playing backdrop: a slow ken-burns blurred render of the
 // current artwork, fading into the app background through layered gradients so
@@ -19,11 +21,11 @@ type Props = {imageUrl: string | null};
 // their opacity varies per gradient stop.
 const SCRIM = colors.background;
 
-export function ArtworkBackdrop({imageUrl}: Props): React.ReactElement {
+export function ArtworkBackdrop({artwork}: Props): React.ReactElement {
   const scale = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    if (!imageUrl) return;
+    if (!artwork) return;
     scale.setValue(1);
     const loop = Animated.loop(
       Animated.sequence([
@@ -43,15 +45,15 @@ export function ArtworkBackdrop({imageUrl}: Props): React.ReactElement {
     );
     loop.start();
     return () => loop.stop();
-  }, [imageUrl, scale]);
+  }, [artwork, scale]);
 
   return (
     <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
-      {imageUrl ? (
+      {artwork ? (
         <Animated.View
           style={[StyleSheet.absoluteFillObject, {transform: [{scale}]}]}>
           <Image
-            source={{uri: imageUrl}}
+            source={artwork}
             style={StyleSheet.absoluteFillObject}
             contentFit="cover"
             blurRadius={80}
@@ -88,6 +90,6 @@ export function ArtworkBackdrop({imageUrl}: Props): React.ReactElement {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createScaledStyles({
   placeholder: {backgroundColor: colors.surface},
 });

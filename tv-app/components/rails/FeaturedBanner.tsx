@@ -1,9 +1,15 @@
 import React from 'react';
 import {Image} from 'expo-image';
 import {StyleSheet, Text, View} from 'react-native';
+import Svg, {Defs, LinearGradient, Rect, Stop} from 'react-native-svg';
 import {FocusableCard} from '../primitives/FocusableCard';
 import {colors} from '../../theme/colors';
 import type {Reciter} from '../../types/reciter';
+import {createScaledStyles} from '../../theme/scale';
+import {getReciterArtwork} from '../../services/reciterArtwork';
+
+// Scrim color is the theme background; only its opacity varies per stop.
+const SCRIM = colors.background;
 
 type Props = {
   reciter: Reciter;
@@ -11,11 +17,22 @@ type Props = {
   hasTVPreferredFocus?: boolean;
 };
 
+// `reciter.date` is a catalog timestamp, not something to show a viewer, so
+// the banner describes the reciter's rewayat instead.
+function featuredSubtitle(reciter: Reciter): string {
+  const count = reciter.rewayat.length;
+  if (count === 0) return '';
+  if (count === 1) return reciter.rewayat[0].name;
+  return `${count} rewayat`;
+}
+
 export function FeaturedBanner({
   reciter,
   onSelect,
   hasTVPreferredFocus,
 }: Props): React.ReactElement {
+  const artwork = getReciterArtwork(reciter);
+  const subtitle = featuredSubtitle(reciter);
   return (
     <FocusableCard
       style={styles.card}
@@ -23,13 +40,32 @@ export function FeaturedBanner({
       hasTVPreferredFocus={hasTVPreferredFocus}
       focusScale={1.02}
       accessibilityLabel={`Featured: ${reciter.name}`}>
-      {reciter.image_url ? (
-        <Image
-          source={{uri: reciter.image_url}}
-          style={StyleSheet.absoluteFillObject}
-          contentFit="cover"
-          cachePolicy="memory-disk"
-        />
+      {artwork ? (
+        <>
+          <Image
+            source={artwork}
+            style={StyleSheet.absoluteFillObject}
+            contentFit="cover"
+            blurRadius={60}
+            cachePolicy="memory-disk"
+          />
+          <Svg style={StyleSheet.absoluteFillObject}>
+            <Defs>
+              <LinearGradient id="featuredScrim" x1="0" y1="0" x2="1" y2="0">
+                <Stop offset={0} stopColor={SCRIM} stopOpacity={0.92} />
+                <Stop offset={0.55} stopColor={SCRIM} stopOpacity={0.6} />
+                <Stop offset={1} stopColor={SCRIM} stopOpacity={0.35} />
+              </LinearGradient>
+            </Defs>
+            <Rect width="100%" height="100%" fill="url(#featuredScrim)" />
+          </Svg>
+          <Image
+            source={artwork}
+            style={styles.portrait}
+            contentFit="cover"
+            cachePolicy="memory-disk"
+          />
+        </>
       ) : (
         <View style={styles.fallback}>
           <Text style={styles.fallbackInitial}>
@@ -37,18 +73,14 @@ export function FeaturedBanner({
           </Text>
         </View>
       )}
-      <View style={styles.scrimBase} />
-      <View style={styles.scrimStep1} />
-      <View style={styles.scrimStep2} />
-      <View style={styles.scrimStep3} />
       <View style={styles.inner}>
         <Text style={styles.kicker}>FEATURED RECITER</Text>
         <Text style={styles.title} numberOfLines={2}>
           {reciter.name}
         </Text>
-        {reciter.date ? (
+        {subtitle ? (
           <Text style={styles.sub} numberOfLines={1}>
-            {reciter.date}
+            {subtitle}
           </Text>
         ) : null}
         <View style={styles.ctaRow}>
@@ -61,7 +93,7 @@ export function FeaturedBanner({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createScaledStyles({
   card: {
     width: '100%',
     height: 320,
@@ -82,33 +114,13 @@ const styles = StyleSheet.create({
     opacity: 0.22,
     lineHeight: 260,
   },
-  scrimBase: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.15)',
-  },
-  scrimStep1: {
+  portrait: {
     position: 'absolute',
-    left: 0,
-    right: '50%',
-    top: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.20)',
-  },
-  scrimStep2: {
-    position: 'absolute',
-    left: 0,
-    right: '65%',
-    top: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.28)',
-  },
-  scrimStep3: {
-    position: 'absolute',
-    left: 0,
-    right: '78%',
-    top: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.30)',
+    right: 48,
+    top: 40,
+    width: 240,
+    height: 240,
+    borderRadius: 16,
   },
   inner: {
     position: 'absolute',
