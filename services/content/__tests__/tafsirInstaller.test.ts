@@ -384,8 +384,7 @@ describe('withdrawal notice', () => {
     expect(burnt.toast).toHaveBeenCalledWith(
       expect.objectContaining({
         title: 'Content removed',
-        message:
-          'Ibn Kathir was withdrawn by its publisher via Quran Foundation.',
+        message: 'Ibn Kathir is no longer available.',
       }),
     );
   });
