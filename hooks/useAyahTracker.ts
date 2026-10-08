@@ -41,7 +41,9 @@ export const SEEK_GRACE_TICKS = 10;
  * canonical resolver (resolveRewayahFromName, the resolver behind
  * useCurrentTrackRewayah), without that hook's display fallback to Hafs: for
  * verse numbering an unresolvable rewayah is unknown, never Hafs. Until the
- * catalog has loaded, an unknown rewayat id counts as "not known yet".
+ * catalog has loaded, an unknown rewayat id counts as "not known yet". A set
+ * the loaded catalog no longer lists keeps the rewayah it was last listed
+ * with (TimingNumberingService.resolveReciterRewayah). @ai
  *
  * A verse written to the store by someone else ("Play from here" publishes
  * the tapped verse) is replaced by the state of the timing entry being
