@@ -848,6 +848,52 @@ describe('player info text and notices', () => {
     expect(barMessages).toEqual([]);
   });
 
+  it('a new start at a later verse of the surah already playing untracked says so again', async () => {
+    await play('doori-269', 562, '67:1');
+    expect(st().numberingMode).toBe('disabled');
+    // the repeat options sheet: a range without repeats, started without stop
+    const {messages, barMessages} = await noticesDuring(async () => {
+      st().setRange({surah: 67, ayah: 10}, {surah: 67, ayah: 12});
+      await st().startPlayback(562, '67:10');
+    });
+    expect(st().ignoredStartVerseKey).toBe('67:10');
+    const expected =
+      'Al-Mulk plays from the beginning without verse tracking for this reciter.';
+    expect(messages).toEqual([expected]);
+    expect(barMessages).toEqual([expected]);
+  });
+
+  it('Play after a range ended in the untracked surah says so again', async () => {
+    st().setRange({surah: 67, ayah: 5}, {surah: 67, ayah: 30});
+    await play('doori-269', 562, '67:5');
+    // the surah's audio ends, and with it the range
+    player().listeners.forEach(l => l({didJustFinish: true}));
+    expect(st()).toMatchObject({
+      playbackState: 'idle',
+      numberingMode: 'disabled',
+      currentSurah: 67,
+    });
+    // the bar's Play on a later page of the same surah
+    mockPageKeys[563] = ['67:13', '67:14'];
+    const {messages, barMessages} = await noticesDuring(async () => {
+      st().clearRange();
+      await st().startPlayback(563);
+    });
+    expect(st().ignoredStartVerseKey).toBe('67:13');
+    const expected =
+      'Al-Mulk plays from the beginning without verse tracking for this reciter.';
+    expect(messages).toEqual([expected]);
+    expect(barMessages).toEqual([expected]);
+  });
+
+  it('the same verse asked for twice is said twice, once per start', async () => {
+    const {barMessages} = await noticesDuring(async () => {
+      await play('doori-269', 562, '67:5');
+      await play('doori-269', 562, '67:5');
+    });
+    expect(barMessages).toHaveLength(2);
+  });
+
   it('the bar only notices what it cannot show inline', () => {
     const refused = {...base, timestampError: VERSE_TIMING_UNAVAILABLE_ERROR};
     expect(getPlayerBarNotice(base, refused, names)).toBeNull();

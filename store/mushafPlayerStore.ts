@@ -918,18 +918,23 @@ type NoticeState = Pick<
 /**
  * Notice for entering a surah that plays without verse tracking, or null.
  * When playback was asked to start at a later verse it says the surah plays
- * from its beginning instead.
+ * from its beginning instead, also when that surah was already playing
+ * untracked (a new start request in it skips a verse again).
  */
 function untrackedSurahNotice(
   prev: NoticeState,
   next: NoticeState,
   surahName: (surah: number) => string,
 ): PlaybackNotice | null {
+  const newlySkipped =
+    !!next.ignoredStartVerseKey &&
+    next.ignoredStartVerseKey !== prev.ignoredStartVerseKey;
   if (
     next.playbackState === 'idle' ||
     next.numberingMode !== 'disabled' ||
     (prev.numberingMode === 'disabled' &&
-      prev.currentSurah === next.currentSurah)
+      prev.currentSurah === next.currentSurah &&
+      !newlySkipped)
   ) {
     return null;
   }
