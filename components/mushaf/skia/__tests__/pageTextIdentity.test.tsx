@@ -2,16 +2,21 @@
 /**
  * The mushaf page renderers (SkiaPage, ContinuousMushafView) follow the
  * identity of the text they draw (the active DigitalKhatt data), not every
- * DigitalKhatt cache event: a side-cache load, or a failed one, for another
- * rewayah (the player, a share, the word-by-word sheet) neither re-renders a
- * mounted page nor rebuilds its lines, while a rewayah switch still rebuilds
- * every line from the new text.
+ * DigitalKhatt cache event:
+ * - across a rewayah switch, no line is ever built from the new text with a
+ *   layout (justification) computed for other text, not even for one frame;
+ * - a side-cache load, or a failed one, for another rewayah (the player, a
+ *   share, the word-by-word sheet) neither re-renders a mounted page nor
+ *   rebuilds its lines.
+ *
+ * The same holds for a font change: a line is never built with the layout of
+ * another font.
  *
  * DigitalKhattDataService is the fixture-backed stand-in (real slot texts of
  * the bundled words DBs) with a data identity and cache listeners added.
  * JustService is a stand-in whose layouts mark the line text and font they
  * were computed for, and Skia's ParagraphBuilder records what each paragraph
- * it builds holds.
+ * it builds holds, so every line built can be checked against its layout.
  */
 
 import React, {act} from 'react';
@@ -441,6 +446,33 @@ function lineTexts(): string[] {
     .filter(text => text !== '');
 }
 
+/**
+ * Paragraphs built from one text or font with a layout computed for another,
+ * as "text <id> in font <id> with the layout of text <id> in font <id>" (ids
+ * from mockLayouts.textIds / fontIds).
+ */
+function mispairedParagraphs(paragraphs: readonly MockParagraph[]): string[] {
+  const out: string[] = [];
+  for (const paragraph of paragraphs) {
+    const textId = mockLayouts.textIds.get(paragraph.text);
+    const fontId = mockLayouts.fontIds.get(paragraph.font ?? '');
+    if (
+      paragraph.layoutOf.length === 1 &&
+      paragraph.layoutOf[0] === textId &&
+      paragraph.layoutFont.length === 1 &&
+      paragraph.layoutFont[0] === fontId
+    ) {
+      continue;
+    }
+    out.push(
+      `text ${textId ?? '(never laid out)'} in font ${fontId ?? '(none)'} ` +
+        `with the layout of text ${paragraph.layoutOf.join(', ') || '(none)'} ` +
+        `in font ${paragraph.layoutFont.join(', ') || '(none)'}`,
+    );
+  }
+  return out;
+}
+
 beforeEach(() => {
   useMushafSettingsStore.setState({
     mushafRenderer: 'dk_v2',
@@ -463,6 +495,61 @@ beforeEach(() => {
 afterEach(() => {
   act(() => {
     for (const renderer of renderers.splice(0)) renderer.unmount();
+  });
+});
+
+describe.each([
+  ['SkiaPage', skiaPage],
+  ['ContinuousMushafView', continuousView],
+])('%s across rewayah switches', (_name, view) => {
+  it('never builds a line from the new text with a layout of other text', () => {
+    mount(view());
+    const hafsLines = lineTexts();
+    expect(hafsLines.length).toBeGreaterThan(0);
+    expect(mockSkia.paragraphs.map(p => p.text)).toEqual(hafsLines);
+    expect(mispairedParagraphs(mockSkia.paragraphs)).toEqual([]);
+
+    // The first switch to a rewayah computes the page layout once; switching
+    // back to Hafs finds its layout cached.
+    for (const db of ['warsh', 'qaloon', 'hafs'] as const) {
+      const before = lineTexts();
+      const computed = mockLayouts.computed;
+      mockSkia.paragraphs.length = 0;
+      commit(db);
+      const after = lineTexts();
+      // The page text really changes, so a stale layout would show.
+      expect(after).not.toEqual(before);
+      expect(mockLayouts.computed - computed).toBe(db === 'hafs' ? 0 : 1);
+      expect(mispairedParagraphs(mockSkia.paragraphs)).toEqual([]);
+      // Every line is drawn from the new text.
+      expect(mockSkia.paragraphs.slice(-after.length).map(p => p.text)).toEqual(
+        after,
+      );
+    }
+  });
+
+  it('never builds a line with the layout of another font', () => {
+    mount(view());
+    mockSkia.paragraphs.length = 0;
+    act(() => {
+      useMushafSettingsStore.setState({
+        mushafRenderer: 'dk_v1',
+        uthmaniFont: 'v1',
+      });
+    });
+    expect(mockSkia.paragraphs.length).toBeGreaterThan(0);
+    expect(mockSkia.paragraphs.every(p => p.font === 'DigitalKhattV1')).toBe(
+      true,
+    );
+    expect(mispairedParagraphs(mockSkia.paragraphs)).toEqual([]);
+  });
+
+  it('keeps the page drawn while it takes the new layout (no blank frame)', () => {
+    mount(view());
+    expect(mockSkia.canvasMounts).toBe(1);
+    commit('warsh');
+    commit('hafs');
+    expect(mockSkia.canvasMounts).toBe(1);
   });
 });
 

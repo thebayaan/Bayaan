@@ -7,7 +7,12 @@ import React, {
   useSyncExternalStore,
 } from 'react';
 import {View, Platform} from 'react-native';
-import {Canvas, Skia, type SkParagraph} from '@shopify/react-native-skia';
+import {
+  Canvas,
+  Skia,
+  type SkParagraph,
+  type SkTypefaceFontProvider, // @ai
+} from '@shopify/react-native-skia';
 import {useMushafFontMgr} from '@/hooks/useMushafFontMgr';
 import {Gesture, GestureDetector} from 'react-native-gesture-handler';
 import {runOnJS} from 'react-native-worklets';
@@ -71,6 +76,52 @@ interface ParagraphInfo {
   paragraph: SkParagraph;
   xPos: number;
 }
+
+// @ai-start
+/** A page layout and the key of the text, font and size it belongs to. */
+interface PageLayout {
+  key: string;
+  results: JustResultByLine[];
+}
+
+function pageLayoutKey(
+  pageNumber: number,
+  fontFamily: string,
+  fontSizeLineWidthRatio: number,
+  textIdentity: string | null,
+): string {
+  return `${pageNumber}|${fontFamily}|${fontSizeLineWidthRatio}|${textIdentity}`;
+}
+
+/**
+ * Layout of a page for the text served now: the cached one (in-memory →
+ * MMKV, both sync), else computed and persisted to MMKV so it survives app
+ * restarts.
+ */
+function resolvePageLayout(
+  pageNumber: number,
+  fontSizeLineWidthRatio: number,
+  fontMgr: SkTypefaceFontProvider,
+  fontFamily: string,
+): JustResultByLine[] {
+  const cached = JustService.getCachedPageLayout(
+    fontSizeLineWidthRatio,
+    pageNumber,
+    fontFamily,
+  );
+  if (cached) return cached;
+  const result = JustService.getPageLayout(
+    pageNumber,
+    fontSizeLineWidthRatio,
+    fontMgr,
+    fontFamily,
+  );
+  if (result.length > 0) {
+    mushafLayoutCacheService.setPageLayout(pageNumber, fontFamily, result);
+  }
+  return result;
+}
+// @ai-end
 
 interface SkiaPageProps {
   pageNumber: number;
@@ -239,15 +290,44 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
   const fontSize = FONTSIZE * scale * 0.9;
   const fontSizeLineWidthRatio = fontSize / lineWidth;
 
-  // Initialize from synchronous cache (in-memory → MMKV, both sync)
-  const [justResults, setJustResults] = useState<JustResultByLine[] | null>(
-    () =>
-      JustService.getCachedPageLayout(
-        fontSizeLineWidthRatio,
-        pageNumber,
-        fontFamily,
-      ) ?? null,
+  // @ai-start
+  // Justification of this page for the text, font and size drawn now. A
+  // layout is kept with the key it was computed for and only drawn under that
+  // key: SkiaLine builds each paragraph from the current line text, and a
+  // layout of other text (the previous rewayah, right after a switch) would
+  // put its letter stretches and spacing on the wrong characters.
+  const layoutKey = pageLayoutKey(
+    pageNumber,
+    fontFamily,
+    fontSizeLineWidthRatio,
+    textIdentity,
   );
+  // Initialize from synchronous cache (in-memory → MMKV, both sync)
+  const [layout, setLayout] = useState<PageLayout | null>(() => {
+    const cached = JustService.getCachedPageLayout(
+      fontSizeLineWidthRatio,
+      pageNumber,
+      fontFamily,
+    );
+    return cached ? {key: layoutKey, results: cached} : null;
+  });
+  if (layout && layout.key !== layoutKey && fontMgr) {
+    // The text, font or size of a page already drawn changed (e.g. a rewayah
+    // switch): take the matching layout during this render, cached or
+    // computed, so the previous frame stays up until it is ready instead of
+    // the new text being drawn with the old layout (or a blank page).
+    setLayout({
+      key: layoutKey,
+      results: resolvePageLayout(
+        pageNumber,
+        fontSizeLineWidthRatio,
+        fontMgr,
+        fontFamily,
+      ),
+    });
+  }
+  const justResults = layout?.key === layoutKey ? layout.results : null;
+  // @ai-end
 
   // Get page lines for layout calculation
   const pageLines = useMemo<DKLine[]>(
@@ -258,41 +338,30 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
   );
 
   // Compute layout if not already cached (first-launch race condition fallback)
+  // @ai-start
+  // Only for a page that has not been drawn yet: once it has, a change of
+  // text, font or size takes its new layout during render (above).
   useEffect(() => {
-    if (!fontMgr) return;
-
-    const cached = JustService.getCachedPageLayout(
-      fontSizeLineWidthRatio,
-      pageNumber,
-      fontFamily,
-    );
-    if (cached) {
-      setJustResults(cached);
-      return;
-    }
-
-    // On-demand compute (first view of this page with this font)
-    const result = JustService.getPageLayout(
+    if (!fontMgr || layout) return;
+    const results = resolvePageLayout(
       pageNumber,
       fontSizeLineWidthRatio,
       fontMgr,
       fontFamily,
     );
-    setJustResults(result);
-
-    // Persist to MMKV so the layout survives app restarts
-    if (result.length > 0) {
-      mushafLayoutCacheService.setPageLayout(pageNumber, fontFamily, result);
-    }
-    // rewayah/textIdentity: the layout depends on the line text.
-  }, [
-    fontMgr,
-    pageNumber,
-    fontSizeLineWidthRatio,
-    fontFamily,
-    rewayah,
-    textIdentity, // @ai
-  ]);
+    // Keyed by the text served at compute time; a render that shows other
+    // text never draws it (it takes its own layout above).
+    setLayout({
+      key: pageLayoutKey(
+        pageNumber,
+        fontFamily,
+        fontSizeLineWidthRatio,
+        getPageTextIdentity(),
+      ),
+      results,
+    });
+  }, [fontMgr, layout, pageNumber, fontSizeLineWidthRatio, fontFamily]);
+  // @ai-end
 
   // Calculate Y positions for each line
   const lineYPositions = useMemo(
