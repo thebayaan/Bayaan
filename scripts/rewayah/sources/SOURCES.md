@@ -184,6 +184,23 @@ file, the Fatiha slots and the absence of the Hafs basmala against
   the official text; the highlight map reads it as written (a doubled first
   letter after a letter read clearly) and tints `جِّئۡنَٰكُم` (al-Duri only;
   `highlight_cases.json` pins it).
+- **Qunbul, Ibn Kathir's stop-only ya** is written (`هَادِۦ`, `وَالِۦ`,
+  `وَاقِۦ`, `بَاقِۦ`) at 6 of the 10 places: 13:7:15, 13:11:35, 13:33:39,
+  13:34:14, 13:37:20 and 16:96:7, but not at 39:23, 39:36, 40:21 or 40:33,
+  and al-Bazzi's text never writes it. Ibn Kathir reads these words with
+  tanween in connected reading and with a ya only at a stop. The words DB
+  keeps the official text, so Qunbul is tinted (with silah) as written at
+  the 6 places and al-Bazzi is not.
+- **Warsh and Qalun 7:137, word 13** read `كَلِمَةُ` (a closed ta) in both
+  official Nafi' texts, where Hafs and Shu'bah write the open ta of al-A'raf
+  137 (`كَلِمَتُ`). Everyone reads `kalimatu` in connected reading; only the
+  sound at a stop differs. The word is tinted as written.
+- **Qunbul 20:71, word 2** reads `ءَاٰ۬مَنتُمُۥ` (a question), while
+  al-Shatibiyya gives Qunbul the statement there. The tint follows the text.
+- **Qalun 35:43, word 5** has a doubled hamza seat (U+0626 U+0650 U+06D2) in
+  the official text. Kept as written.
+- **Warsh and Qalun 51:47, word 3** read `بِأَيَي۟دࣲ`; to a reader of the
+  Madani mushaf its pointing can look like `bi-ayadin`. Kept as written.
 
 ## Changes from the 2021 files used before
 
