@@ -842,6 +842,11 @@ if (typeof useMushafSettingsStore?.subscribe === 'function') {
   useMushafSettingsStore.subscribe((settings, previous) => {
     if (settings.rewayah !== previous.rewayah) relabelRecitedVerse();
   });
+} else if (__DEV__ && useMushafSettingsStore === undefined) {
+  // Not defined yet when this module is evaluated: an import cycle.
+  console.warn(
+    "[MushafPlayerStore] mushafSettingsStore is not defined yet (an import cycle?): the verse label will not follow the mushaf's rewayah",
+  );
 }
 // @ai-end
 
