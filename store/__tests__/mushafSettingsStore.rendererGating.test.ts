@@ -133,7 +133,7 @@ describe('setMushafRenderer', () => {
   });
 
   it('keeps the Mushaf 1440 rule: Hafs, no tajweed, no rewayah diffs', () => {
-    reset('dk_v2', 'warsh');
+    reset('dk_v2', 'hafs');
 
     useMushafSettingsStore.getState().setMushafRenderer('qcf_v2');
 
@@ -143,6 +143,23 @@ describe('setMushafRenderer', () => {
     expect(state.showTajweed).toBe(false);
     expect(state.showRewayahDiffs).toBe(false);
   });
+
+  // @ai-start
+  it('refuses Mushaf 1440 while a non-Hafs rewayah is active, without touching the rewayah', () => {
+    // Pinning Hafs from the store would leave the data service on the other
+    // rewayah's words under a Hafs label; the settings flow switches the
+    // service to Hafs first (selectMushafRenderer).
+    reset('dk_v2', 'warsh');
+
+    useMushafSettingsStore.getState().setMushafRenderer('qcf_v2');
+
+    const state = useMushafSettingsStore.getState();
+    expect(state.mushafRenderer).toBe('dk_v2');
+    expect(state.rewayah).toBe('warsh');
+    expect(state.showTajweed).toBe(true);
+    expect(state.showRewayahDiffs).toBe(true);
+  });
+  // @ai-end
 
   it('maps Madani 1405 to the v1 font and the others to v2', () => {
     reset('dk_v2', 'hafs');

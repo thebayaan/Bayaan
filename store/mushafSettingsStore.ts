@@ -35,13 +35,14 @@ export type MushafRenderer = 'dk_v1' | 'dk_v2' | 'dk_indopak' | 'qcf_v2';
 // Renderer gating for non-Hafs rewayat.
 //
 // Mushaf 1440 (qcf_v2) draws Hafs glyph pages only, so it pins the rewayah to
-// Hafs (setMushafRenderer / setRewayah / persist v16 below). IndoPak is the
-// opposite case: its font lacks marks every non-Hafs rewayah needs (the wasl
-// dot U+06EC, the small waw U+06E5, U+06D7, U+06E0, U+06E7, ...), so about
-// one word in seven would come from a fallback font. Here the rewayah wins:
-// choosing a non-Hafs rewayah while IndoPak is selected moves the renderer to
-// a Madani DigitalKhatt font, and IndoPak cannot be chosen while a non-Hafs
-// rewayah is active.
+// Hafs: it can be chosen only while Hafs is shown, and no other rewayah can
+// be set under it (setMushafRenderer / setRewayah / persist v16 below).
+// IndoPak is the opposite case: its font lacks marks every non-Hafs rewayah
+// needs (the wasl dot U+06EC, the small waw U+06E5, U+06D7, U+06E0, U+06E7,
+// ...), so about one word in seven would come from a fallback font. Here the
+// rewayah wins: choosing a non-Hafs rewayah while IndoPak is selected moves
+// the renderer to a Madani DigitalKhatt font, and IndoPak cannot be chosen
+// while a non-Hafs rewayah is active.
 export const REWAYAH_FALLBACK_RENDERER: MushafRenderer = 'dk_v2';
 /** User-facing name of REWAYAH_FALLBACK_RENDERER (matches the font picker). */
 export const REWAYAH_FALLBACK_RENDERER_LABEL = 'Madani 1421';
@@ -52,6 +53,15 @@ export function isRendererCompatibleWithRewayah(
   rewayah: RewayahId,
 ): boolean {
   return rewayah === 'hafs' || renderer === 'dk_v1' || renderer === 'dk_v2';
+}
+
+/**
+ * Whether `renderer` pins the rewayah to Hafs (Mushaf 1440 draws Hafs glyph
+ * pages only): the store then names Hafs, and the DigitalKhatt data service
+ * must serve Hafs too.
+ */
+export function rendererPinsHafs(renderer: MushafRenderer): boolean {
+  return renderer === 'qcf_v2';
 }
 
 export type DkFontFamily =
@@ -268,18 +278,22 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
       // @ai-start
       setMushafRenderer: (renderer: MushafRenderer) =>
         set(state => {
-          // IndoPak cannot draw non-Hafs text, and the rewayah is never
-          // changed from here (the DigitalKhatt data service would keep the
-          // old rewayah's words). The settings UI disables the option; this
+          // IndoPak cannot draw non-Hafs text and Mushaf 1440 shows Hafs
+          // only, and the rewayah is never changed from here: the DigitalKhatt
+          // data service would keep the old rewayah's words under a Hafs
+          // label. The settings UI disables IndoPak and switches the service
+          // to Hafs before choosing Mushaf 1440 (selectMushafRenderer); this
           // keeps the pair valid for any other caller.
-          if (renderer === 'dk_indopak' && state.rewayah !== 'hafs') {
+          if (
+            (renderer === 'dk_indopak' || rendererPinsHafs(renderer)) &&
+            state.rewayah !== 'hafs'
+          ) {
             return state;
           }
           return {
             mushafRenderer: renderer,
             arabicFontFamily: 'Uthmani',
             showTajweed: renderer === 'qcf_v2' ? false : state.showTajweed,
-            rewayah: renderer === 'qcf_v2' ? 'hafs' : state.rewayah,
             showRewayahDiffs:
               renderer === 'qcf_v2' ? false : state.showRewayahDiffs,
             uthmaniFont: uthmaniFontForRenderer(renderer),
@@ -340,7 +354,7 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
       // @ai-start
       setRewayah: (rewayah: RewayahId) =>
         set(state => {
-          if (state.mushafRenderer === 'qcf_v2') return state;
+          if (rendererPinsHafs(state.mushafRenderer)) return state;
           // Showing a non-Hafs rewayah ends a startup fallback (the text on
           // screen is a rewayah the reader chose again); showing Hafs is
           // what the fallback itself does, so it leaves it in place.

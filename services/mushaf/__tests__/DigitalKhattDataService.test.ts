@@ -161,7 +161,14 @@ jest.mock('@/store/mushafSettingsStore', () => {
     }),
   };
   // @ai-end
-  return {useMushafSettingsStore: {getState: () => state}, __state: state};
+  return {
+    useMushafSettingsStore: {
+      getState: () => state,
+      subscribe: () => () => undefined, // @ai
+    },
+    rendererPinsHafs: (renderer: string) => renderer === 'qcf_v2', // @ai
+    __state: state,
+  };
 });
 
 const WORD_LOCATIONS = [
