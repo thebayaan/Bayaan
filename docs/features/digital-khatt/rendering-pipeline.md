@@ -14,7 +14,8 @@ This document traces one page render from `MushafViewer` to final Skia draw call
 6. `SkiaLine` builds a `Paragraph`:
    - text direction RTL
    - per-char OpenType features from justification map
-   - per-space letterSpacing based on space type
+   - per-space font size giving each space its justified width, under a
+     forced strut at the words' size
 7. `SkiaLine` computes x-position (centered vs justified) and renders `<Paragraph />`.
 8. `UthmaniPageView` overlays surah header text (RN `Text` with `SURAH_HEADERS` font).
 
@@ -148,10 +149,21 @@ This is how line-level justification is translated into glyph-level shaping chan
 After each word, if a trailing space exists:
 
 - check `lineTextInfo.spaces.get(wordEnd + 1)`
-- set `letterSpacing` from:
+- take the justified width (font units at `FONTSIZE`) from:
   - `justResult.ayaSpacing` for Aya space
   - `justResult.simpleSpacing` for Simple space
-- values are normalized by `scale` relative to `SPACEWIDTH`
+- set the space's font size to `effectiveFontSize * spacing / SPACEWIDTH`
+  (`justifiedSpaceFontSize` in `components/mushaf/skia/justifiedSpace.ts`):
+  the font's space is `SPACEWIDTH` units, so its advance scales to the
+  justified width
+
+SkParagraph ignores `letterSpacing` and `wordSpacing` on Arabic runs. A space
+widened with `letterSpacing` kept its natural width, so every line that needed
+wider spaces ended short at its left end. The paragraph style forces a strut at
+the words' size, which keeps a larger space from moving the line box or the
+baseline. Background highlight rects are clamped to the words' band (the rect
+of the line's first character), since a larger space's rect spans that size's
+ascent and descent.
 
 ### Positioning (x-axis)
 
