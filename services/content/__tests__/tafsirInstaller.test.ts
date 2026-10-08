@@ -15,9 +15,10 @@ import type {ContentEnvelope} from '@/types/content';
 import {showWithdrawalNotice} from '../contentNotices';
 import {createTafsirInstaller, tafsirIdFromKey} from '../tafsirInstaller';
 
-function makeStore(selected: string | null) {
+function makeStore(selected: string | null, installed: string[] = []) {
   const state = {
     selectedTafseerId: selected,
+    downloadedMeta: installed.map(identifier => ({identifier})),
     setSelectedTafseerId: jest.fn((id: string | null) => {
       state.selectedTafseerId = id;
     }),
@@ -109,6 +110,83 @@ describe('tafsir installer', () => {
       'rtl',
       expect.any(Array),
     );
+  });
+
+  it('names a fresh install from the manifest meta and maps ISO language codes', async () => {
+    const db = makeDb([]);
+    const installer = createTafsirInstaller({
+      db: db as never,
+      store: makeStore('169', ['169']) as never,
+    });
+    const outcome = await installer.install('qf:tafsirs:169', envelope, {
+      name: 'Ibn Kathir',
+      language: 'en',
+      direction: 'ltr',
+    });
+    expect(db.saveTafseer).toHaveBeenCalledWith(
+      '169',
+      'Ibn Kathir',
+      'Ibn Kathir',
+      'English',
+      'ltr',
+      expect.any(Array),
+    );
+    expect(outcome).toEqual({name: 'Ibn Kathir'});
+  });
+
+  it('keeps Arabic and rtl for a picker install without meta (bundled list)', async () => {
+    const db = makeDb([]);
+    const installer = createTafsirInstaller({
+      db: db as never,
+      store: makeStore('16', ['16']) as never,
+    });
+    await installer.install('qf:tafsirs:16', envelope, undefined);
+    expect(db.saveTafseer).toHaveBeenCalledWith(
+      '16',
+      'Tafsir Muyassar',
+      'Tafsir Muyassar',
+      'Arabic',
+      'rtl',
+      expect.any(Array),
+    );
+    expect(installer.fallbackName?.('qf:tafsirs:16')).toBe('Tafsir Muyassar');
+  });
+
+  it('falls back to placeholders for an id outside the bundled list', async () => {
+    const db = makeDb([]);
+    const installer = createTafsirInstaller({
+      db: db as never,
+      store: makeStore('999', ['999']) as never,
+    });
+    await installer.install('qf:tafsirs:999', envelope, {language: 'xx'});
+    expect(db.saveTafseer).toHaveBeenCalledWith(
+      '999',
+      'Tafsir 999',
+      'Tafsir 999',
+      'English',
+      'ltr',
+      expect.any(Array),
+    );
+  });
+
+  it('selects the installed tafsir when the selection is not installed', async () => {
+    const store = makeStore('169', ['16']);
+    const installer = createTafsirInstaller({
+      db: makeDb([]) as never,
+      store: store as never,
+    });
+    await installer.install('qf:tafsirs:16', envelope, undefined);
+    expect(store.state.setSelectedTafseerId).toHaveBeenCalledWith('16');
+  });
+
+  it('keeps a selection that points at an installed tafsir', async () => {
+    const store = makeStore('169', ['169', '16']);
+    const installer = createTafsirInstaller({
+      db: makeDb([]) as never,
+      store: store as never,
+    });
+    await installer.install('qf:tafsirs:16', envelope, undefined);
+    expect(store.state.setSelectedTafseerId).not.toHaveBeenCalled();
   });
 
   it('falls back to another installed tafsir when the selected one is withdrawn', async () => {
