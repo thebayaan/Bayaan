@@ -1,8 +1,9 @@
 // @ai-generated
 /**
  * Player verse list (QuranView):
- *  - follow-along highlights every Hafs verse the reciter is reciting (Warsh
- *    2:1 = Hafs 2:1 + 2:2), not just the first; Hafs stays one verse;
+ *  - follow-along highlights what the reciter is reciting: a rewayah track's
+ *    rows are its own verses (decision 3), so Warsh 2:1 (= Hafs 2:1 + 2:2) is
+ *    one highlighted row; Hafs stays one verse;
  *  - a rewayah track's text is never drawn with a font that cannot draw it
  *    (IndoPak is Hafs only), mirroring the mushaf settings gating, while Hafs
  *    tracks and the Hafs word-by-word grid keep the reader's font.
@@ -112,6 +113,22 @@ jest.mock('@/hooks/useMushafFontMgr', () => ({
 jest.mock('@/hooks/useCurrentTrackRewayah', () => ({
   useCurrentTrackRewayah: () => mockTrack.rewayah,
 }));
+
+// A rewayah track lists its own verses: a surah 2 that merges Hafs 2:1 and
+// 2:2 into its verse 2:1 and numbers the rest one lower (like Warsh). @ai
+jest.mock('@/hooks/useRewayahVerseUnits', () => {
+  const {mergedOpeningUnits} = jest.requireActual(
+    '../__fixtures__/verseUnitsFixtures',
+  );
+  const cache = new Map();
+  return {
+    useRewayahVerseUnits: (rewayah: string | null) => {
+      if (!rewayah) return {units: null, status: 'unavailable'};
+      if (!cache.has(rewayah)) cache.set(rewayah, mergedOpeningUnits(rewayah));
+      return {units: cache.get(rewayah), status: 'ready'};
+    },
+  };
+});
 
 jest.mock('@/services/mushaf/MushafPreloadService', () => ({
   mushafPreloadService: {initialized: true},
@@ -224,9 +241,19 @@ afterEach(() => {
 });
 
 describe('player verse list follow-along', () => {
-  it('highlights every Hafs verse of a reciter verse (Warsh 2:1 = Hafs 2:1 + 2:2)', () => {
+  it('highlights the rewayah verse being recited (Warsh 2:1 = Hafs 2:1 + 2:2)', () => {
     mockTrack.rewayah = 'warsh';
     render();
+    // The rows are Warsh's own verses 2:1..2:7.
+    expect([...rows().keys()]).toEqual([
+      '2:1',
+      '2:2',
+      '2:3',
+      '2:4',
+      '2:5',
+      '2:6',
+      '2:7',
+    ]);
     track({
       surahNumber: 2,
       ayahNumber: 1,
@@ -236,7 +263,7 @@ describe('player verse list follow-along', () => {
       verseKeys: ['2:1', '2:2'],
       reciterVerseKey: '2:1',
     });
-    expect(active()).toEqual(['2:1', '2:2']);
+    expect(active()).toEqual(['2:1']);
     track({
       surahNumber: 2,
       ayahNumber: 3,
@@ -246,7 +273,8 @@ describe('player verse list follow-along', () => {
       verseKeys: ['2:3'],
       reciterVerseKey: '2:2',
     });
-    expect(active()).toEqual(['2:3']);
+    // Hafs 2:3 is Warsh 2:2.
+    expect(active()).toEqual(['2:2']);
   });
 
   it('Hafs: one highlighted verse, the tracked one', () => {
