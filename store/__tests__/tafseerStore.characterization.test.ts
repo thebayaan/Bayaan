@@ -86,14 +86,26 @@ describe('tafseerStore (characterization, develop behavior)', () => {
     expect(useTafseerStore.getState().selectedTafseerId).toBe('169');
   });
 
-  it('downloadTafseer saves, refreshes meta and keeps an existing selection', async () => {
+  // Changed intentionally (final review I1): a selection that points at
+  // nothing installed, like the default '169' on a fork, moves to the download.
+  it('downloadTafseer saves, refreshes meta and replaces a selection that is not installed', async () => {
     const {useTafseerStore} = await load();
     mockFetchFullTafseer.mockResolvedValue(editionResult('16'));
     await useTafseerStore.getState().downloadTafseer('16');
     const state = useTafseerStore.getState();
     expect(state.downloadedMeta.map(m => m.identifier)).toEqual(['16']);
     expect(state.downloadingId).toBeNull();
-    expect(state.selectedTafseerId).toBe('169');
+    expect(state.selectedTafseerId).toBe('16');
+  });
+
+  it('downloadTafseer keeps a selection that is installed', async () => {
+    const {useTafseerStore} = await load();
+    mockFetchFullTafseer.mockImplementation(async (id: string) =>
+      editionResult(id),
+    );
+    await useTafseerStore.getState().downloadTafseer('16');
+    await useTafseerStore.getState().downloadTafseer('17');
+    expect(useTafseerStore.getState().selectedTafseerId).toBe('16');
   });
 
   it('downloadTafseer auto-selects when nothing is selected', async () => {
@@ -132,9 +144,12 @@ describe('tafseerStore (characterization, develop behavior)', () => {
 
   it('deleting a non-selected tafseer keeps the selection', async () => {
     const {useTafseerStore} = await load();
-    mockFetchFullTafseer.mockResolvedValue(editionResult('16'));
+    mockFetchFullTafseer.mockImplementation(async (id: string) =>
+      editionResult(id),
+    );
     await useTafseerStore.getState().downloadTafseer('16');
-    await useTafseerStore.getState().deleteTafseer('16');
-    expect(useTafseerStore.getState().selectedTafseerId).toBe('169');
+    await useTafseerStore.getState().downloadTafseer('17');
+    await useTafseerStore.getState().deleteTafseer('17');
+    expect(useTafseerStore.getState().selectedTafseerId).toBe('16');
   });
 });

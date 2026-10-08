@@ -23,6 +23,7 @@ jest.mock('@/services/tafseer/TafseerApiService', () => ({
 
 import {useTafseerStore} from '../tafseerStore';
 import {tafseerDbService} from '@/services/tafseer/TafseerDbService';
+import {reportInstall} from '@/services/content/installActivity';
 
 const edition = {
   identifier: '169',
@@ -78,5 +79,99 @@ describe('tafseerStore with content sync', () => {
     await useTafseerStore.getState().deleteTafseer('169');
     expect(tafseerDbService.deleteTafseer).toHaveBeenCalledWith('169');
     expect(mockRemove).not.toHaveBeenCalled();
+  });
+
+  it('selects the downloaded tafsir when the selection is not installed (engine and fork paths)', async () => {
+    jest
+      .mocked(tafseerDbService.getDownloadedTafaseer)
+      .mockResolvedValue([{...edition, identifier: '16'} as never]);
+    for (const managing of [true, false]) {
+      mockManaging = managing;
+      mockFetchFull.mockResolvedValue({
+        edition: {...edition, identifier: '16'},
+        verses: [],
+      });
+      useTafseerStore.setState({selectedTafseerId: '169'});
+      await useTafseerStore.getState().downloadTafseer('16');
+      expect(useTafseerStore.getState().selectedTafseerId).toBe('16');
+    }
+    jest.mocked(tafseerDbService.getDownloadedTafaseer).mockResolvedValue([]);
+  });
+
+  it('keeps an installed selection on the fork path', async () => {
+    mockManaging = false;
+    jest
+      .mocked(tafseerDbService.getDownloadedTafaseer)
+      .mockResolvedValue([
+        edition as never,
+        {...edition, identifier: '16'} as never,
+      ]);
+    mockFetchFull.mockResolvedValue({
+      edition: {...edition, identifier: '16'},
+      verses: [],
+    });
+    useTafseerStore.setState({selectedTafseerId: '169'});
+    await useTafseerStore.getState().downloadTafseer('16');
+    expect(useTafseerStore.getState().selectedTafseerId).toBe('169');
+    jest.mocked(tafseerDbService.getDownloadedTafaseer).mockResolvedValue([]);
+  });
+});
+
+describe('tafseerStore during an engine auto-install', () => {
+  beforeEach(() => {
+    mockInstall.mockClear();
+    mockManaging = true;
+    useTafseerStore.setState({downloadingId: null, downloadProgress: 0});
+  });
+
+  it('shows the auto-install as downloading (indeterminate) until it finishes', async () => {
+    let finish: () => void = () => undefined;
+    const running = reportInstall(
+      'qf:tafsirs:169',
+      () =>
+        new Promise<void>(resolve => {
+          finish = resolve;
+        }),
+    );
+    expect(useTafseerStore.getState()).toMatchObject({
+      downloadingId: '169',
+      downloadProgress: 0,
+    });
+    finish();
+    await running;
+    expect(useTafseerStore.getState().downloadingId).toBeNull();
+  });
+
+  it('clears the indicator when the auto-install fails', async () => {
+    await expect(
+      reportInstall('qf:tafsirs:169', () => Promise.reject(new Error('x'))),
+    ).rejects.toThrow('x');
+    expect(useTafseerStore.getState().downloadingId).toBeNull();
+  });
+
+  it('leaves a user download indicator alone', async () => {
+    useTafseerStore.setState({downloadingId: '16'});
+    await reportInstall('qf:tafsirs:169', () => Promise.resolve());
+    expect(useTafseerStore.getState().downloadingId).toBe('16');
+  });
+
+  it('a user request for the in-flight key joins it instead of being dropped', async () => {
+    let finish: () => void = () => undefined;
+    const running = reportInstall(
+      'qf:tafsirs:169',
+      () =>
+        new Promise<void>(resolve => {
+          finish = resolve;
+        }),
+    );
+    const joined = useTafseerStore.getState().downloadTafseer('169');
+    // A different tafsir is still refused while the indicator is busy.
+    await useTafseerStore.getState().downloadTafseer('16');
+    expect(mockInstall).toHaveBeenCalledTimes(1);
+    expect(mockInstall).toHaveBeenCalledWith('qf:tafsirs:169');
+    finish();
+    await running;
+    await joined;
+    expect(useTafseerStore.getState().downloadingId).toBeNull();
   });
 });

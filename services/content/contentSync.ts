@@ -184,7 +184,21 @@ export async function installContent(key: string): Promise<void> {
   }
   const active = deps;
   if (!active) throw new Error('content_sync_unavailable');
-  await exclusive(() => installResource(active, key, 'tafsir', 'user'));
+  const requestedAt = active.now();
+  await exclusive(async () => {
+    // Joins an install of the same key that finished while this request
+    // waited in the queue (the first-launch install, or a repeated tap).
+    const row = await active.registry.get(key);
+    if (
+      row &&
+      !row.legacy &&
+      row.version > 0 &&
+      row.installed_at !== null &&
+      row.installed_at >= requestedAt
+    )
+      return;
+    await installResource(active, key, 'tafsir', 'user');
+  });
 }
 
 // Before init (or after teardown) there are no engine deps, but the removal

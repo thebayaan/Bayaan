@@ -10,6 +10,11 @@ import {
   isEngineManagingTafsir,
   removeContent,
 } from '@/services/content/contentSync';
+import {setInstallActivityListener} from '@/services/content/installActivity';
+
+const TAFSIR_KEY_PREFIX = 'qf:tafsirs:';
+// The id of an engine install the user did not start, while it runs.
+let engineDownloadingId: string | null = null;
 
 interface TafseerStoreState {
   // Metadata for downloaded tafaseer (synced from SQLite)
@@ -37,9 +42,13 @@ export const useTafseerStore = create<TafseerStoreState>()(
 
       downloadTafseer: async (editionId: string) => {
         const {downloadingId} = get();
-        if (downloadingId) return; // Already downloading
+        // A request for the tafsir the engine is already installing joins it:
+        // installContent waits in the queue and skips the duplicate download.
+        const joining =
+          downloadingId === editionId && engineDownloadingId === editionId;
+        if (downloadingId && !joining) return; // Already downloading
 
-        set({downloadingId: editionId, downloadProgress: 0});
+        if (!joining) set({downloadingId: editionId, downloadProgress: 0});
 
         try {
           let installedId = editionId;
@@ -73,9 +82,12 @@ export const useTafseerStore = create<TafseerStoreState>()(
           const meta = await tafseerDbService.getDownloadedTafaseer();
           set({downloadedMeta: meta, downloadingId: null, downloadProgress: 0});
 
-          // Auto-select if no tafseer is currently selected
+          // Auto-select when the selection is empty or points at nothing installed
           const {selectedTafseerId} = get();
-          if (!selectedTafseerId) {
+          if (
+            !selectedTafseerId ||
+            !meta.some(item => item.identifier === selectedTafseerId)
+          ) {
             set({selectedTafseerId: installedId});
           }
         } catch (error) {
@@ -144,3 +156,23 @@ export const useTafseerStore = create<TafseerStoreState>()(
     },
   ),
 );
+
+// Engine installs the user did not start (the first-launch Ibn Kathir) show as
+// downloading. No byte progress is available, so progress stays 0 (indeterminate).
+setInstallActivityListener((key, phase) => {
+  if (!key.startsWith(TAFSIR_KEY_PREFIX)) return;
+  const id = key.slice(TAFSIR_KEY_PREFIX.length);
+  const {downloadingId} = useTafseerStore.getState();
+  if (phase === 'started') {
+    // A user download already owns the indicator; leave it alone.
+    if (downloadingId !== null) return;
+    engineDownloadingId = id;
+    useTafseerStore.setState({downloadingId: id, downloadProgress: 0});
+    return;
+  }
+  if (engineDownloadingId !== id) return;
+  engineDownloadingId = null;
+  if (downloadingId === id) {
+    useTafseerStore.setState({downloadingId: null, downloadProgress: 0});
+  }
+});

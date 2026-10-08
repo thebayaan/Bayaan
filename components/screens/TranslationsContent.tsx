@@ -716,9 +716,12 @@ export default function TranslationsContent() {
           {isDownloading ? (
             <View style={styles.progressContainer}>
               <ActivityIndicator size="small" color={theme.colors.text} />
-              <Text style={styles.progressText}>
-                {Math.round(tafseerDownloadProgress * 100)}%
-              </Text>
+              {/* Engine downloads report no byte progress: spinner only. */}
+              {tafseerDownloadProgress > 0 && (
+                <Text style={styles.progressText}>
+                  {Math.round(tafseerDownloadProgress * 100)}%
+                </Text>
+              )}
             </View>
           ) : isReady ? (
             <View style={styles.rowActions}>

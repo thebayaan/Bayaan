@@ -1,5 +1,6 @@
 import {installResource, retryIsDue, type EngineDeps} from './contentEngine';
 import {emptyRow, type ContentRegistry} from './contentRegistry';
+import {reportInstall} from './installActivity';
 
 export const AUTO_INSTALL_KEY = 'qf:tafsirs:169';
 
@@ -34,7 +35,9 @@ export async function maybeAutoInstall(deps: EngineDeps): Promise<boolean> {
   }
   // A failed attempt left a placeholder with a backoff; wait it out.
   if (row && !retryIsDue(row.next_retry_at, deps.now())) return false;
-  await installResource(deps, AUTO_INSTALL_KEY, 'tafsir', 'auto');
+  await reportInstall(AUTO_INSTALL_KEY, () =>
+    installResource(deps, AUTO_INSTALL_KEY, 'tafsir', 'auto'),
+  );
   const installed = await deps.registry.get(AUTO_INSTALL_KEY);
   if (!installed || installed.version === 0) return false;
   await deps.registry.setState({autoInstallDone: true});
