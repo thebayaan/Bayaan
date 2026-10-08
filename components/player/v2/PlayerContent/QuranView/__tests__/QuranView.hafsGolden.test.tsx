@@ -186,6 +186,12 @@ jest.mock('@/config/branding', () => ({
   },
 }));
 
+// @ai — the release's timestampStore imports the timing fetcher, which reads
+// branding at import time (before mockBranding is initialised).
+jest.mock('@/services/timestamps/TimestampFetchService', () => ({
+  timestampFetchService: {hasSurah: () => true, hasSource: () => true},
+}));
+
 jest.mock('@/utils/enhancedVerseData', () => {
   const verses = Array.from({length: 6}, (_, i) => ({
     id: 8 + i,
