@@ -45,7 +45,11 @@ interface BayaanAuthServiceOptions {
   apiUrl?: string;
   enabled?: boolean;
   client?: BayaanBffClient;
-  openAuthSessionAsync?: (url: string, redirectUrl: string) => Promise<unknown>;
+  openAuthSessionAsync?: (
+    url: string,
+    redirectUrl: string,
+    options: WebBrowser.AuthSessionOpenOptions,
+  ) => Promise<unknown>;
   now?: () => number;
   urlScheme?: string;
 }
@@ -199,9 +203,12 @@ export function createBayaanAuthService(
             await savePendingBayaanAuthState(pending);
             assertCurrent(owner);
           });
+          // iOS: a private browser session per sign-in, so QF login cookies
+          // from a signed-out account are never reused.
           const result = await openBrowser(
             start.authorizationUrl,
             `${scheme}://oauth/callback`,
+            {preferEphemeralSession: true},
           );
           assertCurrent(owner);
           // Android can dismiss while the router's matching exchange is active.
