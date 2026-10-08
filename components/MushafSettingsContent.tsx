@@ -39,7 +39,6 @@ import {
   getAllahNameHighlightColorHex,
 } from '@/constants/mushafAllahHighlight';
 import {getRewayahShortLabel} from '@/utils/rewayahLabels';
-import {showToast} from '@/utils/toastUtils';
 import branding from '@/config/branding';
 import {
   ALL_REWAYAH_IDS,
@@ -50,7 +49,10 @@ import {
   type RewayahWithDiffs,
 } from '@/services/rewayah/RewayahIdentity';
 import {getRewayahDiffLegend} from '@/components/sheets/rewayahDiffLegend'; // @ai
-import {chooseMushafRewayah} from '@/components/sheets/rewayahSelection'; // @ai
+import {
+  chooseMushafRenderer,
+  chooseMushafRewayah,
+} from '@/components/sheets/rewayahSelection'; // @ai
 import {
   useMushafSettingsStore,
   getActualFontSize,
@@ -588,7 +590,6 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
     setTransliterationFontSize,
     setArabicTextWeight,
     mushafRenderer,
-    setMushafRenderer,
     pageLayout,
     setPageLayout,
     viewMode,
@@ -610,7 +611,6 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
     darkThemeId,
     rewayah,
     showRewayahDiffs,
-    setRewayah,
     toggleRewayahDiffs,
     setAllahNameHighlightColor,
   } = useMushafSettingsStore();
@@ -682,56 +682,25 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
     true: Color(theme.colors.text).alpha(0.65).toString(),
   };
 
-  const handleFontSelect = useCallback(
-    async (value: MushafRenderer) => {
-      // IndoPak draws Hafs only; its row is disabled for other rewayat and
-      // the store refuses the pair as well.
-      if (value === 'dk_indopak' && rewayah !== 'hafs') return; // @ai
-      const switchingToQCF = value === 'qcf_v2' && mushafRenderer !== 'qcf_v2';
-      if (switchingToQCF && rewayah !== 'hafs') {
-        try {
-          await digitalKhattDataService.switchRewayah('hafs');
-        } catch (error) {
-          console.error(
-            '[MushafSettings] Failed to reset rewayah for QCF:',
-            error,
-          );
-          // @ai-start
-          // Mushaf 1440 is Hafs only. Without Hafs in the data service the
-          // store and the service would disagree (pages and highlights built
-          // from one rewayah under the other's label), so stay on the
-          // current font and rewayah, putting the service back if the
-          // failed switch moved it.
-          if (digitalKhattDataService.rewayah !== rewayah) {
-            await digitalKhattDataService
-              .switchRewayah(rewayah)
-              .catch(restoreError =>
-                console.error(
-                  '[MushafSettings] Failed to restore rewayah:',
-                  restoreError,
-                ),
-              );
-          }
-          showToast(
-            "Couldn't switch to Mushaf 1440",
-            'Please try again.',
-            'error',
-          );
-          return;
-          // @ai-end
-        }
-        setRewayah('hafs');
-      }
-      setMushafRenderer(value);
-      if (switchingToQCF) {
-        Alert.alert(
-          'Mushaf 1440 Beta',
-          `Mushaf 1440 is ${branding.appName}’s most modern mushaf pipeline, but it is still in beta. Some features are currently disabled, including tajweed coloring and rewayah switching.`,
-        );
-      }
-    },
-    [mushafRenderer, rewayah, setMushafRenderer, setRewayah],
-  );
+  // @ai-start
+  // Mushaf 1440 is Hafs only. chooseMushafRenderer (rewayahSelection.ts)
+  // switches the data service to Hafs before the store pins it, overtaking a
+  // rewayah switch that is still loading, and keeps the font and rewayah
+  // (with a toast) when Hafs cannot be loaded. It reads the store when
+  // tapped, so a stale render cannot skip that switch.
+  const handleFontSelect = useCallback(async (value: MushafRenderer) => {
+    const switchingToQCF =
+      value === 'qcf_v2' &&
+      useMushafSettingsStore.getState().mushafRenderer !== 'qcf_v2';
+    const outcome = await chooseMushafRenderer(value);
+    if (switchingToQCF && outcome.kind === 'switched') {
+      Alert.alert(
+        'Mushaf 1440 Beta',
+        `Mushaf 1440 is ${branding.appName}’s most modern mushaf pipeline, but it is still in beta. Some features are currently disabled, including tajweed coloring and rewayah switching.`,
+      );
+    }
+  }, []);
+  // @ai-end
 
   // @ai-start
   // Loads the new words DB before the store changes (so React re-renders with

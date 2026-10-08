@@ -141,7 +141,8 @@ jest.mock('expo-file-system/legacy', () => ({
 jest.mock('@/store/mushafSettingsStore', () => {
   // @ai-start
   // Mirrors the real store's rewayah rules: setRewayah is refused under
-  // qcf_v2, and showing a non-Hafs rewayah ends a startup fallback.
+  // qcf_v2, showing a non-Hafs rewayah ends a startup fallback, and starting
+  // one names Hafs in the same update.
   const state = {
     rewayah: 'hafs',
     mushafRenderer: 'dk_v2',
@@ -153,6 +154,7 @@ jest.mock('@/store/mushafSettingsStore', () => {
     }),
     startRewayahFallback: jest.fn((from: string) => {
       if (from !== 'hafs' && state.mushafRenderer !== 'qcf_v2') {
+        state.rewayah = 'hafs';
         state.rewayahFallbackFrom = from;
       }
     }),
@@ -161,7 +163,14 @@ jest.mock('@/store/mushafSettingsStore', () => {
     }),
   };
   // @ai-end
-  return {useMushafSettingsStore: {getState: () => state}, __state: state};
+  return {
+    useMushafSettingsStore: {
+      getState: () => state,
+      subscribe: () => () => undefined, // @ai
+    },
+    rendererPinsHafs: (renderer: string) => renderer === 'qcf_v2', // @ai
+    __state: state,
+  };
 });
 
 const WORD_LOCATIONS = [
@@ -678,15 +687,13 @@ describe('initialization failures', () => {
     expect(texts(service, '1:1')).toEqual(H);
     expect(service.getRewayahLoadState('warsh')).toBe('error');
     // The label names the Hafs on screen; the saved Warsh is recorded as a
-    // fallback (which the real store persists instead of Hafs) before the
-    // commit relabels the store.
+    // fallback (which the real store persists instead of Hafs) by the Hafs
+    // commit itself, in the update that names Hafs.
     expect(store.rewayah).toBe('hafs');
     expect(store.rewayahFallbackFrom).toBe('warsh');
+    expect(store.startRewayahFallback).toHaveBeenCalledTimes(1);
     expect(store.startRewayahFallback).toHaveBeenCalledWith('warsh');
-    expect(store.setRewayah).toHaveBeenCalledWith('hafs');
-    expect(store.startRewayahFallback.mock.invocationCallOrder[0]).toBeLessThan(
-      store.setRewayah.mock.invocationCallOrder[0],
-    );
+    expect(store.setRewayah).not.toHaveBeenCalledWith('hafs');
   });
 
   it('retries the saved rewayah on demand after a startup fallback', async () => {
@@ -850,14 +857,56 @@ describe('side cache', () => {
     expect(service.getRewayahLoadState('hafs')).toBe('idle');
   });
 
-  it('pins a retained copy that a consumer requested explicitly', async () => {
+  // @ai-start
+  it('keeps a copy a mounted surface retains, however often the mushaf switches', async () => {
+    // The player shows a Warsh reciter while the mushaf moves on.
     const service = await initialized();
     await service.switchRewayah('warsh');
-    await service.ensureRewayahLoaded('hafs');
+    const release = service.retainRewayah('warsh');
     await service.switchRewayah('qalun');
-    expect(service.getRewayahLoadState('hafs')).toBe('ready');
+    await service.switchRewayah('shubah');
+    await service.ensureRewayahLoaded('al-bazzi');
     expect(service.getRewayahLoadState('warsh')).toBe('ready');
+    expect(texts(service, '1:1', 'warsh')).toEqual(W);
+    expect(count(`read:${N.warsh}`)).toBe(1);
+
+    // Once nothing shows it, it is bounded like any other copy.
+    release();
+    await service.switchRewayah('qunbul');
+    expect(service.getRewayahLoadState('warsh')).toBe('idle');
   });
+
+  it('keeps a copy until every surface that retains it is gone', async () => {
+    const service = await initialized();
+    await service.ensureRewayahLoaded('warsh');
+    const first = service.retainRewayah('warsh');
+    const second = service.retainRewayah('warsh');
+    first();
+    first(); // releasing twice counts once
+    await service.ensureRewayahLoaded('qalun');
+    await service.ensureRewayahLoaded('shubah');
+    expect(service.getRewayahLoadState('warsh')).toBe('ready');
+    second();
+    await service.ensureRewayahLoaded('al-bazzi');
+    expect(service.getRewayahLoadState('warsh')).toBe('idle');
+  });
+
+  it('bounds the side copies nothing shows', async () => {
+    const service = await initialized();
+    await service.ensureRewayahLoaded('warsh');
+    await service.ensureRewayahLoaded('qalun');
+    await service.ensureRewayahLoaded('shubah');
+    expect(service.getRewayahLoadState('shubah')).toBe('ready');
+    expect(service.getRewayahLoadState('warsh')).toBe('idle');
+    expect(service.getRewayahLoadState('qalun')).toBe('idle');
+    // An explicit request makes a copy the most recently used one.
+    await service.switchRewayah('al-bazzi');
+    await service.ensureRewayahLoaded('hafs');
+    await service.ensureRewayahLoaded('qunbul');
+    expect(service.getRewayahLoadState('qunbul')).toBe('ready');
+    expect(service.getRewayahLoadState('hafs')).toBe('idle');
+  });
+  // @ai-end
 
   it('before initialization the placeholder rewayah waits for init instead of loading a copy', async () => {
     const service = new DigitalKhattDataService();
