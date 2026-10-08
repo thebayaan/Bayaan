@@ -2,17 +2,7 @@ import {Share, Platform} from 'react-native';
 import {analyticsService} from '@/services/analytics/AnalyticsService';
 import branding from '@/config/branding';
 // @ai-start
-import {
-  formatAnchorKey,
-  parseAnchorKey,
-  type RewayahVerseUnits,
-  type VerseUnit,
-} from '@/services/mushaf/RewayahVerseUnits';
-import {
-  PERSISTED_ID_MIGRATIONS,
-  isRewayahId,
-  type RewayahId,
-} from '@/services/rewayah/RewayahIdentity';
+import {parseAnchorKey} from '@/services/mushaf/RewayahVerseUnits';
 // @ai-end
 
 const BASE_URL = branding.shareBaseUrl;
@@ -71,8 +61,9 @@ export function verseShareUrl(
 // count, and does not read the query (checked on the live site). A rewayah
 // verse number in the path would open another verse there. Hafs links
 // never carry `word` and are unchanged. The in-app /quran routes are
-// redirect stubs; resolveVerseShareLink() is the resolution any reader of
-// these links must apply to land on exactly the shared verse.
+// redirect stubs, so the app only writes these links; a reader of one lands
+// on exactly the shared verse by taking the verse of rewayah <id> that holds
+// Hafs word S:A:W (W = 1 without `word`).
 
 /**
  * Share URL of a verse named by its storage anchor ("S:A" or "S:A:W",
@@ -90,106 +81,6 @@ export function anchorShareUrl(
   const url = verseShareUrl(loc.surah, loc.ayah, theme, rewayah);
   if (loc.word === 1 || !rewayah || rewayah === 'hafs') return url;
   return `${url}${url.includes('?') ? '&' : '?'}word=${loc.word}`;
-}
-
-/** A parsed verse link (see the section comment above). */
-export interface VerseShareLink {
-  /** Hafs verse of the path. */
-  surah: number;
-  ayah: number;
-  /** Hafs word position named by `word` (1 without it). */
-  word: number;
-  /** `rewayah` query param, canonical id; Hafs without it. */
-  rewayah: RewayahId;
-  /** The storage anchor the link names ("S:A" or "S:A:W"). */
-  anchor: string;
-}
-
-const VERSE_LINK_PATH = /\/quran\/(\d{1,3})\/(\d{1,3})\/?$/;
-const POSITIVE_INT = /^[1-9]\d{0,2}$/;
-
-function queryParams(query: string): Map<string, string> | null {
-  const params = new Map<string, string>();
-  for (const part of query.split('&')) {
-    if (!part) continue;
-    const eq = part.indexOf('=');
-    const rawKey = eq < 0 ? part : part.slice(0, eq);
-    const rawValue = eq < 0 ? '' : part.slice(eq + 1);
-    try {
-      params.set(
-        decodeURIComponent(rawKey.replace(/\+/g, ' ')),
-        decodeURIComponent(rawValue.replace(/\+/g, ' ')),
-      );
-    } catch {
-      return null; // malformed escape
-    }
-  }
-  return params;
-}
-
-/**
- * Parses a verse link (`https://<shareBaseUrl>/quran/S/A?...`, an app-scheme
- * or path-only form of it). Null when it is not a verse link or names its
- * rewayah or word ambiguously: an unknown `rewayah` (never guessed as Hafs)
- * or a `word` that is not a positive number. Old rewayah slugs map to their
- * canonical ids.
- */
-export function parseVerseShareUrl(url: string): VerseShareLink | null {
-  const hash = url.indexOf('#');
-  const withoutHash = hash < 0 ? url : url.slice(0, hash);
-  const q = withoutHash.indexOf('?');
-  const path = q < 0 ? withoutHash : withoutHash.slice(0, q);
-  const match = VERSE_LINK_PATH.exec(path);
-  if (!match) return null;
-  const surah = Number(match[1]);
-  const ayah = Number(match[2]);
-  if (surah < 1 || surah > 114 || ayah < 1) return null;
-  const params = queryParams(q < 0 ? '' : withoutHash.slice(q + 1));
-  if (!params) return null;
-
-  let rewayah: RewayahId = 'hafs';
-  const rewayahParam = params.get('rewayah');
-  if (rewayahParam !== undefined) {
-    // Own keys only: "constructor" and friends are not rewayat.
-    const canonical = Object.prototype.hasOwnProperty.call(
-      PERSISTED_ID_MIGRATIONS,
-      rewayahParam,
-    )
-      ? PERSISTED_ID_MIGRATIONS[rewayahParam]
-      : isRewayahId(rewayahParam)
-        ? rewayahParam
-        : null;
-    if (!canonical) return null;
-    rewayah = canonical;
-  }
-  let word = 1;
-  const wordParam = params.get('word');
-  if (wordParam !== undefined) {
-    if (!POSITIVE_INT.test(wordParam)) return null;
-    word = Number(wordParam);
-  }
-  return {
-    surah,
-    ayah,
-    word,
-    rewayah,
-    anchor: formatAnchorKey(`${surah}:${ayah}`, word),
-  };
-}
-
-/**
- * The verse a link names, in its rewayah's own numbering: the unit of
- * `units` (that rewayah's verse units) holding the link's anchor. Null when
- * `units` belong to another rewayah, or when no verse holds the anchor (a
- * verse or word the data does not have, or the unnumbered Fatiha basmala of
- * the Madani / Basri counts).
- */
-export function resolveVerseShareLink(
-  link: VerseShareLink,
-  units: RewayahVerseUnits,
-): VerseUnit | null {
-  if (units.rewayah !== link.rewayah) return null;
-  return units.unitForAnchor(link.anchor);
 }
 // @ai-end
 

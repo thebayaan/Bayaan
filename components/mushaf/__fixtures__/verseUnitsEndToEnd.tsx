@@ -97,12 +97,7 @@ import {
   selectUnitAnnotations,
   useVerseAnnotationsStore,
 } from '@/store/verseAnnotationsStore';
-import {
-  anchorShareUrl,
-  parseVerseShareUrl,
-  resolveVerseShareLink,
-  verseShareUrl,
-} from '@/utils/shareUtils';
+import {anchorShareUrl, verseShareUrl} from '@/utils/shareUtils';
 import {
   baseComputePageHighlightLayers,
   baseOrderedVerseKeysForPage,
@@ -995,20 +990,17 @@ export async function runEndToEnd(
         fail(`${u.key}: the route selects ${JSON.stringify(routeSelection)}`);
       }
     }
-    // The share link names exactly this verse (Hafs: the link of before).
+    // The share link names exactly this verse (Hafs: the link of before): its
+    // anchor's Hafs verse as the path, plus the anchor's word when the verse
+    // starts inside that Hafs verse (the anchor names it, checked above).
     const url = anchorShareUrl(anchorKey, 'light', rewayah);
-    const link = url ? parseVerseShareUrl(url) : null;
-    if (isHafs) {
-      if (url !== verseShareUrl(u.surah, u.ayah, 'light', 'hafs')) {
-        fail(`${u.key}: Hafs link ${url}`);
-      }
-    } else if (
-      !link ||
-      link.rewayah !== rewayah ||
-      link.anchor !== u.anchor ||
-      resolveVerseShareLink(link, model!) !== unit
-    ) {
-      fail(`${u.key}: link ${url} names another verse`);
+    const anchorWord = Number(u.anchor.split(':')[2] ?? 1);
+    const expectedUrl = isHafs
+      ? verseShareUrl(u.surah, u.ayah, 'light', 'hafs')
+      : verseShareUrl(u.anchorSurah, u.anchorAyah, 'light', rewayah) +
+        (anchorWord > 1 ? `&word=${anchorWord}` : '');
+    if (url !== expectedUrl) {
+      fail(`${u.key}: link ${url}, expected ${expectedUrl}`);
     }
     tick('storage');
   }

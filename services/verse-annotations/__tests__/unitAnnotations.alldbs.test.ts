@@ -14,7 +14,7 @@
  *    marks every verse holding words of its Hafs verse;
  *  - "N:M" in the mushaf search is that rewayah's verse N:M and no verse
  *    past its count; stored anchors and bookmark chips open the same verse;
- *  - its share link resolves back to it, with a Hafs verse as the path;
+ *  - its share link names exactly it, with a Hafs verse as the path;
  *  - legacy rows on Hafs keys open a verse that holds that Hafs verse;
  *  - Hafs: rows, labels, routes, searches and links are the Hafs ones.
  */
@@ -39,11 +39,7 @@ import {
   verseQueryTarget,
   type ShownVerses,
 } from '@/components/mushaf/mushafSearchVerses';
-import {
-  anchorShareUrl,
-  parseVerseShareUrl,
-  resolveVerseShareLink,
-} from '@/utils/shareUtils';
+import {anchorShareUrl, verseShareUrl} from '@/utils/shareUtils';
 import type {RewayahVerseUnits} from '@/services/mushaf/RewayahVerseUnits';
 import type {RewayahId} from '@/services/rewayah/RewayahIdentity';
 import {SURAHS} from '@/data/surahData';
@@ -162,13 +158,16 @@ run('annotations, search and links on every words DB (local only)', () => {
           () => `${k}: chip ${chip}`,
         );
 
-        // Share link.
+        // Share link: the Hafs verse holding the verse's first word as the
+        // path, plus the word it starts at when that is inside the Hafs
+        // verse; that location is exactly this verse.
         const url = anchorShareUrl(anchor.verseKey, 'dark', rewayah);
-        const link = url ? parseVerseShareUrl(url) : null;
+        const at = units.hafsAnchor(unit);
+        const word =
+          !isHafs && at.wordPosition > 1 ? `&word=${at.wordPosition}` : '';
         check(
-          !!link &&
-            `${link.surah}:${link.ayah}` === units.hafsAnchor(unit).hafsKey &&
-            resolveVerseShareLink(link, units) === unit,
+          url === verseShareUrl(at.surah, at.ayah, 'dark', rewayah) + word &&
+            units.unitForAnchor(at.key) === unit,
           () => `${k}: link ${url}`,
         );
       }
