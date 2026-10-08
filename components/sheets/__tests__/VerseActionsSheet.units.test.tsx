@@ -206,6 +206,7 @@ import {router} from 'expo-router';
 import {showToast} from '@/utils/toastUtils';
 import {qulDataService} from '@/services/mushaf/QulDataService';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
+import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {
@@ -249,6 +250,9 @@ async function openSheet(payload: Payload) {
     sheetId: 'verse-actions',
     payload,
   } as React.ComponentProps<typeof VerseActionsSheet>;
+  // One sheet at a time: a sheet left mounted would re-render on store
+  // changes of later tests.
+  if (renderer) act(() => renderer?.unmount());
   await act(async () => {
     renderer = TestRenderer.create(<VerseActionsSheet {...props} />);
   });
@@ -321,7 +325,26 @@ beforeEach(() => {
     },
   );
   useMushafSettingsStore.setState({rewayah: 'hafs', mushafRenderer: 'dk_v2'});
+  setRows([]);
 });
+
+/** Stored bookmark / highlight rows (verse_keys), any rewayah. */
+function setRows(bookmarks: string[], highlights: Record<string, string> = {}) {
+  (
+    useVerseAnnotationsStore as unknown as {
+      setState: (s: object) => void;
+    }
+  ).setState({bookmarks: new Set(bookmarks), highlights});
+}
+
+const removedBookmarks = () =>
+  (verseAnnotationService.removeBookmark as jest.Mock).mock.calls.map(
+    call => call[0],
+  );
+const removedHighlights = () =>
+  (verseAnnotationService.removeHighlight as jest.Mock).mock.calls.map(
+    call => call[0],
+  );
 
 afterEach(() => {
   act(() => renderer?.unmount());
@@ -367,6 +390,33 @@ describe('Hafs (unchanged)', () => {
     expect(Clipboard.setStringAsync).toHaveBeenCalledWith(
       'HAFS-2:286 ۝ HAFS-3:1 ۝\n\nT(2:286)\nT(3:1)\n\nQuran 2:286 - 3:1',
     );
+  });
+
+  it('removes exactly the bookmarked Hafs key, as before', async () => {
+    setRows(['2:255']);
+    await openSheet(payload);
+    expect(texts()).toContain('Remove Bookmark');
+    await press('Remove Bookmark');
+    expect(removedBookmarks()).toEqual(['2:255']);
+    expect(verseAnnotationService.addBookmark).not.toHaveBeenCalled();
+  });
+
+  it('a row of another rewayah inside the Hafs verse is no Hafs mark', async () => {
+    setRows(['2:255:3'], {'2:255:3': 'yellow'});
+    await openSheet(payload);
+    expect(texts()).toEqual(expect.arrayContaining(['Bookmark', 'Highlight']));
+  });
+
+  it('removes every selected Hafs highlight, as before', async () => {
+    setRows([], {'2:286': 'yellow'});
+    await openSheet({
+      ...payload,
+      verseKey: '2:286',
+      ayahNumber: 286,
+      verseKeys: ['2:286', '3:1'],
+    });
+    await press('Remove Highlight');
+    expect(removedHighlights()).toEqual(['2:286', '3:1']);
   });
 
   it('passes the screens the payload as before', async () => {
@@ -491,6 +541,56 @@ describe('Warsh verses in their own numbering', () => {
       pathname: '/mushaf',
       params: {page: '3', surah: '1', ayah: '7', anchor: '1:7:5'},
     });
+  });
+});
+
+describe('stored rows that mark a Warsh verse (contract section 3)', () => {
+  // A Warsh row saved before Release 1 on Hafs 103:2: Warsh 103:1 holds
+  // Hafs 103:1 and 103:2, so the row marks Warsh 103:1.
+  it('a legacy bookmark on its second Hafs verse marks it and is removed', async () => {
+    setRows(['103:2']);
+    await openSheet(warshUnitPayload(['103:1']));
+    expect(texts()).toContain('Remove Bookmark');
+    await press('Remove Bookmark');
+    // Its own anchor (as always) and the legacy row; nothing added.
+    expect(removedBookmarks()).toEqual(['103:1', '103:2']);
+    expect(verseAnnotationService.addBookmark).not.toHaveBeenCalled();
+  });
+
+  it('a Hafs-keyed payload sees the same row', async () => {
+    setRows(['103:2']);
+    await openSheet({
+      verseKey: '103:2',
+      surahNumber: 103,
+      ayahNumber: 2,
+      rewayah: 'warsh',
+      source: 'mushaf',
+    });
+    expect(texts()).toEqual(
+      expect.arrayContaining(['103:1', 'Remove Bookmark']),
+    );
+  });
+
+  it('a row naming the first part of a split Hafs verse marks only it', async () => {
+    setRows(['1:7']);
+    await openSheet(warshUnitPayload(['1:7']));
+    expect(texts()).toContain('Bookmark');
+    await press('Bookmark');
+    expect(verseAnnotationService.addBookmark).toHaveBeenCalledWith(
+      '1:7:5',
+      1,
+      7,
+      'warsh',
+    );
+  });
+
+  it('a legacy highlight marks it and every row is removed', async () => {
+    setRows([], {'103:2': 'yellow'});
+    await openSheet(warshUnitPayload(['103:1']));
+    expect(texts()).toContain('Remove Highlight');
+    await press('Remove Highlight');
+    expect(removedHighlights()).toEqual(['103:1', '103:2']);
+    expect(last('highlight')).toBeUndefined();
   });
 });
 

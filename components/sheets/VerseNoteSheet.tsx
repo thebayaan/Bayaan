@@ -31,6 +31,7 @@ import {
   useRequireSelection,
   useVerseSelection,
 } from '@/components/share/useVerseSelection';
+import {addSelectionNote} from './verse-actions/selectionAnnotations';
 // @ai-end
 
 export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
@@ -195,22 +196,8 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
       // Another rewayah: stored by its verses' Hafs anchors (verse-units
       // contract section 3), verse_keys = every anchor of a range.
       const ready = await requireSelection('saved');
-      if (!ready) return;
-      const keys = ready.anchors.map(anchor => anchor.key);
-      const [first] = ready.anchors;
-      if (!first) return;
-      await verseAnnotationService.addNote(
-        first.key,
-        first.surah,
-        first.ayah,
-        noteText.trim(),
-        keys.length > 1 ? keys : undefined,
-        ready.rewayah,
-      );
-      const store = useVerseAnnotationsStore.getState();
-      for (const key of keys) {
-        store.addNote(key);
-      }
+      if (!ready || ready.anchors.length === 0) return;
+      await addSelectionNote(ready, noteText.trim());
       // @ai-end
     }
     SheetManager.hideAll();

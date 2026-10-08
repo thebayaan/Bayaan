@@ -22,10 +22,8 @@ import ActionSheet, {
   ScrollView,
 } from 'react-native-actions-sheet';
 import {Feather, MaterialCommunityIcons} from '@expo/vector-icons';
-import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
 import {useVerseSelectionStore} from '@/store/verseSelectionStore';
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
-import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
 import {qulDataService} from '@/services/mushaf/QulDataService';
 import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
@@ -76,6 +74,11 @@ import {
   useSelectionVerseTexts,
   useVerseSelection,
 } from '@/components/share/useVerseSelection';
+import {
+  setSelectionBookmarked,
+  setSelectionHighlight,
+  useSelectionMarks,
+} from './verse-actions/selectionAnnotations';
 // @ai-end
 import branding from '@/config/branding';
 import {HighlightContent} from './verse-actions/HighlightContent';
@@ -280,21 +283,14 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
   // number until its verses can be named (never a Hafs number under a
   // rewayah's name).
   const verseRefText = readySelection ? readySelection.label : '';
-  const anchorKeys = readySelection
-    ? readySelection.anchors.map(anchor => anchor.key)
-    : null;
 
-  // Rows are stored by each verse's Hafs anchor (contract section 3): the
-  // Hafs keys themselves for Hafs, as before.
-  const isBookmarked = useVerseAnnotationsStore(
-    state =>
-      !!anchorKeys &&
-      anchorKeys.length > 0 &&
-      anchorKeys.every(key => state.isBookmarked(key)),
-  );
-  const isHighlighted = useVerseAnnotationsStore(
-    state => !!anchorKeys && !!state.highlights[anchorKeys[0]],
-  );
+  // Rows are stored by each verse's Hafs anchor, and a verse is marked by
+  // any row that names one of its slots, legacy rows included (contract
+  // section 3; see verse-actions/selectionAnnotations.ts). Hafs: the Hafs
+  // keys themselves, as before.
+  const marks = useSelectionMarks(readySelection);
+  const isBookmarked = marks.bookmarked;
+  const isHighlighted = marks.highlightColor !== null;
 
   const pendingSelection: PendingVerseSelection | null =
     selection.status === 'ready' ? null : selection;
@@ -316,7 +312,6 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     const ready = readySelection ?? (await requireSelection('saved'));
     if (!ready) return;
     // @ai-end
-    const store = useVerseAnnotationsStore.getState();
     // A persistence failure must never strand the sheet open: without this
     // guard a rejected write skipped both the optimistic store update and
     // SheetManager.hide, freezing the sheet with no feedback. The DB write is
@@ -324,24 +319,9 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     // all; this is the belt-and-braces for anything else (disk, migration).
     // @ai
     try {
-      // @ai-start
-      if (isBookmarked) {
-        for (const anchor of ready.anchors) {
-          await verseAnnotationService.removeBookmark(anchor.key);
-          store.removeBookmark(anchor.key);
-        }
-      } else {
-        for (const anchor of ready.anchors) {
-          await verseAnnotationService.addBookmark(
-            anchor.key,
-            anchor.surah,
-            anchor.ayah,
-            resolvedRewayah,
-          );
-          store.addBookmark(anchor.key);
-        }
-      }
-      // @ai-end
+      // Removing deletes every row that marks a selected verse; adding
+      // writes one row per verse at its anchor. @ai
+      await setSelectionBookmarked(ready, !isBookmarked); // @ai
     } catch (error) {
       console.error('[VerseActionsSheet] Bookmark toggle failed:', error);
     }
@@ -350,20 +330,16 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     readySelection, // @ai
     requireSelection, // @ai
     isBookmarked,
-    resolvedRewayah,
     props.sheetId,
   ]);
 
   const handleHighlight = useCallback(async () => {
     // @ai-start
-    // Highlighted implies a ready selection (its anchors were looked up).
+    // Highlighted implies a ready selection (its rows were looked up).
+    // Removing deletes every row that marks a selected verse.
     if (isHighlighted && readySelection) {
       lightHaptics();
-      const store = useVerseAnnotationsStore.getState();
-      for (const anchor of readySelection.anchors) {
-        await verseAnnotationService.removeHighlight(anchor.key);
-        store.removeHighlight(anchor.key);
-      }
+      await setSelectionHighlight(readySelection, null);
       hideCurrentSheet();
     } else {
       setActiveScreen('highlight');

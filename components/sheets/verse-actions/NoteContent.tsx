@@ -10,14 +10,13 @@ import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {Feather} from '@expo/vector-icons';
 import Color from 'color';
-import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
-import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
 import SkiaVersePreview from '@/components/share/SkiaVersePreview';
 // @ai-start
 import {
   selectionPreviewProps,
   type ReadyVerseSelection,
 } from '@/components/share/rewayahVerseSelection';
+import {addSelectionNote} from './selectionAnnotations';
 // @ai-end
 
 interface NoteContentProps {
@@ -41,8 +40,8 @@ export const NoteContent: React.FC<NoteContentProps> = ({
   const {theme} = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   // @ai-start
-  const {anchors, rewayah} = selection;
-  const isRange = anchors.length > 1;
+  const {rewayah} = selection;
+  const isRange = selection.anchors.length > 1;
   // @ai-end
   const [noteText, setNoteText] = useState('');
 
@@ -50,24 +49,11 @@ export const NoteContent: React.FC<NoteContentProps> = ({
     if (!noteText.trim()) return;
 
     // @ai-start
-    const [first] = anchors;
-    if (!first) return;
-    const keys = anchors.map(anchor => anchor.key);
-    await verseAnnotationService.addNote(
-      first.key,
-      first.surah,
-      first.ayah,
-      noteText.trim(),
-      isRange ? keys : undefined,
-      rewayah,
-    );
-    const store = useVerseAnnotationsStore.getState();
-    for (const key of keys) {
-      store.addNote(key);
-    }
+    if (selection.anchors.length === 0) return;
+    await addSelectionNote(selection, noteText.trim());
     // @ai-end
     onDone();
-  }, [anchors, isRange, noteText, onDone, rewayah]); // @ai
+  }, [selection, noteText, onDone]); // @ai
 
   const canSave = noteText.trim().length > 0;
 

@@ -10,14 +10,13 @@ import {Theme} from '@/utils/themeUtils';
 import {Feather} from '@expo/vector-icons';
 import Color from 'color';
 import {HIGHLIGHT_COLORS, HighlightColor} from '@/types/verse-annotations';
-import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
-import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
 import SkiaVersePreview from '@/components/share/SkiaVersePreview';
 // @ai-start
 import {
   selectionPreviewProps,
   type ReadyVerseSelection,
 } from '@/components/share/rewayahVerseSelection';
+import {setSelectionHighlight, useSelectionMarks} from './selectionAnnotations';
 // @ai-end
 
 const COLORS = Object.entries(HIGHLIGHT_COLORS) as [HighlightColor, string][];
@@ -29,7 +28,9 @@ interface HighlightContentProps {
    * components/share/rewayahVerseSelection.ts). One highlight row per
    * verse, stored at its Hafs anchor ("S:A", or "S:A:W" for a verse that
    * starts inside a Hafs verse: verse-units contract section 3) with the
-   * selection's rewayah. Hafs: the Hafs keys, exactly as before.
+   * selection's rewayah; the current colour and Remove read every row that
+   * marks a selected verse, legacy rows included (selectionAnnotations.ts).
+   * Hafs: the Hafs keys, exactly as before.
    */
   selection: ReadyVerseSelection;
   // @ai-end
@@ -44,37 +45,21 @@ export const HighlightContent: React.FC<HighlightContentProps> = ({
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   // @ai-start
-  const {anchors, rewayah} = selection;
-  const currentColor = useVerseAnnotationsStore(
-    s => s.highlights[anchors[0]?.key ?? ''],
-  );
+  const {rewayah} = selection;
+  const currentColor = useSelectionMarks(selection).highlightColor;
 
   const handleSelectColor = useCallback(
     async (color: HighlightColor) => {
-      const store = useVerseAnnotationsStore.getState();
-      for (const anchor of anchors) {
-        await verseAnnotationService.upsertHighlight(
-          anchor.key,
-          anchor.surah,
-          anchor.ayah,
-          color,
-          rewayah,
-        );
-        store.setHighlight(anchor.key, color);
-      }
+      await setSelectionHighlight(selection, color);
       onDone();
     },
-    [anchors, onDone, rewayah],
+    [selection, onDone],
   );
 
   const handleRemove = useCallback(async () => {
-    const store = useVerseAnnotationsStore.getState();
-    for (const anchor of anchors) {
-      await verseAnnotationService.removeHighlight(anchor.key);
-      store.removeHighlight(anchor.key);
-    }
+    await setSelectionHighlight(selection, null);
     onDone();
-  }, [anchors, onDone]);
+  }, [selection, onDone]);
   // @ai-end
 
   return (
