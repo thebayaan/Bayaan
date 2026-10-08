@@ -88,7 +88,10 @@ import {
 } from '@/store/timestampStore';
 import {useReciterStore} from '@/store/reciterStore';
 import {RECITERS} from '@/data/reciterData';
-import {timingNumberingService} from '@/services/timestamps/TimingNumberingService';
+import {
+  SET_CLASS_VOTE_TIMEOUT_MS, // @ai
+  timingNumberingService,
+} from '@/services/timestamps/TimingNumberingService';
 import {loadTimings} from '@/services/timestamps/__fixtures__/timingFixtures';
 import {
   findAyahTimestamp,
@@ -567,6 +570,23 @@ describe('useAyahTracker', () => {
       useTimestampStore.setState({supportedRewayatIds: new Set<string>()});
       await startTrack('doori-269', 67);
       expect(unavailable()).toBe(false);
+    });
+
+    it('a set-level vote that gets no answer: unavailable once it times out', async () => {
+      // al-Fatihah's timings arrive; the vote's sample surahs never do
+      getTimestampsForSurah.mockImplementation(
+        (set: string, surah: number): Promise<AyahTimestamp[] | null> =>
+          surah === 1
+            ? Promise.resolve(fixtureTimings(set, surah))
+            : new Promise(() => undefined),
+      );
+      await startTrack('warsh-14', 1);
+      expect(unavailable()).toBe(false); // still being resolved
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(SET_CLASS_VOTE_TIMEOUT_MS);
+      });
+      expect(unavailable()).toBe(true);
+      expect(findAyahTimestamp(timings(), 2)).toBeNull();
     });
 
     it('a surah left and returned to before the next one loaded keeps saying so', async () => {

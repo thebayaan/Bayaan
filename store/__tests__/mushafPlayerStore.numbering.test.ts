@@ -133,7 +133,10 @@ import {
 } from '../mushafPlayerStore';
 import {parseVerseKeyListId} from '@/utils/timestampNumbering'; // @ai
 import {mushafAudioService} from '@/services/audio/MushafAudioService';
-import {timingNumberingService} from '@/services/timestamps/TimingNumberingService';
+import {
+  SET_CLASS_VOTE_TIMEOUT_MS, // @ai
+  timingNumberingService,
+} from '@/services/timestamps/TimingNumberingService';
 import {
   loadTimings,
   oracleHafsAyahs,
@@ -1010,6 +1013,129 @@ describe("Shu'bah files numbered like Hafs but not exactly 1..n", () => {
     const heard = await listen('shubah-305', 112);
     expect(heard).toEqual([3, 3]);
     expect(st().playbackState).toBe('idle');
+  });
+});
+
+describe('a start while the previous surah still plays', () => {
+  // The verse and repeat sheets set a range and start without stopping: the
+  // surah playing keeps playing until the new one's audio is loaded.
+
+  /** Hold back `set`'s timings of `surah`; the returned function sends them. */
+  function holdTimings(set: string, surah: number): () => void {
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>(resolve => {
+      release = resolve;
+    });
+    getTimestampsForSurah.mockImplementation(async (s: string, n: number) => {
+      if (s === set && n === surah) await gate;
+      return fixtureTimings(s, n);
+    });
+    return () => release();
+  }
+
+  it('a verse the previous surah reaches meanwhile does not end the new start', async () => {
+    await play('hafs-clean', 604, '112:1');
+    const previous = player();
+    const sendTimings = holdTimings('hafs-clean', 2);
+    st().setRange({surah: 2, ayah: 30}, {surah: 2, ayah: 37});
+    const start = st().startPlayback(5, '2:30');
+    // al-Ikhlas moves on to its next verse while al-Baqarah loads
+    at(entry('hafs-clean', 112, 2).timestampFrom + 50);
+    const meanwhile = {state: st().playbackState, heard: previous.playing};
+    sendTimings();
+    await start;
+    expect(st().timestampError).toBeNull(); // not "no verses to play"
+    expect(st()).toMatchObject({
+      playbackState: 'playing',
+      currentSurah: 2,
+      currentVerseKey: '2:30',
+    });
+    // al-Ikhlas played on until al-Baqarah replaced it, as before
+    expect(meanwhile).toEqual({state: 'loading', heard: true});
+    expect(player()).not.toBe(previous);
+    expect(player().playing).toBe(true);
+    expect(player().seeks).toEqual([
+      entry('hafs-clean', 2, 30).timestampFrom / 1000,
+    ]);
+    // the new surah's own verses still end the range
+    const heard = await listen('hafs-clean', 2);
+    expect(heard).toEqual([30, 31, 32, 33, 34, 35, 36, 37]);
+    expect(st().playbackState).toBe('idle');
+  });
+
+  it('the previous surah ending meanwhile does not start the surah after it', async () => {
+    await play('hafs-clean', 1, '1:7');
+    const players = mockPlayers.length;
+    const sendTimings = holdTimings('hafs-clean', 2);
+    st().setRange({surah: 2, ayah: 30}, {surah: 2, ayah: 37});
+    const start = st().startPlayback(5, '2:30');
+    // al-Fatihah's audio ends while al-Baqarah loads
+    player().listeners.forEach(l => l({didJustFinish: true}));
+    sendTimings();
+    await start;
+    await flush();
+    expect(st().timestampError).toBeNull();
+    expect(st()).toMatchObject({
+      playbackState: 'playing',
+      currentSurah: 2,
+      currentVerseKey: '2:30',
+    });
+    // one player, for the start asked for: not al-Baqarah from its beginning
+    expect(mockPlayers.length).toBe(players + 1);
+    expect(player().seeks).toEqual([
+      entry('hafs-clean', 2, 30).timestampFrom / 1000,
+    ]);
+  });
+
+  it('a verse the previous surah reaches meanwhile does not use up a repeat of the new start', async () => {
+    await play('hafs-clean', 604, '112:1');
+    const sendTimings = holdTimings('hafs-clean', 2);
+    // the repeat options sheet: 2:30-2:31, each verse twice
+    st().setRange({surah: 2, ayah: 30}, {surah: 2, ayah: 31});
+    st().setVerseRepeatCount(2);
+    const start = st().startPlayback(5, '2:30');
+    at(entry('hafs-clean', 112, 2).timestampFrom + 50);
+    sendTimings();
+    await start;
+    expect(st()._versePlayCount).toBe(1);
+    const heard = await listen('hafs-clean', 2);
+    expect(heard).toEqual([30, 30, 31, 31]);
+    expect(st().playbackState).toBe('idle');
+  });
+});
+
+describe('a set-level vote that gets no answer', () => {
+  it('al-Fatihah starts without verse tracking once the vote times out, and later starts do not wait again', async () => {
+    // al-Fatihah's own timings arrive; the vote's sample surahs never do
+    getTimestampsForSurah.mockImplementation(
+      (set: string, surah: number): Promise<AyahTimestamp[] | null> =>
+        surah === 1
+          ? Promise.resolve(fixtureTimings(set, surah))
+          : new Promise(() => undefined),
+    );
+    st().setReciter('warsh-14', 'Test Reciter');
+    const start = st().startPlayback(1, '1:1');
+    await flush();
+    expect(st().playbackState).toBe('loading');
+    await jest.advanceTimersByTimeAsync(SET_CLASS_VOTE_TIMEOUT_MS);
+    await flush();
+    expect(st()).toMatchObject({
+      playbackState: 'playing',
+      currentSurah: 1,
+      numberingMode: 'disabled',
+    });
+    expect(formatPlaybackInfo('Al-Fatihah', st())).toBe(
+      'Al-Fatihah · Verse tracking unavailable',
+    );
+    expect(player().playing).toBe(true);
+    await start;
+    // the failed vote is remembered: the next start is untracked at once
+    st().stop();
+    await play('warsh-14', 1, '1:1');
+    expect(st()).toMatchObject({
+      playbackState: 'playing',
+      numberingMode: 'disabled',
+    });
   });
 });
 // @ai-end

@@ -261,6 +261,14 @@ type StoreGet = () => MushafPlayerStoreState;
 // Incremented by every startPlayback / stop: async continuations of a
 // superseded playback request must not load audio or touch state.
 let playbackSession = 0;
+// @ai-start
+// The playback session that loaded the surah audio MushafAudioService
+// holds. A start does not stop the surah playing, which plays on until the
+// new surah's audio replaces it: the verse boundaries and the end it reaches
+// meanwhile belong to the superseded playback, and must not repeat, end or
+// advance the new one.
+let audioSession = 0;
+// @ai-end
 
 function displayRewayah(): RewayahId {
   try {
@@ -648,6 +656,11 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
   ) => {
     const audioUrl = resolveMushafAudioUrl(rewayatId, surah);
     mushafAudioService.loadSurah(surah, audioUrl, timestamps);
+    // @ai-start
+    // Its verse boundaries and end are this playback's from now on (both
+    // callers load only for the current session).
+    audioSession = playbackSession;
+    // @ai-end
     mushafAudioService.setVerseSeekingEnabled(numbering.mode !== 'disabled');
     mushafAudioService.setRate(get().rate);
     set({
@@ -772,6 +785,8 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
 
     // Bail out if playback was stopped (stale callback)
     if (state.playbackState === 'idle') return;
+    // ...or superseded by a start still loading its surah (@ai)
+    if (audioSession !== playbackSession) return; // @ai
 
     const numbering = state._numbering;
     const prevEntry = state._entryAyah;
@@ -833,6 +848,8 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
 
     // Bail out if playback was stopped (stale callback)
     if (state.playbackState === 'idle') return;
+    // ...or superseded by a start still loading its surah (@ai)
+    if (audioSession !== playbackSession) return; // @ai
 
     const numbering = state._numbering;
     const surah = state.currentSurah;

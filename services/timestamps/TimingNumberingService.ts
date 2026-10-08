@@ -10,7 +10,10 @@
  * set-level classification: a vote over a sample of the surahs whose counts
  * discriminate (smallest first, so the extra downloads are a few KB). The
  * fetched timings go through TimestampService, which caches them in SQLite,
- * so the vote costs network only the first time a set is used.
+ * so the vote costs network only the first time a set is used. A vote that
+ * fails or takes longer than SET_CLASS_VOTE_TIMEOUT_MS leaves the set
+ * 'unknown' (those surahs play without verse tracking), and the set is not
+ * voted on again until SET_CLASS_RETRY_AFTER_MS has passed. @ai
  *
  * The rewayah of a set comes from its catalog name. The rewayah each set was
  * last listed with is remembered across launches (RewayahMemory), so a set
@@ -45,6 +48,30 @@ import {
 export const SET_CLASS_SAMPLE_SIZE = 5;
 /** Fewer successful observations than this leave the set unclassified. */
 export const SET_CLASS_MIN_OBSERVATIONS = 3;
+// @ai-start
+/**
+ * Longest wait for a set-level vote (its sample downloads in parallel, a few
+ * KB in all). Past it the set counts as 'unknown': the surah plays without
+ * verse tracking, as after an inconclusive vote. Mushaf playback of a surah
+ * that needs the vote waits for it before starting, so this matches the 5 s
+ * ExpoAudioService.waitForLoaded gives a track to load before carrying on.
+ * The vote goes on in the background and still records a verdict it
+ * reaches, for the next load.
+ */
+export const SET_CLASS_VOTE_TIMEOUT_MS = 5000;
+/**
+ * How long a vote that failed (too few timings downloaded) or timed out is
+ * remembered: meanwhile the set is 'unknown' at once, without downloading or
+ * waiting again. Long enough that replays, the main and mushaf players
+ * resolving the same surah, and the set's other surahs needing the vote do
+ * not each vote again; short enough that once the connection is back a
+ * later load gets verse tracking without restarting the app (an app can
+ * stay in memory for days, so failures are not kept for the session). The
+ * same 5 min catalogVersionPoll waits before polling again. Verdicts are
+ * kept for the session, as before.
+ */
+export const SET_CLASS_RETRY_AFTER_MS = 5 * 60 * 1000;
+// @ai-end
 
 // @ai-start
 /**
@@ -176,6 +203,12 @@ export class TimingNumberingService {
   private readonly deps: TimingNumberingDeps;
   private readonly setClassCache = new Map<string, TimingSetClass>();
   private readonly inflight = new Map<string, Promise<TimingSetClass>>();
+  // @ai-start
+  /** When each set whose last vote failed or timed out may vote again. */
+  private readonly retryVoteAt = new Map<string, number>();
+  /** Bumped by reset(): a vote started before it records nothing. */
+  private generation = 0;
+  // @ai-end
 
   constructor(deps: Partial<TimingNumberingDeps> = {}) {
     this.deps = {...DEFAULT_DEPS, ...deps};
@@ -204,7 +237,8 @@ export class TimingNumberingService {
 
   /**
    * Numbering decided without network, or null when the set-level class is
-   * needed and not cached yet. `reciterRewayah` defaults to the catalog's.
+   * needed and not known yet (no verdict, and no failed vote remembered,
+   * @ai). `reciterRewayah` defaults to the catalog's.
    */
   resolveSync(
     rewayatId: string,
@@ -212,10 +246,9 @@ export class TimingNumberingService {
     entries: readonly AyahTimestamp[],
     reciterRewayah: RewayahId | null = this.resolveReciterRewayah(rewayatId),
   ): TimingNumbering | null {
-    const cachedClass = reciterRewayah
-      ? this.setClassCache.get(this.setKey(rewayatId, reciterRewayah))
-      : undefined;
-    const setClass = cachedClass ?? null;
+    const setClass = reciterRewayah
+      ? this.knownSetClass(this.setKey(rewayatId, reciterRewayah))
+      : null; // @ai
     const decision = decideSurahNumbering(
       {reciterRewayah, surah, entries, setClass},
       this.deps.verseMap,
@@ -263,22 +296,31 @@ export class TimingNumberingService {
   /**
    * Set-level class: 'hafs' / 'riwayah' when at least SET_CLASS_THRESHOLD of
    * the sampled discriminating surahs match that count, else 'unknown'.
-   * Conclusive results are cached per (set, rewayah); a vote that could not
-   * gather enough observations (offline) is retried on the next call.
+   * Conclusive results are cached per (set, rewayah). A vote that could not
+   * gather enough observations (offline), failed or did not finish within
+   * SET_CLASS_VOTE_TIMEOUT_MS is 'unknown', and the set is not voted on
+   * again until SET_CLASS_RETRY_AFTER_MS has passed. @ai
    */
   async getSetClass(
     rewayatId: string,
     rewayah: RewayahId,
   ): Promise<TimingSetClass> {
     const key = this.setKey(rewayatId, rewayah);
-    const cached = this.setClassCache.get(key);
-    if (cached) return cached;
+    const known = this.knownSetClass(key); // @ai
+    if (known) return known; // @ai
     const running = this.inflight.get(key);
     if (running) return running;
 
-    const promise = this.voteSetClass(rewayatId, rewayah).finally(() => {
-      this.inflight.delete(key);
+    // @ai-start
+    const generation = this.generation;
+    const promise = this.voteWithTimeout(
+      rewayatId,
+      rewayah,
+      generation,
+    ).finally(() => {
+      if (generation === this.generation) this.inflight.delete(key);
     });
+    // @ai-end
     this.inflight.set(key, promise);
     return promise;
   }
@@ -287,12 +329,72 @@ export class TimingNumberingService {
   reset(): void {
     this.setClassCache.clear();
     this.inflight.clear();
+    // @ai-start
+    this.retryVoteAt.clear();
+    this.generation += 1;
+    // @ai-end
     this.deps.rewayahMemory.clear(); // @ai
   }
+
+  // @ai-start
+  /**
+   * The set class known without voting: the set's verdict, or 'unknown'
+   * while a failed vote is remembered. Null when a vote is needed.
+   */
+  private knownSetClass(key: string): TimingSetClass | null {
+    const verdict = this.setClassCache.get(key);
+    if (verdict) return verdict;
+    const retryAt = this.retryVoteAt.get(key);
+    if (retryAt === undefined) return null;
+    if (Date.now() < retryAt) return 'unknown';
+    this.retryVoteAt.delete(key);
+    return null;
+  }
+
+  /** Remember that the set's vote failed: no new vote for a while. */
+  private rememberFailedVote(key: string, generation: number): void {
+    if (generation !== this.generation || this.setClassCache.has(key)) return;
+    this.retryVoteAt.set(key, Date.now() + SET_CLASS_RETRY_AFTER_MS);
+  }
+
+  /**
+   * The vote, or 'unknown' when it fails or does not finish within
+   * SET_CLASS_VOTE_TIMEOUT_MS (both remembered). A vote that times out goes
+   * on in the background: its downloads are cached, and a verdict it
+   * reaches decides the next load.
+   */
+  private async voteWithTimeout(
+    rewayatId: string,
+    rewayah: RewayahId,
+    generation: number,
+  ): Promise<TimingSetClass> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timedOut = new Promise<null>(resolve => {
+      timer = setTimeout(() => resolve(null), SET_CLASS_VOTE_TIMEOUT_MS);
+    });
+    try {
+      const setClass = await Promise.race([
+        this.voteSetClass(rewayatId, rewayah, generation),
+        timedOut,
+      ]);
+      if (setClass !== null) return setClass;
+      console.warn(
+        `[TimingNumbering] set ${rewayatId} (${rewayah}) vote timed out after ${SET_CLASS_VOTE_TIMEOUT_MS} ms`,
+      );
+    } catch (error) {
+      console.warn('[TimingNumbering] set classification failed:', error);
+    } finally {
+      clearTimeout(timer);
+    }
+    this.rememberFailedVote(this.setKey(rewayatId, rewayah), generation);
+    return 'unknown';
+  }
+  // @ai-end
 
   private async voteSetClass(
     rewayatId: string,
     rewayah: RewayahId,
+    generation: number, // @ai
   ): Promise<TimingSetClass> {
     const {verseMap} = this.deps;
     const sample: number[] = [];
@@ -324,8 +426,17 @@ export class TimingNumberingService {
     });
 
     const verdict = classifyTimingSet(votes, SET_CLASS_MIN_OBSERVATIONS);
-    if (verdict === null) return 'unknown'; // not cached: retry later
-    this.setClassCache.set(this.setKey(rewayatId, rewayah), verdict);
+    // @ai-start
+    const key = this.setKey(rewayatId, rewayah);
+    if (verdict === null) {
+      // Not a verdict: remembered as a failed vote, retried later.
+      this.rememberFailedVote(key, generation);
+      return 'unknown';
+    }
+    if (generation !== this.generation) return verdict; // reset() since
+    this.retryVoteAt.delete(key);
+    // @ai-end
+    this.setClassCache.set(key, verdict); // @ai
     if (__DEV__) {
       console.log(
         `[TimingNumbering] set ${rewayatId} (${rewayah}) classified ${verdict}`,

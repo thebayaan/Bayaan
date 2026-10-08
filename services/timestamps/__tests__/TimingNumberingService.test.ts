@@ -40,6 +40,8 @@ import {
 } from '../__fixtures__/timingFixtures';
 import {
   SET_CLASS_SAMPLE_SIZE,
+  SET_CLASS_RETRY_AFTER_MS, // @ai
+  SET_CLASS_VOTE_TIMEOUT_MS, // @ai
   TimingNumberingService,
   createRewayahMemory, // @ai
   type RewayahMemory, // @ai
@@ -79,7 +81,10 @@ beforeEach(() => {
   jest.spyOn(console, 'log').mockImplementation(() => undefined);
   jest.spyOn(console, 'warn').mockImplementation(() => undefined);
 });
-afterEach(() => jest.restoreAllMocks());
+afterEach(() => {
+  jest.restoreAllMocks();
+  jest.useRealTimers(); // @ai
+});
 
 describe('resolveReciterRewayah', () => {
   it('resolves the catalog rewayat name through the canonical resolver', () => {
@@ -124,9 +129,11 @@ describe('set-level vote', () => {
     expect(getTimestampsForSurah).toHaveBeenCalledTimes(SET_CLASS_SAMPLE_SIZE);
   });
 
-  it('stays unknown (and retries later) when too few surahs could be fetched', async () => {
+  // @ai-start
+  it('stays unknown when too few surahs could be fetched, and votes again once SET_CLASS_RETRY_AFTER_MS has passed', async () => {
+    jest.useFakeTimers();
     let online = false;
-    const {service} = makeService({
+    const {service, getTimestampsForSurah} = makeService({
       getTimestampsForSurah: async (set, surah) =>
         online ? loadTimings(set, surah) : null,
     });
@@ -134,10 +141,19 @@ describe('set-level vote', () => {
       'unknown',
     );
     online = true;
+    // remembered: not voted on again on every load meanwhile
+    const fetches = getTimestampsForSurah.mock.calls.length;
+    jest.advanceTimersByTime(SET_CLASS_RETRY_AFTER_MS - 1);
+    await expect(service.getSetClass('warsh-14', 'warsh')).resolves.toBe(
+      'unknown',
+    );
+    expect(getTimestampsForSurah).toHaveBeenCalledTimes(fetches);
+    jest.advanceTimersByTime(1);
     await expect(service.getSetClass('warsh-14', 'warsh')).resolves.toBe(
       'riwayah',
     );
   });
+  // @ai-end
 
   it('only samples surahs the set covers', async () => {
     const {service, getTimestampsForSurah} = makeService({
@@ -161,6 +177,134 @@ describe('set-level vote', () => {
     );
   });
 });
+
+// @ai-start
+describe('a set-level vote that gets no answer', () => {
+  beforeEach(() => jest.useFakeTimers());
+
+  /** A download over a stalled connection: never settles. */
+  const stalled = () => new Promise<AyahTimestamp[] | null>(() => undefined);
+
+  /** What `promise` has resolved to so far (undefined while pending). */
+  function settled<T>(promise: Promise<T>): {value?: T} {
+    const box: {value?: T} = {};
+    promise.then(value => {
+      box.value = value;
+    });
+    return box;
+  }
+
+  it('is unknown after SET_CLASS_VOTE_TIMEOUT_MS: al-Fatihah gets no verse tracking', async () => {
+    const {service} = makeService({getTimestampsForSurah: stalled});
+    const vote = settled(service.getSetClass('warsh-14', 'warsh'));
+    const fatihah = settled(
+      service.resolve('warsh-14', 1, entries('warsh-14', 1)),
+    );
+    await jest.advanceTimersByTimeAsync(SET_CLASS_VOTE_TIMEOUT_MS - 1);
+    expect(vote.value).toBeUndefined();
+    await jest.advanceTimersByTimeAsync(1);
+    expect(vote.value).toBe('unknown');
+    // the same numbering as an inconclusive vote
+    expect(fatihah.value?.mode).toBe('disabled');
+    expect(fatihah.value?.reason).toBe(
+      'equal counts with different boundaries; set numbering unknown',
+    );
+  });
+
+  it('a timed-out set is not voted on again until SET_CLASS_RETRY_AFTER_MS has passed', async () => {
+    let online = false;
+    const {service, getTimestampsForSurah} = makeService({
+      getTimestampsForSurah: async (set, surah) =>
+        online ? loadTimings(set, surah) : stalled(),
+    });
+    const first = service.getSetClass('warsh-14', 'warsh');
+    await jest.advanceTimersByTimeAsync(SET_CLASS_VOTE_TIMEOUT_MS);
+    await expect(first).resolves.toBe('unknown');
+    online = true;
+    const fetches = getTimestampsForSurah.mock.calls.length;
+    await jest.advanceTimersByTimeAsync(SET_CLASS_RETRY_AFTER_MS - 1);
+    // every load meanwhile: unknown at once, without downloading or waiting
+    await expect(service.getSetClass('warsh-14', 'warsh')).resolves.toBe(
+      'unknown',
+    );
+    expect(
+      service.resolveSync('warsh-14', 1, entries('warsh-14', 1))?.mode,
+    ).toBe('disabled');
+    expect(getTimestampsForSurah).toHaveBeenCalledTimes(fetches);
+    // another set is not affected
+    await expect(service.getSetClass('warsh-134', 'warsh')).resolves.toBe(
+      'hafs',
+    );
+    await jest.advanceTimersByTimeAsync(1);
+    // the vote is needed again, and this time it answers
+    expect(
+      service.resolveSync('warsh-14', 1, entries('warsh-14', 1)),
+    ).toBeNull();
+    await expect(service.getSetClass('warsh-14', 'warsh')).resolves.toBe(
+      'riwayah',
+    );
+  });
+
+  it('a vote that answers after its timeout decides the next load', async () => {
+    let arrive: () => void = () => undefined;
+    const network = new Promise<void>(resolve => {
+      arrive = resolve;
+    });
+    const {service, getTimestampsForSurah} = makeService({
+      getTimestampsForSurah: async (set, surah) => {
+        await network;
+        return loadTimings(set, surah);
+      },
+    });
+    const first = service.getSetClass('warsh-14', 'warsh');
+    await jest.advanceTimersByTimeAsync(SET_CLASS_VOTE_TIMEOUT_MS);
+    await expect(first).resolves.toBe('unknown');
+    arrive();
+    await jest.advanceTimersByTimeAsync(0);
+    await expect(service.getSetClass('warsh-14', 'warsh')).resolves.toBe(
+      'riwayah',
+    );
+    expect(getTimestampsForSurah).toHaveBeenCalledTimes(SET_CLASS_SAMPLE_SIZE);
+  });
+
+  it('a verdict is still kept for good: only failed votes are retried', async () => {
+    const {service, getTimestampsForSurah} = makeService();
+    await expect(service.getSetClass('warsh-14', 'warsh')).resolves.toBe(
+      'riwayah',
+    );
+    await jest.advanceTimersByTimeAsync(SET_CLASS_RETRY_AFTER_MS * 10);
+    await expect(service.getSetClass('warsh-14', 'warsh')).resolves.toBe(
+      'riwayah',
+    );
+    expect(getTimestampsForSurah).toHaveBeenCalledTimes(SET_CLASS_SAMPLE_SIZE);
+  });
+
+  it('reset() forgets a failed vote, and a vote started before it records nothing', async () => {
+    let arrive: () => void = () => undefined;
+    const network = new Promise<void>(resolve => {
+      arrive = resolve;
+    });
+    let online = false;
+    const {service} = makeService({
+      getTimestampsForSurah: async (set, surah) => {
+        if (online) return loadTimings(set, surah);
+        await network;
+        return null; // the download failed
+      },
+    });
+    const first = service.getSetClass('warsh-14', 'warsh');
+    await jest.advanceTimersByTimeAsync(SET_CLASS_VOTE_TIMEOUT_MS);
+    await expect(first).resolves.toBe('unknown');
+    service.reset();
+    arrive(); // the old vote now fails
+    await jest.advanceTimersByTimeAsync(0);
+    online = true;
+    await expect(service.getSetClass('warsh-14', 'warsh')).resolves.toBe(
+      'riwayah',
+    );
+  });
+});
+// @ai-end
 
 describe('resolve', () => {
   const cases: [TimingFixtureSet, number, string][] = [
