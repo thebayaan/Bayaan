@@ -40,8 +40,15 @@ interface PreservedSchema {
   indexes: string[];
 }
 
-// Only these columns belong to Bayaan's new sync contract. Fork-owned columns
-// must keep their own identity rather than becoming remote_id/server_* fields.
+// These fields must not overwrite pre-existing fork data during a legacy upgrade.
+const NEW_SYNC_COLUMNS = [
+  'owner_scope',
+  'remote_id',
+  'server_created_at',
+  'server_updated_at',
+];
+
+// Fork-owned columns keep their own identity, separate from the sync contract.
 const COMMON_ANNOTATION_COLUMNS = [
   'id',
   'owner_scope',
@@ -57,6 +64,40 @@ const COMMON_ANNOTATION_COLUMNS = [
 
 function quoteIdentifier(value: string): string {
   return `"${value.replaceAll('"', '""')}"`;
+}
+
+// Remove comments without changing quoted values/identifiers or fusing tokens.
+// Trimming a definition's trailing newline otherwise lets -- swallow the next
+// comma, column or CHECK when the rebuild joins definitions together.
+function stripSqlComments(sql: string): string {
+  let result = '';
+  let quote: string | null = null;
+  for (let i = 0; i < sql.length; i += 1) {
+    const char = sql[i];
+    if (quote) {
+      result += char;
+      if (char === quote) {
+        if (quote !== ']' && sql[i + 1] === quote) result += sql[++i];
+        else quote = null;
+      }
+    } else if (char === '-' && sql[i + 1] === '-') {
+      const end = sql.indexOf('\n', i + 2);
+      result += ' ';
+      if (end < 0) break;
+      i = end;
+    } else if (char === '/' && sql[i + 1] === '*') {
+      const end = sql.indexOf('*/', i + 2);
+      if (end < 0) throw new Error('Unterminated legacy schema comment');
+      result += ' ';
+      i = end + 1;
+    } else {
+      result += char;
+      if (char === '"' || char === "'" || char === '`' || char === '[') {
+        quote = char === '[' ? ']' : char;
+      }
+    }
+  }
+  return result;
 }
 
 // Split SQLite's CREATE TABLE column list without splitting nested expressions,
@@ -122,7 +163,7 @@ function extraColumnDefinitions(extra: PreservedSchema): string {
     ...extra.columns.map(column => column.definition),
     ...extra.constraints,
   ]
-    .map(definition => `, ${definition}`)
+    .map(definition => `,\n      ${definition}\n`)
     .join('');
 }
 
@@ -177,6 +218,24 @@ async function getTableColumns(
   if (rows.length === 0) {
     throw new Error('Cannot inspect legacy annotation columns safely');
   }
+  const options = (await db.getFirstAsync(
+    `SELECT wr, strict FROM pragma_table_list WHERE "schema" = 'main' AND name = ?`,
+    [tableName],
+  )) as {wr: number; strict: number} | null;
+  if (!options || options.wr || options.strict) {
+    throw new Error('Cannot safely rebuild legacy table options');
+  }
+  for (const column of rows) {
+    if (!NEW_SYNC_COLUMNS.includes(column.name.toLowerCase())) continue;
+    const populated = await db.getFirstAsync(
+      `SELECT 1 FROM ${quoteIdentifier(tableName)} WHERE ${quoteIdentifier(column.name)} IS NOT NULL LIMIT 1`,
+    );
+    if (populated !== null) {
+      throw new Error(
+        `Populated fork column collides with sync field: ${column.name}`,
+      );
+    }
+  }
   const known = new Set([...COMMON_ANNOTATION_COLUMNS, ...additionalColumns]);
   const extra = rows.filter(row => !known.has(row.name.toLowerCase()));
   // PRAGMA cannot reconstruct generated expressions or another primary key.
@@ -191,13 +250,42 @@ async function getTableColumns(
     [tableName],
   )) as {sql: string} | null;
   if (!schema?.sql) throw new Error('Missing legacy annotation schema');
-  const definitions = sqlDefinitions(schema.sql);
+  const definitions = sqlDefinitions(stripSqlComments(schema.sql));
   const byName = new Map<string, string>();
   const constraints: string[] = [];
   const names = new Set(rows.map(row => row.name.toLowerCase()));
   for (const definition of definitions) {
     const identifier = firstSqlIdentifier(definition);
     if (names.has(identifier.name)) {
+      // Standard columns are rebuilt with Bayaan's canonical definitions. Only
+      // accept the unmodified legacy shapes; silently discarding a fork's inline
+      // CHECK/UNIQUE/COLLATE/default here would break its invariants.
+      if (known.has(identifier.name)) {
+        const expected =
+          identifier.name === 'id'
+            ? /^(?:TEXT PRIMARY KEY|TEXT)$/i
+            : identifier.name === 'verse_key'
+              ? /^TEXT NOT NULL(?: UNIQUE)?$/i
+              : [
+                    'rewayah_id',
+                    'verse_keys',
+                    'owner_scope',
+                    'remote_id',
+                  ].includes(identifier.name)
+                ? /^TEXT$/i
+                : ['server_created_at', 'server_updated_at'].includes(
+                      identifier.name,
+                    )
+                  ? /^INTEGER$/i
+                  : ['content', 'color'].includes(identifier.name)
+                    ? /^TEXT NOT NULL$/i
+                    : /^INTEGER NOT NULL$/i;
+        if (!expected.test(identifier.rest.replace(/\s+/g, ' '))) {
+          throw new Error(
+            `Cannot safely rebuild modified standard column: ${identifier.name}`,
+          );
+        }
+      }
       byName.set(identifier.name, definition);
       continue;
     }
@@ -206,11 +294,18 @@ async function getTableColumns(
         ? firstSqlIdentifier(identifier.rest).rest
         : definition;
     if (/^(?:UNIQUE|PRIMARY\s+KEY)\s*\(/i.test(constraint)) {
-      const columns = sqlDefinitions(constraint).map(
-        part => firstSqlIdentifier(part).name,
-      );
-      // Replace only Bayaan's old global uniqueness with owner-scoped indexes.
-      if (columns.every(column => known.has(column))) continue;
+      const parts = sqlDefinitions(constraint).map(firstSqlIdentifier);
+      const columns = parts.map(part => part.name);
+      // Replace only the legacy single-column verse uniqueness and canonical
+      // id primary key. Keep unrelated fork invariants, even on standard columns.
+      if (/^PRIMARY\s+KEY/i.test(constraint)) {
+        if (columns.length !== 1 || columns[0] !== 'id' || parts[0].rest) {
+          throw new Error('Cannot safely rebuild legacy primary key');
+        }
+        continue;
+      }
+      if (columns.length === 1 && columns[0] === 'verse_key' && !parts[0].rest)
+        continue;
     } else if (!/^(?:CHECK\s*\(|FOREIGN\s+KEY\s*\()/i.test(constraint)) {
       throw new Error('Cannot safely rebuild legacy table constraint');
     }
@@ -225,7 +320,9 @@ async function getTableColumns(
     "SELECT name, sql FROM sqlite_master WHERE type = 'index' AND tbl_name = ? AND sql IS NOT NULL",
     [tableName],
   )) as {name: string; sql: string}[];
-  const extraNames = new Set(columns.map(column => column.name.toLowerCase()));
+  const indexMetadata = (await db.getAllAsync(
+    `PRAGMA index_list(${quoteIdentifier(tableName)})`,
+  )) as {name: string; unique: number; partial: number}[];
   const indexes: string[] = [];
   for (const index of indexRows) {
     const indexColumns = (await db.getAllAsync(
@@ -234,13 +331,17 @@ async function getTableColumns(
     if (indexColumns.some(column => column.name === null)) {
       throw new Error('Cannot safely rebuild legacy expression index');
     }
+    const metadata = indexMetadata.find(row => row.name === index.name);
+    if (!metadata) throw new Error('Missing legacy index metadata');
     if (
-      indexColumns.some(
-        column => column.name && extraNames.has(column.name.toLowerCase()),
-      )
-    ) {
-      indexes.push(index.sql);
-    }
+      metadata.unique === 1 &&
+      metadata.partial === 0 &&
+      indexColumns.length === 1 &&
+      indexColumns[0].name?.toLowerCase() === 'verse_key'
+    )
+      continue;
+    // Preserve fork indexes on known-only columns as well as mixed/extra ones.
+    indexes.push(index.sql);
   }
   return {names, extra: {columns, constraints, indexes}};
 }
@@ -476,6 +577,23 @@ async function rebuildHighlights(db: SQLiteLikeDatabase): Promise<void> {
 
 async function rebuildAnnotations(db: SQLiteLikeDatabase): Promise<void> {
   if (!db.getAllAsync) throw new Error('Missing migration schema inspection');
+  const dependencies = (await db.getAllAsync(
+    "SELECT type, tbl_name, sql FROM sqlite_master WHERE type IN ('trigger', 'view')",
+  )) as {type: string; tbl_name: string; sql: string | null}[];
+  for (const dependency of dependencies) {
+    if (
+      ['bookmarks', 'notes', 'highlights'].includes(
+        dependency.tbl_name.toLowerCase(),
+      ) ||
+      /\b(?:bookmarks|notes|highlights)\b/i.test(
+        stripSqlComments(dependency.sql ?? ''),
+      )
+    ) {
+      // Rename-first rewrites dependencies to the legacy table name. Fail before
+      // any rebuild rather than dropping triggers or stranding dependent views.
+      throw new Error(`Cannot safely rebuild annotation ${dependency.type}s`);
+    }
+  }
   const tables = (await db.getAllAsync(
     "SELECT name FROM sqlite_master WHERE type = 'table'",
   )) as TableRow[];

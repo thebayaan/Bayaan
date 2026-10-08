@@ -1,5 +1,4 @@
 const FORBIDDEN_PUBLIC_KEY_PATTERNS = [
-  /QF_CLIENT/i,
   /QF_AUTHORIZATION_CODE/i,
   /QF.*TOKEN/i,
   /CLIENT_SECRET/i,
@@ -27,8 +26,16 @@ function isForbiddenQfHost(url) {
   return hostname.includes('oauth') || hostname.startsWith('apis');
 }
 
-function isForbiddenPublicConfig(key, value) {
+function isForbiddenPublicConfig(key, value, qfSyncEnabled) {
   if (FORBIDDEN_PUBLIC_KEY_PATTERNS.some(pattern => pattern.test(key))) {
+    return true;
+  }
+
+  if (!qfSyncEnabled) {
+    return false;
+  }
+
+  if (/QF_CLIENT_ID/i.test(key)) {
     return true;
   }
 
@@ -37,10 +44,9 @@ function isForbiddenPublicConfig(key, value) {
 }
 
 function assertNoForbiddenPublicBayaanAuthEnv(env) {
-  // Match the runtime guard: this contract applies only to Bayaan QF sync.
-  if (env.EXPO_PUBLIC_BAYAAN_QF_SYNC_ENABLED?.trim().toLowerCase() !== 'true') {
-    return;
-  }
+  // Credentials are never public; only the BFF contract is sync-specific.
+  const qfSyncEnabled =
+    env.EXPO_PUBLIC_BAYAAN_QF_SYNC_ENABLED?.trim().toLowerCase() === 'true';
 
   const forbiddenKeys = Object.entries(env)
     .filter(([key, value]) => {
@@ -52,7 +58,7 @@ function assertNoForbiddenPublicBayaanAuthEnv(env) {
         return false;
       }
 
-      return isForbiddenPublicConfig(key, value ?? '');
+      return isForbiddenPublicConfig(key, value ?? '', qfSyncEnabled);
     })
     .map(([key]) => key);
 

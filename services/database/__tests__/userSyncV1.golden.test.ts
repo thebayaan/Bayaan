@@ -183,6 +183,17 @@ function loadServices(copyTag: string | null, shared?: MockModule): Services {
 
 describe.each(TAGS)('userSyncV1 fork columns on %s', tag => {
   it('keeps Qariah-style identities through initialize and reopen with no queued uploads', async () => {
+    const baseline = loadServices(tag);
+    let baselineSchema: SchemaRow[];
+    try {
+      await initAll(baseline);
+      baselineSchema = await schemaOf(
+        await baseline.mock.openDatabaseAsync(DB_FILE),
+      );
+    } finally {
+      await baseline.database.close();
+      await baseline.mock.resetDatabases();
+    }
     let s = loadServices(tag);
     try {
       const legacy = openAdapterDatabase(
@@ -215,6 +226,32 @@ describe.each(TAGS)('userSyncV1 fork columns on %s', tag => {
         expect(migrated[table].rows).toEqual(expected);
       }
       for (const table of SYNC_TABLES) expect(migrated[table].rows).toEqual([]);
+      const normalizeSchema = (rows: SchemaRow[], removeForkFields = false) =>
+        rows.map(row => ({
+          ...row,
+          sql:
+            row.sql === null
+              ? null
+              : (removeForkFields &&
+                row.type === 'table' &&
+                ANNOTATION_TABLES.includes(row.name)
+                  ? row.sql.replace(
+                      /,\s*qf_(?:note|post)_id TEXT(?=\s*[,)])/g,
+                      '',
+                    )
+                  : row.sql
+                )
+                  .replace(/\s+/g, ' ')
+                  .trim(),
+        }));
+      // Every Bayaan table definition and index must equal the ordinary golden
+      // upgrade; only the two requested fork columns may differ.
+      expect(
+        normalizeSchema(
+          await schemaOf(await s.mock.openDatabaseAsync(DB_FILE)),
+          true,
+        ),
+      ).toEqual(normalizeSchema(baselineSchema));
       await s.database.close();
       s = loadServices(null, s.mock);
       await initAll(s);

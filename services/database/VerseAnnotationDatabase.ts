@@ -33,9 +33,20 @@ export class VerseAnnotationDatabase {
           'Failed to initialize verse annotations database:',
           error,
         );
+        const db = this.db;
         this.db = null;
-        this.initPromise = null;
         this.ready = false;
+        if (db) {
+          try {
+            await db.closeAsync();
+          } catch (closeError) {
+            console.error(
+              'Failed to close verse annotations database after initialization failure:',
+              closeError,
+            );
+          }
+        }
+        // Keep the rejected promise: recovery requires a new database instance.
         throw error;
       }
     })();
@@ -56,6 +67,15 @@ export class VerseAnnotationDatabase {
   }
 
   async close(): Promise<void> {
+    if (this.initPromise && !this.ready) {
+      try {
+        await this.initPromise;
+      } catch {
+        // Initialization already attempted cleanup; do not clear its failure.
+        return;
+      }
+    }
+
     if (this.db) {
       await this.db.closeAsync();
       this.db = null;

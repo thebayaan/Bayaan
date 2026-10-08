@@ -118,6 +118,8 @@ async function openTestDb(): Promise<TestDb> {
 async function createLegacyAnnotationTables(
   db: TestDb,
   notesSchemaExtension = '',
+  notesTableOptions = '',
+  contentDefinition = 'TEXT NOT NULL',
 ): Promise<void> {
   await db.execAsync(`
     CREATE TABLE bookmarks (
@@ -135,12 +137,12 @@ async function createLegacyAnnotationTables(
       verse_key TEXT NOT NULL,
       surah_number INTEGER NOT NULL,
       ayah_number INTEGER NOT NULL,
-      content TEXT NOT NULL,
+      content ${contentDefinition},
       verse_keys TEXT,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL,
       rewayah_id TEXT${notesSchemaExtension}
-    );
+    )${notesTableOptions};
     CREATE INDEX idx_notes_surah ON notes(surah_number);
 
     CREATE TABLE highlights (
@@ -304,6 +306,31 @@ async function tableNames(db: TestDb): Promise<string[]> {
 async function columnNames(db: TestDb, table: string): Promise<string[]> {
   const rows = await db.getAllAsync(`PRAGMA table_info(${table})`);
   return rows.map(row => row.name as string);
+}
+
+async function expectMigrationRollback(
+  db: TestDb,
+  message: string,
+): Promise<void> {
+  const schema = await db.getAllAsync(
+    'SELECT type, name, tbl_name, sql FROM sqlite_master ORDER BY type, name',
+  );
+  const rows = await Promise.all(
+    ['bookmarks', 'notes', 'highlights'].map(table =>
+      db.getAllAsync(`SELECT * FROM ${table} ORDER BY id`),
+    ),
+  );
+  await expect(migrateUserSyncV1(db)).rejects.toThrow(message);
+  await expect(
+    db.getAllAsync(
+      'SELECT type, name, tbl_name, sql FROM sqlite_master ORDER BY type, name',
+    ),
+  ).resolves.toEqual(schema);
+  for (const [index, table] of ['bookmarks', 'notes', 'highlights'].entries()) {
+    await expect(
+      db.getAllAsync(`SELECT * FROM ${table} ORDER BY id`),
+    ).resolves.toEqual(rows[index]);
+  }
 }
 
 describe('userSyncV1 annotation migration', () => {
@@ -672,6 +699,243 @@ describe('userSyncV1 annotation migration', () => {
       }
     },
   );
+
+  it.each(['check', 'column'])(
+    'does not let SQL line comments swallow a following %s',
+    async kind => {
+      const db = await openTestDb();
+      try {
+        await createLegacyAnnotationTables(
+          db,
+          `,
+        fork_a TEXT DEFAULT 'literal--/*kept*/' -- trailing comment with , )
+        , ${kind === 'check' ? "CHECK(fork_a <> '')" : "fork_b TEXT DEFAULT 'second--value'"}
+        /* a block comment with , ) */
+      `,
+        );
+        await migrateUserSyncV1(db);
+        await expect(
+          db.getFirstAsync('SELECT fork_a FROM notes LIMIT 1'),
+        ).resolves.toEqual({fork_a: 'literal--/*kept*/'});
+        if (kind === 'check') {
+          await expect(
+            db.execAsync("UPDATE notes SET fork_a = '';"),
+          ).rejects.toThrow();
+        } else {
+          await expect(
+            db.getFirstAsync('SELECT fork_b FROM notes LIMIT 1'),
+          ).resolves.toEqual({fork_b: 'second--value'});
+        }
+      } finally {
+        await db.closeAsync();
+      }
+    },
+  );
+
+  it.each(['STRICT', 'WITHOUT ROWID'])(
+    'rejects %s table options without changing schema or data',
+    async options => {
+      const db = await openTestDb();
+      try {
+        await createLegacyAnnotationTables(db, '', ` ${options}`);
+        await expectMigrationRollback(db, 'legacy table options');
+      } finally {
+        await db.closeAsync();
+      }
+    },
+  );
+
+  it.each([
+    ['remote_id', 'TEXT', 'qf-123'],
+    ['REMOTE_ID', 'TEXT', ''],
+    ['owner_scope', 'TEXT', 'qariah:reader'],
+    ['server_created_at', 'INTEGER', 0],
+    ['server_updated_at', 'INTEGER', 42],
+  ])(
+    'rejects populated fork field %s before it can be overwritten',
+    async (name, type, value) => {
+      const db = await openTestDb();
+      try {
+        await createLegacyAnnotationTables(db);
+        await db.execAsync(`ALTER TABLE notes ADD COLUMN "${name}" ${type};`);
+        await db.runAsync(`UPDATE notes SET "${name}" = ? WHERE id = ?`, [
+          value,
+          'note-null-rewayah',
+        ]);
+        await expectMigrationRollback(db, 'Populated fork column collides');
+      } finally {
+        await db.closeAsync();
+      }
+    },
+  );
+
+  it('allows existing sync-name fields when every legacy value is NULL', async () => {
+    const db = await openTestDb();
+    try {
+      await createLegacyAnnotationTables(
+        db,
+        ', remote_id TEXT, owner_scope TEXT, server_created_at INTEGER, server_updated_at INTEGER',
+      );
+      await migrateUserSyncV1(db);
+      await expect(
+        db.getAllAsync(
+          'SELECT owner_scope, remote_id, server_created_at, server_updated_at FROM notes',
+        ),
+      ).resolves.toEqual(
+        Array.from({length: 3}, () => ({
+          owner_scope: 'guest',
+          remote_id: null,
+          server_created_at: null,
+          server_updated_at: null,
+        })),
+      );
+    } finally {
+      await db.closeAsync();
+    }
+  });
+
+  it.each([
+    [
+      'trigger',
+      `CREATE TRIGGER fork_note_changes AFTER INSERT ON notes BEGIN UPDATE notes SET updated_at = 99 WHERE id = new.id; END;`,
+    ],
+    ['view', 'CREATE VIEW fork_notes_view AS SELECT id, content FROM notes;'],
+    [
+      'trigger',
+      `CREATE TABLE fork_log (id TEXT); CREATE TRIGGER fork_log_changes AFTER INSERT ON fork_log BEGIN DELETE FROM notes WHERE id = new.id; END;`,
+    ],
+    [
+      'view',
+      'CREATE VIEW fork_inner AS SELECT id FROM notes; CREATE VIEW fork_outer AS SELECT id FROM fork_inner;',
+    ],
+  ])(
+    'rejects dependent annotation %s without dropping user objects',
+    async (kind, sql) => {
+      const db = await openTestDb();
+      try {
+        await createLegacyAnnotationTables(db);
+        await db.execAsync(sql);
+        await expectMigrationRollback(db, `annotation ${kind}s`);
+      } finally {
+        await db.closeAsync();
+      }
+    },
+  );
+
+  it('leaves unrelated fork triggers and views intact', async () => {
+    const db = await openTestDb();
+    try {
+      await createLegacyAnnotationTables(db);
+      await db.execAsync(`CREATE TABLE fork_log (id TEXT); CREATE VIEW fork_log_view AS SELECT id FROM fork_log;
+        CREATE TRIGGER fork_log_changes AFTER INSERT ON fork_log BEGIN DELETE FROM fork_log WHERE id = 'old'; END;`);
+      const before = await db.getAllAsync(
+        "SELECT name, sql FROM sqlite_master WHERE type IN ('trigger', 'view') ORDER BY name",
+      );
+      await migrateUserSyncV1(db);
+      await expect(
+        db.getAllAsync(
+          "SELECT name, sql FROM sqlite_master WHERE type IN ('trigger', 'view') ORDER BY name",
+        ),
+      ).resolves.toEqual(before);
+    } finally {
+      await db.closeAsync();
+    }
+  });
+
+  it('preserves known-only and mixed fork indexes, including ordering, collation and predicates', async () => {
+    const db = await openTestDb();
+    try {
+      await createLegacyAnnotationTables(db, ', qf_note_id TEXT');
+      await db.execAsync(`CREATE UNIQUE INDEX fork_content ON notes(content);
+        CREATE INDEX fork_mixed ON notes(verse_key COLLATE NOCASE, qf_note_id DESC) WHERE qf_note_id IS NOT NULL;`);
+      const before = await db.getAllAsync(
+        "SELECT name, sql FROM sqlite_master WHERE type = 'index' AND name LIKE 'fork_%' ORDER BY name",
+      );
+      const mixed = await db.getAllAsync('PRAGMA index_xinfo(fork_mixed)');
+      await migrateUserSyncV1(db);
+      await expect(
+        db.getAllAsync(
+          "SELECT name, sql FROM sqlite_master WHERE type = 'index' AND name LIKE 'fork_%' ORDER BY name",
+        ),
+      ).resolves.toEqual(before);
+      // Extra fields move after Bayaan's newly added columns; numeric column ids
+      // change, but names, ordering, collation and key membership must not.
+      const withoutCid = (rows: Record<string, unknown>[]) =>
+        rows.map(({cid: _cid, ...rest}) => rest);
+      expect(
+        withoutCid(await db.getAllAsync('PRAGMA index_xinfo(fork_mixed)')),
+      ).toEqual(withoutCid(mixed));
+      await expect(
+        db.execAsync(
+          "UPDATE notes SET content = 'first note' WHERE id = 'note-renamed-rewayah';",
+        ),
+      ).rejects.toThrow();
+    } finally {
+      await db.closeAsync();
+    }
+  });
+
+  it('preserves table-level fork constraints on standard columns', async () => {
+    const db = await openTestDb();
+    try {
+      await createLegacyAnnotationTables(
+        db,
+        ', CONSTRAINT fork_unique_content UNIQUE(content), CHECK(length(content) > 0)',
+      );
+      await migrateUserSyncV1(db);
+      await expect(
+        db.execAsync(
+          "UPDATE notes SET content = 'first note' WHERE id = 'note-renamed-rewayah';",
+        ),
+      ).rejects.toThrow();
+      await expect(
+        db.execAsync("UPDATE notes SET content = '';"),
+      ).rejects.toThrow();
+    } finally {
+      await db.closeAsync();
+    }
+  });
+
+  it.each([
+    'TEXT NOT NULL UNIQUE',
+    'TEXT NOT NULL COLLATE NOCASE',
+    'TEXT NOT NULL CHECK(length(content) > 0)',
+  ])(
+    'rejects modified standard inline definitions instead of dropping %s',
+    async definition => {
+      const db = await openTestDb();
+      try {
+        await createLegacyAnnotationTables(db, '', '', definition);
+        await expectMigrationRollback(db, 'modified standard column: content');
+      } finally {
+        await db.closeAsync();
+      }
+    },
+  );
+
+  it('removes only a legacy explicit global verse index, keeping other constraints', async () => {
+    const db = await openTestDb();
+    try {
+      await createLegacyAnnotationTables(db);
+      await db.execAsync(
+        'CREATE UNIQUE INDEX legacy_verse ON bookmarks(verse_key);',
+      );
+      await migrateUserSyncV1(db);
+      await db.execAsync(`INSERT INTO bookmarks (id, owner_scope, verse_key, surah_number, ayah_number, created_at)
+        VALUES ('account-verse', 'qf:reader', '2:255', 2, 255, 10);`);
+      await expect(
+        db.getFirstAsync(
+          "SELECT name FROM sqlite_master WHERE name = 'legacy_verse'",
+        ),
+      ).resolves.toBeNull();
+      await expect(
+        db.execAsync(`INSERT INTO bookmarks (id, owner_scope, verse_key, surah_number, ayah_number, created_at)
+        VALUES ('duplicate', 'guest', '2:255', 2, 255, 11);`),
+      ).rejects.toThrow();
+    } finally {
+      await db.closeAsync();
+    }
+  });
 
   it('rejects incoming annotation foreign keys before a rename can cascade fork data', async () => {
     const db = await openTestDb();
