@@ -50,7 +50,11 @@ import {useMushafNavigationStore} from '@/store/mushafNavigationStore';
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
 import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
-import {mushafVerseMapService} from '@/services/mushaf/MushafVerseMapService';
+import {
+  mushafVerseMapService,
+  verseNavigationTarget, // @ai
+} from '@/services/mushaf/MushafVerseMapService';
+import type {RewayahId} from '@/services/rewayah/RewayahIdentity'; // @ai
 import {useMushafAutoPageTurn} from '@/hooks/useMushafAutoPageTurn';
 import {MushafPlayerBar} from './MushafPlayerBar';
 import SkiaPage from './skia/SkiaPage';
@@ -1001,15 +1005,49 @@ export default function MushafViewer({
     return () => clearTimeout(timer);
   }, [navRequestId, navigateToPage]);
 
+  // @ai-start
+  // A selection of rewayah verse units is numbered in that rewayah: drop it
+  // when the shown text switches to another rewayah (verse-units contract
+  // 4.7), so no page (QCF included, which reads the keys as Hafs) paints it
+  // there. A Hafs-keyed selection (route flash, QCF) means the same verses
+  // in every rewayah and is left alone, as before.
+  useEffect(() => {
+    const unsubscribe = digitalKhattDataService.onRewayahChange(next => {
+      useMushafVerseSelectionStore.getState().keepSelectionFor(next);
+    });
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+  // @ai-end
+
   const navigateToVerse = useCallback(
-    (verseKey: string, page: number) => {
+    // @ai-start
+    // `verseKey` is in the numbering of `rewayah`. Hafs by default: today's
+    // callers (search, bookmark chips) pass Hafs keys, and the page paints
+    // the shown rewayah's units holding that Hafs verse. A key in the shown
+    // rewayah's own numbering selects exactly that verse unit (and scrolls
+    // to its anchor's Hafs verse); a key of any other numbering selects
+    // nothing rather than the wrong verse.
+    (verseKey: string, page: number, rewayah: RewayahId = 'hafs') => {
+      const target = verseNavigationTarget(verseKey, rewayah);
       if (isVertical) {
         setIsSearchMode(false);
-        continuousListRef.current?.scrollToVerse(verseKey);
+        // The vertical views scroll by Hafs verse (the unit's anchor verse).
+        if (target.scrollHafsKey) {
+          continuousListRef.current?.scrollToVerse(target.scrollHafsKey);
+        } else {
+          continuousListRef.current?.scrollToPage(page);
+        }
       } else {
         navigateToPage(page);
       }
-      useMushafVerseSelectionStore.getState().selectVerse(verseKey, page);
+      const selection = useMushafVerseSelectionStore.getState();
+      if (target.hafsKey) selection.selectVerse(target.hafsKey, page);
+      else if (target.unit) {
+        selection.selectUnits(target.rewayah, [target.unit], page);
+      }
+      // @ai-end
       const timer = setTimeout(() => {
         useMushafVerseSelectionStore.getState().clearSelection();
       }, 3000);
