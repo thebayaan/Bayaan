@@ -3,6 +3,12 @@ jest.mock(
   () => require('@/test-utils/mockExpoSqlite').expoSqliteModule,
 );
 jest.mock('burnt', () => ({toast: jest.fn()}));
+// tafseerStore now imports contentSync (Task 8); keep this suite on the installer alone.
+jest.mock('@/services/content/contentSync', () => ({
+  installContent: jest.fn(),
+  removeContent: jest.fn(),
+  isEngineManagingTafsir: () => false,
+}));
 
 import {resetDatabases} from '@/test-utils/mockExpoSqlite';
 import type {ContentEnvelope} from '@/types/content';

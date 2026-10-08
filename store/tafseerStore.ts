@@ -5,6 +5,11 @@ import type {DownloadedTafseerMeta} from '@/types/tafseer';
 import {tafseerApiService} from '@/services/tafseer/TafseerApiService';
 import {tafseerDbService} from '@/services/tafseer/TafseerDbService';
 import {AVAILABLE_TAFASEER} from '@/data/availableTafaseer';
+import {
+  installContent,
+  isEngineManagingTafsir,
+  removeContent,
+} from '@/services/content/contentSync';
 
 interface TafseerStoreState {
   // Metadata for downloaded tafaseer (synced from SQLite)
@@ -37,25 +42,32 @@ export const useTafseerStore = create<TafseerStoreState>()(
         set({downloadingId: editionId, downloadProgress: 0});
 
         try {
-          // Pass the static edition entry when available so the provider
-          // can skip its internal editions-list lookup (RFC-009 v2 review).
-          const staticEdition = AVAILABLE_TAFASEER.find(
-            e => e.identifier === editionId,
-          );
-          const {edition, verses} = await tafseerApiService.fetchFullTafseer(
-            editionId,
-            progress => set({downloadProgress: progress}),
-            staticEdition,
-          );
+          let installedId = editionId;
+          if (isEngineManagingTafsir()) {
+            await installContent(`qf:tafsirs:${editionId}`);
+            set({downloadProgress: 1});
+          } else {
+            // Pass the static edition entry when available so the provider
+            // can skip its internal editions-list lookup (RFC-009 v2 review).
+            const staticEdition = AVAILABLE_TAFASEER.find(
+              e => e.identifier === editionId,
+            );
+            const {edition, verses} = await tafseerApiService.fetchFullTafseer(
+              editionId,
+              progress => set({downloadProgress: progress}),
+              staticEdition,
+            );
 
-          await tafseerDbService.saveTafseer(
-            edition.identifier,
-            edition.name,
-            edition.englishName,
-            edition.language,
-            edition.direction,
-            verses,
-          );
+            installedId = edition.identifier;
+            await tafseerDbService.saveTafseer(
+              edition.identifier,
+              edition.name,
+              edition.englishName,
+              edition.language,
+              edition.direction,
+              verses,
+            );
+          }
 
           // Refresh downloaded metadata
           const meta = await tafseerDbService.getDownloadedTafaseer();
@@ -64,7 +76,7 @@ export const useTafseerStore = create<TafseerStoreState>()(
           // Auto-select if no tafseer is currently selected
           const {selectedTafseerId} = get();
           if (!selectedTafseerId) {
-            set({selectedTafseerId: edition.identifier});
+            set({selectedTafseerId: installedId});
           }
         } catch (error) {
           console.warn('[TafseerStore] Download failed:', editionId, error);
@@ -75,7 +87,11 @@ export const useTafseerStore = create<TafseerStoreState>()(
 
       deleteTafseer: async (editionId: string) => {
         try {
-          await tafseerDbService.deleteTafseer(editionId);
+          if (isEngineManagingTafsir()) {
+            await removeContent(`qf:tafsirs:${editionId}`);
+          } else {
+            await tafseerDbService.deleteTafseer(editionId);
+          }
           const meta = await tafseerDbService.getDownloadedTafaseer();
           set({downloadedMeta: meta});
 

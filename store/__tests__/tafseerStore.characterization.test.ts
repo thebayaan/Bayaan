@@ -5,6 +5,13 @@ jest.mock(
   () => require('@/test-utils/mockExpoSqlite').expoSqliteModule,
 );
 
+// Fork behavior is pinned here: the content engine is not managing tafsir.
+jest.mock('@/services/content/contentSync', () => ({
+  installContent: jest.fn(),
+  removeContent: jest.fn(),
+  isEngineManagingTafsir: () => false,
+}));
+
 const mockFetchFullTafseer = jest.fn();
 jest.mock('@/services/tafseer/TafseerApiService', () => ({
   tafseerApiService: {
