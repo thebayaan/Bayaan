@@ -1,8 +1,9 @@
 # Rewayah data pipeline
 
-Builds the seven non-Hafs DigitalKhatt words DBs, highlight maps and verse
-maps in `data/mushaf/digitalkhatt/` from the official KFGQPC v2.x texts, and
-proves them correct. Quran text is zero-tolerance: every word and every verse
+Builds the seven non-Hafs DigitalKhatt words DBs, highlight maps, verse maps
+and basmala files in `data/mushaf/digitalkhatt/` from the official KFGQPC
+v2.x texts (the basmala lines from the signed KFGQPC Word files), and proves
+them correct. Quran text is zero-tolerance: every word and every verse
 number must match the official source exactly, and the gates below fail the
 build or CI on any difference.
 
@@ -22,10 +23,11 @@ build or CI on any difference.
 |---|---|
 | `sources/<id>.json` | official KFGQPC JSON, byte for byte (see `sources/SOURCES.md`) |
 | `sources/errata.json` | corrections backed by another official KFGQPC artifact (one: Qunbul 67:17) |
-| `sources/sources.lock.json` | SHA-256 of every source and of `errata.json`, plus provenance |
-| `vendor_sources.py` | extracts and verifies the official zips; `--check` verifies the lock (CI) |
-| `normalize.py` | the definition of "the normalized official source": parsing, tokenization, KFGQPC → DK conventions, per-rewayah render policy (`--policy` prints it) |
-| `build_sibling_rewayah.py` | the builder (alignment, slot policies, markers, highlights, verse maps) |
+| `sources/basmala.json` | the basmala line of every surah, verbatim from each riwayah's signed KFGQPC Word file (see `sources/SOURCES.md`) |
+| `sources/sources.lock.json` | SHA-256 of every source, of `errata.json` and of `basmala.json`, plus provenance (zips, Word files) |
+| `vendor_sources.py` | extracts and verifies the official zips; `--basmala` reads the Word files; `--check` verifies the lock (CI) |
+| `normalize.py` | the definition of "the normalized official source": parsing, tokenization, KFGQPC → DK conventions, per-rewayah render policy (`--policy` prints it), the basmala lines |
+| `build_sibling_rewayah.py` | the builder (alignment, slot policies, markers, highlights, verse maps, basmala files) |
 | `highlights.py` | Release 1 highlight classification (diff JSON format 2) |
 | `validate_rewayah_db.py` | independent exact-match validator (+ `--glyphs`, `--marks`) |
 | `render_review.json` | the visually reviewed clusters the glyph gate accepts (see [Render review](#render-review)) |
@@ -45,7 +47,8 @@ python3 scripts/rewayah/validate.py
 The builder writes into a temporary directory (under `scripts/rewayah/.build/`,
 git-ignored), runs the validator on the result (and the sibling gate for every
 narrator pair it touches), and only then replaces `dk_words_<id>.db`,
-`<id>-diff.json` and `<id>-versemap.json` (atomic `os.replace`). A failure
+`<id>-diff.json`, `<id>-versemap.json` and `<id>-basmala.json` (atomic
+`os.replace`). A failure
 exits non-zero and leaves the committed files untouched. The output is
 deterministic: two runs give byte-identical files (`--out-dir DIR` builds
 elsewhere). A words DB whose schema and rows equal the existing file is not
@@ -58,7 +61,10 @@ apps re-import the new DBs.
 To update a source: put the new official zip in a directory, add its entry
 (URL, capture, SHA-256, published MD5 / SHA-1, member, SHA-256) to
 `PACKAGES` in `vendor_sources.py`, run `vendor_sources.py --zip-dir DIR`,
-rebuild, validate, and record the change in `sources/SOURCES.md`.
+rebuild, validate, and record the change in `sources/SOURCES.md`. The basmala
+lines come from the signed Word files in the zips of the `DOCX` table:
+`python3 -I scripts/rewayah/vendor_sources.py --basmala DIR` (the Word files
+are read as data, never opened by an application).
 
 ## Data model (Release 1)
 
@@ -73,6 +79,8 @@ changes:
 - a content slot may END with an inline verse marker `۝N` (a rewayah verse end
   with no Hafs marker slot);
 - a Hafs marker slot holds the rewayah's `۝N` or `''`;
+- 1:1:1-4 hold the rewayah's own basmala (P10, or verse 1 in the Kufi /
+  Makki counts), never the Hafs spelling;
 - `۞` is attached to the following word.
 
 ## Algorithm
@@ -98,17 +106,19 @@ changes:
      slot is one word, the skeletons match and the first ends in a
      non-joining letter (no case with the v2.x texts).
    - P12: 37:130 keeps both words in the Hafs slot `إِلْ يَاسِينَ`.
-   - P10: a source without a basmala verse (Madani and Basri counts) keeps
-     the exact Hafs basmala words in 1:1:1-4, the 1:1 marker slot is `''` and
-     numbering starts at al-hamdu.
+   - P10: a source without a basmala verse (Madani and Basri counts) gets
+     the official basmala of its signed Word file (`sources/basmala.json`,
+     converted like every word) in 1:1:1-4, unnumbered: the 1:1 marker slot
+     is `''` and numbering starts at al-hamdu. No Hafs word is kept.
 5. Markers: a Hafs marker slot gets `۝v` if the last token consumed so far
    ends rewayah verse v, otherwise `''` (P7). A rewayah verse end with no Hafs
    slot is written inline after its last word (P6), so every surah shows 1..N.
-6. Highlights and the verse map are derived from the same assignment. The
-   classifier gets each slot's next word in Hafs and in the rewayah (verse
-   and surah ends crossed), and Warsh / al-Susi get the whole-word tint that
-   Qalun / al-Duri give to the same stored words, so their sibling is aligned
-   too.
+6. Highlights, the verse map and the basmala file are derived from the same
+   assignment. The classifier gets each slot's next word in Hafs and in the
+   rewayah (verse and surah ends crossed; at a surah end also the first word
+   of the next surah's official basmala line), and Warsh / al-Susi get the
+   whole-word tint that Qalun / al-Duri give to the same stored words, so
+   their sibling is aligned too.
 
 Per rewayah: blank Hafs marker slots 81 (Nafi'), 83 (Ibn Kathir), 76 (Abu
 'Amr), 0 (Shu'bah); inline verse numbers 59 / 67 / 57 / 0. Run the builder
@@ -156,9 +166,11 @@ Hafs verse and word position:
   its across-word rule in context: Warsh's naql (the next word's hamza moves
   its vowel onto this word's final consonant) and al-Susi's idgham kabir (the
   final letter merges into the next word: a doubled first letter, a meem
-  before ba, a ba before the next surah's basmala). Two narrators of one
-  reader that store the same words get the same decision. See the docstring
-  of `highlights.py`.
+  before ba, a ba before the next surah's basmala when the signed Word file
+  doubles that basmala's ba, i.e. before 14 and 15). Two narrators of one
+  reader that store the same words get the same decision. The Fatiha's
+  basmala words are never highlighted: their spelling differs from Hafs,
+  their reading does not. See the docstring of `highlights.py`.
 - `silah`: char indices (UTF-16 = code points here) of the silah marks
   U+06E5 / U+06E6 and their damma / kasra that this rewayah pronounces where
   Hafs does not.
@@ -171,6 +183,36 @@ Hafs verse and word position:
 rewayah verse's words; `h2r` is the inverse (an empty list for a Hafs verse
 with no rewayah word, e.g. 1:1 under P10). Entries equal to `[same key]` are
 omitted; Shu'bah's maps are empty.
+
+## Basmala (`<id>-basmala.json`, format 1)
+
+Contract C6, the basmala line that opens each surah (the words DB only holds
+al-Fatiha's):
+
+```json
+{"__format": 1, "bySurah": {"<surah>": {"dk": "...", "official": "..."}},
+ "dk": "...", "official": "...", "rewayah": "<app RewayahId>",
+ "source": {"file": "<Word file>", "sha256": "<its SHA-256>"}}
+```
+
+- `official`: al-Fatiha's basmala in the rewayah's signed KFGQPC Word file,
+  verbatim (`sources/basmala.json`); it opens every surah not listed in
+  `bySurah` (at-Tawbah has none);
+- `dk`: the same words converted for the DigitalKhatt font exactly like the
+  words of the DB (`normalize.basmala_dk_tokens`: conventions and render
+  policy);
+- `bySurah`: the surahs whose basmala line the Word file writes otherwise,
+  with both texts: Warsh / Qalun 75, 83, 90, 104 (a Habti waqf sign at the
+  end, dropped in `dk`), 95 and 97 in all but Warsh (doubled ba after the
+  ba ending surahs 94 and 96), al-Susi 14 and 15 (doubled ba of the idgham
+  kabir); see `sources/SOURCES.md`;
+- `rewayah`: the app `RewayahId`; `source`: the Word file and its SHA-256.
+
+Written with sorted keys, a 2-space indent and a final newline
+(`json.dumps(..., ensure_ascii=False, sort_keys=True, indent=2)`); the
+validator re-derives the whole file and compares bytes. In the four Madani /
+Basri rewayat, 1:1:1-4 of the words DB hold the `dk` words (P10); in the
+other three, their verse 1, the same text.
 
 ## Gates (`validate_rewayah_db.py`)
 
@@ -187,6 +229,13 @@ omitted; Shu'bah's maps are empty.
   slot fails even if the reading order is intact;
 - diff JSON integrity (an entry's words, without an inline marker, must differ
   from Hafs); verse map re-derived from the DB;
+- basmala: `<id>-basmala.json` equals the document re-derived from
+  `sources/basmala.json` (locked) and the render policy, byte for byte; its
+  DK words are in the DK cmap and keep the official letters; al-Fatiha's
+  basmala is numbered in the Word file exactly when the JSON source counts it
+  as verse 1 (with the same words); 1:1:1-4 hold its DK words, carry no
+  highlight, and the Hafs basmala occurs nowhere in a DB whose own basmala is
+  spelled otherwise (Warsh, Qalun, al-Duri, al-Susi);
 - siblings (when both rewayat of a pair are validated: Warsh / Qalun, al-Duri /
   al-Susi, al-Bazzi / Qunbul): a slot holding the same words in both DBs gets
   the same whole-word decision, unless listed in `SIBLING_EXCEPTIONS` (empty);
@@ -194,8 +243,8 @@ omitted; Shu'bah's maps are empty.
   cluster absent from the DK Hafs DB is in `render_review.json`; a mark without
   an anchor or turned into a spacing glyph is accepted only for a reviewed
   cluster and context; with all 7 rewayat, an unused review entry fails.
-  The DK fonts have no dotted-circle glyph, so broken clusters are checked on
-  the text (slot gate).
+  The DK words of `<id>-basmala.json` are shaped too. The DK fonts have no
+  dotted-circle glyph, so broken clusters are checked on the text (slot gate).
 
 CI runs all of them (`.github/workflows/quran-data.yml`).
 

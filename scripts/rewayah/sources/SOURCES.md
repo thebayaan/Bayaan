@@ -2,10 +2,12 @@
 
 Every non-Hafs words DB is built from the official text published by the
 King Fahd Glorious Qur'an Printing Complex (KFGQPC), developer edition v2.x.
-The JSON files in this folder are the official JSON members of the KFGQPC
-packages, **byte for byte**. Do not edit them: `vendor_sources.py` writes
-them, `sources.lock.json` pins their SHA-256, and the builder, the validator
-and CI refuse to run on anything else.
+The `<id>.json` files in this folder are the official JSON members of the
+KFGQPC packages, **byte for byte**; `basmala.json` holds the basmala line of
+every surah, verbatim from the signed KFGQPC Word files (see
+[Basmala lines](#basmala-lines-basmalajson)). Do not edit them:
+`vendor_sources.py` writes them, `sources.lock.json` pins their SHA-256, and
+the builder, the validator and CI refuse to run on anything else.
 
 Retrieved 2026-10-06. Every `*.qurancomplex.gov.sa` host timed out from the
 research network that day, so each package was fetched from its Internet
@@ -56,6 +58,84 @@ The member path inside each zip is listed in `sources.lock.json`.
   that `normalize.CONVENTION_MAP` turns the KFGQPC encoding into the
   DigitalKhatt one (77,388 of 77,429 words identical; the other words are
   in 22 listed verses with DK-only encodings).
+
+## Basmala lines (`basmala.json`)
+
+The JSON texts have no basmala line (Madani / Basri counts: Warsh, Qalun,
+al-Duri, al-Susi) or only al-Fatiha's, as verse 1 (Kufi / Makki counts:
+Shu'bah, al-Bazzi, Qunbul). The basmala that opens every other surah is
+written only in the KFGQPC-signed Word (.docx) typesetting of each riwayah.
+Following the rule for an official artifact that lacks something (use the
+signed Word file and document it), `basmala.json` copies the basmala
+paragraph of every surah but at-Tawbah from that file, verbatim:
+`surah -> [index of the w:p element in word/document.xml, its text]`, plus
+`official`, al-Fatiha's basmala, which is the default line.
+`sources.lock.json` pins its SHA-256 and the provenance of each Word file
+(full-length hashes there).
+
+| rewayah | Word file | SHA-256 | from |
+|---|---|---|---|
+| Warsh | `uthmanic_warsh_v21.docx` | `7302c27a…88ec` | `UthmanicWarsh_v2-1.zip` (the package of `warsh.json`) |
+| Qalun | `uthmanic_qaloun_v21.docx` | `418a0f6e…d153` | `UthmanicQaloun_v2-1.zip` (the package of `qaloon.json`) |
+| al-Duri | `uthmanic_douri_v20.docx` | `8385661b…916b` | `UthmanicDouri_v2-0.zip` (the package of `doori.json`) |
+| al-Susi | `uthmanic_sousi_v20.docx` | `149e30d3…d126` | `UthmanicSousi_v2-0.zip` (the package of `soosi.json`) |
+| Shu'bah | `uthmanic_shuba_v20.docx` | `76e6b8a3…0e23` | `UthmanicShuba_v2-0.zip` (the package of `shouba.json`) |
+| al-Bazzi | `UthmanicBazzi V20.docx` | `63b62374…4080` | fonts-site `UthmanicBazzi_V20.zip` (SHA-256 `b85cd72f…eaf66`, capture 20250424053606) |
+| Qunbul | `UthmanicQunbul V20.docx` | `9c737e7f…2a23` | fonts-site `UthmanicQunbul_V20.zip` (SHA-256 `d33a35f7…81d62`, capture 20250424120222), the file behind the 67:17 erratum |
+
+`python3 -I scripts/rewayah/vendor_sources.py --basmala DIR` regenerates it.
+It checks each zip (SHA-256, and for the developer packages KFGQPC's
+published MD5 / SHA-1) and each Word file (SHA-256), reads
+`word/document.xml` as data (zipfile + ElementTree: nothing in the file is
+executed), takes the paragraphs whose first word is the basmala's (113 per
+file, each made only of plain text runs), gives the k-th to the k-th surah
+(at-Tawbah has none) and proves it: the paragraph after each one starts with
+that surah's first word in the official JSON. Surah titles are not used:
+Qalun's Word file has no title paragraph for al-Baqarah.
+
+What the Word files write:
+
+| rewayah | default line (al-Fatiha and most surahs) | other lines |
+|---|---|---|
+| Warsh | `بِسْمِ اِ۬للَّهِ اِ۬لرَّحْمَٰنِ اِ۬لرَّحِيمِ` | 75, 83, 90, 104: `بِسْمِ اِ۬للَّهِ اِ۬لرَّحْمَٰنِ اِ۬لرَّحِيمِۖ` |
+| Qalun | as Warsh | 75, 83, 90, 104: as Warsh; 95, 97: `بِّسْمِ اِ۬للَّهِ اِ۬لرَّحْمَٰنِ اِ۬لرَّحِيمِ` |
+| al-Duri | `بِسۡمِ اِ۬للَّهِ اِ۬لرَّحۡمَٰنِ اِ۬لرَّحِيمِ` | 95, 97: `بِّسۡمِ اِ۬للَّهِ اِ۬لرَّحۡمَٰنِ اِ۬لرَّحِيمِ` |
+| al-Susi | as al-Duri | 14, 15, 95, 97: `بِّسۡمِ اِ۬للَّهِ اِ۬لرَّحۡمَٰنِ اِ۬لرَّحِيمِ` |
+| Shu'bah, al-Bazzi, Qunbul | `بِسۡمِ ٱللَّهِ ٱلرَّحۡمَٰنِ ٱلرَّحِيمِ` | 95, 97: `بِّسۡمِ ٱللَّهِ ٱلرَّحۡمَٰنِ ٱلرَّحِيمِ` |
+
+- **al-Fatiha.** The default line in all seven: unnumbered in the four
+  Madani / Basri texts (the builder puts it, unnumbered, in the Fatiha's
+  first word slots, P10) and numbered 1 in the three others, with the words
+  of their JSON verse 1. No Fatiha basmala carries a waqf sign. Warsh's
+  paragraphs for 1 and 2 end with a space, which is not part of the text.
+- **75, 83, 90, 104 (Warsh, Qalun).** The basmala ends with U+06D6, the
+  Maghribi (Habti) waqf sign: stop after the basmala. These are the four
+  surahs that open with `لَآ أُقْسِمُ` (75, 90) or `وَيْلٞ` (83, 104), the "four
+  zuhr" of the Shatibiyya, which are not joined to what precedes them. The
+  DigitalKhatt text drops U+06D6 (render policy `habti-waqf`), so these lines
+  draw like the default in the app.
+- **95, 97 (every file but Warsh's).** A doubled ba: the last word of surah
+  94 (`فَٱرۡغَب`) and of surah 96 (`وَٱقۡتَرِب۩`) ends in a ba
+  without sukun, which merges into the ba of the basmala in connected
+  reading. KFGQPC's own Hafs Word file (`UthmanicHafs v22.docx`, SHA-256
+  `a456af6a…1b83`, fonts site, capture 20250418095658) has exactly the 113
+  lines of Shu'bah / al-Bazzi / Qunbul, these two included: it is the
+  Madinah typesetting, not a reading difference. The Warsh text ends surah 94
+  with a sukun (`فَارْغَبْۖ`) and surah 96 with the kasra of naql into
+  97:1 (`وَاقْتَرِبِۖ۩`): it joins surahs without the basmala, and its Word
+  file has no doubled ba.
+- **14, 15 (al-Susi).** The idgham kabir of the final ba of surah 13
+  (`اُ۬لۡكِتَٰب`, Hafs 13:43) and surah 14 (`اُ۬لۡأَلۡبَٰب`, Hafs
+  14:52), written without its kasra in the JSON and in the Word file, into
+  the ba of the basmala. al-Duri keeps the kasra (`اُ۬لۡكِتَٰبِ`) and the
+  plain basmala.
+- **Qunbul.** The developer package's Word file (`UthmanicQunbul_v2-0.zip`,
+  `uthmanic_qunbul_v20.docx`) has the same 113 lines as the fonts-site file.
+
+The builder writes each rewayah's lines to `data/mushaf/digitalkhatt/<id>-basmala.json`
+(contract C6, see `scripts/rewayah/README.md`) and the validator checks that
+file, the Fatiha slots and the absence of the Hafs basmala against
+`basmala.json`.
 
 ## Schema notes (v2.x)
 
