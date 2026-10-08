@@ -155,7 +155,7 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => {
   const {createFakeDKService} = jest.requireActual<
     typeof import('@/services/mushaf/__fixtures__/rewayahOverlayFixture')
   >('@/services/mushaf/__fixtures__/rewayahOverlayFixture');
-  const base = createFakeDKService(actual.BASMALLAH_TEXT);
+  const base = createFakeDKService();
   const listeners = new Set<() => void>();
   let version = 0;
   let identity: string | null = null;
