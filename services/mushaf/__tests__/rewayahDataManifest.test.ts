@@ -13,9 +13,20 @@ jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
 );
 
-import {execFileSync} from 'child_process';
+import {execFileSync, spawnSync} from 'child_process'; // @ai
 import {createHash} from 'crypto';
-import {readFileSync, statSync} from 'fs';
+// @ai-start
+import {
+  copyFileSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'fs';
+import os from 'os';
+// @ai-end
 import path from 'path';
 
 import {REWAYAH_DATA_MANIFEST} from '../rewayahDataManifest';
@@ -111,4 +122,58 @@ describe('rewayahDataManifest (contract C4)', () => {
     );
     expect(out).toContain('up to date');
   });
+
+  // @ai-start
+  it('is checked before every release build, but not in development', () => {
+    const {scripts} = JSON.parse(
+      readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf8'),
+    ) as {scripts: Record<string, string>};
+    const check = 'node scripts/rewayah/gen-manifest.mjs --check';
+    expect(scripts['check:rewayah-manifest']).toBe(check);
+    // EAS runs this npm hook first on every build, in the cloud or --local.
+    expect(scripts['eas-build-pre-install']).toBe(check);
+    // Local iOS release archives.
+    for (const name of ['ios:archive', 'ios:archive:upload']) {
+      expect(scripts[name].startsWith(`${check} && `)).toBe(true);
+    }
+    for (const name of ['start', 'ios', 'android', 'test', 'test:ci']) {
+      expect(scripts[name]).not.toContain('gen-manifest');
+    }
+  });
+
+  it('fails the check once a bundled DB changes without a new manifest', () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), 'gen-manifest-'));
+    try {
+      const assetDir = path.join(root, 'data', 'mushaf', 'digitalkhatt');
+      const script = path.join(root, 'scripts', 'rewayah', 'gen-manifest.mjs');
+      mkdirSync(assetDir, {recursive: true});
+      mkdirSync(path.dirname(script), {recursive: true});
+      mkdirSync(path.join(root, 'services', 'mushaf'), {recursive: true});
+      copyFileSync(
+        path.join(REPO_ROOT, 'scripts', 'rewayah', 'gen-manifest.mjs'),
+        script,
+      );
+      writeFileSync(
+        path.join(root, 'services', 'mushaf', 'DigitalKhattDataService.ts'),
+        "const DK = {'a.db': require('../../data/mushaf/digitalkhatt/a.db')};\n",
+      );
+      writeFileSync(path.join(assetDir, 'a.db'), 'first version');
+      const run = (...args: string[]) =>
+        spawnSync(process.execPath, [script, ...args], {
+          cwd: root,
+          encoding: 'utf8',
+        });
+
+      expect(run().status).toBe(0);
+      expect(run('--check').status).toBe(0);
+
+      writeFileSync(path.join(assetDir, 'a.db'), 'corrected version');
+      const stale = run('--check');
+      expect(stale.status).toBe(1);
+      expect(stale.stderr).toContain('is stale');
+    } finally {
+      rmSync(root, {recursive: true, force: true});
+    }
+  });
+  // @ai-end
 });

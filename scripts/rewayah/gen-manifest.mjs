@@ -20,6 +20,13 @@
  * services/mushaf/__tests__/rewayahDataManifest.test.ts recomputes the
  * hashes and fails CI when the committed manifest is stale.
  *
+ * Release builds run the check as well (package.json): every EAS build, in
+ * the cloud or with --local, through the eas-build-pre-install hook, and
+ * local iOS archives through ios:archive / ios:archive:upload. Development
+ * scripts (start, ios, android, test) do not. By hand:
+ *
+ *   npm run check:rewayah-manifest
+ *
  * Plain Node (>= 18), no dependencies.
  */
 import {createHash} from 'node:crypto';
