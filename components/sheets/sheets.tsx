@@ -57,8 +57,8 @@ registerSheet('collection-options', CollectionOptionsSheet);
 registerSheet('verse-actions', VerseActionsSheet);
 // @ai-start
 // Copy, share, highlight and similar verses live inside 'verse-actions'.
-// Their old standalone sheets are not registered: nothing opened them, and
-// the copy sheet copied caller-supplied text with no rewayah.
+// Their old standalone sheets were removed: nothing opened them, and the
+// copy sheet copied caller-supplied text with no rewayah.
 // @ai-end
 registerSheet('verse-note', VerseNoteSheet);
 registerSheet('mushaf-player-options', MushafPlayerOptionsSheet);
@@ -226,31 +226,6 @@ declare module 'react-native-actions-sheet' {
         rewayah?: import('@/store/mushafSettingsStore').RewayahId;
       };
     }>;
-    // @ai-start
-    // 'verse-copy', 'verse-highlight' and 'verse-share' are not registered
-    // (see registerSheet above); these types remain only because their
-    // unused modules still reference them.
-    // @ai-end
-    'verse-copy': SheetDefinition<{
-      payload: {
-        verseKey: string;
-        surahNumber: number;
-        ayahNumber: number;
-        verseKeys?: string[];
-        arabicText: string;
-        translation: string;
-        transliteration?: string;
-      };
-    }>;
-    'verse-highlight': SheetDefinition<{
-      payload: {
-        verseKey: string;
-        surahNumber: number;
-        ayahNumber: number;
-        verseKeys?: string[];
-        rewayah?: import('@/store/mushafSettingsStore').RewayahId;
-      };
-    }>;
     'verse-note': SheetDefinition<{
       payload: {
         verseKey: string;
@@ -259,16 +234,6 @@ declare module 'react-native-actions-sheet' {
         verseKeys?: string[];
         noteId?: string;
         rewayah?: import('@/store/mushafSettingsStore').RewayahId;
-      };
-    }>;
-    'verse-share': SheetDefinition<{
-      payload: {
-        verseKey: string;
-        surahNumber: number;
-        ayahNumber: number;
-        verseKeys?: string[];
-        arabicText?: string;
-        translation?: string;
       };
     }>;
     'mushaf-player-options': SheetDefinition<{
