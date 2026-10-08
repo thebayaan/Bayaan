@@ -498,6 +498,14 @@ export function selectTrackedVerseKeysId(s: {
 
 // ── Labels ─────────────────────────────────────────────────────────────────
 
+// @ai-start
+/**
+ * Said in place of a verse number while the surah's verses cannot be
+ * followed (the mushaf player bar and toolbar, the main player).
+ */
+export const VERSE_TRACKING_UNAVAILABLE_LABEL = 'Verse tracking unavailable';
+// @ai-end
+
 /** ['2:1','2:2'] -> '2:1-2'; ['2:286','3:1'] -> '2:286-3:1'; ['2:5'] -> '2:5'. */
 export function formatVerseKeyRange(keys: readonly string[]): string | null {
   if (keys.length === 0) return null;

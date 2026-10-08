@@ -41,6 +41,7 @@ import {resolveMushafAudioUrl} from '@/utils/mushafAudioUtils';
 import {
   formatPlaybackVerseLabel,
   parseVerseKeyListId, // @ai
+  VERSE_TRACKING_UNAVAILABLE_LABEL, // @ai
   verseKeyListId, // @ai
   type TimingNumbering,
   type TimingNumberingMode,
@@ -79,7 +80,7 @@ export const RANGE_UNPLAYABLE_ERROR =
   'This selection has no verses to play for this reciter. Try a different reciter or range.';
 
 /** Shown in place of a verse number while the surah has no verse tracking. */
-export const VERSE_TRACKING_UNAVAILABLE_LABEL = 'Verse tracking unavailable';
+export {VERSE_TRACKING_UNAVAILABLE_LABEL};
 // @ai-end
 
 const NO_KEYS: readonly string[] = Object.freeze([]);
