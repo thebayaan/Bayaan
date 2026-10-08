@@ -9,6 +9,13 @@ import type {DKLine, DKWordInfo} from '../DigitalKhattDataService';
 import type {RewayahId} from '@/services/rewayah/RewayahIdentity';
 import type {IndexedTajweedData} from '@/utils/tajweedLoader';
 import {joinSlotTexts, layoutLineSlots, visibleWords} from '../lineWordSpans';
+// @ai-start
+import {
+  basmalaLineSurahs,
+  layoutLineKey,
+  rewayahBasmalaService,
+} from '../RewayahBasmalaService';
+// @ai-end
 
 /** Words DBs in the fixture (file ids; 'hafs' is digital-khatt-v2.db). */
 export type FixtureDb =
@@ -136,8 +143,10 @@ export function findPage(pageNumber: number): FixturePage {
 /**
  * Fixture-backed stand-in for the DigitalKhattDataService read API used by
  * the overlay services. Its text joins are the same lineWordSpans helpers the
- * real service delegates to. `load` swaps the active words (like a rewayah
- * switch) and bumps the cache version; `bumpVersion` simulates a data reload.
+ * real service delegates to, and a basmallah line draws the active rewayah's
+ * basmala for the surah it opens through the same RewayahBasmalaService
+ * helpers. `load` swaps the active words (like a rewayah switch) and bumps
+ * the cache version; `bumpVersion` simulates a data reload.
  */
 export interface FakeDKService {
   readonly rewayah: RewayahId;
@@ -148,6 +157,7 @@ export interface FakeDKService {
   getWordText(wordId: number): string;
   getWordInfo(wordId: number): DKWordInfo | undefined;
   getLineText(line: DKLine): string;
+  getBasmalaSurah(line: DKLine): number | null; // @ai
   getVerseWords(verseKey: string, rewayah?: RewayahId): DKWordInfo[];
   getVerseText(verseKey: string, rewayah?: RewayahId): string;
   load(db: FixtureDb): void;
@@ -162,13 +172,14 @@ export interface FakeDKService {
 
 const noop = (): void => undefined;
 
-export function createFakeDKService(basmallahText: string): FakeDKService {
+export function createFakeDKService(): FakeDKService {
   let rewayah: RewayahId = 'hafs';
   let version = 0;
   const wordsById = new Map<number, string>();
   const infoById = new Map<number, DKWordInfo>();
   const verseWords = new Map<string, DKWordInfo[]>();
   const lines = new Map<number, DKLine[]>();
+  let basmalaSurahs = new Map<string, number>(); // @ai
 
   return {
     get rewayah() {
@@ -184,11 +195,27 @@ export function createFakeDKService(basmallahText: string): FakeDKService {
     getWordInfo: wordId => infoById.get(wordId),
     getLineText(line) {
       if (line.line_type === 'surah_name') return '';
-      if (line.line_type === 'basmallah') return basmallahText;
+      // @ai-start
+      if (line.line_type === 'basmallah') {
+        return rewayahBasmalaService.getText(
+          rewayah,
+          this.getBasmalaSurah(line),
+        );
+      }
+      // @ai-end
       return layoutLineSlots(line.first_word_id, line.last_word_id, id =>
         this.getWordText(id),
       ).text;
     },
+    // @ai-start
+    getBasmalaSurah(line) {
+      if (line.line_type !== 'basmallah') return null;
+      return (
+        basmalaSurahs.get(layoutLineKey(line.page_number, line.line_number)) ??
+        null
+      );
+    },
+    // @ai-end
     getVerseWords(verseKey, requested) {
       if (requested && requested !== rewayah) return [];
       const slots = verseWords.get(verseKey);
@@ -234,6 +261,14 @@ export function createFakeDKService(basmallahText: string): FakeDKService {
         if (pageList) pageList.push(line);
         else lines.set(line.page_number, [line]);
       }
+      // @ai-start
+      basmalaSurahs = basmalaLineSurahs(
+        [...data.lines].sort(
+          (a, b) =>
+            a.page_number - b.page_number || a.line_number - b.line_number,
+        ),
+      );
+      // @ai-end
       rewayah = data.rewayah;
       version += 1;
     },

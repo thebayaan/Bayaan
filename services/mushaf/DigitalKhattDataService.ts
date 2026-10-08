@@ -8,6 +8,13 @@ import {
 import {migratePersistedId} from '@/services/rewayah/RewayahIdentity';
 import {REWAYAH_DATA_MANIFEST, REWAYAH_DATA_MD5} from './rewayahDataManifest';
 import {joinSlotTexts, layoutLineSlots, visibleWords} from './lineWordSpans';
+// @ai-start
+import {
+  basmalaLineSurahs,
+  layoutLineKey,
+  rewayahBasmalaService,
+} from './RewayahBasmalaService';
+// @ai-end
 
 const TOTAL_PAGES = 604;
 
@@ -134,9 +141,12 @@ export function getRewayahFontFamily(rewayah: RewayahId): string | null {
   return REWAYAH_DATA[rewayah]?.fontFamily ?? null;
 }
 
-// Basmallah text is always the same 4 words; hardcoded to avoid DB lookup
-// (layout DB has NULL word IDs for basmallah lines)
-export const BASMALLAH_TEXT = 'بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ';
+// @ai-start
+// The Hafs basmala (layout DB has NULL word IDs for basmallah lines). Other
+// rewayat draw their own surah-opening basmala (contract C6): see
+// RewayahBasmalaService and getLineText.
+export {BASMALLAH_TEXT} from './RewayahBasmalaService';
+// @ai-end
 
 export interface DKLine {
   page_number: number;
@@ -225,12 +235,38 @@ export interface DKDataIdentity {
   rewayah: RewayahId;
   wordsSha8: string;
   layoutSha8: string;
+  // @ai-start
+  /** Version of the surah-opening basmala the rewayah draws on basmallah
+   *  lines (RewayahBasmalaService.getDataVersion, contract C6). Absent for
+   *  Hafs, whose basmala is the built-in BASMALLAH_TEXT. */
+  basmalaVersion?: string;
+  // @ai-end
 }
 
-/** Cache-key form of a data identity: `<rewayah>@<wordsSha8>.<layoutSha8>`. */
+/**
+ * Cache-key form of a data identity: `<rewayah>@<wordsSha8>.<layoutSha8>`,
+ * plus `.<basmalaVersion>` for a rewayah with its own basmala.
+ */
 export function dataIdentityKey(identity: DKDataIdentity): string {
-  return `${identity.rewayah}@${identity.wordsSha8}.${identity.layoutSha8}`;
+  // @ai-start
+  const key = `${identity.rewayah}@${identity.wordsSha8}.${identity.layoutSha8}`;
+  return identity.basmalaVersion ? `${key}.${identity.basmalaVersion}` : key;
+  // @ai-end
 }
+
+// @ai-start
+/** A data identity, with the rewayah's basmala version when it has one. */
+function makeDataIdentity(
+  rewayah: RewayahId,
+  wordsSha8: string,
+  layoutSha8: string,
+): DKDataIdentity {
+  const identity: DKDataIdentity = {rewayah, wordsSha8, layoutSha8};
+  const basmalaVersion = rewayahBasmalaService.getDataVersion(rewayah);
+  if (basmalaVersion) identity.basmalaVersion = basmalaVersion;
+  return identity;
+}
+// @ai-end
 
 function assetSha256(file: DkDbAssetFile): string {
   const sha256 = REWAYAH_DATA_MANIFEST[file];
@@ -252,11 +288,13 @@ export function getRewayahDataIdentity(
 ): DKDataIdentity | null {
   const cfg = REWAYAH_DATA[rewayah];
   if (!cfg) return null;
-  return {
+  // @ai-start
+  return makeDataIdentity(
     rewayah,
-    wordsSha8: assetSha256(cfg.wordsAssetFile).slice(0, SHA8_LENGTH),
-    layoutSha8: assetSha256(cfg.layoutAssetFile).slice(0, SHA8_LENGTH),
-  };
+    assetSha256(cfg.wordsAssetFile).slice(0, SHA8_LENGTH),
+    assetSha256(cfg.layoutAssetFile).slice(0, SHA8_LENGTH),
+  );
+  // @ai-end
 }
 
 /** dataIdentityKey(getRewayahDataIdentity(rewayah)), or null. */
@@ -430,6 +468,10 @@ interface LayoutData {
   pageLines: Map<number, DKLine[]>;
   surahStartPages: Record<number, number>;
   pageToSurah: Record<number, number>;
+  // @ai-start
+  // Surah each basmallah line opens, keyed by layoutLineKey(page, line).
+  basmalaSurahs: Map<string, number>;
+  // @ai-end
 }
 
 interface MainSnapshot {
@@ -548,7 +590,12 @@ function buildLayoutData(
     }
   }
 
-  return {pageLines, surahStartPages, pageToSurah};
+  // @ai-start
+  // Rows arrive sorted by page and line (readLayoutRows), as
+  // basmalaLineSurahs requires.
+  const basmalaSurahs = basmalaLineSurahs(rows);
+  return {pageLines, surahStartPages, pageToSurah, basmalaSurahs};
+  // @ai-end
 }
 
 async function hasTable(
@@ -650,6 +697,7 @@ export class DigitalKhattDataService {
   private pageLines: Map<number, DKLine[]> = new Map();
   private surahStartPages: Record<number, number> = {};
   private pageToSurah: Record<number, number> = {};
+  private basmalaSurahs: Map<string, number> = new Map(); // @ai
   private verseToPage: Map<string, number> | null = null;
   private currentRewayah: RewayahId = 'hafs';
   private rewayahListeners: Set<RewayahChangeListener> = new Set();
@@ -763,7 +811,8 @@ export class DigitalKhattDataService {
 
   /**
    * Key for caches derived from the main cache's text (page layouts):
-   * `<rewayah>@<wordsSha8>.<layoutSha8>`, or null before the first load.
+   * `<rewayah>@<wordsSha8>.<layoutSha8>` (plus `.<basmalaVersion>` for a
+   * rewayah with its own basmala lines), or null before the first load.
    * Changes exactly when the served text changes.
    */
   getLayoutIdentityKey(): string | null {
@@ -895,6 +944,7 @@ export class DigitalKhattDataService {
     this.pageLines = new Map();
     this.surahStartPages = {};
     this.pageToSurah = {};
+    this.basmalaSurahs = new Map(); // @ai
     this.verseToPage = null;
     this.activeIdentity = null;
     this.activeLayoutDbName = null;
@@ -1184,11 +1234,7 @@ export class DigitalKhattDataService {
       words,
       layout,
       layoutDbName: layoutSpec.name,
-      identity: {
-        rewayah: target,
-        wordsSha8: wordsSpec.sha8,
-        layoutSha8: layoutSpec.sha8,
-      },
+      identity: makeDataIdentity(target, wordsSpec.sha8, layoutSpec.sha8), // @ai
     };
   }
 
@@ -1207,6 +1253,7 @@ export class DigitalKhattDataService {
       this.pageLines = next.layout.pageLines;
       this.surahStartPages = next.layout.surahStartPages;
       this.pageToSurah = next.layout.pageToSurah;
+      this.basmalaSurahs = next.layout.basmalaSurahs; // @ai
     }
     this.activeLayoutDbName = next.layoutDbName;
     this.verseToPage = null;
@@ -1537,14 +1584,38 @@ export class DigitalKhattDataService {
    * (services/mushaf/lineWordSpans.ts): blank slots render nothing and add no
    * separator, a slot containing spaces stays one unit. Every per-line overlay
    * computes its char offsets with getLineWordSpans over the same join.
+   * A basmallah line draws the surah-opening basmala of the active rewayah
+   * for the surah it opens (Hafs: BASMALLAH_TEXT; contract C6).
    */
   getLineText(line: DKLine): string {
     if (line.line_type === 'surah_name') return '';
-    if (line.line_type === 'basmallah') return BASMALLAH_TEXT;
+    // @ai-start
+    if (line.line_type === 'basmallah') {
+      return rewayahBasmalaService.getText(
+        this.currentRewayah,
+        this.getBasmalaSurah(line),
+      );
+    }
+    // @ai-end
     return layoutLineSlots(line.first_word_id, line.last_word_id, wordId =>
       this.getWordText(wordId),
     ).text;
   }
+
+  // @ai-start
+  /**
+   * The surah a basmallah line opens (the surah_name line right before it in
+   * the layout), or null for any other line or before the layout is loaded.
+   */
+  getBasmalaSurah(line: DKLine): number | null {
+    if (line.line_type !== 'basmallah') return null;
+    return (
+      this.basmalaSurahs.get(
+        layoutLineKey(line.page_number, line.line_number),
+      ) ?? null
+    );
+  }
+  // @ai-end
 
   getWordInfo(wordId: number): DKWordInfo | undefined {
     return this.wordInfoById.get(wordId);

@@ -318,6 +318,7 @@ const ContinuousListView = forwardRef<
               />
               <BasmalaHeader
                 visible={item.showBismillah}
+                surahNumber={item.surahNumber} // @ai
                 width={contentWidth}
                 textColor={textColor}
                 showTajweed={showTajweed}

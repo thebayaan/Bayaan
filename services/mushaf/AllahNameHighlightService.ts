@@ -1,7 +1,4 @@
-import {
-  BASMALLAH_TEXT,
-  digitalKhattDataService,
-} from './DigitalKhattDataService';
+import {digitalKhattDataService} from './DigitalKhattDataService'; // @ai
 import {getLineWordSpans, spanTokens} from './lineWordSpans';
 
 // Strip Arabic marks so Allah-name matching survives different mushaf forms:
@@ -215,7 +212,8 @@ export function getLineAllahNameCharMap(
   if (!line || line.line_type === 'surah_name') return null;
 
   if (line.line_type === 'basmallah') {
-    return getTextAllahNameCharMap(BASMALLAH_TEXT);
+    // The rewayah's own basmala, exactly as the line draws it. @ai
+    return getTextAllahNameCharMap(digitalKhattDataService.getLineText(line)); // @ai
   }
 
   const charToColor = new Map<number, string>();

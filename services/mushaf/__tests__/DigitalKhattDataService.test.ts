@@ -14,15 +14,21 @@
  */
 import {REWAYAH_DATA_MANIFEST} from '../rewayahDataManifest';
 import {
+  BASMALLAH_TEXT, // @ai
   contentAddressedDbName,
+  dataIdentityKey, // @ai
   dbBaseName,
   DigitalKhattDataService,
+  getRewayahDataIdentity, // @ai
+  getRewayahDataIdentityKey, // @ai
   isRewayahSwitchSuperseded,
   RewayahLoadError,
   RewayahSwitchSupersededError,
   selectStaleDbFiles,
   type DKLine,
 } from '../DigitalKhattDataService';
+import {rewayahBasmalaService} from '../RewayahBasmalaService'; // @ai
+import {EXPECTED_BASMALA} from '../__fixtures__/basmalaTexts'; // @ai
 
 interface FakeFile {
   base: string;
@@ -227,6 +233,13 @@ function line(
   };
 }
 
+// @ai-start
+// Like the layout DB, basmallah lines carry no surah number (NULL).
+const NO_SURAH = null as unknown as number;
+// Set by the basmallah-line tests: the layout then also has pages 3-4.
+let mockWithBasmalaPages = false;
+// @ai-end
+
 function mockPageRows(): DKLine[] {
   return [
     line(1, 1, 'surah_name', 0, 0, 1),
@@ -235,6 +248,18 @@ function mockPageRows(): DKLine[] {
     line(2, 1, 'surah_name', 0, 0, 2),
     line(2, 2, 'ayah', 9, 10, 2),
     line(2, 3, 'ayah', 11, 12, 2),
+    // @ai-start
+    // Basmallah lines: one under its header, one at the top of the page
+    // after its header (al-Susi writes the basmala of surah 14 'بِّسۡمِ').
+    ...(mockWithBasmalaPages
+      ? [
+          line(3, 1, 'surah_name', 0, 0, 13),
+          line(3, 2, 'basmallah', NO_SURAH, NO_SURAH, NO_SURAH),
+          line(3, 3, 'surah_name', 0, 0, 14),
+          line(4, 1, 'basmallah', NO_SURAH, NO_SURAH, NO_SURAH),
+        ]
+      : []),
+    // @ai-end
   ];
 }
 
@@ -545,9 +570,13 @@ describe('switchRewayah', () => {
     expect(service.getPageForVerse('2:1')).toBe(2);
     expect(service.getCacheVersion()).toBe(version + 1);
     expect(store.rewayah).toBe('warsh');
+    // @ai-start
+    // Warsh draws its own basmala lines: their data version is in the key.
     expect(service.getLayoutIdentityKey()).toBe(
-      `warsh@${sha8('dk_words_warsh.db')}.${sha8('digital-khatt-15-lines.db')}`,
+      `warsh@${sha8('dk_words_warsh.db')}.${sha8('digital-khatt-15-lines.db')}` +
+        `.${rewayahBasmalaService.getDataVersion('warsh')}`,
     );
+    // @ai-end
     // Shared layout DB: not read again.
     expect(count(`read:${N.layout}`)).toBe(1);
     // Listener first (after the swap, version already bumped), then cache
@@ -940,3 +969,92 @@ describe('resetDatabases', () => {
     expect(texts(service, '1:1')).toEqual(H);
   });
 });
+
+// @ai-start
+describe('basmallah lines (contract C6)', () => {
+  const SUSI_14 = EXPECTED_BASMALA['al-susi']!.bySurah[14].dk;
+  const SUSI = EXPECTED_BASMALA['al-susi']!.dk;
+  const WARSH = EXPECTED_BASMALA.warsh!.dk;
+
+  beforeEach(() => {
+    mockWithBasmalaPages = true;
+  });
+  afterEach(() => {
+    mockWithBasmalaPages = false;
+  });
+
+  function basmalaLines(service: DigitalKhattDataService) {
+    return [service.getPageLines(3)[1], service.getPageLines(4)[0]];
+  }
+
+  it('finds the surah each basmallah line opens, across a page break', async () => {
+    const service = await initialized();
+    const [opens13, opens14] = basmalaLines(service);
+    expect(service.getBasmalaSurah(opens13)).toBe(13);
+    expect(service.getBasmalaSurah(opens14)).toBe(14);
+    expect(service.getBasmalaSurah(service.getPageLines(3)[0])).toBeNull();
+    expect(service.getBasmalaSurah(service.getPageLines(1)[1])).toBeNull();
+  });
+
+  it('Hafs draws BASMALLAH_TEXT on every basmallah line, byte for byte', async () => {
+    const service = await initialized();
+    for (const basmala of basmalaLines(service)) {
+      expect(service.getLineText(basmala)).toBe(BASMALLAH_TEXT);
+    }
+    expect(BASMALLAH_TEXT).toBe(
+      '\u0628\u0650\u0633\u0652\u0645\u0650 \u0671\u0644\u0644\u064E\u0651\u0647\u0650 ' +
+        '\u0671\u0644\u0631\u064E\u0651\u062D\u0652\u0645\u064E\u0670\u0646\u0650 ' +
+        '\u0671\u0644\u0631\u064E\u0651\u062D\u0650\u064A\u0645\u0650',
+    );
+  });
+
+  it("another rewayah draws its own basmala, in the surah's own spelling", async () => {
+    const service = await initialized();
+    await service.switchRewayah('warsh');
+    expect(basmalaLines(service).map(l => service.getLineText(l))).toEqual([
+      WARSH,
+      WARSH,
+    ]);
+    await service.switchRewayah('al-susi');
+    expect(basmalaLines(service).map(l => service.getLineText(l))).toEqual([
+      SUSI,
+      SUSI_14,
+    ]);
+    await service.switchRewayah('hafs');
+    expect(basmalaLines(service).map(l => service.getLineText(l))).toEqual([
+      BASMALLAH_TEXT,
+      BASMALLAH_TEXT,
+    ]);
+  });
+
+  it('a rewayah with its own basmala has its data version in the layout identity; Hafs keeps its key', async () => {
+    const service = await initialized();
+    const hafsKey = `hafs@${sha8('digital-khatt-v2.db')}.${sha8('digital-khatt-15-lines.db')}`;
+    expect(service.getLayoutIdentityKey()).toBe(hafsKey);
+    expect(getRewayahDataIdentityKey('hafs')).toBe(hafsKey);
+    expect(getRewayahDataIdentity('hafs')).not.toHaveProperty('basmalaVersion');
+
+    await service.switchRewayah('al-susi');
+    const version = rewayahBasmalaService.getDataVersion('al-susi');
+    expect(version).toMatch(/^[0-9a-f]{8}$/);
+    expect(service.getDataIdentity()).toEqual({
+      rewayah: 'al-susi',
+      wordsSha8: sha8('dk_words_soosi.db'),
+      layoutSha8: sha8('digital-khatt-15-lines.db'),
+      basmalaVersion: version,
+    });
+    // The identity the layout-cache pruning compares with is the same.
+    expect(getRewayahDataIdentityKey('al-susi')).toBe(
+      service.getLayoutIdentityKey(),
+    );
+    expect(
+      dataIdentityKey({
+        rewayah: 'al-susi',
+        wordsSha8: 'aaaaaaaa',
+        layoutSha8: 'bbbbbbbb',
+        basmalaVersion: 'cccccccc',
+      }),
+    ).toBe('al-susi@aaaaaaaa.bbbbbbbb.cccccccc');
+  });
+});
+// @ai-end

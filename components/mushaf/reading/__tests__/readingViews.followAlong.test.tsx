@@ -16,6 +16,13 @@ interface VerseItemProps {
 }
 
 const mockVerseItems: VerseItemProps[] = [];
+// @ai-start
+const mockHeaders: {
+  surahNumber?: number;
+  rewayah?: string;
+  visible: boolean;
+}[] = [];
+// @ai-end
 
 // jest.mock factories run before this module's top-level code: build the
 // verses lazily.
@@ -37,7 +44,19 @@ jest.mock('@/components/player/v2/PlayerContent/QuranView/VerseItem', () => ({
 
 jest.mock(
   '@/components/player/v2/PlayerContent/QuranView/BasmalaHeader',
-  () => ({__esModule: true, default: () => null}),
+  // @ai-start
+  () => ({
+    __esModule: true,
+    default: (props: {
+      surahNumber?: number;
+      rewayah?: string;
+      visible: boolean;
+    }) => {
+      mockHeaders.push(props);
+      return null;
+    },
+  }),
+  // @ai-end
 );
 
 jest.mock(
@@ -120,8 +139,10 @@ jest.mock('@/services/mushaf/ThemeDataService', () => ({
 }));
 
 jest.mock('@/utils/mushafPageVerses', () => ({
-  getReadingPageItems: () =>
-    mockVerses().map(verse => ({type: 'verse', verse})),
+  getReadingPageItems: () => [
+    {type: 'surah_header', surahNumber: 2, showBismillah: true}, // @ai
+    ...mockVerses().map(verse => ({type: 'verse', verse})),
+  ],
 }));
 
 jest.mock('@/utils/enhancedVerseData', () => ({
@@ -213,6 +234,7 @@ function playback(state: object) {
 
 beforeEach(() => {
   mockVerseItems.length = 0;
+  mockHeaders.length = 0; // @ai
   useMushafSettingsStore.setState({mushafRenderer: 'dk_v2', rewayah: 'hafs'});
   useMushafPlayerStore.setState({
     playbackState: 'idle',
@@ -278,4 +300,15 @@ describe.each(Object.keys(views))('%s', name => {
     render();
     expect(rows().get('2:1')!.dkFontFamily).toBe('DigitalKhattV2');
   });
+
+  // @ai-start
+  it("the surah header's basmala opens its surah, in the verses' rewayah", () => {
+    render();
+    const header = mockHeaders.find(h => h.surahNumber === 2);
+    // No rewayah prop: BasmalaHeader follows the mushaf rewayah, like the
+    // verse rows below it; the surah picks its own spelling (contract C6).
+    expect(header).toMatchObject({surahNumber: 2, visible: true});
+    expect(header?.rewayah).toBeUndefined();
+  });
+  // @ai-end
 });

@@ -33,7 +33,7 @@ import {
   DARK_COLORS,
   type ShareCardColors,
 } from './shareCardConstants';
-import {BASMALLAH_TEXT} from '@/services/mushaf/DigitalKhattDataService';
+import {rewayahBasmalaService} from '@/services/mushaf/RewayahBasmalaService'; // @ai
 import {getRewayahShortLabel} from '@/utils/rewayahLabels';
 import type {RewayahId} from '@/store/mushafSettingsStore';
 import branding from '@/config/branding';
@@ -202,7 +202,15 @@ export function buildShareCardParagraphs(
     let basmallahParagraph: SkParagraph | null = null;
     let basmallahHeight = 0;
     const skipBasmallah = group.surahNumber === 1 || group.surahNumber === 9;
-    if (showBasmallah && !skipBasmallah && BASMALLAH_TEXT) {
+    // @ai-start
+    // The basmala of the card's rewayah, as it opens this surah (contract
+    // C6); '' (no basmala drawn) when that rewayah has no basmala data.
+    const basmallahText = rewayahBasmalaService.getText(
+      rewayah ?? 'hafs',
+      group.surahNumber,
+    );
+    // @ai-end
+    if (showBasmallah && !skipBasmallah && basmallahText) {
       const basmallahFontSize = verseFontSize * CARD_BASMALLAH_FONT_RATIO;
       const basmBuilder = Skia.ParagraphBuilder.Make(
         {textDirection: TextDirection.RTL, textAlign: TextAlign.Center},
@@ -214,7 +222,7 @@ export function buildShareCardParagraphs(
         fontSize: basmallahFontSize,
         fontFeatures: [{name: 'basm', value: 1}],
       });
-      basmBuilder.addText(BASMALLAH_TEXT);
+      basmBuilder.addText(basmallahText); // @ai
       basmBuilder.pop();
       basmallahParagraph = basmBuilder.build();
       basmallahParagraph.layout(contentWidth);
