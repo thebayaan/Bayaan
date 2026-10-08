@@ -11,13 +11,16 @@ import {
   type SkParagraph,
   type SkColor,
 } from '@shopify/react-native-skia';
-import {
-  quranTextService,
-  FONTSIZE,
-  SPACEWIDTH,
-  SpaceType,
-} from '@/services/mushaf/QuranTextService';
+import {quranTextService, SpaceType} from '@/services/mushaf/QuranTextService'; // @ai
 import type {JustResultByLine} from '@/services/mushaf/JustificationService';
+// @ai-start
+import {
+  clampRectToBand,
+  justifiedLineStrut,
+  justifiedSpaceFontSize,
+  type LineBand,
+} from './justifiedSpace';
+// @ai-end
 import {tajweedColors} from '@/constants/tajweedColors';
 import type {MushafArabicTextWeight} from '@/store/mushafSettingsStore';
 import {
@@ -80,7 +83,6 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
   backgroundHighlights,
 }) => {
   const paragraphs = useMemo(() => {
-    const scale = (fontSize * justResult.fontSizeRatio) / FONTSIZE;
     const lineInfo = quranTextService.getLineInfo(pageNumber, lineIndex);
     const lineText = quranTextService.getLineText(pageNumber, lineIndex);
     const lineTextInfo = quranTextService.analyzeText(pageNumber, lineIndex);
@@ -105,9 +107,18 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
       textStyle.fontFeatures = [{name: 'basm', value: 1}];
     }
 
+    // @ai-start
+    // The strut pins the line box and baseline to the words' size: justified
+    // spaces are set at larger sizes (justifiedSpace.ts).
+    const paragraphStyle = {
+      ...lineParStyle,
+      strutStyle: justifiedLineStrut(fontFamily, effectiveFontSize),
+    };
+    // @ai-end
+
     const buildParagraph = (withStroke: boolean) => {
       const paragraphBuilder = Skia.ParagraphBuilder.Make(
-        lineParStyle,
+        paragraphStyle, // @ai
         fontMgr,
       );
 
@@ -163,20 +174,21 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
           }
         }
 
-        // Add space between words with appropriate letter spacing
+        // @ai-start
+        // Add the space between words at its justified width. SkParagraph
+        // ignores letterSpacing on Arabic, so the width comes from the space's
+        // font size (justifiedSpace.ts).
         const spaceType = lineTextInfo.spaces.get(wordInfo.endIndex + 1);
         if (spaceType !== undefined) {
+          const spacing =
+            spaceType === SpaceType.Aya
+              ? justResult.ayaSpacing
+              : justResult.simpleSpacing;
           const newtextStyle: SkTextStyle = {
             ...textStyle,
+            fontSize: justifiedSpaceFontSize(effectiveFontSize, spacing),
           };
-
-          if (spaceType === SpaceType.Aya) {
-            newtextStyle.letterSpacing =
-              (justResult.ayaSpacing - SPACEWIDTH) * scale;
-          } else {
-            newtextStyle.letterSpacing =
-              (justResult.simpleSpacing - SPACEWIDTH) * scale;
-          }
+          // @ai-end
 
           pushStyle(newtextStyle, color);
           paragraphBuilder.addText(' ');
@@ -291,17 +303,30 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
       color: string;
     }> = [];
 
+    // @ai-start
+    // The words' band, from the line's first character (a line never starts
+    // with a space). A justified space's rect spans its larger size's ascent
+    // and descent, so every rect is clamped to this band.
+    let band: LineBand | null = null;
+    try {
+      const [first] = paragraph.getRectsForRange(0, 1);
+      if (first) band = {top: first.y, bottom: first.y + first.height};
+    } catch {
+      band = null;
+    }
+    // @ai-end
+
     for (const hl of backgroundHighlights) {
       try {
         const skRects = paragraph.getRectsForRange(hl.start, hl.end + 1);
         for (const rect of skRects) {
-          rects.push({
-            x: rect.x,
-            y: rect.y,
-            width: rect.width,
-            height: rect.height,
-            color: hl.color,
-          });
+          // @ai-start
+          const clamped = clampRectToBand(
+            {x: rect.x, y: rect.y, width: rect.width, height: rect.height},
+            band,
+          );
+          rects.push({...clamped, color: hl.color});
+          // @ai-end
         }
       } catch {
         // Ignore rect computation failures
