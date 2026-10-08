@@ -201,6 +201,12 @@ file, the Fatiha slots and the absence of the Hafs basmala against
   the official text. Kept as written.
 - **Warsh and Qalun 51:47, word 3** read `بِأَيَي۟دࣲ`; to a reader of the
   Madani mushaf its pointing can look like `bi-ayadin`. Kept as written.
+- **Warsh 87:1:4, 87:11:2, 92:15:4 and 92:17:2** end in a dotted ya (U+064A)
+  after a fatha (`اَ۬لَاع۟لَي`, `اَ۬لَاش۟قَي`, `اَ۬لَات۟قَي`), where Hafs writes the
+  alef maqsura (`ٱلْأَعْلَى`, `ٱلْأَشْقَى`, `ٱلْأَتْقَى`). Kept as written.
+- **Warsh 4:23 (words 13, 21 and 26)** write `اُ۬لتِىٓ` / `اُ۬لتِى` without the
+  long ā that Hafs marks with a dagger alef (`ٱلَّٰتِيٓ`); the unmarked doubled
+  lam is the usual Maghribi convention. Kept as written.
 
 ## Changes from the 2021 files used before
 
