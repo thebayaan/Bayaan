@@ -37,6 +37,26 @@ import type {BayaanOpaqueSession} from '@/types/bayaan-auth';
 import {QfSqliteTransientError} from './qfSqliteRetry';
 
 const DEFAULT_RETRY_MS = 1000;
+const REMOTE_RETRY_BASE_MS = 2000;
+const REMOTE_RETRY_MAX_MS = 5 * 60_000;
+
+/**
+ * Delay before retrying a retryable remote failure: exponential backoff with
+ * full jitter (base 2 s doubling per consecutive failure, capped at 5 min),
+ * never shorter than DEFAULT_RETRY_MS or a server-provided Retry-After.
+ */
+export function qfSyncRemoteRetryDelayMs(
+  failureCount: number,
+  random: () => number,
+  retryAfterMs?: number,
+): number {
+  const ceiling = Math.min(
+    REMOTE_RETRY_MAX_MS,
+    REMOTE_RETRY_BASE_MS * 2 ** Math.max(0, failureCount),
+  );
+  const jittered = Math.floor(random() * ceiling);
+  return Math.max(DEFAULT_RETRY_MS, jittered, retryAfterMs ?? 0);
+}
 
 export interface QfSyncLifecycleContext {
   authStatus: BayaanAuthStatus;
@@ -85,6 +105,7 @@ interface QfSyncLifecycleOptions {
   ) => Promise<void>;
   clearActiveViews?: () => void;
   now?: () => number;
+  random?: () => number;
   setTimer?: (
     callback: () => void,
     delayMs: number,
@@ -128,6 +149,7 @@ function deferredStatus(reason: string): QfSyncStatus {
 
 export class QfSyncLifecycle {
   private readonly now: () => number;
+  private readonly random: () => number;
   private readonly setTimer: QfSyncLifecycleOptions['setTimer'];
   private readonly clearTimer: QfSyncLifecycleOptions['clearTimer'];
   private readonly clearActiveViews: () => void;
@@ -144,9 +166,11 @@ export class QfSyncLifecycle {
   private retryTimer: ReturnType<typeof setTimeout> | null = null;
   private rerunRequested = false;
   private permanentErrorEpoch: number | null = null;
+  private remoteFailureCount = 0;
 
   constructor(private readonly options: QfSyncLifecycleOptions) {
     this.now = options.now ?? Date.now;
+    this.random = options.random ?? Math.random;
     this.setTimer = options.setTimer ?? setTimeout;
     this.clearTimer = options.clearTimer ?? clearTimeout;
     this.clearActiveViews =
@@ -175,6 +199,7 @@ export class QfSyncLifecycle {
     const epoch = this.epoch;
     this.rerunRequested = false;
     this.cancelRetry();
+    if (accountChanged) this.remoteFailureCount = 0;
 
     const annotationHandoff = accountChanged
       ? this.beginAnnotationScopeHandoff(previousAccount)
@@ -244,6 +269,9 @@ export class QfSyncLifecycle {
     const context = this.context;
     const accountId = activeAccount(context);
     if (!context || !accountId) return;
+    // An immediate attempt supersedes any scheduled retry, so a manual retry
+    // or foregrounding never leaves a second timer behind.
+    this.cancelRetry();
     const epoch = this.epoch;
     const run = this.runCycle(accountId, epoch);
     const wrapped = run.finally(() => {
@@ -451,6 +479,7 @@ export class QfSyncLifecycle {
 
       const persisted = await this.options.database.getSyncStatus(accountId);
       if (!this.isCurrent(epoch, accountId)) return;
+      this.remoteFailureCount = 0;
       const pushedCount = push.status === 'synced' ? push.pushed : 0;
       const ambiguousCount = push.status === 'recovered' ? push.ambiguous : 0;
       const hasConflict = ambiguousCount > 0 || persisted.conflictCount > 0;
@@ -521,19 +550,26 @@ export class QfSyncLifecycle {
         error instanceof BayaanSyncApiError
           ? httpClassForStatus(error.status)
           : 'none';
-      const retryable =
-        sqliteRetryable ||
-        (error instanceof BayaanSyncApiError &&
-          (error.status === 0 ||
-            error.status === 408 ||
-            error.status === 409 ||
-            error.status === 429 ||
-            error.status >= 500));
+      const remoteRetryable =
+        error instanceof BayaanSyncApiError &&
+        (error.status === 0 ||
+          error.status === 408 ||
+          error.status === 409 ||
+          error.status === 429 ||
+          error.status >= 500);
+      const retryable = sqliteRetryable || remoteRetryable;
       if (!retryable) this.permanentErrorEpoch = epoch;
-      const retryDelay =
-        error instanceof BayaanSyncApiError
-          ? Math.max(DEFAULT_RETRY_MS, error.retryAfterMs ?? 0)
-          : DEFAULT_RETRY_MS;
+      // Remote failures back off so an unavailable upstream is not polled
+      // every second. A local SQLite lock clears quickly; keep its fixed delay.
+      let retryDelay = DEFAULT_RETRY_MS;
+      if (remoteRetryable) {
+        retryDelay = qfSyncRemoteRetryDelayMs(
+          this.remoteFailureCount,
+          this.random,
+          error.retryAfterMs,
+        );
+        this.remoteFailureCount += 1;
+      }
       this.setForCurrent(epoch, accountId, {
         status: 'retry',
         retryAt: retryable ? this.now() + retryDelay : null,
