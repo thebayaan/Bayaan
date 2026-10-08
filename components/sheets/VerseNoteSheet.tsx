@@ -18,6 +18,21 @@ import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotati
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
 import SkiaVersePreview from '@/components/share/SkiaVersePreview';
 import type {RewayahId} from '@/store/mushafSettingsStore'; // @ai
+// @ai-start
+import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import {useRewayahVerseUnits} from '@/hooks/useRewayahVerseUnits';
+import {
+  describeStoredVerses,
+  readUnitTexts,
+  type ReadyVerseSelection,
+  type VerseSelectionRequest,
+} from '@/components/share/rewayahVerseSelection';
+import {
+  useRequireSelection,
+  useVerseSelection,
+} from '@/components/share/useVerseSelection';
+import {addSelectionNote} from './verse-actions/selectionAnnotations';
+// @ai-end
 
 export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
   const {theme} = useTheme();
@@ -27,6 +42,7 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
   const surahNumber = props.payload?.surahNumber ?? 0;
   const ayahNumber = props.payload?.ayahNumber ?? 0;
   const verseKeys = props.payload?.verseKeys;
+  const unitKeys = props.payload?.unitKeys; // @ai
   const isRange = verseKeys && verseKeys.length > 1;
   const noteId = props.payload?.noteId;
   const rewayah = props.payload?.rewayah;
@@ -41,6 +57,11 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
   const [savedNoteRewayah, setSavedNoteRewayah] = useState<
     RewayahId | undefined
   >(undefined);
+  // The saved note's own anchors (notes.verse_keys of a note on several
+  // verses; the Notes list sends only verse_key).
+  const [savedNoteKeys, setSavedNoteKeys] = useState<string[] | undefined>(
+    undefined,
+  );
   const [noteLoaded, setNoteLoaded] = useState(!noteId);
   const previewRewayah = rewayah ?? savedNoteRewayah;
   // @ai-end
@@ -58,6 +79,94 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
     return `${firstSurah}:${firstAyah} - ${lastSurah}:${lastAyah}`;
   }, [isRange, verseKeys, surahNumber, ayahNumber]);
 
+  // @ai-start
+  // Decision 3: the note's verses are named in the numbering of the rewayah
+  // it belongs to: the payload's, else (a saved note opened from the Notes
+  // list) the note's own once it has loaded; a legacy note without one
+  // counts as Hafs (verse-units contract section 3). Null while a saved
+  // note's rewayah is not known yet. Hafs keeps the label and preview above,
+  // exactly as before.
+  const mushafRewayah = useMushafSettingsStore(s => s.rewayah);
+  const noteRewayah: RewayahId | null = noteId
+    ? (rewayah ?? (noteLoaded ? (savedNoteRewayah ?? 'hafs') : null))
+    : (rewayah ?? mushafRewayah);
+  const isHafsNote = noteRewayah === 'hafs';
+
+  // A new note: the payload's verses (verse-units contract 4.1), as the
+  // verse actions sheet names them.
+  const selectionRequest = useMemo<VerseSelectionRequest>(
+    () => ({
+      rewayah: noteRewayah ?? 'hafs',
+      verseKey,
+      surahNumber,
+      ayahNumber,
+      verseKeys,
+      unitKeys,
+    }),
+    [noteRewayah, verseKey, surahNumber, ayahNumber, verseKeys, unitKeys],
+  );
+  const newNoteSelection = useVerseSelection(selectionRequest);
+  const requireSelection = useRequireSelection(
+    newNoteSelection,
+    selectionRequest,
+  );
+
+  // A saved note: its stored anchors ("S:A" or "S:A:W", Hafs locations),
+  // named in its rewayah's own verses once it has loaded (its verse_keys
+  // name every verse of a note on several verses).
+  const savedUnits = useRewayahVerseUnits(
+    noteId && noteRewayah && !isHafsNote ? noteRewayah : null,
+  );
+  const verses = useMemo((): {
+    label: string;
+    selection: ReadyVerseSelection | null;
+  } | null => {
+    if (noteRewayah === null) return null;
+    if (isHafsNote) return {label: verseRefText, selection: null};
+    if (!noteId) {
+      return newNoteSelection.status === 'ready'
+        ? {label: newNoteSelection.label, selection: newNoteSelection}
+        : null;
+    }
+    if (!noteLoaded) return null;
+    const anchorKeys =
+      savedNoteKeys && savedNoteKeys.length > 0
+        ? savedNoteKeys
+        : isRange
+          ? verseKeys
+          : [verseKey];
+    const described = describeStoredVerses(
+      savedUnits.units,
+      savedUnits.status,
+      anchorKeys,
+    );
+    if (described.status === 'loading') return null;
+    if (described.status === 'unnumbered') {
+      return {label: described.label, selection: null};
+    }
+    return {label: described.selection.label, selection: described.selection};
+  }, [
+    noteRewayah,
+    isHafsNote,
+    verseRefText,
+    noteId,
+    newNoteSelection,
+    noteLoaded,
+    savedNoteKeys,
+    isRange,
+    verseKeys,
+    verseKey,
+    savedUnits,
+  ]);
+  // Another rewayah's verses are drawn from their own text (each with its
+  // own marker); '' draws nothing (not nameable, or still loading).
+  const previewText = isHafsNote
+    ? undefined
+    : verses?.selection
+      ? (readUnitTexts(verses.selection) ?? []).join(' ')
+      : '';
+  // @ai-end
+
   useEffect(() => {
     if (!verseKey) return;
 
@@ -70,6 +179,7 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
             setNoteText(note.content);
             setIsEditMode(true);
             setSavedNoteRewayah(note.rewayahId ?? undefined);
+            setSavedNoteKeys(note.verseKeys);
           }
         })
         .finally(() => setNoteLoaded(true));
@@ -82,7 +192,7 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
 
     if (isEditMode && noteId) {
       await verseAnnotationService.updateNote(noteId, noteText.trim());
-    } else {
+    } else if (isHafsNote || !noteRewayah) {
       const allKeys = isRange ? verseKeys : [verseKey];
       await verseAnnotationService.addNote(
         verseKey,
@@ -94,8 +204,16 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
       );
       const store = useVerseAnnotationsStore.getState();
       for (const vk of allKeys) {
-        store.addNote(vk);
+        store.addNote(vk, rewayah); // @ai: the rewayah the row is saved in
       }
+    } else {
+      // @ai-start
+      // Another rewayah: stored by its verses' Hafs anchors (verse-units
+      // contract section 3), verse_keys = every anchor of a range.
+      const ready = await requireSelection('saved');
+      if (!ready || ready.anchors.length === 0) return;
+      await addSelectionNote(ready, noteText.trim());
+      // @ai-end
     }
     SheetManager.hideAll();
   }, [
@@ -108,6 +226,9 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
     isEditMode,
     noteId,
     rewayah,
+    isHafsNote, // @ai
+    noteRewayah, // @ai
+    requireSelection, // @ai
   ]);
 
   const handleDelete = useCallback(async () => {
@@ -134,8 +255,10 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}>
+        {/* @ai: the verses in the note's own rewayah numbering, once known */}
         <Text style={styles.title}>
-          {isEditMode ? 'Edit Note' : 'Note'} for {verseRefText}
+          {isEditMode ? 'Edit Note' : 'Note'}
+          {verses ? ` for ${verses.label}` : ''}
         </Text>
 
         <View style={styles.ayahContainer}>
@@ -144,8 +267,9 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
             <SkiaVersePreview
               verseKey={verseKey}
               verseKeys={verseKeys}
-              numberOfLines={isRange ? 3 : 2}
+              numberOfLines={isRange || verses?.selection?.isRange ? 3 : 2} // @ai
               rewayah={previewRewayah}
+              text={previewText} // @ai
             />
           ) : null}
           {/* @ai-end */}

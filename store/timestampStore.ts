@@ -6,10 +6,14 @@ import {RECITERS} from '@/data/reciterData';
 // @ai-start
 import {
   getPlayFromHereTarget,
+  getPlayFromUnitTarget, // @ai
   type PlayFromHereTarget,
   type TimingLoadStatus,
 } from '@/utils/timestampUtils';
-import type {TimingNumberingMode} from '@/utils/timestampNumbering';
+import type {
+  AudioUnitInput, // @ai
+  TimingNumberingMode,
+} from '@/utils/timestampNumbering';
 
 /** The main player track whose timings were last requested. */
 export interface TimestampRequest {
@@ -193,11 +197,19 @@ export const useTimestampStore = create<TimestampState>()((set, get) => ({
  * The main player's "Play from here" on Hafs verse `hafsVerseKey`, from the
  * current track's timings (getPlayFromHereTarget): 'pending' only while they
  * load, and the reason when the load settled without them. A failed load is
- * retried on the way, so the "try again" it asks for can succeed.
+ * retried on the way, so the "try again" it asks for can succeed. Given a
+ * verse unit of the verse rows' rewayah instead (@ai), it starts exactly at
+ * that verse when the timings are numbered by that rewayah
+ * (getPlayFromUnitTarget).
  */
-export function resolvePlayFromHere(hafsVerseKey: string): PlayFromHereTarget {
+export function resolvePlayFromHere(
+  hafsVerseKey: string | AudioUnitInput,
+): PlayFromHereTarget {
   const state = useTimestampStore.getState();
-  const target = getPlayFromHereTarget(state, hafsVerseKey);
+  const target =
+    typeof hafsVerseKey === 'string'
+      ? getPlayFromHereTarget(state, hafsVerseKey)
+      : getPlayFromUnitTarget(state, hafsVerseKey); // @ai
   if (state.timestampLoadStatus === 'failed') {
     state.retryTimestamps().catch(error => {
       console.warn('[Timestamps] Retrying the verse timing failed:', error);

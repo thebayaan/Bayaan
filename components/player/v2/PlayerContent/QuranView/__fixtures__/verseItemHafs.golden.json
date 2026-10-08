@@ -1,0 +1,2904 @@
+{
+ "player Hafs row, QPC text, translation and transliteration": {
+  "frames": [
+   {
+    "type": "View",
+    "props": {
+     "accessible": true,
+     "accessibilityState": {},
+     "focusable": true,
+     "accessibilityValue": {},
+     "style": [
+      {
+       "paddingVertical": 13.496941176470589,
+       "paddingHorizontal": 8.914285714285715,
+       "borderBottomWidth": 0.5,
+       "borderRadius": 8.914285714285715
+      },
+      {
+       "borderBottomColor": "#cccccc"
+      },
+      null,
+      false
+     ],
+     "collapsable": false
+    },
+    "children": [
+     {
+      "type": "View",
+      "props": {
+       "style": {
+        "marginBottom": 6.748470588235294
+       }
+      },
+      "children": [
+       {
+        "type": "View",
+        "props": {
+         "style": {
+          "flexDirection": "row",
+          "alignItems": "center",
+          "gap": 4.457142857142857
+         }
+        },
+        "children": [
+         {
+          "type": "View",
+          "props": {
+           "style": [
+            {
+             "paddingHorizontal": 4.457142857142857,
+             "paddingVertical": 3.342857142857143,
+             "borderRadius": 6.685714285714286
+            },
+            {
+             "backgroundColor": "rgba(17, 17, 17, 0.08)"
+            }
+           ]
+          },
+          "children": [
+           {
+            "type": "Text",
+            "props": {
+             "style": [
+              {
+               "fontSize": 13.371428571428572,
+               "fontFamily": "Manrope-Medium"
+              },
+              {
+               "color": "#111111"
+              }
+             ]
+            },
+            "children": [
+             "2",
+             ":",
+             "1"
+            ]
+           }
+          ]
+         },
+         {
+          "type": "View",
+          "props": {
+           "accessible": true,
+           "accessibilityState": {},
+           "focusable": true,
+           "accessibilityValue": {},
+           "hitSlop": 8,
+           "style": {
+            "marginLeft": "auto",
+            "padding": 4.457142857142857
+           },
+           "collapsable": false
+          },
+          "children": [
+           {
+            "type": "Text",
+            "props": {},
+            "children": [
+             "Feather:more-horizontal"
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "type": "View",
+      "props": {},
+      "children": [
+       {
+        "type": "Text",
+        "props": {
+         "style": [
+          {
+           "fontSize": 26.742857142857144,
+           "textAlign": "right",
+           "writingDirection": "rtl"
+          },
+          {
+           "fontSize": 26.742857142857144,
+           "fontFamily": "Uthmani"
+          }
+         ]
+        },
+        "children": [
+         {
+          "type": "Text",
+          "props": {
+           "style": {
+            "color": "#111111"
+           }
+          },
+          "children": [
+           "QPC-A"
+          ]
+         },
+         {
+          "type": "Text",
+          "props": {
+           "style": {
+            "color": "#111111"
+           }
+          },
+          "children": [
+           "QPC-B"
+          ]
+         },
+         {
+          "type": "Text",
+          "props": {},
+          "children": [
+           " "
+          ]
+         },
+         {
+          "type": "Text",
+          "props": {
+           "style": {
+            "color": "#111111"
+           }
+          },
+          "children": [
+           "QPC-C"
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "type": "Text",
+      "props": {
+       "testID": "formatted-text"
+      },
+      "children": [
+       "TRANSLITERATION-OF-2:1"
+      ]
+     },
+     {
+      "type": "View",
+      "props": {},
+      "children": [
+       {
+        "type": "Text",
+        "props": {
+         "testID": "formatted-text"
+        },
+        "children": [
+         "TRANSLATION-OF-2:1<sup foot_note=\"9001\">1</sup>"
+        ]
+       },
+       {
+        "type": "Text",
+        "props": {
+         "style": [
+          {
+           "fontSize": 12.257142857142858,
+           "fontFamily": "Manrope-Regular",
+           "marginTop": 2.2494901960784315,
+           "marginBottom": 4.498980392156863,
+           "textAlign": "left",
+           "fontStyle": "italic"
+          },
+          {
+           "color": "rgba(17, 17, 17, 0.6)"
+          }
+         ]
+        },
+        "children": [
+         "Saheeh International"
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "children": [
+   {
+    "component": "AyahCommunityReflections",
+    "props": {
+     "surahNumber": 2,
+     "ayahNumber": 1
+    }
+   }
+  ],
+  "sheets": [],
+  "pressed": [],
+  "selection": {
+   "verseKey": null,
+   "surah": null,
+   "ayah": null
+  }
+ },
+ "player Hafs row drawn by DigitalKhatt after measuring": {
+  "frames": [
+   {
+    "type": "View",
+    "props": {
+     "accessible": true,
+     "accessibilityState": {},
+     "focusable": true,
+     "accessibilityValue": {},
+     "style": [
+      {
+       "paddingVertical": 13.496941176470589,
+       "paddingHorizontal": 8.914285714285715,
+       "borderBottomWidth": 0.5,
+       "borderRadius": 8.914285714285715
+      },
+      {
+       "borderBottomColor": "#cccccc"
+      },
+      null,
+      false
+     ],
+     "collapsable": false
+    },
+    "children": [
+     {
+      "type": "View",
+      "props": {
+       "style": {
+        "marginBottom": 6.748470588235294
+       }
+      },
+      "children": [
+       {
+        "type": "View",
+        "props": {
+         "style": {
+          "flexDirection": "row",
+          "alignItems": "center",
+          "gap": 4.457142857142857
+         }
+        },
+        "children": [
+         {
+          "type": "View",
+          "props": {
+           "style": [
+            {
+             "paddingHorizontal": 4.457142857142857,
+             "paddingVertical": 3.342857142857143,
+             "borderRadius": 6.685714285714286
+            },
+            {
+             "backgroundColor": "rgba(17, 17, 17, 0.08)"
+            }
+           ]
+          },
+          "children": [
+           {
+            "type": "Text",
+            "props": {
+             "style": [
+              {
+               "fontSize": 13.371428571428572,
+               "fontFamily": "Manrope-Medium"
+              },
+              {
+               "color": "#111111"
+              }
+             ]
+            },
+            "children": [
+             "2",
+             ":",
+             "1"
+            ]
+           }
+          ]
+         },
+         {
+          "type": "View",
+          "props": {
+           "accessible": true,
+           "accessibilityState": {},
+           "focusable": true,
+           "accessibilityValue": {},
+           "hitSlop": 8,
+           "style": {
+            "marginLeft": "auto",
+            "padding": 4.457142857142857
+           },
+           "collapsable": false
+          },
+          "children": [
+           {
+            "type": "Text",
+            "props": {},
+            "children": [
+             "Feather:more-horizontal"
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "type": "View",
+      "props": {},
+      "children": [
+       {
+        "type": "Text",
+        "props": {
+         "style": [
+          {
+           "fontSize": 26.742857142857144,
+           "textAlign": "right",
+           "writingDirection": "rtl"
+          },
+          {
+           "fontSize": 26.742857142857144,
+           "fontFamily": "Uthmani"
+          }
+         ]
+        },
+        "children": [
+         {
+          "type": "Text",
+          "props": {
+           "style": {
+            "color": "#0CBF71"
+           }
+          },
+          "children": [
+           "QPC-A"
+          ]
+         },
+         {
+          "type": "Text",
+          "props": {
+           "style": {
+            "color": "#111111"
+           }
+          },
+          "children": [
+           "QPC-B"
+          ]
+         },
+         {
+          "type": "Text",
+          "props": {},
+          "children": [
+           " "
+          ]
+         },
+         {
+          "type": "Text",
+          "props": {
+           "style": {
+            "color": "#111111"
+           }
+          },
+          "children": [
+           "QPC-C"
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "type": "View",
+    "props": {
+     "accessible": true,
+     "accessibilityState": {},
+     "focusable": true,
+     "accessibilityValue": {},
+     "style": [
+      {
+       "paddingVertical": 13.496941176470589,
+       "paddingHorizontal": 8.914285714285715,
+       "borderBottomWidth": 0.5,
+       "borderRadius": 8.914285714285715
+      },
+      {
+       "borderBottomColor": "#cccccc"
+      },
+      null,
+      false
+     ],
+     "collapsable": false
+    },
+    "children": [
+     {
+      "type": "View",
+      "props": {
+       "style": {
+        "marginBottom": 6.748470588235294
+       }
+      },
+      "children": [
+       {
+        "type": "View",
+        "props": {
+         "style": {
+          "flexDirection": "row",
+          "alignItems": "center",
+          "gap": 4.457142857142857
+         }
+        },
+        "children": [
+         {
+          "type": "View",
+          "props": {
+           "style": [
+            {
+             "paddingHorizontal": 4.457142857142857,
+             "paddingVertical": 3.342857142857143,
+             "borderRadius": 6.685714285714286
+            },
+            {
+             "backgroundColor": "rgba(17, 17, 17, 0.08)"
+            }
+           ]
+          },
+          "children": [
+           {
+            "type": "Text",
+            "props": {
+             "style": [
+              {
+               "fontSize": 13.371428571428572,
+               "fontFamily": "Manrope-Medium"
+              },
+              {
+               "color": "#111111"
+              }
+             ]
+            },
+            "children": [
+             "2",
+             ":",
+             "1"
+            ]
+           }
+          ]
+         },
+         {
+          "type": "View",
+          "props": {
+           "accessible": true,
+           "accessibilityState": {},
+           "focusable": true,
+           "accessibilityValue": {},
+           "hitSlop": 8,
+           "style": {
+            "marginLeft": "auto",
+            "padding": 4.457142857142857
+           },
+           "collapsable": false
+          },
+          "children": [
+           {
+            "type": "Text",
+            "props": {},
+            "children": [
+             "Feather:more-horizontal"
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "type": "View",
+      "props": {},
+      "children": null
+     }
+    ]
+   }
+  ],
+  "children": [
+   {
+    "component": "AyahCommunityReflections",
+    "props": {
+     "surahNumber": 2,
+     "ayahNumber": 1
+    }
+   },
+   {
+    "component": "SkiaVerseText",
+    "props": {
+     "verseKey": "2:1",
+     "fontMgr": {
+      "fake": "fontMgr"
+     },
+     "fontFamily": "DigitalKhattV2",
+     "fontSize": 26.742857142857144,
+     "textColor": "#111111",
+     "showTajweed": true,
+     "width": 320,
+     "indexedTajweedData": null,
+     "arabicTextWeight": "normal",
+     "showAllahNameHighlight": false,
+     "allahNameHighlightColor": "#A86A00",
+     "rewayah": "hafs"
+    }
+   },
+   {
+    "component": "AyahCommunityReflections",
+    "props": {
+     "surahNumber": 2,
+     "ayahNumber": 1
+    }
+   }
+  ],
+  "sheets": [],
+  "pressed": [],
+  "selection": {
+   "verseKey": null,
+   "surah": null,
+   "ayah": null
+  }
+ },
+ "mushaf list row (no rewayah prop) in a Hafs mushaf": {
+  "frames": [
+   {
+    "type": "View",
+    "props": {
+     "accessible": true,
+     "accessibilityState": {},
+     "focusable": true,
+     "accessibilityValue": {},
+     "style": [
+      {
+       "paddingVertical": 13.496941176470589,
+       "paddingHorizontal": 8.914285714285715,
+       "borderBottomWidth": 0.5,
+       "borderRadius": 8.914285714285715
+      },
+      {
+       "borderBottomColor": "#cccccc"
+      },
+      null,
+      false
+     ],
+     "collapsable": false
+    },
+    "children": [
+     {
+      "type": "View",
+      "props": {
+       "style": {
+        "marginBottom": 6.748470588235294
+       }
+      },
+      "children": [
+       {
+        "type": "View",
+        "props": {
+         "style": {
+          "flexDirection": "row",
+          "alignItems": "center",
+          "gap": 4.457142857142857
+         }
+        },
+        "children": [
+         {
+          "type": "View",
+          "props": {
+           "style": [
+            {
+             "paddingHorizontal": 4.457142857142857,
+             "paddingVertical": 3.342857142857143,
+             "borderRadius": 6.685714285714286
+            },
+            {
+             "backgroundColor": "rgba(17, 17, 17, 0.08)"
+            }
+           ]
+          },
+          "children": [
+           {
+            "type": "Text",
+            "props": {
+             "style": [
+              {
+               "fontSize": 13.371428571428572,
+               "fontFamily": "Manrope-Medium"
+              },
+              {
+               "color": "#111111"
+              }
+             ]
+            },
+            "children": [
+             "2",
+             ":",
+             "1"
+            ]
+           }
+          ]
+         },
+         {
+          "type": "View",
+          "props": {
+           "accessible": true,
+           "accessibilityState": {},
+           "focusable": true,
+           "accessibilityValue": {},
+           "hitSlop": 8,
+           "style": {
+            "marginLeft": "auto",
+            "padding": 4.457142857142857
+           },
+           "collapsable": false
+          },
+          "children": [
+           {
+            "type": "Text",
+            "props": {},
+            "children": [
+             "Feather:more-horizontal"
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "type": "View",
+      "props": {},
+      "children": [
+       {
+        "type": "Text",
+        "props": {
+         "style": [
+          {
+           "fontSize": 26.742857142857144,
+           "textAlign": "right",
+           "writingDirection": "rtl"
+          },
+          {
+           "fontSize": 26.742857142857144,
+           "fontFamily": "Uthmani"
+          }
+         ]
+        },
+        "children": [
+         {
+          "type": "Text",
+          "props": {
+           "style": {
+            "color": "#111111"
+           }
+          },
+          "children": [
+           "QPC-A"
+          ]
+         },
+         {
+          "type": "Text",
+          "props": {
+           "style": {
+            "color": "#111111"
+           }
+          },
+          "children": [
+           "QPC-B"
+          ]
+         },
+         {
+          "type": "Text",
+          "props": {},
+          "children": [
+           " "
+          ]
+         },
+         {
+          "type": "Text",
+          "props": {
+           "style": {
+            "color": "#111111"
+           }
+          },
+          "children": [
+           "QPC-C"
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "type": "View",
+    "props": {
+     "accessible": true,
+     "accessibilityState": {},
+     "focusable": true,
+     "accessibilityValue": {},
+     "style": [
+      {
+       "paddingVertical": 13.496941176470589,
+       "paddingHorizontal": 8.914285714285715,
+       "borderBottomWidth": 0.5,
+       "borderRadius": 8.914285714285715
+      },
+      {
+       "borderBottomColor": "#cccccc"
+      },
+      null,
+      false
+     ],
+     "collapsable": false
+    },
+    "children": [
+     {
+      "type": "View",
+      "props": {
+       "style": {
+        "marginBottom": 6.748470588235294
+       }
+      },
+      "children": [
+       {
+        "type": "View",
+        "props": {
+         "style": {
+          "flexDirection": "row",
+          "alignItems": "center",
+          "gap": 4.457142857142857
+         }
+        },
+        "children": [
+         {
+          "type": "View",
+          "props": {
+           "style": [
+            {
+             "paddingHorizontal": 4.457142857142857,
+             "paddingVertical": 3.342857142857143,
+             "borderRadius": 6.685714285714286
+            },
+            {
+             "backgroundColor": "rgba(17, 17, 17, 0.08)"
+            }
+           ]
+          },
+          "children": [
+           {
+            "type": "Text",
+            "props": {
+             "style": [
+              {
+               "fontSize": 13.371428571428572,
+               "fontFamily": "Manrope-Medium"
+              },
+              {
+               "color": "#111111"
+              }
+             ]
+            },
+            "children": [
+             "2",
+             ":",
+             "1"
+            ]
+           }
+          ]
+         },
+         {
+          "type": "View",
+          "props": {
+           "accessible": true,
+           "accessibilityState": {},
+           "focusable": true,
+           "accessibilityValue": {},
+           "hitSlop": 8,
+           "style": {
+            "marginLeft": "auto",
+            "padding": 4.457142857142857
+           },
+           "collapsable": false
+          },
+          "children": [
+           {
+            "type": "Text",
+            "props": {},
+            "children": [
+             "Feather:more-horizontal"
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "type": "View",
+      "props": {},
+      "children": null
+     }
+    ]
+   }
+  ],
+  "children": [
+   {
+    "component": "AyahCommunityReflections",
+    "props": {
+     "surahNumber": 2,
+     "ayahNumber": 1
+    }
+   },
+   {
+    "component": "SkiaVerseText",
+    "props": {
+     "verseKey": "2:1",
+     "fontMgr": {
+      "fake": "fontMgr"
+     },
+     "fontFamily": "DigitalKhattV2",
+     "fontSize": 26.742857142857144,
+     "textColor": "#111111",
+     "showTajweed": false,
+     "width": 300,
+     "indexedTajweedData": null,
+     "arabicTextWeight": "normal",
+     "showAllahNameHighlight": false,
+     "allahNameHighlightColor": "#A86A00"
+    }
+   },
+   {
+    "component": "AyahCommunityReflections",
+    "props": {
+     "surahNumber": 2,
+     "ayahNumber": 1
+    }
+   }
+  ],
+  "sheets": [],
+  "pressed": [],
+  "selection": {
+   "verseKey": null,
+   "surah": null,
+   "ayah": null
+  }
+ },
+ "active, selected, bookmarked and noted": {
+  "frames": [
+   {
+    "type": "View",
+    "props": {
+     "accessible": true,
+     "accessibilityState": {},
+     "focusable": true,
+     "accessibilityValue": {},
+     "style": [
+      {
+       "paddingVertical": 13.496941176470589,
+       "paddingHorizontal": 8.914285714285715,
+       "borderBottomWidth": 0.5,
+       "borderRadius": 8.914285714285715
+      },
+      {
+       "borderBottomColor": "#cccccc"
+      },
+      {
+       "backgroundColor": "rgba(17, 17, 17, 0.12)",
+       "borderRadius": 8.914285714285715
+      },
+      {
+       "backgroundColor": "rgba(17, 17, 17, 0.06)",
+       "borderRadius": 8.914285714285715
+      }
+     ],
+     "collapsable": false
+    },
+    "children": [
+     {
+      "type": "View",
+      "props": {
+       "style": {
+        "marginBottom": 6.748470588235294
+       }
+      },
+      "children": [
+       {
+        "type": "View",
+        "props": {
+         "style": {
+          "flexDirection": "row",
+          "alignItems": "center",
+          "gap": 4.457142857142857
+         }
+        },
+        "children": [
+         {
+          "type": "View",
+          "props": {
+           "style": [
+            {
+             "paddingHorizontal": 4.457142857142857,
+             "paddingVertical": 3.342857142857143,
+             "borderRadius": 6.685714285714286
+            },
+            {
+             "backgroundColor": "rgba(17, 17, 17, 0.08)"
+            }
+           ]
+          },
+          "children": [
+           {
+            "type": "Text",
+            "props": {
+             "style": [
+              {
+               "fontSize": 13.371428571428572,
+               "fontFamily": "Manrope-Medium"
+              },
+              {
+               "color": "#111111"
+              }
+             ]
+            },
+            "children": [
+             "2",
+             ":",
+             "1"
+            ]
+           }
+          ]
+         },
+         {
+          "type": "Text",
+          "props": {},
+          "children": [
+           "Feather:bookmark"
+          ]
+         },
+         {
+          "type": "Text",
+          "props": {},
+          "children": [
+           "Feather:file-text"
+          ]
+         },
+         {
+          "type": "View",
+          "props": {
+           "accessible": true,
+           "accessibilityState": {},
+           "focusable": true,
+           "accessibilityValue": {},
+           "hitSlop": 8,
+           "style": {
+            "marginLeft": "auto",
+            "padding": 4.457142857142857
+           },
+           "collapsable": false
+          },
+          "children": [
+           {
+            "type": "Text",
+            "props": {},
+            "children": [
+             "Feather:more-horizontal"
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "type": "View",
+      "props": {},
+      "children": [
+       {
+        "type": "Text",
+        "props": {
+         "style": [
+          {
+           "fontSize": 26.742857142857144,
+           "textAlign": "right",
+           "writingDirection": "rtl"
+          },
+          {
+           "fontSize": 26.742857142857144,
+           "fontFamily": "Uthmani"
+          }
+         ]
+        },
+        "children": [
+         {
+          "type": "Text",
+          "props": {
+           "style": {
+            "color": "#111111"
+           }
+          },
+          "children": [
+           "QPC-A"
+          ]
+         },
+         {
+          "type": "Text",
+          "props": {
+           "style": {
+            "color": "#111111"
+           }
+          },
+          "children": [
+           "QPC-B"
+          ]
+         },
+         {
+          "type": "Text",
+          "props": {},
+          "children": [
+           " "
+          ]
+         },
+         {
+          "type": "Text",
+          "props": {
+           "style": {
+            "color": "#111111"
+           }
+          },
+          "children": [
+           "QPC-C"
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "children": [
+   {
+    "component": "AyahCommunityReflections",
+    "props": {
+     "surahNumber": 2,
+     "ayahNumber": 1
+    }
+   }
+  ],
+  "sheets": [],
+  "pressed": [],
+  "selection": {
+   "verseKey": "2:1",
+   "surah": 2,
+   "ayah": 1
+  }
+ },
+ "another verse is selected": {
+  "frames": [
+   {
+    "type": "View",
+    "props": {
+     "accessible": true,
+     "accessibilityState": {},
+     "focusable": true,
+     "accessibilityValue": {},
+     "style": [
+      {
+       "paddingVertical": 13.496941176470589,
+       "paddingHorizontal": 8.914285714285715,
+       "borderBottomWidth": 0.5,
+       "borderRadius": 8.914285714285715
+      },
+      {
+       "borderBottomColor": "#cccccc"
+      },
+      null,
+      false
+     ],
+     "collapsable": false
+    },
+    "children": [
+     {
+      "type": "View",
+      "props": {
+       "style": {
+        "marginBottom": 6.748470588235294
+       }
+      },
+      "children": [
+       {
+        "type": "View",
+        "props": {
+         "style": {
+          "flexDirection": "row",
+          "alignItems": "center",
+          "gap": 4.457142857142857
+         }
+        },
+        "children": [
+         {
+          "type": "View",
+          "props": {
+           "style": [
+            {
+             "paddingHorizontal": 4.457142857142857,
+             "paddingVertical": 3.342857142857143,
+             "borderRadius": 6.685714285714286
+            },
+            {
+             "backgroundColor": "rgba(17, 17, 17, 0.08)"
+            }
+           ]
+          },
+          "children": [
+           {
+            "type": "Text",
+            "props": {
+             "style": [
+              {
+               "fontSize": 13.371428571428572,
+               "fontFamily": "Manrope-Medium"
+              },
+              {
+               "color": "#111111"
+              }
+             ]
+            },
+            "children": [
+             "2",
+             ":",
+             "1"
+            ]
+           }
+          ]
+         },
+         {
+          "type": "View",
+          "props": {
+           "accessible": true,
+           "accessibilityState": {},
+           "focusable": true,
+           "accessibilityValue": {},
+           "hitSlop": 8,
+           "style": {
+            "marginLeft": "auto",
+            "padding": 4.457142857142857
+           },
+           "collapsable": false
+          },
+          "children": [
+           {
+            "type": "Text",
+            "props": {},
+            "children": [
+             "Feather:more-horizontal"
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "type": "View",
+      "props": {},
+      "children": [
+       {
+        "type": "Text",
+        "props": {
+         "style": [
+          {
+           "fontSize": 26.742857142857144,
+           "textAlign": "right",
+           "writingDirection": "rtl"
+          },
+          {
+           "fontSize": 26.742857142857144,
+           "fontFamily": "Uthmani"
+          }
+         ]
+        },
+        "children": [
+         {
+          "type": "Text",
+          "props": {
+           "style": {
+            "color": "#111111"
+           }
+          },
+          "children": [
+           "QPC-A"
+          ]
+         },
+         {
+          "type": "Text",
+          "props": {
+           "style": {
+            "color": "#111111"
+           }
+          },
+          "children": [
+           "QPC-B"
+          ]
+         },
+         {
+          "type": "Text",
+          "props": {},
+          "children": [
+           " "
+          ]
+         },
+         {
+          "type": "Text",
+          "props": {
+           "style": {
+            "color": "#111111"
+           }
+          },
+          "children": [
+           "QPC-C"
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "children": [
+   {
+    "component": "AyahCommunityReflections",
+    "props": {
+     "surahNumber": 2,
+     "ayahNumber": 1
+    }
+   }
+  ],
+  "sheets": [],
+  "pressed": [],
+  "selection": {
+   "verseKey": "2:2",
+   "surah": 2,
+   "ayah": 2
+  }
+ },
+ "word by word, then a word pressed": {
+  "frames": [
+   {
+    "type": "View",
+    "props": {
+     "accessible": true,
+     "accessibilityState": {},
+     "focusable": true,
+     "accessibilityValue": {},
+     "style": [
+      {
+       "paddingVertical": 13.496941176470589,
+       "paddingHorizontal": 8.914285714285715,
+       "borderBottomWidth": 0.5,
+       "borderRadius": 8.914285714285715
+      },
+      {
+       "borderBottomColor": "#cccccc"
+      },
+      null,
+      false
+     ],
+     "collapsable": false
+    },
+    "children": [
+     {
+      "type": "View",
+      "props": {
+       "style": {
+        "marginBottom": 6.748470588235294
+       }
+      },
+      "children": [
+       {
+        "type": "View",
+        "props": {
+         "style": {
+          "flexDirection": "row",
+          "alignItems": "center",
+          "gap": 4.457142857142857
+         }
+        },
+        "children": [
+         {
+          "type": "View",
+          "props": {
+           "style": [
+            {
+             "paddingHorizontal": 4.457142857142857,
+             "paddingVertical": 3.342857142857143,
+             "borderRadius": 6.685714285714286
+            },
+            {
+             "backgroundColor": "rgba(17, 17, 17, 0.08)"
+            }
+           ]
+          },
+          "children": [
+           {
+            "type": "Text",
+            "props": {
+             "style": [
+              {
+               "fontSize": 13.371428571428572,
+               "fontFamily": "Manrope-Medium"
+              },
+              {
+               "color": "#111111"
+              }
+             ]
+            },
+            "children": [
+             "2",
+             ":",
+             "1"
+            ]
+           }
+          ]
+         },
+         {
+          "type": "View",
+          "props": {
+           "accessible": true,
+           "accessibilityState": {},
+           "focusable": true,
+           "accessibilityValue": {},
+           "hitSlop": 8,
+           "style": {
+            "marginLeft": "auto",
+            "padding": 4.457142857142857
+           },
+           "collapsable": false
+          },
+          "children": [
+           {
+            "type": "Text",
+            "props": {},
+            "children": [
+             "Feather:more-horizontal"
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "type": "View",
+    "props": {
+     "accessible": true,
+     "accessibilityState": {},
+     "focusable": true,
+     "accessibilityValue": {},
+     "style": [
+      {
+       "paddingVertical": 13.496941176470589,
+       "paddingHorizontal": 8.914285714285715,
+       "borderBottomWidth": 0.5,
+       "borderRadius": 8.914285714285715
+      },
+      {
+       "borderBottomColor": "#cccccc"
+      },
+      null,
+      false
+     ],
+     "collapsable": false
+    },
+    "children": [
+     {
+      "type": "View",
+      "props": {
+       "style": {
+        "marginBottom": 6.748470588235294
+       }
+      },
+      "children": [
+       {
+        "type": "View",
+        "props": {
+         "style": {
+          "flexDirection": "row",
+          "alignItems": "center",
+          "gap": 4.457142857142857
+         }
+        },
+        "children": [
+         {
+          "type": "View",
+          "props": {
+           "style": [
+            {
+             "paddingHorizontal": 4.457142857142857,
+             "paddingVertical": 3.342857142857143,
+             "borderRadius": 6.685714285714286
+            },
+            {
+             "backgroundColor": "rgba(17, 17, 17, 0.08)"
+            }
+           ]
+          },
+          "children": [
+           {
+            "type": "Text",
+            "props": {
+             "style": [
+              {
+               "fontSize": 13.371428571428572,
+               "fontFamily": "Manrope-Medium"
+              },
+              {
+               "color": "#111111"
+              }
+             ]
+            },
+            "children": [
+             "2",
+             ":",
+             "1"
+            ]
+           }
+          ]
+         },
+         {
+          "type": "View",
+          "props": {
+           "accessible": true,
+           "accessibilityState": {},
+           "focusable": true,
+           "accessibilityValue": {},
+           "hitSlop": 8,
+           "style": {
+            "marginLeft": "auto",
+            "padding": 4.457142857142857
+           },
+           "collapsable": false
+          },
+          "children": [
+           {
+            "type": "Text",
+            "props": {},
+            "children": [
+             "Feather:more-horizontal"
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "children": [
+   {
+    "component": "WBWVerseView",
+    "props": {
+     "verseKey": "2:1",
+     "textColor": "#111111",
+     "arabicFontSize": 24,
+     "dkFontFamily": "DigitalKhattIndoPak",
+     "fontMgr": {
+      "fake": "fontMgr"
+     },
+     "showTranslation": true,
+     "showTransliteration": false,
+     "onWordPress": "fn",
+     "selectedWordPosition": null,
+     "showTajweed": false,
+     "indexedTajweedData": null,
+     "onTap": "fn",
+     "onLongPress": "fn",
+     "arabicTextWeight": "normal",
+     "showAllahNameHighlight": false,
+     "allahNameHighlightColor": "#A86A00",
+     "rewayah": "hafs"
+    }
+   },
+   {
+    "component": "AyahCommunityReflections",
+    "props": {
+     "surahNumber": 2,
+     "ayahNumber": 1
+    }
+   },
+   {
+    "component": "WBWVerseView",
+    "props": {
+     "verseKey": "2:1",
+     "textColor": "#111111",
+     "arabicFontSize": 24,
+     "dkFontFamily": "DigitalKhattIndoPak",
+     "fontMgr": {
+      "fake": "fontMgr"
+     },
+     "showTranslation": true,
+     "showTransliteration": false,
+     "onWordPress": "fn",
+     "selectedWordPosition": 3,
+     "showTajweed": false,
+     "indexedTajweedData": null,
+     "onTap": "fn",
+     "onLongPress": "fn",
+     "arabicTextWeight": "normal",
+     "showAllahNameHighlight": false,
+     "allahNameHighlightColor": "#A86A00",
+     "rewayah": "hafs"
+    }
+   },
+   {
+    "component": "AyahCommunityReflections",
+    "props": {
+     "surahNumber": 2,
+     "ayahNumber": 1
+    }
+   }
+  ],
+  "sheets": [
+   [
+    "word-detail",
+    {
+     "payload": {
+      "verseKey": "2:1",
+      "position": 3
+     }
+    }
+   ]
+  ],
+  "pressed": [],
+  "selection": {
+   "verseKey": null,
+   "surah": null,
+   "ayah": null
+  }
+ },
+ "long press opens the verse actions sheet": {
+  "frames": [
+   {
+    "type": "View",
+    "props": {
+     "accessible": true,
+     "accessibilityState": {},
+     "focusable": true,
+     "accessibilityValue": {},
+     "style": [
+      {
+       "paddingVertical": 13.496941176470589,
+       "paddingHorizontal": 8.914285714285715,
+       "borderBottomWidth": 0.5,
+       "borderRadius": 8.914285714285715
+      },
+      {
+       "borderBottomColor": "#cccccc"
+      },
+      null,
+      false
+     ],
+     "collapsable": false
+    },
+    "children": [
+     {
+      "type": "View",
+      "props": {
+       "style": {
+        "marginBottom": 6.748470588235294
+       }
+      },
+      "children": [
+       {
+        "type": "View",
+        "props": {
+         "style": {
+          "flexDirection": "row",
+          "alignItems": "center",
+          "gap": 4.457142857142857
+         }
+        },
+        "children": [
+         {
+          "type": "View",
+          "props": {
+           "style": [
+            {
+             "paddingHorizontal": 4.457142857142857,
+             "paddingVertical": 3.342857142857143,
+             "borderRadius": 6.685714285714286
+            },
+            {
+             "backgroundColor": "rgba(17, 17, 17, 0.08)"
+            }
+           ]
+          },
+          "children": [
+           {
+            "type": "Text",
+            "props": {
+             "style": [
+              {
+               "fontSize": 13.371428571428572,
+               "fontFamily": "Manrope-Medium"
+              },
+              {
+               "color": "#111111"
+              }
+             ]
+            },
+            "children": [
+             "2",
+             ":",
+             "1"
+            ]
+           }
+          ]
+         },
+         {
+          "type": "View",
+          "props": {
+           "accessible": true,
+           "accessibilityState": {},
+           "focusable": true,
+           "accessibilityValue": {},
+           "hitSlop": 8,
+           "style": {
+            "marginLeft": "auto",
+            "padding": 4.457142857142857
+           },
+           "collapsable": false
+          },
+          "children": [
+           {
+            "type": "Text",
+            "props": {},
+            "children": [
+             "Feather:more-horizontal"
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "type": "View",
+      "props": {},
+      "children": [
+       {
+        "type": "Text",
+        "props": {
+         "style": [
+          {
+           "fontSize": 26.742857142857144,
+           "textAlign": "right",
+           "writingDirection": "rtl"
+          },
+          {
+           "fontSize": 26.742857142857144,
+           "fontFamily": "Uthmani"
+          }
+         ]
+        },
+        "children": [
+         {
+          "type": "Text",
+          "props": {
+           "style": {
+            "color": "#111111"
+           }
+          },
+          "children": [
+           "QPC-A"
+          ]
+         },
+         {
+          "type": "Text",
+          "props": {
+           "style": {
+            "color": "#111111"
+           }
+          },
+          "children": [
+           "QPC-B"
+          ]
+         },
+         {
+          "type": "Text",
+          "props": {},
+          "children": [
+           " "
+          ]
+         },
+         {
+          "type": "Text",
+          "props": {
+           "style": {
+            "color": "#111111"
+           }
+          },
+          "children": [
+           "QPC-C"
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "type": "View",
+    "props": {
+     "accessible": true,
+     "accessibilityState": {},
+     "focusable": true,
+     "accessibilityValue": {},
+     "style": [
+      {
+       "paddingVertical": 13.496941176470589,
+       "paddingHorizontal": 8.914285714285715,
+       "borderBottomWidth": 0.5,
+       "borderRadius": 8.914285714285715
+      },
+      {
+       "borderBottomColor": "#cccccc"
+      },
+      null,
+      {
+       "backgroundColor": "rgba(17, 17, 17, 0.06)",
+       "borderRadius": 8.914285714285715
+      }
+     ],
+     "collapsable": false
+    },
+    "children": [
+     {
+      "type": "View",
+      "props": {
+       "style": {
+        "marginBottom": 6.748470588235294
+       }
+      },
+      "children": [
+       {
+        "type": "View",
+        "props": {
+         "style": {
+          "flexDirection": "row",
+          "alignItems": "center",
+          "gap": 4.457142857142857
+         }
+        },
+        "children": [
+         {
+          "type": "View",
+          "props": {
+           "style": [
+            {
+             "paddingHorizontal": 4.457142857142857,
+             "paddingVertical": 3.342857142857143,
+             "borderRadius": 6.685714285714286
+            },
+            {
+             "backgroundColor": "rgba(17, 17, 17, 0.08)"
+            }
+           ]
+          },
+          "children": [
+           {
+            "type": "Text",
+            "props": {
+             "style": [
+              {
+               "fontSize": 13.371428571428572,
+               "fontFamily": "Manrope-Medium"
+              },
+              {
+               "color": "#111111"
+              }
+             ]
+            },
+            "children": [
+             "2",
+             ":",
+             "1"
+            ]
+           }
+          ]
+         },
+         {
+          "type": "View",
+          "props": {
+           "accessible": true,
+           "accessibilityState": {},
+           "focusable": true,
+           "accessibilityValue": {},
+           "hitSlop": 8,
+           "style": {
+            "marginLeft": "auto",
+            "padding": 4.457142857142857
+           },
+           "collapsable": false
+          },
+          "children": [
+           {
+            "type": "Text",
+            "props": {},
+            "children": [
+             "Feather:more-horizontal"
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "type": "View",
+      "props": {},
+      "children": [
+       {
+        "type": "Text",
+        "props": {
+         "style": [
+          {
+           "fontSize": 26.742857142857144,
+           "textAlign": "right",
+           "writingDirection": "rtl"
+          },
+          {
+           "fontSize": 26.742857142857144,
+           "fontFamily": "Uthmani"
+          }
+         ]
+        },
+        "children": [
+         {
+          "type": "Text",
+          "props": {
+           "style": {
+            "color": "#111111"
+           }
+          },
+          "children": [
+           "QPC-A"
+          ]
+         },
+         {
+          "type": "Text",
+          "props": {
+           "style": {
+            "color": "#111111"
+           }
+          },
+          "children": [
+           "QPC-B"
+          ]
+         },
+         {
+          "type": "Text",
+          "props": {},
+          "children": [
+           " "
+          ]
+         },
+         {
+          "type": "Text",
+          "props": {
+           "style": {
+            "color": "#111111"
+           }
+          },
+          "children": [
+           "QPC-C"
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "children": [
+   {
+    "component": "AyahCommunityReflections",
+    "props": {
+     "surahNumber": 2,
+     "ayahNumber": 1
+    }
+   },
+   {
+    "component": "AyahCommunityReflections",
+    "props": {
+     "surahNumber": 2,
+     "ayahNumber": 1
+    }
+   }
+  ],
+  "sheets": [
+   [
+    "verse-actions",
+    {
+     "payload": {
+      "verseKey": "2:1",
+      "surahNumber": 2,
+      "ayahNumber": 1,
+      "translation": "TRANSLATION-OF-2:1<sup foot_note=\"9001\">1</sup>",
+      "transliteration": "TRANSLITERATION-OF-2:1",
+      "source": "player",
+      "rewayah": "hafs"
+     }
+    }
+   ]
+  ],
+  "pressed": [],
+  "selection": {
+   "verseKey": "2:1",
+   "surah": 2,
+   "ayah": 1
+  }
+ },
+ "options button opens the verse actions sheet (mushaf source)": {
+  "frames": [
+   {
+    "type": "View",
+    "props": {
+     "accessible": true,
+     "accessibilityState": {},
+     "focusable": true,
+     "accessibilityValue": {},
+     "style": [
+      {
+       "paddingVertical": 13.496941176470589,
+       "paddingHorizontal": 8.914285714285715,
+       "borderBottomWidth": 0.5,
+       "borderRadius": 8.914285714285715
+      },
+      {
+       "borderBottomColor": "#cccccc"
+      },
+      null,
+      false
+     ],
+     "collapsable": false
+    },
+    "children": [
+     {
+      "type": "View",
+      "props": {
+       "style": {
+        "marginBottom": 6.748470588235294
+       }
+      },
+      "children": [
+       {
+        "type": "View",
+        "props": {
+         "style": {
+          "flexDirection": "row",
+          "alignItems": "center",
+          "gap": 4.457142857142857
+         }
+        },
+        "children": [
+         {
+          "type": "View",
+          "props": {
+           "style": [
+            {
+             "paddingHorizontal": 4.457142857142857,
+             "paddingVertical": 3.342857142857143,
+             "borderRadius": 6.685714285714286
+            },
+            {
+             "backgroundColor": "rgba(17, 17, 17, 0.08)"
+            }
+           ]
+          },
+          "children": [
+           {
+            "type": "Text",
+            "props": {
+             "style": [
+              {
+               "fontSize": 13.371428571428572,
+               "fontFamily": "Manrope-Medium"
+              },
+              {
+               "color": "#111111"
+              }
+             ]
+            },
+            "children": [
+             "2",
+             ":",
+             "1"
+            ]
+           }
+          ]
+         },
+         {
+          "type": "View",
+          "props": {
+           "accessible": true,
+           "accessibilityState": {},
+           "focusable": true,
+           "accessibilityValue": {},
+           "hitSlop": 8,
+           "style": {
+            "marginLeft": "auto",
+            "padding": 4.457142857142857
+           },
+           "collapsable": false
+          },
+          "children": [
+           {
+            "type": "Text",
+            "props": {},
+            "children": [
+             "Feather:more-horizontal"
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "type": "View",
+      "props": {},
+      "children": [
+       {
+        "type": "Text",
+        "props": {
+         "style": [
+          {
+           "fontSize": 26.742857142857144,
+           "textAlign": "right",
+           "writingDirection": "rtl"
+          },
+          {
+           "fontSize": 26.742857142857144,
+           "fontFamily": "Uthmani"
+          }
+         ]
+        },
+        "children": [
+         {
+          "type": "Text",
+          "props": {
+           "style": {
+            "color": "#111111"
+           }
+          },
+          "children": [
+           "QPC-A"
+          ]
+         },
+         {
+          "type": "Text",
+          "props": {
+           "style": {
+            "color": "#111111"
+           }
+          },
+          "children": [
+           "QPC-B"
+          ]
+         },
+         {
+          "type": "Text",
+          "props": {},
+          "children": [
+           " "
+          ]
+         },
+         {
+          "type": "Text",
+          "props": {
+           "style": {
+            "color": "#111111"
+           }
+          },
+          "children": [
+           "QPC-C"
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "type": "View",
+    "props": {
+     "accessible": true,
+     "accessibilityState": {},
+     "focusable": true,
+     "accessibilityValue": {},
+     "style": [
+      {
+       "paddingVertical": 13.496941176470589,
+       "paddingHorizontal": 8.914285714285715,
+       "borderBottomWidth": 0.5,
+       "borderRadius": 8.914285714285715
+      },
+      {
+       "borderBottomColor": "#cccccc"
+      },
+      null,
+      {
+       "backgroundColor": "rgba(17, 17, 17, 0.06)",
+       "borderRadius": 8.914285714285715
+      }
+     ],
+     "collapsable": false
+    },
+    "children": [
+     {
+      "type": "View",
+      "props": {
+       "style": {
+        "marginBottom": 6.748470588235294
+       }
+      },
+      "children": [
+       {
+        "type": "View",
+        "props": {
+         "style": {
+          "flexDirection": "row",
+          "alignItems": "center",
+          "gap": 4.457142857142857
+         }
+        },
+        "children": [
+         {
+          "type": "View",
+          "props": {
+           "style": [
+            {
+             "paddingHorizontal": 4.457142857142857,
+             "paddingVertical": 3.342857142857143,
+             "borderRadius": 6.685714285714286
+            },
+            {
+             "backgroundColor": "rgba(17, 17, 17, 0.08)"
+            }
+           ]
+          },
+          "children": [
+           {
+            "type": "Text",
+            "props": {
+             "style": [
+              {
+               "fontSize": 13.371428571428572,
+               "fontFamily": "Manrope-Medium"
+              },
+              {
+               "color": "#111111"
+              }
+             ]
+            },
+            "children": [
+             "2",
+             ":",
+             "1"
+            ]
+           }
+          ]
+         },
+         {
+          "type": "View",
+          "props": {
+           "accessible": true,
+           "accessibilityState": {},
+           "focusable": true,
+           "accessibilityValue": {},
+           "hitSlop": 8,
+           "style": {
+            "marginLeft": "auto",
+            "padding": 4.457142857142857
+           },
+           "collapsable": false
+          },
+          "children": [
+           {
+            "type": "Text",
+            "props": {},
+            "children": [
+             "Feather:more-horizontal"
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "type": "View",
+      "props": {},
+      "children": [
+       {
+        "type": "Text",
+        "props": {
+         "style": [
+          {
+           "fontSize": 26.742857142857144,
+           "textAlign": "right",
+           "writingDirection": "rtl"
+          },
+          {
+           "fontSize": 26.742857142857144,
+           "fontFamily": "Uthmani"
+          }
+         ]
+        },
+        "children": [
+         {
+          "type": "Text",
+          "props": {
+           "style": {
+            "color": "#111111"
+           }
+          },
+          "children": [
+           "QPC-A"
+          ]
+         },
+         {
+          "type": "Text",
+          "props": {
+           "style": {
+            "color": "#111111"
+           }
+          },
+          "children": [
+           "QPC-B"
+          ]
+         },
+         {
+          "type": "Text",
+          "props": {},
+          "children": [
+           " "
+          ]
+         },
+         {
+          "type": "Text",
+          "props": {
+           "style": {
+            "color": "#111111"
+           }
+          },
+          "children": [
+           "QPC-C"
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "children": [
+   {
+    "component": "AyahCommunityReflections",
+    "props": {
+     "surahNumber": 2,
+     "ayahNumber": 1
+    }
+   },
+   {
+    "component": "AyahCommunityReflections",
+    "props": {
+     "surahNumber": 2,
+     "ayahNumber": 1
+    }
+   }
+  ],
+  "sheets": [
+   [
+    "verse-actions",
+    {
+     "payload": {
+      "verseKey": "2:1",
+      "surahNumber": 2,
+      "ayahNumber": 1,
+      "translation": "TRANSLATION-OF-2:1<sup foot_note=\"9001\">1</sup>",
+      "transliteration": "TRANSLITERATION-OF-2:1",
+      "source": "mushaf"
+     }
+    }
+   ]
+  ],
+  "pressed": [],
+  "selection": {
+   "verseKey": "2:1",
+   "surah": 2,
+   "ayah": 1
+  }
+ },
+ "tap and footnote": {
+  "frames": [
+   {
+    "type": "View",
+    "props": {
+     "accessible": true,
+     "accessibilityState": {},
+     "focusable": true,
+     "accessibilityValue": {},
+     "style": [
+      {
+       "paddingVertical": 13.496941176470589,
+       "paddingHorizontal": 8.914285714285715,
+       "borderBottomWidth": 0.5,
+       "borderRadius": 8.914285714285715
+      },
+      {
+       "borderBottomColor": "#cccccc"
+      },
+      null,
+      false
+     ],
+     "collapsable": false
+    },
+    "children": [
+     {
+      "type": "View",
+      "props": {
+       "style": {
+        "marginBottom": 6.748470588235294
+       }
+      },
+      "children": [
+       {
+        "type": "View",
+        "props": {
+         "style": {
+          "flexDirection": "row",
+          "alignItems": "center",
+          "gap": 4.457142857142857
+         }
+        },
+        "children": [
+         {
+          "type": "View",
+          "props": {
+           "style": [
+            {
+             "paddingHorizontal": 4.457142857142857,
+             "paddingVertical": 3.342857142857143,
+             "borderRadius": 6.685714285714286
+            },
+            {
+             "backgroundColor": "rgba(17, 17, 17, 0.08)"
+            }
+           ]
+          },
+          "children": [
+           {
+            "type": "Text",
+            "props": {
+             "style": [
+              {
+               "fontSize": 13.371428571428572,
+               "fontFamily": "Manrope-Medium"
+              },
+              {
+               "color": "#111111"
+              }
+             ]
+            },
+            "children": [
+             "2",
+             ":",
+             "1"
+            ]
+           }
+          ]
+         },
+         {
+          "type": "View",
+          "props": {
+           "accessible": true,
+           "accessibilityState": {},
+           "focusable": true,
+           "accessibilityValue": {},
+           "hitSlop": 8,
+           "style": {
+            "marginLeft": "auto",
+            "padding": 4.457142857142857
+           },
+           "collapsable": false
+          },
+          "children": [
+           {
+            "type": "Text",
+            "props": {},
+            "children": [
+             "Feather:more-horizontal"
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "type": "View",
+      "props": {},
+      "children": [
+       {
+        "type": "Text",
+        "props": {
+         "style": [
+          {
+           "fontSize": 26.742857142857144,
+           "textAlign": "right",
+           "writingDirection": "rtl"
+          },
+          {
+           "fontSize": 26.742857142857144,
+           "fontFamily": "Uthmani"
+          }
+         ]
+        },
+        "children": [
+         {
+          "type": "Text",
+          "props": {
+           "style": {
+            "color": "#111111"
+           }
+          },
+          "children": [
+           "QPC-A"
+          ]
+         },
+         {
+          "type": "Text",
+          "props": {
+           "style": {
+            "color": "#111111"
+           }
+          },
+          "children": [
+           "QPC-B"
+          ]
+         },
+         {
+          "type": "Text",
+          "props": {},
+          "children": [
+           " "
+          ]
+         },
+         {
+          "type": "Text",
+          "props": {
+           "style": {
+            "color": "#111111"
+           }
+          },
+          "children": [
+           "QPC-C"
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "type": "View",
+      "props": {},
+      "children": [
+       {
+        "type": "Text",
+        "props": {
+         "testID": "formatted-text"
+        },
+        "children": [
+         "TRANSLATION-OF-2:1<sup foot_note=\"9001\">1</sup>"
+        ]
+       },
+       {
+        "type": "Text",
+        "props": {
+         "style": [
+          {
+           "fontSize": 12.257142857142858,
+           "fontFamily": "Manrope-Regular",
+           "marginTop": 2.2494901960784315,
+           "marginBottom": 4.498980392156863,
+           "textAlign": "left",
+           "fontStyle": "italic"
+          },
+          {
+           "color": "rgba(17, 17, 17, 0.6)"
+          }
+         ]
+        },
+        "children": [
+         "Saheeh International"
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "type": "View",
+    "props": {
+     "accessible": true,
+     "accessibilityState": {},
+     "focusable": true,
+     "accessibilityValue": {},
+     "style": [
+      {
+       "paddingVertical": 13.496941176470589,
+       "paddingHorizontal": 8.914285714285715,
+       "borderBottomWidth": 0.5,
+       "borderRadius": 8.914285714285715
+      },
+      {
+       "borderBottomColor": "#cccccc"
+      },
+      null,
+      false
+     ],
+     "collapsable": false
+    },
+    "children": [
+     {
+      "type": "View",
+      "props": {
+       "style": {
+        "marginBottom": 6.748470588235294
+       }
+      },
+      "children": [
+       {
+        "type": "View",
+        "props": {
+         "style": {
+          "flexDirection": "row",
+          "alignItems": "center",
+          "gap": 4.457142857142857
+         }
+        },
+        "children": [
+         {
+          "type": "View",
+          "props": {
+           "style": [
+            {
+             "paddingHorizontal": 4.457142857142857,
+             "paddingVertical": 3.342857142857143,
+             "borderRadius": 6.685714285714286
+            },
+            {
+             "backgroundColor": "rgba(17, 17, 17, 0.08)"
+            }
+           ]
+          },
+          "children": [
+           {
+            "type": "Text",
+            "props": {
+             "style": [
+              {
+               "fontSize": 13.371428571428572,
+               "fontFamily": "Manrope-Medium"
+              },
+              {
+               "color": "#111111"
+              }
+             ]
+            },
+            "children": [
+             "2",
+             ":",
+             "1"
+            ]
+           }
+          ]
+         },
+         {
+          "type": "View",
+          "props": {
+           "accessible": true,
+           "accessibilityState": {},
+           "focusable": true,
+           "accessibilityValue": {},
+           "hitSlop": 8,
+           "style": {
+            "marginLeft": "auto",
+            "padding": 4.457142857142857
+           },
+           "collapsable": false
+          },
+          "children": [
+           {
+            "type": "Text",
+            "props": {},
+            "children": [
+             "Feather:more-horizontal"
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "type": "View",
+      "props": {},
+      "children": [
+       {
+        "type": "Text",
+        "props": {
+         "style": [
+          {
+           "fontSize": 26.742857142857144,
+           "textAlign": "right",
+           "writingDirection": "rtl"
+          },
+          {
+           "fontSize": 26.742857142857144,
+           "fontFamily": "Uthmani"
+          }
+         ]
+        },
+        "children": [
+         {
+          "type": "Text",
+          "props": {
+           "style": {
+            "color": "#111111"
+           }
+          },
+          "children": [
+           "QPC-A"
+          ]
+         },
+         {
+          "type": "Text",
+          "props": {
+           "style": {
+            "color": "#111111"
+           }
+          },
+          "children": [
+           "QPC-B"
+          ]
+         },
+         {
+          "type": "Text",
+          "props": {},
+          "children": [
+           " "
+          ]
+         },
+         {
+          "type": "Text",
+          "props": {
+           "style": {
+            "color": "#111111"
+           }
+          },
+          "children": [
+           "QPC-C"
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "type": "View",
+      "props": {},
+      "children": [
+       {
+        "type": "Text",
+        "props": {
+         "testID": "formatted-text"
+        },
+        "children": [
+         "TRANSLATION-OF-2:1<sup foot_note=\"9001\">1</sup>"
+        ]
+       },
+       {
+        "type": "Text",
+        "props": {
+         "style": [
+          {
+           "fontSize": 12.257142857142858,
+           "fontFamily": "Manrope-Regular",
+           "marginTop": 2.2494901960784315,
+           "marginBottom": 4.498980392156863,
+           "textAlign": "left",
+           "fontStyle": "italic"
+          },
+          {
+           "color": "rgba(17, 17, 17, 0.6)"
+          }
+         ]
+        },
+        "children": [
+         "Saheeh International"
+        ]
+       }
+      ]
+     },
+     {
+      "type": "View",
+      "props": {
+       "style": [
+        {
+         "marginTop": 8.997960784313726,
+         "borderRadius": 8.914285714285715,
+         "padding": 13.371428571428572
+        },
+        {
+         "backgroundColor": "rgba(17, 17, 17, 0.1)"
+        }
+       ]
+      },
+      "children": [
+       {
+        "type": "View",
+        "props": {
+         "style": {
+          "flexDirection": "row",
+          "justifyContent": "space-between",
+          "alignItems": "center",
+          "marginBottom": 8.997960784313726
+         }
+        },
+        "children": [
+         {
+          "type": "Text",
+          "props": {
+           "style": [
+            {
+             "fontSize": 17.82857142857143,
+             "fontFamily": "Manrope-Bold"
+            },
+            {
+             "color": "#111111"
+            }
+           ]
+          },
+          "children": [
+           "Footnote"
+          ]
+         },
+         {
+          "type": "View",
+          "props": {
+           "accessible": true,
+           "accessibilityState": {},
+           "focusable": true,
+           "accessibilityValue": {},
+           "style": [
+            {
+             "padding": 4.457142857142857
+            },
+            {
+             "opacity": 1
+            }
+           ],
+           "collapsable": false
+          },
+          "children": [
+           {
+            "type": "Text",
+            "props": {},
+            "children": [
+             "Ionicons:close"
+            ]
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "type": "Text",
+        "props": {
+         "style": [
+          {
+           "fontSize": 15.600000000000001,
+           "fontFamily": "Manrope-Regular",
+           "lineHeight": 22.285714285714285
+          },
+          {
+           "color": "#111111"
+          }
+         ]
+        },
+        "children": [
+         "FOOTNOTE-OF-2:1"
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "children": [
+   {
+    "component": "AyahCommunityReflections",
+    "props": {
+     "surahNumber": 2,
+     "ayahNumber": 1
+    }
+   },
+   {
+    "component": "AyahCommunityReflections",
+    "props": {
+     "surahNumber": 2,
+     "ayahNumber": 1
+    }
+   }
+  ],
+  "sheets": [],
+  "pressed": [
+   "2:1"
+  ],
+  "selection": {
+   "verseKey": null,
+   "surah": null,
+   "ayah": null
+  }
+ }
+}

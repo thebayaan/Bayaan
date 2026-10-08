@@ -19,8 +19,6 @@ import {
 import {useMushafFontMgr} from '@/hooks/useMushafFontMgr';
 import {Gesture, GestureDetector} from 'react-native-gesture-handler';
 import {runOnJS} from 'react-native-worklets';
-import * as Haptics from 'expo-haptics';
-import {SheetManager} from 'react-native-actions-sheet';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {verticalScale} from 'react-native-size-matters';
 import Color from 'color';
@@ -28,7 +26,6 @@ import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import type {MushafArabicTextWeight} from '@/store/mushafSettingsStore';
 import {useTajweedStore} from '@/store/tajweedStore';
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
-import {usePlaybackVerseKeys} from '@/store/mushafPlayerStore'; // @ai
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
 import {
   BOOKMARK_HIGHLIGHT_COLOR,
@@ -49,6 +46,7 @@ import {
   FONTSIZE,
 } from '@/services/mushaf/QuranTextService';
 import {mushafVerseMapService} from '@/services/mushaf/MushafVerseMapService';
+import {parseAnchorKey} from '@/services/mushaf/RewayahVerseUnits'; // @ai
 import type {IndexedTajweedData} from '@/utils/tajweedLoader';
 import {getAllahNameHighlightColorHex} from '@/constants/mushafAllahHighlight';
 import SkiaLine from './SkiaLine';
@@ -62,7 +60,11 @@ import {
   isRewayahDiffPaintEnabled,
   isTajweedEnabled,
 } from './pageOverlays';
-import {computePageHighlightLayers} from './verseHighlightLayers'; // @ai
+// @ai-start
+import {computeUnitPageHighlightLayers} from './verseHighlightLayers';
+import {usePlaybackBand} from './playbackBand';
+import {useVerseUnitDragSelect, type LineCharHit} from './verseUnitDragSelect';
+// @ai-end
 import {type MushafLayoutMetrics} from '../constants';
 
 // Rendering constants are now derived from live `metrics` (see
@@ -126,8 +128,9 @@ function buildRenderConstants(metrics: MushafLayoutMetrics): RenderConstants {
 const TOTAL_PAGES = 604;
 const pages = Array.from({length: TOTAL_PAGES}, (_, i) => i + 1);
 
-// Reverse lookup: verseKey → page number (built lazily from the verse map,
-// rebuilt whenever the active rewayah or the DK words cache changes).
+// Reverse lookup: HAFS verseKey → page number (built lazily from the verse
+// map, rebuilt whenever the active rewayah or the DK words cache changes).
+// scrollToVerse callers (playback page turns, search) pass Hafs keys. @ai
 let verseToPageMap: Map<string, number> | null = null;
 let verseToPageMapRewayah: string | null = null;
 let verseToPageMapVersion = -1;
@@ -373,16 +376,19 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
     );
 
     // ── Verse selection store ──────────────────────────────
+    // @ai-start
+    // Verse units of the shown text, in its rewayah's own numbering, with
+    // their Hafs storage anchors (same as SkiaPage).
     const selectedVerseKeys = useMushafVerseSelectionStore(
       s => s.selectedVerseKeys,
+    );
+    const selectedRewayah = useMushafVerseSelectionStore(
+      s => s.selectedRewayah,
     );
     const selectedPageNumber = useMushafVerseSelectionStore(
       s => s.selectedPageNumber,
     );
-    const selectVerse = useMushafVerseSelectionStore(s => s.selectVerse);
-    const selectVerseRange = useMushafVerseSelectionStore(
-      s => s.selectVerseRange,
-    );
+    // @ai-end
 
     // ── Playback + annotation highlights ───────────────────
     const persistentHighlights = useVerseAnnotationsStore(s => s.highlights);
@@ -391,19 +397,19 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
     const bookmarkedVerseKeys = useVerseAnnotationsStore(
       s => s.bookmarkedVerseKeys,
     );
-    // @ai — every Hafs verse the reciter is reciting; empty when idle.
-    const playbackVerseKeys = usePlaybackVerseKeys();
+    // @ai — the rows behind them, with the rewayah each was saved in, so
+    // every row marks the units the storage rule gives (verse-units
+    // contract, section 3): a Hafs row of a split Hafs verse marks both parts.
+    const bookmarkRows = useVerseAnnotationsStore(s => s.bookmarkRows);
+    const highlightRows = useVerseAnnotationsStore(s => s.highlightRows);
+    // @ai — what the reciter is reciting, painted as verse units.
+    const playbackBand = usePlaybackBand();
 
     // ── Hit testing ────────────────────────────────────────
-    const orderedVerseKeys = useMemo(
-      () => mushafVerseMapService.getOrderedVerseKeysForPage(pageNumber),
-      // rewayah/textIdentity: segments follow the rendered text.
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      [pageNumber, rewayah, textIdentity], // @ai
-    );
-
-    const hitTestVerse = useCallback(
-      (eventX: number, eventY: number) => {
+    // @ai — the line and character under a touch point (this renderer's
+    // paragraph metrics); which verse unit that is: useVerseUnitDragSelect.
+    const charAtPoint = useCallback(
+      (eventX: number, eventY: number): LineCharHit | null => {
         const canvasX = eventX - canvasMarginX;
         const canvasY = eventY;
 
@@ -433,107 +439,21 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
           paragraphY,
         );
 
-        return mushafVerseMapService.findVerseAtCharIndex(
-          pageNumber,
-          lineIndex,
-          charIndex,
-        );
+        return {lineIndex, charIndex};
       },
-      [
-        pageNumber,
-        pageLines,
-        canvasHeight,
-        canvasMarginX,
-        contentWidth,
-        baseLineHeight,
-      ],
+      [pageLines, canvasHeight, canvasMarginX, contentWidth, baseLineHeight],
     );
 
     // ── Drag gesture handlers ──────────────────────────────
-    const dragStartVerseKeyRef = useRef<string | null>(null);
-    const dragCurrentVerseKeyRef = useRef<string | null>(null);
-    const orderedVerseKeysRef = useRef<string[]>(orderedVerseKeys);
-    orderedVerseKeysRef.current = orderedVerseKeys;
-
-    const handleDragStart = useCallback(
-      (eventX: number, eventY: number) => {
-        const segment = hitTestVerse(eventX, eventY);
-        if (!segment) {
-          dragStartVerseKeyRef.current = null;
-          return;
-        }
-        dragStartVerseKeyRef.current = segment.verseKey;
-        dragCurrentVerseKeyRef.current = segment.verseKey;
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        selectVerse(segment.verseKey, pageNumber);
-      },
-      [hitTestVerse, selectVerse, pageNumber],
-    );
-
-    const handleDragUpdate = useCallback(
-      (eventX: number, eventY: number) => {
-        if (Platform.OS === 'android') return;
-        const startKey = dragStartVerseKeyRef.current;
-        if (!startKey) return;
-
-        const segment = hitTestVerse(eventX, eventY);
-        if (!segment) return;
-
-        const currentKey = segment.verseKey;
-        if (currentKey === dragCurrentVerseKeyRef.current) return;
-
-        const ordered = orderedVerseKeysRef.current;
-        const startIdx = ordered.indexOf(startKey);
-        const currentIdx = ordered.indexOf(currentKey);
-        if (startIdx === -1 || currentIdx === -1) return;
-
-        if (currentIdx < startIdx) {
-          if (dragCurrentVerseKeyRef.current !== startKey) {
-            dragCurrentVerseKeyRef.current = startKey;
-            selectVerse(startKey, pageNumber);
-          }
-          return;
-        }
-
-        dragCurrentVerseKeyRef.current = currentKey;
-        const range = ordered.slice(startIdx, currentIdx + 1);
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-
-        if (range.length === 1) {
-          selectVerse(range[0], pageNumber);
-        } else {
-          selectVerseRange(range, pageNumber);
-        }
-      },
-      [hitTestVerse, selectVerse, selectVerseRange, pageNumber],
-    );
-
-    const handleDragEnd = useCallback(() => {
-      const startKey = dragStartVerseKeyRef.current;
-      if (!startKey) return;
-
-      const store = useMushafVerseSelectionStore.getState();
-      const keys = store.selectedVerseKeys;
-      if (keys.length === 0) return;
-
-      const firstKey = keys[0];
-      const [surahStr, ayahStr] = firstKey.split(':');
-      const surahNumber = parseInt(surahStr, 10);
-      const ayahNumber = parseInt(ayahStr, 10);
-
-      SheetManager.show('verse-actions', {
-        payload: {
-          verseKey: firstKey,
-          surahNumber,
-          ayahNumber,
-          verseKeys: keys.length > 1 ? keys : undefined,
-          source: 'mushaf',
-        },
-      });
-
-      dragStartVerseKeyRef.current = null;
-      dragCurrentVerseKeyRef.current = null;
-    }, []);
+    // @ai-start
+    // Long-press / iOS drag-select in verse units of the shown text, and the
+    // verse actions on release (shared with SkiaPage).
+    const {
+      onDragStart: handleDragStart,
+      onDragUpdate: handleDragUpdate,
+      onDragEnd: handleDragEnd,
+    } = useVerseUnitDragSelect(pageNumber, charAtPoint);
+    // @ai-end
 
     // ── Gestures ───────────────────────────────────────────
     const longPressDragGesture = useMemo(
@@ -605,25 +525,31 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
       // @ai-start
       // Same layers as SkiaPage (shared helper), without the theme zebra:
       // rewayah diff tints < bookmarks < colour highlights < playback <
-      // selection.
-      const layers = computePageHighlightLayers({
-        getVerseSegments: vk =>
-          mushafVerseMapService.getVerseSegmentsForPage(pageNumber, vk),
+      // selection. Every verse layer paints whole verse units of the shown
+      // text: the stores' values are mapped to unit keys.
+      const layers = computeUnitPageHighlightLayers({
+        pageNumber,
+        shown: mushafVerseMapService.getShownVerseUnits(),
+        segments: mushafVerseMapService,
         diffHighlights: computePageDiffBackgrounds(
           pageNumber,
           rewayahDiffPaintEnabled,
         ),
         themes: null,
-        bookmarkedVerseKeys,
+        sources: {
+          bookmarkedVerseKeys,
+          persistentHighlights,
+          bookmarkRows,
+          highlightRows,
+          playback: playbackBand,
+          selection:
+            selectedVerseKeys.length > 0 && selectedPageNumber === pageNumber
+              ? {rewayah: selectedRewayah, verseKeys: selectedVerseKeys}
+              : null,
+        },
         bookmarkColor: BOOKMARK_HIGHLIGHT_COLOR,
-        persistentHighlights,
         highlightColors: HIGHLIGHT_COLORS,
-        playbackVerseKeys,
         playbackColor: playbackBgColor,
-        selectedVerseKeys:
-          selectedVerseKeys.length > 0 && selectedPageNumber === pageNumber
-            ? selectedVerseKeys
-            : null,
         selectionColor: selectionBgColor,
       });
       return layers ?? EMPTY_BG_MAP;
@@ -634,9 +560,12 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
     }, [
       persistentHighlights,
       bookmarkedVerseKeys,
-      playbackVerseKeys, // @ai
+      bookmarkRows, // @ai
+      highlightRows, // @ai
+      playbackBand, // @ai
       playbackBgColor,
       selectedVerseKeys,
+      selectedRewayah, // @ai
       selectedPageNumber,
       pageNumber,
       selectionBgColor,
@@ -826,7 +755,13 @@ const ContinuousMushafView = forwardRef<
         }
       },
       scrollToVerse: (verseKey: string, animated = false) => {
-        const page = getPageForVerse(verseKey);
+        // @ai — a stored anchor 'S:A:W' (a verse unit's first slot) is on
+        // the page of its Hafs verse's start (verse-units invariant 8).
+        const loc =
+          verseKey.split(':').length === 3 ? parseAnchorKey(verseKey) : null;
+        const page = getPageForVerse(
+          loc ? `${loc.surah}:${loc.ayah}` : verseKey,
+        );
         if (page) {
           flashListRef.current?.scrollToIndex({index: page - 1, animated});
         }

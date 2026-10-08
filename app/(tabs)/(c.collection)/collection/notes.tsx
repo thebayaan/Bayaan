@@ -24,6 +24,10 @@ import {SheetManager} from 'react-native-actions-sheet';
 import Color from 'color';
 import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
 import type {VerseNote} from '@/types/verse-annotations';
+// @ai-start
+import {describeSavedVerseNow} from '@/hooks/useSavedVerseDescription';
+import {savedVerseSubtitle} from '@/services/verse-annotations/unitAnnotations';
+// @ai-end
 
 interface NoteData {
   note: VerseNote;
@@ -88,6 +92,11 @@ const NotesScreen = () => {
         surahNumber: item.note.surahNumber,
         ayahNumber: item.note.ayahNumber,
         noteId: item.note.id,
+        // The note's own rewayah names its verses (decision 3): the sheet
+        // labels them at once instead of after loading the note. A legacy
+        // note without one is a Hafs note (verse-units contract section 3),
+        // labelled from the first render as before Release 1. @ai
+        rewayah: item.note.rewayahId ?? 'hafs',
       },
     });
   }, []);
@@ -97,7 +106,11 @@ const NotesScreen = () => {
       SheetManager.show('collection-options', {
         payload: {
           title: item.surahName,
-          subtitle: `Ayah ${item.note.ayahNumber}`,
+          // @ai: the ayah in the numbering of the rewayah it was saved in
+          subtitle: savedVerseSubtitle(
+            describeSavedVerseNow(item.note),
+            item.note.ayahNumber,
+          ),
           options: [
             {
               label: 'Edit Note',

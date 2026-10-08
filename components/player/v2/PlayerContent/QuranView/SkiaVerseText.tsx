@@ -65,6 +65,13 @@ interface SkiaVerseTextProps {
   /** Rendered (instead of nothing) while the verse's words cannot be drawn
    *  yet: still loading, or failed / unavailable. @ai */
   renderPlaceholder?: (status: RewayahWordsStatus) => React.ReactNode;
+  // @ai-start
+  /** Draw exactly these words of `rewayah` (a rewayah verse row's own slots,
+   *  verseUnitRows.ts) instead of reading `verseKey`'s words; overlays apply
+   *  as usual. `verseKey` then only names the Hafs verse for Hafs tajweed
+   *  (a Hafs verse row). Ignored if `text` is provided. */
+  words?: readonly DKWordInfo[];
+  // @ai-end
 }
 
 const SkiaVerseText: React.FC<SkiaVerseTextProps> = ({
@@ -82,6 +89,7 @@ const SkiaVerseText: React.FC<SkiaVerseTextProps> = ({
   allahNameHighlightColor,
   rewayah,
   renderPlaceholder, // @ai
+  words: givenWords, // @ai
 }) => {
   // When no explicit prop, follow the mushaf setting. This is the mushaf
   // list-mode / preview case; the player passes an explicit prop.
@@ -93,10 +101,12 @@ const SkiaVerseText: React.FC<SkiaVerseTextProps> = ({
   // Reactive read; re-renders when the requested rewayah's cache transitions
   // from loading → ready (or the words cache changes). Only queried when
   // `text` isn't provided directly.
-  const {words, status} = useRewayahWords(
-    text !== undefined ? null : verseKey ?? null,
+  const {words: verseWords, status} = useRewayahWords(
+    text !== undefined || givenWords ? null : (verseKey ?? null), // @ai
     effectiveRewayah,
   );
+  // @ai — a verse row's own words, else the words of `verseKey`.
+  const words = givenWords ?? verseWords;
   // The rendered verse string: blank slots skipped, single spaces, multi-token
   // slots whole. Every overlay below indexes into this exact string.
   const wordsText = useMemo(() => layoutWords(words).text, [words]);
@@ -184,8 +194,8 @@ const SkiaVerseText: React.FC<SkiaVerseTextProps> = ({
         const resolvedColor = allahHighlight
           ? allahNameHighlightColor
           : rule && tajweedColors[rule]
-          ? tajweedColors[rule]
-          : null;
+            ? tajweedColors[rule]
+            : null;
 
         if (resolvedColor) {
           const charColor = Skia.Color(resolvedColor);

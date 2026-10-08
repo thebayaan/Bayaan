@@ -227,3 +227,54 @@ describe('Hafs', () => {
     expect(mockFetches).toEqual(['hafs-clean-2']);
   });
 });
+
+// @ai-start
+describe('Play from here on a verse unit of the rows', () => {
+  it("starts at the unit's own entry, with the Hafs request's answers otherwise", async () => {
+    const {
+      createTimingNumbering,
+      registerTimingNumbering,
+    } = require('@/utils/timestampNumbering');
+    const {
+      rewayahVerseMapService,
+    } = require('@/services/mushaf/RewayahVerseMapService');
+    const {
+      fixtureUnit,
+    } = require('@/services/timestamps/__fixtures__/verseUnitFixtures');
+    await store().loadTimestampsForSurah('warsh-14', 1);
+    const timestamps = store().currentSurahTimestamps!;
+    registerTimingNumbering(
+      timestamps,
+      createTimingNumbering({
+        surah: 1,
+        mode: 'riwayah',
+        reciterRewayah: 'warsh',
+        reason: 'test',
+        entries: timestamps,
+        verseMap: rewayahVerseMapService,
+      }),
+    );
+    // Warsh 1:7 (the second part of Hafs 1:7) starts at Warsh entry 7
+    const unit = resolvePlayFromHere(fixtureUnit('warsh', '1:7'));
+    expect(unit.status === 'ready' && unit.entry.ayahNumber).toBe(7);
+    const hafs = resolvePlayFromHere('1:7');
+    expect(hafs.status === 'ready' && hafs.entry.ayahNumber).toBe(6);
+    // a unit of a surah the player has left: the Hafs request's answer
+    await store().loadTimestampsForSurah('warsh-14', 2);
+    expect(resolvePlayFromHere(fixtureUnit('warsh', '1:7'))).toEqual({
+      status: 'unavailable',
+      ...PLAY_FROM_HERE_OTHER_SURAH,
+    });
+    // a settled load of its own surah without timings: the Hafs request's
+    // answer (cleared first: a failed reload of loaded timings keeps them)
+    store().clearCurrentTimestamps();
+    mockSource.online = false;
+    await store().loadTimestampsForSurah('warsh-14', 1);
+    expect(resolvePlayFromHere(fixtureUnit('warsh', '1:7'))).toEqual({
+      status: 'unavailable',
+      ...PLAY_FROM_HERE_LOAD_FAILED,
+    });
+    await flush(); // the retry it starts settles
+  });
+});
+// @ai-end

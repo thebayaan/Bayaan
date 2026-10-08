@@ -15,9 +15,22 @@
  * at the first entry containing it, and repeats / ranges run in whole
  * reciter verses. When the numbering cannot be established for a surah,
  * follow-along highlight and verse seeking are disabled for that surah.
+ *
+ * Rewayah verse units (decision 3 of Release 1, @ai): a mushaf that shows a
+ * non-Hafs rewayah works in that rewayah's OWN verses. Next to the Hafs keys
+ * (kept for page turns and Hafs-keyed readers) the store publishes the
+ * follow-along band as verse unit keys of the mushaf on screen
+ * (currentUnitKeys, usePlaybackUnitKeys) and labels the playing verse from
+ * them. Starts and ranges can be given as verse units (startPlayback with a
+ * unit, setUnitRange, setPendingStart): when the reciter's timing entries are
+ * that rewayah's own verses, a unit is exactly one entry (the band moves at
+ * the rewayah's verse ends, Repeat loops one rewayah verse, a range stops at
+ * its last verse, also inside a split Hafs verse); for any other set the
+ * unit's Hafs verses are used as above (verse-units contract 4.2). For Hafs
+ * every unit is its Hafs verse and every answer is the historical one.
  */
 
-import {useMemo} from 'react'; // @ai
+import {useCallback, useMemo} from 'react'; // @ai
 import {create} from 'zustand';
 import {createJSONStorage, persist} from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -31,21 +44,33 @@ import {
   type SurahEndReason,
 } from '@/services/audio/MushafAudioService';
 import {mushafVerseMapService} from '@/services/mushaf/MushafVerseMapService';
-import {
-  parseVerseKey,
-  rewayahVerseMapService,
-} from '@/services/mushaf/RewayahVerseMapService';
+import {parseVerseKey} from '@/services/mushaf/RewayahVerseMapService';
 import type {RewayahId} from '@/services/rewayah/RewayahIdentity';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {resolveMushafAudioUrl} from '@/utils/mushafAudioUtils';
 import {
-  formatPlaybackVerseLabel,
   parseVerseKeyListId, // @ai
   VERSE_TRACKING_UNAVAILABLE_LABEL, // @ai
   verseKeyListId, // @ai
   type TimingNumbering,
   type TimingNumberingMode,
+  // @ai-start
+  // Verse units (the verse label now comes from the band).
+  compareAudioUnits,
+  formatUnitKeysLabel,
+  hafsKeysToUnitKeys,
+  toAudioUnitTarget,
+  type AudioUnitInput,
+  type AudioUnitTarget,
+  // @ai-end
 } from '@/utils/timestampNumbering';
+// @ai-start
+import {
+  canShowRewayahVerses,
+  readyVerseUnits,
+  subscribeVerseUnitsChanges,
+} from '@/utils/playbackVerseUnits';
+// @ai-end
 
 const STORAGE_KEY = 'mushaf-player-store';
 
@@ -62,6 +87,17 @@ interface RangeEndpoint {
   surah: number;
   ayah: number;
 }
+
+// @ai-start
+/**
+ * Consecutive verse units `first`..`last` of one rewayah (its own
+ * numbering), both included.
+ */
+export interface UnitRange {
+  first: AudioUnitTarget;
+  last: AudioUnitTarget;
+}
+// @ai-end
 
 export const TIMESTAMPS_UNAVAILABLE_ERROR =
   'Timestamps unavailable for this reciter on this surah. Try a different reciter.';
@@ -105,14 +141,47 @@ export interface MushafPlayerStoreState {
    * reciter's rewayah numbering for rewayah-numbered sets).
    */
   currentReciterVerseKey: string | null;
-  /** Verse reference to display, in the numbering of the mushaf on screen. */
+  /**
+   * Verse reference to display, in the numbering of the mushaf on screen:
+   * the label of currentUnitKeys ("1:6", "2:1-2"; @ai). Null when what is
+   * recited has no verse number there (the Fatiha basmala in a Madani or
+   * Basri mushaf) or that rewayah's verse units are not available.
+   */
   currentVerseLabel: string | null;
+  // @ai-start
+  /**
+   * The follow-along band as verse unit keys of currentUnitRewayah (the
+   * mushaf on screen): exactly the entry's own verse when the reciter's
+   * entries are that rewayah's verses, else every verse holding a word of
+   * the Hafs verses being recited. Hafs: currentVerseKeys. Empty when that
+   * rewayah's verse units are refused or not in memory: no band and no
+   * number rather than Hafs ones. Read it with usePlaybackUnitKeys().
+   */
+  currentUnitKeys: readonly string[];
+  /** The rewayah currentUnitKeys are numbered in (null when none). */
+  currentUnitRewayah: RewayahId | null;
+  // @ai-end
   /** Numbering of the loaded surah ('disabled' = no follow-along / seeking). */
   numberingMode: TimingNumberingMode | null;
   currentPage: number | null;
   timestamps: AyahTimestamp[] | null;
   rangeStart: RangeEndpoint | null;
   rangeEnd: RangeEndpoint | null;
+  // @ai-start
+  /**
+   * The range as verse units of one rewayah when it was set with
+   * setUnitRange; rangeStart / rangeEnd then hold its Hafs envelope (the
+   * first unit's first Hafs verse, the last unit's last Hafs verse). Used
+   * only while they still hold that envelope.
+   */
+  rangeUnits: UnitRange | null;
+  /**
+   * Verse unit a later startPlayback() without a start begins at (see
+   * setPendingStart). Used only while pendingStartVerseKey still holds its
+   * first Hafs verse.
+   */
+  pendingStartUnit: AudioUnitTarget | null;
+  // @ai-end
   availableReciters: AvailableReciter[];
   pendingStartVerseKey: string | null;
   // @ai-start
@@ -152,9 +221,32 @@ export interface MushafPlayerStoreState {
   setRangeRepeatCount: (count: number) => void;
   /** Range endpoints are Hafs verses. */
   setRange: (start: RangeEndpoint, end: RangeEndpoint) => void;
+  // @ai-start
+  /**
+   * Range of consecutive verse units `first`..`last` of one rewayah (a
+   * mushaf selection, or a verse to the end of its surah). A reciter whose
+   * entries are that rewayah's verses plays exactly those verses; any other
+   * reciter plays the entries holding their Hafs verses. Throws when the two
+   * units belong to different rewayat.
+   */
+  setUnitRange: (first: AudioUnitInput, last: AudioUnitInput) => void;
+  /**
+   * Remember (or clear, with null) the verse unit a later startPlayback()
+   * without a start begins at, e.g. while the reciter picker is open. Also
+   * sets pendingStartVerseKey to its first Hafs verse for Hafs-keyed readers.
+   */
+  setPendingStart: (unit: AudioUnitInput | null) => void;
+  // @ai-end
   clearRange: () => void;
-  /** `startVerseKey` is a Hafs verse key. */
-  startPlayback: (page: number, startVerseKey?: string) => Promise<void>;
+  /**
+   * `startAt` is a Hafs verse key or (@ai) a verse unit. Without it playback
+   * starts at the pending start, else at the range start, else at the first
+   * verse of `page` in the mushaf on screen.
+   */
+  startPlayback: (
+    page: number,
+    startAt?: string | AudioUnitInput,
+  ) => Promise<void>;
   stop: () => void;
   computeAvailableReciters: () => Promise<void>;
 }
@@ -178,6 +270,58 @@ function displayRewayah(): RewayahId {
   }
 }
 
+// @ai-start
+/**
+ * The follow-along band of entry `entryAyah` in `rewayah`'s own verses
+ * (TimingNumbering.unitKeysForEntry). Empty while that rewayah's verse units
+ * are refused or not in memory: no band and no number rather than guessed
+ * ones. Without a numbering (nothing loaded) entries are Hafs verses.
+ */
+function bandUnitKeys(
+  numbering: TimingNumbering | null,
+  surah: number,
+  entryAyah: number,
+  rewayah: RewayahId,
+): readonly string[] {
+  if (!canShowRewayahVerses(rewayah)) return NO_KEYS;
+  if (numbering) return numbering.unitKeysForEntry(entryAyah, rewayah);
+  return hafsKeysToUnitKeys([`${surah}:${entryAyah}`], rewayah);
+}
+
+/**
+ * Band and verse label of the playing entry in the mushaf on screen. For a
+ * Hafs mushaf the band is the entry's Hafs keys and the label the
+ * historical one ("2:5", "2:1-2").
+ */
+function unitStateFor(
+  numbering: TimingNumbering | null,
+  surah: number,
+  entryAyah: number,
+): Pick<
+  MushafPlayerStoreState,
+  'currentUnitKeys' | 'currentUnitRewayah' | 'currentVerseLabel'
+> {
+  const rewayah = displayRewayah();
+  const keys = bandUnitKeys(numbering, surah, entryAyah, rewayah);
+  return {
+    currentUnitKeys: keys.length ? keys : NO_KEYS,
+    currentUnitRewayah: rewayah,
+    currentVerseLabel: formatUnitKeysLabel(keys),
+  };
+}
+
+/** The timing entry being recited ({surah, entry ayah}), or null. */
+function recitedEntry(
+  s: Pick<MushafPlayerStoreState, 'currentReciterVerseKey'>,
+): {surah: number; ayah: number} | null {
+  if (!s.currentReciterVerseKey) return null;
+  const [surah, ayah] = s.currentReciterVerseKey.split(':').map(Number);
+  return Number.isInteger(surah) && Number.isInteger(ayah)
+    ? {surah, ayah}
+    : null;
+}
+// @ai-end
+
 const CLEARED_VERSE: Pick<
   MushafPlayerStoreState,
   | 'currentAyah'
@@ -185,6 +329,8 @@ const CLEARED_VERSE: Pick<
   | 'currentVerseKeys'
   | 'currentReciterVerseKey'
   | 'currentVerseLabel'
+  | 'currentUnitKeys' // @ai
+  | 'currentUnitRewayah' // @ai
   | '_entryAyah'
 > = {
   currentAyah: 0,
@@ -192,26 +338,10 @@ const CLEARED_VERSE: Pick<
   currentVerseKeys: NO_KEYS,
   currentReciterVerseKey: null,
   currentVerseLabel: null,
+  currentUnitKeys: NO_KEYS, // @ai
+  currentUnitRewayah: null, // @ai
   _entryAyah: 0,
 };
-
-// @ai-start
-/** Label of the recited verse in the numbering of the mushaf on screen. */
-function verseLabelFor(
-  numbering: TimingNumbering | null,
-  hafsKeys: readonly string[],
-  reciterVerseKey: string | null,
-): string | null {
-  return formatPlaybackVerseLabel({
-    hafsKeys,
-    reciterVerseKey,
-    mode: numbering ? numbering.mode : 'hafs',
-    reciterRewayah: numbering ? numbering.reciterRewayah : null,
-    mushafRewayah: displayRewayah(),
-    verseMap: rewayahVerseMapService,
-  });
-}
-// @ai-end
 
 /** State for "timing entry `entryAyah` of `surah` is playing". */
 function verseStateFor(
@@ -233,7 +363,9 @@ function verseStateFor(
     currentVerseKey: primary,
     currentVerseKeys: keys,
     currentReciterVerseKey: reciterVerseKey,
-    currentVerseLabel: verseLabelFor(numbering, keys, reciterVerseKey), // @ai
+    // The band in the mushaf's own verses and its label (@ai): for a Hafs
+    // mushaf exactly the keys above and the historical label.
+    ...unitStateFor(numbering, surah, entryAyah),
     _entryAyah: entryAyah,
   };
 }
@@ -241,6 +373,45 @@ function verseStateFor(
 function isIdentity(numbering: TimingNumbering | null): boolean {
   return !numbering || numbering.mode === 'hafs';
 }
+
+// @ai-start
+/** Hafs verse key a verse unit starts in (its first Hafs verse). */
+const unitHafsStartKey = (unit: AudioUnitTarget): string =>
+  `${unit.surah}:${unit.hafsFirstAyah}`;
+
+/**
+ * The range in verse units, while rangeStart / rangeEnd still hold its Hafs
+ * envelope (a later Hafs-keyed range replaces it).
+ */
+function activeRangeUnits(
+  state: Pick<MushafPlayerStoreState, 'rangeUnits' | 'rangeStart' | 'rangeEnd'>,
+): UnitRange | null {
+  const {rangeUnits: units, rangeStart: start, rangeEnd: end} = state;
+  if (!units || !start || !end) return null;
+  return start.surah === units.first.surah &&
+    start.ayah === units.first.hafsFirstAyah &&
+    end.surah === units.last.surah &&
+    end.ayah === units.last.hafsLastAyah
+    ? units
+    : null;
+}
+
+/**
+ * The pending start as a verse unit, while pendingStartVerseKey still holds
+ * its first Hafs verse (a later Hafs-keyed pending start replaces it).
+ */
+function activePendingStartUnit(
+  state: Pick<
+    MushafPlayerStoreState,
+    'pendingStartUnit' | 'pendingStartVerseKey'
+  >,
+): AudioUnitTarget | null {
+  const unit = state.pendingStartUnit;
+  return unit && state.pendingStartVerseKey === unitHafsStartKey(unit)
+    ? unit
+    : null;
+}
+// @ai-end
 
 /**
  * Last timing entry inside the range for `surah`: +Infinity when the range
@@ -254,6 +425,20 @@ function rangeEndEntry(
   numbering: TimingNumbering | null,
   surah: number,
 ): number {
+  // @ai-start
+  // A range of verse units ends exactly at its last verse when the entries
+  // are that rewayah's verses, else after the entries holding its last Hafs
+  // verse. Identity numberings use its Hafs envelope (rangeEnd) below.
+  const units = activeRangeUnits(state);
+  if (units && numbering && !isIdentity(numbering)) {
+    if (units.last.surah > surah) return Infinity;
+    if (units.last.surah < surah) return -Infinity;
+    const lastEntry = numbering.endEntryAyahForUnit(units.last);
+    if (lastEntry === null) return -Infinity;
+    const firstEntry = rangeStartEntry(state, numbering, surah);
+    return firstEntry !== null ? Math.max(lastEntry, firstEntry) : lastEntry;
+  }
+  // @ai-end
   const end = state.rangeEnd!;
   if (end.surah > surah) return Infinity;
   if (end.surah < surah) return -Infinity;
@@ -272,6 +457,13 @@ function rangeStartEntry(
   numbering: TimingNumbering | null,
   surah: number,
 ): number | null {
+  // @ai-start
+  const units = activeRangeUnits(state);
+  if (units && numbering && !isIdentity(numbering)) {
+    if (units.first.surah !== surah) return null;
+    return numbering.startEntryForUnit(units.first)?.ayahNumber ?? null;
+  }
+  // @ai-end
   const start = state.rangeStart!;
   if (start.surah !== surah) return null;
   if (isIdentity(numbering)) return start.ayah;
@@ -289,6 +481,25 @@ function verseLoopUnit(
   numbering: TimingNumbering | null,
   entryAyah: number,
 ): {start: number; end: number} {
+  // @ai-start
+  // One verse unit selected: loop all of it and only it. Exactly its own
+  // entry when the entries are its rewayah's verses (Repeat of Warsh 1:6
+  // loops Warsh 1:6, not all of Hafs 1:7); otherwise every entry holding its
+  // words (a Hafs-numbered set loops Warsh 107:6 as Hafs 107:6 + 107:7). A
+  // Hafs unit gives the historical span of its Hafs verse.
+  const units = activeRangeUnits(state);
+  if (units) {
+    if (
+      numbering &&
+      compareAudioUnits(units.first, units.last) === 0 &&
+      units.first.surah === numbering.surah
+    ) {
+      const span = numbering.entryRangeForUnit(units.first);
+      if (span && entryAyah >= span.start && entryAyah <= span.end) return span;
+    }
+    return {start: entryAyah, end: entryAyah};
+  }
+  // @ai-end
   const {rangeStart, rangeEnd} = state;
   if (
     numbering &&
@@ -304,6 +515,100 @@ function verseLoopUnit(
   }
   return {start: entryAyah, end: entryAyah};
 }
+
+// @ai-start
+/**
+ * Where playback starts: a Hafs verse (`ayah` is Hafs) and, when the start
+ * was given as a verse unit, that unit (`ayah` is then its first Hafs verse).
+ */
+interface StartPoint {
+  surah: number;
+  ayah: number;
+  unit: AudioUnitTarget | null;
+}
+
+type StartResolution =
+  | {kind: 'start'; point: StartPoint}
+  | {kind: 'none'} // nothing to start at (a page without verses)
+  | {kind: 'invalid'; key: string};
+
+const unitStart = (unit: AudioUnitTarget): StartResolution => ({
+  kind: 'start',
+  point: {surah: unit.surah, ayah: unit.hafsFirstAyah, unit},
+});
+
+function hafsStart(key: string): StartResolution {
+  const parsed = parseVerseKey(key);
+  return parsed
+    ? {kind: 'start', point: {...parsed, unit: null}}
+    : {kind: 'invalid', key};
+}
+
+/** First timing entry to play for `point` in the loaded surah. */
+function startEntryAt(
+  numbering: TimingNumbering,
+  point: StartPoint,
+): AyahTimestamp | null {
+  return point.unit
+    ? numbering.startEntryForUnit(point.unit)
+    : numbering.startEntryForHafsAyah(point.ayah);
+}
+
+/**
+ * The first verse of `page` in the mushaf on screen: in a Hafs mushaf the
+ * page's first Hafs verse, as always; in another rewayah's mushaf its own
+ * verse holding the page's first word (found by word slot). The page's first
+ * Hafs verse when that slot is in no verse (the unnumbered Fatiha basmala,
+ * which a Hafs-numbered reciter recites as its first entry) or the verse
+ * units are not available.
+ */
+function pageStart(page: number): StartResolution {
+  const orderedKeys = mushafVerseMapService.getOrderedVerseKeysForPage(page);
+  if (orderedKeys.length === 0) return {kind: 'none'};
+  const rewayah = displayRewayah();
+  const units = rewayah === 'hafs' ? null : readyVerseUnits(rewayah);
+  if (units) {
+    try {
+      const first = mushafVerseMapService.getVerseSegmentsForPage(
+        page,
+        orderedKeys[0],
+      )[0];
+      const unit = first
+        ? units.unitForWordId(first.segment.firstWordId)
+        : null;
+      if (unit) return unitStart(toAudioUnitTarget(unit));
+    } catch (error) {
+      console.warn('[MushafPlayerStore] No verse unit for the page:', error);
+    }
+  }
+  return hafsStart(orderedKeys[0]);
+}
+
+/**
+ * Where startPlayback begins: the given start, else the pending start, else
+ * the range start, else the first verse of the page.
+ */
+function resolveStart(
+  page: number,
+  startAt: string | AudioUnitInput | undefined,
+  state: MushafPlayerStoreState,
+): StartResolution {
+  if (startAt && typeof startAt !== 'string') {
+    return unitStart(toAudioUnitTarget(startAt));
+  }
+  if (startAt) return hafsStart(startAt);
+  const pendingUnit = activePendingStartUnit(state);
+  if (pendingUnit) return unitStart(pendingUnit);
+  if (state.pendingStartVerseKey) return hafsStart(state.pendingStartVerseKey);
+  const rangeUnits = activeRangeUnits(state);
+  if (rangeUnits) return unitStart(rangeUnits.first);
+  if (state.rangeStart) {
+    const {surah, ayah} = state.rangeStart;
+    return {kind: 'start', point: {surah, ayah, unit: null}};
+  }
+  return pageStart(page);
+}
+// @ai-end
 
 function createPlaybackEngine(set: StoreSet, get: StoreGet) {
   /**
@@ -387,10 +692,15 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
 
   /**
    * Load `surah` and play it from Hafs verse `hafsAyah` (null: from its first
-   * timing entry). Used for advancing to the next surah and for looping a
-   * range that started in another surah.
+   * timing entry), or from verse unit `unit` when given (@ai; `hafsAyah` is
+   * then its first Hafs verse). Used for advancing to the next surah and for
+   * looping a range that started in another surah.
    */
-  const playSurahFrom = async (surah: number, hafsAyah: number | null) => {
+  const playSurahFrom = async (
+    surah: number,
+    hafsAyah: number | null,
+    unit: AudioUnitTarget | null = null, // @ai
+  ) => {
     const session = playbackSession;
     const {rewayatId} = get();
     if (!rewayatId) return;
@@ -404,11 +714,21 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
         return;
       }
       const {timestamps, numbering} = prepared;
-      loadSurahAudio(rewayatId, surah, timestamps, numbering, hafsAyah); // @ai
+      loadSurahAudio(
+        rewayatId,
+        surah,
+        timestamps,
+        numbering,
+        unit && unit.ayah === 1 ? 1 : hafsAyah,
+      ); // @ai
       if (numbering.mode !== 'disabled') {
         let start: number | null = 1; // first timing entry
         if (hafsAyah !== null) {
-          const startEntry = numbering.startEntryForHafsAyah(hafsAyah);
+          const startEntry = startEntryAt(numbering, {
+            surah,
+            ayah: hafsAyah,
+            unit,
+          }); // @ai
           start = startEntry ? startEntry.ayahNumber : null;
         }
         if (start !== null) jumpToEntry(surah, start);
@@ -433,7 +753,9 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
     const state = get();
     const start = state.rangeStart!;
     if (start.surah !== surah) {
-      void playSurahFrom(start.surah, start.ayah);
+      // A range of verse units restarts at its first unit (@ai).
+      const units = activeRangeUnits(state);
+      void playSurahFrom(start.surah, start.ayah, units ? units.first : null);
       return;
     }
     const entry = rangeStartEntry(state, state._numbering, surah);
@@ -598,11 +920,15 @@ export const useMushafPlayerStore = create<MushafPlayerStoreState>()(
         currentVerseKeys: NO_KEYS,
         currentReciterVerseKey: null,
         currentVerseLabel: null,
+        currentUnitKeys: NO_KEYS, // @ai
+        currentUnitRewayah: null, // @ai
         numberingMode: null,
         currentPage: null,
         timestamps: null,
         rangeStart: null,
         rangeEnd: null,
+        rangeUnits: null, // @ai
+        pendingStartUnit: null, // @ai
         availableReciters: [],
         pendingStartVerseKey: null,
         ignoredStartVerseKey: null, // @ai
@@ -648,17 +974,48 @@ export const useMushafPlayerStore = create<MushafPlayerStoreState>()(
         },
 
         setRange: (start: RangeEndpoint, end: RangeEndpoint) => {
-          set({rangeStart: start, rangeEnd: end});
+          set({rangeStart: start, rangeEnd: end, rangeUnits: null}); // @ai
         },
+
+        // @ai-start
+        setUnitRange: (first: AudioUnitInput, last: AudioUnitInput) => {
+          const from = toAudioUnitTarget(first);
+          const to = toAudioUnitTarget(last);
+          if (from.rewayah !== to.rewayah) {
+            throw new Error(
+              `[MushafPlayerStore] A range from ${from.rewayah} ${from.key} to ${to.rewayah} ${to.key} mixes two numberings`,
+            );
+          }
+          set({
+            rangeUnits: {first: from, last: to},
+            // Its Hafs envelope, for Hafs-keyed readers of the range.
+            rangeStart: {surah: from.surah, ayah: from.hafsFirstAyah},
+            rangeEnd: {surah: to.surah, ayah: to.hafsLastAyah},
+          });
+        },
+
+        setPendingStart: (unit: AudioUnitInput | null) => {
+          const target = unit ? toAudioUnitTarget(unit) : null;
+          set({
+            pendingStartUnit: target,
+            pendingStartVerseKey: target ? unitHafsStartKey(target) : null,
+          });
+        },
+        // @ai-end
 
         clearRange: () => {
-          set({rangeStart: null, rangeEnd: null});
+          set({rangeStart: null, rangeEnd: null, rangeUnits: null}); // @ai
         },
 
-        startPlayback: async (page: number, startVerseKey?: string) => {
-          const {rewayatId, rangeStart, pendingStartVerseKey} = get();
+        startPlayback: async (
+          page: number,
+          startAt?: string | AudioUnitInput, // @ai
+        ) => {
+          const state = get(); // @ai
+          const {rewayatId} = state;
           if (!rewayatId) return;
           const session = ++playbackSession;
+          followVerseUnits(); // @ai
 
           set({
             playbackState: 'loading',
@@ -668,32 +1025,31 @@ export const useMushafPlayerStore = create<MushafPlayerStoreState>()(
             timestampError: null,
             _versePlayCount: 1,
             _rangePlayCount: 1,
+            pendingStartUnit: null, // @ai
           });
 
           try {
-            let targetKey = startVerseKey || pendingStartVerseKey;
-            if (!targetKey && rangeStart) {
-              targetKey = `${rangeStart.surah}:${rangeStart.ayah}`;
+            // @ai-start
+            // The given start (a Hafs key or a verse unit), else the pending
+            // start, else the range start, else the page's first verse.
+            const target = resolveStart(page, startAt, state);
+            if (target.kind === 'none') {
+              set({playbackState: 'idle'});
+              return;
             }
-            if (!targetKey) {
-              const orderedKeys =
-                mushafVerseMapService.getOrderedVerseKeysForPage(page);
-              if (orderedKeys.length === 0) {
-                set({playbackState: 'idle'});
-                return;
-              }
-              targetKey = orderedKeys[0];
-            }
-
-            const target = parseVerseKey(targetKey);
-            if (!target) {
+            if (target.kind === 'invalid') {
               console.warn(
-                `[MushafPlayerStore] Invalid start verse key "${targetKey}"`,
+                `[MushafPlayerStore] Invalid start verse key "${target.key}"`,
               );
               set({playbackState: 'idle'});
               return;
             }
-            const {surah: surahNumber, ayah: ayahNumber} = target;
+            const {
+              surah: surahNumber,
+              ayah: ayahNumber,
+              unit: startUnit,
+            } = target.point;
+            // @ai-end
 
             const prepared = await engine.prepareSurah(rewayatId, surahNumber);
             if (session !== playbackSession) return;
@@ -732,11 +1088,15 @@ export const useMushafPlayerStore = create<MushafPlayerStoreState>()(
               surahNumber,
               timestamps,
               numbering,
-              ayahNumber, // @ai
+              startUnit && startUnit.ayah === 1 ? 1 : ayahNumber, // @ai
             );
 
             if (numbering.mode !== 'disabled') {
-              const start = numbering.startEntryForHafsAyah(ayahNumber);
+              const start = startEntryAt(numbering, {
+                surah: surahNumber,
+                ayah: ayahNumber,
+                unit: startUnit,
+              }); // @ai
               if (start) engine.jumpToEntry(surahNumber, start.ayahNumber);
             }
             // @ai-start
@@ -770,6 +1130,7 @@ export const useMushafPlayerStore = create<MushafPlayerStoreState>()(
             _numbering: null,
             currentPage: null,
             timestamps: null,
+            rangeUnits: null, // @ai
             rangeStart: null,
             rangeEnd: null,
             ignoredStartVerseKey: null, // @ai
@@ -820,20 +1181,22 @@ export const useMushafPlayerStore = create<MushafPlayerStoreState>()(
 );
 
 // @ai-start
-// The verse label is in the numbering of the mushaf on screen: when the
-// reader switches the mushaf's rewayah, re-label the verse being recited at
-// once (also while paused) rather than keep the previous mushaf's number
-// until the next verse. The highlight keys are Hafs keys and do not change.
+// The band and the verse label are in the numbering of the mushaf on
+// screen. When the reader switches the mushaf's rewayah, or that rewayah's
+// verse units become ready (or are refused or dropped), redo both at once,
+// also while paused, instead of keeping the previous numbering until the
+// next verse. The Hafs keys (page turns) do not change.
 function relabelRecitedVerse(): void {
   const s = useMushafPlayerStore.getState();
-  if (s.currentVerseKeys.length === 0) return;
-  const label = verseLabelFor(
-    s._numbering,
-    s.currentVerseKeys,
-    s.currentReciterVerseKey,
-  );
-  if (label !== s.currentVerseLabel) {
-    useMushafPlayerStore.setState({currentVerseLabel: label});
+  const entry = recitedEntry(s);
+  if (!entry) return;
+  const next = unitStateFor(s._numbering, entry.surah, entry.ayah);
+  if (
+    next.currentUnitRewayah !== s.currentUnitRewayah ||
+    next.currentVerseLabel !== s.currentVerseLabel ||
+    verseKeyListId(next.currentUnitKeys) !== verseKeyListId(s.currentUnitKeys)
+  ) {
+    useMushafPlayerStore.setState(next);
   }
 }
 
@@ -847,6 +1210,19 @@ if (typeof useMushafSettingsStore?.subscribe === 'function') {
   console.warn(
     "[MushafPlayerStore] mushafSettingsStore is not defined yet (an import cycle?): the verse label will not follow the mushaf's rewayah",
   );
+}
+
+let stopFollowingVerseUnits: (() => void) | null = null;
+
+/**
+ * Relabel whenever the words in memory change (a rewayah's verse units may
+ * have become ready). Subscribed by the first playback, so loading this
+ * store does not load the words data service.
+ */
+function followVerseUnits(): void {
+  if (!stopFollowingVerseUnits) {
+    stopFollowingVerseUnits = subscribeVerseUnitsChanges(relabelRecitedVerse);
+  }
 }
 // @ai-end
 
@@ -888,6 +1264,53 @@ export function selectPlaybackVerseKeysId(s: MushafPlayerStoreState): string {
  */
 export function usePlaybackVerseKeys(): readonly string[] {
   const id = useMushafPlayerStore(selectPlaybackVerseKeysId);
+  return useMemo(() => parseVerseKeyListId(id), [id]);
+}
+
+/** The range as verse units while it is in effect (see rangeUnits), else null. */
+export const selectRangeUnits = activeRangeUnits;
+
+/** The pending start as a verse unit while it is in effect, else null. */
+export const selectPendingStartUnit = activePendingStartUnit;
+
+/**
+ * Value-comparable id of the follow-along band as verse unit keys of
+ * `rewayah` (default: the mushaf on screen); '' when idle or when nothing
+ * with a verse number in that rewayah is being recited. See
+ * usePlaybackUnitKeys().
+ */
+export function selectPlaybackUnitKeysId(
+  s: MushafPlayerStoreState,
+  rewayah: RewayahId = displayRewayah(),
+): string {
+  if (s.playbackState === 'idle') return '';
+  if (s.currentUnitRewayah === rewayah) {
+    return verseKeyListId(s.currentUnitKeys);
+  }
+  const entry = recitedEntry(s);
+  if (!entry) return '';
+  return verseKeyListId(
+    bandUnitKeys(s._numbering, entry.surah, entry.ayah, rewayah),
+  );
+}
+
+/**
+ * The mushaf player's follow-along band as verse unit keys of `rewayah`
+ * (default: the rewayah of the mushaf on screen): what every band painter
+ * that draws that rewayah's verses (segments by verse unit) must paint.
+ * When the reciter's timing entries are that rewayah's own verses the band
+ * is exactly the verse being recited, so it moves at the rewayah's own verse
+ * ends (Warsh 1:6, then Warsh 1:7, inside Hafs 1:7); otherwise it is every
+ * verse holding a word of what is recited. Hafs: the same keys as
+ * usePlaybackVerseKeys(). Empty when idle or when that rewayah's verse
+ * units are not available. Re-renders only when the keys change.
+ */
+export function usePlaybackUnitKeys(rewayah?: RewayahId): readonly string[] {
+  const selector = useCallback(
+    (s: MushafPlayerStoreState) => selectPlaybackUnitKeysId(s, rewayah),
+    [rewayah],
+  );
+  const id = useMushafPlayerStore(selector);
   return useMemo(() => parseVerseKeyListId(id), [id]);
 }
 

@@ -209,10 +209,20 @@ declare module 'react-native-actions-sheet' {
     }>;
     'verse-actions': SheetDefinition<{
       payload: {
+        // @ai-start
+        // Verse fields (verse-units contract 4.1). verseKey / surahNumber /
+        // ayahNumber / verseKeys keep their HAFS meaning: the Hafs verse
+        // holding the first selected verse's first word, and every Hafs
+        // verse the selection reads. A producer showing a rewayah also sends
+        // `unitKeys` (with `rewayah`): the selected verses in that rewayah's
+        // own numbering. Without it the sheet selects the rewayah verses
+        // holding the Hafs verses. For Hafs, unitKeys are the Hafs keys.
+        // @ai-end
         verseKey: string;
         surahNumber: number;
         ayahNumber: number;
         verseKeys?: string[];
+        unitKeys?: string[]; // @ai
         // @ai-start
         // No Arabic text field: the sheet reads the text from the words DB
         // of `rewayah` itself, so a caller cannot attach one rewayah's text
@@ -223,15 +233,24 @@ declare module 'react-native-actions-sheet' {
         source?: 'player' | 'mushaf';
         // Override the rewayah used for Arabic text resolution and share
         // disclosure. Defaults to the mushaf's active rewayah.
+        // Required with `unitKeys`: their numbering. @ai
         rewayah?: import('@/store/mushafSettingsStore').RewayahId;
       };
     }>;
     'verse-note': SheetDefinition<{
       payload: {
+        // @ai-start
+        // A saved note (noteId): verseKey / verseKeys are its stored anchors
+        // ("S:A" or "S:A:W", Hafs locations) and `rewayah`, when given, is
+        // the note's own rewayah (else it is read from the note); the sheet
+        // names its verses in that rewayah's numbering. A new note: as
+        // 'verse-actions' (Hafs fields, plus `unitKeys` with `rewayah`).
+        // @ai-end
         verseKey: string;
         surahNumber: number;
         ayahNumber: number;
         verseKeys?: string[];
+        unitKeys?: string[]; // @ai
         noteId?: string;
         rewayah?: import('@/store/mushafSettingsStore').RewayahId;
       };

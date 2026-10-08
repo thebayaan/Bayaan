@@ -359,7 +359,21 @@ jest.mock('@shopify/flash-list', () => {
 
 jest.mock('@/store/mushafPlayerStore', () => {
   const idle: string[] = [];
-  return {usePlaybackVerseKeys: () => idle};
+  // @ai — the pages read the follow-along band (playbackBand.ts) from the
+  // player store's state: nothing is playing.
+  const idleState = {
+    playbackState: 'idle',
+    currentVerseKey: null,
+    currentVerseKeys: idle,
+    currentReciterVerseKey: null,
+    numberingMode: null,
+    _numbering: null,
+  };
+  return {
+    usePlaybackVerseKeys: () => idle,
+    useMushafPlayerStore: (selector: (s: typeof idleState) => unknown) =>
+      selector(idleState),
+  };
 });
 
 jest.mock('@/store/verseAnnotationsStore', () => {
@@ -380,6 +394,12 @@ jest.mock('@/store/tajweedStore', () => {
 
 jest.mock('@/services/mushaf/ThemeDataService', () => ({
   themeDataService: {getThemeForVerse: () => undefined},
+}));
+
+// @ai — verse units (what the pages select and paint) play no part in the
+// layout identity checked here: none are built.
+jest.mock('@/services/mushaf/RewayahVerseUnitsService', () => ({
+  rewayahVerseUnitsService: {get: () => null, getStatus: () => 'loading'},
 }));
 
 import SkiaPage from '../SkiaPage';

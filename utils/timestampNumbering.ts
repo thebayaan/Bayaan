@@ -14,6 +14,19 @@
  * answers every translation question for that surah. The async part (the
  * set-level vote that needs other surahs' timings) lives in
  * services/timestamps/TimingNumberingService.ts.
+ *
+ * Rewayah verse units (decision 3 of Release 1, @ai): a surface that shows a
+ * non-Hafs rewayah works in that rewayah's OWN verses (VerseUnit,
+ * services/mushaf/RewayahVerseUnits.ts; verse-units contract 4.2). When the
+ * timing entries are exactly those verses (a set numbered by the reciter's
+ * rewayah, shown in that same rewayah) a unit is one entry: the follow-along
+ * band moves at the rewayah's own verse ends (also inside a split Hafs
+ * verse), and Play from here / Repeat / Range start, loop and stop on exactly
+ * the selected verses. For every other set (Hafs-numbered, or numbered by
+ * another rewayah) the Hafs-keyed mapping above stays in charge: an entry
+ * lights every unit holding a word of what it recites, and a unit plays the
+ * whole entries holding its words (never half of a reciter's verse). Hafs
+ * units are the Hafs verses, so every Hafs answer is the historical one.
  */
 
 import type {AyahTimestamp, AyahTrackingState} from '@/types/timestamps';
@@ -21,8 +34,15 @@ import type {RewayahId} from '@/services/rewayah/RewayahIdentity';
 import {
   hafsVerseCount,
   parseVerseKey,
+  rewayahVerseMapService, // @ai
   type RewayahVerseMapService,
 } from '@/services/mushaf/RewayahVerseMapService';
+// @ai-start
+import {
+  formatUnitRangeLabel,
+  type VerseUnit,
+} from '@/services/mushaf/RewayahVerseUnits';
+// @ai-end
 
 /**
  * - 'hafs': entries are Hafs verse numbers (identity).
@@ -252,6 +272,90 @@ export function classifyTimingSet(
   return 'unknown';
 }
 
+// @ai-start
+// ── Rewayah verse units as audio targets ───────────────────────────────────
+
+/**
+ * A verse of a shown rewayah (a VerseUnit, in that rewayah's own numbering)
+ * as audio needs it: its own number, used when the timing entries are that
+ * rewayah's verses, and the Hafs verses holding its words, used for every
+ * other timing set. Plain data: it does not tie the player to one load of
+ * the words.
+ */
+export interface AudioUnitTarget {
+  readonly rewayah: RewayahId;
+  readonly surah: number;
+  /** The rewayah's own verse number (VerseUnit.ayah). */
+  readonly ayah: number;
+  /** `${surah}:${ayah}`, the unit key (rewayah numbering). */
+  readonly key: string;
+  /** Hafs ayah of the first Hafs verse holding the verse's words. */
+  readonly hafsFirstAyah: number;
+  /** Hafs ayah of the last Hafs verse holding the verse's words. */
+  readonly hafsLastAyah: number;
+}
+
+/** A unit as callers hold it: from the units model, or already converted. */
+export type AudioUnitInput = VerseUnit | AudioUnitTarget;
+
+/**
+ * The audio target of a verse unit. Units never cross a surah and always
+ * hold at least one word, so the Hafs extent is inside the unit's surah.
+ * (Its first Hafs verse is the Hafs verse of the unit's storage anchor:
+ * checked on every unit of every words DB by the all-DB audio test.)
+ */
+export function toAudioUnitTarget(input: AudioUnitInput): AudioUnitTarget {
+  if (!('hafsKeys' in input)) return input;
+  const first = parseVerseKey(input.hafsKeys[0] ?? '');
+  const last = parseVerseKey(input.hafsKeys[input.hafsKeys.length - 1] ?? '');
+  if (!first || !last || first.surah !== input.surah) {
+    throw new Error(
+      `[TimingNumbering] ${input.rewayah} ${input.key} has no Hafs verses in its surah`,
+    );
+  }
+  return {
+    rewayah: input.rewayah,
+    surah: input.surah,
+    ayah: input.ayah,
+    key: input.key,
+    hafsFirstAyah: first.ayah,
+    hafsLastAyah: last.ayah,
+  };
+}
+
+/** Negative when `a` comes before `b` (same rewayah: reading order). */
+export function compareAudioUnits(
+  a: Pick<AudioUnitTarget, 'surah' | 'ayah'>,
+  b: Pick<AudioUnitTarget, 'surah' | 'ayah'>,
+): number {
+  return a.surah !== b.surah ? a.surah - b.surah : a.ayah - b.ayah;
+}
+
+/**
+ * Keys of `rewayah`'s verses holding words of Hafs verses `hafsKeys`, in
+ * order, without repeats: the safe Hafs-keyed mapping. It equals
+ * units.unitsForHafsKeys() of that rewayah (h2r), because units that
+ * disagree with the bundled verse map are refused at runtime. Hafs: the keys
+ * themselves. Empty when `rewayah` has no usable verse map: never Hafs
+ * numbers under another rewayah's name.
+ */
+export function hafsKeysToUnitKeys(
+  hafsKeys: readonly string[],
+  rewayah: RewayahId,
+  verseMap: RewayahVerseMapService = rewayahVerseMapService,
+): string[] {
+  if (rewayah === 'hafs') return hafsKeys.slice();
+  if (!verseMap.hasVerseMap(rewayah)) return [];
+  const out: string[] = [];
+  for (const hafsKey of hafsKeys) {
+    for (const key of verseMap.toRiwayahKeys(rewayah, hafsKey)) {
+      if (!out.includes(key)) out.push(key);
+    }
+  }
+  return out;
+}
+// @ai-end
+
 /**
  * Translation of one surah of one timing set. "Entry ayah" always means the
  * ayahNumber carried by a timing entry (the set's own numbering); "Hafs ayah"
@@ -294,6 +398,48 @@ export interface TimingNumbering {
    * playback starts at) as a one-entry unit. Null when unknown.
    */
   entryRangeForHafsAyah(hafsAyah: number): {start: number; end: number} | null;
+  // @ai-start
+  // ── Rewayah verse units (verse-units contract 4.2) ──
+  /**
+   * True when the entries are exactly the verses of `rewayah` (entry N is
+   * that rewayah's verse N of this surah, so one verse unit is one entry):
+   * a set numbered by the reciter's own rewayah ('riwayah'), shown in that
+   * same rewayah. False otherwise, also for a disabled numbering.
+   */
+  numbersVersesOf(rewayah: RewayahId): boolean;
+  /**
+   * Entry where playback of verse unit `unit` starts: exactly its own entry
+   * when the entries are its rewayah's verses, otherwise the entry where its
+   * first Hafs verse starts (startEntryForHafsAyah: a Hafs-numbered set
+   * starts the second part of a split Hafs verse at the whole Hafs verse).
+   * Null when the unit is in another surah or no verse-level start exists.
+   */
+  startEntryForUnit(unit: AudioUnitTarget): AyahTimestamp | null;
+  /**
+   * Last entry ayah of a range ending at verse unit `unit`: exactly its own
+   * entry when the entries are its rewayah's verses, otherwise the last entry
+   * holding its last Hafs verse (endEntryAyahForHafsAyah). Null when unknown
+   * or when the unit is in another surah.
+   */
+  endEntryAyahForUnit(unit: AudioUnitTarget): number | null;
+  /**
+   * Entry ayah range that plays all of verse unit `unit` and nothing before
+   * it (what a Repeat of that one verse loops): its own entry when the
+   * entries are its rewayah's verses, otherwise every entry holding its
+   * words. Null when unknown or when the unit is in another surah.
+   */
+  entryRangeForUnit(unit: AudioUnitTarget): {start: number; end: number} | null;
+  /**
+   * The follow-along band in `rewayah`'s own verses while entry `entryAyah`
+   * plays (unit keys 'S:A' of that rewayah, in order). Exactly the entry's
+   * own verse when the entries are `rewayah`'s verses, so the band moves at
+   * the rewayah's own verse ends, also inside a split Hafs verse; otherwise
+   * every verse holding a word of the Hafs verses the entry recites. Hafs:
+   * hafsKeysForEntry(entryAyah), the historical keys. Empty when what is
+   * recited is no verse there (the unnumbered Fatiha basmala) or unknown.
+   */
+  unitKeysForEntry(entryAyah: number, rewayah: RewayahId): string[];
+  // @ai-end
 }
 
 const NO_KEYS: readonly string[] = Object.freeze([]);
@@ -313,7 +459,7 @@ export function createTimingNumbering(args: {
   }
 
   if (mode === 'disabled' || (mode === 'riwayah' && !reciterRewayah)) {
-    return {
+    return withUnitMethods(byAyah, verseMap, {
       surah,
       mode: 'disabled',
       reciterRewayah,
@@ -323,13 +469,13 @@ export function createTimingNumbering(args: {
       startEntryForHafsAyah: () => null,
       endEntryAyahForHafsAyah: () => null,
       entryRangeForHafsAyah: () => null,
-    };
+    }); // @ai
   }
 
   if (mode === 'hafs') {
     // Identity: exactly the historical behaviour (an entry's number is used
     // as the Hafs ayah, including an ayah-0 pre-roll).
-    return {
+    return withUnitMethods(byAyah, verseMap, {
       surah,
       mode,
       reciterRewayah,
@@ -341,7 +487,7 @@ export function createTimingNumbering(args: {
       endEntryAyahForHafsAyah: hafsAyah => hafsAyah,
       entryRangeForHafsAyah: hafsAyah =>
         byAyah.has(hafsAyah) ? {start: hafsAyah, end: hafsAyah} : null,
-    };
+    }); // @ai
   }
 
   const rewayah = reciterRewayah as RewayahId;
@@ -379,7 +525,7 @@ export function createTimingNumbering(args: {
   };
   // @ai-end
 
-  return {
+  return withUnitMethods(byAyah, verseMap, {
     surah,
     mode,
     reciterRewayah,
@@ -415,8 +561,85 @@ export function createTimingNumbering(args: {
       // @ai-end
       return {start: containing[0], end: containing[containing.length - 1]};
     },
+  }); // @ai
+}
+
+// @ai-start
+type UnitMethodName =
+  | 'numbersVersesOf'
+  | 'startEntryForUnit'
+  | 'endEntryAyahForUnit'
+  | 'entryRangeForUnit'
+  | 'unitKeysForEntry';
+
+/**
+ * Adds the verse-unit methods (verse-units contract 4.2) to a numbering's
+ * Hafs-level ones. numbersVersesOf alone chooses between the exact path
+ * (one unit = one entry: a 'riwayah' set shown in the reciter's own
+ * rewayah) and the Hafs-keyed path through the unit's Hafs verses. A Hafs
+ * unit always takes the Hafs-keyed path with its own Hafs verse, so every
+ * Hafs answer is the historical one.
+ */
+function withUnitMethods(
+  byAyah: ReadonlyMap<number, AyahTimestamp>,
+  verseMap: RewayahVerseMapService,
+  base: Omit<TimingNumbering, UnitMethodName>,
+): TimingNumbering {
+  const {surah, mode} = base;
+  const numbersVersesOf = (rewayah: RewayahId): boolean =>
+    mode === 'riwayah' && base.reciterRewayah === rewayah;
+  // The unit's own entry when the entries are its rewayah's verses.
+  const ownEntry = (unit: AudioUnitTarget): AyahTimestamp | null =>
+    numbersVersesOf(unit.rewayah) ? (byAyah.get(unit.ayah) ?? null) : null;
+  const usable = (unit: AudioUnitTarget): boolean =>
+    mode !== 'disabled' && unit.surah === surah;
+
+  return {
+    ...base,
+    numbersVersesOf,
+    startEntryForUnit: unit => {
+      if (!usable(unit)) return null;
+      return ownEntry(unit) ?? base.startEntryForHafsAyah(unit.hafsFirstAyah);
+    },
+    endEntryAyahForUnit: unit => {
+      if (!usable(unit)) return null;
+      const own = ownEntry(unit);
+      if (own) return own.ayahNumber;
+      return base.endEntryAyahForHafsAyah(unit.hafsLastAyah);
+    },
+    entryRangeForUnit: unit => {
+      if (!usable(unit)) return null;
+      const own = ownEntry(unit);
+      if (own) return {start: own.ayahNumber, end: own.ayahNumber};
+      // Every entry holding the unit's words: a Hafs-numbered set loops a
+      // merged verse whole and never cuts a split Hafs verse in two.
+      const start = base.startEntryForHafsAyah(unit.hafsFirstAyah);
+      if (!start) return null;
+      const end = base.endEntryAyahForHafsAyah(unit.hafsLastAyah);
+      return {
+        start: start.ayahNumber,
+        end: end === null ? start.ayahNumber : Math.max(start.ayahNumber, end),
+      };
+    },
+    unitKeysForEntry: (entryAyah, rewayah) => {
+      if (mode === 'disabled') return [];
+      // Hafs units are the Hafs verses: the historical keys, unchanged.
+      if (rewayah === 'hafs') return base.hafsKeysForEntry(entryAyah);
+      if (numbersVersesOf(rewayah)) {
+        const count = verseMap.verseCount(rewayah, surah) ?? 0;
+        return entryAyah >= 1 && entryAyah <= count
+          ? [`${surah}:${entryAyah}`]
+          : [];
+      }
+      return hafsKeysToUnitKeys(
+        base.hafsKeysForEntry(entryAyah),
+        rewayah,
+        verseMap,
+      );
+    },
   };
 }
+// @ai-end
 
 // ── Registry ────────────────────────────────────────────────────────────────
 //
@@ -498,6 +721,42 @@ export function selectTrackedVerseKeysId(s: {
 }
 // @ai-end
 
+// @ai-start
+/**
+ * The main player's follow-along band in `rewayah`'s own verses (unit keys
+ * 'S:A' of that rewayah, verse-units contract 4.2), for verse rows shown in
+ * `rewayah`: exactly the reciter's verse being recited (`reciterVerseKey`)
+ * when `numbering`, the one registered for the playing timings, says the
+ * entries are `rewayah`'s verses; otherwise every verse of `rewayah` holding
+ * a word of the Hafs verses being recited. Hafs: getTrackedVerseKeys(state),
+ * unchanged. Empty when nothing is recited or what is recited is no verse
+ * of `rewayah` (the unnumbered Fatiha basmala). A non-Hafs rewayah's keys
+ * may only be shown while its verse units are ready (useTrackedUnitKeys in
+ * hooks/useAyahTracker.ts checks).
+ */
+export function getTrackedUnitKeys(
+  state: AyahTrackingState | null | undefined,
+  rewayah: RewayahId,
+  numbering: RegisteredTimingNumbering | null | undefined,
+  verseMap: RewayahVerseMapService = rewayahVerseMapService,
+): readonly string[] {
+  if (!state) return NO_KEYS;
+  if (rewayah === 'hafs') return getTrackedVerseKeys(state);
+  const entryKey = (state as Partial<MappedAyahTrackingState>).reciterVerseKey;
+  const entry = entryKey ? parseVerseKey(entryKey) : null;
+  if (
+    entry &&
+    numbering &&
+    numbering !== 'pending' &&
+    numbering.surah === entry.surah &&
+    numbering.numbersVersesOf(rewayah)
+  ) {
+    return numbering.unitKeysForEntry(entry.ayah, rewayah);
+  }
+  return hafsKeysToUnitKeys(getTrackedVerseKeys(state), rewayah, verseMap);
+}
+// @ai-end
+
 // ── Labels ─────────────────────────────────────────────────────────────────
 
 // @ai-start
@@ -519,6 +778,23 @@ export function formatVerseKeyRange(keys: readonly string[]): string | null {
   if (a && b && a.surah === b.surah) return `${first}-${b.ayah}`;
   return `${first}-${last}`;
 }
+
+// @ai-start
+/**
+ * Label of a follow-along band of verse unit keys (consecutive verses of one
+ * rewayah): formatUnitRangeLabel of its first and last verse, so "1:6",
+ * "2:1-2". One key reads as itself, so a Hafs band's label is the historical
+ * one. Null for an empty band: what is recited has no verse number there.
+ */
+export function formatUnitKeysLabel(keys: readonly string[]): string | null {
+  if (keys.length === 0) return null;
+  if (keys.length === 1) return keys[0];
+  const first = parseVerseKey(keys[0]);
+  const last = parseVerseKey(keys[keys.length - 1]);
+  if (!first || !last) return formatVerseKeyRange(keys);
+  return formatUnitRangeLabel(first, last);
+}
+// @ai-end
 
 /**
  * Verse reference for the verse being recited, in the numbering of the mushaf
