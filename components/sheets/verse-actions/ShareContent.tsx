@@ -130,6 +130,14 @@ export const ShareContent: React.FC<ShareContentProps> = ({
       verseRefText: `${surahName} ${formatVerseRange(verseKeys)}`,
     };
   }, [verseKeys, selectedTranslationId]);
+
+  // A verse link opens one verse (the URL scheme has no ranges), so the
+  // message sent with it cites that verse, not the whole selection.
+  const linkRefText = useMemo(() => {
+    const surah = surahData.find(s => s.id === surahNumber);
+    const ref = formatVerseRange([`${surahNumber}:${ayahNumber}`]);
+    return `${surah?.name ?? ''} ${ref}`;
+  }, [surahNumber, ayahNumber]);
   // @ai-end
 
   const handleShareAsImage = useCallback(async () => {
@@ -206,9 +214,9 @@ export const ShareContent: React.FC<ShareContentProps> = ({
       isDarkMode ? 'dark' : 'light',
       rewayah,
     );
-    await nativeShareUrl(url, formatQuranCitation(verseRefText, rewayah));
+    await nativeShareUrl(url, formatQuranCitation(linkRefText, rewayah));
     SheetManager.hideAll();
-  }, [surahNumber, ayahNumber, verseRefText, isDarkMode, rewayah]);
+  }, [surahNumber, ayahNumber, linkRefText, isDarkMode, rewayah]);
   // @ai-end
 
   if (!fontMgr) return null;
