@@ -16,7 +16,10 @@ import {
   selectionPreviewProps,
   type ReadyVerseSelection,
 } from '@/components/share/rewayahVerseSelection';
-import {setSelectionHighlight, useSelectionMarks} from './selectionAnnotations';
+import {
+  setSelectionHighlight,
+  useSelectionHighlightColor,
+} from './selectionAnnotations';
 // @ai-end
 
 const COLORS = Object.entries(HIGHLIGHT_COLORS) as [HighlightColor, string][];
@@ -46,7 +49,7 @@ export const HighlightContent: React.FC<HighlightContentProps> = ({
 
   // @ai-start
   const {rewayah} = selection;
-  const currentColor = useSelectionMarks(selection).highlightColor;
+  const currentColor = useSelectionHighlightColor(selection);
 
   const handleSelectColor = useCallback(
     async (color: HighlightColor) => {

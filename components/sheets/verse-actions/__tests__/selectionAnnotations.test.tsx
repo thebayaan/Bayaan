@@ -64,8 +64,8 @@ import {
   setSelectionBookmarked,
   setSelectionHighlight,
   unitRowKeys,
-  useSelectionMarks,
-  type SelectionMarks,
+  useSelectionBookmarked,
+  useSelectionHighlightColor,
 } from '../selectionAnnotations';
 
 declare const global: {IS_REACT_ACT_ENVIRONMENT?: boolean};
@@ -118,14 +118,22 @@ const service = verseAnnotationService as jest.Mocked<
 const calls = (fn: {mock: {calls: unknown[][]}}) =>
   fn.mock.calls.map(call => call[0]);
 
-/** useSelectionMarks of `selection`, re-read after every store change. */
+interface SelectionMarks {
+  bookmarked: boolean;
+  highlightColor: string | null;
+}
+
+/** The marks hooks of `selection`, re-read after every store change. */
 function renderMarks(selection: ReadyVerseSelection | null): {
   current: () => SelectionMarks;
   unmount: () => void;
 } {
   let latest: SelectionMarks | null = null;
   function Probe() {
-    latest = useSelectionMarks(selection);
+    latest = {
+      bookmarked: useSelectionBookmarked(selection),
+      highlightColor: useSelectionHighlightColor(selection),
+    };
     return null;
   }
   let renderer: TestRenderer.ReactTestRenderer;

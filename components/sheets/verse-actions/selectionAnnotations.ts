@@ -99,36 +99,39 @@ function firstHighlightColor(
   return null;
 }
 
-/** What the sheets show for the rows of a selection. */
-export interface SelectionMarks {
-  /** Every selected verse is bookmarked (by any row that marks it). */
-  bookmarked: boolean;
-  /**
-   * The first selected verse's highlight colour: its own anchor's row, else
-   * the earliest row that marks it; null when none does.
-   */
-  highlightColor: HighlightColor | null;
-}
-
-/** The bookmark and highlight state of a selection; nothing while pending. */
-export function useSelectionMarks(
-  selection: ReadyVerseSelection | null,
-): SelectionMarks {
-  const rowKeys = useMemo(
+/** selectionRowKeys of a selection (none while it is pending). */
+function useRowKeys(selection: ReadyVerseSelection | null): string[][] {
+  return useMemo(
     () => (selection ? selectionRowKeys(selection) : []),
     [selection],
   );
-  const bookmarked = useVerseAnnotationsStore(
+}
+
+/**
+ * True when every selected verse is bookmarked (by any row that marks it);
+ * false while the selection is pending.
+ */
+export function useSelectionBookmarked(
+  selection: ReadyVerseSelection | null,
+): boolean {
+  const rowKeys = useRowKeys(selection);
+  return useVerseAnnotationsStore(
     state =>
       rowKeys.length > 0 &&
       rowKeys.every(keys => keys.some(key => state.isBookmarked(key))),
   );
-  const highlightColor = useVerseAnnotationsStore(state =>
+}
+
+/**
+ * The first selected verse's highlight colour: its own anchor's row, else
+ * the earliest row that marks it; null when none does or while pending.
+ */
+export function useSelectionHighlightColor(
+  selection: ReadyVerseSelection | null,
+): HighlightColor | null {
+  const rowKeys = useRowKeys(selection);
+  return useVerseAnnotationsStore(state =>
     firstHighlightColor(rowKeys[0], state.highlights),
-  );
-  return useMemo(
-    () => ({bookmarked, highlightColor}),
-    [bookmarked, highlightColor],
   );
 }
 

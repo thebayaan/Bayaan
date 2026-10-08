@@ -77,7 +77,8 @@ import {
 import {
   setSelectionBookmarked,
   setSelectionHighlight,
-  useSelectionMarks,
+  useSelectionBookmarked,
+  useSelectionHighlightColor,
 } from './verse-actions/selectionAnnotations';
 // @ai-end
 import branding from '@/config/branding';
@@ -288,9 +289,8 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
   // any row that names one of its slots, legacy rows included (contract
   // section 3; see verse-actions/selectionAnnotations.ts). Hafs: the Hafs
   // keys themselves, as before.
-  const marks = useSelectionMarks(readySelection);
-  const isBookmarked = marks.bookmarked;
-  const isHighlighted = marks.highlightColor !== null;
+  const isBookmarked = useSelectionBookmarked(readySelection);
+  const isHighlighted = useSelectionHighlightColor(readySelection) !== null;
 
   const pendingSelection: PendingVerseSelection | null =
     selection.status === 'ready' ? null : selection;
