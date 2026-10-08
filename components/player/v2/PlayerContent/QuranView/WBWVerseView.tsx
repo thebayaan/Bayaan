@@ -87,6 +87,17 @@ interface WBWVerseViewProps {
    *  is Hafs-only, so the Arabic here is always rendered in Hafs — this
    *  prop only drives the "Showing Hafs" disclosure label. */
   rewayah?: RewayahId;
+  // @ai-start
+  /** Show only the Hafs words at these word positions of `verseKey`
+   *  (inclusive; the verse-end marker when its slot is in range): the part of
+   *  a Hafs verse that one rewayah verse row holds (verseUnitRows.ts). The
+   *  words are matched over the whole verse first, so the slice keeps the
+   *  whole verse's pairing. Omitted: the whole verse. */
+  wordRange?: {first: number; last: number};
+  /** Disclosure text in a non-Hafs context instead of "Word-by-word shown in
+   *  Hafs" (a verse row names the Hafs verse, e.g. "... in Hafs 1:7"). */
+  hafsNotice?: string;
+  // @ai-end
 }
 
 interface MatchedWord {
@@ -338,6 +349,8 @@ export const WBWVerseView = memo<WBWVerseViewProps>(
     onTap,
     onLongPress,
     rewayah: rewayahProp,
+    wordRange, // @ai
+    hafsNotice: hafsNoticeText, // @ai
   }) => {
     const {theme} = useTheme();
     const [containerWidth, setContainerWidth] = useState(0);
@@ -372,6 +385,10 @@ export const WBWVerseView = memo<WBWVerseViewProps>(
     }, [verseKey, cachedWords]);
 
     const wbwWords = cachedWords ?? asyncWords;
+
+    // By value: a new wordRange object with the same range is no change. @ai
+    const sliceFirst = wordRange?.first; // @ai
+    const sliceLast = wordRange?.last; // @ai
 
     // Match DK words with WBW words using text-aware sequential alignment.
     // DK sometimes splits compound words (e.g. "بَعْدَ مَا") into two tokens
@@ -421,8 +438,20 @@ export const WBWVerseView = memo<WBWVerseViewProps>(
         }
       }
 
+      // @ai-start
+      // A verse row's slice: the words (and the end marker) of its own slots.
+      if (sliceFirst !== undefined && sliceLast !== undefined) {
+        const inRange = (w: DKWordInfo) =>
+          w.wordPositionInVerse >= sliceFirst &&
+          w.wordPositionInVerse <= sliceLast;
+        return {
+          matchedWords: result.filter(m => inRange(m.dkWord)),
+          verseEndMarker: endMarker && inRange(endMarker) ? endMarker : null,
+        };
+      }
+      // @ai-end
       return {matchedWords: result, verseEndMarker: endMarker};
-    }, [dkWords, wbwWords]);
+    }, [dkWords, wbwWords, sliceFirst, sliceLast]); // @ai
 
     // Derive colors once
     const derivedColors = useMemo(
@@ -678,7 +707,7 @@ export const WBWVerseView = memo<WBWVerseViewProps>(
           styles.hafsNotice,
           {color: Color(textColor).alpha(0.5).toString()},
         ]}>
-        Word-by-word shown in Hafs
+        {hafsNoticeText ?? 'Word-by-word shown in Hafs' /* @ai */}
       </Text>
     ) : null;
 
