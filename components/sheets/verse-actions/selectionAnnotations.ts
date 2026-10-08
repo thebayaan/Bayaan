@@ -19,12 +19,11 @@
  * write exactly the rows they did before, call for call (every selected
  * key is added or removed, stored or not).
  *
- * The annotations store keys rows by verse_key alone here, so every row is
- * read as a row of the shown rewayah (exact for that rewayah's rows and for
- * legacy rows). Once the store keeps each row's rewayah
- * (fix/r1-v-collections), the non-Hafs paths below delegate to its unit
- * API, which also maps rows saved in Hafs or a third rewayah (integrator
- * patch fix/vu/v-sheets/integrator-annotations-unit-api.patch).
+ * The annotations store keys rows by verse_key alone, so every row is read
+ * as a row of the shown rewayah: exact for that rewayah's rows and for
+ * legacy rows. A row saved in Hafs or in a third rewayah can only be mapped
+ * by its own rewayah (contract section 3) once the store records it; the
+ * non-Hafs paths below are where that mapping plugs in.
  */
 import {useMemo} from 'react';
 import {
