@@ -11,8 +11,7 @@
       "bundleIdentifier": "com.bayaan.tvsmoke"
     },
     "android": {
-      "package": "com.bayaan.tvsmoke",
-      "edgeToEdgeEnabled": true
+      "package": "com.bayaan.tvsmoke"
     },
     "plugins": [
       [
@@ -29,7 +28,15 @@
           "enableBackgroundPlayback": true
         }
       ],
-      "expo-image"
+      "expo-image",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 24
+          }
+        }
+      ]
     ]
   }
 }
