@@ -69,13 +69,22 @@ async function dropEmptyNotesOrphan(db: SQLite.SQLiteDatabase): Promise<void> {
   }
 }
 
-// True only for a real UNIQUE constraint on verse_key (index_list origin 'u').
-// The PRIMARY KEY autoindex has origin 'pk' and CREATE INDEX has origin 'c'.
-async function hasVerseKeyUniqueConstraint(
-  db: SQLite.SQLiteDatabase,
+// The one query shape the check below needs, so tests can pass any adapter.
+interface IndexReader {
+  getAllAsync<T>(source: string, params: string[]): Promise<T[]>;
+}
+
+// True only for a real UNIQUE constraint on verse_key alone (index_list origin
+// 'u'). The PRIMARY KEY autoindex has origin 'pk' and CREATE INDEX has origin
+// 'c'. A composite constraint such as UNIQUE(owner_scope, verse_key) is not the
+// legacy one-note-per-verse rule and must never trigger the rebuild below,
+// which would turn an owner-scoped table back into the old schema.
+export async function hasVerseKeyUniqueConstraint(
+  db: IndexReader,
 ): Promise<boolean> {
   const indexes = await db.getAllAsync<IndexListRow>(
     'SELECT name, "unique", origin FROM pragma_index_list(\'notes\')',
+    [],
   );
   for (const index of indexes) {
     if (index.origin !== 'u' || index.unique !== 1) continue;
@@ -83,7 +92,7 @@ async function hasVerseKeyUniqueConstraint(
       'SELECT name FROM pragma_index_info(?)',
       [index.name],
     );
-    if (columns.some(c => c.name === 'verse_key')) return true;
+    if (columns.length === 1 && columns[0].name === 'verse_key') return true;
   }
   return false;
 }

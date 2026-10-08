@@ -5,6 +5,7 @@ jest.mock(
 import path from 'path';
 import {openAdapterDatabase} from '@/test-utils/sqliteAdapter';
 import {readTable, type Row} from '@/test-utils/goldenDb';
+import {hasVerseKeyUniqueConstraint} from '../migrations/legacyNotesCleanup';
 
 type MockModule = typeof import('@/test-utils/mockExpoSqlite');
 type Annotations =
@@ -228,6 +229,90 @@ describe('notes table migrations', () => {
     expect(after?.rootpage).toBe(master?.rootpage);
     expect((await rawNotes(mock)).map(r => r.id)).toEqual(['n']);
     expect(await tableNames(mock)).not.toContain('notes_new');
+  });
+
+  it('treats only a single-column UNIQUE(verse_key) as the legacy constraint', async () => {
+    const {mock} = loaded;
+    const cases: [string, boolean][] = [
+      ['verse_key TEXT NOT NULL UNIQUE, owner_scope TEXT', true],
+      ['verse_key TEXT, owner_scope TEXT, UNIQUE(verse_key)', true],
+      [
+        'verse_key TEXT, owner_scope TEXT, UNIQUE(owner_scope, verse_key)',
+        false,
+      ],
+      [
+        'verse_key TEXT, owner_scope TEXT, UNIQUE(verse_key, owner_scope)',
+        false,
+      ],
+    ];
+    for (const [columns, expected] of cases) {
+      const db = await mock.openDatabaseAsync(DB_FILE);
+      await db.execAsync(
+        `DROP TABLE IF EXISTS notes; CREATE TABLE notes (id TEXT PRIMARY KEY, ${columns});`,
+      );
+      expect(await hasVerseKeyUniqueConstraint(db)).toBe(expected);
+    }
+  });
+
+  it('does not rebuild an owner-scoped notes table with a composite UNIQUE on a later launch', async () => {
+    const {mock, annotations} = loaded;
+    // A fork-owned column with a composite UNIQUE that includes verse_key.
+    // userSyncV1 keeps the constraint (origin 'u') because it names a column
+    // Bayaan does not own.
+    await seed(
+      mock,
+      `${CURRENT_NOTES}
+       ALTER TABLE notes RENAME TO notes_seed;
+       CREATE TABLE notes (
+         id TEXT PRIMARY KEY,
+         verse_key TEXT NOT NULL,
+         surah_number INTEGER NOT NULL,
+         ayah_number INTEGER NOT NULL,
+         content TEXT NOT NULL,
+         created_at INTEGER NOT NULL,
+         updated_at INTEGER NOT NULL,
+         verse_keys TEXT,
+         rewayah_id TEXT,
+         fork_tag TEXT NOT NULL DEFAULT 'x',
+         UNIQUE(verse_key, fork_tag)
+       );
+       DROP TABLE notes_seed;
+       INSERT INTO notes VALUES ('n', '3:1', 3, 1, 'kept', 1, 2, NULL, 'hafs', 'x');`,
+    );
+
+    await annotations.initialize();
+    await annotations.close();
+    await mock.closeOpenDatabases();
+    const db = await mock.openDatabaseAsync(DB_FILE);
+    const migrated = await db.getFirstAsync<{rootpage: number; sql: string}>(
+      "SELECT rootpage, sql FROM sqlite_master WHERE name='notes'",
+    );
+    expect(migrated?.sql).toMatch(/owner_scope TEXT NOT NULL DEFAULT 'guest'/);
+    expect((await notesIndexes(mock)).some(i => i.origin === 'u')).toBe(true);
+    await mock.closeOpenDatabases();
+
+    // Relaunch: the legacy cleanup must not rebuild notes into the old schema.
+    await annotations.initialize();
+
+    const reopened = await mock.openDatabaseAsync(DB_FILE);
+    const after = await reopened.getFirstAsync<{rootpage: number; sql: string}>(
+      "SELECT rootpage, sql FROM sqlite_master WHERE name='notes'",
+    );
+    expect(after).toEqual(migrated);
+    expect(await rawNotes(mock)).toEqual([
+      synced({
+        id: 'n',
+        verse_key: '3:1',
+        surah_number: 3,
+        ayah_number: 1,
+        content: 'kept',
+        verse_keys: null,
+        created_at: 1,
+        updated_at: 2,
+        rewayah_id: 'hafs',
+        fork_tag: 'x',
+      }),
+    ]);
   });
 
   it('drops an empty orphan notes_new table', async () => {
