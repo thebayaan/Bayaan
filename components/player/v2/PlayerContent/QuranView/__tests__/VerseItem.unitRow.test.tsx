@@ -102,13 +102,29 @@ jest.mock('@/store/tajweedStore', () => {
   return {useTajweedStore: create(() => ({indexedTajweedData: null}))};
 });
 
+// The stored rows with their rewayah, and the real row -> unit mapping.
 jest.mock('@/store/verseAnnotationsStore', () => {
   const {create} = jest.requireActual('zustand');
+  const {deriveUnitAnnotations} = jest.requireActual(
+    '@/services/verse-annotations/unitAnnotations',
+  );
   return {
     useVerseAnnotationsStore: create(() => ({
       bookmarkedVerseKeys: new Set<string>(),
       notedVerseKeys: new Set<string>(),
+      bookmarkRows: {},
+      noteRows: {},
+      highlightRows: {},
     })),
+    selectUnitAnnotations: (
+      s: {bookmarkRows: object; noteRows: object; highlightRows: object},
+      units: unknown,
+    ) =>
+      deriveUnitAnnotations(units, {
+        bookmarks: s.bookmarkRows,
+        notes: s.noteRows,
+        highlights: s.highlightRows,
+      }),
   };
 });
 
@@ -237,7 +253,9 @@ beforeEach(() => {
   useVerseAnnotationsStore.setState({
     bookmarkedVerseKeys: new Set(),
     notedVerseKeys: new Set(),
-  });
+    bookmarkRows: {},
+    noteRows: {},
+  } as never);
 });
 
 afterEach(() => {
@@ -343,30 +361,43 @@ describe('selection and verse actions act on the rewayah verse', () => {
   });
 });
 
-describe('bookmark and note dots from the stored Hafs anchors', () => {
-  it('a row stored at Warsh 1:7 (anchor 1:7:5) marks Warsh 1:7 only', () => {
-    useVerseAnnotationsStore.setState({
-      bookmarkedVerseKeys: new Set(['1:7:5']),
-    });
-    let r = render(row(fatihah, '1:7'));
-    expect(texts(r)).toContain('Feather:bookmark');
+describe('bookmark and note dots from the stored rows (contract section 3)', () => {
+  const marked = (key: string, icon: string) => {
+    const r = render(row(key.startsWith('103:') ? asr : fatihah, key));
+    const shown = texts(r).includes(icon);
     act(() => r.unmount());
-    r = render(row(fatihah, '1:6'));
-    expect(texts(r)).not.toContain('Feather:bookmark');
+    return shown;
+  };
+
+  it('a Warsh row at Warsh 1:7 (anchor 1:7:5) marks Warsh 1:7 only', () => {
+    useVerseAnnotationsStore.setState({
+      bookmarkRows: {'1:7:5': {verseKey: '1:7:5', rewayahId: 'warsh'}},
+    } as never);
+    expect(marked('1:7', 'Feather:bookmark')).toBe(true);
+    expect(marked('1:6', 'Feather:bookmark')).toBe(false);
   });
 
-  it('a row at Hafs 1:7 marks Warsh 1:6, which starts it', () => {
-    useVerseAnnotationsStore.setState({notedVerseKeys: new Set(['1:7'])});
-    const r = render(row(fatihah, '1:6'));
-    expect(texts(r)).toContain('Feather:file-text');
+  it('a Hafs row on Hafs 1:7 marks both Warsh verses holding it', () => {
+    useVerseAnnotationsStore.setState({
+      noteRows: {'hafs|1:7': {verseKey: '1:7', rewayahId: 'hafs'}},
+    } as never);
+    expect(marked('1:6', 'Feather:file-text')).toBe(true);
+    expect(marked('1:7', 'Feather:file-text')).toBe(true);
+  });
+
+  it('a Warsh row at Hafs 1:7 (Warsh 1:6) marks Warsh 1:6 only', () => {
+    useVerseAnnotationsStore.setState({
+      noteRows: {'warsh|1:7': {verseKey: '1:7', rewayahId: 'warsh'}},
+    } as never);
+    expect(marked('1:6', 'Feather:file-text')).toBe(true);
+    expect(marked('1:7', 'Feather:file-text')).toBe(false);
   });
 
   it('a legacy row on Hafs 103:2 marks the merged Warsh 103:1', () => {
     useVerseAnnotationsStore.setState({
-      bookmarkedVerseKeys: new Set(['103:2']),
-    });
-    const r = render(row(asr, '103:1'));
-    expect(texts(r)).toContain('Feather:bookmark');
+      bookmarkRows: {'103:2': {verseKey: '103:2', rewayahId: null}},
+    } as never);
+    expect(marked('103:1', 'Feather:bookmark')).toBe(true);
   });
 });
 

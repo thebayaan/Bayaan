@@ -14,7 +14,10 @@ import {useTheme} from '@/hooks/useTheme';
 import FormattedTextRenderer from '@/components/utils/FormattedText';
 import {Feather, Ionicons} from '@expo/vector-icons';
 import {useTajweedStore} from '@/store/tajweedStore';
-import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
+import {
+  selectUnitAnnotations, // @ai
+  useVerseAnnotationsStore,
+} from '@/store/verseAnnotationsStore';
 import {useVerseSelectionStore} from '@/store/verseSelectionStore';
 import {SheetManager} from 'react-native-actions-sheet';
 import {mediumHaptics} from '@/utils/haptics';
@@ -26,11 +29,7 @@ import type {RewayahWordsStatus} from '@/hooks/useRewayahWords'; // @ai
 import SkiaVerseText from './SkiaVerseText';
 import {WBWVerseView} from './WBWVerseView';
 // @ai-start
-import {
-  rowIsMarked,
-  unitVerseActionsPayload,
-  type VerseUnitRow,
-} from './verseUnitRows';
+import {unitVerseActionsPayload, type VerseUnitRow} from './verseUnitRows';
 import {
   UnitRowTranslations,
   UnitRowWordByWord,
@@ -204,25 +203,32 @@ export const VerseItem = memo<VerseItemProps>(
     // @ai-end
     const selectVerse = useVerseSelectionStore(s => s.selectVerse);
 
-    // @ai — a rewayah verse row is marked by every stored key that resolves
-    // to it (its anchor, or the key of a Hafs verse starting inside it).
-    const markKeys = unitRow?.markKeys;
+    // @ai — a rewayah verse row is marked by every stored row that maps to
+    // its verse in its rewayah (contract section 3: rows keep the rewayah
+    // they were saved in, so a Hafs row of a split Hafs verse marks both
+    // parts). selectUnitAnnotations is memoized per units and rows.
     const isBookmarked = useVerseAnnotationsStore(
       useCallback(
         s =>
-          markKeys
-            ? rowIsMarked(markKeys, s.bookmarkedVerseKeys)
+          unitRow
+            ? unitRow.unit !== null &&
+              selectUnitAnnotations(s, unitRow.units).bookmarkedUnitKeys.has(
+                unitRow.unit.key,
+              )
             : s.bookmarkedVerseKeys.has(verseKey),
-        [verseKey, markKeys],
+        [verseKey, unitRow],
       ),
     );
     const hasNote = useVerseAnnotationsStore(
       useCallback(
         s =>
-          markKeys
-            ? rowIsMarked(markKeys, s.notedVerseKeys)
+          unitRow
+            ? unitRow.unit !== null &&
+              selectUnitAnnotations(s, unitRow.units).notedUnitKeys.has(
+                unitRow.unit.key,
+              )
             : s.notedVerseKeys.has(verseKey),
-        [verseKey, markKeys],
+        [verseKey, unitRow],
       ),
     );
     // Fetch tajweed data directly from store — granular selector means only
