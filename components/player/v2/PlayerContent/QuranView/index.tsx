@@ -7,7 +7,6 @@ import {
   useWindowDimensions,
   type LayoutChangeEvent,
   ActivityIndicator, // @ai
-  Text, // @ai
 } from 'react-native';
 import {moderateScale, verticalScale} from '@/utils/scale';
 import {useResponsive} from '@/hooks/useResponsive';
