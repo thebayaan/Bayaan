@@ -107,6 +107,19 @@ export const useTimestampStore = create<TimestampState>()((set, get) => ({
     // A newer request (the track moved on) or a clear superseded this one:
     // its result must not replace the current track's timings.
     if (get().timestampRequest?.key !== key) return;
+    // The very timings the store already holds for this track (the track
+    // left and came back before the other surah's timings arrived): the
+    // tracker has already resolved them and will not again, so keep what
+    // it published (its numbering mode, the verse being recited).
+    const held = get();
+    if (
+      timestamps &&
+      timestamps === held.currentSurahTimestamps &&
+      key === held.currentTimestampKey
+    ) {
+      set({timestampLoadStatus: 'ready'});
+      return;
+    }
     // @ai-end
     set({
       currentSurahTimestamps: timestamps,

@@ -77,6 +77,7 @@ jest.mock('@/services/audio/ExpoAudioService', () => ({
 }));
 
 import {useAyahTracker} from '../useAyahTracker';
+import {useTimestampLoader} from '../useTimestampLoader'; // @ai
 import {timestampService} from '@/services/timestamps/TimestampService'; // @ai
 import type {AyahTimestamp} from '@/types/timestamps'; // @ai
 import {usePlayerStore} from '@/services/player/store/playerStore';
@@ -566,6 +567,52 @@ describe('useAyahTracker', () => {
       useTimestampStore.setState({supportedRewayatIds: new Set<string>()});
       await startTrack('doori-269', 67);
       expect(unavailable()).toBe(false);
+    });
+
+    it('a surah left and returned to before the next one loaded keeps saying so', async () => {
+      // the player's loader and tracker, as the main player mounts them
+      function PlayerHarness() {
+        useTimestampLoader();
+        useAyahTracker();
+        return null;
+      }
+      const playTrack = async (set: string, surah: number) => {
+        await act(async () => {
+          setPlayer({
+            playback: {state: 'playing'},
+            queue: {
+              tracks: [{rewayatId: set, surahId: String(surah)}],
+              currentIndex: 0,
+            },
+          });
+        });
+        await flush();
+      };
+      let release: () => void = () => undefined;
+      serveTimings(
+        {'doori-269-67': loadTimings('doori-269', 67)!},
+        {
+          'hafs-clean-2': new Promise<void>(resolve => {
+            release = resolve;
+          }),
+        },
+      );
+      await act(async () => {
+        renderer = TestRenderer.create(<PlayerHarness />);
+      });
+      await playTrack('doori-269', 67); // al-Mulk: numbering disabled
+      expect(unavailable()).toBe(true);
+      await playTrack('hafs-clean', 2); // its timings are slow to come
+      expect(useTimestampStore.getState().timestampLoadStatus).toBe('loading');
+      await playTrack('doori-269', 67); // back before they arrive
+      release();
+      await flush();
+      expect(useTimestampStore.getState()).toMatchObject({
+        currentTimestampKey: 'doori-269-67',
+        timestampLoadStatus: 'ready',
+        trackingNumberingMode: 'disabled',
+      });
+      expect(unavailable()).toBe(true);
     });
   });
   // @ai-end
