@@ -21,6 +21,7 @@ import {
   RewayahChangedProps,
   DownloadStartedProps,
   DownloadCompletedProps,
+  ContentEventProps,
   AmbientToggledProps,
   FavoriteToggledProps,
   PlaylistModifiedProps,
@@ -246,6 +247,23 @@ class AnalyticsServiceImpl {
 
   trackDownloadCompleted(props: DownloadCompletedProps): void {
     this.capture(ANALYTICS_EVENTS.DOWNLOAD_COMPLETED, {...props});
+  }
+
+  trackContentEvent(
+    event: 'applied' | 'withdrawn' | 'failed',
+    props: ContentEventProps,
+  ): void {
+    const names = {
+      applied: ANALYTICS_EVENTS.CONTENT_UPDATE_APPLIED,
+      withdrawn: ANALYTICS_EVENTS.CONTENT_WITHDRAWN,
+      failed: ANALYTICS_EVENTS.CONTENT_UPDATE_FAILED,
+    };
+    const name = names[event];
+    this.capture(name, {
+      key: props.key,
+      version: props.version,
+      reason: props.reason ?? null,
+    });
   }
 
   trackAmbientToggled(props: AmbientToggledProps): void {
