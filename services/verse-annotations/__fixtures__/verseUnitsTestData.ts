@@ -58,6 +58,14 @@ export function fixtureUnits(rewayah: RewayahId): RewayahVerseUnits {
   return units;
 }
 
+/** `value`, or a thrown error naming `what` when it is null / undefined. */
+export function must<T>(value: T | null | undefined, what = 'value'): T {
+  if (value === null || value === undefined) {
+    throw new Error(`expected ${what}`);
+  }
+  return value;
+}
+
 /** A unit by its key in the rewayah's numbering; throws when absent. */
 export function unitOf(units: RewayahVerseUnits, key: string) {
   const unit = units.unitByKey(key);
@@ -110,7 +118,9 @@ export const ALL_DB_FILES: readonly [string, RewayahId, number][] = [
 ];
 
 function readSlots(file: string): VerseUnitSlot[] {
-  const db = new sqlite!.DatabaseSync(file, {readOnly: true});
+  const db = new (must(sqlite, 'node:sqlite').DatabaseSync)(file, {
+    readOnly: true,
+  });
   try {
     return db
       .prepare('SELECT id, surah, ayah, word, text FROM words ORDER BY id')

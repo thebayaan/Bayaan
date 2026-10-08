@@ -15,6 +15,7 @@ import {
 import {
   FIXTURE_REWAYAT,
   fixtureUnits,
+  must,
   unitOf,
 } from '@/services/verse-annotations/__fixtures__/verseUnitsTestData';
 import branding from '@/config/branding';
@@ -124,7 +125,7 @@ describe('resolveVerseShareLink', () => {
   it('lands on exactly the shared verse', () => {
     const warsh = fixtureUnits('warsh');
     const resolve = (url: string) =>
-      resolveVerseShareLink(parseVerseShareUrl(url)!, warsh);
+      resolveVerseShareLink(must(parseVerseShareUrl(url)), warsh);
     expect(resolve('/quran/1/7?rewayah=warsh')).toBe(unitOf(warsh, '1:6'));
     expect(resolve('/quran/1/7?rewayah=warsh&word=5')).toBe(
       unitOf(warsh, '1:7'),
@@ -136,7 +137,7 @@ describe('resolveVerseShareLink', () => {
     // Another rewayah's link is not resolved with Warsh verses.
     expect(
       resolveVerseShareLink(
-        parseVerseShareUrl('/quran/1/7?rewayah=qalun')!,
+        must(parseVerseShareUrl('/quran/1/7?rewayah=qalun')),
         warsh,
       ),
     ).toBeNull();
@@ -147,8 +148,8 @@ describe('resolveVerseShareLink', () => {
       const units = fixtureUnits(rewayah);
       for (const unit of units.units) {
         const anchor = units.hafsAnchor(unit);
-        const url = anchorShareUrl(anchor.key, 'light', rewayah)!;
-        const link = parseVerseShareUrl(url)!;
+        const url = must(anchorShareUrl(anchor.key, 'light', rewayah));
+        const link = must(parseVerseShareUrl(url));
         expect(link.rewayah).toBe(rewayah);
         // The path is the Hafs verse holding the verse's first word.
         expect(`${link.surah}:${link.ayah}`).toBe(anchor.hafsKey);

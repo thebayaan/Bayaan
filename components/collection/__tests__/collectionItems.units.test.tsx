@@ -137,7 +137,7 @@ describe('BookmarkItem', () => {
       },
     ]);
     expect(mockSkiaTexts).toEqual([]);
-    expect(mockUnitsRequests.every(r => r === null)).toBe(true);
+    expect(mockUnitsRequests.every(request => request === null)).toBe(true);
   });
 
   it('Warsh row on the later part of Hafs 1:7: Warsh 1:7 and its own text', () => {
