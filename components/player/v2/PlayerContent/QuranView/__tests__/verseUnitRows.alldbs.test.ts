@@ -113,6 +113,13 @@ function numbering(
     startEntryForHafsAyah: () => null,
     endEntryAyahForHafsAyah: () => null,
     entryRangeForHafsAyah: () => null,
+    // Verse-unit answers of fix/r1-v-audio (unused here). @ai
+    numbersVersesOf: rewayah =>
+      mode === 'riwayah' && reciterRewayah === rewayah,
+    startEntryForUnit: () => null,
+    endEntryAyahForUnit: () => null,
+    entryRangeForUnit: () => null,
+    unitKeysForEntry: () => [],
   };
 }
 
