@@ -40,9 +40,17 @@ describe('startContentSyncAfterInit', () => {
   });
 
   it('does not start content sync when initialization rejects', async () => {
+    const warn = jest
+      .spyOn(console, 'warn')
+      .mockImplementation(() => undefined);
     await expect(
       startContentSyncAfterInit(Promise.reject(new Error('init'))),
     ).resolves.toBeUndefined();
     expect(mockInit).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledWith(
+      '[ContentSync] not started: app init failed',
+      expect.any(Error),
+    );
+    warn.mockRestore();
   });
 });

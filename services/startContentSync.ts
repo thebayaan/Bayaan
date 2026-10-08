@@ -12,6 +12,8 @@ export function startContentSyncAfterInit(
       initContentSync().catch((error: unknown) => {
         console.warn('[ContentSync] init failed', error);
       }),
-    () => undefined,
+    (error: unknown) => {
+      console.warn('[ContentSync] not started: app init failed', error);
+    },
   );
 }

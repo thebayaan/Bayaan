@@ -131,7 +131,9 @@ export const useTafseerStore = create<TafseerStoreState>()(
       migrate: (persistedState: unknown, version: number) => {
         const state = persistedState as {selectedTafseerId?: string | null};
         if (version < 3) {
-          // Existing users had null — default to bundled Ibn Kathir
+          // Existing users had null. '169' arrives via Content Sync auto-install
+          // when the engine manages tafsir; forks without a content API start with
+          // no installed tafsir (empty state) until the user downloads one.
           return {
             ...state,
             selectedTafseerId: state.selectedTafseerId || '169',
