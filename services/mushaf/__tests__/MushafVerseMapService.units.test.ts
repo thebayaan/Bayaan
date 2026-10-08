@@ -32,10 +32,13 @@ const mockUnitsService = {
   throwOnGet: false,
   // Status reported while get() returns null: 'error' = refused.
   statusWithoutUnits: 'error' as string,
+  // Rewayat whose units were asked for, in order.
+  gets: [] as string[],
 };
 jest.mock('../RewayahVerseUnitsService', () => ({
   rewayahVerseUnitsService: {
     get: (rewayah: string) => {
+      mockUnitsService.gets.push(rewayah);
       if (mockUnitsService.throwOnGet) throw new Error('units build failed');
       return mockUnitsByRewayah.get(rewayah) ?? null;
     },
@@ -48,6 +51,7 @@ jest.mock('../RewayahVerseUnitsService', () => ({
 
 import {digitalKhattDataService} from '../DigitalKhattDataService';
 import {
+  followShownRewayah,
   HAFS_SHOWN_UNITS,
   mushafVerseMapService,
   selectionForAnchor,
@@ -62,6 +66,8 @@ import {
   type RewayahVerseUnits,
 } from '../RewayahVerseUnits';
 import type {FakeDKService} from '../__fixtures__/rewayahOverlayFixture';
+import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
+import type {RewayahId} from '@/services/rewayah/RewayahIdentity';
 import {
   buildFixtureUnits,
   expectedUnitOfSlot,
@@ -576,6 +582,70 @@ describe('verseNavigationTarget (search, bookmark chips)', () => {
     nothing('warsh', '1:8'); // Warsh has 7 verses in the Fatiha
     show('warsh', {refused: true});
     nothing('warsh', '1:6');
+  });
+});
+
+describe('followShownRewayah (the mushaf screen, on a rewayah switch)', () => {
+  // The fake data service has no rewayah listeners: give it the real
+  // service's onRewayahChange contract for this block.
+  const listeners = new Set<(rewayah: RewayahId) => void>();
+  const fake = dk as unknown as {
+    onRewayahChange: (l: (rewayah: RewayahId) => void) => () => void;
+  };
+  beforeAll(() => {
+    fake.onRewayahChange = listener => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    };
+  });
+  /** Switches the shown text like the data service does, then notifies. */
+  function switchTo(db: UnitsFixtureDb): void {
+    show(db);
+    for (const listener of [...listeners]) listener(UNITS_FIXTURE_REWAYAH[db]);
+  }
+  afterEach(() => {
+    useMushafVerseSelectionStore.getState().clearSelection();
+    listeners.clear();
+  });
+
+  it("drops a selection of the previous rewayah's units, keeps a Hafs one", () => {
+    show('warsh');
+    const tasks: (() => void)[] = [];
+    const unsubscribe = followShownRewayah(task => tasks.push(task));
+    const selection = selectionForUnitKeys(['1:6', '1:7'])!;
+    const store = useMushafVerseSelectionStore.getState();
+    store.selectUnits(selection.rewayah, selection.units, 1);
+    switchTo('bazzi');
+    expect(useMushafVerseSelectionStore.getState().selectedVerseKeys).toEqual(
+      [],
+    );
+    store.selectVerse('1:7', 1);
+    switchTo('doori');
+    expect(useMushafVerseSelectionStore.getState()).toMatchObject({
+      selectedRewayah: 'hafs',
+      selectedVerseKeys: ['1:7'],
+    });
+    unsubscribe();
+    expect(listeners.size).toBe(0);
+  });
+
+  it("builds the new text's verse units after the switch, not on the first render", () => {
+    show('hafs');
+    const tasks: (() => void)[] = [];
+    followShownRewayah(task => tasks.push(task));
+    mockUnitsService.gets.length = 0;
+    switchTo('warsh');
+    // Scheduled, not run inside the listener.
+    expect(mockUnitsService.gets).toEqual([]);
+    expect(tasks).toHaveLength(1);
+    tasks[0]();
+    expect(mockUnitsService.gets).toEqual(['warsh']);
+    // Resolved once for this text: the first page asks for nothing more.
+    mushafVerseMapService.getUnitSegments(1, 6);
+    expect(mockUnitsService.gets).toEqual(['warsh']);
+    // A switch to Hafs builds nothing.
+    switchTo('hafs');
+    expect(tasks).toHaveLength(1);
   });
 });
 

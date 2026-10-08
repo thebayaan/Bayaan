@@ -11,6 +11,7 @@ import {
   BackHandler,
   Platform,
   useWindowDimensions,
+  InteractionManager, // @ai
   type LayoutChangeEvent,
 } from 'react-native';
 import {useResponsive} from '@/hooks/useResponsive';
@@ -51,6 +52,7 @@ import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
 import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
 import {
+  followShownRewayah, // @ai
   mushafVerseMapService,
   verseNavigationTarget, // @ai
 } from '@/services/mushaf/MushafVerseMapService';
@@ -1010,10 +1012,12 @@ export default function MushafViewer({
   // when the shown text switches to another rewayah (verse-units contract
   // 4.7), so no page (QCF included, which reads the keys as Hafs) paints it
   // there. A Hafs-keyed selection (route flash, QCF) means the same verses
-  // in every rewayah and is left alone, as before.
+  // in every rewayah and is left alone, as before. The new text's verse
+  // units are built once the switch's interactions are done, not on the
+  // first page render or long-press.
   useEffect(() => {
-    const unsubscribe = digitalKhattDataService.onRewayahChange(next => {
-      useMushafVerseSelectionStore.getState().keepSelectionFor(next);
+    const unsubscribe = followShownRewayah(task => {
+      InteractionManager.runAfterInteractions(task);
     });
     return () => {
       unsubscribe();

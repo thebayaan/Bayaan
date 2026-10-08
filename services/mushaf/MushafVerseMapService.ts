@@ -12,7 +12,10 @@ import {
 } from './RewayahVerseUnits';
 import {rewayahVerseUnitsService} from './RewayahVerseUnitsService';
 import {hafsVerseCount} from './RewayahVerseMapService';
-import type {SelectedVerseUnit} from '@/store/mushafVerseSelectionStore';
+import {
+  useMushafVerseSelectionStore,
+  type SelectedVerseUnit,
+} from '@/store/mushafVerseSelectionStore';
 // @ai-end
 import type {RewayahId} from '@/services/rewayah/RewayahIdentity';
 
@@ -576,6 +579,32 @@ export function selectionForAnchor(
   const shown = mushafVerseMapService.getShownVerseUnits();
   const key = shown?.unitKeyForAnchor(anchorKey) ?? null;
   return key ? selectionForUnitKeys([key]) : null;
+}
+
+/**
+ * Keeps the mushaf in step with the shown text across rewayah switches (the
+ * mushaf screen subscribes once; unsubscribe with the returned function):
+ * when the active words switch to another rewayah,
+ *  - a selection of the previous rewayah's verse units is dropped (CONTRACT
+ *    4.7: its keys are numbered in that rewayah; a Hafs-keyed selection
+ *    names the same verses in every rewayah and is kept);
+ *  - the new text's verse units are built through `schedule` (the screen
+ *    passes InteractionManager.runAfterInteractions), so the first page
+ *    render or long-press after the switch does not pay for the build
+ *    (contract 2.1). Hafs builds nothing.
+ */
+export function followShownRewayah(
+  schedule: (task: () => void) => void,
+): () => void {
+  return digitalKhattDataService.onRewayahChange(next => {
+    useMushafVerseSelectionStore.getState().keepSelectionFor(next);
+    if (next !== 'hafs') {
+      schedule(() => {
+        // Whatever is shown when the task runs (another switch may follow).
+        mushafVerseMapService.getShownVerseUnits();
+      });
+    }
+  });
 }
 
 /** Where a navigation to one verse lands (see verseNavigationTarget). */
