@@ -61,9 +61,9 @@ const SURAHS = [1, 2, 18, 114];
 const LEGACY = ['shouba', 'bazzi', 'qumbul', 'qaloon', 'doori', 'soosi'];
 const ANNOTATION_TABLES = ['bookmarks', 'notes', 'highlights'];
 
-// Empty orphan left by the PK-autoindex "drop UNIQUE" migration on real
-// devices. Tolerated in both directions: develop may create it, keep it, or
-// (after the production fix) drop it.
+// Empty orphan left on real devices by the old PK-autoindex "drop UNIQUE"
+// migration. Golden copies carry it before develop runs; develop drops it, so
+// it is skipped by the generic row comparisons and asserted on explicitly.
 const TOLERATED_TABLES = ['verse-annotations.db/notes_new'];
 
 // The only documented changes develop may make to pre-existing values on
@@ -188,6 +188,28 @@ async function dumpAll(mock: MockModule, files: string[]): Promise<Dump> {
     }
   }
   return dump;
+}
+
+interface NotesFingerprint {
+  sql: string | null;
+  rootpage: number | null;
+  ids: {rowid: number; id: string}[];
+}
+
+// Schema text, root page and rowid/id pairs of notes: a rebuild changes at
+// least the root page, so equality across launches proves no rebuild ran.
+async function notesFingerprint(mock: MockModule): Promise<NotesFingerprint> {
+  const db = await mock.openDatabaseAsync('verse-annotations.db');
+  const master = await db.getFirstAsync<{
+    sql: string | null;
+    rootpage: number | null;
+  }>(
+    "SELECT sql, rootpage FROM sqlite_master WHERE type='table' AND name='notes'",
+  );
+  const ids = await db.getAllAsync<{rowid: number; id: string}>(
+    'SELECT rowid, id FROM notes ORDER BY rowid',
+  );
+  return {sql: master?.sql ?? null, rootpage: master?.rootpage ?? null, ids};
 }
 
 function pkOf(row: Row, pk: string[]): string {
@@ -341,11 +363,11 @@ describe.each(TAGS)('develop code on %s databases', tag => {
     }
   });
 
-  it('tolerates the real-device notes_new orphan without losing notes', async () => {
-    // Real devices end up with an empty orphan notes_new table: the "drop
-    // UNIQUE" migration mistakes the PRIMARY KEY autoindex for a UNIQUE
-    // constraint. Second-launch goldens carry it; develop may keep, create
-    // or (once fixed) drop it, so only data integrity is asserted after init.
+  it('drops the real-device notes_new orphan without losing notes', async () => {
+    // Real devices carry an empty orphan notes_new table: the old "drop
+    // UNIQUE" migration mistook the PRIMARY KEY autoindex for a UNIQUE
+    // constraint. Second-launch goldens carry it; develop must drop it and
+    // must not create it on a first-launch golden either.
     const manifest = goldenManifest(tag);
     const orphan = before['verse-annotations.db/notes_new'];
     if (tag === FIRST_LAUNCH_TAG) {
@@ -353,6 +375,10 @@ describe.each(TAGS)('develop code on %s databases', tag => {
     } else {
       expect(orphan?.rows).toEqual([]);
     }
+    expect(after['verse-annotations.db/notes_new']).toBeUndefined();
+    expect(after['verse-annotations.db/notes'].rows).toHaveLength(
+      before['verse-annotations.db/notes'].rows.length,
+    );
     expect(await s.annotations.getAllNotes()).toHaveLength(
       manifest.tables['verse-annotations/notes'],
     );
@@ -546,6 +572,18 @@ describe.each(TAGS)('develop code on %s databases', tag => {
       name: 'Synthetic Reciter',
       imageUri: null,
     });
+  });
+
+  it('does not rebuild the notes table on a later launch', async () => {
+    const firstLaunch = await notesFingerprint(s.mock);
+    expect(firstLaunch.ids.length).toBe(
+      goldenManifest(tag).tables['verse-annotations/notes'],
+    );
+    const second = loadServices(null, s.mock);
+    await initAll(second);
+    const laterLaunch = await notesFingerprint(s.mock);
+    expect(laterLaunch).toEqual(firstLaunch);
+    expect(laterLaunch.sql).not.toMatch(/UNIQUE/i);
   });
 
   it('is idempotent: a second initialize changes nothing', async () => {
