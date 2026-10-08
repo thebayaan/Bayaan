@@ -165,6 +165,16 @@ baseline. Background highlight rects are clamped to the words' band (the rect
 of the line's first character), since a larger space's rect spans that size's
 ascent and descent.
 
+A space set at its own size is shaped apart from its words, so a DigitalKhatt
+adjustment spanning two words and the space between them (it widens a few gaps,
+e.g. before a hamza below) no longer applies, although `JustService` measured
+the line with it. `SkiaLine` therefore measures a widened, justified line once
+built and, when it misses its width (`pageWidth - 2 * margin`) by more than a
+quarter pixel, rebuilds it with the residue spread evenly over its spaces
+(`spaceFitExtra`). A justified line at the words' spacing (a shrunk line, whose
+size can round) is rebuilt scaled to its width instead (`fitWordSize`), which
+keeps its spaces in the words' runs. Centered lines are built once.
+
 ### Positioning (x-axis)
 
 - `maxWidth = pageWidth * 2`

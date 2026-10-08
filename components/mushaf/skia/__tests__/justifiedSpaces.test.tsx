@@ -4,9 +4,14 @@
  *
  * SkParagraph ignores letterSpacing on Arabic runs, so SkiaLine sets each
  * space's justified width through its font size, pins the line box with a
- * forced strut at the words' size, and clamps highlight rects to the words'
- * band. Skia's ParagraphBuilder is a recorder here: the test checks the
- * styles each chunk of the line is added with.
+ * forced strut at the words' size, clamps highlight rects to the words' band,
+ * and fits a widened line to its exact width by spreading any residue over
+ * its spaces, or scaling a shrunk line. Skia's ParagraphBuilder is a recorder
+ * here: every paragraph keeps the chunks it was built from, and its width is
+ * half the font size per letter (10 px at 20) plus each space's advance (a
+ * tenth of its font size), less `mockSkia.shapingLoss` (the cross-word
+ * adjustment a space shaped apart from its words loses, or a shrunk line's
+ * rounding).
  */
 
 import React, {act} from 'react';
@@ -23,17 +28,27 @@ interface MockRect {
   width: number;
   height: number;
 }
+interface MockChunk {
+  text: string;
+  style: MockStyle;
+}
+interface MockBuilt {
+  style: unknown;
+  chunks: MockChunk[];
+  width: number;
+  disposed: boolean;
+}
 
 const mockSkia = {
-  paragraphStyles: [] as unknown[],
-  chunks: [] as {text: string; style: MockStyle}[],
+  built: [] as MockBuilt[],
+  shapingLoss: 0,
   rectsForRange: (_start: number, _end: number): MockRect[] => [],
 };
 
 jest.mock('@shopify/react-native-skia', () => {
   const makeBuilder = (paragraphStyle: unknown) => {
-    mockSkia.paragraphStyles.push(paragraphStyle);
     const styles: MockStyle[] = [];
+    const chunks: MockChunk[] = [];
     const builder = {
       pushStyle(style: MockStyle) {
         styles.push(style);
@@ -44,17 +59,31 @@ jest.mock('@shopify/react-native-skia', () => {
         return builder;
       },
       addText(text: string) {
-        mockSkia.chunks.push({text, style: styles[styles.length - 1]});
+        chunks.push({text, style: styles[styles.length - 1]});
         return builder;
       },
       build() {
+        let width = -mockSkia.shapingLoss;
+        for (const c of chunks) {
+          const size = c.style.fontSize ?? 0;
+          width += c.text === ' ' ? size / 10 : size / 2;
+        }
+        const record: MockBuilt = {
+          style: paragraphStyle,
+          chunks,
+          width,
+          disposed: false,
+        };
+        mockSkia.built.push(record);
         return {
           layout: () => undefined,
-          getLongestLine: () => 300,
+          getLongestLine: () => width,
           getHeight: () => 53,
           getRectsForRange: (start: number, end: number) =>
             mockSkia.rectsForRange(start, end),
-          dispose: () => undefined,
+          dispose: () => {
+            record.disposed = true;
+          },
         };
       },
     };
@@ -79,8 +108,9 @@ jest.mock('@/utils/skiaTextWeight', () => ({
 }));
 
 // One line of four tokens (the third a verse marker): two simple spaces, then
-// an aya space.
+// an aya space. 11 letters: 110 px in the mock.
 const LINE = 'ابت جحخ ۝١ دذر';
+const mockLine = {lineType: 0, lineWidthRatio: 1};
 jest.mock('@/services/mushaf/QuranTextService', () => {
   const word = (startIndex: number, endIndex: number) => ({
     startIndex,
@@ -95,7 +125,7 @@ jest.mock('@/services/mushaf/QuranTextService', () => {
     SPACEWIDTH: 100,
     SpaceType: {Simple: 1, Aya: 2},
     quranTextService: {
-      getLineInfo: () => ({lineType: 0, lineWidthRatio: 1}),
+      getLineInfo: () => mockLine,
       getLineText: () => 'ابت جحخ ۝١ دذر',
       analyzeText: () => ({
         ayaSpaceIndexes: [10],
@@ -115,20 +145,25 @@ jest.mock('@/services/mushaf/QuranTextService', () => {
 import SkiaLine from '../SkiaLine';
 import {
   clampRectToBand,
+  fitWordSize,
   justifiedLineStrut,
   justifiedSpaceFontSize,
+  spaceFitExtra,
 } from '../justifiedSpace';
 
+// Words at 20 px with spaces at 150/150/300 units: 110 + 3 + 3 + 6 = 122 px.
+// pageWidth 142 and margin 10 give a 122 px target, so that line fits.
 const baseProps = {
   pageNumber: 6,
   lineIndex: 2,
   fontMgr: {} as never,
-  pageWidth: 400,
+  pageWidth: 142,
   fontSize: 20,
   margin: 10,
   yPos: 100,
   textColor: '#000000',
 };
+const WIDENED = {simpleSpacing: 150, ayaSpacing: 300, fontSizeRatio: 1};
 
 function renderLine(
   justResult: {
@@ -152,10 +187,14 @@ function renderLine(
   return rendered.tree;
 }
 
+const spaceSizes = (b: MockBuilt) =>
+  b.chunks.filter(c => c.text === ' ').map(c => c.style.fontSize);
+
 beforeEach(() => {
-  mockSkia.paragraphStyles = [];
-  mockSkia.chunks = [];
+  mockSkia.built = [];
+  mockSkia.shapingLoss = 0;
   mockSkia.rectsForRange = () => [];
+  mockLine.lineType = 0;
 });
 
 describe('justifiedSpace helpers', () => {
@@ -166,9 +205,29 @@ describe('justifiedSpace helpers', () => {
     expect(justifiedSpaceFontSize(18, 340)).toBeCloseTo(61.2);
   });
 
+  it('adds extra width in px', () => {
+    // 1 px more is 10 more font size (the space is a tenth of the size).
+    expect(justifiedSpaceFontSize(20, 150, 1)).toBeCloseTo(40);
+    expect(justifiedSpaceFontSize(20, 150, -0.5)).toBeCloseTo(25);
+  });
+
   it('never takes a space to or below zero', () => {
     expect(justifiedSpaceFontSize(20, 0)).toBeGreaterThan(0);
     expect(justifiedSpaceFontSize(20, -40)).toBeGreaterThan(0);
+    expect(justifiedSpaceFontSize(20, 150, -50)).toBeGreaterThan(0);
+  });
+
+  it('spreads a residue over the spaces, beyond a quarter pixel', () => {
+    expect(spaceFitExtra(126, 118, 4)).toBe(2);
+    expect(spaceFitExtra(120, 121, 2)).toBe(-0.5);
+    expect(spaceFitExtra(120, 119.8, 3)).toBe(0);
+    expect(spaceFitExtra(120, 100, 0)).toBe(0);
+  });
+
+  it('scales a shrunk line to its width, beyond a quarter pixel', () => {
+    expect(fitWordSize(20, 100, 125)).toBe(16);
+    expect(fitWordSize(20, 100, 100.2)).toBe(20);
+    expect(fitWordSize(20, 100, 0)).toBe(20);
   });
 
   it('forces a strut at the words size', () => {
@@ -199,24 +258,26 @@ describe('justifiedSpace helpers', () => {
 
 describe('SkiaLine justified spaces', () => {
   it('sets each space at the size of its justified width, never letterSpacing', () => {
-    renderLine({simpleSpacing: 150, ayaSpacing: 300, fontSizeRatio: 1});
+    renderLine(WIDENED);
 
-    const spaces = mockSkia.chunks.filter(c => c.text === ' ');
-    expect(spaces).toHaveLength(3);
+    expect(mockSkia.built).toHaveLength(1);
+    const [p] = mockSkia.built;
     // simple, simple, aya: 1.5x and 3x the words' 20.
-    expect(spaces.map(s => s.style.fontSize)).toEqual([30, 30, 60]);
-    for (const s of spaces) expect(s.style.letterSpacing).toBeUndefined();
-
-    const words = mockSkia.chunks.filter(c => c.text !== ' ');
-    for (const w of words) expect(w.style.fontSize).toBe(20);
-    expect(mockSkia.chunks.map(c => c.text).join('')).toBe(LINE);
+    expect(spaceSizes(p)).toEqual([30, 30, 60]);
+    for (const c of p.chunks.filter(chunk => chunk.text === ' ')) {
+      expect(c.style.letterSpacing).toBeUndefined();
+    }
+    for (const c of p.chunks.filter(chunk => chunk.text !== ' ')) {
+      expect(c.style.fontSize).toBe(20);
+    }
+    expect(p.chunks.map(c => c.text).join('')).toBe(LINE);
+    expect(p.width).toBe(122);
   });
 
   it('pins the line box with a forced strut at the words size', () => {
     renderLine({simpleSpacing: 150, ayaSpacing: 300, fontSizeRatio: 0.9});
 
-    expect(mockSkia.paragraphStyles).toHaveLength(1);
-    expect(mockSkia.paragraphStyles[0]).toMatchObject({
+    expect(mockSkia.built[0].style).toMatchObject({
       textHeightBehavior: 3,
       textDirection: 0,
       strutStyle: {
@@ -228,12 +289,73 @@ describe('SkiaLine justified spaces', () => {
     });
   });
 
-  it('keeps a shrunk line spaces at the words size', () => {
-    // A shrunk line keeps the default spacing (SPACEWIDTH).
-    renderLine({simpleSpacing: 100, ayaSpacing: 100, fontSizeRatio: 0.8});
+  it('fits a widened line exactly when its spaces lose shaping width', () => {
+    // Shaped apart from their words, the spaces lose 4 px: 118 of 122 px.
+    mockSkia.shapingLoss = 4;
+    renderLine(WIDENED);
 
-    const spaces = mockSkia.chunks.filter(c => c.text === ' ');
-    expect(spaces.map(s => s.style.fontSize)).toEqual([16, 16, 16]);
+    expect(mockSkia.built).toHaveLength(2);
+    const [first, fitted] = mockSkia.built;
+    expect(first.width).toBe(118);
+    expect(first.disposed).toBe(true);
+    // 4 px over 3 spaces: each 4/3 px (13.33 font size) wider.
+    const sizes = spaceSizes(fitted);
+    expect(sizes[0]).toBeCloseTo(30 + 40 / 3);
+    expect(sizes[1]).toBeCloseTo(30 + 40 / 3);
+    expect(sizes[2]).toBeCloseTo(60 + 40 / 3);
+    expect(fitted.width).toBeCloseTo(122);
+    expect(fitted.disposed).toBe(false);
+  });
+
+  it('narrows the spaces of a line that overshoots', () => {
+    mockSkia.shapingLoss = -3; // drawn 125 of 122 px
+    renderLine(WIDENED);
+
+    expect(mockSkia.built).toHaveLength(2);
+    expect(mockSkia.built[1].width).toBeCloseTo(122);
+  });
+
+  it('builds a line that fits once', () => {
+    mockSkia.shapingLoss = 0.2; // within the quarter-pixel tolerance
+    renderLine(WIDENED);
+
+    expect(mockSkia.built).toHaveLength(1);
+  });
+
+  it('keeps a shrunk line that fits at the words size and spacing', () => {
+    // 0.8 x 20 = 16: 11 letters at 8 px and 3 spaces at 1.6 px = 92.8 px.
+    renderLine(
+      {simpleSpacing: 100, ayaSpacing: 100, fontSizeRatio: 0.8},
+      {pageWidth: 112.8},
+    );
+
+    expect(mockSkia.built).toHaveLength(1);
+    expect(spaceSizes(mockSkia.built[0])).toEqual([16, 16, 16]);
+  });
+
+  it('scales a shrunk line that overshoots, its spaces at the words size', () => {
+    // Drawn 2 px past its 92.8 px target: every size scales by 92.8 / 94.8.
+    mockSkia.shapingLoss = -2;
+    renderLine(
+      {simpleSpacing: 100, ayaSpacing: 100, fontSizeRatio: 0.8},
+      {pageWidth: 112.8},
+    );
+
+    expect(mockSkia.built).toHaveLength(2);
+    const fitted = mockSkia.built[1];
+    const size = (16 * 92.8) / 94.8;
+    for (const c of fitted.chunks) expect(c.style.fontSize).toBeCloseTo(size);
+    expect(fitted.style).toMatchObject({strutStyle: {fontSize: size}});
+    // The mock's 2 px overshoot does not scale: 92.8 * ratio + 2 px.
+    expect(fitted.width).toBeCloseTo(92.8 * (size / 16) + 2);
+  });
+
+  it('leaves a centered line as built', () => {
+    mockLine.lineType = 1;
+    mockSkia.shapingLoss = 4;
+    renderLine(WIDENED);
+
+    expect(mockSkia.built).toHaveLength(1);
   });
 
   it('clamps highlight rects to the words band', () => {
@@ -248,10 +370,9 @@ describe('SkiaLine justified spaces', () => {
       ];
     };
 
-    const tree = renderLine(
-      {simpleSpacing: 150, ayaSpacing: 300, fontSizeRatio: 1},
-      {backgroundHighlights: [{start: 0, end: 3, color: 'tint'}]},
-    );
+    const tree = renderLine(WIDENED, {
+      backgroundHighlights: [{start: 0, end: 3, color: 'tint'}],
+    });
 
     const rects = tree.root.findAll(n => (n.type as unknown) === 'RoundedRect');
     expect(rects).toHaveLength(2);
