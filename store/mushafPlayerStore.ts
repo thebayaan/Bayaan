@@ -1231,6 +1231,12 @@ export function usePlaybackVerseKeys(): readonly string[] {
   return useMemo(() => parseVerseKeyListId(id), [id]);
 }
 
+/** The range as verse units while it is in effect (see rangeUnits), else null. */
+export const selectRangeUnits = activeRangeUnits;
+
+/** The pending start as a verse unit while it is in effect, else null. */
+export const selectPendingStartUnit = activePendingStartUnit;
+
 /**
  * Value-comparable id of the follow-along band as verse unit keys of
  * `rewayah` (default: the mushaf on screen); '' when idle or when nothing
