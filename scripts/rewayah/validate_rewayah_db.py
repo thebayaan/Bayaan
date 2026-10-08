@@ -46,7 +46,9 @@ Gates (each failure is reported; exit code 1 if any gate fails):
               listed Hafs word slots have (tinted) or lack (plain) this
               rewayah's whole-word tint (questions vs statements, a hamzat
               qat' read as wasl, idkhal, the Maghribi lam rules, Warsh's hamza
-              farsh, encoding-only seats; one rule per group)
+              farsh, encoding-only seats, al-Bazzi's doubled ta' vs an
+              idgham's doubled first letter, Nafi's al-Ahzab alefs, the
+              decisions to confirm; one rule per group)
   versemap    <id>-versemap.json format 1 equals the map re-derived from the DB
   siblings    (whenever both rewayat of a pair are validated: Warsh / Qalun,
               al-Duri / al-Susi, al-Bazzi / Qunbul) a content slot holding the
