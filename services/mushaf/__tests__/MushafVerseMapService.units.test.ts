@@ -50,6 +50,7 @@ import {digitalKhattDataService} from '../DigitalKhattDataService';
 import {
   HAFS_SHOWN_UNITS,
   mushafVerseMapService,
+  selectionForAnchor,
   selectionForUnitKeys,
   shownVerseUnitsOf,
   verseNavigationTarget,
@@ -471,6 +472,41 @@ describe('describe(): key, storage anchor and Hafs verses of each unit', () => {
   });
 });
 
+describe('selectionForAnchor (stored rows, route params)', () => {
+  it('selects exactly the unit holding the anchored slot', () => {
+    show('warsh');
+    expect(selectionForAnchor('1:7:5')).toEqual({
+      rewayah: 'warsh',
+      units: [{key: '1:7', anchor: '1:7:5', hafsKeys: ['1:7']}],
+    });
+    // A Hafs anchor 'S:A' is the Hafs verse's first slot: Warsh 1:6.
+    expect(selectionForAnchor('1:7')?.units.map(u => u.key)).toEqual(['1:6']);
+    // A slot inside a unit: the unit holding it (legacy row on Hafs 103:2).
+    expect(selectionForAnchor('103:2')?.units.map(u => u.key)).toEqual([
+      '103:1',
+    ]);
+    // The unnumbered basmala, a slot past the verse, nonsense: nothing.
+    expect(selectionForAnchor('1:1')).toBeNull();
+    expect(selectionForAnchor('1:7:99')).toBeNull();
+    expect(selectionForAnchor('nonsense')).toBeNull();
+  });
+
+  it('Hafs: the Hafs verse of the anchor', () => {
+    show('hafs');
+    expect(selectionForAnchor('1:7')).toEqual({
+      rewayah: 'hafs',
+      units: [{key: '1:7', anchor: '1:7', hafsKeys: ['1:7']}],
+    });
+    expect(selectionForAnchor('1:7:5')?.units.map(u => u.key)).toEqual(['1:7']);
+    expect(selectionForAnchor('1:8')).toBeNull();
+  });
+
+  it('nothing while the units are refused', () => {
+    show('warsh', {refused: true});
+    expect(selectionForAnchor('1:7:5')).toBeNull();
+  });
+});
+
 describe('verseNavigationTarget (search, bookmark chips)', () => {
   it('a Hafs key selects and scrolls to that Hafs verse, as before', () => {
     show('warsh');
@@ -592,6 +628,9 @@ describe('ShownVerseUnits mappings', () => {
           keysOf(unitsForStoredVerse(units, row).units),
         );
       }
+      expect(HAFS_SHOWN_UNITS.unitKeyForAnchor(unit.key)).toBe(
+        units.unitForAnchor(unit.key)?.key ?? null,
+      );
     }
     // Rows saved in other rewayat (their anchors, including mid-verse ones).
     for (const saved of otherRewayah) {
@@ -602,6 +641,9 @@ describe('ShownVerseUnits mappings', () => {
         };
         expect(HAFS_SHOWN_UNITS.unitKeysForStoredVerse(row)).toEqual(
           keysOf(unitsForStoredVerse(units, row).units),
+        );
+        expect(HAFS_SHOWN_UNITS.unitKeyForAnchor(row.verseKey)).toBe(
+          units.unitForAnchor(row.verseKey)?.key ?? null,
         );
       }
     }

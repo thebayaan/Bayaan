@@ -52,6 +52,11 @@ export interface ShownVerseUnits {
   unitKeyByRef(surah: number, ayah: number): string | null;
   /** Units a stored bookmark / note / highlight row marks (storage rule). */
   unitKeysForStoredVerse(row: StoredVerseRef): string[];
+  /**
+   * Key of the unit holding the slot a Hafs anchor names ('S:A' or 'S:A:W',
+   * e.g. a stored verse_key in this rewayah); null for none.
+   */
+  unitKeyForAnchor(anchorKey: string): string | null;
 }
 
 /** A Hafs verse key ('S:A' of an existing Hafs verse), parsed; else null. */
@@ -100,9 +105,13 @@ export const HAFS_SHOWN_UNITS: ShownVerseUnits = {
   unitKeysForStoredVerse(row) {
     // Shown in Hafs, every row marks the Hafs verse of its anchor (a Hafs
     // row, or another rewayah's verse starting in that Hafs verse).
-    const loc = parseAnchorKey(row.verseKey);
+    const key = HAFS_SHOWN_UNITS.unitKeyForAnchor(row.verseKey);
+    return key ? [key] : [];
+  },
+  unitKeyForAnchor(anchorKey) {
+    const loc = parseAnchorKey(anchorKey);
     const key = loc ? `${loc.surah}:${loc.ayah}` : '';
-    return loc && hafsVerseRef(key) ? [key] : [];
+    return loc && hafsVerseRef(key) ? key : null;
   },
 };
 
@@ -128,6 +137,7 @@ export function shownVerseUnitsOf(units: RewayahVerseUnits): ShownVerseUnits {
     // units are built for a tint (verse-units contract, section 3).
     unitKeysForStoredVerse: row =>
       unitsForStoredVerse(units, row).units.map(u => u.key),
+    unitKeyForAnchor: anchorKey => units.unitForAnchor(anchorKey)?.key ?? null,
   };
 }
 
@@ -509,6 +519,21 @@ export function selectionForUnitKeys(
     if (unit) units.push(unit);
   }
   return units.length > 0 ? {rewayah: shown.rewayah, units} : null;
+}
+
+/**
+ * The selection for a stored Hafs anchor ('S:A' or 'S:A:W': a bookmark,
+ * note or highlight opened from a list, a route param) in the shown text:
+ * exactly the unit holding that slot (CONTRACT 4.4: anchors in, units
+ * selected), with its rewayah. Null when the text has no units or the
+ * anchor names no unit (invalid, or the unnumbered Fatiha basmala).
+ */
+export function selectionForAnchor(
+  anchorKey: string,
+): {rewayah: RewayahId; units: SelectedVerseUnit[]} | null {
+  const shown = mushafVerseMapService.getShownVerseUnits();
+  const key = shown?.unitKeyForAnchor(anchorKey) ?? null;
+  return key ? selectionForUnitKeys([key]) : null;
 }
 
 /** Where a navigation to one verse lands (see verseNavigationTarget). */

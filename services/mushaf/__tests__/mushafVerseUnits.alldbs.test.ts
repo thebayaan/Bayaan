@@ -20,7 +20,8 @@
  *    between two units hits nothing;
  *  - page order: the page's units, consecutive verses of the rewayah;
  *  - every unit is selectable whole from any of its words (key, storage
- *    anchor, Hafs verses), and its selection band, its follow-along band
+ *    anchor, Hafs verses), its anchor selects it again, and its selection
+ *    band, its follow-along band
  *    (an entry of a set numbered in the rewayah itself) and a bookmark on
  *    its anchor paint exactly its segments, nothing else;
  *  - the Hafs-keyed API (Hafs-aligned callers) equals the base code.
@@ -60,6 +61,7 @@ jest.mock('../RewayahVerseUnitsService', () => ({
 import {digitalKhattDataService, type DKLine} from '../DigitalKhattDataService';
 import {
   mushafVerseMapService,
+  selectionForAnchor,
   selectionForUnitKeys,
 } from '../MushafVerseMapService';
 import {getLineWordSpans} from '../lineWordSpans';
@@ -469,14 +471,16 @@ run('mushaf verse units on every page of every words DB (local only)', () => {
             const unit = units.unitByKey(key)!;
             const anchor = units.hafsAnchor(unit).key;
             const selection = selectionForUnitKeys([key]);
-            if (
-              JSON.stringify(selection) !==
-              JSON.stringify({
-                rewayah,
-                units: [{key, anchor, hafsKeys: [...unit.hafsKeys]}],
-              })
-            ) {
+            const expected = JSON.stringify({
+              rewayah,
+              units: [{key, anchor, hafsKeys: [...unit.hafsKeys]}],
+            });
+            if (JSON.stringify(selection) !== expected) {
               fail(`${key}: selection ${JSON.stringify(selection)}`);
+            }
+            // Its storage anchor opens exactly it again (route params).
+            if (JSON.stringify(selectionForAnchor(anchor)) !== expected) {
+              fail(`${key}: anchor ${anchor} does not select it`);
             }
             const want = (color: string) =>
               JSON.stringify([...unitPaint(page, key, color)]);
