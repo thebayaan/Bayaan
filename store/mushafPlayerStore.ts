@@ -186,6 +186,24 @@ const CLEARED_VERSE: Pick<
   _entryAyah: 0,
 };
 
+// @ai-start
+/** Label of the recited verse in the numbering of the mushaf on screen. */
+function verseLabelFor(
+  numbering: TimingNumbering | null,
+  hafsKeys: readonly string[],
+  reciterVerseKey: string | null,
+): string | null {
+  return formatPlaybackVerseLabel({
+    hafsKeys,
+    reciterVerseKey,
+    mode: numbering ? numbering.mode : 'hafs',
+    reciterRewayah: numbering ? numbering.reciterRewayah : null,
+    mushafRewayah: displayRewayah(),
+    verseMap: rewayahVerseMapService,
+  });
+}
+// @ai-end
+
 /** State for "timing entry `entryAyah` of `surah` is playing". */
 function verseStateFor(
   numbering: TimingNumbering | null,
@@ -206,14 +224,7 @@ function verseStateFor(
     currentVerseKey: primary,
     currentVerseKeys: keys,
     currentReciterVerseKey: reciterVerseKey,
-    currentVerseLabel: formatPlaybackVerseLabel({
-      hafsKeys: keys,
-      reciterVerseKey,
-      mode: numbering ? numbering.mode : 'hafs',
-      reciterRewayah: numbering ? numbering.reciterRewayah : null,
-      mushafRewayah: displayRewayah(),
-      verseMap: rewayahVerseMapService,
-    }),
+    currentVerseLabel: verseLabelFor(numbering, keys, reciterVerseKey), // @ai
     _entryAyah: entryAyah,
   };
 }
@@ -782,6 +793,31 @@ export const useMushafPlayerStore = create<MushafPlayerStoreState>()(
     },
   ),
 );
+
+// @ai-start
+// The verse label is in the numbering of the mushaf on screen: when the
+// reader switches the mushaf's rewayah, re-label the verse being recited at
+// once (also while paused) rather than keep the previous mushaf's number
+// until the next verse. The highlight keys are Hafs keys and do not change.
+function relabelRecitedVerse(): void {
+  const s = useMushafPlayerStore.getState();
+  if (s.currentVerseKeys.length === 0) return;
+  const label = verseLabelFor(
+    s._numbering,
+    s.currentVerseKeys,
+    s.currentReciterVerseKey,
+  );
+  if (label !== s.currentVerseLabel) {
+    useMushafPlayerStore.setState({currentVerseLabel: label});
+  }
+}
+
+if (typeof useMushafSettingsStore.subscribe === 'function') {
+  useMushafSettingsStore.subscribe((settings, previous) => {
+    if (settings.rewayah !== previous.rewayah) relabelRecitedVerse();
+  });
+}
+// @ai-end
 
 /**
  * Hafs verse keys to highlight for mushaf playback (empty when idle). Use
