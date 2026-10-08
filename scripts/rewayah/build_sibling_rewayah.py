@@ -549,9 +549,10 @@ def _whole_word(cats: list[tuple[str, list[int]]]) -> bool:
 def make_diff(a: Assignment, sibling: Assignment | None = None) -> tuple[dict, Counter]:
     """Highlight map (contract C2, format 2) of an assignment. `sibling` is
     the assignment of highlights.SIBLING_BASE[a.rid]: a slot where it reads
-    the same (the same stored words, or words that differ only in encoding
-    under the sibling's own rules: highlights.same_reading) also gets its
-    whole-word tint."""
+    the same (the same stored words, words that differ only in encoding
+    under the sibling's own rules, or in al-Susi the same word with its final
+    vowel merged by the idgham kabir: highlights.reads_like_sibling) also
+    gets its whole-word tint."""
     category = WHOLE_WORD_CATEGORY[a.rid]
     stats: Counter = Counter()
     entries: dict[tuple[int, int], dict[str, list]] = {}
@@ -562,11 +563,15 @@ def make_diff(a: Assignment, sibling: Assignment | None = None) -> tuple[dict, C
             sib = sibling.hl_inputs.get(wid)
             if (
                 sib is not None
-                and (sib[4] == words or HL.same_reading(sib[4], words, sibling.rid))
+                and HL.reads_like_sibling(sib[4], words, a.rid, ctx)
                 and _whole_word(HL.classify(sib[3], sib[4], sibling.rid, sib[5]))
             ):
                 cats.insert(0, ("word", []))
-                how = "same stored words" if sib[4] == words else "same reading"
+                how = (
+                    "same stored words" if sib[4] == words
+                    else "same reading" if HL.same_reading(sib[4], words, sibling.rid)
+                    else "final vowel merged by the idgham kabir"
+                )
                 stats[f"whole-word tint from {sibling.rid} ({how})"] += 1
         if not cats:
             stats["differs from Hafs, encoding only (no highlight)"] += 1

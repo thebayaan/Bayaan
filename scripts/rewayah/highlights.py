@@ -17,8 +17,11 @@ word in that slot: different letters (incl. a hamza Hafs does not have, the
 seen of 'صِۜرَٰطَ', or a letter the rewayah never pronounces: Qunbul 75:1
 'لَا۟' vs Hafs 'لَآ'), a different long vowel (the dagger alef counts as an
 alef: 1:4 مَلِكِ vs مَٰلِكِ; 33:14 لَأَتَوْهَا vs لَـَٔاتَوْهَا; an alef read
-in waqf only, ٱلظُّنُونَا۠), a different doubling (5:89 عَقَدتُّمُ,
-تَذَّكَّرُونَ, idgham ٱتَّخَذتُّمُ), different vowels on its letters, or a
+in waqf only, ٱلظُّنُونَا۠, which Shu'bah and Nafi' also read in wasl: the
+Nafi' texts never write U+06E0, so their plain alef counts as read in wasl
+only in the NAFI_WASL_ALEF words), a different doubling (5:89 عَقَدتُّمُ,
+تَذَّكَّرُونَ, idgham ٱتَّخَذتُّمُ; al-Bazzi's doubled first ta' 'وَلَآ
+تَّيَمَّمُوا۟', see below), different vowels on its letters, or a
 different case ending (2:214 يَقُولُ vs يَقُولَ, 2:284 فَيَغْفِرْ, ya' al-idafa
 إِنِّيَ vs إِنِّيٓ), a question read as a statement or the reverse (7:123
 ءَاٰ۬مَنتُم vs ءَامَنتُم, 38:63 اِتَّخَذْنَٰهُمْ vs أَتَّخَذْنَٰهُمْ), a hamzat qat'
@@ -42,10 +45,22 @@ NOT highlighted (the reading_key() normalizations):
               final ya ('تِلْقَآءِى۟' = 'تِلْقَآئِ'), a long vowel written small
               inside a word (دَاوُۥدَ), an assimilated nun written or not
               ('وَأَن لَّوِ' / 'وَأَلَّوِ'), the upright zero in the Nafi' texts
-              (never written), CGJ / ZWJ / tatweel, iqlab meem forms, waqf and
-              sajdah signs, rub' el-hizb, and a doubled FIRST letter (an
-              idgham with the previous word, which carries the difference
-              itself). A letter with U+06DF is never pronounced in Hafs, the
+              (never written, see above), CGJ / ZWJ / tatweel, iqlab meem
+              forms, waqf and sajdah signs, rub' el-hizb, the small low seen
+              of Hafs 52:37 ٱلْمُصَۣيْطِرُونَ (read with sad, seen also
+              allowed: Qunbul's seen is the difference), a final long a
+              written without its dagger alef before a wasl alef (not read
+              before the sakin: Warsh 20:135 'اِٜه۟تَدَى' joined to 21:1), the
+              reviewed NAFI_SPELLINGS (14:5, 51:47, 55:54), and a doubled
+              FIRST letter where the rewayah's previous word merges into it
+              (idgham: a tanween or a nun before ي ر م ل و ن, a waw / ya into
+              itself, any other consonant written without vowel or sukun, in
+              al-Susi also one his idgham kabir merges; that word carries
+              any difference itself). After an alef, a hamza, a silah, a
+              sukun, a nun or tanween before another letter, or a vowel, a
+              doubled first letter is the word's own reading (al-Bazzi's
+              tashdid of the ta': 'وَلَآ تَّيَمَّمُوا۟', 'فَإِن تَّوَلَّوْا۟',
+              'هَلْ تَّرَبَّصُونَ'). A letter with U+06DF is never pronounced in Hafs, the
               close rewayat and Abu 'Amr and is left out on both sides (in the
               Nafi' texts, where U+06DF is also the sukun, only an alef inside
               a word: 'وَجِا۟يٓءَ' = 'وَجِىٓءَ'; not on the first letter of an
@@ -67,7 +82,9 @@ NOT highlighted (the reading_key() normalizations):
                   from two hamzas + long a (ءَاٰ۬مَنتُم, a question).
                 two hamzas across words (every rewayah but Shu'bah): the
                   first, at the end of a word, dropped or softened before a
-                  word that starts with a hamza; the second, at the start of
+                  word that starts with a hamza, or changed into the long
+                  waw / ya before it and merged (Qalun, al-Bazzi 12:53
+                  'بِالسُّوِّ إِلَّا'); the second, at the start of
                   a word, softened or changed after a word that ends in a
                   voweled hamza (Context: never across a surah start).
                 Warsh: a vowelless hamza becomes the long vowel of the vowel
@@ -119,12 +136,15 @@ NOT highlighted (the reading_key() normalizations):
 Siblings: two narrators of one reader (Warsh / Qalun, al-Susi / al-Duri)
 who read a slot the same way get the same whole-word decision. The builder
 gives Warsh and al-Susi the whole-word tint that Qalun / al-Duri get for the
-same reading (`SIBLING_BASE`; the same stored words, or words that only
-differ in encoding under the sibling's own rules, see same_reading): their
-extra usul rules must not hide a farsh difference, e.g. Nafi' يَاجُوجَ (18:94),
-مُوصَدَةٌ (90:20, 104:8), Abu 'Amr فَيَغْفِر لِّمَن (2:284, jazm plus idgham,
-which reads like al-Susi's idgham kabir). The validator checks that every
-pair, al-Bazzi / Qunbul included, agrees on identical stored words.
+same reading (`SIBLING_BASE`; the same stored words, words that only
+differ in encoding under the sibling's own rules, or in al-Susi the same
+word whose final vowel his idgham kabir merges: see reads_like_sibling):
+their extra usul rules must not hide a farsh difference, e.g. Nafi' يَاجُوجَ
+(18:94), مُوصَدَةٌ (90:20, 104:8), Abu 'Amr فَيَغْفِر لِّمَن (2:284, jazm plus
+idgham, which reads like al-Susi's idgham kabir), Abu 'Amr's case endings
+6:27 نُكَذِّبُ and 16:12 وَٱلنُّجُومَ, which al-Susi merges into the next word.
+The validator checks that every pair, al-Bazzi / Qunbul included, agrees on
+identical stored words.
 
 No letter-level category (tashil / madd / ibdal / taghliz / minor) is
 emitted in Release 1.
@@ -164,6 +184,9 @@ TEH, TAH = "\u062A", "\u0637"
 # whatever form the text writes it (see reading_key).
 SOFT_HAMZA = "\uE000"
 ASSIMILATING = frozenset("\u0644\u0631\u0645\u0646\u0648\u064A")  # ل ر م ن و ي
+# the letters a nun sakinah or a tanween merges into (idgham, the same six);
+# before any other letter it is concealed (ikhfa') or read clearly, not merged
+NUN_IDGHAM = ASSIMILATING
 HAMZA_SEATS = frozenset("\u064A\u0649\u0648\u0627")  # ي ى و ا
 SILAH_CHARS = frozenset("\u06E5\u06E6")
 SILAH_CARRIER_VOWELS = frozenset("\u064F\u0650")
@@ -176,8 +199,33 @@ FAR = NAFI | ABU_AMR
 KUFI = frozenset({"shouba"})  # reads both of two hamzas
 HAMZA_SOFTENING = frozenset({"warsh", "soosi"})  # general ibdal of the hamza (see reading_key)
 MAGHRIBI_LAM = frozenset({"warsh", "qaloon", "doori", "soosi"})
-# The KFGQPC Nafi' texts never write the upright zero (alef dropped in wasl).
+# The KFGQPC Nafi' texts never write the upright zero (alef dropped in wasl):
+# their plain alef is read like Hafs's alef with U+06E0 (أَنَا, لَّٰكِنَّا),
+# except in the words of NAFI_WASL_ALEF.
 MAGHRIBI_NO_UPRIGHT_ZERO = frozenset({"warsh", "qaloon"})
+# Farsh: Nafi' reads the final alef of these al-Ahzab words in wasl too
+# (33:10, 33:66, 33:67), Hafs only in waqf (U+06E0): letters of the Hafs word.
+NAFI_WASL_ALEF = frozenset({
+    "\u0627\u0644\u0638\u0646\u0648\u0646\u0627",  # ٱلظُّنُونَا۠
+    "\u0627\u0644\u0631\u0633\u0648\u0644\u0627",  # ٱلرَّسُولَا۠
+    "\u0627\u0644\u0633\u0628\u064A\u0644\u0627",  # ٱلسَّبِيلَا۠
+})
+# Reviewed words whose KFGQPC Nafi' spelling differs from the DK Hafs word
+# while the reading is the same: (Hafs slot text, stored text), exact texts,
+# so a changed source falls back to the rules and the cases gate reports it.
+NAFI_SPELLINGS = frozenset({
+    # 14:5 bi-ayyāmi: the rasm's second ya, unpronounced, before (Nafi') or
+    # after (Hafs, the dagger alef's seat) the doubled ya
+    ("\u0628\u0650\u0627\u0654\u064E\u064A\u0651\u064E\u0649\u0670\u0645\u0650",
+     "\u0628\u0650\u0627\u0654\u064E\u064A\u064A\u0651\u064E\u0670\u0645\u0650"),
+    # 51:47 bi-aydin: the rasm's second ya, unpronounced (Nafi' writes the
+    # fatha on the first ya, the sukun on the second)
+    ("\u0628\u0650\u0627\u0654\u064E\u064A\u0652\u064A\u06DF\u062F\u08F2",
+     "\u0628\u0650\u0627\u0654\u064E\u064A\u064E\u064A\u06DF\u062F\u08F2"),
+    # 55:54 wa-janā: an alef for the alef maqsura, both dropped in wasl
+    # before ٱلْجَنَّتَيْنِ
+    ("\u0648\u064E\u062C\u064E\u0646\u064E\u0649", "\u0648\u064E\u062C\u064E\u0646\u064E\u0627"),
+})
 # rewayah -> its sibling without the extra usul rules (see the module docstring)
 SIBLING_BASE = {"warsh": "qaloon", "soosi": "doori"}
 # sibling pairs whose identical stored words must get the same whole-word decision
@@ -193,6 +241,7 @@ _REMOVE = frozenset(
     "\u0651"  # shadda
     "\u0653\u06E4"  # madd, sajdah overline
     "\u06EA"  # dot below (normalize writes U+065C; U+065C is resolved per letter)
+    "\u06E3"  # small low seen: Hafs 52:37 ٱلْمُصَۣيْطِرُونَ is read with sad (seen also allowed)
 )
 _LETTER_CANON = {
     "\u0671": ALEF,  # ٱ
@@ -203,7 +252,6 @@ _LETTER_CANON = {
     "\u06E7": YEH,  # small high yeh
     "\u06E8": "\u0646",  # small high noon
     "\u06DC": "\u0633",  # small high seen (read with seen / sakta)
-    "\u06E3": "\u0633",  # small low seen
 }
 _MARK_CANON = {"\u08F0": FATHATAN, "\u08F1": DAMMATAN, "\u08F2": KASRATAN}
 _DECOMPOSE = {  # precomposed hamza letters (DK text is already decomposed)
@@ -246,7 +294,7 @@ class Context:
 class _Unit:
     __slots__ = (
         "letter", "marks", "silah", "shadda", "dagger", "hamza", "dot", "tdot",
-        "token_start", "silent", "own_letter", "seat", "dotted_start", "from_soft",
+        "token_start", "silent", "own_letter", "seat", "dotted_start", "from_soft", "sukun",
     )
 
     def __init__(self, letter: str, dagger: bool = False) -> None:
@@ -264,6 +312,7 @@ class _Unit:
         self.seat = ""  # the letter that carried the hamza before it became HAMZA
         self.dotted_start = False  # a word-initial alef + vowel + dot (wasl alef or Warsh naql)
         self.from_soft = False  # an alef that stands for the second of two hamzas
+        self.sukun = False  # carried a sukun (U+0652 / U+06E1; the Nafi' texts use U+06DF: `silent`)
 
 
 def _is_letter(c: str) -> bool:
@@ -350,6 +399,8 @@ def _token_units(token: str, rid: str) -> tuple[list[_Unit], int]:
         if c in (SILENT, "\u0652", "\u06E1", MADD) and units:
             if not any(m in HAMZA_MARKS for m in units[-1].marks):
                 units[-1].own_letter = True  # 'شَي۟ٔ', 'خَطِيَٓٔ' (not 'ؤْ': the hamza's sukun)
+        if c in ("\u0652", "\u06E1") and units:
+            units[-1].sukun = True
         if c == SILENT:
             if units:
                 units[-1].silent = True
@@ -500,8 +551,21 @@ def _voweled_hamza(units: list[_Unit], k: int, rid: str) -> bool:
     return rid == "warsh" and k == 0 and u.letter == ALEF and not u.dagger
 
 
+def _waqf_alef_differs(text: str, rid: str) -> bool:
+    """`text` writes an alef read in waqf only (U+06E0) that this rewayah
+    reads in wasl too, although its text does not mark the difference: the
+    Nafi' texts never write U+06E0, so only the NAFI_WASL_ALEF words."""
+    if rid not in MAGHRIBI_NO_UPRIGHT_ZERO:
+        return True
+    if UPRIGHT_ZERO not in text:
+        return False
+    letters = "".join(_LETTER_CANON.get(c, c) for c in text if c in _LETTER_CANON or unicodedata.category(c) == "Lo")
+    return letters in NAFI_WASL_ALEF
+
+
 def reading_key(text: str, rid: str) -> tuple[list[_Unit], int]:
     units, hamzas = _units(text, rid)
+    waqf_alef = _waqf_alef_differs(text, rid)
     # tanween written after a final alef / ya -> on the letter before it
     # (before the hamza rules: 'شَي۟ٔاࣰ' = 'شَيْـࣰٔا', the hamza is voweled)
     if len(units) >= 2 and units[-1].letter in (ALEF, YEH) and any(x in TANWEEN for x in units[-1].marks):
@@ -544,8 +608,8 @@ def reading_key(text: str, rid: str) -> tuple[list[_Unit], int]:
         vowels = "".join(sorted(x for x in u.marks if x in VOWELS))
         if DOT_BELOW in u.marks:  # close rewayat: the imala dot is kept as a mark
             vowels += DOT_BELOW
-        if UPRIGHT_ZERO in u.marks and rid not in MAGHRIBI_NO_UPRIGHT_ZERO:
-            vowels += UPRIGHT_ZERO  # alef read in waqf only (ٱلظُّنُونَا۠ vs Shu'bah ٱلظُّنُونَا)
+        if UPRIGHT_ZERO in u.marks and waqf_alef:
+            vowels += UPRIGHT_ZERO  # alef read in waqf only (ٱلظُّنُونَا۠ vs Shu'bah, Nafi' ٱلظُّنُونَا)
         if softening and u.letter == HAMZA:
             if not any(x in VOWELS for x in vowels):
                 # ibdal of a vowelless hamza: the long vowel of the vowel before
@@ -944,7 +1008,47 @@ def _dotted_second_hamza(a: list[_Unit], b: list[_Unit], rid: str, ctx: Context)
     return a
 
 
+def _first_hamza_merged(a: list[_Unit], b: list[_Unit]) -> bool:
+    """The first of two hamzas across words, after a long waw / ya, changed
+    into that letter and merged into it (ibdal and idgham): the rewayah's
+    last letter is that waw / ya doubled with the hamza's vowel (Qalun,
+    al-Bazzi 12:53 'بِالسُّوِّ إِلَّا' for 'بِٱلسُّوٓءِ إِلَّا'). `a` still ends in
+    Hafs's hamza; `b` is one unit shorter."""
+    if len(a) < 2 or len(b) != len(a) - 1:
+        return False
+    h, x, y = a[-1], a[-2], b[-1]
+    vowel = _hamza_vowel(h)
+    return (
+        bool(vowel)
+        and x.letter in (WAW, YEH)
+        and y.letter == x.letter
+        and not x.shadda
+        and not x.marks
+        and y.shadda
+        and y.marks == vowel
+    )
+
+
+def _long_a_before_wasl(hafs: str, target: str, ctx: Context) -> str:
+    """Hafs's final alef maqsura with its dagger alef (a long a), where the
+    rewayah writes the alef maqsura without it before a word that starts
+    with a wasl alef: no reading pronounces that long a before the sakin (DK
+    Hafs writes 'مُوسَى ٱلْكِتَٰبَ' inside a surah; the KFGQPC Warsh text joins
+    20:135 to 21:1, 'اِٜه۟تَدَى اِق۟تَرَبَ'). -> the Hafs text without that
+    dagger alef."""
+    if (
+        hafs.endswith("\u0649" + DAGGER_ALEF)
+        and target.endswith("\u0649")
+        and ctx.hafs_next.lstrip(RUB_EL_HIZB).startswith("\u0671")
+    ):
+        return hafs[:-1]
+    return hafs
+
+
 def _word_differs(hafs: str, target: str, rid: str, ctx: Context = Context()) -> bool:
+    if rid in NAFI and (hafs, target) in NAFI_SPELLINGS:
+        return False
+    hafs = _long_a_before_wasl(hafs, target, ctx)
     a, ha = reading_key(hafs, rid)
     b, hb = reading_key(target, rid)
     naql_two = False
@@ -953,6 +1057,7 @@ def _word_differs(hafs: str, target: str, rid: str, ctx: Context = Context()) ->
     a = _dotted_second_hamza(a, b, rid, ctx)
     la = [u.letter for u in a]
     lb = [u.letter for u in b]
+    first_hamza_merged = False
     if la != lb:
         # the first of two hamzas across words dropped (isqat) or softened
         # (Qalun 'هَٰؤُلَآ۬ إِن'), non-Kufi
@@ -962,6 +1067,7 @@ def _word_differs(hafs: str, target: str, rid: str, ctx: Context = Context()) ->
             and la[:-1] == lb
             and _hamza_vowel(_lead_unit(ctx.hafs_next, rid))
         ):
+            first_hamza_merged = _first_hamza_merged(a, b)
             a = a[:-1]
         else:
             return True
@@ -975,8 +1081,10 @@ def _word_differs(hafs: str, target: str, rid: str, ctx: Context = Context()) ->
         return True  # a hamza Hafs does not have (e.g. Nafi' النَّبِيٓءَ)
     n = len(a)
     for i, (x, y) in enumerate(zip(a, b)):
-        if x.shadda != y.shadda and not _shadda_excused(i, a, b, rid):
-            return True  # عَقَدتُّمُ / عَقَّدتُّمُ, تَذَّكَّرُونَ, نَزَّلَ, idgham ٱتَّخَذتُّمُ
+        if i == n - 1 and first_hamza_merged:
+            continue  # the dropped first hamza changed into this waw / ya and merged into it
+        if x.shadda != y.shadda and not _shadda_excused(i, a, b, rid, ctx, target):
+            return True  # عَقَدتُّمُ / عَقَّدتُّمُ, تَذَّكَّرُونَ, نَزَّلَ, idgham ٱتَّخَذتُّمُ, al-Bazzi وَلَآ تَّيَمَّمُوا۟
         if x.marks == y.marks:
             continue
         one_sided = not x.marks or not y.marks
@@ -1000,10 +1108,54 @@ def _word_differs(hafs: str, target: str, rid: str, ctx: Context = Context()) ->
     return False
 
 
-def _shadda_excused(i: int, a: list[_Unit], b: list[_Unit], rid: str) -> bool:
+def _word_before(i: int, b: list[_Unit], target: str, ctx: Context) -> str:
+    """The rewayah word read right before the token that b[i] starts: the
+    previous slot's last word, or the previous token of this slot."""
+    t = sum(1 for u in b[:i] if u.token_start)  # tokens before it (b[0] starts the first)
+    toks = target.split(" ")
+    if t == 0:
+        return ctx.target_prev
+    return toks[t - 1] if t - 1 < len(toks) else ""
+
+
+def _merges_into(prev_word: str, lead: _Unit, rid: str) -> bool:
+    """The last letter of `prev_word`, the rewayah word read before, merges
+    into `lead`, the doubled first letter of the next word (an idgham across
+    words): a tanween or a nun without vowel before ي ر م ل و ن ('مَن يَّقُولُ');
+    a waw / ya without vowel into the same letter (al-Susi 'هُو وَّالَّذِينَ');
+    any other consonant the rewayah writes without vowel or sukun, its way of
+    writing an assimilated letter ('قَد جَّآءَكُم', 'إِذ تَّبَرَّأَ', 'قُل رَّبِّي',
+    al-Susi 'ٱلرَّحِيم مَّلِكِ'); in al-Susi also a consonant whose vowel the
+    idgham kabir drops although the text keeps it (36:27 'غَفَرَ لِّي'). Never
+    after an alef, a hamza, a silah, a sukun (the letter is read clearly), a
+    nun or tanween before another letter (concealed, not merged) or a vowel
+    elsewhere: there the doubling is the word's own reading (al-Bazzi's
+    tashdid of the ta': 'وَلَآ تَّيَمَّمُوا۟', 'هَلْ تَّرَبَّصُونَ', 'إِذْ
+    تَّلَقَّوْنَهُۥ', 'فَإِن تَّوَلَّوْا۟', 'نَارࣰا تَّلَظَّىٰ', 'تَكَادُ تَّمَيَّزُ')."""
+    f = _final_unit(prev_word, rid)
+    if f is None:
+        return False
+    units, k = f
+    u = units[k]
+    vowel = any(c in VOWELS for c in u.marks)
+    if any(c in TANWEEN for c in u.marks) or (u.letter == NOON and not vowel and not u.silah):
+        # the Nafi' texts keep the nun's sukun in an idgham with ghunna ('مَن۟ يَّقُولُ')
+        return lead.letter in NUN_IDGHAM
+    if u.silah or u.sukun or (u.silent and rid in NAFI) or u.letter in (ALEF, HAMZA) or u.hamza:
+        return False
+    if u.letter in (WAW, YEH) and lead.letter != u.letter:
+        return False
+    return not vowel or rid == "soosi"
+
+
+def _shadda_excused(i: int, a: list[_Unit], b: list[_Unit], rid: str, ctx: Context, target: str) -> bool:
     x, y = a[i], b[i]
+    if y.token_start and y.shadda and not x.shadda:
+        # a doubled first letter Hafs does not have: excused only as an idgham
+        # with the word read before it, which carries any difference itself
+        return _merges_into(_word_before(i, b, target, ctx), y, rid)
     if x.token_start or y.token_start:
-        return True  # doubled first letter = idgham with the previous word (مَن يَّقُولُ)
+        return True  # a doubled first letter in Hafs only: its idgham, read clearly in the rewayah (usul)
     if rid in MAGHRIBI_LAM and _article_doubled_lam(a, i) and x.marks in ("", FATHA) and y.marks in ("", FATHA):
         return True  # unmarked doubled lam of the article (الذين, لله)
     if rid == "soosi" and i >= 1 and not b[i - 1].marks and a[i - 1].marks and y.shadda:
@@ -1021,6 +1173,34 @@ def same_reading(text1: str, text2: str, rid: str) -> bool:
     b, _ = reading_key(text2, rid)
     return len(a) == len(b) and all(
         (x.letter, x.marks, x.shadda, x.silah) == (y.letter, y.marks, y.shadda, y.silah) for x, y in zip(a, b)
+    )
+
+
+def reads_like_sibling(sib_text: str, text: str, rid: str, ctx: Context = Context()) -> bool:
+    """`text`, stored by `rid` (Warsh or al-Susi), reads like `sib_text`, stored
+    by its sibling SIBLING_BASE[rid] in the same slot: the same words or the
+    same reading under the sibling's rules (same_reading), or in al-Susi the
+    same word whose final vowel his idgham kabir merges into the next word
+    (`ctx` is al-Susi's): 6:27 'نُكَذِّب بِّـَٔايَٰتِ', 16:12 'وَاَلنُّجُوم مُّسَخَّرَٰتࣲ'
+    read al-Duri's 'نُكَذِّبُ', 'وَاَلنُّجُومَ' (Abu 'Amr's case endings)."""
+    base = SIBLING_BASE[rid]
+    if sib_text == text or same_reading(sib_text, text, base):
+        return True
+    if rid != "soosi":
+        return False
+    a, _ = reading_key(sib_text, base)
+    b, _ = reading_key(text, base)
+    if len(a) != len(b) or not a:
+        return False
+    if any((x.letter, x.marks, x.shadda, x.silah) != (y.letter, y.marks, y.shadda, y.silah) for x, y in zip(a[:-1], b[:-1])):
+        return False
+    x, y = a[-1], b[-1]
+    return (
+        (x.letter, x.shadda, x.silah) == (y.letter, y.shadda, y.silah)
+        and len(x.marks) == 1
+        and x.marks in SHORT_VOWELS
+        and not y.marks
+        and _susi_merge(b, ctx)
     )
 
 
