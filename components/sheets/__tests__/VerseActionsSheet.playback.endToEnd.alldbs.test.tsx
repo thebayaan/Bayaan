@@ -1,26 +1,20 @@
 // @ai-generated
 /**
- * Play from here and Repeat end to end (decision 3 of Release 1): the real
- * verse actions sheet drives the real mushaf player store (MushafAudioService
- * over a fake expo-audio player, the timing numbering service with its
- * set-level vote) and the real timestamp store, for every verse of the
- * fixture surahs, with reciters whose timings are numbered by the rewayah:
- * real R2 timing files (Warsh 14 for Warsh al-Fatihah, 106, 107 and 112;
- * al-Bazzi 296 for al-Bazzi 112; services/timestamps/__fixtures__/timings)
- * and a synthetic al-Duri set numbered by al-Duri. Verse units are built
- * from the real slots of verseUnitsFixture.json.
+ * LOCAL-ONLY Play from here and Repeat end to end on every words DB
+ * (skipped unless BAYAAN_OVERLAY_DB_DIR is set; needs Node >= 22.5):
  *
- * For each verse, from the sheet as the mushaf and the player open it:
- *  - mushaf Repeat loops exactly that verse's entry, and the follow-along
- *    band and label are that verse;
- *  - mushaf Play from here starts at that verse's own entry (Warsh 1:7, the
- *    second part of Hafs 1:7, starts at Warsh entry 7) and runs on;
- *  - main player Play from here seeks to that verse's own entry and tracks
- *    the Hafs verses it recites;
- *  - main player Repeat opens the mushaf on exactly that verse (its storage
- *    anchor) and makes it the pending start.
- * Hafs (Hafs-numbered reciter): the same flows give the Hafs verse, as
- * before.
+ *   BAYAAN_OVERLAY_DB_DIR=/path/to/dbs npx jest VerseActionsSheet.playback.endToEnd.alldbs --watchAll=false
+ *
+ * The real verse actions sheet drives the real mushaf player store (over a
+ * fake expo-audio player) and the real timestamp store
+ * (__fixtures__/sheetPlaybackEndToEnd.tsx), with verse units built from each
+ * Release 1 words DB and a synthetic timing set numbered by each rewayah
+ * (Hafs: by Hafs; one entry per verse). Checked for every verse that starts
+ * or ends inside a Hafs verse, every verse holding several Hafs verses, and
+ * the first and last verse of every surah: mushaf Repeat loops exactly that
+ * verse, mushaf Play from here starts at its own entry, the main player's
+ * Play from here seeks to its own entry, and the main player's Repeat opens
+ * the mushaf on exactly that verse. Hafs gives the Hafs verse, as before.
  */
 
 import type React from 'react';
@@ -242,48 +236,57 @@ jest.mock('@/services/audio/AudioCoordinator', () => ({
   },
 }));
 
-// The fixture timing sets, plus 'own-doori': al-Duri numbered by al-Duri.
-jest.mock('@/data/reciterData', () => {
-  const {fixtureCatalog} = jest.requireActual(
-    '@/services/timestamps/__fixtures__/timingFixtures',
-  );
-  const catalog = fixtureCatalog();
-  catalog.push({
-    ...catalog[0],
-    id: 'reciter-own-doori',
+// One timing set per rewayah, numbered by it: 'own-<rewayah id>'.
+// (The factory runs before this module's constants exist: names inline.)
+jest.mock('@/data/reciterData', () => ({
+  RECITERS: Object.entries({
+    hafs: "Hafs A'n Assem",
+    shubah: "Shu'bah A'n Assem",
+    warsh: "Warsh A'n Nafi'",
+    qalun: "Qalon A'n Nafi'",
+    'al-bazzi': "Albizi A'n Ibn Katheer",
+    qunbul: "Qunbol A'n Ibn Katheer",
+    'al-duri-abi-amr': "Aldori A'n Abi Amr",
+    'al-susi': "Assosi A'n Abi Amr",
+  }).map(([rewayah, name]) => ({
+    id: `reciter-own-${rewayah}`,
+    name: 'Test Reciter',
+    date: null,
+    image_url: null,
     rewayat: [
       {
-        ...catalog[0].rewayat[0],
-        id: 'own-doori',
-        reciter_id: 'reciter-own-doori',
-        name: "Aldori A'n Abi Amr",
+        id: `own-${rewayah}`,
+        reciter_id: `reciter-own-${rewayah}`,
+        name,
+        style: 'murattal',
+        server: 'https://audio.example.com/test',
+        surah_total: 114,
+        surah_list: [],
+        source_type: 'test',
+        created_at: '2026-01-01',
+        has_timestamps: true,
       },
     ],
-  });
-  return {RECITERS: catalog};
-});
+  })),
+}));
 jest.mock('@/services/timestamps/TimestampService', () => ({
   timestampService: {
     getTimestampsForSurah: async (set: string, surah: number) => {
-      if (set === 'own-doori') {
-        const {rewayahVerseMapService} = jest.requireActual(
-          '@/services/mushaf/RewayahVerseMapService',
-        );
-        const count = rewayahVerseMapService.verseCount(
-          'al-duri-abi-amr',
-          surah,
-        );
-        return Array.from({length: count}, (_, i) => ({
-          surahNumber: surah,
-          ayahNumber: i + 1,
-          timestampFrom: (i + 1) * 1000,
-          timestampTo: (i + 2) * 1000,
-          durationMs: 1000,
-        }));
-      }
-      return jest
-        .requireActual('@/services/timestamps/__fixtures__/timingFixtures')
-        .loadTimings(set, surah);
+      const {rewayahVerseMapService, hafsVerseCount} = jest.requireActual(
+        '@/services/mushaf/RewayahVerseMapService',
+      );
+      const rewayah = set.slice('own-'.length);
+      const count =
+        rewayah === 'hafs'
+          ? hafsVerseCount(surah)
+          : rewayahVerseMapService.verseCount(rewayah, surah);
+      return Array.from({length: count}, (_, i) => ({
+        surahNumber: surah,
+        ayahNumber: i + 1,
+        timestampFrom: (i + 1) * 1000,
+        timestampTo: (i + 2) * 1000,
+        durationMs: 1000,
+      }));
     },
   },
 }));
@@ -293,11 +296,15 @@ jest.mock('@/services/timestamps/TimestampFetchService', () => ({
 
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {timingNumberingService} from '@/services/timestamps/TimingNumberingService';
-import {
-  buildFixtureUnits,
-  type UnitsFixtureDb,
-} from '@/services/mushaf/__fixtures__/verseUnitPages';
+import type {
+  RewayahVerseUnits,
+  VerseUnit,
+} from '@/services/mushaf/RewayahVerseUnits';
 import type {RewayahId} from '@/services/rewayah/RewayahIdentity';
+import {
+  allDbDir,
+  loadAllDbUnits,
+} from '@/services/timestamps/__fixtures__/allDbVerseUnits';
 import {
   checkMainPlayerPlayback,
   checkMushafPlayback,
@@ -318,68 +325,104 @@ const env: SheetPlaybackEnv = {
   routes: mockRoutes,
 };
 
-interface Case {
-  db: UnitsFixtureDb;
-  rewayah: RewayahId;
-  /** A timing set numbered by the rewayah (Hafs: by Hafs). */
-  set: string;
-  surahs: number[];
-}
-
-const CASES: Case[] = [
-  {db: 'warsh', rewayah: 'warsh', set: 'warsh-14', surahs: [1, 106, 107, 112]},
-  {db: 'bazzi', rewayah: 'al-bazzi', set: 'bazzi-296', surahs: [112]},
-  {
-    db: 'doori',
-    rewayah: 'al-duri-abi-amr',
-    set: 'own-doori',
-    surahs: [1, 71, 103, 106, 107, 112, 114],
-  },
-  {db: 'hafs', rewayah: 'hafs', set: 'hafs-clean', surahs: [1, 112]},
+const REWAYAT: RewayahId[] = [
+  'hafs',
+  'shubah',
+  'warsh',
+  'qalun',
+  'al-bazzi',
+  'qunbul',
+  'al-duri-abi-amr',
+  'al-susi',
 ];
 
-beforeAll(() => {
-  jest.useFakeTimers();
-  jest.spyOn(console, 'log').mockImplementation(() => undefined);
-  jest.spyOn(console, 'warn').mockImplementation(() => undefined);
-});
+/**
+ * The verses whose playback differs from the Hafs verses holding them: every
+ * verse that starts or ends inside a Hafs verse (a split Hafs verse's parts)
+ * and every verse holding several Hafs verses; plus the first and last verse
+ * of every surah. Reading order.
+ */
+function versesToCheck(units: RewayahVerseUnits): VerseUnit[] {
+  const picked = new Map<number, VerseUnit>();
+  for (const unit of units.units) {
+    const anchor = units.hafsAnchor(unit);
+    const next = units.next(unit);
+    const startsInside = anchor.wordPosition > 1;
+    const endsInside =
+      next !== null &&
+      next.surah === unit.surah &&
+      units.hafsAnchor(next).wordPosition > 1;
+    if (startsInside || endsInside || unit.hafsKeys.length > 1) {
+      picked.set(unit.index, unit);
+    }
+  }
+  for (const surah of units.surahs()) {
+    const list = units.unitsOfSurah(surah);
+    picked.set(list[0].index, list[0]);
+    picked.set(list[list.length - 1].index, list[list.length - 1]);
+  }
+  return [...picked.values()].sort((a, b) => a.index - b.index);
+}
 
-afterAll(() => {
-  closeSheet();
-  jest.useRealTimers();
-});
+const DB_DIR = allDbDir();
+const run = DB_DIR ? describe : describe.skip;
 
-describe.each(CASES)(
-  '$rewayah mushaf, reciter $set',
-  ({db, rewayah, set, surahs}) => {
-    let c: SheetPlaybackCase;
+run(
+  'Play from here and Repeat from the sheet on every words DB (local only)',
+  () => {
+    let all: Map<RewayahId, RewayahVerseUnits>;
 
     beforeAll(() => {
-      const units = buildFixtureUnits(db);
-      mockUnits.clear();
-      // Hafs on screen never builds verse units (identity).
-      if (rewayah !== 'hafs') mockUnits.set(rewayah, units);
-      mockShown.rewayah = rewayah;
-      (
-        useMushafSettingsStore as unknown as {setState: (s: object) => void}
-      ).setState({rewayah});
-      timingNumberingService.reset();
-      c = {
-        rewayah,
-        units,
-        set,
-        verses: surahs.flatMap(surah => [...units.unitsOfSurah(surah)]),
-      };
+      jest.useFakeTimers();
+      jest.spyOn(console, 'log').mockImplementation(() => undefined);
+      jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+      all = loadAllDbUnits(DB_DIR!);
     });
 
-    it('mushaf Repeat loops exactly the verse; Play from here starts at it', async () => {
-      expect(await checkMushafPlayback(c, env)).toEqual([]);
-      expect(mockToasts).toEqual([]);
+    afterAll(() => {
+      closeSheet();
+      jest.useRealTimers();
     });
 
-    it("main player Play from here seeks to the verse's own entry; Repeat opens exactly it", async () => {
-      expect(await checkMainPlayerPlayback(c, env)).toEqual([]);
-      expect(mockToasts).toEqual([]);
+    it('finds every words DB', () => {
+      expect([...all.keys()].sort()).toEqual([...REWAYAT].sort());
+    });
+
+    describe.each(REWAYAT)('%s', rewayah => {
+      let c: SheetPlaybackCase;
+
+      beforeAll(() => {
+        const units = all.get(rewayah)!;
+        mockUnits.clear();
+        // Hafs on screen never builds verse units (identity).
+        if (rewayah !== 'hafs') mockUnits.set(rewayah, units);
+        mockShown.rewayah = rewayah;
+        (
+          useMushafSettingsStore as unknown as {setState: (s: object) => void}
+        ).setState({rewayah});
+        timingNumberingService.reset();
+        c = {
+          rewayah,
+          units,
+          set: `own-${rewayah}`,
+          verses: versesToCheck(units),
+        };
+      });
+
+      it('mushaf Repeat loops exactly the verse; Play from here starts at it', async () => {
+        // First and last of every surah, and (not for Hafs and Shu'bah,
+        // whose verses are the Hafs verses) the split and merged verses.
+        expect(c.verses.length).toBeGreaterThanOrEqual(
+          rewayah === 'hafs' || rewayah === 'shubah' ? 228 : 229,
+        );
+        expect(await checkMushafPlayback(c, env)).toEqual([]);
+        expect(mockToasts).toEqual([]);
+      }, 600_000);
+
+      it("main player Play from here seeks to the verse's own entry; Repeat opens exactly it", async () => {
+        expect(await checkMainPlayerPlayback(c, env)).toEqual([]);
+        expect(mockToasts).toEqual([]);
+      }, 600_000);
     });
   },
 );
