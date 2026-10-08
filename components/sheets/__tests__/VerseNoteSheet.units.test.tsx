@@ -48,7 +48,10 @@ jest.mock('@/hooks/useTheme', () => ({
     isDarkMode: false,
   }),
 }));
-const mockNotes = new Map<string, {content: string; rewayahId?: string}>();
+const mockNotes = new Map<
+  string,
+  {content: string; rewayahId?: string; verseKeys?: string[]}
+>();
 jest.mock('@/services/verse-annotations/VerseAnnotationService', () => ({
   verseAnnotationService: {
     getNoteById: jest.fn(async (id: string) => mockNotes.get(id) ?? null),
@@ -135,6 +138,21 @@ function title(): string {
 }
 
 const lastPreview = () => mockPreviews[mockPreviews.length - 1];
+const unitText = (key: string) => warsh.unitText(warsh.unitByKey(key)!);
+
+/** The sheet's title as first drawn, before the saved note has loaded. */
+function firstTitle(payload: Payload): string {
+  act(() => {
+    renderer = TestRenderer.create(
+      <VerseNoteSheet
+        {...({sheetId: 'verse-note', payload} as React.ComponentProps<
+          typeof VerseNoteSheet
+        >)}
+      />,
+    );
+  });
+  return title();
+}
 
 async function save(text: string) {
   if (!renderer) throw new Error('nothing rendered');
@@ -205,6 +223,64 @@ describe('a saved note', () => {
     expect(title()).toBe('Edit Note for 103:1');
   });
 
+  it('Warsh: a note on several verses is named by all its anchors', async () => {
+    // The Notes list sends only verse_key; the note's verse_keys name both
+    // parts of Hafs 1:7 (Warsh 1:6 and 1:7).
+    mockNotes.set('n5', {
+      content: 'a note',
+      rewayahId: 'warsh',
+      verseKeys: ['1:7', '1:7:5'],
+    });
+    await openSheet({
+      verseKey: '1:7',
+      surahNumber: 1,
+      ayahNumber: 7,
+      noteId: 'n5',
+    });
+    expect(title()).toBe('Edit Note for 1:6-7');
+    expect(lastPreview()).toMatchObject({
+      rewayah: 'warsh',
+      text: `${unitText('1:6')} ${unitText('1:7')}`,
+      numberOfLines: 3,
+    });
+  });
+
+  it('Warsh: no number before the note has loaded', async () => {
+    mockNotes.set('n2', {
+      content: 'a note',
+      rewayahId: 'warsh',
+      verseKeys: ['1:7', '1:7:5'],
+    });
+    const payload = {
+      verseKey: '1:7',
+      surahNumber: 1,
+      ayahNumber: 7,
+      noteId: 'n2',
+      rewayah: 'warsh' as const,
+    };
+    expect(firstTitle(payload)).toBe('Note');
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(title()).toBe('Edit Note for 1:6-7');
+  });
+
+  it('Hafs: a payload naming Hafs is labelled from the first render', async () => {
+    mockNotes.set('n1', {content: 'a note'});
+    const payload = {
+      verseKey: '2:255',
+      surahNumber: 2,
+      ayahNumber: 255,
+      noteId: 'n1',
+      rewayah: 'hafs' as const,
+    };
+    expect(firstTitle(payload)).toBe('Note for 2:255');
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(title()).toBe('Edit Note for 2:255');
+  });
+
   it('Warsh units refused: a prefixed Hafs reference, no text', async () => {
     mockUnits.models = new Map();
     mockNotes.set('n4', {content: 'a note', rewayahId: 'warsh'});
@@ -231,6 +307,26 @@ describe('a new note', () => {
       'my note',
       undefined,
       undefined,
+    );
+  });
+
+  it('Warsh: a range is stored at every verse anchor', async () => {
+    await openSheet({
+      verseKey: '1:7',
+      surahNumber: 1,
+      ayahNumber: 7,
+      unitKeys: ['1:6', '1:7'],
+      rewayah: 'warsh',
+    });
+    expect(title()).toBe('Note for 1:6-7');
+    await save('my note');
+    expect(verseAnnotationService.addNote).toHaveBeenCalledWith(
+      '1:7',
+      1,
+      7,
+      'my note',
+      ['1:7', '1:7:5'],
+      'warsh',
     );
   });
 

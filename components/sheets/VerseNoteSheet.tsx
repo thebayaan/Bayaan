@@ -57,6 +57,11 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
   const [savedNoteRewayah, setSavedNoteRewayah] = useState<
     RewayahId | undefined
   >(undefined);
+  // The saved note's own anchors (notes.verse_keys of a note on several
+  // verses; the Notes list sends only verse_key).
+  const [savedNoteKeys, setSavedNoteKeys] = useState<string[] | undefined>(
+    undefined,
+  );
   const [noteLoaded, setNoteLoaded] = useState(!noteId);
   const previewRewayah = rewayah ?? savedNoteRewayah;
   // @ai-end
@@ -107,7 +112,8 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
   );
 
   // A saved note: its stored anchors ("S:A" or "S:A:W", Hafs locations),
-  // named in its rewayah's own verses.
+  // named in its rewayah's own verses once it has loaded (its verse_keys
+  // name every verse of a note on several verses).
   const savedUnits = useRewayahVerseUnits(
     noteId && noteRewayah && !isHafsNote ? noteRewayah : null,
   );
@@ -122,7 +128,13 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
         ? {label: newNoteSelection.label, selection: newNoteSelection}
         : null;
     }
-    const anchorKeys = isRange ? verseKeys : [verseKey];
+    if (!noteLoaded) return null;
+    const anchorKeys =
+      savedNoteKeys && savedNoteKeys.length > 0
+        ? savedNoteKeys
+        : isRange
+          ? verseKeys
+          : [verseKey];
     const described = describeStoredVerses(
       savedUnits.units,
       savedUnits.status,
@@ -139,6 +151,8 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
     verseRefText,
     noteId,
     newNoteSelection,
+    noteLoaded,
+    savedNoteKeys,
     isRange,
     verseKeys,
     verseKey,
@@ -165,6 +179,7 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
             setNoteText(note.content);
             setIsEditMode(true);
             setSavedNoteRewayah(note.rewayahId ?? undefined);
+            setSavedNoteKeys(note.verseKeys);
           }
         })
         .finally(() => setNoteLoaded(true));
@@ -252,7 +267,7 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
             <SkiaVersePreview
               verseKey={verseKey}
               verseKeys={verseKeys}
-              numberOfLines={isRange ? 3 : 2}
+              numberOfLines={isRange || verses?.selection?.isRange ? 3 : 2} // @ai
               rewayah={previewRewayah}
               text={previewText} // @ai
             />
