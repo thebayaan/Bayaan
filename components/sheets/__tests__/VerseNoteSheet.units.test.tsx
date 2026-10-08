@@ -59,9 +59,6 @@ jest.mock('@/services/verse-annotations/VerseAnnotationService', () => ({
     updateNote: jest.fn(async () => undefined),
   },
 }));
-jest.mock('@/store/verseAnnotationsStore', () => ({
-  useVerseAnnotationsStore: {getState: () => ({addNote: jest.fn()})},
-}));
 jest.mock('@/services/mushaf/DigitalKhattDataService', () => ({
   digitalKhattDataService: {
     isRewayahReady: () => true,

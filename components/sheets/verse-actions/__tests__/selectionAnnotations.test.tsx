@@ -9,8 +9,9 @@
  * Real Warsh slots (verseUnitsFixture.json: Warsh 1:6 = Hafs 1:7 words 1-4,
  * 1:7 = Hafs 1:7 from word 5, 103:1 = Hafs 103:1 + 103:2, 103:2 = Hafs 103:3
  * words 1-7, 103:3 = the rest of Hafs 103:3); the real annotations store
- * with the database service mocked. Every unit of every words DB is checked
- * by selectionAnnotations.alldbs.test.ts (local, BAYAAN_OVERLAY_DB_DIR).
+ * with the database service mocked; rows are saved in Warsh unless a test
+ * says otherwise. Every unit of every words DB is checked by
+ * selectionAnnotations.alldbs.test.ts (local, BAYAAN_OVERLAY_DB_DIR).
  */
 import React, {act} from 'react';
 import TestRenderer from 'react-test-renderer';
@@ -51,12 +52,12 @@ import {
 } from '@/services/mushaf/RewayahVerseUnits';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
-import type {HighlightColor} from '@/types/verse-annotations';
 import {
   selectVerses,
   unitSelection,
   type ReadyVerseSelection,
 } from '@/components/share/rewayahVerseSelection';
+import {setStoredRows as setRows} from '../__fixtures__/storedRows';
 import {
   addSelectionNote,
   selectionRowKeys,
@@ -117,16 +118,6 @@ const service = verseAnnotationService as jest.Mocked<
 const calls = (fn: {mock: {calls: unknown[][]}}) =>
   fn.mock.calls.map(call => call[0]);
 
-function setRows(
-  bookmarks: string[],
-  highlights: Record<string, HighlightColor> = {},
-) {
-  useVerseAnnotationsStore.setState({
-    bookmarkedVerseKeys: new Set(bookmarks),
-    highlights,
-  });
-}
-
 /** useSelectionMarks of `selection`, re-read after every store change. */
 function renderMarks(selection: ReadyVerseSelection | null): {
   current: () => SelectionMarks;
@@ -157,7 +148,6 @@ async function run(change: () => Promise<void>) {
 beforeEach(() => {
   jest.clearAllMocks();
   setRows([]);
-  useVerseAnnotationsStore.setState({notedVerseKeys: new Set()});
 });
 
 describe('the keys whose rows mark a verse', () => {
@@ -224,14 +214,24 @@ describe('bookmarks', () => {
     expect(marks.current().bookmarked).toBe(true);
 
     await run(() => setSelectionBookmarked(warshSelection('103:1'), false));
-    // Its own anchor (as always) and the legacy row.
-    expect(calls(service.removeBookmark)).toEqual(['103:1', '103:2']);
+    // Every row that marks it: the legacy row.
+    expect(calls(service.removeBookmark)).toEqual(['103:2']);
     expect(service.addBookmark).not.toHaveBeenCalled();
     expect([
       ...useVerseAnnotationsStore.getState().bookmarkedVerseKeys,
     ]).toEqual([]);
     expect(marks.current().bookmarked).toBe(false);
     marks.unmount();
+  });
+
+  it('removing deletes its own row and a legacy row, nothing else', async () => {
+    setRows(['103:1', '103:2', '103:3']);
+    await setSelectionBookmarked(warshSelection('103:1'), false);
+    expect(calls(service.removeBookmark)).toEqual(['103:1', '103:2']);
+    // "103:3" is Warsh 103:2's own row.
+    expect([
+      ...useVerseAnnotationsStore.getState().bookmarkedVerseKeys,
+    ]).toEqual(['103:3']);
   });
 
   it('a row marks only the verse holding the slot it names', () => {
@@ -273,7 +273,7 @@ describe('bookmarks', () => {
 
   it('Hafs: adds and removes exactly the selected keys, as before', async () => {
     // A row of another rewayah inside Hafs 2:255 is not a Hafs bookmark.
-    setRows(['2:255:3']);
+    setRows(['2:255:3'], {}, 'warsh');
     const marks = renderMarks(hafsSelection('2:255'));
     expect(marks.current().bookmarked).toBe(false);
     await run(() => setSelectionBookmarked(hafsSelection('2:255'), true));
@@ -299,7 +299,7 @@ describe('highlights', () => {
     expect(marks.current().highlightColor).toBe('yellow');
 
     await run(() => setSelectionHighlight(warshSelection('103:1'), null));
-    expect(calls(service.removeHighlight)).toEqual(['103:1', '103:2']);
+    expect(calls(service.removeHighlight)).toEqual(['103:2']);
     expect(useVerseAnnotationsStore.getState().highlights).toEqual({});
     expect(marks.current().highlightColor).toBeNull();
     marks.unmount();
@@ -332,13 +332,13 @@ describe('highlights', () => {
   });
 
   it('Hafs: colours and removes every selected key, as before', async () => {
-    setRows([], {'2:286': 'orange'});
+    setRows([], {'2:286': 'orange'}, 'hafs');
     await setSelectionHighlight(hafsSelection('2:286', '3:1'), 'green');
     expect(service.upsertHighlight.mock.calls).toEqual([
       ['2:286', 2, 286, 'green', 'hafs'],
       ['3:1', 3, 1, 'green', 'hafs'],
     ]);
-    setRows([], {'2:286': 'orange'});
+    setRows([], {'2:286': 'orange'}, 'hafs');
     // Every selected key is removed, stored or not (the sheets always did).
     await setSelectionHighlight(hafsSelection('2:286', '3:1'), null);
     expect(calls(service.removeHighlight)).toEqual(['2:286', '3:1']);

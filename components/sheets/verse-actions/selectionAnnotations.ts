@@ -13,9 +13,11 @@
  *    a row saved before Release 1 on a Hafs verse whose first word it holds
  *    (a legacy Warsh row "103:2" marks Warsh 103:1 = Hafs 103:1 + 103:2);
  *  - removing a verse's mark deletes every row that marks it, legacy rows
- *    included, so no row is left that still marks it on the mushaf.
+ *    included, so no row is left that still marks it on the mushaf;
+ *  - marking it writes a row at its anchor unless a row already marks it.
  * Hafs: a verse's only key is its own Hafs key, so the sheets read and
- * write exactly the rows they did before, call for call.
+ * write exactly the rows they did before, call for call (every selected
+ * key is added or removed, stored or not).
  *
  * The annotations store keys rows by verse_key alone here, so every row is
  * read as a row of the shown rewayah (exact for that rewayah's rows and for
@@ -72,17 +74,17 @@ export function selectionRowKeys(selection: ReadyVerseSelection): string[][] {
 }
 
 /**
- * The rows a removal deletes: each verse's own anchor (removed whether or
- * not it is stored, as the sheets always did) and every other key of the
- * verse that `stored` has. Hafs: exactly the selected keys.
+ * The rows a removal deletes: every stored row (`stored`) that marks a
+ * selected verse. Hafs: every selected key, stored or not, as the sheets
+ * always removed them.
  */
 function removalKeys(
+  selection: ReadyVerseSelection,
   rowKeys: readonly (readonly string[])[],
   stored: (key: string) => boolean,
 ): string[] {
-  return rowKeys.flatMap(keys =>
-    keys.filter((key, i) => i === 0 || stored(key)),
-  );
+  if (!selection.units) return rowKeys.map(keys => keys[0]);
+  return rowKeys.flatMap(keys => keys.filter(stored));
 }
 
 /** The first colour among `keys` (a verse's row keys, own anchor first). */
@@ -132,7 +134,7 @@ export function useSelectionMarks(
 
 /**
  * Bookmark the selected verses: one row per verse at its anchor, except a
- * verse another row already marks (it keeps that row rather than getting a
+ * verse a row already marks (it keeps that row rather than getting a
  * second one). Or remove their bookmarks: every row that marks one of them.
  * Hafs: adds or removes each selected Hafs key, as before.
  */
@@ -143,14 +145,16 @@ export async function setSelectionBookmarked(
   const store = useVerseAnnotationsStore.getState();
   const rowKeys = selectionRowKeys(selection);
   if (!bookmarked) {
-    for (const key of removalKeys(rowKeys, k => store.isBookmarked(k))) {
+    const keys = removalKeys(selection, rowKeys, k => store.isBookmarked(k));
+    for (const key of keys) {
       await verseAnnotationService.removeBookmark(key);
       store.removeBookmark(key);
     }
     return;
   }
   for (const [i, anchor] of selection.anchors.entries()) {
-    if (rowKeys[i].some(key => key !== anchor.key && store.isBookmarked(key))) {
+    // Hafs adds every selected key, as before (the insert is OR IGNORE).
+    if (selection.units && rowKeys[i].some(key => store.isBookmarked(key))) {
       continue;
     }
     await verseAnnotationService.addBookmark(
@@ -175,7 +179,11 @@ export async function setSelectionHighlight(
   const store = useVerseAnnotationsStore.getState();
   if (color === null) {
     const {highlights} = store;
-    const keys = removalKeys(selectionRowKeys(selection), k => !!highlights[k]);
+    const keys = removalKeys(
+      selection,
+      selectionRowKeys(selection),
+      k => !!highlights[k],
+    );
     for (const key of keys) {
       await verseAnnotationService.removeHighlight(key);
       store.removeHighlight(key);

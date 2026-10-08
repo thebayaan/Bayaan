@@ -111,27 +111,21 @@ jest.mock('@/utils/translationLookup', () => ({
   getTranslationTextRaw: (verseKey: string) => `T(${verseKey})`,
 }));
 jest.mock('@/utils/timestampUtils', () => ({getPlayFromHereTarget: jest.fn()}));
+// The real annotations store over a mocked database service.
 jest.mock('@/services/verse-annotations/VerseAnnotationService', () => ({
   verseAnnotationService: {
     addBookmark: jest.fn(async () => undefined),
     removeBookmark: jest.fn(async () => undefined),
+    upsertHighlight: jest.fn(async () => undefined),
     removeHighlight: jest.fn(async () => undefined),
+    addNote: jest.fn(async () => undefined),
+    getAnnotationsForSurah: jest.fn(async () => ({
+      bookmarks: [],
+      notes: [],
+      highlights: [],
+    })),
   },
 }));
-jest.mock('@/store/verseAnnotationsStore', () => {
-  const {create} = jest.requireActual('zustand');
-  const store = create(() => ({
-    bookmarks: new Set<string>(),
-    isBookmarked(key: string) {
-      return store.getState().bookmarks.has(key);
-    },
-    highlights: {} as Record<string, string>,
-    addBookmark: jest.fn(),
-    removeBookmark: jest.fn(),
-    removeHighlight: jest.fn(),
-  }));
-  return {useVerseAnnotationsStore: store};
-});
 const mockPlayer = {
   rewayatId: 'r1' as string | null,
   currentPage: 1,
@@ -207,8 +201,8 @@ import {router} from 'expo-router';
 import {showToast} from '@/utils/toastUtils';
 import {qulDataService} from '@/services/mushaf/QulDataService';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
-import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import {setStoredRows as setRows} from '../verse-actions/__fixtures__/storedRows';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {
   buildRewayahVerseUnits,
@@ -329,15 +323,6 @@ beforeEach(() => {
   setRows([]);
 });
 
-/** Stored bookmark / highlight rows (verse_keys), any rewayah. */
-function setRows(bookmarks: string[], highlights: Record<string, string> = {}) {
-  (
-    useVerseAnnotationsStore as unknown as {
-      setState: (s: object) => void;
-    }
-  ).setState({bookmarks: new Set(bookmarks), highlights});
-}
-
 const removedBookmarks = () =>
   (verseAnnotationService.removeBookmark as jest.Mock).mock.calls.map(
     call => call[0],
@@ -394,7 +379,7 @@ describe('Hafs (unchanged)', () => {
   });
 
   it('removes exactly the bookmarked Hafs key, as before', async () => {
-    setRows(['2:255']);
+    setRows(['2:255'], {}, 'hafs');
     await openSheet(payload);
     expect(texts()).toContain('Remove Bookmark');
     await press('Remove Bookmark');
@@ -409,7 +394,7 @@ describe('Hafs (unchanged)', () => {
   });
 
   it('removes every selected Hafs highlight, as before', async () => {
-    setRows([], {'2:286': 'yellow'});
+    setRows([], {'2:286': 'yellow'}, 'hafs');
     await openSheet({
       ...payload,
       verseKey: '2:286',
@@ -611,8 +596,8 @@ describe('stored rows that mark a Warsh verse (contract section 3)', () => {
     await openSheet(warshUnitPayload(['103:1']));
     expect(texts()).toContain('Remove Bookmark');
     await press('Remove Bookmark');
-    // Its own anchor (as always) and the legacy row; nothing added.
-    expect(removedBookmarks()).toEqual(['103:1', '103:2']);
+    // Every row that marks it: the legacy row; nothing added.
+    expect(removedBookmarks()).toEqual(['103:2']);
     expect(verseAnnotationService.addBookmark).not.toHaveBeenCalled();
   });
 
@@ -648,7 +633,7 @@ describe('stored rows that mark a Warsh verse (contract section 3)', () => {
     await openSheet(warshUnitPayload(['103:1']));
     expect(texts()).toContain('Remove Highlight');
     await press('Remove Highlight');
-    expect(removedHighlights()).toEqual(['103:1', '103:2']);
+    expect(removedHighlights()).toEqual(['103:2']);
     expect(last('highlight')).toBeUndefined();
   });
 });

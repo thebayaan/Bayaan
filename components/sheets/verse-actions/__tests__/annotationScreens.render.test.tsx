@@ -9,7 +9,8 @@
  *
  * Real Warsh slots (verseUnitsFixture.json: Warsh 1:6 = Hafs 1:7 words 1-4,
  * 1:7 = the rest of Hafs 1:7, 103:1 = Hafs 103:1 + 103:2); the real
- * annotations store with the database service mocked.
+ * annotations store with the database service mocked; rows are saved in
+ * Warsh unless a test says otherwise.
  */
 import React, {act} from 'react';
 import TestRenderer from 'react-test-renderer';
@@ -53,6 +54,11 @@ jest.mock('@/services/verse-annotations/VerseAnnotationService', () => ({
     upsertHighlight: jest.fn(async () => undefined),
     removeHighlight: jest.fn(async () => undefined),
     addNote: jest.fn(async () => undefined),
+    getAnnotationsForSurah: jest.fn(async () => ({
+      bookmarks: [],
+      notes: [],
+      highlights: [],
+    })),
   },
 }));
 jest.mock('@/services/mushaf/DigitalKhattDataService', () => ({
@@ -66,8 +72,8 @@ jest.mock('@/services/mushaf/RewayahVerseUnitsService', () => ({
 import {HighlightContent} from '../HighlightContent';
 import {NoteContent} from '../NoteContent';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
-import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
 import {HIGHLIGHT_COLORS, type HighlightColor} from '@/types/verse-annotations';
+import {setStoredRows} from '../__fixtures__/storedRows';
 import {
   selectVerses,
   unitSelection,
@@ -176,11 +182,7 @@ async function pressText(text: string) {
 
 beforeEach(() => {
   jest.clearAllMocks();
-  useVerseAnnotationsStore.setState({
-    bookmarkedVerseKeys: new Set(),
-    notedVerseKeys: new Set(),
-    highlights: {},
-  });
+  setStoredRows([]);
 });
 
 afterEach(() => {
@@ -190,7 +192,7 @@ afterEach(() => {
 
 describe('Highlight screen', () => {
   it('a legacy row on a Hafs verse the verse holds is its colour; Remove deletes it', async () => {
-    useVerseAnnotationsStore.setState({highlights: {'103:2': 'yellow'}});
+    setStoredRows([], {'103:2': 'yellow'});
     await render(
       <HighlightContent selection={warshSelection('103:1')} onDone={onDone} />,
     );
@@ -198,7 +200,6 @@ describe('Highlight screen', () => {
     expect(hasText('Remove Highlight')).toBe(true);
     await pressText('Remove Highlight');
     expect(service.removeHighlight.mock.calls.map(c => c[0])).toEqual([
-      '103:1',
       '103:2',
     ]);
     expect(onDone).toHaveBeenCalled();
@@ -221,7 +222,7 @@ describe('Highlight screen', () => {
   });
 
   it('Hafs: the Hafs key, as before', async () => {
-    useVerseAnnotationsStore.setState({highlights: {'2:255': 'blue'}});
+    setStoredRows([], {'2:255': 'blue'}, 'hafs');
     await render(
       <HighlightContent selection={hafsSelection('2:255')} onDone={onDone} />,
     );
