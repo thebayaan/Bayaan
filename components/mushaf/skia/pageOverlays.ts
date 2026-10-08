@@ -2,6 +2,7 @@ import type {RewayahId} from '@/store/mushafSettingsStore';
 import type {IndexedTajweedData} from '@/utils/tajweedLoader';
 import {getLineAllahNameCharMap} from '@/services/mushaf/AllahNameHighlightService';
 import {getLineTajweedMap} from '@/services/mushaf/TajweedMappingService';
+import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService'; // @ai
 import {
   rewayahDiffService,
   type PageDiffHighlight,
@@ -15,10 +16,29 @@ import {
  *
  * `textRewayah` is the rewayah of the rendered text, i.e. the active DK words
  * cache (digitalKhattDataService.rewayah). Callers recompute these maps when
- * it, the settings, or digitalKhattDataService.getCacheVersion() change.
+ * it, the settings, or the identity of the rendered text
+ * (getPageTextIdentity) change.
  */
 
 export type LineMaps = (Map<number, string> | null)[];
+
+// @ai-start
+/**
+ * Identity of the text the page renderers draw: the data identity of the
+ * active DK words cache (`<rewayah>@<wordsSha8>.<layoutSha8>`, see
+ * DigitalKhattDataService.getLayoutIdentityKey), or null before the first
+ * load. The renderers read it with
+ * useSyncExternalStore(digitalKhattDataService.subscribeCacheChanges, ...): it
+ * changes exactly when the served text changes (a rewayah switch or a data
+ * reload) and not on the other cache events (a side-cache load, or a failed
+ * one, for another rewayah; a failed switch), so those never re-render a
+ * mounted page. Page layouts (justification) are only ever drawn with the
+ * text identity they were computed for.
+ */
+export function getPageTextIdentity(): string | null {
+  return digitalKhattDataService.getLayoutIdentityKey();
+}
+// @ai-end
 
 /** Hafs (QPC) tajweed is only ever painted on Hafs text. */
 export function isTajweedEnabled(

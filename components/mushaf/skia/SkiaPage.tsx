@@ -51,6 +51,7 @@ import {
   computeLineCharRuleMaps,
   computeLineTajweedMaps,
   computePageDiffBackgrounds,
+  getPageTextIdentity, // @ai
   isRewayahDiffPaintEnabled,
   isTajweedEnabled,
 } from './pageOverlays';
@@ -165,13 +166,17 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
   const rewayah = useMushafSettingsStore(s => s.rewayah);
   const showRewayahDiffs = useMushafSettingsStore(s => s.showRewayahDiffs);
   const indexedTajweedData = useTajweedStore(s => s.indexedTajweedData);
-  // Words-cache version: bumps whenever the DK words change (rewayah switch,
-  // data reload). Every char-offset memo below depends on it so no overlay
-  // computed for the previous text survives on a mounted page.
-  const dataVersion = useSyncExternalStore(
+  // @ai-start
+  // Identity of the text this page draws (see getPageTextIdentity): changes
+  // when the DK words change (rewayah switch, data reload), not on side-cache
+  // loads for other rewayat (the player), so those never re-render the page.
+  // Every char-offset memo below depends on it so no overlay computed for the
+  // previous text survives on a mounted page.
+  const textIdentity = useSyncExternalStore(
     digitalKhattDataService.subscribeCacheChanges,
-    digitalKhattDataService.getCacheVersion,
+    getPageTextIdentity,
   );
+  // @ai-end
   // Rewayah of the text this page renders (the active DK words cache). The
   // store value can lag it during a switch, so overlays gate on this one.
   const textRewayah = digitalKhattDataService.rewayah;
@@ -247,9 +252,9 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
   // Get page lines for layout calculation
   const pageLines = useMemo<DKLine[]>(
     () => digitalKhattDataService.getPageLines(pageNumber),
-    // dataVersion: re-read after a data reload.
+    // textIdentity: re-read after a data reload.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [pageNumber, dataVersion],
+    [pageNumber, textIdentity], // @ai
   );
 
   // Compute layout if not already cached (first-launch race condition fallback)
@@ -279,14 +284,14 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
     if (result.length > 0) {
       mushafLayoutCacheService.setPageLayout(pageNumber, fontFamily, result);
     }
-    // rewayah/dataVersion: the layout depends on the line text.
+    // rewayah/textIdentity: the layout depends on the line text.
   }, [
     fontMgr,
     pageNumber,
     fontSizeLineWidthRatio,
     fontFamily,
     rewayah,
-    dataVersion,
+    textIdentity, // @ai
   ]);
 
   // Calculate Y positions for each line
@@ -310,7 +315,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
         indexedTajweedData,
         tajweedEnabled,
       ),
-    // rewayah/textRewayah/dataVersion: maps index into the rendered text.
+    // rewayah/textRewayah/textIdentity: maps index into the rendered text.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       tajweedEnabled,
@@ -319,7 +324,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
       pageLines,
       rewayah,
       textRewayah,
-      dataVersion,
+      textIdentity, // @ai
     ],
   );
 
@@ -331,7 +336,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
         allahNameHighlightColor,
         showAllahNameHighlight,
       ),
-    // rewayah/textRewayah/dataVersion: maps index into the rendered text.
+    // rewayah/textRewayah/textIdentity: maps index into the rendered text.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       showAllahNameHighlight,
@@ -340,7 +345,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
       allahNameHighlightColor,
       rewayah,
       textRewayah,
-      dataVersion,
+      textIdentity, // @ai
     ],
   );
 
@@ -356,7 +361,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
         lineTajweedMaps,
         rewayahDiffPaintEnabled,
       ),
-    // rewayah/textRewayah/dataVersion: rewayahDiffService is a singleton whose
+    // rewayah/textRewayah/textIdentity: rewayahDiffService is a singleton whose
     // state follows the active rewayah and words cache.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
@@ -366,7 +371,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
       rewayahDiffPaintEnabled,
       rewayah,
       textRewayah,
-      dataVersion,
+      textIdentity, // @ai
     ],
   );
 
@@ -386,9 +391,9 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
       }
     }
     return count;
-    // dataVersion: line text can change with the words cache.
+    // textIdentity: line text can change with the words cache.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [justResults, pageLines, pageNumber, dataVersion]);
+  }, [justResults, pageLines, pageNumber, textIdentity]); // @ai
 
   const expectedLineCountRef = useRef(expectedLineCount);
   expectedLineCountRef.current = expectedLineCount;
@@ -460,9 +465,9 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
   // Ordered verse keys for drag range computation
   const orderedVerseKeys = useMemo(
     () => mushafVerseMapService.getOrderedVerseKeysForPage(pageNumber),
-    // rewayah/dataVersion: segments follow the rendered text.
+    // rewayah/textIdentity: segments follow the rendered text.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [pageNumber, rewayah, dataVersion],
+    [pageNumber, rewayah, textIdentity], // @ai
   );
 
   // Refs for drag state (avoid re-renders during drag)
@@ -709,7 +714,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
     });
     return layers ?? EMPTY_BG_MAP;
     // @ai-end
-    // rewayah/textRewayah/dataVersion: verse segments and diff ranges follow
+    // rewayah/textRewayah/textIdentity: verse segments and diff ranges follow
     // the rendered text (singleton services; not read directly).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -727,7 +732,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
     rewayah,
     textRewayah,
     rewayahDiffPaintEnabled,
-    dataVersion,
+    textIdentity, // @ai
   ]);
 
   const pageStyle = {width: SCREEN_WIDTH, height: SCREEN_HEIGHT};
@@ -795,7 +800,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
               charToColor={lineAllahNameColorMaps?.[lineIndex] ?? undefined}
               fontFamily={fontFamily}
               arabicTextWeight={arabicTextWeight}
-              dataVersion={dataVersion}
+              textIdentity={textIdentity} // @ai
               onParagraphReady={handleParagraphReady}
               onParagraphDisposed={handleParagraphDisposed}
               backgroundHighlights={lineBackgroundHighlightsMap.get(lineIndex)}
