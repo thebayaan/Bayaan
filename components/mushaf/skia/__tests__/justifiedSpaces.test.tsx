@@ -110,7 +110,7 @@ jest.mock('@/utils/skiaTextWeight', () => ({
 // One line of four tokens (the third a verse marker): two simple spaces, then
 // an aya space. 11 letters: 110 px in the mock.
 const LINE = 'ابت جحخ ۝١ دذر';
-const mockLine = {lineType: 0, lineWidthRatio: 1};
+const mockLine = {lineType: 0, lineWidthRatio: 1, isCentered: false};
 jest.mock('@/services/mushaf/QuranTextService', () => {
   const word = (startIndex: number, endIndex: number) => ({
     startIndex,
@@ -147,6 +147,8 @@ import {
   clampRectToBand,
   clearLineFits,
   fitWordSize,
+  isNaturalWidthLine,
+  naturalJustification,
   justifiedLineStrut,
   justifiedSpaceFontSize,
   mergeTouchingRects,
@@ -200,6 +202,8 @@ beforeEach(() => {
   mockSkia.shapingLoss = 0;
   mockSkia.rectsForRange = () => [];
   mockLine.lineType = 0;
+  mockLine.lineWidthRatio = 1;
+  mockLine.isCentered = false;
 });
 
 describe('justifiedSpace helpers', () => {
@@ -233,6 +237,34 @@ describe('justifiedSpace helpers', () => {
     expect(fitWordSize(20, 100, 125)).toBe(16);
     expect(fitWordSize(20, 100, 100.2)).toBe(20);
     expect(fitWordSize(20, 100, 0)).toBe(20);
+  });
+
+  it('draws only an untabled centred ayah line at its natural width', () => {
+    expect(
+      isNaturalWidthLine({lineType: 0, lineWidthRatio: 1, isCentered: true}),
+    ).toBe(true);
+    // A width of its own (pages 1-2, 600-604) is justified to that width.
+    expect(
+      isNaturalWidthLine({lineType: 0, lineWidthRatio: 0.84, isCentered: true}),
+    ).toBe(false);
+    expect(
+      isNaturalWidthLine({lineType: 0, lineWidthRatio: 1, isCentered: false}),
+    ).toBe(false);
+    // Surah names and basmalas are centred already.
+    expect(
+      isNaturalWidthLine({lineType: 2, lineWidthRatio: 1, isCentered: true}),
+    ).toBe(false);
+    const natural = naturalJustification({
+      fontFeatures: new Map([[2, [{name: 'cv01', value: 3}]]]),
+      simpleSpacing: 180,
+      ayaSpacing: 400,
+      fontSizeRatio: 1,
+    });
+    expect(natural.fontFeatures.size).toBe(0);
+    expect([natural.simpleSpacing, natural.ayaSpacing]).toEqual([100, 100]);
+    expect(
+      naturalJustification({...natural, fontSizeRatio: 0.9}).fontSizeRatio,
+    ).toBe(0.9);
   });
 
   it('forces a strut at the words size', () => {
@@ -482,5 +514,29 @@ describe('SkiaLine justified spaces', () => {
     // A new width is a new fit: measured, then fitted to 132 px.
     expect(mockSkia.built).toHaveLength(4);
     expect(mockSkia.built[3].width).toBeCloseTo(132);
+  });
+
+  it('draws a centred line without a width of its own unstretched, centred', () => {
+    // 586:1-like: the layout centres it and the width table has no entry.
+    mockLine.isCentered = true;
+    mockSkia.shapingLoss = 4; // would trigger a fit on a justified line
+    const tree = renderLine({
+      fontFeatures: new Map([[1, [{name: 'cv01', value: 5}]]]),
+      ...WIDENED,
+    } as never);
+
+    // One build: no fit pass. Spaces at the words' size, no kashida feature.
+    expect(mockSkia.built).toHaveLength(1);
+    const [p] = mockSkia.built;
+    expect(spaceSizes(p)).toEqual([20, 20, 20]);
+    for (const c of p.chunks) {
+      expect(
+        (c.style as {fontFeatures?: unknown}).fontFeatures,
+      ).toBeUndefined();
+    }
+    // 11 letters (110) + 3 spaces (6) - 4 = 112 px, centred in 142 px:
+    // x = -(maxWidth - pageWidth + (pageWidth - width) / 2).
+    const [para] = tree.root.findAll(n => (n.type as unknown) === 'Paragraph');
+    expect(para.props.x).toBeCloseTo(-(284 - 142 + (142 - 112) / 2));
   });
 });

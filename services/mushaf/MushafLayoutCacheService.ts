@@ -7,7 +7,12 @@ import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 // Incrementing invalidates all cached layouts and forces recomputation.
 // v9: layouts are now keyed by rewayah (word widths differ per transmission
 // — sharing a cache across rewayahs leaves Shouba lines under-stretched).
-const SCHEMA_VERSION = 9;
+// @ai-start
+// v11: the 600:9 width (84%) moved to 600:10, the line the layout centres.
+// (v10 is taken by the rewayah PR, #329, which keys layouts by text identity;
+// whichever lands second must take the next number.)
+const SCHEMA_VERSION = 11;
+// @ai-end
 
 function mmkvKey(
   fontFamily: string,

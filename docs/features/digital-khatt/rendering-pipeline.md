@@ -185,8 +185,14 @@ Modes:
 
 - centered:
   - surah names (lineType 1) and basmallah (except page 1/2)
+  - ayah lines the layout centres (`is_centered`) that have no width of
+    their own in `QuranTextService.initLineWidths`: drawn at their natural
+    width (no kashida, the font's own spaces), e.g. the closing line of a
+    surah such as 586:1
 - justified:
-  - all other ayah lines
+  - all other ayah lines, to the full line width or to the line's own width
+    (pages 1-2, and the centred lines 600:10, 602:5, 602:15, 603:10, 604:4,
+    604:9, 604:14 and 604:15)
 
 ## Why `maxWidth = pageWidth * 2`
 

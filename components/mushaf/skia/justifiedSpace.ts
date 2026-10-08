@@ -24,11 +24,45 @@
  */
 
 import type {SkStrutStyle} from '@shopify/react-native-skia';
+import type {JustResultByLine} from '@/services/mushaf/JustificationService';
 import {FONTSIZE, SPACEWIDTH} from '@/services/mushaf/QuranTextService';
 
 /** Narrowest spacing drawn (font units at FONTSIZE): a font size must stay
  *  positive, so an overshoot never takes a space to or below zero. */
 const MIN_SPACING = 1;
+
+/**
+ * Whether a line is drawn at its natural width, centred: an ayah line the
+ * layout centres (is_centered) that has no width of its own in
+ * QuranTextService's line-width table (lineWidthRatio 1). Such lines close a
+ * surah on a short line (e.g. 586:1); justifying them would stretch them
+ * across the page.
+ */
+export function isNaturalWidthLine(lineInfo: {
+  lineType: number;
+  lineWidthRatio: number;
+  isCentered?: boolean;
+}): boolean {
+  return (
+    lineInfo.lineType === 0 &&
+    lineInfo.isCentered === true &&
+    lineInfo.lineWidthRatio === 1
+  );
+}
+
+/** The justification of a line drawn at its natural width: no kashida, the
+ *  font's own spaces, and only a shrink JustService needed to fit the page. */
+export function naturalJustification(
+  justification: JustResultByLine,
+): JustResultByLine {
+  return {
+    ...justification,
+    fontFeatures: new Map(),
+    simpleSpacing: SPACEWIDTH,
+    ayaSpacing: SPACEWIDTH,
+    fontSizeRatio: Math.min(1, justification.fontSizeRatio),
+  };
+}
 
 /** Residue (px) under which a drawn line counts as fitted. */
 export const LINE_FIT_TOLERANCE = 0.25;

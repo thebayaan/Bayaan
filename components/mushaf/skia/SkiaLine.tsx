@@ -24,10 +24,12 @@ import {
   clampRectToBand,
   fitWordSize,
   getLineFit,
+  isNaturalWidthLine,
   justifiedLineStrut,
   justifiedSpaceFontSize,
   lineFitKey,
   mergeTouchingRects,
+  naturalJustification,
   setLineFit,
   rectsBand,
   shortestRectBand,
@@ -97,8 +99,16 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
 
     if (!lineText) return null;
 
+    // @ai-start
+    // A line the layout centres without a width of its own (the last line of
+    // a surah, e.g. 586:1) is drawn at its natural width, never stretched.
+    const lineJust = isNaturalWidthLine(lineInfo)
+      ? naturalJustification(justResult)
+      : justResult;
+    // @ai-end
+
     const color = Skia.Color(textColor);
-    const effectiveFontSize = justResult.fontSizeRatio * fontSize;
+    const effectiveFontSize = lineJust.fontSizeRatio * fontSize; // @ai
 
     const textStyle: SkTextStyle = {
       color,
@@ -155,7 +165,7 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
         // Render each character with optional font features and tajweed colors
         for (let i = wordInfo.startIndex; i <= wordInfo.endIndex; i++) {
           const char = lineText.charAt(i);
-          const justInfo = justResult.fontFeatures.get(i);
+          const justInfo = lineJust.fontFeatures.get(i);
           const tajweedRule = charToRule?.get(i);
           const customColor = charToColor?.get(i);
 
@@ -192,8 +202,8 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
         if (spaceType !== undefined) {
           const spacing =
             spaceType === SpaceType.Aya
-              ? justResult.ayaSpacing
-              : justResult.simpleSpacing;
+              ? lineJust.ayaSpacing
+              : lineJust.simpleSpacing;
           const newtextStyle: SkTextStyle = {
             ...lineStyle,
             fontSize: justifiedSpaceFontSize(wordSize, spacing, spaceExtra),
@@ -225,14 +235,14 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
     // once.
     const isJustifiedLine = !(
       lineInfo.lineType === 1 ||
-      (lineInfo.lineType === 2 && pageNumber !== 1 && pageNumber !== 2)
+      (lineInfo.lineType === 2 && pageNumber !== 1 && pageNumber !== 2) ||
+      isNaturalWidthLine(lineInfo)
     );
     const isWidened =
-      justResult.simpleSpacing > SPACEWIDTH ||
-      justResult.ayaSpacing > SPACEWIDTH;
+      lineJust.simpleSpacing > SPACEWIDTH || lineJust.ayaSpacing > SPACEWIDTH;
     const targetWidth = pageWidth - 2 * margin;
     const fitKey = isJustifiedLine
-      ? lineFitKey(lineText, fontFamily, fontSize, targetWidth, justResult)
+      ? lineFitKey(lineText, fontFamily, fontSize, targetWidth, lineJust)
       : null;
     const knownFit = fitKey ? getLineFit(fitKey) : undefined;
     let wordSize = knownFit?.wordSize ?? effectiveFontSize;
@@ -312,9 +322,11 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
   let xPos: number;
   if (
     lineInfo.lineType === 1 ||
-    (lineInfo.lineType === 2 && pageNumber !== 1 && pageNumber !== 2)
+    (lineInfo.lineType === 2 && pageNumber !== 1 && pageNumber !== 2) ||
+    isNaturalWidthLine(lineInfo) // @ai
   ) {
-    // Centered lines: surah names and basmallah (except pages 1-2)
+    // Centered lines: surah names, basmallah (except pages 1-2) and lines
+    // the layout centres at their natural width
     const centeredMargin = (pageWidth - currLineWidth) / 2;
     xPos = -(maxWidth - pageWidth + centeredMargin);
   } else {
