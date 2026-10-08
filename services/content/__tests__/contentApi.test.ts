@@ -40,6 +40,41 @@ describe('isManifest', () => {
     expect(isManifest({...manifest, resources: [{key: 'k'}]})).toBe(false);
     expect(isManifest(null)).toBe(false);
   });
+
+  it('rejects unknown kinds, non-record meta, a non-string name and a non-number schema', () => {
+    const [entry] = manifest.resources;
+    for (const bad of [
+      {...entry, kind: 'audio'},
+      {...entry, meta: 'x'},
+      {...entry, meta: {name: 7}},
+      {...entry, meta: {direction: 'up'}},
+      {...entry, upstream_schema_version: '1'},
+    ]) {
+      expect(isManifest({...manifest, resources: [bad]})).toBe(false);
+    }
+  });
+});
+
+describe('fetchManifest with unknown kinds', () => {
+  it('drops entries of an unknown kind instead of rejecting the manifest', async () => {
+    const extra = {...manifest.resources[0], key: 'qf:audio:1', kind: 'audio'};
+    const fetchImpl = jest.fn(() =>
+      respond(
+        {...manifest, resources: [...manifest.resources, extra]},
+        {status: 200, headers: {ETag: '"e"'}},
+      ),
+    );
+    const api = createContentApi(
+      'https://api.test',
+      'k',
+      fetchImpl as unknown as typeof fetch,
+    );
+    expect(await api.fetchManifest(['tafsir'], null)).toEqual({
+      status: 'ok',
+      manifest,
+      etag: '"e"',
+    });
+  });
 });
 
 describe('createContentApi', () => {

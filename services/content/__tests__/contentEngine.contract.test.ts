@@ -112,12 +112,12 @@ describe('content engine against backend contract fixtures', () => {
     expect(installers.tafsir.install).toHaveBeenCalledWith(
       'qf:tafsirs:169',
       expect.objectContaining({key: 'qf:tafsirs:169'}),
-      undefined,
+      expect.objectContaining({name: 'Synthetic Tafsir'}),
     );
     expect(installers.translation.install).toHaveBeenCalledWith(
       'qf:translations:20',
       expect.objectContaining({key: 'qf:translations:20'}),
-      undefined,
+      expect.objectContaining({name: 'Synthetic Translation'}),
     );
     for (const entry of manifest.resources) {
       expect(await registry.get(entry.key)).toMatchObject({

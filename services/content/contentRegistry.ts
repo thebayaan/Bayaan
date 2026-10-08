@@ -1,11 +1,14 @@
 import * as SQLite from 'expo-sqlite';
-import type {ContentKind, LocalContentRow} from '@/types/content';
+import type {ContentKind, LocalContentRow, Manifest} from '@/types/content';
+import {isManifest} from './contentApi';
 
 export interface ContentState {
   manifestEtag: string | null;
   lastCheckedAt: number | null;
   migratedAt: number | null;
   autoInstallDone: boolean;
+  // The last valid 200 manifest, so a 304 can still process pending rows.
+  manifest: Manifest | null;
 }
 
 export interface ContentRegistry {
@@ -27,6 +30,7 @@ const EMPTY_STATE: ContentState = {
   lastCheckedAt: null,
   migratedAt: null,
   autoInstallDone: false,
+  manifest: null,
 };
 
 export function emptyRow(key: string, kind: ContentKind): LocalContentRow {
@@ -66,7 +70,8 @@ CREATE TABLE IF NOT EXISTS content_state (
   manifest_etag TEXT,
   last_checked_at INTEGER,
   migrated_at INTEGER,
-  auto_install_done INTEGER NOT NULL DEFAULT 0
+  auto_install_done INTEGER NOT NULL DEFAULT 0,
+  manifest_json TEXT
 );
 INSERT OR IGNORE INTO content_state (id) VALUES (1);
 `;
@@ -91,6 +96,33 @@ interface RawState {
   last_checked_at: number | null;
   migrated_at: number | null;
   auto_install_done: number;
+  manifest_json: string | null;
+}
+
+interface RawColumn {
+  name: string;
+}
+
+// content.db files created before manifest_json existed lack the column.
+async function ensureManifestColumn(opened: Db): Promise<void> {
+  // SQLite JSON boundary.
+  const columns = (await opened.getAllAsync(
+    'PRAGMA table_info(content_state)',
+  )) as RawColumn[];
+  if (columns.some(column => column.name === 'manifest_json')) return;
+  await opened.execAsync(
+    'ALTER TABLE content_state ADD COLUMN manifest_json TEXT',
+  );
+}
+
+function parseManifest(text: string | null | undefined): Manifest | null {
+  if (!text) return null;
+  try {
+    const parsed: unknown = JSON.parse(text);
+    return isManifest(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
 }
 
 function fromRaw(raw: RawRow): LocalContentRow {
@@ -117,6 +149,7 @@ export function createSqliteContentRegistry(
   function db(): Promise<Db> {
     ready ??= open().then(async opened => {
       await opened.execAsync(SCHEMA);
+      await ensureManifestColumn(opened);
       return opened;
     });
     return ready;
@@ -178,6 +211,7 @@ export function createSqliteContentRegistry(
         lastCheckedAt: raw.last_checked_at,
         migratedAt: raw.migrated_at,
         autoInstallDone: raw.auto_install_done === 1,
+        manifest: parseManifest(raw.manifest_json),
       };
     },
     async setState(patch) {
@@ -185,12 +219,13 @@ export function createSqliteContentRegistry(
       await (
         await db()
       ).runAsync(
-        'UPDATE content_state SET manifest_etag = ?, last_checked_at = ?, migrated_at = ?, auto_install_done = ? WHERE id = 1',
+        'UPDATE content_state SET manifest_etag = ?, last_checked_at = ?, migrated_at = ?, auto_install_done = ?, manifest_json = ? WHERE id = 1',
         [
           next.manifestEtag,
           next.lastCheckedAt,
           next.migratedAt,
           next.autoInstallDone ? 1 : 0,
+          next.manifest ? JSON.stringify(next.manifest) : null,
         ],
       );
     },

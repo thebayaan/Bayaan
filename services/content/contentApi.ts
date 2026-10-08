@@ -27,12 +27,33 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+function isOptionalString(value: unknown): boolean {
+  return value === undefined || typeof value === 'string';
+}
+
+function isMeta(value: unknown): boolean {
+  if (value === undefined) return true;
+  if (!isRecord(value)) return false;
+  return (
+    isOptionalString(value.name) &&
+    isOptionalString(value.language) &&
+    (value.direction === undefined ||
+      value.direction === 'ltr' ||
+      value.direction === 'rtl')
+  );
+}
+
 function isEntry(value: unknown): value is ManifestEntry {
   if (!isRecord(value)) return false;
   if (
     typeof value.key !== 'string' ||
-    typeof value.kind !== 'string' ||
-    typeof value.version !== 'number'
+    (value.kind !== 'tafsir' && value.kind !== 'translation') ||
+    typeof value.version !== 'number' ||
+    !(
+      value.upstream_schema_version === undefined ||
+      typeof value.upstream_schema_version === 'number'
+    ) ||
+    !isMeta(value.meta)
   )
     return false;
   if (value.status === 'withdrawn') return true;
@@ -51,6 +72,19 @@ export function isManifest(value: unknown): value is Manifest {
     Array.isArray(value.resources) &&
     value.resources.every(isEntry)
   );
+}
+
+function isKnownKind(value: unknown): boolean {
+  return (
+    !isRecord(value) || value.kind === 'tafsir' || value.kind === 'translation'
+  );
+}
+
+// Entries of a kind this build does not know are dropped, not fatal, so a new
+// backend kind cannot invalidate the whole manifest.
+function withKnownKinds(body: unknown): unknown {
+  if (!isRecord(body) || !Array.isArray(body.resources)) return body;
+  return {...body, resources: body.resources.filter(isKnownKind)};
 }
 
 function isTicket(value: unknown): value is DownloadTicket {
@@ -118,7 +152,7 @@ export function createContentApi(
             if (response.status === 304) return {status: 'not_modified'};
             if (!response.ok)
               return {status: 'error', reason: `http_${response.status}`};
-            const body = parseJson(await response.text());
+            const body = withKnownKinds(parseJson(await response.text()));
             if (!isManifest(body))
               return {status: 'error', reason: 'malformed'};
             return {

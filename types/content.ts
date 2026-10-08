@@ -77,6 +77,11 @@ export interface WithdrawalNotice {
   name: string;
 }
 
+export interface InstallOutcome {
+  // The display name the installer stored, for the registry and notices.
+  name: string | null;
+}
+
 export interface ContentInstaller {
   kind: ContentKind;
   supportsSchemaVersion(version: number): boolean;
@@ -84,7 +89,9 @@ export interface ContentInstaller {
     key: string,
     envelope: ContentEnvelope,
     meta: ContentMeta | undefined,
-  ): Promise<void>;
+  ): Promise<InstallOutcome | undefined>;
   remove(key: string): Promise<void>;
   onWithdrawn(key: string): Promise<void>;
+  // A bundled display name for a key, used when the registry has none.
+  fallbackName?(key: string): string | undefined;
 }

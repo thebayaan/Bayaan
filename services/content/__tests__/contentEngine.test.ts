@@ -809,3 +809,193 @@ describe('removeResource', () => {
     });
   });
 });
+
+describe('runContentCheck on 304 with a cached manifest', () => {
+  const NOT_MODIFIED: ManifestResult = {status: 'not_modified'};
+
+  it('stores the 200 manifest with its ETag', async () => {
+    const {deps, registry} = setup(manifest([active(2)]));
+    await runContentCheck(deps);
+    expect(await registry.getState()).toMatchObject({
+      manifestEtag: '"e"',
+      manifest: expect.objectContaining({resources: [active(2)]}),
+    });
+  });
+
+  it('installs a Wi-Fi-gated update on a later 304 check once on Wi-Fi', async () => {
+    const {deps, registry, installer, api, advance} = setup(
+      manifest([active(2, 6_000_000)]),
+    );
+    (deps.isOnWifi as jest.Mock).mockResolvedValue(false);
+    await registry.upsert({...emptyRow(KEY, 'tafsir'), version: 1});
+    expect(await runContentCheck(deps)).toBe('applied');
+    expect(installer.install).not.toHaveBeenCalled();
+
+    api.fetchManifest.mockResolvedValue(NOT_MODIFIED);
+    (deps.isOnWifi as jest.Mock).mockResolvedValue(true);
+    advance(DAY_MS);
+    expect(await runContentCheck(deps)).toBe('not_modified');
+    expect(api.fetchManifest).toHaveBeenLastCalledWith(['tafsir'], '"e"');
+    expect(installer.install).toHaveBeenCalledTimes(1);
+    expect(installer.install).toHaveBeenCalledWith(
+      KEY,
+      expect.objectContaining({version: 2}),
+      {name: 'Ibn Kathir'},
+    );
+    expect((await registry.get(KEY))?.version).toBe(2);
+  });
+
+  it('retries a failed update on a 304 after the backoff', async () => {
+    const {deps, registry, installer, api, advance} = setup(
+      manifest([active(2)]),
+    );
+    await registry.upsert({...emptyRow(KEY, 'tafsir'), version: 1});
+    (deps.sha256 as jest.Mock).mockResolvedValueOnce('wrong');
+    await runContentCheck(deps);
+    expect(installer.install).not.toHaveBeenCalled();
+    expect((await registry.get(KEY))?.failures).toBe(1);
+
+    api.fetchManifest.mockResolvedValue(NOT_MODIFIED);
+    advance(BACKOFF_MS[0] - 1);
+    await runContentCheck(deps, {force: true});
+    expect(installer.install).not.toHaveBeenCalled();
+
+    advance(1);
+    await runContentCheck(deps, {force: true});
+    expect(installer.install).toHaveBeenCalledTimes(1);
+    expect(await registry.get(KEY)).toMatchObject({version: 2, failures: 0});
+  });
+
+  it('retries a failed withdrawal on a 304', async () => {
+    const {deps, registry, installer, api} = setup(
+      manifest([{...active(3), status: 'withdrawn'}]),
+    );
+    await registry.upsert({
+      ...emptyRow(KEY, 'tafsir'),
+      version: 2,
+      installed_at: 1,
+      upstream_schema_version: 1,
+    });
+    installer.remove.mockRejectedValueOnce(new Error('locked'));
+    await runContentCheck(deps);
+    expect(await registry.get(KEY)).not.toBeNull();
+
+    api.fetchManifest.mockResolvedValue(NOT_MODIFIED);
+    await runContentCheck(deps, {force: true});
+    expect(installer.remove).toHaveBeenCalledTimes(2);
+    expect(await registry.get(KEY)).toBeNull();
+    expect(deps.notify).toHaveBeenCalledTimes(1);
+  });
+
+  it('purges nothing the cached manifest does not justify', async () => {
+    const {deps, registry, installer, api} = setup(manifest([active(2)]));
+    await registry.upsert({...emptyRow(KEY, 'tafsir'), version: 2});
+    await runContentCheck(deps);
+    api.fetchManifest.mockResolvedValue(NOT_MODIFIED);
+    const seen = jest.fn();
+    await runContentCheck(deps, {force: true, onManifest: seen});
+    expect(seen).toHaveBeenCalledWith(
+      expect.objectContaining({resources: [active(2)]}),
+    );
+    expect(installer.remove).not.toHaveBeenCalled();
+    expect(installer.install).not.toHaveBeenCalled();
+    expect(await registry.get(KEY)).toMatchObject({version: 2});
+  });
+
+  it('refetches once without If-None-Match when no manifest is cached', async () => {
+    const {deps, registry, installer, api} = setup(manifest([active(2)]));
+    await registry.setState({manifestEtag: '"stale"'});
+    await registry.upsert({...emptyRow(KEY, 'tafsir'), version: 1});
+    api.fetchManifest.mockResolvedValueOnce(NOT_MODIFIED);
+    expect(await runContentCheck(deps)).toBe('applied');
+    expect(api.fetchManifest).toHaveBeenNthCalledWith(1, ['tafsir'], '"stale"');
+    expect(api.fetchManifest).toHaveBeenNthCalledWith(2, ['tafsir'], null);
+    expect(installer.install).toHaveBeenCalledTimes(1);
+    expect((await registry.getState()).manifest).not.toBeNull();
+  });
+});
+
+describe('metadata and names', () => {
+  it('a user install uses the cached manifest meta and records the name', async () => {
+    const {deps, registry, installer} = setup(manifest([active(2)]));
+    await registry.setState({
+      manifest: {
+        format: 1,
+        generated_at: 'x',
+        paused: false,
+        resources: [active(2)],
+      },
+    });
+    installer.install.mockResolvedValueOnce({name: 'Ibn Kathir (Abridged)'});
+    await installResource(deps, KEY, 'tafsir', 'user');
+    expect(installer.install).toHaveBeenCalledWith(KEY, expect.anything(), {
+      name: 'Ibn Kathir',
+    });
+    expect((await registry.get(KEY))?.name).toBe('Ibn Kathir (Abridged)');
+  });
+
+  it('falls back to the meta name when the installer reports none', async () => {
+    const {deps, registry} = setup(manifest([active(2)]));
+    await installResource(deps, KEY, 'tafsir', 'auto', undefined, {
+      name: 'Ibn Kathir',
+    });
+    expect((await registry.get(KEY))?.name).toBe('Ibn Kathir');
+  });
+
+  it('notice name: registry name, then bundled name, then key', async () => {
+    const withdrawn = manifest([
+      {...active(3), status: 'withdrawn', meta: undefined},
+    ]);
+    const named = setup(withdrawn);
+    await named.registry.upsert({
+      ...emptyRow(KEY, 'tafsir'),
+      version: 2,
+      installed_at: 1,
+      upstream_schema_version: 1,
+      name: 'Ibn Kathir',
+    });
+    named.installer.fallbackName = () => 'Bundled';
+    await runContentCheck(named.deps);
+    expect(named.deps.notify).toHaveBeenCalledWith({
+      key: KEY,
+      name: 'Ibn Kathir',
+    });
+
+    const bundled = setup(withdrawn);
+    await bundled.registry.upsert({
+      ...emptyRow(KEY, 'tafsir'),
+      version: 2,
+      installed_at: 1,
+      upstream_schema_version: 1,
+    });
+    bundled.installer.fallbackName = () => 'Bundled';
+    await runContentCheck(bundled.deps);
+    expect(bundled.deps.notify).toHaveBeenCalledWith({
+      key: KEY,
+      name: 'Bundled',
+    });
+
+    const bare = setup(withdrawn);
+    await bare.registry.upsert({
+      ...emptyRow(KEY, 'tafsir'),
+      version: 2,
+      installed_at: 1,
+      upstream_schema_version: 1,
+    });
+    await runContentCheck(bare.deps);
+    expect(bare.deps.notify).toHaveBeenCalledWith({key: KEY, name: KEY});
+  });
+
+  it('tracks an update skipped for an unsupported schema', async () => {
+    const {deps, registry} = setup(
+      manifest([{...active(2), upstream_schema_version: 2}]),
+    );
+    await registry.upsert({...emptyRow(KEY, 'tafsir'), version: 1});
+    await runContentCheck(deps);
+    expect(deps.track).toHaveBeenCalledWith('failed', {
+      key: KEY,
+      version: 1,
+      reason: 'unsupported_schema',
+    });
+  });
+});

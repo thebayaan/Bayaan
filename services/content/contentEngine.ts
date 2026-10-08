@@ -4,6 +4,7 @@ import type {
   ContentEnvelope,
   ContentInstaller,
   ContentKind,
+  ContentMeta,
   LocalContentRow,
   Manifest,
   ManifestEntry,
@@ -14,6 +15,7 @@ export const DAY_MS = 86_400_000;
 export const WIFI_THRESHOLD_BYTES = 5_000_000;
 // Accepted: unforced checks run daily, so the 1h and 6h steps only shorten retries for forced checks and user installs.
 export const BACKOFF_MS = [3_600_000, 21_600_000, 86_400_000];
+const KINDS: ContentKind[] = ['tafsir', 'translation'];
 
 export interface EngineDeps {
   api: ContentApi;
@@ -81,12 +83,21 @@ async function recordFailure(
   deps.track('failed', {key, version: row.version, reason});
 }
 
+async function cachedMeta(
+  deps: EngineDeps,
+  key: string,
+): Promise<ContentMeta | undefined> {
+  const {manifest} = await deps.registry.getState();
+  return manifest?.resources.find(entry => entry.key === key)?.meta;
+}
+
 export async function installResource(
   deps: EngineDeps,
   key: string,
   kind: ContentKind,
   reason: 'user' | 'auto',
   expectedVersion?: number,
+  meta?: ContentMeta,
 ): Promise<void> {
   const installer = deps.installers[kind];
   if (!installer) throw new Error(`no_installer_${kind}`);
@@ -106,9 +117,12 @@ export async function installResource(
     if (!installer.supportsSchemaVersion(parsed.snapshot.schema_version))
       throw new Error('unsupported_schema');
     const previous = (await deps.registry.get(key)) ?? emptyRow(key, kind);
-    await installer.install(key, parsed, undefined);
+    // User and first-launch installs have no entry at hand: use the last manifest.
+    const resolvedMeta = meta ?? (await cachedMeta(deps, key));
+    const outcome = await installer.install(key, parsed, resolvedMeta);
     await deps.registry.upsert({
       ...previous,
+      name: outcome?.name ?? resolvedMeta?.name ?? previous.name,
       version: ticket.version,
       sha256: ticket.sha256,
       upstream_schema_version: parsed.snapshot.schema_version,
@@ -185,7 +199,14 @@ async function purge(
   // publisher, so it is removed without the withdrawal notice.
   const silent = row.legacy && entry?.status !== 'withdrawn';
   if (!silent && !row.withdrawal_notified) {
-    deps.notify({key: row.key, name: row.name ?? entry?.meta?.name ?? row.key});
+    deps.notify({
+      key: row.key,
+      name:
+        row.name ??
+        entry?.meta?.name ??
+        installer.fallbackName?.(row.key) ??
+        row.key,
+    });
     // Persisted before the delete so a failed delete cannot repeat the notice.
     await deps.registry.upsert({...removed, withdrawal_notified: true});
   }
@@ -215,12 +236,55 @@ async function applyRow(
     entry.upstream_schema_version !== undefined &&
     installer.supportsSchemaVersion(entry.upstream_schema_version);
   const backoffOver = retryIsDue(row.next_retry_at, deps.now());
-  if (!needsUpdate || !schemaOk || !backoffOver) return;
+  if (!needsUpdate || !backoffOver) return;
+  if (!schemaOk) {
+    // Spec 7.4: the copy stays, and the skipped update is visible in analytics.
+    deps.track('failed', {
+      key: row.key,
+      version: row.version,
+      reason: 'unsupported_schema',
+    });
+    return;
+  }
   const networkOk =
     (entry.bytes ?? 0) <= WIFI_THRESHOLD_BYTES || (await onWifi());
   if (!networkOk) return;
   await deps.registry.upsert({...row, name: entry.meta?.name ?? row.name});
-  await installResource(deps, row.key, row.kind, 'auto', entry.version);
+  await installResource(
+    deps,
+    row.key,
+    row.kind,
+    'auto',
+    entry.version,
+    entry.meta,
+  );
+}
+
+type ManifestSource =
+  | {status: 'error'}
+  | {status: 'not_modified'; manifest: Manifest | null}
+  | {status: 'ok'; manifest: Manifest};
+
+async function loadManifest(
+  deps: EngineDeps,
+  kinds: ContentKind[],
+  etag: string | null,
+  cached: Manifest | null,
+): Promise<ManifestSource> {
+  const result = await deps.api.fetchManifest(kinds, etag);
+  if (result.status === 'error') return {status: 'error'};
+  if (result.status === 'ok') {
+    await deps.registry.setState({
+      manifestEtag: result.etag,
+      manifest: result.manifest,
+      lastCheckedAt: deps.now(),
+    });
+    return {status: 'ok', manifest: result.manifest};
+  }
+  // A 304 without a cached body: refetch once without If-None-Match.
+  if (!cached && etag !== null) return loadManifest(deps, kinds, null, null);
+  await deps.registry.setState({lastCheckedAt: deps.now()});
+  return {status: 'not_modified', manifest: cached};
 }
 
 export async function runContentCheck(
@@ -231,25 +295,22 @@ export async function runContentCheck(
   if (!opts.force && !checkIsDue(state.lastCheckedAt, deps.now()))
     return 'skipped_recent';
 
-  const kinds = (Object.keys(deps.installers) as ContentKind[]).filter(
-    kind => deps.installers[kind],
+  const kinds = KINDS.filter(kind => deps.installers[kind]);
+  const source = await loadManifest(
+    deps,
+    kinds,
+    state.manifestEtag,
+    state.manifest,
   );
-  const result = await deps.api.fetchManifest(kinds, state.manifestEtag);
-  if (result.status === 'error') return 'error';
-  if (result.status === 'not_modified') {
-    await deps.registry.setState({lastCheckedAt: deps.now()});
-    return 'not_modified';
-  }
-  await deps.registry.setState({
-    manifestEtag: result.etag,
-    lastCheckedAt: deps.now(),
-  });
-  opts.onManifest?.(result.manifest);
-  if (result.manifest.paused) return 'paused';
+  if (source.status === 'error') return 'error';
+  const manifest = source.manifest;
+  if (!manifest) return 'not_modified';
+  opts.onManifest?.(manifest);
+  if (manifest.paused) return 'paused';
 
-  const entries = new Map(
-    result.manifest.resources.map(entry => [entry.key, entry]),
-  );
+  // On a 304 the cached manifest drives the same row processing, so deferred,
+  // failed and legacy rows are retried while the catalog is unchanged.
+  const entries = new Map(manifest.resources.map(entry => [entry.key, entry]));
   let wifi: Promise<boolean> | null = null;
   function onWifi(): Promise<boolean> {
     wifi ??= deps.isOnWifi();
@@ -270,5 +331,5 @@ export async function runContentCheck(
       ).catch(() => undefined);
     }
   }
-  return 'applied';
+  return source.status === 'ok' ? 'applied' : 'not_modified';
 }
