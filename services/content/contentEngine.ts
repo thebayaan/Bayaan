@@ -5,6 +5,7 @@ import type {
   ContentInstaller,
   ContentKind,
   LocalContentRow,
+  Manifest,
   ManifestEntry,
   WithdrawalNotice,
 } from '@/types/content';
@@ -58,7 +59,7 @@ function checkIsDue(lastCheckedAt: number | null, now: number): boolean {
   return gap < 0 || gap >= DAY_MS;
 }
 
-function retryIsDue(nextRetryAt: number | null, now: number): boolean {
+export function retryIsDue(nextRetryAt: number | null, now: number): boolean {
   if (nextRetryAt === null || nextRetryAt <= now) return true;
   // Further out than the longest backoff means the clock moved backwards.
   return nextRetryAt - now > BACKOFF_MS[BACKOFF_MS.length - 1];
@@ -132,7 +133,7 @@ export async function installResource(
 }
 
 export async function removeResource(
-  deps: EngineDeps,
+  deps: Pick<EngineDeps, 'registry' | 'installers'>,
   key: string,
 ): Promise<void> {
   const row = await deps.registry.get(key);
@@ -180,7 +181,10 @@ async function purge(
   };
   await deps.registry.upsert(removed);
   await installer.onWithdrawn(row.key);
-  if (!row.withdrawal_notified) {
+  // A legacy copy the catalog no longer lists was never withdrawn by its
+  // publisher, so it is removed without the withdrawal notice.
+  const silent = row.legacy && entry?.status !== 'withdrawn';
+  if (!silent && !row.withdrawal_notified) {
     deps.notify({key: row.key, name: row.name ?? entry?.meta?.name ?? row.key});
     // Persisted before the delete so a failed delete cannot repeat the notice.
     await deps.registry.upsert({...removed, withdrawal_notified: true});
@@ -221,7 +225,7 @@ async function applyRow(
 
 export async function runContentCheck(
   deps: EngineDeps,
-  opts: {force?: boolean} = {},
+  opts: {force?: boolean; onManifest?: (manifest: Manifest) => void} = {},
 ): Promise<CheckOutcome> {
   const state = await deps.registry.getState();
   if (!opts.force && !checkIsDue(state.lastCheckedAt, deps.now()))
@@ -240,6 +244,7 @@ export async function runContentCheck(
     manifestEtag: result.etag,
     lastCheckedAt: deps.now(),
   });
+  opts.onManifest?.(result.manifest);
   if (result.manifest.paused) return 'paused';
 
   const entries = new Map(

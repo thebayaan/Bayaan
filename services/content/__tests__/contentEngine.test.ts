@@ -370,7 +370,7 @@ describe('runContentCheck never-installed placeholders', () => {
   });
 
   it('still removes and notifies for a withdrawn legacy copy at version 0', async () => {
-    const {deps, registry, installer} = setup(manifest([]));
+    const {deps, registry, installer} = setup(manifest([withdrawnEntry()]));
     await registry.upsert({
       ...emptyRow(KEY, 'tafsir'),
       legacy: true,
@@ -378,7 +378,46 @@ describe('runContentCheck never-installed placeholders', () => {
     });
     await runContentCheck(deps);
     expect(installer.remove).toHaveBeenCalledWith(KEY);
+    expect(installer.onWithdrawn).toHaveBeenCalledWith(KEY);
     expect(deps.notify).toHaveBeenCalledWith({key: KEY, name: 'Ibn Kathir'});
+    expect(await registry.get(KEY)).toBeNull();
+  });
+
+  it('removes a legacy copy absent from the manifest without a notice', async () => {
+    const {deps, registry, installer} = setup(manifest([]));
+    await registry.upsert({
+      ...emptyRow(KEY, 'tafsir'),
+      legacy: true,
+      name: 'Ibn Kathir',
+    });
+    expect(await runContentCheck(deps)).toBe('applied');
+    expect(installer.remove).toHaveBeenCalledWith(KEY);
+    expect(installer.onWithdrawn).toHaveBeenCalledWith(KEY);
+    expect(deps.notify).not.toHaveBeenCalled();
+    expect(deps.track).toHaveBeenCalledWith('withdrawn', {
+      key: KEY,
+      version: 0,
+      reason: 'absent',
+    });
+    expect(await registry.get(KEY)).toBeNull();
+  });
+
+  it('passes a valid manifest to onManifest, but not on 304 or error', async () => {
+    const ok = setup(manifest([active(2)], true));
+    const seen = jest.fn();
+    expect(await runContentCheck(ok.deps, {onManifest: seen})).toBe('paused');
+    expect(seen).toHaveBeenCalledWith(
+      expect.objectContaining({paused: true, resources: [active(2)]}),
+    );
+    for (const result of [
+      {status: 'not_modified' as const},
+      {status: 'error' as const, reason: 'x'},
+    ]) {
+      const other = setup(result);
+      const none = jest.fn();
+      await runContentCheck(other.deps, {onManifest: none});
+      expect(none).not.toHaveBeenCalled();
+    }
   });
 
   it('sends no second notice on a later check after a withdrawal', async () => {
