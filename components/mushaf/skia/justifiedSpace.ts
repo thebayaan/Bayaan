@@ -64,6 +64,82 @@ export function fitWordSize(
 }
 
 /**
+ * A line's fit pass result: the words' font size and the px added to every
+ * space. Cached per line for the session (by everything that sets the drawn
+ * width: the line text, its justification, font, size and line width), so a
+ * line is measured and rebuilt at most once; later builds of it (a colour,
+ * tajweed or highlight change, a page revisit) build once with the fit.
+ */
+export interface LineFit {
+  wordSize: number;
+  spaceExtra: number;
+}
+
+/** Lines kept (about 130 pages of 15 lines). */
+const LINE_FIT_LIMIT = 2000;
+const lineFits = new Map<string, LineFit>();
+
+/** Cached fit of the line `key` names (see lineFitKey), most recent first. */
+export function getLineFit(key: string): LineFit | undefined {
+  const fit = lineFits.get(key);
+  if (fit) {
+    lineFits.delete(key);
+    lineFits.set(key, fit);
+  }
+  return fit;
+}
+
+export function setLineFit(key: string, fit: LineFit): void {
+  lineFits.set(key, fit);
+  if (lineFits.size > LINE_FIT_LIMIT) {
+    const oldest = lineFits.keys().next().value;
+    if (oldest !== undefined) lineFits.delete(oldest);
+  }
+}
+
+/** Drops every cached fit (tests). */
+export function clearLineFits(): void {
+  lineFits.clear();
+}
+
+/**
+ * Key of a line's fit: everything that sets its drawn width. `features` is
+ * the justification's per-character font features (index -> features).
+ */
+export function lineFitKey(
+  lineText: string,
+  fontFamily: string,
+  fontSize: number,
+  lineWidth: number,
+  justification: {
+    simpleSpacing: number;
+    ayaSpacing: number;
+    fontSizeRatio: number;
+    fontFeatures: ReadonlyMap<
+      number,
+      ReadonlyArray<{name: string; value: number}>
+    >;
+  },
+): string {
+  let features = '';
+  for (const [index, list] of justification.fontFeatures) {
+    features += `${index}:`;
+    for (const f of list) features += `${f.name}=${f.value},`;
+    features += ';';
+  }
+  return [
+    fontFamily,
+    fontSize,
+    lineWidth,
+    justification.fontSizeRatio,
+    justification.simpleSpacing,
+    justification.ayaSpacing,
+    features,
+    lineText,
+  ].join('|');
+}
+
+/**
  * Width (px) to add to each of a line's `spaceCount` spaces so a line drawn
  * `drawnWidth` wide fills `targetWidth`; 0 when it already fits.
  */

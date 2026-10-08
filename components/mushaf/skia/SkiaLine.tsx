@@ -23,9 +23,12 @@ import type {JustResultByLine} from '@/services/mushaf/JustificationService';
 import {
   clampRectToBand,
   fitWordSize,
+  getLineFit,
   justifiedLineStrut,
   justifiedSpaceFontSize,
+  lineFitKey,
   mergeTouchingRects,
+  setLineFit,
   rectsBand,
   shortestRectBand,
   spaceFitExtra,
@@ -216,7 +219,10 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
     // words (justifiedSpace.ts), and a shrunk line's size can round. Measure
     // it, then spread a widened line's residue over its spaces, or scale a
     // line at the words' spacing (its spaces stay in the words' runs), so the
-    // line ends exactly on the margin. Centered lines are left as built.
+    // line ends exactly on the margin. Centered lines are left as built. The
+    // fit is kept per line for the session (justifiedSpace.ts getLineFit), so
+    // a later build of the same line (colours, highlights, a revisit) builds
+    // once.
     const isJustifiedLine = !(
       lineInfo.lineType === 1 ||
       (lineInfo.lineType === 2 && pageNumber !== 1 && pageNumber !== 2)
@@ -224,11 +230,15 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
     const isWidened =
       justResult.simpleSpacing > SPACEWIDTH ||
       justResult.ayaSpacing > SPACEWIDTH;
-    let wordSize = effectiveFontSize;
-    let spaceExtra = 0;
+    const targetWidth = pageWidth - 2 * margin;
+    const fitKey = isJustifiedLine
+      ? lineFitKey(lineText, fontFamily, fontSize, targetWidth, justResult)
+      : null;
+    const knownFit = fitKey ? getLineFit(fitKey) : undefined;
+    let wordSize = knownFit?.wordSize ?? effectiveFontSize;
+    let spaceExtra = knownFit?.spaceExtra ?? 0;
     let paragraph = buildParagraph(false, wordSize, spaceExtra);
-    if (isJustifiedLine) {
-      const targetWidth = pageWidth - 2 * margin;
+    if (fitKey && !knownFit) {
       const drawnWidth = paragraph.getLongestLine();
       if (isWidened) {
         spaceExtra = spaceFitExtra(
@@ -243,6 +253,7 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
         paragraph.dispose();
         paragraph = buildParagraph(false, wordSize, spaceExtra);
       }
+      setLineFit(fitKey, {wordSize, spaceExtra});
     }
 
     const strokeWidth = getArabicTextWeightStrokeWidth(

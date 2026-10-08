@@ -145,6 +145,7 @@ jest.mock('@/services/mushaf/QuranTextService', () => {
 import SkiaLine from '../SkiaLine';
 import {
   clampRectToBand,
+  clearLineFits,
   fitWordSize,
   justifiedLineStrut,
   justifiedSpaceFontSize,
@@ -194,6 +195,7 @@ const spaceSizes = (b: MockBuilt) =>
   b.chunks.filter(c => c.text === ' ').map(c => c.style.fontSize);
 
 beforeEach(() => {
+  clearLineFits();
   mockSkia.built = [];
   mockSkia.shapingLoss = 0;
   mockSkia.rectsForRange = () => [];
@@ -444,5 +446,41 @@ describe('SkiaLine justified spaces', () => {
     expect(rects[0].props.y).toBeCloseTo(100 + 2);
     expect(rects[0].props.height).toBeCloseTo(40);
     expect(rects[0].props.width).toBeCloseTo(58);
+  });
+
+  it('reuses a line fit when the line is built again', () => {
+    mockSkia.shapingLoss = 4;
+    const tree = renderLine(WIDENED);
+    expect(mockSkia.built).toHaveLength(2); // measured, then fitted
+
+    // A colour change rebuilds the line: one build, with the kept fit.
+    act(() => {
+      tree.update(
+        <SkiaLine
+          {...baseProps}
+          justResult={{fontFeatures: new Map(), ...WIDENED}}
+          charToColor={new Map([[0, '#ff0000']])}
+        />,
+      );
+    });
+    expect(mockSkia.built).toHaveLength(3);
+    expect(mockSkia.built[2].width).toBeCloseTo(122);
+  });
+
+  it('fits again when the width the line fills changes', () => {
+    mockSkia.shapingLoss = 4;
+    const tree = renderLine(WIDENED);
+    act(() => {
+      tree.update(
+        <SkiaLine
+          {...baseProps}
+          pageWidth={152}
+          justResult={{fontFeatures: new Map(), ...WIDENED}}
+        />,
+      );
+    });
+    // A new width is a new fit: measured, then fitted to 132 px.
+    expect(mockSkia.built).toHaveLength(4);
+    expect(mockSkia.built[3].width).toBeCloseTo(132);
   });
 });
