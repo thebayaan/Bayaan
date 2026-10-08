@@ -1,0 +1,1224 @@
+{
+ "reading 1 idle": {
+  "count": 10,
+  "sha256": "cdb09c1a779a562a3a630438dfefb1a13ba04df4a0320a215fe737e9dd59f365",
+  "head": [
+   [
+    "SurahDivider",
+    {
+     "width": 718,
+     "surahNumber": 1,
+     "textColor": "#666666",
+     "nameColor": "#111111"
+    }
+   ],
+   [
+    "BasmalaHeader",
+    {
+     "visible": false,
+     "width": 718,
+     "textColor": "#111111",
+     "showTajweed": false,
+     "fontMgr": {
+      "fake": "fontMgr"
+     },
+     "dkFontFamily": "DigitalKhattV2",
+     "indexedTajweedData": null,
+     "arabicTextWeight": "normal",
+     "showAllahNameHighlight": false,
+     "allahNameHighlightColor": "#A86A00"
+    }
+   ],
+   [
+    "VerseItem",
+    {
+     "verse": {
+      "id": 1,
+      "surah_number": 1,
+      "ayah_number": 1,
+      "verse_key": "1:1",
+      "text": "بِسۡمِ ٱللَّهِ ٱلرَّحۡمَٰنِ ٱلرَّحِيمِ ١",
+      "translation": "In the name of Allāh,<sup foot_note=\"226402\">1</sup> the Entirely Merciful, the Especially Merciful.<sup foot_note=\"226403\">2</sup>",
+      "transliteration": "Bismi All<u>a</u>hi a<b>l</b>rra<u>h</u>m<u>a</u>ni a<b>l</b>rra<u>h</u>eem<b>i</b>"
+     },
+     "onVersePress": "[function]",
+     "textColor": "#111111",
+     "borderColor": "#cccccc",
+     "showTranslation": true,
+     "showTransliteration": true,
+     "showTajweed": false,
+     "arabicFontFamily": "Uthmani",
+     "transliterationFontSize": 18,
+     "translationFontSize": 18,
+     "arabicFontSize": 26,
+     "fontMgr": {
+      "fake": "fontMgr"
+     },
+     "dkFontFamily": "DigitalKhattV2",
+     "indexedTajweedData": null,
+     "isActive": false,
+     "source": "mushaf",
+     "translationName": "Translation",
+     "translationId": "saheeh",
+     "showWBW": false,
+     "wbwShowTranslation": true,
+     "wbwShowTransliteration": false
+    }
+   ],
+   [
+    "VerseItem",
+    {
+     "verse": {
+      "id": 2,
+      "surah_number": 1,
+      "ayah_number": 2,
+      "verse_key": "1:2",
+      "text": "ٱلۡحَمۡدُ لِلَّهِ رَبِّ ٱلۡعَٰلَمِينَ ٢",
+      "translation": "[All] praise is [due] to Allāh, Lord<sup foot_note=\"226404\">1</sup> of the worlds -",
+      "transliteration": "Al<u>h</u>amdu lill<u>a</u>hi rabbi al<u>a</u>lameen<b>a</b>"
+     },
+     "onVersePress": "[function]",
+     "textColor": "#111111",
+     "borderColor": "#cccccc",
+     "showTranslation": true,
+     "showTransliteration": true,
+     "showTajweed": false,
+     "arabicFontFamily": "Uthmani",
+     "transliterationFontSize": 18,
+     "translationFontSize": 18,
+     "arabicFontSize": 26,
+     "fontMgr": {
+      "fake": "fontMgr"
+     },
+     "dkFontFamily": "DigitalKhattV2",
+     "indexedTajweedData": null,
+     "isActive": false,
+     "source": "mushaf",
+     "translationName": "Translation",
+     "translationId": "saheeh",
+     "showWBW": false,
+     "wbwShowTranslation": true,
+     "wbwShowTransliteration": false
+    }
+   ]
+  ]
+ },
+ "reading 1 playing": {
+  "count": 9,
+  "sha256": "aeafb72854bd7ba1fbd97c68c18d12c6ed85d80045d0765a7e0b8df6b29e7b8b",
+  "head": [
+   [
+    "SurahDivider",
+    {
+     "width": 718,
+     "surahNumber": 1,
+     "textColor": "#666666",
+     "nameColor": "#111111"
+    }
+   ],
+   [
+    "BasmalaHeader",
+    {
+     "visible": false,
+     "width": 718,
+     "textColor": "#111111",
+     "showTajweed": false,
+     "fontMgr": {
+      "fake": "fontMgr"
+     },
+     "dkFontFamily": "DigitalKhattV2",
+     "indexedTajweedData": null,
+     "arabicTextWeight": "normal",
+     "showAllahNameHighlight": false,
+     "allahNameHighlightColor": "#A86A00"
+    }
+   ],
+   [
+    "VerseItem",
+    {
+     "verse": {
+      "id": 1,
+      "surah_number": 1,
+      "ayah_number": 1,
+      "verse_key": "1:1",
+      "text": "بِسۡمِ ٱللَّهِ ٱلرَّحۡمَٰنِ ٱلرَّحِيمِ ١",
+      "translation": "In the name of Allāh,<sup foot_note=\"226402\">1</sup> the Entirely Merciful, the Especially Merciful.<sup foot_note=\"226403\">2</sup>",
+      "transliteration": "Bismi All<u>a</u>hi a<b>l</b>rra<u>h</u>m<u>a</u>ni a<b>l</b>rra<u>h</u>eem<b>i</b>"
+     },
+     "onVersePress": "[function]",
+     "textColor": "#111111",
+     "borderColor": "#cccccc",
+     "showTranslation": true,
+     "showTransliteration": true,
+     "showTajweed": false,
+     "arabicFontFamily": "Uthmani",
+     "transliterationFontSize": 18,
+     "translationFontSize": 18,
+     "arabicFontSize": 26,
+     "fontMgr": {
+      "fake": "fontMgr"
+     },
+     "dkFontFamily": "DigitalKhattV2",
+     "indexedTajweedData": null,
+     "isActive": false,
+     "source": "mushaf",
+     "translationName": "Translation",
+     "translationId": "saheeh",
+     "showWBW": false,
+     "wbwShowTranslation": true,
+     "wbwShowTransliteration": false
+    }
+   ],
+   [
+    "VerseItem",
+    {
+     "verse": {
+      "id": 2,
+      "surah_number": 1,
+      "ayah_number": 2,
+      "verse_key": "1:2",
+      "text": "ٱلۡحَمۡدُ لِلَّهِ رَبِّ ٱلۡعَٰلَمِينَ ٢",
+      "translation": "[All] praise is [due] to Allāh, Lord<sup foot_note=\"226404\">1</sup> of the worlds -",
+      "transliteration": "Al<u>h</u>amdu lill<u>a</u>hi rabbi al<u>a</u>lameen<b>a</b>"
+     },
+     "onVersePress": "[function]",
+     "textColor": "#111111",
+     "borderColor": "#cccccc",
+     "showTranslation": true,
+     "showTransliteration": true,
+     "showTajweed": false,
+     "arabicFontFamily": "Uthmani",
+     "transliterationFontSize": 18,
+     "translationFontSize": 18,
+     "arabicFontSize": 26,
+     "fontMgr": {
+      "fake": "fontMgr"
+     },
+     "dkFontFamily": "DigitalKhattV2",
+     "indexedTajweedData": null,
+     "isActive": false,
+     "source": "mushaf",
+     "translationName": "Translation",
+     "translationId": "saheeh",
+     "showWBW": false,
+     "wbwShowTranslation": true,
+     "wbwShowTransliteration": false
+    }
+   ]
+  ]
+ },
+ "reading 1 paused": {
+  "count": 9,
+  "sha256": "52c2695a431bba28085ea5ecfae8453bf4e31400afcbba01b1f5cf7e04fbe3cb",
+  "head": [
+   [
+    "SurahDivider",
+    {
+     "width": 718,
+     "surahNumber": 1,
+     "textColor": "#666666",
+     "nameColor": "#111111"
+    }
+   ],
+   [
+    "BasmalaHeader",
+    {
+     "visible": false,
+     "width": 718,
+     "textColor": "#111111",
+     "showTajweed": false,
+     "fontMgr": {
+      "fake": "fontMgr"
+     },
+     "dkFontFamily": "DigitalKhattV2",
+     "indexedTajweedData": null,
+     "arabicTextWeight": "normal",
+     "showAllahNameHighlight": false,
+     "allahNameHighlightColor": "#A86A00"
+    }
+   ],
+   [
+    "VerseItem",
+    {
+     "verse": {
+      "id": 1,
+      "surah_number": 1,
+      "ayah_number": 1,
+      "verse_key": "1:1",
+      "text": "بِسۡمِ ٱللَّهِ ٱلرَّحۡمَٰنِ ٱلرَّحِيمِ ١",
+      "translation": "In the name of Allāh,<sup foot_note=\"226402\">1</sup> the Entirely Merciful, the Especially Merciful.<sup foot_note=\"226403\">2</sup>",
+      "transliteration": "Bismi All<u>a</u>hi a<b>l</b>rra<u>h</u>m<u>a</u>ni a<b>l</b>rra<u>h</u>eem<b>i</b>"
+     },
+     "onVersePress": "[function]",
+     "textColor": "#111111",
+     "borderColor": "#cccccc",
+     "showTranslation": true,
+     "showTransliteration": true,
+     "showTajweed": false,
+     "arabicFontFamily": "Uthmani",
+     "transliterationFontSize": 18,
+     "translationFontSize": 18,
+     "arabicFontSize": 26,
+     "fontMgr": {
+      "fake": "fontMgr"
+     },
+     "dkFontFamily": "DigitalKhattV2",
+     "indexedTajweedData": null,
+     "isActive": false,
+     "source": "mushaf",
+     "translationName": "Translation",
+     "translationId": "saheeh",
+     "showWBW": false,
+     "wbwShowTranslation": true,
+     "wbwShowTransliteration": false
+    }
+   ],
+   [
+    "VerseItem",
+    {
+     "verse": {
+      "id": 2,
+      "surah_number": 1,
+      "ayah_number": 2,
+      "verse_key": "1:2",
+      "text": "ٱلۡحَمۡدُ لِلَّهِ رَبِّ ٱلۡعَٰلَمِينَ ٢",
+      "translation": "[All] praise is [due] to Allāh, Lord<sup foot_note=\"226404\">1</sup> of the worlds -",
+      "transliteration": "Al<u>h</u>amdu lill<u>a</u>hi rabbi al<u>a</u>lameen<b>a</b>"
+     },
+     "onVersePress": "[function]",
+     "textColor": "#111111",
+     "borderColor": "#cccccc",
+     "showTranslation": true,
+     "showTransliteration": true,
+     "showTajweed": false,
+     "arabicFontFamily": "Uthmani",
+     "transliterationFontSize": 18,
+     "translationFontSize": 18,
+     "arabicFontSize": 26,
+     "fontMgr": {
+      "fake": "fontMgr"
+     },
+     "dkFontFamily": "DigitalKhattV2",
+     "indexedTajweedData": null,
+     "isActive": false,
+     "source": "mushaf",
+     "translationName": "Translation",
+     "translationId": "saheeh",
+     "showWBW": false,
+     "wbwShowTranslation": true,
+     "wbwShowTransliteration": false
+    }
+   ]
+  ]
+ },
+ "reading 371 idle": {
+  "count": 59,
+  "sha256": "29476eb64e1b5cd81304459726cb0f1cddbd4c655b3579ccab7e661af156e6cb",
+  "head": [
+   [
+    "getThemeForVerse",
+    "71:1"
+   ],
+   [
+    "getThemeForVerse",
+    "71:2"
+   ],
+   [
+    "getThemeForVerse",
+    "71:3"
+   ],
+   [
+    "getThemeForVerse",
+    "71:4"
+   ]
+  ]
+ },
+ "reading 371 playing": {
+  "count": 58,
+  "sha256": "5c9a487e5231a5f86533ffaaa180eb2fe058da997ba743ab18de1984feddd58b",
+  "head": [
+   [
+    "getThemeForVerse",
+    "71:1"
+   ],
+   [
+    "getThemeForVerse",
+    "71:2"
+   ],
+   [
+    "getThemeForVerse",
+    "71:3"
+   ],
+   [
+    "getThemeForVerse",
+    "71:4"
+   ]
+  ]
+ },
+ "reading 371 paused": {
+  "count": 58,
+  "sha256": "c2abe095c94fc1996d11676cf2c09f824e9961d144e5d89e289f831d7418011b",
+  "head": [
+   [
+    "getThemeForVerse",
+    "71:1"
+   ],
+   [
+    "getThemeForVerse",
+    "71:2"
+   ],
+   [
+    "getThemeForVerse",
+    "71:3"
+   ],
+   [
+    "getThemeForVerse",
+    "71:4"
+   ]
+  ]
+ },
+ "reading 403 idle": {
+  "count": 6,
+  "sha256": "8e66b7365e15afe3e0d994ced460dbfcaf86796bfc00b8d82ef892df927b0bc1",
+  "head": [
+   [
+    "SurahDivider",
+    {
+     "width": 718,
+     "surahNumber": 103,
+     "textColor": "#666666",
+     "nameColor": "#111111"
+    }
+   ],
+   [
+    "BasmalaHeader",
+    {
+     "visible": true,
+     "width": 718,
+     "textColor": "#111111",
+     "showTajweed": false,
+     "fontMgr": {
+      "fake": "fontMgr"
+     },
+     "dkFontFamily": "DigitalKhattV2",
+     "indexedTajweedData": null,
+     "arabicTextWeight": "normal",
+     "showAllahNameHighlight": false,
+     "allahNameHighlightColor": "#A86A00"
+    }
+   ],
+   [
+    "VerseItem",
+    {
+     "verse": {
+      "id": 6177,
+      "surah_number": 103,
+      "ayah_number": 1,
+      "verse_key": "103:1",
+      "text": "وَٱلۡعَصۡرِ ١",
+      "translation": "By time,<sup foot_note=\"228284\">1</sup>",
+      "transliteration": "Wa<b>a</b>lAAa<u>s</u>r<b>i</b>"
+     },
+     "onVersePress": "[function]",
+     "textColor": "#111111",
+     "borderColor": "#cccccc",
+     "showTranslation": true,
+     "showTransliteration": true,
+     "showTajweed": false,
+     "arabicFontFamily": "Uthmani",
+     "transliterationFontSize": 18,
+     "translationFontSize": 18,
+     "arabicFontSize": 26,
+     "fontMgr": {
+      "fake": "fontMgr"
+     },
+     "dkFontFamily": "DigitalKhattV2",
+     "indexedTajweedData": null,
+     "isActive": false,
+     "source": "mushaf",
+     "translationName": "Translation",
+     "translationId": "saheeh",
+     "showWBW": false,
+     "wbwShowTranslation": true,
+     "wbwShowTransliteration": false
+    }
+   ],
+   [
+    "VerseItem",
+    {
+     "verse": {
+      "id": 6178,
+      "surah_number": 103,
+      "ayah_number": 2,
+      "verse_key": "103:2",
+      "text": "إِنَّ ٱلۡإِنسَٰنَ لَفِي خُسۡرٍ ٢",
+      "translation": "Indeed, mankind is in loss,",
+      "transliteration": "Inna alins<u>a</u>na lafee khusr<b>in</b>"
+     },
+     "onVersePress": "[function]",
+     "textColor": "#111111",
+     "borderColor": "#cccccc",
+     "showTranslation": true,
+     "showTransliteration": true,
+     "showTajweed": false,
+     "arabicFontFamily": "Uthmani",
+     "transliterationFontSize": 18,
+     "translationFontSize": 18,
+     "arabicFontSize": 26,
+     "fontMgr": {
+      "fake": "fontMgr"
+     },
+     "dkFontFamily": "DigitalKhattV2",
+     "indexedTajweedData": null,
+     "isActive": false,
+     "source": "mushaf",
+     "translationName": "Translation",
+     "translationId": "saheeh",
+     "showWBW": false,
+     "wbwShowTranslation": true,
+     "wbwShowTransliteration": false
+    }
+   ]
+  ]
+ },
+ "reading 403 playing": {
+  "count": 5,
+  "sha256": "c16a84c09f161eee52f17e47bd1f12e4c3ee38fb9611729a24cee57c31558ea6",
+  "head": [
+   [
+    "SurahDivider",
+    {
+     "width": 718,
+     "surahNumber": 103,
+     "textColor": "#666666",
+     "nameColor": "#111111"
+    }
+   ],
+   [
+    "BasmalaHeader",
+    {
+     "visible": true,
+     "width": 718,
+     "textColor": "#111111",
+     "showTajweed": false,
+     "fontMgr": {
+      "fake": "fontMgr"
+     },
+     "dkFontFamily": "DigitalKhattV2",
+     "indexedTajweedData": null,
+     "arabicTextWeight": "normal",
+     "showAllahNameHighlight": false,
+     "allahNameHighlightColor": "#A86A00"
+    }
+   ],
+   [
+    "VerseItem",
+    {
+     "verse": {
+      "id": 6177,
+      "surah_number": 103,
+      "ayah_number": 1,
+      "verse_key": "103:1",
+      "text": "وَٱلۡعَصۡرِ ١",
+      "translation": "By time,<sup foot_note=\"228284\">1</sup>",
+      "transliteration": "Wa<b>a</b>lAAa<u>s</u>r<b>i</b>"
+     },
+     "onVersePress": "[function]",
+     "textColor": "#111111",
+     "borderColor": "#cccccc",
+     "showTranslation": true,
+     "showTransliteration": true,
+     "showTajweed": false,
+     "arabicFontFamily": "Uthmani",
+     "transliterationFontSize": 18,
+     "translationFontSize": 18,
+     "arabicFontSize": 26,
+     "fontMgr": {
+      "fake": "fontMgr"
+     },
+     "dkFontFamily": "DigitalKhattV2",
+     "indexedTajweedData": null,
+     "isActive": false,
+     "source": "mushaf",
+     "translationName": "Translation",
+     "translationId": "saheeh",
+     "showWBW": false,
+     "wbwShowTranslation": true,
+     "wbwShowTransliteration": false
+    }
+   ],
+   [
+    "VerseItem",
+    {
+     "verse": {
+      "id": 6178,
+      "surah_number": 103,
+      "ayah_number": 2,
+      "verse_key": "103:2",
+      "text": "إِنَّ ٱلۡإِنسَٰنَ لَفِي خُسۡرٍ ٢",
+      "translation": "Indeed, mankind is in loss,",
+      "transliteration": "Inna alins<u>a</u>na lafee khusr<b>in</b>"
+     },
+     "onVersePress": "[function]",
+     "textColor": "#111111",
+     "borderColor": "#cccccc",
+     "showTranslation": true,
+     "showTransliteration": true,
+     "showTajweed": false,
+     "arabicFontFamily": "Uthmani",
+     "transliterationFontSize": 18,
+     "translationFontSize": 18,
+     "arabicFontSize": 26,
+     "fontMgr": {
+      "fake": "fontMgr"
+     },
+     "dkFontFamily": "DigitalKhattV2",
+     "indexedTajweedData": null,
+     "isActive": false,
+     "source": "mushaf",
+     "translationName": "Translation",
+     "translationId": "saheeh",
+     "showWBW": false,
+     "wbwShowTranslation": true,
+     "wbwShowTransliteration": false
+    }
+   ]
+  ]
+ },
+ "reading 403 paused": {
+  "count": 5,
+  "sha256": "c16a84c09f161eee52f17e47bd1f12e4c3ee38fb9611729a24cee57c31558ea6",
+  "head": [
+   [
+    "SurahDivider",
+    {
+     "width": 718,
+     "surahNumber": 103,
+     "textColor": "#666666",
+     "nameColor": "#111111"
+    }
+   ],
+   [
+    "BasmalaHeader",
+    {
+     "visible": true,
+     "width": 718,
+     "textColor": "#111111",
+     "showTajweed": false,
+     "fontMgr": {
+      "fake": "fontMgr"
+     },
+     "dkFontFamily": "DigitalKhattV2",
+     "indexedTajweedData": null,
+     "arabicTextWeight": "normal",
+     "showAllahNameHighlight": false,
+     "allahNameHighlightColor": "#A86A00"
+    }
+   ],
+   [
+    "VerseItem",
+    {
+     "verse": {
+      "id": 6177,
+      "surah_number": 103,
+      "ayah_number": 1,
+      "verse_key": "103:1",
+      "text": "وَٱلۡعَصۡرِ ١",
+      "translation": "By time,<sup foot_note=\"228284\">1</sup>",
+      "transliteration": "Wa<b>a</b>lAAa<u>s</u>r<b>i</b>"
+     },
+     "onVersePress": "[function]",
+     "textColor": "#111111",
+     "borderColor": "#cccccc",
+     "showTranslation": true,
+     "showTransliteration": true,
+     "showTajweed": false,
+     "arabicFontFamily": "Uthmani",
+     "transliterationFontSize": 18,
+     "translationFontSize": 18,
+     "arabicFontSize": 26,
+     "fontMgr": {
+      "fake": "fontMgr"
+     },
+     "dkFontFamily": "DigitalKhattV2",
+     "indexedTajweedData": null,
+     "isActive": false,
+     "source": "mushaf",
+     "translationName": "Translation",
+     "translationId": "saheeh",
+     "showWBW": false,
+     "wbwShowTranslation": true,
+     "wbwShowTransliteration": false
+    }
+   ],
+   [
+    "VerseItem",
+    {
+     "verse": {
+      "id": 6178,
+      "surah_number": 103,
+      "ayah_number": 2,
+      "verse_key": "103:2",
+      "text": "إِنَّ ٱلۡإِنسَٰنَ لَفِي خُسۡرٍ ٢",
+      "translation": "Indeed, mankind is in loss,",
+      "transliteration": "Inna alins<u>a</u>na lafee khusr<b>in</b>"
+     },
+     "onVersePress": "[function]",
+     "textColor": "#111111",
+     "borderColor": "#cccccc",
+     "showTranslation": true,
+     "showTransliteration": true,
+     "showTajweed": false,
+     "arabicFontFamily": "Uthmani",
+     "transliterationFontSize": 18,
+     "translationFontSize": 18,
+     "arabicFontSize": 26,
+     "fontMgr": {
+      "fake": "fontMgr"
+     },
+     "dkFontFamily": "DigitalKhattV2",
+     "indexedTajweedData": null,
+     "isActive": false,
+     "source": "mushaf",
+     "translationName": "Translation",
+     "translationId": "saheeh",
+     "showWBW": false,
+     "wbwShowTranslation": true,
+     "wbwShowTransliteration": false
+    }
+   ]
+  ]
+ },
+ "list 1 idle": {
+  "count": 6464,
+  "sha256": "9bfcae43d06deaed25e84c764c876e170227554a05e65b92120519ac05544994",
+  "head": [
+   [
+    "SurahDivider",
+    {
+     "width": 724.8571428571429,
+     "surahNumber": 1,
+     "textColor": "#666666",
+     "nameColor": "#111111"
+    }
+   ],
+   [
+    "BasmalaHeader",
+    {
+     "visible": false,
+     "width": 724.8571428571429,
+     "textColor": "#111111",
+     "showTajweed": false,
+     "fontMgr": {
+      "fake": "fontMgr"
+     },
+     "dkFontFamily": "DigitalKhattV2",
+     "indexedTajweedData": null,
+     "arabicTextWeight": "normal",
+     "showAllahNameHighlight": false,
+     "allahNameHighlightColor": "#A86A00"
+    }
+   ],
+   [
+    "VerseItem",
+    {
+     "verse": {
+      "id": 1,
+      "surah_number": 1,
+      "ayah_number": 1,
+      "verse_key": "1:1",
+      "text": "بِسۡمِ ٱللَّهِ ٱلرَّحۡمَٰنِ ٱلرَّحِيمِ ١",
+      "translation": "In the name of Allāh,<sup foot_note=\"226402\">1</sup> the Entirely Merciful, the Especially Merciful.<sup foot_note=\"226403\">2</sup>",
+      "transliteration": "Bismi All<u>a</u>hi a<b>l</b>rra<u>h</u>m<u>a</u>ni a<b>l</b>rra<u>h</u>eem<b>i</b>"
+     },
+     "onVersePress": "[function]",
+     "textColor": "#111111",
+     "borderColor": "#cccccc",
+     "showTranslation": true,
+     "showTransliteration": true,
+     "showTajweed": false,
+     "arabicFontFamily": "Uthmani",
+     "transliterationFontSize": 18,
+     "translationFontSize": 18,
+     "arabicFontSize": 26,
+     "fontMgr": {
+      "fake": "fontMgr"
+     },
+     "dkFontFamily": "DigitalKhattV2",
+     "indexedTajweedData": null,
+     "isActive": false,
+     "source": "mushaf",
+     "translationName": "Translation",
+     "translationId": "saheeh",
+     "showWBW": false,
+     "wbwShowTranslation": true,
+     "wbwShowTransliteration": false
+    }
+   ],
+   [
+    "VerseItem",
+    {
+     "verse": {
+      "id": 2,
+      "surah_number": 1,
+      "ayah_number": 2,
+      "verse_key": "1:2",
+      "text": "ٱلۡحَمۡدُ لِلَّهِ رَبِّ ٱلۡعَٰلَمِينَ ٢",
+      "translation": "[All] praise is [due] to Allāh, Lord<sup foot_note=\"226404\">1</sup> of the worlds -",
+      "transliteration": "Al<u>h</u>amdu lill<u>a</u>hi rabbi al<u>a</u>lameen<b>a</b>"
+     },
+     "onVersePress": "[function]",
+     "textColor": "#111111",
+     "borderColor": "#cccccc",
+     "showTranslation": true,
+     "showTransliteration": true,
+     "showTajweed": false,
+     "arabicFontFamily": "Uthmani",
+     "transliterationFontSize": 18,
+     "translationFontSize": 18,
+     "arabicFontSize": 26,
+     "fontMgr": {
+      "fake": "fontMgr"
+     },
+     "dkFontFamily": "DigitalKhattV2",
+     "indexedTajweedData": null,
+     "isActive": false,
+     "source": "mushaf",
+     "translationName": "Translation",
+     "translationId": "saheeh",
+     "showWBW": false,
+     "wbwShowTranslation": true,
+     "wbwShowTransliteration": false
+    }
+   ]
+  ]
+ },
+ "list 1 initialScrollIndex": 1,
+ "list 1 data": "40fe33057aec90e686eaa6aa7d2bd449fcded8a1d402276171cfce1fb2301614",
+ "list 1 playing": {
+  "count": 6464,
+  "sha256": "56eca0ce3e39f8297dcdd7db8a2aad705484e7df297bddc4a0c38af1d75adff8",
+  "head": [
+   [
+    "SurahDivider",
+    {
+     "width": 724.8571428571429,
+     "surahNumber": 1,
+     "textColor": "#666666",
+     "nameColor": "#111111"
+    }
+   ],
+   [
+    "BasmalaHeader",
+    {
+     "visible": false,
+     "width": 724.8571428571429,
+     "textColor": "#111111",
+     "showTajweed": false,
+     "fontMgr": {
+      "fake": "fontMgr"
+     },
+     "dkFontFamily": "DigitalKhattV2",
+     "indexedTajweedData": null,
+     "arabicTextWeight": "normal",
+     "showAllahNameHighlight": false,
+     "allahNameHighlightColor": "#A86A00"
+    }
+   ],
+   [
+    "VerseItem",
+    {
+     "verse": {
+      "id": 1,
+      "surah_number": 1,
+      "ayah_number": 1,
+      "verse_key": "1:1",
+      "text": "بِسۡمِ ٱللَّهِ ٱلرَّحۡمَٰنِ ٱلرَّحِيمِ ١",
+      "translation": "In the name of Allāh,<sup foot_note=\"226402\">1</sup> the Entirely Merciful, the Especially Merciful.<sup foot_note=\"226403\">2</sup>",
+      "transliteration": "Bismi All<u>a</u>hi a<b>l</b>rra<u>h</u>m<u>a</u>ni a<b>l</b>rra<u>h</u>eem<b>i</b>"
+     },
+     "onVersePress": "[function]",
+     "textColor": "#111111",
+     "borderColor": "#cccccc",
+     "showTranslation": true,
+     "showTransliteration": true,
+     "showTajweed": false,
+     "arabicFontFamily": "Uthmani",
+     "transliterationFontSize": 18,
+     "translationFontSize": 18,
+     "arabicFontSize": 26,
+     "fontMgr": {
+      "fake": "fontMgr"
+     },
+     "dkFontFamily": "DigitalKhattV2",
+     "indexedTajweedData": null,
+     "isActive": false,
+     "source": "mushaf",
+     "translationName": "Translation",
+     "translationId": "saheeh",
+     "showWBW": false,
+     "wbwShowTranslation": true,
+     "wbwShowTransliteration": false
+    }
+   ],
+   [
+    "VerseItem",
+    {
+     "verse": {
+      "id": 2,
+      "surah_number": 1,
+      "ayah_number": 2,
+      "verse_key": "1:2",
+      "text": "ٱلۡحَمۡدُ لِلَّهِ رَبِّ ٱلۡعَٰلَمِينَ ٢",
+      "translation": "[All] praise is [due] to Allāh, Lord<sup foot_note=\"226404\">1</sup> of the worlds -",
+      "transliteration": "Al<u>h</u>amdu lill<u>a</u>hi rabbi al<u>a</u>lameen<b>a</b>"
+     },
+     "onVersePress": "[function]",
+     "textColor": "#111111",
+     "borderColor": "#cccccc",
+     "showTranslation": true,
+     "showTransliteration": true,
+     "showTajweed": false,
+     "arabicFontFamily": "Uthmani",
+     "transliterationFontSize": 18,
+     "translationFontSize": 18,
+     "arabicFontSize": 26,
+     "fontMgr": {
+      "fake": "fontMgr"
+     },
+     "dkFontFamily": "DigitalKhattV2",
+     "indexedTajweedData": null,
+     "isActive": false,
+     "source": "mushaf",
+     "translationName": "Translation",
+     "translationId": "saheeh",
+     "showWBW": false,
+     "wbwShowTranslation": true,
+     "wbwShowTransliteration": false
+    }
+   ]
+  ]
+ },
+ "list 1 scrolls": {
+  "count": 5,
+  "sha256": "2870bdb3fa73f08cb2102d94e33ce01e0cc492a862ad7adad816a2b28837e35d",
+  "head": [
+   [
+    "scrollToIndex",
+    {
+     "index": 7,
+     "animated": true
+    }
+   ],
+   [
+    "scrollToIndex",
+    {
+     "index": 5517,
+     "animated": false
+    }
+   ],
+   [
+    "scrollToIndex",
+    {
+     "index": 1,
+     "animated": false
+    }
+   ],
+   [
+    "scrollToIndex",
+    {
+     "index": 5490,
+     "animated": true
+    }
+   ]
+  ]
+ },
+ "list 1 viewable": {
+  "count": 11,
+  "sha256": "f834f76cacdd493cb8c3ad7ee11d01ba5f67f7b88dc11272e418164f8e704930",
+  "head": [
+   [
+    "surah",
+    1
+   ],
+   [
+    "loadAnnotationsForSurah",
+    1
+   ],
+   [
+    "surah",
+    1
+   ],
+   [
+    "loadAnnotationsForSurah",
+    1
+   ]
+  ]
+ },
+ "list 371 idle": {
+  "count": 6464,
+  "sha256": "9bfcae43d06deaed25e84c764c876e170227554a05e65b92120519ac05544994",
+  "head": [
+   [
+    "SurahDivider",
+    {
+     "width": 724.8571428571429,
+     "surahNumber": 1,
+     "textColor": "#666666",
+     "nameColor": "#111111"
+    }
+   ],
+   [
+    "BasmalaHeader",
+    {
+     "visible": false,
+     "width": 724.8571428571429,
+     "textColor": "#111111",
+     "showTajweed": false,
+     "fontMgr": {
+      "fake": "fontMgr"
+     },
+     "dkFontFamily": "DigitalKhattV2",
+     "indexedTajweedData": null,
+     "arabicTextWeight": "normal",
+     "showAllahNameHighlight": false,
+     "allahNameHighlightColor": "#A86A00"
+    }
+   ],
+   [
+    "VerseItem",
+    {
+     "verse": {
+      "id": 1,
+      "surah_number": 1,
+      "ayah_number": 1,
+      "verse_key": "1:1",
+      "text": "بِسۡمِ ٱللَّهِ ٱلرَّحۡمَٰنِ ٱلرَّحِيمِ ١",
+      "translation": "In the name of Allāh,<sup foot_note=\"226402\">1</sup> the Entirely Merciful, the Especially Merciful.<sup foot_note=\"226403\">2</sup>",
+      "transliteration": "Bismi All<u>a</u>hi a<b>l</b>rra<u>h</u>m<u>a</u>ni a<b>l</b>rra<u>h</u>eem<b>i</b>"
+     },
+     "onVersePress": "[function]",
+     "textColor": "#111111",
+     "borderColor": "#cccccc",
+     "showTranslation": true,
+     "showTransliteration": true,
+     "showTajweed": false,
+     "arabicFontFamily": "Uthmani",
+     "transliterationFontSize": 18,
+     "translationFontSize": 18,
+     "arabicFontSize": 26,
+     "fontMgr": {
+      "fake": "fontMgr"
+     },
+     "dkFontFamily": "DigitalKhattV2",
+     "indexedTajweedData": null,
+     "isActive": false,
+     "source": "mushaf",
+     "translationName": "Translation",
+     "translationId": "saheeh",
+     "showWBW": false,
+     "wbwShowTranslation": true,
+     "wbwShowTransliteration": false
+    }
+   ],
+   [
+    "VerseItem",
+    {
+     "verse": {
+      "id": 2,
+      "surah_number": 1,
+      "ayah_number": 2,
+      "verse_key": "1:2",
+      "text": "ٱلۡحَمۡدُ لِلَّهِ رَبِّ ٱلۡعَٰلَمِينَ ٢",
+      "translation": "[All] praise is [due] to Allāh, Lord<sup foot_note=\"226404\">1</sup> of the worlds -",
+      "transliteration": "Al<u>h</u>amdu lill<u>a</u>hi rabbi al<u>a</u>lameen<b>a</b>"
+     },
+     "onVersePress": "[function]",
+     "textColor": "#111111",
+     "borderColor": "#cccccc",
+     "showTranslation": true,
+     "showTransliteration": true,
+     "showTajweed": false,
+     "arabicFontFamily": "Uthmani",
+     "transliterationFontSize": 18,
+     "translationFontSize": 18,
+     "arabicFontSize": 26,
+     "fontMgr": {
+      "fake": "fontMgr"
+     },
+     "dkFontFamily": "DigitalKhattV2",
+     "indexedTajweedData": null,
+     "isActive": false,
+     "source": "mushaf",
+     "translationName": "Translation",
+     "translationId": "saheeh",
+     "showWBW": false,
+     "wbwShowTranslation": true,
+     "wbwShowTransliteration": false
+    }
+   ]
+  ]
+ },
+ "list 371 initialScrollIndex": 5490,
+ "list 371 data": "40fe33057aec90e686eaa6aa7d2bd449fcded8a1d402276171cfce1fb2301614",
+ "list 371 playing": {
+  "count": 6464,
+  "sha256": "56eca0ce3e39f8297dcdd7db8a2aad705484e7df297bddc4a0c38af1d75adff8",
+  "head": [
+   [
+    "SurahDivider",
+    {
+     "width": 724.8571428571429,
+     "surahNumber": 1,
+     "textColor": "#666666",
+     "nameColor": "#111111"
+    }
+   ],
+   [
+    "BasmalaHeader",
+    {
+     "visible": false,
+     "width": 724.8571428571429,
+     "textColor": "#111111",
+     "showTajweed": false,
+     "fontMgr": {
+      "fake": "fontMgr"
+     },
+     "dkFontFamily": "DigitalKhattV2",
+     "indexedTajweedData": null,
+     "arabicTextWeight": "normal",
+     "showAllahNameHighlight": false,
+     "allahNameHighlightColor": "#A86A00"
+    }
+   ],
+   [
+    "VerseItem",
+    {
+     "verse": {
+      "id": 1,
+      "surah_number": 1,
+      "ayah_number": 1,
+      "verse_key": "1:1",
+      "text": "بِسۡمِ ٱللَّهِ ٱلرَّحۡمَٰنِ ٱلرَّحِيمِ ١",
+      "translation": "In the name of Allāh,<sup foot_note=\"226402\">1</sup> the Entirely Merciful, the Especially Merciful.<sup foot_note=\"226403\">2</sup>",
+      "transliteration": "Bismi All<u>a</u>hi a<b>l</b>rra<u>h</u>m<u>a</u>ni a<b>l</b>rra<u>h</u>eem<b>i</b>"
+     },
+     "onVersePress": "[function]",
+     "textColor": "#111111",
+     "borderColor": "#cccccc",
+     "showTranslation": true,
+     "showTransliteration": true,
+     "showTajweed": false,
+     "arabicFontFamily": "Uthmani",
+     "transliterationFontSize": 18,
+     "translationFontSize": 18,
+     "arabicFontSize": 26,
+     "fontMgr": {
+      "fake": "fontMgr"
+     },
+     "dkFontFamily": "DigitalKhattV2",
+     "indexedTajweedData": null,
+     "isActive": false,
+     "source": "mushaf",
+     "translationName": "Translation",
+     "translationId": "saheeh",
+     "showWBW": false,
+     "wbwShowTranslation": true,
+     "wbwShowTransliteration": false
+    }
+   ],
+   [
+    "VerseItem",
+    {
+     "verse": {
+      "id": 2,
+      "surah_number": 1,
+      "ayah_number": 2,
+      "verse_key": "1:2",
+      "text": "ٱلۡحَمۡدُ لِلَّهِ رَبِّ ٱلۡعَٰلَمِينَ ٢",
+      "translation": "[All] praise is [due] to Allāh, Lord<sup foot_note=\"226404\">1</sup> of the worlds -",
+      "transliteration": "Al<u>h</u>amdu lill<u>a</u>hi rabbi al<u>a</u>lameen<b>a</b>"
+     },
+     "onVersePress": "[function]",
+     "textColor": "#111111",
+     "borderColor": "#cccccc",
+     "showTranslation": true,
+     "showTransliteration": true,
+     "showTajweed": false,
+     "arabicFontFamily": "Uthmani",
+     "transliterationFontSize": 18,
+     "translationFontSize": 18,
+     "arabicFontSize": 26,
+     "fontMgr": {
+      "fake": "fontMgr"
+     },
+     "dkFontFamily": "DigitalKhattV2",
+     "indexedTajweedData": null,
+     "isActive": false,
+     "source": "mushaf",
+     "translationName": "Translation",
+     "translationId": "saheeh",
+     "showWBW": false,
+     "wbwShowTranslation": true,
+     "wbwShowTransliteration": false
+    }
+   ]
+  ]
+ },
+ "list 371 scrolls": {
+  "count": 5,
+  "sha256": "2870bdb3fa73f08cb2102d94e33ce01e0cc492a862ad7adad816a2b28837e35d",
+  "head": [
+   [
+    "scrollToIndex",
+    {
+     "index": 7,
+     "animated": true
+    }
+   ],
+   [
+    "scrollToIndex",
+    {
+     "index": 5517,
+     "animated": false
+    }
+   ],
+   [
+    "scrollToIndex",
+    {
+     "index": 1,
+     "animated": false
+    }
+   ],
+   [
+    "scrollToIndex",
+    {
+     "index": 5490,
+     "animated": true
+    }
+   ]
+  ]
+ },
+ "list 371 viewable": {
+  "count": 11,
+  "sha256": "f834f76cacdd493cb8c3ad7ee11d01ba5f67f7b88dc11272e418164f8e704930",
+  "head": [
+   [
+    "surah",
+    1
+   ],
+   [
+    "loadAnnotationsForSurah",
+    1
+   ],
+   [
+    "surah",
+    1
+   ],
+   [
+    "loadAnnotationsForSurah",
+    1
+   ]
+  ]
+ }
+}

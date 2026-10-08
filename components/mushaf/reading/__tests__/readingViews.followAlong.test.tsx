@@ -13,6 +13,7 @@ interface VerseItemProps {
   verse: {verse_key: string};
   isActive?: boolean;
   dkFontFamily: string;
+  unitRow?: object; // @ai
 }
 
 const mockVerseItems: VerseItemProps[] = [];
@@ -124,15 +125,54 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => ({
     initialized: true,
     rewayah: 'hafs',
     getCacheVersion: () => 1,
+    // @ai — read by the verse units of a non-Hafs text (useRewayahVerseUnits)
+    subscribeCacheChanges: () => () => undefined,
+    getRewayahLoadState: () => 'loaded',
+    ensureRewayahLoaded: async () => undefined,
+    // Page 2 holds the slots of the synthetic surah 2 (mergedOpeningUnits).
+    getPageLines: (page: number) =>
+      page === 2
+        ? [
+            {
+              page_number: 2,
+              line_number: 1,
+              line_type: 'ayah',
+              is_centered: 0,
+              first_word_id: 1,
+              last_word_id: 23,
+              surah_number: '',
+            },
+          ]
+        : [],
   },
 }));
 
 jest.mock('@/services/mushaf/MushafVerseMapService', () => ({
+  // @ai — the shown-units mapping the band of a non-Hafs text goes through
+  shownVerseUnitsOf: jest.requireActual(
+    '@/services/mushaf/MushafVerseMapService',
+  ).shownVerseUnitsOf,
   mushafVerseMapService: {
     getOrderedVerseKeysForPage: (page: number) =>
       page === 2 ? ['2:1', '2:2', '2:3', '2:4', '2:5', '2:6'] : [],
   },
 }));
+
+// @ai — a Warsh-like surah 2 (rewayah 2:1 = Hafs 2:1 + 2:2) for the
+// rewayah case below; Hafs never asks for units.
+jest.mock('@/services/mushaf/RewayahVerseUnitsService', () => {
+  const {mergedOpeningUnits} = jest.requireActual(
+    '@/components/player/v2/PlayerContent/QuranView/__fixtures__/verseUnitsFixtures',
+  );
+  const warsh = mergedOpeningUnits('warsh');
+  return {
+    rewayahVerseUnitsService: {
+      get: (rewayah: string) => (rewayah === 'warsh' ? warsh : null),
+      getStatus: (rewayah: string) =>
+        rewayah === 'warsh' ? 'ready' : 'unavailable',
+    },
+  };
+});
 
 jest.mock('@/services/mushaf/ThemeDataService', () => ({
   themeDataService: {getThemeForVerse: () => undefined},
@@ -298,6 +338,8 @@ describe.each(Object.keys(views))('%s', name => {
       rewayah: 'warsh',
     });
     render();
+    // @ai — the row is Warsh 2:1 itself (Hafs 2:1 + 2:2), not Hafs 2:1
+    expect(rows().get('2:1')!.unitRow).toBeDefined();
     expect(rows().get('2:1')!.dkFontFamily).toBe('DigitalKhattV2');
   });
 
