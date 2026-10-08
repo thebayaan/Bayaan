@@ -596,12 +596,33 @@ export interface VerseNavigationTarget {
  * unit and scrolls to its anchor's Hafs verse. A key of any other numbering
  * (or while the shown text has no units) selects nothing: never a verse
  * that merely has the same number.
+ *
+ * A stored anchor inside a Hafs verse ('S:A:W', the later part of a split
+ * Hafs verse) passed as a Hafs key is no verse key: it selects the shown
+ * unit holding that slot (selectionForAnchor), or, while there is none, the
+ * Hafs verse S:A, and scrolls to Hafs S:A. (@ai)
  */
 export function verseNavigationTarget(
   verseKey: string,
   rewayah: RewayahId,
 ): VerseNavigationTarget {
   if (rewayah === 'hafs') {
+    // @ai-start
+    const loc =
+      verseKey.split(':').length === 3 ? hafsAnchorRef(verseKey) : null;
+    if (loc) {
+      const hafsKey = `${loc.surah}:${loc.ayah}`;
+      const selection = selectionForAnchor(verseKey);
+      return selection
+        ? {
+            rewayah: selection.rewayah,
+            hafsKey: null,
+            unit: selection.units[0],
+            scrollHafsKey: hafsKey,
+          }
+        : {rewayah, hafsKey, unit: null, scrollHafsKey: hafsKey};
+    }
+    // @ai-end
     return {rewayah, hafsKey: verseKey, unit: null, scrollHafsKey: verseKey};
   }
   const selection = selectionForUnitKeys([verseKey]);

@@ -534,6 +534,36 @@ describe('verseNavigationTarget (search, bookmark chips)', () => {
     });
   });
 
+  it("a stored anchor 'S:A:W' given as a Hafs key selects the unit holding that slot", () => {
+    show('warsh');
+    expect(verseNavigationTarget('1:7:5', 'hafs')).toEqual({
+      rewayah: 'warsh',
+      hafsKey: null,
+      unit: {key: '1:7', anchor: '1:7:5', hafsKeys: ['1:7']},
+      scrollHafsKey: '1:7',
+    });
+    // A slot inside the first part (word 3 of Hafs 1:7): Warsh 1:6.
+    expect(verseNavigationTarget('1:7:3', 'hafs').unit?.key).toBe('1:6');
+    // Hafs on screen: the Hafs verse of the anchor.
+    show('hafs');
+    expect(verseNavigationTarget('1:7:5', 'hafs')).toEqual({
+      rewayah: 'hafs',
+      hafsKey: null,
+      unit: {key: '1:7', anchor: '1:7', hafsKeys: ['1:7']},
+      scrollHafsKey: '1:7',
+    });
+    // No units yet (refused here): the anchor's Hafs verse, as a Hafs key.
+    show('warsh', {refused: true});
+    expect(verseNavigationTarget('1:7:5', 'hafs')).toEqual({
+      rewayah: 'hafs',
+      hafsKey: '1:7',
+      unit: null,
+      scrollHafsKey: '1:7',
+    });
+    // Not an anchor of an existing Hafs verse: passed on as before.
+    expect(verseNavigationTarget('1:8:2', 'hafs').hafsKey).toBe('1:8:2');
+  });
+
   it('a key of another numbering, or no unit, selects nothing', () => {
     show('warsh');
     const nothing = (rewayah: 'qalun' | 'warsh', key: string) => {
