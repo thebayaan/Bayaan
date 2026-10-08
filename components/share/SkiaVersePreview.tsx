@@ -19,13 +19,25 @@ interface SkiaVersePreviewProps {
    *  mushaf rewayah. Player-context callers pass the currently-playing
    *  track's rewayah so the preview matches what the user is listening to. */
   rewayah?: RewayahId;
+  // @ai-start
+  /**
+   * Text to draw instead of reading verseKey(s): the own text of rewayah
+   * verse units (RewayahVerseUnits.unitText), for rows that show a
+   * rewayah's verse in its own numbering (bookmarks and notes saved in a
+   * non-Hafs rewayah). verseKey(s) are then not read. '' draws nothing yet.
+   */
+  text?: string;
+  // @ai-end
 }
+
+const NO_VERSE_KEYS: readonly string[] = []; // @ai
 
 const SkiaVersePreview: React.FC<SkiaVersePreviewProps> = ({
   verseKey,
   verseKeys,
   numberOfLines = 2,
   rewayah: rewayahOverride,
+  text: textOverride, // @ai
 }) => {
   const {theme} = useTheme();
   const [width, setWidth] = useState(0);
@@ -61,14 +73,20 @@ const SkiaVersePreview: React.FC<SkiaVersePreviewProps> = ({
   // one and re-renders when it lands (a plain memo stayed empty until the
   // preview remounted). Shows nothing while loading or if the load fails,
   // never another rewayah's text.
-  const keys = verseKeys && verseKeys.length > 1 ? verseKeys : [verseKey];
+  const keys =
+    textOverride !== undefined // @ai: drawn text given, read no verse
+      ? NO_VERSE_KEYS
+      : verseKeys && verseKeys.length > 1
+        ? verseKeys
+        : [verseKey];
   const verseTexts = useRewayahVerseTexts(keys, rewayah);
   const text = useMemo(
     () =>
-      verseTexts.status === 'ready'
+      textOverride ??
+      (verseTexts.status === 'ready'
         ? verseTexts.texts.filter(Boolean).join(' ')
-        : '',
-    [verseTexts],
+        : ''),
+    [textOverride, verseTexts],
   );
   // @ai-end
 

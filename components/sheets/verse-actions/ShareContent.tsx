@@ -36,15 +36,24 @@ import {verseShareUrl, shareUrl as nativeShareUrl} from '@/utils/shareUtils';
 import {getRewayahShortLabel} from '@/utils/rewayahLabels';
 // @ai-start
 import {showToast} from '@/utils/toastUtils';
-import {useRewayahVerseTexts} from '@/components/share/useRewayahVerseTexts';
 import {
   formatQuranCitation,
-  formatVerseRange,
   hasNoOwnText,
   joinVerseTexts,
   noOwnTextMessage,
-  resolveVerseTexts,
 } from '@/components/share/rewayahVerseText';
+import {
+  joinTranslationParts,
+  resolveSelectionTexts,
+  selectionTranslationParts,
+  type ReadyVerseSelection,
+  type VerseSelectionRequest,
+} from '@/components/share/rewayahVerseSelection';
+import {
+  useRequireSelection,
+  useSelectionVerseTexts,
+  useVerseSelection,
+} from '@/components/share/useVerseSelection';
 // @ai-end
 import type {RewayahId} from '@/store/mushafSettingsStore';
 
@@ -53,11 +62,23 @@ const surahData = require('@/data/surahData.json') as Array<{
   name: string;
 }>;
 
+const NO_KEYS: readonly string[] = []; // @ai
+
 interface ShareContentProps {
   verseKey: string;
   surahNumber: number;
   ayahNumber: number;
   verseKeys?: string[];
+  // @ai-start
+  /**
+   * The selected verses in `rewayah`'s own numbering (verse-units contract
+   * 4.1). verseKey / surahNumber / ayahNumber / verseKeys keep their Hafs
+   * meaning; without unitKeys another rewayah shares its verses holding
+   * those Hafs verses. Text, card, translation, reference and link all
+   * follow these verses (see components/share/rewayahVerseSelection.ts).
+   */
+  unitKeys?: readonly string[];
+  // @ai-end
   rewayah?: RewayahId;
   onDone: () => void;
 }
@@ -67,6 +88,7 @@ export const ShareContent: React.FC<ShareContentProps> = ({
   surahNumber,
   ayahNumber,
   verseKeys: verseKeysProp,
+  unitKeys, // @ai
   rewayah: rewayahProp,
   onDone,
 }) => {
@@ -80,11 +102,6 @@ export const ShareContent: React.FC<ShareContentProps> = ({
   const [isCapturing, setIsCapturing] = useState(false);
   // @ai-start
   const [isPreparingText, setIsPreparingText] = useState(false);
-
-  const verseKeys = useMemo(
-    () => verseKeysProp ?? [verseKey],
-    [verseKeysProp, verseKey],
-  );
   // @ai-end
   const fontMgr = useMushafFontMgr();
   const quranCommonTypeface = mushafPreloadService.quranCommonTypeface;
@@ -99,11 +116,32 @@ export const ShareContent: React.FC<ShareContentProps> = ({
   // @ai-start
   const fontFamily = getDkFontFamily(mushafRenderer, rewayah);
 
-  // The card and the shared text use this rewayah's words only. While they
-  // load (a reciter's rewayah that is not the active mushaf one) the preview
-  // shows a spinner; if they cannot be loaded the sheet says so instead of
-  // substituting Hafs.
-  const verseTexts = useRewayahVerseTexts(verseKeys, rewayah);
+  // The verses to share, in the rewayah's own numbering (decision 3): the
+  // unit keys, or the rewayah verses holding the Hafs verses. Hafs: the Hafs
+  // keys, exactly as before.
+  const selectionRequest = useMemo<VerseSelectionRequest>(
+    () => ({
+      rewayah,
+      verseKey,
+      surahNumber,
+      ayahNumber,
+      verseKeys: verseKeysProp,
+      unitKeys,
+    }),
+    [rewayah, verseKey, surahNumber, ayahNumber, verseKeysProp, unitKeys],
+  );
+  const selection = useVerseSelection(selectionRequest);
+  const requireSelection = useRequireSelection(selection, selectionRequest);
+  // The share card groups the selected verses by surah (surah numbers are
+  // the same in every numbering).
+  const verseKeys = selection.status === 'ready' ? selection.keys : NO_KEYS;
+
+  // The card and the shared text use this rewayah's words only: each
+  // selected verse exactly as the mushaf shows it, with its own marker.
+  // While they load (a reciter's rewayah that is not the active mushaf one)
+  // the preview shows a spinner; if they cannot be loaded the sheet says so
+  // instead of substituting Hafs.
+  const verseTexts = useSelectionVerseTexts(selection);
   // The card needs words to draw; a selection with no words of its own in
   // this rewayah gets an explanation instead.
   const cardTexts =
@@ -116,28 +154,29 @@ export const ShareContent: React.FC<ShareContentProps> = ({
   const captureLogicalWidth = 1080 / PixelRatio.get();
 
   // @ai-start
-  const {translation, verseRefText} = useMemo(() => {
-    const translationParts: string[] = [];
-    for (const vk of verseKeys) {
-      const trans = getTranslationTextRaw(vk, selectedTranslationId);
-      if (trans) translationParts.push(trans);
-    }
-    const [firstSurah] = verseKeys[0].split(':');
-    const surah = surahData.find(s => s.id === parseInt(firstSurah, 10));
-    const surahName = surah?.name ?? '';
-    return {
-      translation: translationParts.join('\n'),
-      verseRefText: `${surahName} ${formatVerseRange(verseKeys)}`,
-    };
-  }, [verseKeys, selectedTranslationId]);
-
-  // A verse link opens one verse (the URL scheme has no ranges), so the
-  // message sent with it cites that verse, not the whole selection.
-  const linkRefText = useMemo(() => {
-    const surah = surahData.find(s => s.id === surahNumber);
-    const ref = formatVerseRange([`${surahNumber}:${ayahNumber}`]);
-    return `${surah?.name ?? ''} ${ref}`;
-  }, [surahNumber, ayahNumber]);
+  // Translation and reference of the shared verses. Translations are
+  // Hafs-aligned (verse-units contract 4.6): every Hafs verse the selection
+  // reads, once, with a note under a Hafs verse the rewayah divides. The
+  // reference is in the selection's own numbering ("Al-Fatihah 1:6"). Hafs:
+  // the selected verses' translations and Hafs reference, as before. A
+  // verse link opens one verse (the URL scheme has no ranges), so the
+  // message sent with it cites that verse (linkRefText), not the whole
+  // selection.
+  const shareRefs = useCallback(
+    (ready: ReadyVerseSelection) => {
+      const surah = surahData.find(s => s.id === ready.surahNumber);
+      const surahName = surah?.name ?? '';
+      return {
+        translation: joinTranslationParts(
+          selectionTranslationParts(ready),
+          hafsKey => getTranslationTextRaw(hafsKey, selectedTranslationId),
+        ),
+        verseRefText: `${surahName} ${ready.label}`,
+        linkRefText: `${surahName} ${ready.linkLabel}`,
+      };
+    },
+    [selectedTranslationId],
+  );
   // @ai-end
 
   const handleShareAsImage = useCallback(async () => {
@@ -164,10 +203,17 @@ export const ShareContent: React.FC<ShareContentProps> = ({
     lightHaptics();
     setIsPreparingText(true);
     try {
+      // @ai-start
+      // Waits (bounded) for another rewayah's verse units and words while
+      // they load; says why when they cannot be named.
+      const ready = await requireSelection('shared');
+      if (!ready) return;
       const result =
-        verseTexts.status === 'ready'
+        ready === selection && verseTexts.status === 'ready'
           ? verseTexts
-          : await resolveVerseTexts(verseKeys, rewayah);
+          : await resolveSelectionTexts(ready);
+      const {translation, verseRefText} = shareRefs(ready);
+      // @ai-end
       if (result.status !== 'ready') {
         showToast(
           `Couldn't load the ${rewayahLabel} text`,
@@ -199,27 +245,38 @@ export const ShareContent: React.FC<ShareContentProps> = ({
     }
   }, [
     isPreparingText,
+    requireSelection, // @ai
+    selection, // @ai
     verseTexts,
-    verseKeys,
-    rewayah,
+    shareRefs, // @ai
     rewayahLabel,
-    translation,
-    verseRefText,
   ]);
 
   const handleShareLink = useCallback(async () => {
     lightHaptics();
+    // @ai-start
+    const ready = await requireSelection('shared');
+    if (!ready) return;
     // The link carries the rewayah and the page renders its own text, so no
-    // local text is needed here.
+    // local text is needed here. The web reader behind verseShareUrl
+    // resolves Hafs verses only (it checks the ayah against the Hafs verse
+    // count and ignores the rewayah's numbering), so the link names the Hafs
+    // verse holding the first selected verse's first word (Hafs: the
+    // payload's verse, as before); the message cites the selection in its
+    // own numbering.
     const url = verseShareUrl(
-      surahNumber,
-      ayahNumber,
+      ready.linkVerse.surah,
+      ready.linkVerse.ayah,
       isDarkMode ? 'dark' : 'light',
       rewayah,
     );
-    await nativeShareUrl(url, formatQuranCitation(linkRefText, rewayah));
+    await nativeShareUrl(
+      url,
+      formatQuranCitation(shareRefs(ready).linkRefText, rewayah),
+    );
+    // @ai-end
     SheetManager.hideAll();
-  }, [surahNumber, ayahNumber, linkRefText, isDarkMode, rewayah]);
+  }, [requireSelection, shareRefs, isDarkMode, rewayah]); // @ai
   // @ai-end
 
   if (!fontMgr) return null;
