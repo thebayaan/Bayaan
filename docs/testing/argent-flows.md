@@ -35,7 +35,7 @@ Simulator: iPhone 17 Pro (test), iOS 26.
 | Rows | bookmark, highlight and note saved with `rewayah_id = hafs` |
 | Install `develop` over it | Launches; bookmark, highlight, note and 6231 tafsir rows kept; schemas unchanged |
 
-**`notes_new` on real devices.** `VerseAnnotationDatabaseService` checks for `sqlite_autoindex_notes_1` to detect an old UNIQUE constraint, but that index belongs to `id TEXT PRIMARY KEY`, so the rebuild branch runs on every launch. Once `verse_keys` and `rewayah_id` were added, `INSERT OR IGNORE INTO notes_new SELECT * FROM notes` fails (10 columns into 7) and the error is swallowed, leaving an empty 7-column `notes_new`. Every device that has launched more than once carries it. Today it is harmless. A future migration must not reuse the name `notes_new` with `CREATE TABLE IF NOT EXISTS`, or it will silently get the stale 7-column table. The golden generator now simulates a second launch so goldens match real devices.
+**`notes_new` on real devices (fixed).** `VerseAnnotationDatabaseService` used to check for `sqlite_autoindex_notes_1` to detect an old UNIQUE constraint, but that index belongs to `id TEXT PRIMARY KEY`, so the rebuild branch ran on every launch and, once `verse_keys` and `rewayah_id` existed, failed silently and left an empty 7-column `notes_new` on every device that launched more than once. The migration now rebuilds only for a real UNIQUE constraint (`index_list` origin `u`), copies an explicit column list inside a transaction, and drops the empty orphan on launch (a non-empty `notes_new` is left in place with a warning). The golden generator still simulates a second launch, so the goldens keep the orphan and the upgrade test asserts develop removes it.
 
 ## Flows
 

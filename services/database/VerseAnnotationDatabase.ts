@@ -1,4 +1,5 @@
 import * as SQLite from 'expo-sqlite';
+import {cleanUpLegacyNotes} from '@/services/database/migrations/legacyNotesCleanup';
 import {migrateUserSyncV1} from '@/services/database/migrations/userSyncV1';
 import {migrateUserSyncV2} from '@/services/database/migrations/userSyncV2';
 import {migrateUserSyncV3} from '@/services/database/migrations/userSyncV3';
@@ -22,6 +23,7 @@ export class VerseAnnotationDatabase {
     this.initPromise = (async () => {
       try {
         this.db = await SQLite.openDatabaseAsync(this.databaseName);
+        await cleanUpLegacyNotes(this.db);
         await migrateUserSyncV1(this.db);
         await migrateUserSyncV2(this.db);
         await migrateUserSyncV3(this.db);

@@ -58,30 +58,55 @@ function normalize(params: SqlParams): Bindable[] | Record<string, Bindable> {
   return (params as SqlValue[]).map(toBindable);
 }
 
+// better-sqlite3 caches its native addon per process and keeps the SqliteError
+// constructor from the first Jest test file a worker ran. Later files in the
+// same worker run in a new VM realm, so those errors fail `instanceof Error`
+// there and `expect(...).rejects.toThrow()` reports "did not throw". Rebuild
+// them as errors of the current realm, the way expo-sqlite surfaces failures.
+export function toLocalError(error: unknown): Error {
+  if (error instanceof Error) return error;
+  if (typeof error !== 'object' || error === null)
+    return new Error(String(error));
+  const message = 'message' in error ? String(error.message) : String(error);
+  const local = new Error(message);
+  if ('name' in error && typeof error.name === 'string')
+    local.name = error.name;
+  if ('code' in error) Object.assign(local, {code: error.code});
+  return local;
+}
+
+function native<T>(call: () => T): T {
+  try {
+    return call();
+  } catch (error) {
+    throw toLocalError(error);
+  }
+}
+
 function executorFor(db: Database.Database): AdapterExecutor {
   return {
     async execAsync(source) {
-      db.exec(source);
+      native(() => db.exec(source));
     },
     async runAsync(source, ...params) {
-      const info = db.prepare(source).run(normalize(params));
+      const info = native(() => db.prepare(source).run(normalize(params)));
       return {
         lastInsertRowId: Number(info.lastInsertRowid),
         changes: info.changes,
       };
     },
     async getAllAsync<T>(source: string, ...params: SqlParams) {
-      return db.prepare(source).all(normalize(params)) as T[];
+      return native(() => db.prepare(source).all(normalize(params))) as T[];
     },
     async getFirstAsync<T>(source: string, ...params: SqlParams) {
-      const row = db.prepare(source).get(normalize(params));
+      const row = native(() => db.prepare(source).get(normalize(params)));
       return (row ?? null) as T | null;
     },
   };
 }
 
 export function openAdapterDatabase(filePath: string): AdapterDatabase {
-  const db = new Database(filePath);
+  const db = native(() => new Database(filePath));
   let depth = 0;
   return {
     ...executorFor(db),
@@ -94,34 +119,34 @@ export function openAdapterDatabase(filePath: string): AdapterDatabase {
           'nested withTransactionAsync is not supported by expo-sqlite',
         );
       depth++;
-      db.exec('BEGIN');
+      native(() => db.exec('BEGIN'));
       try {
         await task();
-        db.exec('COMMIT');
+        native(() => db.exec('COMMIT'));
       } catch (error) {
-        db.exec('ROLLBACK');
+        native(() => db.exec('ROLLBACK'));
         throw error;
       } finally {
         depth--;
       }
     },
     async withExclusiveTransactionAsync(task) {
-      const own = new Database(filePath);
+      const own = native(() => new Database(filePath));
       try {
-        own.exec('BEGIN EXCLUSIVE');
+        native(() => own.exec('BEGIN EXCLUSIVE'));
         try {
           await task(executorFor(own));
-          own.exec('COMMIT');
+          native(() => own.exec('COMMIT'));
         } catch (error) {
-          own.exec('ROLLBACK');
+          native(() => own.exec('ROLLBACK'));
           throw error;
         }
       } finally {
-        own.close();
+        native(() => own.close());
       }
     },
     async closeAsync() {
-      db.close();
+      native(() => db.close());
     },
   };
 }

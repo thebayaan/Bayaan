@@ -446,15 +446,15 @@ describe.each(TAGS)('userSyncV1 on %s verse-annotations.db', tag => {
 
   it('is not broken by the real-device notes_new orphan', () => {
     // Real devices carry an empty orphan notes_new table from the old "drop
-    // UNIQUE" migration. userSyncV1 must still rebuild notes and leave the
-    // orphan as it was.
+    // UNIQUE" migration. The legacy notes cleanup drops it before userSyncV1,
+    // which must still rebuild notes without losing rows.
     const orphan = before[ORPHAN];
     if (tag === FIRST_LAUNCH_TAG) {
       expect(orphan).toBeUndefined();
     } else {
       expect(orphan?.rows).toEqual([]);
     }
-    expect(after[ORPHAN]).toEqual(orphan);
+    expect(after[ORPHAN]).toBeUndefined();
     expect(after.notes.rows).toHaveLength(before.notes.rows.length);
     expect(after.schema_migrations.rows.map(r => r.version)).toContain(
       USER_SYNC_V1_VERSION,
