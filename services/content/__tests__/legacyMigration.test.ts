@@ -4,7 +4,7 @@ import {
   maybeAutoInstall,
   migrateLegacyContent,
 } from '../legacyMigration';
-import type {EngineDeps} from '../contentEngine';
+import {BACKOFF_MS, type EngineDeps} from '../contentEngine';
 
 function deps(
   registry = createMemoryContentRegistry(),
@@ -69,6 +69,31 @@ describe('migrateLegacyContent', () => {
   });
 });
 
+describe('migrateLegacyContent partial failure', () => {
+  it('completes on a rerun after an upsert throws midway', async () => {
+    const registry = createMemoryContentRegistry();
+    const upsert = registry.upsert.bind(registry);
+    let calls = 0;
+    registry.upsert = async row => {
+      calls++;
+      if (calls === 2) throw new Error('disk_full');
+      await upsert(row);
+    };
+    await expect(
+      migrateLegacyContent(registry, ['169', '16', '7'], 5),
+    ).rejects.toThrow('disk_full');
+    expect((await registry.getState()).migratedAt).toBeNull();
+    expect(await migrateLegacyContent(registry, ['169', '16', '7'], 6)).toBe(2);
+    for (const id of ['169', '16', '7']) {
+      expect(await registry.get(`qf:tafsirs:${id}`)).toMatchObject({
+        version: 0,
+        legacy: true,
+      });
+    }
+    expect((await registry.getState()).migratedAt).toBe(6);
+  });
+});
+
 describe('maybeAutoInstall', () => {
   it('installs Ibn Kathir on a fresh install, even off Wi-Fi', async () => {
     const d = deps();
@@ -96,9 +121,42 @@ describe('maybeAutoInstall', () => {
     expect(await maybeAutoInstall(d)).toBe(false);
   });
 
-  it('retries on the next run if the first attempt fails', async () => {
-    const d = deps(createMemoryContentRegistry(), false);
+  it('honors the backoff after a failed attempt, then retries', async () => {
+    let now = 1000;
+    const d = {...deps(createMemoryContentRegistry(), false), now: () => now};
     expect(await maybeAutoInstall(d)).toBe(false);
     expect((await d.registry.getState()).autoInstallDone).toBe(false);
+    expect(d.api.getDownloadTicket).toHaveBeenCalledTimes(1);
+
+    now += BACKOFF_MS[0] - 1;
+    expect(await maybeAutoInstall(d)).toBe(false);
+    expect(d.api.getDownloadTicket).toHaveBeenCalledTimes(1);
+
+    now += 1;
+    expect(await maybeAutoInstall(d)).toBe(false);
+    expect(d.api.getDownloadTicket).toHaveBeenCalledTimes(2);
+  });
+
+  it('settles for good once a legacy copy was seen, even if the row goes away', async () => {
+    const d = deps();
+    await d.registry.upsert({
+      ...emptyRow(AUTO_INSTALL_KEY, 'tafsir'),
+      legacy: true,
+    });
+    expect(await maybeAutoInstall(d)).toBe(false);
+    expect((await d.registry.getState()).autoInstallDone).toBe(true);
+    await d.registry.delete(AUTO_INSTALL_KEY);
+    expect(await maybeAutoInstall(d)).toBe(false);
+    expect(d.api.getDownloadTicket).not.toHaveBeenCalled();
+  });
+
+  it('settles for good after the user removed it', async () => {
+    const d = deps();
+    await d.registry.upsert({
+      ...emptyRow(AUTO_INSTALL_KEY, 'tafsir'),
+      user_removed: true,
+    });
+    expect(await maybeAutoInstall(d)).toBe(false);
+    expect((await d.registry.getState()).autoInstallDone).toBe(true);
   });
 });

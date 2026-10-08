@@ -174,6 +174,6 @@ describe('legacy migration on v2.3.0 golden databases', () => {
     expect(deps.api.getDownloadTicket).not.toHaveBeenCalled();
     expect(install).not.toHaveBeenCalled();
     expect(await registry.get(key)).toMatchObject({user_removed: true});
-    expect((await registry.getState()).autoInstallDone).toBe(false);
+    expect((await registry.getState()).autoInstallDone).toBe(true);
   });
 });
