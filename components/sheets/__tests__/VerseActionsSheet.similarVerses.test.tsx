@@ -107,6 +107,18 @@ jest.mock('@/store/verseAnnotationsStore', () => {
       isBookmarked: () => false,
       highlights: {},
     })),
+    // @ai-start
+    // A rewayah's verses read their marks through the store's unit API:
+    // none here.
+    selectUnitAnnotations: () => ({
+      rewayah: 'warsh',
+      bookmarkedUnitKeys: new Set(),
+      notedUnitKeys: new Set(),
+      highlightColors: {},
+      bookmarkRowKeys: () => [],
+      highlightRowKeys: () => [],
+    }),
+    // @ai-end
   };
 });
 jest.mock('@/store/mushafPlayerStore', () => ({

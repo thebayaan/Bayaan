@@ -204,7 +204,7 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
       );
       const store = useVerseAnnotationsStore.getState();
       for (const vk of allKeys) {
-        store.addNote(vk);
+        store.addNote(vk, rewayah); // @ai: the rewayah the row is saved in
       }
     } else {
       // @ai-start

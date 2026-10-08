@@ -1,17 +1,19 @@
 // @ai-generated
 /**
  * Bookmarks, highlights and notes of a verse sheet's selection (decision 3,
- * verse-units contract section 3): one row per selected verse at its Hafs
- * anchor; a verse is marked by ANY row naming one of its slots (legacy rows
- * keyed by a Hafs verse included), and removing its mark deletes every such
- * row. Hafs reads and writes exactly the selected Hafs keys, as before.
+ * verse-units contract section 3), through the annotations store's unit
+ * API: one row per selected verse at its Hafs anchor; a verse is marked by
+ * ANY row that marks it (a row of its rewayah naming one of its slots,
+ * legacy rows keyed by a Hafs verse included; a Hafs row on a Hafs verse it
+ * holds), and removing its mark deletes every such row. Hafs reads and
+ * writes exactly the selected Hafs keys, as before.
  *
  * Real Warsh slots (verseUnitsFixture.json: Warsh 1:6 = Hafs 1:7 words 1-4,
  * 1:7 = Hafs 1:7 from word 5, 103:1 = Hafs 103:1 + 103:2, 103:2 = Hafs 103:3
  * words 1-7, 103:3 = the rest of Hafs 103:3); the real annotations store
  * with the database service mocked; rows are saved in Warsh unless a test
- * says otherwise. Every unit of every words DB is checked by
- * selectionAnnotations.alldbs.test.ts (local, BAYAAN_OVERLAY_DB_DIR).
+ * says otherwise. The row mapping is checked on every unit of every words
+ * DB by unitAnnotations.alldbs.test.ts (local, BAYAAN_OVERLAY_DB_DIR).
  */
 import React, {act} from 'react';
 import TestRenderer from 'react-test-renderer';
@@ -60,10 +62,8 @@ import {
 import {setStoredRows as setRows} from '../__fixtures__/storedRows';
 import {
   addSelectionNote,
-  selectionRowKeys,
   setSelectionBookmarked,
   setSelectionHighlight,
-  unitRowKeys,
   useSelectionBookmarked,
   useSelectionHighlightColor,
 } from '../selectionAnnotations';
@@ -158,62 +158,6 @@ beforeEach(() => {
   setRows([]);
 });
 
-describe('the keys whose rows mark a verse', () => {
-  it('a verse starting a Hafs verse: its anchor first, then its slots', () => {
-    expect(unitRowKeys(warsh, warsh.unitByKey('1:6')!)).toEqual([
-      '1:7',
-      '1:7:2',
-      '1:7:3',
-      '1:7:4',
-    ]);
-  });
-
-  it('the later part of a split Hafs verse: from its own anchor on', () => {
-    expect(unitRowKeys(warsh, warsh.unitByKey('1:7')!)).toEqual([
-      '1:7:5',
-      '1:7:6',
-      '1:7:7',
-      '1:7:8',
-      '1:7:9',
-      '1:7:10',
-    ]);
-  });
-
-  it('a verse holding two Hafs verses: both, including the second start', () => {
-    expect(unitRowKeys(warsh, warsh.unitByKey('103:1')!)).toEqual([
-      '103:1',
-      '103:1:2',
-      '103:2',
-      '103:2:2',
-      '103:2:3',
-      '103:2:4',
-      '103:2:5',
-    ]);
-  });
-
-  it('every verse: one key per slot, each naming that verse, none shared', () => {
-    const seen = new Map<string, string>();
-    for (const unit of warsh.units) {
-      const keys = unitRowKeys(warsh, unit);
-      expect(keys[0]).toBe(warsh.hafsAnchor(unit).key);
-      expect(keys).toHaveLength(unit.lastWordId - unit.firstWordId + 1);
-      for (const key of keys) {
-        expect(warsh.unitForAnchor(key)).toBe(unit);
-        expect(seen.get(key)).toBeUndefined();
-        seen.set(key, unit.key);
-      }
-    }
-  });
-
-  it('Hafs: each selected Hafs key, as before', () => {
-    expect(selectionRowKeys(hafsSelection('2:255'))).toEqual([['2:255']]);
-    expect(selectionRowKeys(hafsSelection('2:286', '3:1'))).toEqual([
-      ['2:286'],
-      ['3:1'],
-    ]);
-  });
-});
-
 describe('bookmarks', () => {
   it('a legacy row on the second Hafs verse of a merged verse marks it', async () => {
     // Saved in Warsh before Release 1 on Hafs 103:2: Warsh 103:1 holds it.
@@ -247,6 +191,30 @@ describe('bookmarks', () => {
     setRows(['1:7']);
     const first = renderMarks(warshSelection('1:6'));
     const second = renderMarks(warshSelection('1:7'));
+    expect(first.current().bookmarked).toBe(true);
+    expect(second.current().bookmarked).toBe(false);
+    first.unmount();
+    second.unmount();
+  });
+
+  it('a Hafs row marks every verse holding its Hafs verse', () => {
+    setRows(['1:7'], {}, 'hafs');
+    const first = renderMarks(warshSelection('1:6'));
+    const second = renderMarks(warshSelection('1:7'));
+    expect(first.current().bookmarked).toBe(true);
+    expect(second.current().bookmarked).toBe(true);
+    first.unmount();
+    second.unmount();
+  });
+
+  it('unbookmarking one part of a Hafs row keeps the other part', async () => {
+    setRows(['1:7'], {}, 'hafs');
+    const first = renderMarks(warshSelection('1:6'));
+    const second = renderMarks(warshSelection('1:7'));
+    await run(() => setSelectionBookmarked(warshSelection('1:7'), false));
+    expect(calls(service.removeBookmark)).toEqual(['1:7']);
+    // Warsh 1:6 keeps its bookmark on a row of its own.
+    expect(service.addBookmark.mock.calls).toEqual([['1:7', 1, 7, 'warsh']]);
     expect(first.current().bookmarked).toBe(true);
     expect(second.current().bookmarked).toBe(false);
     first.unmount();
@@ -316,6 +284,13 @@ describe('highlights', () => {
   it("the verse's own row gives its colour", () => {
     setRows([], {'103:1': 'green', '103:2': 'yellow'});
     const marks = renderMarks(warshSelection('103:1'));
+    expect(marks.current().highlightColor).toBe('green');
+    marks.unmount();
+  });
+
+  it('a Hafs row colours every verse holding its Hafs verse', () => {
+    setRows([], {'1:7': 'green'}, 'hafs');
+    const marks = renderMarks(warshSelection('1:7'));
     expect(marks.current().highlightColor).toBe('green');
     marks.unmount();
   });

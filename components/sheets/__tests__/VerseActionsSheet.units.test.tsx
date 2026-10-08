@@ -211,6 +211,7 @@ import {resolvePlayFromHere} from '@/store/timestampStore'; // @ai
 import {qulDataService} from '@/services/mushaf/QulDataService';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
 import {setStoredRows as setRows} from '../verse-actions/__fixtures__/storedRows';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {
@@ -690,6 +691,31 @@ describe('stored rows that mark a Warsh verse (contract section 3)', () => {
       7,
       'warsh',
     );
+  });
+
+  it('a Hafs row on a split Hafs verse marks both Warsh verses', async () => {
+    setRows(['1:7'], {}, 'hafs');
+    await openSheet(warshUnitPayload(['1:7']));
+    expect(texts()).toContain('Remove Bookmark');
+  });
+
+  it("rows are saved in the sheet's rewayah, not the mushaf's", async () => {
+    // A player sheet: Warsh verses while the mushaf shows Hafs, and the
+    // other way round.
+    await openSheet(warshUnitPayload(['1:7'], {source: 'player'}));
+    await press('Bookmark');
+    useMushafSettingsStore.setState({rewayah: 'warsh'});
+    await openSheet({
+      verseKey: '2:255',
+      surahNumber: 2,
+      ayahNumber: 255,
+      rewayah: 'hafs',
+      source: 'player',
+    });
+    await press('Bookmark');
+    const rows = useVerseAnnotationsStore.getState().bookmarkRows;
+    expect(rows['1:7:5']).toEqual({verseKey: '1:7:5', rewayahId: 'warsh'});
+    expect(rows['2:255']).toEqual({verseKey: '2:255', rewayahId: 'hafs'});
   });
 
   it('a legacy highlight marks it and every row is removed', async () => {

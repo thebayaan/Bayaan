@@ -81,6 +81,7 @@ jest.mock('@/services/mushaf/RewayahVerseUnitsService', () => ({
 import {VerseNoteSheet} from '../VerseNoteSheet';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
 import {
   buildRewayahVerseUnits,
   type RewayahVerseUnits,
@@ -294,6 +295,33 @@ describe('a saved note', () => {
 });
 
 describe('a new note', () => {
+  it("is kept in the store with the note's rewayah, not the mushaf's", async () => {
+    useMushafSettingsStore.setState({rewayah: 'warsh'});
+    await openSheet({
+      verseKey: '2:255',
+      surahNumber: 2,
+      ayahNumber: 255,
+      rewayah: 'hafs',
+    });
+    await save('my note');
+    useMushafSettingsStore.setState({rewayah: 'hafs'});
+    await openSheet({
+      verseKey: '1:7',
+      surahNumber: 1,
+      ayahNumber: 7,
+      unitKeys: ['1:7'],
+      rewayah: 'warsh',
+    });
+    await save('my note');
+    const rows = Object.values(useVerseAnnotationsStore.getState().noteRows);
+    expect(rows).toEqual(
+      expect.arrayContaining([
+        {verseKey: '2:255', rewayahId: 'hafs'},
+        {verseKey: '1:7:5', rewayahId: 'warsh'},
+      ]),
+    );
+  });
+
   it('Hafs: stored exactly as before', async () => {
     await openSheet({verseKey: '2:255', surahNumber: 2, ayahNumber: 255});
     expect(title()).toBe('Note for 2:255');

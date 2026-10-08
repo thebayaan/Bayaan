@@ -7,101 +7,40 @@
  *
  * Storage stays Hafs-keyed: a selected verse is stored as one row at its
  * Hafs anchor ("S:A", or "S:A:W" for a verse that starts inside a Hafs
- * verse) with the selection's rewayah. Read back, a row marks the verse
- * holding the slot its verse_key names (RewayahVerseUnits.unitForAnchor):
- *  - a verse is marked when ANY row marks it: the row at its own anchor, or
- *    a row saved before Release 1 on a Hafs verse whose first word it holds
- *    (a legacy Warsh row "103:2" marks Warsh 103:1 = Hafs 103:1 + 103:2);
- *  - removing a verse's mark deletes every row that marks it, legacy rows
- *    included, so no row is left that still marks it on the mushaf;
- *  - marking it writes a row at its anchor unless a row already marks it.
+ * verse) with the selection's rewayah. Another rewayah's verses go through
+ * the annotations store's unit API (selectUnitAnnotations,
+ * setUnitsBookmarked, setUnitsHighlight, addUnitsNote), which reads every
+ * row back in the shown rewayah by the rewayah it was saved in:
+ *  - a row of the shown rewayah (or a legacy row) marks the verse holding
+ *    the slot its verse_key names (unitForAnchor): a legacy Warsh row
+ *    "103:2" marks Warsh 103:1 = Hafs 103:1 + 103:2;
+ *  - a Hafs row marks every verse holding its Hafs verse (Hafs "1:7": Warsh
+ *    1:6 and 1:7); a row of a third rewayah the verses holding its words;
+ *  - a verse is marked when ANY row marks it; removing its mark deletes
+ *    every row that marks it and keeps the other verses such a row marked
+ *    on rows of their own; marking it writes a row at its anchor unless a
+ *    row already marks it.
  * Hafs: a verse's only key is its own Hafs key, so the sheets read and
  * write exactly the rows they did before, call for call (every selected
- * key is added or removed, stored or not).
- *
- * The annotations store keys rows by verse_key alone, so every row is read
- * as a row of the shown rewayah: exact for that rewayah's rows and for
- * legacy rows. A row saved in Hafs or in a third rewayah can only be mapped
- * by its own rewayah (contract section 3) once the store records it; the
- * non-Hafs paths below are where that mapping plugs in.
+ * key is added or removed, stored or not), each optimistic row with its
+ * rewayah.
  */
 import {useMemo} from 'react';
-import {
-  formatAnchorKey,
-  type RewayahVerseUnits,
-  type VerseUnit,
-} from '@/services/mushaf/RewayahVerseUnits';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
-import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
+import {
+  selectUnitAnnotations,
+  useVerseAnnotationsStore,
+} from '@/store/verseAnnotationsStore';
 import type {HighlightColor} from '@/types/verse-annotations';
 import type {ReadyVerseSelection} from '@/components/share/rewayahVerseSelection';
 
-/**
- * Every verse_key a stored row can have to mark `unit` (the inverse of
- * unitForAnchor): the Hafs location of each of its slots, "S:A" for a Hafs
- * verse's first slot and "S:A:W" for slot W, in slot order, so the unit's
- * own anchor comes first.
- */
-export function unitRowKeys(
-  model: RewayahVerseUnits,
-  unit: VerseUnit,
-): string[] {
-  const anchor = model.hafsAnchor(unit);
-  const keys: string[] = [];
-  let ayah = anchor.ayah;
-  let range = model.hafsVerseWordRange(anchor.hafsKey);
-  for (let id = unit.firstWordId; id <= unit.lastWordId; id++) {
-    // A surah's Hafs verses are consecutive runs of slot ids.
-    while (range && id > range.last) {
-      ayah += 1;
-      range = model.hafsVerseWordRange(`${unit.surah}:${ayah}`);
-    }
-    if (!range) break;
-    keys.push(formatAnchorKey(`${unit.surah}:${ayah}`, id - range.first + 1));
-  }
-  return keys.length > 0 ? keys : [anchor.key];
-}
-
-/**
- * Per selected verse, the verse_keys whose rows mark it (unitRowKeys), its
- * own anchor first. Hafs: [[verseKey], ...], the keys the sheets used before.
- */
-export function selectionRowKeys(selection: ReadyVerseSelection): string[][] {
-  const {units, model} = selection;
-  if (!units || !model) return selection.anchors.map(anchor => [anchor.key]);
-  return units.map(unit => unitRowKeys(model, unit));
-}
-
-/**
- * The rows a removal deletes: every stored row (`stored`) that marks a
- * selected verse. Hafs: every selected key, stored or not, as the sheets
- * always removed them.
- */
-function removalKeys(
-  selection: ReadyVerseSelection,
-  rowKeys: readonly (readonly string[])[],
-  stored: (key: string) => boolean,
-): string[] {
-  if (!selection.units) return rowKeys.map(keys => keys[0]);
-  return rowKeys.flatMap(keys => keys.filter(stored));
-}
-
-/** The first colour among `keys` (a verse's row keys, own anchor first). */
-function firstHighlightColor(
-  keys: readonly string[] | undefined,
-  highlights: Readonly<Record<string, HighlightColor>>,
-): HighlightColor | null {
-  for (const key of keys ?? []) {
-    const color = highlights[key];
-    if (color) return color;
-  }
-  return null;
-}
-
-/** selectionRowKeys of a selection (none while it is pending). */
-function useRowKeys(selection: ReadyVerseSelection | null): string[][] {
+/** A Hafs selection's keys (none for another rewayah, or while pending). */
+function useHafsKeys(selection: ReadyVerseSelection | null): string[] {
   return useMemo(
-    () => (selection ? selectionRowKeys(selection) : []),
+    () =>
+      selection && !selection.units
+        ? selection.anchors.map(anchor => anchor.key)
+        : [],
     [selection],
   );
 }
@@ -113,59 +52,69 @@ function useRowKeys(selection: ReadyVerseSelection | null): string[][] {
 export function useSelectionBookmarked(
   selection: ReadyVerseSelection | null,
 ): boolean {
-  const rowKeys = useRowKeys(selection);
-  return useVerseAnnotationsStore(
-    state =>
-      rowKeys.length > 0 &&
-      rowKeys.every(keys => keys.some(key => state.isBookmarked(key))),
-  );
+  const hafsKeys = useHafsKeys(selection);
+  const units = selection?.units ?? null;
+  const model = selection?.model ?? null;
+  return useVerseAnnotationsStore(state => {
+    if (units && model) {
+      const marks = selectUnitAnnotations(state, model);
+      return units.every(unit => marks.bookmarkedUnitKeys.has(unit.key));
+    }
+    return (
+      hafsKeys.length > 0 && hafsKeys.every(key => state.isBookmarked(key))
+    );
+  });
 }
 
 /**
- * The first selected verse's highlight colour: its own anchor's row, else
- * the earliest row that marks it; null when none does or while pending.
+ * The first selected verse's highlight colour (another rewayah: the store's
+ * pick among the rows that mark it, its own row first); null when none does
+ * or while pending.
  */
 export function useSelectionHighlightColor(
   selection: ReadyVerseSelection | null,
 ): HighlightColor | null {
-  const rowKeys = useRowKeys(selection);
-  return useVerseAnnotationsStore(state =>
-    firstHighlightColor(rowKeys[0], state.highlights),
-  );
+  const hafsKeys = useHafsKeys(selection);
+  const units = selection?.units ?? null;
+  const model = selection?.model ?? null;
+  return useVerseAnnotationsStore(state => {
+    if (units && model) {
+      const marks = selectUnitAnnotations(state, model);
+      return marks.highlightColors[units[0].key] ?? null;
+    }
+    return (hafsKeys.length > 0 && state.highlights[hafsKeys[0]]) || null;
+  });
 }
 
 /**
  * Bookmark the selected verses: one row per verse at its anchor, except a
- * verse a row already marks (it keeps that row rather than getting a
- * second one). Or remove their bookmarks: every row that marks one of them.
- * Hafs: adds or removes each selected Hafs key, as before.
+ * verse a row already marks. Or remove their bookmarks: every row that
+ * marks one of them. Hafs: adds or removes each selected Hafs key, as
+ * before.
  */
 export async function setSelectionBookmarked(
   selection: ReadyVerseSelection,
   bookmarked: boolean,
 ): Promise<void> {
   const store = useVerseAnnotationsStore.getState();
-  const rowKeys = selectionRowKeys(selection);
-  if (!bookmarked) {
-    const keys = removalKeys(selection, rowKeys, k => store.isBookmarked(k));
-    for (const key of keys) {
-      await verseAnnotationService.removeBookmark(key);
-      store.removeBookmark(key);
-    }
+  const {units, model} = selection;
+  if (units && model) {
+    await store.setUnitsBookmarked(model, units, bookmarked);
     return;
   }
-  for (const [i, anchor] of selection.anchors.entries()) {
-    // Hafs adds every selected key, as before (the insert is OR IGNORE).
-    if (selection.units && rowKeys[i].some(key => store.isBookmarked(key))) {
-      continue;
+  for (const anchor of selection.anchors) {
+    if (bookmarked) {
+      await verseAnnotationService.addBookmark(
+        anchor.key,
+        anchor.surah,
+        anchor.ayah,
+        selection.rewayah,
+      );
+      store.addBookmark(anchor.key, selection.rewayah);
+    } else {
+      await verseAnnotationService.removeBookmark(anchor.key);
+      store.removeBookmark(anchor.key);
     }
-    await verseAnnotationService.addBookmark(
-      anchor.key,
-      anchor.surah,
-      anchor.ayah,
-      selection.rewayah,
-    );
-    store.addBookmark(anchor.key);
   }
 }
 
@@ -179,28 +128,25 @@ export async function setSelectionHighlight(
   color: HighlightColor | null,
 ): Promise<void> {
   const store = useVerseAnnotationsStore.getState();
-  if (color === null) {
-    const {highlights} = store;
-    const keys = removalKeys(
-      selection,
-      selectionRowKeys(selection),
-      k => !!highlights[k],
-    );
-    for (const key of keys) {
-      await verseAnnotationService.removeHighlight(key);
-      store.removeHighlight(key);
-    }
+  const {units, model} = selection;
+  if (units && model) {
+    await store.setUnitsHighlight(model, units, color);
     return;
   }
   for (const anchor of selection.anchors) {
-    await verseAnnotationService.upsertHighlight(
-      anchor.key,
-      anchor.surah,
-      anchor.ayah,
-      color,
-      selection.rewayah,
-    );
-    store.setHighlight(anchor.key, color);
+    if (color === null) {
+      await verseAnnotationService.removeHighlight(anchor.key);
+      store.removeHighlight(anchor.key);
+    } else {
+      await verseAnnotationService.upsertHighlight(
+        anchor.key,
+        anchor.surah,
+        anchor.ayah,
+        color,
+        selection.rewayah,
+      );
+      store.setHighlight(anchor.key, color, selection.rewayah);
+    }
   }
 }
 
@@ -213,6 +159,13 @@ export async function addSelectionNote(
   selection: ReadyVerseSelection,
   content: string,
 ): Promise<void> {
+  const {units, model} = selection;
+  if (units && model) {
+    await useVerseAnnotationsStore
+      .getState()
+      .addUnitsNote(model, units, content);
+    return;
+  }
   const [first] = selection.anchors;
   if (!first) return;
   const keys = selection.anchors.map(anchor => anchor.key);
@@ -226,6 +179,6 @@ export async function addSelectionNote(
   );
   const store = useVerseAnnotationsStore.getState();
   for (const key of keys) {
-    store.addNote(key);
+    store.addNote(key, selection.rewayah);
   }
 }
