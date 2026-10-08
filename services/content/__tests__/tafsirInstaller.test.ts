@@ -20,7 +20,14 @@ function makeStore(selected: string | null) {
   return {getState: () => state, state};
 }
 
-function makeDb(downloaded: Array<{identifier: string; name: string}>) {
+function makeDb(
+  downloaded: Array<{
+    identifier: string;
+    name: string;
+    language?: string;
+    direction?: 'ltr' | 'rtl';
+  }>,
+) {
   return {
     saveTafseer: jest.fn().mockResolvedValue(undefined),
     deleteTafseer: jest.fn().mockResolvedValue(undefined),
@@ -72,6 +79,30 @@ describe('tafsir installer', () => {
       [expect.objectContaining({verseKey: '1:1', text: '<p>a</p>'})],
     );
     expect(store.state.loadDownloadedMeta).toHaveBeenCalled();
+  });
+
+  it('keeps an installed tafsir language and direction on an update without meta', async () => {
+    const db = makeDb([
+      {
+        identifier: '16',
+        name: 'Tafsir Muyassar',
+        language: 'Arabic',
+        direction: 'rtl',
+      },
+    ]);
+    const installer = createTafsirInstaller({
+      db: db as never,
+      store: makeStore('16') as never,
+    });
+    await installer.install('qf:tafsirs:16', envelope, undefined);
+    expect(db.saveTafseer).toHaveBeenCalledWith(
+      '16',
+      'Tafsir Muyassar',
+      'Tafsir Muyassar',
+      'Arabic',
+      'rtl',
+      expect.any(Array),
+    );
   });
 
   it('falls back to another installed tafsir when the selected one is withdrawn', async () => {
@@ -179,6 +210,28 @@ describe('tafsir installer against real SQLite', () => {
       undefined,
     );
     expect((await svc.getTafseerForVerse('1:1', '169'))?.text).toBe('<p>b</p>');
+  });
+
+  it('drops verses that are absent from the new snapshot', async () => {
+    const svc = freshService();
+    await svc.initialize();
+    const installer = createTafsirInstaller({
+      db: svc,
+      store: makeStore('169') as never,
+    });
+    await installer.install(
+      'qf:tafsirs:169',
+      makeEnvelope([
+        {verse_id: 1, verse_key: '1:1', text: '<p>a</p>'},
+        {verse_id: 2, verse_key: '1:2', text: '<p>b</p>'},
+      ]),
+      undefined,
+    );
+    expect((await svc.getTafseerForVerse('1:2', '169'))?.text).toBe('<p>b</p>');
+    await installer.install('qf:tafsirs:169', envelope, undefined);
+    expect((await svc.getTafseerForVerse('1:1', '169'))?.text).toBe('<p>a</p>');
+    const after = await svc.getTafseerForVerse('1:2', '169');
+    expect(after?.text ?? null).not.toBe('<p>b</p>');
   });
 
   it('keeps the previous rows when the parser fails', async () => {

@@ -33,8 +33,9 @@ export function createTafsirInstaller(
         id,
         name,
         name,
-        meta?.language ?? 'English',
-        meta?.direction ?? 'ltr',
+        // Updates arrive without meta; keep an installed tafsir's language and direction.
+        meta?.language ?? existing?.language ?? 'English',
+        meta?.direction ?? existing?.direction ?? 'ltr',
         verses,
       );
       await store.getState().loadDownloadedMeta();
