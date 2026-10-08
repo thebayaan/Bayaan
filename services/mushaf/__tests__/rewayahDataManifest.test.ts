@@ -29,7 +29,7 @@ import os from 'os';
 // @ai-end
 import path from 'path';
 
-import {REWAYAH_DATA_MANIFEST} from '../rewayahDataManifest';
+import {REWAYAH_DATA_MANIFEST, REWAYAH_DATA_MD5} from '../rewayahDataManifest';
 import {
   getBundledDkDbAssetFiles,
   getCurrentDbNamesByBase,
@@ -49,6 +49,14 @@ function sha256(file: string): string {
     .update(readFileSync(path.join(ASSET_DIR, file)))
     .digest('hex');
 }
+
+// @ai-start
+function md5(file: string): string {
+  return createHash('md5')
+    .update(readFileSync(path.join(ASSET_DIR, file)))
+    .digest('hex');
+}
+// @ai-end
 
 function requiredDbAssets(source: string): string[] {
   const re =
@@ -86,6 +94,16 @@ describe('rewayahDataManifest (contract C4)', () => {
       expect(sha256(file)).toBe(hash);
     },
   );
+
+  // @ai-start
+  it('holds the md5 of exactly the same assets, matching the files on disk', () => {
+    expect(Object.keys(REWAYAH_DATA_MD5).sort()).toEqual(manifestFiles);
+    for (const [file, hash] of Object.entries(REWAYAH_DATA_MD5)) {
+      expect(hash).toMatch(/^[0-9a-f]{32}$/);
+      expect(md5(file)).toBe(hash);
+    }
+  });
+  // @ai-end
 
   it('resolves an identity and a unique on-device name for every rewayah with text', () => {
     const withText = ALL_REWAYAH_IDS.filter(hasTextData);

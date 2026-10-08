@@ -29,3 +29,19 @@ export const REWAYAH_DATA_MANIFEST: Readonly<Record<string, string>> = {
   'dk_words_warsh.db':
     '702885469af3a1006027e86ade7692018a00914be6993a88f95d9ab4eae65d27',
 };
+
+// md5 of the same assets: the platform file API reports md5, so the app
+// checks each on-device copy against it once per session and re-imports
+// a copy that was cut short (a copy can still open after that, with its
+// last words silently altered).
+export const REWAYAH_DATA_MD5: Readonly<Record<string, string>> = {
+  'digital-khatt-15-lines.db': 'b52a3dd59f9cdf985b896a607c259953',
+  'digital-khatt-v2.db': '9b4feda111e1daacf8e477feb9126ce2',
+  'dk_words_bazzi.db': 'bf0d3d1e60fbb0c3dbfd4323feb96d35',
+  'dk_words_doori.db': '9525873c6a103fc075f294680bf2df2d',
+  'dk_words_qaloon.db': '9b526a4d1ddf1be5cddc8236ff967ad3',
+  'dk_words_qumbul.db': '6edd1efc4d8e7e8f4662f98de310896e',
+  'dk_words_shouba.db': '392d7cc02780d83f2adc760463559759',
+  'dk_words_soosi.db': 'dd8cebea9101f48d66e02e76830edff8',
+  'dk_words_warsh.db': 'e121b6b58c5d233c17e11d723b460b84',
+};
