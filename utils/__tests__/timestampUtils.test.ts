@@ -14,6 +14,7 @@ import {
   getPlayFromHereTarget,
   PLAY_FROM_HERE_LOAD_FAILED,
   PLAY_FROM_HERE_NO_TIMING,
+  PLAY_FROM_HERE_OTHER_SURAH,
   PLAY_FROM_HERE_PENDING,
   PLAY_FROM_HERE_UNAVAILABLE,
   type TimingLoadStatus,
@@ -218,6 +219,34 @@ describe('getPlayFromHereTarget with the timestamp store state', () => {
     expect(getPlayFromHereTarget(timings('ready', pending), '1:2').status).toBe(
       'pending',
     );
+  });
+
+  it('a verse of another surah than the player is on says so, whatever the load state', () => {
+    // the track moved on to al-Ikhlas while al-Baqarah's verse menu was open
+    const onIkhlas = (status: TimingLoadStatus, t: AyahTimestamp[] | null) => ({
+      ...timings(status, t),
+      timestampRequest: {surahNumber: 112},
+    });
+    const otherSurah = {status: 'unavailable', ...PLAY_FROM_HERE_OTHER_SURAH};
+    const ikhlas = fresh('hafs-clean', 112);
+    expect(getPlayFromHereTarget(onIkhlas('ready', ikhlas), '2:3')).toEqual(
+      otherSurah,
+    );
+    // al-Baqarah's timings still held while al-Ikhlas loads
+    expect(
+      getPlayFromHereTarget(onIkhlas('loading', fresh('hafs-clean', 2)), '2:3'),
+    ).toEqual(otherSurah);
+    expect(getPlayFromHereTarget(onIkhlas('failed', null), '2:3')).toEqual(
+      otherSurah,
+    );
+    // its own verses are unaffected
+    expect(getPlayFromHereTarget(onIkhlas('ready', ikhlas), '112:3')).toEqual(
+      getPlayFromHereTarget(ikhlas, '112:3'),
+    );
+    expect(getPlayFromHereTarget(onIkhlas('loading', null), '112:3')).toEqual({
+      status: 'pending',
+      ...PLAY_FROM_HERE_PENDING,
+    });
   });
 });
 // @ai-end

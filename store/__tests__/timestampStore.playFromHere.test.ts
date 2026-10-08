@@ -52,6 +52,7 @@ import {
   getPlayFromHereTarget,
   PLAY_FROM_HERE_LOAD_FAILED,
   PLAY_FROM_HERE_NO_TIMING,
+  PLAY_FROM_HERE_OTHER_SURAH,
   PLAY_FROM_HERE_PENDING,
 } from '@/utils/timestampUtils';
 import {loadTimings} from '@/services/timestamps/__fixtures__/timingFixtures';
@@ -176,6 +177,24 @@ describe('Play from here while the timings load', () => {
       loadTimings('hafs-clean', 112)!.length,
     );
     expect(store().timestampLoadStatus).toBe('ready');
+  });
+
+  it('a verse of the surah the player has left says the player moved on', async () => {
+    await store().loadTimestampsForSurah('hafs-clean', 2);
+    // the verse menu of 2:3 stays open while the track moves to al-Ikhlas
+    const release = gate('hafs-clean-112');
+    const loading = store().loadTimestampsForSurah('hafs-clean', 112);
+    expect(resolvePlayFromHere('2:3')).toEqual({
+      status: 'unavailable',
+      ...PLAY_FROM_HERE_OTHER_SURAH,
+    });
+    release();
+    await loading;
+    expect(resolvePlayFromHere('2:3')).toEqual({
+      status: 'unavailable',
+      ...PLAY_FROM_HERE_OTHER_SURAH,
+    });
+    expect(resolvePlayFromHere('112:3').status).toBe('ready');
   });
 
   it('a load cleared mid-flight (no track) stays cleared', async () => {

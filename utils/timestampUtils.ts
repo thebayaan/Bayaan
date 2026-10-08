@@ -96,13 +96,23 @@ export const PLAY_FROM_HERE_NO_TIMING = {
 
 /**
  * "Play from here" after the surah's verse timing failed to load (offline, a
- * CDN error). The request that shows it retries the load (resolvePlayFromHere
- * in store/timestampStore.ts), so trying again can succeed.
+ * CDN error, a damaged file: the store cannot tell which). The request that
+ * shows it retries the load (resolvePlayFromHere in store/timestampStore.ts),
+ * so trying again can succeed.
  */
 export const PLAY_FROM_HERE_LOAD_FAILED = {
   title: "Can't start at this verse",
   message:
-    "This surah's verse timing couldn't be loaded. Check your connection and try again.",
+    "This surah's verse timing couldn't be loaded. Check your connection, or try again later.",
+} as const;
+
+/**
+ * "Play from here" on a verse of another surah than the one the player is on
+ * (the track moved on while the verse's menu was open).
+ */
+export const PLAY_FROM_HERE_OTHER_SURAH = {
+  title: "Can't start at this verse",
+  message: 'The player is now on another surah.',
 } as const;
 
 /**
@@ -126,6 +136,8 @@ export type TimingLoadStatus =
 export interface CurrentTrackTimings {
   currentSurahTimestamps: AyahTimestamp[] | null;
   timestampLoadStatus: TimingLoadStatus;
+  /** The track whose timings were requested (the surah the player is on). */
+  timestampRequest?: {surahNumber: number} | null;
 }
 
 export type PlayFromHereTarget =
@@ -148,7 +160,8 @@ export type PlayFromHereTarget =
  * exactly as findAyahTimestamp always did.
  *
  * Pass the timestamp store's state (CurrentTrackTimings) so a load that has
- * settled without timings is told apart from one in flight; given only a
+ * settled without timings is told apart from one in flight, and a verse of
+ * another surah than the player's is said to be one; given only a
  * timestamps array, a missing array can only mean "not loaded yet". Either
  * way, timings of another surah (left in the store while the track's own
  * load) are never a target.
@@ -159,6 +172,15 @@ export function getPlayFromHereTarget(
 ): PlayFromHereTarget {
   let timestamps: AyahTimestamp[] | null | undefined;
   if (timings && !Array.isArray(timings)) {
+    const trackSurah = timings.timestampRequest?.surahNumber;
+    const tappedSurah = parseInt(hafsVerseKey.split(':')[0], 10);
+    if (
+      trackSurah !== undefined &&
+      !Number.isNaN(tappedSurah) &&
+      trackSurah !== tappedSurah
+    ) {
+      return {status: 'unavailable', ...PLAY_FROM_HERE_OTHER_SURAH};
+    }
     switch (timings.timestampLoadStatus) {
       case 'ready':
         timestamps = timings.currentSurahTimestamps;
@@ -192,7 +214,7 @@ export function getPlayFromHereTarget(
   if (entry.surahNumber && entry.surahNumber !== requestedSurah) {
     return Array.isArray(timings)
       ? {status: 'pending', ...PLAY_FROM_HERE_PENDING}
-      : {status: 'unavailable', ...PLAY_FROM_HERE_UNAVAILABLE};
+      : {status: 'unavailable', ...PLAY_FROM_HERE_OTHER_SURAH};
   }
 
   const surah = entry.surahNumber || requestedSurah;
