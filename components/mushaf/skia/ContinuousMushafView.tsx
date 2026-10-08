@@ -19,18 +19,13 @@ import {
 import {useMushafFontMgr} from '@/hooks/useMushafFontMgr';
 import {Gesture, GestureDetector} from 'react-native-gesture-handler';
 import {runOnJS} from 'react-native-worklets';
-import * as Haptics from 'expo-haptics';
-import {SheetManager} from 'react-native-actions-sheet';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {verticalScale} from 'react-native-size-matters';
 import Color from 'color';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import type {MushafArabicTextWeight} from '@/store/mushafSettingsStore';
 import {useTajweedStore} from '@/store/tajweedStore';
-import {
-  useMushafVerseSelectionStore,
-  verseActionsPayloadForUnits, // @ai
-} from '@/store/mushafVerseSelectionStore';
+import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
 import {
   BOOKMARK_HIGHLIGHT_COLOR,
@@ -50,10 +45,7 @@ import {
   MARGIN,
   FONTSIZE,
 } from '@/services/mushaf/QuranTextService';
-import {
-  mushafVerseMapService,
-  selectionForUnitKeys, // @ai
-} from '@/services/mushaf/MushafVerseMapService';
+import {mushafVerseMapService} from '@/services/mushaf/MushafVerseMapService';
 import {parseAnchorKey} from '@/services/mushaf/RewayahVerseUnits'; // @ai
 import type {IndexedTajweedData} from '@/utils/tajweedLoader';
 import {getAllahNameHighlightColorHex} from '@/constants/mushafAllahHighlight';
@@ -70,6 +62,7 @@ import {
 // @ai-start
 import {computeUnitPageHighlightLayers} from './verseHighlightLayers';
 import {usePlaybackBand} from './playbackBand';
+import {useVerseUnitDragSelect, type LineCharHit} from './verseUnitDragSelect';
 // @ai-end
 import {type MushafLayoutMetrics} from '../constants';
 
@@ -391,7 +384,6 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
     const selectedPageNumber = useMushafVerseSelectionStore(
       s => s.selectedPageNumber,
     );
-    const selectUnits = useMushafVerseSelectionStore(s => s.selectUnits);
     // @ai-end
 
     // ── Playback + annotation highlights ───────────────────
@@ -405,16 +397,10 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
     const playbackBand = usePlaybackBand();
 
     // ── Hit testing ────────────────────────────────────────
-    // @ai — verse UNIT keys of the page, reading order (drag ranges)
-    const orderedVerseKeys = useMemo(
-      () => mushafVerseMapService.getOrderedUnitKeysForPage(pageNumber),
-      // rewayah/dataVersion: segments follow the rendered text.
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      [pageNumber, rewayah, dataVersion],
-    );
-
-    const hitTestVerse = useCallback(
-      (eventX: number, eventY: number) => {
+    // @ai — the line and character under a touch point (this renderer's
+    // paragraph metrics); which verse unit that is: useVerseUnitDragSelect.
+    const charAtPoint = useCallback(
+      (eventX: number, eventY: number): LineCharHit | null => {
         const canvasX = eventX - canvasMarginX;
         const canvasY = eventY;
 
@@ -444,110 +430,21 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
           paragraphY,
         );
 
-        // @ai — the verse unit under the finger (null on the unnumbered
-        // basmala)
-        return mushafVerseMapService.findUnitAtCharIndex(
-          pageNumber,
-          lineIndex,
-          charIndex,
-        );
+        return {lineIndex, charIndex};
       },
-      [
-        pageNumber,
-        pageLines,
-        canvasHeight,
-        canvasMarginX,
-        contentWidth,
-        baseLineHeight,
-      ],
-    );
-
-    // @ai — select verse units of the shown text (keys + rewayah + anchors)
-    const selectUnitKeys = useCallback(
-      (unitKeys: string[]) => {
-        const selection = selectionForUnitKeys(unitKeys);
-        if (selection) {
-          selectUnits(selection.rewayah, selection.units, pageNumber);
-        }
-      },
-      [selectUnits, pageNumber],
+      [pageLines, canvasHeight, canvasMarginX, contentWidth, baseLineHeight],
     );
 
     // ── Drag gesture handlers ──────────────────────────────
-    const dragStartVerseKeyRef = useRef<string | null>(null);
-    const dragCurrentVerseKeyRef = useRef<string | null>(null);
-    const orderedVerseKeysRef = useRef<string[]>(orderedVerseKeys);
-    orderedVerseKeysRef.current = orderedVerseKeys;
-
-    const handleDragStart = useCallback(
-      (eventX: number, eventY: number) => {
-        const segment = hitTestVerse(eventX, eventY);
-        if (!segment) {
-          dragStartVerseKeyRef.current = null;
-          return;
-        }
-        dragStartVerseKeyRef.current = segment.verseKey;
-        dragCurrentVerseKeyRef.current = segment.verseKey;
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        selectUnitKeys([segment.verseKey]); // @ai
-      },
-      [hitTestVerse, selectUnitKeys],
-    );
-
-    const handleDragUpdate = useCallback(
-      (eventX: number, eventY: number) => {
-        if (Platform.OS === 'android') return;
-        const startKey = dragStartVerseKeyRef.current;
-        if (!startKey) return;
-
-        const segment = hitTestVerse(eventX, eventY);
-        if (!segment) return;
-
-        const currentKey = segment.verseKey;
-        if (currentKey === dragCurrentVerseKeyRef.current) return;
-
-        const ordered = orderedVerseKeysRef.current;
-        const startIdx = ordered.indexOf(startKey);
-        const currentIdx = ordered.indexOf(currentKey);
-        if (startIdx === -1 || currentIdx === -1) return;
-
-        if (currentIdx < startIdx) {
-          if (dragCurrentVerseKeyRef.current !== startKey) {
-            dragCurrentVerseKeyRef.current = startKey;
-            selectUnitKeys([startKey]); // @ai
-          }
-          return;
-        }
-
-        dragCurrentVerseKeyRef.current = currentKey;
-        // @ai — consecutive units of the page, start..current
-        const range = ordered.slice(startIdx, currentIdx + 1);
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-
-        selectUnitKeys(range); // @ai
-      },
-      [hitTestVerse, selectUnitKeys],
-    );
-
-    const handleDragEnd = useCallback(() => {
-      const startKey = dragStartVerseKeyRef.current;
-      if (!startKey) return;
-
-      // @ai-start
-      // Payload per the verse-units contract (4.1), as in SkiaPage.
-      const {selectedRewayah: rewayahOfKeys, selectedUnits} =
-        useMushafVerseSelectionStore.getState();
-      const payload = rewayahOfKeys
-        ? verseActionsPayloadForUnits(rewayahOfKeys, selectedUnits)
-        : null;
-      if (!payload) return;
-
-      SheetManager.show('verse-actions', {payload});
-      // @ai-end
-
-      dragStartVerseKeyRef.current = null;
-      dragCurrentVerseKeyRef.current = null;
-    }, []);
+    // @ai-start
+    // Long-press / iOS drag-select in verse units of the shown text, and the
+    // verse actions on release (shared with SkiaPage).
+    const {
+      onDragStart: handleDragStart,
+      onDragUpdate: handleDragUpdate,
+      onDragEnd: handleDragEnd,
+    } = useVerseUnitDragSelect(pageNumber, charAtPoint);
+    // @ai-end
 
     // ── Gestures ───────────────────────────────────────────
     const longPressDragGesture = useMemo(
