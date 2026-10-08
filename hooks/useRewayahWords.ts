@@ -1,4 +1,10 @@
-import {useEffect, useMemo, useSyncExternalStore} from 'react';
+import {
+  useCallback, // @ai
+  useEffect,
+  useMemo,
+  useRef, // @ai
+  useSyncExternalStore,
+} from 'react';
 import {
   digitalKhattDataService,
   type DKWordInfo,
@@ -15,13 +21,33 @@ export type RewayahWordsStatus = 'loading' | 'ready' | 'unavailable' | 'error';
 export interface RewayahWordsResult {
   words: DKWordInfo[];
   status: RewayahWordsStatus;
+  // @ai-start
+  /** Asks for the rewayah's words again (after 'error'); a no-op if loaded. */
+  retry: () => void;
+  // @ai-end
 }
 
 const EMPTY_WORDS: DKWordInfo[] = [];
-const UNAVAILABLE: RewayahWordsResult = {
-  words: EMPTY_WORDS,
-  status: 'unavailable',
-};
+
+// @ai-start
+// A failed load is asked for again when a surface showing that rewayah
+// mounts (the player reopened, a row scrolled into view), at most once per
+// rewayah per interval, so rows mounting together or a reader scrolling do
+// not repeat a load that keeps failing (e.g. no storage left). retry()
+// asks at once.
+export const REWAYAH_WORDS_RETRY_INTERVAL_MS = 10000;
+const lastAutoRetryAt = new Map<RewayahId, number>();
+
+function claimAutoRetry(rewayah: RewayahId): boolean {
+  const now = Date.now();
+  const last = lastAutoRetryAt.get(rewayah);
+  if (last !== undefined && now - last < REWAYAH_WORDS_RETRY_INTERVAL_MS) {
+    return false;
+  }
+  lastAutoRetryAt.set(rewayah, now);
+  return true;
+}
+// @ai-end
 
 // Single access point for reading Arabic words from DigitalKhattDataService.
 //
@@ -39,7 +65,8 @@ const UNAVAILABLE: RewayahWordsResult = {
 // explicit ensureRewayahLoaded or switchRewayah call retries.
 // @ai-start
 // While it shows a verse, the hook retains the rewayah, so its side copy is
-// never evicted by later switches.
+// never evicted by later switches. A failed load is asked for again when the
+// surface mounts (see REWAYAH_WORDS_RETRY_INTERVAL_MS) or on retry().
 // @ai-end
 //
 // Returns {status: 'unavailable'} for rewayat without bundled DK data, so
@@ -61,13 +88,23 @@ export function useRewayahWords(
     if (!showsVerse || !rewayahHasData) return;
     return digitalKhattDataService.retainRewayah(rewayah);
   }, [showsVerse, rewayah, rewayahHasData]);
+
+  // The rewayah this mounted surface last asked for: a failed load is asked
+  // for again only on the first run for a rewayah (mount or a new rewayah),
+  // never on the cache changes that follow.
+  const askedForRef = useRef<RewayahId | null>(null);
   // @ai-end
 
   useEffect(() => {
     if (!verseKey || !rewayahHasData) return;
-    if (digitalKhattDataService.getRewayahLoadState(rewayah) !== 'idle') {
-      return;
-    }
+    // @ai-start
+    const firstRun = askedForRef.current !== rewayah;
+    askedForRef.current = rewayah;
+    const state = digitalKhattDataService.getRewayahLoadState(rewayah);
+    const retryFailed =
+      state === 'error' && firstRun && claimAutoRetry(rewayah);
+    if (state !== 'idle' && !retryFailed) return;
+    // @ai-end
     let cancelled = false;
     // Completion (or failure) bumps the cache version, which re-renders this
     // component through useSyncExternalStore.
@@ -81,22 +118,33 @@ export function useRewayahWords(
     };
   }, [verseKey, rewayah, rewayahHasData, cacheVersion]);
 
+  // @ai-start
+  const retry = useCallback(() => {
+    if (!hasTextData(rewayah)) return;
+    digitalKhattDataService.ensureRewayahLoaded(rewayah).catch(err => {
+      console.warn(`[useRewayahWords] Loading ${rewayah} failed:`, err);
+    });
+  }, [rewayah]);
+  // @ai-end
+
   return useMemo<RewayahWordsResult>(() => {
-    if (!verseKey) return {words: EMPTY_WORDS, status: 'ready'};
-    if (!rewayahHasData) return UNAVAILABLE;
+    if (!verseKey) return {words: EMPTY_WORDS, status: 'ready', retry};
+    if (!rewayahHasData) {
+      return {words: EMPTY_WORDS, status: 'unavailable', retry};
+    }
 
     // null = this rewayah's words are not in memory; [] = loaded, and this
     // verse key genuinely has no words in its DB.
     const words = digitalKhattDataService.tryGetVerseWords(verseKey, rewayah);
-    if (words) return {words, status: 'ready'};
+    if (words) return {words, status: 'ready', retry};
     const status: RewayahWordsStatus =
       digitalKhattDataService.getRewayahLoadState(rewayah) === 'error'
         ? 'error'
         : 'loading';
-    return {words: EMPTY_WORDS, status};
+    return {words: EMPTY_WORDS, status, retry};
     // cacheVersion is intentionally a dep — it's the reactivity signal.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [verseKey, rewayah, rewayahHasData, cacheVersion]);
+  }, [verseKey, rewayah, rewayahHasData, cacheVersion, retry]);
 }
 
 // Convenience: joined text. Same reactivity as useRewayahWords. Blank word

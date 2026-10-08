@@ -2,7 +2,9 @@
 /**
  * useRewayahWords against the real DigitalKhattDataService (expo-sqlite
  * faked): a surface that shows a rewayah's words (the player's verse rows)
- * keeps them while the mushaf switches away.
+ * keeps them while the mushaf switches away, and recovers from a failed load
+ * when it is shown again instead of saying "Verse text couldn't be loaded"
+ * until something else happens to reload it.
  */
 import React, {act} from 'react';
 import TestRenderer from 'react-test-renderer';
@@ -194,6 +196,40 @@ describe('a surface showing a rewayah', () => {
     expect(fake.reads.filter(base => base === 'dk_words_warsh')).toHaveLength(
       1,
     );
+    row.unmount();
+  });
+
+  it('recovers from a failed load when it is shown again', async () => {
+    fake.broken.add('dk_words_warsh');
+    const row = showVerse('warsh');
+    await settle();
+    expect(row.latest().status).toBe('error');
+    row.unmount();
+
+    // The DB can be read again (e.g. space was freed); the player reopens.
+    fake.broken.clear();
+    now += 60 * 1000;
+    const again = showVerse('warsh');
+    await settle();
+
+    expect(again.latest().status).toBe('ready');
+    expect(again.latest().words.map(w => w.text)).toEqual(['W1', 'W2']);
+    again.unmount();
+  });
+
+  it('recovers at once on an explicit retry', async () => {
+    fake.broken.add('dk_words_warsh');
+    const row = showVerse('warsh');
+    await settle();
+    expect(row.latest().status).toBe('error');
+
+    fake.broken.clear();
+    await act(async () => {
+      row.latest().retry();
+      await flush();
+    });
+
+    expect(row.latest().status).toBe('ready');
     row.unmount();
   });
 });

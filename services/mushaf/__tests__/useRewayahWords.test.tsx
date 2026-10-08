@@ -6,12 +6,14 @@
  * substituted text, and never retries a failed load in a loop.
  */
 // @ai-start
-// It also retains the rewayah while it shows a verse.
+// It also retains the rewayah while it shows a verse, and asks again for a
+// failed load when a surface mounts (at most once per interval) or on retry.
 // @ai-end
 import React, {act} from 'react';
 import TestRenderer from 'react-test-renderer';
 
 import {
+  REWAYAH_WORDS_RETRY_INTERVAL_MS, // @ai
   useRewayahText,
   useRewayahWords,
   type RewayahWordsResult,
@@ -98,6 +100,10 @@ function renderWords(verseKey: string | null, rewayah: RewayahId) {
 }
 
 let errorSpy: jest.SpyInstance;
+// @ai-start
+let now = 0;
+let nowSpy: jest.SpyInstance;
+// @ai-end
 
 beforeEach(() => {
   fake.version = 0;
@@ -107,6 +113,9 @@ beforeEach(() => {
   // @ai-start
   fake.retain.mockClear();
   fake.release.mockClear();
+  // Each test starts long after the previous one's automatic retries.
+  now += 10 * REWAYAH_WORDS_RETRY_INTERVAL_MS;
+  nowSpy = jest.spyOn(Date, 'now').mockImplementation(() => now);
   // @ai-end
   // react-test-renderer prints a deprecation notice under React 19.
   errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
@@ -114,12 +123,13 @@ beforeEach(() => {
 
 afterEach(() => {
   errorSpy.mockRestore();
+  nowSpy.mockRestore(); // @ai
 });
 
 describe('useRewayahWords', () => {
   it('loads an idle rewayah once and re-renders when it becomes ready', () => {
     const view = renderWords('2:255', 'warsh');
-    expect(view.latest()).toEqual({words: [], status: 'loading'});
+    expect(view.latest()).toMatchObject({words: [], status: 'loading'});
     expect(fake.ensure).toHaveBeenCalledTimes(1);
     expect(fake.ensure).toHaveBeenCalledWith('warsh');
 
@@ -150,7 +160,7 @@ describe('useRewayahWords', () => {
 
     fake.states.set('hafs', 'idle');
     act(() => fake.bump());
-    expect(view.latest()).toEqual({words: [], status: 'loading'});
+    expect(view.latest()).toMatchObject({words: [], status: 'loading'});
     expect(fake.ensure).toHaveBeenCalledWith('hafs');
     view.unmount();
   });
@@ -160,14 +170,15 @@ describe('useRewayahWords', () => {
     const view = renderWords('2:255', 'warsh');
     act(() => fake.bump());
     act(() => fake.bump());
-    expect(view.latest()).toEqual({words: [], status: 'error'});
-    expect(fake.ensure).not.toHaveBeenCalled();
+    expect(view.latest()).toMatchObject({words: [], status: 'error'});
+    // @ai: one request when the surface mounts, none on later cache changes.
+    expect(fake.ensure).toHaveBeenCalledTimes(1);
     view.unmount();
   });
 
   it('reports rewayat without bundled text as unavailable', () => {
     const view = renderWords('2:255', 'hisham');
-    expect(view.latest()).toEqual({words: [], status: 'unavailable'});
+    expect(view.latest()).toMatchObject({words: [], status: 'unavailable'});
     expect(fake.ensure).not.toHaveBeenCalled();
     expect(fake.retain).not.toHaveBeenCalled(); // @ai
     view.unmount();
@@ -175,7 +186,7 @@ describe('useRewayahWords', () => {
 
   it('is ready with no words when there is no verse', () => {
     const view = renderWords(null, 'warsh');
-    expect(view.latest()).toEqual({words: [], status: 'ready'});
+    expect(view.latest()).toMatchObject({words: [], status: 'ready'});
     expect(fake.ensure).not.toHaveBeenCalled();
     expect(fake.retain).not.toHaveBeenCalled(); // @ai
     view.unmount();
@@ -192,6 +203,42 @@ describe('useRewayahWords', () => {
     expect(fake.release).not.toHaveBeenCalled();
     view.unmount();
     expect(fake.release).toHaveBeenCalledTimes(1);
+  });
+
+  it('asks again for a failed load when a surface mounts again', () => {
+    fake.states.set('warsh', 'error');
+    const first = renderWords('2:255', 'warsh');
+    expect(fake.ensure).toHaveBeenCalledTimes(1);
+    first.unmount();
+
+    // Reopened at once: the load that just failed is not repeated.
+    const soon = renderWords('2:255', 'warsh');
+    expect(fake.ensure).toHaveBeenCalledTimes(1);
+    expect(soon.latest().status).toBe('error');
+    soon.unmount();
+
+    now += REWAYAH_WORDS_RETRY_INTERVAL_MS;
+    const later = renderWords('2:255', 'warsh');
+    expect(fake.ensure).toHaveBeenCalledTimes(2);
+    expect(fake.ensure).toHaveBeenLastCalledWith('warsh');
+    later.unmount();
+  });
+
+  it('asks once for all the rows that mount together', () => {
+    fake.states.set('warsh', 'error');
+    const rows = [1, 2, 3, 4].map(() => renderWords('2:255', 'warsh'));
+    expect(fake.ensure).toHaveBeenCalledTimes(1);
+    rows.forEach(row => row.unmount());
+  });
+
+  it('asks again at once on retry()', () => {
+    fake.states.set('warsh', 'error');
+    const view = renderWords('2:255', 'warsh');
+    expect(fake.ensure).toHaveBeenCalledTimes(1);
+    act(() => view.latest().retry());
+    act(() => view.latest().retry());
+    expect(fake.ensure).toHaveBeenCalledTimes(3);
+    view.unmount();
   });
   // @ai-end
 });
