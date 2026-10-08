@@ -29,6 +29,7 @@ build or CI on any difference.
 | `highlights.py` | Release 1 highlight classification (diff JSON format 2) |
 | `validate_rewayah_db.py` | independent exact-match validator (+ `--glyphs`, `--marks`) |
 | `render_review.json` | the visually reviewed clusters the glyph gate accepts (see [Render review](#render-review)) |
+| `highlight_cases.json` | reviewed whole-word highlight decisions the `cases` gate checks (one group per rule of `highlights.py`) |
 | `validate.py` | round-trip self-test of the convention map against the DK Hafs DB |
 | `compare_outputs.py` | a fresh build must equal the committed files (CI drift check) |
 | `requirements-ci.txt` | pinned `uharfbuzz` / `fonttools` for the glyph gate |
@@ -122,7 +123,7 @@ Summary:
 
 | rule | rewayat | decision |
 |---|---|---|
-| U+06DF dot for a softened / changed hamza (`أَ۟ذَا`, `هَٰؤُلَآ۟`) | all but Shu'bah | → U+06EC, DK's tashil dot (DK draws U+06DF as the 'silent letter' circle) |
+| U+06DF dot for a softened / changed hamza (`أَ۟ذَا`, `هَٰؤُلَآ۟`) | all but Shu'bah | → U+06EC, DK's tashil dot (DK draws U+06DF as the 'silent letter' circle); a waqf sign after the dot is moved before it (al-Bazzi 34:9, 46:31; Qalun's two carry the omitted Habti sign) |
 | U+06DF start-with-damma dot on a silent alef (wasl, Warsh naql) | far rewayat | kept: DK's circle (no dot beside a letter in DK) |
 | sukun + U+06DC (69:28) | all | CGJ inserted, as the DK Hafs DB writes it |
 | U+06D2 yeh barree | Warsh, Qalun | → U+0649 |
@@ -150,15 +151,21 @@ Hafs verse and word position:
   whole word (`[]`), for words read differently from the Hafs word in that
   slot (letters, including a letter the rewayah never pronounces; long
   vowels, doubling, vowels, case ending, ya' al-idafa and ha' al-kinaya
-  vowels; imala dots in the close rewayat). Encoding conventions and general
-  rules marked only by diacritics or by the hamza's carrier are not
-  highlighted. A vowel added or dropped on the last letter is excused only by
-  its across-word rule in context: Warsh's naql (the next word's hamza moves
-  its vowel onto this word's final consonant) and al-Susi's idgham kabir (the
-  final letter merges into the next word: a doubled first letter, a meem
-  before ba, a ba before the next surah's basmala). Two narrators of one
-  reader that store the same words get the same decision. See the docstring
-  of `highlights.py`.
+  vowels; a question read as a statement or the reverse; a hamzat qat' read
+  as a wasl alef; imala dots in the close rewayat). Encoding conventions
+  (including the hamza's seat) and general rules marked only by diacritics or
+  by the hamza's carrier are not highlighted: madd length, imala / taqlil
+  dots, the two-hamza rules (idkhal included), Warsh's and al-Susi's ibdal of
+  a vowelless hamza, Warsh's naql. Each across-word rule applies only in its
+  context: a word-initial hamza may be dropped only as the second of two
+  hamzas across words (after a word ending in a voweled hamza) or by Warsh's
+  naql (the previous word takes its vowel); a vowel added or dropped on the
+  last letter is excused only by Warsh's naql into the next word or al-Susi's
+  idgham kabir (a doubled first letter, a meem before ba, a ba before the next
+  surah's basmala). Two narrators of one reader that read a slot the same way
+  (the same stored words, or encoding-only differences under the sibling's
+  rules) get the same decision. See the docstring of `highlights.py`; the
+  reviewed decisions in `highlight_cases.json` pin every rule.
 - `silah`: char indices (UTF-16 = code points here) of the silah marks
   U+06E5 / U+06E6 and their damma / kasra that this rewayah pronounces where
   Hafs does not.
@@ -190,6 +197,9 @@ omitted; Shu'bah's maps are empty.
 - siblings (when both rewayat of a pair are validated: Warsh / Qalun, al-Duri /
   al-Susi, al-Bazzi / Qunbul): a slot holding the same words in both DBs gets
   the same whole-word decision, unless listed in `SIBLING_EXCEPTIONS` (empty);
+- cases: every reviewed decision in `highlight_cases.json` holds (the listed
+  slots have, or lack, the rewayah's whole-word tint). Add a group when a
+  review settles a reading; never edit one to make a build pass;
 - `--glyphs` (HarfBuzz, DigitalKhattFont and the V1 font): 0 `.notdef`; every
   cluster absent from the DK Hafs DB is in `render_review.json`; a mark without
   an anchor or turned into a spacing glyph is accepted only for a reviewed

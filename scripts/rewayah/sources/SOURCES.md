@@ -71,7 +71,7 @@ The member path inside each zip is listed in `sources.lock.json`.
   Warsh 4:44 has double spaces; Warsh / Qalun have 14 right-to-left marks
   (U+200F), always at a word end.
 
-## Known upstream issue (not corrected)
+## Known upstream issues (not corrected)
 
 - **Qunbul 4:135 (Makki; Hafs 4:136)** reads `أُنزَلَ` (fatha on the zay) in
   both official Qunbul artifacts (qc2 JSON and the signed Word file). Ibn
@@ -79,6 +79,14 @@ The member path inside each zip is listed in `sources.lock.json`.
   writes it; the 2021 v07 file had `أُنِزَلَ`. The words DB keeps the official
   text; a correction needs a qualified reader's confirmation and, ideally,
   a report to KFGQPC.
+- **Qalun 17:62, first word** reads `قَالْ` (U+0652, the Maghribi sukun, on
+  the lam) in both official Qalun JSONs (`qc2_qalun_2-1.json` and
+  `QalounData_v2-1.json`). Every other rewayah, Warsh included, has `قَالَ`,
+  and no reading has a sukun there. The words DB keeps the official text, so
+  the highlight map tints the word as written (`highlight_cases.json` pins
+  it); a correction needs a qualified reader's confirmation, ideally backed
+  by an official artifact such as the printed Qalun mushaf, and is then one
+  entry in `errata.json`.
 
 ## Changes from the 2021 files used before
 
