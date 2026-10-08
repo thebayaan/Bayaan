@@ -150,9 +150,15 @@ export function parseVerseShareUrl(url: string): VerseShareLink | null {
   let rewayah: RewayahId = 'hafs';
   const rewayahParam = params.get('rewayah');
   if (rewayahParam !== undefined) {
-    const canonical =
-      PERSISTED_ID_MIGRATIONS[rewayahParam] ??
-      (isRewayahId(rewayahParam) ? rewayahParam : null);
+    // Own keys only: "constructor" and friends are not rewayat.
+    const canonical = Object.prototype.hasOwnProperty.call(
+      PERSISTED_ID_MIGRATIONS,
+      rewayahParam,
+    )
+      ? PERSISTED_ID_MIGRATIONS[rewayahParam]
+      : isRewayahId(rewayahParam)
+        ? rewayahParam
+        : null;
     if (!canonical) return null;
     rewayah = canonical;
   }
