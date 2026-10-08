@@ -1,7 +1,7 @@
 {
  "reading 1 idle": {
   "count": 10,
-  "sha256": "cdb09c1a779a562a3a630438dfefb1a13ba04df4a0320a215fe737e9dd59f365",
+  "sha256": "70fdf9d2b56aba99367961cb79362560c88ed2575ee971e1eae99f0d74ed7fe8",
   "head": [
    [
     "SurahDivider",
@@ -16,6 +16,7 @@
     "BasmalaHeader",
     {
      "visible": false,
+     "surahNumber": 1,
      "width": 718,
      "textColor": "#111111",
      "showTajweed": false,
@@ -105,7 +106,7 @@
  },
  "reading 1 playing": {
   "count": 9,
-  "sha256": "aeafb72854bd7ba1fbd97c68c18d12c6ed85d80045d0765a7e0b8df6b29e7b8b",
+  "sha256": "55dc6cf64238d539c8006c59fe85b992b60dbab71a71cff8194b077ec61522bc",
   "head": [
    [
     "SurahDivider",
@@ -120,6 +121,7 @@
     "BasmalaHeader",
     {
      "visible": false,
+     "surahNumber": 1,
      "width": 718,
      "textColor": "#111111",
      "showTajweed": false,
@@ -209,7 +211,7 @@
  },
  "reading 1 paused": {
   "count": 9,
-  "sha256": "52c2695a431bba28085ea5ecfae8453bf4e31400afcbba01b1f5cf7e04fbe3cb",
+  "sha256": "645d65f1f642d492f7a9ba2dd709ec58614a28b2d788f9fb63c04102123a2856",
   "head": [
    [
     "SurahDivider",
@@ -224,6 +226,7 @@
     "BasmalaHeader",
     {
      "visible": false,
+     "surahNumber": 1,
      "width": 718,
      "textColor": "#111111",
      "showTajweed": false,
@@ -313,7 +316,7 @@
  },
  "reading 371 idle": {
   "count": 59,
-  "sha256": "29476eb64e1b5cd81304459726cb0f1cddbd4c655b3579ccab7e661af156e6cb",
+  "sha256": "1fa055d0a7de39312aa5620c2d03a2c2dcfe38c650ffa3a050312327a2372485",
   "head": [
    [
     "getThemeForVerse",
@@ -335,7 +338,7 @@
  },
  "reading 371 playing": {
   "count": 58,
-  "sha256": "5c9a487e5231a5f86533ffaaa180eb2fe058da997ba743ab18de1984feddd58b",
+  "sha256": "93ac47f0f8f7e871aba0e2de59990e7b5287ce1e0c9a329da389ed81599a2848",
   "head": [
    [
     "getThemeForVerse",
@@ -357,7 +360,7 @@
  },
  "reading 371 paused": {
   "count": 58,
-  "sha256": "c2abe095c94fc1996d11676cf2c09f824e9961d144e5d89e289f831d7418011b",
+  "sha256": "9c24affc85666eb232f137120bc2e0c1be2697b650373e226d3282a8cd07cc3a",
   "head": [
    [
     "getThemeForVerse",
@@ -379,7 +382,7 @@
  },
  "reading 403 idle": {
   "count": 6,
-  "sha256": "8e66b7365e15afe3e0d994ced460dbfcaf86796bfc00b8d82ef892df927b0bc1",
+  "sha256": "bb3fa186038fec4190c195914a2b3bb310b31e4fdae289cbe02ac71949bef10a",
   "head": [
    [
     "SurahDivider",
@@ -394,6 +397,7 @@
     "BasmalaHeader",
     {
      "visible": true,
+     "surahNumber": 103,
      "width": 718,
      "textColor": "#111111",
      "showTajweed": false,
@@ -483,7 +487,7 @@
  },
  "reading 403 playing": {
   "count": 5,
-  "sha256": "c16a84c09f161eee52f17e47bd1f12e4c3ee38fb9611729a24cee57c31558ea6",
+  "sha256": "427692281e98840c088e33355cb3bca414fdf5ccc66aaf61d3a5f6e3598c0eac",
   "head": [
    [
     "SurahDivider",
@@ -498,6 +502,7 @@
     "BasmalaHeader",
     {
      "visible": true,
+     "surahNumber": 103,
      "width": 718,
      "textColor": "#111111",
      "showTajweed": false,
@@ -587,7 +592,7 @@
  },
  "reading 403 paused": {
   "count": 5,
-  "sha256": "c16a84c09f161eee52f17e47bd1f12e4c3ee38fb9611729a24cee57c31558ea6",
+  "sha256": "427692281e98840c088e33355cb3bca414fdf5ccc66aaf61d3a5f6e3598c0eac",
   "head": [
    [
     "SurahDivider",
@@ -602,6 +607,7 @@
     "BasmalaHeader",
     {
      "visible": true,
+     "surahNumber": 103,
      "width": 718,
      "textColor": "#111111",
      "showTajweed": false,
@@ -691,7 +697,7 @@
  },
  "list 1 idle": {
   "count": 6464,
-  "sha256": "9bfcae43d06deaed25e84c764c876e170227554a05e65b92120519ac05544994",
+  "sha256": "a084154271f986dba96525848eb95d80662e891610c7e7a7130a94ea97bb8f7b",
   "head": [
    [
     "SurahDivider",
@@ -706,6 +712,7 @@
     "BasmalaHeader",
     {
      "visible": false,
+     "surahNumber": 1,
      "width": 724.8571428571429,
      "textColor": "#111111",
      "showTajweed": false,
@@ -797,7 +804,7 @@
  "list 1 data": "40fe33057aec90e686eaa6aa7d2bd449fcded8a1d402276171cfce1fb2301614",
  "list 1 playing": {
   "count": 6464,
-  "sha256": "56eca0ce3e39f8297dcdd7db8a2aad705484e7df297bddc4a0c38af1d75adff8",
+  "sha256": "a2440e6aeb1be4ce86495e4ac4769fab1db42d91f86b6c90f09567327f3edd06",
   "head": [
    [
     "SurahDivider",
@@ -812,6 +819,7 @@
     "BasmalaHeader",
     {
      "visible": false,
+     "surahNumber": 1,
      "width": 724.8571428571429,
      "textColor": "#111111",
      "showTajweed": false,
@@ -957,7 +965,7 @@
  },
  "list 371 idle": {
   "count": 6464,
-  "sha256": "9bfcae43d06deaed25e84c764c876e170227554a05e65b92120519ac05544994",
+  "sha256": "a084154271f986dba96525848eb95d80662e891610c7e7a7130a94ea97bb8f7b",
   "head": [
    [
     "SurahDivider",
@@ -972,6 +980,7 @@
     "BasmalaHeader",
     {
      "visible": false,
+     "surahNumber": 1,
      "width": 724.8571428571429,
      "textColor": "#111111",
      "showTajweed": false,
@@ -1063,7 +1072,7 @@
  "list 371 data": "40fe33057aec90e686eaa6aa7d2bd449fcded8a1d402276171cfce1fb2301614",
  "list 371 playing": {
   "count": 6464,
-  "sha256": "56eca0ce3e39f8297dcdd7db8a2aad705484e7df297bddc4a0c38af1d75adff8",
+  "sha256": "a2440e6aeb1be4ce86495e4ac4769fab1db42d91f86b6c90f09567327f3edd06",
   "head": [
    [
     "SurahDivider",
@@ -1078,6 +1087,7 @@
     "BasmalaHeader",
     {
      "visible": false,
+     "surahNumber": 1,
      "width": 724.8571428571429,
      "textColor": "#111111",
      "showTajweed": false,
