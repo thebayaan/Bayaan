@@ -32,6 +32,11 @@ import {
   type RewayahId,
 } from '@/store/mushafSettingsStore';
 import {hasTextData} from '@/services/rewayah/RewayahIdentity';
+import {describeSavedVerseNow} from '@/hooks/useSavedVerseDescription';
+import {
+  savedVerseRouteParams,
+  savedVerseSubtitle,
+} from '@/services/verse-annotations/unitAnnotations';
 // @ai-end
 import {getRewayahShortLabel} from '@/utils/rewayahLabels';
 import {showToast} from '@/utils/toastUtils';
@@ -178,13 +183,13 @@ const BookmarksScreen = () => {
         // matches what the user was reading at save time.
         await restoreBookmarkRewayah(bookmark.rewayahId);
         const page = digitalKhattDataService.getPageForVerse(verseKey);
+        // The page of the anchor's Hafs verse is the page the saved verse
+        // starts on. A bookmark saved in a non-Hafs rewayah also passes its
+        // anchor, so the mushaf selects exactly that rewayah verse (the two
+        // parts of a split Hafs verse are different bookmarks).
         router.push({
           pathname: '/mushaf',
-          params: {
-            surah: String(bookmark.surahNumber),
-            ayah: String(bookmark.ayahNumber),
-            page: String(page || fallbackPage),
-          },
+          params: savedVerseRouteParams(bookmark, page || fallbackPage),
         });
       } finally {
         openingRef.current = false;
@@ -199,7 +204,11 @@ const BookmarksScreen = () => {
       SheetManager.show('collection-options', {
         payload: {
           title: item.surahName,
-          subtitle: `Ayah ${item.bookmark.ayahNumber}`,
+          // @ai: the ayah in the numbering of the rewayah it was saved in
+          subtitle: savedVerseSubtitle(
+            describeSavedVerseNow(item.bookmark),
+            item.bookmark.ayahNumber,
+          ),
           options: [
             {
               label: 'Remove Bookmark',
