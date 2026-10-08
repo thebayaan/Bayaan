@@ -1242,7 +1242,7 @@ for (const platform of ['ios', 'web']) {
       },
     );
 
-    it.each(['favorites', 'public-notes'])(
+    it.each(['non-ayah-bookmarks', 'public-notes'])(
       'filtered %s pages retain raw cardinality and commit no head until full traversal and head-only metadata',
       async projection => {
         const {root, annotations, pull} = await createServices();
@@ -1282,12 +1282,11 @@ for (const platform of ['ios', 'web']) {
                             : {
                                 resource: 'BOOKMARK',
                                 type: 'CREATE',
-                                resourceId: `favorite-${index}`,
+                                resourceId: `page-${index}`,
                                 timestamp: 200,
                                 data: {
-                                  type: 'ayah',
-                                  key: 2,
-                                  verseNumber: 255,
+                                  type: 'page',
+                                  key: 10,
                                   isInDefaultCollection: true,
                                 },
                               },
@@ -1521,7 +1520,7 @@ for (const platform of ['ios', 'web']) {
       },
     );
 
-    it('leaves legacy Favorite rows and pending bookmark work unchanged on excluded reads', async () => {
+    it('applies Favorites reads to legacy rows and settles a pending local create for the same verse', async () => {
       const {root, annotations, sync, pull} = await createServices();
       await pull.applyPage('reader', [
         {
@@ -1537,46 +1536,36 @@ for (const platform of ['ios', 'web']) {
         verseKey: '2:256',
         ayahNumber: 256,
       });
-      const beforeRows =
-        await annotations.getAllBookmarksInOwnerScope('qf:reader');
-      const beforeOutbox = await sync.getOutboxEntries('reader');
+      expect(await sync.getOutboxEntries('reader')).toEqual([
+        expect.objectContaining({resource: 'BOOKMARK', mutationType: 'CREATE'}),
+      ]);
+      // QF places every /v1/sync bookmark in the default collection, so
+      // Favorites reads are ordinary ayah bookmarks.
+      const mutations = [255, 256].map(verseNumber => ({
+        resource: 'BOOKMARK' as const,
+        type: 'UPDATE' as const,
+        resourceId: verseNumber === 255 ? 'legacy-favorite' : 'new-favorite',
+        timestamp: 200,
+        data: {
+          type: 'ayah',
+          key: 2,
+          verseNumber,
+          isInDefaultCollection: true,
+        },
+      }));
       const page = decodeBayaanSyncPullResponse({
         success: true,
-        data: {
-          lastMutationAt: 200,
-          mutations: [255, 256].map(verseNumber => ({
-            resource: 'BOOKMARK',
-            type: 'UPDATE',
-            resourceId:
-              verseNumber === 255 ? 'legacy-favorite' : 'new-favorite',
-            timestamp: 200,
-            data: {
-              type: 'ayah',
-              key: 2,
-              verseNumber,
-              isInDefaultCollection: true,
-            },
-          })),
-        },
+        data: {lastMutationAt: 200, mutations},
       });
-      expect(page).toEqual({
-        lastMutationAt: 200,
-        mutations: [],
-        receivedMutationCount: 2,
-      });
+      expect(page).toEqual({lastMutationAt: 200, mutations});
       await pull.applyPage('reader', page.mutations);
       expect(await pull.commitStableHead('reader', 0, 200, 200)).toBe(true);
       expect(
-        await annotations.getAllBookmarksInOwnerScope('qf:reader'),
-      ).toEqual(beforeRows);
-      expect(await sync.getOutboxEntries('reader')).toEqual(beforeOutbox);
-      // The schema did not retain membership. Exclusion cannot migrate or
-      // safely reinterpret this already persisted remote ID as a collection ID.
-      expect(
-        (
-          await root.getAllAsync<{name: string}>('PRAGMA table_info(bookmarks)')
-        ).map(column => column.name),
-      ).not.toContain('isInDefaultCollection');
+        (await annotations.getAllBookmarksInOwnerScope('qf:reader'))
+          .map(row => `${row.remoteId}@${row.verseKey}`)
+          .sort(),
+      ).toEqual(['legacy-favorite@2:255', 'new-favorite@2:256']);
+      expect(await sync.getOutboxEntries('reader')).toEqual([]);
       await root.closeAsync();
     });
 
