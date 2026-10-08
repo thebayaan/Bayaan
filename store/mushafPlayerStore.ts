@@ -837,7 +837,8 @@ function relabelRecitedVerse(): void {
   }
 }
 
-if (typeof useMushafSettingsStore.subscribe === 'function') {
+// Guarded: a stand-in settings store (tests) may only offer getState.
+if (typeof useMushafSettingsStore?.subscribe === 'function') {
   useMushafSettingsStore.subscribe((settings, previous) => {
     if (settings.rewayah !== previous.rewayah) relabelRecitedVerse();
   });
