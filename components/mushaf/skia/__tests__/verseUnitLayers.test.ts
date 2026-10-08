@@ -297,13 +297,80 @@ describe('unitKeyedVerseLayers', () => {
         ['103:1', 'green', 'warsh'],
       ]),
     ).toBe('green');
-    // Equal ranks: the first row.
+    // Equal ranks: the earlier anchor, whatever the rows' order (the
+    // annotations' deriveUnitAnnotations rule, so the tint and the sheet
+    // agree). Hafs rows 103:1 yellow and 103:2 green both mark Warsh 103:1.
     expect(
       on103([
-        ['103:1', 'blue', 'qalun'],
         ['103:2', 'green', 'qalun'],
+        ['103:1', 'blue', 'qalun'],
       ]),
     ).toBe('blue');
+    expect(
+      on103([
+        ['103:2', 'green', 'hafs'],
+        ['103:1', 'yellow', 'hafs'],
+      ]),
+    ).toBe('yellow');
+    expect(
+      on103([
+        ['103:1', 'yellow', 'hafs'],
+        ['103:2', 'green', 'hafs'],
+      ]),
+    ).toBe('yellow');
+    // Warsh 1:6 and 1:7 hold Hafs 1:7: a legacy row 1:7 (read as Warsh,
+    // rank 3 on 1:6) and a Qalun row 1:7:5 (rank 0) are not tied on 1:6;
+    // on 1:7 only the Qalun row's inexact path marks it.
+    expect(
+      colours([
+        ['1:7:5', 'green', 'qalun'],
+        ['1:7', 'blue', 'warsh'],
+      ]),
+    ).toEqual({'1:6': 'blue', '1:7': 'green'});
+  });
+
+  it('a unit marked by rows of equal rank takes the earlier anchor (Hafs too)', () => {
+    // Hafs shown: rows of other rewayat anchored inside one Hafs verse.
+    const hafs = unitKeyedVerseLayers(
+      HAFS_SHOWN_UNITS,
+      sources({
+        persistentHighlights: {'1:7:9': 'green', '1:7:5': 'blue'},
+        highlightRows: {
+          '1:7:9': {verseKey: '1:7:9', rewayahId: 'qalun'},
+          '1:7:5': {verseKey: '1:7:5', rewayahId: 'warsh'},
+        },
+      }),
+    ).persistentHighlights;
+    expect(hafs).toEqual({'1:7': 'blue'});
+  });
+
+  it('Hafs: a malformed stored key names no verse (as the Hafs segments did)', () => {
+    const out = unitKeyedVerseLayers(
+      HAFS_SHOWN_UNITS,
+      sources({
+        bookmarkedVerseKeys: new Set(['02:255', '2:255', '2:7:1', '2:7:3']),
+        persistentHighlights: {'2:01': 'yellow', '3:7': 'blue'},
+      }),
+    );
+    // '2:7:1' is not how a row is written ('2:7' is): no verse either.
+    expect([...out.bookmarkedVerseKeys]).toEqual(['2:255', '2:7']);
+    expect(out.persistentHighlights).toEqual({'3:7': 'blue'});
+    expect(HAFS_SHOWN_UNITS.unitKeyForAnchor('02:255')).toBeNull();
+    expect(HAFS_SHOWN_UNITS.unitKeyForAnchor('2:255')).toBe('2:255');
+    expect(HAFS_SHOWN_UNITS.unitKeyForAnchor('2:255:3')).toBe('2:255');
+    expect(HAFS_SHOWN_UNITS.describe('02:255')).toBeNull();
+    expect(HAFS_SHOWN_UNITS.unitKeysForHafsKeys(['2:255', '02:255'])).toEqual([
+      '2:255',
+    ]);
+    expect(HAFS_SHOWN_UNITS.anchorOrder('2:255')).toBeLessThan(
+      HAFS_SHOWN_UNITS.anchorOrder('2:255:2'),
+    );
+    expect(HAFS_SHOWN_UNITS.anchorOrder('2:255:9')).toBeLessThan(
+      HAFS_SHOWN_UNITS.anchorOrder('2:256'),
+    );
+    expect(HAFS_SHOWN_UNITS.anchorOrder('02:255')).toBe(
+      Number.MAX_SAFE_INTEGER,
+    );
   });
 
   it('the selection: own numbering as is, Hafs keys mapped, others dropped', () => {

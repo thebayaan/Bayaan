@@ -324,7 +324,8 @@ const NO_UNIT_LAYERS: UnitKeyedVerseLayers = Object.freeze({
  *    several highlight rows takes the colour of, in order: a row of the
  *    shown rewayah at the unit's own anchor (what marking the unit writes),
  *    another row of the shown rewayah, a Hafs row, a row of another rewayah;
- *    the first such row on a tie;
+ *    on a tie the row with the earlier anchor, then the smaller verse_key
+ *    (the same rule as the annotations' deriveUnitAnnotations);
  *  - playback: playbackBandUnitKeys;
  *  - selection: its own keys when made in the shown rewayah; a Hafs-keyed
  *    selection (QCF, routes, navigation) lights the units holding those
@@ -359,11 +360,18 @@ export function unitKeyedVerseLayers(
   }
 
   const persistentHighlights: Record<string, string> = {};
-  const colourRank = new Map<string, number>();
+  // The row whose colour a unit takes so far: rank, then the earlier anchor,
+  // then the smaller verse_key (the annotations' own tie rule, so the tint
+  // and the verse-actions sheet agree on a unit's colour). @ai
+  const colourPick = new Map<
+    string,
+    {rank: number; order: number; verseKey: string}
+  >();
   for (const [verseKey, color] of Object.entries(
     sources.persistentHighlights,
   )) {
     const row = rowOf(sources.highlightRows, verseKey);
+    const order = shown.anchorOrder(verseKey);
     for (const key of shown.unitKeysForStoredVerse(row)) {
       let rank = 0;
       if (row.rewayahId === shown.rewayah) {
@@ -371,8 +379,15 @@ export function unitKeyedVerseLayers(
       } else if (row.rewayahId === 'hafs') {
         rank = 1;
       }
-      if (rank > (colourRank.get(key) ?? -1)) {
-        colourRank.set(key, rank);
+      const current = colourPick.get(key);
+      if (
+        !current ||
+        rank > current.rank ||
+        (rank === current.rank &&
+          (order < current.order ||
+            (order === current.order && verseKey < current.verseKey)))
+      ) {
+        colourPick.set(key, {rank, order, verseKey});
         persistentHighlights[key] = color;
       }
     }

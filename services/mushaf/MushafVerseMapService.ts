@@ -2,6 +2,7 @@ import {digitalKhattDataService} from './DigitalKhattDataService';
 import {getLineWordSpans} from './lineWordSpans';
 // @ai-start
 import {
+  formatAnchorKey,
   parseAnchorKey,
   parseUnitKey,
   unitsForStoredVerse,
@@ -57,12 +58,44 @@ export interface ShownVerseUnits {
    * e.g. a stored verse_key in this rewayah); null for none.
    */
   unitKeyForAnchor(anchorKey: string): string | null;
+  /**
+   * Reading-order position of the slot a Hafs anchor names (slots of
+   * earlier verses and earlier words come first);
+   * Number.MAX_SAFE_INTEGER when it names no slot. Breaks ties between
+   * stored rows marking one unit the way the annotations do (the earlier
+   * anchor wins).
+   */
+  anchorOrder(anchorKey: string): number;
 }
 
-/** A Hafs verse key ('S:A' of an existing Hafs verse), parsed; else null. */
+/**
+ * A Hafs verse key ('S:A' of an existing Hafs verse, written as the app
+ * writes it: no leading zeros), parsed; else null. A malformed stored key
+ * such as '02:255' names nothing, as with the Hafs verse segments before.
+ */
 function hafsVerseRef(key: string): {surah: number; ayah: number} | null {
   const ref = parseUnitKey(key);
-  return ref && ref.ayah <= hafsVerseCount(ref.surah) ? ref : null;
+  return ref &&
+    ref.ayah <= hafsVerseCount(ref.surah) &&
+    `${ref.surah}:${ref.ayah}` === key
+    ? ref
+    : null;
+}
+
+/**
+ * A Hafs anchor ('S:A', or 'S:A:W' with W > 1) of an existing Hafs verse,
+ * written in its canonical form (formatAnchorKey); else null.
+ */
+function hafsAnchorRef(
+  anchorKey: string,
+): {surah: number; ayah: number; word: number} | null {
+  const loc = parseAnchorKey(anchorKey);
+  if (!loc) return null;
+  const hafsKey = `${loc.surah}:${loc.ayah}`;
+  return formatAnchorKey(hafsKey, loc.word) === anchorKey &&
+    hafsVerseRef(hafsKey)
+    ? loc
+    : null;
 }
 
 const hafsRefs = new Map<string, VerseUnitRef>();
@@ -109,9 +142,16 @@ export const HAFS_SHOWN_UNITS: ShownVerseUnits = {
     return key ? [key] : [];
   },
   unitKeyForAnchor(anchorKey) {
-    const loc = parseAnchorKey(anchorKey);
-    const key = loc ? `${loc.surah}:${loc.ayah}` : '';
-    return loc && hafsVerseRef(key) ? key : null;
+    const loc = hafsAnchorRef(anchorKey);
+    return loc ? `${loc.surah}:${loc.ayah}` : null;
+  },
+  anchorOrder(anchorKey) {
+    // Slot ids follow (surah, ayah, word): this orders anchors as their
+    // slot ids do (ayah and word have at most 3 digits).
+    const loc = hafsAnchorRef(anchorKey);
+    return loc
+      ? loc.surah * 1_000_000 + loc.ayah * 1_000 + loc.word
+      : Number.MAX_SAFE_INTEGER;
   },
 };
 
@@ -138,6 +178,8 @@ export function shownVerseUnitsOf(units: RewayahVerseUnits): ShownVerseUnits {
     unitKeysForStoredVerse: row =>
       unitsForStoredVerse(units, row).units.map(u => u.key),
     unitKeyForAnchor: anchorKey => units.unitForAnchor(anchorKey)?.key ?? null,
+    anchorOrder: anchorKey =>
+      units.wordIdForAnchor(anchorKey) ?? Number.MAX_SAFE_INTEGER,
   };
 }
 
