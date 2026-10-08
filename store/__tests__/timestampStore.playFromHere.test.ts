@@ -259,13 +259,22 @@ describe('Play from here on a verse unit of the rows', () => {
     expect(unit.status === 'ready' && unit.entry.ayahNumber).toBe(7);
     const hafs = resolvePlayFromHere('1:7');
     expect(hafs.status === 'ready' && hafs.entry.ayahNumber).toBe(6);
-    // a settled load without timings: the Hafs request's answer
-    mockSource.online = false;
+    // a unit of a surah the player has left: the Hafs request's answer
     await store().loadTimestampsForSurah('warsh-14', 2);
+    expect(resolvePlayFromHere(fixtureUnit('warsh', '1:7'))).toEqual({
+      status: 'unavailable',
+      ...PLAY_FROM_HERE_OTHER_SURAH,
+    });
+    // a settled load of its own surah without timings: the Hafs request's
+    // answer (cleared first: a failed reload of loaded timings keeps them)
+    store().clearCurrentTimestamps();
+    mockSource.online = false;
+    await store().loadTimestampsForSurah('warsh-14', 1);
     expect(resolvePlayFromHere(fixtureUnit('warsh', '1:7'))).toEqual({
       status: 'unavailable',
       ...PLAY_FROM_HERE_LOAD_FAILED,
     });
+    await flush(); // the retry it starts settles
   });
 });
 // @ai-end
