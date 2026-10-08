@@ -566,14 +566,56 @@ async function readWordRows(db: SQLite.SQLiteDatabase): Promise<WordRow[]> {
     'SELECT id, text, location FROM words;',
   );
   if (rows.length === 0) throw new Error('words table is empty');
+  // @ai-start
+  // A damaged copy (e.g. cut short inside its last page) can still return
+  // every row, some with NULL fields. Reject it here, inside the read, so the
+  // copy is deleted, re-imported and read again instead of failing (or
+  // dropping a word) later.
+  for (const row of rows) {
+    if (
+      typeof row.id !== 'number' ||
+      typeof row.location !== 'string' ||
+      typeof row.text !== 'string'
+    ) {
+      throw new Error(`words table has a malformed row (id ${row.id})`);
+    }
+  }
+  // @ai-end
   return rows;
 }
+
+// @ai-start
+const LINE_TYPES: ReadonlySet<unknown> = new Set<DKLine['line_type']>([
+  'surah_name',
+  'basmallah',
+  'ayah',
+]);
+
+const isWholeNumber = (value: unknown): boolean =>
+  typeof value === 'number' && Number.isInteger(value);
+// @ai-end
 
 async function readLayoutRows(db: SQLite.SQLiteDatabase): Promise<DKLine[]> {
   const rows = await db.getAllAsync<DKLine>(
     'SELECT * FROM pages ORDER BY page_number, line_number;',
   );
   if (rows.length === 0) throw new Error('pages table is empty');
+  // @ai-start
+  // Same check as readWordRows: a damaged copy must not drop a line.
+  for (const row of rows) {
+    if (
+      !isWholeNumber(row.page_number) ||
+      !isWholeNumber(row.line_number) ||
+      !LINE_TYPES.has(row.line_type) ||
+      (row.line_type === 'ayah' &&
+        (!isWholeNumber(row.first_word_id) || !isWholeNumber(row.last_word_id)))
+    ) {
+      throw new Error(
+        `pages table has a malformed row (page ${row.page_number}, line ${row.line_number})`,
+      );
+    }
+  }
+  // @ai-end
   return rows;
 }
 
@@ -1078,11 +1120,17 @@ export class DigitalKhattDataService {
       this._initialized &&
       this.activeLayoutDbName === layoutSpec.name &&
       this.pageLines.size > 0;
-    const [rows, layoutRows] = await Promise.all([
-      this.readBundledDb(wordsSpec, readWordRows),
+    const [words, layoutRows] = await Promise.all([
+      // @ai-start
+      // Built inside the read: a copy whose rows cannot be used is deleted,
+      // re-imported and read again like any unreadable copy (as the side
+      // cache's read does).
+      this.readBundledDb(wordsSpec, async db =>
+        buildWordsData(await readWordRows(db)),
+      ),
+      // @ai-end
       reuseLayout ? null : this.readBundledDb(layoutSpec, readLayoutRows),
     ]);
-    const words = buildWordsData(rows);
     // Surah start pages come from the words' verse keys, so build the layout
     // after the words.
     const layout = layoutRows
