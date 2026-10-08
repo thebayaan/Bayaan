@@ -11,13 +11,21 @@ import {
   type SkParagraph,
   type SkColor,
 } from '@shopify/react-native-skia';
-import {quranTextService, SpaceType} from '@/services/mushaf/QuranTextService'; // @ai
+// @ai-start
+import {
+  quranTextService,
+  SPACEWIDTH,
+  SpaceType,
+} from '@/services/mushaf/QuranTextService';
+// @ai-end
 import type {JustResultByLine} from '@/services/mushaf/JustificationService';
 // @ai-start
 import {
   clampRectToBand,
+  fitWordSize,
   justifiedLineStrut,
   justifiedSpaceFontSize,
+  spaceFitExtra,
   type LineBand,
 } from './justifiedSpace';
 // @ai-end
@@ -91,10 +99,6 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
 
     const color = Skia.Color(textColor);
     const effectiveFontSize = justResult.fontSizeRatio * fontSize;
-    const strokeWidth = getArabicTextWeightStrokeWidth(
-      arabicTextWeight,
-      effectiveFontSize,
-    );
 
     const textStyle: SkTextStyle = {
       color,
@@ -108,23 +112,29 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
     }
 
     // @ai-start
-    // The strut pins the line box and baseline to the words' size: justified
-    // spaces are set at larger sizes (justifiedSpace.ts).
-    const paragraphStyle = {
-      ...lineParStyle,
-      strutStyle: justifiedLineStrut(fontFamily, effectiveFontSize),
-    };
-    // @ai-end
-
-    const buildParagraph = (withStroke: boolean) => {
+    // `wordSize`: the words' font size; `spaceExtra`: px added to every space
+    // (both set by the fit pass below). The strut pins the line box and
+    // baseline to the words' size: justified spaces are set at larger sizes
+    // (justifiedSpace.ts).
+    const buildParagraph = (
+      withStroke: boolean,
+      wordSize: number,
+      spaceExtra: number,
+    ) => {
+      const lineStyle: SkTextStyle = {...textStyle, fontSize: wordSize};
+      const lineStroke = getArabicTextWeightStrokeWidth(
+        arabicTextWeight,
+        wordSize,
+      );
       const paragraphBuilder = Skia.ParagraphBuilder.Make(
-        paragraphStyle, // @ai
+        {...lineParStyle, strutStyle: justifiedLineStrut(fontFamily, wordSize)},
         fontMgr,
       );
+      // @ai-end
 
       const pushStyle = (style: SkTextStyle, styleColor: SkColor) => {
         const strokePaint = withStroke
-          ? createTextStrokePaint(styleColor, strokeWidth)
+          ? createTextStrokePaint(styleColor, lineStroke) // @ai
           : undefined;
         if (strokePaint) {
           paragraphBuilder.pushStyle(style, strokePaint);
@@ -133,7 +143,7 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
         }
       };
 
-      pushStyle(textStyle, color);
+      pushStyle(lineStyle, color); // @ai
 
       for (
         let wordIndex = 0;
@@ -153,7 +163,7 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
 
           if (needsCustomStyle) {
             const charStyle: SkTextStyle = {
-              ...textStyle,
+              ...lineStyle, // @ai
             };
             let charColor = color;
             if (justInfo) {
@@ -185,8 +195,8 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
               ? justResult.ayaSpacing
               : justResult.simpleSpacing;
           const newtextStyle: SkTextStyle = {
-            ...textStyle,
-            fontSize: justifiedSpaceFontSize(effectiveFontSize, spacing),
+            ...lineStyle,
+            fontSize: justifiedSpaceFontSize(wordSize, spacing, spaceExtra),
           };
           // @ai-end
 
@@ -203,10 +213,51 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
       return p;
     };
 
+    // @ai-start
+    // Fit pass. The drawn width of a justified line can miss the width
+    // JustService fitted: a widened line's spaces are shaped apart from their
+    // words (justifiedSpace.ts), and a shrunk line's size can round. Measure
+    // it, then spread a widened line's residue over its spaces, or scale a
+    // line at the words' spacing (its spaces stay in the words' runs), so the
+    // line ends exactly on the margin. Centered lines are left as built.
+    const isJustifiedLine = !(
+      lineInfo.lineType === 1 ||
+      (lineInfo.lineType === 2 && pageNumber !== 1 && pageNumber !== 2)
+    );
+    const isWidened =
+      justResult.simpleSpacing > SPACEWIDTH ||
+      justResult.ayaSpacing > SPACEWIDTH;
+    let wordSize = effectiveFontSize;
+    let spaceExtra = 0;
+    let paragraph = buildParagraph(false, wordSize, spaceExtra);
+    if (isJustifiedLine) {
+      const targetWidth = pageWidth - 2 * margin;
+      const drawnWidth = paragraph.getLongestLine();
+      if (isWidened) {
+        spaceExtra = spaceFitExtra(
+          targetWidth,
+          drawnWidth,
+          lineTextInfo.spaces.size,
+        );
+      } else {
+        wordSize = fitWordSize(effectiveFontSize, targetWidth, drawnWidth);
+      }
+      if (spaceExtra !== 0 || wordSize !== effectiveFontSize) {
+        paragraph.dispose();
+        paragraph = buildParagraph(false, wordSize, spaceExtra);
+      }
+    }
+
+    const strokeWidth = getArabicTextWeightStrokeWidth(
+      arabicTextWeight,
+      wordSize,
+    );
     return {
-      paragraph: buildParagraph(false),
-      strokeParagraph: strokeWidth > 0 ? buildParagraph(true) : null,
+      paragraph,
+      strokeParagraph:
+        strokeWidth > 0 ? buildParagraph(true, wordSize, spaceExtra) : null,
     };
+    // @ai-end
     // textIdentity: the line text (read from quranTextService) follows the
     // words cache; char indices of charToRule/charToColor index into it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
