@@ -37,6 +37,10 @@ const UNAVAILABLE: RewayahWordsResult = {
 // showing a track's rewayah while the mushaf moves on) without any prop of
 // this hook changing. A failed load stays 'error' (no retry loop); an
 // explicit ensureRewayahLoaded or switchRewayah call retries.
+// @ai-start
+// While it shows a verse, the hook retains the rewayah, so its side copy is
+// never evicted by later switches.
+// @ai-end
 //
 // Returns {status: 'unavailable'} for rewayat without bundled DK data, so
 // callers can show "text not available" rather than another rewayah's text.
@@ -50,6 +54,14 @@ export function useRewayahWords(
   );
 
   const rewayahHasData = hasTextData(rewayah);
+
+  // @ai-start
+  const showsVerse = verseKey !== null;
+  useEffect(() => {
+    if (!showsVerse || !rewayahHasData) return;
+    return digitalKhattDataService.retainRewayah(rewayah);
+  }, [showsVerse, rewayah, rewayahHasData]);
+  // @ai-end
 
   useEffect(() => {
     if (!verseKey || !rewayahHasData) return;

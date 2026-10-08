@@ -5,6 +5,9 @@
  * 'loading' / 'error' / 'unavailable' explicitly instead of empty or
  * substituted text, and never retries a failed load in a loop.
  */
+// @ai-start
+// It also retains the rewayah while it shows a verse.
+// @ai-end
 import React, {act} from 'react';
 import TestRenderer from 'react-test-renderer';
 
@@ -26,6 +29,8 @@ interface FakeService {
   states: Map<string, string>;
   words: Map<string, FakeWord[]>;
   ensure: jest.Mock;
+  retain: jest.Mock; // @ai
+  release: jest.Mock; // @ai
   bump: () => void;
 }
 
@@ -36,6 +41,8 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => {
     states: new Map(),
     words: new Map(),
     ensure: jest.fn(() => Promise.resolve()),
+    release: jest.fn(), // @ai
+    retain: jest.fn(() => fakeState.release), // @ai
     bump: () => {
       fakeState.version += 1;
       listeners.forEach(listener => listener());
@@ -52,6 +59,7 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => {
       getRewayahLoadState: (rewayah: string) =>
         fakeState.states.get(rewayah) ?? 'idle',
       ensureRewayahLoaded: (rewayah: string) => fakeState.ensure(rewayah),
+      retainRewayah: (rewayah: string) => fakeState.retain(rewayah), // @ai
       tryGetVerseWords: (verseKey: string, rewayah: string) => {
         if (fakeState.states.get(rewayah) !== 'ready') return null;
         return fakeState.words.get(`${rewayah}|${verseKey}`) ?? [];
@@ -96,6 +104,10 @@ beforeEach(() => {
   fake.states.clear();
   fake.words.clear();
   fake.ensure.mockClear();
+  // @ai-start
+  fake.retain.mockClear();
+  fake.release.mockClear();
+  // @ai-end
   // react-test-renderer prints a deprecation notice under React 19.
   errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
 });
@@ -157,6 +169,7 @@ describe('useRewayahWords', () => {
     const view = renderWords('2:255', 'hisham');
     expect(view.latest()).toEqual({words: [], status: 'unavailable'});
     expect(fake.ensure).not.toHaveBeenCalled();
+    expect(fake.retain).not.toHaveBeenCalled(); // @ai
     view.unmount();
   });
 
@@ -164,8 +177,23 @@ describe('useRewayahWords', () => {
     const view = renderWords(null, 'warsh');
     expect(view.latest()).toEqual({words: [], status: 'ready'});
     expect(fake.ensure).not.toHaveBeenCalled();
+    expect(fake.retain).not.toHaveBeenCalled(); // @ai
     view.unmount();
   });
+
+  // @ai-start
+  it('retains the rewayah while it shows a verse and releases it on unmount', () => {
+    fake.states.set('warsh', 'ready');
+    const view = renderWords('2:255', 'warsh');
+    expect(fake.retain).toHaveBeenCalledTimes(1);
+    expect(fake.retain).toHaveBeenCalledWith('warsh');
+    act(() => fake.bump());
+    expect(fake.retain).toHaveBeenCalledTimes(1);
+    expect(fake.release).not.toHaveBeenCalled();
+    view.unmount();
+    expect(fake.release).toHaveBeenCalledTimes(1);
+  });
+  // @ai-end
 });
 
 describe('useRewayahText', () => {

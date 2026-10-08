@@ -634,6 +634,13 @@ function runInBackground(label: string, task: Promise<unknown>): void {
 type RewayahChangeListener = (rewayah: RewayahId) => void;
 type CacheChangeListener = () => void;
 
+// @ai-start
+// Side copies of rewayat no mounted surface shows that stay in memory (about
+// 7 MB each next to the main cache's 14 MB, measured on V8): the previously
+// active rewayah after a switch, or the last one read once (copy, share).
+const MAX_IDLE_SIDE_ENTRIES = 1;
+// @ai-end
+
 export class DigitalKhattDataService {
   // Main cache: the active rewayah (what the mushaf renders). Replaced as a
   // whole by swapMain(); never cleared or partially filled in place.
@@ -673,9 +680,13 @@ export class DigitalKhattDataService {
   private mainWorkerRunning = false;
   private mainOutcomeListeners: (() => void)[] = [];
   private loadErrors: Map<RewayahId, unknown> = new Map();
-  // Side entry kept from the previously active rewayah (at most one; replaced
-  // on the next switch unless a consumer asked for it explicitly).
-  private retainedSideRewayah: RewayahId | null = null;
+  // @ai-start
+  // Side entries a mounted surface shows (retainRewayah): never evicted while
+  // counted. The others are bounded: only the MAX_IDLE_SIDE_ENTRIES most
+  // recently used stay (sideVerseWords is kept in recency order, oldest
+  // first; see trimSideCache).
+  private sideRetainCounts: Map<RewayahId, number> = new Map();
+  // @ai-end
   // Per-DB-name operation chain: imports, opens and deletes of one file never
   // overlap, so concurrent loaders cannot collide.
   private dbLocks: Map<string, Promise<void>> = new Map();
@@ -888,7 +899,6 @@ export class DigitalKhattDataService {
     this.sideVerseWords.clear();
     this.sideLoading.clear();
     this.loadErrors.clear();
-    this.retainedSideRewayah = null;
     this.sweptBases.clear();
     this.sweepsInFlight.clear(); // @ai
 
@@ -1204,20 +1214,17 @@ export class DigitalKhattDataService {
 
     // The new active rewayah reads from the main cache now.
     this.sideVerseWords.delete(next.rewayah);
-    if (this.retainedSideRewayah === next.rewayah) {
-      this.retainedSideRewayah = null;
-    }
     // Keep the outgoing rewayah readable (e.g. the player still showing a
-    // track in it) instead of dropping it; bounded to one retained entry.
+    // track in it) instead of dropping it.
     if (wasInitialized && prevRewayah !== next.rewayah) {
-      if (this.retainedSideRewayah !== null) {
-        this.sideVerseWords.delete(this.retainedSideRewayah);
-        this.retainedSideRewayah = null;
-      }
       if (prevVerseWords.size > 0 && !this.sideVerseWords.has(prevRewayah)) {
         this.sideVerseWords.set(prevRewayah, prevVerseWords);
-        this.retainedSideRewayah = prevRewayah;
       }
+      // @ai-start
+      // It is the most recent copy nothing retains; older ones go unless a
+      // surface shows them.
+      this.trimSideCache();
+      // @ai-end
     }
 
     // @ai-start
@@ -1532,8 +1539,11 @@ export class DigitalKhattDataService {
     // main cache is already loading waits for that load. Never substitutes
     // another rewayah's text.
     if (this.isRewayahReady(rewayah)) {
-      // An explicit request pins the retained copy of the previous rewayah.
-      if (this.retainedSideRewayah === rewayah) this.retainedSideRewayah = null;
+      // @ai-start
+      // An explicit request makes a side copy the most recently used one
+      // (a surface that keeps showing it retains it: retainRewayah).
+      this.touchSideCopy(rewayah);
+      // @ai-end
       return;
     }
     requireRewayahAssets(rewayah);
@@ -1597,13 +1607,62 @@ export class DigitalKhattDataService {
     this.loadErrors.delete(rewayah);
     // If it became the active rewayah meanwhile, the main cache has it.
     if (!(rewayah === this.currentRewayah && this._initialized)) {
+      // @ai-start
+      // The newest copy (re-inserted: map order is recency); older copies
+      // nothing retains are dropped beyond the bound.
+      this.sideVerseWords.delete(rewayah);
       this.sideVerseWords.set(rewayah, verseWords);
+      this.trimSideCache();
+      // @ai-end
     }
     // Side cache for this rewayah is now ready; wake any consumer reading
     // it (e.g. SkiaVerseText on the player screen rendering a non-mushaf
     // rewayah).
     this.notifyCacheChange();
   }
+
+  // @ai-start
+  /**
+   * Marks `rewayah`'s words as shown by a mounted surface (useRewayahWords)
+   * until the returned function is called: while any surface retains it, its
+   * side copy is never evicted (e.g. the player's reciter rewayah while the
+   * mushaf switches). Loads nothing; ensureRewayahLoaded does.
+   */
+  retainRewayah(rewayah: RewayahId): () => void {
+    this.sideRetainCounts.set(
+      rewayah,
+      (this.sideRetainCounts.get(rewayah) ?? 0) + 1,
+    );
+    this.touchSideCopy(rewayah);
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true;
+      const count = (this.sideRetainCounts.get(rewayah) ?? 1) - 1;
+      if (count > 0) this.sideRetainCounts.set(rewayah, count);
+      else this.sideRetainCounts.delete(rewayah);
+    };
+  }
+
+  private touchSideCopy(rewayah: RewayahId): void {
+    const words = this.sideVerseWords.get(rewayah);
+    if (!words) return;
+    this.sideVerseWords.delete(rewayah);
+    this.sideVerseWords.set(rewayah, words);
+  }
+
+  // Drops the least recently used side copies nothing retains beyond
+  // MAX_IDLE_SIDE_ENTRIES. Runs when a copy is added (not on release, so a
+  // surface that remounts finds its copy still there). Callers notify.
+  private trimSideCache(): void {
+    let idle = 0;
+    for (const rewayah of [...this.sideVerseWords.keys()].reverse()) {
+      if ((this.sideRetainCounts.get(rewayah) ?? 0) > 0) continue;
+      idle += 1;
+      if (idle > MAX_IDLE_SIDE_ENTRIES) this.sideVerseWords.delete(rewayah);
+    }
+  }
+  // @ai-end
 
   /** True when `rewayah`'s words are in memory (main or side cache). */
   isRewayahReady(rewayah: RewayahId): boolean {
