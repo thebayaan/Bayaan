@@ -6,9 +6,13 @@ import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {surahGlyphMap} from '@/utils/surahGlyphMap';
 import Color from 'color';
-import SkiaVersePreview from '@/components/share/SkiaVersePreview';
 import {getRewayahShortLabel} from '@/utils/rewayahLabels';
 import type {RewayahId} from '@/store/mushafSettingsStore';
+// @ai-start
+import {CollectionVersePreview} from './CollectionVersePreview';
+import {useSavedVerseDescription} from '@/hooks/useSavedVerseDescription';
+import {savedVerseLabel} from '@/services/verse-annotations/unitAnnotations';
+// @ai-end
 
 interface BookmarkItemProps {
   surahName: string;
@@ -35,6 +39,18 @@ export const BookmarkItem = memo<BookmarkItemProps>(
 
     const surahGlyph = surahGlyphMap[surahNumber] ?? '';
 
+    // @ai-start
+    // A bookmark saved in a non-Hafs rewayah names that rewayah's own verse
+    // (the row keeps its Hafs anchor, e.g. "1:7:5" for Warsh 1:7): label it
+    // in the rewayah's numbering and preview that verse's own text. Hafs rows
+    // keep their Hafs label and preview.
+    const description = useSavedVerseDescription({verseKey, rewayahId});
+    const verseLabel = savedVerseLabel(
+      description,
+      `${surahNumber}:${ayahNumber}`,
+    );
+    // @ai-end
+
     return (
       <Pressable
         style={styles.container}
@@ -42,11 +58,13 @@ export const BookmarkItem = memo<BookmarkItemProps>(
         onLongPress={onOptionsPress}>
         {/* Top bar: pill + surah glyph + options */}
         <View style={styles.topBar}>
-          <View style={styles.versePill}>
-            <Text style={styles.versePillText}>
-              {surahNumber}:{ayahNumber}
-            </Text>
-          </View>
+          {/* @ai-start */}
+          {verseLabel ? (
+            <View style={styles.versePill}>
+              <Text style={styles.versePillText}>{verseLabel}</Text>
+            </View>
+          ) : null}
+          {/* @ai-end */}
           {rewayahId && rewayahId !== 'hafs' && (
             <View style={styles.rewayahPill}>
               <Text style={styles.rewayahPillText}>
@@ -73,7 +91,13 @@ export const BookmarkItem = memo<BookmarkItemProps>(
 
         {/* Arabic text */}
         <View style={styles.arabicContainer}>
-          <SkiaVersePreview verseKey={verseKey} rewayah={rewayahId} />
+          {/* @ai-start */}
+          <CollectionVersePreview
+            description={description}
+            verseKey={verseKey}
+            rewayah={rewayahId}
+          />
+          {/* @ai-end */}
         </View>
       </Pressable>
     );
