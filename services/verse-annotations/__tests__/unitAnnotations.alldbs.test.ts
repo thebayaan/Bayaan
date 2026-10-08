@@ -35,7 +35,7 @@ import {
 } from '../__fixtures__/verseUnitsTestData';
 import {
   anchorTarget,
-  bookmarkChipView,
+  bookmarkChipText,
   verseQueryTarget,
   type ShownVerses,
 } from '@/components/mushaf/mushafSearchVerses';
@@ -151,10 +151,15 @@ run('annotations, search and links on every words DB (local only)', () => {
           anchorTarget(anchor.verseKey, shown)?.verseKey === k,
           () => `${k}: history anchor`,
         );
-        const chip = bookmarkChipView(row, shown);
+        // A bookmark chip of the row reads its own verse (no tag: the
+        // rewayah on screen is the row's).
+        const chip = bookmarkChipText('S', row, description, rewayah);
         check(
-          chip.label === k && chip.target?.verseKey === k,
-          () => `${k}: chip ${JSON.stringify(chip)}`,
+          chip ===
+            (isHafs
+              ? `S ${anchor.surahNumber}:${anchor.ayahNumber}`
+              : `S ${k}`),
+          () => `${k}: chip ${chip}`,
         );
 
         // Share link.

@@ -26,100 +26,18 @@ import Color from 'color';
 import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
 import type {VerseBookmark} from '@/types/verse-annotations';
 // @ai-start
-import {
-  REWAYAH_FALLBACK_RENDERER_LABEL,
-  useMushafSettingsStore,
-  type RewayahId,
-} from '@/store/mushafSettingsStore';
-import {hasTextData} from '@/services/rewayah/RewayahIdentity';
+import {restoreSavedRewayah} from '@/services/verse-annotations/restoreSavedRewayah';
 import {describeSavedVerseNow} from '@/hooks/useSavedVerseDescription';
 import {
   savedVerseRouteParams,
   savedVerseSubtitle,
 } from '@/services/verse-annotations/unitAnnotations';
 // @ai-end
-import {getRewayahShortLabel} from '@/utils/rewayahLabels';
-import {showToast} from '@/utils/toastUtils';
 
 interface BookmarkData {
   bookmark: VerseBookmark;
   surahName: string;
 }
-
-// @ai-start
-/**
- * Switches to the rewayah a bookmark was saved in before it opens, keeping
- * the settings store and the DigitalKhatt data service on the same rewayah.
- *
- * Mushaf 1440 (qcf_v2) draws Hafs only and the store refuses a non-Hafs
- * rewayah there. Switching the data service anyway left it on the saved
- * rewayah while the store said Hafs: Allah-name highlights were projected
- * from the wrong words, and after a later switch back to a DigitalKhatt font
- * pages drew that text under a Hafs header and saved Hafs layouts built from
- * it. So under Mushaf 1440 the data service is left alone and the verse opens
- * in Hafs, and the reader is told so.
- */
-async function restoreBookmarkRewayah(
-  savedRewayah: RewayahId | undefined,
-): Promise<void> {
-  // Legacy bookmarks carry no rewayah and open in whatever is active.
-  if (!savedRewayah) return;
-  const settings = useMushafSettingsStore.getState();
-  if (
-    savedRewayah === settings.rewayah &&
-    savedRewayah === digitalKhattDataService.rewayah
-  ) {
-    return;
-  }
-  const savedLabel = getRewayahShortLabel(savedRewayah);
-  if (settings.mushafRenderer === 'qcf_v2' && savedRewayah !== 'hafs') {
-    showToast(
-      'Opening in Hafs',
-      `Saved in ${savedLabel}. Mushaf 1440 shows Hafs only.`,
-    );
-    return;
-  }
-  if (!hasTextData(savedRewayah)) {
-    showToast(
-      `${savedLabel} text is not available`,
-      `Opening in ${getRewayahShortLabel(settings.rewayah)}.`,
-      'error',
-    );
-    return;
-  }
-  try {
-    await digitalKhattDataService.switchRewayah(savedRewayah);
-  } catch (err) {
-    console.error('[Bookmarks] Failed to switch rewayah:', err);
-    // Put the data service back on the store's rewayah if the failed switch
-    // moved it (a no-op when the service rolled back by itself).
-    if (digitalKhattDataService.rewayah !== settings.rewayah) {
-      await digitalKhattDataService
-        .switchRewayah(settings.rewayah)
-        .catch(restoreErr =>
-          console.error('[Bookmarks] Failed to restore rewayah:', restoreErr),
-        );
-    }
-    showToast(
-      `Couldn't open in ${savedLabel}`,
-      `Showing ${getRewayahShortLabel(settings.rewayah)} instead.`,
-      'error',
-    );
-    return;
-  }
-  const rendererBefore = settings.mushafRenderer;
-  // setRewayah also moves IndoPak to a Madani font (IndoPak draws Hafs only).
-  useMushafSettingsStore.getState().setRewayah(savedRewayah);
-  if (useMushafSettingsStore.getState().mushafRenderer !== rendererBefore) {
-    showToast(
-      `Opening in ${savedLabel}`,
-      `IndoPak shows Hafs only, so the font is now ${REWAYAH_FALLBACK_RENDERER_LABEL}.`,
-    );
-  } else {
-    showToast('Opening in', savedLabel);
-  }
-}
-// @ai-end
 
 const BookmarksScreen = () => {
   const {theme} = useTheme();
@@ -181,7 +99,7 @@ const BookmarksScreen = () => {
         const fallbackPage = surahStartPages[bookmark.surahNumber] || 1;
         // Restore the rewayah the bookmark was saved in so the opened verse
         // matches what the user was reading at save time.
-        await restoreBookmarkRewayah(bookmark.rewayahId);
+        await restoreSavedRewayah(bookmark.rewayahId);
         const page = digitalKhattDataService.getPageForVerse(verseKey);
         // The page of the anchor's Hafs verse is the page the saved verse
         // starts on. A bookmark saved in a non-Hafs rewayah also passes its

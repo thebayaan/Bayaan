@@ -34,13 +34,15 @@ import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService
 // @ai-start
 import {useRewayahVerseUnits} from '@/hooks/useRewayahVerseUnits';
 import type {RewayahId} from '@/services/rewayah/RewayahIdentity';
+import {rewayahVerseUnitsService} from '@/services/mushaf/RewayahVerseUnitsService';
+import {restoreSavedRewayah} from '@/services/verse-annotations/restoreSavedRewayah';
+import type {VerseBookmark} from '@/types/verse-annotations';
 import {
   anchorTarget,
   historyEntryLabel,
   verseHistoryLabel,
   verseQueryTarget,
   verseResultTexts,
-  type BookmarkChipView,
   type ShownVerses,
   type VerseTarget,
 } from './mushafSearchVerses';
@@ -788,14 +790,35 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
   );
 
   // @ai-start
-  // A chip opens the verse it is labelled with, in the rewayah on screen
-  // (Hafs: the bookmark's Hafs verse, as before); its page while no verse
-  // can be named.
+  // A chip opens its bookmark as the Bookmarks list does: in the rewayah it
+  // was saved in (restored first), with exactly its verse selected there
+  // (the verse holding its anchor; Hafs: its Hafs verse, as before). Its
+  // page when no verse can be named. Taps during a restore are ignored.
+  const openingBookmarkRef = useRef(false);
   const handleBookmarkPress = useCallback(
-    (view: BookmarkChipView, surahId: number) => {
+    async (bookmark: VerseBookmark) => {
       Keyboard.dismiss();
-      if (view.target) navigateToTarget(view.target, surahId);
-      else navigateToHafsPage(view.pageVerseKey, surahId);
+      if (openingBookmarkRef.current) return;
+      openingBookmarkRef.current = true;
+      try {
+        await restoreSavedRewayah(bookmark.rewayahId);
+        // Read after the restore: the rewayah on screen may have changed.
+        const rewayah = digitalKhattDataService.rewayah;
+        const target = anchorTarget(bookmark.verseKey, {
+          rewayah,
+          units:
+            rewayah === 'hafs' ? null : rewayahVerseUnitsService.get(rewayah),
+        });
+        if (target) navigateToTarget(target, bookmark.surahNumber);
+        else {
+          navigateToHafsPage(
+            `${bookmark.surahNumber}:${bookmark.ayahNumber}`,
+            bookmark.surahNumber,
+          );
+        }
+      } finally {
+        openingBookmarkRef.current = false;
+      }
     },
     [navigateToTarget, navigateToHafsPage],
   );
@@ -906,7 +929,10 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
           onPress={handleChipPress}
           onClear={handleClearRecentReads}
         />
-        <BookmarkChips shown={shown} onPress={handleBookmarkPress} />
+        <BookmarkChips
+          shownRewayah={shown.rewayah} // @ai
+          onPress={handleBookmarkPress}
+        />
         {SortBar}
       </View>
     ),

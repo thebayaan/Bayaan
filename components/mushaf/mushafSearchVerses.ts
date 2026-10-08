@@ -6,10 +6,10 @@
  * - "N:M" typed in the search is verse N:M of the rewayah on screen: Warsh
  *   "2:285" is Warsh's last verse of al-Baqarah (Hafs 2:286), and Warsh
  *   "2:286" does not exist.
- * - A bookmark chip is labelled with the verse(s) of the rewayah on screen
- *   that the bookmark marks (the storage rule of the verse-units contract,
- *   section 3) and opens that verse, in the mushaf as it is: the chips never
- *   switch the rewayah.
+ * - A bookmark chip is labelled like the Bookmarks list: the bookmark's own
+ *   verse in the rewayah it was saved in (that rewayah named when another
+ *   one is on screen), and opens like it: that rewayah is restored, then
+ *   exactly that verse is selected (anchorTarget).
  * - Search history keeps the verse's storage anchor (Hafs-keyed) with the
  *   rewayah, never a rewayah verse number (contract 4.4).
  *
@@ -21,9 +21,7 @@
  */
 import {SURAHS} from '@/data/surahData';
 import {
-  formatUnitRangeLabel,
   parseAnchorKey,
-  unitsForStoredVerse,
   type RewayahVerseUnits,
   type VerseUnit,
 } from '@/services/mushaf/RewayahVerseUnits';
@@ -32,8 +30,9 @@ import {
   type RewayahId,
 } from '@/services/rewayah/RewayahIdentity';
 import {
-  formatHafsReference,
+  savedVerseLabel,
   unitForRouteAnchor,
+  type SavedVerseDescription,
 } from '@/services/verse-annotations/unitAnnotations';
 
 /** The rewayah on screen and its verse units. */
@@ -177,67 +176,25 @@ export function historyEntryLabel(
     : entry.label;
 }
 
-/** What a bookmark chip shows and opens. */
-export interface BookmarkChipView {
-  /**
-   * Verse label after the surah name, in the numbering of the rewayah on
-   * screen: "2:255", "1:6-7", "Hafs 1:1" (the unnumbered Fatiha basmala of
-   * the Madani / Basri counts); null while the verses are not ready.
-   */
-  readonly label: string | null;
-  /** The verse to open; null: open the page of `pageVerseKey`. */
-  readonly target: VerseTarget | null;
-  /** Hafs verse whose page holds the bookmark. */
-  readonly pageVerseKey: string;
-}
-
 /**
- * A bookmark row as a chip of the mushaf search, in the rewayah on screen.
- * Hafs on screen: the row's Hafs reference and Hafs verse, exactly as
- * before (a row's surah_number / ayah_number are its anchor's Hafs verse).
- * Another rewayah: the units the row marks (contract section 3: exactly the
- * saved verse for a row of that rewayah, every part of the Hafs verse for a
- * Hafs row; a row of a third rewayah, loading nothing, from its anchored
- * word to the end of that Hafs verse), labelled first-last, opening the
- * first one.
+ * A bookmark chip's text: the surah name, the bookmark's verse in the
+ * rewayah it was saved in (savedVerseLabel: its own number, the prefixed
+ * Hafs reference of the unnumbered Fatiha basmala, none while loading), and
+ * that rewayah's name when another rewayah is on screen ("Al-Baqarah 2:2 ·
+ * Hafs" in a Warsh mushaf). Hafs bookmarks with Hafs on screen read exactly
+ * as before ("Al-Baqarah 2:255").
  */
-export function bookmarkChipView(
-  row: {
-    verseKey: string;
-    surahNumber: number;
-    ayahNumber: number;
-    rewayahId?: RewayahId | null;
-  },
-  shown: ShownVerses,
-): BookmarkChipView {
-  const pageVerseKey = `${row.surahNumber}:${row.ayahNumber}`;
-  if (shown.rewayah === 'hafs') {
-    return {
-      label: pageVerseKey,
-      target: hafsTarget(pageVerseKey),
-      pageVerseKey,
-    };
-  }
-  const units = readyUnits(shown);
-  if (!units) return {label: null, target: null, pageVerseKey};
-  const marked = unitsForStoredVerse(units, {
-    verseKey: row.verseKey,
-    rewayahId: row.rewayahId ?? 'hafs',
-  }).units;
-  if (marked.length > 0) {
-    return {
-      label: formatUnitRangeLabel(marked[0], marked[marked.length - 1]),
-      target: unitTarget(units, marked[0]),
-      pageVerseKey,
-    };
-  }
-  // No verse of the rewayah on screen holds it (the unnumbered Fatiha
-  // basmala): its Hafs reference, opening the verse after it.
-  return {
-    label: parseAnchorKey(row.verseKey)
-      ? formatHafsReference(pageVerseKey)
-      : null,
-    target: anchorTarget(row.verseKey, shown),
-    pageVerseKey,
-  };
+export function bookmarkChipText(
+  surahName: string,
+  row: {surahNumber: number; ayahNumber: number; rewayahId?: RewayahId | null},
+  description: SavedVerseDescription,
+  shownRewayah: RewayahId,
+): string {
+  const verse = savedVerseLabel(
+    description,
+    `${row.surahNumber}:${row.ayahNumber}`,
+  );
+  const saved: RewayahId = row.rewayahId ?? 'hafs';
+  const text = verse ? `${surahName} ${verse}` : surahName;
+  return saved === shownRewayah ? text : `${text} · ${getShortLabel(saved)}`;
 }

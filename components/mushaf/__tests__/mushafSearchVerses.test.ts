@@ -4,14 +4,16 @@
  * (decision 3), on real slots of the Release 1 words DBs (fixture surahs):
  *  - "N:M" is verse N:M of that rewayah (Warsh has a 106:5, Hafs does not);
  *  - verse results and history say whose numbering they are;
- *  - bookmark chips are labelled with, and open, the verse of that rewayah
- *    the bookmark marks; the two parts of a split Hafs verse stay apart;
+ *  - bookmark chips read like the Bookmarks list (the saved rewayah's own
+ *    verse, naming that rewayah when another one is on screen), and a
+ *    stored anchor opens exactly its verse (the two parts of a split Hafs
+ *    verse stay apart);
  *  - Hafs on screen: exactly the targets and labels of before.
  * Every verse of every words DB: unitAnnotations.alldbs.test.ts (local).
  */
 import {
   anchorTarget,
-  bookmarkChipView,
+  bookmarkChipText,
   historyEntryLabel,
   verseHistoryLabel,
   verseQueryTarget,
@@ -21,10 +23,10 @@ import {
 import {
   fixtureUnits,
   must,
-  unitOf,
 } from '@/services/verse-annotations/__fixtures__/verseUnitsTestData';
 import {SURAHS} from '@/data/surahData';
 import type {RewayahId} from '@/services/rewayah/RewayahIdentity';
+import {describeSavedVerse} from '@/services/verse-annotations/unitAnnotations';
 
 const HAFS: ShownVerses = {rewayah: 'hafs', units: null};
 const shownReady = (rewayah: RewayahId): ShownVerses => ({
@@ -171,64 +173,52 @@ describe('anchorTarget: a stored anchor in the rewayah on screen', () => {
   });
 });
 
-describe('bookmarkChipView', () => {
-  it('Hafs on screen: every row as before (its Hafs reference and verse)', () => {
-    for (const row of [
-      bm('2:255', 'hafs'),
-      bm('2:255'),
-      bm('1:7', 'warsh'),
-      {...bm('1:7', 'warsh'), verseKey: '1:7:5'},
-    ]) {
-      const key = `${row.surahNumber}:${row.ayahNumber}`;
-      expect(bookmarkChipView(row, HAFS)).toEqual({
-        label: key,
-        target: {
-          verseKey: key,
-          rewayah: 'hafs',
-          pageVerseKey: key,
-          anchor: key,
-        },
-        pageVerseKey: key,
-      });
-    }
-  });
-
-  it('Warsh on screen: the Warsh verse the row marks', () => {
-    const shown = shownReady('warsh');
-    const later = bookmarkChipView(
-      {...bm('1:7', 'warsh'), verseKey: '1:7:5'},
-      shown,
+describe('bookmarkChipText', () => {
+  /** The chip text of `row` with `shown` on screen, its rewayah ready. */
+  const chip = (
+    row: ReturnType<typeof bm>,
+    shown: RewayahId,
+    status: 'ready' | 'loading' = 'ready',
+  ) => {
+    const saved = row.rewayahId ?? 'hafs';
+    const description = describeSavedVerse(
+      row,
+      status === 'ready' && saved !== 'hafs'
+        ? {units: fixtureUnits(saved), status}
+        : {units: null, status},
     );
-    expect(later.label).toBe('1:7');
-    expect(later.target?.verseKey).toBe('1:7');
-    const first = bookmarkChipView(bm('1:7', 'warsh'), shown);
-    expect(first.label).toBe('1:6');
-    expect(first.target?.verseKey).toBe('1:6');
-    // A Hafs bookmark on split Hafs 1:7 marks both Warsh verses.
-    const hafsRow = bookmarkChipView(bm('1:7', 'hafs'), shown);
-    expect(hafsRow.label).toBe('1:6-7');
-    expect(hafsRow.target?.verseKey).toBe('1:6');
-    // Hafs 103:2 is inside Warsh 103:1.
-    expect(bookmarkChipView(bm('103:2', 'hafs'), shown).label).toBe('103:1');
-    expect(bookmarkChipView(bm('103:2', null), shown).label).toBe('103:1');
-    expect(unitOf(fixtureUnits('warsh'), '103:1').hafsKeys).toEqual([
-      '103:1',
-      '103:2',
-    ]);
+    return bookmarkChipText('Surah', row, description, shown);
+  };
+
+  it('Hafs bookmarks with Hafs on screen read as before', () => {
+    expect(chip(bm('2:255', 'hafs'), 'hafs')).toBe('Surah 2:255');
+    expect(chip(bm('2:255'), 'hafs')).toBe('Surah 2:255');
   });
 
-  it('the unnumbered basmala keeps its Hafs reference and opens verse 1', () => {
-    const view = bookmarkChipView(bm('1:1', 'hafs'), shownReady('warsh'));
-    expect(view.label).toBe('Hafs 1:1');
-    expect(view.target).toMatchObject({verseKey: '1:1', anchor: '1:2'});
-    expect(view.pageVerseKey).toBe('1:1');
+  it('names the saved verse in its own rewayah numbering', () => {
+    const later = {...bm('1:7', 'warsh'), verseKey: '1:7:5'};
+    expect(chip(later, 'warsh')).toBe('Surah 1:7');
+    expect(chip(bm('1:7', 'warsh'), 'warsh')).toBe('Surah 1:6');
+    expect(chip(bm('106:4:5', 'warsh'), 'warsh')).toBe('Surah 106:5');
   });
 
-  it('no number while the verses are not ready: opens the page', () => {
-    expect(bookmarkChipView(bm('1:7', 'warsh'), WARSH_LOADING)).toEqual({
-      label: null,
-      target: null,
-      pageVerseKey: '1:7',
-    });
+  it('names the saved rewayah when another one is on screen', () => {
+    const later = {...bm('1:7', 'warsh'), verseKey: '1:7:5'};
+    expect(chip(later, 'hafs')).toBe('Surah 1:7 · Warsh');
+    expect(chip(bm('2:2', 'hafs'), 'warsh')).toBe('Surah 2:2 · Hafs');
+    expect(chip(bm('2:2'), 'warsh')).toBe('Surah 2:2 · Hafs');
+    // al-Bazzi 71:25 starts at Hafs 71:24:4.
+    expect(chip(bm('71:24:4', 'al-bazzi'), 'warsh')).toBe(
+      'Surah 71:25 · Al-Bazzi',
+    );
+  });
+
+  it('the unnumbered basmala keeps its Hafs reference', () => {
+    expect(chip(bm('1:1', 'warsh'), 'warsh')).toBe('Surah Hafs 1:1');
+  });
+
+  it('no number while the saved rewayah verses load', () => {
+    expect(chip(bm('1:7', 'warsh'), 'warsh', 'loading')).toBe('Surah');
+    expect(chip(bm('1:7', 'warsh'), 'hafs', 'loading')).toBe('Surah · Warsh');
   });
 });

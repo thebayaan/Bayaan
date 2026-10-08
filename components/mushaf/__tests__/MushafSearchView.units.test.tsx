@@ -7,6 +7,8 @@
  *    storage anchor and the rewayah, never the Warsh number;
  *  - a history entry opens the verse holding its anchor in the rewayah on
  *    screen; older entries (Hafs numbers) open their Hafs verse as before;
+ *  - a bookmark chip opens its bookmark as the Bookmarks list does: its
+ *    rewayah restored first, then exactly its verse selected;
  *  - Hafs on screen: results, navigation calls and history entries are
  *    exactly those of before.
  */
@@ -14,6 +16,7 @@ import React, {act} from 'react';
 import TestRenderer from 'react-test-renderer';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type {RewayahId} from '@/services/rewayah/RewayahIdentity';
+import type {VerseBookmark} from '@/types/verse-annotations';
 
 let mockShownRewayah: RewayahId = 'hafs';
 let mockUnitsReady = true;
@@ -43,9 +46,43 @@ jest.mock('@/hooks/useRewayahVerseUnits', () => ({
   },
 }));
 
-jest.mock('@shopify/flash-list', () => ({FlashList: () => null}));
+const mockRestore = jest.fn((saved?: RewayahId) => {
+  if (saved) mockShownRewayah = saved;
+  return Promise.resolve();
+});
+jest.mock('@/services/verse-annotations/restoreSavedRewayah', () => ({
+  restoreSavedRewayah: (saved?: RewayahId) => mockRestore(saved),
+}));
+
+jest.mock('@/services/mushaf/RewayahVerseUnitsService', () => ({
+  rewayahVerseUnitsService: {
+    get: (rewayah: RewayahId) => {
+      if (!mockUnitsReady) return null;
+      const {
+        fixtureUnits,
+      } = require('@/services/verse-annotations/__fixtures__/verseUnitsTestData');
+      return fixtureUnits(rewayah);
+    },
+  },
+}));
+
+let mockChipsProps: {
+  shownRewayah?: RewayahId;
+  onPress?: (bookmark: VerseBookmark) => Promise<void>;
+} = {};
+jest.mock('../BookmarkChips', () => ({
+  BookmarkChips: (props: typeof mockChipsProps) => {
+    mockChipsProps = props;
+    return null;
+  },
+}));
+
+// The browse list draws only its header (recent reads, bookmark chips).
+jest.mock('@shopify/flash-list', () => ({
+  FlashList: ({ListHeaderComponent}: {ListHeaderComponent?: unknown}) =>
+    ListHeaderComponent ?? null,
+}));
 jest.mock('@/components/SurahItem', () => ({SurahItem: () => null}));
-jest.mock('../BookmarkChips', () => ({BookmarkChips: () => null}));
 jest.mock('@expo/vector-icons', () => ({Feather: () => null}));
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({top: 0, bottom: 0, left: 0, right: 0}),
@@ -90,7 +127,7 @@ interface Callbacks {
   onNavigateToSurah: jest.Mock;
 }
 
-async function renderSearch(): Promise<{
+async function renderSearch(autoFocusSearch = true): Promise<{
   renderer: TestRenderer.ReactTestRenderer;
   calls: Callbacks;
 }> {
@@ -108,7 +145,7 @@ async function renderSearch(): Promise<{
         onClose={jest.fn()}
         surahStartPages={{}}
         pageToSurah={{}}
-        autoFocusSearch
+        autoFocusSearch={autoFocusSearch}
       />,
     );
   });
@@ -167,6 +204,8 @@ beforeEach(async () => {
   await AsyncStorage.clear();
   mockShownRewayah = 'hafs';
   mockUnitsReady = true;
+  mockRestore.mockClear();
+  mockChipsProps = {};
 });
 
 afterEach(() => {
@@ -322,6 +361,76 @@ describe('Warsh on screen: Warsh numbering', () => {
     );
     const {renderer, calls} = await renderSearch();
     await act(async () => historyRows(renderer)[0].press());
+    expect(calls.onNavigateToVerse).not.toHaveBeenCalled();
+    expect(calls.onNavigateToPage.mock.calls).toEqual([[602]]);
+  });
+});
+
+describe('bookmark chips open their bookmark', () => {
+  function bookmark(verseKey: string, rewayahId?: RewayahId): VerseBookmark {
+    const [surah, ayah] = verseKey.split(':').map(Number);
+    return {
+      id: verseKey,
+      verseKey,
+      surahNumber: surah,
+      ayahNumber: ayah,
+      createdAt: 0,
+      rewayahId,
+    };
+  }
+
+  async function press(row: VerseBookmark) {
+    const {calls} = await renderSearch(false);
+    const onPress = mockChipsProps.onPress;
+    if (!onPress) throw new Error('chips not rendered');
+    await act(async () => onPress(row));
+    return calls;
+  }
+
+  it('Hafs bookmark, Hafs on screen: as before', async () => {
+    const calls = await press(bookmark('2:255', 'hafs'));
+    expect(mockRestore.mock.calls).toEqual([['hafs']]);
+    expect(calls.onNavigateToVerse.mock.calls).toEqual([['2:255', 42]]);
+  });
+
+  it('the chips know the rewayah on screen', async () => {
+    mockShownRewayah = 'warsh';
+    await renderSearch(false);
+    expect(mockChipsProps.shownRewayah).toBe('warsh');
+  });
+
+  it('Warsh bookmark: exactly its Warsh verse, after restoring Warsh', async () => {
+    const later = {...bookmark('1:7', 'warsh'), verseKey: '1:7:5'};
+    const calls = await press(later);
+    expect(mockRestore.mock.calls).toEqual([['warsh']]);
+    expect(calls.onNavigateToVerse.mock.calls).toEqual([['1:7', 1, 'warsh']]);
+    const first = await press(bookmark('1:7', 'warsh'));
+    expect(first.onNavigateToVerse.mock.calls).toEqual([['1:6', 1, 'warsh']]);
+  });
+
+  it('Hafs bookmark with Warsh on screen: Hafs restored, its Hafs verse', async () => {
+    mockShownRewayah = 'warsh';
+    const calls = await press(bookmark('1:7', 'hafs'));
+    expect(mockRestore.mock.calls).toEqual([['hafs']]);
+    expect(calls.onNavigateToVerse.mock.calls).toEqual([['1:7', 1]]);
+  });
+
+  it('a legacy bookmark opens in the rewayah on screen', async () => {
+    mockShownRewayah = 'warsh';
+    const calls = await press(bookmark('106:4'));
+    expect(mockRestore.mock.calls).toEqual([[undefined]]);
+    // The Warsh verse holding the start of Hafs 106:4.
+    expect(calls.onNavigateToVerse.mock.calls).toEqual([
+      ['106:4', 602, 'warsh'],
+    ]);
+  });
+
+  it('no verse can be named: its page', async () => {
+    mockUnitsReady = false;
+    const calls = await press({
+      ...bookmark('106:4', 'warsh'),
+      verseKey: '106:4:5',
+    });
     expect(calls.onNavigateToVerse).not.toHaveBeenCalled();
     expect(calls.onNavigateToPage.mock.calls).toEqual([[602]]);
   });
