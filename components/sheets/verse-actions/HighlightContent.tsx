@@ -13,66 +13,76 @@ import {HIGHLIGHT_COLORS, HighlightColor} from '@/types/verse-annotations';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
 import SkiaVersePreview from '@/components/share/SkiaVersePreview';
+// @ai-start
+import {
+  selectionPreviewProps,
+  type ReadyVerseSelection,
+} from '@/components/share/rewayahVerseSelection';
+// @ai-end
 
 const COLORS = Object.entries(HIGHLIGHT_COLORS) as [HighlightColor, string][];
 
 interface HighlightContentProps {
-  verseKey: string;
-  surahNumber: number;
-  ayahNumber: number;
-  verseKeys?: string[];
-  rewayah?: import('@/store/mushafSettingsStore').RewayahId;
+  // @ai-start
+  /**
+   * The selected verses in their rewayah's own numbering (decision 3; see
+   * components/share/rewayahVerseSelection.ts). One highlight row per
+   * verse, stored at its Hafs anchor ("S:A", or "S:A:W" for a verse that
+   * starts inside a Hafs verse: verse-units contract section 3) with the
+   * selection's rewayah. Hafs: the Hafs keys, exactly as before.
+   */
+  selection: ReadyVerseSelection;
+  // @ai-end
   onDone: () => void;
 }
 
 export const HighlightContent: React.FC<HighlightContentProps> = ({
-  verseKey,
-  surahNumber,
-  ayahNumber,
-  verseKeys,
-  rewayah,
+  selection, // @ai
   onDone,
 }) => {
   const {theme} = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
-  const allKeys = verseKeys && verseKeys.length > 1 ? verseKeys : [verseKey];
-  const currentColor = useVerseAnnotationsStore(s => s.highlights[verseKey]);
+  // @ai-start
+  const {anchors, rewayah} = selection;
+  const currentColor = useVerseAnnotationsStore(
+    s => s.highlights[anchors[0]?.key ?? ''],
+  );
 
   const handleSelectColor = useCallback(
     async (color: HighlightColor) => {
       const store = useVerseAnnotationsStore.getState();
-      for (const vk of allKeys) {
-        const [s, a] = vk.split(':');
+      for (const anchor of anchors) {
         await verseAnnotationService.upsertHighlight(
-          vk,
-          parseInt(s, 10),
-          parseInt(a, 10),
+          anchor.key,
+          anchor.surah,
+          anchor.ayah,
           color,
           rewayah,
         );
-        store.setHighlight(vk, color);
+        store.setHighlight(anchor.key, color);
       }
       onDone();
     },
-    [allKeys, onDone, rewayah],
+    [anchors, onDone, rewayah],
   );
 
   const handleRemove = useCallback(async () => {
     const store = useVerseAnnotationsStore.getState();
-    for (const vk of allKeys) {
-      await verseAnnotationService.removeHighlight(vk);
-      store.removeHighlight(vk);
+    for (const anchor of anchors) {
+      await verseAnnotationService.removeHighlight(anchor.key);
+      store.removeHighlight(anchor.key);
     }
     onDone();
-  }, [allKeys, onDone]);
+  }, [anchors, onDone]);
+  // @ai-end
 
   return (
     <View>
       <View style={styles.previewCard}>
+        {/* @ai: the selected verses, each with its own marker */}
         <SkiaVersePreview
-          verseKey={verseKey}
-          verseKeys={verseKeys}
+          {...selectionPreviewProps(selection)}
           rewayah={rewayah}
         />
       </View>

@@ -10,6 +10,8 @@ import {
   LayoutAnimation,
   UIManager,
   ActivityIndicator, // @ai
+  type StyleProp, // @ai
+  type ViewStyle, // @ai
 } from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
@@ -52,14 +54,28 @@ import * as Clipboard from 'expo-clipboard';
 import {getRewayahShortLabel} from '@/utils/rewayahLabels';
 // @ai-start
 import {showToast} from '@/utils/toastUtils';
-import {useRewayahVerseTexts} from '@/components/share/useRewayahVerseTexts';
 import {
   formatQuranCitation,
   hasNoOwnText,
   joinVerseTexts,
   noOwnTextMessage,
-  resolveVerseTexts,
 } from '@/components/share/rewayahVerseText';
+import {
+  formatVerseCopyText,
+  joinTranslationParts,
+  qulVerseKey,
+  resolveSelectionTexts,
+  selectionPlaybackKeys,
+  selectionTranslationParts,
+  type PendingVerseSelection,
+  type ReadyVerseSelection,
+  type VerseSelectionRequest,
+} from '@/components/share/rewayahVerseSelection';
+import {
+  useRequireSelection,
+  useSelectionVerseTexts,
+  useVerseSelection,
+} from '@/components/share/useVerseSelection';
 // @ai-end
 import branding from '@/config/branding';
 import {HighlightContent} from './verse-actions/HighlightContent';
@@ -110,6 +126,57 @@ if (
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
+// @ai-start
+/**
+ * In place of a screen while the selected verses of another rewayah cannot
+ * be named: its verse units are loading or were refused, or the payload
+ * names no verse of it (the unnumbered Fatiha basmala of the Madani and
+ * Basri counts).
+ */
+function SelectionPendingView({
+  selection,
+  theme,
+  style,
+}: {
+  selection: PendingVerseSelection;
+  theme: Theme;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const label = getRewayahShortLabel(selection.rewayah);
+  return (
+    <View style={[pendingStyles.container, style]}>
+      {selection.status === 'loading' ? (
+        <ActivityIndicator size="small" color={theme.colors.textSecondary} />
+      ) : (
+        <Text
+          style={[
+            pendingStyles.text,
+            {color: Color(theme.colors.text).alpha(0.6).toString()},
+          ]}>
+          {selection.status === 'invalid'
+            ? `Not a numbered verse in ${label}.`
+            : `Couldn't load the ${label} text.`}
+        </Text>
+      )}
+    </View>
+  );
+}
+
+const pendingStyles = StyleSheet.create({
+  container: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: moderateScale(40),
+    paddingHorizontal: moderateScale(16),
+  },
+  text: {
+    fontSize: moderateScale(13),
+    fontFamily: 'Manrope-Medium',
+    textAlign: 'center',
+  },
+});
+// @ai-end
+
 export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
@@ -133,7 +200,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
   const surahNumber = payload?.surahNumber ?? 0;
   const ayahNumber = payload?.ayahNumber ?? 0;
   const verseKeys = payload?.verseKeys;
-  const isRange = verseKeys && verseKeys.length > 1;
+  const unitKeys = payload?.unitKeys; // @ai
   const source = payload?.source;
 
   const selectedTranslationId = useMushafSettingsStore(
@@ -144,67 +211,111 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
   const resolvedRewayah = payload?.rewayah ?? mushafRewayah;
 
   // @ai-start
+  // The verses this sheet acts on, in the shown rewayah's OWN numbering
+  // (decision 3): the payload's unit keys, or the rewayah verses holding its
+  // Hafs verses. Header, copy, share, bookmark / highlight / note rows and
+  // playback all read this selection. Hafs: the payload's Hafs keys, as
+  // before (see components/share/rewayahVerseSelection.ts).
+  const selectionRequest = useMemo<VerseSelectionRequest>(
+    () => ({
+      rewayah: resolvedRewayah,
+      verseKey,
+      surahNumber,
+      ayahNumber,
+      verseKeys,
+      unitKeys,
+    }),
+    [resolvedRewayah, verseKey, surahNumber, ayahNumber, verseKeys, unitKeys],
+  );
+  const selection = useVerseSelection(selectionRequest);
+  const readySelection = selection.status === 'ready' ? selection : null;
+  const isRange = readySelection
+    ? readySelection.isRange
+    : (unitKeys ?? verseKeys ?? []).length > 1;
+
   // Arabic text always comes from the resolved rewayah's words DB (loaded on
   // demand when it is not the active one), never from the static Hafs JSON
-  // and never from a caller-supplied string of unknown rewayah.
-  const selectionKeys = useMemo(
-    () => (isRange ? verseKeys : verseKey ? [verseKey] : []),
-    [isRange, verseKeys, verseKey],
-  );
-  const arabicTexts = useRewayahVerseTexts(selectionKeys, resolvedRewayah);
+  // and never from a caller-supplied string of unknown rewayah. Another
+  // rewayah's verses are its verse units: exactly their slots.
+  const arabicTexts = useSelectionVerseTexts(selection);
   const [isCopying, setIsCopying] = useState(false);
 
-  const {translation} = useMemo(() => {
-    if (isRange) {
-      const translationParts: string[] = [];
-      for (const vk of verseKeys) {
-        const trans = getTranslationTextRaw(vk, selectedTranslationId);
-        if (trans) translationParts.push(trans);
-      }
-      return {translation: translationParts.join('\n')};
-    }
-    return {
-      translation: (payload?.translation ||
-        getTranslationTextRaw(verseKey, selectedTranslationId) ||
-        '') as string,
-    };
-  }, [
-    verseKey,
-    verseKeys,
-    isRange,
-    payload?.translation,
-    selectedTranslationId,
-  ]);
+  // Translations are Hafs-aligned: every Hafs verse the selection reads,
+  // once, with a note under a Hafs verse the rewayah divides (contract 4.6).
+  // The caller's translation (the player passes the one it shows) is its
+  // verse's: used, as before, when the selection reads exactly that one
+  // Hafs verse; any other selection uses the selected translation for every
+  // Hafs verse, so one copy never mixes two translations.
+  const translationFor = useCallback(
+    (ready: ReadyVerseSelection) => {
+      const parts = selectionTranslationParts(ready);
+      const callerTranslation =
+        parts.length === 1 && parts[0].hafsKey === verseKey
+          ? payload?.translation
+          : undefined;
+      return joinTranslationParts(
+        parts,
+        hafsKey =>
+          callerTranslation ||
+          getTranslationTextRaw(hafsKey, selectedTranslationId) ||
+          '',
+      );
+    },
+    [verseKey, payload?.translation, selectedTranslationId],
+  );
+
+  // The selection for an action, waiting (bounded) for another rewayah's
+  // verse units while they load; null after telling the user why nothing
+  // could be done.
+  const requireSelection = useRequireSelection(selection, selectionRequest);
   // @ai-end
 
   const surah = surahData.find(
-    (s: {id: number; name: string}) => s.id === surahNumber,
+    (s: {id: number; name: string}) => s.id === selection.surahNumber, // @ai
   );
   const surahName = surah?.name ?? '';
 
-  const verseRefText = useMemo(() => {
-    if (!isRange) return `${surahNumber}:${ayahNumber}`;
-    const firstKey = verseKeys[0];
-    const lastKey = verseKeys[verseKeys.length - 1];
-    const [firstSurah, firstAyah] = firstKey.split(':');
-    const [lastSurah, lastAyah] = lastKey.split(':');
-    if (firstSurah === lastSurah) {
-      return `${firstSurah}:${firstAyah}-${lastAyah}`;
-    }
-    return `${firstSurah}:${firstAyah} - ${lastSurah}:${lastAyah}`;
-  }, [isRange, verseKeys, surahNumber, ayahNumber]);
+  // @ai-start
+  // "2:1", "2:1-3" or "2:286 - 3:2" in the shown rewayah's numbering; no
+  // number until its verses can be named (never a Hafs number under a
+  // rewayah's name).
+  const verseRefText = readySelection ? readySelection.label : '';
+  const anchorKeys = readySelection
+    ? readySelection.anchors.map(anchor => anchor.key)
+    : null;
 
-  const isBookmarked = useVerseAnnotationsStore(state => {
-    const keys = isRange ? verseKeys : [verseKey];
-    return keys.every(vk => state.isBookmarked(vk));
-  });
-  const isHighlighted = useVerseAnnotationsStore(
-    state => !!state.highlights[verseKey],
+  // Rows are stored by each verse's Hafs anchor (contract section 3): the
+  // Hafs keys themselves for Hafs, as before.
+  const isBookmarked = useVerseAnnotationsStore(
+    state =>
+      !!anchorKeys &&
+      anchorKeys.length > 0 &&
+      anchorKeys.every(key => state.isBookmarked(key)),
   );
+  const isHighlighted = useVerseAnnotationsStore(
+    state => !!anchorKeys && !!state.highlights[anchorKeys[0]],
+  );
+
+  const pendingSelection: PendingVerseSelection | null =
+    selection.status === 'ready' ? null : selection;
+  // Where the pagers (translation, tafsir) and the Hafs-part screens (theme,
+  // word by word) start in another rewayah; undefined for Hafs, whose
+  // screens page Hafs verses as before.
+  const unitStart = useMemo(
+    () =>
+      readySelection?.model && readySelection.units
+        ? {model: readySelection.model, unit: readySelection.units[0]}
+        : undefined,
+    [readySelection],
+  );
+  // @ai-end
 
   const handleToggleBookmark = useCallback(async () => {
     lightHaptics();
-    const keys = isRange ? verseKeys : [verseKey];
+    // @ai-start
+    const ready = readySelection ?? (await requireSelection('saved'));
+    if (!ready) return;
+    // @ai-end
     const store = useVerseAnnotationsStore.getState();
     // A persistence failure must never strand the sheet open: without this
     // guard a rejected write skipped both the optimistic store update and
@@ -213,50 +324,52 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     // all; this is the belt-and-braces for anything else (disk, migration).
     // @ai
     try {
+      // @ai-start
       if (isBookmarked) {
-        for (const vk of keys) {
-          await verseAnnotationService.removeBookmark(vk);
-          store.removeBookmark(vk);
+        for (const anchor of ready.anchors) {
+          await verseAnnotationService.removeBookmark(anchor.key);
+          store.removeBookmark(anchor.key);
         }
       } else {
-        for (const vk of keys) {
-          const [s, a] = vk.split(':');
+        for (const anchor of ready.anchors) {
           await verseAnnotationService.addBookmark(
-            vk,
-            parseInt(s, 10),
-            parseInt(a, 10),
+            anchor.key,
+            anchor.surah,
+            anchor.ayah,
             resolvedRewayah,
           );
-          store.addBookmark(vk);
+          store.addBookmark(anchor.key);
         }
       }
+      // @ai-end
     } catch (error) {
       console.error('[VerseActionsSheet] Bookmark toggle failed:', error);
     }
     await SheetManager.hide(props.sheetId);
   }, [
-    verseKey,
-    verseKeys,
-    isRange,
+    readySelection, // @ai
+    requireSelection, // @ai
     isBookmarked,
     resolvedRewayah,
     props.sheetId,
   ]);
 
   const handleHighlight = useCallback(async () => {
-    if (isHighlighted) {
+    // @ai-start
+    // Highlighted implies a ready selection (its anchors were looked up).
+    if (isHighlighted && readySelection) {
       lightHaptics();
-      const keys = isRange ? verseKeys : [verseKey];
       const store = useVerseAnnotationsStore.getState();
-      for (const vk of keys) {
-        await verseAnnotationService.removeHighlight(vk);
-        store.removeHighlight(vk);
+      for (const anchor of readySelection.anchors) {
+        await verseAnnotationService.removeHighlight(anchor.key);
+        store.removeHighlight(anchor.key);
       }
       hideCurrentSheet();
     } else {
       setActiveScreen('highlight');
     }
-  }, [verseKey, verseKeys, isRange, isHighlighted, hideCurrentSheet]);
+    // @ai-end
+  }, [readySelection, isHighlighted, hideCurrentSheet]);
 
   const handleNote = useCallback(() => {
     setActiveScreen('note');
@@ -268,11 +381,14 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     lightHaptics();
     setIsCopying(true);
     try {
-      // Waits (bounded) for the rewayah's words when they are still loading.
+      // Waits (bounded) for the rewayah's verses and words when they are
+      // still loading.
+      const ready = readySelection ?? (await requireSelection('copied'));
+      if (!ready) return;
       const result =
-        arabicTexts.status === 'ready'
+        ready === selection && arabicTexts.status === 'ready'
           ? arabicTexts
-          : await resolveVerseTexts(selectionKeys, resolvedRewayah);
+          : await resolveSelectionTexts(ready);
       if (result.status !== 'ready') {
         showToast(
           `Couldn't load the ${getRewayahShortLabel(resolvedRewayah)} text`,
@@ -285,23 +401,27 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
         showToast('Nothing to copy', noOwnTextMessage(result.rewayah), 'error');
         return;
       }
-      const parts: string[] = [];
-      const arabic = joinVerseTexts(result.texts);
-      if (arabic) parts.push(arabic);
-      if (translation) parts.push(translation);
-      parts.push(formatQuranCitation(verseRefText, result.rewayah));
-      await Clipboard.setStringAsync(parts.join('\n\n'));
+      // Each verse exactly as the mushaf shows it, with its own marker; the
+      // citation in the rewayah's numbering ("Quran 2:1 · Warsh").
+      await Clipboard.setStringAsync(
+        formatVerseCopyText(
+          joinVerseTexts(result.texts),
+          translationFor(ready),
+          formatQuranCitation(ready.label, result.rewayah),
+        ),
+      );
       await SheetManager.hide(props.sheetId);
     } finally {
       setIsCopying(false);
     }
   }, [
     isCopying,
+    readySelection,
+    requireSelection,
+    selection,
     arabicTexts,
-    selectionKeys,
     resolvedRewayah,
-    translation,
-    verseRefText,
+    translationFor,
     props.sheetId,
   ]);
   // @ai-end
@@ -337,10 +457,16 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
   const [hasSimilarVerses, setHasSimilarVerses] = useState(false);
   const [hasSharedPhrases, setHasSharedPhrases] = useState(false);
 
+  // @ai-start
+  // QUL data is per Hafs verse: offered for a single verse that is exactly
+  // one whole Hafs verse (Hafs: the payload's verse, as before).
+  const qulKey = qulVerseKey(selection, {surahNumber, ayahNumber});
+
   useEffect(() => {
-    if (!surahNumber || !ayahNumber || isRange) return;
+    if (!qulKey) return;
     let cancelled = false;
-    const vk = `${surahNumber}:${ayahNumber}`;
+    const vk = qulKey;
+    // @ai-end
 
     (async () => {
       const [similar, phrases] = await Promise.all([
@@ -355,7 +481,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     return () => {
       cancelled = true;
     };
-  }, [surahNumber, ayahNumber, isRange]);
+  }, [qulKey]); // @ai
 
   const handleSimilarVerses = useCallback(() => {
     setActiveScreen('similar');
@@ -368,11 +494,19 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
   const startPlaybackForSelection = useCallback(
     async (loop: boolean) => {
       lightHaptics();
+      // @ai-start
+      const ready = readySelection ?? (await requireSelection('played'));
+      if (!ready) return;
+      // Until the audio store takes verse units (area B), playback runs on
+      // the Hafs verses holding the selection: from the Hafs verse holding
+      // its first word to the last Hafs verse it reads. Hafs: the first and
+      // last selected verses, as before.
+      const {firstHafsKey: firstKey, lastHafsKey: lastKey} =
+        selectionPlaybackKeys(ready);
+      // @ai-end
       const store = useMushafPlayerStore.getState();
 
       if (!store.rewayatId) {
-        const keys = isRange ? verseKeys! : [verseKey];
-        const firstKey = keys[0];
         const page =
           digitalKhattDataService.getPageForVerse(firstKey) ||
           store.currentPage ||
@@ -388,9 +522,6 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
         return;
       }
 
-      const keys = isRange ? verseKeys! : [verseKey];
-      const firstKey = keys[0];
-      const lastKey = keys[keys.length - 1];
       const [startS, startA] = firstKey.split(':').map(Number);
       const [endS, endA] = lastKey.split(':').map(Number);
 
@@ -406,7 +537,9 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
           {surah: startS, ayah: startA},
           {surah: endS, ayah: endA},
         );
-        store.setVerseRepeatCount(isRange ? 1 : 0);
+        // One Hafs verse repeats as a verse; several (a range, or one
+        // rewayah verse spanning Hafs verses) loop as a range. @ai
+        store.setVerseRepeatCount(firstKey !== lastKey ? 1 : 0);
         store.setRangeRepeatCount(0);
       } else {
         const surahInfo = surahData.find((s: {id: number}) => s.id === startS);
@@ -422,7 +555,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
       hideCurrentSheet();
       store.startPlayback(page, firstKey);
     },
-    [verseKey, verseKeys, isRange, props.sheetId, hideCurrentSheet],
+    [readySelection, requireSelection, props.sheetId, hideCurrentSheet], // @ai
   );
 
   const handlePlaySelection = useCallback(
@@ -450,12 +583,13 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     SheetManager.show('follow-along');
   }, [props.sheetId]);
 
-  const handlePlayerPlayFromHere = useCallback(() => {
+  const handlePlayerPlayFromHere = useCallback(async () => {
     lightHaptics();
-    const keys = isRange ? verseKeys! : [verseKey];
-    const firstKey = keys[0];
-
     // @ai-start
+    const ready = readySelection ?? (await requireSelection('played'));
+    if (!ready) return;
+    const firstKey = selectionPlaybackKeys(ready).firstHafsKey;
+
     // While the reciter's verse numbering is still being resolved, or when
     // it cannot be established for this surah, say so instead of silently
     // keeping the sheet open.
@@ -482,12 +616,18 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     // @ai-end
 
     hideCurrentSheet();
-  }, [verseKey, verseKeys, isRange, hideCurrentSheet]);
+  }, [readySelection, requireSelection, hideCurrentSheet]); // @ai
 
   const handlePlayerRepeat = useCallback(async () => {
     lightHaptics();
-    const keys = isRange ? verseKeys! : [verseKey];
-    const firstKey = keys[0];
+    // @ai-start
+    const ready = readySelection ?? (await requireSelection('played'));
+    if (!ready) return;
+    const firstKey = selectionPlaybackKeys(ready).firstHafsKey;
+    // A rewayah verse starting inside a Hafs verse ("1:7:5") also passes its
+    // storage anchor (verse-units contract 4.4); surah / ayah stay Hafs.
+    const anchorKey = ready.anchors[0].key;
+    // @ai-end
     const [sStr, aStr] = firstKey.split(':');
     const sNum = parseInt(sStr, 10);
     const aNum = parseInt(aStr, 10);
@@ -527,13 +667,14 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
         page: String(page),
         surah: String(sNum),
         ayah: String(aNum),
+        ...(anchorKey !== firstKey ? {anchor: anchorKey} : {}), // @ai
       },
     });
 
     SheetManager.show('mushaf-player-options', {
       payload: {currentPage: page},
     });
-  }, [verseKey, verseKeys, isRange, props.sheetId]);
+  }, [readySelection, requireSelection, props.sheetId]); // @ai
 
   useEffect(() => {
     if (Platform.OS !== 'android' || !activeScreen) return;
@@ -629,13 +770,25 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                 </Pressable>
               )}
             </View>
-            {isFullScreen ? (
+            {/* @ai-start */}
+            {/* Every screen acts on the selected verses; until another
+                rewayah's verses can be named, a screen shows why instead
+                (never Hafs numbers under that rewayah's name). Hafs is
+                always ready. */}
+            {pendingSelection ? (
+              <SelectionPendingView
+                selection={pendingSelection}
+                theme={theme}
+                style={isFullScreen ? {flex: 1} : undefined}
+              />
+            ) : isFullScreen ? (
               <View style={{flex: 1}}>
                 {activeScreen === 'translation' && (
                   <TranslationContent
                     surahNumber={surahNumber}
                     ayahNumber={ayahNumber}
                     rewayah={resolvedRewayah}
+                    unitStart={unitStart}
                     onBack={handleBack}
                   />
                 )}
@@ -644,6 +797,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                     surahNumber={surahNumber}
                     ayahNumber={ayahNumber}
                     rewayah={resolvedRewayah}
+                    unitStart={unitStart}
                     onBack={handleBack}
                   />
                 )}
@@ -651,6 +805,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                   <ThemeContent
                     surahNumber={surahNumber}
                     ayahNumber={ayahNumber}
+                    unitStart={unitStart}
                     onBack={handleBack}
                   />
                 )}
@@ -658,36 +813,34 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                   <WBWContent
                     surahNumber={surahNumber}
                     ayahNumber={ayahNumber}
-                    rewayah={resolvedRewayah} // @ai
+                    rewayah={resolvedRewayah}
+                    unitStart={unitStart}
                     onBack={handleBack}
                   />
                 )}
-                {activeScreen === 'community-reflections' && (
+                {activeScreen === 'community-reflections' && readySelection && (
+                  // Reflections are per Hafs verse: the one holding the
+                  // verse's first word; the badge is the verse's own label.
                   <CommunityReflectionsContent
-                    surahNumber={surahNumber}
-                    ayahNumber={ayahNumber}
+                    surahNumber={readySelection.linkVerse.surah}
+                    ayahNumber={readySelection.linkVerse.ayah}
+                    label={
+                      readySelection.units ? readySelection.label : undefined
+                    }
                   />
                 )}
               </View>
-            ) : (
+            ) : readySelection ? (
               <>
                 {activeScreen === 'highlight' && (
                   <HighlightContent
-                    verseKey={verseKey}
-                    surahNumber={surahNumber}
-                    ayahNumber={ayahNumber}
-                    verseKeys={verseKeys}
-                    rewayah={resolvedRewayah}
+                    selection={readySelection}
                     onDone={handleDismiss}
                   />
                 )}
                 {activeScreen === 'note' && (
                   <NoteContent
-                    verseKey={verseKey}
-                    surahNumber={surahNumber}
-                    ayahNumber={ayahNumber}
-                    verseKeys={verseKeys}
-                    rewayah={resolvedRewayah}
+                    selection={readySelection}
                     onDone={handleDismiss}
                   />
                 )}
@@ -697,21 +850,26 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                     surahNumber={surahNumber}
                     ayahNumber={ayahNumber}
                     verseKeys={verseKeys}
+                    unitKeys={
+                      readySelection.units ? readySelection.keys : undefined
+                    }
                     rewayah={resolvedRewayah}
                     onDone={handleDismiss}
                   />
                 )}
-                {isSimilar && (
+                {isSimilar && qulKey && (
                   <SimilarVersesContent
-                    verseKey={verseKey}
+                    verseKey={qulKey}
                     surahNumber={surahNumber}
                     ayahNumber={ayahNumber}
                     section={activeScreen === 'similar' ? 'similar' : 'phrases'}
                     onDone={handleDismiss}
+                    hafsReferences={resolvedRewayah !== 'hafs'}
                   />
                 )}
               </>
-            )}
+            ) : null}
+            {/* @ai-end */}
           </>
         ) : (
           <ScrollView

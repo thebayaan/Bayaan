@@ -13,56 +13,61 @@ import Color from 'color';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
 import SkiaVersePreview from '@/components/share/SkiaVersePreview';
+// @ai-start
+import {
+  selectionPreviewProps,
+  type ReadyVerseSelection,
+} from '@/components/share/rewayahVerseSelection';
+// @ai-end
 
 interface NoteContentProps {
-  verseKey: string;
-  surahNumber: number;
-  ayahNumber: number;
-  verseKeys?: string[];
-  rewayah?: import('@/store/mushafSettingsStore').RewayahId;
+  // @ai-start
+  /**
+   * The selected verses in their rewayah's own numbering (decision 3; see
+   * components/share/rewayahVerseSelection.ts). The note is stored by Hafs
+   * anchors (verse-units contract section 3): verse_key = the first verse's
+   * anchor, verse_keys = every verse's anchor for a range, with the
+   * selection's rewayah. Hafs: the Hafs keys, exactly as before.
+   */
+  selection: ReadyVerseSelection;
+  // @ai-end
   onDone: () => void;
 }
 
 export const NoteContent: React.FC<NoteContentProps> = ({
-  verseKey,
-  surahNumber,
-  ayahNumber,
-  verseKeys,
-  rewayah,
+  selection, // @ai
   onDone,
 }) => {
   const {theme} = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const isRange = verseKeys && verseKeys.length > 1;
+  // @ai-start
+  const {anchors, rewayah} = selection;
+  const isRange = anchors.length > 1;
+  // @ai-end
   const [noteText, setNoteText] = useState('');
 
   const handleSave = useCallback(async () => {
     if (!noteText.trim()) return;
 
-    const allKeys = isRange ? verseKeys! : [verseKey];
+    // @ai-start
+    const [first] = anchors;
+    if (!first) return;
+    const keys = anchors.map(anchor => anchor.key);
     await verseAnnotationService.addNote(
-      verseKey,
-      surahNumber,
-      ayahNumber,
+      first.key,
+      first.surah,
+      first.ayah,
       noteText.trim(),
-      isRange ? verseKeys : undefined,
+      isRange ? keys : undefined,
       rewayah,
     );
     const store = useVerseAnnotationsStore.getState();
-    for (const vk of allKeys) {
-      store.addNote(vk);
+    for (const key of keys) {
+      store.addNote(key);
     }
+    // @ai-end
     onDone();
-  }, [
-    verseKey,
-    verseKeys,
-    isRange,
-    surahNumber,
-    ayahNumber,
-    noteText,
-    onDone,
-    rewayah,
-  ]);
+  }, [anchors, isRange, noteText, onDone, rewayah]); // @ai
 
   const canSave = noteText.trim().length > 0;
 
@@ -71,9 +76,9 @@ export const NoteContent: React.FC<NoteContentProps> = ({
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}>
       <View style={styles.previewCard}>
+        {/* @ai: the selected verses, each with its own marker */}
         <SkiaVersePreview
-          verseKey={verseKey}
-          verseKeys={verseKeys}
+          {...selectionPreviewProps(selection)}
           numberOfLines={isRange ? 3 : 2}
           rewayah={rewayah}
         />
