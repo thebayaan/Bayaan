@@ -15,19 +15,19 @@ export const REWAYAH_DATA_MANIFEST: Readonly<Record<string, string>> = {
   'digital-khatt-v2.db':
     '071c0f43e30819b8b6427194c2f4c97ff05340da3808092c590967913b0382a6',
   'dk_words_bazzi.db':
-    '8bfc31bfba485df98cfd05e5eafcd18566a6d9b8a89714c44646d1e39c1ac588',
+    'b74167b16291c8aca09da1b24ca7c7608b27d9d7f7f79b77a92dca38ca022265',
   'dk_words_doori.db':
-    'd000de8795fa3a71b5a04a6c9c9404dd802f4383dfd9f3dc8de8ab229c1bd568',
+    'fd1633d4ccf65051d68a14475cc6fd39685561efb31f6f51fa63a360413b95b6',
   'dk_words_qaloon.db':
-    '90b47c3b52af34f954e9e22c35862b6b20a050c19d6bf0d3a995ac6d9ffd63ed',
+    '53c3f531e0053e12ef0d80c753ce36dd8c46d39faee420dfbaf66496047f19c1',
   'dk_words_qumbul.db':
-    'dbb499b13b03c584d4933796dae792381d723310244b79cb09990fd32c18df14',
+    'b59463c3a1e79c93b99bf8494f9db0fd6d349cf9bed0364e8ba1304fc73a8fd2',
   'dk_words_shouba.db':
-    'cae17a91e8fdbaf413d8a20177ab274090ab99be73481b596dc3bb67bd93e6d6',
+    'ba68656a3ed41a24ad74139d8bddbfb676992a83fda0f54fb7fc1b5fedcce205',
   'dk_words_soosi.db':
-    'df24adc02fe5c80931dfde20f02d800a054d5f87d9fe0f1179a96ae623ffd71d',
+    '167b9270d4bd50f89178ca017c160c51661b1cf2854d313383ef12c3a7d9deb4',
   'dk_words_warsh.db':
-    '702885469af3a1006027e86ade7692018a00914be6993a88f95d9ab4eae65d27',
+    'd284add198b3f80cebb18842a03ebc2f1db5600ecccfc5e0e96ebae5284e4a84',
 };
 
 // md5 of the same assets: the platform file API reports md5, so the app
@@ -37,11 +37,11 @@ export const REWAYAH_DATA_MANIFEST: Readonly<Record<string, string>> = {
 export const REWAYAH_DATA_MD5: Readonly<Record<string, string>> = {
   'digital-khatt-15-lines.db': 'b52a3dd59f9cdf985b896a607c259953',
   'digital-khatt-v2.db': '9b4feda111e1daacf8e477feb9126ce2',
-  'dk_words_bazzi.db': 'bf0d3d1e60fbb0c3dbfd4323feb96d35',
-  'dk_words_doori.db': '9525873c6a103fc075f294680bf2df2d',
-  'dk_words_qaloon.db': '9b526a4d1ddf1be5cddc8236ff967ad3',
-  'dk_words_qumbul.db': '6edd1efc4d8e7e8f4662f98de310896e',
-  'dk_words_shouba.db': '392d7cc02780d83f2adc760463559759',
-  'dk_words_soosi.db': 'dd8cebea9101f48d66e02e76830edff8',
-  'dk_words_warsh.db': 'e121b6b58c5d233c17e11d723b460b84',
+  'dk_words_bazzi.db': '545bacc4c9e4aff83c5c2e7b36ea3f32',
+  'dk_words_doori.db': '91e04c3d80c84158c91cd36ff8a0148a',
+  'dk_words_qaloon.db': '6297bacbf75ceee82bd07487df44ac72',
+  'dk_words_qumbul.db': 'c8c6da2ad756b75610d8e5749cfb6aac',
+  'dk_words_shouba.db': '5ad571c83b4a3fc6300bbaded7f9d562',
+  'dk_words_soosi.db': '36d3487f77653c4df242234f841f1fb5',
+  'dk_words_warsh.db': '11b82f49208e2a9a77718efb9ec0f8a3',
 };
