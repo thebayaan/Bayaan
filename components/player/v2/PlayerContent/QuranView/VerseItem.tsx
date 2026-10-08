@@ -551,7 +551,9 @@ export const VerseItem = memo<VerseItemProps>(
           surahNumber={verse.surah_number}
           ayahNumber={verse.ayah_number}
         />
-        {showTransliteration && verse.transliteration && (
+        {/* @ai — the transliteration spells the Hafs reading: never under a
+         *  rewayah's text, where it would read as that rewayah's. */}
+        {showTransliteration && isHafsText && verse.transliteration && (
           <FormattedTextRenderer
             text={verse.transliteration}
             baseStyle={transliterationStyle}
