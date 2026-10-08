@@ -217,6 +217,32 @@ describe('resolve', () => {
     const n = await service.resolve('warsh-14', 1, entries('warsh-14', 1));
     expect(n.mode).toBe('disabled');
   });
+
+  // @ai-start
+  it('once the set class is known, a surah whose count disagrees with it is not guessed', async () => {
+    const {service} = makeService();
+    const baqarah = entries('warsh-14', 2);
+    const last = baqarah[baqarah.length - 1];
+    // one extra trailing entry: 286 entries, the Hafs count
+    const extra = [
+      ...baqarah,
+      {
+        ...last,
+        ayahNumber: 286,
+        timestampFrom: last.timestampTo,
+        timestampTo: last.timestampTo + 1000,
+      },
+    ];
+    // no vote yet: the surah's own count (as before)
+    expect(service.resolveSync('warsh-14', 2, extra)?.mode).toBe('hafs');
+    // al-Fatihah needs the vote: the set is rewayah-numbered
+    await service.resolve('warsh-14', 1, entries('warsh-14', 1));
+    expect((await service.resolve('warsh-14', 2, extra)).mode).toBe('disabled');
+    expect((await service.resolve('warsh-14', 2, baqarah)).mode).toBe(
+      'riwayah',
+    );
+  });
+  // @ai-end
 });
 
 // @ai-start

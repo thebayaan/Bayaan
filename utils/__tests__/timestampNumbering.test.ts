@@ -163,6 +163,47 @@ describe('decideSurahNumbering', () => {
 });
 
 // @ai-start
+describe('a known set class checks the surah count', () => {
+  it("a rewayah-numbered set's surah with the Hafs count is not taken as Hafs", () => {
+    // Warsh al-Baqarah: 285 verses (Madani count), 286 in Hafs. One extra
+    // entry in a rewayah-numbered file also makes 286.
+    const extra = synthetic(2, range(286));
+    expect(decide('warsh', 2, extra, 'riwayah')).toMatchObject({
+      mode: 'disabled',
+      needsSetClass: false,
+    });
+    expect(decide('warsh', 2, extra, 'hafs').mode).toBe('hafs');
+    // a mixed set, or no vote yet: the surah's own count, as before
+    expect(decide('warsh', 2, extra, 'unknown').mode).toBe('hafs');
+    expect(decide('warsh', 2, extra, null).mode).toBe('hafs');
+  });
+
+  it("a Hafs-numbered set's surah with the rewayah count is not taken as rewayah-numbered", () => {
+    // one entry short of the Hafs count
+    const short = synthetic(2, range(285));
+    expect(decide('warsh', 2, short, 'hafs').mode).toBe('disabled');
+    expect(decide('warsh', 2, short, 'riwayah').mode).toBe('riwayah');
+    expect(decide('warsh', 2, short, 'unknown').mode).toBe('riwayah');
+    expect(decide('warsh', 2, short, null).mode).toBe('riwayah');
+  });
+
+  it('real sets agree with their class', () => {
+    expect(decide('warsh', 2, timings('warsh-14', 2), 'riwayah').mode).toBe(
+      'riwayah',
+    );
+    expect(decide('warsh', 2, timings('warsh-134', 2), 'hafs').mode).toBe(
+      'hafs',
+    );
+    expect(
+      decide('al-bazzi', 112, timings('bazzi-296', 112), 'riwayah').mode,
+    ).toBe('riwayah');
+    // identically numbered surahs need no class either way
+    expect(decide('warsh', 112, timings('warsh-14', 112), 'hafs').mode).toBe(
+      'hafs',
+    );
+  });
+});
+
 describe('explicitly numbered files (a verse missing or repeated)', () => {
   const without = (n: number, missing: number[]) =>
     range(n).filter(a => !missing.includes(a));

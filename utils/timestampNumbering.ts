@@ -87,7 +87,10 @@ export interface SurahNumberingDecision {
  *  - Rewayat with a verse map: count == Hafs count != rewayah count -> 'hafs';
  *    count == rewayah count != Hafs count -> 'riwayah'; both counts equal ->
  *    identity when the map is identity for the surah, else the set-level
- *    class; anything else -> 'disabled'.
+ *    class; anything else -> 'disabled'. A known set class that contradicts
+ *    the surah count ('riwayah' set, Hafs count; 'hafs' set, rewayah count)
+ *    -> 'disabled': an extra or a missing entry looks just like the other
+ *    numbering. @ai
  *  - Rewayat that should have a map but whose map is unavailable -> 'disabled'.
  *  - Unknown rewayat (no map): count == Hafs count -> 'hafs', else 'disabled'.
  *  - Entries not numbered 1..n (a verse missing or repeated) -> 'disabled',
@@ -132,9 +135,25 @@ export function decideSurahNumbering(
   if (reciterRewayah && verseMap.hasVerseMap(reciterRewayah)) {
     const riwayahCount = verseMap.verseCount(reciterRewayah, surah)!;
     if (count === hafsCount && count !== riwayahCount) {
+      // @ai-start
+      if (setClass === 'riwayah') {
+        return decide(
+          'disabled',
+          'entry count matches the Hafs count but the set is rewayah-numbered',
+        );
+      }
+      // @ai-end
       return decide('hafs', 'entry count matches the Hafs count');
     }
     if (count === riwayahCount && count !== hafsCount) {
+      // @ai-start
+      if (setClass === 'hafs') {
+        return decide(
+          'disabled',
+          'entry count matches the rewayah count but the set is Hafs-numbered',
+        );
+      }
+      // @ai-end
       return decide('riwayah', 'entry count matches the rewayah count');
     }
     if (count === hafsCount && count === riwayahCount) {
