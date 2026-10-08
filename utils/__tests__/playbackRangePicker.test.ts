@@ -25,7 +25,7 @@ jest.mock('@/store/mushafSettingsStore', () => ({
   useMushafSettingsStore: {getState: () => ({rewayah: 'hafs'})},
 }));
 jest.mock('@/utils/playbackVerseUnits', () => ({
-  readyVerseUnits: () => null,
+  readyVerseUnits: jest.fn(() => null),
   canShowRewayahVerses: () => true,
   subscribeVerseUnitsChanges: () => () => undefined,
 }));
@@ -33,8 +33,10 @@ jest.mock('@/utils/playbackVerseUnits', () => ({
 import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
 import {
   fixtureUnit,
+  fixtureUnitsOf,
   fixtureVerseUnits,
 } from '@/services/timestamps/__fixtures__/verseUnitFixtures';
+import {readyVerseUnits} from '@/utils/playbackVerseUnits';
 import {
   pickerDefaults,
   pickerPendingStart,
@@ -145,6 +147,26 @@ describe('defaults', () => {
     st().setPendingStart(null);
     expect(pickerPendingStart(warsh(), st())).toBeNull();
     expect(pickerPendingStart(hafs, st())).toBeNull();
+  });
+
+  it("another rewayah's pending verse maps by its first word, not its Hafs verse start", () => {
+    // al-Duri 1:7 starts at word 5 of Hafs 1:7 (anchor '1:7:5'); in Warsh
+    // that word is in 1:7, while Hafs 1:7 word 1 is in Warsh 1:6.
+    const readyMock = readyVerseUnits as jest.Mock;
+    readyMock.mockImplementation(fixtureUnitsOf);
+    try {
+      st().setPendingStart(fixtureUnit('doori', '1:7'));
+      expect(pickerPendingStart(warsh(), st())).toBe('1:7');
+      // al-Duri 1:6 starts with Hafs 1:7 word 1: Warsh 1:6, as before
+      st().setPendingStart(fixtureUnit('doori', '1:6'));
+      expect(pickerPendingStart(warsh(), st())).toBe('1:6');
+      // units of the pending rewayah not loaded: by its Hafs verse, as before
+      readyMock.mockImplementation(() => null);
+      st().setPendingStart(fixtureUnit('doori', '1:7'));
+      expect(pickerPendingStart(warsh(), st())).toBe('1:6');
+    } finally {
+      readyMock.mockImplementation(() => null);
+    }
   });
 });
 

@@ -25,6 +25,7 @@ import {
   selectRangeUnits,
   type MushafPlayerStoreState,
 } from '@/store/mushafPlayerStore';
+import {readyVerseUnits} from '@/utils/playbackVerseUnits';
 
 export interface RangePickerNumbering {
   /** Numbering of the picker keys: the mushaf's rewayah, or 'hafs'. */
@@ -139,9 +140,18 @@ export function pickerPendingStart(
   if (!n.units) return s.pendingStartVerseKey;
   const pending = selectPendingStartUnit(s);
   if (pending && pending.rewayah === n.rewayah) return pending.key;
+  // A verse of another rewayah: the verse of this mushaf holding its first
+  // word (its anchor; every words DB shares the word ids), not the start of
+  // its first Hafs verse, which for the later part of a split Hafs verse is
+  // the verse before.
+  const own =
+    pending && pending.rewayah !== 'hafs'
+      ? readyVerseUnits(pending.rewayah)?.unitByKey(pending.key)
+      : null;
+  if (own) return n.units.unitAtOrAfterWordId(own.firstWordId)?.key ?? null;
   if (!s.pendingStartVerseKey) return null;
-  // A Hafs verse (or a unit of another rewayah, by its Hafs verse): the
-  // verse of this mushaf holding its start.
+  // A Hafs verse (or a unit of another rewayah whose units are not loaded,
+  // by its Hafs verse): the verse of this mushaf holding its start.
   return unitAtHafs(n.units, s.pendingStartVerseKey)?.key ?? null;
 }
 
