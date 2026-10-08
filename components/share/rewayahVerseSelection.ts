@@ -489,10 +489,12 @@ export function qulVerseKey(
 }
 
 /**
- * The Hafs verses a playback request uses until the audio store takes verse
- * units (area B): playback starts at the Hafs verse holding the first
- * selected verse's first word and ends with the last Hafs verse holding the
- * last selected verse's words. Hafs: the first and last selected verses.
+ * The Hafs verses holding a selection: the Hafs verse holding the first
+ * selected verse's first word and the last Hafs verse holding the last
+ * selected verse's words. Hafs: the first and last selected verses, which a
+ * Hafs selection plays as before. A non-Hafs selection plays its own verse
+ * units (the verse actions sheet passes `units` to the players); these keys
+ * then serve its page lookups and Hafs fields only.
  */
 export function selectionPlaybackKeys(selection: ReadyVerseSelection): {
   firstHafsKey: string;

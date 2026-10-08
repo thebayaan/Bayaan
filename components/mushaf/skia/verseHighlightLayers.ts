@@ -279,12 +279,12 @@ export interface PageVerseLayerSources {
   persistentHighlights: Readonly<Record<string, string>>;
   /**
    * The bookmark / highlight rows behind the two fields above, by verse_key,
-   * with the rewayah each was saved in. The annotations store does not keep
-   * rows' rewayah_id yet: until it does, these are omitted and every row is
-   * read as an anchor of the shown rewayah (exactly the unit it names; a
-   * Hafs row of a split Hafs verse then marks its first part only). A row
-   * given here follows the storage rule: a Hafs row marks every unit holding
-   * its Hafs verse.
+   * with the rewayah each was saved in (the annotations store's bookmarkRows
+   * / highlightRows; the page renderers pass them). A row given here follows
+   * the storage rule: a Hafs row marks every unit holding its Hafs verse.
+   * Without them every row is read as an anchor of the shown rewayah
+   * (exactly the unit it names; a Hafs row of a split Hafs verse then marks
+   * its first part only).
    */
   bookmarkRows?: Readonly<Record<string, StoredRowRef>>;
   highlightRows?: Readonly<Record<string, StoredRowRef>>;
