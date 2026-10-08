@@ -68,6 +68,7 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => ({
     getRewayahLoadState: () => 'ready',
     subscribeCacheChanges: () => () => undefined,
     getCacheVersion: () => 0,
+    retainRewayah: () => () => undefined,
     ensureRewayahLoaded: jest.fn(async () => undefined),
   },
   getRewayahDataIdentityKey: (r: string) => `${r}@test`,

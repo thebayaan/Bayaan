@@ -83,6 +83,7 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => ({
       r === 'hafs' || r === undefined ? `HAFS-${key} ۝` : '',
     subscribeCacheChanges: () => () => undefined,
     getCacheVersion: () => 0,
+    retainRewayah: () => () => undefined,
     ensureRewayahLoaded: jest.fn(async () => undefined),
   },
   getRewayahDataIdentityKey: (r: string) => `${r}@test`,

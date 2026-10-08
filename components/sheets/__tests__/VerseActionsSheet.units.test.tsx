@@ -183,6 +183,7 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => ({
     getPageForVerse: () => 3,
     subscribeCacheChanges: () => () => undefined,
     getCacheVersion: () => 0,
+    retainRewayah: () => () => undefined,
     ensureRewayahLoaded: jest.fn(async () => {
       throw new Error('not in tests');
     }),
@@ -419,6 +420,14 @@ describe('Hafs (unchanged)', () => {
     expect(removedHighlights()).toEqual(['2:286', '3:1']);
   });
 
+  it('copies the translation the player passes for its verse', async () => {
+    await openSheet({...payload, translation: 'SHOWN'});
+    await press('Copy');
+    expect(Clipboard.setStringAsync).toHaveBeenCalledWith(
+      'HAFS-2:255 ۝\n\nSHOWN\n\nQuran 2:255',
+    );
+  });
+
   it('a player Repeat routes to the Hafs verse without an anchor', async () => {
     await openSheet({...payload, source: 'player'});
     await press('Repeat');
@@ -561,6 +570,36 @@ describe('Warsh verses in their own numbering', () => {
       pathname: '/mushaf',
       params: {page: '3', surah: '1', ayah: '7', anchor: '1:7'},
     });
+  });
+
+  it("uses the player's translation only for a verse that is its Hafs verse", async () => {
+    // Warsh 1:5 is exactly Hafs 1:6: the translation shown for it is used.
+    await openSheet({
+      verseKey: '1:6',
+      surahNumber: 1,
+      ayahNumber: 6,
+      rewayah: 'warsh',
+      source: 'player',
+      translation: 'SHOWN',
+    });
+    await press('Copy');
+    expect(Clipboard.setStringAsync).toHaveBeenLastCalledWith(
+      `${warshText('1:5')}\n\nSHOWN\n\nQuran 1:5 · Warsh`,
+    );
+    // Warsh 103:1 reads Hafs 103:1 and 103:2: each its own translation, not
+    // the one the player showed for Hafs 103:1 twice.
+    await openSheet({
+      verseKey: '103:1',
+      surahNumber: 103,
+      ayahNumber: 1,
+      rewayah: 'warsh',
+      source: 'player',
+      translation: 'SHOWN',
+    });
+    await press('Copy');
+    expect(Clipboard.setStringAsync).toHaveBeenLastCalledWith(
+      `${warshText('103:1')}\n\nT(103:1)\nT(103:2)\n\nQuran 103:1 · Warsh`,
+    );
   });
 });
 
