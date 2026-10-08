@@ -171,4 +171,20 @@ describe('lock screen sync', () => {
     setMushaf({playbackState: 'playing'});
     expect(titles()).toEqual(['At-Tahrim · 66:12', 'Al-Mulk']);
   });
+
+  // @ai-start
+  it('a rewayah switch re-labels the verse, also while paused', () => {
+    setMushaf({
+      playbackState: 'playing',
+      currentSurah: 2,
+      numberingMode: 'riwayah',
+      currentVerseKey: '2:5',
+      currentVerseLabel: '2:4', // Warsh mushaf
+    });
+    setMushaf({playbackState: 'paused'});
+    // the store re-labels the recited verse for the Hafs mushaf now on screen
+    setMushaf({currentVerseLabel: '2:5'});
+    expect(titles()).toEqual(['Al-Baqarah · 2:4', 'Al-Baqarah · 2:5']);
+  });
+  // @ai-end
 });
