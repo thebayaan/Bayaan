@@ -135,6 +135,8 @@ const mockPlayer = {
   setRangeRepeatCount: jest.fn(),
   startPlayback: jest.fn(),
   setReciter: jest.fn(),
+  setUnitRange: jest.fn(), // @ai
+  setPendingStart: jest.fn(), // @ai
 };
 jest.mock('@/store/mushafPlayerStore', () => ({
   useMushafPlayerStore: {getState: () => mockPlayer, setState: jest.fn()},
@@ -156,6 +158,12 @@ jest.mock('@/store/timestampStore', () => ({
   useTimestampStore: {
     getState: () => ({supportedRewayatIds: new Set(['r1'])}),
   },
+  // @ai — the main player's Play from here target (store/timestampStore)
+  resolvePlayFromHere: jest.fn(() => ({
+    status: 'unavailable',
+    title: 'Not now',
+    message: 'No timing',
+  })),
 }));
 jest.mock('@/services/mushaf/QulDataService', () => ({
   qulDataService: {
@@ -199,6 +207,7 @@ import {VerseActionsSheet} from '../VerseActionsSheet';
 import * as Clipboard from 'expo-clipboard';
 import {router} from 'expo-router';
 import {showToast} from '@/utils/toastUtils';
+import {resolvePlayFromHere} from '@/store/timestampStore'; // @ai
 import {qulDataService} from '@/services/mushaf/QulDataService';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
@@ -525,17 +534,68 @@ describe('Warsh verses in their own numbering', () => {
     );
   });
 
-  it('plays from the Hafs verse holding the selection until area B takes units', async () => {
+  // @ai-start
+  it('repeats exactly the selected Warsh verse, as one verse', async () => {
     await openSheet(warshUnitPayload(['103:1']));
     await press('Repeat');
-    expect(mockPlayer.setRange).toHaveBeenCalledWith(
-      {surah: 103, ayah: 1},
-      {surah: 103, ayah: 2},
-    );
-    // One Warsh verse spanning two Hafs verses loops as a range.
-    expect(mockPlayer.setVerseRepeatCount).toHaveBeenCalledWith(1);
-    expect(mockPlayer.startPlayback).toHaveBeenCalledWith(3, '103:1');
+    // Warsh 103:1 holds Hafs 103:1 + 103:2: one verse, looped as a verse.
+    const unit = warsh.unitByKey('103:1');
+    expect(mockPlayer.setUnitRange).toHaveBeenCalledWith(unit, unit);
+    expect(mockPlayer.setRange).not.toHaveBeenCalled();
+    expect(mockPlayer.setVerseRepeatCount).toHaveBeenCalledWith(0);
+    expect(mockPlayer.setRangeRepeatCount).toHaveBeenCalledWith(0);
+    expect(mockPlayer.startPlayback).toHaveBeenCalledWith(3, unit);
   });
+
+  it('plays from the selected Warsh verse to the end of its surah', async () => {
+    await openSheet(warshUnitPayload(['1:7']));
+    await press('Play from Here');
+    const unit = warsh.unitByKey('1:7');
+    const surah = warsh.unitsOfSurah(1);
+    expect(mockPlayer.setUnitRange).toHaveBeenCalledWith(
+      unit,
+      surah[surah.length - 1],
+    );
+    expect(mockPlayer.setVerseRepeatCount).toHaveBeenCalledWith(1);
+    expect(mockPlayer.setRangeRepeatCount).toHaveBeenCalledWith(1);
+    expect(mockPlayer.startPlayback).toHaveBeenCalledWith(3, unit);
+  });
+
+  it('keeps the selected Warsh verse as the start while a reciter is chosen', async () => {
+    mockPlayer.rewayatId = null;
+    await openSheet(warshUnitPayload(['1:7']));
+    await press('Repeat');
+    expect(mockPlayer.setPendingStart).toHaveBeenCalledWith(
+      warsh.unitByKey('1:7'),
+    );
+    expect(mockPlayer.startPlayback).not.toHaveBeenCalled();
+  });
+  // @ai-end
+
+  // @ai-start
+  it("the main player's Play from here starts at the selected Warsh verse itself", async () => {
+    // Warsh 1:7 is the second part of Hafs 1:7: the target is resolved for
+    // the unit (exactly its own timing entry when the timings are numbered
+    // by Warsh), never for Hafs 1:7 as a whole.
+    await openSheet(warshUnitPayload(['1:7'], {source: 'player'}));
+    await press('Play from Here');
+    expect(resolvePlayFromHere).toHaveBeenCalledTimes(1);
+    expect(resolvePlayFromHere).toHaveBeenCalledWith(warsh.unitByKey('1:7'));
+    expect(showToast).toHaveBeenCalledWith('Not now', 'No timing', 'error');
+  });
+
+  it("the main player's Play from here of a Hafs verse resolves its Hafs key", async () => {
+    await openSheet({
+      verseKey: '1:7',
+      surahNumber: 1,
+      ayahNumber: 7,
+      rewayah: 'hafs',
+      source: 'player',
+    });
+    await press('Play from Here');
+    expect(resolvePlayFromHere).toHaveBeenCalledWith('1:7');
+  });
+  // @ai-end
 
   it('a player Repeat of a verse starting inside a Hafs verse passes its anchor', async () => {
     await openSheet(warshUnitPayload(['1:7'], {source: 'player'}));
@@ -544,6 +604,10 @@ describe('Warsh verses in their own numbering', () => {
       pathname: '/mushaf',
       params: {page: '3', surah: '1', ayah: '7', anchor: '1:7:5'},
     });
+    // The mushaf player starts at Warsh 1:7 itself. @ai
+    expect(mockPlayer.setPendingStart).toHaveBeenCalledWith(
+      warsh.unitByKey('1:7'),
+    );
   });
 
   it('a player Repeat of the first part of a split Hafs verse names it', async () => {

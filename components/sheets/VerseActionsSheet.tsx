@@ -475,10 +475,12 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
       // @ai-start
       const ready = readySelection ?? (await requireSelection('played'));
       if (!ready) return;
-      // Until the audio store takes verse units (area B), playback runs on
-      // the Hafs verses holding the selection: from the Hafs verse holding
-      // its first word to the last Hafs verse it reads. Hafs: the first and
-      // last selected verses, as before.
+      // The selected verses of a non-Hafs rewayah play as its own verses
+      // (verse-units contract 4.2): exactly them when the reciter's timings
+      // are numbered by that rewayah, else the whole Hafs verses holding
+      // them. `firstKey` / `lastKey` are the Hafs verses holding the
+      // selection (page lookups); a Hafs selection plays them as before.
+      const units = ready.units;
       const {firstHafsKey: firstKey, lastHafsKey: lastKey} =
         selectionPlaybackKeys(ready);
       // @ai-end
@@ -493,6 +495,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
           currentPage: page,
           pendingStartVerseKey: firstKey,
         });
+        if (units) store.setPendingStart(units[0]); // @ai
         await SheetManager.hide(props.sheetId);
         SheetManager.show('mushaf-player-options', {
           payload: {currentPage: page},
@@ -510,7 +513,21 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
 
       store.stop();
 
-      if (loop) {
+      // @ai-start
+      if (loop && units) {
+        // One verse repeats as a verse (Repeat of Warsh 1:6 loops Warsh
+        // 1:6 only), several loop as a range.
+        store.setUnitRange(units[0], units[units.length - 1]);
+        store.setVerseRepeatCount(units.length > 1 ? 1 : 0);
+        store.setRangeRepeatCount(0);
+      } else if (units && ready.model) {
+        // From the first verse to the end of its surah, in its rewayah.
+        const surahUnits = ready.model.unitsOfSurah(units[0].surah);
+        store.setUnitRange(units[0], surahUnits[surahUnits.length - 1]);
+        store.setVerseRepeatCount(1);
+        store.setRangeRepeatCount(1);
+      } else if (loop) {
+        // @ai-end
         store.setRange(
           {surah: startS, ayah: startA},
           {surah: endS, ayah: endA},
@@ -531,7 +548,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
       }
 
       hideCurrentSheet();
-      store.startPlayback(page, firstKey);
+      store.startPlayback(page, units ? units[0] : firstKey); // @ai
     },
     [readySelection, requireSelection, props.sheetId, hideCurrentSheet], // @ai
   );
@@ -572,8 +589,10 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     // loading, or when the surah has no timing, it failed to load (retried
     // by this request), the numbering cannot be established or the player
     // has moved on to another surah, say so instead of silently keeping the
-    // sheet open.
-    const target = resolvePlayFromHere(firstKey);
+    // sheet open. A verse of a non-Hafs rewayah starts exactly at itself
+    // when the timings are numbered by that rewayah (Warsh 1:7 inside Hafs
+    // 1:7); a Hafs selection resolves its first Hafs verse as before.
+    const target = resolvePlayFromHere(ready.units ? ready.units[0] : firstKey);
     if (target.status !== 'ready') {
       showToast(
         target.title,
@@ -640,6 +659,8 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
       currentPage: page,
       pendingStartVerseKey: firstKey,
     });
+    // Start at the selected verse itself, in its own rewayah. @ai
+    if (ready.units) mushafStore.setPendingStart(ready.units[0]);
 
     router.push({
       pathname: '/mushaf',
