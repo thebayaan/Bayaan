@@ -119,6 +119,43 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => {
   return {digitalKhattDataService: service};
 });
 
+// @ai-start
+// Decision 3 (verse units): a non-Hafs rewayah's verses come from its verse
+// units. These Warsh units are synthetic and numbered like Hafs (every Hafs
+// verse of surahs 1-3 is one Warsh verse of placeholder words), so the
+// expectations keep their verse keys.
+jest.mock('@/services/mushaf/RewayahVerseUnitsService', () => {
+  const {buildRewayahVerseUnits} = jest.requireActual(
+    '@/services/mushaf/RewayahVerseUnits',
+  );
+  const arabic = (n: number) =>
+    String(n).replace(/[0-9]/g, d => String.fromCharCode(0x0660 + Number(d)));
+  const counts: Record<number, number> = {1: 7, 2: 286, 3: 200};
+  const slots: object[] = [];
+  let id = 0;
+  for (const surah of [1, 2, 3]) {
+    for (let ayah = 1; ayah <= counts[surah]; ayah++) {
+      const texts = [
+        `WARSH-${ayah}a`,
+        `WARSH-${ayah}b`,
+        `\u06DD${arabic(ayah)}`,
+      ];
+      texts.forEach((text, i) => {
+        id += 1;
+        slots.push({id, surah, ayah, word: i + 1, text});
+      });
+    }
+  }
+  const warsh = buildRewayahVerseUnits('warsh', slots, 'warsh@test');
+  return {
+    rewayahVerseUnitsService: {
+      get: (rewayah: string) => (rewayah === 'warsh' ? warsh : null),
+      getStatus: (rewayah: string) => (rewayah === 'warsh' ? 'ready' : 'error'),
+    },
+  };
+});
+// @ai-end
+
 import {ShareContent} from '../ShareContent';
 import {shareUrl} from '@/utils/shareUtils';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
