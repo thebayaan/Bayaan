@@ -265,10 +265,11 @@ export function joinVerseTexts(texts: readonly string[]): string {
 }
 
 /**
- * Verse reference for a selection: "2:255", "2:255-257" or "2:286 - 3:2".
- * Uses the app's verse keys (Hafs numbering) for every rewayah. A rewayah
- * may number the same verse differently; switching references to rewayah
- * numbering is an open product decision and should change only here.
+ * Verse reference for a selection of Hafs verse keys: "2:255", "2:255-257"
+ * or "2:286 - 3:2". Decision 3 (Release 1): a rewayah's verses are labelled
+ * in its own numbering, with formatUnitRangeLabel (same format) through
+ * rewayahVerseSelection.ts; this labels Hafs selections only, whose verse
+ * keys are their own numbers.
  */
 export function formatVerseRange(verseKeys: readonly string[]): string {
   if (verseKeys.length === 0) return '';
