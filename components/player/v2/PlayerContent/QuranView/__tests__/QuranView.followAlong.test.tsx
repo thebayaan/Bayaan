@@ -302,6 +302,53 @@ describe('player verse list follow-along', () => {
   });
 });
 
+// @ai-start
+describe('a surah whose verses cannot be followed', () => {
+  const says = () =>
+    JSON.stringify(renderer?.toJSON() ?? null).includes(
+      'Verse tracking unavailable',
+    );
+
+  function timings(state: object) {
+    act(() => {
+      useTimestampStore.setState(state as never);
+    });
+  }
+
+  afterEach(() => {
+    useTimestampStore.setState({
+      timestampRequest: null,
+      timestampLoadStatus: 'idle',
+      trackingNumberingMode: null,
+      supportedRewayatIds: new Set<string>(),
+      followAlongEnabled: true,
+    });
+  });
+
+  it('says "Verse tracking unavailable", as the mushaf player does', () => {
+    render();
+    expect(says()).toBe(false);
+    timings({
+      followAlongEnabled: true,
+      supportedRewayatIds: new Set(['set-1']),
+      timestampRequest: {key: 'set-1-2', rewayatId: 'set-1', surahNumber: 2},
+      timestampLoadStatus: 'ready',
+      trackingNumberingMode: 'disabled',
+    });
+    expect(says()).toBe(true);
+    // a surah that can be followed says nothing
+    timings({trackingNumberingMode: 'hafs'});
+    expect(says()).toBe(false);
+    // its timing could not be loaded
+    timings({timestampLoadStatus: 'failed'});
+    expect(says()).toBe(true);
+    // follow-along switched off
+    timings({followAlongEnabled: false});
+    expect(says()).toBe(false);
+  });
+});
+// @ai-end
+
 describe('player text font', () => {
   it('IndoPak + a rewayah track: the text is drawn with DigitalKhatt', () => {
     useMushafSettingsStore.setState({mushafRenderer: 'dk_indopak'});
