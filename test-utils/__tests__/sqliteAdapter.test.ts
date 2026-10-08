@@ -1,7 +1,8 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import {openAdapterDatabase} from '../sqliteAdapter';
+import vm from 'vm';
+import {openAdapterDatabase, toLocalError} from '../sqliteAdapter';
 
 function tempFile(): string {
   return path.join(
@@ -106,5 +107,31 @@ describe('sqlite adapter', () => {
     );
     expect(Array.from(row?.b ?? [])).toEqual([1, 2, 3]);
     expect(row?.n).toBeNull();
+  });
+
+  it('rejects SQL failures with an Error from the current realm', async () => {
+    const db = openAdapterDatabase(tempFile());
+    await db.execAsync('CREATE TABLE t (v TEXT NOT NULL)');
+    const error = await db
+      .runAsync('INSERT INTO t (v) VALUES (?)', [null])
+      .catch((caught: unknown) => caught);
+    expect(error).toBeInstanceOf(Error);
+    expect(error).toMatchObject({code: 'SQLITE_CONSTRAINT_NOTNULL'});
+  });
+
+  // A reused Jest worker hands later test files SqliteErrors built in the
+  // first file's realm; simulate that with an error from another VM context.
+  it('rebuilds errors from another realm as local Errors', () => {
+    const foreign: unknown = vm.runInNewContext(
+      'const e = new Error("NOT NULL constraint failed"); e.code = "SQLITE_CONSTRAINT_NOTNULL"; e',
+    );
+    expect(foreign instanceof Error).toBe(false);
+    const local = toLocalError(foreign);
+    expect(local).toBeInstanceOf(Error);
+    expect(local.message).toBe('NOT NULL constraint failed');
+    expect(local).toMatchObject({code: 'SQLITE_CONSTRAINT_NOTNULL'});
+    expect(() => {
+      throw local;
+    }).toThrow('NOT NULL constraint failed');
   });
 });
