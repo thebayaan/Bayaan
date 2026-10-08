@@ -2,6 +2,11 @@ import type {AyahTimestamp} from '@/types/timestamps';
 import {
   getRegisteredTimingNumbering,
   type MappedAyahTrackingState, // @ai
+  // @ai-start
+  toAudioUnitTarget,
+  type AudioUnitInput,
+  type TimingNumbering,
+  // @ai-end
 } from '@/utils/timestampNumbering';
 
 export {getTrackedVerseKeys} from '@/utils/timestampNumbering';
@@ -145,5 +150,106 @@ export function getPlayFromHereTarget(
       reciterVerseKey: `${entry.surahNumber}:${entry.ayahNumber}`,
     },
   };
+}
+// @ai-end
+
+// @ai-start
+// ── Verse units (verse-units contract 4.2) ──────────────────────────────────
+
+/**
+ * Timing entry where playback of verse unit `unit` starts (a verse of the
+ * shown rewayah, in its own numbering): exactly its own entry when the
+ * numbering registered for `timestamps` says the entries are that rewayah's
+ * verses, otherwise the entry where its first Hafs verse starts (also for
+ * timings without a registered numbering, which are Hafs-numbered). Null
+ * while the numbering resolves, when it is disabled, for a unit of another
+ * surah, or when there is no such entry. A Hafs unit gives what
+ * findAyahTimestamp gives for its Hafs ayah.
+ */
+export function findUnitTimestamp(
+  timestamps: AyahTimestamp[],
+  unit: AudioUnitInput,
+): AyahTimestamp | null {
+  const target = toAudioUnitTarget(unit);
+  const numbering = getRegisteredTimingNumbering(timestamps);
+  if (numbering === 'pending') return null;
+  if (numbering) return numbering.startEntryForUnit(target);
+  const surah = timestamps.find(t => t.surahNumber > 0)?.surahNumber;
+  if (surah !== undefined && surah !== target.surah) return null;
+  return findAyahTimestamp(timestamps, target.hafsFirstAyah);
+}
+
+/** Timings in any form getPlayFromHereTarget takes. */
+type PlayFromHereTimings = Parameters<typeof getPlayFromHereTarget>[0];
+
+/** The timestamps array held by `timings`. */
+function timestampsOf(timings: PlayFromHereTimings): AyahTimestamp[] | null {
+  if (!timings) return null;
+  if (Array.isArray(timings)) return timings;
+  // Where getPlayFromHereTarget also takes the timestamp store's state
+  // ({currentSurahTimestamps, ...}) instead of the array, read it from there.
+  return (
+    (timings as {currentSurahTimestamps?: AyahTimestamp[] | null})
+      .currentSurahTimestamps ?? null
+  );
+}
+
+/** Follow-along state of a rewayah-numbered entry (every Hafs verse it recites). */
+function trackingForEntry(
+  entry: AyahTimestamp,
+  surah: number,
+  numbering: TimingNumbering,
+): MappedAyahTrackingState | null {
+  const verseKeys = numbering.hafsKeysForEntry(entry.ayahNumber);
+  if (verseKeys.length === 0) return null;
+  const primary = verseKeys[0];
+  return {
+    surahNumber: entry.surahNumber,
+    ayahNumber: parseInt(primary.split(':')[1], 10),
+    verseKey: primary,
+    timestampFrom: entry.timestampFrom,
+    timestampTo: entry.timestampTo,
+    verseKeys,
+    reciterVerseKey: `${entry.surahNumber || surah}:${entry.ayahNumber}`,
+  };
+}
+
+/**
+ * The main player's "Play from here" on verse unit `unit` of the verse rows'
+ * rewayah: the checks and answers of getPlayFromHereTarget on the unit's
+ * first Hafs verse (timings or numbering still loading, numbering disabled,
+ * no entry), except that playback starts exactly at the unit's own entry
+ * when the entries are that rewayah's verses (Warsh 1:7, the second part of
+ * Hafs 1:7, starts at Warsh entry 7, not with the start of Hafs 1:7). Any
+ * other set starts at the whole Hafs verse. A Hafs unit gives exactly
+ * getPlayFromHereTarget(timings, its key).
+ */
+export function getPlayFromUnitTarget(
+  timings: PlayFromHereTimings,
+  unit: AudioUnitInput,
+): PlayFromHereTarget {
+  const target = toAudioUnitTarget(unit);
+  const hafsTarget = getPlayFromHereTarget(
+    timings,
+    `${target.surah}:${target.hafsFirstAyah}`,
+  );
+  if (hafsTarget.status !== 'ready') return hafsTarget;
+  const timestamps = timestampsOf(timings);
+  const numbering = timestamps
+    ? getRegisteredTimingNumbering(timestamps)
+    : undefined;
+  if (
+    !numbering ||
+    numbering === 'pending' ||
+    !numbering.numbersVersesOf(target.rewayah)
+  ) {
+    return hafsTarget;
+  }
+  const entry = numbering.startEntryForUnit(target);
+  const tracking = entry && trackingForEntry(entry, target.surah, numbering);
+  if (!entry || !tracking) {
+    return {status: 'unavailable', ...PLAY_FROM_HERE_UNAVAILABLE};
+  }
+  return {status: 'ready', entry, tracking};
 }
 // @ai-end
