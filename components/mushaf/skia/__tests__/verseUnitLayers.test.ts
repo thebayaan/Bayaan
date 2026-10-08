@@ -329,19 +329,40 @@ describe('unitKeyedVerseLayers', () => {
     ).toEqual({'1:6': 'blue', '1:7': 'green'});
   });
 
-  it('a unit marked by rows of equal rank takes the earlier anchor (Hafs too)', () => {
-    // Hafs shown: rows of other rewayat anchored inside one Hafs verse.
-    const hafs = unitKeyedVerseLayers(
+  it('Hafs: a row marks the Hafs verse its key names, whatever its rewayah', () => {
+    // Rows of other rewayat: Warsh 1:6 is stored at '1:7' (the start of
+    // Hafs 1:7), Warsh 1:7 at '1:7:5' and a Qalun row at '1:7:9' (verses
+    // starting inside Hafs 1:7). The Hafs sheet and the Hafs list rows
+    // read rows by their exact key, so the Hafs page does too: the
+    // mid-verse anchors name no Hafs verse and are not painted (a tint the
+    // Hafs sheet could neither show nor remove), as before verse units.
+    const rows = {
+      '1:7': {verseKey: '1:7', rewayahId: 'warsh'},
+      '1:7:5': {verseKey: '1:7:5', rewayahId: 'warsh'},
+      '1:7:9': {verseKey: '1:7:9', rewayahId: 'qalun'},
+      '103:2': {verseKey: '103:2', rewayahId: 'al-bazzi'},
+      '103:3:4': {verseKey: '103:3:4', rewayahId: 'warsh'},
+    } as const;
+    const out = unitKeyedVerseLayers(
       HAFS_SHOWN_UNITS,
       sources({
-        persistentHighlights: {'1:7:9': 'green', '1:7:5': 'blue'},
-        highlightRows: {
-          '1:7:9': {verseKey: '1:7:9', rewayahId: 'qalun'},
-          '1:7:5': {verseKey: '1:7:5', rewayahId: 'warsh'},
+        bookmarkedVerseKeys: new Set(Object.keys(rows)),
+        bookmarkRows: rows,
+        persistentHighlights: {
+          '1:7:9': 'green',
+          '1:7:5': 'blue',
+          '103:2': 'yellow',
         },
+        highlightRows: rows,
       }),
-    ).persistentHighlights;
-    expect(hafs).toEqual({'1:7': 'blue'});
+    );
+    expect([...out.bookmarkedVerseKeys]).toEqual(['1:7', '103:2']);
+    expect(out.persistentHighlights).toEqual({'103:2': 'yellow'});
+    for (const row of Object.values(rows)) {
+      expect(HAFS_SHOWN_UNITS.unitKeysForStoredVerse(row)).toEqual(
+        row.verseKey.split(':').length === 2 ? [row.verseKey] : [],
+      );
+    }
   });
 
   it('Hafs: a malformed stored key names no verse (as the Hafs segments did)', () => {
@@ -352,8 +373,9 @@ describe('unitKeyedVerseLayers', () => {
         persistentHighlights: {'2:01': 'yellow', '3:7': 'blue'},
       }),
     );
-    // '2:7:1' is not how a row is written ('2:7' is): no verse either.
-    expect([...out.bookmarkedVerseKeys]).toEqual(['2:255', '2:7']);
+    // '2:7:1' is not how a row is written ('2:7' is), and '2:7:3' is a
+    // mid-verse anchor, no Hafs verse key: neither is painted.
+    expect([...out.bookmarkedVerseKeys]).toEqual(['2:255']);
     expect(out.persistentHighlights).toEqual({'3:7': 'blue'});
     expect(HAFS_SHOWN_UNITS.unitKeyForAnchor('02:255')).toBeNull();
     expect(HAFS_SHOWN_UNITS.unitKeyForAnchor('2:255')).toBe('2:255');
@@ -657,6 +679,49 @@ describe('Hafs: the unit pipeline paints exactly what the Hafs pipeline painted'
           },
           themeIndexOfHafs,
         );
+        expect(after).toEqual(before);
+        compared++;
+      }
+    }
+    expect(compared).toBeGreaterThan(50);
+  });
+
+  it('rows saved in any rewayah, mid-verse anchors included', () => {
+    // The base pipeline painted a row by its verse_key alone; the unit
+    // pipeline gets the rows with their rewayat (as SkiaPage passes them).
+    show('hafs');
+    const rewayat = ['warsh', 'al-bazzi', 'hafs', null, 'qalun'] as const;
+    let compared = 0;
+    for (const page of fixturePages()) {
+      const keys = baseOrderedVerseKeysForPage(dk, page);
+      for (let i = 0; i < keys.length; i++) {
+        const at = (n: number) => keys[(i + n) % keys.length];
+        const bookmarked = [at(0), `${at(1)}:${2 + (i % 4)}`, at(2)];
+        const highlighted: [string, string][] = [
+          [`${at(0)}:3`, 'green'],
+          [at(1), 'yellow'],
+          [`${at(2)}:${2 + (i % 3)}`, 'yellow'],
+          [at(3), 'green'],
+        ];
+        const rowsOf = (verseKeys: string[]) =>
+          Object.fromEntries(
+            verseKeys.map((verseKey, n) => [
+              verseKey,
+              {verseKey, rewayahId: rewayat[(i + n) % rewayat.length]},
+            ]),
+          );
+        const before = paintHafsBefore(page, {
+          bookmarkedVerseKeys: new Set(bookmarked),
+          persistentHighlights: Object.fromEntries(highlighted),
+          playbackVerseKeys: [],
+          selectedVerseKeys: null,
+        });
+        const after = paintUnits(page, {
+          bookmarkedVerseKeys: new Set(bookmarked),
+          bookmarkRows: rowsOf(bookmarked),
+          persistentHighlights: Object.fromEntries(highlighted),
+          highlightRows: rowsOf(highlighted.map(([key]) => key)),
+        });
         expect(after).toEqual(before);
         compared++;
       }

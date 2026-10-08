@@ -23,7 +23,10 @@
  * Hafs: a verse's only key is its own Hafs key, so the sheets read and
  * write exactly the rows they did before, call for call (every selected
  * key is added or removed, stored or not), each optimistic row with its
- * rewayah.
+ * rewayah. The Hafs mushaf page reads rows by the same keys
+ * (HAFS_SHOWN_UNITS.unitKeysForStoredVerse), so a row of another rewayah
+ * anchored inside a Hafs verse ("1:7:5", Warsh 1:7) is neither painted nor
+ * reported in Hafs: never a tint the Hafs sheet cannot show or remove.
  */
 import {useMemo} from 'react';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';

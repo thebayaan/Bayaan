@@ -27,8 +27,10 @@
  *  - the Hafs-keyed API (Hafs-aligned callers) equals the base code.
  * Hafs differential against the base pipeline (baseHafsVersePipeline.ts,
  * the code of the release base): segments, page order, every hit-test,
- * every painted layer for synthetic store states and the verse-actions
- * payload are identical on all 604 pages. Shu'bah: units = Hafs verses.
+ * every painted layer for synthetic store states, rows saved at every
+ * anchor of every rewayah (mid-verse anchors paint nothing in Hafs) and
+ * the verse-actions payload are identical on all 604 pages. Shu'bah:
+ * units = Hafs verses.
  */
 import * as fs from 'fs';
 import * as path from 'path';
@@ -641,6 +643,94 @@ run('mushaf verse units on every page of every words DB (local only)', () => {
             }
           }
           expect(compared).toBeGreaterThan(2500);
+        });
+
+        it('Hafs differential: rows saved at every anchor of every rewayah', () => {
+          // A row of any rewayah marks, on the Hafs page, the Hafs verse its
+          // verse_key names, exactly as the base pipeline painted it; a
+          // mid-verse anchor (the later part of a split Hafs verse: Warsh
+          // 1:7 at '1:7:5') names none and is not painted, as the Hafs
+          // verse sheet reports and removes rows by their exact key too.
+          const byHafsVerse = new Map<string, [string, RewayahId][]>();
+          const midVerse = new Set<string>();
+          for (const [other, otherRewayah] of present) {
+            if (otherRewayah === 'hafs') continue;
+            const slots = readRows(
+              path.join(DB_DIR!, other),
+              'SELECT id, surah, ayah, word, text FROM words ORDER BY id',
+            ).map(r => ({
+              id: Number(r.id),
+              surah: Number(r.surah),
+              ayah: Number(r.ayah),
+              word: Number(r.word),
+              text: (r.text as string | null) ?? '',
+            }));
+            const otherUnits = buildRewayahVerseUnits(
+              otherRewayah,
+              slots,
+              `${otherRewayah}@alldbs`,
+            );
+            for (const unit of otherUnits.units) {
+              const anchor = otherUnits.hafsAnchor(unit);
+              const list = byHafsVerse.get(anchor.hafsKey) ?? [];
+              list.push([anchor.key, otherRewayah]);
+              byHafsVerse.set(anchor.hafsKey, list);
+              if (anchor.key !== anchor.hafsKey) midVerse.add(anchor.key);
+            }
+          }
+          const colours = ['yellow', 'green', 'blue'];
+          const included = new Set<string>();
+          let compared = 0;
+          for (let page = 1; page <= TOTAL_PAGES; page++) {
+            // verse_key is UNIQUE: the first rewayah to claim a key has it.
+            const bookmarkRows: Record<
+              string,
+              {verseKey: string; rewayahId: RewayahId}
+            > = {};
+            const highlights: Record<string, string> = {};
+            for (const hafsKey of baseOrderedVerseKeysForPage(dk, page)) {
+              for (const [verseKey, rewayahId] of byHafsVerse.get(hafsKey) ??
+                []) {
+                if (bookmarkRows[verseKey]) continue;
+                bookmarkRows[verseKey] = {verseKey, rewayahId};
+                const n = Object.keys(bookmarkRows).length;
+                if (n % 2 === 0) highlights[verseKey] = colours[n % 3];
+                included.add(verseKey);
+              }
+            }
+            const bookmarked = new Set(
+              Object.keys(bookmarkRows).filter((_, n) => n % 3 !== 1),
+            );
+            const before =
+              baseComputePageHighlightLayers({
+                getVerseSegments: vk => baseVerseSegmentsForPage(dk, page, vk),
+                diffHighlights: new Map(),
+                themes: null,
+                bookmarkedVerseKeys: bookmarked,
+                bookmarkColor: COLORS.bookmark,
+                persistentHighlights: highlights,
+                highlightColors: COLORS.highlight,
+                playbackVerseKeys: [],
+                playbackColor: COLORS.play,
+                selectedVerseKeys: null,
+                selectionColor: COLORS.select,
+              }) ?? new Map();
+            const after = paint(page, {
+              bookmarkedVerseKeys: bookmarked,
+              bookmarkRows,
+              persistentHighlights: highlights,
+              highlightRows: bookmarkRows,
+            });
+            const drop = (m: Map<number, LineHighlight[]>) =>
+              JSON.stringify([...m].filter(([, list]) => list.length > 0));
+            if (drop(after) !== drop(before)) {
+              throw new Error(`p${page}: rows not painted as the base did`);
+            }
+            compared++;
+          }
+          expect(compared).toBe(TOTAL_PAGES);
+          // Every mid-verse anchor of every DB here was in some page's rows.
+          expect([...midVerse].filter(key => !included.has(key))).toEqual([]);
         });
 
         it('Hafs differential: the verse-actions payload of every selection', () => {

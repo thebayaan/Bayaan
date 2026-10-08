@@ -54,7 +54,10 @@ export interface ShownVerseUnits {
   unitKeysForHafsKeys(hafsKeys: readonly string[]): string[];
   /** Unit key of verse `surah`:`ayah` in this rewayah's numbering, or null. */
   unitKeyByRef(surah: number, ayah: number): string | null;
-  /** Units a stored bookmark / note / highlight row marks (storage rule). */
+  /**
+   * Units a stored bookmark / note / highlight row marks (storage rule;
+   * shown in Hafs: the Hafs verse its key names, see HAFS_SHOWN_UNITS).
+   */
   unitKeysForStoredVerse(row: StoredVerseRef): string[];
   /**
    * Key of the unit holding the slot a Hafs anchor names ('S:A' or 'S:A:W',
@@ -107,9 +110,11 @@ const hafsRefs = new Map<string, VerseUnitRef>();
  * Hafs without building its units: a Hafs unit IS its Hafs verse (same key,
  * slots, anchor and Hafs key; invariant 6 of the verse-units contract), so
  * every answer comes from the slot's own Hafs verse key. The Hafs mushaf
- * therefore pays no units build and paints exactly what it painted before;
- * the all-DB test proves these answers equal to the units built from the
- * Hafs words DB.
+ * therefore pays no units build and paints exactly what it painted before,
+ * for any stored rows; the all-DB test proves these answers equal to the
+ * units built from the Hafs words DB, except that a stored row marks only
+ * the Hafs verse its key names (unitKeysForStoredVerse: never one of
+ * another rewayah's mid-verse anchors).
  */
 export const HAFS_SHOWN_UNITS: ShownVerseUnits = {
   rewayah: 'hafs',
@@ -139,10 +144,15 @@ export const HAFS_SHOWN_UNITS: ShownVerseUnits = {
     return hafsVerseRef(key) ? key : null;
   },
   unitKeysForStoredVerse(row) {
-    // Shown in Hafs, every row marks the Hafs verse of its anchor (a Hafs
-    // row, or another rewayah's verse starting in that Hafs verse).
-    const key = HAFS_SHOWN_UNITS.unitKeyForAnchor(row.verseKey);
-    return key ? [key] : [];
+    // Shown in Hafs, a row marks the Hafs verse its verse_key IS, whatever
+    // rewayah it was saved in: the Hafs verse sheet, the Hafs player and
+    // list rows and the pipeline before verse units all read rows by that
+    // exact key. A mid-verse anchor 'S:A:W' (another rewayah's verse that
+    // starts inside Hafs verse S:A: Warsh 1:7 is stored as '1:7:5') names
+    // no Hafs verse, so the Hafs page does not paint it: a tint there would
+    // be a mark the Hafs sheet can neither show nor remove. Such a row is
+    // shown in its own rewayah (and the rewayat that map it).
+    return hafsVerseRef(row.verseKey) ? [row.verseKey] : [];
   },
   unitKeyForAnchor(anchorKey) {
     const loc = hafsAnchorRef(anchorKey);

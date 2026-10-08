@@ -282,6 +282,9 @@ export interface PageVerseLayerSources {
    * with the rewayah each was saved in (the annotations store's bookmarkRows
    * / highlightRows; the page renderers pass them). A row given here follows
    * the storage rule: a Hafs row marks every unit holding its Hafs verse.
+   * (Shown in Hafs, a row of any rewayah marks the Hafs verse its key names
+   * and a mid-verse anchor none, as the Hafs sheet reads rows: see
+   * HAFS_SHOWN_UNITS.unitKeysForStoredVerse.)
    * Without them every row is read as an anchor of the shown rewayah
    * (exactly the unit it names; a Hafs row of a split Hafs verse then marks
    * its first part only).
@@ -331,7 +334,10 @@ const NO_UNIT_LAYERS: UnitKeyedVerseLayers = Object.freeze({
  *    selection (QCF, routes, navigation) lights the units holding those
  *    Hafs verses; a selection in another rewayah's numbering is not shown.
  * With no units (a non-Hafs text whose units were refused) nothing is
- * painted as a verse. For Hafs (Hafs rows) the result equals the inputs.
+ * painted as a verse. For Hafs the result equals the inputs, for rows of
+ * any rewayah, less the keys that name no Hafs verse (another rewayah's
+ * mid-verse anchors, malformed keys), which the Hafs pipeline before verse
+ * units never painted either.
  */
 export function unitKeyedVerseLayers(
   shown: ShownVerseUnits | null,

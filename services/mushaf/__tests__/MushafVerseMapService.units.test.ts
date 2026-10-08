@@ -690,7 +690,7 @@ describe('ShownVerseUnits mappings', () => {
     expect(shown.unitOfSlot(3, '1:1')).toBeNull();
   });
 
-  it('HAFS_SHOWN_UNITS answers exactly like the units built from the Hafs DB', () => {
+  it('HAFS_SHOWN_UNITS answers like the units built from the Hafs DB', () => {
     const units: RewayahVerseUnits = buildFixtureUnits('hafs');
     const otherRewayah = [
       buildFixtureUnits('warsh'),
@@ -732,20 +732,31 @@ describe('ShownVerseUnits mappings', () => {
         units.unitForAnchor(unit.key)?.key ?? null,
       );
     }
-    // Rows saved in other rewayat (their anchors, including mid-verse ones).
+    // Rows saved in other rewayat (their anchors, including mid-verse
+    // ones). A row marks the Hafs verse its key names, as the Hafs verse
+    // sheet and the Hafs list rows read it; a mid-verse anchor (the later
+    // part of a split Hafs verse) marks none, so the Hafs page never paints
+    // a mark the Hafs sheet cannot show or remove. Navigation to an anchor
+    // still lands on the Hafs verse holding its slot.
+    let midVerse = 0;
     for (const saved of otherRewayah) {
       for (const unit of saved.units) {
-        const row = {
-          verseKey: saved.hafsAnchor(unit).key,
-          rewayahId: saved.rewayah,
-        };
-        expect(HAFS_SHOWN_UNITS.unitKeysForStoredVerse(row)).toEqual(
-          keysOf(unitsForStoredVerse(units, row).units),
-        );
+        const anchor = saved.hafsAnchor(unit);
+        const row = {verseKey: anchor.key, rewayahId: saved.rewayah};
+        if (anchor.key === anchor.hafsKey) {
+          expect(HAFS_SHOWN_UNITS.unitKeysForStoredVerse(row)).toEqual(
+            keysOf(unitsForStoredVerse(units, row).units),
+          );
+        } else {
+          midVerse++;
+          expect(HAFS_SHOWN_UNITS.unitKeysForStoredVerse(row)).toEqual([]);
+        }
         expect(HAFS_SHOWN_UNITS.unitKeyForAnchor(row.verseKey)).toBe(
           units.unitForAnchor(row.verseKey)?.key ?? null,
         );
       }
     }
+    // The fixture has such verses (Warsh 1:7 is stored as '1:7:5').
+    expect(midVerse).toBeGreaterThan(0);
   });
 });
