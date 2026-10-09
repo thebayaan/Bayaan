@@ -144,6 +144,7 @@ jest.mock('@/services/mushaf/QuranTextService', () => {
 
 import SkiaLine from '../SkiaLine';
 import {
+  clampBandToSlot,
   clampRectToBand,
   clearLineFits,
   fitWordSize,
@@ -311,6 +312,15 @@ describe('justifiedSpace helpers', () => {
       r(40, 20),
     ]);
     expect(mergeTouchingRects([])).toEqual([]);
+  });
+
+  it('limits a band to the line slot', () => {
+    const band = {top: -0.5, bottom: 53};
+    expect(clampBandToSlot(band, 0, 50)).toEqual({top: 0, bottom: 50});
+    // A centred basmala's paragraph sits 3 px into its slot.
+    expect(clampBandToSlot(band, -3, 50)).toEqual({top: -0.5, bottom: 47});
+    expect(clampBandToSlot(band, 0, undefined)).toBe(band);
+    expect(clampBandToSlot(null, 0, 50)).toBeNull();
   });
 
   it('clamps a taller rect to the band and leaves a word rect alone', () => {
@@ -538,5 +548,25 @@ describe('SkiaLine justified spaces', () => {
     // x = -(maxWidth - pageWidth + (pageWidth - width) / 2).
     const [para] = tree.root.findAll(n => (n.type as unknown) === 'Paragraph');
     expect(para.props.x).toBeCloseTo(-(284 - 142 + (142 - 112) / 2));
+  });
+
+  it('keeps a highlight within the line slot', () => {
+    // The words' band (53.5 px) is taller than the 50 px line pitch: tints on
+    // neighbouring lines would overlap.
+    mockSkia.rectsForRange = (start, end) =>
+      start === 0 && end === 3
+        ? [{x: 370, y: -0.5, width: 18, height: 53.5}]
+        : [{x: 340, y: -0.5, width: 48, height: 53.5}];
+
+    const tree = renderLine(WIDENED, {
+      lineHeight: 50,
+      backgroundHighlights: [{start: 0, end: 2, color: 'tint'}],
+    });
+
+    const [rect] = tree.root.findAll(
+      n => (n.type as unknown) === 'RoundedRect',
+    );
+    expect(rect.props.y).toBeCloseTo(100);
+    expect(rect.props.height).toBeCloseTo(50);
   });
 });

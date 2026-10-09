@@ -21,6 +21,7 @@ import {
 import type {JustResultByLine} from '@/services/mushaf/JustificationService';
 // @ai-start
 import {
+  clampBandToSlot,
   clampRectToBand,
   fitWordSize,
   getLineFit,
@@ -401,7 +402,12 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
         // Clamp each rect to the band, then merge the ones that touch so the
         // highlight draws as one band per run of words, not one rounded rect
         // per word and space.
-        const hlBand = band ?? shortestRectBand(skRects);
+        // Within the line's own slot: rects are relative to adjustedYPos.
+        const hlBand = clampBandToSlot(
+          band ?? shortestRectBand(skRects),
+          yPos - adjustedYPos,
+          lineHeight,
+        );
         const clamped = skRects.map(rect =>
           clampRectToBand(
             {x: rect.x, y: rect.y, width: rect.width, height: rect.height},
@@ -418,7 +424,15 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
     }
 
     return rects.length > 0 ? rects : null;
-  }, [paragraph, backgroundHighlights, pageNumber, lineIndex]); // @ai
+  }, [
+    paragraph,
+    backgroundHighlights,
+    pageNumber,
+    lineIndex,
+    yPos,
+    adjustedYPos,
+    lineHeight,
+  ]); // @ai
 
   if (!paragraph) return null;
 

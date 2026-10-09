@@ -261,6 +261,23 @@ export function mergeTouchingRects<
   return merged;
 }
 
+/**
+ * Limits a band to the line's own slot (`slotTop`, `slotHeight`, in the
+ * paragraph's coordinates). A word's rect spans the font's ascent and descent,
+ * taller than the line pitch, so tints on words stacked on neighbouring lines
+ * overlapped in a darker seam. Unchanged without a slot height.
+ */
+export function clampBandToSlot(
+  band: LineBand | null,
+  slotTop: number,
+  slotHeight: number | undefined,
+): LineBand | null {
+  if (!band || !slotHeight) return band;
+  const top = Math.max(band.top, slotTop);
+  const bottom = Math.min(band.bottom, slotTop + slotHeight);
+  return bottom > top ? {top, bottom} : band;
+}
+
 /** Clamps a rect to the words' band (top and bottom of a word's rect). */
 export function clampRectToBand<T extends {y: number; height: number}>(
   rect: T,
