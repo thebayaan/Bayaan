@@ -13,6 +13,7 @@ import {useTVPlayerStore} from '../../store/tvPlayerStore';
 import {colors} from '../../theme/colors';
 import {spacing} from '../../theme/spacing';
 import {createScaledStyles} from '../../theme/scale';
+import {createRemoteKeyFilter} from '../../services/remoteKeys';
 
 const SCRUBBER_STEP_SECONDS = 10;
 
@@ -44,13 +45,15 @@ export function Scrubber(): React.ReactElement {
   // wrapping guide traps horizontal focus so these presses reach this handler
   // instead of moving focus; Up/Down are not trapped, so they still escape to
   // the Back button (above) and the transport controls (below).
+  const remoteFilter = useMemo(createRemoteKeyFilter, []);
   const handleSeekEvent = useCallback(
     (event: HWEvent): void => {
+      const action = remoteFilter(event);
       if (!focusedRef.current) return;
-      if (event.eventType === 'right') seekBy(SCRUBBER_STEP_SECONDS);
-      else if (event.eventType === 'left') seekBy(-SCRUBBER_STEP_SECONDS);
+      if (action === 'right') seekBy(SCRUBBER_STEP_SECONDS);
+      else if (action === 'left') seekBy(-SCRUBBER_STEP_SECONDS);
     },
-    [seekBy],
+    [seekBy, remoteFilter],
   );
   useTVEventHandler(handleSeekEvent);
 

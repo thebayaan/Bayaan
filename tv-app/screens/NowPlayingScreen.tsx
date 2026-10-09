@@ -1,4 +1,4 @@
-import React, {useCallback} from 'react';
+import React, {useCallback, useMemo} from 'react';
 import {StyleSheet, Text, View, useTVEventHandler} from 'react-native';
 import type {HWEvent} from 'react-native';
 import {ArtworkBackdrop} from '../components/player/ArtworkBackdrop';
@@ -22,6 +22,7 @@ import {fonts, typography} from '../theme/typography';
 import {spacing} from '../theme/spacing';
 import {createScaledStyles} from '../theme/scale';
 import {getReciterArtwork} from '../services/reciterArtwork';
+import {createRemoteKeyFilter} from '../services/remoteKeys';
 
 const SEEK_STEP_SECONDS = 15;
 
@@ -60,23 +61,24 @@ export function NowPlayingScreen(): React.ReactElement {
   // button currently holds focus. Swipe gestures map to the ±15s seek; the
   // dedicated play/pause key toggles playback. Directional clicks are left to
   // the focus engine so left/right still navigates between transport buttons.
+  const remoteFilter = useMemo(createRemoteKeyFilter, []);
   const handleTVEvent = useCallback(
     (event: HWEvent): void => {
-      switch (event.eventType) {
+      switch (remoteFilter(event)) {
         case 'playPause':
           toggle();
           return;
-        case 'swipeRight':
+        case 'seekForward':
           seekBy(SEEK_STEP_SECONDS);
           return;
-        case 'swipeLeft':
+        case 'seekBackward':
           seekBy(-SEEK_STEP_SECONDS);
           return;
         default:
           return;
       }
     },
-    [toggle, seekBy],
+    [toggle, seekBy, remoteFilter],
   );
 
   useTVEventHandler(handleTVEvent);
