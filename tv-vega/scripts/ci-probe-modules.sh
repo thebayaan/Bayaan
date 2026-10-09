@@ -50,20 +50,20 @@ make_host_variant() {
   echo "$dir" >"$WORK/$name/.probe-dir"
 }
 
-# Bisect the shared app: each variant hydrates storage, then loads part of it.
-# app-full is the real entry point and should reproduce the crash.
-make_host_variant app-full <<'JS'
-function load() {
-  return require('../tv-app/App').default;
-}
-
+# Bisect the shared app: each variant hydrates storage, then renders one
+# piece of what the Router shows first. (Rendering the Router crashes; loading
+# App, the providers, and the audio engine do not.)
+make_host_variant onboarding <<'JS'
 import React, {useEffect, useState} from 'react';
-import {AppRegistry, View} from 'react-native';
+import {AppRegistry, Text, View} from 'react-native';
 import {hydrateStorage} from '../tv-app/services/storage';
 import {name as appName} from './app.json';
 
-function Blank() {
-  return React.createElement(View, {style: {flex: 1}});
+const h = React.createElement;
+const box = {width: 400, height: 400};
+
+function load() {
+  return require('../tv-app/screens/OnboardingScreen').OnboardingScreen;
 }
 
 function Root() {
@@ -77,19 +77,17 @@ function Root() {
 AppRegistry.registerComponent(appName, () => Root);
 JS
 
-make_host_variant app-import <<'JS'
-function load() {
-  require('../tv-app/App');
-  return Blank;
-}
-
+make_host_variant home <<'JS'
 import React, {useEffect, useState} from 'react';
-import {AppRegistry, View} from 'react-native';
+import {AppRegistry, Text, View} from 'react-native';
 import {hydrateStorage} from '../tv-app/services/storage';
 import {name as appName} from './app.json';
 
-function Blank() {
-  return React.createElement(View, {style: {flex: 1}});
+const h = React.createElement;
+const box = {width: 400, height: 400};
+
+function load() {
+  return require('../tv-app/screens/HomeScreen').HomeScreen;
 }
 
 function Root() {
@@ -103,22 +101,19 @@ function Root() {
 AppRegistry.registerComponent(appName, () => Root);
 JS
 
-make_host_variant providers <<'JS'
-function load() {
-  const {ErrorBoundary} = require('../tv-app/components/ErrorBoundary');
-  const {TVAudioProvider} = require('../tv-app/components/providers/TVAudioProvider');
-  return () =>
-    React.createElement(ErrorBoundary, null,
-      React.createElement(TVAudioProvider, null, React.createElement(Blank)));
-}
-
+make_host_variant img-local <<'JS'
 import React, {useEffect, useState} from 'react';
-import {AppRegistry, View} from 'react-native';
+import {AppRegistry, Text, View} from 'react-native';
 import {hydrateStorage} from '../tv-app/services/storage';
 import {name as appName} from './app.json';
 
-function Blank() {
-  return React.createElement(View, {style: {flex: 1}});
+const h = React.createElement;
+const box = {width: 400, height: 400};
+
+function load() {
+  const {Image} = require('expo-image');
+  const asset = require('../assets/images/icon.png');
+  return () => h(Image, {source: asset, style: box});
 }
 
 function Root() {
@@ -132,19 +127,18 @@ function Root() {
 AppRegistry.registerComponent(appName, () => Root);
 JS
 
-make_host_variant router <<'JS'
-function load() {
-  const {Router} = require('../tv-app/components/nav/Router');
-  return Router;
-}
-
+make_host_variant img-remote <<'JS'
 import React, {useEffect, useState} from 'react';
-import {AppRegistry, View} from 'react-native';
+import {AppRegistry, Text, View} from 'react-native';
 import {hydrateStorage} from '../tv-app/services/storage';
 import {name as appName} from './app.json';
 
-function Blank() {
-  return React.createElement(View, {style: {flex: 1}});
+const h = React.createElement;
+const box = {width: 400, height: 400};
+
+function load() {
+  const {Image} = require('expo-image');
+  return () => h(Image, {source: {uri: 'https://picsum.photos/400'}, style: box});
 }
 
 function Root() {
@@ -158,20 +152,42 @@ function Root() {
 AppRegistry.registerComponent(appName, () => Root);
 JS
 
-make_host_variant engine <<'JS'
-function load() {
-  const {createAudioEngine} = require('../tv-app/services/audioEngine');
-  createAudioEngine();
-  return Blank;
-}
-
+make_host_variant font <<'JS'
 import React, {useEffect, useState} from 'react';
-import {AppRegistry, View} from 'react-native';
+import {AppRegistry, Text, View} from 'react-native';
 import {hydrateStorage} from '../tv-app/services/storage';
 import {name as appName} from './app.json';
 
-function Blank() {
-  return React.createElement(View, {style: {flex: 1}});
+const h = React.createElement;
+const box = {width: 400, height: 400};
+
+function load() {
+  return () => h(Text, {style: {fontFamily: 'Manrope-Bold', fontSize: 40, color: '#fff'}}, 'Bayaan');
+}
+
+function Root() {
+  const [Body, setBody] = useState(null);
+  useEffect(() => {
+    hydrateStorage().finally(() => setBody(() => load()));
+  }, []);
+  return Body ? React.createElement(Body) : null;
+}
+
+AppRegistry.registerComponent(appName, () => Root);
+JS
+
+make_host_variant button <<'JS'
+import React, {useEffect, useState} from 'react';
+import {AppRegistry, Text, View} from 'react-native';
+import {hydrateStorage} from '../tv-app/services/storage';
+import {name as appName} from './app.json';
+
+const h = React.createElement;
+const box = {width: 400, height: 400};
+
+function load() {
+  const {FocusableButton} = require('../tv-app/components/primitives/FocusableButton');
+  return () => h(FocusableButton, {onPress: () => {}, hasTVPreferredFocus: true}, h(Text, null, 'Go'));
 }
 
 function Root() {
