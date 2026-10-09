@@ -18,6 +18,7 @@ import {useBottomInset} from '@/hooks/useBottomInset';
 import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
 import {useResponsive} from '@/hooks/useResponsive';
 import {GlassView} from 'expo-glass-effect';
+import BrowseChipsRow from './BrowseChipsRow';
 
 // CONFIGURABLE ROW HEIGHT MULTIPLIER - This is the 'x' variable you can adjust
 const ROW_HEIGHT_UNIT = 80; // Base unit 'x' in points - adjust this value to change all card heights proportionally
@@ -360,6 +361,11 @@ export const ExploreView = React.memo(
                 },
           ]}
           showsVerticalScrollIndicator={false}>
+          {/* RFC-020 — the "Browse" region: filter-dimension entry chips
+           * that deeplink into the compose destination. Renders nothing on
+           * stock upstream (branding.searchFilters unset), so the curated
+           * Collections landing below stays byte-identical. */}
+          <BrowseChipsRow />
           {tilesReady && (
             <View style={styles.masonryContainer}>
               {renderColumn(layout.leftColumn, 'left')}
