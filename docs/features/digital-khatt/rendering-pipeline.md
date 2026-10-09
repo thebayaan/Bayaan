@@ -175,6 +175,13 @@ quarter pixel, rebuilds it with the residue spread evenly over its spaces
 size can round) is rebuilt scaled to its width instead (`fitWordSize`), which
 keeps its spaces in the words' runs. Centered lines are built once.
 
+Before and after (iPhone 17 Pro simulator, Hafs; left: the letterSpacing
+spaces, right: sized spaces with the fit pass):
+[page 6](assets/justification-hafs_p006_before_after.jpg),
+[page 100](assets/justification-hafs_p100_before_after.jpg),
+[page 604](assets/justification-hafs_p604_before_after.jpg),
+[page 3 with a bookmark band](assets/justification-hafs_p003_bookmark_before_after.jpg).
+
 ### Positioning (x-axis)
 
 - `maxWidth = pageWidth * 2`
