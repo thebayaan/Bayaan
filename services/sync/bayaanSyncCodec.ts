@@ -222,8 +222,10 @@ function decodeData(
     // push receipts. Ayah bookmarks in the default collection (Favorites) are
     // ordinary bookmarks: QF places every /v1/sync bookmark there, and a
     // BOOKMARK DELETE through /v1/sync removes the bookmark entirely, Favorites
-    // membership included (verified on QF pre-live, Oct 2026).
-    if (unsupported) return null;
+    // membership included (verified on QF pre-live, Oct 2026). A reading
+    // bookmark (isReading: true) is Quran.com's "where I stopped" marker, not a
+    // saved ayah: projecting it would let a local delete erase it on QF.
+    if (unsupported || value.isReading === true) return null;
   } else if (resource === 'NOTE') {
     if (
       typeof value.body !== 'string' ||

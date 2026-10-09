@@ -692,6 +692,45 @@ describe('Bayaan Sync BFF client', () => {
     },
   );
 
+  it.each(['CREATE', 'UPDATE'] as const)(
+    'omits pulled %s reading bookmarks so a local delete cannot erase them on QF',
+    async type => {
+      const reading = {
+        resource: 'BOOKMARK',
+        type,
+        resourceId: 'reading',
+        timestamp: 1,
+        data: {
+          bookmarkType: 'ayah',
+          key: 2,
+          verseNumber: 255,
+          isInDefaultCollection: true,
+          isReading: true,
+        },
+      };
+      const saved = {
+        ...reading,
+        resourceId: 'saved',
+        data: {...reading.data, isReading: false},
+      };
+      const fetchImpl = jest.fn().mockResolvedValue(
+        jsonResponse({
+          success: true,
+          data: {lastMutationAt: 1, mutations: [reading, saved]},
+        }),
+      );
+      await expect(
+        new BayaanSyncApiClient({apiUrl, fetchImpl}).pull(opaqueSession, {
+          mutationsSince: 0,
+        }),
+      ).resolves.toEqual({
+        lastMutationAt: 1,
+        mutations: [saved],
+        receivedMutationCount: 2,
+      });
+    },
+  );
+
   it('applies a pulled default-collection ayah bookmark as forwarded by the backend', async () => {
     // Real QF pre-live payload for a Bayaan-created bookmark. The backend
     // projects data onto its allowlist, so `metadata` never reaches mobile.
