@@ -50,7 +50,12 @@ import {useMushafNavigationStore} from '@/store/mushafNavigationStore';
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
 import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
-import {mushafVerseMapService} from '@/services/mushaf/MushafVerseMapService';
+import {
+  followShownRewayah, // @ai
+  mushafVerseMapService,
+  verseNavigationTarget, // @ai
+} from '@/services/mushaf/MushafVerseMapService';
+import type {RewayahId} from '@/services/rewayah/RewayahIdentity'; // @ai
 import {useMushafAutoPageTurn} from '@/hooks/useMushafAutoPageTurn';
 import {MushafPlayerBar} from './MushafPlayerBar';
 import SkiaPage from './skia/SkiaPage';
@@ -67,6 +72,8 @@ import PageEdgeDecoration, {
 import {analyticsService} from '@/services/analytics/AnalyticsService';
 import {qcfFontLoader} from '@/services/mushaf/QCFFontLoader';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
+import {useHeaderHeight} from 'expo-router/react-navigation'; // @ai
+import {RewayahFallbackBanner} from '@/components/MushafSettingsContent'; // @ai
 
 const TOTAL_PAGES = 604;
 const ANIMATION_DURATION = 300;
@@ -548,6 +555,9 @@ export default function MushafViewer({
   const scrollDirection = useMushafSettingsStore(s => s.scrollDirection);
   const rewayah = useMushafSettingsStore(s => s.rewayah);
   const mushafRenderer = useMushafSettingsStore(s => s.mushafRenderer);
+  const rewayahFallbackFrom = useMushafSettingsStore(
+    s => s.rewayahFallbackFrom,
+  ); // @ai
   const isVertical = scrollDirection === 'vertical';
   const isBookLayout = pageLayout === 'book';
   const edgeBg = isDarkMode ? '#000' : readingColors.card;
@@ -560,6 +570,8 @@ export default function MushafViewer({
   const flatListRef = useRef<FlatList>(null);
   const continuousListRef = useRef<ContinuousListViewHandle>(null);
   const insets = useSafeAreaInsets();
+  // @ai — the iOS 26 Stack header is transparent and drawn over the content
+  const rawHeaderHeight = useHeaderHeight(); // @ai
   const {isTablet} = useResponsive();
   const {width: windowWidth, height: windowHeight} = useWindowDimensions();
   // A paged, `inverted` FlatList preserves its pixel scroll offset when its
@@ -970,7 +982,7 @@ export default function MushafViewer({
     [isVertical, surahStartPages, navigateToPage],
   );
 
-  // Subscribe to external navigation requests (e.g. from SimilarVersesSheet)
+  // Subscribe to external navigation requests (e.g. from Similar Verses)
   const navRequestId = useMushafNavigationStore(s => s.requestId);
   useEffect(() => {
     if (navRequestId === 0) return;
@@ -994,15 +1006,52 @@ export default function MushafViewer({
     return () => clearTimeout(timer);
   }, [navRequestId, navigateToPage]);
 
+  // @ai-start
+  // A selection of rewayah verse units is numbered in that rewayah: drop it
+  // when the shown text switches to another rewayah (verse-units contract
+  // 4.7), so no page (QCF included, which reads the keys as Hafs) paints it
+  // there. A Hafs-keyed selection (route flash, QCF) means the same verses
+  // in every rewayah and is left alone, as before. The new text's verse
+  // units are requested at once and built by the units service after the
+  // switch's interactions, in chunks: never on a page render or long-press.
+  useEffect(() => {
+    const unsubscribe = followShownRewayah();
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+  // @ai-end
+
   const navigateToVerse = useCallback(
-    (verseKey: string, page: number) => {
+    // @ai-start
+    // `verseKey` is in the numbering of `rewayah`. Hafs by default: today's
+    // callers (search, bookmark chips) pass Hafs keys, and the page paints
+    // the shown rewayah's units holding that Hafs verse. A key in the shown
+    // rewayah's own numbering selects exactly that verse unit (and scrolls
+    // to its anchor's Hafs verse); a key of any other numbering selects
+    // nothing rather than the wrong verse.
+    (verseKey: string, page: number, rewayah: RewayahId = 'hafs') => {
+      const target = verseNavigationTarget(verseKey, rewayah);
       if (isVertical) {
         setIsSearchMode(false);
-        continuousListRef.current?.scrollToVerse(verseKey);
+        // The vertical views scroll to the verse's first slot: a unit's
+        // storage anchor ('S:A:W' for each part of a split Hafs verse, which
+        // the list view finds as its own row), else the Hafs verse. @ai
+        const scrollKey = target.unit?.anchor ?? target.scrollHafsKey;
+        if (scrollKey) {
+          continuousListRef.current?.scrollToVerse(scrollKey);
+        } else {
+          continuousListRef.current?.scrollToPage(page);
+        }
       } else {
         navigateToPage(page);
       }
-      useMushafVerseSelectionStore.getState().selectVerse(verseKey, page);
+      const selection = useMushafVerseSelectionStore.getState();
+      if (target.hafsKey) selection.selectVerse(target.hafsKey, page);
+      else if (target.unit) {
+        selection.selectUnits(target.rewayah, [target.unit], page);
+      }
+      // @ai-end
       const timer = setTimeout(() => {
         useMushafVerseSelectionStore.getState().clearSelection();
       }, 3000);
@@ -1299,8 +1348,34 @@ export default function MushafViewer({
                   </Pressable>
                 </View>
               </View>
+              {/* @ai — Hafs is standing in for a rewayah that failed to load */}
+              <RewayahFallbackBanner style={styles.headerFallbackBanner} />
             </Animated.View>
           )}
+
+          {/* @ai-start */}
+          {/* iOS 26: the same notice, under the transparent Stack header */}
+          {USE_GLASS && rewayahFallbackFrom && (
+            <Animated.View
+              style={[
+                styles.glassFallbackBanner,
+                overlayAnimatedStyle,
+                {
+                  top: rawHeaderHeight + moderateScale(8),
+                  left: Math.max(insets.left, moderateScale(12)),
+                  right: Math.max(insets.right, moderateScale(12)),
+                },
+              ]}
+              pointerEvents={isImmersive ? 'none' : 'box-none'}>
+              <RewayahFallbackBanner
+                style={[
+                  styles.glassFallbackBannerCard,
+                  {backgroundColor: theme.colors.background},
+                ]}
+              />
+            </Animated.View>
+          )}
+          {/* @ai-end */}
 
           {/* ================================================================ */}
           {/* Normal mode bottom bar — non-glass (iOS 26 uses Stack.Toolbar)  */}
@@ -1417,4 +1492,17 @@ const styles = StyleSheet.create({
     right: 0,
     zIndex: 10,
   },
+  // @ai-start
+  headerFallbackBanner: {
+    marginTop: moderateScale(8),
+    marginBottom: 0,
+  },
+  glassFallbackBanner: {
+    position: 'absolute',
+    zIndex: 10,
+  },
+  glassFallbackBannerCard: {
+    marginBottom: 0,
+  },
+  // @ai-end
 });

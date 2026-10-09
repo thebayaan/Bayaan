@@ -8,8 +8,14 @@ import {
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useTheme} from '@/hooks/useTheme';
-import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
-import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
+import {
+  getDkFontFamily, // @ai
+  useMushafSettingsStore,
+} from '@/store/mushafSettingsStore';
+import {
+  useMushafPlayerStore,
+  usePlaybackVerseKeys, // @ai
+} from '@/store/mushafPlayerStore';
 import {useTajweedStore} from '@/store/tajweedStore';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
@@ -39,6 +45,17 @@ import {
   PAGE_PADDING_BOTTOM,
   getPageEdgeLayout,
 } from '../constants';
+// @ai-start
+import {useRewayahVerseUnits} from '@/hooks/useRewayahVerseUnits';
+import {shownVerseUnitsOf} from '@/services/mushaf/MushafVerseMapService';
+import {isVerseUnitRow} from '@/components/player/v2/PlayerContent/QuranView/verseUnitRows';
+import {playbackBandUnitKeys} from '../skia/verseHighlightLayers';
+import {usePlaybackBand} from '../skia/playbackBand';
+import {readingPageUnitItems, themeHafsKeyOfRow} from './mushafVerseUnitRows';
+import {VerseUnitsPending} from './VerseUnitsPending';
+
+const NO_KEYS: readonly string[] = Object.freeze([]);
+// @ai-end
 
 // Metadata row sits just above PAGE_PADDING_TOP (behind the header panel)
 const METADATA_OFFSET = 30;
@@ -115,12 +132,12 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
     [allahNameHighlightColorSetting, theme.isDarkMode],
   );
 
-  const dkFontFamily =
-    mushafRenderer === 'dk_indopak'
-      ? 'DigitalKhattIndoPak'
-      : mushafRenderer === 'dk_v1'
-        ? 'DigitalKhattV1'
-        : 'DigitalKhattV2';
+  // @ai-start
+  // Same font as before for Hafs; a font that cannot draw a rewayah's marks
+  // (IndoPak) is never used for non-Hafs text.
+  const mushafRewayah = useMushafSettingsStore(s => s.rewayah);
+  const dkFontFamily = getDkFontFamily(mushafRenderer, mushafRewayah);
+  // @ai-end
   const isDK =
     (mushafRenderer === 'dk_v1' ||
       mushafRenderer === 'dk_v2' ||
@@ -132,12 +149,46 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
 
   const indexedTajweedData = useTajweedStore(s => s.indexedTajweedData);
 
-  // Active ayah highlighting
+  // Active ayah highlighting. currentVerseKey (the first Hafs verse being
+  // recited) drives the auto-scroll; every recited Hafs verse is highlighted.
   const currentVerseKey = useMushafPlayerStore(s => s.currentVerseKey);
+  const playbackVerseKeys = usePlaybackVerseKeys(); // @ai
   const playbackState = useMushafPlayerStore(s => s.playbackState);
   const isPlaying = playbackState === 'playing';
 
-  const items = useMemo(() => getReadingPageItems(pageNumber), [pageNumber]);
+  // @ai-start
+  // Decision 3 (Release 1): a non-Hafs text lists the page's verses as its
+  // rewayah's OWN verses (verse units, in its numbering;
+  // mushafVerseUnitRows.ts), never Hafs verses under the rewayah's name.
+  // Hafs keeps its Hafs verse rows exactly as before and never builds verse
+  // units.
+  const unitsRewayah = mushafRewayah === 'hafs' ? null : mushafRewayah;
+  const {units: verseUnits, status: verseUnitsStatus} =
+    useRewayahVerseUnits(unitsRewayah);
+  const pageUnits =
+    unitsRewayah && verseUnits?.rewayah === unitsRewayah ? verseUnits : null;
+  // The follow-along band as rows of the rewayah: the band the mushaf pages
+  // paint (verse-units contract 4.2).
+  const playbackBand = usePlaybackBand();
+  const bandKeys = useMemo(
+    () =>
+      pageUnits
+        ? playbackBandUnitKeys(shownVerseUnitsOf(pageUnits), playbackBand)
+        : NO_KEYS,
+    [pageUnits, playbackBand],
+  );
+  // @ai-end
+
+  const items = useMemo<ReadingPageItem[]>(
+    () =>
+      // @ai — a rewayah's page: its verse rows (none until they are ready)
+      unitsRewayah
+        ? pageUnits
+          ? readingPageUnitItems(pageUnits, pageNumber)
+          : []
+        : getReadingPageItems(pageNumber),
+    [pageNumber, unitsRewayah, pageUnits],
+  );
 
   const {isRightPage} = useMemo(
     () => getPageEdgeLayout(pageNumber),
@@ -172,13 +223,15 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
   }, [firstSurah, loadAnnotationsForSurah]);
 
   // Auto-scroll to active ayah within the page
+  // @ai — a rewayah's page follows the band's first verse row
+  const activeRowKey = unitsRewayah ? bandKeys[0] : currentVerseKey;
   useEffect(() => {
-    if (!isPlaying || !currentVerseKey) return;
-    const y = verseOffsetsRef.current.get(currentVerseKey);
+    if (!isPlaying || !activeRowKey) return;
+    const y = verseOffsetsRef.current.get(activeRowKey);
     if (y != null) {
       scrollViewRef.current?.scrollTo({y, animated: true});
     }
-  }, [isPlaying, currentVerseKey]);
+  }, [isPlaying, activeRowKey]);
 
   // Tap on verse → toggle immersive mode (matches DKPageView tap behavior)
   const handleVersePress = useCallback(() => {
@@ -198,6 +251,7 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
             />
             <BasmalaHeader
               visible={item.showBismillah}
+              surahNumber={item.surahNumber} // @ai
               width={contentItemWidth}
               textColor={textColor}
               showTajweed={showTajweed}
@@ -212,9 +266,16 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
         );
       }
 
-      const themeInfo = showThemes
-        ? themeDataService.getThemeForVerse(item.verse.verse_key)
-        : undefined;
+      // @ai — themes are Hafs-aligned: a rewayah verse row takes the theme
+      // of the Hafs verse its first word is in (as on the mushaf pages)
+      const unitRow = isVerseUnitRow(item.verse) ? item.verse : undefined;
+      const themeKey = unitRow
+        ? themeHafsKeyOfRow(unitRow)
+        : item.verse.verse_key;
+      const themeInfo =
+        showThemes && themeKey
+          ? themeDataService.getThemeForVerse(themeKey)
+          : undefined;
       const themeBg =
         themeInfo && themeInfo.themeIndex % 2 === 0
           ? Color(textColor).alpha(0.12).toString()
@@ -247,13 +308,20 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
             fontMgr={fontMgr}
             dkFontFamily={dkFontFamily}
             indexedTajweedData={indexedTajweedData}
-            isActive={isPlaying && item.verse.verse_key === currentVerseKey}
+            isActive={
+              isPlaying &&
+              // @ai — a rewayah verse row: lit by the band's verse keys
+              (unitRow
+                ? bandKeys.includes(item.verse.verse_key)
+                : playbackVerseKeys.includes(item.verse.verse_key))
+            }
             source="mushaf"
             translationName={translationName}
             translationId={selectedTranslationId}
             showWBW={showWBW}
             wbwShowTranslation={wbwShowTranslation}
             wbwShowTransliteration={wbwShowTransliteration}
+            unitRow={unitRow} // @ai — the row is this rewayah verse
           />
         </View>
       );
@@ -274,7 +342,8 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
       dkFontFamily,
       indexedTajweedData,
       handleVersePress,
-      currentVerseKey,
+      playbackVerseKeys, // @ai
+      bandKeys, // @ai
       isPlaying,
       translationName,
       selectedTranslationId,
@@ -305,7 +374,17 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
         </Text>
       </View>
       {/* Verse items */}
-      {items.map(item => renderItem(item))}
+      {/* @ai — a rewayah whose verse units are not ready: no rows yet
+       *  (never its text as Hafs verses) */}
+      {unitsRewayah && !pageUnits ? (
+        <VerseUnitsPending
+          status={verseUnitsStatus === 'ready' ? 'loading' : verseUnitsStatus}
+          rewayah={unitsRewayah}
+          color={labelColor}
+        />
+      ) : (
+        items.map(item => renderItem(item))
+      )}
       {/* Bottom page number: sits behind the bottom panel */}
       <Text style={[styles.pageNumber, {color: labelColor}]}>{pageLabel}</Text>
     </>

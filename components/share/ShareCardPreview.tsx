@@ -23,7 +23,12 @@ import {
 } from './shareCardConstants';
 
 interface ShareCardPreviewProps {
-  verseKeys: string[];
+  // @ai-start
+  verseKeys: readonly string[];
+  /** One text per verse key, resolved for `rewayah` by the caller
+   *  (useRewayahVerseTexts / resolveVerseTexts). */
+  verseTexts: readonly string[];
+  // @ai-end
   isDarkMode: boolean;
   showWatermark: boolean;
   showBasmallah: boolean;
@@ -33,14 +38,14 @@ interface ShareCardPreviewProps {
   width: number;
   /** Optional ref forwarded to the underlying Canvas (used for image capture). */
   canvasRef?: React.RefObject<any>;
-  /** Current-context rewayah. Drives which DK words DB the Arabic text is
-   *  pulled from, and (when non-Hafs) surfaces a small rewayah label on the
-   *  rendered card so shared images disclose the reading. */
+  /** Rewayah of `verseTexts`. When non-Hafs, the card carries a small
+   *  rewayah label so shared images disclose the reading. @ai */
   rewayah?: import('@/store/mushafSettingsStore').RewayahId;
 }
 
 const ShareCardPreview: React.FC<ShareCardPreviewProps> = ({
   verseKeys,
+  verseTexts, // @ai
   isDarkMode,
   showWatermark,
   showBasmallah,
@@ -59,6 +64,7 @@ const ShareCardPreview: React.FC<ShareCardPreviewProps> = ({
     () =>
       buildShareCardParagraphs(
         verseKeys,
+        verseTexts, // @ai
         contentWidth,
         fontMgr,
         isDarkMode,
@@ -70,6 +76,7 @@ const ShareCardPreview: React.FC<ShareCardPreviewProps> = ({
       ),
     [
       verseKeys,
+      verseTexts, // @ai
       contentWidth,
       fontMgr,
       isDarkMode,

@@ -41,8 +41,14 @@ Additional licensing:
 - **Manrope** — Apache-2.0 (https://github.com/sharanda/manrope)
 - **Scheherazade New** — SIL Open Font License 1.1 (https://software.sil.org/scheherazade/)
 - **UthmanicHafs** / **Uthmani** — King Fahd Glorious Qur’an Printing Complex (used with permission)
-- **Digital Khatt** (`data/mushaf/digitalkhatt/DigitalKhattFont.otf`) — SIL Open Font License 1.1, © Amine Anane and contributors (https://github.com/DigitalKhatt/DigitalKhatt). The companion SQLite layout/word databases (`digital-khatt-*.db`, `dk_words_*.db`) and diff JSON files in the same directory are derivative works generated from the Digital Khatt project and are distributed under the same license.
+- **Digital Khatt** (`data/mushaf/digitalkhatt/DigitalKhattFont.otf`) — SIL Open Font License 1.1, © Amine Anane and contributors (https://github.com/DigitalKhatt/DigitalKhatt). The companion Hafs SQLite layout/word databases (`digital-khatt-*.db`) in the same directory are derivative works generated from the Digital Khatt project and are distributed under the same license.
 - **surah_names / surah_names_2** — Custom glyphs bundled with this project
+
+## Qur'an texts of the other rewayat
+
+The word text of the seven non-Hafs rewayah databases (`data/mushaf/digitalkhatt/dk_words_<id>.db`: Warsh, Qalun, al-Bazzi, Qunbul, al-Duri, al-Susi, Shu'bah), the highlight and verse-map files derived from it (`<id>-diff.json`, `<id>-versemap.json`) and the basmala files (`<id>-basmala.json`) come from the official Uthmanic riwayah texts of the **King Fahd Glorious Qur'an Printing Complex** (KFGQPC, https://qurancomplex.gov.sa), version 2.x; the basmala lines come from KFGQPC's signed Word typesetting of each riwayah. The exact files and their checksums are listed in `scripts/rewayah/sources/SOURCES.md` and `scripts/rewayah/sources/sources.lock.json`. The text is used as published; the only changes are the display adaptations listed in `docs/features/rewayat.md`, needed because the Digital Khatt font cannot draw some riwayah marks. The word rows and page layout these texts are placed into come from Digital Khatt (above).
+
+**Licence status.** KFGQPC offers these packages to developers on its developer page (https://qurancomplex.gov.sa/en/techquran/dev/). No licence or terms of use for the text was found in the packages. The end-user licence embedded in their riwayah fonts covers only those fonts, and Bayaan does not ship them. No written permission from KFGQPC for these texts is recorded in this repository yet. Until one is, this section records where the text comes from, not a licence grant. Details are in `scripts/rewayah/sources/SOURCES.md` (Licence status).
 
 ## Adhkar content & audio
 

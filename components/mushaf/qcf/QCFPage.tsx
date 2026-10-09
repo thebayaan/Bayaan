@@ -58,7 +58,7 @@ import {useMushafFontMgr} from '@/hooks/useMushafFontMgr';
 import {getTextAllahNameCharMap} from '@/services/mushaf/AllahNameHighlightService';
 import {themeDataService} from '@/services/mushaf/ThemeDataService';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
-import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
+import {usePlaybackVerseKeys} from '@/store/mushafPlayerStore'; // @ai
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
 import {
   createTextStrokePaint,
@@ -154,10 +154,9 @@ const QCFPage: React.FC<QCFPageProps> = ({
   const selectVerseRange = useMushafVerseSelectionStore(
     s => s.selectVerseRange,
   );
-  const playbackVerseKey = useMushafPlayerStore(s => {
-    if (!s.currentVerseKey || s.playbackState === 'idle') return null;
-    return s.currentVerseKey;
-  });
+  // @ai — every Hafs verse the reciter is reciting (a rewayah recitation's
+  // verse can cover several Hafs verses); empty when idle.
+  const playbackVerseKeys = usePlaybackVerseKeys();
 
   const surahHeaderFonts = useMemo(() => {
     const qcTypeface = mushafPreloadService.quranCommonTypeface;
@@ -296,7 +295,7 @@ const QCFPage: React.FC<QCFPageProps> = ({
       const ranges: Array<{start: number; end: number; color: string}> = [];
       for (const segment of model.verseSegments) {
         if (
-          playbackVerseKey === segment.verseKey &&
+          playbackVerseKeys.includes(segment.verseKey) && // @ai
           !selectedSet?.has(segment.verseKey)
         ) {
           ranges.push({
@@ -335,7 +334,7 @@ const QCFPage: React.FC<QCFPageProps> = ({
     pageNumber,
     selectedPageNumber,
     selectedVerseKeys,
-    playbackVerseKey,
+    playbackVerseKeys, // @ai
     playbackBgColor,
     selectionBgColor,
     showThemes,

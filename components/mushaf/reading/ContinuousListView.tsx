@@ -1,6 +1,7 @@
 import React, {
   useMemo,
   useCallback,
+  useEffect, // @ai
   useRef,
   useImperativeHandle,
   forwardRef,
@@ -10,7 +11,10 @@ import {FlashList, type FlashListRef} from '@shopify/flash-list';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
-import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import {
+  getDkFontFamily, // @ai
+  useMushafSettingsStore,
+} from '@/store/mushafSettingsStore';
 import {useTajweedStore} from '@/store/tajweedStore';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
@@ -22,12 +26,34 @@ import {
   type EnhancedVerse,
 } from '@/utils/enhancedVerseData';
 import {VerseItem} from '@/components/player/v2/PlayerContent/QuranView/VerseItem';
-import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
+import {
+  useMushafPlayerStore,
+  usePlaybackVerseKeys, // @ai
+} from '@/store/mushafPlayerStore';
 import SurahDivider from '@/components/player/v2/PlayerContent/QuranView/SurahDivider';
 import BasmalaHeader from '@/components/player/v2/PlayerContent/QuranView/BasmalaHeader';
 import {getTranslationName} from '@/utils/translationLookup';
 import {getAllahNameHighlightColorHex} from '@/constants/mushafAllahHighlight';
 import {SCREEN_WIDTH} from '../constants';
+// @ai-start
+import {useRewayahVerseUnits} from '@/hooks/useRewayahVerseUnits';
+import {parseAnchorKey} from '@/services/mushaf/RewayahVerseUnits';
+import {shownVerseUnitsOf} from '@/services/mushaf/MushafVerseMapService';
+import {isVerseUnitRow} from '@/components/player/v2/PlayerContent/QuranView/verseUnitRows';
+import {playbackBandUnitKeys} from '../skia/verseHighlightLayers';
+import {usePlaybackBand} from '../skia/playbackBand';
+import {buildUnitListModel, type UnitListModel} from './mushafVerseUnitRows';
+import {VerseUnitsPending} from './VerseUnitsPending';
+
+const NO_KEYS: readonly string[] = Object.freeze([]);
+
+/** The Hafs verse of a stored anchor 'S:A:W'; a Hafs key as it is. */
+function hafsVerseKeyOf(reference: string): string {
+  const loc =
+    reference.split(':').length === 3 ? parseAnchorKey(reference) : null;
+  return loc ? `${loc.surah}:${loc.ayah}` : reference;
+}
+// @ai-end
 
 const surahData = require('@/data/surahData.json') as Array<{
   id: number;
@@ -103,10 +129,20 @@ function getVerseIndex(verseKey: string): number {
   return verseIndexMap.get(verseKey) ?? 0;
 }
 
-// Reverse lookup: verseKey → page number (built lazily from all 604 pages)
+// Reverse lookup: verseKey → page number (built lazily from all 604 pages,
+// rebuilt whenever the active rewayah or the DK words cache changes).
 let verseToPageMap: Map<string, number> | null = null;
+let verseToPageMapRewayah: string | null = null;
+let verseToPageMapVersion = -1;
 
 function getPageForVerse(verseKey: string): number | null {
+  const rewayah = digitalKhattDataService.rewayah;
+  const version = digitalKhattDataService.getCacheVersion();
+  if (rewayah !== verseToPageMapRewayah || version !== verseToPageMapVersion) {
+    verseToPageMap = null;
+    verseToPageMapRewayah = rewayah;
+    verseToPageMapVersion = version;
+  }
   if (!verseToPageMap) {
     if (!digitalKhattDataService.initialized) return null;
     verseToPageMap = new Map();
@@ -168,14 +204,63 @@ const ContinuousListView = forwardRef<
     const insets = useSafeAreaInsets();
     const flashListRef = useRef<FlashListRef<ContinuousListItem>>(null);
 
-    // Active ayah highlighting (same pattern as player QuranView)
-    const currentVerseKey = useMushafPlayerStore(s => s.currentVerseKey);
+    // Active ayah highlighting (same pattern as player QuranView): every
+    // Hafs verse the reciter is reciting.
+    const playbackVerseKeys = usePlaybackVerseKeys(); // @ai
     const playbackState = useMushafPlayerStore(s => s.playbackState);
     const isPlaying = playbackState === 'playing';
+
+    // @ai-start
+    // Decision 3 (Release 1): a non-Hafs text lists its rewayah's OWN verses
+    // (verse units, in its numbering; mushafVerseUnitRows.ts), never Hafs
+    // verses under the rewayah's name: in Warsh, Hafs 1:7 is the rows 1:6
+    // and 1:7, and Warsh 2:1 holds Hafs 2:1 and 2:2. Hafs keeps its Hafs
+    // verse rows exactly as before and never builds verse units.
+    const mushafRewayah = useMushafSettingsStore(s => s.rewayah);
+    const unitsRewayah = mushafRewayah === 'hafs' ? null : mushafRewayah;
+    const {units: verseUnits, status: verseUnitsStatus} =
+      useRewayahVerseUnits(unitsRewayah);
+    const unitList = useMemo<UnitListModel | null>(
+      () =>
+        unitsRewayah && verseUnits?.rewayah === unitsRewayah
+          ? buildUnitListModel(verseUnits)
+          : null,
+      [unitsRewayah, verseUnits],
+    );
+    // The follow-along band as rows of the rewayah: the band the mushaf
+    // pages paint (verse-units contract 4.2), e.g. a Warsh reciter on Warsh
+    // 1:6 lights the row 1:6 only.
+    const playbackBand = usePlaybackBand();
+    const bandKeys = useMemo(
+      () =>
+        unitList
+          ? playbackBandUnitKeys(
+              shownVerseUnitsOf(unitList.units),
+              playbackBand,
+            )
+          : NO_KEYS,
+      [unitList, playbackBand],
+    );
+    // For the stable viewability callback below.
+    const unitListRef = useRef(unitList);
+    useEffect(() => {
+      unitListRef.current = unitList;
+    }, [unitList]);
+    // @ai-end
 
     // Expose navigation methods to parent
     useImperativeHandle(ref, () => ({
       scrollToPage: (page: number, animated = false) => {
+        // @ai-start
+        // A rewayah's list: the row holding the page's first word.
+        if (unitList) {
+          const index = unitList.indexForPage(page);
+          if (index !== undefined) {
+            flashListRef.current?.scrollToIndex({index, animated});
+          }
+          return;
+        }
+        // @ai-end
         const verseKey = getFirstVerseKeyForPage(page);
         if (verseKey) {
           const index = getVerseIndex(verseKey);
@@ -183,11 +268,25 @@ const ContinuousListView = forwardRef<
         }
       },
       scrollToSurah: (surahId: number, animated = false) => {
-        const index = getSurahIndex(surahId);
+        const index = unitList // @ai
+          ? (unitList.indexOfSurah(surahId) ?? 0)
+          : getSurahIndex(surahId);
         flashListRef.current?.scrollToIndex({index, animated});
       },
       scrollToVerse: (verseKey: string, animated = false) => {
-        const index = getVerseIndex(verseKey);
+        // @ai-start
+        // `verseKey`: a Hafs key (search, playback) or a stored anchor
+        // 'S:A:W'. A rewayah's list scrolls to the row holding that slot;
+        // during playback to the band's row holding that Hafs verse.
+        if (unitList) {
+          const index = unitList.indexForHafsReference(verseKey, bandKeys);
+          if (index !== undefined) {
+            flashListRef.current?.scrollToIndex({index, animated});
+          }
+          return;
+        }
+        const index = getVerseIndex(hafsVerseKeyOf(verseKey));
+        // @ai-end
         flashListRef.current?.scrollToIndex({index, animated});
       },
     }));
@@ -233,12 +332,11 @@ const ContinuousListView = forwardRef<
       [allahNameHighlightColorSetting, theme.isDarkMode],
     );
 
-    const dkFontFamily =
-      mushafRenderer === 'dk_indopak'
-        ? 'DigitalKhattIndoPak'
-        : mushafRenderer === 'dk_v1'
-          ? 'DigitalKhattV1'
-          : 'DigitalKhattV2';
+    // @ai-start
+    // Same font as before for Hafs; a font that cannot draw a rewayah's marks
+    // (IndoPak) is never used for non-Hafs text.
+    const dkFontFamily = getDkFontFamily(mushafRenderer, mushafRewayah);
+    // @ai-end
     const isDK =
       (mushafRenderer === 'dk_v1' ||
         mushafRenderer === 'dk_v2' ||
@@ -264,10 +362,11 @@ const ContinuousListView = forwardRef<
 
     // Compute initial scroll index from page number
     const initialScrollIndex = useMemo(() => {
+      if (unitList) return unitList.indexForPage(initialPage) ?? 0; // @ai
       const verseKey = getFirstVerseKeyForPage(initialPage);
       if (verseKey) return getVerseIndex(verseKey);
       return 0;
-    }, [initialPage]);
+    }, [initialPage, unitList]);
 
     // Track viewable items for surah/page updates
     const onViewableItemsChanged = useCallback(
@@ -281,7 +380,10 @@ const ContinuousListView = forwardRef<
           onCurrentSurahChange?.(firstItem.surahNumber);
           loadAnnotationsForSurah(firstItem.surahNumber);
           // Report accurate page number from verse-to-page mapping
-          const page = getPageForVerse(firstItem.verse.verse_key);
+          // @ai — a rewayah verse row: the page of its first word
+          const page = isVerseUnitRow(firstItem.verse)
+            ? unitListRef.current?.pageOfRow(firstItem.verse.verse_key)
+            : getPageForVerse(firstItem.verse.verse_key);
           if (page) onCurrentPageChange?.(page);
         }
       },
@@ -301,6 +403,7 @@ const ContinuousListView = forwardRef<
               />
               <BasmalaHeader
                 visible={item.showBismillah}
+                surahNumber={item.surahNumber} // @ai
                 width={contentWidth}
                 textColor={textColor}
                 showTajweed={showTajweed}
@@ -331,13 +434,21 @@ const ContinuousListView = forwardRef<
             fontMgr={fontMgr}
             dkFontFamily={dkFontFamily}
             indexedTajweedData={indexedTajweedData}
-            isActive={isPlaying && item.verse.verse_key === currentVerseKey}
+            isActive={
+              isPlaying &&
+              // @ai — a rewayah verse row: lit by the band's verse keys
+              (isVerseUnitRow(item.verse)
+                ? bandKeys.includes(item.verse.verse_key)
+                : playbackVerseKeys.includes(item.verse.verse_key))
+            }
             source="mushaf"
             translationName={translationName}
             translationId={selectedTranslationId}
             showWBW={showWBW}
             wbwShowTranslation={wbwShowTranslation}
             wbwShowTransliteration={wbwShowTransliteration}
+            // @ai — the row is this rewayah verse (label, text, actions)
+            unitRow={isVerseUnitRow(item.verse) ? item.verse : undefined}
           />
         );
       },
@@ -357,7 +468,8 @@ const ContinuousListView = forwardRef<
         dkFontFamily,
         indexedTajweedData,
         handleVersePress,
-        currentVerseKey,
+        playbackVerseKeys, // @ai
+        bandKeys, // @ai
         isPlaying,
         translationName,
         selectedTranslationId,
@@ -382,12 +494,26 @@ const ContinuousListView = forwardRef<
       [],
     );
 
+    // @ai-start
+    // A rewayah whose verse units are not ready: no rows yet (never its text
+    // as Hafs verses).
+    if (unitsRewayah && !unitList) {
+      return (
+        <VerseUnitsPending
+          status={verseUnitsStatus === 'ready' ? 'loading' : verseUnitsStatus}
+          rewayah={unitsRewayah}
+          color={labelColor}
+        />
+      );
+    }
+    // @ai-end
+
     return (
       <FlashList
         ref={flashListRef}
-        data={items}
+        data={unitList ? unitList.items : items} // @ai
         renderItem={renderItem}
-        extraData={`${currentVerseKey}-${arabicTextWeight}-${showAllahNameHighlight}-${allahNameHighlightColor}`}
+        extraData={`${(unitList ? bandKeys : playbackVerseKeys).join(',')}-${arabicTextWeight}-${showAllahNameHighlight}-${allahNameHighlightColor}`} // @ai
         getItemType={getItemType}
         keyExtractor={keyExtractor}
         initialScrollIndex={initialScrollIndex}

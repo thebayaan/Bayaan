@@ -39,6 +39,11 @@ import type {CommunityReflection} from '@/types/CommunityReflection';
 interface CommunityReflectionsContentProps {
   surahNumber: number;
   ayahNumber: number;
+  // @ai-start
+  /** The verse's label in the shown rewayah's numbering (the provider is
+   *  asked for the Hafs verse surahNumber:ayahNumber). Default "S:A". */
+  label?: string;
+  // @ai-end
 }
 
 type FetchState =
@@ -48,7 +53,7 @@ type FetchState =
 
 export const CommunityReflectionsContent: React.FC<
   CommunityReflectionsContentProps
-> = ({surahNumber, ayahNumber}) => {
+> = ({surahNumber, ayahNumber, label}) => {
   const {theme} = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const verseKey = `${surahNumber}:${ayahNumber}`;
@@ -89,7 +94,8 @@ export const CommunityReflectionsContent: React.FC<
         showsVerticalScrollIndicator={false}
         bounces={true}>
         <View style={styles.verseBadge}>
-          <Text style={styles.verseBadgeText}>{verseKey}</Text>
+          {/* @ai: the rewayah's own label when given */}
+          <Text style={styles.verseBadgeText}>{label ?? verseKey}</Text>
         </View>
 
         {state.kind === 'loading' ? (

@@ -12,23 +12,27 @@ import {
   type SkColor,
 } from '@shopify/react-native-skia';
 import {getTextAllahNameCharMap} from '@/services/mushaf/AllahNameHighlightService';
-import {getVerseTajweedMap} from '@/services/mushaf/DigitalKhattVerseTajweedService';
-import {rewayahDiffService} from '@/services/mushaf/RewayahDiffService';
+import {layoutWords} from '@/services/mushaf/lineWordSpans';
 import {
   tajweedColors,
   REWAYAH_DIFF_BACKGROUND,
 } from '@/constants/tajweedColors';
 import type {IndexedTajweedData} from '@/utils/tajweedLoader';
+import type {DKWordInfo} from '@/services/mushaf/DigitalKhattDataService';
 import type {
   MushafArabicTextWeight,
   RewayahId,
 } from '@/store/mushafSettingsStore';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
-import {useRewayahWords} from '@/hooks/useRewayahWords';
+import {
+  useRewayahWords,
+  type RewayahWordsStatus, // @ai
+} from '@/hooks/useRewayahWords';
 import {
   createTextStrokePaint,
   getArabicTextWeightStrokeWidth,
 } from '@/utils/skiaTextWeight';
+import {computeVerseCharRuleMap, computeVerseDiffRanges} from './verseOverlays';
 
 const paragraphStyle = {
   textHeightBehavior: TextHeightBehavior.DisableAll,
@@ -38,6 +42,8 @@ const paragraphStyle = {
 // Corner radius for the rewayah-diff background tint; matches SkiaLine's
 // 4px so list-mode and page-mode highlights look identical.
 const DIFF_BG_RADIUS = 4;
+
+const EMPTY_WORDS: DKWordInfo[] = [];
 
 interface SkiaVerseTextProps {
   verseKey?: string;
@@ -56,6 +62,16 @@ interface SkiaVerseTextProps {
    *  mushaf one. Used by the player to show text matching the currently
    *  playing reciter's rewayah. Ignored if `text` prop is provided. */
   rewayah?: RewayahId;
+  /** Rendered (instead of nothing) while the verse's words cannot be drawn
+   *  yet: still loading, or failed / unavailable. @ai */
+  renderPlaceholder?: (status: RewayahWordsStatus) => React.ReactNode;
+  // @ai-start
+  /** Draw exactly these words of `rewayah` (a rewayah verse row's own slots,
+   *  verseUnitRows.ts) instead of reading `verseKey`'s words; overlays apply
+   *  as usual. `verseKey` then only names the Hafs verse for Hafs tajweed
+   *  (a Hafs verse row). Ignored if `text` is provided. */
+  words?: readonly DKWordInfo[];
+  // @ai-end
 }
 
 const SkiaVerseText: React.FC<SkiaVerseTextProps> = ({
@@ -72,6 +88,8 @@ const SkiaVerseText: React.FC<SkiaVerseTextProps> = ({
   showAllahNameHighlight = false,
   allahNameHighlightColor,
   rewayah,
+  renderPlaceholder, // @ai
+  words: givenWords, // @ai
 }) => {
   // When no explicit prop, follow the mushaf setting. This is the mushaf
   // list-mode / preview case; the player passes an explicit prop.
@@ -81,48 +99,53 @@ const SkiaVerseText: React.FC<SkiaVerseTextProps> = ({
   >[1];
 
   // Reactive read; re-renders when the requested rewayah's cache transitions
-  // from loading → ready. Only queried when `text` isn't provided directly.
-  const {words, status} = useRewayahWords(
-    text !== undefined ? null : verseKey ?? null,
+  // from loading → ready (or the words cache changes). Only queried when
+  // `text` isn't provided directly.
+  const {words: verseWords, status} = useRewayahWords(
+    text !== undefined || givenWords ? null : (verseKey ?? null), // @ai
     effectiveRewayah,
   );
-  const verseText =
-    text ?? (status === 'ready' ? words.map(w => w.text).join(' ') : '');
+  // @ai — a verse row's own words, else the words of `verseKey`.
+  const words = givenWords ?? verseWords;
+  // The rendered verse string: blank slots skipped, single spaces, multi-token
+  // slots whole. Every overlay below indexes into this exact string.
+  const wordsText = useMemo(() => layoutWords(words).text, [words]);
+  const verseText = text ?? (status === 'ready' ? wordsText : '');
 
-  // Rewayah-foreground gate mirrors the diff-background gate below: the
-  // singleton rewayahDiffService only carries one rewayah's diff data at
-  // a time (the active mushaf setting), so we can't paint fg highlights
-  // for a track rewayah that differs from the mushaf setting. Pre-built
-  // `text` inputs (share card / similar-verse snippets) have no per-word
-  // metadata, so we silently skip them too.
+  // Pre-built `text` inputs (share card / similar-verse snippets) have no
+  // per-word metadata, so no tajweed or rewayah highlight applies to them.
   const showRewayahDiffs = useMushafSettingsStore(s => s.showRewayahDiffs);
   const textProvided = text !== undefined;
-  const rewayahFgApplies =
-    !textProvided &&
-    showRewayahDiffs &&
-    effectiveRewayah !== 'hafs' &&
-    effectiveRewayah === mushafRewayah &&
-    (rewayahDiffService.hasAnyDiffs || rewayahDiffService.hasSilahColoring);
+  const overlayWords = textProvided ? EMPTY_WORDS : words;
 
-  // Char→rule map: tajweed base layer + rewayah foreground categories
-  // (minor/ibdal/tashil/madd/taghliz/silah) on top, so rewayah rules win
-  // on conflict. Matches SkiaPage / ContinuousMushafView precedence exactly.
-  const charToRule = useMemo(() => {
-    const tajweedMap =
-      verseKey && showTajweed && indexedTajweedData
-        ? getVerseTajweedMap(verseKey, indexedTajweedData)
-        : null;
-    const rewayahMap =
-      rewayahFgApplies && words.length > 0
-        ? rewayahDiffService.getRewayahRuleMapForWords(words)
-        : null;
-    if (!tajweedMap && !rewayahMap) return null;
-    if (!rewayahMap) return tajweedMap;
-    if (!tajweedMap) return rewayahMap;
-    const merged = new Map(tajweedMap);
-    for (const [k, v] of rewayahMap) merged.set(k, v);
-    return merged;
-  }, [verseKey, showTajweed, indexedTajweedData, rewayahFgApplies, words]);
+  // Char→rule map: Hafs tajweed base layer (Hafs text only) + rewayah
+  // foreground categories / silah on top (only with 'Show differences' on
+  // and for the active mushaf rewayah, whose diff data is loaded). Same
+  // precedence as SkiaPage / ContinuousMushafView.
+  const charToRule = useMemo(
+    () =>
+      textProvided
+        ? null
+        : computeVerseCharRuleMap({
+            verseKey,
+            words: overlayWords,
+            rewayah: effectiveRewayah,
+            mushafRewayah,
+            showTajweed,
+            indexedTajweedData,
+            showRewayahDiffs,
+          }),
+    [
+      textProvided,
+      verseKey,
+      overlayWords,
+      effectiveRewayah,
+      mushafRewayah,
+      showTajweed,
+      indexedTajweedData,
+      showRewayahDiffs,
+    ],
+  );
 
   const charToAllahHighlight = useMemo(() => {
     if (!showAllahNameHighlight || !allahNameHighlightColor || !verseText) {
@@ -171,8 +194,8 @@ const SkiaVerseText: React.FC<SkiaVerseTextProps> = ({
         const resolvedColor = allahHighlight
           ? allahNameHighlightColor
           : rule && tajweedColors[rule]
-          ? tajweedColors[rule]
-          : null;
+            ? tajweedColors[rule]
+            : null;
 
         if (resolvedColor) {
           const charColor = Skia.Color(resolvedColor);
@@ -228,25 +251,18 @@ const SkiaVerseText: React.FC<SkiaVerseTextProps> = ({
     };
   }, [built]);
 
-  // Rewayah diff backgrounds; highlights words that differ from Hafs.
-  // Mirrors the SkiaPage pipeline (which uses getDiffRangesForLine) but
-  // operates on the verse-level word list that useRewayahWords returned.
-  // The gating conditions (textProvided / Hafs / toggle / mushaf-setting
-  // alignment) are shared with the foreground rule map above; see that
-  // block for the reasoning behind each condition.
+  // Rewayah diff backgrounds: whole-word variants (differs from Hafs), drawn
+  // under the text. Same data and gates as the page renderers (which use
+  // getDiffRangesForLine), over the verse-level word list; a trailing inline
+  // verse marker is never tinted.
   const diffBgRects = useMemo(() => {
-    if (
-      !paragraph ||
-      textProvided ||
-      !showRewayahDiffs ||
-      effectiveRewayah === 'hafs' ||
-      effectiveRewayah !== mushafRewayah ||
-      !rewayahDiffService.hasDiffs ||
-      words.length === 0
-    ) {
-      return null;
-    }
-    const ranges = rewayahDiffService.getDiffRangesForWords(words);
+    if (!paragraph || textProvided) return null;
+    const ranges = computeVerseDiffRanges({
+      words: overlayWords,
+      rewayah: effectiveRewayah,
+      mushafRewayah,
+      showRewayahDiffs,
+    });
     if (ranges.length === 0) return null;
 
     const rects: Array<{
@@ -279,13 +295,30 @@ const SkiaVerseText: React.FC<SkiaVerseTextProps> = ({
     showRewayahDiffs,
     effectiveRewayah,
     mushafRewayah,
-    words,
+    overlayWords,
   ]);
 
-  if (!paragraph || width <= 0) return null;
+  if (!paragraph || width <= 0) {
+    return renderPlaceholder ? <>{renderPlaceholder(status)}</> : null; // @ai
+  }
 
   return (
     <Canvas pointerEvents="none" style={{width, height, direction: 'rtl'}}>
+      {diffBgRects && (
+        <Group>
+          {diffBgRects.map((rect, i) => (
+            <RoundedRect
+              key={i}
+              x={rect.x}
+              y={rect.y + yOffset}
+              width={rect.width}
+              height={rect.height}
+              r={DIFF_BG_RADIUS}
+              color={REWAYAH_DIFF_BACKGROUND}
+            />
+          ))}
+        </Group>
+      )}
       {strokeParagraph && (
         <Paragraph
           paragraph={strokeParagraph}

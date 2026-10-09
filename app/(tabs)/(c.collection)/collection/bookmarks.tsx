@@ -25,9 +25,14 @@ import {SheetManager} from 'react-native-actions-sheet';
 import Color from 'color';
 import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
 import type {VerseBookmark} from '@/types/verse-annotations';
-import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
-import {getRewayahShortLabel} from '@/utils/rewayahLabels';
-import {showToast} from '@/utils/toastUtils';
+// @ai-start
+import {restoreSavedRewayah} from '@/services/verse-annotations/restoreSavedRewayah';
+import {describeSavedVerseNow} from '@/hooks/useSavedVerseDescription';
+import {
+  savedVerseRouteParams,
+  savedVerseSubtitle,
+} from '@/services/verse-annotations/unitAnnotations';
+// @ai-end
 
 interface BookmarkData {
   bookmark: VerseBookmark;
@@ -42,6 +47,9 @@ const BookmarksScreen = () => {
   const [bookmarks, setBookmarks] = useState<BookmarkData[]>([]);
   const [loading, setLoading] = useState(true);
   const scrollY = useRef(new RNAnimated.Value(0)).current;
+  // Ignore taps while a bookmark is opening: a second tap during the rewayah
+  // load would start a competing switch.
+  const openingRef = useRef(false); // @ai
 
   useCollectionNativeHeader({
     title: 'Bookmarks',
@@ -80,12 +88,45 @@ const BookmarksScreen = () => {
     setBookmarks(prev => prev.filter(b => b.bookmark.id !== bookmark.id));
   }, []);
 
+  // @ai-start
+  const handleOpenBookmark = useCallback(
+    async (bookmark: VerseBookmark) => {
+      if (openingRef.current) return;
+      openingRef.current = true;
+      try {
+        const verseKey = `${bookmark.surahNumber}:${bookmark.ayahNumber}`;
+        const surahStartPages = digitalKhattDataService.getSurahStartPages();
+        const fallbackPage = surahStartPages[bookmark.surahNumber] || 1;
+        // Restore the rewayah the bookmark was saved in so the opened verse
+        // matches what the user was reading at save time.
+        await restoreSavedRewayah(bookmark.rewayahId);
+        const page = digitalKhattDataService.getPageForVerse(verseKey);
+        // The page of the anchor's Hafs verse is the page the saved verse
+        // starts on. A bookmark saved in a non-Hafs rewayah also passes its
+        // anchor, so the mushaf selects exactly that rewayah verse (the two
+        // parts of a split Hafs verse are different bookmarks).
+        router.push({
+          pathname: '/mushaf',
+          params: savedVerseRouteParams(bookmark, page || fallbackPage),
+        });
+      } finally {
+        openingRef.current = false;
+      }
+    },
+    [router],
+  );
+  // @ai-end
+
   const handleOptionsPress = useCallback(
     (item: BookmarkData) => {
       SheetManager.show('collection-options', {
         payload: {
           title: item.surahName,
-          subtitle: `Ayah ${item.bookmark.ayahNumber}`,
+          // @ai: the ayah in the numbering of the rewayah it was saved in
+          subtitle: savedVerseSubtitle(
+            describeSavedVerseNow(item.bookmark),
+            item.bookmark.ayahNumber,
+          ),
           options: [
             {
               label: 'Remove Bookmark',
@@ -142,33 +183,7 @@ const BookmarksScreen = () => {
       surahNumber={item.bookmark.surahNumber}
       verseKey={item.bookmark.verseKey}
       rewayahId={item.bookmark.rewayahId}
-      onPress={async () => {
-        const verseKey = `${item.bookmark.surahNumber}:${item.bookmark.ayahNumber}`;
-        const surahStartPages = digitalKhattDataService.getSurahStartPages();
-        const fallbackPage = surahStartPages[item.bookmark.surahNumber] || 1;
-        // Silently restore the rewayah the bookmark was saved in so the
-        // opened verse matches what the user was reading at save time.
-        const savedRewayah = item.bookmark.rewayahId;
-        const active = useMushafSettingsStore.getState().rewayah;
-        if (savedRewayah && savedRewayah !== active) {
-          try {
-            await digitalKhattDataService.switchRewayah(savedRewayah);
-            useMushafSettingsStore.getState().setRewayah(savedRewayah);
-            showToast('Opening in', getRewayahShortLabel(savedRewayah));
-          } catch (err) {
-            console.error('[Bookmarks] Failed to switch rewayah:', err);
-          }
-        }
-        const page = digitalKhattDataService.getPageForVerse(verseKey);
-        router.push({
-          pathname: '/mushaf',
-          params: {
-            surah: String(item.bookmark.surahNumber),
-            ayah: String(item.bookmark.ayahNumber),
-            page: String(page || fallbackPage),
-          },
-        });
-      }}
+      onPress={() => handleOpenBookmark(item.bookmark)} // @ai
       onOptionsPress={() => handleOptionsPress(item)}
     />
   );

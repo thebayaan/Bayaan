@@ -14,7 +14,10 @@ import {useTheme} from '@/hooks/useTheme';
 import FormattedTextRenderer from '@/components/utils/FormattedText';
 import {Feather, Ionicons} from '@expo/vector-icons';
 import {useTajweedStore} from '@/store/tajweedStore';
-import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
+import {
+  selectUnitAnnotations, // @ai
+  useVerseAnnotationsStore,
+} from '@/store/verseAnnotationsStore';
 import {useVerseSelectionStore} from '@/store/verseSelectionStore';
 import {SheetManager} from 'react-native-actions-sheet';
 import {mediumHaptics} from '@/utils/haptics';
@@ -22,9 +25,18 @@ import {tajweedColors} from '@/constants/tajweedColors';
 import type {IndexedTajweedData} from '@/utils/tajweedLoader';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {getAllahNameHighlightColorHex} from '@/constants/mushafAllahHighlight';
+import type {RewayahWordsStatus} from '@/hooks/useRewayahWords'; // @ai
 import SkiaVerseText from './SkiaVerseText';
 import {WBWVerseView} from './WBWVerseView';
-import {AyahCommunityReflections} from '@/components/mushaf/AyahCommunityReflections';
+// @ai-start
+import {unitVerseActionsPayload, type VerseUnitRow} from './verseUnitRows';
+import {
+  UnitRowTranslations,
+  UnitRowWordByWord,
+  VerseRowReflections,
+  type UnitRowWord,
+} from './VerseUnitRowContent';
+// @ai-end
 import {
   isBundledTranslation,
   getBundledFootnotes,
@@ -57,6 +69,9 @@ interface SaheehData {
   [verseKey: string]: SaheehFootnoteEntry;
 }
 
+// Shown in place of the Arabic line when the rewayah's words fail to load. @ai
+const TEXT_UNAVAILABLE_MESSAGE = "Verse text couldn't be loaded.";
+
 // Load Saheeh data at module scope (require() is cached — zero cost since QuranView already loaded it)
 const saheehDataForFootnotes =
   require('@/data/SaheehInternational.translation-with-footnote-tags.json') as SaheehData;
@@ -75,6 +90,9 @@ interface VerseItemProps {
   arabicFontSize: number;
   fontMgr: SkTypefaceFontProvider | null;
   dkFontFamily: string;
+  /** Font of the word-by-word grid, which always shows Hafs words (defaults
+   *  to dkFontFamily). @ai */
+  wbwFontFamily?: string;
   indexedTajweedData: IndexedTajweedData | null;
   isActive?: boolean;
   translationName?: string;
@@ -87,6 +105,17 @@ interface VerseItemProps {
    *  currently-playing track's rewayah. Mushaf context: can be omitted to
    *  follow the active mushaf rewayah automatically. */
   rewayah?: import('@/store/mushafSettingsStore').RewayahId;
+  // @ai-start
+  /**
+   * Decision 3: the row is this rewayah verse (or the unnumbered Fatiha
+   * basmala) from buildVerseUnitRows; pass the same object as `verse`. Its
+   * label, text, selection, bookmark / note dots and verse-actions payload
+   * follow the rewayah's own verse, and its translation, notes and word by
+   * word come per Hafs verse it holds. The basmala row has no number and no
+   * actions. Omitted: a Hafs verse row, exactly as before.
+   */
+  unitRow?: VerseUnitRow;
+  // @ai-end
 }
 
 /**
@@ -113,6 +142,7 @@ export const VerseItem = memo<VerseItemProps>(
     arabicFontSize,
     fontMgr,
     dkFontFamily,
+    wbwFontFamily, // @ai
     indexedTajweedData,
     isActive,
     translationName,
@@ -122,10 +152,25 @@ export const VerseItem = memo<VerseItemProps>(
     wbwShowTranslation,
     wbwShowTransliteration,
     rewayah,
+    unitRow, // @ai
   }) => {
     const {theme} = useTheme();
     const verseKey = verse.verse_key;
     const arabicTextWeight = useMushafSettingsStore(s => s.arabicTextWeight);
+    const mushafRewayah = useMushafSettingsStore(s => s.rewayah);
+    // @ai-start
+    // The QPC fallback below can only show Hafs text. In a non-Hafs context
+    // (a rewayah track in the player, a rewayah mushaf's verse list) it is
+    // never shown, not even for the first frame before the row is measured:
+    // a neutral placeholder holds the place until DigitalKhatt draws the
+    // rewayah's own text.
+    const isHafsText =
+      (unitRow?.rewayah ?? rewayah ?? mushafRewayah) === 'hafs';
+    // A verse row of a rewayah: keys and numbers are that rewayah's
+    // (verseKey is its unit key); null `unit` is the unnumbered basmala.
+    const textRewayah = unitRow?.rewayah ?? rewayah;
+    const isUnnumbered = unitRow !== undefined && unitRow.unit === null;
+    // @ai-end
     const showAllahNameHighlight = useMushafSettingsStore(
       s => s.showAllahNameHighlight,
     );
@@ -143,16 +188,48 @@ export const VerseItem = memo<VerseItemProps>(
 
     // Per-verse-key annotation selectors — Zustand skips re-render when
     // THIS verse's specific value didn't change
+    // @ai-start
+    // A selected key means something only in its numbering: a Hafs verse row
+    // matches a Hafs selection, a rewayah verse row one of its own rewayah.
+    const selectionRewayah = unitRow ? unitRow.rewayah : 'hafs';
     const isSelected = useVerseSelectionStore(
-      useCallback(s => s.selectedVerseKey === verseKey, [verseKey]),
+      useCallback(
+        s =>
+          s.selectedVerseKey === verseKey &&
+          (s.selectedRewayah ?? 'hafs') === selectionRewayah,
+        [verseKey, selectionRewayah],
+      ),
     );
+    // @ai-end
     const selectVerse = useVerseSelectionStore(s => s.selectVerse);
 
+    // @ai — a rewayah verse row is marked by every stored row that maps to
+    // its verse in its rewayah (contract section 3: rows keep the rewayah
+    // they were saved in, so a Hafs row of a split Hafs verse marks both
+    // parts). selectUnitAnnotations is memoized per units and rows.
     const isBookmarked = useVerseAnnotationsStore(
-      useCallback(s => s.bookmarkedVerseKeys.has(verseKey), [verseKey]),
+      useCallback(
+        s =>
+          unitRow
+            ? unitRow.unit !== null &&
+              selectUnitAnnotations(s, unitRow.units).bookmarkedUnitKeys.has(
+                unitRow.unit.key,
+              )
+            : s.bookmarkedVerseKeys.has(verseKey),
+        [verseKey, unitRow],
+      ),
     );
     const hasNote = useVerseAnnotationsStore(
-      useCallback(s => s.notedVerseKeys.has(verseKey), [verseKey]),
+      useCallback(
+        s =>
+          unitRow
+            ? unitRow.unit !== null &&
+              selectUnitAnnotations(s, unitRow.units).notedUnitKeys.has(
+                unitRow.unit.key,
+              )
+            : s.notedVerseKeys.has(verseKey),
+        [verseKey, unitRow],
+      ),
     );
     // Fetch tajweed data directly from store — granular selector means only
     // the ~10 visible VerseItems re-render when tajweed finishes loading
@@ -177,11 +254,15 @@ export const VerseItem = memo<VerseItemProps>(
     const [selectedWordPosition, setSelectedWordPosition] = useState<
       number | null
     >(null);
+    // @ai — the same for a verse row's grids (one per Hafs verse it holds)
+    const [selectedUnitWord, setSelectedUnitWord] =
+      useState<UnitRowWord | null>(null);
 
     // Reset footnote and word highlight when cell is recycled by FlashList
     useEffect(() => {
       setActiveFootnote(null);
       setSelectedWordPosition(null);
+      setSelectedUnitWord(null); // @ai
     }, [verseKey]);
 
     // Batch all Color() derivations — only recomputed on theme or highlight change
@@ -198,8 +279,14 @@ export const VerseItem = memo<VerseItemProps>(
     );
 
     // Handle footnote press - uses module-scope cached data or translationLookup
-    const handleFootnotePress = useCallback(
-      (footnoteId: string, footnoteNumber: string) => {
+    // @ai — `footnoteVerseKey`: the Hafs verse whose translation holds the
+    // footnote (a verse row passes each of its Hafs verses' own).
+    const toggleFootnote = useCallback(
+      (
+        footnoteVerseKey: string,
+        footnoteId: string,
+        footnoteNumber: string,
+      ) => {
         // If tapping the same footnote again, close it
         if (activeFootnote && activeFootnote.id === footnoteId) {
           setActiveFootnote(null);
@@ -209,7 +296,7 @@ export const VerseItem = memo<VerseItemProps>(
         // For bundled translations, use translationLookup; for remote, no footnotes
         const effectiveId = translationId ?? 'saheeh';
         const footnotes = isBundledTranslation(effectiveId)
-          ? getBundledFootnotes(verseKey, effectiveId)
+          ? getBundledFootnotes(footnoteVerseKey, effectiveId) // @ai
           : undefined;
 
         if (footnotes) {
@@ -227,7 +314,13 @@ export const VerseItem = memo<VerseItemProps>(
           });
         }
       },
-      [verseKey, activeFootnote, translationId],
+      [activeFootnote, translationId], // @ai
+    );
+    // A Hafs verse row: the footnotes of its own verse. @ai
+    const handleFootnotePress = useCallback(
+      (footnoteId: string, footnoteNumber: string) =>
+        toggleFootnote(verseKey, footnoteId, footnoteNumber),
+      [toggleFootnote, verseKey],
     );
 
     // Close the footnote display
@@ -235,8 +328,37 @@ export const VerseItem = memo<VerseItemProps>(
       setActiveFootnote(null);
     }, []);
 
+    // @ai-start
+    // A verse row of a rewayah acts on the rewayah's own verse: it selects
+    // the unit (in its rewayah's numbering) and opens the verse actions with
+    // the unit (contract 4.1). The unnumbered Fatiha basmala is no verse
+    // there: nothing to select, no actions.
+    const openUnitActions = useCallback(
+      (withHaptics: boolean) => {
+        if (!unitRow?.unit) return;
+        const payload = unitVerseActionsPayload(unitRow, source ?? 'player');
+        if (!payload) return;
+        if (withHaptics) mediumHaptics();
+        selectVerse(
+          unitRow.unit.key,
+          unitRow.unit.surah,
+          unitRow.unit.ayah,
+          unitRow.rewayah,
+        );
+        SheetManager.show('verse-actions', {payload});
+      },
+      [unitRow, source, selectVerse],
+    );
+    // @ai-end
+
     // Long press → open verse actions sheet
     const handleLongPress = useCallback(() => {
+      // @ai-start
+      if (unitRow) {
+        openUnitActions(true);
+        return;
+      }
+      // @ai-end
       mediumHaptics();
       selectVerse(verseKey, verse.surah_number, verse.ayah_number);
       SheetManager.show('verse-actions', {
@@ -253,10 +375,24 @@ export const VerseItem = memo<VerseItemProps>(
           rewayah,
         },
       });
-    }, [verseKey, verse, selectVerse, source, rewayah]);
+    }, [
+      verseKey,
+      verse,
+      selectVerse,
+      source,
+      rewayah,
+      unitRow,
+      openUnitActions,
+    ]); // @ai
 
     // Options button → same as long press
     const handleOptionsPress = useCallback(() => {
+      // @ai-start
+      if (unitRow) {
+        openUnitActions(false);
+        return;
+      }
+      // @ai-end
       selectVerse(verseKey, verse.surah_number, verse.ayah_number);
       SheetManager.show('verse-actions', {
         payload: {
@@ -272,7 +408,15 @@ export const VerseItem = memo<VerseItemProps>(
           rewayah,
         },
       });
-    }, [verseKey, verse, selectVerse, source, rewayah]);
+    }, [
+      verseKey,
+      verse,
+      selectVerse,
+      source,
+      rewayah,
+      unitRow,
+      openUnitActions,
+    ]); // @ai
 
     const handleWordPress = useCallback(
       (position: number) => {
@@ -285,6 +429,19 @@ export const VerseItem = memo<VerseItemProps>(
       },
       [verseKey],
     );
+
+    // @ai-start
+    // A verse row's word-by-word word: word detail of its HAFS verse (word
+    // by word is Hafs data, keyed by Hafs verse and word position).
+    const handleUnitWordPress = useCallback((word: UnitRowWord) => {
+      setSelectedUnitWord(word);
+      SheetManager.show('word-detail', {
+        payload: {verseKey: word.hafsKey, position: word.position},
+      }).then(() => {
+        setSelectedUnitWord(null);
+      });
+    }, []);
+    // @ai-end
 
     const handlePress = useCallback(() => {
       onVersePress(verseKey);
@@ -393,57 +550,120 @@ export const VerseItem = memo<VerseItemProps>(
       [derivedColors.translationSource],
     );
 
+    // @ai — notes under a verse row's Hafs content (a translation the
+    // rewayah divides between verses, the transliteration's Hafs disclosure)
+    const unitNoteStyle = useMemo(
+      () => [styles.unitNote, {color: derivedColors.translationSource}],
+      [derivedColors.translationSource],
+    );
+
+    // @ai-start
+    // Neutral stand-in for the Arabic line while the rewayah's own text
+    // cannot be drawn yet (fonts loading, row not measured, words loading):
+    // about one line high, no text. If the words fail to load, say so rather
+    // than show nothing (or another rewayah's text).
+    const placeholderStyle = useMemo(
+      () => ({height: Math.round(moderateScale(arabicFontSize) * 1.9)}),
+      [arabicFontSize],
+    );
+    const renderTextPlaceholder = useCallback(
+      (status: RewayahWordsStatus) =>
+        status === 'error' || status === 'unavailable' ? (
+          <Text
+            style={[
+              styles.textUnavailable,
+              {color: derivedColors.translationSource},
+            ]}>
+            {TEXT_UNAVAILABLE_MESSAGE}
+          </Text>
+        ) : (
+          <View
+            style={placeholderStyle}
+            accessibilityLabel="Loading verse text"
+            testID="verse-text-placeholder"
+          />
+        ),
+      [placeholderStyle, derivedColors.translationSource],
+    );
+    // @ai-end
+
     return (
       <Pressable
         style={containerStyle}
         onPress={handlePress}
         onLongPress={handleLongPress}>
-        <View style={styles.verseInfoContainer}>
-          <View style={styles.verseInfoRow}>
-            <View
-              style={[
-                styles.verseInfoPill,
-                {backgroundColor: derivedColors.bg},
-              ]}>
-              <Text style={[styles.verseInfo, {color: textColor}]}>
-                {verse.surah_number}:{verse.ayah_number}
-              </Text>
+        {/* @ai — the unnumbered basmala row: no number, no actions */}
+        {isUnnumbered ? null : (
+          <View style={styles.verseInfoContainer}>
+            <View style={styles.verseInfoRow}>
+              <View
+                style={[
+                  styles.verseInfoPill,
+                  {backgroundColor: derivedColors.bg},
+                ]}>
+                {/* @ai — a verse row's surah_number / ayah_number are its
+                 *  rewayah's own numbers: the pill reads '1:6' of Warsh. */}
+                <Text style={[styles.verseInfo, {color: textColor}]}>
+                  {verse.surah_number}:{verse.ayah_number}
+                </Text>
+              </View>
+              {isBookmarked && (
+                <Feather
+                  name="bookmark"
+                  size={moderateScale(12)}
+                  color={textColor}
+                  style={styles.annotationIcon}
+                />
+              )}
+              {hasNote && (
+                <Feather
+                  name="file-text"
+                  size={moderateScale(12)}
+                  color={textColor}
+                  style={styles.annotationIcon}
+                />
+              )}
+              <Pressable
+                onPress={handleOptionsPress}
+                hitSlop={8}
+                style={styles.optionsButton}>
+                <Feather
+                  name="more-horizontal"
+                  size={moderateScale(18)}
+                  color={derivedColors.optionsIcon}
+                />
+              </Pressable>
             </View>
-            {isBookmarked && (
-              <Feather
-                name="bookmark"
-                size={moderateScale(12)}
-                color={textColor}
-                style={styles.annotationIcon}
-              />
-            )}
-            {hasNote && (
-              <Feather
-                name="file-text"
-                size={moderateScale(12)}
-                color={textColor}
-                style={styles.annotationIcon}
-              />
-            )}
-            <Pressable
-              onPress={handleOptionsPress}
-              hitSlop={8}
-              style={styles.optionsButton}>
-              <Feather
-                name="more-horizontal"
-                size={moderateScale(18)}
-                color={derivedColors.optionsIcon}
-              />
-            </Pressable>
           </View>
-        </View>
+        )}
         {/* ---> Arabic Text Rendering <-- */}
-        {showWBW ? (
+        {showWBW && unitRow ? (
+          // @ai — a verse row: one Hafs grid per Hafs verse it holds, each
+          // cut to the row's own words
+          <UnitRowWordByWord
+            row={unitRow}
+            textColor={textColor}
+            arabicFontSize={arabicFontSize}
+            dkFontFamily={wbwFontFamily ?? dkFontFamily}
+            fontMgr={fontMgr}
+            showTranslation={wbwShowTranslation ?? true}
+            showTransliteration={wbwShowTransliteration ?? false}
+            selectedWord={selectedUnitWord}
+            onWordPress={handleUnitWordPress}
+            showTajweed={showTajweed}
+            indexedTajweedData={indexedTajweedData}
+            onTap={handlePress}
+            onLongPress={handleLongPress}
+            arabicTextWeight={arabicTextWeight}
+            showAllahNameHighlight={showAllahNameHighlight}
+            allahNameHighlightColor={allahNameHighlightColor}
+          />
+        ) : showWBW ? (
           <WBWVerseView
             verseKey={verseKey}
             textColor={textColor}
             arabicFontSize={arabicFontSize}
-            dkFontFamily={dkFontFamily}
+            dkFontFamily={wbwFontFamily ?? dkFontFamily} // @ai
             fontMgr={fontMgr}
             showTranslation={wbwShowTranslation ?? true}
             showTransliteration={wbwShowTransliteration ?? false}
@@ -463,7 +683,9 @@ export const VerseItem = memo<VerseItemProps>(
             {fontMgr && arabicContainerWidth > 0 ? (
               // DK Skia Rendering (Uthmani with Digital Khatt font)
               <SkiaVerseText
-                verseKey={verseKey}
+                // @ai — a verse row draws exactly its own slots (`words`);
+                // its key only names a Hafs verse when the row is Hafs.
+                verseKey={unitRow ? unitRow.unit?.key : verseKey}
                 fontMgr={fontMgr}
                 fontFamily={dkFontFamily}
                 fontSize={moderateScale(arabicFontSize)}
@@ -474,8 +696,15 @@ export const VerseItem = memo<VerseItemProps>(
                 arabicTextWeight={arabicTextWeight}
                 showAllahNameHighlight={showAllahNameHighlight}
                 allahNameHighlightColor={allahNameHighlightColor}
-                rewayah={rewayah}
+                rewayah={textRewayah} // @ai
+                words={unitRow?.words} // @ai
+                renderPlaceholder={
+                  isHafsText ? undefined : renderTextPlaceholder // @ai
+                }
               />
+            ) : !isHafsText ? (
+              // @ai — never Hafs text in a non-Hafs context
+              renderTextPlaceholder('loading')
             ) : isQPCSelected && tajweedNodes ? (
               // QPC Rendering: Always use generated tajweedNodes
               <Text style={arabicStyleNoColor}>{tajweedNodes}</Text>
@@ -494,11 +723,14 @@ export const VerseItem = memo<VerseItemProps>(
          *  ReadingPageView) — intentional: a fork's reflections surface in
          *  every verse-list context. The noop + the toggle/provider gates
          *  inside the component keep it free for forks that don't opt in. */}
-        <AyahCommunityReflections
+        <VerseRowReflections // @ai — a verse row: per Hafs verse it owns
+          unitRow={unitRow} // @ai
           surahNumber={verse.surah_number}
           ayahNumber={verse.ayah_number}
         />
-        {showTransliteration && verse.transliteration && (
+        {/* @ai — the transliteration spells the Hafs reading: never under a
+         *  rewayah's text, where it would read as that rewayah's. */}
+        {showTransliteration && isHafsText && verse.transliteration && (
           <FormattedTextRenderer
             text={verse.transliteration}
             baseStyle={transliterationStyle}
@@ -520,6 +752,23 @@ export const VerseItem = memo<VerseItemProps>(
             )}
           </View>
         )}
+        {unitRow ? (
+          // @ai — a verse row carries no transliteration / translation of
+          // its own ('', so the two blocks above render nothing): the
+          // translation of each Hafs verse it owns and the shared-translation
+          // notes come here (verseUnitRows.ts, contract 4.6).
+          <UnitRowTranslations
+            row={unitRow}
+            showTranslation={!!showTranslation}
+            showTransliteration={!!showTransliteration}
+            translationStyle={translationStyle}
+            transliterationStyle={transliterationStyle}
+            translationSourceStyle={translationSourceStyle}
+            noteStyle={unitNoteStyle}
+            translationName={translationName}
+            onFootnotePress={toggleFootnote}
+          />
+        ) : null}
 
         {/* Footnote Display */}
         {activeFootnote && (
@@ -589,6 +838,19 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     writingDirection: 'rtl',
   },
+  // @ai-start
+  textUnavailable: {
+    fontFamily: 'Manrope-Medium',
+    fontSize: moderateScale(12),
+    marginVertical: verticalScale(6),
+  },
+  unitNote: {
+    fontSize: moderateScale(11),
+    fontFamily: 'Manrope-Regular',
+    marginTop: verticalScale(4),
+    textAlign: 'left',
+  },
+  // @ai-end
   transliterationText: {
     fontSize: moderateScale(14),
     fontFamily: 'Manrope-Regular',

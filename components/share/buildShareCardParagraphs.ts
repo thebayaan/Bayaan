@@ -33,24 +33,10 @@ import {
   DARK_COLORS,
   type ShareCardColors,
 } from './shareCardConstants';
-import {
-  BASMALLAH_TEXT,
-  digitalKhattDataService,
-} from '@/services/mushaf/DigitalKhattDataService';
+import {rewayahBasmalaService} from '@/services/mushaf/RewayahBasmalaService'; // @ai
 import {getRewayahShortLabel} from '@/utils/rewayahLabels';
 import type {RewayahId} from '@/store/mushafSettingsStore';
 import branding from '@/config/branding';
-
-interface QuranEntry {
-  verse_key: string;
-  text: string;
-}
-const quranRaw = require('@/data/quran.json') as Record<string, QuranEntry>;
-const textByKey: Record<string, string> = {};
-for (const key of Object.keys(quranRaw)) {
-  const entry = quranRaw[key];
-  if (entry?.verse_key) textByKey[entry.verse_key] = entry.text;
-}
 
 // Reference coordinate system constants (from DigitalKhatt / QuranTextService)
 const FONTSIZE = 1000;
@@ -90,22 +76,21 @@ export interface ShareCardElements {
   colors: ShareCardColors;
 }
 
-/** Group verse keys by surah number, preserving order. */
+// @ai-start
+/** Group verse keys (and their texts) by surah number, preserving order. */
 function groupBySurah(
-  verseKeys: string[],
-  rewayah: RewayahId | undefined,
+  verseKeys: readonly string[],
+  verseTexts: readonly string[],
 ): SurahSection[] {
   const sections: SurahSection[] = [];
   let current: SurahSection | null = null;
 
-  for (const vk of verseKeys) {
+  for (let i = 0; i < verseKeys.length; i++) {
+    const vk = verseKeys[i];
     const [surahStr] = vk.split(':');
     const surahNumber = parseInt(surahStr, 10);
-    // Prefer DK text for the active rewayah so the rendered share card
-    // matches what the user is reading. Fall back to the static Hafs JSON
-    // for verses DK doesn't cover yet.
-    const text =
-      digitalKhattDataService.getVerseText(vk, rewayah) || textByKey[vk] || '';
+    const text = verseTexts[i] ?? '';
+    // @ai-end
 
     if (!current || current.surahNumber !== surahNumber) {
       current = {surahNumber, verseKeys: [], verseTexts: []};
@@ -141,8 +126,17 @@ function addVerseMarker(text: string): string {
   return text.replace(/([\u0660-\u0669]+)$/, '\u06DD$1');
 }
 
+// @ai-start
+/**
+ * `verseTexts` holds one text per entry of `verseKeys`, already resolved for
+ * `rewayah` (see components/share/rewayahVerseText.ts). The builder never
+ * looks text up itself, so the card cannot show one rewayah's text under
+ * another rewayah's label.
+ */
 export function buildShareCardParagraphs(
-  verseKeys: string[],
+  verseKeys: readonly string[],
+  verseTexts: readonly string[],
+  // @ai-end
   contentWidth: number,
   fontMgr: SkTypefaceFontProvider,
   isDarkMode: boolean,
@@ -163,7 +157,7 @@ export function buildShareCardParagraphs(
   const surahGap = CARD_SURAH_GAP * scale;
   const basmallahBottomGap = CARD_BASMALLAH_BOTTOM_GAP * scale;
 
-  const groups = groupBySurah(verseKeys, rewayah);
+  const groups = groupBySurah(verseKeys, verseTexts); // @ai
 
   // Build sections
   const sections = groups.map(group => {
@@ -208,7 +202,15 @@ export function buildShareCardParagraphs(
     let basmallahParagraph: SkParagraph | null = null;
     let basmallahHeight = 0;
     const skipBasmallah = group.surahNumber === 1 || group.surahNumber === 9;
-    if (showBasmallah && !skipBasmallah && BASMALLAH_TEXT) {
+    // @ai-start
+    // The basmala of the card's rewayah, as it opens this surah (contract
+    // C6); '' (no basmala drawn) when that rewayah has no basmala data.
+    const basmallahText = rewayahBasmalaService.getText(
+      rewayah ?? 'hafs',
+      group.surahNumber,
+    );
+    // @ai-end
+    if (showBasmallah && !skipBasmallah && basmallahText) {
       const basmallahFontSize = verseFontSize * CARD_BASMALLAH_FONT_RATIO;
       const basmBuilder = Skia.ParagraphBuilder.Make(
         {textDirection: TextDirection.RTL, textAlign: TextAlign.Center},
@@ -220,7 +222,7 @@ export function buildShareCardParagraphs(
         fontSize: basmallahFontSize,
         fontFeatures: [{name: 'basm', value: 1}],
       });
-      basmBuilder.addText(BASMALLAH_TEXT);
+      basmBuilder.addText(basmallahText); // @ai
       basmBuilder.pop();
       basmallahParagraph = basmBuilder.build();
       basmallahParagraph.layout(contentWidth);

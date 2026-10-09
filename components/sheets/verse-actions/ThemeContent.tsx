@@ -10,6 +10,9 @@ import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import Color from 'color';
 import {themeDataService} from '@/services/mushaf/ThemeDataService';
+// @ai-start
+import {rewayahThemePassage, type UnitStart} from './verseUnitScreens';
+// @ai-end
 
 const surahData = require('@/data/surahData.json');
 
@@ -18,18 +21,28 @@ const surahData = require('@/data/surahData.json');
 interface ThemeContentProps {
   surahNumber: number;
   ayahNumber: number;
+  // @ai-start
+  /** Another rewayah's verse: its theme is the theme of the first Hafs
+   *  verse holding its words, and the passage is told in the rewayah's
+   *  numbering. Absent for Hafs (unchanged). */
+  unitStart?: UnitStart;
+  // @ai-end
   onBack: () => void;
 }
 
 export const ThemeContent: React.FC<ThemeContentProps> = ({
   surahNumber,
   ayahNumber,
+  unitStart, // @ai
   onBack,
 }) => {
   const {theme} = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
-  const verseKey = `${surahNumber}:${ayahNumber}`;
+  // Themes are keyed by Hafs verses. @ai
+  const verseKey = unitStart
+    ? unitStart.unit.hafsKeys[0]
+    : `${surahNumber}:${ayahNumber}`;
   const themeInfo = themeDataService.getThemeForVerse(verseKey);
 
   if (!themeInfo) {
@@ -50,8 +63,24 @@ export const ThemeContent: React.FC<ThemeContentProps> = ({
     (s: {id: number; name: string}) => s.id === themeInfo.surah,
   );
   const surahName = surah?.name ?? `Surah ${themeInfo.surah}`;
-  const passageRange = `${themeInfo.surah}:${themeInfo.ayahFrom} \u2013 ${themeInfo.surah}:${themeInfo.ayahTo}`;
-  const verseCount = themeInfo.ayahTo - themeInfo.ayahFrom + 1;
+  // @ai-start
+  // Another rewayah: the rewayah verses holding the passage's words (never
+  // Hafs numbers under the rewayah's name).
+  const rewayahPassage = unitStart
+    ? rewayahThemePassage(
+        unitStart.model,
+        themeInfo.surah,
+        themeInfo.ayahFrom,
+        themeInfo.ayahTo,
+      )
+    : null;
+  const passageRange = unitStart
+    ? (rewayahPassage?.range ?? '')
+    : `${themeInfo.surah}:${themeInfo.ayahFrom} \u2013 ${themeInfo.surah}:${themeInfo.ayahTo}`;
+  const verseCount = unitStart
+    ? (rewayahPassage?.count ?? 0)
+    : themeInfo.ayahTo - themeInfo.ayahFrom + 1;
+  // @ai-end
 
   return (
     <View style={styles.container}>

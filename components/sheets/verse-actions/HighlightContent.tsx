@@ -10,69 +10,78 @@ import {Theme} from '@/utils/themeUtils';
 import {Feather} from '@expo/vector-icons';
 import Color from 'color';
 import {HIGHLIGHT_COLORS, HighlightColor} from '@/types/verse-annotations';
-import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
-import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
 import SkiaVersePreview from '@/components/share/SkiaVersePreview';
+// @ai-start
+import {
+  selectionPreviewProps,
+  type ReadyVerseSelection,
+} from '@/components/share/rewayahVerseSelection';
+import {
+  setSelectionHighlight,
+  useSelectionHighlightColor,
+} from './selectionAnnotations';
+// @ai-end
 
 const COLORS = Object.entries(HIGHLIGHT_COLORS) as [HighlightColor, string][];
 
 interface HighlightContentProps {
-  verseKey: string;
-  surahNumber: number;
-  ayahNumber: number;
-  verseKeys?: string[];
-  rewayah?: import('@/store/mushafSettingsStore').RewayahId;
+  // @ai-start
+  /**
+   * The selected verses in their rewayah's own numbering (decision 3; see
+   * components/share/rewayahVerseSelection.ts). One highlight row per
+   * verse, stored at its Hafs anchor ("S:A", or "S:A:W" for a part of a
+   * split Hafs verse: verse-units contract section 3) with the selection's
+   * rewayah; the current colour and Remove read every row that marks a
+   * selected verse, legacy rows included (selectionAnnotations.ts).
+   * Hafs: the Hafs keys, exactly as before.
+   */
+  selection: ReadyVerseSelection;
+  // @ai-end
   onDone: () => void;
 }
 
 export const HighlightContent: React.FC<HighlightContentProps> = ({
-  verseKey,
-  surahNumber,
-  ayahNumber,
-  verseKeys,
-  rewayah,
+  selection, // @ai
   onDone,
 }) => {
   const {theme} = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
-  const allKeys = verseKeys && verseKeys.length > 1 ? verseKeys : [verseKey];
-  const currentColor = useVerseAnnotationsStore(s => s.highlights[verseKey]);
+  // @ai-start
+  const {rewayah} = selection;
+  const currentColor = useSelectionHighlightColor(selection);
 
-  const handleSelectColor = useCallback(
-    async (color: HighlightColor) => {
-      const store = useVerseAnnotationsStore.getState();
-      for (const vk of allKeys) {
-        const [s, a] = vk.split(':');
-        await verseAnnotationService.upsertHighlight(
-          vk,
-          parseInt(s, 10),
-          parseInt(a, 10),
-          color,
-          rewayah,
-        );
-        store.setHighlight(vk, color);
+  // A failed write (it is one transaction: nothing changed) must not strand
+  // the screen open, as the bookmark toggle in VerseActionsSheet.
+  const writeHighlight = useCallback(
+    async (color: HighlightColor | null) => {
+      try {
+        await setSelectionHighlight(selection, color);
+      } catch (error) {
+        console.error('[HighlightContent] Highlight change failed:', error);
       }
       onDone();
     },
-    [allKeys, onDone, rewayah],
+    [selection, onDone],
   );
 
-  const handleRemove = useCallback(async () => {
-    const store = useVerseAnnotationsStore.getState();
-    for (const vk of allKeys) {
-      await verseAnnotationService.removeHighlight(vk);
-      store.removeHighlight(vk);
-    }
-    onDone();
-  }, [allKeys, onDone]);
+  const handleSelectColor = useCallback(
+    (color: HighlightColor) => writeHighlight(color),
+    [writeHighlight],
+  );
+
+  const handleRemove = useCallback(
+    () => writeHighlight(null),
+    [writeHighlight],
+  );
+  // @ai-end
 
   return (
     <View>
       <View style={styles.previewCard}>
+        {/* @ai: the selected verses, each with its own marker */}
         <SkiaVersePreview
-          verseKey={verseKey}
-          verseKeys={verseKeys}
+          {...selectionPreviewProps(selection)}
           rewayah={rewayah}
         />
       </View>

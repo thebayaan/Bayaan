@@ -26,16 +26,13 @@ import {AddToCollectionSheet} from './AddToCollectionSheet';
 import {AmbientSoundsSheet} from './AmbientSoundsSheet';
 import {CollectionOptionsSheet} from './CollectionOptionsSheet';
 import {VerseActionsSheet} from './VerseActionsSheet';
-import {VerseCopySheet} from './VerseCopySheet';
-import {VerseHighlightSheet} from './VerseHighlightSheet';
 import {VerseNoteSheet} from './VerseNoteSheet';
-import {VerseShareSheet} from './VerseShareSheet';
-import {SimilarVersesSheet} from './SimilarVersesSheet';
 import {MushafPlayerOptionsSheet} from './MushafPlayerOptionsSheet';
 import {MushafRepeatOptionsSheet} from './MushafRepeatOptionsSheet';
 import {FollowAlongSheet} from './FollowAlongSheet';
 import {WordDetailSheet} from './WordDetailSheet';
 import {HomeCardOptionsSheet} from './HomeCardOptionsSheet';
+import {installRewayahFallbackNotice} from './rewayahFallbackNotice'; // @ai
 
 // Register all sheets
 registerSheet('surah-options', SurahOptionsSheet);
@@ -58,16 +55,23 @@ registerSheet('add-to-collection', AddToCollectionSheet);
 registerSheet('ambient-sounds', AmbientSoundsSheet);
 registerSheet('collection-options', CollectionOptionsSheet);
 registerSheet('verse-actions', VerseActionsSheet);
-registerSheet('verse-copy', VerseCopySheet);
-registerSheet('verse-highlight', VerseHighlightSheet);
+// @ai-start
+// Copy, share, highlight and similar verses live inside 'verse-actions'.
+// Their old standalone sheets were removed: nothing opened them, and the
+// copy sheet copied caller-supplied text with no rewayah.
+// @ai-end
 registerSheet('verse-note', VerseNoteSheet);
-registerSheet('verse-share', VerseShareSheet);
-registerSheet('similar-verses', SimilarVersesSheet);
 registerSheet('mushaf-player-options', MushafPlayerOptionsSheet);
 registerSheet('mushaf-repeat-options', MushafRepeatOptionsSheet);
 registerSheet('follow-along', FollowAlongSheet);
 registerSheet('word-detail', WordDetailSheet);
 registerSheet('home-card-options', HomeCardOptionsSheet);
+
+// @ai-start
+// App-wide notice when the saved rewayah fails to load at startup and Hafs
+// is shown instead (the root layout imports this file before startup runs).
+installRewayahFallbackNotice();
+// @ai-end
 
 // Type definitions for payloads
 declare module 'react-native-actions-sheet' {
@@ -205,65 +209,50 @@ declare module 'react-native-actions-sheet' {
     }>;
     'verse-actions': SheetDefinition<{
       payload: {
+        // @ai-start
+        // Verse fields (verse-units contract 4.1). verseKey / surahNumber /
+        // ayahNumber / verseKeys keep their HAFS meaning: the Hafs verse
+        // holding the first selected verse's first word, and every Hafs
+        // verse the selection reads. A producer showing a rewayah also sends
+        // `unitKeys` (with `rewayah`): the selected verses in that rewayah's
+        // own numbering. Without it the sheet selects the rewayah verses
+        // holding the Hafs verses. For Hafs, unitKeys are the Hafs keys.
+        // @ai-end
         verseKey: string;
         surahNumber: number;
         ayahNumber: number;
         verseKeys?: string[];
-        arabicText?: string;
+        unitKeys?: string[]; // @ai
+        // @ai-start
+        // No Arabic text field: the sheet reads the text from the words DB
+        // of `rewayah` itself, so a caller cannot attach one rewayah's text
+        // to another rewayah's label.
+        // @ai-end
         translation?: string;
         transliteration?: string;
         source?: 'player' | 'mushaf';
         // Override the rewayah used for Arabic text resolution and share
         // disclosure. Defaults to the mushaf's active rewayah.
-        rewayah?: import('@/store/mushafSettingsStore').RewayahId;
-      };
-    }>;
-    'verse-copy': SheetDefinition<{
-      payload: {
-        verseKey: string;
-        surahNumber: number;
-        ayahNumber: number;
-        verseKeys?: string[];
-        arabicText: string;
-        translation: string;
-        transliteration?: string;
-      };
-    }>;
-    'verse-highlight': SheetDefinition<{
-      payload: {
-        verseKey: string;
-        surahNumber: number;
-        ayahNumber: number;
-        verseKeys?: string[];
+        // Required with `unitKeys`: their numbering. @ai
         rewayah?: import('@/store/mushafSettingsStore').RewayahId;
       };
     }>;
     'verse-note': SheetDefinition<{
       payload: {
+        // @ai-start
+        // A saved note (noteId): verseKey / verseKeys are its stored anchors
+        // ("S:A" or "S:A:W", Hafs locations) and `rewayah`, when given, is
+        // the note's own rewayah (else it is read from the note); the sheet
+        // names its verses in that rewayah's numbering. A new note: as
+        // 'verse-actions' (Hafs fields, plus `unitKeys` with `rewayah`).
+        // @ai-end
         verseKey: string;
         surahNumber: number;
         ayahNumber: number;
         verseKeys?: string[];
+        unitKeys?: string[]; // @ai
         noteId?: string;
         rewayah?: import('@/store/mushafSettingsStore').RewayahId;
-      };
-    }>;
-    'verse-share': SheetDefinition<{
-      payload: {
-        verseKey: string;
-        surahNumber: number;
-        ayahNumber: number;
-        verseKeys?: string[];
-        arabicText?: string;
-        translation?: string;
-      };
-    }>;
-    'similar-verses': SheetDefinition<{
-      payload: {
-        verseKey: string;
-        surahNumber: number;
-        ayahNumber: number;
-        section?: 'similar' | 'phrases';
       };
     }>;
     'mushaf-player-options': SheetDefinition<{

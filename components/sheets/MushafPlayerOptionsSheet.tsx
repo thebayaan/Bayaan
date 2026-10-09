@@ -35,6 +35,18 @@ import {
 import {SURAHS} from '@/data/surahData';
 import {mushafVerseMapService} from '@/services/mushaf/MushafVerseMapService';
 import Color from 'color';
+// @ai-start
+import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import {useRewayahVerseUnits} from '@/hooks/useRewayahVerseUnits';
+import {
+  pickerDefaults,
+  pickerPendingStart,
+  pickerSelection,
+  pickerVerseCount,
+  pickerVerseLabel,
+  rangePickerNumbering,
+} from '@/utils/playbackRangePicker';
+// @ai-end
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -62,11 +74,8 @@ type VersePick = 'surahList' | 'ayahGrid';
 // ---------------------------------------------------------------------------
 // Verse-key helpers
 // ---------------------------------------------------------------------------
-function formatVerseKey(verseKey: string): string {
-  const [s, a] = verseKey.split(':').map(Number);
-  if (s < 1 || s > 114) return verseKey;
-  return `${SURAHS[s - 1].name} ${s}:${a}`;
-}
+// Verse keys are in the pickers' numbering (@ai): the verses of the mushaf on
+// screen (utils/playbackRangePicker.ts). Labels: pickerVerseLabel.
 
 // Negative if a < b, zero if equal, positive if a > b. Used to keep the
 // range from going backwards: a new start past the current end drags end
@@ -143,12 +152,31 @@ export const MushafPlayerOptionsSheet = (
     () => mushafVerseMapService.getOrderedVerseKeysForPage(currentPage),
     [currentPage],
   );
-  const defaultStart = storeRangeStart
-    ? `${storeRangeStart.surah}:${storeRangeStart.ayah}`
-    : (pageVerseKeys[0] ?? '1:1');
-  const defaultEnd = storeRangeEnd
-    ? `${storeRangeEnd.surah}:${storeRangeEnd.ayah}`
-    : (pageVerseKeys[pageVerseKeys.length - 1] ?? '1:7');
+  // @ai-start
+  // The pickers offer the verses of the mushaf on screen, in its own
+  // numbering once its verse units are ready (Hafs verses before that,
+  // labelled as Hafs); a Hafs mushaf keeps its Hafs pickers.
+  const mushafRewayah = useMushafSettingsStore(s => s.rewayah);
+  const {units: mushafUnits} = useRewayahVerseUnits(
+    mushafRewayah === 'hafs' ? null : mushafRewayah,
+  );
+  const numbering = useMemo(
+    () => rangePickerNumbering(mushafRewayah, mushafUnits),
+    [mushafRewayah, mushafUnits],
+  );
+  const storeRangeUnits = useMushafPlayerStore(s => s.rangeUnits);
+  const {start: defaultStart, end: defaultEnd} = pickerDefaults(
+    numbering,
+    {
+      rangeStart: storeRangeStart,
+      rangeEnd: storeRangeEnd,
+      rangeUnits: storeRangeUnits,
+      pendingStartUnit: null,
+      pendingStartVerseKey: null,
+    },
+    pageVerseKeys,
+  );
+  // @ai-end
 
   // Local state — applied only on "Play Audio"
   const [startVerseKey, setStartVerseKey] = useState(defaultStart);
@@ -177,12 +205,29 @@ export const MushafPlayerOptionsSheet = (
   const [endPickSurah, setEndPickSurah] = useState<number | null>(null);
 
   // Pre-populate from pending start verse if set
+  // @ai-start
+  // The keys are in the pickers' numbering: when it changes (the mushaf's
+  // verse units became ready while the sheet is open), start over from the
+  // defaults in the new numbering.
+  const numberingId = `${numbering.rewayah}@${numbering.units?.dataKey ?? ''}`;
+  const [keysNumberingId, setKeysNumberingId] = useState(numberingId);
   useEffect(() => {
-    const pending = useMushafPlayerStore.getState().pendingStartVerseKey;
+    if (numberingId !== keysNumberingId) {
+      setKeysNumberingId(numberingId);
+      setStartVerseKey(defaultStart);
+      setEndVerseKey(defaultEnd);
+    }
+    const pending = pickerPendingStart(
+      numbering,
+      useMushafPlayerStore.getState(),
+    );
     if (pending) {
       setStartVerseKey(pending);
     }
-  }, []);
+    // Only on mount and when the numbering changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [numberingId]);
+  // @ai-end
 
   // Compute reciters on mount
   useEffect(() => {
@@ -280,22 +325,33 @@ export const MushafPlayerOptionsSheet = (
   const handlePlayAudio = useCallback(() => {
     if (!selectedRewayatId || !selectedReciterName) return;
 
+    // Verse units of the mushaf's rewayah, or Hafs verses as before (@ai).
+    const selection = pickerSelection(numbering, startVerseKey, endVerseKey);
+    if (!selection) return;
+
     const store = useMushafPlayerStore.getState();
     store.stop();
 
     // Apply settings
     store.setReciter(selectedRewayatId, selectedReciterName);
 
-    const [startS, startA] = startVerseKey.split(':').map(Number);
-    const [endS, endA] = endVerseKey.split(':').map(Number);
-    store.setRange({surah: startS, ayah: startA}, {surah: endS, ayah: endA});
+    // @ai-start
+    if (selection.kind === 'units') {
+      store.setUnitRange(selection.first, selection.last);
+    } else {
+      store.setRange(selection.start, selection.end);
+    }
+    // @ai-end
 
     // rate is bound directly to the store via the speed chips; no need to
     // commit it here (and committing a stale local copy was the bug).
     store.setVerseRepeatCount(verseRepeat);
     store.setRangeRepeatCount(rangeRepeat);
 
-    store.startPlayback(currentPage, startVerseKey);
+    store.startPlayback(
+      currentPage,
+      selection.kind === 'units' ? selection.first : startVerseKey,
+    ); // @ai
     SheetManager.hide('mushaf-player-options');
   }, [
     selectedRewayatId,
@@ -305,6 +361,7 @@ export const MushafPlayerOptionsSheet = (
     verseRepeat,
     rangeRepeat,
     currentPage,
+    numbering, // @ai
   ]);
 
   // ---------------------------------------------------------------------------
@@ -338,7 +395,7 @@ export const MushafPlayerOptionsSheet = (
     onSelect: (ayah: number) => void,
     onBack: () => void,
   ) => {
-    const versesCount = SURAHS[surahId - 1]?.verses_count ?? 1;
+    const versesCount = pickerVerseCount(numbering, surahId); // @ai
     const ayahs = Array.from({length: versesCount}, (_, i) => i + 1);
     return (
       <View>
@@ -400,7 +457,7 @@ export const MushafPlayerOptionsSheet = (
             onPress={() => toggleSection('startVerse')}>
             <Text style={styles.dropdownLabel}>Starting Verse</Text>
             <Text style={styles.dropdownValue} numberOfLines={1}>
-              {formatVerseKey(startVerseKey)}
+              {pickerVerseLabel(numbering, startVerseKey) /* @ai */}
             </Text>
             <AnimatedChevron
               expanded={expandedSection === 'startVerse'}
@@ -430,7 +487,7 @@ export const MushafPlayerOptionsSheet = (
             onPress={() => toggleSection('endVerse')}>
             <Text style={styles.dropdownLabel}>Ending Verse</Text>
             <Text style={styles.dropdownValue} numberOfLines={1}>
-              {formatVerseKey(endVerseKey)}
+              {pickerVerseLabel(numbering, endVerseKey) /* @ai */}
             </Text>
             <AnimatedChevron
               expanded={expandedSection === 'endVerse'}

@@ -1,12 +1,15 @@
 import React, {useCallback, useRef, useEffect, useState, useMemo} from 'react';
 import {
   View,
+  Text, // @ai
   StyleSheet,
   Pressable,
   useWindowDimensions,
   type LayoutChangeEvent,
+  ActivityIndicator, // @ai
 } from 'react-native';
 import {moderateScale, verticalScale} from '@/utils/scale';
+import Color from 'color'; // @ai
 import {useResponsive} from '@/hooks/useResponsive';
 import {Ionicons} from '@expo/vector-icons';
 import {useTheme} from '@/hooks/useTheme';
@@ -19,15 +22,30 @@ import SurahDivider, {computeDividerTotalHeight} from './SurahDivider';
 import {FlashList, type FlashListRef} from '@shopify/flash-list';
 import {useBottomSheetScrollableCreator} from '@gorhom/bottom-sheet';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
-import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
-import type {MushafArabicTextWeight} from '@/store/mushafSettingsStore';
+import {
+  getDkFontFamily, // @ai
+  useMushafSettingsStore,
+} from '@/store/mushafSettingsStore';
+import type {
+  MushafArabicTextWeight,
+  RewayahId,
+} from '@/store/mushafSettingsStore';
 import {useTajweedStore} from '@/store/tajweedStore';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
 import {useMushafFontMgr} from '@/hooks/useMushafFontMgr';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import type {SkTypefaceFontProvider} from '@shopify/react-native-skia';
 import type {IndexedTajweedData} from '@/utils/tajweedLoader';
-import {useTimestampStore} from '@/store/timestampStore';
+import {
+  selectVerseTrackingUnavailable, // @ai
+  useTimestampStore,
+} from '@/store/timestampStore';
+import {
+  getRegisteredTimingNumbering, // @ai
+  parseVerseKeyListId, // @ai
+  selectTrackedVerseKeysId, // @ai
+  VERSE_TRACKING_UNAVAILABLE_LABEL, // @ai
+} from '@/utils/timestampNumbering';
 import {
   enhancedVersesBySurah,
   rebuildEnhancedVerses,
@@ -37,6 +55,20 @@ import {getTranslationName} from '@/utils/translationLookup';
 import {useCurrentTrackRewayah} from '@/hooks/useCurrentTrackRewayah';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import branding from '@/config/branding';
+// @ai-start
+import {
+  useRewayahVerseUnits,
+  type RewayahVerseUnitsStatus,
+} from '@/hooks/useRewayahVerseUnits';
+import {getShortLabel} from '@/services/rewayah/RewayahIdentity';
+import {
+  buildVerseUnitRows,
+  isVerseUnitRow,
+  playbackBandKeysId,
+  rowIndexForHafsReference,
+  type VerseUnitRow,
+} from './verseUnitRows';
+// @ai-end
 
 const surahData = require('@/data/surahData.json') as Surah[];
 
@@ -72,6 +104,8 @@ interface QuranListHeaderProps {
   arabicTextWeight: MushafArabicTextWeight;
   showAllahNameHighlight: boolean;
   allahNameHighlightColor: string;
+  /** Rewayah of the verses below (the playing track's rewayah). */
+  rewayah: RewayahId;
 }
 
 const QuranListHeader = React.memo<QuranListHeaderProps>(
@@ -88,6 +122,7 @@ const QuranListHeader = React.memo<QuranListHeaderProps>(
     arabicTextWeight,
     showAllahNameHighlight,
     allahNameHighlightColor,
+    rewayah,
   }) => (
     <>
       <SurahDivider
@@ -107,11 +142,72 @@ const QuranListHeader = React.memo<QuranListHeaderProps>(
         arabicTextWeight={arabicTextWeight}
         showAllahNameHighlight={showAllahNameHighlight}
         allahNameHighlightColor={allahNameHighlightColor}
+        rewayah={rewayah}
+        surahNumber={surahNumber} // @ai
       />
     </>
   ),
 );
 QuranListHeader.displayName = 'QuranListHeader';
+
+// @ai-start
+/**
+ * In place of the verse list while a non-Hafs track's verse units are not
+ * ready: a spinner while its words load or its units are built, else a
+ * short message, with Try Again when the load or the build failed. Never
+ * the Hafs verse rows meanwhile: they would show Hafs numbers under the
+ * rewayah's name.
+ */
+function VerseUnitsPendingView({
+  status,
+  rewayah,
+  color,
+  textColor,
+  onRetry,
+}: {
+  status: RewayahVerseUnitsStatus;
+  rewayah: RewayahId;
+  color: string;
+  textColor: string;
+  onRetry: () => void;
+}) {
+  const label = getShortLabel(rewayah);
+  return (
+    <View style={styles.pending} testID="verse-units-pending">
+      {status === 'loading' ? (
+        <ActivityIndicator
+          size="small"
+          color={color}
+          accessibilityLabel={`Loading the ${label} verses`}
+        />
+      ) : (
+        <>
+          <Text style={[styles.pendingText, {color}]}>
+            {`Couldn't load the ${label} verses.`}
+          </Text>
+          {status === 'error' && (
+            <Pressable
+              onPress={onRetry}
+              accessibilityRole="button"
+              accessibilityLabel={`Try loading the ${label} verses again`}
+              hitSlop={8}
+              testID="verse-units-retry"
+              style={({pressed}) => [
+                styles.retryButton,
+                {backgroundColor: Color(textColor).alpha(0.08).toString()},
+                pressed && styles.retryButtonPressed,
+              ]}>
+              <Text style={[styles.retryButtonText, {color: textColor}]}>
+                Try Again
+              </Text>
+            </Pressable>
+          )}
+        </>
+      )}
+    </View>
+  );
+}
+// @ai-end
 
 interface QuranViewProps {
   currentSurah: number;
@@ -171,10 +267,62 @@ export const QuranView: React.FC<QuranViewProps> = ({
   }
   const trackRewayah = useCurrentTrackRewayah();
   const surah = surahData.find(s => s.id === currentSurah);
+  // @ai-start
+  // Decision 3 (Release 1): a non-Hafs track lists its rewayah's OWN verses
+  // (verse units, in the rewayah's numbering: Warsh 1:6 is the first part of
+  // Hafs 1:7, Warsh 2:1 holds Hafs 2:1 and 2:2), never Hafs verses under the
+  // rewayah's name. A Hafs track keeps its Hafs verse rows exactly as before
+  // and never loads verse units.
+  const unitsRewayah = trackRewayah === 'hafs' ? null : trackRewayah;
+  const {
+    units: verseUnits,
+    status: verseUnitsStatus,
+    retry: retryVerseUnits,
+  } = useRewayahVerseUnits(unitsRewayah);
+  // @ai-end
 
-  // Ayah timestamp tracking
+  // Ayah timestamp tracking. currentVerseKey (the first Hafs verse being
+  // recited) drives scrolling; every Hafs verse the reciter is reciting is
+  // highlighted (a reciter verse can cover several Hafs verses).
   const currentVerseKey = useTimestampStore(s => s.currentAyah?.verseKey);
+  // @ai-start
+  const trackedVerseKeysId = useTimestampStore(selectTrackedVerseKeysId);
+  const trackedVerseKeys = useMemo(
+    () => parseVerseKeyListId(trackedVerseKeysId),
+    [trackedVerseKeysId],
+  );
+  // @ai-end
+  // @ai-start
+  // The band of a non-Hafs track, as its verse keys (contract 4.2): exactly
+  // the reciter's own verse when the timing set is numbered in this rewayah
+  // (Warsh entry 6 lights Warsh 1:6, not the rest of Hafs 1:7), else every
+  // verse holding a Hafs verse the entry recites. Empty for a Hafs track.
+  const bandKeysId = useTimestampStore(
+    useCallback(
+      s =>
+        verseUnits && unitsRewayah
+          ? playbackBandKeysId(
+              verseUnits,
+              s.currentAyah,
+              s.currentSurahTimestamps
+                ? getRegisteredTimingNumbering(s.currentSurahTimestamps)
+                : undefined,
+            )
+          : '',
+      [verseUnits, unitsRewayah],
+    ),
+  );
+  const bandKeys = useMemo(() => parseVerseKeyListId(bandKeysId), [bandKeysId]);
+  // @ai-end
   const isLocked = useTimestampStore(s => s.isLocked);
+  // @ai-start
+  // Follow-along is on, but this surah's verses cannot be followed (no
+  // timing, a failed load, or an unknown verse numbering): say so, as the
+  // mushaf player does, instead of silently highlighting nothing.
+  const verseTrackingUnavailable = useTimestampStore(
+    selectVerseTrackingUnavailable,
+  );
+  // @ai-end
   const setIsLocked = useTimestampStore(s => s.setIsLocked);
 
   // Granular mushaf settings selectors (avoid full-store subscription)
@@ -206,7 +354,7 @@ export const QuranView: React.FC<QuranViewProps> = ({
   );
 
   // Counter to force re-render when enhanced verses are rebuilt (async)
-  const [, setRebuildCounter] = useState(0);
+  const [rebuildCounter, setRebuildCounter] = useState(0); // @ai
 
   // Measured ListHeaderComponent height (SurahDivider + BasmalaHeader). Used
   // as a negative `viewOffset` on imperative scrollToIndex calls so the
@@ -224,19 +372,26 @@ export const QuranView: React.FC<QuranViewProps> = ({
     headerHeightRef.current = e.nativeEvent.layout.height;
   }, []);
 
-  // DK Skia rendering: derive font family and fontMgr from mushafRenderer
+  // DK Skia rendering: derive font family and fontMgr from mushafRenderer.
+  // A rewayah track has no QPC (Hafs) text to fall back on, so it always
+  // renders from its DK words DB, also under the Hafs-only QCF renderer,
+  // instead of showing Hafs text for a Warsh/Qalun/... recitation.
   const isDK =
     (mushafRenderer === 'dk_v1' ||
       mushafRenderer === 'dk_v2' ||
-      mushafRenderer === 'dk_indopak') &&
+      mushafRenderer === 'dk_indopak' ||
+      trackRewayah !== 'hafs') &&
     mushafPreloadService.initialized &&
     digitalKhattDataService.initialized;
-  const dkFontFamily =
-    mushafRenderer === 'dk_indopak'
-      ? 'DigitalKhattIndoPak'
-      : mushafRenderer === 'dk_v1'
-        ? 'DigitalKhattV1'
-        : 'DigitalKhattV2';
+  // @ai-start
+  // The font follows the text it draws, like the mushaf settings gating: a
+  // rewayah track's text is drawn with a DigitalKhatt font that has its
+  // marks, never IndoPak (Hafs only) or the QCF glyphs. Hafs tracks keep the
+  // reader's font. The word-by-word grid always shows Hafs words, so it
+  // keeps the reader's font too.
+  const dkFontFamily = getDkFontFamily(mushafRenderer, trackRewayah);
+  const wbwFontFamily = getDkFontFamily(mushafRenderer, 'hafs');
+  // @ai-end
   const subscribedFontMgr = useMushafFontMgr();
   const fontMgr = isDK ? subscribedFontMgr : null;
 
@@ -268,6 +423,31 @@ export const QuranView: React.FC<QuranViewProps> = ({
     [currentSurah],
   );
 
+  // @ai-start
+  // Rows of a non-Hafs track: one per verse of the rewayah (plus the
+  // unnumbered Fatiha basmala of the Madani / Basri counts), its text exactly
+  // its own slots, with the translation of every Hafs verse it holds (the
+  // rebuilt translation included). Null for a Hafs track; [] until the units
+  // are ready.
+  const unitRows = useMemo<VerseUnitRow[] | null>(() => {
+    if (!unitsRewayah) return null;
+    if (!verseUnits || verseUnits.rewayah !== unitsRewayah) return [];
+    const hafsVerses = new Map(
+      (enhancedVersesBySurah[currentSurah] ?? []).map(v => [v.verse_key, v]),
+    );
+    return buildVerseUnitRows(verseUnits, currentSurah, hafsKey =>
+      hafsVerses.get(hafsKey),
+    );
+    // rebuildCounter: the enhanced verses were rebuilt with a new translation
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [unitsRewayah, verseUnits, currentSurah, rebuildCounter]);
+  // What the list shows: the rewayah's verse rows, or the Hafs verses.
+  const listData: EnhancedVerse[] = unitRows ?? verses;
+  // The row the list follows: the tracked Hafs verse, or the first verse of
+  // a non-Hafs track's band.
+  const activeRowKey = unitRows ? bandKeys[0] : currentVerseKey;
+  // @ai-end
+
   // RFC-013 — fork-supplied initial anchor. Granular selectors so QuranView
   // doesn't re-render on every player tick. The hook is consulted on
   // currentSurah change; `undefined` (no hook OR hook returns undefined OR
@@ -280,9 +460,18 @@ export const QuranView: React.FC<QuranViewProps> = ({
     if (!currentTrack || !branding.initialPlayerVerseKey) return undefined;
     const verseKey = branding.initialPlayerVerseKey(currentTrack);
     if (!verseKey) return undefined;
+    // @ai-start
+    // The hook names a Hafs verse: a non-Hafs track lands on the rewayah
+    // verse holding its start (as stored Hafs references resolve).
+    if (unitRows) {
+      return verseUnits
+        ? rowIndexForHafsReference(unitRows, verseUnits, verseKey)
+        : undefined;
+    }
+    // @ai-end
     const idx = verses.findIndex(v => v.verse_key === verseKey);
     return idx >= 0 ? idx : undefined;
-  }, [currentTrack, verses]);
+  }, [currentTrack, verses, unitRows, verseUnits]); // @ai
 
   // Reset scroll position when currentSurah changes. When the fork's
   // `initialPlayerVerseKey` resolves to an index, defer scrollToIndex two
@@ -309,6 +498,9 @@ export const QuranView: React.FC<QuranViewProps> = ({
   // ref-based guard like `if (lastFiredForSurahRef.current === currentSurah
   // && lastFiredForIndexRef.current === initialScrollIndex) return;`
   // before the imperative scroll. Out of scope for RFC-013 v1.
+  // @ai — hasRows: a non-Hafs track's list first mounts when its verse
+  // units are ready (constant for a Hafs track, so its runs are unchanged).
+  const hasRows = listData.length > 0;
   useEffect(() => {
     if (!listRef.current) return;
     setIsLocked(true);
@@ -330,13 +522,14 @@ export const QuranView: React.FC<QuranViewProps> = ({
     } else {
       listRef.current.scrollToOffset({offset: 0, animated: false});
     }
-  }, [currentSurah, initialScrollIndex, setIsLocked]);
+  }, [currentSurah, initialScrollIndex, setIsLocked, hasRows]); // @ai
 
   // Auto-scroll to active ayah (only when locked)
+  // @ai — the active row (a non-Hafs track: the band's first verse)
   useEffect(() => {
-    if (!currentVerseKey || !isLocked || !listRef.current) return;
+    if (!activeRowKey || !isLocked || !listRef.current) return;
 
-    const index = verses.findIndex(v => v.verse_key === currentVerseKey);
+    const index = listData.findIndex(v => v.verse_key === activeRowKey);
     if (index === -1) return;
 
     try {
@@ -349,7 +542,7 @@ export const QuranView: React.FC<QuranViewProps> = ({
     } catch {
       // Index may be out of range during recycling — ignore
     }
-  }, [currentVerseKey, verses, isLocked]);
+  }, [activeRowKey, listData, isLocked]); // @ai
 
   // Render verse items — annotations handled inside VerseItem via per-key selectors
   const renderItem = useCallback(
@@ -368,14 +561,22 @@ export const QuranView: React.FC<QuranViewProps> = ({
         arabicFontSize={arabicFontSize}
         fontMgr={fontMgr}
         dkFontFamily={dkFontFamily}
+        wbwFontFamily={wbwFontFamily} // @ai
         indexedTajweedData={indexedTajweedData}
-        isActive={isLocked && item.verse_key === currentVerseKey}
+        // @ai — a verse row: the band of the rewayah's own verses
+        isActive={
+          isLocked &&
+          (unitRows
+            ? bandKeys.includes(item.verse_key)
+            : trackedVerseKeys.includes(item.verse_key))
+        }
         translationName={translationName}
         translationId={selectedTranslationId}
         showWBW={showWBW}
         wbwShowTranslation={wbwShowTranslation}
         wbwShowTransliteration={wbwShowTransliteration}
         rewayah={trackRewayah}
+        unitRow={isVerseUnitRow(item) ? item : undefined} // @ai
       />
     ),
     [
@@ -390,8 +591,11 @@ export const QuranView: React.FC<QuranViewProps> = ({
       arabicFontSize,
       fontMgr,
       dkFontFamily,
+      wbwFontFamily, // @ai
       indexedTajweedData,
-      currentVerseKey,
+      trackedVerseKeys, // @ai
+      unitRows, // @ai
+      bandKeys, // @ai
       isLocked,
       translationName,
       selectedTranslationId,
@@ -419,13 +623,28 @@ export const QuranView: React.FC<QuranViewProps> = ({
   if (!surah || !verses.length) {
     return null;
   }
+  // @ai-start
+  if (unitRows && unitRows.length === 0) {
+    return (
+      <View style={styles.container}>
+        <VerseUnitsPendingView
+          status={verseUnitsStatus}
+          rewayah={trackRewayah}
+          color={readingColors.textSecondary}
+          textColor={readingColors.text}
+          onRetry={retryVerseUnits}
+        />
+      </View>
+    );
+  }
+  // @ai-end
 
   return (
     <View style={styles.container}>
       <FlashList
         ref={listRef}
         style={{width: contentWidth, height: '100%'}}
-        data={verses}
+        data={listData} // @ai
         renderItem={renderItem}
         extraData={`${showWBW}-${wbwShowTranslation}-${wbwShowTransliteration}-${showTajweed}-${arabicFontSize}-${arabicTextWeight}-${showTranslation}-${showTransliteration}-${showAllahNameHighlight}-${allahNameHighlightColor}`}
         keyExtractor={keyExtractor}
@@ -445,7 +664,20 @@ export const QuranView: React.FC<QuranViewProps> = ({
               arabicTextWeight={arabicTextWeight}
               showAllahNameHighlight={showAllahNameHighlight}
               allahNameHighlightColor={allahNameHighlightColor}
+              rewayah={trackRewayah}
             />
+            {/* @ai-start */}
+            {verseTrackingUnavailable && (
+              <Text
+                style={[
+                  styles.trackingUnavailable,
+                  {color: readingColors.textSecondary},
+                ]}
+                numberOfLines={1}>
+                {VERSE_TRACKING_UNAVAILABLE_LABEL}
+              </Text>
+            )}
+            {/* @ai-end */}
           </View>
         }
         contentContainerStyle={{
@@ -460,19 +692,19 @@ export const QuranView: React.FC<QuranViewProps> = ({
         overScrollMode="never"
         drawDistance={1500}
         onScrollBeginDrag={() => {
-          if (currentVerseKey) {
+          // @ai — the active row (a non-Hafs track: the band's first verse)
+          if (activeRowKey) {
             setIsLocked(false);
           }
         }}
       />
-      {!isLocked && currentVerseKey && (
+      {!isLocked && activeRowKey /* @ai */ && (
         <Pressable
           style={[styles.recenterButton, {backgroundColor: theme.colors.card}]}
           onPress={() => {
             setIsLocked(true);
-            const index = verses.findIndex(
-              v => v.verse_key === currentVerseKey,
-            );
+            // @ai — the active row (a non-Hafs track: the band's first verse)
+            const index = listData.findIndex(v => v.verse_key === activeRowKey);
             if (index !== -1 && listRef.current) {
               listRef.current.scrollToIndex({
                 index,
@@ -497,6 +729,34 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     alignItems: 'center',
   },
+  // @ai-start
+  pending: {
+    flex: 1,
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: moderateScale(8),
+    paddingHorizontal: moderateScale(24),
+  },
+  pendingText: {
+    fontFamily: 'Manrope-Medium',
+    fontSize: moderateScale(13),
+    textAlign: 'center',
+  },
+  // The verse sheets' Try Again button (SimilarVersesContent, ShareContent).
+  retryButton: {
+    paddingHorizontal: moderateScale(14),
+    paddingVertical: verticalScale(6),
+    borderRadius: moderateScale(8),
+  },
+  retryButtonPressed: {
+    opacity: 0.7,
+  },
+  retryButtonText: {
+    fontSize: moderateScale(13),
+    fontFamily: 'Manrope-SemiBold',
+  },
+  // @ai-end
   recenterButton: {
     position: 'absolute',
     bottom: verticalScale(16),
@@ -512,4 +772,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 4,
   },
+  // @ai-start
+  trackingUnavailable: {
+    fontSize: moderateScale(11),
+    fontFamily: 'Manrope-Medium',
+    textAlign: 'center',
+    marginBottom: moderateScale(8),
+  },
+  // @ai-end
 });
