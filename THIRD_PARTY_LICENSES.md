@@ -48,6 +48,8 @@ Additional licensing:
 
 The word text of the seven non-Hafs rewayah databases (`data/mushaf/digitalkhatt/dk_words_<id>.db`: Warsh, Qalun, al-Bazzi, Qunbul, al-Duri, al-Susi, Shu'bah), the highlight and verse-map files derived from it (`<id>-diff.json`, `<id>-versemap.json`) and the basmala files (`<id>-basmala.json`) come from the official Uthmanic riwayah texts of the **King Fahd Glorious Qur'an Printing Complex** (KFGQPC, https://qurancomplex.gov.sa), version 2.x; the basmala lines come from KFGQPC's signed Word typesetting of each riwayah. The exact files and their checksums are listed in `scripts/rewayah/sources/SOURCES.md` and `scripts/rewayah/sources/sources.lock.json`. The text is used as published; the only changes are the display adaptations listed in `docs/features/rewayat.md`, needed because the Digital Khatt font cannot draw some riwayah marks. The word rows and page layout these texts are placed into come from Digital Khatt (above).
 
+**Licence status.** KFGQPC offers these packages to developers on its developer page (https://qurancomplex.gov.sa/en/techquran/dev/). No licence or terms of use for the text was found in the packages. The end-user licence embedded in their riwayah fonts covers only those fonts, and Bayaan does not ship them. No written permission from KFGQPC for these texts is recorded in this repository yet. Until one is, this section records where the text comes from, not a licence grant. Details are in `scripts/rewayah/sources/SOURCES.md` (Licence status).
+
 ## Adhkar content & audio
 
 The Arabic adhkar text, English translations, and accompanying MP3 recitations

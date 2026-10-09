@@ -33,6 +33,20 @@ for the qc2 packages).
 
 The member path inside each zip is listed in `sources.lock.json`.
 
+## Licence status
+
+KFGQPC offers these packages to developers on the developer page above. No
+licence or terms of use for the text was found in them. None of the eight zips
+holds a licence file, and the `data/read.me` of each lists only the version
+history and the columns of the data files. The riwayah fonts in the packages
+embed KFGQPC's end-user licence agreement (the font's `name` table, ID 13). It
+covers the font only: it may be used, copied and distributed free of charge,
+but not sold or modified. Bayaan ships none of those fonts.
+
+This repository holds no written permission from KFGQPC for these texts. Until
+one is recorded here and in `THIRD_PARTY_LICENSES.md`, these files record
+where the text comes from, not a licence to use it.
+
 ## Why these packages
 
 - **Bazzi / Qunbul.** The 2022 `UthmanicQunbul_v2-0.zip` package must NOT be
