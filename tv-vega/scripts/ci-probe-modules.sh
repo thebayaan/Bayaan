@@ -36,7 +36,7 @@ make_variant() {
 
 build_variant() {
   local dir=$WORK/$1
-  (cd "$dir" && npm install --no-audit --no-fund >/dev/null 2>&1 && npm run build:release >"$OUT/build-$1.log" 2>&1) ||
+  (cd "$dir" && npm install --legacy-peer-deps --no-audit --no-fund >"$OUT/install-$1.log" 2>&1 && npm run build:release >"$OUT/build-$1.log" 2>&1) ||
     echo "build failed: $1"
 }
 
