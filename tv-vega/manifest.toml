@@ -31,9 +31,6 @@ id = "/com.amazon.kepler.media.control.server@IMediaControlServerComponentAsync"
 id = "com.amazon.network.privilege.net-info"
 
 [[needs.module]]
-id = "/com.amazon.kepler.expo_image_2@IExpoImage_0"
-
-[[needs.module]]
 id = "/com.amazon.kepler.kepler_media_controls_1@IKeplerMediaControls_0"
 
 [[needs.module]]

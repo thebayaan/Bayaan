@@ -18,7 +18,8 @@ const VEGA_PORTS = {
     '@amazon-devices/react-native-async-storage__async-storage',
   '@shopify/flash-list': '@amazon-devices/shopify__flash-list',
   'react-native-svg': '@amazon-devices/react-native-svg',
-  'expo-image': '@amazon-devices/expo-image',
+  // Vega's expo-image port crashes on render; see shims/expo-image.tsx.
+  'expo-image': path.join(__dirname, 'shims', 'expo-image.tsx'),
 };
 
 const KEPLER_RN = '@amazon-devices/react-native-kepler';

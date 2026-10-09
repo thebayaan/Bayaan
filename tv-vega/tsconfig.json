@@ -15,7 +15,7 @@
         "node_modules/@amazon-devices/shopify__flash-list"
       ],
       "react-native-svg": ["node_modules/@amazon-devices/react-native-svg"],
-      "expo-image": ["node_modules/@amazon-devices/expo-image"],
+      "expo-image": ["shims/expo-image.tsx"],
       "react": ["node_modules/@types/react"],
       "@/*": ["../*"],
       "*": ["node_modules/*", "node_modules/@types/*"]
