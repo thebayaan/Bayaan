@@ -13,9 +13,9 @@ appId: com.bayaan.app
       - waitForAnimationToEnd:
           timeout: 10000
 - openLink: 'bayaan://mushaf?page=${PAGE}'
-- runFlow: accept-link.yaml
-- extendedWaitUntil:
-    visible: 'Options'
-    timeout: 90000
+- runFlow:
+    file: accept-link.yaml
+    env:
+      EXPECT: 'Options'
 - waitForAnimationToEnd:
     timeout: 15000
