@@ -1017,8 +1017,9 @@ describe("Shu'bah files numbered like Hafs but not exactly 1..n", () => {
 });
 
 describe('a start while the previous surah still plays', () => {
-  // The verse and repeat sheets set a range and start without stopping: the
-  // surah playing keeps playing until the new one's audio is loaded.
+  // A start without stop() first (the repeat options sheet's path; the verse
+  // sheet and the player options stop first): the surah playing pauses while
+  // the new one loads, and whatever it still reports is not the new start's.
 
   /** Hold back `set`'s timings of `surah`; the returned function sends them. */
   function holdTimings(set: string, surah: number): () => void {
@@ -1050,8 +1051,8 @@ describe('a start while the previous surah still plays', () => {
       currentSurah: 2,
       currentVerseKey: '2:30',
     });
-    // al-Ikhlas played on until al-Baqarah replaced it, as before
-    expect(meanwhile).toEqual({state: 'loading', heard: true});
+    // al-Ikhlas paused while al-Baqarah loaded (@ai)
+    expect(meanwhile).toEqual({state: 'loading', heard: false});
     expect(player()).not.toBe(previous);
     expect(player().playing).toBe(true);
     expect(player().seeks).toEqual([

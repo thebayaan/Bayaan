@@ -1044,6 +1044,12 @@ export const useMushafPlayerStore = create<MushafPlayerStoreState>()(
             _rangePlayCount: 1,
             pendingStartUnit: null, // @ai
           });
+          // @ai-start
+          // The surah playing pauses while the new start loads, as in
+          // playSurahFrom: its follow-along stops with it instead of freezing
+          // on a verse it no longer reports (audioSession drops its updates).
+          mushafAudioService.pause();
+          // @ai-end
 
           try {
             // @ai-start
