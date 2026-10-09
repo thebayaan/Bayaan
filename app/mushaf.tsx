@@ -179,9 +179,14 @@ export default function MushafScreen() {
     };
     // Verse units are built after interactions, never here: right after a
     // rewayah switch (a bookmark saved in another rewayah) they may still
-    // be building. Wait for them, so the anchor selects exactly its verse
-    // rather than every verse holding its Hafs verse.
-    if (anchor && mushafVerseMapService.isShownVerseUnitsPending()) {
+    // be building. Wait for them, so an anchor selects exactly its verse
+    // rather than every verse holding its Hafs verse, and so the 3 s flash
+    // of a Hafs verse starts once the pages can paint it (no verse layer is
+    // painted while the units build) instead of running out unseen.
+    if (
+      (anchor || initialVerseKey) &&
+      mushafVerseMapService.isShownVerseUnitsPending()
+    ) {
       whenShownVerseUnitsResolved().then(() => {
         if (!cancelled) flash();
       });

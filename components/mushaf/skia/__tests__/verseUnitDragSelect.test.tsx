@@ -4,7 +4,8 @@
  * the gesture logic of both SkiaPage and ContinuousMushafView): the unit
  * under the finger is the shown rewayah's own verse, a drag extends over
  * consecutive verse units of the page, and release opens the verse actions
- * with the units' payload. Real Release 1 slots on the real page-1 layout
+ * with the units' payload; while the units are still being built a
+ * long-press says so. Real Release 1 slots on the real page-1 layout
  * (verseUnitPages.ts); the renderer's touch -> character mapping is replaced
  * by a direct (line, char) position.
  */
@@ -40,18 +41,24 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => {
     digitalKhattDataService: createFakeDKService(actual.BASMALLAH_TEXT),
   };
 });
+jest.mock('@/utils/toastUtils', () => ({showToast: jest.fn()}));
 const mockUnitsByRewayah = new Map<string, unknown>();
+// The units service's status while a rewayah has no units ('loading': being
+// built; 'error': refused).
+const mockUnits = {status: 'error'};
 jest.mock('@/services/mushaf/RewayahVerseUnitsService', () => ({
   rewayahVerseUnitsService: jest
     .requireActual('@/services/mushaf/__fixtures__/verseUnitsServiceStub')
     .verseUnitsServiceStub({
       peek: (rewayah: string) => mockUnitsByRewayah.get(rewayah) ?? null,
+      status: () => mockUnits.status,
     }),
 }));
 
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {mushafVerseMapService} from '@/services/mushaf/MushafVerseMapService';
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
+import {showToast} from '@/utils/toastUtils';
 import type {FakeDKService} from '@/services/mushaf/__fixtures__/rewayahOverlayFixture';
 import {
   buildFixtureUnits,
@@ -128,6 +135,8 @@ const selection = () => {
 
 beforeEach(() => {
   mockSheets.length = 0;
+  mockUnits.status = 'error';
+  jest.mocked(showToast).mockClear();
   useMushafVerseSelectionStore.getState().clearSelection();
 });
 
@@ -240,6 +249,40 @@ describe('Warsh page 1', () => {
       {key: '71:24', anchor: '71:23:10', hafsKeys: ['71:23', '71:24']},
       {key: '71:25', anchor: '71:24:4', hafsKeys: ['71:24']},
     ]);
+  });
+
+  it('units still being built: a long-press on the text says so and selects nothing', () => {
+    mockUnitsByRewayah.clear();
+    mockUnits.status = 'loading';
+    mount();
+    // Line 1, character 0: text, but no unit there yet.
+    act(() => handlers!.onDragStart(0, 1));
+    expect(showToast).toHaveBeenCalledTimes(1);
+    expect(showToast).toHaveBeenCalledWith(
+      'Preparing verses',
+      'Try again in a moment.',
+      'none',
+    );
+    expect(selection()).toMatchObject({rewayah: null, keys: []});
+    release();
+    expect(mockSheets).toEqual([]);
+    // Off the text: nothing, as before.
+    act(() => handlers!.onDragStart(-1, 1));
+    expect(showToast).toHaveBeenCalledTimes(1);
+
+    // Built: the press selects the verse, and no toast.
+    show('warsh');
+    press('1:7');
+    expect(selection()).toMatchObject({rewayah: 'warsh', keys: ['1:7']});
+    expect(showToast).toHaveBeenCalledTimes(1);
+  });
+
+  it('units refused: a long-press selects nothing and shows no toast, as before', () => {
+    mockUnitsByRewayah.clear();
+    mount();
+    act(() => handlers!.onDragStart(0, 1));
+    expect(selection()).toMatchObject({rewayah: null, keys: []});
+    expect(showToast).not.toHaveBeenCalled();
   });
 
   it('units and their order follow the text on screen across a rewayah switch', () => {

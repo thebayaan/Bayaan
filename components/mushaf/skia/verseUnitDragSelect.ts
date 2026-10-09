@@ -12,7 +12,10 @@
  *    the pressed unit only (its long-press does not drag);
  *  - releasing opens the verse actions with the units' payload (verse-units
  *    contract 4.1: unit keys + rewayah, Hafs fields with their Hafs
- *    meaning).
+ *    meaning);
+ *  - while the shown text's units are still being built (right after a
+ *    rewayah switch) there is no unit to select: a long-press on the text
+ *    says so (a toast) instead of doing nothing.
  * A renderer supplies only where a touch lands in its line text (its own
  * paragraph metrics); which unit that is, the drag order and the payload
  * are decided here, from MushafVerseMapService's unit segments.
@@ -29,6 +32,7 @@ import {
   useMushafVerseSelectionStore,
   verseActionsPayloadForUnits,
 } from '@/store/mushafVerseSelectionStore';
+import {showToast} from '@/utils/toastUtils';
 
 /** Where a touch lands in a page's line text. */
 export interface LineCharHit {
@@ -92,12 +96,17 @@ export function useVerseUnitDragSelect(
     (x: number, y: number) => {
       const key = unitKeyAt(x, y);
       startKeyRef.current = key;
-      if (!key) return;
+      if (!key) {
+        if (charAt(x, y) && mushafVerseMapService.isShownVerseUnitsPending()) {
+          showToast('Preparing verses', 'Try again in a moment.', 'none');
+        }
+        return;
+      }
       currentKeyRef.current = key;
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       selectUnitKeys([key]);
     },
-    [unitKeyAt, selectUnitKeys],
+    [unitKeyAt, charAt, selectUnitKeys],
   );
 
   // Extends the selection (disabled on Android to avoid gesture conflicts).

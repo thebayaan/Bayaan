@@ -91,6 +91,7 @@ jest.mock('react-native-actions-sheet', () => ({
   },
 }));
 
+jest.mock('@/utils/toastUtils', () => ({showToast: jest.fn()}));
 jest.mock('expo-haptics', () => ({
   impactAsync: () => Promise.resolve(),
   ImpactFeedbackStyle: {Light: 'light', Medium: 'medium', Heavy: 'heavy'},

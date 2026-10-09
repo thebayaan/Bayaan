@@ -6,8 +6,9 @@
  * are built after interactions, never on the screen's mount, so right after
  * the rewayah switch that opening a bookmark makes they may still be
  * building: the screen waits for them instead of flashing every verse
- * holding the anchor's Hafs verse meanwhile. Lives outside app/ because
- * every file there is bundled as a route.
+ * holding the anchor's Hafs verse meanwhile. A flash of a Hafs verse (no
+ * anchor) waits too, as the pages paint no verse layer until they are
+ * built. Lives outside app/ because every file there is bundled as a route.
  */
 import React, {act} from 'react';
 import TestRenderer from 'react-test-renderer';
@@ -175,8 +176,27 @@ it('closed while the units build: never flashes', async () => {
   expect(selection()).toEqual({rewayah: null, keys: []});
 });
 
-it('no anchor: the Hafs verse at once, as before', () => {
+// A Hafs verse (search, a Hafs bookmark, the player) is painted through the
+// same verse layers, which stay empty while the units build: its 3 s start
+// once they are built, not before.
+it('no anchor, units still building: waits, then flashes the Hafs verse for 3 s', async () => {
   mockShown.pending = true;
+  open({page: '1', surah: '1', ayah: '7'});
+  expect(selection()).toEqual({rewayah: null, keys: []});
+  act(() => jest.advanceTimersByTime(5000));
+  expect(selection()).toEqual({rewayah: null, keys: []});
+
+  await act(async () => {
+    mockShown.built?.();
+  });
+  expect(selection()).toEqual({rewayah: 'hafs', keys: ['1:7']});
+  act(() => jest.advanceTimersByTime(2999));
+  expect(selection()).toEqual({rewayah: 'hafs', keys: ['1:7']});
+  act(() => jest.advanceTimersByTime(1));
+  expect(selection()).toEqual({rewayah: null, keys: []});
+});
+
+it('no anchor, units built: the Hafs verse at once, as before', () => {
   open({page: '1', surah: '1', ayah: '7'});
   expect(selection()).toEqual({rewayah: 'hafs', keys: ['1:7']});
 });

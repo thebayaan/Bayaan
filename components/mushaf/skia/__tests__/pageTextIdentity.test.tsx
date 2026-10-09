@@ -320,6 +320,7 @@ jest.mock('react-native-worklets', () => ({
   runOnJS: (fn: unknown) => fn,
 }));
 
+jest.mock('@/utils/toastUtils', () => ({showToast: jest.fn()}));
 jest.mock('expo-haptics', () => ({
   impactAsync: () => undefined,
   ImpactFeedbackStyle: {Light: 'light', Medium: 'medium'},
