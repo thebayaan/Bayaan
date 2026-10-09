@@ -7,11 +7,11 @@ appId: com.bayaan.app
     permissions:
       all: allow
 - extendedWaitUntil:
-    visible: "Skip"
+    visible: 'Skip'
     timeout: 60000
     optional: true
 - tapOn:
-    text: "Skip"
+    text: 'Skip'
     optional: true
 - waitForAnimationToEnd:
     timeout: 5000

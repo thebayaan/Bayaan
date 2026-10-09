@@ -11,4 +11,4 @@ appId: com.bayaan.app
 - takeScreenshot: page1-after-upgrade
 - runFlow: ../../common/bookmarks-list.yaml
 - takeScreenshot: bookmarks-list-after-upgrade
-- assertVisible: "1:6-7, Warsh.*"
+- assertVisible: '1:6-7, Warsh.*'

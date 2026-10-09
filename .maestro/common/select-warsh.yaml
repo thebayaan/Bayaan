@@ -4,16 +4,16 @@
 appId: com.bayaan.app
 ---
 - tapOn:
-    point: "90%,10%"
+    point: '90%,10%'
 - extendedWaitUntil:
-    visible: "Mushaf Settings"
+    visible: 'Mushaf Settings'
     timeout: 20000
 - scrollUntilVisible:
     element:
-      text: "Rewayah: .*"
+      text: 'Rewayah: .*'
     direction: DOWN
     timeout: 60000
-- tapOn: "Rewayah: .*"
+- tapOn: 'Rewayah: .*'
 - scrollUntilVisible:
     element:
       text: "Warsh 'an Nafi'.*"
@@ -26,14 +26,14 @@ appId: com.bayaan.app
     timeout: 10000
 - tapOn: "Warsh 'an Nafi'.*"
 - extendedWaitUntil:
-    visible: "Rewayah: Warsh.*"
+    visible: 'Rewayah: Warsh.*'
     timeout: 20000
 - takeScreenshot: warsh-selected
 # Close the sheet by tapping the dimmed area above it.
 - tapOn:
-    point: "50%,15%"
+    point: '50%,15%'
 - extendedWaitUntil:
-    notVisible: "Mushaf Settings"
+    notVisible: 'Mushaf Settings'
     timeout: 20000
 - waitForAnimationToEnd:
     timeout: 10000

@@ -6,16 +6,16 @@ appId: com.bayaan.app
 - runFlow:
     when:
       visible:
-        id: "BackButton"
+        id: 'BackButton'
     commands:
       - tapOn:
-          id: "BackButton"
+          id: 'BackButton'
       - waitForAnimationToEnd:
           timeout: 10000
-- openLink: "bayaan://mushaf?page=${PAGE}"
+- openLink: 'bayaan://mushaf?page=${PAGE}'
 - runFlow: accept-link.yaml
 - extendedWaitUntil:
-    visible: "Options"
+    visible: 'Options'
     timeout: 90000
 - waitForAnimationToEnd:
     timeout: 15000
