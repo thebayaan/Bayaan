@@ -1,0 +1,27 @@
+# Old build: read in Warsh and bookmark the last verse of Al-Fatiha, which
+# Warsh splits differently from Hafs. Before PR #329 the row is saved under
+# the Hafs key "1:7".
+appId: com.bayaan.app
+---
+- runFlow: ../../common/launch.yaml
+- runFlow:
+    file: ../../common/open-page.yaml
+    env:
+      PAGE: 1
+- runFlow: ../../common/select-warsh.yaml
+- takeScreenshot: page1-warsh
+# The last line of the page: ولا الضالين.
+- longPressOn:
+    point: '50%,69%'
+# The sheet opens when the finger lifts. Its rows are labelled "<icon>, Name".
+- extendedWaitUntil:
+    visible: '(.*, )?Bookmark'
+    timeout: 30000
+- assertVisible: '1:7'
+- takeScreenshot: verse-actions
+- tapOn: '(.*, )?Bookmark'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: page1-bookmarked
+- runFlow: ../../common/bookmarks-list.yaml
+- takeScreenshot: bookmarks-list
