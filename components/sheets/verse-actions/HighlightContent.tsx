@@ -51,18 +51,29 @@ export const HighlightContent: React.FC<HighlightContentProps> = ({
   const {rewayah} = selection;
   const currentColor = useSelectionHighlightColor(selection);
 
-  const handleSelectColor = useCallback(
-    async (color: HighlightColor) => {
-      await setSelectionHighlight(selection, color);
+  // A failed write (it is one transaction: nothing changed) must not strand
+  // the screen open, as the bookmark toggle in VerseActionsSheet.
+  const writeHighlight = useCallback(
+    async (color: HighlightColor | null) => {
+      try {
+        await setSelectionHighlight(selection, color);
+      } catch (error) {
+        console.error('[HighlightContent] Highlight change failed:', error);
+      }
       onDone();
     },
     [selection, onDone],
   );
 
-  const handleRemove = useCallback(async () => {
-    await setSelectionHighlight(selection, null);
-    onDone();
-  }, [selection, onDone]);
+  const handleSelectColor = useCallback(
+    (color: HighlightColor) => writeHighlight(color),
+    [writeHighlight],
+  );
+
+  const handleRemove = useCallback(
+    () => writeHighlight(null),
+    [writeHighlight],
+  );
   // @ai-end
 
   return (

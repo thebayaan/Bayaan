@@ -209,6 +209,29 @@ describe('Highlight screen', () => {
     expect(onDone).toHaveBeenCalled();
   });
 
+  it('a write that fails still closes the screen, colour or remove', async () => {
+    const error = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+    service.applyAnnotationChanges.mockRejectedValueOnce(new Error('disk'));
+    await render(
+      <HighlightContent selection={warshSelection('1:6')} onDone={onDone} />,
+    );
+    await pressNode(swatch('green'));
+    expect(onDone).toHaveBeenCalledTimes(1);
+
+    act(() => renderer?.unmount());
+    setStoredRows([], {'1:7:1': 'green'});
+    service.applyAnnotationChanges.mockRejectedValueOnce(new Error('disk'));
+    await render(
+      <HighlightContent selection={warshSelection('1:6')} onDone={onDone} />,
+    );
+    await pressText('Remove Highlight');
+    expect(onDone).toHaveBeenCalledTimes(2);
+    expect(error).toHaveBeenCalledTimes(2);
+    error.mockRestore();
+  });
+
   it('a colour is written at every selected verse anchor', async () => {
     await render(
       <HighlightContent

@@ -342,7 +342,13 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     // Removing deletes every row that marks a selected verse.
     if (isHighlighted && readySelection) {
       lightHaptics();
-      await setSelectionHighlight(readySelection, null);
+      // A failed write (one transaction: nothing changed) must not strand
+      // the sheet open, as in handleToggleBookmark.
+      try {
+        await setSelectionHighlight(readySelection, null);
+      } catch (error) {
+        console.error('[VerseActionsSheet] Highlight removal failed:', error);
+      }
       hideCurrentSheet();
     } else {
       setActiveScreen('highlight');
