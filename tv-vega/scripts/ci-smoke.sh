@@ -56,7 +56,7 @@ app_running() {
 collect_diagnostics() {
   kill "$LOG_PID" 2>/dev/null || true
   mkdir -p "$OUT_DIR/doctor"
-  vega device doctor -d "$SERIAL" --dir "$OUT_DIR/doctor" -a "${APP_ID%.main}" || echo "doctor failed"
+  vega device doctor -d "$SERIAL" --dir "$OUT_DIR/doctor" --since 15m -a "${APP_ID%.main}" || echo "doctor failed"
 }
 
 "$VDA" -s "$SERIAL" shell "loggingctl log -f" >"$OUT_DIR/logs/device.log" 2>&1 &
