@@ -1,0 +1,107 @@
+schema-version = 1
+
+# Bayaan for Vega OS (Fire TV). The app code is the shared TV app in ../tv-app;
+# this manifest only declares what Vega needs to run and play audio.
+# Audio and media-control entries follow Amazon's vega-audio-sample.
+
+[package]
+title = "Bayaan"
+version = "0.1.0"
+id = "com.bayaan.tvsmoke"
+
+[os.version]
+min = "1.2"
+target = "1.2"
+
+[components]
+[[components.interactive]]
+id = "com.bayaan.tvsmoke.main"
+runtime-module = "/com.amazon.kepler.runtime.react_native_kepler_4@IReactNativeKepler_0"
+launch-type = "singleton"
+categories = ["com.amazon.category.main", "com.amazon.category.kepler.media"]
+
+[needs]
+[[needs.module]]
+id = "/com.amazon.vega.os@IVega_1_2"
+
+[[needs.module]]
+id = "/com.amazon.kepler.media.control.server@IMediaControlServerComponentAsync"
+
+[[needs.privilege]]
+id = "com.amazon.network.privilege.net-info"
+
+[[needs.module]]
+id = "/com.amazon.kepler.expo_image_2@IExpoImage_0"
+
+[[needs.module]]
+id = "/com.amazon.kepler.kepler_media_controls_1@IKeplerMediaControls_0"
+
+[[needs.module]]
+id = "/com.amazon.kepler.keplermediadescriptor_1@IKeplermediadescriptor_1"
+
+[[needs.module]]
+id = "/com.amazon.kepler.keplerscript_4@IKeplerScript_0"
+
+[[needs.module]]
+id = "/com.amazon.kepler.svg_3@ISVG_0"
+
+[[needs.module]]
+id = "/com.amazon.kepler.w3cmedia_2@IW3cmedia_3"
+
+[[needs.module]]
+id = "/com.amazon.kepler.shopify__flash_list_2@IShopify__FlashList_0"
+
+
+
+
+
+
+
+
+[wants]
+[[wants.service]]
+id = "com.amazon.gipc.uuid.*"
+
+[[wants.service]]
+id = "com.amazon.media.server"
+
+[[wants.service]]
+id = "com.amazon.media.playersession.service"
+
+[[wants.service]]
+id = "com.amazon.mediametrics.service"
+
+[[wants.service]]
+id = "com.amazon.audio.stream"
+
+[[wants.service]]
+id = "com.amazon.audio.control"
+
+[[wants.service]]
+id = "com.amazon.audio.system"
+
+[[wants.service]]
+id = "com.amazon.mediabuffer.service"
+
+[[wants.service]]
+id = "com.amazon.mediatransform.service"
+
+[[wants.service]]
+id = "com.amazon.inputd.service"
+
+[[wants.service]]
+id = "com.amazon.network.service"
+
+[offers]
+[[offers.service]]
+id = "com.amazon.gipc.uuid.*"
+
+# Vega Media Controls: lets the remote's transport keys and Alexa drive playback.
+[[extras]]
+key = "interface.provider"
+component-id = "com.bayaan.tvsmoke.main"
+
+[[extras.value.application.interface]]
+interface_name = "com.amazon.kepler.media.IMediaPlaybackServer"
+command_options = ["Play", "Pause", "Previous", "Next", "SkipForward", "SkipBackward"]
+features = ["AdvancedSeek", "VariableSpeed"]
