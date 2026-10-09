@@ -1,5 +1,5 @@
 import React from 'react';
-import {ScrollView, View} from 'react-native';
+import {ScrollView, TVFocusGuideView, View} from 'react-native';
 import {RailHeader} from './RailHeader';
 import {spacing} from '../../theme/spacing';
 import {createScaledStyles} from '../../theme/scale';
@@ -13,12 +13,17 @@ export function Rail({title, children}: Props): React.ReactElement {
   return (
     <View style={styles.section}>
       <RailHeader title={title} />
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.rail}>
-        {children}
-      </ScrollView>
+      {/* autoFocus sends focus entering the row to its first card, or the one
+          last focused, instead of whichever card is geometrically nearest
+          (Android TV's default), so rows behave the same on every platform. */}
+      <TVFocusGuideView autoFocus>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.rail}>
+          {children}
+        </ScrollView>
+      </TVFocusGuideView>
     </View>
   );
 }
