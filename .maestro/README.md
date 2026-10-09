@@ -17,5 +17,18 @@ The app has no testIDs, so flows match visible text. Spots without a label
 screen position, measured on an iPhone 17 Pro.
 
 To iterate on flows without rebuilding, pass `-f builds_from_run=<run id>` to
-reuse an earlier run's builds. Locally: `scripts/ci/run-sim-qa.sh app.zip
-[base.zip]` with builds downloaded from a run.
+reuse an earlier run's builds.
+
+## Running locally
+
+`scripts/qa-local.sh` runs the same flows on a simulator on this Mac:
+
+- `scripts/qa-local.sh <ref> [--upgrade-from <older ref>]` builds Release
+  simulator apps here (no Metro), then runs the flows. Builds are cached by
+  commit under `~/Library/Caches/bayaan-qa-local`, so a second run of the same
+  ref goes straight to the flows.
+- `scripts/qa-local.sh --from-run <run id>` downloads the apps from a CI run
+  that built them, and skips the build.
+
+It needs Xcode, CocoaPods, jq, gh and Maestro. It works around two Xcode 27
+issues (pods targeting iOS < 15, and a Swift 6.3 error in expo-modules-jsi).

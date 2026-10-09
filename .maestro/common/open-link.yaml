@@ -1,0 +1,31 @@
+# Opens ${LINK} and waits for ${EXPECT}. iOS asks "Open in \"Bayaan\"?" before
+# handing a deep link to the app, and hides the app from the accessibility
+# tree while it asks. On slow CI simulators the prompt can show late, and an
+# app that has just launched sometimes drops the link even after "Open". So
+# accept the prompt, and send the link again until ${EXPECT} shows.
+appId: com.bayaan.app
+---
+- repeat:
+    while:
+      notVisible: ${EXPECT}
+    times: 3
+    commands:
+      - openLink: ${LINK}
+      - extendedWaitUntil:
+          visible: 'Open'
+          timeout: 20000
+          optional: true
+      - tapOn:
+          text: 'Open'
+          optional: true
+      - extendedWaitUntil:
+          visible: ${EXPECT}
+          timeout: 45000
+          optional: true
+# A prompt that showed late can still be up over the right screen.
+- tapOn:
+    text: 'Open'
+    optional: true
+- extendedWaitUntil:
+    visible: ${EXPECT}
+    timeout: 30000

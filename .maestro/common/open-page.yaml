@@ -12,10 +12,10 @@ appId: com.bayaan.app
           id: 'BackButton'
       - waitForAnimationToEnd:
           timeout: 10000
-- openLink: 'bayaan://mushaf?page=${PAGE}'
 - runFlow:
-    file: accept-link.yaml
+    file: open-link.yaml
     env:
+      LINK: 'bayaan://mushaf?page=${PAGE}'
       EXPECT: 'Options'
 - waitForAnimationToEnd:
     timeout: 15000

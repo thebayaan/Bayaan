@@ -1,9 +1,9 @@
 appId: com.bayaan.app
 ---
-- openLink: 'bayaan://collection/bookmarks'
 - runFlow:
-    file: accept-link.yaml
+    file: open-link.yaml
     env:
+      LINK: 'bayaan://collection/bookmarks'
       EXPECT: 'Bookmarks'
 - waitForAnimationToEnd:
     timeout: 5000
