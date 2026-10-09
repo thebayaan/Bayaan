@@ -25,7 +25,8 @@ import {useNavigation} from 'expo-router';
 import TabSelector from '@/components/TabSelector';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {useTranslationStore} from '@/store/translationStore';
-import {useTafseerStore} from '@/store/tafseerStore';
+import {browsableTafaseer, useTafseerStore} from '@/store/tafseerStore';
+import {tafseerDownloadFailure} from '@/services/content/contentNotices';
 import {
   getTranslationName,
   isBundledTranslation,
@@ -165,11 +166,14 @@ export default function TranslationsContent() {
   const deleteTafseer = useTafseerStore(s => s.deleteTafseer);
   const setSelectedTafseerId = useTafseerStore(s => s.setSelectedTafseerId);
   const loadTafseerMeta = useTafseerStore(s => s.loadDownloadedMeta);
+  const offeredTafsirIds = useTafseerStore(s => s.offeredTafsirIds);
+  const loadOfferedTafsirs = useTafseerStore(s => s.loadOfferedTafsirs);
 
   useEffect(() => {
     loadDownloadedMeta();
     loadTafseerMeta();
-  }, [loadDownloadedMeta, loadTafseerMeta]);
+    loadOfferedTafsirs();
+  }, [loadDownloadedMeta, loadTafseerMeta, loadOfferedTafsirs]);
 
   useEffect(() => {
     for (const meta of downloadedMeta) {
@@ -267,11 +271,9 @@ export default function TranslationsContent() {
       }
       try {
         await downloadTafseer(editionId);
-      } catch {
-        Alert.alert(
-          'Download Failed',
-          'Unable to download this tafseer. Please check your internet connection and try again.',
-        );
+      } catch (error) {
+        const {title, message} = tafseerDownloadFailure(error);
+        Alert.alert(title, message);
       }
     },
     [downloadTafseer, tafseerDownloadingId],
@@ -415,8 +417,11 @@ export default function TranslationsContent() {
       });
     }
 
-    for (const edition of AVAILABLE_TAFASEER) {
-      if (tafseerDownloadedIds.has(edition.identifier)) continue;
+    for (const edition of browsableTafaseer(
+      AVAILABLE_TAFASEER,
+      tafseerDownloadedIds,
+      offeredTafsirIds,
+    )) {
       allRows.push({
         type: 'row',
         id: edition.identifier,
@@ -470,7 +475,12 @@ export default function TranslationsContent() {
     }
 
     return items;
-  }, [selectedTafseerId, tafseerDownloaded, tafseerDownloadedIds]);
+  }, [
+    selectedTafseerId,
+    tafseerDownloaded,
+    tafseerDownloadedIds,
+    offeredTafsirIds,
+  ]);
 
   const getItemType = useCallback((item: FlatItem) => item.type, []);
 
@@ -716,9 +726,12 @@ export default function TranslationsContent() {
           {isDownloading ? (
             <View style={styles.progressContainer}>
               <ActivityIndicator size="small" color={theme.colors.text} />
-              <Text style={styles.progressText}>
-                {Math.round(tafseerDownloadProgress * 100)}%
-              </Text>
+              {/* Engine downloads report no byte progress: spinner only. */}
+              {tafseerDownloadProgress > 0 && (
+                <Text style={styles.progressText}>
+                  {Math.round(tafseerDownloadProgress * 100)}%
+                </Text>
+              )}
             </View>
           ) : isReady ? (
             <View style={styles.rowActions}>

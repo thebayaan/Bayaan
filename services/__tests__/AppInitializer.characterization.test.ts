@@ -57,7 +57,6 @@ jest.mock('@/services/translation/TranslationDbService', () => ({
 jest.mock('@/services/tafseer/TafseerDbService', () => ({
   tafseerDbService: {
     initialize: mockStep('tafseerDb.initialize'),
-    importBundledIbnKathir: mockStep('tafseerDb.importBundledIbnKathir'),
   },
 }));
 jest.mock('@/store/tafseerStore', () => ({
@@ -219,21 +218,21 @@ describe('AppInitializer startup (characterization, develop behavior)', () => {
     );
   });
 
-  it('runs the Tafseer DB steps in order: open, bundled import, store meta', async () => {
+  // Changed by content-sync Task 8: bundled Ibn Kathir removed (QF terms); tafsir now arrives via Content Sync.
+  it('runs the Tafseer DB steps in order: open, store meta (no bundled import)', async () => {
     await freshInitializer().initialize();
     const open = indexOf('tafseerDb.initialize');
-    const bundled = indexOf('tafseerDb.importBundledIbnKathir');
     const meta = indexOf('tafseerStore.loadDownloadedMeta');
-    expect(open).toBeLessThan(bundled);
-    expect(bundled).toBeLessThan(meta);
+    expect(open).toBeLessThan(meta);
+    expect(mockCalls).not.toContain('tafseerDb.importBundledIbnKathir');
   });
 
+  // Changed by content-sync Task 8: bundled Ibn Kathir removed (QF terms); tafsir now arrives via Content Sync.
   it('runs every content-touching step exactly once', async () => {
     await freshInitializer().initialize();
     for (const step of [
       'translationDb.initialize',
       'tafseerDb.initialize',
-      'tafseerDb.importBundledIbnKathir',
       'tafseerStore.loadDownloadedMeta',
       'annotations.initialize',
       'database.initialize',
@@ -244,12 +243,12 @@ describe('AppInitializer startup (characterization, develop behavior)', () => {
     }
   });
 
+  // Changed by content-sync Task 8: bundled Ibn Kathir removed (QF terms); tafsir now arrives via Content Sync.
   it('completes startup when the Tafseer DB fails to open, skipping its later steps', async () => {
     mockFailing.add('tafseerDb.initialize');
     const initializer = freshInitializer();
     await expect(initializer.initialize()).resolves.toBeUndefined();
     expect(initializer.isInitialized()).toBe(true);
-    expect(mockCalls).not.toContain('tafseerDb.importBundledIbnKathir');
     expect(mockCalls).not.toContain('tafseerStore.loadDownloadedMeta');
     expect(mockCalls).toContain('translationDb.initialize');
     expect(mockCalls).toContain('annotations.initialize');
@@ -258,14 +257,6 @@ describe('AppInitializer startup (characterization, develop behavior)', () => {
       '[AppInitializer] Non-critical service Tafseer DB failed, continuing...',
       expect.any(Error),
     );
-  });
-
-  it('completes startup when the bundled Ibn Kathir import fails, skipping store meta', async () => {
-    mockFailing.add('tafseerDb.importBundledIbnKathir');
-    const initializer = freshInitializer();
-    await initializer.initialize();
-    expect(initializer.isInitialized()).toBe(true);
-    expect(mockCalls).not.toContain('tafseerStore.loadDownloadedMeta');
   });
 
   it('completes startup when the Translation DB fails to open', async () => {

@@ -22,6 +22,9 @@ export const ANALYTICS_EVENTS = {
   REWAYAH_CHANGED: 'rewayah_changed',
   DOWNLOAD_STARTED: 'download_started',
   DOWNLOAD_COMPLETED: 'download_completed',
+  CONTENT_UPDATE_APPLIED: 'content_update_applied',
+  CONTENT_WITHDRAWN: 'content_withdrawn',
+  CONTENT_UPDATE_FAILED: 'content_update_failed',
   AMBIENT_TOGGLED: 'ambient_toggled',
   FAVORITE_TOGGLED: 'favorite_toggled',
   PLAYLIST_MODIFIED: 'playlist_modified',
@@ -140,6 +143,12 @@ export interface ReciterSelectedProps {
 export interface RewayahChangedProps {
   rewayah_id: string;
   rewayah_name: string;
+}
+
+export interface ContentEventProps {
+  key: string;
+  version: number;
+  reason?: string;
 }
 
 export interface DownloadStartedProps {
