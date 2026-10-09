@@ -84,15 +84,27 @@ jobs:
       - name: Install app
         run: |
           VPKG=$(find build -path '*x86_64/Release/*.vpkg' | head -1)
-          echo "Installing $VPKG"
-          timeout 600 vega device install-app -p "$VPKG"
-          # The device can drop offline for a moment after an install.
           VDA=$(ls ~/vega/sdk/vega-sdk/*/*/bin/tools/vda | head -1)
+          # "Virtual device ready" comes seconds after launch, before the
+          # system finishes booting; an install then reports OK but never
+          # registers. Wait for the app list to settle, then retry the install
+          # until the app shows up.
           timeout 300 "$VDA" wait-for-device
-          for attempt in $(seq 1 10); do
-            vega device installed-apps | grep -i bayaan && exit 0
-            sleep 10
+          sleep 60
+          for attempt in $(seq 1 5); do
+            echo "Install attempt $attempt: $VPKG"
+            timeout 600 vega device install-app -p "$VPKG" || true
+            timeout 300 "$VDA" wait-for-device
+            for check in $(seq 1 6); do
+              if vega device installed-apps | grep -q "$APP_ID"; then
+                echo "$APP_ID installed"
+                exit 0
+              fi
+              sleep 10
+            done
           done
+          echo "$APP_ID never appeared in installed-apps"
+          vega device installed-apps || true
           exit 1
 
       - name: Smoke test
