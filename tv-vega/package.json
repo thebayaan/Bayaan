@@ -20,8 +20,8 @@
   "dependencies": {
     "@amazon-devices/expo-image": "~2.0.9000000000+1.6.0",
     "@amazon-devices/kepler-media-controls": "~1.0.25",
+    "@amazon-devices/react-native-async-storage__async-storage": "^2.1.9000000000-rn-83",
     "@amazon-devices/react-native-kepler": "~4.0.0",
-    "@amazon-devices/react-native-mmkv": "^1.0.11-rn-83",
     "@amazon-devices/react-native-svg": "~3.0.9000000000+15.11.1",
     "@amazon-devices/react-native-w3cmedia": "~2.3.2",
     "@amazon-devices/shopify__flash-list": "~2.0.9000000000+1.6.3",

@@ -8,7 +8,9 @@
     "baseUrl": ".",
     "paths": {
       "react-native": ["node_modules/@amazon-devices/react-native-kepler"],
-      "react-native-mmkv": ["node_modules/@amazon-devices/react-native-mmkv"],
+      "@react-native-async-storage/async-storage": [
+        "node_modules/@amazon-devices/react-native-async-storage__async-storage"
+      ],
       "@shopify/flash-list": [
         "node_modules/@amazon-devices/shopify__flash-list"
       ],
@@ -19,6 +21,11 @@
       "*": ["node_modules/*", "node_modules/@types/*"]
     }
   },
-  "include": ["env.d.ts", "../tv-app/App.tsx", "../tv-app/**/*.kepler.ts", "../tv-app/**/*.kepler.tsx"],
+  "include": [
+    "env.d.ts",
+    "../tv-app/App.tsx",
+    "../tv-app/**/*.kepler.ts",
+    "../tv-app/**/*.kepler.tsx"
+  ],
   "exclude": ["../tv-app/node_modules"]
 }

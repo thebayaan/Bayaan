@@ -14,7 +14,8 @@ const tvAppRoot = path.join(repoRoot, 'tv-app');
 
 // Shared code imports upstream package names; on Vega they map to Amazon's ports.
 const VEGA_PORTS = {
-  'react-native-mmkv': '@amazon-devices/react-native-mmkv',
+  '@react-native-async-storage/async-storage':
+    '@amazon-devices/react-native-async-storage__async-storage',
   '@shopify/flash-list': '@amazon-devices/shopify__flash-list',
   'react-native-svg': '@amazon-devices/react-native-svg',
   'expo-image': '@amazon-devices/expo-image',
