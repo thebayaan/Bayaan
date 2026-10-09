@@ -275,6 +275,20 @@ class VerseAnnotationDatabaseService {
     return this.db;
   }
 
+  // @ai-start
+  // Tail of the writes. withTransactionAsync is not exclusive: a statement
+  // run on the connection while applyAnnotationChanges has its transaction
+  // open joins that transaction (and its ROLLBACK undoes it), and a second
+  // BEGIN fails. Every write therefore starts once the one before it is done.
+  private writeQueue: Promise<unknown> = Promise.resolve();
+
+  private serializeWrite<T>(write: () => Promise<T>): Promise<T> {
+    const result = this.writeQueue.then(write, write);
+    this.writeQueue = result.catch(() => undefined);
+    return result;
+  }
+  // @ai-end
+
   private async createTables(): Promise<void> {
     if (!this.db) throw new Error('Database not initialized');
 
@@ -394,29 +408,34 @@ class VerseAnnotationDatabaseService {
       rewayahId: rewayahId as VerseBookmark['rewayahId'],
     };
 
+    // @ai-start
     // OR IGNORE: `verse_key` is UNIQUE, so a plain INSERT of an
     // already-bookmarked verse raises SQLITE_CONSTRAINT and rejects. That is
     // reachable whenever the caller's `isBookmarked` is stale, and the
     // rejection used to abort the toggle handler mid-way (leaving the sheet
-    // open). Bookmarking is idempotent by intent — swallow the duplicate. @ai
-    await db.runAsync(
-      INSERT_BOOKMARK_SQL, // @ai
-      [
+    // open). Bookmarking is idempotent by intent — swallow the duplicate.
+    await this.serializeWrite(() =>
+      db.runAsync(INSERT_BOOKMARK_SQL, [
         bookmark.id,
         bookmark.verseKey,
         bookmark.surahNumber,
         bookmark.ayahNumber,
         bookmark.createdAt,
         bookmark.rewayahId ?? null,
-      ],
+      ]),
     );
+    // @ai-end
 
     return bookmark;
   }
 
   async removeBookmark(verseKey: string): Promise<void> {
     const db = await this.ensureReady();
-    await db.runAsync(`DELETE FROM bookmarks WHERE verse_key = ?`, [verseKey]);
+    // @ai-start
+    await this.serializeWrite(() =>
+      db.runAsync(`DELETE FROM bookmarks WHERE verse_key = ?`, [verseKey]),
+    );
+    // @ai-end
   }
 
   async getBookmarksBySurah(surahNumber: number): Promise<VerseBookmark[]> {
@@ -460,21 +479,25 @@ class VerseAnnotationDatabaseService {
     const id = generateId();
     const verseKeysStr = verseKeys?.length ? verseKeys.join(',') : null;
 
-    await db.runAsync(
-      `INSERT INTO notes (id, verse_key, surah_number, ayah_number, content, verse_keys, created_at, updated_at, rewayah_id)
+    // @ai-start
+    await this.serializeWrite(() =>
+      db.runAsync(
+        `INSERT INTO notes (id, verse_key, surah_number, ayah_number, content, verse_keys, created_at, updated_at, rewayah_id)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        id,
-        verseKey,
-        surahNumber,
-        ayahNumber,
-        content,
-        verseKeysStr,
-        now,
-        now,
-        rewayahId ?? null,
-      ],
+        [
+          id,
+          verseKey,
+          surahNumber,
+          ayahNumber,
+          content,
+          verseKeysStr,
+          now,
+          now,
+          rewayahId ?? null,
+        ],
+      ),
     );
+    // @ai-end
 
     return {
       id,
@@ -491,10 +514,15 @@ class VerseAnnotationDatabaseService {
 
   async updateNote(noteId: string, content: string): Promise<void> {
     const db = await this.ensureReady();
-    await db.runAsync(
-      `UPDATE notes SET content = ?, updated_at = ? WHERE id = ?`,
-      [content, Date.now(), noteId],
+    // @ai-start
+    await this.serializeWrite(() =>
+      db.runAsync(`UPDATE notes SET content = ?, updated_at = ? WHERE id = ?`, [
+        content,
+        Date.now(),
+        noteId,
+      ]),
     );
+    // @ai-end
   }
 
   async getNoteById(noteId: string): Promise<VerseNote | null> {
@@ -516,7 +544,11 @@ class VerseAnnotationDatabaseService {
 
   async deleteNoteById(noteId: string): Promise<void> {
     const db = await this.ensureReady();
-    await db.runAsync(`DELETE FROM notes WHERE id = ?`, [noteId]);
+    // @ai-start
+    await this.serializeWrite(() =>
+      db.runAsync(`DELETE FROM notes WHERE id = ?`, [noteId]),
+    );
+    // @ai-end
   }
 
   async getNotesCountForVerse(verseKey: string): Promise<number> {
@@ -558,10 +590,19 @@ class VerseAnnotationDatabaseService {
     const now = Date.now();
     const id = generateId();
 
-    await db.runAsync(
-      UPSERT_HIGHLIGHT_SQL, // @ai
-      [id, verseKey, surahNumber, ayahNumber, color, now, rewayahId ?? null],
+    // @ai-start
+    await this.serializeWrite(() =>
+      db.runAsync(UPSERT_HIGHLIGHT_SQL, [
+        id,
+        verseKey,
+        surahNumber,
+        ayahNumber,
+        color,
+        now,
+        rewayahId ?? null,
+      ]),
     );
+    // @ai-end
 
     return {
       id,
@@ -576,22 +617,22 @@ class VerseAnnotationDatabaseService {
 
   async removeHighlight(verseKey: string): Promise<void> {
     const db = await this.ensureReady();
-    await db.runAsync(`DELETE FROM highlights WHERE verse_key = ?`, [verseKey]);
+    // @ai-start
+    await this.serializeWrite(() =>
+      db.runAsync(`DELETE FROM highlights WHERE verse_key = ?`, [verseKey]),
+    );
+    // @ai-end
   }
 
   // @ai-start
-  // Tail of the applyAnnotationChanges calls. withTransactionAsync is not
-  // exclusive: a second BEGIN on the connection while one transaction is
-  // open fails, and its ROLLBACK would undo the first. Calls therefore run
-  // one after the other.
-  private changesQueue: Promise<unknown> = Promise.resolve();
-
   /**
    * Applies the bookmark and highlight writes of one change in ONE
    * transaction: every write, or, when any of them fails, none (the error is
    * thrown and the rows stay as they were). Deletes run first, then inserts
    * and upserts, written exactly as addBookmark / upsertHighlight write
-   * them. Rows the change does not name are not touched.
+   * them. Rows the change does not name are not touched. Like every write
+   * here it runs after the writes issued before it and before those issued
+   * while it is open (serializeWrite), so none of them joins its transaction.
    */
   async applyAnnotationChanges(changes: AnnotationRowChanges): Promise<void> {
     const db = await this.ensureReady();
@@ -642,9 +683,7 @@ class VerseAnnotationDatabaseService {
           ]);
         }
       });
-    const result = this.changesQueue.then(apply, apply);
-    this.changesQueue = result.catch(() => undefined);
-    return result;
+    return this.serializeWrite(apply);
   }
   // @ai-end
 
