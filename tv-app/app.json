@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "tv-smoke",
+    "name": "Bayaan",
     "slug": "tv-smoke",
     "version": "1.0.0",
     "orientation": "landscape",
@@ -19,7 +19,8 @@
         {
           "isTV": true,
           "tvosDeploymentTarget": "17.0",
-          "removeFlipperOnAndroid": true
+          "removeFlipperOnAndroid": true,
+          "androidTVBanner": "./assets/tv/android-tv-banner.png"
         }
       ],
       [
