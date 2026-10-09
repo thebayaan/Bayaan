@@ -1,0 +1,268 @@
+name: Simulator builds
+
+# Builds an iOS simulator app (and optionally an Android APK) for any ref and
+# runs the Maestro flows in .maestro/ against it on a CI simulator, so device
+# QA doesn't need a local Mac. Screenshots and builds are uploaded as
+# artifacts. See .maestro/README.md.
+#
+# Triggers:
+# - Actions tab / `gh workflow run sim-builds.yml -f ref=<ref>`.
+# - Adding the `sim-qa` label to a PR into develop. The PR is built along with
+#   its base, so the upgrade flows run too. New pushes re-run it while the
+#   label stays on.
+
+on:
+  # TEMP(bootstrap): registers the workflow so it can be dispatched from this
+  # branch before it reaches main. Removed before merge.
+  push:
+    branches: [ci/cloud-sim-builds]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Branch, tag, SHA or refs/pull/N/head to build
+        required: true
+        default: develop
+      upgrade_from:
+        description: Optional older ref. The upgrade flows install it first, then install `ref` over it.
+        required: false
+        default: ''
+      qa:
+        description: Run the Maestro flows
+        type: boolean
+        default: true
+      android:
+        description: Also build an Android release APK
+        type: boolean
+        default: false
+      builds_from_run:
+        description: Reuse the iOS builds from this earlier run ID instead of building (for iterating on flows)
+        required: false
+        default: ''
+  pull_request:
+    types: [labeled, synchronize, reopened]
+    branches: [develop]
+
+concurrency:
+  group: sim-builds-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  plan:
+    name: Plan
+    if: >-
+      github.event_name == 'workflow_dispatch' || github.event_name == 'push' ||
+      (contains(github.event.pull_request.labels.*.name, 'sim-qa') &&
+      (github.event.action != 'labeled' || github.event.label.name == 'sim-qa'))
+    runs-on: ubuntu-latest
+    outputs:
+      builds: ${{ steps.plan.outputs.builds }}
+      build_ios: ${{ steps.plan.outputs.build_ios }}
+      upgrade: ${{ steps.plan.outputs.upgrade }}
+      qa: ${{ steps.plan.outputs.qa }}
+      android: ${{ steps.plan.outputs.android }}
+      ref: ${{ steps.plan.outputs.ref }}
+    steps:
+      - id: plan
+        env:
+          EVENT: ${{ github.event_name }}
+          IN_REF: ${{ inputs.ref }}
+          IN_UPGRADE_FROM: ${{ inputs.upgrade_from }}
+          IN_QA: ${{ inputs.qa }}
+          IN_ANDROID: ${{ inputs.android }}
+          IN_BUILDS_FROM_RUN: ${{ inputs.builds_from_run }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ "$EVENT" = push ]; then
+            # TEMP(bootstrap): PR #329 upgraded from develop.
+            IN_REF=refs/pull/329/head; IN_UPGRADE_FROM=develop; IN_QA=false; IN_ANDROID=false; IN_BUILDS_FROM_RUN=
+          fi
+          if [ "$EVENT" = pull_request ]; then
+            ref=$PR_HEAD; from=$PR_BASE; qa=true; android=false; reuse=
+          else
+            ref=$IN_REF; from=$IN_UPGRADE_FROM; qa=$IN_QA; android=$IN_ANDROID; reuse=$IN_BUILDS_FROM_RUN
+          fi
+          builds=$(jq -cn --arg ref "$ref" --arg from "$from" \
+            '[{name: "app", ref: $ref}] + (if $from == "" then [] else [{name: "base", ref: $from}] end)')
+          {
+            echo "builds=$builds"
+            echo "build_ios=$([ -z "$reuse" ] && echo true || echo false)"
+            echo "upgrade=$([ -n "$from" ] && echo true || echo false)"
+            echo "qa=$qa"
+            echo "android=$android"
+            echo "ref=$ref"
+          } >> "$GITHUB_OUTPUT"
+          echo "Building $builds (reuse run: ${reuse:-none})"
+
+  ios:
+    name: iOS simulator build (${{ matrix.name }})
+    needs: plan
+    if: needs.plan.outputs.build_ios == 'true'
+    runs-on: macos-26
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.builds) }}
+    env:
+      EXPO_PUBLIC_ANALYTICS_ENABLED: 'false'
+      SENTRY_DISABLE_AUTO_UPLOAD: 'true'
+    steps:
+      - name: Checkout ${{ matrix.ref }}
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.ref }}
+          # generate-version.js derives the build number from git history.
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Cache Pods
+        uses: actions/cache@v4
+        with:
+          path: ios/Pods
+          key: pods-${{ runner.os }}-${{ hashFiles('ios/Podfile.lock', 'package-lock.json') }}
+
+      - name: Pod install
+        working-directory: ios
+        run: |
+          xcodebuild -version
+          pod install
+
+      - name: Build
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -workspace ios/Bayaan.xcworkspace \
+            -scheme Bayaan \
+            -configuration Release \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build \
+            ARCHS=arm64 ONLY_ACTIVE_ARCH=YES \
+            CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM= PROVISIONING_PROFILE_SPECIFIER= \
+            COMPILER_INDEX_STORE_ENABLE=NO \
+            build 2>&1 | tee build.log | grep -E '(error|warning: .*Bundle|BUILD (SUCCEEDED|FAILED))' || true
+          test -d build/Build/Products/Release-iphonesimulator/Bayaan.app
+          ditto -c -k --keepParent build/Build/Products/Release-iphonesimulator/Bayaan.app Bayaan-ios-sim.zip
+
+      - name: Upload app
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-sim-${{ matrix.name }}
+          path: Bayaan-ios-sim.zip
+          retention-days: 14
+
+      - name: Upload build log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-build-log-${{ matrix.name }}
+          path: build.log
+          retention-days: 7
+
+  qa:
+    name: Maestro QA (iOS simulator)
+    needs: [plan, ios]
+    if: >-
+      always() && needs.plan.result == 'success' && needs.plan.outputs.qa == 'true' &&
+      (needs.ios.result == 'success' || needs.ios.result == 'skipped')
+    runs-on: macos-26
+    timeout-minutes: 60
+    steps:
+      # Flows and the runner script come from the workflow's own commit, so
+      # they can test refs that predate them.
+      - name: Checkout flows
+        uses: actions/checkout@v4
+
+      - name: Download builds
+        uses: actions/download-artifact@v4
+        with:
+          pattern: ios-sim-*
+          path: builds
+          run-id: ${{ inputs.builds_from_run || github.run_id }}
+          github-token: ${{ github.token }}
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Install Maestro
+        run: |
+          curl -fsSL https://get.maestro.mobile.dev | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+
+      - name: Run flows
+        env:
+          QA_OUT: ${{ github.workspace }}/qa-output
+        run: |
+          base=
+          if [ "${{ needs.plan.outputs.upgrade }}" = true ]; then
+            base=builds/ios-sim-base/Bayaan-ios-sim.zip
+          fi
+          scripts/ci/run-sim-qa.sh builds/ios-sim-app/Bayaan-ios-sim.zip $base
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-output
+          path: qa-output
+          retention-days: 14
+
+  android:
+    name: Android APK
+    needs: plan
+    if: needs.plan.outputs.android == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      EXPO_PUBLIC_ANALYTICS_ENABLED: 'false'
+      SENTRY_DISABLE_AUTO_UPLOAD: 'true'
+    steps:
+      - name: Checkout ${{ needs.plan.outputs.ref }}
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.plan.outputs.ref }}
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Build APK
+        working-directory: android
+        # Release signing falls back to the debug keystore without the upload
+        # key, which is fine for a test install.
+        run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a,x86_64
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: android/app/build/outputs/apk/release/*.apk
+          retention-days: 14
