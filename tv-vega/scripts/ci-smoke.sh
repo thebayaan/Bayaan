@@ -11,6 +11,7 @@ OUT_DIR=${1:?usage: ci-smoke.sh <out-dir>}
 mkdir -p "$OUT_DIR/screens" "$OUT_DIR/logs"
 
 VDA=$(ls ~/vega/sdk/vega-sdk/*/*/bin/tools/vda | head -1)
+timeout 300 "$VDA" wait-for-device
 SERIAL=$("$VDA" devices | awk '/^emulator-/ && $2 == "device" { print $1; exit }')
 if [[ -z "$SERIAL" ]]; then
   echo "No running Vega Virtual Device found"

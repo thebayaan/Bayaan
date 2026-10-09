@@ -86,7 +86,14 @@ jobs:
           VPKG=$(find build -path '*x86_64/Release/*.vpkg' | head -1)
           echo "Installing $VPKG"
           timeout 600 vega device install-app -p "$VPKG"
-          vega device installed-apps | grep -i bayaan
+          # The device can drop offline for a moment after an install.
+          VDA=$(ls ~/vega/sdk/vega-sdk/*/*/bin/tools/vda | head -1)
+          timeout 300 "$VDA" wait-for-device
+          for attempt in $(seq 1 10); do
+            vega device installed-apps | grep -i bayaan && exit 0
+            sleep 10
+          done
+          exit 1
 
       - name: Smoke test
         run: bash scripts/ci-smoke.sh "$RUNNER_TEMP/vega-smoke"
