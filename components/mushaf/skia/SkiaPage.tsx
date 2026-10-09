@@ -52,6 +52,7 @@ import {
   CONTENT_HEIGHT as DEFAULT_CONTENT_HEIGHT,
   BASE_LINE_HEIGHT as DEFAULT_BASE_LINE_HEIGHT,
   calculateLineYPositions,
+  canvasBottomOverflow, // @ai
 } from '../constants';
 
 interface ParagraphInfo {
@@ -768,7 +769,8 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
       <Canvas
         style={{
           width: CONTENT_WIDTH,
-          height: CONTENT_HEIGHT,
+          // Room below the last line for its marks (canvasBottomOverflow). @ai
+          height: CONTENT_HEIGHT + canvasBottomOverflow(fontSize), // @ai
           marginLeft: contentMarginLeft ?? PAGE_PADDING_HORIZONTAL,
           marginTop: PAGE_PADDING_TOP,
         }}>

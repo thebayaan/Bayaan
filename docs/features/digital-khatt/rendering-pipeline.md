@@ -201,6 +201,14 @@ Modes:
     (pages 1-2, and the centred lines 600:10, 602:5, 602:15, 603:10, 604:4,
     604:9, 604:14 and 604:15)
 
+### Vertical room below the last line
+
+A DigitalKhatt line box is taller than the line pitch, so marks under the last
+line of a page (an open tanween, a small low meem) reach past the content
+height. The page canvas (SkiaPage, and each page of ContinuousMushafView)
+extends `canvasBottomOverflow(fontSize)` (one font size) below the content so
+they are not cut. The canvas is transparent and lines keep their positions.
+
 ## Why `maxWidth = pageWidth * 2`
 
 Using a wider paragraph layout box makes RTL alignment behavior predictable in Skia and supports negative x-offset alignment strategy without clipping line geometry.

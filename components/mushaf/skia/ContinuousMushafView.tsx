@@ -55,7 +55,7 @@ import type {IndexedTajweedData} from '@/utils/tajweedLoader';
 import {getAllahNameHighlightColorHex} from '@/constants/mushafAllahHighlight';
 import SkiaLine from './SkiaLine';
 import SkiaSurahHeader from './SkiaSurahHeader';
-import {type MushafLayoutMetrics} from '../constants';
+import {type MushafLayoutMetrics, canvasBottomOverflow} from '../constants'; // @ai
 
 // Rendering constants are now derived from live `metrics` (see
 // `useRenderConstants` below). On phones the old frozen values are
@@ -669,11 +669,18 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
 
     // ── Render ─────────────────────────────────────────────
     const content = (
-      <View style={{width: screenWidth, height: canvasHeight}}>
+      <View
+        style={{
+          width: screenWidth,
+          height: canvasHeight,
+          overflow: 'visible', // @ai
+        }}>
         <Canvas
           style={{
             width: contentWidth,
-            height: canvasHeight,
+            // Runs past the page footprint by canvasBottomOverflow so the
+            // last line's marks are not cut; the scroll layout is unchanged.
+            height: canvasHeight + canvasBottomOverflow(skiaFontSize), // @ai
             marginHorizontal: canvasMarginX,
           }}>
           {pageLines.map((line, lineIndex) => {
