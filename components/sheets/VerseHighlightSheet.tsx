@@ -6,6 +6,7 @@ import {
   verticalScale,
 } from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
+import {useAnnotationSheetScope} from '@/hooks/useAnnotationSheetScope';
 import {Theme} from '@/utils/themeUtils';
 import ActionSheet, {
   SheetProps,
@@ -22,6 +23,8 @@ const COLORS = Object.entries(HIGHLIGHT_COLORS) as [HighlightColor, string][];
 
 export const VerseHighlightSheet = (props: SheetProps<'verse-highlight'>) => {
   const {theme} = useTheme();
+  const {isScopeCurrent, scopeIsCurrent} =
+    useAnnotationSheetScope('verse-highlight');
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const verseKey = props.payload?.verseKey ?? '';
@@ -35,31 +38,39 @@ export const VerseHighlightSheet = (props: SheetProps<'verse-highlight'>) => {
 
   const handleSelectColor = useCallback(
     async (color: HighlightColor) => {
-      const store = useVerseAnnotationsStore.getState();
-      for (const vk of allKeys) {
-        const [s, a] = vk.split(':');
-        await verseAnnotationService.upsertHighlight(
-          vk,
-          parseInt(s, 10),
-          parseInt(a, 10),
-          color,
-          rewayah,
-        );
-        store.setHighlight(vk, color);
-      }
-      SheetManager.hideAll();
+      if (!isScopeCurrent()) return;
+      await verseAnnotationService.runInScope(async operation => {
+        for (const vk of allKeys) {
+          const [s, a] = vk.split(':');
+          await operation.upsertHighlight(
+            vk,
+            parseInt(s, 10),
+            parseInt(a, 10),
+            color,
+            rewayah,
+          );
+          if (operation.isCurrent()) {
+            useVerseAnnotationsStore.getState().setHighlight(vk, color);
+          }
+        }
+        if (operation.isCurrent()) SheetManager.hideAll();
+      });
     },
-    [allKeys, rewayah],
+    [allKeys, rewayah, isScopeCurrent],
   );
 
   const handleRemove = useCallback(async () => {
-    const store = useVerseAnnotationsStore.getState();
-    for (const vk of allKeys) {
-      await verseAnnotationService.removeHighlight(vk);
-      store.removeHighlight(vk);
-    }
-    SheetManager.hideAll();
-  }, [allKeys]);
+    if (!isScopeCurrent()) return;
+    await verseAnnotationService.runInScope(async operation => {
+      for (const vk of allKeys) {
+        await operation.removeHighlight(vk);
+        if (operation.isCurrent()) {
+          useVerseAnnotationsStore.getState().removeHighlight(vk);
+        }
+      }
+      if (operation.isCurrent()) SheetManager.hideAll();
+    });
+  }, [allKeys, isScopeCurrent]);
 
   return (
     <ActionSheet
@@ -67,44 +78,54 @@ export const VerseHighlightSheet = (props: SheetProps<'verse-highlight'>) => {
       containerStyle={styles.sheetContainer}
       indicatorStyle={styles.indicator}
       gestureEnabled={true}>
-      <View style={styles.container}>
-        <Text style={styles.title}>Highlight Color</Text>
+      {scopeIsCurrent && (
+        <View style={styles.container}>
+          <Text style={styles.title}>Highlight Color</Text>
 
-        <View style={styles.ayahContainer}>
-          <SkiaVersePreview
-            verseKey={verseKey}
-            verseKeys={verseKeys}
-            rewayah={rewayah}
-          />
+          <View style={styles.ayahContainer}>
+            <SkiaVersePreview
+              verseKey={verseKey}
+              verseKeys={verseKeys}
+              rewayah={rewayah}
+            />
+          </View>
+
+          <View style={styles.colorsGrid}>
+            {COLORS.map(([name, hex]) => {
+              const isActive = currentColor === name;
+              return (
+                <Pressable
+                  key={name}
+                  style={[
+                    styles.colorCircle,
+                    {backgroundColor: hex},
+                    isActive && styles.colorCircleActive,
+                  ]}
+                  onPress={() => handleSelectColor(name)}>
+                  {isActive ? (
+                    <Feather
+                      name="check"
+                      size={moderateScale(22)}
+                      color="#333"
+                    />
+                  ) : null}
+                </Pressable>
+              );
+            })}
+          </View>
+
+          {currentColor ? (
+            <Pressable style={styles.removeButton} onPress={handleRemove}>
+              <Feather
+                name="x-circle"
+                size={moderateScale(18)}
+                color="#ff4444"
+              />
+              <Text style={styles.removeButtonText}>Remove Highlight</Text>
+            </Pressable>
+          ) : null}
         </View>
-
-        <View style={styles.colorsGrid}>
-          {COLORS.map(([name, hex]) => {
-            const isActive = currentColor === name;
-            return (
-              <Pressable
-                key={name}
-                style={[
-                  styles.colorCircle,
-                  {backgroundColor: hex},
-                  isActive && styles.colorCircleActive,
-                ]}
-                onPress={() => handleSelectColor(name)}>
-                {isActive ? (
-                  <Feather name="check" size={moderateScale(22)} color="#333" />
-                ) : null}
-              </Pressable>
-            );
-          })}
-        </View>
-
-        {currentColor ? (
-          <Pressable style={styles.removeButton} onPress={handleRemove}>
-            <Feather name="x-circle" size={moderateScale(18)} color="#ff4444" />
-            <Text style={styles.removeButtonText}>Remove Highlight</Text>
-          </Pressable>
-        ) : null}
-      </View>
+      )}
     </ActionSheet>
   );
 };

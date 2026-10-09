@@ -40,7 +40,7 @@ import Color from 'color';
 // Constants
 // ---------------------------------------------------------------------------
 
-const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
+const SPEEDS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
 
 const VERSE_REPEAT_OPTIONS = [
   {label: '1 time', value: 1},

@@ -7,7 +7,7 @@ export type SqlParams =
   | [Record<string, SqlValue>]
   | SqlValue[];
 
-export interface AdapterDatabase {
+export interface AdapterExecutor {
   execAsync(source: string): Promise<void>;
   runAsync(
     source: string,
@@ -15,7 +15,17 @@ export interface AdapterDatabase {
   ): Promise<{lastInsertRowId: number; changes: number}>;
   getAllAsync<T>(source: string, ...params: SqlParams): Promise<T[]>;
   getFirstAsync<T>(source: string, ...params: SqlParams): Promise<T | null>;
+}
+
+export interface AdapterDatabase extends AdapterExecutor {
+  readonly databasePath: string;
+  readonly options: Record<string, never>;
   withTransactionAsync(task: () => Promise<void>): Promise<void>;
+  // Like expo-sqlite, runs task on a separate connection inside
+  // BEGIN EXCLUSIVE, so writes on the shared handle are not part of it.
+  withExclusiveTransactionAsync(
+    task: (txn: AdapterExecutor) => Promise<void>,
+  ): Promise<void>;
   closeAsync(): Promise<void>;
 }
 
@@ -73,9 +83,7 @@ function native<T>(call: () => T): T {
   }
 }
 
-export function openAdapterDatabase(filePath: string): AdapterDatabase {
-  const db = native(() => new Database(filePath));
-  let depth = 0;
+function executorFor(db: Database.Database): AdapterExecutor {
   return {
     async execAsync(source) {
       native(() => db.exec(source));
@@ -94,6 +102,16 @@ export function openAdapterDatabase(filePath: string): AdapterDatabase {
       const row = native(() => db.prepare(source).get(normalize(params)));
       return (row ?? null) as T | null;
     },
+  };
+}
+
+export function openAdapterDatabase(filePath: string): AdapterDatabase {
+  const db = native(() => new Database(filePath));
+  let depth = 0;
+  return {
+    ...executorFor(db),
+    databasePath: filePath,
+    options: {},
     async withTransactionAsync(task) {
       // expo-sqlite does not support nested withTransactionAsync; fail loudly like it does.
       if (depth > 0)
@@ -110,6 +128,21 @@ export function openAdapterDatabase(filePath: string): AdapterDatabase {
         throw error;
       } finally {
         depth--;
+      }
+    },
+    async withExclusiveTransactionAsync(task) {
+      const own = native(() => new Database(filePath));
+      try {
+        native(() => own.exec('BEGIN EXCLUSIVE'));
+        try {
+          await task(executorFor(own));
+          native(() => own.exec('COMMIT'));
+        } catch (error) {
+          native(() => own.exec('ROLLBACK'));
+          throw error;
+        }
+      } finally {
+        native(() => own.close());
       }
     },
     async closeAsync() {

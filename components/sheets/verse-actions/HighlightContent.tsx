@@ -23,6 +23,7 @@ interface HighlightContentProps {
   verseKeys?: string[];
   rewayah?: import('@/store/mushafSettingsStore').RewayahId;
   onDone: () => void;
+  isScopeCurrent: () => boolean;
 }
 
 export const HighlightContent: React.FC<HighlightContentProps> = ({
@@ -32,6 +33,7 @@ export const HighlightContent: React.FC<HighlightContentProps> = ({
   verseKeys,
   rewayah,
   onDone,
+  isScopeCurrent,
 }) => {
   const {theme} = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -41,31 +43,39 @@ export const HighlightContent: React.FC<HighlightContentProps> = ({
 
   const handleSelectColor = useCallback(
     async (color: HighlightColor) => {
-      const store = useVerseAnnotationsStore.getState();
-      for (const vk of allKeys) {
-        const [s, a] = vk.split(':');
-        await verseAnnotationService.upsertHighlight(
-          vk,
-          parseInt(s, 10),
-          parseInt(a, 10),
-          color,
-          rewayah,
-        );
-        store.setHighlight(vk, color);
-      }
-      onDone();
+      if (!isScopeCurrent()) return;
+      await verseAnnotationService.runInScope(async operation => {
+        for (const vk of allKeys) {
+          const [s, a] = vk.split(':');
+          await operation.upsertHighlight(
+            vk,
+            parseInt(s, 10),
+            parseInt(a, 10),
+            color,
+            rewayah,
+          );
+          if (operation.isCurrent()) {
+            useVerseAnnotationsStore.getState().setHighlight(vk, color);
+          }
+        }
+        if (operation.isCurrent()) onDone();
+      });
     },
-    [allKeys, onDone, rewayah],
+    [allKeys, onDone, rewayah, isScopeCurrent],
   );
 
   const handleRemove = useCallback(async () => {
-    const store = useVerseAnnotationsStore.getState();
-    for (const vk of allKeys) {
-      await verseAnnotationService.removeHighlight(vk);
-      store.removeHighlight(vk);
-    }
-    onDone();
-  }, [allKeys, onDone]);
+    if (!isScopeCurrent()) return;
+    await verseAnnotationService.runInScope(async operation => {
+      for (const vk of allKeys) {
+        await operation.removeHighlight(vk);
+        if (operation.isCurrent()) {
+          useVerseAnnotationsStore.getState().removeHighlight(vk);
+        }
+      }
+      if (operation.isCurrent()) onDone();
+    });
+  }, [allKeys, onDone, isScopeCurrent]);
 
   return (
     <View>

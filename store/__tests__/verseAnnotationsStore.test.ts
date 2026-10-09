@@ -64,13 +64,7 @@ function loadedList() {
 }
 
 function resetStore() {
-  useVerseAnnotationsStore.setState({
-    loadedSurahs: new Set<number>(),
-    bookmarkedVerseKeys: new Set<string>(),
-    notedVerseKeys: new Set<string>(),
-    highlights: {},
-    loading: false,
-  });
+  useVerseAnnotationsStore.getState().clearActiveView(); // @ai
 }
 
 describe('verseAnnotationsStore multi-surah loading', () => {
@@ -241,6 +235,53 @@ describe('verseAnnotationsStore multi-surah loading', () => {
     await store.loadAnnotationsForSurahs([2]);
     expect(loadedList()).toEqual([1, 2]);
   });
+
+  // @ai-start
+  it('invalidates accumulated annotations and drops old-scope in-flight and queued loads', async () => {
+    const gate = deferred<SurahAnnotations>();
+    mockGetAnnotations.mockImplementation((surah: number) =>
+      surah === 112
+        ? gate.promise
+        : Promise.resolve(annotations({bookmarks: [bookmark(`${surah}:1`)]})),
+    );
+    const store = useVerseAnnotationsStore.getState();
+    await store.loadAnnotationsForSurah(1);
+    const first = store.loadAnnotationsForSurahs([112, 113, 114]);
+    const queued = store.loadAnnotationsForSurah(50);
+    store.clearActiveView();
+    expect(loadedList()).toEqual([]);
+    expect(useVerseAnnotationsStore.getState().isBookmarked('1:1')).toBe(false);
+    const newScopeLoad = store.loadAnnotationsForSurahs([2, 3]);
+    gate.resolve(annotations({bookmarks: [bookmark('112:1')]}));
+    await Promise.all([first, queued, newScopeLoad]);
+    expect(mockGetAnnotations).not.toHaveBeenCalledWith(50);
+    expect(loadedList()).toEqual([2, 3]);
+    expect([
+      ...useVerseAnnotationsStore.getState().bookmarkedVerseKeys,
+    ]).toEqual(['2:1', '3:1']);
+    expect(useVerseAnnotationsStore.getState().loading).toBe(false);
+  });
+
+  it('releases an invalidated failed load without poisoning a new scope', async () => {
+    let reject!: (error: Error) => void;
+    const pending = new Promise<SurahAnnotations>((_, fail) => {
+      reject = fail;
+    });
+    mockGetAnnotations.mockReturnValueOnce(pending);
+    const store = useVerseAnnotationsStore.getState();
+    const oldLoad = store.loadAnnotationsForSurah(112);
+    store.clearActiveView();
+    const newLoad = store.loadAnnotationsForSurahs([113, 114]);
+    const errorLog = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+    reject(new Error('old scope unavailable'));
+    await Promise.all([oldLoad, newLoad]);
+    errorLog.mockRestore();
+    expect(loadedList()).toEqual([113, 114]);
+    expect(useVerseAnnotationsStore.getState().loading).toBe(false);
+  });
+  // @ai-end
 
   it('optimistic bookmark mutations update the set immediately', () => {
     const store = useVerseAnnotationsStore.getState();

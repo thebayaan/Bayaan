@@ -28,6 +28,7 @@ import type {VerseBookmark} from '@/types/verse-annotations';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {getRewayahShortLabel} from '@/utils/rewayahLabels';
 import {showToast} from '@/utils/toastUtils';
+import {useQfSyncStore} from '@/store/qfSyncStore';
 
 interface BookmarkData {
   bookmark: VerseBookmark;
@@ -42,6 +43,11 @@ const BookmarksScreen = () => {
   const [bookmarks, setBookmarks] = useState<BookmarkData[]>([]);
   const [loading, setLoading] = useState(true);
   const scrollY = useRef(new RNAnimated.Value(0)).current;
+  const loadRequestRef = useRef(0);
+  const activeScopeKey = useQfSyncStore(
+    state => state.activeAccountId ?? 'guest',
+  );
+  const dataRevision = useQfSyncStore(state => state.dataRevision);
 
   useCollectionNativeHeader({
     title: 'Bookmarks',
@@ -50,8 +56,11 @@ const BookmarksScreen = () => {
   });
 
   const loadBookmarks = useCallback(async () => {
+    const requestId = ++loadRequestRef.current;
+    const requestDataRevision = dataRevision;
     try {
       setLoading(true);
+      setBookmarks([]);
       const allBookmarks = await verseAnnotationService.getAllBookmarks();
       const enriched = allBookmarks.map(bookmark => {
         const surah = getSurahById(bookmark.surahNumber);
@@ -60,25 +69,47 @@ const BookmarksScreen = () => {
           surahName: surah?.name ?? `Surah ${bookmark.surahNumber}`,
         };
       });
-      setBookmarks(enriched);
+      if (
+        requestId === loadRequestRef.current &&
+        useQfSyncStore.getState().dataRevision === requestDataRevision &&
+        (useQfSyncStore.getState().activeAccountId ?? 'guest') ===
+          activeScopeKey
+      ) {
+        setBookmarks(enriched);
+      }
     } catch (error) {
       console.error('Failed to load bookmarks:', error);
     } finally {
-      setLoading(false);
+      if (requestId === loadRequestRef.current) setLoading(false);
     }
-  }, []);
+  }, [activeScopeKey, dataRevision]);
 
   useFocusEffect(
     useCallback(() => {
       loadBookmarks();
+      return () => {
+        loadRequestRef.current += 1;
+      };
     }, [loadBookmarks]),
   );
 
-  const handleRemoveBookmark = useCallback(async (bookmark: VerseBookmark) => {
-    await verseAnnotationService.removeBookmark(bookmark.verseKey);
-    useVerseAnnotationsStore.getState().removeBookmark(bookmark.verseKey);
-    setBookmarks(prev => prev.filter(b => b.bookmark.id !== bookmark.id));
-  }, []);
+  const handleRemoveBookmark = useCallback(
+    async (bookmark: VerseBookmark) => {
+      if (
+        (useQfSyncStore.getState().activeAccountId ?? 'guest') !==
+        activeScopeKey
+      ) {
+        return;
+      }
+      await verseAnnotationService.runInScope(async operation => {
+        await operation.removeBookmark(bookmark.verseKey);
+        if (!operation.isCurrent()) return;
+        useVerseAnnotationsStore.getState().removeBookmark(bookmark.verseKey);
+        setBookmarks(prev => prev.filter(b => b.bookmark.id !== bookmark.id));
+      });
+    },
+    [activeScopeKey],
+  );
 
   const handleOptionsPress = useCallback(
     (item: BookmarkData) => {

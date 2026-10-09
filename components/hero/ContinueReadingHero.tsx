@@ -4,6 +4,7 @@ import {moderateScale} from 'react-native-size-matters';
 import {useFocusEffect} from 'expo-router';
 import {SURAHS, Surah} from '@/data/surahData';
 import {mushafSessionStore} from '@/services/mushaf/MushafSessionStore';
+import {useQfSyncStore} from '@/store/qfSyncStore';
 import {HeroSection} from './HeroSection';
 import {SurahHeroSection} from './SurahsHero';
 
@@ -30,6 +31,13 @@ interface ContinueReadingHeroProps {
 
 const SECTION_HEIGHT = moderateScale(150);
 
+function readLastPageForRevision(
+  _scopeRevision: number,
+  _dataRevision: number,
+): number | null {
+  return mushafSessionStore.getLastReadPage();
+}
+
 /**
  * Hero section for the Surahs tab.
  * Shows "Continue Reading" with the last-read surah if the user has history,
@@ -38,18 +46,17 @@ const SECTION_HEIGHT = moderateScale(150);
 export function ContinueReadingHero({
   onSurahLongPress,
 }: ContinueReadingHeroProps) {
-  // MMKV reads aren't reactive, and this component is typically cached
-  // inside a memoized FlashList header — so re-read the session value
-  // every time the Surahs tab regains focus (e.g. after backing out of
-  // the mushaf) to keep "Continue Reading" in sync with the latest page.
-  const [lastReadPage, setLastReadPage] = useState<number | null>(() =>
-    mushafSessionStore.getLastReadPage(),
-  );
+  const scopeRevision = useQfSyncStore(state => state.scopeRevision);
+  const dataRevision = useQfSyncStore(state => state.dataRevision);
+  // MMKV reads aren't reactive, so revision changes read the active scope
+  // during render and focus changes force a fresh render after leaving Mushaf.
+  const [, setFocusRevision] = useState(0);
   useFocusEffect(
     useCallback(() => {
-      setLastReadPage(mushafSessionStore.getLastReadPage());
+      setFocusRevision(revision => revision + 1);
     }, []),
   );
+  const lastReadPage = readLastPageForRevision(scopeRevision, dataRevision);
 
   const surahOfTheDay = useMemo(() => getSurahOfTheDay(), []);
 

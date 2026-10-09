@@ -89,6 +89,7 @@
     "expo-notifications": "~56.0.14",
     "expo-router": "~56.2.7",
     "expo-screen-orientation": "~56.0.5",
+    "expo-secure-store": "~56.0.4",
     "expo-share-intent": "^6.1.1",
     "expo-sharing": "~56.0.14",
     "expo-splash-screen": "~56.0.10",

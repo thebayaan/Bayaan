@@ -31,6 +31,7 @@ import {useDevSettingsStore} from '@/store/devSettingsStore';
 import {useAnalyticsConsentStore} from '@/store/analyticsConsentStore';
 import {ThemePicker} from '@/components/settings/ThemePicker';
 import branding from '@/config/branding';
+import {QfAccountCard} from '@/components/auth/QfAccountCard';
 
 const isExternalLink = (type: string): boolean => {
   return [
@@ -325,6 +326,12 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionHeader}>APPEARANCE</Text>
           <ThemePicker />
+        </View>
+
+        {/* Account */}
+        <View style={styles.section}>
+          <Text style={styles.sectionHeader}>ACCOUNT</Text>
+          <QfAccountCard />
         </View>
 
         {/* Settings Sections */}

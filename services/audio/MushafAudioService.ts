@@ -9,7 +9,7 @@
  * - No looping/crossfade (plays surah audio linearly)
  * - Ayah tracking via 200ms polling of currentTime
  * - Supports seeking to specific ayahs
- * - Rate control (0.5x - 2.0x)
+ * - Rate control (0.25x - 2.0x)
  */
 
 import {createAudioPlayer, AudioPlayer} from 'expo-audio';
@@ -213,7 +213,7 @@ class MushafAudioService {
   }
 
   setRate(rate: number): void {
-    this.rate = Math.max(0.5, Math.min(2.0, rate));
+    this.rate = Number.isFinite(rate) ? Math.max(0.25, Math.min(2.0, rate)) : 1;
     if (this.player) {
       this.player.setPlaybackRate(this.rate, 'high');
     }

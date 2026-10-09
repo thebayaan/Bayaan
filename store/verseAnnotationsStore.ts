@@ -1,21 +1,15 @@
+// @ai-generated
 import {create} from 'zustand';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
 import type {HighlightColor} from '@/types/verse-annotations';
 
 interface VerseAnnotationsState {
-  /**
-   * Surahs whose annotations are currently in the store — ACCUMULATED, never
-   * narrowed. Multi-surah loads exist because a single mushaf page can span
-   * several surahs (the norm in Juz 'Amma); a per-surah cache would blind the
-   * page renderer to bookmarks in the page's later surahs. @ai
-   *
-   * Accumulating (rather than keying the store on "the last loaded set") is
-   * what makes concurrent loads safe: a narrow per-surah load can no longer
-   * replace a wider page-level one and unpaint its siblings, and a neighbour
-   * page still mounted by `windowSize` keeps its tint when the current page
-   * changes.
-   */
+  scopeRevision: number;
+  // Accumulate multi-surah pages and mounted neighbours within one scope.
   loadedSurahs: Set<number>;
+  // Surahs requested in this scope, including loads still in flight or queued,
+  // so a scope change can reload what the mounted views are waiting for.
+  requestedSurahs: Set<number>;
   bookmarkedVerseKeys: Set<string>;
   notedVerseKeys: Set<string>;
   highlights: Record<string, HighlightColor>;
@@ -23,6 +17,7 @@ interface VerseAnnotationsState {
 
   loadAnnotationsForSurah: (surahNumber: number) => Promise<void>;
   loadAnnotationsForSurahs: (surahNumbers: number[]) => Promise<void>;
+  clearActiveView: () => void;
 
   // Optimistic mutations
   addBookmark: (verseKey: string) => void;
@@ -38,56 +33,50 @@ interface VerseAnnotationsState {
   getHighlightColor: (verseKey: string) => HighlightColor | null;
 }
 
-// @ai — serializes loads instead of dropping them. The old
-// `if (loading) return` guard silently discarded the second caller's surah
-// set when two surfaces raced (e.g. ContinuousMushafView's per-surah load vs
-// main.tsx's page-level multi-surah load), leaving those surahs unloaded.
+// Serialize loads instead of dropping concurrent page/per-surah requests.
 let inFlightLoad: Promise<void> | null = null;
 
 export const useVerseAnnotationsStore = create<VerseAnnotationsState>()(
   (set, get) => ({
+    scopeRevision: 0,
     loadedSurahs: new Set<number>(),
+    requestedSurahs: new Set<number>(),
     bookmarkedVerseKeys: new Set<string>(),
     notedVerseKeys: new Set<string>(),
     highlights: {},
     loading: false,
 
     loadAnnotationsForSurah: async (surahNumber: number) => {
-      // Already-loaded no-op. `loadedSurahs` accumulates, so this also covers
-      // "this surah arrived as part of a wider page-level load". @ai
-      if (get().loadedSurahs.has(surahNumber)) return;
       await get().loadAnnotationsForSurahs([surahNumber]);
     },
 
     loadAnnotationsForSurahs: async (surahNumbers: number[]) => {
+      const scopeRevision = get().scopeRevision;
       const wanted = [...new Set(surahNumbers)].sort((a, b) => a - b);
       if (wanted.length === 0) return;
+      if (!wanted.every(n => get().requestedSurahs.has(n))) {
+        set({requestedSurahs: new Set([...get().requestedSurahs, ...wanted])});
+      }
       if (wanted.every(n => get().loadedSurahs.has(n))) return;
 
-      // Wait out any in-flight load, THEN recompute what's still missing. The
-      // recheck is subset-aware on purpose: the load we waited on may have
-      // been a superset (e.g. we want [113] while [112,113,114] was in
-      // flight). An exact-key recheck would compare '112,113,114' === '113',
-      // decide it still had work to do, re-fetch 113 alone and REPLACE the
-      // store — wiping 112/114's bookmarks. @ai
+      // Recheck the subset after waiting: a wider page load may already have
+      // supplied it. A queued old-account request must not read the new scope.
       while (inFlightLoad) {
         await inFlightLoad;
+        if (get().scopeRevision !== scopeRevision) return;
       }
       const missing = wanted.filter(n => !get().loadedSurahs.has(n));
       if (missing.length === 0) return;
 
       const load = (async () => {
         set({loading: true});
-
         try {
           const results = await Promise.all(
             missing.map(n => verseAnnotationService.getAnnotationsForSurah(n)),
           );
+          if (get().scopeRevision !== scopeRevision) return;
 
-          // MERGE into whatever is in the store now (read at set-time, not a
-          // stale snapshot) — never replace. This is what keeps a narrow load
-          // from unpainting a wider one, and keeps still-mounted neighbour
-          // pages tinted across a page change. @ai
+          // Merge at completion time, preserving siblings and optimistic edits.
           const bookmarkedVerseKeys = new Set(get().bookmarkedVerseKeys);
           const notedVerseKeys = new Set(get().notedVerseKeys);
           const highlightsRecord: Record<string, HighlightColor> = {
@@ -102,7 +91,6 @@ export const useVerseAnnotationsStore = create<VerseAnnotationsState>()(
           }
           const loadedSurahs = new Set(get().loadedSurahs);
           missing.forEach(n => loadedSurahs.add(n));
-
           set({
             loadedSurahs,
             bookmarkedVerseKeys,
@@ -115,7 +103,7 @@ export const useVerseAnnotationsStore = create<VerseAnnotationsState>()(
             '[VerseAnnotationsStore] Failed to load annotations:',
             error,
           );
-          set({loading: false});
+          if (get().scopeRevision === scopeRevision) set({loading: false});
         }
       })();
 
@@ -126,6 +114,17 @@ export const useVerseAnnotationsStore = create<VerseAnnotationsState>()(
         if (inFlightLoad === load) inFlightLoad = null;
       }
     },
+
+    clearActiveView: () =>
+      set(state => ({
+        scopeRevision: state.scopeRevision + 1,
+        loadedSurahs: new Set<number>(),
+        requestedSurahs: new Set<number>(),
+        bookmarkedVerseKeys: new Set<string>(),
+        notedVerseKeys: new Set<string>(),
+        highlights: {},
+        loading: false,
+      })),
 
     // Optimistic mutations
     addBookmark: (verseKey: string) => {
@@ -164,9 +163,7 @@ export const useVerseAnnotationsStore = create<VerseAnnotationsState>()(
 
     // Query helpers (O(1))
     isBookmarked: (verseKey: string) => get().bookmarkedVerseKeys.has(verseKey),
-
     hasNote: (verseKey: string) => get().notedVerseKeys.has(verseKey),
-
     getHighlightColor: (verseKey: string) => get().highlights[verseKey] ?? null,
   }),
 );

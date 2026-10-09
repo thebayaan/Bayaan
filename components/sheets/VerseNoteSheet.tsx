@@ -6,6 +6,7 @@ import {
   verticalScale,
 } from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
+import {useAnnotationSheetScope} from '@/hooks/useAnnotationSheetScope';
 import {Theme} from '@/utils/themeUtils';
 import ActionSheet, {
   SheetProps,
@@ -20,6 +21,8 @@ import SkiaVersePreview from '@/components/share/SkiaVersePreview';
 
 export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
   const {theme} = useTheme();
+  const {isScopeCurrent, scopeIsCurrent} =
+    useAnnotationSheetScope('verse-note');
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const verseKey = props.payload?.verseKey ?? '';
@@ -51,35 +54,37 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
 
     if (noteId) {
       verseAnnotationService.getNoteById(noteId).then(note => {
-        if (note) {
+        if (note && isScopeCurrent()) {
           setNoteText(note.content);
           setIsEditMode(true);
         }
       });
     }
-  }, [verseKey, noteId]);
+  }, [verseKey, noteId, isScopeCurrent]);
 
   const handleSave = useCallback(async () => {
-    if (!noteText.trim()) return;
+    if (!isScopeCurrent() || !noteText.trim()) return;
 
-    if (isEditMode && noteId) {
-      await verseAnnotationService.updateNote(noteId, noteText.trim());
-    } else {
-      const allKeys = isRange ? verseKeys : [verseKey];
-      await verseAnnotationService.addNote(
-        verseKey,
-        surahNumber,
-        ayahNumber,
-        noteText.trim(),
-        isRange ? verseKeys : undefined,
-        rewayah,
-      );
-      const store = useVerseAnnotationsStore.getState();
-      for (const vk of allKeys) {
-        store.addNote(vk);
+    await verseAnnotationService.runInScope(async operation => {
+      if (isEditMode && noteId) {
+        await operation.updateNote(noteId, noteText.trim());
+      } else {
+        const allKeys = isRange ? verseKeys : [verseKey];
+        await operation.addNote(
+          verseKey,
+          surahNumber,
+          ayahNumber,
+          noteText.trim(),
+          isRange ? verseKeys : undefined,
+          rewayah,
+        );
+        if (operation.isCurrent()) {
+          const store = useVerseAnnotationsStore.getState();
+          for (const vk of allKeys) store.addNote(vk);
+        }
       }
-    }
-    SheetManager.hideAll();
+      if (operation.isCurrent()) SheetManager.hideAll();
+    });
   }, [
     verseKey,
     verseKeys,
@@ -90,18 +95,21 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
     isEditMode,
     noteId,
     rewayah,
+    isScopeCurrent,
   ]);
 
   const handleDelete = useCallback(async () => {
-    if (!noteId) return;
-    await verseAnnotationService.deleteNoteById(noteId);
-    const remaining =
-      await verseAnnotationService.getNotesCountForVerse(verseKey);
-    if (remaining === 0) {
-      useVerseAnnotationsStore.getState().removeNote(verseKey);
-    }
-    SheetManager.hideAll();
-  }, [verseKey, noteId]);
+    if (!isScopeCurrent() || !noteId) return;
+    await verseAnnotationService.runInScope(async operation => {
+      await operation.deleteNoteById(noteId);
+      const remaining = await operation.getNotesCountForVerse(verseKey);
+      if (!operation.isCurrent()) return;
+      if (remaining === 0) {
+        useVerseAnnotationsStore.getState().removeNote(verseKey);
+      }
+      SheetManager.hideAll();
+    });
+  }, [verseKey, noteId, isScopeCurrent]);
 
   const canSave = noteText.trim().length > 0;
 
@@ -111,64 +119,66 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
       containerStyle={styles.sheetContainer}
       indicatorStyle={styles.indicator}
       gestureEnabled={true}>
-      <ScrollView
-        style={styles.container}
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}>
-        <Text style={styles.title}>
-          {isEditMode ? 'Edit Note' : 'Note'} for {verseRefText}
-        </Text>
-
-        <View style={styles.ayahContainer}>
-          <SkiaVersePreview
-            verseKey={verseKey}
-            verseKeys={verseKeys}
-            numberOfLines={isRange ? 3 : 2}
-            rewayah={rewayah}
-          />
-        </View>
-
-        <TextInput
-          style={styles.textInput}
-          value={noteText}
-          onChangeText={setNoteText}
-          placeholder="Write your note here..."
-          placeholderTextColor={theme.colors.textSecondary}
-          multiline
-          textAlignVertical="top"
-          autoFocus
-        />
-
-        <Pressable
-          style={[styles.saveButton, !canSave && styles.saveButtonDisabled]}
-          onPress={handleSave}
-          disabled={!canSave}>
-          <Feather
-            name="save"
-            size={moderateScale(18)}
-            color={canSave ? theme.colors.text : theme.colors.textSecondary}
-          />
-          <Text
-            style={[
-              styles.saveButtonText,
-              !canSave && styles.saveButtonTextDisabled,
-            ]}>
-            {isEditMode ? 'Update Note' : 'Save Note'}
+      {scopeIsCurrent && (
+        <ScrollView
+          style={styles.container}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}>
+          <Text style={styles.title}>
+            {isEditMode ? 'Edit Note' : 'Note'} for {verseRefText}
           </Text>
-        </Pressable>
 
-        {isEditMode && noteId ? (
-          <Pressable style={styles.deleteButton} onPress={handleDelete}>
-            <Feather
-              name="minus-circle"
-              size={moderateScale(18)}
-              color="#ff4444"
+          <View style={styles.ayahContainer}>
+            <SkiaVersePreview
+              verseKey={verseKey}
+              verseKeys={verseKeys}
+              numberOfLines={isRange ? 3 : 2}
+              rewayah={rewayah}
             />
-            <Text style={styles.deleteButtonText}>Delete Note</Text>
+          </View>
+
+          <TextInput
+            style={styles.textInput}
+            value={noteText}
+            onChangeText={setNoteText}
+            placeholder="Write your note here..."
+            placeholderTextColor={theme.colors.textSecondary}
+            multiline
+            textAlignVertical="top"
+            autoFocus
+          />
+
+          <Pressable
+            style={[styles.saveButton, !canSave && styles.saveButtonDisabled]}
+            onPress={handleSave}
+            disabled={!canSave}>
+            <Feather
+              name="save"
+              size={moderateScale(18)}
+              color={canSave ? theme.colors.text : theme.colors.textSecondary}
+            />
+            <Text
+              style={[
+                styles.saveButtonText,
+                !canSave && styles.saveButtonTextDisabled,
+              ]}>
+              {isEditMode ? 'Update Note' : 'Save Note'}
+            </Text>
           </Pressable>
-        ) : null}
-      </ScrollView>
+
+          {isEditMode && noteId ? (
+            <Pressable style={styles.deleteButton} onPress={handleDelete}>
+              <Feather
+                name="minus-circle"
+                size={moderateScale(18)}
+                color="#ff4444"
+              />
+              <Text style={styles.deleteButtonText}>Delete Note</Text>
+            </Pressable>
+          ) : null}
+        </ScrollView>
+      )}
     </ActionSheet>
   );
 };

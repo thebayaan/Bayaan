@@ -909,7 +909,7 @@ export default function MushafViewer({
       // Preload QCF page font immediately, overlapping with the scroll/animation
       if (mushafRenderer === 'qcf_v2') {
         const fm = mushafPreloadService.fontMgr;
-        if (fm) qcfFontLoader.ensure(targetPage, fm).catch(() => {});
+        if (fm) qcfFontLoader.ensure(targetPage, fm).catch(() => undefined); // @ai
       }
       // Explicit navigation = start a new chain (preserves old position)
       const surahId = digitalKhattDataService.initialized

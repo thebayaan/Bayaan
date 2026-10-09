@@ -15,17 +15,20 @@ export function useVerseActions() {
         surahNumber: number,
         ayahNumber: number,
       ) => {
-        const wasAdded = await verseAnnotationService.toggleBookmark(
-          verseKey,
-          surahNumber,
-          ayahNumber,
-        );
-        const store = useVerseAnnotationsStore.getState();
-        if (wasAdded) {
-          store.addBookmark(verseKey);
-        } else {
-          store.removeBookmark(verseKey);
-        }
+        await verseAnnotationService.runInScope(async operation => {
+          const wasAdded = await operation.toggleBookmark(
+            verseKey,
+            surahNumber,
+            ayahNumber,
+          );
+          if (!operation.isCurrent()) return;
+          const store = useVerseAnnotationsStore.getState();
+          if (wasAdded) {
+            store.addBookmark(verseKey);
+          } else {
+            store.removeBookmark(verseKey);
+          }
+        });
       },
 
       addNote: async (
@@ -34,22 +37,22 @@ export function useVerseActions() {
         ayahNumber: number,
         content: string,
       ) => {
-        await verseAnnotationService.addNote(
-          verseKey,
-          surahNumber,
-          ayahNumber,
-          content,
-        );
-        useVerseAnnotationsStore.getState().addNote(verseKey);
+        await verseAnnotationService.runInScope(async operation => {
+          await operation.addNote(verseKey, surahNumber, ayahNumber, content);
+          if (operation.isCurrent()) {
+            useVerseAnnotationsStore.getState().addNote(verseKey);
+          }
+        });
       },
 
       deleteNoteById: async (noteId: string, verseKey: string) => {
-        await verseAnnotationService.deleteNoteById(noteId);
-        const remaining =
-          await verseAnnotationService.getNotesCountForVerse(verseKey);
-        if (remaining === 0) {
-          useVerseAnnotationsStore.getState().removeNote(verseKey);
-        }
+        await verseAnnotationService.runInScope(async operation => {
+          await operation.deleteNoteById(noteId);
+          const remaining = await operation.getNotesCountForVerse(verseKey);
+          if (operation.isCurrent() && remaining === 0) {
+            useVerseAnnotationsStore.getState().removeNote(verseKey);
+          }
+        });
       },
 
       setHighlight: async (
@@ -58,18 +61,26 @@ export function useVerseActions() {
         ayahNumber: number,
         color: HighlightColor,
       ) => {
-        await verseAnnotationService.setHighlight(
-          verseKey,
-          surahNumber,
-          ayahNumber,
-          color,
-        );
-        useVerseAnnotationsStore.getState().setHighlight(verseKey, color);
+        await verseAnnotationService.runInScope(async operation => {
+          await operation.upsertHighlight(
+            verseKey,
+            surahNumber,
+            ayahNumber,
+            color,
+          );
+          if (operation.isCurrent()) {
+            useVerseAnnotationsStore.getState().setHighlight(verseKey, color);
+          }
+        });
       },
 
       removeHighlight: async (verseKey: string) => {
-        await verseAnnotationService.removeHighlight(verseKey);
-        useVerseAnnotationsStore.getState().removeHighlight(verseKey);
+        await verseAnnotationService.runInScope(async operation => {
+          await operation.removeHighlight(verseKey);
+          if (operation.isCurrent()) {
+            useVerseAnnotationsStore.getState().removeHighlight(verseKey);
+          }
+        });
       },
     }),
     [],

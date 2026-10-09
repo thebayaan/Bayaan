@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
+import {useAnnotationSheetScope} from '@/hooks/useAnnotationSheetScope';
 import {Theme} from '@/utils/themeUtils';
 import ActionSheet, {
   SheetProps,
@@ -104,6 +105,8 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
   const [activeScreen, setActiveScreenRaw] = useState<ActiveScreen>(null);
+  const {isScopeCurrent, scopeIsCurrent} =
+    useAnnotationSheetScope('verse-actions');
 
   const setActiveScreen = useCallback((screen: ActiveScreen) => {
     LayoutAnimation.configureNext(
@@ -214,60 +217,77 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
   );
 
   const handleToggleBookmark = useCallback(async () => {
+    if (!isScopeCurrent()) return;
     lightHaptics();
     const keys = isRange ? verseKeys : [verseKey];
-    const store = useVerseAnnotationsStore.getState();
-    // A persistence failure must never strand the sheet open: without this
-    // guard a rejected write skipped both the optimistic store update and
-    // SheetManager.hide, freezing the sheet with no feedback. The DB write is
-    // now idempotent (INSERT OR IGNORE) so the duplicate case can't reject at
-    // all; this is the belt-and-braces for anything else (disk, migration).
-    // @ai
+    // @ai-start
+    // Preserve #314's failure dismissal without updating or dismissing a
+    // replacement account's UI after an asynchronous scoped write.
     try {
-      if (isBookmarked) {
-        for (const vk of keys) {
-          await verseAnnotationService.removeBookmark(vk);
-          store.removeBookmark(vk);
+      await verseAnnotationService.runInScope(async operation => {
+        if (isBookmarked) {
+          for (const vk of keys) {
+            await operation.removeBookmark(vk);
+            if (operation.isCurrent()) {
+              useVerseAnnotationsStore.getState().removeBookmark(vk);
+            }
+          }
+        } else {
+          for (const vk of keys) {
+            const [s, a] = vk.split(':');
+            await operation.addBookmark(
+              vk,
+              parseInt(s, 10),
+              parseInt(a, 10),
+              resolvedRewayah,
+            );
+            if (operation.isCurrent()) {
+              useVerseAnnotationsStore.getState().addBookmark(vk);
+            }
+          }
         }
-      } else {
-        for (const vk of keys) {
-          const [s, a] = vk.split(':');
-          await verseAnnotationService.addBookmark(
-            vk,
-            parseInt(s, 10),
-            parseInt(a, 10),
-            resolvedRewayah,
-          );
-          store.addBookmark(vk);
-        }
-      }
+      });
     } catch (error) {
       console.error('[VerseActionsSheet] Bookmark toggle failed:', error);
+    } finally {
+      if (isScopeCurrent()) hideCurrentSheet();
     }
-    await SheetManager.hide(props.sheetId);
+    // @ai-end
   }, [
     verseKey,
     verseKeys,
     isRange,
     isBookmarked,
     resolvedRewayah,
-    props.sheetId,
+    hideCurrentSheet,
+    isScopeCurrent,
   ]);
 
   const handleHighlight = useCallback(async () => {
+    if (!isScopeCurrent()) return;
     if (isHighlighted) {
       lightHaptics();
       const keys = isRange ? verseKeys : [verseKey];
-      const store = useVerseAnnotationsStore.getState();
-      for (const vk of keys) {
-        await verseAnnotationService.removeHighlight(vk);
-        store.removeHighlight(vk);
-      }
-      hideCurrentSheet();
+      await verseAnnotationService.runInScope(async operation => {
+        for (const vk of keys) {
+          await operation.removeHighlight(vk);
+          if (operation.isCurrent()) {
+            useVerseAnnotationsStore.getState().removeHighlight(vk);
+          }
+        }
+        if (operation.isCurrent()) hideCurrentSheet();
+      });
     } else {
       setActiveScreen('highlight');
     }
-  }, [verseKey, verseKeys, isRange, isHighlighted, hideCurrentSheet]);
+  }, [
+    verseKey,
+    verseKeys,
+    isRange,
+    isHighlighted,
+    hideCurrentSheet,
+    isScopeCurrent,
+  ]);
 
   const handleNote = useCallback(() => {
     setActiveScreen('note');
@@ -554,391 +574,408 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
       indicatorStyle={activeScreen ? {height: 0} : styles.indicator}
       gestureEnabled={true}
       onClose={handleOnClose}>
-      <View style={[styles.container, activeScreen && {flex: 1}]}>
-        {!activeScreen && (
-          <View style={styles.header}>
-            <Text style={styles.surahName}>{surahName}</Text>
-            <Text style={styles.verseRef}>{verseRefText}</Text>
-          </View>
-        )}
+      {scopeIsCurrent && (
+        <View style={[styles.container, activeScreen && {flex: 1}]}>
+          {!activeScreen && (
+            <View style={styles.header}>
+              <Text style={styles.surahName}>{surahName}</Text>
+              <Text style={styles.verseRef}>{verseRefText}</Text>
+            </View>
+          )}
 
-        {activeScreen ? (
-          <>
-            <View style={styles.backRowContainer}>
-              <Pressable
-                onPress={handleBack}
-                style={({pressed}) => [
-                  styles.backRow,
-                  pressed && {opacity: 0.6},
-                ]}
-                hitSlop={8}>
-                <Feather
-                  name="chevron-left"
-                  size={moderateScale(16)}
-                  color={theme.colors.text}
-                />
-                <Text style={styles.backRowText}>
-                  {SCREEN_TITLES[activeScreen] ?? 'Back'}
-                </Text>
-              </Pressable>
-              {(activeScreen === 'translation' ||
-                activeScreen === 'tafseer') && (
+          {activeScreen ? (
+            <>
+              <View style={styles.backRowContainer}>
                 <Pressable
-                  onPress={() => {
-                    lightHaptics();
-                    hideCurrentSheet();
-                    usePlayerStore.getState().setSheetMode('hidden');
-                    setTimeout(() => {
-                      router.push('/(tabs)/(a.home)/translations');
-                    }, 300);
-                  }}
+                  onPress={handleBack}
                   style={({pressed}) => [
-                    styles.settingsButton,
+                    styles.backRow,
                     pressed && {opacity: 0.6},
                   ]}
                   hitSlop={8}>
                   <Feather
-                    name="settings"
+                    name="chevron-left"
                     size={moderateScale(16)}
-                    color={Color(theme.colors.text).alpha(0.5).toString()}
+                    color={theme.colors.text}
                   />
+                  <Text style={styles.backRowText}>
+                    {SCREEN_TITLES[activeScreen] ?? 'Back'}
+                  </Text>
                 </Pressable>
-              )}
-            </View>
-            {isFullScreen ? (
-              <View style={{flex: 1}}>
-                {activeScreen === 'translation' && (
-                  <TranslationContent
-                    surahNumber={surahNumber}
-                    ayahNumber={ayahNumber}
-                    rewayah={resolvedRewayah}
-                    onBack={handleBack}
-                  />
-                )}
-                {activeScreen === 'tafseer' && (
-                  <TafseerContent
-                    surahNumber={surahNumber}
-                    ayahNumber={ayahNumber}
-                    rewayah={resolvedRewayah}
-                    onBack={handleBack}
-                  />
-                )}
-                {activeScreen === 'theme' && (
-                  <ThemeContent
-                    surahNumber={surahNumber}
-                    ayahNumber={ayahNumber}
-                    onBack={handleBack}
-                  />
-                )}
-                {activeScreen === 'wbw' && (
-                  <WBWContent
-                    surahNumber={surahNumber}
-                    ayahNumber={ayahNumber}
-                    onBack={handleBack}
-                  />
-                )}
-                {activeScreen === 'community-reflections' && (
-                  <CommunityReflectionsContent
-                    surahNumber={surahNumber}
-                    ayahNumber={ayahNumber}
-                  />
+                {(activeScreen === 'translation' ||
+                  activeScreen === 'tafseer') && (
+                  <Pressable
+                    onPress={() => {
+                      lightHaptics();
+                      hideCurrentSheet();
+                      usePlayerStore.getState().setSheetMode('hidden');
+                      setTimeout(() => {
+                        router.push('/(tabs)/(a.home)/translations');
+                      }, 300);
+                    }}
+                    style={({pressed}) => [
+                      styles.settingsButton,
+                      pressed && {opacity: 0.6},
+                    ]}
+                    hitSlop={8}>
+                    <Feather
+                      name="settings"
+                      size={moderateScale(16)}
+                      color={Color(theme.colors.text).alpha(0.5).toString()}
+                    />
+                  </Pressable>
                 )}
               </View>
-            ) : (
-              <>
-                {activeScreen === 'highlight' && (
-                  <HighlightContent
-                    verseKey={verseKey}
-                    surahNumber={surahNumber}
-                    ayahNumber={ayahNumber}
-                    verseKeys={verseKeys}
-                    rewayah={resolvedRewayah}
-                    onDone={handleDismiss}
+              {isFullScreen ? (
+                <View style={{flex: 1}}>
+                  {activeScreen === 'translation' && (
+                    <TranslationContent
+                      surahNumber={surahNumber}
+                      ayahNumber={ayahNumber}
+                      rewayah={resolvedRewayah}
+                      onBack={handleBack}
+                    />
+                  )}
+                  {activeScreen === 'tafseer' && (
+                    <TafseerContent
+                      surahNumber={surahNumber}
+                      ayahNumber={ayahNumber}
+                      rewayah={resolvedRewayah}
+                      onBack={handleBack}
+                    />
+                  )}
+                  {activeScreen === 'theme' && (
+                    <ThemeContent
+                      surahNumber={surahNumber}
+                      ayahNumber={ayahNumber}
+                      onBack={handleBack}
+                    />
+                  )}
+                  {activeScreen === 'wbw' && (
+                    <WBWContent
+                      surahNumber={surahNumber}
+                      ayahNumber={ayahNumber}
+                      onBack={handleBack}
+                    />
+                  )}
+                  {activeScreen === 'community-reflections' && (
+                    <CommunityReflectionsContent
+                      surahNumber={surahNumber}
+                      ayahNumber={ayahNumber}
+                    />
+                  )}
+                </View>
+              ) : (
+                <>
+                  {activeScreen === 'highlight' && (
+                    <HighlightContent
+                      isScopeCurrent={isScopeCurrent}
+                      verseKey={verseKey}
+                      surahNumber={surahNumber}
+                      ayahNumber={ayahNumber}
+                      verseKeys={verseKeys}
+                      rewayah={resolvedRewayah}
+                      onDone={handleDismiss}
+                    />
+                  )}
+                  {activeScreen === 'note' && (
+                    <NoteContent
+                      isScopeCurrent={isScopeCurrent}
+                      verseKey={verseKey}
+                      surahNumber={surahNumber}
+                      ayahNumber={ayahNumber}
+                      verseKeys={verseKeys}
+                      rewayah={resolvedRewayah}
+                      onDone={handleDismiss}
+                    />
+                  )}
+                  {activeScreen === 'share' && (
+                    <ShareContent
+                      verseKey={verseKey}
+                      surahNumber={surahNumber}
+                      ayahNumber={ayahNumber}
+                      verseKeys={verseKeys}
+                      arabicText={arabicText}
+                      translation={translation}
+                      rewayah={resolvedRewayah}
+                      onDone={handleDismiss}
+                    />
+                  )}
+                  {isSimilar && (
+                    <SimilarVersesContent
+                      verseKey={verseKey}
+                      surahNumber={surahNumber}
+                      ayahNumber={ayahNumber}
+                      section={
+                        activeScreen === 'similar' ? 'similar' : 'phrases'
+                      }
+                      onDone={handleDismiss}
+                    />
+                  )}
+                </>
+              )}
+            </>
+          ) : (
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              bounces={false}
+              contentContainerStyle={{paddingBottom: moderateScale(10)}}>
+              {/* LISTEN */}
+              <View style={styles.card}>
+                <Pressable
+                  style={({pressed}) => [
+                    styles.option,
+                    pressed && styles.optionPressed,
+                  ]}
+                  onPress={
+                    source === 'player'
+                      ? isCurrentTrackTimestamped()
+                        ? handlePlayerPlayFromHere
+                        : handleShowFollowAlong
+                      : handlePlaySelection
+                  }>
+                  <PlayIcon
+                    size={moderateScale(18)}
+                    color={theme.colors.text}
                   />
-                )}
-                {activeScreen === 'note' && (
-                  <NoteContent
-                    verseKey={verseKey}
-                    surahNumber={surahNumber}
-                    ayahNumber={ayahNumber}
-                    verseKeys={verseKeys}
-                    rewayah={resolvedRewayah}
-                    onDone={handleDismiss}
+                  <Text style={styles.optionText}>
+                    {isRange ? 'Play Selection' : 'Play from Here'}
+                  </Text>
+                </Pressable>
+                <View style={styles.divider} />
+                <Pressable
+                  style={({pressed}) => [
+                    styles.option,
+                    pressed && styles.optionPressed,
+                  ]}
+                  onPress={
+                    source === 'player'
+                      ? isCurrentTrackTimestamped()
+                        ? handlePlayerRepeat
+                        : handleShowFollowAlong
+                      : handleRepeatSelection
+                  }>
+                  <RepeatIcon
+                    size={moderateScale(24)}
+                    color={theme.colors.text}
                   />
-                )}
-                {activeScreen === 'share' && (
-                  <ShareContent
-                    verseKey={verseKey}
-                    surahNumber={surahNumber}
-                    ayahNumber={ayahNumber}
-                    verseKeys={verseKeys}
-                    arabicText={arabicText}
-                    translation={translation}
-                    rewayah={resolvedRewayah}
-                    onDone={handleDismiss}
-                  />
-                )}
-                {isSimilar && (
-                  <SimilarVersesContent
-                    verseKey={verseKey}
-                    surahNumber={surahNumber}
-                    ayahNumber={ayahNumber}
-                    section={activeScreen === 'similar' ? 'similar' : 'phrases'}
-                    onDone={handleDismiss}
-                  />
-                )}
-              </>
-            )}
-          </>
-        ) : (
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            bounces={false}
-            contentContainerStyle={{paddingBottom: moderateScale(10)}}>
-            {/* LISTEN */}
-            <View style={styles.card}>
-              <Pressable
-                style={({pressed}) => [
-                  styles.option,
-                  pressed && styles.optionPressed,
-                ]}
-                onPress={
-                  source === 'player'
-                    ? isCurrentTrackTimestamped()
-                      ? handlePlayerPlayFromHere
-                      : handleShowFollowAlong
-                    : handlePlaySelection
-                }>
-                <PlayIcon size={moderateScale(18)} color={theme.colors.text} />
-                <Text style={styles.optionText}>
-                  {isRange ? 'Play Selection' : 'Play from Here'}
-                </Text>
-              </Pressable>
-              <View style={styles.divider} />
-              <Pressable
-                style={({pressed}) => [
-                  styles.option,
-                  pressed && styles.optionPressed,
-                ]}
-                onPress={
-                  source === 'player'
-                    ? isCurrentTrackTimestamped()
-                      ? handlePlayerRepeat
-                      : handleShowFollowAlong
-                    : handleRepeatSelection
-                }>
-                <RepeatIcon
-                  size={moderateScale(24)}
-                  color={theme.colors.text}
-                />
-                <Text style={styles.optionText}>Repeat</Text>
-              </Pressable>
-            </View>
+                  <Text style={styles.optionText}>Repeat</Text>
+                </Pressable>
+              </View>
 
-            {/* STUDY */}
-            <View style={styles.card}>
-              <Pressable
-                style={({pressed}) => [
-                  styles.option,
-                  pressed && styles.optionPressed,
-                ]}
-                onPress={handleToggleBookmark}>
-                <Feather
-                  name={isBookmarked ? 'minus-circle' : 'bookmark'}
-                  size={moderateScale(18)}
-                  color={theme.colors.text}
-                />
-                <Text style={styles.optionText}>
-                  {isBookmarked ? 'Remove Bookmark' : 'Bookmark'}
-                </Text>
-              </Pressable>
-              <View style={styles.divider} />
-              <Pressable
-                style={({pressed}) => [
-                  styles.option,
-                  pressed && styles.optionPressed,
-                ]}
-                onPress={handleHighlight}>
-                {isHighlighted ? (
+              {/* STUDY */}
+              <View style={styles.card}>
+                <Pressable
+                  style={({pressed}) => [
+                    styles.option,
+                    pressed && styles.optionPressed,
+                  ]}
+                  onPress={handleToggleBookmark}>
                   <Feather
-                    name="minus-circle"
+                    name={isBookmarked ? 'minus-circle' : 'bookmark'}
                     size={moderateScale(18)}
                     color={theme.colors.text}
                   />
-                ) : (
-                  <HighlightIcon
+                  <Text style={styles.optionText}>
+                    {isBookmarked ? 'Remove Bookmark' : 'Bookmark'}
+                  </Text>
+                </Pressable>
+                <View style={styles.divider} />
+                <Pressable
+                  style={({pressed}) => [
+                    styles.option,
+                    pressed && styles.optionPressed,
+                  ]}
+                  onPress={handleHighlight}>
+                  {isHighlighted ? (
+                    <Feather
+                      name="minus-circle"
+                      size={moderateScale(18)}
+                      color={theme.colors.text}
+                    />
+                  ) : (
+                    <HighlightIcon
+                      size={moderateScale(18)}
+                      color={theme.colors.text}
+                    />
+                  )}
+                  <Text style={styles.optionText}>
+                    {isHighlighted ? 'Remove Highlight' : 'Highlight'}
+                  </Text>
+                </Pressable>
+                <View style={styles.divider} />
+                <Pressable
+                  style={({pressed}) => [
+                    styles.option,
+                    pressed && styles.optionPressed,
+                  ]}
+                  onPress={handleNote}>
+                  <PageQuillIcon
                     size={moderateScale(18)}
                     color={theme.colors.text}
                   />
-                )}
-                <Text style={styles.optionText}>
-                  {isHighlighted ? 'Remove Highlight' : 'Highlight'}
-                </Text>
-              </Pressable>
-              <View style={styles.divider} />
-              <Pressable
-                style={({pressed}) => [
-                  styles.option,
-                  pressed && styles.optionPressed,
-                ]}
-                onPress={handleNote}>
-                <PageQuillIcon
-                  size={moderateScale(18)}
-                  color={theme.colors.text}
-                />
-                <Text style={styles.optionText}>Add Note</Text>
-              </Pressable>
-            </View>
+                  <Text style={styles.optionText}>Add Note</Text>
+                </Pressable>
+              </View>
 
-            {/* EXPLORE */}
-            <View style={styles.card}>
-              <Pressable
-                style={({pressed}) => [
-                  styles.option,
-                  pressed && styles.optionPressed,
-                ]}
-                onPress={handleTranslation}>
-                <MaterialCommunityIcons
-                  name="translate"
-                  size={moderateScale(19)}
-                  color={theme.colors.text}
-                />
-                <Text style={styles.optionText}>Translation</Text>
-              </Pressable>
-              {!isRange ? (
-                <>
-                  <View style={styles.divider} />
-                  <Pressable
-                    style={({pressed}) => [
-                      styles.option,
-                      pressed && styles.optionPressed,
-                    ]}
-                    onPress={handleTafseer}>
-                    <StackedVolumesIcon
-                      size={moderateScale(18)}
-                      color={theme.colors.text}
-                    />
-                    <Text style={styles.optionText}>Tafseer</Text>
-                  </Pressable>
-                </>
-              ) : null}
-              {!isRange ? (
-                <>
-                  <View style={styles.divider} />
-                  <Pressable
-                    style={({pressed}) => [
-                      styles.option,
-                      pressed && styles.optionPressed,
-                    ]}
-                    onPress={handleTheme}>
-                    <GroupedLinesIcon
-                      size={moderateScale(18)}
-                      color={theme.colors.text}
-                    />
-                    <Text style={styles.optionText}>Theme</Text>
-                  </Pressable>
-                </>
-              ) : null}
-              {!isRange ? (
-                <>
-                  <View style={styles.divider} />
-                  <Pressable
-                    style={({pressed}) => [
-                      styles.option,
-                      pressed && styles.optionPressed,
-                    ]}
-                    onPress={handleWBW}>
-                    <BreakdownIcon
-                      size={moderateScale(18)}
-                      color={theme.colors.text}
-                    />
-                    <Text style={styles.optionText}>Word by Word</Text>
-                  </Pressable>
-                </>
-              ) : null}
-              {/* RFC-018 — Community Reflections row. Gated on a fork wiring
+              {/* EXPLORE */}
+              <View style={styles.card}>
+                <Pressable
+                  style={({pressed}) => [
+                    styles.option,
+                    pressed && styles.optionPressed,
+                  ]}
+                  onPress={handleTranslation}>
+                  <MaterialCommunityIcons
+                    name="translate"
+                    size={moderateScale(19)}
+                    color={theme.colors.text}
+                  />
+                  <Text style={styles.optionText}>Translation</Text>
+                </Pressable>
+                {!isRange ? (
+                  <>
+                    <View style={styles.divider} />
+                    <Pressable
+                      style={({pressed}) => [
+                        styles.option,
+                        pressed && styles.optionPressed,
+                      ]}
+                      onPress={handleTafseer}>
+                      <StackedVolumesIcon
+                        size={moderateScale(18)}
+                        color={theme.colors.text}
+                      />
+                      <Text style={styles.optionText}>Tafseer</Text>
+                    </Pressable>
+                  </>
+                ) : null}
+                {!isRange ? (
+                  <>
+                    <View style={styles.divider} />
+                    <Pressable
+                      style={({pressed}) => [
+                        styles.option,
+                        pressed && styles.optionPressed,
+                      ]}
+                      onPress={handleTheme}>
+                      <GroupedLinesIcon
+                        size={moderateScale(18)}
+                        color={theme.colors.text}
+                      />
+                      <Text style={styles.optionText}>Theme</Text>
+                    </Pressable>
+                  </>
+                ) : null}
+                {!isRange ? (
+                  <>
+                    <View style={styles.divider} />
+                    <Pressable
+                      style={({pressed}) => [
+                        styles.option,
+                        pressed && styles.optionPressed,
+                      ]}
+                      onPress={handleWBW}>
+                      <BreakdownIcon
+                        size={moderateScale(18)}
+                        color={theme.colors.text}
+                      />
+                      <Text style={styles.optionText}>Word by Word</Text>
+                    </Pressable>
+                  </>
+                ) : null}
+                {/* RFC-018 — Community Reflections row. Gated on a fork wiring
                   branding.communityReflectionsProvider (so Bayaan never shows
                   it) and single-ayah selection. Same predicate as the inline
                   slot + settings toggle; no new seam. */}
-              {branding.communityReflectionsProvider && !isRange ? (
-                <>
-                  <View style={styles.divider} />
-                  <Pressable
-                    style={({pressed}) => [
-                      styles.option,
-                      pressed && styles.optionPressed,
-                    ]}
-                    onPress={handleCommunityReflections}>
-                    <MaterialCommunityIcons
-                      name="comment-quote-outline"
-                      size={moderateScale(19)}
-                      color={theme.colors.text}
-                    />
-                    <Text style={styles.optionText}>Community Reflections</Text>
-                  </Pressable>
-                </>
-              ) : null}
-              {hasSimilarVerses && !isRange ? (
-                <>
-                  <View style={styles.divider} />
-                  <Pressable
-                    style={({pressed}) => [
-                      styles.option,
-                      pressed && styles.optionPressed,
-                    ]}
-                    onPress={handleSimilarVerses}>
-                    <MirrorWavesIcon
-                      size={moderateScale(18)}
-                      color={theme.colors.text}
-                    />
-                    <Text style={styles.optionText}>Similar Verses</Text>
-                  </Pressable>
-                </>
-              ) : null}
-              {hasSharedPhrases && !isRange ? (
-                <>
-                  <View style={styles.divider} />
-                  <Pressable
-                    style={({pressed}) => [
-                      styles.option,
-                      pressed && styles.optionPressed,
-                    ]}
-                    onPress={handleSharedPhrases}>
-                    <ChainLinksIcon
-                      size={moderateScale(18)}
-                      color={theme.colors.text}
-                    />
-                    <Text style={styles.optionText}>Shared Phrases</Text>
-                  </Pressable>
-                </>
-              ) : null}
-            </View>
+                {branding.communityReflectionsProvider && !isRange ? (
+                  <>
+                    <View style={styles.divider} />
+                    <Pressable
+                      style={({pressed}) => [
+                        styles.option,
+                        pressed && styles.optionPressed,
+                      ]}
+                      onPress={handleCommunityReflections}>
+                      <MaterialCommunityIcons
+                        name="comment-quote-outline"
+                        size={moderateScale(19)}
+                        color={theme.colors.text}
+                      />
+                      <Text style={styles.optionText}>
+                        Community Reflections
+                      </Text>
+                    </Pressable>
+                  </>
+                ) : null}
+                {hasSimilarVerses && !isRange ? (
+                  <>
+                    <View style={styles.divider} />
+                    <Pressable
+                      style={({pressed}) => [
+                        styles.option,
+                        pressed && styles.optionPressed,
+                      ]}
+                      onPress={handleSimilarVerses}>
+                      <MirrorWavesIcon
+                        size={moderateScale(18)}
+                        color={theme.colors.text}
+                      />
+                      <Text style={styles.optionText}>Similar Verses</Text>
+                    </Pressable>
+                  </>
+                ) : null}
+                {hasSharedPhrases && !isRange ? (
+                  <>
+                    <View style={styles.divider} />
+                    <Pressable
+                      style={({pressed}) => [
+                        styles.option,
+                        pressed && styles.optionPressed,
+                      ]}
+                      onPress={handleSharedPhrases}>
+                      <ChainLinksIcon
+                        size={moderateScale(18)}
+                        color={theme.colors.text}
+                      />
+                      <Text style={styles.optionText}>Shared Phrases</Text>
+                    </Pressable>
+                  </>
+                ) : null}
+              </View>
 
-            {/* SHARE */}
-            <View style={styles.card}>
-              <Pressable
-                style={({pressed}) => [
-                  styles.option,
-                  pressed && styles.optionPressed,
-                ]}
-                onPress={handleCopy}>
-                <CopyIcon size={moderateScale(18)} color={theme.colors.text} />
-                <Text style={styles.optionText}>Copy</Text>
-              </Pressable>
-              <View style={styles.divider} />
-              <Pressable
-                style={({pressed}) => [
-                  styles.option,
-                  pressed && styles.optionPressed,
-                ]}
-                onPress={handleShare}>
-                <ShareIcon size={moderateScale(18)} color={theme.colors.text} />
-                <Text style={styles.optionText}>Share</Text>
-              </Pressable>
-            </View>
-          </ScrollView>
-        )}
-      </View>
+              {/* SHARE */}
+              <View style={styles.card}>
+                <Pressable
+                  style={({pressed}) => [
+                    styles.option,
+                    pressed && styles.optionPressed,
+                  ]}
+                  onPress={handleCopy}>
+                  <CopyIcon
+                    size={moderateScale(18)}
+                    color={theme.colors.text}
+                  />
+                  <Text style={styles.optionText}>Copy</Text>
+                </Pressable>
+                <View style={styles.divider} />
+                <Pressable
+                  style={({pressed}) => [
+                    styles.option,
+                    pressed && styles.optionPressed,
+                  ]}
+                  onPress={handleShare}>
+                  <ShareIcon
+                    size={moderateScale(18)}
+                    color={theme.colors.text}
+                  />
+                  <Text style={styles.optionText}>Share</Text>
+                </Pressable>
+              </View>
+            </ScrollView>
+          )}
+        </View>
+      )}
     </ActionSheet>
   );
 };

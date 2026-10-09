@@ -7,12 +7,15 @@ import Color from 'color';
 import {SURAHS} from '@/data/surahData';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
 import type {VerseBookmark} from '@/types/verse-annotations';
+import {useQfSyncStore} from '@/store/qfSyncStore';
 
 // Module-level cache — warmed by AppInitializer after DB is ready
 let cachedBookmarks: VerseBookmark[] = [];
+let cachedScopeKey = 'guest';
 
 /** Called from AppInitializer after VerseAnnotations DB is initialized */
 export async function warmBookmarkCache(): Promise<void> {
+  cachedScopeKey = useQfSyncStore.getState().activeAccountId ?? 'guest';
   cachedBookmarks = await verseAnnotationService.getAllBookmarks();
 }
 
@@ -23,15 +26,26 @@ interface BookmarkChipsProps {
 export const BookmarkChips: React.FC<BookmarkChipsProps> = React.memo(
   ({onPress}) => {
     const {theme} = useTheme();
-    const [bookmarks, setBookmarks] = useState(cachedBookmarks);
+    const scopeKey = useQfSyncStore(state => state.activeAccountId ?? 'guest');
+    const dataRevision = useQfSyncStore(state => state.dataRevision);
+    const [bookmarks, setBookmarks] = useState(() =>
+      cachedScopeKey === scopeKey ? cachedBookmarks : [],
+    );
 
     // Refresh from DB on mount (covers new bookmarks added since cache)
     useEffect(() => {
+      let active = true;
+      setBookmarks(cachedScopeKey === scopeKey ? cachedBookmarks : []);
       verseAnnotationService.getAllBookmarks().then(b => {
+        if (!active) return;
+        cachedScopeKey = scopeKey;
         cachedBookmarks = b;
         setBookmarks(b);
       });
-    }, []);
+      return () => {
+        active = false;
+      };
+    }, [dataRevision, scopeKey]);
 
     if (bookmarks.length === 0) return null;
 

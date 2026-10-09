@@ -26,6 +26,7 @@ import {usePlayCountStore} from '@/store/playCountStore';
 import {useLovedStore} from '@/services/player/store/lovedStore';
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
 import {useFavoriteRecitersStore} from '@/services/player/store/favoriteRecitersStore';
+import {qfSyncDatabaseService} from '@/services/sync/qfSyncDatabaseService';
 import * as Font from 'expo-font';
 
 interface ServiceInitializer {
@@ -322,6 +323,20 @@ appInitializer.registerService({
   initialize: async () => {
     await verseAnnotationService.initialize();
     await warmBookmarkCache();
+  },
+});
+
+/**
+ * QF Sync Storage (Priority 8)
+ * Opens the account-scoped durable sync state without requiring network/auth.
+ * Non-critical - guest and offline annotations remain fully usable.
+ */
+appInitializer.registerService({
+  name: 'QF Sync Storage',
+  priority: 8,
+  critical: false,
+  initialize: async () => {
+    await qfSyncDatabaseService.initialize();
   },
 });
 

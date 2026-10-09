@@ -46,11 +46,27 @@ import {useShareIntent} from 'expo-share-intent';
 import {useUploadsStore} from '@/store/uploadsStore';
 import {SheetManager} from 'react-native-actions-sheet';
 import {showToast} from '@/utils/toastUtils';
-import {mushafSessionStore} from '@/services/mushaf/MushafSessionStore';
+import {useMushafResumeRestore} from '@/hooks/useMushafResumeRestore';
 import {USE_GLASS} from '@/hooks/useGlassProps';
 import Constants from 'expo-constants';
 import * as Sentry from '@sentry/react-native';
 import * as ScreenOrientation from 'expo-screen-orientation';
+import {BayaanAuthProvider} from '@/providers/BayaanAuthProvider';
+import {useBayaanAuthStore} from '@/store/bayaanAuthStore';
+import {useNetworkStore} from '@/store/networkStore';
+import {useQfSyncStore} from '@/store/qfSyncStore';
+import {qfSyncLifecycle} from '@/services/sync/qfSyncLifecycle';
+import {qfSettingsSyncLifecycle} from '@/services/settings/qfSettingsSyncLifecycle';
+import {GuestDataMergeSheet} from '@/components/auth/GuestDataMergeSheet';
+
+type GestureHandlerRootViewWithOverrideProps = React.ComponentProps<
+  typeof GestureHandlerRootView
+> & {
+  overrideUserInterfaceStyle?: 'light' | 'dark';
+};
+
+const GestureHandlerRootViewWithOverride =
+  GestureHandlerRootView as React.ComponentType<GestureHandlerRootViewWithOverrideProps>;
 
 // Configure Reanimated logger
 configureReanimatedLogger({
@@ -154,6 +170,51 @@ function AnalyticsConnector(): null {
   }, []);
 
   return null;
+}
+
+function QfSyncLifecycleBridge() {
+  const authStatus = useBayaanAuthStore(state => state.status);
+  const accountId = useBayaanAuthStore(
+    state => state.profile?.accountId ?? null,
+  );
+  const online = useNetworkStore(state => state.isOnline);
+  const syncRequestId = useQfSyncStore(state => state.syncRequestId);
+  const [appState, setAppState] = useState(AppState.currentState);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', setAppState);
+    return () => subscription.remove();
+  }, []);
+
+  useEffect(() => {
+    const context = {
+      authStatus,
+      accountId,
+      online,
+      appActive: appState === 'active',
+    };
+    qfSyncLifecycle.updateContext(context);
+    qfSettingsSyncLifecycle.updateContext(context);
+  }, [accountId, appState, authStatus, online]);
+
+  useEffect(() => {
+    if (syncRequestId > 0) {
+      // Settings changes are captured by their own store subscriptions.
+      qfSyncLifecycle.requestSync();
+    }
+  }, [syncRequestId]);
+
+  useEffect(
+    () => () => {
+      Promise.allSettled([
+        qfSyncLifecycle.stop(),
+        qfSettingsSyncLifecycle.stop(),
+      ]).catch(() => undefined);
+    },
+    [],
+  );
+
+  return <GuestDataMergeSheet />;
 }
 
 function RootLayout() {
@@ -336,7 +397,6 @@ function RootLayout() {
     }
 
     prepare();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Set native root view background + configure Android navigation bar to match theme
@@ -436,27 +496,10 @@ function RootLayout() {
     resetShareIntent,
   ]);
 
-  // Restore mushaf screen if it was open when the app was killed.
-  // MMKV reads are synchronous — no hydration wait needed.
-  useEffect(() => {
-    if (!appIsReady || !isPlayerReady || hasShareIntent) return;
-
-    const lastScreenWasMushaf = mushafSessionStore.getLastScreenWasMushaf();
-    const lastReadPage = mushafSessionStore.getLastReadPage();
-
-    if (lastScreenWasMushaf) {
-      router.push({
-        pathname: '/mushaf',
-        params: lastReadPage ? {page: String(lastReadPage)} : undefined,
-      });
-      // Let the navigation animation finish behind the splash before revealing
-      InteractionManager.runAfterInteractions(() => {
-        setMushafRestoreHandled(true);
-      });
-    } else {
-      setMushafRestoreHandled(true);
-    }
-  }, [appIsReady, isPlayerReady, hasShareIntent]);
+  useMushafResumeRestore(
+    appIsReady && isPlayerReady && !hasShareIntent,
+    useCallback(() => setMushafRestoreHandled(true), []),
+  );
 
   // Hide splash once mushaf restore (if any) has settled.
   // onLayout only fires once, so this effect covers the case where
@@ -469,7 +512,7 @@ function RootLayout() {
       !hasShareIntent &&
       mushafRestoreHandled
     ) {
-      SplashScreen.hideAsync().catch(() => {});
+      SplashScreen.hideAsync().catch(() => undefined);
     }
   }, [
     appIsReady,
@@ -519,48 +562,50 @@ function RootLayout() {
         <AnalyticsConnector />
         <ThemeProvider value={navigationTheme}>
           <SafeAreaProvider>
-            <ExpoAudioProvider>
-              <GestureHandlerRootView
-                style={{flex: 1, backgroundColor: theme.colors.background}}
-                // @ts-ignore - RN supports this on iOS to override system theme for native UI (keyboard, menus, alerts)
-                overrideUserInterfaceStyle={isDarkMode ? 'dark' : 'light'}
-                onLayout={onLayoutRootView}>
-                <NetworkStatusMonitor />
-                <SheetProvider>
-                  <Stack
-                    screenOptions={{
-                      headerShown: false,
-                      contentStyle: {
-                        paddingTop: 0,
-                        backgroundColor: theme.colors.background,
-                      },
-                      animation: 'fade',
-                    }}>
-                    <Stack.Screen
-                      name="(tabs)"
-                      options={{headerShown: false}}
-                    />
-                    <Stack.Screen
-                      name="mushaf"
-                      options={{
-                        headerShown: USE_GLASS,
-                        headerTransparent: true,
-                        headerStyle: {backgroundColor: 'transparent'},
-                        headerShadowVisible: false,
-                        headerTitle: '',
-                        headerTitleAlign: 'center',
-                        headerBackButtonDisplayMode: 'minimal',
-                        animation: 'slide_from_right',
-                        fullScreenGestureEnabled: false,
-                      }}
-                    />
-                  </Stack>
-                  <PlayerSheet />
-                  <WhatsNewModal ref={whatsNewModalRef} />
-                  <DevMenu whatsNewModalRef={whatsNewModalRef} />
-                </SheetProvider>
-              </GestureHandlerRootView>
-            </ExpoAudioProvider>
+            <BayaanAuthProvider>
+              <ExpoAudioProvider>
+                <GestureHandlerRootViewWithOverride
+                  style={{flex: 1, backgroundColor: theme.colors.background}}
+                  overrideUserInterfaceStyle={isDarkMode ? 'dark' : 'light'}
+                  onLayout={onLayoutRootView}>
+                  <NetworkStatusMonitor />
+                  <SheetProvider>
+                    <QfSyncLifecycleBridge />
+                    <Stack
+                      screenOptions={{
+                        headerShown: false,
+                        contentStyle: {
+                          paddingTop: 0,
+                          backgroundColor: theme.colors.background,
+                        },
+                        animation: 'fade',
+                      }}>
+                      <Stack.Screen
+                        name="(tabs)"
+                        options={{headerShown: false}}
+                      />
+                      <Stack.Screen
+                        name="mushaf"
+                        options={{
+                          headerShown: USE_GLASS,
+                          headerTransparent: true,
+                          headerStyle: {backgroundColor: 'transparent'},
+                          headerShadowVisible: false,
+                          headerTitle: '',
+                          headerTitleAlign: 'center',
+                          headerBackButtonDisplayMode: 'minimal',
+                          animation: 'slide_from_right',
+                          fullScreenGestureEnabled: false,
+                        }}
+                      />
+                    </Stack>
+                    <PlayerSheet />
+                    <WhatsNewModal ref={whatsNewModalRef} />
+                    <DevMenu whatsNewModalRef={whatsNewModalRef} />
+                  </SheetProvider>
+                </GestureHandlerRootViewWithOverride>
+              </ExpoAudioProvider>
+            </BayaanAuthProvider>
           </SafeAreaProvider>
         </ThemeProvider>
       </PostHogProvider>

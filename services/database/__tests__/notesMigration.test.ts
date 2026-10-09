@@ -98,6 +98,17 @@ async function notesIndexes(mock: MockModule): Promise<IndexListRow[]> {
   );
 }
 
+// Columns userSyncV1 adds when it rebuilds notes into the owner-scoped schema.
+function synced(row: Row): Row {
+  return {
+    ...row,
+    owner_scope: 'guest',
+    remote_id: null,
+    server_created_at: null,
+    server_updated_at: null,
+  };
+}
+
 function oldRow(i: number): string {
   return `('note-${i}', '1:${i}', 1, ${i}, 'body ${i}', ${1000 + i}, ${
     2000 + i
@@ -135,7 +146,7 @@ describe('notes table migrations', () => {
 
     expect((await notesIndexes(mock)).some(i => i.origin === 'u')).toBe(false);
     expect(await rawNotes(mock)).toEqual(
-      before.map(r => ({...r, verse_keys: null, rewayah_id: 'hafs'})),
+      before.map(r => synced({...r, verse_keys: null, rewayah_id: 'hafs'})),
     );
     expect(await tableNames(mock)).not.toContain('notes_new');
     expect(await tableNames(mock)).not.toContain('notes_rebuild');
@@ -161,7 +172,7 @@ describe('notes table migrations', () => {
 
     expect((await notesIndexes(mock)).some(i => i.origin === 'u')).toBe(false);
     expect(await rawNotes(mock)).toEqual([
-      {
+      synced({
         id: 'a',
         verse_key: '2:1',
         surah_number: 2,
@@ -171,8 +182,8 @@ describe('notes table migrations', () => {
         updated_at: 20,
         verse_keys: '2:1,2:2',
         rewayah_id: 'warsh',
-      },
-      {
+      }),
+      synced({
         id: 'b',
         verse_key: '2:5',
         surah_number: 2,
@@ -182,7 +193,7 @@ describe('notes table migrations', () => {
         updated_at: 21,
         verse_keys: null,
         rewayah_id: 'hafs',
-      },
+      }),
     ]);
   });
 
@@ -195,12 +206,19 @@ describe('notes table migrations', () => {
     );
     const indexes = await notesIndexes(mock);
     expect(indexes.map(i => i.origin)).toEqual(['pk']);
+
+    // userSyncV1 rebuilds notes once into the owner-scoped schema; no later
+    // launch may rebuild it again.
+    await annotations.initialize();
+    await annotations.close();
+    await mock.closeOpenDatabases();
     const db = await mock.openDatabaseAsync(DB_FILE);
     const master = await db.getFirstAsync<{rootpage: number}>(
       "SELECT rootpage FROM sqlite_master WHERE name='notes'",
     );
     await mock.closeOpenDatabases();
 
+    // Relaunch: the closed service reopens the same database file.
     await annotations.initialize();
 
     const reopened = await mock.openDatabaseAsync(DB_FILE);
@@ -208,7 +226,97 @@ describe('notes table migrations', () => {
       "SELECT rootpage FROM sqlite_master WHERE name='notes'",
     );
     expect(after?.rootpage).toBe(master?.rootpage);
+    expect((await rawNotes(mock)).map(r => r.id)).toEqual(['n']);
     expect(await tableNames(mock)).not.toContain('notes_new');
+  });
+
+  it('keeps a fork column CHECK constraint and index when removing UNIQUE(verse_key)', async () => {
+    const {mock, annotations} = loaded;
+    await seed(
+      mock,
+      `${OLD_NOTES}
+       ALTER TABLE notes ADD COLUMN fork_rank INTEGER NOT NULL DEFAULT 1 CHECK (fork_rank > 0);
+       CREATE INDEX idx_notes_fork_rank ON notes(fork_rank);
+       INSERT INTO notes VALUES ('n', '3:1', 3, 1, 'kept', 1, 2, 5);`,
+    );
+
+    await annotations.initialize();
+
+    const db = await mock.openDatabaseAsync(DB_FILE);
+    const master = await db.getFirstAsync<{sql: string}>(
+      "SELECT sql FROM sqlite_master WHERE name='notes'",
+    );
+    expect(master?.sql).toMatch(/CHECK\s*\(\s*"?fork_rank"?\s*>\s*0\s*\)/);
+    const indexNames = (await notesIndexes(mock)).map(i => i.name);
+    expect(indexNames).toContain('idx_notes_fork_rank');
+    expect((await notesIndexes(mock)).some(i => i.origin === 'u')).toBe(false);
+    expect((await rawNotes(mock)).map(r => [r.id, r.fork_rank])).toEqual([
+      ['n', 5],
+    ]);
+    await expect(
+      db.execAsync("UPDATE notes SET fork_rank = 0 WHERE id = 'n'"),
+    ).rejects.toThrow();
+  });
+
+  it('does not rebuild an owner-scoped notes table with a composite UNIQUE on a later launch', async () => {
+    const {mock, annotations} = loaded;
+    // A fork-owned column with a composite UNIQUE that includes verse_key.
+    // userSyncV1 keeps the constraint (origin 'u') because it names a column
+    // Bayaan does not own.
+    await seed(
+      mock,
+      `${CURRENT_NOTES}
+       ALTER TABLE notes RENAME TO notes_seed;
+       CREATE TABLE notes (
+         id TEXT PRIMARY KEY,
+         verse_key TEXT NOT NULL,
+         surah_number INTEGER NOT NULL,
+         ayah_number INTEGER NOT NULL,
+         content TEXT NOT NULL,
+         created_at INTEGER NOT NULL,
+         updated_at INTEGER NOT NULL,
+         verse_keys TEXT,
+         rewayah_id TEXT,
+         fork_tag TEXT NOT NULL DEFAULT 'x',
+         UNIQUE(verse_key, fork_tag)
+       );
+       DROP TABLE notes_seed;
+       INSERT INTO notes VALUES ('n', '3:1', 3, 1, 'kept', 1, 2, NULL, 'hafs', 'x');`,
+    );
+
+    await annotations.initialize();
+    await annotations.close();
+    await mock.closeOpenDatabases();
+    const db = await mock.openDatabaseAsync(DB_FILE);
+    const migrated = await db.getFirstAsync<{rootpage: number; sql: string}>(
+      "SELECT rootpage, sql FROM sqlite_master WHERE name='notes'",
+    );
+    expect(migrated?.sql).toMatch(/owner_scope TEXT NOT NULL DEFAULT 'guest'/);
+    expect((await notesIndexes(mock)).some(i => i.origin === 'u')).toBe(true);
+    await mock.closeOpenDatabases();
+
+    // Relaunch: the legacy cleanup must not rebuild notes into the old schema.
+    await annotations.initialize();
+
+    const reopened = await mock.openDatabaseAsync(DB_FILE);
+    const after = await reopened.getFirstAsync<{rootpage: number; sql: string}>(
+      "SELECT rootpage, sql FROM sqlite_master WHERE name='notes'",
+    );
+    expect(after).toEqual(migrated);
+    expect(await rawNotes(mock)).toEqual([
+      synced({
+        id: 'n',
+        verse_key: '3:1',
+        surah_number: 3,
+        ayah_number: 1,
+        content: 'kept',
+        verse_keys: null,
+        created_at: 1,
+        updated_at: 2,
+        rewayah_id: 'hafs',
+        fork_tag: 'x',
+      }),
+    ]);
   });
 
   it('drops an empty orphan notes_new table', async () => {
