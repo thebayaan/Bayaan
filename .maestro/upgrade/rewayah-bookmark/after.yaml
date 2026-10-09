@@ -1,5 +1,6 @@
-# New build over the old data: the Warsh bookmark should still be listed and
-# tint the right Warsh verse(s) on page 1.
+# New build over the old data. Since PR #329 a legacy Warsh row on Hafs "1:7"
+# covers every Warsh verse holding words of Hafs 1:7, i.e. Warsh 1:6 and 1:7:
+# both should be tinted on page 1, and the list labels the bookmark "1:6-7".
 appId: com.bayaan.app
 ---
 - runFlow: ../../common/launch.yaml
@@ -9,5 +10,5 @@ appId: com.bayaan.app
       PAGE: 1
 - takeScreenshot: page1-after-upgrade
 - runFlow: ../../common/bookmarks-list.yaml
-- assertVisible: "Warsh"
 - takeScreenshot: bookmarks-list-after-upgrade
+- assertVisible: "1:6-7, Warsh.*"

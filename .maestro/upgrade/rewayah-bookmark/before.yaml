@@ -12,12 +12,14 @@ appId: com.bayaan.app
 - takeScreenshot: page1-warsh
 # The last line of the page: ولا الضالين.
 - longPressOn:
-    point: "50%,69.3%"
+    point: "50%,69%"
+# The sheet opens when the finger lifts. Its rows are labelled "<icon>, Name".
 - extendedWaitUntil:
-    visible: "Bookmark"
-    timeout: 10000
+    visible: "(.*, )?Bookmark"
+    timeout: 30000
+- assertVisible: "1:7"
 - takeScreenshot: verse-actions
-- tapOn: "Bookmark"
+- tapOn: "(.*, )?Bookmark"
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: page1-bookmarked

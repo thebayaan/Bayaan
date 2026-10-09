@@ -3,7 +3,7 @@ appId: com.bayaan.app
 ---
 - extendedWaitUntil:
     visible: "Open"
-    timeout: 5000
+    timeout: 20000
     optional: true
 - tapOn:
     text: "Open"

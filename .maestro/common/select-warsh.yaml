@@ -1,28 +1,39 @@
 # Switches the open mushaf to Warsh. On iOS 26 the settings icon in the
-# navigation bar has no label, so it's tapped by position.
+# navigation bar has no label, so it's tapped by position. The rewayah row and
+# its options expose only combined accessibility labels.
 appId: com.bayaan.app
 ---
 - tapOn:
-    point: "90.5%,9.6%"
+    point: "90%,10%"
 - extendedWaitUntil:
     visible: "Mushaf Settings"
-    timeout: 10000
+    timeout: 20000
 - scrollUntilVisible:
     element:
-      text: "Currently reading"
+      text: "Rewayah: .*"
     direction: DOWN
-    timeout: 30000
-- tapOn: "Currently reading"
-- tapOn: "Warsh 'an Nafi'"
-- extendedWaitUntil:
-    visible: "Now reading"
-    timeout: 10000
-    optional: true
-- takeScreenshot: warsh-selected
-# Close the sheet by swiping it down.
-- swipe:
-    start: "50%,25%"
-    end: "50%,95%"
-    duration: 400
+    timeout: 60000
+- tapOn: "Rewayah: .*"
+- scrollUntilVisible:
+    element:
+      text: "Warsh 'an Nafi'.*"
+    direction: DOWN
+    centerElement: true
+    visibilityPercentage: 100
+    timeout: 60000
+# Let the list stop moving, or the tap can land on a neighbouring rewayah.
 - waitForAnimationToEnd:
-    timeout: 5000
+    timeout: 10000
+- tapOn: "Warsh 'an Nafi'.*"
+- extendedWaitUntil:
+    visible: "Rewayah: Warsh.*"
+    timeout: 20000
+- takeScreenshot: warsh-selected
+# Close the sheet by tapping the dimmed area above it.
+- tapOn:
+    point: "50%,15%"
+- extendedWaitUntil:
+    notVisible: "Mushaf Settings"
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 10000

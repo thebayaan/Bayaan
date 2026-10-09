@@ -1,19 +1,21 @@
 # Opens the mushaf on ${PAGE}. A deep link doesn't navigate while the mushaf
-# is already open, so leave it first (back button, top left).
+# is already open, so leave it first. Timeouts are long because CI simulators
+# are slow.
 appId: com.bayaan.app
 ---
 - runFlow:
     when:
-      visible: "Options"
+      visible:
+        id: "BackButton"
     commands:
       - tapOn:
-          point: "9%,9.6%"
+          id: "BackButton"
       - waitForAnimationToEnd:
-          timeout: 5000
+          timeout: 10000
 - openLink: "bayaan://mushaf?page=${PAGE}"
 - runFlow: accept-link.yaml
 - extendedWaitUntil:
     visible: "Options"
-    timeout: 30000
+    timeout: 90000
 - waitForAnimationToEnd:
-    timeout: 10000
+    timeout: 15000

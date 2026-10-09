@@ -12,11 +12,6 @@ name: Simulator builds
 #   label stays on.
 
 on:
-  # TEMP(bootstrap): registers the workflow so it can be dispatched from this
-  # branch before it reaches main. Removed before merge.
-  push:
-    branches: [ci/cloud-sim-builds]
-    paths: [.github/workflows/sim-builds.yml]
   workflow_dispatch:
     inputs:
       ref:
@@ -55,7 +50,7 @@ jobs:
   plan:
     name: Plan
     if: >-
-      github.event_name == 'workflow_dispatch' || github.event_name == 'push' ||
+      github.event_name == 'workflow_dispatch' ||
       (contains(github.event.pull_request.labels.*.name, 'sim-qa') &&
       (github.event.action != 'labeled' || github.event.label.name == 'sim-qa'))
     runs-on: ubuntu-latest
@@ -78,10 +73,6 @@ jobs:
           PR_HEAD: ${{ github.event.pull_request.head.sha }}
           PR_BASE: ${{ github.event.pull_request.base.sha }}
         run: |
-          if [ "$EVENT" = push ]; then
-            # TEMP(bootstrap): PR #329 upgraded from develop.
-            IN_REF=refs/pull/329/head; IN_UPGRADE_FROM=develop; IN_QA=false; IN_ANDROID=false; IN_BUILDS_FROM_RUN=
-          fi
           if [ "$EVENT" = pull_request ]; then
             ref=$PR_HEAD; from=$PR_BASE; qa=true; android=false; reuse=
           else
@@ -209,6 +200,9 @@ jobs:
       - name: Run flows
         env:
           QA_OUT: ${{ github.workspace }}/qa-output
+          # The XCTest driver starts slowly on hosted runners.
+          MAESTRO_DRIVER_STARTUP_TIMEOUT: '300000'
+          MAESTRO_CLI_NO_ANALYTICS: '1'
         run: |
           base=
           if [ "${{ needs.plan.outputs.upgrade }}" = true ]; then
