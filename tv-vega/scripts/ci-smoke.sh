@@ -4,9 +4,12 @@
 # Assumes the app is already installed. Streams device logs, launches the app,
 # drives it with remote key presses, saves a screenshot after each step plus a
 # diagnostic bundle to <out-dir>, and fails if the app is not running at the end.
+#
+# SMOKE_APP_ID overrides the app (CI uses it for a Hello World control app), and
+# SMOKE_KEYS=0 skips the remote key presses.
 set -uo pipefail
 
-APP_ID=com.bayaan.tvsmoke.main
+APP_ID=${SMOKE_APP_ID:-com.bayaan.tvsmoke.main}
 OUT_DIR=${1:?usage: ci-smoke.sh <out-dir>}
 mkdir -p "$OUT_DIR/screens" "$OUT_DIR/logs"
 
@@ -52,7 +55,8 @@ app_running() {
 
 collect_diagnostics() {
   kill "$LOG_PID" 2>/dev/null || true
-  vega device doctor -d "$SERIAL" --dir "$OUT_DIR/doctor" -a com.bayaan.tvsmoke || echo "doctor failed"
+  mkdir -p "$OUT_DIR/doctor"
+  vega device doctor -d "$SERIAL" --dir "$OUT_DIR/doctor" -a "${APP_ID%.main}" || echo "doctor failed"
 }
 
 "$VDA" -s "$SERIAL" shell "loggingctl log -f" >"$OUT_DIR/logs/device.log" 2>&1 &
@@ -82,6 +86,11 @@ for second in 5 10 15; do
   screenshot "00-launch-${second}s"
   app_running
 done
+
+if [[ "${SMOKE_KEYS:-1}" == 0 ]]; then
+  app_running | grep -qi "is not running" && exit 1
+  exit 0
+fi
 
 press KEY_DOWN KEY_ENTER
 sleep 5
