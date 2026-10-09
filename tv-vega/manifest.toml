@@ -51,6 +51,10 @@ id = "/com.amazon.kepler.w3cmedia_2@IW3cmedia_3"
 [[needs.module]]
 id = "/com.amazon.kepler.shopify__flash_list_2@IShopify__FlashList_0"
 
+[[needs.module]]
+id = "/com.amazon.kepler.async_storage__async_storage_2@IAsyncStorage__AsyncStorage_1"
+
+
 
 
 
