@@ -1,0 +1,103 @@
+name: TV Vega
+
+on:
+  push:
+    branches: [feature/tv-platforms]
+    paths:
+      - 'tv-app/**'
+      - 'tv-vega/**'
+      - 'components/**'
+      - 'data/**'
+      - 'utils/**'
+      - '.github/workflows/tv-vega.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  VEGA_SDK_VERSION: 0.24.12112
+  APP_ID: com.bayaan.tvsmoke.main
+
+jobs:
+  vega:
+    name: Build and smoke test on Vega Virtual Device
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: tv-vega
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Enable KVM
+        working-directory: .
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          ls -l /dev/kvm
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: tv-vega/package-lock.json
+
+      - name: Cache Vega SDK
+        id: vega-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/vega
+          key: vega-sdk-${{ env.VEGA_SDK_VERSION }}-linux-x86_64
+
+      - name: Install Vega SDK
+        if: steps.vega-cache.outputs.cache-hit != 'true'
+        working-directory: .
+        env:
+          NONINTERACTIVE: 'true'
+        run: |
+          curl -fsSL https://sdk-installer.vega.labcollab.net/get_vvm.sh -o "$RUNNER_TEMP/get_vvm.sh"
+          bash "$RUNNER_TEMP/get_vvm.sh"
+
+      - name: Add Vega CLI to PATH
+        working-directory: .
+        run: |
+          echo "$HOME/vega/bin" >> "$GITHUB_PATH"
+          "$HOME/vega/bin/vega" sdk list-installed
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps --no-audit --no-fund
+
+      - name: Typecheck (shared app against Vega types)
+        run: npm run typecheck
+
+      - name: Build release vpkg
+        run: npm run build:release
+
+      - name: Start Vega Virtual Device
+        run: vega virtual-device start --no-gui --no-gl-accel -t 600
+
+      - name: Install and launch app
+        run: |
+          VPKG=$(find build -path '*x86_64/Release/*.vpkg' | head -1)
+          echo "Installing $VPKG"
+          timeout 600 vega run-app "$VPKG" "$APP_ID" -d VirtualDevice
+
+      - name: Smoke test
+        run: bash scripts/ci-smoke.sh "$RUNNER_TEMP/vega-smoke"
+
+      - name: Upload screenshots and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vega-smoke
+          path: ${{ runner.temp }}/vega-smoke
+          if-no-files-found: warn
+
+      - name: Stop Vega Virtual Device
+        if: always()
+        run: vega virtual-device stop || true
