@@ -2,6 +2,10 @@ import {create} from 'zustand';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
 import type {HighlightColor, VerseNote} from '@/types/verse-annotations';
 // @ai-start
+import type {
+  BookmarkRowInsert,
+  HighlightRowUpsert,
+} from '@/types/verse-annotations';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import type {
   RewayahVerseUnits,
@@ -45,7 +49,7 @@ interface VerseAnnotationsState {
    * in (decision 3: rewayah verse units). Keys are stored verse_keys (Hafs
    * anchors); the fields above stay keyed by verse_key alone for consumers
    * that still read Hafs keys. A shown rewayah's unit keys come from
-   * selectUnitAnnotations() / useUnitAnnotations().
+   * selectUnitAnnotations().
    */
   bookmarkRows: Record<string, StoredVerseRow>;
   /** Noted anchors, keyed by noteRowKey (rewayah + verse_key). */
@@ -71,16 +75,20 @@ interface VerseAnnotationsState {
   removeHighlight: (verseKey: string) => void;
 
   // @ai-start
-  // Rewayah verse units (decision 3): persist, then update the store. Rows
-  // store each unit's Hafs anchor and rewayah (annotationAnchor), never a
-  // rewayah verse number. `units` are the units of the selected verses'
-  // rewayah (useRewayahVerseUnits); a unit of other data throws before
-  // anything is written.
+  // Rewayah verse units (decision 3). Rows store each unit's Hafs anchor
+  // and rewayah (annotationAnchor), never a rewayah verse number. `units`
+  // are the units of the selected verses' rewayah (useRewayahVerseUnits); a
+  // unit of other data throws before anything is written. The writes of one
+  // call run in ONE database transaction, and the store changes only once
+  // it has committed: when it fails, the error is thrown and nothing changed.
   /**
-   * Bookmark: one row per unit not bookmarked yet. Unbookmark: delete every
-   * row that marks the units in that rewayah, legacy rows included; other
-   * verses such a row also marked (the other part of a split Hafs verse
-   * under a Hafs row) stay bookmarked on rows of their own.
+   * Bookmark: one row per unit no row marks yet. Unbookmark: delete exactly
+   * the rows that mark the units in that rewayah (legacy rows included),
+   * each as a whole row, and write nothing else. A row is one bookmark
+   * saved on one verse of its own rewayah, so a verse it also marks here
+   * (the other part of a Hafs verse that a Hafs row marks) is unbookmarked
+   * with it; rewriting it into this rewayah would change its identity and
+   * keep its verse bookmarked where it was saved.
    */
   setUnitsBookmarked: (
     units: RewayahVerseUnits,
@@ -88,9 +96,12 @@ interface VerseAnnotationsState {
     bookmarked: boolean,
   ) => Promise<void>;
   /**
-   * Colour each unit (one row at its anchor), or with null remove every
-   * highlight row that marks the units, legacy rows included. Other verses
-   * a changed row also marked keep their colour on rows of their own.
+   * Colour each unit (one row at its anchor), or with null remove exactly
+   * the highlight rows that mark the units, each whole (as unbookmarking).
+   * Colouring a unit whose anchor holds a row of another rewayah recolours
+   * and restamps that row (highlights.verse_key is UNIQUE): the other verses
+   * it marked keep the colour they showed on rows of their own, with its
+   * created_at.
    */
   setUnitsHighlight: (
     units: RewayahVerseUnits,
@@ -134,11 +145,11 @@ function anchorsOf(
 
 /**
  * Verses outside `changed` that would lose their mark when the rows at
- * `rowKeys` are deleted or restamped: verses one of those rows marks that
- * no other row marks. A row of another rewayah can mark several verses of
- * the shown one (a Hafs bookmark on split Hafs 1:7 marks Warsh 1:6 and
- * 1:7); changing one of them must leave the others as they were, so they
- * get rows of their own.
+ * `rowKeys` are restamped into the shown rewayah: verses one of those rows
+ * marks that no other row marks. A row of another rewayah can mark several
+ * verses of the shown one; recolouring one of them at its anchor (where
+ * such a row sits) must leave the others as they were, so they get rows of
+ * their own.
  */
 function versesLosingMark(
   units: RewayahVerseUnits,
@@ -158,6 +169,46 @@ function versesLosingMark(
     }
   }
   return [...out.values()].sort((a, b) => a.index - b.index);
+}
+
+/** The bookmark fields once rows were deleted, then added, in the DB. */
+function bookmarkFieldsAfter(
+  state: VerseAnnotationsState,
+  removed: Iterable<string>,
+  added: readonly BookmarkRowInsert[],
+): Pick<VerseAnnotationsState, 'bookmarkedVerseKeys' | 'bookmarkRows'> {
+  const bookmarkedVerseKeys = new Set(state.bookmarkedVerseKeys);
+  const bookmarkRows = {...state.bookmarkRows};
+  for (const verseKey of removed) {
+    bookmarkedVerseKeys.delete(verseKey);
+    delete bookmarkRows[verseKey];
+  }
+  for (const {verseKey, rewayahId} of added) {
+    bookmarkedVerseKeys.add(verseKey);
+    // INSERT OR IGNORE: a row already at this key stays as it is.
+    bookmarkRows[verseKey] ??= {verseKey, rewayahId};
+  }
+  return {bookmarkedVerseKeys, bookmarkRows};
+}
+
+/** The highlight fields once rows were deleted, then upserted, in the DB. */
+function highlightFieldsAfter(
+  state: VerseAnnotationsState,
+  removed: Iterable<string>,
+  upserted: readonly HighlightRowUpsert[],
+): Pick<VerseAnnotationsState, 'highlights' | 'highlightRows'> {
+  const highlights = {...state.highlights};
+  const highlightRows = {...state.highlightRows};
+  for (const verseKey of removed) {
+    delete highlights[verseKey];
+    delete highlightRows[verseKey];
+  }
+  for (const {verseKey, rewayahId, color} of upserted) {
+    // An upsert recolours the row at its key and restamps its rewayah.
+    highlights[verseKey] = color;
+    highlightRows[verseKey] = {verseKey, rewayahId, color};
+  }
+  return {highlights, highlightRows};
 }
 
 type RowsState = Pick<
@@ -424,48 +475,31 @@ export const useVerseAnnotationsStore = create<VerseAnnotationsState>()(
       await get().loadAnnotationsForSurahs(picked.map(p => p.unit.surah));
       const marks = selectUnitAnnotations(get(), units);
       if (bookmarked) {
-        for (const {unit, anchor} of picked) {
-          if (marks.bookmarkedUnitKeys.has(unit.key)) continue;
-          // bookmarks.verse_key is UNIQUE (INSERT OR IGNORE): an existing
-          // row at this anchor already marks the unit.
-          if (get().bookmarkRows[anchor.verseKey]) continue;
-          await verseAnnotationService.addBookmark(
-            anchor.verseKey,
-            anchor.surahNumber,
-            anchor.ayahNumber,
-            anchor.rewayahId,
-          );
-          get().addBookmark(anchor.verseKey, anchor.rewayahId);
-        }
+        // bookmarks.verse_key is UNIQUE (INSERT OR IGNORE): an existing row
+        // at a unit's anchor already marks the unit.
+        const added = picked
+          .filter(
+            ({unit, anchor}) =>
+              !marks.bookmarkedUnitKeys.has(unit.key) &&
+              !get().bookmarkRows[anchor.verseKey],
+          )
+          .map(p => p.anchor);
+        if (added.length === 0) return;
+        await verseAnnotationService.applyAnnotationChanges({
+          addBookmarks: added,
+        });
+        set(state => bookmarkFieldsAfter(state, [], added));
         return;
       }
-      const rowKeys = new Set<string>();
+      const removed = new Set<string>();
       for (const {unit} of picked) {
-        marks.bookmarkRowKeys(unit.key).forEach(key => rowKeys.add(key));
+        marks.bookmarkRowKeys(unit.key).forEach(key => removed.add(key));
       }
-      const keep = versesLosingMark(
-        units,
-        get().bookmarkRows,
-        rowKeys,
-        new Set(picked.map(p => p.unit.key)),
-        marks.bookmarkRowKeys,
-      );
-      for (const key of rowKeys) {
-        await verseAnnotationService.removeBookmark(key);
-        get().removeBookmark(key);
-      }
-      // Other verses those rows marked stay bookmarked (after the deletes:
-      // one of their anchors can be a deleted row's key).
-      for (const unit of keep) {
-        const anchor = annotationAnchor(units, unit);
-        await verseAnnotationService.addBookmark(
-          anchor.verseKey,
-          anchor.surahNumber,
-          anchor.ayahNumber,
-          anchor.rewayahId,
-        );
-        get().addBookmark(anchor.verseKey, anchor.rewayahId);
-      }
+      if (removed.size === 0) return;
+      await verseAnnotationService.applyAnnotationChanges({
+        removeBookmarks: [...removed],
+      });
+      set(state => bookmarkFieldsAfter(state, removed, []));
     },
 
     setUnitsHighlight: async (units, selected, color) => {
@@ -473,59 +507,55 @@ export const useVerseAnnotationsStore = create<VerseAnnotationsState>()(
       if (picked.length === 0) return;
       await get().loadAnnotationsForSurahs(picked.map(p => p.unit.surah));
       const marks = selectUnitAnnotations(get(), units);
-      const changed = new Set(picked.map(p => p.unit.key));
-      // Rows that change: colouring restamps a row of another rewayah that
-      // sits at a picked verse's anchor (highlights.verse_key is UNIQUE);
-      // removing deletes every row that marks a picked verse.
-      const rowKeys = new Set<string>();
-      for (const {unit, anchor} of picked) {
-        if (color) {
-          const row = get().highlightRows[anchor.verseKey];
-          if (row && (row.rewayahId ?? 'hafs') !== anchor.rewayahId) {
-            rowKeys.add(anchor.verseKey);
-          }
-        } else {
-          marks.highlightRowKeys(unit.key).forEach(key => rowKeys.add(key));
+      if (!color) {
+        // Exactly the rows that mark a picked verse, whole (see
+        // setUnitsBookmarked).
+        const removed = new Set<string>();
+        for (const {unit} of picked) {
+          marks.highlightRowKeys(unit.key).forEach(key => removed.add(key));
+        }
+        if (removed.size === 0) return;
+        await verseAnnotationService.applyAnnotationChanges({
+          removeHighlights: [...removed],
+        });
+        set(state => highlightFieldsAfter(state, removed, []));
+        return;
+      }
+      // One row per picked verse at its anchor. A row of another rewayah
+      // sitting at a picked anchor is recoloured and restamped by the upsert
+      // (highlights.verse_key is UNIQUE): the other verses it marked keep the
+      // colour they showed on rows of their own, created when it was.
+      const replaced = new Set<string>();
+      for (const {anchor} of picked) {
+        const row = get().highlightRows[anchor.verseKey];
+        if (row && (row.rewayahId ?? 'hafs') !== anchor.rewayahId) {
+          replaced.add(anchor.verseKey);
         }
       }
-      // Other verses those rows marked keep their colour on rows of their
-      // own, written after the changes (an anchor can be a changed key).
-      const keep = versesLosingMark(
+      const upserts: HighlightRowUpsert[] = picked.map(({anchor}) => ({
+        ...anchor,
+        color,
+      }));
+      const kept = versesLosingMark(
         units,
         get().highlightRows,
-        rowKeys,
-        changed,
+        replaced,
+        new Set(picked.map(p => p.unit.key)),
         marks.highlightRowKeys,
-      ).map(unit => ({unit, color: marks.highlightColors[unit.key]}));
-      if (color) {
-        for (const {anchor} of picked) {
-          await verseAnnotationService.upsertHighlight(
-            anchor.verseKey,
-            anchor.surahNumber,
-            anchor.ayahNumber,
-            color,
-            anchor.rewayahId,
-          );
-          get().setHighlight(anchor.verseKey, color, anchor.rewayahId);
-        }
-      } else {
-        for (const key of rowKeys) {
-          await verseAnnotationService.removeHighlight(key);
-          get().removeHighlight(key);
-        }
+      );
+      for (const unit of kept) {
+        const shown = marks.highlightColors[unit.key];
+        if (!shown) continue;
+        upserts.push({
+          ...annotationAnchor(units, unit),
+          color: shown,
+          createdAtOf: marks.highlightColorRowKey(unit.key) ?? undefined,
+        });
       }
-      for (const {unit, color: kept} of keep) {
-        if (!kept) continue;
-        const anchor = annotationAnchor(units, unit);
-        await verseAnnotationService.upsertHighlight(
-          anchor.verseKey,
-          anchor.surahNumber,
-          anchor.ayahNumber,
-          kept,
-          anchor.rewayahId,
-        );
-        get().setHighlight(anchor.verseKey, kept, anchor.rewayahId);
-      }
+      await verseAnnotationService.applyAnnotationChanges({
+        upsertHighlights: upserts,
+      });
+      set(state => highlightFieldsAfter(state, [], upserts));
     },
 
     addUnitsNote: async (units, selected, content) => {

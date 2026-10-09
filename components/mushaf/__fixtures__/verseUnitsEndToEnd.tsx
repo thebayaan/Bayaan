@@ -145,10 +145,16 @@ export interface OracleUnit {
   readonly ayah: number;
   readonly firstId: number;
   readonly lastId: number;
-  /** Hafs location of its first slot: 'S:A' (word 1) or 'S:A:W'. */
+  /**
+   * Its storage anchor, the Hafs location of its first slot: 'S:A' when it
+   * starts at word 1 of a Hafs verse no other verse holds words of, else
+   * 'S:A:W' (the first part of a split Hafs verse is 'S:A:1').
+   */
   readonly anchor: string;
   readonly anchorSurah: number;
   readonly anchorAyah: number;
+  /** Hafs word position of its first slot. */
+  readonly anchorWord: number;
   /** Hafs verses holding its words, reading order. */
   readonly hafsKeys: readonly string[];
   /** Its non-blank slots joined by single spaces (ends with its marker). */
@@ -187,7 +193,8 @@ export function walkOracle(
   rewayah: RewayahId,
   words: EndToEndData['words'],
 ): Oracle {
-  const units: OracleUnit[] = [];
+  // Anchors are set once every verse is known (they depend on the others).
+  const units: {-readonly [K in keyof OracleUnit]: OracleUnit[K]}[] = [];
   const unitOfSlot = new Map<number, OracleUnit | null>();
   const holders = new Map<string, string[]>();
   let surah = 0;
@@ -234,15 +241,16 @@ export function walkOracle(
     count += 1;
     if (marker !== count) throw new Error(`${location}: marker ${marker}`);
     const [as, aa, aw] = open.anchor;
-    const unit: OracleUnit = {
+    const unit = {
       key: `${s}:${marker}`,
       surah: s,
       ayah: marker,
       firstId: open.firstId,
       lastId: id,
-      anchor: aw === 1 ? `${as}:${aa}` : `${as}:${aa}:${aw}`,
+      anchor: '',
       anchorSurah: as,
       anchorAyah: aa,
+      anchorWord: aw,
       hafsKeys: open.hafsKeys,
       text: open.texts.join(' '),
     };
@@ -256,6 +264,14 @@ export function walkOracle(
     open = null;
   }
   if (open) throw new Error(`surah ${surah} ends inside a verse`);
+  for (const unit of units) {
+    const hafsKey = `${unit.anchorSurah}:${unit.anchorAyah}`;
+    const alone =
+      unit.anchorWord === 1 &&
+      unit.hafsKeys[0] === hafsKey &&
+      holders.get(hafsKey)?.length === 1;
+    unit.anchor = alone ? hafsKey : `${hafsKey}:${unit.anchorWord}`;
+  }
   return {
     units,
     byKey: new Map(units.map(u => [u.key, u])),

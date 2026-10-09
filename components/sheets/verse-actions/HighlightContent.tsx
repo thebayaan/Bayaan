@@ -29,10 +29,10 @@ interface HighlightContentProps {
   /**
    * The selected verses in their rewayah's own numbering (decision 3; see
    * components/share/rewayahVerseSelection.ts). One highlight row per
-   * verse, stored at its Hafs anchor ("S:A", or "S:A:W" for a verse that
-   * starts inside a Hafs verse: verse-units contract section 3) with the
-   * selection's rewayah; the current colour and Remove read every row that
-   * marks a selected verse, legacy rows included (selectionAnnotations.ts).
+   * verse, stored at its Hafs anchor ("S:A", or "S:A:W" for a part of a
+   * split Hafs verse: verse-units contract section 3) with the selection's
+   * rewayah; the current colour and Remove read every row that marks a
+   * selected verse, legacy rows included (selectionAnnotations.ts).
    * Hafs: the Hafs keys, exactly as before.
    */
   selection: ReadyVerseSelection;

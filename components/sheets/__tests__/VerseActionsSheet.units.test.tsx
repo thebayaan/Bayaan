@@ -119,6 +119,7 @@ jest.mock('@/services/verse-annotations/VerseAnnotationService', () => ({
     upsertHighlight: jest.fn(async () => undefined),
     removeHighlight: jest.fn(async () => undefined),
     addNote: jest.fn(async () => undefined),
+    applyAnnotationChanges: jest.fn(async () => undefined),
     getAnnotationsForSurah: jest.fn(async () => ({
       bookmarks: [],
       notes: [],
@@ -219,6 +220,7 @@ import {
   type RewayahVerseUnits,
   type VerseUnitSlot,
 } from '@/services/mushaf/RewayahVerseUnits';
+import type {AnnotationRowChanges} from '@/types/verse-annotations';
 
 declare const global: {IS_REACT_ACT_ENVIRONMENT?: boolean};
 global.IS_REACT_ACT_ENVIRONMENT = true;
@@ -333,14 +335,28 @@ beforeEach(() => {
   setRows([]);
 });
 
-const removedBookmarks = () =>
-  (verseAnnotationService.removeBookmark as jest.Mock).mock.calls.map(
+/** The change set of each unit-API write (one transaction each). */
+const changeSets = (): AnnotationRowChanges[] =>
+  (verseAnnotationService.applyAnnotationChanges as jest.Mock).mock.calls.map(
     call => call[0],
   );
-const removedHighlights = () =>
-  (verseAnnotationService.removeHighlight as jest.Mock).mock.calls.map(
+// Rows deleted: one call per Hafs key (Hafs), or in a change set (units).
+const removedBookmarks = () => [
+  ...(verseAnnotationService.removeBookmark as jest.Mock).mock.calls.map(
     call => call[0],
-  );
+  ),
+  ...changeSets().flatMap(c => c.removeBookmarks ?? []),
+];
+const removedHighlights = () => [
+  ...(verseAnnotationService.removeHighlight as jest.Mock).mock.calls.map(
+    call => call[0],
+  ),
+  ...changeSets().flatMap(c => c.removeHighlights ?? []),
+];
+const warshBookmark = (verseKey: string) => {
+  const [surahNumber, ayahNumber] = verseKey.split(':').map(Number);
+  return {verseKey, surahNumber, ayahNumber, rewayahId: 'warsh'};
+};
 
 afterEach(() => {
   act(() => renderer?.unmount());
@@ -467,13 +483,11 @@ describe('Warsh verses in their own numbering', () => {
   it('stores the verse at its Hafs anchor, never a Warsh number', async () => {
     await openSheet(warshUnitPayload(['1:7']));
     await press('Bookmark');
-    expect(verseAnnotationService.addBookmark).toHaveBeenCalledTimes(1);
-    expect(verseAnnotationService.addBookmark).toHaveBeenCalledWith(
-      '1:7:5',
-      1,
-      7,
-      'warsh',
-    );
+    expect(changeSets()).toEqual([{addBookmarks: [warshBookmark('1:7:5')]}]);
+    await openSheet(warshUnitPayload(['1:6']));
+    await press('Bookmark');
+    expect(changeSets()[1]).toEqual({addBookmarks: [warshBookmark('1:7:1')]});
+    expect(verseAnnotationService.addBookmark).not.toHaveBeenCalled();
   });
 
   it('a Hafs-keyed payload selects the Warsh verses holding the Hafs verse', async () => {
@@ -618,7 +632,7 @@ describe('Warsh verses in their own numbering', () => {
     await press('Repeat');
     expect(router.push).toHaveBeenCalledWith({
       pathname: '/mushaf',
-      params: {page: '3', surah: '1', ayah: '7', anchor: '1:7'},
+      params: {page: '3', surah: '1', ayah: '7', anchor: '1:7:1'},
     });
   });
 
@@ -681,16 +695,23 @@ describe('stored rows that mark a Warsh verse (contract section 3)', () => {
   });
 
   it('a row naming the first part of a split Hafs verse marks only it', async () => {
-    setRows(['1:7']);
+    setRows(['1:7:1']);
     await openSheet(warshUnitPayload(['1:7']));
     expect(texts()).toContain('Bookmark');
     await press('Bookmark');
-    expect(verseAnnotationService.addBookmark).toHaveBeenCalledWith(
-      '1:7:5',
-      1,
-      7,
-      'warsh',
-    );
+    expect(changeSets()).toEqual([{addBookmarks: [warshBookmark('1:7:5')]}]);
+  });
+
+  it('a Warsh row saved before verse units on a split Hafs verse marks both parts', async () => {
+    // develop saved "1:7" for all of Hafs 1:7 (Warsh 1:6 and 1:7).
+    setRows(['1:7']);
+    await openSheet(warshUnitPayload(['1:7']));
+    expect(texts()).toContain('Remove Bookmark');
+    await openSheet(warshUnitPayload(['1:6']));
+    expect(texts()).toContain('Remove Bookmark');
+    await press('Remove Bookmark');
+    expect(removedBookmarks()).toEqual(['1:7']);
+    expect(changeSets()).toEqual([{removeBookmarks: ['1:7']}]);
   });
 
   it('a Hafs row on a split Hafs verse marks both Warsh verses', async () => {

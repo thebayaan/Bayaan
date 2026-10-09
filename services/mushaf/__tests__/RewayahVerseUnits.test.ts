@@ -116,13 +116,32 @@ describe('slot grammar and keys', () => {
   it('parses unit keys and stored anchor keys', () => {
     expect(parseUnitKey('1:7')).toEqual({surah: 1, ayah: 7});
     expect(parseUnitKey('1:7:5')).toBeNull();
-    expect(parseAnchorKey('1:7')).toEqual({surah: 1, ayah: 7, word: 1});
-    expect(parseAnchorKey('1:7:5')).toEqual({surah: 1, ayah: 7, word: 5});
+    expect(parseAnchorKey('1:7')).toEqual({
+      surah: 1,
+      ayah: 7,
+      word: 1,
+      hasWord: false,
+    });
+    expect(parseAnchorKey('1:7:1')).toEqual({
+      surah: 1,
+      ayah: 7,
+      word: 1,
+      hasWord: true,
+    });
+    expect(parseAnchorKey('1:7:5')).toEqual({
+      surah: 1,
+      ayah: 7,
+      word: 5,
+      hasWord: true,
+    });
     for (const bad of ['', '0:1', '115:1', '1:0', '1:7:0', 'a:b', '1:7:5:1']) {
       expect(parseAnchorKey(bad)).toBeNull();
     }
     expect(formatAnchorKey('1:7', 1)).toBe('1:7');
     expect(formatAnchorKey('1:7', 5)).toBe('1:7:5');
+    // A unit holding only part of its Hafs verse names its word, word 1 too.
+    expect(formatAnchorKey('1:7', 1, false)).toBe('1:7:1');
+    expect(formatAnchorKey('1:7', 5, false)).toBe('1:7:5');
   });
 });
 
@@ -183,10 +202,18 @@ describe.each(DBS)('%s: units from real slots', db => {
       expect(seen.has(anchor.key)).toBe(false);
       seen.add(anchor.key);
       expect(u.unitForAnchor(anchor.key)).toBe(unit);
-      // The anchor is the Hafs location of the unit's first slot.
+      // A row at the anchor names exactly this unit.
+      expect(u.unitsForStoredKey(anchor.key)).toEqual([unit]);
+      // The anchor is the Hafs location of the unit's first slot, bare
+      // ("S:A") only when the unit holds Hafs verse S:A alone.
       const loc = fixture.locations[fixture.ids.indexOf(unit.firstWordId)];
       expect(`${anchor.hafsKey}:${anchor.wordPosition}`).toBe(loc);
-      expect(anchor.key).toBe(anchor.wordPosition === 1 ? anchor.hafsKey : loc);
+      const holders = u.unitsForHafsKey(anchor.hafsKey);
+      const alone =
+        anchor.wordPosition === 1 &&
+        holders.length === 1 &&
+        holders[0] === unit;
+      expect(anchor.key).toBe(alone ? anchor.hafsKey : loc);
       expect(anchor.hafsKey).toBe(unit.hafsKeys[0]);
       expect(`${anchor.surah}:${anchor.ayah}`).toBe(anchor.hafsKey);
     }
@@ -199,6 +226,16 @@ describe.each(DBS)('%s: units from real slots', db => {
       }
     }
     expect(midVerse.length).toBe(split.size);
+    // Every part of a split Hafs verse that starts in it names its word.
+    for (const hafsKey of split) {
+      const range = u.hafsVerseWordRange(hafsKey)!;
+      for (const part of u.unitsForHafsKey(hafsKey)) {
+        if (part.firstWordId < range.first) continue; // starts earlier
+        expect(u.hafsAnchor(part).key).toBe(
+          `${hafsKey}:${part.firstWordId - range.first + 1}`,
+        );
+      }
+    }
   });
 });
 
@@ -209,6 +246,7 @@ describe('Hafs and Shu’bah units are the Hafs verses', () => {
     for (const unit of u.units) {
       expect(unit.hafsKeys).toEqual([unit.key]);
       expect(u.hafsAnchor(unit).key).toBe(unit.key);
+      expect(u.unitsForStoredKey(unit.key)).toEqual([unit]);
       const verseSlots = slots.filter(s => `${s.surah}:${s.ayah}` === unit.key);
       expect(unit.firstWordId).toBe(verseSlots[0].id);
       expect(unit.lastWordId).toBe(verseSlots[verseSlots.length - 1].id);
@@ -261,10 +299,19 @@ describe('Warsh al-Fatihah: unnumbered basmala and a split Hafs verse', () => {
     expect(u.unitText(v7).endsWith(' \u06DD\u0667')).toBe(true);
     expect(u.unitText(v6).startsWith('صِرَٰطَ ')).toBe(true);
     expect(u.unitText(v7).startsWith('غَي۟رِ ')).toBe(true);
-    // Storage: two distinct rows, and the legacy Hafs key opens Warsh 1:6.
-    expect(u.hafsAnchor(v6).key).toBe('1:7');
+    // Storage: two distinct word anchors. A bare "1:7" (a row saved before
+    // verse units, when the reader marked all of Hafs 1:7) names both parts
+    // and opens at Warsh 1:6.
+    expect(u.hafsAnchor(v6).key).toBe('1:7:1');
     expect(u.hafsAnchor(v7).key).toBe('1:7:5');
+    expect(u.unitsForStoredKey('1:7')).toEqual([v6, v7]);
+    expect(u.unitsForStoredKey('1:7:1')).toEqual([v6]);
+    expect(u.unitsForStoredKey('1:7:5')).toEqual([v7]);
+    expect(u.unitsForStoredKey('1:7:11')).toEqual([]);
+    expect(u.unitsForStoredKey('1:1')).toEqual([]); // the basmala
+    expect(u.unitsForStoredKey('bad')).toEqual([]);
     expect(u.unitForAnchor('1:7')).toBe(v6);
+    expect(u.unitForAnchor('1:7:1')).toBe(v6);
     expect(u.unitForAnchor('1:7:4')).toBe(v6);
     expect(u.unitForAnchor('1:7:5')).toBe(v7);
     expect(u.unitForAnchor('1:7:10')).toBe(v7);
@@ -302,6 +349,14 @@ describe('merged, split and partly overlapping verses', () => {
     // A legacy row on the second Hafs verse of a merge opens the merged verse.
     expect(u.unitForAnchor('103:2')?.key).toBe('103:1');
     expect(keysOf(u.unitsForHafsKey('103:2'))).toEqual(['103:1']);
+    expect(keysOf(u.unitsForStoredKey('103:2'))).toEqual(['103:1']);
+    // The merge starts with whole Hafs 103:1: bare. Hafs 103:3 is split.
+    expect(u.unitsOfSurah(103).map(x => [x.key, u.hafsAnchor(x).key])).toEqual([
+      ['103:1', '103:1'],
+      ['103:2', '103:3:1'],
+      ['103:3', '103:3:8'],
+    ]);
+    expect(keysOf(u.unitsForStoredKey('103:3'))).toEqual(['103:2', '103:3']);
     const merged = u.unitByKey('103:1')!;
     expect(u.translationParts(merged)).toEqual([
       {hafsKey: '103:1', shared: false, sharedWith: ['103:1'], ownedHere: true},
@@ -314,6 +369,8 @@ describe('merged, split and partly overlapping verses', () => {
     const v = u.unitByKey('71:24')!;
     expect(v.hafsKeys).toEqual(['71:23', '71:24']);
     expect(u.hafsAnchor(v).key).toBe('71:23:10');
+    // al-Bazzi 71:23 is the first part of split Hafs 71:23.
+    expect(u.hafsAnchor(u.unitByKey('71:23')!).key).toBe('71:23:1');
     expect(keysOf(u.unitsForHafsKey('71:23'))).toEqual(['71:23', '71:24']);
     expect(keysOf(u.unitsForHafsKey('71:24'))).toEqual(['71:24', '71:25']);
     expect(
@@ -393,6 +450,93 @@ describe('stored rows (bookmarks / notes / highlights)', () => {
           .units,
       ),
     ).toEqual(['1:7']); // legacy rows count as Hafs
+  });
+
+  it('read a bare "S:A" row as every verse holding that Hafs verse', () => {
+    // Saved before verse units: a Warsh reader marked what the app showed
+    // as 1:7, all of Hafs 1:7. It marks both parts in its own rewayah, and
+    // in another rewayah given its units (exact) or not.
+    const legacy = {verseKey: '1:7', rewayahId: 'warsh' as RewayahId};
+    const own = unitsForStoredVerse(units.warsh, legacy);
+    expect([keysOf(own.units), own.exact]).toEqual([['1:6', '1:7'], true]);
+    expect(
+      keysOf(unitsForStoredVerse(units.doori, legacy, units.warsh).units),
+    ).toEqual(['1:6', '1:7']);
+    expect(keysOf(unitsForStoredVerse(units.doori, legacy).units)).toEqual([
+      '1:6',
+      '1:7',
+    ]);
+    // A row written now names its own part only (Hafs: the Hafs verse
+    // holding its words).
+    const first = {verseKey: '1:7:1', rewayahId: 'warsh' as RewayahId};
+    expect(keysOf(unitsForStoredVerse(units.warsh, first).units)).toEqual([
+      '1:6',
+    ]);
+    expect(
+      keysOf(unitsForStoredVerse(units.doori, first, units.warsh).units),
+    ).toEqual(['1:6']);
+    expect(
+      keysOf(unitsForStoredVerse(units.hafs, first, units.warsh).units),
+    ).toEqual(['1:7']);
+    // A bare key on a merged verse still names that one verse.
+    expect(
+      keysOf(
+        unitsForStoredVerse(units.warsh, {
+          verseKey: '103:2',
+          rewayahId: 'warsh',
+        }).units,
+      ),
+    ).toEqual(['103:1']);
+    expect(
+      unitsForStoredVerse(units.warsh, {verseKey: '1:1', rewayahId: 'warsh'})
+        .units,
+    ).toEqual([]); // the unnumbered basmala
+  });
+
+  it('map a bare row of another rewayah like the rows of its parts', () => {
+    // Every Hafs verse of the fixture: a bare row saved in one rewayah marks,
+    // shown in another (exact, units supplied), what the rows of the verses
+    // holding that Hafs verse there mark together.
+    const pairs: [FixtureDb, FixtureDb][] = [
+      ['bazzi', 'warsh'],
+      ['warsh', 'doori'],
+      ['doori', 'bazzi'],
+      ['warsh', 'hafs'],
+    ];
+    let split = 0;
+    for (const [savedDb, displayDb] of pairs) {
+      const saved = units[savedDb];
+      const display = units[displayDb];
+      for (const surah of fixture.surahs) {
+        for (let ayah = 1; ; ayah++) {
+          const hafsKey = `${surah}:${ayah}`;
+          if (!saved.hafsVerseWordRange(hafsKey)) break;
+          const parts = saved.unitsForHafsKey(hafsKey);
+          if (parts.length > 1) split += 1;
+          const union = new Map<number, VerseUnit>();
+          for (const part of parts) {
+            const partRow = {
+              verseKey: saved.hafsAnchor(part).key,
+              rewayahId: saved.rewayah,
+            };
+            for (const x of unitsForStoredVerse(display, partRow, saved)
+              .units) {
+              union.set(x.index, x);
+            }
+          }
+          const bare = unitsForStoredVerse(
+            display,
+            {verseKey: hafsKey, rewayahId: saved.rewayah},
+            saved,
+          );
+          expect([hafsKey, keysOf(bare.units)]).toEqual([
+            hafsKey,
+            keysOf([...union.values()].sort((a, b) => a.index - b.index)),
+          ]);
+        }
+      }
+    }
+    expect(split).toBeGreaterThan(5);
   });
 
   it('map a Hafs row to every display verse holding its words', () => {

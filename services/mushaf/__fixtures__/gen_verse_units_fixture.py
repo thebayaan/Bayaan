@@ -15,7 +15,9 @@ computed here independently of the TypeScript builder:
 
   unit = [surah, ayah, firstWordId, lastWordId, hafsKeys, anchorKey, text]
     hafsKeys  = Hafs verse keys of the slots holding the unit's words
-    anchorKey = "S:A" when the unit starts at Hafs word 1, else "S:A:W"
+    anchorKey = "S:A" when the unit starts at Hafs word 1 and is the only
+                unit holding words of Hafs verse S:A, else "S:A:W" (the
+                first part of a split Hafs verse is "S:A:1")
     text      = the unit's non-blank slot texts joined by single spaces
 
 Surahs (short ones that still exercise every case): 1 (Madani / Basri:
@@ -92,10 +94,20 @@ def expected_units(rows):
             if n is None:
                 continue
             fid, fa, fw = start
-            anchor = f"{surah}:{fa}" if fw == 1 else f"{surah}:{fa}:{fw}"
-            units.append([surah, n, fid, wid, hafs_keys, anchor, " ".join(texts)])
+            units.append([surah, n, fid, wid, hafs_keys, (fa, fw), " ".join(texts)])
             start, hafs_keys, texts = None, [], []
         assert start is None, f"surah {surah} ends inside a verse"
+    # Anchor keys need every unit: a bare "S:A" only for the one unit
+    # holding words of Hafs verse S:A.
+    holders: dict[str, int] = {}
+    for unit in units:
+        for key in unit[4]:
+            holders[key] = holders.get(key, 0) + 1
+    for unit in units:
+        fa, fw = unit[5]
+        key = f"{unit[0]}:{fa}"
+        alone = fw == 1 and unit[4][:1] == [key] and holders[key] == 1
+        unit[5] = key if alone else f"{key}:{fw}"
     return units, unnumbered
 
 

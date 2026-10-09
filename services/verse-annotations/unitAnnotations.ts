@@ -3,13 +3,17 @@
  * Bookmarks, notes and highlights of rewayah verse units (decision 3).
  *
  * Storage stays Hafs-keyed (verse-units contract, section 3). A row keeps
- *   verse_key    = the unit's Hafs anchor: "S:A", or "S:A:W" for a unit that
- *                  starts inside Hafs verse S:A (the later part of a split
- *                  Hafs verse: Warsh 1:7 is stored as "1:7:5"),
+ *   verse_key    = the unit's Hafs anchor (HafsAnchor): "S:A" for a unit
+ *                  that starts at word 1 of a Hafs verse no other unit
+ *                  holds words of, else "S:A:W" (every part of a split Hafs
+ *                  verse: Warsh 1:6 is stored as "1:7:1", Warsh 1:7 as
+ *                  "1:7:5"),
  *   surah_number / ayah_number = the anchor's Hafs surah and ayah,
  *   rewayah_id   = the unit's rewayah.
- * There is no schema change and no migration: every existing row is a valid
- * anchor, and the two parts of a split Hafs verse get two distinct keys, so
+ * There is no schema change and no migration: every existing row keeps its
+ * meaning (a bare "S:A" names every verse holding words of Hafs verse S:A,
+ * so a Warsh "1:7" row saved before verse units still marks Warsh 1:6 and
+ * 1:7), and the parts of a split Hafs verse get distinct keys, so
  * UNIQUE(verse_key) keeps them apart.
  *
  * This module turns rows back into units. It is pure (no data-service or
@@ -37,7 +41,7 @@ import type {HighlightColor} from '@/types/verse-annotations';
 
 /** What a stored row identifies a verse by. */
 export interface StoredVerseRow {
-  /** verse_key: a Hafs anchor, "S:A" or "S:A:W". */
+  /** verse_key: a Hafs anchor, "S:A" or "S:A:W" (see HafsAnchor). */
   readonly verseKey: string;
   /** rewayah_id the row was saved in; null / undefined count as Hafs. */
   readonly rewayahId?: RewayahId | null;
@@ -102,6 +106,8 @@ export interface UnitAnnotations {
   bookmarkRowKeys(unitKey: string): readonly string[];
   /** verse_keys of every highlight row marking the unit (all are removed). */
   highlightRowKeys(unitKey: string): readonly string[];
+  /** verse_key of the highlight row whose colour the unit shows, or null. */
+  highlightColorRowKey(unitKey: string): string | null;
 }
 
 const NO_KEYS: readonly string[] = Object.freeze([]);
@@ -132,7 +138,11 @@ export function unitsMarkedBy(
 
 /**
  * The units of `display` each row marks (contract section 3):
- *  - a row saved in the shown rewayah marks the unit its anchor names;
+ *  - a row saved in the shown rewayah marks the units its key names
+ *    (unitsForStoredKey): "S:A:W" exactly one verse, a bare "S:A" every
+ *    verse holding words of Hafs verse S:A (one for a key written now; both
+ *    parts of a split Hafs verse for a row saved before verse units: Warsh
+ *    "1:7" marks Warsh 1:6 and 1:7);
  *  - a Hafs row (and a legacy row without rewayah) marks every shown unit
  *    holding words of that Hafs verse (Hafs 1:7 in Warsh: 1:6 and 1:7);
  *  - a row of another rewayah marks, without loading anything, the shown
@@ -216,6 +226,7 @@ export function deriveUnitAnnotations(
     highlightColors,
     bookmarkRowKeys: unitKey => bookmarkRows.get(unitKey) ?? NO_KEYS,
     highlightRowKeys: unitKey => highlightRows.get(unitKey) ?? NO_KEYS,
+    highlightColorRowKey: unitKey => best.get(unitKey)?.key ?? null,
   };
 }
 
@@ -301,11 +312,14 @@ function unnumbered(keys: readonly string[]): SavedVerseDescription {
 /**
  * Label and text of a saved row in the rewayah it was saved in (the exact
  * mapping of contract section 3: the row's rewayah is the displayed one).
- * `source` holds that rewayah's units. Each anchor names one unit
- * (unitForAnchor); a note's anchors give its units in reading order, without
- * repeats. A legacy row keyed by a Hafs verse names the rewayah verse holding
- * the start of that Hafs verse (Warsh "2:2" -> Warsh 2:1); an anchor on the
- * unnumbered Fatiha basmala names none.
+ * `source` holds that rewayah's units. Each anchor names its units
+ * (unitsForStoredKey: "S:A:W" one verse; a bare "S:A" every verse holding
+ * words of that Hafs verse); a note's anchors give its units in reading
+ * order, without repeats. So a row saved before verse units on a split
+ * Hafs verse lists every part (Warsh "1:7" -> Warsh 1:6-7, with both
+ * verses' text), and one on a merged Hafs verse the verse holding it
+ * (Warsh "2:2" -> Warsh 2:1); an anchor on the unnumbered Fatiha basmala
+ * names none.
  */
 export function describeSavedVerse(
   row: SavedVerseRef,
@@ -318,8 +332,9 @@ export function describeSavedVerse(
   if (units && units.rewayah === row.rewayahId) {
     const picked = new Map<number, VerseUnit>();
     for (const key of keys) {
-      const unit = units.unitForAnchor(key);
-      if (unit) picked.set(unit.index, unit);
+      for (const unit of units.unitsForStoredKey(key)) {
+        picked.set(unit.index, unit);
+      }
     }
     const list = [...picked.values()].sort((a, b) => a.index - b.index);
     if (list.length === 0) return unnumbered(keys);
@@ -395,19 +410,21 @@ export type SavedVerseRouteParams = {
   /**
    * The row's storage anchor ("S:A" or "S:A:W"), for a row saved in a
    * non-Hafs rewayah only: the mushaf selects exactly the verse unit holding
-   * that slot in the rewayah on screen (verse-units contract 4.4), so the two
-   * parts of a split Hafs verse open as two different verses. Hafs rows keep
-   * today's params (no anchor).
+   * that slot in the rewayah on screen (verse-units contract 4.4), so the
+   * parts of a split Hafs verse ("1:7:1", "1:7:5" in Warsh) open as
+   * different verses, and a bare "S:A" row marking several verses opens at
+   * the first of them. Hafs rows keep today's params (no anchor).
    */
   anchor?: string;
 };
 
 /**
  * The verse a stored anchor opens in a rewayah (`units`, its verse units):
- * the unit holding the anchored word, or, for the unnumbered Fatiha basmala
- * of the Madani / Basri counts, the first verse after it (contract section
- * 5). Null for a key that names no word of the data. The receiving side of
- * SavedVerseRouteParams.anchor.
+ * the unit holding the anchored word (unitForAnchor: for a bare "S:A" row
+ * that marks several verses, the first of them), or, for the unnumbered
+ * Fatiha basmala of the Madani / Basri counts, the first verse after it
+ * (contract section 5). Null for a key that names no word of the data. The
+ * receiving side of SavedVerseRouteParams.anchor.
  */
 export function unitForRouteAnchor(
   anchor: string,

@@ -6,27 +6,31 @@
  * note screens, and the note sheet.
  *
  * Storage stays Hafs-keyed: a selected verse is stored as one row at its
- * Hafs anchor ("S:A", or "S:A:W" for a verse that starts inside a Hafs
- * verse) with the selection's rewayah. Another rewayah's verses go through
- * the annotations store's unit API (selectUnitAnnotations,
- * setUnitsBookmarked, setUnitsHighlight, addUnitsNote), which reads every
- * row back in the shown rewayah by the rewayah it was saved in:
- *  - a row of the shown rewayah (or a legacy row) marks the verse holding
- *    the slot its verse_key names (unitForAnchor): a legacy Warsh row
- *    "103:2" marks Warsh 103:1 = Hafs 103:1 + 103:2;
+ * Hafs anchor ("S:A", or "S:A:W" for every part of a split Hafs verse:
+ * Warsh 1:6 is "1:7:1", Warsh 1:7 "1:7:5") with the selection's rewayah.
+ * Another rewayah's verses go through the annotations store's unit API
+ * (selectUnitAnnotations, setUnitsBookmarked, setUnitsHighlight,
+ * addUnitsNote), which reads every row back in the shown rewayah by the
+ * rewayah it was saved in:
+ *  - a row of the shown rewayah marks the verses its verse_key names
+ *    (unitsForStoredKey): "S:A:W" exactly one; a bare "S:A" every verse
+ *    holding words of that Hafs verse, as rows saved before verse units
+ *    meant it (a Warsh row "1:7" marks Warsh 1:6 and 1:7, "103:2" marks
+ *    Warsh 103:1 = Hafs 103:1 + 103:2);
  *  - a Hafs row marks every verse holding its Hafs verse (Hafs "1:7": Warsh
  *    1:6 and 1:7); a row of a third rewayah the verses holding its words;
  *  - a verse is marked when ANY row marks it; removing its mark deletes
- *    every row that marks it and keeps the other verses such a row marked
- *    on rows of their own; marking it writes a row at its anchor unless a
- *    row already marks it.
+ *    exactly the rows that mark it, each whole, so a verse such a row also
+ *    marks loses that mark too; marking it writes a row at its anchor
+ *    unless a row already marks it. One call is one transaction.
  * Hafs: a verse's only key is its own Hafs key, so the sheets read and
  * write exactly the rows they did before, call for call (every selected
  * key is added or removed, stored or not), each optimistic row with its
  * rewayah. The Hafs mushaf page reads rows by the same keys
  * (HAFS_SHOWN_UNITS.unitKeysForStoredVerse), so a row of another rewayah
- * anchored inside a Hafs verse ("1:7:5", Warsh 1:7) is neither painted nor
- * reported in Hafs: never a tint the Hafs sheet cannot show or remove.
+ * anchored at a word of a Hafs verse ("1:7:1", Warsh 1:6; "1:7:5", Warsh
+ * 1:7) is neither painted nor reported in Hafs: never a tint the Hafs sheet
+ * cannot show or remove.
  */
 import {useMemo} from 'react';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';

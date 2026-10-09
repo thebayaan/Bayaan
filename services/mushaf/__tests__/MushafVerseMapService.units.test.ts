@@ -461,7 +461,7 @@ describe('describe(): key, storage anchor and Hafs verses of each unit', () => {
     expect(selectionForUnitKeys(['1:6', '1:7'])).toEqual({
       rewayah: 'warsh',
       units: [
-        {key: '1:6', anchor: '1:7', hafsKeys: ['1:7']},
+        {key: '1:6', anchor: '1:7:1', hafsKeys: ['1:7']},
         {key: '1:7', anchor: '1:7:5', hafsKeys: ['1:7']},
       ],
     });
@@ -485,7 +485,13 @@ describe('selectionForAnchor (stored rows, route params)', () => {
       rewayah: 'warsh',
       units: [{key: '1:7', anchor: '1:7:5', hafsKeys: ['1:7']}],
     });
-    // A Hafs anchor 'S:A' is the Hafs verse's first slot: Warsh 1:6.
+    // Warsh 1:6's own anchor names the first word of Hafs 1:7.
+    expect(selectionForAnchor('1:7:1')).toEqual({
+      rewayah: 'warsh',
+      units: [{key: '1:6', anchor: '1:7:1', hafsKeys: ['1:7']}],
+    });
+    // A bare 'S:A' is the Hafs verse's first slot: a row saved before verse
+    // units on all of Hafs 1:7 opens at the first verse it marks, Warsh 1:6.
     expect(selectionForAnchor('1:7')?.units.map(u => u.key)).toEqual(['1:6']);
     // A slot inside a unit: the unit holding it (legacy row on Hafs 103:2).
     expect(selectionForAnchor('103:2')?.units.map(u => u.key)).toEqual([
@@ -550,6 +556,13 @@ describe('verseNavigationTarget (search, bookmark chips)', () => {
     });
     // A slot inside the first part (word 3 of Hafs 1:7): Warsh 1:6.
     expect(verseNavigationTarget('1:7:3', 'hafs').unit?.key).toBe('1:6');
+    // Warsh 1:6's own anchor, word 1 named: Warsh 1:6 (not a Hafs key).
+    expect(verseNavigationTarget('1:7:1', 'hafs')).toEqual({
+      rewayah: 'warsh',
+      hafsKey: null,
+      unit: {key: '1:6', anchor: '1:7:1', hafsKeys: ['1:7']},
+      scrollHafsKey: '1:7',
+    });
     // Hafs on screen: the Hafs verse of the anchor.
     show('hafs');
     expect(verseNavigationTarget('1:7:5', 'hafs')).toEqual({
@@ -558,6 +571,7 @@ describe('verseNavigationTarget (search, bookmark chips)', () => {
       unit: {key: '1:7', anchor: '1:7', hafsKeys: ['1:7']},
       scrollHafsKey: '1:7',
     });
+    expect(verseNavigationTarget('1:7:1', 'hafs').unit?.key).toBe('1:7');
     // No units yet (refused here): the anchor's Hafs verse, as a Hafs key.
     show('warsh', {refused: true});
     expect(verseNavigationTarget('1:7:5', 'hafs')).toEqual({
@@ -661,10 +675,15 @@ describe('ShownVerseUnits mappings', () => {
     expect(
       shown.unitKeysForStoredVerse({verseKey: '1:7:5', rewayahId: 'warsh'}),
     ).toEqual(['1:7']);
-    // A Warsh row on "1:7" (Warsh 1:6's anchor, or a legacy Hafs-verse row).
+    // Warsh 1:6's own row is anchored on the first part.
+    expect(
+      shown.unitKeysForStoredVerse({verseKey: '1:7:1', rewayahId: 'warsh'}),
+    ).toEqual(['1:6']);
+    // A Warsh row on "1:7" was saved before verse units for all of Hafs
+    // 1:7: it marks both Warsh verses holding its words.
     expect(
       shown.unitKeysForStoredVerse({verseKey: '1:7', rewayahId: 'warsh'}),
-    ).toEqual(['1:6']);
+    ).toEqual(['1:6', '1:7']);
     // A Hafs row on Hafs 1:7 marks both Warsh verses holding its words.
     expect(
       shown.unitKeysForStoredVerse({verseKey: '1:7', rewayahId: 'hafs'}),
@@ -732,12 +751,12 @@ describe('ShownVerseUnits mappings', () => {
         units.unitForAnchor(unit.key)?.key ?? null,
       );
     }
-    // Rows saved in other rewayat (their anchors, including mid-verse
-    // ones). A row marks the Hafs verse its key names, as the Hafs verse
-    // sheet and the Hafs list rows read it; a mid-verse anchor (the later
-    // part of a split Hafs verse) marks none, so the Hafs page never paints
-    // a mark the Hafs sheet cannot show or remove. Navigation to an anchor
-    // still lands on the Hafs verse holding its slot.
+    // Rows saved in other rewayat (their anchors, including word ones). A
+    // row marks the Hafs verse its key names, as the Hafs verse sheet and
+    // the Hafs list rows read it; a word anchor (a part of a split Hafs
+    // verse, the first part included) marks none, so the Hafs page never
+    // paints a mark the Hafs sheet cannot show or remove. Navigation to an
+    // anchor still lands on the Hafs verse holding its slot.
     let midVerse = 0;
     for (const saved of otherRewayah) {
       for (const unit of saved.units) {
@@ -756,7 +775,8 @@ describe('ShownVerseUnits mappings', () => {
         );
       }
     }
-    // The fixture has such verses (Warsh 1:7 is stored as '1:7:5').
+    // The fixture has such verses (Warsh 1:6 and 1:7 are stored as '1:7:1'
+    // and '1:7:5').
     expect(midVerse).toBeGreaterThan(0);
   });
 });

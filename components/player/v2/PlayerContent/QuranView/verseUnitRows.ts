@@ -108,16 +108,6 @@ export interface VerseUnitRow extends EnhancedVerse {
   readonly parts: readonly VerseRowPart[];
   /** Storage identity (contract section 3); null for the basmala row. */
   readonly anchor: HafsAnchor | null;
-  /**
-   * Stored verse_keys that mark this row (bookmark / note dots), in the two
-   * forms rows are written with: its own anchor, and the "S:A" key of every
-   * Hafs verse that starts inside it (Hafs and legacy rows). Each resolves to
-   * this verse (units.unitForAnchor(k) === unit). Empty for the basmala row.
-   * The rows' own rewayah is not known here: the exact rule (a Hafs row of a
-   * split Hafs verse marks both parts) needs the stored rows (contract
-   * section 3).
-   */
-  readonly markKeys: readonly string[];
 }
 
 interface HafsSlice {
@@ -246,12 +236,6 @@ function unitRow(
       ),
     );
   }
-  const markKeys = [anchor.key];
-  for (const s of slices) {
-    if (s.from === s.range.first && !markKeys.includes(s.hafsKey)) {
-      markKeys.push(s.hafsKey);
-    }
-  }
   return {
     id: unit.index + 1,
     verse_key: unit.key,
@@ -267,7 +251,6 @@ function unitRow(
     words: sliceWords(units, slices),
     parts,
     anchor,
-    markKeys,
   };
 }
 
@@ -300,7 +283,6 @@ function unnumberedRow(
     words: sliceWords(units, slices),
     parts,
     anchor: null,
-    markKeys: [],
   };
 }
 
@@ -349,7 +331,7 @@ export function buildVerseUnitRows(
 
 /** True for a row built by buildVerseUnitRows (not a Hafs EnhancedVerse). */
 export function isVerseUnitRow(verse: EnhancedVerse): verse is VerseUnitRow {
-  return 'parts' in verse && 'markKeys' in verse && 'units' in verse;
+  return 'parts' in verse && 'anchor' in verse && 'units' in verse;
 }
 
 /**
@@ -397,9 +379,9 @@ export function playbackBandKeysId(
 
 /**
  * Index of the row a Hafs-keyed reference lands on ('S:A' or 'S:A:W', e.g.
- * branding.initialPlayerVerseKey): the row holding that Hafs location, as
- * stored references resolve (unitForAnchor). Undefined when no verse holds
- * it (the unnumbered basmala) or the row is not in `rows`.
+ * branding.initialPlayerVerseKey): the row holding that Hafs location,
+ * where stored references open (unitForAnchor). Undefined when no verse
+ * holds it (the unnumbered basmala) or the row is not in `rows`.
  */
 export function rowIndexForHafsReference(
   rows: readonly VerseUnitRow[],
@@ -410,14 +392,6 @@ export function rowIndexForHafsReference(
   if (!unit) return undefined;
   const index = rows.findIndex(row => row.unit?.key === unit.key);
   return index >= 0 ? index : undefined;
-}
-
-/** True when one of the row's mark keys is in `stored` (bookmarks, notes). */
-export function rowIsMarked(
-  markKeys: readonly string[],
-  stored: ReadonlySet<string>,
-): boolean {
-  return markKeys.some(key => stored.has(key));
 }
 
 /**

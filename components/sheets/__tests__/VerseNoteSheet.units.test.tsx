@@ -228,10 +228,10 @@ describe('a saved note', () => {
     mockNotes.set('n5', {
       content: 'a note',
       rewayahId: 'warsh',
-      verseKeys: ['1:7', '1:7:5'],
+      verseKeys: ['1:7:1', '1:7:5'],
     });
     await openSheet({
-      verseKey: '1:7',
+      verseKey: '1:7:1',
       surahNumber: 1,
       ayahNumber: 7,
       noteId: 'n5',
@@ -241,6 +241,22 @@ describe('a saved note', () => {
       rewayah: 'warsh',
       text: `${unitText('1:6')} ${unitText('1:7')}`,
       numberOfLines: 3,
+    });
+  });
+
+  it('Warsh: a note saved before verse units on a split Hafs verse names both parts', async () => {
+    // develop saved ("1:7", Warsh) for all of Hafs 1:7.
+    mockNotes.set('n6', {content: 'a note', rewayahId: 'warsh'});
+    await openSheet({
+      verseKey: '1:7',
+      surahNumber: 1,
+      ayahNumber: 7,
+      noteId: 'n6',
+    });
+    expect(title()).toBe('Edit Note for 1:6-7');
+    expect(lastPreview()).toMatchObject({
+      rewayah: 'warsh',
+      text: `${unitText('1:6')} ${unitText('1:7')}`,
     });
   });
 
@@ -347,11 +363,11 @@ describe('a new note', () => {
     expect(title()).toBe('Note for 1:6-7');
     await save('my note');
     expect(verseAnnotationService.addNote).toHaveBeenCalledWith(
-      '1:7',
+      '1:7:1',
       1,
       7,
       'my note',
-      ['1:7', '1:7:5'],
+      ['1:7:1', '1:7:5'],
       'warsh',
     );
   });

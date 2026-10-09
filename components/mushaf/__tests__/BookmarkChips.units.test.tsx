@@ -105,7 +105,7 @@ function chipTexts(renderer: TestRenderer.ReactTestRenderer): string[] {
 beforeEach(() => {
   mockUnitsReady = true;
   mockBookmarks = [
-    bookmark('1:7', 'warsh', 'a'),
+    {...bookmark('1:7', 'warsh', 'a'), verseKey: '1:7:1'},
     {...bookmark('1:7', 'warsh', 'b'), verseKey: '1:7:5'},
     bookmark('1:7', 'hafs', 'c'),
     bookmark('106:4', undefined, 'd'),
@@ -150,6 +150,17 @@ it('Hafs on screen: Warsh bookmarks name Warsh', async () => {
     'Al-Fatihah 1:7 · Warsh',
     'Al-Fatihah 1:7',
     'Quraysh 106:4',
+  ]);
+});
+
+it('a Warsh bookmark saved before verse units names both verses of its Hafs verse', async () => {
+  // develop wrote ("1:7", "warsh") for all of Hafs 1:7.
+  mockBookmarks = [bookmark('1:7', 'warsh', 'a')];
+  expect(chipTexts(await render('warsh', jest.fn()))).toEqual([
+    'Al-Fatihah 1:6-7',
+  ]);
+  expect(chipTexts(await render('hafs', jest.fn()))).toEqual([
+    'Al-Fatihah 1:6-7 · Warsh',
   ]);
 });
 

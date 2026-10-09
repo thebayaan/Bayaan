@@ -24,8 +24,11 @@
  *    marker (the stream the data gates prove equal to the official text);
  *  - hafsKeys equal r2h and unitsForHafsKey equals h2r for every verse;
  *  - Hafs, Shu'bah and every identity surah: units are the Hafs verses;
- *  - storage anchors are distinct, round-trip, and are mid-verse exactly for
- *    the split Hafs verses (59 / 67 / 57 / 0);
+ *  - storage anchors are distinct and round-trip (a row at the anchor names
+ *    exactly its unit), are a bare "S:A" exactly for a unit that starts at
+ *    word 1 of a Hafs verse it holds alone (every Hafs and identity verse),
+ *    and start mid-verse exactly for the split Hafs verses (59 / 67 / 57 /
+ *    0);
  *  - a unit starts on the page of its anchor's Hafs verse start (so
  *    getPageForVerse(anchor.hafsKey) pages to it);
  *  - the named edge cases of the consumer contract.
@@ -347,6 +350,22 @@ run('verse units of every words DB (local only)', () => {
         if (u.unitForAnchor(anchor.key) !== unit) {
           fail(`${unit.key}: anchor ${anchor.key} does not resolve back`);
         }
+        const named = u.unitsForStoredKey(anchor.key);
+        if (named.length !== 1 || named[0] !== unit) {
+          fail(`${unit.key}: a row at ${anchor.key} names ${named.length}`);
+        }
+        // Bare only for the one unit holding words of its Hafs verse.
+        const holders = u.unitsForHafsKey(anchor.hafsKey);
+        const alone =
+          anchor.wordPosition === 1 &&
+          holders.length === 1 &&
+          holders[0] === unit;
+        const expectedKey = alone
+          ? anchor.hafsKey
+          : `${anchor.hafsKey}:${anchor.wordPosition}`;
+        if (anchor.key !== expectedKey) {
+          fail(`${unit.key}: anchor ${anchor.key}, expected ${expectedKey}`);
+        }
         if (anchor.wordPosition > 1) midVerse += 1;
         const verseStart = u.hafsVerseWordRange(anchor.hafsKey)!.first;
         if (pageOf(unit.firstWordId) !== pageOf(verseStart)) {
@@ -373,9 +392,9 @@ run('verse units of every words DB (local only)', () => {
   // Named edge cases of the consumer contract (when those DBs are present):
   // rewayah, its verse, that verse's Hafs verses, its storage anchor.
   const edgeCases: [RewayahId, string, string[], string][] = [
-    ['warsh', '1:6', ['1:7'], '1:7'],
+    ['warsh', '1:6', ['1:7'], '1:7:1'],
     ['warsh', '1:7', ['1:7'], '1:7:5'],
-    ['warsh', '11:81', ['11:82'], '11:82'],
+    ['warsh', '11:81', ['11:82'], '11:82:1'],
     ['warsh', '11:82', ['11:82', '11:83'], '11:82:12'],
     ['warsh', '11:83', ['11:84'], '11:84'],
     ['warsh', '56:49', ['56:46'], '56:46'],
@@ -384,7 +403,7 @@ run('verse units of every words DB (local only)', () => {
     ['warsh', '22:19', ['22:19', '22:20', '22:21'], '22:19'],
     ['warsh', '42:1', ['42:1', '42:2', '42:3'], '42:1'],
     ['al-duri-abi-amr', '1:7', ['1:7'], '1:7:5'],
-    ['al-bazzi', '2:217', ['2:219'], '2:219'],
+    ['al-bazzi', '2:217', ['2:219'], '2:219:1'],
     ['al-bazzi', '2:218', ['2:219', '2:220'], '2:219:18'],
     ['al-bazzi', '2:219', ['2:221'], '2:221'],
     ['al-bazzi', '18:83', ['18:84', '18:85', '18:86'], '18:84'],

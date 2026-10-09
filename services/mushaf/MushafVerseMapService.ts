@@ -89,8 +89,9 @@ function hafsVerseRef(key: string): {surah: number; ayah: number} | null {
 }
 
 /**
- * A Hafs anchor ('S:A', or 'S:A:W' with W > 1) of an existing Hafs verse,
- * written in its canonical form (formatAnchorKey); else null.
+ * A Hafs anchor ('S:A' or 'S:A:W', W = 1 included: the first part of a
+ * split Hafs verse) of an existing Hafs verse, written in a canonical form
+ * (formatAnchorKey); else null.
  */
 function hafsAnchorRef(
   anchorKey: string,
@@ -98,7 +99,8 @@ function hafsAnchorRef(
   const loc = parseAnchorKey(anchorKey);
   if (!loc) return null;
   const hafsKey = `${loc.surah}:${loc.ayah}`;
-  return formatAnchorKey(hafsKey, loc.word) === anchorKey &&
+  // 'S:A:1' is canonical too (HafsAnchor: a split verse's first part).
+  return formatAnchorKey(hafsKey, loc.word, !loc.hasWord) === anchorKey &&
     hafsVerseRef(hafsKey)
     ? loc
     : null;
@@ -114,7 +116,7 @@ const hafsRefs = new Map<string, VerseUnitRef>();
  * for any stored rows; the all-DB test proves these answers equal to the
  * units built from the Hafs words DB, except that a stored row marks only
  * the Hafs verse its key names (unitKeysForStoredVerse: never one of
- * another rewayah's mid-verse anchors).
+ * another rewayah's word anchors 'S:A:W').
  */
 export const HAFS_SHOWN_UNITS: ShownVerseUnits = {
   rewayah: 'hafs',
@@ -147,11 +149,11 @@ export const HAFS_SHOWN_UNITS: ShownVerseUnits = {
     // Shown in Hafs, a row marks the Hafs verse its verse_key IS, whatever
     // rewayah it was saved in: the Hafs verse sheet, the Hafs player and
     // list rows and the pipeline before verse units all read rows by that
-    // exact key. A mid-verse anchor 'S:A:W' (another rewayah's verse that
-    // starts inside Hafs verse S:A: Warsh 1:7 is stored as '1:7:5') names
-    // no Hafs verse, so the Hafs page does not paint it: a tint there would
-    // be a mark the Hafs sheet can neither show nor remove. Such a row is
-    // shown in its own rewayah (and the rewayat that map it).
+    // exact key. A word anchor 'S:A:W' (another rewayah's verse holding
+    // part of Hafs verse S:A: Warsh 1:6 is stored as '1:7:1', Warsh 1:7 as
+    // '1:7:5') names no Hafs verse, so the Hafs page does not paint it: a
+    // tint there would be a mark the Hafs sheet can neither show nor remove.
+    // Such a row is shown in its own rewayah (and the rewayat that map it).
     return hafsVerseRef(row.verseKey) ? [row.verseKey] : [];
   },
   unitKeyForAnchor(anchorKey) {
@@ -580,8 +582,9 @@ export function selectionForUnitKeys(
  * The selection for a stored Hafs anchor ('S:A' or 'S:A:W': a bookmark,
  * note or highlight opened from a list, a route param) in the shown text:
  * exactly the unit holding that slot (CONTRACT 4.4: anchors in, units
- * selected), with its rewayah. Null when the text has no units or the
- * anchor names no unit (invalid, or the unnumbered Fatiha basmala).
+ * selected), with its rewayah; a bare 'S:A' row marking several units opens
+ * at the first of them (unitForAnchor). Null when the text has no units or
+ * the anchor names no unit (invalid, or the unnumbered Fatiha basmala).
  */
 export function selectionForAnchor(
   anchorKey: string,
@@ -636,8 +639,8 @@ export interface VerseNavigationTarget {
  * (or while the shown text has no units) selects nothing: never a verse
  * that merely has the same number.
  *
- * A stored anchor inside a Hafs verse ('S:A:W', the later part of a split
- * Hafs verse) passed as a Hafs key is no verse key: it selects the shown
+ * A stored word anchor ('S:A:W', a part of a split Hafs verse; 'S:A:1' its
+ * first part) passed as a Hafs key is no verse key: it selects the shown
  * unit holding that slot (selectionForAnchor), or, while there is none, the
  * Hafs verse S:A, and scrolls to Hafs S:A. (@ai)
  */

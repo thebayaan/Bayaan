@@ -47,10 +47,12 @@ export function verseShareUrl(
 // @ai-start
 // ── Verse links of a rewayah (decision 3: rewayah verse units) ────────────
 //
-// A verse link names its verse by the verse's storage anchor (verse-units
-// contract, section 3), a Hafs location that every rewayah shares:
+// A verse link names its verse by the Hafs location of the verse's first
+// word (its storage anchor, verse-units contract section 3), which every
+// rewayah shares:
 //   /quran/S/A?rewayah=<id>          the verse holding the first word of
-//                                    Hafs S:A, in rewayah <id>;
+//                                    Hafs S:A, in rewayah <id> (anchors
+//                                    "S:A" and "S:A:1");
 //   /quran/S/A?rewayah=<id>&word=W   the verse holding Hafs word S:A:W: the
 //                                    later part of a split Hafs verse
 //                                    (Warsh 1:7 is /quran/1/7?rewayah=warsh
@@ -68,8 +70,9 @@ export function verseShareUrl(
 /**
  * Share URL of a verse named by its storage anchor ("S:A" or "S:A:W",
  * RewayahVerseUnits.hafsAnchor(unit).key) in `rewayah`. Equals
- * verseShareUrl(S, A, theme, rewayah) except that a mid-verse anchor of a
- * non-Hafs rewayah adds `word=W`. Null for an invalid anchor.
+ * verseShareUrl(S, A, theme, rewayah) except that an anchor past the Hafs
+ * verse's first word (W > 1) of a non-Hafs rewayah adds `word=W`. Null for
+ * an invalid anchor.
  */
 export function anchorShareUrl(
   anchorKey: string,

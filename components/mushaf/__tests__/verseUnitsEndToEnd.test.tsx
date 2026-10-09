@@ -68,6 +68,30 @@ jest.mock('@/services/verse-annotations/VerseAnnotationService', () => ({
       notes: [],
       highlights: [],
     }),
+    // The store's unit API writes each change in one call (one
+    // transaction): its last bookmark row added / deleted, as the
+    // single-row calls record them.
+    applyAnnotationChanges: async (changes: {
+      addBookmarks?: {
+        verseKey: string;
+        surahNumber: number;
+        ayahNumber: number;
+        rewayahId: string;
+      }[];
+      removeBookmarks?: string[];
+    }) => {
+      for (const row of changes.addBookmarks ?? []) {
+        mockDatabase.lastAddBookmark = [
+          row.verseKey,
+          row.surahNumber,
+          row.ayahNumber,
+          row.rewayahId,
+        ];
+      }
+      for (const verseKey of changes.removeBookmarks ?? []) {
+        mockDatabase.lastRemoveBookmark = [verseKey];
+      }
+    },
     addBookmark: async (...args: unknown[]) => {
       mockDatabase.lastAddBookmark = args;
     },

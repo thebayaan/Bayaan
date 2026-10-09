@@ -288,9 +288,10 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
   const verseRefText = readySelection ? readySelection.label : '';
 
   // Rows are stored by each verse's Hafs anchor, and a verse is marked by
-  // any row that names one of its slots, legacy rows included (contract
-  // section 3; see verse-actions/selectionAnnotations.ts). Hafs: the Hafs
-  // keys themselves, as before.
+  // any row that names it (a bare "S:A" names every verse holding words of
+  // that Hafs verse), legacy rows included (contract section 3; see
+  // verse-actions/selectionAnnotations.ts). Hafs: the Hafs keys themselves,
+  // as before.
   const isBookmarked = useSelectionBookmarked(readySelection);
   const isHighlighted = useSelectionHighlightColor(readySelection) !== null;
 
@@ -621,7 +622,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     if (!ready) return;
     const firstKey = selectionPlaybackKeys(ready).firstHafsKey;
     // Another rewayah's verse also passes its storage anchor (verse-units
-    // contract 4.4: "1:7" for Warsh 1:6, "1:7:5" for Warsh 1:7), so the
+    // contract 4.4: "1:7:1" for Warsh 1:6, "1:7:5" for Warsh 1:7), so the
     // mushaf selects exactly that verse rather than every verse holding Hafs
     // surah:ayah (both Warsh 1:6 and 1:7). surah / ayah stay Hafs; Hafs
     // passes no anchor, as before.

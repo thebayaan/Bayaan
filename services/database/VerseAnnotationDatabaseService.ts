@@ -4,6 +4,7 @@ import type {
   VerseNote,
   VerseHighlight,
   HighlightColor,
+  AnnotationRowChanges, // @ai
 } from '@/types/verse-annotations';
 import {
   ALL_REWAYAH_IDS,
@@ -46,6 +47,16 @@ interface HighlightRow {
 function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2);
 }
+
+// @ai-start
+// The single-row bookmark / highlight writes, shared by the one-row methods
+// and applyAnnotationChanges so both write rows the same way.
+const INSERT_BOOKMARK_SQL = `INSERT OR IGNORE INTO bookmarks (id, verse_key, surah_number, ayah_number, created_at, rewayah_id)
+       VALUES (?, ?, ?, ?, ?, ?)`;
+const UPSERT_HIGHLIGHT_SQL = `INSERT INTO highlights (id, verse_key, surah_number, ayah_number, color, created_at, rewayah_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(verse_key) DO UPDATE SET color = excluded.color, rewayah_id = excluded.rewayah_id`;
+// @ai-end
 
 function parseRewayahId(value: string | null): RewayahId | undefined {
   if (!value) return undefined;
@@ -389,8 +400,7 @@ class VerseAnnotationDatabaseService {
     // rejection used to abort the toggle handler mid-way (leaving the sheet
     // open). Bookmarking is idempotent by intent — swallow the duplicate. @ai
     await db.runAsync(
-      `INSERT OR IGNORE INTO bookmarks (id, verse_key, surah_number, ayah_number, created_at, rewayah_id)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+      INSERT_BOOKMARK_SQL, // @ai
       [
         bookmark.id,
         bookmark.verseKey,
@@ -549,9 +559,7 @@ class VerseAnnotationDatabaseService {
     const id = generateId();
 
     await db.runAsync(
-      `INSERT INTO highlights (id, verse_key, surah_number, ayah_number, color, created_at, rewayah_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT(verse_key) DO UPDATE SET color = excluded.color, rewayah_id = excluded.rewayah_id`,
+      UPSERT_HIGHLIGHT_SQL, // @ai
       [id, verseKey, surahNumber, ayahNumber, color, now, rewayahId ?? null],
     );
 
@@ -570,6 +578,75 @@ class VerseAnnotationDatabaseService {
     const db = await this.ensureReady();
     await db.runAsync(`DELETE FROM highlights WHERE verse_key = ?`, [verseKey]);
   }
+
+  // @ai-start
+  // Tail of the applyAnnotationChanges calls. withTransactionAsync is not
+  // exclusive: a second BEGIN on the connection while one transaction is
+  // open fails, and its ROLLBACK would undo the first. Calls therefore run
+  // one after the other.
+  private changesQueue: Promise<unknown> = Promise.resolve();
+
+  /**
+   * Applies the bookmark and highlight writes of one change in ONE
+   * transaction: every write, or, when any of them fails, none (the error is
+   * thrown and the rows stay as they were). Deletes run first, then inserts
+   * and upserts, written exactly as addBookmark / upsertHighlight write
+   * them. Rows the change does not name are not touched.
+   */
+  async applyAnnotationChanges(changes: AnnotationRowChanges): Promise<void> {
+    const db = await this.ensureReady();
+    const apply = () =>
+      db.withTransactionAsync(async () => {
+        // created_at a new highlight row carries over, read before any write.
+        const createdAt = new Map<string, number>();
+        for (const {createdAtOf} of changes.upsertHighlights ?? []) {
+          if (!createdAtOf || createdAt.has(createdAtOf)) continue;
+          const row = await db.getFirstAsync<{created_at: number}>(
+            `SELECT created_at FROM highlights WHERE verse_key = ?`,
+            [createdAtOf],
+          );
+          if (row) createdAt.set(createdAtOf, row.created_at);
+        }
+        for (const verseKey of changes.removeBookmarks ?? []) {
+          await db.runAsync(`DELETE FROM bookmarks WHERE verse_key = ?`, [
+            verseKey,
+          ]);
+        }
+        for (const verseKey of changes.removeHighlights ?? []) {
+          await db.runAsync(`DELETE FROM highlights WHERE verse_key = ?`, [
+            verseKey,
+          ]);
+        }
+        for (const row of changes.addBookmarks ?? []) {
+          await db.runAsync(INSERT_BOOKMARK_SQL, [
+            generateId(),
+            row.verseKey,
+            row.surahNumber,
+            row.ayahNumber,
+            Date.now(),
+            row.rewayahId,
+          ]);
+        }
+        for (const row of changes.upsertHighlights ?? []) {
+          const kept = row.createdAtOf
+            ? createdAt.get(row.createdAtOf)
+            : undefined;
+          await db.runAsync(UPSERT_HIGHLIGHT_SQL, [
+            generateId(),
+            row.verseKey,
+            row.surahNumber,
+            row.ayahNumber,
+            row.color,
+            kept ?? Date.now(),
+            row.rewayahId,
+          ]);
+        }
+      });
+    const result = this.changesQueue.then(apply, apply);
+    this.changesQueue = result.catch(() => undefined);
+    return result;
+  }
+  // @ai-end
 
   async getHighlightsBySurah(surahNumber: number): Promise<VerseHighlight[]> {
     const db = await this.ensureReady();

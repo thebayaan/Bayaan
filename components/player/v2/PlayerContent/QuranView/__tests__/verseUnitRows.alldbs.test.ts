@@ -19,8 +19,8 @@
  *    shared-translation note exactly where rows divide a Hafs verse;
  *  - word by word: no Hafs word in two rows, and every Hafs slot that holds
  *    a word in this rewayah is in some row's slice;
- *  - storage: every mark key resolves (unitForAnchor) to the row's verse,
- *    and every Hafs verse start marks exactly one row (the basmala none);
+ *  - storage: each verse row carries its verse's anchor, which lands on it
+ *    (rowIndexForHafsReference);
  *  - follow-along: a rewayah-numbered entry lights exactly its verse, a
  *    Hafs-numbered entry every verse holding it;
  *  - the verse-actions payload and Hafs references (initial anchor).
@@ -195,7 +195,6 @@ run('player list rows of every words DB (local only)', () => {
         const owners = new Map<string, number>();
         const holders = new Map<string, number>();
         const sliced = new Map<string, Set<number>>();
-        const marks = new Map<string, string>();
         rows.forEach((row: VerseUnitRow, index) => {
           const unit = row.unit;
           const where = unit ? `${unit.key}` : 'basmala';
@@ -232,17 +231,10 @@ run('player list rows of every words DB (local only)', () => {
             }
             sliced.set(p.hafsKey, set);
           }
-          // Storage keys.
-          for (const key of row.markKeys) {
-            if (!unit || units.unitForAnchor(key) !== unit) {
-              fail(`${where}: mark key ${key} resolves elsewhere`);
-            }
-            if (marks.has(key)) fail(`${where}: mark key ${key} twice`);
-            marks.set(key, where);
-          }
           if (!unit) return;
+          // Storage anchor.
           const anchor = units.hafsAnchor(unit);
-          if (row.markKeys[0] !== anchor.key) fail(`${where}: anchor first`);
+          if (row.anchor !== anchor) fail(`${where}: anchor`);
           // Follow-along.
           const own = playbackBandUnits(
             units,
@@ -295,11 +287,6 @@ run('player list rows of every words DB (local only)', () => {
             if (textOf.get(id) && !set.has(id - range.first + 1)) {
               fail(`${key}:${id - range.first + 1}: word in no slice`);
             }
-          }
-          // A Hafs verse start marks exactly one row (the basmala none).
-          const startUnit = units.unitForAnchor(key);
-          if ((marks.get(key) ?? null) !== (startUnit ? startUnit.key : null)) {
-            fail(`${key}: start marks ${marks.get(key)}`);
           }
           // A Hafs-numbered entry lights every verse holding the Hafs verse.
           const band = playbackBandUnits(

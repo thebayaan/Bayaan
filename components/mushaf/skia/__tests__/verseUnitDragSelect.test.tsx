@@ -231,11 +231,12 @@ describe('Warsh page 1', () => {
       keys: ['71:28', '71:29', '71:30'],
       page: pageOfFixtureSurah(71),
     });
-    // al-Bazzi 71:24 starts inside Hafs 71:23 and ends inside Hafs 71:24.
+    // al-Bazzi 71:24 starts inside Hafs 71:23 and ends inside Hafs 71:24;
+    // al-Bazzi 71:23, the first part of Hafs 71:23, names its first word.
     press('71:23');
     dragTo('71:25');
     expect(useMushafVerseSelectionStore.getState().selectedUnits).toEqual([
-      {key: '71:23', anchor: '71:23', hafsKeys: ['71:23']},
+      {key: '71:23', anchor: '71:23:1', hafsKeys: ['71:23']},
       {key: '71:24', anchor: '71:23:10', hafsKeys: ['71:23', '71:24']},
       {key: '71:25', anchor: '71:24:4', hafsKeys: ['71:24']},
     ]);

@@ -167,7 +167,7 @@ describe('BookmarkItem', () => {
         surahName="Al-Fatihah"
         surahNumber={1}
         ayahNumber={7}
-        verseKey="1:7"
+        verseKey="1:7:1"
         rewayahId="warsh"
         onPress={noop}
         onOptionsPress={noop}
@@ -176,6 +176,29 @@ describe('BookmarkItem', () => {
     expect(texts(r)).toEqual(['1:6', 'Warsh']);
     expect(mockSkiaTexts[mockSkiaTexts.length - 1]).toBe(
       warsh.unitText(unitOf(warsh, '1:6')),
+    );
+  });
+
+  it('Warsh row saved before verse units on Hafs 1:7: Warsh 1:6-7 with both texts', () => {
+    // develop wrote ("1:7", "warsh") for what it showed as 1:7: all of
+    // Hafs 1:7, Warsh 1:6 and 1:7.
+    const warsh = fixtureUnits('warsh');
+    const r = render(
+      <BookmarkItem
+        surahName="Al-Fatihah"
+        surahNumber={1}
+        ayahNumber={7}
+        verseKey="1:7"
+        rewayahId="warsh"
+        onPress={noop}
+        onOptionsPress={noop}
+      />,
+    );
+    expect(texts(r)).toEqual(['1:6-7', 'Warsh']);
+    expect(mockSkiaTexts[mockSkiaTexts.length - 1]).toBe(
+      `${warsh.unitText(unitOf(warsh, '1:6'))} ${warsh.unitText(
+        unitOf(warsh, '1:7'),
+      )}`,
     );
   });
 
@@ -231,8 +254,30 @@ describe('NoteItem', () => {
         surahName="Al-Fatihah"
         surahNumber={1}
         ayahNumber={7}
+        verseKey="1:7:1"
+        verseKeys={['1:7:1', '1:7:5']}
+        notePreview="text"
+        rewayahId="warsh"
+        onPress={noop}
+        onOptionsPress={noop}
+      />,
+    );
+    expect(texts(r)).toEqual(['1:6-7', 'Warsh', 'text']);
+    expect(mockSkiaTexts[mockSkiaTexts.length - 1]).toBe(
+      `${warsh.unitText(unitOf(warsh, '1:6'))} ${warsh.unitText(
+        unitOf(warsh, '1:7'),
+      )}`,
+    );
+  });
+
+  it('a Warsh note saved before verse units on Hafs 1:7: Warsh 1:6-7 with their texts', () => {
+    const warsh = fixtureUnits('warsh');
+    const r = render(
+      <NoteItem
+        surahName="Al-Fatihah"
+        surahNumber={1}
+        ayahNumber={7}
         verseKey="1:7"
-        verseKeys={['1:7', '1:7:5']}
         notePreview="text"
         rewayahId="warsh"
         onPress={noop}

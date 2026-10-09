@@ -224,7 +224,8 @@ describe('a Warsh verse that starts inside a Hafs verse (Warsh 1:7, "1:7:5")', (
 });
 
 it('a row of another rewayah at a Hafs verse key marks that Hafs verse everywhere, as before', async () => {
-  // Warsh 1:6 is stored at "1:7" (it starts with Hafs 1:7).
+  // A Warsh row saved before verse units on Hafs 1:7 ("1:7"; Warsh 1:6 is
+  // stored at "1:7:1" now).
   setStoredRows(['1:7'], {'1:7': 'blue'}, 'warsh');
   const sheet = sheets(['1:7']);
   const blue = {bookmarked: true, color: 'blue'};

@@ -54,6 +54,7 @@ jest.mock('@/services/verse-annotations/VerseAnnotationService', () => ({
     upsertHighlight: jest.fn(async () => undefined),
     removeHighlight: jest.fn(async () => undefined),
     addNote: jest.fn(async () => undefined),
+    applyAnnotationChanges: jest.fn(async () => undefined),
     getAnnotationsForSurah: jest.fn(async () => ({
       bookmarks: [],
       notes: [],
@@ -199,8 +200,9 @@ describe('Highlight screen', () => {
     expect(activeColors()).toEqual(['yellow']);
     expect(hasText('Remove Highlight')).toBe(true);
     await pressText('Remove Highlight');
-    expect(service.removeHighlight.mock.calls.map(c => c[0])).toEqual([
-      '103:2',
+    // One transaction deleting the row that marks the verse.
+    expect(service.applyAnnotationChanges.mock.calls).toEqual([
+      [{removeHighlights: ['103:2']}],
     ]);
     expect(onDone).toHaveBeenCalled();
   });
@@ -215,9 +217,15 @@ describe('Highlight screen', () => {
     expect(activeColors()).toEqual([]);
     expect(hasText('Remove Highlight')).toBe(false);
     await pressNode(swatch('green'));
-    expect(service.upsertHighlight.mock.calls).toEqual([
-      ['1:7', 1, 7, 'green', 'warsh'],
-      ['1:7:5', 1, 7, 'green', 'warsh'],
+    const row = (verseKey: string) => ({
+      verseKey,
+      surahNumber: 1,
+      ayahNumber: 7,
+      color: 'green',
+      rewayahId: 'warsh',
+    });
+    expect(service.applyAnnotationChanges.mock.calls).toEqual([
+      [{upsertHighlights: [row('1:7:1'), row('1:7:5')]}],
     ]);
   });
 
@@ -247,7 +255,7 @@ describe('Add Note screen', () => {
     );
     await saveNote(' my note ');
     expect(service.addNote.mock.calls).toEqual([
-      ['1:7', 1, 7, 'my note', ['1:7', '1:7:5'], 'warsh'],
+      ['1:7:1', 1, 7, 'my note', ['1:7:1', '1:7:5'], 'warsh'],
     ]);
     expect(onDone).toHaveBeenCalled();
   });

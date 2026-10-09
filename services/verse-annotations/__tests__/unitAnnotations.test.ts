@@ -5,6 +5,8 @@
  * 103, 106, 107, 112, 114):
  *  - rows store each unit's Hafs anchor + rewayah (never a rewayah number);
  *  - the two parts of a split Hafs verse are two rows and mark two verses;
+ *  - a bare "S:A" row saved before verse units keeps its meaning: every
+ *    verse holding words of that Hafs verse (listed as their range);
  *  - a shown rewayah's marks follow the storage rule of the contract;
  *  - collection rows read in their own rewayah (label + own text);
  *  - Hafs rows and Hafs marks are exactly the Hafs keys of before.
@@ -65,13 +67,14 @@ const hl = (
 describe('annotationAnchor: what a row stores for a verse', () => {
   it('stores the Hafs location of the verse start, never its own number', () => {
     const u = warsh();
+    // Both parts of split Hafs 1:7 name their first word: the first part
+    // at word 1, the later part at its 5th word.
     expect(annotationAnchor(u, unitOf(u, '1:6'))).toEqual({
-      verseKey: '1:7',
+      verseKey: '1:7:1',
       surahNumber: 1,
       ayahNumber: 7,
       rewayahId: 'warsh',
     });
-    // The later part of split Hafs 1:7 starts at its 5th word.
     expect(annotationAnchor(u, unitOf(u, '1:7'))).toEqual({
       verseKey: '1:7:5',
       surahNumber: 1,
@@ -145,7 +148,7 @@ describe('deriveUnitAnnotations: marks in the numbering of the shown rewayah', (
     const u = warsh();
     const first = deriveUnitAnnotations(
       u,
-      rows({bookmarks: [row('1:7', 'warsh')]}),
+      rows({bookmarks: [row('1:7:1', 'warsh')]}),
     );
     expect([...first.bookmarkedUnitKeys]).toEqual(['1:6']);
     const second = deriveUnitAnnotations(
@@ -155,10 +158,10 @@ describe('deriveUnitAnnotations: marks in the numbering of the shown rewayah', (
     expect([...second.bookmarkedUnitKeys]).toEqual(['1:7']);
     const both = deriveUnitAnnotations(
       u,
-      rows({bookmarks: [row('1:7', 'warsh'), row('1:7:5', 'warsh')]}),
+      rows({bookmarks: [row('1:7:1', 'warsh'), row('1:7:5', 'warsh')]}),
     );
     expect([...both.bookmarkedUnitKeys]).toEqual(['1:6', '1:7']);
-    expect(both.bookmarkRowKeys('1:6')).toEqual(['1:7']);
+    expect(both.bookmarkRowKeys('1:6')).toEqual(['1:7:1']);
     expect(both.bookmarkRowKeys('1:7')).toEqual(['1:7:5']);
   });
 
@@ -175,13 +178,23 @@ describe('deriveUnitAnnotations: marks in the numbering of the shown rewayah', (
     expect([...marks.notedUnitKeys]).toEqual(['106:4', '106:5']);
   });
 
-  it('a legacy rewayah row keyed by a Hafs verse marks the verse holding its start', () => {
-    // Saved before verse units: Warsh rows on Hafs keys (no migration).
+  it('a rewayah row saved before verse units marks every verse of its Hafs verse', () => {
+    // Saved before verse units: Warsh rows on the Hafs verse the reader
+    // marked (no migration). "1:7" was all of Hafs 1:7: Warsh 1:6 and 1:7.
     const marks = deriveUnitAnnotations(
       warsh(),
       rows({bookmarks: [row('1:7', 'warsh'), row('103:2', 'warsh')]}),
     );
-    expect([...marks.bookmarkedUnitKeys]).toEqual(['1:6', '103:1']);
+    expect([...marks.bookmarkedUnitKeys]).toEqual(['1:6', '1:7', '103:1']);
+    expect(marks.bookmarkRowKeys('1:6')).toEqual(['1:7']);
+    expect(marks.bookmarkRowKeys('1:7')).toEqual(['1:7']);
+    // Next to the rows written now, it keeps marking both parts.
+    const mixed = deriveUnitAnnotations(
+      warsh(),
+      rows({bookmarks: [row('1:7', 'warsh'), row('1:7:5', 'warsh')]}),
+    );
+    expect(mixed.bookmarkRowKeys('1:6')).toEqual(['1:7']);
+    expect([...mixed.bookmarkRowKeys('1:7')].sort()).toEqual(['1:7', '1:7:5']);
   });
 
   it('the unnumbered Fatiha basmala marks nothing in the Madani count', () => {
@@ -235,6 +248,24 @@ describe('deriveUnitAnnotations: marks in the numbering of the shown rewayah', (
       '103:2',
     ]);
     expect(marks.highlightRowKeys('106:5')).toEqual(['106:4', '106:4:5']);
+    expect(marks.highlightColorRowKey('106:5')).toBe('106:4:5');
+    expect(marks.highlightColorRowKey('106:4')).toBe('106:4');
+    expect(marks.highlightColorRowKey('106:3')).toBeNull();
+  });
+
+  it('a verse coloured at its own anchor wins over a row saved before verse units', () => {
+    const marks = deriveUnitAnnotations(
+      warsh(),
+      rows({
+        highlights: [
+          hl('1:7', 'yellow', 'warsh'),
+          hl('1:7:1', 'green', 'warsh'),
+        ],
+      }),
+    );
+    expect(marks.highlightColors).toEqual({'1:6': 'green', '1:7': 'yellow'});
+    expect(marks.highlightColorRowKey('1:6')).toBe('1:7:1');
+    expect(marks.highlightColorRowKey('1:7')).toBe('1:7');
   });
 });
 
@@ -271,17 +302,36 @@ describe('describeSavedVerse: a collection row in its own rewayah', () => {
     // Only the later part: not the first part's verse number.
     expect(later.text).not.toContain('۝٦');
     const first = describeSavedVerse(
-      {verseKey: '1:7', rewayahId: 'warsh'},
+      {verseKey: '1:7:1', rewayahId: 'warsh'},
       ready('warsh'),
     );
     expect(first.kind === 'units' && first.label).toBe('1:6');
     expect(first.kind === 'units' && first.text.endsWith('۝٦')).toBe(true);
   });
 
+  it('lists a row saved before verse units on a split Hafs verse as both parts', () => {
+    // develop saved ("1:7", "warsh") for all of Hafs 1:7.
+    const u = warsh();
+    expect(
+      describeSavedVerse({verseKey: '1:7', rewayahId: 'warsh'}, ready('warsh')),
+    ).toEqual({
+      kind: 'units',
+      units: [unitOf(u, '1:6'), unitOf(u, '1:7')],
+      label: '1:6-7',
+      text: `${u.unitText(unitOf(u, '1:6'))} ${u.unitText(unitOf(u, '1:7'))}`,
+    });
+    // On a Hafs verse inside a merged verse: that verse.
+    const merged = describeSavedVerse(
+      {verseKey: '103:2', rewayahId: 'warsh'},
+      ready('warsh'),
+    );
+    expect(merged.kind === 'units' && merged.label).toBe('103:1');
+  });
+
   it('names a note on several verses by its anchors', () => {
     const u = warsh();
     const note = describeSavedVerse(
-      {verseKey: '1:7', verseKeys: ['1:7', '1:7:5'], rewayahId: 'warsh'},
+      {verseKey: '1:7:1', verseKeys: ['1:7:1', '1:7:5'], rewayahId: 'warsh'},
       ready('warsh'),
     );
     expect(note).toEqual({
@@ -290,7 +340,8 @@ describe('describeSavedVerse: a collection row in its own rewayah', () => {
       label: '1:6-7',
       text: `${u.unitText(unitOf(u, '1:6'))} ${u.unitText(unitOf(u, '1:7'))}`,
     });
-    // A legacy note on Hafs keys: the verses holding their starts, once.
+    // A legacy note on Hafs keys: every verse holding their words, once
+    // (Warsh splits Hafs 103:3 into 103:2 and 103:3).
     const legacy = describeSavedVerse(
       {
         verseKey: '103:1',
@@ -299,7 +350,7 @@ describe('describeSavedVerse: a collection row in its own rewayah', () => {
       },
       ready('warsh'),
     );
-    expect(legacy.kind === 'units' && legacy.label).toBe('103:1-2');
+    expect(legacy.kind === 'units' && legacy.label).toBe('103:1-3');
   });
 
   it('shows no number while the rewayah verses load', () => {
@@ -386,6 +437,14 @@ describe('opening a saved verse', () => {
     ).toEqual({surah: '1', ayah: '7', page: '1', anchor: '1:7:5'});
     expect(
       savedVerseRouteParams(
+        {verseKey: '1:7:1', surahNumber: 1, ayahNumber: 7, rewayahId: 'warsh'},
+        1,
+      ).anchor,
+    ).toBe('1:7:1');
+    // A row saved before verse units passes its key: it opens at the first
+    // verse it marks (unitForRouteAnchor).
+    expect(
+      savedVerseRouteParams(
         {verseKey: '1:7', surahNumber: 1, ayahNumber: 7, rewayahId: 'warsh'},
         1,
       ).anchor,
@@ -403,6 +462,8 @@ describe('opening a saved verse', () => {
     const u = warsh();
     expect(unitForRouteAnchor('1:7:5', u)).toBe(unitOf(u, '1:7'));
     expect(unitForRouteAnchor('1:7:6', u)).toBe(unitOf(u, '1:7'));
+    expect(unitForRouteAnchor('1:7:1', u)).toBe(unitOf(u, '1:6'));
+    // A bare key marking both parts opens at the first.
     expect(unitForRouteAnchor('1:7', u)).toBe(unitOf(u, '1:6'));
     // The unnumbered basmala opens Warsh 1:1 right after it.
     expect(unitForRouteAnchor('1:1', u)).toBe(unitOf(u, '1:1'));

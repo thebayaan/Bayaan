@@ -31,9 +31,15 @@
  *
  * Storage stays Hafs-keyed (bookmarks / notes / highlights keep Hafs verse
  * keys plus rewayah_id): hafsAnchor() names a unit by the Hafs location of
- * its first slot, and unitForAnchor() / unitsForStoredVerse() are the inverse.
- * See the consumer contract (CONTRACT.md of the verse-units work) for the
- * rules every surface follows.
+ * its first slot, "S:A:W", or the bare "S:A" when the unit starts at word 1
+ * of a Hafs verse that no other unit holds words of (every Hafs verse and
+ * every identity verse, so their rows are unchanged). A bare "S:A" row
+ * therefore always names every unit holding words of Hafs verse S:A, which
+ * is also what the rows saved before verse units mean (they keyed the Hafs
+ * verse the reader marked: a Warsh "1:7" row is Warsh 1:6 and 1:7), and an
+ * "S:A:W" row exactly one unit. unitsForStoredKey() / unitsForStoredVerse()
+ * are the inverse. See the consumer contract (CONTRACT.md of the
+ * verse-units work) for the rules every surface follows.
  *
  * This module is pure (no data-service import). The cached, data-service
  * backed instances live in RewayahVerseUnitsService.ts.
@@ -106,20 +112,26 @@ export interface VerseUnit {
  * Storage identity of a unit: the Hafs location of its first slot.
  *
  * `key` is what a bookmarks / notes / highlights row stores in verse_key:
- *  - "S:A" when the unit starts at the first slot of Hafs verse S:A. That is
- *    every Hafs verse (so Hafs rows are unchanged), every identity verse,
- *    the first part of a split Hafs verse and every merged verse that starts
- *    with a whole Hafs verse (Warsh 2:1 = Hafs 2:1-2 is "2:1");
- *  - "S:A:W" (Hafs word position W > 1) when the unit starts inside Hafs
- *    verse S:A: the later part of a split Hafs verse (Warsh 1:7 starts at
- *    Hafs 1:7:5, so it is stored as "1:7:5"; Warsh 11:82, the rest of Hafs
- *    11:82 plus Hafs 11:83, is "11:82:12").
- * Distinct for every unit of one rewayah, so the two parts of a split Hafs
- * verse are two rows, and bookmarks / highlights keep their UNIQUE(verse_key)
- * without a schema change.
+ *  - "S:A" when the unit starts at the first slot of Hafs verse S:A and no
+ *    other unit of its rewayah holds words of S:A. That is every Hafs verse
+ *    (so Hafs rows are unchanged), every identity verse and every merged
+ *    verse that starts with a whole Hafs verse (Warsh 2:1 = Hafs 2:1-2 is
+ *    "2:1");
+ *  - "S:A:W" otherwise, W the Hafs word position of its first slot: every
+ *    part of a split Hafs verse, the first one included (Warsh 1:6, the
+ *    start of Hafs 1:7, is "1:7:1"; Warsh 1:7 starts at Hafs 1:7:5, so it is
+ *    "1:7:5"; Warsh 11:82, the rest of Hafs 11:82 plus Hafs 11:83, is
+ *    "11:82:12").
+ * So a bare "S:A" always names every unit holding words of Hafs verse S:A
+ * (unitsForStoredKey), the meaning of the rows saved before verse units
+ * (keyed by the Hafs verse marked: a Warsh "1:7" row marks Warsh 1:6 and
+ * 1:7), and "S:A:W" exactly one unit. Distinct for every unit of one
+ * rewayah, so the parts of a split Hafs verse are separate rows, and
+ * bookmarks / highlights keep their UNIQUE(verse_key) without a schema
+ * change.
  */
 export interface HafsAnchor {
-  /** verse_key to store: "S:A" or "S:A:W". */
+  /** verse_key to store: "S:A" or "S:A:W" (see above). */
   readonly key: string;
   /** Hafs verse key of the unit's first slot, "S:A". */
   readonly hafsKey: string;
@@ -211,24 +223,39 @@ export function parseUnitKey(
 }
 
 /**
- * Hafs location of a stored verse_key: "S:A" (word 1, also every legacy row)
- * or "S:A:W". Null for anything else.
+ * Hafs location of a stored verse_key: "S:A" (`hasWord` false; word 1, the
+ * first slot of the Hafs verse) or "S:A:W" (`hasWord` true, W = 1
+ * included). What a row with either key marks: see HafsAnchor. Null for
+ * anything else.
  */
 export function parseAnchorKey(
   key: string,
-): {surah: number; ayah: number; word: number} | null {
+): {surah: number; ayah: number; word: number; hasWord: boolean} | null {
   const m = ANCHOR_KEY.exec(key);
   if (!m) return null;
   const surah = Number(m[1]);
   const ayah = Number(m[2]);
-  const word = m[3] === undefined ? 1 : Number(m[3]);
+  const hasWord = m[3] !== undefined;
+  const word = hasWord ? Number(m[3]) : 1;
   if (surah < 1 || surah > TOTAL_SURAHS || ayah < 1 || word < 1) return null;
-  return {surah, ayah, word};
+  return {surah, ayah, word, hasWord};
 }
 
-/** The verse_key form of a Hafs location: "S:A" for word 1, else "S:A:W". */
-export function formatAnchorKey(hafsKey: string, wordPosition: number): string {
-  return wordPosition === 1 ? hafsKey : `${hafsKey}:${wordPosition}`;
+/**
+ * The verse_key of a unit starting at Hafs word `wordPosition` of
+ * `hafsKey` (HafsAnchor): the bare "S:A" for word 1 when the unit holds
+ * that Hafs verse alone (`wholeVerse`: no other unit holds words of it),
+ * else "S:A:W" (the first part of a split Hafs verse is "S:A:1"). With the
+ * default it is a plain Hafs location: "S:A" for word 1, else "S:A:W".
+ */
+export function formatAnchorKey(
+  hafsKey: string,
+  wordPosition: number,
+  wholeVerse = true,
+): string {
+  return wordPosition === 1 && wholeVerse
+    ? hafsKey
+    : `${hafsKey}:${wordPosition}`;
 }
 
 /** Union of the units' Hafs verse keys, in reading order, without repeats. */
@@ -448,15 +475,38 @@ export class RewayahVerseUnits {
   }
 
   /**
-   * Inverse of hafsAnchor(): the unit holding the slot a stored verse_key
-   * names ("S:A" = the Hafs verse's first slot, "S:A:W" = word W). A legacy
-   * Hafs-keyed row therefore resolves to the rewayah verse holding the start
-   * of that Hafs verse. Null for an invalid key, a slot outside this data,
-   * or the unnumbered Fatiha basmala.
+   * The unit holding the slot a verse_key names ("S:A:W" = Hafs word W,
+   * W = 1 included; "S:A" = the Hafs verse's first slot): where a stored
+   * row or a link opens. For an "S:A:W" key and for every key hafsAnchor()
+   * writes, that is exactly the unit the key names. A bare "S:A" row can
+   * mark several units (unitsForStoredKey: a row saved before verse units
+   * on a split Hafs verse marks every part): this is the first of them.
+   * Null for an invalid key, a slot outside this data, or the unnumbered
+   * Fatiha basmala.
    */
   unitForAnchor(key: string): VerseUnit | null {
     const id = this.wordIdForAnchor(key);
     return id === null ? null : this.unitForWordId(id);
+  }
+
+  /**
+   * Inverse of hafsAnchor(): the units a stored verse_key names in this
+   * rewayah (a row saved in it), in reading order.
+   *  - "S:A": every unit holding words of Hafs verse S:A (unitsForHafsKey).
+   *    For a key hafsAnchor() writes that is its one unit; a row saved
+   *    before verse units, keyed by the Hafs verse the reader marked, marks
+   *    every part of a split Hafs verse (Warsh "1:7": 1:6 and 1:7), as it
+   *    did when it was saved.
+   *  - "S:A:W" (W = 1 included): exactly the unit holding that slot.
+   * Empty for an invalid key, a slot outside this data, or the unnumbered
+   * Fatiha basmala.
+   */
+  unitsForStoredKey(key: string): readonly VerseUnit[] {
+    const loc = parseAnchorKey(key);
+    if (!loc) return NO_UNITS;
+    if (!loc.hasWord) return this.unitsForHafsKey(`${loc.surah}:${loc.ayah}`);
+    const unit = this.unitForAnchor(key);
+    return unit ? [unit] : NO_UNITS;
   }
 
   /** Slot id a stored verse_key names, or null when it names no slot. */
@@ -576,8 +626,9 @@ const END_OF_AYAH = '\u06DD';
  * ids or Hafs locations out of order. Pre-Release-1 data (no inline
  * markers) fails here instead of producing wrong verse labels.
  *
- * One pass, no per-slot allocation: the builder keeps no reference to the
- * slot objects, so a source may reuse one object for every slot.
+ * One pass over the slots, no per-slot allocation (then one over the units
+ * for their anchor keys): the builder keeps no reference to the slot
+ * objects, so a source may reuse one object for every slot.
  */
 export function buildRewayahVerseUnits(
   rewayah: RewayahId,
@@ -588,7 +639,9 @@ export function buildRewayahVerseUnits(
     throw new VerseUnitsBuildError(rewayah, message);
   };
   const units: VerseUnit[] = [];
-  const anchors: HafsAnchor[] = [];
+  // Hafs location of each unit's first slot (its anchor key is set once
+  // every unit is known: see below).
+  const starts: Omit<HafsAnchor, 'key'>[] = [];
   const texts: string[] = [];
   const hafsRanges = new Map<string, {first: number; last: number}>();
   const unnumbered: WordIdRange[] = [];
@@ -662,16 +715,12 @@ export function buildRewayahVerseUnits(
       );
     }
     count += 1;
-    const anchorVerse = `${surah}:${startAyah}`;
-    anchors.push(
-      Object.freeze({
-        key: formatAnchorKey(anchorVerse, startWord),
-        hafsKey: anchorVerse,
-        surah,
-        ayah: startAyah,
-        wordPosition: startWord,
-      }),
-    );
+    starts.push({
+      hafsKey: `${surah}:${startAyah}`,
+      surah,
+      ayah: startAyah,
+      wordPosition: startWord,
+    });
     units.push(
       Object.freeze({
         rewayah,
@@ -781,6 +830,26 @@ export function buildRewayahVerseUnits(
   closeSurah();
   if (surah === 0) fail('no word slots');
 
+  // Anchor keys (HafsAnchor): a unit starting at word 1 of a Hafs verse
+  // keeps the bare "S:A" only when it is the one unit holding words of it.
+  const holders = new Map<string, number>();
+  for (const unit of units) {
+    for (const key of unit.hafsKeys) {
+      holders.set(key, (holders.get(key) ?? 0) + 1);
+    }
+  }
+  const anchors = starts.map((start, i) =>
+    Object.freeze({
+      key: formatAnchorKey(
+        start.hafsKey,
+        start.wordPosition,
+        units[i].hafsKeys[0] === start.hafsKey &&
+          holders.get(start.hafsKey) === 1,
+      ),
+      ...start,
+    }),
+  );
+
   return new RewayahVerseUnits({
     rewayah,
     dataKey,
@@ -796,7 +865,7 @@ export function buildRewayahVerseUnits(
 
 /** What a bookmarks / notes / highlights row identifies a verse by. */
 export interface StoredVerseRef {
-  /** verse_key: a Hafs anchor key ("S:A" or "S:A:W"). */
+  /** verse_key: a Hafs anchor key ("S:A" or "S:A:W", see HafsAnchor). */
   verseKey: string;
   /** rewayah_id the row was saved in; null (legacy) counts as Hafs. */
   rewayahId: RewayahId | null | undefined;
@@ -807,21 +876,27 @@ export interface StoredVerseUnits {
   units: VerseUnit[];
   /**
    * False when the row was saved in another rewayah whose units were not
-   * supplied: the units are then those holding the anchored Hafs verse from
-   * the anchored word on (correct for every identity, split-part and Hafs
-   * row; a merged verse saved in another rewayah marks only its first Hafs
-   * verse).
+   * supplied: the units are then those holding words of the anchored Hafs
+   * verse from the anchored word on. That is what a bare "S:A" key means
+   * (every unit holding words of S:A) and an approximation for "S:A:W": a
+   * merged verse saved in another rewayah marks only its first Hafs verse,
+   * a part of a split Hafs verse also marks the parts after it.
    */
   exact: boolean;
 }
 
 /**
  * Inverse of the storage rule: the units of `display` a stored row marks.
- *  - Saved in the display rewayah: exactly the unit its anchor names.
+ * In the rewayah it was saved in, a row names the units of its key
+ * (unitsForStoredKey: a bare "S:A" every unit holding words of Hafs verse
+ * S:A, the meaning of the rows saved before verse units; "S:A:W" exactly
+ * one unit).
+ *  - Saved in the display rewayah: exactly those units (a Warsh "1:7" row
+ *    saved before verse units marks Warsh 1:6 and 1:7; "1:7:1" Warsh 1:6).
  *  - Saved in Hafs: the display units holding words of that Hafs verse
  *    (unitsForHafsKey; exact, Hafs verses are the Hafs rows).
  *  - Saved in another rewayah with its units supplied: the display units
- *    holding a word of the saved verse.
+ *    holding a word of the units the key names there.
  *  - Otherwise: approximate (see StoredVerseUnits.exact).
  */
 export function unitsForStoredVerse(
@@ -831,8 +906,7 @@ export function unitsForStoredVerse(
 ): StoredVerseUnits {
   const savedRewayah: RewayahId = row.rewayahId ?? 'hafs';
   if (savedRewayah === display.rewayah) {
-    const unit = display.unitForAnchor(row.verseKey);
-    return {units: unit ? [unit] : [], exact: true};
+    return {units: [...display.unitsForStoredKey(row.verseKey)], exact: true};
   }
   const loc = parseAnchorKey(row.verseKey);
   if (!loc) return {units: [], exact: true};
@@ -841,15 +915,15 @@ export function unitsForStoredVerse(
     return {units: [...display.unitsForHafsKey(hafsKey)], exact: true};
   }
   if (saved && saved.rewayah === savedRewayah) {
-    const unit = saved.unitForAnchor(row.verseKey);
-    if (!unit) return {units: [], exact: true};
     const picked = new Map<number, VerseUnit>();
-    for (let id = unit.firstWordId; id <= unit.lastWordId; id++) {
-      // Words of the saved verse only (not its blank slots or marker slot).
-      const text = saved.slotText(id);
-      if (!text || parseVerseMarker(text) !== null) continue;
-      const shown = display.unitForWordId(id);
-      if (shown) picked.set(shown.index, shown);
+    for (const unit of saved.unitsForStoredKey(row.verseKey)) {
+      for (let id = unit.firstWordId; id <= unit.lastWordId; id++) {
+        // Words of the saved verse only (not its blank slots or marker slot).
+        const text = saved.slotText(id);
+        if (!text || parseVerseMarker(text) !== null) continue;
+        const shown = display.unitForWordId(id);
+        if (shown) picked.set(shown.index, shown);
+      }
     }
     return {
       units: [...picked.values()].sort((a, b) => a.index - b.index),

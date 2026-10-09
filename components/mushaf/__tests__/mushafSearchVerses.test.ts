@@ -78,7 +78,10 @@ describe('verseQueryTarget: "N:M" in the rewayah on screen', () => {
     expect(verseQueryTarget(106, 6, shown)).toBeNull();
     // Warsh 1:7 vs 1:6: the two parts of Hafs 1:7.
     expect(verseQueryTarget(1, 7, shown)?.anchor).toBe('1:7:5');
-    expect(verseQueryTarget(1, 6, shown)?.anchor).toBe('1:7');
+    expect(verseQueryTarget(1, 6, shown)).toMatchObject({
+      pageVerseKey: '1:7',
+      anchor: '1:7:1',
+    });
     // Warsh 1:1 is Hafs 1:2 (the basmala is not a verse in Warsh).
     expect(verseQueryTarget(1, 1, shown)).toMatchObject({
       verseKey: '1:1',
@@ -149,6 +152,9 @@ describe('anchorTarget: a stored anchor in the rewayah on screen', () => {
   it('opens the verse holding the anchored word', () => {
     const shown = shownReady('warsh');
     expect(anchorTarget('1:7:5', shown)?.verseKey).toBe('1:7');
+    expect(anchorTarget('1:7:1', shown)?.verseKey).toBe('1:6');
+    // A bare key (a bookmark saved before verse units marks both parts)
+    // opens at the first.
     expect(anchorTarget('1:7', shown)?.verseKey).toBe('1:6');
     expect(anchorTarget('106:4:5', shown)?.verseKey).toBe('106:5');
     // The unnumbered basmala: the verse after it.
@@ -198,7 +204,9 @@ describe('bookmarkChipText', () => {
   it('names the saved verse in its own rewayah numbering', () => {
     const later = {...bm('1:7', 'warsh'), verseKey: '1:7:5'};
     expect(chip(later, 'warsh')).toBe('Surah 1:7');
-    expect(chip(bm('1:7', 'warsh'), 'warsh')).toBe('Surah 1:6');
+    expect(chip(bm('1:7:1', 'warsh'), 'warsh')).toBe('Surah 1:6');
+    // Saved before verse units on all of Hafs 1:7: both Warsh verses.
+    expect(chip(bm('1:7', 'warsh'), 'warsh')).toBe('Surah 1:6-7');
     expect(chip(bm('106:4:5', 'warsh'), 'warsh')).toBe('Surah 106:5');
   });
 

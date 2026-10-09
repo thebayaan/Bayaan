@@ -316,7 +316,8 @@ describe('Warsh: the verses are its own (fixture)', () => {
   it('a split Hafs verse is two verses with their own labels and anchors', () => {
     const first = select('warsh', ['1:6']);
     expect(first.label).toBe('1:6');
-    expect(first.anchors).toEqual([{key: '1:7', surah: 1, ayah: 7}]);
+    // Each part of split Hafs 1:7 names its first word.
+    expect(first.anchors).toEqual([{key: '1:7:1', surah: 1, ayah: 7}]);
     expect(first.linkVerse).toEqual({surah: 1, ayah: 7});
     expect(first.linkLabel).toBe('1:6');
     expect(selectionCitation(first)).toBe('Quran 1:6 · Warsh');
@@ -365,7 +366,7 @@ describe('Warsh: the verses are its own (fixture)', () => {
     // Both verses selected: the translation is shown once, no note needed.
     const both = select('warsh', ['1:6', '1:7']);
     expect(both.label).toBe('1:6-7');
-    expect(both.anchors.map(a => a.key)).toEqual(['1:7', '1:7:5']);
+    expect(both.anchors.map(a => a.key)).toEqual(['1:7:1', '1:7:5']);
     expect(selectionTranslationParts(both)).toEqual([
       {hafsKey: '1:7', note: null},
     ]);
@@ -472,7 +473,7 @@ describe('al-Bazzi and al-Duri (fixture)', () => {
       {hafsKey: '71:24', note: null},
     ]);
     expect(run.anchors.map(a => a.key)).toEqual([
-      '71:23',
+      '71:23:1',
       '71:23:10',
       '71:24:4',
     ]);
@@ -520,9 +521,18 @@ describe('stored rows in their own rewayah', () => {
   it('names a saved row by its anchors', () => {
     const warsh = models.warsh;
     expect(storedVerseSelection(warsh, ['1:7:5'])?.label).toBe('1:7');
-    expect(storedVerseSelection(warsh, ['1:7'])?.label).toBe('1:6');
+    expect(storedVerseSelection(warsh, ['1:7:1'])?.label).toBe('1:6');
     // A range note: verse_keys = every anchor.
-    expect(storedVerseSelection(warsh, ['1:7', '1:7:5'])?.label).toBe('1:6-7');
+    expect(storedVerseSelection(warsh, ['1:7:1', '1:7:5'])?.label).toBe(
+      '1:6-7',
+    );
+    // A row saved before verse units on all of Hafs 1:7: both verses.
+    const legacy = storedVerseSelection(warsh, ['1:7']);
+    expect(legacy?.label).toBe('1:6-7');
+    expect(legacy && readUnitTexts(legacy)).toEqual([
+      warsh.unitText(warsh.unitByKey('1:6')!),
+      warsh.unitText(warsh.unitByKey('1:7')!),
+    ]);
     // A legacy row on the second Hafs verse of a merged verse.
     expect(storedVerseSelection(warsh, ['103:2'])?.label).toBe('103:1');
     // The unnumbered basmala names no verse.

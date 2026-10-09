@@ -15,7 +15,9 @@
  *  - "N:M" in the mushaf search is that rewayah's verse N:M and no verse
  *    past its count; stored anchors and bookmark chips open the same verse;
  *  - its share link names exactly it, with a Hafs verse as the path;
- *  - legacy rows on Hafs keys open a verse that holds that Hafs verse;
+ *  - legacy rows on Hafs keys mark and list every verse holding words of
+ *    that Hafs verse (as their range, with their own text) and open the
+ *    first of them;
  *  - Hafs: rows, labels, routes, searches and links are the Hafs ones.
  */
 import {
@@ -40,7 +42,10 @@ import {
   type ShownVerses,
 } from '@/components/mushaf/mushafSearchVerses';
 import {anchorShareUrl, verseShareUrl} from '@/utils/shareUtils';
-import type {RewayahVerseUnits} from '@/services/mushaf/RewayahVerseUnits';
+import {
+  formatUnitRangeLabel,
+  type RewayahVerseUnits,
+} from '@/services/mushaf/RewayahVerseUnits';
 import type {RewayahId} from '@/services/rewayah/RewayahIdentity';
 import {SURAHS} from '@/data/surahData';
 
@@ -244,6 +249,32 @@ run('annotations, search and links on every words DB (local only)', () => {
         check(
           legacy === holding[0],
           () => `legacy row ${hafsKey}: ${legacy?.key} vs ${holding[0]?.key}`,
+        );
+        if (isHafs) continue;
+        // That legacy row marks every verse holding words of its Hafs verse
+        // (what it marked when it was saved), and is listed as their range
+        // with their own text.
+        const legacyRow = {verseKey: hafsKey, rewayahId: rewayah};
+        const legacyMarks = deriveUnitAnnotations(units, {
+          bookmarks: {[hafsKey]: legacyRow},
+          notes: {},
+          highlights: {},
+        });
+        check(
+          [...legacyMarks.bookmarkedUnitKeys].join() ===
+            holding.map(u => u.key).join(),
+          () =>
+            `legacy row ${hafsKey} marks ${[
+              ...legacyMarks.bookmarkedUnitKeys,
+            ]}`,
+        );
+        const listed = describeSavedVerse(legacyRow, {units, status: 'ready'});
+        check(
+          listed.kind === 'units' &&
+            listed.label ===
+              formatUnitRangeLabel(holding[0], holding[holding.length - 1]) &&
+            listed.text === holding.map(u => units.unitText(u)).join(' '),
+          () => `legacy row ${hafsKey} listed as ${JSON.stringify(listed)}`,
         );
       }
       if (rewayah === 'hafs' || rewayah === 'shubah') {

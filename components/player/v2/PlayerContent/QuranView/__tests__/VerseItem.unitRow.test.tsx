@@ -385,12 +385,20 @@ describe('bookmark and note dots from the stored rows (contract section 3)', () 
     expect(marked('1:7', 'Feather:file-text')).toBe(true);
   });
 
-  it('a Warsh row at Hafs 1:7 (Warsh 1:6) marks Warsh 1:6 only', () => {
+  it('a Warsh row at Warsh 1:6 (anchor 1:7:1) marks Warsh 1:6 only', () => {
+    useVerseAnnotationsStore.setState({
+      noteRows: {'warsh|1:7:1': {verseKey: '1:7:1', rewayahId: 'warsh'}},
+    } as never);
+    expect(marked('1:6', 'Feather:file-text')).toBe(true);
+    expect(marked('1:7', 'Feather:file-text')).toBe(false);
+  });
+
+  it('a Warsh row saved before verse units on Hafs 1:7 marks both parts', () => {
     useVerseAnnotationsStore.setState({
       noteRows: {'warsh|1:7': {verseKey: '1:7', rewayahId: 'warsh'}},
     } as never);
     expect(marked('1:6', 'Feather:file-text')).toBe(true);
-    expect(marked('1:7', 'Feather:file-text')).toBe(false);
+    expect(marked('1:7', 'Feather:file-text')).toBe(true);
   });
 
   it('a legacy row on Hafs 103:2 marks the merged Warsh 103:1', () => {

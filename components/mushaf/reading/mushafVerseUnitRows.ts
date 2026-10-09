@@ -226,7 +226,7 @@ export interface UnitListModel {
   indexOfRow(rowKey: string): number | undefined;
   /**
    * Item index of the row holding the slot a Hafs reference names: a Hafs
-   * key 'S:A' (its first slot, as a stored legacy row resolves) or a stored
+   * key 'S:A' (its first slot, where a stored 'S:A' row opens) or a stored
    * anchor 'S:A:W'. For a Hafs key held by one of `preferRowKeys` (the
    * follow-along band), that row: playback scrolls by the Hafs verse being
    * recited, and a reciter of the rewayah may be on its second part.

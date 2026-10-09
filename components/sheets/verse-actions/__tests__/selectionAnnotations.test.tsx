@@ -3,17 +3,21 @@
  * Bookmarks, highlights and notes of a verse sheet's selection (decision 3,
  * verse-units contract section 3), through the annotations store's unit
  * API: one row per selected verse at its Hafs anchor; a verse is marked by
- * ANY row that marks it (a row of its rewayah naming one of its slots,
- * legacy rows keyed by a Hafs verse included; a Hafs row on a Hafs verse it
- * holds), and removing its mark deletes every such row. Hafs reads and
- * writes exactly the selected Hafs keys, as before.
+ * ANY row that marks it (a row of its rewayah naming it: a word anchor its
+ * one verse, a bare Hafs key every verse holding that Hafs verse, as rows
+ * saved before verse units meant it; a Hafs row on a Hafs verse it holds),
+ * and removing its mark deletes exactly those rows, whole, in one
+ * transaction (one applyAnnotationChanges call). Hafs reads and writes
+ * exactly the selected Hafs keys, as before.
  *
  * Real Warsh slots (verseUnitsFixture.json: Warsh 1:6 = Hafs 1:7 words 1-4,
  * 1:7 = Hafs 1:7 from word 5, 103:1 = Hafs 103:1 + 103:2, 103:2 = Hafs 103:3
  * words 1-7, 103:3 = the rest of Hafs 103:3); the real annotations store
- * with the database service mocked; rows are saved in Warsh unless a test
- * says otherwise. The row mapping is checked on every unit of every words
- * DB by unitAnnotations.alldbs.test.ts (local, BAYAAN_OVERLAY_DB_DIR).
+ * with the database service mocked (the rows a call leaves in the real
+ * database: verseAnnotationsStore.units.test.ts); rows are saved in Warsh
+ * unless a test says otherwise. The row mapping is checked on every unit of
+ * every words DB by unitAnnotations.alldbs.test.ts (local,
+ * BAYAAN_OVERLAY_DB_DIR).
  */
 import React, {act} from 'react';
 import TestRenderer from 'react-test-renderer';
@@ -25,6 +29,7 @@ jest.mock('@/services/verse-annotations/VerseAnnotationService', () => ({
     upsertHighlight: jest.fn(async () => undefined),
     removeHighlight: jest.fn(async () => undefined),
     addNote: jest.fn(async () => undefined),
+    applyAnnotationChanges: jest.fn(async () => undefined),
     getAnnotationsForSurah: jest.fn(async () => ({
       bookmarks: [],
       notes: [],
@@ -117,6 +122,12 @@ const service = verseAnnotationService as jest.Mocked<
 >;
 const calls = (fn: {mock: {calls: unknown[][]}}) =>
   fn.mock.calls.map(call => call[0]);
+/** The change set of each unit-API call (one transaction each). */
+const changes = () => calls(service.applyAnnotationChanges);
+const warshRow = (verseKey: string) => {
+  const [surahNumber, ayahNumber] = verseKey.split(':').map(Number);
+  return {verseKey, surahNumber, ayahNumber, rewayahId: 'warsh'};
+};
 
 interface SelectionMarks {
   bookmarked: boolean;
@@ -167,8 +178,7 @@ describe('bookmarks', () => {
 
     await run(() => setSelectionBookmarked(warshSelection('103:1'), false));
     // Every row that marks it: the legacy row.
-    expect(calls(service.removeBookmark)).toEqual(['103:2']);
-    expect(service.addBookmark).not.toHaveBeenCalled();
+    expect(changes()).toEqual([{removeBookmarks: ['103:2']}]);
     expect([
       ...useVerseAnnotationsStore.getState().bookmarkedVerseKeys,
     ]).toEqual([]);
@@ -177,22 +187,30 @@ describe('bookmarks', () => {
   });
 
   it('removing deletes its own row and a legacy row, nothing else', async () => {
-    setRows(['103:1', '103:2', '103:3']);
+    setRows(['103:1', '103:2', '103:3:1']);
     await setSelectionBookmarked(warshSelection('103:1'), false);
-    expect(calls(service.removeBookmark)).toEqual(['103:1', '103:2']);
-    // "103:3" is Warsh 103:2's own row.
+    expect(changes()).toEqual([{removeBookmarks: ['103:1', '103:2']}]);
+    // "103:3:1" is Warsh 103:2's own row.
     expect([
       ...useVerseAnnotationsStore.getState().bookmarkedVerseKeys,
-    ]).toEqual(['103:3']);
+    ]).toEqual(['103:3:1']);
   });
 
-  it('a row marks only the verse holding the slot it names', () => {
-    // "1:7" names Hafs 1:7's first word: Warsh 1:6, not Warsh 1:7.
-    setRows(['1:7']);
-    const first = renderMarks(warshSelection('1:6'));
-    const second = renderMarks(warshSelection('1:7'));
+  it('a word anchor marks its verse only; a bare key every verse of its Hafs verse', () => {
+    // "1:7:1" names Hafs 1:7's first word: Warsh 1:6, not Warsh 1:7.
+    setRows(['1:7:1']);
+    let first = renderMarks(warshSelection('1:6'));
+    let second = renderMarks(warshSelection('1:7'));
     expect(first.current().bookmarked).toBe(true);
     expect(second.current().bookmarked).toBe(false);
+    first.unmount();
+    second.unmount();
+    // "1:7" (saved before verse units): all of Hafs 1:7, both verses.
+    setRows(['1:7']);
+    first = renderMarks(warshSelection('1:6'));
+    second = renderMarks(warshSelection('1:7'));
+    expect(first.current().bookmarked).toBe(true);
+    expect(second.current().bookmarked).toBe(true);
     first.unmount();
     second.unmount();
   });
@@ -207,25 +225,29 @@ describe('bookmarks', () => {
     second.unmount();
   });
 
-  it('unbookmarking one part of a Hafs row keeps the other part', async () => {
+  it('unbookmarking one part of a Hafs row deletes that row, whole', async () => {
+    // The Hafs bookmark on Hafs 1:7 is one bookmark: removing it from Warsh
+    // 1:7 removes it (also from Warsh 1:6, and from Hafs 1:7 in Hafs);
+    // nothing is written in its place.
     setRows(['1:7'], {}, 'hafs');
     const first = renderMarks(warshSelection('1:6'));
     const second = renderMarks(warshSelection('1:7'));
     await run(() => setSelectionBookmarked(warshSelection('1:7'), false));
-    expect(calls(service.removeBookmark)).toEqual(['1:7']);
-    // Warsh 1:6 keeps its bookmark on a row of its own.
-    expect(service.addBookmark.mock.calls).toEqual([['1:7', 1, 7, 'warsh']]);
-    expect(first.current().bookmarked).toBe(true);
+    expect(changes()).toEqual([{removeBookmarks: ['1:7']}]);
+    expect(service.addBookmark).not.toHaveBeenCalled();
+    expect(first.current().bookmarked).toBe(false);
     expect(second.current().bookmarked).toBe(false);
     first.unmount();
     second.unmount();
   });
 
   it('a range is bookmarked when every verse is', () => {
-    setRows(['1:7']);
+    setRows(['1:7:1']);
     const marks = renderMarks(warshSelection('1:6', '1:7'));
     expect(marks.current().bookmarked).toBe(false);
-    act(() => setRows(['1:7', '1:7:5']));
+    act(() => setRows(['1:7:1', '1:7:5']));
+    expect(marks.current().bookmarked).toBe(true);
+    act(() => setRows(['1:7']));
     expect(marks.current().bookmarked).toBe(true);
     marks.unmount();
   });
@@ -234,17 +256,20 @@ describe('bookmarks', () => {
     // Warsh 103:1 is already marked by its legacy row; 103:2 is not.
     setRows(['103:2']);
     await setSelectionBookmarked(warshSelection('103:1', '103:2'), true);
-    expect(service.addBookmark.mock.calls).toEqual([
-      ['103:3', 103, 3, 'warsh'],
-    ]);
+    expect(changes()).toEqual([{addBookmarks: [warshRow('103:3:1')]}]);
     expect([
       ...useVerseAnnotationsStore.getState().bookmarkedVerseKeys,
-    ]).toEqual(['103:2', '103:3']);
+    ]).toEqual(['103:2', '103:3:1']);
   });
 
-  it('the later part of a split Hafs verse is stored at its own anchor', async () => {
+  it('each part of a split Hafs verse is stored at its own anchor', async () => {
     await setSelectionBookmarked(warshSelection('1:7'), true);
-    expect(service.addBookmark.mock.calls).toEqual([['1:7:5', 1, 7, 'warsh']]);
+    await setSelectionBookmarked(warshSelection('1:6'), true);
+    expect(changes()).toEqual([
+      {addBookmarks: [warshRow('1:7:5')]},
+      {addBookmarks: [warshRow('1:7:1')]},
+    ]);
+    expect(service.addBookmark).not.toHaveBeenCalled();
   });
 
   it('Hafs: adds and removes exactly the selected keys, as before', async () => {
@@ -275,7 +300,7 @@ describe('highlights', () => {
     expect(marks.current().highlightColor).toBe('yellow');
 
     await run(() => setSelectionHighlight(warshSelection('103:1'), null));
-    expect(calls(service.removeHighlight)).toEqual(['103:2']);
+    expect(changes()).toEqual([{removeHighlights: ['103:2']}]);
     expect(useVerseAnnotationsStore.getState().highlights).toEqual({});
     expect(marks.current().highlightColor).toBeNull();
     marks.unmount();
@@ -304,12 +329,17 @@ describe('highlights', () => {
 
   it('colouring writes one row per verse at its anchor', async () => {
     await setSelectionHighlight(warshSelection('1:6', '1:7'), 'purple');
-    expect(service.upsertHighlight.mock.calls).toEqual([
-      ['1:7', 1, 7, 'purple', 'warsh'],
-      ['1:7:5', 1, 7, 'purple', 'warsh'],
+    expect(changes()).toEqual([
+      {
+        upsertHighlights: [
+          {...warshRow('1:7:1'), color: 'purple'},
+          {...warshRow('1:7:5'), color: 'purple'},
+        ],
+      },
     ]);
+    expect(service.upsertHighlight).not.toHaveBeenCalled();
     expect(useVerseAnnotationsStore.getState().highlights).toEqual({
-      '1:7': 'purple',
+      '1:7:1': 'purple',
       '1:7:5': 'purple',
     });
   });
@@ -339,10 +369,10 @@ describe('notes', () => {
   it('a range: verse_key is the first anchor, verse_keys every anchor', async () => {
     await addSelectionNote(warshSelection('1:6', '1:7'), 'a note');
     expect(service.addNote.mock.calls).toEqual([
-      ['1:7', 1, 7, 'a note', ['1:7', '1:7:5'], 'warsh'],
+      ['1:7:1', 1, 7, 'a note', ['1:7:1', '1:7:5'], 'warsh'],
     ]);
     expect([...useVerseAnnotationsStore.getState().notedVerseKeys]).toEqual([
-      '1:7',
+      '1:7:1',
       '1:7:5',
     ]);
   });
@@ -350,7 +380,7 @@ describe('notes', () => {
   it('one verse: no verse_keys', async () => {
     await addSelectionNote(warshSelection('103:2'), 'a note');
     expect(service.addNote.mock.calls).toEqual([
-      ['103:3', 103, 3, 'a note', undefined, 'warsh'],
+      ['103:3:1', 103, 3, 'a note', undefined, 'warsh'],
     ]);
   });
 

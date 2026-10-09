@@ -13,7 +13,6 @@ import {
   playbackBandKeysId,
   playbackBandUnits,
   rowIndexForHafsReference,
-  rowIsMarked,
   unitVerseActionsPayload,
   UNNUMBERED_BASMALA_ROW_KEY,
   wordByWordNotice,
@@ -140,7 +139,6 @@ describe('Warsh al-Fatihah: the unnumbered basmala and a split Hafs verse', () =
     );
     expect(basmala.unit).toBeNull();
     expect(basmala.anchor).toBeNull();
-    expect(basmala.markKeys).toEqual([]);
     expect(layoutWords(basmala.words).text).toBe(
       slots
         .map(s => s.text)
@@ -164,7 +162,6 @@ describe('Warsh al-Fatihah: the unnumbered basmala and a split Hafs verse', () =
     const v1 = byKey(rows, '1:1');
     expect(partsOf(v1)).toEqual([['1:2', true, 1, 5, true]]);
     expect(v1.anchor?.key).toBe('1:2');
-    expect(v1.markKeys).toEqual(['1:2']);
   });
 
   it('splits Hafs 1:7: the translation once under 1:6, the note under both', () => {
@@ -182,10 +179,8 @@ describe('Warsh al-Fatihah: the unnumbered basmala and a split Hafs verse', () =
       'Translation of all of Hafs 1:7, which Warsh divides between verses 1:6 and 1:7.';
     expect(v6.parts[0].note).toBe(note);
     expect(v7.parts[0].note).toBe(note);
-    // Storage: two rows, two anchors.
-    expect([v6.anchor?.key, v7.anchor?.key]).toEqual(['1:7', '1:7:5']);
-    expect(v6.markKeys).toEqual(['1:7']);
-    expect(v7.markKeys).toEqual(['1:7:5']);
+    // Storage: two rows, two word anchors (Hafs 1:7 is split).
+    expect([v6.anchor?.key, v7.anchor?.key]).toEqual(['1:7:1', '1:7:5']);
   });
 });
 
@@ -203,8 +198,7 @@ describe('merged and partly overlapping verses', () => {
       [null, 'T(103:1)'],
       [null, 'T(103:2)'],
     ]);
-    // A legacy row on Hafs 103:2 is a mark of the merged verse.
-    expect(v1.markKeys).toEqual(['103:1', '103:2']);
+    expect(v1.anchor?.key).toBe('103:1');
     expect(v2.parts[0]).toMatchObject({hafsKey: '103:3', owned: true});
     expect(v3.parts[0]).toMatchObject({hafsKey: '103:3', owned: false});
     expect(v2.parts[0].note).toContain('verses 103:2 and 103:3');
@@ -224,11 +218,7 @@ describe('merged and partly overlapping verses', () => {
     expect(v24.parts[1]).toMatchObject({firstWord: 1, lastWord: 3});
     expect(v24.parts.every(p => p.note !== null)).toBe(true);
     expect(v24.anchor?.key).toBe('71:23:10');
-    // Hafs 71:24 begins inside it: a legacy '71:24' row marks it.
-    expect(v24.markKeys).toEqual(['71:23:10', '71:24']);
-    for (const key of v24.markKeys) {
-      expect(units.unitForAnchor(key)?.key).toBe('71:24');
-    }
+    expect(units.unitForAnchor('71:23:10')?.key).toBe('71:24');
   });
 
   it('Kufi and Makki counts number the basmala: no unnumbered row', () => {
@@ -258,10 +248,7 @@ describe.each(DBS)('%s: rows of every fixture surah', db => {
       if (row.unit) {
         expect(layoutWords(row.words).text).toBe(units.unitText(row.unit));
         expect(row.parts.map(p => p.hafsKey)).toEqual([...row.unit.hafsKeys]);
-        for (const key of row.markKeys) {
-          expect(units.unitForAnchor(key)).toBe(row.unit);
-        }
-        expect(row.markKeys[0]).toBe(units.hafsAnchor(row.unit).key);
+        expect(row.anchor).toBe(units.hafsAnchor(row.unit));
       }
       for (const p of row.parts) {
         if (p.owned) owners.set(p.hafsKey, (owners.get(p.hafsKey) ?? 0) + 1);
@@ -304,7 +291,6 @@ describe('Hafs and Shu’bah rows are the Hafs verses', () => {
           wholeVerse: true,
           firstWord: 1,
         });
-        expect(row.markKeys).toEqual([row.verse_key]);
         expect(row.anchor?.key).toBe(row.verse_key);
         expect(wordByWordNotice(row, row.parts[0])).toBeUndefined();
       }
@@ -382,29 +368,21 @@ describe('follow-along band', () => {
   });
 });
 
-describe('references, marks and sheet payloads', () => {
+describe('references and sheet payloads', () => {
   const rows = rowsOf('warsh', 1);
   const units = fixtureUnits('warsh');
 
   it('lands a Hafs reference on the row holding it', () => {
     expect(rowIndexForHafsReference(rows, units, '1:7')).toBe(6);
     expect(rows[6].verse_key).toBe('1:6');
+    // Warsh 1:6's own anchor (the first part of split Hafs 1:7).
+    expect(rowIndexForHafsReference(rows, units, '1:7:1')).toBe(6);
     expect(rowIndexForHafsReference(rows, units, '1:7:5')).toBe(7);
     expect(rowIndexForHafsReference(rows, units, '1:2')).toBe(1);
     // The basmala is no verse: no row to land on (the list starts at top).
     expect(rowIndexForHafsReference(rows, units, '1:1')).toBeUndefined();
     expect(rowIndexForHafsReference(rows, units, '2:1')).toBeUndefined();
     expect(rowIndexForHafsReference(rows, units, 'nonsense')).toBeUndefined();
-  });
-
-  it('marks a row from any of its storage keys', () => {
-    const v7 = byKey(rows, '1:7');
-    expect(rowIsMarked(v7.markKeys, new Set(['1:7:5']))).toBe(true);
-    expect(rowIsMarked(v7.markKeys, new Set(['1:7']))).toBe(false);
-    expect(rowIsMarked(byKey(rows, '1:6').markKeys, new Set(['1:7']))).toBe(
-      true,
-    );
-    expect(rowIsMarked(rows[0].markKeys, new Set(['1:1']))).toBe(false);
   });
 
   it('opens the verse actions with the unit and Hafs-meaning fields', () => {

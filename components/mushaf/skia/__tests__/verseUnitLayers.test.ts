@@ -207,7 +207,7 @@ describe('playbackBandUnitKeys (verse-units contract 4.2)', () => {
 });
 
 describe('unitKeyedVerseLayers', () => {
-  it('rows are read as anchors of the shown rewayah: one unit per row', () => {
+  it('rows without their records are read as saved in the shown rewayah', () => {
     const out = unitKeyedVerseLayers(
       warsh(),
       sources({
@@ -215,8 +215,17 @@ describe('unitKeyedVerseLayers', () => {
         persistentHighlights: {'1:7': 'yellow', '1:7:5': 'green'},
       }),
     );
+    // A word anchor names one unit; the unnumbered basmala and a malformed
+    // key name none.
     expect([...out.bookmarkedVerseKeys]).toEqual(['1:7', '103:1']);
+    // A bare '1:7' names both parts of split Hafs 1:7; on Warsh 1:7 the row
+    // at its own anchor wins.
     expect(out.persistentHighlights).toEqual({'1:6': 'yellow', '1:7': 'green'});
+    const bare = unitKeyedVerseLayers(
+      warsh(),
+      sources({bookmarkedVerseKeys: new Set(['1:7'])}),
+    );
+    expect([...bare.bookmarkedVerseKeys]).toEqual(['1:6', '1:7']);
   });
 
   it('rows with their rewayah follow the storage rule (Hafs rows: every unit holding the verse)', () => {
@@ -254,6 +263,34 @@ describe('unitKeyedVerseLayers', () => {
       '1:7': 'green',
       '1:6': 'yellow',
     });
+  });
+
+  it('a Warsh row saved before verse units tints both parts of its Hafs verse', () => {
+    // develop saved ("1:7", "warsh") for all of Hafs 1:7; rows written now
+    // name each part ("1:7:1" is Warsh 1:6, "1:7:5" Warsh 1:7).
+    const legacy = {verseKey: '1:7', rewayahId: 'warsh'} as const;
+    const out = unitKeyedVerseLayers(
+      warsh(),
+      sources({
+        bookmarkedVerseKeys: new Set(['1:7']),
+        bookmarkRows: {'1:7': legacy},
+        persistentHighlights: {'1:7': 'yellow'},
+        highlightRows: {'1:7': legacy},
+      }),
+    );
+    expect([...out.bookmarkedVerseKeys]).toEqual(['1:6', '1:7']);
+    expect(out.persistentHighlights).toEqual({
+      '1:6': 'yellow',
+      '1:7': 'yellow',
+    });
+    const parts = unitKeyedVerseLayers(
+      warsh(),
+      sources({
+        bookmarkedVerseKeys: new Set(['1:7:1']),
+        bookmarkRows: {'1:7:1': {verseKey: '1:7:1', rewayahId: 'warsh'}},
+      }),
+    );
+    expect([...parts.bookmarkedVerseKeys]).toEqual(['1:6']);
   });
 
   it('highlight precedence: own anchor > shown rewayah > Hafs > other rewayah', () => {
@@ -318,26 +355,36 @@ describe('unitKeyedVerseLayers', () => {
         ['103:2', 'green', 'hafs'],
       ]),
     ).toBe('yellow');
-    // Warsh 1:6 and 1:7 hold Hafs 1:7: a legacy row 1:7 (read as Warsh,
-    // rank 3 on 1:6) and a Qalun row 1:7:5 (rank 0) are not tied on 1:6;
-    // on 1:7 only the Qalun row's inexact path marks it.
+    // Warsh 1:6 and 1:7 hold Hafs 1:7: a Warsh row 1:7 saved before verse
+    // units marks both (rank 2) and outranks a Qalun row 1:7:5 (rank 0,
+    // inexact path: Warsh 1:7 only); a Warsh row at Warsh 1:6's own anchor
+    // 1:7:1 (rank 3) outranks it there.
     expect(
       colours([
         ['1:7:5', 'green', 'qalun'],
         ['1:7', 'blue', 'warsh'],
       ]),
-    ).toEqual({'1:6': 'blue', '1:7': 'green'});
+    ).toEqual({'1:6': 'blue', '1:7': 'blue'});
+    expect(
+      colours([
+        ['1:7:5', 'green', 'qalun'],
+        ['1:7', 'blue', 'warsh'],
+        ['1:7:1', 'yellow', 'warsh'],
+      ]),
+    ).toEqual({'1:6': 'yellow', '1:7': 'blue'});
   });
 
   it('Hafs: a row marks the Hafs verse its key names, whatever its rewayah', () => {
-    // Rows of other rewayat: Warsh 1:6 is stored at '1:7' (the start of
-    // Hafs 1:7), Warsh 1:7 at '1:7:5' and a Qalun row at '1:7:9' (verses
-    // starting inside Hafs 1:7). The Hafs sheet and the Hafs list rows
-    // read rows by their exact key, so the Hafs page does too: the
-    // mid-verse anchors name no Hafs verse and are not painted (a tint the
-    // Hafs sheet could neither show nor remove), as before verse units.
+    // Rows of other rewayat: a Warsh row saved before verse units at '1:7'
+    // (all of Hafs 1:7), Warsh 1:6 written now at '1:7:1', Warsh 1:7 at
+    // '1:7:5' and a Qalun row at '1:7:9' (verses holding part of Hafs 1:7).
+    // The Hafs sheet and the Hafs list rows read rows by their exact key,
+    // so the Hafs page does too: the word anchors name no Hafs verse and
+    // are not painted (a tint the Hafs sheet could neither show nor
+    // remove), as before verse units.
     const rows = {
       '1:7': {verseKey: '1:7', rewayahId: 'warsh'},
+      '1:7:1': {verseKey: '1:7:1', rewayahId: 'warsh'},
       '1:7:5': {verseKey: '1:7:5', rewayahId: 'warsh'},
       '1:7:9': {verseKey: '1:7:9', rewayahId: 'qalun'},
       '103:2': {verseKey: '103:2', rewayahId: 'al-bazzi'},
@@ -351,6 +398,7 @@ describe('unitKeyedVerseLayers', () => {
         persistentHighlights: {
           '1:7:9': 'green',
           '1:7:5': 'blue',
+          '1:7:1': 'purple',
           '103:2': 'yellow',
         },
         highlightRows: rows,
@@ -373,13 +421,19 @@ describe('unitKeyedVerseLayers', () => {
         persistentHighlights: {'2:01': 'yellow', '3:7': 'blue'},
       }),
     );
-    // '2:7:1' is not how a row is written ('2:7' is), and '2:7:3' is a
-    // mid-verse anchor, no Hafs verse key: neither is painted.
+    // '2:7:1' (another rewayah's first part of a split Hafs 2:7) and
+    // '2:7:3' (a later part) are word anchors, no Hafs verse key: neither is
+    // painted.
     expect([...out.bookmarkedVerseKeys]).toEqual(['2:255']);
     expect(out.persistentHighlights).toEqual({'3:7': 'blue'});
     expect(HAFS_SHOWN_UNITS.unitKeyForAnchor('02:255')).toBeNull();
+    expect(HAFS_SHOWN_UNITS.unitKeyForAnchor('2:255:01')).toBeNull();
     expect(HAFS_SHOWN_UNITS.unitKeyForAnchor('2:255')).toBe('2:255');
+    expect(HAFS_SHOWN_UNITS.unitKeyForAnchor('2:255:1')).toBe('2:255');
     expect(HAFS_SHOWN_UNITS.unitKeyForAnchor('2:255:3')).toBe('2:255');
+    expect(HAFS_SHOWN_UNITS.anchorOrder('2:255:1')).toBe(
+      HAFS_SHOWN_UNITS.anchorOrder('2:255'),
+    );
     expect(HAFS_SHOWN_UNITS.describe('02:255')).toBeNull();
     expect(HAFS_SHOWN_UNITS.unitKeysForHafsKeys(['2:255', '02:255'])).toEqual([
       '2:255',
