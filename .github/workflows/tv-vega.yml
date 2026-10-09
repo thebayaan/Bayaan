@@ -22,15 +22,9 @@ env:
 
 jobs:
   vega:
-    name: Vega Virtual Device (${{ matrix.display }})
+    name: Build and smoke test on Vega Virtual Device
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      matrix:
-        # headless: --no-gui --no-gl-accel. xvfb: GUI and GL on a virtual X
-        # display, in case the headless device has no usable display.
-        display: [headless, xvfb]
     defaults:
       run:
         working-directory: tv-vega
@@ -84,30 +78,8 @@ jobs:
       - name: Build release vpkg
         run: npm run build:release
 
-      - name: Build Hello World control app
-        working-directory: .
-        run: |
-          vega project generate -t helloWorld -n cicontrol --packageId com.bayaan.cicontrol -o "$RUNNER_TEMP/cicontrol"
-          cd "$RUNNER_TEMP/cicontrol"
-          npm install --legacy-peer-deps --no-audit --no-fund
-          npm run build:release
-
-      - name: Start virtual X display
-        if: matrix.display == 'xvfb'
-        working-directory: .
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq xvfb libgl1 libegl1 libgles2 mesa-utils > /dev/null
-          Xvfb :99 -screen 0 1920x1080x24 > /dev/null 2>&1 &
-          echo "DISPLAY=:99" >> "$GITHUB_ENV"
-
       - name: Start Vega Virtual Device
-        run: |
-          if [ "${{ matrix.display }}" = xvfb ]; then
-            vega virtual-device start --gui -t 600
-          else
-            vega virtual-device start --no-gui --no-gl-accel -t 600
-          fi
+        run: vega virtual-device start --no-gui --no-gl-accel -t 600
 
       - name: Install app
         run: |
@@ -135,18 +107,11 @@ jobs:
           vega device installed-apps || true
           exit 1
 
-      - name: Install control app
-        # Installed after Bayaan so the boot wait above covers both.
-        run: |
-          CONTROL_VPKG=$(find "$RUNNER_TEMP/cicontrol/build" -path '*x86_64/Release/*.vpkg' | head -1)
-          timeout 600 vega device install-app -p "$CONTROL_VPKG"
-
-      - name: Control app smoke test (Hello World)
+      - name: Probe which Vega module breaks launch
+        # Diagnostic: Bayaan exits before its JS runtime starts, while Hello
+        # World runs. Launch Hello World once per module tv-vega depends on.
         continue-on-error: true
-        env:
-          SMOKE_APP_ID: com.bayaan.cicontrol.main
-          SMOKE_KEYS: '0'
-        run: bash scripts/ci-smoke.sh "$RUNNER_TEMP/vega-smoke/control"
+        run: bash scripts/ci-probe-modules.sh "$RUNNER_TEMP/probe" "$RUNNER_TEMP/vega-smoke/probe"
 
       - name: Smoke test
         run: bash scripts/ci-smoke.sh "$RUNNER_TEMP/vega-smoke/bayaan"
@@ -162,7 +127,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: vega-smoke-${{ matrix.display }}
+          name: vega-smoke
           path: ${{ runner.temp }}/vega-smoke
           if-no-files-found: warn
 
