@@ -16,6 +16,7 @@ on:
   # branch before it reaches main. Removed before merge.
   push:
     branches: [ci/cloud-sim-builds]
+    paths: [.github/workflows/sim-builds.yml]
   workflow_dispatch:
     inputs:
       ref:

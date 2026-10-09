@@ -1,0 +1,17 @@
+# Launches the app (keeping its data) and closes the What's New modal if it
+# shows. The splash waits on the reciter catalog and database setup, so the
+# first wait is long.
+appId: com.bayaan.app
+---
+- launchApp:
+    permissions:
+      all: allow
+- extendedWaitUntil:
+    visible: "Skip"
+    timeout: 60000
+    optional: true
+- tapOn:
+    text: "Skip"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 5000

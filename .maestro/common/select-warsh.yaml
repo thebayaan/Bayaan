@@ -1,0 +1,28 @@
+# Switches the open mushaf to Warsh. On iOS 26 the settings icon in the
+# navigation bar has no label, so it's tapped by position.
+appId: com.bayaan.app
+---
+- tapOn:
+    point: "90.5%,9.6%"
+- extendedWaitUntil:
+    visible: "Mushaf Settings"
+    timeout: 10000
+- scrollUntilVisible:
+    element:
+      text: "Currently reading"
+    direction: DOWN
+    timeout: 30000
+- tapOn: "Currently reading"
+- tapOn: "Warsh 'an Nafi'"
+- extendedWaitUntil:
+    visible: "Now reading"
+    timeout: 10000
+    optional: true
+- takeScreenshot: warsh-selected
+# Close the sheet by swiping it down.
+- swipe:
+    start: "50%,25%"
+    end: "50%,95%"
+    duration: 400
+- waitForAnimationToEnd:
+    timeout: 5000

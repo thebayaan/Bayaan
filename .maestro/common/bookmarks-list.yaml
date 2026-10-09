@@ -1,0 +1,8 @@
+appId: com.bayaan.app
+---
+- openLink: "bayaan://collection/bookmarks"
+- extendedWaitUntil:
+    visible: "Bookmarks"
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 5000

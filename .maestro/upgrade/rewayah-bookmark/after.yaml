@@ -1,0 +1,13 @@
+# New build over the old data: the Warsh bookmark should still be listed and
+# tint the right Warsh verse(s) on page 1.
+appId: com.bayaan.app
+---
+- runFlow: ../../common/launch.yaml
+- runFlow:
+    file: ../../common/open-page.yaml
+    env:
+      PAGE: 1
+- takeScreenshot: page1-after-upgrade
+- runFlow: ../../common/bookmarks-list.yaml
+- assertVisible: "Warsh"
+- takeScreenshot: bookmarks-list-after-upgrade

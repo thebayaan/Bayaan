@@ -1,0 +1,19 @@
+# Opens the mushaf on ${PAGE}. A deep link doesn't navigate while the mushaf
+# is already open, so leave it first (back button, top left).
+appId: com.bayaan.app
+---
+- runFlow:
+    when:
+      visible: "Options"
+    commands:
+      - tapOn:
+          point: "9%,9.6%"
+      - waitForAnimationToEnd:
+          timeout: 5000
+- openLink: "bayaan://mushaf?page=${PAGE}"
+- extendedWaitUntil:
+    visible: "Options"
+    timeout: 30000
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 10000
