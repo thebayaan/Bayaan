@@ -8,5 +8,6 @@
       "@/*": ["../*"]
     },
     "resolveJsonModule": true
-  }
+  },
+  "exclude": ["node_modules", "**/*.kepler.ts", "**/*.kepler.tsx"]
 }

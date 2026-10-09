@@ -15,30 +15,9 @@
 
 import {expoAudioService} from '../../services/audio/ExpoAudioService';
 import type {PlaybackState} from '../../services/audio/ExpoAudioService';
+import type {AudioEngine, EngineEvent, EngineStatus} from './audioEngineTypes';
 
-export type EngineStatus =
-  | 'idle'
-  | 'loading'
-  | 'playing'
-  | 'paused'
-  | 'buffering'
-  | 'error';
-
-export type EngineEvent = {
-  status: EngineStatus;
-  positionSeconds: number;
-  durationSeconds: number;
-};
-
-export type AudioEngine = {
-  load: (url: string) => Promise<void>;
-  play: () => Promise<void>;
-  pause: () => void;
-  seek: (seconds: number) => void;
-  setRate: (rate: number) => void;
-  subscribe: (cb: (e: EngineEvent) => void) => () => void;
-  destroy: () => void;
-};
+export type {AudioEngine, EngineEvent, EngineStatus} from './audioEngineTypes';
 
 const POLL_INTERVAL_MS = 500;
 
