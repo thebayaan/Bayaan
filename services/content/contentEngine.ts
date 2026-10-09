@@ -16,6 +16,8 @@ export const WIFI_THRESHOLD_BYTES = 5_000_000;
 // Accepted: unforced checks run daily, so the 1h and 6h steps only shorten retries for forced checks and user installs.
 export const BACKOFF_MS = [3_600_000, 21_600_000, 86_400_000];
 const KINDS: ContentKind[] = ['tafsir', 'translation'];
+// The tafsir installed once on first launch (Ibn Kathir, abridged).
+export const AUTO_INSTALL_KEY = 'qf:tafsirs:169';
 
 export interface EngineDeps {
   api: ContentApi;
@@ -210,6 +212,11 @@ async function purge(
     // Persisted before the delete so a failed delete cannot repeat the notice.
     await deps.registry.upsert({...removed, withdrawal_notified: true});
   }
+  // Removed by the catalog, not the user: the first-launch install may run
+  // again once the manifest offers it. Set before the delete so a kill in
+  // between cannot lose it; user_removed rows never reach purge.
+  if (row.key === AUTO_INSTALL_KEY && !row.user_removed)
+    await deps.registry.setState({autoInstallDone: false});
   await deps.registry.delete(row.key);
   deps.track('withdrawn', {
     key: row.key,

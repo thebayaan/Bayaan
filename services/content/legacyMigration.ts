@@ -1,8 +1,13 @@
-import {installResource, retryIsDue, type EngineDeps} from './contentEngine';
+import {
+  AUTO_INSTALL_KEY,
+  installResource,
+  retryIsDue,
+  type EngineDeps,
+} from './contentEngine';
 import {emptyRow, type ContentRegistry} from './contentRegistry';
 import {reportInstall} from './installActivity';
 
-export const AUTO_INSTALL_KEY = 'qf:tafsirs:169';
+export {AUTO_INSTALL_KEY};
 
 export interface DownloadedContent {
   identifier: string;
@@ -48,9 +53,9 @@ export async function maybeAutoInstall(deps: EngineDeps): Promise<boolean> {
   if (state.autoInstallDone) return false;
   const row = await deps.registry.get(AUTO_INSTALL_KEY);
   if (row && (row.user_removed || row.legacy || row.version > 0)) {
-    // The first-launch install is settled for good: a legacy copy is replaced
-    // by the check, an install exists, or the user removed it. Never retry, so
-    // a later purge or removal cannot bring Ibn Kathir back.
+    // The first-launch install is settled: a legacy copy is replaced by the
+    // check, an install exists, or the user removed it. A user removal is
+    // final; only a catalog purge reopens it (purge clears autoInstallDone).
     await deps.registry.setState({autoInstallDone: true});
     return false;
   }
