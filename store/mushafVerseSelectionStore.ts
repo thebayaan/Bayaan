@@ -12,8 +12,10 @@ export interface SelectedVerseUnit {
   readonly key: string;
   /**
    * Storage anchor, Hafs-keyed: the Hafs location of the unit's first slot,
-   * 'S:A' (starts at Hafs word 1) or 'S:A:W' (later part of a split Hafs
-   * verse). What bookmarks / notes / highlights store in verse_key.
+   * 'S:A' when it starts at Hafs word 1 and no other unit holds words of
+   * that Hafs verse, else 'S:A:W' (every part of a split Hafs verse, the
+   * first one included as 'S:A:1'). What bookmarks / notes / highlights
+   * store in verse_key (RewayahVerseUnits HafsAnchor). @ai
    */
   readonly anchor: string;
   /** Hafs verse keys holding the unit's words, in order. */

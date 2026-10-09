@@ -1,7 +1,7 @@
 // @ai-generated
 /**
  * LOCAL-ONLY full-data check of the audio side of the verse units (skipped
- * unless BAYAAN_OVERLAY_DB_DIR is set; needs Node >= 22.5 for node:sqlite):
+ * unless BAYAAN_OVERLAY_DB_DIR is set; needs Node >= 22.13 for node:sqlite):
  *
  *   BAYAAN_OVERLAY_DB_DIR=/path/to/dbs npx jest timestampNumbering.units.alldbs --watchAll=false
  *

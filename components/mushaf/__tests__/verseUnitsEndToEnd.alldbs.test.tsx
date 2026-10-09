@@ -2,7 +2,7 @@
 /**
  * LOCAL-ONLY verse units end to end (decision 3 of Release 1) on every verse
  * of every words DB (skipped unless BAYAAN_OVERLAY_DB_DIR is set; needs
- * Node >= 22.5 for node:sqlite):
+ * Node >= 22.13 for node:sqlite):
  *
  *   BAYAAN_OVERLAY_DB_DIR=bundled npx jest verseUnitsEndToEnd.alldbs --watchAll=false
  *   BAYAAN_OVERLAY_DB_DIR=/path/to/dbs npx jest verseUnitsEndToEnd.alldbs --watchAll=false

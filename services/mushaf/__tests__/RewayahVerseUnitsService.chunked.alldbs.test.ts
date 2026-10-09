@@ -1,6 +1,6 @@
 // @ai-generated
 /**
- * LOCAL-ONLY (skipped unless BAYAAN_OVERLAY_DB_DIR is set; needs Node >= 22.5
+ * LOCAL-ONLY (skipped unless BAYAAN_OVERLAY_DB_DIR is set; needs Node >= 22.13
  * for node:sqlite):
  *
  *   BAYAAN_OVERLAY_DB_DIR=bundled npx jest RewayahVerseUnitsService.chunked.alldbs --watchAll=false

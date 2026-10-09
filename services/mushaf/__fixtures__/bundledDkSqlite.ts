@@ -1,7 +1,7 @@
 // @ai-generated
 /**
  * Test-only expo-sqlite stand-in serving the bundled DigitalKhatt DBs
- * through node:sqlite (Node >= 22.5), so the real DigitalKhattDataService
+ * through node:sqlite (Node >= 22.13), so the real DigitalKhattDataService
  * loads the real words and layout in a test (the *.alldbs suites):
  *
  *   jest.mock('expo-sqlite', () =>

@@ -2,7 +2,7 @@
 /**
  * LOCAL-ONLY full-data check of what the verse sheets name, copy, store and
  * link for every verse of every words DB (skipped unless BAYAAN_OVERLAY_DB_DIR
- * is set; needs Node >= 22.5 for node:sqlite):
+ * is set; needs Node >= 22.13 for node:sqlite):
  *
  *   BAYAAN_OVERLAY_DB_DIR=/path/to/dbs npx jest rewayahVerseSelection.alldbs --watchAll=false
  *

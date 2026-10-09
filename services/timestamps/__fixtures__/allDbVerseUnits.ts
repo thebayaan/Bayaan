@@ -4,7 +4,7 @@
  * Release 1 words DB in BAYAAN_OVERLAY_DB_DIR (dk_words_<id>.db for the seven
  * non-Hafs rewayat, digital-khatt-v2.db for Hafs, falling back to the repo's
  * Hafs DB) and their verse maps (<id>-versemap.json, falling back to the
- * bundled ones). Needs Node >= 22.5 (node:sqlite); `allDbDir()` is null when
+ * bundled ones). Needs Node >= 22.13 (node:sqlite); `allDbDir()` is null when
  * the variable is unset or node:sqlite is missing, and the tests then skip.
  */
 

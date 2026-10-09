@@ -1,7 +1,7 @@
 // @ai-generated
 /**
  * LOCAL-ONLY Play from here and Repeat end to end on every words DB
- * (skipped unless BAYAAN_OVERLAY_DB_DIR is set; needs Node >= 22.5):
+ * (skipped unless BAYAAN_OVERLAY_DB_DIR is set; needs Node >= 22.13):
  *
  *   BAYAAN_OVERLAY_DB_DIR=/path/to/dbs npx jest VerseActionsSheet.playback.endToEnd.alldbs --watchAll=false
  *

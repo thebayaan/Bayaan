@@ -1,6 +1,6 @@
 /**
  * LOCAL-ONLY full-data check (skipped unless BAYAAN_OVERLAY_DB_DIR is set;
- * needs Node >= 22.5 for node:sqlite). Runs the overlay walkers on EVERY line
+ * needs Node >= 22.13 for node:sqlite). Runs the overlay walkers on EVERY line
  * of every words DB found in the directory:
  *
  *   BAYAAN_OVERLAY_DB_DIR=bundled npx jest rewayahOverlays.alldbs --watchAll=false

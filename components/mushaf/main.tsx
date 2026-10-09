@@ -1035,8 +1035,8 @@ export default function MushafViewer({
       if (isVertical) {
         setIsSearchMode(false);
         // The vertical views scroll to the verse's first slot: a unit's
-        // storage anchor ('S:A:W' for the later part of a split Hafs verse,
-        // which the list view finds as its own row), else the Hafs verse.
+        // storage anchor ('S:A:W' for each part of a split Hafs verse, which
+        // the list view finds as its own row), else the Hafs verse. @ai
         const scrollKey = target.unit?.anchor ?? target.scrollHafsKey;
         if (scrollKey) {
           continuousListRef.current?.scrollToVerse(scrollKey);

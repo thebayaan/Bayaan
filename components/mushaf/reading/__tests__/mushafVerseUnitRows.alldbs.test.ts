@@ -1,7 +1,7 @@
 // @ai-generated
 /**
  * LOCAL-ONLY full-data check of the mushaf's list and reading modes in verse
- * units (skipped unless BAYAAN_OVERLAY_DB_DIR is set; needs Node >= 22.5 for
+ * units (skipped unless BAYAAN_OVERLAY_DB_DIR is set; needs Node >= 22.13 for
  * node:sqlite):
  *
  *   BAYAAN_OVERLAY_DB_DIR=/path/to/dbs npx jest mushafVerseUnitRows.alldbs --watchAll=false

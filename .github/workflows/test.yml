@@ -23,7 +23,7 @@ jobs:
         with:
           # @ai-start
           # 22, not 20: the *.alldbs suites read the words DBs with node:sqlite
-          # (Node >= 22.5).
+          # (Node >= 22.13).
           node-version: 22
           # @ai-end
           cache: npm
