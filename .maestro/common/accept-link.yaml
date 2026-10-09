@@ -1,0 +1,10 @@
+# iOS asks "Open in \"Bayaan\"?" before handing a deep link to the app.
+appId: com.bayaan.app
+---
+- extendedWaitUntil:
+    visible: "Open"
+    timeout: 5000
+    optional: true
+- tapOn:
+    text: "Open"
+    optional: true

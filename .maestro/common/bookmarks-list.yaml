@@ -1,6 +1,7 @@
 appId: com.bayaan.app
 ---
 - openLink: "bayaan://collection/bookmarks"
+- runFlow: accept-link.yaml
 - extendedWaitUntil:
     visible: "Bookmarks"
     timeout: 15000

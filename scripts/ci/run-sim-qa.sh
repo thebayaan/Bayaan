@@ -30,11 +30,14 @@ APP=$(unpack "$APP_ZIP" app)
 BASE=
 [ -n "$BASE_ZIP" ] && BASE=$(unpack "$BASE_ZIP" base)
 
-# Newest available iOS runtime, and an iPhone Pro (not Max) on it.
+# Newest available iOS runtime, on an iPhone 17 Pro if there is one (flow taps
+# without a label are measured on it), else the newest iPhone Pro (not Max).
 RUNTIME=$(xcrun simctl list runtimes -j |
   jq -r '[.runtimes[] | select(.platform == "iOS" and .isAvailable)] | last | .identifier')
 DEVICE_TYPE=$(xcrun simctl list devicetypes -j |
-  jq -r '[.devicetypes[] | select(.name | test("^iPhone [0-9]+ Pro$"))] | last | .identifier')
+  jq -r '[.devicetypes[] | select(.name | test("^iPhone [0-9]+ Pro$"))]
+    | sort_by(.name | capture("(?<n>[0-9]+)").n | tonumber)
+    | (map(select(.name == "iPhone 17 Pro")) + [last]) | first | .identifier')
 UDID=$(xcrun simctl create bayaan-qa "$DEVICE_TYPE" "$RUNTIME")
 echo "Simulator $UDID ($DEVICE_TYPE, $RUNTIME)"
 trap 'xcrun simctl shutdown "$UDID" >/dev/null 2>&1 || true; xcrun simctl delete "$UDID" >/dev/null 2>&1 || true' EXIT
