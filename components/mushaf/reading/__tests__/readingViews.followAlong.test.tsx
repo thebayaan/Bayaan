@@ -167,11 +167,12 @@ jest.mock('@/services/mushaf/RewayahVerseUnitsService', () => {
   );
   const warsh = mergedOpeningUnits('warsh');
   return {
-    rewayahVerseUnitsService: {
-      get: (rewayah: string) => (rewayah === 'warsh' ? warsh : null),
-      getStatus: (rewayah: string) =>
-        rewayah === 'warsh' ? 'ready' : 'unavailable',
-    },
+    rewayahVerseUnitsService: jest
+      .requireActual('@/services/mushaf/__fixtures__/verseUnitsServiceStub')
+      .verseUnitsServiceStub({
+        peek: (rewayah: string) => (rewayah === 'warsh' ? warsh : null),
+        status: () => 'unavailable',
+      }),
   };
 });
 

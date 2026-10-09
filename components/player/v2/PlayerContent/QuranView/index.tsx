@@ -9,6 +9,7 @@ import {
   ActivityIndicator, // @ai
 } from 'react-native';
 import {moderateScale, verticalScale} from '@/utils/scale';
+import Color from 'color'; // @ai
 import {useResponsive} from '@/hooks/useResponsive';
 import {Ionicons} from '@expo/vector-icons';
 import {useTheme} from '@/hooks/useTheme';
@@ -152,31 +153,56 @@ QuranListHeader.displayName = 'QuranListHeader';
 // @ai-start
 /**
  * In place of the verse list while a non-Hafs track's verse units are not
- * ready: a spinner while its words load, else a short message. Never the
- * Hafs verse rows meanwhile: they would show Hafs numbers under the
+ * ready: a spinner while its words load or its units are built, else a
+ * short message, with Try Again when the load or the build failed. Never
+ * the Hafs verse rows meanwhile: they would show Hafs numbers under the
  * rewayah's name.
  */
 function VerseUnitsPendingView({
   status,
   rewayah,
   color,
+  textColor,
+  onRetry,
 }: {
   status: RewayahVerseUnitsStatus;
   rewayah: RewayahId;
   color: string;
+  textColor: string;
+  onRetry: () => void;
 }) {
+  const label = getShortLabel(rewayah);
   return (
     <View style={styles.pending} testID="verse-units-pending">
       {status === 'loading' ? (
         <ActivityIndicator
           size="small"
           color={color}
-          accessibilityLabel={`Loading the ${getShortLabel(rewayah)} verses`}
+          accessibilityLabel={`Loading the ${label} verses`}
         />
       ) : (
-        <Text style={[styles.pendingText, {color}]}>
-          {`Couldn't load the ${getShortLabel(rewayah)} verses.`}
-        </Text>
+        <>
+          <Text style={[styles.pendingText, {color}]}>
+            {`Couldn't load the ${label} verses.`}
+          </Text>
+          {status === 'error' && (
+            <Pressable
+              onPress={onRetry}
+              accessibilityRole="button"
+              accessibilityLabel={`Try loading the ${label} verses again`}
+              hitSlop={8}
+              testID="verse-units-retry"
+              style={({pressed}) => [
+                styles.retryButton,
+                {backgroundColor: Color(textColor).alpha(0.08).toString()},
+                pressed && styles.retryButtonPressed,
+              ]}>
+              <Text style={[styles.retryButtonText, {color: textColor}]}>
+                Try Again
+              </Text>
+            </Pressable>
+          )}
+        </>
       )}
     </View>
   );
@@ -248,8 +274,11 @@ export const QuranView: React.FC<QuranViewProps> = ({
   // rewayah's name. A Hafs track keeps its Hafs verse rows exactly as before
   // and never loads verse units.
   const unitsRewayah = trackRewayah === 'hafs' ? null : trackRewayah;
-  const {units: verseUnits, status: verseUnitsStatus} =
-    useRewayahVerseUnits(unitsRewayah);
+  const {
+    units: verseUnits,
+    status: verseUnitsStatus,
+    retry: retryVerseUnits,
+  } = useRewayahVerseUnits(unitsRewayah);
   // @ai-end
 
   // Ayah timestamp tracking. currentVerseKey (the first Hafs verse being
@@ -602,6 +631,8 @@ export const QuranView: React.FC<QuranViewProps> = ({
           status={verseUnitsStatus}
           rewayah={trackRewayah}
           color={readingColors.textSecondary}
+          textColor={readingColors.text}
+          onRetry={retryVerseUnits}
         />
       </View>
     );
@@ -704,12 +735,26 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: moderateScale(8),
     paddingHorizontal: moderateScale(24),
   },
   pendingText: {
     fontFamily: 'Manrope-Medium',
     fontSize: moderateScale(13),
     textAlign: 'center',
+  },
+  // The verse sheets' Try Again button (SimilarVersesContent, ShareContent).
+  retryButton: {
+    paddingHorizontal: moderateScale(14),
+    paddingVertical: verticalScale(6),
+    borderRadius: moderateScale(8),
+  },
+  retryButtonPressed: {
+    opacity: 0.7,
+  },
+  retryButtonText: {
+    fontSize: moderateScale(13),
+    fontFamily: 'Manrope-SemiBold',
   },
   // @ai-end
   recenterButton: {

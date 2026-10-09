@@ -519,7 +519,8 @@ export function selectionPlaybackKeys(selection: ReadyVerseSelection): {
 /**
  * The selection once the rewayah's verse units are in memory: waits
  * (bounded, like copy / share waits for text) for the rewayah's words, then
- * builds the selection. Hafs: at once.
+ * for their units (built after interactions, in chunks; never on this
+ * stack), then builds the selection. Hafs: at once.
  */
 export async function resolveVerseSelection(
   request: VerseSelectionRequest,
@@ -527,7 +528,9 @@ export async function resolveVerseSelection(
 ): Promise<VerseSelection> {
   if (request.rewayah === 'hafs') return selectVerses(request, null, 'ready');
   const loaded = await waitForRewayahText(request.rewayah, timeoutMs);
-  const model = loaded ? rewayahVerseUnitsService.get(request.rewayah) : null;
+  const model = loaded
+    ? await rewayahVerseUnitsService.request(request.rewayah)
+    : null;
   if (model) return selectVerses(request, model, 'ready');
   const status = rewayahVerseUnitsService.getStatus(request.rewayah);
   return selectVerses(

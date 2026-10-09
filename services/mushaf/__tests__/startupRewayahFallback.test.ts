@@ -176,6 +176,25 @@ describe('startup fallback with the real settings store', () => {
     expect((await persisted()).rewayah).toBe('warsh');
   });
 
+  it('a retry after Hafs failed too runs startup again, the saved rewayah first', async () => {
+    sqlite.__broken.add('dk_words_warsh');
+    sqlite.__broken.add('dk_words');
+    const service = new DigitalKhattDataService();
+    await expect(service.initialize()).rejects.toThrow();
+    expect(service.initialized).toBe(false);
+    expect(service.getRewayahLoadState('hafs')).toBe('error');
+    sqlite.__broken.clear();
+    // A plain request keeps reporting the failure; a retry loads again.
+    await expect(service.ensureRewayahLoaded('hafs')).rejects.toThrow();
+    await service.ensureRewayahLoaded('hafs', {retry: true});
+
+    expect(service.rewayah).toBe('warsh');
+    expect(service.getVerseText('1:1')).toBe('W1 W2');
+    expect(service.getVerseText('1:1', 'hafs')).toBe('H1 H2');
+    expect(useMushafSettingsStore.getState().rewayah).toBe('warsh');
+    expect(useMushafSettingsStore.getState().rewayahFallbackFrom).toBeNull();
+  });
+
   it('saves Hafs once the reader chooses to keep it', async () => {
     await launchWithBrokenWarsh();
 

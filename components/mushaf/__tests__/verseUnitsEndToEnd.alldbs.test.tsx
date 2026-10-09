@@ -48,15 +48,32 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => {
   return {...actual, digitalKhattDataService: createFakeDKService()};
 });
 
-// The real units service (set in beforeAll), over the words on screen.
-const mockUnitsService: {
-  current: {get(r: string): unknown; getStatus(r: string): string} | null;
-} = {current: null};
+// The real units service (set in beforeAll), over the words on screen. Its
+// chunks run at once here, and a read of units not built yet requests them
+// first: every check sees the units the app shows once their build (after
+// interactions) has ended.
+const mockUnitsService: {current: RewayahVerseUnitsService | null} = {
+  current: null,
+};
 jest.mock('@/services/mushaf/RewayahVerseUnitsService', () => ({
   rewayahVerseUnitsService: {
-    get: (rewayah: string) => mockUnitsService.current?.get(rewayah) ?? null,
-    getStatus: (rewayah: string) =>
+    peek: (rewayah: RewayahId) => {
+      const service = mockUnitsService.current;
+      if (!service) return null;
+      service.request(rewayah);
+      return service.peek(rewayah);
+    },
+    getStatus: (rewayah: RewayahId) =>
       mockUnitsService.current?.getStatus(rewayah) ?? 'loading',
+    getError: (rewayah: RewayahId) =>
+      mockUnitsService.current?.getError(rewayah) ?? null,
+    request: (rewayah: RewayahId) =>
+      mockUnitsService.current?.request(rewayah) ?? Promise.resolve(null),
+    retry: (rewayah: RewayahId) =>
+      mockUnitsService.current?.retry(rewayah) ?? Promise.resolve(null),
+    subscribe: (listener: () => void) =>
+      mockUnitsService.current?.subscribe(listener) ?? (() => undefined),
+    getVersion: () => mockUnitsService.current?.getVersion() ?? 0,
   },
 }));
 
@@ -245,6 +262,12 @@ run('verse units end to end on every words DB (local only)', () => {
       },
       rewayahVerseMapService,
       (r: RewayahId) => `${r}@end-to-end#${dk.getCacheVersion()}`,
+      {
+        scheduler: {
+          afterInteractions: (task: () => void) => task(),
+          nextChunk: (task: () => void) => task(),
+        },
+      },
     ) as RewayahVerseUnitsService;
     mockUnitsService.current = service;
     lines = readRows(
@@ -279,7 +302,10 @@ run('verse units end to end on every words DB (local only)', () => {
       const data: EndToEndData = {rewayah, words, lines, pages: PAGES};
       const report = await runEndToEnd(data, {
         sheet: mockSheet,
-        unitsOf: r => service.get(r) as RewayahVerseUnits | null,
+        unitsOf: r => {
+          service.request(r);
+          return service.peek(r) as RewayahVerseUnits | null;
+        },
         database: mockDatabase,
       });
       expect({count: report.count, failures: report.failures}).toEqual({

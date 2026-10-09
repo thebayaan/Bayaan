@@ -11,7 +11,6 @@ import {
   BackHandler,
   Platform,
   useWindowDimensions,
-  InteractionManager, // @ai
   type LayoutChangeEvent,
 } from 'react-native';
 import {useResponsive} from '@/hooks/useResponsive';
@@ -1013,12 +1012,10 @@ export default function MushafViewer({
   // 4.7), so no page (QCF included, which reads the keys as Hafs) paints it
   // there. A Hafs-keyed selection (route flash, QCF) means the same verses
   // in every rewayah and is left alone, as before. The new text's verse
-  // units are built once the switch's interactions are done, not on the
-  // first page render or long-press.
+  // units are requested at once and built by the units service after the
+  // switch's interactions, in chunks: never on a page render or long-press.
   useEffect(() => {
-    const unsubscribe = followShownRewayah(task => {
-      InteractionManager.runAfterInteractions(task);
-    });
+    const unsubscribe = followShownRewayah();
     return () => {
       unsubscribe();
     };

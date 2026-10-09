@@ -33,6 +33,7 @@ import {
 } from '@/services/mushaf/DigitalKhattDataService';
 import {mushafLayoutCacheService} from '@/services/mushaf/MushafLayoutCacheService';
 import {mushafVerseMapService} from '@/services/mushaf/MushafVerseMapService';
+import {rewayahVerseUnitsService} from '@/services/mushaf/RewayahVerseUnitsService'; // @ai
 import {themeDataService} from '@/services/mushaf/ThemeDataService';
 import {useTajweedStore} from '@/store/tajweedStore';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
@@ -227,6 +228,13 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
   const textIdentity = useSyncExternalStore(
     digitalKhattDataService.subscribeCacheChanges,
     getPageTextIdentity,
+  );
+  // Verse units are built after interactions, in chunks, never while a page
+  // renders: when a build ends, the verse layers below are computed again
+  // (getShownVerseUnits() is null until then: no verse painted).
+  const verseUnitsVersion = useSyncExternalStore(
+    rewayahVerseUnitsService.subscribe,
+    rewayahVerseUnitsService.getVersion,
   );
   // @ai-end
   // Rewayah of the text this page renders (the active DK words cache). The
@@ -702,6 +710,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
     // @ai-end
     // rewayah/textRewayah/textIdentity: verse segments and diff ranges follow
     // the rendered text (singleton services; not read directly).
+    // verseUnitsVersion: the shown verse units (@ai).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     persistentHighlights,
@@ -722,6 +731,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
     textRewayah,
     rewayahDiffPaintEnabled,
     textIdentity, // @ai
+    verseUnitsVersion, // @ai
   ]);
 
   const pageStyle = {width: SCREEN_WIDTH, height: SCREEN_HEIGHT};

@@ -18,7 +18,13 @@ import {useTheme} from '@/hooks/useTheme';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService'; // @ai
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
-import {selectionForAnchor} from '@/services/mushaf/MushafVerseMapService'; // @ai
+// @ai-start
+import {
+  mushafVerseMapService,
+  selectionForAnchor,
+  whenShownVerseUnitsResolved,
+} from '@/services/mushaf/MushafVerseMapService';
+// @ai-end
 import {mushafSessionStore} from '@/services/mushaf/MushafSessionStore';
 import {
   formatPlaybackInfo, // @ai
@@ -151,9 +157,12 @@ export default function MushafScreen() {
   // Set verse highlight on mount, auto-clear after 3s, clear on unmount
   useEffect(() => {
     // @ai-start
-    // The unit a stored anchor names, in the shown rewayah's numbering.
-    const unitSelection = anchor ? selectionForAnchor(anchor) : null;
-    if (unitSelection || initialVerseKey) {
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const flash = () => {
+      // The unit a stored anchor names, in the shown rewayah's numbering.
+      const unitSelection = anchor ? selectionForAnchor(anchor) : null;
+      if (!unitSelection && !initialVerseKey) return;
       const selection = useMushafVerseSelectionStore.getState();
       if (unitSelection) {
         selection.selectUnits(
@@ -164,18 +173,27 @@ export default function MushafScreen() {
       } else if (initialVerseKey) {
         selection.selectVerse(initialVerseKey, pageNumber);
       }
-      // @ai-end
-      const timer = setTimeout(() => {
+      timer = setTimeout(() => {
         useMushafVerseSelectionStore.getState().clearSelection();
       }, 3000);
-      return () => {
-        clearTimeout(timer);
-        useMushafVerseSelectionStore.getState().clearSelection();
-      };
+    };
+    // Verse units are built after interactions, never here: right after a
+    // rewayah switch (a bookmark saved in another rewayah) they may still
+    // be building. Wait for them, so the anchor selects exactly its verse
+    // rather than every verse holding its Hafs verse.
+    if (anchor && mushafVerseMapService.isShownVerseUnitsPending()) {
+      whenShownVerseUnitsResolved().then(() => {
+        if (!cancelled) flash();
+      });
+    } else {
+      flash();
     }
     return () => {
+      cancelled = true;
+      if (timer !== null) clearTimeout(timer);
       useMushafVerseSelectionStore.getState().clearSelection();
     };
+    // @ai-end
   }, [anchor, initialVerseKey, pageNumber]); // @ai: anchor
 
   if (!dkReady) {

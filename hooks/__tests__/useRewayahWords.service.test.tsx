@@ -4,7 +4,8 @@
  * faked): a surface that shows a rewayah's words (the player's verse rows)
  * keeps them while the mushaf switches away, and recovers from a failed load
  * when it is shown again instead of saying "Verse text couldn't be loaded"
- * until something else happens to reload it.
+ * until something else happens to reload it; also when the load that failed
+ * was startup's own (Hafs).
  */
 import React, {act} from 'react';
 import TestRenderer from 'react-test-renderer';
@@ -15,6 +16,7 @@ import {
 } from '@/hooks/useRewayahWords';
 import {DigitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import type {RewayahId} from '@/services/rewayah/RewayahIdentity';
+import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 
 interface FakeSqlite {
   files: Set<string>;
@@ -230,6 +232,53 @@ describe('a surface showing a rewayah', () => {
     });
 
     expect(row.latest().status).toBe('ready');
+    row.unmount();
+  });
+});
+
+describe('after Hafs failed to load at startup', () => {
+  // Nothing else retries a failed startup: the data service used to rethrow
+  // its stored error to every later request, so Retry did nothing.
+  async function failedStartup(): Promise<DigitalKhattDataService> {
+    useMushafSettingsStore.setState({rewayah: 'hafs'});
+    fake.broken.add('dk_words');
+    const instance = new DigitalKhattDataService();
+    holder.current = instance;
+    await instance.initialize().catch(() => undefined);
+    expect(instance.initialized).toBe(false);
+    expect(instance.getRewayahLoadState('hafs')).toBe('error');
+    return instance;
+  }
+
+  it('an explicit retry loads Hafs again', async () => {
+    const instance = await failedStartup();
+    const row = showVerse('hafs');
+    await settle();
+    // Still unreadable: the try on mount fails too.
+    expect(row.latest().status).toBe('error');
+
+    fake.broken.clear();
+    await act(async () => {
+      row.latest().retry();
+      await flush();
+    });
+
+    expect(row.latest().status).toBe('ready');
+    expect(row.latest().words.map(w => w.text)).toEqual(['H1', 'H2']);
+    expect(instance.initialized).toBe(true);
+    expect(instance.rewayah).toBe('hafs');
+    row.unmount();
+  });
+
+  it('shown again later, it loads Hafs again', async () => {
+    await failedStartup();
+    fake.broken.clear();
+    now += 60 * 1000;
+    const row = showVerse('hafs');
+    await settle();
+
+    expect(row.latest().status).toBe('ready');
+    expect(row.latest().words.map(w => w.text)).toEqual(['H1', 'H2']);
     row.unmount();
   });
 });

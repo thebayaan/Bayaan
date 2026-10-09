@@ -108,11 +108,18 @@ export function useRewayahWords(
     let cancelled = false;
     // Completion (or failure) bumps the cache version, which re-renders this
     // component through useSyncExternalStore.
-    digitalKhattDataService.ensureRewayahLoaded(rewayah).catch(err => {
+    // @ai-start
+    // A retry makes the data service forget the failure first; otherwise it
+    // rethrows it (a failed startup, Hafs included) without loading again.
+    const load = retryFailed
+      ? digitalKhattDataService.ensureRewayahLoaded(rewayah, {retry: true})
+      : digitalKhattDataService.ensureRewayahLoaded(rewayah);
+    load.catch(err => {
       if (!cancelled) {
         console.warn(`[useRewayahWords] Loading ${rewayah} failed:`, err);
       }
     });
+    // @ai-end
     return () => {
       cancelled = true;
     };
@@ -121,9 +128,11 @@ export function useRewayahWords(
   // @ai-start
   const retry = useCallback(() => {
     if (!hasTextData(rewayah)) return;
-    digitalKhattDataService.ensureRewayahLoaded(rewayah).catch(err => {
-      console.warn(`[useRewayahWords] Loading ${rewayah} failed:`, err);
-    });
+    digitalKhattDataService
+      .ensureRewayahLoaded(rewayah, {retry: true})
+      .catch(err => {
+        console.warn(`[useRewayahWords] Loading ${rewayah} failed:`, err);
+      });
   }, [rewayah]);
   // @ai-end
 

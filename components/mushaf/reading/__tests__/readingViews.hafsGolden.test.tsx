@@ -119,13 +119,14 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => {
   };
 });
 jest.mock('@/services/mushaf/RewayahVerseUnitsService', () => ({
-  rewayahVerseUnitsService: {
-    get: (rewayah: string) => {
-      mockRecorded.unitsAsked.push(rewayah);
-      return null;
-    },
-    getStatus: () => 'error',
-  },
+  rewayahVerseUnitsService: jest
+    .requireActual('@/services/mushaf/__fixtures__/verseUnitsServiceStub')
+    .verseUnitsServiceStub({
+      peek: (rewayah: string) => {
+        mockRecorded.unitsAsked.push(rewayah);
+        return null;
+      },
+    }),
 }));
 jest.mock('@/services/mushaf/ThemeDataService', () => ({
   themeDataService: {

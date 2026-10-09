@@ -1654,8 +1654,15 @@ export class DigitalKhattDataService {
    * with the `rewayah` param. No-op if rewayah is the current one or already
    * cached. Used by the player to render text for a reciter whose rewayah
    * differs from the mushaf's active rewayah without mutating global state.
+   *
+   * `retry` (@ai): forget the last failed load of `rewayah` and load it
+   * again (a Retry button, a surface mounting over a failure). Without it a
+   * failed startup (Hafs could not be loaded) keeps rethrowing its error.
    */
-  async ensureRewayahLoaded(rewayah: RewayahId): Promise<void> {
+  async ensureRewayahLoaded(
+    rewayah: RewayahId,
+    options?: {retry?: boolean}, // @ai
+  ): Promise<void> {
     // Resolves once the rewayah's words are readable (isRewayahReady), and
     // rejects if loading fails; either way cache subscribers are notified.
     // Before the first commit the placeholder `rewayah` (Hafs) waits for
@@ -1671,6 +1678,7 @@ export class DigitalKhattDataService {
       return;
     }
     requireRewayahAssets(rewayah);
+    const retrying = options?.retry === true && this.forgetFailedLoad(rewayah); // @ai
 
     while (rewayah === this.currentRewayah && !this._initialized) {
       if (!this.mainWorkerRunning && this.loadErrors.has(rewayah)) {
@@ -1701,8 +1709,30 @@ export class DigitalKhattDataService {
     }
     const load = this.loadSideRewayah(rewayah, spec, this.epoch);
     this.sideLoading.set(rewayah, load);
+    if (retrying) this.notifyCacheChange(); // @ai: 'error' is 'loading' now
     return load;
   }
+
+  // @ai-start
+  // Forgets the failed load of `rewayah` (a retry); true when there was one.
+  // Before the first commit that failure was startup itself (Hafs could not
+  // be loaded either), which nothing else retries: startup runs again, the
+  // saved rewayah first, exactly as at launch, and `rewayah` reads
+  // 'loading' until it ends.
+  private forgetFailedLoad(rewayah: RewayahId): boolean {
+    if (!this.loadErrors.has(rewayah)) return false;
+    this.loadErrors.delete(rewayah);
+    if (!this._initialized && rewayah === this.currentRewayah) {
+      // After a startup still settling, if it did not commit.
+      (this._initializing ?? Promise.resolve())
+        .catch(() => undefined)
+        .then(() => (this._initialized ? undefined : this.initialize()))
+        .catch(() => undefined); // initialize() reports its own failure
+      this.notifyCacheChange();
+    }
+    return true;
+  }
+  // @ai-end
 
   private async loadSideRewayah(
     rewayah: RewayahId,

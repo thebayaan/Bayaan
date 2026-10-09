@@ -148,10 +148,11 @@ jest.mock('@/services/mushaf/RewayahVerseUnitsService', () => {
   }
   const warsh = buildRewayahVerseUnits('warsh', slots, 'warsh@test');
   return {
-    rewayahVerseUnitsService: {
-      get: (rewayah: string) => (rewayah === 'warsh' ? warsh : null),
-      getStatus: (rewayah: string) => (rewayah === 'warsh' ? 'ready' : 'error'),
-    },
+    rewayahVerseUnitsService: jest
+      .requireActual('@/services/mushaf/__fixtures__/verseUnitsServiceStub')
+      .verseUnitsServiceStub({
+        peek: (rewayah: string) => (rewayah === 'warsh' ? warsh : null),
+      }),
   };
 });
 // @ai-end

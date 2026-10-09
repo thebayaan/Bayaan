@@ -90,10 +90,11 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => ({
 }));
 const mockUnits = {models: new Map<string, unknown>()};
 jest.mock('@/services/mushaf/RewayahVerseUnitsService', () => ({
-  rewayahVerseUnitsService: {
-    get: (r: string) => mockUnits.models.get(r) ?? null,
-    getStatus: (r: string) => (mockUnits.models.has(r) ? 'ready' : 'error'),
-  },
+  rewayahVerseUnitsService: jest
+    .requireActual('@/services/mushaf/__fixtures__/verseUnitsServiceStub')
+    .verseUnitsServiceStub({
+      peek: (r: string) => mockUnits.models.get(r) ?? null,
+    }),
 }));
 
 import {ShareContent} from '../ShareContent';

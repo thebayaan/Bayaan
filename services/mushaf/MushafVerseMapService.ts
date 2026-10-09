@@ -243,6 +243,8 @@ class MushafVerseMapService {
   private unitCache: Map<string, readonly VerseSegment[]> = new Map();
   private orderedUnitKeysCache: Map<number, string[]> = new Map();
   private shownUnits: ShownVerseUnits | null | undefined = undefined;
+  // Version of the units service the unit caches were computed on.
+  private unitsVersion = -1;
   // @ai-end
   // Words cache (rewayah + cache version) the caches above were computed on.
   private dataRewayah: RewayahId | null = null;
@@ -256,6 +258,7 @@ class MushafVerseMapService {
     this.unitCache.clear();
     this.orderedUnitKeysCache.clear();
     this.shownUnits = undefined;
+    this.unitsVersion = -1;
     // @ai-end
     this.dataRewayah = null;
     this.dataVersion = -1;
@@ -275,6 +278,17 @@ class MushafVerseMapService {
       this.dataRewayah = rewayah;
       this.dataVersion = version;
     }
+    // @ai-start
+    // A build ended since (units accepted, or refused units built again):
+    // resolve the shown units again. The Hafs verse caches stay.
+    const unitsVersion = rewayahVerseUnitsService.getVersion();
+    if (unitsVersion !== this.unitsVersion) {
+      this.unitCache.clear();
+      this.orderedUnitKeysCache.clear();
+      this.shownUnits = undefined;
+      this.unitsVersion = unitsVersion;
+    }
+    // @ai-end
   }
 
   getVerseSegments(pageNumber: number, lineIndex: number): VerseSegment[] {
@@ -393,10 +407,13 @@ class MushafVerseMapService {
   /**
    * The verse units of the text the mushaf shows (the active DK words), or
    * null when a non-Hafs text has no usable units (refused: no verse is
-   * selectable or painted). Resolved once per data version; for a non-Hafs
-   * rewayah the first call builds its units (RewayahVerseUnitsService).
-   * A null while those words are still loading is not remembered: the next
-   * call asks again (the load also bumps the cache version).
+   * selectable or painted) or while they are being built. Resolved once per
+   * data version. Never builds (the page renderers call this while
+   * rendering): a non-Hafs rewayah's units are requested from
+   * RewayahVerseUnitsService, which builds them after interactions, in
+   * chunks, and bumps its version when done (the renderers subscribe to
+   * it). A null while they are built is not remembered: the next call asks
+   * again (isShownVerseUnitsPending; whenShownVerseUnitsResolved).
    */
   getShownVerseUnits(): ShownVerseUnits | null {
     this.ensureFresh();
@@ -408,10 +425,11 @@ class MushafVerseMapService {
         let units: RewayahVerseUnits | null = null;
         let refused = false;
         try {
-          units = rewayahVerseUnitsService.get(rewayah);
+          units = rewayahVerseUnitsService.peek(rewayah);
           if (!units) {
             const status = rewayahVerseUnitsService.getStatus(rewayah);
             refused = status !== 'loading' && status !== 'idle';
+            if (!refused) rewayahVerseUnitsService.request(rewayah);
           }
         } catch (error) {
           // Never break the page over the units: fail closed instead.
@@ -427,6 +445,14 @@ class MushafVerseMapService {
       }
     }
     return this.shownUnits;
+  }
+
+  /**
+   * True while the shown text's verse units are being built:
+   * getShownVerseUnits() is null for now, not because they were refused.
+   */
+  isShownVerseUnitsPending(): boolean {
+    return this.getShownVerseUnits() === null && this.shownUnits === undefined;
   }
 
   /** Segments of the shown text's verse units on one line (see class doc). */
@@ -595,28 +621,37 @@ export function selectionForAnchor(
 }
 
 /**
+ * The shown text's verse units once resolved: at once for Hafs and for
+ * units already built or refused, else when their build ends (after
+ * interactions, in chunks; never on the caller's stack). For a caller that
+ * needs the exact verse of a stored anchor right after a switch, such as
+ * the flash of a bookmark opened from a list.
+ */
+export async function whenShownVerseUnitsResolved(): Promise<ShownVerseUnits | null> {
+  if (!mushafVerseMapService.isShownVerseUnitsPending()) {
+    return mushafVerseMapService.getShownVerseUnits();
+  }
+  await rewayahVerseUnitsService.request(digitalKhattDataService.rewayah);
+  return mushafVerseMapService.getShownVerseUnits();
+}
+
+/**
  * Keeps the mushaf in step with the shown text across rewayah switches (the
  * mushaf screen subscribes once; unsubscribe with the returned function):
  * when the active words switch to another rewayah,
  *  - a selection of the previous rewayah's verse units is dropped (CONTRACT
  *    4.7: its keys are numbered in that rewayah; a Hafs-keyed selection
  *    names the same verses in every rewayah and is kept);
- *  - the new text's verse units are built through `schedule` (the screen
- *    passes InteractionManager.runAfterInteractions), so the first page
- *    render or long-press after the switch does not pay for the build
- *    (contract 2.1). Hafs builds nothing.
+ *  - the new text's verse units are requested at once: the units service
+ *    builds them after the switch's interactions, in chunks, so neither the
+ *    first page render nor a long-press after the switch pays for the build
+ *    (contract 2.1); the pages paint their verse layers when it ends. Hafs
+ *    builds nothing.
  */
-export function followShownRewayah(
-  schedule: (task: () => void) => void,
-): () => void {
+export function followShownRewayah(): () => void {
   return digitalKhattDataService.onRewayahChange(next => {
     useMushafVerseSelectionStore.getState().keepSelectionFor(next);
-    if (next !== 'hafs') {
-      schedule(() => {
-        // Whatever is shown when the task runs (another switch may follow).
-        mushafVerseMapService.getShownVerseUnits();
-      });
-    }
+    if (next !== 'hafs') rewayahVerseUnitsService.request(next);
   });
 }
 

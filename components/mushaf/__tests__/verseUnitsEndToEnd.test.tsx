@@ -29,12 +29,12 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => {
 // The verse units of the words on screen (built from the same slots).
 const mockUnits: {current: {rewayah: string} | null} = {current: null};
 jest.mock('@/services/mushaf/RewayahVerseUnitsService', () => ({
-  rewayahVerseUnitsService: {
-    get: (rewayah: string) =>
-      mockUnits.current?.rewayah === rewayah ? mockUnits.current : null,
-    getStatus: (rewayah: string) =>
-      mockUnits.current?.rewayah === rewayah ? 'ready' : 'error',
-  },
+  rewayahVerseUnitsService: jest
+    .requireActual('@/services/mushaf/__fixtures__/verseUnitsServiceStub')
+    .verseUnitsServiceStub({
+      peek: (rewayah: string) =>
+        mockUnits.current?.rewayah === rewayah ? mockUnits.current : null,
+    }),
 }));
 
 const mockSheet: {last: {name: string; payload: unknown} | null} = {

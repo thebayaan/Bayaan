@@ -399,7 +399,9 @@ jest.mock('@/services/mushaf/ThemeDataService', () => ({
 // @ai — verse units (what the pages select and paint) play no part in the
 // layout identity checked here: none are built.
 jest.mock('@/services/mushaf/RewayahVerseUnitsService', () => ({
-  rewayahVerseUnitsService: {get: () => null, getStatus: () => 'loading'},
+  rewayahVerseUnitsService: jest
+    .requireActual('@/services/mushaf/__fixtures__/verseUnitsServiceStub')
+    .verseUnitsServiceStub({peek: () => null, status: () => 'loading'}),
 }));
 
 import SkiaPage from '../SkiaPage';

@@ -198,10 +198,12 @@ const mockUnits = {
   status: new Map<string, string>(),
 };
 jest.mock('@/services/mushaf/RewayahVerseUnitsService', () => ({
-  rewayahVerseUnitsService: {
-    get: (r: string) => mockUnits.models.get(r) ?? null,
-    getStatus: (r: string) => mockUnits.status.get(r) ?? 'error',
-  },
+  rewayahVerseUnitsService: jest
+    .requireActual('@/services/mushaf/__fixtures__/verseUnitsServiceStub')
+    .verseUnitsServiceStub({
+      peek: (r: string) => mockUnits.models.get(r) ?? null,
+      status: (r: string) => mockUnits.status.get(r) ?? 'error',
+    }),
 }));
 
 import {VerseActionsSheet} from '../VerseActionsSheet';

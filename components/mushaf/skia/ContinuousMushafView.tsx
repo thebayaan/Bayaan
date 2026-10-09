@@ -47,6 +47,7 @@ import {
 } from '@/services/mushaf/QuranTextService';
 import {mushafVerseMapService} from '@/services/mushaf/MushafVerseMapService';
 import {parseAnchorKey} from '@/services/mushaf/RewayahVerseUnits'; // @ai
+import {rewayahVerseUnitsService} from '@/services/mushaf/RewayahVerseUnitsService'; // @ai
 import type {IndexedTajweedData} from '@/utils/tajweedLoader';
 import {getAllahNameHighlightColorHex} from '@/constants/mushafAllahHighlight';
 import SkiaLine from './SkiaLine';
@@ -234,6 +235,15 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
     render,
   }) => {
     const {isDarkMode} = useTheme();
+    // @ai-start
+    // Verse units are built after interactions, in chunks, never while a page
+    // renders: when a build ends, the verse layers below are computed again
+    // (getShownVerseUnits() is null until then: no verse painted).
+    const verseUnitsVersion = useSyncExternalStore(
+      rewayahVerseUnitsService.subscribe,
+      rewayahVerseUnitsService.getVersion,
+    );
+    // @ai-end
     // Rewayah of the text this page renders (the active DK words cache). The
     // store value can lag it during a switch, so overlays gate on this one.
     const textRewayah = digitalKhattDataService.rewayah;
@@ -556,6 +566,7 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
       // @ai-end
       // rewayah/textRewayah/textIdentity: verse segments and diff ranges follow
       // the rendered text (singleton services; not read directly).
+      // verseUnitsVersion: the shown verse units (@ai).
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [
       persistentHighlights,
@@ -574,6 +585,7 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
       rewayahDiffPaintEnabled,
       pageLines,
       textIdentity, // @ai
+      verseUnitsVersion, // @ai
     ]);
 
     // ── Render ─────────────────────────────────────────────

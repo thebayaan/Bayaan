@@ -34,7 +34,9 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => ({
   getRewayahDataIdentityKey: () => null,
 }));
 jest.mock('@/services/mushaf/RewayahVerseUnitsService', () => ({
-  rewayahVerseUnitsService: {get: () => null, getStatus: () => 'error'},
+  rewayahVerseUnitsService: jest
+    .requireActual('@/services/mushaf/__fixtures__/verseUnitsServiceStub')
+    .verseUnitsServiceStub({peek: () => null, status: () => 'error'}),
 }));
 
 import {

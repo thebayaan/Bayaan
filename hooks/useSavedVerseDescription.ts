@@ -41,9 +41,10 @@ export function useSavedVerseDescription(
 }
 
 /**
- * The same description without a hook and without loading anything, for
- * event handlers (an options sheet opened from a row already on screen,
- * whose units its preview loaded). 'loading' when they are not in memory.
+ * The same description without a hook and without loading or building
+ * anything, for event handlers (an options sheet opened from a row already
+ * on screen, whose units its label loaded). 'loading' when they are not
+ * built.
  */
 export function describeSavedVerseNow(
   row: SavedVerseRef,
@@ -52,7 +53,7 @@ export function describeSavedVerseNow(
     return describeSavedVerse(row, {units: null, status: 'unavailable'});
   }
   return describeSavedVerse(row, {
-    units: rewayahVerseUnitsService.get(row.rewayahId),
+    units: rewayahVerseUnitsService.peek(row.rewayahId),
     status: rewayahVerseUnitsService.getStatus(row.rewayahId),
   });
 }

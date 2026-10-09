@@ -635,6 +635,28 @@ export function buildRewayahVerseUnits(
   slots: Iterable<VerseUnitSlot>,
   dataKey: string,
 ): RewayahVerseUnits {
+  const builder = createVerseUnitsBuilder(rewayah, dataKey);
+  for (const slot of slots) builder.push(slot);
+  return builder.finish();
+}
+
+/**
+ * buildRewayahVerseUnits in steps, for a caller that yields between chunks
+ * of slots (RewayahVerseUnitsService builds a whole words DB that way, off
+ * the render path): push() each slot in id order, then finish() once. The
+ * units are exactly those of one buildRewayahVerseUnits call over the same
+ * slots, however they are split, and every check fails the same way (push()
+ * and finish() throw VerseUnitsBuildError).
+ */
+export interface VerseUnitsBuilder {
+  push(slot: VerseUnitSlot): void;
+  finish(): RewayahVerseUnits;
+}
+
+export function createVerseUnitsBuilder(
+  rewayah: RewayahId,
+  dataKey: string,
+): VerseUnitsBuilder {
   const fail = (message: string): never => {
     throw new VerseUnitsBuildError(rewayah, message);
   };
@@ -759,7 +781,7 @@ export function buildRewayahVerseUnits(
     if (count === 0) fail(`surah ${surah} has no verse`);
   };
 
-  for (const slot of slots) {
+  const push = (slot: VerseUnitSlot): void => {
     const {id, ayah, word} = slot;
     const text = slot.text ?? '';
     if (
@@ -822,43 +844,48 @@ export function buildRewayahVerseUnits(
         for (const b of basmala) walk(b.id, b.ayah, b.word, b.text);
         basmala = [];
       }
-      continue;
+      return;
     }
     flushBasmala();
     walk(id, ayah, word, text);
-  }
-  closeSurah();
-  if (surah === 0) fail('no word slots');
+  };
 
-  // Anchor keys (HafsAnchor): a unit starting at word 1 of a Hafs verse
-  // keeps the bare "S:A" only when it is the one unit holding words of it.
-  const holders = new Map<string, number>();
-  for (const unit of units) {
-    for (const key of unit.hafsKeys) {
-      holders.set(key, (holders.get(key) ?? 0) + 1);
+  const finish = (): RewayahVerseUnits => {
+    closeSurah();
+    if (surah === 0) fail('no word slots');
+
+    // Anchor keys (HafsAnchor): a unit starting at word 1 of a Hafs verse
+    // keeps the bare "S:A" only when it is the one unit holding words of it.
+    const holders = new Map<string, number>();
+    for (const unit of units) {
+      for (const key of unit.hafsKeys) {
+        holders.set(key, (holders.get(key) ?? 0) + 1);
+      }
     }
-  }
-  const anchors = starts.map((start, i) =>
-    Object.freeze({
-      key: formatAnchorKey(
-        start.hafsKey,
-        start.wordPosition,
-        units[i].hafsKeys[0] === start.hafsKey &&
-          holders.get(start.hafsKey) === 1,
-      ),
-      ...start,
-    }),
-  );
+    const anchors = starts.map((start, i) =>
+      Object.freeze({
+        key: formatAnchorKey(
+          start.hafsKey,
+          start.wordPosition,
+          units[i].hafsKeys[0] === start.hafsKey &&
+            holders.get(start.hafsKey) === 1,
+        ),
+        ...start,
+      }),
+    );
 
-  return new RewayahVerseUnits({
-    rewayah,
-    dataKey,
-    units,
-    anchors,
-    texts,
-    hafsRanges,
-    unnumbered,
-  });
+    return new RewayahVerseUnits({
+      rewayah,
+      dataKey,
+      units,
+      anchors,
+      texts,
+      hafsRanges,
+      unnumbered,
+    });
+  };
+
+  return {push, finish};
 }
 
 // ── Stored rows (bookmarks / notes / highlights) ───────────────────────────
@@ -964,6 +991,26 @@ export function crossCheckVerseUnits(
   map: VerseMapReader,
   maxReported = 20,
 ): string[] {
+  const check = createVerseUnitsCrossCheck(units, map, maxReported);
+  for (const surah of units.surahs()) check.checkSurah(surah);
+  return check.result();
+}
+
+/**
+ * crossCheckVerseUnits one surah at a time, for a caller that yields between
+ * surahs (RewayahVerseUnitsService): checkSurah() each surah of the units
+ * once, in order, then result() is what crossCheckVerseUnits returns.
+ */
+export interface VerseUnitsCrossCheck {
+  checkSurah(surah: number): void;
+  result(): string[];
+}
+
+export function createVerseUnitsCrossCheck(
+  units: RewayahVerseUnits,
+  map: VerseMapReader,
+  maxReported = 20,
+): VerseUnitsCrossCheck {
   const out: string[] = [];
   let total = 0;
   const report = (msg: string) => {
@@ -971,33 +1018,38 @@ export function crossCheckVerseUnits(
     if (out.length < maxReported) out.push(msg);
   };
   const rewayah = units.rewayah;
-  if (!map.hasVerseMap(rewayah)) {
-    return [`${rewayah}: no verse map to check against`];
-  }
+  const hasMap = map.hasVerseMap(rewayah);
   const same = (a: readonly string[], b: readonly string[]) =>
     a.length === b.length && a.every((k, i) => k === b[i]);
-  for (const surah of units.surahs()) {
-    const expected = map.verseCount(rewayah, surah);
-    const actual = units.verseCount(surah);
-    if (expected !== actual) {
-      report(`surah ${surah}: ${actual} verses, verse map says ${expected}`);
-    }
-    for (const unit of units.unitsOfSurah(surah)) {
-      const mapped = map.toHafsKeys(rewayah, unit.key);
-      if (!same(unit.hafsKeys, mapped)) {
-        report(`r2h ${unit.key}: [${unit.hafsKeys}] vs map [${mapped}]`);
+  return {
+    checkSurah(surah: number): void {
+      if (!hasMap) return;
+      const expected = map.verseCount(rewayah, surah);
+      const actual = units.verseCount(surah);
+      if (expected !== actual) {
+        report(`surah ${surah}: ${actual} verses, verse map says ${expected}`);
       }
-    }
-    for (let ayah = 1; ; ayah++) {
-      const hafsKey = `${surah}:${ayah}`;
-      if (!units.hafsVerseWordRange(hafsKey)) break;
-      const keys = units.unitsForHafsKey(hafsKey).map(u => u.key);
-      const mapped = map.toRiwayahKeys(rewayah, hafsKey);
-      if (!same(keys, mapped)) {
-        report(`h2r ${hafsKey}: [${keys}] vs map [${mapped}]`);
+      for (const unit of units.unitsOfSurah(surah)) {
+        const mapped = map.toHafsKeys(rewayah, unit.key);
+        if (!same(unit.hafsKeys, mapped)) {
+          report(`r2h ${unit.key}: [${unit.hafsKeys}] vs map [${mapped}]`);
+        }
       }
-    }
-  }
-  if (total > out.length) out.push(`... ${total - out.length} more`);
-  return out;
+      for (let ayah = 1; ; ayah++) {
+        const hafsKey = `${surah}:${ayah}`;
+        if (!units.hafsVerseWordRange(hafsKey)) break;
+        const keys = units.unitsForHafsKey(hafsKey).map(u => u.key);
+        const mapped = map.toRiwayahKeys(rewayah, hafsKey);
+        if (!same(keys, mapped)) {
+          report(`h2r ${hafsKey}: [${keys}] vs map [${mapped}]`);
+        }
+      }
+    },
+    result(): string[] {
+      if (!hasMap) return [`${rewayah}: no verse map to check against`];
+      return total > out.length
+        ? [...out, `... ${total - out.length} more`]
+        : [...out];
+    },
+  };
 }

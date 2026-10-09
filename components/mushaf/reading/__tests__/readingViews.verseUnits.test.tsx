@@ -132,11 +132,12 @@ const mockUnits = {
   status: 'loading',
 };
 jest.mock('@/services/mushaf/RewayahVerseUnitsService', () => ({
-  rewayahVerseUnitsService: {
-    get: (rewayah: string) => mockUnits.byRewayah.get(rewayah) ?? null,
-    getStatus: (rewayah: string) =>
-      mockUnits.byRewayah.has(rewayah) ? 'ready' : mockUnits.status,
-  },
+  rewayahVerseUnitsService: jest
+    .requireActual('@/services/mushaf/__fixtures__/verseUnitsServiceStub')
+    .verseUnitsServiceStub({
+      peek: (rewayah: string) => mockUnits.byRewayah.get(rewayah) ?? null,
+      status: () => mockUnits.status,
+    }),
 }));
 jest.mock('@/services/mushaf/ThemeDataService', () => ({
   themeDataService: {

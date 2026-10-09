@@ -804,11 +804,13 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
         await restoreSavedRewayah(bookmark.rewayahId);
         // Read after the restore: the rewayah on screen may have changed.
         const rewayah = digitalKhattDataService.rewayah;
-        const target = anchorTarget(bookmark.verseKey, {
-          rewayah,
-          units:
-            rewayah === 'hafs' ? null : rewayahVerseUnitsService.get(rewayah),
-        });
+        // Its units are built after interactions, in chunks (right after a
+        // restore they usually are not yet): wait for them, never build here.
+        const units =
+          rewayah === 'hafs'
+            ? null
+            : await rewayahVerseUnitsService.request(rewayah);
+        const target = anchorTarget(bookmark.verseKey, {rewayah, units});
         if (target) navigateToTarget(target, bookmark.surahNumber);
         else {
           navigateToHafsPage(

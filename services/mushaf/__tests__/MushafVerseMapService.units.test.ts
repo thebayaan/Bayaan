@@ -26,27 +26,24 @@ jest.mock('../DigitalKhattDataService', () => {
   };
 });
 
-// The units the runtime service would build from the active words.
+// The units the runtime service has built from the active words (it
+// builds them after interactions, once requested; never on a read).
 const mockUnitsByRewayah = new Map<string, unknown>();
 const mockUnitsService = {
-  throwOnGet: false,
-  // Status reported while get() returns null: 'error' = refused.
+  throwOnPeek: false,
+  // Status reported while peek() returns null: 'error' = refused.
   statusWithoutUnits: 'error' as string,
-  // Rewayat whose units were asked for, in order.
-  gets: [] as string[],
 };
 jest.mock('../RewayahVerseUnitsService', () => ({
-  rewayahVerseUnitsService: {
-    get: (rewayah: string) => {
-      mockUnitsService.gets.push(rewayah);
-      if (mockUnitsService.throwOnGet) throw new Error('units build failed');
-      return mockUnitsByRewayah.get(rewayah) ?? null;
-    },
-    getStatus: (rewayah: string) =>
-      mockUnitsByRewayah.has(rewayah)
-        ? 'ready'
-        : mockUnitsService.statusWithoutUnits,
-  },
+  rewayahVerseUnitsService: jest
+    .requireActual('../__fixtures__/verseUnitsServiceStub')
+    .verseUnitsServiceStub({
+      peek: (rewayah: string) => {
+        if (mockUnitsService.throwOnPeek) throw new Error('units unavailable');
+        return mockUnitsByRewayah.get(rewayah) ?? null;
+      },
+      status: () => mockUnitsService.statusWithoutUnits,
+    }),
 }));
 
 import {digitalKhattDataService} from '../DigitalKhattDataService';
@@ -58,8 +55,11 @@ import {
   selectionForUnitKeys,
   shownVerseUnitsOf,
   verseNavigationTarget,
+  whenShownVerseUnitsResolved,
   type VerseSegment,
 } from '../MushafVerseMapService';
+import {rewayahVerseUnitsService} from '../RewayahVerseUnitsService';
+import type {VerseUnitsServiceStub} from '../__fixtures__/verseUnitsServiceStub';
 import {getLineWordSpans} from '../lineWordSpans';
 import {
   unitsForStoredVerse,
@@ -81,6 +81,8 @@ import {
 } from '../__fixtures__/verseUnitPages';
 
 const dk = digitalKhattDataService as unknown as FakeDKService;
+const unitsService =
+  rewayahVerseUnitsService as unknown as VerseUnitsServiceStub;
 
 /** Shows `db` in the mushaf; its units are available unless `refused`. */
 function show(db: UnitsFixtureDb, opts: {refused?: boolean} = {}): void {
@@ -392,9 +394,83 @@ describe('refused units (fail closed)', () => {
     }
   });
 
+  it('never builds: requests the units and shows them when built', () => {
+    show('warsh', {refused: true});
+    // Words in memory, units not built yet (the first page of a switch).
+    mockUnitsService.statusWithoutUnits = 'idle';
+    try {
+      unitsService.requested.length = 0;
+      expect(mushafVerseMapService.getShownVerseUnits()).toBeNull();
+      expect(mushafVerseMapService.isShownVerseUnitsPending()).toBe(true);
+      // Asked for: the units service builds them after interactions.
+      expect(unitsService.requested).toContain('warsh');
+      expect(mushafVerseMapService.getUnitSegments(1, 6)).toEqual([]);
+      // The build ends.
+      mockUnitsByRewayah.set('warsh', buildFixtureUnits('warsh'));
+      unitsService.notify();
+      expect(mushafVerseMapService.isShownVerseUnitsPending()).toBe(false);
+      expect(mushafVerseMapService.getShownVerseUnits()?.rewayah).toBe('warsh');
+      expect(
+        mushafVerseMapService.getUnitSegments(1, 6).map(s => s.verseKey),
+      ).toEqual(['1:6', '1:7']);
+    } finally {
+      mockUnitsService.statusWithoutUnits = 'error';
+    }
+  });
+
+  it('refused units built again (a retry) are shown once that build ends', () => {
+    show('warsh', {refused: true});
+    expect(mushafVerseMapService.getShownVerseUnits()).toBeNull();
+    // Refused: remembered for these words, nothing requested.
+    expect(mushafVerseMapService.isShownVerseUnitsPending()).toBe(false);
+    mockUnitsByRewayah.set('warsh', buildFixtureUnits('warsh'));
+    expect(mushafVerseMapService.getUnitSegments(1, 6)).toEqual([]);
+    // The units service ends a build: no words changed, the units did.
+    unitsService.notify();
+    expect(mushafVerseMapService.getShownVerseUnits()?.rewayah).toBe('warsh');
+    expect(
+      mushafVerseMapService.getUnitSegments(1, 6).map(s => s.verseKey),
+    ).toEqual(['1:6', '1:7']);
+  });
+
+  it('whenShownVerseUnitsResolved waits for a build in progress', async () => {
+    show('hafs');
+    await expect(whenShownVerseUnitsResolved()).resolves.toBe(HAFS_SHOWN_UNITS);
+    show('warsh', {refused: true});
+    await expect(whenShownVerseUnitsResolved()).resolves.toBeNull();
+
+    show('warsh', {refused: true});
+    mockUnitsService.statusWithoutUnits = 'loading';
+    let endBuild: () => void = () => undefined;
+    const request = jest.spyOn(unitsService, 'request').mockImplementation(
+      () =>
+        new Promise(resolve => {
+          endBuild = () => {
+            mockUnitsByRewayah.set('warsh', buildFixtureUnits('warsh'));
+            unitsService.notify();
+            resolve(mockUnitsByRewayah.get('warsh'));
+          };
+        }),
+    );
+    try {
+      let resolved: unknown = 'pending';
+      const waiting = whenShownVerseUnitsResolved().then(shown => {
+        resolved = shown;
+      });
+      await Promise.resolve();
+      expect(resolved).toBe('pending');
+      endBuild();
+      await waiting;
+      expect((resolved as {rewayah: string} | null)?.rewayah).toBe('warsh');
+    } finally {
+      request.mockRestore();
+      mockUnitsService.statusWithoutUnits = 'error';
+    }
+  });
+
   it('a units service that throws is treated as refused', () => {
     show('warsh');
-    mockUnitsService.throwOnGet = true;
+    mockUnitsService.throwOnPeek = true;
     const error = jest
       .spyOn(console, 'error')
       .mockImplementation(() => undefined);
@@ -403,7 +479,7 @@ describe('refused units (fail closed)', () => {
       expect(mushafVerseMapService.getUnitSegments(1, 6)).toEqual([]);
       expect(error).toHaveBeenCalledTimes(1);
     } finally {
-      mockUnitsService.throwOnGet = false;
+      mockUnitsService.throwOnPeek = false;
       error.mockRestore();
     }
   });
@@ -624,8 +700,7 @@ describe('followShownRewayah (the mushaf screen, on a rewayah switch)', () => {
 
   it("drops a selection of the previous rewayah's units, keeps a Hafs one", () => {
     show('warsh');
-    const tasks: (() => void)[] = [];
-    const unsubscribe = followShownRewayah(task => tasks.push(task));
+    const unsubscribe = followShownRewayah();
     const selection = selectionForUnitKeys(['1:6', '1:7'])!;
     const store = useMushafVerseSelectionStore.getState();
     store.selectUnits(selection.rewayah, selection.units, 1);
@@ -643,23 +718,16 @@ describe('followShownRewayah (the mushaf screen, on a rewayah switch)', () => {
     expect(listeners.size).toBe(0);
   });
 
-  it("builds the new text's verse units after the switch, not on the first render", () => {
+  it("requests the new text's verse units on a switch; Hafs needs none", () => {
     show('hafs');
-    const tasks: (() => void)[] = [];
-    followShownRewayah(task => tasks.push(task));
-    mockUnitsService.gets.length = 0;
+    followShownRewayah();
+    unitsService.requested.length = 0;
     switchTo('warsh');
-    // Scheduled, not run inside the listener.
-    expect(mockUnitsService.gets).toEqual([]);
-    expect(tasks).toHaveLength(1);
-    tasks[0]();
-    expect(mockUnitsService.gets).toEqual(['warsh']);
-    // Resolved once for this text: the first page asks for nothing more.
-    mushafVerseMapService.getUnitSegments(1, 6);
-    expect(mockUnitsService.gets).toEqual(['warsh']);
-    // A switch to Hafs builds nothing.
+    // Asked for inside the switch: the units service builds them after its
+    // interactions, in chunks, before the first page needs them.
+    expect(unitsService.requested).toEqual(['warsh']);
     switchTo('hafs');
-    expect(tasks).toHaveLength(1);
+    expect(unitsService.requested).toEqual(['warsh']);
   });
 });
 

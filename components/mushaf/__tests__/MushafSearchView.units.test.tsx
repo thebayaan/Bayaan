@@ -55,15 +55,17 @@ jest.mock('@/services/verse-annotations/restoreSavedRewayah', () => ({
 }));
 
 jest.mock('@/services/mushaf/RewayahVerseUnitsService', () => ({
-  rewayahVerseUnitsService: {
-    get: (rewayah: RewayahId) => {
-      if (!mockUnitsReady) return null;
-      const {
-        fixtureUnits,
-      } = require('@/services/verse-annotations/__fixtures__/verseUnitsTestData');
-      return fixtureUnits(rewayah);
-    },
-  },
+  rewayahVerseUnitsService: jest
+    .requireActual('@/services/mushaf/__fixtures__/verseUnitsServiceStub')
+    .verseUnitsServiceStub({
+      peek: (rewayah: RewayahId) => {
+        if (!mockUnitsReady) return null;
+        const {
+          fixtureUnits,
+        } = require('@/services/verse-annotations/__fixtures__/verseUnitsTestData');
+        return fixtureUnits(rewayah);
+      },
+    }),
 }));
 
 let mockChipsProps: {

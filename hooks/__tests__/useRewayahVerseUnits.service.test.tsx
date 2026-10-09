@@ -59,8 +59,9 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => {
   return mocked;
 });
 
-// The real service's contract: units exist exactly while the rewayah's
-// words are in memory (RewayahVerseUnitsService.entry()).
+// The real service's contract, with builds that take no time: units exist
+// exactly while the rewayah's words are in memory (the real service builds
+// them after interactions once requested, and drops them with the words).
 jest.mock('@/services/mushaf/RewayahVerseUnitsService', () => {
   const dk = () =>
     (
@@ -78,10 +79,12 @@ jest.mock('@/services/mushaf/RewayahVerseUnitsService', () => {
       )
       .fixtureUnits(r);
   return {
-    rewayahVerseUnitsService: {
-      get: (r: string) => (dk().isRewayahReady(r) ? units(r) : null),
-      getStatus: (r: string) => dk().getRewayahLoadState(r),
-    },
+    rewayahVerseUnitsService: jest
+      .requireActual('@/services/mushaf/__fixtures__/verseUnitsServiceStub')
+      .verseUnitsServiceStub({
+        peek: (r: string) => (dk().isRewayahReady(r) ? units(r) : null),
+        status: (r: string) => dk().getRewayahLoadState(r),
+      }),
   };
 });
 

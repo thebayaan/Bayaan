@@ -54,10 +54,9 @@ jest.mock('../DigitalKhattDataService', () => {
 // from the same DB rows with the core builder.
 const mockUnits: {current: unknown} = {current: null};
 jest.mock('../RewayahVerseUnitsService', () => ({
-  rewayahVerseUnitsService: {
-    get: () => mockUnits.current,
-    getStatus: () => (mockUnits.current ? 'ready' : 'error'),
-  },
+  rewayahVerseUnitsService: jest
+    .requireActual('@/services/mushaf/__fixtures__/verseUnitsServiceStub')
+    .verseUnitsServiceStub({peek: () => mockUnits.current}),
 }));
 
 import {digitalKhattDataService, type DKLine} from '../DigitalKhattDataService';
