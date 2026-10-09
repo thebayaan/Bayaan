@@ -14,7 +14,8 @@ This document traces one page render from `MushafViewer` to final Skia draw call
 6. `SkiaLine` builds a `Paragraph`:
    - text direction RTL
    - per-char OpenType features from justification map
-   - per-space letterSpacing based on space type
+   - per-space font size giving each space its justified width, under a
+     forced strut at the words' size
 7. `SkiaLine` computes x-position (centered vs justified) and renders `<Paragraph />`.
 8. `UthmaniPageView` overlays surah header text (RN `Text` with `SURAH_HEADERS` font).
 
@@ -148,10 +149,38 @@ This is how line-level justification is translated into glyph-level shaping chan
 After each word, if a trailing space exists:
 
 - check `lineTextInfo.spaces.get(wordEnd + 1)`
-- set `letterSpacing` from:
+- take the justified width (font units at `FONTSIZE`) from:
   - `justResult.ayaSpacing` for Aya space
   - `justResult.simpleSpacing` for Simple space
-- values are normalized by `scale` relative to `SPACEWIDTH`
+- set the space's font size to `effectiveFontSize * spacing / SPACEWIDTH`
+  (`justifiedSpaceFontSize` in `components/mushaf/skia/justifiedSpace.ts`):
+  the font's space is `SPACEWIDTH` units, so its advance scales to the
+  justified width
+
+SkParagraph ignores `letterSpacing` and `wordSpacing` on Arabic runs. A space
+widened with `letterSpacing` kept its natural width, so every line that needed
+wider spaces ended short at its left end. The paragraph style forces a strut at
+the words' size, which keeps a larger space from moving the line box or the
+baseline. Background highlight rects are clamped to the words' band (the rect
+of the line's first character), since a larger space's rect spans that size's
+ascent and descent.
+
+A space set at its own size is shaped apart from its words, so a DigitalKhatt
+adjustment spanning two words and the space between them (it widens a few gaps,
+e.g. before a hamza below) no longer applies, although `JustService` measured
+the line with it. `SkiaLine` therefore measures a widened, justified line once
+built and, when it misses its width (`pageWidth - 2 * margin`) by more than a
+quarter pixel, rebuilds it with the residue spread evenly over its spaces
+(`spaceFitExtra`). A justified line at the words' spacing (a shrunk line, whose
+size can round) is rebuilt scaled to its width instead (`fitWordSize`), which
+keeps its spaces in the words' runs. Centered lines are built once.
+
+Before and after (iPhone 17 Pro simulator, Hafs; left: the letterSpacing
+spaces, right: sized spaces with the fit pass):
+[page 6](assets/justification-hafs_p006_before_after.jpg),
+[page 100](assets/justification-hafs_p100_before_after.jpg),
+[page 604](assets/justification-hafs_p604_before_after.jpg),
+[page 3 with a bookmark band](assets/justification-hafs_p003_bookmark_before_after.jpg).
 
 ### Positioning (x-axis)
 
@@ -163,8 +192,22 @@ Modes:
 
 - centered:
   - surah names (lineType 1) and basmallah (except page 1/2)
+  - ayah lines the layout centres (`is_centered`) that have no width of
+    their own in `QuranTextService.initLineWidths`: drawn at their natural
+    width (no kashida, the font's own spaces), e.g. the closing line of a
+    surah such as 586:1
 - justified:
-  - all other ayah lines
+  - all other ayah lines, to the full line width or to the line's own width
+    (pages 1-2, and the centred lines 600:10, 602:5, 602:15, 603:10, 604:4,
+    604:9, 604:14 and 604:15)
+
+### Vertical room below the last line
+
+A DigitalKhatt line box is taller than the line pitch, so marks under the last
+line of a page (an open tanween, a small low meem) reach past the content
+height. The page canvas (SkiaPage, and each page of ContinuousMushafView)
+extends `canvasBottomOverflow(fontSize)` (one font size) below the content so
+they are not cut. The canvas is transparent and lines keep their positions.
 
 ## Why `maxWidth = pageWidth * 2`
 

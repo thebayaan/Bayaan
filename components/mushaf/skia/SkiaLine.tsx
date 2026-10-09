@@ -11,13 +11,33 @@ import {
   type SkParagraph,
   type SkColor,
 } from '@shopify/react-native-skia';
+// @ai-start
 import {
   quranTextService,
-  FONTSIZE,
   SPACEWIDTH,
   SpaceType,
 } from '@/services/mushaf/QuranTextService';
+// @ai-end
 import type {JustResultByLine} from '@/services/mushaf/JustificationService';
+// @ai-start
+import {
+  clampBandToSlot,
+  clampRectToBand,
+  fitWordSize,
+  getLineFit,
+  isNaturalWidthLine,
+  justifiedLineStrut,
+  justifiedSpaceFontSize,
+  lineFitKey,
+  mergeTouchingRects,
+  naturalJustification,
+  setLineFit,
+  rectsBand,
+  shortestRectBand,
+  spaceFitExtra,
+  type LineBand,
+} from './justifiedSpace';
+// @ai-end
 import {tajweedColors} from '@/constants/tajweedColors';
 import type {MushafArabicTextWeight} from '@/store/mushafSettingsStore';
 import {
@@ -74,19 +94,22 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
   backgroundHighlights,
 }) => {
   const paragraphs = useMemo(() => {
-    const scale = (fontSize * justResult.fontSizeRatio) / FONTSIZE;
     const lineInfo = quranTextService.getLineInfo(pageNumber, lineIndex);
     const lineText = quranTextService.getLineText(pageNumber, lineIndex);
     const lineTextInfo = quranTextService.analyzeText(pageNumber, lineIndex);
 
     if (!lineText) return null;
 
+    // @ai-start
+    // A line the layout centres without a width of its own (the last line of
+    // a surah, e.g. 586:1) is drawn at its natural width, never stretched.
+    const lineJust = isNaturalWidthLine(lineInfo)
+      ? naturalJustification(justResult)
+      : justResult;
+    // @ai-end
+
     const color = Skia.Color(textColor);
-    const effectiveFontSize = justResult.fontSizeRatio * fontSize;
-    const strokeWidth = getArabicTextWeightStrokeWidth(
-      arabicTextWeight,
-      effectiveFontSize,
-    );
+    const effectiveFontSize = lineJust.fontSizeRatio * fontSize; // @ai
 
     const textStyle: SkTextStyle = {
       color,
@@ -99,15 +122,30 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
       textStyle.fontFeatures = [{name: 'basm', value: 1}];
     }
 
-    const buildParagraph = (withStroke: boolean) => {
+    // @ai-start
+    // `wordSize`: the words' font size; `spaceExtra`: px added to every space
+    // (both set by the fit pass below). The strut pins the line box and
+    // baseline to the words' size: justified spaces are set at larger sizes
+    // (justifiedSpace.ts).
+    const buildParagraph = (
+      withStroke: boolean,
+      wordSize: number,
+      spaceExtra: number,
+    ) => {
+      const lineStyle: SkTextStyle = {...textStyle, fontSize: wordSize};
+      const lineStroke = getArabicTextWeightStrokeWidth(
+        arabicTextWeight,
+        wordSize,
+      );
       const paragraphBuilder = Skia.ParagraphBuilder.Make(
-        lineParStyle,
+        {...lineParStyle, strutStyle: justifiedLineStrut(fontFamily, wordSize)},
         fontMgr,
       );
+      // @ai-end
 
       const pushStyle = (style: SkTextStyle, styleColor: SkColor) => {
         const strokePaint = withStroke
-          ? createTextStrokePaint(styleColor, strokeWidth)
+          ? createTextStrokePaint(styleColor, lineStroke) // @ai
           : undefined;
         if (strokePaint) {
           paragraphBuilder.pushStyle(style, strokePaint);
@@ -116,7 +154,7 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
         }
       };
 
-      pushStyle(textStyle, color);
+      pushStyle(lineStyle, color); // @ai
 
       for (
         let wordIndex = 0;
@@ -128,7 +166,7 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
         // Render each character with optional font features and tajweed colors
         for (let i = wordInfo.startIndex; i <= wordInfo.endIndex; i++) {
           const char = lineText.charAt(i);
-          const justInfo = justResult.fontFeatures.get(i);
+          const justInfo = lineJust.fontFeatures.get(i);
           const tajweedRule = charToRule?.get(i);
           const customColor = charToColor?.get(i);
 
@@ -136,7 +174,7 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
 
           if (needsCustomStyle) {
             const charStyle: SkTextStyle = {
-              ...textStyle,
+              ...lineStyle, // @ai
             };
             let charColor = color;
             if (justInfo) {
@@ -157,20 +195,21 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
           }
         }
 
-        // Add space between words with appropriate letter spacing
+        // @ai-start
+        // Add the space between words at its justified width. SkParagraph
+        // ignores letterSpacing on Arabic, so the width comes from the space's
+        // font size (justifiedSpace.ts).
         const spaceType = lineTextInfo.spaces.get(wordInfo.endIndex + 1);
         if (spaceType !== undefined) {
+          const spacing =
+            spaceType === SpaceType.Aya
+              ? lineJust.ayaSpacing
+              : lineJust.simpleSpacing;
           const newtextStyle: SkTextStyle = {
-            ...textStyle,
+            ...lineStyle,
+            fontSize: justifiedSpaceFontSize(wordSize, spacing, spaceExtra),
           };
-
-          if (spaceType === SpaceType.Aya) {
-            newtextStyle.letterSpacing =
-              (justResult.ayaSpacing - SPACEWIDTH) * scale;
-          } else {
-            newtextStyle.letterSpacing =
-              (justResult.simpleSpacing - SPACEWIDTH) * scale;
-          }
+          // @ai-end
 
           pushStyle(newtextStyle, color);
           paragraphBuilder.addText(' ');
@@ -185,10 +224,59 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
       return p;
     };
 
+    // @ai-start
+    // Fit pass. The drawn width of a justified line can miss the width
+    // JustService fitted: a widened line's spaces are shaped apart from their
+    // words (justifiedSpace.ts), and a shrunk line's size can round. Measure
+    // it, then spread a widened line's residue over its spaces, or scale a
+    // line at the words' spacing (its spaces stay in the words' runs), so the
+    // line ends exactly on the margin. Centered lines are left as built. The
+    // fit is kept per line for the session (justifiedSpace.ts getLineFit), so
+    // a later build of the same line (colours, highlights, a revisit) builds
+    // once.
+    const isJustifiedLine = !(
+      lineInfo.lineType === 1 ||
+      (lineInfo.lineType === 2 && pageNumber !== 1 && pageNumber !== 2) ||
+      isNaturalWidthLine(lineInfo)
+    );
+    const isWidened =
+      lineJust.simpleSpacing > SPACEWIDTH || lineJust.ayaSpacing > SPACEWIDTH;
+    const targetWidth = pageWidth - 2 * margin;
+    const fitKey = isJustifiedLine
+      ? lineFitKey(lineText, fontFamily, fontSize, targetWidth, lineJust)
+      : null;
+    const knownFit = fitKey ? getLineFit(fitKey) : undefined;
+    let wordSize = knownFit?.wordSize ?? effectiveFontSize;
+    let spaceExtra = knownFit?.spaceExtra ?? 0;
+    let paragraph = buildParagraph(false, wordSize, spaceExtra);
+    if (fitKey && !knownFit) {
+      const drawnWidth = paragraph.getLongestLine();
+      if (isWidened) {
+        spaceExtra = spaceFitExtra(
+          targetWidth,
+          drawnWidth,
+          lineTextInfo.spaces.size,
+        );
+      } else {
+        wordSize = fitWordSize(effectiveFontSize, targetWidth, drawnWidth);
+      }
+      if (spaceExtra !== 0 || wordSize !== effectiveFontSize) {
+        paragraph.dispose();
+        paragraph = buildParagraph(false, wordSize, spaceExtra);
+      }
+      setLineFit(fitKey, {wordSize, spaceExtra});
+    }
+
+    const strokeWidth = getArabicTextWeightStrokeWidth(
+      arabicTextWeight,
+      wordSize,
+    );
     return {
-      paragraph: buildParagraph(false),
-      strokeParagraph: strokeWidth > 0 ? buildParagraph(true) : null,
+      paragraph,
+      strokeParagraph:
+        strokeWidth > 0 ? buildParagraph(true, wordSize, spaceExtra) : null,
     };
+    // @ai-end
   }, [
     pageNumber,
     lineIndex,
@@ -235,9 +323,11 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
   let xPos: number;
   if (
     lineInfo.lineType === 1 ||
-    (lineInfo.lineType === 2 && pageNumber !== 1 && pageNumber !== 2)
+    (lineInfo.lineType === 2 && pageNumber !== 1 && pageNumber !== 2) ||
+    isNaturalWidthLine(lineInfo) // @ai
   ) {
-    // Centered lines: surah names and basmallah (except pages 1-2)
+    // Centered lines: surah names, basmallah (except pages 1-2) and lines
+    // the layout centres at their natural width
     const centeredMargin = (pageWidth - currLineWidth) / 2;
     xPos = -(maxWidth - pageWidth + centeredMargin);
   } else {
@@ -281,25 +371,68 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
       color: string;
     }> = [];
 
+    // @ai-start
+    // The words' band, from the line's first word. Its whole range is asked
+    // for: SkParagraph returns no rect for part of a grapheme cluster, so a
+    // first letter carrying a mark gives nothing on its own. A justified
+    // space's rect spans its larger size's ascent and descent, so every rect
+    // is clamped to this band; without one, a highlight is clamped to its own
+    // shortest rect (a word's, never taller than a space's).
+    const firstWord = quranTextService.analyzeText(pageNumber, lineIndex)
+      .wordInfos[0];
+    let band: LineBand | null = null;
+    if (firstWord) {
+      try {
+        band = rectsBand(
+          paragraph.getRectsForRange(
+            firstWord.startIndex,
+            firstWord.endIndex + 1,
+          ),
+        );
+      } catch {
+        band = null;
+      }
+    }
+    // @ai-end
+
     for (const hl of backgroundHighlights) {
       try {
         const skRects = paragraph.getRectsForRange(hl.start, hl.end + 1);
-        for (const rect of skRects) {
-          rects.push({
-            x: rect.x,
-            y: rect.y,
-            width: rect.width,
-            height: rect.height,
-            color: hl.color,
-          });
+        // @ai-start
+        // Clamp each rect to the band, then merge the ones that touch so the
+        // highlight draws as one band per run of words, not one rounded rect
+        // per word and space.
+        // Within the line's own slot: rects are relative to adjustedYPos.
+        const hlBand = clampBandToSlot(
+          band ?? shortestRectBand(skRects),
+          yPos - adjustedYPos,
+          lineHeight,
+        );
+        const clamped = skRects.map(rect =>
+          clampRectToBand(
+            {x: rect.x, y: rect.y, width: rect.width, height: rect.height},
+            hlBand,
+          ),
+        );
+        for (const rect of mergeTouchingRects(clamped)) {
+          rects.push({...rect, color: hl.color});
         }
+        // @ai-end
       } catch {
         // Ignore rect computation failures
       }
     }
 
     return rects.length > 0 ? rects : null;
-  }, [paragraph, backgroundHighlights]);
+  }, [
+    paragraph,
+    backgroundHighlights,
+    pageNumber,
+    lineIndex,
+    yPos,
+    adjustedYPos,
+    lineHeight,
+  ]); // @ai
 
   if (!paragraph) return null;
 
