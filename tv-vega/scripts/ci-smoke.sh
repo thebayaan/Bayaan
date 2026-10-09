@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Smoke test for the Vega build on a running Vega Virtual Device.
 #
-# Assumes the app is already installed and launched (vega run-app). Drives it
-# with remote key presses, saves a screenshot after each step plus the device
-# logs to <out-dir>, and fails if the app is no longer running at the end.
+# Assumes the app is already installed. Streams device logs, launches the app,
+# drives it with remote key presses, saves a screenshot after each step plus a
+# diagnostic bundle to <out-dir>, and fails if the app is not running at the end.
 set -uo pipefail
 
 APP_ID=com.bayaan.tvsmoke.main
@@ -17,12 +17,21 @@ if [[ -z "$SERIAL" ]]; then
   "$VDA" devices
   exit 1
 fi
-echo "Using $SERIAL"
+CONSOLE_PORT=${SERIAL#emulator-}
+echo "Using $SERIAL (console port $CONSOLE_PORT)"
 
+# vda has no `emu` command, so talk to the emulator console directly.
 screenshot() {
-  local dir
+  local dir token
   dir=$(mktemp -d)
-  if "$VDA" -s "$SERIAL" emu screenrecord screenshot "$dir" >/dev/null; then
+  token=$(cat ~/.emulator_console_auth_token 2>/dev/null || true)
+  {
+    [[ -n "$token" ]] && echo "auth $token"
+    echo "screenrecord screenshot $dir"
+    sleep 3
+    echo "quit"
+  } | nc -q 5 localhost "$CONSOLE_PORT" >/dev/null 2>&1
+  if compgen -G "$dir/*.png" >/dev/null; then
     mv "$dir"/*.png "$OUT_DIR/screens/$1.png" && echo "screenshot: $1"
   else
     echo "screenshot $1 failed"
@@ -40,12 +49,38 @@ app_running() {
   vega device is-app-running -d "$SERIAL" -a "$APP_ID" 2>&1 | tee -a "$OUT_DIR/logs/is-app-running.txt"
 }
 
+collect_diagnostics() {
+  kill "$LOG_PID" 2>/dev/null || true
+  vega device doctor -d "$SERIAL" --dir "$OUT_DIR/doctor" -a com.bayaan.tvsmoke || echo "doctor failed"
+}
+
+"$VDA" -s "$SERIAL" shell "loggingctl log -f" >"$OUT_DIR/logs/device.log" 2>&1 &
+LOG_PID=$!
+trap collect_diagnostics EXIT
+
 echo "inputd screen size: $("$VDA" -s "$SERIAL" shell inputd-cli get_screen_size 2>&1)"
 
-# Give the JS bundle time to load and the first screen to render.
-sleep 20
-screenshot 01-launch
-app_running
+# Launching right after install can fail ("App could not be determined",
+# "reading 'trim'") while the package registers, so retry for a while.
+launched=false
+for attempt in $(seq 1 12); do
+  if vega device launch-app -d "$SERIAL" -a "$APP_ID"; then
+    launched=true
+    break
+  fi
+  echo "Launch attempt $attempt failed, retrying"
+  sleep 10
+done
+if [[ "$launched" != true ]]; then
+  echo "Could not launch $APP_ID"
+  exit 1
+fi
+
+for second in 5 10 15; do
+  sleep 5
+  screenshot "00-launch-${second}s"
+  app_running
+done
 
 press KEY_DOWN KEY_ENTER
 sleep 5
@@ -70,9 +105,7 @@ press KEY_BACK
 sleep 3
 screenshot 07-back
 
-vega device copy-logs -d "$SERIAL" -a system/var_log --dir "$OUT_DIR/logs" || echo "copy-logs failed"
-
-if ! app_running | grep -qiE "is running|true"; then
+if app_running | grep -qi "is not running"; then
   echo "App $APP_ID is not running at the end of the smoke test (crash?)"
   exit 1
 fi

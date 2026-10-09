@@ -81,22 +81,12 @@ jobs:
       - name: Start Vega Virtual Device
         run: vega virtual-device start --no-gui --no-gl-accel -t 600
 
-      - name: Install and launch app
+      - name: Install app
         run: |
           VPKG=$(find build -path '*x86_64/Release/*.vpkg' | head -1)
           echo "Installing $VPKG"
-          timeout 600 vega device install-app -p "$VPKG" || timeout 600 vega run-app "$VPKG" -d VirtualDevice
-          vega device installed-apps | grep -i bayaan || true
-          # Launching right after install can fail with "App could not be
-          # determined" while the package registers, so retry for a while.
-          for attempt in $(seq 1 12); do
-            if vega device launch-app -a "$APP_ID"; then
-              exit 0
-            fi
-            echo "Launch attempt $attempt failed, retrying"
-            sleep 10
-          done
-          exit 1
+          timeout 600 vega device install-app -p "$VPKG"
+          vega device installed-apps | grep -i bayaan
 
       - name: Smoke test
         run: bash scripts/ci-smoke.sh "$RUNNER_TEMP/vega-smoke"
