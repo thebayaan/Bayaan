@@ -11,6 +11,15 @@ export interface Reciter {
   date: string | null;
   image_url: string | null;
   rewayat: Rewayat[];
+  /**
+   * RFC-020 §1 field prerequisite — optional catalog fields the `country`
+   * and `translation` Search-filter dimensions resolve against. Unset by
+   * default (the catalog omits them → those dimensions surface empty,
+   * harmless chips); a fork populates them from its catalog to light the
+   * dimensions up.
+   */
+  country?: string;
+  translation?: string;
 }
 
 export interface Rewayat {
