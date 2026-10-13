@@ -128,7 +128,7 @@ export const UnitRowTranslations = memo<UnitRowTranslationsProps>(
           ))}
         {hasTranslation ? (
           <Text style={translationSourceStyle}>
-            {translationName ?? 'Saheeh International'}
+            {translationName ?? 'The Clear Quran'}
           </Text>
         ) : null}
       </View>

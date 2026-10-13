@@ -39,7 +39,6 @@ import {
 // @ai-end
 import {
   isBundledTranslation,
-  getBundledFootnotes,
   getRemoteFootnote,
 } from '@/utils/translationLookup';
 
@@ -60,22 +59,8 @@ interface FootnoteData {
   content?: string;
 }
 
-// Type for the Saheeh International JSON structure
-interface SaheehFootnoteEntry {
-  t: string; // Translation text
-  f?: {[key: string]: string}; // Optional footnotes object
-}
-
-interface SaheehData {
-  [verseKey: string]: SaheehFootnoteEntry;
-}
-
 // Shown in place of the Arabic line when the rewayah's words fail to load. @ai
 const TEXT_UNAVAILABLE_MESSAGE = "Verse text couldn't be loaded.";
-
-// Load Saheeh data at module scope (require() is cached — zero cost since QuranView already loaded it)
-const saheehDataForFootnotes =
-  require('@/data/SaheehInternational.translation-with-footnote-tags.json') as SaheehData;
 
 interface VerseItemProps {
   verse: Verse & {translation?: string; transliteration?: string};
@@ -279,12 +264,14 @@ export const VerseItem = memo<VerseItemProps>(
       [textColor],
     );
 
-    // Handle footnote press - uses module-scope cached data or translationLookup
+    // Handle footnote press: a downloaded edition's footnotes come from
+    // translation_footnotes, cached with its verses (enhancedVerseData). The
+    // bundled Clear Quran has no footnote bodies (its markers are stripped).
     // @ai — `footnoteVerseKey`: the Hafs verse whose translation holds the
     // footnote (a verse row passes each of its Hafs verses' own).
     const toggleFootnote = useCallback(
       (
-        footnoteVerseKey: string,
+        _footnoteVerseKey: string,
         footnoteId: string,
         footnoteNumber: string,
       ) => {
@@ -294,35 +281,15 @@ export const VerseItem = memo<VerseItemProps>(
           return;
         }
 
-        // Bundled footnotes come per verse; a downloaded edition's come from
-        // translation_footnotes, cached with its verses (enhancedVerseData).
-        const effectiveId = translationId ?? 'saheeh';
-        if (!isBundledTranslation(effectiveId)) {
-          setActiveFootnote({
-            id: footnoteId,
-            number: footnoteNumber,
-            content:
-              getRemoteFootnote(effectiveId, footnoteId) ??
-              'Footnote data not available',
-          });
-          return;
-        }
-        const footnotes = getBundledFootnotes(footnoteVerseKey, effectiveId); // @ai
-
-        if (footnotes) {
-          const footnoteContent = footnotes[footnoteId];
-          setActiveFootnote({
-            id: footnoteId,
-            number: footnoteNumber,
-            content: footnoteContent ?? 'Footnote content not available',
-          });
-        } else {
-          setActiveFootnote({
-            id: footnoteId,
-            number: footnoteNumber,
-            content: 'Footnote data not available',
-          });
-        }
+        const effectiveId = translationId ?? 'clear-quran';
+        const content = isBundledTranslation(effectiveId)
+          ? undefined
+          : getRemoteFootnote(effectiveId, footnoteId);
+        setActiveFootnote({
+          id: footnoteId,
+          number: footnoteNumber,
+          content: content ?? 'Footnote data not available',
+        });
       },
       [activeFootnote, translationId], // @ai
     );
@@ -757,7 +724,7 @@ export const VerseItem = memo<VerseItemProps>(
             {/* Display Translation Source */}
             {verse.translation && (
               <Text style={translationSourceStyle}>
-                {translationName ?? 'Saheeh International'}
+                {translationName ?? 'The Clear Quran'}
               </Text>
             )}
           </View>

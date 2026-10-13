@@ -1,7 +1,7 @@
 {
  "reading 1 idle": {
   "count": 10,
-  "sha256": "70fdf9d2b56aba99367961cb79362560c88ed2575ee971e1eae99f0d74ed7fe8",
+  "sha256": "826140c275858b35f33ed482d6b691d41e4bb987304add6a0b68f66db2efabf8",
   "head": [
    [
     "SurahDivider",
@@ -39,7 +39,7 @@
       "ayah_number": 1,
       "verse_key": "1:1",
       "text": "بِسۡمِ ٱللَّهِ ٱلرَّحۡمَٰنِ ٱلرَّحِيمِ ١",
-      "translation": "In the name of Allāh,<sup foot_note=\"226402\">1</sup> the Entirely Merciful, the Especially Merciful.<sup foot_note=\"226403\">2</sup>",
+      "translation": "In the Name of Allah—the Most Compassionate, Most Merciful.",
       "transliteration": "Bismi All<u>a</u>hi a<b>l</b>rra<u>h</u>m<u>a</u>ni a<b>l</b>rra<u>h</u>eem<b>i</b>"
      },
      "onVersePress": "[function]",
@@ -60,7 +60,7 @@
      "isActive": false,
      "source": "mushaf",
      "translationName": "Translation",
-     "translationId": "saheeh",
+     "translationId": "clear-quran",
      "showWBW": false,
      "wbwShowTranslation": true,
      "wbwShowTransliteration": false
@@ -75,7 +75,7 @@
       "ayah_number": 2,
       "verse_key": "1:2",
       "text": "ٱلۡحَمۡدُ لِلَّهِ رَبِّ ٱلۡعَٰلَمِينَ ٢",
-      "translation": "[All] praise is [due] to Allāh, Lord<sup foot_note=\"226404\">1</sup> of the worlds -",
+      "translation": "All praise is for Allah—Lord of all worlds,",
       "transliteration": "Al<u>h</u>amdu lill<u>a</u>hi rabbi al<u>a</u>lameen<b>a</b>"
      },
      "onVersePress": "[function]",
@@ -96,7 +96,7 @@
      "isActive": false,
      "source": "mushaf",
      "translationName": "Translation",
-     "translationId": "saheeh",
+     "translationId": "clear-quran",
      "showWBW": false,
      "wbwShowTranslation": true,
      "wbwShowTransliteration": false
@@ -106,7 +106,7 @@
  },
  "reading 1 playing": {
   "count": 9,
-  "sha256": "55dc6cf64238d539c8006c59fe85b992b60dbab71a71cff8194b077ec61522bc",
+  "sha256": "276f537454f54756b124505cd4e271669ec62e82ca1080f8080fbd4b62a0e874",
   "head": [
    [
     "SurahDivider",
@@ -144,7 +144,7 @@
       "ayah_number": 1,
       "verse_key": "1:1",
       "text": "بِسۡمِ ٱللَّهِ ٱلرَّحۡمَٰنِ ٱلرَّحِيمِ ١",
-      "translation": "In the name of Allāh,<sup foot_note=\"226402\">1</sup> the Entirely Merciful, the Especially Merciful.<sup foot_note=\"226403\">2</sup>",
+      "translation": "In the Name of Allah—the Most Compassionate, Most Merciful.",
       "transliteration": "Bismi All<u>a</u>hi a<b>l</b>rra<u>h</u>m<u>a</u>ni a<b>l</b>rra<u>h</u>eem<b>i</b>"
      },
      "onVersePress": "[function]",
@@ -165,7 +165,7 @@
      "isActive": false,
      "source": "mushaf",
      "translationName": "Translation",
-     "translationId": "saheeh",
+     "translationId": "clear-quran",
      "showWBW": false,
      "wbwShowTranslation": true,
      "wbwShowTransliteration": false
@@ -180,7 +180,7 @@
       "ayah_number": 2,
       "verse_key": "1:2",
       "text": "ٱلۡحَمۡدُ لِلَّهِ رَبِّ ٱلۡعَٰلَمِينَ ٢",
-      "translation": "[All] praise is [due] to Allāh, Lord<sup foot_note=\"226404\">1</sup> of the worlds -",
+      "translation": "All praise is for Allah—Lord of all worlds,",
       "transliteration": "Al<u>h</u>amdu lill<u>a</u>hi rabbi al<u>a</u>lameen<b>a</b>"
      },
      "onVersePress": "[function]",
@@ -201,7 +201,7 @@
      "isActive": false,
      "source": "mushaf",
      "translationName": "Translation",
-     "translationId": "saheeh",
+     "translationId": "clear-quran",
      "showWBW": false,
      "wbwShowTranslation": true,
      "wbwShowTransliteration": false
@@ -211,7 +211,7 @@
  },
  "reading 1 paused": {
   "count": 9,
-  "sha256": "645d65f1f642d492f7a9ba2dd709ec58614a28b2d788f9fb63c04102123a2856",
+  "sha256": "e997c2cd13e664439dffaff96ec52ba2ad7c63c2c73a46524d096a6c2e2d4e24",
   "head": [
    [
     "SurahDivider",
@@ -249,7 +249,7 @@
       "ayah_number": 1,
       "verse_key": "1:1",
       "text": "بِسۡمِ ٱللَّهِ ٱلرَّحۡمَٰنِ ٱلرَّحِيمِ ١",
-      "translation": "In the name of Allāh,<sup foot_note=\"226402\">1</sup> the Entirely Merciful, the Especially Merciful.<sup foot_note=\"226403\">2</sup>",
+      "translation": "In the Name of Allah—the Most Compassionate, Most Merciful.",
       "transliteration": "Bismi All<u>a</u>hi a<b>l</b>rra<u>h</u>m<u>a</u>ni a<b>l</b>rra<u>h</u>eem<b>i</b>"
      },
      "onVersePress": "[function]",
@@ -270,7 +270,7 @@
      "isActive": false,
      "source": "mushaf",
      "translationName": "Translation",
-     "translationId": "saheeh",
+     "translationId": "clear-quran",
      "showWBW": false,
      "wbwShowTranslation": true,
      "wbwShowTransliteration": false
@@ -285,7 +285,7 @@
       "ayah_number": 2,
       "verse_key": "1:2",
       "text": "ٱلۡحَمۡدُ لِلَّهِ رَبِّ ٱلۡعَٰلَمِينَ ٢",
-      "translation": "[All] praise is [due] to Allāh, Lord<sup foot_note=\"226404\">1</sup> of the worlds -",
+      "translation": "All praise is for Allah—Lord of all worlds,",
       "transliteration": "Al<u>h</u>amdu lill<u>a</u>hi rabbi al<u>a</u>lameen<b>a</b>"
      },
      "onVersePress": "[function]",
@@ -306,7 +306,7 @@
      "isActive": false,
      "source": "mushaf",
      "translationName": "Translation",
-     "translationId": "saheeh",
+     "translationId": "clear-quran",
      "showWBW": false,
      "wbwShowTranslation": true,
      "wbwShowTransliteration": false
@@ -316,7 +316,7 @@
  },
  "reading 371 idle": {
   "count": 59,
-  "sha256": "1fa055d0a7de39312aa5620c2d03a2c2dcfe38c650ffa3a050312327a2372485",
+  "sha256": "3117e9a237524b855372a71e360ae4fa859b3e0a1fe909e7f79d5ea40d822893",
   "head": [
    [
     "getThemeForVerse",
@@ -338,7 +338,7 @@
  },
  "reading 371 playing": {
   "count": 58,
-  "sha256": "93ac47f0f8f7e871aba0e2de59990e7b5287ce1e0c9a329da389ed81599a2848",
+  "sha256": "870ef2c1d43041c323a722c0836ce29d9b6d0fe5485cdaa811563187adc1e41f",
   "head": [
    [
     "getThemeForVerse",
@@ -360,7 +360,7 @@
  },
  "reading 371 paused": {
   "count": 58,
-  "sha256": "9c24affc85666eb232f137120bc2e0c1be2697b650373e226d3282a8cd07cc3a",
+  "sha256": "29407989906b3b4cd08c8df97eec770d582c893abb62b64ef37d5caffa87f392",
   "head": [
    [
     "getThemeForVerse",
@@ -382,7 +382,7 @@
  },
  "reading 403 idle": {
   "count": 6,
-  "sha256": "bb3fa186038fec4190c195914a2b3bb310b31e4fdae289cbe02ac71949bef10a",
+  "sha256": "805775704beb0b3270ccf22e102dd84685f9023e36fe73b365f7dae1638cca2e",
   "head": [
    [
     "SurahDivider",
@@ -420,7 +420,7 @@
       "ayah_number": 1,
       "verse_key": "103:1",
       "text": "وَٱلۡعَصۡرِ ١",
-      "translation": "By time,<sup foot_note=\"228284\">1</sup>",
+      "translation": "By the ˹passage of˺ time!",
       "transliteration": "Wa<b>a</b>lAAa<u>s</u>r<b>i</b>"
      },
      "onVersePress": "[function]",
@@ -441,7 +441,7 @@
      "isActive": false,
      "source": "mushaf",
      "translationName": "Translation",
-     "translationId": "saheeh",
+     "translationId": "clear-quran",
      "showWBW": false,
      "wbwShowTranslation": true,
      "wbwShowTransliteration": false
@@ -456,7 +456,7 @@
       "ayah_number": 2,
       "verse_key": "103:2",
       "text": "إِنَّ ٱلۡإِنسَٰنَ لَفِي خُسۡرٍ ٢",
-      "translation": "Indeed, mankind is in loss,",
+      "translation": "Surely humanity is in ˹grave˺ loss,",
       "transliteration": "Inna alins<u>a</u>na lafee khusr<b>in</b>"
      },
      "onVersePress": "[function]",
@@ -477,7 +477,7 @@
      "isActive": false,
      "source": "mushaf",
      "translationName": "Translation",
-     "translationId": "saheeh",
+     "translationId": "clear-quran",
      "showWBW": false,
      "wbwShowTranslation": true,
      "wbwShowTransliteration": false
@@ -487,7 +487,7 @@
  },
  "reading 403 playing": {
   "count": 5,
-  "sha256": "427692281e98840c088e33355cb3bca414fdf5ccc66aaf61d3a5f6e3598c0eac",
+  "sha256": "29ebbb4b9d8fe2b5de97f49900ef2f2e02097f4efc4c834095416d3bd70014b5",
   "head": [
    [
     "SurahDivider",
@@ -525,7 +525,7 @@
       "ayah_number": 1,
       "verse_key": "103:1",
       "text": "وَٱلۡعَصۡرِ ١",
-      "translation": "By time,<sup foot_note=\"228284\">1</sup>",
+      "translation": "By the ˹passage of˺ time!",
       "transliteration": "Wa<b>a</b>lAAa<u>s</u>r<b>i</b>"
      },
      "onVersePress": "[function]",
@@ -546,7 +546,7 @@
      "isActive": false,
      "source": "mushaf",
      "translationName": "Translation",
-     "translationId": "saheeh",
+     "translationId": "clear-quran",
      "showWBW": false,
      "wbwShowTranslation": true,
      "wbwShowTransliteration": false
@@ -561,7 +561,7 @@
       "ayah_number": 2,
       "verse_key": "103:2",
       "text": "إِنَّ ٱلۡإِنسَٰنَ لَفِي خُسۡرٍ ٢",
-      "translation": "Indeed, mankind is in loss,",
+      "translation": "Surely humanity is in ˹grave˺ loss,",
       "transliteration": "Inna alins<u>a</u>na lafee khusr<b>in</b>"
      },
      "onVersePress": "[function]",
@@ -582,7 +582,7 @@
      "isActive": false,
      "source": "mushaf",
      "translationName": "Translation",
-     "translationId": "saheeh",
+     "translationId": "clear-quran",
      "showWBW": false,
      "wbwShowTranslation": true,
      "wbwShowTransliteration": false
@@ -592,7 +592,7 @@
  },
  "reading 403 paused": {
   "count": 5,
-  "sha256": "427692281e98840c088e33355cb3bca414fdf5ccc66aaf61d3a5f6e3598c0eac",
+  "sha256": "29ebbb4b9d8fe2b5de97f49900ef2f2e02097f4efc4c834095416d3bd70014b5",
   "head": [
    [
     "SurahDivider",
@@ -630,7 +630,7 @@
       "ayah_number": 1,
       "verse_key": "103:1",
       "text": "وَٱلۡعَصۡرِ ١",
-      "translation": "By time,<sup foot_note=\"228284\">1</sup>",
+      "translation": "By the ˹passage of˺ time!",
       "transliteration": "Wa<b>a</b>lAAa<u>s</u>r<b>i</b>"
      },
      "onVersePress": "[function]",
@@ -651,7 +651,7 @@
      "isActive": false,
      "source": "mushaf",
      "translationName": "Translation",
-     "translationId": "saheeh",
+     "translationId": "clear-quran",
      "showWBW": false,
      "wbwShowTranslation": true,
      "wbwShowTransliteration": false
@@ -666,7 +666,7 @@
       "ayah_number": 2,
       "verse_key": "103:2",
       "text": "إِنَّ ٱلۡإِنسَٰنَ لَفِي خُسۡرٍ ٢",
-      "translation": "Indeed, mankind is in loss,",
+      "translation": "Surely humanity is in ˹grave˺ loss,",
       "transliteration": "Inna alins<u>a</u>na lafee khusr<b>in</b>"
      },
      "onVersePress": "[function]",
@@ -687,7 +687,7 @@
      "isActive": false,
      "source": "mushaf",
      "translationName": "Translation",
-     "translationId": "saheeh",
+     "translationId": "clear-quran",
      "showWBW": false,
      "wbwShowTranslation": true,
      "wbwShowTransliteration": false
@@ -697,7 +697,7 @@
  },
  "list 1 idle": {
   "count": 6464,
-  "sha256": "a084154271f986dba96525848eb95d80662e891610c7e7a7130a94ea97bb8f7b",
+  "sha256": "0a144d774c5a63e7b899e748088cb5f0cd883e7b2f44d497e89924b8c9d933b5",
   "head": [
    [
     "SurahDivider",
@@ -735,7 +735,7 @@
       "ayah_number": 1,
       "verse_key": "1:1",
       "text": "بِسۡمِ ٱللَّهِ ٱلرَّحۡمَٰنِ ٱلرَّحِيمِ ١",
-      "translation": "In the name of Allāh,<sup foot_note=\"226402\">1</sup> the Entirely Merciful, the Especially Merciful.<sup foot_note=\"226403\">2</sup>",
+      "translation": "In the Name of Allah—the Most Compassionate, Most Merciful.",
       "transliteration": "Bismi All<u>a</u>hi a<b>l</b>rra<u>h</u>m<u>a</u>ni a<b>l</b>rra<u>h</u>eem<b>i</b>"
      },
      "onVersePress": "[function]",
@@ -756,7 +756,7 @@
      "isActive": false,
      "source": "mushaf",
      "translationName": "Translation",
-     "translationId": "saheeh",
+     "translationId": "clear-quran",
      "showWBW": false,
      "wbwShowTranslation": true,
      "wbwShowTransliteration": false
@@ -771,7 +771,7 @@
       "ayah_number": 2,
       "verse_key": "1:2",
       "text": "ٱلۡحَمۡدُ لِلَّهِ رَبِّ ٱلۡعَٰلَمِينَ ٢",
-      "translation": "[All] praise is [due] to Allāh, Lord<sup foot_note=\"226404\">1</sup> of the worlds -",
+      "translation": "All praise is for Allah—Lord of all worlds,",
       "transliteration": "Al<u>h</u>amdu lill<u>a</u>hi rabbi al<u>a</u>lameen<b>a</b>"
      },
      "onVersePress": "[function]",
@@ -792,7 +792,7 @@
      "isActive": false,
      "source": "mushaf",
      "translationName": "Translation",
-     "translationId": "saheeh",
+     "translationId": "clear-quran",
      "showWBW": false,
      "wbwShowTranslation": true,
      "wbwShowTransliteration": false
@@ -801,10 +801,10 @@
   ]
  },
  "list 1 initialScrollIndex": 1,
- "list 1 data": "40fe33057aec90e686eaa6aa7d2bd449fcded8a1d402276171cfce1fb2301614",
+ "list 1 data": "fa4a9b9ba4b7edc2cb141dcfad40c4828103e5f9789f302941ccef6e5b8fc653",
  "list 1 playing": {
   "count": 6464,
-  "sha256": "a2440e6aeb1be4ce86495e4ac4769fab1db42d91f86b6c90f09567327f3edd06",
+  "sha256": "a82d4136a4f978ada2581555d2a43688a7aa72a5fc195114484c6a72c6349e04",
   "head": [
    [
     "SurahDivider",
@@ -842,7 +842,7 @@
       "ayah_number": 1,
       "verse_key": "1:1",
       "text": "بِسۡمِ ٱللَّهِ ٱلرَّحۡمَٰنِ ٱلرَّحِيمِ ١",
-      "translation": "In the name of Allāh,<sup foot_note=\"226402\">1</sup> the Entirely Merciful, the Especially Merciful.<sup foot_note=\"226403\">2</sup>",
+      "translation": "In the Name of Allah—the Most Compassionate, Most Merciful.",
       "transliteration": "Bismi All<u>a</u>hi a<b>l</b>rra<u>h</u>m<u>a</u>ni a<b>l</b>rra<u>h</u>eem<b>i</b>"
      },
      "onVersePress": "[function]",
@@ -863,7 +863,7 @@
      "isActive": false,
      "source": "mushaf",
      "translationName": "Translation",
-     "translationId": "saheeh",
+     "translationId": "clear-quran",
      "showWBW": false,
      "wbwShowTranslation": true,
      "wbwShowTransliteration": false
@@ -878,7 +878,7 @@
       "ayah_number": 2,
       "verse_key": "1:2",
       "text": "ٱلۡحَمۡدُ لِلَّهِ رَبِّ ٱلۡعَٰلَمِينَ ٢",
-      "translation": "[All] praise is [due] to Allāh, Lord<sup foot_note=\"226404\">1</sup> of the worlds -",
+      "translation": "All praise is for Allah—Lord of all worlds,",
       "transliteration": "Al<u>h</u>amdu lill<u>a</u>hi rabbi al<u>a</u>lameen<b>a</b>"
      },
      "onVersePress": "[function]",
@@ -899,7 +899,7 @@
      "isActive": false,
      "source": "mushaf",
      "translationName": "Translation",
-     "translationId": "saheeh",
+     "translationId": "clear-quran",
      "showWBW": false,
      "wbwShowTranslation": true,
      "wbwShowTransliteration": false
@@ -965,7 +965,7 @@
  },
  "list 371 idle": {
   "count": 6464,
-  "sha256": "a084154271f986dba96525848eb95d80662e891610c7e7a7130a94ea97bb8f7b",
+  "sha256": "0a144d774c5a63e7b899e748088cb5f0cd883e7b2f44d497e89924b8c9d933b5",
   "head": [
    [
     "SurahDivider",
@@ -1003,7 +1003,7 @@
       "ayah_number": 1,
       "verse_key": "1:1",
       "text": "بِسۡمِ ٱللَّهِ ٱلرَّحۡمَٰنِ ٱلرَّحِيمِ ١",
-      "translation": "In the name of Allāh,<sup foot_note=\"226402\">1</sup> the Entirely Merciful, the Especially Merciful.<sup foot_note=\"226403\">2</sup>",
+      "translation": "In the Name of Allah—the Most Compassionate, Most Merciful.",
       "transliteration": "Bismi All<u>a</u>hi a<b>l</b>rra<u>h</u>m<u>a</u>ni a<b>l</b>rra<u>h</u>eem<b>i</b>"
      },
      "onVersePress": "[function]",
@@ -1024,7 +1024,7 @@
      "isActive": false,
      "source": "mushaf",
      "translationName": "Translation",
-     "translationId": "saheeh",
+     "translationId": "clear-quran",
      "showWBW": false,
      "wbwShowTranslation": true,
      "wbwShowTransliteration": false
@@ -1039,7 +1039,7 @@
       "ayah_number": 2,
       "verse_key": "1:2",
       "text": "ٱلۡحَمۡدُ لِلَّهِ رَبِّ ٱلۡعَٰلَمِينَ ٢",
-      "translation": "[All] praise is [due] to Allāh, Lord<sup foot_note=\"226404\">1</sup> of the worlds -",
+      "translation": "All praise is for Allah—Lord of all worlds,",
       "transliteration": "Al<u>h</u>amdu lill<u>a</u>hi rabbi al<u>a</u>lameen<b>a</b>"
      },
      "onVersePress": "[function]",
@@ -1060,7 +1060,7 @@
      "isActive": false,
      "source": "mushaf",
      "translationName": "Translation",
-     "translationId": "saheeh",
+     "translationId": "clear-quran",
      "showWBW": false,
      "wbwShowTranslation": true,
      "wbwShowTransliteration": false
@@ -1069,10 +1069,10 @@
   ]
  },
  "list 371 initialScrollIndex": 5490,
- "list 371 data": "40fe33057aec90e686eaa6aa7d2bd449fcded8a1d402276171cfce1fb2301614",
+ "list 371 data": "fa4a9b9ba4b7edc2cb141dcfad40c4828103e5f9789f302941ccef6e5b8fc653",
  "list 371 playing": {
   "count": 6464,
-  "sha256": "a2440e6aeb1be4ce86495e4ac4769fab1db42d91f86b6c90f09567327f3edd06",
+  "sha256": "a82d4136a4f978ada2581555d2a43688a7aa72a5fc195114484c6a72c6349e04",
   "head": [
    [
     "SurahDivider",
@@ -1110,7 +1110,7 @@
       "ayah_number": 1,
       "verse_key": "1:1",
       "text": "بِسۡمِ ٱللَّهِ ٱلرَّحۡمَٰنِ ٱلرَّحِيمِ ١",
-      "translation": "In the name of Allāh,<sup foot_note=\"226402\">1</sup> the Entirely Merciful, the Especially Merciful.<sup foot_note=\"226403\">2</sup>",
+      "translation": "In the Name of Allah—the Most Compassionate, Most Merciful.",
       "transliteration": "Bismi All<u>a</u>hi a<b>l</b>rra<u>h</u>m<u>a</u>ni a<b>l</b>rra<u>h</u>eem<b>i</b>"
      },
      "onVersePress": "[function]",
@@ -1131,7 +1131,7 @@
      "isActive": false,
      "source": "mushaf",
      "translationName": "Translation",
-     "translationId": "saheeh",
+     "translationId": "clear-quran",
      "showWBW": false,
      "wbwShowTranslation": true,
      "wbwShowTransliteration": false
@@ -1146,7 +1146,7 @@
       "ayah_number": 2,
       "verse_key": "1:2",
       "text": "ٱلۡحَمۡدُ لِلَّهِ رَبِّ ٱلۡعَٰلَمِينَ ٢",
-      "translation": "[All] praise is [due] to Allāh, Lord<sup foot_note=\"226404\">1</sup> of the worlds -",
+      "translation": "All praise is for Allah—Lord of all worlds,",
       "transliteration": "Al<u>h</u>amdu lill<u>a</u>hi rabbi al<u>a</u>lameen<b>a</b>"
      },
      "onVersePress": "[function]",
@@ -1167,7 +1167,7 @@
      "isActive": false,
      "source": "mushaf",
      "translationName": "Translation",
-     "translationId": "saheeh",
+     "translationId": "clear-quran",
      "showWBW": false,
      "wbwShowTranslation": true,
      "wbwShowTransliteration": false

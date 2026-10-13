@@ -67,6 +67,12 @@ import {
   type RewayahId,
 } from '@/store/mushafSettingsStore';
 
+import {
+  getTranslationName,
+  getTranslationTextRaw,
+} from '@/utils/translationLookup';
+import {translationPlainText} from '@/utils/translationText';
+
 // --- Pre-cache Translation/Transliteration Data --- //
 interface TransliterationData {
   [key: string]: {
@@ -613,6 +619,7 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
     showRewayahDiffs,
     toggleRewayahDiffs,
     setAllahNameHighlightColor,
+    selectedTranslationId,
   } = useMushafSettingsStore();
 
   const verseKey = '1:1';
@@ -640,20 +647,16 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
       ? subscribedFontMgr
       : null;
 
-  const actualTranslationText = useMemo(() => {
-    try {
-      const saheehInternationalData = require('@/data/SaheehInternational.translation-with-footnote-tags.json');
-      return (
-        saheehInternationalData[verseKey]?.t || 'Error loading translation'
-      );
-    } catch (error) {
-      console.error(
-        '[MushafSettingsContent] Error loading translation:',
-        error,
-      );
-      return 'Error loading translation';
-    }
-  }, []);
+  // The selected edition's 1:1 as plain text; the bundled Clear Quran until a
+  // downloaded edition is loaded.
+  const actualTranslationText = useMemo(
+    () =>
+      translationPlainText(
+        getTranslationTextRaw(verseKey, selectedTranslationId) ||
+          getTranslationTextRaw(verseKey, 'clear-quran'),
+      ) || 'Error loading translation',
+    [selectedTranslationId],
+  );
 
   const actualTransliterationText = useMemo(
     () =>
@@ -1003,7 +1006,7 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
               />
             </View>
             <Text style={styles.helperText}>
-              Using: Saheeh International Translation with footnotes
+              Using: {getTranslationName(selectedTranslationId)}
             </Text>
             {showTranslation && (
               <>

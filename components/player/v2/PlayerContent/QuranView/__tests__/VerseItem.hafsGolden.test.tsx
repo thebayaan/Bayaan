@@ -100,10 +100,16 @@ jest.mock('react-native-actions-sheet', () => ({
 
 jest.mock('@/utils/haptics', () => ({mediumHaptics: jest.fn()}));
 
+// Changed on purpose (QF translations switch-over): the bundled Saheeh with
+// per-verse footnotes is gone; Saheeh International is QF 20, a downloaded
+// edition whose footnotes come from its stored bodies. The scenarios name it
+// and its label explicitly, so the golden output is unchanged.
 jest.mock('@/utils/translationLookup', () => ({
-  isBundledTranslation: (id: string) => id === 'saheeh',
-  getBundledFootnotes: (verseKey: string) =>
-    verseKey === '2:1' ? {'9001': 'FOOTNOTE-OF-2:1'} : undefined,
+  isBundledTranslation: (id: string) => id === 'clear-quran',
+  getRemoteFootnote: (translationId: string, footnoteId: string) =>
+    translationId === '20' && footnoteId === '9001'
+      ? 'FOOTNOTE-OF-2:1'
+      : undefined,
 }));
 
 jest.mock('@/store/tajweedStore', () => {
@@ -204,7 +210,7 @@ const SCENARIOS: Scenario[] = [
       showTranslation: true,
       showTransliteration: true,
       translationName: 'Saheeh International',
-      translationId: 'saheeh',
+      translationId: '20',
     },
   },
   {
@@ -249,7 +255,7 @@ const SCENARIOS: Scenario[] = [
   },
   {
     name: 'long press opens the verse actions sheet',
-    props: {rewayah: 'hafs', fontMgr: null, translationId: 'saheeh'},
+    props: {rewayah: 'hafs', fontMgr: null, translationId: '20'},
     act: r => rowPressable(r).props.onLongPress(),
   },
   {
@@ -263,7 +269,8 @@ const SCENARIOS: Scenario[] = [
       rewayah: 'hafs',
       fontMgr: null,
       showTranslation: true,
-      translationId: 'saheeh',
+      translationName: 'Saheeh International',
+      translationId: '20',
     },
     act: r => {
       rowPressable(r).props.onPress();

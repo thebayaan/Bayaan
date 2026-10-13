@@ -1,9 +1,9 @@
 import {
-  getBundledFootnotes,
   getBundledTranslation,
   getBundledTranslationRaw,
   getRemoteFootnote,
   getTranslationText,
+  isBundledTranslation,
   stripFootnoteMarkers,
   setActiveRemoteTranslationCache,
   clearActiveRemoteTranslationCache,
@@ -16,28 +16,26 @@ function sha256(text: string): string {
 
 const mockGetAllVerses = jest.fn();
 const mockGetFootnotes = jest.fn();
+const mockGetDownloaded = jest.fn();
 jest.mock('@/services/translation/TranslationDbService', () => ({
   translationDbService: {
     getAllVerses: (...args: unknown[]) => mockGetAllVerses(...args),
     getFootnotes: (...args: unknown[]) => mockGetFootnotes(...args),
+    getDownloadedTranslations: (...args: unknown[]) =>
+      mockGetDownloaded(...args),
   },
 }));
 
 describe('translationLookup (characterization, develop behavior)', () => {
   // Exact bundled text, pinned by hash so a swapped or edited translation
-  // fails (the prefix checks below would not catch Saheeh and Clear Quran
-  // being swapped for 2:255).
-  it('returns the exact bundled text for 1:1 and 2:255 in both translations', () => {
+  // fails. Changed on purpose (QF translations switch-over): the bundled
+  // Saheeh International is gone, so its two hashes were dropped; Clear
+  // Quran's are unchanged.
+  it('returns the exact bundled text for 1:1 and 2:255', () => {
     expect({
-      saheeh11: sha256(getBundledTranslation('1:1', 'saheeh')),
-      saheeh2255: sha256(getBundledTranslation('2:255', 'saheeh')),
       clear11: sha256(getBundledTranslation('1:1', 'clear-quran')),
       clear2255: sha256(getBundledTranslation('2:255', 'clear-quran')),
     }).toEqual({
-      saheeh11:
-        'bb9ebf73f5e2c8b94a2956b0bc62f9315409cc3c933b24d2312f0399b5ab032a',
-      saheeh2255:
-        '8365bdf532d87bc3905904c012932b8a35e30a0e67c20eec474d1ad64d5e494f',
       clear11:
         '38fcf74d05c29c7478254a7c48623d214e4eaf3894fa9f529753207f0954e91c',
       // Changed on purpose: 2:255's footnote marker digit is now removed.
@@ -46,12 +44,11 @@ describe('translationLookup (characterization, develop behavior)', () => {
     });
   });
 
-  it('returns Saheeh text for 1:1 and 2:255 (footnote tags are NOT stripped)', () => {
-    const t11 = getBundledTranslation('1:1', 'saheeh');
-    expect(t11.startsWith('In the name of')).toBe(true);
-    expect(t11).toContain('<sup foot_note=');
-    expect(getBundledTranslation('2:255', 'saheeh')).toContain('Ever-Living');
-    expect(getBundledTranslationRaw('1:1', 'saheeh')).toBe(t11);
+  // Replaces the bundled Saheeh text check: Saheeh is QF 20 now, a download.
+  it('bundles Clear Quran only; "saheeh" is no longer bundled', () => {
+    expect(isBundledTranslation('clear-quran')).toBe(true);
+    expect(isBundledTranslation('saheeh')).toBe(false);
+    expect(getTranslationText('1:1', 'saheeh')).toBe('');
   });
 
   it('returns Clear Quran text with HTML stripped', () => {
@@ -83,14 +80,7 @@ describe('translationLookup (characterization, develop behavior)', () => {
   });
 
   it('returns empty string for unknown verse keys', () => {
-    expect(getBundledTranslation('999:1', 'saheeh')).toBe('');
     expect(getBundledTranslation('999:1', 'clear-quran')).toBe('');
-  });
-
-  it('returns the Saheeh footnote map and none for Clear Quran', () => {
-    const real = getBundledFootnotes('1:1', 'saheeh');
-    expect(Object.keys(real ?? {})).toEqual(['226402', '226403']);
-    expect(getBundledFootnotes('1:1', 'clear-quran')).toBeUndefined();
   });
 
   it('getTranslationText returns empty for remote ids unless the active cache matches', () => {
@@ -150,6 +140,8 @@ describe('rebuildEnhancedVerses (characterization, develop behavior)', () => {
     mockGetAllVerses.mockReset();
     mockGetFootnotes.mockReset();
     mockGetFootnotes.mockResolvedValue({});
+    mockGetDownloaded.mockReset();
+    mockGetDownloaded.mockResolvedValue([]);
     warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
   });
 
@@ -182,29 +174,72 @@ describe('rebuildEnhancedVerses (characterization, develop behavior)', () => {
     expect(warnSpy).not.toHaveBeenCalled();
   });
 
-  it('falls back to Saheeh when a remote translation has no verses', async () => {
+  // Changed on purpose (QF translations switch-over): the default and the
+  // fallback are Clear Quran, the only bundled edition, instead of Saheeh.
+  it('starts on Clear Quran', () => {
     const m = loadIsolated();
-    const saheeh = m.getBundledTranslation('1:1', 'saheeh');
-    await m.rebuildEnhancedVerses('clear-quran');
-    expect(m.enhancedVersesBySurah[1][0].translation).not.toBe(saheeh);
+    expect(m.enhancedVersesBySurah[1][0].translation).toBe(
+      m.getBundledTranslation('1:1', 'clear-quran'),
+    );
+  });
+
+  it('falls back to Clear Quran when a remote translation has no verses', async () => {
+    const m = loadIsolated();
+    const clear = m.getBundledTranslation('1:1', 'clear-quran');
+    mockGetAllVerses.mockResolvedValue({'1:1': 'remote text'});
+    await m.rebuildEnhancedVerses('remote.ok');
+    expect(m.enhancedVersesBySurah[1][0].translation).toBe('remote text');
 
     mockGetAllVerses.mockResolvedValue({});
     expect(await m.rebuildEnhancedVerses('unknown.remote')).toBe(true);
-    expect(m.enhancedVersesBySurah[1][0].translation).toBe(saheeh);
+    expect(m.enhancedVersesBySurah[1][0].translation).toBe(clear);
     expect(warnSpy).toHaveBeenCalled();
     expect(m.getTranslationText('1:1', 'unknown.remote')).toBe('');
   });
 
-  it('falls back to Saheeh when the remote load throws', async () => {
+  it('falls back to Clear Quran when the remote load throws', async () => {
     const m = loadIsolated();
-    const saheeh = m.getBundledTranslation('1:1', 'saheeh');
-    await m.rebuildEnhancedVerses('clear-quran');
-    expect(m.enhancedVersesBySurah[1][0].translation).not.toBe(saheeh);
+    const clear = m.getBundledTranslation('1:1', 'clear-quran');
+    mockGetAllVerses.mockResolvedValue({'1:1': 'remote text'});
+    await m.rebuildEnhancedVerses('remote.ok');
 
     mockGetAllVerses.mockRejectedValue(new Error('db'));
     expect(await m.rebuildEnhancedVerses('another.remote')).toBe(true);
-    expect(m.enhancedVersesBySurah[1][0].translation).toBe(saheeh);
+    expect(m.enhancedVersesBySurah[1][0].translation).toBe(clear);
     expect(warnSpy).toHaveBeenCalled();
     expect(m.getTranslationText('1:1', 'another.remote')).toBe('');
+  });
+
+  // Content sync replaces an edition's rows in place (a legacy copy, the
+  // Saheeh auto-install): a new download time reads them again.
+  it('rebuilds the same edition only when its download revision changes', async () => {
+    const m = loadIsolated();
+    mockGetAllVerses.mockResolvedValue({'1:1': 'old'});
+    mockGetDownloaded.mockResolvedValue([
+      {identifier: '19', downloadedAt: 100},
+    ]);
+    expect(await m.rebuildEnhancedVerses('19')).toBe(true);
+    // The revision read with the rows matches: no second read.
+    expect(await m.rebuildEnhancedVerses('19', 100)).toBe(false);
+    expect(await m.rebuildEnhancedVerses('19')).toBe(false);
+
+    mockGetAllVerses.mockResolvedValue({'1:1': 'new'});
+    mockGetDownloaded.mockResolvedValue([
+      {identifier: '19', downloadedAt: 200},
+    ]);
+    expect(await m.rebuildEnhancedVerses('19', 200)).toBe(true);
+    expect(m.getTranslationText('1:1', '19')).toBe('new');
+  });
+
+  it('reads a selected edition once it lands after a fallback', async () => {
+    const m = loadIsolated();
+    mockGetAllVerses.mockResolvedValue({});
+    await m.rebuildEnhancedVerses('20');
+    mockGetAllVerses.mockResolvedValue({'1:1': 'saheeh text'});
+    mockGetDownloaded.mockResolvedValue([
+      {identifier: '20', downloadedAt: 300},
+    ]);
+    expect(await m.rebuildEnhancedVerses('20', 300)).toBe(true);
+    expect(m.enhancedVersesBySurah[1][0].translation).toBe('saheeh text');
   });
 });
