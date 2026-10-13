@@ -243,3 +243,18 @@ describe('rebuildEnhancedVerses (characterization, develop behavior)', () => {
     expect(m.enhancedVersesBySurah[1][0].translation).toBe('saheeh text');
   });
 });
+
+describe('getRenderedTranslationName', () => {
+  it('labels a selection that is not installed as the edition shown', () => {
+    const lookup: typeof import('../translationLookup') = jest.requireActual(
+      '../translationLookup',
+    );
+    const clearQuran = lookup.getTranslationName('clear-quran');
+    expect(lookup.getRenderedTranslationName('20')).toBe(clearQuran);
+    lookup.registerRemoteTranslationName('20', 'Saheeh International');
+    expect(lookup.getRenderedTranslationName('20')).toBe(
+      'Saheeh International',
+    );
+    expect(lookup.getRenderedTranslationName('clear-quran')).toBe(clearQuran);
+  });
+});

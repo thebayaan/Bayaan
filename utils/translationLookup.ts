@@ -76,6 +76,20 @@ export function getTranslationName(translationId: string): string {
   return translationId;
 }
 
+/**
+ * The name of the edition a verse view actually shows. A selection that is
+ * not installed yet (for example QF 20 replacing bundled Saheeh) renders the
+ * bundled fallback, so it is labelled as that instead of by its raw id.
+ */
+export function getRenderedTranslationName(translationId: string): string {
+  if (
+    translationId in BUNDLED_TRANSLATIONS ||
+    translationId in remoteNameRegistry
+  )
+    return getTranslationName(translationId);
+  return BUNDLED_TRANSLATIONS['clear-quran'].name;
+}
+
 export function isBundledTranslation(id: string): id is BundledTranslationId {
   return id in BUNDLED_TRANSLATIONS;
 }

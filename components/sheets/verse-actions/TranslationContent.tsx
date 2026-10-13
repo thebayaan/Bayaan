@@ -15,6 +15,7 @@ import {useTranslationStore} from '@/store/translationStore';
 import SkiaVersePreview from '@/components/share/SkiaVersePreview';
 import {
   getTranslationText,
+  getRenderedTranslationName,
   getTranslationName,
   isBundledTranslation,
 } from '@/utils/translationLookup';
@@ -177,7 +178,9 @@ export const TranslationContent: React.FC<TranslationContentProps> = ({
   );
   // @ai-end
 
-  const activeTranslationName = getTranslationName(selectedTranslationId);
+  const activeTranslationName = getRenderedTranslationName(
+    selectedTranslationId,
+  );
   const activeTranslationText = isBundledTranslation(selectedTranslationId)
     ? bundledText(selectedTranslationId) // @ai
     : translationPlainText(downloadedTexts[selectedTranslationId] ?? '');

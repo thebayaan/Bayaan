@@ -195,6 +195,7 @@ jest.mock('@/utils/enhancedVerseData', () => ({
 
 jest.mock('@/utils/translationLookup', () => ({
   getTranslationName: () => 'Translation',
+  getRenderedTranslationName: () => 'Translation',
 }));
 
 jest.mock('@/store/verseAnnotationsStore', () => {

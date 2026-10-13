@@ -68,7 +68,7 @@ import {
 } from '@/store/mushafSettingsStore';
 
 import {
-  getTranslationName,
+  getRenderedTranslationName,
   getTranslationTextRaw,
 } from '@/utils/translationLookup';
 import {translationPlainText} from '@/utils/translationText';
@@ -1006,7 +1006,7 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
               />
             </View>
             <Text style={styles.helperText}>
-              Using: {getTranslationName(selectedTranslationId)}
+              Using: {getRenderedTranslationName(selectedTranslationId)}
             </Text>
             {showTranslation && (
               <>

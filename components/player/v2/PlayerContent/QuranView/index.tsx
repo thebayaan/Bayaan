@@ -52,7 +52,7 @@ import {
   rebuildEnhancedVerses,
   type EnhancedVerse,
 } from '@/utils/enhancedVerseData';
-import {getTranslationName} from '@/utils/translationLookup';
+import {getRenderedTranslationName} from '@/utils/translationLookup';
 import {useCurrentTrackRewayah} from '@/hooks/useCurrentTrackRewayah';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import branding from '@/config/branding';
@@ -351,7 +351,7 @@ export const QuranView: React.FC<QuranViewProps> = ({
   const wbwShowTransliteration = useMushafSettingsStore(
     s => s.wbwShowTransliteration,
   );
-  const translationName = getTranslationName(selectedTranslationId);
+  const translationName = getRenderedTranslationName(selectedTranslationId);
   const allahNameHighlightColor = useMemo(
     () =>
       getAllahNameHighlightColorHex(

@@ -177,6 +177,7 @@ jest.mock('@/services/timestamps/TimestampService', () => ({
 
 jest.mock('@/utils/translationLookup', () => ({
   getTranslationName: () => 'Translation',
+  getRenderedTranslationName: () => 'Translation',
 }));
 
 jest.mock('@/config/branding', () => ({

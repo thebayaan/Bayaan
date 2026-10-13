@@ -209,6 +209,7 @@ jest.mock('@/services/timestamps/TimestampFetchService', () => ({
 
 jest.mock('@/utils/translationLookup', () => ({
   getTranslationName: () => 'Translation',
+  getRenderedTranslationName: () => 'Translation',
 }));
 
 jest.mock('@/config/branding', () => ({__esModule: true, default: {}}));
