@@ -8,7 +8,12 @@ import * as Crypto from 'expo-crypto';
 import branding from '@/config/branding';
 import {analyticsService} from '@/services/analytics/AnalyticsService';
 import {tafseerDbService} from '@/services/tafseer/TafseerDbService';
-import type {Manifest} from '@/types/content';
+import type {
+  ContentInstaller,
+  ContentKind,
+  ContentMeta,
+  Manifest,
+} from '@/types/content';
 import {createContentApi, resolveContentApiBase} from './contentApi';
 import {
   installResource,
@@ -28,10 +33,20 @@ import {
   migrateLegacyContent,
 } from './legacyMigration';
 import {createTafsirInstaller} from './tafsirInstaller';
+import {createTranslationInstaller} from './translationInstaller';
 
 // After a failed manifest check, further checks in this session wait this long.
 export const FAILED_CHECK_THROTTLE_MS = 3_600_000;
 const TAFSIR_KEY_PREFIX = 'qf:tafsirs:';
+const TRANSLATION_KEY_PREFIX = 'qf:translations:';
+
+// A translation the last cached manifest offers for install.
+export interface OfferedTranslation {
+  key: string;
+  id: string;
+  meta: ContentMeta | undefined;
+  bytes: number | undefined;
+}
 
 let deps: EngineDeps | null = null;
 let subscription: NativeEventSubscription | null = null;
@@ -46,6 +61,29 @@ export function isEngineManagingTafsir(): boolean {
   return !branding.tafsirProvider && resolveContentApiBase() !== null;
 }
 
+// Translations ride on the same engine unless a fork keeps its own provider
+// (RFC-009). Only meaningful while isEngineManagingTafsir() is true.
+export function isEngineManagingTranslations(): boolean {
+  return !branding.translationProvider && resolveContentApiBase() !== null;
+}
+
+function kindForKey(key: string): ContentKind | null {
+  if (key.startsWith(TAFSIR_KEY_PREFIX)) return 'tafsir';
+  if (key.startsWith(TRANSLATION_KEY_PREFIX)) return 'translation';
+  return null;
+}
+
+// The manifest is requested for every kind with an installer, so translation
+// entries are cached; nothing installs a translation without installContent.
+function buildInstallers(): Partial<Record<ContentKind, ContentInstaller>> {
+  return isEngineManagingTranslations()
+    ? {
+        tafsir: createTafsirInstaller(),
+        translation: createTranslationInstaller(),
+      }
+    : {tafsir: createTafsirInstaller()};
+}
+
 export function isOnWifi(state: {type: string}): boolean {
   return state.type === 'wifi' || state.type === 'ethernet';
 }
@@ -54,7 +92,7 @@ function buildDeps(base: string): EngineDeps {
   return {
     api: createContentApi(base, process.env.EXPO_PUBLIC_BAYAAN_API_KEY ?? ''),
     registry: createSqliteContentRegistry(),
-    installers: {tafsir: createTafsirInstaller()},
+    installers: buildInstallers(),
     isOnWifi: async () => isOnWifi(await NetInfo.fetch()),
     sha256: text =>
       Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, text),
@@ -192,7 +230,11 @@ async function exclusive(task: () => Promise<void>): Promise<void> {
 }
 
 export async function installContent(key: string): Promise<void> {
-  if (!key.startsWith(TAFSIR_KEY_PREFIX)) {
+  const kind = kindForKey(key);
+  if (
+    kind === null ||
+    (kind === 'translation' && !isEngineManagingTranslations())
+  ) {
     throw new Error('unsupported_content_key');
   }
   const active = deps;
@@ -210,7 +252,7 @@ export async function installContent(key: string): Promise<void> {
       row.installed_at >= requestedAt
     )
       return;
-    await installResource(active, key, 'tafsir', 'user');
+    await installResource(active, key, kind, 'user');
   });
 }
 
@@ -231,6 +273,33 @@ export async function getOfferedTafsirIds(): Promise<ReadonlySet<string> | null>
   return ids;
 }
 
+// The active translations in the last cached manifest. Null when the engine
+// does not manage translations or no manifest has loaded yet.
+export async function getOfferedTranslations(): Promise<
+  OfferedTranslation[] | null
+> {
+  if (!isEngineManagingTafsir() || !isEngineManagingTranslations()) return null;
+  fallbackRegistry ??= createSqliteContentRegistry();
+  const registry = deps?.registry ?? fallbackRegistry;
+  const {manifest} = await registry.getState();
+  if (!manifest) return null;
+  const offered: OfferedTranslation[] = [];
+  for (const entry of manifest.resources) {
+    if (
+      entry.status !== 'active' ||
+      !entry.key.startsWith(TRANSLATION_KEY_PREFIX)
+    )
+      continue;
+    offered.push({
+      key: entry.key,
+      id: entry.key.slice(TRANSLATION_KEY_PREFIX.length),
+      meta: entry.meta,
+      bytes: entry.bytes,
+    });
+  }
+  return offered;
+}
+
 // Before init (or after teardown) there are no engine deps, but the removal
 // must still stick: record the user_removed marker and delete the rows.
 export async function removeContent(key: string): Promise<void> {
@@ -242,9 +311,6 @@ export async function removeContent(key: string): Promise<void> {
   fallbackRegistry ??= createSqliteContentRegistry();
   const registry = fallbackRegistry;
   await exclusive(() =>
-    removeResource(
-      {registry, installers: {tafsir: createTafsirInstaller()}},
-      key,
-    ),
+    removeResource({registry, installers: buildInstallers()}, key),
   );
 }

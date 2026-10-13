@@ -12,10 +12,15 @@ import type {ContentInstaller, ContentKind, Manifest} from '@/types/content';
 type ContentSync = typeof import('../contentSync');
 
 interface MockState {
-  branding: {tafsirProvider?: string; contentApiBase?: string};
+  branding: {
+    tafsirProvider?: string;
+    translationProvider?: string;
+    contentApiBase?: string;
+  };
   api: jest.Mocked<ContentApi>;
   registry: ContentRegistry;
   installer: jest.Mocked<ContentInstaller>;
+  translationInstaller: jest.Mocked<ContentInstaller>;
   downloaded: jest.Mock<Promise<{identifier: string}[]>, []>;
   track: jest.Mock;
   notify: jest.Mock;
@@ -77,6 +82,9 @@ jest.mock('../contentNotices', () => ({
 jest.mock('../tafsirInstaller', () => ({
   createTafsirInstaller: () => mockState.installer,
 }));
+jest.mock('../translationInstaller', () => ({
+  createTranslationInstaller: () => mockState.translationInstaller,
+}));
 jest.mock('../contentRegistry', () => ({
   ...jest.requireActual('../contentRegistry'),
   createSqliteContentRegistry: () => mockState.registry,
@@ -93,7 +101,9 @@ const HOUR = 3_600_000;
 function entry(key: string, status: 'active' | 'withdrawn' = 'active') {
   return {
     key,
-    kind: 'tafsir' as const,
+    kind: key.startsWith('qf:translations:')
+      ? ('translation' as const)
+      : ('tafsir' as const),
     source: 'qf',
     version: 3,
     status,
@@ -178,6 +188,13 @@ beforeEach(() => {
     }),
     installer: {
       kind: 'tafsir',
+      supportsSchemaVersion: jest.fn((_version: number) => true),
+      install: jest.fn().mockResolvedValue(undefined),
+      remove: jest.fn().mockResolvedValue(undefined),
+      onWithdrawn: jest.fn().mockResolvedValue(undefined),
+    },
+    translationInstaller: {
+      kind: 'translation',
       supportsSchemaVersion: jest.fn((_version: number) => true),
       install: jest.fn().mockResolvedValue(undefined),
       remove: jest.fn().mockResolvedValue(undefined),
@@ -449,13 +466,13 @@ describe('user actions', () => {
     expect((await mockState.registry.get('qf:tafsirs:16'))?.version).toBe(3);
   });
 
-  it('installContent rejects without deps and for non-tafsir keys', async () => {
+  it('installContent rejects without deps and for unknown keys', async () => {
     const sync = load();
     await expect(sync.installContent(KEY)).rejects.toThrow(
       'content_sync_unavailable',
     );
     await sync.initContentSync();
-    await expect(sync.installContent('qf:translations:20')).rejects.toThrow(
+    await expect(sync.installContent('qf:wbw:1')).rejects.toThrow(
       'unsupported_content_key',
     );
   });
@@ -499,6 +516,99 @@ describe('getOfferedTafsirIds', () => {
     expect(await sync.getOfferedTafsirIds()).toEqual(new Set(['169']));
     sync.teardownContentSync();
     expect(await sync.getOfferedTafsirIds()).toEqual(new Set(['169']));
+  });
+});
+
+describe('translations', () => {
+  const TRANSLATION_KEY = 'qf:translations:20';
+
+  it('requests the manifest for both kinds, or tafsir only when a fork keeps its provider', async () => {
+    const sync = load();
+    await sync.initContentSync();
+    expect(mockState.api.fetchManifest.mock.calls[0][0]).toEqual([
+      'tafsir',
+      'translation',
+    ]);
+    sync.teardownContentSync();
+
+    mockState.branding.translationProvider = 'fork';
+    mockState.registry = createMemoryContentRegistry();
+    mockState.api.fetchManifest.mockClear();
+    const forked = load();
+    expect(forked.isEngineManagingTranslations()).toBe(false);
+    await forked.initContentSync();
+    expect(mockState.api.fetchManifest.mock.calls[0][0]).toEqual(['tafsir']);
+  });
+
+  it('never auto-installs a translation the manifest offers', async () => {
+    mockState.api.fetchManifest.mockResolvedValue(
+      ok([entry(KEY), entry(TRANSLATION_KEY)]),
+    );
+    const sync = load();
+    await sync.initContentSync();
+    expect(mockState.translationInstaller.install).not.toHaveBeenCalled();
+    expect(await mockState.registry.get(TRANSLATION_KEY)).toBeNull();
+  });
+
+  it('installContent installs a translation key with the translation installer', async () => {
+    const sync = load();
+    await sync.initContentSync();
+    await sync.installContent(TRANSLATION_KEY);
+    expect(mockState.translationInstaller.install).toHaveBeenCalledWith(
+      TRANSLATION_KEY,
+      expect.objectContaining({key: TRANSLATION_KEY}),
+      undefined,
+    );
+    expect(await mockState.registry.get(TRANSLATION_KEY)).toMatchObject({
+      kind: 'translation',
+      version: 3,
+    });
+  });
+
+  it('installContent rejects a translation key when a fork keeps its provider', async () => {
+    mockState.branding.translationProvider = 'fork';
+    const sync = load();
+    await sync.initContentSync();
+    await expect(sync.installContent(TRANSLATION_KEY)).rejects.toThrow(
+      'unsupported_content_key',
+    );
+  });
+
+  it('removeContent without deps removes a translation with its installer', async () => {
+    const sync = load();
+    await sync.removeContent(TRANSLATION_KEY);
+    expect(mockState.translationInstaller.remove).toHaveBeenCalledWith(
+      TRANSLATION_KEY,
+    );
+    expect(await mockState.registry.get(TRANSLATION_KEY)).toMatchObject({
+      kind: 'translation',
+      user_removed: true,
+    });
+  });
+
+  it('getOfferedTranslations is null without a manifest or when a fork keeps its provider', async () => {
+    expect(await load().getOfferedTranslations()).toBeNull();
+    const cached = ok([entry(TRANSLATION_KEY)]);
+    if (cached.status !== 'ok') throw new Error('unreachable');
+    await mockState.registry.setState({manifest: cached.manifest});
+    mockState.branding.translationProvider = 'fork';
+    expect(await load().getOfferedTranslations()).toBeNull();
+  });
+
+  it('getOfferedTranslations lists the active translations with meta and bytes', async () => {
+    const meta = {name: 'Saheeh International', language: 'english'};
+    mockState.api.fetchManifest.mockResolvedValue(
+      ok([
+        entry(KEY),
+        {...entry(TRANSLATION_KEY), meta},
+        entry('qf:translations:19', 'withdrawn'),
+      ]),
+    );
+    const sync = load();
+    await sync.initContentSync();
+    expect(await sync.getOfferedTranslations()).toEqual([
+      {key: TRANSLATION_KEY, id: '20', meta, bytes: 1000},
+    ]);
   });
 });
 
