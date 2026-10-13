@@ -93,6 +93,7 @@ jest.mock('@/utils/translationLookup', () => ({
   getTranslationText: (key: string, id: string) => `<b>T</b>(${key},${id})`,
   getTranslationTextRaw: (key: string, id: string) => `T(${key},${id})`,
   getTranslationName: (id: string) => `Name-${id}`,
+  getRenderedTranslationName: (id: string) => `Name-${id}`,
   isBundledTranslation: () => true,
 }));
 jest.mock('@/services/translation/TranslationDbService', () => ({
@@ -274,7 +275,8 @@ beforeEach(() => {
   useMushafSettingsStore.setState({
     rewayah: 'warsh',
     mushafRenderer: 'dk_v2',
-    selectedTranslationId: 'saheeh',
+    // Changed on purpose: Clear Quran is the only bundled edition now.
+    selectedTranslationId: 'clear-quran',
   });
   useTafseerStore.setState({
     selectedTafseerId: 'tf-1',
@@ -307,7 +309,7 @@ describe('translation pager', () => {
       />,
     );
     expect(texts()).toEqual(
-      expect.arrayContaining(['1:6', 'T(1:7,saheeh)', NOTE_17]),
+      expect.arrayContaining(['1:6', 'T(1:7,clear-quran)', NOTE_17]),
     );
     expect(lastLogged('preview')).toMatchObject({
       text: unitText('1:6'),
@@ -316,13 +318,15 @@ describe('translation pager', () => {
 
     await press('Prev');
     // Warsh 1:5 is Hafs 1:6: no note.
-    expect(texts()).toEqual(expect.arrayContaining(['1:5', 'T(1:6,saheeh)']));
+    expect(texts()).toEqual(
+      expect.arrayContaining(['1:5', 'T(1:6,clear-quran)']),
+    );
     expect(texts()).not.toContain(NOTE_17);
 
     await press('Next');
     await press('Next');
     expect(texts()).toEqual(
-      expect.arrayContaining(['1:7', 'T(1:7,saheeh)', NOTE_17]),
+      expect.arrayContaining(['1:7', 'T(1:7,clear-quran)', NOTE_17]),
     );
     expect(lastLogged('preview')).toMatchObject({text: unitText('1:7')});
   });
@@ -338,7 +342,10 @@ describe('translation pager', () => {
       />,
     );
     expect(texts()).toEqual(
-      expect.arrayContaining(['103:1', 'T(103:1,saheeh)\nT(103:2,saheeh)']),
+      expect.arrayContaining([
+        '103:1',
+        'T(103:1,clear-quran)\nT(103:2,clear-quran)',
+      ]),
     );
   });
 
@@ -351,7 +358,9 @@ describe('translation pager', () => {
         onBack={() => undefined}
       />,
     );
-    expect(texts()).toEqual(expect.arrayContaining(['1:7', 'T(1:7,saheeh)']));
+    expect(texts()).toEqual(
+      expect.arrayContaining(['1:7', 'T(1:7,clear-quran)']),
+    );
     expect(lastLogged('preview')).toMatchObject({verseKey: '1:7'});
     expect(lastLogged('preview')?.text).toBeUndefined();
   });

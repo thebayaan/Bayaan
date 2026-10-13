@@ -8,6 +8,7 @@ import {
   type ContentRegistry,
 } from '../contentRegistry';
 import type {ContentInstaller, ContentKind, Manifest} from '@/types/content';
+import type {DownloadedTranslationMeta} from '@/types/translation';
 
 type ContentSync = typeof import('../contentSync');
 
@@ -22,6 +23,14 @@ interface MockState {
   installer: jest.Mocked<ContentInstaller>;
   translationInstaller: jest.Mocked<ContentInstaller>;
   downloaded: jest.Mock<Promise<{identifier: string}[]>, []>;
+  // translations.db rows, the selected edition and the removal notice
+  translations: DownloadedTranslationMeta[];
+  translationDb: {
+    renameTranslation: jest.Mock;
+    deleteTranslation: jest.Mock;
+  };
+  selectedTranslationId: string;
+  removedNotice: jest.Mock;
   track: jest.Mock;
   notify: jest.Mock;
   listeners: ((status: string) => void)[];
@@ -78,6 +87,32 @@ jest.mock('@/services/tafseer/TafseerDbService', () => ({
 }));
 jest.mock('../contentNotices', () => ({
   showWithdrawalNotice: (notice: unknown) => mockState.notify(notice),
+  showRemovedTranslationsNotice: (names: unknown) =>
+    mockState.removedNotice(names),
+}));
+jest.mock('@/services/translation/TranslationDbService', () => ({
+  translationDbService: {
+    getDownloadedTranslations: async () => mockState.translations,
+    renameTranslation: (...args: unknown[]) =>
+      mockState.translationDb.renameTranslation(...args),
+    deleteTranslation: (...args: unknown[]) =>
+      mockState.translationDb.deleteTranslation(...args),
+  },
+}));
+jest.mock('@/store/mushafSettingsStore', () => ({
+  useMushafSettingsStore: {
+    getState: () => ({
+      selectedTranslationId: mockState.selectedTranslationId,
+      setSelectedTranslationId: (id: string) => {
+        mockState.selectedTranslationId = id;
+      },
+    }),
+  },
+}));
+jest.mock('@/store/translationStore', () => ({
+  useTranslationStore: {
+    getState: () => ({loadDownloadedMeta: async () => undefined}),
+  },
 }));
 jest.mock('../tafsirInstaller', () => ({
   createTafsirInstaller: () => mockState.installer,
@@ -182,6 +217,13 @@ beforeEach(() => {
     registry: createMemoryContentRegistry(),
     track: jest.fn(),
     notify: jest.fn(),
+    translations: [],
+    translationDb: {
+      renameTranslation: jest.fn(async () => undefined),
+      deleteTranslation: jest.fn(async () => undefined),
+    },
+    selectedTranslationId: 'clear-quran',
+    removedNotice: jest.fn(),
     downloaded: jest.fn(async () => {
       events.push('migrate');
       return [];
@@ -608,6 +650,130 @@ describe('translations', () => {
     await sync.initContentSync();
     expect(await sync.getOfferedTranslations()).toEqual([
       {key: TRANSLATION_KEY, id: '20', meta, bytes: 1000},
+    ]);
+  });
+});
+
+describe('translations migration (spec 4.7)', () => {
+  function meta(identifier: string, englishName: string) {
+    return {
+      identifier,
+      name: englishName,
+      englishName,
+      language: 'en',
+      direction: 'ltr' as const,
+      downloadedAt: 1,
+      verseCount: 6236,
+    };
+  }
+
+  it('renames a matched edition before the check, which then replaces it', async () => {
+    mockState.translations = [meta('en.pickthall', 'Pickthall')];
+    mockState.selectedTranslationId = 'en.pickthall';
+    mockState.api.fetchManifest.mockResolvedValue(
+      ok([entry(KEY), entry('qf:translations:19')]),
+    );
+    const sync = load();
+    await sync.initContentSync();
+    expect(mockState.translationDb.renameTranslation).toHaveBeenCalledWith(
+      'en.pickthall',
+      '19',
+    );
+    expect(mockState.selectedTranslationId).toBe('19');
+    expect(mockState.api.getDownloadTicket).toHaveBeenCalledWith(
+      'qf:translations:19',
+    );
+    expect(await mockState.registry.get('qf:translations:19')).toMatchObject({
+      legacy: false,
+      version: 3,
+    });
+    expect(mockState.track).not.toHaveBeenCalledWith(
+      'failed',
+      expect.anything(),
+    );
+  });
+
+  it('runs once: a later cycle leaves the translations alone', async () => {
+    mockState.translations = [meta('en.itani', 'Itani')];
+    const sync = load();
+    await sync.initContentSync();
+    expect(mockState.removedNotice).toHaveBeenCalledWith(['Itani']);
+    expect(
+      (await mockState.registry.getState()).translationsMigratedAt,
+    ).not.toBeNull();
+    mockState.now += DAY;
+    foreground();
+    await settle();
+    expect(mockState.translationDb.deleteTranslation).toHaveBeenCalledTimes(1);
+    expect(mockState.removedNotice).toHaveBeenCalledTimes(1);
+  });
+
+  it('a Saheeh selection gets QF 20 installed once, in the same cycle', async () => {
+    mockState.selectedTranslationId = 'saheeh';
+    mockState.api.fetchManifest.mockResolvedValue(
+      ok([entry(KEY), entry('qf:translations:20')]),
+    );
+    const sync = load();
+    await sync.initContentSync();
+    expect(mockState.selectedTranslationId).toBe('20');
+    expect(mockState.translationInstaller.install).toHaveBeenCalledWith(
+      'qf:translations:20',
+      expect.anything(),
+      undefined,
+    );
+    expect(
+      (await mockState.registry.getState()).translationAutoInstallKey,
+    ).toBeNull();
+
+    mockState.now += DAY;
+    foreground();
+    await settle();
+    expect(mockState.translationInstaller.install).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not auto-install QF 20 while the manifest withdraws it', async () => {
+    mockState.selectedTranslationId = 'saheeh';
+    mockState.api.fetchManifest.mockResolvedValue(
+      ok([entry(KEY), entry('qf:translations:20', 'withdrawn')]),
+    );
+    const sync = load();
+    await sync.initContentSync();
+    expect(mockState.translationInstaller.install).not.toHaveBeenCalled();
+    expect(
+      (await mockState.registry.getState()).translationAutoInstallKey,
+    ).toBe('qf:translations:20');
+  });
+
+  it('a fork keeping its provider migrates nothing; only saheeh moves to Clear Quran', async () => {
+    mockState.branding.translationProvider = 'fork';
+    mockState.translations = [meta('en.pickthall', 'Pickthall')];
+    mockState.selectedTranslationId = 'saheeh';
+    const sync = load();
+    await sync.initContentSync();
+    expect(mockState.selectedTranslationId).toBe('clear-quran');
+    expect(mockState.translationDb.renameTranslation).not.toHaveBeenCalled();
+    expect(mockState.translationDb.deleteTranslation).not.toHaveBeenCalled();
+    expect(
+      (await mockState.registry.getState()).translationsMigratedAt,
+    ).toBeNull();
+  });
+
+  it('getOfferedTranslations ignores a manifest cached before translations were requested', async () => {
+    const cached = ok([entry('qf:translations:20')]);
+    if (cached.status !== 'ok') throw new Error('unreachable');
+    await mockState.registry.setState({
+      manifest: cached.manifest,
+      manifestKinds: 'tafsir',
+    });
+    expect(await load().getOfferedTranslations()).toBeNull();
+    await mockState.registry.setState({manifestKinds: 'tafsir,translation'});
+    expect(await load().getOfferedTranslations()).toEqual([
+      {
+        key: 'qf:translations:20',
+        id: '20',
+        meta: undefined,
+        bytes: 1000,
+      },
     ]);
   });
 });

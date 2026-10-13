@@ -92,12 +92,10 @@ const mockFootnoteLookups: string[] = [];
 // '20' stands for a downloaded QF edition; every other id is bundled.
 jest.mock('@/utils/translationLookup', () => ({
   isBundledTranslation: (id: string) => id !== '20',
-  getBundledFootnotes: (verseKey: string) => {
-    mockFootnoteLookups.push(verseKey);
-    return {'77': `FOOTNOTE-OF-${verseKey}`};
+  getRemoteFootnote: (translationId: string, footnoteId: string) => {
+    mockFootnoteLookups.push(translationId);
+    return footnoteId === '77' ? `DB-FOOTNOTE-${translationId}` : undefined;
   },
-  getRemoteFootnote: (translationId: string, footnoteId: string) =>
-    footnoteId === '77' ? `DB-FOOTNOTE-${translationId}` : undefined,
 }));
 
 jest.mock('@/store/tajweedStore', () => {
@@ -448,11 +446,15 @@ describe('Hafs-aligned content per Hafs verse', () => {
     expect(texts(r).some(t => t.startsWith('TL('))).toBe(false);
   });
 
-  it('a footnote opens from its own Hafs verse', () => {
+  // Changed on purpose (QF translations switch-over): the per-verse bundled
+  // Saheeh footnotes are gone. The only bundled edition, Clear Quran, has no
+  // footnote bodies, so a marker on it shows the unavailable text without a
+  // lookup.
+  it('a footnote of the bundled edition has no body to show', () => {
     const r = render(row(fatihah, '1:6'), {showTranslation: true});
     act(() => mockHandlers.onFootnotePress?.('77', '1'));
-    expect(mockFootnoteLookups).toEqual(['1:7']);
-    expect(texts(r)).toContain('FOOTNOTE-OF-1:7');
+    expect(mockFootnoteLookups).toEqual([]);
+    expect(texts(r)).toContain('Footnote data not available');
   });
 
   it('a footnote of a downloaded edition comes from its stored footnotes', () => {
@@ -461,7 +463,7 @@ describe('Hafs-aligned content per Hafs verse', () => {
       translationId: '20',
     });
     act(() => mockHandlers.onFootnotePress?.('77', '1'));
-    expect(mockFootnoteLookups).toEqual([]);
+    expect(mockFootnoteLookups).toEqual(['20']);
     expect(texts(r)).toContain('DB-FOOTNOTE-20');
     act(() => mockHandlers.onFootnotePress?.('78', '2'));
     expect(texts(r)).toContain('Footnote data not available');

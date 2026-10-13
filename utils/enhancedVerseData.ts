@@ -11,11 +11,6 @@ import {translationDbService} from '@/services/translation/TranslationDbService'
 // Import data with type safety - loaded once at module scope
 const quranData = require('@/data/quran.json') as QuranData;
 
-export interface SaheehEntry {
-  t: string;
-  f?: Record<string, string>;
-}
-
 export interface TransliterationVerse {
   t: string;
 }
@@ -41,8 +36,14 @@ Object.values(versesBySurah).forEach(arr =>
   arr.sort((a, b) => a.ayah_number - b.ayah_number),
 );
 
-// Track which translation is currently indexed
-let currentTranslationId: string = 'saheeh';
+// The bundled edition: the default, and the fallback when a download is
+// missing or unreadable.
+const FALLBACK_TRANSLATION_ID: BundledTranslationId = 'clear-quran';
+
+// Track which translation is currently indexed, and the download revision
+// it was read at (an update of the same edition rebuilds too)
+let currentTranslationId: string = FALLBACK_TRANSLATION_ID;
+let currentRevision: number | undefined;
 
 // Pre-build enhanced verse arrays with translations at module scope
 export const enhancedVersesBySurah: Record<number, EnhancedVerse[]> = {};
@@ -78,8 +79,22 @@ function buildBundledEnhancedVerses(translationId: BundledTranslationId) {
   currentTranslationId = translationId;
 }
 
-// Initial build with default (saheeh)
-buildBundledEnhancedVerses('saheeh');
+// Initial build with the default (Clear Quran)
+buildBundledEnhancedVerses(FALLBACK_TRANSLATION_ID);
+
+// The download time of the rows read, so a later rebuild can tell whether
+// content sync replaced them; undefined when unknown.
+async function loadRevision(
+  translationId: string,
+): Promise<number | undefined> {
+  try {
+    const downloaded = await translationDbService.getDownloadedTranslations();
+    return downloaded.find(item => item.identifier === translationId)
+      ?.downloadedAt;
+  } catch {
+    return undefined;
+  }
+}
 
 // Footnotes are optional: a failed read keeps the verses and shows no bodies.
 async function loadFootnotes(
@@ -95,12 +110,20 @@ async function loadFootnotes(
 /**
  * Rebuild the enhanced verse arrays with a different translation.
  * For bundled translations this is synchronous; for remote ones it loads from SQLite.
- * Returns true if the data was actually rebuilt (i.e., translationId changed).
+ * `revision` (the download time of the edition) rebuilds the same edition
+ * after content sync replaced its rows.
+ * Returns true if the data was actually rebuilt.
  */
 export async function rebuildEnhancedVerses(
   translationId: string,
+  revision?: number,
 ): Promise<boolean> {
-  if (translationId === currentTranslationId) return false;
+  if (
+    translationId === currentTranslationId &&
+    (revision === undefined || revision === currentRevision)
+  )
+    return false;
+  currentRevision = undefined;
 
   if (isBundledTranslation(translationId)) {
     clearActiveRemoteTranslationCache();
@@ -114,13 +137,14 @@ export async function rebuildEnhancedVerses(
       await translationDbService.getAllVerses(translationId);
     if (Object.keys(translationMap).length === 0) {
       console.warn(
-        `[enhancedVerseData] No verses found for ${translationId}, falling back to saheeh`,
+        `[enhancedVerseData] No verses found for ${translationId}, falling back to ${FALLBACK_TRANSLATION_ID}`,
       );
       clearActiveRemoteTranslationCache();
-      buildBundledEnhancedVerses('saheeh');
+      buildBundledEnhancedVerses(FALLBACK_TRANSLATION_ID);
       return true;
     }
     const footnotes = await loadFootnotes(translationId);
+    currentRevision = await loadRevision(translationId);
     buildEnhancedVersesFromMap(translationId, translationMap);
     // Populate the sync cache so sheets can look up verses without async
     setActiveRemoteTranslationCache(translationId, translationMap, footnotes);
@@ -131,7 +155,7 @@ export async function rebuildEnhancedVerses(
       error,
     );
     clearActiveRemoteTranslationCache();
-    buildBundledEnhancedVerses('saheeh');
+    buildBundledEnhancedVerses(FALLBACK_TRANSLATION_ID);
     return true;
   }
 }

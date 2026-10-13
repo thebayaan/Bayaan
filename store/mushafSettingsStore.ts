@@ -238,7 +238,7 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
       scrollDirection: 'horizontal' as MushafScrollDirection,
       pageLayout: 'book' as MushafPageLayout, // Default to book page view
       recentPages: [],
-      selectedTranslationId: 'saheeh',
+      selectedTranslationId: 'clear-quran',
       lightThemeId: 'default',
       darkThemeId: 'dark-default',
       rewayah: 'hafs' as RewayahId,
@@ -445,6 +445,8 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
           delete state.lastReadPage;
         }
         if (version < 6) {
+          // The retired bundled Saheeh: the translations migration (content
+          // sync) moves it to QF 20, or to Clear Quran without the engine.
           state.selectedTranslationId = 'saheeh';
         }
         if (version < 7) {

@@ -157,6 +157,12 @@ jest.mock('@/store/verseAnnotationsStore', () => {
   };
 });
 
+// QuranView reads the selected edition's download time from the translation
+// store (content sync replacing it rebuilds the verses); nothing is downloaded.
+jest.mock('@/store/translationStore', () => {
+  const {create} = jest.requireActual('zustand');
+  return {useTranslationStore: create(() => ({downloadedMeta: []}))};
+});
 jest.mock('@/store/tajweedStore', () => {
   const {create} = jest.requireActual('zustand');
   return {useTajweedStore: create(() => ({indexedTajweedData: null}))};
@@ -177,6 +183,7 @@ jest.mock('@/services/timestamps/TimestampService', () => ({
 
 jest.mock('@/utils/translationLookup', () => ({
   getTranslationName: () => 'Translation',
+  getRenderedTranslationName: () => 'Translation',
 }));
 
 jest.mock('@/config/branding', () => ({

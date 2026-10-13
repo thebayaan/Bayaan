@@ -23,10 +23,21 @@ import {useHeaderHeight} from 'expo-router/react-navigation';
 import {USE_GLASS} from '@/hooks/useGlassProps';
 import {useNavigation} from 'expo-router';
 import TabSelector from '@/components/TabSelector';
+import {SearchInput} from '@/components/SearchInput';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
-import {useTranslationStore} from '@/store/translationStore';
+import {
+  buildTranslationPicker,
+  useTranslationStore,
+  type PickerTranslation,
+} from '@/store/translationStore';
 import {browsableTafaseer, useTafseerStore} from '@/store/tafseerStore';
-import {tafseerDownloadFailure} from '@/services/content/contentNotices';
+import {
+  tafseerDownloadFailure,
+  translationDownloadFailure,
+} from '@/services/content/contentNotices';
+import {translationLanguageName} from '@/services/content/translationInstaller';
+import {DEFAULT_TRANSLATION_ID} from '@/services/translation/translationRemap';
+import {formatBytes} from '@/services/storageService';
 import {
   getTranslationName,
   isBundledTranslation,
@@ -34,13 +45,11 @@ import {
 } from '@/utils/translationLookup';
 import {
   BUNDLED_TRANSLATIONS,
-  type BundledTranslationId,
   type DownloadedTranslationMeta,
 } from '@/types/translation';
 import type {DownloadedTafseerMeta} from '@/types/tafseer';
 import {lightHaptics} from '@/utils/haptics';
 import {useBottomInset} from '@/hooks/useBottomInset';
-import {AVAILABLE_TRANSLATIONS} from '@/data/availableTranslations';
 import {AVAILABLE_TAFASEER} from '@/data/availableTafaseer';
 
 type ActiveTab = 'Translations' | 'Tafaseer';
@@ -53,58 +62,9 @@ const showDownloadInProgressAlert = () =>
     'Please wait until the current download completes before starting another.',
   );
 
-const LANGUAGE_NAMES: Record<string, string> = {
-  en: 'English',
-  ar: 'Arabic',
-  fr: 'French',
-  de: 'German',
-  es: 'Spanish',
-  pt: 'Portuguese',
-  ru: 'Russian',
-  tr: 'Turkish',
-  ur: 'Urdu',
-  id: 'Indonesian',
-  ms: 'Malay',
-  bn: 'Bengali',
-  hi: 'Hindi',
-  fa: 'Persian',
-  zh: 'Chinese',
-  ja: 'Japanese',
-  ko: 'Korean',
-  it: 'Italian',
-  nl: 'Dutch',
-  pl: 'Polish',
-  sv: 'Swedish',
-  th: 'Thai',
-  vi: 'Vietnamese',
-  ha: 'Hausa',
-  so: 'Somali',
-  sw: 'Swahili',
-  am: 'Amharic',
-  az: 'Azerbaijani',
-  bs: 'Bosnian',
-  cs: 'Czech',
-  dv: 'Dhivehi',
-  ku: 'Kurdish',
-  ml: 'Malayalam',
-  no: 'Norwegian',
-  ro: 'Romanian',
-  sq: 'Albanian',
-  ta: 'Tamil',
-  tt: 'Tatar',
-  ug: 'Uyghur',
-  uz: 'Uzbek',
-};
-
-function getLanguageDisplayName(code: string): string {
-  return LANGUAGE_NAMES[code] ?? code.charAt(0).toUpperCase() + code.slice(1);
-}
-
 function normalizeTafseerLanguage(lang: string): string {
   return lang;
 }
-
-const bundledIds = Object.keys(BUNDLED_TRANSLATIONS) as BundledTranslationId[];
 
 // Flattened item types for FlashList
 interface MetaHeaderItem {
@@ -130,7 +90,41 @@ interface RowItem {
   isLastInGroup: boolean;
 }
 
-type FlatItem = MetaHeaderItem | LangHeaderItem | RowItem;
+// Before any catalog is known: how to see more translations.
+interface ConnectItem {
+  type: 'connect';
+}
+
+type FlatItem = MetaHeaderItem | LangHeaderItem | RowItem | ConnectItem;
+
+// A translation row: the name, with author and download size underneath.
+function translationRow(translation: PickerTranslation): RowItem {
+  const details = [
+    translation.author,
+    translation.isDownloaded || translation.bytes === null
+      ? null
+      : formatBytes(translation.bytes),
+  ].filter((detail): detail is string => !!detail);
+  return {
+    type: 'row',
+    id: translation.id,
+    name: details.length > 0 ? details.join(' · ') : translation.name,
+    englishName: translation.name,
+    language: translation.language,
+    isBundled: translation.isBundled,
+    isDownloaded: translation.isDownloaded,
+    isFirstInGroup: false,
+    isLastInGroup: false,
+  };
+}
+
+function markGroup(rows: RowItem[]): RowItem[] {
+  rows.forEach((row, idx) => {
+    row.isFirstInGroup = idx === 0;
+    row.isLastInGroup = idx === rows.length - 1;
+  });
+  return rows;
+}
 
 export default function TranslationsContent() {
   const {theme} = useTheme();
@@ -151,6 +145,11 @@ export default function TranslationsContent() {
   );
 
   const downloadedMeta = useTranslationStore(s => s.downloadedMeta);
+  const offeredTranslations = useTranslationStore(s => s.offeredTranslations);
+  const loadOfferedTranslations = useTranslationStore(
+    s => s.loadOfferedTranslations,
+  );
+  const [translationQuery, setTranslationQuery] = useState('');
   const downloadingId = useTranslationStore(s => s.downloadingId);
   const downloadProgress = useTranslationStore(s => s.downloadProgress);
   const downloadTranslation = useTranslationStore(s => s.downloadTranslation);
@@ -171,23 +170,24 @@ export default function TranslationsContent() {
 
   useEffect(() => {
     loadDownloadedMeta();
+    loadOfferedTranslations();
     loadTafseerMeta();
     loadOfferedTafsirs();
-  }, [loadDownloadedMeta, loadTafseerMeta, loadOfferedTafsirs]);
+  }, [
+    loadDownloadedMeta,
+    loadOfferedTranslations,
+    loadTafseerMeta,
+    loadOfferedTafsirs,
+  ]);
 
   useEffect(() => {
     for (const meta of downloadedMeta) {
       registerRemoteTranslationName(meta.identifier, meta.englishName);
     }
-    for (const edition of AVAILABLE_TRANSLATIONS) {
-      registerRemoteTranslationName(edition.identifier, edition.englishName);
+    for (const edition of offeredTranslations ?? []) {
+      registerRemoteTranslationName(edition.id, edition.name);
     }
-  }, [downloadedMeta]);
-
-  const downloadedIds = useMemo(
-    () => new Set(downloadedMeta.map(m => m.identifier)),
-    [downloadedMeta],
-  );
+  }, [downloadedMeta, offeredTranslations]);
 
   const tafseerDownloadedIds = useMemo(
     () => new Set(tafseerDownloaded.map(m => m.identifier)),
@@ -217,11 +217,9 @@ export default function TranslationsContent() {
       }
       try {
         await downloadTranslation(editionId);
-      } catch {
-        Alert.alert(
-          'Download Failed',
-          'Unable to download this translation. Please check your internet connection and try again.',
-        );
+      } catch (error) {
+        const {title, message} = translationDownloadFailure(error);
+        Alert.alert(title, message);
       }
     },
     [downloadTranslation, downloadingId],
@@ -239,7 +237,7 @@ export default function TranslationsContent() {
             style: 'destructive',
             onPress: async () => {
               if (selectedTranslationId === meta.identifier) {
-                setSelectedTranslationId('saheeh');
+                setSelectedTranslationId(DEFAULT_TRANSLATION_ID);
               }
               await deleteTranslation(meta.identifier);
             },
@@ -300,103 +298,40 @@ export default function TranslationsContent() {
   );
 
   // --- Flattened data for FlashList ---
+  // Installed editions first, then the catalog grouped by language; before
+  // any catalog is known, a short row says how to see more.
   const translationData = useMemo((): FlatItem[] => {
+    const picker = buildTranslationPicker({
+      downloaded: downloadedMeta,
+      offered: offeredTranslations,
+      selectedId: selectedTranslationId,
+      query: translationQuery,
+    });
     const items: FlatItem[] = [];
 
-    // Build unified row list: bundled + downloaded + available
-    const allRows: RowItem[] = [];
-
-    for (const id of bundledIds) {
-      const info = BUNDLED_TRANSLATIONS[id];
-      allRows.push({
-        type: 'row',
-        id,
-        name: info.name,
-        englishName: info.name,
-        language: 'en',
-        isBundled: true,
-        isDownloaded: true,
-        isFirstInGroup: false,
-        isLastInGroup: false,
-      });
-    }
-
-    for (const meta of downloadedMeta) {
-      if (isBundledTranslation(meta.identifier)) continue;
-      allRows.push({
-        type: 'row',
-        id: meta.identifier,
-        name: meta.name,
-        englishName: meta.englishName,
-        language: meta.language,
-        isBundled: false,
-        isDownloaded: true,
-        isFirstInGroup: false,
-        isLastInGroup: false,
-      });
-    }
-
-    for (const edition of AVAILABLE_TRANSLATIONS) {
-      if (downloadedIds.has(edition.identifier)) continue;
-      if (isBundledTranslation(edition.identifier)) continue;
-      allRows.push({
-        type: 'row',
-        id: edition.identifier,
-        name: edition.name,
-        englishName: edition.englishName,
-        language: edition.language,
-        isBundled: false,
-        isDownloaded: false,
-        isFirstInGroup: false,
-        isLastInGroup: false,
-      });
-    }
-
-    // Available section — downloaded items (excluding active)
-    const availableRows = allRows
-      .filter(r => r.isDownloaded && r.id !== selectedTranslationId)
-      .sort((a, b) => a.englishName.localeCompare(b.englishName));
-
-    if (availableRows.length > 0) {
+    if (picker.installed.length > 0) {
       items.push({type: 'meta-header', title: 'AVAILABLE'});
-      availableRows.forEach((row, idx) => {
-        row.isFirstInGroup = idx === 0;
-        row.isLastInGroup = idx === availableRows.length - 1;
-      });
-      items.push(...availableRows);
+      items.push(...markGroup(picker.installed.map(translationRow)));
     }
 
-    // Language groups — only non-downloaded items
-    const browseRows = allRows.filter(r => !r.isDownloaded);
-    const byLang: Record<string, RowItem[]> = {};
-    for (const row of browseRows) {
-      (byLang[row.language] ??= []).push(row);
-    }
-
-    const sortedLangs = Object.keys(byLang).sort((a, b) => {
-      if (a === 'en') return -1;
-      if (b === 'en') return 1;
-      return getLanguageDisplayName(a).localeCompare(getLanguageDisplayName(b));
-    });
-
-    for (const lang of sortedLangs) {
-      const rows = byLang[lang].sort((a, b) =>
-        a.englishName.localeCompare(b.englishName),
-      );
+    for (const group of picker.groups) {
       items.push({
         type: 'lang-header',
-        title: getLanguageDisplayName(lang),
-        count: rows.length,
+        title: group.language,
+        count: group.rows.length,
       });
-      rows.forEach((row, idx) => {
-        row.isFirstInGroup = idx === 0;
-        row.isLastInGroup = idx === rows.length - 1;
-      });
-      items.push(...rows);
+      items.push(...markGroup(group.rows.map(translationRow)));
     }
 
+    if (picker.needsCatalog) items.push({type: 'connect'});
+
     return items;
-  }, [selectedTranslationId, downloadedMeta, downloadedIds]);
+  }, [
+    selectedTranslationId,
+    downloadedMeta,
+    offeredTranslations,
+    translationQuery,
+  ]);
 
   const tafseerData = useMemo((): FlatItem[] => {
     const items: FlatItem[] = [];
@@ -489,6 +424,7 @@ export default function TranslationsContent() {
       if (item.type === 'meta-header' || item.type === 'lang-header') {
         return `trans-header-${item.title}`;
       }
+      if (item.type === 'connect') return 'trans-connect';
       return `trans-${item.id}`;
     },
     [],
@@ -498,21 +434,21 @@ export default function TranslationsContent() {
     if (item.type === 'meta-header' || item.type === 'lang-header') {
       return `tafseer-header-${item.title}`;
     }
+    if (item.type === 'connect') return 'tafseer-connect';
     return `tafseer-${item.id}`;
   }, []);
 
   const translationListHeader = useMemo(() => {
     const activeName = getTranslationName(selectedTranslationId);
     const activeLang = isBundledTranslation(selectedTranslationId)
-      ? 'English'
-      : getLanguageDisplayName(
-          AVAILABLE_TRANSLATIONS.find(
-            e => e.identifier === selectedTranslationId,
-          )?.language ??
-            downloadedMeta.find(m => m.identifier === selectedTranslationId)
-              ?.language ??
-            '',
-        );
+      ? BUNDLED_TRANSLATIONS[selectedTranslationId].language
+      : (offeredTranslations?.find(e => e.id === selectedTranslationId)
+          ?.language ??
+        translationLanguageName(
+          downloadedMeta.find(m => m.identifier === selectedTranslationId)
+            ?.language,
+        ) ??
+        '');
     return (
       <>
         <View style={styles.metaHeaderContainer}>
@@ -529,9 +465,31 @@ export default function TranslationsContent() {
             <Text style={styles.activeBadgeText}>Active</Text>
           </View>
         </View>
+        <SearchInput
+          placeholder="Search translations..."
+          value={translationQuery}
+          onChangeText={setTranslationQuery}
+          showCancelButton={false}
+          iconColor={theme.colors.text}
+          iconOpacity={0.25}
+          placeholderTextColor={Color(theme.colors.text).alpha(0.35).toString()}
+          textColor={theme.colors.text}
+          backgroundColor={Color(theme.colors.text).alpha(0.04).toString()}
+          borderColor={Color(theme.colors.text).alpha(0.06).toString()}
+          autoCorrect={false}
+          autoCapitalize="none"
+          containerStyle={styles.searchContainer}
+        />
       </>
     );
-  }, [selectedTranslationId, downloadedMeta, styles]);
+  }, [
+    selectedTranslationId,
+    downloadedMeta,
+    offeredTranslations,
+    translationQuery,
+    styles,
+    theme.colors.text,
+  ]);
 
   const tafseerListHeader = useMemo(() => {
     if (!selectedTafseerId) return null;
@@ -577,6 +535,11 @@ export default function TranslationsContent() {
             <Text style={styles.langHeader}>{item.title}</Text>
             <Text style={styles.langCount}>{item.count}</Text>
           </View>
+        );
+      }
+      if (item.type === 'connect') {
+        return (
+          <Text style={styles.emptyText}>Connect to see more translations</Text>
         );
       }
       return null;
@@ -934,6 +897,11 @@ const createStyles = (theme: Theme) =>
       fontFamily: 'Manrope-SemiBold',
       color: Color(theme.colors.text).alpha(0.55).toString(),
       letterSpacing: 0.3,
+    },
+
+    searchContainer: {
+      paddingHorizontal: moderateScale(16),
+      paddingTop: moderateScale(12),
     },
 
     // Card grouping

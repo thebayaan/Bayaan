@@ -31,6 +31,7 @@ import type {
   RewayahId,
 } from '@/store/mushafSettingsStore';
 import {useTajweedStore} from '@/store/tajweedStore';
+import {useTranslationStore} from '@/store/translationStore';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
 import {useMushafFontMgr} from '@/hooks/useMushafFontMgr';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
@@ -51,7 +52,7 @@ import {
   rebuildEnhancedVerses,
   type EnhancedVerse,
 } from '@/utils/enhancedVerseData';
-import {getTranslationName} from '@/utils/translationLookup';
+import {getRenderedTranslationName} from '@/utils/translationLookup';
 import {useCurrentTrackRewayah} from '@/hooks/useCurrentTrackRewayah';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import branding from '@/config/branding';
@@ -338,12 +339,19 @@ export const QuranView: React.FC<QuranViewProps> = ({
   const selectedTranslationId = useMushafSettingsStore(
     s => s.selectedTranslationId,
   );
+  // When content sync installs or replaces the selected edition, its
+  // download time changes and the verses are read again.
+  const selectedTranslationRevision = useTranslationStore(
+    s =>
+      s.downloadedMeta.find(meta => meta.identifier === selectedTranslationId)
+        ?.downloadedAt,
+  );
   const showWBW = useMushafSettingsStore(s => s.showWBW);
   const wbwShowTranslation = useMushafSettingsStore(s => s.wbwShowTranslation);
   const wbwShowTransliteration = useMushafSettingsStore(
     s => s.wbwShowTransliteration,
   );
-  const translationName = getTranslationName(selectedTranslationId);
+  const translationName = getRenderedTranslationName(selectedTranslationId);
   const allahNameHighlightColor = useMemo(
     () =>
       getAllahNameHighlightColorHex(
@@ -410,10 +418,13 @@ export const QuranView: React.FC<QuranViewProps> = ({
 
   // Rebuild enhanced verse data when translation changes
   useEffect(() => {
-    rebuildEnhancedVerses(selectedTranslationId).then(rebuilt => {
+    rebuildEnhancedVerses(
+      selectedTranslationId,
+      selectedTranslationRevision,
+    ).then(rebuilt => {
       if (rebuilt) setRebuildCounter(c => c + 1);
     });
-  }, [selectedTranslationId]);
+  }, [selectedTranslationId, selectedTranslationRevision]);
 
   // Direct lookup from module-scope pre-built arrays — zero computation per surah change.
   // useMemo gives a stable reference so dep arrays of hooks reading `verses` don't

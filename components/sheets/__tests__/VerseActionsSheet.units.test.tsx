@@ -412,6 +412,20 @@ describe('Hafs (unchanged)', () => {
     );
   });
 
+  // The player passes the translation it shows: QF markup, footnote markers
+  // included. The copied text is plain.
+  it('copies the caller translation as plain text', async () => {
+    await openSheet({
+      ...payload,
+      translation:
+        'Allah<sup foot_note=254011>1</sup>, the <i class="s">Ever-Living</i> &amp; Sustainer',
+    });
+    await press('Copy');
+    expect(Clipboard.setStringAsync).toHaveBeenCalledWith(
+      'HAFS-2:255 ۝\n\nAllah, the Ever-Living & Sustainer\n\nQuran 2:255',
+    );
+  });
+
   it('removes exactly the bookmarked Hafs key, as before', async () => {
     setRows(['2:255'], {}, 'hafs');
     await openSheet(payload);

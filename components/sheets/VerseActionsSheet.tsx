@@ -51,6 +51,7 @@ import {
 } from '@/store/timestampStore';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {getTranslationTextRaw} from '@/utils/translationLookup';
+import {translationPlainText} from '@/utils/translationText';
 import * as Clipboard from 'expo-clipboard';
 import {getRewayahShortLabel} from '@/utils/rewayahLabels';
 // @ai-start
@@ -262,12 +263,13 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
         parts.length === 1 && parts[0].hafsKey === verseKey
           ? payload?.translation
           : undefined;
-      return joinTranslationParts(
-        parts,
-        hafsKey =>
+      // Copied text is plain: QF markup and footnote markers never reach it.
+      return joinTranslationParts(parts, hafsKey =>
+        translationPlainText(
           callerTranslation ||
-          getTranslationTextRaw(hafsKey, selectedTranslationId) ||
-          '',
+            getTranslationTextRaw(hafsKey, selectedTranslationId) ||
+            '',
+        ),
       );
     },
     [verseKey, payload?.translation, selectedTranslationId],

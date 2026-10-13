@@ -7,9 +7,9 @@ import type {
  * RFC-009 — pluggable translation source.
  *
  * A `TranslationProvider` supplies the editions list and full-translation
- * download used by Settings → Translations. Bayaan's default is the
- * alQuran.cloud-backed `AlQuranCloudTranslationProvider`; a fork can
- * override it via `branding.translationProvider`.
+ * download used by Settings → Translations when a fork sets
+ * `branding.translationProvider`. Without one, Bayaan installs Quran
+ * Foundation translations through content sync.
  *
  * The SQLite cache layer (`translationDbService`) sits outside this
  * contract — providers return in-memory `{edition, verses}` only.

@@ -1,9 +1,9 @@
 // scripts/generate-widget-data.ts
 // Writes the static data bundled into both widget targets:
 //   surahs.json  names, surah glyph code points, card file names
-//   ayat.json    Ayah of the Day list with Digital Khatt text and Saheeh translation
+//   ayat.json    Ayah of the Day list with Digital Khatt text and The Clear Quran
 //   adhkar-periods.json  morning and evening adhkar with a curated featured list
-//   occasions.json       Hijri month names and occasion ayat (Digital Khatt + Saheeh)
+//   occasions.json       Hijri month names and occasion ayat (Digital Khatt + The Clear Quran)
 // Run after editing data/widgets/ayah-of-the-day.json: npm run generate:widget-data
 import fs from 'fs';
 import path from 'path';
@@ -44,17 +44,27 @@ function textOf(row: unknown): string {
     : '';
 }
 
-function saheehText(data: unknown, key: string): string | undefined {
-  if (typeof data !== 'object' || data === null || !(key in data)) {
-    return undefined;
+// data/clear-quran-translation.json: {translations: [{text}]}, indexed by the
+// verse's global id (1:1 is 1) minus one.
+function clearQuranTexts(data: unknown): string[] {
+  if (typeof data !== 'object' || data === null || !('translations' in data))
+    throw new Error('clear-quran-translation.json is malformed');
+  const rows: unknown = Reflect.get(data, 'translations');
+  if (!Array.isArray(rows))
+    throw new Error('clear-quran-translation.json is malformed');
+  return rows.map(textOf);
+}
+
+function verseIndexByKey(): Map<string, number> {
+  const index = new Map<string, number>();
+  let offset = 0;
+  for (const surah of SURAHS) {
+    for (let ayah = 1; ayah <= surah.verses_count; ayah++) {
+      index.set(`${surah.id}:${ayah}`, offset + ayah - 1);
+    }
+    offset += surah.verses_count;
   }
-  const entry: unknown = Reflect.get(data, key);
-  return typeof entry === 'object' &&
-    entry !== null &&
-    't' in entry &&
-    typeof entry.t === 'string'
-    ? entry.t
-    : undefined;
+  return index;
 }
 
 function main(): void {
@@ -62,9 +72,10 @@ function main(): void {
   if (!isStringArray(keys)) {
     throw new Error('ayah-of-the-day.json must be an array of verse keys');
   }
-  const saheeh = readJson(
-    'data/SaheehInternational.translation-with-footnote-tags.json',
+  const clearQuran = clearQuranTexts(
+    readJson('data/clear-quran-translation.json'),
   );
+  const verseIndex = verseIndexByKey();
   const db = new Database(
     path.join(root, 'data/mushaf/digitalkhatt/digital-khatt-v2.db'),
     {readonly: true},
@@ -76,7 +87,10 @@ function main(): void {
   const ayahSources = {
     words: (surahId: number, ayah: number) =>
       wordsStmt.all(surahId, ayah).map(textOf).filter(Boolean),
-    translation: (key: string) => saheehText(saheeh, key),
+    translation: (key: string) => {
+      const index = verseIndex.get(key);
+      return index === undefined ? undefined : clearQuran[index];
+    },
     surahName: (surahId: number) => SURAHS[surahId - 1]?.name,
   };
   const ayat = buildStaticAyat(keys, ayahSources);

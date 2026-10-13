@@ -9,6 +9,14 @@ export interface ContentState {
   autoInstallDone: boolean;
   // The last valid 200 manifest, so a 304 can still process pending rows.
   manifest: Manifest | null;
+  // The kinds that manifest was requested for ("tafsir,translation"); a
+  // different set makes the next check due and skips the ETag.
+  manifestKinds: string | null;
+  // Set once the AlQuranCloud translations have moved to QF ids (spec 4.7).
+  translationsMigratedAt: number | null;
+  // A translation key to install once on the next cycle (the retired bundled
+  // Saheeh moves to qf:translations:20); null when nothing is pending.
+  translationAutoInstallKey: string | null;
 }
 
 export interface ContentRegistry {
@@ -31,6 +39,9 @@ const EMPTY_STATE: ContentState = {
   migratedAt: null,
   autoInstallDone: false,
   manifest: null,
+  manifestKinds: null,
+  translationsMigratedAt: null,
+  translationAutoInstallKey: null,
 };
 
 export function emptyRow(key: string, kind: ContentKind): LocalContentRow {
@@ -71,7 +82,10 @@ CREATE TABLE IF NOT EXISTS content_state (
   last_checked_at INTEGER,
   migrated_at INTEGER,
   auto_install_done INTEGER NOT NULL DEFAULT 0,
-  manifest_json TEXT
+  manifest_json TEXT,
+  manifest_kinds TEXT,
+  translations_migrated_at INTEGER,
+  translation_auto_install TEXT
 );
 INSERT OR IGNORE INTO content_state (id) VALUES (1);
 `;
@@ -97,27 +111,39 @@ interface RawState {
   migrated_at: number | null;
   auto_install_done: number;
   manifest_json: string | null;
+  manifest_kinds?: string | null;
+  translations_migrated_at?: number | null;
+  translation_auto_install?: string | null;
 }
 
 interface RawColumn {
   name: string;
 }
 
-// content.db files created before manifest_json existed lack the column.
-async function ensureManifestColumn(opened: Db): Promise<void> {
+// content.db files created before a column existed lack it.
+const ADDED_STATE_COLUMNS: ReadonlyArray<[string, string]> = [
+  ['manifest_json', 'TEXT'],
+  ['manifest_kinds', 'TEXT'],
+  ['translations_migrated_at', 'INTEGER'],
+  ['translation_auto_install', 'TEXT'],
+];
+
+async function ensureStateColumns(opened: Db): Promise<void> {
   // SQLite JSON boundary.
   const columns = (await opened.getAllAsync(
     'PRAGMA table_info(content_state)',
   )) as RawColumn[];
-  if (columns.some(column => column.name === 'manifest_json')) return;
-  try {
-    await opened.execAsync(
-      'ALTER TABLE content_state ADD COLUMN manifest_json TEXT',
-    );
-  } catch (error) {
-    // Another connection may have added it between the check and the ALTER.
-    const message = error instanceof Error ? error.message : String(error);
-    if (!message.includes('duplicate column name')) throw error;
+  for (const [name, type] of ADDED_STATE_COLUMNS) {
+    if (columns.some(column => column.name === name)) continue;
+    try {
+      await opened.execAsync(
+        `ALTER TABLE content_state ADD COLUMN ${name} ${type}`,
+      );
+    } catch (error) {
+      // Another connection may have added it between the check and the ALTER.
+      const message = error instanceof Error ? error.message : String(error);
+      if (!message.includes('duplicate column name')) throw error;
+    }
   }
 }
 
@@ -156,7 +182,7 @@ export function createSqliteContentRegistry(
     ready ??= open()
       .then(async opened => {
         await opened.execAsync(SCHEMA);
-        await ensureManifestColumn(opened);
+        await ensureStateColumns(opened);
         return opened;
       })
       .catch((error: unknown) => {
@@ -224,6 +250,9 @@ export function createSqliteContentRegistry(
         migratedAt: raw.migrated_at,
         autoInstallDone: raw.auto_install_done === 1,
         manifest: parseManifest(raw.manifest_json),
+        manifestKinds: raw.manifest_kinds ?? null,
+        translationsMigratedAt: raw.translations_migrated_at ?? null,
+        translationAutoInstallKey: raw.translation_auto_install ?? null,
       };
     },
     async setState(patch) {
@@ -231,13 +260,16 @@ export function createSqliteContentRegistry(
       await (
         await db()
       ).runAsync(
-        'UPDATE content_state SET manifest_etag = ?, last_checked_at = ?, migrated_at = ?, auto_install_done = ?, manifest_json = ? WHERE id = 1',
+        'UPDATE content_state SET manifest_etag = ?, last_checked_at = ?, migrated_at = ?, auto_install_done = ?, manifest_json = ?, manifest_kinds = ?, translations_migrated_at = ?, translation_auto_install = ? WHERE id = 1',
         [
           next.manifestEtag,
           next.lastCheckedAt,
           next.migratedAt,
           next.autoInstallDone ? 1 : 0,
           next.manifest ? JSON.stringify(next.manifest) : null,
+          next.manifestKinds,
+          next.translationsMigratedAt,
+          next.translationAutoInstallKey,
         ],
       );
     },

@@ -1,5 +1,9 @@
 import React, {memo} from 'react';
 import {Text, StyleSheet, TextStyle, StyleProp, Platform} from 'react-native';
+import {
+  decodeHtmlEntities,
+  formattedTranslationMarkup,
+} from '@/utils/translationText';
 
 interface FormattedTextProps {
   text: string;
@@ -31,7 +35,11 @@ const FormattedTextRenderer = memo(function FormattedTextRenderer({
   const superscriptFontSize = Math.max(baseFontSize * 0.75, 10); // Relative to base font size
   const superscriptLineHeight = Math.max(baseFontSize * 1.3, 16); // Relative line height
 
-  const parts = text.split(/(<\/?(?:b|i|u|sup)(?:\s+[^>]*)?\/?>)/);
+  // QF text also carries tags this renderer does not draw (<span>, the
+  // <a class=f> around footnotes) and entities: drop and decode them.
+  const parts = formattedTranslationMarkup(text).split(
+    /(<\/?(?:b|i|u|sup)(?:\s+[^>]*)?\/?>)/,
+  );
 
   const elements: React.ReactNode[] = [];
   const styleStack: StyleProp<TextStyle>[] = [baseStyle];
@@ -152,7 +160,7 @@ const FormattedTextRenderer = memo(function FormattedTextRenderer({
         } else {
           elements.push(
             <Text key={index} style={currentStyle}>
-              {part}
+              {decodeHtmlEntities(part)}
             </Text>,
           );
         }

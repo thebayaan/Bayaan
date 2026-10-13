@@ -64,6 +64,11 @@ jest.mock('@/store/tafseerStore', () => ({
     loadDownloadedMeta: mockStep('tafseerStore.loadDownloadedMeta'),
   }),
 }));
+jest.mock('@/store/translationStore', () => ({
+  useTranslationStore: mockStore({
+    loadDownloadedMeta: mockStep('translationStore.loadDownloadedMeta'),
+  }),
+}));
 jest.mock('@/services/wbw/WBWDataService', () => ({
   wbwDataService: {initialize: mockStep('wbw.initialize')},
 }));
@@ -268,6 +273,15 @@ describe('AppInitializer startup (characterization, develop behavior)', () => {
     await initializer.initialize();
     expect(initializer.isInitialized()).toBe(true);
     expect(mockCalls).toContain('tafseerStore.loadDownloadedMeta');
+    expect(mockCalls).not.toContain('translationStore.loadDownloadedMeta');
+  });
+
+  // Added with QF translations: downloaded names reach the reader's label.
+  it('loads the downloaded translation meta after opening the Translation DB', async () => {
+    await freshInitializer().initialize();
+    expect(indexOf('translationDb.initialize')).toBeLessThan(
+      indexOf('translationStore.loadDownloadedMeta'),
+    );
   });
 
   it('aborts startup when a critical service fails, before any non-critical service runs', async () => {

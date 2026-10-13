@@ -2,6 +2,14 @@ jest.mock(
   'expo-sqlite',
   () => require('@/test-utils/mockExpoSqlite').expoSqliteModule,
 );
+// translationStore imports contentSync (the picker installs through it);
+// keep this suite on the installer alone.
+jest.mock('@/services/content/contentSync', () => ({
+  installContent: jest.fn(),
+  removeContent: jest.fn(),
+  getOfferedTranslations: jest.fn(),
+  isEngineInstallingTranslations: () => false,
+}));
 
 import {SURAHS} from '@/data/surahData';
 import type {ContentEnvelope} from '@/types/content';
