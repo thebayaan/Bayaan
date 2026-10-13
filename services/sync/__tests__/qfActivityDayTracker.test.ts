@@ -111,12 +111,34 @@ describe('qfActivityDayTracker', () => {
     expect(posted).toEqual([
       {
         idempotencyKey: 'batch-1',
-        date: '2026-10-12',
         timezone: 'America/Los_Angeles',
         seconds: 12,
         ranges: ['1:1-1:7'],
       },
     ]);
+  });
+
+  it('dates only reading left over from an earlier day', async () => {
+    let fail = true;
+    const sent: {date?: string; seconds: number}[] = [];
+    const {tracker, advance} = setup({
+      post: async (_token, input) => {
+        sent.push({date: input.date, seconds: input.seconds});
+        if (fail) throw new BayaanSettingsApiError(503, 'unavailable');
+      },
+    });
+    tracker.showPages([1]);
+    advance(10_000);
+    tracker.stop();
+    await tracker.flush();
+    // Today's reading goes undated, so QF counts it as tracked reading.
+    expect(sent).toEqual([{date: undefined, seconds: 10}]);
+
+    fail = false;
+    advance(24 * 60 * 60_000);
+    await tracker.flush();
+    // Retried the next day, it keeps the day it was read.
+    expect(sent[1]).toEqual({date: '2026-10-12', seconds: 10});
   });
 
   it('merges several pages into one batch', async () => {

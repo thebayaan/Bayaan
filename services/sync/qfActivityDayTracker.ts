@@ -37,7 +37,7 @@ export interface QfActivityDayTrackerDeps {
       sessionToken: string,
       input: {
         idempotencyKey: string;
-        date: string;
+        date?: string;
         timezone: string;
         seconds: number;
         ranges: string[];
@@ -188,7 +188,10 @@ export function createQfActivityDayTracker(
       try {
         await deps.api.postActivityDay(session.token, {
           idempotencyKey: batch.id,
-          date: batch.date,
+          // QF counts dated seconds as manually added time, so today's
+          // reading goes undated and QF dates it by the timezone; only a
+          // batch left from an earlier day keeps its date.
+          ...(batch.date === localDateOf(deps.now()) ? {} : {date: batch.date}),
           timezone: batch.timezone,
           seconds: batch.seconds,
           ranges: batch.ranges,

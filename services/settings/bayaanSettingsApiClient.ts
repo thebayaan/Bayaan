@@ -338,7 +338,8 @@ export class BayaanSettingsApiClient {
     sessionToken: string,
     input: {
       idempotencyKey: string;
-      date: string;
+      /** Only for reading from an earlier day; QF dates today's by timezone. */
+      date?: string;
       timezone: string;
       seconds: number;
       ranges: string[];
@@ -354,7 +355,7 @@ export class BayaanSettingsApiClient {
           'Idempotency-Key': input.idempotencyKey,
         }),
         body: JSON.stringify({
-          date: input.date,
+          ...(input.date === undefined ? {} : {date: input.date}),
           timezone: input.timezone,
           seconds: input.seconds,
           ranges: input.ranges,

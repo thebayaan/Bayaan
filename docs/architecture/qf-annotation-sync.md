@@ -62,7 +62,7 @@ less than 3 seconds and anything past 10 minutes on one page. Reading is
 queued in MMKV per account as batches of the device's local date, timezone,
 seconds and merged verse ranges (Hafs keys, one surah per range), sent through
 the BFF with `mushafId` 4 every 30 seconds, when the app leaves the foreground
-and when the reader closes. A batch is sealed before its first send, so a retry
+and when the reader closes. Today's batches go without a `date`, since QF counts dated seconds as manually added time and dates undated ones by `x-timezone`; only a batch left over from an earlier day keeps its date. QF adds each POST's seconds and unions its ranges. A batch is sealed before its first send, so a retry
 resends it unchanged with the same `Idempotency-Key` while later reading starts
 a new batch. Server errors back off (up to 15 minutes); a refused batch is
 dropped; a 403 pauses sending until the next launch or sign-in and keeps the
