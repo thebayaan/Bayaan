@@ -8,6 +8,10 @@ import * as Crypto from 'expo-crypto';
 import branding from '@/config/branding';
 import {analyticsService} from '@/services/analytics/AnalyticsService';
 import {tafseerDbService} from '@/services/tafseer/TafseerDbService';
+import {translationDbService} from '@/services/translation/TranslationDbService';
+import {remapLegacyTranslationId} from '@/services/translation/translationRemap';
+import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import {useTranslationStore} from '@/store/translationStore';
 import type {
   ContentInstaller,
   ContentKind,
@@ -21,7 +25,10 @@ import {
   runContentCheck,
   type EngineDeps,
 } from './contentEngine';
-import {showWithdrawalNotice} from './contentNotices';
+import {
+  showRemovedTranslationsNotice,
+  showWithdrawalNotice,
+} from './contentNotices';
 import {
   createSqliteContentRegistry,
   type ContentRegistry,
@@ -34,11 +41,15 @@ import {
 } from './legacyMigration';
 import {createTafsirInstaller} from './tafsirInstaller';
 import {createTranslationInstaller} from './translationInstaller';
+import {
+  maybeAutoInstallTranslation,
+  migrateLegacyTranslations,
+  TRANSLATION_KEY_PREFIX,
+} from './translationMigration';
 
 // After a failed manifest check, further checks in this session wait this long.
 export const FAILED_CHECK_THROTTLE_MS = 3_600_000;
 const TAFSIR_KEY_PREFIX = 'qf:tafsirs:';
-const TRANSLATION_KEY_PREFIX = 'qf:translations:';
 
 // A translation the last cached manifest offers for install.
 export interface OfferedTranslation {
@@ -65,6 +76,12 @@ export function isEngineManagingTafsir(): boolean {
 // (RFC-009). Only meaningful while isEngineManagingTafsir() is true.
 export function isEngineManagingTranslations(): boolean {
   return !branding.translationProvider && resolveContentApiBase() !== null;
+}
+
+// Translations installed and offered through the running engine: the engine
+// only starts while it manages tafsir.
+export function isEngineInstallingTranslations(): boolean {
+  return isEngineManagingTafsir() && isEngineManagingTranslations();
 }
 
 function kindForKey(key: string): ContentKind | null {
@@ -148,21 +165,64 @@ async function adoptLocalContent(active: EngineDeps): Promise<boolean> {
   return true;
 }
 
+// The selection must be read after the persisted settings loaded, or the
+// default would be migrated instead of the reader's choice.
+function settingsHydrated(): boolean {
+  const persist = useMushafSettingsStore.persist;
+  return !persist || persist.hasHydrated();
+}
+
+// The AlQuranCloud translations move to QF ids once (spec 4.7), before the
+// check, so the check replaces the renamed copies. Before the settings
+// loaded it waits for the next cycle rather than blocking this one.
+async function migrateTranslations(active: EngineDeps): Promise<boolean> {
+  if (!active.installers.translation || !settingsHydrated()) return false;
+  return migrateLegacyTranslations({
+    registry: active.registry,
+    db: translationDbService,
+    settings: useMushafSettingsStore,
+    notifyRemoved: showRemovedTranslationsNotice,
+    reload: () => useTranslationStore.getState().loadDownloadedMeta(),
+    now: active.now(),
+  });
+}
+
 async function isMigrated(active: EngineDeps): Promise<boolean> {
   return (await active.registry.getState()).migratedAt !== null;
 }
 
-function manifestAllowsAutoInstall(manifest: Manifest): boolean {
+function manifestAllowsAutoInstall(
+  manifest: Manifest,
+  key: string = AUTO_INSTALL_KEY,
+): boolean {
   // A paused manifest is the kill switch: nothing new installs.
   if (manifest.paused) return false;
-  const entry = manifest.resources.find(item => item.key === AUTO_INSTALL_KEY);
+  const entry = manifest.resources.find(item => item.key === key);
   return entry !== undefined && entry.status !== 'withdrawn';
+}
+
+// The queued translation install (Saheeh as QF 20) follows the same manifest
+// rules as the first-launch tafsir.
+async function autoInstallTranslation(
+  active: EngineDeps,
+  manifest: Manifest | null,
+): Promise<void> {
+  if (!active.installers.translation) return;
+  const {translationAutoInstallKey} = await active.registry.getState();
+  if (translationAutoInstallKey === null) return;
+  if (
+    manifest &&
+    !manifestAllowsAutoInstall(manifest, translationAutoInstallKey)
+  )
+    return;
+  await maybeAutoInstallTranslation(active);
 }
 
 // Order: adoption (the migration is retried every cycle until it succeeds), then the check,
 // then the first-launch install. Each step is isolated from the others.
 async function cycle(active: EngineDeps): Promise<void> {
   const adopted = await attempt(active, () => adoptLocalContent(active));
+  await attempt(active, () => migrateTranslations(active));
   // A failed adoption after the first migration must not block the install.
   const migrated =
     adopted === true || (await attempt(active, () => isMigrated(active)));
@@ -179,6 +239,7 @@ async function cycle(active: EngineDeps): Promise<void> {
       checkBlockedUntil = active.now() + FAILED_CHECK_THROTTLE_MS;
     }
   }
+  await attempt(active, () => autoInstallTranslation(active, seen.manifest));
   if (migrated !== true) return;
   // Without a manifest this cycle (skipped, 304 or failed) the install may
   // proceed: the backend refuses tickets for withdrawn keys.
@@ -186,7 +247,31 @@ async function cycle(active: EngineDeps): Promise<void> {
   await attempt(active, () => maybeAutoInstall(active));
 }
 
+// Without the engine's translations (a fork's own provider, or no content
+// API), nothing migrates; only the retired bundled Saheeh selection moves to
+// the bundled Clear Quran.
+function retireBundledSaheehSelection(): void {
+  const retire = () => {
+    const settings = useMushafSettingsStore.getState();
+    const next = remapLegacyTranslationId(
+      settings.selectedTranslationId,
+      false,
+    );
+    if (next !== settings.selectedTranslationId)
+      settings.setSelectedTranslationId(next);
+  };
+  if (settingsHydrated()) {
+    retire();
+    return;
+  }
+  const unsubscribe = useMushafSettingsStore.persist.onFinishHydration(() => {
+    unsubscribe();
+    retire();
+  });
+}
+
 export async function initContentSync(): Promise<void> {
+  if (!isEngineInstallingTranslations()) retireBundledSaheehSelection();
   const base = resolveContentApiBase();
   if (deps || !base || !isEngineManagingTafsir()) return;
   const active = buildDeps(base);
@@ -278,11 +363,14 @@ export async function getOfferedTafsirIds(): Promise<ReadonlySet<string> | null>
 export async function getOfferedTranslations(): Promise<
   OfferedTranslation[] | null
 > {
-  if (!isEngineManagingTafsir() || !isEngineManagingTranslations()) return null;
+  if (!isEngineInstallingTranslations()) return null;
   fallbackRegistry ??= createSqliteContentRegistry();
   const registry = deps?.registry ?? fallbackRegistry;
-  const {manifest} = await registry.getState();
-  if (!manifest) return null;
+  const {manifest, manifestKinds} = await registry.getState();
+  // A manifest cached before translations were requested has no entries for
+  // them: treat it as no manifest until the next check refetches.
+  if (!manifest || !manifestKinds?.split(',').includes('translation'))
+    return null;
   const offered: OfferedTranslation[] = [];
   for (const entry of manifest.resources) {
     if (

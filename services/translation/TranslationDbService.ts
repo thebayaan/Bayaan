@@ -249,6 +249,24 @@ class TranslationDbService {
     console.log(`[TranslationDbService] Deleted ${identifier}`);
   }
 
+  // Moves an edition to a new identifier in place (verses, footnotes and
+  // metadata in one transaction), so it stays readable offline.
+  async renameTranslation(from: string, to: string): Promise<void> {
+    const db = await this.ensureReady();
+    await db.withTransactionAsync(async () => {
+      for (const table of [
+        'translations',
+        'translation_footnotes',
+        'translation_metadata',
+      ]) {
+        await db.runAsync(
+          `UPDATE ${table} SET identifier = ? WHERE identifier = ?`,
+          [to, from],
+        );
+      }
+    });
+  }
+
   async getDownloadedTranslations(): Promise<DownloadedTranslationMeta[]> {
     const db = await this.ensureReady();
     const rows = (await db.getAllAsync(
