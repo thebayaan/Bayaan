@@ -333,4 +333,34 @@ export class BayaanSettingsApiClient {
     }
     return etag;
   }
+
+  async postActivityDay(
+    sessionToken: string,
+    input: {
+      idempotencyKey: string;
+      date: string;
+      timezone: string;
+      seconds: number;
+      ranges: string[];
+    },
+  ): Promise<void> {
+    const {response, body} = await this.request(
+      '/v1/qf/settings/activity-days',
+      sessionToken,
+      {
+        method: 'POST',
+        headers: new Headers({
+          'Content-Type': 'application/json',
+          'Idempotency-Key': input.idempotencyKey,
+        }),
+        body: JSON.stringify({
+          date: input.date,
+          timezone: input.timezone,
+          seconds: input.seconds,
+          ranges: input.ranges,
+        }),
+      },
+    );
+    this.assertOk(response, body);
+  }
 }

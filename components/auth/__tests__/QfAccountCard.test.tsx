@@ -50,6 +50,18 @@ jest.mock('@/services/settings/qfSettingsSyncLifecycle', () => ({
   qfSettingsSyncLifecycle: {stop: jest.fn(async () => undefined)},
 }));
 
+const mockActivityEvents: string[] = [];
+jest.mock('@/services/sync/qfActivityDayTracker', () => ({
+  qfActivityDayTracker: {
+    flush: jest.fn(async () => {
+      mockActivityEvents.push('activity:flush');
+    }),
+    clearAccount: jest.fn((accountId: string) => {
+      mockActivityEvents.push(`activity:clear:${accountId}`);
+    }),
+  },
+}));
+
 jest.mock('@/config/bayaanAuth', () => ({
   bayaanAuthConfig: {
     apiUrl: 'https://api-prelive.thebayaan.com',
@@ -603,7 +615,8 @@ describe('QfAccountCard', () => {
   );
 
   it('flushes, stops account lifecycle work, logs out, then purges the account', async () => {
-    const events: string[] = [];
+    const events = mockActivityEvents;
+    events.length = 0;
     jest.spyOn(qfSyncLifecycle, 'requestSync').mockImplementation(() => {
       events.push('flush');
     });
@@ -636,8 +649,10 @@ describe('QfAccountCard', () => {
 
     expect(events).toEqual([
       'flush',
+      'activity:flush',
       'stop',
       'logout',
+      'activity:clear:bayaan-account-id',
       'purge:bayaan-account-id',
     ]);
     expect(useBayaanAuthStore.getState().status).toBe('signed_out');

@@ -14,6 +14,7 @@ import {QfSyncStatusRow} from './QfSyncStatusRow';
 import {qfSyncLifecycle} from '@/services/sync/qfSyncLifecycle';
 import {qfSettingsSyncLifecycle} from '@/services/settings/qfSettingsSyncLifecycle';
 import {qfSyncDatabaseService} from '@/services/sync/qfSyncDatabaseService';
+import {qfActivityDayTracker} from '@/services/sync/qfActivityDayTracker';
 
 // How long sign-out waits for queued edits to reach QF before purging.
 const SIGN_OUT_FLUSH_MS = 5_000;
@@ -58,7 +59,11 @@ export function QfAccountCard() {
     qfSyncLifecycle.requestSync();
     let flushTimer: ReturnType<typeof setTimeout> | undefined;
     await Promise.race([
-      qfSyncLifecycle.waitForIdle().catch(() => undefined),
+      Promise.all([
+        qfSyncLifecycle.waitForIdle().catch(() => undefined),
+        // Send queued reading while the session can still credit it.
+        qfActivityDayTracker.flush(),
+      ]),
       new Promise(resolve => {
         flushTimer = setTimeout(resolve, SIGN_OUT_FLUSH_MS);
       }),
@@ -86,7 +91,10 @@ export function QfAccountCard() {
     try {
       // Like Quran.com web, a signed-out account leaves no copy on a shared
       // device; the next sign-in pulls it again.
-      if (accountId) await qfSyncDatabaseService.purgeAccountData(accountId);
+      if (accountId) {
+        qfActivityDayTracker.clearAccount(accountId);
+        await qfSyncDatabaseService.purgeAccountData(accountId);
+      }
     } catch (error) {
       console.error('[QfAccountCard] Account data purge failed:', error);
     } finally {

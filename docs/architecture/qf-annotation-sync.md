@@ -52,6 +52,24 @@ skips that surah and the others continue. Signed-in highlight edits request a
 sync. App State being off for the client (403 or disabled) skips highlights
 without failing sync.
 
+## Reading credited to QF activity days
+
+Mushaf reading counts toward the user's Quran.com streaks through QF activity
+days (`POST /v1/activity-days`, `type: QURAN`, behind the optional
+`activity_day` scope). `qfActivityDayTracker` times the pages on screen (both
+pages of a facing spread) while the app is active, ignoring a page shown for
+less than 3 seconds and anything past 10 minutes on one page. Reading is
+queued in MMKV per account as batches of the device's local date, timezone,
+seconds and merged verse ranges (Hafs keys, one surah per range), sent through
+the BFF with `mushafId` 4 every 30 seconds, when the app leaves the foreground
+and when the reader closes. A batch is sealed before its first send, so a retry
+resends it unchanged with the same `Idempotency-Key` while later reading starts
+a new batch. Server errors back off (up to 15 minutes); a refused batch is
+dropped; a 403 pauses sending until the next launch or sign-in and keeps the
+queue. Batches older than six days expire. Sign-out sends what it can within
+the existing wait, then clears the account's queue. The resume location stays
+on `READING_SESSION`.
+
 ## Guest decisions cover rows, not an account's lifetime
 
 Guest-import consent applies to the offered rows. A prior merge does not silently
