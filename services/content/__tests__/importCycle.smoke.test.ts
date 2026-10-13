@@ -54,3 +54,42 @@ describe('content sync import cycle', () => {
     });
   });
 });
+
+// The translation store installs through contentSync, whose translation
+// installer and migration read the store back: the same cycle shape.
+describe('translation import cycle', () => {
+  type TranslationStoreModule = typeof import('@/store/translationStore');
+  type TranslationInstallerModule =
+    typeof import('@/services/content/translationInstaller');
+
+  function expectTranslationsWired(
+    store: TranslationStoreModule,
+    sync: SyncModule,
+    installer: TranslationInstallerModule,
+  ): void {
+    expect(
+      typeof store.useTranslationStore.getState().downloadTranslation,
+    ).toBe('function');
+    expect(typeof sync.getOfferedTranslations).toBe('function');
+    expect(installer.createTranslationInstaller().kind).toBe('translation');
+    expect(installer.translationLanguageName('english')).toBe('English');
+  }
+
+  it('loads the store first, then contentSync', () => {
+    jest.isolateModules(() => {
+      const store: TranslationStoreModule = require('@/store/translationStore');
+      const sync: SyncModule = require('@/services/content/contentSync');
+      const installer: TranslationInstallerModule = require('@/services/content/translationInstaller');
+      expectTranslationsWired(store, sync, installer);
+    });
+  });
+
+  it('loads the installer first', () => {
+    jest.isolateModules(() => {
+      const installer: TranslationInstallerModule = require('@/services/content/translationInstaller');
+      const sync: SyncModule = require('@/services/content/contentSync');
+      const store: TranslationStoreModule = require('@/store/translationStore');
+      expectTranslationsWired(store, sync, installer);
+    });
+  });
+});

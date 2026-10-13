@@ -189,8 +189,9 @@ export interface Branding {
   initialPlayerVerseKey?: (track: Track) => string | undefined;
   /**
    * RFC-009 — optional translation source for Settings → Translations.
-   * `undefined` keeps Bayaan's default (the alQuran.cloud-backed
-   * `alQuranCloudTranslationProvider`).
+   * `undefined` keeps Bayaan's default: Quran Foundation translations
+   * installed through content sync. When set, the picker lists and
+   * downloads this provider's editions instead.
    */
   translationProvider?: TranslationProvider;
   /**

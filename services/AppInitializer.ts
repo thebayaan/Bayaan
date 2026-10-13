@@ -9,6 +9,7 @@ import {qulDataService} from '@/services/mushaf/QulDataService';
 import {translationDbService} from '@/services/translation/TranslationDbService';
 import {tafseerDbService} from '@/services/tafseer/TafseerDbService';
 import {useTafseerStore} from '@/store/tafseerStore';
+import {useTranslationStore} from '@/store/translationStore';
 import {wbwDataService} from '@/services/wbw/WBWDataService';
 import {warmBookmarkCache} from '@/components/mushaf/BookmarkChips';
 import {timestampService} from '@/services/timestamps/TimestampService';
@@ -421,6 +422,8 @@ appInitializer.registerService({
   critical: false,
   initialize: async () => {
     await translationDbService.initialize();
+    // Names and the downloaded set for the reader's label and settings sync.
+    await useTranslationStore.getState().loadDownloadedMeta();
   },
 });
 
