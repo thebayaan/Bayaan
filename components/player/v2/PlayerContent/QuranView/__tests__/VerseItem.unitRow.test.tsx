@@ -89,12 +89,15 @@ const mockHaptics = jest.fn();
 jest.mock('@/utils/haptics', () => ({mediumHaptics: () => mockHaptics()}));
 
 const mockFootnoteLookups: string[] = [];
+// '20' stands for a downloaded QF edition; every other id is bundled.
 jest.mock('@/utils/translationLookup', () => ({
-  isBundledTranslation: () => true,
+  isBundledTranslation: (id: string) => id !== '20',
   getBundledFootnotes: (verseKey: string) => {
     mockFootnoteLookups.push(verseKey);
     return {'77': `FOOTNOTE-OF-${verseKey}`};
   },
+  getRemoteFootnote: (translationId: string, footnoteId: string) =>
+    footnoteId === '77' ? `DB-FOOTNOTE-${translationId}` : undefined,
 }));
 
 jest.mock('@/store/tajweedStore', () => {
@@ -450,6 +453,18 @@ describe('Hafs-aligned content per Hafs verse', () => {
     act(() => mockHandlers.onFootnotePress?.('77', '1'));
     expect(mockFootnoteLookups).toEqual(['1:7']);
     expect(texts(r)).toContain('FOOTNOTE-OF-1:7');
+  });
+
+  it('a footnote of a downloaded edition comes from its stored footnotes', () => {
+    const r = render(row(fatihah, '1:6'), {
+      showTranslation: true,
+      translationId: '20',
+    });
+    act(() => mockHandlers.onFootnotePress?.('77', '1'));
+    expect(mockFootnoteLookups).toEqual([]);
+    expect(texts(r)).toContain('DB-FOOTNOTE-20');
+    act(() => mockHandlers.onFootnotePress?.('78', '2'));
+    expect(texts(r)).toContain('Footnote data not available');
   });
 
   it('reflections of each Hafs verse the row owns, once in the list', () => {

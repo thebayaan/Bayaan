@@ -7,6 +7,12 @@ interface FormattedTextProps {
   onFootnotePress?: (footnoteId: string, footnoteNumber: string) => void;
 }
 
+// Bundled Saheeh quotes the id (foot_note="226402"); QF does not (foot_note=254011).
+export function footnoteIdFromTag(tag: string): string {
+  const match = tag.match(/foot_note=(?:"([^"]+)"|(\d+))/);
+  return match ? (match[1] ?? match[2]) : '';
+}
+
 const FormattedTextRenderer = memo(function FormattedTextRenderer({
   text,
   baseStyle,
@@ -56,8 +62,7 @@ const FormattedTextRenderer = memo(function FormattedTextRenderer({
         },
       ]);
 
-      const match = part.match(/foot_note="([^"]+)"/);
-      footnoteId = match ? match[1] : '';
+      footnoteId = footnoteIdFromTag(part);
 
       return; // Skip adding this part
     }

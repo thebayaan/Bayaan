@@ -40,6 +40,7 @@ import {
 import {
   isBundledTranslation,
   getBundledFootnotes,
+  getRemoteFootnote,
 } from '@/utils/translationLookup';
 
 // Type for processed word data from store
@@ -293,11 +294,20 @@ export const VerseItem = memo<VerseItemProps>(
           return;
         }
 
-        // For bundled translations, use translationLookup; for remote, no footnotes
+        // Bundled footnotes come per verse; a downloaded edition's come from
+        // translation_footnotes, cached with its verses (enhancedVerseData).
         const effectiveId = translationId ?? 'saheeh';
-        const footnotes = isBundledTranslation(effectiveId)
-          ? getBundledFootnotes(footnoteVerseKey, effectiveId) // @ai
-          : undefined;
+        if (!isBundledTranslation(effectiveId)) {
+          setActiveFootnote({
+            id: footnoteId,
+            number: footnoteNumber,
+            content:
+              getRemoteFootnote(effectiveId, footnoteId) ??
+              'Footnote data not available',
+          });
+          return;
+        }
+        const footnotes = getBundledFootnotes(footnoteVerseKey, effectiveId); // @ai
 
         if (footnotes) {
           const footnoteContent = footnotes[footnoteId];
