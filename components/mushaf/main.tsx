@@ -8,6 +8,7 @@ import {
   ScrollView,
   ViewToken,
   StatusBar,
+  AppState,
   BackHandler,
   Platform,
   useWindowDimensions,
@@ -46,6 +47,7 @@ import {SURAHS} from '@/data/surahData';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {getRewayahShortLabel} from '@/utils/rewayahLabels';
 import {mushafSessionStore} from '@/services/mushaf/MushafSessionStore';
+import {qfActivityDayTracker} from '@/services/sync/qfActivityDayTracker';
 import {useMushafNavigationStore} from '@/store/mushafNavigationStore';
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
 import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
@@ -99,6 +101,10 @@ function pageToSpreadIndex(page: number): number {
 
 function spreadPrimaryPage(spread: Spread): number {
   return spread.right;
+}
+
+function spreadPages(spread: Spread): number[] {
+  return spread.left === null ? [spread.right] : [spread.right, spread.left];
 }
 
 // ============================================================================
@@ -738,7 +744,13 @@ export default function MushafViewer({
   // Track initial page + start page_read timer on mount
   useEffect(() => {
     trackPageChange(initialPage);
+    qfActivityDayTracker.showPages([initialPage]);
+    const appStateSubscription = AppState.addEventListener('change', state =>
+      qfActivityDayTracker.setAppActive(state === 'active'),
+    );
     return () => {
+      appStateSubscription.remove();
+      qfActivityDayTracker.stop();
       // Session ended on unmount
       if (pageReadTimerRef.current) {
         clearTimeout(pageReadTimerRef.current);
@@ -890,6 +902,9 @@ export default function MushafViewer({
       useMushafPlayerStore.setState({currentPage: page});
       mushafSessionStore.setLastReadPage(page);
       trackPageChange(page);
+      qfActivityDayTracker.showPages(
+        typeof first === 'number' ? [first] : spreadPages(first as Spread),
+      );
       const surahId = digitalKhattDataService.initialized
         ? digitalKhattDataService.getPageToSurah()[page]
         : undefined;
@@ -1094,6 +1109,7 @@ export default function MushafViewer({
         setCurrentPage(page);
         useMushafPlayerStore.setState({currentPage: page});
         trackPageChange(page);
+        qfActivityDayTracker.showPages([page]);
         const surahId = pageToSurah[page];
         if (surahId) {
           useMushafSettingsStore.getState().updateActiveChain(surahId, page);
