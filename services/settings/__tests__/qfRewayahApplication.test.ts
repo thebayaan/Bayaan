@@ -7,6 +7,7 @@ jest.mock('@/services/content/contentSync', () => ({
   installContent: jest.fn(),
   removeContent: jest.fn(),
   isEngineManagingTafsir: () => false,
+  isEngineInstallingTranslations: () => false,
 }));
 jest.mock(
   '../../../data/mushaf/digitalkhatt/digital-khatt-15-lines.db',

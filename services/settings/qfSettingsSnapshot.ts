@@ -11,6 +11,8 @@ import {
   isRewayahSwitchSuperseded,
 } from '@/services/mushaf/DigitalKhattDataService';
 import {usePlayerStore} from '@/services/player/store/playerStore';
+import {isEngineInstallingTranslations} from '@/services/content/contentSync';
+import {remapLegacyTranslationId} from '@/services/translation/translationRemap';
 import {useAdhkarSettingsStore} from '@/store/adhkarSettingsStore';
 import {useAmbientStore} from '@/store/ambientStore';
 import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
@@ -85,6 +87,12 @@ function safeStringMap(value: unknown): Record<string, string> | undefined {
   return result;
 }
 
+// The same remap as the translations migration (spec 4.7), for selections
+// that come from or go to the cloud.
+function remapTranslationSelection(id: string): string {
+  return remapLegacyTranslationId(id, isEngineInstallingTranslations());
+}
+
 export function captureSettingsDocuments(): SettingsDocuments {
   const theme = useThemeStore.getState();
   const mushaf = useMushafSettingsStore.getState();
@@ -120,7 +128,11 @@ export function captureSettingsDocuments(): SettingsDocuments {
       darkThemeId: mushaf.darkThemeId,
       rewayah: mushaf.rewayah,
       showRewayahDiffs: mushaf.showRewayahDiffs,
-      selectedTranslationId: mushaf.selectedTranslationId,
+      // Never uploads an AlQuranCloud id or "saheeh", even before the
+      // translations migration ran on this device.
+      selectedTranslationId: remapTranslationSelection(
+        mushaf.selectedTranslationId,
+      ),
     },
     audio: {
       defaultReciterId: reciter.defaultReciter.id || null,
@@ -307,7 +319,11 @@ export function sanitizeRemoteDocument(
       value.selectedTranslationId.length > 0 &&
       value.selectedTranslationId.length <= 255
     ) {
-      result.selectedTranslationId = value.selectedTranslationId;
+      // A device that has not migrated may still send an AlQuranCloud id or
+      // "saheeh": project it to the id this device uses.
+      result.selectedTranslationId = remapTranslationSelection(
+        value.selectedTranslationId,
+      );
     }
   } else if (key === 'audio') {
     if (optionalString(value.defaultReciterId, 128))
