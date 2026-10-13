@@ -138,3 +138,16 @@ export function parseTafseerHtml(html: string): TafseerNode[] {
 
   return nodes;
 }
+
+// The same parse as the tafsir renderer, flattened: one block per paragraph
+// or heading, separated by a blank line.
+export function tafseerHtmlToPlainText(html: string): string {
+  return parseTafseerHtml(html)
+    .map(node =>
+      node.type === 'heading'
+        ? node.text
+        : (node.children ?? []).map(child => child.text).join(''),
+    )
+    .filter(block => block !== '')
+    .join('\n\n');
+}

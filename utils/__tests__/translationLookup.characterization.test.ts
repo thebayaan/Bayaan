@@ -2,7 +2,9 @@ import {
   getBundledFootnotes,
   getBundledTranslation,
   getBundledTranslationRaw,
+  getRemoteFootnote,
   getTranslationText,
+  stripFootnoteMarkers,
   setActiveRemoteTranslationCache,
   clearActiveRemoteTranslationCache,
 } from '../translationLookup';
@@ -13,9 +15,11 @@ function sha256(text: string): string {
 }
 
 const mockGetAllVerses = jest.fn();
+const mockGetFootnotes = jest.fn();
 jest.mock('@/services/translation/TranslationDbService', () => ({
   translationDbService: {
     getAllVerses: (...args: unknown[]) => mockGetAllVerses(...args),
+    getFootnotes: (...args: unknown[]) => mockGetFootnotes(...args),
   },
 }));
 
@@ -36,8 +40,9 @@ describe('translationLookup (characterization, develop behavior)', () => {
         '8365bdf532d87bc3905904c012932b8a35e30a0e67c20eec474d1ad64d5e494f',
       clear11:
         '38fcf74d05c29c7478254a7c48623d214e4eaf3894fa9f529753207f0954e91c',
+      // Changed on purpose: 2:255's footnote marker digit is now removed.
       clear2255:
-        '23da26f47875bd83423f036ce01a181ae0222c86efa5509f373aa7250951f16d',
+        'c47913e69c60ff0f02bd3763c6ad45e15444420556e32d948191bbe23ecd332e',
     });
   });
 
@@ -56,6 +61,25 @@ describe('translationLookup (characterization, develop behavior)', () => {
     expect(getBundledTranslation('2:255', 'clear-quran')).toContain(
       'Ever-Living',
     );
+  });
+
+  it('strips Clear Quran footnote markers with their digits, plain and raw', () => {
+    // The source reads "...Lord of all worlds,<sup foot_note=76373>1</sup>".
+    expect(getBundledTranslation('1:2', 'clear-quran')).toMatch(
+      /Lord of all worlds,$/,
+    );
+    expect(getBundledTranslationRaw('1:2', 'clear-quran')).toBe(
+      getBundledTranslation('1:2', 'clear-quran'),
+    );
+    expect(getBundledTranslation('2:255', 'clear-quran')).not.toMatch(/\d\s*$/);
+  });
+
+  it('stripFootnoteMarkers removes quoted and unquoted markers only', () => {
+    expect(
+      stripFootnoteMarkers(
+        'a,<sup foot_note=1>1</sup> b<sup foot_note="2">2</sup> <b>c</b>',
+      ),
+    ).toBe('a, b <b>c</b>');
   });
 
   it('returns empty string for unknown verse keys', () => {
@@ -78,6 +102,20 @@ describe('translationLookup (characterization, develop behavior)', () => {
     clearActiveRemoteTranslationCache();
     expect(getTranslationText('1:1', 'remote.x')).toBe('');
   });
+
+  it('getRemoteFootnote reads the active edition footnotes as plain text', () => {
+    setActiveRemoteTranslationCache(
+      '20',
+      {'1:1': 'a<sup foot_note=7>1</sup>'},
+      {'7': '<p>First &amp; one.</p><p>Second.</p>', '8': 'Plain'},
+    );
+    expect(getRemoteFootnote('20', '7')).toBe('First & one.\n\nSecond.');
+    expect(getRemoteFootnote('20', '8')).toBe('Plain');
+    expect(getRemoteFootnote('20', '9')).toBeUndefined();
+    expect(getRemoteFootnote('19', '7')).toBeUndefined();
+    clearActiveRemoteTranslationCache();
+    expect(getRemoteFootnote('20', '7')).toBeUndefined();
+  });
 });
 
 interface Isolated {
@@ -85,6 +123,7 @@ interface Isolated {
   enhancedVersesBySurah: typeof import('../enhancedVerseData').enhancedVersesBySurah;
   getTranslationText: typeof import('../translationLookup').getTranslationText;
   getBundledTranslation: typeof import('../translationLookup').getBundledTranslation;
+  getRemoteFootnote: typeof import('../translationLookup').getRemoteFootnote;
 }
 
 function loadIsolated(): Isolated {
@@ -97,6 +136,7 @@ function loadIsolated(): Isolated {
       enhancedVersesBySurah: enhanced.enhancedVersesBySurah,
       getTranslationText: lookup.getTranslationText,
       getBundledTranslation: lookup.getBundledTranslation,
+      getRemoteFootnote: lookup.getRemoteFootnote,
     };
   });
   if (!loaded) throw new Error('modules not loaded');
@@ -108,6 +148,8 @@ describe('rebuildEnhancedVerses (characterization, develop behavior)', () => {
 
   beforeEach(() => {
     mockGetAllVerses.mockReset();
+    mockGetFootnotes.mockReset();
+    mockGetFootnotes.mockResolvedValue({});
     warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
   });
 
@@ -122,6 +164,21 @@ describe('rebuildEnhancedVerses (characterization, develop behavior)', () => {
     expect(m.enhancedVersesBySurah[1][0].translation).toBe('remote text');
     expect(m.enhancedVersesBySurah[1][1].translation).toBe('');
     expect(m.getTranslationText('1:1', 'remote.ok')).toBe('remote text');
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  it('caches the edition footnotes with its verses, and keeps the verses when they fail', async () => {
+    const m = loadIsolated();
+    mockGetAllVerses.mockResolvedValue({'1:1': 'a<sup foot_note=7>1</sup>'});
+    mockGetFootnotes.mockResolvedValue({'7': '<p>note</p>'});
+    await m.rebuildEnhancedVerses('20');
+    expect(mockGetFootnotes).toHaveBeenCalledWith('20');
+    expect(m.getRemoteFootnote('20', '7')).toBe('note');
+
+    mockGetFootnotes.mockRejectedValue(new Error('db'));
+    expect(await m.rebuildEnhancedVerses('21')).toBe(true);
+    expect(m.getTranslationText('1:1', '21')).toBe('a<sup foot_note=7>1</sup>');
+    expect(m.getRemoteFootnote('21', '7')).toBeUndefined();
     expect(warnSpy).not.toHaveBeenCalled();
   });
 

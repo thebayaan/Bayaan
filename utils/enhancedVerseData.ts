@@ -81,6 +81,17 @@ function buildBundledEnhancedVerses(translationId: BundledTranslationId) {
 // Initial build with default (saheeh)
 buildBundledEnhancedVerses('saheeh');
 
+// Footnotes are optional: a failed read keeps the verses and shows no bodies.
+async function loadFootnotes(
+  translationId: string,
+): Promise<Record<string, string>> {
+  try {
+    return await translationDbService.getFootnotes(translationId);
+  } catch {
+    return {};
+  }
+}
+
 /**
  * Rebuild the enhanced verse arrays with a different translation.
  * For bundled translations this is synchronous; for remote ones it loads from SQLite.
@@ -109,9 +120,10 @@ export async function rebuildEnhancedVerses(
       buildBundledEnhancedVerses('saheeh');
       return true;
     }
+    const footnotes = await loadFootnotes(translationId);
     buildEnhancedVersesFromMap(translationId, translationMap);
     // Populate the sync cache so sheets can look up verses without async
-    setActiveRemoteTranslationCache(translationId, translationMap);
+    setActiveRemoteTranslationCache(translationId, translationMap, footnotes);
     return true;
   } catch (error) {
     console.warn(

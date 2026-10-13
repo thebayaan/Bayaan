@@ -2,6 +2,7 @@ import {
   BUNDLED_TRANSLATIONS,
   type BundledTranslationId,
 } from '@/types/translation';
+import {tafseerHtmlToPlainText} from '@/utils/tafseerHtmlParser';
 
 interface SaheehEntry {
   t: string;
@@ -40,6 +41,13 @@ function stripHtml(text: string): string {
   return text.replace(/<[^>]*>/g, '');
 }
 
+// Clear Quran's markers have no bodies to show, so the marker and its digit go.
+const FOOTNOTE_MARKER = /<sup\s+foot_note=[^>]*>[\s\S]*?<\/sup>/g;
+
+export function stripFootnoteMarkers(text: string): string {
+  return text.replace(FOOTNOTE_MARKER, '');
+}
+
 export function getBundledTranslation(
   verseKey: string,
   translationId: BundledTranslationId,
@@ -50,7 +58,7 @@ export function getBundledTranslation(
   const globalId = verseKeyToGlobalId[verseKey];
   if (globalId == null) return '';
   const entry = clearQuranData.translations[globalId - 1];
-  return entry ? stripHtml(entry.text) : '';
+  return entry ? stripHtml(stripFootnoteMarkers(entry.text)) : '';
 }
 
 export function getBundledTranslationRaw(
@@ -62,7 +70,8 @@ export function getBundledTranslationRaw(
   }
   const globalId = verseKeyToGlobalId[verseKey];
   if (globalId == null) return '';
-  return clearQuranData.translations[globalId - 1]?.text ?? '';
+  const text = clearQuranData.translations[globalId - 1]?.text;
+  return text ? stripFootnoteMarkers(text) : '';
 }
 
 export function getBundledFootnotes(
@@ -108,13 +117,28 @@ export function isBundledTranslation(id: string): id is BundledTranslationId {
 let activeRemoteTranslationCache: {
   id: string;
   data: Record<string, string>;
+  footnotes: Record<string, string>;
 } | null = null;
 
 export function setActiveRemoteTranslationCache(
   id: string,
   data: Record<string, string>,
+  footnotes: Record<string, string> = {},
 ): void {
-  activeRemoteTranslationCache = {id, data};
+  activeRemoteTranslationCache = {id, data, footnotes};
+}
+
+/**
+ * A downloaded edition's footnote as plain text with paragraph breaks, or
+ * undefined when the active cache holds another edition or no such footnote.
+ */
+export function getRemoteFootnote(
+  translationId: string,
+  footnoteId: string,
+): string | undefined {
+  if (activeRemoteTranslationCache?.id !== translationId) return undefined;
+  const html = activeRemoteTranslationCache.footnotes[footnoteId];
+  return html === undefined ? undefined : tafseerHtmlToPlainText(html);
 }
 
 export function clearActiveRemoteTranslationCache(): void {
