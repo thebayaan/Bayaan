@@ -19,6 +19,7 @@ import {
   isBundledTranslation,
 } from '@/utils/translationLookup';
 import {translationDbService} from '@/services/translation/TranslationDbService';
+import {translationPlainText} from '@/utils/translationText';
 import {
   BUNDLED_TRANSLATIONS,
   type BundledTranslationId,
@@ -61,10 +62,6 @@ const TOTAL_VERSES = allVerses.length; // 6236
 const verseKeyToIndex: Record<string, number> = {};
 for (let i = 0; i < allVerses.length; i++) {
   verseKeyToIndex[allVerses[i].verseKey] = i;
-}
-
-function stripHtml(text: string): string {
-  return text.replace(/<[^>]*>/g, '');
 }
 
 const bundledIds = Object.keys(BUNDLED_TRANSLATIONS) as BundledTranslationId[];
@@ -173,7 +170,7 @@ export const TranslationContent: React.FC<TranslationContentProps> = ({
     (id: string) =>
       joinPartTexts(
         page.hafsKeys.map(hafsKey =>
-          stripHtml(getTranslationText(hafsKey, id)),
+          translationPlainText(getTranslationText(hafsKey, id)),
         ),
       ),
     [page],
@@ -183,17 +180,21 @@ export const TranslationContent: React.FC<TranslationContentProps> = ({
   const activeTranslationName = getTranslationName(selectedTranslationId);
   const activeTranslationText = isBundledTranslation(selectedTranslationId)
     ? bundledText(selectedTranslationId) // @ai
-    : stripHtml(downloadedTexts[selectedTranslationId] ?? '');
+    : translationPlainText(downloadedTexts[selectedTranslationId] ?? '');
 
   // Track translation viewed when the selected translation changes
   useEffect(() => {
+    // QF ids carry no language ("20"): read it from the download.
     const language = isBundledTranslation(selectedTranslationId)
       ? BUNDLED_TRANSLATIONS[selectedTranslationId].language
-      : selectedTranslationId.split('.')[0] || 'unknown';
+      : (downloadedMeta.find(m => m.identifier === selectedTranslationId)
+          ?.language ?? 'unknown');
     analyticsService.trackTranslationViewed({
       translation_id: selectedTranslationId,
       language,
     });
+    // Tracked once per selection, not again when the downloads reload.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedTranslationId]);
 
   // All other translation IDs (bundled + downloaded, excluding active)
@@ -275,7 +276,7 @@ export const TranslationContent: React.FC<TranslationContentProps> = ({
           const name = getTranslationName(id);
           const text = isBundledTranslation(id)
             ? bundledText(id) // @ai
-            : stripHtml(downloadedTexts[id] ?? '');
+            : translationPlainText(downloadedTexts[id] ?? '');
           return (
             <React.Fragment key={id}>
               <View style={styles.divider} />

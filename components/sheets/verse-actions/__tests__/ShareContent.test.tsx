@@ -305,6 +305,19 @@ describe('Share as Text', () => {
     },
   );
 
+  // QF text carries inline HTML; the shared message is plain text.
+  it('shares a QF translation without markers, tags or entities', async () => {
+    mockTranslations.set(
+      '1:1',
+      'In the Name of Allah,<sup foot_note=254011>1</sup> the <i class="s">Merciful</i> &quot;One&quot;',
+    );
+    open(['1:1'], 'hafs');
+    await press('Share as Text');
+    expect(sharedMessage()).toBe(
+      'HAFS-1a HAFS-1b ۝١\n\nIn the Name of Allah, the Merciful "One"\n\n-- Quran Al-Fatihah 1:1',
+    );
+  });
+
   it('uses the same layout for a rewayah, labelled with it', async () => {
     open(['2:255'], 'warsh');
     await press('Share as Text');

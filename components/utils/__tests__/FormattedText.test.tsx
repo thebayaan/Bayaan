@@ -53,3 +53,39 @@ describe('FormattedTextRenderer footnotes', () => {
     expect(onPress).toHaveBeenCalledWith('254011', '1');
   });
 });
+
+// QF text carries tags this renderer does not draw and HTML entities.
+describe('FormattedTextRenderer QF markup', () => {
+  // The rendered strings, in order (host nodes only).
+  function plainText(renderer: TestRenderer.ReactTestRenderer): string {
+    function collect(
+      node: ReturnType<TestRenderer.ReactTestRenderer['toJSON']>,
+    ): string {
+      if (node === null) return '';
+      if (Array.isArray(node)) return node.map(collect).join('');
+      return (node.children ?? [])
+        .map(child => (typeof child === 'string' ? child : collect(child)))
+        .join('');
+    }
+    return collect(renderer.toJSON());
+  }
+
+  it('drops <a class=f> and <span> wrappers but keeps the tappable footnote', () => {
+    const onPress = jest.fn();
+    const renderer = render(
+      'l’Assoluto <a class=f><sup foot_note=156219>1</sup></a>. <span class="h">Non</span> &quot;x&quot;',
+      onPress,
+    );
+    const text = plainText(renderer);
+    expect(text).not.toMatch(/<|>|&quot;/);
+    expect(text).toContain('"x"');
+    expect(text).toContain('Non');
+    pressMarker(renderer);
+    expect(onPress).toHaveBeenCalledWith('156219', '1');
+  });
+
+  it('renders <i class=...> as italic text, not as a literal tag', () => {
+    const renderer = render('a <i class="s">word</i> b', jest.fn());
+    expect(plainText(renderer)).toBe('a word b');
+  });
+});
