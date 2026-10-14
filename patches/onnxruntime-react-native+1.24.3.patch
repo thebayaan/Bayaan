@@ -1,0 +1,50 @@
+diff --git a/node_modules/onnxruntime-react-native/android/build.gradle b/node_modules/onnxruntime-react-native/android/build.gradle
+index 41b4359..96f1868 100644
+--- a/node_modules/onnxruntime-react-native/android/build.gradle
++++ b/node_modules/onnxruntime-react-native/android/build.gradle
+@@ -242,19 +242,14 @@ dependencies {
+   implementation "junit:junit:4.12"
+ 
+   if (useQnn) {
+-    extractLibs "com.microsoft.onnxruntime:onnxruntime-android-qnn:latest.integration@aar"
++    extractLibs "com.microsoft.onnxruntime:onnxruntime-android-qnn:1.24.3@aar"
+   } else {
+-    extractLibs "com.microsoft.onnxruntime:onnxruntime-android:latest.integration@aar"
+-  }
+-
+-  if (VersionNumber.parse(REACT_NATIVE_VERSION) < VersionNumber.parse("0.71")) {
+-    extractLibs "com.facebook.fbjni:fbjni:+:headers"
+-    extractLibs "com.facebook.fbjni:fbjni:+"
++    extractLibs "com.microsoft.onnxruntime:onnxruntime-android:1.24.3@aar"
+   }
+ 
+   // By default it will just include onnxruntime full aar package
+   if (ortExtensionsEnabled) {
+-    implementation "com.microsoft.onnxruntime:onnxruntime-extensions-android:latest.integration@aar"
++    implementation "com.microsoft.onnxruntime:onnxruntime-extensions-android:0.13.0@aar"
+   }
+ }
+ 
+diff --git a/node_modules/onnxruntime-react-native/onnxruntime-react-native.podspec b/node_modules/onnxruntime-react-native/onnxruntime-react-native.podspec
+index 58bbbda..f9c08ca 100644
+--- a/node_modules/onnxruntime-react-native/onnxruntime-react-native.podspec
++++ b/node_modules/onnxruntime-react-native/onnxruntime-react-native.podspec
+@@ -23,7 +23,7 @@ Pod::Spec.new do |spec|
+   spec.source_files         = "ios/*.{h,mm}", "cpp/*.{h,cpp}"
+   spec.private_header_files = "ios/*.h", "cpp/*.h"
+ 
+-  spec.dependency "onnxruntime-c"
++  spec.dependency "onnxruntime-c", package["version"]
+ 
+   if respond_to?(:install_modules_dependencies, true)
+     install_modules_dependencies(spec)
+diff --git a/node_modules/onnxruntime-react-native/unimodule.json b/node_modules/onnxruntime-react-native/unimodule.json
+deleted file mode 100644
+index c2bd3c0..0000000
+--- a/node_modules/onnxruntime-react-native/unimodule.json
++++ /dev/null
+@@ -1,4 +0,0 @@
+-{
+-  "name": "onnxruntime-react-native",
+-  "platforms": ["ios", "android"]
+-}
