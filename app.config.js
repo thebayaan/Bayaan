@@ -49,7 +49,7 @@ module.exports = {
         BayaanAppGroup: `group.${IOS_BUNDLE_ID}`,
         NSSupportsLiveActivities: true,
         NSMicrophoneUsageDescription:
-          'This app uses the microphone to play audio.',
+          'Bayaan uses the microphone to follow along as you recite. Audio stays on your device.',
         NSAppleMusicUsageDescription:
           'This app uses Apple Music to play audio.',
         UILaunchStoryboardName: 'SplashScreen',
@@ -173,6 +173,16 @@ module.exports = {
       '@bacons/apple-targets',
       ['expo-audio', {enableBackgroundPlayback: true}],
       'expo-sqlite',
+      'onnxruntime-react-native',
+      [
+        'react-native-audio-api',
+        {
+          iosBackgroundMode: false,
+          androidForegroundService: false,
+          androidPermissions: ['android.permission.RECORD_AUDIO'],
+          disableFFmpeg: true,
+        },
+      ],
       [
         'expo-splash-screen',
         {

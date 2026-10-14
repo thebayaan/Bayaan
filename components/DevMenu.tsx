@@ -1,5 +1,6 @@
 import React, {useState} from 'react';
 import {View, Text, TouchableOpacity, StyleSheet, Alert} from 'react-native';
+import {router} from 'expo-router';
 import {moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {quickTestWhatsNew, logVersionState} from '@/utils/devUtils';
@@ -243,6 +244,28 @@ export function DevMenu({whatsNewModalRef}: DevMenuProps) {
             onPressOut={() => setPressedItem(null)}>
             <Text style={[styles.devMenuText, {color: theme.colors.text}]}>
               📡 Network Banner: {forceNetworkBanner ? 'ON' : 'OFF'}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={1}
+            style={[
+              styles.devMenuItem,
+              {
+                backgroundColor:
+                  pressedItem === 'recitationSpike'
+                    ? Color(theme.colors.text).alpha(0.08).toString()
+                    : 'transparent',
+              },
+            ]}
+            onPress={() => {
+              setVisible(false);
+              router.push('/recitation-spike');
+            }}
+            onPressIn={() => setPressedItem('recitationSpike')}
+            onPressOut={() => setPressedItem(null)}>
+            <Text style={[styles.devMenuText, {color: theme.colors.text}]}>
+              🎙️ Recitation Spike
             </Text>
           </TouchableOpacity>
 

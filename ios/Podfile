@@ -78,3 +78,4 @@ Dir.glob(File.join(__dir__, '..', 'targets', '**', 'pods.rb')).each do |target_f
     eval(File.read(target_file), target_binding, target_file)
   end
 end
+ENV['DISABLE_AUDIOAPI_FFMPEG'] = '1'
