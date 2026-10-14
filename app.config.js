@@ -173,7 +173,6 @@ module.exports = {
       '@bacons/apple-targets',
       ['expo-audio', {enableBackgroundPlayback: true}],
       'expo-sqlite',
-      'onnxruntime-react-native',
       [
         'react-native-audio-api',
         {

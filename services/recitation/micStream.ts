@@ -67,7 +67,13 @@ export async function startMicStream(
     async stop() {
       recorder.clearOnAudioReady();
       await recorder.stop();
-      await AudioManager.setAudioSessionActivity(false);
+      // Hand the shared session back in the shape expo-audio set at init, so
+      // Quran playback isn't left in record mode or deactivated.
+      AudioManager.setAudioSessionOptions({
+        iosCategory: 'playback',
+        iosMode: 'default',
+        iosOptions: [],
+      });
     },
   };
 }
