@@ -1,0 +1,533 @@
+<meta charset="utf-8" />
+<meta
+  name="viewport"
+  content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Sign Mushaf Prototype</title>
+<meta name="robots" content="noindex" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+  rel="stylesheet"
+  href="https://fonts.googleapis.com/css2?family=Amiri+Quran&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap" />
+<style>
+  /* Layout: one reading column; the alphabet and Al-Fatihah sit on paper strips so
+     LPMQ's black-line drawings read the same in light and dark themes. */
+  :root {
+    --bg: #f3f5f2;
+    --surface: #ffffff;
+    --paper: #fcfcfa;
+    --ink: #18221e;
+    --muted: #59665f;
+    --line: #d5ddd8;
+    --accent: #0d675f;
+    --accent-ink: #ffffff;
+    --warn-bg: #fff4d6;
+    --warn-ink: #5a4100;
+    --diff: #b5541c;
+    --font-display: 'Newsreader', 'Iowan Old Style', Georgia, serif;
+    --font-body: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI',
+      sans-serif;
+    --font-mono: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
+    --font-quran: 'Amiri Quran', 'Amiri', 'Scheherazade New',
+      'Noto Naskh Arabic', serif;
+    --hand: 64px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) {
+      --bg: #101513;
+      --surface: #18201c;
+      --paper: #eef0eb;
+      --ink: #e5ece8;
+      --muted: #9daaa3;
+      --line: #2b3631;
+      --accent: #5cc2b4;
+      --accent-ink: #0d1412;
+      --warn-bg: #3a3014;
+      --warn-ink: #f2dc9d;
+      --diff: #f0995f;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme='dark'] {
+    --bg: #101513;
+    --surface: #18201c;
+    --paper: #eef0eb;
+    --ink: #e5ece8;
+    --muted: #9daaa3;
+    --line: #2b3631;
+    --accent: #5cc2b4;
+    --accent-ink: #0d1412;
+    --warn-bg: #3a3014;
+    --warn-ink: #f2dc9d;
+    --diff: #f0995f;
+    color-scheme: dark;
+  }
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.55;
+  }
+  .wrap {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding-inline: 16px;
+    padding-block: 32px 64px;
+    display: grid;
+    gap: 40px;
+  }
+  header {
+    display: grid;
+    gap: 12px;
+  }
+  .eyebrow {
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  h1,
+  h2 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    margin: 0;
+    text-wrap: balance;
+  }
+  h1 {
+    font-size: clamp(28px, 5vw, 40px);
+    line-height: 1.1;
+  }
+  h2 {
+    font-size: 24px;
+  }
+  p {
+    margin: 0;
+    max-width: 68ch;
+  }
+  .lede {
+    color: var(--muted);
+  }
+  .notice {
+    background: var(--warn-bg);
+    color: var(--warn-ink);
+    border-radius: 10px;
+    padding: 12px 14px;
+    display: grid;
+    gap: 4px;
+    font-size: 14px;
+  }
+  .notice strong {
+    font-weight: 600;
+  }
+  section {
+    display: grid;
+    gap: 16px;
+  }
+  .section-head {
+    display: grid;
+    gap: 6px;
+  }
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 16px;
+    align-items: center;
+  }
+  .seg {
+    display: inline-flex;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    overflow: hidden;
+    background: var(--surface);
+  }
+  .seg button {
+    font: inherit;
+    font-size: 13px;
+    color: var(--ink);
+    background: transparent;
+    border: 0;
+    padding-block: 6px;
+    padding-inline: 14px;
+    cursor: pointer;
+  }
+  .seg button + button {
+    border-left: 1px solid var(--line);
+  }
+  .seg button[aria-pressed='true'] {
+    background: var(--accent);
+    color: var(--accent-ink);
+  }
+  .seg button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+  }
+  .ctl {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .seg-label {
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  /* alphabet */
+  .alphabet {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 10px;
+    direction: rtl;
+  }
+  .card {
+    direction: ltr;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 10px;
+    display: grid;
+    grid-template-rows: auto 120px auto;
+    gap: 8px;
+    min-width: 0;
+  }
+  .card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 6px;
+  }
+  .card-head .ar {
+    font-family: var(--font-quran);
+    font-size: 30px;
+    line-height: 1;
+  }
+  .card-head .nm {
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .card-head .no {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .card .pic {
+    background: var(--paper);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+  }
+  .card .pic img {
+    max-height: 104px;
+    max-width: 100%;
+    object-fit: contain;
+  }
+  .card p {
+    font-size: 12.5px;
+    color: var(--muted);
+    line-height: 1.4;
+  }
+
+  /* marks legend */
+  .legend {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 10px;
+  }
+  .legend-item {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 10px 12px;
+    display: grid;
+    grid-template-columns: 64px 1fr;
+    gap: 10px;
+    align-items: start;
+    min-width: 0;
+  }
+  .legend-item .glyph {
+    background: var(--paper);
+    border-radius: 6px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px;
+  }
+  .legend-item .glyph img {
+    max-width: 100%;
+    max-height: 40px;
+  }
+  .legend-item .glyph .txt {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: #3d4842;
+  }
+  .legend-item h3 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .legend-item .ar {
+    font-family: var(--font-quran);
+    font-size: 18px;
+    color: var(--muted);
+  }
+  .legend-item p {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.4;
+  }
+
+  /* Al-Fatihah */
+  .ayah {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 14px;
+    display: grid;
+    gap: 10px;
+    min-width: 0;
+  }
+  .ayah-words {
+    background: var(--paper);
+    color: #18221e;
+    border-radius: 8px;
+    padding: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px 26px;
+    direction: rtl;
+    align-items: flex-end;
+  }
+  .word {
+    display: grid;
+    gap: 6px;
+    justify-items: center;
+    min-width: 0;
+  }
+  .word-text {
+    font-family: var(--font-quran);
+    font-size: 30px;
+    line-height: 1.7;
+  }
+  .word.differs .word-text {
+    text-decoration: underline wavy var(--diff);
+    text-underline-offset: 10px;
+  }
+  .signs {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 4px;
+    direction: rtl;
+    align-items: flex-end;
+    position: relative;
+  }
+  .waqf {
+    font-family: var(--font-quran);
+    font-size: 18px;
+    line-height: 1;
+    align-self: flex-start;
+  }
+  .sg {
+    margin: 0;
+    display: grid;
+    grid-template-rows: 30px var(--hand) 34px;
+    justify-items: center;
+  }
+  .sg .band {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+  .sg .band.above {
+    justify-content: flex-end;
+  }
+  .sg .band.below {
+    justify-content: flex-start;
+  }
+  .sg .hand {
+    height: var(--hand);
+    width: auto;
+    max-width: none;
+  }
+  .sg .badge {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: #59665f;
+  }
+  .lefty .sg {
+    transform: scaleX(-1);
+  }
+  .ayah-end {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: 1.5px solid var(--accent);
+    color: var(--accent);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-quran);
+    font-size: 18px;
+    align-self: center;
+  }
+  .ayah-words .ayah-end {
+    border-color: #0d675f;
+    color: #0d675f;
+  }
+  .translit {
+    font-style: italic;
+    color: var(--muted);
+  }
+  .ayah-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .ayah-meta code {
+    font-family: var(--font-mono);
+  }
+  .fine {
+    font-size: 13px;
+    color: var(--muted);
+  }
+  footer {
+    border-top: 1px solid var(--line);
+    padding-top: 16px;
+    display: grid;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  @media (max-width: 520px) {
+    :root {
+      --hand: 44px;
+    }
+    .word-text {
+      font-size: 26px;
+    }
+  }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Bayaan · internal prototype</div>
+    <h1>Sign Mushaf: letters and Al-Fatihah</h1>
+    <p class="lede">
+      Every Arabic letter of the Uthmani text fingerspelled, with harakat shown
+      as movement marks, following the method of LPMQ's
+      <i>Pedoman Membaca Mushaf Al-Qur'an Isyarat</i> (Kemenag RI, 2022).
+      Al-Fatihah below is converted by Bayaan's rule-based converter, not drawn
+      by hand.
+    </p>
+    <div class="notice" role="note">
+      <p>
+        <strong
+          >Illustrations: LPMQ Kemenag RI, used for internal review pending
+          permission; not for distribution.</strong
+        >
+      </p>
+      <p>
+        Method follows LPMQ's Pedoman Membaca Mushaf Al-Qur'an Isyarat (Kemenag
+        RI). Prototype pending review by Deaf teachers and LPMQ.
+      </p>
+    </div>
+  </header>
+
+  <section aria-labelledby="fatihah-h">
+    <div class="section-head">
+      <h2 id="fatihah-h">Surah Al-Fatihah</h2>
+      <p class="fine">
+        Read each row right to left, as in the guideline. Kitabah signs what is
+        written; Tilawah signs what is recited. Words underlined in orange sign
+        differently from the guideline's worked example because Bayaan's Madani
+        text is spelled differently from the Mushaf Standar Indonesia the
+        example uses.
+      </p>
+    </div>
+    <div class="controls">
+      <div class="ctl">
+        <span class="seg-label" id="method-l">Method</span>
+        <div class="seg" role="group" aria-labelledby="method-l">
+          <button type="button" id="m-kitabah" aria-pressed="true">
+            Kitabah
+          </button>
+          <button type="button" id="m-tilawah" aria-pressed="false">
+            Tilawah
+          </button>
+        </div>
+      </div>
+      <div class="ctl">
+        <span class="seg-label" id="text-l">Text</span>
+        <div class="seg" role="group" aria-labelledby="text-l">
+          <button type="button" id="t-qpc" aria-pressed="true">
+            Bayaan (Madani)
+          </button>
+          <button type="button" id="t-msi" aria-pressed="false">
+            As in the guideline (MSI)
+          </button>
+        </div>
+      </div>
+      <div class="ctl">
+        <span class="seg-label" id="hand-l">Hand</span>
+        <div class="seg" role="group" aria-labelledby="hand-l">
+          <button type="button" id="h-right" aria-pressed="true">Right</button>
+          <button type="button" id="h-left" aria-pressed="false">
+            Left (mirrored)
+          </button>
+        </div>
+      </div>
+    </div>
+    <div id="fatihah"></div>
+  </section>
+
+  <section aria-labelledby="alpha-h">
+    <div class="section-head">
+      <h2 id="alpha-h">The alphabet</h2>
+      <p class="fine">
+        The 32 handshapes of the guideline's letter table, in its order, plus
+        the Tilawah form of hamza. Drawn from the viewer's side: the signer's
+        right hand, palm descriptions in the signer's frame.
+      </p>
+    </div>
+    <div class="alphabet" id="alphabet"></div>
+  </section>
+
+  <section aria-labelledby="marks-h">
+    <div class="section-head">
+      <h2 id="marks-h">Harakat and marks</h2>
+      <p class="fine">
+        Each mark is a movement made after forming the letter. The glyphs are
+        the guideline's; arrows point the way the viewer sees the hand move.
+      </p>
+    </div>
+    <div class="legend" id="legend"></div>
+  </section>
+
+  <footer>
+    <p>
+      Text: Bayaan's KFGQPC Hafs Uthmani text; transliteration from Bayaan's
+      data. Method and illustrations: Lajnah Pentashihan Mushaf Al-Qur'an
+      (LPMQ), Kemenag RI, used for internal review pending permission; not for
+      distribution.
+    </p>
+  </footer>
+</div>
+
+<script>
+  (function () {
+    'use strict';
+    /*__BUNDLE__*/
+  })();
+</script>
