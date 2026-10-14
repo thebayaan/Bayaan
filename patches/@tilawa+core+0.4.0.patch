@@ -1,0 +1,16 @@
+diff --git a/node_modules/@tilawa/core/dist/recitation/session.js b/node_modules/@tilawa/core/dist/recitation/session.js
+index 3d7030c..eb6059c 100644
+--- a/node_modules/@tilawa/core/dist/recitation/session.js
++++ b/node_modules/@tilawa/core/dist/recitation/session.js
+@@ -80,8 +80,9 @@ const STRUCTURAL_BLOCK_SECONDS = 120;
+ const STRUCTURAL_ERROR_KINDS = new Set(["possible_omission", "possible_substitution", "possible_vowel",
+     "possible_skipped_ayah", "unclear_ayah"]);
+ async function loadStructuralIndex() {
+-    const mod = await import("./structural-index.json", { with: { type: "json" } });
+-    return mod.default;
++    // Metro rejects import() with an options argument; a plain require() of
++    // the JSON is equivalent once bundled.
++    return require("./structural-index.json");
+ }
+ export class ZipformerSession {
+     corpus;
