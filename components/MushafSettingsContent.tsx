@@ -588,6 +588,7 @@ const RecitationTrackingControl: React.FC<RecitationTrackingControlProps> = ({
       <Text style={styles.helperText}>
         Adds a mic to the mushaf bar. Recite and the page follows you, word by
         word. Recognition runs on your device; audio never leaves your phone.
+        Hafs only.
       </Text>
       {enabled && (
         <>

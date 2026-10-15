@@ -53,6 +53,7 @@ import {playbackBandUnitKeys} from '../skia/verseHighlightLayers';
 import {usePlaybackBand} from '../skia/playbackBand';
 import {readingPageUnitItems, themeHafsKeyOfRow} from './mushafVerseUnitRows';
 import {VerseUnitsPending} from './VerseUnitsPending';
+import {useRecitedVerseKey} from '@/store/recitationTrackingStore';
 
 const NO_KEYS: readonly string[] = Object.freeze([]);
 // @ai-end
@@ -151,10 +152,18 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
 
   // Active ayah highlighting. currentVerseKey (the first Hafs verse being
   // recited) drives the auto-scroll; every recited Hafs verse is highlighted.
-  const currentVerseKey = useMushafPlayerStore(s => s.currentVerseKey);
-  const playbackVerseKeys = usePlaybackVerseKeys(); // @ai
+  // While the reader's own recitation is followed (Hafs only), that ayah
+  // takes the player's place.
+  const recitedVerseKey = useRecitedVerseKey();
+  const playerVerseKey = useMushafPlayerStore(s => s.currentVerseKey);
+  const currentVerseKey = recitedVerseKey ?? playerVerseKey;
+  const playerVerseKeys = usePlaybackVerseKeys(); // @ai
+  const playbackVerseKeys = useMemo(
+    () => (recitedVerseKey ? [recitedVerseKey] : playerVerseKeys),
+    [recitedVerseKey, playerVerseKeys],
+  );
   const playbackState = useMushafPlayerStore(s => s.playbackState);
-  const isPlaying = playbackState === 'playing';
+  const isPlaying = playbackState === 'playing' || recitedVerseKey !== null;
 
   // @ai-start
   // Decision 3 (Release 1): a non-Hafs text lists the page's verses as its

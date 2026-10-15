@@ -38,6 +38,13 @@ export const RECITATION_TRACKING_IDLE: RecitationTrackingState = {
   errorKind: null,
 };
 
+/** Hafs key of the ayah the reader is reciting, or null when not listening. */
+export function useRecitedVerseKey(): string | null {
+  return useRecitationTrackingStore(s =>
+    s.status === 'listening' ? s.verseKey : null,
+  );
+}
+
 /** Written only by RecitationTrackingService; components read it. */
 export const useRecitationTrackingStore = create<RecitationTrackingState>(
   () => RECITATION_TRACKING_IDLE,

@@ -76,6 +76,7 @@ import {
   CONTENT_HEIGHT,
   calculateLineYPositions,
 } from '../constants';
+import {useRecitedVerseKey} from '@/store/recitationTrackingStore';
 
 interface QCFPageProps {
   pageNumber: number;
@@ -156,7 +157,14 @@ const QCFPage: React.FC<QCFPageProps> = ({
   );
   // @ai — every Hafs verse the reciter is reciting (a rewayah recitation's
   // verse can cover several Hafs verses); empty when idle.
-  const playbackVerseKeys = usePlaybackVerseKeys();
+  const playerVerseKeys = usePlaybackVerseKeys();
+  // While the reader's own recitation is followed, that ayah takes the
+  // player's place (QCF is Hafs only).
+  const recitedVerseKey = useRecitedVerseKey();
+  const playbackVerseKeys = useMemo(
+    () => (recitedVerseKey ? [recitedVerseKey] : playerVerseKeys),
+    [recitedVerseKey, playerVerseKeys],
+  );
 
   const surahHeaderFonts = useMemo(() => {
     const qcTypeface = mushafPreloadService.quranCommonTypeface;
