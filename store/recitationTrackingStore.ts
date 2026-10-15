@@ -11,6 +11,10 @@ export interface RecitationTrackingState {
   status: RecitationTrackingStatus;
   /** Model download progress, 0 to 1, while status is 'downloading'. */
   downloadProgress: number;
+  /** The tracker knows where the reader is; false while it searches. */
+  locked: boolean;
+  /** Hafs keys Tilawa counted as recited this take, in order. */
+  recitedVerseKeys: readonly string[];
   /** Hafs key of the ayah being recited, once the tracker has locked on. */
   verseKey: string | null;
   /** 0-based word in Tilawa's segmentation of verseKey, or null. */
@@ -25,6 +29,8 @@ export interface RecitationTrackingState {
 export const RECITATION_TRACKING_IDLE: RecitationTrackingState = {
   status: 'off',
   downloadProgress: 0,
+  locked: false,
+  recitedVerseKeys: [],
   verseKey: null,
   wordIndex: null,
   totalWords: 0,

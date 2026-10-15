@@ -38,7 +38,11 @@ import {SheetManager} from 'react-native-actions-sheet';
 import {SURAHS} from '@/data/surahData';
 import MushafViewer from '@/components/mushaf/main';
 import {USE_GLASS} from '@/hooks/useGlassProps';
-import {useRecitationMic} from '@/components/mushaf/RecitationMicButton';
+import {
+  useRecitationMic,
+  useRecitationStatusText,
+} from '@/components/mushaf/RecitationMicButton';
+import {stopRecitationTracking} from '@/services/recitation/RecitationTrackingService';
 
 export type MushafScreenParams = {
   surah?: string;
@@ -270,10 +274,28 @@ const surahNameOf = (surah: number): string =>
 // shows: the verse label in the numbering of the mushaf on screen, "Verse
 // tracking unavailable" (with prev / next disabled), and, as one-off notices,
 // refused playback requests.
+// Status text for the toolbar while following the reader's recitation.
+function RecitationToolbarLabel({text}: {text: string}): React.JSX.Element {
+  const {theme} = useTheme();
+  return (
+    <Text
+      numberOfLines={1}
+      style={{
+        fontSize: 15,
+        fontFamily: 'Manrope-SemiBold',
+        color: theme.colors.text,
+        paddingHorizontal: 12,
+      }}>
+      {text}
+    </Text>
+  );
+}
+
 export function MushafToolbar() {
   const playbackState = useMushafPlayerStore(s => s.playbackState);
   const currentPage = useMushafPlayerStore(s => s.currentPage);
   const mic = useRecitationMic(currentPage || 1);
+  const recitationText = useRecitationStatusText();
   const currentSurah = useMushafPlayerStore(s => s.currentSurah);
   // @ai-start
   const currentVerseLabel = useMushafPlayerStore(s => s.currentVerseLabel);
@@ -349,6 +371,24 @@ export function MushafToolbar() {
 
   // Hide toolbar in immersive or search mode
   if (isImmersive || isSearchMode) return null;
+
+  if (recitationText !== null) {
+    // Reciting: [Stop] — spacer — what the reader is reciting — spacer
+    return (
+      <Stack.Toolbar>
+        <Stack.Toolbar.Button
+          icon="stop.fill"
+          onPress={() => void stopRecitationTracking()}>
+          Stop
+        </Stack.Toolbar.Button>
+        <Stack.Toolbar.Spacer />
+        <Stack.Toolbar.View>
+          <RecitationToolbarLabel text={recitationText} />
+        </Stack.Toolbar.View>
+        <Stack.Toolbar.Spacer />
+      </Stack.Toolbar>
+    );
+  }
 
   if (isIdle) {
     // Idle: [Search] — spacer — [Play] — spacer — [Options]

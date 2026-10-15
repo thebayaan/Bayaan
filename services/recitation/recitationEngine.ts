@@ -118,6 +118,10 @@ export async function createRecitationEngine(
     onEvent,
     // The structural rules only serve correction mode; tracking skips them.
     structural: false,
+    // Skips a whole-Quran search over the transcript at stop().
+    enableFallback: false,
+    // Engine state changes (located, lost, idle) arrive as debug events.
+    debug: true,
   });
   stats.loadMs = performance.now() - loadStart;
 

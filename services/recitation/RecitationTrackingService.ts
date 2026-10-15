@@ -36,15 +36,34 @@ function setState(
   useRecitationTrackingStore.setState(patch);
 }
 
+// Engine events (sent as debug messages) that move between searching for
+// the reader's place and following it.
+const LOCK_EVENTS = new Set(['located', 'relocated']);
+const UNLOCK_EVENTS = new Set(['lost', 'idle', 'locateFailed', 'completed']);
+
 function handleEvent(msg: WorkerOutbound): void {
-  if (msg.type !== 'word_progress') return;
+  const state = useRecitationTrackingStore.getState();
   // stop() flushes the tail after the highlight is cleared; drop those.
-  if (useRecitationTrackingStore.getState().status !== 'listening') return;
-  setState({
-    verseKey: `${msg.surah}:${msg.ayah}`,
-    wordIndex: msg.word_index,
-    totalWords: msg.total_words,
-  });
+  if (state.status !== 'listening') return;
+  if (msg.type === 'word_progress') {
+    setState({
+      locked: true,
+      verseKey: `${msg.surah}:${msg.ayah}`,
+      wordIndex: msg.word_index,
+      totalWords: msg.total_words,
+    });
+    return;
+  }
+  if (msg.type === 'verse_match') {
+    const key = `${msg.surah}:${msg.ayah}`;
+    if (!state.recitedVerseKeys.includes(key)) {
+      setState({recitedVerseKeys: [...state.recitedVerseKeys, key]});
+    }
+    return;
+  }
+  if (msg.type !== 'debug') return;
+  if (LOCK_EVENTS.has(msg.event)) setState({locked: true});
+  if (UNLOCK_EVENTS.has(msg.event)) setState({locked: false});
 }
 
 function messageOf(error: unknown): string {

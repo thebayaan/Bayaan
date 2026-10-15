@@ -26,6 +26,7 @@ import {
   stopRecitationTracking,
 } from '@/services/recitation/RecitationTrackingService';
 import type {SearchHint} from '@tilawa/core';
+import {SURAHS} from '@/data/surahData';
 
 function pageHint(page: number): SearchHint | null {
   const first = mushafVerseMapService.getOrderedVerseKeysForPage(page)[0];
@@ -121,6 +122,22 @@ export function useRecitationMic(currentPage: number): RecitationMic {
     busy: status === 'loading' || status === 'downloading',
     toggle,
   };
+}
+
+/**
+ * What the mushaf bar says while recitation follow-along is active, or null
+ * when it is off: "Getting ready…", "Finding your place…" or "Ya-Sin 36:4".
+ * Shared by the player bar and the iOS 26 toolbar.
+ */
+export function useRecitationStatusText(): string | null {
+  return useRecitationTrackingStore(s => {
+    if (s.status === 'loading') return 'Getting ready…';
+    if (s.status !== 'listening') return null;
+    if (!s.locked || !s.verseKey) return 'Finding your place…';
+    const [surah, ayah] = s.verseKey.split(':').map(Number);
+    const name = SURAHS[surah - 1]?.name ?? '';
+    return `${name} ${surah}:${ayah}`;
+  });
 }
 
 interface RecitationMicButtonProps {

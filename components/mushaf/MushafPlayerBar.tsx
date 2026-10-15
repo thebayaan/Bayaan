@@ -34,7 +34,11 @@ import {mushafAudioService} from '@/services/audio/MushafAudioService';
 import {SURAHS} from '@/data/surahData';
 import {PlayIcon, PauseIcon} from '@/components/Icons';
 import {showToast} from '@/utils/toastUtils'; // @ai
-import {RecitationMicButton} from './RecitationMicButton';
+import {
+  RecitationMicButton,
+  useRecitationStatusText,
+} from './RecitationMicButton';
+import {stopRecitationTracking} from '@/services/recitation/RecitationTrackingService';
 
 // @ai-start
 const surahNameOf = (surah: number): string =>
@@ -58,6 +62,7 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
   const numberingMode = useMushafPlayerStore(s => s.numberingMode); // @ai
   const verseTrackingUnavailable = numberingMode === 'disabled'; // @ai
   const timestampError = useMushafPlayerStore(s => s.timestampError);
+  const recitationText = useRecitationStatusText();
   const isIdle = playbackState === 'idle';
   const isLoading = playbackState === 'loading';
   const isPlaying = playbackState === 'playing';
@@ -132,6 +137,46 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
       payload: {currentPage},
     });
   }, [currentPage]);
+
+  // ── Reciting: [Stop] — mic — [ ] with what the reader is reciting ────
+  if (recitationText !== null) {
+    return (
+      <View style={styles.activeContainer}>
+        <View style={styles.activeRow}>
+          <Pressable
+            style={styles.edgeButton}
+            onPress={() => void stopRecitationTracking()}
+            accessibilityRole="button"
+            accessibilityLabel="Stop following my recitation">
+            <Ionicons
+              name="stop"
+              size={moderateScale(20)}
+              color={theme.colors.text}
+            />
+          </Pressable>
+          <View style={styles.controlsCenter}>
+            <RecitationMicButton
+              currentPage={currentPage}
+              style={[
+                styles.micButtonRect,
+                {
+                  backgroundColor: Color(theme.colors.text)
+                    .alpha(0.1)
+                    .toString(),
+                },
+              ]}
+            />
+          </View>
+          <View style={styles.edgeButton} />
+        </View>
+        <Text
+          style={[styles.verseInfo, {color: theme.colors.textSecondary}]}
+          numberOfLines={1}>
+          {recitationText}
+        </Text>
+      </View>
+    );
+  }
 
   // ── Error state: show message + change reciter button ────
   if (isIdle && timestampError) {

@@ -1,3 +1,18 @@
+diff --git a/node_modules/@tilawa/core/dist/recitation/engine.js b/node_modules/@tilawa/core/dist/recitation/engine.js
+index 0a41219..54a4689 100644
+--- a/node_modules/@tilawa/core/dist/recitation/engine.js
++++ b/node_modules/@tilawa/core/dist/recitation/engine.js
+@@ -476,8 +476,9 @@ export class RecitationEngine {
+         }
+         if (changes.length)
+             events.push({ type: "verdicts", changes });
++        const live = new Set(vs.map((v) => v.wordIndex));
+         for (const key of this.lastStates.keys()) {
+-            if (!vs.some((v) => v.wordIndex === key))
++            if (!live.has(key))
+                 this.lastStates.delete(key);
+         }
+         this.prevSettled = settled;
 diff --git a/node_modules/@tilawa/core/dist/recitation/session.d.ts b/node_modules/@tilawa/core/dist/recitation/session.d.ts
 index 24b499d..e53247e 100644
 --- a/node_modules/@tilawa/core/dist/recitation/session.d.ts
@@ -21,7 +36,7 @@ index 24b499d..e53247e 100644
      /**
       * Turn the slip head on or off. `"strict"` is the no-extra-false-flag
 diff --git a/node_modules/@tilawa/core/dist/recitation/session.js b/node_modules/@tilawa/core/dist/recitation/session.js
-index 3d7030c..e1e54b5 100644
+index 3d7030c..78d4d75 100644
 --- a/node_modules/@tilawa/core/dist/recitation/session.js
 +++ b/node_modules/@tilawa/core/dist/recitation/session.js
 @@ -80,8 +80,9 @@ const STRUCTURAL_BLOCK_SECONDS = 120;
@@ -57,3 +72,42 @@ index 3d7030c..e1e54b5 100644
          return engine;
      }
      /** GOP scoring costs a few CTC Viterbi passes per word; only correction mode reads it.
+@@ -555,7 +563,9 @@ export class ZipformerSession {
+             && (tracker.costRate(this.cfg.holdWindow) ?? 0) < this.cfg.holdRate) {
+             const last = tracker.heard[tracker.heard.length - 1];
+             const settled = !!last && this.decoder.framesDecoded - last.frame >= this.cfg.settleFrames;
+-            const raised = this.correction.observe(this.engine.tracer.verdicts(settled), this.lastCursor, this.decoder.framesDecoded);
++            // observe() ignores its input outside correction mode; skip the verdicts.
++            const raised = this.correction.mode === "correction"
++                && this.correction.observe(this.engine.tracer.verdicts(settled), this.lastCursor, this.decoder.framesDecoded);
+             out.push(...this.noteMessages());
+             if (raised) {
+                 // Retain main-session coverage before a practice exit replaces its tracker.
+diff --git a/node_modules/@tilawa/core/dist/recitation/verdicts.js b/node_modules/@tilawa/core/dist/recitation/verdicts.js
+index 96da26c..d8d5202 100644
+--- a/node_modules/@tilawa/core/dist/recitation/verdicts.js
++++ b/node_modules/@tilawa/core/dist/recitation/verdicts.js
+@@ -81,6 +81,13 @@ export class VerdictTracer {
+     }
+     verdicts(settled = false) {
+         const t = this.tracker;
++        // Tracking mode calls this several times per chunk with the same
++        // inputs; reuse the result until the tracker hears something new.
++        const memoKey = this.posteriors || (this.encoder && this.slipHead)
++            ? null
++            : `${t.revision}:${t.heard.length}:${settled}:${this.anchorAyahEnd}`;
++        if (memoKey !== null && this.memoTracker === t && this.memoKey === memoKey)
++            return this.memoOut;
+         if (this.cacheRevision !== t.revision) {
+             this.cache.clear();
+             this.gopCache.clear();
+@@ -117,6 +124,9 @@ export class VerdictTracer {
+             this.score(out, spans);
+         if (this.encoder && this.slipHead)
+             this.attachSlip(out);
++        this.memoTracker = memoKey === null ? null : t;
++        this.memoKey = memoKey;
++        this.memoOut = out;
+         return out;
+     }
+     /** Ref cell just past the ayah holding `cell`, when `cell` lies within the
