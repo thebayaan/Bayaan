@@ -4,6 +4,7 @@ import {Surah} from '@/data/surahData';
 import type {RewayatStyle} from '@/types/reciter';
 import type {Dhikr} from '@/types/adhkar';
 import type {UploadedRecitation} from '@/types/uploads';
+import type {AvailableReciter} from '@/store/mushafPlayerStore'; // @ai
 
 // Import sheet components
 import {SurahOptionsSheet} from './SurahOptionsSheet';
@@ -28,6 +29,7 @@ import {CollectionOptionsSheet} from './CollectionOptionsSheet';
 import {VerseActionsSheet} from './VerseActionsSheet';
 import {VerseNoteSheet} from './VerseNoteSheet';
 import {MushafPlayerOptionsSheet} from './MushafPlayerOptionsSheet';
+import {MushafReciterPickerSheet} from './MushafReciterPickerSheet'; // @ai
 import {MushafRepeatOptionsSheet} from './MushafRepeatOptionsSheet';
 import {FollowAlongSheet} from './FollowAlongSheet';
 import {WordDetailSheet} from './WordDetailSheet';
@@ -62,6 +64,7 @@ registerSheet('verse-actions', VerseActionsSheet);
 // @ai-end
 registerSheet('verse-note', VerseNoteSheet);
 registerSheet('mushaf-player-options', MushafPlayerOptionsSheet);
+registerSheet('mushaf-reciter-picker', MushafReciterPickerSheet); // @ai
 registerSheet('mushaf-repeat-options', MushafRepeatOptionsSheet);
 registerSheet('follow-along', FollowAlongSheet);
 registerSheet('word-detail', WordDetailSheet);
@@ -260,6 +263,14 @@ declare module 'react-native-actions-sheet' {
         currentPage: number;
       };
     }>;
+    // @ai-start
+    'mushaf-reciter-picker': SheetDefinition<{
+      payload: {
+        selectedRewayatId: string | null;
+      };
+      returnValue: AvailableReciter | undefined;
+    }>;
+    // @ai-end
     'mushaf-repeat-options': SheetDefinition<{
       payload: {
         verseKey: string;

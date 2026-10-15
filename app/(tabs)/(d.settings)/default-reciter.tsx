@@ -17,6 +17,7 @@ import {ReciterImage} from '@/components/ReciterImage';
 import {useHeaderHeight} from 'expo-router/react-navigation';
 import {USE_GLASS} from '@/hooks/useGlassProps';
 import {getDisplayLabelFromName} from '@/services/rewayah/RewayahIdentity';
+import {rankReciters} from '@/utils/search/catalog'; // @ai
 // @ai-start
 import {latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
@@ -42,22 +43,22 @@ export default function DefaultReciterScreen() {
     );
   }, []);
 
+  // @ai-start
+  // Stable subset so rankReciters reuses its index across keystrokes.
+  const completeReciters = useMemo(
+    () => RECITERS.filter(hasCompleteQuran),
+    [hasCompleteQuran],
+  );
   const handleSearch = useCallback(
     (query: string) => {
       setSearchQuery(query);
-      if (query.trim() === '') {
-        setSearchResults([]);
-      } else {
-        const filtered = RECITERS.filter(
-          reciter =>
-            hasCompleteQuran(reciter) &&
-            reciter.name.toLowerCase().includes(query.toLowerCase()),
-        );
-        setSearchResults(filtered);
-      }
+      setSearchResults(
+        query.trim() ? [...rankReciters(query, completeReciters)] : [],
+      );
     },
-    [hasCompleteQuran],
+    [completeReciters],
   );
+  // @ai-end
 
   const handleReciterSelect = useCallback(
     (reciter: Reciter) => {

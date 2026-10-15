@@ -27,6 +27,8 @@ import {
 } from '@/services/dataService';
 import {surahGlyphMap} from '@/utils/surahGlyphMap';
 import {RECITERS} from '@/data/reciterData';
+import {rankReciters} from '@/utils/search/catalog'; // @ai
+import {createSearchIndex} from '@/utils/search/createSearchIndex'; // @ai
 import type {Surah} from '@/data/surahData';
 import type {UploadedRecitation} from '@/types/uploads';
 import {
@@ -410,18 +412,23 @@ export const OrganizeRecitationSheet = (
   const [reciterQuery, setReciterQuery] = useState('');
   const [showReciterResults, setShowReciterResults] = useState(false);
 
+  // @ai-start
+  const customReciterIndex = useMemo(
+    () =>
+      createSearchIndex(customReciters, {
+        fields: [{get: reciter => reciter.name, weight: 1}],
+      }),
+    [customReciters],
+  );
+
   const reciterResults = useMemo(() => {
     if (!reciterQuery.trim()) return {system: [], custom: []};
-    const q = reciterQuery.toLowerCase();
-    const system = RECITERS.filter(r => r.name.toLowerCase().includes(q)).slice(
-      0,
-      5,
-    );
-    const custom = customReciters
-      .filter(r => r.name.toLowerCase().includes(q))
-      .slice(0, 3);
-    return {system, custom};
-  }, [reciterQuery, customReciters]);
+    return {
+      system: rankReciters(reciterQuery).slice(0, 5),
+      custom: customReciterIndex.search(reciterQuery, 3).map(hit => hit.item),
+    };
+  }, [reciterQuery, customReciterIndex]);
+  // @ai-end
 
   const hasReciterResults =
     reciterResults.system.length > 0 || reciterResults.custom.length > 0;

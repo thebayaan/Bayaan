@@ -83,10 +83,12 @@
     "title": "ተወዳጅ አንባቢዎች",
     "selected_one": "{{count}} ተመርጠዋል",
     "selected_other": "{{count}} ተመርጠዋል",
-    "rewayatCount_other": "{{count}} ሪዋያዎች",
+    "rewayatCount_one": "{{count}} ሪዋያ",
+    "rewayatCount_other": "{{count}} ሪዋያዎች"
+  },
+  "reciterPicker": {
     "searchPlaceholder": "አንባቢዎችን ፈልግ...",
-    "empty": "ምንም አንባቢዎች አልተገኙም",
-    "rewayatCount_one": "{{count}} ሪዋያ"
+    "empty": "ምንም አንባቢዎች አልተገኙም"
   },
   "adhkarLayout": {
     "title": "የአዝካር አቀማመጥ",
@@ -192,7 +194,8 @@
     "startingVerse": "መነሻ አንቀጽ",
     "endingVerse": "መጨረሻ አንቀጽ",
     "reciter": "አንባቢ",
-    "play": "አጫውት"
+    "play": "አጫውት",
+    "reciterPickerSubtitle": "አንቀጽ በአንቀጽ ድምፅ ያላቸው አንባቢዎች"
   },
   "playlistContext": {
     "edit": "የማጫወቻ ዝርዝር አርም",

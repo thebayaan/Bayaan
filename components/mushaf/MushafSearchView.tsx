@@ -36,7 +36,8 @@ import {flipX, latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
 import i18n from '@/i18n';
 import {getSurahDisplayName, getSurahMeaning} from '@/i18n/format';
-import {normalizeSearchText, matchesSurah} from '@/utils/catalogSearch';
+import {normalizeSearchText} from '@/utils/search/normalize'; // @ai
+import {rankSurahs} from '@/utils/search/catalog'; // @ai
 import {useRewayahVerseUnits} from '@/hooks/useRewayahVerseUnits';
 import type {RewayahId} from '@/services/rewayah/RewayahIdentity';
 import {rewayahVerseUnitsService} from '@/services/mushaf/RewayahVerseUnitsService';
@@ -315,17 +316,17 @@ function parseSearchQuery(
     return results;
   }
 
-  // 5. Fuzzy match on surah names
-  for (const surah of SURAHS) {
-    if (matchesSurah(surah, q)) {
-      results.push({
-        type: 'surah',
-        surah,
-        primary: getSurahDisplayName(surah),
-        secondary: surahSecondaryLabel(surah),
-      });
-    }
+  // 5. Ranked match on surah names
+  // @ai-start
+  for (const surah of rankSurahs(q)) {
+    results.push({
+      type: 'surah',
+      surah,
+      primary: getSurahDisplayName(surah),
+      secondary: surahSecondaryLabel(surah),
+    });
   }
+  // @ai-end
 
   return results;
 }

@@ -105,7 +105,9 @@
     "rewayatCount_two": "روايتان",
     "rewayatCount_few": "{{count}} روايات",
     "rewayatCount_many": "{{count}} روايةً",
-    "rewayatCount_other": "{{count}} رواية",
+    "rewayatCount_other": "{{count}} رواية"
+  },
+  "reciterPicker": {
     "searchPlaceholder": "ابحث عن قارئ…",
     "empty": "لم يُعثر على قرّاء"
   },
@@ -217,7 +219,8 @@
     "startingVerse": "آية البداية",
     "endingVerse": "آية النهاية",
     "reciter": "القارئ",
-    "play": "تشغيل"
+    "play": "تشغيل",
+    "reciterPickerSubtitle": "قرّاء يدعمون التشغيل آيةً بآية"
   },
   "playlistContext": {
     "edit": "تعديل قائمة التشغيل",

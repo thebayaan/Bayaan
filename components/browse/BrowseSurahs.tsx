@@ -3,7 +3,7 @@ import {View, FlatList, Text, Pressable} from 'react-native';
 // @ai-start
 import {Stack, useRouter, useNavigation} from 'expo-router';
 import {SearchInput} from '@/components/SearchInput';
-import {matchesSurah} from '@/utils/catalogSearch';
+import {rankSurahs} from '@/utils/search/catalog'; // @ai
 // @ai-end
 import {
   moderateScale,
@@ -206,13 +206,12 @@ export default function BrowseSurahs({theme, onBack}: BrowseSurahsProps) {
   );
 
   // Filter and sort surahs
+  // @ai-start
+  const isSearching = searchQuery.trim().length > 0;
   const displaySurahs = useMemo(() => {
-    // First filter based on search query
-    const result = searchQuery.trim()
-      ? SURAHS.filter(surah => matchesSurah(surah, searchQuery))
-      : [...SURAHS];
-
-    // Then sort based on selected option
+    // A query ranks by relevance; the sort option applies to the full list.
+    if (isSearching) return [...rankSurahs(searchQuery)];
+    const result = [...SURAHS];
     switch (sortOption) {
       case 'asc':
         return result.sort((a, b) => a.id - b.id);
@@ -223,12 +222,16 @@ export default function BrowseSurahs({theme, onBack}: BrowseSurahsProps) {
       default:
         return result;
     }
-  }, [searchQuery, sortOption]);
+  }, [isSearching, searchQuery, sortOption]);
+  // @ai-end
 
   // Prepare list data with Juz headers (only for list view with asc/desc sort)
   const listDataWithJuzHeaders = useMemo(() => {
+    // Juz headers assume mushaf order, which ranked results don't have.
     const shouldShowJuzHeaders =
-      viewMode === 'list' && (sortOption === 'asc' || sortOption === 'desc');
+      !isSearching && // @ai
+      viewMode === 'list' &&
+      (sortOption === 'asc' || sortOption === 'desc');
 
     if (!shouldShowJuzHeaders) {
       // No Juz headers - just return surahs as ListItems
@@ -266,7 +269,7 @@ export default function BrowseSurahs({theme, onBack}: BrowseSurahsProps) {
     });
 
     return data;
-  }, [displaySurahs, viewMode, sortOption, t]);
+  }, [displaySurahs, isSearching, viewMode, sortOption, t]); // @ai
 
   // Function to generate a consistent color for each surah
   const getColorForSurah = useCallback((id: number): string => {

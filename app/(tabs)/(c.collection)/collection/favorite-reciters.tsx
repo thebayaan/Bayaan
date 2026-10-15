@@ -26,6 +26,7 @@ import {getDisplayLabelFromName} from '@/services/rewayah/RewayahIdentity';
 import {flipX, latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
 import {getReciterDisplayName} from '@/i18n/format';
+import {rankReciters} from '@/utils/search/catalog'; // @ai
 // @ai-end
 
 // @ai-start
@@ -65,17 +66,12 @@ export default function FavoriteRecitersScreen() {
     headerRight: favoriteReciters.length > 0 ? renderHeaderRight : undefined,
   });
 
+  // @ai-start
   const filteredReciters = useMemo(
-    () =>
-      favoriteReciters.filter(
-        reciter =>
-          reciter.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          getReciterDisplayName(reciter)
-            .toLowerCase()
-            .includes(searchQuery.toLowerCase()),
-      ),
+    () => [...rankReciters(searchQuery, favoriteReciters)],
     [favoriteReciters, searchQuery],
   );
+  // @ai-end
 
   const styles = useMemo(
     () =>
@@ -174,7 +170,9 @@ export default function FavoriteRecitersScreen() {
           position: 'absolute',
           top: insets.top + moderateScale(10),
           right: moderateScale(15),
-          zIndex: 5,
+          // @ai: above CollectionStickyHeader (zIndex 10), whose transparent
+          // overlay otherwise swallows taps on Android.
+          zIndex: 11,
           padding: moderateScale(8),
         },
         emptyHeader: {
@@ -336,7 +334,9 @@ export default function FavoriteRecitersScreen() {
     );
   }
 
-  const ListHeaderComponent = () => {
+  // @ai: render as an element; a component defined here remounts the search
+  // input on every keystroke and drops focus.
+  const renderListHeader = (): React.ReactElement => {
     return (
       <View style={styles.headerContainer}>
         <View style={styles.contentArea}>
@@ -449,7 +449,7 @@ export default function FavoriteRecitersScreen() {
         data={filteredReciters}
         renderItem={renderItem}
         keyExtractor={item => item.id}
-        ListHeaderComponent={ListHeaderComponent}
+        ListHeaderComponent={renderListHeader()} // @ai
         contentContainerStyle={styles.listContentContainer}
         onScroll={RNAnimated.event(
           [{nativeEvent: {contentOffset: {y: scrollY}}}],

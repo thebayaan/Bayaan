@@ -1,313 +1,68 @@
-import React, {useState, useCallback, useMemo, useRef} from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Platform,
-  Pressable,
-  TextInput,
-  Dimensions,
-  type ListRenderItemInfo,
-} from 'react-native';
-import {moderateScale} from 'react-native-size-matters';
-import {useTheme} from '@/hooks/useTheme';
-import {RECITERS, Reciter} from '@/data/reciterData';
+import React, {useCallback, useMemo} from 'react';
+import {RECITERS} from '@/data/reciterData';
 import {useFavoriteReciters} from '@/hooks/useFavoriteReciters';
-import ActionSheet, {
-  SheetProps,
-  SheetManager,
-  FlatList,
-} from 'react-native-actions-sheet';
-import {Theme} from '@/utils/themeUtils';
-import Color from 'color';
-import {SearchInput} from '@/components/SearchInput';
-import {ReciterImage} from '@/components/ReciterImage';
-import {Feather} from '@expo/vector-icons';
+import {SheetProps, SheetManager} from 'react-native-actions-sheet';
 import {getDisplayLabelFromName} from '@/services/rewayah/RewayahIdentity';
 // @ai-start
 import {useTranslation} from 'react-i18next';
 import {getReciterDisplayName} from '@/i18n/format';
-// @ai-end
+import {
+  ReciterPickerSheet,
+  type ReciterPickerItem,
+} from '@/components/reciter-picker/ReciterPickerSheet';
 
-// @ai-start
 export const FavoriteRecitersSheet = (
   props: SheetProps<'favorite-reciters'>,
 ) => {
-  const {theme} = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
-  const {t} = useTranslation(['sheets', 'common']);
+  const {t} = useTranslation('sheets');
   const {toggleFavorite, favoriteReciters} = useFavoriteReciters();
-  const [searchQuery, setSearchQuery] = useState('');
-  const searchInputRef = useRef<TextInput>(null);
 
   const favoriteIds = useMemo(
     () => new Set(favoriteReciters.map(r => r.id)),
     [favoriteReciters],
   );
 
-  const filteredReciters = useMemo(() => {
-    if (!searchQuery.trim()) return RECITERS;
+  const items = useMemo<ReciterPickerItem[]>(
+    () =>
+      RECITERS.map(reciter => ({
+        id: reciter.id,
+        name: getReciterDisplayName(reciter),
+        imageUrl: reciter.image_url,
+        subtitle:
+          reciter.rewayat.length > 1
+            ? t('favoriteReciters.rewayatCount', {
+                count: reciter.rewayat.length,
+              })
+            : getDisplayLabelFromName(reciter.rewayat[0]?.name),
+        searchTerms: [
+          reciter.name,
+          getReciterDisplayName(reciter, 'ar'),
+          ...reciter.rewayat.map(rewaya => rewaya.name ?? ''),
+        ],
+      })),
+    [t],
+  );
 
-    const query = searchQuery.toLowerCase().trim();
-    return RECITERS.filter(reciter => {
-      if (reciter.name.toLowerCase().includes(query)) return true;
-      return reciter.rewayat.some(rewaya =>
-        rewaya.name?.toLowerCase().includes(query),
-      );
-    });
-  }, [searchQuery]);
-
-  const handleReciterPress = useCallback(
-    (reciter: Reciter) => {
-      toggleFavorite(reciter);
+  const handleSelect = useCallback(
+    (item: ReciterPickerItem) => {
+      const reciter = RECITERS.find(r => r.id === item.id);
+      if (reciter) toggleFavorite(reciter);
     },
     [toggleFavorite],
   );
 
-  const renderItem = useCallback(
-    ({item}: ListRenderItemInfo<Reciter>) => {
-      const isFavorite = favoriteIds.has(item.id);
-
-      return (
-        <Pressable
-          style={({pressed}) => [
-            styles.reciterRow,
-            pressed && styles.reciterRowPressed,
-          ]}
-          onPress={() => handleReciterPress(item)}>
-          <View style={styles.reciterImageContainer}>
-            <ReciterImage
-              imageUrl={item.image_url || undefined}
-              reciterName={item.name}
-              style={styles.reciterImage}
-              profileIconSize={moderateScale(20)}
-            />
-          </View>
-          <View style={styles.reciterInfo}>
-            <Text style={styles.reciterName} numberOfLines={1}>
-              {getReciterDisplayName(item)}
-            </Text>
-            <Text style={styles.reciterDetail} numberOfLines={1}>
-              {item.rewayat.length > 1
-                ? t('favoriteReciters.rewayatCount', {
-                    count: item.rewayat.length,
-                  })
-                : getDisplayLabelFromName(item.rewayat[0]?.name)}
-            </Text>
-          </View>
-          <View
-            style={[
-              styles.checkCircle,
-              isFavorite && styles.checkCircleActive,
-            ]}>
-            {isFavorite && (
-              <Feather
-                name="check"
-                size={moderateScale(14)}
-                color={theme.colors.text}
-              />
-            )}
-          </View>
-        </Pressable>
-      );
-    },
-    [favoriteIds, handleReciterPress, styles, theme.colors.text, t],
-  );
-
   return (
-    <ActionSheet
-      id={props.sheetId}
-      containerStyle={styles.sheetContainer}
-      indicatorStyle={styles.indicator}
-      gestureEnabled={true}>
-      <View style={styles.header}>
-        <View style={styles.headerSpacer} />
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>{t('favoriteReciters.title')}</Text>
-          <Text style={styles.headerSubtitle}>
-            {t('favoriteReciters.selected', {count: favoriteReciters.length})}
-          </Text>
-        </View>
-        <Pressable
-          style={styles.doneButton}
-          onPress={() => SheetManager.hide('favorite-reciters')}
-          hitSlop={8}>
-          <Text style={styles.doneButtonText}>{t('common:actions.done')}</Text>
-        </Pressable>
-      </View>
-
-      <View style={styles.container}>
-        <View style={styles.searchContainer}>
-          <SearchInput
-            ref={searchInputRef}
-            placeholder={t('favoriteReciters.searchPlaceholder')}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            backgroundColor={Color(theme.colors.text).alpha(0.04).toString()}
-            borderColor={Color(theme.colors.text).alpha(0.06).toString()}
-            iconColor={theme.colors.textSecondary}
-            textColor={theme.colors.text}
-            showCancelButton={false}
-            containerStyle={styles.searchInputContainer}
-            autoCapitalize="none"
-            keyboardAppearance={theme.isDarkMode ? 'dark' : 'light'}
-          />
-        </View>
-
-        <FlatList
-          data={filteredReciters}
-          renderItem={renderItem}
-          keyExtractor={item => item.id}
-          contentContainerStyle={styles.listContainer}
-          showsVerticalScrollIndicator={false}
-          initialNumToRender={15}
-          maxToRenderPerBatch={10}
-          windowSize={5}
-          removeClippedSubviews={Platform.OS === 'android'}
-          keyboardShouldPersistTaps="handled"
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>
-                {t('favoriteReciters.empty')}
-              </Text>
-            </View>
-          }
-        />
-      </View>
-    </ActionSheet>
+    <ReciterPickerSheet
+      sheetId={props.sheetId}
+      title={t('favoriteReciters.title')}
+      subtitle={t('favoriteReciters.selected', {
+        count: favoriteReciters.length,
+      })}
+      items={items}
+      selectedIds={favoriteIds}
+      onSelect={handleSelect}
+      onDone={() => SheetManager.hide('favorite-reciters')}
+    />
   );
 };
 // @ai-end
-
-const SCREEN_HEIGHT = Dimensions.get('window').height;
-
-const createStyles = (theme: Theme) =>
-  StyleSheet.create({
-    sheetContainer: {
-      backgroundColor: theme.colors.background,
-      borderTopLeftRadius: moderateScale(20),
-      borderTopRightRadius: moderateScale(20),
-      paddingTop: moderateScale(8),
-      height: SCREEN_HEIGHT * 0.85,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderLeftWidth: StyleSheet.hairlineWidth,
-      borderRightWidth: StyleSheet.hairlineWidth,
-      borderColor: Color(theme.colors.text).alpha(0.08).toString(),
-    },
-    indicator: {
-      backgroundColor: Color(theme.colors.text).alpha(0.3).toString(),
-      width: moderateScale(40),
-      height: 2.5,
-    },
-    header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: moderateScale(12),
-      paddingHorizontal: moderateScale(16),
-    },
-    headerSpacer: {
-      width: moderateScale(50),
-    },
-    headerCenter: {
-      flex: 1,
-      alignItems: 'center',
-      gap: moderateScale(4),
-    },
-    headerTitle: {
-      fontSize: moderateScale(20),
-      fontFamily: 'Manrope-Bold',
-      color: theme.colors.text,
-    },
-    headerSubtitle: {
-      fontSize: moderateScale(13),
-      fontFamily: 'Manrope-Medium',
-      color: theme.colors.textSecondary,
-    },
-    doneButton: {
-      width: moderateScale(50),
-      alignItems: 'flex-end',
-    },
-    doneButtonText: {
-      fontSize: moderateScale(15),
-      fontFamily: 'Manrope-SemiBold',
-      color: theme.colors.text,
-    },
-    container: {
-      flex: 1,
-      paddingHorizontal: moderateScale(16),
-    },
-    searchContainer: {
-      paddingVertical: moderateScale(8),
-    },
-    searchInputContainer: {
-      paddingHorizontal: 0,
-      paddingVertical: 0,
-      width: '100%',
-    },
-    listContainer: {
-      paddingTop: moderateScale(4),
-      paddingBottom: moderateScale(40),
-      gap: moderateScale(6),
-    },
-    reciterRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: moderateScale(5),
-      paddingHorizontal: moderateScale(14),
-      borderRadius: moderateScale(12),
-    },
-    reciterRowPressed: {
-      backgroundColor: Color(theme.colors.text).alpha(0.08).toString(),
-    },
-    reciterImageContainer: {
-      width: moderateScale(46),
-      height: moderateScale(46),
-      borderRadius: moderateScale(23),
-      overflow: 'hidden',
-      marginRight: moderateScale(12),
-    },
-    reciterImage: {
-      width: moderateScale(46),
-      height: moderateScale(46),
-    },
-    reciterInfo: {
-      flex: 1,
-      justifyContent: 'center',
-    },
-    reciterName: {
-      fontSize: moderateScale(14),
-      fontFamily: 'Manrope-SemiBold',
-      color: theme.colors.text,
-      marginBottom: moderateScale(2),
-    },
-    reciterDetail: {
-      fontSize: moderateScale(12),
-      fontFamily: 'Manrope-Regular',
-      color: theme.colors.textSecondary,
-    },
-    checkCircle: {
-      width: moderateScale(26),
-      height: moderateScale(26),
-      borderRadius: moderateScale(13),
-      borderWidth: moderateScale(1.5),
-      borderColor: Color(theme.colors.text).alpha(0.12).toString(),
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginLeft: moderateScale(8),
-    },
-    checkCircleActive: {
-      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
-      borderColor: Color(theme.colors.text).alpha(0.12).toString(),
-    },
-    emptyContainer: {
-      padding: moderateScale(40),
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    emptyText: {
-      fontSize: moderateScale(15),
-      fontFamily: 'Manrope-Medium',
-      color: theme.colors.textSecondary,
-      textAlign: 'center',
-    },
-  });

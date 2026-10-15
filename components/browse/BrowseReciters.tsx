@@ -37,8 +37,7 @@ import {
   resolveRewayatName,
   getRewayatPersonLabel,
 } from '@/data/rewayat';
-import {getReciterDisplayName} from '@/i18n/format';
-import {normalizeSearchText, matchesSearchText} from '@/utils/catalogSearch';
+import {rankReciters} from '@/utils/search/catalog'; // @ai
 // @ai-end
 import {resolveRewayahFromName} from '@/services/rewayah/RewayahIdentity';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -270,18 +269,14 @@ export default function BrowseReciters({
       });
     }
 
-    if (searchQuery.trim()) {
-      const query = normalizeSearchText(searchQuery);
-      result = result.filter(reciter => {
-        if (matchesSearchText(reciter.name, query)) return true;
-        if (matchesSearchText(getReciterDisplayName(reciter, 'ar'), query)) {
-          return true;
-        }
-        return reciter.rewayat.some(rewaya =>
-          matchesSearchText(rewaya.name ?? '', query),
-        );
-      });
+    // @ai-start
+    const searchRank = searchQuery.trim()
+      ? new Map(rankReciters(searchQuery).map((reciter, i) => [reciter.id, i]))
+      : null;
+    if (searchRank) {
+      result = result.filter(reciter => searchRank.has(reciter.id));
     }
+    // @ai-end
 
     if (selectedTeacher) {
       result = result.filter(reciter =>
@@ -341,6 +336,11 @@ export default function BrowseReciters({
     const featuredIds = new Set(featuredRecitersData.map(r => r.id));
 
     result.sort((a, b) => {
+      // @ai-start
+      if (searchRank) {
+        return (searchRank.get(a.id) ?? 0) - (searchRank.get(b.id) ?? 0);
+      }
+      // @ai-end
       if (featuredIds.has(a.id) && !featuredIds.has(b.id)) return -1;
       if (!featuredIds.has(a.id) && featuredIds.has(b.id)) return 1;
       const aHasImage = hasImage(a);

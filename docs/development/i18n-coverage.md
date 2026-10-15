@@ -16,11 +16,11 @@ The ordinary interface-copy queue is now addressed: **286 new Amharic draft entr
 | home | 188 | 188 | 0 |
 | collection | 99 | 99 | 0 |
 | settings | 260 | 233 | 27 |
-| sheets | 238 | 237 | 1 |
+| sheets | 239 | 238 | 1 |
 | player | 54 | 54 | 0 |
 | reader | 41 | 41 | 0 |
 | content | 407 | 366 | 41 |
-| **Total** | **1,391** | **1,322** | **69** |
+| **Total** | **1,392** | **1,323** | **69** |
 
 The [per-key fallback inventory](../i18n/amharic-fallbacks.md) now contains only **69 specialist reference/legend explanations**: 41 recitation-transmission descriptions, 27 tajweed/reference legend terms/descriptions and one rewayat explanation containing religious quotations. They remain original English pending qualified review. The [source-value policy](../i18n/amharic-source-values.json) records 132 canonical names, 13 outgoing copy/share values and 10 notation values; tests and the coverage reporter require exact equality with English. Populated resource coverage includes these explicit source values and is not a translated/approved-copy percentage.
 
@@ -84,6 +84,12 @@ Remaining work: obtain fluent review of all interface draft copy and qualified r
 - **Ten Python regression tests pass**, including under optimized Python (`-O`), with isolated fixtures for stale/missing inventory, read-only checks, new ordinary/specialist in-progress fallbacks, canonical-value corruption, invalid/duplicate JSON and policies, and escaped missing glyphs. Command: `python -B -m unittest discover -s scripts/__tests__ -p 'test_i18n_*.py'` after installing `scripts/rewayah/requirements-ci.txt`.
 - Existing **161 i18n tests / six suites**, `npm run i18n:check` and TypeScript with the documented 8 GB heap pass. Logs: ignored `.expo/dev/logs/amharic-ci-gates-{tests,check,typescript}.log`. Font source and previous iOS/Android export hashes pass with **189 Ethiopic characters**; coverage remains **1,322 / 1,391**, **155 retained values**, **69 specialist fallbacks**, **zero ordinary UI gaps**. Workflow YAML parses with unique keys and valid step shapes and passes project Prettier formatting. Local Markdown links and `git diff --check` pass. No font binaries, locale copy, runtime components, English/Arabic resources, domain data/services/stores or renderer were changed in this pass. Full repository tests and native exports were not repeated for this tooling-only change.
 - Updated the guide, plan and font provenance instructions with the CI commands. Fluent/specialist review and the remaining native/accessibility/offline/size/startup acceptance work are still required; Amharic remains development-only. Android SDK/emulator tooling is not installed at the expected local SDK paths, and no Android native acceptance is claimed. No feature commit, push or PR was created.
+
+### Develop sync — 2026-10-15
+
+- Merged `origin/develop` at `b31362cf` (search overhaul and reciter picker). Develop moved `sheets:favoriteReciters.searchPlaceholder` and `.empty` into a new `sheets:reciterPicker` group and added `sheets:mushafPlayer.reciterPickerSubtitle`. The Amharic file follows the same shape; the two moved values are unchanged and the new subtitle is an unreviewed draft (አንቀጽ በአንቀጽ ድምፅ ያላቸው አንባቢዎች).
+- Coverage is now **1,323 / 1,392**, with the same **69 specialist fallbacks**, **155 retained values** and **zero ordinary UI gaps**. The inventory was regenerated with `--write`.
+- Checks: `npm run i18n:check`, **161 i18n tests / six suites**, ten Python verification-tool tests, the seven-face font verifier (still **189 Ethiopic characters**), TypeScript with the 8 GB heap and Prettier on changed files pass. The full suite with `BAYAAN_OVERLAY_DB_DIR=bundled` passes (2,688 tests, two skipped) once `better-sqlite3` is built. No native QA was run for this sync.
 
 ## Historical SDK 56 evidence — superseded by the rebase
 

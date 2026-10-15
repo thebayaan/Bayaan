@@ -32,3 +32,17 @@ export interface Rewayat {
 // Mutable array — populated in-place by dataService after API fetch.
 // Do NOT reassign this variable; mutate it with splice() to preserve references.
 export const RECITERS: Reciter[] = [];
+
+// @ai-start
+// Bumped whenever RECITERS is repopulated, so caches derived from it (the
+// search index) rebuild even when a refresh keeps the same length and ids.
+let recitersVersion = 0;
+
+export function markRecitersUpdated(): void {
+  recitersVersion += 1;
+}
+
+export function getRecitersVersion(): number {
+  return recitersVersion;
+}
+// @ai-end

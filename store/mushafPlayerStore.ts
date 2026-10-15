@@ -78,8 +78,10 @@ type PlaybackState = 'idle' | 'loading' | 'playing' | 'paused';
 
 export interface AvailableReciter {
   rewayatId: string;
+  reciterId: string; // @ai
   reciterName: string;
   imageUrl: string | null;
+  rewayahName: string; // @ai
   style: string;
 }
 
@@ -1171,8 +1173,10 @@ export const useMushafPlayerStore = create<MushafPlayerStoreState>()(
                 if (timestampFetchService.hasSource(rewayat.id)) {
                   available.push({
                     rewayatId: rewayat.id,
+                    reciterId: reciter.id, // @ai
                     reciterName: reciter.name,
                     imageUrl: reciter.image_url,
+                    rewayahName: rewayat.name, // @ai
                     style: rewayat.style,
                   });
                 }

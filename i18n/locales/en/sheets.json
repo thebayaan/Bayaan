@@ -85,7 +85,9 @@
     "selected_one": "{{count}} selected",
     "selected_other": "{{count}} selected",
     "rewayatCount_one": "{{count}} rewayah",
-    "rewayatCount_other": "{{count}} rewayat",
+    "rewayatCount_other": "{{count}} rewayat"
+  },
+  "reciterPicker": {
     "searchPlaceholder": "Search reciters...",
     "empty": "No reciters found"
   },
@@ -193,7 +195,8 @@
     "startingVerse": "Starting Verse",
     "endingVerse": "Ending Verse",
     "reciter": "Reciter",
-    "play": "Play"
+    "play": "Play",
+    "reciterPickerSubtitle": "Reciters with verse-by-verse audio"
   },
   "playlistContext": {
     "edit": "Edit Playlist",

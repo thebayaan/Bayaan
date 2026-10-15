@@ -14,7 +14,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import {ScaledSheet, moderateScale as ms} from 'react-native-size-matters';
-import {Feather, Ionicons} from '@expo/vector-icons';
+import {Ionicons} from '@expo/vector-icons';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -38,9 +38,12 @@ import Color from 'color';
 // @ai-start
 import {useTranslation} from 'react-i18next';
 import i18n from '@/i18n';
-import {getSurahDisplayName, localizeDigits} from '@/i18n/format';
+import {
+  getReciterDisplayName,
+  getSurahDisplayName,
+  localizeDigits,
+} from '@/i18n/format';
 import {flipX} from '@/utils/rtl';
-import {getStyleLabel} from './sheetLabels';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {useRewayahVerseUnits} from '@/hooks/useRewayahVerseUnits';
 import {
@@ -71,7 +74,7 @@ function getRepeatLabel(value: number): string {
 }
 // @ai-end
 
-type AccordionSection = 'startVerse' | 'endVerse' | 'reciter' | null;
+type AccordionSection = 'startVerse' | 'endVerse' | null; // @ai
 type VersePick = 'surahList' | 'ayahGrid';
 
 // ---------------------------------------------------------------------------
@@ -318,11 +321,28 @@ export const MushafPlayerOptionsSheet = (
   );
 
   // Reciter selection
-  const handleReciterSelect = useCallback((reciter: AvailableReciter) => {
+  // @ai-start
+  const handleOpenReciterPicker = useCallback(async () => {
+    setExpandedSection(null);
+    const reciter: AvailableReciter | undefined = await SheetManager.show(
+      'mushaf-reciter-picker',
+      {payload: {selectedRewayatId}},
+    );
+    if (!reciter) return;
     setSelectedRewayatId(reciter.rewayatId);
     setSelectedReciterName(reciter.reciterName);
-    setExpandedSection(null);
-  }, []);
+  }, [selectedRewayatId]);
+
+  const selectedReciter = availableReciters.find(
+    r => r.rewayatId === selectedRewayatId,
+  );
+  const selectedReciterLabel = selectedReciter
+    ? getReciterDisplayName({
+        id: selectedReciter.reciterId,
+        name: selectedReciter.reciterName,
+      })
+    : selectedReciterName;
+  // @ai-end
 
   // Play Audio
   const canPlay = !!selectedRewayatId;
@@ -552,54 +572,21 @@ export const MushafPlayerOptionsSheet = (
               styles.dropdownRow,
               pressed && styles.dropdownRowPressed,
             ]}
-            onPress={() => toggleSection('reciter')}>
+            onPress={handleOpenReciterPicker}>
+            {/* @ai-start */}
             <Text
               style={[styles.dropdownValue, {textAlign: 'left'}]}
               numberOfLines={1}>
-              {selectedReciterName || t('selectReciter.title')}
+              {selectedReciterLabel || t('selectReciter.title')}
             </Text>
-            <AnimatedChevron
-              expanded={expandedSection === 'reciter'}
+            <Ionicons
+              name="chevron-forward"
+              size={ms(16)}
               color={theme.colors.textSecondary}
+              style={flipX}
             />
+            {/* @ai-end */}
           </Pressable>
-          {expandedSection === 'reciter' && (
-            <View style={styles.accordionContent}>
-              <AccordionScrollList>
-                <View>
-                  {availableReciters.map(item => {
-                    const isSelected = item.rewayatId === selectedRewayatId;
-                    return (
-                      <Pressable
-                        key={item.rewayatId}
-                        style={({pressed}) => [
-                          styles.reciterRow,
-                          isSelected && styles.reciterRowSelected,
-                          pressed && styles.pickerRowPressed,
-                        ]}
-                        onPress={() => handleReciterSelect(item)}>
-                        <View style={styles.reciterInfo}>
-                          <Text style={styles.reciterName} numberOfLines={1}>
-                            {item.reciterName}
-                          </Text>
-                          <Text style={styles.reciterStyle} numberOfLines={1}>
-                            {getStyleLabel(item.style)}
-                          </Text>
-                        </View>
-                        {isSelected && (
-                          <Feather
-                            name="check"
-                            size={ms(16)}
-                            color={theme.colors.text}
-                          />
-                        )}
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              </AccordionScrollList>
-            </View>
-          )}
         </View>
 
         {/* ============================================================== */}
@@ -854,33 +841,6 @@ const createStyles = (theme: Theme) =>
       fontSize: ms(13),
       fontFamily: 'Manrope-SemiBold',
       color: theme.colors.text,
-    },
-
-    // Reciter picker rows
-    reciterRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: ms(12),
-      paddingHorizontal: ms(16),
-      borderRadius: ms(8),
-    },
-    reciterRowSelected: {
-      backgroundColor: Color(theme.colors.text).alpha(0.08).toString(),
-    },
-    reciterInfo: {
-      flex: 1,
-      gap: ms(2),
-    },
-    reciterName: {
-      fontSize: ms(14),
-      fontFamily: 'Manrope-SemiBold',
-      color: theme.colors.text,
-    },
-    reciterStyle: {
-      fontSize: ms(12),
-      fontFamily: 'Manrope-Regular',
-      color: theme.colors.textSecondary,
-      textTransform: 'capitalize',
     },
 
     // Chips (wrap)

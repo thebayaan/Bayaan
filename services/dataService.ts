@@ -1,17 +1,17 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {Surah, SURAHS} from '../data/surahData';
-import {Reciter, Rewayat, RECITERS} from '../data/reciterData';
+import {
+  Reciter,
+  Rewayat,
+  RECITERS,
+  markRecitersUpdated, // @ai
+} from '../data/reciterData';
 import {usePlayerStore} from './player/store/playerStore';
 import {useReciterStore} from '../store/reciterStore';
 import {useApiHealthStore} from '../store/apiHealthStore';
 import fallbackReciters from '../data/reciters-fallback.json';
 // @ai-start
-import {getReciterDisplayName} from '@/i18n/format';
-import {
-  normalizeSearchText,
-  matchesSearchText,
-  matchesSurah,
-} from '@/utils/catalogSearch';
+import {rankSurahs} from '@/utils/search/catalog';
 // @ai-end
 
 const BAYAAN_API_URL = process.env.EXPO_PUBLIC_BAYAAN_API_URL;
@@ -75,6 +75,7 @@ async function setStoredData<T>(key: string, data: T): Promise<void> {
 
 function populateReciters(data: Reciter[]): void {
   RECITERS.splice(0, RECITERS.length, ...data);
+  markRecitersUpdated(); // @ai
   // Refresh the store's default reciter now that RECITERS is populated
   useReciterStore.getState().refreshDefaultReciter();
   useReciterStore.setState({isInitialized: true});
@@ -135,7 +136,7 @@ export function getSurahById(id: number): Surah | undefined {
 
 // @ai-start
 export function searchSurahs(query: string): Surah[] {
-  return SURAHS.filter(surah => matchesSurah(surah, query));
+  return [...rankSurahs(query)]; // @ai
 }
 // @ai-end
 
@@ -299,52 +300,6 @@ export async function getAvailableSurahsForRewayat(
   return [];
 }
 
-// @ai-start
-export async function filterReciters(options: {
-  style?: string;
-  hasSurah?: number;
-  query?: string;
-}): Promise<Reciter[]> {
-  const reciters = await getAllReciters();
-  const normalizedQuery = normalizeSearchText(options.query ?? '');
-
-  return reciters.filter(reciter => {
-    if (options.style) {
-      const hasStyle = reciter.rewayat.some(r => r.style === options.style);
-      if (!hasStyle) return false;
-    }
-
-    if (options.hasSurah !== undefined) {
-      const hasSurah = reciter.rewayat.some(
-        r =>
-          !r.surah_list ||
-          r.surah_list
-            .filter((id): id is number => id !== null)
-            .includes(options.hasSurah ?? 0),
-      );
-      if (!hasSurah) return false;
-    }
-
-    if (normalizedQuery) {
-      const matchesQuery =
-        matchesSearchText(reciter.name, normalizedQuery) ||
-        matchesSearchText(
-          getReciterDisplayName(reciter, 'ar'),
-          normalizedQuery,
-        ) ||
-        reciter.rewayat.some(
-          r =>
-            matchesSearchText(r.name, normalizedQuery) ||
-            matchesSearchText(r.style, normalizedQuery),
-        );
-      if (!matchesQuery) return false;
-    }
-
-    return true;
-  });
-}
-// @ai-end
-
 // ── Audio URL ─────────────────────────────────────────────────────────────────
 
 export async function fetchAudioUrl(
@@ -380,20 +335,6 @@ export async function fetchAudioUrl(
   const surahStr = surahId.toString().padStart(3, '0');
   return `${rewayat.server}/${surahStr}.mp3`;
 }
-
-// ── Search ────────────────────────────────────────────────────────────────────
-
-// @ai-start
-export async function searchReciters(query: string): Promise<Reciter[]> {
-  const reciters = await getAllReciters();
-  const normalizedQuery = normalizeSearchText(query);
-  return reciters.filter(
-    reciter =>
-      matchesSearchText(reciter.name, normalizedQuery) ||
-      matchesSearchText(getReciterDisplayName(reciter, 'ar'), normalizedQuery),
-  );
-}
-// @ai-end
 
 // ── Utility ───────────────────────────────────────────────────────────────────
 

@@ -16,11 +16,10 @@ import {getAllReciters, getAllSurahs} from '@/services/dataService';
 import {Surah} from '@/data/surahData';
 import {Reciter} from '@/data/reciterData';
 // @ai-start
-import {getReciterDisplayName} from '@/i18n/format';
 import {
   createCatalogSearch,
   type CatalogSearchResult,
-} from '@/utils/catalogSearch';
+} from '@/utils/search/catalog';
 // @ai-end
 import {Feather} from '@expo/vector-icons';
 import {ReciterItem} from '@/components/ReciterItem';
@@ -178,11 +177,7 @@ export function SearchView({
           getAllSurahs(),
         ]);
 
-        setCatalogSearch(
-          createCatalogSearch(reciterData, surahData, reciter =>
-            getReciterDisplayName(reciter, 'ar'),
-          ),
-        );
+        setCatalogSearch(createCatalogSearch(reciterData, surahData)); // @ai
 
         const storedSearches = await AsyncStorage.getItem(RECENT_SEARCHES_KEY);
         if (storedSearches) {

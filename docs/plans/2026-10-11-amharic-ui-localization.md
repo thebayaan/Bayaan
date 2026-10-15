@@ -3,9 +3,9 @@
 | Field | Value |
 | --- | --- |
 | Status | Development draft integrated with upstream registry; fluent/native/release acceptance pending |
-| Updated | 2026-10-14 |
+| Updated | 2026-10-15 |
 | Branch | `feature/amharic-reading-controls` |
-| Base | `develop` / `origin/develop` at `6dd37983a087fcaa03a0f7a7d99375ac463f27fc` |
+| Base | `develop` / `origin/develop`, last merged at `b31362cf` (2026-10-15); originally rebased onto `6dd37983` |
 | Governing guide | [i18n guidelines](../i18n/README.md) |
 | Upstream design | [Arabic i18n/RTL plan](../superpowers/plans/2026-10-12-arabic-support.md) |
 | Feature RFC | [RFC-022](../rfcs/022-amharic-i18n.md) |
@@ -28,7 +28,7 @@ The upstream branch now ships English and Arabic, with Expo SDK 57 / React Nativ
 
 ## Current coverage and next implementation work
 
-The resources contain **1,322 populated leaves across eight namespaces**, against **1,391 English source leaves**. The ordinary UI queue is addressed with **286 new unreviewed Amharic drafts** and **155 explicit source values**, preserving all 881 prior entries. The remaining **69 fallbacks** are specialist reference descriptions/legend terminology requiring qualified review; no religious quotations or reference explanations were machine-translated.
+The resources contain **1,323 populated leaves across eight namespaces**, against **1,392 English source leaves**. The ordinary UI queue is addressed with **286 new unreviewed Amharic drafts** and **155 explicit source values**, preserving all 881 prior entries. The remaining **69 fallbacks** are specialist reference descriptions/legend terminology requiring qualified review; no religious quotations or reference explanations were machine-translated.
 
 | Namespace | Populated | Source | Fallback |
 | --- | ---: | ---: | ---: |
@@ -36,7 +36,7 @@ The resources contain **1,322 populated leaves across eight namespaces**, agains
 | home | 188 | 188 | 0 |
 | collection | 99 | 99 | 0 |
 | settings | 233 | 260 | 27 |
-| sheets | 237 | 238 | 1 |
+| sheets | 238 | 239 | 1 |
 | player | 54 | 54 | 0 |
 | reader | 41 | 41 | 0 |
 | content | 366 | 407 | 41 |
