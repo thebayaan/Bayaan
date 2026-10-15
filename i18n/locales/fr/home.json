@@ -1,0 +1,247 @@
+{
+  "translations": {
+    "title": "Traductions et tafsirs",
+    "downloadFailedTitle": "Échec du téléchargement",
+    "translationDownloadFailed": "Impossible de télécharger cette traduction. Vérifiez votre connexion Internet et réessayez.",
+    "tafseerDownloadFailed": "Impossible de télécharger ce tafsir. Vérifiez votre connexion Internet et réessayez.",
+    "deleteTranslationTitle": "Supprimer la traduction",
+    "deleteTafseerTitle": "Supprimer le tafsir",
+    "deleteMessage": "Supprimer « {{name}} » ? Vous pourrez le retélécharger plus tard.",
+    "available": "DISPONIBLES",
+    "activeTranslation": "TRADUCTION ACTIVE",
+    "activeTafseer": "TAFSIR ACTIF",
+    "active": "Actif",
+    "noTranslations": "Aucune traduction trouvée",
+    "noTafaseer": "Aucun tafsir trouvé",
+    "downloadInProgress": "Téléchargement en cours",
+    "waitForDownload": "Veuillez attendre la fin du téléchargement en cours avant d’en lancer un autre."
+  },
+  "browse": {
+    "browseAll": "Tout parcourir",
+    "allSurahs": "Toutes les sourates",
+    "browseRecitersForSurah": "Récitateurs - {{surah}}",
+    "allChip": "Tous",
+    "rewayahSeparator": "A'n",
+    "searchReciters": "Rechercher un récitateur…",
+    "hasPhoto": "Avec photo",
+    "recitersFound_one": "{{count}} récitateur trouvé avec les filtres actuels",
+    "recitersFound_many": "{{count}} de récitateurs trouvés avec les filtres actuels",
+    "recitersFound_other": "{{count}} récitateurs trouvés avec les filtres actuels",
+    "clearAll": "Tout effacer",
+    "searchSurahs": "Rechercher une sourate…"
+  },
+  "search": {
+    "placeholder": "Rechercher sourates ou récitateurs",
+    "recentSearches": "Recherches récentes",
+    "noRecent": "Aucune recherche récente",
+    "noRecentHint": "Votre historique de recherche apparaîtra ici",
+    "noResultsHint": "Essayez d’autres mots-clés ou vérifiez l’orthographe"
+  },
+  "systemPlaylist": {
+    "invalidId": "ID de playlist non valide",
+    "notFound": "Playlist introuvable"
+  },
+  "adhkar": {
+    "saved": "Enregistrés",
+    "count_one": "{{count}} adhkar",
+    "count_many": "{{count}} d’adhkar",
+    "count_other": "{{count}} adhkar",
+    "noSavedYet": "Aucun adhkar enregistré pour l’instant",
+    "noSavedHint": "Touchez l’icône de signet sur un dhikr pour l’enregistrer ici",
+    "noSaved": "Aucun adhkar enregistré",
+    "noneFound": "Aucun adhkar trouvé",
+    "position": "{{current}} sur {{total}}",
+    "dhikr": "Dhikr",
+    "shareCategory": "Découvrez {{title}} sur {{appName}}",
+    "shareDhikr": "Découvrez ce dhikr sur {{appName}}"
+  },
+  "hero": {
+    "surahOfTheDay": "SOURATE DU JOUR",
+    "continueReading": "REPRENDRE LA LECTURE",
+    "browseAllSurahs": "Parcourir les {{total}} sourates",
+    "verses": "Versets",
+    "number": "Numéro"
+  },
+  "randomHero": {
+    "finding": "Recherche de récitations aléatoires de différents récitateurs…",
+    "findFailed": "Impossible de trouver des récitations aléatoires. Veuillez réessayer.",
+    "playing": "Lecture de {{surah}} par {{reciter}}",
+    "playFailed": "Impossible de lire la récitation aléatoire. Veuillez réessayer.",
+    "shuffleListen": "Écoute aléatoire",
+    "letQuranSurprise": "Laissez le Coran vous surprendre",
+    "discover": "Découvrir",
+    "hearSomethingNew": "Écoutez quelque chose de nouveau",
+    "explore": "Explorer",
+    "discoverNewVoice": "Découvrez une nouvelle voix",
+    "randomRecitation": "Récitation aléatoire",
+    "surpriseMe": "Surprenez-moi",
+    "exploreUnexpected": "Explorez l’inattendu",
+    "randomMix": "Mix aléatoire",
+    "chosenForMoment": "Une récitation choisie rien que pour cet instant"
+  },
+  "adhkarHero": {
+    "title_one": "DHIKR ENREGISTRÉ",
+    "title_many": "ADHKAR ENREGISTRÉS",
+    "title_other": "ADHKAR ENREGISTRÉS",
+    "yourCollection": "Votre collection"
+  },
+  "browseAllHero": {
+    "titles": {
+      "fullCollection": "Parcourez toute la collection",
+      "everyReciter": "Explorez tous les récitateurs",
+      "everyVoice": "Toutes les voix, un seul endroit",
+      "worldOfRecitations": "Un monde de récitations",
+      "allRecitersAwait": "Tous les récitateurs vous attendent",
+      "oneTap": "Tous les récitateurs, en un geste"
+    },
+    "labels": {
+      "allReciters": "Tous les récitateurs",
+      "browseVoices": "Parcourir les voix",
+      "discover": "Découvrir",
+      "fullLibrary": "Bibliothèque complète",
+      "explore": "Explorer",
+      "browse": "Parcourir"
+    }
+  },
+  "reciterCard": {
+    "rewayatAvailable_one": "{{count}} riwaya disponible",
+    "rewayatAvailable_many": "{{count}} de riwayat disponibles",
+    "rewayatAvailable_other": "{{count}} riwayat disponibles"
+  },
+  "filters": {
+    "title": "Filtrer les récitateurs",
+    "recitationStyles": "Styles de récitation",
+    "rewayatTypes": "Types de riwayat"
+  },
+  "surahItem": {
+    "a11yName": "Sourate {{name}}",
+    "a11yPlaying": "en cours de lecture",
+    "a11ySeparator": ", ",
+    "a11yPlayHint": "Touchez pour lire la sourate",
+    "makkah": "La Mecque",
+    "madinah": "Médine",
+    "moreOptions": "Plus d’options",
+    "moreOptionsHint": "Ouvre un menu avec d’autres actions pour cette sourate",
+    "verses_one": "{{count}} verset",
+    "verses_many": "{{count}} de versets",
+    "verses_other": "{{count}} versets"
+  },
+  "sort": {
+    "asc": "Croiss.",
+    "desc": "Décroiss.",
+    "revelation": "Révél."
+  },
+  "juz": {
+    "amma": "Juz 'Amma"
+  },
+  "home": {
+    "myRecitations": "Mes récitations",
+    "upload": "Import",
+    "continueListening": "Reprendre l’écoute",
+    "newToQuran": "Nouveau dans le Coran ? Commencez ici",
+    "yourFavorites": "Vos favoris",
+    "featuredReciters": "Récitateurs à la une",
+    "seeMore": "Voir plus",
+    "followAlong": "Suivre la récitation",
+    "yourPlaylists": "Vos playlists",
+    "exclusives": "Exclusivités",
+    "bestForTajweed": "Idéal pour le tajwid",
+    "bestForMemorization": "Idéal pour la mémorisation",
+    "exploreByRewayah": "Explorer par riwaya",
+    "fromYourCollection": "De votre collection"
+  },
+  "reciterBrowse": {
+    "title": "Parcourir les récitateurs",
+    "noneFound": "Aucun récitateur trouvé"
+  },
+  "network": {
+    "offline": "Aucune connexion Internet",
+    "restored": "Connexion rétablie",
+    "showingCached": "Affichage des données en cache",
+    "backendUnreachable": "Serveur injoignable"
+  },
+  "errorBoundary": {
+    "message": "Désolé… une erreur s’est produite"
+  },
+  "input": {
+    "characterCount": "{{current}}/{{max}} caractères"
+  },
+  "cards": {
+    "lovedSurahs": "Sourates favorites",
+    "recitations_one": "{{count}} récitation",
+    "recitations_many": "{{count}} de récitations",
+    "recitations_other": "{{count}} récitations",
+    "downloadedCount_one": "Téléchargé • {{count}} sourate",
+    "downloadedCount_many": "Téléchargé • {{count}} de sourates",
+    "downloadedCount_other": "Téléchargé • {{count}} sourates"
+  },
+  "duration": {
+    "seconds": "{{value}} s",
+    "minutes": "{{value}} min",
+    "hours": "{{value}} h"
+  },
+  "languages": {
+    "en": "Anglais",
+    "ar": "Arabe",
+    "fr": "Français",
+    "de": "Allemand",
+    "es": "Espagnol",
+    "pt": "Portugais",
+    "ru": "Russe",
+    "tr": "Turc",
+    "ur": "Ourdou",
+    "id": "Indonésien",
+    "ms": "Malais",
+    "bn": "Bengali",
+    "hi": "Hindi",
+    "fa": "Persan",
+    "zh": "Chinois",
+    "ja": "Japonais",
+    "ko": "Coréen",
+    "it": "Italien",
+    "nl": "Néerlandais",
+    "pl": "Polonais",
+    "sv": "Suédois",
+    "th": "Thaï",
+    "vi": "Vietnamien",
+    "ha": "Haoussa",
+    "so": "Somali",
+    "sw": "Swahili",
+    "am": "Amharique",
+    "az": "Azerbaïdjanais",
+    "bs": "Bosnien",
+    "cs": "Tchèque",
+    "dv": "Maldivien",
+    "ku": "Kurde",
+    "ml": "Malayalam",
+    "no": "Norvégien",
+    "ro": "Roumain",
+    "sq": "Albanais",
+    "ta": "Tamoul",
+    "tt": "Tatar",
+    "ug": "Ouïghour",
+    "uz": "Ouzbek"
+  },
+  "tafseerNames": {
+    "169": "Ibn Kathir (abrégé)",
+    "381": "Tafsir Fathul Majid",
+    "16": "Tafsir Muyassar",
+    "165": "Tafsir Ahsanul Bayaan",
+    "166": "Tafsir Abu Bakr Zakaria",
+    "93": "Al-Tafsir al-Wasit (Tantawi)",
+    "14": "Tafsir Ibn Kathir",
+    "15": "Tafsir al-Tabari",
+    "164": "Tafseer ibn Kathir",
+    "90": "Al-Qurtubi",
+    "168": "Ma'arif al-Qur'an",
+    "91": "السعدي Al-Sa'di",
+    "170": "Al-Sa'di",
+    "94": "Tafseer Al-Baghawi",
+    "157": "Fi Zilal al-Quran",
+    "804": "Rebar Kurdish Tafsir",
+    "817": "Tazkirul Quran(Maulana Wahiduddin Khan)",
+    "160": "Tafsir Ibn Kathir",
+    "818": "Tazkir ul Quran",
+    "159": "Bayan ul Quran"
+  }
+}

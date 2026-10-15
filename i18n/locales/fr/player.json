@@ -1,0 +1,80 @@
+{
+  "queue": {
+    "empty": "La file d’attente est vide",
+    "verseShort": "v. {{verse}}"
+  },
+  "uploads": {
+    "recordingType": {
+      "salah": "Salat",
+      "studio": "Studio"
+    },
+    "untagged": "Sans catégorie",
+    "addRecitation": "Ajouter une récitation",
+    "emptyTitle": "Aucun import pour l’instant",
+    "emptySubtitle": "Importez des récitations pour les voir ici"
+  },
+  "uploadPlaceholder": {
+    "hint": "Identifiez cette récitation pour afficher le texte de la sourate et ses détails",
+    "editDetails": "Modifier les détails"
+  },
+  "verse": {
+    "footnote": "Note de bas de page",
+    "footnoteContentUnavailable": "Contenu de la note indisponible",
+    "footnoteDataUnavailable": "Données de la note indisponibles",
+    "wbwHafsNotice": "Mot à mot affiché selon Hafs"
+  },
+  "reciterProfile": {
+    "shareMessage": "Écoutez {{name}} sur {{appName}}",
+    "thisReciter": "ce récitateur",
+    "myUploads": "Mes imports",
+    "sort": {
+      "asc": "Croiss.",
+      "desc": "Décroiss.",
+      "revelation": "Révél."
+    },
+    "searchPlaceholder": "Rechercher des sourates",
+    "noSurahsAvailable": "Aucune sourate disponible",
+    "noSurahsFound": "Aucune sourate trouvée",
+    "juzAmma": "Juz 'Amma"
+  },
+  "adhkar": {
+    "otherSection": "Autres",
+    "playAll": "Tout lire",
+    "hideInfo": "Masquer les infos",
+    "showInfo": "Afficher les infos",
+    "reciteTimes_one": "Réciter {{count}} fois",
+    "reciteTimes_many": "Réciter {{count}} de fois",
+    "reciteTimes_other": "Réciter {{count}} fois",
+    "repeatTimes": "Répéter {{times}}×",
+    "dhikrCount_one": "{{count}} dhikr",
+    "dhikrCount_many": "{{count}} d’adhkar",
+    "dhikrCount_other": "{{count}} adhkar",
+    "tasbeeh": {
+      "a11yLabel": "Compteur de tasbih, {{current}} sur {{target}}",
+      "a11yHint": "Touchez pour augmenter le compteur",
+      "complete": "Terminé",
+      "tapToCount": "Touchez pour compter",
+      "percent": "{{value}} %",
+      "resetA11yLabel": "Réinitialiser le compteur",
+      "resetA11yHint": "Remet le compteur à zéro"
+    },
+    "a11y": {
+      "copyArabic": "Copier le texte arabe",
+      "addBookmark": "Ajouter un signet",
+      "removeBookmark": "Retirer le signet",
+      "shareDhikr": "Partager le dhikr",
+      "layoutSettings": "Paramètres de mise en page",
+      "playAudio": "Lire l’audio",
+      "pauseAudio": "Mettre l’audio en pause",
+      "enableRepeat": "Activer la répétition",
+      "disableRepeat": "Désactiver la répétition",
+      "showInstruction": "Afficher la consigne",
+      "hideInstruction": "Masquer la consigne",
+      "playAll": "Tout lire",
+      "pauseAll": "Tout mettre en pause"
+    }
+  },
+  "a11y": {
+    "openPlayer": "Ouvre le lecteur complet"
+  }
+}

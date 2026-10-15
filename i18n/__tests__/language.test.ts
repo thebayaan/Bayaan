@@ -12,6 +12,7 @@ const mockDirection = {
   forceRTL: jest.fn(),
   swapLeftAndRightInRTL: jest.fn(),
 };
+const originalDevelopmentMode = __DEV__;
 
 jest.mock('react-native', () => ({
   I18nManager: mockDirection,
@@ -42,7 +43,16 @@ Object.defineProperty(globalThis, 'fetch', {
   value: jest.fn(),
 });
 
+function setDevelopmentMode(value: boolean) {
+  Object.defineProperty(globalThis, '__DEV__', {
+    configurable: true,
+    writable: true,
+    value,
+  });
+}
+
 beforeEach(() => {
+  setDevelopmentMode(originalDevelopmentMode);
   jest.resetModules();
   jest.clearAllMocks();
   mockStorage.clear();
@@ -51,6 +61,60 @@ beforeEach(() => {
   mockDeviceLocales.mockReturnValue([{languageCode: 'en'}]);
   mockReload.mockResolvedValue(undefined);
   mockUpdatesReload.mockResolvedValue(undefined);
+});
+
+afterEach(() => {
+  setDevelopmentMode(originalDevelopmentMode);
+});
+
+it.each([true, false])(
+  'offers the French draft only in development (development=%s)',
+  development => {
+    setDevelopmentMode(development);
+    mockDeviceLocales.mockReturnValue([
+      {languageCode: 'fr'},
+      {languageCode: 'ar'},
+    ]);
+    const language = loadLanguage();
+    expect(language.AVAILABLE_LANGUAGES).toEqual(
+      development ? ['en', 'ar', 'fr'] : ['en', 'ar'],
+    );
+    expect(language.currentLanguage).toBe(development ? 'fr' : 'ar');
+  },
+);
+
+it('ignores a saved French preview preference in release builds', () => {
+  setDevelopmentMode(false);
+  mockStorage.set('language_preference', 'fr');
+  mockDeviceLocales.mockReturnValue([{languageCode: 'fr'}]);
+  const language = loadLanguage();
+  expect(language.getLanguagePreference()).toBe('system');
+  expect(language.currentLanguage).toBe('en');
+  // Keep the stored draft choice for a later development session.
+  expect(mockStorage.get('language_preference')).toBe('fr');
+});
+
+it('restores French in development with English reading aids and LTR layout', () => {
+  mockStorage.set('language_preference', 'fr');
+  const language = loadLanguage();
+  expect(language.currentLanguage).toBe('fr');
+  expect(language.defaultShowEnglishReadingAids).toBe(true);
+  expect(language.defaultShowTransliteration).toBe(true);
+  language.bootstrapDirection();
+  expect(mockDirection.forceRTL).toHaveBeenCalledWith(false);
+  expect(mockReload).not.toHaveBeenCalled();
+});
+
+it('clears Arabic mirroring before reloading into French', async () => {
+  mockStorage.set('language_preference', 'ar');
+  mockDirection.isRTL = true;
+  await loadLanguage().setLanguagePreference('fr');
+  expect(mockStorage.get('language_preference')).toBe('fr');
+  expect(mockDirection.allowRTL).toHaveBeenCalledWith(false);
+  expect(mockDirection.forceRTL).toHaveBeenCalledWith(false);
+  expect(mockDirection.forceRTL.mock.invocationCallOrder[0]).toBeLessThan(
+    mockReload.mock.invocationCallOrder[0],
+  );
 });
 
 it('keeps startup imports free of reloads until the root mounts', () => {
@@ -68,7 +132,7 @@ it.each(['ar', 'en'])('sets reading-aid defaults for %s', language => {
 
 it('falls back to English for a device language the app does not ship', () => {
   mockDeviceLocales.mockReturnValue([
-    {languageCode: 'fr'},
+    {languageCode: 'de'},
     {languageCode: null},
   ]);
   expect(loadLanguage().currentLanguage).toBe('en');

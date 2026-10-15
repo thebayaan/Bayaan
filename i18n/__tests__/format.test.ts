@@ -34,6 +34,11 @@ describe('formatNumber', () => {
     expect(formatNumber(6236, 'ar')).toBe('٦٬٢٣٦');
     expect(formatNumber(999, 'ar')).toBe('٩٩٩');
   });
+
+  it('uses the French separators', () => {
+    expect(formatNumber(6236, 'fr')).toBe('6\u202f236');
+    expect(decimalSeparator('fr')).toBe(',');
+  });
 });
 
 describe('surah and reciter names', () => {
@@ -45,6 +50,14 @@ describe('surah and reciter names', () => {
   it('hides the English meaning in Arabic', () => {
     expect(getSurahMeaning(fatiha, 'ar')).toBeNull();
     expect(getSurahMeaning(fatiha, 'en')).toBe('The Opener');
+  });
+
+  it('shows the transliteration without the English meaning in French', () => {
+    expect(getSurahDisplayName(fatiha, 'fr')).toBe('Al-Fatihah');
+    expect(getSurahMeaning(fatiha, 'fr')).toBeNull();
+    expect(
+      getTrackDisplayTitle({title: 'Al-Fatihah', surahId: '1'}, 'fr'),
+    ).toBe('Al-Fatihah');
   });
 
   it('resolves Arabic track titles from surahId but keeps upload titles', () => {
@@ -69,6 +82,12 @@ describe('surah and reciter names', () => {
     expect(getReciterDisplayName({name: 'Mishary Alafasi'}, 'en')).toBe(
       'Mishary Alafasi',
     );
+    expect(
+      getReciterDisplayName(
+        {id: 'b3bca7d8-b004-4511-b46e-f3527f6b1f67', name: 'Mishary Alafasi'},
+        'fr',
+      ),
+    ).toBe('Mishary Alafasi');
   });
 
   it('falls back to the English reciter name without an Arabic one', () => {

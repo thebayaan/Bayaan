@@ -1,0 +1,145 @@
+{
+  "collectionScreen": {
+    "addToCollection": "Ajouter à la collection",
+    "loved": "Favoris",
+    "notes": "Notes",
+    "itemsCount_one": "{{count}} élément",
+    "itemsCount_many": "{{count}} d’éléments",
+    "itemsCount_other": "{{count}} éléments",
+    "empty": {
+      "playlists": "Créez votre première playlist",
+      "reciters": "Aucun favori pour l’instant",
+      "downloads": "Aucun téléchargement pour l’instant",
+      "loved": "Aucune sourate favorite pour l’instant",
+      "bookmarks": "Aucun signet pour l’instant",
+      "notes": "Aucune note pour l’instant",
+      "uploads": "Aucun import pour l’instant"
+    }
+  },
+  "bookmarksScreen": {
+    "count_one": "{{count}} signet",
+    "count_many": "{{count}} de signets",
+    "count_other": "{{count}} signets",
+    "removeBookmark": "Retirer le signet",
+    "openingIn": "S’ouvre en",
+    "emptySubtitle": "Ajoutez des signets aux versets pour les voir ici"
+  },
+  "notesScreen": {
+    "count_one": "{{count}} note",
+    "count_many": "{{count}} de notes",
+    "count_other": "{{count}} notes",
+    "editNote": "Modifier la note",
+    "deleteNote": "Supprimer la note",
+    "emptySubtitle": "Ajoutez des notes aux versets pour les voir ici"
+  },
+  "playlistsScreen": {
+    "count_one": "{{count}} playlist",
+    "count_many": "{{count}} de playlists",
+    "count_other": "{{count}} playlists",
+    "emptyTitle": "Aucune playlist pour l’instant",
+    "emptySubtitle": "Créez des playlists pour les voir ici",
+    "createNew": "Créer une playlist"
+  },
+  "favoriteRecitersScreen": {
+    "title": "Récitateurs favoris",
+    "removeFromFavorites": "Retirer des favoris",
+    "emptyTitle": "Aucun récitateur favori pour l’instant",
+    "emptySubtitle": "Ajoutez des récitateurs pour les voir ici",
+    "addReciters": "Ajouter des récitateurs",
+    "searchPlaceholder": "Rechercher dans vos récitateurs favoris"
+  },
+  "downloadsScreen": {
+    "surahsDownloaded_one": "{{count}} sourate téléchargée",
+    "surahsDownloaded_many": "{{count}} de sourates téléchargées",
+    "surahsDownloaded_other": "{{count}} sourates téléchargées",
+    "removeAll": "Supprimer tous les téléchargements",
+    "playAll": "Tout lire",
+    "emptySubtitle": "Téléchargez des sourates pour les voir ici"
+  },
+  "lovedScreen": {
+    "allDownloaded": "Tout est téléchargé",
+    "downloadAll": "Tout télécharger",
+    "unloveAll": "Retirer toutes les sourates des favoris",
+    "emptySubtitle": "Ajoutez des sourates aux favoris pour les voir ici",
+    "alreadyDownloadedTitle": "Déjà téléchargées",
+    "alreadyDownloadedMessage": "Toutes les sourates favorites sont déjà téléchargées.",
+    "downloadCompleteTitle": "Téléchargement terminé",
+    "downloadCompleteMessage": "Toutes les sourates favorites ont été téléchargées.",
+    "downloadErrorTitle": "Erreur de téléchargement",
+    "downloadErrorMessage": "Certains téléchargements ont peut-être échoué."
+  },
+  "uploadsScreen": {
+    "recitationsCount_one": "{{count}} récitation",
+    "recitationsCount_many": "{{count}} de récitations",
+    "recitationsCount_other": "{{count}} récitations",
+    "removeAll": "Supprimer tous les imports",
+    "emptySubtitle": "Importez des récitations pour les voir ici",
+    "opening": "Ouverture…",
+    "addRecitation": "Ajouter une récitation",
+    "untagged": "Sans catégorie",
+    "verseShort": "v. {{verse}}",
+    "recordingType": {
+      "salah": "Salat",
+      "studio": "Studio"
+    },
+    "category": {
+      "dua": "Dua",
+      "lecture": "Conférence",
+      "tafsir": "Tafsir",
+      "other": "Autre"
+    }
+  },
+  "playlistModal": {
+    "newTitle": "Nouvelle playlist",
+    "editTitle": "Modifier la playlist",
+    "namePreview": "Votre playlist",
+    "nameLabel": "Nom de la playlist",
+    "namePlaceholder": "Nom"
+  },
+  "searchModal": {
+    "placeholder": "Rechercher playlists, récitateurs, sourates, riwayat…",
+    "emptyTitle": "Rechercher dans votre collection",
+    "emptySubtitle": "Recherchez des playlists, récitateurs, sourates, riwayat et téléchargements",
+    "searching": "Recherche…",
+    "tryDifferent": "Essayez d’autres mots-clés",
+    "resultsCount_one": "{{count}} résultat",
+    "resultsCount_many": "{{count}} de résultats",
+    "resultsCount_other": "{{count}} résultats",
+    "unknownReciter": "Récitateur inconnu",
+    "inPlaylist": "{{reciter}} • dans la playlist « {{playlist}} »",
+    "lovedBy": "Favoris • {{reciter}}",
+    "downloadedTitle": "Téléchargée : {{surah}}",
+    "rewayatAvailable_one": "{{count}} riwaya disponible",
+    "rewayatAvailable_many": "{{count}} de riwayat disponibles",
+    "rewayatAvailable_other": "{{count}} riwayat disponibles",
+    "rewayahBy": "{{rewayah}} par {{reciter}}",
+    "typeLoved": "Favoris",
+    "typeInPlaylist": "Dans une playlist"
+  },
+  "playlistDetail": {
+    "empty": "Aucune sourate dans cette playlist"
+  },
+  "reciterDownloads": {
+    "empty": "Aucun téléchargement pour ce récitateur"
+  },
+  "systemPlaylist": {
+    "curatedBadge": "Sélection {{appName}}",
+    "withReciter": "avec {{reciter}}",
+    "durationHoursMinutes": "{{hours}} h {{minutes}} min",
+    "durationHours": "{{hours}} h",
+    "durationMinutes": "{{minutes}} min",
+    "noReciterTitle": "Aucun récitateur disponible",
+    "noReciterMessage": "Impossible de trouver un récitateur ayant toutes les sourates de cette playlist. Veuillez essayer une autre playlist.",
+    "errorTitle": "Erreur",
+    "playFailed": "Impossible de lire la playlist. Veuillez réessayer.",
+    "shuffleFailed": "Impossible de lire la playlist en aléatoire. Veuillez réessayer.",
+    "playTrackFailed": "Impossible de lire la piste. Veuillez réessayer."
+  },
+  "playlistItem": {
+    "subtitle": "Playlist • {{surahs}}"
+  },
+  "reciterDownloadsItem": {
+    "subtitle": "Téléchargements • {{surahs}}"
+  },
+  "followAlongBadge": "Suivre la récitation"
+}

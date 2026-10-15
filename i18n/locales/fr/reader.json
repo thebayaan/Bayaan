@@ -1,0 +1,57 @@
+{
+  "verseLabel": "{{surah}} {{surahNumber}}:{{ayah}}",
+  "mushaf": {
+    "headerMeta": "Page {{page}} · Juz {{juz}} · {{rewayah}}",
+    "searchSurahs": "Rechercher des sourates",
+    "settings": "Paramètres du mushaf",
+    "shareMessage": "Découvrez la page {{page}} du Coran sur {{appName}}",
+    "loadFailedTitle": "Impossible de charger le mushaf",
+    "loadFailedBody": "Vérifiez que votre appareil dispose d’un peu d’espace libre, puis réessayez.",
+    "pageLoadFailed": "Impossible de charger cette page.",
+    "turnOffTajweed": "Désactiver le tajwid"
+  },
+  "toolbar": {
+    "options": "Options",
+    "stop": "Arrêter"
+  },
+  "playerBar": {
+    "changeReciter": "Changer de récitateur",
+    "changeReciterButton": "Changer de récitateur",
+    "playbackOptions": "Options de lecture",
+    "previousAyah": "Verset précédent",
+    "nextAyah": "Verset suivant"
+  },
+  "search": {
+    "placeholder": "Rechercher sourates, pages ou juz…",
+    "recentReads": "Lus récemment",
+    "recentSearches": "Recherches récentes",
+    "emptyTitle": "Rechercher dans le mushaf",
+    "emptySubtitle": "Trouvez des sourates, versets, pages ou juz",
+    "sortAsc": "Croiss.",
+    "sortDesc": "Décroiss.",
+    "sortRevelation": "Révél.",
+    "juzAmma": "Juz 'Amma",
+    "juzTabarak": "Juz Tabarak",
+    "pageWithSurah": "Page {{page}} · {{surah}}",
+    "surahWithMeaning": "Sourate {{number}} · {{meaning}}",
+    "verse": "Verset {{number}}"
+  },
+  "shareCard": {
+    "madeWith": "créé avec {{appName}}"
+  },
+  "playback": {
+    "trackingUnavailable": "Suivi des versets indisponible",
+    "unavailable": "Lecture indisponible",
+    "surah": "Cette sourate",
+    "fromBeginning": "Avec ce récitateur, {{surah}} est lue depuis le début, sans suivi des versets.",
+    "untracked": "Avec ce récitateur, {{surah}} est lue sans surlignage des versets.",
+    "timestampsUnavailable": "Horodatages indisponibles pour ce récitateur sur cette sourate. Essayez un autre récitateur.",
+    "verseTimingUnavailable": "La lecture verset par verset n’est pas disponible pour ce récitateur sur cette sourate. Essayez un autre récitateur.",
+    "rangeUnplayable": "Cette sélection ne contient aucun verset à lire pour ce récitateur. Essayez un autre récitateur ou une autre plage."
+  },
+  "verseUnits": {
+    "loading": "Chargement des versets selon {{rewayah}}",
+    "loadFailed": "Impossible de charger les versets selon {{rewayah}}.",
+    "retryLabel": "Réessayer de charger les versets selon {{rewayah}}"
+  }
+}

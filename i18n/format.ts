@@ -3,7 +3,7 @@ import {SURAHS} from '@/data/surahData';
 import arNamesById from '@/data/reciterNamesAr.json';
 import fallbackReciters from '@/data/reciters-fallback.json';
 import {currentLanguage, type AppLanguage} from './language';
-import {DIGIT_ZERO, getLanguageConfig} from './languages';
+import {DIGIT_ZERO, getLanguageConfig, SOURCE_LANGUAGE} from './languages';
 
 function reciterNameKey(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -75,14 +75,14 @@ interface TranslatedSurah {
 }
 
 /**
- * English meaning of a surah name (e.g. "The Opener"). Returns null when the
- * Arabic name is shown, since it already carries the meaning.
+ * English meaning of a surah name (e.g. "The Opener"). Only English shows
+ * it: the data is English, and other languages show the name itself.
  */
 export function getSurahMeaning(
   surah: TranslatedSurah,
   language: AppLanguage = currentLanguage,
 ): string | null {
-  return usesArabicContent(language) ? null : surah.translated_name_english;
+  return language === SOURCE_LANGUAGE ? surah.translated_name_english : null;
 }
 
 interface TitledTrack {

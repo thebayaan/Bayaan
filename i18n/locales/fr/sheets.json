@@ -1,0 +1,327 @@
+{
+  "followAlong": {
+    "title": "Suivre la récitation",
+    "description": "La lecture verset par verset n’est pas prise en charge par le récitateur actuel. Essayez plutôt l’un de ces récitateurs :"
+  },
+  "playbackSpeed": {
+    "title": "Vitesse de lecture",
+    "speed": "{{speed}}x"
+  },
+  "sleepTimer": {
+    "title": "Minuterie de sommeil",
+    "secondsRemaining_one": "{{count}} seconde restante",
+    "secondsRemaining_many": "{{count}} de secondes restantes",
+    "secondsRemaining_other": "{{count}} secondes restantes",
+    "minutesRemaining_one": "{{count}} minute restante",
+    "minutesRemaining_many": "{{count}} de minutes restantes",
+    "minutesRemaining_other": "{{count}} minutes restantes",
+    "minutesOption_one": "{{count}} min",
+    "minutesOption_many": "{{count}} min",
+    "minutesOption_other": "{{count}} min",
+    "turnOff": "Désactiver la minuterie"
+  },
+  "mushafLayout": {
+    "readingTheme": "Thème de lecture"
+  },
+  "themeContent": {
+    "empty": "Aucune donnée thématique pour ce verset.",
+    "passage": "Passage",
+    "verses": "Versets"
+  },
+  "note": {
+    "title": "Note pour {{ref}}",
+    "editTitle": "Modifier la note pour {{ref}}",
+    "placeholder": "Écrivez votre note ici…",
+    "save": "Enregistrer la note",
+    "update": "Mettre à jour la note",
+    "delete": "Supprimer la note",
+    "titleWithoutRef": "Note",
+    "editTitleWithoutRef": "Modifier la note"
+  },
+  "highlight": {
+    "title": "Couleur de surlignage",
+    "chooseColor": "CHOISIR UNE COULEUR",
+    "remove": "Retirer le surlignage"
+  },
+  "rewayatInfo": {
+    "title": "À propos des riwayat",
+    "readMore": "lire la suite",
+    "showLess": "voir moins",
+    "available": "Riwayat disponibles",
+    "explanation": "Une riwaya (رواية, pluriel : riwayat رِوَايَات) est une méthode précise de récitation du Coran, qui représente une voie de transmission particulière au sein d’une tradition plus large de qira’at (قِرَاءَة, pluriel : qira’at قِرَاءَات).\n\nAlors que les qira’at sont les grandes écoles de récitation coranique attribuées à des récitateurs célèbres, les riwayat sont les voies précises par lesquelles ces récitations ont été transmises, par des chaînes de narrateurs remontant jusqu’au Prophète Muhammad ﷺ.\n\n« Le Coran a été révélé selon sept ahruf (styles). Récitez-en donc ce qui vous est le plus facile. »\n- Sahih al-Bukhari 2419, Sahih Muslim 818\n\nLa riwaya la plus répandue aujourd’hui est Hafs 'an Assem (حَفْص عَن عَاصِم), considérée comme la version de référence utilisée dans la plupart des Corans imprimés et immédiatement reconnaissable par la plupart des musulmans dans le monde.\n\nChaque riwaya peut présenter de légères variations de prononciation, d’allongement ou de points d’articulation. Ces différences sont purement phonétiques et n’altèrent jamais le sens du texte coranique, car elles représentent toutes des manières authentiques de réciter le Coran, méticuleusement préservées."
+  },
+  "addToCollection": {
+    "title": "Ajouter à la collection",
+    "uploadRecitation": "Importer une récitation",
+    "createPlaylist": "Créer une playlist",
+    "addFavoriteReciter": "Ajouter un récitateur favori"
+  },
+  "selectReciter": {
+    "title": "Choisir un récitateur",
+    "useDefault": "Récitateur par défaut",
+    "random": "Récitateur aléatoire",
+    "browseAll": "Voir tous les récitateurs",
+    "askEveryTime": "Toujours demander"
+  },
+  "copy": {
+    "optionsTitle": "Options de copie",
+    "optionsSubtitle": "Choisissez ce que vous voulez copier",
+    "selectContent": "SÉLECTIONNER LE CONTENU",
+    "arabic": "Arabe",
+    "transliteration": "Translittération",
+    "verseReference": "Référence du verset",
+    "copyToClipboard": "Copier dans le presse-papiers",
+    "quranReference": "Coran {{ref}}"
+  },
+  "createPlaylist": {
+    "title": "Nouvelle playlist",
+    "editTitle": "Modifier la playlist",
+    "previewName": "Votre playlist",
+    "nameLabel": "Nom de la playlist",
+    "namePlaceholder": "ex. : Récitations du matin"
+  },
+  "wordDetail": {
+    "context": "Verset {{ref}} · Mot {{position}} sur {{total}}"
+  },
+  "favoriteReciters": {
+    "title": "Récitateurs favoris",
+    "selected_one": "{{count}} sélectionné",
+    "selected_many": "{{count}} sélectionnés",
+    "selected_other": "{{count}} sélectionnés",
+    "rewayatCount_one": "{{count}} riwaya",
+    "rewayatCount_many": "{{count}} de riwayat",
+    "rewayatCount_other": "{{count}} riwayat"
+  },
+  "reciterPicker": {
+    "searchPlaceholder": "Rechercher un récitateur…",
+    "empty": "Aucun récitateur trouvé"
+  },
+  "adhkarLayout": {
+    "title": "Mise en page des adhkar",
+    "arabicText": "Texte arabe",
+    "fontSize": "Taille de police",
+    "showTranslation": "Afficher la traduction",
+    "showTransliteration": "Afficher la translittération"
+  },
+  "share": {
+    "title": "Partager le verset",
+    "showBasmallah": "Afficher la basmala",
+    "showWatermark": "Afficher le filigrane",
+    "asImage": "Partager en image",
+    "asText": "Partager en texte",
+    "link": "Partager le lien",
+    "reference": "Coran {{ref}}",
+    "referenceWithRewayah": "Coran {{ref}} · {{rewayah}}"
+  },
+  "selectPlaylist": {
+    "errorTitle": "Erreur",
+    "addFailed": "Impossible d’ajouter la sourate à la playlist",
+    "createFailed": "Impossible de créer la playlist",
+    "loved": "Favoris",
+    "creating": "Création…",
+    "yourPlaylists": "Vos playlists",
+    "empty": "Aucune playlist pour l’instant. Créez votre première playlist ci-dessus !"
+  },
+  "options": {
+    "playNow": "Lire maintenant",
+    "addToQueue": "Ajouter à la file d’attente",
+    "addToLoved": "Ajouter aux favoris",
+    "removeFromLoved": "Retirer des favoris",
+    "addToCollection": "Ajouter à la collection",
+    "learnAboutSurah": "En savoir plus sur la sourate",
+    "aboutSurah": "À propos de {{surah}}",
+    "editDetails": "Modifier les détails",
+    "goToReciter": "Voir le récitateur",
+    "downloading": "Téléchargement {{percent}} %",
+    "downloaded": "Téléchargé",
+    "shareListen": "Écoutez la sourate {{surah}} sur {{appName}}",
+    "shareListenSurah": "Écoutez {{surah}} sur {{appName}}",
+    "removeFromPlaylist": "Retirer de la playlist"
+  },
+  "uploads": {
+    "untagged": "Sans catégorie",
+    "categories": {
+      "dua": "Dua",
+      "lecture": "Conférence",
+      "tafsir": "Tafsir",
+      "other": "Autre"
+    },
+    "versesRange": "Versets {{from}}-{{to}}",
+    "verse": "Verset {{verse}}",
+    "salah": "Salat",
+    "studio": "Studio",
+    "deleteTitle": "Supprimer la récitation",
+    "deleteMessage": "Voulez-vous vraiment supprimer « {{title}} » ?",
+    "uploadedAudio": "Audio importé",
+    "upload": "Import"
+  },
+  "organize": {
+    "categoryDua": "Du'a",
+    "unknownDuration": "Durée inconnue",
+    "type": "Type",
+    "surah": "Sourate",
+    "searchSurahs": "Rechercher une sourate…",
+    "verseRangeOptional": "Plage de versets (facultatif)",
+    "ofVerses_one": "sur {{count}} verset",
+    "ofVerses_many": "sur {{count}} de versets",
+    "ofVerses_other": "sur {{count}} versets",
+    "title": "Titre",
+    "titlePlaceholder": "ex. : Adhkar du matin",
+    "category": "Catégorie",
+    "searchReciters": "Rechercher un récitateur…",
+    "createReciter": "Créer « {{name}} »",
+    "customReciter": "Récitateur personnalisé",
+    "moreOptions": "Plus d’options",
+    "rewayah": "Riwaya",
+    "style": "Style",
+    "recording": "Enregistrement"
+  },
+  "verseActions": {
+    "highlight": "Surligner",
+    "addNote": "Ajouter une note",
+    "similarVerses": "Versets similaires",
+    "sharedPhrases": "Expressions communes",
+    "translation": "Traduction",
+    "tafseer": "Tafsir",
+    "theme": "Thème",
+    "wordByWord": "Mot à mot",
+    "playSelection": "Lire la sélection",
+    "playFromHere": "Lire à partir d’ici",
+    "repeat": "Répéter",
+    "bookmark": "Ajouter un signet",
+    "removeBookmark": "Retirer le signet",
+    "communityReflections": "Réflexions de la communauté",
+    "unnumbered": "Verset non numéroté dans {{rewayah}}.",
+    "loadFailed": "Impossible de charger le texte de {{rewayah}}.",
+    "loadingText": "Chargement du texte de {{rewayah}}"
+  },
+  "mushafPlayer": {
+    "title": "Paramètres de lecture",
+    "selectRange": "Choisir la plage",
+    "startingVerse": "Verset de début",
+    "endingVerse": "Verset de fin",
+    "reciter": "Récitateur",
+    "play": "Lire",
+    "reciterPickerSubtitle": "Récitateurs avec audio verset par verset"
+  },
+  "playlistContext": {
+    "edit": "Modifier la playlist",
+    "download": "Télécharger la playlist",
+    "delete": "Supprimer la playlist",
+    "deleteTitle": "Supprimer la playlist",
+    "deleteMessage": "Voulez-vous vraiment supprimer « {{name}} » ? Cette action est irréversible.",
+    "emptyTitle": "Playlist vide",
+    "emptyMessage": "Cette playlist est vide.",
+    "alreadyDownloadedTitle": "Déjà téléchargée",
+    "alreadyDownloadedMessage": "Tous les éléments de cette playlist sont déjà téléchargés.",
+    "completeTitle": "Téléchargement terminé",
+    "completeMessage_one": "{{count}} élément de « {{name}} » téléchargé avec succès.",
+    "completeMessage_many": "{{count}} d’éléments de « {{name}} » téléchargés avec succès.",
+    "completeMessage_other": "{{count}} éléments de « {{name}} » téléchargés avec succès.",
+    "failedTitle": "Échec du téléchargement",
+    "failedMessage": "Une erreur s’est produite lors du téléchargement de la playlist. Veuillez réessayer.",
+    "downloadingPlaylist": "Téléchargement de la playlist…",
+    "itemsProgress_one": "{{current}} sur {{count}} élément",
+    "itemsProgress_many": "{{current}} sur {{count}} d’éléments",
+    "itemsProgress_other": "{{current}} sur {{count}} éléments"
+  },
+  "homeCardOptions": {
+    "continuePlaying": "Reprendre la lecture",
+    "addToQueue": "Ajouter à la file d’attente",
+    "goToReciter": "Voir le récitateur",
+    "addReciterToFavorites": "Ajouter le récitateur aux favoris",
+    "removeReciterFromFavorites": "Retirer le récitateur des favoris",
+    "addToLoved": "Ajouter aux favoris",
+    "removeFromLoved": "Retirer des favoris",
+    "addToCollection": "Ajouter à la collection",
+    "removeFromRecents": "Retirer des récents",
+    "shareRecitation": "Écoutez {{reciter}} réciter {{surah}} sur {{appName}}",
+    "shareReciter": "Écoutez {{reciter}} sur {{appName}}"
+  },
+  "downloadOptions": {
+    "removeTitle": "Supprimer le téléchargement",
+    "removeMessage": "Voulez-vous vraiment supprimer ce téléchargement ?"
+  },
+  "translationContent": {
+    "notAvailable": "Traduction non disponible",
+    "switch": "Changer",
+    "prev": "Préc."
+  },
+  "repeat": {
+    "title": "Paramètres de répétition",
+    "verseRange": "Plage de versets",
+    "from": "De",
+    "to": "À",
+    "playSpeed": "Vitesse de lecture",
+    "eachVerse": "Lire chaque verset",
+    "range": "Lire la plage",
+    "start": "Démarrer",
+    "loop": "En boucle",
+    "times_one": "{{count}} fois",
+    "times_many": "{{count}} de fois",
+    "times_other": "{{count}} fois"
+  },
+  "percent": "{{value}} %",
+  "ambient": {
+    "title": "Sons d’ambiance",
+    "none": "Aucun",
+    "volume": "Volume",
+    "sounds": {
+      "rain": "Pluie",
+      "forest": "Forêt",
+      "ocean": "Océan",
+      "stream": "Ruisseau",
+      "thunder": "Tonnerre",
+      "fireplace": "Cheminée",
+      "wind": "Vent"
+    }
+  },
+  "similar": {
+    "sharedPhrases": "EXPRESSIONS COMMUNES",
+    "sharedPhrasesTitle": "Expressions communes",
+    "similarWording": "FORMULATION SIMILAIRE",
+    "similarWordingTitle": "Formulation similaire",
+    "foundIn_one": "Présente dans {{count}} verset",
+    "foundIn_many": "Présente dans {{count}} de versets",
+    "foundIn_other": "Présente dans {{count}} versets",
+    "goToVerse": "Aller au verset",
+    "more_one": "+{{count}} autre",
+    "more_many": "+{{count}} autres",
+    "more_other": "+{{count}} autres",
+    "empty": "Aucun verset similaire trouvé pour ce verset."
+  },
+  "tafseerContent": {
+    "emptyTitle": "Aucun tafsir téléchargé",
+    "emptyMessage": "Touchez ici pour télécharger un tafsir et afficher le commentaire.",
+    "select": "Choisir un tafsir",
+    "versesRange": "VERSETS {{range}}",
+    "notAvailable": "Tafsir non disponible pour ce verset"
+  },
+  "communityReflections": {
+    "loadFailed": "Impossible de charger les réflexions. Réessayez plus tard.",
+    "empty": "Aucune réflexion pour l’instant",
+    "count_one": "{{count}} réflexion",
+    "count_many": "{{count}} de réflexions",
+    "count_other": "{{count}} réflexions",
+    "openLabel": "Ouvrir la réflexion de {{author}}"
+  },
+  "selectionFailure": {
+    "unnumbered": "Verset non numéroté dans {{rewayah}}",
+    "loadFailed": "Impossible de charger le texte de {{rewayah}}",
+    "nothingDone": {
+      "copied": "Rien n’a été copié.",
+      "shared": "Rien n’a été partagé.",
+      "saved": "Rien n’a été enregistré.",
+      "played": "Rien n’a été lu."
+    },
+    "nothingDoneRetry": {
+      "copied": "Rien n’a été copié. Veuillez réessayer.",
+      "shared": "Rien n’a été partagé. Veuillez réessayer.",
+      "saved": "Rien n’a été enregistré. Veuillez réessayer.",
+      "played": "Rien n’a été lu. Veuillez réessayer."
+    },
+    "nothingToCopy": "Rien à copier",
+    "nothingToShare": "Rien à partager",
+    "noOwnText": "Dans {{rewayah}}, cette sélection est lue comme faisant partie d’un verset voisin."
+  }
+}

@@ -10,7 +10,7 @@
 export const SOURCE_LANGUAGE = 'en';
 
 /** Every shipped or in-progress UI language, as BCP 47 tags without region. */
-export const SUPPORTED_LANGUAGES = ['en', 'ar'] as const;
+export const SUPPORTED_LANGUAGES = ['en', 'ar', 'fr'] as const;
 
 export type AppLanguage = (typeof SUPPORTED_LANGUAGES)[number];
 
@@ -93,6 +93,22 @@ export const LANGUAGES: Readonly<Record<AppLanguage, LanguageConfig>> = {
     bilingualContent: 'ar',
     understandsArabic: true,
     status: 'shipped',
+  },
+  fr: {
+    code: 'fr',
+    endonym: 'Français',
+    englishName: 'French',
+    direction: 'ltr',
+    script: 'Latn',
+    digits: 'latn',
+    // CLDR groups French digits with a narrow no-break space (U+202F).
+    groupSeparator: '\u202f',
+    decimalSeparator: ',',
+    uiFont: 'manrope',
+    allowsLetterSpacing: true,
+    bilingualContent: 'en',
+    understandsArabic: false,
+    status: 'inProgress',
   },
 };
 

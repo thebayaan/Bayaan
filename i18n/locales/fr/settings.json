@@ -1,0 +1,404 @@
+{
+  "layout": {
+    "storage": "Stockage",
+    "about": "À propos de {{appName}}",
+    "credits": "Crédits",
+    "mushafSettings": "Paramètres du Mushaf",
+    "defaultReciter": "Récitateur par défaut",
+    "reciterChoice": "Choix du récitateur",
+    "account": "Compte",
+    "translations": "Traductions et tafsirs",
+    "readingTheme": "Thème de lecture",
+    "whatsNew": "Nouveautés"
+  },
+  "index": {
+    "appearance": "Apparence",
+    "sections": {
+      "quran": "Coran",
+      "audio": "Audio et lecture",
+      "appData": "Application et données",
+      "feedback": "Vos retours",
+      "about": "À propos de {{appName}}"
+    },
+    "items": {
+      "mushafSettings": {
+        "title": "Paramètres du Mushaf",
+        "description": "Personnalisez l’affichage du Coran"
+      },
+      "translations": {
+        "title": "Traductions et tafsirs",
+        "description": "Gérez les traductions et commentaires du Coran"
+      },
+      "defaultReciter": {
+        "title": "Récitateur par défaut",
+        "description": "Choisissez votre récitateur préféré"
+      },
+      "reciterChoice": {
+        "title": "Choix du récitateur",
+        "description": "Personnalisez la sélection du récitateur"
+      },
+      "storage": {
+        "title": "Stockage",
+        "description": "Consultez et gérez l’espace utilisé"
+      },
+      "rateApp": {
+        "title": "Laisser un avis",
+        "description": "Partagez votre expérience avec d’autres"
+      },
+      "featureRequest": {
+        "title": "Suggestions",
+        "description": "Proposez des améliorations et de nouvelles fonctionnalités"
+      },
+      "support": {
+        "title": "Aide et assistance",
+        "description": "Obtenez de l’aide pour utiliser {{appName}}"
+      },
+      "whatsNew": {
+        "title": "Nouveautés",
+        "description": "Découvrez les nouveautés de cette version"
+      },
+      "about": {
+        "title": "À propos de {{appName}}",
+        "description": "Découvrez notre mission"
+      },
+      "credits": {
+        "title": "Crédits",
+        "description": "Contributeurs et remerciements"
+      },
+      "github": {
+        "title": "Contribuer sur GitHub",
+        "description": "{{appName}} est désormais open source. Ajoutez une étoile, signalez un problème ou proposez une PR"
+      },
+      "terms": {
+        "title": "Conditions d’utilisation",
+        "description": "Lisez nos conditions d’utilisation"
+      },
+      "privacy": {
+        "title": "Politique de confidentialité",
+        "description": "Consultez notre politique de confidentialité"
+      }
+    },
+    "analytics": {
+      "section": "CONFIDENTIALITÉ",
+      "title": "Partager des données d’utilisation anonymes",
+      "description": "Aidez à améliorer {{appName}} grâce à des statistiques anonymes et non personnelles. Votre nom et votre compte ne sont jamais partagés."
+    }
+  },
+  "themePicker": {
+    "light": "Clair",
+    "dark": "Sombre",
+    "system": "Auto"
+  },
+  "about": {
+    "tagline": "Votre compagnon pour la récitation du Coran",
+    "alhamdulillahHeading": "Alhamdulillah",
+    "alhamdulillahBody": "Toute louange revient à Allah, qui nous a accordé l’occasion de servir Son Livre et la Oumma. Nous sommes profondément reconnaissants d’avoir été choisis pour développer cette plateforme qui relie les gens à la belle récitation du Saint Coran.",
+    "missionHeading": "Notre mission",
+    "missionBody": "{{appName}} a pour vocation de rendre la belle récitation du Saint Coran accessible à tous. Nous nous efforçons d’offrir une expérience d’écoute du Coran sereine et intuitive, avec les récitateurs les plus renommés au monde et quelques exclusivités {{appName}}.",
+    "featuresHeader": "Fonctionnalités",
+    "features": {
+      "offlineDownloads": {
+        "title": "Téléchargements hors ligne",
+        "description": "Téléchargez des sourates pour les écouter hors ligne, partout et à tout moment, sans connexion internet"
+      },
+      "customPlaylists": {
+        "title": "Playlists personnalisées",
+        "description": "Créez et gérez vos propres playlists avec vos récitations préférées"
+      },
+      "browseByJuz": {
+        "title": "Parcourir par juz",
+        "description": "Naviguez facilement dans le Coran grâce à une organisation et un regroupement par juz"
+      },
+      "audioControls": {
+        "title": "Commandes audio avancées",
+        "description": "Contrôle précis de la lecture, avec lecture continue et vitesse de récitation réglable"
+      },
+      "highQualityAudio": {
+        "title": "Audio haute qualité",
+        "description": "Des récitations d’une clarté cristalline par les meilleurs récitateurs du monde, avec un streaming optimisé"
+      },
+      "curatedCollections": {
+        "title": "Collections sélectionnées",
+        "description": "Des sourates soigneusement organisées selon les occasions et les thèmes"
+      },
+      "personalization": {
+        "title": "Personnalisation",
+        "description": "Personnalisez les thèmes, les couleurs d’accent et les réglages audio selon vos goûts"
+      }
+    },
+    "comingSoonHeader": "Bientôt disponible",
+    "comingSoonIntro": "Nous travaillons dur pour vous proposer encore plus de fonctionnalités afin d’enrichir votre parcours avec le Coran, notamment :",
+    "comingSoon": {
+      "translations": {
+        "title": "Traductions multiples",
+        "description": "Accédez à des traductions du Coran en plusieurs langues pour mieux en comprendre le sens"
+      },
+      "wordByWord": {
+        "title": "Suivre la récitation mot à mot",
+        "description": "Surlignage des mots en temps réel, synchronisé avec les récitations, pour vous aider à suivre et à apprendre"
+      },
+      "bookmarking": {
+        "title": "Signets intelligents",
+        "description": "Enregistrez vos versets préférés et suivez votre progression d’une sourate à l’autre"
+      },
+      "learningTools": {
+        "title": "Outils d’apprentissage",
+        "description": "Des fonctionnalités interactives pour vous aider à mémoriser et à mieux comprendre le Coran"
+      },
+      "community": {
+        "title": "Fonctionnalités communautaires",
+        "description": "Échangez avec d’autres, partagez votre parcours et progressez ensemble dans votre expérience du Coran"
+      }
+    },
+    "commitmentHeading": "Notre engagement",
+    "commitmentBody": "Nous nous engageons à nous améliorer continuellement et à maintenir les plus hautes exigences de qualité. Notre équipe travaille avec assiduité pour que {{appName}} reste une plateforme fiable et respectueuse pour la récitation du Coran. InshaAllah, avec l’aide d’Allah, nous continuerons à développer et à améliorer ces fonctionnalités pour mieux servir la Oumma. Nous vous remercions pour votre soutien et vos retours tout au long de ce parcours béni que nous poursuivons ensemble."
+  },
+  "credits": {
+    "intro": "{{appName}} n’existerait pas sans le travail remarquable de ces projets, organisations et personnes. Nous leur sommes profondément reconnaissants pour leurs contributions à la communauté musulmane et au monde de la tech.",
+    "footer": "Fait avec ❤️ par l’équipe {{appName}}",
+    "sections": {
+      "quranData": "Données coraniques",
+      "audioSources": "Sources audio",
+      "designResources": "Ressources de design",
+      "openSource": "Bibliothèques open source",
+      "specialThanks": "Remerciements particuliers",
+      "designArt": "Design et art"
+    },
+    "items": {
+      "qul": "Données coraniques avancées et informations mot par mot, par Tarteel",
+      "quranFoundation": "Services d’API complets pour le Coran, par Quran.com",
+      "mp3quran": "Vaste collection de récitateurs",
+      "svgrepo": "De belles icônes et illustrations open source",
+      "manropeTitle": "Police Manrope",
+      "manrope": "Famille de polices sans empattement, géométrique et moderne",
+      "uthmaniTitle": "Police Uthmani",
+      "uthmani": "Belle police coranique, par Arabic Fonts",
+      "quranComTitle": "Ressources Quran.com",
+      "quranCom": "SVG des noms de sourates et icônes",
+      "reactNative": "Framework principal",
+      "expo": "Plateforme de développement",
+      "reanimated": "Bibliothèque d’animations",
+      "contributorsTitle": "Nos contributeurs",
+      "contributors": "Toutes les personnes qui ont aidé à améliorer {{appName}}",
+      "betaTestersTitle": "Bêta-testeurs",
+      "betaTesters": "Pour leurs retours et suggestions précieux",
+      "communityTitle": "Communauté musulmane",
+      "community": "Pour leur soutien et leurs conseils constants",
+      "yamamotoTitle": "Dr Naoki Yamamoto",
+      "yamamoto": "Calligraphie de l’écran de démarrage, créée sur mesure"
+    }
+  },
+  "defaultReciter": {
+    "changeHeader": "Changer de récitateur par défaut",
+    "searchPlaceholder": "Rechercher des récitateurs…",
+    "completeOnly": "Seuls les récitateurs ayant le Coran complet sont affichés",
+    "noResults": "Aucun récitateur trouvé"
+  },
+  "reciterChoice": {
+    "subtitle": "Choisissez comment sélectionner le récitateur lorsque vous lancez une sourate",
+    "preferenceHeader": "Préférence de sélection",
+    "askEveryTime": "Toujours demander",
+    "askEveryTimeDescription": "Choisissez un récitateur à chaque lecture",
+    "methodHeader": "Méthode de sélection par défaut",
+    "browseAll": "Parcourir tous les récitateurs",
+    "browseAllDescription": "Recherchez dans notre collection complète de récitateurs",
+    "useDefault": "Utiliser le récitateur par défaut",
+    "useDefaultDescription": "Toujours utiliser le récitateur par défaut que vous avez choisi"
+  },
+  "storage": {
+    "loading": "Chargement des informations de stockage…",
+    "breakdownHeader": "Répartition du stockage",
+    "manageHeader": "Gérer le stockage",
+    "otherApps": "Autres applications",
+    "downloads": "Téléchargements",
+    "cache": "Cache",
+    "free": "Libre",
+    "removeDownloadsTitle": "Supprimer tous les téléchargements",
+    "removeDownloadsDescription": "Supprimez tout le contenu coranique que vous avez téléchargé pour une utilisation hors ligne.",
+    "removeDownloadsConfirm": "Voulez-vous vraiment supprimer tout le contenu téléchargé ? Cette action est irréversible.",
+    "removeDownloadsSuccess": "Tous les téléchargements ont été supprimés.",
+    "removeDownloadsError": "Impossible de supprimer les téléchargements.",
+    "clearCacheTitle": "Vider le cache",
+    "clearCacheDescription": "Vous pouvez libérer de l’espace en vidant le cache. Vos téléchargements ne seront pas supprimés.",
+    "clearCacheConfirm": "Le cache va être vidé. Vos téléchargements ne seront pas supprimés.",
+    "clearCacheSuccess": "Le cache a été vidé.",
+    "clearCacheError": "Impossible de vider le cache.",
+    "success": "Succès",
+    "error": "Erreur"
+  },
+  "whatsNew": {
+    "empty": "Aucun journal des modifications disponible",
+    "title": "Nouveautés de <brand>{{appName}}</brand>",
+    "version": "Version {{version}}",
+    "versionRange": "Versions {{from}} - {{to}}",
+    "versionShort": "v{{version}}"
+  },
+  "changelog": {
+    "versionDate": "Version {{version}} · {{date}}",
+    "features": "Nouvelles fonctionnalités",
+    "improvements": "Améliorations",
+    "fixes": "Corrections de bugs"
+  },
+  "onboarding": {
+    "skip": "Passer",
+    "getStarted": "Commencer"
+  },
+  "version": {
+    "label": "Version {{version}}",
+    "withBuildType": "Version {{version}} - {{buildType}}"
+  },
+  "readingTheme": {
+    "disclosure": "Le changement de mode d’apparence s’applique à toute l’application",
+    "system": "Système",
+    "light": "Clair",
+    "dark": "Sombre"
+  },
+  "mushafSettings": {
+    "title": "Paramètres du Mushaf",
+    "loadingSample": "Chargement de l’aperçu…",
+    "translationError": "Erreur de chargement de la traduction",
+    "transliterationError": "Erreur de chargement de la translittération",
+    "on": "OUI",
+    "off": "NON",
+    "viewTypeHeader": "Type d’affichage",
+    "viewMushaf": "Mushaf",
+    "viewList": "Liste",
+    "scrollDirectionHeader": "Sens de défilement",
+    "horizontal": "Horizontal",
+    "vertical": "Vertical",
+    "pageDesignHeader": "Mise en page",
+    "fullscreen": "Plein écran",
+    "book": "Livre",
+    "readingThemeHeader": "Thème de lecture",
+    "system": "Système",
+    "wordByWordHeader": "Mot à mot",
+    "wordByWord": "Mot à mot",
+    "translation": "Traduction",
+    "transliteration": "Translittération",
+    "arabicFontSize": "Taille de la police arabe",
+    "fontSize": "Taille de police",
+    "translationSource": "Source : traduction Saheeh International avec notes de bas de page",
+    "textThicknessHeader": "Épaisseur du texte",
+    "divineNamesHeader": "Noms divins",
+    "highlightAllah": "Mettre en évidence Allah / Rabb",
+    "highlightAllahHelper": "Met en évidence le nom d’Allah et les formes de titres divins comme Rabb dans le mushaf.",
+    "thematicHighlighting": "Surlignage thématique",
+    "thematicHelper": "Surlignage alterné par passage thématique",
+    "fontHeader": "Police",
+    "tajweedColoring": "Coloration du tajwid",
+    "tajweedPreview": "Aperçu du tajwid en couleur",
+    "tajweedDescription": "Mettre en évidence les règles en couleur",
+    "rewayahHeader": "Riwaya",
+    "rewayahDisabled": "Le changement de riwaya est désactivé dans la bêta de Mushaf 1440.",
+    "qcfBetaTitle": "Mushaf 1440 bêta",
+    "qcfBetaMessage": "Mushaf 1440 est le moteur de mushaf le plus moderne de {{appName}}, mais il est encore en bêta. La coloration du tajwid est disponible en aperçu. Le changement de riwaya reste désactivé.",
+    "nowReading": "Vous lisez",
+    "currentlyReading": "Lecture actuelle",
+    "rewayahExpandLabel": "Riwaya : {{name}}. Développer pour changer.",
+    "rewayahCollapseLabel": "Riwaya : {{name}}. Réduire pour changer.",
+    "previewUnavailableHeader": "Aperçu du texte pas encore disponible",
+    "previewUnavailableLabel": "{{name}}, aperçu du texte pas encore disponible",
+    "showDifferences": "Afficher les différences",
+    "colorLegend": "Légende des couleurs",
+    "fonts": {
+      "dkV1": {
+        "label": "Madani 1405",
+        "description": "Complexe du Roi Fahd, classique"
+      },
+      "dkV2": {
+        "label": "Madani 1421",
+        "description": "Complexe du Roi Fahd, moderne"
+      },
+      "indopak": {
+        "label": "IndoPak",
+        "description": "Style nastaliq du sous-continent"
+      },
+      "qcfV2": {
+        "label": "Mushaf 1440",
+        "description": "Édition imprimée moderne de Médine"
+      }
+    },
+    "weights": {
+      "normal": {
+        "label": "Normal",
+        "description": "Épaisseur d’origine du mushaf"
+      },
+      "medium": {
+        "label": "Moyen",
+        "description": "Légèrement plus marqué"
+      },
+      "bold": {
+        "label": "Gras",
+        "description": "Mise en valeur maximale"
+      }
+    },
+    "legendSummary": {
+      "shubah": "Signale les mots qui diffèrent de Hafs. Les règles de tajwid au niveau des lettres ne sont pas mises en évidence pour cette riwaya.",
+      "ibnKathir": "Signale les mots qui diffèrent de Hafs et met en évidence la silah d’Ibn Kathir (allongement du pronom). Les règles de tajwid au niveau des lettres ne sont pas mises en évidence.",
+      "nafi": "Met en évidence les règles du mushaf publié encodées par le KFGQPC : tashil, ibdal, madd al-badal, taghliz al-lam, silah et véritables variantes de mots. Le taqlil, le tarqiq ar-ra et le naql ne sont pas encore pris en charge.",
+      "abuAmr": "Signale uniquement les véritables variantes de mots au niveau des lettres par rapport à Hafs. Les règles de tajwid propres à Abu Amr (idgham kabeer, imalah) ne sont pas encore mises en évidence."
+    },
+    "legend": {
+      "wordVariant": {
+        "label": "Variante de mot",
+        "description": "Différence de lettres par rapport à Hafs"
+      },
+      "genuineWordVariant": {
+        "label": "Variante de mot",
+        "description": "Véritable différence de lettres par rapport à Hafs"
+      },
+      "vowelShift": {
+        "label": "Changement de voyelle / de mode",
+        "description": "Changement de voyelle finale ou de mode uniquement"
+      },
+      "silah": {
+        "label": "Silah",
+        "description": "Signe d’allongement du pronom (ۥ / ۦ)"
+      },
+      "maddBadal": {
+        "label": "Madd al-Badal",
+        "description": "Voyelle allongée après une hamza"
+      },
+      "tashil": {
+        "label": "Tashil / Musahhala",
+        "description": "Prononciation adoucie de la hamza"
+      },
+      "ibdal": {
+        "label": "Ibdal",
+        "description": "Hamza remplacée par une voyelle longue"
+      },
+      "taghliz": {
+        "label": "Taghliz al-Lam",
+        "description": "Lam emphatique dans Allah après des lettres emphatiques"
+      }
+    },
+    "legendV2": {
+      "labels": {
+        "wordVariant": "Variante de mot",
+        "silah": "Silah"
+      },
+      "descriptions": {
+        "wordVariant": "Mot qui se lit différemment de Hafs",
+        "silah": "Signe d’allongement du pronom (ۥ / ۦ)",
+        "silahDifference": "Signe d’allongement du pronom (ۥ / ۦ) qui diffère de Hafs"
+      },
+      "summary": {
+        "words": "Colore les mots qui se lisent différemment de Hafs. Les règles de prononciation telles que le tashil, l’imalah et le taqlil ne sont pas mises en évidence.",
+        "wordsAndSilah": "Colore les mots qui se lisent différemment de Hafs ainsi que les signes de silah. Les règles de prononciation telles que le tashil, l’imalah et le taqlil ne sont pas mises en évidence."
+      }
+    },
+    "hafsOnlyFont": "Hafs uniquement. Cette police ne contient pas les signes utilisés par {{rewayah}}.",
+    "hafsOnlyTajweed": "Hafs uniquement. Non affiché pour {{rewayah}}.",
+    "fallback": {
+      "title": "Impossible de charger {{rewayah}}",
+      "body": "Hafs est affiché à la place. {{rewayah}} reste votre riwaya, et son chargement sera retenté au prochain lancement de l’application.",
+      "retryLabel": "Réessayer de charger {{rewayah}}",
+      "retry": "Réessayer",
+      "keepLabel": "Continuer la lecture en Hafs",
+      "keep": "Garder Hafs"
+    },
+    "communityReflections": "Réflexions de la communauté",
+    "communityReflectionsHelper": "Afficher les réflexions de la communauté sous chaque verset en mode liste",
+    "indopakHafsOnly": "IndoPak affiche uniquement Hafs. Choisir une autre riwaya fait passer la police à {{font}}."
+  }
+}
