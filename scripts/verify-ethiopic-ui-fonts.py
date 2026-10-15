@@ -64,8 +64,10 @@ def verify(export_directory=None):
     require(len(manifest) == len(WEIGHTS), 'Manifest must contain seven faces')
     records = {row['weight']: row for row in manifest}
     require(set(records) == set(WEIGHTS), 'Manifest weights do not match UI aliases')
+    # Locale copy plus bundled Ethiopic data shown through the UI fonts.
+    sources = [*(ROOT / 'i18n/locales/am').glob('*.json'), ROOT / 'data/surahNamesAm.json']
     copy = ''.join(resource_text(json.loads(path.read_text(encoding='utf-8')))
-                   for path in (ROOT / 'i18n/locales/am').glob('*.json'))
+                   for path in sources)
     # Include Ethiopic extensions as well as the main Unicode block.
     ethiopic = {char for char in copy + 'አማርኛበያን'
                 if unicodedata.name(char, '').startswith('ETHIOPIC')}

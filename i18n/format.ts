@@ -1,9 +1,10 @@
 // @ai-generated
 import {SURAHS} from '@/data/surahData';
 import arNamesById from '@/data/reciterNamesAr.json';
+import amSurahNames from '@/data/surahNamesAm.json';
 import fallbackReciters from '@/data/reciters-fallback.json';
 import {currentLanguage, type AppLanguage} from './language';
-import {DIGIT_ZERO, getLanguageConfig} from './languages';
+import {DIGIT_ZERO, getLanguageConfig, SOURCE_LANGUAGE} from './languages';
 
 /** Display only: preserve fork names and canonical branding used in IDs/share payloads. */
 export function getAppDisplayName(
@@ -68,16 +69,52 @@ export function formatNumber(
 }
 
 interface NamedSurah {
+  id?: number;
   name: string;
   name_arabic: string;
 }
 
-/** Surah name for display: the Arabic name or the transliteration. */
+/**
+ * Phonetic spellings of surah names in a language's own script, keyed by
+ * surah number. Transliterated from the Arabic, never translated by meaning.
+ * Languages without an entry show the Latin transliteration.
+ */
+const SURAH_NAME_TRANSLITERATIONS: Partial<
+  Record<AppLanguage, Readonly<Record<string, string>>>
+> = {am: amSurahNames};
+
+const SURAH_ID_BY_NAME = new Map(SURAHS.map(surah => [surah.name, surah.id]));
+
+function transliteratedSurahName(
+  surah: NamedSurah,
+  language: AppLanguage,
+): string | undefined {
+  const id = surah.id ?? SURAH_ID_BY_NAME.get(surah.name);
+  return id === undefined
+    ? undefined
+    : SURAH_NAME_TRANSLITERATIONS[language]?.[String(id)];
+}
+
+/** Every bundled phonetic spelling of a surah's name, for search. */
+export function getSurahNameTransliterations(surahId: number): string[] {
+  return Object.values(SURAH_NAME_TRANSLITERATIONS).flatMap(names => {
+    const name = names?.[String(surahId)];
+    return name ? [name] : [];
+  });
+}
+
+/**
+ * Surah name for display: the Arabic name, the language's own phonetic
+ * spelling, or the Latin transliteration.
+ */
 export function getSurahDisplayName(
   surah: NamedSurah,
   language: AppLanguage = currentLanguage,
 ): string {
-  return usesArabicContent(language) ? surah.name_arabic : surah.name;
+  if (usesArabicContent(language)) {
+    return surah.name_arabic;
+  }
+  return transliteratedSurahName(surah, language) ?? surah.name;
 }
 
 interface TranslatedSurah {
@@ -85,14 +122,14 @@ interface TranslatedSurah {
 }
 
 /**
- * English meaning of a surah name (e.g. "The Opener"). Returns null when the
- * Arabic name is shown, since it already carries the meaning.
+ * English meaning of a surah name (e.g. "The Opener"). Only English shows
+ * it: the data is English, and other languages show the name itself.
  */
 export function getSurahMeaning(
   surah: TranslatedSurah,
   language: AppLanguage = currentLanguage,
 ): string | null {
-  return usesArabicContent(language) ? null : surah.translated_name_english;
+  return language === SOURCE_LANGUAGE ? surah.translated_name_english : null;
 }
 
 interface TitledTrack {
@@ -103,18 +140,24 @@ interface TitledTrack {
 
 /**
  * Track title for display. Surah tracks are titled with the English surah
- * name when queued, so the Arabic name is resolved from `surahId` when the
- * language shows Arabic names. User uploads keep their own titles.
+ * name when queued, so the display name is resolved from `surahId`. User
+ * uploads keep their own titles.
  */
 export function getTrackDisplayTitle(
   track: TitledTrack,
   language: AppLanguage = currentLanguage,
 ): string {
-  if (!usesArabicContent(language) || track.isUserUpload || !track.surahId) {
+  if (track.isUserUpload || !track.surahId) {
     return track.title;
   }
   const surah = SURAHS[Number(track.surahId) - 1];
-  return surah ? surah.name_arabic : track.title;
+  if (!surah) {
+    return track.title;
+  }
+  if (usesArabicContent(language)) {
+    return surah.name_arabic;
+  }
+  return transliteratedSurahName(surah, language) ?? track.title;
 }
 
 interface NamedReciter {

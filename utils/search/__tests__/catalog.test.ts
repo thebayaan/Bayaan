@@ -44,6 +44,11 @@ describe('rankSurahs', () => {
     expect(rankSurahs('tabarak')[0].id).toBe(67);
   });
 
+  it('finds surahs by their Ethiopic phonetic spelling', () => {
+    expect(rankSurahs('አል-ፋቲሓ')[0]?.id).toBe(1);
+    expect(rankSurahs('ያሲን')[0]?.id).toBe(36);
+  });
+
   it('keeps original objects for display', () => {
     expect(rankSurahs('ال عمران')[0]).toBe(SURAHS[2]);
   });

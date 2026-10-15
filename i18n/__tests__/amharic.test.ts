@@ -7,10 +7,13 @@ import {getLanguageConfig, SHIPPED_LANGUAGES} from '../languages';
 import {
   getAppDisplayName,
   getSurahDisplayName,
+  getSurahMeaning,
+  getTrackDisplayTitle,
   localizeDigits,
   formatNumber,
 } from '../format';
 import {SURAHS} from '@/data/surahData';
+import amSurahNames from '@/data/surahNamesAm.json';
 import sourceValues from '../../docs/i18n/amharic-source-values.json';
 
 it('keeps the Amharic draft LTR, in progress and out of release languages', () => {
@@ -32,12 +35,33 @@ it('transliterates only the display brand and preserves forks and existing langu
   expect(getAppDisplayName('Bayaan', 'ar')).toBe('Bayaan');
   expect(getAppDisplayName('Original fork', 'am')).toBe('Original fork');
 });
-it('retains canonical Latin reference digits and original surah data names', () => {
+it('retains canonical Latin reference digits', () => {
   expect(localizeDigits('2:255', 'am')).toBe('2:255');
   expect(formatNumber(12345, 'am')).toBe('12,345');
-  expect(getSurahDisplayName(SURAHS[0], 'am')).toBe(
-    getSurahDisplayName(SURAHS[0], 'en'),
+});
+it('spells surah names phonetically in Ethiopic without English meanings', () => {
+  const [fatihah] = SURAHS;
+  expect(getSurahDisplayName(fatihah, 'am')).toBe('አል-ፋቲሓ');
+  expect(
+    getSurahDisplayName({name: 'Al-Fatihah', name_arabic: 'الفاتحة'}, 'am'),
+  ).toBe('አል-ፋቲሓ');
+  expect(getSurahDisplayName(fatihah, 'en')).toBe('Al-Fatihah');
+  expect(getSurahDisplayName(fatihah, 'ar')).toBe('الفاتحة');
+  expect(getSurahMeaning(fatihah, 'am')).toBeNull();
+  expect(getSurahMeaning(fatihah, 'en')).toBe('The Opener');
+  expect(getTrackDisplayTitle({title: 'Al-Fatihah', surahId: '1'}, 'am')).toBe(
+    'አል-ፋቲሓ',
   );
+  expect(
+    getTrackDisplayTitle(
+      {title: 'My upload', surahId: '1', isUserUpload: true},
+      'am',
+    ),
+  ).toBe('My upload');
+  expect(Object.keys(amSurahNames)).toHaveLength(SURAHS.length);
+  for (const name of Object.values(amSurahNames)) {
+    expect(name).toMatch(/^[\u1200-\u137F -]+$/);
+  }
 });
 it('uses the upstream framework, Amharic plurals and canonical source labels', async () => {
   const instance = createInstance();

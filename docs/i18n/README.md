@@ -130,7 +130,7 @@ UI strings live in locale files. Content that comes with the data has its own ru
 
 | Data | Rule |
 |------|------|
-| Surah names | `getSurahDisplayName`: the Arabic name for languages whose `bilingualContent` is `'ar'`, otherwise the transliteration. The English meaning (`getSurahMeaning`) is hidden when the Arabic name is shown. |
+| Surah names | `getSurahDisplayName`: the Arabic name for languages whose `bilingualContent` is `'ar'`; otherwise a bundled phonetic spelling in the language's own script when one exists (`data/surahNamesAm.json` for Amharic, registered in `i18n/format.ts`), else the Latin transliteration. Names are transliterated from the Arabic, never translated by meaning. The English meaning (`getSurahMeaning`) shows only in English. Surah search also matches the bundled spellings. |
 | Reciter names | `getReciterDisplayName`: for languages whose `bilingualContent` is `'ar'`, the API's `name_arabic`, then the bundled `data/reciterNamesAr.json`, then the English name. Planned: a per-language `names` map from the backend, looked up as locale, then English, then Arabic. Reciter names are transliterated, never translated. |
 | Tafsir editions | Titles come from `home.tafseerNames` in the active locale, then the edition's Arabic or English name (by `bilingualContent`). |
 | Adhkar categories | `getSuperCategoryDisplayTitle` reads `content:adhkarSuperCategories.<id>`, keyed by the seeded super-category id, and falls back to the database's Arabic or English title (by `bilingualContent`). Add a key in every shipped language when seeding a new super category. |
