@@ -6,7 +6,11 @@ import {
 } from '@/store/recitationTrackingStore';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
-import {ensureRecitationAssets, getRecitationAssets} from './recitationAssets';
+import {
+  deleteRecitationAssets,
+  ensureRecitationAssets,
+  getRecitationAssets,
+} from './recitationAssets';
 import {
   createRecitationEngine,
   type RecitationEngine,
@@ -120,6 +124,15 @@ export async function stopRecitationTracking(): Promise<void> {
   setState(RECITATION_TRACKING_IDLE);
   if (stream) await stream.stop();
   if (engine) await engine.stop();
+}
+
+/** Stops listening, unloads the model and deletes the downloaded files. */
+export async function removeRecitationModel(): Promise<void> {
+  await stopRecitationTracking();
+  const loaded = engine;
+  engine = null;
+  if (loaded) await loaded.dispose();
+  await deleteRecitationAssets();
 }
 
 /** Re-points the search bias, e.g. when the reader turns the page by hand. */

@@ -11,7 +11,7 @@ import {
 import {Ionicons} from '@expo/vector-icons';
 import {moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
-import {useDevSettingsStore} from '@/store/devSettingsStore';
+import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {
   useRecitationTrackingStore,
   type RecitationTrackingStatus,
@@ -66,7 +66,7 @@ export function useRecitationFollowAlong(currentPage: number): void {
 }
 
 export interface RecitationMic {
-  /** The dev toggle is on, so the bar shows the button. */
+  /** The setting is on, so the bar shows the button. */
   enabled: boolean;
   status: RecitationTrackingStatus;
   /** Download progress, 0 to 1, while status is 'downloading'. */
@@ -81,7 +81,7 @@ export interface RecitationMic {
  * one-time download), stops it when listening, and reports errors.
  */
 export function useRecitationMic(currentPage: number): RecitationMic {
-  const enabled = useDevSettingsStore(s => s.recitationFollowAlong);
+  const enabled = useMushafSettingsStore(s => s.showRecitationTracking);
   const status = useRecitationTrackingStore(s => s.status);
   const progress = useRecitationTrackingStore(s => s.downloadProgress);
   const error = useRecitationTrackingStore(s => s.error);

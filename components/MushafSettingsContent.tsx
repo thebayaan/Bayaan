@@ -1,4 +1,4 @@
-import React, {useMemo, useCallback, useState} from 'react';
+import React, {useMemo, useCallback, useEffect, useState} from 'react';
 import {
   ActivityIndicator, // @ai
   Alert,
@@ -66,6 +66,11 @@ import {
   type MushafAllahNameHighlightColor,
   type RewayahId,
 } from '@/store/mushafSettingsStore';
+import {useRecitationTrackingStore} from '@/store/recitationTrackingStore';
+import {
+  recitationModelNeedsDownload,
+  removeRecitationModel,
+} from '@/services/recitation/RecitationTrackingService';
 
 // --- Pre-cache Translation/Transliteration Data --- //
 interface TransliterationData {
@@ -513,6 +518,107 @@ const TextWeightControl: React.FC<TextWeightControlProps> = ({
     })}
   </View>
 );
+
+interface RecitationTrackingControlProps {
+  styles: ReturnType<typeof createStyles>;
+  theme: Theme;
+  trackColor: {false: string; true: string};
+}
+
+// Follow my recitation: the mic toggle plus the downloaded model's state.
+const RecitationTrackingControl: React.FC<RecitationTrackingControlProps> = ({
+  styles,
+  theme,
+  trackColor,
+}) => {
+  const enabled = useMushafSettingsStore(s => s.showRecitationTracking);
+  const toggle = useMushafSettingsStore(s => s.toggleRecitationTracking);
+  const status = useRecitationTrackingStore(s => s.status);
+  const progress = useRecitationTrackingStore(s => s.downloadProgress);
+  const [downloaded, setDownloaded] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (!enabled) return;
+    let cancelled = false;
+    recitationModelNeedsDownload().then(needs => {
+      if (!cancelled) setDownloaded(!needs);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [enabled, status]);
+
+  function confirmRemove(): void {
+    Alert.alert(
+      'Remove recognition model?',
+      'Frees 75 MB. It downloads again the next time you tap the mic.',
+      [
+        {text: 'Cancel', style: 'cancel'},
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: () => {
+            removeRecitationModel().then(() => setDownloaded(false));
+          },
+        },
+      ],
+    );
+  }
+
+  const modelLabel =
+    status === 'downloading'
+      ? `Downloading ${Math.round(progress * 100)}%`
+      : downloaded
+        ? 'Downloaded, 75 MB'
+        : 'Not downloaded, 75 MB';
+
+  return (
+    <View style={styles.card}>
+      <View style={styles.optionRow}>
+        <Text style={styles.optionLabel}>Follow my recitation</Text>
+        <Switch
+          trackColor={trackColor}
+          thumbColor="#FFFFFF"
+          ios_backgroundColor={trackColor.false}
+          onValueChange={toggle}
+          value={enabled}
+          style={styles.switchStyle}
+        />
+      </View>
+      <Text style={styles.helperText}>
+        Adds a mic to the mushaf bar. Recite and the page follows you, word by
+        word. Recognition runs on your device; audio never leaves your phone.
+      </Text>
+      {enabled && (
+        <>
+          <View style={styles.divider} />
+          <View style={styles.optionRow}>
+            <Text style={styles.optionLabel}>Recognition model</Text>
+            <View style={styles.recitationModelState}>
+              {status === 'downloading' && (
+                <ActivityIndicator size="small" color={theme.colors.text} />
+              )}
+              <Text style={styles.recitationModelLabel}>{modelLabel}</Text>
+              {downloaded && status !== 'downloading' && (
+                <Pressable
+                  onPress={confirmRemove}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Remove recognition model">
+                  <Feather
+                    name="minus-circle"
+                    size={moderateScale(18)}
+                    color={Color(theme.colors.text).alpha(0.6).toString()}
+                  />
+                </Pressable>
+              )}
+            </View>
+          </View>
+        </>
+      )}
+    </View>
+  );
+};
 
 interface AllahNameColorControlProps {
   value: MushafAllahNameHighlightColor;
@@ -1106,6 +1212,17 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
           </View>
         )}
 
+      {context !== 'player' && (
+        <>
+          <Text style={styles.sectionHeader}>RECITATION</Text>
+          <RecitationTrackingControl
+            styles={styles}
+            theme={theme}
+            trackColor={trackColor}
+          />
+        </>
+      )}
+
       {/* FONT Section */}
       <Text style={styles.sectionHeader}>FONT</Text>
       <View style={styles.card}>
@@ -1620,6 +1737,16 @@ const createStyles = (theme: Theme) =>
       justifyContent: 'space-between',
       alignItems: 'center',
       paddingVertical: verticalScale(8),
+    },
+    recitationModelState: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: moderateScale(8),
+    },
+    recitationModelLabel: {
+      fontSize: moderateScale(12),
+      fontFamily: 'Manrope-Regular',
+      color: theme.colors.textSecondary,
     },
     optionLabel: {
       fontSize: moderateScale(13.5),

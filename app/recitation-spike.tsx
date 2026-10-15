@@ -7,12 +7,11 @@ import {
   View,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {router} from 'expo-router';
+import {Redirect, router} from 'expo-router';
 import {moderateScale} from 'react-native-size-matters';
 import Color from 'color';
 import type {WorkerOutbound} from '@tilawa/core';
 import {useTheme} from '@/hooks/useTheme';
-import {useDevSettingsStore} from '@/store/devSettingsStore';
 import {
   deleteRecitationAssets,
   ensureRecitationAssets,
@@ -61,7 +60,13 @@ function rms(pcm: Float32Array): number {
   return Math.sqrt(sum / pcm.length);
 }
 
-export default function RecitationSpikeScreen(): React.JSX.Element {
+export default function RecitationSpikeRoute(): React.JSX.Element {
+  // Development only; release builds land on the home screen.
+  if (!__DEV__) return <Redirect href="/" />;
+  return <RecitationSpikeScreen />;
+}
+
+function RecitationSpikeScreen(): React.JSX.Element {
   const {theme} = useTheme();
   const insets = useSafeAreaInsets();
   const [phase, setPhase] = useState<Phase>('checking');
@@ -75,10 +80,6 @@ export default function RecitationSpikeScreen(): React.JSX.Element {
   const [inputRms, setInputRms] = useState(0);
   const [lastEvent, setLastEvent] = useState('-');
   const engineRef = useRef<RecitationEngine | null>(null);
-  const followAlong = useDevSettingsStore(s => s.recitationFollowAlong);
-  const toggleFollowAlong = useDevSettingsStore(
-    s => s.toggleRecitationFollowAlong,
-  );
   const micRef = useRef<MicStream | null>(null);
 
   const handleEvent = useCallback((msg: WorkerOutbound) => {
@@ -251,10 +252,6 @@ export default function RecitationSpikeScreen(): React.JSX.Element {
       </Text>
       <Text style={[styles.subtitle, {color: muted}]}>Phase: {phase}</Text>
       {renderButton('Close', handleClose)}
-      {renderButton(
-        `Mic in mushaf: ${followAlong ? 'ON' : 'OFF'}`,
-        toggleFollowAlong,
-      )}
 
       {phase === 'needs-download' &&
         renderButton('Download model (~75 MB)', handleDownload)}

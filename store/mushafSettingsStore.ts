@@ -118,6 +118,9 @@ interface MushafSettingsState {
   // default off. The toggle row only renders when a fork supplies
   // `branding.communityReflectionsProvider`; inert for Bayaan.
   showCommunityReflections: boolean;
+  // Mic button in the mushaf bar that follows the reader's own recitation
+  // (on-device Tilawa model). Opt-in, default off.
+  showRecitationTracking: boolean;
 
   // Word-by-word settings
   showWBW: boolean;
@@ -178,6 +181,7 @@ interface MushafSettingsState {
   toggleTajweed: () => void;
   toggleThemes: () => void;
   toggleCommunityReflections: () => void;
+  toggleRecitationTracking: () => void;
   toggleWBW: () => void;
   toggleWBWTranslation: () => void;
   toggleWBWTransliteration: () => void;
@@ -222,6 +226,7 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
       showTajweed: false,
       showThemes: false,
       showCommunityReflections: false,
+      showRecitationTracking: false,
       showWBW: false,
       wbwShowTranslation: true,
       wbwShowTransliteration: false,
@@ -260,6 +265,10 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
       toggleCommunityReflections: () =>
         set(state => ({
           showCommunityReflections: !state.showCommunityReflections,
+        })),
+      toggleRecitationTracking: () =>
+        set(state => ({
+          showRecitationTracking: !state.showRecitationTracking,
         })),
       toggleWBW: () => set(state => ({showWBW: !state.showWBW})),
       toggleWBWTranslation: () =>
@@ -401,7 +410,7 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
     {
       name: 'mushaf-settings',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 18, // @ai
+      version: 19, // @ai
       // @ai-start
       // A startup fallback lasts one session: persist the reader's saved
       // rewayah rather than the Hafs shown in its place, and never the
@@ -514,6 +523,10 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
           state.uthmaniFont = uthmaniFontForRenderer(REWAYAH_FALLBACK_RENDERER);
         }
         // @ai-end
+        if (version < 19) {
+          // Recitation follow-along, opt-in, default off.
+          state.showRecitationTracking = false;
+        }
         return state as unknown as MushafSettingsState;
       },
     },

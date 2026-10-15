@@ -33,12 +33,6 @@ export function DevMenu({whatsNewModalRef}: DevMenuProps) {
   const toggleForceNetworkBanner = useDevSettingsStore(
     s => s.toggleForceNetworkBanner,
   );
-  const recitationFollowAlong = useDevSettingsStore(
-    s => s.recitationFollowAlong,
-  );
-  const toggleRecitationFollowAlong = useDevSettingsStore(
-    s => s.toggleRecitationFollowAlong,
-  );
 
   function getRandomCardLabel() {
     if (randomCardVariantIndex < 0) return 'Auto (session seed)';
@@ -250,25 +244,6 @@ export function DevMenu({whatsNewModalRef}: DevMenuProps) {
             onPressOut={() => setPressedItem(null)}>
             <Text style={[styles.devMenuText, {color: theme.colors.text}]}>
               📡 Network Banner: {forceNetworkBanner ? 'ON' : 'OFF'}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            activeOpacity={1}
-            style={[
-              styles.devMenuItem,
-              {
-                backgroundColor:
-                  pressedItem === 'recitationFollowAlong'
-                    ? Color(theme.colors.text).alpha(0.08).toString()
-                    : 'transparent',
-              },
-            ]}
-            onPress={toggleRecitationFollowAlong}
-            onPressIn={() => setPressedItem('recitationFollowAlong')}
-            onPressOut={() => setPressedItem(null)}>
-            <Text style={[styles.devMenuText, {color: theme.colors.text}]}>
-              📖 Recitation Follow-Along: {recitationFollowAlong ? 'ON' : 'OFF'}
             </Text>
           </TouchableOpacity>
 
