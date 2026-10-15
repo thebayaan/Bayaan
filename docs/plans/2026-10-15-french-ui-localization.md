@@ -6,7 +6,7 @@
 | --- | --- |
 | Status | Development draft. Native review and device QA pending |
 | Updated | 2026-10-15 |
-| Branch | `claude/project-thread-qfl13w`, from `develop` at `b31362cf` |
+| Branch | `feature/french-ui-localization`, from `develop` at `b31362cf` |
 | Governing guide | [i18n guidelines](../i18n/README.md) |
 | Reference implementations | [Arabic plan](../superpowers/plans/2026-10-12-arabic-support.md); the Amharic draft on `feature/amharic-reading-controls` |
 
