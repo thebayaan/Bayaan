@@ -28,6 +28,7 @@ import {
 } from '@/services/recitation/RecitationTrackingService';
 import type {SearchHint} from '@tilawa/core';
 import {SURAHS} from '@/data/surahData';
+import {SheetManager} from 'react-native-actions-sheet';
 
 const LEAVE_MUSHAF_UNLOAD_MS = 60 * 1000;
 
@@ -38,18 +39,10 @@ function pageHint(page: number): SearchHint | null {
   return {surah, ayah};
 }
 
-function confirmDownload(): Promise<boolean> {
-  return new Promise(resolve => {
-    Alert.alert(
-      'Download recitation model?',
-      'Follow-along needs a one-time 75 MB download. Recognition then runs on your device.',
-      [
-        {text: 'Cancel', style: 'cancel', onPress: () => resolve(false)},
-        {text: 'Download', onPress: () => resolve(true)},
-      ],
-      {cancelable: true, onDismiss: () => resolve(false)},
-    );
-  });
+/** First run: explain the feature before the mic prompt and the download. */
+async function confirmIntro(): Promise<boolean> {
+  const start = await SheetManager.show('recitation-intro');
+  return start === true;
 }
 
 /**
@@ -120,7 +113,7 @@ export function useRecitationMic(currentPage: number): RecitationMic {
       return;
     }
     if (status !== 'off') return;
-    if ((await recitationModelNeedsDownload()) && !(await confirmDownload())) {
+    if ((await recitationModelNeedsDownload()) && !(await confirmIntro())) {
       return;
     }
     await startRecitationTracking(pageHint(currentPage));

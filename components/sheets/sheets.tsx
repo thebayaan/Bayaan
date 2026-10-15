@@ -30,6 +30,7 @@ import {VerseNoteSheet} from './VerseNoteSheet';
 import {MushafPlayerOptionsSheet} from './MushafPlayerOptionsSheet';
 import {MushafRepeatOptionsSheet} from './MushafRepeatOptionsSheet';
 import {FollowAlongSheet} from './FollowAlongSheet';
+import {RecitationIntroSheet} from './RecitationIntroSheet';
 import {WordDetailSheet} from './WordDetailSheet';
 import {HomeCardOptionsSheet} from './HomeCardOptionsSheet';
 import {installRewayahFallbackNotice} from './rewayahFallbackNotice'; // @ai
@@ -64,6 +65,7 @@ registerSheet('verse-note', VerseNoteSheet);
 registerSheet('mushaf-player-options', MushafPlayerOptionsSheet);
 registerSheet('mushaf-repeat-options', MushafRepeatOptionsSheet);
 registerSheet('follow-along', FollowAlongSheet);
+registerSheet('recitation-intro', RecitationIntroSheet);
 registerSheet('word-detail', WordDetailSheet);
 registerSheet('home-card-options', HomeCardOptionsSheet);
 
@@ -269,6 +271,7 @@ declare module 'react-native-actions-sheet' {
       };
     }>;
     'follow-along': SheetDefinition;
+    'recitation-intro': SheetDefinition<{returnValue: boolean}>;
     'word-detail': SheetDefinition<{
       payload: {
         verseKey: string;
