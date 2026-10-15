@@ -1,6 +1,9 @@
 import {Share, Platform} from 'react-native';
 import {analyticsService} from '@/services/analytics/AnalyticsService';
 import branding from '@/config/branding';
+// @ai-start
+import {parseAnchorKey} from '@/services/mushaf/RewayahVerseUnits';
+// @ai-end
 
 const BASE_URL = branding.shareBaseUrl;
 
@@ -40,6 +43,49 @@ export function verseShareUrl(
     ? `${BASE_URL}/quran/${surah}/${ayah}?${params.join('&')}`
     : `${BASE_URL}/quran/${surah}/${ayah}`;
 }
+
+// @ai-start
+// ── Verse links of a rewayah (decision 3: rewayah verse units) ────────────
+//
+// A verse link names its verse by the Hafs location of the verse's first
+// word (its storage anchor, verse-units contract section 3), which every
+// rewayah shares:
+//   /quran/S/A?rewayah=<id>          the verse holding the first word of
+//                                    Hafs S:A, in rewayah <id> (anchors
+//                                    "S:A" and "S:A:1");
+//   /quran/S/A?rewayah=<id>&word=W   the verse holding Hafs word S:A:W: the
+//                                    later part of a split Hafs verse
+//                                    (Warsh 1:7 is /quran/1/7?rewayah=warsh
+//                                    &word=5; Warsh 1:6 is /quran/1/7?...).
+// The path stays a Hafs verse because the web reader behind shareBaseUrl
+// knows Hafs verses only: it shows /quran/S/A as Hafs S:A (the verse that
+// holds the shared verse's first word), answers 404 past the Hafs verse
+// count, and does not read the query (checked on the live site). A rewayah
+// verse number in the path would open another verse there. Hafs links
+// never carry `word` and are unchanged. The in-app /quran routes are
+// redirect stubs, so the app only writes these links; a reader of one lands
+// on exactly the shared verse by taking the verse of rewayah <id> that holds
+// Hafs word S:A:W (W = 1 without `word`).
+
+/**
+ * Share URL of a verse named by its storage anchor ("S:A" or "S:A:W",
+ * RewayahVerseUnits.hafsAnchor(unit).key) in `rewayah`. Equals
+ * verseShareUrl(S, A, theme, rewayah) except that an anchor past the Hafs
+ * verse's first word (W > 1) of a non-Hafs rewayah adds `word=W`. Null for
+ * an invalid anchor.
+ */
+export function anchorShareUrl(
+  anchorKey: string,
+  theme?: 'dark' | 'light',
+  rewayah?: string,
+): string | null {
+  const loc = parseAnchorKey(anchorKey);
+  if (!loc) return null;
+  const url = verseShareUrl(loc.surah, loc.ayah, theme, rewayah);
+  if (loc.word === 1 || !rewayah || rewayah === 'hafs') return url;
+  return `${url}${url.includes('?') ? '&' : '?'}word=${loc.word}`;
+}
+// @ai-end
 
 export function mushafShareUrl(page: number, theme?: 'dark' | 'light'): string {
   return theme === 'light'

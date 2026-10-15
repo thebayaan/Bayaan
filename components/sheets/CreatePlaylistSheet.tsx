@@ -21,6 +21,10 @@ import ActionSheet, {
 } from 'react-native-actions-sheet';
 import Color from 'color';
 import {LinearGradient} from 'expo-linear-gradient';
+// @ai-start
+import {latinLetterSpacing} from '@/utils/rtl';
+import {useTranslation} from 'react-i18next';
+// @ai-end
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 
@@ -40,9 +44,11 @@ const PLAYLIST_COLORS = [
   '#10B981', // Emerald
 ];
 
+// @ai-start
 export const CreatePlaylistSheet = (props: SheetProps<'create-playlist'>) => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
+  const {t} = useTranslation(['sheets', 'common']);
 
   const payload = props.payload;
   const existingColors = payload?.existingColors ?? [];
@@ -92,10 +98,12 @@ export const CreatePlaylistSheet = (props: SheetProps<'create-playlist'>) => {
       {/* Header */}
       <View style={styles.headerContainer}>
         <Pressable onPress={handleClose} style={styles.headerButton}>
-          <Text style={styles.cancelText}>Cancel</Text>
+          <Text style={styles.cancelText}>{t('common:actions.cancel')}</Text>
         </Pressable>
         <Text style={styles.headerTitle}>
-          {isEditMode ? 'Edit Playlist' : 'New Playlist'}
+          {isEditMode
+            ? t('createPlaylist.editTitle')
+            : t('createPlaylist.title')}
         </Text>
         <Pressable
           onPress={handleCreate}
@@ -104,7 +112,7 @@ export const CreatePlaylistSheet = (props: SheetProps<'create-playlist'>) => {
             {opacity: playlistName.trim() ? 1 : 0.4},
           ]}
           disabled={!playlistName.trim()}>
-          <Text style={styles.saveText}>Save</Text>
+          <Text style={styles.saveText}>{t('common:actions.save')}</Text>
         </Pressable>
       </View>
 
@@ -142,17 +150,17 @@ export const CreatePlaylistSheet = (props: SheetProps<'create-playlist'>) => {
               </View>
             </View>
             <Text style={styles.heroTitle} numberOfLines={2}>
-              {playlistName || 'Your Playlist'}
+              {playlistName || t('createPlaylist.previewName')}
             </Text>
           </LinearGradient>
         </View>
 
         {/* Input Section */}
         <Input
-          label="Playlist Name"
+          label={t('createPlaylist.nameLabel')}
           showIcon
           iconName="edit-3"
-          placeholder="e.g., Morning Recitations"
+          placeholder={t('createPlaylist.namePlaceholder')}
           value={playlistName}
           onChangeText={setPlaylistName}
           maxLength={50}
@@ -167,7 +175,9 @@ export const CreatePlaylistSheet = (props: SheetProps<'create-playlist'>) => {
     </ActionSheet>
   );
 };
+// @ai-end
 
+// @ai-start
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({
     sheetContainer: {
@@ -274,10 +284,11 @@ const createStyles = (theme: Theme) =>
       color: theme.colors.text,
       textAlign: 'center',
       marginBottom: moderateScale(8),
-      letterSpacing: -0.3,
+      letterSpacing: latinLetterSpacing(-0.3),
       minHeight: moderateScale(22),
     },
     inputSection: {
       marginBottom: 0,
     },
   });
+// @ai-end

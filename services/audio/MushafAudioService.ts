@@ -10,6 +10,12 @@
  * - Ayah tracking via 200ms polling of currentTime
  * - Supports seeking to specific ayahs
  * - Rate control (0.5x - 2.0x)
+ *
+ * Every ayah number this service receives or reports is a TIMING ENTRY
+ * number: the ayahNumber of the loaded timing set, in that set's own verse
+ * numbering (a rewayah-numbered set counts the reciter's verses). Translation
+ * to and from Hafs verse keys is the caller's job (mushafPlayerStore +
+ * utils/timestampNumbering.ts).
  */
 
 import {createAudioPlayer, AudioPlayer} from 'expo-audio';
@@ -22,7 +28,12 @@ import {audioCoordinator} from './AudioCoordinator';
 const AYAH_TRACKING_INTERVAL = 200; // ms
 
 type AyahChangeCallback = (surahNumber: number, ayahNumber: number) => void;
-type SurahEndCallback = () => void;
+/**
+ * 'finished': the audio reached its end. 'skipped': seekToNextAyah() was
+ * called on the last timing entry.
+ */
+export type SurahEndReason = 'finished' | 'skipped';
+type SurahEndCallback = (reason: SurahEndReason) => void;
 
 class MushafAudioService {
   private static instance: MushafAudioService;
@@ -38,6 +49,9 @@ class MushafAudioService {
   private isPlaying = false;
   private rate: number = 1.0;
   private _dispatchingAyahChange = false;
+  // False while the loaded surah's verse numbering is unknown: previous /
+  // next-ayah seeking is disabled instead of landing on unverified verses.
+  private verseSeekingEnabled = true;
 
   // Callbacks
   private onAyahChange: AyahChangeCallback | null = null;
@@ -90,13 +104,14 @@ class MushafAudioService {
       this.currentSurah = surahNumber;
       this.timestamps = timestamps;
       this.lastTrackedAyah = -1;
+      this.verseSeekingEnabled = true;
 
       // Listen for track end
       this.statusSubscription = this.player.addListener(
         'playbackStatusUpdate',
         status => {
           if (status.didJustFinish && this.isPlaying) {
-            this.handleSurahEnd();
+            this.handleSurahEnd('finished');
           }
         },
       );
@@ -145,16 +160,29 @@ class MushafAudioService {
   }
 
   /**
-   * Seek to the start of a specific ayah.
+   * Enable or disable previous / next-ayah seeking for the loaded surah.
+   * Reset to enabled by loadSurah().
    */
-  seekToAyah(ayahNumber: number): void {
-    if (!this.player || this.timestamps.length === 0) return;
+  setVerseSeekingEnabled(enabled: boolean): void {
+    this.verseSeekingEnabled = enabled;
+  }
+
+  isVerseSeekingEnabled(): boolean {
+    return this.verseSeekingEnabled;
+  }
+
+  /**
+   * Seek to the start of a timing entry (ayah number in the timing set's own
+   * numbering). Returns false when there is no player or no such entry.
+   */
+  seekToAyah(ayahNumber: number): boolean {
+    if (!this.player || this.timestamps.length === 0) return false;
 
     const timestamp = this.timestamps.find(t => t.ayahNumber === ayahNumber);
     if (!timestamp) {
       if (__DEV__)
         console.warn(`[MushafAudio] No timestamp for ayah ${ayahNumber}`);
-      return;
+      return false;
     }
 
     try {
@@ -177,12 +205,15 @@ class MushafAudioService {
         console.log(
           `[MushafAudio] Seeked to ayah ${ayahNumber} at ${timestamp.timestampFrom}ms`,
         );
+      return true;
     } catch (error) {
       console.error('[MushafAudio] Seek failed:', error);
+      return false;
     }
   }
 
   seekToNextAyah(): void {
+    if (!this.verseSeekingEnabled) return;
     if (this.lastTrackedAyah < 0 || this.timestamps.length === 0) return;
 
     const nextAyah = this.lastTrackedAyah + 1;
@@ -190,7 +221,7 @@ class MushafAudioService {
 
     if (nextAyah > maxAyah) {
       // End of surah — trigger surah end
-      this.handleSurahEnd();
+      this.handleSurahEnd('skipped');
       return;
     }
 
@@ -198,6 +229,7 @@ class MushafAudioService {
   }
 
   seekToPreviousAyah(): void {
+    if (!this.verseSeekingEnabled) return;
     if (this.lastTrackedAyah <= 1 || this.timestamps.length === 0) return;
 
     const prevAyah = this.lastTrackedAyah - 1;
@@ -244,6 +276,10 @@ class MushafAudioService {
     return this.lastTrackedAyah;
   }
 
+  getTimestamps(): readonly AyahTimestamp[] {
+    return this.timestamps;
+  }
+
   hasPlayer(): boolean {
     return this.player !== null;
   }
@@ -284,14 +320,15 @@ class MushafAudioService {
 
   // ========== SURAH END ==========
 
-  private handleSurahEnd(): void {
+  private handleSurahEnd(reason: SurahEndReason): void {
     this.isPlaying = false;
     this.stopAyahTracking();
 
-    if (__DEV__) console.log(`[MushafAudio] Surah ${this.currentSurah} ended`);
+    if (__DEV__)
+      console.log(`[MushafAudio] Surah ${this.currentSurah} ended (${reason})`);
 
     if (this.onSurahEnd) {
-      this.onSurahEnd();
+      this.onSurahEnd(reason);
     }
   }
 
@@ -331,6 +368,7 @@ class MushafAudioService {
     this.currentSurah = 0;
     this.timestamps = [];
     this.lastTrackedAyah = -1;
+    this.verseSeekingEnabled = true;
     audioCoordinator.sourceDidStop('mushaf');
     if (__DEV__) console.log('[MushafAudio] Cleaned up');
   }
@@ -343,6 +381,7 @@ class MushafAudioService {
     this.currentSurah = 0;
     this.timestamps = [];
     this.lastTrackedAyah = -1;
+    this.verseSeekingEnabled = true;
     audioCoordinator.sourceDidStop('mushaf');
     if (__DEV__) console.log('[MushafAudio] Stopped');
   }

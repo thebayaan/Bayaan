@@ -1,10 +1,14 @@
 import React from 'react';
 import {useRouter} from 'expo-router';
+import {useHeaderHeight} from 'expo-router/react-navigation';
+import {USE_GLASS} from '@/hooks/useGlassProps';
 import {AdhkarView} from '@/components/AdhkarView';
 import {SuperCategory} from '@/types/adhkar';
 
 export default function AdhkarIndexScreen() {
   const router = useRouter();
+  const rawHeaderHeight = useHeaderHeight();
+  const headerHeight = USE_GLASS ? rawHeaderHeight : 0;
 
   const handleCategoryPress = (superCategory: SuperCategory) => {
     router.push({
@@ -21,7 +25,7 @@ export default function AdhkarIndexScreen() {
     <AdhkarView
       onCategoryPress={handleCategoryPress}
       onSavedPress={handleSavedPress}
-      headerHeight={0}
+      headerHeight={headerHeight}
     />
   );
 }

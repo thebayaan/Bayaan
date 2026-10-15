@@ -56,6 +56,13 @@ class QuranTextService {
   clearCaches(): void {
     this.lineTextCache.clear();
     this.lineTextInfoCache.clear();
+    // Page layouts are keyed by rewayah/font/ratio; clear them on the same
+    // transitions (e.g. rewayah change) so stale partitions don't accumulate.
+    // Required lazily to avoid a JustificationService ⇄ QuranTextService
+    // import cycle (JustificationService imports from this module).
+    const {JustService} =
+      require('./JustificationService') as typeof import('./JustificationService');
+    JustService.clearPageLayoutCache();
   }
 
   private initBases(): void {
@@ -85,7 +92,11 @@ class QuranTextService {
     }
 
     // Last pages with shorter lines
-    this.madinaLineWidths.set('600:9', 0.84);
+    // @ai-start
+    // 600:10 is the line the layout centres (`وَمَآ أَدْرَىٰكَ مَا هِيَهْ`);
+    // this entry used to name 600:9, a full line, and drew it at 84%.
+    this.madinaLineWidths.set('600:10', 0.84);
+    // @ai-end
     this.madinaLineWidths.set('602:5', 0.61);
     this.madinaLineWidths.set('602:15', 0.59);
     this.madinaLineWidths.set('603:10', 0.68);

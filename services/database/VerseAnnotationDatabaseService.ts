@@ -4,6 +4,7 @@ import type {
   VerseNote,
   VerseHighlight,
   HighlightColor,
+  AnnotationRowChanges, // @ai
 } from '@/types/verse-annotations';
 import {
   ALL_REWAYAH_IDS,
@@ -46,6 +47,16 @@ interface HighlightRow {
 function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2);
 }
+
+// @ai-start
+// The single-row bookmark / highlight writes, shared by the one-row methods
+// and applyAnnotationChanges so both write rows the same way.
+const INSERT_BOOKMARK_SQL = `INSERT OR IGNORE INTO bookmarks (id, verse_key, surah_number, ayah_number, created_at, rewayah_id)
+       VALUES (?, ?, ?, ?, ?, ?)`;
+const UPSERT_HIGHLIGHT_SQL = `INSERT INTO highlights (id, verse_key, surah_number, ayah_number, color, created_at, rewayah_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(verse_key) DO UPDATE SET color = excluded.color, rewayah_id = excluded.rewayah_id`;
+// @ai-end
 
 function parseRewayahId(value: string | null): RewayahId | undefined {
   if (!value) return undefined;
@@ -92,6 +103,138 @@ function mapHighlightRow(row: HighlightRow): VerseHighlight {
   };
 }
 
+interface IndexListRow {
+  name: string;
+  unique: number;
+  origin: string;
+}
+
+interface IndexInfoRow {
+  name: string | null;
+}
+
+interface TableInfoRow {
+  name: string;
+  type: string;
+}
+
+interface CountRow {
+  count: number;
+}
+
+// Columns of the notes table as created without the old UNIQUE constraint.
+const NOTES_BASE_COLUMNS = [
+  'id',
+  'verse_key',
+  'surah_number',
+  'ayah_number',
+  'content',
+  'created_at',
+  'updated_at',
+];
+
+function quoteIdentifier(name: string): string {
+  return `"${name.replace(/"/g, '""')}"`;
+}
+
+async function tableExists(
+  db: SQLite.SQLiteDatabase,
+  table: string,
+): Promise<boolean> {
+  const row = await db.getFirstAsync<CountRow>(
+    `SELECT COUNT(*) AS count FROM sqlite_master WHERE type = 'table' AND name = ?`,
+    [table],
+  );
+  return (row?.count ?? 0) > 0;
+}
+
+// Earlier builds mistook the PRIMARY KEY autoindex for a UNIQUE constraint,
+// ran the rebuild below on every launch and, once verse_keys and rewayah_id
+// existed, left an empty orphan notes_new table behind. Drop it when empty;
+// leave it alone (and say so) if it somehow holds rows.
+async function dropEmptyNotesOrphan(db: SQLite.SQLiteDatabase): Promise<void> {
+  try {
+    if (!(await tableExists(db, 'notes_new'))) return;
+    if (!(await tableExists(db, 'notes'))) return;
+    const row = await db.getFirstAsync<CountRow>(
+      'SELECT COUNT(*) AS count FROM notes_new',
+    );
+    const count = row?.count ?? 0;
+    if (count > 0) {
+      console.warn(
+        `Leaving notes_new in place: it holds ${count} row(s) that may be user data`,
+      );
+      return;
+    }
+    await db.execAsync('DROP TABLE notes_new;');
+  } catch (error) {
+    console.error('Failed to clean up orphan notes_new table:', error);
+  }
+}
+
+// True only for a real UNIQUE constraint on verse_key (index_list origin 'u').
+// The PRIMARY KEY autoindex has origin 'pk' and CREATE INDEX has origin 'c'.
+async function hasVerseKeyUniqueConstraint(
+  db: SQLite.SQLiteDatabase,
+): Promise<boolean> {
+  const indexes = await db.getAllAsync<IndexListRow>(
+    'SELECT name, "unique", origin FROM pragma_index_list(\'notes\')',
+  );
+  for (const index of indexes) {
+    if (index.origin !== 'u' || index.unique !== 1) continue;
+    const columns = await db.getAllAsync<IndexInfoRow>(
+      'SELECT name FROM pragma_index_info(?)',
+      [index.name],
+    );
+    if (columns.some(c => c.name === 'verse_key')) return true;
+  }
+  return false;
+}
+
+// Migration: drop the UNIQUE(verse_key) constraint from the oldest notes
+// schema. SQLite cannot drop a constraint, so the table is rebuilt inside a
+// transaction (a failure rolls back and leaves notes untouched), copying an
+// explicit column list that includes any later columns (verse_keys,
+// rewayah_id) present on the old table.
+async function dropNotesUniqueConstraint(
+  db: SQLite.SQLiteDatabase,
+): Promise<void> {
+  try {
+    if (!(await hasVerseKeyUniqueConstraint(db))) return;
+    const columns = await db.getAllAsync<TableInfoRow>(
+      "SELECT name, type FROM pragma_table_info('notes')",
+    );
+    const extras = columns.filter(c => !NOTES_BASE_COLUMNS.includes(c.name));
+    const columnList = [...NOTES_BASE_COLUMNS, ...extras.map(c => c.name)]
+      .map(quoteIdentifier)
+      .join(', ');
+    const extraDefinitions = extras
+      .map(c => `,\n          ${quoteIdentifier(c.name)} ${c.type}`)
+      .join('');
+    await db.withTransactionAsync(async () => {
+      await db.execAsync('DROP TABLE IF EXISTS notes_rebuild;');
+      await db.execAsync(`
+        CREATE TABLE notes_rebuild (
+          id TEXT PRIMARY KEY,
+          verse_key TEXT NOT NULL,
+          surah_number INTEGER NOT NULL,
+          ayah_number INTEGER NOT NULL,
+          content TEXT NOT NULL,
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL${extraDefinitions}
+        );
+      `);
+      await db.execAsync(
+        `INSERT INTO notes_rebuild (${columnList}) SELECT ${columnList} FROM notes;`,
+      );
+      await db.execAsync('DROP TABLE notes;');
+      await db.execAsync('ALTER TABLE notes_rebuild RENAME TO notes;');
+    });
+  } catch (error) {
+    console.error('Failed to drop UNIQUE constraint from notes table:', error);
+  }
+}
+
 class VerseAnnotationDatabaseService {
   private db: SQLite.SQLiteDatabase | null = null;
   private initPromise: Promise<void> | null = null;
@@ -132,6 +275,20 @@ class VerseAnnotationDatabaseService {
     return this.db;
   }
 
+  // @ai-start
+  // Tail of the writes. withTransactionAsync is not exclusive: a statement
+  // run on the connection while applyAnnotationChanges has its transaction
+  // open joins that transaction (and its ROLLBACK undoes it), and a second
+  // BEGIN fails. Every write therefore starts once the one before it is done.
+  private writeQueue: Promise<unknown> = Promise.resolve();
+
+  private serializeWrite<T>(write: () => Promise<T>): Promise<T> {
+    const result = this.writeQueue.then(write, write);
+    this.writeQueue = result.catch(() => undefined);
+    return result;
+  }
+  // @ai-end
+
   private async createTables(): Promise<void> {
     if (!this.db) throw new Error('Database not initialized');
 
@@ -164,43 +321,8 @@ class VerseAnnotationDatabaseService {
       );
     `);
 
-    // Migration: drop UNIQUE constraint if it exists from older schema
-    // SQLite doesn't support ALTER TABLE DROP CONSTRAINT, so we check and recreate
-    try {
-      const tableInfo = (await this.db.getAllAsync(
-        `PRAGMA index_list(notes)`,
-      )) as Array<{name: string; unique: number}>;
-      const hasUniqueIndex = tableInfo.some(
-        idx =>
-          idx.unique === 1 &&
-          idx.name !== 'sqlite_autoindex_notes_1' &&
-          idx.name.includes('verse_key'),
-      );
-      // If there's a sqlite autoindex from UNIQUE constraint, recreate table
-      const hasAutoIndex = tableInfo.some(
-        idx => idx.name === 'sqlite_autoindex_notes_1',
-      );
-      if (hasAutoIndex || hasUniqueIndex) {
-        await this.db.execAsync(`
-          CREATE TABLE IF NOT EXISTS notes_new (
-            id TEXT PRIMARY KEY,
-            verse_key TEXT NOT NULL,
-            surah_number INTEGER NOT NULL,
-            ayah_number INTEGER NOT NULL,
-            content TEXT NOT NULL,
-            created_at INTEGER NOT NULL,
-            updated_at INTEGER NOT NULL
-          );
-        `);
-        await this.db.execAsync(`
-          INSERT OR IGNORE INTO notes_new SELECT * FROM notes;
-        `);
-        await this.db.execAsync(`DROP TABLE notes;`);
-        await this.db.execAsync(`ALTER TABLE notes_new RENAME TO notes;`);
-      }
-    } catch {
-      // Migration already done or not needed
-    }
+    await dropEmptyNotesOrphan(this.db);
+    await dropNotesUniqueConstraint(this.db);
 
     await this.db.execAsync(`
       CREATE INDEX IF NOT EXISTS idx_notes_surah
@@ -286,25 +408,34 @@ class VerseAnnotationDatabaseService {
       rewayahId: rewayahId as VerseBookmark['rewayahId'],
     };
 
-    await db.runAsync(
-      `INSERT INTO bookmarks (id, verse_key, surah_number, ayah_number, created_at, rewayah_id)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [
+    // @ai-start
+    // OR IGNORE: `verse_key` is UNIQUE, so a plain INSERT of an
+    // already-bookmarked verse raises SQLITE_CONSTRAINT and rejects. That is
+    // reachable whenever the caller's `isBookmarked` is stale, and the
+    // rejection used to abort the toggle handler mid-way (leaving the sheet
+    // open). Bookmarking is idempotent by intent — swallow the duplicate.
+    await this.serializeWrite(() =>
+      db.runAsync(INSERT_BOOKMARK_SQL, [
         bookmark.id,
         bookmark.verseKey,
         bookmark.surahNumber,
         bookmark.ayahNumber,
         bookmark.createdAt,
         bookmark.rewayahId ?? null,
-      ],
+      ]),
     );
+    // @ai-end
 
     return bookmark;
   }
 
   async removeBookmark(verseKey: string): Promise<void> {
     const db = await this.ensureReady();
-    await db.runAsync(`DELETE FROM bookmarks WHERE verse_key = ?`, [verseKey]);
+    // @ai-start
+    await this.serializeWrite(() =>
+      db.runAsync(`DELETE FROM bookmarks WHERE verse_key = ?`, [verseKey]),
+    );
+    // @ai-end
   }
 
   async getBookmarksBySurah(surahNumber: number): Promise<VerseBookmark[]> {
@@ -348,21 +479,25 @@ class VerseAnnotationDatabaseService {
     const id = generateId();
     const verseKeysStr = verseKeys?.length ? verseKeys.join(',') : null;
 
-    await db.runAsync(
-      `INSERT INTO notes (id, verse_key, surah_number, ayah_number, content, verse_keys, created_at, updated_at, rewayah_id)
+    // @ai-start
+    await this.serializeWrite(() =>
+      db.runAsync(
+        `INSERT INTO notes (id, verse_key, surah_number, ayah_number, content, verse_keys, created_at, updated_at, rewayah_id)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        id,
-        verseKey,
-        surahNumber,
-        ayahNumber,
-        content,
-        verseKeysStr,
-        now,
-        now,
-        rewayahId ?? null,
-      ],
+        [
+          id,
+          verseKey,
+          surahNumber,
+          ayahNumber,
+          content,
+          verseKeysStr,
+          now,
+          now,
+          rewayahId ?? null,
+        ],
+      ),
     );
+    // @ai-end
 
     return {
       id,
@@ -379,10 +514,15 @@ class VerseAnnotationDatabaseService {
 
   async updateNote(noteId: string, content: string): Promise<void> {
     const db = await this.ensureReady();
-    await db.runAsync(
-      `UPDATE notes SET content = ?, updated_at = ? WHERE id = ?`,
-      [content, Date.now(), noteId],
+    // @ai-start
+    await this.serializeWrite(() =>
+      db.runAsync(`UPDATE notes SET content = ?, updated_at = ? WHERE id = ?`, [
+        content,
+        Date.now(),
+        noteId,
+      ]),
     );
+    // @ai-end
   }
 
   async getNoteById(noteId: string): Promise<VerseNote | null> {
@@ -404,7 +544,11 @@ class VerseAnnotationDatabaseService {
 
   async deleteNoteById(noteId: string): Promise<void> {
     const db = await this.ensureReady();
-    await db.runAsync(`DELETE FROM notes WHERE id = ?`, [noteId]);
+    // @ai-start
+    await this.serializeWrite(() =>
+      db.runAsync(`DELETE FROM notes WHERE id = ?`, [noteId]),
+    );
+    // @ai-end
   }
 
   async getNotesCountForVerse(verseKey: string): Promise<number> {
@@ -446,12 +590,19 @@ class VerseAnnotationDatabaseService {
     const now = Date.now();
     const id = generateId();
 
-    await db.runAsync(
-      `INSERT INTO highlights (id, verse_key, surah_number, ayah_number, color, created_at, rewayah_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT(verse_key) DO UPDATE SET color = excluded.color, rewayah_id = excluded.rewayah_id`,
-      [id, verseKey, surahNumber, ayahNumber, color, now, rewayahId ?? null],
+    // @ai-start
+    await this.serializeWrite(() =>
+      db.runAsync(UPSERT_HIGHLIGHT_SQL, [
+        id,
+        verseKey,
+        surahNumber,
+        ayahNumber,
+        color,
+        now,
+        rewayahId ?? null,
+      ]),
     );
+    // @ai-end
 
     return {
       id,
@@ -466,8 +617,75 @@ class VerseAnnotationDatabaseService {
 
   async removeHighlight(verseKey: string): Promise<void> {
     const db = await this.ensureReady();
-    await db.runAsync(`DELETE FROM highlights WHERE verse_key = ?`, [verseKey]);
+    // @ai-start
+    await this.serializeWrite(() =>
+      db.runAsync(`DELETE FROM highlights WHERE verse_key = ?`, [verseKey]),
+    );
+    // @ai-end
   }
+
+  // @ai-start
+  /**
+   * Applies the bookmark and highlight writes of one change in ONE
+   * transaction: every write, or, when any of them fails, none (the error is
+   * thrown and the rows stay as they were). Deletes run first, then inserts
+   * and upserts, written exactly as addBookmark / upsertHighlight write
+   * them. Rows the change does not name are not touched. Like every write
+   * here it runs after the writes issued before it and before those issued
+   * while it is open (serializeWrite), so none of them joins its transaction.
+   */
+  async applyAnnotationChanges(changes: AnnotationRowChanges): Promise<void> {
+    const db = await this.ensureReady();
+    const apply = () =>
+      db.withTransactionAsync(async () => {
+        // created_at a new highlight row carries over, read before any write.
+        const createdAt = new Map<string, number>();
+        for (const {createdAtOf} of changes.upsertHighlights ?? []) {
+          if (!createdAtOf || createdAt.has(createdAtOf)) continue;
+          const row = await db.getFirstAsync<{created_at: number}>(
+            `SELECT created_at FROM highlights WHERE verse_key = ?`,
+            [createdAtOf],
+          );
+          if (row) createdAt.set(createdAtOf, row.created_at);
+        }
+        for (const verseKey of changes.removeBookmarks ?? []) {
+          await db.runAsync(`DELETE FROM bookmarks WHERE verse_key = ?`, [
+            verseKey,
+          ]);
+        }
+        for (const verseKey of changes.removeHighlights ?? []) {
+          await db.runAsync(`DELETE FROM highlights WHERE verse_key = ?`, [
+            verseKey,
+          ]);
+        }
+        for (const row of changes.addBookmarks ?? []) {
+          await db.runAsync(INSERT_BOOKMARK_SQL, [
+            generateId(),
+            row.verseKey,
+            row.surahNumber,
+            row.ayahNumber,
+            Date.now(),
+            row.rewayahId,
+          ]);
+        }
+        for (const row of changes.upsertHighlights ?? []) {
+          const kept = row.createdAtOf
+            ? createdAt.get(row.createdAtOf)
+            : undefined;
+          await db.runAsync(UPSERT_HIGHLIGHT_SQL, [
+            generateId(),
+            row.verseKey,
+            row.surahNumber,
+            row.ayahNumber,
+            row.color,
+            kept ?? Date.now(),
+            row.rewayahId,
+          ]);
+        }
+      });
+    return this.serializeWrite(apply);
+  }
+  // @ai-end
 
   async getHighlightsBySurah(surahNumber: number): Promise<VerseHighlight[]> {
     const db = await this.ensureReady();

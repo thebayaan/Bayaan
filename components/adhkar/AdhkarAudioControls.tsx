@@ -23,6 +23,10 @@ import {useAdhkarPlayAllStore} from '@/store/adhkarPlayAllStore';
 import {Theme} from '@/utils/themeUtils';
 import {PlayIcon, PauseIcon, RepeatIcon} from '@/components/Icons';
 import Color from 'color';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+import {forceLTR} from '@/utils/rtl';
+// @ai-end
 
 // Pre-compute scaled values outside component to avoid worklet issues
 const PROGRESS_BAR_HEIGHT = moderateScale(40);
@@ -38,10 +42,12 @@ interface AdhkarAudioControlsProps {
   isBookmarked: boolean;
 }
 
+// @ai-start
 export const AdhkarAudioControls: React.FC<AdhkarAudioControlsProps> =
   React.memo(
     ({audioFile, onCopy, onBookmark, onShare, onSettings, isBookmarked}) => {
       const {theme} = useTheme();
+      const {t} = useTranslation('player');
       const styles = useMemo(() => createStyles(theme), [theme]);
 
       const {
@@ -152,7 +158,7 @@ export const AdhkarAudioControls: React.FC<AdhkarAudioControlsProps> =
                   activeOpacity={0.7}
                   hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
                   accessibilityRole="button"
-                  accessibilityLabel="Copy Arabic text">
+                  accessibilityLabel={t('adhkar.a11y.copyArabic')}>
                   <Feather
                     name="copy"
                     size={moderateScale(18)}
@@ -166,7 +172,9 @@ export const AdhkarAudioControls: React.FC<AdhkarAudioControlsProps> =
                   hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
                   accessibilityRole="button"
                   accessibilityLabel={
-                    isBookmarked ? 'Remove bookmark' : 'Add bookmark'
+                    isBookmarked
+                      ? t('adhkar.a11y.removeBookmark')
+                      : t('adhkar.a11y.addBookmark')
                   }
                   accessibilityState={{selected: isBookmarked}}>
                   <Ionicons
@@ -185,7 +193,7 @@ export const AdhkarAudioControls: React.FC<AdhkarAudioControlsProps> =
                   activeOpacity={0.7}
                   hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
                   accessibilityRole="button"
-                  accessibilityLabel="Share dhikr">
+                  accessibilityLabel={t('adhkar.a11y.shareDhikr')}>
                   <Feather
                     name="share"
                     size={moderateScale(18)}
@@ -198,7 +206,7 @@ export const AdhkarAudioControls: React.FC<AdhkarAudioControlsProps> =
                   activeOpacity={0.7}
                   hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
                   accessibilityRole="button"
-                  accessibilityLabel="Layout settings">
+                  accessibilityLabel={t('adhkar.a11y.layoutSettings')}>
                   <Feather
                     name="sliders"
                     size={moderateScale(18)}
@@ -214,7 +222,8 @@ export const AdhkarAudioControls: React.FC<AdhkarAudioControlsProps> =
       return (
         <View style={styles.container}>
           {/* Progress Bar Row (animated) */}
-          <Animated.View style={[styles.progressRow, progressRowAnimatedStyle]}>
+          <Animated.View
+            style={[styles.progressRow, progressRowAnimatedStyle, forceLTR]}>
             <Slider
               style={styles.slider}
               value={progress}
@@ -237,7 +246,11 @@ export const AdhkarAudioControls: React.FC<AdhkarAudioControlsProps> =
               onPress={handleToggle}
               activeOpacity={1}
               accessibilityRole="button"
-              accessibilityLabel={isPlaying ? 'Pause audio' : 'Play audio'}>
+              accessibilityLabel={
+                isPlaying
+                  ? t('adhkar.a11y.pauseAudio')
+                  : t('adhkar.a11y.playAudio')
+              }>
               {isPlaying ? (
                 <PauseIcon
                   size={moderateScale(14)}
@@ -261,7 +274,9 @@ export const AdhkarAudioControls: React.FC<AdhkarAudioControlsProps> =
               activeOpacity={0.7}
               accessibilityRole="button"
               accessibilityLabel={
-                isLooping ? 'Disable repeat' : 'Enable repeat'
+                isLooping
+                  ? t('adhkar.a11y.disableRepeat')
+                  : t('adhkar.a11y.enableRepeat')
               }
               accessibilityState={{selected: isLooping}}>
               <RepeatIcon
@@ -280,7 +295,7 @@ export const AdhkarAudioControls: React.FC<AdhkarAudioControlsProps> =
                 activeOpacity={0.7}
                 hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
                 accessibilityRole="button"
-                accessibilityLabel="Copy Arabic text">
+                accessibilityLabel={t('adhkar.a11y.copyArabic')}>
                 <Feather
                   name="copy"
                   size={moderateScale(18)}
@@ -295,7 +310,9 @@ export const AdhkarAudioControls: React.FC<AdhkarAudioControlsProps> =
                 hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
                 accessibilityRole="button"
                 accessibilityLabel={
-                  isBookmarked ? 'Remove bookmark' : 'Add bookmark'
+                  isBookmarked
+                    ? t('adhkar.a11y.removeBookmark')
+                    : t('adhkar.a11y.addBookmark')
                 }
                 accessibilityState={{selected: isBookmarked}}>
                 <Ionicons
@@ -315,7 +332,7 @@ export const AdhkarAudioControls: React.FC<AdhkarAudioControlsProps> =
                 activeOpacity={0.7}
                 hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
                 accessibilityRole="button"
-                accessibilityLabel="Share dhikr">
+                accessibilityLabel={t('adhkar.a11y.shareDhikr')}>
                 <Feather
                   name="share"
                   size={moderateScale(18)}
@@ -329,7 +346,7 @@ export const AdhkarAudioControls: React.FC<AdhkarAudioControlsProps> =
                 activeOpacity={0.7}
                 hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
                 accessibilityRole="button"
-                accessibilityLabel="Layout settings">
+                accessibilityLabel={t('adhkar.a11y.layoutSettings')}>
                 <Feather
                   name="sliders"
                   size={moderateScale(18)}
@@ -342,6 +359,7 @@ export const AdhkarAudioControls: React.FC<AdhkarAudioControlsProps> =
       );
     },
   );
+// @ai-end
 
 AdhkarAudioControls.displayName = 'AdhkarAudioControls';
 

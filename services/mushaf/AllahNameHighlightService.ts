@@ -1,8 +1,5 @@
-import {
-  BASMALLAH_TEXT,
-  digitalKhattDataService,
-} from './DigitalKhattDataService';
-import {quranTextService} from './QuranTextService';
+import {digitalKhattDataService} from './DigitalKhattDataService'; // @ai
+import {getLineWordSpans, spanTokens} from './lineWordSpans';
 
 // Strip Arabic marks so Allah-name matching survives different mushaf forms:
 // الله / ٱللَّه / لِلَّه / تَاللَّه / اللهم / رب / برب / وربك / ربكم
@@ -199,48 +196,46 @@ export function getTextAllahNameCharMap(
   return charToColor.size > 0 ? charToColor : null;
 }
 
+/**
+ * Allah-name / Rabb-title char map for a mushaf line, computed on the text the
+ * line actually renders (the active words cache, laid out with the shared
+ * span model: blank slots skipped, multi-token slots kept whole). Each
+ * space-separated token is matched at its rendered offset, so a slot that
+ * carries an inline verse number ('رَبِّكَ ۝٣') or two words still matches
+ * whole-word forms.
+ */
 export function getLineAllahNameCharMap(
   pageNumber: number,
   lineIndex: number,
 ): Map<number, string> | null {
-  const lines = digitalKhattDataService.getPageLines(pageNumber);
-  if (lineIndex >= lines.length) return null;
-
-  const line = lines[lineIndex];
-  if (line.line_type === 'surah_name') return null;
-
-  const lineText = quranTextService.getLineText(pageNumber, lineIndex);
-  if (!lineText) return null;
+  const line = digitalKhattDataService.getPageLines(pageNumber)[lineIndex];
+  if (!line || line.line_type === 'surah_name') return null;
 
   if (line.line_type === 'basmallah') {
-    return getTextAllahNameCharMap(BASMALLAH_TEXT);
+    // The rewayah's own basmala, exactly as the line draws it. @ai
+    return getTextAllahNameCharMap(digitalKhattDataService.getLineText(line)); // @ai
   }
 
   const charToColor = new Map<number, string>();
-  let charOffset = 0;
 
-  for (let wordId = line.first_word_id; wordId <= line.last_word_id; wordId++) {
-    const wordText = digitalKhattDataService.getWordText(wordId);
-    if (!wordText) {
-      if (wordId < line.last_word_id) charOffset += 1;
-      continue;
-    }
-
-    const highlightRanges = [
-      ...findAllahNameRangesInWord(wordText),
-      ...findRabbTitleRangesInWord(wordText),
-    ];
-    for (const range of highlightRanges) {
-      for (let charIndex = range.start; charIndex <= range.end; charIndex++) {
-        charToColor.set(
-          charOffset + charIndex,
-          wordText.slice(range.start, range.end + 1),
-        );
+  for (const span of getLineWordSpans(line, digitalKhattDataService)) {
+    for (const {token: wordText, start: charOffset} of spanTokens(
+      span.text,
+      span.start,
+    )) {
+      const highlightRanges = [
+        ...findAllahNameRangesInWord(wordText),
+        ...findRabbTitleRangesInWord(wordText),
+      ];
+      for (const range of highlightRanges) {
+        for (let charIndex = range.start; charIndex <= range.end; charIndex++) {
+          charToColor.set(
+            charOffset + charIndex,
+            wordText.slice(range.start, range.end + 1),
+          );
+        }
       }
     }
-
-    charOffset += wordText.length;
-    if (wordId < line.last_word_id) charOffset += 1;
   }
 
   return charToColor.size > 0 ? charToColor : null;

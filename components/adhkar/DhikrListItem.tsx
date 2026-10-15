@@ -13,6 +13,11 @@ import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {Dhikr} from '@/types/adhkar';
 import Color from 'color';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+import {localizeDigits} from '@/i18n/format';
+import {useAdhkarSettingsStore} from '@/store/adhkarSettingsStore';
+// @ai-end
 
 interface DhikrListItemProps {
   dhikr: Dhikr;
@@ -20,9 +25,12 @@ interface DhikrListItemProps {
   style?: StyleProp<ViewStyle>;
 }
 
+// @ai-start
 export const DhikrListItem: React.FC<DhikrListItemProps> = React.memo(
   ({dhikr, index, style}) => {
     const {theme} = useTheme();
+    const {t} = useTranslation('player');
+    const showTranslation = useAdhkarSettingsStore(s => s.showTranslation);
     const styles = createStyles(theme);
 
     const displayNumber = index + 1;
@@ -37,7 +45,9 @@ export const DhikrListItem: React.FC<DhikrListItemProps> = React.memo(
         <View style={styles.ornamentBar}>
           <View style={styles.ornamentLeft} />
           <View style={styles.ornamentCenter}>
-            <Text style={styles.ornamentNumber}>{displayNumber}</Text>
+            <Text style={styles.ornamentNumber}>
+              {localizeDigits(displayNumber)}
+            </Text>
           </View>
           <View style={styles.ornamentRight} />
         </View>
@@ -48,7 +58,7 @@ export const DhikrListItem: React.FC<DhikrListItemProps> = React.memo(
         </View>
 
         {/* Translation */}
-        {dhikr.translation ? (
+        {showTranslation && dhikr.translation ? (
           <View style={styles.annotationContainer}>
             <View style={styles.annotationLine} />
             <Text style={styles.translationText}>{dhikr.translation}</Text>
@@ -58,7 +68,9 @@ export const DhikrListItem: React.FC<DhikrListItemProps> = React.memo(
         {/* Footer with metadata */}
         <View style={styles.footer}>
           {dhikr.repeatCount > 1 ? (
-            <Text style={styles.repeatText}>Repeat {dhikr.repeatCount}×</Text>
+            <Text style={styles.repeatText}>
+              {t('adhkar.repeatTimes', {times: dhikr.repeatCount})}
+            </Text>
           ) : (
             <View style={styles.audioIndicator} />
           )}
@@ -67,6 +79,7 @@ export const DhikrListItem: React.FC<DhikrListItemProps> = React.memo(
     );
   },
 );
+// @ai-end
 
 DhikrListItem.displayName = 'DhikrListItem';
 

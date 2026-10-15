@@ -53,22 +53,6 @@ export interface StickyHeaderProps {
 }
 
 /**
- * Props for the SearchHeader component
- */
-export interface SearchHeaderProps {
-  /** Whether the search bar is visible */
-  showSearch: boolean;
-  /** Current search query */
-  searchQuery: string;
-  /** Handler for search query changes */
-  onSearchChange: (query: string) => void;
-  /** Safe area insets for proper padding */
-  insets: {
-    top: number;
-  };
-}
-
-/**
  * Props for the SurahList component
  */
 export interface SurahListProps {

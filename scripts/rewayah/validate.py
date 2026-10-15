@@ -1,121 +1,103 @@
+#!/usr/bin/env python3
 """
-Validate that normalize.normalize_verse() applied to KFGQPC Hafs JSON
-produces text that byte-matches Bayaan's dk_words.db on a per-verse basis.
+Round-trip self-test of the KFGQPC -> DigitalKhatt conventions in normalize.py.
 
-Reports:
-  - round-trip match rate
-  - per-verse character-level deltas for the first N mismatches
-  - codepoint frequency of residual deltas (helps find missed mapping rules)
+The official KFGQPC Hafs v2.0 text (sources/hafs.json, locked in
+sources/sources.lock.json), converted with normalize.apply_conventions() plus
+the three render rules that also apply to Hafs-style texts (sajdah overline,
+dot below, sakt CGJ), must reproduce the DigitalKhatt Hafs words DB
+(data/mushaf/digitalkhatt/digital-khatt-v2.db) word for word, except for the
+DK-only encodings listed in KNOWN_RESIDUALS. Any other difference means a
+convention mapping changed and fails the test (exit 1).
+
+Usage: python3 scripts/rewayah/validate.py
 """
 from __future__ import annotations
 
-import json
 import sqlite3
-from collections import Counter, defaultdict
+import sys
 from pathlib import Path
 
-from normalize import normalize_verse
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
 
-HERE = Path(__file__).parent
+import normalize as N  # noqa: E402
+from validate_rewayah_db import LOCK_FILE, sha256_file  # noqa: E402
+
 REPO = HERE.parents[1]
-BAYAAN_DB = REPO / "data" / "mushaf" / "digitalkhatt" / "digital-khatt-v2.db"
-KFGQPC_HAFS = HERE / "hafs.json"
+HAFS_DB = REPO / "data" / "mushaf" / "digitalkhatt" / "digital-khatt-v2.db"
+SOURCE = HERE / "sources" / "hafs.json"
 
-MAX_SAMPLES = 10
-
-
-def load_bayaan_verses() -> dict[tuple[int, int], str]:
-    conn = sqlite3.connect(BAYAAN_DB)
-    cur = conn.cursor()
-    verses: dict[tuple[int, int], list[tuple[int, str]]] = defaultdict(list)
-    for surah, ayah, word, text in cur.execute(
-        "SELECT surah, ayah, word, text FROM words ORDER BY surah, ayah, word"
-    ):
-        verses[(surah, ayah)].append((word, text))
-    conn.close()
-    return {
-        key: " ".join(t for _, t in sorted(words))
-        for key, words in verses.items()
-    }
-
-
-def char_deltas(a: str, b: str) -> list[tuple[int, str, str]]:
-    out = []
-    la, lb = len(a), len(b)
-    i = j = 0
-    while i < la and j < lb:
-        if a[i] == b[j]:
-            i += 1
-            j += 1
-        else:
-            out.append((i, a[i], b[j]))
-            i += 1
-            j += 1
-    for k in range(i, la):
-        out.append((k, a[k], ""))
-    for k in range(j, lb):
-        out.append((k, "", b[k]))
-    return out
+# verse -> reason. DK encodes these words differently from KFGQPC; the reading
+# is the same.
+KNOWN_RESIDUALS = {
+    "2:72": "DK writes a CGJ before the hamza of fa-ddara'tum; KFGQPC a hamza on the line",
+    "2:97": "KFGQPC writes a tatweel after the lam of li-jibrila",
+    "17:7": "DK adds CGJ + small high waw + madda before the hamza seat",
+    "52:37": "DK small LOW seen (U+06E3), KFGQPC small high seen (U+06DC) drawn below by its font",
+    # hamza with kasra on a ya / waw seat: DK seat + hamza above + kasra,
+    # KFGQPC seat + kasra + hamza below
+    **{
+        v: "hamza with kasra on a seat: DK hamza above + kasra, KFGQPC kasra + hamza below"
+        for v in (
+            "10:15", "16:90", "20:130", "24:11", "28:30", "30:8", "30:16", "35:43",
+            "42:51", "52:21", "56:23", "70:38", "74:52", "80:37",
+        )
+    },
+    # word boundaries: DK splits / joins differently (the builder handles them)
+    "15:7": "DK writes two words, KFGQPC one",
+    "27:20": "DK writes two words, KFGQPC one",
+    "36:22": "DK writes two words, KFGQPC one",
+    "37:130": "DK keeps 'il yasin' in one slot with a space",
+}
 
 
-def main() -> None:
-    bayaan = load_bayaan_verses()
-    kfgqpc = json.loads(KFGQPC_HAFS.read_text(encoding="utf-8"))
-    kfgqpc_by_key = {(row["sora"], row["aya_no"]): row["aya_text"] for row in kfgqpc}
+def main() -> int:
+    import json
 
-    total = 0
-    matches = 0
-    mismatches = 0
-    samples: list[tuple[tuple[int, int], str, str]] = []
-    residual_cps: Counter[tuple[str, str]] = Counter()
+    lock = json.loads(LOCK_FILE.read_text(encoding="utf-8"))
+    if sha256_file(SOURCE) != lock["sources"]["hafs"]["sha256"]:
+        print(f"FAIL {SOURCE.name} does not match {LOCK_FILE.name}")
+        return 1
+    rules = [r for r in N.RENDER_POLICY if r.id in ("sajdah-overline", "dot-below", "sakt-cgj")]
 
-    for key, bayaan_text in bayaan.items():
-        kf = kfgqpc_by_key.get(key)
-        if kf is None:
-            continue
-        total += 1
-        normalized = normalize_verse(kf)
-        if normalized == bayaan_text:
-            matches += 1
-        else:
-            mismatches += 1
-            if len(samples) < MAX_SAMPLES:
-                samples.append((key, bayaan_text, normalized))
-            for _, a, b in char_deltas(bayaan_text, normalized):
-                residual_cps[(a, b)] += 1
+    def convert(tok: str) -> str:
+        for r in rules:
+            tok = r.apply(tok, "")
+        return N.apply_conventions(tok)
 
-    print(f"Verses compared: {total}")
-    print(f"  Round-trip match:     {matches}  ({matches / total * 100:.2f}%)")
-    print(f"  Residual mismatches:  {mismatches}")
+    con = sqlite3.connect(f"file:{HAFS_DB}?mode=ro", uri=True)
+    dk: dict[tuple[int, int], list[str]] = {}
+    for s, a, t in con.execute("SELECT surah, ayah, text FROM words ORDER BY id"):
+        if not N.is_marker(t):
+            dk.setdefault((s, a), []).append(t)
+    con.close()
 
-    if samples:
-        print(f"\n=== First {len(samples)} mismatches ===")
-        for key, a, b in samples:
-            print(f"\n  {key[0]}:{key[1]}")
-            print(f"    bayaan:     {a}")
-            print(f"    normalized: {b}")
-            deltas = char_deltas(a, b)[:6]
-            if deltas:
-                print(f"    deltas (first 6):")
-                for idx, x, y in deltas:
-                    def fmt(c: str) -> str:
-                        if not c:
-                            return "[]"
-                        return f"{c!r} U+{ord(c):04X}"
-                    print(f"      @{idx}  bayaan={fmt(x)}  normalized={fmt(y)}")
-
-    print("\n=== Residual codepoint delta frequency (top 20) ===")
-    for (a, b), count in residual_cps.most_common(20):
-        def name(c: str) -> str:
-            import unicodedata
-            if not c:
-                return "(none)"
-            try:
-                return f"U+{ord(c):04X} {unicodedata.name(c)}"
-            except ValueError:
-                return f"U+{ord(c):04X} (unknown)"
-        print(f"  {count:>6}  bayaan={name(a):<50}  normalized={name(b)}")
+    total = same = 0
+    residual_verses: set[str] = set()
+    unexpected: list[str] = []
+    for v in N.load_source(SOURCE):
+        key = f"{v.surah}:{v.ayah}"
+        a = dk[(v.surah, v.ayah)]
+        b = [convert(t) for t in v.tokens]
+        if len(a) != len(b) or a != b:
+            residual_verses.add(key)
+            if key not in KNOWN_RESIDUALS:
+                unexpected.append(f"{key}: DK {' '.join(a)!r} vs KFGQPC {' '.join(b)!r}")
+        for x, y in zip(a, b):
+            total += 1
+            same += x == y
+    stale = sorted(set(KNOWN_RESIDUALS) - residual_verses)
+    print(f"Hafs round trip: {same}/{total} words identical; {len(residual_verses)} verses with known DK-only encodings")
+    for u in unexpected:
+        print(f"FAIL unexpected difference {u}")
+    for k in stale:
+        print(f"FAIL KNOWN_RESIDUALS entry {k} no longer differs; remove it")
+    if unexpected or stale:
+        return 1
+    print("OK")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

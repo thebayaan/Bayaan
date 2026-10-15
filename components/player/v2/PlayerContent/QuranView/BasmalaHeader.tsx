@@ -11,12 +11,21 @@ import {
   type SkTextStyle,
   type SkColor,
 } from '@shopify/react-native-skia';
-import {BASMALLAH_TEXT} from '@/services/mushaf/DigitalKhattDataService';
+// @ai-start
+import {
+  BASMALLAH_TEXT,
+  rewayahBasmalaService,
+} from '@/services/mushaf/RewayahBasmalaService';
+// @ai-end
 import {getTextAllahNameCharMap} from '@/services/mushaf/AllahNameHighlightService';
 import {getBasmalaTajweedMap} from '@/services/mushaf/DigitalKhattVerseTajweedService';
 import {tajweedColors} from '@/constants/tajweedColors';
 import type {IndexedTajweedData} from '@/utils/tajweedLoader';
-import type {MushafArabicTextWeight} from '@/store/mushafSettingsStore';
+import {
+  useMushafSettingsStore,
+  type MushafArabicTextWeight,
+  type RewayahId,
+} from '@/store/mushafSettingsStore';
 import {
   createTextStrokePaint,
   getArabicTextWeightStrokeWidth,
@@ -42,6 +51,7 @@ let basmalaCache: BasmalaCacheEntry | null = null;
 
 function getOrBuildBasmala(
   fontMgr: SkTypefaceFontProvider,
+  text: string, // @ai
   width: number,
   textColor: string,
   dkFontFamily: string,
@@ -52,7 +62,9 @@ function getOrBuildBasmala(
   showAllahNameHighlight: boolean,
   allahNameHighlightColor?: string,
 ): BasmalaCacheEntry {
-  const cacheKey = `${width}:${textColor}:${dkFontFamily}:${fontSize}:${showTajweed}:${arabicTextWeight}:${showAllahNameHighlight}:${allahNameHighlightColor ?? ''}`;
+  // The text is part of the key: each rewayah (and surah) may draw its own
+  // basmala. @ai
+  const cacheKey = `${text}:${width}:${textColor}:${dkFontFamily}:${fontSize}:${showTajweed}:${arabicTextWeight}:${showAllahNameHighlight}:${allahNameHighlightColor ?? ''}`; // @ai
   if (basmalaCache?.key === cacheKey) return basmalaCache;
 
   const color = Skia.Color(textColor);
@@ -68,7 +80,7 @@ function getOrBuildBasmala(
   };
   const charToAllahHighlight =
     showAllahNameHighlight && allahNameHighlightColor
-      ? getTextAllahNameCharMap(BASMALLAH_TEXT)
+      ? getTextAllahNameCharMap(text) // @ai
       : null;
 
   const buildParagraph = (withStroke: boolean) => {
@@ -86,8 +98,9 @@ function getOrBuildBasmala(
 
     pushStyle(baseStyle, color);
 
-    for (let i = 0; i < BASMALLAH_TEXT.length; i++) {
-      const char = BASMALLAH_TEXT.charAt(i);
+    for (let i = 0; i < text.length; i++) {
+      // @ai
+      const char = text.charAt(i); // @ai
       const allahHighlight = charToAllahHighlight?.has(i);
       const rule = charToRule?.get(i);
       const resolvedColor = allahHighlight
@@ -148,20 +161,44 @@ interface BasmalaHeaderProps {
   arabicTextWeight?: MushafArabicTextWeight;
   showAllahNameHighlight?: boolean;
   allahNameHighlightColor?: string;
+  /** Rewayah of the surrounding verses (player: the track's rewayah).
+   *  Defaults to the active mushaf rewayah. Hafs (QPC) tajweed is painted
+   *  only in a Hafs context. */
+  rewayah?: RewayahId;
+  // @ai-start
+  /** Surah this basmala opens. The basmala drawn is that rewayah's own
+   *  (contract C6), in the surah's own spelling when its Word file has one
+   *  (e.g. al-Susi 14 and 15); omitted, the rewayah's usual spelling. */
+  surahNumber?: number;
+  // @ai-end
 }
 
 const BasmalaHeader: React.FC<BasmalaHeaderProps> = ({
   visible,
   width,
   textColor,
-  showTajweed,
+  showTajweed: showTajweedSetting,
   fontMgr,
   dkFontFamily,
   indexedTajweedData,
   arabicTextWeight = 'normal',
   showAllahNameHighlight = false,
   allahNameHighlightColor,
+  rewayah,
+  surahNumber, // @ai
 }) => {
+  const mushafRewayah = useMushafSettingsStore(s => s.rewayah);
+  // @ai-start
+  const textRewayah = rewayah ?? mushafRewayah;
+  // Never the Hafs basmala for another rewayah: '' when it has no basmala
+  // data, and then nothing is drawn.
+  const basmalaText = rewayahBasmalaService.getText(textRewayah, surahNumber);
+  // Hafs (QPC) tajweed is mapped onto BASMALLAH_TEXT only.
+  const showTajweed =
+    showTajweedSetting &&
+    textRewayah === 'hafs' &&
+    basmalaText === BASMALLAH_TEXT;
+  // @ai-end
   const charToRule = useMemo(() => {
     if (!showTajweed || !indexedTajweedData) return null;
     return getBasmalaTajweedMap(indexedTajweedData);
@@ -169,15 +206,20 @@ const BasmalaHeader: React.FC<BasmalaHeaderProps> = ({
 
   const fontSize = moderateScale(BASMALA_FONT_SIZE);
 
-  const containerStyle = visible
-    ? styles.container
-    : [styles.container, styles.hidden];
+  // @ai-start
+  const containerStyle =
+    visible && basmalaText
+      ? styles.container
+      : [styles.container, styles.hidden];
+  if (!basmalaText) return <View style={containerStyle} />;
+  // @ai-end
 
   // Skia rendering path — width is known synchronously, cache returns instantly on surah change
   if (fontMgr && width > 0) {
     const {paragraph, strokeParagraph, height, xPos, maxWidth} =
       getOrBuildBasmala(
         fontMgr,
+        basmalaText, // @ai
         width,
         textColor,
         dkFontFamily,
@@ -217,6 +259,7 @@ const BasmalaHeader: React.FC<BasmalaHeaderProps> = ({
   return (
     <View style={containerStyle}>
       <BasmalaFallbackText
+        text={basmalaText} // @ai
         indexedTajweedData={indexedTajweedData}
         showTajweed={showTajweed}
         textColor={textColor}
@@ -230,6 +273,7 @@ const BasmalaHeader: React.FC<BasmalaHeaderProps> = ({
 
 // Extracted fallback to keep the main component body lean
 const BasmalaFallbackText: React.FC<{
+  text: string; // @ai
   indexedTajweedData: IndexedTajweedData | null;
   showTajweed: boolean;
   textColor: string;
@@ -237,6 +281,7 @@ const BasmalaFallbackText: React.FC<{
   showAllahNameHighlight?: boolean;
   allahNameHighlightColor?: string;
 }> = ({
+  text, // @ai
   indexedTajweedData,
   showTajweed,
   textColor,
@@ -252,14 +297,15 @@ const BasmalaFallbackText: React.FC<{
   const charToAllahHighlight = useMemo(
     () =>
       showAllahNameHighlight && allahNameHighlightColor
-        ? getTextAllahNameCharMap(BASMALLAH_TEXT)
+        ? getTextAllahNameCharMap(text) // @ai
         : null,
-    [showAllahNameHighlight, allahNameHighlightColor],
+    [text, showAllahNameHighlight, allahNameHighlightColor], // @ai
   );
 
   const fallbackNodes = useMemo(() => {
     const nodes: React.ReactNode[] = [];
-    for (let i = 0; i < BASMALLAH_TEXT.length; i++) {
+    for (let i = 0; i < text.length; i++) {
+      // @ai
       const color =
         charToAllahHighlight?.has(i) && allahNameHighlightColor
           ? allahNameHighlightColor
@@ -268,13 +314,14 @@ const BasmalaFallbackText: React.FC<{
             : textColor;
       nodes.push(
         <Text key={`basm-char-${i}`} style={{color}}>
-          {BASMALLAH_TEXT.charAt(i)}
+          {text.charAt(i) /* @ai */}
         </Text>,
       );
     }
 
     return nodes;
   }, [
+    text, // @ai
     showTajweed,
     textColor,
     charToRule,
@@ -296,7 +343,7 @@ const BasmalaFallbackText: React.FC<{
         styles.fallbackText,
         {color: textColor, fontSize, fontFamily: 'Uthmani'},
       ]}>
-      {BASMALLAH_TEXT}
+      {text /* @ai */}
     </Text>
   );
 };

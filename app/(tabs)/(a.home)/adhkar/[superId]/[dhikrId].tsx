@@ -31,6 +31,10 @@ import {useAdhkarPlayAllStore} from '@/store/adhkarPlayAllStore';
 import {useHeaderHeight} from 'expo-router/react-navigation';
 import {dhikrShareUrl, shareUrl} from '@/utils/shareUtils';
 import branding from '@/config/branding';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+import {appLayoutDirection} from '@/utils/rtl';
+// @ai-end
 
 const {width: SCREEN_WIDTH} = Dimensions.get('window');
 
@@ -58,6 +62,7 @@ interface CategoryTitleMap {
   [categoryId: string]: string;
 }
 
+// @ai-start
 const DhikrReaderScreen: React.FC = () => {
   const {
     superId,
@@ -76,6 +81,7 @@ const DhikrReaderScreen: React.FC = () => {
   const router = useRouter();
   const navigation = useNavigation();
   const {theme} = useTheme();
+  const {t} = useTranslation('home');
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const headerHeight = useHeaderHeight();
@@ -181,14 +187,20 @@ const DhikrReaderScreen: React.FC = () => {
     if (currentDhikr && categoryTitles[currentDhikr.categoryId]) {
       return categoryTitles[currentDhikr.categoryId];
     }
-    return initialCategoryTitle || superCategoryTitle || 'Dhikr';
-  }, [currentDhikr, categoryTitles, initialCategoryTitle, superCategoryTitle]);
+    return initialCategoryTitle || superCategoryTitle || t('adhkar.dhikr');
+  }, [
+    currentDhikr,
+    categoryTitles,
+    initialCategoryTitle,
+    superCategoryTitle,
+    t,
+  ]);
 
   const handleShareDhikr = useCallback(() => {
     if (!superId || !currentDhikr) return;
     const url = dhikrShareUrl(superId, currentDhikr.id);
-    shareUrl(url, `Check out this dhikr on ${branding.appName}`);
-  }, [superId, currentDhikr]);
+    shareUrl(url, t('adhkar.shareDhikr', {appName: branding.appName}));
+  }, [superId, currentDhikr, t]);
 
   // Set native header with title + position subtitle
   useLayoutEffect(() => {
@@ -213,7 +225,10 @@ const DhikrReaderScreen: React.FC = () => {
                 color: theme.colors.textSecondary,
                 marginTop: moderateScale(2),
               }}>
-              {currentIndex + 1} of {adhkarList.length}
+              {t('adhkar.position', {
+                current: currentIndex + 1,
+                total: adhkarList.length,
+              })}
             </Text>
           )}
         </View>
@@ -241,6 +256,7 @@ const DhikrReaderScreen: React.FC = () => {
     adhkarList.length,
     handleShareDhikr,
     theme,
+    t,
   ]);
 
   const handleSaveToggle = useCallback(
@@ -315,7 +331,7 @@ const DhikrReaderScreen: React.FC = () => {
     return (
       <View style={styles.container}>
         <View style={[styles.loadingContainer, {paddingTop: headerHeight}]}>
-          <Text style={styles.emptyText}>No adhkar found</Text>
+          <Text style={styles.emptyText}>{t('adhkar.noneFound')}</Text>
         </View>
       </View>
     );
@@ -330,6 +346,7 @@ const DhikrReaderScreen: React.FC = () => {
         ]}>
         <FlatList
           ref={flatListRef}
+          style={appLayoutDirection}
           data={adhkarList}
           renderItem={renderItem}
           keyExtractor={keyExtractor}
@@ -352,6 +369,7 @@ const DhikrReaderScreen: React.FC = () => {
     </View>
   );
 };
+// @ai-end
 
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({

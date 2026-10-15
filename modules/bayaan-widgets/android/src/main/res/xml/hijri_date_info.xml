@@ -1,0 +1,12 @@
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+  android:description="@string/bayaan_widget_hijri_desc"
+  android:minWidth="110dp"
+  android:minHeight="110dp"
+  android:targetCellWidth="2"
+  android:targetCellHeight="2"
+  android:maxResizeWidth="200dp"
+  android:maxResizeHeight="200dp"
+  android:resizeMode="horizontal|vertical"
+  android:updatePeriodMillis="0"
+  android:widgetCategory="home_screen"
+  android:initialLayout="@layout/glance_default_loading_layout" />

@@ -1,3 +1,6 @@
+// @ai-start
+import i18n from '@/i18n';
+// @ai-end
 import {AdhkarBroadTag} from '@/types/adhkar';
 
 /**
@@ -29,20 +32,46 @@ export function getTagColor(tag: AdhkarBroadTag | string): string {
 /**
  * Display names for tags (for section headers)
  */
+// @ai-start
 export const ADHKAR_TAG_NAMES: Record<AdhkarBroadTag, string> = {
-  daily: 'Daily Adhkar',
-  prayer: 'Prayer',
-  protection: 'Protection',
-  health: 'Health & Healing',
-  travel: 'Travel',
-  food: 'Food & Drink',
-  social: 'Social',
-  nature: 'Nature',
-  spiritual: 'Spiritual',
-  home: 'Home & Family',
-  clothing: 'Clothing',
-  general: 'General',
+  get daily() {
+    return i18n.t('content:adhkarTags.daily');
+  },
+  get prayer() {
+    return i18n.t('content:adhkarTags.prayer');
+  },
+  get protection() {
+    return i18n.t('content:adhkarTags.protection');
+  },
+  get health() {
+    return i18n.t('content:adhkarTags.health');
+  },
+  get travel() {
+    return i18n.t('content:adhkarTags.travel');
+  },
+  get food() {
+    return i18n.t('content:adhkarTags.food');
+  },
+  get social() {
+    return i18n.t('content:adhkarTags.social');
+  },
+  get nature() {
+    return i18n.t('content:adhkarTags.nature');
+  },
+  get spiritual() {
+    return i18n.t('content:adhkarTags.spiritual');
+  },
+  get home() {
+    return i18n.t('content:adhkarTags.home');
+  },
+  get clothing() {
+    return i18n.t('content:adhkarTags.clothing');
+  },
+  get general() {
+    return i18n.t('content:adhkarTags.general');
+  },
 };
+// @ai-end
 
 /**
  * Order of tags for display (most important first)

@@ -97,7 +97,7 @@ export interface PlaybackSettings {
   /** Timestamp when the sleep timer should end (null if disabled) */
   sleepTimerEnd: number | null;
   /** Interval for updating the sleep timer */
-  sleepTimerInterval?: NodeJS.Timeout | null;
+  sleepTimerInterval?: ReturnType<typeof setInterval> | null;
   /** Whether to skip silence */
   skipSilence: boolean;
 }

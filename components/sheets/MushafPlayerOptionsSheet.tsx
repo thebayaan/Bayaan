@@ -14,7 +14,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import {ScaledSheet, moderateScale as ms} from 'react-native-size-matters';
-import {Feather, Ionicons} from '@expo/vector-icons';
+import {Ionicons} from '@expo/vector-icons';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -35,6 +35,26 @@ import {
 import {SURAHS} from '@/data/surahData';
 import {mushafVerseMapService} from '@/services/mushaf/MushafVerseMapService';
 import Color from 'color';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+import i18n from '@/i18n';
+import {
+  getReciterDisplayName,
+  getSurahDisplayName,
+  localizeDigits,
+} from '@/i18n/format';
+import {flipX} from '@/utils/rtl';
+import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import {useRewayahVerseUnits} from '@/hooks/useRewayahVerseUnits';
+import {
+  pickerDefaults,
+  pickerPendingStart,
+  pickerSelection,
+  pickerVerseCount,
+  pickerVerseLabel,
+  rangePickerNumbering,
+} from '@/utils/playbackRangePicker';
+// @ai-end
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -42,31 +62,26 @@ import Color from 'color';
 
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
 
-const VERSE_REPEAT_OPTIONS = [
-  {label: '1 time', value: 1},
-  {label: '2 times', value: 2},
-  {label: '3 times', value: 3},
-  {label: 'Loop', value: 0},
-];
+// @ai-start
+const REPEAT_VALUES = [1, 2, 3, 0];
+// @ai-end
 
-const RANGE_REPEAT_OPTIONS = [
-  {label: '1 time', value: 1},
-  {label: '2 times', value: 2},
-  {label: '3 times', value: 3},
-  {label: 'Loop', value: 0},
-];
+// @ai-start
+function getRepeatLabel(value: number): string {
+  return value === 0
+    ? i18n.t('sheets:repeat.loop')
+    : i18n.t('sheets:repeat.times', {count: value});
+}
+// @ai-end
 
-type AccordionSection = 'startVerse' | 'endVerse' | 'reciter' | null;
+type AccordionSection = 'startVerse' | 'endVerse' | null; // @ai
 type VersePick = 'surahList' | 'ayahGrid';
 
 // ---------------------------------------------------------------------------
 // Verse-key helpers
 // ---------------------------------------------------------------------------
-function formatVerseKey(verseKey: string): string {
-  const [s, a] = verseKey.split(':').map(Number);
-  if (s < 1 || s > 114) return verseKey;
-  return `${SURAHS[s - 1].name} ${s}:${a}`;
-}
+// Verse keys are in the pickers' numbering (@ai): the verses of the mushaf on
+// screen (utils/playbackRangePicker.ts). Labels: pickerVerseLabel.
 
 // Negative if a < b, zero if equal, positive if a > b. Used to keep the
 // range from going backwards: a new start past the current end drags end
@@ -119,11 +134,13 @@ const AccordionScrollList: React.FC<{children: React.ReactNode}> = ({
 // Component
 // ---------------------------------------------------------------------------
 
+// @ai-start
 export const MushafPlayerOptionsSheet = (
   props: SheetProps<'mushaf-player-options'>,
 ) => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
+  const {t} = useTranslation('sheets');
   const insets = useSafeAreaInsets();
 
   const currentPage = props.payload?.currentPage ?? 1;
@@ -143,12 +160,31 @@ export const MushafPlayerOptionsSheet = (
     () => mushafVerseMapService.getOrderedVerseKeysForPage(currentPage),
     [currentPage],
   );
-  const defaultStart = storeRangeStart
-    ? `${storeRangeStart.surah}:${storeRangeStart.ayah}`
-    : (pageVerseKeys[0] ?? '1:1');
-  const defaultEnd = storeRangeEnd
-    ? `${storeRangeEnd.surah}:${storeRangeEnd.ayah}`
-    : (pageVerseKeys[pageVerseKeys.length - 1] ?? '1:7');
+  // @ai-start
+  // The pickers offer the verses of the mushaf on screen, in its own
+  // numbering once its verse units are ready (Hafs verses before that,
+  // labelled as Hafs); a Hafs mushaf keeps its Hafs pickers.
+  const mushafRewayah = useMushafSettingsStore(s => s.rewayah);
+  const {units: mushafUnits} = useRewayahVerseUnits(
+    mushafRewayah === 'hafs' ? null : mushafRewayah,
+  );
+  const numbering = useMemo(
+    () => rangePickerNumbering(mushafRewayah, mushafUnits),
+    [mushafRewayah, mushafUnits],
+  );
+  const storeRangeUnits = useMushafPlayerStore(s => s.rangeUnits);
+  const {start: defaultStart, end: defaultEnd} = pickerDefaults(
+    numbering,
+    {
+      rangeStart: storeRangeStart,
+      rangeEnd: storeRangeEnd,
+      rangeUnits: storeRangeUnits,
+      pendingStartUnit: null,
+      pendingStartVerseKey: null,
+    },
+    pageVerseKeys,
+  );
+  // @ai-end
 
   // Local state — applied only on "Play Audio"
   const [startVerseKey, setStartVerseKey] = useState(defaultStart);
@@ -177,12 +213,29 @@ export const MushafPlayerOptionsSheet = (
   const [endPickSurah, setEndPickSurah] = useState<number | null>(null);
 
   // Pre-populate from pending start verse if set
+  // @ai-start
+  // The keys are in the pickers' numbering: when it changes (the mushaf's
+  // verse units became ready while the sheet is open), start over from the
+  // defaults in the new numbering.
+  const numberingId = `${numbering.rewayah}@${numbering.units?.dataKey ?? ''}`;
+  const [keysNumberingId, setKeysNumberingId] = useState(numberingId);
   useEffect(() => {
-    const pending = useMushafPlayerStore.getState().pendingStartVerseKey;
+    if (numberingId !== keysNumberingId) {
+      setKeysNumberingId(numberingId);
+      setStartVerseKey(defaultStart);
+      setEndVerseKey(defaultEnd);
+    }
+    const pending = pickerPendingStart(
+      numbering,
+      useMushafPlayerStore.getState(),
+    );
     if (pending) {
       setStartVerseKey(pending);
     }
-  }, []);
+    // Only on mount and when the numbering changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [numberingId]);
+  // @ai-end
 
   // Compute reciters on mount
   useEffect(() => {
@@ -268,11 +321,28 @@ export const MushafPlayerOptionsSheet = (
   );
 
   // Reciter selection
-  const handleReciterSelect = useCallback((reciter: AvailableReciter) => {
+  // @ai-start
+  const handleOpenReciterPicker = useCallback(async () => {
+    setExpandedSection(null);
+    const reciter: AvailableReciter | undefined = await SheetManager.show(
+      'mushaf-reciter-picker',
+      {payload: {selectedRewayatId}},
+    );
+    if (!reciter) return;
     setSelectedRewayatId(reciter.rewayatId);
     setSelectedReciterName(reciter.reciterName);
-    setExpandedSection(null);
-  }, []);
+  }, [selectedRewayatId]);
+
+  const selectedReciter = availableReciters.find(
+    r => r.rewayatId === selectedRewayatId,
+  );
+  const selectedReciterLabel = selectedReciter
+    ? getReciterDisplayName({
+        id: selectedReciter.reciterId,
+        name: selectedReciter.reciterName,
+      })
+    : selectedReciterName;
+  // @ai-end
 
   // Play Audio
   const canPlay = !!selectedRewayatId;
@@ -280,22 +350,33 @@ export const MushafPlayerOptionsSheet = (
   const handlePlayAudio = useCallback(() => {
     if (!selectedRewayatId || !selectedReciterName) return;
 
+    // Verse units of the mushaf's rewayah, or Hafs verses as before (@ai).
+    const selection = pickerSelection(numbering, startVerseKey, endVerseKey);
+    if (!selection) return;
+
     const store = useMushafPlayerStore.getState();
     store.stop();
 
     // Apply settings
     store.setReciter(selectedRewayatId, selectedReciterName);
 
-    const [startS, startA] = startVerseKey.split(':').map(Number);
-    const [endS, endA] = endVerseKey.split(':').map(Number);
-    store.setRange({surah: startS, ayah: startA}, {surah: endS, ayah: endA});
+    // @ai-start
+    if (selection.kind === 'units') {
+      store.setUnitRange(selection.first, selection.last);
+    } else {
+      store.setRange(selection.start, selection.end);
+    }
+    // @ai-end
 
     // rate is bound directly to the store via the speed chips; no need to
     // commit it here (and committing a stale local copy was the bug).
     store.setVerseRepeatCount(verseRepeat);
     store.setRangeRepeatCount(rangeRepeat);
 
-    store.startPlayback(currentPage, startVerseKey);
+    store.startPlayback(
+      currentPage,
+      selection.kind === 'units' ? selection.first : startVerseKey,
+    ); // @ai
     SheetManager.hide('mushaf-player-options');
   }, [
     selectedRewayatId,
@@ -305,6 +386,7 @@ export const MushafPlayerOptionsSheet = (
     verseRepeat,
     rangeRepeat,
     currentPage,
+    numbering, // @ai
   ]);
 
   // ---------------------------------------------------------------------------
@@ -321,12 +403,13 @@ export const MushafPlayerOptionsSheet = (
             pressed && styles.pickerRowPressed,
           ]}
           onPress={() => onSelect(item.id)}>
-          <Text style={styles.pickerRowNumber}>{item.id}</Text>
-          <Text style={styles.pickerRowText}>{item.name}</Text>
+          <Text style={styles.pickerRowNumber}>{localizeDigits(item.id)}</Text>
+          <Text style={styles.pickerRowText}>{getSurahDisplayName(item)}</Text>
           <Ionicons
             name="chevron-forward"
             size={ms(14)}
             color={theme.colors.textSecondary}
+            style={flipX}
           />
         </Pressable>
       ))}
@@ -338,7 +421,7 @@ export const MushafPlayerOptionsSheet = (
     onSelect: (ayah: number) => void,
     onBack: () => void,
   ) => {
-    const versesCount = SURAHS[surahId - 1]?.verses_count ?? 1;
+    const versesCount = pickerVerseCount(numbering, surahId); // @ai
     const ayahs = Array.from({length: versesCount}, (_, i) => i + 1);
     return (
       <View>
@@ -347,8 +430,11 @@ export const MushafPlayerOptionsSheet = (
             name="chevron-back"
             size={ms(16)}
             color={theme.colors.text}
+            style={flipX}
           />
-          <Text style={styles.pickerBackText}>{SURAHS[surahId - 1].name}</Text>
+          <Text style={styles.pickerBackText}>
+            {getSurahDisplayName(SURAHS[surahId - 1])}
+          </Text>
         </Pressable>
         <View style={styles.ayahGrid}>
           {ayahs.map(a => (
@@ -359,7 +445,7 @@ export const MushafPlayerOptionsSheet = (
                 pressed && styles.ayahChipPressed,
               ]}
               onPress={() => onSelect(a)}>
-              <Text style={styles.ayahChipText}>{a}</Text>
+              <Text style={styles.ayahChipText}>{localizeDigits(a)}</Text>
             </Pressable>
           ))}
         </View>
@@ -383,13 +469,15 @@ export const MushafPlayerOptionsSheet = (
         showsVerticalScrollIndicator={false}
         bounces={true}>
         {/* Title */}
-        <Text style={styles.title}>Playback Settings</Text>
+        <Text style={styles.title}>{t('mushafPlayer.title')}</Text>
 
         {/* ============================================================== */}
         {/* Select Range                                                   */}
         {/* ============================================================== */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Select Range</Text>
+          <Text style={styles.sectionLabel}>
+            {t('mushafPlayer.selectRange')}
+          </Text>
 
           {/* Starting Verse */}
           <Pressable
@@ -398,9 +486,20 @@ export const MushafPlayerOptionsSheet = (
               pressed && styles.dropdownRowPressed,
             ]}
             onPress={() => toggleSection('startVerse')}>
-            <Text style={styles.dropdownLabel}>Starting Verse</Text>
+            <Text style={styles.dropdownLabel}>
+              {t('mushafPlayer.startingVerse')}
+            </Text>
             <Text style={styles.dropdownValue} numberOfLines={1}>
-              {formatVerseKey(startVerseKey)}
+              {
+                localizeDigits(
+                  pickerVerseLabel(
+                    numbering,
+                    startVerseKey,
+                    getSurahDisplayName,
+                    i18n.t('content:rewayah.short.hafs'),
+                  ),
+                ) /* @ai */
+              }
             </Text>
             <AnimatedChevron
               expanded={expandedSection === 'startVerse'}
@@ -428,9 +527,20 @@ export const MushafPlayerOptionsSheet = (
               pressed && styles.dropdownRowPressed,
             ]}
             onPress={() => toggleSection('endVerse')}>
-            <Text style={styles.dropdownLabel}>Ending Verse</Text>
+            <Text style={styles.dropdownLabel}>
+              {t('mushafPlayer.endingVerse')}
+            </Text>
             <Text style={styles.dropdownValue} numberOfLines={1}>
-              {formatVerseKey(endVerseKey)}
+              {
+                localizeDigits(
+                  pickerVerseLabel(
+                    numbering,
+                    endVerseKey,
+                    getSurahDisplayName,
+                    i18n.t('content:rewayah.short.hafs'),
+                  ),
+                ) /* @ai */
+              }
             </Text>
             <AnimatedChevron
               expanded={expandedSection === 'endVerse'}
@@ -456,67 +566,34 @@ export const MushafPlayerOptionsSheet = (
         {/* Reciter                                                        */}
         {/* ============================================================== */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Reciter</Text>
+          <Text style={styles.sectionLabel}>{t('mushafPlayer.reciter')}</Text>
           <Pressable
             style={({pressed}) => [
               styles.dropdownRow,
               pressed && styles.dropdownRowPressed,
             ]}
-            onPress={() => toggleSection('reciter')}>
+            onPress={handleOpenReciterPicker}>
+            {/* @ai-start */}
             <Text
               style={[styles.dropdownValue, {textAlign: 'left'}]}
               numberOfLines={1}>
-              {selectedReciterName || 'Select Reciter'}
+              {selectedReciterLabel || t('selectReciter.title')}
             </Text>
-            <AnimatedChevron
-              expanded={expandedSection === 'reciter'}
+            <Ionicons
+              name="chevron-forward"
+              size={ms(16)}
               color={theme.colors.textSecondary}
+              style={flipX}
             />
+            {/* @ai-end */}
           </Pressable>
-          {expandedSection === 'reciter' && (
-            <View style={styles.accordionContent}>
-              <AccordionScrollList>
-                <View>
-                  {availableReciters.map(item => {
-                    const isSelected = item.rewayatId === selectedRewayatId;
-                    return (
-                      <Pressable
-                        key={item.rewayatId}
-                        style={({pressed}) => [
-                          styles.reciterRow,
-                          isSelected && styles.reciterRowSelected,
-                          pressed && styles.pickerRowPressed,
-                        ]}
-                        onPress={() => handleReciterSelect(item)}>
-                        <View style={styles.reciterInfo}>
-                          <Text style={styles.reciterName} numberOfLines={1}>
-                            {item.reciterName}
-                          </Text>
-                          <Text style={styles.reciterStyle} numberOfLines={1}>
-                            {item.style}
-                          </Text>
-                        </View>
-                        {isSelected && (
-                          <Feather
-                            name="check"
-                            size={ms(16)}
-                            color={theme.colors.text}
-                          />
-                        )}
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              </AccordionScrollList>
-            </View>
-          )}
         </View>
 
         {/* ============================================================== */}
         {/* Play speed                                                     */}
         {/* ============================================================== */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Play speed</Text>
+          <Text style={styles.sectionLabel}>{t('repeat.playSpeed')}</Text>
           <View style={styles.chipRowFlex}>
             {SPEEDS.map(speed => {
               const isActive = storeRate === speed;
@@ -530,7 +607,7 @@ export const MushafPlayerOptionsSheet = (
                       styles.chipText,
                       isActive && styles.chipTextActive,
                     ]}>
-                    {speed}x
+                    {t('playbackSpeed.speed', {speed})}
                   </Text>
                 </Pressable>
               );
@@ -542,21 +619,21 @@ export const MushafPlayerOptionsSheet = (
         {/* Play each verse                                                */}
         {/* ============================================================== */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Play each verse</Text>
+          <Text style={styles.sectionLabel}>{t('repeat.eachVerse')}</Text>
           <View style={styles.chipRowFlex}>
-            {VERSE_REPEAT_OPTIONS.map(opt => {
-              const isActive = verseRepeat === opt.value;
+            {REPEAT_VALUES.map(value => {
+              const isActive = verseRepeat === value;
               return (
                 <Pressable
-                  key={opt.value}
+                  key={value}
                   style={[styles.chipFlex, isActive && styles.chipActive]}
-                  onPress={() => setVerseRepeat(opt.value)}>
+                  onPress={() => setVerseRepeat(value)}>
                   <Text
                     style={[
                       styles.chipText,
                       isActive && styles.chipTextActive,
                     ]}>
-                    {opt.label}
+                    {getRepeatLabel(value)}
                   </Text>
                 </Pressable>
               );
@@ -568,21 +645,21 @@ export const MushafPlayerOptionsSheet = (
         {/* Play the range                                                 */}
         {/* ============================================================== */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Play the range</Text>
+          <Text style={styles.sectionLabel}>{t('repeat.range')}</Text>
           <View style={styles.chipRowFlex}>
-            {RANGE_REPEAT_OPTIONS.map(opt => {
-              const isActive = rangeRepeat === opt.value;
+            {REPEAT_VALUES.map(value => {
+              const isActive = rangeRepeat === value;
               return (
                 <Pressable
-                  key={opt.value}
+                  key={value}
                   style={[styles.chipFlex, isActive && styles.chipActive]}
-                  onPress={() => setRangeRepeat(opt.value)}>
+                  onPress={() => setRangeRepeat(value)}>
                   <Text
                     style={[
                       styles.chipText,
                       isActive && styles.chipTextActive,
                     ]}>
-                    {opt.label}
+                    {getRepeatLabel(value)}
                   </Text>
                 </Pressable>
               );
@@ -612,13 +689,14 @@ export const MushafPlayerOptionsSheet = (
               styles.playButtonText,
               !canPlay && styles.playButtonTextDisabled,
             ]}>
-            Play
+            {t('mushafPlayer.play')}
           </Text>
         </Pressable>
       </View>
     </ActionSheet>
   );
 };
+// @ai-end
 
 // ---------------------------------------------------------------------------
 // Styles
@@ -763,33 +841,6 @@ const createStyles = (theme: Theme) =>
       fontSize: ms(13),
       fontFamily: 'Manrope-SemiBold',
       color: theme.colors.text,
-    },
-
-    // Reciter picker rows
-    reciterRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: ms(12),
-      paddingHorizontal: ms(16),
-      borderRadius: ms(8),
-    },
-    reciterRowSelected: {
-      backgroundColor: Color(theme.colors.text).alpha(0.08).toString(),
-    },
-    reciterInfo: {
-      flex: 1,
-      gap: ms(2),
-    },
-    reciterName: {
-      fontSize: ms(14),
-      fontFamily: 'Manrope-SemiBold',
-      color: theme.colors.text,
-    },
-    reciterStyle: {
-      fontSize: ms(12),
-      fontFamily: 'Manrope-Regular',
-      color: theme.colors.textSecondary,
-      textTransform: 'capitalize',
     },
 
     // Chips (wrap)

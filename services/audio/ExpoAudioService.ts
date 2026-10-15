@@ -27,6 +27,7 @@ type StateListener = (state: ExpoAudioServiceState) => void;
 class ExpoAudioService {
   private static instance: ExpoAudioService;
   private player: AudioPlayer | null = null;
+  private playerWaiters: Array<() => void> = [];
   private isInitialized = false;
   private currentUrl: string | null = null;
   private stateListeners: Set<StateListener> = new Set();
@@ -89,7 +90,26 @@ class ExpoAudioService {
    */
   setPlayer(player: AudioPlayer): void {
     this.player = player;
+    const waiters = this.playerWaiters;
+    this.playerWaiters = [];
+    waiters.forEach(resolve => resolve());
     if (__DEV__) console.log('[ExpoAudioService] Player instance set');
+  }
+
+  /** Resolves once a player is set, or after timeoutMs at the latest. */
+  waitForPlayer(timeoutMs: number): Promise<void> {
+    if (this.player) return Promise.resolve();
+    return new Promise<void>(resolve => {
+      const done = (): void => {
+        clearTimeout(timer);
+        resolve();
+      };
+      const timer = setTimeout(() => {
+        this.playerWaiters = this.playerWaiters.filter(w => w !== done);
+        resolve();
+      }, timeoutMs);
+      this.playerWaiters.push(done);
+    });
   }
 
   /**

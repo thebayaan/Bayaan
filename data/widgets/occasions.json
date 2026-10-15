@@ -1,0 +1,26 @@
+{
+  "months": [
+    {"number": 1, "name": "Muharram", "arabic": "محرم"},
+    {"number": 2, "name": "Safar", "arabic": "صفر"},
+    {"number": 3, "name": "Rabi al-Awwal", "arabic": "ربيع الأول"},
+    {"number": 4, "name": "Rabi al-Thani", "arabic": "ربيع الآخر"},
+    {"number": 5, "name": "Jumada al-Ula", "arabic": "جمادى الأولى"},
+    {"number": 6, "name": "Jumada al-Akhirah", "arabic": "جمادى الآخرة"},
+    {"number": 7, "name": "Rajab", "arabic": "رجب"},
+    {"number": 8, "name": "Sha'ban", "arabic": "شعبان"},
+    {"number": 9, "name": "Ramadan", "arabic": "رمضان"},
+    {"number": 10, "name": "Shawwal", "arabic": "شوال"},
+    {"number": 11, "name": "Dhu al-Qadah", "arabic": "ذو القعدة"},
+    {"number": 12, "name": "Dhu al-Hijjah", "arabic": "ذو الحجة"}
+  ],
+  "occasions": [
+    {"id": "eidFitr", "name": "Eid al-Fitr", "arabicName": "عيد الفطر", "listenSurahId": null, "keys": ["10:58", "87:14", "87:15"]},
+    {"id": "arafah", "name": "Day of Arafah", "arabicName": "يوم عرفة", "listenSurahId": null, "keys": ["2:199", "2:201"]},
+    {"id": "eidAdha", "name": "Eid al-Adha", "arabicName": "عيد الأضحى", "listenSurahId": null, "keys": ["108:1", "108:2", "108:3"]},
+    {"id": "lastTen", "name": "The Last Ten Nights", "arabicName": "العشر الأواخر", "listenSurahId": null, "keys": ["97:1", "97:2", "97:3", "97:4", "97:5", "44:3"]},
+    {"id": "ramadan", "name": "Ramadan", "arabicName": "رمضان", "listenSurahId": null, "keys": ["2:183", "2:186", "97:1", "97:3"]},
+    {"id": "dhulHijjah", "name": "The Ten Days of Dhul Hijjah", "arabicName": "عشر ذي الحجة", "listenSurahId": null, "keys": ["89:1", "89:2", "22:27"]},
+    {"id": "ashura", "name": "Ashura", "arabicName": "عاشوراء", "listenSurahId": null, "keys": ["26:62", "26:63"]},
+    {"id": "jumuah", "name": "Jumu'ah", "arabicName": "الجمعة", "listenSurahId": 18, "keys": ["18:10", "18:1"]}
+  ]
+}

@@ -28,8 +28,14 @@ import {
   ShieldLockIcon,
 } from '@/components/Icons';
 import {useDevSettingsStore} from '@/store/devSettingsStore';
+import {useAnalyticsConsentStore} from '@/store/analyticsConsentStore';
 import {ThemePicker} from '@/components/settings/ThemePicker';
 import branding from '@/config/branding';
+// @ai-start
+import {flipX, latinLetterSpacing} from '@/utils/rtl';
+import {useTranslation} from 'react-i18next';
+import type {TFunction} from 'i18next';
+// @ai-end
 
 const isExternalLink = (type: string): boolean => {
   return [
@@ -42,131 +48,143 @@ const isExternalLink = (type: string): boolean => {
   ].includes(type);
 };
 
-const settingsItems = [
-  {
-    section: 'Quran',
-    items: [
-      {
-        title: 'Mushaf Settings',
-        type: 'mushafSettings',
-        description: 'Customize Quran display options',
-        icon: 'quran',
-        iconType: 'custom',
-      },
-      {
-        title: 'Translations & Tafaseer',
-        type: 'translations',
-        description: 'Manage Quran translations and commentary',
-        icon: 'dualPages',
-        iconType: 'custom',
-      },
-    ],
-  },
-  {
-    section: 'Audio & Playback',
-    items: [
-      {
-        title: 'Default Reciter',
-        type: 'defaultReciter',
-        description: 'Choose your preferred reciter',
-        icon: 'personAudio',
-        iconType: 'custom',
-      },
-      {
-        title: 'Reciter Choice',
-        type: 'reciterChoice',
-        description: 'Customize reciter selection',
-        icon: 'selectionList',
-        iconType: 'custom',
-      },
-    ],
-  },
-  {
-    section: 'App & Data',
-    items: [
-      {
-        title: 'Storage',
-        type: 'storage',
-        description: 'View and manage storage usage',
-        icon: 'database',
-        iconType: 'custom',
-      },
-    ],
-  },
-  {
-    section: 'Feedback',
-    items: [
-      {
-        title: 'Write a Review',
-        type: 'rateApp',
-        description: 'Share your experience with others',
-        icon: 'star',
-        iconType: 'custom',
-      },
-      {
-        title: 'Feature Requests',
-        type: 'featureRequest',
-        description: 'Suggest improvements and new features',
-        icon: 'lightbulb',
-        iconType: 'custom',
-      },
-      {
-        title: 'Help & Support',
-        type: 'support',
-        description: `Get assistance with using ${branding.appName}`,
-        icon: 'chatBubble',
-        iconType: 'custom',
-      },
-    ],
-  },
-  {
-    section: `About ${branding.appName}`,
-    items: [
-      {
-        title: "What's New",
-        type: 'whatsNew',
-        description: "See what's new in this version",
-        icon: 'giftBox',
-        iconType: 'custom',
-      },
-      {
-        title: `About ${branding.appName}`,
-        type: 'about',
-        description: 'Learn more about our mission',
-        icon: 'infoRounded',
-        iconType: 'custom',
-      },
-      {
-        title: 'Credits',
-        type: 'credits',
-        description: 'View contributors and acknowledgments',
-        icon: 'medal',
-        iconType: 'custom',
-      },
-      {
-        title: 'Contribute on GitHub',
-        type: 'github',
-        description: `${branding.appName} is now open source. Star, report issues, or submit a PR`,
-        icon: 'github',
-        iconType: 'feather',
-      },
-      {
-        title: 'Terms of Service',
-        type: 'terms',
-        description: 'Read our terms of service',
-        icon: 'docCheck',
-        iconType: 'custom',
-      },
-      {
-        title: 'Privacy Policy',
-        type: 'privacy',
-        description: 'View our privacy policy',
-        icon: 'shieldLock',
-        iconType: 'custom',
-      },
-    ],
-  },
-];
+// @ai-start
+const getSettingsSections = (t: TFunction<['settings', 'common']>) => {
+  const appName = branding.appName;
+  return [
+    {
+      section: t('settings:index.sections.quran'),
+      items: [
+        {
+          title: t('settings:index.items.mushafSettings.title'),
+          type: 'mushafSettings',
+          description: t('settings:index.items.mushafSettings.description'),
+          icon: 'quran',
+          iconType: 'custom',
+        },
+        {
+          title: t('settings:index.items.translations.title'),
+          type: 'translations',
+          description: t('settings:index.items.translations.description'),
+          icon: 'dualPages',
+          iconType: 'custom',
+        },
+      ],
+    },
+    {
+      section: t('settings:index.sections.audio'),
+      items: [
+        {
+          title: t('settings:index.items.defaultReciter.title'),
+          type: 'defaultReciter',
+          description: t('settings:index.items.defaultReciter.description'),
+          icon: 'personAudio',
+          iconType: 'custom',
+        },
+        {
+          title: t('settings:index.items.reciterChoice.title'),
+          type: 'reciterChoice',
+          description: t('settings:index.items.reciterChoice.description'),
+          icon: 'selectionList',
+          iconType: 'custom',
+        },
+      ],
+    },
+    {
+      section: t('settings:index.sections.appData'),
+      items: [
+        {
+          title: t('common:language.title'),
+          type: 'language',
+          description: t('common:language.description'),
+          icon: 'globe',
+          iconType: 'feather',
+        },
+        {
+          title: t('settings:index.items.storage.title'),
+          type: 'storage',
+          description: t('settings:index.items.storage.description'),
+          icon: 'database',
+          iconType: 'custom',
+        },
+      ],
+    },
+    {
+      section: t('settings:index.sections.feedback'),
+      items: [
+        {
+          title: t('settings:index.items.rateApp.title'),
+          type: 'rateApp',
+          description: t('settings:index.items.rateApp.description'),
+          icon: 'star',
+          iconType: 'custom',
+        },
+        {
+          title: t('settings:index.items.featureRequest.title'),
+          type: 'featureRequest',
+          description: t('settings:index.items.featureRequest.description'),
+          icon: 'lightbulb',
+          iconType: 'custom',
+        },
+        {
+          title: t('settings:index.items.support.title'),
+          type: 'support',
+          description: t('settings:index.items.support.description', {appName}),
+          icon: 'chatBubble',
+          iconType: 'custom',
+        },
+      ],
+    },
+    {
+      section: t('settings:index.sections.about', {appName}),
+      items: [
+        {
+          title: t('settings:index.items.whatsNew.title'),
+          type: 'whatsNew',
+          description: t('settings:index.items.whatsNew.description'),
+          icon: 'giftBox',
+          iconType: 'custom',
+        },
+        {
+          title: t('settings:index.items.about.title', {appName}),
+          type: 'about',
+          description: t('settings:index.items.about.description'),
+          icon: 'infoRounded',
+          iconType: 'custom',
+        },
+        {
+          title: t('settings:index.items.credits.title'),
+          type: 'credits',
+          description: t('settings:index.items.credits.description'),
+          icon: 'medal',
+          iconType: 'custom',
+        },
+        {
+          title: t('settings:index.items.github.title'),
+          type: 'github',
+          description: t('settings:index.items.github.description', {appName}),
+          icon: 'github',
+          iconType: 'feather',
+        },
+        {
+          title: t('settings:index.items.terms.title'),
+          type: 'terms',
+          description: t('settings:index.items.terms.description'),
+          icon: 'docCheck',
+          iconType: 'custom',
+        },
+        {
+          title: t('settings:index.items.privacy.title'),
+          type: 'privacy',
+          description: t('settings:index.items.privacy.description'),
+          icon: 'shieldLock',
+          iconType: 'custom',
+        },
+      ],
+    },
+  ];
+};
+// @ai-end
 
 const customIconMap: Record<string, React.FC<{size: number; color: string}>> = {
   quran: QuranIcon,
@@ -212,6 +230,7 @@ const renderIcon = (
   );
 };
 
+// @ai-start
 export default function SettingsScreen() {
   const router = useRouter();
   const {theme} = useTheme();
@@ -220,6 +239,15 @@ export default function SettingsScreen() {
   const styles = useMemo(() => createStyles(theme), [theme]);
   const glassColorScheme = useGlassColorScheme();
   const {showFloatingDevMenu, toggleFloatingDevMenu} = useDevSettingsStore();
+  const {t} = useTranslation(['settings', 'common']);
+  const settingsSections = useMemo(() => getSettingsSections(t), [t]);
+  const {analyticsEnabled, setAnalyticsEnabled} = useAnalyticsConsentStore();
+
+  const handleAnalyticsToggle = (value: boolean): void => {
+    // The analytics service subscribes to this store and pushes the choice
+    // straight to the PostHog SDK, so flipping the flag is all we do here.
+    setAnalyticsEnabled(value);
+  };
 
   const iconColor = theme.colors.text;
   const chevronColor = theme.colors.textSecondary;
@@ -245,6 +273,9 @@ export default function SettingsScreen() {
         break;
       case 'reciterChoice':
         router.push('/(d.settings)/reciter-choice');
+        break;
+      case 'language':
+        router.push('/(d.settings)/language');
         break;
       case 'storage':
         router.push('/(d.settings)/storage');
@@ -315,12 +346,14 @@ export default function SettingsScreen() {
         showsVerticalScrollIndicator={false}>
         {/* Appearance */}
         <View style={styles.section}>
-          <Text style={styles.sectionHeader}>APPEARANCE</Text>
+          <Text style={styles.sectionHeader}>
+            {t('settings:index.appearance')}
+          </Text>
           <ThemePicker />
         </View>
 
         {/* Settings Sections */}
-        {settingsItems.map(section => (
+        {settingsSections.map(section => (
           <View key={section.section} style={styles.section}>
             <Text style={styles.sectionHeader}>
               {section.section.toUpperCase()}
@@ -352,6 +385,7 @@ export default function SettingsScreen() {
                       }
                       size={moderateScale(16)}
                       color={chevronColor}
+                      style={isExternalLink(item.type) ? undefined : flipX}
                     />
                   </Pressable>
                 </React.Fragment>
@@ -360,8 +394,46 @@ export default function SettingsScreen() {
           </View>
         ))}
 
+        {/* Privacy Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionHeader}>
+            {t('settings:index.analytics.section')}
+          </Text>
+          {renderCard(
+            <View style={styles.settingsRow}>
+              <View style={styles.settingsItemIcon}>
+                <Feather
+                  name="bar-chart-2"
+                  size={moderateScale(20)}
+                  color={iconColor}
+                />
+              </View>
+              <View style={styles.settingsTextContainer}>
+                <Text style={styles.settingsTitle}>
+                  {t('settings:index.analytics.title')}
+                </Text>
+                <Text style={styles.settingsDescription}>
+                  {t('settings:index.analytics.description', {
+                    appName: branding.appName,
+                  })}
+                </Text>
+              </View>
+              <Switch
+                value={analyticsEnabled}
+                onValueChange={handleAnalyticsToggle}
+                trackColor={trackColor}
+                thumbColor="#FFFFFF"
+                ios_backgroundColor={trackColor.false}
+                style={styles.switchStyle}
+              />
+            </View>,
+          )}
+        </View>
+
         {/* Developer Section */}
         {__DEV__ && (
+          // Dev-only tools stay in English. // @ai
+          // i18next-instrument-ignore
           <View style={styles.section}>
             <Text style={styles.sectionHeader}>DEVELOPER</Text>
             {renderCard(
@@ -395,7 +467,9 @@ export default function SettingsScreen() {
     </View>
   );
 }
+// @ai-end
 
+// @ai-start
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({
     container: {
@@ -409,10 +483,11 @@ const createStyles = (theme: Theme) =>
       marginBottom: moderateScale(14),
     },
     sectionHeader: {
+      textAlign: 'left',
       fontSize: moderateScale(10.5),
       fontFamily: 'Manrope-SemiBold',
       color: theme.colors.textSecondary,
-      letterSpacing: 1.2,
+      letterSpacing: latinLetterSpacing(1.2),
       textTransform: 'uppercase',
       marginBottom: moderateScale(6),
       marginLeft: moderateScale(2),
@@ -458,11 +533,13 @@ const createStyles = (theme: Theme) =>
       marginRight: moderateScale(10),
     },
     settingsTitle: {
+      textAlign: 'left',
       fontSize: moderateScale(13.5),
       fontFamily: 'Manrope-Medium',
       color: theme.colors.text,
     },
     settingsDescription: {
+      textAlign: 'left',
       fontSize: moderateScale(11),
       fontFamily: 'Manrope-Regular',
       color: theme.colors.textSecondary,
@@ -474,3 +551,4 @@ const createStyles = (theme: Theme) =>
       transform: [{scaleX: 0.8}, {scaleY: 0.8}],
     },
   });
+// @ai-end

@@ -1,12 +1,15 @@
 import {Reciter, RECITERS} from '@/data/reciterData';
 import {Surah, SURAHS} from '@/data/surahData';
 
+/** Returns a number in [0, 1), like Math.random (injectable for tests). */
+export type RandomSource = () => number;
+
 /**
  * Gets a random reciter from the available reciters
  */
-function getRandomReciter(): Reciter {
-  const randomIndex = Math.floor(Math.random() * RECITERS.length);
-  return RECITERS[randomIndex];
+function getRandomReciter(reciters: Reciter[], random: RandomSource): Reciter {
+  const randomIndex = Math.floor(random() * reciters.length);
+  return reciters[randomIndex];
 }
 
 /**
@@ -14,7 +17,7 @@ function getRandomReciter(): Reciter {
  * Weight = 1 / sqrt(surahId) for a moderate bias (~7.5x ratio between surah 2 and 114).
  * Al-Fatihah (id 1) is de-weighted to match a mid-range surah since it's very short.
  */
-function weightedRandomIndex(surahs: Surah[]): number {
+function weightedRandomIndex(surahs: Surah[], random: RandomSource): number {
   const MID_SURAH_WEIGHT = 1 / Math.sqrt(50);
   let totalWeight = 0;
   const weights = surahs.map(s => {
@@ -23,7 +26,7 @@ function weightedRandomIndex(surahs: Surah[]): number {
     return w;
   });
 
-  let roll = Math.random() * totalWeight;
+  let roll = random() * totalWeight;
   for (let i = 0; i < weights.length; i++) {
     roll -= weights[i];
     if (roll <= 0) return i;
@@ -35,7 +38,10 @@ function weightedRandomIndex(surahs: Surah[]): number {
  * Gets a random surah that is available for the given reciter.
  * Biased toward lower-numbered (longer) surahs.
  */
-function getRandomAvailableSurah(reciter: Reciter): Surah {
+function getRandomAvailableSurah(
+  reciter: Reciter,
+  random: RandomSource,
+): Surah {
   // Get the rewayat with the most surahs
   const primaryRewayat = reciter.rewayat.reduce(
     (prev, current) =>
@@ -54,21 +60,21 @@ function getRandomAvailableSurah(reciter: Reciter): Surah {
     return SURAHS[0];
   }
 
-  return availableSurahs[weightedRandomIndex(availableSurahs)];
+  return availableSurahs[weightedRandomIndex(availableSurahs, random)];
 }
 
 /**
  * Gets a random reciter and surah combination
  */
-export async function getRandomTrack(): Promise<{
-  reciter: Reciter;
-  surah: Surah;
-}> {
+function pickRandomTrack(
+  reciters: Reciter[],
+  random: RandomSource,
+): {reciter: Reciter; surah: Surah} {
   // Try up to 5 times to find a valid combination
   for (let i = 0; i < 5; i++) {
     try {
-      const reciter = getRandomReciter();
-      const surah = getRandomAvailableSurah(reciter);
+      const reciter = getRandomReciter(reciters, random);
+      const surah = getRandomAvailableSurah(reciter, random);
 
       return {reciter, surah};
     } catch (error) {
@@ -78,11 +84,11 @@ export async function getRandomTrack(): Promise<{
 
   // Fallback to a known good combination
   const fallbackReciter =
-    RECITERS.find(
+    reciters.find(
       r =>
         r.name === 'Mishary Alafasi' ||
         r.rewayat.some(rw => rw.surah_total > 10),
-    ) || RECITERS[0];
+    ) || reciters[0];
 
   const fallbackSurah = SURAHS[0]; // Al-Fatihah
 
@@ -93,60 +99,47 @@ export async function getRandomTrack(): Promise<{
 }
 
 /**
- * Gets multiple random tracks for continuous playback
- * @param count Number of random tracks to retrieve (default 5)
- * @param sameReciter Whether to use the same reciter for all tracks (default true)
- * @returns Array of {reciter, surah} pairs
+ * The rewayah a random pick plays in: a random one that has the surah, else
+ * the reciter's largest.
  */
-export async function getMultipleRandomTracks(
-  count = 5,
-  sameReciter = true,
-): Promise<Array<{reciter: Reciter; surah: Surah}>> {
-  const tracks: Array<{reciter: Reciter; surah: Surah}> = [];
-  let currentReciter: Reciter | null = null;
-  let usedSurahIds: Set<number> = new Set();
+function randomRewayatId(
+  reciter: Reciter,
+  surahId: number,
+  random: RandomSource,
+): string | null {
+  if (reciter.rewayat.length === 0) return null;
+  const available = reciter.rewayat.filter(r => r.surah_list.includes(surahId));
+  if (available.length > 0) {
+    return available[Math.floor(random() * available.length)].id;
+  }
+  return reciter.rewayat.reduce(
+    (prev, current) =>
+      current.surah_total > prev.surah_total ? current : prev,
+    reciter.rewayat[0],
+  ).id;
+}
 
-  // Try to get the requested number of tracks
+export interface RandomRecitation {
+  reciter: Reciter;
+  surah: Surah;
+  rewayatId: string;
+}
+
+/**
+ * Random Recitation (the Home screen card and the car's Surprise me): `count`
+ * surahs, each from its own random reciter.
+ */
+export function pickRandomRecitations(
+  count: number,
+  reciters: Reciter[] = RECITERS,
+  random: RandomSource = Math.random,
+): RandomRecitation[] {
+  const picks: RandomRecitation[] = [];
+  if (reciters.length === 0) return picks;
   for (let i = 0; i < count; i++) {
-    try {
-      // If we want the same reciter and we already have one, use it
-      // Otherwise get a new random reciter
-      if (sameReciter && currentReciter) {
-        // For the same reciter, get a different surah if possible
-        let attempts = 0;
-        let surah: Surah;
-
-        do {
-          surah = getRandomAvailableSurah(currentReciter);
-          attempts++;
-          // Break after 5 attempts to avoid infinite loop
-          if (attempts > 5) break;
-        } while (usedSurahIds.has(surah.id) && attempts < 5);
-
-        tracks.push({reciter: currentReciter, surah});
-        usedSurahIds.add(surah.id);
-      } else {
-        // Get a new random track
-        const {reciter, surah} = await getRandomTrack();
-
-        // For the first track or when using different reciters, save the reciter
-        if (i === 0 || !sameReciter) {
-          currentReciter = reciter;
-          usedSurahIds = new Set([surah.id]);
-        }
-
-        tracks.push({reciter, surah});
-      }
-    } catch (error) {
-      console.warn('Error finding random track, continuing:', error);
-    }
+    const {reciter, surah} = pickRandomTrack(reciters, random);
+    const rewayatId = randomRewayatId(reciter, surah.id, random);
+    if (rewayatId) picks.push({reciter, surah, rewayatId});
   }
-
-  // If we couldn't get any tracks, fall back to one track
-  if (tracks.length === 0) {
-    const fallbackTrack = await getRandomTrack();
-    return [fallbackTrack];
-  }
-
-  return tracks;
+  return picks;
 }

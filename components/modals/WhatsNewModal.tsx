@@ -27,6 +27,10 @@ import {
   getCurrentVersion,
 } from '@/utils/versionUtils';
 import Animated, {FadeIn, ZoomIn} from 'react-native-reanimated';
+// @ai-start
+import {Trans, useTranslation} from 'react-i18next';
+import branding from '@/config/branding';
+// @ai-end
 
 const {width} = Dimensions.get('window');
 
@@ -34,8 +38,10 @@ export interface WhatsNewModalRef {
   show: () => void;
 }
 
+// @ai-start
 export const WhatsNewModal = forwardRef<WhatsNewModalRef>((props, ref) => {
   const {theme} = useTheme();
+  const {t} = useTranslation(['settings', 'common']);
   const [visible, setVisible] = useState(false);
   const [changelogs, setChangelogs] = useState<ChangelogEntry[]>([]);
   const [pressedButton, setPressedButton] = useState(false);
@@ -135,15 +141,22 @@ export const WhatsNewModal = forwardRef<WhatsNewModalRef>((props, ref) => {
             />
 
             <Text style={[styles.title, {color: theme.colors.text}]}>
-              What&apos;s new in <Text style={styles.bayaanText}>Bayaan</Text>
+              <Trans
+                t={t}
+                ns="settings"
+                i18nKey="whatsNew.title"
+                values={{appName: branding.appName}}
+                components={{brand: <Text style={styles.bayaanText} />}}
+              />
             </Text>
 
             <Text style={[styles.version, {color: theme.colors.textSecondary}]}>
               {hasMultipleVersions
-                ? `Versions ${
-                    changelogs[changelogs.length - 1]?.version
-                  } - ${latestVersion}`
-                : `Version ${latestVersion}`}
+                ? t('whatsNew.versionRange', {
+                    from: changelogs[changelogs.length - 1]?.version,
+                    to: latestVersion,
+                  })
+                : t('whatsNew.version', {version: latestVersion})}
             </Text>
 
             <ScrollView
@@ -165,7 +178,9 @@ export const WhatsNewModal = forwardRef<WhatsNewModalRef>((props, ref) => {
                           styles.versionLabel,
                           {color: theme.colors.textSecondary},
                         ]}>
-                        v{changelog.version}
+                        {t('whatsNew.versionShort', {
+                          version: changelog.version,
+                        })}
                       </Text>
                       <View
                         style={[
@@ -223,7 +238,7 @@ export const WhatsNewModal = forwardRef<WhatsNewModalRef>((props, ref) => {
               onPressOut={() => setPressedButton(false)}>
               <Text
                 style={[styles.buttonText, {color: theme.colors.background}]}>
-                Continue
+                {t('common:actions.continue')}
               </Text>
             </TouchableOpacity>
           </Animated.View>
@@ -232,6 +247,7 @@ export const WhatsNewModal = forwardRef<WhatsNewModalRef>((props, ref) => {
     </Modal>
   );
 });
+// @ai-end
 
 WhatsNewModal.displayName = 'WhatsNewModal';
 

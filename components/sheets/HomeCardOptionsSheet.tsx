@@ -30,13 +30,19 @@ import {
   shareUrl,
 } from '@/utils/shareUtils';
 import branding from '@/config/branding';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+import {getSurahDisplayName} from '@/i18n/format';
+// @ai-end
 
+// @ai-start
 export const HomeCardOptionsSheet = (
   props: SheetProps<'home-card-options'>,
 ) => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
   const router = useRouter();
+  const {t} = useTranslation(['sheets', 'common']);
   const {isFavoriteReciter, toggleFavorite} = useFavoriteReciters();
   const {isLovedWithRewayat, toggleLoved} = useLoved();
   const {addToQueue} = usePlayerActions();
@@ -53,6 +59,12 @@ export const HomeCardOptionsSheet = (
     recentIndex,
     variant,
   } = payload;
+
+  const surahForName =
+    surahId !== undefined ? getSurahById(surahId) : undefined;
+  const displaySurahName = surahForName
+    ? getSurahDisplayName(surahForName)
+    : surahName;
 
   const isFavorite = isFavoriteReciter(reciterId);
   const isLoved =
@@ -136,26 +148,35 @@ export const HomeCardOptionsSheet = (
     setTimeout(() => {
       if (variant === 'recent' && surahId !== undefined) {
         const url = recitationShareUrl(slug, surahId, rewayatId);
-        const surahLabel = surahName ?? `surah ${surahId}`;
+        const surahLabel =
+          displaySurahName ?? t('common:labels.surahNumber', {number: surahId});
         shareUrl(
           url,
-          `Listen to ${displayName} reciting ${surahLabel} on ${branding.appName}`,
+          t('homeCardOptions.shareRecitation', {
+            reciter: displayName,
+            surah: surahLabel,
+            appName: branding.appName,
+          }),
         );
         return;
       }
       shareUrl(
         reciterShareUrl(slug),
-        `Listen to ${displayName} on ${branding.appName}`,
+        t('homeCardOptions.shareReciter', {
+          reciter: displayName,
+          appName: branding.appName,
+        }),
       );
     }, 300);
   }, [
     reciterId,
     reciterName,
     surahId,
-    surahName,
+    displaySurahName,
     rewayatId,
     variant,
     handleClose,
+    t,
   ]);
 
   const handleRemoveFromRecents = useCallback(() => {
@@ -173,7 +194,8 @@ export const HomeCardOptionsSheet = (
   const iconSize = moderateScale(18);
   const iconColor = theme.colors.text;
 
-  const title = variant === 'recent' ? (surahName ?? reciterName) : reciterName;
+  const title =
+    variant === 'recent' ? (displaySurahName ?? reciterName) : reciterName;
   const subtitle = variant === 'recent' ? reciterName : undefined;
 
   return (
@@ -198,7 +220,9 @@ export const HomeCardOptionsSheet = (
                 ]}
                 onPress={handleContinuePlaying}>
                 <PlayIcon color={iconColor} size={iconSize} />
-                <Text style={styles.optionText}>Continue playing</Text>
+                <Text style={styles.optionText}>
+                  {t('homeCardOptions.continuePlaying')}
+                </Text>
               </Pressable>
 
               <View style={styles.divider} />
@@ -212,7 +236,9 @@ export const HomeCardOptionsSheet = (
                 <View style={styles.rotatedIcon}>
                   <QueueIcon color={iconColor} size={iconSize} filled={true} />
                 </View>
-                <Text style={styles.optionText}>Add to queue</Text>
+                <Text style={styles.optionText}>
+                  {t('homeCardOptions.addToQueue')}
+                </Text>
               </Pressable>
 
               <View style={styles.divider} />
@@ -226,7 +252,9 @@ export const HomeCardOptionsSheet = (
             ]}
             onPress={handleGoToReciter}>
             <ProfileIcon color={iconColor} size={iconSize} filled={false} />
-            <Text style={styles.optionText}>Go to reciter</Text>
+            <Text style={styles.optionText}>
+              {t('homeCardOptions.goToReciter')}
+            </Text>
           </Pressable>
 
           <View style={styles.divider} />
@@ -240,8 +268,8 @@ export const HomeCardOptionsSheet = (
             <StarIcon color={iconColor} size={iconSize} filled={isFavorite} />
             <Text style={styles.optionText}>
               {isFavorite
-                ? 'Remove reciter from favorites'
-                : 'Add reciter to favorites'}
+                ? t('homeCardOptions.removeReciterFromFavorites')
+                : t('homeCardOptions.addReciterToFavorites')}
             </Text>
           </Pressable>
 
@@ -261,7 +289,9 @@ export const HomeCardOptionsSheet = (
                   filled={isLoved}
                 />
                 <Text style={styles.optionText}>
-                  {isLoved ? 'Remove from loved' : 'Add to loved'}
+                  {isLoved
+                    ? t('homeCardOptions.removeFromLoved')
+                    : t('homeCardOptions.addToLoved')}
                 </Text>
               </Pressable>
 
@@ -274,7 +304,9 @@ export const HomeCardOptionsSheet = (
                 ]}
                 onPress={handleAddToPlaylist}>
                 <Feather name="plus-circle" size={iconSize} color={iconColor} />
-                <Text style={styles.optionText}>Add to collection</Text>
+                <Text style={styles.optionText}>
+                  {t('homeCardOptions.addToCollection')}
+                </Text>
               </Pressable>
             </>
           )}
@@ -288,7 +320,7 @@ export const HomeCardOptionsSheet = (
             ]}
             onPress={handleShare}>
             <Feather name="share" size={iconSize} color={iconColor} />
-            <Text style={styles.optionText}>Share</Text>
+            <Text style={styles.optionText}>{t('common:actions.share')}</Text>
           </Pressable>
         </View>
 
@@ -302,7 +334,7 @@ export const HomeCardOptionsSheet = (
               onPress={handleRemoveFromRecents}>
               <Feather name="minus-circle" size={iconSize} color="#ff4444" />
               <Text style={styles.optionTextDestructive}>
-                Remove from recents
+                {t('homeCardOptions.removeFromRecents')}
               </Text>
             </Pressable>
           </View>
@@ -311,6 +343,7 @@ export const HomeCardOptionsSheet = (
     </ActionSheet>
   );
 };
+// @ai-end
 
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({

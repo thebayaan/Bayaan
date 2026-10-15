@@ -1,0 +1,16 @@
+{
+  "morning": {
+    "superId": "morning-adhkar",
+    "title": "Morning Adhkar",
+    "arabicTitle": "أذكار الصباح",
+    "categoryId": "27",
+    "featured": ["83", "86", "87", "88", "91", "92", "94", "95", "96", "98"]
+  },
+  "evening": {
+    "superId": "evening-adhkar",
+    "title": "Evening Adhkar",
+    "arabicTitle": "أذكار المساء",
+    "categoryId": "27",
+    "featured": ["83", "86", "87", "88", "91", "92", "94", "96", "97", "98"]
+  }
+}

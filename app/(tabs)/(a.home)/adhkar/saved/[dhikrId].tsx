@@ -20,6 +20,10 @@ import {adhkarService} from '@/services/adhkar/AdhkarService';
 import {useAdhkarAudioStore} from '@/store/adhkarAudioStore';
 import {useAdhkarPlayAllStore} from '@/store/adhkarPlayAllStore';
 import {useHeaderHeight} from 'expo-router/react-navigation';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+import {appLayoutDirection} from '@/utils/rtl';
+// @ai-end
 
 const {width: SCREEN_WIDTH} = Dimensions.get('window');
 
@@ -43,6 +47,7 @@ const DhikrPage = React.memo(function DhikrPage({
   );
 });
 
+// @ai-start
 const SavedDhikrReaderScreen: React.FC = () => {
   const {dhikrId, globalIndex: globalIndexParam} = useLocalSearchParams<{
     dhikrId: string;
@@ -52,6 +57,7 @@ const SavedDhikrReaderScreen: React.FC = () => {
   const router = useRouter();
   const navigation = useNavigation();
   const {theme} = useTheme();
+  const {t} = useTranslation('home');
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const headerHeight = useHeaderHeight();
@@ -166,7 +172,7 @@ const SavedDhikrReaderScreen: React.FC = () => {
               fontFamily: theme.fonts.semiBold,
               color: theme.colors.text,
             }}>
-            Saved
+            {t('adhkar.saved')}
           </Text>
           {adhkarList.length > 1 && (
             <Text
@@ -176,13 +182,16 @@ const SavedDhikrReaderScreen: React.FC = () => {
                 color: theme.colors.textSecondary,
                 marginTop: moderateScale(2),
               }}>
-              {currentIndex + 1} of {adhkarList.length}
+              {t('adhkar.position', {
+                current: currentIndex + 1,
+                total: adhkarList.length,
+              })}
             </Text>
           )}
         </View>
       ),
     });
-  }, [navigation, currentIndex, adhkarList.length, theme]);
+  }, [navigation, currentIndex, adhkarList.length, theme, t]);
 
   const handleSaveToggle = useCallback(
     (dhikr: Dhikr) => {
@@ -256,7 +265,7 @@ const SavedDhikrReaderScreen: React.FC = () => {
     return (
       <View style={styles.container}>
         <View style={[styles.loadingContainer, {paddingTop: headerHeight}]}>
-          <Text style={styles.emptyText}>No saved adhkar</Text>
+          <Text style={styles.emptyText}>{t('adhkar.noSaved')}</Text>
         </View>
       </View>
     );
@@ -271,6 +280,7 @@ const SavedDhikrReaderScreen: React.FC = () => {
         ]}>
         <FlatList
           ref={flatListRef}
+          style={appLayoutDirection}
           data={adhkarList}
           renderItem={renderItem}
           keyExtractor={keyExtractor}
@@ -293,6 +303,7 @@ const SavedDhikrReaderScreen: React.FC = () => {
     </View>
   );
 };
+// @ai-end
 
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({

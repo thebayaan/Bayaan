@@ -33,12 +33,21 @@ import {LoadingIndicator} from '@/components/LoadingIndicator';
 import {PlayAllButton} from '@/components/adhkar/PlayAllButton';
 import {Dhikr, SuperCategory} from '@/types/adhkar';
 import {adhkarService} from '@/services/adhkar/AdhkarService';
-import {shortenCategoryTitle} from '@/utils/adhkarUtils';
+// @ai-start
+import {
+  getSuperCategoryDisplayTitle,
+  shortenCategoryTitle,
+} from '@/utils/adhkarUtils';
+// @ai-end
 import {useAdhkarPlayAllStore} from '@/store/adhkarPlayAllStore';
 import {useHeaderHeight} from 'expo-router/react-navigation';
 import {adhkarShareUrl, shareUrl} from '@/utils/shareUtils';
 import {analyticsService} from '@/services/analytics/AnalyticsService';
 import branding from '@/config/branding';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+import {flipX} from '@/utils/rtl';
+// @ai-end
 
 interface DhikrItem {
   dhikr: Dhikr;
@@ -60,11 +69,13 @@ interface CategoryGroup {
   adhkar: Dhikr[];
 }
 
+// @ai-start
 const SuperCategoryListScreen: React.FC = () => {
   const {superId} = useLocalSearchParams<{superId: string}>();
   const router = useRouter();
   const navigation = useNavigation();
   const {theme} = useTheme();
+  const {t} = useTranslation(['home', 'common']);
   const styles = useMemo(() => createStyles(theme), [theme]);
   const headerHeight = useHeaderHeight();
 
@@ -117,8 +128,10 @@ const SuperCategoryListScreen: React.FC = () => {
     return getSuperCategoryById(superId);
   }, [superId, getSuperCategoryById]);
 
-  const displayTitle =
-    superCategory?.title || storedSuperCategory?.title || 'Loading...';
+  const titled = superCategory ?? storedSuperCategory;
+  const displayTitle = titled
+    ? getSuperCategoryDisplayTitle(titled)
+    : t('common:status.loading');
 
   // Determine if this is a single-category super category
   const isSingleCategory = categoryGroups.length === 1;
@@ -173,8 +186,14 @@ const SuperCategoryListScreen: React.FC = () => {
   const handleShare = useCallback(() => {
     if (!superId) return;
     const url = adhkarShareUrl(superId);
-    shareUrl(url, `Check out ${displayTitle} on ${branding.appName}`);
-  }, [superId, displayTitle]);
+    shareUrl(
+      url,
+      t('adhkar.shareCategory', {
+        title: displayTitle,
+        appName: branding.appName,
+      }),
+    );
+  }, [superId, displayTitle, t]);
 
   // Play All handler
   const handlePlayAll = useCallback(() => {
@@ -247,6 +266,7 @@ const SuperCategoryListScreen: React.FC = () => {
             name="chevron-back"
             size={moderateScale(24)}
             color={theme.colors.text}
+            style={flipX}
           />
         </Pressable>
       ),
@@ -368,10 +388,10 @@ const SuperCategoryListScreen: React.FC = () => {
   const ListEmptyComponent = useMemo(
     () => (
       <View style={styles.emptyContainer}>
-        <Text style={styles.emptyText}>No adhkar found</Text>
+        <Text style={styles.emptyText}>{t('adhkar.noneFound')}</Text>
       </View>
     ),
-    [styles.emptyContainer, styles.emptyText],
+    [styles.emptyContainer, styles.emptyText, t],
   );
 
   if (!superId) {
@@ -431,6 +451,7 @@ const SuperCategoryListScreen: React.FC = () => {
     </View>
   );
 };
+// @ai-end
 
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({

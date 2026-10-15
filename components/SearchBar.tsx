@@ -5,6 +5,10 @@ import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {MotiView} from 'moti';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+import {isRTL} from '@/utils/rtl';
+// @ai-end
 
 interface SearchBarProps {
   placeholder: string;
@@ -22,6 +26,7 @@ export interface SearchBarRef {
   focusSearchBar: () => void;
 }
 
+// @ai-start
 const SearchBar = forwardRef<SearchBarRef, SearchBarProps>(
   (
     {
@@ -40,6 +45,7 @@ const SearchBar = forwardRef<SearchBarRef, SearchBarProps>(
     const [isFocused, setIsFocused] = useState(false);
     const inputRef = useRef<TextInput>(null);
     const {theme} = useTheme();
+    const {t} = useTranslation(['home', 'common']);
     const styles = createStyles(theme);
     const iconRotation = useRef(new Animated.Value(0)).current;
 
@@ -153,10 +159,12 @@ const SearchBar = forwardRef<SearchBarRef, SearchBarProps>(
         </MotiView>
         {isFocused && (
           <MotiView
-            from={{opacity: 0, translateX: 20}}
+            from={{opacity: 0, translateX: isRTL ? -20 : 20}}
             animate={{opacity: 1, translateX: 0}}>
             <Pressable style={styles.cancelButton} onPress={handleCancel}>
-              <Text style={styles.cancelButtonText}>Cancel</Text>
+              <Text style={styles.cancelButtonText}>
+                {t('common:actions.cancel')}
+              </Text>
             </Pressable>
           </MotiView>
         )}
@@ -164,6 +172,7 @@ const SearchBar = forwardRef<SearchBarRef, SearchBarProps>(
     );
   },
 );
+// @ai-end
 
 SearchBar.displayName = 'SearchBar';
 

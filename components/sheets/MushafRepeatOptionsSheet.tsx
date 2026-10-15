@@ -12,29 +12,34 @@ import ActionSheet, {
 import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
 import {SURAHS} from '@/data/surahData';
 import Color from 'color';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+import i18n from '@/i18n';
+import {getSurahDisplayName, localizeDigits} from '@/i18n/format';
+// @ai-end
 
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
 
-const VERSE_REPEAT_OPTIONS = [
-  {label: '1 time', value: 1},
-  {label: '2 times', value: 2},
-  {label: '3 times', value: 3},
-  {label: 'Loop', value: 0},
-];
+// @ai-start
+const REPEAT_VALUES = [1, 2, 3, 0];
+// @ai-end
 
-const RANGE_REPEAT_OPTIONS = [
-  {label: '1 time', value: 1},
-  {label: '2 times', value: 2},
-  {label: '3 times', value: 3},
-  {label: 'Loop', value: 0},
-];
+// @ai-start
+function getRepeatLabel(value: number): string {
+  return value === 0
+    ? i18n.t('sheets:repeat.loop')
+    : i18n.t('sheets:repeat.times', {count: value});
+}
+// @ai-end
 
+// @ai-start
 export const MushafRepeatOptionsSheet = (
   props: SheetProps<'mushaf-repeat-options'>,
 ) => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
   const insets = useSafeAreaInsets();
+  const {t} = useTranslation('sheets');
 
   const verseKey = props.payload?.verseKey ?? '';
   const verseKeys = props.payload?.verseKeys;
@@ -83,9 +88,13 @@ export const MushafRepeatOptionsSheet = (
   );
 
   const verseRefText = useMemo(() => {
-    const surahName = surahInfo?.name ?? '';
-    if (fromAyah === toAyah) return `${surahName} ${surahNumber}:${fromAyah}`;
-    return `${surahName} ${surahNumber}:${fromAyah}-${toAyah}`;
+    const surahName = surahInfo ? getSurahDisplayName(surahInfo) : '';
+    if (fromAyah === toAyah) {
+      return `${surahName} ${localizeDigits(`${surahNumber}:${fromAyah}`)}`;
+    }
+    return `${surahName} ${localizeDigits(
+      `${surahNumber}:${fromAyah}-${toAyah}`,
+    )}`;
   }, [surahInfo, surahNumber, fromAyah, toAyah]);
 
   const handleRateChange = useCallback((newRate: number) => {
@@ -118,13 +127,13 @@ export const MushafRepeatOptionsSheet = (
       indicatorStyle={styles.indicator}
       gestureEnabled={true}>
       <View style={styles.container}>
-        <Text style={styles.title}>Repeat Settings</Text>
+        <Text style={styles.title}>{t('repeat.title')}</Text>
         <Text style={styles.subtitle}>{verseRefText}</Text>
 
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Verse range</Text>
+          <Text style={styles.sectionLabel}>{t('repeat.verseRange')}</Text>
           <View style={styles.rangeRow}>
-            <Text style={styles.rangeLabel}>From</Text>
+            <Text style={styles.rangeLabel}>{t('repeat.from')}</Text>
             <View style={styles.stepperContainer}>
               <Pressable
                 style={[
@@ -143,7 +152,9 @@ export const MushafRepeatOptionsSheet = (
                   }
                 />
               </Pressable>
-              <Text style={styles.stepperValue}>{fromAyah}</Text>
+              <Text style={styles.stepperValue}>
+                {localizeDigits(fromAyah)}
+              </Text>
               <Pressable
                 style={[
                   styles.stepperButton,
@@ -164,7 +175,7 @@ export const MushafRepeatOptionsSheet = (
             </View>
           </View>
           <View style={styles.rangeRow}>
-            <Text style={styles.rangeLabel}>To</Text>
+            <Text style={styles.rangeLabel}>{t('repeat.to')}</Text>
             <View style={styles.stepperContainer}>
               <Pressable
                 style={[
@@ -183,7 +194,7 @@ export const MushafRepeatOptionsSheet = (
                   }
                 />
               </Pressable>
-              <Text style={styles.stepperValue}>{toAyah}</Text>
+              <Text style={styles.stepperValue}>{localizeDigits(toAyah)}</Text>
               <Pressable
                 style={[
                   styles.stepperButton,
@@ -206,7 +217,7 @@ export const MushafRepeatOptionsSheet = (
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Play speed</Text>
+          <Text style={styles.sectionLabel}>{t('repeat.playSpeed')}</Text>
           <View style={styles.chipRowFlex}>
             {SPEEDS.map(speed => {
               const isActive = rate === speed;
@@ -220,7 +231,7 @@ export const MushafRepeatOptionsSheet = (
                       styles.chipText,
                       isActive && styles.chipTextActive,
                     ]}>
-                    {speed}x
+                    {t('playbackSpeed.speed', {speed})}
                   </Text>
                 </Pressable>
               );
@@ -229,21 +240,21 @@ export const MushafRepeatOptionsSheet = (
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Play each verse</Text>
+          <Text style={styles.sectionLabel}>{t('repeat.eachVerse')}</Text>
           <View style={styles.chipRowFlex}>
-            {VERSE_REPEAT_OPTIONS.map(opt => {
-              const isActive = verseRepeat === opt.value;
+            {REPEAT_VALUES.map(value => {
+              const isActive = verseRepeat === value;
               return (
                 <Pressable
-                  key={opt.value}
+                  key={value}
                   style={[styles.chipFlex, isActive && styles.chipActive]}
-                  onPress={() => setVerseRepeat(opt.value)}>
+                  onPress={() => setVerseRepeat(value)}>
                   <Text
                     style={[
                       styles.chipText,
                       isActive && styles.chipTextActive,
                     ]}>
-                    {opt.label}
+                    {getRepeatLabel(value)}
                   </Text>
                 </Pressable>
               );
@@ -252,21 +263,21 @@ export const MushafRepeatOptionsSheet = (
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Play the range</Text>
+          <Text style={styles.sectionLabel}>{t('repeat.range')}</Text>
           <View style={styles.chipRowFlex}>
-            {RANGE_REPEAT_OPTIONS.map(opt => {
-              const isActive = rangeRepeat === opt.value;
+            {REPEAT_VALUES.map(value => {
+              const isActive = rangeRepeat === value;
               return (
                 <Pressable
-                  key={opt.value}
+                  key={value}
                   style={[styles.chipFlex, isActive && styles.chipActive]}
-                  onPress={() => setRangeRepeat(opt.value)}>
+                  onPress={() => setRangeRepeat(value)}>
                   <Text
                     style={[
                       styles.chipText,
                       isActive && styles.chipTextActive,
                     ]}>
-                    {opt.label}
+                    {getRepeatLabel(value)}
                   </Text>
                 </Pressable>
               );
@@ -279,12 +290,13 @@ export const MushafRepeatOptionsSheet = (
         style={[styles.stickyFooter, {paddingBottom: insets.bottom + ms(4)}]}>
         <Pressable style={styles.playButton} onPress={handleStart}>
           <Ionicons name="play" size={ms(18)} color={theme.colors.background} />
-          <Text style={styles.playButtonText}>Start</Text>
+          <Text style={styles.playButtonText}>{t('repeat.start')}</Text>
         </Pressable>
       </View>
     </ActionSheet>
   );
 };
+// @ai-end
 
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({

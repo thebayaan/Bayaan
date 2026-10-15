@@ -7,12 +7,50 @@
  * This service only manages: which player is active for lock screen, and metadata updates.
  */
 
+import {Platform} from 'react-native';
 import type {AudioPlayer, AudioMetadata} from 'expo-audio';
 import {usePlayerStore} from '@/services/player/store/playerStore';
-import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
+import {
+  useMushafPlayerStore,
+  type MushafPlayerStoreState, // @ai
+} from '@/store/mushafPlayerStore';
 import {expoAudioService} from './ExpoAudioService';
 import {mushafAudioService} from './MushafAudioService';
 import {audioCoordinator} from './AudioCoordinator';
+
+// @ai-start
+function surahNameOf(surah: number): string | null {
+  const surahData = require('@/data/surahData.json') as Array<{
+    id: number;
+    name: string;
+  }>;
+  return surahData.find(s => s.id === surah)?.name ?? null;
+}
+
+/**
+ * Lock screen title for mushaf playback: "Al-Baqarah · 2:4", with the verse
+ * in the numbering of the mushaf on screen (the player bar's label). The
+ * surah name alone when the surah plays without verse tracking, or when what
+ * is recited has no verse number in that mushaf. Null until the first verse
+ * of a tracked surah is known (the title is left as it is meanwhile).
+ */
+export function mushafLockScreenTitle(
+  state: Pick<
+    MushafPlayerStoreState,
+    'currentSurah' | 'currentVerseKey' | 'currentVerseLabel' | 'numberingMode'
+  >,
+  surahName: (surah: number) => string | null = surahNameOf,
+): string | null {
+  const {currentSurah, currentVerseKey, currentVerseLabel, numberingMode} =
+    state;
+  if (currentSurah <= 0) return null;
+  const name = surahName(currentSurah);
+  if (numberingMode === 'disabled') return name;
+  if (!currentVerseKey) return null;
+  if (!currentVerseLabel) return name;
+  return name ? `${name} · ${currentVerseLabel}` : currentVerseLabel;
+}
+// @ai-end
 
 class LockScreenService {
   private static instance: LockScreenService;
@@ -20,7 +58,9 @@ class LockScreenService {
   private mushafStoreUnsubscribe: (() => void) | null = null;
   private lastTrackId: string | null = null;
   private isMushafActive = false;
-  private lastMushafVerseKey: string | null = null;
+  private lastMushafTitle: string | null = null; // @ai
+  private carMode = false;
+  private carAyahLabel: string | null = null;
 
   private constructor() {}
 
@@ -62,7 +102,7 @@ class LockScreenService {
 
     this.lastTrackId = null;
     this.isMushafActive = false;
-    this.lastMushafVerseKey = null;
+    this.lastMushafTitle = null; // @ai
 
     if (__DEV__) console.log('[LockScreenService] Sync stopped');
   }
@@ -73,6 +113,43 @@ class LockScreenService {
   async cleanup(): Promise<void> {
     this.stopSync();
     if (__DEV__) console.log('[LockScreenService] Cleaned up');
+  }
+
+  /**
+   * While a car is connected, hide the 10s skip buttons so CarPlay shows
+   * previous / next surah instead. Restored on disconnect. On Android this
+   * only affects the phone notification.
+   */
+  setCarMode(enabled: boolean): void {
+    if (this.carMode === enabled) return;
+    this.carMode = enabled;
+    if (this.isMushafActive) return;
+    const {queue} = usePlayerStore.getState();
+    const track = queue.tracks[queue.currentIndex];
+    if (track) this.activateMainPlayer(track);
+  }
+
+  /**
+   * Car mode only: the current ayah ("Ayah 12 of 110") shown after the
+   * reciter on CarPlay's Now Playing, which reads the lock screen metadata.
+   * iOS only: Android Auto reads the car bridge's now playing instead, and
+   * expo-audio on Android reloads the artwork on every metadata update.
+   * Null clears it.
+   */
+  setCarAyahLabel(label: string | null): void {
+    if (Platform.OS !== 'ios') return;
+    if (this.carAyahLabel === label) return;
+    this.carAyahLabel = label;
+    if (this.isMushafActive) return;
+    const player = expoAudioService.getPlayer();
+    const {queue} = usePlayerStore.getState();
+    const track = queue.tracks[queue.currentIndex];
+    if (!player || !track) return;
+    try {
+      player.updateLockScreenMetadata(this.mainMetadata(track));
+    } catch {
+      // Player may not be active for the lock screen yet
+    }
   }
 
   // ========== PRIVATE ==========
@@ -96,6 +173,19 @@ class LockScreenService {
     }
   }
 
+  private mainMetadata(track: {
+    title: string;
+    artist: string;
+    artwork?: string;
+  }): AudioMetadata {
+    const label = this.carMode ? this.carAyahLabel : null;
+    return {
+      title: track.title,
+      artist: label ? `${track.artist} · ${label}` : track.artist,
+      artworkUrl: track.artwork,
+    };
+  }
+
   private activateMainPlayer(track: {
     title: string;
     artist: string;
@@ -105,16 +195,12 @@ class LockScreenService {
     const player = expoAudioService.getPlayer();
     if (!player) return;
 
-    const metadata: AudioMetadata = {
-      title: track.title,
-      artist: track.artist,
-      artworkUrl: track.artwork,
-    };
+    const metadata = this.mainMetadata(track);
 
     try {
       player.setActiveForLockScreen(true, metadata, {
-        showSeekForward: true,
-        showSeekBackward: true,
+        showSeekForward: !this.carMode,
+        showSeekBackward: !this.carMode,
       });
     } catch (error) {
       if (__DEV__)
@@ -168,7 +254,7 @@ class LockScreenService {
 
   private subscribeToMushafStore(): void {
     this.mushafStoreUnsubscribe = useMushafPlayerStore.subscribe(state => {
-      const {playbackState, currentVerseKey, reciterName, currentSurah} = state;
+      const {playbackState, reciterName} = state; // @ai
 
       // Detect mushaf becoming active
       if (playbackState === 'playing' || playbackState === 'loading') {
@@ -179,37 +265,31 @@ class LockScreenService {
         }
       }
 
-      // Update metadata when verse changes
-      if (this.isMushafActive && currentVerseKey !== this.lastMushafVerseKey) {
-        this.lastMushafVerseKey = currentVerseKey;
-
-        if (currentVerseKey && currentSurah > 0) {
-          try {
-            const surahData = require('@/data/surahData.json');
-            const surah = surahData.find(
-              (s: {id: number; name: string}) => s.id === currentSurah,
-            );
-            const title = surah
-              ? `${surah.name} · ${currentVerseKey}`
-              : currentVerseKey;
-
-            const player = mushafAudioService.getPlayer();
-            if (player) {
-              player.updateLockScreenMetadata({
-                title,
-                artist: reciterName || 'Quran',
-              });
-            }
-          } catch {
-            // Silently ignore metadata update failures
+      // @ai-start
+      // Update metadata when the title changes: a new verse, or a new surah
+      // even when it has no verse tracking (it must not keep the previous
+      // surah's title).
+      const title = this.isMushafActive ? mushafLockScreenTitle(state) : null;
+      if (title && title !== this.lastMushafTitle) {
+        this.lastMushafTitle = title;
+        try {
+          const player = mushafAudioService.getPlayer();
+          if (player) {
+            player.updateLockScreenMetadata({
+              title,
+              artist: reciterName || 'Quran',
+            });
           }
+        } catch {
+          // Silently ignore metadata update failures
         }
       }
+      // @ai-end
 
       // Detect mushaf becoming idle — revert to main player
       if (this.isMushafActive && playbackState === 'idle') {
         this.isMushafActive = false;
-        this.lastMushafVerseKey = null;
+        this.lastMushafTitle = null; // @ai
 
         // Clear mushaf lock screen and restore main player
         this.clearPlayer(mushafAudioService.getPlayer());

@@ -1,3 +1,9 @@
+// @ai-start
+import i18n from '@/i18n';
+import {uiFontFiles} from '@/i18n/fonts';
+import {bootstrapDirection} from '@/i18n/language';
+import {appDirection, appLayoutDirection, isRTL} from '@/utils/rtl';
+// @ai-end
 import React, {useEffect, useState, useRef, useCallback, useMemo} from 'react';
 import {Stack, useRouter} from 'expo-router';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
@@ -5,7 +11,6 @@ import {useFonts} from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import * as SystemUI from 'expo-system-ui';
 import {usePlayerStore} from '@/services/player/store/playerStore';
-import {useDownloadStore} from '@/services/player/store/downloadStore';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 import {
@@ -16,10 +21,13 @@ import {
   StatusBar as RNStatusBar,
   Appearance,
   InteractionManager,
+  Linking,
   type AppStateStatus,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
-import {ThemeProvider} from 'expo-router';
+// @ai-start
+import {LocaleDirContext, ThemeProvider} from 'expo-router/react-navigation';
+// @ai-end
 import {PlayerSheet} from '@/components/player/v2/PlayerSheet';
 import {
   WhatsNewModal,
@@ -33,21 +41,23 @@ import {
   ReanimatedLogLevel,
 } from 'react-native-reanimated';
 import {preloadTajweedData} from '@/utils/tajweedLoader';
-import {appInitializer} from '@/services/AppInitializer';
+import {bootApp} from '@/services/appBoot';
 import {NetworkStatusMonitor} from '@/components/NetworkStatusMonitor';
 import {useNetworkMonitor} from '@/hooks/useNetworkMonitor';
 import {PostHogProvider, usePostHog} from 'posthog-react-native';
+import {startWidgetSync} from '@/services/widgets/syncWidgets';
+import {startContentWidgetSync} from '@/services/widgets/syncContentWidgets';
+import {startConfiguredWidgetSync} from '@/services/widgets/syncConfiguredWidgets';
+import {startLiveActivitySync} from '@/services/widgets/live-activity/syncLiveActivity';
 import {analyticsService} from '@/services/analytics/AnalyticsService';
 import {ExpoAudioProvider} from '@/services/audio';
-import {expoAudioService} from '@/services/audio/ExpoAudioService';
-import {restoreSession} from '@/services/player/utils/restoreSession';
-import {getAllReciters} from '@/services/dataService';
 import {useShareIntent} from 'expo-share-intent';
 import {useUploadsStore} from '@/store/uploadsStore';
 import {SheetManager} from 'react-native-actions-sheet';
 import {showToast} from '@/utils/toastUtils';
 import {mushafSessionStore} from '@/services/mushaf/MushafSessionStore';
 import {USE_GLASS} from '@/hooks/useGlassProps';
+import Constants from 'expo-constants';
 import * as Sentry from '@sentry/react-native';
 import * as ScreenOrientation from 'expo-screen-orientation';
 
@@ -73,11 +83,49 @@ SystemUI.setBackgroundColorAsync(
 
 const analyticsEnabled = process.env.EXPO_PUBLIC_ANALYTICS_ENABLED !== 'false';
 
+// Narrows the `any`-typed expoConfig.extra.version without an `as` cast.
+function isVersionInfo(
+  value: unknown,
+): value is {semanticVersion: string; buildNumber: string | number} {
+  if (value == null || typeof value !== 'object') return false;
+  const v = value as Record<string, unknown>;
+  return (
+    typeof v.semanticVersion === 'string' &&
+    (typeof v.buildNumber === 'string' || typeof v.buildNumber === 'number')
+  );
+}
+
 if (analyticsEnabled) {
+  // Explicit release + dist tagging. Android events were landing with no
+  // release (`release: None`), so crashes/ANRs couldn't be tied to a build.
+  // Derive both from the build-time version injected into
+  // expoConfig.extra.version by scripts/generate-version.js — reliable on both
+  // platforms, unlike Sentry's native auto-detection. `undefined` is a safe
+  // no-op (Sentry falls back to auto-detect), so a missing manifest can't
+  // regress the current behavior.
+  const rawVersion: unknown = Constants.expoConfig?.extra?.version;
+  const versionInfo = isVersionInfo(rawVersion) ? rawVersion : undefined;
+  const appId =
+    Constants.expoConfig?.ios?.bundleIdentifier ??
+    Constants.expoConfig?.android?.package;
+  // Require appId too — without it the template literal would stringify
+  // `undefined` into the release name (e.g. "undefined@2.2.1+935"). Falling
+  // back to an undefined release is the safe no-op (Sentry auto-detects).
+  const sentryRelease =
+    versionInfo != null && appId != null
+      ? `${appId}@${versionInfo.semanticVersion}+${versionInfo.buildNumber}`
+      : undefined;
+  const sentryDist =
+    versionInfo?.buildNumber != null
+      ? String(versionInfo.buildNumber)
+      : undefined;
+
   Sentry.init({
     dsn: process.env.EXPO_PUBLIC_SENTRY_DSN ?? '',
     tracesSampleRate: 0.2,
     enableAutoSessionTracking: true,
+    release: sentryRelease,
+    dist: sentryDist,
   });
 }
 
@@ -112,7 +160,11 @@ function AnalyticsConnector(): null {
   return null;
 }
 
+// @ai-start
 function RootLayout() {
+  // Start reloads after the root has mounted, when native reload listeners are
+  // ready, rather than as a side effect of importing translation resources.
+  useEffect(bootstrapDirection, []);
   const [appIsReady, setAppIsReady] = useState(false);
   const [isPlayerReady, setIsPlayerReady] = useState(false);
   const [mushafRestoreHandled, setMushafRestoreHandled] = useState(false);
@@ -147,13 +199,7 @@ function RootLayout() {
 
   // Critical fonts — block splash screen on these only
   const [fontsLoaded, fontError] = useFonts({
-    'Manrope-Regular': require('@/assets/fonts/Manrope-Regular.ttf'),
-    'Manrope-Bold': require('@/assets/fonts/Manrope-Bold.ttf'),
-    'Manrope-Medium': require('@/assets/fonts/Manrope-Medium.ttf'),
-    'Manrope-SemiBold': require('@/assets/fonts/Manrope-SemiBold.ttf'),
-    'Manrope-Light': require('@/assets/fonts/Manrope-Light.ttf'),
-    'Manrope-ExtraLight': require('@/assets/fonts/Manrope-ExtraLight.ttf'),
-    'Manrope-ExtraBold': require('@/assets/fonts/Manrope-ExtraBold.ttf'),
+    ...uiFontFiles,
     SurahNames: require('@/assets/fonts/surah_names.ttf'),
     SurahNames2: require('@/assets/fonts/surah_names_2.ttf'),
   });
@@ -168,6 +214,22 @@ function RootLayout() {
   useEffect(() => {
     ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
   }, []);
+
+  // Start after init so the first snapshot sees the restored session and
+  // stores instead of overwriting the widgets with an empty state.
+  useEffect(() => {
+    if (!appIsReady) return;
+    const stopLiveActivity = startLiveActivitySync();
+    const stopSnapshot = startWidgetSync();
+    const stopConfigured = startConfiguredWidgetSync();
+    const stopContent = startContentWidgetSync();
+    return () => {
+      stopSnapshot();
+      stopConfigured();
+      stopContent();
+      stopLiveActivity();
+    };
+  }, [appIsReady]);
 
   // Tajweed data — defer until after first frame + interactions complete
   useEffect(() => {
@@ -207,40 +269,7 @@ function RootLayout() {
 
     async function prepare() {
       try {
-        if (__DEV__)
-          console.log('[App] Starting initialization with expo-audio...');
-
-        // Initialize expo-audio service
-        await expoAudioService.initialize();
-        if (__DEV__) console.log('[App] expo-audio service initialized');
-
-        // Fetch reciter data from backend API (or fallback if killswitch active)
-        await getAllReciters();
-        if (__DEV__) console.log('[App] Reciter data loaded');
-
-        // Initialize all SQLite services, adhkar, playlists, mushaf, fonts, stores, etc.
-        // This blocks splash screen so everything is ready when the user sees the app
-        await appInitializer.initialize();
-        if (__DEV__) console.log('[App] AppInitializer complete');
-
-        // PRE-WARM: Initialize stores BEFORE first play to prevent cold start lag
-        try {
-          useDownloadStore.getState();
-          if (__DEV__) console.log('[App] Download store pre-warmed');
-
-          usePlayerStore.getState();
-          if (__DEV__) console.log('[App] Player store pre-warmed');
-        } catch (error) {
-          console.debug('[App] Failed to pre-warm stores:', error);
-        }
-
-        // Restore last session so floating player + lock screen show last track
-        try {
-          await restoreSession();
-          if (__DEV__) console.log('[App] Session restored');
-        } catch (error) {
-          console.debug('[App] Failed to restore session:', error);
-        }
+        await bootApp();
 
         // Mark app as ready
         setIsPlayerReady(true);
@@ -267,7 +296,6 @@ function RootLayout() {
     }
 
     prepare();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Set native root view background + configure Android navigation bar to match theme
@@ -332,23 +360,23 @@ function RootLayout() {
           const file = audioFiles[0];
           const recitation = await importFile(
             file.path,
-            file.fileName || 'Shared Audio',
+            file.fileName || i18n.t('app.sharedAudio'),
           );
           resetShareIntent();
           await SplashScreen.hideAsync();
-          showToast('File imported');
+          showToast(i18n.t('app.fileImported'));
           SheetManager.show('organize-recitation', {
             payload: {recitation},
           });
         } else {
           const mapped = audioFiles.map(f => ({
             uri: f.path,
-            name: f.fileName || 'Shared Audio',
+            name: f.fileName || i18n.t('app.sharedAudio'),
           }));
           await importFiles(mapped);
           resetShareIntent();
           await SplashScreen.hideAsync();
-          showToast(`${audioFiles.length} files imported`);
+          showToast(i18n.t('app.filesImported', {count: audioFiles.length}));
           router.push('/collection/uploads');
         }
       } catch (error) {
@@ -372,21 +400,32 @@ function RootLayout() {
   useEffect(() => {
     if (!appIsReady || !isPlayerReady || hasShareIntent) return;
 
-    const lastScreenWasMushaf = mushafSessionStore.getLastScreenWasMushaf();
-    const lastReadPage = mushafSessionStore.getLastReadPage();
+    let cancelled = false;
+    // A launch from a deep link (widget tap, notification) already routed
+    // to its target; pushing the mushaf on top would hide it.
+    Linking.getInitialURL()
+      .catch(() => null)
+      .then(initialUrl => {
+        if (cancelled) return;
+        const lastScreenWasMushaf = mushafSessionStore.getLastScreenWasMushaf();
+        const lastReadPage = mushafSessionStore.getLastReadPage();
 
-    if (lastScreenWasMushaf) {
-      router.push({
-        pathname: '/mushaf',
-        params: lastReadPage ? {page: String(lastReadPage)} : undefined,
+        if (!lastScreenWasMushaf || initialUrl) {
+          setMushafRestoreHandled(true);
+          return;
+        }
+        router.push({
+          pathname: '/mushaf',
+          params: lastReadPage ? {page: String(lastReadPage)} : undefined,
+        });
+        // Let the navigation animation finish behind the splash before revealing
+        InteractionManager.runAfterInteractions(() => {
+          setMushafRestoreHandled(true);
+        });
       });
-      // Let the navigation animation finish behind the splash before revealing
-      InteractionManager.runAfterInteractions(() => {
-        setMushafRestoreHandled(true);
-      });
-    } else {
-      setMushafRestoreHandled(true);
-    }
+    return () => {
+      cancelled = true;
+    };
   }, [appIsReady, isPlayerReady, hasShareIntent]);
 
   // Hide splash once mushaf restore (if any) has settled.
@@ -414,7 +453,7 @@ function RootLayout() {
     SplashScreen.hideAsync();
     return (
       <View style={{flex: 1, alignItems: 'center', justifyContent: 'center'}}>
-        <Text>Error loading fonts</Text>
+        <Text>{i18n.t('app.fontError')}</Text>
       </View>
     );
   }
@@ -423,7 +462,7 @@ function RootLayout() {
     SplashScreen.hideAsync();
     return (
       <View style={{flex: 1, alignItems: 'center', justifyContent: 'center'}}>
-        <Text>Error initializing player: {setupError.message}</Text>
+        <Text>{i18n.t('app.initError', {message: setupError.message})}</Text>
       </View>
     );
   }
@@ -448,55 +487,64 @@ function RootLayout() {
           captureScreens: true,
         }}>
         <AnalyticsConnector />
-        <ThemeProvider value={navigationTheme}>
-          <SafeAreaProvider>
-            <ExpoAudioProvider>
-              <GestureHandlerRootView
-                style={{flex: 1, backgroundColor: theme.colors.background}}
-                // @ts-ignore - RN supports this on iOS to override system theme for native UI (keyboard, menus, alerts)
-                overrideUserInterfaceStyle={isDarkMode ? 'dark' : 'light'}
-                onLayout={onLayoutRootView}>
-                <NetworkStatusMonitor />
-                <SheetProvider>
-                  <Stack
-                    screenOptions={{
-                      headerShown: false,
-                      contentStyle: {
-                        paddingTop: 0,
-                        backgroundColor: theme.colors.background,
-                      },
-                      animation: 'fade',
-                    }}>
-                    <Stack.Screen
-                      name="(tabs)"
-                      options={{headerShown: false}}
-                    />
-                    <Stack.Screen
-                      name="mushaf"
-                      options={{
-                        headerShown: USE_GLASS,
-                        headerTransparent: true,
-                        headerStyle: {backgroundColor: 'transparent'},
-                        headerShadowVisible: false,
-                        headerTitle: '',
-                        headerTitleAlign: 'center',
-                        headerBackButtonDisplayMode: 'minimal',
-                        animation: 'slide_from_right',
-                        fullScreenGestureEnabled: false,
-                      }}
-                    />
-                  </Stack>
-                  <PlayerSheet />
-                  <WhatsNewModal ref={whatsNewModalRef} />
-                  <DevMenu whatsNewModalRef={whatsNewModalRef} />
-                </SheetProvider>
-              </GestureHandlerRootView>
-            </ExpoAudioProvider>
-          </SafeAreaProvider>
-        </ThemeProvider>
+        <LocaleDirContext.Provider value={appDirection}>
+          <ThemeProvider value={navigationTheme}>
+            <SafeAreaProvider>
+              <ExpoAudioProvider>
+                <GestureHandlerRootView
+                  style={[
+                    {flex: 1, backgroundColor: theme.colors.background},
+                    appLayoutDirection,
+                  ]}
+                  // @ts-ignore - RN supports this on iOS to override system theme for native UI (keyboard, menus, alerts)
+                  overrideUserInterfaceStyle={isDarkMode ? 'dark' : 'light'}
+                  onLayout={onLayoutRootView}>
+                  <NetworkStatusMonitor />
+                  <SheetProvider>
+                    <Stack
+                      screenOptions={{
+                        headerShown: false,
+                        contentStyle: {
+                          direction: appDirection,
+                          paddingTop: 0,
+                          backgroundColor: theme.colors.background,
+                        },
+                        animation: 'fade',
+                      }}>
+                      <Stack.Screen
+                        name="(tabs)"
+                        options={{headerShown: false}}
+                      />
+                      <Stack.Screen
+                        name="mushaf"
+                        options={{
+                          headerShown: USE_GLASS,
+                          headerTransparent: true,
+                          headerStyle: {backgroundColor: 'transparent'},
+                          headerShadowVisible: false,
+                          headerTitle: '',
+                          headerTitleAlign: 'center',
+                          headerBackButtonDisplayMode: 'minimal',
+                          animation: isRTL
+                            ? 'slide_from_left'
+                            : 'slide_from_right',
+                          fullScreenGestureEnabled: false,
+                        }}
+                      />
+                    </Stack>
+                    <PlayerSheet />
+                    <WhatsNewModal ref={whatsNewModalRef} />
+                    <DevMenu whatsNewModalRef={whatsNewModalRef} />
+                  </SheetProvider>
+                </GestureHandlerRootView>
+              </ExpoAudioProvider>
+            </SafeAreaProvider>
+          </ThemeProvider>
+        </LocaleDirContext.Provider>
       </PostHogProvider>
     </ErrorBoundary>
   );
 }
+// @ai-end
 
 export default Sentry.wrap(RootLayout);

@@ -30,6 +30,23 @@ import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
 import {Feather} from '@expo/vector-icons';
 import {USE_GLASS} from '@/hooks/useGlassProps';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+import i18n from '@/i18n';
+import {getReciterDisplayName} from '@/i18n/format';
+// @ai-end
+
+// @ai-start
+const KNOWN_STYLES = ['murattal', 'mojawwad', 'molim'] as const;
+// @ai-end
+
+// @ai-start
+function getStyleLabel(style: string): string {
+  const known = KNOWN_STYLES.find(s => s === style.toLowerCase());
+  if (known) return i18n.t(`common:styles.${known}`);
+  return style.charAt(0).toUpperCase() + style.slice(1);
+}
+// @ai-end
 
 interface DownloadTrackData {
   download: DownloadedSurah;
@@ -42,10 +59,12 @@ interface ReciterDownloadsListProps {
   reciterId: string;
 }
 
+// @ai-start
 export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
   reciterId,
 }) => {
   const {theme} = useTheme();
+  const {t} = useTranslation(['collection', 'common']);
   const downloads = useDownloads();
   const {removeDownload} = useDownloadActions();
   const {startNewChain} = useRecentlyPlayedStore();
@@ -127,10 +146,9 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
               r => r.id === download.rewayatId,
             );
             if (rewayat) {
-              // Capitalize style
-              const capitalizedStyle =
-                rewayat.style.charAt(0).toUpperCase() + rewayat.style.slice(1);
-              rewayatName = `${getDisplayLabelFromName(rewayat.name)} \u2022 ${capitalizedStyle}`;
+              rewayatName = `${getDisplayLabelFromName(
+                rewayat.name,
+              )} \u2022 ${getStyleLabel(rewayat.style)}`;
             }
           }
 
@@ -340,16 +358,18 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
     [handleTrackPress, addToQueue, handleRemoveDownload],
   );
 
+  const reciterDisplayName = reciter ? getReciterDisplayName(reciter) : null;
+
   const handleRemoveAllDownloads = useCallback(() => {
     SheetManager.show('collection-options', {
       payload: {
-        title: reciter?.name || 'Downloads',
-        subtitle: `${reciterDownloads.length} ${
-          reciterDownloads.length === 1 ? 'surah' : 'surahs'
-        } downloaded`,
+        title: reciterDisplayName || t('common:terms.downloads'),
+        subtitle: t('downloadsScreen.surahsDownloaded', {
+          count: reciterDownloads.length,
+        }),
         options: [
           {
-            label: 'Remove All Downloads',
+            label: t('downloadsScreen.removeAll'),
             icon: 'trash-2',
             destructive: true,
             onPress: async () => {
@@ -365,7 +385,7 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
         ],
       },
     });
-  }, [reciterDownloads, reciter?.name, removeDownload]);
+  }, [reciterDownloads, reciterDisplayName, removeDownload, t]);
 
   const renderHeaderRight = useCallback(
     () => (
@@ -381,7 +401,7 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
   );
 
   useCollectionNativeHeader({
-    title: reciter?.name || 'Downloads',
+    title: reciterDisplayName || t('common:terms.downloads'),
     scrollY,
     hasContent: downloadData.length > 0 && !loading,
     headerRight: downloadData.length > 0 ? renderHeaderRight : undefined,
@@ -392,10 +412,11 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
       <ReciterDownloadsHeader
         reciterId={reciterId}
         reciterName={reciter?.name || 'Reciter'}
+        reciterDisplayName={reciterDisplayName || t('common:terms.reciter')}
         reciterImageUrl={reciter?.image_url || undefined}
-        subtitle={`${downloadData.length} ${
-          downloadData.length === 1 ? 'surah' : 'surahs'
-        } downloaded`}
+        subtitle={t('downloadsScreen.surahsDownloaded', {
+          count: downloadData.length,
+        })}
         onPlayPress={handlePlayAll}
         onShufflePress={handleShuffle}
         onOptionsPress={USE_GLASS ? undefined : handleRemoveAllDownloads}
@@ -410,6 +431,8 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
     handleShuffle,
     handleRemoveAllDownloads,
     theme,
+    reciterDisplayName,
+    t,
   ]);
 
   const renderItem: ListRenderItem<DownloadTrackData> = ({item}) => {
@@ -441,7 +464,7 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
   if (loading) {
     return (
       <View style={styles.container}>
-        <Text style={styles.emptyText}>Loading...</Text>
+        <Text style={styles.emptyText}>{t('common:status.loading')}</Text>
       </View>
     );
   }
@@ -456,7 +479,7 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
         contentContainerStyle={styles.listContentContainer}
         contentInsetAdjustmentBehavior="automatic"
         ListEmptyComponent={
-          <Text style={styles.emptyText}>No downloads for this reciter</Text>
+          <Text style={styles.emptyText}>{t('reciterDownloads.empty')}</Text>
         }
         onScroll={RNAnimated.event(
           [{nativeEvent: {contentOffset: {y: scrollY}}}],
@@ -467,10 +490,11 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
       />
       {!USE_GLASS && (
         <CollectionStickyHeader
-          title={reciter?.name || 'Downloads'}
+          title={reciterDisplayName || t('common:terms.downloads')}
           scrollY={scrollY}
         />
       )}
     </View>
   );
 };
+// @ai-end

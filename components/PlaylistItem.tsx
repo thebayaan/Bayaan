@@ -6,6 +6,9 @@ import {Theme} from '@/utils/themeUtils';
 import {MaterialIcons, Feather} from '@expo/vector-icons';
 import {PlaylistIcon} from '@/components/Icons';
 import Color from 'color';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+// @ai-end
 
 interface PlaylistItemProps {
   id: string;
@@ -18,6 +21,7 @@ interface PlaylistItemProps {
   isSelected?: boolean;
 }
 
+// @ai-start
 export const PlaylistItem: React.FC<PlaylistItemProps> = React.memo(
   ({
     name,
@@ -29,6 +33,7 @@ export const PlaylistItem: React.FC<PlaylistItemProps> = React.memo(
     isSelected,
   }) => {
     const {theme} = useTheme();
+    const {t} = useTranslation(['collection', 'common']);
     const styles = createStyles(theme);
     const handlePress = React.useCallback(() => onPress(), [onPress]);
     const handleLongPress = React.useCallback(
@@ -56,7 +61,9 @@ export const PlaylistItem: React.FC<PlaylistItemProps> = React.memo(
         <View style={styles.playlistInfo}>
           <Text style={styles.playlistName}>{name}</Text>
           <Text style={styles.playlistSubtitle} numberOfLines={1}>
-            Playlist • {itemCount} {itemCount === 1 ? 'surah' : 'surahs'}
+            {t('playlistItem.subtitle', {
+              surahs: t('common:counts.surahs', {count: itemCount}),
+            })}
           </Text>
         </View>
         {onOptionsPress && !isSelected && (
@@ -84,6 +91,7 @@ export const PlaylistItem: React.FC<PlaylistItemProps> = React.memo(
     );
   },
 );
+// @ai-end
 
 PlaylistItem.displayName = 'PlaylistItem';
 

@@ -59,7 +59,11 @@ const TAFKHIM_LETTERS = new Set([
  * Maps each DK character index to its tajweed rule (or leaves it unmapped).
  *
  * Walks both the DK string and flattened QPC segments in parallel, using
- * known equivalence patterns to stay in sync. Returns a Map<dkCharIdx, rule>.
+ * known equivalence patterns to stay in sync. Returns a Map<dkCharIdx, rule>
+ * keyed by UTF-16 code-unit index into `dkText` (the unit every renderer and
+ * overlay uses); a surrogate pair gets the rule on both of its units.
+ *
+ * The QPC data is Hafs tajweed: callers must only pass Hafs text.
  */
 export function alignWordTajweed(
   dkText: string,
@@ -188,12 +192,12 @@ export function alignWordTajweed(
     }
   }
 
-  return result.size > 0 ? result : null;
+  return toUtf16Indices(dkArr, dkText, result);
 }
 
 /**
  * Detects tafkhim for a DK word that has no QPC tajweed data at all.
- * Returns a Map<dkCharIdx, 'tafkhim'> or null.
+ * Returns a Map<dkCharIdx (UTF-16 unit), 'tafkhim'> or null. Hafs text only.
  */
 export function detectWordTafkhim(dkText: string): Map<number, string> | null {
   const result = new Map<number, string>();
@@ -207,7 +211,31 @@ export function detectWordTafkhim(dkText: string): Map<number, string> | null {
     }
   }
 
-  return result.size > 0 ? result : null;
+  return toUtf16Indices(dkArr, dkText, result);
+}
+
+/**
+ * Re-keys a code-point-indexed rule map to UTF-16 code-unit indices (both
+ * units of a surrogate pair get the rule). Identity for BMP-only text, which
+ * is every bundled words DB today. Returns null for an empty map.
+ */
+function toUtf16Indices(
+  codePoints: string[],
+  text: string,
+  byCodePoint: Map<number, string>,
+): Map<number, string> | null {
+  if (byCodePoint.size === 0) return null;
+  if (codePoints.length === text.length) return byCodePoint;
+  const byUnit = new Map<number, string>();
+  let unit = 0;
+  for (let i = 0; i < codePoints.length; i++) {
+    const rule = byCodePoint.get(i);
+    if (rule) {
+      for (let k = 0; k < codePoints[i].length; k++) byUnit.set(unit + k, rule);
+    }
+    unit += codePoints[i].length;
+  }
+  return byUnit.size > 0 ? byUnit : null;
 }
 
 /** Arabic combining marks (tashkeel) that should inherit the tafkhim color

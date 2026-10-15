@@ -31,6 +31,28 @@ import {BookmarkChips} from './BookmarkChips';
 import {JUZ_START_PAGES} from './constants';
 import {useMushafSettingsStore, RecentRead} from '@/store/mushafSettingsStore';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
+// @ai-start
+import {flipX, latinLetterSpacing} from '@/utils/rtl';
+import {useTranslation} from 'react-i18next';
+import i18n from '@/i18n';
+import {getSurahDisplayName, getSurahMeaning} from '@/i18n/format';
+import {normalizeSearchText} from '@/utils/search/normalize'; // @ai
+import {rankSurahs} from '@/utils/search/catalog'; // @ai
+import {useRewayahVerseUnits} from '@/hooks/useRewayahVerseUnits';
+import type {RewayahId} from '@/services/rewayah/RewayahIdentity';
+import {rewayahVerseUnitsService} from '@/services/mushaf/RewayahVerseUnitsService';
+import {restoreSavedRewayah} from '@/services/verse-annotations/restoreSavedRewayah';
+import type {VerseBookmark} from '@/types/verse-annotations';
+import {
+  anchorTarget,
+  historyEntryLabel,
+  verseHistoryLabel,
+  verseQueryTarget,
+  verseResultTexts,
+  type ShownVerses,
+  type VerseTarget,
+} from './mushafSearchVerses';
+// @ai-end
 
 // ============================================================================
 // Types
@@ -40,7 +62,16 @@ interface MushafSearchViewProps {
   onNavigateToPage: (page: number) => void;
   onResumeChain: (index: number, page: number) => void;
   onNavigateToSurah: (surahId: number) => void;
-  onNavigateToVerse: (verseKey: string, page: number) => void;
+  /**
+   * Select a verse on `page`. `verseKey` is in the numbering of `rewayah`:
+   * a Hafs key when it is omitted (as before), else a verse of the rewayah
+   * on screen in its own numbering (verse-units contract 4.4). @ai
+   */
+  onNavigateToVerse: (
+    verseKey: string,
+    page: number,
+    rewayah?: RewayahId,
+  ) => void;
   onClose: () => void;
   surahStartPages: Record<number, number>;
   pageToSurah: Record<number, number>;
@@ -62,6 +93,8 @@ type SearchResultItem =
       verse: number;
       primary: string;
       secondary: string;
+      /** The verse in the rewayah on screen (its numbering). @ai */
+      target: VerseTarget;
     }
   | {type: 'page'; page: number; primary: string; secondary: string}
   | {
@@ -77,9 +110,20 @@ interface SearchHistoryItem {
   label: string;
   surahId?: number;
   page?: number;
+  /** A Hafs verse number (verses searched in Hafs, and older entries). @ai */
   verse?: number;
   juz?: number;
   timestamp: number;
+  // @ai-start
+  /**
+   * A verse searched in another rewayah: its storage anchor (Hafs location,
+   * "S:A" or "S:A:W") and that rewayah, never its rewayah verse number
+   * (verse-units contract 4.4). Opens the verse holding the anchor in the
+   * rewayah on screen.
+   */
+  anchor?: string;
+  rewayah?: RewayahId;
+  // @ai-end
 }
 
 // ============================================================================
@@ -93,76 +137,117 @@ const MAX_HISTORY = 10;
 // Smart Search Parser
 // ============================================================================
 
+// @ai-start
+function surahNameForId(surahId: number): string {
+  return surahId >= 1 && surahId <= 114
+    ? getSurahDisplayName(SURAHS[surahId - 1])
+    : '';
+}
+// @ai-end
+
+// @ai-start
+function pageLabel(page: number): string {
+  return i18n.t('common:labels.pageNumber', {number: page});
+}
+// @ai-end
+
+// @ai-start
+function pageWithSurahLabel(page: number, surahId: number): string {
+  return i18n.t('reader:search.pageWithSurah', {
+    page,
+    surah: surahNameForId(surahId),
+  });
+}
+// @ai-end
+
+// @ai-start
+function juzLabel(juz: number): string {
+  if (juz === 30) return i18n.t('reader:search.juzAmma');
+  if (juz === 29) return i18n.t('reader:search.juzTabarak');
+  return i18n.t('common:labels.juzNumber', {number: juz});
+}
+// @ai-end
+
+// @ai-start
+function surahSecondaryLabel(surah: Surah): string {
+  const meaning = getSurahMeaning(surah);
+  return meaning
+    ? i18n.t('reader:search.surahWithMeaning', {number: surah.id, meaning})
+    : i18n.t('common:labels.surahNumber', {number: surah.id});
+}
+// @ai-end
+
+// @ai-start
 function parseSearchQuery(
   query: string,
   surahStartPages: Record<number, number>,
   pageToSurah: Record<number, number>,
+  shown: ShownVerses, // @ai
 ): SearchResultItem[] {
-  const q = query.trim();
+  const q = normalizeSearchText(query);
   if (!q) return [];
 
   const lower = q.toLowerCase();
   const results: SearchResultItem[] = [];
 
   // 1. "page N" or "pg N"
-  const pageMatch = q.match(/^(?:page|pg)\s+(\d+)$/i);
+  const pageMatch = q.match(/^(?:page|pg|صفحه|ص)\s*(\d+)$/i);
   if (pageMatch) {
     const page = parseInt(pageMatch[1], 10);
     if (page >= 1 && page <= 604) {
-      const surahId = pageToSurah[page];
-      const surahName =
-        surahId >= 1 && surahId <= 114 ? SURAHS[surahId - 1].name : '';
       results.push({
         type: 'page',
         page,
-        primary: `Page ${page}`,
-        secondary: surahName,
+        primary: pageLabel(page),
+        secondary: surahNameForId(pageToSurah[page]),
       });
     }
     return results;
   }
 
   // 2. Show all Juz list if typing "juz" or "jz"
-  if (lower === 'juz' || lower === 'jz') {
+  if (
+    lower === 'juz' ||
+    lower === 'jz' ||
+    lower === 'جزء' ||
+    lower === 'الاجزاء'
+  ) {
     for (let i = 1; i <= 30; i++) {
       const page = JUZ_START_PAGES[i - 1];
-      const surahId = pageToSurah[page];
-      const surahName =
-        surahId >= 1 && surahId <= 114 ? SURAHS[surahId - 1].name : '';
       results.push({
         type: 'juz',
         juz: i,
         page,
-        primary: i === 30 ? "Juz 'Amma" : i === 29 ? 'Juz Tabarak' : `Juz ${i}`,
-        secondary: `Page ${page} \u00B7 ${surahName}`,
+        primary: juzLabel(i),
+        secondary: pageWithSurahLabel(page, pageToSurah[page]),
       });
     }
     return results;
   }
 
   // 3. "juz N", "j N", "jz N" or common names like "Amma"
-  const juzMatch = q.match(/^(?:juz|j|jz)\s*(\d+)$/i);
+  const juzMatch = q.match(/^(?:juz|j|jz|الجزء|جزء|ج)\s*(\d+)$/i);
   const juzNames: Record<string, number> = {
     amma: 30,
     'juz amma': 30,
     tabarak: 29,
     'juz tabarak': 29,
+    عم: 30,
+    'جزء عم': 30,
+    تبارك: 29,
+    'جزء تبارك': 29,
   };
 
   if (juzMatch || juzNames[lower]) {
     const juz = juzMatch ? parseInt(juzMatch[1], 10) : juzNames[lower];
     if (juz >= 1 && juz <= 30) {
       const page = JUZ_START_PAGES[juz - 1];
-      const surahId = pageToSurah[page];
-      const surahName =
-        surahId >= 1 && surahId <= 114 ? SURAHS[surahId - 1].name : '';
       results.push({
         type: 'juz',
         juz,
         page,
-        primary:
-          juz === 30 ? "Juz 'Amma" : juz === 29 ? 'Juz Tabarak' : `Juz ${juz}`,
-        secondary: `Page ${page} \u00B7 ${surahName}`,
+        primary: juzLabel(juz),
+        secondary: pageWithSurahLabel(page, pageToSurah[page]),
       });
     }
     if (juzMatch) return results; // Only return early if it was an explicit "juz N" search
@@ -173,18 +258,25 @@ function parseSearchQuery(
   if (verseMatch) {
     const surahId = parseInt(verseMatch[1], 10);
     const verse = parseInt(verseMatch[2], 10);
-    if (surahId >= 1 && surahId <= 114) {
-      const surah = SURAHS[surahId - 1];
-      if (verse >= 1 && verse <= surah.verses_count) {
-        results.push({
-          type: 'verse',
-          surahId,
-          verse,
-          primary: `${surah.name} ${surahId}:${verse}`,
-          secondary: `Verse ${verse}`,
-        });
-      }
+    // @ai-start
+    // Verse N:M of the rewayah on screen, in its own numbering (Hafs: the
+    // Hafs verse counts, as before). None while a non-Hafs rewayah's verses
+    // are not ready: never a Hafs verse under its numbering.
+    const target = verseQueryTarget(surahId, verse, shown);
+    if (target) {
+      results.push({
+        type: 'verse',
+        surahId,
+        verse,
+        ...verseResultTexts(
+          target,
+          getSurahDisplayName(SURAHS[surahId - 1]),
+          number => i18n.t('reader:search.verse', {number}),
+        ),
+        target,
+      });
     }
+    // @ai-end
     return results;
   }
 
@@ -197,57 +289,48 @@ function parseSearchQuery(
       results.push({
         type: 'surah',
         surah,
-        primary: surah.name,
-        secondary: `Surah ${surah.id} \u00B7 ${surah.translated_name_english}`,
+        primary: getSurahDisplayName(surah),
+        secondary: surahSecondaryLabel(surah),
       });
     }
     // Juz result
     if (plainNum >= 1 && plainNum <= 30) {
       const page = JUZ_START_PAGES[plainNum - 1];
-      const surahId = pageToSurah[page];
-      const surahName =
-        surahId >= 1 && surahId <= 114 ? SURAHS[surahId - 1].name : '';
       results.push({
         type: 'juz',
         juz: plainNum,
         page,
-        primary: `Juz ${plainNum}`,
-        secondary: `Page ${page} \u00B7 ${surahName}`,
+        primary: i18n.t('common:labels.juzNumber', {number: plainNum}),
+        secondary: pageWithSurahLabel(page, pageToSurah[page]),
       });
     }
     // Page result
     if (plainNum >= 1 && plainNum <= 604) {
-      const surahId = pageToSurah[plainNum];
-      const surahName =
-        surahId >= 1 && surahId <= 114 ? SURAHS[surahId - 1].name : '';
       results.push({
         type: 'page',
         page: plainNum,
-        primary: `Page ${plainNum}`,
-        secondary: surahName,
+        primary: pageLabel(plainNum),
+        secondary: surahNameForId(pageToSurah[plainNum]),
       });
     }
     return results;
   }
 
-  // 5. Fuzzy match on surah names
-  for (const surah of SURAHS) {
-    if (
-      surah.name.toLowerCase().includes(lower) ||
-      surah.translated_name_english.toLowerCase().includes(lower) ||
-      surah.name_arabic.includes(q)
-    ) {
-      results.push({
-        type: 'surah',
-        surah,
-        primary: surah.name,
-        secondary: `Surah ${surah.id} \u00B7 ${surah.translated_name_english}`,
-      });
-    }
+  // 5. Ranked match on surah names
+  // @ai-start
+  for (const surah of rankSurahs(q)) {
+    results.push({
+      type: 'surah',
+      surah,
+      primary: getSurahDisplayName(surah),
+      secondary: surahSecondaryLabel(surah),
+    });
   }
+  // @ai-end
 
   return results;
 }
+// @ai-end
 
 // ============================================================================
 // Sub-components
@@ -289,10 +372,12 @@ SearchResultRow.displayName = 'SearchResultRow';
 
 const HistoryRow: React.FC<{
   item: SearchHistoryItem;
+  /** The entry's label in the rewayah on screen (historyEntryLabel). @ai */
+  label: string;
   textColor: string;
   secondaryColor: string;
   onPress: () => void;
-}> = React.memo(({item, textColor, secondaryColor, onPress}) => (
+}> = React.memo(({label, textColor, secondaryColor, onPress}) => (
   <Pressable
     style={({pressed}) => [styles.historyRow, {opacity: pressed ? 0.5 : 1}]}
     onPress={onPress}>
@@ -307,13 +392,14 @@ const HistoryRow: React.FC<{
         {color: Color(textColor).alpha(0.85).toString()},
       ]}
       numberOfLines={1}>
-      {item.label}
+      {label /* @ai */}
     </Text>
   </Pressable>
 ));
 
 HistoryRow.displayName = 'HistoryRow';
 
+// @ai-start
 const RecentReadChips: React.FC<{
   recentPages: RecentRead[];
   textColor: string;
@@ -322,6 +408,7 @@ const RecentReadChips: React.FC<{
   onClear: () => void;
 }> = React.memo(
   ({recentPages, textColor, secondaryColor, onPress, onClear}) => {
+    const {t} = useTranslation(['reader', 'common']);
     if (recentPages.length === 0) return null;
 
     return (
@@ -337,7 +424,7 @@ const RecentReadChips: React.FC<{
                 flex: 1,
               },
             ]}>
-            RECENT READS
+            {t('search.recentReads')}
           </Text>
           <Pressable
             onPress={onClear}
@@ -348,7 +435,7 @@ const RecentReadChips: React.FC<{
                 styles.recentClearText,
                 {color: Color(secondaryColor).alpha(0.45).toString()},
               ]}>
-              Clear
+              {t('common:actions.clear')}
             </Text>
           </Pressable>
         </View>
@@ -375,14 +462,14 @@ const RecentReadChips: React.FC<{
                 ]}
                 onPress={() => onPress(index, item.page)}>
                 <Text style={[styles.chipName, {color: textColor}]}>
-                  {surah.name}
+                  {getSurahDisplayName(surah)}
                 </Text>
                 <Text
                   style={[
                     styles.chipPage,
                     {color: Color(secondaryColor).alpha(0.5).toString()},
                   ]}>
-                  Page {item.page}
+                  {t('common:labels.pageNumber', {number: item.page})}
                 </Text>
               </Pressable>
             );
@@ -392,6 +479,7 @@ const RecentReadChips: React.FC<{
     );
   },
 );
+// @ai-end
 
 RecentReadChips.displayName = 'RecentReadChips';
 
@@ -399,6 +487,7 @@ RecentReadChips.displayName = 'RecentReadChips';
 // Main Component
 // ============================================================================
 
+// @ai-start
 const MushafSearchView: React.FC<MushafSearchViewProps> = ({
   onNavigateToPage,
   onResumeChain,
@@ -410,6 +499,7 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
   autoFocusSearch,
 }) => {
   const {theme, isDarkMode} = useTheme();
+  const {t} = useTranslation(['reader', 'common']);
   const insets = useSafeAreaInsets();
   const [isSearchMode, setIsSearchMode] = useState(autoFocusSearch ?? false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -421,6 +511,21 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
 
   const recentPages = useMushafSettingsStore(s => s.recentPages);
   const searchInputRef = useRef<TextInput>(null);
+
+  // @ai-start
+  // The rewayah whose text is on screen and its verse units (decision 3):
+  // verse searches, verse history and bookmark chips use its own numbering.
+  // The units hook re-renders on data-service cache changes (switches,
+  // loads), which also refreshes the rewayah read here.
+  const shownRewayah = digitalKhattDataService.rewayah;
+  const {units: shownUnits} = useRewayahVerseUnits(
+    shownRewayah === 'hafs' ? null : shownRewayah,
+  );
+  const shown = useMemo<ShownVerses>(
+    () => ({rewayah: shownRewayah, units: shownUnits}),
+    [shownRewayah, shownUnits],
+  );
+  // @ai-end
 
   // Fade animation refs — if autoFocusSearch, start in search mode immediately
   const browseOpacity = useRef(
@@ -552,9 +657,39 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
   // Search results
   // ──────────────────────────────────────────────────────────
   const searchResults = useMemo(
-    () => parseSearchQuery(searchQuery, surahStartPages, pageToSurah),
-    [searchQuery, surahStartPages, pageToSurah],
+    () => parseSearchQuery(searchQuery, surahStartPages, pageToSurah, shown),
+    [searchQuery, surahStartPages, pageToSurah, shown],
   );
+
+  // @ai-start
+  // Opens a verse of the rewayah on screen on its page (the page of the
+  // Hafs verse holding its first word); its surah when no page is known.
+  const navigateToTarget = useCallback(
+    (target: VerseTarget, surahId: number) => {
+      const versePage = digitalKhattDataService.getPageForVerse(
+        target.pageVerseKey,
+      );
+      if (!versePage) {
+        onNavigateToSurah(surahId);
+      } else if (target.rewayah === 'hafs') {
+        onNavigateToVerse(target.verseKey, versePage);
+      } else {
+        onNavigateToVerse(target.verseKey, versePage, target.rewayah);
+      }
+    },
+    [onNavigateToSurah, onNavigateToVerse],
+  );
+
+  // Opens the page of a Hafs verse when no verse can be named yet.
+  const navigateToHafsPage = useCallback(
+    (hafsKey: string, surahId: number) => {
+      const versePage = digitalKhattDataService.getPageForVerse(hafsKey);
+      if (versePage) onNavigateToPage(versePage);
+      else onNavigateToSurah(surahId);
+    },
+    [onNavigateToPage, onNavigateToSurah],
+  );
+  // @ai-end
 
   const handleResultPress = useCallback(
     (item: SearchResultItem) => {
@@ -573,15 +708,19 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
           break;
         case 'verse': {
           historyItem.surahId = item.surahId;
-          historyItem.verse = item.verse;
-          addToHistory(historyItem);
-          const verseKey = `${item.surahId}:${item.verse}`;
-          const versePage = digitalKhattDataService.getPageForVerse(verseKey);
-          if (versePage) {
-            onNavigateToVerse(verseKey, versePage);
+          // @ai-start
+          // Hafs: the entry of before. Another rewayah: the verse's anchor
+          // and rewayah, and a label that says whose numbering it is.
+          if (item.target.rewayah === 'hafs') {
+            historyItem.verse = item.verse;
           } else {
-            onNavigateToSurah(item.surahId);
+            historyItem.anchor = item.target.anchor;
+            historyItem.rewayah = item.target.rewayah;
+            historyItem.label = verseHistoryLabel(item.target, item.primary);
           }
+          addToHistory(historyItem);
+          navigateToTarget(item.target, item.surahId);
+          // @ai-end
           break;
         }
         case 'page':
@@ -597,12 +736,26 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
           break;
       }
     },
-    [addToHistory, onNavigateToPage, onNavigateToSurah, onNavigateToVerse],
+    [addToHistory, onNavigateToPage, onNavigateToSurah, navigateToTarget], // @ai
   );
 
   const handleHistoryPress = useCallback(
     (item: SearchHistoryItem) => {
       Keyboard.dismiss();
+      // @ai-start
+      // A verse searched in another rewayah: the verse holding its anchor in
+      // the rewayah on screen (the same verse when that is the rewayah it
+      // was searched in), or its page while no verse can be named.
+      if (item.anchor && item.surahId) {
+        const target = anchorTarget(item.anchor, shown);
+        if (target) navigateToTarget(target, item.surahId);
+        else {
+          const [surah, ayah] = item.anchor.split(':');
+          navigateToHafsPage(`${surah}:${ayah}`, item.surahId);
+        }
+        return;
+      }
+      // @ai-end
       if (item.surahId && item.verse) {
         const verseKey = `${item.surahId}:${item.verse}`;
         const versePage = digitalKhattDataService.getPageForVerse(verseKey);
@@ -617,7 +770,16 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
         onNavigateToSurah(item.surahId);
       }
     },
-    [onNavigateToPage, onNavigateToSurah, onNavigateToVerse],
+    [
+      onNavigateToPage,
+      onNavigateToSurah,
+      onNavigateToVerse,
+      // @ai-start
+      shown,
+      navigateToTarget,
+      navigateToHafsPage,
+      // @ai-end
+    ],
   );
 
   // ──────────────────────────────────────────────────────────
@@ -673,19 +835,42 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
     [onNavigateToSurah],
   );
 
+  // @ai-start
+  // A chip opens its bookmark as the Bookmarks list does: in the rewayah it
+  // was saved in (restored first), with exactly its verse selected there
+  // (the verse holding its anchor; Hafs: its Hafs verse, as before). Its
+  // page when no verse can be named. Taps during a restore are ignored.
+  const openingBookmarkRef = useRef(false);
   const handleBookmarkPress = useCallback(
-    (surahId: number, ayahNumber: number) => {
+    async (bookmark: VerseBookmark) => {
       Keyboard.dismiss();
-      const verseKey = `${surahId}:${ayahNumber}`;
-      const versePage = digitalKhattDataService.getPageForVerse(verseKey);
-      if (versePage) {
-        onNavigateToVerse(verseKey, versePage);
-      } else {
-        onNavigateToSurah(surahId);
+      if (openingBookmarkRef.current) return;
+      openingBookmarkRef.current = true;
+      try {
+        await restoreSavedRewayah(bookmark.rewayahId);
+        // Read after the restore: the rewayah on screen may have changed.
+        const rewayah = digitalKhattDataService.rewayah;
+        // Its units are built after interactions, in chunks (right after a
+        // restore they usually are not yet): wait for them, never build here.
+        const units =
+          rewayah === 'hafs'
+            ? null
+            : await rewayahVerseUnitsService.request(rewayah);
+        const target = anchorTarget(bookmark.verseKey, {rewayah, units});
+        if (target) navigateToTarget(target, bookmark.surahNumber);
+        else {
+          navigateToHafsPage(
+            `${bookmark.surahNumber}:${bookmark.ayahNumber}`,
+            bookmark.surahNumber,
+          );
+        }
+      } finally {
+        openingBookmarkRef.current = false;
       }
     },
-    [onNavigateToSurah, onNavigateToVerse],
+    [navigateToTarget, navigateToHafsPage],
   );
+  // @ai-end
 
   const handleChipPress = useCallback(
     (index: number, page: number) => {
@@ -742,7 +927,11 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
                   ? 'arrow-down'
                   : 'calendar';
             const label =
-              option === 'asc' ? 'Asc' : option === 'desc' ? 'Desc' : 'Rev';
+              option === 'asc'
+                ? t('search.sortAsc')
+                : option === 'desc'
+                  ? t('search.sortDesc')
+                  : t('search.sortRevelation');
             return (
               <Pressable
                 key={option}
@@ -779,7 +968,7 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
         </View>
       </View>
     ),
-    [sortOption, theme.colors, changeSortOption],
+    [sortOption, theme.colors, changeSortOption, t],
   );
 
   const BrowseListHeader = useMemo(
@@ -792,7 +981,10 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
           onPress={handleChipPress}
           onClear={handleClearRecentReads}
         />
-        <BookmarkChips onPress={handleBookmarkPress} />
+        <BookmarkChips
+          shownRewayah={shown.rewayah} // @ai
+          onPress={handleBookmarkPress}
+        />
         {SortBar}
       </View>
     ),
@@ -803,6 +995,7 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
       handleChipPress,
       handleClearRecentReads,
       SortBar,
+      shown, // @ai
     ],
   );
 
@@ -856,13 +1049,14 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
               name="chevron-left"
               size={ms(20)}
               color={theme.colors.text}
+              style={flipX}
             />
           </Pressable>
           <Pressable style={styles.searchBarTap} onPress={enterSearchMode}>
             <SearchInput
               value=""
               onChangeText={() => {}}
-              placeholder="Search surahs, pages, or juz..."
+              placeholder={t('search.placeholder')}
               showCancelButton={false}
               editable={false}
               pointerEvents="none"
@@ -916,7 +1110,7 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
           value={searchQuery}
           onChangeText={setSearchQuery}
           onCancel={exitSearchMode}
-          placeholder="Search surahs, pages, or juz..."
+          placeholder={t('search.placeholder')}
           showCancelButton={true}
           autoFocus={autoFocusSearch}
           iconColor={theme.colors.textSecondary}
@@ -937,7 +1131,7 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
                 <View style={styles.historyHeader}>
                   <Text
                     style={[styles.historyTitle, {color: theme.colors.text}]}>
-                    Recent searches
+                    {t('search.recentSearches')}
                   </Text>
                   <Pressable onPress={clearHistory}>
                     <Text
@@ -945,7 +1139,7 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
                         styles.historyClear,
                         {color: theme.colors.textSecondary},
                       ]}>
-                      Clear
+                      {t('common:actions.clear')}
                     </Text>
                   </Pressable>
                 </View>
@@ -953,6 +1147,7 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
                   <HistoryRow
                     key={`${item.type}-${item.label}-${index}`}
                     item={item}
+                    label={historyEntryLabel(item, shown.rewayah)} // @ai
                     textColor={theme.colors.text}
                     secondaryColor={theme.colors.textSecondary}
                     onPress={() => handleHistoryPress(item)}
@@ -977,7 +1172,7 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
                         .toString(),
                     },
                   ]}>
-                  Search the Mushaf
+                  {t('search.emptyTitle')}
                 </Text>
                 <Text
                   style={[
@@ -988,7 +1183,7 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
                         .toString(),
                     },
                   ]}>
-                  Find surahs, verses, pages, or juz
+                  {t('search.emptySubtitle')}
                 </Text>
               </View>
             )}
@@ -1023,7 +1218,7 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
                         .toString(),
                     },
                   ]}>
-                  No results found
+                  {t('common:status.noResults')}
                 </Text>
               </View>
             }
@@ -1033,6 +1228,7 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
     </View>
   );
 };
+// @ai-end
 
 export default MushafSearchView;
 
@@ -1040,6 +1236,7 @@ export default MushafSearchView;
 // Styles
 // ============================================================================
 
+// @ai-start
 const styles = StyleSheet.create({
   container: {
     ...StyleSheet.absoluteFill,
@@ -1083,7 +1280,7 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: ms(10.5),
     fontFamily: 'Manrope-SemiBold',
-    letterSpacing: 1.0,
+    letterSpacing: latinLetterSpacing(1.0),
     textTransform: 'uppercase',
     marginBottom: ms(8),
     marginTop: ms(12),
@@ -1145,7 +1342,7 @@ const styles = StyleSheet.create({
     fontSize: ms(12),
     fontFamily: 'Manrope-SemiBold',
     textTransform: 'uppercase',
-    letterSpacing: 0.8,
+    letterSpacing: latinLetterSpacing(0.8),
   },
 
   // Recent Read chips
@@ -1247,3 +1444,4 @@ const styles = StyleSheet.create({
     fontFamily: 'Manrope-Medium',
   },
 });
+// @ai-end

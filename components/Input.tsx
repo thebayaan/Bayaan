@@ -12,6 +12,10 @@ import {moderateScale} from 'react-native-size-matters';
 import {Feather} from '@expo/vector-icons';
 import {useTheme} from '@/hooks/useTheme';
 import Color from 'color';
+// @ai-start
+import {latinLetterSpacing} from '@/utils/rtl';
+import {useTranslation} from 'react-i18next';
+// @ai-end
 
 interface InputProps extends TextInputProps {
   label?: string;
@@ -25,6 +29,7 @@ interface InputProps extends TextInputProps {
   inputStyle?: TextStyle;
 }
 
+// @ai-start
 export const Input: React.FC<InputProps> = ({
   label,
   showIcon = false,
@@ -40,6 +45,7 @@ export const Input: React.FC<InputProps> = ({
   ...textInputProps
 }) => {
   const {theme, isDarkMode} = useTheme();
+  const {t} = useTranslation('home');
 
   return (
     <View style={[styles.container, containerStyle]}>
@@ -58,7 +64,7 @@ export const Input: React.FC<InputProps> = ({
               styles.label,
               {
                 color: theme.colors.text,
-                marginLeft: showIcon ? moderateScale(8) : 0,
+                marginStart: showIcon ? moderateScale(8) : 0,
               },
             ]}>
             {label}
@@ -121,7 +127,10 @@ export const Input: React.FC<InputProps> = ({
                       : theme.colors.textSecondary,
                 },
               ]}>
-              {value?.length || 0}/{maxLength} characters
+              {t('input.characterCount', {
+                current: value?.length || 0,
+                max: maxLength,
+              })}
             </Text>
           )}
         </View>
@@ -129,7 +138,9 @@ export const Input: React.FC<InputProps> = ({
     </View>
   );
 };
+// @ai-end
 
+// @ai-start
 const styles = StyleSheet.create({
   container: {
     marginBottom: moderateScale(16),
@@ -142,7 +153,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: moderateScale(13.5),
     fontFamily: 'Manrope-SemiBold',
-    letterSpacing: 0.2,
+    letterSpacing: latinLetterSpacing(0.2),
   },
   inputContainer: {
     borderWidth: 1,
@@ -172,3 +183,4 @@ const styles = StyleSheet.create({
     fontFamily: 'Manrope-Medium',
   },
 });
+// @ai-end
