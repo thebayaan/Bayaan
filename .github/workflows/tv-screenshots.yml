@@ -13,14 +13,21 @@ on:
       - 'services/**'
       - '.github/workflows/tv-screenshots.yml'
   workflow_dispatch:
+    inputs:
+      platform:
+        description: Which TV platform to walk
+        type: choice
+        options: [all, apple-tv, android-tv]
+        default: all
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.platform || 'all' }}
   cancel-in-progress: true
 
 jobs:
   android-tv:
     name: Android TV walk
+    if: ${{ !inputs.platform || inputs.platform == 'all' || inputs.platform == 'android-tv' }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
@@ -90,6 +97,7 @@ jobs:
 
   apple-tv:
     name: Apple TV walk
+    if: ${{ !inputs.platform || inputs.platform == 'all' || inputs.platform == 'apple-tv' }}
     runs-on: macos-15
     timeout-minutes: 120
     steps:
@@ -102,6 +110,15 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: tv-app/package-lock.json
+
+      # idb-companion builds from source and needs Xcode 26.
+      - name: Select Xcode 26
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1)
+          echo "Using $XCODE"
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+          xcrun simctl list runtimes | grep -i tvos
 
       - name: Install idb
         run: |
