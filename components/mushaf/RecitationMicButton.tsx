@@ -1,10 +1,21 @@
-import React, {useEffect} from 'react';
-import {ActivityIndicator, Alert, Pressable, Text, View} from 'react-native';
+import React, {useCallback, useEffect} from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  Text,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 import {Ionicons} from '@expo/vector-icons';
 import {moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {useDevSettingsStore} from '@/store/devSettingsStore';
-import {useRecitationTrackingStore} from '@/store/recitationTrackingStore';
+import {
+  useRecitationTrackingStore,
+  type RecitationTrackingStatus,
+} from '@/store/recitationTrackingStore';
 import {mushafVerseMapService} from '@/services/mushaf/MushafVerseMapService';
 import {
   recitationModelNeedsDownload,
@@ -54,14 +65,22 @@ export function useRecitationFollowAlong(currentPage: number): void {
   }, []);
 }
 
-interface RecitationMicButtonProps {
-  currentPage: number;
+export interface RecitationMic {
+  /** The dev toggle is on, so the bar shows the button. */
+  enabled: boolean;
+  status: RecitationTrackingStatus;
+  /** Download progress, 0 to 1, while status is 'downloading'. */
+  progress: number;
+  busy: boolean;
+  toggle: () => Promise<void>;
 }
 
-export function RecitationMicButton({
-  currentPage,
-}: RecitationMicButtonProps): React.JSX.Element | null {
-  const {theme} = useTheme();
+/**
+ * Mic state and tap handling shared by the iOS 26 toolbar and the player
+ * bar: starts follow-along on the page on screen (asking before the
+ * one-time download), stops it when listening, and reports errors.
+ */
+export function useRecitationMic(currentPage: number): RecitationMic {
   const enabled = useDevSettingsStore(s => s.recitationFollowAlong);
   const status = useRecitationTrackingStore(s => s.status);
   const progress = useRecitationTrackingStore(s => s.downloadProgress);
@@ -73,9 +92,7 @@ export function RecitationMicButton({
     void stopRecitationTracking();
   }, [status, error]);
 
-  if (!enabled) return null;
-
-  async function handlePress(): Promise<void> {
+  const toggle = useCallback(async (): Promise<void> => {
     if (status === 'listening') {
       await stopRecitationTracking();
       return;
@@ -85,13 +102,36 @@ export function RecitationMicButton({
       return;
     }
     await startRecitationTracking(pageHint(currentPage));
-  }
+  }, [status, currentPage]);
 
-  const busy = status === 'loading' || status === 'downloading';
+  return {
+    enabled,
+    status,
+    progress,
+    busy: status === 'loading' || status === 'downloading',
+    toggle,
+  };
+}
+
+interface RecitationMicButtonProps {
+  currentPage: number;
+  style?: StyleProp<ViewStyle>;
+}
+
+export function RecitationMicButton({
+  currentPage,
+  style,
+}: RecitationMicButtonProps): React.JSX.Element | null {
+  const {theme} = useTheme();
+  const {enabled, status, progress, busy, toggle} =
+    useRecitationMic(currentPage);
+
+  if (!enabled) return null;
 
   return (
     <Pressable
-      onPress={handlePress}
+      style={style}
+      onPress={toggle}
       hitSlop={8}
       accessibilityRole="button"
       accessibilityLabel={
@@ -114,7 +154,7 @@ export function RecitationMicButton({
       ) : (
         <Ionicons
           name={status === 'listening' ? 'mic' : 'mic-outline'}
-          size={moderateScale(22)}
+          size={moderateScale(20)}
           color={theme.colors.text}
         />
       )}

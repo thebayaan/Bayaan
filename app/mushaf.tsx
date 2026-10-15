@@ -38,6 +38,7 @@ import {SheetManager} from 'react-native-actions-sheet';
 import {SURAHS} from '@/data/surahData';
 import MushafViewer from '@/components/mushaf/main';
 import {USE_GLASS} from '@/hooks/useGlassProps';
+import {useRecitationMic} from '@/components/mushaf/RecitationMicButton';
 
 export type MushafScreenParams = {
   surah?: string;
@@ -272,6 +273,7 @@ const surahNameOf = (surah: number): string =>
 export function MushafToolbar() {
   const playbackState = useMushafPlayerStore(s => s.playbackState);
   const currentPage = useMushafPlayerStore(s => s.currentPage);
+  const mic = useRecitationMic(currentPage || 1);
   const currentSurah = useMushafPlayerStore(s => s.currentSurah);
   // @ai-start
   const currentVerseLabel = useMushafPlayerStore(s => s.currentVerseLabel);
@@ -359,6 +361,20 @@ export function MushafToolbar() {
         <Stack.Toolbar.Button icon="play.fill" onPress={handlePlay}>
           Play
         </Stack.Toolbar.Button>
+        {mic.enabled && (
+          <Stack.Toolbar.Button
+            icon={
+              mic.busy
+                ? 'hourglass'
+                : mic.status === 'listening'
+                  ? 'mic.fill'
+                  : 'mic'
+            }
+            onPress={mic.toggle}
+            disabled={mic.busy}>
+            Recite
+          </Stack.Toolbar.Button>
+        )}
         <Stack.Toolbar.Spacer />
         <Stack.Toolbar.Button icon="ellipsis.circle" onPress={handleOptions}>
           Options

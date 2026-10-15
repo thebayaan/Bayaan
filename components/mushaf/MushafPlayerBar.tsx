@@ -34,6 +34,7 @@ import {mushafAudioService} from '@/services/audio/MushafAudioService';
 import {SURAHS} from '@/data/surahData';
 import {PlayIcon, PauseIcon} from '@/components/Icons';
 import {showToast} from '@/utils/toastUtils'; // @ai
+import {RecitationMicButton} from './RecitationMicButton';
 
 // @ai-start
 const surahNameOf = (surah: number): string =>
@@ -187,6 +188,13 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
             accessibilityLabel="Play">
             <PlayIcon color={theme.colors.text} size={moderateScale(16)} />
           </Pressable>
+          <RecitationMicButton
+            currentPage={currentPage}
+            style={[
+              styles.micButtonRect,
+              {backgroundColor: Color(theme.colors.text).alpha(0.1).toString()},
+            ]}
+          />
         </View>
 
         <Pressable
@@ -336,6 +344,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: moderateScale(12),
     paddingLeft: moderateScale(3),
+  },
+  micButtonRect: {
+    width: moderateScale(42),
+    height: moderateScale(42),
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: moderateScale(12),
   },
   edgeButton: {
     width: moderateScale(36),

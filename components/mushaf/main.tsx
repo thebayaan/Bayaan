@@ -58,11 +58,7 @@ import {
 import type {RewayahId} from '@/services/rewayah/RewayahIdentity'; // @ai
 import {useMushafAutoPageTurn} from '@/hooks/useMushafAutoPageTurn';
 import {MushafPlayerBar} from './MushafPlayerBar';
-import {
-  RecitationMicButton,
-  useRecitationFollowAlong,
-} from './RecitationMicButton';
-import {useDevSettingsStore} from '@/store/devSettingsStore';
+import {useRecitationFollowAlong} from './RecitationMicButton';
 import SkiaPage from './skia/SkiaPage';
 import QCFPage from './qcf/QCFPage';
 import ReadingPageView from './reading/ReadingPageView';
@@ -674,10 +670,6 @@ export default function MushafViewer({
     : {};
 
   useRecitationFollowAlong(currentPage);
-  // The classic header widens both sides so the title stays centred.
-  const headerSideStyle = useDevSettingsStore(s => s.recitationFollowAlong)
-    ? styles.headerSideWide
-    : null;
 
   const currentSurahId =
     askedSurah && askedSurah.page === currentPage
@@ -853,7 +845,6 @@ export default function MushafViewer({
             gap: moderateScale(20),
             paddingHorizontal: moderateScale(6),
           }}>
-          <RecitationMicButton currentPage={currentPage} />
           <Pressable onPress={handleSharePage} hitSlop={8}>
             <Feather
               name="share"
@@ -1296,7 +1287,7 @@ export default function MushafViewer({
               pointerEvents={isImmersive ? 'none' : 'auto'}>
               <View style={styles.headerRow}>
                 {/* Left: back button */}
-                <View style={[styles.headerSide, headerSideStyle]}>
+                <View style={styles.headerSide}>
                   <BackButton onPress={() => router.back()} />
                 </View>
 
@@ -1342,13 +1333,7 @@ export default function MushafViewer({
                 </Pressable>
 
                 {/* Right: settings */}
-                <View
-                  style={[
-                    styles.headerSide,
-                    headerSideStyle,
-                    styles.headerSideRight,
-                  ]}>
-                  <RecitationMicButton currentPage={currentPage} />
+                <View style={[styles.headerSide, {alignItems: 'flex-end'}]}>
                   <Pressable
                     style={styles.headerIcon}
                     onPress={() =>
@@ -1473,15 +1458,6 @@ const styles = StyleSheet.create({
   },
   headerSide: {
     width: moderateScale(44),
-  },
-  headerSideWide: {
-    width: moderateScale(84),
-  },
-  headerSideRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    gap: moderateScale(8),
   },
   headerCenter: {
     flex: 1,
