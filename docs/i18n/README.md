@@ -4,7 +4,7 @@
 
 How Bayaan's interface is translated, and the rules every change follows so a new language is a data change, not a code change.
 
-Shipped languages: **English** (source) and **Arabic** (RTL). Every language the app knows about is listed once, in [`i18n/languages.ts`](../../i18n/languages.ts).
+Shipped languages: **English** (source) and **Arabic** (RTL). **French** is an in-progress, development-only draft (see the [French plan](../plans/2026-10-15-french-ui-localization.md)). Every language the app knows about is listed once, in [`i18n/languages.ts`](../../i18n/languages.ts).
 
 ---
 
@@ -130,7 +130,7 @@ UI strings live in locale files. Content that comes with the data has its own ru
 
 | Data | Rule |
 |------|------|
-| Surah names | `getSurahDisplayName`: the Arabic name for languages whose `bilingualContent` is `'ar'`, otherwise the transliteration. The English meaning (`getSurahMeaning`) is hidden when the Arabic name is shown. |
+| Surah names | `getSurahDisplayName`: the Arabic name for languages whose `bilingualContent` is `'ar'`, otherwise the transliteration. The English meaning (`getSurahMeaning`) is shown only in English; other languages show the name itself. |
 | Reciter names | `getReciterDisplayName`: for languages whose `bilingualContent` is `'ar'`, the API's `name_arabic`, then the bundled `data/reciterNamesAr.json`, then the English name. Planned: a per-language `names` map from the backend, looked up as locale, then English, then Arabic. Reciter names are transliterated, never translated. |
 | Tafsir editions | Titles come from `home.tafseerNames` in the active locale, then the edition's Arabic or English name (by `bilingualContent`). |
 | Adhkar categories | `getSuperCategoryDisplayTitle` picks the Arabic title when the language shows Arabic content. |
@@ -182,20 +182,22 @@ The workflow is `.github/workflows/i18n.yml`. The CLI never deletes keys on its 
 
 Canonical terms. The keys under `common.terms.*` are the reference values.
 
-| English | Arabic | Notes |
-|---------|--------|-------|
-| Surah | سورة | Plural السور |
-| Ayah | آية | Plural آيات. Use "Ayah" in English UI; "verse" only in longer sentences |
-| Juz | جزء | |
-| Hizb | حزب | |
-| Tafseer | التفسير | English UI spells it "Tafseer" (`common.terms.tafseer`) |
-| Rewayah | الرواية | Plural Rewayat / الروايات |
-| Reciter | القارئ | Some languages use "Qari" (Malay, Indonesian, Urdu) |
-| Mushaf | المصحف | |
-| Adhkar | الأذكار | Singular Dhikr / ذكر |
-| Bismillah | البسملة | |
-| Murattal | مرتل | Recitation style |
-| Mojawwad | مجوّد | Recitation style |
-| Word by Word | كلمة بكلمة | |
-| Transliteration | النطق اللاتيني | |
-| Follow Along | المتابعة مع التلاوة | Verse highlighting during playback |
+| English | Arabic | French (draft, review pending) | Notes |
+|---------|--------|--------------------------------|-------|
+| Surah | سورة | Sourate | Plural السور |
+| Ayah | آية | Verset | Plural آيات. Use "Ayah" in English UI; "verse" only in longer sentences |
+| Juz | جزء | Juz | |
+| Hizb | حزب | Hizb | |
+| Tafseer | التفسير | Tafsir | English UI spells it "Tafseer" (`common.terms.tafseer`) |
+| Rewayah | الرواية | Riwaya (plural Riwayat) | Plural Rewayat / الروايات |
+| Reciter | القارئ | Récitateur | Some languages use "Qari" (Malay, Indonesian, Urdu) |
+| Mushaf | المصحف | Mushaf | |
+| Adhkar | الأذكار | Adhkar (singular Dhikr) | Singular Dhikr / ذكر |
+| Bismillah | البسملة | Basmala | |
+| Murattal | مرتل | Murattal | Recitation style |
+| Mojawwad | مجوّد | Mojawwad | Recitation style |
+| Word by Word | كلمة بكلمة | Mot à mot | |
+| Transliteration | النطق اللاتيني | Translittération | |
+| Follow Along | المتابعة مع التلاوة | Suivre la récitation | Verse highlighting during playback |
+
+French drafts use formal "vous", sentence case, the typographic apostrophe (’) and a no-break space before `:` `;` `!` `?` `%` and inside « ». Names (reciters, surah transliterations, rewayat, editions) stay as in English. The full style brief is in the [French plan](../plans/2026-10-15-french-ui-localization.md#style).
