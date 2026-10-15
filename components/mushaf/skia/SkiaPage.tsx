@@ -61,8 +61,7 @@ import {
 // @ai-start
 import {computeUnitPageHighlightLayers} from './verseHighlightLayers';
 import {usePlaybackBand} from './playbackBand';
-import {dkWordPosition, withRecitedWordRun} from './recitedWord';
-import {useRecitationTrackingStore} from '@/store/recitationTrackingStore';
+import {useRecitationLineHighlights} from './useRecitationLineHighlights';
 import {useVerseUnitDragSelect, type LineCharHit} from './verseUnitDragSelect';
 // @ai-end
 import {
@@ -737,38 +736,14 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
     verseUnitsVersion, // @ai
   ]);
 
-  // The word being recited, painted over its ayah's band while recitation
-  // follow-along is listening.
-  const recitedWord = useRecitationTrackingStore(s =>
-    s.status === 'listening' && s.verseKey && s.wordIndex !== null
-      ? `${s.verseKey}|${s.wordIndex}|${s.totalWords}`
-      : '',
+  // Recitation follow-along: recited ayat and the word being recited.
+  const lineHighlights = useRecitationLineHighlights(
+    pageNumber,
+    pageLines,
+    lineBackgroundHighlightsMap,
+    textColor,
+    isDarkMode,
   );
-  const recitedWordColor = useMemo(
-    () =>
-      Color(textColor)
-        .alpha(isDarkMode ? 0.22 : 0.25)
-        .toString(),
-    [textColor, isDarkMode],
-  );
-  const lineHighlights = useMemo(() => {
-    if (!recitedWord) return lineBackgroundHighlightsMap;
-    const [verseKey, wordIndex, totalWords] = recitedWord.split('|');
-    const position = dkWordPosition(
-      digitalKhattDataService.getVerseWords(verseKey),
-      Number(wordIndex),
-      Number(totalWords),
-    );
-    if (position === null) return lineBackgroundHighlightsMap;
-    return withRecitedWordRun(
-      lineBackgroundHighlightsMap,
-      pageLines,
-      digitalKhattDataService,
-      verseKey,
-      position,
-      recitedWordColor,
-    );
-  }, [recitedWord, lineBackgroundHighlightsMap, pageLines, recitedWordColor]);
 
   const pageStyle = {width: SCREEN_WIDTH, height: SCREEN_HEIGHT};
 
