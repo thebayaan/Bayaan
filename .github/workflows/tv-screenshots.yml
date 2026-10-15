@@ -1,0 +1,155 @@
+name: TV Screenshots
+
+# Builds the shared TV app for Apple TV and Android TV, walks it end to end on a
+# simulator / emulator with remote presses (tv-app/e2e/walk.txt), and uploads a
+# screenshot of every step as a workflow artifact.
+
+on:
+  push:
+    branches: [feature/tv-platforms]
+    paths:
+      - 'tv-app/**'
+      - 'components/**'
+      - 'services/**'
+      - '.github/workflows/tv-screenshots.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android-tv:
+    name: Android TV walk
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tv-app/package-lock.json
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Install dependencies
+        working-directory: tv-app
+        run: npm ci --legacy-peer-deps --no-audit --no-fund
+
+      - name: Prebuild Android TV project
+        working-directory: tv-app
+        env:
+          EXPO_TV: '1'
+        run: npx expo prebuild --platform android --clean --no-install
+
+      # Release bundles the JavaScript and signs with the debug key, so the APK
+      # runs without Metro.
+      - name: Assemble release APK
+        working-directory: tv-app/android
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+        run: ./gradlew :app:assembleRelease --no-daemon --max-workers=2 -PreactNativeArchitectures=x86,x86_64
+
+      - name: Walk the app on an Android TV emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          target: android-tv
+          arch: x86
+          profile: tv_1080p
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: |
+            adb install -r "$(find tv-app/android/app/build/outputs/apk/release -name '*.apk' | head -1)"
+            bash tv-app/e2e/run-walk.sh android "$RUNNER_TEMP/tv-screens/android-tv"
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-tv-screens
+          path: ${{ runner.temp }}/tv-screens/android-tv
+          if-no-files-found: warn
+
+  apple-tv:
+    name: Apple TV walk
+    runs-on: macos-15
+    timeout-minutes: 120
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tv-app/package-lock.json
+
+      - name: Install idb
+        run: |
+          brew tap facebook/fb
+          brew install facebook/fb/idb-companion
+          pipx install fb-idb
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Install dependencies
+        working-directory: tv-app
+        run: npm ci --legacy-peer-deps --no-audit --no-fund
+
+      - name: Prebuild tvOS project
+        working-directory: tv-app
+        env:
+          EXPO_TV: '1'
+        run: npx expo prebuild --platform ios --clean
+
+      - name: Build for the Apple TV simulator
+        working-directory: tv-app/ios
+        run: |
+          WORKSPACE=$(ls -d *.xcworkspace | head -1)
+          SCHEME=${WORKSPACE%.xcworkspace}
+          set -o pipefail
+          xcodebuild -workspace "$WORKSPACE" -scheme "$SCHEME" -configuration Release \
+            -sdk appletvsimulator -destination 'generic/platform=tvOS Simulator' \
+            -derivedDataPath build CODE_SIGNING_ALLOWED=NO build | tail -50
+
+      - name: Boot an Apple TV simulator
+        id: sim
+        run: |
+          UDID=$(xcrun simctl list devices available -j |
+            jq -r '[.devices | to_entries[] | select(.key | contains("tvOS")) | .value[] | select(.name | contains("Apple TV 4K"))] | last | .udid')
+          echo "Using $UDID"
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+
+      - name: Walk the app on the Apple TV simulator
+        run: |
+          APP=$(find tv-app/ios/build/Build/Products/Release-appletvsimulator -maxdepth 1 -name '*.app' | head -1)
+          xcrun simctl install "${{ steps.sim.outputs.udid }}" "$APP"
+          bash tv-app/e2e/run-walk.sh tvos "$RUNNER_TEMP/tv-screens/apple-tv" "${{ steps.sim.outputs.udid }}"
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: apple-tv-screens
+          path: ${{ runner.temp }}/tv-screens/apple-tv
+          if-no-files-found: warn
