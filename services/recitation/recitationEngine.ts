@@ -3,6 +3,7 @@ import {InferenceSession, Tensor} from 'onnxruntime-react-native';
 import {
   createZipformerSession,
   type OrtSessionLike,
+  type SearchHint,
   type TensorLike,
   type WorkerOutbound,
 } from '@tilawa/core';
@@ -36,6 +37,8 @@ export interface RecitationEngine {
   stop: () => Promise<void>;
   /** Clears recognition state for a new take; keeps the model loaded. */
   reset: () => void;
+  /** Biases ambiguous matches toward this ayah, e.g. the page on screen. */
+  setHint: (hint: SearchHint | null) => void;
   getStats: () => RecitationStats;
   dispose: () => Promise<void>;
 }
@@ -113,6 +116,8 @@ export async function createRecitationEngine(
     corpus: async () =>
       JSON.parse(await FileSystem.readAsStringAsync(assets.corpusPath)),
     onEvent,
+    // The structural rules only serve correction mode; tracking skips them.
+    structural: false,
   });
   stats.loadMs = performance.now() - loadStart;
 
@@ -162,6 +167,11 @@ export async function createRecitationEngine(
         stats.maxFeedMs = 0;
         stats.chunks = 0;
         stats.lastError = null;
+      });
+    },
+    setHint(hint) {
+      void enqueue(async () => {
+        session.setHint(hint);
       });
     },
     getStats() {

@@ -1,13 +1,15 @@
 /**
  * useMushafAutoPageTurn
  *
- * Watches the mushaf player's current verse key during playback.
- * When the active ayah crosses a page boundary, triggers an animated
- * FlatList scroll to the new page.
+ * Watches the mushaf player's current verse key during playback, or the
+ * ayah being recited while recitation follow-along listens. When the active
+ * ayah crosses a page boundary, triggers an animated FlatList scroll to the
+ * new page.
  */
 
 import {useEffect, useRef} from 'react';
 import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
+import {useRecitationTrackingStore} from '@/store/recitationTrackingStore';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 
 export function useMushafAutoPageTurn(
@@ -16,7 +18,12 @@ export function useMushafAutoPageTurn(
   navigateToVerse?: (verseKey: string) => void,
 ) {
   const playbackState = useMushafPlayerStore(s => s.playbackState);
-  const currentVerseKey = useMushafPlayerStore(s => s.currentVerseKey);
+  const playerVerseKey = useMushafPlayerStore(s => s.currentVerseKey);
+  const recitedVerseKey = useRecitationTrackingStore(s =>
+    s.status === 'listening' ? s.verseKey : null,
+  );
+  const isFollowing = playbackState === 'playing' || recitedVerseKey !== null;
+  const currentVerseKey = recitedVerseKey ?? playerVerseKey;
   const lastNavigatedPage = useRef<number>(currentPage);
 
   // Keep the ref in sync when the user manually scrolls
@@ -25,7 +32,7 @@ export function useMushafAutoPageTurn(
   }, [currentPage]);
 
   useEffect(() => {
-    if (playbackState !== 'playing' || !currentVerseKey) return;
+    if (!isFollowing || !currentVerseKey) return;
 
     // In verse-level navigation mode (vertical/list view), scroll to every ayah
     if (navigateToVerse) {
@@ -45,5 +52,5 @@ export function useMushafAutoPageTurn(
       lastNavigatedPage.current = targetPage;
       navigateToPage(targetPage);
     }
-  }, [playbackState, currentVerseKey, navigateToPage, navigateToVerse]);
+  }, [isFollowing, currentVerseKey, navigateToPage, navigateToVerse]);
 }

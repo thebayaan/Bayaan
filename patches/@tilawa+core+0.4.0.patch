@@ -1,5 +1,27 @@
+diff --git a/node_modules/@tilawa/core/dist/recitation/session.d.ts b/node_modules/@tilawa/core/dist/recitation/session.d.ts
+index 24b499d..e53247e 100644
+--- a/node_modules/@tilawa/core/dist/recitation/session.d.ts
++++ b/node_modules/@tilawa/core/dist/recitation/session.d.ts
+@@ -15,7 +15,7 @@ import { QuranDB } from "../quran-db.js";
+ import type { WorkerOutbound } from "../types.js";
+ import { type AyahTally, type BridgedAyahTally } from "./emission.js";
+ import { type EngineConfig } from "./config.js";
+-import type { ExpectedPassage, FallbackHit, WordVerdict } from "./types.js";
++import type { ExpectedPassage, FallbackHit, SearchHint, WordVerdict } from "./types.js";
+ import { type OrtLike, type OrtSessionLike, type ZipformerIo } from "./zipformerRunner.js";
+ import { CorrectionController, type CorrectionAction, type RecitationMode } from "./correction.js";
+ import { type SlipSensitivity } from "./slipHead.js";
+@@ -219,6 +219,8 @@ export declare class ZipformerSession {
+      * across {@link reset}; pass null to clear.
+      */
+     setExpected(passage: ExpectedPassage | null): void;
++    /** Tracking mode: bias near-tie searches toward this ayah. Kept across reset. */
++    setHint(hint: SearchHint | null): void;
+     setMode(mode: RecitationMode): WorkerOutbound[];
+     /**
+      * Turn the slip head on or off. `"strict"` is the no-extra-false-flag
 diff --git a/node_modules/@tilawa/core/dist/recitation/session.js b/node_modules/@tilawa/core/dist/recitation/session.js
-index 3d7030c..eb6059c 100644
+index 3d7030c..e1e54b5 100644
 --- a/node_modules/@tilawa/core/dist/recitation/session.js
 +++ b/node_modules/@tilawa/core/dist/recitation/session.js
 @@ -80,8 +80,9 @@ const STRUCTURAL_BLOCK_SECONDS = 120;
@@ -14,3 +36,24 @@ index 3d7030c..eb6059c 100644
  }
  export class ZipformerSession {
      corpus;
+@@ -295,6 +296,12 @@ export class ZipformerSession {
+         this.expected = passage ? { ...passage } : null;
+         this.engine.setExpected(this.expected);
+     }
++    /** Tracking mode: bias near-tie searches toward this ayah (e.g. the page
++     * on screen). Kept across {@link reset}; pass null to clear. */
++    setHint(hint) {
++        this.hint = hint ? { ...hint } : null;
++        this.engine.setHint(this.hint);
++    }
+     setMode(mode) {
+         const out = this.correction.state.phase !== 'idle' ? this.correct('close') : [];
+         this.correction.setMode(mode);
+@@ -437,6 +444,7 @@ export class ZipformerSession {
+         engine.onBeforeRelocate = () => this.dumpTallies();
+         this.attachPosteriors(engine);
+         engine.setExpected(this.expected);
++        engine.setHint(this.hint ?? null);
+         return engine;
+     }
+     /** GOP scoring costs a few CTC Viterbi passes per word; only correction mode reads it.

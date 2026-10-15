@@ -8,6 +8,9 @@ interface DevSettingsState {
   toggleFloatingDevMenu: () => void;
   forceNetworkBanner: boolean;
   toggleForceNetworkBanner: () => void;
+  // Mic button in the mushaf header for recitation follow-along (Tilawa)
+  recitationFollowAlong: boolean;
+  toggleRecitationFollowAlong: () => void;
   // Random card design override (-1 = auto/session seed)
   randomCardVariantIndex: number;
   setRandomCardVariantIndex: (index: number) => void;
@@ -25,6 +28,9 @@ export const useDevSettingsStore = create<DevSettingsState>()(
       forceNetworkBanner: false,
       toggleForceNetworkBanner: () =>
         set(state => ({forceNetworkBanner: !state.forceNetworkBanner})),
+      recitationFollowAlong: false,
+      toggleRecitationFollowAlong: () =>
+        set(state => ({recitationFollowAlong: !state.recitationFollowAlong})),
       randomCardVariantIndex: -1,
       setRandomCardVariantIndex: (index: number) =>
         set({randomCardVariantIndex: index}),

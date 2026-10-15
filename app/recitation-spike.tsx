@@ -12,6 +12,7 @@ import {moderateScale} from 'react-native-size-matters';
 import Color from 'color';
 import type {WorkerOutbound} from '@tilawa/core';
 import {useTheme} from '@/hooks/useTheme';
+import {useDevSettingsStore} from '@/store/devSettingsStore';
 import {
   deleteRecitationAssets,
   ensureRecitationAssets,
@@ -74,6 +75,10 @@ export default function RecitationSpikeScreen(): React.JSX.Element {
   const [inputRms, setInputRms] = useState(0);
   const [lastEvent, setLastEvent] = useState('-');
   const engineRef = useRef<RecitationEngine | null>(null);
+  const followAlong = useDevSettingsStore(s => s.recitationFollowAlong);
+  const toggleFollowAlong = useDevSettingsStore(
+    s => s.toggleRecitationFollowAlong,
+  );
   const micRef = useRef<MicStream | null>(null);
 
   const handleEvent = useCallback((msg: WorkerOutbound) => {
@@ -246,6 +251,10 @@ export default function RecitationSpikeScreen(): React.JSX.Element {
       </Text>
       <Text style={[styles.subtitle, {color: muted}]}>Phase: {phase}</Text>
       {renderButton('Close', handleClose)}
+      {renderButton(
+        `Mic in mushaf: ${followAlong ? 'ON' : 'OFF'}`,
+        toggleFollowAlong,
+      )}
 
       {phase === 'needs-download' &&
         renderButton('Download model (~75 MB)', handleDownload)}
