@@ -19,8 +19,8 @@ The ordinary interface-copy queue is now addressed: **286 new Amharic draft entr
 | sheets | 239 | 238 | 1 |
 | player | 54 | 54 | 0 |
 | reader | 41 | 41 | 0 |
-| content | 407 | 366 | 41 |
-| **Total** | **1,392** | **1,323** | **69** |
+| content | 436 | 395 | 41 |
+| **Total** | **1,421** | **1,352** | **69** |
 
 The [per-key fallback inventory](../i18n/amharic-fallbacks.md) now contains only **69 specialist reference/legend explanations**: 41 recitation-transmission descriptions, 27 tajweed/reference legend terms/descriptions and one rewayat explanation containing religious quotations. They remain original English pending qualified review. The [source-value policy](../i18n/amharic-source-values.json) records 132 canonical names, 13 outgoing copy/share values and 10 notation values; tests and the coverage reporter require exact equality with English. Populated resource coverage includes these explicit source values and is not a translated/approved-copy percentage.
 
@@ -90,6 +90,7 @@ Remaining work: obtain fluent review of all interface draft copy and qualified r
 - Merged `origin/develop` at `b31362cf` (search overhaul and reciter picker). Develop moved `sheets:favoriteReciters.searchPlaceholder` and `.empty` into a new `sheets:reciterPicker` group and added `sheets:mushafPlayer.reciterPickerSubtitle`. The Amharic file follows the same shape; the two moved values are unchanged and the new subtitle is an unreviewed draft (አንቀጽ በአንቀጽ ድምፅ ያላቸው አንባቢዎች).
 - Coverage is now **1,323 / 1,392**, with the same **69 specialist fallbacks**, **155 retained values** and **zero ordinary UI gaps**. The inventory was regenerated with `--write`.
 - Checks: `npm run i18n:check`, **161 i18n tests / six suites**, ten Python verification-tool tests, the seven-face font verifier (still **189 Ethiopic characters**), TypeScript with the 8 GB heap and Prettier on changed files pass. The full suite with `BAYAAN_OVERLAY_DB_DIR=bundled` passes (2,688 tests, two skipped) once `better-sqlite3` is built. No native QA was run for this sync.
+- The 29 adhkar super-category cards (Morning, Evening, Salah…) showed English in Amharic because their titles came only from the seeded `super_categories` rows. `getSuperCategoryDisplayTitle` now reads `content:adhkarSuperCategories.<id>` and falls back to the database title on the language's `bilingualContent` side. English and Arabic values equal the seeded `title` and `arabic_title`, so their display is unchanged; a test parses the seed and enforces that. The Amharic titles are unreviewed drafts that reuse the existing short-title terms. Coverage is now **1,352 / 1,421**. Native widgets keep their own adhkar titles.
 
 ## Historical SDK 56 evidence — superseded by the rebase
 

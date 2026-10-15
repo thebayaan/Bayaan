@@ -10,6 +10,7 @@ import type enContent from '@/i18n/locales/en/content.json';
 
 // @ai-start
 type ShortTitleKey = keyof (typeof enContent)['adhkarShortTitles'];
+type SuperCategoryTitleKey = keyof (typeof enContent)['adhkarSuperCategories'];
 // @ai-end
 
 /**
@@ -218,16 +219,25 @@ const TITLE_SHORTENINGS: Record<string, ShortTitleKey> = {
 };
 // @ai-end
 
-/** Super-category label: Arabic title in Arabic mode, English otherwise. */
+/**
+ * Super-category label from `content:adhkarSuperCategories`, keyed by id.
+ * Unknown ids fall back to the database title on the language's
+ * `bilingualContent` side.
+ */
 // @ai-start
 export function getSuperCategoryDisplayTitle(category: {
+  id: string;
   title: string;
   arabicTitle?: string | null;
 }): string {
-  if (currentLanguageConfig.bilingualContent === 'ar' && category.arabicTitle) {
-    return category.arabicTitle;
-  }
-  return category.title;
+  const dataTitle =
+    currentLanguageConfig.bilingualContent === 'ar' && category.arabicTitle
+      ? category.arabicTitle
+      : category.title;
+  return i18n.t(
+    `content:adhkarSuperCategories.${category.id as SuperCategoryTitleKey}`,
+    {defaultValue: dataTitle},
+  );
 }
 // @ai-end
 

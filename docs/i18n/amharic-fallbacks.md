@@ -13,8 +13,8 @@ Amharic remains `inProgress`. Populated entries include unreviewed Amharic copy 
 | sheets | 239 | 238 | 1 |
 | player | 54 | 54 | 0 |
 | reader | 41 | 41 | 0 |
-| content | 407 | 366 | 41 |
-| **Total** | **1,392** | **1,323** | **69** |
+| content | 436 | 395 | 41 |
+| **Total** | **1,421** | **1,352** | **69** |
 
 ## Deliberately retained source values
 

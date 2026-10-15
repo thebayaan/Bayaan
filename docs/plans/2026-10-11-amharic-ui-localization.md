@@ -28,7 +28,7 @@ The upstream branch now ships English and Arabic, with Expo SDK 57 / React Nativ
 
 ## Current coverage and next implementation work
 
-The resources contain **1,323 populated leaves across eight namespaces**, against **1,392 English source leaves**. The ordinary UI queue is addressed with **286 new unreviewed Amharic drafts** and **155 explicit source values**, preserving all 881 prior entries. The remaining **69 fallbacks** are specialist reference descriptions/legend terminology requiring qualified review; no religious quotations or reference explanations were machine-translated.
+The resources contain **1,352 populated leaves across eight namespaces**, against **1,421 English source leaves**. The ordinary UI queue is addressed with **286 new unreviewed Amharic drafts** and **155 explicit source values**, preserving all 881 prior entries. The remaining **69 fallbacks** are specialist reference descriptions/legend terminology requiring qualified review; no religious quotations or reference explanations were machine-translated.
 
 | Namespace | Populated | Source | Fallback |
 | --- | ---: | ---: | ---: |
@@ -39,7 +39,7 @@ The resources contain **1,323 populated leaves across eight namespaces**, agains
 | sheets | 238 | 239 | 1 |
 | player | 54 | 54 | 0 |
 | reader | 41 | 41 | 0 |
-| content | 366 | 407 | 41 |
+| content | 395 | 436 | 41 |
 
 The [per-key fallback inventory](../i18n/amharic-fallbacks.md) is reproducible with `python scripts/report-amharic-coverage.py --write`. The [source-value policy](../i18n/amharic-source-values.json) preserves 132 catalog/reference names, 13 outgoing copy/share templates and 10 numeric/reference notations. Resource tests and the report enforce equality with English. Catalog headings and adhkar navigation titles/tags are interface metadata; their religious bodies and provider data remain unchanged. All draft copy remains awaiting fluent review, and source-value coverage is not a claim of translation completeness.
 

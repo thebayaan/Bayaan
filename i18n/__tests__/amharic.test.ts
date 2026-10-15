@@ -111,3 +111,27 @@ it('keeps Amharic out of native released-language declarations until review', ()
   expect(declared).toBeDefined();
   expect(declared).not.toMatch(/['"]am['"]/);
 });
+it('labels every seeded adhkar super category, keeping English and Arabic titles', () => {
+  const source = readFileSync(
+    join(__dirname, '../../services/database/AdhkarDatabaseService.ts'),
+    'utf8',
+  );
+  const seeded = [
+    ...source
+      .slice(source.indexOf('async seedSuperCategories'))
+      .matchAll(
+        /id: '([^']+)',\s*title: '([^']+)',\s*arabic_title: '([^']+)'/g,
+      ),
+  ].map(([, id, title, arabicTitle]) => ({id, title, arabicTitle}));
+  expect(seeded.length).toBeGreaterThan(0);
+  const labels = (lang: 'en' | 'ar' | 'am') =>
+    resources[lang].content.adhkarSuperCategories as Record<string, string>;
+  expect(Object.keys(labels('en')).sort()).toEqual(
+    seeded.map(category => category.id).sort(),
+  );
+  for (const {id, title, arabicTitle} of seeded) {
+    expect(labels('en')[id]).toBe(title);
+    expect(labels('ar')[id]).toBe(arabicTitle);
+    expect(labels('am')[id]).toMatch(/[ሀ-፿]/);
+  }
+});
