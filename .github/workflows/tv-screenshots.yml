@@ -155,6 +155,9 @@ jobs:
           echo "Using $UDID"
           xcrun simctl boot "$UDID"
           xcrun simctl bootstatus "$UDID" -b
+          # The first walk saw the Apple boot logo after launch, so let the
+          # simulator finish settling before installing.
+          sleep 60
           echo "udid=$UDID" >> "$GITHUB_OUTPUT"
 
       - name: Walk the app on the Apple TV simulator

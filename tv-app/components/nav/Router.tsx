@@ -39,7 +39,12 @@ export function Router(): React.ReactElement {
     return false;
   }, [stack.length, pop]);
 
-  useTVBackHandler(handleBack);
+  const contextMenuOpen = useContextMenuStore(s => s.reciterId !== null);
+  const overlayOpen = useOverlayStore(s => Boolean(s.active));
+  useTVBackHandler(
+    handleBack,
+    contextMenuOpen || overlayOpen || stack.length > 0,
+  );
 
   if (!onboarded && reciters.length > 0) {
     return (

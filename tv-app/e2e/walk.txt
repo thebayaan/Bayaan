@@ -10,16 +10,17 @@
 05-home-rail-3 2 down
 06-home-rail-3-next-card 2 right
 07-reciter-detail 6 select
-08-reciter-detail-surah-list 2 down
-09-play-surah 12 select
-10-paused 3 playpause
-11-resumed 3 playpause
-12-seek-forward 3 right
-13-back-1 3 back
-14-back-2 3 back
-15-tab-bar 2 up up up up
-16-search-tab 4 right select
-17-search-typed 5 down text:fati
-18-collection-tab 4 up up up right select
-19-settings-tab 4 right select
-20-relaunch-home 20 relaunch
+08-reciter-detail-rewayah-tabs 2 down
+09-reciter-detail-surah-grid 2 down
+10-play-surah 12 select
+11-paused 3 playpause
+12-resumed 3 playpause
+13-seek-forward 3 right
+14-back-to-detail 3 back
+15-back-to-home 3 back
+16-tab-bar 2 up up up up up
+17-search-tab 4 right select
+18-search-typed 5 down text:fati
+19-collection-tab 4 up up up right select
+20-settings-tab 4 right select
+21-relaunch-home 20 relaunch
