@@ -79,7 +79,8 @@ jobs:
         run: npm run build:release
 
       # The headless device (--no-gui --no-gl-accel) runs the app but its
-      # screenshots come out black, so render on a virtual X display with GL.
+      # screenshots come out black, so show its window on a virtual X display
+      # (software rendering; --gui with GL never finished booting).
       - name: Start virtual X display
         working-directory: .
         run: |
@@ -89,7 +90,7 @@ jobs:
           echo "DISPLAY=:99" >> "$GITHUB_ENV"
 
       - name: Start Vega Virtual Device
-        run: vega virtual-device start --gui -t 600
+        run: vega virtual-device start --gui --no-gl-accel -t 600
 
       - name: Install app
         run: |
