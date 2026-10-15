@@ -27,7 +27,7 @@ describe('dkWordPosition', () => {
     expect(dkWordPosition(fatiha1, 9, 4)).toBe(4);
   });
 
-  it('falls back to the proportional word when the counts differ (37:130)', () => {
+  it('maps 37:130, where Tilawa splits one word in two', () => {
     const ayah = words('37:130', [
       'سَلَٰمٌ',
       'عَلَىٰٓ',
@@ -35,8 +35,15 @@ describe('dkWordPosition', () => {
       '۝١٣٠',
     ]);
     expect(dkWordPosition(ayah, 0, 4)).toBe(1);
-    expect(dkWordPosition(ayah, 2, 4)).toBe(2);
+    expect(dkWordPosition(ayah, 1, 4)).toBe(2);
+    expect(dkWordPosition(ayah, 2, 4)).toBe(3);
     expect(dkWordPosition(ayah, 3, 4)).toBe(3);
+  });
+
+  it('falls back to the proportional word for an unknown mismatch', () => {
+    const ayah = words('2:1', ['الٓمٓ', 'ذَٰلِكَ', '۝١']);
+    expect(dkWordPosition(ayah, 0, 4)).toBe(1);
+    expect(dkWordPosition(ayah, 3, 4)).toBe(2);
   });
 
   it('returns null without words', () => {

@@ -14,10 +14,17 @@ function isAyahMarker(word: DKWordInfo): boolean {
   return word.text.trimStart().startsWith(AYAH_MARKER);
 }
 
+// Tilawa's word segmentation matches Digital Khatt (and QCF) on every ayah
+// but 37:130, where it splits إِلْ يَاسِينَ into two words. Tilawa word index
+// to DK word position for those ayat.
+const TILAWA_WORD_OVERRIDES: Readonly<Record<string, readonly number[]>> = {
+  '37:130': [1, 2, 3, 3],
+};
+
 /**
- * The Digital Khatt word position Tilawa's word index points at. The two
- * segmentations agree on every ayah but 37:130, so a count mismatch falls
- * back to the proportional position.
+ * The Digital Khatt word position Tilawa's word index points at, skipping
+ * the ayah marker. A count mismatch outside the override table falls back to
+ * the proportional position.
  */
 export function dkWordPosition(
   verseWords: readonly DKWordInfo[],
@@ -28,6 +35,12 @@ export function dkWordPosition(
     .filter(w => !isAyahMarker(w))
     .map(w => w.wordPositionInVerse);
   if (positions.length === 0 || totalWords <= 0) return null;
+  const override = TILAWA_WORD_OVERRIDES[verseWords[0].verseKey];
+  if (override && totalWords === override.length) {
+    const position =
+      override[Math.min(Math.max(wordIndex, 0), override.length - 1)];
+    return positions.includes(position) ? position : null;
+  }
   const index =
     positions.length === totalWords
       ? wordIndex
