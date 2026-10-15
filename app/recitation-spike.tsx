@@ -7,6 +7,7 @@ import {
   View,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {router} from 'expo-router';
 import {moderateScale} from 'react-native-size-matters';
 import Color from 'color';
 import type {WorkerOutbound} from '@tilawa/core';
@@ -52,6 +53,13 @@ function formatMs(ms: number): string {
   return `${Math.round(ms)} ms`;
 }
 
+function rms(pcm: Float32Array): number {
+  if (pcm.length === 0) return 0;
+  let sum = 0;
+  for (let i = 0; i < pcm.length; i++) sum += pcm[i] * pcm[i];
+  return Math.sqrt(sum / pcm.length);
+}
+
 export default function RecitationSpikeScreen(): React.JSX.Element {
   const {theme} = useTheme();
   const insets = useSafeAreaInsets();
@@ -63,10 +71,13 @@ export default function RecitationSpikeScreen(): React.JSX.Element {
   const [transcript, setTranscript] = useState('');
   const [stats, setStats] = useState<RecitationStats | null>(null);
   const [deviceRate, setDeviceRate] = useState<number | null>(null);
+  const [inputRms, setInputRms] = useState(0);
+  const [lastEvent, setLastEvent] = useState('-');
   const engineRef = useRef<RecitationEngine | null>(null);
   const micRef = useRef<MicStream | null>(null);
 
   const handleEvent = useCallback((msg: WorkerOutbound) => {
+    setLastEvent(msg.type);
     if (msg.type === 'verse_match') {
       const key = `${msg.surah}:${msg.ayah}`;
       setVerses(prev =>
@@ -153,6 +164,7 @@ export default function RecitationSpikeScreen(): React.JSX.Element {
       setTranscript('');
       micRef.current = await startMicStream((pcm, rate) => {
         setDeviceRate(rate);
+        setInputRms(rms(pcm));
         engine.feed(pcm);
       });
       setPhase('listening');
@@ -170,6 +182,15 @@ export default function RecitationSpikeScreen(): React.JSX.Element {
       setStats(engine.getStats());
     }
     setPhase('ready');
+  }
+
+  async function handleClose(): Promise<void> {
+    if (micRef.current) await handleStop();
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    router.replace('/');
   }
 
   async function handleDelete(): Promise<void> {
@@ -224,6 +245,7 @@ export default function RecitationSpikeScreen(): React.JSX.Element {
         Recitation spike
       </Text>
       <Text style={[styles.subtitle, {color: muted}]}>Phase: {phase}</Text>
+      {renderButton('Close', handleClose)}
 
       {phase === 'needs-download' &&
         renderButton('Download model (~75 MB)', handleDownload)}
@@ -273,6 +295,10 @@ export default function RecitationSpikeScreen(): React.JSX.Element {
         {renderStat('Max feed', stats ? formatMs(stats.maxFeedMs) : '-')}
         {renderStat('Backlog', stats ? String(stats.backlog) : '-')}
         {renderStat('Mic rate', deviceRate ? `${deviceRate} Hz` : '-')}
+        {renderStat('Input RMS (gate 0.005)', inputRms.toFixed(4))}
+        {renderStat('Chunks', stats ? String(stats.chunks) : '-')}
+        {renderStat('Last event', lastEvent)}
+        {renderStat('Engine error', stats?.lastError ?? '-')}
       </View>
 
       {(phase === 'ready' || phase === 'error') &&

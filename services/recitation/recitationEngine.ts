@@ -23,6 +23,10 @@ export interface RecitationStats {
   backlog: number;
   /** Time to create the ONNX session and load the corpus. */
   loadMs: number;
+  /** Chunks fed successfully. */
+  chunks: number;
+  /** Most recent engine failure, if any. */
+  lastError: string | null;
 }
 
 export interface RecitationEngine {
@@ -52,6 +56,13 @@ function toTensorLike(tensor: Tensor): TensorLike {
   throw new Error(`Unsupported ONNX output type: ${type}`);
 }
 
+function toOrtTensor(value: TensorLike): Tensor {
+  const {data, dims} = value;
+  if (data instanceof Float32Array) return new Tensor('float32', data, dims);
+  if (data instanceof BigInt64Array) return new Tensor('int64', data, dims);
+  return new Tensor('int32', data, dims);
+}
+
 function stripFileScheme(uri: string): string {
   return uri.startsWith('file://') ? uri.slice('file://'.length) : uri;
 }
@@ -67,6 +78,8 @@ export async function createRecitationEngine(
     maxFeedMs: 0,
     backlog: 0,
     loadMs: 0,
+    chunks: 0,
+    lastError: null,
   };
   const loadStart = performance.now();
   const ortSession = await InferenceSession.create(
@@ -79,10 +92,9 @@ export async function createRecitationEngine(
     async run(feeds) {
       const ortFeeds: Record<string, Tensor> = {};
       for (const [name, value] of Object.entries(feeds)) {
-        if (!isOrtTensor(value)) {
-          throw new Error(`Feed ${name} is not an onnxruntime Tensor`);
-        }
-        ortFeeds[name] = value;
+        // Recurrent state comes back as the plain TensorLike we returned from
+        // the previous run, so rewrap it.
+        ortFeeds[name] = isOrtTensor(value) ? value : toOrtTensor(value);
       }
       const start = performance.now();
       const outputs = await ortSession.run(ortFeeds);
@@ -117,6 +129,8 @@ export async function createRecitationEngine(
         await task();
       })
       .catch(error => {
+        stats.lastError =
+          error instanceof Error ? error.message : String(error);
         console.warn('[recitation] engine task failed', error);
       });
     return queue;
@@ -131,6 +145,7 @@ export async function createRecitationEngine(
         stats.busyMs += elapsed;
         stats.maxFeedMs = Math.max(stats.maxFeedMs, elapsed);
         stats.audioSeconds += pcm.length / RECITATION_SAMPLE_RATE;
+        stats.chunks += 1;
       });
     },
     stop() {
@@ -145,6 +160,8 @@ export async function createRecitationEngine(
         stats.busyMs = 0;
         stats.ortMs = 0;
         stats.maxFeedMs = 0;
+        stats.chunks = 0;
+        stats.lastError = null;
       });
     },
     getStats() {

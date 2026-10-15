@@ -37,7 +37,9 @@ export async function startMicStream(
 ): Promise<MicStream> {
   AudioManager.setAudioSessionOptions({
     iosCategory: 'playAndRecord',
-    iosMode: 'measurement',
+    // 'measurement' disables input gain, which left speech under Tilawa's
+    // silence gate on device.
+    iosMode: 'default',
     iosOptions: ['defaultToSpeaker', 'allowBluetoothHFP'],
   });
   await AudioManager.setAudioSessionActivity(true);
