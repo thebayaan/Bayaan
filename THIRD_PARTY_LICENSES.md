@@ -50,6 +50,20 @@ The word text of the seven non-Hafs rewayah databases (`data/mushaf/digitalkhatt
 
 **Licence status.** KFGQPC offers these packages to developers on its developer page (https://qurancomplex.gov.sa/en/techquran/dev/). No licence or terms of use for the text was found in the packages. The end-user licence embedded in their riwayah fonts covers only those fonts, and Bayaan does not ship them. No written permission from KFGQPC for these texts is recorded in this repository yet. Until one is, this section records where the text comes from, not a licence grant. Details are in `scripts/rewayah/sources/SOURCES.md` (Licence status).
 
+## Recitation follow-along model (Tilawa)
+
+Recitation follow-along runs the **Tilawa** recogniser on the device
+(https://github.com/yazinsai/tilawa). The JavaScript SDK `@tilawa/core` is MIT
+and is listed with the npm dependencies below. The acoustic model
+(`zipformer_a0w_ep1_a05.int8.onnx`) and the phoneme corpus
+(`zipformer_quran.json`) are not bundled: the app downloads them on first use
+from the Tilawa GitHub releases. Both are Derivatives of **Quran-Lab**'s
+`zipformer_p-arabic-v3` (https://huggingface.co/Quran-Lab/zipformer_p-arabic-v3)
+and are licensed under the **Quran-Lab NPL-1.2**, whose full text is in
+`licenses/NPL-1.2.txt`. NPL-1.2 forbids charging for the Work or any feature it
+powers: follow-along is and will stay free, with no paywall or ads. Any copy of
+the model Bayaan hosts itself must be served with that licence file.
+
 ## Adhkar content & audio
 
 The Arabic adhkar text, English translations, and accompanying MP3 recitations

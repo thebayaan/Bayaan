@@ -1,9 +1,9 @@
 import * as FileSystem from 'expo-file-system/legacy';
 
 // Tilawa (github.com/yazinsai/tilawa) model + phoneme corpus. Both are
-// NPL-1.2: free to use, never behind a payment, derivatives stay NPL-1.2.
-// Phase 0 spike pulls straight from the GitHub releases; mirror to R2 before
-// anything ships.
+// NPL-1.2 (licenses/NPL-1.2.txt): free to use, never behind a payment,
+// derivatives stay NPL-1.2. Pulled from the GitHub releases for now; an R2
+// mirror must serve licenses/NPL-1.2.txt beside the files.
 const MODEL_URL =
   'https://github.com/yazinsai/tilawa/releases/download/zipformer-a0w-ep1-a0.5/zipformer_a0w_ep1_a05.int8.onnx';
 const CORPUS_URL =
