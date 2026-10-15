@@ -25,6 +25,12 @@ import {
 // useRecitationTrackingStore. The model stays loaded between takes.
 
 let engine: RecitationEngine | null = null;
+let unloadTimer: ReturnType<typeof setTimeout> | null = null;
+let memoryWarningSub: NativeEventSubscription | null = null;
+
+// The model holds ~100 to 150 MB once loaded. Keep it between takes, drop it
+// once the reader has been idle this long.
+const IDLE_UNLOAD_MS = 5 * 60 * 1000;
 let mic: MicStream | null = null;
 let appStateSub: NativeEventSubscription | null = null;
 // Bumped by stop() so a start() still loading knows it was cancelled.
@@ -128,6 +134,7 @@ export async function startRecitationTracking(
       });
       return;
     }
+    cancelUnload();
     if (!engine) {
       let assets = await getRecitationAssets();
       if (!assets) {
@@ -138,6 +145,11 @@ export async function startRecitationTracking(
         setState({status: 'loading'});
       }
       engine = await createRecitationEngine(assets, handleEvent);
+      memoryWarningSub ??= AppState.addEventListener('memoryWarning', () => {
+        if (useRecitationTrackingStore.getState().status !== 'listening') {
+          void unloadRecitationModel();
+        }
+      });
     }
     if (run !== generation) return;
     if (pauseQuranAudio()) {
@@ -192,14 +204,39 @@ export async function stopRecitationTracking(): Promise<void> {
   setState(RECITATION_TRACKING_IDLE);
   if (stream) await stream.stop();
   if (engine) await engine.stop();
+  scheduleUnload(IDLE_UNLOAD_MS);
+}
+
+function cancelUnload(): void {
+  if (unloadTimer) clearTimeout(unloadTimer);
+  unloadTimer = null;
+}
+
+/** Unloads the model after `delayMs` unless a take starts first. */
+export function scheduleUnload(delayMs: number): void {
+  cancelUnload();
+  if (!engine) return;
+  unloadTimer = setTimeout(() => {
+    unloadTimer = null;
+    void unloadRecitationModel();
+  }, delayMs);
+}
+
+/** Releases the loaded model; the next take loads it again (~1 to 2 s). */
+export async function unloadRecitationModel(): Promise<void> {
+  cancelUnload();
+  if (useRecitationTrackingStore.getState().status !== 'off') return;
+  const loaded = engine;
+  engine = null;
+  memoryWarningSub?.remove();
+  memoryWarningSub = null;
+  if (loaded) await loaded.dispose();
 }
 
 /** Stops listening, unloads the model and deletes the downloaded files. */
 export async function removeRecitationModel(): Promise<void> {
   await stopRecitationTracking();
-  const loaded = engine;
-  engine = null;
-  if (loaded) await loaded.dispose();
+  await unloadRecitationModel();
   await deleteRecitationAssets();
 }
 

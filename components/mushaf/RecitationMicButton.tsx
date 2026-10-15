@@ -21,12 +21,15 @@ import {
 import {mushafVerseMapService} from '@/services/mushaf/MushafVerseMapService';
 import {
   recitationModelNeedsDownload,
+  scheduleUnload,
   setRecitationHint,
   startRecitationTracking,
   stopRecitationTracking,
 } from '@/services/recitation/RecitationTrackingService';
 import type {SearchHint} from '@tilawa/core';
 import {SURAHS} from '@/data/surahData';
+
+const LEAVE_MUSHAF_UNLOAD_MS = 60 * 1000;
 
 function pageHint(page: number): SearchHint | null {
   const first = mushafVerseMapService.getOrderedVerseKeysForPage(page)[0];
@@ -63,7 +66,11 @@ export function useRecitationFollowAlong(currentPage: number): void {
 
   useEffect(() => {
     return () => {
-      void stopRecitationTracking();
+      // Leaving the mushaf: stop, and let the model go soon after unless the
+      // reader comes straight back.
+      void stopRecitationTracking().then(() =>
+        scheduleUnload(LEAVE_MUSHAF_UNLOAD_MS),
+      );
     };
   }, []);
 }

@@ -12,7 +12,7 @@ the mushaf bottom bar; user-facing name "Follow my recitation".
 | 4 | State: `debug: true` engine events give searching / following / lost; bar and iOS 26 toolbar show Stop plus "Finding your place…" or "Ya-Sin 36:4", Play hidden while listening | done |
 | 5 | Engine quick wins: `enableFallback: false`, verdict memo + observe guard + Set cleanup patch (identical output on 4 surahs; jitless 10 to 42% faster) | done |
 | 6 | Recited ayat tint (under all layers, DK pages and vertical mushaf); band in QCF and reading views; word tint in ContinuousMushafView; Hafs-only gate | done (recited tint not in QCF or list views yet) |
-| 7 | Unload: dispose on leaving the mushaf, after 5 min idle, on memory warning | |
+| 7 | Unload: 1 min after leaving the mushaf, 5 min after a take, at once on memory warning | done |
 | 8 | First run: intro sheet (on device, audio stays on the phone, 75 MB), mic permission before download, progress; What's New entry | |
 | 9 | Analytics: started, locked (time to lock), stopped (duration, ayat, reason, rtf), download started/completed/failed, error | |
 | 10 | Native fbank Expo module (C++ core), parity-tested against JS | |
