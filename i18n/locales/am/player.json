@@ -1,0 +1,78 @@
+{
+  "queue": {
+    "empty": "ወረፋው ባዶ ነው",
+    "verseShort": "አ{{verse}}"
+  },
+  "uploads": {
+    "recordingType": {
+      "salah": "ሰላት",
+      "studio": "ስቱዲዮ"
+    },
+    "untagged": "ያልተለየ",
+    "addRecitation": "ንባብ አክል",
+    "emptyTitle": "እስካሁን የተሰቀሉ የሉም",
+    "emptySubtitle": "እዚህ ለማየት ንባቦችን ይስቀሉ"
+  },
+  "uploadPlaceholder": {
+    "hint": "የሱራ ጽሑፍና ዝርዝሮችን ለማየት ይህን ንባብ መለያ ያድርጉለት",
+    "editDetails": "ዝርዝሮችን አርትዕ"
+  },
+  "verse": {
+    "footnote": "የግርጌ ማስታወሻ",
+    "footnoteContentUnavailable": "የግርጌ ማስታወሻው ይዘት አይገኝም",
+    "footnoteDataUnavailable": "የግርጌ ማስታወሻ መረጃ አይገኝም",
+    "wbwHafsNotice": "የቃል በቃል እይታ በHafs ይታያል"
+  },
+  "reciterProfile": {
+    "myUploads": "የእኔ ሰቀላዎች",
+    "sort": {
+      "asc": "ወደ ላይ",
+      "desc": "ወደ ታች",
+      "revelation": "ውርደት"
+    },
+    "searchPlaceholder": "ሱራዎችን ፈልግ",
+    "noSurahsAvailable": "ምንም ሱራ የለም",
+    "noSurahsFound": "ምንም ሱራ አልተገኘም",
+    "thisReciter": "ይህ አንባቢ",
+    "shareMessage": "Listen to {{name}} on {{appName}}",
+    "juzAmma": "Juz 'Amma"
+  },
+  "adhkar": {
+    "playAll": "ሁሉንም አጫውት",
+    "hideInfo": "መረጃ ደብቅ",
+    "showInfo": "መረጃ አሳይ",
+    "reciteTimes_one": "{{count}} ጊዜ አንብብ",
+    "reciteTimes_other": "{{count}} ጊዜ አንብብ",
+    "repeatTimes": "{{times}}× ድገም",
+    "dhikrCount_one": "{{count}} ዚክር",
+    "dhikrCount_other": "{{count}} አዝካር",
+    "tasbeeh": {
+      "a11yLabel": "የተስቢህ ቆጣሪ፣ {{current}} ከ {{target}}",
+      "a11yHint": "ቁጥሩን ለመጨመር ይንኩ",
+      "complete": "ተጠናቋል",
+      "tapToCount": "ለመቁጠር ይንኩ",
+      "resetA11yLabel": "ቆጣሪ ዳግም ጀምር",
+      "resetA11yHint": "ቁጥሩን ወደ ዜሮ ይመልሳል",
+      "percent": "{{value}}%"
+    },
+    "a11y": {
+      "copyArabic": "የአረብኛ ጽሑፍ ቅዳ",
+      "addBookmark": "እልባት ጨምር",
+      "shareDhikr": "ዚክር አጋራ",
+      "layoutSettings": "የአቀማመጥ ቅንብሮች",
+      "playAudio": "ድምፅ አጫውት",
+      "pauseAudio": "ድምፅ ለአፍታ አቁም",
+      "enableRepeat": "ድግግሞሽ አብራ",
+      "disableRepeat": "ድግግሞሽ አጥፋ",
+      "showInstruction": "መመሪያ አሳይ",
+      "hideInstruction": "መመሪያ ደብቅ",
+      "playAll": "ሁሉንም አጫውት",
+      "pauseAll": "ሁሉንም ለአፍታ አቁም",
+      "removeBookmark": "ዕልባት አስወግድ"
+    },
+    "otherSection": "ሌሎች"
+  },
+  "a11y": {
+    "openPlayer": "ሙሉ ማጫወቻውን ይከፍታል"
+  }
+}

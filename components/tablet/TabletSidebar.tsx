@@ -1,3 +1,4 @@
+import {getAppDisplayName} from '@/i18n/format'; // @ai
 import React, {useCallback, useMemo} from 'react';
 import {View, Pressable, Text, StyleSheet} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
@@ -189,7 +190,7 @@ export const TabletSidebar: React.FC<BottomTabBarProps> = ({
         <LogoIcon color={theme.colors.text} size={40} isDarkMode={isDarkMode} />
         {expanded ? (
           <Text style={[styles.brand, {color: theme.colors.text}]}>
-            {branding.appName}
+            {getAppDisplayName(branding.appName) /* @ai */}
           </Text>
         ) : null}
       </View>

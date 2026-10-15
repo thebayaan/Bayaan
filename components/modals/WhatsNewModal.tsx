@@ -1,3 +1,4 @@
+import {getAppDisplayName} from '@/i18n/format'; // @ai
 import React, {
   useEffect,
   useState,
@@ -145,7 +146,7 @@ export const WhatsNewModal = forwardRef<WhatsNewModalRef>((props, ref) => {
                 t={t}
                 ns="settings"
                 i18nKey="whatsNew.title"
-                values={{appName: branding.appName}}
+                values={{appName: getAppDisplayName(branding.appName)}}
                 components={{brand: <Text style={styles.bayaanText} />}}
               />
             </Text>

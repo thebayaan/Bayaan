@@ -1,0 +1,100 @@
+[
+  {
+    "file": "assets/fonts/ethiopic/ui/BayaanUIEthiopic-Regular.ttf",
+    "weight": "Regular",
+    "manrope": {
+      "file": "assets/fonts/Manrope-Regular.ttf",
+      "sha256": "2960175e094cf559435dd6ad7b67391689a95e866e7989b70560937dccaaea87"
+    },
+    "ethiopic": {
+      "file": "assets/fonts/ethiopic/NotoSansEthiopic-Regular.ttf",
+      "sha256": "f6f7fc379db9438959a2b0527e7a2cf36ea9c84626d56ec444fff37fc24c3c10"
+    },
+    "sha256": "ec62b03312a60a88daf4be01aefd94723b7876383718a26d4e10d47ecbf35c49",
+    "bytes": 382040
+  },
+  {
+    "file": "assets/fonts/ethiopic/ui/BayaanUIEthiopic-Medium.ttf",
+    "weight": "Medium",
+    "manrope": {
+      "file": "assets/fonts/Manrope-Medium.ttf",
+      "sha256": "562fb5d836ed71955f2442a42f2699ab6d8872578bca012d290cdff81aa808aa"
+    },
+    "ethiopic": {
+      "file": "assets/fonts/ethiopic/NotoSansEthiopic-Medium.ttf",
+      "sha256": "d5c09c921049aa49066524e68cca4d7a5f5d07c30a0f1f436902910bbb8dd60d"
+    },
+    "sha256": "9bd3ee0cd876576d241ded7500402e49d2d2537088434337ef54a9552dc3be10",
+    "bytes": 383604
+  },
+  {
+    "file": "assets/fonts/ethiopic/ui/BayaanUIEthiopic-SemiBold.ttf",
+    "weight": "SemiBold",
+    "manrope": {
+      "file": "assets/fonts/Manrope-SemiBold.ttf",
+      "sha256": "9cb6bdf00c2c6b64d4bc77087aadf88207a577f32dae410745e4d55582355d3c"
+    },
+    "ethiopic": {
+      "file": "assets/fonts/ethiopic/NotoSansEthiopic-SemiBold.ttf",
+      "sha256": "c4447908a95c2a7d8721f047fa19e95700bdf09d1b15e185be922263d3aa72c2"
+    },
+    "sha256": "11f5cb4fe1621c086afd5db50ee5fc8cd91b284e04c59d47111e6581971d632c",
+    "bytes": 383572
+  },
+  {
+    "file": "assets/fonts/ethiopic/ui/BayaanUIEthiopic-Bold.ttf",
+    "weight": "Bold",
+    "manrope": {
+      "file": "assets/fonts/Manrope-Bold.ttf",
+      "sha256": "ce687c0c867a4d43dc683d19c6e065bb84c027d3c9e4dd51e82fb53908d4f849"
+    },
+    "ethiopic": {
+      "file": "assets/fonts/ethiopic/NotoSansEthiopic-Bold.ttf",
+      "sha256": "b45f16db963a94ccb6590b65d3b0e48f55cde011f7c0d4f3c00531e6b8500d6f"
+    },
+    "sha256": "9c1f04ab10f9df5fe85e16c6affcdad20eaeb91461971694841ae13ce5cc7615",
+    "bytes": 381944
+  },
+  {
+    "file": "assets/fonts/ethiopic/ui/BayaanUIEthiopic-Light.ttf",
+    "weight": "Light",
+    "manrope": {
+      "file": "assets/fonts/Manrope-Light.ttf",
+      "sha256": "8d4ec5d9b26f325a2e5e3995f542785ae5a36b68400ba80f1e2cb820796cd9c7"
+    },
+    "ethiopic": {
+      "file": "assets/fonts/ethiopic/NotoSansEthiopic-Regular.ttf",
+      "sha256": "f6f7fc379db9438959a2b0527e7a2cf36ea9c84626d56ec444fff37fc24c3c10"
+    },
+    "sha256": "9bee5e129e1700a1046f4802f5fa29c6dd7b908688c773a114ad992702e2c4d0",
+    "bytes": 381916
+  },
+  {
+    "file": "assets/fonts/ethiopic/ui/BayaanUIEthiopic-ExtraLight.ttf",
+    "weight": "ExtraLight",
+    "manrope": {
+      "file": "assets/fonts/Manrope-ExtraLight.ttf",
+      "sha256": "493d6b0bb03dbe47889f8b097250a3c210dd2be96b6795c641ba1980e5b6bd09"
+    },
+    "ethiopic": {
+      "file": "assets/fonts/ethiopic/NotoSansEthiopic-Regular.ttf",
+      "sha256": "f6f7fc379db9438959a2b0527e7a2cf36ea9c84626d56ec444fff37fc24c3c10"
+    },
+    "sha256": "296ea5d27b4ca1745a6e005e1d18e811162eae51580bae428275075f23e20e76",
+    "bytes": 381904
+  },
+  {
+    "file": "assets/fonts/ethiopic/ui/BayaanUIEthiopic-ExtraBold.ttf",
+    "weight": "ExtraBold",
+    "manrope": {
+      "file": "assets/fonts/Manrope-ExtraBold.ttf",
+      "sha256": "effbf6efd56d3bc969fcfa43097932e1a858b6cd0ff6564425e0cc48554ad463"
+    },
+    "ethiopic": {
+      "file": "assets/fonts/ethiopic/NotoSansEthiopic-Bold.ttf",
+      "sha256": "b45f16db963a94ccb6590b65d3b0e48f55cde011f7c0d4f3c00531e6b8500d6f"
+    },
+    "sha256": "2bc3ed446016a827a9ffe8053d300666f36df1d10ff40f40477431e92e5d9e67",
+    "bytes": 382620
+  }
+]

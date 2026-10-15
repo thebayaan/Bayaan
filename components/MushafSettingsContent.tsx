@@ -69,7 +69,7 @@ import {
 // @ai-start
 import {flipX, latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
-import {localizeDigits} from '@/i18n/format';
+import {getAppDisplayName, localizeDigits} from '@/i18n/format'; // @ai
 // @ai-end
 
 // --- Pre-cache Translation/Transliteration Data --- //
@@ -702,7 +702,9 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
       if (switchingToQCF && outcome.kind === 'switched') {
         Alert.alert(
           t('mushafSettings.qcfBetaTitle'),
-          t('mushafSettings.qcfBetaMessage', {appName: branding.appName}),
+          t('mushafSettings.qcfBetaMessage', {
+            appName: getAppDisplayName(branding.appName),
+          }),
         );
       }
     },

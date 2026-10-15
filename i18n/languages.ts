@@ -10,12 +10,12 @@
 export const SOURCE_LANGUAGE = 'en';
 
 /** Every shipped or in-progress UI language, as BCP 47 tags without region. */
-export const SUPPORTED_LANGUAGES = ['en', 'ar'] as const;
+export const SUPPORTED_LANGUAGES = ['en', 'ar', 'am'] as const;
 
 export type AppLanguage = (typeof SUPPORTED_LANGUAGES)[number];
 
 /** ISO 15924 script code, the same value Intl.Locale#maximize() reports. */
-export type Script = 'Latn' | 'Arab';
+export type Script = 'Latn' | 'Arab' | 'Ethi';
 
 /** CLDR numbering system used for digits in UI text. */
 export type Digits = 'latn' | 'arab';
@@ -27,7 +27,7 @@ export const DIGIT_ZERO: Readonly<Record<Digits, number>> = {
 };
 
 /** Font family the Manrope style aliases resolve to (see i18n/fonts.ts). */
-export type UiFont = 'manrope' | 'plexSansArabic';
+export type UiFont = 'manrope' | 'plexSansArabic' | 'manropeEthiopic';
 
 export interface LanguageConfig {
   code: AppLanguage;
@@ -42,6 +42,8 @@ export interface LanguageConfig {
   groupSeparator: string;
   decimalSeparator: string;
   uiFont: UiFont;
+  /** Display transliteration of the canonical Bayaan brand; null keeps its spelling. */
+  bayaanTransliteration: string | null;
   /** False for cursive scripts, where letter spacing breaks joining. */
   allowsLetterSpacing: boolean;
   /**
@@ -74,6 +76,7 @@ export const LANGUAGES: Readonly<Record<AppLanguage, LanguageConfig>> = {
     groupSeparator: ',',
     decimalSeparator: '.',
     uiFont: 'manrope',
+    bayaanTransliteration: null,
     allowsLetterSpacing: true,
     bilingualContent: 'en',
     understandsArabic: false,
@@ -89,10 +92,27 @@ export const LANGUAGES: Readonly<Record<AppLanguage, LanguageConfig>> = {
     groupSeparator: '٬',
     decimalSeparator: '٫',
     uiFont: 'plexSansArabic',
+    bayaanTransliteration: null,
     allowsLetterSpacing: false,
     bilingualContent: 'ar',
     understandsArabic: true,
     status: 'shipped',
+  },
+  am: {
+    code: 'am',
+    endonym: 'አማርኛ',
+    englishName: 'Amharic',
+    direction: 'ltr',
+    script: 'Ethi',
+    digits: 'latn',
+    groupSeparator: ',',
+    decimalSeparator: '.',
+    uiFont: 'manropeEthiopic',
+    bayaanTransliteration: 'በያን',
+    allowsLetterSpacing: true,
+    bilingualContent: 'en',
+    understandsArabic: false,
+    status: 'inProgress',
   },
 };
 

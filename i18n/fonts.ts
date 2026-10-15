@@ -25,9 +25,22 @@ const plexSansArabic: Record<keyof typeof manrope, number> = {
   'Manrope-ExtraBold': require('@/assets/fonts/IBMPlexSansArabic-Bold.ttf'),
 };
 
+// OFL UI derivatives preserve each Manrope face and add Noto Sans Ethiopic.
+// See assets/fonts/ethiopic/ui/README.md for inputs, pins and Latin-shaping proof.
+const manropeEthiopic: Record<keyof typeof manrope, number> = {
+  'Manrope-Regular': require('@/assets/fonts/ethiopic/ui/BayaanUIEthiopic-Regular.ttf'),
+  'Manrope-Bold': require('@/assets/fonts/ethiopic/ui/BayaanUIEthiopic-Bold.ttf'),
+  'Manrope-Medium': require('@/assets/fonts/ethiopic/ui/BayaanUIEthiopic-Medium.ttf'),
+  'Manrope-SemiBold': require('@/assets/fonts/ethiopic/ui/BayaanUIEthiopic-SemiBold.ttf'),
+  'Manrope-Light': require('@/assets/fonts/ethiopic/ui/BayaanUIEthiopic-Light.ttf'),
+  'Manrope-ExtraLight': require('@/assets/fonts/ethiopic/ui/BayaanUIEthiopic-ExtraLight.ttf'),
+  'Manrope-ExtraBold': require('@/assets/fonts/ethiopic/ui/BayaanUIEthiopic-ExtraBold.ttf'),
+};
+
 const fontFiles: Record<UiFont, Record<keyof typeof manrope, number>> = {
   manrope,
   plexSansArabic,
+  manropeEthiopic,
 };
 
 export const uiFontFiles = fontFiles[getLanguageConfig(currentLanguage).uiFont];

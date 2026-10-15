@@ -1,0 +1,57 @@
+{
+  "mushaf": {
+    "headerMeta": "ገጽ {{page}} · ጁዝ {{juz}} · {{rewayah}}",
+    "searchSurahs": "ሱራዎችን ፈልግ",
+    "settings": "የሙስሐፍ ቅንብሮች",
+    "loadFailedTitle": "ሙስሐፉን መጫን አልተቻለም",
+    "loadFailedBody": "መሣሪያዎ ላይ ነፃ የማከማቻ ቦታ መኖሩን ያረጋግጡ፣ ከዚያ እንደገና ይሞክሩ።",
+    "pageLoadFailed": "ይህን ገጽ መጫን አልተቻለም።",
+    "turnOffTajweed": "ተጅዊድ አጥፋ",
+    "shareMessage": "Check out page {{page}} of the Quran on {{appName}}"
+  },
+  "toolbar": {
+    "options": "አማራጮች",
+    "stop": "አቁም"
+  },
+  "playerBar": {
+    "changeReciter": "አንባቢ ቀይር",
+    "changeReciterButton": "አንባቢ ቀይር",
+    "playbackOptions": "የማጫወቻ አማራጮች",
+    "previousAyah": "ያለፈው አንቀጽ",
+    "nextAyah": "ቀጣይ አንቀጽ"
+  },
+  "search": {
+    "placeholder": "ሱራዎችን፣ ገጾችን ወይም ጁዝን ፈልግ...",
+    "recentReads": "በቅርቡ የተነበቡ",
+    "recentSearches": "የቅርብ ጊዜ ፍለጋዎች",
+    "emptyTitle": "ሙስሐፍን ፈልግ",
+    "emptySubtitle": "ሱራዎችን፣ አንቀጾችን፣ ገጾችን ወይም ጁዝን ፈልግ",
+    "sortAsc": "ወደ ላይ",
+    "sortDesc": "ወደ ታች",
+    "pageWithSurah": "ገጽ {{page}} · {{surah}}",
+    "surahWithMeaning": "ሱራ {{number}} · {{meaning}}",
+    "verse": "አንቀጽ {{number}}",
+    "sortRevelation": "ውርደት",
+    "juzAmma": "Juz 'Amma",
+    "juzTabarak": "Juz Tabarak"
+  },
+  "playback": {
+    "timestampsUnavailable": "ለዚህ አንባቢ በዚህ ሱራ የጊዜ ምልክቶች አይገኙም። ሌላ አንባቢ ይሞክሩ።",
+    "trackingUnavailable": "የአንቀጽ ክትትል አይገኝም",
+    "unavailable": "ማጫወት አይቻልም",
+    "surah": "ይህ ሱራ",
+    "fromBeginning": "ለዚህ አንባቢ {{surah}} ያለ አንቀጽ ክትትል ከመጀመሪያው ይጫወታል።",
+    "untracked": "ለዚህ አንባቢ {{surah}} ያለ አንቀጽ ማድመቅ ይጫወታል።",
+    "verseTimingUnavailable": "ለዚህ አንባቢ በዚህ ሱራ አንቀጽ በአንቀጽ ማጫወት አይቻልም። ሌላ አንባቢ ይሞክሩ።",
+    "rangeUnplayable": "በዚህ ምርጫ ውስጥ ለዚህ አንባቢ ሊጫወቱ የሚችሉ አንቀጾች የሉም። ሌላ አንባቢ ወይም የአንቀጽ ክልል ይሞክሩ።"
+  },
+  "verseUnits": {
+    "loading": "የ{{rewayah}} አንቀጾች በመጫን ላይ",
+    "loadFailed": "የ{{rewayah}} አንቀጾችን መጫን አልተቻለም።",
+    "retryLabel": "የ{{rewayah}} አንቀጾችን እንደገና ለመጫን ይሞክሩ"
+  },
+  "verseLabel": "{{surah}} {{surahNumber}}:{{ayah}}",
+  "shareCard": {
+    "madeWith": "made with {{appName}}"
+  }
+}

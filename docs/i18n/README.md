@@ -4,7 +4,7 @@
 
 How Bayaan's interface is translated, and the rules every change follows so a new language is a data change, not a code change.
 
-Shipped languages: **English** (source) and **Arabic** (RTL). Every language the app knows about is listed once, in [`i18n/languages.ts`](../../i18n/languages.ts).
+Shipped languages: **English** (source) and **Arabic** (RTL). **Amharic** (LTR, Ethiopic) is an in-progress development-only draft. Every language the app knows about is listed once, in [`i18n/languages.ts`](../../i18n/languages.ts).
 
 ---
 
@@ -165,10 +165,14 @@ Native surfaces (widgets, CarPlay, Android Auto) are outside this system; check 
 |---------|--------------|-------|
 | `npm run i18n:check` | Fails if code uses a key that the English files or a shipped language lack, or if JSX text is hardcoded (see rule 1 for what it can't see) | Blocking |
 | `npx jest i18n/` | Registry matches CLDR; shipped languages have every key; every language has its plural categories and the same placeholders as English | Blocking (Test workflow) |
+| `python scripts/report-amharic-coverage.py --check` | Checks the retained-source policy, JSON/resource validity and that the Amharic fallback inventory matches current resources; permits documented in-progress fallbacks | Blocking |
+| `python scripts/verify-ethiopic-ui-fonts.py` | Checks pinned font hashes, original Latin glyphs/metrics/shaping and decoded Amharic resource glyph coverage | Blocking |
 | `npm run i18n:status` | Translation progress for shipped languages (in-progress languages are left out of the CLI config) | Advisory |
 | `npm run i18n:unused` | Keys no code references. Keys built at runtime (`` `ambient.sounds.${id}` ``) show up too, so check before deleting | Advisory |
 
 The workflow is `.github/workflows/i18n.yml`. The CLI never deletes keys on its own (`removeUnusedKeys: false`).
+
+The Amharic inventory/font job uses Python 3.12 and the pinned dependencies in `scripts/rewayah/requirements-ci.txt`. When resources change, run `python scripts/report-amharic-coverage.py --write` and review the inventory diff before committing. The `--check` mode writes nothing and fails with the regeneration command if the inventory is stale. It does not require an in-progress language to be complete. Verification-tool regressions run with `python -B -m unittest discover -s scripts/__tests__ -p 'test_i18n_*.py'`.
 
 ---
 
@@ -182,20 +186,29 @@ The workflow is `.github/workflows/i18n.yml`. The CLI never deletes keys on its 
 
 Canonical terms. The keys under `common.terms.*` are the reference values.
 
-| English | Arabic | Notes |
-|---------|--------|-------|
-| Surah | سورة | Plural السور |
-| Ayah | آية | Plural آيات. Use "Ayah" in English UI; "verse" only in longer sentences |
-| Juz | جزء | |
-| Hizb | حزب | |
-| Tafseer | التفسير | English UI spells it "Tafseer" (`common.terms.tafseer`) |
-| Rewayah | الرواية | Plural Rewayat / الروايات |
-| Reciter | القارئ | Some languages use "Qari" (Malay, Indonesian, Urdu) |
-| Mushaf | المصحف | |
-| Adhkar | الأذكار | Singular Dhikr / ذكر |
-| Bismillah | البسملة | |
-| Murattal | مرتل | Recitation style |
-| Mojawwad | مجوّد | Recitation style |
-| Word by Word | كلمة بكلمة | |
-| Transliteration | النطق اللاتيني | |
-| Follow Along | المتابعة مع التلاوة | Verse highlighting during playback |
+| English | Arabic | Amharic draft — native review pending | Notes |
+|---------|--------|----------------------------------------|-------|
+| Surah | سورة | ሱራ | Plural السور |
+| Ayah | آية | አንቀጽ | Plural آيات. Use "Ayah" in English UI; "verse" only in longer sentences |
+| Juz | جزء | ጁዝ |  |
+| Hizb | حزب | ሂዝብ |  |
+| Tafseer | التفسير | ተፍሲር | English UI spells it "Tafseer" (`common.terms.tafseer`) |
+| Rewayah | الرواية | ሪዋያ | Plural Rewayat / الروايات |
+| Reciter | القارئ | አንባቢ | Some languages use "Qari" (Malay, Indonesian, Urdu) |
+| Mushaf | المصحف | ሙስሐፍ |  |
+| Adhkar | الأذكار | አዝካር | Singular Dhikr / ذكر |
+| Bismillah | البسملة | ቢስሚላህ |  |
+| Murattal | مرتل | ሙረተል | Recitation style |
+| Mojawwad | مجوّد | ሙጀወድ | Recitation style |
+| Word by Word | كلمة بكلمة | ቃል በቃል |  |
+| Transliteration | النطق اللاتيني | የፊደል ቅየራ |  |
+| Follow Along | المتابعة مع التلاوة | አብሮ መከተል | Verse highlighting during playback |
+
+
+### Amharic development draft
+
+The Amharic draft follows the existing registry and eight namespaces; it does not add a second language store, i18next instance, plural implementation or per-screen font system. It has `status: 'inProgress'`, Western digits and separators, English-side catalog names, and OFL UI derivatives combining the existing Manrope faces with Noto Sans Ethiopic 2.102 under the UI font aliases. Missing draft keys fall back to English. English and Arabic source/shipped resources are unchanged.
+
+`LanguageConfig.bayaanTransliteration` supplies the approved display spelling **በያን**. `getAppDisplayName` uses that registry property only for the canonical Bayaan brand, keeping fork names, canonical configuration, identifiers and share payloads intact. Existing English/Arabic brand behavior is preserved. This is a transliteration, not a translation of the word's meaning.
+
+Draft copy and the glossary column above require fluent-speaker review. The [Amharic plan](../plans/2026-10-11-amharic-ui-localization.md) and [coverage/compliance record](../development/i18n-coverage.md) track unfinished keys and release checks. The [per-key fallback inventory](amharic-fallbacks.md) distinguishes pending interface copy from canonical references and material requiring separate terminology/religious review. Do not mark the language shipped or add native released-language declarations before those checks pass.

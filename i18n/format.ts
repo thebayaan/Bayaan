@@ -5,6 +5,16 @@ import fallbackReciters from '@/data/reciters-fallback.json';
 import {currentLanguage, type AppLanguage} from './language';
 import {DIGIT_ZERO, getLanguageConfig} from './languages';
 
+/** Display only: preserve fork names and canonical branding used in IDs/share payloads. */
+export function getAppDisplayName(
+  canonicalName: string,
+  language: AppLanguage = currentLanguage,
+): string {
+  return canonicalName === 'Bayaan'
+    ? (getLanguageConfig(language).bayaanTransliteration ?? canonicalName)
+    : canonicalName;
+}
+
 function reciterNameKey(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]/g, '');
 }

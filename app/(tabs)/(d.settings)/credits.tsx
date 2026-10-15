@@ -1,3 +1,4 @@
+import {getAppDisplayName} from '@/i18n/format'; // @ai
 import React, {useMemo} from 'react';
 import {View, Text, ScrollView, Pressable, Linking} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
@@ -29,7 +30,7 @@ interface Credit {
 function getCredits(
   t: TFunction<'settings'>,
 ): {section: string; items: Credit[]}[] {
-  const appName = branding.appName;
+  const appName = getAppDisplayName(branding.appName); // @ai
   return [
     {
       section: t('credits.sections.quranData'),
@@ -157,7 +158,7 @@ export default function CreditsScreen() {
         showsVerticalScrollIndicator={false}>
         <View>
           <Text style={styles.introText}>
-            {t('credits.intro', {appName: branding.appName})}
+            {t('credits.intro', {appName: getAppDisplayName(branding.appName)})}
           </Text>
 
           {credits.map(section => (
@@ -199,7 +200,9 @@ export default function CreditsScreen() {
           ))}
 
           <Text style={styles.footerText}>
-            {t('credits.footer', {appName: branding.appName})}
+            {t('credits.footer', {
+              appName: getAppDisplayName(branding.appName),
+            })}
           </Text>
         </View>
       </ScrollView>

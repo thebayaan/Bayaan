@@ -18,6 +18,7 @@ import {resources} from '../resources';
 const FONT_SCRIPTS: Record<UiFont, Script[]> = {
   manrope: ['Latn'],
   plexSansArabic: ['Arab', 'Latn'],
+  manropeEthiopic: ['Ethi', 'Latn'],
 };
 
 /** Scripts whose letters join, where letter spacing breaks words apart. */

@@ -1,0 +1,240 @@
+{
+  "translations": {
+    "title": "ትርጉሞችና ተፍሲሮች",
+    "translationDownloadFailed": "ይህን ትርጉም ማውረድ አልተቻለም። እባክዎ የበይነመረብ ግንኙነትዎን ያረጋግጡ እና እንደገና ይሞክሩ።",
+    "tafseerDownloadFailed": "ይህን ተፍሲር ማውረድ አልተቻለም። እባክዎ የበይነመረብ ግንኙነትዎን ያረጋግጡ እና እንደገና ይሞክሩ።",
+    "deleteTranslationTitle": "ትርጉም ሰርዝ",
+    "deleteTafseerTitle": "ተፍሲር ሰርዝ",
+    "deleteMessage": "“{{name}}”ን ያስወግዱ? በኋላ እንደገና ማውረድ ይችላሉ።",
+    "available": "የሚገኙ",
+    "activeTranslation": "ንቁ ትርጉም",
+    "activeTafseer": "ንቁ ተፍሲር",
+    "active": "ንቁ",
+    "noTranslations": "ትርጉሞች አልተገኙም",
+    "noTafaseer": "ተፍሲሮች አልተገኙም",
+    "downloadInProgress": "ማውረድ በሂደት ላይ ነው",
+    "waitForDownload": "ሌላ ከመጀመርዎ በፊት የአሁኑ ማውረድ እስኪጠናቀቅ ይጠብቁ።",
+    "downloadFailedTitle": "ማውረድ አልተሳካም"
+  },
+  "browse": {
+    "browseAll": "ሁሉንም አስስ",
+    "allSurahs": "ሁሉም ሱራዎች",
+    "browseRecitersForSurah": "አንባቢዎችን አስስ - {{surah}}",
+    "allChip": "ሁሉም",
+    "hasPhoto": "ፎቶ ያለው",
+    "clearAll": "ሁሉንም አጽዳ",
+    "searchSurahs": "ሱራዎችን ፈልግ...",
+    "searchReciters": "አንባቢዎችን ፈልግ...",
+    "recitersFound_one": "በአሁኑ ማጣሪያዎች {{count}} አንባቢ ተገኝቷል",
+    "recitersFound_other": "በአሁኑ ማጣሪያዎች {{count}} አንባቢዎች ተገኝተዋል",
+    "rewayahSeparator": "A'n"
+  },
+  "search": {
+    "placeholder": "ሱራዎችን ወይም አንባቢዎችን ፈልግ",
+    "recentSearches": "የቅርብ ጊዜ ፍለጋዎች",
+    "noRecent": "የቅርብ ጊዜ ፍለጋ የለም",
+    "noRecentHint": "የፍለጋ ታሪክዎ እዚህ ይታያል",
+    "noResultsHint": "የተለያዩ ቃላትን ይሞክሩ ወይም አጻጻፉን ያረጋግጡ"
+  },
+  "systemPlaylist": {
+    "invalidId": "የማጫወቻ ዝርዝር መለያው ልክ አይደለም",
+    "notFound": "የማጫወቻ ዝርዝሩ አልተገኘም"
+  },
+  "adhkar": {
+    "saved": "የተቀመጡ",
+    "count_one": "{{count}} አዝካር",
+    "count_other": "{{count}} አዝካር",
+    "noSavedYet": "እስካሁን የተቀመጡ አዝካር የሉም",
+    "noSavedHint": "ማንኛውንም ዚክር እዚህ ለማስቀመጥ የእልባት ምልክቱን ይንኩ",
+    "noSaved": "የተቀመጡ አዝካር የሉም",
+    "noneFound": "አዝካር አልተገኙም",
+    "position": "{{current}} ከ {{total}}",
+    "dhikr": "ዚክር",
+    "shareCategory": "Check out {{title}} on {{appName}}",
+    "shareDhikr": "Check out this dhikr on {{appName}}"
+  },
+  "hero": {
+    "surahOfTheDay": "የዕለቱ ሱራ",
+    "continueReading": "ማንበብ ቀጥል",
+    "verses": "አንቀጾች",
+    "number": "ቁጥር",
+    "browseAllSurahs": "ሁሉንም {{total}} ሱራዎች ያስሱ"
+  },
+  "randomHero": {
+    "finding": "ከተለያዩ አንባቢዎች በዘፈቀደ ንባቦች እየተፈለጉ ነው...",
+    "findFailed": "በዘፈቀደ ንባቦችን ማግኘት አልተቻለም። እንደገና ይሞክሩ።",
+    "playing": "{{surah}} በ{{reciter}} እየተጫወተ ነው",
+    "playFailed": "በዘፈቀደ ንባብ ማጫወት አልተቻለም። እንደገና ይሞክሩ።",
+    "shuffleListen": "ቀላቅልና አዳምጥ",
+    "letQuranSurprise": "አዲስ የቁርአን ንባብ ያግኙ",
+    "discover": "አግኝ",
+    "hearSomethingNew": "አዲስ ነገር ያዳምጡ",
+    "explore": "አስስ",
+    "discoverNewVoice": "አዲስ ድምፅ ያግኙ",
+    "randomRecitation": "በዘፈቀደ ንባብ",
+    "surpriseMe": "አዲስ ነገር አስማኝ",
+    "exploreUnexpected": "ያልተጠበቀውን አስስ",
+    "randomMix": "በዘፈቀደ ቅልቅል",
+    "chosenForMoment": "ለዚህ ቅጽበት የተመረጠ ንባብ"
+  },
+  "adhkarHero": {
+    "title_one": "የተቀመጠ ዚክር",
+    "title_other": "የተቀመጡ አዝካር",
+    "yourCollection": "የእርስዎ ስብስብ"
+  },
+  "browseAllHero": {
+    "titles": {
+      "fullCollection": "ሙሉ ስብስቡን አስስ",
+      "everyReciter": "ሁሉንም አንባቢዎች አስስ",
+      "everyVoice": "ሁሉም ድምፆች በአንድ ቦታ",
+      "worldOfRecitations": "የንባቦች ዓለም",
+      "allRecitersAwait": "ሁሉም አንባቢዎች ይጠብቁዎታል",
+      "oneTap": "እያንዳንዱ አንባቢ በአንድ ንክኪ"
+    },
+    "labels": {
+      "allReciters": "ሁሉም አንባቢዎች",
+      "browseVoices": "ድምፆችን አስስ",
+      "discover": "አግኝ",
+      "fullLibrary": "ሙሉ ቤተ-መጻሕፍት",
+      "explore": "አስስ",
+      "browse": "አስስ"
+    }
+  },
+  "filters": {
+    "title": "አንባቢዎችን አጣራ",
+    "recitationStyles": "የንባብ ዘይቤዎች",
+    "rewayatTypes": "የሪዋያ ዓይነቶች"
+  },
+  "surahItem": {
+    "a11yPlayHint": "ሱራውን ለማጫወት ይንኩ",
+    "moreOptions": "ተጨማሪ አማራጮች",
+    "moreOptionsHint": "ለዚህ ሱራ ተጨማሪ አማራጮችን ይከፍታል",
+    "a11yName": "ሱራ {{name}}",
+    "a11yPlaying": "አሁን በመጫወት ላይ",
+    "verses_one": "{{count}} አንቀጽ",
+    "verses_other": "{{count}} አንቀጾች",
+    "a11ySeparator": ", ",
+    "makkah": "Makkah",
+    "madinah": "Madinah"
+  },
+  "sort": {
+    "asc": "ወደ ላይ",
+    "desc": "ወደ ታች",
+    "revelation": "ውርደት"
+  },
+  "home": {
+    "myRecitations": "የእኔ ንባቦች",
+    "continueListening": "ማዳመጥ ቀጥል",
+    "newToQuran": "ቁርአን አዲስ ነው? ከዚህ ይጀምሩ",
+    "yourFavorites": "የሚወዷቸው",
+    "featuredReciters": "ተመርጠው የቀረቡ አንባቢዎች",
+    "seeMore": "ተጨማሪ ይመልከቱ",
+    "followAlong": "ተከታተል",
+    "exclusives": "ልዩ ንባቦች",
+    "bestForTajweed": "ለተጅዊድ ምርጥ",
+    "bestForMemorization": "ለሸምደዳ ምርጥ",
+    "exploreByRewayah": "በሪዋያ አስስ",
+    "fromYourCollection": "ከእርስዎ ስብስብ",
+    "upload": "ሰቀላ",
+    "yourPlaylists": "የእርስዎ የማጫወቻ ዝርዝሮች"
+  },
+  "network": {
+    "offline": "የበይነመረብ ግንኙነት የለም",
+    "restored": "ግንኙነቱ ተመልሷል",
+    "showingCached": "የተቀመጠ መረጃ እየታየ ነው",
+    "backendUnreachable": "የአገልግሎቱ ስርዓት አይደረስበትም"
+  },
+  "errorBoundary": {
+    "message": "ይቅርታ፣ ስህተት ተፈጥሯል"
+  },
+  "input": {
+    "characterCount": "{{current}}/{{max}} ፊደሎች"
+  },
+  "cards": {
+    "recitations_one": "{{count}} ንባብ",
+    "recitations_other": "{{count}} ንባቦች",
+    "downloadedCount_one": "ወርዷል • {{count}} ሱራ",
+    "downloadedCount_other": "ወርደዋል • {{count}} ሱራዎች",
+    "lovedSurahs": "የተወደዱ ሱራዎች"
+  },
+  "duration": {
+    "minutes": "{{value}}ደ",
+    "hours": "{{value}}ሰ",
+    "seconds": "{{value}}ሰከ"
+  },
+  "languages": {
+    "en": "እንግሊዝኛ",
+    "ar": "አረብኛ",
+    "fr": "ፈረንሳይኛ",
+    "de": "ጀርመንኛ",
+    "es": "ስፓኒሽ",
+    "pt": "ፖርቱጋልኛ",
+    "ru": "ሩሲያኛ",
+    "tr": "ቱርክኛ",
+    "ur": "ኡርዱ",
+    "id": "ኢንዶኔዥያኛ",
+    "ms": "ማላይ",
+    "bn": "ቤንጋሊ",
+    "hi": "ሂንዲ",
+    "fa": "ፋርሲ",
+    "zh": "ቻይንኛ",
+    "ja": "ጃፓንኛ",
+    "ko": "ኮሪያኛ",
+    "it": "ጣሊያንኛ",
+    "nl": "ደች",
+    "pl": "ፖላንድኛ",
+    "sv": "ስዊድንኛ",
+    "th": "ታይ",
+    "vi": "ቬትናምኛ",
+    "ha": "ሃውሳ",
+    "so": "ሶማሊኛ",
+    "sw": "ስዋሂሊ",
+    "am": "አማርኛ",
+    "az": "አዘርባይጃንኛ",
+    "bs": "ቦስኒያኛ",
+    "cs": "ቼክ",
+    "dv": "ዲቬሂ",
+    "ku": "ኩርዲ",
+    "ml": "ማላያላም",
+    "no": "ኖርዌይኛ",
+    "ro": "ሮማንያኛ",
+    "sq": "አልባኒያኛ",
+    "ta": "ታሚል",
+    "tt": "ታታር",
+    "ug": "ዊጉር",
+    "uz": "ኡዝቤክ"
+  },
+  "reciterCard": {
+    "rewayatAvailable_one": "{{count}} ሪዋያ ይገኛል",
+    "rewayatAvailable_other": "{{count}} ሪዋያዎች ይገኛሉ"
+  },
+  "reciterBrowse": {
+    "noneFound": "ምንም አንባቢዎች አልተገኙም",
+    "title": "አንባቢዎችን ያስሱ"
+  },
+  "juz": {
+    "amma": "Juz 'Amma"
+  },
+  "tafseerNames": {
+    "169": "Ibn Kathir (Abridged)",
+    "381": "Tafsir Fathul Majid",
+    "16": "Tafsir Muyassar",
+    "165": "Tafsir Ahsanul Bayaan",
+    "166": "Tafsir Abu Bakr Zakaria",
+    "93": "Al-Tafsir al-Wasit (Tantawi)",
+    "14": "Tafsir Ibn Kathir",
+    "15": "Tafsir al-Tabari",
+    "164": "Tafseer ibn Kathir",
+    "90": "Al-Qurtubi",
+    "168": "Ma'arif al-Qur'an",
+    "91": "السعدي Al-Sa'di",
+    "170": "Al-Sa'di",
+    "94": "Tafseer Al-Baghawi",
+    "157": "Fi Zilal al-Quran",
+    "804": "Rebar Kurdish Tafsir",
+    "817": "Tazkirul Quran(Maulana Wahiduddin Khan)",
+    "160": "Tafsir Ibn Kathir",
+    "818": "Tazkir ul Quran",
+    "159": "Bayan ul Quran"
+  }
+}

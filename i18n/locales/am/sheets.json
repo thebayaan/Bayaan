@@ -1,0 +1,311 @@
+{
+  "followAlong": {
+    "title": "ተከታተል",
+    "description": "የአሁኑ አንባቢ አያ በአያ ማጫወትን አይደግፍም። በምትኩ ከእነዚህ አንባቢዎች አንዱን ይሞክሩ፦"
+  },
+  "playbackSpeed": {
+    "title": "የማጫወት ፍጥነት",
+    "speed": "{{speed}}x"
+  },
+  "sleepTimer": {
+    "title": "የእንቅልፍ ጊዜ ቆጣሪ",
+    "secondsRemaining_one": "{{count}} ሰከንድ ቀርቷል",
+    "secondsRemaining_other": "{{count}} ሰከንዶች ቀርተዋል",
+    "minutesRemaining_one": "{{count}} ደቂቃ ቀርቷል",
+    "minutesRemaining_other": "{{count}} ደቂቃዎች ቀርተዋል",
+    "minutesOption_one": "{{count}} ደቂቃ",
+    "minutesOption_other": "{{count}} ደቂቃ",
+    "turnOff": "ጊዜ ቆጣሪውን አጥፋ"
+  },
+  "mushafLayout": {
+    "readingTheme": "የንባብ ገጽታ"
+  },
+  "themeContent": {
+    "empty": "ለዚህ አንቀጽ የጭብጥ መረጃ የለም።",
+    "passage": "ክፍል",
+    "verses": "አንቀጾች"
+  },
+  "note": {
+    "title": "ለ {{ref}} ማስታወሻ",
+    "editTitle": "የ {{ref}} ማስታወሻን አርትዕ",
+    "placeholder": "ማስታወሻዎን እዚህ ይጻፉ...",
+    "save": "ማስታወሻ አስቀምጥ",
+    "update": "ማስታወሻ አዘምን",
+    "delete": "ማስታወሻ ሰርዝ",
+    "titleWithoutRef": "ማስታወሻ",
+    "editTitleWithoutRef": "ማስታወሻ አርም"
+  },
+  "highlight": {
+    "chooseColor": "ቀለም ይምረጡ",
+    "remove": "ማድመቅ አስወግድ",
+    "title": "የማድመቂያ ቀለም"
+  },
+  "rewayatInfo": {
+    "showLess": "ያነሰ አሳይ",
+    "title": "ስለ ሪዋያዎች",
+    "readMore": "ተጨማሪ አንብብ",
+    "available": "የሚገኙ ሪዋያዎች"
+  },
+  "addToCollection": {
+    "uploadRecitation": "ንባብ ስቀል",
+    "createPlaylist": "አዲስ የማጫወቻ ዝርዝር ፍጠር",
+    "addFavoriteReciter": "ተወዳጅ አንባቢ አክል",
+    "title": "ወደ ስብስብ አክል"
+  },
+  "selectReciter": {
+    "random": "በዘፈቀደ አንባቢ",
+    "browseAll": "ሁሉንም አንባቢዎች አስስ",
+    "askEveryTime": "በእያንዳንዱ ጊዜ ጠይቅ",
+    "title": "አንባቢ ምረጥ",
+    "useDefault": "ነባሪውን አንባቢ ተጠቀም"
+  },
+  "copy": {
+    "optionsTitle": "የመቅዳት አማራጮች",
+    "optionsSubtitle": "ምን መቅዳት እንደሚፈልጉ ይምረጡ",
+    "selectContent": "ይዘት ይምረጡ",
+    "arabic": "አረብኛ",
+    "verseReference": "የአንቀጽ ማጣቀሻ",
+    "copyToClipboard": "ወደ ቅንጥብ ሰሌዳ ቅዳ",
+    "transliteration": "የፊደል ቅየራ",
+    "quranReference": "Quran {{ref}}"
+  },
+  "createPlaylist": {
+    "title": "አዲስ የማጫወቻ ዝርዝር",
+    "editTitle": "የማጫወቻ ዝርዝር አርም",
+    "previewName": "የእርስዎ የማጫወቻ ዝርዝር",
+    "nameLabel": "የማጫወቻ ዝርዝር ስም",
+    "namePlaceholder": "ለምሳሌ፦ የጠዋት ንባቦች"
+  },
+  "wordDetail": {
+    "context": "አንቀጽ {{ref}} · ቃል {{position}} ከ {{total}}"
+  },
+  "favoriteReciters": {
+    "title": "ተወዳጅ አንባቢዎች",
+    "selected_one": "{{count}} ተመርጠዋል",
+    "selected_other": "{{count}} ተመርጠዋል",
+    "rewayatCount_other": "{{count}} ሪዋያዎች",
+    "searchPlaceholder": "አንባቢዎችን ፈልግ...",
+    "empty": "ምንም አንባቢዎች አልተገኙም",
+    "rewayatCount_one": "{{count}} ሪዋያ"
+  },
+  "adhkarLayout": {
+    "title": "የአዝካር አቀማመጥ",
+    "arabicText": "የአረብኛ ጽሑፍ",
+    "fontSize": "የፊደል መጠን",
+    "showTranslation": "ትርጉም አሳይ",
+    "showTransliteration": "የፊደል ቅየራ አሳይ"
+  },
+  "share": {
+    "title": "አንቀጽ አጋራ",
+    "showBasmallah": "በስመላን አሳይ",
+    "showWatermark": "የውኃ ምልክት አሳይ",
+    "asImage": "እንደ ምስል አጋራ",
+    "asText": "እንደ ጽሑፍ አጋራ",
+    "link": "አገናኝ አጋራ",
+    "reference": "Quran {{ref}}",
+    "referenceWithRewayah": "Quran {{ref}} · {{rewayah}}"
+  },
+  "selectPlaylist": {
+    "errorTitle": "ስህተት",
+    "addFailed": "ሱራውን ወደ የማጫወቻ ዝርዝር መጨመር አልተሳካም",
+    "createFailed": "የማጫወቻ ዝርዝር መፍጠር አልተሳካም",
+    "loved": "የተወደዱ",
+    "creating": "በመፍጠር ላይ…",
+    "empty": "እስካሁን የማጫወቻ ዝርዝሮች የሉም። የመጀመሪያውን ከላይ ይፍጠሩ!",
+    "yourPlaylists": "የእርስዎ የማጫወቻ ዝርዝሮች"
+  },
+  "options": {
+    "playNow": "አሁን አጫውት",
+    "learnAboutSurah": "ስለ ሱራው ይወቁ",
+    "aboutSurah": "ስለ {{surah}}",
+    "downloading": "በማውረድ ላይ {{percent}}%",
+    "downloaded": "ወርዷል",
+    "removeFromPlaylist": "ከማጫወቻ ዝርዝር አስወግድ",
+    "addToQueue": "ወደ ማጫወቻ ወረፋ አክል",
+    "addToLoved": "ወደ የተወደዱ አክል",
+    "removeFromLoved": "ከየተወደዱ አስወግድ",
+    "addToCollection": "ወደ ስብስብ አክል",
+    "editDetails": "ዝርዝሮችን አርትዕ",
+    "goToReciter": "ወደ አንባቢው ሂድ",
+    "shareListen": "Listen to Surah {{surah}} on {{appName}}",
+    "shareListenSurah": "Listen to {{surah}} on {{appName}}"
+  },
+  "uploads": {
+    "untagged": "ያልተለየ",
+    "categories": {
+      "dua": "ዱዓ",
+      "lecture": "ትምህርት",
+      "tafsir": "ተፍሲር",
+      "other": "ሌላ"
+    },
+    "verse": "አንቀጽ {{verse}}",
+    "salah": "ሰላት",
+    "studio": "ስቱዲዮ",
+    "deleteTitle": "ቅጂ ሰርዝ",
+    "deleteMessage": "“{{title}}”ን መሰረዝ ይፈልጋሉ?",
+    "uploadedAudio": "የተሰቀለ ድምፅ",
+    "upload": "ሰቀላ",
+    "versesRange": "አንቀጾች {{from}}-{{to}}"
+  },
+  "organize": {
+    "categoryDua": "ዱዓ",
+    "unknownDuration": "የቆይታ ጊዜው አይታወቅም",
+    "type": "ዓይነት",
+    "surah": "ሱራ",
+    "searchSurahs": "ሱራዎችን ፈልግ...",
+    "verseRangeOptional": "የአንቀጽ ክልል (አማራጭ)",
+    "ofVerses_one": "ከ{{count}} አንቀጽ",
+    "ofVerses_other": "ከ{{count}} አንቀጾች",
+    "title": "ርዕስ",
+    "titlePlaceholder": "ለምሳሌ፣ የጠዋት አዝካር",
+    "category": "ምድብ",
+    "createReciter": "“{{name}}”ን ፍጠር",
+    "customReciter": "በእርስዎ የተጨመረ አንባቢ",
+    "moreOptions": "ተጨማሪ አማራጮች",
+    "rewayah": "ሪዋያ",
+    "style": "የንባብ ዘይቤ",
+    "recording": "ቀረጻ",
+    "searchReciters": "አንባቢዎችን ፈልግ..."
+  },
+  "verseActions": {
+    "highlight": "ማድመቅ",
+    "addNote": "ማስታወሻ ጨምር",
+    "similarVerses": "ተመሳሳይ አንቀጾች",
+    "sharedPhrases": "ተደጋጋሚ ሐረጎች",
+    "translation": "ትርጉም",
+    "tafseer": "ተፍሲር",
+    "theme": "ጭብጥ",
+    "wordByWord": "ቃል በቃል",
+    "playSelection": "የተመረጠውን አጫውት",
+    "playFromHere": "ከዚህ አጫውት",
+    "repeat": "ድገም",
+    "bookmark": "እልባት አድርግ",
+    "removeBookmark": "ዕልባት አስወግድ",
+    "communityReflections": "የማኅበረሰብ አስተያየቶች",
+    "unnumbered": "በ{{rewayah}} ቁጥር ያለው አንቀጽ አይደለም።",
+    "loadFailed": "የ{{rewayah}} ጽሑፍ መጫን አልተቻለም።",
+    "loadingText": "የ{{rewayah}} ጽሑፍ በመጫን ላይ"
+  },
+  "mushafPlayer": {
+    "title": "የማጫወቻ ቅንብሮች",
+    "selectRange": "ክልል ይምረጡ",
+    "startingVerse": "መነሻ አንቀጽ",
+    "endingVerse": "መጨረሻ አንቀጽ",
+    "reciter": "አንባቢ",
+    "play": "አጫውት"
+  },
+  "playlistContext": {
+    "edit": "የማጫወቻ ዝርዝር አርም",
+    "download": "የማጫወቻ ዝርዝር አውርድ",
+    "delete": "የማጫወቻ ዝርዝር ሰርዝ",
+    "deleteTitle": "የማጫወቻ ዝርዝር ሰርዝ",
+    "deleteMessage": "\"{{name}}\"ን ለመሰረዝ እርግጠኛ ነዎት? ይህ እርምጃ ሊመለስ አይችልም።",
+    "emptyTitle": "ባዶ የማጫወቻ ዝርዝር",
+    "emptyMessage": "ይህ የማጫወቻ ዝርዝር ባዶ ነው።",
+    "alreadyDownloadedTitle": "አስቀድሞ ወርዷል",
+    "alreadyDownloadedMessage": "በዚህ የማጫወቻ ዝርዝር ውስጥ ያሉ ሁሉም ንጥሎች አስቀድመው ወርደዋል።",
+    "completeTitle": "ውርደቱ ተጠናቋል",
+    "completeMessage_one": "ከ\"{{name}}\" {{count}} ንጥል በተሳካ ሁኔታ ወርዷል።",
+    "completeMessage_other": "ከ\"{{name}}\" {{count}} ንጥሎች በተሳካ ሁኔታ ወርደዋል።",
+    "failedMessage": "የማጫወቻ ዝርዝሩን በማውረድ ላይ ስህተት ተከስቷል። እባክዎ እንደገና ይሞክሩ።",
+    "downloadingPlaylist": "የማጫወቻ ዝርዝር እየወረደ ነው…",
+    "failedTitle": "ማውረድ አልተሳካም",
+    "itemsProgress_one": "{{current}} ከ{{count}} ንጥል",
+    "itemsProgress_other": "{{current}} ከ{{count}} ንጥሎች"
+  },
+  "homeCardOptions": {
+    "continuePlaying": "ማጫወት ቀጥል",
+    "removeReciterFromFavorites": "አንባቢውን ከተወዳጆች አስወግድ",
+    "removeFromRecents": "ከቅርብ ጊዜ ዝርዝር አስወግድ",
+    "addToQueue": "ወደ ማጫወቻ ወረፋ አክል",
+    "goToReciter": "ወደ አንባቢው ሂድ",
+    "addReciterToFavorites": "አንባቢውን ወደ ተወዳጆች አክል",
+    "addToLoved": "ወደ የተወደዱ አክል",
+    "removeFromLoved": "ከየተወደዱ አስወግድ",
+    "addToCollection": "ወደ ስብስብ አክል",
+    "shareRecitation": "Listen to {{reciter}} reciting {{surah}} on {{appName}}",
+    "shareReciter": "Listen to {{reciter}} on {{appName}}"
+  },
+  "downloadOptions": {
+    "removeTitle": "የወረደውን ፋይል አስወግድ",
+    "removeMessage": "ይህን የወረደ ፋይል ማስወገድ ይፈልጋሉ?"
+  },
+  "translationContent": {
+    "notAvailable": "ትርጉም አይገኝም",
+    "switch": "ቀይር",
+    "prev": "ያለፈው"
+  },
+  "repeat": {
+    "title": "የመድገም ቅንብሮች",
+    "verseRange": "የአንቀጾች ክልል",
+    "from": "ከ",
+    "to": "እስከ",
+    "playSpeed": "የማጫወቻ ፍጥነት",
+    "eachVerse": "እያንዳንዱን አንቀጽ አጫውት",
+    "range": "ክልሉን አጫውት",
+    "start": "ጀምር",
+    "loop": "ደጋግም",
+    "times_one": "{{count}} ጊዜ",
+    "times_other": "{{count}} ጊዜ"
+  },
+  "ambient": {
+    "title": "የተፈጥሮ ድምፆች",
+    "none": "ምንም",
+    "volume": "የድምፅ መጠን",
+    "sounds": {
+      "rain": "ዝናብ",
+      "forest": "ጫካ",
+      "ocean": "ውቅያኖስ",
+      "stream": "ጅረት",
+      "thunder": "ነጎድጓድ",
+      "fireplace": "የእሳት ምድጃ",
+      "wind": "ነፋስ"
+    }
+  },
+  "similar": {
+    "sharedPhrases": "ተደጋጋሚ ሐረጎች",
+    "sharedPhrasesTitle": "ተደጋጋሚ ሐረጎች",
+    "similarWording": "ተመሳሳይ ቃላት",
+    "similarWordingTitle": "ተመሳሳይ ቃላት",
+    "foundIn_one": "በ {{count}} አንቀጽ ውስጥ ተገኝቷል",
+    "foundIn_other": "በ {{count}} አንቀጾች ውስጥ ተገኝቷል",
+    "goToVerse": "ወደ አንቀጽ ሂድ",
+    "more_one": "+{{count}} ተጨማሪ",
+    "more_other": "+{{count}} ተጨማሪ",
+    "empty": "ለዚህ አንቀጽ ተመሳሳይ አንቀጾች አልተገኙም።"
+  },
+  "tafseerContent": {
+    "emptyTitle": "የወረደ ተፍሲር የለም",
+    "emptyMessage": "ተፍሲር ለማውረድ እና ማብራሪያ ለማየት እዚህ ይንኩ።",
+    "select": "ተፍሲር ይምረጡ",
+    "versesRange": "አንቀጾች {{range}}",
+    "notAvailable": "ለዚህ አንቀጽ ተፍሲር አይገኝም"
+  },
+  "communityReflections": {
+    "loadFailed": "ሐሳቦቹን መጫን አልተቻለም። ቆይተው እንደገና ይሞክሩ።",
+    "empty": "እስካሁን ሐሳቦች የሉም",
+    "count_one": "{{count}} ሐሳብ",
+    "count_other": "{{count}} ሐሳቦች",
+    "openLabel": "የ {{author}} ሐሳብን ክፈት"
+  },
+  "selectionFailure": {
+    "unnumbered": "በ{{rewayah}} ቁጥር ያለው አንቀጽ አይደለም",
+    "loadFailed": "የ{{rewayah}} ጽሑፍ መጫን አልተቻለም",
+    "nothingDone": {
+      "copied": "ምንም አልተቀዳም።",
+      "shared": "ምንም አልተጋራም።",
+      "saved": "ምንም አልተቀመጠም።",
+      "played": "ምንም አልተጫወተም።"
+    },
+    "nothingDoneRetry": {
+      "copied": "ምንም አልተቀዳም። እባክዎ እንደገና ይሞክሩ።",
+      "shared": "ምንም አልተጋራም። እባክዎ እንደገና ይሞክሩ።",
+      "saved": "ምንም አልተቀመጠም። እባክዎ እንደገና ይሞክሩ።",
+      "played": "ምንም አልተጫወተም። እባክዎ እንደገና ይሞክሩ።"
+    },
+    "nothingToCopy": "የሚቀዳ የለም",
+    "nothingToShare": "የሚጋራ የለም",
+    "noOwnText": "በ{{rewayah}} ይህ ምርጫ የሚነበበው ከአጎራባች አንቀጽ አካል ጋር ነው።"
+  },
+  "percent": "{{value}}%"
+}

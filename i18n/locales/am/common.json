@@ -1,0 +1,128 @@
+{
+  "actions": {
+    "save": "አስቀምጥ",
+    "delete": "ሰርዝ",
+    "remove": "አስወግድ",
+    "done": "ተጠናቋል",
+    "ok": "እሺ",
+    "retry": "እንደገና ሞክር",
+    "share": "አጋራ",
+    "play": "አጫውት",
+    "pause": "ለአፍታ አቁም",
+    "shuffle": "ቀላቅል",
+    "download": "አውርድ",
+    "showLess": "ያነሰ አሳይ",
+    "back": "ተመለስ",
+    "next": "ቀጣይ",
+    "search": "ፈልግ",
+    "clear": "አጽዳ",
+    "copy": "ቅዳ",
+    "apply": "ተግብር",
+    "cancel": "ይቅር",
+    "reset": "ዳግም አስጀምር",
+    "edit": "አርትዕ",
+    "close": "ዝጋ",
+    "confirm": "አረጋግጥ",
+    "add": "አክል",
+    "create": "ፍጠር",
+    "rename": "ስም ቀይር",
+    "seeAll": "ሁሉንም ይመልከቱ",
+    "showMore": "ተጨማሪ አሳይ",
+    "continue": "ቀጥል",
+    "select": "ምረጥ",
+    "tryAgain": "እንደገና ሞክር"
+  },
+  "tabs": {
+    "home": "መነሻ",
+    "surahs": "ሱራዎች",
+    "search": "ፈልግ",
+    "collection": "ስብስብ",
+    "settings": "ቅንብሮች"
+  },
+  "terms": {
+    "surah": "ሱራ",
+    "surahs": "ሱራዎች",
+    "reciter": "አንባቢ",
+    "reciters": "አንባቢዎች",
+    "rewayah": "ሪዋያ",
+    "mushaf": "ሙስሐፍ",
+    "quran": "ቁርአን",
+    "translation": "ትርጉም",
+    "translations": "ትርጉሞች",
+    "tafseer": "ተፍሲር",
+    "tafaseer": "ተፍሲሮች",
+    "adhkar": "አዝካር",
+    "playlist": "የማጫወቻ ዝርዝር",
+    "bookmark": "ዕልባት",
+    "uploads": "የተሰቀሉ",
+    "queue": "ወረፋ",
+    "playlists": "የማጫወቻ ዝርዝሮች",
+    "bookmarks": "ዕልባቶች",
+    "downloads": "የወረዱ",
+    "ayah": "አንቀጽ",
+    "ayahs": "አንቀጾች",
+    "juz": "ጁዝ",
+    "page": "ገጽ",
+    "hizb": "ሂዝብ",
+    "rewayat": "ሪዋያዎች",
+    "favorites": "ተወዳጆች",
+    "bismillah": "ቢስሚላህ"
+  },
+  "counts": {
+    "surahs_one": "{{count}} ሱራ",
+    "surahs_other": "{{count}} ሱራዎች",
+    "reciters_one": "{{count}} አንባቢ",
+    "reciters_other": "{{count}} አንባቢዎች",
+    "tracks_one": "{{count}} ትራክ",
+    "tracks_other": "{{count}} ትራኮች",
+    "ayahs_one": "{{count}} አንቀጽ",
+    "ayahs_other": "{{count}} አንቀጾች",
+    "pages_one": "{{count}} ገጽ",
+    "pages_other": "{{count}} ገጾች"
+  },
+  "labels": {
+    "juzNumber": "ጁዝ {{number}}",
+    "pageNumber": "ገጽ {{number}}",
+    "surahNumber": "ሱራ {{number}}",
+    "ayahNumber": "አንቀጽ {{number}}",
+    "verseKey": "{{surah}}:{{ayah}}"
+  },
+  "status": {
+    "downloaded": "ወርዷል",
+    "loading": "በመጫን ላይ…",
+    "noResults": "ምንም ውጤት አልተገኘም",
+    "error": "ስህተት ተፈጥሯል",
+    "offline": "ከመስመር ውጭ ነዎት",
+    "empty": "እስካሁን ምንም የለም",
+    "downloading": "በማውረድ ላይ…"
+  },
+  "app": {
+    "filesImported_one": "{{count}} ፋይል ገብቷል",
+    "filesImported_other": "{{count}} ፋይሎች ገብተዋል",
+    "fileImported": "ፋይሉ ገብቷል",
+    "fontError": "ፊደሎችን በመጫን ላይ ስህተት ተፈጥሯል",
+    "initError": "ማጫወቻውን በማስጀመር ላይ ስህተት ተፈጥሯል፦ {{message}}",
+    "sharedAudio": "Shared Audio"
+  },
+  "language": {
+    "title": "ቋንቋ",
+    "description": "የመተግበሪያውን ቋንቋ ይምረጡ",
+    "system": "የመሣሪያው ነባሪ",
+    "systemDescription": "የመሣሪያውን ቋንቋ ተከተል",
+    "restartNote": "አዲሱን ቋንቋ ለመተግበር መተግበሪያው እንደገና ይጀምራል።",
+    "iosNote": "ምርጫዎ በመተግበሪያው ቋንቋና አቀማመጥ ላይ ይተገበራል።"
+  },
+  "revelation": {
+    "Makkah": "የመካ",
+    "Madinah": "የመዲና"
+  },
+  "styles": {
+    "murattal": "ሙረተል",
+    "mojawwad": "ሙጀወድ",
+    "molim": "ሙዓሊም"
+  },
+  "languageRestart": {
+    "title": "እንደገና ማስጀመር ያስፈልጋል",
+    "message": "አዲሱን ቋንቋ ለመተግበር መተግበሪያውን ዝጉና እንደገና ይክፈቱ።"
+  }
+}

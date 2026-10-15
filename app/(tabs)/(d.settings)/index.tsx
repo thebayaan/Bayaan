@@ -1,3 +1,4 @@
+import {getAppDisplayName} from '@/i18n/format'; // @ai
 import React, {useMemo} from 'react';
 import {Text, Pressable, ScrollView, View, Linking, Switch} from 'react-native';
 import {useRouter} from 'expo-router';
@@ -50,7 +51,7 @@ const isExternalLink = (type: string): boolean => {
 
 // @ai-start
 const getSettingsSections = (t: TFunction<['settings', 'common']>) => {
-  const appName = branding.appName;
+  const appName = getAppDisplayName(branding.appName); // @ai
   return [
     {
       section: t('settings:index.sections.quran'),
@@ -414,7 +415,7 @@ export default function SettingsScreen() {
                 </Text>
                 <Text style={styles.settingsDescription}>
                   {t('settings:index.analytics.description', {
-                    appName: branding.appName,
+                    appName: getAppDisplayName(branding.appName),
                   })}
                 </Text>
               </View>

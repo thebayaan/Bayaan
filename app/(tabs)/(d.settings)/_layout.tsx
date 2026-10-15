@@ -1,3 +1,4 @@
+import {getAppDisplayName} from '@/i18n/format'; // @ai
 import {Stack} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
 import {USE_GLASS} from '@/hooks/useGlassProps';
@@ -38,7 +39,11 @@ export default function SettingsLayout() {
         <Stack.Screen name="storage" options={{title: t('layout.storage')}} />
         <Stack.Screen
           name="about"
-          options={{title: t('layout.about', {appName: branding.appName})}}
+          options={{
+            title: t('layout.about', {
+              appName: getAppDisplayName(branding.appName),
+            }),
+          }}
         />
         <Stack.Screen name="credits" options={{title: t('layout.credits')}} />
         <Stack.Screen

@@ -1,3 +1,4 @@
+import {getAppDisplayName} from '@/i18n/format'; // @ai
 import React, {useMemo} from 'react';
 import {View, Text, ScrollView, Image} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
@@ -51,7 +52,7 @@ export default function AboutScreen() {
   const {theme} = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const {t} = useTranslation('settings');
-  const appName = branding.appName;
+  const appName = getAppDisplayName(branding.appName); // @ai
 
   return (
     <View style={styles.container}>

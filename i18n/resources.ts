@@ -15,6 +15,14 @@ import arSheets from './locales/ar/sheets.json';
 import arPlayer from './locales/ar/player.json';
 import arContent from './locales/ar/content.json';
 import arReader from './locales/ar/reader.json';
+import amCommon from './locales/am/common.json';
+import amHome from './locales/am/home.json';
+import amCollection from './locales/am/collection.json';
+import amSettings from './locales/am/settings.json';
+import amSheets from './locales/am/sheets.json';
+import amPlayer from './locales/am/player.json';
+import amContent from './locales/am/content.json';
+import amReader from './locales/am/reader.json';
 
 export const defaultNS = 'common';
 
@@ -38,6 +46,16 @@ export const resources = {
     player: arPlayer,
     content: arContent,
     reader: arReader,
+  },
+  am: {
+    common: amCommon,
+    home: amHome,
+    collection: amCollection,
+    settings: amSettings,
+    sheets: amSheets,
+    player: amPlayer,
+    content: amContent,
+    reader: amReader,
   },
 } as const;
 

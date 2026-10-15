@@ -1,0 +1,349 @@
+{
+  "layout": {
+    "storage": "ማከማቻ",
+    "about": "ስለ {{appName}}",
+    "credits": "ምስጋና",
+    "mushafSettings": "የሙስሐፍ ቅንብሮች",
+    "defaultReciter": "ነባሪ አንባቢ",
+    "reciterChoice": "የአንባቢ ምርጫ",
+    "account": "መለያ",
+    "translations": "ትርጉሞችና ተፍሲሮች",
+    "readingTheme": "የንባብ ገጽታ",
+    "whatsNew": "ምን አዲስ ነገር አለ?"
+  },
+  "index": {
+    "appearance": "ገጽታ",
+    "sections": {
+      "quran": "ቁርአን",
+      "audio": "ድምፅና ማጫወት",
+      "appData": "መተግበሪያና ውሂብ",
+      "feedback": "አስተያየት",
+      "about": "ስለ {{appName}}"
+    },
+    "items": {
+      "mushafSettings": {
+        "title": "የሙስሐፍ ቅንብሮች",
+        "description": "የቁርአን ማሳያ አማራጮችን ያስተካክሉ"
+      },
+      "translations": {
+        "title": "ትርጉሞችና ተፍሲሮች",
+        "description": "የቁርአን ትርጉሞችንና ማብራሪያዎችን ያስተዳድሩ"
+      },
+      "defaultReciter": {
+        "title": "ነባሪ አንባቢ",
+        "description": "የሚመርጡትን አንባቢ ይምረጡ"
+      },
+      "reciterChoice": {
+        "title": "የአንባቢ ምርጫ",
+        "description": "የአንባቢ ምርጫን ያስተካክሉ"
+      },
+      "storage": {
+        "title": "ማከማቻ",
+        "description": "የማከማቻ አጠቃቀምን ይመልከቱና ያስተዳድሩ"
+      },
+      "rateApp": {
+        "title": "ግምገማ ጻፍ",
+        "description": "ተሞክሮዎን ለሌሎች ያጋሩ"
+      },
+      "featureRequest": {
+        "title": "የባህሪ ጥያቄዎች",
+        "description": "ማሻሻያዎችንና አዳዲስ ባህሪያትን ይጠቁሙ"
+      },
+      "support": {
+        "title": "እገዛና ድጋፍ",
+        "description": "{{appName}}ን ለመጠቀም እገዛ ያግኙ"
+      },
+      "whatsNew": {
+        "title": "ምን አዲስ ነገር አለ?",
+        "description": "በዚህ ስሪት ያሉ አዳዲስ ነገሮችን ይመልከቱ"
+      },
+      "about": {
+        "title": "ስለ {{appName}}",
+        "description": "ስለ ተልዕኳችን የበለጠ ይወቁ"
+      },
+      "credits": {
+        "title": "ምስጋና",
+        "description": "አስተዋጽኦ ያደረጉትን ይመልከቱ"
+      },
+      "github": {
+        "title": "በGitHub ላይ አስተዋጽኦ ያድርጉ",
+        "description": "{{appName}} አሁን ክፍት ምንጭ ነው። ኮከብ ይስጡ፣ ችግሮችን ያሳውቁ ወይም PR ያቅርቡ"
+      },
+      "terms": {
+        "title": "የአገልግሎት ውሎች",
+        "description": "የአገልግሎት ውሎቻችንን ያንብቡ"
+      },
+      "privacy": {
+        "title": "የግላዊነት ፖሊሲ",
+        "description": "የግላዊነት ፖሊሲያችንን ይመልከቱ"
+      }
+    },
+    "analytics": {
+      "section": "ግላዊነት",
+      "title": "ስም-አልባ የአጠቃቀም ውሂብ አጋራ",
+      "description": "ግላዊ መረጃ የሌለውን ስም-አልባ የአጠቃቀም ውሂብ በማጋራት {{appName}}ን ለማሻሻል ያግዙ። ስምዎና መለያዎ ፈጽሞ አይጋሩም።"
+    }
+  },
+  "themePicker": {
+    "light": "ብርሃን",
+    "dark": "ጨለማ",
+    "system": "ራስ-ሰር"
+  },
+  "about": {
+    "tagline": "የቁርአን ንባብ አጋርዎ",
+    "alhamdulillahHeading": "አልሐምዱሊላህ",
+    "alhamdulillahBody": "መጽሐፉንና ኡማውን የማገልገል ዕድል ስለሰጠን ምስጋና ሁሉ ለአላህ ይገባል። ሰዎችን ከቅዱስ ቁርአን ውብ ንባብ ጋር የሚያገናኝ ይህን መድረክ እንድናዘጋጅ በመመረጣችን በጣም እናመሰግናለን።",
+    "missionHeading": "ተልዕኳችን",
+    "missionBody": "{{appName}} የቅዱስ ቁርአንን ውብ ንባብ ለሁሉም ሰው ተደራሽ ለማድረግ ይሠራል። ታዋቂ አንባቢዎችንና የ{{appName}} ልዩ ንባቦችን በማቅረብ ቁርአንን ለማዳመጥ ሰላማዊና ቀላል ተሞክሮ ለመስጠት እንጥራለን።",
+    "featuresHeader": "ባህሪያት",
+    "features": {
+      "offlineDownloads": {
+        "title": "ያለ በይነመረብ የሚጠቀሙባቸው ውርዶች",
+        "description": "ያለ በይነመረብ በማንኛውም ጊዜና ቦታ ለማዳመጥ ሱራዎችን አውርድ"
+      },
+      "customPlaylists": {
+        "title": "የግል ማጫወቻ ዝርዝሮች",
+        "description": "የሚወዷቸውን ንባቦች በግል ማጫወቻ ዝርዝሮች ውስጥ ያዘጋጁና ያስተዳድሩ"
+      },
+      "browseByJuz": {
+        "title": "በጁዝ አስስ",
+        "description": "በጁዝ በተደራጀ ቅርጽ በቁርአን ውስጥ በቀላሉ ያስሱ"
+      },
+      "audioControls": {
+        "title": "የላቁ የድምፅ መቆጣጠሪያዎች",
+        "description": "ተከታታይ ማጫወትና የሚስተካከል የንባብ ፍጥነት በመጠቀም ማጫወትን በትክክል ይቆጣጠሩ"
+      },
+      "highQualityAudio": {
+        "title": "ከፍተኛ ጥራት ያለው ድምፅ",
+        "description": "ከምርጥ ቃሪዎች ጥርት ያለ ንባብ ከተሻሻለ የድምፅ ስርጭት ጋር"
+      },
+      "curatedCollections": {
+        "title": "የተመረጡ ስብስቦች",
+        "description": "ለተለያዩ አጋጣሚዎችና ርዕሶች በጥንቃቄ የተደራጁ ሱራዎች"
+      },
+      "personalization": {
+        "title": "የግል ማስተካከያ",
+        "description": "ገጽታዎችን፣ ቀለሞችንና የድምፅ ቅንብሮችን በፍላጎትዎ ያስተካክሉ"
+      }
+    },
+    "comingSoonHeader": "በቅርቡ የሚመጡ",
+    "comingSoonIntro": "የቁርአን ጉዞዎን ለማሻሻል ተጨማሪ ባህሪያትን ለማቅረብ እየሠራን ነው። ከእነሱም መካከል፦",
+    "comingSoon": {
+      "translations": {
+        "title": "ብዙ ትርጉሞች",
+        "description": "ትርጉሞቹን በተሻለ ለመረዳት በተለያዩ ቋንቋዎች ያሉ የቁርአን ትርጉሞችን ያግኙ"
+      },
+      "wordByWord": {
+        "title": "ቃል በቃል ተከታተል",
+        "description": "ከንባቡ ጋር በአንድ ጊዜ የሚሄድ የቃላት ማጉላት ለመከታተልና ለመማር ይረዳል"
+      },
+      "bookmarking": {
+        "title": "ብልህ ዕልባት",
+        "description": "የሚወዷቸውን አንቀጾች ያስቀምጡና በሱራዎች ውስጥ ያለዎትን እድገት ይከታተሉ"
+      },
+      "learningTools": {
+        "title": "የመማሪያ መሣሪያዎች",
+        "description": "ቁርአንን ለመሸምደድና በተሻለ ለመረዳት የሚረዱ ባህሪያት"
+      },
+      "community": {
+        "title": "የማህበረሰብ ባህሪያት",
+        "description": "ከሌሎች ጋር ይገናኙ፣ ጉዞዎን ያጋሩና የቁርአን ተሞክሮዎን በጋራ ያሳድጉ"
+      }
+    },
+    "commitmentHeading": "ቁርጠኝነታችን",
+    "commitmentBody": "ለተከታታይ ማሻሻያና ለከፍተኛ ጥራት ቁርጠኞች ነን። ቡድናችን {{appName}} ለቁርአን ንባብ ታማኝና አክባሪ መድረክ እንዲሆን በትጋት ይሠራል። ኢንሻአላህ፣ በአላህ እርዳታ ኡማውን በተሻለ ለማገልገል እነዚህን ባህሪያት ማዘጋጀትና ማሻሻል እንቀጥላለን። ይህን ጉዞ በጋራ ስንቀጥል ለድጋፍዎና ለአስተያየትዎ እናመሰግናለን።"
+  },
+  "credits": {
+    "intro": "የእነዚህ ፕሮጀክቶች፣ ድርጅቶችና ግለሰቦች አስደናቂ ሥራ ባይኖር {{appName}} ሊኖር አይችልም ነበር። ለሙስሊም ማህበረሰብና ለቴክኖሎጂ ዓለም ላደረጉት አስተዋጽኦ በጣም እናመሰግናለን።",
+    "footer": "በ{{appName}} ቡድን በ❤️ የተሠራ",
+    "sections": {
+      "quranData": "የቁርአን ውሂብ",
+      "audioSources": "የድምፅ ምንጮች",
+      "designResources": "የንድፍ ሀብቶች",
+      "openSource": "ክፍት ምንጭ ቤተ-መጻሕፍት",
+      "specialThanks": "ልዩ ምስጋና",
+      "designArt": "ንድፍና ጥበብ"
+    },
+    "items": {
+      "qul": "የላቀ የቁርአን ውሂብና የቃላት መረጃ ከTarteel",
+      "quranFoundation": "ሰፊ የቁርአን API አገልግሎቶች ከQuran.com",
+      "mp3quran": "ሰፊ የአንባቢዎች ስብስብ",
+      "svgrepo": "ውብ ክፍት ምንጭ ምልክቶችና ስዕሎች",
+      "manrope": "ዘመናዊ የጽሑፍ ቅርጽ ቤተሰብ",
+      "uthmani": "ውብ የቁርአን የጽሑፍ ቅርጽ ከArabic Fonts",
+      "quranCom": "የሱራ ስም SVG እና ምልክቶች",
+      "reactNative": "ዋና ማዕቀፍ",
+      "expo": "የልማት መድረክ",
+      "reanimated": "የእንቅስቃሴ ቤተ-መጻሕፍት",
+      "contributorsTitle": "አስተዋጽኦ ያደረጉ",
+      "contributors": "{{appName}}ን ለማሻሻል የረዱ ሁሉ",
+      "betaTestersTitle": "የቤታ ሞካሪዎች",
+      "betaTesters": "ለጠቃሚ አስተያየቶቻቸውና ጥቆማዎቻቸው",
+      "communityTitle": "የሙስሊም ማህበረሰብ",
+      "community": "ለተከታታይ ድጋፋቸውና ምክራቸው",
+      "yamamoto": "ለመነሻ ማያ ገጽ የተዘጋጀ የካሊግራፊ ንድፍ",
+      "manropeTitle": "Manrope ቅርጸ ቁምፊ",
+      "uthmaniTitle": "Uthmani ቅርጸ ቁምፊ",
+      "quranComTitle": "የQuran.com ምንጮች",
+      "yamamotoTitle": "Dr. Naoki Yamamoto"
+    }
+  },
+  "defaultReciter": {
+    "changeHeader": "ነባሪ አንባቢ ቀይር",
+    "completeOnly": "ሙሉ ቁርአን ያላቸው አንባቢዎች ብቻ ይታያሉ",
+    "searchPlaceholder": "አንባቢዎችን ፈልግ...",
+    "noResults": "ምንም አንባቢዎች አልተገኙም"
+  },
+  "reciterChoice": {
+    "subtitle": "ሱራዎችን ሲያጫውቱ አንባቢዎችን እንዴት እንደሚመርጡ ይወስኑ",
+    "preferenceHeader": "የምርጫ ቅንብር",
+    "askEveryTime": "በእያንዳንዱ ጊዜ ጠይቅ",
+    "askEveryTimeDescription": "በሚያጫውቱበት እያንዳንዱ ጊዜ አንባቢ ይምረጡ",
+    "methodHeader": "ነባሪ የምርጫ ዘዴ",
+    "browseAll": "ሁሉንም አንባቢዎች አስስ",
+    "browseAllDescription": "ሙሉ የአንባቢዎች ስብስባችንን ፈልግ",
+    "useDefaultDescription": "ሁልጊዜ የመረጡትን ነባሪ አንባቢ ተጠቀም",
+    "useDefault": "ነባሪውን አንባቢ ተጠቀም"
+  },
+  "storage": {
+    "loading": "የማከማቻ መረጃ እየተጫነ ነው...",
+    "breakdownHeader": "የማከማቻ ዝርዝር",
+    "manageHeader": "ማከማቻን አስተዳድር",
+    "otherApps": "ሌሎች መተግበሪያዎች",
+    "cache": "መሸጎጫ",
+    "free": "ነፃ",
+    "removeDownloadsDescription": "ያለ በይነመረብ ለመጠቀም ያወረዱትን ሁሉንም የቁርአን ይዘት አስወግድ።",
+    "removeDownloadsConfirm": "ሁሉንም የወረደ ይዘት ማስወገድ ይፈልጋሉ? ይህን እርምጃ መመለስ አይቻልም።",
+    "removeDownloadsSuccess": "ሁሉም ውርዶች ተወግደዋል።",
+    "removeDownloadsError": "ውርዶችን ማስወገድ አልተቻለም።",
+    "clearCacheTitle": "መሸጎጫ አጽዳ",
+    "clearCacheDescription": "መሸጎጫውን በማጽዳት የማከማቻ ቦታ መልቀቅ ይችላሉ። ውርዶችዎ አይወገዱም።",
+    "clearCacheConfirm": "ይህ መሸጎጫዎን ያጸዳል። ውርዶችዎ አይወገዱም።",
+    "clearCacheSuccess": "መሸጎጫው ተጸድቷል።",
+    "clearCacheError": "መሸጎጫውን ማጽዳት አልተቻለም።",
+    "success": "ተሳክቷል",
+    "error": "ስህተት",
+    "downloads": "የወረዱ",
+    "removeDownloadsTitle": "ሁሉንም የወረዱ አስወግድ"
+  },
+  "whatsNew": {
+    "empty": "የለውጥ ዝርዝር የለም",
+    "version": "ስሪት {{version}}",
+    "title": "በ<brand>{{appName}}</brand> ምን አዲስ ነገር አለ",
+    "versionRange": "ስሪቶች {{from}} - {{to}}",
+    "versionShort": "v{{version}}"
+  },
+  "changelog": {
+    "features": "አዳዲስ ባህሪያት",
+    "improvements": "ማሻሻያዎች",
+    "fixes": "የስህተት ማስተካከያዎች",
+    "versionDate": "ስሪት {{version}} · {{date}}"
+  },
+  "onboarding": {
+    "skip": "ዝለል",
+    "getStarted": "ጀምር"
+  },
+  "version": {
+    "label": "ስሪት {{version}}",
+    "withBuildType": "ስሪት {{version}} - {{buildType}}"
+  },
+  "readingTheme": {
+    "disclosure": "የመልክ ሁኔታን መቀየር በመላው መተግበሪያ ላይ ይተገበራል",
+    "system": "ስርዓት",
+    "light": "ብርሃን",
+    "dark": "ጨለማ"
+  },
+  "mushafSettings": {
+    "title": "የሙስሐፍ ቅንብሮች",
+    "loadingSample": "ናሙና እየተጫነ ነው...",
+    "translationError": "ትርጉሙን መጫን አልተቻለም",
+    "transliterationError": "የፊደል ቅያሬውን መጫን አልተቻለም",
+    "on": "በርቷል",
+    "off": "ጠፍቷል",
+    "viewTypeHeader": "የእይታ ዓይነት",
+    "viewMushaf": "ሙስሐፍ",
+    "viewList": "ዝርዝር",
+    "scrollDirectionHeader": "የማሸብለል አቅጣጫ",
+    "horizontal": "አግድም",
+    "vertical": "ቁመት",
+    "pageDesignHeader": "የገጽ አቀማመጥ",
+    "fullscreen": "ሙሉ ማያ",
+    "book": "መጽሐፍ",
+    "readingThemeHeader": "የንባብ ገጽታ",
+    "system": "ስርዓት",
+    "wordByWordHeader": "ቃል በቃል",
+    "wordByWord": "ቃል በቃል",
+    "translation": "ትርጉም",
+    "arabicFontSize": "የአረብኛ ፊደል መጠን",
+    "fontSize": "የፊደል መጠን",
+    "textThicknessHeader": "የፊደል ውፍረት",
+    "divineNamesHeader": "መለኮታዊ ስሞች",
+    "highlightAllah": "አላህ / ረብ አጉላ",
+    "highlightAllahHelper": "በሙስሐፉ ውስጥ የአላህን ስም እና እንደ ረብ ያሉ መለኮታዊ መጠሪያዎችን ያጎላል።",
+    "thematicHelper": "እንደ ርዕሰ ጉዳዩ የሚቀያየሩ ማጉያዎች",
+    "fontHeader": "ፊደል",
+    "tajweedColoring": "የተጅዊድ ቀለሞች",
+    "tajweedDescription": "ደንቦችን በቀለም አጉላ",
+    "rewayahHeader": "ሪዋያ",
+    "rewayahDisabled": "በሙስሐፍ 1440 ሙከራ ስሪት ሪዋያ መቀየር አይቻልም።",
+    "qcfBetaTitle": "ሙስሐፍ 1440 ሙከራ ስሪት",
+    "nowReading": "አሁን በማንበብ ላይ",
+    "currentlyReading": "አሁን በማንበብ ላይ",
+    "previewUnavailableHeader": "የጽሑፍ ቅድመ እይታ ገና አይገኝም",
+    "previewUnavailableLabel": "{{name}}፣ የጽሑፍ ቅድመ እይታ ገና አይገኝም",
+    "showDifferences": "ልዩነቶችን አሳይ",
+    "colorLegend": "የቀለም መግለጫ",
+    "fonts": {
+      "dkV1": {
+        "description": "የቀድሞው King Fahd Complex",
+        "label": "Madani 1405"
+      },
+      "dkV2": {
+        "description": "ዘመናዊ King Fahd Complex",
+        "label": "Madani 1421"
+      },
+      "indopak": {
+        "description": "የህንድ ክፍለ አህጉር ነስታሊቅ ዘይቤ",
+        "label": "IndoPak"
+      },
+      "qcfV2": {
+        "description": "ዘመናዊ የመዲና የታተመ ስርዓት",
+        "label": "Mushaf 1440"
+      }
+    },
+    "weights": {
+      "normal": {
+        "label": "መደበኛ",
+        "description": "የሙስሐፉ ዋና ውፍረት"
+      },
+      "medium": {
+        "label": "መካከለኛ",
+        "description": "በትንሹ የበለጠ ጎልቶ የሚታይ"
+      },
+      "bold": {
+        "label": "ወፍራም",
+        "description": "ከፍተኛ ጉልህነት"
+      }
+    },
+    "communityReflectionsHelper": "በዝርዝር እይታ ከእያንዳንዱ አንቀጽ ስር የማኅበረሰብ አስተያየቶችን አሳይ",
+    "transliteration": "የፊደል ቅየራ",
+    "thematicHighlighting": "በርዕሰ ጉዳይ ማጉላት",
+    "communityReflections": "የማኅበረሰብ አስተያየቶች",
+    "translationSource": "በጥቅም ላይ፦ Saheeh International ትርጉም ከግርጌ ማስታወሻዎች ጋር",
+    "tajweedPreview": "ባለቀለም ተጅዊድን በቅድመ እይታ አሳይ",
+    "qcfBetaMessage": "Mushaf 1440 የ{{appName}} አዲሱ የሙስሐፍ ማሳያ ሥርዓት ነው፣ ሆኖም ገና በሙከራ ደረጃ ላይ ነው። የተጅዊድ ቀለሞች በቅድመ እይታ ይገኛሉ። ሪዋያ መቀየር እስካሁን አይቻልም።",
+    "rewayahExpandLabel": "ሪዋያ፦ {{name}}። ለመቀየር ዘርጋ።",
+    "rewayahCollapseLabel": "ሪዋያ፦ {{name}}። ለመቀየር ሰብስብ።",
+    "hafsOnlyFont": "Hafs ብቻ። ይህ ቅርጸ ቁምፊ በ{{rewayah}} የሚጠቀሙባቸውን ምልክቶች የሉትም።",
+    "hafsOnlyTajweed": "Hafs ብቻ። ለ{{rewayah}} አይታይም።",
+    "fallback": {
+      "title": "{{rewayah}}ን መጫን አልተቻለም",
+      "body": "በምትኩ Hafs ይታያል። {{rewayah}} የእርስዎ ሪዋያ ሆኖ ይቀጥላል፣ መተግበሪያው በሚቀጥለው ጊዜ ሲከፈት እንደገና ለመጫን ይሞክራል።",
+      "retryLabel": "{{rewayah}}ን እንደገና ለመጫን ይሞክሩ",
+      "retry": "እንደገና ሞክር",
+      "keepLabel": "Hafsን ማንበብ ቀጥል",
+      "keep": "Hafsን አቆይ"
+    },
+    "indopakHafsOnly": "IndoPak የሚያሳየው Hafsን ብቻ ነው። ሌላ ሪዋያ ሲመረጥ ቅርጸ ቁምፊው ወደ {{font}} ይቀየራል።"
+  }
+}

@@ -15,6 +15,32 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # @ai-start — keep the local Amharic resource/font gates reproducible in CI.
+  amharic:
+    name: Amharic inventory and UI fonts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install pinned font verification dependencies
+        run: python -m pip install --disable-pip-version-check -r scripts/rewayah/requirements-ci.txt
+
+      - name: Verification tooling regressions
+        run: python -B -m unittest discover -s scripts/__tests__ -p 'test_i18n_*.py'
+
+      - name: Amharic source-value policy and fallback inventory
+        run: python -B scripts/report-amharic-coverage.py --check
+
+      - name: UI font hashes, Latin preservation and Ethiopic coverage
+        run: python -B scripts/verify-ethiopic-ui-fonts.py
+  # @ai-end
+
   check:
     name: Locale keys and hardcoded strings
     runs-on: ubuntu-latest

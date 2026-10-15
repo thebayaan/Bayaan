@@ -38,7 +38,9 @@ Additional licensing:
 
 ## Fonts
 
-- **Manrope** — Apache-2.0 (https://github.com/sharanda/manrope)
+- **Manrope** — SIL Open Font License 1.1, © 2019 The Manrope Project Authors (https://github.com/sharanda/manrope). The bundled version 4.504 identifies OFL-1.1 in its font metadata.
+- **Noto Sans Ethiopic** — SIL Open Font License 1.1, © 2022 The Noto Project Authors. Pinned version 2.102; [license and provenance](assets/fonts/ethiopic/README.md).
+- **Bayaan UI Ethiopic** — OFL-1.1 derivatives combining the bundled Manrope and Noto Sans Ethiopic faces. Both copyright notices, the full license, source/output hashes and build instructions are [bundled with the derivatives](assets/fonts/ethiopic/ui/README.md).
 - **Scheherazade New** — SIL Open Font License 1.1 (https://software.sil.org/scheherazade/)
 - **IBM Plex Sans Arabic** — SIL Open Font License 1.1, © 2017 IBM Corp. (https://github.com/IBM/plex)
 - **UthmanicHafs** / **Uthmani** — King Fahd Glorious Qur’an Printing Complex (used with permission)

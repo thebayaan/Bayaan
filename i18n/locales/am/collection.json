@@ -1,0 +1,137 @@
+{
+  "collectionScreen": {
+    "loved": "የተወደዱ",
+    "notes": "ማስታወሻዎች",
+    "itemsCount_one": "{{count}} ንጥል",
+    "itemsCount_other": "{{count}} ንጥሎች",
+    "empty": {
+      "playlists": "የመጀመሪያ የማጫወቻ ዝርዝርዎን ይፍጠሩ",
+      "reciters": "እስካሁን ተወዳጆች የሉም",
+      "downloads": "እስካሁን የወረዱ የሉም",
+      "loved": "እስካሁን የተወደዱ ሱራዎች የሉም",
+      "bookmarks": "እስካሁን ዕልባቶች የሉም",
+      "notes": "እስካሁን ማስታወሻዎች የሉም",
+      "uploads": "እስካሁን የተሰቀሉ የሉም"
+    },
+    "addToCollection": "ወደ ስብስብ አክል"
+  },
+  "bookmarksScreen": {
+    "count_one": "{{count}} ዕልባት",
+    "count_other": "{{count}} ዕልባቶች",
+    "openingIn": "እየተከፈተ ያለው በ",
+    "emptySubtitle": "እዚህ ለማየት በአንቀጾች ላይ ዕልባት ያድርጉ",
+    "removeBookmark": "ዕልባት አስወግድ"
+  },
+  "notesScreen": {
+    "count_one": "{{count}} ማስታወሻ",
+    "count_other": "{{count}} ማስታወሻዎች",
+    "editNote": "ማስታወሻ አርም",
+    "deleteNote": "ማስታወሻ ሰርዝ",
+    "emptySubtitle": "እዚህ ለማየት በአንቀጾች ላይ ማስታወሻ ያክሉ"
+  },
+  "playlistsScreen": {
+    "count_one": "{{count}} የማጫወቻ ዝርዝር",
+    "count_other": "{{count}} የማጫወቻ ዝርዝሮች",
+    "emptyTitle": "እስካሁን የማጫወቻ ዝርዝሮች የሉም",
+    "emptySubtitle": "እዚህ ለማየት የማጫወቻ ዝርዝሮችን ይፍጠሩ",
+    "createNew": "አዲስ የማጫወቻ ዝርዝር ፍጠር"
+  },
+  "favoriteRecitersScreen": {
+    "title": "ተወዳጅ አንባቢዎች",
+    "removeFromFavorites": "ከተወዳጆች አስወግድ",
+    "emptyTitle": "እስካሁን ተወዳጅ አንባቢዎች የሉም",
+    "emptySubtitle": "እዚህ ለማየት አንባቢዎችን ያክሉ",
+    "addReciters": "አንባቢዎችን አክል",
+    "searchPlaceholder": "ተወዳጅ አንባቢዎችን ፈልግ"
+  },
+  "downloadsScreen": {
+    "surahsDownloaded_one": "{{count}} ሱራ ወርዷል",
+    "surahsDownloaded_other": "{{count}} ሱራዎች ወርደዋል",
+    "playAll": "ሁሉንም አጫውት",
+    "emptySubtitle": "እዚህ ለማየት ሱራዎችን ያውርዱ",
+    "removeAll": "ሁሉንም የወረዱ አስወግድ"
+  },
+  "lovedScreen": {
+    "allDownloaded": "ሁሉም ወርደዋል",
+    "downloadAll": "ሁሉንም አውርድ",
+    "unloveAll": "ሁሉንም ሱራዎች ከየተወደዱ አስወግድ",
+    "emptySubtitle": "እዚህ ለማየት ሱራዎችን ወደ የተወደዱ ያክሉ",
+    "alreadyDownloadedTitle": "አስቀድሞ ወርዷል",
+    "alreadyDownloadedMessage": "ሁሉም የተወደዱ ሱራዎች አስቀድመው ወርደዋል።",
+    "downloadCompleteTitle": "ውርደቱ ተጠናቋል",
+    "downloadCompleteMessage": "ሁሉም የተወደዱ ሱራዎች ወርደዋል።",
+    "downloadErrorTitle": "የውርደት ስህተት",
+    "downloadErrorMessage": "አንዳንድ ውርደቶች አልተሳኩ ሊሆኑ ይችላሉ።"
+  },
+  "uploadsScreen": {
+    "recitationsCount_one": "{{count}} ንባብ",
+    "recitationsCount_other": "{{count}} ንባቦች",
+    "removeAll": "ሁሉንም የተሰቀሉ አስወግድ",
+    "emptySubtitle": "እዚህ ለማየት ንባቦችን ይስቀሉ",
+    "opening": "በመክፈት ላይ…",
+    "addRecitation": "ንባብ አክል",
+    "untagged": "ያልተለየ",
+    "recordingType": {
+      "salah": "ሰላት",
+      "studio": "ስቱዲዮ"
+    },
+    "category": {
+      "dua": "ዱዓ",
+      "lecture": "ትምህርት",
+      "tafsir": "ተፍሲር",
+      "other": "ሌላ"
+    },
+    "verseShort": "አ{{verse}}"
+  },
+  "playlistModal": {
+    "newTitle": "አዲስ የማጫወቻ ዝርዝር",
+    "editTitle": "የማጫወቻ ዝርዝር አርም",
+    "namePreview": "የእርስዎ የማጫወቻ ዝርዝር",
+    "nameLabel": "የማጫወቻ ዝርዝር ስም",
+    "namePlaceholder": "ስም"
+  },
+  "searchModal": {
+    "typeLoved": "የተወደዱ",
+    "rewayatAvailable_one": "{{count}} ሪዋያ ይገኛል",
+    "rewayatAvailable_other": "{{count}} ሪዋያዎች ይገኛሉ",
+    "placeholder": "የማጫወቻ ዝርዝሮችን፣ አንባቢዎችን፣ ሱራዎችን፣ ሪዋያዎችን ፈልግ...",
+    "emptyTitle": "ስብስብዎን ፈልግ",
+    "emptySubtitle": "የማጫወቻ ዝርዝሮችን፣ አንባቢዎችን፣ ሱራዎችን፣ ሪዋያዎችን እና የወረዱ ፋይሎችን ፈልግ",
+    "searching": "በመፈለግ ላይ...",
+    "tryDifferent": "ሌሎች የፍለጋ ቃላትን ይሞክሩ",
+    "resultsCount_one": "{{count}} ውጤት",
+    "resultsCount_other": "{{count}} ውጤቶች",
+    "unknownReciter": "ያልታወቀ አንባቢ",
+    "inPlaylist": "{{reciter}} • በ\"{{playlist}}\" የማጫወቻ ዝርዝር ውስጥ",
+    "lovedBy": "የተወደዱ • {{reciter}}",
+    "downloadedTitle": "የወረደ፦ {{surah}}",
+    "rewayahBy": "{{rewayah}} በ{{reciter}}",
+    "typeInPlaylist": "በማጫወቻ ዝርዝር ውስጥ"
+  },
+  "playlistDetail": {
+    "empty": "በዚህ የማጫወቻ ዝርዝር ውስጥ ሱራዎች የሉም"
+  },
+  "reciterDownloads": {
+    "empty": "ለዚህ አንባቢ የወረዱ ፋይሎች የሉም"
+  },
+  "systemPlaylist": {
+    "curatedBadge": "በ{{appName}} የተመረጠ",
+    "withReciter": "በ{{reciter}}",
+    "durationHoursMinutes": "{{hours}}ሰ {{minutes}}ደ",
+    "durationHours": "{{hours}}ሰ",
+    "durationMinutes": "{{minutes}}ደ",
+    "noReciterTitle": "አንባቢ አልተገኘም",
+    "noReciterMessage": "በዚህ ዝርዝር ያሉትን ሱራዎች ሁሉ ያለው አንባቢ አልተገኘም። እባክዎ ሌላ የማጫወቻ ዝርዝር ይሞክሩ።",
+    "errorTitle": "ስህተት",
+    "playFailed": "የማጫወቻ ዝርዝሩን ማጫወት አልተቻለም። እባክዎ እንደገና ይሞክሩ።",
+    "shuffleFailed": "የማጫወቻ ዝርዝሩን በዘፈቀደ ማጫወት አልተቻለም። እባክዎ እንደገና ይሞክሩ።",
+    "playTrackFailed": "ቅጂውን ማጫወት አልተቻለም። እባክዎ እንደገና ይሞክሩ።"
+  },
+  "followAlongBadge": "ተከታተል",
+  "playlistItem": {
+    "subtitle": "የማጫወቻ ዝርዝር • {{surahs}}"
+  },
+  "reciterDownloadsItem": {
+    "subtitle": "የወረዱ • {{surahs}}"
+  }
+}

@@ -1,0 +1,540 @@
+{
+  "errors": {
+    "title": "ስህተት",
+    "unexpected": "ያልተጠበቀ ስህተት ተፈጥሯል። እንደገና ይሞክሩ።",
+    "timestampsUnavailable": "ለዚህ አንባቢ በዚህ ሱራ የጊዜ ምልክቶች አይገኙም። ሌላ አንባቢ ይሞክሩ።",
+    "storageLoadFailed": "የማከማቻ መረጃውን መጫን አልተቻለም"
+  },
+  "toasts": {
+    "nowReading": "አሁን በማንበብ ላይ",
+    "showingInHafs": "በHafs እየታየ ነው"
+  },
+  "uploads": {
+    "categories": {
+      "dua": "ዱዓ",
+      "lecture": "ትምህርት",
+      "tafsir": "ተፍሲር",
+      "other": "ንባብ"
+    },
+    "unknownReciter": "ያልታወቀ"
+  },
+  "duration": {
+    "hoursMinutes": "{{hours}}ሰ {{minutes}}ደ",
+    "hours": "{{hours}}ሰ",
+    "minutes": "{{minutes}}ደ"
+  },
+  "onboarding": {
+    "welcome": {
+      "title": "ወደ {{appName}} እንኳን ደህና መጡ",
+      "subtitle": "አዲስ ምዕራፍ",
+      "description": "ውብ ሙስሐፍ፣ የአያ ማጉላት፣ ቃል በቃል ትርጉም፣ አዝካር፣ የተፈጥሮ ድምፆችና ሌሎች ብዙ ባህሪያት።"
+    },
+    "mushaf": {
+      "title": "ሙስሐፍ",
+      "description": "ሙሉ የዑስማኒ ጽሑፍ፣ ውብ የተጅዊድ ቀለሞችና ትኩረት የሚሰጥ የንባብ ሁኔታ ያለው ልዩ የንባብ ገጽ።"
+    },
+    "highlighting": {
+      "title": "ተከታተል",
+      "description": "ቦታዎን እንዳያጡ እያንዳንዱ አያ ከንባቡ ጋር በአንድ ጊዜ ይጎላል። ለአብዛኞቹ የሚወዷቸው አንባቢዎች ይገኛል፤ በቅርቡም ለሁሉም ይቀርባል።"
+    },
+    "memorize": {
+      "title": "ለመሸምደድ አዳምጥ",
+      "description": "አንድ አያ ደጋግመው ያጫውቱ፣ የአንቀጾች ክልል ያጫውቱ ወይም ሙሉ ገጽ ይድገሙ። ለሂፍዝና ለክለሳ ጠቃሚ ነው።"
+    },
+    "uploads": {
+      "title": "የግል ንባቦች",
+      "description": "የራስዎን የድምፅ ቅጂዎች ያስገቡ፣ የሱራና የአንባቢ መረጃ ያክሉላቸውና የግል ስብስብዎን ያደራጁ።"
+    },
+    "ambient": {
+      "title": "የተፈጥሮ ድምፆች",
+      "description": "እንደ ዝናብ፣ ውቅያኖስና ጫካ ያሉ የተፈጥሮ ድምፆችን ከንባብዎ ጋር በማዋሃድ ትኩረት የሚሰጥ ተሞክሮ ያግኙ።"
+    },
+    "verseInteractions": {
+      "title": "የአንቀጽ እርምጃዎች",
+      "description": "ለማንኛውም አንቀጽ ዕልባት ያክሉ፣ ያጉሉ፣ ማስታወሻ ይጻፉ፣ ይቅዱና ያጋሩ። ማስታወሻዎችዎ በመተግበሪያው ውስጥ ይመሳሰላሉ።"
+    },
+    "adhkar": {
+      "title": "አዝካር",
+      "description": "ሙሉ የሂስኑል ሙስሊም ስብስብ ከድምፅ ማጫወት፣ ሁሉንም የማጫወት ሁኔታና ከተቀመጡ ተወዳጆች ጋር።"
+    },
+    "wbw": {
+      "title": "ቃል በቃል",
+      "description": "በሙስሐፍ ወይም በማጫወቻው ውስጥ ማንኛውንም ቃል በመንካት ትርጉሙን፣ አነባበቡንና ሰዋሰዉን ይመልከቱ።"
+    },
+    "translations": {
+      "title": "ትርጉሞችና ተፍሲር",
+      "description": "በብዙ ቋንቋዎች ያሉ ትርጉሞችንና ምሁራዊ ማብራሪያዎችን ያስሱ። ሁሉንም ያለ በይነመረብ ለመጠቀም ማውረድ ይቻላል።"
+    },
+    "themes": {
+      "description": "የእያንዳንዱን ሱራ መዋቅርና ርዕሶች በቀላሉ ለማየት አንቀጾች በርዕሳቸው ቀለም ይለያሉ።",
+      "title": "በርዕሰ ጉዳይ ማጉላት"
+    },
+    "indopak": {
+      "title": "የኢንዶፓክ ጽሑፍ",
+      "description": "በደቡብ እስያ የሚጠቀሙበትን ዘይቤ ለማየት በሙስሐፍ ውስጥ ወደ ኢንዶፓክ ናስታሊቅ ጽሑፍ ይቀይሩ።"
+    },
+    "downloads": {
+      "title": "ያለ በይነመረብ የሚጠቀሙባቸው ውርዶች",
+      "description": "ያለ በይነመረብ ለማዳመጥ ነጠላ ሱራዎችን ወይም ሙሉ ማጫወቻ ዝርዝሮችን አውርድ።"
+    },
+    "playlists": {
+      "description": "የግል ማጫወቻ ዝርዝሮችን ያዘጋጁ፣ የትራኮችን ቅደም ተከተል ይቀይሩና የራስዎን የማዳመጥ ልምድ ይገንቡ።",
+      "title": "የማጫወቻ ዝርዝሮች"
+    }
+  },
+  "recitation": {
+    "recordingTypes": {
+      "studio": "ስቱዲዮ",
+      "salah": "ሰላት"
+    },
+    "styles": {
+      "murattal": "Murattal",
+      "mojawwad": "Mojawwad",
+      "molim": "Molim",
+      "hadr": "Hadr"
+    }
+  },
+  "allahHighlight": {
+    "gold": "ወርቅ",
+    "emerald": "ኤመራልድ",
+    "blue": "ሰማያዊ",
+    "rose": "ሮዝ"
+  },
+  "readingThemes": {
+    "default": "ክሬም",
+    "parchment": "ብራና",
+    "white": "ነጭ",
+    "sage": "ግራጫ አረንጓዴ",
+    "rose": "ሮዝ",
+    "cool": "ቀዝቃዛ ግራጫ",
+    "sand": "አሸዋ",
+    "darkDefault": "ጥቁር ሰማያዊ",
+    "darkSepia": "ጥቁር ቡናማ",
+    "oled": "ጥቁር",
+    "darkSage": "ጥቁር አረንጓዴ",
+    "charcoal": "ከሰል",
+    "indigo": "ኢንዲጎ",
+    "darkAmber": "አምበር"
+  },
+  "adhkarShortTitles": {
+    "thunder": "ነጎድጓድ",
+    "morningAndEvening": "ጠዋት እና ምሽት",
+    "beforeSleep": "ከመተኛት በፊት",
+    "wakingUp": "ከእንቅልፍ ሲነቁ",
+    "badDreams": "መጥፎ ሕልሞች",
+    "fearOfSleep": "እንቅልፍን መፍራት",
+    "stirringAtNight": "በሌሊት ሲነቁ",
+    "enteringRestroom": "ወደ መጸዳጃ ሲገቡ",
+    "leavingRestroom": "ከመጸዳጃ ሲወጡ",
+    "beforeWudu": "ከውዱእ በፊት",
+    "afterWudu": "ከውዱእ በኋላ",
+    "leavingHome": "ከቤት ሲወጡ",
+    "enteringHome": "ወደ ቤት ሲገቡ",
+    "goingToMosque": "ወደ መስጊድ ሲሄዱ",
+    "enteringMosque": "ወደ መስጊድ ሲገቡ",
+    "leavingMosque": "ከመስጊድ ሲወጡ",
+    "hearingAdhan": "አዛን ሲሰሙ",
+    "openingPrayer": "ሰላትን ሲጀምሩ",
+    "duringRuku": "በሩኩዕ ጊዜ",
+    "risingFromRuku": "ከሩኩዕ ሲነሱ",
+    "duringSujood": "በሱጁድ ጊዜ",
+    "betweenProstrations": "በሁለቱ ሱጁዶች መካከል",
+    "tashahhud": "ተሸሁድ",
+    "salawatInPrayer": "በሰላት ውስጥ ሰለዋት",
+    "beforeSalam": "ከሰላም በፊት",
+    "afterPrayer": "ከሰላት በኋላ",
+    "sujoodTilawah": "ሱጁድ አት-ቲላዋ",
+    "qunut": "ቁኑት",
+    "afterWitr": "ከዊትር በኋላ",
+    "againstDistraction": "ትኩረትን ከሚበትኑ ነገሮች ለመጠበቅ",
+    "gettingDressed": "ልብስ ሲለብሱ",
+    "newClothes": "አዲስ ልብስ",
+    "complimentingClothes": "ልብስን ሲያደንቁ",
+    "undressing": "ልብስ ሲያወልቁ",
+    "beforeEating": "ከመብላት በፊት",
+    "afterEating": "ከመብላት በኋላ",
+    "breakingFast": "ጾም ሲፈቱ",
+    "iftarInvitation": "የኢፍጣር ግብዣ",
+    "forHost": "ለአስተናጋጁ",
+    "offeredDrink": "መጠጥ ሲቀርብልዎ",
+    "decliningFood": "ምግብ ሲያልፉ",
+    "startingTravel": "ጉዞ ሲጀምሩ",
+    "ridingVehicle": "ተሽከርካሪ ሲሳፈሩ",
+    "duringJourney": "በጉዞ ላይ",
+    "travelerAtDawn": "ተጓዥ በንጋት",
+    "travelStop": "በጉዞ ላይ ሲያርፉ",
+    "enteringTown": "ወደ ከተማ ሲገቡ",
+    "returningHome": "ወደ ቤት ሲመለሱ",
+    "forTraveler": "ለተጓዡ",
+    "leavingBehind": "ትተው ለሚሄዷቸው",
+    "vehicleTrouble": "የተሽከርካሪ ችግር",
+    "windBlowing": "ነፋስ ሲነፍስ",
+    "whenRaining": "ዝናብ ሲዘንብ",
+    "afterRain": "ከዝናብ በኋላ",
+    "seekingRain": "ዝናብን መለመን",
+    "drought": "ድርቅ",
+    "newMoon": "አዲስ ጨረቃ",
+    "firstFruits": "የመጀመሪያ ፍራፍሬዎች",
+    "givingSalam": "ሰላምታ ሲሰጡ",
+    "respondingToSalam": "ሰላምታ ሲመልሱ",
+    "sneezing": "ሲያስነጥሱ",
+    "othersSneezing": "ሌሎች ሲያስነጥሱ",
+    "thankingOthers": "ሌሎችን ሲያመሰግኑ",
+    "loveForAllah": "ለአላህ ሲሉ መውደድ",
+    "receivingBlessing": "በረከትን ሲቀበሉ",
+    "receivingForgiveness": "ይቅርታን ሲቀበሉ",
+    "afterBackbiting": "ከሐሜት በኋላ",
+    "offeredWealth": "ሀብት ሲቀርብልዎ",
+    "praisingOthers": "ሌሎችን ሲያወድሱ",
+    "beingPraised": "ሲወደሱ",
+    "seeingMisfortune": "መከራን ሲያዩ",
+    "avoidingEvilEye": "ከዐይን ጥበቃ ለመፈለግ",
+    "leavingGathering": "ከመሰብሰቢያ ሲወጡ",
+    "inGatherings": "በመሰብሰቢያዎች ውስጥ",
+    "communityEtiquette": "ማኅበራዊ ሥነ ሥርዓት",
+    "worryAndGrief": "ጭንቀት እና ሐዘን",
+    "anguish": "ከባድ ጭንቀት",
+    "anger": "ቁጣ",
+    "tragedy": "መከራ",
+    "goodOrBadNews": "መልካም ወይም መጥፎ ዜና",
+    "goodNews": "መልካም ዜና",
+    "surprise": "ድንገተኛ ነገር",
+    "fear": "ፍርሃት",
+    "disappointment": "ተስፋ መቁረጥ",
+    "difficulty": "ችግር",
+    "pain": "ሕመም",
+    "rudenessWhileFasting": "በጾም ጊዜ የሚደርስ ክፉ ንግግር",
+    "fearOfHarm": "የጉዳት ፍርሃት",
+    "againstShaytan": "ከሸይጣን ጥበቃ ለመፈለግ",
+    "foilingShaytan": "የሸይጣንን ሴራ ለማክሸፍ",
+    "fearOfShirk": "የሺርክ ፍርሃት",
+    "doubtInFaith": "በእምነት ውስጥ ጥርጣሬ",
+    "againstDajjal": "ከደጃል ጥበቃ ለመፈለግ",
+    "againstBadOmens": "ከመጥፎ ገድ ጥበቃ ለመፈለግ",
+    "againstEnemy": "ከጠላት ጥበቃ ለመፈለግ",
+    "againstOppression": "ከጭቆና ጥበቃ ለመፈለግ",
+    "meetingAdversary": "ተቃዋሚን ሲያገኙ",
+    "dogBarking": "ውሻ ሲጮኽ",
+    "animalsCalling": "እንስሳት ሲጮኹ",
+    "protectingChildren": "ሕፃናትን መጠበቅ",
+    "excellenceOfDhikr": "የዚክር ትሩፋት",
+    "excellenceOfSalawat": "የሰለዋት ትሩፋት",
+    "glorifyingAllah": "አላህን ማወደስ",
+    "istighfar": "ኢስቲግፋር",
+    "istikharah": "ኢስቲኻራ",
+    "enteringMarket": "ወደ ገበያ ሲገቡ",
+    "settlingDebt": "ዕዳን ሲከፍሉ",
+    "receivingLoan": "ብድር ሲቀበሉ",
+    "forGroom": "ለሙሽራው",
+    "weddingNight": "የሠርግ ምሽት",
+    "newParents": "አዲስ ወላጆች",
+    "beforeIntimacy": "ከግብረ ሥጋ ግንኙነት በፊት",
+    "visitingSick": "የታመመን ሲጠይቁ",
+    "rewardOfVisiting": "የመጠየቅ ምንዳ",
+    "terminalIllness": "ለሞት በሚያደርስ ሕመም ጊዜ",
+    "forDyingPerson": "ለሚሞት ሰው",
+    "closingEyes": "ዐይኖችን ሲዘጉ",
+    "janazahPrayer": "የጀናዛ ሰላት",
+    "childJanazah": "የሕፃን ጀናዛ",
+    "condolences": "የሐዘን መግለጫ",
+    "placingInGrave": "በመቃብር ሲያኖሩ",
+    "afterBurial": "ከቀብር በኋላ",
+    "visitingGraves": "መቃብሮችን ሲጎበኙ",
+    "afterSinning": "ከኃጢአት በኋላ",
+    "talbiyah": "ተልቢያ",
+    "atBlackStone": "በጥቁሩ ድንጋይ አጠገብ",
+    "betweenCorners": "በማዕዘኖቹ መካከል",
+    "safaAndMarwah": "ሶፋ እና መርዋ",
+    "atMuzdalifah": "በሙዝደሊፋ",
+    "dayOfArafat": "የዐረፋ ቀን",
+    "stoningJamarat": "የጀመራት ድንጋይ ውርወራ",
+    "slaughtering": "እርድ"
+  },
+  "importAudio": {
+    "fileImported": "ፋይሉ ገብቷል",
+    "editDetails": "ዝርዝሮችን አርትዕ"
+  },
+  "units": {
+    "bytes": "{{value}} ባይት",
+    "kb": "{{value}} KB",
+    "mb": "{{value}} MB",
+    "gb": "{{value}} GB"
+  },
+  "systemPlaylists": {
+    "readyToPlay": "ለመጫወት ዝግጁ ነው",
+    "selectReciters": "ለማጫወት አንባቢዎችን ይምረጡ",
+    "morningReflections": {
+      "title": "የጠዋት ተደቡር",
+      "description": "ምስጋናን እና ተስፋን በሚያነሳሱ ሱራዎች ቀንዎን ይጀምሩ"
+    },
+    "quickListen": {
+      "title": "አጭር ማዳመጥ",
+      "subtitle": "5-15 ደቂቃዎች",
+      "description": "በጉዞ ወይም በእረፍት ጊዜ ለአጭር ማዳመጥ የሚመች"
+    },
+    "heartSofteners": {
+      "title": "ልብን የሚያለሰልሱ",
+      "description": "ስሜትን የሚያነሳሱ እና ልብን የሚነኩ ንባቦች"
+    },
+    "storiesProphets": {
+      "title": "የነቢያት ታሪኮች",
+      "description": "የአላህ መልእክተኞች ታሪኮችን የሚያቀርቡ ሱራዎች"
+    },
+    "protectionHealing": {
+      "title": "ጥበቃ እና ፈውስ",
+      "description": "ለሩቅያ እና በአላህ ጥበቃ ለመፈለግ የሚነበቡ ሱራዎች"
+    },
+    "mostLoved": {
+      "title": "በጣም የተወደዱ",
+      "description": "በዓለም ዙሪያ ያሉ አድማጮች የሚወዷቸው ንባቦች"
+    },
+    "eveningSerenity": {
+      "title": "የምሽት እርጋታ",
+      "description": "ለምሽት ተደቡር የሚመቹ የተረጋጉ እና ሰላማዊ ሱራዎች"
+    },
+    "fridayEssentials": {
+      "title": "የጁምዓ ምርጦች",
+      "description": "Al-Kahf እና ሌሎች ለጁምዓ የሚመከሩ ንባቦች"
+    },
+    "focusStudy": {
+      "title": "ትኩረት እና ጥናት",
+      "description": "በሌላ ሥራ ላይ ሳሉ ለማዳመጥ የሚመቹ የተረጋጉ እና ግልጽ ንባቦች"
+    },
+    "juzAmma": {
+      "subtitle": "30ኛው ጁዝ",
+      "description": "ከመጨረሻው ጁዝ የተሰበሰቡ ሁሉም አጫጭር ሱራዎች",
+      "title": "Juz Amma"
+    },
+    "memorizationStation": {
+      "title": "የሒፍዝ ማዕከል",
+      "description": "ሒፍዝ ለሚጀምሩ የሚመቹ አጫጭር ሱራዎች"
+    },
+    "appEssentials": {
+      "title": "የ{{appName}} ምርጦች",
+      "description": "ለእያንዳንዱ አድማጭ የምንመክራቸው ምርጥ ንባቦች"
+    }
+  },
+  "categories": {
+    "juzAmma": {
+      "description": "የቁርኣን የመጨረሻዎቹ 37 ሱራዎች",
+      "title": "Juz Amma"
+    },
+    "sevenLong": {
+      "title": "ሰባቱ ረጃጅም ሱራዎች",
+      "description": "Al-Sab' Al-Tiwal"
+    },
+    "heartOfQuran": {
+      "title": "የቁርኣን ልብ",
+      "description": "ጥልቅ ተጽዕኖ ያላቸው ሱራዎች"
+    },
+    "dailyAdhkar": {
+      "title": "ዕለታዊ አዝካር",
+      "description": "በየቀኑ በተለምዶ የሚነበቡ ሱራዎች"
+    },
+    "prophets": {
+      "title": "የነቢያት ታሪኮች"
+    },
+    "mercy": {
+      "title": "እዝነት እና ምሕረት"
+    },
+    "faith": {
+      "title": "እምነት"
+    },
+    "short": {
+      "title": "አጫጭር ሱራዎች",
+      "description": "ከ20 ያነሱ አንቀጾች"
+    },
+    "medium": {
+      "title": "መካከለኛ ሱራዎች",
+      "description": "20-100 አንቀጾች"
+    },
+    "long": {
+      "title": "ረጃጅም ሱራዎች",
+      "description": "ከ100 በላይ አንቀጾች"
+    },
+    "meccan": {
+      "title": "ታዋቂ የመካ ሱራዎች"
+    },
+    "medinan": {
+      "title": "ታዋቂ የመዲና ሱራዎች"
+    },
+    "mostRecited": {
+      "title": "በብዛት የተነበቡ"
+    },
+    "mostLoved": {
+      "title": "በማኅበረሰቡ በጣም የተወደዱ"
+    },
+    "browse": {
+      "dailyAdhkar": "ዕለታዊ አዝካር",
+      "prophets": "የነቢያት ታሪኮች",
+      "heartOfQuran": "የቁርኣን ልብ",
+      "mostRecited": "በብዛት የተነበቡ",
+      "short": "አጫጭር ሱራዎች",
+      "meccan": "የመካ ሱራዎች",
+      "medinan": "የመዲና ሱራዎች",
+      "juzAmma": "Juz Amma"
+    }
+  },
+  "adhkarTags": {
+    "daily": "ዕለታዊ አዝካር",
+    "prayer": "ሰላት",
+    "protection": "ጥበቃ",
+    "health": "ጤና እና ፈውስ",
+    "travel": "ጉዞ",
+    "food": "ምግብ እና መጠጥ",
+    "social": "ማኅበራዊ",
+    "nature": "ተፈጥሮ",
+    "spiritual": "መንፈሳዊ",
+    "home": "ቤት እና ቤተሰብ",
+    "clothing": "ልብስ",
+    "general": "አጠቃላይ"
+  },
+  "juz": {
+    "amma": "Juz 'Amma"
+  },
+  "rewayah": {
+    "short": {
+      "hafs": "Hafs",
+      "shubah": "Shu'bah",
+      "al-bazzi": "Al-Bazzi",
+      "qunbul": "Qunbul",
+      "warsh": "Warsh",
+      "qalun": "Qalun",
+      "al-duri-abi-amr": "Al-Duri (Abu Amr)",
+      "al-susi": "Al-Susi",
+      "hisham": "Hisham",
+      "ibn-dhakwan": "Ibn Dhakwan",
+      "khalaf-an-hamzah": "Khalaf (Hamzah)",
+      "khallad": "Khallad",
+      "al-duri-al-kisai": "Al-Duri (al-Kisa'i)",
+      "abu-al-harith": "Abu al-Harith",
+      "ibn-jammaz": "Ibn Jammaz",
+      "ibn-wardan": "Ibn Wardan",
+      "rawh": "Rawh",
+      "ruwais": "Ruwais",
+      "idris": "Idris",
+      "ishaq": "Ishaq"
+    },
+    "long": {
+      "hafs": "Hafs 'an Asim",
+      "shubah": "Shu'bah 'an Asim",
+      "al-bazzi": "Al-Bazzi 'an Ibn Kathir",
+      "qunbul": "Qunbul 'an Ibn Kathir",
+      "warsh": "Warsh 'an Nafi'",
+      "qalun": "Qalun 'an Nafi'",
+      "al-duri-abi-amr": "Al-Duri 'an Abu Amr",
+      "al-susi": "Al-Susi 'an Abu Amr",
+      "hisham": "Hisham 'an Ibn Amir",
+      "ibn-dhakwan": "Ibn Dhakwan 'an Ibn Amir",
+      "khalaf-an-hamzah": "Khalaf 'an Hamzah",
+      "khallad": "Khallad 'an Hamzah",
+      "al-duri-al-kisai": "Al-Duri 'an al-Kisa'i",
+      "abu-al-harith": "Abu al-Harith 'an al-Kisa'i",
+      "ibn-jammaz": "Ibn Jammaz 'an Abu Ja'far",
+      "ibn-wardan": "Ibn Wardan 'an Abu Ja'far",
+      "rawh": "Rawh 'an Ya'qub",
+      "ruwais": "Ruways 'an Ya'qub",
+      "idris": "Idris 'an Khalaf al-Bazzar",
+      "ishaq": "Ishaq 'an Khalaf al-Bazzar"
+    }
+  },
+  "rewayat": {
+    "entries": {
+      "warsh-an-nafi": {
+        "displayName": "Warsh"
+      },
+      "qalon-an-nafi": {
+        "displayName": "Qalun"
+      },
+      "albizi-an-ibn-katheer": {
+        "displayName": "Al-Bazzi"
+      },
+      "qunbol-an-ibn-katheer": {
+        "displayName": "Qunbul"
+      },
+      "aldori-an-abi-amr": {
+        "displayName": "Al-Duri (Abu Amr)"
+      },
+      "assosi-an-abi-amr": {
+        "displayName": "Al-Susi"
+      },
+      "ibn-thakwan-an-ibn-amer": {
+        "displayName": "Ibn Dhakwan"
+      },
+      "hesham-an-ibn-amer": {
+        "displayName": "Hisham"
+      },
+      "hafs-an-assem": {
+        "displayName": "Hafs"
+      },
+      "shubah-an-assem": {
+        "displayName": "Shu'bah"
+      },
+      "khalaf-an-hamzah": {
+        "displayName": "Khalaf (Hamzah)"
+      },
+      "khallad-an-hamzah": {
+        "displayName": "Khallad"
+      },
+      "aldorai-an-alkisaai": {
+        "displayName": "Al-Duri (al-Kisa'i)"
+      },
+      "abu-al-harith-an-alkisai": {
+        "displayName": "Abu al-Harith"
+      },
+      "ibn-jammaz-an-abi-jafar": {
+        "displayName": "Ibn Jammaz"
+      },
+      "ibn-wardan-an-abi-jafar": {
+        "displayName": "Ibn Wardan"
+      },
+      "rowis-rawh-an-yakoob": {
+        "displayName": "Ruwais & Rawh"
+      },
+      "rawh-an-yaqub": {
+        "displayName": "Rawh"
+      },
+      "ruwais-an-yaqub": {
+        "displayName": "Ruwais"
+      },
+      "idris-an-khalaf": {
+        "displayName": "Idris"
+      },
+      "ishaq-an-khalaf": {
+        "displayName": "Ishaq"
+      }
+    },
+    "people": {
+      "nafi": "Nafi'",
+      "ibnKathir": "Ibn Kathir",
+      "abuAmr": "Abu Amr",
+      "ibnAmir": "Ibn Amir",
+      "asim": "Asim",
+      "hamzah": "Hamzah",
+      "kisai": "al-Kisa'i",
+      "abuJafar": "Abu Ja'far",
+      "yaqub": "Ya'qub",
+      "khalafAlBazzar": "Khalaf al-Bazzar",
+      "warsh": "Warsh",
+      "qalun": "Qalun",
+      "bazzi": "Al-Bazzi",
+      "qunbul": "Qunbul",
+      "duri": "Al-Duri",
+      "susi": "Al-Susi",
+      "ibnDhakwan": "Ibn Dhakwan",
+      "hisham": "Hisham",
+      "hafs": "Hafs",
+      "shubah": "Shu'bah",
+      "khalaf": "Khalaf",
+      "khallad": "Khallad",
+      "abuAlHarith": "Abu al-Harith",
+      "ibnJammaz": "Ibn Jammaz",
+      "ibnWardan": "Ibn Wardan",
+      "ruwaisAndRawh": "Ruwais and Rawh",
+      "rawh": "Rawh",
+      "ruwais": "Ruwais",
+      "idris": "Idris",
+      "ishaq": "Ishaq"
+    }
+  }
+}

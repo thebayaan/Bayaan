@@ -12,6 +12,7 @@ const mockDirection = {
   forceRTL: jest.fn(),
   swapLeftAndRightInRTL: jest.fn(),
 };
+const originalDevelopmentMode = __DEV__;
 
 jest.mock('react-native', () => ({
   I18nManager: mockDirection,
@@ -43,6 +44,11 @@ Object.defineProperty(globalThis, 'fetch', {
 });
 
 beforeEach(() => {
+  Object.defineProperty(globalThis, '__DEV__', {
+    configurable: true,
+    writable: true,
+    value: originalDevelopmentMode,
+  });
   jest.resetModules();
   jest.clearAllMocks();
   mockStorage.clear();
@@ -51,6 +57,75 @@ beforeEach(() => {
   mockDeviceLocales.mockReturnValue([{languageCode: 'en'}]);
   mockReload.mockResolvedValue(undefined);
   mockUpdatesReload.mockResolvedValue(undefined);
+});
+
+afterEach(() => {
+  Object.defineProperty(globalThis, '__DEV__', {
+    configurable: true,
+    writable: true,
+    value: originalDevelopmentMode,
+  });
+});
+
+it.each([true, false])(
+  'offers the Amharic draft only in development (development=%s)',
+  development => {
+    Object.defineProperty(globalThis, '__DEV__', {value: development});
+    mockDeviceLocales.mockReturnValue([
+      {languageCode: 'am'},
+      {languageCode: 'ar'},
+    ]);
+    const language = loadLanguage();
+    expect(language.AVAILABLE_LANGUAGES).toEqual(
+      development ? ['en', 'ar', 'am'] : ['en', 'ar'],
+    );
+    expect(language.currentLanguage).toBe(development ? 'am' : 'ar');
+  },
+);
+
+it('ignores a saved Amharic preview preference in release builds', () => {
+  Object.defineProperty(globalThis, '__DEV__', {value: false});
+  mockStorage.set('language_preference', 'am');
+  mockDeviceLocales.mockReturnValue([{languageCode: 'am'}]);
+  const language = loadLanguage();
+  expect(language.getLanguagePreference()).toBe('system');
+  expect(language.currentLanguage).toBe('en');
+  // Leave the stored draft choice intact for a later development session.
+  expect(mockStorage.get('language_preference')).toBe('am');
+});
+
+it('restores Amharic in development with English reading aids and LTR layout', () => {
+  mockStorage.set('language_preference', 'am');
+  const language = loadLanguage();
+  expect(language.currentLanguage).toBe('am');
+  expect(language.defaultShowEnglishReadingAids).toBe(true);
+  expect(language.defaultShowTransliteration).toBe(true);
+  language.bootstrapDirection();
+  expect(mockDirection.forceRTL).toHaveBeenCalledWith(false);
+  expect(mockReload).not.toHaveBeenCalled();
+});
+
+it('persists an Amharic choice and reloads the fixed-language session', async () => {
+  const language = loadLanguage();
+  await language.setLanguagePreference('am');
+  expect(mockStorage.get('language_preference')).toBe('am');
+  expect(mockDirection.forceRTL).toHaveBeenCalledWith(false);
+  expect(mockReload).toHaveBeenCalledTimes(1);
+  expect(language.currentLanguage).toBe('en');
+  jest.resetModules();
+  expect(loadLanguage().currentLanguage).toBe('am');
+});
+
+it('clears Arabic mirroring before reloading into Amharic', async () => {
+  mockStorage.set('language_preference', 'ar');
+  mockDirection.isRTL = true;
+  await loadLanguage().setLanguagePreference('am');
+  expect(mockDirection.allowRTL).toHaveBeenCalledWith(false);
+  expect(mockDirection.forceRTL).toHaveBeenCalledWith(false);
+  expect(mockDirection.swapLeftAndRightInRTL).toHaveBeenCalledWith(true);
+  expect(mockDirection.forceRTL.mock.invocationCallOrder[0]).toBeLessThan(
+    mockReload.mock.invocationCallOrder[0],
+  );
 });
 
 it('keeps startup imports free of reloads until the root mounts', () => {

@@ -1,3 +1,4 @@
+import {getAppDisplayName} from '@/i18n/format'; // @ai
 import React from 'react';
 import {View, Text, Pressable} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
@@ -107,7 +108,9 @@ export const SystemPlaylistHeader: React.FC<SystemPlaylistHeaderProps> = ({
           {/* System Playlist Badge */}
           <View style={styles.badge}>
             <Text style={styles.badgeText}>
-              {t('systemPlaylist.curatedBadge', {appName: branding.appName})}
+              {t('systemPlaylist.curatedBadge', {
+                appName: getAppDisplayName(branding.appName),
+              })}
             </Text>
           </View>
 
