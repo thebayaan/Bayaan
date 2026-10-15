@@ -18,6 +18,8 @@ export interface RecitationTrackingState {
   /** Word count of verseKey in Tilawa's segmentation. */
   totalWords: number;
   error: string | null;
+  /** 'permission' when the reader has to allow the mic in Settings. */
+  errorKind: 'permission' | 'other' | null;
 }
 
 export const RECITATION_TRACKING_IDLE: RecitationTrackingState = {
@@ -27,6 +29,7 @@ export const RECITATION_TRACKING_IDLE: RecitationTrackingState = {
   wordIndex: null,
   totalWords: 0,
   error: null,
+  errorKind: null,
 };
 
 /** Written only by RecitationTrackingService; components read it. */

@@ -2,6 +2,7 @@ import React, {useCallback, useEffect} from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Linking,
   Pressable,
   Text,
   View,
@@ -11,6 +12,7 @@ import {
 import {Ionicons} from '@expo/vector-icons';
 import {moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
+import {showToast} from '@/utils/toastUtils';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {
   useRecitationTrackingStore,
@@ -85,12 +87,20 @@ export function useRecitationMic(currentPage: number): RecitationMic {
   const status = useRecitationTrackingStore(s => s.status);
   const progress = useRecitationTrackingStore(s => s.downloadProgress);
   const error = useRecitationTrackingStore(s => s.error);
+  const errorKind = useRecitationTrackingStore(s => s.errorKind);
 
   useEffect(() => {
     if (status !== 'error' || !error) return;
-    Alert.alert('Follow-along stopped', error);
+    if (errorKind === 'permission') {
+      Alert.alert('Microphone is off', error, [
+        {text: 'Not now', style: 'cancel'},
+        {text: 'Open Settings', onPress: () => void Linking.openSettings()},
+      ]);
+    } else {
+      showToast('Recitation stopped', error, 'error');
+    }
     void stopRecitationTracking();
-  }, [status, error]);
+  }, [status, error, errorKind]);
 
   const toggle = useCallback(async (): Promise<void> => {
     if (status === 'listening') {

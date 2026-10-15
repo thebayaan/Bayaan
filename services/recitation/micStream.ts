@@ -1,3 +1,4 @@
+import {Platform} from 'react-native';
 import {AudioManager, AudioRecorder} from 'react-native-audio-api';
 import {RECITATION_SAMPLE_RATE} from './recitationEngine';
 
@@ -31,9 +32,11 @@ export async function requestMicPermission(): Promise<boolean> {
 /**
  * Streams mono 16 kHz PCM chunks from the microphone.
  * @param onChunk - Receives each chunk plus the device's actual sample rate
+ * @param onInterrupted - A call, Siri or another app took the audio session
  */
 export async function startMicStream(
   onChunk: (pcm: Float32Array, deviceRate: number) => void,
+  onInterrupted: () => void = () => undefined,
 ): Promise<MicStream> {
   AudioManager.setAudioSessionOptions({
     iosCategory: 'playAndRecord',
@@ -65,8 +68,22 @@ export async function startMicStream(
     throw new Error(startResult.message);
   }
 
+  // The recorder pauses silently on an interruption. On Android this also
+  // takes audio focus, so other apps stop playing into the mic.
+  AudioManager.observeAudioInterruptions(
+    Platform.OS === 'android' ? 'gainTransientExclusive' : true,
+  );
+  const interruption = AudioManager.addSystemEventListener(
+    'interruption',
+    event => {
+      if (event.type === 'began') onInterrupted();
+    },
+  );
+
   return {
     async stop() {
+      interruption?.remove();
+      AudioManager.observeAudioInterruptions(false);
       recorder.clearOnAudioReady();
       await recorder.stop();
       // Hand the shared session back in the shape expo-audio set at init, so

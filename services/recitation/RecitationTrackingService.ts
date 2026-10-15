@@ -56,11 +56,36 @@ export async function recitationModelNeedsDownload(): Promise<boolean> {
   return (await getRecitationAssets()) === null;
 }
 
-function pauseQuranAudio(): void {
+/** Pauses Bayaan's own Quran audio; true when something was playing. */
+function pauseQuranAudio(): boolean {
+  let paused = false;
   const player = usePlayerStore.getState();
-  if (player.playback.state === 'playing') player.pause();
+  if (player.playback.state === 'playing') {
+    player.pause();
+    paused = true;
+  }
   const mushafPlayer = useMushafPlayerStore.getState();
-  if (mushafPlayer.playbackState !== 'idle') mushafPlayer.stop();
+  if (mushafPlayer.playbackState !== 'idle') {
+    mushafPlayer.stop();
+    paused = true;
+  }
+  return paused;
+}
+
+// expo-audio deactivates the iOS audio session ~100 ms after a pause when
+// nothing else plays; starting the mic inside that window kills it.
+const AFTER_PAUSE_MS = 300;
+// No chunk for this long while listening means the mic died (interruption,
+// route change, media services reset).
+const MIC_SILENT_MS = 3000;
+
+let lastChunkAt = 0;
+let watchdog: ReturnType<typeof setInterval> | null = null;
+
+function fail(message: string, kind: 'permission' | 'other'): void {
+  void stopRecitationTracking().then(() =>
+    setState({status: 'error', error: message, errorKind: kind}),
+  );
 }
 
 /**
@@ -76,7 +101,13 @@ export async function startRecitationTracking(
   setState({...RECITATION_TRACKING_IDLE, status: 'loading'});
   try {
     if (!(await requestMicPermission())) {
-      throw new Error('Microphone access is off for Bayaan');
+      setState({
+        ...RECITATION_TRACKING_IDLE,
+        status: 'error',
+        error: 'Allow microphone access for Bayaan in Settings to recite.',
+        errorKind: 'permission',
+      });
+      return;
     }
     if (!engine) {
       let assets = await getRecitationAssets();
@@ -90,11 +121,21 @@ export async function startRecitationTracking(
       engine = await createRecitationEngine(assets, handleEvent);
     }
     if (run !== generation) return;
-    pauseQuranAudio();
+    if (pauseQuranAudio()) {
+      await new Promise(resolve => setTimeout(resolve, AFTER_PAUSE_MS));
+      if (run !== generation) return;
+    }
     const active = engine;
     active.reset();
     active.setHint(hint);
-    mic = await startMicStream(pcm => active.feed(pcm));
+    lastChunkAt = Date.now();
+    mic = await startMicStream(
+      pcm => {
+        lastChunkAt = Date.now();
+        active.feed(pcm);
+      },
+      () => fail('Recitation stopped because another app used audio.', 'other'),
+    );
     if (run !== generation) {
       await mic.stop();
       mic = null;
@@ -103,6 +144,11 @@ export async function startRecitationTracking(
     appStateSub = AppState.addEventListener('change', next => {
       if (next !== 'active') void stopRecitationTracking();
     });
+    watchdog = setInterval(() => {
+      if (Date.now() - lastChunkAt > MIC_SILENT_MS) {
+        fail('The microphone stopped. Tap the mic to start again.', 'other');
+      }
+    }, 1000);
     setState({status: 'listening'});
   } catch (error) {
     if (run !== generation) return;
@@ -110,6 +156,7 @@ export async function startRecitationTracking(
       ...RECITATION_TRACKING_IDLE,
       status: 'error',
       error: messageOf(error),
+      errorKind: 'other',
     });
   }
 }
@@ -119,6 +166,8 @@ export async function stopRecitationTracking(): Promise<void> {
   generation++;
   appStateSub?.remove();
   appStateSub = null;
+  if (watchdog) clearInterval(watchdog);
+  watchdog = null;
   const stream = mic;
   mic = null;
   setState(RECITATION_TRACKING_IDLE);

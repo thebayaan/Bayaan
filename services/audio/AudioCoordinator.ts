@@ -31,6 +31,7 @@ class AudioCoordinator {
    * Pauses the main player if it's currently playing.
    */
   mushafWillPlay(): void {
+    this.stopRecitation();
     if (this.activeSource === 'main') {
       const store = usePlayerStore.getState();
       if (
@@ -50,6 +51,7 @@ class AudioCoordinator {
    * Pauses the mushaf player if it's currently playing.
    */
   mainWillPlay(): void {
+    this.stopRecitation();
     if (this.activeSource === 'mushaf') {
       // Lazy import to avoid circular dependency
       const {mushafAudioService} = require('./MushafAudioService');
@@ -67,6 +69,22 @@ class AudioCoordinator {
       }
     }
     this.activeSource = 'main';
+  }
+
+  /**
+   * Quran audio must never play into the mic: playback stops the reader's
+   * recitation follow-along.
+   */
+  private stopRecitation(): void {
+    // Lazy import to avoid circular dependency
+    const {
+      useRecitationTrackingStore,
+    } = require('@/store/recitationTrackingStore');
+    if (useRecitationTrackingStore.getState().status === 'off') return;
+    const {
+      stopRecitationTracking,
+    } = require('@/services/recitation/RecitationTrackingService');
+    void stopRecitationTracking();
   }
 
   /**
