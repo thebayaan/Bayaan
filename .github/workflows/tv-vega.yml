@@ -78,8 +78,18 @@ jobs:
       - name: Build release vpkg
         run: npm run build:release
 
+      # The headless device (--no-gui --no-gl-accel) runs the app but its
+      # screenshots come out black, so render on a virtual X display with GL.
+      - name: Start virtual X display
+        working-directory: .
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq xvfb libgl1 libegl1 libgles2 mesa-utils imagemagick > /dev/null
+          Xvfb :99 -screen 0 1920x1080x24 > /dev/null 2>&1 &
+          echo "DISPLAY=:99" >> "$GITHUB_ENV"
+
       - name: Start Vega Virtual Device
-        run: vega virtual-device start --no-gui --no-gl-accel -t 600
+        run: vega virtual-device start --gui -t 600
 
       - name: Install app
         run: |
