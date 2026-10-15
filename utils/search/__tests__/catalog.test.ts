@@ -61,6 +61,11 @@ describe('rankReciters', () => {
     expect(rankReciters('alafasi')[0].id).toBe(ALAFASI);
   });
 
+  it('searches Ethiopic reciter spellings', () => {
+    RECITERS.splice(0, RECITERS.length, ...reciters);
+    expect(rankReciters('ሚሻሪ አል-ዐፋሲ')[0]?.id).toBe(ALAFASI);
+  });
+
   it('searches Arabic names and rewayah names', () => {
     RECITERS.splice(0, RECITERS.length, ...reciters);
     expect(rankReciters('العفاسي')[0].id).toBe(ALAFASI);

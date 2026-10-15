@@ -18,7 +18,7 @@ The upstream branch now ships English and Arabic, with Expo SDK 57 / React Nativ
 
 ## Design aligned with the current repository
 
-- Register `am` in `i18n/languages.ts` with `status: 'inProgress'`, LTR direction, Ethiopic script, Western digits/separators, English-side catalog names and `understandsArabic: false`. Exception (2026-10-15, requested by the contributor): surah names use bundled Ethiopic phonetic spellings in `data/surahNamesAm.json`, not translated meanings, and the English meaning subtitle is hidden. Reciter names stay Latin until the backend serves per-language names.
+- Register `am` in `i18n/languages.ts` with `status: 'inProgress'`, LTR direction, Ethiopic script, Western digits/separators, English-side catalog names and `understandsArabic: false`. Exception (2026-10-15, requested by the contributor): surah names use bundled Ethiopic phonetic spellings in `data/surahNamesAm.json`, not translated meanings, and the English meaning subtitle is hidden. Reciter names likewise use Ethiopic phonetic spellings: the API's `names.am` (new bayaan-backend `reciters.names` column) and then the bundled `data/reciterNamesAm.json`.
 - Reuse the eight upstream namespaces in `i18n/locales/am/` and imports in `i18n/resources.ts`. No second i18next instance, language store, custom startup flow, plural polyfill or UI font hook.
 - Keep the upstream `intl-pluralrules`, fixed session language, MMKV preference, direction bootstrap, reload behavior, typed keys, number/date helpers and RTL/media boundaries unchanged.
 - Use the registry for policy. The documented `bayaanTransliteration` field is set for every language; `getAppDisplayName` consults it only at interface display sites. Existing English/Arabic and fork branding are preserved.

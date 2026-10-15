@@ -153,9 +153,10 @@ class FontGateTests(unittest.TestCase):
                 json.dumps({'label': 'ሀ'}, ensure_ascii=True), encoding='utf-8'
             )
             (root / 'data').mkdir()
-            (root / 'data/surahNamesAm.json').write_text(
-                json.dumps({'1': 'አ'}, ensure_ascii=True), encoding='utf-8'
-            )
+            for name in ('surahNamesAm.json', 'reciterNamesAm.json'):
+                (root / 'data' / name).write_text(
+                    json.dumps({'1': 'አ'}, ensure_ascii=True), encoding='utf-8'
+                )
             with patch.object(fonts, 'ROOT', root), patch.object(fonts, 'FONT_DIRECTORY', font_directory):
                 with self.assertRaisesRegex(ValueError, 'missing Ethiopic draft glyphs'):
                     fonts.verify()

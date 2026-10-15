@@ -5,6 +5,7 @@ import {SURAH_ALIASES} from '@/data/searchAliases';
 import {FEATURED_RECITER_NAMES} from '@/data/featuredReciters';
 import {
   getReciterDisplayName,
+  getReciterNameTransliterations,
   getSurahNameTransliterations,
 } from '@/i18n/format';
 import {getDisplayLabelFromName} from '@/services/rewayah/RewayahIdentity';
@@ -65,6 +66,7 @@ export function createReciterSearch(
     fields: [
       {get: reciter => reciter.name, weight: 1},
       {get: reciter => getReciterDisplayName(reciter, 'ar'), weight: 1},
+      {get: reciter => getReciterNameTransliterations(reciter), weight: 1},
       {get: reciter => reciter.rewayat.map(r => r.name), weight: 0.6},
       {
         get: reciter =>

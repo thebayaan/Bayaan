@@ -6,6 +6,8 @@ import {resources} from '../resources';
 import {getLanguageConfig, SHIPPED_LANGUAGES} from '../languages';
 import {
   getAppDisplayName,
+  getReciterDisplayName,
+  getTrackArtistDisplay,
   getSurahDisplayName,
   getSurahMeaning,
   getTrackDisplayTitle,
@@ -14,6 +16,8 @@ import {
 } from '../format';
 import {SURAHS} from '@/data/surahData';
 import amSurahNames from '@/data/surahNamesAm.json';
+import amReciterNames from '@/data/reciterNamesAm.json';
+import fallbackReciters from '@/data/reciters-fallback.json';
 import sourceValues from '../../docs/i18n/amharic-source-values.json';
 
 it('keeps the Amharic draft LTR, in progress and out of release languages', () => {
@@ -158,4 +162,35 @@ it('labels every seeded adhkar super category, keeping English and Arabic titles
     expect(labels('ar')[id]).toBe(arabicTitle);
     expect(labels('am')[id]).toMatch(/[ሀ-፿]/);
   }
+});
+it('spells reciter names in Ethiopic from the API, then the bundled file', () => {
+  const alafasy = {
+    id: 'b3bca7d8-b004-4511-b46e-f3527f6b1f67',
+    name: 'Mishary Alafasi',
+    name_arabic: 'مشاري العفاسي',
+  };
+  expect(getReciterDisplayName(alafasy, 'am')).toBe('ሚሻሪ አል-ዐፋሲ');
+  expect(
+    getReciterDisplayName({...alafasy, names: {am: 'ሚሻሪ ራሺድ'}}, 'am'),
+  ).toBe('ሚሻሪ ራሺድ');
+  expect(getReciterDisplayName(alafasy, 'en')).toBe('Mishary Alafasi');
+  expect(getReciterDisplayName(alafasy, 'ar')).toBe('مشاري العفاسي');
+  expect(getReciterDisplayName({name: 'Unknown Reciter'}, 'am')).toBe(
+    'Unknown Reciter',
+  );
+  expect(
+    getTrackArtistDisplay(
+      {artist: 'Mishary Alafasi', reciterId: alafasy.id},
+      'am',
+    ),
+  ).toBe('ሚሻሪ አል-ዐፋሲ');
+  expect(
+    getTrackArtistDisplay(
+      {artist: 'Mishary Alafasi', reciterId: alafasy.id},
+      'en',
+    ),
+  ).toBe('Mishary Alafasi');
+  expect(Object.keys(amReciterNames).sort()).toEqual(
+    fallbackReciters.map(reciter => reciter.id).sort(),
+  );
 });

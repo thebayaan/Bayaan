@@ -7,6 +7,10 @@
 export interface Reciter {
   id: string;
   name: string;
+  // @ai-start
+  /** Display names by language code from the API, e.g. `{am: '...'}`. */
+  names?: Record<string, string>;
+  // @ai-end
   slug?: string | null;
   date: string | null;
   image_url: string | null;

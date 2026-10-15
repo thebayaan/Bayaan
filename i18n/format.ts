@@ -2,6 +2,7 @@
 import {SURAHS} from '@/data/surahData';
 import arNamesById from '@/data/reciterNamesAr.json';
 import amSurahNames from '@/data/surahNamesAm.json';
+import amReciterNames from '@/data/reciterNamesAm.json';
 import fallbackReciters from '@/data/reciters-fallback.json';
 import {currentLanguage, type AppLanguage} from './language';
 import {DIGIT_ZERO, getLanguageConfig, SOURCE_LANGUAGE} from './languages';
@@ -164,18 +165,59 @@ interface NamedReciter {
   id?: string;
   name: string;
   name_arabic?: string | null;
+  /** The API's display names by language code, e.g. `{am: '...'}`. */
+  names?: Readonly<Record<string, string>> | null;
 }
 
 /**
- * Reciter name for display. Languages that show Arabic names prefer the API's
- * `name_arabic`, then the bundled Arabic name (matched by id, then by English
- * name). Everything else shows the English name. Reciter names are data, not
+ * Bundled phonetic spellings of reciter names, keyed by reciter id, for when
+ * the API has no `names` entry (offline first launch, queued tracks).
+ * Transliterated, never translated.
+ */
+const RECITER_NAME_TRANSLITERATIONS: Partial<
+  Record<AppLanguage, Readonly<Record<string, string>>>
+> = {am: amReciterNames};
+
+function ownScriptReciterName(
+  reciter: NamedReciter,
+  language: AppLanguage,
+): string | undefined {
+  return (
+    reciter.names?.[language] ??
+    (reciter.id
+      ? RECITER_NAME_TRANSLITERATIONS[language]?.[reciter.id]
+      : undefined)
+  );
+}
+
+/** Every bundled or API spelling of a reciter's name, for search. */
+export function getReciterNameTransliterations(
+  reciter: NamedReciter,
+): string[] {
+  const bundled = Object.values(RECITER_NAME_TRANSLITERATIONS).map(names =>
+    reciter.id ? names?.[reciter.id] : undefined,
+  );
+  return [...Object.values(reciter.names ?? {}), ...bundled].filter(
+    (name): name is string => Boolean(name),
+  );
+}
+
+/**
+ * Reciter name for display. A spelling in the language's own script comes
+ * first: the API's `names[language]`, then the bundled file. Languages that
+ * show Arabic names then prefer the API's `name_arabic`, then the bundled
+ * Arabic name (matched by id, then by English name). Everything else shows
+ * the English name. Reciter names are data, not
  * UI strings: they never go in the locale files (see docs/i18n/README.md).
  */
 export function getReciterDisplayName(
   reciter: NamedReciter,
   language: AppLanguage = currentLanguage,
 ): string {
+  const ownScript = ownScriptReciterName(reciter, language);
+  if (ownScript) {
+    return ownScript;
+  }
   if (!usesArabicContent(language)) {
     return reciter.name;
   }
@@ -196,7 +238,7 @@ export function getTrackArtistDisplay(
   track: {artist: string; reciterId?: string; isUserUpload?: boolean},
   language: AppLanguage = currentLanguage,
 ): string {
-  if (!usesArabicContent(language) || track.isUserUpload || !track.reciterId) {
+  if (track.isUserUpload || !track.reciterId) {
     return track.artist;
   }
   return getReciterDisplayName(
