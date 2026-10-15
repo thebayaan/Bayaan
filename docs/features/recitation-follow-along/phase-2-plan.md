@@ -14,6 +14,6 @@ the mushaf bottom bar; user-facing name "Follow my recitation".
 | 6 | Recited ayat tint (under all layers, DK pages and vertical mushaf); band in QCF and reading views; word tint in ContinuousMushafView; Hafs-only gate | done (recited tint not in QCF or list views yet) |
 | 7 | Unload: 1 min after leaving the mushaf, 5 min after a take, at once on memory warning | done |
 | 8 | First run: intro sheet (on device, audio stays on the phone, 75 MB, Hafs, no tajweed claims); mic permission is asked before the download; progress in the bar and settings | done (What's New entry left for release time, it is keyed to the version) |
-| 9 | Analytics: started, locked (time to lock), stopped (duration, ayat, reason, rtf), download started/completed/failed, error | |
+| 9 | Analytics: started, locked (time to lock, hint matched), stopped (duration, ayat, reason, rtf, max feed, load), model download outcome, errors by stage | done |
 | 10 | Native fbank Expo module (C++ core), parity-tested against JS | |
 | 11 | Android device pass (RTF, input gain preset, memory, APK size) | needs a device and disk space |

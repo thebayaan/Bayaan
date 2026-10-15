@@ -5,11 +5,14 @@ import {
   useRecitationTrackingStore,
 } from '@/store/recitationTrackingStore';
 import {usePlayerStore} from '@/services/player/store/playerStore';
+import {analyticsService} from '@/services/analytics/AnalyticsService';
+import type {RecitationStopReason} from '@/services/analytics/events';
 import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
 import {
   deleteRecitationAssets,
   ensureRecitationAssets,
   getRecitationAssets,
+  type RecitationAssetPaths,
 } from './recitationAssets';
 import {
   createRecitationEngine,
@@ -36,6 +39,11 @@ let appStateSub: NativeEventSubscription | null = null;
 // Bumped by stop() so a start() still loading knows it was cancelled.
 let generation = 0;
 
+// The current take, for analytics.
+let takeStartedAt = 0;
+let takeLockedAt: number | null = null;
+let takeHint: SearchHint | null = null;
+
 function setState(
   patch: Partial<ReturnType<typeof useRecitationTrackingStore.getState>>,
 ): void {
@@ -52,6 +60,15 @@ function handleEvent(msg: WorkerOutbound): void {
   // stop() flushes the tail after the highlight is cleared; drop those.
   if (state.status !== 'listening') return;
   if (msg.type === 'word_progress') {
+    if (takeLockedAt === null) {
+      takeLockedAt = Date.now();
+      analyticsService.trackRecitationTrackingLocked({
+        time_to_lock_ms: takeLockedAt - takeStartedAt,
+        surah_id: msg.surah,
+        ayah: msg.ayah,
+        page_hint_matched: takeHint?.surah === msg.surah,
+      });
+    }
     setState({
       locked: true,
       verseKey: `${msg.surah}:${msg.ayah}`,
@@ -107,9 +124,9 @@ const MIC_SILENT_MS = 3000;
 let lastChunkAt = 0;
 let watchdog: ReturnType<typeof setInterval> | null = null;
 
-function fail(message: string, kind: 'permission' | 'other'): void {
-  void stopRecitationTracking().then(() =>
-    setState({status: 'error', error: message, errorKind: kind}),
+function fail(message: string, reason: RecitationStopReason): void {
+  void stopRecitationTracking(reason).then(() =>
+    setState({status: 'error', error: message, errorKind: 'other'}),
   );
 }
 
@@ -124,8 +141,13 @@ export async function startRecitationTracking(
   if (status !== 'off' && status !== 'error') return;
   const run = ++generation;
   setState({...RECITATION_TRACKING_IDLE, status: 'loading'});
+  let stage: 'download' | 'model_load' | 'mic' = 'model_load';
   try {
     if (!(await requestMicPermission())) {
+      analyticsService.trackRecitationTrackingError({
+        stage: 'permission',
+        error_message: 'denied',
+      });
       setState({
         ...RECITATION_TRACKING_IDLE,
         status: 'error',
@@ -135,14 +157,15 @@ export async function startRecitationTracking(
       return;
     }
     cancelUnload();
+    const modelLoaded = engine !== null;
     if (!engine) {
       let assets = await getRecitationAssets();
       if (!assets) {
+        stage = 'download';
         setState({status: 'downloading'});
-        assets = await ensureRecitationAssets(progress =>
-          setState({downloadProgress: progress}),
-        );
+        assets = await downloadModel();
         setState({status: 'loading'});
+        stage = 'model_load';
       }
       engine = await createRecitationEngine(assets, handleEvent);
       memoryWarningSub ??= AppState.addEventListener('memoryWarning', () => {
@@ -156,6 +179,7 @@ export async function startRecitationTracking(
       await new Promise(resolve => setTimeout(resolve, AFTER_PAUSE_MS));
       if (run !== generation) return;
     }
+    stage = 'mic';
     const active = engine;
     active.reset();
     active.setHint(hint);
@@ -165,7 +189,11 @@ export async function startRecitationTracking(
         lastChunkAt = Date.now();
         active.feed(pcm);
       },
-      () => fail('Recitation stopped because another app used audio.', 'other'),
+      () =>
+        fail(
+          'Recitation stopped because another app used audio.',
+          'interruption',
+        ),
     );
     if (run !== generation) {
       await mic.stop();
@@ -173,16 +201,30 @@ export async function startRecitationTracking(
       return;
     }
     appStateSub = AppState.addEventListener('change', next => {
-      if (next !== 'active') void stopRecitationTracking();
+      if (next !== 'active') void stopRecitationTracking('background');
     });
     watchdog = setInterval(() => {
       if (Date.now() - lastChunkAt > MIC_SILENT_MS) {
-        fail('The microphone stopped. Tap the mic to start again.', 'other');
+        fail(
+          'The microphone stopped. Tap the mic to start again.',
+          'mic_silent',
+        );
       }
     }, 1000);
+    takeStartedAt = Date.now();
+    takeLockedAt = null;
+    takeHint = hint;
+    analyticsService.trackRecitationTrackingStarted({
+      hint_surah_id: hint?.surah ?? null,
+      model_loaded: modelLoaded,
+    });
     setState({status: 'listening'});
   } catch (error) {
     if (run !== generation) return;
+    analyticsService.trackRecitationTrackingError({
+      stage,
+      error_message: messageOf(error),
+    });
     setState({
       ...RECITATION_TRACKING_IDLE,
       status: 'error',
@@ -192,8 +234,51 @@ export async function startRecitationTracking(
   }
 }
 
+async function downloadModel(): Promise<RecitationAssetPaths> {
+  const startedAt = Date.now();
+  try {
+    const assets = await ensureRecitationAssets(progress =>
+      setState({downloadProgress: progress}),
+    );
+    analyticsService.trackRecitationModelDownloaded({
+      outcome: 'completed',
+      duration_ms: Date.now() - startedAt,
+      error_message: null,
+    });
+    return assets;
+  } catch (error) {
+    analyticsService.trackRecitationModelDownloaded({
+      outcome: 'failed',
+      duration_ms: Date.now() - startedAt,
+      error_message: messageOf(error),
+    });
+    throw error;
+  }
+}
+
+function trackTakeStopped(reason: RecitationStopReason): void {
+  const stats = engine?.getStats();
+  analyticsService.trackRecitationTrackingStopped({
+    duration_ms: Date.now() - takeStartedAt,
+    locked: takeLockedAt !== null,
+    ayat_recited: useRecitationTrackingStore.getState().recitedVerseKeys.length,
+    stop_reason: reason,
+    rtf:
+      stats && stats.audioSeconds > 0
+        ? Math.round((stats.busyMs / 1000 / stats.audioSeconds) * 1000) / 1000
+        : 0,
+    max_feed_ms: stats ? Math.round(stats.maxFeedMs) : 0,
+    load_ms: stats ? Math.round(stats.loadMs) : 0,
+  });
+}
+
 /** Stops listening and clears the highlight. Safe to call when idle. */
-export async function stopRecitationTracking(): Promise<void> {
+export async function stopRecitationTracking(
+  reason: RecitationStopReason = 'user',
+): Promise<void> {
+  if (useRecitationTrackingStore.getState().status === 'listening') {
+    trackTakeStopped(reason);
+  }
   generation++;
   appStateSub?.remove();
   appStateSub = null;
@@ -235,7 +320,7 @@ export async function unloadRecitationModel(): Promise<void> {
 
 /** Stops listening, unloads the model and deletes the downloaded files. */
 export async function removeRecitationModel(): Promise<void> {
-  await stopRecitationTracking();
+  await stopRecitationTracking('model_removed');
   await unloadRecitationModel();
   await deleteRecitationAssets();
 }

@@ -84,7 +84,7 @@ class AudioCoordinator {
     const {
       stopRecitationTracking,
     } = require('@/services/recitation/RecitationTrackingService');
-    void stopRecitationTracking();
+    void stopRecitationTracking('playback_started');
   }
 
   /**

@@ -28,6 +28,12 @@ export const ANALYTICS_EVENTS = {
   SHARE_CREATED: 'share_created',
   SEARCH_PERFORMED: 'search_performed',
   TRANSLATION_VIEWED: 'translation_viewed',
+  // Recitation follow-along (audio and transcripts are never sent)
+  RECITATION_TRACKING_STARTED: 'recitation_tracking_started',
+  RECITATION_TRACKING_LOCKED: 'recitation_tracking_locked',
+  RECITATION_TRACKING_STOPPED: 'recitation_tracking_stopped',
+  RECITATION_MODEL_DOWNLOADED: 'recitation_model_downloaded',
+  RECITATION_TRACKING_ERROR: 'recitation_tracking_error',
   // Lifecycle
   APP_OPENED: 'app_opened',
   APP_BACKGROUNDED: 'app_backgrounded',
@@ -140,6 +146,52 @@ export interface ReciterSelectedProps {
 export interface RewayahChangedProps {
   rewayah_id: string;
   rewayah_name: string;
+}
+
+export type RecitationStopReason =
+  | 'user'
+  | 'background'
+  | 'mushaf_closed'
+  | 'playback_started'
+  | 'interruption'
+  | 'mic_silent'
+  | 'model_removed';
+
+export interface RecitationTrackingStartedProps {
+  /** Surah of the page on screen, passed to Tilawa as a search hint. */
+  hint_surah_id: number | null;
+  /** The model was already in memory (no load wait). */
+  model_loaded: boolean;
+}
+
+export interface RecitationTrackingLockedProps {
+  time_to_lock_ms: number;
+  surah_id: number;
+  ayah: number;
+  /** The first lock landed in the surah of the page on screen. */
+  page_hint_matched: boolean;
+}
+
+export interface RecitationTrackingStoppedProps {
+  duration_ms: number;
+  locked: boolean;
+  ayat_recited: number;
+  stop_reason: RecitationStopReason;
+  /** Engine busy time over audio time. */
+  rtf: number;
+  max_feed_ms: number;
+  load_ms: number;
+}
+
+export interface RecitationModelDownloadedProps {
+  outcome: 'completed' | 'failed';
+  duration_ms: number;
+  error_message: string | null;
+}
+
+export interface RecitationTrackingErrorProps {
+  stage: 'permission' | 'download' | 'model_load' | 'mic' | 'engine';
+  error_message: string;
 }
 
 export interface DownloadStartedProps {

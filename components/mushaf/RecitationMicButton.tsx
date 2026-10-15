@@ -61,7 +61,7 @@ export function useRecitationFollowAlong(currentPage: number): void {
     return () => {
       // Leaving the mushaf: stop, and let the model go soon after unless the
       // reader comes straight back.
-      void stopRecitationTracking().then(() =>
+      void stopRecitationTracking('mushaf_closed').then(() =>
         scheduleUnload(LEAVE_MUSHAF_UNLOAD_MS),
       );
     };
