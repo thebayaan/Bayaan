@@ -1,14 +1,15 @@
 import React from 'react';
 import {StyleSheet, View} from 'react-native';
 import {Image} from 'expo-image';
-import {DEFAULT_SURAH_ARTWORK_BASE} from '../../../utils/surahArtworkBase';
 import {GradientFill} from './GradientFill';
 import {SurahGlyph} from './SurahGlyph';
 import {surahGradient} from '../../theme/surahColors';
 
-/** The phone's dark surah card on R2 (512 px, calligraphy and name). */
+/** The surah cards on R2 (1200 px, dark): the set shared surah links use. */
+const SURAH_ARTWORK_BASE = 'https://cdn.thebayaan.com/assets/og-images/surah/';
+
 export function surahArtworkUrl(surahNumber: number): string {
-  return `${DEFAULT_SURAH_ARTWORK_BASE}${surahNumber}.png`;
+  return `${SURAH_ARTWORK_BASE}${surahNumber}.png`;
 }
 
 type Props = {
@@ -20,8 +21,7 @@ type Props = {
 };
 
 /**
- * A surah's artwork: the same card the phone, widgets and CarPlay use, from
- * the CDN. The pigment and calligraphy sit underneath, so the slot is never
+ * A surah's artwork card from the CDN. The pigment and calligraphy sit underneath, so the slot is never
  * empty while the card loads or when the network is down. Fills its parent;
  * wide slots crop the card's empty top and bottom, keeping the name.
  */

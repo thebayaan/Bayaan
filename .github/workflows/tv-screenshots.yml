@@ -124,6 +124,13 @@ jobs:
               || ffmpeg -loglevel error -y -i "$f" -vf scale=1280:-2 -q:v 5 "$OUT/$name.jpg" \
               || cp "$f" "$OUT/$name.png"
           done
+          # HTTP status of each CDN URL listed in tv-app/e2e/cdn-probe.txt, so
+          # agents (whose network can't reach the CDN) can find asset paths.
+          if [ -f tv-app/e2e/cdn-probe.txt ]; then
+            grep -v '^#' tv-app/e2e/cdn-probe.txt | while read -r url; do
+              [ -n "$url" ] && echo "$(curl -s -o /dev/null -w '%{http_code} %{content_type} %{size_download}' -m 10 "$url") $url"
+            done > "$OUT/cdn-probe.txt" || true
+          fi
           cd "$OUT"
           git init -q
           git checkout -q --orphan screens
