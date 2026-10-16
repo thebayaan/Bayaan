@@ -19,8 +19,6 @@
   <bool name="bayaan_widget_enabled_bedtime">true</bool>
   <bool name="bayaan_widget_enabled_reciter_spotlight">true</bool>
   <bool name="bayaan_widget_enabled_adhkar">true</bool>
-  <bool name="bayaan_widget_enabled_hijri_date">true</bool>
-  <bool name="bayaan_widget_enabled_occasion">true</bool>
   <bool name="bayaan_widget_enabled_bayaan_now">true</bool>
   <!-- Flag-driven parts of widgets that otherwise stay. -->
   <bool name="bayaan_widgets_feature_adhkar">true</bool>

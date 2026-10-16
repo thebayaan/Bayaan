@@ -12,6 +12,7 @@ import {Feather} from '@expo/vector-icons';
 import Color from 'color';
 import SkiaVersePreview from '@/components/share/SkiaVersePreview';
 // @ai-start
+import {useTranslation} from 'react-i18next';
 import {
   selectionPreviewProps,
   type ReadyVerseSelection,
@@ -33,12 +34,14 @@ interface NoteContentProps {
   onDone: () => void;
 }
 
+// @ai-start
 export const NoteContent: React.FC<NoteContentProps> = ({
   selection, // @ai
   onDone,
 }) => {
   const {theme} = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const {t} = useTranslation('sheets');
   // @ai-start
   const {rewayah} = selection;
   const isRange = selection.anchors.length > 1;
@@ -74,7 +77,7 @@ export const NoteContent: React.FC<NoteContentProps> = ({
         style={styles.textInput}
         value={noteText}
         onChangeText={setNoteText}
-        placeholder="Write your note here..."
+        placeholder={t('note.placeholder')}
         placeholderTextColor={Color(theme.colors.textSecondary)
           .alpha(0.5)
           .toString()}
@@ -96,11 +99,12 @@ export const NoteContent: React.FC<NoteContentProps> = ({
           size={moderateScale(16)}
           color={theme.colors.text}
         />
-        <Text style={styles.saveButtonText}>Save Note</Text>
+        <Text style={styles.saveButtonText}>{t('note.save')}</Text>
       </Pressable>
     </ScrollView>
   );
 };
+// @ai-end
 
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({

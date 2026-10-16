@@ -15,6 +15,10 @@ import {PlaylistIcon} from '@/components/Icons';
 import {Input} from '@/components/Input';
 import Color from 'color';
 import {LinearGradient} from 'expo-linear-gradient';
+// @ai-start
+import {latinLetterSpacing} from '@/utils/rtl';
+import {useTranslation} from 'react-i18next';
+// @ai-end
 
 interface PlaylistModalProps {
   visible: boolean;
@@ -43,6 +47,7 @@ const PLAYLIST_COLORS = [
   '#10B981', // Emerald
 ];
 
+// @ai-start
 export const PlaylistModal: React.FC<PlaylistModalProps> = ({
   visible,
   onClose,
@@ -53,6 +58,7 @@ export const PlaylistModal: React.FC<PlaylistModalProps> = ({
   initialName = '',
   initialColor,
 }) => {
+  const {t} = useTranslation(['collection', 'common']);
   const [playlistName, setPlaylistName] = useState(initialName);
 
   // Generate a stable preview color that only changes when the modal reopens
@@ -125,7 +131,9 @@ export const PlaylistModal: React.FC<PlaylistModalProps> = ({
             />
           </TouchableOpacity>
           <Text style={[styles.title, {color: theme.colors.text}]}>
-            {isEditMode ? 'Edit Playlist' : 'New Playlist'}
+            {isEditMode
+              ? t('playlistModal.editTitle')
+              : t('playlistModal.newTitle')}
           </Text>
           <TouchableOpacity
             onPress={handleCreate}
@@ -143,7 +151,7 @@ export const PlaylistModal: React.FC<PlaylistModalProps> = ({
                   color: theme.colors.text,
                 },
               ]}>
-              Save
+              {t('common:actions.save')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -185,17 +193,17 @@ export const PlaylistModal: React.FC<PlaylistModalProps> = ({
               <Text
                 style={[styles.heroTitle, {color: theme.colors.text}]}
                 numberOfLines={2}>
-                {playlistName || 'Your Playlist'}
+                {playlistName || t('playlistModal.namePreview')}
               </Text>
             </LinearGradient>
           </View>
 
           {/* Input Section */}
           <Input
-            label="Playlist Name"
+            label={t('playlistModal.nameLabel')}
             showIcon
             iconName="edit-3"
-            placeholder="Name"
+            placeholder={t('playlistModal.namePlaceholder')}
             value={playlistName}
             onChangeText={setPlaylistName}
             maxLength={50}
@@ -211,7 +219,9 @@ export const PlaylistModal: React.FC<PlaylistModalProps> = ({
     </Modal>
   );
 };
+// @ai-end
 
+// @ai-start
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -234,7 +244,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: moderateScale(22),
     fontFamily: 'Manrope-Bold',
-    letterSpacing: -0.5,
+    letterSpacing: latinLetterSpacing(-0.5),
   },
   createButton: {
     paddingHorizontal: moderateScale(20),
@@ -243,7 +253,7 @@ const styles = StyleSheet.create({
   createButtonText: {
     fontSize: moderateScale(15),
     fontFamily: 'Manrope-SemiBold',
-    letterSpacing: 0.2,
+    letterSpacing: latinLetterSpacing(0.2),
   },
   content: {
     flex: 1,
@@ -304,7 +314,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Manrope-Bold',
     textAlign: 'center',
     marginBottom: moderateScale(8),
-    letterSpacing: -0.3,
+    letterSpacing: latinLetterSpacing(-0.3),
     minHeight: moderateScale(22),
   },
   heroBadge: {
@@ -324,9 +334,10 @@ const styles = StyleSheet.create({
   heroBadgeText: {
     fontSize: moderateScale(12),
     fontFamily: 'Manrope-SemiBold',
-    letterSpacing: 0.1,
+    letterSpacing: latinLetterSpacing(0.1),
   },
   inputSection: {
     marginBottom: 0,
   },
 });
+// @ai-end

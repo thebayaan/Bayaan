@@ -11,7 +11,7 @@
  * See docs/rfcs/021-native-widget-seams.md.
  */
 
-/** Every surface, in a stable order. The last four are iOS-only. */
+/** Every surface, in a stable order. The last five are iOS-only. */
 const NATIVE_WIDGET_IDS = [
   'ContinueListening',
   'ContinueReading',
@@ -24,17 +24,16 @@ const NATIVE_WIDGET_IDS = [
   'Bedtime',
   'ReciterSpotlight',
   'Adhkar',
-  'HijriDate',
-  'Occasion',
   'BayaanNow',
   'ListeningAccessory',
+  'VerseOfTheDayAccessory',
   'LiveActivity',
   'PlaybackControl',
   'PlaySurahControl',
 ];
 
 /** Surfaces that exist on Android (the rest are iOS-only). */
-const ANDROID_WIDGET_IDS = NATIVE_WIDGET_IDS.slice(0, 14);
+const ANDROID_WIDGET_IDS = NATIVE_WIDGET_IDS.slice(0, 12);
 
 /** Feature flags (config/featureFlags.ts) a whole surface depends on. */
 const NATIVE_WIDGET_FLAGS = {

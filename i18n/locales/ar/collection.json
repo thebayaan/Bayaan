@@ -1,0 +1,169 @@
+{
+  "collectionScreen": {
+    "addToCollection": "إضافة إلى مكتبتي",
+    "loved": "المحبّبة",
+    "notes": "الملاحظات",
+    "itemsCount_zero": "لا توجد عناصر",
+    "itemsCount_one": "عنصر واحد",
+    "itemsCount_two": "عنصران",
+    "itemsCount_few": "{{count}} عناصر",
+    "itemsCount_many": "{{count}} عنصرًا",
+    "itemsCount_other": "{{count}} عنصر",
+    "empty": {
+      "playlists": "أنشئ أول قائمة تشغيل",
+      "reciters": "لا توجد مفضلات بعد",
+      "downloads": "لا توجد تنزيلات بعد",
+      "loved": "لا توجد سور محبّبة بعد",
+      "bookmarks": "لا توجد علامات مرجعية بعد",
+      "notes": "لا توجد ملاحظات بعد",
+      "uploads": "لا توجد ملفات مستوردة بعد"
+    }
+  },
+  "bookmarksScreen": {
+    "count_zero": "لا توجد علامات مرجعية",
+    "count_one": "علامة مرجعية واحدة",
+    "count_two": "علامتان مرجعيتان",
+    "count_few": "{{count}} علامات مرجعية",
+    "count_many": "{{count}} علامةً مرجعية",
+    "count_other": "{{count}} علامة مرجعية",
+    "removeBookmark": "إزالة العلامة المرجعية",
+    "openingIn": "يُفتح برواية",
+    "emptySubtitle": "ضع علامات مرجعية على الآيات لتظهر هنا"
+  },
+  "notesScreen": {
+    "count_zero": "لا توجد ملاحظات",
+    "count_one": "ملاحظة واحدة",
+    "count_two": "ملاحظتان",
+    "count_few": "{{count}} ملاحظات",
+    "count_many": "{{count}} ملاحظةً",
+    "count_other": "{{count}} ملاحظة",
+    "editNote": "تعديل الملاحظة",
+    "deleteNote": "حذف الملاحظة",
+    "emptySubtitle": "أضف ملاحظات على الآيات لتظهر هنا"
+  },
+  "playlistsScreen": {
+    "count_zero": "لا توجد قوائم تشغيل",
+    "count_one": "قائمة تشغيل واحدة",
+    "count_two": "قائمتا تشغيل",
+    "count_few": "{{count}} قوائم تشغيل",
+    "count_many": "{{count}} قائمةَ تشغيل",
+    "count_other": "{{count}} قائمة تشغيل",
+    "emptyTitle": "لا توجد قوائم تشغيل بعد",
+    "emptySubtitle": "أنشئ قوائم تشغيل لتظهر هنا",
+    "createNew": "إنشاء قائمة تشغيل جديدة"
+  },
+  "favoriteRecitersScreen": {
+    "title": "القرّاء المفضلون",
+    "removeFromFavorites": "إزالة من المفضلة",
+    "emptyTitle": "لا يوجد قرّاء مفضلون بعد",
+    "emptySubtitle": "أضف قرّاء ليظهروا هنا",
+    "addReciters": "إضافة قرّاء",
+    "searchPlaceholder": "ابحث في القرّاء المفضلين"
+  },
+  "downloadsScreen": {
+    "surahsDownloaded_zero": "لا توجد سور منزّلة",
+    "surahsDownloaded_one": "سورة واحدة منزّلة",
+    "surahsDownloaded_two": "سورتان منزّلتان",
+    "surahsDownloaded_few": "{{count}} سور منزّلة",
+    "surahsDownloaded_many": "{{count}} سورةً منزّلة",
+    "surahsDownloaded_other": "{{count}} سورة منزّلة",
+    "removeAll": "إزالة كل التنزيلات",
+    "playAll": "تشغيل الكل",
+    "emptySubtitle": "نزّل السور لتظهر هنا"
+  },
+  "lovedScreen": {
+    "allDownloaded": "تم تنزيل الكل",
+    "downloadAll": "تنزيل الكل",
+    "unloveAll": "إزالة كل السور المحبّبة",
+    "emptySubtitle": "أضف السور إلى المحبّبة لتظهر هنا",
+    "alreadyDownloadedTitle": "منزّلة مسبقًا",
+    "alreadyDownloadedMessage": "جميع السور المحبّبة منزّلة مسبقًا.",
+    "downloadCompleteTitle": "اكتمل التنزيل",
+    "downloadCompleteMessage": "تم تنزيل جميع السور المحبّبة.",
+    "downloadErrorTitle": "خطأ في التنزيل",
+    "downloadErrorMessage": "ربما تعذّر تنزيل بعض السور."
+  },
+  "uploadsScreen": {
+    "recitationsCount_zero": "لا توجد تلاوات",
+    "recitationsCount_one": "تلاوة واحدة",
+    "recitationsCount_two": "تلاوتان",
+    "recitationsCount_few": "{{count}} تلاوات",
+    "recitationsCount_many": "{{count}} تلاوةً",
+    "recitationsCount_other": "{{count}} تلاوة",
+    "removeAll": "إزالة كل الملفات المستوردة",
+    "emptySubtitle": "استورد تلاوات لتظهر هنا",
+    "opening": "جارٍ الفتح…",
+    "addRecitation": "إضافة تلاوة",
+    "untagged": "غير مصنّف",
+    "verseShort": "آية {{verse}}",
+    "recordingType": {
+      "salah": "صلاة",
+      "studio": "استوديو"
+    },
+    "category": {
+      "dua": "دعاء",
+      "lecture": "محاضرة",
+      "tafsir": "تفسير",
+      "other": "أخرى"
+    }
+  },
+  "playlistModal": {
+    "newTitle": "قائمة تشغيل جديدة",
+    "editTitle": "تعديل قائمة التشغيل",
+    "namePreview": "قائمة التشغيل",
+    "nameLabel": "اسم قائمة التشغيل",
+    "namePlaceholder": "الاسم"
+  },
+  "searchModal": {
+    "placeholder": "ابحث في قوائم التشغيل والقرّاء والسور والروايات…",
+    "emptyTitle": "ابحث في مكتبتك",
+    "emptySubtitle": "ابحث في قوائم التشغيل والقرّاء والسور والروايات والتنزيلات",
+    "searching": "جارٍ البحث…",
+    "tryDifferent": "جرّب كلمات بحث مختلفة",
+    "resultsCount_zero": "لا توجد نتائج",
+    "resultsCount_one": "نتيجة واحدة",
+    "resultsCount_two": "نتيجتان",
+    "resultsCount_few": "{{count}} نتائج",
+    "resultsCount_many": "{{count}} نتيجةً",
+    "resultsCount_other": "{{count}} نتيجة",
+    "unknownReciter": "قارئ غير معروف",
+    "inPlaylist": "{{reciter}} • في قائمة التشغيل «{{playlist}}»",
+    "lovedBy": "محبّبة • {{reciter}}",
+    "downloadedTitle": "منزّلة: {{surah}}",
+    "rewayatAvailable_zero": "لا توجد روايات متاحة",
+    "rewayatAvailable_one": "رواية واحدة متاحة",
+    "rewayatAvailable_two": "روايتان متاحتان",
+    "rewayatAvailable_few": "{{count}} روايات متاحة",
+    "rewayatAvailable_many": "{{count}} روايةً متاحة",
+    "rewayatAvailable_other": "{{count}} رواية متاحة",
+    "rewayahBy": "{{rewayah}} بصوت {{reciter}}",
+    "typeLoved": "محبّبة",
+    "typeInPlaylist": "في قائمة تشغيل"
+  },
+  "playlistDetail": {
+    "empty": "لا توجد سور في قائمة التشغيل هذه"
+  },
+  "reciterDownloads": {
+    "empty": "لا توجد تنزيلات لهذا القارئ"
+  },
+  "systemPlaylist": {
+    "curatedBadge": "مختارات {{appName}}",
+    "withReciter": "بصوت {{reciter}}",
+    "durationHoursMinutes": "{{hours}} س {{minutes}} د",
+    "durationHours": "{{hours}} س",
+    "durationMinutes": "{{minutes}} د",
+    "noReciterTitle": "لا يوجد قارئ متاح",
+    "noReciterMessage": "تعذّر العثور على قارئ لديه جميع سور قائمة التشغيل هذه. يُرجى تجربة قائمة أخرى.",
+    "errorTitle": "خطأ",
+    "playFailed": "تعذّر تشغيل قائمة التشغيل. يُرجى المحاولة مرة أخرى.",
+    "shuffleFailed": "تعذّر التشغيل العشوائي لقائمة التشغيل. يُرجى المحاولة مرة أخرى.",
+    "playTrackFailed": "تعذّر تشغيل المقطع. يُرجى المحاولة مرة أخرى."
+  },
+  "playlistItem": {
+    "subtitle": "قائمة تشغيل • {{surahs}}"
+  },
+  "reciterDownloadsItem": {
+    "subtitle": "منزّلة • {{surahs}}"
+  },
+  "followAlongBadge": "المتابعة مع التلاوة"
+}

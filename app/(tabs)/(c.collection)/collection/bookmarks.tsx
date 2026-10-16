@@ -25,6 +25,14 @@ import {SheetManager} from 'react-native-actions-sheet';
 import Color from 'color';
 import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
 import type {VerseBookmark} from '@/types/verse-annotations';
+import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import {getRewayahShortLabel} from '@/utils/rewayahLabels';
+import {showToast} from '@/utils/toastUtils';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+import i18n from '@/i18n';
+import {getSurahDisplayName} from '@/i18n/format';
+import {flipX} from '@/utils/rtl';
 // @ai-start
 import {restoreSavedRewayah} from '@/services/verse-annotations/restoreSavedRewayah';
 import {describeSavedVerseNow} from '@/hooks/useSavedVerseDescription';
@@ -39,10 +47,12 @@ interface BookmarkData {
   surahName: string;
 }
 
+// @ai-start
 const BookmarksScreen = () => {
   const {theme} = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const {t} = useTranslation(['collection', 'common']);
 
   const [bookmarks, setBookmarks] = useState<BookmarkData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,7 +62,7 @@ const BookmarksScreen = () => {
   const openingRef = useRef(false); // @ai
 
   useCollectionNativeHeader({
-    title: 'Bookmarks',
+    title: t('common:terms.bookmarks'),
     scrollY,
     hasContent: bookmarks.length > 0 && !loading,
   });
@@ -65,7 +75,11 @@ const BookmarksScreen = () => {
         const surah = getSurahById(bookmark.surahNumber);
         return {
           bookmark,
-          surahName: surah?.name ?? `Surah ${bookmark.surahNumber}`,
+          surahName: surah
+            ? getSurahDisplayName(surah)
+            : i18n.t('common:labels.surahNumber', {
+                number: bookmark.surahNumber,
+              }),
         };
       });
       setBookmarks(enriched);
@@ -126,10 +140,11 @@ const BookmarksScreen = () => {
           subtitle: savedVerseSubtitle(
             describeSavedVerseNow(item.bookmark),
             item.bookmark.ayahNumber,
+            number => t('common:labels.ayahNumber', {number}),
           ),
           options: [
             {
-              label: 'Remove Bookmark',
+              label: t('bookmarksScreen.removeBookmark'),
               icon: 'minus-circle',
               destructive: true,
               onPress: () => handleRemoveBookmark(item.bookmark),
@@ -138,7 +153,7 @@ const BookmarksScreen = () => {
         },
       });
     },
-    [handleRemoveBookmark],
+    [handleRemoveBookmark, t],
   );
 
   const heroOuterBg = Color(theme.colors.textSecondary).alpha(0.1).toString();
@@ -161,20 +176,19 @@ const BookmarksScreen = () => {
             </View>
           </View>
           <Text style={[styles.headerTitle, {color: theme.colors.text}]}>
-            Bookmarks
+            {t('common:terms.bookmarks')}
           </Text>
           <Text
             style={[
               styles.headerSubtitle,
               {color: theme.colors.textSecondary},
             ]}>
-            {bookmarks.length}{' '}
-            {bookmarks.length === 1 ? 'bookmark' : 'bookmarks'}
+            {t('bookmarksScreen.count', {count: bookmarks.length})}
           </Text>
         </View>
       </View>
     );
-  }, [bookmarks.length, insets.top, theme, heroOuterBg, heroInnerBg]);
+  }, [bookmarks.length, insets.top, theme, heroOuterBg, heroInnerBg, t]);
 
   const renderItem: ListRenderItem<BookmarkData> = ({item}) => (
     <BookmarkItem
@@ -204,10 +218,11 @@ const BookmarksScreen = () => {
                 name="arrow-left"
                 size={moderateScale(22)}
                 color={theme.colors.text}
+                style={flipX}
               />
             </Pressable>
             <Text style={[styles.emptyHeaderTitle, {color: theme.colors.text}]}>
-              Bookmarks
+              {t('common:terms.bookmarks')}
             </Text>
             <View style={styles.emptyHeaderBack} />
           </View>
@@ -215,7 +230,7 @@ const BookmarksScreen = () => {
         <View style={styles.emptyContent}>
           <Text
             style={[styles.loadingText, {color: theme.colors.textSecondary}]}>
-            Loading...
+            {t('common:status.loading')}
           </Text>
         </View>
       </View>
@@ -236,10 +251,11 @@ const BookmarksScreen = () => {
                 name="arrow-left"
                 size={moderateScale(22)}
                 color={theme.colors.text}
+                style={flipX}
               />
             </Pressable>
             <Text style={[styles.emptyHeaderTitle, {color: theme.colors.text}]}>
-              Bookmarks
+              {t('common:terms.bookmarks')}
             </Text>
             <View style={styles.emptyHeaderBack} />
           </View>
@@ -253,11 +269,11 @@ const BookmarksScreen = () => {
             />
           </View>
           <Text style={[styles.emptyTitle, {color: theme.colors.text}]}>
-            No bookmarks yet
+            {t('collectionScreen.empty.bookmarks')}
           </Text>
           <Text
             style={[styles.emptySubtitle, {color: theme.colors.textSecondary}]}>
-            Bookmark verses to see them here
+            {t('bookmarksScreen.emptySubtitle')}
           </Text>
         </View>
       </View>
@@ -287,6 +303,7 @@ const BookmarksScreen = () => {
               name="arrow-left"
               size={moderateScale(24)}
               color={theme.colors.text}
+              style={flipX}
             />
           </Pressable>
         </RNAnimated.View>
@@ -307,11 +324,15 @@ const BookmarksScreen = () => {
         contentInsetAdjustmentBehavior="automatic"
       />
       {!USE_GLASS && (
-        <CollectionStickyHeader title="Bookmarks" scrollY={scrollY} />
+        <CollectionStickyHeader
+          title={t('common:terms.bookmarks')}
+          scrollY={scrollY}
+        />
       )}
     </View>
   );
 };
+// @ai-end
 
 export default BookmarksScreen;
 

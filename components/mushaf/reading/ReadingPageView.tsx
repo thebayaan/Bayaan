@@ -75,6 +75,7 @@ interface ReadingPageViewProps {
   onTap?: () => void;
 }
 
+// @ai-start
 const ReadingPageView: React.FC<ReadingPageViewProps> = ({
   pageNumber,
   textColor,
@@ -465,6 +466,7 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
     </View>
   );
 };
+// @ai-end
 
 const styles = StyleSheet.create({
   page: {

@@ -4,6 +4,7 @@ import {Surah} from '@/data/surahData';
 import type {RewayatStyle} from '@/types/reciter';
 import type {Dhikr} from '@/types/adhkar';
 import type {UploadedRecitation} from '@/types/uploads';
+import type {AvailableReciter} from '@/store/mushafPlayerStore'; // @ai
 
 // Import sheet components
 import {SurahOptionsSheet} from './SurahOptionsSheet';
@@ -28,11 +29,13 @@ import {CollectionOptionsSheet} from './CollectionOptionsSheet';
 import {VerseActionsSheet} from './VerseActionsSheet';
 import {VerseNoteSheet} from './VerseNoteSheet';
 import {MushafPlayerOptionsSheet} from './MushafPlayerOptionsSheet';
+import {MushafReciterPickerSheet} from './MushafReciterPickerSheet'; // @ai
 import {MushafRepeatOptionsSheet} from './MushafRepeatOptionsSheet';
 import {FollowAlongSheet} from './FollowAlongSheet';
 import {RecitationIntroSheet} from './RecitationIntroSheet';
 import {WordDetailSheet} from './WordDetailSheet';
 import {HomeCardOptionsSheet} from './HomeCardOptionsSheet';
+import {AdhkarSessionOptionsSheet} from './AdhkarSessionOptionsSheet';
 import {installRewayahFallbackNotice} from './rewayahFallbackNotice'; // @ai
 
 // Register all sheets
@@ -63,11 +66,13 @@ registerSheet('verse-actions', VerseActionsSheet);
 // @ai-end
 registerSheet('verse-note', VerseNoteSheet);
 registerSheet('mushaf-player-options', MushafPlayerOptionsSheet);
+registerSheet('mushaf-reciter-picker', MushafReciterPickerSheet); // @ai
 registerSheet('mushaf-repeat-options', MushafRepeatOptionsSheet);
 registerSheet('follow-along', FollowAlongSheet);
 registerSheet('recitation-intro', RecitationIntroSheet);
 registerSheet('word-detail', WordDetailSheet);
 registerSheet('home-card-options', HomeCardOptionsSheet);
+registerSheet('adhkar-session-options', AdhkarSessionOptionsSheet);
 
 // @ai-start
 // App-wide notice when the saved rewayah fails to load at startup and Hafs
@@ -262,6 +267,14 @@ declare module 'react-native-actions-sheet' {
         currentPage: number;
       };
     }>;
+    // @ai-start
+    'mushaf-reciter-picker': SheetDefinition<{
+      payload: {
+        selectedRewayatId: string | null;
+      };
+      returnValue: AvailableReciter | undefined;
+    }>;
+    // @ai-end
     'mushaf-repeat-options': SheetDefinition<{
       payload: {
         verseKey: string;
@@ -288,6 +301,12 @@ declare module 'react-native-actions-sheet' {
         recentIndex?: number;
         variant: 'recent' | 'reciter';
         onContinuePlaying?: () => void;
+      };
+    }>;
+    'adhkar-session-options': SheetDefinition<{
+      payload: {
+        title: string;
+        subtitle: string;
       };
     }>;
   }

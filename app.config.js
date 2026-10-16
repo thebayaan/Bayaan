@@ -22,6 +22,7 @@ const ASSOCIATED_DOMAIN = process.env.EXPO_PUBLIC_ASSOCIATED_DOMAIN;
 const PRIVACY_POLICY_URL =
   process.env.EXPO_PUBLIC_PRIVACY_POLICY_URL ?? 'https://thebayaan.com/privacy';
 
+// @ai-start
 module.exports = {
   expo: {
     name: 'Bayaan',
@@ -170,9 +171,21 @@ module.exports = {
       : {enabled: false},
     plugins: [
       'expo-router',
+      [
+        'expo-localization',
+        // Direction is controlled by the in-app language preference. Static
+        // supportsRTL/forcesRTL resets I18nManager to the device locale on iOS.
+        {supportedLocales: {ios: ['en', 'ar']}},
+      ],
       '@bacons/apple-targets',
       ['expo-audio', {enableBackgroundPlayback: true}],
       'expo-sqlite',
+      'expo-asset',
+      'expo-font',
+      'expo-image',
+      'expo-sharing',
+      'expo-status-bar',
+      'expo-web-browser',
       [
         'react-native-audio-api',
         {
@@ -245,3 +258,4 @@ module.exports = {
     ],
   },
 };
+// @ai-end

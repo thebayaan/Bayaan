@@ -12,14 +12,28 @@ on:
       - patches/**
       - .github/workflows/native-build.yml
   workflow_dispatch:
+    # @ai-start
+    inputs:
+      preview_apk:
+        description: Build a standalone Android preview APK
+        type: boolean
+        default: false
+      debug_preview:
+        description: Use a faster ARM64 debug APK for emulator testing (requires Metro)
+        type: boolean
+        default: false
+    # @ai-end
+
+permissions:
+  contents: read # @ai
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.debug_preview }} # @ai
   cancel-in-progress: true
 
 jobs:
   android:
-    name: Gradle assembleDebug
+    name: ${{ inputs.preview_apk && (inputs.debug_preview && 'Debug preview APK' || 'Standalone preview APK') || 'Gradle assembleDebug' }} # @ai
     runs-on: ubuntu-latest
     timeout-minutes: 90
     # No secrets are used. android/ is committed, so no prebuild step is needed.
@@ -35,7 +49,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24 # @ai
           cache: npm
 
       - name: Setup Java 17
@@ -51,8 +65,39 @@ jobs:
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
 
+      # @ai-start
+      - name: Copy bundled widget fonts
+        run: npm run sync:widget-fonts
+      # @ai-end
+
       # Build a single ABI to keep native compile time down; this job checks
       # that the project compiles, not that every ABI links.
       - name: Assemble debug APK
+        if: ${{ !inputs.preview_apk }} # @ai
         working-directory: android
         run: ./gradlew assembleDebug --no-daemon -PreactNativeArchitectures=x86_64
+
+      # @ai-start
+      # Release bundles JavaScript and uses the committed debug key when no
+      # release credentials are configured. This is an installable test build.
+      - name: Assemble standalone preview APK
+        if: ${{ inputs.preview_apk && !inputs.debug_preview }}
+        working-directory: android
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+        run: ./gradlew :app:assembleRelease --no-daemon --max-workers=2 -PreactNativeArchitectures=arm64-v8a,x86_64
+
+      - name: Assemble debug preview APK
+        if: ${{ inputs.preview_apk && inputs.debug_preview }}
+        working-directory: android
+        run: ./gradlew :app:assembleDebug --no-daemon --max-workers=2 -PreactNativeArchitectures=arm64-v8a
+
+      - name: Upload preview APK
+        if: ${{ inputs.preview_apk }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: bayaan-android-preview
+          path: android/app/build/outputs/apk/${{ inputs.debug_preview && 'debug' || 'release' }}/*.apk
+          if-no-files-found: error
+          retention-days: 14
+      # @ai-end

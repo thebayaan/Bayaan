@@ -11,11 +11,10 @@ export type NativeWidgetId =
   | 'Bedtime'
   | 'ReciterSpotlight'
   | 'Adhkar'
-  | 'HijriDate'
-  | 'Occasion'
   | 'BayaanNow'
-  // iOS only: Lock Screen widget, Live Activity, Control Center controls.
+  // iOS only: Lock Screen widgets, Live Activity, Control Center controls.
   | 'ListeningAccessory'
+  | 'VerseOfTheDayAccessory'
   | 'LiveActivity'
   | 'PlaybackControl'
   | 'PlaySurahControl';

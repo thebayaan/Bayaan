@@ -7,6 +7,10 @@ import {Reciter} from '@/data/reciterData';
 import {ReciterImage} from '@/components/ReciterImage';
 import {getReciterById} from '@/services/dataService';
 import {Feather} from '@expo/vector-icons';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+import {getReciterDisplayName} from '@/i18n/format';
+// @ai-end
 
 interface ReciterDownloadsListItemProps {
   reciterId: string;
@@ -16,10 +20,12 @@ interface ReciterDownloadsListItemProps {
   onLongPress?: () => void;
 }
 
+// @ai-start
 export const ReciterDownloadsListItem: React.FC<ReciterDownloadsListItemProps> =
   React.memo(
     ({reciterId, downloadCount, onPress, onOptionsPress, onLongPress}) => {
       const {theme} = useTheme();
+      const {t} = useTranslation(['collection', 'common']);
       const styles = createStyles(theme);
       const [reciter, setReciter] = useState<Reciter | null>(null);
 
@@ -58,10 +64,13 @@ export const ReciterDownloadsListItem: React.FC<ReciterDownloadsListItemProps> =
             />
           </View>
           <View style={styles.reciterInfo}>
-            <Text style={styles.reciterName}>{reciter.name}</Text>
+            <Text style={styles.reciterName}>
+              {getReciterDisplayName(reciter)}
+            </Text>
             <Text style={styles.reciterSubtitle} numberOfLines={1}>
-              Downloaded • {downloadCount}{' '}
-              {downloadCount === 1 ? 'surah' : 'surahs'}
+              {t('reciterDownloadsItem.subtitle', {
+                surahs: t('common:counts.surahs', {count: downloadCount}),
+              })}
             </Text>
           </View>
           {onOptionsPress && (
@@ -80,6 +89,7 @@ export const ReciterDownloadsListItem: React.FC<ReciterDownloadsListItemProps> =
       );
     },
   );
+// @ai-end
 
 ReciterDownloadsListItem.displayName = 'ReciterDownloadsListItem';
 

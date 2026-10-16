@@ -36,6 +36,11 @@ import {useTajweedStore} from '@/store/tajweedStore';
 import {useMushafFontMgr} from '@/hooks/useMushafFontMgr';
 import SkiaVerseText from '@/components/player/v2/PlayerContent/QuranView/SkiaVerseText';
 import type {SimilarAyah, MutashabihatPhrase} from '@/types/qul';
+// @ai-start
+import {flipX, isRTL, latinLetterSpacing} from '@/utils/rtl';
+import {useTranslation} from 'react-i18next';
+import {getSurahDisplayName, localizeDigits} from '@/i18n/format';
+// @ai-end
 
 const surahData = require('@/data/surahData.json') as Array<{
   id: number;
@@ -43,9 +48,12 @@ const surahData = require('@/data/surahData.json') as Array<{
   name_arabic: string;
 }>;
 
+// @ai-start
 function getSurahName(surahNumber: number): string {
-  return surahData.find(s => s.id === surahNumber)?.name ?? '';
+  const surah = surahData.find(s => s.id === surahNumber);
+  return surah ? getSurahDisplayName(surah) : '';
 }
+// @ai-end
 
 function parseVerseKey(verseKey: string): {surah: number; ayah: number} {
   const [s, a] = verseKey.split(':');
@@ -74,6 +82,7 @@ interface SimilarVersesContentProps {
   // @ai-end
 }
 
+// @ai-start
 export const SimilarVersesContent: React.FC<SimilarVersesContentProps> = ({
   verseKey,
   surahNumber,
@@ -85,6 +94,7 @@ export const SimilarVersesContent: React.FC<SimilarVersesContentProps> = ({
 }) => {
   const {theme} = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const {t} = useTranslation(['sheets', 'common']);
 
   const mushafRenderer = useMushafSettingsStore(s => s.mushafRenderer);
   const arabicTextWeight = useMushafSettingsStore(s => s.arabicTextWeight);
@@ -214,13 +224,13 @@ export const SimilarVersesContent: React.FC<SimilarVersesContentProps> = ({
                 color={theme.colors.textSecondary}
               />
               <Text style={styles.textNoticeText}>
-                Loading the {rewayahLabel} text
+                {t('verseActions.loadingText', {rewayah: rewayahLabel})}
               </Text>
             </>
           ) : (
             <>
               <Text style={styles.textNoticeText}>
-                Couldn&apos;t load the {rewayahLabel} text.
+                {t('verseActions.loadFailed', {rewayah: rewayahLabel})}
               </Text>
               <Pressable
                 onPress={rewayahText.retry}
@@ -230,7 +240,9 @@ export const SimilarVersesContent: React.FC<SimilarVersesContentProps> = ({
                   styles.retryButton,
                   pressed && styles.retryButtonPressed,
                 ]}>
-                <Text style={styles.retryButtonText}>Try Again</Text>
+                <Text style={styles.retryButtonText}>
+                  {t('common:actions.tryAgain')}
+                </Text>
               </Pressable>
             </>
           )}
@@ -239,7 +251,7 @@ export const SimilarVersesContent: React.FC<SimilarVersesContentProps> = ({
       {/* @ai-end */}
       {mutashabihat.length > 0 && (
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>SHARED PHRASES</Text>
+          <Text style={styles.sectionLabel}>{t('similar.sharedPhrases')}</Text>
 
           {mutashabihat.map(phrase => {
             // @ai-start
@@ -276,7 +288,7 @@ export const SimilarVersesContent: React.FC<SimilarVersesContentProps> = ({
                   </View>
                 ) : null}
                 <Text style={styles.phraseCount}>
-                  Found in {phrase.totalOccurrences} verses
+                  {t('similar.foundIn', {count: phrase.totalOccurrences})}
                 </Text>
                 {(expandedPhrases.has(phrase.phraseId)
                   ? otherMatches
@@ -299,7 +311,9 @@ export const SimilarVersesContent: React.FC<SimilarVersesContentProps> = ({
                           color={theme.colors.textSecondary}
                         />
                         <Text style={styles.matchRef}>
-                          {similarVerseRef(match.verseKey, hafsReferences)}
+                          {localizeDigits(
+                            similarVerseRef(match.verseKey, hafsReferences),
+                          )}
                         </Text>
                         <Text style={styles.matchSurah}>{matchSurahName}</Text>
                       </Pressable>
@@ -332,12 +346,13 @@ export const SimilarVersesContent: React.FC<SimilarVersesContentProps> = ({
                             ]}
                             onPress={() => handleVersePress(match.verseKey)}>
                             <Text style={styles.goToVerseText}>
-                              Go to verse
+                              {t('similar.goToVerse')}
                             </Text>
                             <Feather
                               name="arrow-right"
                               size={moderateScale(14)}
                               color={theme.colors.text}
+                              style={flipX}
                             />
                           </Pressable>
                         </View>
@@ -350,8 +365,10 @@ export const SimilarVersesContent: React.FC<SimilarVersesContentProps> = ({
                     onPress={() => togglePhraseExpand(phrase.phraseId)}>
                     <Text style={styles.moreText}>
                       {expandedPhrases.has(phrase.phraseId)
-                        ? 'Show less'
-                        : `+${otherMatches.length - 10} more`}
+                        ? t('common:actions.showLess')
+                        : t('similar.more', {
+                            count: otherMatches.length - 10,
+                          })}
                     </Text>
                   </Pressable>
                 )}
@@ -363,7 +380,7 @@ export const SimilarVersesContent: React.FC<SimilarVersesContentProps> = ({
 
       {similarAyahs.length > 0 && (
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>SIMILAR WORDING</Text>
+          <Text style={styles.sectionLabel}>{t('similar.similarWording')}</Text>
 
           {(showAllSimilar ? similarAyahs : similarAyahs.slice(0, 20)).map(
             similar => {
@@ -387,7 +404,6 @@ export const SimilarVersesContent: React.FC<SimilarVersesContentProps> = ({
                       {/* @ai: Hafs references prefixed in another rewayah */}
                       {`${similarVerseRef(similar.matchedVerseKey, hafsReferences)} · ${matchSurahName}`}
                     </Text>
-                    <Text style={styles.similarScore}>{similar.score}%</Text>
                   </View>
                   {preview && skiaReady ? (
                     <SkiaVerseText
@@ -412,8 +428,8 @@ export const SimilarVersesContent: React.FC<SimilarVersesContentProps> = ({
             <Pressable onPress={toggleShowAllSimilar}>
               <Text style={styles.moreText}>
                 {showAllSimilar
-                  ? 'Show less'
-                  : `+${similarAyahs.length - 20} more`}
+                  ? t('common:actions.showLess')
+                  : t('similar.more', {count: similarAyahs.length - 20})}
               </Text>
             </Pressable>
           )}
@@ -421,14 +437,14 @@ export const SimilarVersesContent: React.FC<SimilarVersesContentProps> = ({
       )}
 
       {mutashabihat.length === 0 && similarAyahs.length === 0 && (
-        <Text style={styles.emptyText}>
-          No similar verses found for this ayah.
-        </Text>
+        <Text style={styles.emptyText}>{t('similar.empty')}</Text>
       )}
     </ScrollView>
   );
 };
+// @ai-end
 
+// @ai-start
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({
     scrollContent: {
@@ -472,7 +488,7 @@ const createStyles = (theme: Theme) =>
       fontSize: moderateScale(10),
       fontFamily: 'Manrope-SemiBold',
       color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
-      letterSpacing: 1.2,
+      letterSpacing: latinLetterSpacing(1.2),
       marginBottom: moderateScale(6),
       marginLeft: moderateScale(2),
     },
@@ -485,7 +501,7 @@ const createStyles = (theme: Theme) =>
       marginBottom: moderateScale(10),
     },
     skiaArabicWrap: {
-      alignItems: 'flex-end',
+      alignItems: isRTL ? 'flex-start' : 'flex-end',
       marginBottom: moderateScale(8),
     },
     phraseCount: {
@@ -589,3 +605,4 @@ const createStyles = (theme: Theme) =>
       marginTop: verticalScale(30),
     },
   });
+// @ai-end

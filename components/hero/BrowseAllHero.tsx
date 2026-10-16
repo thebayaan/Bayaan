@@ -22,6 +22,10 @@ import Svg, {Path} from 'react-native-svg';
 import {SESSION_SEED, pickHeroTheme} from '@/components/hero/heroThemes';
 import {Theme} from '@/utils/themeUtils';
 import Color from 'color';
+// @ai-start
+import {flipX, latinLetterSpacing} from '@/utils/rtl';
+import {useTranslation} from 'react-i18next';
+// @ai-end
 
 const TILE_COLORS = [
   '#fbbf24',
@@ -38,23 +42,27 @@ const TILE_COLORS = [
   '#f472b6',
 ];
 
+// @ai-start
 const TITLE_VARIANTS = [
-  'Browse the Full Collection',
-  'Explore Every Reciter',
-  'Every Voice, One Place',
-  'A World of Recitations',
-  'All Reciters Await',
-  'Every Reciter, One Tap',
-];
+  'browseAllHero.titles.fullCollection',
+  'browseAllHero.titles.everyReciter',
+  'browseAllHero.titles.everyVoice',
+  'browseAllHero.titles.worldOfRecitations',
+  'browseAllHero.titles.allRecitersAwait',
+  'browseAllHero.titles.oneTap',
+] as const;
+// @ai-end
 
+// @ai-start
 const LABEL_VARIANTS = [
-  'All Reciters',
-  'Browse Voices',
-  'Discover',
-  'Full Library',
-  'Explore',
-  'Browse',
-];
+  'browseAllHero.labels.allReciters',
+  'browseAllHero.labels.browseVoices',
+  'browseAllHero.labels.discover',
+  'browseAllHero.labels.fullLibrary',
+  'browseAllHero.labels.explore',
+  'browseAllHero.labels.browse',
+] as const;
+// @ai-end
 
 // Match SurahsHero height
 const CARD_HEIGHT = moderateScale(150);
@@ -208,15 +216,17 @@ interface BrowseAllHeroProps {
   style?: object;
 }
 
+// @ai-start
 export function BrowseAllHero({style}: BrowseAllHeroProps) {
   const {theme} = useTheme();
+  const {t} = useTranslation('home');
   const heroTheme = useMemo(() => pickHeroTheme(), []);
   const copyIndex = useMemo(
     () => Math.abs(SESSION_SEED) % TITLE_VARIANTS.length,
     [],
   );
-  const title = TITLE_VARIANTS[copyIndex];
-  const label = LABEL_VARIANTS[copyIndex];
+  const title = t(TITLE_VARIANTS[copyIndex]);
+  const label = t(LABEL_VARIANTS[copyIndex]);
   const isDark = theme.isDarkMode;
 
   const bg = isDark ? heroTheme.bg : heroTheme.bgLight;
@@ -280,7 +290,7 @@ export function BrowseAllHero({style}: BrowseAllHeroProps) {
               </Text>
               <Text style={[styles.title, {color: titleColor}]}>{title}</Text>
             </View>
-            <View style={styles.chevron}>
+            <View style={[styles.chevron, flipX]}>
               <Svg
                 width={moderateScale(16)}
                 height={moderateScale(16)}
@@ -301,7 +311,9 @@ export function BrowseAllHero({style}: BrowseAllHeroProps) {
     </Animated.View>
   );
 }
+// @ai-end
 
+// @ai-start
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     container: {
@@ -328,12 +340,14 @@ const createStyles = (theme: Theme) =>
       justifyContent: 'flex-end',
     },
     label: {
+      textAlign: 'left',
       fontFamily: 'Manrope-Bold',
       fontSize: moderateScale(9),
-      letterSpacing: 1.2,
+      letterSpacing: latinLetterSpacing(1.2),
       marginBottom: moderateScale(2),
     },
     title: {
+      textAlign: 'left',
       fontFamily: 'Manrope-SemiBold',
       fontSize: moderateScale(14),
     },
@@ -342,3 +356,4 @@ const createStyles = (theme: Theme) =>
       marginBottom: moderateScale(2),
     },
   });
+// @ai-end

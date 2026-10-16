@@ -41,6 +41,10 @@ import {
   createTextStrokePaint,
   getArabicTextWeightStrokeWidth,
 } from '@/utils/skiaTextWeight';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+import {forceLTR} from '@/utils/rtl';
+// @ai-end
 
 // --- Constants ---
 
@@ -330,6 +334,7 @@ function computeRTLLayout(
 
 // --- Main component ---
 
+// @ai-start
 export const WBWVerseView = memo<WBWVerseViewProps>(
   ({
     verseKey,
@@ -352,6 +357,7 @@ export const WBWVerseView = memo<WBWVerseViewProps>(
     wordRange, // @ai
     hafsNotice: hafsNoticeText, // @ai
   }) => {
+    const {t} = useTranslation('player');
     const {theme} = useTheme();
     const [containerWidth, setContainerWidth] = useState(0);
     const activeRewayah = useMushafSettingsStore(s => s.rewayah);
@@ -707,7 +713,7 @@ export const WBWVerseView = memo<WBWVerseViewProps>(
           styles.hafsNotice,
           {color: Color(textColor).alpha(0.5).toString()},
         ]}>
-        {hafsNoticeText ?? 'Word-by-word shown in Hafs' /* @ai */}
+        {hafsNoticeText ?? t('verse.wbwHafsNotice') /* @ai */}
       </Text>
     ) : null;
 
@@ -722,6 +728,7 @@ export const WBWVerseView = memo<WBWVerseViewProps>(
             onLongPress={handleWordPress}
             style={[
               styles.singleCanvasContainer,
+              forceLTR,
               {height: computedLayout.totalHeight + PADDING_VERTICAL * 2},
             ]}>
             {/* Word highlight boxes (rendered before Canvas so text sits on top) */}
@@ -821,7 +828,9 @@ export const WBWVerseView = memo<WBWVerseViewProps>(
     // Fallback: flex-wrap with RN Text (no Skia canvases)
     // Used when: fontMgr not ready, or containerWidth not measured yet
     return (
-      <View onLayout={handleLayout} style={styles.fallbackContainer}>
+      <View
+        onLayout={handleLayout}
+        style={[styles.fallbackContainer, forceLTR]}>
         {hafsNotice}
         {matchedWords.map(({dkWord, wbwWord}) => (
           <Pressable
@@ -891,6 +900,7 @@ export const WBWVerseView = memo<WBWVerseViewProps>(
     );
   },
 );
+// @ai-end
 
 WBWVerseView.displayName = 'WBWVerseView';
 

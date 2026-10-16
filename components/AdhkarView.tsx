@@ -13,7 +13,14 @@ import {AdhkarBentoCard} from '@/components/adhkar/AdhkarBentoCard';
 import {SuperCategory} from '@/types/adhkar';
 import {useBottomInset} from '@/hooks/useBottomInset';
 import {LoadingIndicator} from '@/components/LoadingIndicator';
+import {
+  AdhkarNowPlayingCard,
+  useHasAdhkarSession,
+} from '@/components/adhkar/AdhkarNowPlayingCard';
 import {SavedAdhkarHero} from '@/components/hero/SavedAdhkarHero';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+// @ai-end
 
 // Gap between cards
 const CARD_GAP = moderateScale(8);
@@ -84,12 +91,14 @@ const CategoryGrid = React.memo(function CategoryGrid({
   );
 });
 
+// @ai-start
 export const AdhkarView: React.FC<AdhkarViewProps> = ({
   onCategoryPress,
   onSavedPress,
   headerHeight,
 }) => {
   const {theme} = useTheme();
+  const {t} = useTranslation('player');
   const bottomInset = useBottomInset();
   const {
     error,
@@ -99,6 +108,7 @@ export const AdhkarView: React.FC<AdhkarViewProps> = ({
     savedIds,
   } = useAdhkar();
   const {width} = useWindowDimensions();
+  const hasAdhkarSession = useHasAdhkarSession();
 
   // Calculate column dimensions
   const tileDimensions = useMemo(() => {
@@ -159,6 +169,15 @@ export const AdhkarView: React.FC<AdhkarViewProps> = ({
       contentInsetAdjustmentBehavior="never"
       showsVerticalScrollIndicator={false}>
       {/* Saved Hero Section - only shows when there are saved adhkar */}
+      {hasAdhkarSession && (
+        <View
+          style={{
+            paddingHorizontal: tileDimensions.horizontalPadding,
+            marginBottom: moderateScale(8),
+          }}>
+          <AdhkarNowPlayingCard variant="row" />
+        </View>
+      )}
       <SavedAdhkarHero savedCount={savedIds.size} />
 
       {/* Main Section */}
@@ -177,7 +196,7 @@ export const AdhkarView: React.FC<AdhkarViewProps> = ({
 
       {/* Other Section */}
       <View style={{paddingHorizontal: tileDimensions.horizontalPadding}}>
-        <SectionHeader title="Other" theme={theme} />
+        <SectionHeader title={t('adhkar.otherSection')} theme={theme} />
         <CategoryGrid
           categories={otherCategories}
           columnWidth={tileDimensions.columnWidth}
@@ -188,6 +207,7 @@ export const AdhkarView: React.FC<AdhkarViewProps> = ({
     </ScrollView>
   );
 };
+// @ai-end
 
 const styles = StyleSheet.create({
   container: {

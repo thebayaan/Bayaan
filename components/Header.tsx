@@ -5,6 +5,9 @@ import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
+// @ai-start
+import {flipX} from '@/utils/rtl';
+// @ai-end
 
 interface HeaderProps {
   title: string;
@@ -15,6 +18,7 @@ interface HeaderProps {
   backButtonStyle?: ViewStyle;
 }
 
+// @ai-start
 export const Header: React.FC<HeaderProps> = ({
   title,
   onBack,
@@ -46,6 +50,7 @@ export const Header: React.FC<HeaderProps> = ({
               name="arrow-left"
               size={moderateScale(24)}
               color={theme.colors.text}
+              style={flipX}
             />
           </Pressable>
         )}
@@ -54,7 +59,9 @@ export const Header: React.FC<HeaderProps> = ({
     </View>
   );
 };
+// @ai-end
 
+// @ai-start
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({
     header: {
@@ -78,7 +85,7 @@ const createStyles = (theme: Theme) =>
       justifyContent: 'center',
       alignItems: 'center',
       position: 'absolute',
-      left: moderateScale(16),
+      start: moderateScale(16),
       zIndex: 1,
     },
     headerTitle: {
@@ -89,5 +96,6 @@ const createStyles = (theme: Theme) =>
       color: theme.colors.text,
     },
   });
+// @ai-end
 
 export default Header;

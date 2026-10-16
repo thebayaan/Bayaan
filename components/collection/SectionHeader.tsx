@@ -3,6 +3,9 @@ import {View, Pressable, StyleSheet} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {Feather} from '@expo/vector-icons';
 import {Theme} from '@/utils/themeUtils';
+// @ai-start
+import {latinLetterSpacing} from '@/utils/rtl';
+// @ai-end
 
 interface SectionHeaderProps {
   title: string;
@@ -34,6 +37,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
   );
 };
 
+// @ai-start
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
@@ -46,9 +50,10 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(14),
     fontWeight: '600',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: latinLetterSpacing(0.5),
   },
   toggleButton: {
     padding: moderateScale(4),
   },
 });
+// @ai-end

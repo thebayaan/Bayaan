@@ -35,8 +35,14 @@ import {
 } from './shareCardConstants';
 import {rewayahBasmalaService} from '@/services/mushaf/RewayahBasmalaService'; // @ai
 import {getRewayahShortLabel} from '@/utils/rewayahLabels';
+// @ai-start
+import i18n from 'i18next';
+// @ai-end
 import type {RewayahId} from '@/store/mushafSettingsStore';
 import branding from '@/config/branding';
+// @ai-start
+import {latinLetterSpacing} from '@/utils/rtl';
+// @ai-end
 
 // Reference coordinate system constants (from DigitalKhatt / QuranTextService)
 const FONTSIZE = 1000;
@@ -266,7 +272,7 @@ export function buildShareCardParagraphs(
         if (isAyaSpace) {
           verseBuilder.pushStyle({
             ...textStyle,
-            letterSpacing: ayaLetterSpacing,
+            letterSpacing: latinLetterSpacing(ayaLetterSpacing),
           });
         } else {
           verseBuilder.pushStyle({...textStyle, letterSpacing: 0});
@@ -307,7 +313,7 @@ export function buildShareCardParagraphs(
     );
     labelBuilder.pushStyle({
       color: Skia.Color(colors.secondary),
-      fontFamilies: ['ManropeSemiBold'],
+      fontFamilies: ['ManropeSemiBold', 'PlexSansArabicSemiBold'],
       fontSize: watermarkFontSize,
     });
     labelBuilder.addText(getRewayahShortLabel(rewayah));
@@ -330,10 +336,12 @@ export function buildShareCardParagraphs(
     );
     wmBuilder.pushStyle({
       color: Skia.Color(colors.secondary),
-      fontFamilies: ['ManropeSemiBold'],
+      fontFamilies: ['ManropeSemiBold', 'PlexSansArabicSemiBold'],
       fontSize: watermarkFontSize,
     });
-    wmBuilder.addText(`made with ${branding.appName}`);
+    wmBuilder.addText(
+      i18n.t('reader:shareCard.madeWith', {appName: branding.appName}),
+    );
     wmBuilder.pop();
     watermarkParagraph = wmBuilder.build();
     watermarkParagraph.layout(contentWidth);
@@ -369,3 +377,4 @@ export function buildShareCardParagraphs(
     colors,
   };
 }
+// @ai-end

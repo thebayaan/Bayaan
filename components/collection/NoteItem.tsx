@@ -9,6 +9,7 @@ import Color from 'color';
 import {getRewayahShortLabel} from '@/utils/rewayahLabels';
 import type {RewayahId} from '@/store/mushafSettingsStore';
 // @ai-start
+import {localizeDigits} from '@/i18n/format';
 import {CollectionVersePreview} from './CollectionVersePreview';
 import {useSavedVerseDescription} from '@/hooks/useSavedVerseDescription';
 import {savedVerseLabel} from '@/services/verse-annotations/unitAnnotations';
@@ -26,6 +27,7 @@ interface NoteItemProps {
   onOptionsPress: () => void;
 }
 
+// @ai-start
 export const NoteItem = memo<NoteItemProps>(
   ({
     surahName,
@@ -79,7 +81,9 @@ export const NoteItem = memo<NoteItemProps>(
           {/* @ai-start */}
           {verseLabel ? (
             <View style={styles.versePill}>
-              <Text style={styles.versePillText}>{verseLabel}</Text>
+              <Text style={styles.versePillText}>
+                {localizeDigits(verseLabel)}
+              </Text>
             </View>
           ) : null}
           {/* @ai-end */}
@@ -131,6 +135,7 @@ export const NoteItem = memo<NoteItemProps>(
     );
   },
 );
+// @ai-end
 
 NoteItem.displayName = 'NoteItem';
 

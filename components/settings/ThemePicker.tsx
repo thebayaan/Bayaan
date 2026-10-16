@@ -6,16 +6,20 @@ import {ThemeMode, Theme} from '@/utils/themeUtils';
 import Color from 'color';
 import {SunIcon, MoonIcon, AutoThemeIcon} from '@/components/Icons';
 import * as Haptics from 'expo-haptics';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+// @ai-end
 
+// @ai-start
 const THEME_OPTIONS: {
   mode: ThemeMode;
-  label: string;
   icon: 'sun' | 'moon' | 'auto';
 }[] = [
-  {mode: 'light', label: 'Light', icon: 'sun'},
-  {mode: 'dark', label: 'Dark', icon: 'moon'},
-  {mode: 'system', label: 'Auto', icon: 'auto'},
+  {mode: 'light', icon: 'sun'},
+  {mode: 'dark', icon: 'moon'},
+  {mode: 'system', icon: 'auto'},
 ];
+// @ai-end
 
 const IconMap = {
   sun: SunIcon,
@@ -23,9 +27,11 @@ const IconMap = {
   auto: AutoThemeIcon,
 };
 
+// @ai-start
 export const ThemePicker: React.FC = () => {
   const {theme, themeMode, setThemeMode} = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const {t} = useTranslation('settings');
 
   const handleSelect = useCallback(
     (mode: ThemeMode) => {
@@ -58,7 +64,7 @@ export const ThemePicker: React.FC = () => {
             onPress={() => handleSelect(option.mode)}>
             <Icon size={moderateScale(20)} color={iconColor} />
             <Text style={[styles.label, isActive && styles.labelActive]}>
-              {option.label}
+              {t(`themePicker.${option.mode}`)}
             </Text>
           </Pressable>
         );
@@ -66,6 +72,7 @@ export const ThemePicker: React.FC = () => {
     </View>
   );
 };
+// @ai-end
 
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({

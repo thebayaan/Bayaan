@@ -1,0 +1,69 @@
+{
+  "repeatCounts": [1, 3, 1],
+  "ids": ["75", "76", "77"],
+  "sessionDay": [
+    [1791799200000, "2026-10-12"],
+    [1791770400000, "2026-10-11"],
+    [1791777540000, "2026-10-11"],
+    [1791777600000, "2026-10-12"]
+  ],
+  "resolve": [
+    {"name": "nil", "stored": null, "period": "morning", "day": "2026-10-12",
+     "expect": {"period": "morning", "day": "2026-10-12", "index": 0, "remaining": 1, "completed": false, "startedAtMs": null}},
+    {"name": "keeps", "stored": {"period": "morning", "day": "2026-10-12", "index": 1, "remaining": 2, "completed": false, "startedAtMs": 5}, "period": "morning", "day": "2026-10-12",
+     "expect": {"period": "morning", "day": "2026-10-12", "index": 1, "remaining": 2, "completed": false, "startedAtMs": 5}},
+    {"name": "period change", "stored": {"period": "morning", "day": "2026-10-12", "index": 1, "remaining": 2, "completed": false, "startedAtMs": 5}, "period": "evening", "day": "2026-10-12",
+     "expect": {"period": "evening", "day": "2026-10-12", "index": 0, "remaining": 1, "completed": false, "startedAtMs": null}},
+    {"name": "day change", "stored": {"period": "evening", "day": "2026-10-11", "index": 2, "remaining": 1, "completed": true, "startedAtMs": 5}, "period": "evening", "day": "2026-10-12",
+     "expect": {"period": "evening", "day": "2026-10-12", "index": 0, "remaining": 1, "completed": false, "startedAtMs": null}},
+    {"name": "index out of range", "stored": {"period": "morning", "day": "2026-10-12", "index": 9, "remaining": 1, "completed": false, "startedAtMs": 5}, "period": "morning", "day": "2026-10-12",
+     "expect": {"period": "morning", "day": "2026-10-12", "index": 0, "remaining": 1, "completed": false, "startedAtMs": null}}
+  ],
+  "apply": [
+    {"name": "next stamps start", "action": "next", "nowMs": 100, "start": {"period": "morning", "day": "d", "index": 0, "remaining": 1, "completed": false, "startedAtMs": null},
+     "expect": {"period": "morning", "day": "d", "index": 1, "remaining": 3, "completed": false, "startedAtMs": 100}},
+    {"name": "count decrements", "action": "count", "nowMs": 200, "start": {"period": "morning", "day": "d", "index": 1, "remaining": 3, "completed": false, "startedAtMs": 100},
+     "expect": {"period": "morning", "day": "d", "index": 1, "remaining": 2, "completed": false, "startedAtMs": 100}},
+    {"name": "count at one advances", "action": "count", "nowMs": 200, "start": {"period": "morning", "day": "d", "index": 1, "remaining": 1, "completed": false, "startedAtMs": 100},
+     "expect": {"period": "morning", "day": "d", "index": 2, "remaining": 1, "completed": false, "startedAtMs": 100}},
+    {"name": "next on last completes", "action": "next", "nowMs": 300, "start": {"period": "morning", "day": "d", "index": 2, "remaining": 1, "completed": false, "startedAtMs": 100},
+     "expect": {"period": "morning", "day": "d", "index": 2, "remaining": 0, "completed": true, "startedAtMs": 100}},
+    {"name": "count on last completes", "action": "count", "nowMs": 300, "start": {"period": "morning", "day": "d", "index": 2, "remaining": 1, "completed": false, "startedAtMs": 100},
+     "expect": {"period": "morning", "day": "d", "index": 2, "remaining": 0, "completed": true, "startedAtMs": 100}},
+    {"name": "prev resets remaining", "action": "prev", "nowMs": 300, "start": {"period": "morning", "day": "d", "index": 2, "remaining": 1, "completed": false, "startedAtMs": 100},
+     "expect": {"period": "morning", "day": "d", "index": 1, "remaining": 3, "completed": false, "startedAtMs": 100}},
+    {"name": "prev at first", "action": "prev", "nowMs": 300, "start": {"period": "morning", "day": "d", "index": 0, "remaining": 1, "completed": false, "startedAtMs": null},
+     "expect": {"period": "morning", "day": "d", "index": 0, "remaining": 1, "completed": false, "startedAtMs": 300}},
+    {"name": "completed ignores next", "action": "next", "nowMs": 400, "start": {"period": "morning", "day": "d", "index": 2, "remaining": 0, "completed": true, "startedAtMs": 100},
+     "expect": {"period": "morning", "day": "d", "index": 2, "remaining": 0, "completed": true, "startedAtMs": 100}},
+    {"name": "completed ignores count", "action": "count", "nowMs": 400, "start": {"period": "morning", "day": "d", "index": 2, "remaining": 0, "completed": true, "startedAtMs": 100},
+     "expect": {"period": "morning", "day": "d", "index": 2, "remaining": 0, "completed": true, "startedAtMs": 100}},
+    {"name": "restart", "action": "restart", "nowMs": 400, "start": {"period": "morning", "day": "d", "index": 2, "remaining": 0, "completed": true, "startedAtMs": 100},
+     "expect": {"period": "morning", "day": "d", "index": 0, "remaining": 1, "completed": false, "startedAtMs": null}}
+  ],
+  "completion": [
+    {"name": "next on last completes", "action": "next", "nowMs": 300, "start": {"period": "morning", "day": "d", "index": 2, "remaining": 1, "completed": false, "startedAtMs": 100},
+     "expect": {"category": "morning-adhkar", "duration_ms": 200, "dhikr_count": 3, "completedAtMs": 300}},
+    {"name": "count on last completes", "action": "count", "nowMs": 1300, "start": {"period": "morning", "day": "d", "index": 2, "remaining": 1, "completed": false, "startedAtMs": 100},
+     "expect": {"category": "morning-adhkar", "duration_ms": 1200, "dhikr_count": 3, "completedAtMs": 1300}},
+    {"name": "completing first action has zero duration", "action": "next", "nowMs": 500, "start": {"period": "morning", "day": "d", "index": 2, "remaining": 1, "completed": false, "startedAtMs": null},
+     "expect": {"category": "morning-adhkar", "duration_ms": 0, "dhikr_count": 3, "completedAtMs": 500}},
+    {"name": "count with repeats left on last", "action": "count", "nowMs": 300, "start": {"period": "morning", "day": "d", "index": 2, "remaining": 2, "completed": false, "startedAtMs": 100},
+     "expect": null},
+    {"name": "next before last", "action": "next", "nowMs": 300, "start": {"period": "morning", "day": "d", "index": 1, "remaining": 3, "completed": false, "startedAtMs": 100},
+     "expect": null},
+    {"name": "prev on last", "action": "prev", "nowMs": 300, "start": {"period": "morning", "day": "d", "index": 2, "remaining": 1, "completed": false, "startedAtMs": 100},
+     "expect": null},
+    {"name": "already completed next", "action": "next", "nowMs": 400, "start": {"period": "morning", "day": "d", "index": 2, "remaining": 0, "completed": true, "startedAtMs": 100},
+     "expect": null},
+    {"name": "already completed count", "action": "count", "nowMs": 400, "start": {"period": "morning", "day": "d", "index": 2, "remaining": 0, "completed": true, "startedAtMs": 100},
+     "expect": null},
+    {"name": "restart from completed", "action": "restart", "nowMs": 400, "start": {"period": "morning", "day": "d", "index": 2, "remaining": 0, "completed": true, "startedAtMs": 100},
+     "expect": null}
+  ],
+  "link": [
+    {"session": {"period": "morning", "day": "d", "index": 0, "remaining": 1, "completed": false, "startedAtMs": null}, "expect": "adhkar/morning-adhkar"},
+    {"session": {"period": "morning", "day": "d", "index": 1, "remaining": 3, "completed": false, "startedAtMs": 1}, "expect": "adhkar/morning-adhkar?dhikr=76"},
+    {"session": {"period": "morning", "day": "d", "index": 2, "remaining": 0, "completed": true, "startedAtMs": 1}, "expect": "adhkar/morning-adhkar"}
+  ]
+}

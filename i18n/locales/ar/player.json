@@ -1,0 +1,88 @@
+{
+  "queue": {
+    "empty": "قائمة الانتظار فارغة",
+    "verseShort": "آية {{verse}}"
+  },
+  "uploads": {
+    "recordingType": {
+      "salah": "صلاة",
+      "studio": "استوديو"
+    },
+    "untagged": "غير مصنّفة",
+    "addRecitation": "إضافة تلاوة",
+    "emptyTitle": "لا توجد تلاوات مرفوعة بعد",
+    "emptySubtitle": "ارفع تلاواتك لتظهر هنا"
+  },
+  "uploadPlaceholder": {
+    "hint": "صنّف هذه التلاوة لعرض نص السورة وتفاصيلها",
+    "editDetails": "تعديل التفاصيل"
+  },
+  "verse": {
+    "footnote": "حاشية",
+    "footnoteContentUnavailable": "محتوى الحاشية غير متوفر",
+    "footnoteDataUnavailable": "بيانات الحاشية غير متوفرة",
+    "wbwHafsNotice": "يُعرض كلمة بكلمة وفق رواية حفص"
+  },
+  "reciterProfile": {
+    "shareMessage": "استمع إلى {{name}} على {{appName}}",
+    "thisReciter": "هذا القارئ",
+    "myUploads": "تلاواتي",
+    "sort": {
+      "asc": "تصاعدي",
+      "desc": "تنازلي",
+      "revelation": "النزول"
+    },
+    "searchPlaceholder": "ابحث في السور",
+    "noSurahsAvailable": "لا توجد سور متاحة",
+    "noSurahsFound": "لم يُعثر على سور",
+    "juzAmma": "جزء عمّ"
+  },
+  "adhkar": {
+    "otherSection": "أخرى",
+    "playAll": "تشغيل الكل",
+    "resume": "استئناف",
+    "hideInfo": "إخفاء التفاصيل",
+    "showInfo": "عرض التفاصيل",
+    "reciteTimes_zero": "تُقال {{count}} مرة",
+    "reciteTimes_one": "تُقال مرة واحدة",
+    "reciteTimes_two": "تُقال مرتين",
+    "reciteTimes_few": "تُقال {{count}} مرات",
+    "reciteTimes_many": "تُقال {{count}} مرةً",
+    "reciteTimes_other": "تُقال {{count}} مرة",
+    "repeatTimes": "التكرار ×{{times}}",
+    "dhikrCount_zero": "لا أذكار",
+    "dhikrCount_one": "ذكر واحد",
+    "dhikrCount_two": "ذكران",
+    "dhikrCount_few": "{{count}} أذكار",
+    "dhikrCount_many": "{{count}} ذكرًا",
+    "dhikrCount_other": "{{count}} ذكر",
+    "tasbeeh": {
+      "a11yLabel": "عدّاد التسبيح، {{current}} من {{target}}",
+      "a11yHint": "اضغط لزيادة العدد",
+      "complete": "اكتمل",
+      "tapToCount": "اضغط للعدّ",
+      "percent": "{{value}}٪",
+      "resetA11yLabel": "إعادة تعيين العدّاد",
+      "resetA11yHint": "يُعيد العدد إلى الصفر"
+    },
+    "a11y": {
+      "copyArabic": "نسخ النص العربي",
+      "addBookmark": "إضافة علامة مرجعية",
+      "removeBookmark": "إزالة العلامة المرجعية",
+      "shareDhikr": "مشاركة الذكر",
+      "layoutSettings": "إعدادات العرض",
+      "playAudio": "تشغيل الصوت",
+      "pauseAudio": "إيقاف الصوت مؤقتًا",
+      "enableRepeat": "تفعيل التكرار",
+      "disableRepeat": "إيقاف التكرار",
+      "showInstruction": "إظهار الإرشاد",
+      "hideInstruction": "إخفاء الإرشاد",
+      "playAll": "تشغيل الكل",
+      "pauseAll": "إيقاف الكل مؤقتًا",
+      "resumeAll": "استئناف الكل"
+    }
+  },
+  "a11y": {
+    "openPlayer": "يفتح المشغّل الكامل"
+  }
+}

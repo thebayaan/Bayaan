@@ -26,6 +26,11 @@ import {
 } from './random-recitation/backgrounds';
 import {SESSION_SEED} from '@/components/hero/heroThemes';
 import {COPY_VARIANTS} from './random-recitation/types';
+// @ai-start
+import {latinLetterSpacing} from '@/utils/rtl';
+import {useTranslation} from 'react-i18next';
+import {getReciterDisplayName, getSurahDisplayName} from '@/i18n/format';
+// @ai-end
 
 function showToast(message: string) {
   if (Platform.OS === 'android') {
@@ -41,11 +46,13 @@ interface RandomRecitationHeroProps {
 const SECTION_HEIGHT = moderateScale(150);
 const RANDOM_HERO_HEIGHT = SECTION_HEIGHT / 2;
 
+// @ai-start
 export function RandomRecitationHero({
   style,
   isCompact = false,
 }: RandomRecitationHeroProps) {
   const {theme} = useTheme();
+  const {t} = useTranslation('home');
   const {updateQueue, play} = usePlayerActions();
   const {startNewChain} = useRecentlyPlayedStore();
 
@@ -71,16 +78,21 @@ export function RandomRecitationHero({
   const handleRandomPlay = useCallback(async () => {
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      showToast('Finding random recitations from different reciters...');
+      showToast(t('randomHero.finding'));
 
       const picks = pickRandomRecitations(15);
       if (picks.length === 0) {
-        showToast('Failed to find random recitations. Please try again.');
+        showToast(t('randomHero.findFailed'));
         return;
       }
 
       const {reciter, surah, rewayatId} = picks[0];
-      showToast(`Playing ${surah.name} by ${reciter.name}`);
+      showToast(
+        t('randomHero.playing', {
+          surah: getSurahDisplayName(surah),
+          reciter: getReciterDisplayName(reciter),
+        }),
+      );
 
       const trackBatches = await Promise.all(
         picks.map(item =>
@@ -94,9 +106,9 @@ export function RandomRecitationHero({
       await startNewChain(reciter, surah, 0, 0, rewayatId);
     } catch (error) {
       console.error('Error playing random recitation:', error);
-      showToast('Failed to play random recitation. Please try again.');
+      showToast(t('randomHero.playFailed'));
     }
-  }, [updateQueue, play, startNewChain]);
+  }, [updateQueue, play, startNewChain, t]);
 
   const containerHeight = useMemo(
     () => ({height: isCompact ? moderateScale(75) : RANDOM_HERO_HEIGHT}),
@@ -132,7 +144,9 @@ export function RandomRecitationHero({
     </Animated.View>
   );
 }
+// @ai-end
 
+// @ai-start
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     container: {
@@ -150,14 +164,17 @@ const createStyles = (theme: Theme) =>
       justifyContent: 'center',
     },
     title: {
+      textAlign: 'left',
       fontFamily: 'Manrope-Bold',
       fontSize: moderateScale(9),
-      letterSpacing: moderateScale(0.5),
+      letterSpacing: latinLetterSpacing(moderateScale(0.5)),
       marginBottom: verticalScale(2),
       textTransform: 'uppercase',
     },
     subtitle: {
+      textAlign: 'left',
       fontFamily: 'Manrope-Medium',
       fontSize: moderateScale(11),
     },
   });
+// @ai-end

@@ -411,7 +411,7 @@ describe('a Warsh sheet on a Hafs mushaf (Warsh track in the player)', () => {
     expect(allTexts().some(s => s.startsWith('31:5'))).toBe(true);
 
     ensureRewayahLoaded.mockClear();
-    press('Try Again');
+    press('Try again'); // @ai: shared common:actions.tryAgain
     expect(ensureRewayahLoaded).toHaveBeenCalledWith('warsh');
     await act(async () => {
       t.finishSideLoad('warsh', WARSH);

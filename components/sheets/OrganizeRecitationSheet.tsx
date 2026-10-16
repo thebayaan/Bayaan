@@ -27,6 +27,8 @@ import {
 } from '@/services/dataService';
 import {surahGlyphMap} from '@/utils/surahGlyphMap';
 import {RECITERS} from '@/data/reciterData';
+import {rankReciters} from '@/utils/search/catalog'; // @ai
+import {createSearchIndex} from '@/utils/search/createSearchIndex'; // @ai
 import type {Surah} from '@/data/surahData';
 import type {UploadedRecitation} from '@/types/uploads';
 import {
@@ -37,33 +39,85 @@ import {
   RECORDING_TYPE_OPTIONS,
 } from '@/constants/recitationOptions';
 import type {RecordingType} from '@/types/uploads';
+// @ai-start
+import {latinLetterSpacing} from '@/utils/rtl';
+import {resolveRewayatName} from '@/data/rewayat';
+import {useTranslation} from 'react-i18next';
+import i18n from '@/i18n';
+import {
+  getReciterDisplayName,
+  getSurahDisplayName,
+  getSurahMeaning,
+  localizeDigits,
+} from '@/i18n/format';
+// @ai-end
 
 type RecitationType = 'surah' | 'other';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 
+// @ai-start
 const CATEGORY_OPTIONS: {
   id: UploadedRecitation['category'];
-  label: string;
+  readonly label: string;
 }[] = [
-  {id: 'dua', label: "Du'a"},
-  {id: 'lecture', label: 'Lecture'},
-  {id: 'tafsir', label: 'Tafsir'},
-  {id: 'other', label: 'Other'},
+  {
+    id: 'dua',
+    get label() {
+      return i18n.t('sheets:organize.categoryDua');
+    },
+  },
+  {
+    id: 'lecture',
+    get label() {
+      return i18n.t('sheets:uploads.categories.lecture');
+    },
+  },
+  {
+    id: 'tafsir',
+    get label() {
+      return i18n.t('sheets:uploads.categories.tafsir');
+    },
+  },
+  {
+    id: 'other',
+    get label() {
+      return i18n.t('sheets:uploads.categories.other');
+    },
+  },
 ];
+// @ai-end
 
+// @ai-start
 function formatDuration(seconds: number | null): string {
-  if (seconds === null || seconds === undefined) return 'Unknown duration';
+  if (seconds === null || seconds === undefined)
+    return i18n.t('sheets:organize.unknownDuration');
   const mins = Math.floor(seconds / 60);
   const secs = Math.floor(seconds % 60);
-  return `${mins}:${secs.toString().padStart(2, '0')}`;
+  return localizeDigits(`${mins}:${secs.toString().padStart(2, '0')}`);
 }
+// @ai-end
 
+// @ai-start
+function getSystemReciterName(id: string): string {
+  const reciter = RECITERS.find(r => r.id === id);
+  return reciter ? getReciterDisplayName(reciter) : (getReciterName(id) ?? '');
+}
+// @ai-end
+
+// @ai-start
+function getRewayahOptionLabel(name: string): string {
+  return resolveRewayatName(name)?.displayName ?? name;
+}
+// @ai-end
+
+// @ai-start
 export const OrganizeRecitationSheet = (
   props: SheetProps<'organize-recitation'>,
 ) => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
+  const {t} = useTranslation(['sheets', 'common']);
   const {updateTags, deleteRecitation, customReciters, createCustomReciter} =
     useUploadsStore();
 
@@ -95,14 +149,14 @@ export const OrganizeRecitationSheet = (
   );
   const [reciterDisplayName, setReciterDisplayName] = useState<string>(() => {
     if (recitation?.reciterId) {
-      return getReciterName(recitation.reciterId) ?? '';
+      return getSystemReciterName(recitation.reciterId);
     }
     if (recitation?.customReciterId) {
       const cr = customReciters.find(r => r.id === recitation.customReciterId);
       return cr?.name ?? '';
     }
     if (payload?.prefillReciterId) {
-      return getReciterName(payload.prefillReciterId) ?? '';
+      return getSystemReciterName(payload.prefillReciterId);
     }
     return '';
   });
@@ -198,13 +252,13 @@ export const OrganizeRecitationSheet = (
     setShowReciterResults(false);
     // Resolve reciter display name
     if (recitation.reciterId) {
-      setReciterDisplayName(getReciterName(recitation.reciterId) ?? '');
+      setReciterDisplayName(getSystemReciterName(recitation.reciterId));
     } else if (recitation.customReciterId) {
       const cr = customReciters.find(r => r.id === recitation.customReciterId);
       setReciterDisplayName(cr?.name ?? '');
     } else if (payload?.prefillReciterId) {
       setReciterId(payload.prefillReciterId);
-      setReciterDisplayName(getReciterName(payload.prefillReciterId) ?? '');
+      setReciterDisplayName(getSystemReciterName(payload.prefillReciterId));
     } else {
       setReciterDisplayName('');
     }
@@ -358,18 +412,23 @@ export const OrganizeRecitationSheet = (
   const [reciterQuery, setReciterQuery] = useState('');
   const [showReciterResults, setShowReciterResults] = useState(false);
 
+  // @ai-start
+  const customReciterIndex = useMemo(
+    () =>
+      createSearchIndex(customReciters, {
+        fields: [{get: reciter => reciter.name, weight: 1}],
+      }),
+    [customReciters],
+  );
+
   const reciterResults = useMemo(() => {
     if (!reciterQuery.trim()) return {system: [], custom: []};
-    const q = reciterQuery.toLowerCase();
-    const system = RECITERS.filter(r => r.name.toLowerCase().includes(q)).slice(
-      0,
-      5,
-    );
-    const custom = customReciters
-      .filter(r => r.name.toLowerCase().includes(q))
-      .slice(0, 3);
-    return {system, custom};
-  }, [reciterQuery, customReciters]);
+    return {
+      system: rankReciters(reciterQuery).slice(0, 5),
+      custom: customReciterIndex.search(reciterQuery, 3).map(hit => hit.item),
+    };
+  }, [reciterQuery, customReciterIndex]);
+  // @ai-end
 
   const hasReciterResults =
     reciterResults.system.length > 0 || reciterResults.custom.length > 0;
@@ -442,14 +501,14 @@ export const OrganizeRecitationSheet = (
       {/* Header */}
       <View style={styles.headerContainer}>
         <Pressable onPress={handleClose} style={styles.headerButton}>
-          <Text style={styles.cancelText}>Cancel</Text>
+          <Text style={styles.cancelText}>{t('common:actions.cancel')}</Text>
         </Pressable>
-        <Text style={styles.headerTitle}>Edit Details</Text>
+        <Text style={styles.headerTitle}>{t('options.editDetails')}</Text>
         <Pressable
           onPress={handleSave}
           style={[styles.headerButton, {opacity: hasChanges ? 1 : 0.4}]}
           disabled={!hasChanges}>
-          <Text style={styles.saveText}>Save</Text>
+          <Text style={styles.saveText}>{t('common:actions.save')}</Text>
         </Pressable>
       </View>
 
@@ -486,7 +545,7 @@ export const OrganizeRecitationSheet = (
         </View>
 
         {/* Type Chips */}
-        <Text style={styles.sectionLabel}>Type</Text>
+        <Text style={styles.sectionLabel}>{t('organize.type')}</Text>
         <View style={styles.chipRow}>
           <Pressable
             style={[styles.chip, type === 'surah' && styles.chipSelected]}
@@ -496,7 +555,7 @@ export const OrganizeRecitationSheet = (
                 styles.chipText,
                 type === 'surah' && styles.chipTextSelected,
               ]}>
-              Surah
+              {t('organize.surah')}
             </Text>
           </Pressable>
           <Pressable
@@ -507,7 +566,7 @@ export const OrganizeRecitationSheet = (
                 styles.chipText,
                 type === 'other' && styles.chipTextSelected,
               ]}>
-              Other
+              {t('uploads.categories.other')}
             </Text>
           </Pressable>
         </View>
@@ -519,12 +578,13 @@ export const OrganizeRecitationSheet = (
             onLayout={e => {
               surahSectionY.current = e.nativeEvent.layout.y;
             }}>
-            <Text style={styles.sectionLabel}>Surah</Text>
+            <Text style={styles.sectionLabel}>{t('organize.surah')}</Text>
             {selectedSurah ? (
               <View style={styles.selectedItemRow}>
                 <View style={styles.selectedItemChip}>
                   <Text style={styles.selectedItemText}>
-                    {selectedSurah.id}. {selectedSurah.name}
+                    {localizeDigits(selectedSurah.id)}.{' '}
+                    {getSurahDisplayName(selectedSurah)}
                   </Text>
                   <Text style={styles.selectedItemGlyph}>
                     {surahGlyphMap[selectedSurah.id]}
@@ -550,7 +610,7 @@ export const OrganizeRecitationSheet = (
                   />
                   <TextInput
                     style={styles.searchInput}
-                    placeholder="Search surahs..."
+                    placeholder={t('organize.searchSurahs')}
                     placeholderTextColor={Color(theme.colors.textSecondary)
                       .alpha(0.5)
                       .toString()}
@@ -579,12 +639,18 @@ export const OrganizeRecitationSheet = (
                         key={surah.id}
                         style={styles.resultItem}
                         onPress={() => handleSelectSurah(surah)}>
-                        <Text style={styles.resultNumber}>{surah.id}</Text>
+                        <Text style={styles.resultNumber}>
+                          {localizeDigits(surah.id)}
+                        </Text>
                         <View style={styles.resultTextContainer}>
-                          <Text style={styles.resultName}>{surah.name}</Text>
-                          <Text style={styles.resultTranslation}>
-                            {surah.translated_name_english}
+                          <Text style={styles.resultName}>
+                            {getSurahDisplayName(surah)}
                           </Text>
+                          {getSurahMeaning(surah) ? (
+                            <Text style={styles.resultTranslation}>
+                              {getSurahMeaning(surah)}
+                            </Text>
+                          ) : null}
                         </View>
                         <Text style={styles.resultGlyph}>
                           {surahGlyphMap[surah.id]}
@@ -600,13 +666,13 @@ export const OrganizeRecitationSheet = (
             {selectedSurah && (
               <View style={styles.verseRangeContainer}>
                 <Text style={styles.verseRangeLabel}>
-                  Verse range (optional)
+                  {t('organize.verseRangeOptional')}
                 </Text>
                 <View style={styles.verseRangeRow}>
                   <View style={styles.verseInputWrapper}>
                     <TextInput
                       style={styles.verseInput}
-                      placeholder="From"
+                      placeholder={t('repeat.from')}
                       placeholderTextColor={Color(theme.colors.textSecondary)
                         .alpha(0.5)
                         .toString()}
@@ -621,7 +687,7 @@ export const OrganizeRecitationSheet = (
                   <View style={styles.verseInputWrapper}>
                     <TextInput
                       style={styles.verseInput}
-                      placeholder="To"
+                      placeholder={t('repeat.to')}
                       placeholderTextColor={Color(theme.colors.textSecondary)
                         .alpha(0.5)
                         .toString()}
@@ -633,7 +699,9 @@ export const OrganizeRecitationSheet = (
                     />
                   </View>
                   <Text style={styles.verseCountHint}>
-                    of {selectedSurah.verses_count} verses
+                    {t('organize.ofVerses', {
+                      count: selectedSurah.verses_count,
+                    })}
                   </Text>
                 </View>
               </View>
@@ -644,11 +712,11 @@ export const OrganizeRecitationSheet = (
         {/* Other Type Section */}
         {type === 'other' && (
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Title</Text>
+            <Text style={styles.sectionLabel}>{t('organize.title')}</Text>
             <View style={styles.searchInputContainer}>
               <TextInput
                 style={[styles.searchInput, {paddingLeft: 0}]}
-                placeholder="e.g., Morning Adhkar"
+                placeholder={t('organize.titlePlaceholder')}
                 placeholderTextColor={Color(theme.colors.textSecondary)
                   .alpha(0.5)
                   .toString()}
@@ -661,7 +729,7 @@ export const OrganizeRecitationSheet = (
             </View>
 
             <Text style={[styles.sectionLabel, {marginTop: moderateScale(16)}]}>
-              Category
+              {t('organize.category')}
             </Text>
             <View style={styles.chipRow}>
               {CATEGORY_OPTIONS.map(opt => (
@@ -692,7 +760,7 @@ export const OrganizeRecitationSheet = (
             onLayout={e => {
               reciterSectionY.current = e.nativeEvent.layout.y;
             }}>
-            <Text style={styles.sectionLabel}>Reciter</Text>
+            <Text style={styles.sectionLabel}>{t('mushafPlayer.reciter')}</Text>
             {reciterDisplayName ? (
               <View style={styles.selectedItemRow}>
                 <View style={styles.selectedItemChip}>
@@ -720,7 +788,7 @@ export const OrganizeRecitationSheet = (
                   />
                   <TextInput
                     style={styles.searchInput}
-                    placeholder="Search reciters..."
+                    placeholder={t('organize.searchReciters')}
                     placeholderTextColor={Color(theme.colors.textSecondary)
                       .alpha(0.5)
                       .toString()}
@@ -762,7 +830,9 @@ export const OrganizeRecitationSheet = (
                               {marginLeft: moderateScale(10)},
                             ]}>
                             <Text style={styles.resultName}>
-                              Create "{reciterQuery.trim()}"
+                              {t('organize.createReciter', {
+                                name: reciterQuery.trim(),
+                              })}
                             </Text>
                           </View>
                         </Pressable>
@@ -772,10 +842,15 @@ export const OrganizeRecitationSheet = (
                           key={r.id}
                           style={styles.resultItem}
                           onPress={() =>
-                            handleSelectSystemReciter(r.id, r.name)
+                            handleSelectSystemReciter(
+                              r.id,
+                              getReciterDisplayName(r),
+                            )
                           }>
                           <View style={styles.resultTextContainer}>
-                            <Text style={styles.resultName}>{r.name}</Text>
+                            <Text style={styles.resultName}>
+                              {getReciterDisplayName(r)}
+                            </Text>
                           </View>
                         </Pressable>
                       ))}
@@ -789,7 +864,7 @@ export const OrganizeRecitationSheet = (
                           <View style={styles.resultTextContainer}>
                             <Text style={styles.resultName}>{r.name}</Text>
                             <Text style={styles.resultTranslation}>
-                              Custom reciter
+                              {t('organize.customReciter')}
                             </Text>
                           </View>
                         </Pressable>
@@ -804,7 +879,9 @@ export const OrganizeRecitationSheet = (
               <Pressable
                 style={styles.moreOptionsToggle}
                 onPress={() => setShowMoreOptions(prev => !prev)}>
-                <Text style={styles.moreOptionsText}>More Options</Text>
+                <Text style={styles.moreOptionsText}>
+                  {t('organize.moreOptions')}
+                </Text>
                 <Feather
                   name={showMoreOptions ? 'chevron-up' : 'chevron-down'}
                   size={moderateScale(14)}
@@ -816,7 +893,9 @@ export const OrganizeRecitationSheet = (
             {/* Rewayah + Style picklists */}
             {showMoreOptions && reciterDisplayName !== '' && (
               <View style={styles.moreOptionsContainer}>
-                <Text style={styles.verseRangeLabel}>Rewayah</Text>
+                <Text style={styles.verseRangeLabel}>
+                  {t('organize.rewayah')}
+                </Text>
                 <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
@@ -837,7 +916,7 @@ export const OrganizeRecitationSheet = (
                           rewayah === opt && styles.chipTextSelected,
                         ]}
                         numberOfLines={1}>
-                        {opt}
+                        {getRewayahOptionLabel(opt)}
                       </Text>
                     </Pressable>
                   ))}
@@ -848,7 +927,7 @@ export const OrganizeRecitationSheet = (
                     styles.verseRangeLabel,
                     {marginTop: moderateScale(14)},
                   ]}>
-                  Style
+                  {t('organize.style')}
                 </Text>
                 <View style={styles.chipRow}>
                   {STYLE_OPTIONS.map(opt => (
@@ -877,7 +956,7 @@ export const OrganizeRecitationSheet = (
         {/* Recording Type */}
         {type === 'surah' && (
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Recording</Text>
+            <Text style={styles.sectionLabel}>{t('organize.recording')}</Text>
             <View style={styles.chipRow}>
               {RECORDING_TYPE_OPTIONS.map(opt => (
                 <Pressable
@@ -911,13 +990,15 @@ export const OrganizeRecitationSheet = (
             size={moderateScale(16)}
             color="#EF4444"
           />
-          <Text style={styles.deleteText}>Delete Recitation</Text>
+          <Text style={styles.deleteText}>{t('uploads.deleteTitle')}</Text>
         </Pressable>
       </ScrollView>
     </ActionSheet>
   );
 };
+// @ai-end
 
+// @ai-start
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({
     sheetContainer: {
@@ -1008,7 +1089,7 @@ const createStyles = (theme: Theme) =>
       fontFamily: 'Manrope-SemiBold',
       color: theme.colors.textSecondary,
       textTransform: 'uppercase',
-      letterSpacing: 0.5,
+      letterSpacing: latinLetterSpacing(0.5),
       marginBottom: moderateScale(10),
     },
     chipRow: {
@@ -1203,3 +1284,4 @@ const createStyles = (theme: Theme) =>
       color: '#EF4444',
     },
   });
+// @ai-end

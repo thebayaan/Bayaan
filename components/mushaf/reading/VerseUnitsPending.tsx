@@ -7,6 +7,7 @@ import {
   getShortLabel,
   type RewayahId,
 } from '@/services/rewayah/RewayahIdentity';
+import {useTranslation} from 'react-i18next';
 
 /**
  * In place of the verse rows of a non-Hafs mushaf (list and reading modes)
@@ -24,17 +25,19 @@ export function VerseUnitsPending({
   rewayah: RewayahId;
   color: string;
 }) {
+  const {t} = useTranslation('reader');
+  const label = getShortLabel(rewayah);
   return (
     <View style={styles.pending} testID="verse-units-pending">
       {status === 'loading' ? (
         <ActivityIndicator
           size="small"
           color={color}
-          accessibilityLabel={`Loading the ${getShortLabel(rewayah)} verses`}
+          accessibilityLabel={t('verseUnits.loading', {rewayah: label})}
         />
       ) : (
         <Text style={[styles.pendingText, {color}]}>
-          {`Couldn't load the ${getShortLabel(rewayah)} verses.`}
+          {t('verseUnits.loadFailed', {rewayah: label})}
         </Text>
       )}
     </View>

@@ -132,7 +132,8 @@ describe('setMushafRenderer', () => {
     expect(state.uthmaniFont).toBe('v2');
   });
 
-  it('keeps the Mushaf 1440 rule: Hafs, no tajweed, no rewayah diffs', () => {
+  it('keeps Mushaf 1440 on Hafs with tajweed preview and no rewayah diffs', () => {
+    // @ai
     reset('dk_v2', 'hafs');
 
     useMushafSettingsStore.getState().setMushafRenderer('qcf_v2');
@@ -140,7 +141,7 @@ describe('setMushafRenderer', () => {
     const state = useMushafSettingsStore.getState();
     expect(state.mushafRenderer).toBe('qcf_v2');
     expect(state.rewayah).toBe('hafs');
-    expect(state.showTajweed).toBe(false);
+    expect(state.showTajweed).toBe(true); // @ai
     expect(state.showRewayahDiffs).toBe(false);
   });
 

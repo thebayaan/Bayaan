@@ -20,7 +20,9 @@ import {VerseItem} from './VerseItem';
 import BasmalaHeader from './BasmalaHeader';
 import SurahDivider, {computeDividerTotalHeight} from './SurahDivider';
 import {FlashList, type FlashListRef} from '@shopify/flash-list';
-import {useBottomSheetScrollableCreator} from '@gorhom/bottom-sheet';
+// @ai-start
+import {usePlayerScrollable} from '@/hooks/usePlayerScrollable';
+// @ai-end
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
 import {
   getDkFontFamily, // @ai
@@ -61,6 +63,7 @@ import {
   type RewayahVerseUnitsStatus,
 } from '@/hooks/useRewayahVerseUnits';
 import {getShortLabel} from '@/services/rewayah/RewayahIdentity';
+import {useTranslation} from 'react-i18next';
 import {
   buildVerseUnitRows,
   isVerseUnitRow,
@@ -171,6 +174,7 @@ function VerseUnitsPendingView({
   textColor: string;
   onRetry: () => void;
 }) {
+  const {t} = useTranslation(['reader', 'common']); // @ai
   const label = getShortLabel(rewayah);
   return (
     <View style={styles.pending} testID="verse-units-pending">
@@ -178,18 +182,20 @@ function VerseUnitsPendingView({
         <ActivityIndicator
           size="small"
           color={color}
-          accessibilityLabel={`Loading the ${label} verses`}
+          accessibilityLabel={t('reader:verseUnits.loading', {rewayah: label})}
         />
       ) : (
         <>
           <Text style={[styles.pendingText, {color}]}>
-            {`Couldn't load the ${label} verses.`}
+            {t('reader:verseUnits.loadFailed', {rewayah: label})}
           </Text>
           {status === 'error' && (
             <Pressable
               onPress={onRetry}
               accessibilityRole="button"
-              accessibilityLabel={`Try loading the ${label} verses again`}
+              accessibilityLabel={t('reader:verseUnits.retryLabel', {
+                rewayah: label,
+              })}
               hitSlop={8}
               testID="verse-units-retry"
               style={({pressed}) => [
@@ -198,7 +204,7 @@ function VerseUnitsPendingView({
                 pressed && styles.retryButtonPressed,
               ]}>
               <Text style={[styles.retryButtonText, {color: textColor}]}>
-                Try Again
+                {t('common:actions.tryAgain')}
               </Text>
             </Pressable>
           )}
@@ -223,6 +229,7 @@ interface QuranViewProps {
   parentContentWidth?: number;
 }
 
+// @ai-start
 export const QuranView: React.FC<QuranViewProps> = ({
   currentSurah,
   onVersePress,
@@ -259,7 +266,7 @@ export const QuranView: React.FC<QuranViewProps> = ({
   // satisfy rules-of-hooks; the factory is discarded when behavior is
   // 'native'. See docs/rfcs/014-player-scroll-strategy-seam.md.
   const scrollBehavior = branding.playerMushafScrollBehavior ?? 'gorhom';
-  const gorhomScrollComponent = useBottomSheetScrollableCreator();
+  const gorhomScrollComponent = usePlayerScrollable();
   const renderScrollComponent =
     scrollBehavior === 'gorhom' ? gorhomScrollComponent : undefined;
   if (__DEV__ && scrollBehavior === 'native') {
@@ -720,6 +727,7 @@ export const QuranView: React.FC<QuranViewProps> = ({
     </View>
   );
 };
+// @ai-end
 
 const styles = StyleSheet.create({
   container: {

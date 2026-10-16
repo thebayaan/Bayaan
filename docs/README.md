@@ -89,6 +89,7 @@ Deep documentation of the Uthmani Mushaf rendering system:
 | [android-performance-enhancements.md](development/android-performance-enhancements.md) | Android performance audit and improvements |
 | [performance-postmortem.md](development/performance-postmortem.md) | **[ARCHIVED]** Playback performance postmortem (TrackPlayer era) |
 | [whats-new-implementation.md](development/whats-new-implementation.md) | What's New feature implementation notes |
+| [i18n/README.md](i18n/README.md) | Translations and RTL: language registry, rules, adding strings and languages, glossary |
 
 ---
 

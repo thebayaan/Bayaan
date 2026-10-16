@@ -9,6 +9,7 @@ import Color from 'color';
 import {getRewayahShortLabel} from '@/utils/rewayahLabels';
 import type {RewayahId} from '@/store/mushafSettingsStore';
 // @ai-start
+import {localizeDigits} from '@/i18n/format';
 import {CollectionVersePreview} from './CollectionVersePreview';
 import {useSavedVerseDescription} from '@/hooks/useSavedVerseDescription';
 import {savedVerseLabel} from '@/services/verse-annotations/unitAnnotations';
@@ -24,6 +25,7 @@ interface BookmarkItemProps {
   onOptionsPress: () => void;
 }
 
+// @ai-start
 export const BookmarkItem = memo<BookmarkItemProps>(
   ({
     surahName,
@@ -61,7 +63,9 @@ export const BookmarkItem = memo<BookmarkItemProps>(
           {/* @ai-start */}
           {verseLabel ? (
             <View style={styles.versePill}>
-              <Text style={styles.versePillText}>{verseLabel}</Text>
+              <Text style={styles.versePillText}>
+                {localizeDigits(verseLabel)}
+              </Text>
             </View>
           ) : null}
           {/* @ai-end */}
@@ -103,6 +107,7 @@ export const BookmarkItem = memo<BookmarkItemProps>(
     );
   },
 );
+// @ai-end
 
 BookmarkItem.displayName = 'BookmarkItem';
 

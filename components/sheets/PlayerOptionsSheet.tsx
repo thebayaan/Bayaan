@@ -39,6 +39,14 @@ import RenderHtml, {
   defaultSystemFonts,
 } from 'react-native-render-html';
 import {useUploadsStore} from '@/store/uploadsStore';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+import {
+  getReciterDisplayName,
+  getSurahDisplayName,
+  getSurahMeaning,
+} from '@/i18n/format';
+// @ai-end
 
 // Import surah info data
 const surahInfo = require('@/data/surahInfo.json');
@@ -64,9 +72,11 @@ const renderHtmlDefaultProps: Partial<RenderHTMLProps> = {
   },
 };
 
+// @ai-start
 export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
+  const {t} = useTranslation(['sheets', 'common']);
   const {width} = useWindowDimensions();
   const [showSurahInfo, setShowSurahInfo] = useState(false);
 
@@ -89,17 +99,17 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
 
   const uploadHeaderTitle = useMemo(() => {
     if (!isUserUpload) return '';
-    if (surah) return surah.name;
+    if (surah) return getSurahDisplayName(surah);
     if (recitation?.title) return recitation.title;
     if (recitation?.originalFilename) return recitation.originalFilename;
-    return 'Uploaded Audio';
-  }, [isUserUpload, surah, recitation]);
+    return t('uploads.uploadedAudio');
+  }, [isUserUpload, surah, recitation, t]);
 
   const uploadHeaderSubtitle = useMemo(() => {
     if (!isUserUpload) return '';
-    if (surah) return surah.translated_name_english;
-    return 'Upload';
-  }, [isUserUpload, surah]);
+    if (surah) return getSurahMeaning(surah) ?? '';
+    return t('uploads.upload');
+  }, [isUserUpload, surah, t]);
 
   const downloadId = React.useMemo(
     () =>
@@ -275,8 +285,11 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
       rewayat.id,
       timestampSec,
     );
-    shareUrl(url, `Listen to Surah ${surahNum} on ${branding.appName}`);
-  }, [reciterId, rewayatId, surah]);
+    shareUrl(
+      url,
+      t('options.shareListen', {surah: surahNum, appName: branding.appName}),
+    );
+  }, [reciterId, rewayatId, surah, t]);
 
   const handleSheetChange = useCallback((index: number) => {
     if (index === -1) {
@@ -288,6 +301,11 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
   if (!surah && !isUserUpload) {
     return null;
   }
+
+  const headerReciter = reciterId ? getReciterByIdSync(reciterId) : undefined;
+  const reciterDisplayName = headerReciter
+    ? getReciterDisplayName(headerReciter)
+    : reciterId && getReciterName(reciterId);
 
   // Determine which options to show
   const showEditDetails = isUserUpload;
@@ -315,7 +333,7 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
             size={moderateScale(16)}
             color={theme.colors.text}
           />
-          <Text style={styles.optionText}>Edit Details</Text>
+          <Text style={styles.optionText}>{t('options.editDetails')}</Text>
         </Pressable>
       ),
     });
@@ -349,10 +367,12 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
           )}
           <Text style={styles.optionText}>
             {isCurrentlyDownloading
-              ? `Downloading ${Math.round(downloadProgress * 100)}%`
+              ? t('options.downloading', {
+                  percent: Math.round(downloadProgress * 100),
+                })
               : isTrackDownloaded
-                ? 'Downloaded'
-                : 'Download'}
+                ? t('options.downloaded')
+                : t('common:actions.download')}
           </Text>
         </Pressable>
       ),
@@ -374,7 +394,7 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
             size={moderateScale(18)}
             color={theme.colors.text}
           />
-          <Text style={styles.optionText}>Add to Collection</Text>
+          <Text style={styles.optionText}>{t('options.addToCollection')}</Text>
         </Pressable>
       ),
     });
@@ -396,7 +416,9 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
             filled={isLovedState}
           />
           <Text style={styles.optionText}>
-            {isLovedState ? 'Remove from Loved' : 'Add to Loved'}
+            {isLovedState
+              ? t('options.removeFromLoved')
+              : t('options.addToLoved')}
           </Text>
         </Pressable>
       ),
@@ -418,7 +440,7 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
             size={moderateScale(18)}
             color={theme.colors.text}
           />
-          <Text style={styles.optionText}>Share</Text>
+          <Text style={styles.optionText}>{t('common:actions.share')}</Text>
         </Pressable>
       ),
     });
@@ -439,7 +461,7 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
             size={moderateScale(18)}
             filled={false}
           />
-          <Text style={styles.optionText}>Go to Reciter</Text>
+          <Text style={styles.optionText}>{t('options.goToReciter')}</Text>
         </Pressable>
       ),
     });
@@ -460,7 +482,7 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
             size={moderateScale(18)}
             color={theme.colors.text}
           />
-          <Text style={styles.optionText}>Learn About Surah</Text>
+          <Text style={styles.optionText}>{t('options.learnAboutSurah')}</Text>
         </Pressable>
       ),
     });
@@ -479,7 +501,9 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
       {showSurahInfo ? (
         <>
           <View style={styles.headerContainer}>
-            <Text style={styles.headerTitle}>About {surah!.name}</Text>
+            <Text style={styles.headerTitle}>
+              {t('options.aboutSurah', {surah: getSurahDisplayName(surah!)})}
+            </Text>
           </View>
           <ScrollView
             style={styles.scrollView}
@@ -487,10 +511,14 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
             bounces={true}>
             <View style={styles.infoContent}>
               <View style={styles.surahInfoHeader}>
-                <Text style={styles.surahInfoName}>{surah!.name}</Text>
-                <Text style={styles.surahInfoTranslation}>
-                  {surah!.translated_name_english}
+                <Text style={styles.surahInfoName}>
+                  {getSurahDisplayName(surah!)}
                 </Text>
+                {getSurahMeaning(surah!) ? (
+                  <Text style={styles.surahInfoTranslation}>
+                    {getSurahMeaning(surah!)}
+                  </Text>
+                ) : null}
               </View>
               {currentSurahInfo && (
                 <RenderHtml
@@ -507,13 +535,12 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
         <View style={styles.container}>
           <View style={styles.header}>
             <Text style={styles.surahName} numberOfLines={1}>
-              {isUserUpload ? uploadHeaderTitle : surah!.name}
+              {isUserUpload ? uploadHeaderTitle : getSurahDisplayName(surah!)}
             </Text>
             <Text style={styles.surahTranslation} numberOfLines={1}>
               {isUserUpload
                 ? uploadHeaderSubtitle
-                : (reciterId && getReciterName(reciterId)) ||
-                  surah!.translated_name_english}
+                : reciterDisplayName || getSurahMeaning(surah!)}
             </Text>
           </View>
 
@@ -530,6 +557,7 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
     </ActionSheet>
   );
 };
+// @ai-end
 
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({

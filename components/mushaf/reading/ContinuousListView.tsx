@@ -185,6 +185,7 @@ interface ContinuousListViewProps {
   onCurrentPageChange?: (page: number) => void;
 }
 
+// @ai-start
 const ContinuousListView = forwardRef<
   ContinuousListViewHandle,
   ContinuousListViewProps
@@ -537,6 +538,7 @@ const ContinuousListView = forwardRef<
     );
   },
 );
+// @ai-end
 ContinuousListView.displayName = 'ContinuousListView';
 
 export default React.memo(ContinuousListView);

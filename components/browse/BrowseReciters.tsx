@@ -31,13 +31,23 @@ import {getSurahById} from '@/services/dataService';
 import {reciterImages} from '@/utils/reciterImages';
 import Header from '@/components/Header';
 import {useSettings} from '@/hooks/useSettings';
-import {QIRAAT_TEACHERS, resolveRewayatName} from '@/data/rewayat';
+// @ai-start
+import {
+  QIRAAT_TEACHERS,
+  resolveRewayatName,
+  getRewayatPersonLabel,
+} from '@/data/rewayat';
+import {rankReciters} from '@/utils/search/catalog'; // @ai
+// @ai-end
 import {resolveRewayahFromName} from '@/services/rewayah/RewayahIdentity';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useHeaderHeight} from 'expo-router/react-navigation';
 import branding from '@/config/branding';
 import {USE_GLASS} from '@/hooks/useGlassProps';
 import {useBottomInset} from '@/hooks/useBottomInset';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+// @ai-end
 
 interface BrowseRecitersProps {
   theme: Theme;
@@ -109,16 +119,18 @@ interface Chip {
   isSelected: boolean;
 }
 
+// @ai-start
 export default function BrowseReciters({
   theme,
   onBack,
   surahId,
-  title = 'Browse All',
+  title,
   initialTeacher,
   initialStudent,
   initialHasPhoto = false,
 }: BrowseRecitersProps) {
   const router = useRouter();
+  const {t} = useTranslation('home');
   const {updateQueue, play} = usePlayerActions();
   const {startNewChain} = useRecentlyPlayedStore();
   const {setReciterPreference} = useSettings();
@@ -176,7 +188,11 @@ export default function BrowseReciters({
     const chips: Chip[] = [];
     const isAllSelected = !selectedTeacher && !selectedStudent;
 
-    chips.push({label: 'All', type: 'all', isSelected: isAllSelected});
+    chips.push({
+      label: t('browse.allChip'),
+      type: 'all',
+      isSelected: isAllSelected,
+    });
 
     if (!selectedTeacher) {
       primaryTeachers.forEach(teacher => {
@@ -194,7 +210,11 @@ export default function BrowseReciters({
         });
 
         if (studentsOfSelectedTeacher.length > 0) {
-          chips.push({label: "A'n", type: 'separator', isSelected: false});
+          chips.push({
+            label: t('browse.rewayahSeparator'),
+            type: 'separator',
+            isSelected: false,
+          });
         }
 
         chips.push({
@@ -209,7 +229,11 @@ export default function BrowseReciters({
             type: 'student',
             isSelected: true,
           });
-          chips.push({label: "A'n", type: 'separator', isSelected: false});
+          chips.push({
+            label: t('browse.rewayahSeparator'),
+            type: 'separator',
+            isSelected: false,
+          });
           chips.push({
             label: selectedTeacher,
             type: 'teacher',
@@ -219,7 +243,7 @@ export default function BrowseReciters({
       }
     }
     return chips;
-  }, [selectedTeacher, selectedStudent, primaryTeachers]);
+  }, [selectedTeacher, selectedStudent, primaryTeachers, t]);
 
   const filteredReciters = useMemo(() => {
     // Hoisted above the filter chain so the RFC-012 `has-photo` filter
@@ -245,15 +269,14 @@ export default function BrowseReciters({
       });
     }
 
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase().trim();
-      result = result.filter(reciter => {
-        if (reciter.name.toLowerCase().includes(query)) return true;
-        return reciter.rewayat.some(rewaya =>
-          rewaya.name?.toLowerCase().includes(query),
-        );
-      });
+    // @ai-start
+    const searchRank = searchQuery.trim()
+      ? new Map(rankReciters(searchQuery).map((reciter, i) => [reciter.id, i]))
+      : null;
+    if (searchRank) {
+      result = result.filter(reciter => searchRank.has(reciter.id));
     }
+    // @ai-end
 
     if (selectedTeacher) {
       result = result.filter(reciter =>
@@ -313,6 +336,11 @@ export default function BrowseReciters({
     const featuredIds = new Set(featuredRecitersData.map(r => r.id));
 
     result.sort((a, b) => {
+      // @ai-start
+      if (searchRank) {
+        return (searchRank.get(a.id) ?? 0) - (searchRank.get(b.id) ?? 0);
+      }
+      // @ai-end
       if (featuredIds.has(a.id) && !featuredIds.has(b.id)) return -1;
       if (!featuredIds.has(a.id) && featuredIds.has(b.id)) return 1;
       const aHasImage = hasImage(a);
@@ -521,7 +549,7 @@ export default function BrowseReciters({
         {/* Android: custom Header; iOS: native Stack header handles this */}
         {!useNativeHeader && (
           <Header
-            title={title}
+            title={title ?? t('browse.browseAll')}
             onBack={onBack}
             showBlur={true}
             containerStyle={{zIndex: 2}}
@@ -539,7 +567,7 @@ export default function BrowseReciters({
             },
           ]}>
           <SearchInput
-            placeholder="Search reciters..."
+            placeholder={t('browse.searchReciters')}
             value={searchQuery}
             onChangeText={setSearchQuery}
             onCancel={handleSearchCancel}
@@ -593,7 +621,7 @@ export default function BrowseReciters({
                 ) : (
                   <Pressable
                     accessibilityRole="togglebutton"
-                    accessibilityLabel={chip.label}
+                    accessibilityLabel={getRewayatPersonLabel(chip.label)}
                     accessibilityState={{selected: chip.isSelected}}
                     style={({pressed}) => [
                       styles.filterChip,
@@ -609,7 +637,7 @@ export default function BrowseReciters({
                         styles.filterChipText,
                         chip.isSelected && styles.filterChipTextActive,
                       ]}>
-                      {chip.label}
+                      {getRewayatPersonLabel(chip.label)}
                     </Text>
                   </Pressable>
                 )}
@@ -624,7 +652,7 @@ export default function BrowseReciters({
                 layout={LinearTransition.duration(300)}>
                 <Pressable
                   accessibilityRole="togglebutton"
-                  accessibilityLabel="Has photo"
+                  accessibilityLabel={t('browse.hasPhoto')}
                   accessibilityState={{selected: hasPhoto}}
                   style={({pressed}) => [
                     styles.filterChip,
@@ -640,7 +668,7 @@ export default function BrowseReciters({
                       styles.filterChipText,
                       hasPhoto && styles.filterChipTextActive,
                     ]}>
-                    Has photo
+                    {t('browse.hasPhoto')}
                   </Text>
                 </Pressable>
               </Animated.View>
@@ -652,7 +680,7 @@ export default function BrowseReciters({
         {hasActiveFilters && (
           <View style={styles.activeFiltersContainer}>
             <Text style={styles.activeFiltersText}>
-              {filteredReciters.length} reciters found with current filters
+              {t('browse.recitersFound', {count: filteredReciters.length})}
             </Text>
             <Pressable
               style={({pressed}) => [
@@ -663,7 +691,9 @@ export default function BrowseReciters({
                 Keyboard.dismiss();
                 handleClearFilters();
               }}>
-              <Text style={styles.clearFiltersText}>Clear All</Text>
+              <Text style={styles.clearFiltersText}>
+                {t('browse.clearAll')}
+              </Text>
             </Pressable>
           </View>
         )}
@@ -696,6 +726,7 @@ export default function BrowseReciters({
     </TouchableWithoutFeedback>
   );
 }
+// @ai-end
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({

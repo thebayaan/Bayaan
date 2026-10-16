@@ -11,6 +11,8 @@ import {Theme} from '@/utils/themeUtils';
 import Color from 'color';
 import {themeDataService} from '@/services/mushaf/ThemeDataService';
 // @ai-start
+import {useTranslation} from 'react-i18next';
+import {getSurahDisplayName, localizeDigits} from '@/i18n/format';
 import {rewayahThemePassage, type UnitStart} from './verseUnitScreens';
 // @ai-end
 
@@ -30,6 +32,7 @@ interface ThemeContentProps {
   onBack: () => void;
 }
 
+// @ai-start
 export const ThemeContent: React.FC<ThemeContentProps> = ({
   surahNumber,
   ayahNumber,
@@ -38,6 +41,7 @@ export const ThemeContent: React.FC<ThemeContentProps> = ({
 }) => {
   const {theme} = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const {t} = useTranslation(['sheets', 'common']);
 
   // Themes are keyed by Hafs verses. @ai
   const verseKey = unitStart
@@ -53,16 +57,19 @@ export const ThemeContent: React.FC<ThemeContentProps> = ({
           contentContainerStyle={styles.scrollInner}
           showsVerticalScrollIndicator={false}
           bounces={true}>
-          <Text style={styles.emptyText}>No thematic data for this verse.</Text>
+          <Text style={styles.emptyText}>{t('themeContent.empty')}</Text>
         </ScrollView>
       </View>
     );
   }
 
   const surah = surahData.find(
-    (s: {id: number; name: string}) => s.id === themeInfo.surah,
+    (s: {id: number; name: string; name_arabic: string}) =>
+      s.id === themeInfo.surah,
   );
-  const surahName = surah?.name ?? `Surah ${themeInfo.surah}`;
+  const surahName = surah
+    ? getSurahDisplayName(surah)
+    : t('common:labels.surahNumber', {number: themeInfo.surah});
   // @ai-start
   // Another rewayah: the rewayah verses holding the passage's words (never
   // Hafs numbers under the rewayah's name).
@@ -74,9 +81,11 @@ export const ThemeContent: React.FC<ThemeContentProps> = ({
         themeInfo.ayahTo,
       )
     : null;
-  const passageRange = unitStart
-    ? (rewayahPassage?.range ?? '')
-    : `${themeInfo.surah}:${themeInfo.ayahFrom} \u2013 ${themeInfo.surah}:${themeInfo.ayahTo}`;
+  const passageRange = localizeDigits(
+    unitStart
+      ? (rewayahPassage?.range ?? '')
+      : `${themeInfo.surah}:${themeInfo.ayahFrom} \u2013 ${themeInfo.surah}:${themeInfo.ayahTo}`,
+  );
   const verseCount = unitStart
     ? (rewayahPassage?.count ?? 0)
     : themeInfo.ayahTo - themeInfo.ayahFrom + 1;
@@ -96,7 +105,7 @@ export const ThemeContent: React.FC<ThemeContentProps> = ({
         <View style={styles.card}>
           {/* Surah name row */}
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Surah</Text>
+            <Text style={styles.infoLabel}>{t('common:terms.surah')}</Text>
             <Text style={styles.infoValue}>{surahName}</Text>
           </View>
 
@@ -104,7 +113,7 @@ export const ThemeContent: React.FC<ThemeContentProps> = ({
 
           {/* Passage range row */}
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Passage</Text>
+            <Text style={styles.infoLabel}>{t('themeContent.passage')}</Text>
             <Text style={styles.infoValue}>{passageRange}</Text>
           </View>
 
@@ -112,14 +121,15 @@ export const ThemeContent: React.FC<ThemeContentProps> = ({
 
           {/* Verse count row */}
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Verses</Text>
-            <Text style={styles.infoValue}>{verseCount}</Text>
+            <Text style={styles.infoLabel}>{t('themeContent.verses')}</Text>
+            <Text style={styles.infoValue}>{localizeDigits(verseCount)}</Text>
           </View>
         </View>
       </ScrollView>
     </View>
   );
 };
+// @ai-end
 
 // ─── Styles ───────────────────────────────────────────────────────────────
 

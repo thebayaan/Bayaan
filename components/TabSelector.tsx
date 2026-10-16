@@ -13,18 +13,23 @@ import {Theme} from '@/utils/themeUtils';
 import Color from 'color';
 import SegmentedControl from '@react-native-segmented-control/segmented-control';
 
+// @ai-start
 interface TabSelectorProps<T extends string> {
   options: T[];
   selectedOption: T;
   onSelect: (option: T) => void;
   width?: number;
+  getLabel?: (option: T) => string;
 }
+// @ai-end
 
+// @ai-start
 function TabSelector<T extends string>({
   options,
   selectedOption,
   onSelect,
   width,
+  getLabel = option => option,
 }: TabSelectorProps<T>) {
   const {theme} = useTheme();
   const selectedIndex = options.indexOf(selectedOption);
@@ -33,7 +38,7 @@ function TabSelector<T extends string>({
   if (Platform.OS === 'ios') {
     return (
       <SegmentedControl
-        values={options}
+        values={options.map(getLabel)}
         selectedIndex={selectedIndex}
         onChange={event => {
           const index = event.nativeEvent.selectedSegmentIndex;
@@ -76,7 +81,7 @@ function TabSelector<T extends string>({
                   styles.tabText,
                   selectedOption === option && styles.activeTabText,
                 ]}>
-                {option}
+                {getLabel(option)}
               </Text>
               {selectedOption === option && (
                 <Animated.View style={styles.activeIndicator} />
@@ -89,6 +94,7 @@ function TabSelector<T extends string>({
     </View>
   );
 }
+// @ai-end
 
 const createStyles = (theme: Theme, _optionCount: number, width: number) =>
   StyleSheet.create({

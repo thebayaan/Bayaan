@@ -5,6 +5,9 @@ import {moderateScale} from 'react-native-size-matters';
 import Color from 'color';
 import {useTheme} from '@/hooks/useTheme';
 import {AdhkarCategory} from '@/types/adhkar';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+// @ai-end
 
 interface CategoryCardProps {
   category: AdhkarCategory;
@@ -14,6 +17,7 @@ interface CategoryCardProps {
   height?: number;
 }
 
+// @ai-start
 export const CategoryCard: React.FC<CategoryCardProps> = ({
   category,
   tagColor,
@@ -22,6 +26,7 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({
   height = moderateScale(100),
 }) => {
   const {theme} = useTheme();
+  const {t} = useTranslation('player');
 
   // Create gradient colors from tagColor
   const gradientTop = Color(tagColor).alpha(0.8).toString();
@@ -73,8 +78,7 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({
           style={styles.gradient}>
           <View style={styles.countContainer}>
             <Text style={styles.countText}>
-              {category.dhikrCount}{' '}
-              {category.dhikrCount === 1 ? 'dhikr' : 'adhkar'}
+              {t('adhkar.dhikrCount', {count: category.dhikrCount})}
             </Text>
           </View>
           <View style={styles.titleContainer}>
@@ -87,3 +91,4 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({
     </TouchableOpacity>
   );
 };
+// @ai-end

@@ -8,7 +8,11 @@ import {ReciterImage} from '@/components/ReciterImage';
 import {ReciterHeaderProps} from '@/components/reciter-profile/types';
 import {Link} from 'expo-router';
 import {USE_GLASS} from '@/hooks/useGlassProps';
+// @ai-start
+import {getReciterDisplayName} from '@/i18n/format';
+// @ai-end
 
+// @ai-start
 export const ReciterHeader: React.FC<ReciterHeaderProps> = ({
   reciter,
   showSearch,
@@ -47,11 +51,12 @@ export const ReciterHeader: React.FC<ReciterHeaderProps> = ({
         </View>
       )}
       <Text style={styles.reciterName} numberOfLines={2}>
-        {reciter.name}
+        {getReciterDisplayName(reciter)}
       </Text>
     </View>
   );
 };
+// @ai-end
 
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({

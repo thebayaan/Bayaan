@@ -41,6 +41,11 @@ import {
   isBundledTranslation,
   getBundledFootnotes,
 } from '@/utils/translationLookup';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+import {localizeDigits} from '@/i18n/format';
+import {isRTL} from '@/utils/rtl';
+// @ai-end
 
 // Type for processed word data from store
 interface ProcessedTajweedWord {
@@ -127,6 +132,7 @@ const TajweedSegment = memo(({text, color}: {text: string; color: string}) => (
 ));
 TajweedSegment.displayName = 'TajweedSegment';
 
+// @ai-start
 export const VerseItem = memo<VerseItemProps>(
   ({
     verse,
@@ -155,6 +161,7 @@ export const VerseItem = memo<VerseItemProps>(
     unitRow, // @ai
   }) => {
     const {theme} = useTheme();
+    const {t} = useTranslation(['player', 'common']);
     const verseKey = verse.verse_key;
     const arabicTextWeight = useMushafSettingsStore(s => s.arabicTextWeight);
     const mushafRewayah = useMushafSettingsStore(s => s.rewayah);
@@ -304,17 +311,17 @@ export const VerseItem = memo<VerseItemProps>(
           setActiveFootnote({
             id: footnoteId,
             number: footnoteNumber,
-            content: footnoteContent ?? 'Footnote content not available',
+            content: footnoteContent ?? t('verse.footnoteContentUnavailable'),
           });
         } else {
           setActiveFootnote({
             id: footnoteId,
             number: footnoteNumber,
-            content: 'Footnote data not available',
+            content: t('verse.footnoteDataUnavailable'),
           });
         }
       },
-      [activeFootnote, translationId], // @ai
+      [activeFootnote, translationId, t], // @ai
     );
     // A Hafs verse row: the footnotes of its own verse. @ai
     const handleFootnotePress = useCallback(
@@ -604,7 +611,8 @@ export const VerseItem = memo<VerseItemProps>(
                 {/* @ai — a verse row's surah_number / ayah_number are its
                  *  rewayah's own numbers: the pill reads '1:6' of Warsh. */}
                 <Text style={[styles.verseInfo, {color: textColor}]}>
-                  {verse.surah_number}:{verse.ayah_number}
+                  {localizeDigits(verse.surah_number)}:
+                  {localizeDigits(verse.ayah_number)}
                 </Text>
               </View>
               {isBookmarked && (
@@ -710,7 +718,9 @@ export const VerseItem = memo<VerseItemProps>(
               <Text style={arabicStyleNoColor}>{tajweedNodes}</Text>
             ) : (
               // Fallback (e.g., data is loading/missing)
-              <Text style={arabicStyle}>{verse.text || 'Loading...'}</Text>
+              <Text style={arabicStyle}>
+                {verse.text || t('common:status.loading')}
+              </Text>
             )}
           </View>
         )}
@@ -779,7 +789,7 @@ export const VerseItem = memo<VerseItemProps>(
             ]}>
             <View style={styles.footnoteHeader}>
               <Text style={[styles.footnoteTitle, {color: textColor}]}>
-                Footnote
+                {t('verse.footnote')}
               </Text>
               <Pressable
                 onPress={closeFootnote}
@@ -799,9 +809,11 @@ export const VerseItem = memo<VerseItemProps>(
     );
   },
 );
+// @ai-end
 
 VerseItem.displayName = 'VerseItem';
 
+// @ai-start
 const styles = StyleSheet.create({
   container: {
     paddingVertical: verticalScale(12),
@@ -835,7 +847,8 @@ const styles = StyleSheet.create({
   },
   arabicText: {
     fontSize: moderateScale(24),
-    textAlign: 'right',
+    // RN swaps left/right alignment in RTL; keep Quran text physically right.
+    textAlign: isRTL ? 'left' : 'right',
     writingDirection: 'rtl',
   },
   // @ai-start
@@ -895,3 +908,4 @@ const styles = StyleSheet.create({
     lineHeight: moderateScale(20),
   },
 });
+// @ai-end

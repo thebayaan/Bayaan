@@ -8,6 +8,9 @@ import {PlayIcon, PauseIcon} from '@/components/Icons';
 import {LoadingIndicator} from '@/components/LoadingIndicator';
 import {ReciterImage} from '@/components/ReciterImage';
 import Color from 'color';
+// @ai-start
+import {getTrackDisplayTitle, getTrackArtistDisplay} from '@/i18n/format';
+// @ai-end
 
 interface TabletDockedPlayerProps {
   /** When true, shows artwork + title + subtitle + play. When false, artwork-only compact mode. */
@@ -20,6 +23,7 @@ interface TabletDockedPlayerProps {
  * Phones never mount this component — they use `FloatingPlayer` (Android)
  * or `MiniPlayer` inside `NativeTabs.BottomAccessory` (iOS).
  */
+// @ai-start
 export const TabletDockedPlayer: React.FC<TabletDockedPlayerProps> = React.memo(
   function TabletDockedPlayer({expanded}) {
     const {theme} = useTheme();
@@ -43,9 +47,7 @@ export const TabletDockedPlayer: React.FC<TabletDockedPlayerProps> = React.memo(
       if (currentTrack?.id) {
         prevTrackIdRef.current = currentTrack.id;
       }
-      return (
-        (trackLoading && isTrackChanging) || playbackState === 'buffering'
-      );
+      return (trackLoading && isTrackChanging) || playbackState === 'buffering';
     }, [trackLoading, playbackState, currentTrack?.id]);
 
     const handlePress = useCallback(() => {
@@ -104,12 +106,12 @@ export const TabletDockedPlayer: React.FC<TabletDockedPlayerProps> = React.memo(
         />
         <View style={styles.trackInfo}>
           <Text style={[styles.title, {color: textColor}]} numberOfLines={1}>
-            {currentTrack.title}
+            {getTrackDisplayTitle(currentTrack)}
           </Text>
           <Text
             style={[styles.subtitle, {color: subtitleColor}]}
             numberOfLines={1}>
-            {currentTrack.artist}
+            {getTrackArtistDisplay(currentTrack)}
           </Text>
         </View>
         <Pressable
@@ -128,6 +130,7 @@ export const TabletDockedPlayer: React.FC<TabletDockedPlayerProps> = React.memo(
     );
   },
 );
+// @ai-end
 
 const styles = StyleSheet.create({
   compact: {

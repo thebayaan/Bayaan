@@ -19,9 +19,15 @@ import {GlassView} from 'expo-glass-effect';
 import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
 import {FrostedView} from '@/components/FrostedView';
 import {useResponsive} from '@/hooks/useResponsive';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+import {getTrackDisplayTitle, getTrackArtistDisplay} from '@/i18n/format';
+// @ai-end
 
+// @ai-start
 export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
   const {theme} = useTheme();
+  const {t} = useTranslation(['player', 'common']);
   const glassColorScheme = useGlassColorScheme();
   const {play, pause} = usePlayerActions();
   const playbackState = usePlayerStore(state => state.playback.state);
@@ -110,20 +116,20 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
           style={styles.body}
           android_ripple={{color: 'rgba(0, 0, 0, 0.1)', borderless: false}}
           accessibilityRole="button"
-          accessibilityLabel={`${currentTrack.title}, ${currentTrack.artist}`}
-          accessibilityHint="Opens the full player">
+          accessibilityLabel={`${getTrackDisplayTitle(currentTrack)}, ${getTrackArtistDisplay(currentTrack)}`}
+          accessibilityHint={t('a11y.openPlayer')}>
           <ReciterImage
             reciterName={currentTrack.reciterName}
             style={styles.artwork}
           />
           <View style={styles.trackInfo}>
             <Text style={[styles.title, {color: textColor}]} numberOfLines={1}>
-              {currentTrack.title}
+              {getTrackDisplayTitle(currentTrack)}
             </Text>
             <Text
               style={[styles.subtitle, {color: subtitleColor}]}
               numberOfLines={1}>
-              {currentTrack.artist}
+              {getTrackArtistDisplay(currentTrack)}
             </Text>
           </View>
         </Pressable>
@@ -132,7 +138,11 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
           style={styles.playButton}
           hitSlop={10}
           accessibilityRole="button"
-          accessibilityLabel={playbackState === 'playing' ? 'Pause' : 'Play'}>
+          accessibilityLabel={t(
+            playbackState === 'playing'
+              ? 'common:actions.pause'
+              : 'common:actions.play',
+          )}>
           {isLoadingNewTrack ? (
             <LoadingIndicator color={theme.colors.text} />
           ) : playbackState === 'playing' ? (
@@ -148,7 +158,9 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
     </Container>
   );
 });
+// @ai-end
 
+// @ai-start
 const styles = StyleSheet.create({
   content: {
     flexDirection: 'row',
@@ -180,10 +192,12 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   title: {
+    textAlign: 'left',
     fontSize: moderateScale(13, 0.2),
     fontFamily: 'Manrope-SemiBold',
   },
   subtitle: {
+    textAlign: 'left',
     fontSize: moderateScale(11, 0.2),
     fontFamily: 'Manrope-Medium',
   },
@@ -195,3 +209,4 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
 });
+// @ai-end

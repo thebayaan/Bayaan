@@ -3,7 +3,7 @@
 <resources>
   <string name="bayaan_widgets_url_scheme" translatable="false">bayaan</string>
   <string name="bayaan_widget_now_label">Bayaan Now</string>
-  <string name="bayaan_widget_now_desc">What fits this moment: listening, adhkar, occasions or bedtime.</string>
+  <string name="bayaan_widget_now_desc">What fits this moment: listening, adhkar or bedtime.</string>
   <bool name="bayaan_widget_enabled_continue_listening">true</bool>
   <bool name="bayaan_widget_enabled_continue_reading">true</bool>
   <bool name="bayaan_widget_enabled_quick_surah">true</bool>
@@ -15,8 +15,6 @@
   <bool name="bayaan_widget_enabled_bedtime">true</bool>
   <bool name="bayaan_widget_enabled_reciter_spotlight">true</bool>
   <bool name="bayaan_widget_enabled_adhkar">true</bool>
-  <bool name="bayaan_widget_enabled_hijri_date">true</bool>
-  <bool name="bayaan_widget_enabled_occasion">true</bool>
   <bool name="bayaan_widget_enabled_bayaan_now">true</bool>
   <bool name="bayaan_widgets_feature_adhkar">true</bool>
   <bool name="bayaan_widgets_feature_sleep_timer">true</bool>

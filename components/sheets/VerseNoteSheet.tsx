@@ -17,6 +17,8 @@ import {Feather} from '@expo/vector-icons';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
 import SkiaVersePreview from '@/components/share/SkiaVersePreview';
+// @ai-start
+import {useTranslation} from 'react-i18next';
 import type {RewayahId} from '@/store/mushafSettingsStore'; // @ai
 // @ai-start
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
@@ -34,9 +36,11 @@ import {
 import {addSelectionNote} from './verse-actions/selectionAnnotations';
 // @ai-end
 
+// @ai-start
 export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
   const {theme} = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const {t} = useTranslation('sheets');
 
   const verseKey = props.payload?.verseKey ?? '';
   const surahNumber = props.payload?.surahNumber ?? 0;
@@ -257,8 +261,13 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
         showsVerticalScrollIndicator={false}>
         {/* @ai: the verses in the note's own rewayah numbering, once known */}
         <Text style={styles.title}>
-          {isEditMode ? 'Edit Note' : 'Note'}
-          {verses ? ` for ${verses.label}` : ''}
+          {isEditMode
+            ? verses?.label
+              ? t('note.editTitle', {ref: verses.label})
+              : t('note.editTitleWithoutRef')
+            : verses?.label
+              ? t('note.title', {ref: verses.label})
+              : t('note.titleWithoutRef')}
         </Text>
 
         <View style={styles.ayahContainer}>
@@ -279,7 +288,7 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
           style={styles.textInput}
           value={noteText}
           onChangeText={setNoteText}
-          placeholder="Write your note here..."
+          placeholder={t('note.placeholder')}
           placeholderTextColor={theme.colors.textSecondary}
           multiline
           textAlignVertical="top"
@@ -300,7 +309,7 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
               styles.saveButtonText,
               !canSave && styles.saveButtonTextDisabled,
             ]}>
-            {isEditMode ? 'Update Note' : 'Save Note'}
+            {isEditMode ? t('note.update') : t('note.save')}
           </Text>
         </Pressable>
 
@@ -311,13 +320,14 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
               size={moderateScale(18)}
               color="#ff4444"
             />
-            <Text style={styles.deleteButtonText}>Delete Note</Text>
+            <Text style={styles.deleteButtonText}>{t('note.delete')}</Text>
           </Pressable>
         ) : null}
       </ScrollView>
     </ActionSheet>
   );
 };
+// @ai-end
 
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({

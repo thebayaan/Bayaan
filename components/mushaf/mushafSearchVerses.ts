@@ -135,13 +135,17 @@ export function anchorTarget(
 export function verseResultTexts(
   target: VerseTarget,
   surahName: string,
+  verseLabel: (ayah: string) => string = ayah => `Verse ${ayah}`,
 ): {primary: string; secondary: string} {
   const [, ayah] = target.verseKey.split(':');
   const primary = `${surahName} ${target.verseKey}`;
   // Hafs: exactly as before. Another rewayah says whose numbering it is.
   return target.rewayah === 'hafs'
-    ? {primary, secondary: `Verse ${ayah}`}
-    : {primary, secondary: `Verse ${ayah} · ${getShortLabel(target.rewayah)}`};
+    ? {primary, secondary: verseLabel(ayah)}
+    : {
+        primary,
+        secondary: `${verseLabel(ayah)} · ${getShortLabel(target.rewayah)}`,
+      };
 }
 
 /**

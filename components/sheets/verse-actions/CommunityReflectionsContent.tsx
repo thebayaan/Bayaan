@@ -35,6 +35,10 @@ import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import branding from '@/config/branding';
 import type {CommunityReflection} from '@/types/CommunityReflection';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+import {latinLetterSpacing} from '@/utils/rtl';
+// @ai-end
 
 interface CommunityReflectionsContentProps {
   surahNumber: number;
@@ -55,6 +59,7 @@ export const CommunityReflectionsContent: React.FC<
   CommunityReflectionsContentProps
 > = ({surahNumber, ayahNumber, label}) => {
   const {theme} = useTheme();
+  const {t} = useTranslation('sheets'); // @ai
   const styles = useMemo(() => createStyles(theme), [theme]);
   const verseKey = `${surahNumber}:${ayahNumber}`;
   const [state, setState] = useState<FetchState>({kind: 'loading'});
@@ -104,7 +109,7 @@ export const CommunityReflectionsContent: React.FC<
           </View>
         ) : state.kind === 'error' ? (
           <Text style={styles.emptyText}>
-            Couldn’t load reflections. Try again later.
+            {t('communityReflections.loadFailed')}
           </Text>
         ) : state.data.length === 0 ? (
           <View style={styles.emptyContainer}>
@@ -113,13 +118,14 @@ export const CommunityReflectionsContent: React.FC<
               size={moderateScale(28)}
               color={Color(theme.colors.text).alpha(0.2).toString()}
             />
-            <Text style={styles.emptyTitle}>No reflections yet</Text>
+            <Text style={styles.emptyTitle}>
+              {t('communityReflections.empty')}
+            </Text>
           </View>
         ) : (
           <>
             <Text style={styles.sectionLabel}>
-              {state.data.length}{' '}
-              {state.data.length === 1 ? 'REFLECTION' : 'REFLECTIONS'}
+              {t('communityReflections.count', {count: state.data.length})}
             </Text>
             <View style={styles.reflectionList}>
               {state.data.map(r => (
@@ -145,6 +151,7 @@ interface ReflectionRowProps {
 }
 
 function ReflectionRow({reflection, styles, theme}: ReflectionRowProps) {
+  const {t} = useTranslation('sheets'); // @ai
   // Community-authored URL supplied by a fork's provider — only web schemes
   // may reach Linking.openURL (blocks intent://, javascript:, file:, …).
   const isWebUrl = /^https?:\/\//i.test(reflection.url);
@@ -155,7 +162,9 @@ function ReflectionRow({reflection, styles, theme}: ReflectionRowProps) {
   return (
     <Pressable
       accessibilityRole="link"
-      accessibilityLabel={`Open ${reflection.author.name}'s reflection`}
+      accessibilityLabel={t('communityReflections.openLabel', {
+        author: reflection.author.name,
+      })}
       disabled={!isWebUrl}
       style={({pressed}) => [
         styles.reflectionCard,
@@ -255,7 +264,7 @@ const createStyles = (theme: Theme) =>
       fontSize: moderateScale(10.5),
       fontFamily: 'Manrope-SemiBold',
       color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
-      letterSpacing: 1.2,
+      letterSpacing: latinLetterSpacing(1.2), // @ai
       textTransform: 'uppercase',
       marginBottom: verticalScale(10),
       paddingHorizontal: moderateScale(16),

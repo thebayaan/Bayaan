@@ -25,6 +25,10 @@ import Color from 'color';
 import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
 import type {VerseNote} from '@/types/verse-annotations';
 // @ai-start
+import {useTranslation} from 'react-i18next';
+import i18n from '@/i18n';
+import {getSurahDisplayName} from '@/i18n/format';
+import {flipX} from '@/utils/rtl';
 import {describeSavedVerseNow} from '@/hooks/useSavedVerseDescription';
 import {savedVerseSubtitle} from '@/services/verse-annotations/unitAnnotations';
 // @ai-end
@@ -34,17 +38,19 @@ interface NoteData {
   surahName: string;
 }
 
+// @ai-start
 const NotesScreen = () => {
   const {theme} = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const {t} = useTranslation(['collection', 'common']);
 
   const [notes, setNotes] = useState<NoteData[]>([]);
   const [loading, setLoading] = useState(true);
   const scrollY = useRef(new RNAnimated.Value(0)).current;
 
   useCollectionNativeHeader({
-    title: 'Notes',
+    title: t('collectionScreen.notes'),
     scrollY,
     hasContent: notes.length > 0 && !loading,
   });
@@ -57,7 +63,9 @@ const NotesScreen = () => {
         const surah = getSurahById(note.surahNumber);
         return {
           note,
-          surahName: surah?.name ?? `Surah ${note.surahNumber}`,
+          surahName: surah
+            ? getSurahDisplayName(surah)
+            : i18n.t('common:labels.surahNumber', {number: note.surahNumber}),
         };
       });
       setNotes(enriched);
@@ -110,15 +118,16 @@ const NotesScreen = () => {
           subtitle: savedVerseSubtitle(
             describeSavedVerseNow(item.note),
             item.note.ayahNumber,
+            number => t('common:labels.ayahNumber', {number}),
           ),
           options: [
             {
-              label: 'Edit Note',
+              label: t('notesScreen.editNote'),
               icon: 'edit-2',
               onPress: () => handleNotePress(item),
             },
             {
-              label: 'Delete Note',
+              label: t('notesScreen.deleteNote'),
               icon: 'minus-circle',
               destructive: true,
               onPress: () => handleDeleteNote(item.note),
@@ -127,7 +136,7 @@ const NotesScreen = () => {
         },
       });
     },
-    [handleDeleteNote, handleNotePress],
+    [handleDeleteNote, handleNotePress, t],
   );
 
   const heroOuterBg = Color(theme.colors.textSecondary).alpha(0.1).toString();
@@ -150,19 +159,19 @@ const NotesScreen = () => {
             </View>
           </View>
           <Text style={[styles.headerTitle, {color: theme.colors.text}]}>
-            Notes
+            {t('collectionScreen.notes')}
           </Text>
           <Text
             style={[
               styles.headerSubtitle,
               {color: theme.colors.textSecondary},
             ]}>
-            {notes.length} {notes.length === 1 ? 'note' : 'notes'}
+            {t('notesScreen.count', {count: notes.length})}
           </Text>
         </View>
       </View>
     );
-  }, [notes.length, insets.top, theme, heroOuterBg, heroInnerBg]);
+  }, [notes.length, insets.top, theme, heroOuterBg, heroInnerBg, t]);
 
   const renderItem: ListRenderItem<NoteData> = ({item}) => (
     <NoteItem
@@ -194,10 +203,11 @@ const NotesScreen = () => {
                 name="arrow-left"
                 size={moderateScale(22)}
                 color={theme.colors.text}
+                style={flipX}
               />
             </Pressable>
             <Text style={[styles.emptyHeaderTitle, {color: theme.colors.text}]}>
-              Notes
+              {t('collectionScreen.notes')}
             </Text>
             <View style={styles.emptyHeaderBack} />
           </View>
@@ -205,7 +215,7 @@ const NotesScreen = () => {
         <View style={styles.emptyContent}>
           <Text
             style={[styles.loadingText, {color: theme.colors.textSecondary}]}>
-            Loading...
+            {t('common:status.loading')}
           </Text>
         </View>
       </View>
@@ -226,10 +236,11 @@ const NotesScreen = () => {
                 name="arrow-left"
                 size={moderateScale(22)}
                 color={theme.colors.text}
+                style={flipX}
               />
             </Pressable>
             <Text style={[styles.emptyHeaderTitle, {color: theme.colors.text}]}>
-              Notes
+              {t('collectionScreen.notes')}
             </Text>
             <View style={styles.emptyHeaderBack} />
           </View>
@@ -243,11 +254,11 @@ const NotesScreen = () => {
             />
           </View>
           <Text style={[styles.emptyTitle, {color: theme.colors.text}]}>
-            No notes yet
+            {t('collectionScreen.empty.notes')}
           </Text>
           <Text
             style={[styles.emptySubtitle, {color: theme.colors.textSecondary}]}>
-            Add notes to verses to see them here
+            {t('notesScreen.emptySubtitle')}
           </Text>
         </View>
       </View>
@@ -277,6 +288,7 @@ const NotesScreen = () => {
               name="arrow-left"
               size={moderateScale(24)}
               color={theme.colors.text}
+              style={flipX}
             />
           </Pressable>
         </RNAnimated.View>
@@ -296,10 +308,16 @@ const NotesScreen = () => {
         showsVerticalScrollIndicator={false}
         contentInsetAdjustmentBehavior="automatic"
       />
-      {!USE_GLASS && <CollectionStickyHeader title="Notes" scrollY={scrollY} />}
+      {!USE_GLASS && (
+        <CollectionStickyHeader
+          title={t('collectionScreen.notes')}
+          scrollY={scrollY}
+        />
+      )}
     </View>
   );
 };
+// @ai-end
 
 export default NotesScreen;
 

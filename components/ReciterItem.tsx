@@ -8,6 +8,10 @@ import {Reciter} from '@/data/reciterData';
 import {ReciterImage} from '@/components/ReciterImage';
 import {FollowAlongBadge} from '@/components/badges/FollowAlongBadge';
 import {getDisplayLabelFromName} from '@/services/rewayah/RewayahIdentity';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+import {getReciterDisplayName} from '@/i18n/format';
+// @ai-end
 
 interface ReciterItemProps {
   item: Reciter;
@@ -19,6 +23,7 @@ interface ReciterItemProps {
   showFollowAlong?: boolean;
 }
 
+// @ai-start
 export const ReciterItem: React.FC<ReciterItemProps> = React.memo(
   ({
     item,
@@ -30,6 +35,7 @@ export const ReciterItem: React.FC<ReciterItemProps> = React.memo(
     showFollowAlong,
   }) => {
     const {theme} = useTheme();
+    const {t} = useTranslation('home');
     const styles = createStyles(theme);
     const handlePress = React.useCallback(() => onPress(item), [item, onPress]);
     const handleLongPress = React.useCallback(
@@ -55,12 +61,14 @@ export const ReciterItem: React.FC<ReciterItemProps> = React.memo(
           />
         </View>
         <View style={styles.reciterInfo}>
-          <Text style={styles.reciterName}>{item.name}</Text>
+          <Text style={styles.reciterName}>{getReciterDisplayName(item)}</Text>
           <View style={styles.secondaryRow}>
             <Text style={styles.reciterRewayat} numberOfLines={1}>
               {secondaryText ||
                 (item.rewayat.length > 1
-                  ? `${item.rewayat.length} rewayat available`
+                  ? t('reciterCard.rewayatAvailable', {
+                      count: item.rewayat.length,
+                    })
                   : getDisplayLabelFromName(item.rewayat[0]?.name))}
             </Text>
             {showFollowAlong && <FollowAlongBadge />}
@@ -91,9 +99,11 @@ export const ReciterItem: React.FC<ReciterItemProps> = React.memo(
     );
   },
 );
+// @ai-end
 
 ReciterItem.displayName = 'ReciterItem';
 
+// @ai-start
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({
     reciterItem: {
@@ -105,7 +115,7 @@ const createStyles = (theme: Theme) =>
     imageContainer: {
       width: moderateScale(50),
       height: moderateScale(50),
-      marginRight: moderateScale(12),
+      marginEnd: moderateScale(12),
       justifyContent: 'center',
       alignItems: 'center',
       overflow: 'hidden',
@@ -144,7 +154,7 @@ const createStyles = (theme: Theme) =>
       borderColor: theme.colors.primary,
     },
     checkmarkContainer: {
-      marginLeft: moderateScale(8),
+      marginStart: moderateScale(8),
     },
     optionsZone: {
       width: moderateScale(44),
@@ -153,3 +163,4 @@ const createStyles = (theme: Theme) =>
       alignSelf: 'stretch',
     },
   });
+// @ai-end

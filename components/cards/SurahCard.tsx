@@ -35,6 +35,16 @@ import {
   useIsDownloaded,
   useIsDownloadedWithRewayat,
 } from '@/services/player/store/downloadSelectors';
+// @ai-start
+import {latinLetterSpacing} from '@/utils/rtl';
+import {SURAHS} from '@/data/surahData';
+import {useTranslation} from 'react-i18next';
+import {
+  getSurahDisplayName,
+  getSurahMeaning,
+  localizeDigits,
+} from '@/i18n/format';
+// @ai-end
 
 interface SurahCardProps {
   id: number;
@@ -60,10 +70,12 @@ interface SurahCardProps {
 const AnimatedTouchableOpacity =
   Animated.createAnimatedComponent(TouchableOpacity);
 
+// @ai-start
 export const SurahCard: React.FC<SurahCardProps> = ({
   id,
   name,
   translatedName,
+  versesCount,
   revelationPlace,
   color,
   onPress,
@@ -79,6 +91,12 @@ export const SurahCard: React.FC<SurahCardProps> = ({
   mushafLink = false,
 }) => {
   const {theme} = useTheme();
+  const {t} = useTranslation(['home', 'common']);
+  const displayName = getSurahDisplayName({
+    name,
+    name_arabic: SURAHS[id - 1]?.name_arabic ?? name,
+  });
+  const meaning = getSurahMeaning({translated_name_english: translatedName});
 
   // Get download state
   const isDownloadedBase = useIsDownloaded(
@@ -222,7 +240,7 @@ export const SurahCard: React.FC<SurahCardProps> = ({
       fontFamily: 'Manrope-Bold',
       color: theme.colors.text,
       textAlign: 'center',
-      letterSpacing: 0.2,
+      letterSpacing: latinLetterSpacing(0.2),
     },
     translatedName: {
       fontSize: moderateScale(9),
@@ -230,7 +248,7 @@ export const SurahCard: React.FC<SurahCardProps> = ({
       color: theme.colors.textSecondary,
       textAlign: 'center',
       opacity: 0.9,
-      letterSpacing: 0.1,
+      letterSpacing: latinLetterSpacing(0.1),
     },
     placeIcon: {
       position: 'absolute',
@@ -359,7 +377,7 @@ export const SurahCard: React.FC<SurahCardProps> = ({
         )}
       </View>
       <View style={styles.numberBadge}>
-        <Text style={styles.numberText}>{id}</Text>
+        <Text style={styles.numberText}>{localizeDigits(id)}</Text>
       </View>
       <View style={styles.content}>
         <Text style={styles.arabicName}>{surahGlyphMap[id]}</Text>
@@ -368,18 +386,18 @@ export const SurahCard: React.FC<SurahCardProps> = ({
           <View style={styles.textBlock}>
             {isCurrentTrack ? (
               <GradientText style={styles.name} surahId={id}>
-                {name}
+                {displayName}
               </GradientText>
             ) : (
               <Text style={styles.name} numberOfLines={1} ellipsizeMode="tail">
-                {name}
+                {displayName}
               </Text>
             )}
             <Text
               style={styles.translatedName}
               numberOfLines={1}
               ellipsizeMode="tail">
-              {translatedName}
+              {meaning ?? t('common:counts.ayahs', {count: versesCount})}
             </Text>
           </View>
         </View>
@@ -504,3 +522,4 @@ export const SurahCard: React.FC<SurahCardProps> = ({
     </TouchableComponent>
   );
 };
+// @ai-end

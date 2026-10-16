@@ -466,14 +466,11 @@ final class CarTemplateBuilder {
   private func reciterHeader(
     _ reciter: CarReciter, _ rewayah: CarRewayah, template: CPListTemplate
   ) -> CPListTemplateDetailsHeader {
-    // Before iOS 27 no API reports the thumbnail size, so the card element
-    // size is an approximation.
-    let size: CGFloat
-    if #available(iOS 27.0, *) {
-      size = CPThumbnailImage.maximumImageSize(forAspectRatio: 1).width
-    } else {
-      size = CPListImageRowItemCardElement.maximumImageSize.width
-    }
+    // @ai-start
+    // The card-element size is available in the supported Xcode 26 SDK.
+    // CPThumbnailImage.maximumImageSize requires the iOS 27 SDK to compile.
+    let size = CPListImageRowItemCardElement.maximumImageSize.width
+    // @ai-end
     let thumbnail = CPThumbnailImage(image: peek(reciter.artwork, size: size))
     let header = CPListTemplateDetailsHeader(
       thumbnail: thumbnail, title: reciter.name, subtitle: rewayah.name, actionButtons: [])

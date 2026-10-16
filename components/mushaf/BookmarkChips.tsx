@@ -8,6 +8,9 @@ import {SURAHS} from '@/data/surahData';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
 import type {VerseBookmark} from '@/types/verse-annotations';
 // @ai-start
+import {latinLetterSpacing} from '@/utils/rtl';
+import {useTranslation} from 'react-i18next';
+import {getSurahDisplayName, localizeDigits} from '@/i18n/format';
 import {useSavedVerseDescription} from '@/hooks/useSavedVerseDescription';
 import type {RewayahId} from '@/services/rewayah/RewayahIdentity';
 import {bookmarkChipText} from './mushafSearchVerses';
@@ -45,7 +48,9 @@ const BookmarkChipText: React.FC<{
   const description = useSavedVerseDescription(bookmark);
   return (
     <Text style={style} numberOfLines={1}>
-      {bookmarkChipText(surahName, bookmark, description, shownRewayah)}
+      {localizeDigits(
+        bookmarkChipText(surahName, bookmark, description, shownRewayah),
+      )}
     </Text>
   );
 };
@@ -54,6 +59,7 @@ const BookmarkChipText: React.FC<{
 export const BookmarkChips: React.FC<BookmarkChipsProps> = React.memo(
   ({shownRewayah, onPress}) => {
     const {theme} = useTheme();
+    const {t} = useTranslation(['reader', 'common']);
     const [bookmarks, setBookmarks] = useState(cachedBookmarks);
 
     // Refresh from DB on mount (covers new bookmarks added since cache)
@@ -73,7 +79,7 @@ export const BookmarkChips: React.FC<BookmarkChipsProps> = React.memo(
             styles.label,
             {color: Color(theme.colors.textSecondary).alpha(0.5).toString()},
           ]}>
-          BOOKMARKS
+          {t('common:terms.bookmarks')}
         </Text>
         <ScrollView
           horizontal
@@ -110,7 +116,7 @@ export const BookmarkChips: React.FC<BookmarkChipsProps> = React.memo(
                 {/* @ai-start */}
                 <BookmarkChipText
                   bookmark={bookmark}
-                  surahName={surah.name}
+                  surahName={getSurahDisplayName(surah)}
                   shownRewayah={shownRewayah}
                   style={[styles.chipText, {color: theme.colors.text}]}
                 />
@@ -123,16 +129,18 @@ export const BookmarkChips: React.FC<BookmarkChipsProps> = React.memo(
     );
   },
 );
+// @ai-end
 
 BookmarkChips.displayName = 'BookmarkChips';
 
+// @ai-start
 const styles = StyleSheet.create({
   container: {},
   label: {
     fontSize: moderateScale(10.5),
     fontFamily: 'Manrope-SemiBold',
     textTransform: 'uppercase',
-    letterSpacing: 1.0,
+    letterSpacing: latinLetterSpacing(1.0),
     marginTop: moderateScale(12),
     marginBottom: moderateScale(8),
     paddingHorizontal: moderateScale(16),
@@ -155,3 +163,4 @@ const styles = StyleSheet.create({
     fontFamily: 'Manrope-Medium',
   },
 });
+// @ai-end

@@ -25,6 +25,9 @@ import {
 } from '@/types/translation';
 import {analyticsService} from '@/services/analytics/AnalyticsService';
 // @ai-start
+import {flipX, latinLetterSpacing} from '@/utils/rtl';
+import {useTranslation} from 'react-i18next';
+import {localizeDigits} from '@/i18n/format';
 import {
   hafsPagerPage,
   joinPartTexts,
@@ -83,6 +86,7 @@ interface TranslationContentProps {
   onBack: () => void;
 }
 
+// @ai-start
 export const TranslationContent: React.FC<TranslationContentProps> = ({
   surahNumber,
   ayahNumber,
@@ -92,6 +96,7 @@ export const TranslationContent: React.FC<TranslationContentProps> = ({
 }) => {
   const {theme} = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const {t} = useTranslation(['sheets', 'common']);
   const selectedTranslationId = useMushafSettingsStore(
     s => s.selectedTranslationId,
   );
@@ -237,7 +242,9 @@ export const TranslationContent: React.FC<TranslationContentProps> = ({
         bounces={true}>
         {/* Verse badge */}
         <View style={styles.verseBadge}>
-          <Text style={styles.verseBadgeText}>{page.label}</Text>
+          <Text style={styles.verseBadgeText}>
+            {localizeDigits(page.label)}
+          </Text>
         </View>
 
         {/* Arabic text */}
@@ -259,7 +266,9 @@ export const TranslationContent: React.FC<TranslationContentProps> = ({
         {activeTranslationText ? (
           <Text style={styles.translationText}>{activeTranslationText}</Text>
         ) : (
-          <Text style={styles.noTranslation}>Translation not available</Text>
+          <Text style={styles.noTranslation}>
+            {t('translationContent.notAvailable')}
+          </Text>
         )}
         {/* @ai-start */}
         {/* A Hafs verse the rewayah divides: its whole translation, noted. */}
@@ -287,7 +296,9 @@ export const TranslationContent: React.FC<TranslationContentProps> = ({
                     {name.toUpperCase()}
                   </Text>
                   <View style={styles.switchPill}>
-                    <Text style={styles.switchPillText}>Switch</Text>
+                    <Text style={styles.switchPillText}>
+                      {t('translationContent.switch')}
+                    </Text>
                   </View>
                 </View>
               </Pressable>
@@ -295,7 +306,7 @@ export const TranslationContent: React.FC<TranslationContentProps> = ({
                 <Text style={styles.translationTextSecondary}>{text}</Text>
               ) : (
                 <Text style={styles.noTranslation}>
-                  Translation not available
+                  {t('translationContent.notAvailable')}
                 </Text>
               )}
             </React.Fragment>
@@ -321,17 +332,18 @@ export const TranslationContent: React.FC<TranslationContentProps> = ({
                 ? Color(theme.colors.text).alpha(0.2).toString()
                 : theme.colors.text
             }
+            style={flipX}
           />
           <Text
             style={[
               styles.navButtonText,
               isFirst && styles.navButtonTextDisabled,
             ]}>
-            Prev
+            {t('translationContent.prev')}
           </Text>
         </Pressable>
 
-        <Text style={styles.footerCounter}>{page.label}</Text>
+        <Text style={styles.footerCounter}>{localizeDigits(page.label)}</Text>
 
         <Pressable
           onPress={goToNext}
@@ -346,7 +358,7 @@ export const TranslationContent: React.FC<TranslationContentProps> = ({
               styles.navButtonText,
               isLast && styles.navButtonTextDisabled,
             ]}>
-            Next
+            {t('common:actions.next')}
           </Text>
           <Feather
             name="chevron-right"
@@ -356,15 +368,18 @@ export const TranslationContent: React.FC<TranslationContentProps> = ({
                 ? Color(theme.colors.text).alpha(0.2).toString()
                 : theme.colors.text
             }
+            style={flipX}
           />
         </Pressable>
       </View>
     </View>
   );
 };
+// @ai-end
 
 // ─── Styles ───────────────────────────────────────────────────────────────
 
+// @ai-start
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({
     container: {
@@ -390,7 +405,7 @@ const createStyles = (theme: Theme) =>
       fontSize: moderateScale(11.5),
       fontFamily: 'Manrope-SemiBold',
       color: Color(theme.colors.textSecondary).alpha(0.7).toString(),
-      letterSpacing: 0.3,
+      letterSpacing: latinLetterSpacing(0.3),
     },
     divider: {
       height: 1,
@@ -401,7 +416,7 @@ const createStyles = (theme: Theme) =>
       fontSize: moderateScale(10.5),
       fontFamily: 'Manrope-SemiBold',
       color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
-      letterSpacing: 1.2,
+      letterSpacing: latinLetterSpacing(1.2),
       textTransform: 'uppercase',
       marginBottom: verticalScale(6),
     },
@@ -447,7 +462,7 @@ const createStyles = (theme: Theme) =>
       fontSize: moderateScale(11),
       fontFamily: 'Manrope-SemiBold',
       color: Color(theme.colors.text).alpha(0.6).toString(),
-      letterSpacing: 0.3,
+      letterSpacing: latinLetterSpacing(0.3),
     },
     // Footer
     footer: {
@@ -485,6 +500,7 @@ const createStyles = (theme: Theme) =>
       fontSize: moderateScale(12.5),
       fontFamily: 'Manrope-SemiBold',
       color: Color(theme.colors.textSecondary).alpha(0.6).toString(),
-      letterSpacing: 0.3,
+      letterSpacing: latinLetterSpacing(0.3),
     },
   });
+// @ai-end

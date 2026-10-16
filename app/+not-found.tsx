@@ -1,5 +1,7 @@
-import {Redirect} from 'expo-router';
+import {useLeaveLinkRoute} from '@/hooks/useLeaveLinkRoute';
 
-export default function NotFound() {
-  return <Redirect href="/" />;
+// An unknown link (an old widget, a typo) shows the screen underneath.
+export default function NotFound(): null {
+  useLeaveLinkRoute();
+  return null;
 }

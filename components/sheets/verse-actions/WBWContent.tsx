@@ -39,6 +39,7 @@ interface WBWContentProps {
   onBack: () => void;
 }
 
+// @ai-start
 export const WBWContent: React.FC<WBWContentProps> = ({
   surahNumber,
   ayahNumber,
@@ -53,6 +54,10 @@ export const WBWContent: React.FC<WBWContentProps> = ({
   // Inherit mushaf font settings
   const mushafRenderer = useMushafSettingsStore(s => s.mushafRenderer);
   const arabicFontSize = useMushafSettingsStore(s => s.arabicFontSize);
+  const showTranslation = useMushafSettingsStore(s => s.wbwShowTranslation);
+  const showTransliteration = useMushafSettingsStore(
+    s => s.wbwShowTransliteration,
+  );
   const arabicTextWeight = useMushafSettingsStore(s => s.arabicTextWeight);
   const showAllahNameHighlight = useMushafSettingsStore(
     s => s.showAllahNameHighlight,
@@ -142,8 +147,8 @@ export const WBWContent: React.FC<WBWContentProps> = ({
               arabicFontSize={arabicFontSize}
               dkFontFamily={dkFontFamily}
               fontMgr={fontMgr}
-              showTranslation={true}
-              showTransliteration={true}
+              showTranslation={showTranslation}
+              showTransliteration={showTransliteration}
               onWordPress={wordPressHandlers.get(part.verseKey) ?? noop}
               selectedWordPosition={
                 selectedWord?.verseKey === part.verseKey
@@ -164,6 +169,7 @@ export const WBWContent: React.FC<WBWContentProps> = ({
     </ScrollView>
   );
 };
+// @ai-end
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({

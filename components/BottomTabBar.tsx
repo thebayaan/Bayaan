@@ -21,6 +21,9 @@ import {
 import {GlassView} from 'expo-glass-effect';
 import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
 import {FrostedView} from '@/components/FrostedView';
+// @ai-start
+import {appDirection} from '@/utils/rtl';
+// @ai-end
 
 function getIcon(
   routeName: string,
@@ -178,8 +181,10 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({
   );
 };
 
+// @ai-start
 const styles = StyleSheet.create({
   content: {
+    direction: appDirection,
     flexDirection: 'row',
     paddingHorizontal: moderateScale(8),
   },
@@ -194,5 +199,6 @@ const styles = StyleSheet.create({
     marginTop: moderateScale(3),
   },
 });
+// @ai-end
 
 export default BottomTabBar;

@@ -92,6 +92,12 @@ import {TranslationContent} from './verse-actions/TranslationContent';
 import {TafseerContent} from './verse-actions/TafseerContent';
 import {ThemeContent} from './verse-actions/ThemeContent';
 import {WBWContent} from './verse-actions/WBWContent';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+import i18n from '@/i18n';
+import {getSurahDisplayName, localizeDigits} from '@/i18n/format';
+import {flipX} from '@/utils/rtl';
+// @ai-end
 import {CommunityReflectionsContent} from './verse-actions/CommunityReflectionsContent';
 
 const surahData = require('@/data/surahData.json');
@@ -109,18 +115,20 @@ type ActiveScreen =
   | 'community-reflections'
   | null;
 
-const SCREEN_TITLES: Record<string, string> = {
-  highlight: 'Highlight',
-  note: 'Add Note',
-  share: 'Share',
-  similar: 'Similar Verses',
-  phrases: 'Shared Phrases',
-  translation: 'Translation',
-  tafseer: 'Tafseer',
-  theme: 'Theme',
-  wbw: 'Word by Word',
-  'community-reflections': 'Community Reflections',
-};
+// @ai-start
+const SCREEN_TITLE_KEYS = {
+  highlight: 'verseActions.highlight',
+  note: 'verseActions.addNote',
+  share: 'common:actions.share',
+  similar: 'verseActions.similarVerses',
+  phrases: 'verseActions.sharedPhrases',
+  translation: 'verseActions.translation',
+  tafseer: 'verseActions.tafseer',
+  theme: 'verseActions.theme',
+  wbw: 'verseActions.wordByWord',
+  'community-reflections': 'verseActions.communityReflections',
+} as const;
+// @ai-end
 
 const SHEET_HEIGHT = Dimensions.get('window').height * 0.85;
 
@@ -148,6 +156,7 @@ function SelectionPendingView({
   theme: Theme;
   style?: StyleProp<ViewStyle>;
 }) {
+  const {t} = useTranslation('sheets');
   const label = getRewayahShortLabel(selection.rewayah);
   return (
     <View style={[pendingStyles.container, style]}>
@@ -159,9 +168,12 @@ function SelectionPendingView({
             pendingStyles.text,
             {color: Color(theme.colors.text).alpha(0.6).toString()},
           ]}>
-          {selection.status === 'invalid'
-            ? `Not a numbered verse in ${label}.`
-            : `Couldn't load the ${label} text.`}
+          {t(
+            selection.status === 'invalid'
+              ? 'verseActions.unnumbered'
+              : 'verseActions.loadFailed',
+            {rewayah: label},
+          )}
         </Text>
       )}
     </View>
@@ -186,6 +198,7 @@ const pendingStyles = StyleSheet.create({
 export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
+  const {t} = useTranslation(['sheets', 'common']);
   const [activeScreen, setActiveScreenRaw] = useState<ActiveScreen>(null);
 
   const setActiveScreen = useCallback((screen: ActiveScreen) => {
@@ -277,9 +290,10 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
   // @ai-end
 
   const surah = surahData.find(
-    (s: {id: number; name: string}) => s.id === selection.surahNumber, // @ai
+    (s: {id: number; name: string; name_arabic: string}) =>
+      s.id === selection.surahNumber, // @ai
   );
-  const surahName = surah?.name ?? '';
+  const surahName = surah ? getSurahDisplayName(surah) : '';
 
   // @ai-start
   // "2:1", "2:1-3" or "2:286 - 3:2" in the shown rewayah's numbering; no
@@ -376,14 +390,22 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
           : await resolveSelectionTexts(ready);
       if (result.status !== 'ready') {
         showToast(
-          `Couldn't load the ${getRewayahShortLabel(resolvedRewayah)} text`,
-          'Nothing was copied. Please try again.',
+          // @ai-start
+          t('selectionFailure.loadFailed', {
+            rewayah: getRewayahShortLabel(resolvedRewayah),
+          }),
+          t('selectionFailure.nothingDoneRetry.copied'),
+          // @ai-end
           'error',
         );
         return;
       }
       if (hasNoOwnText(result.texts)) {
-        showToast('Nothing to copy', noOwnTextMessage(result.rewayah), 'error');
+        showToast(
+          t('selectionFailure.nothingToCopy'), // @ai
+          noOwnTextMessage(result.rewayah),
+          'error',
+        );
         return;
       }
       // Each verse exactly as the mushaf shows it, with its own marker; the
@@ -731,7 +753,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
         {!activeScreen && (
           <View style={styles.header}>
             <Text style={styles.surahName}>{surahName}</Text>
-            <Text style={styles.verseRef}>{verseRefText}</Text>
+            <Text style={styles.verseRef}>{localizeDigits(verseRefText)}</Text>
           </View>
         )}
 
@@ -749,9 +771,10 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                   name="chevron-left"
                   size={moderateScale(16)}
                   color={theme.colors.text}
+                  style={flipX}
                 />
                 <Text style={styles.backRowText}>
-                  {SCREEN_TITLES[activeScreen] ?? 'Back'}
+                  {t(SCREEN_TITLE_KEYS[activeScreen] ?? 'common:actions.back')}
                 </Text>
               </Pressable>
               {(activeScreen === 'translation' ||
@@ -901,7 +924,9 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                 }>
                 <PlayIcon size={moderateScale(18)} color={theme.colors.text} />
                 <Text style={styles.optionText}>
-                  {isRange ? 'Play Selection' : 'Play from Here'}
+                  {isRange
+                    ? t('verseActions.playSelection')
+                    : t('verseActions.playFromHere')}
                 </Text>
               </Pressable>
               <View style={styles.divider} />
@@ -921,7 +946,9 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                   size={moderateScale(24)}
                   color={theme.colors.text}
                 />
-                <Text style={styles.optionText}>Repeat</Text>
+                <Text style={styles.optionText}>
+                  {t('verseActions.repeat')}
+                </Text>
               </Pressable>
             </View>
 
@@ -939,7 +966,9 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                   color={theme.colors.text}
                 />
                 <Text style={styles.optionText}>
-                  {isBookmarked ? 'Remove Bookmark' : 'Bookmark'}
+                  {isBookmarked
+                    ? t('verseActions.removeBookmark')
+                    : t('verseActions.bookmark')}
                 </Text>
               </Pressable>
               <View style={styles.divider} />
@@ -962,7 +991,9 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                   />
                 )}
                 <Text style={styles.optionText}>
-                  {isHighlighted ? 'Remove Highlight' : 'Highlight'}
+                  {isHighlighted
+                    ? t('highlight.remove')
+                    : t('verseActions.highlight')}
                 </Text>
               </Pressable>
               <View style={styles.divider} />
@@ -976,7 +1007,9 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                   size={moderateScale(18)}
                   color={theme.colors.text}
                 />
-                <Text style={styles.optionText}>Add Note</Text>
+                <Text style={styles.optionText}>
+                  {t('verseActions.addNote')}
+                </Text>
               </Pressable>
             </View>
 
@@ -993,7 +1026,9 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                   size={moderateScale(19)}
                   color={theme.colors.text}
                 />
-                <Text style={styles.optionText}>Translation</Text>
+                <Text style={styles.optionText}>
+                  {t('verseActions.translation')}
+                </Text>
               </Pressable>
               {!isRange ? (
                 <>
@@ -1008,7 +1043,9 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                       size={moderateScale(18)}
                       color={theme.colors.text}
                     />
-                    <Text style={styles.optionText}>Tafseer</Text>
+                    <Text style={styles.optionText}>
+                      {t('verseActions.tafseer')}
+                    </Text>
                   </Pressable>
                 </>
               ) : null}
@@ -1025,7 +1062,9 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                       size={moderateScale(18)}
                       color={theme.colors.text}
                     />
-                    <Text style={styles.optionText}>Theme</Text>
+                    <Text style={styles.optionText}>
+                      {t('verseActions.theme')}
+                    </Text>
                   </Pressable>
                 </>
               ) : null}
@@ -1042,7 +1081,9 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                       size={moderateScale(18)}
                       color={theme.colors.text}
                     />
-                    <Text style={styles.optionText}>Word by Word</Text>
+                    <Text style={styles.optionText}>
+                      {t('verseActions.wordByWord')}
+                    </Text>
                   </Pressable>
                 </>
               ) : null}
@@ -1064,7 +1105,9 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                       size={moderateScale(19)}
                       color={theme.colors.text}
                     />
-                    <Text style={styles.optionText}>Community Reflections</Text>
+                    <Text style={styles.optionText}>
+                      {t('verseActions.communityReflections')}
+                    </Text>
                   </Pressable>
                 </>
               ) : null}
@@ -1081,7 +1124,9 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                       size={moderateScale(18)}
                       color={theme.colors.text}
                     />
-                    <Text style={styles.optionText}>Similar Verses</Text>
+                    <Text style={styles.optionText}>
+                      {t('verseActions.similarVerses')}
+                    </Text>
                   </Pressable>
                 </>
               ) : null}
@@ -1098,7 +1143,9 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                       size={moderateScale(18)}
                       color={theme.colors.text}
                     />
-                    <Text style={styles.optionText}>Shared Phrases</Text>
+                    <Text style={styles.optionText}>
+                      {t('verseActions.sharedPhrases')}
+                    </Text>
                   </Pressable>
                 </>
               ) : null}
@@ -1128,7 +1175,9 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                   />
                 )}
                 {/* @ai-end */}
-                <Text style={styles.optionText}>Copy</Text>
+                <Text style={styles.optionText}>
+                  {t('common:actions.copy')}
+                </Text>
               </Pressable>
               <View style={styles.divider} />
               <Pressable
@@ -1138,7 +1187,9 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                 ]}
                 onPress={handleShare}>
                 <ShareIcon size={moderateScale(18)} color={theme.colors.text} />
-                <Text style={styles.optionText}>Share</Text>
+                <Text style={styles.optionText}>
+                  {t('common:actions.share')}
+                </Text>
               </Pressable>
             </View>
           </ScrollView>
@@ -1147,6 +1198,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     </ActionSheet>
   );
 };
+// @ai-end
 
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({

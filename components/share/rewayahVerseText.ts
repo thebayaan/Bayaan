@@ -23,6 +23,7 @@
  * slot blank because its words are read with a neighbouring verse), and such
  * a verse must not hold a copy or a preview hostage.
  */
+import i18n from '@/i18n'; // @ai
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {
   getShortLabel,
@@ -92,7 +93,9 @@ export function hasNoOwnText(texts: readonly string[]): boolean {
  * share say this rather than sharing a bare citation.
  */
 export function noOwnTextMessage(rewayah: RewayahId): string {
-  return `In ${getShortLabel(rewayah)}, this selection is read as part of a neighboring verse.`;
+  return i18n.t('sheets:selectionFailure.noOwnText', {
+    rewayah: getShortLabel(rewayah),
+  }); // @ai
 }
 
 /**

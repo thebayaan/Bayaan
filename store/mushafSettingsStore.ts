@@ -2,6 +2,7 @@ import {create} from 'zustand';
 import {persist, createJSONStorage} from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {getReadingThemeById} from '@/constants/readingThemes';
+import {defaultShowEnglishReadingAids} from '@/i18n/language'; // @ai
 import {
   migratePersistedId,
   type RewayahId,
@@ -221,14 +222,14 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
   persist(
     set => ({
       // Default values
-      showTranslation: true,
+      showTranslation: defaultShowEnglishReadingAids, // @ai
       showTransliteration: false,
       showTajweed: false,
       showThemes: false,
       showCommunityReflections: false,
       recitationHideText: false,
       showWBW: false,
-      wbwShowTranslation: true,
+      wbwShowTranslation: defaultShowEnglishReadingAids, // @ai
       wbwShowTransliteration: false,
       arabicFontSize: getActualFontSize(5), // Default: middle of scale
       translationFontSize: getActualFontSize(3),
@@ -255,12 +256,7 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
         set(state => ({showTranslation: !state.showTranslation})),
       toggleTransliteration: () =>
         set(state => ({showTransliteration: !state.showTransliteration})),
-      toggleTajweed: () =>
-        set(state =>
-          state.mushafRenderer === 'qcf_v2'
-            ? state
-            : {showTajweed: !state.showTajweed},
-        ),
+      toggleTajweed: () => set(state => ({showTajweed: !state.showTajweed})), // @ai
       toggleThemes: () => set(state => ({showThemes: !state.showThemes})),
       toggleCommunityReflections: () =>
         set(state => ({
@@ -304,7 +300,10 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
           return {
             mushafRenderer: renderer,
             arabicFontFamily: 'Uthmani',
-            showTajweed: renderer === 'qcf_v2' ? false : state.showTajweed,
+            showTajweed:
+              renderer === 'qcf_v2' && state.mushafRenderer !== renderer
+                ? true
+                : state.showTajweed,
             showRewayahDiffs:
               renderer === 'qcf_v2' ? false : state.showRewayahDiffs,
             uthmaniFont: uthmaniFontForRenderer(renderer),
@@ -459,7 +458,7 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
         }
         if (version < 8) {
           state.showWBW = false;
-          state.wbwShowTranslation = true;
+          state.wbwShowTranslation = defaultShowEnglishReadingAids; // @ai
           state.wbwShowTransliteration = false;
         }
         if (version < 9) {
@@ -521,12 +520,16 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
           state.uthmaniFont = uthmaniFontForRenderer(REWAYAH_FALLBACK_RENDERER);
         }
         // @ai-end
-        if (version < 19) {
-          state.recitationHideText = false;
+        // @ai-start
+        if (version < 19 && state.mushafRenderer === 'qcf_v2') {
+          state.showTajweed = true;
         }
+        // @ai-end
         if (version < 20) {
-          // Follow my recitation is always on now; the toggle is gone.
+          // Recitation follow-along: the mic is always on (the old toggle
+          // is dropped) and hide text starts off.
           delete state.showRecitationTracking;
+          state.recitationHideText = false;
         }
         return state as unknown as MushafSettingsState;
       },

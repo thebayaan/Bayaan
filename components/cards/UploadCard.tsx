@@ -4,6 +4,9 @@ import {useTheme} from '@/hooks/useTheme';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {MicrophoneIcon} from '@/components/Icons';
 import Color from 'color';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+// @ai-end
 
 interface UploadCardProps {
   itemCount: number;
@@ -12,6 +15,7 @@ interface UploadCardProps {
   height?: number;
 }
 
+// @ai-start
 export const UploadCard: React.FC<UploadCardProps> = ({
   itemCount,
   onPress,
@@ -19,6 +23,7 @@ export const UploadCard: React.FC<UploadCardProps> = ({
   height,
 }) => {
   const {theme} = useTheme();
+  const {t} = useTranslation(['home', 'common']);
 
   // Purple color for uploads
   const uploadColor = '#8B5CF6';
@@ -68,11 +73,12 @@ export const UploadCard: React.FC<UploadCardProps> = ({
         <MicrophoneIcon color={uploadColor} size={iconSize} />
       </View>
       <Text style={styles.name} numberOfLines={1}>
-        Uploads
+        {t('common:terms.uploads')}
       </Text>
       <Text style={styles.subtitle} numberOfLines={1}>
-        {itemCount} {itemCount === 1 ? 'recitation' : 'recitations'}
+        {t('cards.recitations', {count: itemCount})}
       </Text>
     </TouchableOpacity>
   );
 };
+// @ai-end

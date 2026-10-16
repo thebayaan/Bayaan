@@ -61,9 +61,74 @@ describe('tasbeehTranslation', () => {
   });
 });
 
+describe('tasbeeh text of the seed rows', () => {
+  function seedRow(id: string): {arabic: string; translation: string | null} {
+    const found = seedAdhkar(adhkarSeed).find(d => d.id === id);
+    if (!found) throw new Error(`row ${id} missing`);
+    return found;
+  }
+
+  it('leaves no empty ( ) in rows 114, 207 and the translation of 218', () => {
+    for (const id of ['114', '207']) {
+      expect({id, text: tasbeehDisplayText(seedRow(id).arabic)}).not.toEqual({
+        id,
+        text: expect.stringMatching(/\(\s*\)/),
+      });
+    }
+    expect(tasbeehTranslation(seedRow('218').translation)).not.toMatch(
+      /\(\s*\)/,
+    );
+  });
+
+  it('leaves no (( or )) in the multi-dhikr rows 31, 114, 145, 160, 162', () => {
+    for (const id of ['31', '114', '145', '160', '162']) {
+      const text = tasbeehDisplayText(seedRow(id).arabic);
+      expect({id, empty: !text}).toEqual({id, empty: false});
+      expect({id, text}).not.toEqual({
+        id,
+        text: expect.stringMatching(/[()[\]]/),
+      });
+    }
+  });
+
+  it('shows no bracket in any picker title or subtitle', () => {
+    for (const {id, arabic, translation} of seedAdhkar(adhkarSeed)) {
+      for (const text of [
+        tasbeehDisplayText(arabic),
+        tasbeehTranslation(translation),
+      ]) {
+        expect({id, text}).not.toEqual({
+          id,
+          text: expect.stringMatching(/[()[\]]/),
+        });
+      }
+    }
+  });
+
+  it('gives the dhikr of a row with a gloss inside it (row 119)', () => {
+    expect(tasbeehTranslation(seedRow('119').translation)).toBe(
+      'How perfect The King, The Holy One is. Lord of the angels and the Rooh.',
+    );
+  });
+});
+
 describe('tasbeeh adhkar', () => {
-  it('picks the 13 repeatable adhkar from the seed', () => {
+  it('skips rows whose count is an instruction, not a dhikr', () => {
+    expect(
+      tasbeehAdhkar([
+        {
+          id: '114',
+          arabic: '((يَنْفُثُ عَنْ يَسَارِهِ)) (ثلاثاً).',
+          translation: null,
+          repeat_count: 3,
+        },
+      ]),
+    ).toEqual([]);
+  });
+
+  it('picks the 17 repeatable adhkar from the seed', () => {
     expect(TASBEEH_ADHKAR.map(d => d.id)).toEqual([
+      '83',
       '86',
       '87',
       '91',
@@ -73,10 +138,13 @@ describe('tasbeeh adhkar', () => {
       '96',
       '97',
       '98',
+      '106',
       '33',
       '41',
       '69',
       '72',
+      '119',
+      '148',
     ]);
     const seedArabic = seedAdhkar(adhkarSeed).find(
       d => d.id === DEFAULT_TASBEEH_DHIKR_ID,
@@ -127,7 +195,7 @@ describe('buildCatalog', () => {
 describe('buildTasbeehEntries', () => {
   it('gives every tasbeeh dhikr today’s count and its target', () => {
     const entries = buildTasbeehEntries(
-      TASBEEH_ADHKAR.slice(0, 3),
+      TASBEEH_ADHKAR.slice(1, 4),
       {'91': 12},
       '2026-10-10',
     );

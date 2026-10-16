@@ -8,9 +8,16 @@ import {PlayIcon, PauseIcon} from '@/components/Icons';
 import {LoadingIndicator} from '@/components/LoadingIndicator';
 import {ReciterImage} from '@/components/ReciterImage';
 import Color from 'color';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+import {getTrackDisplayTitle, getTrackArtistDisplay} from '@/i18n/format';
+import {appLayoutDirection} from '@/utils/rtl';
+// @ai-end
 
+// @ai-start
 function MiniPlayerInner() {
   const {theme} = useTheme();
+  const {t} = useTranslation(['player', 'common']);
   const {play, pause} = usePlayerActions();
   const playbackState = usePlayerStore(state => state.playback.state);
   const queueTracks = usePlayerStore(state => state.queue.tracks);
@@ -52,13 +59,13 @@ function MiniPlayerInner() {
     // a11y — plain View row (not a grouping Pressable) so the play/pause
     // control is INDIVIDUALLY focusable by VoiceOver; the expand action lives
     // on the inner body only.
-    <View style={styles.row}>
+    <View style={[styles.row, appLayoutDirection]}>
       <Pressable
         onPress={handlePress}
         style={styles.body}
         accessibilityRole="button"
-        accessibilityLabel={`${currentTrack.title}, ${currentTrack.artist}`}
-        accessibilityHint="Opens the full player">
+        accessibilityLabel={`${getTrackDisplayTitle(currentTrack)}, ${getTrackArtistDisplay(currentTrack)}`}
+        accessibilityHint={t('a11y.openPlayer')}>
         <ReciterImage
           reciterName={currentTrack.reciterName}
           style={styles.artwork}
@@ -66,7 +73,7 @@ function MiniPlayerInner() {
 
         <View style={styles.trackInfo}>
           <Text style={[styles.title, {color: textColor}]} numberOfLines={1}>
-            {currentTrack.title}
+            {getTrackDisplayTitle(currentTrack)}
           </Text>
           <Text
             style={[
@@ -74,7 +81,7 @@ function MiniPlayerInner() {
               {color: Color(textColor).alpha(0.5).toString()},
             ]}
             numberOfLines={1}>
-            {currentTrack.artist}
+            {getTrackArtistDisplay(currentTrack)}
           </Text>
         </View>
       </Pressable>
@@ -84,7 +91,11 @@ function MiniPlayerInner() {
         style={styles.playButton}
         hitSlop={10}
         accessibilityRole="button"
-        accessibilityLabel={playbackState === 'playing' ? 'Pause' : 'Play'}>
+        accessibilityLabel={t(
+          playbackState === 'playing'
+            ? 'common:actions.pause'
+            : 'common:actions.play',
+        )}>
         {isLoadingNewTrack ? (
           <LoadingIndicator color={textColor} />
         ) : playbackState === 'playing' ? (
@@ -96,9 +107,11 @@ function MiniPlayerInner() {
     </View>
   );
 }
+// @ai-end
 
 export const MiniPlayer: React.FC = React.memo(MiniPlayerInner);
 
+// @ai-start
 const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
@@ -130,10 +143,12 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   title: {
+    textAlign: 'left',
     fontSize: 13,
     fontFamily: 'Manrope-SemiBold',
   },
   subtitle: {
+    textAlign: 'left',
     fontSize: 11,
     fontFamily: 'Manrope-Medium',
   },
@@ -145,3 +160,4 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
 });
+// @ai-end

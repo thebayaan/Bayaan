@@ -9,15 +9,8 @@ import java.util.TimeZone
 enum class AdhkarPeriod { MORNING, EVENING }
 
 enum class BayaanNowMode(val wire: String) {
-  LISTENING("listening"), OCCASION("occasion"), MORNING_ADHKAR("morningAdhkar"),
+  LISTENING("listening"), MORNING_ADHKAR("morningAdhkar"),
   EVENING_ADHKAR("eveningAdhkar"), BEDTIME("bedtime"),
-}
-
-data class UpcomingOccasion(val id: String, val days: Int)
-
-/** Converts a local Gregorian day number (DayMath.dayNumber) to an Umm al-Qura date. */
-fun interface HijriOf {
-  fun at(dayNumber: Long): HijriDate?
 }
 
 data class RecentShelf(val tracks: List<WidgetTrack>, val isSuggestion: Boolean)
@@ -30,54 +23,23 @@ sealed class LibraryShelfState {
 }
 
 /**
- * Phase 3 rules. Mirrors contextRules.ts and ContentLogic.swift. Hours and
- * weekdays are Gregorian whatever calendar the device uses. Relevance scores
- * are iOS only: Android has no Smart Stack.
+ * Phase 3 rules. Mirrors contextRules.ts and ContentLogic.swift. Hours are
+ * Gregorian whatever calendar the device uses. Relevance scores are iOS only:
+ * Android has no Smart Stack.
  */
 object ContentLogic {
-  const val FRIDAY = 6
-  const val JUMUAH_END_HOUR = 18
-  const val NEXT_OCCASION_HORIZON = 400
   val BOUNDARY_HOURS = listOf(0, 4, 11, 12, 15, 18, 20, 21)
   /** Al-Fatihah, Al-Kahf, Ya-Sin, Al-Mulk. */
   val POPULAR_SURAH_IDS = listOf(1, 18, 36, 67)
   const val DOWNLOADS = "downloads"
   const val PLAYLIST_PREFIX = "playlist:"
 
-  private data class Window(val id: String, val month: Int, val from: Int, val to: Int)
-  // Priority order; the Hijri windows do not overlap.
-  private val WINDOWS = listOf(
-    Window("eidFitr", 10, 1, 3), Window("arafah", 12, 9, 9), Window("eidAdha", 12, 10, 13),
-    Window("lastTen", 9, 21, 30), Window("ramadan", 9, 1, 20), Window("dhulHijjah", 12, 1, 8),
-    Window("ashura", 1, 9, 10),
-  )
-
-  private data class Anchor(val id: String, val month: Int, val day: Int)
-  private val ANCHORS = listOf(
-    Anchor("ramadan", 9, 1), Anchor("eidFitr", 10, 1), Anchor("dhulHijjah", 12, 1),
-    Anchor("arafah", 12, 9), Anchor("eidAdha", 12, 10), Anchor("ashura", 1, 10),
-  )
-
   private fun calendar(nowMs: Long, tz: TimeZone): Calendar =
     GregorianCalendar(tz, Locale.US).apply { timeInMillis = nowMs }
 
   fun hour(nowMs: Long, tz: TimeZone): Int = calendar(nowMs, tz).get(Calendar.HOUR_OF_DAY)
 
-  /** Sunday = 1, Friday = 6. */
-  fun weekday(nowMs: Long, tz: TimeZone): Int = calendar(nowMs, tz).get(Calendar.DAY_OF_WEEK)
-
-  fun hijri(nowMs: Long, tz: TimeZone, hijriOf: HijriOf): HijriDate? = hijriOf.at(DayMath.dayNumber(nowMs, tz))
-
   fun adhkarPeriod(hour: Int): AdhkarPeriod = if (hour in 4..11) AdhkarPeriod.MORNING else AdhkarPeriod.EVENING
-
-  fun occasion(hijri: HijriDate?, weekday: Int, hour: Int): String? {
-    val hit = hijri?.let { h -> WINDOWS.firstOrNull { it.month == h.month && h.day in it.from..it.to } }
-    if (hit != null) return hit.id
-    return if (weekday == FRIDAY && hour < JUMUAH_END_HOUR) "jumuah" else null
-  }
-
-  fun occasionAt(nowMs: Long, tz: TimeZone, hijriOf: HijriOf): String? =
-    occasion(hijri(nowMs, tz, hijriOf), weekday(nowMs, tz), hour(nowMs, tz))
 
   /**
    * Whether the snapshot's track is still playing at nowMs (playing, and not past
@@ -98,9 +60,8 @@ object ContentLogic {
   }
 
   /** adhkar and bedtime turn those cards off (RFC-021); their hours fall back to listening. */
-  fun mode(hour: Int, isPlaying: Boolean, occasion: String?, adhkar: Boolean = true, bedtime: Boolean = true): BayaanNowMode = when {
+  fun mode(hour: Int, isPlaying: Boolean, adhkar: Boolean = true, bedtime: Boolean = true): BayaanNowMode = when {
     isPlaying -> BayaanNowMode.LISTENING
-    occasion != null -> BayaanNowMode.OCCASION
     adhkar && hour in 4..10 -> BayaanNowMode.MORNING_ADHKAR
     adhkar && hour in 15..19 -> BayaanNowMode.EVENING_ADHKAR
     bedtime && (hour >= 21 || hour < 4) -> BayaanNowMode.BEDTIME
@@ -120,20 +81,6 @@ object ContentLogic {
     c.set(Calendar.MILLISECOND, 0)
     if (next >= 1440) c.add(Calendar.DAY_OF_MONTH, 1) else c.set(Calendar.HOUR_OF_DAY, next / 60)
     return c.timeInMillis
-  }
-
-  /** Scans forward day by day; stops early when the converter returns null. */
-  fun nextOccasions(today: Long, count: Int, hijriOf: HijriOf, horizon: Int = NEXT_OCCASION_HORIZON): List<UpcomingOccasion> {
-    val found = mutableListOf<UpcomingOccasion>()
-    var d = 1
-    while (d <= horizon && found.size < count) {
-      val h = hijriOf.at(today + d) ?: break
-      for (a in ANCHORS) {
-        if (a.month == h.month && a.day == h.day && found.none { it.id == a.id }) found.add(UpcomingOccasion(a.id, d))
-      }
-      d++
-    }
-    return found.take(count)
   }
 
   fun sleepActive(endsAt: Long?, nowMs: Long): Boolean = endsAt != null && endsAt > nowMs
@@ -156,11 +103,6 @@ object ContentLogic {
     val list = content?.spotlight?.takeIf { it.isNotEmpty() } ?: return null
     return list.getOrNull(DayMath.ayahIndex(nowMs, tz, list.size))
   }
-
-  fun hijriLine(h: HijriDate, months: List<HijriMonthName>): String =
-    "${h.day} ${months.firstOrNull { it.number == h.month }?.name ?: h.month.toString()} ${h.year}"
-
-  fun daysLabel(days: Int): String = if (days == 1) "Tomorrow" else "in $days days"
 
   fun surahCount(n: Int): String = if (n == 1) "1 surah" else "$n surahs"
 

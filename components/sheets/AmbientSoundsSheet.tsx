@@ -15,6 +15,9 @@ import {
   AMBIENT_SOUND_LIST,
   AMBIENT_SOUNDS,
 } from '@/types/ambient';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+// @ai-end
 
 /**
  * AmbientSoundsSheet
@@ -23,9 +26,11 @@ import {
  * Displays a 2-column grid of sound cards with "None" as the first option,
  * plus a volume slider at the bottom.
  */
+// @ai-start
 export const AmbientSoundsSheet = (props: SheetProps<'ambient-sounds'>) => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
+  const {t} = useTranslation('sheets');
 
   const currentSound = useAmbientStore(s => s.currentSound);
   const isEnabled = useAmbientStore(s => s.isEnabled);
@@ -77,7 +82,7 @@ export const AmbientSoundsSheet = (props: SheetProps<'ambient-sounds'>) => {
       gestureEnabled={true}
       onBeforeClose={handleBeforeClose}>
       <View style={styles.headerContainer}>
-        <Text style={styles.headerTitle}>Ambient Sounds</Text>
+        <Text style={styles.headerTitle}>{t('ambient.title')}</Text>
       </View>
       <View style={styles.container}>
         {/* Sound Grid */}
@@ -95,13 +100,16 @@ export const AmbientSoundsSheet = (props: SheetProps<'ambient-sounds'>) => {
                 styles.soundLabel,
                 isNoneSelected && styles.soundLabelSelected,
               ]}>
-              None
+              {t('ambient.none')}
             </Text>
           </Pressable>
 
           {/* Sound options */}
           {AMBIENT_SOUND_LIST.map(soundType => {
             const meta = AMBIENT_SOUNDS[soundType];
+            const label = t(`ambient.sounds.${soundType}`, {
+              defaultValue: meta.label,
+            });
             const isSelected = currentSound === soundType && isEnabled;
             return (
               <Pressable
@@ -117,7 +125,7 @@ export const AmbientSoundsSheet = (props: SheetProps<'ambient-sounds'>) => {
                     styles.soundLabel,
                     isSelected && styles.soundLabelSelected,
                   ]}>
-                  {meta.label}
+                  {label}
                 </Text>
               </Pressable>
             );
@@ -128,9 +136,9 @@ export const AmbientSoundsSheet = (props: SheetProps<'ambient-sounds'>) => {
         {isEnabled && (
           <View style={styles.volumeSection}>
             <View style={styles.volumeHeader}>
-              <Text style={styles.volumeLabel}>Volume</Text>
+              <Text style={styles.volumeLabel}>{t('ambient.volume')}</Text>
               <Text style={styles.volumeValue}>
-                {Math.round(volume * 100)}%
+                {t('percent', {value: Math.round(volume * 100)})}
               </Text>
             </View>
             <Slider
@@ -152,6 +160,7 @@ export const AmbientSoundsSheet = (props: SheetProps<'ambient-sounds'>) => {
     </ActionSheet>
   );
 };
+// @ai-end
 
 const ICON_SIZE = moderateScale(34);
 
