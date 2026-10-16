@@ -519,26 +519,22 @@ const TextWeightControl: React.FC<TextWeightControlProps> = ({
   </View>
 );
 
-interface RecitationTrackingControlProps {
+interface RecitationModelControlProps {
   styles: ReturnType<typeof createStyles>;
   theme: Theme;
-  trackColor: {false: string; true: string};
 }
 
-// Follow my recitation: the mic toggle plus the downloaded model's state.
-const RecitationTrackingControl: React.FC<RecitationTrackingControlProps> = ({
+// Follow my recitation is always on; this only shows the downloaded model's
+// state so it can be removed to free space.
+const RecitationModelControl: React.FC<RecitationModelControlProps> = ({
   styles,
   theme,
-  trackColor,
 }) => {
-  const enabled = useMushafSettingsStore(s => s.showRecitationTracking);
-  const toggle = useMushafSettingsStore(s => s.toggleRecitationTracking);
   const status = useRecitationTrackingStore(s => s.status);
   const progress = useRecitationTrackingStore(s => s.downloadProgress);
   const [downloaded, setDownloaded] = useState<boolean | null>(null);
 
   useEffect(() => {
-    if (!enabled) return;
     let cancelled = false;
     recitationModelNeedsDownload().then(needs => {
       if (!cancelled) setDownloaded(!needs);
@@ -546,7 +542,7 @@ const RecitationTrackingControl: React.FC<RecitationTrackingControlProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [enabled, status]);
+  }, [status]);
 
   function confirmRemove(): void {
     Alert.alert(
@@ -575,48 +571,31 @@ const RecitationTrackingControl: React.FC<RecitationTrackingControlProps> = ({
   return (
     <View style={styles.card}>
       <View style={styles.optionRow}>
-        <Text style={styles.optionLabel}>Follow my recitation</Text>
-        <Switch
-          trackColor={trackColor}
-          thumbColor="#FFFFFF"
-          ios_backgroundColor={trackColor.false}
-          onValueChange={toggle}
-          value={enabled}
-          style={styles.switchStyle}
-        />
+        <Text style={styles.optionLabel}>Recognition model</Text>
+        <View style={styles.recitationModelState}>
+          {status === 'downloading' && (
+            <ActivityIndicator size="small" color={theme.colors.text} />
+          )}
+          <Text style={styles.recitationModelLabel}>{modelLabel}</Text>
+          {downloaded && status !== 'downloading' && (
+            <Pressable
+              onPress={confirmRemove}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Remove recognition model">
+              <Feather
+                name="minus-circle"
+                size={moderateScale(18)}
+                color={Color(theme.colors.text).alpha(0.6).toString()}
+              />
+            </Pressable>
+          )}
+        </View>
       </View>
       <Text style={styles.helperText}>
-        Adds a mic to the mushaf bar. Recite and the page follows you, word by
-        word. Recognition runs on your device; audio never leaves your phone.
-        Hafs only.
+        Used by the mic in the mushaf bar to follow your recitation. Runs on
+        your device; audio never leaves your phone. Hafs only.
       </Text>
-      {enabled && (
-        <>
-          <View style={styles.divider} />
-          <View style={styles.optionRow}>
-            <Text style={styles.optionLabel}>Recognition model</Text>
-            <View style={styles.recitationModelState}>
-              {status === 'downloading' && (
-                <ActivityIndicator size="small" color={theme.colors.text} />
-              )}
-              <Text style={styles.recitationModelLabel}>{modelLabel}</Text>
-              {downloaded && status !== 'downloading' && (
-                <Pressable
-                  onPress={confirmRemove}
-                  hitSlop={8}
-                  accessibilityRole="button"
-                  accessibilityLabel="Remove recognition model">
-                  <Feather
-                    name="minus-circle"
-                    size={moderateScale(18)}
-                    color={Color(theme.colors.text).alpha(0.6).toString()}
-                  />
-                </Pressable>
-              )}
-            </View>
-          </View>
-        </>
-      )}
     </View>
   );
 };
@@ -1216,11 +1195,7 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
       {context !== 'player' && (
         <>
           <Text style={styles.sectionHeader}>RECITATION</Text>
-          <RecitationTrackingControl
-            styles={styles}
-            theme={theme}
-            trackColor={trackColor}
-          />
+          <RecitationModelControl styles={styles} theme={theme} />
         </>
       )}
 

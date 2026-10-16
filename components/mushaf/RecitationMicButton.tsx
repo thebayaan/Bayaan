@@ -87,9 +87,7 @@ export interface RecitationMic {
 export function useRecitationMic(currentPage: number): RecitationMic {
   // Tilawa recognises Hafs recitation and reports Hafs words, so the mic
   // only shows over Hafs text.
-  const enabled = useMushafSettingsStore(
-    s => s.showRecitationTracking && s.rewayah === 'hafs',
-  );
+  const enabled = useMushafSettingsStore(s => s.rewayah === 'hafs');
   const status = useRecitationTrackingStore(s => s.status);
   const progress = useRecitationTrackingStore(s => s.downloadProgress);
   const error = useRecitationTrackingStore(s => s.error);

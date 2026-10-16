@@ -118,9 +118,6 @@ interface MushafSettingsState {
   // default off. The toggle row only renders when a fork supplies
   // `branding.communityReflectionsProvider`; inert for Bayaan.
   showCommunityReflections: boolean;
-  // Mic button in the mushaf bar that follows the reader's own recitation
-  // (on-device Tilawa model). Opt-in, default off.
-  showRecitationTracking: boolean;
   // Memorisation: while following the reader's recitation, ghost the page
   // text and reveal words as they are recited.
   recitationHideText: boolean;
@@ -184,7 +181,6 @@ interface MushafSettingsState {
   toggleTajweed: () => void;
   toggleThemes: () => void;
   toggleCommunityReflections: () => void;
-  toggleRecitationTracking: () => void;
   toggleRecitationHideText: () => void;
   toggleWBW: () => void;
   toggleWBWTranslation: () => void;
@@ -230,7 +226,6 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
       showTajweed: false,
       showThemes: false,
       showCommunityReflections: false,
-      showRecitationTracking: false,
       recitationHideText: false,
       showWBW: false,
       wbwShowTranslation: true,
@@ -270,10 +265,6 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
       toggleCommunityReflections: () =>
         set(state => ({
           showCommunityReflections: !state.showCommunityReflections,
-        })),
-      toggleRecitationTracking: () =>
-        set(state => ({
-          showRecitationTracking: !state.showRecitationTracking,
         })),
       toggleRecitationHideText: () =>
         set(state => ({recitationHideText: !state.recitationHideText})),
@@ -417,7 +408,7 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
     {
       name: 'mushaf-settings',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 19, // @ai
+      version: 20, // @ai
       // @ai-start
       // A startup fallback lasts one session: persist the reader's saved
       // rewayah rather than the Hafs shown in its place, and never the
@@ -531,9 +522,11 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
         }
         // @ai-end
         if (version < 19) {
-          // Recitation follow-along, opt-in, default off.
-          state.showRecitationTracking = false;
           state.recitationHideText = false;
+        }
+        if (version < 20) {
+          // Follow my recitation is always on now; the toggle is gone.
+          delete state.showRecitationTracking;
         }
         return state as unknown as MushafSettingsState;
       },
