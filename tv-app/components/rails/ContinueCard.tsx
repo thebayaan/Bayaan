@@ -71,6 +71,7 @@ const styles = createScaledStyles({
   card: {
     width: 320,
     height: 200,
+    borderRadius: 14,
     backgroundColor: colors.surface,
     overflow: 'hidden',
   },
@@ -103,7 +104,7 @@ const styles = createScaledStyles({
   track: {
     marginTop: 12,
     height: 6,
-    backgroundColor: 'rgba(255,255,255,0.25)',
+    backgroundColor: 'rgba(244,243,236,0.25)',
     borderRadius: 3,
     overflow: 'hidden',
   },

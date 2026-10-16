@@ -3,6 +3,7 @@ import {Image} from 'expo-image';
 import {StyleSheet, Text, View} from 'react-native';
 import Svg, {Defs, LinearGradient, Rect, Stop} from 'react-native-svg';
 import {FocusableCard} from '../primitives/FocusableCard';
+import {FocusText, useButtonFocused} from '../primitives/focusContext';
 import {colors} from '../../theme/colors';
 import type {Reciter} from '../../types/reciter';
 import {createScaledStyles} from '../../theme/scale';
@@ -84,12 +85,20 @@ export function FeaturedBanner({
           </Text>
         ) : null}
         <View style={styles.ctaRow}>
-          <View style={styles.cta}>
-            <Text style={styles.ctaText}>Explore</Text>
-          </View>
+          <ExploreButton />
         </View>
       </View>
     </FocusableCard>
+  );
+}
+
+/** Hairline pill at rest; cream with ink text while the banner is focused. */
+function ExploreButton(): React.ReactElement {
+  const focused = useButtonFocused();
+  return (
+    <View style={[styles.cta, focused && styles.ctaFocused]}>
+      <FocusText style={styles.ctaText}>Explore</FocusText>
+    </View>
   );
 }
 
@@ -120,7 +129,7 @@ const styles = createScaledStyles({
     top: 40,
     width: 240,
     height: 240,
-    borderRadius: 16,
+    borderRadius: 120,
   },
   inner: {
     position: 'absolute',
@@ -133,11 +142,10 @@ const styles = createScaledStyles({
     maxWidth: '55%',
   },
   kicker: {
-    color: colors.text,
+    color: colors.accent,
     fontSize: 13,
     fontWeight: '800',
     letterSpacing: 2.4,
-    opacity: 0.8,
   },
   title: {
     color: colors.text,
@@ -155,15 +163,18 @@ const styles = createScaledStyles({
   },
   ctaRow: {flexDirection: 'row', marginTop: 18},
   cta: {
-    paddingHorizontal: 22,
+    paddingHorizontal: 26,
     paddingVertical: 12,
-    backgroundColor: colors.text,
-    borderRadius: 24,
+    borderWidth: 2,
+    borderColor: colors.outline,
+    borderRadius: 999,
+  },
+  ctaFocused: {
+    backgroundColor: colors.focusFill,
+    borderColor: colors.focusFill,
   },
   ctaText: {
-    color: colors.background,
-    fontSize: 15,
-    fontWeight: '800',
-    letterSpacing: 0.2,
+    fontSize: 17,
+    fontWeight: '700',
   },
 });

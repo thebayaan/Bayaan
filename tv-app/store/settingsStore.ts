@@ -6,9 +6,14 @@ import type {Reciter} from '../types/reciter';
 // with the screens that still read through that hook.
 const DEFAULT_RECITER_KEY = 'bayaan_tv_default_reciter_id';
 
+/** The picker open beside the Settings rows, if any. */
+export type SettingsPicker = 'reciter' | 'translation' | 'textSize';
+
 type SettingsState = {
   defaultReciterId: string | null;
   setDefaultReciterId: (id: string | null) => void;
+  picker: SettingsPicker | null;
+  setPicker: (picker: SettingsPicker | null) => void;
 };
 
 export function readPersistedDefaultReciterId(): string | null {
@@ -25,6 +30,8 @@ export const useSettingsStore = create<SettingsState>(set => ({
     }
     set({defaultReciterId: id});
   },
+  picker: null,
+  setPicker: picker => set({picker}),
 }));
 
 // Reflect external MMKV writes (e.g. the Onboarding screen still sets the

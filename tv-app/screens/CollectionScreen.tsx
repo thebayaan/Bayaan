@@ -1,9 +1,13 @@
-import React, {useMemo, useState} from 'react';
+import React, {useMemo} from 'react';
 import {ScrollView, Text, TVFocusGuideView, View} from 'react-native';
 import {FocusableButton} from '../components/primitives/FocusableButton';
+import {FocusText} from '../components/primitives/focusContext';
+import {Rail} from '../components/rails/Rail';
 import {ReciterCard} from '../components/rails/ReciterCard';
-import {ContinueCard} from '../components/rails/ContinueCard';
-import {HeartIcon} from '../../components/Icons';
+import {
+  ResumeHero,
+  SurahProgressCard,
+} from '../components/library/LibraryCards';
 import {useReciters} from '../hooks/useReciters';
 import {useFavorites} from '../hooks/useFavorites';
 import {useContinueListening} from '../hooks/useContinueListening';
@@ -17,18 +21,19 @@ import SURAHS from '../../data/surahData.json';
 import {colors} from '../theme/colors';
 import {spacing} from '../theme/spacing';
 import {fonts, typography} from '../theme/typography';
-import {createScaledStyles, scale} from '../theme/scale';
-
-type TabKey = 'favorites' | 'continue' | 'recent';
+import {createScaledStyles} from '../theme/scale';
 
 type SurahMeta = {id: number; name: string};
 
-type TabDef = {
-  key: TabKey;
-  label: string;
-  count: number;
-};
+function plural(count: number, one: string, many: string): string {
+  return `${count} ${count === 1 ? one : many}`;
+}
 
+/**
+ * The Library: one page, no tabs. The surah you were last listening to leads,
+ * large, with the rest of your unfinished surahs under it, then the reciters
+ * you saved and the ones you played recently.
+ */
 export function CollectionScreen(): React.ReactElement {
   const favorites = useFavorites();
   const continueEntries = useContinueListening();
@@ -37,7 +42,6 @@ export function CollectionScreen(): React.ReactElement {
   const {playRewayah} = usePlayer();
   const push = useNavStore(s => s.push);
   const switchTab = useNavStore(s => s.switchTab);
-  const [tab, setTab] = useState<TabKey>('favorites');
 
   const reciterById = useMemo(() => {
     const map = new Map<string, Reciter>();
@@ -45,11 +49,8 @@ export function CollectionScreen(): React.ReactElement {
     return map;
   }, [reciters]);
 
-  const surahByNumber = useMemo(() => {
-    const map = new Map<number, string>();
-    (SURAHS as SurahMeta[]).forEach(s => map.set(s.id, s.name));
-    return map;
-  }, []);
+  const surahName = (n: number): string =>
+    (SURAHS as SurahMeta[]).find(s => s.id === n)?.name ?? `Surah ${n}`;
 
   const favoriteReciters = useMemo(
     () =>
@@ -67,13 +68,12 @@ export function CollectionScreen(): React.ReactElement {
     [recent, reciterById],
   );
 
-  const tabs: TabDef[] = [
-    {key: 'favorites', label: 'Favorites', count: favoriteReciters.length},
-    {key: 'continue', label: 'Continue', count: continueEntries.length},
-    {key: 'recent', label: 'Recently Played', count: recentReciters.length},
-  ];
+  const inProgress = useMemo(
+    () => continueEntries.filter(e => reciterById.has(e.reciterId)),
+    [continueEntries, reciterById],
+  );
 
-  async function handleContinueSelect(entry: ContinueEntry): Promise<void> {
+  async function resume(entry: ContinueEntry): Promise<void> {
     const reciter = reciterById.get(entry.reciterId);
     if (!reciter) return;
     const rewayat = await fetchRewayat(entry.reciterId);
@@ -83,303 +83,197 @@ export function CollectionScreen(): React.ReactElement {
     push({screen: 'nowPlaying'});
   }
 
-  function renderFavorites(): React.ReactElement {
-    if (favoriteReciters.length === 0) {
-      return (
-        <EmptyState
-          icon={<HeartIcon color={colors.text} size={scale(64)} />}
-          title="Nothing saved yet"
-          sub="Open a reciter and tap Favorite to pin them here."
-          cta={{
-            label: 'Browse reciters',
-            onPress: () => switchTab('reciters'),
-          }}
-        />
-      );
-    }
+  const openReciter = (r: Reciter) =>
+    push({screen: 'reciterDetail', reciterId: r.id});
+
+  const empty =
+    inProgress.length === 0 &&
+    favoriteReciters.length === 0 &&
+    recentReciters.length === 0;
+
+  if (empty) {
     return (
-      <ScrollView
-        contentContainerStyle={styles.grid}
-        showsVerticalScrollIndicator={false}>
-        {favoriteReciters.map((r, i) => (
-          <View key={r.id} style={styles.cell}>
-            <ReciterCard
-              reciter={r}
-              onSelect={() => push({screen: 'reciterDetail', reciterId: r.id})}
-              hasTVPreferredFocus={i === 0}
-            />
-          </View>
-        ))}
-      </ScrollView>
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.pageTitle}>Library</Text>
+        </View>
+        <View style={styles.empty}>
+          <Text style={styles.emptyTitle}>Your listening lives here</Text>
+          <Text style={styles.emptySub}>
+            Surahs you start, reciters you favorite and the ones you play will
+            gather on this page so you can return to them in one press.
+          </Text>
+          <FocusableButton
+            onPress={() => switchTab('reciters')}
+            accessibilityLabel="Browse reciters"
+            hasTVPreferredFocus
+            outlined
+            style={styles.emptyCta}>
+            <FocusText style={styles.emptyCtaText}>Browse reciters</FocusText>
+          </FocusableButton>
+        </View>
+      </View>
     );
   }
 
-  function renderContinue(): React.ReactElement {
-    if (continueEntries.length === 0) {
-      return (
-        <EmptyState
-          title="No listening history"
-          sub="Surahs you've started will show up here so you can pick up where you left off."
-          cta={{
-            label: 'Browse reciters',
-            onPress: () => switchTab('reciters'),
-          }}
-        />
-      );
-    }
-    return (
-      <ScrollView
-        contentContainerStyle={styles.grid}
-        showsVerticalScrollIndicator={false}>
-        {continueEntries.map((e, i) => (
-          <View key={`${e.reciterId}:${e.surahNumber}`} style={styles.cell}>
-            <ContinueCard
-              entry={e}
-              reciter={reciterById.get(e.reciterId) ?? null}
-              surahName={
-                surahByNumber.get(e.surahNumber) ?? `Surah ${e.surahNumber}`
-              }
-              onSelect={handleContinueSelect}
-              hasTVPreferredFocus={i === 0}
-            />
-          </View>
-        ))}
-      </ScrollView>
-    );
-  }
-
-  function renderRecent(): React.ReactElement {
-    if (recentReciters.length === 0) {
-      return (
-        <EmptyState
-          title="Nothing played yet"
-          sub="Reciters you've played will appear here for quick return."
-          cta={{
-            label: 'Browse reciters',
-            onPress: () => switchTab('reciters'),
-          }}
-        />
-      );
-    }
-    return (
-      <ScrollView
-        contentContainerStyle={styles.grid}
-        showsVerticalScrollIndicator={false}>
-        {recentReciters.map((r, i) => (
-          <View key={r.id} style={styles.cell}>
-            <ReciterCard
-              reciter={r}
-              onSelect={() => push({screen: 'reciterDetail', reciterId: r.id})}
-              hasTVPreferredFocus={i === 0}
-            />
-          </View>
-        ))}
-      </ScrollView>
-    );
-  }
-
-  const total =
-    favoriteReciters.length + continueEntries.length + recentReciters.length;
+  const [lead, ...rest] = inProgress;
+  const summary = [
+    inProgress.length > 0 &&
+      plural(inProgress.length, 'surah in progress', 'surahs in progress'),
+    favoriteReciters.length > 0 &&
+      plural(favoriteReciters.length, 'favorite', 'favorites'),
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.kicker}>SAVED</Text>
-        <Text style={styles.pageTitle}>Library</Text>
-        {total > 0 ? (
-          <Text style={styles.sub}>
-            {total} {total === 1 ? 'item' : 'items'} saved
-          </Text>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}>
+        <View style={styles.header}>
+          <Text style={styles.pageTitle}>Library</Text>
+          {summary ? <Text style={styles.summary}>{summary}</Text> : null}
+        </View>
+
+        {lead ? (
+          <TVFocusGuideView autoFocus style={styles.heroWrap}>
+            <ResumeHero
+              entry={lead}
+              surahName={surahName(lead.surahNumber)}
+              reciterName={reciterById.get(lead.reciterId)?.name ?? ''}
+              onSelect={resume}
+              hasTVPreferredFocus
+            />
+          </TVFocusGuideView>
         ) : null}
-      </View>
-      <TVFocusGuideView autoFocus style={styles.tabRow}>
-        {tabs.map(t => {
-          const active = tab === t.key;
-          return (
-            <FocusableButton
-              key={t.key}
-              onPress={() => setTab(t.key)}
-              accessibilityLabel={t.label}
-              style={[styles.tab, active && styles.tabActive]}>
-              <View style={styles.tabInner}>
-                <Text style={[styles.tabText, active && styles.tabTextActive]}>
-                  {t.label}
-                </Text>
-                {t.count > 0 ? (
-                  <View
-                    style={[
-                      styles.countPill,
-                      active && styles.countPillActive,
-                    ]}>
-                    <Text
-                      style={[
-                        styles.countText,
-                        active && styles.countTextActive,
-                      ]}>
-                      {t.count}
-                    </Text>
-                  </View>
-                ) : null}
-              </View>
-            </FocusableButton>
-          );
-        })}
-      </TVFocusGuideView>
-      <TVFocusGuideView autoFocus style={styles.content}>
-        {tab === 'favorites' ? renderFavorites() : null}
-        {tab === 'continue' ? renderContinue() : null}
-        {tab === 'recent' ? renderRecent() : null}
-      </TVFocusGuideView>
-    </View>
-  );
-}
 
-type EmptyStateProps = {
-  title: string;
-  sub: string;
-  icon?: React.ReactNode;
-  cta?: {label: string; onPress: () => void};
-};
+        <View style={styles.rails}>
+          {rest.length > 0 ? (
+            <Rail title="Also in progress">
+              {rest.map(e => (
+                <SurahProgressCard
+                  key={`${e.reciterId}:${e.surahNumber}`}
+                  entry={e}
+                  surahName={surahName(e.surahNumber)}
+                  reciterName={reciterById.get(e.reciterId)?.name ?? ''}
+                  onSelect={resume}
+                />
+              ))}
+            </Rail>
+          ) : null}
 
-function EmptyState({
-  title,
-  sub,
-  icon,
-  cta,
-}: EmptyStateProps): React.ReactElement {
-  return (
-    <View style={styles.center}>
-      {icon ? <View style={styles.iconHalo}>{icon}</View> : null}
-      <Text style={styles.emptyTitle}>{title}</Text>
-      <Text style={styles.emptySub}>{sub}</Text>
-      {cta ? (
-        <FocusableButton
-          onPress={cta.onPress}
-          accessibilityLabel={cta.label}
-          style={styles.emptyCta}>
-          <Text style={styles.emptyCtaText}>{cta.label}</Text>
-        </FocusableButton>
-      ) : null}
+          {favoriteReciters.length > 0 ? (
+            <Rail title="Your reciters">
+              {favoriteReciters.map((r, i) => (
+                <ReciterCard
+                  key={r.id}
+                  reciter={r}
+                  onSelect={openReciter}
+                  hasTVPreferredFocus={!lead && i === 0}
+                />
+              ))}
+            </Rail>
+          ) : (
+            <View style={styles.hint}>
+              <Text style={styles.hintTitle}>Your reciters</Text>
+              <Text style={styles.hintText}>
+                Open a reciter and choose Favorite to keep them here.
+              </Text>
+            </View>
+          )}
+
+          {recentReciters.length > 0 ? (
+            <Rail title="Recently played">
+              {recentReciters.map((r, i) => (
+                <ReciterCard
+                  key={r.id}
+                  reciter={r}
+                  onSelect={openReciter}
+                  hasTVPreferredFocus={
+                    !lead && favoriteReciters.length === 0 && i === 0
+                  }
+                />
+              ))}
+            </Rail>
+          ) : null}
+        </View>
+      </ScrollView>
     </View>
   );
 }
 
 const styles = createScaledStyles({
   container: {flex: 1, backgroundColor: colors.background},
-  content: {flex: 1},
-  header: {paddingHorizontal: spacing.xl, paddingTop: spacing.xl, gap: 6},
-  kicker: {
-    color: colors.text,
-    ...typography.label,
-    opacity: 0.55,
+  scroll: {paddingBottom: spacing.xxl},
+  header: {
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.xl,
+    gap: 8,
+    marginBottom: spacing.md,
   },
   pageTitle: {
     color: colors.text,
     ...typography.title,
     letterSpacing: -0.5,
   },
-  sub: {
+  summary: {
     color: colors.textSecondary,
     fontFamily: fonts.medium,
-    fontSize: 18,
     fontWeight: '500',
-    opacity: 0.75,
-    marginTop: 2,
+    fontSize: 20,
   },
-  tabRow: {
-    flexDirection: 'row',
-    gap: 10,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-  },
-  tab: {
-    paddingHorizontal: 18,
+  // Inset so the hero's focus ring has room on every side.
+  heroWrap: {
+    paddingHorizontal: spacing.xl - 10,
     paddingVertical: 10,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    marginBottom: spacing.lg,
   },
-  tabActive: {backgroundColor: colors.text},
-  tabInner: {flexDirection: 'row', alignItems: 'center', gap: 8},
-  tabText: {
+  rails: {paddingLeft: spacing.xl - 16},
+  hint: {paddingLeft: 16, marginBottom: spacing.lg, gap: 8},
+  hintTitle: {
     color: colors.text,
-    fontFamily: fonts.bold,
-    fontSize: 18,
+    fontSize: 24,
     fontWeight: '700',
-    letterSpacing: -0.1,
+    letterSpacing: -0.3,
+    marginTop: 8,
   },
-  tabTextActive: {color: colors.background},
-  countPill: {
-    paddingHorizontal: 9,
-    minWidth: 26,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    alignItems: 'center',
-    justifyContent: 'center',
+  hintText: {
+    color: colors.textSecondary,
+    fontFamily: fonts.medium,
+    fontWeight: '500',
+    fontSize: 18,
   },
-  countPillActive: {backgroundColor: 'rgba(0,0,0,0.14)'},
-  countText: {
-    color: colors.text,
-    fontFamily: fonts.extraBold,
-    fontSize: 13,
-    fontWeight: '800',
-    letterSpacing: 0.2,
-  },
-  countTextActive: {color: colors.background},
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: spacing.xl - 8,
-    paddingTop: 8,
-    paddingBottom: spacing.xxl,
-  },
-  // Per-cell padding doubles as the breathing room a focused card needs to
-  // scale (1.05) + show its glow without clipping against neighbors or edges.
-  cell: {padding: 12},
-  center: {
+  empty: {
     flex: 1,
-    alignItems: 'center',
     justifyContent: 'center',
-    padding: spacing.xl,
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.xxl,
     gap: spacing.md,
-  },
-  iconHalo: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.sm,
   },
   emptyTitle: {
     color: colors.text,
     fontFamily: fonts.bold,
-    fontSize: 34,
+    fontSize: 44,
     fontWeight: '700',
-    letterSpacing: -0.3,
-    textAlign: 'center',
+    letterSpacing: -0.8,
   },
   emptySub: {
     color: colors.textSecondary,
     ...typography.body,
-    textAlign: 'center',
-    maxWidth: 640,
-    lineHeight: 30,
-    opacity: 0.75,
+    maxWidth: 760,
+    lineHeight: 32,
   },
   emptyCta: {
+    alignSelf: 'flex-start',
     marginTop: spacing.sm,
     paddingHorizontal: 30,
-    paddingVertical: 16,
-    borderRadius: 28,
-    backgroundColor: colors.text,
+    paddingVertical: 14,
+    borderRadius: 999,
   },
   emptyCtaText: {
-    color: colors.background,
-    fontFamily: fonts.extraBold,
-    fontSize: 18,
-    fontWeight: '800',
-    letterSpacing: 0.3,
+    fontFamily: fonts.bold,
+    fontSize: 20,
+    fontWeight: '700',
   },
 });

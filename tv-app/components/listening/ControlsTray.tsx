@@ -1,6 +1,7 @@
 import React from 'react';
 import {Text, TVFocusGuideView, View} from 'react-native';
 import {FocusableButton} from '../primitives/FocusableButton';
+import {FocusIcon, FocusText} from '../primitives/focusContext';
 import {ProgressLine} from './ProgressLine';
 import {useTVPlayerStore} from '../../store/tvPlayerStore';
 import {
@@ -13,7 +14,7 @@ import {onScreenLabel, useDisplayStore} from '../../store/displayStore';
 import {formatSpeed} from './ListeningPanels';
 import {colors} from '../../theme/colors';
 import {fonts} from '../../theme/typography';
-import {createScaledStyles, scale} from '../../theme/scale';
+import {createScaledStyles} from '../../theme/scale';
 import {
   NextIcon,
   PauseIcon,
@@ -91,24 +92,21 @@ export function ControlsTray({
             onPress={press(() => onStep(-1))}
             accessibilityLabel={synced ? 'Previous verse' : 'Back 15 seconds'}
             style={styles.round}>
-            <PreviousIcon color={colors.text} size={scale(30)} />
+            <FocusIcon icon={PreviousIcon} size={30} />
           </FocusableButton>
           <FocusableButton
             onPress={press(toggle)}
             accessibilityLabel={isPlaying ? 'Pause' : 'Play'}
             hasTVPreferredFocus
+            outlined
             style={[styles.round, styles.roundBig]}>
-            {isPlaying ? (
-              <PauseIcon color={colors.accentInk} size={scale(40)} />
-            ) : (
-              <PlayIcon color={colors.accentInk} size={scale(40)} />
-            )}
+            <FocusIcon icon={isPlaying ? PauseIcon : PlayIcon} size={40} />
           </FocusableButton>
           <FocusableButton
             onPress={press(() => onStep(1))}
             accessibilityLabel={synced ? 'Next verse' : 'Forward 15 seconds'}
             style={styles.round}>
-            <NextIcon color={colors.text} size={scale(30)} />
+            <FocusIcon icon={NextIcon} size={30} />
           </FocusableButton>
         </View>
         <View style={styles.tools}>
@@ -164,9 +162,18 @@ function Tool({
     <FocusableButton
       onPress={onPress}
       accessibilityLabel={`${label}: ${value}`}
-      style={[styles.tool, (on || active) && styles.toolOn]}>
-      <Text style={styles.toolLabel}>{label}</Text>
-      <Text style={[styles.toolValue, on && styles.toolValueOn]}>{value}</Text>
+      style={[styles.tool, active && styles.toolActive]}>
+      <FocusText
+        style={styles.toolLabel}
+        color={colors.textSecondary}
+        focusedColor={colors.onFocusSecondary}>
+        {label}
+      </FocusText>
+      <FocusText
+        style={styles.toolValue}
+        color={on ? colors.accent : colors.text}>
+        {value}
+      </FocusText>
     </FocusableButton>
   );
 }
@@ -201,7 +208,6 @@ const styles = createScaledStyles({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: 'rgba(244,243,236,0.1)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -209,31 +215,26 @@ const styles = createScaledStyles({
     width: 96,
     height: 96,
     borderRadius: 48,
-    backgroundColor: colors.accent,
   },
   tools: {flexDirection: 'row', gap: 14},
   tool: {
-    minWidth: 170,
-    paddingHorizontal: 22,
+    paddingHorizontal: 26,
     paddingVertical: 12,
-    borderRadius: 16,
-    backgroundColor: 'rgba(244,243,236,0.08)',
+    borderRadius: 999,
     gap: 2,
   },
-  toolOn: {backgroundColor: colors.accentSoft},
+  // Its panel is open beside the tray.
+  toolActive: {backgroundColor: 'rgba(244,243,236,0.1)'},
   toolLabel: {
-    color: colors.textSecondary,
     fontFamily: fonts.semiBold,
     fontWeight: '600',
-    fontSize: 14,
-    letterSpacing: 1,
+    fontSize: 13,
+    letterSpacing: 2,
     textTransform: 'uppercase',
   },
   toolValue: {
-    color: colors.text,
     fontFamily: fonts.bold,
     fontWeight: '700',
     fontSize: 22,
   },
-  toolValueOn: {color: colors.accent},
 });

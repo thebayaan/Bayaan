@@ -15,6 +15,7 @@ import {ListeningPanels} from '../components/listening/ListeningPanels';
 import {ProgressLine} from '../components/listening/ProgressLine';
 import {ErrorBanner} from '../components/player/ErrorBanner';
 import {FocusableButton} from '../components/primitives/FocusableButton';
+import {FocusText} from '../components/primitives/focusContext';
 import {SLEEP_FADE_MS, useTVPlayerStore} from '../store/tvPlayerStore';
 import {useNavStore} from '../store/navStore';
 import {
@@ -262,8 +263,9 @@ export function NowPlayingScreen(): React.ReactElement {
             onPress={resetNav}
             accessibilityLabel="Browse reciters"
             style={styles.emptyCta}
+            outlined
             hasTVPreferredFocus>
-            <Text style={styles.emptyCtaText}>Browse reciters</Text>
+            <FocusText style={styles.emptyCtaText}>Browse reciters</FocusText>
           </FocusableButton>
         </View>
       </View>
@@ -495,15 +497,12 @@ const styles = createScaledStyles({
   emptyCta: {
     paddingHorizontal: 32,
     paddingVertical: 16,
-    borderRadius: 28,
-    backgroundColor: colors.text,
+    borderRadius: 999,
     marginTop: 8,
   },
   emptyCtaText: {
-    color: colors.background,
-    fontFamily: fonts.extraBold,
+    fontFamily: fonts.bold,
     fontSize: 20,
-    fontWeight: '800',
-    letterSpacing: 0.3,
+    fontWeight: '700',
   },
 });

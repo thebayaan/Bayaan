@@ -126,8 +126,9 @@ function SidebarItem({
   onBlur,
   onPress,
 }: ItemProps): React.ReactElement {
+  // Focus is the cream fill with ink; the current place keeps a sky icon.
   const tint = focused
-    ? colors.accentInk
+    ? colors.onFocus
     : active
       ? colors.accent
       : colors.textSecondary;
@@ -275,7 +276,7 @@ const styles = createScaledStyles({
     justifyContent: 'flex-start',
     paddingHorizontal: 18,
   },
-  itemFocused: {backgroundColor: colors.accent},
+  itemFocused: {backgroundColor: colors.focusFill},
   itemLabel: {
     color: colors.textSecondary,
     fontFamily: fonts.semiBold,
@@ -283,7 +284,7 @@ const styles = createScaledStyles({
     fontSize: 20,
   },
   itemLabelActive: {color: colors.text},
-  itemLabelFocused: {color: colors.accentInk},
+  itemLabelFocused: {color: colors.onFocus},
   spacer: {flex: 1},
   nowPlaying: {
     width: 64,

@@ -6,7 +6,10 @@ import {
   TVFocusGuideView,
   View,
 } from 'react-native';
-import {FocusableButton} from '../components/primitives/FocusableButton';
+import {
+  FocusableButton,
+  FocusText,
+} from '../components/primitives/FocusableButton';
 import {Rail} from '../components/rails/Rail';
 import {ReciterCard} from '../components/rails/ReciterCard';
 import {QuickPlayCard} from '../components/rails/QuickPlayCard';
@@ -130,7 +133,7 @@ export function SearchScreen(): React.ReactElement {
                     onPress={() => clearRecentSearches()}
                     accessibilityLabel="Clear recent searches"
                     style={styles.clearBtn}>
-                    <Text style={styles.clearBtnText}>Clear</Text>
+                    <FocusText style={styles.clearBtnText}>Clear</FocusText>
                   </FocusableButton>
                 </View>
                 <View style={styles.recentList}>
@@ -139,17 +142,23 @@ export function SearchScreen(): React.ReactElement {
                       <FocusableButton
                         onPress={() => setQuery(r)}
                         accessibilityLabel={`Search ${r}`}
-                        focusedStyle={styles.recentFillWrap}
+                        containerStyle={styles.recentFillWrap}
                         style={styles.recentFill}>
-                        <Text style={styles.recentFillText} numberOfLines={1}>
+                        <FocusText
+                          style={styles.recentFillText}
+                          numberOfLines={1}>
                           {r}
-                        </Text>
+                        </FocusText>
                       </FocusableButton>
                       <FocusableButton
                         onPress={() => removeRecentSearch(r)}
                         accessibilityLabel={`Remove ${r} from recent searches`}
                         style={styles.recentRemove}>
-                        <Text style={styles.recentRemoveText}>Remove</Text>
+                        <FocusText
+                          style={styles.recentRemoveText}
+                          color={colors.textSecondary}>
+                          Remove
+                        </FocusText>
                       </FocusableButton>
                     </View>
                   ))}
@@ -207,7 +216,7 @@ const styles = createScaledStyles({
     alignItems: 'center',
     gap: 16,
     borderBottomWidth: 2,
-    borderColor: 'rgba(255,255,255,0.15)',
+    borderColor: colors.border,
     paddingVertical: 14,
     marginBottom: spacing.md,
   },
@@ -238,11 +247,9 @@ const styles = createScaledStyles({
   clearBtn: {
     paddingHorizontal: 16,
     paddingVertical: 9,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 999,
   },
   clearBtnText: {
-    color: colors.text,
     fontFamily: fonts.bold,
     fontSize: 16,
     fontWeight: '700',
@@ -258,11 +265,9 @@ const styles = createScaledStyles({
   recentFill: {
     paddingHorizontal: 18,
     paddingVertical: 12,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 14,
   },
   recentFillText: {
-    color: colors.text,
     fontFamily: fonts.semiBold,
     fontSize: 20,
     fontWeight: '600',
@@ -271,11 +276,9 @@ const styles = createScaledStyles({
   recentRemove: {
     paddingHorizontal: 18,
     paddingVertical: 12,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 999,
   },
   recentRemoveText: {
-    color: colors.textSecondary,
     fontFamily: fonts.bold,
     fontSize: 16,
     fontWeight: '700',

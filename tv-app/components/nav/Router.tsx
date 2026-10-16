@@ -4,6 +4,7 @@ import {useNavStore} from '../../store/navStore';
 import {useOverlayStore} from '../../store/overlayStore';
 import {useContextMenuStore} from '../../store/contextMenuStore';
 import {useListeningStore} from '../../store/listeningStore';
+import {useSettingsStore} from '../../store/settingsStore';
 import {useOnboarded} from '../../hooks/useOnboarded';
 import {useReciters} from '../../hooks/useReciters';
 import {HomeScreen} from '../../screens/HomeScreen';
@@ -38,6 +39,10 @@ export function Router(): React.ReactElement {
     }
     if (useListeningStore.getState().panel) {
       useListeningStore.getState().setPanel(null);
+      return true;
+    }
+    if (useSettingsStore.getState().picker) {
+      useSettingsStore.getState().setPicker(null);
       return true;
     }
     if (useListeningStore.getState().trayOpen) {

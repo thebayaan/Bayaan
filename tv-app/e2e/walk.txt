@@ -31,6 +31,7 @@
 26-reciters 4 down down select
 27-library 4 left down select
 28-settings 4 left down select
-29-search 4 left up up up select
+28a-settings-picker 3 select
+29-search 4 back left up up up select
 30-search-typed 5 right select text:fati
 31-relaunch-home 20 relaunch

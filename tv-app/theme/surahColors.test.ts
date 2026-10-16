@@ -1,5 +1,6 @@
 import {
   GLOW_PALETTES,
+  PIGMENTS,
   surahGlow,
   surahGradient,
   TILE_HUES,
@@ -7,18 +8,16 @@ import {
 
 describe('surahGradient', () => {
   it('uses the designed pair for featured surahs', () => {
-    expect(surahGradient(18)).toEqual(['#2563EB', '#4F46E5']);
-    expect(surahGradient(67)).toEqual(['#312E81', '#2563EB']);
+    expect(surahGradient(18)).toEqual([PIGMENTS.indigo, PIGMENTS.lapis]);
+    expect(surahGradient(67)).toEqual([PIGMENTS.indigo, PIGMENTS.carmine]);
   });
 
-  it('gives every surah two different brand hues', () => {
+  it('gives every surah two different pigments', () => {
     for (let n = 1; n <= 114; n++) {
       const [from, to] = surahGradient(n);
       expect(from).not.toBe(to);
-      if (n !== 32 && n !== 67) {
-        expect(TILE_HUES).toContain(from);
-        expect(TILE_HUES).toContain(to);
-      }
+      expect(TILE_HUES).toContain(from);
+      expect(TILE_HUES).toContain(to);
     }
   });
 

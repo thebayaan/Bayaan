@@ -1,12 +1,21 @@
 import React from 'react';
+import {Image} from 'expo-image';
 import {ScrollView, Text, TVFocusGuideView, View} from 'react-native';
 import {FocusableButton} from '../primitives/FocusableButton';
+import {FocusIcon, FocusText} from '../primitives/focusContext';
 import {colors} from '../../theme/colors';
 import {fonts} from '../../theme/typography';
-import {createScaledStyles, scale} from '../../theme/scale';
+import {createScaledStyles} from '../../theme/scale';
 import {CheckIcon} from '../../../components/Icons';
+import type {ArtworkSource} from '../../services/reciterArtwork';
 
-export type PanelOption<T> = {value: T; label: string; detail?: string};
+export type PanelOption<T> = {
+  value: T;
+  label: string;
+  detail?: string;
+  /** A round portrait before the label (reciter pickers). */
+  face?: {source: ArtworkSource | null; name: string};
+};
 
 export type PanelSection<T = unknown> = {
   title: string;
@@ -63,20 +72,30 @@ export function SidePanel({
                     hasTVPreferredFocus={si === 0 && selected}
                     focusScale={1.02}
                     style={styles.option}>
+                    {option.face ? <Face {...option.face} /> : null}
                     <View style={styles.optionText}>
-                      <Text
-                        style={[styles.label, selected && styles.labelOn]}
+                      <FocusText
+                        style={styles.label}
+                        color={selected ? colors.text : colors.textSecondary}
                         numberOfLines={1}>
                         {option.label}
-                      </Text>
+                      </FocusText>
                       {option.detail ? (
-                        <Text style={styles.detail} numberOfLines={1}>
+                        <FocusText
+                          style={styles.detail}
+                          color={colors.textTertiary}
+                          focusedColor={colors.onFocusSecondary}
+                          numberOfLines={1}>
                           {option.detail}
-                        </Text>
+                        </FocusText>
                       ) : null}
                     </View>
                     {selected ? (
-                      <CheckIcon color={colors.accent} size={scale(26)} />
+                      <FocusIcon
+                        icon={CheckIcon}
+                        color={colors.accent}
+                        size={26}
+                      />
                     ) : null}
                   </FocusableButton>
                 );
@@ -89,6 +108,29 @@ export function SidePanel({
   );
 }
 
+function Face({
+  source,
+  name,
+}: {
+  source: ArtworkSource | null;
+  name: string;
+}): React.ReactElement {
+  return (
+    <View style={styles.face}>
+      {source ? (
+        <Image
+          source={source}
+          style={styles.faceImg}
+          contentFit="cover"
+          cachePolicy="memory-disk"
+        />
+      ) : (
+        <Text style={styles.faceInitial}>{name.charAt(0).toUpperCase()}</Text>
+      )}
+    </View>
+  );
+}
+
 const styles = createScaledStyles({
   panel: {
     position: 'absolute',
@@ -96,7 +138,9 @@ const styles = createScaledStyles({
     right: 0,
     bottom: 0,
     width: 620,
-    backgroundColor: 'rgba(5,11,16,0.96)',
+    backgroundColor: 'rgba(6,21,28,0.96)',
+    borderLeftWidth: 1,
+    borderLeftColor: colors.border,
     paddingTop: 64,
     paddingHorizontal: 40,
   },
@@ -115,8 +159,8 @@ const styles = createScaledStyles({
     color: colors.accent,
     fontFamily: fonts.bold,
     fontWeight: '700',
-    fontSize: 15,
-    letterSpacing: 2,
+    fontSize: 14,
+    letterSpacing: 2.5,
     textTransform: 'uppercase',
     paddingHorizontal: 20,
     marginBottom: 6,
@@ -130,19 +174,26 @@ const styles = createScaledStyles({
     gap: 16,
   },
   optionText: {flex: 1, minWidth: 0},
+  face: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    overflow: 'hidden',
+    backgroundColor: colors.surfaceElevated,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  faceImg: {width: '100%', height: '100%'},
+  faceInitial: {color: colors.textSecondary, fontSize: 24, fontWeight: '600'},
   label: {
-    color: colors.textSecondary,
     fontFamily: fonts.semiBold,
     fontWeight: '600',
     fontSize: 22,
   },
-  labelOn: {color: colors.text},
   detail: {
-    color: colors.textSecondary,
     fontFamily: fonts.medium,
     fontWeight: '500',
     fontSize: 16,
     marginTop: 2,
-    opacity: 0.8,
   },
 });

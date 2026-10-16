@@ -11,7 +11,7 @@ import {
   View,
 } from 'react-native';
 import {FocusableButton} from '../components/primitives/FocusableButton';
-import {FocusableCard} from '../components/primitives/FocusableCard';
+import {FocusIcon, FocusText} from '../components/primitives/focusContext';
 import {fetchRewayat, getCachedRewayat} from '../services/tvDataService';
 import {toggleFavorite} from '../services/favoritesStore';
 import {useReciters} from '../hooks/useReciters';
@@ -30,7 +30,7 @@ import {
 import {colors} from '../theme/colors';
 import {fonts, typography} from '../theme/typography';
 import {spacing} from '../theme/spacing';
-import {createScaledStyles, scale} from '../theme/scale';
+import {createScaledStyles} from '../theme/scale';
 import {getReciterArtwork} from '../services/reciterArtwork';
 
 type Props = {reciterId: string};
@@ -148,8 +148,9 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
           onPress={pop}
           accessibilityLabel="Go back"
           hasTVPreferredFocus
+          outlined
           style={styles.notFoundBtn}>
-          <Text style={styles.notFoundBtnText}>Go back</Text>
+          <FocusText style={styles.notFoundBtnText}>Go back</FocusText>
         </FocusableButton>
       </View>
     );
@@ -186,7 +187,7 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
           onPress={pop}
           accessibilityLabel="Back"
           style={styles.back}>
-          <Text style={styles.backText}>‹ Back</Text>
+          <FocusText style={styles.backText}>‹ Back</FocusText>
         </FocusableButton>
         <View style={styles.heroContent}>
           {artwork ? (
@@ -230,17 +231,18 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
                   }}
                   accessibilityLabel={resumeEntry ? 'Continue' : 'Play'}
                   hasTVPreferredFocus
-                  style={[styles.primaryBtn]}>
+                  outlined
+                  style={styles.actionBtn}>
                   <View style={styles.favInner}>
-                    <PlayIcon color={colors.background} size={scale(18)} />
-                    <Text style={styles.primaryText}>
+                    <FocusIcon icon={PlayIcon} size={20} />
+                    <FocusText style={styles.actionText}>
                       {resumeEntry
                         ? `Continue · ${
                             surahByNumber.get(resumeEntry.surahNumber) ??
                             `Surah ${resumeEntry.surahNumber}`
                           }`
                         : 'Play'}
-                    </Text>
+                    </FocusText>
                   </View>
                 </FocusableButton>
               ) : null}
@@ -251,10 +253,10 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
                     push({screen: 'nowPlaying'});
                   }}
                   accessibilityLabel="Shuffle play"
-                  style={styles.ghostBtn}>
+                  style={styles.actionBtn}>
                   <View style={styles.favInner}>
-                    <ShuffleIcon color={colors.text} size={scale(18)} />
-                    <Text style={styles.favText}>Shuffle</Text>
+                    <FocusIcon icon={ShuffleIcon} size={20} />
+                    <FocusText style={styles.actionText}>Shuffle</FocusText>
                   </View>
                 </FocusableButton>
               ) : null}
@@ -263,16 +265,12 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
                 accessibilityLabel={
                   isFav ? 'Remove from favorites' : 'Add to favorites'
                 }
-                style={[styles.favBtn, isFav && styles.favBtnActive]}>
+                style={styles.actionBtn}>
                 <View style={styles.favInner}>
-                  <HeartIcon
-                    color={isFav ? colors.background : colors.text}
-                    size={scale(18)}
-                    filled={isFav}
-                  />
-                  <Text style={[styles.favText, isFav && styles.favTextActive]}>
+                  <FocusIcon icon={HeartIcon} size={20} filled={isFav} />
+                  <FocusText style={styles.actionText}>
                     {isFav ? 'Favorited' : 'Favorite'}
-                  </Text>
+                  </FocusText>
                 </View>
               </FocusableButton>
             </TVFocusGuideView>
@@ -283,21 +281,12 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
       {rewayat.length > 1 && (
         <TVFocusGuideView autoFocus style={styles.rewayahRow}>
           {rewayat.map(r => (
-            <FocusableCard
+            <Tab
               key={r.id}
-              style={[
-                styles.chip,
-                activeRewayahId === r.id && styles.chipActive,
-              ]}
-              onPress={() => setActive(r.id)}>
-              <Text
-                style={[
-                  styles.chipText,
-                  activeRewayahId === r.id && styles.chipTextActive,
-                ]}>
-                {r.name}
-              </Text>
-            </FocusableCard>
+              label={r.name}
+              selected={activeRewayahId === r.id}
+              onPress={() => setActive(r.id)}
+            />
           ))}
         </TVFocusGuideView>
       )}
@@ -335,37 +324,53 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
             const completed = ratio >= 0.97;
             const inProgress = ratio > 0.02 && !completed;
             return (
-              <FocusableCard
+              <FocusableButton
                 key={n}
                 style={styles.surahCard}
+                accessibilityLabel={surahByNumber.get(n) ?? `Surah ${n}`}
                 onPress={async () => {
                   if (!current) return;
                   await playRewayah(reciter.id, reciter.name, current, n);
                   push({screen: 'nowPlaying'});
                 }}>
-                <View style={styles.numBadge}>
-                  {completed ? (
-                    <CheckIcon color={colors.text} size={scale(20)} />
-                  ) : (
-                    <Text style={styles.num}>{n}</Text>
-                  )}
-                </View>
-                <View style={styles.surahMeta}>
-                  <Text style={styles.name} numberOfLines={1}>
-                    {surahByNumber.get(n) ?? `Surah ${n}`}
-                  </Text>
-                  {inProgress ? (
-                    <View style={styles.progressTrack}>
+                {focused => (
+                  <>
+                    <View style={styles.surahTop}>
+                      <FocusText
+                        style={styles.num}
+                        color={colors.textTertiary}
+                        focusedColor={colors.onFocusSecondary}>
+                        {n}
+                      </FocusText>
+                      {completed ? (
+                        <FocusIcon
+                          icon={CheckIcon}
+                          color={colors.accent}
+                          size={20}
+                        />
+                      ) : null}
+                    </View>
+                    <FocusText style={styles.name} numberOfLines={1}>
+                      {surahByNumber.get(n) ?? `Surah ${n}`}
+                    </FocusText>
+                    {inProgress ? (
                       <View
                         style={[
-                          styles.progressFill,
-                          {width: `${ratio * 100}%`},
-                        ]}
-                      />
-                    </View>
-                  ) : null}
-                </View>
-              </FocusableCard>
+                          styles.progressTrack,
+                          focused && styles.progressTrackFocused,
+                        ]}>
+                        <View
+                          style={[
+                            styles.progressFill,
+                            focused && styles.progressFillFocused,
+                            {width: `${ratio * 100}%`},
+                          ]}
+                        />
+                      </View>
+                    ) : null}
+                  </>
+                )}
+              </FocusableButton>
             );
           })}
         </TVFocusGuideView>
@@ -391,18 +396,64 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
   );
 }
 
-type SortChipProps = {label: string; active: boolean; onPress: () => void};
+type TabProps = {
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+  small?: boolean;
+  accessibilityLabel?: string;
+};
 
-function SortChip({label, active, onPress}: SortChipProps): React.ReactElement {
+/**
+ * A plain text tab: the selected one is cream with a thin sky underline, so
+ * "selected" and "focused" (the cream fill) never look alike.
+ */
+function Tab({
+  label,
+  selected,
+  onPress,
+  small,
+  accessibilityLabel,
+}: TabProps): React.ReactElement {
+  const name = accessibilityLabel ?? label;
   return (
     <FocusableButton
       onPress={onPress}
-      accessibilityLabel={`Sort ${label}`}
-      style={[styles.sortChip, active && styles.sortChipActive]}>
-      <Text style={[styles.sortChipText, active && styles.sortChipTextActive]}>
-        {label}
-      </Text>
+      accessibilityLabel={selected ? `${name}, selected` : name}
+      style={[styles.tab, small && styles.tabSmall]}>
+      {focused => (
+        <>
+          <FocusText
+            style={[styles.tabText, small && styles.tabTextSmall]}
+            color={selected ? colors.text : colors.textSecondary}>
+            {label}
+          </FocusText>
+          <View
+            style={[styles.tabLine, selected && !focused && styles.tabLineOn]}
+          />
+        </>
+      )}
     </FocusableButton>
+  );
+}
+
+function SortChip({
+  label,
+  active,
+  onPress,
+}: {
+  label: string;
+  active: boolean;
+  onPress: () => void;
+}): React.ReactElement {
+  return (
+    <Tab
+      small
+      label={label}
+      selected={active}
+      onPress={onPress}
+      accessibilityLabel={`Sort ${label}`}
+    />
   );
 }
 
@@ -412,15 +463,13 @@ const styles = createScaledStyles({
   back: {
     position: 'absolute',
     top: 24,
-    left: spacing.xl,
+    left: spacing.xl - 18,
     zIndex: 10,
     paddingHorizontal: 18,
     paddingVertical: 10,
-    borderRadius: 22,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    borderRadius: 999,
   },
   backText: {
-    color: colors.text,
     fontFamily: fonts.bold,
     fontSize: 18,
     fontWeight: '700',
@@ -446,7 +495,7 @@ const styles = createScaledStyles({
   portrait: {
     width: 240,
     height: 240,
-    borderRadius: 16,
+    borderRadius: 120,
     backgroundColor: colors.surfaceElevated,
   },
   portraitPlaceholder: {alignItems: 'center', justifyContent: 'center'},
@@ -459,9 +508,12 @@ const styles = createScaledStyles({
   },
   heroMeta: {flex: 1, paddingBottom: spacing.sm, gap: 6},
   kicker: {
-    color: colors.text,
-    ...typography.label,
-    opacity: 0.7,
+    color: colors.accent,
+    fontFamily: fonts.extraBold,
+    fontWeight: '800',
+    fontSize: 14,
+    letterSpacing: 2.5,
+    textTransform: 'uppercase',
     marginBottom: 4,
   },
   title: {
@@ -471,72 +523,54 @@ const styles = createScaledStyles({
     letterSpacing: -1,
   },
   sub: {
-    color: colors.text,
+    color: colors.textSecondary,
     fontFamily: fonts.medium,
     fontSize: 20,
     fontWeight: '500',
-    opacity: 0.75,
     marginTop: 6,
   },
   heroActions: {flexDirection: 'row', marginTop: 16, gap: 12, flexWrap: 'wrap'},
-  primaryBtn: {
-    paddingHorizontal: 26,
-    paddingVertical: 13,
-    borderRadius: 26,
-    backgroundColor: colors.text,
-  },
-  primaryText: {
-    color: colors.background,
-    fontFamily: fonts.extraBold,
-    fontSize: 18,
-    fontWeight: '800',
-    letterSpacing: 0.3,
-  },
-  ghostBtn: {
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-  },
-  favBtn: {
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-  },
-  favBtnActive: {backgroundColor: colors.text},
   favInner: {flexDirection: 'row', alignItems: 'center', gap: 8},
-  favText: {
-    color: colors.text,
-    fontFamily: fonts.bold,
-    fontSize: 17,
-    fontWeight: '700',
-    letterSpacing: 0.3,
+  actionBtn: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 999,
   },
-  favTextActive: {color: colors.background},
+  actionText: {
+    fontFamily: fonts.bold,
+    fontSize: 19,
+    fontWeight: '700',
+  },
+  tab: {
+    paddingHorizontal: 18,
+    paddingTop: 10,
+    paddingBottom: 6,
+    borderRadius: 999,
+    alignItems: 'center',
+  },
+  tabSmall: {paddingHorizontal: 14, paddingTop: 7, paddingBottom: 4},
+  tabText: {
+    fontFamily: fonts.semiBold,
+    fontSize: 20,
+    fontWeight: '600',
+  },
+  tabTextSmall: {fontSize: 16},
+  tabLine: {
+    marginTop: 6,
+    height: 3,
+    alignSelf: 'stretch',
+    borderRadius: 2,
+    backgroundColor: 'transparent',
+  },
+  tabLineOn: {backgroundColor: colors.accent},
   rewayahRow: {
     flexDirection: 'row',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.xl,
+    gap: 8,
+    paddingHorizontal: spacing.xl - 18,
     marginTop: 2,
     marginBottom: spacing.lg,
     flexWrap: 'wrap',
   },
-  chip: {
-    paddingHorizontal: 20,
-    paddingVertical: 11,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 22,
-  },
-  chipActive: {backgroundColor: colors.text},
-  chipText: {
-    color: colors.text,
-    fontFamily: fonts.semiBold,
-    fontSize: 18,
-    fontWeight: '600',
-    letterSpacing: -0.1,
-  },
-  chipTextActive: {color: colors.background},
   sectionLabel: {
     color: colors.text,
     fontFamily: fonts.bold,
@@ -554,30 +588,15 @@ const styles = createScaledStyles({
     paddingRight: spacing.xl,
   },
   sortRow: {flexDirection: 'row', gap: 8, marginTop: spacing.md},
-  sortChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-  },
-  sortChipActive: {backgroundColor: colors.text},
-  sortChipText: {
-    color: colors.text,
-    fontFamily: fonts.bold,
-    fontSize: 15,
-    fontWeight: '700',
-    letterSpacing: 0.1,
-  },
-  sortChipTextActive: {color: colors.background},
-  surahMeta: {flex: 1, gap: 4},
   progressTrack: {
     height: 3,
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(244,243,236,0.16)',
     borderRadius: 2,
     overflow: 'hidden',
-    marginTop: 4,
   },
+  progressTrackFocused: {backgroundColor: 'rgba(6,21,28,0.18)'},
   progressFill: {height: '100%', backgroundColor: colors.text, borderRadius: 2},
+  progressFillFocused: {backgroundColor: colors.onFocus},
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -586,36 +605,28 @@ const styles = createScaledStyles({
     paddingVertical: 8,
   },
   surahCard: {
-    width: 170,
-    height: 120,
-    backgroundColor: colors.surface,
-    padding: 14,
+    width: 196,
+    height: 112,
+    padding: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    justifyContent: 'space-between',
+  },
+  surahTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-  },
-  numBadge: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
   },
   num: {
-    color: colors.text,
-    fontFamily: fonts.extraBold,
-    fontSize: 20,
-    fontWeight: '800',
-    letterSpacing: -0.3,
+    fontFamily: fonts.bold,
+    fontSize: 16,
+    fontWeight: '700',
   },
   name: {
-    flex: 1,
-    color: colors.text,
     fontFamily: fonts.semiBold,
-    fontSize: 17,
+    fontSize: 19,
     fontWeight: '600',
-    opacity: 0.85,
   },
   loadingRow: {
     paddingHorizontal: spacing.xl,
@@ -659,17 +670,14 @@ const styles = createScaledStyles({
   },
   notFoundBtn: {
     paddingHorizontal: 30,
-    paddingVertical: 16,
-    borderRadius: 28,
-    backgroundColor: colors.text,
+    paddingVertical: 14,
+    borderRadius: 999,
     marginTop: spacing.sm,
   },
   notFoundBtnText: {
-    color: colors.background,
-    fontFamily: fonts.extraBold,
-    fontSize: 18,
-    fontWeight: '800',
-    letterSpacing: 0.3,
+    fontFamily: fonts.bold,
+    fontSize: 20,
+    fontWeight: '700',
   },
   bioBlock: {marginTop: spacing.xl},
   bio: {

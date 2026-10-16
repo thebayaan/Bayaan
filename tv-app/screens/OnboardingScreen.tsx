@@ -8,6 +8,7 @@ import {
   View,
 } from 'react-native';
 import {FocusableButton} from '../components/primitives/FocusableButton';
+import {FocusFrame, FocusText} from '../components/primitives/focusContext';
 import {FocusableCard} from '../components/primitives/FocusableCard';
 import {useDefaultReciter} from '../hooks/useDefaultReciter';
 import {useOnboarded} from '../hooks/useOnboarded';
@@ -66,11 +67,13 @@ export function OnboardingScreen(): React.ReactElement {
         <FocusableButton
           onPress={finish}
           accessibilityLabel={defaultReciterId ? 'Continue' : 'Skip for now'}
-          style={[styles.cta, defaultReciterId && styles.ctaActive]}>
-          <Text
-            style={[styles.ctaText, defaultReciterId && styles.ctaTextActive]}>
+          outlined={Boolean(defaultReciterId)}
+          style={styles.cta}>
+          <FocusText
+            style={styles.ctaText}
+            color={defaultReciterId ? colors.text : colors.textSecondary}>
             {defaultReciterId ? 'Continue' : 'Skip for now'}
-          </Text>
+          </FocusText>
         </FocusableButton>
       </TVFocusGuideView>
     </View>
@@ -101,11 +104,14 @@ function ReciterChoice({
   const artwork = getReciterArtwork(reciter);
   return (
     <FocusableCard
-      style={[styles.card, selected && styles.cardSelected]}
+      ring={false}
+      style={styles.card}
       onPress={onSelect}
       hasTVPreferredFocus={hasTVPreferredFocus}
-      accessibilityLabel={reciter.name}>
-      <View style={styles.artwork}>
+      accessibilityLabel={
+        selected ? `${reciter.name}, selected` : reciter.name
+      }>
+      <FocusFrame radius={(CARD_W - 18) / 2} style={styles.artwork}>
         {artwork ? (
           <Image
             source={artwork}
@@ -120,13 +126,17 @@ function ReciterChoice({
             </Text>
           </View>
         )}
-      </View>
+      </FocusFrame>
       <View style={styles.meta}>
-        <Text style={styles.name} numberOfLines={1}>
+        <FocusText
+          style={styles.name}
+          color={selected ? colors.text : colors.textSecondary}
+          focusedColor={colors.text}
+          numberOfLines={1}>
           {reciter.name}
-        </Text>
+        </FocusText>
         {selected ? (
-          <Text style={styles.selectedTag}>SELECTED</Text>
+          <Text style={styles.selectedTag}>Selected</Text>
         ) : subtitle ? (
           <Text style={styles.cardSub} numberOfLines={1}>
             {subtitle}
@@ -149,13 +159,12 @@ const styles = createScaledStyles({
   },
   header: {paddingHorizontal: spacing.xxl, marginBottom: spacing.xl, gap: 6},
   kicker: {
-    color: colors.text,
+    color: colors.accent,
     fontFamily: fonts.extraBold,
     fontSize: 15,
     fontWeight: '800',
     letterSpacing: 2.6,
     textTransform: 'uppercase',
-    opacity: 0.7,
     marginBottom: 6,
   },
   title: {
@@ -179,19 +188,12 @@ const styles = createScaledStyles({
     // Room for a focused card's 1.05 scale + glow so it is not clipped.
     paddingVertical: 22,
   },
-  card: {
-    width: CARD_W,
-    height: CARD_H,
-    backgroundColor: colors.surface,
-    overflow: 'hidden',
-    borderWidth: 3,
-    borderColor: 'transparent',
-  },
-  cardSelected: {borderColor: colors.text},
-  artwork: {flex: 1, backgroundColor: colors.surfaceElevated},
+  card: {width: CARD_W, height: CARD_H, alignItems: 'center', gap: 14},
+  artwork: {width: CARD_W, height: CARD_W},
   img: {width: '100%', height: '100%'},
   placeholder: {
     ...StyleSheet.absoluteFillObject,
+    backgroundColor: colors.surfaceElevated,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -202,9 +204,8 @@ const styles = createScaledStyles({
     fontWeight: '300',
     opacity: 0.35,
   },
-  meta: {paddingHorizontal: 14, paddingVertical: 12},
+  meta: {alignItems: 'center', paddingHorizontal: 8},
   name: {
-    color: colors.text,
     fontFamily: fonts.bold,
     fontSize: 20,
     fontWeight: '700',
@@ -219,12 +220,12 @@ const styles = createScaledStyles({
     marginTop: 4,
   },
   selectedTag: {
-    color: colors.text,
+    color: colors.accent,
     fontFamily: fonts.extraBold,
     fontSize: 13,
     fontWeight: '800',
-    letterSpacing: 1.4,
-    opacity: 0.85,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
     marginTop: 4,
   },
   actions: {
@@ -234,16 +235,11 @@ const styles = createScaledStyles({
   cta: {
     paddingHorizontal: 36,
     paddingVertical: 16,
-    borderRadius: 30,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 999,
   },
-  ctaActive: {backgroundColor: colors.text},
   ctaText: {
-    color: colors.text,
-    fontFamily: fonts.extraBold,
+    fontFamily: fonts.bold,
     fontSize: 20,
-    fontWeight: '800',
-    letterSpacing: 0.3,
+    fontWeight: '700',
   },
-  ctaTextActive: {color: colors.background},
 });
