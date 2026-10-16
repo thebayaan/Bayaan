@@ -16,6 +16,12 @@
 import {expoAudioService} from '../../services/audio/ExpoAudioService';
 import type {PlaybackState} from '../../services/audio/ExpoAudioService';
 import type {AudioEngine, EngineEvent, EngineStatus} from './audioEngineTypes';
+import {
+  audioFocusHeldByOther,
+  claimAudioFocus,
+  releaseAudioFocus,
+  type AudioFocusOwner,
+} from './audioFocus';
 
 export type {AudioEngine, EngineEvent, EngineStatus} from './audioEngineTypes';
 
@@ -49,6 +55,24 @@ export function createAudioEngine(): AudioEngine {
   // track the chosen rate here and re-apply it after every load() to keep the
   // selected speed across track changes.
   let currentRate = 1;
+  let currentVolume = 1;
+  // Every engine shares the one expo-audio player (see audioFocus.ts). The
+  // last URL this engine loaded, and where to resume after another engine
+  // took the player over.
+  let lastUrl: string | null = null;
+  let resumeAt: {url: string; seconds: number} | null = null;
+  const focusOwner: AudioFocusOwner = {
+    onFocusLost: (): void => {
+      stopPolling();
+      if (!lastUrl) return;
+      const event = snapshot();
+      resumeAt = {url: lastUrl, seconds: event.positionSeconds};
+      // Report a pause, never `idle`, so the owner doesn't take it for a
+      // finished track.
+      listeners.forEach(cb => cb({...event, status: 'paused'}));
+    },
+  };
+  const otherHasFocus = (): boolean => audioFocusHeldByOther(focusOwner);
 
   function safeGet<T>(fn: () => T, fallback: T): T {
     try {
@@ -69,6 +93,7 @@ export function createAudioEngine(): AudioEngine {
   }
 
   function emit(): void {
+    if (otherHasFocus()) return;
     const event = snapshot();
     listeners.forEach(cb => cb(event));
   }
@@ -87,6 +112,7 @@ export function createAudioEngine(): AudioEngine {
 
   // Listen to ExpoAudioService state changes (play/pause/error transitions)
   const removeStateListener = expoAudioService.addStateListener(() => {
+    if (otherHasFocus()) return;
     emit();
     const current = safeGet<EngineStatus>(
       () => mapPlaybackState(expoAudioService.getPlaybackState()),
@@ -101,30 +127,54 @@ export function createAudioEngine(): AudioEngine {
 
   return {
     load: async (url: string): Promise<void> => {
+      claimAudioFocus(focusOwner);
+      lastUrl = url;
+      resumeAt = null;
       await expoAudioService.loadTrack(url);
       expoAudioService.setRate(currentRate);
+      expoAudioService.setVolume(currentVolume);
     },
 
     play: async (): Promise<void> => {
+      if (otherHasFocus() || resumeAt) {
+        // Another engine has the player: take it back and reload where this
+        // engine left off. Without a track of its own there is nothing to do.
+        const resume = resumeAt;
+        if (!resume) return;
+        claimAudioFocus(focusOwner);
+        resumeAt = null;
+        await expoAudioService.loadTrack(resume.url);
+        expoAudioService.setRate(currentRate);
+        expoAudioService.setVolume(currentVolume);
+        if (resume.seconds > 0) await expoAudioService.seekTo(resume.seconds);
+      }
       await expoAudioService.play();
       startPolling();
     },
 
     pause: (): void => {
+      if (otherHasFocus()) return;
       void expoAudioService.pause();
       stopPolling();
     },
 
     seek: (seconds: number): void => {
+      if (otherHasFocus()) {
+        if (resumeAt) resumeAt = {...resumeAt, seconds};
+        return;
+      }
       void expoAudioService.seekTo(seconds);
     },
 
     setRate: (rate: number): void => {
       currentRate = rate;
+      if (otherHasFocus()) return;
       expoAudioService.setRate(rate);
     },
 
     setVolume: (volume: number): void => {
+      currentVolume = volume;
+      if (otherHasFocus()) return;
       expoAudioService.setVolume(volume);
     },
 
@@ -143,6 +193,7 @@ export function createAudioEngine(): AudioEngine {
 
     destroy: (): void => {
       stopPolling();
+      releaseAudioFocus(focusOwner);
       removeStateListener();
       listeners.clear();
     },
