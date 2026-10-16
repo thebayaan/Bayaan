@@ -153,7 +153,7 @@ class FontGateTests(unittest.TestCase):
                 json.dumps({'label': 'ሀ'}, ensure_ascii=True), encoding='utf-8'
             )
             (root / 'data').mkdir()
-            for name in ('surahNamesAm.json', 'reciterNamesAm.json'):
+            for name in ('surahNamesAm.json', 'surahMeaningsAm.json', 'reciterNamesAm.json'):
                 (root / 'data' / name).write_text(
                     json.dumps({'1': 'አ'}, ensure_ascii=True), encoding='utf-8'
                 )

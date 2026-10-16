@@ -88,10 +88,10 @@
       "salah": "ሰላት"
     },
     "styles": {
-      "murattal": "Murattal",
-      "mojawwad": "Mojawwad",
-      "molim": "Molim",
-      "hadr": "Hadr"
+      "murattal": "ሙረተል",
+      "mojawwad": "ሙጀወድ",
+      "molim": "ሙዐሊም",
+      "hadr": "ሐድር"
     }
   },
   "allahHighlight": {
@@ -334,7 +334,7 @@
     "juzAmma": {
       "subtitle": "30ኛው ጁዝ",
       "description": "ከመጨረሻው ጁዝ የተሰበሰቡ ሁሉም አጫጭር ሱራዎች",
-      "title": "Juz Amma"
+      "title": "ጁዝ ዐም"
     },
     "memorizationStation": {
       "title": "የሒፍዝ ማዕከል",
@@ -348,11 +348,11 @@
   "categories": {
     "juzAmma": {
       "description": "የቁርኣን የመጨረሻዎቹ 37 ሱራዎች",
-      "title": "Juz Amma"
+      "title": "ጁዝ ዐም"
     },
     "sevenLong": {
       "title": "ሰባቱ ረጃጅም ሱራዎች",
-      "description": "Al-Sab' Al-Tiwal"
+      "description": "አስ-ሰብዕ አጥ-ጢዋል"
     },
     "heartOfQuran": {
       "title": "የቁርኣን ልብ",
@@ -403,7 +403,7 @@
       "short": "አጫጭር ሱራዎች",
       "meccan": "የመካ ሱራዎች",
       "medinan": "የመዲና ሱራዎች",
-      "juzAmma": "Juz Amma"
+      "juzAmma": "ጁዝ ዐም"
     }
   },
   "adhkarTags": {
@@ -421,151 +421,198 @@
     "general": "አጠቃላይ"
   },
   "juz": {
-    "amma": "Juz 'Amma"
+    "amma": "ጁዝ ዐም"
   },
   "rewayah": {
     "short": {
-      "hafs": "Hafs",
-      "shubah": "Shu'bah",
-      "al-bazzi": "Al-Bazzi",
-      "qunbul": "Qunbul",
-      "warsh": "Warsh",
-      "qalun": "Qalun",
-      "al-duri-abi-amr": "Al-Duri (Abu Amr)",
-      "al-susi": "Al-Susi",
-      "hisham": "Hisham",
-      "ibn-dhakwan": "Ibn Dhakwan",
-      "khalaf-an-hamzah": "Khalaf (Hamzah)",
-      "khallad": "Khallad",
-      "al-duri-al-kisai": "Al-Duri (al-Kisa'i)",
-      "abu-al-harith": "Abu al-Harith",
-      "ibn-jammaz": "Ibn Jammaz",
-      "ibn-wardan": "Ibn Wardan",
-      "rawh": "Rawh",
-      "ruwais": "Ruwais",
-      "idris": "Idris",
-      "ishaq": "Ishaq"
+      "hafs": "ሐፍስ",
+      "shubah": "ሹዕባ",
+      "al-bazzi": "አል-በዚ",
+      "qunbul": "ቁንቡል",
+      "warsh": "ወርሽ",
+      "qalun": "ቃሉን",
+      "al-duri-abi-amr": "አድ-ዱሪ (አቡ ዐምር)",
+      "al-susi": "አስ-ሱሲ",
+      "hisham": "ሂሻም",
+      "ibn-dhakwan": "ኢብኑ ዘክዋን",
+      "khalaf-an-hamzah": "ኸለፍ (ሐምዛ)",
+      "khallad": "ኸላድ",
+      "al-duri-al-kisai": "አድ-ዱሪ (አል-ኪሳኢ)",
+      "abu-al-harith": "አቡል-ሓሪሥ",
+      "ibn-jammaz": "ኢብኑ ጀማዝ",
+      "ibn-wardan": "ኢብኑ ወርዳን",
+      "rawh": "ረውሕ",
+      "ruwais": "ሩወይስ",
+      "idris": "ኢድሪስ",
+      "ishaq": "ኢስሓቅ"
     },
     "long": {
-      "hafs": "Hafs 'an Asim",
-      "shubah": "Shu'bah 'an Asim",
-      "al-bazzi": "Al-Bazzi 'an Ibn Kathir",
-      "qunbul": "Qunbul 'an Ibn Kathir",
-      "warsh": "Warsh 'an Nafi'",
-      "qalun": "Qalun 'an Nafi'",
-      "al-duri-abi-amr": "Al-Duri 'an Abu Amr",
-      "al-susi": "Al-Susi 'an Abu Amr",
-      "hisham": "Hisham 'an Ibn Amir",
-      "ibn-dhakwan": "Ibn Dhakwan 'an Ibn Amir",
-      "khalaf-an-hamzah": "Khalaf 'an Hamzah",
-      "khallad": "Khallad 'an Hamzah",
-      "al-duri-al-kisai": "Al-Duri 'an al-Kisa'i",
-      "abu-al-harith": "Abu al-Harith 'an al-Kisa'i",
-      "ibn-jammaz": "Ibn Jammaz 'an Abu Ja'far",
-      "ibn-wardan": "Ibn Wardan 'an Abu Ja'far",
-      "rawh": "Rawh 'an Ya'qub",
-      "ruwais": "Ruways 'an Ya'qub",
-      "idris": "Idris 'an Khalaf al-Bazzar",
-      "ishaq": "Ishaq 'an Khalaf al-Bazzar"
+      "hafs": "ሐፍስ ዐን ዓሲም",
+      "shubah": "ሹዕባ ዐን ዓሲም",
+      "al-bazzi": "አል-በዚ ዐን ኢብኑ ከሢር",
+      "qunbul": "ቁንቡል ዐን ኢብኑ ከሢር",
+      "warsh": "ወርሽ ዐን ናፊዕ",
+      "qalun": "ቃሉን ዐን ናፊዕ",
+      "al-duri-abi-amr": "አድ-ዱሪ ዐን አቡ ዐምር",
+      "al-susi": "አስ-ሱሲ ዐን አቡ ዐምር",
+      "hisham": "ሂሻም ዐን ኢብኑ ዓሚር",
+      "ibn-dhakwan": "ኢብኑ ዘክዋን ዐን ኢብኑ ዓሚር",
+      "khalaf-an-hamzah": "ኸለፍ ዐን ሐምዛ",
+      "khallad": "ኸላድ ዐን ሐምዛ",
+      "al-duri-al-kisai": "አድ-ዱሪ ዐን አል-ኪሳኢ",
+      "abu-al-harith": "አቡል-ሓሪሥ ዐን አል-ኪሳኢ",
+      "ibn-jammaz": "ኢብኑ ጀማዝ ዐን አቡ ጀዕፈር",
+      "ibn-wardan": "ኢብኑ ወርዳን ዐን አቡ ጀዕፈር",
+      "rawh": "ረውሕ ዐን የዕቁብ",
+      "ruwais": "ሩወይስ ዐን የዕቁብ",
+      "idris": "ኢድሪስ ዐን ኸለፍ አል-በዛር",
+      "ishaq": "ኢስሓቅ ዐን ኸለፍ አል-በዛር"
+    },
+    "unmapped": {
+      "rowis-and-rawh-an-yakoob-al-hadrami": "ሩወይስ እና ረውሕ ዐን የዕቁብ አል-ሐድረሚ",
+      "hafs-an-asim": "ሐፍስ ዐን ዓሲም"
+    },
+    "description": {
+      "hafs": "በአብዛኛው የሙስሊም ዓለም የሚነበበው መደበኛው ንባብ",
+      "shubah": "ከዓሲም የተላለፈው ሁለተኛው የኩፋ ዘገባ",
+      "al-bazzi": "ከኢብኑ ከሢር የተላለፈ የመካ ዘገባ፤ በመካ እና በየመን ይነበባል",
+      "qunbul": "ከኢብኑ ከሢር የተላለፈው ሁለተኛው የመካ ዘገባ",
+      "warsh": "ከናፊዕ የተላለፈ የመዲና ዘገባ — በሰሜን አፍሪካ በስፋት ይነበባል",
+      "qalun": "ከናፊዕ የተላለፈው ሁለተኛው የመዲና ዘገባ — በሊቢያ እና በከፊል ቱኒዚያ ይነበባል",
+      "al-duri-abi-amr": "ከአቡ ዐምር የተላለፈ የበስራ ዘገባ — በሱዳን እና በከፊል ምዕራብ አፍሪካ የተለመደ",
+      "al-susi": "ከአቡ ዐምር የተላለፈው ሁለተኛው የበስራ ዘገባ",
+      "hisham": "ከኢብኑ ዓሚር የተላለፈ የደማስቆ ዘገባ",
+      "ibn-dhakwan": "ከኢብኑ ዓሚር የተላለፈው ሁለተኛው የደማስቆ ዘገባ",
+      "khalaf-an-hamzah": "ከሐምዛ የተላለፈ የኩፋ ዘገባ",
+      "khallad": "ከሐምዛ የተላለፈው ሁለተኛው የኩፋ ዘገባ",
+      "al-duri-al-kisai": "ከአል-ኪሳኢ የተላለፈ የኩፋ ዘገባ (ከአድ-ዱሪ ዐን አቡ ዐምር የተለየ)",
+      "abu-al-harith": "ከአል-ኪሳኢ የተላለፈው ሁለተኛው የኩፋ ዘገባ",
+      "ibn-jammaz": "ከአቡ ጀዕፈር የተላለፈ የመዲና ዘገባ (10ኛው ቂራኣ)",
+      "ibn-wardan": "ከአቡ ጀዕፈር የተላለፈው ሁለተኛው የመዲና ዘገባ (10ኛው ቂራኣ)",
+      "rawh": "ከየዕቁብ የተላለፈ የበስራ ዘገባ (10ኛው ቂራኣ)",
+      "ruwais": "ከየዕቁብ የተላለፈው ሁለተኛው የበስራ ዘገባ (10ኛው ቂራኣ)",
+      "idris": "ከኸለፍ አል-በዛር የተላለፈ ዘገባ (10ኛው ቂራኣ)",
+      "ishaq": "ከኸለፍ አል-በዛር የተላለፈው ሁለተኛው ዘገባ (10ኛው ቂራኣ)"
     }
   },
   "rewayat": {
     "entries": {
       "warsh-an-nafi": {
-        "displayName": "Warsh"
+        "displayName": "ወርሽ",
+        "description": "የወርሽ ዘገባ ከኢማም ናፊዕ"
       },
       "qalon-an-nafi": {
-        "displayName": "Qalun"
+        "displayName": "ቃሉን",
+        "description": "የቃሉን ዘገባ ከኢማም ናፊዕ"
       },
       "albizi-an-ibn-katheer": {
-        "displayName": "Al-Bazzi"
+        "displayName": "አል-በዚ",
+        "description": "የአል-በዚ ዘገባ ከኢብኑ ከሢር"
       },
       "qunbol-an-ibn-katheer": {
-        "displayName": "Qunbul"
+        "displayName": "ቁንቡል",
+        "description": "የቁንቡል ዘገባ ከኢብኑ ከሢር"
       },
       "aldori-an-abi-amr": {
-        "displayName": "Al-Duri (Abu Amr)"
+        "displayName": "አድ-ዱሪ (አቡ ዐምር)",
+        "description": "የአድ-ዱሪ ዘገባ ከአቡ ዐምር"
       },
       "assosi-an-abi-amr": {
-        "displayName": "Al-Susi"
+        "displayName": "አስ-ሱሲ",
+        "description": "የአስ-ሱሲ ዘገባ ከአቡ ዐምር"
       },
       "ibn-thakwan-an-ibn-amer": {
-        "displayName": "Ibn Dhakwan"
+        "displayName": "ኢብኑ ዘክዋን",
+        "description": "የኢብኑ ዘክዋን ዘገባ ከኢብኑ ዓሚር"
       },
       "hesham-an-ibn-amer": {
-        "displayName": "Hisham"
+        "displayName": "ሂሻም",
+        "description": "የሂሻም ዘገባ ከኢብኑ ዓሚር"
       },
       "hafs-an-assem": {
-        "displayName": "Hafs"
+        "displayName": "ሐፍስ",
+        "description": "የሐፍስ ዘገባ ከኢማም ዓሲም"
       },
       "shubah-an-assem": {
-        "displayName": "Shu'bah"
+        "displayName": "ሹዕባ",
+        "description": "የሹዕባ ዘገባ ከኢማም ዓሲም"
       },
       "khalaf-an-hamzah": {
-        "displayName": "Khalaf (Hamzah)"
+        "displayName": "ኸለፍ (ሐምዛ)",
+        "description": "የኸለፍ ዘገባ ከሐምዛ"
       },
       "khallad-an-hamzah": {
-        "displayName": "Khallad"
+        "displayName": "ኸላድ",
+        "description": "የኸላድ ዘገባ ከሐምዛ"
       },
       "aldorai-an-alkisaai": {
-        "displayName": "Al-Duri (al-Kisa'i)"
+        "displayName": "አድ-ዱሪ (አል-ኪሳኢ)",
+        "description": "የአድ-ዱሪ ዘገባ ከአል-ኪሳኢ"
       },
       "abu-al-harith-an-alkisai": {
-        "displayName": "Abu al-Harith"
+        "displayName": "አቡል-ሓሪሥ",
+        "description": "የአቡል-ሓሪሥ ዘገባ ከአል-ኪሳኢ"
       },
       "ibn-jammaz-an-abi-jafar": {
-        "displayName": "Ibn Jammaz"
+        "displayName": "ኢብኑ ጀማዝ",
+        "description": "የኢብኑ ጀማዝ ዘገባ ከአቡ ጀዕፈር"
       },
       "ibn-wardan-an-abi-jafar": {
-        "displayName": "Ibn Wardan"
+        "displayName": "ኢብኑ ወርዳን",
+        "description": "የኢብኑ ወርዳን ዘገባ ከአቡ ጀዕፈር"
       },
       "rowis-rawh-an-yakoob": {
-        "displayName": "Ruwais & Rawh"
+        "displayName": "ሩወይስ እና ረውሕ",
+        "description": "የሩወይስ እና የረውሕ ዘገባ ከየዕቁብ አል-ሐድረሚ"
       },
       "rawh-an-yaqub": {
-        "displayName": "Rawh"
+        "displayName": "ረውሕ",
+        "description": "የረውሕ ዘገባ ከየዕቁብ አል-ሐድረሚ"
       },
       "ruwais-an-yaqub": {
-        "displayName": "Ruwais"
+        "displayName": "ሩወይስ",
+        "description": "የሩወይስ ዘገባ ከየዕቁብ አል-ሐድረሚ"
       },
       "idris-an-khalaf": {
-        "displayName": "Idris"
+        "displayName": "ኢድሪስ",
+        "description": "የኢድሪስ ዘገባ ከኸለፍ አል-በዛር"
       },
       "ishaq-an-khalaf": {
-        "displayName": "Ishaq"
+        "displayName": "ኢስሓቅ",
+        "description": "የኢስሓቅ ዘገባ ከኸለፍ አል-በዛር"
       }
     },
     "people": {
-      "nafi": "Nafi'",
-      "ibnKathir": "Ibn Kathir",
-      "abuAmr": "Abu Amr",
-      "ibnAmir": "Ibn Amir",
-      "asim": "Asim",
-      "hamzah": "Hamzah",
-      "kisai": "al-Kisa'i",
-      "abuJafar": "Abu Ja'far",
-      "yaqub": "Ya'qub",
-      "khalafAlBazzar": "Khalaf al-Bazzar",
-      "warsh": "Warsh",
-      "qalun": "Qalun",
-      "bazzi": "Al-Bazzi",
-      "qunbul": "Qunbul",
-      "duri": "Al-Duri",
-      "susi": "Al-Susi",
-      "ibnDhakwan": "Ibn Dhakwan",
-      "hisham": "Hisham",
-      "hafs": "Hafs",
-      "shubah": "Shu'bah",
-      "khalaf": "Khalaf",
-      "khallad": "Khallad",
-      "abuAlHarith": "Abu al-Harith",
-      "ibnJammaz": "Ibn Jammaz",
-      "ibnWardan": "Ibn Wardan",
-      "ruwaisAndRawh": "Ruwais and Rawh",
-      "rawh": "Rawh",
-      "ruwais": "Ruwais",
-      "idris": "Idris",
-      "ishaq": "Ishaq"
+      "nafi": "ናፊዕ",
+      "ibnKathir": "ኢብኑ ከሢር",
+      "abuAmr": "አቡ ዐምር",
+      "ibnAmir": "ኢብኑ ዓሚር",
+      "asim": "ዓሲም",
+      "hamzah": "ሐምዛ",
+      "kisai": "አል-ኪሳኢ",
+      "abuJafar": "አቡ ጀዕፈር",
+      "yaqub": "የዕቁብ",
+      "khalafAlBazzar": "ኸለፍ አል-በዛር",
+      "warsh": "ወርሽ",
+      "qalun": "ቃሉን",
+      "bazzi": "አል-በዚ",
+      "qunbul": "ቁንቡል",
+      "duri": "አድ-ዱሪ",
+      "susi": "አስ-ሱሲ",
+      "ibnDhakwan": "ኢብኑ ዘክዋን",
+      "hisham": "ሂሻም",
+      "hafs": "ሐፍስ",
+      "shubah": "ሹዕባ",
+      "khalaf": "ኸለፍ",
+      "khallad": "ኸላድ",
+      "abuAlHarith": "አቡል-ሓሪሥ",
+      "ibnJammaz": "ኢብኑ ጀማዝ",
+      "ibnWardan": "ኢብኑ ወርዳን",
+      "ruwaisAndRawh": "ሩወይስ እና ረውሕ",
+      "rawh": "ረውሕ",
+      "ruwais": "ሩወይስ",
+      "idris": "ኢድሪስ",
+      "ishaq": "ኢስሓቅ"
     }
   }
 }

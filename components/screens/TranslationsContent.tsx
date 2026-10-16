@@ -51,6 +51,7 @@ import {SOURCE_LANGUAGE} from '@/i18n/languages';
 import {
   compareTafaseer,
   getTafseerDisplayName,
+  getTranslationDisplayName,
   isPreferredTafseerLanguage,
 } from '@/i18n/tafseer';
 // @ai-end
@@ -312,7 +313,12 @@ export default function TranslationsContent() {
     (meta: DownloadedTranslationMeta) => {
       Alert.alert(
         t('translations.deleteTranslationTitle'),
-        t('translations.deleteMessage', {name: meta.englishName}),
+        t('translations.deleteMessage', {
+          name: getTranslationDisplayName({
+            id: meta.identifier,
+            englishName: meta.englishName,
+          }),
+        }),
         [
           {text: t('common:actions.cancel'), style: 'cancel'},
           {
@@ -759,7 +765,7 @@ export default function TranslationsContent() {
             <Text
               style={[styles.rowName, isActive && styles.rowNameActive]}
               numberOfLines={1}>
-              {item.englishName}
+              {getTranslationDisplayName(item)}
             </Text>
             {item.name !== item.englishName && (
               <Text style={styles.rowNativeName} numberOfLines={1}>

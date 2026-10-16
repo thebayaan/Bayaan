@@ -44,20 +44,21 @@
     "showLess": "ያነሰ አሳይ",
     "title": "ስለ ሪዋያዎች",
     "readMore": "ተጨማሪ አንብብ",
-    "available": "የሚገኙ ሪዋያዎች"
+    "available": "የሚገኙ ሪዋያዎች",
+    "explanation": "ሪዋያ (رواية፣ ብዙ ቁጥር፦ ሪዋያት رِوَايَات) ቁርአንን የማንበብ የተወሰነ መንገድ ሲሆን በአንድ ትልቅ የቂራኣ (قِرَاءَة፣ ብዙ ቁጥር፦ ቂራኣት قِرَاءَات) ወግ ውስጥ ያለን የተለየ የዘገባ መስመር ይወክላል።\n\nቂራኣት ለታዋቂ ቃሪኦች የሚጠቀሱ ዋና ዋና የቁርአን አነባበብ ትምህርት ቤቶች ሲሆኑ፣ ሪዋያት ደግሞ እነዚህ ንባቦች በተራኪዎች ሰንሰለት እስከ ነቢዩ ሙሐመድ ﷺ ድረስ የተላለፉባቸው የተወሰኑ መንገዶች ናቸው።\n\n\"ቁርአን በሰባት አሕሩፍ (አነባበቦች) ተወርዷል። ከእርሱ የቀለላችሁን አንብቡ።\"\n- ሶሒሕ አል-ቡኻሪ 2419፣ ሶሒሕ ሙስሊም 818\n\nዛሬ በስፋት የሚነበበው ሪዋያ ሐፍስ ዐን ዓሲም (حَفْص عَن عَاصِم) ሲሆን፣ በአብዛኞቹ የታተሙ ቁርአኖች ውስጥ ጥቅም ላይ የሚውል መደበኛ ቅጂ ተደርጎ የሚወሰድ እና በዓለም ዙሪያ ባሉ አብዛኞቹ ሙስሊሞች ዘንድ ወዲያውኑ የሚታወቅ ነው።\n\nእያንዳንዱ ሪዋያ በአነባበብ፣ በማስረዘም ወይም በፊደል መውጫዎች ጥቃቅን ልዩነቶች ሊኖሩት ይችላል። እነዚህ ልዩነቶች የድምፅ ብቻ ሲሆኑ የቁርአንን ጽሑፍ ትርጉም ፈጽሞ አይለውጡም፤ ሁሉም በጥንቃቄ ተጠብቀው የቆዩ ትክክለኛ የቁርአን አነባበብ መንገዶች ናቸውና።"
   },
   "addToCollection": {
-    "uploadRecitation": "ንባብ ስቀል",
+    "uploadRecitation": "ንባብ ጫን",
     "createPlaylist": "አዲስ የማጫወቻ ዝርዝር ፍጠር",
-    "addFavoriteReciter": "ተወዳጅ አንባቢ አክል",
-    "title": "ወደ ስብስብ አክል"
+    "addFavoriteReciter": "ተወዳጅ አንባቢ ጨምር",
+    "title": "ወደ ስብስብ ጨምር"
   },
   "selectReciter": {
     "random": "በዘፈቀደ አንባቢ",
     "browseAll": "ሁሉንም አንባቢዎች አስስ",
     "askEveryTime": "በእያንዳንዱ ጊዜ ጠይቅ",
     "title": "አንባቢ ምረጥ",
-    "useDefault": "ነባሪውን አንባቢ ተጠቀም"
+    "useDefault": "ዋናውን አንባቢ ተጠቀም"
   },
   "copy": {
     "optionsTitle": "የመቅዳት አማራጮች",
@@ -67,7 +68,7 @@
     "verseReference": "የአንቀጽ ማጣቀሻ",
     "copyToClipboard": "ወደ ቅንጥብ ሰሌዳ ቅዳ",
     "transliteration": "የፊደል ቅየራ",
-    "quranReference": "Quran {{ref}}"
+    "quranReference": "ቁርአን {{ref}}"
   },
   "createPlaylist": {
     "title": "አዲስ የማጫወቻ ዝርዝር",
@@ -104,8 +105,8 @@
     "asImage": "እንደ ምስል አጋራ",
     "asText": "እንደ ጽሑፍ አጋራ",
     "link": "አገናኝ አጋራ",
-    "reference": "Quran {{ref}}",
-    "referenceWithRewayah": "Quran {{ref}} · {{rewayah}}"
+    "reference": "ቁርአን {{ref}}",
+    "referenceWithRewayah": "ቁርአን {{ref}} · {{rewayah}}"
   },
   "selectPlaylist": {
     "errorTitle": "ስህተት",
@@ -123,14 +124,14 @@
     "downloading": "በማውረድ ላይ {{percent}}%",
     "downloaded": "ወርዷል",
     "removeFromPlaylist": "ከማጫወቻ ዝርዝር አስወግድ",
-    "addToQueue": "ወደ ማጫወቻ ወረፋ አክል",
-    "addToLoved": "ወደ የተወደዱ አክል",
+    "addToQueue": "ወደ ማጫወቻ ወረፋ ጨምር",
+    "addToLoved": "ወደ የተወደዱ ጨምር",
     "removeFromLoved": "ከየተወደዱ አስወግድ",
-    "addToCollection": "ወደ ስብስብ አክል",
+    "addToCollection": "ወደ ስብስብ ጨምር",
     "editDetails": "ዝርዝሮችን አርትዕ",
     "goToReciter": "ወደ አንባቢው ሂድ",
-    "shareListen": "Listen to Surah {{surah}} on {{appName}}",
-    "shareListenSurah": "Listen to {{surah}} on {{appName}}"
+    "shareListen": "ሱረቱ {{surah}}ን በ{{appName}} ያዳምጡ",
+    "shareListenSurah": "{{surah}}ን በ{{appName}} ያዳምጡ"
   },
   "uploads": {
     "untagged": "ያልተለየ",
@@ -145,8 +146,8 @@
     "studio": "ስቱዲዮ",
     "deleteTitle": "ቅጂ ሰርዝ",
     "deleteMessage": "“{{title}}”ን መሰረዝ ይፈልጋሉ?",
-    "uploadedAudio": "የተሰቀለ ድምፅ",
-    "upload": "ሰቀላ",
+    "uploadedAudio": "የተጫነ ድምፅ",
+    "upload": "ጫን",
     "versesRange": "አንቀጾች {{from}}-{{to}}"
   },
   "organize": {
@@ -220,14 +221,14 @@
     "continuePlaying": "ማጫወት ቀጥል",
     "removeReciterFromFavorites": "አንባቢውን ከተወዳጆች አስወግድ",
     "removeFromRecents": "ከቅርብ ጊዜ ዝርዝር አስወግድ",
-    "addToQueue": "ወደ ማጫወቻ ወረፋ አክል",
+    "addToQueue": "ወደ ማጫወቻ ወረፋ ጨምር",
     "goToReciter": "ወደ አንባቢው ሂድ",
-    "addReciterToFavorites": "አንባቢውን ወደ ተወዳጆች አክል",
-    "addToLoved": "ወደ የተወደዱ አክል",
+    "addReciterToFavorites": "አንባቢውን ወደ ተወዳጆች ጨምር",
+    "addToLoved": "ወደ የተወደዱ ጨምር",
     "removeFromLoved": "ከየተወደዱ አስወግድ",
-    "addToCollection": "ወደ ስብስብ አክል",
-    "shareRecitation": "Listen to {{reciter}} reciting {{surah}} on {{appName}}",
-    "shareReciter": "Listen to {{reciter}} on {{appName}}"
+    "addToCollection": "ወደ ስብስብ ጨምር",
+    "shareRecitation": "{{reciter}} {{surah}}ን ሲያነቡ በ{{appName}} ያዳምጡ",
+    "shareReciter": "{{reciter}}ን በ{{appName}} ያዳምጡ"
   },
   "downloadOptions": {
     "removeTitle": "የወረደውን ፋይል አስወግድ",

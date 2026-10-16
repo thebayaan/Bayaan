@@ -6,6 +6,7 @@ import {resources} from './resources';
 interface HomeTables {
   languages?: Record<string, string>;
   tafseerNames?: Record<string, string>;
+  translationNames?: Record<string, string>;
 }
 
 /** A home.json table for `language`, with English filling any gaps. */
@@ -53,6 +54,16 @@ export function getTafseerDisplayName(
     (getLanguageConfig(language).bilingualContent === 'ar'
       ? edition.name
       : edition.englishName)
+  );
+}
+
+/** Translation edition title for display; editions without one keep their own. */
+export function getTranslationDisplayName(
+  edition: {id: string; englishName: string},
+  language: AppLanguage = currentLanguage,
+): string {
+  return (
+    homeTable(language, 'translationNames')[edition.id] ?? edition.englishName
   );
 }
 

@@ -23,7 +23,7 @@
     "edit": "አርትዕ",
     "close": "ዝጋ",
     "confirm": "አረጋግጥ",
-    "add": "አክል",
+    "add": "ጨምር",
     "create": "ፍጠር",
     "rename": "ስም ቀይር",
     "seeAll": "ሁሉንም ይመልከቱ",
@@ -54,7 +54,7 @@
     "adhkar": "አዝካር",
     "playlist": "የማጫወቻ ዝርዝር",
     "bookmark": "ዕልባት",
-    "uploads": "የተሰቀሉ",
+    "uploads": "የተጫኑ",
     "queue": "ወረፋ",
     "playlists": "የማጫወቻ ዝርዝሮች",
     "bookmarks": "ዕልባቶች",
@@ -102,7 +102,7 @@
     "fileImported": "ፋይሉ ገብቷል",
     "fontError": "ፊደሎችን በመጫን ላይ ስህተት ተፈጥሯል",
     "initError": "ማጫወቻውን በማስጀመር ላይ ስህተት ተፈጥሯል፦ {{message}}",
-    "sharedAudio": "Shared Audio"
+    "sharedAudio": "የተጋራ ድምፅ"
   },
   "language": {
     "title": "ቋንቋ",

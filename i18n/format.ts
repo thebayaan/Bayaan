@@ -2,10 +2,11 @@
 import {SURAHS} from '@/data/surahData';
 import arNamesById from '@/data/reciterNamesAr.json';
 import amSurahNames from '@/data/surahNamesAm.json';
+import amSurahMeanings from '@/data/surahMeaningsAm.json';
 import amReciterNames from '@/data/reciterNamesAm.json';
 import fallbackReciters from '@/data/reciters-fallback.json';
 import {currentLanguage, type AppLanguage} from './language';
-import {DIGIT_ZERO, getLanguageConfig, SOURCE_LANGUAGE} from './languages';
+import {DIGIT_ZERO, getLanguageConfig} from './languages';
 
 /** Display only: preserve fork names and canonical branding used in IDs/share payloads. */
 export function getAppDisplayName(
@@ -119,18 +120,39 @@ export function getSurahDisplayName(
 }
 
 interface TranslatedSurah {
+  id?: number;
   translated_name_english: string;
 }
 
 /**
- * English meaning of a surah name (e.g. "The Opener"). Only English shows
- * it: the data is English, and other languages show the name itself.
+ * Surah meanings translated into a language, keyed by surah number. Amharic
+ * comes from the chapter list at https://amharicquran.com/.
+ */
+const SURAH_MEANING_TRANSLATIONS: Partial<
+  Record<AppLanguage, Readonly<Record<string, string>>>
+> = {am: amSurahMeanings};
+
+const SURAH_ID_BY_MEANING = new Map(
+  SURAHS.map(surah => [surah.translated_name_english, surah.id]),
+);
+
+/**
+ * Meaning of a surah name (e.g. "The Opener"), in the language when it has
+ * translated meanings, otherwise in English. Arabic shows no meaning.
  */
 export function getSurahMeaning(
   surah: TranslatedSurah,
   language: AppLanguage = currentLanguage,
 ): string | null {
-  return language === SOURCE_LANGUAGE ? surah.translated_name_english : null;
+  if (usesArabicContent(language)) {
+    return null;
+  }
+  const id = surah.id ?? SURAH_ID_BY_MEANING.get(surah.translated_name_english);
+  const translated =
+    id === undefined
+      ? undefined
+      : SURAH_MEANING_TRANSLATIONS[language]?.[String(id)];
+  return translated ?? surah.translated_name_english;
 }
 
 interface TitledTrack {

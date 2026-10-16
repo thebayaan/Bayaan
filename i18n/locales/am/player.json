@@ -9,9 +9,9 @@
       "studio": "ስቱዲዮ"
     },
     "untagged": "ያልተለየ",
-    "addRecitation": "ንባብ አክል",
-    "emptyTitle": "እስካሁን የተሰቀሉ የሉም",
-    "emptySubtitle": "እዚህ ለማየት ንባቦችን ይስቀሉ"
+    "addRecitation": "ንባብ ጨምር",
+    "emptyTitle": "እስካሁን ምንም የተጫነ የለም",
+    "emptySubtitle": "እዚህ ለማየት ንባቦችን ይጫኑ"
   },
   "uploadPlaceholder": {
     "hint": "የሱራ ጽሑፍና ዝርዝሮችን ለማየት ይህን ንባብ መለያ ያድርጉለት",
@@ -24,18 +24,18 @@
     "wbwHafsNotice": "የቃል በቃል እይታ በHafs ይታያል"
   },
   "reciterProfile": {
-    "myUploads": "የእኔ ሰቀላዎች",
+    "myUploads": "የጫንኳቸው",
     "sort": {
       "asc": "ወደ ላይ",
       "desc": "ወደ ታች",
-      "revelation": "ውርደት"
+      "revelation": "የወረደበት"
     },
     "searchPlaceholder": "ሱራዎችን ፈልግ",
     "noSurahsAvailable": "ምንም ሱራ የለም",
     "noSurahsFound": "ምንም ሱራ አልተገኘም",
     "thisReciter": "ይህ አንባቢ",
-    "shareMessage": "Listen to {{name}} on {{appName}}",
-    "juzAmma": "Juz 'Amma"
+    "shareMessage": "{{name}}ን በ{{appName}} ያዳምጡ",
+    "juzAmma": "ጁዝ ዐም"
   },
   "adhkar": {
     "playAll": "ሁሉንም አጫውት",

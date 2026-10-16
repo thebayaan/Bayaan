@@ -11,9 +11,9 @@
       "loved": "እስካሁን የተወደዱ ሱራዎች የሉም",
       "bookmarks": "እስካሁን ዕልባቶች የሉም",
       "notes": "እስካሁን ማስታወሻዎች የሉም",
-      "uploads": "እስካሁን የተሰቀሉ የሉም"
+      "uploads": "እስካሁን ምንም የተጫነ የለም"
     },
-    "addToCollection": "ወደ ስብስብ አክል"
+    "addToCollection": "ወደ ስብስብ ጨምር"
   },
   "bookmarksScreen": {
     "count_one": "{{count}} ዕልባት",
@@ -41,7 +41,7 @@
     "removeFromFavorites": "ከተወዳጆች አስወግድ",
     "emptyTitle": "እስካሁን ተወዳጅ አንባቢዎች የሉም",
     "emptySubtitle": "እዚህ ለማየት አንባቢዎችን ያክሉ",
-    "addReciters": "አንባቢዎችን አክል",
+    "addReciters": "አንባቢዎችን ጨምር",
     "searchPlaceholder": "ተወዳጅ አንባቢዎችን ፈልግ"
   },
   "downloadsScreen": {
@@ -60,16 +60,16 @@
     "alreadyDownloadedMessage": "ሁሉም የተወደዱ ሱራዎች አስቀድመው ወርደዋል።",
     "downloadCompleteTitle": "ውርደቱ ተጠናቋል",
     "downloadCompleteMessage": "ሁሉም የተወደዱ ሱራዎች ወርደዋል።",
-    "downloadErrorTitle": "የውርደት ስህተት",
+    "downloadErrorTitle": "የማውረድ ስህተት",
     "downloadErrorMessage": "አንዳንድ ውርደቶች አልተሳኩ ሊሆኑ ይችላሉ።"
   },
   "uploadsScreen": {
     "recitationsCount_one": "{{count}} ንባብ",
     "recitationsCount_other": "{{count}} ንባቦች",
-    "removeAll": "ሁሉንም የተሰቀሉ አስወግድ",
-    "emptySubtitle": "እዚህ ለማየት ንባቦችን ይስቀሉ",
+    "removeAll": "ሁሉንም የተጫኑትን አስወግድ",
+    "emptySubtitle": "እዚህ ለማየት ንባቦችን ይጫኑ",
     "opening": "በመክፈት ላይ…",
-    "addRecitation": "ንባብ አክል",
+    "addRecitation": "ንባብ ጨምር",
     "untagged": "ያልተለየ",
     "recordingType": {
       "salah": "ሰላት",

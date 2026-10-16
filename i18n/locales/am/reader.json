@@ -7,7 +7,7 @@
     "loadFailedBody": "መሣሪያዎ ላይ ነፃ የማከማቻ ቦታ መኖሩን ያረጋግጡ፣ ከዚያ እንደገና ይሞክሩ።",
     "pageLoadFailed": "ይህን ገጽ መጫን አልተቻለም።",
     "turnOffTajweed": "ተጅዊድ አጥፋ",
-    "shareMessage": "Check out page {{page}} of the Quran on {{appName}}"
+    "shareMessage": "የቁርአንን ገጽ {{page}} በ{{appName}} ይመልከቱ"
   },
   "toolbar": {
     "options": "አማራጮች",
@@ -31,9 +31,9 @@
     "pageWithSurah": "ገጽ {{page}} · {{surah}}",
     "surahWithMeaning": "ሱራ {{number}} · {{meaning}}",
     "verse": "አንቀጽ {{number}}",
-    "sortRevelation": "ውርደት",
-    "juzAmma": "Juz 'Amma",
-    "juzTabarak": "Juz Tabarak"
+    "sortRevelation": "የወረደበት",
+    "juzAmma": "ጁዝ ዐም",
+    "juzTabarak": "ጁዝ ተባረክ"
   },
   "playback": {
     "timestampsUnavailable": "ለዚህ አንባቢ በዚህ ሱራ የጊዜ ምልክቶች አይገኙም። ሌላ አንባቢ ይሞክሩ።",
@@ -52,6 +52,6 @@
   },
   "verseLabel": "{{surah}} {{surahNumber}}:{{ayah}}",
   "shareCard": {
-    "madeWith": "made with {{appName}}"
+    "madeWith": "በ{{appName}} የተሰራ"
   }
 }

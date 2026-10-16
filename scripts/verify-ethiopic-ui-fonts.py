@@ -66,7 +66,8 @@ def verify(export_directory=None):
     require(set(records) == set(WEIGHTS), 'Manifest weights do not match UI aliases')
     # Locale copy plus bundled Ethiopic data shown through the UI fonts.
     sources = [*(ROOT / 'i18n/locales/am').glob('*.json'),
-               ROOT / 'data/surahNamesAm.json', ROOT / 'data/reciterNamesAm.json']
+               ROOT / 'data/surahNamesAm.json', ROOT / 'data/surahMeaningsAm.json',
+               ROOT / 'data/reciterNamesAm.json']
     copy = ''.join(resource_text(json.loads(path.read_text(encoding='utf-8')))
                    for path in sources)
     # Include Ethiopic extensions as well as the main Unicode block.

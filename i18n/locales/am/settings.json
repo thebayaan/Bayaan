@@ -4,7 +4,7 @@
     "about": "ስለ {{appName}}",
     "credits": "ምስጋና",
     "mushafSettings": "የሙስሐፍ ቅንብሮች",
-    "defaultReciter": "ነባሪ አንባቢ",
+    "defaultReciter": "ዋና አንባቢ",
     "reciterChoice": "የአንባቢ ምርጫ",
     "account": "መለያ",
     "translations": "ትርጉሞችና ተፍሲሮች",
@@ -30,7 +30,7 @@
         "description": "የቁርአን ትርጉሞችንና ማብራሪያዎችን ያስተዳድሩ"
       },
       "defaultReciter": {
-        "title": "ነባሪ አንባቢ",
+        "title": "ዋና አንባቢ",
         "description": "የሚመርጡትን አንባቢ ይምረጡ"
       },
       "reciterChoice": {
@@ -185,11 +185,11 @@
       "manropeTitle": "Manrope ቅርጸ ቁምፊ",
       "uthmaniTitle": "Uthmani ቅርጸ ቁምፊ",
       "quranComTitle": "የQuran.com ምንጮች",
-      "yamamotoTitle": "Dr. Naoki Yamamoto"
+      "yamamotoTitle": "ዶ/ር ናኦኪ ያማሞቶ"
     }
   },
   "defaultReciter": {
-    "changeHeader": "ነባሪ አንባቢ ቀይር",
+    "changeHeader": "ዋና አንባቢ ቀይር",
     "completeOnly": "ሙሉ ቁርአን ያላቸው አንባቢዎች ብቻ ይታያሉ",
     "searchPlaceholder": "አንባቢዎችን ፈልግ...",
     "noResults": "ምንም አንባቢዎች አልተገኙም"
@@ -199,11 +199,11 @@
     "preferenceHeader": "የምርጫ ቅንብር",
     "askEveryTime": "በእያንዳንዱ ጊዜ ጠይቅ",
     "askEveryTimeDescription": "በሚያጫውቱበት እያንዳንዱ ጊዜ አንባቢ ይምረጡ",
-    "methodHeader": "ነባሪ የምርጫ ዘዴ",
+    "methodHeader": "ዋና የምርጫ ዘዴ",
     "browseAll": "ሁሉንም አንባቢዎች አስስ",
     "browseAllDescription": "ሙሉ የአንባቢዎች ስብስባችንን ፈልግ",
-    "useDefaultDescription": "ሁልጊዜ የመረጡትን ነባሪ አንባቢ ተጠቀም",
-    "useDefault": "ነባሪውን አንባቢ ተጠቀም"
+    "useDefaultDescription": "ሁልጊዜ የመረጡትን ዋና አንባቢ ተጠቀም",
+    "useDefault": "ዋናውን አንባቢ ተጠቀም"
   },
   "storage": {
     "loading": "የማከማቻ መረጃ እየተጫነ ነው...",
@@ -296,19 +296,19 @@
     "fonts": {
       "dkV1": {
         "description": "የቀድሞው King Fahd Complex",
-        "label": "Madani 1405"
+        "label": "መዳኒ 1405"
       },
       "dkV2": {
         "description": "ዘመናዊ King Fahd Complex",
-        "label": "Madani 1421"
+        "label": "መዳኒ 1421"
       },
       "indopak": {
         "description": "የህንድ ክፍለ አህጉር ነስታሊቅ ዘይቤ",
-        "label": "IndoPak"
+        "label": "ኢንዶፓክ"
       },
       "qcfV2": {
         "description": "ዘመናዊ የመዲና የታተመ ስርዓት",
-        "label": "Mushaf 1440"
+        "label": "ሙስሐፍ 1440"
       }
     },
     "weights": {
@@ -344,6 +344,61 @@
       "keepLabel": "Hafsን ማንበብ ቀጥል",
       "keep": "Hafsን አቆይ"
     },
-    "indopakHafsOnly": "IndoPak የሚያሳየው Hafsን ብቻ ነው። ሌላ ሪዋያ ሲመረጥ ቅርጸ ቁምፊው ወደ {{font}} ይቀየራል።"
+    "indopakHafsOnly": "IndoPak የሚያሳየው Hafsን ብቻ ነው። ሌላ ሪዋያ ሲመረጥ ቅርጸ ቁምፊው ወደ {{font}} ይቀየራል።",
+    "legendSummary": {
+      "shubah": "ከሐፍስ የሚለዩ ቃላትን ያመለክታል። በፊደል ደረጃ ያሉ የተጅዊድ ሕጎች ለዚህ ሪዋያ አይደምቁም።",
+      "ibnKathir": "ከሐፍስ የሚለዩ ቃላትን ያመለክታል፤ የኢብኑ ከሢርን ሲላ (የተውላጠ ስም ማስረዘም) ያደምቃል። በፊደል ደረጃ ያሉ የተጅዊድ ሕጎች አይደምቁም።",
+      "nafi": "KFGQPC የሚያካትታቸውን የታተመ ሙስሐፍ ሕጎች ያደምቃል፦ ተስሂል፣ ኢብዳል፣ መድ አል-በደል፣ ተግሊዝ አል-ላም፣ ሲላ እና እውነተኛ የቃል ልዩነቶች። ተቅሊል፣ ተርቂቅ አር-ራእ እና ነቅል ገና አልተደገፉም።",
+      "abuAmr": "ከሐፍስ የሚለዩ እውነተኛ የፊደል ደረጃ የቃል ልዩነቶችን ብቻ ያመለክታል። የአቡ ዐምር የተጅዊድ ሕጎች (ኢድጋም ከቢር፣ ኢማላ) ገና አይደምቁም።"
+    },
+    "legend": {
+      "wordVariant": {
+        "label": "የቃል ልዩነት",
+        "description": "ከሐፍስ ጋር በፊደል ደረጃ ያለ ልዩነት"
+      },
+      "genuineWordVariant": {
+        "label": "የቃል ልዩነት",
+        "description": "ከሐፍስ ጋር በፊደል ደረጃ ያለ እውነተኛ ልዩነት"
+      },
+      "vowelShift": {
+        "label": "የአናባቢ / የሁኔታ ለውጥ",
+        "description": "የመጨረሻ አናባቢ ወይም የሁኔታ ለውጥ ብቻ"
+      },
+      "silah": {
+        "label": "ሲላ",
+        "description": "የተውላጠ ስም ማስረዘሚያ ምልክት (ۥ / ۦ)"
+      },
+      "maddBadal": {
+        "label": "መድ አል-በደል",
+        "description": "ከሐምዛ በኋላ የሚረዝም አናባቢ"
+      },
+      "tashil": {
+        "label": "ተስሂል / ሙሰሀላ",
+        "description": "የለዘበ የሐምዛ አነባበብ"
+      },
+      "ibdal": {
+        "label": "ኢብዳል",
+        "description": "ሐምዛ በረጅም አናባቢ ሲተካ"
+      },
+      "taghliz": {
+        "label": "ተግሊዝ አል-ላም",
+        "description": "ከወፍራም ፊደላት በኋላ በአላህ ስም ውስጥ የሚወፍረው ላም"
+      }
+    },
+    "legendV2": {
+      "labels": {
+        "wordVariant": "የቃል ልዩነት",
+        "silah": "ሲላ"
+      },
+      "descriptions": {
+        "wordVariant": "ከሐፍስ በተለየ የሚነበብ ቃል",
+        "silah": "የተውላጠ ስም ማስረዘሚያ ምልክት (ۥ / ۦ)",
+        "silahDifference": "ከሐፍስ የሚለይ የተውላጠ ስም ማስረዘሚያ ምልክት (ۥ / ۦ)"
+      },
+      "summary": {
+        "words": "ከሐፍስ በተለየ የሚነበቡ ቃላትን ቀለም ያለብሳል። እንደ ተስሂል፣ ኢማላ እና ተቅሊል ያሉ የአነባበብ ሕጎች አይደምቁም።",
+        "wordsAndSilah": "ከሐፍስ በተለየ የሚነበቡ ቃላትን ቀለም ያለብሳል፤ የሲላ ምልክቶችንም ያቀልማል። እንደ ተስሂል፣ ኢማላ እና ተቅሊል ያሉ የአነባበብ ሕጎች አይደምቁም።"
+      }
+    }
   }
 }

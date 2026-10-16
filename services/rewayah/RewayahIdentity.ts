@@ -208,7 +208,21 @@ export function getDisplayLabelFromName(
 ): string {
   if (!dbName) return '';
   const canonical = resolveRewayahFromName(dbName);
-  return canonical ? getShortLabel(canonical) : dbName;
+  if (canonical) return getShortLabel(canonical);
+  // Names outside the 20 slugs (e.g. the combined Ruwais and Rawh recording)
+  // keep their raw spelling unless a locale lists one under `unmapped`.
+  return i18n.t(`content:rewayah.unmapped.${unmappedNameKey(dbName)}`, {
+    defaultValue: dbName,
+  });
+}
+
+// "Rowis and Rawh A'n Yakoob" -> "rowis-and-rawh-an-yakoob"
+function unmappedNameKey(dbName: string): string {
+  return dbName
+    .toLowerCase()
+    .replace(/['’]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
 }
 
 // ── Persisted-id migration ───────────────────────────────────────────────────

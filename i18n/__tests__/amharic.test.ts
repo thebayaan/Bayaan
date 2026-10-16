@@ -43,7 +43,7 @@ it('retains canonical Latin reference digits', () => {
   expect(localizeDigits('2:255', 'am')).toBe('2:255');
   expect(formatNumber(12345, 'am')).toBe('12,345');
 });
-it('spells surah names phonetically in Ethiopic without English meanings', () => {
+it('spells surah names phonetically in Ethiopic with Amharic meanings', () => {
   const [fatihah] = SURAHS;
   expect(getSurahDisplayName(fatihah, 'am')).toBe('አል-ፋቲሓ');
   expect(
@@ -51,7 +51,11 @@ it('spells surah names phonetically in Ethiopic without English meanings', () =>
   ).toBe('አል-ፋቲሓ');
   expect(getSurahDisplayName(fatihah, 'en')).toBe('Al-Fatihah');
   expect(getSurahDisplayName(fatihah, 'ar')).toBe('الفاتحة');
-  expect(getSurahMeaning(fatihah, 'am')).toBeNull();
+  expect(getSurahMeaning(fatihah, 'am')).toBe('መክፈቻይቱ');
+  expect(getSurahMeaning({translated_name_english: 'The Opener'}, 'am')).toBe(
+    'መክፈቻይቱ',
+  );
+  expect(getSurahMeaning(fatihah, 'ar')).toBeNull();
   expect(getSurahMeaning(fatihah, 'en')).toBe('The Opener');
   expect(getTrackDisplayTitle({title: 'Al-Fatihah', surahId: '1'}, 'am')).toBe(
     'አል-ፋቲሓ',
@@ -78,7 +82,7 @@ it('uses the upstream framework, Amharic plurals and canonical source labels', a
     interpolation: {escapeValue: false},
   });
   expect(instance.t('terms.reciter')).toBe('አንባቢ');
-  expect(instance.t('app.sharedAudio')).toBe('Shared Audio');
+  expect(instance.t('app.sharedAudio')).toBe('የተጋራ ድምፅ');
   expect(instance.t('languageRestart.title')).toBe('እንደገና ማስጀመር ያስፈልጋል');
   expect(instance.t('counts.reciters', {count: 0})).toBe('0 አንባቢ');
   expect(instance.t('counts.reciters', {count: 1})).toBe('1 አንባቢ');
@@ -126,8 +130,11 @@ it('localizes reader failures and keeps Trans brand markup and provider names in
       count: 5,
     }),
   ).toBe('2 ከ5 ንጥሎች');
-  // Specialist reference explanations continue to use the original source.
-  expect(instance.t('sheets:rewayatInfo.explanation')).toBe(
+  // Reference explanations are drafted in Amharic, keeping the Arabic terms.
+  expect(instance.t('sheets:rewayatInfo.explanation')).toContain(
+    'حَفْص عَن عَاصِم',
+  );
+  expect(instance.t('sheets:rewayatInfo.explanation')).not.toBe(
     resources.en.sheets.rewayatInfo.explanation,
   );
 });
