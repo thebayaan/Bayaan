@@ -1,4 +1,5 @@
 import {
+  footerChips,
   nextInCycle,
   nextRepeatChoice,
   pauseLabel,
@@ -111,5 +112,47 @@ describe('labels', () => {
   it('names repeat counts and pauses', () => {
     expect([3, Infinity].map(timesLabel)).toEqual(['3×', '∞']);
     expect([0, 2000].map(pauseLabel)).toEqual(['None', '2 s']);
+  });
+});
+
+describe('footerChips', () => {
+  const base = {
+    repeat: {kind: 'off'} as const,
+    speed: 1,
+    ambient: null,
+    sleepOn: false,
+    sleepChoice: 0,
+  };
+
+  it('is empty when nothing is changed', () => {
+    expect(footerChips(base)).toEqual([]);
+  });
+
+  it('lists repeat, speed, ambience and sleep in tray order', () => {
+    expect(
+      footerChips({
+        repeat: {kind: 'verse', times: 3},
+        speed: 1.25,
+        ambient: 'Rain',
+        sleepOn: true,
+        sleepChoice: 30,
+      }),
+    ).toEqual(['Repeat verse 3×', '1.25×', 'Rain', 'Sleep 30 min']);
+  });
+
+  it('names endless verse repeat, surah repeat and end-of-surah sleep', () => {
+    expect(
+      footerChips({...base, repeat: {kind: 'verse', times: Infinity}}),
+    ).toEqual(['Repeat verse']);
+    expect(footerChips({...base, repeat: {kind: 'surah'}})).toEqual([
+      'Repeat surah',
+    ]);
+    expect(footerChips({...base, sleepOn: true, sleepChoice: -1})).toEqual([
+      'Sleep at end of surah',
+    ]);
+  });
+
+  it('hides a sleep choice once the timer has run out', () => {
+    expect(footerChips({...base, sleepOn: false, sleepChoice: 30})).toEqual([]);
   });
 });

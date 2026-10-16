@@ -57,6 +57,18 @@ export function findTranslation(id: string): TranslationEdition {
   return TRANSLATIONS.find(t => t.id === id) ?? TRANSLATIONS[0];
 }
 
+/**
+ * One entry per language, with the first edition offered in it (so English
+ * picks Saheeh International), for choosing by language at onboarding.
+ */
+export function translationLanguages(): {language: string; edition: string}[] {
+  const seen = new Map<string, string>();
+  TRANSLATIONS.forEach(t => {
+    if (!seen.has(t.language)) seen.set(t.language, t.id);
+  });
+  return [...seen].map(([language, edition]) => ({language, edition}));
+}
+
 export function textScale(size: TextSize): number {
   return TEXT_SIZES.find(s => s.value === size)?.scale ?? 1;
 }
@@ -76,13 +88,26 @@ export function onScreenLabel(mode: OnScreenMode, edition: string): string {
   }
 }
 
-type Prefs = {mode: OnScreenMode; edition: string; textSize: TextSize};
+/** Minutes without a press before the listening room dims; 0 never dims. */
+export const DIM_CHOICES: readonly number[] = [0, 5, 10, 30];
+
+export function dimLabel(minutes: number): string {
+  return minutes === 0 ? 'Never' : `After ${minutes} min`;
+}
+
+type Prefs = {
+  mode: OnScreenMode;
+  edition: string;
+  textSize: TextSize;
+  dimAfterMin: number;
+};
 
 const KEY = 'bayaan_tv_display';
 const DEFAULTS: Prefs = {
   mode: 'both',
   edition: DEFAULT_EDITION,
   textSize: 'large',
+  dimAfterMin: 10,
 };
 
 function load(): Prefs {
@@ -97,6 +122,9 @@ function load(): Prefs {
     textSize: TEXT_SIZES.some(s => s.value === saved.textSize)
       ? (saved.textSize as TextSize)
       : DEFAULTS.textSize,
+    dimAfterMin: DIM_CHOICES.includes(saved.dimAfterMin as number)
+      ? (saved.dimAfterMin as number)
+      : DEFAULTS.dimAfterMin,
   };
 }
 
@@ -104,13 +132,14 @@ type DisplayState = Prefs & {
   setMode: (mode: OnScreenMode) => void;
   setEdition: (edition: string) => void;
   setTextSize: (size: TextSize) => void;
+  setDimAfter: (minutes: number) => void;
 };
 
 /** The listening room's on-screen choices, kept across launches. */
 export const useDisplayStore = create<DisplayState>((set, get) => {
   const save = (patch: Partial<Prefs>) => {
-    const {mode, edition, textSize} = {...get(), ...patch};
-    writeJSON<Prefs>(KEY, {mode, edition, textSize});
+    const {mode, edition, textSize, dimAfterMin} = {...get(), ...patch};
+    writeJSON<Prefs>(KEY, {mode, edition, textSize, dimAfterMin});
     set(patch);
   };
   return {
@@ -118,5 +147,6 @@ export const useDisplayStore = create<DisplayState>((set, get) => {
     setMode: mode => save({mode}),
     setEdition: edition => save({edition}),
     setTextSize: textSize => save({textSize}),
+    setDimAfter: dimAfterMin => save({dimAfterMin}),
   };
 });
