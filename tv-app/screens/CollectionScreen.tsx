@@ -184,8 +184,8 @@ export function CollectionScreen(): React.ReactElement {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.kicker}>YOUR LIBRARY</Text>
-        <Text style={styles.pageTitle}>Collection</Text>
+        <Text style={styles.kicker}>SAVED</Text>
+        <Text style={styles.pageTitle}>Library</Text>
         {total > 0 ? (
           <Text style={styles.sub}>
             {total} {total === 1 ? 'item' : 'items'} saved

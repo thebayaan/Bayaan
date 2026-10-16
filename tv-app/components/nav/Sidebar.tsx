@@ -1,11 +1,5 @@
-import React, {
-  forwardRef,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
-import {Platform, Pressable, Text, TVFocusGuideView, View} from 'react-native';
+import React, {useCallback, useEffect, useRef, useState} from 'react';
+import {Pressable, Text, TVFocusGuideView, View} from 'react-native';
 import {LogoMark} from '../brand/LogoMark';
 import {GradientFill} from '../brand/GradientFill';
 import {SurahGlyph} from '../brand/SurahGlyph';
@@ -73,24 +67,12 @@ export function Sidebar(): React.ReactElement {
 
   const open = focusedKey !== null;
 
-  // Android's guide enters on its last child (the now-playing tile) when
-  // focus arrives from the right, so point it at the current place instead.
-  // It only redirects focus coming from outside; moves inside stay normal.
-  // tvOS already enters on Home and then remembers the last item.
-  const guideRef = useRef<React.ElementRef<typeof TVFocusGuideView>>(null);
-  const activeRef = useRef<View>(null);
-  useEffect(() => {
-    if (Platform.OS !== 'android' || !activeRef.current) return;
-    guideRef.current?.setDestinations([activeRef.current]);
-  }, [current]);
-
   return (
     // The guide spans the sidebar's full height, so Left from any row of the
     // screen lands in it, even rows below the last item where the focus engine
     // would otherwise find nothing (tvOS) or the nearest item (Android). Focus
     // enters on Home the first time, then wherever it last was.
     <TVFocusGuideView
-      ref={guideRef}
       autoFocus
       style={[styles.root, open ? styles.rootOpen : styles.rootFolded]}>
       <View style={styles.brand}>
@@ -101,7 +83,6 @@ export function Sidebar(): React.ReactElement {
         {PLACES.map(place => (
           <SidebarItem
             key={place.key}
-            ref={current === place.key ? activeRef : undefined}
             label={place.label}
             icon={place.icon}
             active={current === place.key}
@@ -135,10 +116,16 @@ type ItemProps = {
   onPress: () => void;
 };
 
-const SidebarItem = forwardRef<View, ItemProps>(function SidebarItem(
-  {label, icon: Icon, active, open, focused, onFocus, onBlur, onPress},
-  ref,
-) {
+function SidebarItem({
+  label,
+  icon: Icon,
+  active,
+  open,
+  focused,
+  onFocus,
+  onBlur,
+  onPress,
+}: ItemProps): React.ReactElement {
   const tint = focused
     ? colors.accentInk
     : active
@@ -146,7 +133,6 @@ const SidebarItem = forwardRef<View, ItemProps>(function SidebarItem(
       : colors.textSecondary;
   return (
     <Pressable
-      ref={ref}
       onPress={onPress}
       onFocus={onFocus}
       onBlur={onBlur}
@@ -171,7 +157,7 @@ const SidebarItem = forwardRef<View, ItemProps>(function SidebarItem(
       ) : null}
     </Pressable>
   );
-});
+}
 
 type NowPlayingProps = {
   open: boolean;
@@ -307,7 +293,9 @@ const styles = createScaledStyles({
     alignItems: 'center',
     gap: 14,
   },
-  nowPlayingOpen: {width: 252, padding: 8, marginLeft: -8},
+  // No negative margin: an edge left of the items' makes Android treat the
+  // tile as "left of" Home, so an extra Left press would jump down to it.
+  nowPlayingOpen: {width: 252, padding: 8},
   tile: {
     width: 64,
     height: 52,
