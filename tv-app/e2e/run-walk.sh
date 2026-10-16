@@ -69,7 +69,9 @@ app_running() {
   if [[ $PLATFORM == android ]]; then
     [[ -n "$(adb_ shell pidof "$APP_ID" | tr -d '\r')" ]]
   else
-    xcrun simctl spawn "$DEVICE" launchctl list | grep -q "$APP_ID"
+    # Not grep -q: it exits on the first match, launchctl then dies of
+    # SIGPIPE, and pipefail turns that into "not running".
+    xcrun simctl spawn "$DEVICE" launchctl list | grep "$APP_ID" >/dev/null
   fi
 }
 
