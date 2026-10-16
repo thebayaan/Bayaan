@@ -1,26 +1,38 @@
-import React, {useEffect, useMemo, useRef, useState} from 'react';
+import {FlashList, type FlashListRef} from '@shopify/flash-list';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {Image} from 'expo-image';
 import {
   ActivityIndicator,
   NativeScrollEvent,
   NativeSyntheticEvent,
-  ScrollView,
   StyleSheet,
   Text,
   TVFocusGuideView,
   View,
 } from 'react-native';
+import {FilterChip} from '../components/browse/FilterChip';
+import {
+  ReciterPortrait,
+  reciterArabicName,
+} from '../components/browse/ReciterPortrait';
+import {SurahRow, SURAH_ROW_HEIGHT} from '../components/browse/SurahRow';
 import {FocusableButton} from '../components/primitives/FocusableButton';
 import {FocusIcon, FocusText} from '../components/primitives/focusContext';
 import {fetchRewayat, getCachedRewayat} from '../services/tvDataService';
 import {toggleFavorite} from '../services/favoritesStore';
+import {
+  SURAHS,
+  groupRewayat,
+  rewayahDisplayName,
+  styleLabel,
+} from '../services/browseCatalog';
 import {useReciters} from '../hooks/useReciters';
 import {useFavorites} from '../hooks/useFavorites';
 import {useContinueListening} from '../hooks/useContinueListening';
 import {usePlayer} from '../hooks/usePlayer';
 import {useNavStore} from '../store/navStore';
-import type {Rewayah} from '../types/reciter';
-import {SURAHS} from '../../data/surahData';
+import {useSettingsStore} from '../store/settingsStore';
+import type {Rewayah, Surah} from '../types/reciter';
 import {
   CheckIcon,
   HeartIcon,
@@ -30,17 +42,36 @@ import {
 import {colors} from '../theme/colors';
 import {fonts, typography} from '../theme/typography';
 import {spacing} from '../theme/spacing';
-import {createScaledStyles} from '../theme/scale';
+import {createScaledStyles, scale} from '../theme/scale';
 import {getReciterArtwork} from '../services/reciterArtwork';
 
 type Props = {reciterId: string};
 type SortMode = 'asc' | 'desc' | 'revelation';
 
+const COLUMNS = 3;
+const CELL_PAD_X = 10;
+const CELL_PAD_Y = 8;
+const ROW_SIZE = SURAH_ROW_HEIGHT + CELL_PAD_Y * 2;
+/** The list's side padding, so rows (inside their cell padding) sit on the gutter. */
+const LIST_PAD_X = spacing.xl - CELL_PAD_X;
+const PORTRAIT = 240;
+
 const scrollPositions = new Map<string, number>();
 
-const revelationOrder = new Map<number, number>(
-  SURAHS.map(s => [s.id, s.revelation_order]),
-);
+const surahById = new Map<number, Surah>(SURAHS.map(s => [s.id, s]));
+
+function surahName(n: number): string {
+  return surahById.get(n)?.name ?? `Surah ${n}`;
+}
+
+function firstRewayahId(rewayat: Rewayah[]): string | null {
+  return groupRewayat(rewayat)[0]?.items[0]?.id ?? null;
+}
+
+function overrideItemLayout(layout: {span?: number; size?: number}): void {
+  layout.span = 1;
+  layout.size = scale(ROW_SIZE);
+}
 
 export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
   const {reciters} = useReciters();
@@ -48,13 +79,17 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
   const [rewayat, setRewayat] = useState<Rewayah[]>(
     () => getCachedRewayat(reciterId) ?? [],
   );
-  const [activeRewayahId, setActive] = useState<string | null>(
-    () => getCachedRewayat(reciterId)?.[0]?.id ?? null,
+  const groups = useMemo(() => groupRewayat(rewayat), [rewayat]);
+  const [activeRewayahId, setActive] = useState<string | null>(() =>
+    firstRewayahId(getCachedRewayat(reciterId) ?? []),
   );
   const {playRewayah, shufflePlayRewayah} = usePlayer();
   const favorites = useFavorites();
   const continueEntries = useContinueListening();
   const isFav = favorites.some(f => f.reciterId === reciterId);
+  const defaultReciterId = useSettingsStore(s => s.defaultReciterId);
+  const setDefaultReciterId = useSettingsStore(s => s.setDefaultReciterId);
+  const isDefault = defaultReciterId === reciterId;
   const push = useNavStore(s => s.push);
   const pop = useNavStore(s => s.pop);
   const [sort, setSort] = useState<SortMode>('asc');
@@ -62,7 +97,7 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
     () => (getCachedRewayat(reciterId)?.length ?? 0) === 0,
   );
 
-  const scrollRef = useRef<ScrollView>(null);
+  const listRef = useRef<FlashListRef<Surah>>(null);
   const restoredRef = useRef<boolean>(false);
 
   useEffect(() => {
@@ -71,7 +106,9 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
       .then(r => {
         if (cancelled || r.length === 0) return;
         setRewayat(r);
-        setActive(prev => prev ?? r[0]?.id ?? null);
+        setActive(prev =>
+          prev && r.some(x => x.id === prev) ? prev : firstRewayahId(r),
+        );
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -93,24 +130,22 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
       return;
     }
     if (height < saved) return;
-    scrollRef.current?.scrollTo({y: saved, animated: false});
+    listRef.current?.scrollToOffset({offset: saved, animated: false});
     restoredRef.current = true;
   }
 
   const current = rewayat.find(r => r.id === activeRewayahId);
-  const baseSurahNumbers: number[] = useMemo(
-    () => (current ? current.surah_list.filter(n => n > 0) : []),
-    [current],
-  );
+  const activeGroup = groups.find(g => g.items.some(r => r.id === current?.id));
 
-  const sortedSurahNumbers = useMemo(() => {
-    const copy = baseSurahNumbers.slice();
-    if (sort === 'asc') return copy.sort((a, b) => a - b);
-    if (sort === 'desc') return copy.sort((a, b) => b - a);
-    return copy.sort(
-      (a, b) => (revelationOrder.get(a) ?? a) - (revelationOrder.get(b) ?? b),
-    );
-  }, [baseSurahNumbers, sort]);
+  const sortedSurahs: Surah[] = useMemo(() => {
+    const numbers = current ? current.surah_list.filter(n => n > 0) : [];
+    const list = numbers
+      .map(n => surahById.get(n))
+      .filter((s): s is Surah => !!s);
+    if (sort === 'asc') return list.sort((a, b) => a.id - b.id);
+    if (sort === 'desc') return list.sort((a, b) => b.id - a.id);
+    return list.sort((a, b) => a.revelation_order - b.revelation_order);
+  }, [current, sort]);
 
   const resumeEntry = useMemo(() => {
     if (!current) return null;
@@ -122,20 +157,40 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
   }, [continueEntries, current, reciterId]);
 
   const progressByNumber = useMemo(() => {
-    const map = new Map<
-      number,
-      {positionSeconds: number; durationSeconds: number}
-    >();
+    const map = new Map<number, number>();
     continueEntries
-      .filter(e => e.reciterId === reciterId)
-      .forEach(e =>
-        map.set(e.surahNumber, {
-          positionSeconds: e.positionSeconds,
-          durationSeconds: e.durationSeconds,
-        }),
-      );
+      .filter(e => e.reciterId === reciterId && e.durationSeconds > 0)
+      .forEach(e => {
+        if (map.has(e.surahNumber)) return;
+        map.set(
+          e.surahNumber,
+          Math.min(1, e.positionSeconds / e.durationSeconds),
+        );
+      });
     return map;
   }, [continueEntries, reciterId]);
+
+  const playSurah = useCallback(
+    async (surahNumber: number): Promise<void> => {
+      if (!reciter || !current) return;
+      await playRewayah(reciter.id, reciter.name, current, surahNumber);
+      push({screen: 'nowPlaying'});
+    },
+    [reciter, current, playRewayah, push],
+  );
+
+  const renderItem = useCallback(
+    ({item}: {item: Surah}) => (
+      <View style={styles.cell}>
+        <SurahRow
+          surah={item}
+          progress={progressByNumber.get(item.id) ?? 0}
+          onSelect={playSurah}
+        />
+      </View>
+    ),
+    [progressByNumber, playSurah],
+  );
 
   if (!reciter) {
     return (
@@ -156,22 +211,26 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
     );
   }
 
-  const surahByNumber = new Map<number, string>(
-    SURAHS.map(s => [s.id, s.name]),
-  );
-  const totalSurahs = rewayat.reduce((sum, r) => sum + r.surah_list.length, 0);
-
   const artwork = getReciterArtwork(reciter);
+  const arabicName = reciterArabicName(reciter);
+  const firstSurah = sortedSurahs[0]?.id;
+  const playLabel = resumeEntry
+    ? `Continue ${surahName(resumeEntry.surahNumber)}`
+    : firstSurah !== undefined
+      ? `Play from ${surahName(firstSurah)}`
+      : 'Play';
+  const meta = [
+    current ? rewayahDisplayName(current.name) : null,
+    current ? `${sortedSurahs.length} surahs` : null,
+    groups.length > 1 ? `${groups.length} rewayat` : null,
+  ].filter((part): part is string => !!part);
+  const styleItems =
+    activeGroup && activeGroup.items.length > 1 ? activeGroup.items : [];
 
-  return (
-    <ScrollView
-      ref={scrollRef}
-      style={styles.container}
-      contentContainerStyle={styles.scroll}
-      scrollEventThrottle={250}
-      showsVerticalScrollIndicator={false}
-      onScroll={handleScroll}
-      onContentSizeChange={handleContentSizeChange}>
+  // Header, footer and empty state sit inside the list's side padding: bleed
+  // them back out so the hero spans the screen.
+  const header = (
+    <View style={styles.bleed}>
       <View style={styles.hero}>
         {artwork ? (
           <Image
@@ -190,63 +249,45 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
           <FocusText style={styles.backText}>‹ Back</FocusText>
         </FocusableButton>
         <View style={styles.heroContent}>
-          {artwork ? (
-            <Image
-              source={artwork}
-              style={styles.portrait}
-              contentFit="cover"
-              cachePolicy="memory-disk"
+          <View style={styles.portrait}>
+            <ReciterPortrait
+              reciter={reciter}
+              size={PORTRAIT}
+              idPrefix="detail"
             />
-          ) : (
-            <View style={[styles.portrait, styles.portraitPlaceholder]}>
-              <Text style={styles.portraitInitial}>
-                {reciter.name.charAt(0).toUpperCase()}
-              </Text>
-            </View>
-          )}
+          </View>
           <View style={styles.heroMeta}>
             <Text style={styles.kicker}>RECITER</Text>
-            <Text style={styles.title}>{reciter.name}</Text>
-            {rewayat.length > 0 ? (
-              <Text style={styles.sub}>
-                {rewayat.length} {rewayat.length === 1 ? 'rewayah' : 'rewayat'}
-                {'  ·  '}
-                {totalSurahs} surahs
+            <View style={styles.names}>
+              <Text style={styles.title} numberOfLines={2}>
+                {reciter.name}
               </Text>
+              {arabicName ? (
+                <Text style={styles.arabic} numberOfLines={1}>
+                  {arabicName}
+                </Text>
+              ) : null}
+            </View>
+            {meta.length > 0 ? (
+              <Text style={styles.sub}>{meta.join('  ·  ')}</Text>
             ) : null}
             <TVFocusGuideView autoFocus style={styles.heroActions}>
-              {current ? (
-                <FocusableButton
-                  onPress={async () => {
-                    const target =
-                      resumeEntry?.surahNumber ?? sortedSurahNumbers[0];
-                    if (target === undefined) return;
-                    await playRewayah(
-                      reciter.id,
-                      reciter.name,
-                      current,
-                      target,
-                    );
-                    push({screen: 'nowPlaying'});
-                  }}
-                  accessibilityLabel={resumeEntry ? 'Continue' : 'Play'}
-                  hasTVPreferredFocus
-                  outlined
-                  style={styles.actionBtn}>
-                  <View style={styles.favInner}>
-                    <FocusIcon icon={PlayIcon} size={20} />
-                    <FocusText style={styles.actionText}>
-                      {resumeEntry
-                        ? `Continue · ${
-                            surahByNumber.get(resumeEntry.surahNumber) ??
-                            `Surah ${resumeEntry.surahNumber}`
-                          }`
-                        : 'Play'}
-                    </FocusText>
-                  </View>
-                </FocusableButton>
-              ) : null}
-              {current && sortedSurahNumbers.length > 1 ? (
+              <FocusableButton
+                onPress={async () => {
+                  const target = resumeEntry?.surahNumber ?? firstSurah;
+                  if (target === undefined) return;
+                  await playSurah(target);
+                }}
+                accessibilityLabel={playLabel}
+                hasTVPreferredFocus
+                outlined
+                style={styles.actionBtn}>
+                <View style={styles.actionInner}>
+                  <FocusIcon icon={PlayIcon} size={20} />
+                  <FocusText style={styles.actionText}>{playLabel}</FocusText>
+                </View>
+              </FocusableButton>
+              {current && sortedSurahs.length > 1 ? (
                 <FocusableButton
                   onPress={async () => {
                     await shufflePlayRewayah(reciter.id, reciter.name, current);
@@ -254,7 +295,7 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
                   }}
                   accessibilityLabel="Shuffle play"
                   style={styles.actionBtn}>
-                  <View style={styles.favInner}>
+                  <View style={styles.actionInner}>
                     <FocusIcon icon={ShuffleIcon} size={20} />
                     <FocusText style={styles.actionText}>Shuffle</FocusText>
                   </View>
@@ -266,10 +307,25 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
                   isFav ? 'Remove from favorites' : 'Add to favorites'
                 }
                 style={styles.actionBtn}>
-                <View style={styles.favInner}>
+                <View style={styles.actionInner}>
                   <FocusIcon icon={HeartIcon} size={20} filled={isFav} />
                   <FocusText style={styles.actionText}>
                     {isFav ? 'Favorited' : 'Favorite'}
+                  </FocusText>
+                </View>
+              </FocusableButton>
+              <FocusableButton
+                onPress={() => {
+                  if (!isDefault) setDefaultReciterId(reciterId);
+                }}
+                accessibilityLabel={
+                  isDefault ? 'Your default reciter' : 'Make default reciter'
+                }
+                style={styles.actionBtn}>
+                <View style={styles.actionInner}>
+                  {isDefault ? <FocusIcon icon={CheckIcon} size={20} /> : null}
+                  <FocusText style={styles.actionText}>
+                    {isDefault ? 'Default reciter' : 'Make default'}
                   </FocusText>
                 </View>
               </FocusableButton>
@@ -278,192 +334,112 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
         </View>
       </View>
 
-      {rewayat.length > 1 && (
-        <TVFocusGuideView autoFocus style={styles.rewayahRow}>
-          {rewayat.map(r => (
-            <Tab
-              key={r.id}
-              label={r.name}
-              selected={activeRewayahId === r.id}
-              onPress={() => setActive(r.id)}
+      {groups.length > 1 ? (
+        <TVFocusGuideView autoFocus style={styles.tabRow}>
+          {groups.map(g => (
+            <FilterChip
+              key={g.key}
+              label={g.label}
+              accessibilityLabel={g.key}
+              selected={activeGroup?.key === g.key}
+              onPress={() => setActive(g.items[0]?.id ?? null)}
             />
           ))}
         </TVFocusGuideView>
-      )}
-
-      <View style={styles.sectionHeaderRow}>
-        <Text style={styles.sectionLabel}>Surahs</Text>
-        {sortedSurahNumbers.length > 1 ? (
-          <TVFocusGuideView autoFocus style={styles.sortRow}>
-            <SortChip
-              label="1–114"
-              active={sort === 'asc'}
-              onPress={() => setSort('asc')}
-            />
-            <SortChip
-              label="114–1"
-              active={sort === 'desc'}
-              onPress={() => setSort('desc')}
-            />
-            <SortChip
-              label="Revelation"
-              active={sort === 'revelation'}
-              onPress={() => setSort('revelation')}
-            />
-          </TVFocusGuideView>
-        ) : null}
-      </View>
-      {sortedSurahNumbers.length > 0 ? (
-        <TVFocusGuideView autoFocus style={styles.grid}>
-          {sortedSurahNumbers.map(n => {
-            const p = progressByNumber.get(n);
-            const ratio =
-              p && p.durationSeconds > 0
-                ? Math.min(1, p.positionSeconds / p.durationSeconds)
-                : 0;
-            const completed = ratio >= 0.97;
-            const inProgress = ratio > 0.02 && !completed;
-            return (
-              <FocusableButton
-                key={n}
-                style={styles.surahCard}
-                accessibilityLabel={surahByNumber.get(n) ?? `Surah ${n}`}
-                onPress={async () => {
-                  if (!current) return;
-                  await playRewayah(reciter.id, reciter.name, current, n);
-                  push({screen: 'nowPlaying'});
-                }}>
-                {focused => (
-                  <>
-                    <View style={styles.surahTop}>
-                      <FocusText
-                        style={styles.num}
-                        color={colors.textTertiary}
-                        focusedColor={colors.onFocusSecondary}>
-                        {n}
-                      </FocusText>
-                      {completed ? (
-                        <FocusIcon
-                          icon={CheckIcon}
-                          color={colors.accent}
-                          size={20}
-                        />
-                      ) : null}
-                    </View>
-                    <FocusText style={styles.name} numberOfLines={1}>
-                      {surahByNumber.get(n) ?? `Surah ${n}`}
-                    </FocusText>
-                    {inProgress ? (
-                      <View
-                        style={[
-                          styles.progressTrack,
-                          focused && styles.progressTrackFocused,
-                        ]}>
-                        <View
-                          style={[
-                            styles.progressFill,
-                            focused && styles.progressFillFocused,
-                            {width: `${ratio * 100}%`},
-                          ]}
-                        />
-                      </View>
-                    ) : null}
-                  </>
-                )}
-              </FocusableButton>
-            );
-          })}
-        </TVFocusGuideView>
-      ) : loading ? (
-        <View style={styles.loadingRow}>
-          <ActivityIndicator color={colors.text} size="large" />
-        </View>
-      ) : (
-        <View style={styles.noSurahs}>
-          <Text style={styles.noSurahsText}>
-            No surahs are available for this rewayah yet.
-          </Text>
-        </View>
-      )}
-
-      {reciter.bio ? (
-        <View style={styles.bioBlock}>
-          <Text style={styles.sectionLabel}>About</Text>
-          <Text style={styles.bio}>{reciter.bio}</Text>
-        </View>
       ) : null}
-    </ScrollView>
+
+      {styleItems.length > 0 || sortedSurahs.length > 1 ? (
+        <TVFocusGuideView autoFocus style={styles.filterRow}>
+          {styleItems.map(r => (
+            <FilterChip
+              key={r.id}
+              small
+              label={styleLabel(r.style)}
+              selected={r.id === current?.id}
+              onPress={() => setActive(r.id)}
+            />
+          ))}
+          <View style={styles.filterSpacer} />
+          {sortedSurahs.length > 1 ? (
+            <>
+              <Text style={styles.sortLabel}>SORT</Text>
+              <FilterChip
+                small
+                label="1–114"
+                accessibilityLabel="Sort 1 to 114"
+                selected={sort === 'asc'}
+                onPress={() => setSort('asc')}
+              />
+              <FilterChip
+                small
+                label="114–1"
+                accessibilityLabel="Sort 114 to 1"
+                selected={sort === 'desc'}
+                onPress={() => setSort('desc')}
+              />
+              <FilterChip
+                small
+                label="Revelation"
+                accessibilityLabel="Sort by revelation order"
+                selected={sort === 'revelation'}
+                onPress={() => setSort('revelation')}
+              />
+            </>
+          ) : null}
+        </TVFocusGuideView>
+      ) : null}
+    </View>
   );
-}
 
-type TabProps = {
-  label: string;
-  selected: boolean;
-  onPress: () => void;
-  small?: boolean;
-  accessibilityLabel?: string;
-};
+  const footer = reciter.bio ? (
+    <View style={[styles.bleed, styles.bioBlock]}>
+      <Text style={styles.sectionLabel}>About</Text>
+      <Text style={styles.bio}>{reciter.bio}</Text>
+    </View>
+  ) : null;
 
-/**
- * A plain text tab: the selected one is cream with a thin sky underline, so
- * "selected" and "focused" (the cream fill) never look alike.
- */
-function Tab({
-  label,
-  selected,
-  onPress,
-  small,
-  accessibilityLabel,
-}: TabProps): React.ReactElement {
-  const name = accessibilityLabel ?? label;
-  return (
-    <FocusableButton
-      onPress={onPress}
-      accessibilityLabel={selected ? `${name}, selected` : name}
-      style={[styles.tab, small && styles.tabSmall]}>
-      {focused => (
-        <>
-          <FocusText
-            style={[styles.tabText, small && styles.tabTextSmall]}
-            color={selected ? colors.text : colors.textSecondary}>
-            {label}
-          </FocusText>
-          <View
-            style={[styles.tabLine, selected && !focused && styles.tabLineOn]}
-          />
-        </>
-      )}
-    </FocusableButton>
+  const empty = loading ? (
+    <View style={[styles.bleed, styles.loadingRow]}>
+      <ActivityIndicator color={colors.text} size="large" />
+    </View>
+  ) : (
+    <View style={[styles.bleed, styles.noSurahs]}>
+      <Text style={styles.noSurahsText}>
+        No surahs are available for this rewayah yet.
+      </Text>
+    </View>
   );
-}
 
-function SortChip({
-  label,
-  active,
-  onPress,
-}: {
-  label: string;
-  active: boolean;
-  onPress: () => void;
-}): React.ReactElement {
   return (
-    <Tab
-      small
-      label={label}
-      selected={active}
-      onPress={onPress}
-      accessibilityLabel={`Sort ${label}`}
-    />
+    <View style={styles.container}>
+      <FlashList
+        ref={listRef}
+        data={sortedSurahs}
+        numColumns={COLUMNS}
+        renderItem={renderItem}
+        keyExtractor={s => String(s.id)}
+        overrideItemLayout={overrideItemLayout}
+        ListHeaderComponent={header}
+        ListFooterComponent={footer}
+        ListEmptyComponent={empty}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+        scrollEventThrottle={250}
+        onScroll={handleScroll}
+        onContentSizeChange={handleContentSizeChange}
+      />
+    </View>
   );
 }
 
 const styles = createScaledStyles({
   container: {flex: 1, backgroundColor: colors.background},
-  scroll: {paddingBottom: spacing.xxl},
+  listContent: {paddingHorizontal: LIST_PAD_X, paddingBottom: spacing.xxl},
+  bleed: {marginHorizontal: -LIST_PAD_X},
   back: {
     position: 'absolute',
     top: 24,
-    // Not left of the grid's edge: Android's focus finder would treat Back
+    // Not left of the list's edge: Android's focus finder would treat Back
     // as "left of" the first surah and jump up to it.
     left: spacing.xl,
     zIndex: 10,
@@ -477,38 +453,31 @@ const styles = createScaledStyles({
     fontWeight: '700',
   },
   hero: {
-    height: 380,
-    marginBottom: spacing.md,
-    backgroundColor: colors.surface,
+    marginBottom: spacing.sm,
+    backgroundColor: colors.backgroundSecondary,
     overflow: 'hidden',
   },
-  heroImg: {...StyleSheet.absoluteFillObject, opacity: 0.6},
+  heroImg: {...StyleSheet.absoluteFillObject, opacity: 0.5},
   heroScrim: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    backgroundColor: 'rgba(5,11,16,0.45)',
   },
   heroContent: {
-    flex: 1,
     flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: spacing.lg,
-    padding: spacing.xl,
+    alignItems: 'center',
+    gap: spacing.lg + 8,
+    paddingHorizontal: spacing.xl,
+    paddingTop: 96,
+    paddingBottom: spacing.lg,
   },
   portrait: {
-    width: 240,
-    height: 240,
-    borderRadius: 120,
+    width: PORTRAIT,
+    height: PORTRAIT,
+    borderRadius: PORTRAIT / 2,
+    overflow: 'hidden',
     backgroundColor: colors.surfaceElevated,
   },
-  portraitPlaceholder: {alignItems: 'center', justifyContent: 'center'},
-  portraitInitial: {
-    color: colors.text,
-    fontFamily: fonts.extraLight,
-    fontSize: 104,
-    fontWeight: '200',
-    opacity: 0.45,
-  },
-  heroMeta: {flex: 1, paddingBottom: spacing.sm, gap: 6},
+  heroMeta: {flex: 1, gap: 6},
   kicker: {
     color: colors.accent,
     fontFamily: fonts.extraBold,
@@ -516,26 +485,40 @@ const styles = createScaledStyles({
     fontSize: 14,
     letterSpacing: 2.5,
     textTransform: 'uppercase',
-    marginBottom: 4,
+    marginBottom: 2,
   },
+  names: {alignSelf: 'flex-start', maxWidth: '100%'},
   title: {
     color: colors.text,
     ...typography.titleXL,
-    lineHeight: 70,
+    lineHeight: 74,
     letterSpacing: -1,
+  },
+  arabic: {
+    alignSelf: 'flex-end',
+    color: colors.textSecondary,
+    fontSize: 30,
+    lineHeight: 44,
+    writingDirection: 'rtl',
+    marginTop: -4,
   },
   sub: {
     color: colors.textSecondary,
     fontFamily: fonts.medium,
     fontSize: 20,
     fontWeight: '500',
-    marginTop: 6,
+    marginTop: 4,
   },
-  heroActions: {flexDirection: 'row', marginTop: 16, gap: 12, flexWrap: 'wrap'},
-  favInner: {flexDirection: 'row', alignItems: 'center', gap: 8},
+  heroActions: {
+    flexDirection: 'row',
+    marginTop: 20,
+    gap: 14,
+    flexWrap: 'wrap',
+  },
+  actionInner: {flexDirection: 'row', alignItems: 'center', gap: 10},
   actionBtn: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
+    paddingHorizontal: 26,
+    paddingVertical: 14,
     borderRadius: 16,
   },
   actionText: {
@@ -543,36 +526,29 @@ const styles = createScaledStyles({
     fontSize: 19,
     fontWeight: '700',
   },
-  tab: {
-    paddingHorizontal: 18,
-    paddingTop: 10,
-    paddingBottom: 6,
-    borderRadius: 16,
-    alignItems: 'center',
-  },
-  tabSmall: {paddingHorizontal: 14, paddingTop: 7, paddingBottom: 4},
-  tabText: {
-    fontFamily: fonts.semiBold,
-    fontSize: 20,
-    fontWeight: '600',
-  },
-  tabTextSmall: {fontSize: 16},
-  tabLine: {
-    marginTop: 6,
-    height: 3,
-    alignSelf: 'stretch',
-    borderRadius: 2,
-    backgroundColor: 'transparent',
-  },
-  tabLineOn: {backgroundColor: colors.accent},
-  rewayahRow: {
+  // Chips carry side padding: pull the rows out so their text lines up with
+  // the portrait and the list.
+  tabRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
     paddingHorizontal: spacing.xl - 18,
-    marginTop: 2,
-    marginBottom: spacing.lg,
-    flexWrap: 'wrap',
+    marginBottom: spacing.xs,
   },
+  filterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: spacing.xl - 14,
+    marginBottom: spacing.xs,
+  },
+  filterSpacer: {flex: 1},
+  sortLabel: {
+    color: colors.textTertiary,
+    ...typography.label,
+    marginRight: 4,
+  },
+  cell: {paddingHorizontal: CELL_PAD_X, paddingVertical: CELL_PAD_Y},
   sectionLabel: {
     color: colors.text,
     fontFamily: fonts.bold,
@@ -582,53 +558,6 @@ const styles = createScaledStyles({
     paddingHorizontal: spacing.xl,
     marginTop: spacing.md,
     marginBottom: 16,
-  },
-  sectionHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingRight: spacing.xl,
-  },
-  sortRow: {flexDirection: 'row', gap: 8, marginTop: spacing.md},
-  progressTrack: {
-    height: 3,
-    backgroundColor: 'rgba(244,243,236,0.16)',
-    borderRadius: 2,
-    overflow: 'hidden',
-  },
-  progressTrackFocused: {backgroundColor: 'rgba(6,21,28,0.18)'},
-  progressFill: {height: '100%', backgroundColor: colors.text, borderRadius: 2},
-  progressFillFocused: {backgroundColor: colors.onFocus},
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 16,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: 8,
-  },
-  surahCard: {
-    width: 196,
-    height: 112,
-    padding: 16,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
-    justifyContent: 'space-between',
-  },
-  surahTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  num: {
-    fontFamily: fonts.bold,
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  name: {
-    fontFamily: fonts.semiBold,
-    fontSize: 19,
-    fontWeight: '600',
   },
   loadingRow: {
     paddingHorizontal: spacing.xl,
