@@ -1,52 +1,96 @@
-/** Words of one ayah revealed so far, in Tilawa's segmentation. */
-export interface RevealedAyah {
-  /** Leading words revealed (word_index + 1 at most). */
-  count: number;
-  /** Tilawa's word count for the ayah. */
-  total: number;
+/**
+ * Hide and reveal keeps one point in the Quran: every word up to and
+ * including it is shown, everything after it is hidden. It only moves
+ * forward, so starting mid-page shows what comes before, and a jump ahead
+ * shows the ayat skipped over.
+ */
+export interface RevealedThrough {
+  surah: number;
+  ayah: number;
+  /** Last Digital Khatt word position shown in that ayah. */
+  position: number;
 }
 
-export type RevealedWords = Readonly<Record<string, RevealedAyah>>;
+/** Position meaning "the whole ayah". */
+export const WHOLE_AYAH = Number.MAX_SAFE_INTEGER;
 
-function parseKey(key: string): [number, number] {
-  const [surah, ayah] = key.split(':').map(Number);
-  return [surah, ayah];
+export interface AyahRef {
+  surah: number;
+  ayah: number;
+}
+
+/** Quran facts reveal needs, injected so the logic stays pure. */
+export interface RevealSource {
+  /** Ayat in a surah. */
+  ayahCount: (surah: number) => number;
+  /** Last word position of an ayah, ayah marker excluded. */
+  lastPosition: (surah: number, ayah: number) => number;
+}
+
+function compare(a: RevealedThrough, b: RevealedThrough): number {
+  return a.surah - b.surah || a.ayah - b.ayah || a.position - b.position;
+}
+
+/** The later of the two points; `current` itself when it is not behind. */
+export function advanceRevealed(
+  current: RevealedThrough | null,
+  next: RevealedThrough,
+): RevealedThrough {
+  if (current && compare(current, next) >= 0) return current;
+  return next;
+}
+
+export function isRevealed(
+  through: RevealedThrough | null,
+  surah: number,
+  ayah: number,
+  position: number,
+): boolean {
+  if (!through) return false;
+  if (surah !== through.surah) return surah < through.surah;
+  if (ayah !== through.ayah) return ayah < through.ayah;
+  return position <= through.position;
+}
+
+function nextAyah(ref: AyahRef, source: RevealSource): AyahRef | null {
+  if (ref.ayah < source.ayahCount(ref.surah)) {
+    return {surah: ref.surah, ayah: ref.ayah + 1};
+  }
+  return ref.surah < 114 ? {surah: ref.surah + 1, ayah: 1} : null;
+}
+
+function isComplete(through: RevealedThrough, source: RevealSource): boolean {
+  return through.position >= source.lastPosition(through.surah, through.ayah);
 }
 
 /**
- * Hide-and-reveal state after a word_progress event. Words are revealed up to
- * the frontier word and never hidden again; moving on to the very next ayah
- * reveals the rest of the one just finished (its last words may never get
- * their own event before the cursor moves).
+ * Peek one word: the next hidden word after the point, or the first word of
+ * `start` (the page on screen) before anything is revealed.
  */
-export function nextRevealed(
-  revealed: RevealedWords,
-  previousKey: string | null,
-  key: string,
-  wordIndex: number,
-  total: number,
-): RevealedWords {
-  const current = revealed[key];
-  const count = Math.min(Math.max(current?.count ?? 0, wordIndex + 1), total);
-  let next: Record<string, RevealedAyah> | null = null;
-  if (!current || current.count !== count || current.total !== total) {
-    next = {...revealed, [key]: {count, total}};
+export function peekWord(
+  through: RevealedThrough | null,
+  start: AyahRef,
+  source: RevealSource,
+): RevealedThrough {
+  if (!through) return {...start, position: 1};
+  if (!isComplete(through, source)) {
+    return {...through, position: through.position + 1};
   }
-  if (previousKey && previousKey !== key) {
-    const [ps, pa] = parseKey(previousKey);
-    const [s, a] = parseKey(key);
-    const finished = (next ?? revealed)[previousKey];
-    if (
-      s === ps &&
-      a === pa + 1 &&
-      finished &&
-      finished.count < finished.total
-    ) {
-      next = {
-        ...(next ?? revealed),
-        [previousKey]: {count: finished.total, total: finished.total},
-      };
-    }
-  }
-  return next ?? revealed;
+  const next = nextAyah(through, source);
+  return next ? {...next, position: 1} : through;
+}
+
+/**
+ * Peek an ayah: the rest of the ayah being recited, or the whole next one
+ * when it is already shown.
+ */
+export function peekAyah(
+  through: RevealedThrough | null,
+  start: AyahRef,
+  source: RevealSource,
+): RevealedThrough {
+  if (!through) return {...start, position: WHOLE_AYAH};
+  if (!isComplete(through, source)) return {...through, position: WHOLE_AYAH};
+  const next = nextAyah(through, source);
+  return next ? {...next, position: WHOLE_AYAH} : through;
 }

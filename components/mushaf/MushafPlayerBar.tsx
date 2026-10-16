@@ -35,6 +35,7 @@ import {SURAHS} from '@/data/surahData';
 import {PlayIcon, PauseIcon} from '@/components/Icons';
 import {showToast} from '@/utils/toastUtils'; // @ai
 import {
+  peekOnPage,
   RecitationMicButton,
   useRecitationStatusText,
 } from './RecitationMicButton';
@@ -143,7 +144,27 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
     });
   }, [currentPage]);
 
-  // ── Reciting: [Stop] — mic — [ ] with what the reader is reciting ────
+  // Hide and reveal: show the next hidden word or ayah.
+  function renderPeekButton(
+    label: string,
+    kind: 'word' | 'ayah',
+  ): React.JSX.Element {
+    return (
+      <Pressable
+        style={[
+          styles.peekButton,
+          {backgroundColor: Color(theme.colors.text).alpha(0.1).toString()},
+        ]}
+        onPress={() => peekOnPage(kind, currentPage)}
+        accessibilityRole="button">
+        <Text style={[styles.peekButtonText, {color: theme.colors.text}]}>
+          {label}
+        </Text>
+      </Pressable>
+    );
+  }
+
+  // ── Reciting: [Stop] — mic or peek — [eye] with what is being recited ──
   if (recitationText !== null) {
     return (
       <View style={styles.activeContainer}>
@@ -160,17 +181,24 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
             />
           </Pressable>
           <View style={styles.controlsCenter}>
-            <RecitationMicButton
-              currentPage={currentPage}
-              style={[
-                styles.micButtonRect,
-                {
-                  backgroundColor: Color(theme.colors.text)
-                    .alpha(0.1)
-                    .toString(),
-                },
-              ]}
-            />
+            {hideText ? (
+              <>
+                {renderPeekButton('Next word', 'word')}
+                {renderPeekButton('Next ayah', 'ayah')}
+              </>
+            ) : (
+              <RecitationMicButton
+                currentPage={currentPage}
+                style={[
+                  styles.micButtonRect,
+                  {
+                    backgroundColor: Color(theme.colors.text)
+                      .alpha(0.1)
+                      .toString(),
+                  },
+                ]}
+              />
+            )}
           </View>
           <Pressable
             style={styles.edgeButton}
@@ -405,6 +433,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: moderateScale(12),
     paddingLeft: moderateScale(3),
+  },
+  peekButton: {
+    height: moderateScale(42),
+    paddingHorizontal: moderateScale(14),
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: moderateScale(12),
+  },
+  peekButtonText: {
+    fontSize: moderateScale(13),
+    fontFamily: 'Manrope-SemiBold',
   },
   micButtonRect: {
     width: moderateScale(42),

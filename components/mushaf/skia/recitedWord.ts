@@ -75,3 +75,22 @@ export function withRecitedWordRun(
   }
   return base;
 }
+
+/** The last word drawn on a page (ayah markers excluded), or null. */
+export function lastWordOnPage(
+  lines: readonly DKLine[],
+  source: WordSlotSource,
+): {verseKey: string; position: number} | null {
+  for (let lineIndex = lines.length - 1; lineIndex >= 0; lineIndex--) {
+    const spans = getLineWordSpans(lines[lineIndex], source);
+    for (let i = spans.length - 1; i >= 0; i--) {
+      const span = spans[i];
+      if (span.wordEnd < span.start) continue;
+      return {
+        verseKey: span.info.verseKey,
+        position: span.info.wordPositionInVerse,
+      };
+    }
+  }
+  return null;
+}

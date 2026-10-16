@@ -10,7 +10,12 @@
 import {useEffect, useRef} from 'react';
 import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
 import {useRecitationTrackingStore} from '@/store/recitationTrackingStore';
+import {
+  dkWordPosition,
+  lastWordOnPage,
+} from '@/components/mushaf/skia/recitedWord';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
+import {mushafVerseMapService} from '@/services/mushaf/MushafVerseMapService';
 
 export function useMushafAutoPageTurn(
   currentPage: number,
@@ -24,7 +29,34 @@ export function useMushafAutoPageTurn(
   );
   const isFollowing = playbackState === 'playing' || recitedVerseKey !== null;
   const currentVerseKey = recitedVerseKey ?? playerVerseKey;
+  // The word being recited, as a comparable id ('' when not listening).
+  const recitedWord = useRecitationTrackingStore(s =>
+    s.status === 'listening' && s.verseKey && s.wordIndex !== null
+      ? `${s.verseKey}|${s.wordIndex}|${s.totalWords}`
+      : '',
+  );
   const lastNavigatedPage = useRef<number>(currentPage);
+
+  // Reciting the last word on the page turns it at once, without waiting for
+  // the next page's first ayah (paged mode only).
+  useEffect(() => {
+    if (!recitedWord || navigateToVerse) return;
+    const [verseKey, wordIndex, totalWords] = recitedWord.split('|');
+    const page = lastNavigatedPage.current;
+    const last = lastWordOnPage(
+      digitalKhattDataService.getPageLines(page),
+      digitalKhattDataService,
+    );
+    if (!last || last.verseKey !== verseKey) return;
+    const position = dkWordPosition(
+      digitalKhattDataService.getVerseWords(verseKey),
+      Number(wordIndex),
+      Number(totalWords),
+    );
+    if (position === null || position < last.position) return;
+    lastNavigatedPage.current = page + 1;
+    navigateToPage(page + 1);
+  }, [recitedWord, navigateToPage, navigateToVerse]);
 
   // Keep the ref in sync when the user manually scrolls
   useEffect(() => {
@@ -44,6 +76,16 @@ export function useMushafAutoPageTurn(
       return;
     }
 
+    // An ayah running over a page break is still on the page being recited.
+    if (
+      recitedVerseKey &&
+      mushafVerseMapService
+        .getOrderedVerseKeysForPage(lastNavigatedPage.current)
+        .includes(recitedVerseKey)
+    ) {
+      return;
+    }
+
     const targetPage = digitalKhattDataService.getPageForVerse(currentVerseKey);
     if (!targetPage) return;
 
@@ -52,5 +94,11 @@ export function useMushafAutoPageTurn(
       lastNavigatedPage.current = targetPage;
       navigateToPage(targetPage);
     }
-  }, [isFollowing, currentVerseKey, navigateToPage, navigateToVerse]);
+  }, [
+    isFollowing,
+    currentVerseKey,
+    recitedVerseKey,
+    navigateToPage,
+    navigateToVerse,
+  ]);
 }

@@ -739,11 +739,8 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
 
   // Memorisation: words not yet recited are ghosted while hiding is on.
   const lineCharColors = useRecitationHiddenText(
-    pageNumber,
     pageLines,
     lineAllahNameColorMaps,
-    textColor,
-    isDarkMode,
   );
 
   // Recitation follow-along: recited ayat and the word being recited.

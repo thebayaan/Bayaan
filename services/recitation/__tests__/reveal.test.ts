@@ -1,32 +1,70 @@
-import {nextRevealed, type RevealedWords} from '../reveal';
+import {
+  advanceRevealed,
+  isRevealed,
+  peekAyah,
+  peekWord,
+  WHOLE_AYAH,
+  type RevealSource,
+} from '../reveal';
 
-describe('nextRevealed', () => {
-  it('reveals up to the frontier word', () => {
-    const r = nextRevealed({}, null, '36:1', 0, 1);
-    expect(r['36:1']).toEqual({count: 1, total: 1});
+// Al-Ikhlas: 4 ayat of 4, 2, 3, 5 words; Al-Falaq follows.
+const WORDS: Record<string, number> = {
+  '112:1': 4,
+  '112:2': 2,
+  '112:3': 3,
+  '112:4': 5,
+};
+const source: RevealSource = {
+  ayahCount: surah => (surah === 112 ? 4 : 5),
+  lastPosition: (surah, ayah) => WORDS[`${surah}:${ayah}`] ?? 6,
+};
+
+describe('reveal', () => {
+  it('shows everything before the point and nothing after', () => {
+    const through = {surah: 112, ayah: 3, position: 2};
+    expect(isRevealed(through, 112, 1, 4)).toBe(true);
+    expect(isRevealed(through, 112, 3, 2)).toBe(true);
+    expect(isRevealed(through, 112, 3, 3)).toBe(false);
+    expect(isRevealed(through, 112, 4, 1)).toBe(false);
+    expect(isRevealed(through, 111, 5, 9)).toBe(true);
+    expect(isRevealed(null, 1, 1, 1)).toBe(false);
   });
 
-  it('never hides a word again when the cursor steps back', () => {
-    let r: RevealedWords = nextRevealed({}, null, '36:4', 3, 5);
-    r = nextRevealed(r, '36:4', '36:4', 1, 5);
-    expect(r['36:4'].count).toBe(4);
+  it('only moves forward', () => {
+    const at = {surah: 112, ayah: 3, position: 2};
+    expect(advanceRevealed(at, {surah: 112, ayah: 2, position: 1})).toBe(at);
+    expect(advanceRevealed(at, {surah: 112, ayah: 4, position: 1})).toEqual({
+      surah: 112,
+      ayah: 4,
+      position: 1,
+    });
   });
 
-  it('completes the previous ayah when the next one starts', () => {
-    let r: RevealedWords = nextRevealed({}, null, '36:4', 2, 5);
-    r = nextRevealed(r, '36:4', '36:5', 0, 7);
-    expect(r['36:4']).toEqual({count: 5, total: 5});
-    expect(r['36:5']).toEqual({count: 1, total: 7});
+  it('peeks the next word, crossing into the next ayah and surah', () => {
+    const start = {surah: 112, ayah: 1};
+    expect(peekWord(null, start, source)).toEqual({...start, position: 1});
+    expect(peekWord({surah: 112, ayah: 2, position: 1}, start, source)).toEqual(
+      {surah: 112, ayah: 2, position: 2},
+    );
+    expect(peekWord({surah: 112, ayah: 2, position: 2}, start, source)).toEqual(
+      {surah: 112, ayah: 3, position: 1},
+    );
+    expect(
+      peekWord({surah: 112, ayah: 4, position: WHOLE_AYAH}, start, source),
+    ).toEqual({surah: 113, ayah: 1, position: 1});
   });
 
-  it('leaves a skipped-from ayah partly hidden after a jump', () => {
-    let r: RevealedWords = nextRevealed({}, null, '36:4', 2, 5);
-    r = nextRevealed(r, '36:4', '36:9', 0, 6);
-    expect(r['36:4'].count).toBe(3);
-  });
-
-  it('returns the same object when nothing changes', () => {
-    const r = nextRevealed({}, null, '1:1', 3, 4);
-    expect(nextRevealed(r, '1:1', '1:1', 2, 4)).toBe(r);
+  it('peeks the rest of the ayah, then the next ayah', () => {
+    const start = {surah: 112, ayah: 1};
+    expect(peekAyah({surah: 112, ayah: 3, position: 1}, start, source)).toEqual(
+      {surah: 112, ayah: 3, position: WHOLE_AYAH},
+    );
+    expect(
+      peekAyah({surah: 112, ayah: 3, position: WHOLE_AYAH}, start, source),
+    ).toEqual({surah: 112, ayah: 4, position: WHOLE_AYAH});
+    expect(peekAyah(null, start, source)).toEqual({
+      ...start,
+      position: WHOLE_AYAH,
+    });
   });
 });

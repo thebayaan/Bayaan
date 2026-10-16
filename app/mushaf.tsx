@@ -39,6 +39,7 @@ import {SURAHS} from '@/data/surahData';
 import MushafViewer from '@/components/mushaf/main';
 import {USE_GLASS} from '@/hooks/useGlassProps';
 import {
+  peekOnPage,
   useRecitationMic,
   useRecitationStatusText,
 } from '@/components/mushaf/RecitationMicButton';
@@ -386,9 +387,22 @@ export function MushafToolbar() {
           Stop
         </Stack.Toolbar.Button>
         <Stack.Toolbar.Spacer />
-        <Stack.Toolbar.View>
-          <RecitationToolbarLabel text={recitationText} />
-        </Stack.Toolbar.View>
+        {hideText ? (
+          <>
+            <Stack.Toolbar.Button
+              onPress={() => peekOnPage('word', currentPage || 1)}>
+              Next word
+            </Stack.Toolbar.Button>
+            <Stack.Toolbar.Button
+              onPress={() => peekOnPage('ayah', currentPage || 1)}>
+              Next ayah
+            </Stack.Toolbar.Button>
+          </>
+        ) : (
+          <Stack.Toolbar.View>
+            <RecitationToolbarLabel text={recitationText} />
+          </Stack.Toolbar.View>
+        )}
         <Stack.Toolbar.Spacer />
         <Stack.Toolbar.Button
           icon={hideText ? 'eye.slash' : 'eye'}

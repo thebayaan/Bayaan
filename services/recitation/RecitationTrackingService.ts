@@ -18,7 +18,16 @@ import {
   createRecitationEngine,
   type RecitationEngine,
 } from './recitationEngine';
-import {nextRevealed} from './reveal';
+import {
+  advanceRevealed,
+  peekAyah,
+  peekWord,
+  type AyahRef,
+  type RevealSource,
+} from './reveal';
+import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
+import {dkWordPosition} from '@/components/mushaf/skia/recitedWord';
+import {SURAHS} from '@/data/surahData';
 import {
   requestMicPermission,
   startMicStream,
@@ -71,15 +80,21 @@ function handleEvent(msg: WorkerOutbound): void {
       });
     }
     const key = `${msg.surah}:${msg.ayah}`;
+    const position = dkWordPosition(
+      digitalKhattDataService.getVerseWords(key),
+      msg.word_index,
+      msg.total_words,
+    );
     setState({
       locked: true,
-      revealed: nextRevealed(
-        state.revealed,
-        state.verseKey,
-        key,
-        msg.word_index,
-        msg.total_words,
-      ),
+      revealedThrough:
+        position === null
+          ? state.revealedThrough
+          : advanceRevealed(state.revealedThrough, {
+              surah: msg.surah,
+              ayah: msg.ayah,
+              position,
+            }),
       verseKey: key,
       wordIndex: msg.word_index,
       totalWords: msg.total_words,
@@ -332,6 +347,33 @@ export async function removeRecitationModel(): Promise<void> {
   await stopRecitationTracking('model_removed');
   await unloadRecitationModel();
   await deleteRecitationAssets();
+}
+
+const AYAH_MARKER = '۝';
+
+const revealSource: RevealSource = {
+  ayahCount: surah => SURAHS[surah - 1]?.verses_count ?? 0,
+  lastPosition: (surah, ayah) => {
+    let last = 0;
+    for (const word of digitalKhattDataService.getVerseWords(
+      `${surah}:${ayah}`,
+    )) {
+      if (word.text.trimStart().startsWith(AYAH_MARKER)) continue;
+      last = Math.max(last, word.wordPositionInVerse);
+    }
+    return last;
+  },
+};
+
+/**
+ * Hide and reveal: shows the next hidden word (or the rest of the ayah).
+ * @param start - First ayah on screen, used before anything is revealed
+ */
+export function peekRecitation(kind: 'word' | 'ayah', start: AyahRef): void {
+  const state = useRecitationTrackingStore.getState();
+  if (state.status !== 'listening') return;
+  const peek = kind === 'word' ? peekWord : peekAyah;
+  setState({revealedThrough: peek(state.revealedThrough, start, revealSource)});
 }
 
 /** Re-points the search bias, e.g. when the reader turns the page by hand. */

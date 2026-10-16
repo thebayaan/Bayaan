@@ -1,5 +1,5 @@
 import {create} from 'zustand';
-import type {RevealedWords} from '@/services/recitation/reveal';
+import type {RevealedThrough} from '@/services/recitation/reveal';
 
 export type RecitationTrackingStatus =
   | 'off'
@@ -14,8 +14,8 @@ export interface RecitationTrackingState {
   downloadProgress: number;
   /** The tracker knows where the reader is; false while it searches. */
   locked: boolean;
-  /** Hide and reveal: words of each ayah heard so far this take. */
-  revealed: RevealedWords;
+  /** Hide and reveal: words up to here are shown, null before any. */
+  revealedThrough: RevealedThrough | null;
   /** Hafs keys Tilawa counted as recited this take, in order. */
   recitedVerseKeys: readonly string[];
   /** Hafs key of the ayah being recited, once the tracker has locked on. */
@@ -34,7 +34,7 @@ export const RECITATION_TRACKING_IDLE: RecitationTrackingState = {
   downloadProgress: 0,
   locked: false,
   recitedVerseKeys: [],
-  revealed: {},
+  revealedThrough: null,
   verseKey: null,
   wordIndex: null,
   totalWords: 0,

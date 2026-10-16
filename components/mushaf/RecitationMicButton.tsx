@@ -20,6 +20,7 @@ import {
 } from '@/store/recitationTrackingStore';
 import {mushafVerseMapService} from '@/services/mushaf/MushafVerseMapService';
 import {
+  peekRecitation,
   recitationModelNeedsDownload,
   scheduleUnload,
   setRecitationHint,
@@ -142,6 +143,15 @@ export function useRecitationStatusText(): string | null {
     const name = SURAHS[surah - 1]?.name ?? '';
     return `${name} ${surah}:${ayah}`;
   });
+}
+
+/**
+ * Hide and reveal: shows the next hidden word or ayah, starting from the top
+ * of `page` when nothing has been revealed yet.
+ */
+export function peekOnPage(kind: 'word' | 'ayah', page: number): void {
+  const start = pageHint(page);
+  if (start) peekRecitation(kind, start);
 }
 
 interface RecitationMicButtonProps {

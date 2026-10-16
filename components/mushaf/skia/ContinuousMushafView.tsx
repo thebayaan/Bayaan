@@ -592,11 +592,8 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
 
     // Memorisation: words not yet recited are ghosted while hiding is on.
     const lineCharColors = useRecitationHiddenText(
-      pageNumber,
       pageLines,
       lineAllahNameColorMaps,
-      textColor,
-      isDarkMode,
     );
 
     // Recitation follow-along: recited ayat and the word being recited.
