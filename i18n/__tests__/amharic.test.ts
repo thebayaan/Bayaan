@@ -82,7 +82,7 @@ it('uses the upstream framework, Amharic plurals and canonical source labels', a
     interpolation: {escapeValue: false},
   });
   expect(instance.t('terms.reciter')).toBe('አንባቢ');
-  expect(instance.t('app.sharedAudio')).toBe('የተጋራ ድምፅ');
+  expect(instance.t('app.sharedAudio')).toBe('ሼር የተደረገ ድምፅ');
   expect(instance.t('languageRestart.title')).toBe('እንደገና ማስጀመር ያስፈልጋል');
   expect(instance.t('counts.reciters', {count: 0})).toBe('0 አንባቢ');
   expect(instance.t('counts.reciters', {count: 1})).toBe('1 አንባቢ');
