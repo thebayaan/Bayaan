@@ -154,7 +154,7 @@ jobs:
         run: |
           mkdir -p out
           find tv-vega/build -path '*/Release/*.vpkg' | grep -v x86_64 | while read -r f; do
-            arch=$(echo "$f" | sed -E 's#.*/build/([^/]+)/.*#\1#')
+            arch=$(basename "$f" .vpkg | sed 's/^tv-vega_//')
             cp "$f" "out/bayaan-tv-$arch.vpkg"
           done
           ls -l out
