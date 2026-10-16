@@ -179,3 +179,7 @@ jobs:
               --title "Bayaan TV test build" --notes "TV test build." || true
           fi
           gh release upload "$RELEASE_TAG" out/*.vpkg --clobber
+          # Drop packages this build no longer makes.
+          for name in $(gh release view "$RELEASE_TAG" --json assets -q '.assets[].name' | grep '\.vpkg$'); do
+            [ -f "out/$name" ] || gh release delete-asset "$RELEASE_TAG" "$name" --yes
+          done
