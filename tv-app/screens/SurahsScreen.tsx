@@ -38,7 +38,7 @@ const JUZ_NUMBERS = Array.from({length: 30}, (_, i) => i + 1);
 const CELL_PAD = 14;
 const CELL_WIDTH = SURAH_TILE_WIDTH + CELL_PAD * 2;
 /** Art 168 + label row and gaps + the cell's vertical padding. */
-const ROW_HEIGHT = 236;
+const ROW_HEIGHT = 196;
 
 async function rewayatFor(reciter: Reciter): Promise<Rewayah[]> {
   const cached = getCachedRewayat(reciter.id);

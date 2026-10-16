@@ -153,6 +153,14 @@ describe('rewayat and styles', () => {
     expect(groups[1].items.map(r => r.style)).toEqual(['murattal', 'mojawwad']);
   });
 
+  it('puts the rewayah with the most surahs first', () => {
+    const groups = groupRewayat([
+      rewayah("Ad-Duri A'n Abi Amr", 'murattal', [12, 14, 25]),
+      rewayah("Hafs A'n Assem", 'murattal', [1, 2, 3, 4, 5]),
+    ]);
+    expect(groups.map(g => g.label)).toEqual(['Hafs', 'Ad-Duri']);
+  });
+
   it('uses full names when two groups share a short name', () => {
     const groups = groupRewayat([
       rewayah("Warsh A'n Nafi'"),

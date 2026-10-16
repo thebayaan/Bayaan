@@ -216,7 +216,14 @@ export function groupRewayat(rewayat: readonly Rewayah[]): RewayahGroup[] {
   out.forEach(g => {
     if ((shortCounts.get(g.label) ?? 0) > 1) g.label = g.key;
   });
-  return out;
+  // The fullest recitation first, so a reciter page opens on the one with
+  // the most surahs (Alafasi's Hafs, not his six surahs of Ad-Duri).
+  const size = (g: RewayahGroup): number =>
+    Math.max(0, ...g.items.map(r => r.surah_list?.length ?? 0));
+  return out
+    .map((g, i) => ({g, i}))
+    .sort((a, b) => size(b.g) - size(a.g) || a.i - b.i)
+    .map(x => x.g);
 }
 
 /** "Hafs", "Hafs, Warsh", "Hafs · 3 styles", "Hafs · Mujawwad". */

@@ -1,6 +1,13 @@
 import {FlashList, type FlashListRef} from '@shopify/flash-list';
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {Image} from 'expo-image';
+import Svg, {
+  Defs,
+  LinearGradient,
+  RadialGradient,
+  Rect,
+  Stop,
+} from 'react-native-svg';
 import {
   ActivityIndicator,
   NativeScrollEvent,
@@ -242,6 +249,36 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
           />
         ) : null}
         <View style={styles.heroScrim} />
+        {/* A sky glow behind the portrait that fades into the page, so the
+            hero has no hard bottom edge. */}
+        <Svg
+          style={StyleSheet.absoluteFill}
+          width="100%"
+          height="100%"
+          preserveAspectRatio="none"
+          pointerEvents="none">
+          <Defs>
+            <RadialGradient
+              id="reciter-hero-glow"
+              cx="0.18"
+              cy="0.2"
+              rx="0.7"
+              ry="1.1">
+              <Stop offset="0" stopColor={colors.accent} stopOpacity={0.22} />
+              <Stop offset="1" stopColor={colors.accent} stopOpacity={0} />
+            </RadialGradient>
+            <LinearGradient id="reciter-hero-fade" x1="0" y1="0" x2="0" y2="1">
+              <Stop
+                offset="0.45"
+                stopColor={colors.background}
+                stopOpacity={0}
+              />
+              <Stop offset="1" stopColor={colors.background} stopOpacity={1} />
+            </LinearGradient>
+          </Defs>
+          <Rect width="100%" height="100%" fill="url(#reciter-hero-glow)" />
+          <Rect width="100%" height="100%" fill="url(#reciter-hero-fade)" />
+        </Svg>
         <FocusableButton
           onPress={pop}
           accessibilityLabel="Back"
@@ -454,7 +491,6 @@ const styles = createScaledStyles({
   },
   hero: {
     marginBottom: spacing.sm,
-    backgroundColor: colors.backgroundSecondary,
     overflow: 'hidden',
   },
   heroImg: {...StyleSheet.absoluteFillObject, opacity: 0.5},

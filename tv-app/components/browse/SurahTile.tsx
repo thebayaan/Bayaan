@@ -1,7 +1,7 @@
 import React from 'react';
-import {View} from 'react-native';
+import {Text, View} from 'react-native';
 import {FocusableCard} from '../primitives/FocusableCard';
-import {FocusFrame, FocusText} from '../primitives/focusContext';
+import {FocusFrame} from '../primitives/focusContext';
 import {SurahArtwork} from '../brand/SurahArtwork';
 import {colors} from '../../theme/colors';
 import {fonts} from '../../theme/typography';
@@ -19,7 +19,7 @@ type Props = {
 export const SURAH_TILE_WIDTH = 252;
 const ART_HEIGHT = 168;
 
-/** A surah's artwork card with a cream ring on focus, number and name below. */
+/** A surah's artwork card with a cream ring on focus and its number in the corner. */
 function SurahTileImpl({
   surahNumber,
   name,
@@ -41,27 +41,14 @@ function SurahTileImpl({
           glyphSize={64}
           id={`surah-tile-${surahNumber}`}
         />
+        {/* The card carries the name; the number sits in its corner. */}
+        <Text style={styles.num}>{surahNumber}</Text>
         {started ? (
           <View style={styles.track}>
             <View style={[styles.fill, {width: `${progress * 100}%`}]} />
           </View>
         ) : null}
       </FocusFrame>
-      <View style={styles.meta}>
-        <FocusText
-          style={styles.num}
-          color={colors.textTertiary}
-          focusedColor={colors.textSecondary}>
-          {surahNumber}
-        </FocusText>
-        <FocusText
-          style={styles.name}
-          color={colors.textSecondary}
-          focusedColor={colors.text}
-          numberOfLines={1}>
-          {name}
-        </FocusText>
-      </View>
     </FocusableCard>
   );
 }
@@ -69,7 +56,7 @@ function SurahTileImpl({
 export const SurahTile = React.memo(SurahTileImpl);
 
 const styles = createScaledStyles({
-  card: {width: SURAH_TILE_WIDTH, gap: 8},
+  card: {width: SURAH_TILE_WIDTH},
   frame: {width: SURAH_TILE_WIDTH, height: ART_HEIGHT},
   track: {
     position: 'absolute',
@@ -80,22 +67,13 @@ const styles = createScaledStyles({
     backgroundColor: 'rgba(5,11,16,0.55)',
   },
   fill: {height: '100%', backgroundColor: colors.accent},
-  meta: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 10,
-    paddingHorizontal: 9,
-  },
   num: {
+    position: 'absolute',
+    top: 10,
+    left: 14,
+    color: colors.textSecondary,
     fontFamily: fonts.bold,
     fontSize: 16,
-    fontWeight: '700',
-    minWidth: 28,
-  },
-  name: {
-    flex: 1,
-    fontFamily: fonts.bold,
-    fontSize: 19,
     fontWeight: '700',
   },
 });
