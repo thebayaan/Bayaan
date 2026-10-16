@@ -6,9 +6,7 @@ import {
   FocusText,
   useButtonFocused,
 } from '../primitives/focusContext';
-import {GradientFill} from '../brand/GradientFill';
-import {SurahGlyph} from '../brand/SurahGlyph';
-import {surahGradient} from '../../theme/surahColors';
+import {SurahArtwork} from '../brand/SurahArtwork';
 import {colors} from '../../theme/colors';
 import {fonts} from '../../theme/typography';
 import {createScaledStyles} from '../../theme/scale';
@@ -42,8 +40,7 @@ function SurahArt({
 }): React.ReactElement {
   return (
     <View style={styles.art}>
-      <GradientFill colors={surahGradient(surahNumber)} id={id} />
-      <SurahGlyph surahNumber={surahNumber} size={glyphSize} />
+      <SurahArtwork surahNumber={surahNumber} glyphSize={glyphSize} id={id} />
       {progress !== undefined ? (
         <View style={styles.track}>
           <View style={[styles.fill, {width: `${progress * 100}%`}]} />
@@ -62,7 +59,7 @@ type EntryProps = {
 };
 
 /**
- * The most recent unfinished surah, large: its calligraphy on its pigment,
+ * The most recent unfinished surah, large: its artwork card,
  * where it stopped, and a Resume pill that fills cream on focus.
  */
 export function ResumeHero({

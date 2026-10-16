@@ -2,9 +2,7 @@ import React from 'react';
 import {View} from 'react-native';
 import {FocusableCard} from '../primitives/FocusableCard';
 import {FocusFrame, FocusText} from '../primitives/focusContext';
-import {GradientFill} from '../brand/GradientFill';
-import {SurahGlyph} from '../brand/SurahGlyph';
-import {surahGradient} from '../../theme/surahColors';
+import {SurahArtwork} from '../brand/SurahArtwork';
 import {colors} from '../../theme/colors';
 import {fonts} from '../../theme/typography';
 import {createScaledStyles} from '../../theme/scale';
@@ -15,7 +13,7 @@ type Props = {
   onSelect: (n: number) => void;
 };
 
-/** A surah as calligraphy on its pigment, with its name below. */
+/** A surah's artwork card, with its name and number below. */
 export function QuickPlayCard({
   surahNumber,
   surahName,
@@ -28,13 +26,11 @@ export function QuickPlayCard({
       onPress={() => onSelect(surahNumber)}
       accessibilityLabel={`Play ${surahName}`}>
       <FocusFrame radius={14} style={styles.frame}>
-        <View style={styles.art}>
-          <GradientFill
-            colors={surahGradient(surahNumber)}
-            id={`quick-play-${surahNumber}`}
-          />
-          <SurahGlyph surahNumber={surahNumber} size={64} />
-        </View>
+        <SurahArtwork
+          surahNumber={surahNumber}
+          glyphSize={64}
+          id={`quick-play-${surahNumber}`}
+        />
       </FocusFrame>
       <View style={styles.meta}>
         <FocusText style={styles.name} numberOfLines={1}>
@@ -54,7 +50,6 @@ export function QuickPlayCard({
 const styles = createScaledStyles({
   card: {width: 188, gap: 10},
   frame: {width: 188, height: 188},
-  art: {flex: 1, alignItems: 'center', justifyContent: 'center'},
   meta: {paddingHorizontal: 9, gap: 2},
   name: {
     fontFamily: fonts.bold,

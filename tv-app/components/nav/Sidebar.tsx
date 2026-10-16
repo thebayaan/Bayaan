@@ -1,12 +1,10 @@
 import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {Pressable, Text, TVFocusGuideView, View} from 'react-native';
 import {LogoMark} from '../brand/LogoMark';
-import {GradientFill} from '../brand/GradientFill';
-import {SurahGlyph} from '../brand/SurahGlyph';
+import {SurahArtwork} from '../brand/SurahArtwork';
 import {useNavStore, type TabKey} from '../../store/navStore';
 import {useTVPlayerStore} from '../../store/tvPlayerStore';
 import {colors} from '../../theme/colors';
-import {surahGradient} from '../../theme/surahColors';
 import {fonts} from '../../theme/typography';
 import {createScaledStyles, scale} from '../../theme/scale';
 import {
@@ -193,11 +191,11 @@ function SidebarNowPlaying({
         focused && styles.itemFocused,
       ]}>
       <View style={styles.tile}>
-        <GradientFill
-          colors={surahGradient(item.surahNumber)}
+        <SurahArtwork
+          surahNumber={item.surahNumber}
+          glyphSize={26}
           id="sidebar-now-playing"
         />
-        <SurahGlyph surahNumber={item.surahNumber} size={26} />
         <View style={styles.badge}>
           {isPlaying ? (
             <PauseIcon color={colors.accentInk} size={scale(10)} />
