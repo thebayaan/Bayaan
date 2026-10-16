@@ -2,36 +2,41 @@
 # screenshot runs. Each line is: <screenshot-name> <seconds-to-wait> <keys...>
 # The keys are pressed in order, the runner waits, then saves a screenshot.
 # Keys: up down left right select back playpause relaunch none text:<word>
+# Sidebar order: Home, Search, Surahs, Reciters, Adhkar, Library, Settings;
+# "left up up up up up up down xN select" opens place N from anywhere on a root screen.
 00-launch 20 none
-01-onboarding-pick-reciter 3 select
-02-onboarding-continue-focused 2 down
-03-home 6 select
-04-home-rail-2 2 down
-05-home-rail-3 2 down
-06-home-rail-3-next-card 2 right
-07-reciter-detail 6 select
-08-reciter-detail-rewayah-tabs 2 down
-09-rewayah-hafs 3 right select
-10-reciter-detail-surah-grid 2 down left
-11-play-surah 12 select
-12-paused 3 playpause
-13-resumed 3 playpause
-14-next-verse 3 right
-15-controls 3 select
-16-repeat-panel 3 right right select
-17-repeat-verse 3 down select
-18-repeat-pause 3 down down down down down down down down select
-19-on-screen-panel 3 back right right select
-20-translation 5 down down down down down down down down select
-21-text-size 3 down down down down down down down down down down down select
-22-controls-lowered 3 back back
-23-back-to-detail 3 back
-24-back-to-home 3 back
-25-sidebar-open 2 left left left left left
-26-reciters 4 down down select
-27-library 4 left down select
-28-settings 4 left down select
-28a-settings-picker 3 select
-29-search 4 back left up up up select
-30-search-typed 5 right select text:fati
-31-relaunch-home 20 relaunch
+01-onboarding-step-1 3 none
+02-onboarding-step-2 3 select
+03-onboarding-start 2 down down
+04-home 8 select
+05-home-rail-2 2 down
+06-home-rail-3 2 down
+07-sidebar-open 2 left
+08-surahs 5 up up up up up up down down select
+09-play-surah 12 select
+10-next-verse 3 right
+11-controls 3 select
+12-repeat-panel 3 right right select
+13-repeat-verse 3 down select
+14-on-screen-panel 3 back right right select
+15-reciter-panel 3 back right select
+16-sound-panel 3 back right right select
+17-queue-panel 3 back right select
+18-controls-lowered 3 back back
+19-back-to-surahs 3 back
+20-surahs-juz 3 up right select
+21-reciters 5 left up up up up up up down down down select
+22-reciter-page 6 select
+23-reciter-rows 3 down down
+24-adhkar 5 back left up up up up up up down down down down select
+25-adhkar-reader 6 select
+26-adhkar-next 3 right
+27-adhkar-count 3 select
+28-adhkar-chips 3 down
+29-library 5 back left up up up up up up down down down down down select
+30-settings 5 left up up up up up up down down down down down down select
+31-settings-picker 3 select
+32-search 5 back left up up up up up up down select
+33-search-typed 5 down right right right select up left left left select down select up right right right right right select
+34-search-result 3 right
+35-relaunch-home 20 relaunch
