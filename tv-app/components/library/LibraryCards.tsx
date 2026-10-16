@@ -1,56 +1,19 @@
 import React from 'react';
 import {Text, View} from 'react-native';
 import {FocusableCard} from '../primitives/FocusableCard';
-import {
-  FocusFrame,
-  FocusText,
-  useButtonFocused,
-} from '../primitives/focusContext';
+import {FocusFrame, FocusText} from '../primitives/focusContext';
 import {SurahArtwork} from '../brand/SurahArtwork';
+import {GradientFill} from '../brand/GradientFill';
+import {SurahGlyph} from '../brand/SurahGlyph';
+import {surahGradient} from '../../theme/surahColors';
 import {colors} from '../../theme/colors';
 import {fonts} from '../../theme/typography';
 import {createScaledStyles} from '../../theme/scale';
 import type {ContinueEntry} from '../../services/continueListeningStore';
+import type {LovedSurah} from '../../services/lovedSurahsStore';
+import {progressOf, timeLeftLabel} from '../../services/libraryFormat';
 
-/** "12 min left", "Almost done", or "Started" when the length is unknown. */
-export function timeLeftLabel(entry: ContinueEntry): string {
-  if (!entry.durationSeconds) return 'Started';
-  const left = Math.max(0, entry.durationSeconds - entry.positionSeconds);
-  const minutes = Math.round(left / 60);
-  if (minutes < 1) return 'Almost done';
-  return `${minutes} min left`;
-}
-
-function progressOf(entry: ContinueEntry): number {
-  return entry.durationSeconds
-    ? Math.min(1, entry.positionSeconds / entry.durationSeconds)
-    : 0;
-}
-
-function SurahArt({
-  surahNumber,
-  glyphSize,
-  id,
-  progress,
-}: {
-  surahNumber: number;
-  glyphSize: number;
-  id: string;
-  progress?: number;
-}): React.ReactElement {
-  return (
-    <View style={styles.art}>
-      <SurahArtwork surahNumber={surahNumber} glyphSize={glyphSize} id={id} />
-      {progress !== undefined ? (
-        <View style={styles.track}>
-          <View style={[styles.fill, {width: `${progress * 100}%`}]} />
-        </View>
-      ) : null}
-    </View>
-  );
-}
-
-type EntryProps = {
+type ContinueProps = {
   entry: ContinueEntry;
   surahName: string;
   reciterName: string;
@@ -59,152 +22,143 @@ type EntryProps = {
 };
 
 /**
- * The most recent unfinished surah, large: its artwork card,
- * where it stopped, and a Resume pill that fills cream on focus.
+ * An unfinished surah as a wide card: the surah's pigment and calligraphy,
+ * its name, the reciter and the time left, with progress along the bottom.
  */
-export function ResumeHero({
+export function ContinueWideCard({
   entry,
   surahName,
   reciterName,
   onSelect,
   hasTVPreferredFocus,
-}: EntryProps): React.ReactElement {
+}: ContinueProps): React.ReactElement {
+  const id = `lib-continue-${entry.reciterId}-${entry.surahNumber}`;
   return (
     <FocusableCard
-      ring={false}
-      focusScale={1.02}
-      style={styles.hero}
+      style={styles.wide}
+      focusScale={1.03}
       onPress={() => onSelect(entry)}
       hasTVPreferredFocus={hasTVPreferredFocus}
-      accessibilityLabel={`Resume ${surahName} by ${reciterName}`}>
-      <FocusFrame radius={18} style={styles.heroFrame}>
-        <SurahArt
-          surahNumber={entry.surahNumber}
-          glyphSize={120}
-          id={`library-hero-${entry.surahNumber}`}
-          progress={progressOf(entry)}
-        />
-      </FocusFrame>
-      <View style={styles.heroText}>
-        <Text style={styles.eyebrow}>Pick up where you left off</Text>
-        <Text style={styles.heroTitle} numberOfLines={1}>
-          {surahName}
-        </Text>
-        <Text style={styles.heroMeta} numberOfLines={1}>
-          {reciterName} · {timeLeftLabel(entry)}
-        </Text>
-        <ResumePill />
+      accessibilityLabel={`Resume ${surahName} by ${reciterName}, ${timeLeftLabel(entry)}`}>
+      <View style={styles.wideBody}>
+        <View style={styles.thumb}>
+          <GradientFill colors={surahGradient(entry.surahNumber)} id={id} />
+          <SurahGlyph surahNumber={entry.surahNumber} size={58} />
+        </View>
+        <View style={styles.wideText}>
+          <Text style={styles.wideTitle} numberOfLines={1}>
+            {surahName}
+          </Text>
+          <Text style={styles.wideMeta} numberOfLines={1}>
+            {reciterName ? `${reciterName} · ` : ''}
+            {timeLeftLabel(entry)}
+          </Text>
+        </View>
+      </View>
+      <View style={styles.track}>
+        <View style={[styles.fill, {width: `${progressOf(entry) * 100}%`}]} />
       </View>
     </FocusableCard>
   );
 }
 
-function ResumePill(): React.ReactElement {
-  const focused = useButtonFocused();
-  return (
-    <View style={[styles.pill, focused && styles.pillFocused]}>
-      <FocusText style={styles.pillText}>Resume</FocusText>
-    </View>
-  );
-}
+type FavoriteProps = {
+  loved: LovedSurah;
+  surahName: string;
+  reciterName: string;
+  onSelect: (loved: LovedSurah) => void;
+  hasTVPreferredFocus?: boolean;
+};
 
-/** An unfinished surah in the row under the hero. */
-export function SurahProgressCard({
-  entry,
+/** A favorite surah: its artwork card, with its name and voice below. */
+export function FavoriteSurahCard({
+  loved,
   surahName,
   reciterName,
   onSelect,
-}: EntryProps): React.ReactElement {
+  hasTVPreferredFocus,
+}: FavoriteProps): React.ReactElement {
   return (
     <FocusableCard
       ring={false}
-      style={styles.card}
-      onPress={() => onSelect(entry)}
-      accessibilityLabel={`Resume ${surahName} by ${reciterName}`}>
-      <FocusFrame radius={14} style={styles.cardFrame}>
-        <SurahArt
-          surahNumber={entry.surahNumber}
-          glyphSize={72}
-          id={`library-card-${entry.reciterId}-${entry.surahNumber}`}
-          progress={progressOf(entry)}
+      style={styles.fav}
+      onPress={() => onSelect(loved)}
+      hasTVPreferredFocus={hasTVPreferredFocus}
+      accessibilityLabel={`Play ${surahName}${reciterName ? ` by ${reciterName}` : ''}`}>
+      <FocusFrame radius={16} style={styles.favFrame}>
+        <SurahArtwork
+          surahNumber={loved.surahNumber}
+          glyphSize={78}
+          id={`lib-fav-${loved.surahNumber}`}
         />
       </FocusFrame>
-      <View style={styles.cardText}>
+      <View style={styles.favText}>
         <FocusText
-          style={styles.cardTitle}
+          style={styles.favTitle}
           color={colors.text}
           focusedColor={colors.text}
           numberOfLines={1}>
           {surahName}
         </FocusText>
-        <Text style={styles.cardMeta} numberOfLines={1}>
-          {reciterName} · {timeLeftLabel(entry)}
-        </Text>
+        {reciterName ? (
+          <Text style={styles.favMeta} numberOfLines={1}>
+            {reciterName}
+          </Text>
+        ) : null}
       </View>
     </FocusableCard>
   );
 }
 
+const THUMB = 104;
+const FAV_W = 280;
+
 const styles = createScaledStyles({
-  art: {flex: 1, alignItems: 'center', justifyContent: 'center'},
-  track: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: 6,
-    backgroundColor: 'rgba(6,21,28,0.45)',
+  wide: {
+    width: 540,
+    height: 156,
+    borderRadius: 18,
+    backgroundColor: colors.surfaceElevated,
   },
-  fill: {height: '100%', backgroundColor: colors.text},
-  hero: {
+  wideBody: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 48,
-    alignSelf: 'flex-start',
+    gap: 22,
+    paddingHorizontal: 22,
   },
-  heroFrame: {width: 520, height: 300},
-  heroText: {width: 640, gap: 10},
-  eyebrow: {
-    color: colors.accent,
-    fontFamily: fonts.extraBold,
-    fontWeight: '800',
-    fontSize: 14,
-    letterSpacing: 2.5,
-    textTransform: 'uppercase',
+  thumb: {
+    width: THUMB,
+    height: THUMB,
+    borderRadius: 14,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  heroTitle: {
+  wideText: {flex: 1, gap: 6},
+  wideTitle: {
     color: colors.text,
     fontFamily: fonts.bold,
     fontWeight: '700',
-    fontSize: 60,
-    letterSpacing: -1.2,
+    fontSize: 26,
+    letterSpacing: -0.3,
   },
-  heroMeta: {
+  wideMeta: {
     color: colors.textSecondary,
     fontFamily: fonts.medium,
     fontWeight: '500',
-    fontSize: 22,
+    fontSize: 18,
   },
-  pill: {
-    alignSelf: 'flex-start',
-    marginTop: 18,
-    paddingHorizontal: 30,
-    paddingVertical: 13,
-    borderRadius: 16,
-    borderCurve: 'continuous',
-    borderWidth: 2,
-    borderColor: colors.outline,
+  track: {
+    height: 5,
+    backgroundColor: 'rgba(244,243,236,0.14)',
   },
-  pillFocused: {
-    backgroundColor: colors.focusFill,
-    borderColor: colors.focusFill,
-  },
-  pillText: {fontFamily: fonts.bold, fontWeight: '700', fontSize: 20},
-  card: {width: 300, gap: 12},
-  cardFrame: {width: 300, height: 180},
-  cardText: {paddingHorizontal: 9, gap: 3},
-  cardTitle: {fontFamily: fonts.bold, fontWeight: '700', fontSize: 20},
-  cardMeta: {
+  fill: {height: '100%', backgroundColor: colors.accent},
+  fav: {width: FAV_W, gap: 12},
+  favFrame: {width: FAV_W, height: 190},
+  favText: {paddingHorizontal: 9, gap: 3},
+  favTitle: {fontFamily: fonts.bold, fontWeight: '700', fontSize: 21},
+  favMeta: {
     color: colors.textSecondary,
     fontFamily: fonts.medium,
     fontWeight: '500',
