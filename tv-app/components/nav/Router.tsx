@@ -15,6 +15,9 @@ import {NowPlayingScreen} from '../../screens/NowPlayingScreen';
 import {OnboardingScreen} from '../../screens/OnboardingScreen';
 import {ReciterDetailScreen} from '../../screens/ReciterDetailScreen';
 import {CatalogGridScreen} from '../../screens/CatalogGridScreen';
+import {SurahsScreen} from '../../screens/SurahsScreen';
+import {AdhkarScreen} from '../../screens/AdhkarScreen';
+import {AdhkarReaderScreen} from '../../screens/AdhkarReaderScreen';
 import {ReciterContextMenu} from '../overlays/ReciterContextMenu';
 import {Sidebar, SIDEBAR_COLLAPSED_WIDTH} from './Sidebar';
 import {useTVBackHandler} from '../../hooks/useTVBackHandler';
@@ -94,6 +97,8 @@ export function Router(): React.ReactElement {
           <ReciterContextMenu />
         </View>
       );
+    if (top.screen === 'adhkarReader')
+      return <AdhkarReaderScreen key={top.listId} listId={top.listId} />;
   }
 
   // Root places share the sidebar; screens sit beside its folded width and it
@@ -103,7 +108,9 @@ export function Router(): React.ReactElement {
       <View style={{flex: 1, paddingLeft: scale(SIDEBAR_COLLAPSED_WIDTH)}}>
         {currentTab === 'home' && <HomeScreen />}
         {currentTab === 'search' && <SearchScreen />}
+        {currentTab === 'surahs' && <SurahsScreen />}
         {currentTab === 'reciters' && <CatalogGridScreen />}
+        {currentTab === 'adhkar' && <AdhkarScreen />}
         {currentTab === 'collection' && <CollectionScreen />}
         {currentTab === 'settings' && <SettingsScreen />}
       </View>

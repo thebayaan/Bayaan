@@ -1,10 +1,18 @@
 import {create} from 'zustand';
 
-export type TabKey = 'home' | 'search' | 'reciters' | 'collection' | 'settings';
+export type TabKey =
+  | 'home'
+  | 'search'
+  | 'surahs'
+  | 'reciters'
+  | 'adhkar'
+  | 'collection'
+  | 'settings';
 
 export type ScreenEntry =
   | {screen: 'nowPlaying'}
-  | {screen: 'reciterDetail'; reciterId: string};
+  | {screen: 'reciterDetail'; reciterId: string}
+  | {screen: 'adhkarReader'; listId: string};
 
 type NavState = {
   currentTab: TabKey;

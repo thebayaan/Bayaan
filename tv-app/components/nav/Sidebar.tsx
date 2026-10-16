@@ -13,8 +13,10 @@ import {
   PauseIcon,
   PersonAudioIcon,
   PlayIcon,
+  QuranBookIcon,
   SearchIcon,
   SettingsIcon,
+  TasbihIcon,
   type IconProps,
 } from '../../../components/Icons';
 
@@ -24,12 +26,12 @@ const SIDEBAR_EXPANDED_WIDTH = 300;
 
 type Place = {key: TabKey; label: string; icon: React.FC<IconProps>};
 
-// Surahs and Adhkar join this list when their screens land (build phases 4
-// and 5); a place only appears once it has a real screen behind it.
 const PLACES: Place[] = [
   {key: 'home', label: 'Home', icon: HomeIcon},
   {key: 'search', label: 'Search', icon: SearchIcon},
+  {key: 'surahs', label: 'Surahs', icon: QuranBookIcon},
   {key: 'reciters', label: 'Reciters', icon: PersonAudioIcon},
+  {key: 'adhkar', label: 'Adhkar', icon: TasbihIcon},
   {key: 'collection', label: 'Library', icon: CollectionIcon},
   {key: 'settings', label: 'Settings', icon: SettingsIcon},
 ];
