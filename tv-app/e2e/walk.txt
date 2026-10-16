@@ -33,7 +33,7 @@
 26-adhkar-next 3 right
 27-adhkar-count 3 select
 28-adhkar-chips 3 down
-29-library 5 back left left up up up up up up down down down down down select
+29-library 5 back left left left left up up up up up up down down down down down select
 30-settings 5 left up up up up up up down down down down down down select
 31-settings-picker 3 select
 32-search 5 back left up up up up up up down select
