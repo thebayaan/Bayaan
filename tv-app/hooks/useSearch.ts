@@ -1,68 +1,75 @@
 import {useEffect, useMemo, useState} from 'react';
-import {SURAHS, type Surah} from '../../data/surahData';
+import {
+  createTvSearch,
+  EMPTY_RESULTS,
+  type GroupedResults,
+} from '../services/search/tvSearch';
+import {
+  buildSuggestions,
+  type Suggestion,
+} from '../services/search/suggestions';
+import {toSearchKey} from '../../utils/search/normalize';
 import type {Reciter} from '../types/reciter';
 
-export const MIN_QUERY_LENGTH = 2;
-const MAX_RECITER_RESULTS = 20;
-const MAX_SURAH_RESULTS = 12;
-const DEBOUNCE_MS = 250;
+/** Every key press is deliberate on a remote, so wait only a beat. */
+const DEBOUNCE_MS = 120;
 
-export interface SearchResults {
-  reciters: Reciter[];
-  surahs: Surah[];
-  loading: boolean;
+export interface SearchState {
+  /** The query the results are for (lags the typed one by the debounce). */
+  settled: string;
+  results: GroupedResults;
+  suggestions: Suggestion[];
+  /** True while a freshly typed query waits for the debounce to settle. */
+  pending: boolean;
 }
 
-export function normalizeQuery(query: string): string {
-  return query.trim().toLowerCase();
+export type TvSearchEngine = ReturnType<typeof createTvSearch>;
+
+/** Anything with a letter or digit in it searches; the phone has no minimum. */
+export function isActiveQuery(query: string): boolean {
+  return toSearchKey(query).length > 0;
 }
 
-export function searchReciters(reciters: Reciter[], query: string): Reciter[] {
-  const q = normalizeQuery(query);
-  if (q.length < MIN_QUERY_LENGTH) return [];
-  return reciters
-    .filter(r => r.name.toLowerCase().includes(q))
-    .slice(0, MAX_RECITER_RESULTS);
-}
-
-export function searchSurahs(query: string): Surah[] {
-  const q = normalizeQuery(query);
-  if (q.length < MIN_QUERY_LENGTH) return [];
-  const asNumber = Number(q);
-  const matchesNumber = Number.isInteger(asNumber) && asNumber > 0;
-  return SURAHS.filter(
-    s =>
-      s.name.toLowerCase().includes(q) ||
-      s.translated_name_english.toLowerCase().includes(q) ||
-      (matchesNumber && s.id === asNumber),
-  ).slice(0, MAX_SURAH_RESULTS);
+/** Results and suggestions for one query: the hook's whole logic, pure. */
+export function runSearch(
+  engine: TvSearchEngine,
+  query: string,
+): {results: GroupedResults; suggestions: Suggestion[]} {
+  if (!isActiveQuery(query)) {
+    return {results: EMPTY_RESULTS, suggestions: []};
+  }
+  const results = engine.search(query);
+  return {results, suggestions: buildSuggestions(query, results.ranked)};
 }
 
 /**
- * Debounced search over the supplied reciters plus the bundled surah list.
- * `loading` is true while a freshly typed query waits for the debounce to
- * settle, so the screen can keep prior results visible without flicker.
+ * Debounced search over the catalog's reciters, the surahs, the adhkar lists
+ * and verse references, on the phone's engine (see services/search/tvSearch).
+ * Prior results stay up while a new query settles, so typing never flickers.
  */
-export function useSearch(query: string, reciters: Reciter[]): SearchResults {
-  const normalized = normalizeQuery(query);
-  const active = normalized.length >= MIN_QUERY_LENGTH;
-  const [settled, setSettled] = useState('');
+export function useSearch(query: string, reciters: Reciter[]): SearchState {
+  const engine = useMemo(() => createTvSearch(reciters), [reciters]);
+  const active = isActiveQuery(query);
+  const [settled, setSettled] = useState(query);
 
   useEffect(() => {
     if (!active) {
       setSettled('');
       return;
     }
-    const handle = setTimeout(() => setSettled(normalized), DEBOUNCE_MS);
+    const handle = setTimeout(() => setSettled(query), DEBOUNCE_MS);
     return () => clearTimeout(handle);
-  }, [normalized, active]);
+  }, [query, active]);
 
-  const reciterResults = useMemo(
-    () => searchReciters(reciters, settled),
-    [reciters, settled],
+  const {results, suggestions} = useMemo(
+    () => runSearch(engine, settled),
+    [engine, settled],
   );
-  const surahResults = useMemo(() => searchSurahs(settled), [settled]);
-  const loading = active && settled !== normalized;
 
-  return {reciters: reciterResults, surahs: surahResults, loading};
+  return {
+    settled,
+    results,
+    suggestions,
+    pending: active && settled !== query,
+  };
 }

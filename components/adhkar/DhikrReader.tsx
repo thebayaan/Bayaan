@@ -18,6 +18,9 @@ import {Theme} from '@/utils/themeUtils';
 import {AdhkarAudioControls} from './AdhkarAudioControls';
 import {useAdhkarSettingsStore} from '@/store/adhkarSettingsStore';
 import {Dhikr} from '@/types/adhkar';
+import {adhkarCopyText, adhkarTranslationCopyText} from '@/utils/adhkarText';
+import {AdhkarArabicText} from './AdhkarArabicText';
+import {AdhkarLatinText} from './AdhkarLatinText';
 // @ai-start
 import {useTranslation} from 'react-i18next';
 import {isRTL} from '@/utils/rtl';
@@ -88,10 +91,12 @@ export const DhikrReader: React.FC<DhikrReaderProps> = ({
 
   const handleShare = useCallback(async () => {
     const content = [
-      dhikr.arabic,
-      showTranslation && dhikr.translation ? `\n\n${dhikr.translation}` : '',
+      adhkarCopyText(dhikr.arabic),
+      showTranslation && dhikr.translation
+        ? `\n\n${adhkarTranslationCopyText(dhikr.translation)}`
+        : '',
       showTransliteration && dhikr.transliteration
-        ? `\n\n${dhikr.transliteration}`
+        ? `\n\n${adhkarCopyText(dhikr.transliteration)}`
         : '',
       dhikr.instruction ? `\n\n${dhikr.instruction}` : '',
     ].join('');
@@ -121,7 +126,13 @@ export const DhikrReader: React.FC<DhikrReaderProps> = ({
         {/* Arabic Text */}
         {dhikr.arabic ? (
           <View style={styles.arabicSection}>
-            <Text style={styles.arabicText}>{dhikr.arabic}</Text>
+            <AdhkarArabicText
+              dhikrId={dhikr.id}
+              arabic={dhikr.arabic}
+              fontSize={moderateScale(arabicFontSize)}
+              style={styles.arabicText}
+              horizontalPadding={moderateScale(8)}
+            />
           </View>
         ) : null}
 
@@ -129,6 +140,7 @@ export const DhikrReader: React.FC<DhikrReaderProps> = ({
         {showControls && (
           <View style={styles.audioSection}>
             <AdhkarAudioControls
+              dhikrId={dhikr.id}
               audioFile={dhikr.audioFile}
               onCopy={handleOpenCopyOptions}
               onBookmark={onSaveToggle}
@@ -147,7 +159,13 @@ export const DhikrReader: React.FC<DhikrReaderProps> = ({
         {/* Translation */}
         {showTranslation && dhikr.translation ? (
           <View style={styles.translationSection}>
-            <Text style={styles.translationText}>{dhikr.translation}</Text>
+            <AdhkarLatinText
+              text={dhikr.translation}
+              variant="translation"
+              fontSize={moderateScale(translationFontSize)}
+              color={theme.colors.textSecondary}
+              style={styles.translationText}
+            />
           </View>
         ) : null}
 
@@ -159,9 +177,13 @@ export const DhikrReader: React.FC<DhikrReaderProps> = ({
         {/* Transliteration */}
         {showTransliteration && dhikr.transliteration ? (
           <View style={styles.transliterationSection}>
-            <Text style={styles.transliterationText}>
-              {dhikr.transliteration}
-            </Text>
+            <AdhkarLatinText
+              text={dhikr.transliteration}
+              variant="transliteration"
+              fontSize={moderateScale(transliterationFontSize)}
+              color={transliterationColor(theme)}
+              style={styles.transliterationText}
+            />
           </View>
         ) : null}
 
@@ -214,6 +236,9 @@ export const DhikrReader: React.FC<DhikrReaderProps> = ({
 // @ai-end
 
 DhikrReader.displayName = 'DhikrReader';
+
+const transliterationColor = (theme: Theme) =>
+  Color(theme.colors.textSecondary).alpha(0.7).toString();
 
 // Secondary background color used throughout
 const getSecondaryBg = (theme: Theme) =>
@@ -295,7 +320,7 @@ const createStyles = (theme: Theme, fontSizes?: FontSizes) =>
       fontSize: moderateScale(fontSizes?.transliterationFontSize ?? 15),
       fontFamily: theme.fonts.light,
       fontStyle: 'italic',
-      color: Color(theme.colors.textSecondary).alpha(0.7).toString(),
+      color: transliterationColor(theme),
       lineHeight: moderateScale(
         (fontSizes?.transliterationFontSize ?? 15) * 1.6,
       ),

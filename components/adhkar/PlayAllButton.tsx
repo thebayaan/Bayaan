@@ -1,8 +1,9 @@
 /**
  * PlayAllButton Component
  *
- * Button to start/stop "Play All" adhkar playback.
- * Shows play/pause icon with text label.
+ * The list header's Play All button. "Play All" with no session for the
+ * list, "Pause" while it plays, "Resume" while it is paused. It never ends
+ * the session.
  */
 
 import React, {useMemo} from 'react';
@@ -10,6 +11,7 @@ import {TouchableOpacity, Text, View} from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
+import type {PlayAllState} from '@/services/adhkar/playback/sessionReducer';
 import {PlayIcon, PauseIcon} from '@/components/Icons';
 // @ai-start
 import {useTranslation} from 'react-i18next';
@@ -17,18 +19,31 @@ import {useTranslation} from 'react-i18next';
 
 interface PlayAllButtonProps {
   onPress: () => void;
-  isPlaying?: boolean;
+  state?: PlayAllState;
   disabled?: boolean;
 }
 
 // @ai-start
 export const PlayAllButton: React.FC<PlayAllButtonProps> = React.memo(
-  function PlayAllButton({onPress, isPlaying = false, disabled = false}) {
+  function PlayAllButton({onPress, state = 'idle', disabled = false}) {
     const {theme} = useTheme();
     const {t} = useTranslation(['player', 'common']);
     const styles = useMemo(() => createStyles(theme), [theme]);
 
     const iconColor = disabled ? theme.colors.textSecondary : theme.colors.text;
+    const isPlaying = state === 'playing';
+    const label =
+      state === 'playing'
+        ? t('common:actions.pause')
+        : state === 'paused'
+          ? t('adhkar.resume')
+          : t('adhkar.playAll');
+    const a11yLabel =
+      state === 'playing'
+        ? t('adhkar.a11y.pauseAll')
+        : state === 'paused'
+          ? t('adhkar.a11y.resumeAll')
+          : t('adhkar.a11y.playAll');
 
     return (
       <TouchableOpacity
@@ -38,9 +53,7 @@ export const PlayAllButton: React.FC<PlayAllButtonProps> = React.memo(
         activeOpacity={1}
         hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
         accessibilityRole="button"
-        accessibilityLabel={
-          isPlaying ? t('adhkar.a11y.pauseAll') : t('adhkar.a11y.playAll')
-        }>
+        accessibilityLabel={a11yLabel}>
         <View style={styles.iconContainer}>
           {isPlaying ? (
             <PauseIcon size={moderateScale(16)} color={iconColor} />
@@ -49,7 +62,7 @@ export const PlayAllButton: React.FC<PlayAllButtonProps> = React.memo(
           )}
         </View>
         <Text style={[styles.text, disabled && styles.textDisabled]}>
-          {isPlaying ? t('common:actions.pause') : t('adhkar.playAll')}
+          {label}
         </Text>
       </TouchableOpacity>
     );

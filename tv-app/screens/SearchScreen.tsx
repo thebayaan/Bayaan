@@ -1,286 +1,257 @@
-import React, {useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useState} from 'react';
+import {ScrollView, Text, TVFocusGuideView, View} from 'react-native';
+import {SearchBar} from '../components/search/SearchBar';
 import {
-  ScrollView,
-  Text,
-  TextInput,
-  TVFocusGuideView,
-  View,
-} from 'react-native';
-import {TopTabBar} from '../components/nav/TopTabBar';
-import {FocusableButton} from '../components/primitives/FocusableButton';
-import {Rail} from '../components/rails/Rail';
-import {ReciterCard} from '../components/rails/ReciterCard';
-import {QuickPlayCard} from '../components/rails/QuickPlayCard';
-import {SearchIcon} from '../../components/Icons';
+  SearchKeyboard,
+  KEYBOARD_WIDTH,
+} from '../components/search/SearchKeyboard';
+import {SearchSideList} from '../components/search/SearchSideList';
+import {BrowsePanel} from '../components/search/BrowsePanel';
+import {TopResultCard} from '../components/search/TopResultCard';
+import {ResultSections} from '../components/search/ResultSections';
+import {ReciterPicker} from '../components/search/ReciterPicker';
+import {useSearchActions} from '../components/search/useSearchActions';
 import {useReciters} from '../hooks/useReciters';
 import {useDefaultReciter} from '../hooks/useDefaultReciter';
+import {useFavorites} from '../hooks/useFavorites';
 import {useSearchRecents} from '../hooks/useSearchRecents';
-import {useSearch, MIN_QUERY_LENGTH} from '../hooks/useSearch';
-import {usePlayer} from '../hooks/usePlayer';
-import {useNavStore} from '../store/navStore';
+import {isActiveQuery, useSearch} from '../hooks/useSearch';
+import {clearRecentSearches} from '../services/searchRecentsStore';
+import {pushScreenBack} from '../services/screenBack';
 import {
-  clearRecentSearches,
-  recordSearch,
-  removeRecentSearch,
-} from '../services/searchRecentsStore';
-import {fetchRewayat} from '../services/tvDataService';
+  deleteKey,
+  nextMode,
+  typeKey,
+  typeSpace,
+  type KeyboardMode,
+} from '../services/search/keyboard';
+import {
+  pickReciterForSurah,
+  recitersForSurah,
+} from '../services/search/playback';
+import type {SearchItem} from '../services/search/tvSearch';
+import type {Suggestion} from '../services/search/suggestions';
+import type {Surah} from '../../data/surahData';
 import {colors} from '../theme/colors';
-import {spacing} from '../theme/spacing';
 import {fonts, typography} from '../theme/typography';
-import {createScaledStyles, scale} from '../theme/scale';
+import {createScaledStyles} from '../theme/scale';
 
+/** How long a "focus this when it appears" request stays open. */
+const FOCUS_REQUEST_MS = 800;
+
+function itemKey(item: SearchItem): string {
+  switch (item.type) {
+    case 'surah':
+      return `s${item.item.id}`;
+    case 'reciter':
+      return `r${item.item.id}`;
+    case 'adhkar':
+      return `a${item.item.id}`;
+    case 'verse':
+      return `v${item.item.surah.id}:${item.item.ayah}`;
+  }
+}
+
+/**
+ * Search (the approved mix): the search bar and a grid keyboard on the left
+ * with recent searches, then suggestions, under it; browse tiles on the right
+ * before typing, then the top result with its own buttons and rows of more
+ * surahs, reciters and adhkar.
+ *
+ * Focus: the keyboard's first key on arrival. Right from the keyboard enters
+ * the results (the top result's first button); Left comes back to the last
+ * key used; Down from the keyboard reaches the recents or suggestions; Left
+ * from the keyboard's first column opens the sidebar.
+ */
 export function SearchScreen(): React.ReactElement {
   const [query, setQuery] = useState('');
+  const [mode, setMode] = useState<KeyboardMode>('letters');
+  const [picker, setPicker] = useState<Surah | null>(null);
+  // Focus requests for elements that appear a moment later: the top result
+  // after a suggestion is picked, "Choose reciter" after the picker closes.
+  const [focusTopFor, setFocusTopFor] = useState<string | null>(null);
+  const [focusChooser, setFocusChooser] = useState(false);
+
   const {reciters} = useReciters();
   const {defaultReciterId} = useDefaultReciter();
+  const favorites = useFavorites();
   const recents = useSearchRecents();
-  const {playRewayah} = usePlayer();
-  const push = useNavStore(s => s.push);
+  const {settled, results, suggestions, pending} = useSearch(query, reciters);
+  const actions = useSearchActions(settled, reciters, defaultReciterId);
 
-  const {
-    reciters: reciterResults,
-    surahs: surahResults,
-    loading,
-  } = useSearch(query, reciters);
+  const favoriteIds = useMemo(
+    () => favorites.map(f => f.reciterId),
+    [favorites],
+  );
+  const typing = isActiveQuery(query);
 
-  const active = query.trim().length >= MIN_QUERY_LENGTH;
+  useEffect(() => {
+    if (focusTopFor === null) return;
+    const t = setTimeout(() => setFocusTopFor(null), FOCUS_REQUEST_MS);
+    return () => clearTimeout(t);
+  }, [focusTopFor, settled]);
 
-  function commitSearch(): void {
-    recordSearch(query);
+  useEffect(() => {
+    if (!focusChooser) return;
+    const t = setTimeout(() => setFocusChooser(false), FOCUS_REQUEST_MS);
+    return () => clearTimeout(t);
+  }, [focusChooser]);
+
+  const closePicker = useCallback(() => {
+    setPicker(null);
+    setFocusChooser(true);
+  }, []);
+
+  // Back closes the picker before it leaves Search.
+  useEffect(() => {
+    if (!picker) return;
+    return pushScreenBack(() => {
+      closePicker();
+      return true;
+    });
+  }, [picker, closePicker]);
+
+  const fillAndFocus = useCallback((text: string) => {
+    setQuery(text);
+    setFocusTopFor(text);
+  }, []);
+
+  const surahReciter = useCallback(
+    (surah: Surah) =>
+      pickReciterForSurah(reciters, surah.id, defaultReciterId, favoriteIds)
+        ?.reciter ?? null,
+    [reciters, defaultReciterId, favoriteIds],
+  );
+
+  const pickerReciters = useMemo(
+    () =>
+      picker
+        ? recitersForSurah(reciters, picker.id, defaultReciterId, favoriteIds)
+        : [],
+    [picker, reciters, defaultReciterId, favoriteIds],
+  );
+
+  const top = results.top;
+  const showResults = typing && top !== null;
+
+  let right: React.ReactNode;
+  if (picker) {
+    right = (
+      <ReciterPicker
+        surah={picker}
+        reciters={pickerReciters}
+        onCancel={closePicker}
+        onPick={reciter => {
+          setPicker(null);
+          void actions.playSurah(picker, {reciter});
+        }}
+      />
+    );
+  } else if (!typing) {
+    right = (
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scroll}>
+        <BrowsePanel
+          reciters={reciters}
+          onReciter={actions.openReciter}
+          onSurah={surah => void actions.playSurah(surah)}
+          onAdhkar={list => actions.openAdhkar(list)}
+          onBrowseAll={tab => actions.switchTab(tab)}
+        />
+      </ScrollView>
+    );
+  } else if (showResults && top) {
+    right = (
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scroll}>
+        <TopResultCard
+          key={itemKey(top)}
+          top={top}
+          surahReciter={surahReciter}
+          actions={actions}
+          onChooseReciter={setPicker}
+          takeFocus={focusTopFor !== null && focusTopFor === settled}
+          focusChooser={focusChooser}
+        />
+        <ResultSections
+          results={results}
+          onSurah={surah => void actions.playSurah(surah)}
+          onReciter={actions.openReciter}
+          onAdhkar={list => actions.openAdhkar(list)}
+        />
+      </ScrollView>
+    );
+  } else if (!pending) {
+    right = (
+      <View style={styles.empty}>
+        <Text style={styles.emptyTitle}>No matches for “{query.trim()}”</Text>
+        <Text style={styles.emptyHint}>
+          Try a surah name or number, a reciter, a verse like 2:255, or a dua
+          like “morning”.
+        </Text>
+      </View>
+    );
+  } else {
+    right = null;
   }
 
-  function handleReciterSelect(reciterId: string): void {
-    commitSearch();
-    push({screen: 'reciterDetail', reciterId});
-  }
-
-  async function handleSurahSelect(surahNumber: number): Promise<void> {
-    if (!defaultReciterId) return;
-    const reciter = reciters.find(r => r.id === defaultReciterId);
-    if (!reciter) return;
-    const rewayat = await fetchRewayat(defaultReciterId);
-    const rewayah = rewayat[0];
-    if (!rewayah) return;
-    commitSearch();
-    await playRewayah(reciter.id, reciter.name, rewayah, surahNumber);
-    push({screen: 'nowPlaying'});
-  }
-
-  const hasReciters = reciterResults.length > 0;
-  const hasSurahs = surahResults.length > 0;
-  const hasAny = hasReciters || hasSurahs;
+  const onSuggestion = useCallback(
+    (s: Suggestion) => fillAndFocus(s.fill),
+    [fillAndFocus],
+  );
 
   return (
     <View style={styles.container}>
-      <TopTabBar />
-      <View style={styles.body}>
-        <Text style={styles.kicker}>CATALOG</Text>
-        <Text style={styles.pageTitle}>Search</Text>
-        <TVFocusGuideView autoFocus style={styles.inputRow}>
-          <SearchIcon color={colors.text} size={scale(32)} />
-          <TextInput
-            value={query}
-            onChangeText={setQuery}
-            placeholder="Reciter name, surah name, or number"
-            placeholderTextColor="rgba(255,255,255,0.35)"
-            style={styles.input}
-            autoCorrect={false}
-            autoCapitalize="none"
-            hasTVPreferredFocus
-          />
-        </TVFocusGuideView>
-        <TVFocusGuideView autoFocus style={styles.results}>
-          <ScrollView
-            style={styles.results}
-            showsVerticalScrollIndicator={false}>
-            {hasReciters && (
-              <Rail
-                title={`${reciterResults.length} ${
-                  reciterResults.length === 1 ? 'reciter' : 'reciters'
-                }`}>
-                {reciterResults.map(r => (
-                  <ReciterCard
-                    key={r.id}
-                    reciter={r}
-                    onSelect={() => handleReciterSelect(r.id)}
-                  />
-                ))}
-              </Rail>
-            )}
-
-            {hasSurahs && defaultReciterId && (
-              <Rail
-                title={`${surahResults.length} ${
-                  surahResults.length === 1 ? 'surah' : 'surahs'
-                } to play`}>
-                {surahResults.map(s => (
-                  <QuickPlayCard
-                    key={s.id}
-                    surahNumber={s.id}
-                    surahName={s.name}
-                    onSelect={handleSurahSelect}
-                  />
-                ))}
-              </Rail>
-            )}
-
-            {!active && recents.length > 0 && (
-              <View style={styles.recentsBlock}>
-                <View style={styles.recentsHeader}>
-                  <Text style={styles.recentsKicker}>RECENT SEARCHES</Text>
-                  <FocusableButton
-                    onPress={() => clearRecentSearches()}
-                    accessibilityLabel="Clear recent searches"
-                    style={styles.clearBtn}>
-                    <Text style={styles.clearBtnText}>Clear</Text>
-                  </FocusableButton>
-                </View>
-                <View style={styles.recentList}>
-                  {recents.map(r => (
-                    <View key={r} style={styles.recentRow}>
-                      <FocusableButton
-                        onPress={() => setQuery(r)}
-                        accessibilityLabel={`Search ${r}`}
-                        focusedStyle={styles.recentFillWrap}
-                        style={styles.recentFill}>
-                        <Text style={styles.recentFillText} numberOfLines={1}>
-                          {r}
-                        </Text>
-                      </FocusableButton>
-                      <FocusableButton
-                        onPress={() => removeRecentSearch(r)}
-                        accessibilityLabel={`Remove ${r} from recent searches`}
-                        style={styles.recentRemove}>
-                        <Text style={styles.recentRemoveText}>Remove</Text>
-                      </FocusableButton>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            )}
-
-            {active && loading && !hasAny && (
-              <View style={styles.emptyWrap}>
-                <Text style={styles.hint}>Searching…</Text>
-              </View>
-            )}
-
-            {active && !loading && !hasAny && (
-              <View style={styles.emptyWrap}>
-                <Text style={styles.hint}>No matches for that search</Text>
-              </View>
-            )}
-
-            {!active && recents.length === 0 && (
-              <View style={styles.emptyWrap}>
-                <Text style={styles.hint}>
-                  Start typing a reciter, a surah name, or a surah number
-                </Text>
-              </View>
-            )}
-          </ScrollView>
-        </TVFocusGuideView>
-      </View>
+      <TVFocusGuideView autoFocus style={styles.left}>
+        <SearchBar query={query} onChangeQuery={setQuery} />
+        <View style={styles.keyboardGap} />
+        <SearchKeyboard
+          mode={mode}
+          onKey={key => setQuery(q => typeKey(q, key))}
+          onSpace={() => setQuery(typeSpace)}
+          onDelete={() => setQuery(deleteKey)}
+          onClear={() => setQuery('')}
+          onMode={() => setMode(nextMode)}
+          preferFirstKey
+        />
+        <SearchSideList
+          typing={typing}
+          recents={recents}
+          suggestions={suggestions}
+          onRecent={fillAndFocus}
+          onSuggestion={onSuggestion}
+          onClearRecents={clearRecentSearches}
+        />
+      </TVFocusGuideView>
+      <TVFocusGuideView autoFocus style={styles.right}>
+        {right}
+      </TVFocusGuideView>
     </View>
   );
 }
 
 const styles = createScaledStyles({
-  container: {flex: 1, backgroundColor: colors.background},
-  body: {
+  container: {
     flex: 1,
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.sm,
-    gap: 6,
-  },
-  kicker: {
-    color: colors.text,
-    ...typography.label,
-    opacity: 0.55,
-  },
-  pageTitle: {
-    color: colors.text,
-    ...typography.title,
-    letterSpacing: -0.5,
-    marginBottom: spacing.md,
-  },
-  inputRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-    borderBottomWidth: 2,
-    borderColor: 'rgba(255,255,255,0.15)',
-    paddingVertical: 14,
-    marginBottom: spacing.md,
+    backgroundColor: colors.background,
+    paddingTop: 84,
+    paddingLeft: 48,
+    paddingRight: 64,
   },
-  input: {
-    flex: 1,
-    color: colors.text,
-    fontFamily: fonts.medium,
-    fontSize: 34,
-    fontWeight: '500',
-    paddingVertical: 6,
-    letterSpacing: -0.5,
-  },
-  results: {flex: 1},
-  emptyWrap: {paddingTop: spacing.xl, alignItems: 'center'},
-  hint: {color: colors.textSecondary, ...typography.body, opacity: 0.7},
-  recentsBlock: {paddingTop: spacing.sm, paddingBottom: spacing.md},
-  recentsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  recentsKicker: {
-    color: colors.text,
-    ...typography.label,
-    opacity: 0.55,
-  },
-  clearBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 9,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-  },
-  clearBtnText: {
+  left: {width: KEYBOARD_WIDTH},
+  keyboardGap: {height: 28},
+  right: {flex: 1, marginLeft: 80},
+  scroll: {paddingTop: 8, paddingBottom: 96},
+  empty: {paddingTop: 120, gap: 14, maxWidth: 760},
+  emptyTitle: {
     color: colors.text,
     fontFamily: fonts.bold,
-    fontSize: 16,
+    fontSize: 40,
     fontWeight: '700',
-    letterSpacing: 0.3,
+    letterSpacing: -0.6,
   },
-  recentList: {gap: 10},
-  recentRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  recentFillWrap: {flex: 1},
-  recentFill: {
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-  },
-  recentFillText: {
-    color: colors.text,
-    fontFamily: fonts.semiBold,
-    fontSize: 20,
-    fontWeight: '600',
-    letterSpacing: -0.2,
-  },
-  recentRemove: {
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.04)',
-  },
-  recentRemoveText: {
-    color: colors.textSecondary,
-    fontFamily: fonts.bold,
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: 0.3,
-  },
+  emptyHint: {...typography.body, color: colors.textSecondary, lineHeight: 30},
 });

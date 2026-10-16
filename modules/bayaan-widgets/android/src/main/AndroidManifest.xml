@@ -214,30 +214,6 @@
         android:resource="@xml/adhkar_info" />
     </receiver>
     <receiver
-      android:name="expo.modules.bayaanwidgets.hijri.HijriDateReceiver"
-      android:enabled="@bool/bayaan_widget_enabled_hijri_date"
-      android:exported="true"
-      android:label="@string/bayaan_widget_hijri_label">
-      <intent-filter>
-        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-      </intent-filter>
-      <meta-data
-        android:name="android.appwidget.provider"
-        android:resource="@xml/hijri_date_info" />
-    </receiver>
-    <receiver
-      android:name="expo.modules.bayaanwidgets.hijri.OccasionReceiver"
-      android:enabled="@bool/bayaan_widget_enabled_occasion"
-      android:exported="true"
-      android:label="@string/bayaan_widget_occasion_label">
-      <intent-filter>
-        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-      </intent-filter>
-      <meta-data
-        android:name="android.appwidget.provider"
-        android:resource="@xml/occasion_info" />
-    </receiver>
-    <receiver
       android:name="expo.modules.bayaanwidgets.bayaannow.BayaanNowReceiver"
       android:enabled="@bool/bayaan_widget_enabled_bayaan_now"
       android:exported="true"

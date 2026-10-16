@@ -17,6 +17,7 @@ struct AdhkarEntry: TimelineEntry {
   let date: Date
   let data: AdhkarPeriodData?
   let featured: FeaturedDhikr?
+  let session: AdhkarSession?
   let relevance: TimelineEntryRelevance?
 
   static func make(at date: Date, next: Date?) -> AdhkarEntry {
@@ -26,7 +27,11 @@ struct AdhkarEntry: TimelineEntry {
       let i = WidgetLogic.ayahIndex(date, count: d.featured.count)
       return i >= 0 ? d.featured[i] : nil
     }
-    return AdhkarEntry(date: date, data: data, featured: featured,
+    let session = data.map { d in
+      AdhkarSessionLogic.resolve(AdhkarSessionStore.read(), period: d.period,
+                                 day: AdhkarSessionLogic.sessionDay(date), repeatCounts: d.items.map(\.repeatCount))
+    }
+    return AdhkarEntry(date: date, data: data, featured: featured, session: session,
                        relevance: .scored(ContentLogic.adhkarRelevance(hour: hour), from: date, until: next))
   }
 }
@@ -51,8 +56,8 @@ struct AdhkarWidget: Widget {
       AdhkarView(entry: entry)
     }
     .configurationDisplayName("Morning & Evening Adhkar")
-    .description("The adhkar for this time of day.")
-    .supportedFamilies([.systemSmall, .systemMedium])
+    .description("Go through the adhkar for this time of day.")
+    .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
     .contentMarginsDisabled()
   }
 }
@@ -63,21 +68,26 @@ struct AdhkarView: View {
 
   var body: some View {
     Group {
-      if let data = entry.data, let dhikr = entry.featured {
-        if family == .systemSmall { small(data, dhikr) } else { medium(data, dhikr) }
+      if family == .systemSmall {
+        if let data = entry.data, let dhikr = entry.featured {
+          small(data, dhikr).widgetURL(AppLinks.url("adhkar/\(data.superId)"))
+        } else {
+          ContentMessage(title: "Open \(AppBrand.name)")
+        }
+      } else if let data = entry.data, let session = entry.session, !data.items.isEmpty {
+        AdhkarSessionView(data: data, session: session)
       } else {
         ContentMessage(title: "Open \(AppBrand.name)")
       }
     }
     .foregroundStyle(.white)
     .containerBackground(for: .widget) { WidgetPalette.background }
-    .widgetURL(entry.data.flatMap { AppLinks.url("adhkar/\($0.superId)") })
   }
 
   private func small(_ data: AdhkarPeriodData, _ dhikr: FeaturedDhikr) -> some View {
     VStack(spacing: 6) {
       HStack {
-        Text(data.arabicTitle).font(WidgetFonts.dhikr(15)).opacity(0.75).lineLimit(1)
+        Text(data.title).font(.footnote.weight(.bold)).opacity(0.75).lineLimit(1)
         Spacer(minLength: 0)
         BayaanLogo(size: 12)
       }
@@ -86,31 +96,6 @@ struct AdhkarView: View {
       Spacer(minLength: 0)
     }
     .padding(12)
-  }
-
-  private func medium(_ data: AdhkarPeriodData, _ dhikr: FeaturedDhikr) -> some View {
-    VStack(alignment: .leading, spacing: 6) {
-      HStack(alignment: .firstTextBaseline, spacing: 8) {
-        Text(data.title).font(.subheadline.weight(.bold)).lineLimit(1)
-        Text(data.arabicTitle).font(WidgetFonts.dhikr(14)).opacity(0.6).lineLimit(1)
-        Spacer(minLength: 0)
-        BayaanLogo(size: 14)
-      }
-      Spacer(minLength: 0)
-      DhikrText(text: dhikr.arabic, size: 22, lines: 2).frame(maxWidth: .infinity)
-      if let translation = dhikr.translation {
-        Text(translation).font(.caption).opacity(0.75).lineLimit(1)
-      }
-      Spacer(minLength: 0)
-      HStack {
-        if let r = ContentText.repeatLabel(dhikr.repeatCount) {
-          Text(r).font(.caption2.weight(.bold)).opacity(0.6)
-        }
-        Spacer(minLength: 0)
-        Text("\(data.count) adhkar").font(.caption2.weight(.semibold)).opacity(0.6)
-      }
-    }
-    .padding(14)
   }
 }
 
@@ -124,5 +109,11 @@ struct AdhkarView: View {
   AdhkarWidget()
 } timeline: {
   AdhkarEntry.make(at: .now, next: nil)
-  AdhkarEntry(date: .now, data: nil, featured: nil, relevance: nil)
+  AdhkarEntry(date: .now, data: nil, featured: nil, session: nil, relevance: nil)
+}
+
+#Preview("Large", as: .systemLarge) {
+  AdhkarWidget()
+} timeline: {
+  AdhkarEntry.make(at: .now, next: nil)
 }

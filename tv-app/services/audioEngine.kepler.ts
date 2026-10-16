@@ -14,6 +14,11 @@
 import {AudioPlayer} from '@amazon-devices/react-native-w3cmedia';
 import type {IComponentInstance} from '@amazon-devices/react-native-kepler';
 import type {AudioEngine, EngineEvent, EngineStatus} from './audioEngineTypes';
+import {
+  claimAudioFocus,
+  releaseAudioFocus,
+  type AudioFocusOwner,
+} from './audioFocus';
 
 export type {AudioEngine, EngineEvent, EngineStatus} from './audioEngineTypes';
 
@@ -36,6 +41,13 @@ export function createAudioEngine(): AudioEngine {
   let status: EngineStatus = 'idle';
   let currentRate = 1;
   let pollTimer: ReturnType<typeof setInterval> | null = null;
+  // Each engine has its own player here; taking focus pauses the other one
+  // so the Quran and an adhkar recitation never play over each other.
+  const focusOwner: AudioFocusOwner = {
+    onFocusLost: (): void => {
+      player?.pause();
+    },
+  };
 
   function snapshot(): EngineEvent {
     const duration = player ? finiteOr(player.duration, 0) : 0;
@@ -99,6 +111,7 @@ export function createAudioEngine(): AudioEngine {
 
   return {
     load: async (url: string): Promise<void> => {
+      claimAudioFocus(focusOwner);
       const audio = await ensurePlayer();
       setStatus('loading');
       audio.autoplay = false;
@@ -109,6 +122,7 @@ export function createAudioEngine(): AudioEngine {
     },
 
     play: async (): Promise<void> => {
+      claimAudioFocus(focusOwner);
       const audio = await ensurePlayer();
       audio.play();
     },
@@ -128,6 +142,10 @@ export function createAudioEngine(): AudioEngine {
       if (player) player.playbackRate = rate;
     },
 
+    setVolume: (volume: number): void => {
+      if (player) player.volume = Math.max(0, Math.min(1, volume));
+    },
+
     subscribe: (cb: (e: EngineEvent) => void): (() => void) => {
       listeners.add(cb);
       cb(snapshot());
@@ -138,6 +156,7 @@ export function createAudioEngine(): AudioEngine {
 
     destroy: (): void => {
       stopPolling();
+      releaseAudioFocus(focusOwner);
       listeners.clear();
       const audio = player;
       player = null;

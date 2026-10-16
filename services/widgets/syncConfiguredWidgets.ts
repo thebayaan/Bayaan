@@ -9,11 +9,13 @@ import {
   readArtworkRequests,
   reloadWidgets,
   takePendingTasbeeh,
+  takePendingWidgetEvents,
   writeCatalog,
   WidgetArtworkRequests,
   WidgetKind,
 } from 'bayaan-widgets';
 import {RECITERS} from '@/data/reciterData';
+import {analyticsService} from '@/services/analytics/AnalyticsService';
 import {useAdhkarStore} from '@/store/adhkarStore';
 import {useReciterStore} from '@/store/reciterStore';
 import {getReciterByIdSync} from '@/services/dataService';
@@ -149,6 +151,25 @@ export async function consumeTasbeehIncrements(
   if (applied) flushWidgetSnapshot();
 }
 
+// Sends analytics events raised by widget actions (adhkar session completed).
+// Taking the events clears the native queue, so they stay queued until
+// analytics can capture them; startConfiguredWidgetSync retries on readiness.
+export function consumeWidgetEvents(): void {
+  if (!analyticsService.isReadyToCapture()) return;
+  try {
+    for (const event of takePendingWidgetEvents()) {
+      if (event.name === 'adhkar_session_completed') {
+        analyticsService.trackAdhkarSessionCompleted(
+          event.props,
+          new Date(event.completedAtMs),
+        );
+      }
+    }
+  } catch (error) {
+    console.error('[WidgetSync] Failed to send widget events:', error);
+  }
+}
+
 function refresh(): void {
   // Ayah of the Day depends only on the date; a push is cheap and repairs a
   // stale ayah (and, on Android, a lost midnight alarm).
@@ -157,6 +178,7 @@ function refresh(): void {
   consumeTasbeehIncrements().catch(error => {
     console.error('[WidgetSync] Tasbeeh sync failed:', error);
   });
+  consumeWidgetEvents();
   ensureConfiguredArtwork().catch(error => {
     console.error('[WidgetSync] Configured artwork sync failed:', error);
   });
@@ -167,6 +189,7 @@ export function startConfiguredWidgetSync(): () => void {
   if (!isWidgetsAvailable()) return () => undefined;
   refresh();
   const unsubs = [
+    analyticsService.onReadyToCapture(consumeWidgetEvents),
     // RECITERS is filled in place; the default reciter refresh follows a load.
     useReciterStore.subscribe(() => syncCatalog()),
     useAdhkarStore.subscribe((state, prev) => {

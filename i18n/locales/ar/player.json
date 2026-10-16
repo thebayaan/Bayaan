@@ -35,11 +35,28 @@
     "searchPlaceholder": "ابحث في السور",
     "noSurahsAvailable": "لا توجد سور متاحة",
     "noSurahsFound": "لم يُعثر على سور",
-    "juzAmma": "جزء عمّ"
+    "juzAmma": "جزء عمّ",
+    "playAll": "تشغيل الكل",
+    "favorite": "المفضلة",
+    "favorited": "في المفضلة",
+    "downloaded": "تم التنزيل",
+    "surahCount_zero": "{{count}} سورة",
+    "surahCount_one": "سورة واحدة",
+    "surahCount_two": "سورتان",
+    "surahCount_few": "{{count}} سور",
+    "surahCount_many": "{{count}} سورة",
+    "surahCount_other": "{{count}} سورة",
+    "rewayatCount_zero": "{{count}} رواية",
+    "rewayatCount_one": "رواية واحدة",
+    "rewayatCount_two": "روايتان",
+    "rewayatCount_few": "{{count}} روايات",
+    "rewayatCount_many": "{{count}} رواية",
+    "rewayatCount_other": "{{count}} رواية"
   },
   "adhkar": {
     "otherSection": "أخرى",
     "playAll": "تشغيل الكل",
+    "resume": "استئناف",
     "hideInfo": "إخفاء التفاصيل",
     "showInfo": "عرض التفاصيل",
     "reciteTimes_zero": "تُقال {{count}} مرة",
@@ -77,7 +94,8 @@
       "showInstruction": "إظهار الإرشاد",
       "hideInstruction": "إخفاء الإرشاد",
       "playAll": "تشغيل الكل",
-      "pauseAll": "إيقاف الكل مؤقتًا"
+      "pauseAll": "إيقاف الكل مؤقتًا",
+      "resumeAll": "استئناف الكل"
     }
   },
   "a11y": {

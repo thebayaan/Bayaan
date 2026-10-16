@@ -19,6 +19,8 @@ import {
   PERSISTED_ID_MIGRATIONS,
   isRewayahId,
 } from '@/services/rewayah/RewayahIdentity';
+import adhkarSeed from '@/data/adhkar.json';
+import {ADHKAR_DATA_VERSION} from '../adhkarDataVersion';
 
 type MockModule = typeof import('@/test-utils/mockExpoSqlite');
 type Annotations =
@@ -65,6 +67,19 @@ const ANNOTATION_TABLES = ['bookmarks', 'notes', 'highlights'];
 // migration. Golden copies carry it before develop runs; develop drops it, so
 // it is skipped by the generic row comparisons and asserted on explicitly.
 const TOLERATED_TABLES = ['verse-annotations.db/notes_new'];
+
+// Bundled content tables AdhkarService wipes and reinserts when
+// ADHKAR_DATA_VERSION goes up. Not user data: the reseed test below asserts
+// them instead of the generic row-preservation checks. User tables
+// (dhikr_favorites, dhikr_counts) are not in this list.
+const RESEEDED_TABLES = [
+  'adhkar.db/adhkar',
+  'adhkar.db/adhkar_categories',
+  'adhkar.db/adhkar_tags',
+  'adhkar.db/category_tags',
+  'adhkar.db/super_categories',
+  'adhkar.db/adhkar_meta',
+];
 
 // The only documented changes develop may make to pre-existing values on
 // upgrade: rewayah ids are renamed from legacy slugs and NULL is backfilled
@@ -279,6 +294,7 @@ describe.each(TAGS)('develop code on %s databases', tag => {
         expect(after[dumpKey]?.rows ?? []).toHaveLength(0);
         continue;
       }
+      if (RESEEDED_TABLES.includes(dumpKey)) continue;
       expect({table: key, rows: after[dumpKey]?.rows.length}).toEqual({
         table: key,
         rows: count,
@@ -288,7 +304,9 @@ describe.each(TAGS)('develop code on %s databases', tag => {
 
   it('preserves every pre-existing row and column, except documented mappings', () => {
     for (const [key, pre] of Object.entries(before)) {
-      if (TOLERATED_TABLES.includes(key)) continue;
+      if (TOLERATED_TABLES.includes(key) || RESEEDED_TABLES.includes(key)) {
+        continue;
+      }
       const post = after[key];
       expect(post).toBeDefined();
       if (!post) continue;
@@ -534,6 +552,48 @@ describe.each(TAGS)('develop code on %s databases', tag => {
     expect(after['adhkar.db/dhikr_counts'].rows.map(r => r.count)).toEqual(
       expect.arrayContaining([33, 7]),
     );
+  });
+
+  it('reseeds adhkar content for the new data version and keeps every dhikr id', () => {
+    const version = after['adhkar.db/adhkar_meta'].rows.find(
+      r => r.key === 'data_version',
+    );
+    expect(version?.value).toBe(String(ADHKAR_DATA_VERSION));
+
+    const afterIds = after['adhkar.db/adhkar'].rows.map(r => String(r.id));
+    expect([...afterIds].sort()).toEqual(
+      adhkarSeed.adhkar.map(a => a.id).sort(),
+    );
+    const kept = new Set(afterIds);
+    for (const r of before['adhkar.db/adhkar'].rows) {
+      const id = String(r.id);
+      expect({id, kept: kept.has(id)}).toEqual({id, kept: true});
+    }
+
+    expect(after['adhkar.db/adhkar_categories'].rows).toHaveLength(
+      adhkarSeed.categories.length,
+    );
+    const supers = after['adhkar.db/super_categories'].rows;
+    expect(supers).toHaveLength(
+      before['adhkar.db/super_categories'].rows.length,
+    );
+    const lists = new Map(supers.map(r => [String(r.id), r.dhikr_ids]));
+    expect(lists.get('morning-adhkar')).toBe(
+      JSON.stringify(adhkarSeed.super_category_dhikr_ids['morning-adhkar']),
+    );
+    expect(lists.get('evening-adhkar')).toBe(
+      JSON.stringify(adhkarSeed.super_category_dhikr_ids['evening-adhkar']),
+    );
+    expect(lists.get('salah')).toBeNull();
+    const overrides = new Map(
+      supers.map(r => [String(r.id), r.audio_overrides]),
+    );
+    expect(overrides.get('evening-adhkar')).toBe(
+      JSON.stringify(
+        adhkarSeed.super_category_audio_overrides['evening-adhkar'],
+      ),
+    );
+    expect(overrides.get('morning-adhkar')).toBeNull();
   });
 
   it('keeps uploaded recitations and custom reciters', async () => {

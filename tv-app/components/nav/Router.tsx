@@ -3,6 +3,8 @@ import {View} from 'react-native';
 import {useNavStore} from '../../store/navStore';
 import {useOverlayStore} from '../../store/overlayStore';
 import {useContextMenuStore} from '../../store/contextMenuStore';
+import {useListeningStore} from '../../store/listeningStore';
+import {useSettingsStore} from '../../store/settingsStore';
 import {useOnboarded} from '../../hooks/useOnboarded';
 import {useReciters} from '../../hooks/useReciters';
 import {HomeScreen} from '../../screens/HomeScreen';
@@ -13,17 +15,26 @@ import {NowPlayingScreen} from '../../screens/NowPlayingScreen';
 import {OnboardingScreen} from '../../screens/OnboardingScreen';
 import {ReciterDetailScreen} from '../../screens/ReciterDetailScreen';
 import {CatalogGridScreen} from '../../screens/CatalogGridScreen';
+import {SurahsScreen} from '../../screens/SurahsScreen';
+import {AdhkarScreen} from '../../screens/AdhkarScreen';
+import {AdhkarReaderScreen} from '../../screens/AdhkarReaderScreen';
 import {ReciterContextMenu} from '../overlays/ReciterContextMenu';
+import {Sidebar, SIDEBAR_COLLAPSED_WIDTH} from './Sidebar';
 import {useTVBackHandler} from '../../hooks/useTVBackHandler';
+import {consumeScreenBack} from '../../services/screenBack';
+import {scale} from '../../theme/scale';
 
 export function Router(): React.ReactElement {
   const currentTab = useNavStore(s => s.currentTab);
   const stack = useNavStore(s => s.stack);
   const pop = useNavStore(s => s.pop);
+  const switchTab = useNavStore(s => s.switchTab);
   const {onboarded} = useOnboarded();
   const {reciters} = useReciters();
 
   const handleBack = useCallback((): boolean => {
+    // A screen's own open panel (e.g. Search's reciter picker) closes first.
+    if (consumeScreenBack()) return true;
     if (useContextMenuStore.getState().reciterId) {
       useContextMenuStore.getState().close();
       return true;
@@ -32,18 +43,35 @@ export function Router(): React.ReactElement {
       useOverlayStore.getState().close();
       return true;
     }
+    if (useListeningStore.getState().panel) {
+      useListeningStore.getState().setPanel(null);
+      return true;
+    }
+    if (useSettingsStore.getState().picker) {
+      useSettingsStore.getState().setPicker(null);
+      return true;
+    }
+    if (useListeningStore.getState().trayOpen) {
+      useListeningStore.getState().setTrayOpen(false);
+      return true;
+    }
     if (stack.length > 0) {
       pop();
       return true;
     }
+    // Back from any other place returns home before it leaves the app.
+    if (currentTab !== 'home') {
+      switchTab('home');
+      return true;
+    }
     return false;
-  }, [stack.length, pop]);
+  }, [stack.length, pop, currentTab, switchTab]);
 
   const contextMenuOpen = useContextMenuStore(s => s.reciterId !== null);
   const overlayOpen = useOverlayStore(s => Boolean(s.active));
   useTVBackHandler(
     handleBack,
-    contextMenuOpen || overlayOpen || stack.length > 0,
+    contextMenuOpen || overlayOpen || stack.length > 0 || currentTab !== 'home',
   );
 
   if (!onboarded && reciters.length > 0) {
@@ -72,21 +100,30 @@ export function Router(): React.ReactElement {
           <ReciterContextMenu />
         </View>
       );
-    if (top.screen === 'catalogGrid')
+    if (top.screen === 'adhkarReader')
       return (
-        <View style={{flex: 1}}>
-          <CatalogGridScreen />
-          <ReciterContextMenu />
-        </View>
+        <AdhkarReaderScreen
+          key={top.listId}
+          listId={top.listId}
+          mode={top.mode}
+        />
       );
   }
 
+  // Root places share the sidebar; screens sit beside its folded width and it
+  // opens over them, so focusing it never reflows the content.
   return (
     <View style={{flex: 1}}>
-      {currentTab === 'home' && <HomeScreen />}
-      {currentTab === 'search' && <SearchScreen />}
-      {currentTab === 'collection' && <CollectionScreen />}
-      {currentTab === 'settings' && <SettingsScreen />}
+      <View style={{flex: 1, paddingLeft: scale(SIDEBAR_COLLAPSED_WIDTH)}}>
+        {currentTab === 'home' && <HomeScreen />}
+        {currentTab === 'search' && <SearchScreen />}
+        {currentTab === 'surahs' && <SurahsScreen />}
+        {currentTab === 'reciters' && <CatalogGridScreen />}
+        {currentTab === 'adhkar' && <AdhkarScreen />}
+        {currentTab === 'collection' && <CollectionScreen />}
+        {currentTab === 'settings' && <SettingsScreen />}
+      </View>
+      <Sidebar />
       <ReciterContextMenu />
     </View>
   );

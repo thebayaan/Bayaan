@@ -4,7 +4,8 @@
  * The TV app is a dark 10-foot UI, so it maps the mobile dark scheme
  * (`styles/colorSchemes.ts` -> `darkColors`): deep-ink backgrounds with the
  * brand cream (`lightColors.background`) inverted onto them for text. No
- * deprecated `primary` / `accent` colors are used here.
+ * deprecated `primary` colors are used here; `accent` is the TV brand sky
+ * taken from the app icon, not the mobile `darkColors.accent`.
  */
 export const colors = {
   // Brand deep-ink backgrounds (mobile darkColors.background / backgroundSecondary).
@@ -13,13 +14,27 @@ export const colors = {
   // Card and elevated surfaces, toned to the same ink family for clear depth.
   surface: '#06151c',
   surfaceElevated: '#0e2530',
-  // Brand cream text (mobile lightColors.background) plus muted steps.
+  // Brand cream text (mobile lightColors.background) plus muted steps, all
+  // cream at lower strength so greys stay warm instead of neutral.
   text: '#f4f3ec',
-  textSecondary: '#b0b0b0',
-  textTertiary: '#6e7a80',
-  // Hairline / divider (mobile darkColors.border).
-  border: '#332f38',
-  // Neutral bright focus ring (Spotify-style brand cream, not an accent color).
+  textSecondary: 'rgba(244,243,236,0.62)',
+  textTertiary: 'rgba(244,243,236,0.4)',
+  // Hairline / divider, cream at low strength.
+  border: 'rgba(244,243,236,0.12)',
+  // Ink & Cream focus: one treatment everywhere, a cream fill with ink on it.
+  focusFill: '#f4f3ec',
+  onFocus: '#06151c',
+  onFocusSecondary: 'rgba(6,21,28,0.66)',
+  // Hairline outline for a screen's main action at rest.
+  outline: 'rgba(244,243,236,0.5)',
+  // Brand sky from the app icon, for indicators only: the selected tab's
+  // underline, section labels, live state and checks. Never a focus fill.
+  accent: '#8dc9d6',
+  // Logo ink: text and icons drawn on top of the sky accent.
+  accentInk: '#101820',
+  // Sky at low opacity for selected-but-not-focused states.
+  accentSoft: 'rgba(141,201,214,0.18)',
+  // Focus ring for artwork (cards, portraits), where a fill would hide it.
   focusRing: '#f4f3ec',
   // Scrims for cinematic artwork overlays, built from the brand ink.
   overlayScrim: 'rgba(5,11,16,0.6)',

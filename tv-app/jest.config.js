@@ -7,6 +7,7 @@ module.exports = {
         '<rootDir>/services/**/*.test.ts',
         '<rootDir>/store/**/*.test.ts',
         '<rootDir>/hooks/**/*.test.ts',
+        '<rootDir>/theme/surahColors.test.ts',
       ],
       setupFiles: ['<rootDir>/__tests__/setup.ts'],
       transform: {
@@ -21,6 +22,11 @@ module.exports = {
         '<rootDir>/components/**/*.test.tsx',
         '<rootDir>/hooks/**/*.test.tsx',
         '<rootDir>/theme/**/*.test.ts',
+      ],
+      // Pure-logic theme tests run in the unit project above.
+      testPathIgnorePatterns: [
+        '/node_modules/',
+        '<rootDir>/theme/surahColors.test.ts',
       ],
       setupFiles: ['<rootDir>/__tests__/setup.ts'],
       transformIgnorePatterns: [

@@ -1,6 +1,7 @@
 import React, {useEffect, useRef} from 'react';
 import {Animated, Easing, StyleSheet, Text, View} from 'react-native';
 import {FocusableButton} from '../primitives/FocusableButton';
+import {FocusText} from '../primitives/focusContext';
 import {isNetworkError, useTVPlayerStore} from '../../store/tvPlayerStore';
 import {colors} from '../../theme/colors';
 import {createScaledStyles} from '../../theme/scale';
@@ -70,15 +71,16 @@ export function ErrorBanner(): React.ReactElement | null {
             onPress={() => void retry()}
             accessibilityLabel="Retry playback"
             style={styles.cta}
+            outlined
             hasTVPreferredFocus>
-            <Text style={styles.ctaText}>Try again</Text>
+            <FocusText style={styles.ctaText}>Try again</FocusText>
           </FocusableButton>
           {queueLen > 1 && (
             <FocusableButton
               onPress={() => void next()}
               accessibilityLabel="Skip to next track"
               style={styles.ctaSecondary}>
-              <Text style={styles.ctaSecondaryText}>Skip</Text>
+              <FocusText style={styles.ctaText}>Skip</FocusText>
             </FocusableButton>
           )}
         </View>
@@ -104,11 +106,10 @@ const styles = createScaledStyles({
     gap: 6,
   },
   kicker: {
-    color: colors.text,
+    color: colors.accent,
     fontSize: 12,
     fontWeight: '800',
     letterSpacing: 2.2,
-    opacity: 0.6,
   },
   title: {
     color: colors.text,
@@ -132,25 +133,15 @@ const styles = createScaledStyles({
   cta: {
     paddingHorizontal: 26,
     paddingVertical: 12,
-    borderRadius: 24,
-    backgroundColor: colors.text,
+    borderRadius: 16,
   },
   ctaText: {
-    color: colors.background,
-    fontSize: 15,
-    fontWeight: '800',
-    letterSpacing: 0.3,
+    fontSize: 17,
+    fontWeight: '700',
   },
   ctaSecondary: {
     paddingHorizontal: 22,
     paddingVertical: 12,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-  },
-  ctaSecondaryText: {
-    color: colors.text,
-    fontSize: 15,
-    fontWeight: '700',
-    letterSpacing: 0.3,
+    borderRadius: 16,
   },
 });

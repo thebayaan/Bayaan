@@ -14,7 +14,12 @@ import {
   ViewToken,
   Pressable,
 } from 'react-native';
-import {useLocalSearchParams, useRouter, useNavigation} from 'expo-router';
+import {
+  useLocalSearchParams,
+  useRouter,
+  useNavigation,
+  useFocusEffect,
+} from 'expo-router';
 import {Feather} from '@expo/vector-icons';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
@@ -22,13 +27,25 @@ import {useAdhkar} from '@/hooks/useAdhkar';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {DhikrReader} from '@/components/adhkar/DhikrReader';
+import {resolveViewableChange} from '@/components/adhkar/playAllScrollGuard';
 import {LoadingIndicator} from '@/components/LoadingIndicator';
 import {Dhikr} from '@/types/adhkar';
 import {adhkarService} from '@/services/adhkar/AdhkarService';
-import {shortenCategoryTitle} from '@/utils/adhkarUtils';
-import {useAdhkarAudioStore} from '@/store/adhkarAudioStore';
-import {useAdhkarPlayAllStore} from '@/store/adhkarPlayAllStore';
+import {
+  getSuperCategoryDisplayTitle,
+  shortenCategoryTitle,
+} from '@/utils/adhkarUtils';
+import {useAdhkarSessionStore} from '@/store/adhkarSessionStore';
+import {toSessionItems} from '@/services/adhkar/playback/sessionReducer';
+import {
+  setAdhkarFocus,
+  clearAdhkarFocus,
+  type AdhkarFocus,
+} from '@/services/adhkar/playback/openPlayingDhikr';
+import {AdhkarSessionSourceProvider} from '@/components/adhkar/AdhkarSessionSourceContext';
 import {useHeaderHeight} from 'expo-router/react-navigation';
+import {USE_GLASS} from '@/hooks/useGlassProps';
+import {useBottomInset} from '@/hooks/useBottomInset';
 import {dhikrShareUrl, shareUrl} from '@/utils/shareUtils';
 import branding from '@/config/branding';
 // @ai-start
@@ -85,28 +102,44 @@ const DhikrReaderScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const headerHeight = useHeaderHeight();
+  // Glass headers are transparent, so content is padded below them. The
+  // non-glass header is opaque and already takes its own space; padding
+  // by headerHeight there would leave a blank band of that height.
+  const contentTop = USE_GLASS ? headerHeight : 0;
+  // Non-glass tab bars (and the floating player) overlay the screen, so the
+  // page must clear them; glass keeps the safe-area inset only.
+  const bottomInset = useBottomInset();
+  const contentBottom = USE_GLASS ? insets.bottom : bottomInset;
   const flatListRef = useRef<FlatList<Dhikr>>(null);
 
-  const initialIndex = globalIndexParam ? parseInt(globalIndexParam, 10) : 0;
+  const [initialIndex, setInitialIndex] = useState(
+    globalIndexParam ? parseInt(globalIndexParam, 10) : 0,
+  );
 
   const [adhkarList, setAdhkarList] = useState<Dhikr[]>([]);
   const [categoryTitles, setCategoryTitles] = useState<CategoryTitleMap>({});
+  const [loadedListTitle, setLoadedListTitle] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
 
   const {isSaved, toggleSaved} = useAdhkar();
 
-  const setAudio = useAdhkarAudioStore(state => state.setAudio);
-  const stopAudio = useAdhkarAudioStore(state => state.stop);
-
-  // Play All store
-  const isPlayAllMode = useAdhkarPlayAllStore(state => state.isPlayAllMode);
-  const playAllIndex = useAdhkarPlayAllStore(state => state.currentIndex);
-  const playAllSourceId = useAdhkarPlayAllStore(state => state.sourceId);
-  const goToIndex = useAdhkarPlayAllStore(state => state.goToIndex);
-
-  // Check if this reader is the active Play All source
-  const isThisPlayAllSource = isPlayAllMode && playAllSourceId === superId;
+  const session = useAdhkarSessionStore(s => s.session);
+  const revealToken = useAdhkarSessionStore(s => s.revealToken);
+  const dispatch = useAdhkarSessionStore(s => s.dispatch);
+  const isThisAllSession =
+    session?.listId === superId && session.mode === 'all';
+  const sessionDhikrId =
+    session?.listId === superId
+      ? (session.items[session.index]?.dhikrId ?? null)
+      : null;
+  // Where the session's dhikr sits in this screen's rows. session.index
+  // counts the session's own items, which can drift from this list.
+  const sessionIndex = useMemo(() => {
+    if (sessionDhikrId === null) return null;
+    const found = adhkarList.findIndex(d => d.id === sessionDhikrId);
+    return found < 0 ? null : found;
+  }, [sessionDhikrId, adhkarList]);
 
   useEffect(() => {
     async function loadData() {
@@ -120,6 +153,12 @@ const DhikrReaderScreen: React.FC = () => {
         if (data) {
           const flatAdhkar = data.categoryGroups.flatMap(g => g.adhkar);
           setAdhkarList(flatAdhkar);
+          setLoadedListTitle(getSuperCategoryDisplayTitle(data.superCategory));
+          const opened = flatAdhkar.findIndex(d => d.id === dhikrId);
+          if (opened >= 0) {
+            setInitialIndex(opened);
+            setCurrentIndex(opened);
+          }
 
           const titlesMap: CategoryTitleMap = {};
           data.categoryGroups.forEach(group => {
@@ -137,51 +176,79 @@ const DhikrReaderScreen: React.FC = () => {
     }
 
     loadData();
+    // The opened dhikr only seeds the first position.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [superId]);
 
   const currentDhikr = useMemo(() => {
     return adhkarList[currentIndex] || null;
   }, [adhkarList, currentIndex]);
 
-  useEffect(() => {
-    if (currentDhikr) {
-      setAudio(currentDhikr.audioFile);
-    }
-  }, [currentDhikr, setAudio]);
+  const sessionSource = useMemo(
+    () =>
+      superId && adhkarList.length > 0
+        ? {
+            listId: superId,
+            listTitle:
+              superCategoryTitle || loadedListTitle || t('adhkar.dhikr'),
+            items: toSessionItems(adhkarList),
+          }
+        : null,
+    [superId, adhkarList, superCategoryTitle, loadedListTitle, t],
+  );
 
+  // Follow the session when it advances through this list in Play All.
+  // Row a Play All auto-scroll is heading to; null when no such scroll is in
+  // flight. Viewable changes until it lands are not user swipes.
+  const playAllScrollTarget = useRef<number | null>(null);
+  // Follow only a change of the session's dhikr, never a paused or restored
+  // session that merely points elsewhere when the reader opens.
+  const followedDhikrId = useRef(sessionDhikrId);
   useEffect(() => {
-    return () => {
-      stopAudio();
-    };
-  }, [stopAudio]);
-
-  // Sync FlatList scroll when Play All index changes
-  const isScrollingFromPlayAll = useRef(false);
-  useEffect(() => {
-    if (
-      isThisPlayAllSource &&
-      playAllIndex !== currentIndex &&
-      isDataLoaded &&
-      adhkarList.length > 0
-    ) {
-      isScrollingFromPlayAll.current = true;
-      flatListRef.current?.scrollToIndex({
-        index: playAllIndex,
-        animated: true,
-      });
-      setCurrentIndex(playAllIndex);
-      // Reset flag after animation completes
-      setTimeout(() => {
-        isScrollingFromPlayAll.current = false;
-      }, 300);
-    }
+    if (!isDataLoaded) return;
+    if (sessionDhikrId === followedDhikrId.current) return;
+    followedDhikrId.current = sessionDhikrId;
+    if (!isThisAllSession || sessionIndex === null) return;
+    if (sessionIndex === currentIndex) return;
+    playAllScrollTarget.current = sessionIndex;
+    flatListRef.current?.scrollToIndex({
+      index: sessionIndex,
+      animated: true,
+    });
+    setCurrentIndex(sessionIndex);
   }, [
-    isThisPlayAllSource,
-    playAllIndex,
+    isThisAllSession,
+    sessionDhikrId,
+    sessionIndex,
     currentIndex,
     isDataLoaded,
-    adhkarList.length,
   ]);
+
+  // A surface asked to show the playing dhikr.
+  const lastReveal = useRef(revealToken);
+  useEffect(() => {
+    if (revealToken === lastReveal.current) return;
+    // Not this list's session: drop the request.
+    if (sessionIndex === null) {
+      lastReveal.current = revealToken;
+      return;
+    }
+    // Still loading: keep the request pending until the rows exist.
+    if (!isDataLoaded) return;
+    lastReveal.current = revealToken;
+    playAllScrollTarget.current = sessionIndex;
+    flatListRef.current?.scrollToIndex({index: sessionIndex, animated: true});
+    setCurrentIndex(sessionIndex);
+  }, [revealToken, sessionIndex, isDataLoaded]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!superId) return;
+      const mine: AdhkarFocus = {kind: 'reader', listId: superId};
+      setAdhkarFocus(mine);
+      return () => clearAdhkarFocus(mine);
+    }, [superId]),
+  );
 
   const displayTitle = useMemo(() => {
     if (currentDhikr && categoryTitles[currentDhikr.categoryId]) {
@@ -266,24 +333,53 @@ const DhikrReaderScreen: React.FC = () => {
     [toggleSaved],
   );
 
+  // The first viewability report is the page the reader opened on, not a
+  // user swipe.
+  const sawFirstViewable = useRef(false);
   const onViewableItemsChanged = useCallback(
-    ({viewableItems}: {viewableItems: ViewToken[]}) => {
+    ({viewableItems}: {viewableItems: ViewToken<Dhikr>[]}) => {
       if (viewableItems.length > 0 && viewableItems[0].index !== null) {
         const newIndex = viewableItems[0].index;
         setCurrentIndex(newIndex);
+        if (!sawFirstViewable.current) {
+          sawFirstViewable.current = true;
+          return;
+        }
 
-        // Sync Play All store when user manually swipes (not from Play All auto-scroll)
+        // Move the session when the user manually swipes (not from Play All
+        // auto-scroll, which may pass several rows before it lands)
+        const change = resolveViewableChange(
+          playAllScrollTarget.current,
+          newIndex,
+        );
+        playAllScrollTarget.current = change.target;
         if (
-          isThisPlayAllSource &&
-          newIndex !== playAllIndex &&
-          !isScrollingFromPlayAll.current
+          isThisAllSession &&
+          newIndex !== sessionIndex &&
+          change.isUserSwipe &&
+          superId
         ) {
-          goToIndex(newIndex);
+          dispatch({
+            type: 'swipedTo',
+            listId: superId,
+            dhikrId: viewableItems[0].item.id,
+          });
         }
       }
     },
-    [isThisPlayAllSource, playAllIndex, goToIndex],
+    [isThisAllSession, sessionIndex, superId, dispatch],
   );
+
+  // A drag is the user taking over, even mid auto-scroll.
+  const handleScrollBeginDrag = useCallback(() => {
+    playAllScrollTarget.current = null;
+  }, []);
+
+  // Any scroll that comes to rest ends the auto-scroll, even one that moved
+  // nothing.
+  const handleMomentumScrollEnd = useCallback(() => {
+    playAllScrollTarget.current = null;
+  }, []);
 
   const viewabilityConfig = useRef({
     itemVisiblePercentThreshold: 50,
@@ -320,7 +416,7 @@ const DhikrReaderScreen: React.FC = () => {
   if (!isDataLoaded) {
     return (
       <View style={styles.container}>
-        <View style={[styles.loadingContainer, {paddingTop: headerHeight}]}>
+        <View style={[styles.loadingContainer, {paddingTop: contentTop}]}>
           <LoadingIndicator />
         </View>
       </View>
@@ -330,7 +426,7 @@ const DhikrReaderScreen: React.FC = () => {
   if (adhkarList.length === 0) {
     return (
       <View style={styles.container}>
-        <View style={[styles.loadingContainer, {paddingTop: headerHeight}]}>
+        <View style={[styles.loadingContainer, {paddingTop: contentTop}]}>
           <Text style={styles.emptyText}>{t('adhkar.noneFound')}</Text>
         </View>
       </View>
@@ -338,35 +434,39 @@ const DhikrReaderScreen: React.FC = () => {
   }
 
   return (
-    <View style={styles.container}>
-      <View
-        style={[
-          styles.listContainer,
-          {paddingTop: headerHeight, paddingBottom: insets.bottom},
-        ]}>
-        <FlatList
-          ref={flatListRef}
-          style={appLayoutDirection}
-          data={adhkarList}
-          renderItem={renderItem}
-          keyExtractor={keyExtractor}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          initialScrollIndex={initialIndex}
-          getItemLayout={getItemLayout}
-          onViewableItemsChanged={onViewableItemsChanged}
-          viewabilityConfig={viewabilityConfig}
-          windowSize={3}
-          maxToRenderPerBatch={2}
-          removeClippedSubviews={true}
-          initialNumToRender={1}
-          decelerationRate="fast"
-          snapToInterval={SCREEN_WIDTH}
-          snapToAlignment="start"
-        />
+    <AdhkarSessionSourceProvider source={sessionSource}>
+      <View style={styles.container}>
+        <View
+          style={[
+            styles.listContainer,
+            {paddingTop: contentTop, paddingBottom: contentBottom},
+          ]}>
+          <FlatList
+            ref={flatListRef}
+            style={appLayoutDirection}
+            data={adhkarList}
+            renderItem={renderItem}
+            keyExtractor={keyExtractor}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            initialScrollIndex={initialIndex}
+            getItemLayout={getItemLayout}
+            onViewableItemsChanged={onViewableItemsChanged}
+            onScrollBeginDrag={handleScrollBeginDrag}
+            onMomentumScrollEnd={handleMomentumScrollEnd}
+            viewabilityConfig={viewabilityConfig}
+            windowSize={3}
+            maxToRenderPerBatch={2}
+            removeClippedSubviews={true}
+            initialNumToRender={1}
+            decelerationRate="fast"
+            snapToInterval={SCREEN_WIDTH}
+            snapToAlignment="start"
+          />
+        </View>
       </View>
-    </View>
+    </AdhkarSessionSourceProvider>
   );
 };
 // @ai-end

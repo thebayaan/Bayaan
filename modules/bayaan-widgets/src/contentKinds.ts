@@ -9,8 +9,6 @@ export type ContentWidgetKind =
   | 'LibraryShelf'
   | 'Bedtime'
   | 'Adhkar'
-  | 'HijriDate'
-  | 'Occasion'
   | 'ReciterSpotlight'
   | 'BayaanNow';
 
@@ -19,8 +17,6 @@ export const ALL_CONTENT_WIDGET_KINDS: readonly ContentWidgetKind[] = [
   'LibraryShelf',
   'Bedtime',
   'Adhkar',
-  'HijriDate',
-  'Occasion',
   'ReciterSpotlight',
   'BayaanNow',
 ];
@@ -29,7 +25,7 @@ function same(a: unknown, b: unknown): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
-// Adhkar, HijriDate and Occasion depend only on the date: never reloaded here.
+// Adhkar depends only on the date: never reloaded here.
 export function changedContentKindsForSnapshot(
   prev: WidgetSnapshot | null,
   next: WidgetSnapshot,

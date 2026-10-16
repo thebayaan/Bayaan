@@ -1,11 +1,25 @@
 import {create} from 'zustand';
 
-export type TabKey = 'home' | 'search' | 'collection' | 'settings';
+export type TabKey =
+  | 'home'
+  | 'search'
+  | 'surahs'
+  | 'reciters'
+  | 'adhkar'
+  | 'collection'
+  | 'settings';
+
+/**
+ * How an adhkar list opens: read at your own pace (default), listen through
+ * with each recitation playing and advancing on its own, or have each dhikr
+ * counted out for you (recitation repeated to its count).
+ */
+export type AdhkarStartMode = 'read' | 'listen' | 'count';
 
 export type ScreenEntry =
   | {screen: 'nowPlaying'}
   | {screen: 'reciterDetail'; reciterId: string}
-  | {screen: 'catalogGrid'};
+  | {screen: 'adhkarReader'; listId: string; mode?: AdhkarStartMode};
 
 type NavState = {
   currentTab: TabKey;

@@ -7,6 +7,8 @@ import {
   Skia,
   TextHeightBehavior,
   TextDirection,
+  TextAlign, // @ai
+  type SkParagraphStyle, // @ai
   type SkTypefaceFontProvider,
   type SkTextStyle,
   type SkColor,
@@ -34,10 +36,27 @@ import {
 } from '@/utils/skiaTextWeight';
 import {computeVerseCharRuleMap, computeVerseDiffRanges} from './verseOverlays';
 
-const paragraphStyle = {
+const paragraphStyle: SkParagraphStyle = {
   textHeightBehavior: TextHeightBehavior.DisableAll,
   textDirection: TextDirection.RTL,
 };
+
+// @ai-start
+// Optional paragraph alignment. Absent: the RTL default (right edge), the
+// same style object as before, so existing callers are unchanged.
+export type SkiaVerseTextAlign = 'left' | 'right' | 'center';
+
+function paragraphStyleFor(align?: SkiaVerseTextAlign): SkParagraphStyle {
+  if (!align) return paragraphStyle;
+  const textAlign =
+    align === 'center'
+      ? TextAlign.Center
+      : align === 'left'
+        ? TextAlign.Left
+        : TextAlign.Right;
+  return {...paragraphStyle, textAlign};
+}
+// @ai-end
 
 // Corner radius for the rewayah-diff background tint; matches SkiaLine's
 // 4px so list-mode and page-mode highlights look identical.
@@ -71,6 +90,8 @@ interface SkiaVerseTextProps {
    *  as usual. `verseKey` then only names the Hafs verse for Hafs tajweed
    *  (a Hafs verse row). Ignored if `text` is provided. */
   words?: readonly DKWordInfo[];
+  /** Paragraph alignment; omitted keeps the RTL default (right edge). */
+  textAlign?: SkiaVerseTextAlign;
   // @ai-end
 }
 
@@ -90,6 +111,7 @@ const SkiaVerseText: React.FC<SkiaVerseTextProps> = ({
   rewayah,
   renderPlaceholder, // @ai
   words: givenWords, // @ai
+  textAlign, // @ai
 }) => {
   // When no explicit prop, follow the mushaf setting. This is the mushaf
   // list-mode / preview case; the player passes an explicit prop.
@@ -172,7 +194,10 @@ const SkiaVerseText: React.FC<SkiaVerseTextProps> = ({
     };
 
     const buildParagraph = (withStroke: boolean) => {
-      const builder = Skia.ParagraphBuilder.Make(paragraphStyle, fontMgr);
+      const builder = Skia.ParagraphBuilder.Make(
+        paragraphStyleFor(textAlign), // @ai
+        fontMgr,
+      );
 
       const pushStyle = (style: SkTextStyle, styleColor: SkColor) => {
         const strokePaint = withStroke
@@ -236,6 +261,7 @@ const SkiaVerseText: React.FC<SkiaVerseTextProps> = ({
     charToAllahHighlight,
     arabicTextWeight,
     allahNameHighlightColor,
+    textAlign, // @ai
   ]);
 
   const {paragraph, strokeParagraph, height, yOffset} = built;

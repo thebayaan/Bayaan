@@ -9,10 +9,9 @@ enum ContentStore {
   }
 }
 
-/// adhkar-periods.json and occasions.json bundled in the extension.
+/// adhkar-periods.json bundled in the extension.
 enum ContentStaticData {
   static let adhkar: AdhkarPeriods? = load("adhkar-periods")
-  static let occasions: OccasionData? = load("occasions")
 
   private static func load<T: Decodable>(_ name: String) -> T? {
     guard let url = Bundle.main.url(forResource: name, withExtension: "json"),

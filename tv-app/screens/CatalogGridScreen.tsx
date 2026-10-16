@@ -1,175 +1,114 @@
-import {FlashList} from '@shopify/flash-list';
-import React, {useMemo} from 'react';
-import {Text, TVFocusGuideView, useWindowDimensions, View} from 'react-native';
-import {TopTabBar} from '../components/nav/TopTabBar';
-import {Rail} from '../components/rails/Rail';
-import {RailHeader} from '../components/rails/RailHeader';
-import {ReciterCard} from '../components/rails/ReciterCard';
+import React, {useCallback, useEffect, useMemo, useState} from 'react';
+import {Text, TVFocusGuideView, View} from 'react-native';
+import {FilterChip} from '../components/browse/FilterChip';
+import {BROWSE_GUTTER} from '../components/browse/gridLayout';
+import {ReciterGrid} from '../components/catalog/ReciterGrid';
 import {useReciters} from '../hooks/useReciters';
+import {
+  REWAYAH_CHIPS,
+  STYLE_CHIPS,
+  availableChips,
+  featuredFirst,
+  matchesChips,
+  type RewayahChip,
+  type StyleChip,
+} from '../services/browseCatalog';
 import {useNavStore} from '../store/navStore';
 import {colors} from '../theme/colors';
 import {spacing} from '../theme/spacing';
 import {fonts, typography} from '../theme/typography';
 import type {Reciter} from '../types/reciter';
-import {createScaledStyles, scale, scaleFactor} from '../theme/scale';
+import {createScaledStyles} from '../theme/scale';
 
-const CELL_HEIGHT = 300;
-const MAX_PER_ROW = 16;
-const ROW_MIN = 5;
-const MAINSTREAM_REWAYAH = /hafs|warsh|qalon|qalun/i;
-
-type Category = {
-  key: string;
-  title: string;
-  reciters: Reciter[];
-};
-
-function hasRewayahMatching(reciter: Reciter, pattern: RegExp): boolean {
-  return reciter.rewayat?.some(rewayah => pattern.test(rewayah.name)) ?? false;
-}
-
-function hasRareRewayah(reciter: Reciter): boolean {
-  return (
-    reciter.rewayat?.some(rewayah => !MAINSTREAM_REWAYAH.test(rewayah.name)) ??
-    false
-  );
-}
-
-function buildCategories(reciters: Reciter[]): Category[] {
-  const definitions: ReadonlyArray<{
-    key: string;
-    title: string;
-    min: number;
-    match: (reciter: Reciter) => boolean;
-  }> = [
-    {
-      key: 'featured',
-      title: 'Featured Reciters',
-      min: 1,
-      match: reciter => reciter.is_featured,
-    },
-    {
-      key: 'multi',
-      title: 'Multiple Rewayat',
-      min: ROW_MIN,
-      match: reciter => (reciter.rewayat?.length ?? 0) > 1,
-    },
-    {
-      key: 'warsh',
-      title: "Warsh A'n Nafi'",
-      min: ROW_MIN,
-      match: reciter => hasRewayahMatching(reciter, /warsh/i),
-    },
-    {
-      key: 'qalun',
-      title: "Qalun A'n Nafi'",
-      min: ROW_MIN,
-      match: reciter => hasRewayahMatching(reciter, /qalon|qalun/i),
-    },
-    {
-      key: 'other',
-      title: "Other Qira'at",
-      min: ROW_MIN,
-      match: hasRareRewayah,
-    },
-  ];
-
-  const categories: Category[] = [];
-  for (const def of definitions) {
-    const matched = reciters.filter(def.match).slice(0, MAX_PER_ROW);
-    if (matched.length >= def.min) {
-      categories.push({key: def.key, title: def.title, reciters: matched});
-    }
-  }
-  return categories;
-}
-
-function overrideItemLayout(layout: {span?: number; size?: number}): void {
-  layout.span = 1;
-  layout.size = scale(CELL_HEIGHT);
-}
-
-type HeaderProps = {
-  count: number;
-  categories: Category[];
-  onSelect: (reciter: Reciter) => void;
-};
-
-function CatalogHeader({
-  count,
-  categories,
-  onSelect,
-}: HeaderProps): React.ReactElement {
-  return (
-    <View>
-      <View style={styles.header}>
-        <Text style={styles.kicker}>BROWSE</Text>
-        <Text style={styles.title}>All Reciters</Text>
-        <Text style={styles.sub}>
-          {count} voices, from cornerstones to contemporary masters
-        </Text>
-      </View>
-      {categories.map((category, categoryIndex) => (
-        <Rail key={category.key} title={category.title}>
-          {category.reciters.map((reciter, reciterIndex) => (
-            <ReciterCard
-              key={reciter.id}
-              reciter={reciter}
-              onSelect={onSelect}
-              hasTVPreferredFocus={categoryIndex === 0 && reciterIndex === 0}
-            />
-          ))}
-        </Rail>
-      ))}
-      <View style={styles.gridLabel}>
-        <RailHeader title="All Reciters" />
-      </View>
-    </View>
-  );
-}
-
+/**
+ * Reciters: one grid of round portraits, featured reciters first, filtered
+ * by a rewayah chip (single choice) and an optional style chip (pressing the
+ * selected style again clears it). Chips the catalog can't fill are hidden.
+ */
 export function CatalogGridScreen(): React.ReactElement {
   const {reciters} = useReciters();
   const push = useNavStore(s => s.push);
-  const {width} = useWindowDimensions();
-  // Breakpoints are in design pixels; convert the window width back to them.
-  const designWidth = width / scaleFactor;
-  const numColumns = designWidth >= 1800 ? 6 : designWidth >= 1400 ? 5 : 4;
+  const [rewayah, setRewayah] = useState<RewayahChip>('all');
+  const [style, setStyle] = useState<StyleChip | null>(null);
+  // The first portrait takes focus on entry, not after a chip press.
+  const [focusFirst, setFocusFirst] = useState<boolean>(true);
+  // Drop the request once the grid has had time to take it: FlashList
+  // recycles cells, and a recycled cell becoming index 0 again would pull
+  // focus back to the first portrait.
+  const hasReciters = reciters.length > 0;
+  useEffect(() => {
+    if (!hasReciters) return;
+    const timer = setTimeout(() => setFocusFirst(false), 1500);
+    return () => clearTimeout(timer);
+  }, [hasReciters]);
 
-  const categories = useMemo(() => buildCategories(reciters), [reciters]);
-  const hasCategoryRows = categories.length > 0;
+  const ordered = useMemo(() => featuredFirst(reciters), [reciters]);
+  const available = useMemo(() => availableChips(reciters), [reciters]);
+  const visible = useMemo(
+    () => ordered.filter(r => matchesChips(r, rewayah, style)),
+    [ordered, rewayah, style],
+  );
 
-  function handleSelect(reciter: Reciter): void {
-    push({screen: 'reciterDetail', reciterId: reciter.id});
+  const rewayahChips = REWAYAH_CHIPS.filter(c => available.rewayah.has(c.key));
+  // A lone style chip would filter nothing out: show styles only when the
+  // catalog has more than one.
+  const styleChips =
+    available.style.size > 1
+      ? STYLE_CHIPS.filter(c => available.style.has(c.key))
+      : [];
+
+  const handleSelect = useCallback(
+    (reciter: Reciter): void => {
+      push({screen: 'reciterDetail', reciterId: reciter.id});
+    },
+    [push],
+  );
+
+  function chooseRewayah(next: RewayahChip): void {
+    setFocusFirst(false);
+    setRewayah(next);
+  }
+
+  function toggleStyle(next: StyleChip): void {
+    setFocusFirst(false);
+    setStyle(prev => (prev === next ? null : next));
   }
 
   return (
     <View style={styles.container}>
-      <TopTabBar />
-      <TVFocusGuideView autoFocus style={styles.listWrap}>
-        <FlashList
-          data={reciters}
-          numColumns={numColumns}
-          overrideItemLayout={overrideItemLayout}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          ListHeaderComponent={
-            <CatalogHeader
-              count={reciters.length}
-              categories={categories}
-              onSelect={handleSelect}
-            />
+      <View style={styles.header}>
+        <Text style={styles.title}>Reciters</Text>
+      </View>
+      <TVFocusGuideView autoFocus style={styles.chipRow}>
+        {rewayahChips.map(c => (
+          <FilterChip
+            key={c.key}
+            label={c.label}
+            selected={rewayah === c.key}
+            onPress={() => chooseRewayah(c.key)}
+          />
+        ))}
+        {styleChips.length > 0 ? <View style={styles.chipDivider} /> : null}
+        {styleChips.map(c => (
+          <FilterChip
+            key={c.key}
+            label={c.label}
+            selected={style === c.key}
+            onPress={() => toggleStyle(c.key)}
+          />
+        ))}
+      </TVFocusGuideView>
+      <TVFocusGuideView autoFocus style={styles.gridWrap}>
+        <ReciterGrid
+          key={`${rewayah}-${style ?? 'any'}`}
+          reciters={visible}
+          onSelect={handleSelect}
+          focusFirst={focusFirst}
+          ListEmptyComponent={
+            <Text style={styles.empty}>
+              No reciters match these filters yet.
+            </Text>
           }
-          renderItem={({item, index}) => (
-            <View style={styles.cell}>
-              <ReciterCard
-                reciter={item}
-                onSelect={handleSelect}
-                hasTVPreferredFocus={!hasCategoryRows && index === 0}
-              />
-            </View>
-          )}
-          keyExtractor={reciter => reciter.id}
         />
       </TVFocusGuideView>
     </View>
@@ -178,24 +117,35 @@ export function CatalogGridScreen(): React.ReactElement {
 
 const styles = createScaledStyles({
   container: {flex: 1, backgroundColor: colors.background},
-  listWrap: {flex: 1, paddingHorizontal: spacing.xl - 8},
-  listContent: {paddingBottom: spacing.xxl},
   header: {
-    paddingHorizontal: 8,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.md,
-    gap: 6,
+    paddingHorizontal: BROWSE_GUTTER,
+    paddingTop: spacing.xl,
+    paddingBottom: spacing.sm,
   },
-  kicker: {color: colors.text, ...typography.label, opacity: 0.55},
   title: {color: colors.text, ...typography.title, letterSpacing: -0.5},
-  sub: {
-    color: colors.textSecondary,
-    fontFamily: fonts.regular,
-    fontSize: 20,
-    fontWeight: '400',
-    opacity: 0.75,
-    marginTop: 2,
+  // Chips carry 18 px of side padding: pull the row out so their text lines
+  // up with the title and the portraits.
+  chipRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+    paddingHorizontal: BROWSE_GUTTER - 18,
+    paddingBottom: spacing.xs,
   },
-  gridLabel: {paddingHorizontal: 8, paddingTop: spacing.sm},
-  cell: {padding: 12},
+  chipDivider: {
+    width: 1,
+    height: 28,
+    marginHorizontal: spacing.sm,
+    backgroundColor: colors.border,
+  },
+  gridWrap: {flex: 1},
+  empty: {
+    color: colors.textSecondary,
+    fontFamily: fonts.medium,
+    fontSize: 20,
+    fontWeight: '500',
+    paddingHorizontal: 13,
+    paddingTop: spacing.md,
+  },
 });

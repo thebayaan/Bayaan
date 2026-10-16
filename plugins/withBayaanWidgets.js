@@ -163,7 +163,6 @@ function bayaanNowDescription(features) {
   const parts = [
     'listening',
     ...(features.adhkar ? ['adhkar'] : []),
-    'occasions',
     ...(features.sleepTimer ? ['bedtime'] : []),
   ];
   const last = parts.pop();

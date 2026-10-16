@@ -1,43 +1,105 @@
-import React, {useMemo, useState} from 'react';
-import {ScrollView, Text, TVFocusGuideView, View} from 'react-native';
-import {TopTabBar} from '../components/nav/TopTabBar';
-import {FocusableButton} from '../components/primitives/FocusableButton';
-import {ReciterCard} from '../components/rails/ReciterCard';
-import {ContinueCard} from '../components/rails/ContinueCard';
-import {HeartIcon} from '../../components/Icons';
-import {useReciters} from '../hooks/useReciters';
-import {useFavorites} from '../hooks/useFavorites';
+import {FlashList} from '@shopify/flash-list';
+import React, {useCallback, useEffect, useMemo, useState} from 'react';
+import {Text, TVFocusGuideView, View} from 'react-native';
+import {AdhkarChip} from '../components/adhkar/AdhkarChip';
+import {FilterChip} from '../components/browse/FilterChip';
+import {HomeClock} from '../components/home/HomeClock';
+import {LibraryFirstRun} from '../components/library/LibraryFirstRun';
+import {ShelfFade} from '../components/library/ShelfFade';
+import {
+  SHELF_ART,
+  SHELF_RING,
+  ShelfReciterTile,
+  ShelfSurahTile,
+} from '../components/library/ShelfTile';
+import {useLibraryPlayback} from '../components/library/useLibraryPlayback';
+import {useClock} from '../hooks/useClock';
 import {useContinueListening} from '../hooks/useContinueListening';
+import {useFavorites} from '../hooks/useFavorites';
+import {useLovedSurahs} from '../hooks/useLovedSurahs';
 import {useRecentlyPlayed} from '../hooks/useRecentlyPlayed';
-import {usePlayer} from '../hooks/usePlayer';
+import {useReciters} from '../hooks/useReciters';
+import {nowListId} from '../services/adhkarBrowse';
+import {SURAHS} from '../services/browseCatalog';
+import {
+  buildShelf,
+  filterShelf,
+  reciterTileLabel,
+  shelfCounts,
+  sortShelf,
+  surahTileCaption,
+  type ShelfFilter,
+  type ShelfItem,
+  type ShelfSort,
+} from '../services/libraryShelf';
+import {shortReciterName} from '../services/listeningChoices';
+import {getCachedRewayat} from '../services/tvDataService';
+import {useContextMenuStore} from '../store/contextMenuStore';
 import {useNavStore} from '../store/navStore';
-import {fetchRewayat} from '../services/tvDataService';
-import type {ContinueEntry} from '../services/continueListeningStore';
-import type {Reciter} from '../types/reciter';
-import SURAHS from '../../data/surahData.json';
 import {colors} from '../theme/colors';
-import {spacing} from '../theme/spacing';
-import {fonts, typography} from '../theme/typography';
+import {fonts} from '../theme/typography';
 import {createScaledStyles, scale} from '../theme/scale';
+import type {Reciter} from '../types/reciter';
 
-type TabKey = 'favorites' | 'continue' | 'recent';
+// Layout in design px, beside the folded sidebar (1920 - 112 = 1808 wide).
+const PAD_LEFT = 72;
+const PAD_RIGHT = 84;
+const COLUMNS = 6;
+const COLUMN_GAP = 44;
+/** One column: the artwork plus the gap after it. */
+const CELL_WIDTH = SHELF_ART + COLUMN_GAP;
+/** Ring frame (art + 18) + two label lines + the gap to the next row. */
+const ROW_HEIGHT = 352;
+// The list starts one ring-width left of the title so the artwork, not the
+// focus ring's reserved space, lines up with it; the right padding leaves
+// exactly six cells.
+const LIST_PAD_LEFT = PAD_LEFT - SHELF_RING;
+const LIST_PAD_RIGHT = 1808 - LIST_PAD_LEFT - CELL_WIDTH * COLUMNS;
 
-type SurahMeta = {id: number; name: string};
+/** Chips carry 24 px of side padding: pull the row out to line text up. */
+const CHIP_PAD = 24;
 
-type TabDef = {
-  key: TabKey;
-  label: string;
-  count: number;
-};
+const TABS: ReadonlyArray<{key: ShelfFilter; label: string}> = [
+  {key: 'all', label: 'All'},
+  {key: 'surahs', label: 'Surahs'},
+  {key: 'reciters', label: 'Reciters'},
+];
 
+const SORTS: ReadonlyArray<{key: ShelfSort; label: string}> = [
+  {key: 'recent', label: 'Recent'},
+  {key: 'az', label: 'A–Z'},
+];
+
+// The tab and sort chosen last time, so coming back keeps the place.
+let lastFilter: ShelfFilter = 'all';
+let lastSort: ShelfSort = 'recent';
+
+const surahNames = new Map<number, string>(SURAHS.map(s => [s.id, s.name]));
+
+function surahName(n: number): string {
+  return surahNames.get(n) ?? `Surah ${n}`;
+}
+
+function overrideItemLayout(layout: {span?: number; size?: number}): void {
+  layout.span = 1;
+  layout.size = scale(ROW_HEIGHT);
+}
+
+/**
+ * The Library as a shelf: everything kept (unfinished and loved surahs in
+ * their voice, reciters played or favorited) as one grid of same-size tiles,
+ * newest first, under All / Surahs / Reciters tabs and a Recent / A–Z sort.
+ * Before anything is kept, a first-run page offers one clear first step.
+ */
 export function CollectionScreen(): React.ReactElement {
+  const now = useClock();
   const favorites = useFavorites();
   const continueEntries = useContinueListening();
   const recent = useRecentlyPlayed();
+  const loved = useLovedSurahs();
   const {reciters} = useReciters();
-  const {playRewayah} = usePlayer();
   const push = useNavStore(s => s.push);
-  const [tab, setTab] = useState<TabKey>('favorites');
+  const switchTab = useNavStore(s => s.switchTab);
 
   const reciterById = useMemo(() => {
     const map = new Map<string, Reciter>();
@@ -45,342 +107,243 @@ export function CollectionScreen(): React.ReactElement {
     return map;
   }, [reciters]);
 
-  const surahByNumber = useMemo(() => {
-    const map = new Map<number, string>();
-    (SURAHS as SurahMeta[]).forEach(s => map.set(s.id, s.name));
-    return map;
+  const {defaultReciter, playTile, playInDefault} = useLibraryPlayback(
+    reciters,
+    reciterById,
+  );
+
+  const shelf = useMemo(
+    () =>
+      buildShelf({
+        continueEntries,
+        loved,
+        recent,
+        favorites,
+        isKnownReciter: id => reciterById.has(id),
+      }),
+    [continueEntries, loved, recent, favorites, reciterById],
+  );
+  const counts = useMemo(() => shelfCounts(shelf), [shelf]);
+  const tabs = TABS.filter(t => t.key === 'all' || counts[t.key] > 0);
+
+  const [filterChoice, setFilter] = useState<ShelfFilter>(lastFilter);
+  const [sort, setSort] = useState<ShelfSort>(lastSort);
+  // A tab that has emptied (its last tile removed elsewhere) falls back to All.
+  const filter = counts[filterChoice] > 0 ? filterChoice : 'all';
+
+  // The first tile takes focus when the screen opens, but not after a tab
+  // or the sort changes the grid: focus stays where the viewer is. Dropped
+  // once it has landed, so a recycled cell becoming index 0 again does not
+  // pull focus back (as on Surahs).
+  const [focusGridFirst, setFocusGridFirst] = useState<boolean>(true);
+  useEffect(() => {
+    const timer = setTimeout(() => setFocusGridFirst(false), 1500);
+    return () => clearTimeout(timer);
   }, []);
 
-  const favoriteReciters = useMemo(
-    () =>
-      favorites
-        .map(f => reciterById.get(f.reciterId))
-        .filter((r): r is Reciter => !!r),
-    [favorites, reciterById],
+  // Focus coming up from the grid lands on the selected tab.
+  const [selectedTab, setSelectedTab] = useState<View | null>(null);
+
+  const nameOf = useCallback(
+    (item: ShelfItem): string =>
+      item.kind === 'surah'
+        ? `${surahName(item.surahNumber)} ${reciterById.get(item.reciterId)?.name ?? ''}`
+        : (reciterById.get(item.reciterId)?.name ?? ''),
+    [reciterById],
   );
 
-  const recentReciters = useMemo(
-    () =>
-      recent
-        .map(e => reciterById.get(e.reciterId))
-        .filter((r): r is Reciter => !!r),
-    [recent, reciterById],
+  const items = useMemo(
+    () => sortShelf(filterShelf(shelf, filter), sort, nameOf),
+    [shelf, filter, sort, nameOf],
   );
 
-  const tabs: TabDef[] = [
-    {key: 'favorites', label: 'Favorites', count: favoriteReciters.length},
-    {key: 'continue', label: 'Continue', count: continueEntries.length},
-    {key: 'recent', label: 'Recently Played', count: recentReciters.length},
-  ];
+  const chooseFilter = (next: ShelfFilter): void => {
+    if (next === filter) return;
+    lastFilter = next;
+    setFocusGridFirst(false);
+    setFilter(next);
+  };
 
-  async function handleContinueSelect(entry: ContinueEntry): Promise<void> {
-    const reciter = reciterById.get(entry.reciterId);
-    if (!reciter) return;
-    const rewayat = await fetchRewayat(entry.reciterId);
-    const rewayah = rewayat.find(r => r.id === entry.rewayahId) ?? rewayat[0];
-    if (!rewayah) return;
-    await playRewayah(reciter.id, reciter.name, rewayah, entry.surahNumber);
-    push({screen: 'nowPlaying'});
-  }
+  const chooseSort = (next: ShelfSort): void => {
+    if (next === sort) return;
+    lastSort = next;
+    setFocusGridFirst(false);
+    setSort(next);
+  };
 
-  function renderFavorites(): React.ReactElement {
-    if (favoriteReciters.length === 0) {
-      return (
-        <EmptyState
-          icon={<HeartIcon color={colors.text} size={scale(64)} />}
-          title="Nothing saved yet"
-          sub="Open a reciter and tap Favorite to pin them here."
-          cta={{
-            label: 'Browse reciters',
-            onPress: () => push({screen: 'catalogGrid'}),
-          }}
-        />
-      );
-    }
-    return (
-      <ScrollView
-        contentContainerStyle={styles.grid}
-        showsVerticalScrollIndicator={false}>
-        {favoriteReciters.map((r, i) => (
-          <View key={r.id} style={styles.cell}>
-            <ReciterCard
-              reciter={r}
-              onSelect={() => push({screen: 'reciterDetail', reciterId: r.id})}
-              hasTVPreferredFocus={i === 0}
-            />
+  const renderItem = useCallback(
+    ({item, index}: {item: ShelfItem; index: number}) => {
+      const reciter = reciterById.get(item.reciterId) ?? null;
+      const preferred = focusGridFirst && index === 0;
+      if (item.kind === 'reciter') {
+        return (
+          <View style={styles.cell}>
+            {reciter ? (
+              <ShelfReciterTile
+                reciter={reciter}
+                caption={reciterTileLabel(item.surahCount)}
+                onPress={() =>
+                  push({screen: 'reciterDetail', reciterId: reciter.id})
+                }
+                onLongPress={() =>
+                  useContextMenuStore.getState().open(reciter.id)
+                }
+                hasTVPreferredFocus={preferred}
+              />
+            ) : null}
           </View>
-        ))}
-      </ScrollView>
+        );
+      }
+      const name = surahName(item.surahNumber);
+      const voice = reciter ? shortReciterName(reciter.name) : '';
+      const rewayah = (
+        getCachedRewayat(item.reciterId) ??
+        reciter?.rewayat ??
+        []
+      ).find(r => r.id === item.rewayahId);
+      const caption = surahTileCaption(item, voice, rewayah?.name);
+      return (
+        <View style={styles.cell}>
+          <ShelfSurahTile
+            surahNumber={item.surahNumber}
+            surahName={name}
+            reciter={reciter}
+            caption={caption}
+            loved={item.loved}
+            progress={item.progress}
+            idPrefix="lib-shelf"
+            onPress={() => {
+              playTile(item).catch(() => undefined);
+            }}
+            hasTVPreferredFocus={preferred}
+            accessibilityLabel={`${item.progress ? 'Resume' : 'Play'} ${name}${
+              reciter ? ` by ${reciter.name}` : ''
+            }${caption && item.progress ? `, ${caption}` : ''}${
+              item.loved ? ', loved' : ''
+            }`}
+          />
+        </View>
+      );
+    },
+    [reciterById, focusGridFirst, push, playTile],
+  );
+
+  const clock = (
+    <View style={styles.clock} pointerEvents="none">
+      <HomeClock now={now} />
+    </View>
+  );
+
+  if (shelf.length === 0) {
+    return (
+      <View style={styles.container}>
+        <LibraryFirstRun
+          reciter={defaultReciter}
+          adhkarListId={nowListId(now)}
+          onPlaySurah={n => {
+            playInDefault(n).catch(() => undefined);
+          }}
+          onBrowseReciters={() => switchTab('reciters')}
+          onOpenAdhkar={listId => push({screen: 'adhkarReader', listId})}
+        />
+        {clock}
+      </View>
     );
   }
-
-  function renderContinue(): React.ReactElement {
-    if (continueEntries.length === 0) {
-      return (
-        <EmptyState
-          title="No listening history"
-          sub="Surahs you've started will show up here so you can pick up where you left off."
-          cta={{
-            label: 'Browse reciters',
-            onPress: () => push({screen: 'catalogGrid'}),
-          }}
-        />
-      );
-    }
-    return (
-      <ScrollView
-        contentContainerStyle={styles.grid}
-        showsVerticalScrollIndicator={false}>
-        {continueEntries.map((e, i) => (
-          <View key={`${e.reciterId}:${e.surahNumber}`} style={styles.cell}>
-            <ContinueCard
-              entry={e}
-              reciter={reciterById.get(e.reciterId) ?? null}
-              surahName={
-                surahByNumber.get(e.surahNumber) ?? `Surah ${e.surahNumber}`
-              }
-              onSelect={handleContinueSelect}
-              hasTVPreferredFocus={i === 0}
-            />
-          </View>
-        ))}
-      </ScrollView>
-    );
-  }
-
-  function renderRecent(): React.ReactElement {
-    if (recentReciters.length === 0) {
-      return (
-        <EmptyState
-          title="Nothing played yet"
-          sub="Reciters you've played will appear here for quick return."
-          cta={{
-            label: 'Browse reciters',
-            onPress: () => push({screen: 'catalogGrid'}),
-          }}
-        />
-      );
-    }
-    return (
-      <ScrollView
-        contentContainerStyle={styles.grid}
-        showsVerticalScrollIndicator={false}>
-        {recentReciters.map((r, i) => (
-          <View key={r.id} style={styles.cell}>
-            <ReciterCard
-              reciter={r}
-              onSelect={() => push({screen: 'reciterDetail', reciterId: r.id})}
-              hasTVPreferredFocus={i === 0}
-            />
-          </View>
-        ))}
-      </ScrollView>
-    );
-  }
-
-  const total =
-    favoriteReciters.length + continueEntries.length + recentReciters.length;
 
   return (
     <View style={styles.container}>
-      <TopTabBar />
-      <View style={styles.header}>
-        <Text style={styles.kicker}>YOUR LIBRARY</Text>
-        <Text style={styles.pageTitle}>Collection</Text>
-        {total > 0 ? (
-          <Text style={styles.sub}>
-            {total} {total === 1 ? 'item' : 'items'} saved
-          </Text>
-        ) : null}
-      </View>
-      <TVFocusGuideView autoFocus style={styles.tabRow}>
-        {tabs.map(t => {
-          const active = tab === t.key;
-          return (
-            <FocusableButton
+      <Text style={styles.title}>Library</Text>
+
+      <View style={styles.bar}>
+        <TVFocusGuideView
+          autoFocus
+          destinations={selectedTab ? [selectedTab] : undefined}
+          style={styles.tabs}>
+          {tabs.map(t => (
+            <AdhkarChip
               key={t.key}
-              onPress={() => setTab(t.key)}
-              accessibilityLabel={t.label}
-              style={[styles.tab, active && styles.tabActive]}>
-              <View style={styles.tabInner}>
-                <Text style={[styles.tabText, active && styles.tabTextActive]}>
-                  {t.label}
-                </Text>
-                {t.count > 0 ? (
-                  <View
-                    style={[
-                      styles.countPill,
-                      active && styles.countPillActive,
-                    ]}>
-                    <Text
-                      style={[
-                        styles.countText,
-                        active && styles.countTextActive,
-                      ]}>
-                      {t.count}
-                    </Text>
-                  </View>
-                ) : null}
-              </View>
-            </FocusableButton>
-          );
-        })}
-      </TVFocusGuideView>
-      <TVFocusGuideView autoFocus style={styles.content}>
-        {tab === 'favorites' ? renderFavorites() : null}
-        {tab === 'continue' ? renderContinue() : null}
-        {tab === 'recent' ? renderRecent() : null}
-      </TVFocusGuideView>
-    </View>
-  );
-}
+              ref={t.key === filter ? setSelectedTab : undefined}
+              label={t.label}
+              count={counts[t.key]}
+              selected={t.key === filter}
+              onSelect={() => chooseFilter(t.key)}
+            />
+          ))}
+        </TVFocusGuideView>
+        <View style={styles.barSpacer} />
+        <Text style={styles.sortKicker}>SORT</Text>
+        <TVFocusGuideView autoFocus style={styles.sorts}>
+          {SORTS.map(s => (
+            <FilterChip
+              key={s.key}
+              label={s.label}
+              accessibilityLabel={
+                s.key === 'az' ? 'Sort A to Z' : 'Sort by most recent'
+              }
+              selected={s.key === sort}
+              onPress={() => chooseSort(s.key)}
+            />
+          ))}
+        </TVFocusGuideView>
+      </View>
 
-type EmptyStateProps = {
-  title: string;
-  sub: string;
-  icon?: React.ReactNode;
-  cta?: {label: string; onPress: () => void};
-};
+      <TVFocusGuideView autoFocus style={styles.gridWrap}>
+        <FlashList
+          key={`${filter}-${sort}`}
+          data={items}
+          numColumns={COLUMNS}
+          renderItem={renderItem}
+          keyExtractor={item => item.key}
+          overrideItemLayout={overrideItemLayout}
+          extraData={focusGridFirst}
+          contentContainerStyle={styles.gridContent}
+          showsVerticalScrollIndicator={false}
+        />
+        <ShelfFade height={130} />
+      </TVFocusGuideView>
 
-function EmptyState({
-  title,
-  sub,
-  icon,
-  cta,
-}: EmptyStateProps): React.ReactElement {
-  return (
-    <View style={styles.center}>
-      {icon ? <View style={styles.iconHalo}>{icon}</View> : null}
-      <Text style={styles.emptyTitle}>{title}</Text>
-      <Text style={styles.emptySub}>{sub}</Text>
-      {cta ? (
-        <FocusableButton
-          onPress={cta.onPress}
-          accessibilityLabel={cta.label}
-          style={styles.emptyCta}>
-          <Text style={styles.emptyCtaText}>{cta.label}</Text>
-        </FocusableButton>
-      ) : null}
+      {clock}
     </View>
   );
 }
 
 const styles = createScaledStyles({
   container: {flex: 1, backgroundColor: colors.background},
-  content: {flex: 1},
-  header: {paddingHorizontal: spacing.xl, paddingTop: spacing.sm, gap: 6},
-  kicker: {
-    color: colors.text,
-    ...typography.label,
-    opacity: 0.55,
-  },
-  pageTitle: {
-    color: colors.text,
-    ...typography.title,
-    letterSpacing: -0.5,
-  },
-  sub: {
-    color: colors.textSecondary,
-    fontFamily: fonts.medium,
-    fontSize: 18,
-    fontWeight: '500',
-    opacity: 0.75,
-    marginTop: 2,
-  },
-  tabRow: {
-    flexDirection: 'row',
-    gap: 10,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-  },
-  tab: {
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-  },
-  tabActive: {backgroundColor: colors.text},
-  tabInner: {flexDirection: 'row', alignItems: 'center', gap: 8},
-  tabText: {
+  clock: {position: 'absolute', top: 62, right: PAD_RIGHT},
+  title: {
     color: colors.text,
     fontFamily: fonts.bold,
-    fontSize: 18,
     fontWeight: '700',
-    letterSpacing: -0.1,
+    fontSize: 66,
+    letterSpacing: -1.6,
+    marginTop: 58,
+    paddingLeft: PAD_LEFT,
   },
-  tabTextActive: {color: colors.background},
-  countPill: {
-    paddingHorizontal: 9,
-    minWidth: 26,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  countPillActive: {backgroundColor: 'rgba(0,0,0,0.14)'},
-  countText: {
-    color: colors.text,
-    fontFamily: fonts.extraBold,
-    fontSize: 13,
-    fontWeight: '800',
-    letterSpacing: 0.2,
-  },
-  countTextActive: {color: colors.background},
-  grid: {
+  bar: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: spacing.xl - 8,
-    paddingTop: 8,
-    paddingBottom: spacing.xxl,
-  },
-  // Per-cell padding doubles as the breathing room a focused card needs to
-  // scale (1.05) + show its glow without clipping against neighbors or edges.
-  cell: {padding: 12},
-  center: {
-    flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.xl,
-    gap: spacing.md,
+    marginTop: 18,
+    paddingLeft: PAD_LEFT - CHIP_PAD,
+    paddingRight: PAD_RIGHT - 18,
   },
-  iconHalo: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.sm,
-  },
-  emptyTitle: {
-    color: colors.text,
-    fontFamily: fonts.bold,
-    fontSize: 34,
-    fontWeight: '700',
-    letterSpacing: -0.3,
-    textAlign: 'center',
-  },
-  emptySub: {
-    color: colors.textSecondary,
-    ...typography.body,
-    textAlign: 'center',
-    maxWidth: 640,
-    lineHeight: 30,
-    opacity: 0.75,
-  },
-  emptyCta: {
-    marginTop: spacing.sm,
-    paddingHorizontal: 30,
-    paddingVertical: 16,
-    borderRadius: 28,
-    backgroundColor: colors.text,
-  },
-  emptyCtaText: {
-    color: colors.background,
+  tabs: {flexDirection: 'row', gap: 8},
+  barSpacer: {flex: 1},
+  sortKicker: {
+    color: colors.textTertiary,
     fontFamily: fonts.extraBold,
-    fontSize: 18,
     fontWeight: '800',
-    letterSpacing: 0.3,
+    fontSize: 15,
+    letterSpacing: 3,
+    marginRight: 6,
   },
+  sorts: {flexDirection: 'row', gap: 4},
+  gridWrap: {flex: 1},
+  gridContent: {
+    paddingLeft: LIST_PAD_LEFT,
+    paddingRight: LIST_PAD_RIGHT,
+    paddingTop: 36,
+    paddingBottom: 160,
+  },
+  cell: {height: ROW_HEIGHT},
 });

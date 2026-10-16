@@ -45,6 +45,12 @@ import {USE_GLASS} from '@/hooks/useGlassProps';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useAdhkarStore} from '@/store/adhkarStore';
 import {AdhkarBentoCard} from '@/components/adhkar/AdhkarBentoCard';
+import {
+  ADHKAR_TILE_GAP,
+  ADHKAR_TILE_WIDTH,
+  AdhkarNowPlayingCard,
+  useHasAdhkarSession,
+} from '@/components/adhkar/AdhkarNowPlayingCard';
 import {SuperCategory} from '@/types/adhkar';
 import branding, {type HomeRow, type HomeRowId} from '@/config/branding';
 // @ai-start
@@ -87,6 +93,7 @@ const MemoizedFlatList = React.memo(
     onReciterPress,
     onRewayatPress,
     onPlaylistPress,
+    showAdhkarTile,
   }: {
     data: SectionItem[];
     variant:
@@ -99,6 +106,7 @@ const MemoizedFlatList = React.memo(
     onReciterPress: (reciter: Reciter) => void;
     onRewayatPress?: (rewayat: RewayatInfo) => void;
     onPlaylistPress?: (playlist: UserPlaylist) => void;
+    showAdhkarTile?: boolean;
     theme: Theme;
   }) => (
     <FlatList
@@ -127,6 +135,13 @@ const MemoizedFlatList = React.memo(
       horizontal
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={styles.sectionContent}
+      ListHeaderComponent={
+        showAdhkarTile ? (
+          <View style={{flex: 1}}>
+            <AdhkarNowPlayingCard variant="tile" />
+          </View>
+        ) : null
+      }
       removeClippedSubviews={true}
       maxToRenderPerBatch={5}
       windowSize={3}
@@ -155,7 +170,11 @@ const MemoizedFlatList = React.memo(
                   ? 130
                   : variant === 'playlist'
                     ? 120
-                    : 140) * index,
+                    : 140) *
+            index +
+          (showAdhkarTile && variant === 'recent'
+            ? ADHKAR_TILE_WIDTH + ADHKAR_TILE_GAP
+            : 0),
         index,
       })}
     />
@@ -166,6 +185,7 @@ const MemoizedFlatList = React.memo(
     prevProps.onReciterPress === nextProps.onReciterPress &&
     prevProps.onRewayatPress === nextProps.onRewayatPress &&
     prevProps.onPlaylistPress === nextProps.onPlaylistPress &&
+    prevProps.showAdhkarTile === nextProps.showAdhkarTile &&
     prevProps.theme === nextProps.theme,
 );
 
@@ -330,6 +350,7 @@ const Section = React.memo(
     onRewayatPress,
     onPlaylistPress,
     onClear,
+    showAdhkarTile,
     theme,
   }: {
     title: string;
@@ -345,10 +366,11 @@ const Section = React.memo(
     onRewayatPress?: (rewayat: RewayatInfo) => void;
     onPlaylistPress?: (playlist: UserPlaylist) => void;
     onClear?: () => void;
+    showAdhkarTile?: boolean;
     theme: Theme;
   }) => {
     const {t} = useTranslation(['home', 'common']);
-    if (!data.length) return null;
+    if (!data.length && !showAdhkarTile) return null;
 
     return (
       <View style={styles.section}>
@@ -356,7 +378,7 @@ const Section = React.memo(
           <Text style={[styles.sectionTitle, {color: theme.colors.text}]}>
             {title}
           </Text>
-          {onClear && (
+          {onClear && data.length > 0 && (
             <Pressable onPress={onClear} hitSlop={8}>
               <Text
                 style={[
@@ -378,6 +400,7 @@ const Section = React.memo(
           onReciterPress={onReciterPress}
           onRewayatPress={onRewayatPress}
           onPlaylistPress={onPlaylistPress}
+          showAdhkarTile={showAdhkarTile}
           theme={theme}
         />
       </View>
@@ -390,6 +413,7 @@ const Section = React.memo(
     prevProps.onRewayatPress === nextProps.onRewayatPress &&
     prevProps.onPlaylistPress === nextProps.onPlaylistPress &&
     prevProps.onClear === nextProps.onClear &&
+    prevProps.showAdhkarTile === nextProps.showAdhkarTile &&
     prevProps.theme === nextProps.theme,
 );
 // @ai-end
@@ -422,6 +446,7 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const {recentTracks} = useRecentlyPlayedStore();
+  const showAdhkarTile = useHasAdhkarSession();
   const {favoriteReciters} = useFavoriteReciters();
   const {lovedTracks} = useLoved();
   const downloads = useDownloadStore(state => state.downloads);
@@ -577,13 +602,14 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
    */
   const rowNodes: Record<HomeRowId, React.ReactNode> = {
     'continue-listening':
-      validRecentTracks.length > 0 ? (
+      validRecentTracks.length > 0 || showAdhkarTile ? (
         <Section
           title={t('home.continueListening')}
           data={validRecentTracks}
           variant="recent"
           onReciterPress={onReciterPress}
           onClear={handleClearRecentTracks}
+          showAdhkarTile={showAdhkarTile}
           theme={theme}
         />
       ) : null,

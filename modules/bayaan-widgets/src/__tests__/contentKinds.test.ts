@@ -94,7 +94,7 @@ describe('changedContentKindsForContent', () => {
     ]);
   });
 
-  it('lists eight kinds', () => {
-    expect(ALL_CONTENT_WIDGET_KINDS).toHaveLength(8);
+  it('lists six kinds', () => {
+    expect(ALL_CONTENT_WIDGET_KINDS).toHaveLength(6);
   });
 });

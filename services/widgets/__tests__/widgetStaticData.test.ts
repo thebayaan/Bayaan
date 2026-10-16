@@ -5,7 +5,12 @@ import {
   buildStaticAyat,
   buildStaticSurahs,
   buildSurahCatalogSwift,
+  buildAdhkarPeriods,
   cleanTranslation,
+  cutToBudget,
+  sessionDhikrText,
+  SESSION_MEDIUM_CHARS,
+  AdhkarSeedRow,
   parseVerseKey,
   AyahSources,
   StaticAyah,
@@ -171,5 +176,112 @@ describe('generated widget data', () => {
       expect(s.artworkFile).toBe(surahArtworkFileName(s.id));
       expect(s.glyph.length).toBe(1);
     });
+  });
+});
+
+describe('sessionDhikrText', () => {
+  it('uses the (( )) text without the count', () => {
+    expect(
+      sessionDhikrText('((سُبْحَانَ اللَّهِ وَبِحَمْدِهِ)) (مائة مرَّةٍ).'),
+    ).toBe('سُبْحَانَ اللَّهِ وَبِحَمْدِهِ');
+  });
+  it('keeps unmarked text and drops bare parentheses', () => {
+    expect(
+      sessionDhikrText(
+        '(بسم الله ﴿قُلْ هُوَ اللَّهُ أَحَدٌ﴾.) (بسم الله ﴿قُلْ أَعُوذُ﴾)',
+      ),
+    ).toBe('بسم الله ﴿قُلْ هُوَ اللَّهُ أَحَدٌ﴾. بسم الله ﴿قُلْ أَعُوذُ﴾');
+  });
+  it('trims trailing punctuation', () => {
+    expect(sessionDhikrText('أَعُوذُ بِاللَّهِ ﴿اللَّهُ﴾.')).toBe(
+      'أَعُوذُ بِاللَّهِ ﴿اللَّهُ﴾',
+    );
+  });
+});
+
+describe('cutToBudget', () => {
+  it('returns short text unchanged', () => {
+    expect(cutToBudget('a b c', 10)).toEqual({text: 'a b c', cut: false});
+  });
+  it('cuts at a word boundary and appends an ellipsis', () => {
+    expect(cutToBudget('aaa bbb ccc ddd', 9)).toEqual({
+      text: 'aaa bbb…',
+      cut: true,
+    });
+  });
+});
+
+describe('buildAdhkarPeriods items', () => {
+  const seed: AdhkarSeedRow[] = [
+    {
+      id: '2',
+      category_id: '27',
+      arabic: '((ب)) (ثلاثاً).',
+      translation: 'B',
+      repeat_count: 3,
+      audio_file: 'adhkar_2.mp3',
+      order_index: 1,
+    },
+    {
+      id: '1',
+      category_id: '27',
+      arabic: '((أ))',
+      translation: null,
+      repeat_count: 0,
+      audio_file: null,
+      order_index: 0,
+    },
+    {
+      id: '3',
+      category_id: '27',
+      arabic: `((${'كلمة '.repeat(60)}))`,
+      translation: null,
+      repeat_count: 1,
+      audio_file: null,
+      order_index: 2,
+    },
+    {
+      id: '9',
+      category_id: '30',
+      arabic: '((x))',
+      translation: null,
+      repeat_count: 1,
+      audio_file: null,
+      order_index: 0,
+    },
+  ];
+  const src = {
+    superId: 'morning-adhkar',
+    title: 'Morning Adhkar',
+    arabicTitle: 'أذكار الصباح',
+    categoryId: '27',
+    featured: ['1'],
+  };
+  const periods = buildAdhkarPeriods(
+    {morning: src, evening: {...src, superId: 'evening-adhkar'}},
+    seed,
+    {'morning-adhkar': ['1', '2', '3'], 'evening-adhkar': ['1', '2', '3']},
+  );
+
+  it('lists the category in order with repeat counts of at least 1', () => {
+    expect(periods.morning.items.map(i => [i.id, i.repeatCount])).toEqual([
+      ['1', 1],
+      ['2', 3],
+      ['3', 1],
+    ]);
+  });
+  it('carries audio and display text', () => {
+    expect(periods.morning.items[1]).toMatchObject({
+      audioFile: 'adhkar_2.mp3',
+      mediumText: 'ب',
+      mediumCut: false,
+      largeCut: false,
+      translation: 'B',
+    });
+  });
+  it('cuts long text for medium', () => {
+    const long = periods.morning.items.find(i => i.id === '3');
+    expect(long?.mediumCut).toBe(true);
+    expect(long?.mediumText.length).toBeLessThanOrEqual(SESSION_MEDIUM_CHARS);
   });
 });

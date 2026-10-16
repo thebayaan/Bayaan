@@ -26,10 +26,27 @@ export const fonts = {
 } as const;
 
 /**
+ * Surah-name calligraphy (the mobile app's `surah_names.ttf`). Each surah's
+ * name is a single private-use glyph; see `utils/surahGlyphMap.ts` and
+ * `components/brand/SurahGlyph.tsx`. Decorative artwork only: it is not Quran
+ * text, which stays on Digital Khatt.
+ */
+export const surahNameFontFamily = 'SurahNames';
+
+/**
  * Digital Khatt family name for Quran / Arabic text. Loaded into a Skia font
  * provider (matches the mobile mushaf pipeline), never used as a system font.
  */
 export const quranFontFamily = 'DigitalKhatt';
+
+/**
+ * Quran text in the listening room. The TV app has no Skia, so it can't run
+ * the Digital Khatt pipeline; until Skia is proven on tvOS and Vega it uses
+ * the KFGQPC Uthmanic Hafs font, the font `data/quran.json`'s text is encoded
+ * for, as plain text. Vega can't register it and falls back to the system
+ * Arabic font (see `theme/calligraphy`).
+ */
+export const quranTextFontFamily = 'UthmanicHafs';
 
 type TypographyStyle = {
   fontFamily: string;

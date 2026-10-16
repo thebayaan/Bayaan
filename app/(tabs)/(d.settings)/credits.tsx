@@ -54,6 +54,48 @@ function getCredits(
           description: t('credits.items.mp3quran'),
           link: 'https://mp3quran.net',
         },
+        {
+          title: t('credits.items.alafasyTitle'),
+          description: t('credits.items.alafasy'),
+          link: 'http://www.alafasy.tv',
+        },
+        {
+          title: t('credits.items.duraihimTitle'),
+          description: t('credits.items.duraihim'),
+          link: 'https://islamhouse.com',
+        },
+        {
+          title: t('credits.items.removalTitle'),
+          description: t('credits.items.removal', {
+            supportUrl: branding.supportUrl,
+          }),
+          link: branding.supportUrl,
+        },
+      ],
+    },
+    {
+      section: t('credits.sections.adhkarSources'),
+      items: [
+        {
+          title: 'hisnmuslim.com',
+          description: t('credits.items.hisnmuslim'),
+          link: 'https://www.hisnmuslim.com',
+        },
+        {
+          title: 'Tanzil',
+          description: t('credits.items.tanzil'),
+          link: 'https://tanzil.net/trans/',
+        },
+        {
+          title: 'Wikipedia contributors',
+          description: t('credits.items.wikipediaNames'),
+          link: 'https://creativecommons.org/licenses/by-sa/4.0/',
+        },
+        {
+          title: 'fitrahive/dua-dhikr',
+          description: t('credits.items.fitrahive'),
+          link: 'https://github.com/fitrahive/dua-dhikr',
+        },
       ],
     },
     {
@@ -115,16 +157,6 @@ function getCredits(
         {
           title: t('credits.items.communityTitle'),
           description: t('credits.items.community'),
-        },
-      ],
-    },
-    {
-      section: t('credits.sections.designArt'),
-      items: [
-        {
-          title: t('credits.items.yamamotoTitle'),
-          description: t('credits.items.yamamoto'),
-          link: 'https://twitter.com/NaokiQYamamoto',
         },
       ],
     },

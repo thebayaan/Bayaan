@@ -1,7 +1,10 @@
 import React from 'react';
-import {Text, View} from 'react-native';
+import {View} from 'react-native';
 import {FocusableCard} from '../primitives/FocusableCard';
+import {FocusFrame, FocusText} from '../primitives/focusContext';
+import {SurahArtwork} from '../brand/SurahArtwork';
 import {colors} from '../../theme/colors';
+import {fonts} from '../../theme/typography';
 import {createScaledStyles} from '../../theme/scale';
 
 type Props = {
@@ -10,6 +13,7 @@ type Props = {
   onSelect: (n: number) => void;
 };
 
+/** A surah's artwork card, with its name and number below. */
 export function QuickPlayCard({
   surahNumber,
   surahName,
@@ -17,33 +21,44 @@ export function QuickPlayCard({
 }: Props): React.ReactElement {
   return (
     <FocusableCard
+      ring={false}
       style={styles.card}
       onPress={() => onSelect(surahNumber)}
       accessibilityLabel={`Play ${surahName}`}>
-      <View style={styles.inner}>
-        <Text style={styles.num}>{surahNumber}</Text>
-        <Text style={styles.name} numberOfLines={2}>
+      <FocusFrame radius={14} style={styles.frame}>
+        <SurahArtwork
+          surahNumber={surahNumber}
+          glyphSize={64}
+          id={`quick-play-${surahNumber}`}
+        />
+      </FocusFrame>
+      <View style={styles.meta}>
+        <FocusText style={styles.name} numberOfLines={1}>
           {surahName}
-        </Text>
+        </FocusText>
+        <FocusText
+          style={styles.num}
+          color={colors.textSecondary}
+          focusedColor={colors.textSecondary}>
+          Surah {surahNumber}
+        </FocusText>
       </View>
     </FocusableCard>
   );
 }
 
 const styles = createScaledStyles({
-  card: {width: 170, height: 170, backgroundColor: colors.surface},
-  inner: {flex: 1, padding: 18, justifyContent: 'space-between'},
-  num: {
-    color: colors.text,
-    fontSize: 60,
-    fontWeight: '200',
-    opacity: 0.55,
-    letterSpacing: -2,
-  },
+  card: {width: 188, gap: 10},
+  frame: {width: 188, height: 188},
+  meta: {paddingHorizontal: 9, gap: 2},
   name: {
-    color: colors.text,
-    fontSize: 16,
+    fontFamily: fonts.bold,
+    fontSize: 18,
     fontWeight: '700',
-    letterSpacing: -0.2,
+  },
+  num: {
+    fontFamily: fonts.medium,
+    fontSize: 14,
+    fontWeight: '500',
   },
 });

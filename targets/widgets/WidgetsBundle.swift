@@ -29,8 +29,11 @@ struct BayaanWidgetsBundle: WidgetBundle {
     #if !BAYAAN_NO_WIDGET_LISTENING_ACCESSORY
     ListeningAccessoryWidget()
     #endif
+    #if !BAYAAN_NO_WIDGET_VERSE_OF_THE_DAY_ACCESSORY
+    VerseOfTheDayAccessoryWidget()
+    #endif
     #if !BAYAAN_NO_WIDGET_LIVE_ACTIVITY
-    NowPlayingLiveActivity()
+    LiveActivities().body
     #endif
     if #available(iOS 18.0, *) {
       #if !BAYAAN_NO_WIDGET_PLAYBACK_CONTROL

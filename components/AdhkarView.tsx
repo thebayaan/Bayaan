@@ -13,6 +13,10 @@ import {AdhkarBentoCard} from '@/components/adhkar/AdhkarBentoCard';
 import {SuperCategory} from '@/types/adhkar';
 import {useBottomInset} from '@/hooks/useBottomInset';
 import {LoadingIndicator} from '@/components/LoadingIndicator';
+import {
+  AdhkarNowPlayingCard,
+  useHasAdhkarSession,
+} from '@/components/adhkar/AdhkarNowPlayingCard';
 import {SavedAdhkarHero} from '@/components/hero/SavedAdhkarHero';
 // @ai-start
 import {useTranslation} from 'react-i18next';
@@ -104,6 +108,7 @@ export const AdhkarView: React.FC<AdhkarViewProps> = ({
     savedIds,
   } = useAdhkar();
   const {width} = useWindowDimensions();
+  const hasAdhkarSession = useHasAdhkarSession();
 
   // Calculate column dimensions
   const tileDimensions = useMemo(() => {
@@ -164,6 +169,15 @@ export const AdhkarView: React.FC<AdhkarViewProps> = ({
       contentInsetAdjustmentBehavior="never"
       showsVerticalScrollIndicator={false}>
       {/* Saved Hero Section - only shows when there are saved adhkar */}
+      {hasAdhkarSession && (
+        <View
+          style={{
+            paddingHorizontal: tileDimensions.horizontalPadding,
+            marginBottom: moderateScale(8),
+          }}>
+          <AdhkarNowPlayingCard variant="row" />
+        </View>
+      )}
       <SavedAdhkarHero savedCount={savedIds.size} />
 
       {/* Main Section */}
