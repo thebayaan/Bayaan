@@ -21,6 +21,7 @@ import {AdhkarReaderScreen} from '../../screens/AdhkarReaderScreen';
 import {ReciterContextMenu} from '../overlays/ReciterContextMenu';
 import {Sidebar, SIDEBAR_COLLAPSED_WIDTH} from './Sidebar';
 import {useTVBackHandler} from '../../hooks/useTVBackHandler';
+import {consumeScreenBack} from '../../services/screenBack';
 import {scale} from '../../theme/scale';
 
 export function Router(): React.ReactElement {
@@ -32,6 +33,8 @@ export function Router(): React.ReactElement {
   const {reciters} = useReciters();
 
   const handleBack = useCallback((): boolean => {
+    // A screen's own open panel (e.g. Search's reciter picker) closes first.
+    if (consumeScreenBack()) return true;
     if (useContextMenuStore.getState().reciterId) {
       useContextMenuStore.getState().close();
       return true;
