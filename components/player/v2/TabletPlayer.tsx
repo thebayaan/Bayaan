@@ -69,11 +69,8 @@ import {
   AmbientIcon,
 } from '@/components/Icons';
 // @ai-start
-import {
-  localizeDigits,
-  getTrackDisplayTitle,
-  getTrackArtistDisplay,
-} from '@/i18n/format';
+import {localizeDigits, getTrackDisplayTitle} from '@/i18n/format';
+import {getTrackArtistLabel} from '@/utils/uploadLabels';
 import {forceLTR} from '@/utils/rtl';
 import {getRecitationStyleLabel} from './recitationStyle';
 // @ai-end
@@ -511,7 +508,7 @@ const TabletPlayer: React.FC<TabletPlayerProps> = ({
             {color: textColor},
           ]}
           numberOfLines={1}>
-          {currentTrack ? getTrackArtistDisplay(currentTrack) : ''}
+          {currentTrack ? getTrackArtistLabel(currentTrack) : ''}
         </Text>
         {resolvedRewayah && (rewayat || currentTrack?.rewayahName) && (
           <Text

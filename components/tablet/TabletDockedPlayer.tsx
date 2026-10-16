@@ -9,7 +9,8 @@ import {LoadingIndicator} from '@/components/LoadingIndicator';
 import {ReciterImage} from '@/components/ReciterImage';
 import Color from 'color';
 // @ai-start
-import {getTrackDisplayTitle, getTrackArtistDisplay} from '@/i18n/format';
+import {getTrackDisplayTitle} from '@/i18n/format';
+import {getTrackArtistLabel} from '@/utils/uploadLabels';
 // @ai-end
 
 interface TabletDockedPlayerProps {
@@ -111,7 +112,7 @@ export const TabletDockedPlayer: React.FC<TabletDockedPlayerProps> = React.memo(
           <Text
             style={[styles.subtitle, {color: subtitleColor}]}
             numberOfLines={1}>
-            {getTrackArtistDisplay(currentTrack)}
+            {getTrackArtistLabel(currentTrack)}
           </Text>
         </View>
         <Pressable

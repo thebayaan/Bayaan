@@ -27,6 +27,8 @@ import {analyticsService} from '@/services/analytics/AnalyticsService';
 // @ai-start
 import {flipX, latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
+import {currentLanguage} from '@/i18n/language';
+import {getIntlLocale} from '@/i18n/languages';
 import {localizeDigits} from '@/i18n/format';
 import {
   hafsPagerPage,
@@ -261,7 +263,9 @@ export const TranslationContent: React.FC<TranslationContentProps> = ({
 
         {/* Active Translation */}
         <Text style={styles.translationLabel}>
-          {activeTranslationName.toUpperCase()}
+          {activeTranslationName.toLocaleUpperCase(
+            getIntlLocale(currentLanguage),
+          )}
         </Text>
         {activeTranslationText ? (
           <Text style={styles.translationText}>{activeTranslationText}</Text>
@@ -293,7 +297,7 @@ export const TranslationContent: React.FC<TranslationContentProps> = ({
                 style={({pressed}) => [pressed && {opacity: 0.7}]}>
                 <View style={styles.otherTranslationHeader}>
                   <Text style={styles.translationLabel}>
-                    {name.toUpperCase()}
+                    {name.toLocaleUpperCase(getIntlLocale(currentLanguage))}
                   </Text>
                   <View style={styles.switchPill}>
                     <Text style={styles.switchPillText}>

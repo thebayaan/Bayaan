@@ -7,7 +7,22 @@
   },
   "toasts": {
     "showingInHafs": "Showing in Hafs",
-    "nowReading": "Now reading"
+    "nowReading": "Now reading",
+    "rewayahLoadFailed": "Couldn't load {{rewayah}}",
+    "stillShowing": "Still showing {{rewayah}}.",
+    "pleaseTryAgain": "Please try again.",
+    "mushaf1440SwitchFailed": "Couldn't switch to Mushaf 1440",
+    "showingHafsInstead": "Showing Hafs instead.",
+    "openingInHafs": "Opening in Hafs",
+    "savedInHafsOnly": "Saved in {{rewayah}}. Mushaf 1440 shows Hafs only.",
+    "rewayahTextUnavailable": "{{rewayah}} text is not available",
+    "openingInRewayah": "Opening in {{rewayah}}.",
+    "openingInRewayahTitle": "Opening in {{rewayah}}",
+    "openInRewayahFailed": "Couldn't open in {{rewayah}}",
+    "showingRewayahInstead": "Showing {{rewayah}} instead.",
+    "indopakFontSwitched": "IndoPak shows Hafs only, so the font is now {{font}}.",
+    "preparingVerses": "Preparing verses",
+    "tryAgainShortly": "Try again in a moment."
   },
   "importAudio": {
     "fileImported": "File Imported",

@@ -22,8 +22,15 @@ def load_script(name):
     return module
 
 
-coverage = load_script('report-amharic-coverage')
+coverage = load_script('report-i18n-coverage')
 fonts = load_script('verify-ethiopic-ui-fonts')
+ui_fonts = load_script('verify-i18n-ui-fonts')
+
+
+def copy_registry(root):
+    (root / 'i18n').mkdir(parents=True, exist_ok=True)
+    for source in (ROOT / 'i18n').glob('*.ts'):
+        shutil.copyfile(source, root / 'i18n' / source.name)
 
 
 class CoverageGateTests(unittest.TestCase):
@@ -31,6 +38,7 @@ class CoverageGateTests(unittest.TestCase):
         directory = tempfile.TemporaryDirectory()
         self.addCleanup(directory.cleanup)
         self.root = Path(directory.name)
+        copy_registry(self.root)
         self.write_json('docs/i18n/amharic-source-values.json', {
             'catalogNames': ['common:name'], 'canonicalOutputs': [], 'notation': [],
         })
@@ -39,6 +47,8 @@ class CoverageGateTests(unittest.TestCase):
             draft = {'name': 'Canonical name'} if namespace == 'common' else {'label': 'ሙከራ'}
             self.write_json(f'i18n/locales/en/{namespace}.json', source)
             self.write_json(f'i18n/locales/am/{namespace}.json', draft)
+            self.write_json(f'i18n/locales/ar/{namespace}.json',
+                            {'name': 'Canonical name'} if namespace == 'common' else {'label': 'تجربة'})
         self.addCleanup(patch.stopall)
         patch.object(coverage, 'ROOT', self.root).start()
 
@@ -47,9 +57,9 @@ class CoverageGateTests(unittest.TestCase):
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(json.dumps(value), encoding='utf-8')
 
-    def report(self, **kwargs):
+    def report(self, language='am', **kwargs):
         with contextlib.redirect_stdout(io.StringIO()):
-            return coverage.report(**kwargs)
+            return coverage.report(language, **kwargs)
 
     def files(self):
         return {path.relative_to(self.root): path.read_bytes()
@@ -123,6 +133,44 @@ class CoverageGateTests(unittest.TestCase):
                     self.report(check=True)
 
 
+    def test_language_without_source_policy_has_an_empty_policy(self):
+        self.write_json('i18n/locales/en/sheets.json', {'count_one': '{{count}} item', 'count_other': '{{count}} items'})
+        self.write_json('i18n/locales/ar/sheets.json', {
+            f'count_{category}': '{{count}}' for category in ('zero', 'one', 'two', 'few', 'many', 'other')})
+        self.report(language='ar', write=True)
+        result = self.report(language='ar', check=True)
+        self.assertEqual(result['retainedSourceValues'], 0)
+        self.assertEqual(result['totals']['missing'], 0)
+        self.assertIn('None. Add `docs/i18n/arabic-source-values.json`',
+                      (self.root / 'docs/i18n/arabic-fallbacks.md').read_text(encoding='utf-8'))
+        self.assertFalse((self.root / 'docs/i18n/arabic-source-values.json').exists())
+
+    def test_plural_forms_are_not_a_loophole_for_unknown_keys(self):
+        self.write_json('i18n/locales/ar/home.json', {'label_few': 'تجربة'})
+        with self.assertRaisesRegex(ValueError, 'unknown Arabic keys'):
+            self.report(language='ar', check=True)
+
+    def test_source_and_unknown_languages_are_rejected(self):
+        for language in ('en', 'xx'):
+            with self.subTest(language=language):
+                with self.assertRaisesRegex(ValueError, 'Unknown or source language'):
+                    self.report(language=language, check=True)
+
+    def test_cli_checks_every_non_source_language_and_reports_each_failure(self):
+        self.report(language='am', write=True)
+        stderr = io.StringIO()
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(stderr):
+            with self.assertRaises(SystemExit) as raised:
+                coverage.main(['--check'])
+        self.assertEqual(raised.exception.code, 1)
+        self.assertIn('ar: Arabic fallback inventory is stale', stderr.getvalue())
+        self.assertNotIn('am:', stderr.getvalue())
+        with contextlib.redirect_stdout(io.StringIO()):
+            coverage.main(['--write'])
+            coverage.main(['--check'])
+            coverage.main(['--check', '--language', 'ar'])
+
+
 class FontGateTests(unittest.TestCase):
     def test_json_escaping_cannot_hide_a_missing_ethiopic_glyph(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -147,6 +195,7 @@ class FontGateTests(unittest.TestCase):
             record['bytes'] = derivative.stat().st_size
             font_directory = root / 'assets/fonts/ethiopic/ui'
             (font_directory / 'manifest.json').write_text(json.dumps(manifest), encoding='utf-8')
+            copy_registry(root)
             locales = root / 'i18n/locales/am'
             locales.mkdir(parents=True)
             (locales / 'common.json').write_text(
@@ -164,6 +213,71 @@ class FontGateTests(unittest.TestCase):
     def test_only_decoded_values_contribute_ui_text(self):
         tree = json.loads('{"nested":{"label":"\\u1200"},"not UI text":"Latin"}')
         self.assertEqual(fonts.resource_text(tree), 'ሀLatin')
+
+
+class UiFontCoverageTests(unittest.TestCase):
+    def fixture(self, code, values):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        root = Path(directory.name)
+        copy_registry(root)
+        locales = root / f'i18n/locales/{code}'
+        locales.mkdir(parents=True)
+        (locales / 'common.json').write_text(json.dumps(values, ensure_ascii=True), encoding='utf-8')
+        for path in ui_fonts.registry.language_data_files(code, root=ROOT):
+            target = root / path.relative_to(ROOT)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(json.dumps({'1': values['label']}, ensure_ascii=True), encoding='utf-8')
+        return root
+
+    def check(self, root, code, font):
+        _, languages = ui_fonts.registry.load_languages(root=root)
+        config = {**languages[code], 'uiFont': font}
+        font_maps = ui_fonts.registry.load_ui_fonts(root=root)
+        for files in font_maps.values():
+            for relative in files.values():
+                target = root / relative
+                target.parent.mkdir(parents=True, exist_ok=True)
+                if not target.exists():
+                    target.symlink_to(ROOT / relative)
+        return ui_fonts.verify_language(code, config, font_maps, root)
+
+    def test_registry_maps_every_language_to_its_font_and_data(self):
+        _, languages = ui_fonts.registry.load_languages()
+        font_maps = ui_fonts.registry.load_ui_fonts()
+        for code, config in languages.items():
+            with self.subTest(code=code):
+                self.assertIn(config['uiFont'], font_maps)
+                self.assertEqual(len(font_maps[config['uiFont']]), 7)
+        self.assertEqual(
+            [path.name for path in ui_fonts.registry.language_data_files('am')],
+            ['reciterNamesAm.json', 'surahMeaningsAm.json', 'surahNamesAm.json'])
+        self.assertEqual(
+            [path.name for path in ui_fonts.registry.language_data_files('ar')], ['reciterNamesAr.json'])
+
+    def test_escaped_own_script_text_without_a_glyph_fails(self):
+        # Arabic text rendered with plain Manrope, which has no Arabic glyphs.
+        root = self.fixture('ar', {'label': '\u0628\u064e'})
+        with self.assertRaisesRegex(ValueError, 'missing glyphs for U\\+0628 ARABIC LETTER BEH'):
+            self.check(root, 'ar', 'manrope')
+
+    def test_other_scripts_and_emoji_use_platform_fallback(self):
+        root = self.fixture('ar', {'label': 'باب', 'edition': 'Русский 马 ❤\ufe0f', 'note': 'Alİ'})
+        result = self.check(root, 'ar', 'plexSansArabic')
+        # Р у с к и й, 马, ❤, U+FE0F and İ (not Arabic script, so not required).
+        self.assertEqual(result['platformFallbackCharacters'], 10)
+
+    def test_harakat_are_required_only_for_arabic_script_languages(self):
+        self.assertTrue(ui_fonts.required_for('Arab', '\u064e'))
+        self.assertFalse(ui_fonts.required_for('Ethi', '\u064e'))
+        self.assertTrue(ui_fonts.required_for('Ethi', '\u1361'))
+        self.assertTrue(ui_fonts.required_for('Ethi', '·'))
+        self.assertFalse(ui_fonts.required_for('Ethi', '\ufe0f'))
+
+    def test_unknown_ui_font_fails(self):
+        root = self.fixture('am', {'label': 'ሀ'})
+        with self.assertRaisesRegex(ValueError, "uiFont 'missing'"):
+            self.check(root, 'am', 'missing')
 
 
 if __name__ == '__main__':

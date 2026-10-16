@@ -175,7 +175,9 @@ module.exports = {
         'expo-localization',
         // Direction is controlled by the in-app language preference. Static
         // supportsRTL/forcesRTL resets I18nManager to the device locale on iOS.
-        {supportedLocales: {ios: ['en', 'ar']}},
+        // Shipped languages only (i18n/languages.ts); the registry test
+        // keeps both lists in sync.
+        {supportedLocales: {ios: ['en', 'ar'], android: ['en', 'ar']}},
       ],
       '@bacons/apple-targets',
       ['expo-audio', {enableBackgroundPlayback: true}],

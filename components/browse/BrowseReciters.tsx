@@ -47,6 +47,8 @@ import {USE_GLASS} from '@/hooks/useGlassProps';
 import {useBottomInset} from '@/hooks/useBottomInset';
 // @ai-start
 import {useTranslation} from 'react-i18next';
+import {currentLanguage} from '@/i18n/language';
+import {getIntlLocale} from '@/i18n/languages';
 // @ai-end
 
 interface BrowseRecitersProps {
@@ -347,7 +349,7 @@ export default function BrowseReciters({
       const bHasImage = hasImage(b);
       if (aHasImage && !bHasImage) return -1;
       if (!aHasImage && bHasImage) return 1;
-      return a.name.localeCompare(b.name);
+      return a.name.localeCompare(b.name, getIntlLocale(currentLanguage));
     });
 
     return result;

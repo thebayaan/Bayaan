@@ -16,6 +16,7 @@ import {
   type RewayahId,
 } from '@/services/rewayah/RewayahIdentity';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import i18n from '@/i18n';
 import {showToast} from '@/utils/toastUtils';
 
 /** Notice copy for a fallback from `from` to Hafs. */
@@ -24,8 +25,10 @@ export function rewayahFallbackNotice(from: RewayahId): {
   message: string;
 } {
   return {
-    title: `Couldn't load ${getShortLabel(from)}`,
-    message: 'Showing Hafs instead.',
+    title: i18n.t('content:toasts.rewayahLoadFailed', {
+      rewayah: getShortLabel(from),
+    }),
+    message: i18n.t('content:toasts.showingHafsInstead'),
   };
 }
 

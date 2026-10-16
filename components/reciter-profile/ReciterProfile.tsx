@@ -212,7 +212,7 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
   initialRewayatId: initialRewayatIdProp,
 }) => {
   const {theme} = useTheme();
-  const {t} = useTranslation('player');
+  const {t} = useTranslation(['player', 'collection']);
   const styles = createSharedStyles(theme);
   const insets = useSafeAreaInsets();
   const bottomInset = useBottomInset();
@@ -641,8 +641,8 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
 
     if (allDownloaded) {
       Alert.alert(
-        'Already Downloaded',
-        'Every surah shown is already downloaded for this rewayah.',
+        t('collection:lovedScreen.alreadyDownloadedTitle'),
+        t('reciterProfile.downloadAll.alreadyDownloadedMessage'),
       );
       return;
     }
@@ -689,24 +689,34 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
 
       if (summary.cancelled) {
         Alert.alert(
-          'Download Stopped',
-          `Downloaded ${summary.downloaded} surah(s) before stopping.`,
+          t('reciterProfile.downloadAll.stoppedTitle'),
+          t('reciterProfile.downloadAll.stoppedMessage', {
+            count: summary.downloaded,
+          }),
         );
       } else if (summary.failed > 0) {
         Alert.alert(
-          'Download Finished',
-          `${summary.downloaded} downloaded, ${summary.failed} failed. Tap again to retry the rest.`,
+          t('reciterProfile.downloadAll.finishedTitle'),
+          t('reciterProfile.downloadAll.finishedMessage', {
+            downloaded: summary.downloaded,
+            failed: summary.failed,
+          }),
         );
       } else if (summary.downloaded > 0) {
         Alert.alert(
-          'Download Complete',
-          `All surahs for ${reciter.name} are now available offline.`,
+          t('collection:lovedScreen.downloadCompleteTitle'),
+          t('reciterProfile.downloadAll.completeMessage', {
+            name: getReciterDisplayName(reciter),
+          }),
         );
       }
     } catch (error) {
       console.error('Error downloading all surahs:', error);
       if (isMountedRef.current) {
-        Alert.alert('Download Error', 'Some downloads may have failed.');
+        Alert.alert(
+          t('collection:lovedScreen.downloadErrorTitle'),
+          t('collection:lovedScreen.downloadErrorMessage'),
+        );
       }
     } finally {
       downloadAllInFlightRef.current = false;
@@ -729,6 +739,7 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
     clearDownloading,
     addDownload,
     setDownloadProgress,
+    t,
   ]);
   // @ai-end
 

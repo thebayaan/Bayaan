@@ -10,7 +10,8 @@ import {ReciterImage} from '@/components/ReciterImage';
 import Color from 'color';
 // @ai-start
 import {useTranslation} from 'react-i18next';
-import {getTrackDisplayTitle, getTrackArtistDisplay} from '@/i18n/format';
+import {getTrackDisplayTitle} from '@/i18n/format';
+import {getTrackArtistLabel} from '@/utils/uploadLabels';
 import {appLayoutDirection} from '@/utils/rtl';
 // @ai-end
 
@@ -64,7 +65,7 @@ function MiniPlayerInner() {
         onPress={handlePress}
         style={styles.body}
         accessibilityRole="button"
-        accessibilityLabel={`${getTrackDisplayTitle(currentTrack)}, ${getTrackArtistDisplay(currentTrack)}`}
+        accessibilityLabel={`${getTrackDisplayTitle(currentTrack)}, ${getTrackArtistLabel(currentTrack)}`}
         accessibilityHint={t('a11y.openPlayer')}>
         <ReciterImage
           reciterName={currentTrack.reciterName}
@@ -81,7 +82,7 @@ function MiniPlayerInner() {
               {color: Color(textColor).alpha(0.5).toString()},
             ]}
             numberOfLines={1}>
-            {getTrackArtistDisplay(currentTrack)}
+            {getTrackArtistLabel(currentTrack)}
           </Text>
         </View>
       </Pressable>

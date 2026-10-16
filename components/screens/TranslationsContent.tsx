@@ -47,7 +47,7 @@ import {useTranslation} from 'react-i18next';
 import i18n from '@/i18n';
 import {localizeDigits} from '@/i18n/format';
 import {currentLanguage, currentLanguageConfig} from '@/i18n/language';
-import {SOURCE_LANGUAGE} from '@/i18n/languages';
+import {SOURCE_LANGUAGE, getIntlLocale} from '@/i18n/languages';
 import {
   compareTafaseer,
   getTafseerDisplayName,
@@ -465,7 +465,10 @@ export default function TranslationsContent() {
     const sortedLangs = Object.keys(byLang).sort((a, b) => {
       if (a === 'en') return -1;
       if (b === 'en') return 1;
-      return getLanguageDisplayName(a).localeCompare(getLanguageDisplayName(b));
+      return getLanguageDisplayName(a).localeCompare(
+        getLanguageDisplayName(b),
+        getIntlLocale(currentLanguage),
+      );
     });
 
     for (const lang of sortedLangs) {
@@ -581,7 +584,7 @@ export default function TranslationsContent() {
           Number(isPreferredTafseerLanguage(a)) ||
         getTafseerLanguageDisplayName(a).localeCompare(
           getTafseerLanguageDisplayName(b),
-          currentLanguage,
+          getIntlLocale(currentLanguage),
         )
       );
     });

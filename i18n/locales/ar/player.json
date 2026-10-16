@@ -21,7 +21,9 @@
     "footnote": "حاشية",
     "footnoteContentUnavailable": "محتوى الحاشية غير متوفر",
     "footnoteDataUnavailable": "بيانات الحاشية غير متوفرة",
-    "wbwHafsNotice": "يُعرض كلمة بكلمة وفق رواية حفص"
+    "wbwHafsNotice": "يُعرض كلمة بكلمة وفق رواية حفص",
+    "textUnavailable": "تعذّر تحميل نص الآية.",
+    "textLoading": "جارٍ تحميل نص الآية"
   },
   "reciterProfile": {
     "shareMessage": "استمع إلى {{name}} على {{appName}}",
@@ -35,7 +37,25 @@
     "searchPlaceholder": "ابحث في السور",
     "noSurahsAvailable": "لا توجد سور متاحة",
     "noSurahsFound": "لم يُعثر على سور",
-    "juzAmma": "جزء عمّ"
+    "juzAmma": "جزء عمّ",
+    "downloadAll": {
+      "alreadyDownloadedMessage": "جميع السور المعروضة منزّلة مسبقًا لهذه الرواية.",
+      "stoppedTitle": "توقّف التنزيل",
+      "stoppedMessage_zero": "توقّف التنزيل قبل تنزيل أي سورة.",
+      "stoppedMessage_one": "نُزّلت سورة واحدة قبل التوقّف.",
+      "stoppedMessage_two": "نُزّلت سورتان قبل التوقّف.",
+      "stoppedMessage_few": "نُزّلت {{count}} سور قبل التوقّف.",
+      "stoppedMessage_many": "نُزّلت {{count}} سورةً قبل التوقّف.",
+      "stoppedMessage_other": "نُزّلت {{count}} سورة قبل التوقّف.",
+      "finishedTitle": "انتهى التنزيل",
+      "finishedMessage": "نُزّل {{downloaded}}، وتعذّر تنزيل {{failed}}. اضغط مجددًا لإعادة محاولة الباقي.",
+      "completeMessage": "جميع سور {{name}} متاحة الآن دون اتصال.",
+      "a11y": {
+        "cancel": "إلغاء تنزيل جميع السور",
+        "allDownloaded": "تم تنزيل جميع السور",
+        "start": "تنزيل جميع السور"
+      }
+    }
   },
   "adhkar": {
     "otherSection": "أخرى",
@@ -78,7 +98,8 @@
       "hideInstruction": "إخفاء الإرشاد",
       "playAll": "تشغيل الكل",
       "pauseAll": "إيقاف الكل مؤقتًا"
-    }
+    },
+    "loadFailed": "تعذّر تحميل الأذكار. يُرجى المحاولة مرة أخرى."
   },
   "a11y": {
     "openPlayer": "يفتح المشغّل الكامل"

@@ -35,6 +35,8 @@ import branding from '@/config/branding';
 // @ai-start
 import {flipX, latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
+import {currentLanguage} from '@/i18n/language';
+import {getIntlLocale} from '@/i18n/languages';
 import type {TFunction} from 'i18next';
 // @ai-end
 
@@ -357,7 +359,9 @@ export default function SettingsScreen() {
         {settingsSections.map(section => (
           <View key={section.section} style={styles.section}>
             <Text style={styles.sectionHeader}>
-              {section.section.toUpperCase()}
+              {section.section.toLocaleUpperCase(
+                getIntlLocale(currentLanguage),
+              )}
             </Text>
             {renderCard(
               section.items.map((item, itemIndex) => (

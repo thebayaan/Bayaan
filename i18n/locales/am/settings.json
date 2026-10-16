@@ -331,20 +331,20 @@
     "communityReflections": "የማኅበረሰብ አስተያየቶች",
     "translationSource": "በጥቅም ላይ፦ Saheeh International ትርጉም ከግርጌ ማስታወሻዎች ጋር",
     "tajweedPreview": "ባለቀለም ተጅዊድን በቅድመ እይታ አሳይ",
-    "qcfBetaMessage": "Mushaf 1440 የ{{appName}} አዲሱ የሙስሐፍ ማሳያ ሥርዓት ነው፣ ሆኖም ገና በሙከራ ደረጃ ላይ ነው። የተጅዊድ ቀለሞች በቅድመ እይታ ይገኛሉ። ሪዋያ መቀየር እስካሁን አይቻልም።",
+    "qcfBetaMessage": "ሙስሐፍ 1440 የ{{appName}} አዲሱ የሙስሐፍ ማሳያ ሥርዓት ነው፣ ሆኖም ገና በሙከራ ደረጃ ላይ ነው። የተጅዊድ ቀለሞች በቅድመ እይታ ይገኛሉ። ሪዋያ መቀየር እስካሁን አይቻልም።",
     "rewayahExpandLabel": "ሪዋያ፦ {{name}}። ለመቀየር ዘርጋ።",
     "rewayahCollapseLabel": "ሪዋያ፦ {{name}}። ለመቀየር ሰብስብ።",
-    "hafsOnlyFont": "Hafs ብቻ። ይህ ቅርጸ ቁምፊ በ{{rewayah}} የሚጠቀሙባቸውን ምልክቶች የሉትም።",
-    "hafsOnlyTajweed": "Hafs ብቻ። ለ{{rewayah}} አይታይም።",
+    "hafsOnlyFont": "ሐፍስ ብቻ። ይህ ቅርጸ ቁምፊ በ{{rewayah}} የሚጠቀሙባቸውን ምልክቶች የሉትም።",
+    "hafsOnlyTajweed": "ሐፍስ ብቻ። ለ{{rewayah}} አይታይም።",
     "fallback": {
       "title": "{{rewayah}}ን መጫን አልተቻለም",
-      "body": "በምትኩ Hafs ይታያል። {{rewayah}} የእርስዎ ሪዋያ ሆኖ ይቀጥላል፣ መተግበሪያው በሚቀጥለው ጊዜ ሲከፈት እንደገና ለመጫን ይሞክራል።",
+      "body": "በምትኩ ሐፍስ ይታያል። {{rewayah}} የእርስዎ ሪዋያ ሆኖ ይቀጥላል፣ መተግበሪያው በሚቀጥለው ጊዜ ሲከፈት እንደገና ለመጫን ይሞክራል።",
       "retryLabel": "{{rewayah}}ን እንደገና ለመጫን ይሞክሩ",
       "retry": "እንደገና ሞክር",
-      "keepLabel": "Hafsን ማንበብ ቀጥል",
-      "keep": "Hafsን አቆይ"
+      "keepLabel": "ሐፍስን ማንበብ ቀጥል",
+      "keep": "ሐፍስን አቆይ"
     },
-    "indopakHafsOnly": "IndoPak የሚያሳየው Hafsን ብቻ ነው። ሌላ ሪዋያ ሲመረጥ ቅርጸ ቁምፊው ወደ {{font}} ይቀየራል።",
+    "indopakHafsOnly": "ኢንዶፓክ የሚያሳየው ሐፍስን ብቻ ነው። ሌላ ሪዋያ ሲመረጥ ቅርጸ ቁምፊው ወደ {{font}} ይቀየራል።",
     "legendSummary": {
       "shubah": "ከሐፍስ የሚለዩ ቃላትን ያመለክታል። በፊደል ደረጃ ያሉ የተጅዊድ ሕጎች ለዚህ ሪዋያ አይደምቁም።",
       "ibnKathir": "ከሐፍስ የሚለዩ ቃላትን ያመለክታል፤ የኢብኑ ከሢርን ሲላ (የተውላጠ ስም ማስረዘም) ያደምቃል። በፊደል ደረጃ ያሉ የተጅዊድ ሕጎች አይደምቁም።",

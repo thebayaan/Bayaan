@@ -8,6 +8,8 @@ import {PlayIcon, ShuffleIcon} from '@/components/Icons';
 import {ActionButtonsProps} from '@/components/reciter-profile/types';
 import Color from 'color';
 import {Ionicons} from '@expo/vector-icons';
+import {useTranslation} from 'react-i18next';
+import {localizeDigits} from '@/i18n/format';
 
 const GOLD_COLOR = '#FFD700';
 
@@ -23,11 +25,13 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
 }) => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
+  const {t} = useTranslation('player');
 
   const getDownloadAllLabel = () => {
-    if (isDownloadingAll) return 'Cancel downloading all surahs';
-    if (allDownloaded) return 'All surahs downloaded';
-    return 'Download all surahs';
+    if (isDownloadingAll) return t('reciterProfile.downloadAll.a11y.cancel');
+    if (allDownloaded)
+      return t('reciterProfile.downloadAll.a11y.allDownloaded');
+    return t('reciterProfile.downloadAll.a11y.start');
   };
 
   return (
@@ -58,7 +62,7 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
           accessibilityLabel={getDownloadAllLabel()}>
           {isDownloadingAll ? (
             <Text style={styles.progressText} numberOfLines={1}>
-              {`${Math.round(downloadAllProgress * 100)}%`}
+              {localizeDigits(`${Math.round(downloadAllProgress * 100)}%`)}
             </Text>
           ) : (
             <Ionicons

@@ -12,8 +12,19 @@ import {
   type RewayahId,
 } from '@/store/mushafSettingsStore';
 import {migratePersistedId} from '@/services/rewayah/RewayahIdentity';
+import {currentLanguageConfig} from '@/i18n/language';
+import {uiFontFiles} from '@/i18n/fonts';
 
 // @ai-start
+const UI_SCRIPT_SEMIBOLD = 'UIScriptSemiBold';
+
+/** Skia families for UI text (share-card labels), in fallback order. */
+export const SKIA_UI_FONT_FAMILIES = [
+  'ManropeSemiBold',
+  'PlexSansArabicSemiBold',
+  UI_SCRIPT_SEMIBOLD,
+];
+
 const FONT_ASSETS: Record<string, number> = {
   DigitalKhattV1: require('@/data/mushaf/legacy/DigitalKhattQuranicV1.otf'),
   DigitalKhattV2: require('@/data/mushaf/digitalkhatt/DigitalKhattFont.otf'),
@@ -24,6 +35,13 @@ const FONT_ASSETS: Record<string, number> = {
   ManropeSemiBold: require('@/assets/fonts/Manrope-SemiBold.ttf'),
   ManropeRegular: require('@/assets/fonts/Manrope-Regular.ttf'),
   PlexSansArabicSemiBold: require('@/assets/fonts/IBMPlexSansArabic-SemiBold.ttf'),
+  // The UI language's own semibold face, for scripts Manrope and Plex lack
+  // (e.g. Ethiopic). Skia has no system fallback, so share-card text in such
+  // a script needs this family listed (see SKIA_UI_FONT_FAMILIES).
+  ...(currentLanguageConfig.uiFont === 'manrope' ||
+  currentLanguageConfig.uiFont === 'plexSansArabic'
+    ? {}
+    : {[UI_SCRIPT_SEMIBOLD]: uiFontFiles['Manrope-SemiBold']}),
 };
 // @ai-end
 

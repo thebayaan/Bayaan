@@ -31,6 +31,8 @@ import {TafseerHtmlRenderer} from './TafseerHtmlRenderer';
 // @ai-start
 import {flipX, latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
+import {currentLanguage} from '@/i18n/language';
+import {getIntlLocale} from '@/i18n/languages';
 import {localizeDigits} from '@/i18n/format';
 import {
   compareTafaseer,
@@ -318,7 +320,9 @@ export const TafseerContent: React.FC<TafseerContentProps> = ({
             {/* Tafseer label */}
             {activeTafseer && downloadedMeta.length === 1 && (
               <Text style={styles.tafseerLabel}>
-                {getTafseerDisplayName(activeTafseer).toUpperCase()}
+                {getTafseerDisplayName(activeTafseer).toLocaleUpperCase(
+                  getIntlLocale(currentLanguage),
+                )}
               </Text>
             )}
 

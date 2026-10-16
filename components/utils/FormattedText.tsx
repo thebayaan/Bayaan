@@ -175,7 +175,9 @@ const styles = StyleSheet.create({
     // fontWeight: 'bold', // fontWeight can conflict with custom fonts, use fontFamily preferably
   },
   italic: {
-    fontFamily: 'Manrope-Italic', // Make sure 'Manrope-Italic' is loaded
+    // No italic face is bundled; the regular alias (mapped per language in
+    // i18n/fonts.ts) is slanted by fontStyle.
+    fontFamily: 'Manrope-Regular',
     fontStyle: 'italic',
   },
   underline: {

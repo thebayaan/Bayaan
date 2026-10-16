@@ -11,6 +11,7 @@ import {getSurahById, getReciterName} from '@/services/dataService';
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
 // @ai-start
 import i18n from '@/i18n';
+import {UNTAGGED_UPLOAD_ARTIST} from '@/utils/uploadLabels';
 // @ai-end
 
 /**
@@ -172,8 +173,9 @@ export function createUserUploadTrack(recitation: UploadedRecitation): Track {
     title = recitation.title;
   }
 
-  // Build artist from reciter tags, fallback to 'My Recitations'
-  let artist = 'My Recitations';
+  // Build artist from reciter tags, fallback to the untagged-upload artist
+  // (canonical data, translated where shown)
+  let artist = UNTAGGED_UPLOAD_ARTIST;
   let resolvedRewayatId: string | undefined;
   let artwork = '';
   if (recitation.reciterId) {
@@ -221,7 +223,7 @@ export function createUserUploadTrack(recitation: UploadedRecitation): Track {
 const UPLOAD_PLACEHOLDER_RECITER: Reciter = {
   ...RECITERS[0],
   id: '__uploads__',
-  name: 'My Recitations',
+  name: UNTAGGED_UPLOAD_ARTIST,
 };
 
 const UPLOAD_PLACEHOLDER_SURAH: Surah = {
@@ -256,7 +258,7 @@ export function addUploadToRecentlyPlayed(
   }
 
   // Build display artist
-  let artist = 'My Recitations';
+  let artist = UNTAGGED_UPLOAD_ARTIST;
   if (recitation.reciterId) {
     const name = getReciterName(recitation.reciterId);
     if (name) artist = name;

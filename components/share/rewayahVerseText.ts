@@ -296,6 +296,10 @@ export function formatQuranCitation(
   reference: string,
   rewayah: RewayahId,
 ): string {
-  const base = `Quran ${reference}`;
-  return rewayah === 'hafs' ? base : `${base} · ${getShortLabel(rewayah)}`;
+  return rewayah === 'hafs'
+    ? i18n.t('sheets:share.reference', {ref: reference})
+    : i18n.t('sheets:share.referenceWithRewayah', {
+        ref: reference,
+        rewayah: getShortLabel(rewayah),
+      });
 }

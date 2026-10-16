@@ -7,7 +7,22 @@
   },
   "toasts": {
     "showingInHafs": "العرض برواية حفص",
-    "nowReading": "الرواية الحالية"
+    "nowReading": "الرواية الحالية",
+    "rewayahLoadFailed": "تعذّر تحميل رواية {{rewayah}}",
+    "stillShowing": "لا تزال رواية {{rewayah}} معروضة.",
+    "pleaseTryAgain": "يُرجى المحاولة مرة أخرى.",
+    "mushaf1440SwitchFailed": "تعذّر التبديل إلى مصحف 1440",
+    "showingHafsInstead": "تُعرض رواية حفص بدلًا منها.",
+    "openingInHafs": "يُفتح برواية حفص",
+    "savedInHafsOnly": "حُفظ برواية {{rewayah}}. مصحف 1440 يعرض رواية حفص فقط.",
+    "rewayahTextUnavailable": "نص رواية {{rewayah}} غير متوفر",
+    "openingInRewayah": "يُفتح برواية {{rewayah}}.",
+    "openingInRewayahTitle": "يُفتح برواية {{rewayah}}",
+    "openInRewayahFailed": "تعذّر الفتح برواية {{rewayah}}",
+    "showingRewayahInstead": "تُعرض رواية {{rewayah}} بدلًا من ذلك.",
+    "indopakFontSwitched": "الخط الهندي الباكستاني يعرض رواية حفص فقط، لذا تغيّر الخط إلى {{font}}.",
+    "preparingVerses": "جارٍ تجهيز الآيات",
+    "tryAgainShortly": "حاول مجددًا بعد قليل."
   },
   "importAudio": {
     "fileImported": "تم استيراد الملف",

@@ -1,12 +1,8 @@
 // @ai-generated
 import {SURAHS} from '@/data/surahData';
-import arNamesById from '@/data/reciterNamesAr.json';
-import amSurahNames from '@/data/surahNamesAm.json';
-import amSurahMeanings from '@/data/surahMeaningsAm.json';
-import amReciterNames from '@/data/reciterNamesAm.json';
-import fallbackReciters from '@/data/reciters-fallback.json';
 import {currentLanguage, type AppLanguage} from './language';
 import {DIGIT_ZERO, getLanguageConfig} from './languages';
+import {getAllContentPacks, getContentPack} from './packs';
 
 /** Display only: preserve fork names and canonical branding used in IDs/share payloads. */
 export function getAppDisplayName(
@@ -22,12 +18,31 @@ function reciterNameKey(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
-const arNamesByKey = new Map<string, string>();
-for (const reciter of fallbackReciters as {id: string; name: string}[]) {
-  const arabic = (arNamesById as Record<string, string>)[reciter.id];
-  if (arabic) {
-    arNamesByKey.set(reciterNameKey(reciter.name), arabic);
+interface ArabicReciterNames {
+  byId: Readonly<Record<string, string>>;
+  byKey: ReadonlyMap<string, string>;
+}
+
+let arabicReciterNames: ArabicReciterNames | null = null;
+
+/** Bundled Arabic reciter names, loaded only when Arabic names are shown. */
+function getArabicReciterNames(): ArabicReciterNames {
+  if (!arabicReciterNames) {
+    const byId: Record<string, string> = require('@/data/reciterNamesAr.json');
+    const fallback: {
+      id: string;
+      name: string;
+    }[] = require('@/data/reciters-fallback.json');
+    const byKey = new Map<string, string>();
+    for (const reciter of fallback) {
+      const arabic = byId[reciter.id];
+      if (arabic) {
+        byKey.set(reciterNameKey(reciter.name), arabic);
+      }
+    }
+    arabicReciterNames = {byId, byKey};
   }
+  return arabicReciterNames;
 }
 
 /** Converts ASCII digits to the language's digits (Arabic-Indic for Arabic). */
@@ -61,12 +76,23 @@ export function formatNumber(
   value: number,
   language: AppLanguage = currentLanguage,
 ): string {
-  const grouped = Math.trunc(value)
-    .toString()
-    .replace(
-      /\B(?=(\d{3})+(?!\d))/g,
-      getLanguageConfig(language).groupSeparator,
-    );
+  const {groupSeparator, secondaryGroupSize} = getLanguageConfig(language);
+  const integer = Math.trunc(value);
+  const digits = Math.abs(integer).toString();
+  // First group of 3 from the right, then groups of `secondaryGroupSize`.
+  const head = digits.slice(0, -3);
+  const groups = head
+    ? [
+        ...(head.match(
+          new RegExp(
+            `\\d{1,${secondaryGroupSize}}(?=(\\d{${secondaryGroupSize}})*$)`,
+            'g',
+          ),
+        ) ?? []),
+        digits.slice(-3),
+      ]
+    : [digits];
+  const grouped = (integer < 0 ? '-' : '') + groups.join(groupSeparator);
   return localizeDigits(grouped, language);
 }
 
@@ -75,15 +101,6 @@ interface NamedSurah {
   name: string;
   name_arabic: string;
 }
-
-/**
- * Phonetic spellings of surah names in a language's own script, keyed by
- * surah number. Transliterated from the Arabic, never translated by meaning.
- * Languages without an entry show the Latin transliteration.
- */
-const SURAH_NAME_TRANSLITERATIONS: Partial<
-  Record<AppLanguage, Readonly<Record<string, string>>>
-> = {am: amSurahNames};
 
 const SURAH_ID_BY_NAME = new Map(SURAHS.map(surah => [surah.name, surah.id]));
 
@@ -94,13 +111,13 @@ function transliteratedSurahName(
   const id = surah.id ?? SURAH_ID_BY_NAME.get(surah.name);
   return id === undefined
     ? undefined
-    : SURAH_NAME_TRANSLITERATIONS[language]?.[String(id)];
+    : getContentPack(language).surahNames?.[String(id)];
 }
 
 /** Every bundled phonetic spelling of a surah's name, for search. */
 export function getSurahNameTransliterations(surahId: number): string[] {
-  return Object.values(SURAH_NAME_TRANSLITERATIONS).flatMap(names => {
-    const name = names?.[String(surahId)];
+  return getAllContentPacks().flatMap(({surahNames}) => {
+    const name = surahNames?.[String(surahId)];
     return name ? [name] : [];
   });
 }
@@ -124,14 +141,6 @@ interface TranslatedSurah {
   translated_name_english: string;
 }
 
-/**
- * Surah meanings translated into a language, keyed by surah number. Amharic
- * comes from the chapter list at https://amharicquran.com/.
- */
-const SURAH_MEANING_TRANSLATIONS: Partial<
-  Record<AppLanguage, Readonly<Record<string, string>>>
-> = {am: amSurahMeanings};
-
 const SURAH_ID_BY_MEANING = new Map(
   SURAHS.map(surah => [surah.translated_name_english, surah.id]),
 );
@@ -151,7 +160,7 @@ export function getSurahMeaning(
   const translated =
     id === undefined
       ? undefined
-      : SURAH_MEANING_TRANSLATIONS[language]?.[String(id)];
+      : getContentPack(language).surahMeanings?.[String(id)];
   return translated ?? surah.translated_name_english;
 }
 
@@ -191,15 +200,6 @@ interface NamedReciter {
   names?: Readonly<Record<string, string>> | null;
 }
 
-/**
- * Bundled phonetic spellings of reciter names, keyed by reciter id, for when
- * the API has no `names` entry (offline first launch, queued tracks).
- * Transliterated, never translated.
- */
-const RECITER_NAME_TRANSLITERATIONS: Partial<
-  Record<AppLanguage, Readonly<Record<string, string>>>
-> = {am: amReciterNames};
-
 function ownScriptReciterName(
   reciter: NamedReciter,
   language: AppLanguage,
@@ -207,7 +207,7 @@ function ownScriptReciterName(
   return (
     reciter.names?.[language] ??
     (reciter.id
-      ? RECITER_NAME_TRANSLITERATIONS[language]?.[reciter.id]
+      ? getContentPack(language).reciterNames?.[reciter.id]
       : undefined)
   );
 }
@@ -216,8 +216,8 @@ function ownScriptReciterName(
 export function getReciterNameTransliterations(
   reciter: NamedReciter,
 ): string[] {
-  const bundled = Object.values(RECITER_NAME_TRANSLITERATIONS).map(names =>
-    reciter.id ? names?.[reciter.id] : undefined,
+  const bundled = getAllContentPacks().map(({reciterNames}) =>
+    reciter.id ? reciterNames?.[reciter.id] : undefined,
   );
   return [...Object.values(reciter.names ?? {}), ...bundled].filter(
     (name): name is string => Boolean(name),
@@ -247,12 +247,15 @@ export function getReciterDisplayName(
     return reciter.name_arabic;
   }
   if (reciter.id) {
-    const byId = (arNamesById as Record<string, string>)[reciter.id];
+    const byId = getArabicReciterNames().byId[reciter.id];
     if (byId) {
       return byId;
     }
   }
-  return arNamesByKey.get(reciterNameKey(reciter.name)) ?? reciter.name;
+  return (
+    getArabicReciterNames().byKey.get(reciterNameKey(reciter.name)) ??
+    reciter.name
+  );
 }
 
 /** Artist line on a queued track. Uploads keep their own name. */

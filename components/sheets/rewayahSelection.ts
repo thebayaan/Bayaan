@@ -24,6 +24,7 @@ import {
   useMushafSettingsStore,
   type MushafRenderer,
 } from '@/store/mushafSettingsStore';
+import i18n from '@/i18n';
 import {showToast} from '@/utils/toastUtils';
 
 export type RewayahSelectionOutcome =
@@ -105,17 +106,24 @@ export function announceRewayahSelection(
 ): void {
   switch (outcome.kind) {
     case 'switched':
-      showToast('Now reading', getShortLabel(outcome.rewayah));
+      showToast(
+        i18n.t('content:toasts.nowReading'),
+        getShortLabel(outcome.rewayah),
+      );
       return;
     case 'kept-hafs':
-      showToast('Now reading', getShortLabel('hafs'));
+      showToast(i18n.t('content:toasts.nowReading'), getShortLabel('hafs'));
       return;
     case 'failed':
       showToast(
-        `Couldn't load ${getShortLabel(outcome.requested)}`,
+        i18n.t('content:toasts.rewayahLoadFailed', {
+          rewayah: getShortLabel(outcome.requested),
+        }),
         outcome.showing
-          ? `Still showing ${getShortLabel(outcome.showing)}.`
-          : 'Please try again.',
+          ? i18n.t('content:toasts.stillShowing', {
+              rewayah: getShortLabel(outcome.showing),
+            })
+          : i18n.t('content:toasts.pleaseTryAgain'),
         'error',
       );
       return;
@@ -205,7 +213,11 @@ export function announceRendererSelection(
   outcome: RendererSelectionOutcome,
 ): void {
   if (outcome.kind === 'failed') {
-    showToast("Couldn't switch to Mushaf 1440", 'Please try again.', 'error');
+    showToast(
+      i18n.t('content:toasts.mushaf1440SwitchFailed'),
+      i18n.t('content:toasts.pleaseTryAgain'),
+      'error',
+    );
   }
 }
 

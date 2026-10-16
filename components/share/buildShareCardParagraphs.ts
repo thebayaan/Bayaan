@@ -40,8 +40,10 @@ import i18n from 'i18next';
 // @ai-end
 import type {RewayahId} from '@/store/mushafSettingsStore';
 import branding from '@/config/branding';
+import {getAppDisplayName} from '@/i18n/format';
 // @ai-start
 import {latinLetterSpacing} from '@/utils/rtl';
+import {SKIA_UI_FONT_FAMILIES} from '@/services/mushaf/MushafPreloadService';
 // @ai-end
 
 // Reference coordinate system constants (from DigitalKhatt / QuranTextService)
@@ -313,7 +315,7 @@ export function buildShareCardParagraphs(
     );
     labelBuilder.pushStyle({
       color: Skia.Color(colors.secondary),
-      fontFamilies: ['ManropeSemiBold', 'PlexSansArabicSemiBold'],
+      fontFamilies: SKIA_UI_FONT_FAMILIES,
       fontSize: watermarkFontSize,
     });
     labelBuilder.addText(getRewayahShortLabel(rewayah));
@@ -336,11 +338,13 @@ export function buildShareCardParagraphs(
     );
     wmBuilder.pushStyle({
       color: Skia.Color(colors.secondary),
-      fontFamilies: ['ManropeSemiBold', 'PlexSansArabicSemiBold'],
+      fontFamilies: SKIA_UI_FONT_FAMILIES,
       fontSize: watermarkFontSize,
     });
     wmBuilder.addText(
-      i18n.t('reader:shareCard.madeWith', {appName: branding.appName}),
+      i18n.t('reader:shareCard.madeWith', {
+        appName: getAppDisplayName(branding.appName),
+      }),
     );
     wmBuilder.pop();
     watermarkParagraph = wmBuilder.build();

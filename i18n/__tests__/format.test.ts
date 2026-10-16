@@ -1,4 +1,5 @@
 // @ai-generated
+import {SUPPORTED_LANGUAGES, getLanguageConfig} from '../languages';
 jest.mock('../language', () => ({currentLanguage: 'en'}));
 
 import {
@@ -29,6 +30,18 @@ describe('localizeDigits', () => {
 });
 
 describe('formatNumber', () => {
+  it('matches Intl grouping and digits for every language', () => {
+    for (const language of SUPPORTED_LANGUAGES) {
+      const {digits} = getLanguageConfig(language);
+      const intl = new Intl.NumberFormat(`${language}-u-nu-${digits}`, {
+        maximumFractionDigits: 0,
+      });
+      for (const value of [0, 7, 999, 1000, 123456, 12345678]) {
+        expect(formatNumber(value, language)).toBe(intl.format(value));
+      }
+    }
+  });
+
   it('groups thousands', () => {
     expect(formatNumber(6236, 'en')).toBe('6,236');
     expect(formatNumber(6236, 'ar')).toBe('٦٬٢٣٦');

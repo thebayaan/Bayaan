@@ -21,7 +21,9 @@
     "footnote": "የግርጌ ማስታወሻ",
     "footnoteContentUnavailable": "የግርጌ ማስታወሻው ይዘት አይገኝም",
     "footnoteDataUnavailable": "የግርጌ ማስታወሻ መረጃ አይገኝም",
-    "wbwHafsNotice": "የቃል በቃል እይታ በHafs ይታያል"
+    "wbwHafsNotice": "የቃል በቃል እይታ በሐፍስ ይታያል",
+    "textUnavailable": "የአንቀጹን ጽሑፍ መጫን አልተቻለም።",
+    "textLoading": "የአንቀጹ ጽሑፍ በመጫን ላይ"
   },
   "reciterProfile": {
     "myUploads": "የጫንኳቸው",
@@ -35,7 +37,21 @@
     "noSurahsFound": "ምንም ሱራ አልተገኘም",
     "thisReciter": "ይህ አንባቢ",
     "shareMessage": "{{name}}ን በ{{appName}} ያዳምጡ",
-    "juzAmma": "ጁዝ ዐም"
+    "juzAmma": "ጁዝ ዐም",
+    "downloadAll": {
+      "alreadyDownloadedMessage": "የሚታዩት ሁሉም ሱራዎች ለዚህ ሪዋያ አስቀድመው ወርደዋል።",
+      "stoppedTitle": "ማውረዱ ቆሟል",
+      "stoppedMessage_one": "ከመቆሙ በፊት {{count}} ሱራ ወርዷል።",
+      "stoppedMessage_other": "ከመቆሙ በፊት {{count}} ሱራዎች ወርደዋል።",
+      "finishedTitle": "ማውረዱ አልቋል",
+      "finishedMessage": "{{downloaded}} ወርደዋል፣ {{failed}} አልተሳኩም። የቀሩትን እንደገና ለመሞከር እንደገና ይንኩ።",
+      "completeMessage": "የ{{name}} ሁሉም ሱራዎች አሁን ያለ በይነመረብ ይገኛሉ።",
+      "a11y": {
+        "cancel": "የሁሉንም ሱራዎች ማውረድ ሰርዝ",
+        "allDownloaded": "ሁሉም ሱራዎች ወርደዋል",
+        "start": "ሁሉንም ሱራዎች አውርድ"
+      }
+    }
   },
   "adhkar": {
     "playAll": "ሁሉንም አጫውት",
@@ -70,7 +86,8 @@
       "pauseAll": "ሁሉንም ለአፍታ አቁም",
       "removeBookmark": "ዕልባት አስወግድ"
     },
-    "otherSection": "ሌሎች"
+    "otherSection": "ሌሎች",
+    "loadFailed": "አዝካርን መጫን አልተቻለም። እባክዎ እንደገና ይሞክሩ።"
   },
   "a11y": {
     "openPlayer": "ሙሉ ማጫወቻውን ይከፍታል"

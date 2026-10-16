@@ -11,6 +11,7 @@ import {
   type RewayahId,
 } from '@/store/mushafSettingsStore';
 import {getRewayahShortLabel} from '@/utils/rewayahLabels';
+import i18n from '@/i18n';
 import {showToast} from '@/utils/toastUtils';
 
 /**
@@ -40,15 +41,17 @@ export async function restoreSavedRewayah(
   const savedLabel = getRewayahShortLabel(savedRewayah);
   if (settings.mushafRenderer === 'qcf_v2' && savedRewayah !== 'hafs') {
     showToast(
-      'Opening in Hafs',
-      `Saved in ${savedLabel}. Mushaf 1440 shows Hafs only.`,
+      i18n.t('content:toasts.openingInHafs'),
+      i18n.t('content:toasts.savedInHafsOnly', {rewayah: savedLabel}),
     );
     return;
   }
   if (!hasTextData(savedRewayah)) {
     showToast(
-      `${savedLabel} text is not available`,
-      `Opening in ${getRewayahShortLabel(settings.rewayah)}.`,
+      i18n.t('content:toasts.rewayahTextUnavailable', {rewayah: savedLabel}),
+      i18n.t('content:toasts.openingInRewayah', {
+        rewayah: getRewayahShortLabel(settings.rewayah),
+      }),
       'error',
     );
     return;
@@ -67,8 +70,10 @@ export async function restoreSavedRewayah(
         );
     }
     showToast(
-      `Couldn't open in ${savedLabel}`,
-      `Showing ${getRewayahShortLabel(settings.rewayah)} instead.`,
+      i18n.t('content:toasts.openInRewayahFailed', {rewayah: savedLabel}),
+      i18n.t('content:toasts.showingRewayahInstead', {
+        rewayah: getRewayahShortLabel(settings.rewayah),
+      }),
       'error',
     );
     return;
@@ -78,10 +83,12 @@ export async function restoreSavedRewayah(
   useMushafSettingsStore.getState().setRewayah(savedRewayah);
   if (useMushafSettingsStore.getState().mushafRenderer !== rendererBefore) {
     showToast(
-      `Opening in ${savedLabel}`,
-      `IndoPak shows Hafs only, so the font is now ${REWAYAH_FALLBACK_RENDERER_LABEL}.`,
+      i18n.t('content:toasts.openingInRewayahTitle', {rewayah: savedLabel}),
+      i18n.t('content:toasts.indopakFontSwitched', {
+        font: REWAYAH_FALLBACK_RENDERER_LABEL,
+      }),
     );
   } else {
-    showToast('Opening in', savedLabel);
+    showToast(i18n.t('collection:bookmarksScreen.openingIn'), savedLabel);
   }
 }

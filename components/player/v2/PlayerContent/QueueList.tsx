@@ -18,11 +18,12 @@ import {useUploadsStore} from '@/store/uploadsStore';
 import Color from 'color';
 // @ai-start
 import {useTranslation} from 'react-i18next';
+import {localizeDigits, getTrackDisplayTitle} from '@/i18n/format';
 import {
-  localizeDigits,
-  getTrackDisplayTitle,
-  getTrackArtistDisplay,
-} from '@/i18n/format';
+  getTrackArtistLabel,
+  getUploadCategoryLabel,
+  UNTAGGED_UPLOAD_ARTIST,
+} from '@/utils/uploadLabels';
 // @ai-end
 
 interface UploadQueueItemProps {
@@ -76,17 +77,14 @@ const UploadQueueItem: React.FC<UploadQueueItemProps> = React.memo(
 
     const categoryLabel = React.useMemo(() => {
       if (recitation?.type !== 'other' || !recitation?.category) return null;
-      return (
-        recitation.category.charAt(0).toUpperCase() +
-        recitation.category.slice(1)
-      );
+      return getUploadCategoryLabel(recitation.category);
     }, [recitation?.type, recitation?.category]);
 
     const tagBg = Color(theme.colors.text).alpha(0.06).toString();
 
     return (
       <Pressable style={uploadQueueStyles.container} onPress={onPress}>
-        {track.reciterName && track.reciterName !== 'My Recitations' ? (
+        {track.reciterName && track.reciterName !== UNTAGGED_UPLOAD_ARTIST ? (
           <ReciterImage
             reciterName={track.reciterName}
             style={uploadQueueStyles.reciterImage}
@@ -156,7 +154,7 @@ const UploadQueueItem: React.FC<UploadQueueItemProps> = React.memo(
               {color: theme.colors.textSecondary},
             ]}
             numberOfLines={1}>
-            {getTrackArtistDisplay(track)}
+            {getTrackArtistLabel(track)}
           </Text>
         </View>
         {isCurrentTrack && (

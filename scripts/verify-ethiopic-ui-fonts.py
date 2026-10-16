@@ -1,12 +1,16 @@
 # @ai-generated
 """Verify pinned UI fonts, preserved Latin text and draft Ethiopic coverage.
 
+scripts/verify-i18n-ui-fonts.py runs this for any language using the
+manropeEthiopic UI font, after its per-language glyph coverage check.
+
 Requires scripts/rewayah/requirements-ci.txt. Optionally check bundled bytes
 with --export-dir <expo export directory>. Native typography review remains
 separate. This command writes only an ignored verification report.
 """
 import argparse
 import hashlib
+import importlib.util
 import json
 from pathlib import Path
 import unicodedata
@@ -16,6 +20,10 @@ from fontTools.ttLib import TTFont
 import uharfbuzz as hb
 
 ROOT = Path(__file__).resolve().parent.parent
+_spec = importlib.util.spec_from_file_location('i18n_registry', Path(__file__).with_name('i18n_registry.py'))
+registry = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(registry)
+UI_FONT = 'manropeEthiopic'
 FONT_DIRECTORY = ROOT / 'assets/fonts/ethiopic/ui'
 WEIGHTS = ('Regular', 'Medium', 'SemiBold', 'Bold', 'Light', 'ExtraLight', 'ExtraBold')
 SAMPLES = (
@@ -64,10 +72,14 @@ def verify(export_directory=None):
     require(len(manifest) == len(WEIGHTS), 'Manifest must contain seven faces')
     records = {row['weight']: row for row in manifest}
     require(set(records) == set(WEIGHTS), 'Manifest weights do not match UI aliases')
-    # Locale copy plus bundled Ethiopic data shown through the UI fonts.
-    sources = [*(ROOT / 'i18n/locales/am').glob('*.json'),
-               ROOT / 'data/surahNamesAm.json', ROOT / 'data/surahMeaningsAm.json',
-               ROOT / 'data/reciterNamesAm.json']
+    # Locale copy plus bundled data of every language rendered with these fonts
+    # (Amharic: data/*Am.json loaded by i18n/*.ts).
+    _, languages = registry.load_languages(root=ROOT)
+    codes = [code for code, config in languages.items() if config['uiFont'] == UI_FONT]
+    require(codes, f'No language in i18n/languages.ts uses {UI_FONT}')
+    sources = [path for code in codes
+               for path in (*sorted((ROOT / f'i18n/locales/{code}').glob('*.json')),
+                            *registry.language_data_files(code, root=ROOT))]
     copy = ''.join(resource_text(json.loads(path.read_text(encoding='utf-8')))
                    for path in sources)
     # Include Ethiopic extensions as well as the main Unicode block.

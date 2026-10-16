@@ -21,7 +21,8 @@ import {FrostedView} from '@/components/FrostedView';
 import {useResponsive} from '@/hooks/useResponsive';
 // @ai-start
 import {useTranslation} from 'react-i18next';
-import {getTrackDisplayTitle, getTrackArtistDisplay} from '@/i18n/format';
+import {getTrackDisplayTitle} from '@/i18n/format';
+import {getTrackArtistLabel} from '@/utils/uploadLabels';
 // @ai-end
 
 // @ai-start
@@ -116,7 +117,7 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
           style={styles.body}
           android_ripple={{color: 'rgba(0, 0, 0, 0.1)', borderless: false}}
           accessibilityRole="button"
-          accessibilityLabel={`${getTrackDisplayTitle(currentTrack)}, ${getTrackArtistDisplay(currentTrack)}`}
+          accessibilityLabel={`${getTrackDisplayTitle(currentTrack)}, ${getTrackArtistLabel(currentTrack)}`}
           accessibilityHint={t('a11y.openPlayer')}>
           <ReciterImage
             reciterName={currentTrack.reciterName}
@@ -129,7 +130,7 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
             <Text
               style={[styles.subtitle, {color: subtitleColor}]}
               numberOfLines={1}>
-              {getTrackArtistDisplay(currentTrack)}
+              {getTrackArtistLabel(currentTrack)}
             </Text>
           </View>
         </Pressable>

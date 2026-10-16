@@ -74,9 +74,6 @@ interface SaheehData {
   [verseKey: string]: SaheehFootnoteEntry;
 }
 
-// Shown in place of the Arabic line when the rewayah's words fail to load. @ai
-const TEXT_UNAVAILABLE_MESSAGE = "Verse text couldn't be loaded.";
-
 // Load Saheeh data at module scope (require() is cached — zero cost since QuranView already loaded it)
 const saheehDataForFootnotes =
   require('@/data/SaheehInternational.translation-with-footnote-tags.json') as SaheehData;
@@ -581,16 +578,16 @@ export const VerseItem = memo<VerseItemProps>(
               styles.textUnavailable,
               {color: derivedColors.translationSource},
             ]}>
-            {TEXT_UNAVAILABLE_MESSAGE}
+            {t('verse.textUnavailable')}
           </Text>
         ) : (
           <View
             style={placeholderStyle}
-            accessibilityLabel="Loading verse text"
+            accessibilityLabel={t('verse.textLoading')}
             testID="verse-text-placeholder"
           />
         ),
-      [placeholderStyle, derivedColors.translationSource],
+      [placeholderStyle, derivedColors.translationSource, t],
     );
     // @ai-end
 

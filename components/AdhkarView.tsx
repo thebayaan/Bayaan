@@ -144,8 +144,9 @@ export const AdhkarView: React.FC<AdhkarViewProps> = ({
   if (error) {
     return (
       <View style={styles.centerContainer}>
+        {/* The store keeps the raw error for logs; show a translated message. */}
         <Text style={[styles.errorText, {color: theme.colors.error}]}>
-          {error}
+          {t('adhkar.loadFailed')}
         </Text>
       </View>
     );

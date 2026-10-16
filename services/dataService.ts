@@ -12,6 +12,7 @@ import {useApiHealthStore} from '../store/apiHealthStore';
 import fallbackReciters from '../data/reciters-fallback.json';
 // @ai-start
 import {rankSurahs} from '@/utils/search/catalog';
+import {sanitizeDisplayNames} from '@/i18n/names';
 // @ai-end
 
 const BAYAAN_API_URL = process.env.EXPO_PUBLIC_BAYAAN_API_URL;
@@ -107,6 +108,7 @@ async function fetchAllRecitersFromApi(): Promise<Reciter[]> {
 
     const reciters: Reciter[] = (json.data ?? []).map((r: any) => ({
       ...r,
+      names: sanitizeDisplayNames(r.names),
       rewayat: (r.rewayat ?? []).map((rw: any) => ({
         ...rw,
         surah_list: rw.surah_list ?? [],

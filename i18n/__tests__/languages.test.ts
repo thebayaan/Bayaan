@@ -83,6 +83,14 @@ describe.each(SUPPORTED_LANGUAGES)('language "%s"', code => {
     expect(config.decimalSeparator).toBe(part('decimal'));
   });
 
+  it('has the CLDR secondary grouping size', () => {
+    const grouped = new Intl.NumberFormat(`${code}-u-nu-latn`, {
+      useGrouping: true,
+    }).format(12345678);
+    const groups = grouped.split(/[^0-9]/).filter(Boolean);
+    expect(config.secondaryGroupSize).toBe(groups[1]?.length ?? 3);
+  });
+
   it('uses a UI font that covers its script', () => {
     expect(FONT_SCRIPTS[config.uiFont]).toContain(config.script);
   });
@@ -123,22 +131,22 @@ it('lists the same languages in resources.ts as in the registry', () => {
   );
 });
 
-it('declares every shipped language to iOS in app.config.js', () => {
-  // Read as text: evaluating app.config.js runs the version script.
-  const appConfig = readFileSync(
-    join(__dirname, '../../app.config.js'),
-    'utf8',
-  );
-  const match = /supportedLocales:\s*{\s*ios:\s*\[([^\]]*)\]/.exec(appConfig);
-  expect(match).not.toBeNull();
-  const declared = (match?.[1] ?? '')
-    .split(',')
-    .map(entry => entry.trim().replace(/^['"]|['"]$/g, ''))
-    .filter(Boolean);
-  for (const language of SHIPPED_LANGUAGES) {
-    expect(declared).toContain(language);
-  }
-  for (const language of declared) {
-    expect(SUPPORTED_LANGUAGES).toContain(language);
-  }
-});
+it.each(['ios', 'android'])(
+  'declares every shipped language to %s in app.config.js',
+  platform => {
+    // Read as text: evaluating app.config.js runs the version script.
+    const appConfig = readFileSync(
+      join(__dirname, '../../app.config.js'),
+      'utf8',
+    );
+    const match = new RegExp(
+      `supportedLocales:\\s*{[^}]*\\b${platform}:\\s*\\[([^\\]]*)\\]`,
+    ).exec(appConfig);
+    expect(match).not.toBeNull();
+    const declared = (match?.[1] ?? '')
+      .split(',')
+      .map(entry => entry.trim().replace(/^['"]|['"]$/g, ''))
+      .filter(Boolean);
+    expect([...declared].sort()).toEqual([...SHIPPED_LANGUAGES].sort());
+  },
+);

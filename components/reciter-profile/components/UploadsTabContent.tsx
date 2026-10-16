@@ -29,6 +29,7 @@ import {getSurahDisplayName, localizeDigits} from '@/i18n/format';
 import {currentLanguage} from '@/i18n/language';
 import {SOURCE_LANGUAGE} from '@/i18n/languages';
 import {getRecitationStyleLabel} from '@/components/player/v2/recitationStyle';
+import {getUploadCategoryLabel} from '@/utils/uploadLabels';
 // @ai-end
 
 interface UploadsTabContentProps {
@@ -194,8 +195,7 @@ const ReciterUploadListItem: React.FC<ReciterUploadListItemProps> = React.memo(
               {item.type === 'other' && item.category && (
                 <View style={styles.tag}>
                   <Text style={styles.tagText}>
-                    {item.category.charAt(0).toUpperCase() +
-                      item.category.slice(1)}
+                    {getUploadCategoryLabel(item.category)}
                   </Text>
                 </View>
               )}

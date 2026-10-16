@@ -18,12 +18,19 @@ export type AppLanguage = (typeof SUPPORTED_LANGUAGES)[number];
 export type Script = 'Latn' | 'Arab' | 'Ethi';
 
 /** CLDR numbering system used for digits in UI text. */
-export type Digits = 'latn' | 'arab';
+export type Digits = 'latn' | 'arab' | 'arabext' | 'deva' | 'beng';
 
-/** Code point of the digit zero in each numbering system. */
+/**
+ * Code point of the digit zero in each numbering system (checked against
+ * Intl in the tests). `arabext` is Persian/Urdu, `deva` Hindi/Marathi,
+ * `beng` Bengali; add a system here before a language can use it.
+ */
 export const DIGIT_ZERO: Readonly<Record<Digits, number>> = {
   latn: 0x30,
   arab: 0x660,
+  arabext: 0x6f0,
+  deva: 0x966,
+  beng: 0x9e6,
 };
 
 /** Font family the Manrope style aliases resolve to (see i18n/fonts.ts). */
@@ -41,6 +48,11 @@ export interface LanguageConfig {
   /** CLDR separators for `digits` (checked against Intl in the tests). */
   groupSeparator: string;
   decimalSeparator: string;
+  /**
+   * CLDR secondary grouping size: 3 for 1,234,567, 2 for the Indian
+   * 12,34,567 (Hindi, Bengali, Urdu). The first group is always 3 digits.
+   */
+  secondaryGroupSize: 2 | 3;
   uiFont: UiFont;
   /** Display transliteration of the canonical Bayaan brand; null keeps its spelling. */
   bayaanTransliteration: string | null;
@@ -75,6 +87,7 @@ export const LANGUAGES: Readonly<Record<AppLanguage, LanguageConfig>> = {
     digits: 'latn',
     groupSeparator: ',',
     decimalSeparator: '.',
+    secondaryGroupSize: 3,
     uiFont: 'manrope',
     bayaanTransliteration: null,
     allowsLetterSpacing: true,
@@ -91,6 +104,7 @@ export const LANGUAGES: Readonly<Record<AppLanguage, LanguageConfig>> = {
     digits: 'arab',
     groupSeparator: '٬',
     decimalSeparator: '٫',
+    secondaryGroupSize: 3,
     uiFont: 'plexSansArabic',
     bayaanTransliteration: null,
     allowsLetterSpacing: false,
@@ -107,6 +121,7 @@ export const LANGUAGES: Readonly<Record<AppLanguage, LanguageConfig>> = {
     digits: 'latn',
     groupSeparator: ',',
     decimalSeparator: '.',
+    secondaryGroupSize: 3,
     uiFont: 'manropeEthiopic',
     bayaanTransliteration: 'በያን',
     allowsLetterSpacing: true,

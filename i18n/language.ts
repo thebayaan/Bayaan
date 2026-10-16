@@ -46,9 +46,27 @@ export function getLanguagePreference(): LanguagePreference {
   return 'system';
 }
 
+/** "zh-Hant-TW" → ["zh-Hant-TW", "zh-Hant", "zh"]; malformed tags give []. */
+export function localeCandidates(tag: string | null | undefined): string[] {
+  if (!tag) {
+    return [];
+  }
+  const parts = tag.replace(/_/g, '-').split('-').filter(Boolean);
+  return parts.map((_, index) =>
+    parts.slice(0, parts.length - index).join('-'),
+  );
+}
+
 export function getDeviceLanguage(): AppLanguage {
   try {
+    // Most specific first: the full tag ("pt-BR", "zh-Hant-TW"), then the
+    // tag without region ("zh-Hant"), then the bare language ("zh").
     for (const locale of getLocales()) {
+      for (const candidate of localeCandidates(locale.languageTag)) {
+        if (isAvailableLanguage(candidate)) {
+          return candidate;
+        }
+      }
       if (isAvailableLanguage(locale.languageCode)) {
         return locale.languageCode;
       }

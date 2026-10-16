@@ -25,6 +25,8 @@ import Color from 'color';
 // @ai-start
 import {flipX, latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
+import {currentLanguage} from '@/i18n/language';
+import {getIntlLocale} from '@/i18n/languages';
 // @ai-end
 
 const TILE_COLORS = [
@@ -286,7 +288,7 @@ export function BrowseAllHero({style}: BrowseAllHeroProps) {
           <View style={styles.content}>
             <View style={styles.textContainer}>
               <Text style={[styles.label, {color: labelColor}]}>
-                {label.toUpperCase()}
+                {label.toLocaleUpperCase(getIntlLocale(currentLanguage))}
               </Text>
               <Text style={[styles.title, {color: titleColor}]}>{title}</Text>
             </View>

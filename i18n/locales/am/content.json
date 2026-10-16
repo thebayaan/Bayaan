@@ -7,7 +7,22 @@
   },
   "toasts": {
     "nowReading": "አሁን በማንበብ ላይ",
-    "showingInHafs": "በHafs እየታየ ነው"
+    "showingInHafs": "በሐፍስ እየታየ ነው",
+    "rewayahLoadFailed": "{{rewayah}}ን መጫን አልተቻለም",
+    "stillShowing": "አሁንም {{rewayah}} እየታየ ነው።",
+    "pleaseTryAgain": "እባክዎ እንደገና ይሞክሩ።",
+    "mushaf1440SwitchFailed": "ወደ ሙስሐፍ 1440 መቀየር አልተቻለም",
+    "showingHafsInstead": "በምትኩ ሐፍስ እየታየ ነው።",
+    "openingInHafs": "በሐፍስ እየተከፈተ ነው",
+    "savedInHafsOnly": "በ{{rewayah}} ተቀምጧል። ሙስሐፍ 1440 የሚያሳየው ሐፍስን ብቻ ነው።",
+    "rewayahTextUnavailable": "የ{{rewayah}} ጽሑፍ አይገኝም",
+    "openingInRewayah": "በ{{rewayah}} እየተከፈተ ነው።",
+    "openingInRewayahTitle": "በ{{rewayah}} እየተከፈተ ነው",
+    "openInRewayahFailed": "በ{{rewayah}} መክፈት አልተቻለም",
+    "showingRewayahInstead": "በምትኩ {{rewayah}} እየታየ ነው።",
+    "indopakFontSwitched": "ኢንዶፓክ የሚያሳየው ሐፍስን ብቻ ስለሆነ ቅርጸ ቁምፊው ወደ {{font}} ተቀይሯል።",
+    "preparingVerses": "አንቀጾችን በማዘጋጀት ላይ",
+    "tryAgainShortly": "ትንሽ ቆይተው እንደገና ይሞክሩ።"
   },
   "uploads": {
     "categories": {

@@ -50,6 +50,7 @@ import branding, {type HomeRow, type HomeRowId} from '@/config/branding';
 // @ai-start
 import {useTranslation} from 'react-i18next';
 import {getReciterDisplayName, getSurahDisplayName} from '@/i18n/format';
+import {getUploadArtistDisplay} from '@/utils/uploadLabels';
 // @ai-end
 
 /**
@@ -215,7 +216,11 @@ const RenderSectionItem = React.memo(
                 ? (item.reciter?.image_url ?? undefined)
                 : undefined
             }
-            reciterName={item.uploadArtist || t('home.myRecitations')}
+            reciterName={
+              item.uploadArtist
+                ? getUploadArtistDisplay(item.uploadArtist)
+                : t('home.myRecitations')
+            }
             surahName={item.uploadTitle || t('home.upload')}
             trackId={`upload:${item.userRecitationId}`}
             reciterId={item.reciter?.id || '__uploads__'}

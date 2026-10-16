@@ -25,7 +25,8 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 // @ai-start
-import {getTrackDisplayTitle, getTrackArtistDisplay} from '@/i18n/format';
+import {getTrackDisplayTitle} from '@/i18n/format';
+import {getTrackArtistLabel} from '@/utils/uploadLabels';
 // @ai-end
 
 // @ai-start
@@ -134,7 +135,7 @@ export const TrackInfo = () => {
             <Text
               style={[styles.reciterName, {color: theme.colors.text}]}
               numberOfLines={1}>
-              {currentTrack ? getTrackArtistDisplay(currentTrack) : ''}
+              {currentTrack ? getTrackArtistLabel(currentTrack) : ''}
             </Text>
             {resolvedRewayah && (rewayat || currentTrack?.rewayahName) && (
               <Text

@@ -46,7 +46,6 @@ import {
   getRegisteredTimingNumbering, // @ai
   parseVerseKeyListId, // @ai
   selectTrackedVerseKeysId, // @ai
-  VERSE_TRACKING_UNAVAILABLE_LABEL, // @ai
 } from '@/utils/timestampNumbering';
 import {
   enhancedVersesBySurah,
@@ -243,6 +242,7 @@ export const QuranView: React.FC<QuranViewProps> = ({
   parentContentWidth,
 }) => {
   const {theme} = useTheme();
+  const {t} = useTranslation('reader'); // @ai
   const readingColors = useReadingThemeColors();
   const {width: screenWidth} = useWindowDimensions();
   const {isTablet} = useResponsive();
@@ -681,7 +681,7 @@ export const QuranView: React.FC<QuranViewProps> = ({
                   {color: readingColors.textSecondary},
                 ]}
                 numberOfLines={1}>
-                {VERSE_TRACKING_UNAVAILABLE_LABEL}
+                {t('playback.trackingUnavailable')}
               </Text>
             )}
             {/* @ai-end */}
