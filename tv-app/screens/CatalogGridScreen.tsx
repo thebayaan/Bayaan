@@ -1,7 +1,6 @@
 import {FlashList} from '@shopify/flash-list';
 import React, {useMemo} from 'react';
 import {Text, TVFocusGuideView, useWindowDimensions, View} from 'react-native';
-import {TopTabBar} from '../components/nav/TopTabBar';
 import {Rail} from '../components/rails/Rail';
 import {RailHeader} from '../components/rails/RailHeader';
 import {ReciterCard} from '../components/rails/ReciterCard';
@@ -145,7 +144,6 @@ export function CatalogGridScreen(): React.ReactElement {
 
   return (
     <View style={styles.container}>
-      <TopTabBar />
       <TVFocusGuideView autoFocus style={styles.listWrap}>
         <FlashList
           data={reciters}
@@ -182,7 +180,7 @@ const styles = createScaledStyles({
   listContent: {paddingBottom: spacing.xxl},
   header: {
     paddingHorizontal: 8,
-    paddingTop: spacing.sm,
+    paddingTop: spacing.xl,
     paddingBottom: spacing.md,
     gap: 6,
   },

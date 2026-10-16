@@ -1,6 +1,5 @@
 import React, {useState} from 'react';
 import {ScrollView, Text, TVFocusGuideView, View} from 'react-native';
-import {TopTabBar} from '../components/nav/TopTabBar';
 import {FocusableButton} from '../components/primitives/FocusableButton';
 import {FocusableCard} from '../components/primitives/FocusableCard';
 import {CheckIcon, TrashIcon} from '../../components/Icons';
@@ -38,7 +37,6 @@ export function SettingsScreen(): React.ReactElement {
 
   return (
     <View style={styles.container}>
-      <TopTabBar />
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}>
@@ -146,7 +144,7 @@ const styles = createScaledStyles({
   container: {flex: 1, backgroundColor: colors.background},
   scroll: {
     paddingHorizontal: spacing.xl,
-    paddingTop: spacing.sm,
+    paddingTop: spacing.xl,
     paddingBottom: spacing.xxl,
     gap: 4,
   },

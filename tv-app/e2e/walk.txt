@@ -18,9 +18,11 @@
 13-seek-forward 3 right
 14-back-to-detail 3 back
 15-back-to-home 3 back
-16-tab-bar 2 up up up up up
-17-search-tab 4 right select
-18-search-typed 5 down select text:fati
-19-collection-tab 4 up up up right select
-20-settings-tab 4 right select
-21-relaunch-home 20 relaunch
+16-sidebar-open 2 left left left left left
+17-search 4 down select
+18-search-typed 5 right select text:fati
+19-reciters 4 left left left down select
+20-library 4 down select
+21-settings 4 down select
+22-back-to-home 3 back
+23-relaunch-home 20 relaunch

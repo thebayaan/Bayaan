@@ -1,11 +1,10 @@
 import {create} from 'zustand';
 
-export type TabKey = 'home' | 'search' | 'collection' | 'settings';
+export type TabKey = 'home' | 'search' | 'reciters' | 'collection' | 'settings';
 
 export type ScreenEntry =
   | {screen: 'nowPlaying'}
-  | {screen: 'reciterDetail'; reciterId: string}
-  | {screen: 'catalogGrid'};
+  | {screen: 'reciterDetail'; reciterId: string};
 
 type NavState = {
   currentTab: TabKey;

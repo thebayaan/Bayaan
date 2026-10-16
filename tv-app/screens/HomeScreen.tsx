@@ -1,6 +1,5 @@
 import React, {useMemo} from 'react';
 import {ScrollView, Text, TVFocusGuideView, View} from 'react-native';
-import {TopTabBar} from '../components/nav/TopTabBar';
 import {Rail} from '../components/rails/Rail';
 import {ReciterCard} from '../components/rails/ReciterCard';
 import {ContinueCard} from '../components/rails/ContinueCard';
@@ -44,6 +43,7 @@ export function HomeScreen(): React.ReactElement {
   const {defaultReciterId} = useDefaultReciter();
   const {playRewayah, resumeContinue} = usePlayer();
   const push = useNavStore(s => s.push);
+  const switchTab = useNavStore(s => s.switchTab);
 
   const surahByNumber = useMemo(() => {
     const map = new Map<number, string>();
@@ -158,7 +158,6 @@ export function HomeScreen(): React.ReactElement {
 
   return (
     <View style={styles.container}>
-      <TopTabBar />
       <ScrollView showsVerticalScrollIndicator={false}>
         <TVFocusGuideView autoFocus style={styles.scroll}>
           <View style={styles.hero}>
@@ -283,7 +282,7 @@ export function HomeScreen(): React.ReactElement {
                   onSelect={handleReciterSelect}
                 />
               ))}
-              <SeeAllCard onSelect={() => push({screen: 'catalogGrid'})} />
+              <SeeAllCard onSelect={() => switchTab('reciters')} />
             </Rail>
           )}
         </TVFocusGuideView>
@@ -296,7 +295,7 @@ const styles = createScaledStyles({
   container: {flex: 1, backgroundColor: colors.background},
   scroll: {
     paddingHorizontal: spacing.xl,
-    paddingTop: spacing.sm,
+    paddingTop: spacing.xl,
     paddingBottom: spacing.xxl,
     gap: spacing.md,
   },

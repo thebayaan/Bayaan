@@ -6,7 +6,6 @@ import {
   TVFocusGuideView,
   View,
 } from 'react-native';
-import {TopTabBar} from '../components/nav/TopTabBar';
 import {FocusableButton} from '../components/primitives/FocusableButton';
 import {Rail} from '../components/rails/Rail';
 import {ReciterCard} from '../components/rails/ReciterCard';
@@ -72,7 +71,6 @@ export function SearchScreen(): React.ReactElement {
 
   return (
     <View style={styles.container}>
-      <TopTabBar />
       <View style={styles.body}>
         <Text style={styles.kicker}>CATALOG</Text>
         <Text style={styles.pageTitle}>Search</Text>
@@ -190,7 +188,7 @@ const styles = createScaledStyles({
   body: {
     flex: 1,
     paddingHorizontal: spacing.xl,
-    paddingTop: spacing.sm,
+    paddingTop: spacing.xl,
     gap: 6,
   },
   kicker: {

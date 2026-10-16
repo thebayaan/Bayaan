@@ -1,9 +1,10 @@
 import {useFonts} from 'expo-font';
-import {fonts} from '../theme/typography';
+import {fonts, surahNameFontFamily} from '../theme/typography';
 
 /**
- * Registers the Manrope brand faces so `typography.fontFamily` resolves to the
- * real brand font instead of the platform fallback. The map keys are the
+ * Registers the Manrope brand faces and the surah-name calligraphy so
+ * `typography.fontFamily` resolves to the real brand font instead of the
+ * platform fallback. The map keys are the
  * family names exported from `theme/typography.ts` so registered names always
  * match what styles reference. Returns true once the fonts are ready.
  */
@@ -16,6 +17,8 @@ export function useBrandFonts(): boolean {
     [fonts.extraBold]: require('../assets/fonts/Manrope-ExtraBold.ttf'),
     [fonts.light]: require('../assets/fonts/Manrope-Light.ttf'),
     [fonts.extraLight]: require('../assets/fonts/Manrope-ExtraLight.ttf'),
+    // Shared with the mobile app rather than copied, so both stay in sync.
+    [surahNameFontFamily]: require('../../assets/fonts/surah_names.ttf'),
   });
   return loaded;
 }

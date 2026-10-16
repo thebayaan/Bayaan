@@ -26,6 +26,14 @@ export const fonts = {
 } as const;
 
 /**
+ * Surah-name calligraphy (the mobile app's `surah_names.ttf`). Each surah's
+ * name is a single private-use glyph; see `utils/surahGlyphMap.ts` and
+ * `components/brand/SurahGlyph.tsx`. Decorative artwork only: it is not Quran
+ * text, which stays on Digital Khatt.
+ */
+export const surahNameFontFamily = 'SurahNames';
+
+/**
  * Digital Khatt family name for Quran / Arabic text. Loaded into a Skia font
  * provider (matches the mobile mushaf pipeline), never used as a system font.
  */

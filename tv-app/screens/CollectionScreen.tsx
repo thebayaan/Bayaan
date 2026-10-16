@@ -1,6 +1,5 @@
 import React, {useMemo, useState} from 'react';
 import {ScrollView, Text, TVFocusGuideView, View} from 'react-native';
-import {TopTabBar} from '../components/nav/TopTabBar';
 import {FocusableButton} from '../components/primitives/FocusableButton';
 import {ReciterCard} from '../components/rails/ReciterCard';
 import {ContinueCard} from '../components/rails/ContinueCard';
@@ -37,6 +36,7 @@ export function CollectionScreen(): React.ReactElement {
   const {reciters} = useReciters();
   const {playRewayah} = usePlayer();
   const push = useNavStore(s => s.push);
+  const switchTab = useNavStore(s => s.switchTab);
   const [tab, setTab] = useState<TabKey>('favorites');
 
   const reciterById = useMemo(() => {
@@ -92,7 +92,7 @@ export function CollectionScreen(): React.ReactElement {
           sub="Open a reciter and tap Favorite to pin them here."
           cta={{
             label: 'Browse reciters',
-            onPress: () => push({screen: 'catalogGrid'}),
+            onPress: () => switchTab('reciters'),
           }}
         />
       );
@@ -122,7 +122,7 @@ export function CollectionScreen(): React.ReactElement {
           sub="Surahs you've started will show up here so you can pick up where you left off."
           cta={{
             label: 'Browse reciters',
-            onPress: () => push({screen: 'catalogGrid'}),
+            onPress: () => switchTab('reciters'),
           }}
         />
       );
@@ -156,7 +156,7 @@ export function CollectionScreen(): React.ReactElement {
           sub="Reciters you've played will appear here for quick return."
           cta={{
             label: 'Browse reciters',
-            onPress: () => push({screen: 'catalogGrid'}),
+            onPress: () => switchTab('reciters'),
           }}
         />
       );
@@ -183,7 +183,6 @@ export function CollectionScreen(): React.ReactElement {
 
   return (
     <View style={styles.container}>
-      <TopTabBar />
       <View style={styles.header}>
         <Text style={styles.kicker}>YOUR LIBRARY</Text>
         <Text style={styles.pageTitle}>Collection</Text>
@@ -268,7 +267,7 @@ function EmptyState({
 const styles = createScaledStyles({
   container: {flex: 1, backgroundColor: colors.background},
   content: {flex: 1},
-  header: {paddingHorizontal: spacing.xl, paddingTop: spacing.sm, gap: 6},
+  header: {paddingHorizontal: spacing.xl, paddingTop: spacing.xl, gap: 6},
   kicker: {
     color: colors.text,
     ...typography.label,

@@ -14,12 +14,15 @@ import {OnboardingScreen} from '../../screens/OnboardingScreen';
 import {ReciterDetailScreen} from '../../screens/ReciterDetailScreen';
 import {CatalogGridScreen} from '../../screens/CatalogGridScreen';
 import {ReciterContextMenu} from '../overlays/ReciterContextMenu';
+import {Sidebar, SIDEBAR_COLLAPSED_WIDTH} from './Sidebar';
 import {useTVBackHandler} from '../../hooks/useTVBackHandler';
+import {scale} from '../../theme/scale';
 
 export function Router(): React.ReactElement {
   const currentTab = useNavStore(s => s.currentTab);
   const stack = useNavStore(s => s.stack);
   const pop = useNavStore(s => s.pop);
+  const switchTab = useNavStore(s => s.switchTab);
   const {onboarded} = useOnboarded();
   const {reciters} = useReciters();
 
@@ -36,14 +39,19 @@ export function Router(): React.ReactElement {
       pop();
       return true;
     }
+    // Back from any other place returns home before it leaves the app.
+    if (currentTab !== 'home') {
+      switchTab('home');
+      return true;
+    }
     return false;
-  }, [stack.length, pop]);
+  }, [stack.length, pop, currentTab, switchTab]);
 
   const contextMenuOpen = useContextMenuStore(s => s.reciterId !== null);
   const overlayOpen = useOverlayStore(s => Boolean(s.active));
   useTVBackHandler(
     handleBack,
-    contextMenuOpen || overlayOpen || stack.length > 0,
+    contextMenuOpen || overlayOpen || stack.length > 0 || currentTab !== 'home',
   );
 
   if (!onboarded && reciters.length > 0) {
@@ -72,21 +80,20 @@ export function Router(): React.ReactElement {
           <ReciterContextMenu />
         </View>
       );
-    if (top.screen === 'catalogGrid')
-      return (
-        <View style={{flex: 1}}>
-          <CatalogGridScreen />
-          <ReciterContextMenu />
-        </View>
-      );
   }
 
+  // Root places share the sidebar; screens sit beside its folded width and it
+  // opens over them, so focusing it never reflows the content.
   return (
     <View style={{flex: 1}}>
-      {currentTab === 'home' && <HomeScreen />}
-      {currentTab === 'search' && <SearchScreen />}
-      {currentTab === 'collection' && <CollectionScreen />}
-      {currentTab === 'settings' && <SettingsScreen />}
+      <View style={{flex: 1, paddingLeft: scale(SIDEBAR_COLLAPSED_WIDTH)}}>
+        {currentTab === 'home' && <HomeScreen />}
+        {currentTab === 'search' && <SearchScreen />}
+        {currentTab === 'reciters' && <CatalogGridScreen />}
+        {currentTab === 'collection' && <CollectionScreen />}
+        {currentTab === 'settings' && <SettingsScreen />}
+      </View>
+      <Sidebar />
       <ReciterContextMenu />
     </View>
   );
