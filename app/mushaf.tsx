@@ -296,6 +296,10 @@ export function MushafToolbar() {
   const currentPage = useMushafPlayerStore(s => s.currentPage);
   const mic = useRecitationMic(currentPage || 1);
   const recitationText = useRecitationStatusText();
+  const hideText = useMushafSettingsStore(s => s.recitationHideText);
+  const toggleHideText = useMushafSettingsStore(
+    s => s.toggleRecitationHideText,
+  );
   const currentSurah = useMushafPlayerStore(s => s.currentSurah);
   // @ai-start
   const currentVerseLabel = useMushafPlayerStore(s => s.currentVerseLabel);
@@ -386,6 +390,11 @@ export function MushafToolbar() {
           <RecitationToolbarLabel text={recitationText} />
         </Stack.Toolbar.View>
         <Stack.Toolbar.Spacer />
+        <Stack.Toolbar.Button
+          icon={hideText ? 'eye.slash' : 'eye'}
+          onPress={toggleHideText}>
+          {hideText ? 'Show text' : 'Hide text'}
+        </Stack.Toolbar.Button>
       </Stack.Toolbar>
     );
   }

@@ -39,6 +39,7 @@ import {
   useRecitationStatusText,
 } from './RecitationMicButton';
 import {stopRecitationTracking} from '@/services/recitation/RecitationTrackingService';
+import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 
 // @ai-start
 const surahNameOf = (surah: number): string =>
@@ -63,6 +64,10 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
   const verseTrackingUnavailable = numberingMode === 'disabled'; // @ai
   const timestampError = useMushafPlayerStore(s => s.timestampError);
   const recitationText = useRecitationStatusText();
+  const hideText = useMushafSettingsStore(s => s.recitationHideText);
+  const toggleHideText = useMushafSettingsStore(
+    s => s.toggleRecitationHideText,
+  );
   const isIdle = playbackState === 'idle';
   const isLoading = playbackState === 'loading';
   const isPlaying = playbackState === 'playing';
@@ -167,7 +172,18 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
               ]}
             />
           </View>
-          <View style={styles.edgeButton} />
+          <Pressable
+            style={styles.edgeButton}
+            onPress={toggleHideText}
+            accessibilityRole="button"
+            accessibilityLabel={hideText ? 'Show the text' : 'Hide the text'}
+            accessibilityState={{selected: hideText}}>
+            <Feather
+              name={hideText ? 'eye-off' : 'eye'}
+              size={moderateScale(20)}
+              color={theme.colors.text}
+            />
+          </Pressable>
         </View>
         <Text
           style={[styles.verseInfo, {color: theme.colors.textSecondary}]}

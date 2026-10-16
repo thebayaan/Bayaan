@@ -121,6 +121,9 @@ interface MushafSettingsState {
   // Mic button in the mushaf bar that follows the reader's own recitation
   // (on-device Tilawa model). Opt-in, default off.
   showRecitationTracking: boolean;
+  // Memorisation: while following the reader's recitation, ghost the page
+  // text and reveal words as they are recited.
+  recitationHideText: boolean;
 
   // Word-by-word settings
   showWBW: boolean;
@@ -182,6 +185,7 @@ interface MushafSettingsState {
   toggleThemes: () => void;
   toggleCommunityReflections: () => void;
   toggleRecitationTracking: () => void;
+  toggleRecitationHideText: () => void;
   toggleWBW: () => void;
   toggleWBWTranslation: () => void;
   toggleWBWTransliteration: () => void;
@@ -227,6 +231,7 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
       showThemes: false,
       showCommunityReflections: false,
       showRecitationTracking: false,
+      recitationHideText: false,
       showWBW: false,
       wbwShowTranslation: true,
       wbwShowTransliteration: false,
@@ -270,6 +275,8 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
         set(state => ({
           showRecitationTracking: !state.showRecitationTracking,
         })),
+      toggleRecitationHideText: () =>
+        set(state => ({recitationHideText: !state.recitationHideText})),
       toggleWBW: () => set(state => ({showWBW: !state.showWBW})),
       toggleWBWTranslation: () =>
         set(state => ({wbwShowTranslation: !state.wbwShowTranslation})),
@@ -526,6 +533,7 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
         if (version < 19) {
           // Recitation follow-along, opt-in, default off.
           state.showRecitationTracking = false;
+          state.recitationHideText = false;
         }
         return state as unknown as MushafSettingsState;
       },

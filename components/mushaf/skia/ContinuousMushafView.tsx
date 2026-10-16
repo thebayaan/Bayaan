@@ -68,6 +68,7 @@ import {useVerseUnitDragSelect, type LineCharHit} from './verseUnitDragSelect';
 // @ai-end
 import {type MushafLayoutMetrics, canvasBottomOverflow} from '../constants'; // @ai
 import {useRecitationLineHighlights} from './useRecitationLineHighlights';
+import {useRecitationHiddenText} from './useRecitationHiddenText';
 
 // Rendering constants are now derived from live `metrics` (see
 // `useRenderConstants` below). On phones the old frozen values are
@@ -589,6 +590,15 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
       verseUnitsVersion, // @ai
     ]);
 
+    // Memorisation: words not yet recited are ghosted while hiding is on.
+    const lineCharColors = useRecitationHiddenText(
+      pageNumber,
+      pageLines,
+      lineAllahNameColorMaps,
+      textColor,
+      isDarkMode,
+    );
+
     // Recitation follow-along: recited ayat and the word being recited.
     const lineHighlights = useRecitationLineHighlights(
       pageNumber,
@@ -660,7 +670,7 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
                 margin={lineMargin}
                 yPos={yPos}
                 textColor={textColor}
-                charToColor={lineAllahNameColorMaps?.[lineIndex] ?? undefined}
+                charToColor={lineCharColors?.[lineIndex] ?? undefined}
                 charToRule={lineCharRuleMaps?.[lineIndex] ?? undefined}
                 fontFamily={fontFamily}
                 arabicTextWeight={arabicTextWeight}

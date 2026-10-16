@@ -18,6 +18,7 @@ import {
   createRecitationEngine,
   type RecitationEngine,
 } from './recitationEngine';
+import {nextRevealed} from './reveal';
 import {
   requestMicPermission,
   startMicStream,
@@ -69,9 +70,17 @@ function handleEvent(msg: WorkerOutbound): void {
         page_hint_matched: takeHint?.surah === msg.surah,
       });
     }
+    const key = `${msg.surah}:${msg.ayah}`;
     setState({
       locked: true,
-      verseKey: `${msg.surah}:${msg.ayah}`,
+      revealed: nextRevealed(
+        state.revealed,
+        state.verseKey,
+        key,
+        msg.word_index,
+        msg.total_words,
+      ),
+      verseKey: key,
       wordIndex: msg.word_index,
       totalWords: msg.total_words,
     });

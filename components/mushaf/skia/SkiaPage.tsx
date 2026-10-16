@@ -62,6 +62,7 @@ import {
 import {computeUnitPageHighlightLayers} from './verseHighlightLayers';
 import {usePlaybackBand} from './playbackBand';
 import {useRecitationLineHighlights} from './useRecitationLineHighlights';
+import {useRecitationHiddenText} from './useRecitationHiddenText';
 import {useVerseUnitDragSelect, type LineCharHit} from './verseUnitDragSelect';
 // @ai-end
 import {
@@ -736,6 +737,15 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
     verseUnitsVersion, // @ai
   ]);
 
+  // Memorisation: words not yet recited are ghosted while hiding is on.
+  const lineCharColors = useRecitationHiddenText(
+    pageNumber,
+    pageLines,
+    lineAllahNameColorMaps,
+    textColor,
+    isDarkMode,
+  );
+
   // Recitation follow-along: recited ayat and the word being recited.
   const lineHighlights = useRecitationLineHighlights(
     pageNumber,
@@ -808,7 +818,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
               yPos={yPos}
               textColor={textColor}
               charToRule={lineCharRuleMaps?.[lineIndex] ?? undefined}
-              charToColor={lineAllahNameColorMaps?.[lineIndex] ?? undefined}
+              charToColor={lineCharColors?.[lineIndex] ?? undefined}
               fontFamily={fontFamily}
               arabicTextWeight={arabicTextWeight}
               textIdentity={textIdentity} // @ai
