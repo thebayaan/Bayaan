@@ -1,42 +1,125 @@
-import React, {useMemo} from 'react';
-import {ScrollView, Text, TVFocusGuideView, View} from 'react-native';
-import {Rail} from '../components/rails/Rail';
-import {ReciterCard} from '../components/rails/ReciterCard';
-import {ContinueCard} from '../components/rails/ContinueCard';
-import {QuickPlayCard} from '../components/rails/QuickPlayCard';
-import {SeeAllCard} from '../components/rails/SeeAllCard';
-import {FeaturedBanner} from '../components/rails/FeaturedBanner';
+import React, {useMemo, useRef} from 'react';
+import {ScrollView, Text, View} from 'react-native';
+import {HomeHero, type HeroArt} from '../components/home/HomeHero';
+import {HomeClock} from '../components/home/HomeClock';
+import {HomeGlow} from '../components/home/HomeGlow';
+import {HomeRail, HOME_GUTTER} from '../components/home/HomeRail';
+import {ContinueWideCard} from '../components/home/ContinueWideCard';
+import {AdhkarTile, SurahTile} from '../components/home/MomentTiles';
+import {ReciterPortrait} from '../components/home/ReciterPortrait';
 import {useReciters} from '../hooks/useReciters';
 import {useContinueListening} from '../hooks/useContinueListening';
 import {useDefaultReciter} from '../hooks/useDefaultReciter';
 import {useFavorites} from '../hooks/useFavorites';
 import {useRecentlyPlayed} from '../hooks/useRecentlyPlayed';
 import {usePlayer} from '../hooks/usePlayer';
+import {useClock} from '../hooks/useClock';
+import {
+  adhkarFacts,
+  adhkarTileMeta,
+  estimateAdhkarMinutes,
+  homePlanAt,
+  homeSections,
+  quickPicks,
+  surahFacts,
+  type HomeHero as HeroPlan,
+  type HomeSection,
+  type MomentItem,
+} from '../hooks/homeMoments';
+import {pickHomeReciters} from '../hooks/homeReciters';
 import {useNavStore} from '../store/navStore';
-import {fetchRewayat} from '../services/tvDataService';
+import {fetchRewayat, getDefaultReciter} from '../services/tvDataService';
+import {adhkarForList, adhkarList} from '../services/adhkarData';
 import type {Reciter} from '../types/reciter';
 import type {ContinueEntry} from '../services/continueListeningStore';
-import SURAHS from '../../data/surahData.json';
+import {SURAHS} from '../../data/surahData';
+import {surahGlow} from '../theme/surahColors';
 import {colors} from '../theme/colors';
-import {spacing} from '../theme/spacing';
 import {fonts} from '../theme/typography';
 import {createScaledStyles} from '../theme/scale';
-import {getReciterArtwork} from '../services/reciterArtwork';
 
-const QUICK_PLAY_SURAHS = [1, 18, 67, 55, 36, 112];
+const surahNameMap = new Map<number, string>(SURAHS.map(s => [s.id, s.name]));
 
-type SurahMeta = {id: number; name: string};
-
-function timeOfDayGreeting(): string {
-  const h = new Date().getHours();
-  if (h < 4) return 'Peaceful night';
-  if (h < 12) return 'Good morning';
-  if (h < 17) return 'Good afternoon';
-  return 'Good evening';
+function surahName(n: number): string {
+  return surahNameMap.get(n) ?? `Surah ${n}`;
 }
 
+type AdhkarSummary = {
+  listId: string;
+  title: string;
+  arabicTitle: string;
+  color: string;
+  count: number;
+  minutes: number;
+};
+
+function adhkarSummary(listId: string): AdhkarSummary | null {
+  const list = adhkarList(listId);
+  if (!list) return null;
+  const items = adhkarForList(listId);
+  return {
+    listId,
+    title: list.title,
+    arabicTitle: list.arabicTitle,
+    color: list.color,
+    count: items.length,
+    minutes: estimateAdhkarMinutes(items),
+  };
+}
+
+type HeroView = {
+  kicker: string;
+  title: string;
+  sentence: string;
+  art: HeroArt;
+  glow: readonly string[];
+  primaryLabel: string;
+  secondaryLabel: string;
+  /** The surah the primary plays, or null when it opens adhkar. */
+  primarySurah: number | null;
+  listId: string | null;
+  /** The surah the secondary plays, or null when it opens Reciters. */
+  insteadSurah: number | null;
+};
+
+function heroView(plan: HeroPlan, reciterName: string | null): HeroView {
+  if (plan.kind === 'adhkar') {
+    const summary = adhkarSummary(plan.listId);
+    return {
+      kicker: plan.kicker,
+      title: plan.title,
+      sentence: summary ? adhkarFacts(summary.count, summary.minutes) : '',
+      art: {kind: 'arabic', text: summary?.arabicTitle ?? ''},
+      glow: summary ? [summary.color, summary.color, summary.color] : [],
+      primaryLabel: 'Begin',
+      secondaryLabel: `${surahName(plan.insteadSurah)} instead`,
+      primarySurah: null,
+      listId: plan.listId,
+      insteadSurah: plan.insteadSurah,
+    };
+  }
+  return {
+    kicker: plan.kicker,
+    title: surahName(plan.surahNumber),
+    sentence: `${plan.lead} ${surahFacts(plan.surahNumber, reciterName)}`,
+    art: {kind: 'surah', surahNumber: plan.surahNumber},
+    glow: surahGlow(plan.surahNumber),
+    primaryLabel: 'Play',
+    secondaryLabel: 'Another reciter',
+    primarySurah: plan.surahNumber,
+    listId: null,
+    insteadSurah: null,
+  };
+}
+
+/**
+ * Home: a hero that follows the day (adhkar after Fajr and in the evening,
+ * Al-Kahf on Friday, Al-Mulk at night, a surah of the day otherwise), the
+ * clock, then at most two rails: Continue listening and the moment's rail,
+ * or Quick picks and reciters on a first launch.
+ */
 export function HomeScreen(): React.ReactElement {
-  const {reciters} = useReciters();
+  const {reciters, loading} = useReciters();
   const continueEntries = useContinueListening();
   const favorites = useFavorites();
   const recent = useRecentlyPlayed();
@@ -44,12 +127,17 @@ export function HomeScreen(): React.ReactElement {
   const {playRewayah, resumeContinue} = usePlayer();
   const push = useNavStore(s => s.push);
   const switchTab = useNavStore(s => s.switchTab);
+  const now = useClock();
+  const busy = useRef(false);
 
-  const surahByNumber = useMemo(() => {
-    const map = new Map<number, string>();
-    (SURAHS as SurahMeta[]).forEach(s => map.set(s.id, s.name));
-    return map;
-  }, []);
+  // Re-plan when the hour turns, not on every minute tick.
+  const hourStart = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+    now.getHours(),
+  ).getTime();
+  const plan = useMemo(() => homePlanAt(new Date(hourStart)), [hourStart]);
 
   const reciterById = useMemo(() => {
     const map = new Map<string, Reciter>();
@@ -57,236 +145,203 @@ export function HomeScreen(): React.ReactElement {
     return map;
   }, [reciters]);
 
-  const favoriteReciters = useMemo(
+  // Home plays with the default reciter, or the app's pick until one is set.
+  const playReciter = useMemo<Reciter | null>(
     () =>
-      favorites
-        .map(f => reciterById.get(f.reciterId))
-        .filter((r): r is Reciter => !!r),
-    [favorites, reciterById],
+      (defaultReciterId ? reciterById.get(defaultReciterId) : undefined) ??
+      getDefaultReciter(reciters),
+    [defaultReciterId, reciterById, reciters],
   );
 
-  const recentReciters = useMemo(
+  const hero = useMemo(
+    () => heroView(plan.hero, playReciter?.name ?? null),
+    [plan.hero, playReciter],
+  );
+
+  const homeReciters = useMemo(
     () =>
-      recent
-        .map(e => reciterById.get(e.reciterId))
-        .filter((r): r is Reciter => !!r)
-        .slice(0, 10),
-    [recent, reciterById],
+      pickHomeReciters({
+        reciters,
+        favoriteIds: favorites.map(f => f.reciterId),
+        recentIds: recent.map(e => e.reciterId),
+        defaultId: defaultReciterId,
+      }),
+    [reciters, favorites, recent, defaultReciterId],
   );
 
-  const featuredReciters = useMemo(
-    () => reciters.filter(r => r.is_featured).slice(0, 10),
-    [reciters],
-  );
+  const sections = homeSections({
+    hasContinue: continueEntries.length > 0,
+    hasHistory: recent.length > 0 || favorites.length > 0,
+    hasMoments: (plan.moments?.items.length ?? 0) > 0,
+  });
 
-  const excludeIds = useMemo(() => {
-    const set = new Set<string>();
-    favorites.forEach(f => set.add(f.reciterId));
-    recent.forEach(r => set.add(r.reciterId));
-    return set;
-  }, [favorites, recent]);
+  // One playback request at a time: a second OK while the rewayat load
+  // would otherwise start two queues.
+  async function guarded(task: () => Promise<void>): Promise<void> {
+    if (busy.current) return;
+    busy.current = true;
+    try {
+      await task();
+    } catch {
+      // Playback failures surface in the player's own error banner.
+    } finally {
+      busy.current = false;
+    }
+  }
 
-  const discoverReciters = useMemo(
-    () => reciters.filter(r => !excludeIds.has(r.id)).slice(0, 12),
-    [reciters, excludeIds],
-  );
+  function playSurah(surahNumber: number): void {
+    const reciter = playReciter;
+    if (!reciter) return;
+    void guarded(async () => {
+      const rewayat = await fetchRewayat(reciter.id);
+      const rewayah =
+        rewayat.find(r => r.surah_list.includes(surahNumber)) ?? rewayat[0];
+      if (!rewayah) return;
+      await playRewayah(reciter.id, reciter.name, rewayah, surahNumber);
+      push({screen: 'nowPlaying'});
+    });
+  }
 
-  const spotlight = useMemo(() => {
-    const featured = reciters.find(r => r.is_featured && getReciterArtwork(r));
-    return (
-      featured ??
-      reciters.find(r => getReciterArtwork(r)) ??
-      reciters[0] ??
-      null
-    );
-  }, [reciters]);
+  function openAdhkar(listId: string): void {
+    push({screen: 'adhkarReader', listId});
+  }
 
-  const warshReciters = useMemo(
-    () =>
-      reciters
-        .filter(r => r.rewayat?.some(rew => /warsh/i.test(rew.name)))
-        .slice(0, 14),
-    [reciters],
-  );
+  function handleContinue(entry: ContinueEntry): void {
+    const reciter = reciterById.get(entry.reciterId);
+    if (!reciter) return;
+    void guarded(async () => {
+      const rewayat = await fetchRewayat(entry.reciterId);
+      const rewayah = rewayat.find(r => r.id === entry.rewayahId) ?? rewayat[0];
+      if (!rewayah) return;
+      await resumeContinue(
+        reciter.id,
+        reciter.name,
+        rewayah,
+        entry.surahNumber,
+        entry.positionSeconds,
+      );
+      push({screen: 'nowPlaying'});
+    });
+  }
 
-  const qalunReciters = useMemo(
-    () =>
-      reciters
-        .filter(r => r.rewayat?.some(rew => /qalon|qalun/i.test(rew.name)))
-        .slice(0, 14),
-    [reciters],
-  );
-
-  const multiRewayahReciters = useMemo(
-    () => reciters.filter(r => (r.rewayat?.length ?? 0) > 1).slice(0, 12),
-    [reciters],
-  );
-
-  async function handleReciterSelect(reciter: Reciter): Promise<void> {
+  function handleReciter(reciter: Reciter): void {
     push({screen: 'reciterDetail', reciterId: reciter.id});
   }
 
-  async function handleContinueSelect(entry: ContinueEntry): Promise<void> {
-    const reciter = reciterById.get(entry.reciterId);
-    if (!reciter) return;
-    const rewayat = await fetchRewayat(entry.reciterId);
-    const rewayah = rewayat.find(r => r.id === entry.rewayahId) ?? rewayat[0];
-    if (!rewayah) return;
-    await resumeContinue(
-      reciter.id,
-      reciter.name,
-      rewayah,
-      entry.surahNumber,
-      entry.positionSeconds,
+  function handlePrimary(): void {
+    if (hero.listId) openAdhkar(hero.listId);
+    else if (hero.primarySurah) playSurah(hero.primarySurah);
+  }
+
+  function handleSecondary(): void {
+    if (hero.insteadSurah) playSurah(hero.insteadSurah);
+    else switchTab('reciters');
+  }
+
+  function renderMoment(item: MomentItem): React.ReactElement | null {
+    if (item.kind === 'surah') {
+      return (
+        <SurahTile
+          key={`s${item.surahNumber}`}
+          surahNumber={item.surahNumber}
+          surahName={surahName(item.surahNumber)}
+          onSelect={playSurah}
+        />
+      );
+    }
+    const summary = adhkarSummary(item.listId);
+    if (!summary) return null;
+    return (
+      <AdhkarTile
+        key={`a${item.listId}`}
+        listId={summary.listId}
+        title={summary.title}
+        arabicTitle={summary.arabicTitle}
+        color={summary.color}
+        meta={adhkarTileMeta(summary.count, summary.minutes)}
+        onSelect={openAdhkar}
+      />
     );
-    push({screen: 'nowPlaying'});
   }
 
-  async function handleQuickPlay(surahNumber: number): Promise<void> {
-    if (!defaultReciterId) return;
-    const reciter = reciterById.get(defaultReciterId);
-    if (!reciter) return;
-    const rewayat = await fetchRewayat(defaultReciterId);
-    const rewayah = rewayat[0];
-    if (!rewayah) return;
-    await playRewayah(reciter.id, reciter.name, rewayah, surahNumber);
-    push({screen: 'nowPlaying'});
+  function renderSection(section: HomeSection): React.ReactNode {
+    switch (section) {
+      case 'continue':
+        return (
+          <HomeRail key="continue" title="Continue listening">
+            {continueEntries.map(e => (
+              <ContinueWideCard
+                key={`${e.reciterId}:${e.surahNumber}`}
+                entry={e}
+                surahName={surahName(e.surahNumber)}
+                reciterName={reciterById.get(e.reciterId)?.name ?? ''}
+                onSelect={handleContinue}
+              />
+            ))}
+          </HomeRail>
+        );
+      case 'moments':
+        return plan.moments ? (
+          <HomeRail key="moments" title={plan.moments.title}>
+            {plan.moments.items.map(renderMoment)}
+          </HomeRail>
+        ) : null;
+      case 'quickPicks':
+        return (
+          <HomeRail key="quickPicks" title="Quick picks">
+            {quickPicks(hero.primarySurah).map(n => (
+              <SurahTile
+                key={n}
+                surahNumber={n}
+                surahName={surahName(n)}
+                onSelect={playSurah}
+              />
+            ))}
+          </HomeRail>
+        );
+      case 'reciters':
+        if (homeReciters.reciters.length === 0) {
+          return (
+            <Text key="reciters" style={styles.status}>
+              {loading ? 'Loading reciters…' : 'Reciters are unavailable.'}
+            </Text>
+          );
+        }
+        return (
+          <HomeRail key="reciters" title={homeReciters.title}>
+            {homeReciters.reciters.map(r => (
+              <ReciterPortrait
+                key={r.id}
+                reciter={r}
+                onSelect={handleReciter}
+              />
+            ))}
+          </HomeRail>
+        );
+    }
   }
-
-  const hasContinue = continueEntries.length > 0;
-  const greeting = timeOfDayGreeting();
 
   return (
     <View style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <TVFocusGuideView autoFocus style={styles.scroll}>
-          <View style={styles.hero}>
-            <Text style={styles.greeting}>{greeting}</Text>
-          </View>
-          {spotlight && (
-            <FeaturedBanner
-              reciter={spotlight}
-              onSelect={handleReciterSelect}
-              hasTVPreferredFocus={!hasContinue}
-            />
-          )}
-
-          {hasContinue && (
-            <Rail title="Continue Listening">
-              {continueEntries.map((e, i) => (
-                <ContinueCard
-                  key={`${e.reciterId}:${e.surahNumber}`}
-                  entry={e}
-                  reciter={reciterById.get(e.reciterId) ?? null}
-                  surahName={
-                    surahByNumber.get(e.surahNumber) ?? `Surah ${e.surahNumber}`
-                  }
-                  onSelect={handleContinueSelect}
-                  hasTVPreferredFocus={i === 0}
-                />
-              ))}
-            </Rail>
-          )}
-
-          {recentReciters.length > 0 && (
-            <Rail title="Jump Back In">
-              {recentReciters.map(r => (
-                <ReciterCard
-                  key={r.id}
-                  reciter={r}
-                  onSelect={handleReciterSelect}
-                />
-              ))}
-            </Rail>
-          )}
-
-          {favoriteReciters.length > 0 && (
-            <Rail title="Your Favorites">
-              {favoriteReciters.map(r => (
-                <ReciterCard
-                  key={r.id}
-                  reciter={r}
-                  onSelect={handleReciterSelect}
-                />
-              ))}
-            </Rail>
-          )}
-
-          {defaultReciterId && (
-            <Rail title="Quick Play">
-              {QUICK_PLAY_SURAHS.map(n => (
-                <QuickPlayCard
-                  key={n}
-                  surahNumber={n}
-                  surahName={surahByNumber.get(n) ?? `Surah ${n}`}
-                  onSelect={handleQuickPlay}
-                />
-              ))}
-            </Rail>
-          )}
-
-          {featuredReciters.length > 0 && (
-            <Rail title="Featured Reciters">
-              {featuredReciters.map(r => (
-                <ReciterCard
-                  key={r.id}
-                  reciter={r}
-                  onSelect={handleReciterSelect}
-                />
-              ))}
-            </Rail>
-          )}
-
-          {warshReciters.length >= 5 && (
-            <Rail title="Warsh A'n Nafi'">
-              {warshReciters.map(r => (
-                <ReciterCard
-                  key={r.id}
-                  reciter={r}
-                  onSelect={handleReciterSelect}
-                />
-              ))}
-            </Rail>
-          )}
-
-          {qalunReciters.length >= 5 && (
-            <Rail title="Qalun A'n Nafi'">
-              {qalunReciters.map(r => (
-                <ReciterCard
-                  key={r.id}
-                  reciter={r}
-                  onSelect={handleReciterSelect}
-                />
-              ))}
-            </Rail>
-          )}
-
-          {multiRewayahReciters.length >= 5 && (
-            <Rail title="Multiple Rewayat">
-              {multiRewayahReciters.map(r => (
-                <ReciterCard
-                  key={r.id}
-                  reciter={r}
-                  onSelect={handleReciterSelect}
-                />
-              ))}
-            </Rail>
-          )}
-
-          {discoverReciters.length > 0 && (
-            <Rail title="Discover">
-              {discoverReciters.map(r => (
-                <ReciterCard
-                  key={r.id}
-                  reciter={r}
-                  onSelect={handleReciterSelect}
-                />
-              ))}
-              <SeeAllCard onSelect={() => switchTab('reciters')} />
-            </Rail>
-          )}
-        </TVFocusGuideView>
+      <HomeGlow palette={hero.glow} />
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scroll}>
+        <HomeHero
+          kicker={hero.kicker}
+          title={hero.title}
+          sentence={hero.sentence}
+          art={hero.art}
+          primaryLabel={hero.primaryLabel}
+          onPrimary={handlePrimary}
+          secondaryLabel={hero.secondaryLabel}
+          onSecondary={handleSecondary}
+        />
+        {sections.map(renderSection)}
       </ScrollView>
+      <View style={styles.clock} pointerEvents="none">
+        <HomeClock now={now} />
+      </View>
     </View>
   );
 }
@@ -294,17 +349,16 @@ export function HomeScreen(): React.ReactElement {
 const styles = createScaledStyles({
   container: {flex: 1, backgroundColor: colors.background},
   scroll: {
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.xl,
-    paddingBottom: spacing.xxl,
-    gap: spacing.md,
+    paddingHorizontal: HOME_GUTTER,
+    paddingTop: 40,
+    paddingBottom: 90,
   },
-  hero: {marginBottom: 4},
-  greeting: {
-    color: colors.text,
-    fontFamily: fonts.extraBold,
-    fontSize: 40,
-    fontWeight: '800',
-    letterSpacing: -0.6,
+  clock: {position: 'absolute', top: 52, right: HOME_GUTTER},
+  status: {
+    color: colors.textSecondary,
+    fontFamily: fonts.medium,
+    fontWeight: '500',
+    fontSize: 20,
+    marginTop: 24,
   },
 });
