@@ -89,7 +89,16 @@ export function createAudioEngine(): AudioEngine {
     );
     const positionSeconds = safeGet(() => expoAudioService.getCurrentTime(), 0);
     const durationSeconds = safeGet(() => expoAudioService.getDuration(), 0);
-    return {status, positionSeconds, durationSeconds};
+    // ExpoAudioService stays "playing" after a track runs out (only stop()
+    // returns it to idle), so report the end here: the player stopped at the
+    // end of the track. The store treats playing -> idle at the end as
+    // finished and moves on (next surah, repeat, sleep at end of surah).
+    const ranOut =
+      status === 'playing' &&
+      durationSeconds > 0 &&
+      positionSeconds >= durationSeconds - 0.5 &&
+      !safeGet(() => expoAudioService.getIsPlaying(), true);
+    return {status: ranOut ? 'idle' : status, positionSeconds, durationSeconds};
   }
 
   function emit(): void {
