@@ -17,5 +17,7 @@ const styles = createScaledStyles({
     letterSpacing: -0.3,
     marginBottom: 16,
     marginTop: 8,
+    // Lines up with the rail's first card, which sits 16 in for its focus ring.
+    paddingLeft: 16,
   },
 });
