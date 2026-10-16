@@ -73,15 +73,21 @@ export function AdhkarReaderScreen({listId, mode}: Props): React.ReactElement {
     useAdhkarSessionStore.getState();
 
   useEffect(() => {
-    if (mode === 'listen') setAutoAdvance(true);
-    if (mode === 'count') setAutoAdvance(false);
+    // Search's "Listen through" and "Count each for me" both let the
+    // recitations play and count themselves (Auto-advance) for this visit
+    // only; the viewer's own Auto-advance choice comes back on the way out.
+    const saved = useAdhkarSessionStore.getState().autoAdvance;
+    const forced = mode === 'listen' || mode === 'count';
+    if (forced) setAutoAdvance(true);
     open(
       listId,
       adhkar.map(d => d.repeatCount),
       adhkar.map(d => d.audioUrl),
-      {autoplay: mode !== 'count'},
     );
-    return () => close();
+    return () => {
+      close();
+      if (forced) setAutoAdvance(saved);
+    };
   }, [listId, mode, adhkar, open, close, setAutoAdvance]);
 
   const ready = session !== null && session.listId === listId;

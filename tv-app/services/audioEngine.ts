@@ -101,8 +101,12 @@ export function createAudioEngine(): AudioEngine {
     return {status: ranOut ? 'idle' : status, positionSeconds, durationSeconds};
   }
 
+  // Lost the player and not yet taken it back: whatever it reports now is
+  // another engine's track (a late pause from the adhkar reader, say).
+  const sidelined = (): boolean => otherHasFocus() || resumeAt !== null;
+
   function emit(): void {
-    if (otherHasFocus()) return;
+    if (sidelined()) return;
     const event = snapshot();
     listeners.forEach(cb => cb(event));
   }
@@ -121,7 +125,7 @@ export function createAudioEngine(): AudioEngine {
 
   // Listen to ExpoAudioService state changes (play/pause/error transitions)
   const removeStateListener = expoAudioService.addStateListener(() => {
-    if (otherHasFocus()) return;
+    if (sidelined()) return;
     emit();
     const current = safeGet<EngineStatus>(
       () => mapPlaybackState(expoAudioService.getPlaybackState()),
@@ -168,7 +172,7 @@ export function createAudioEngine(): AudioEngine {
     },
 
     seek: (seconds: number): void => {
-      if (otherHasFocus()) {
+      if (sidelined()) {
         if (resumeAt) resumeAt = {...resumeAt, seconds};
         return;
       }

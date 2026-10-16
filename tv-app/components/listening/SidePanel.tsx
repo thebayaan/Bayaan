@@ -57,8 +57,12 @@ export function SidePanel({
           {sections.map((section, si) => (
             <View key={section.title} style={styles.section}>
               <Text style={styles.sectionTitle}>{section.title}</Text>
-              {section.options.map(option => {
+              {section.options.map((option, oi) => {
                 const selected = Object.is(option.value, section.selected);
+                // With nothing selected (the queue), focus the first option.
+                const noneSelected = !section.options.some(o =>
+                  Object.is(o.value, section.selected),
+                );
                 return (
                   <FocusableButton
                     key={String(option.value)}
@@ -69,7 +73,9 @@ export function SidePanel({
                     accessibilityLabel={
                       selected ? `${option.label}, selected` : option.label
                     }
-                    hasTVPreferredFocus={si === 0 && selected}
+                    hasTVPreferredFocus={
+                      si === 0 && (selected || (noneSelected && oi === 0))
+                    }
                     focusScale={1.02}
                     style={styles.option}>
                     {option.face ? <Face {...option.face} /> : null}

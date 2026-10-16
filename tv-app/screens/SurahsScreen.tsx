@@ -1,5 +1,5 @@
 import {FlashList} from '@shopify/flash-list';
-import React, {useCallback, useMemo, useRef, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {ScrollView, Text, TVFocusGuideView, View} from 'react-native';
 import {FilterChip} from '../components/browse/FilterChip';
 import {SurahTile, SURAH_TILE_WIDTH} from '../components/browse/SurahTile';
@@ -65,6 +65,12 @@ export function SurahsScreen(): React.ReactElement {
   // The first tile takes focus when the screen opens, but not after a chip
   // changes the grid: focus stays on the chip the viewer pressed.
   const [focusGridFirst, setFocusGridFirst] = useState<boolean>(true);
+  // Drop the request once it has had time to land: FlashList recycles cells,
+  // and a recycled cell becoming index 0 again would pull focus back up.
+  useEffect(() => {
+    const timer = setTimeout(() => setFocusGridFirst(false), 1500);
+    return () => clearTimeout(timer);
+  }, []);
   const busyRef = useRef<boolean>(false);
 
   const reciter = useMemo<Reciter | null>(() => {

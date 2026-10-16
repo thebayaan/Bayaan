@@ -1,4 +1,4 @@
-import React, {useCallback, useMemo, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {Text, TVFocusGuideView, View} from 'react-native';
 import {FilterChip} from '../components/browse/FilterChip';
 import {BROWSE_GUTTER} from '../components/browse/gridLayout';
@@ -32,6 +32,15 @@ export function CatalogGridScreen(): React.ReactElement {
   const [style, setStyle] = useState<StyleChip | null>(null);
   // The first portrait takes focus on entry, not after a chip press.
   const [focusFirst, setFocusFirst] = useState<boolean>(true);
+  // Drop the request once the grid has had time to take it: FlashList
+  // recycles cells, and a recycled cell becoming index 0 again would pull
+  // focus back to the first portrait.
+  const hasReciters = reciters.length > 0;
+  useEffect(() => {
+    if (!hasReciters) return;
+    const timer = setTimeout(() => setFocusFirst(false), 1500);
+    return () => clearTimeout(timer);
+  }, [hasReciters]);
 
   const ordered = useMemo(() => featuredFirst(reciters), [reciters]);
   const available = useMemo(() => availableChips(reciters), [reciters]);
