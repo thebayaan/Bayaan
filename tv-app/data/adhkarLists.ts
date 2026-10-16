@@ -128,7 +128,7 @@ export const ADHKAR_LISTS: readonly AdhkarList[] = [
     color: '#0D9488',
     section: 'main',
     sortOrder: 7,
-    categoryIds: [],
+    categoryIds: ['quranic-duas'],
   },
   {
     id: 'names-of-allah',
@@ -137,7 +137,7 @@ export const ADHKAR_LISTS: readonly AdhkarList[] = [
     color: '#8B5CF6',
     section: 'other',
     sortOrder: 0,
-    categoryIds: [],
+    categoryIds: ['names-of-allah'],
   },
   {
     id: 'clothes',

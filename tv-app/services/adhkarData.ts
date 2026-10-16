@@ -104,7 +104,8 @@ export function adhkarCount(listId: string): number {
 }
 
 /** Where the lists' illustrations live on the CDN (dark variants). */
-export const ADHKAR_IMAGE_BASE = `${ADHKAR_CDN}/images`;
+export const ADHKAR_IMAGE_BASE =
+  'https://cdn.thebayaan.com/assets/images/adhkar';
 
 /** The list's illustration (the phone's `<list>-dark.png`). */
 export function adhkarImageUrl(listId: string): string {
