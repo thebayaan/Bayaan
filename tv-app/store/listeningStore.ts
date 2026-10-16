@@ -66,7 +66,54 @@ export function pauseLabel(ms: number): string {
 }
 
 /** The settings panel open beside the tray, if any. */
-export type PanelKey = 'repeat' | 'speed' | 'onScreen' | 'sleep';
+export type PanelKey =
+  | 'repeat'
+  | 'speed'
+  | 'onScreen'
+  | 'reciter'
+  | 'sleep'
+  | 'sound'
+  | 'queue';
+
+/** The footer chip for a repeat choice, or null when repeat is off. */
+export function repeatChip(choice: RepeatChoice): string | null {
+  switch (choice.kind) {
+    case 'off':
+      return null;
+    case 'surah':
+      return 'Repeat surah';
+    case 'verse':
+      return Number.isFinite(choice.times)
+        ? `Repeat verse ${choice.times}×`
+        : 'Repeat verse';
+  }
+}
+
+/** The footer chip for the sleep timer, or null when it is off. */
+export function sleepChip(sleepOn: boolean, minutes: number): string | null {
+  if (!sleepOn || minutes === 0) return null;
+  return minutes < 0 ? 'Sleep at end of surah' : `Sleep ${minutes} min`;
+}
+
+/**
+ * The small status chips beside the footer's progress line: whatever is
+ * changing how this listening sounds, in tray order.
+ */
+export function footerChips(input: {
+  repeat: RepeatChoice;
+  speed: number;
+  /** The ambience playing, by name, or null. */
+  ambient: string | null;
+  sleepOn: boolean;
+  sleepChoice: number;
+}): string[] {
+  return [
+    repeatChip(input.repeat),
+    input.speed !== 1 ? `${input.speed}×` : null,
+    input.ambient,
+    sleepChip(input.sleepOn, input.sleepChoice),
+  ].filter((c): c is string => c !== null);
+}
 
 /** Sleep timer steps in minutes; -1 is "end of surah", 0 is off. */
 export const SLEEP_CYCLE: readonly number[] = [0, 15, 30, 60, -1];

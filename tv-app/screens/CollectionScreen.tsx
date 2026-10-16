@@ -1,21 +1,24 @@
 import React, {useMemo} from 'react';
-import {ScrollView, Text, TVFocusGuideView, View} from 'react-native';
+import {ScrollView, Text, View} from 'react-native';
 import {FocusableButton} from '../components/primitives/FocusableButton';
 import {FocusText} from '../components/primitives/focusContext';
 import {Rail} from '../components/rails/Rail';
 import {ReciterCard} from '../components/rails/ReciterCard';
 import {
-  ResumeHero,
-  SurahProgressCard,
+  ContinueWideCard,
+  FavoriteSurahCard,
 } from '../components/library/LibraryCards';
 import {useReciters} from '../hooks/useReciters';
 import {useFavorites} from '../hooks/useFavorites';
 import {useContinueListening} from '../hooks/useContinueListening';
 import {useRecentlyPlayed} from '../hooks/useRecentlyPlayed';
+import {useLovedSurahs} from '../hooks/useLovedSurahs';
 import {usePlayer} from '../hooks/usePlayer';
 import {useNavStore} from '../store/navStore';
 import {fetchRewayat} from '../services/tvDataService';
+import {rewayahForSurah} from '../services/listeningChoices';
 import type {ContinueEntry} from '../services/continueListeningStore';
+import type {LovedSurah} from '../services/lovedSurahsStore';
 import type {Reciter} from '../types/reciter';
 import SURAHS from '../../data/surahData.json';
 import {colors} from '../theme/colors';
@@ -25,21 +28,26 @@ import {createScaledStyles} from '../theme/scale';
 
 type SurahMeta = {id: number; name: string};
 
-function plural(count: number, one: string, many: string): string {
-  return `${count} ${count === 1 ? one : many}`;
+const surahNames = new Map<number, string>(
+  (SURAHS as SurahMeta[]).map(s => [s.id, s.name]),
+);
+
+function surahName(n: number): string {
+  return surahNames.get(n) ?? `Surah ${n}`;
 }
 
 /**
- * The Library: one page, no tabs. The surah you were last listening to leads,
- * large, with the rest of your unfinished surahs under it, then the reciters
- * you saved and the ones you played recently.
+ * The Library: what you are in the middle of, the surahs and reciters you
+ * keep, and who you played lately, as rows you can return to in one press.
+ * Each row explains how to fill it while it is empty.
  */
 export function CollectionScreen(): React.ReactElement {
   const favorites = useFavorites();
   const continueEntries = useContinueListening();
   const recent = useRecentlyPlayed();
+  const loved = useLovedSurahs();
   const {reciters} = useReciters();
-  const {playRewayah} = usePlayer();
+  const {playRewayah, resumeContinue} = usePlayer();
   const push = useNavStore(s => s.push);
   const switchTab = useNavStore(s => s.switchTab);
 
@@ -48,9 +56,6 @@ export function CollectionScreen(): React.ReactElement {
     reciters.forEach(r => map.set(r.id, r));
     return map;
   }, [reciters]);
-
-  const surahName = (n: number): string =>
-    (SURAHS as SurahMeta[]).find(s => s.id === n)?.name ?? `Surah ${n}`;
 
   const favoriteReciters = useMemo(
     () =>
@@ -79,8 +84,28 @@ export function CollectionScreen(): React.ReactElement {
     const rewayat = await fetchRewayat(entry.reciterId);
     const rewayah = rewayat.find(r => r.id === entry.rewayahId) ?? rewayat[0];
     if (!rewayah) return;
-    await playRewayah(reciter.id, reciter.name, rewayah, entry.surahNumber);
     push({screen: 'nowPlaying'});
+    await resumeContinue(
+      reciter.id,
+      reciter.name,
+      rewayah,
+      entry.surahNumber,
+      entry.positionSeconds,
+    );
+  }
+
+  async function playLoved(entry: LovedSurah): Promise<void> {
+    const reciter = reciterById.get(entry.reciterId);
+    if (!reciter) return;
+    const rewayat = await fetchRewayat(reciter.id);
+    const rewayah =
+      rewayat.find(
+        r =>
+          r.id === entry.rewayahId && r.surah_list.includes(entry.surahNumber),
+      ) ?? rewayahForSurah({...reciter, rewayat}, entry.surahNumber);
+    if (!rewayah) return;
+    push({screen: 'nowPlaying'});
+    await playRewayah(reciter.id, reciter.name, rewayah, entry.surahNumber);
   }
 
   const openReciter = (r: Reciter) =>
@@ -88,6 +113,7 @@ export function CollectionScreen(): React.ReactElement {
 
   const empty =
     inProgress.length === 0 &&
+    loved.length === 0 &&
     favoriteReciters.length === 0 &&
     recentReciters.length === 0;
 
@@ -100,8 +126,9 @@ export function CollectionScreen(): React.ReactElement {
         <View style={styles.empty}>
           <Text style={styles.emptyTitle}>Your listening lives here</Text>
           <Text style={styles.emptySub}>
-            Surahs you start, reciters you favorite and the ones you play will
-            gather on this page so you can return to them in one press.
+            Surahs you start, the surahs and reciters you favorite, and the
+            voices you play will gather on this page so you can return to them
+            in one press.
           </Text>
           <FocusableButton
             onPress={() => switchTab('reciters')}
@@ -116,15 +143,15 @@ export function CollectionScreen(): React.ReactElement {
     );
   }
 
-  const [lead, ...rest] = inProgress;
-  const summary = [
-    inProgress.length > 0 &&
-      plural(inProgress.length, 'surah in progress', 'surahs in progress'),
-    favoriteReciters.length > 0 &&
-      plural(favoriteReciters.length, 'favorite', 'favorites'),
-  ]
-    .filter(Boolean)
-    .join(' · ');
+  // The first row with something in it takes focus when the page opens.
+  const firstRow =
+    inProgress.length > 0
+      ? 'continue'
+      : loved.length > 0
+        ? 'surahs'
+        : favoriteReciters.length > 0
+          ? 'reciters'
+          : 'recent';
 
   return (
     <View style={styles.container}>
@@ -133,54 +160,65 @@ export function CollectionScreen(): React.ReactElement {
         showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <Text style={styles.pageTitle}>Library</Text>
-          {summary ? <Text style={styles.summary}>{summary}</Text> : null}
         </View>
 
-        {lead ? (
-          <TVFocusGuideView autoFocus style={styles.heroWrap}>
-            <ResumeHero
-              entry={lead}
-              surahName={surahName(lead.surahNumber)}
-              reciterName={reciterById.get(lead.reciterId)?.name ?? ''}
-              onSelect={resume}
-              hasTVPreferredFocus
-            />
-          </TVFocusGuideView>
-        ) : null}
-
         <View style={styles.rails}>
-          {rest.length > 0 ? (
-            <Rail title="Also in progress">
-              {rest.map(e => (
-                <SurahProgressCard
+          {inProgress.length > 0 ? (
+            <Rail title="Continue listening">
+              {inProgress.map((e, i) => (
+                <ContinueWideCard
                   key={`${e.reciterId}:${e.surahNumber}`}
                   entry={e}
                   surahName={surahName(e.surahNumber)}
                   reciterName={reciterById.get(e.reciterId)?.name ?? ''}
                   onSelect={resume}
+                  hasTVPreferredFocus={firstRow === 'continue' && i === 0}
                 />
               ))}
             </Rail>
-          ) : null}
+          ) : (
+            <EmptyRow
+              title="Continue listening"
+              text="Start any surah and it waits here with the time left, so you can pick up where you stopped."
+            />
+          )}
+
+          {loved.length > 0 ? (
+            <Rail title="Favorite surahs">
+              {loved.map((e, i) => (
+                <FavoriteSurahCard
+                  key={e.surahNumber}
+                  loved={e}
+                  surahName={surahName(e.surahNumber)}
+                  reciterName={reciterById.get(e.reciterId)?.name ?? ''}
+                  onSelect={playLoved}
+                  hasTVPreferredFocus={firstRow === 'surahs' && i === 0}
+                />
+              ))}
+            </Rail>
+          ) : (
+            <EmptyRow
+              title="Favorite surahs"
+              text="While a surah plays, press OK and choose the heart to keep it here in that voice."
+            />
+          )}
 
           {favoriteReciters.length > 0 ? (
-            <Rail title="Your reciters">
+            <Rail title="Favorite reciters">
               {favoriteReciters.map((r, i) => (
                 <ReciterCard
                   key={r.id}
                   reciter={r}
                   onSelect={openReciter}
-                  hasTVPreferredFocus={!lead && i === 0}
+                  hasTVPreferredFocus={firstRow === 'reciters' && i === 0}
                 />
               ))}
             </Rail>
           ) : (
-            <View style={styles.hint}>
-              <Text style={styles.hintTitle}>Your reciters</Text>
-              <Text style={styles.hintText}>
-                Open a reciter and choose Favorite to keep them here.
-              </Text>
-            </View>
+            <EmptyRow
+              title="Favorite reciters"
+              text="Open a reciter and choose Favorite to keep them here."
+            />
           )}
 
           {recentReciters.length > 0 ? (
@@ -190,15 +228,33 @@ export function CollectionScreen(): React.ReactElement {
                   key={r.id}
                   reciter={r}
                   onSelect={openReciter}
-                  hasTVPreferredFocus={
-                    !lead && favoriteReciters.length === 0 && i === 0
-                  }
+                  hasTVPreferredFocus={firstRow === 'recent' && i === 0}
                 />
               ))}
             </Rail>
-          ) : null}
+          ) : (
+            <EmptyRow
+              title="Recently played"
+              text="The reciters you listen to show up here, newest first."
+            />
+          )}
         </View>
       </ScrollView>
+    </View>
+  );
+}
+
+function EmptyRow({
+  title,
+  text,
+}: {
+  title: string;
+  text: string;
+}): React.ReactElement {
+  return (
+    <View style={styles.hint}>
+      <Text style={styles.hintTitle}>{title}</Text>
+      <Text style={styles.hintText}>{text}</Text>
     </View>
   );
 }
@@ -209,28 +265,20 @@ const styles = createScaledStyles({
   header: {
     paddingHorizontal: spacing.xl,
     paddingTop: spacing.xl,
-    gap: 8,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   pageTitle: {
     color: colors.text,
     ...typography.title,
     letterSpacing: -0.5,
   },
-  summary: {
-    color: colors.textSecondary,
-    fontFamily: fonts.medium,
-    fontWeight: '500',
-    fontSize: 20,
-  },
-  // Inset so the hero's focus ring has room on every side.
-  heroWrap: {
-    paddingHorizontal: spacing.xl - 10,
-    paddingVertical: 10,
-    marginBottom: spacing.lg,
-  },
   rails: {paddingLeft: spacing.xl - 16},
-  hint: {paddingLeft: 16, marginBottom: spacing.lg, gap: 8},
+  hint: {
+    paddingLeft: 16,
+    marginBottom: spacing.lg,
+    gap: 8,
+    maxWidth: 1000,
+  },
   hintTitle: {
     color: colors.text,
     fontSize: 24,
@@ -243,6 +291,7 @@ const styles = createScaledStyles({
     fontFamily: fonts.medium,
     fontWeight: '500',
     fontSize: 18,
+    lineHeight: 26,
   },
   empty: {
     flex: 1,

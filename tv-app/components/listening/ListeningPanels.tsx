@@ -1,5 +1,6 @@
 import React from 'react';
 import {SidePanel, type PanelSection} from './SidePanel';
+import SURAHS from '../../../data/surahData.json';
 import {useTVPlayerStore} from '../../store/tvPlayerStore';
 import {useOverlayStore} from '../../store/overlayStore';
 import {
@@ -19,12 +20,50 @@ import {
   TRANSLATIONS,
   useDisplayStore,
 } from '../../store/displayStore';
+import {
+  AMBIENT_SOUND_OPTIONS,
+  AMBIENT_VOLUMES,
+  useAmbientStore,
+  type AmbientChoice,
+} from '../../store/ambientStore';
+import {useSettingsStore} from '../../store/settingsStore';
+import {useFavorites} from '../../hooks/useFavorites';
+import {useRecentlyPlayed} from '../../hooks/useRecentlyPlayed';
+import {
+  reciterChoicesForSurah,
+  rewayahLabel,
+  upcoming,
+  type ReciterChoice,
+} from '../../services/listeningChoices';
+import {getReciterArtwork} from '../../services/reciterArtwork';
+import type {Reciter} from '../../types/reciter';
+
+type SurahMeta = {
+  id: number;
+  name: string;
+  translated_name_english: string;
+  verses_count: number;
+};
+
+const surahMeta = new Map<number, SurahMeta>(
+  (SURAHS as SurahMeta[]).map(s => [s.id, s]),
+);
+
+/** Reciters offered in the Reciter panel. */
+const RECITER_CHOICES = 40;
+/** Surahs listed in the Queue panel. */
+const QUEUE_SHOWN = 40;
 
 type Props = {
   currentAyah: number;
   /** Whether the recitation has verse timings (enables verse repeat). */
   synced: boolean;
   onActivity: () => void;
+  reciters: Reciter[];
+  /** The rewayah playing now, so a new reciter keeps it when they have it. */
+  rewayahName: string;
+  /** Switch the current surah to another reciter. */
+  onSwitchReciter: (choice: ReciterChoice) => void;
 };
 
 export function formatSpeed(speed: number): string {
@@ -36,8 +75,23 @@ export function ListeningPanels({
   currentAyah,
   synced,
   onActivity,
+  reciters,
+  rewayahName,
+  onSwitchReciter,
 }: Props): React.ReactElement | null {
   const panel = useListeningStore(s => s.panel);
+  const setPanel = useListeningStore(s => s.setPanel);
+  const queue = useTVPlayerStore(s => s.queue);
+  const currentIndex = useTVPlayerStore(s => s.currentIndex);
+  const jumpToIndex = useTVPlayerStore(s => s.jumpToIndex);
+  const ambientOn = useAmbientStore(s => s.enabled);
+  const ambientSound = useAmbientStore(s => s.currentSound);
+  const ambientVolume = useAmbientStore(s => s.volume);
+  const chooseAmbient = useAmbientStore(s => s.choose);
+  const setAmbientVolume = useAmbientStore(s => s.setVolume);
+  const defaultReciterId = useSettingsStore(s => s.defaultReciterId);
+  const favorites = useFavorites();
+  const recent = useRecentlyPlayed();
   const repeat = useListeningStore(s => s.repeat);
   const setRepeat = useListeningStore(s => s.setRepeat);
   const setRepeatTimes = useListeningStore(s => s.setRepeatTimes);
@@ -133,6 +187,89 @@ export function ListeningPanels({
         options: SLEEP_CYCLE.map(m => ({value: m, label: sleepLabel(m)})),
         selected: sleep.kind === 'off' ? 0 : sleepChoice,
         onSelect: setSleepChoice,
+      },
+    ];
+  } else if (panel === 'reciter') {
+    title = 'Reciter';
+    const item = queue[currentIndex];
+    const surahNumber = item?.surahNumber ?? 1;
+    const preferredIds = [
+      ...favorites.map(f => f.reciterId),
+      ...(defaultReciterId ? [defaultReciterId] : []),
+      ...recent.map(r => r.reciterId),
+    ];
+    const choices = reciterChoicesForSurah(reciters, surahNumber, {
+      currentId: item?.reciterId ?? null,
+      preferredIds,
+      preferRewayahName: rewayahName,
+      limit: RECITER_CHOICES,
+    });
+    sections = [
+      {
+        title: `Recite ${surahMeta.get(surahNumber)?.name ?? 'this surah'} with`,
+        options: choices.map(c => ({
+          value: c.reciter.id,
+          label: c.reciter.name,
+          detail: rewayahLabel(c.rewayah),
+          face: {source: getReciterArtwork(c.reciter), name: c.reciter.name},
+        })),
+        selected: item?.reciterId ?? null,
+        onSelect: (id: string) => {
+          const choice = choices.find(c => c.reciter.id === id);
+          setPanel(null);
+          if (choice && id !== item?.reciterId) onSwitchReciter(choice);
+        },
+      },
+    ];
+  } else if (panel === 'sound') {
+    title = 'Sound';
+    const choice: AmbientChoice = ambientOn ? ambientSound : 'off';
+    sections = [
+      {
+        title: 'Background sound',
+        options: [{value: 'off', label: 'Off'}, ...AMBIENT_SOUND_OPTIONS],
+        selected: choice,
+        onSelect: chooseAmbient,
+      },
+    ];
+    if (ambientOn) {
+      sections.push({
+        title: 'Volume',
+        options: AMBIENT_VOLUMES,
+        selected:
+          AMBIENT_VOLUMES.find(v => Math.abs(v.value - ambientVolume) < 0.01)
+            ?.value ?? ambientVolume,
+        onSelect: setAmbientVolume,
+      });
+    }
+  } else if (panel === 'queue') {
+    title = 'Queue';
+    const next = upcoming(queue, currentIndex, QUEUE_SHOWN);
+    const options = next.map(({item, index}) => {
+      const meta = surahMeta.get(item.surahNumber);
+      return {
+        value: index,
+        label: `${item.surahNumber}. ${item.title}`,
+        detail: meta
+          ? `${meta.translated_name_english} · ${meta.verses_count} verses`
+          : undefined,
+      };
+    });
+    const playing = queue[currentIndex];
+    sections = [
+      {
+        title: playing ? `Up next with ${playing.subtitle}` : 'Up next',
+        options:
+          options.length > 0
+            ? options
+            : queue.length > 1
+              ? [{value: 0, label: 'Start again from the first surah'}]
+              : [{value: -1, label: 'Nothing else is queued'}],
+        selected: null,
+        onSelect: (index: number) => {
+          setPanel(null);
+          if (index >= 0) void jumpToIndex(index);
+        },
       },
     ];
   } else {

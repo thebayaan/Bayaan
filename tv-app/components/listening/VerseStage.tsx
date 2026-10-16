@@ -167,12 +167,14 @@ const styles = createScaledStyles({
     fontWeight: '600',
     fontSize: 26,
   },
+  // "VERSE 2 OF 7" in sky small caps, an indicator rather than text to read.
   reference: {
-    color: colors.textSecondary,
-    fontFamily: fonts.semiBold,
-    fontWeight: '600',
-    fontSize: 20,
-    letterSpacing: 1,
-    marginTop: 6,
+    color: colors.accent,
+    fontFamily: fonts.bold,
+    fontWeight: '700',
+    fontSize: 18,
+    letterSpacing: 2.6,
+    textTransform: 'uppercase',
+    marginTop: 10,
   },
 });

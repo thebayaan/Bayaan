@@ -2,7 +2,9 @@ import {storage} from '../services/storage';
 import {
   findTranslation,
   onScreenLabel,
+  dimLabel,
   textScale,
+  translationLanguages,
   TRANSLATIONS,
   useDisplayStore,
 } from './displayStore';
@@ -25,6 +27,7 @@ describe('displayStore', () => {
       mode: 'both',
       edition: 'fr.hamidullah',
       textSize: 'xlarge',
+      dimAfterMin: 10,
     });
   });
 
@@ -41,5 +44,21 @@ describe('displayStore', () => {
   it('scales text by size', () => {
     expect(textScale('medium')).toBeLessThan(textScale('large'));
     expect(textScale('xlarge')).toBeGreaterThan(textScale('large'));
+  });
+
+  it('saves the dim delay and labels it', () => {
+    useDisplayStore.getState().setDimAfter(0);
+    expect(useDisplayStore.getState().dimAfterMin).toBe(0);
+    const saved = JSON.parse(storage.getString('bayaan_tv_display') ?? '{}');
+    expect(saved.dimAfterMin).toBe(0);
+    expect(dimLabel(0)).toBe('Never');
+    expect(dimLabel(10)).toBe('After 10 min');
+  });
+
+  it('lists each language once with its first edition', () => {
+    const languages = translationLanguages();
+    expect(languages[0]).toEqual({language: 'English', edition: 'en.sahih'});
+    expect(languages.filter(l => l.language === 'English')).toHaveLength(1);
+    expect(languages.some(l => l.edition === 'fr.hamidullah')).toBe(true);
   });
 });
