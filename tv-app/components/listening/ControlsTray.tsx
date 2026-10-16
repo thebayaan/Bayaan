@@ -151,19 +151,6 @@ export function ControlsTray({
             style={styles.round}>
             <FocusIcon icon={NextIcon} size={30} />
           </FocusableButton>
-          <FocusableButton
-            onPress={toggleLoved}
-            accessibilityLabel={
-              isLoved ? 'Remove from favorite surahs' : 'Add to favorite surahs'
-            }
-            style={styles.round}>
-            <FocusIcon
-              icon={HeartIcon}
-              size={30}
-              filled={isLoved}
-              color={isLoved ? colors.accent : colors.text}
-            />
-          </FocusableButton>
         </View>
         <View style={styles.tools}>
           <Tool
@@ -210,6 +197,19 @@ export function ControlsTray({
             on={false}
             {...tool('queue')}
           />
+          <FocusableButton
+            onPress={toggleLoved}
+            accessibilityLabel={
+              isLoved ? 'Remove from favorite surahs' : 'Add to favorite surahs'
+            }
+            style={styles.round}>
+            <FocusIcon
+              icon={HeartIcon}
+              size={30}
+              filled={isLoved}
+              color={isLoved ? colors.accent : colors.text}
+            />
+          </FocusableButton>
         </View>
       </TVFocusGuideView>
     </View>
@@ -293,7 +293,7 @@ const styles = createScaledStyles({
     height: 96,
     borderRadius: 30,
   },
-  tools: {flexDirection: 'row', gap: 8, flexShrink: 1},
+  tools: {flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1},
   tool: {
     maxWidth: 280,
     paddingHorizontal: 22,
