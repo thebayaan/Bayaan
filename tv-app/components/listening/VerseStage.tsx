@@ -6,6 +6,7 @@ import {colors} from '../../theme/colors';
 import {quranTextFontAvailable} from '../../theme/calligraphy';
 import {fonts, quranTextFontFamily} from '../../theme/typography';
 import {createScaledStyles} from '../../theme/scale';
+import type {OnScreenMode} from '../../store/displayStore';
 
 type Props = {
   surahNumber: number;
@@ -18,12 +19,18 @@ type Props = {
   compact: boolean;
   /** Extra line under the verse reference, such as the repeat count. */
   note?: string | null;
+  /** What to show: Arabic, translation, both, or the calligraphy alone. */
+  show?: OnScreenMode;
+  /** Text size multiplier from the On screen panel. */
+  textScale?: number;
+  /** Moves the text left of a settings panel so changes preview beside it. */
+  besidePanel?: boolean;
 };
 
 // Long verses step the Arabic size down so one never spills off a 10-foot
 // screen; Al-Baqarah 282 is the longest at about 1,100 characters.
-function arabicSize(text: string, compact: boolean): number {
-  const base = compact ? 44 : 64;
+function arabicSize(text: string, compact: boolean, factor: number): number {
+  const base = (compact ? 44 : 64) * factor;
   if (text.length > 600) return base * 0.5;
   if (text.length > 360) return base * 0.62;
   if (text.length > 200) return base * 0.78;
@@ -43,6 +50,9 @@ export function VerseStage({
   translation,
   compact,
   note,
+  show = 'both',
+  textScale = 1,
+  besidePanel = false,
 }: Props): React.ReactElement {
   const total = arabic.length;
   let arabicText: string | null = null;
@@ -63,16 +73,27 @@ export function VerseStage({
         : 'In the name of Allah, the Entirely Merciful, the Especially Merciful.';
   }
 
-  const fontSize = arabicText ? arabicSize(arabicText, compact) : 0;
+  if (show === 'translation' || show === 'calligraphy') arabicText = null;
+  if (show === 'arabic' || show === 'calligraphy') translationText = null;
+  // On its own, the translation takes the Arabic's place and size.
+  const translationAlone = show === 'translation';
+
+  const fontSize = arabicText ? arabicSize(arabicText, compact, textScale) : 0;
+  const translationSize = (translationAlone ? 40 : 30) * textScale;
+  const hasText = arabicText !== null || (translationAlone && translationText);
 
   return (
     <View
-      style={[styles.stage, compact && styles.stageCompact]}
+      style={[
+        styles.stage,
+        compact && styles.stageCompact,
+        besidePanel && styles.stageBesidePanel,
+      ]}
       pointerEvents="none">
-      {!compact || !arabicText ? (
+      {!compact || !hasText ? (
         <SurahGlyph
           surahNumber={surahNumber}
-          size={arabicText ? 84 : 150}
+          size={hasText ? 84 : 150}
           color={colors.text}
           style={styles.glyph}
         />
@@ -88,8 +109,15 @@ export function VerseStage({
           {arabicText}
         </Text>
       ) : null}
-      {translationText && !compact ? (
-        <Text style={styles.translation}>{translationText}</Text>
+      {translationText && (!compact || translationAlone) ? (
+        <Text
+          style={[
+            styles.translation,
+            {fontSize: translationSize, lineHeight: translationSize * 1.45},
+            compact && styles.dim,
+          ]}>
+          {translationText}
+        </Text>
       ) : null}
       {ayah === null ? <Text style={styles.surahName}>{surahName}</Text> : null}
       {reference ? (
@@ -113,6 +141,8 @@ const styles = createScaledStyles({
     gap: 18,
   },
   stageCompact: {bottom: 330},
+  // The settings panel is 620 wide on the right.
+  stageBesidePanel: {left: 80, right: 700},
   glyph: {opacity: 0.9, marginBottom: 6},
   arabic: {
     color: colors.text,

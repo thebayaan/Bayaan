@@ -1,10 +1,12 @@
 import {
   nextInCycle,
   nextRepeatChoice,
+  pauseLabel,
   SLEEP_CYCLE,
   sleepLabel,
   SPEED_CYCLE,
   repeatLabel,
+  timesLabel,
   useListeningStore,
 } from './listeningStore';
 import {useTVPlayerStore} from './tvPlayerStore';
@@ -52,6 +54,38 @@ describe('setRepeat', () => {
   });
 });
 
+describe('setRepeatTimes', () => {
+  afterEach(() => useListeningStore.getState().reset());
+
+  it('changes the count without restarting the repeat', () => {
+    const store = useListeningStore.getState();
+    store.setRepeat({kind: 'verse', times: 3}, 4);
+    store.setVerseRepeat({ayah: 4, times: 3, played: 2});
+    useListeningStore.getState().setRepeatTimes(10);
+    expect(useListeningStore.getState().repeat).toEqual({
+      kind: 'verse',
+      times: 10,
+    });
+    expect(useListeningStore.getState().verseRepeat).toEqual({
+      ayah: 4,
+      times: 10,
+      played: 2,
+    });
+  });
+});
+
+describe('panels', () => {
+  afterEach(() => useListeningStore.getState().reset());
+
+  it('closes the open panel when the tray lowers', () => {
+    const store = useListeningStore.getState();
+    store.setTrayOpen(true);
+    store.setPanel('onScreen');
+    useListeningStore.getState().setTrayOpen(false);
+    expect(useListeningStore.getState().panel).toBeNull();
+  });
+});
+
 describe('cycles', () => {
   it('steps speed up and wraps to the slowest', () => {
     expect(nextInCycle(SPEED_CYCLE, 1)).toBe(1.25);
@@ -70,5 +104,12 @@ describe('cycles', () => {
       'End of surah',
       'Off',
     ]);
+  });
+});
+
+describe('labels', () => {
+  it('names repeat counts and pauses', () => {
+    expect([3, Infinity].map(timesLabel)).toEqual(['3×', '∞']);
+    expect([0, 2000].map(pauseLabel)).toEqual(['None', '2 s']);
   });
 });

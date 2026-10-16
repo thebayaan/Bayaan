@@ -124,6 +124,10 @@ export function createAudioEngine(): AudioEngine {
       expoAudioService.setRate(rate);
     },
 
+    setVolume: (volume: number): void => {
+      expoAudioService.setVolume(volume);
+    },
+
     subscribe: (cb: (e: EngineEvent) => void): (() => void) => {
       listeners.add(cb);
       cb(snapshot());

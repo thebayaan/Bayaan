@@ -128,6 +128,10 @@ export function createAudioEngine(): AudioEngine {
       if (player) player.playbackRate = rate;
     },
 
+    setVolume: (volume: number): void => {
+      if (player) player.volume = Math.max(0, Math.min(1, volume));
+    },
+
     subscribe: (cb: (e: EngineEvent) => void): (() => void) => {
       listeners.add(cb);
       cb(snapshot());

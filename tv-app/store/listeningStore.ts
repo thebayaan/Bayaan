@@ -51,6 +51,23 @@ export function nextRepeatChoice(
   return options[(index + 1) % options.length];
 }
 
+/** How many times a repeated verse plays in all, as offered in the Repeat panel. */
+export const REPEAT_TIMES: readonly number[] = [2, 3, 5, 10, Infinity];
+
+/** Pause before each replay of a repeated verse, for reciting it back. */
+export const REPEAT_PAUSES: readonly number[] = [0, 2000, 5000];
+
+export function timesLabel(times: number): string {
+  return Number.isFinite(times) ? `${times}×` : '∞';
+}
+
+export function pauseLabel(ms: number): string {
+  return ms === 0 ? 'None' : `${ms / 1000} s`;
+}
+
+/** The settings panel open beside the tray, if any. */
+export type PanelKey = 'repeat' | 'speed' | 'onScreen' | 'sleep';
+
 /** Sleep timer steps in minutes; -1 is "end of surah", 0 is off. */
 export const SLEEP_CYCLE: readonly number[] = [0, 15, 30, 60, -1];
 
@@ -75,12 +92,20 @@ type ListeningState = {
   /** Whether the controls tray is up; Back lowers it before leaving the player. */
   trayOpen: boolean;
   setTrayOpen: (open: boolean) => void;
+  /** Back closes an open panel before it lowers the tray. */
+  panel: PanelKey | null;
+  setPanel: (panel: PanelKey | null) => void;
+  /** Milliseconds to wait before each replay of a repeated verse. */
+  repeatPauseMs: number;
+  setRepeatPause: (ms: number) => void;
   repeat: RepeatChoice;
   /** The sleep step last picked, so the control can show and advance it. */
   sleepChoice: number;
   /** The live verse repeat, set when verse repeat starts on a verse. */
   verseRepeat: VerseRepeat | null;
   setRepeat: (choice: RepeatChoice, currentAyah: number) => void;
+  /** Changes how many times the verse repeats without restarting the count. */
+  setRepeatTimes: (times: number) => void;
   setVerseRepeat: (repeat: VerseRepeat | null) => void;
   setSleepChoice: (minutes: number) => void;
   reset: () => void;
@@ -88,7 +113,11 @@ type ListeningState = {
 
 export const useListeningStore = create<ListeningState>(set => ({
   trayOpen: false,
-  setTrayOpen: trayOpen => set({trayOpen}),
+  setTrayOpen: trayOpen => set(trayOpen ? {trayOpen} : {trayOpen, panel: null}),
+  panel: null,
+  setPanel: panel => set({panel}),
+  repeatPauseMs: 0,
+  setRepeatPause: repeatPauseMs => set({repeatPauseMs}),
   repeat: {kind: 'off'},
   verseRepeat: null,
   sleepChoice: 0,
@@ -106,6 +135,12 @@ export const useListeningStore = create<ListeningState>(set => ({
     });
   },
 
+  setRepeatTimes: times =>
+    set(state => ({
+      repeat: {kind: 'verse', times},
+      verseRepeat: state.verseRepeat ? {...state.verseRepeat, times} : null,
+    })),
+
   setVerseRepeat: verseRepeat => set({verseRepeat}),
 
   setSleepChoice: minutes => {
@@ -117,6 +152,8 @@ export const useListeningStore = create<ListeningState>(set => ({
     useTVPlayerStore.getState().setRepeat('off');
     set({
       trayOpen: false,
+      panel: null,
+      repeatPauseMs: 0,
       repeat: {kind: 'off'},
       verseRepeat: null,
       sleepChoice: 0,

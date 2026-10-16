@@ -5,6 +5,10 @@ import type {PlayerStatus, QueueItem} from '../types/player';
 
 export type RepeatMode = 'off' | 'one' | 'all';
 
+/** A sleep timer fades the audio out over its last stretch instead of cutting off. */
+export const SLEEP_FADE_MS = 30 * 1000;
+const SLEEP_FADE_STEP_MS = 500;
+
 export type SleepMode =
   | {kind: 'off'}
   | {kind: 'timer'; endsAt: number}
@@ -227,6 +231,8 @@ export const useTVPlayerStore = create<TVPlayerState>((set, get) => ({
   setSleep: (minutes: number): void => {
     const existing = get().sleepTimerId;
     if (existing !== null) clearTimeout(existing);
+    // Undo a fade that was under way.
+    get().engine?.setVolume(1);
     if (minutes === 0) {
       set({sleep: {kind: 'off'}, sleepTimerId: null});
       return;
@@ -235,11 +241,25 @@ export const useTVPlayerStore = create<TVPlayerState>((set, get) => ({
       set({sleep: {kind: 'endOfSurah'}, sleepTimerId: null});
       return;
     }
-    const endsAt = Date.now() + minutes * 60 * 1000;
-    const timerId = setTimeout(() => {
-      get().engine?.pause();
-      set({sleep: {kind: 'off'}, sleepTimerId: null});
-    }, minutes * 60 * 1000);
+    const totalMs = minutes * 60 * 1000;
+    const endsAt = Date.now() + totalMs;
+    // Each step lowers the volume and schedules the next, keeping the pending
+    // one in sleepTimerId so turning the timer off cancels it.
+    const fadeStep = (): void => {
+      const left = endsAt - Date.now();
+      const engine = get().engine;
+      if (left <= 0) {
+        engine?.pause();
+        engine?.setVolume(1);
+        set({sleep: {kind: 'off'}, sleepTimerId: null});
+        return;
+      }
+      engine?.setVolume(left / SLEEP_FADE_MS);
+      set({
+        sleepTimerId: setTimeout(fadeStep, Math.min(SLEEP_FADE_STEP_MS, left)),
+      });
+    };
+    const timerId = setTimeout(fadeStep, Math.max(0, totalMs - SLEEP_FADE_MS));
     set({sleep: {kind: 'timer', endsAt}, sleepTimerId: timerId});
   },
 

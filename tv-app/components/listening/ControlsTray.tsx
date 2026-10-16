@@ -3,16 +3,14 @@ import {Text, TVFocusGuideView, View} from 'react-native';
 import {FocusableButton} from '../primitives/FocusableButton';
 import {ProgressLine} from './ProgressLine';
 import {useTVPlayerStore} from '../../store/tvPlayerStore';
-import {useOverlayStore} from '../../store/overlayStore';
 import {
-  nextInCycle,
-  nextRepeatChoice,
   repeatLabel,
-  SLEEP_CYCLE,
   sleepLabel,
-  SPEED_CYCLE,
   useListeningStore,
+  type PanelKey,
 } from '../../store/listeningStore';
+import {onScreenLabel, useDisplayStore} from '../../store/displayStore';
+import {formatSpeed} from './ListeningPanels';
 import {colors} from '../../theme/colors';
 import {fonts} from '../../theme/typography';
 import {createScaledStyles, scale} from '../../theme/scale';
@@ -24,8 +22,7 @@ import {
 } from '../../../components/Icons';
 
 type Props = {
-  currentAyah: number;
-  /** Whether the recitation has verse timings (enables verse repeat). */
+  /** Whether the recitation has verse timings (verse-by-verse transport). */
   synced: boolean;
   ticks: number[];
   onStep: (direction: 1 | -1) => void;
@@ -44,17 +41,13 @@ export function formatTime(seconds: number): string {
     : `${mm}:${String(s).padStart(2, '0')}`;
 }
 
-function formatSpeed(speed: number): string {
-  return `${Number.isInteger(speed) ? speed.toFixed(1) : speed}×`;
-}
-
 /**
  * The player's controls, raised from the bottom on OK: progress with verse
  * ticks, verse-by-verse transport, and one row of labeled settings that each
- * show their current value. Pressing a setting steps to its next value.
+ * show their current value. Pressing a setting opens its panel beside the
+ * tray.
  */
 export function ControlsTray({
-  currentAyah,
   synced,
   ticks,
   onStep,
@@ -66,11 +59,12 @@ export function ControlsTray({
   const speed = useTVPlayerStore(s => s.speed);
   const sleep = useTVPlayerStore(s => s.sleep);
   const toggle = useTVPlayerStore(s => s.toggle);
-  const applySpeed = useOverlayStore(s => s.applySpeed);
   const repeat = useListeningStore(s => s.repeat);
-  const setRepeat = useListeningStore(s => s.setRepeat);
   const sleepChoice = useListeningStore(s => s.sleepChoice);
-  const setSleepChoice = useListeningStore(s => s.setSleepChoice);
+  const panel = useListeningStore(s => s.panel);
+  const setPanel = useListeningStore(s => s.setPanel);
+  const mode = useDisplayStore(s => s.mode);
+  const edition = useDisplayStore(s => s.edition);
 
   const isPlaying = status === 'playing';
   const sleepOn = sleep.kind !== 'off';
@@ -78,6 +72,7 @@ export function ControlsTray({
     onActivity();
     fn();
   };
+  const open = (key: PanelKey) => press(() => setPanel(key));
 
   return (
     <View style={styles.tray}>
@@ -121,25 +116,29 @@ export function ControlsTray({
             label="Repeat"
             value={repeatLabel(repeat)}
             on={repeat.kind !== 'off'}
-            onPress={press(() =>
-              setRepeat(nextRepeatChoice(repeat, synced), currentAyah),
-            )}
+            active={panel === 'repeat'}
+            onPress={open('repeat')}
           />
           <Tool
             label="Speed"
             value={formatSpeed(speed)}
             on={speed !== 1}
-            onPress={press(() => applySpeed(nextInCycle(SPEED_CYCLE, speed)))}
+            active={panel === 'speed'}
+            onPress={open('speed')}
+          />
+          <Tool
+            label="On screen"
+            value={onScreenLabel(mode, edition)}
+            on={false}
+            active={panel === 'onScreen'}
+            onPress={open('onScreen')}
           />
           <Tool
             label="Sleep"
             value={sleepOn ? sleepLabel(sleepChoice) : 'Off'}
             on={sleepOn}
-            onPress={press(() =>
-              setSleepChoice(
-                nextInCycle(SLEEP_CYCLE, sleepOn ? sleepChoice : 0),
-              ),
-            )}
+            active={panel === 'sleep'}
+            onPress={open('sleep')}
           />
         </View>
       </TVFocusGuideView>
@@ -151,18 +150,21 @@ function Tool({
   label,
   value,
   on,
+  active,
   onPress,
 }: {
   label: string;
   value: string;
   on: boolean;
+  /** Its panel is open. */
+  active: boolean;
   onPress: () => void;
 }): React.ReactElement {
   return (
     <FocusableButton
       onPress={onPress}
       accessibilityLabel={`${label}: ${value}`}
-      style={[styles.tool, on && styles.toolOn]}>
+      style={[styles.tool, (on || active) && styles.toolOn]}>
       <Text style={styles.toolLabel}>{label}</Text>
       <Text style={[styles.toolValue, on && styles.toolValueOn]}>{value}</Text>
     </FocusableButton>

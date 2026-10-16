@@ -11,16 +11,18 @@ import Svg, {Defs, LinearGradient, Rect, Stop} from 'react-native-svg';
 import {GlowBackdrop} from '../components/listening/GlowBackdrop';
 import {VerseStage} from '../components/listening/VerseStage';
 import {ControlsTray} from '../components/listening/ControlsTray';
+import {ListeningPanels} from '../components/listening/ListeningPanels';
 import {ProgressLine} from '../components/listening/ProgressLine';
 import {ErrorBanner} from '../components/player/ErrorBanner';
 import {FocusableButton} from '../components/primitives/FocusableButton';
-import {useTVPlayerStore} from '../store/tvPlayerStore';
+import {SLEEP_FADE_MS, useTVPlayerStore} from '../store/tvPlayerStore';
 import {useNavStore} from '../store/navStore';
 import {
   repeatLabel,
   sleepLabel,
   useListeningStore,
 } from '../store/listeningStore';
+import {textScale, useDisplayStore} from '../store/displayStore';
 import {useReciters} from '../hooks/useReciters';
 import {useVerseSync} from '../hooks/useVerseSync';
 import {
@@ -82,6 +84,11 @@ export function NowPlayingScreen(): React.ReactElement {
   const setRepeat = useListeningStore(s => s.setRepeat);
   const setVerseRepeat = useListeningStore(s => s.setVerseRepeat);
   const sleepChoice = useListeningStore(s => s.sleepChoice);
+  const panel = useListeningStore(s => s.panel);
+  const repeatPauseMs = useListeningStore(s => s.repeatPauseMs);
+  const onScreen = useDisplayStore(s => s.mode);
+  const edition = useDisplayStore(s => s.edition);
+  const textSize = useDisplayStore(s => s.textSize);
   const {reciters} = useReciters();
 
   const item = queue[currentIndex];
@@ -97,6 +104,7 @@ export function NowPlayingScreen(): React.ReactElement {
     item?.surahNumber ?? null,
     item?.rewayahId,
     rewayah?.name ?? '',
+    edition,
   );
   const {timeline} = sync;
   const positionMs = position * 1000;
@@ -118,11 +126,18 @@ export function NowPlayingScreen(): React.ReactElement {
   const markActivity = useCallback(() => setLastActivity(Date.now()), []);
   const idleMs = now - lastActivity;
   const dimmed = idleMs > DIM_IDLE_MS;
+  // With a sleep timer, the screen fades toward black along with the audio.
+  const sleepLeftMs = sleep.kind === 'timer' ? sleep.endsAt - now : Infinity;
+  const sleepFade =
+    sleepLeftMs < SLEEP_FADE_MS
+      ? 0.85 * (1 - Math.max(0, sleepLeftMs) / SLEEP_FADE_MS)
+      : 0;
   const showHint = !trayOpen && now - openedAt < HINT_MS;
 
   useEffect(() => {
-    if (trayOpen && idleMs > TRAY_IDLE_MS) setTrayOpen(false);
-  }, [trayOpen, idleMs, setTrayOpen]);
+    // A panel stays up until Back, since reading a list takes a while.
+    if (trayOpen && !panel && idleMs > TRAY_IDLE_MS) setTrayOpen(false);
+  }, [trayOpen, panel, idleMs, setTrayOpen]);
 
   // Leaving the player lowers the tray so it isn't up next time.
   useEffect(() => () => setTrayOpen(false), [setTrayOpen]);
@@ -139,21 +154,53 @@ export function NowPlayingScreen(): React.ReactElement {
   }, [surahKey, setRepeat, setVerseRepeat]);
 
   // Verse repeat: send playback back to the verse start until the count runs
-  // out, then let it carry on.
+  // out, then let it carry on. With a pause set, playback waits at the verse
+  // start before each replay, so the listener can recite it back.
   const lastRepeatSeek = useRef(0);
+  const resumeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (!timeline || !verseRepeat) return;
     // Ignore the stale positions that arrive just after a seek.
     if (Date.now() - lastRepeatSeek.current < 600) return;
+    if (resumeTimer.current) return;
     const result = advanceRepeat(timeline, verseRepeat, positionMs);
     if (result.seekToMs !== null) {
       lastRepeatSeek.current = Date.now();
       seekTo(result.seekToMs / 1000);
       setVerseRepeat(result.repeat);
+      if (repeatPauseMs > 0) {
+        const engine = useTVPlayerStore.getState().engine;
+        engine?.pause();
+        resumeTimer.current = setTimeout(() => {
+          resumeTimer.current = null;
+          lastRepeatSeek.current = Date.now();
+          void engine?.play();
+        }, repeatPauseMs);
+      }
     } else if (result.done) {
       setRepeat({kind: 'off'}, 0);
     }
-  }, [timeline, verseRepeat, positionMs, seekTo, setVerseRepeat, setRepeat]);
+  }, [
+    timeline,
+    verseRepeat,
+    positionMs,
+    repeatPauseMs,
+    seekTo,
+    setVerseRepeat,
+    setRepeat,
+  ]);
+  // Turning repeat off, or leaving, cancels a pending replay.
+  useEffect(() => {
+    if (verseRepeat || !resumeTimer.current) return;
+    clearTimeout(resumeTimer.current);
+    resumeTimer.current = null;
+  }, [verseRepeat]);
+  useEffect(
+    () => () => {
+      if (resumeTimer.current) clearTimeout(resumeTimer.current);
+    },
+    [],
+  );
 
   const step = useCallback(
     (direction: 1 | -1) => {
@@ -249,6 +296,9 @@ export function NowPlayingScreen(): React.ReactElement {
         translation={sync.translation}
         compact={trayOpen}
         note={repeatNote}
+        show={onScreen}
+        textScale={textScale(textSize)}
+        besidePanel={panel !== null}
       />
 
       {trayOpen ? (
@@ -285,10 +335,14 @@ export function NowPlayingScreen(): React.ReactElement {
             <Text style={styles.titleSub}>{`  ·  ${reciterName}`}</Text>
           </Text>
           <ControlsTray
-            currentAyah={currentAyah ?? 0}
             synced={timeline !== null}
             ticks={ticks}
             onStep={step}
+            onActivity={markActivity}
+          />
+          <ListeningPanels
+            currentAyah={currentAyah ?? 0}
+            synced={timeline !== null}
             onActivity={markActivity}
           />
         </>
@@ -333,6 +387,12 @@ export function NowPlayingScreen(): React.ReactElement {
       )}
 
       {dimmed ? <View style={styles.dim} pointerEvents="none" /> : null}
+      {sleepFade > 0 ? (
+        <View
+          style={[styles.fade, {opacity: sleepFade}]}
+          pointerEvents="none"
+        />
+      ) : null}
       <ErrorBanner />
     </View>
   );
@@ -403,6 +463,7 @@ const styles = createScaledStyles({
     overflow: 'hidden',
   },
   dim: {...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)'},
+  fade: {...StyleSheet.absoluteFillObject, backgroundColor: '#000'},
   empty: {
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',

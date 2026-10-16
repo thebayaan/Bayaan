@@ -36,6 +36,10 @@ export function Router(): React.ReactElement {
       useOverlayStore.getState().close();
       return true;
     }
+    if (useListeningStore.getState().panel) {
+      useListeningStore.getState().setPanel(null);
+      return true;
+    }
     if (useListeningStore.getState().trayOpen) {
       useListeningStore.getState().setTrayOpen(false);
       return true;

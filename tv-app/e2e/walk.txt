@@ -18,15 +18,19 @@
 13-resumed 3 playpause
 14-next-verse 3 right
 15-controls 3 select
-16-repeat-verse 3 right right select
-17-speed 3 right select
-18-controls-lowered 3 back
-19-back-to-detail 3 back
-20-back-to-home 3 back
-21-sidebar-open 2 left left left left left
-22-reciters 4 down down select
-23-library 4 left down select
-24-settings 4 left down select
-25-search 4 left up up up select
-26-search-typed 5 right select text:fati
-27-relaunch-home 20 relaunch
+16-repeat-panel 3 right right select
+17-repeat-verse 3 down select
+18-repeat-pause 3 down down down down down down down down select
+19-on-screen-panel 3 back right right select
+20-translation 5 down down down down down down down down select
+21-text-size 3 down down down down down down down down down down down select
+22-controls-lowered 3 back back
+23-back-to-detail 3 back
+24-back-to-home 3 back
+25-sidebar-open 2 left left left left left
+26-reciters 4 down down select
+27-library 4 left down select
+28-settings 4 left down select
+29-search 4 left up up up select
+30-search-typed 5 right select text:fati
+31-relaunch-home 20 relaunch
