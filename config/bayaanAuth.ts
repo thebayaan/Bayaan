@@ -1,3 +1,5 @@
+import branding from '@/config/branding';
+
 const FORBIDDEN_PUBLIC_KEY_PATTERNS = [
   /QF_AUTHORIZATION_CODE/i,
   /QF.*TOKEN/i,
@@ -97,19 +99,67 @@ export function assertNoForbiddenPublicBayaanAuthEnv(
   }
 }
 
+function nonOriginParts(url: URL) {
+  return [
+    url.username || url.password ? 'credentials' : '',
+    url.pathname !== '/' ? 'a path' : '',
+    url.search ? 'a query' : '',
+    url.hash ? 'a fragment' : '',
+  ].filter(Boolean);
+}
+
+function assertNoForbiddenQfBffBase(qfBffBase: string | undefined) {
+  const trimmed = qfBffBase?.trim();
+  if (!trimmed) {
+    return;
+  }
+
+  const parsedUrl = parsePublicUrl(trimmed);
+  if (!parsedUrl || !/^https?:$/i.test(parsedUrl.protocol)) {
+    throw new Error(
+      `Invalid branding auth config: qfBffBase must be an absolute http(s) URL, got "${trimmed}"`,
+    );
+  }
+
+  // The BFF is never QF itself, whatever the sync flag says.
+  if (isForbiddenQfHost(parsedUrl)) {
+    throw new Error(
+      `Forbidden branding auth config detected: qfBffBase points at the Quran Foundation host ${parsedUrl.hostname}`,
+    );
+  }
+
+  // The BFF clients join absolute `/v1/...` paths onto this base, and an
+  // absolute path drops any base path, so only an origin routes correctly.
+  // The message names the origin, not the raw value, so that it never
+  // repeats credentials.
+  const extraParts = nonOriginParts(parsedUrl);
+  if (extraParts.length > 0) {
+    throw new Error(
+      `Invalid branding auth config: qfBffBase must be an origin only, such as ${parsedUrl.origin}; found ${extraParts.join(', ')}`,
+    );
+  }
+}
+
+/**
+ * `qfBffBase` is `branding.qfBffBase`. When set, it replaces
+ * `EXPO_PUBLIC_BAYAAN_API_URL` as the BFF base URL. It must be an origin
+ * (scheme, host and optional port); a trailing slash is accepted.
+ */
 export function readBayaanAuthConfig(
   env: PublicBayaanAuthEnv,
+  qfBffBase?: string,
 ): BayaanAuthConfig {
   assertNoForbiddenPublicBayaanAuthEnv(env);
+  assertNoForbiddenQfBffBase(qfBffBase);
 
   return {
     qfSyncEnabled:
       env.EXPO_PUBLIC_BAYAAN_QF_SYNC_ENABLED?.trim().toLowerCase() === 'true',
-    apiUrl: env.EXPO_PUBLIC_BAYAAN_API_URL?.trim() ?? '',
+    apiUrl: qfBffBase?.trim() || env.EXPO_PUBLIC_BAYAAN_API_URL?.trim() || '',
   };
 }
 
-export const bayaanAuthConfig = readBayaanAuthConfig({
+const publicBayaanAuthEnv: PublicBayaanAuthEnv = {
   EXPO_PUBLIC_BAYAAN_QF_SYNC_ENABLED:
     process.env.EXPO_PUBLIC_BAYAAN_QF_SYNC_ENABLED,
   EXPO_PUBLIC_BAYAAN_API_URL: process.env.EXPO_PUBLIC_BAYAAN_API_URL,
@@ -123,4 +173,9 @@ export const bayaanAuthConfig = readBayaanAuthConfig({
   EXPO_PUBLIC_USER_API_URL: process.env.EXPO_PUBLIC_USER_API_URL,
   EXPO_PUBLIC_QF_DISCOVERY_URL: process.env.EXPO_PUBLIC_QF_DISCOVERY_URL,
   EXPO_PUBLIC_QF_PROFILE_URL: process.env.EXPO_PUBLIC_QF_PROFILE_URL,
-});
+};
+
+export const bayaanAuthConfig = readBayaanAuthConfig(
+  publicBayaanAuthEnv,
+  branding.qfBffBase,
+);
