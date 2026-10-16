@@ -35,11 +35,6 @@ screenshot() {
     sleep 3
     echo "quit"
   } | nc -q 5 localhost "$CONSOLE_PORT" >/dev/null 2>&1
-  # Also grab the virtual X display, which shows the device window when the
-  # emulator console capture comes back black.
-  if [[ -n "${DISPLAY:-}" ]] && command -v import >/dev/null; then
-    import -window root "$OUT_DIR/screens/$1-x11.png" 2>/dev/null || true
-  fi
   if compgen -G "$dir/*.png" >/dev/null; then
     mv "$dir"/*.png "$OUT_DIR/screens/$1.png" && echo "screenshot: $1"
   else
