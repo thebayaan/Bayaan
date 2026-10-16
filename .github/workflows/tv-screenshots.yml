@@ -19,20 +19,28 @@ on:
         type: choice
         options: [all, apple-tv, android-tv]
         default: all
+      checkout_ref:
+        description: Commit or branch to build instead of the selected branch (for before/after screenshots)
+        type: string
+        required: false
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.platform || 'all' }}
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.platform || 'all' }}-${{ inputs.checkout_ref || 'head' }}
   cancel-in-progress: true
 
 jobs:
   android-tv:
     name: Android TV walk
+    permissions:
+      contents: write
     if: ${{ !inputs.platform || inputs.platform == 'all' || inputs.platform == 'android-tv' }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.checkout_ref || '' }}
 
       - name: Enable KVM
         run: |
@@ -95,14 +103,46 @@ jobs:
           path: ${{ runner.temp }}/tv-screens/android-tv
           if-no-files-found: warn
 
+      # Cloud agent sessions can't download artifacts (their blob host is off
+      # their network allowlist) but can fetch from the repo, so each run's
+      # frames also go to tv-screens/<platform>/<commit>, shrunk to JPEG to
+      # keep the repo small. Never fails the walk.
+      - name: Publish screenshots to a branch
+        if: always()
+        continue-on-error: true
+        env:
+          TOKEN: ${{ github.token }}
+        run: |
+          SRC="$RUNNER_TEMP/tv-screens/android-tv/screens"
+          [ -d "$SRC" ] || exit 0
+          SHA=$(git rev-parse --short=7 HEAD)
+          BRANCH="tv-screens/android-tv/$SHA"
+          OUT="$(mktemp -d)"
+          for f in "$SRC"/*.png; do
+            name=$(basename "$f" .png)
+            convert "$f" -resize 1280x -quality 72 "$OUT/$name.jpg" 2>/dev/null || cp "$f" "$OUT/$name.png"
+          done
+          cd "$OUT"
+          git init -q
+          git checkout -q --orphan screens
+          git add -A
+          git -c user.name=github-actions -c user.email=41898282+github-actions[bot]@users.noreply.github.com \
+            commit -qm "TV screenshots (android-tv) for $SHA"
+          git push -qf "https://x-access-token:$TOKEN@github.com/${{ github.repository }}.git" "HEAD:refs/heads/$BRANCH"
+          echo "Published $BRANCH"
+
   apple-tv:
     name: Apple TV walk
+    permissions:
+      contents: write
     if: ${{ !inputs.platform || inputs.platform == 'all' || inputs.platform == 'apple-tv' }}
     runs-on: macos-15
     timeout-minutes: 120
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.checkout_ref || '' }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -184,3 +224,31 @@ jobs:
           name: apple-tv-screens
           path: ${{ runner.temp }}/tv-screens/apple-tv
           if-no-files-found: warn
+
+      # Cloud agent sessions can't download artifacts (their blob host is off
+      # their network allowlist) but can fetch from the repo, so each run's
+      # frames also go to tv-screens/<platform>/<commit>, shrunk to JPEG to
+      # keep the repo small. Never fails the walk.
+      - name: Publish screenshots to a branch
+        if: always()
+        continue-on-error: true
+        env:
+          TOKEN: ${{ github.token }}
+        run: |
+          SRC="$RUNNER_TEMP/tv-screens/apple-tv/screens"
+          [ -d "$SRC" ] || exit 0
+          SHA=$(git rev-parse --short=7 HEAD)
+          BRANCH="tv-screens/apple-tv/$SHA"
+          OUT="$(mktemp -d)"
+          for f in "$SRC"/*.png; do
+            name=$(basename "$f" .png)
+            sips -s format jpeg -s formatOptions 72 --resampleWidth 1280 "$f" --out "$OUT/$name.jpg" >/dev/null 2>&1 || cp "$f" "$OUT/$name.png"
+          done
+          cd "$OUT"
+          git init -q
+          git checkout -q --orphan screens
+          git add -A
+          git -c user.name=github-actions -c user.email=41898282+github-actions[bot]@users.noreply.github.com \
+            commit -qm "TV screenshots (apple-tv) for $SHA"
+          git push -qf "https://x-access-token:$TOKEN@github.com/${{ github.repository }}.git" "HEAD:refs/heads/$BRANCH"
+          echo "Published $BRANCH"
