@@ -1,0 +1,178 @@
+name: TV Fire TV build
+
+# Builds the TV app for real Fire TV sticks and puts the files on the
+# "tv-test" pre-release, so they can be sideloaded with a plain URL:
+#   - bayaan-tv.apk:   Fire OS sticks (Lite, 4K, 4K Max, 3rd gen) and any
+#                      Android TV, ARM builds signed with the debug key
+#   - bayaan-tv-*.vpkg: Vega OS sticks (Fire TV Stick 4K Select)
+# The APK goes in with the Downloader app; the vpkg needs developer mode and
+# the Vega CLI on a computer.
+
+on:
+  # A dispatch-only workflow can't be run until it reaches the default
+  # branch, so changes to this file on the TV branch also build.
+  push:
+    branches: [claude/project-thread-p66y7w, feature/tv-platforms]
+    paths: ['.github/workflows/tv-firetv.yml']
+  workflow_dispatch:
+    inputs:
+      checkout_ref:
+        description: 'Branch or commit to build (default: the branch you run it on)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+env:
+  VEGA_SDK_VERSION: 0.24.12112
+  RELEASE_TAG: tv-test
+
+jobs:
+  apk:
+    name: Fire OS / Android TV APK (ARM)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.checkout_ref || '' }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tv-app/package-lock.json
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Install dependencies
+        working-directory: tv-app
+        run: npm ci --legacy-peer-deps --no-audit --no-fund
+
+      - name: Prebuild Android TV project
+        working-directory: tv-app
+        env:
+          EXPO_TV: '1'
+        run: npx expo prebuild --platform android --clean --no-install
+
+      # Fire TV sticks are ARM: 32-bit on older and Lite sticks, 64-bit on
+      # the 4K Max. Release bundles the JavaScript, so no Metro is needed.
+      - name: Assemble release APK
+        working-directory: tv-app/android
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+        run: ./gradlew :app:assembleRelease --no-daemon --max-workers=2 -PreactNativeArchitectures=armeabi-v7a,arm64-v8a
+
+      - name: Collect APK
+        run: |
+          mkdir -p out
+          cp "$(find tv-app/android/app/build/outputs/apk/release -name '*.apk' | head -1)" out/bayaan-tv.apk
+          ls -l out
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bayaan-tv-apk
+          path: out/bayaan-tv.apk
+
+      - name: Publish to the tv-test pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          SHA=$(git rev-parse --short HEAD)
+          NOTES="TV test build from $SHA. Fire OS sticks: install bayaan-tv.apk with the Downloader app. Vega OS sticks: use the .vpkg."
+          if ! gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release create "$RELEASE_TAG" --prerelease --target "$(git rev-parse HEAD)" \
+              --title "Bayaan TV test build" --notes "$NOTES" || true
+          fi
+          gh release edit "$RELEASE_TAG" --notes "$NOTES" || true
+          gh release upload "$RELEASE_TAG" out/bayaan-tv.apk --clobber
+
+  vpkg:
+    name: Vega OS package
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.checkout_ref || '' }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: tv-vega/package-lock.json
+
+      - name: Cache Vega SDK
+        id: vega-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/vega
+          key: vega-sdk-${{ env.VEGA_SDK_VERSION }}-linux-x86_64
+
+      - name: Install Vega SDK
+        if: steps.vega-cache.outputs.cache-hit != 'true'
+        env:
+          NONINTERACTIVE: 'true'
+        run: |
+          curl -fsSL https://sdk-installer.vega.labcollab.net/get_vvm.sh -o "$RUNNER_TEMP/get_vvm.sh"
+          bash "$RUNNER_TEMP/get_vvm.sh"
+
+      - name: Add Vega CLI to PATH
+        run: echo "$HOME/vega/bin" >> "$GITHUB_PATH"
+
+      - name: Install dependencies
+        working-directory: tv-vega
+        run: npm ci --legacy-peer-deps --no-audit --no-fund
+
+      - name: Build release vpkg
+        working-directory: tv-vega
+        run: npm run build:release
+
+      # One package per device architecture; the virtual device's x86_64 one
+      # is no use on a stick.
+      - name: Collect device packages
+        run: |
+          mkdir -p out
+          find tv-vega/build -path '*/Release/*.vpkg' | grep -v x86_64 | while read -r f; do
+            arch=$(echo "$f" | sed -E 's#.*/build/([^/]+)/.*#\1#')
+            cp "$f" "out/bayaan-tv-$arch.vpkg"
+          done
+          ls -l out
+          test -n "$(ls out)"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bayaan-tv-vpkg
+          path: out/*.vpkg
+
+      - name: Publish to the tv-test pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for attempt in 1 2 3 4 5 6; do
+            gh release view "$RELEASE_TAG" >/dev/null 2>&1 && break
+            sleep 30
+          done
+          if ! gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release create "$RELEASE_TAG" --prerelease --target "$(git rev-parse HEAD)" \
+              --title "Bayaan TV test build" --notes "TV test build." || true
+          fi
+          gh release upload "$RELEASE_TAG" out/*.vpkg --clobber
