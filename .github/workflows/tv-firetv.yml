@@ -10,10 +10,13 @@ name: TV Fire TV build
 
 on:
   # A dispatch-only workflow can't be run until it reaches the default
-  # branch, so changes to this file on the TV branch also build.
+  # branch, so TV changes on the TV branches build a fresh test release.
   push:
     branches: [claude/project-thread-p66y7w, feature/tv-platforms]
-    paths: ['.github/workflows/tv-firetv.yml']
+    paths:
+      - '.github/workflows/tv-firetv.yml'
+      - 'tv-app/**'
+      - 'tv-vega/**'
   workflow_dispatch:
     inputs:
       checkout_ref:
