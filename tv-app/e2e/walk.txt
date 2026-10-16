@@ -25,7 +25,7 @@
 18-controls-lowered 3 back back
 19-back-to-surahs 3 back
 20-surahs-juz 3 up right select
-21-reciters 5 left up up up up up up down down down select
+21-reciters 5 left left up up up up up up down down down select
 22-reciter-page 6 select
 23-reciter-rows 3 down down
 24-adhkar 5 back left up up up up up up down down down down select
