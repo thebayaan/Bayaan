@@ -8,8 +8,9 @@ export function getRecentSearches(): string[] {
 }
 
 export function recordSearch(query: string): void {
-  const trimmed = query.trim();
-  if (trimmed.length < 2) return;
+  const trimmed = query.trim().replace(/\s+/g, ' ');
+  // A lone letter is a step on the way, not a search; a surah number isn't.
+  if (trimmed.length < 2 && !/^\d$/.test(trimmed)) return;
   const existing = getRecentSearches();
   const filtered = existing.filter(
     q => q.toLowerCase() !== trimmed.toLowerCase(),
