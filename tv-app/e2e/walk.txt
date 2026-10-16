@@ -39,4 +39,5 @@
 32-search 5 back left up up up up up up down select
 33-search-typed 5 down right right right select up left left left select down select up right right right right right select
 34-search-result 3 right
+34b-search-reciter 5 down down down down left select up up up right select left left left left select down right right right select up left left left left select
 35-relaunch-home 20 relaunch

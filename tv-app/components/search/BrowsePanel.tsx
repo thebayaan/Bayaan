@@ -1,14 +1,17 @@
 import React from 'react';
-import {Text, TVFocusGuideView, View} from 'react-native';
+import {StyleSheet, Text, TVFocusGuideView, View} from 'react-native';
+import {Image} from 'expo-image';
 import {FocusableCard} from '../primitives/FocusableCard';
 import {FocusableButton, FocusText} from '../primitives/FocusableButton';
 import {GradientFill} from '../brand/GradientFill';
 import {SurahGlyph} from '../brand/SurahGlyph';
-import {HandsGlyph} from './SearchGlyphs';
+import {Scrim} from '../adhkar/AdhkarListCard';
+import {PortraitCard} from './ResultCards';
 import {SURAHS, type Surah} from '../../../data/surahData';
 import {
   ADHKAR_LISTS,
   adhkarCount,
+  adhkarImageUrl,
   type AdhkarList,
 } from '../../services/adhkarData';
 import {
@@ -19,8 +22,9 @@ import {
 import {surahGradient} from '../../theme/surahColors';
 import {colors} from '../../theme/colors';
 import {fonts, typography} from '../../theme/typography';
-import {createScaledStyles, scale} from '../../theme/scale';
+import {createScaledStyles} from '../../theme/scale';
 import type {TabKey} from '../../store/navStore';
+import type {Reciter} from '../../types/reciter';
 
 type SurahEntry = {surah: number; title: string; subtitle: string};
 
@@ -40,7 +44,12 @@ const BROWSE_ALL: readonly {tab: TabKey; label: string}[] = [
 
 const surahById = new Map(SURAHS.map(s => [s.id, s]));
 
+/** Reciters shown before typing, so it's clear Search finds them too. */
+const RECITER_COUNT = 6;
+
 type Props = {
+  reciters: readonly Reciter[];
+  onReciter: (reciter: Reciter) => void;
   onSurah: (surah: Surah) => void;
   onAdhkar: (list: AdhkarList) => void;
   onBrowseAll: (tab: TabKey) => void;
@@ -48,6 +57,8 @@ type Props = {
 
 /** The right side before typing: ways in that need no typing at all. */
 export function BrowsePanel({
+  reciters,
+  onReciter,
   onSurah,
   onAdhkar,
   onBrowseAll,
@@ -56,6 +67,10 @@ export function BrowsePanel({
     const list = ADHKAR_LISTS.find(l => l.id === id);
     return list ? [list] : [];
   });
+  const featured = reciters.filter(r => r.is_featured);
+  const shownReciters = (
+    featured.length >= RECITER_COUNT ? featured : reciters
+  ).slice(0, RECITER_COUNT);
   return (
     <View>
       <Text style={styles.kicker}>Browse</Text>
@@ -73,8 +88,8 @@ export function BrowsePanel({
               art={
                 <SurahGlyph
                   surahNumber={entry.surah}
-                  size={96}
-                  color="rgba(244,243,236,0.28)"
+                  size={112}
+                  color="rgba(244,243,236,0.34)"
                 />
               }
               onPress={() => onSurah(surah)}
@@ -82,6 +97,22 @@ export function BrowsePanel({
           );
         })}
       </TVFocusGuideView>
+
+      {shownReciters.length > 0 ? (
+        <>
+          <Text style={[styles.kicker, styles.kickerGap]}>Reciters</Text>
+          <TVFocusGuideView autoFocus style={styles.reciterRow}>
+            {shownReciters.map(reciter => (
+              <PortraitCard
+                key={reciter.id}
+                reciter={reciter}
+                size={112}
+                onPress={onReciter}
+              />
+            ))}
+          </TVFocusGuideView>
+        </>
+      ) : null}
 
       <Text style={[styles.kicker, styles.kickerGap]}>Adhkar</Text>
       <TVFocusGuideView autoFocus style={styles.row}>
@@ -95,9 +126,7 @@ export function BrowsePanel({
               colors={adhkarGradient(list)}
               title={list.title}
               subtitle={when ? `${when} · ${count}` : count}
-              art={
-                <HandsGlyph color="rgba(244,243,236,0.22)" size={scale(84)} />
-              }
+              image={adhkarImageUrl(list.id)}
               onPress={() => onAdhkar(list)}
             />
           );
@@ -126,13 +155,17 @@ function BrowseTile({
   title,
   subtitle,
   art,
+  image,
   onPress,
 }: {
   id: string;
   colors: readonly [string, string];
   title: string;
   subtitle: string;
-  art: React.ReactNode;
+  /** Drawn over the gradient, bottom right. */
+  art?: React.ReactNode;
+  /** An illustration covering the tile (the adhkar pictures on the CDN). */
+  image?: string;
   onPress: () => void;
 }): React.ReactElement {
   return (
@@ -140,14 +173,30 @@ function BrowseTile({
       onPress={onPress}
       accessibilityLabel={`${title}, ${subtitle}`}
       style={styles.tile}>
-      <GradientFill colors={gradient} id={id} />
-      <View style={styles.tileArt}>{art}</View>
-      <Text style={styles.tileTitle} numberOfLines={1}>
-        {title}
-      </Text>
-      <Text style={styles.tileSub} numberOfLines={1}>
-        {subtitle}
-      </Text>
+      {/* One clipped layer for the artwork, so it always fills the tile. */}
+      <View style={styles.tileFill}>
+        <GradientFill colors={gradient} id={id} />
+        {image ? (
+          <Image
+            source={{uri: image}}
+            style={[StyleSheet.absoluteFill, styles.tileImage]}
+            contentFit="cover"
+            cachePolicy="memory-disk"
+            transition={250}
+            accessible={false}
+          />
+        ) : null}
+        {art ? <View style={styles.tileArt}>{art}</View> : null}
+        <Scrim id={`${id}-scrim`} direction="up" from={0.75} to={0} />
+        <View style={styles.tileText}>
+          <Text style={styles.tileTitle} numberOfLines={1}>
+            {title}
+          </Text>
+          <Text style={styles.tileSub} numberOfLines={1}>
+            {subtitle}
+          </Text>
+        </View>
+      </View>
     </FocusableCard>
   );
 }
@@ -159,21 +208,23 @@ const styles = createScaledStyles({
   kickerGap: {marginTop: 44},
   row: {flexDirection: 'row', gap: TILE_GAP},
   allRow: {marginTop: 48},
-  tile: {
-    width: 320,
-    height: 176,
-    borderRadius: 18,
-    padding: 22,
-    justifyContent: 'space-between',
+  reciterRow: {flexDirection: 'row', gap: 14},
+  tile: {width: 320, height: 176},
+  tileFill: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 10,
+    overflow: 'hidden',
     backgroundColor: colors.surfaceElevated,
   },
+  tileImage: {opacity: 0.85},
   tileArt: {
     position: 'absolute',
-    right: 10,
-    bottom: 4,
-    alignItems: 'flex-end',
-    justifyContent: 'flex-end',
+    top: 0,
+    right: 14,
+    bottom: 0,
+    justifyContent: 'center',
   },
+  tileText: {position: 'absolute', left: 22, right: 22, bottom: 18, gap: 2},
   tileTitle: {
     color: colors.text,
     fontFamily: fonts.bold,

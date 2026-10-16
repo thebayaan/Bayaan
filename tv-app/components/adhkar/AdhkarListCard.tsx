@@ -27,7 +27,7 @@ export const BIG_CARD_HEIGHT = 240;
 export const SMALL_CARD_HEIGHT = 132;
 
 /** A vertical or horizontal ink scrim over artwork, so text stays legible. */
-function Scrim({
+export function Scrim({
   id,
   direction,
   from,

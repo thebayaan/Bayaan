@@ -153,6 +153,8 @@ export function SearchScreen(): React.ReactElement {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}>
         <BrowsePanel
+          reciters={reciters}
+          onReciter={actions.openReciter}
           onSurah={surah => void actions.playSurah(surah)}
           onAdhkar={list => actions.openAdhkar(list)}
           onBrowseAll={tab => actions.switchTab(tab)}
