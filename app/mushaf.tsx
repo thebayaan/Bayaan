@@ -362,7 +362,7 @@ export function MushafToolbar() {
   if (isImmersive || isSearchMode) return null;
 
   if (recitationText !== null) {
-    // Reciting: [Stop], then the live mic (or the peek buttons), then [eye].
+    // Reciting: [Stop], peek icons when hiding, the live mic, then [eye].
     return (
       <Stack.Toolbar>
         <Stack.Toolbar.Button
@@ -371,26 +371,29 @@ export function MushafToolbar() {
           Stop
         </Stack.Toolbar.Button>
         <Stack.Toolbar.Spacer />
-        {hideText ? (
-          <>
-            <Stack.Toolbar.Button
-              onPress={() => peekOnPage('word', currentPage || 1)}>
-              Next word
-            </Stack.Toolbar.Button>
-            <Stack.Toolbar.Button
-              onPress={() => peekOnPage('ayah', currentPage || 1)}>
-              Next ayah
-            </Stack.Toolbar.Button>
-          </>
-        ) : (
+        {hideText && (
           <Stack.Toolbar.Button
-            icon="mic.fill"
-            tintColor={LIVE_MIC_COLOR}
-            accessibilityLabel={`Listening. ${recitationText}`}
-            onPress={() => void stopRecitationTracking()}>
-            Listening
+            icon="chevron.left.2"
+            accessibilityLabel="Next ayah"
+            onPress={() => peekOnPage('ayah', currentPage || 1)}>
+            Next ayah
           </Stack.Toolbar.Button>
         )}
+        {hideText && (
+          <Stack.Toolbar.Button
+            icon="chevron.left"
+            accessibilityLabel="Next word"
+            onPress={() => peekOnPage('word', currentPage || 1)}>
+            Next word
+          </Stack.Toolbar.Button>
+        )}
+        <Stack.Toolbar.Button
+          icon="mic.fill"
+          tintColor={LIVE_MIC_COLOR}
+          accessibilityLabel={`Listening. ${recitationText}`}
+          onPress={() => void stopRecitationTracking()}>
+          Listening
+        </Stack.Toolbar.Button>
         <Stack.Toolbar.Spacer />
         <Stack.Toolbar.Button
           icon={hideText ? 'eye.slash' : 'eye'}
