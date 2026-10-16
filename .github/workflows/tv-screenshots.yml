@@ -166,6 +166,17 @@ jobs:
           xcrun simctl install "${{ steps.sim.outputs.udid }}" "$APP"
           bash tv-app/e2e/run-walk.sh tvos "$RUNNER_TEMP/tv-screens/apple-tv" "${{ steps.sim.outputs.udid }}"
 
+      # The simulator has rebooted mid-walk on the runner, so keep the crash
+      # reports and the simulator's system log for diagnosis.
+      - name: Collect simulator crash reports
+        if: always()
+        run: |
+          OUT="$RUNNER_TEMP/tv-screens/apple-tv/crash"
+          mkdir -p "$OUT"
+          cp ~/Library/Logs/DiagnosticReports/*.ips "$OUT/" 2>/dev/null || true
+          cp ~/Library/Logs/CoreSimulator/${{ steps.sim.outputs.udid }}/system.log "$OUT/" 2>/dev/null || true
+          ls "$OUT"
+
       - name: Upload screenshots
         if: always()
         uses: actions/upload-artifact@v4

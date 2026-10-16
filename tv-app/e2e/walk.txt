@@ -20,7 +20,7 @@
 15-back-to-home 3 back
 16-tab-bar 2 up up up up up
 17-search-tab 4 right select
-18-search-typed 5 down text:fati
+18-search-typed 5 down select text:fati
 19-collection-tab 4 up up up right select
 20-settings-tab 4 right select
 21-relaunch-home 20 relaunch

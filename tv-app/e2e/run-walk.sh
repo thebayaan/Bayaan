@@ -121,6 +121,7 @@ fi
 LOG_PID=$!
 trap 'kill $LOG_PID 2>/dev/null || true' EXIT
 
+STOPPED=()
 launch_app
 
 while read -r name wait keys <&3; do
@@ -131,9 +132,21 @@ while read -r name wait keys <&3; do
   sleep "$wait"
   screenshot "$name"
   if ! app_running; then
+    # Keep walking so one crash doesn't hide the rest of the app, but fail the
+    # run at the end.
     echo "App stopped running after step $name"
-    exit 1
+    STOPPED+=("$name")
+    if [[ $PLATFORM == tvos ]]; then
+      xcrun simctl bootstatus "$DEVICE" -b >/dev/null 2>&1
+      sleep 20
+    fi
+    launch_app
+    sleep 15
   fi
 done 3<"$WALK"
 
+if ((${#STOPPED[@]} > 0)); then
+  echo "App stopped running after: ${STOPPED[*]}"
+  exit 1
+fi
 echo "Walk finished with the app still running"
