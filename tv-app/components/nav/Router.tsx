@@ -101,7 +101,13 @@ export function Router(): React.ReactElement {
         </View>
       );
     if (top.screen === 'adhkarReader')
-      return <AdhkarReaderScreen key={top.listId} listId={top.listId} />;
+      return (
+        <AdhkarReaderScreen
+          key={top.listId}
+          listId={top.listId}
+          mode={top.mode}
+        />
+      );
   }
 
   // Root places share the sidebar; screens sit beside its folded width and it

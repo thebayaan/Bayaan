@@ -22,12 +22,16 @@ import {
 import {createRemoteKeyFilter} from '../services/remoteKeys';
 import type {AdhkarAudio} from '../store/adhkarSessionController';
 import {useAdhkarSessionStore} from '../store/adhkarSessionStore';
-import {useNavStore} from '../store/navStore';
+import {useNavStore, type AdhkarStartMode} from '../store/navStore';
 import {colors} from '../theme/colors';
 import {fonts} from '../theme/typography';
 import {createScaledStyles, scale} from '../theme/scale';
 
-type Props = {listId: string};
+type Props = {
+  listId: string;
+  /** From Search: listen straight through, or count each without audio. */
+  mode?: AdhkarStartMode;
+};
 
 /** "Morning adhkar" for the time-of-day lists, the list's title otherwise. */
 function readerTitle(listId: string, title: string): string {
@@ -56,7 +60,7 @@ function playLabel(audio: AdhkarAudio): string {
  * (through the pages of a long dhikr first), OK counts, Play/Pause plays,
  * Down reaches the audio and Auto-advance chips. Back is the Router's.
  */
-export function AdhkarReaderScreen({listId}: Props): React.ReactElement {
+export function AdhkarReaderScreen({listId, mode}: Props): React.ReactElement {
   const list = adhkarList(listId);
   const adhkar = useMemo(() => adhkarForList(listId), [listId]);
   const now = useNow();
@@ -69,13 +73,16 @@ export function AdhkarReaderScreen({listId}: Props): React.ReactElement {
     useAdhkarSessionStore.getState();
 
   useEffect(() => {
+    if (mode === 'listen') setAutoAdvance(true);
+    if (mode === 'count') setAutoAdvance(false);
     open(
       listId,
       adhkar.map(d => d.repeatCount),
       adhkar.map(d => d.audioUrl),
+      {autoplay: mode !== 'count'},
     );
     return () => close();
-  }, [listId, adhkar, open, close]);
+  }, [listId, mode, adhkar, open, close, setAutoAdvance]);
 
   const ready = session !== null && session.listId === listId;
   const index = ready ? session.index : 0;
