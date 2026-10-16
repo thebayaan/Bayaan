@@ -24,10 +24,9 @@
 19-back-to-detail 3 back
 20-back-to-home 3 back
 21-sidebar-open 2 left left left left left
-22-search 4 down select
-23-search-typed 5 right select text:fati
-24-reciters 4 left left left down select
-25-library 4 down select
-26-settings 4 down select
-27-back-to-home 3 back
-28-relaunch-home 20 relaunch
+22-reciters 4 down down select
+23-library 4 left down select
+24-settings 4 left down select
+25-search 4 left up up up select
+26-search-typed 5 right select text:fati
+27-relaunch-home 20 relaunch
