@@ -7,7 +7,21 @@ import type {Reciter} from '../types/reciter';
 const DEFAULT_RECITER_KEY = 'bayaan_tv_default_reciter_id';
 
 /** The picker open beside the Settings rows, if any. */
-export type SettingsPicker = 'reciter' | 'translation' | 'textSize';
+export type SettingsPicker =
+  | 'reciter'
+  | 'speed'
+  | 'sound'
+  | 'mode'
+  | 'translation'
+  | 'textSize'
+  | 'dim';
+
+/** Pickers for what the listening room shows; they open beside a big preview. */
+export const DISPLAY_PICKERS: readonly SettingsPicker[] = [
+  'mode',
+  'translation',
+  'textSize',
+];
 
 type SettingsState = {
   defaultReciterId: string | null;
