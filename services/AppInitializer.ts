@@ -26,6 +26,7 @@ import {usePlayCountStore} from '@/store/playCountStore';
 import {useLovedStore} from '@/services/player/store/lovedStore';
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
 import {useFavoriteRecitersStore} from '@/services/player/store/favoriteRecitersStore';
+import {startCarIntegration} from '@/services/car';
 import * as Font from 'expo-font';
 
 interface ServiceInitializer {
@@ -145,6 +146,7 @@ class AppInitializer {
         }
 
         this.initialized = true;
+        startCarIntegration();
         const totalTime = Date.now() - startTime;
         console.log(
           `[AppInitializer] All services initialized successfully (${totalTime}ms total)`,

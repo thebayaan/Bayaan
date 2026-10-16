@@ -1,0 +1,57 @@
+{
+  "verseLabel": "{{surah}} {{surahNumber}}:{{ayah}}",
+  "mushaf": {
+    "headerMeta": "صفحة {{page}} · الجزء {{juz}} · {{rewayah}}",
+    "searchSurahs": "البحث في السور",
+    "settings": "إعدادات المصحف",
+    "shareMessage": "اطّلع على الصفحة {{page}} من القرآن الكريم على {{appName}}",
+    "loadFailedTitle": "تعذّر تحميل المصحف",
+    "loadFailedBody": "تأكّد من توفّر مساحة تخزين كافية على جهازك، ثم حاول مجددًا.",
+    "pageLoadFailed": "تعذّر تحميل هذه الصفحة.",
+    "turnOffTajweed": "إيقاف تلوين التجويد"
+  },
+  "toolbar": {
+    "options": "خيارات",
+    "stop": "إيقاف"
+  },
+  "playerBar": {
+    "changeReciter": "تغيير القارئ",
+    "changeReciterButton": "تغيير القارئ",
+    "playbackOptions": "خيارات التشغيل",
+    "previousAyah": "الآية السابقة",
+    "nextAyah": "الآية التالية"
+  },
+  "search": {
+    "placeholder": "ابحث عن سورة أو صفحة أو جزء…",
+    "recentReads": "قراءات حديثة",
+    "recentSearches": "عمليات البحث الأخيرة",
+    "emptyTitle": "ابحث في المصحف",
+    "emptySubtitle": "اعثر على السور والآيات والصفحات والأجزاء",
+    "sortAsc": "تصاعدي",
+    "sortDesc": "تنازلي",
+    "sortRevelation": "النزول",
+    "juzAmma": "جزء عمّ",
+    "juzTabarak": "جزء تبارك",
+    "pageWithSurah": "صفحة {{page}} · {{surah}}",
+    "surahWithMeaning": "سورة {{number}} · {{meaning}}",
+    "verse": "آية {{number}}"
+  },
+  "shareCard": {
+    "madeWith": "صُنع باستخدام {{appName}}"
+  },
+  "playback": {
+    "trackingUnavailable": "تتبّع الآيات غير متاح",
+    "unavailable": "التشغيل غير متاح",
+    "surah": "هذه السورة",
+    "fromBeginning": "تُشغّل {{surah}} من البداية دون تتبّع الآيات لهذا القارئ.",
+    "untracked": "تُشغّل {{surah}} دون تمييز الآيات لهذا القارئ.",
+    "timestampsUnavailable": "توقيت الآيات غير متاح لهذا القارئ في هذه السورة. جرّب قارئًا آخر.",
+    "verseTimingUnavailable": "التشغيل آيةً بآية غير متاح لهذا القارئ في هذه السورة. جرّب قارئًا آخر.",
+    "rangeUnplayable": "لا توجد آيات قابلة للتشغيل في هذا النطاق لهذا القارئ. جرّب قارئًا أو نطاقًا آخر."
+  },
+  "verseUnits": {
+    "loading": "جارٍ تحميل آيات رواية {{rewayah}}",
+    "loadFailed": "تعذّر تحميل آيات رواية {{rewayah}}.",
+    "retryLabel": "أعد محاولة تحميل آيات رواية {{rewayah}}"
+  }
+}

@@ -1,0 +1,229 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+  <application>
+    <activity
+      android:name="expo.modules.bayaanwidgets.WidgetCommandActivity"
+      android:exported="false"
+      android:excludeFromRecents="true"
+      android:noHistory="true"
+      android:taskAffinity=""
+      android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+    <receiver
+      android:name="expo.modules.bayaanwidgets.continuelistening.ContinueListeningReceiver"
+      android:enabled="@bool/bayaan_widget_enabled_continue_listening"
+      android:exported="true"
+      android:label="@string/bayaan_widget_continue_listening_label">
+      <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+      </intent-filter>
+      <meta-data
+        android:name="android.appwidget.provider"
+        android:resource="@xml/continue_listening_info" />
+    </receiver>
+    <receiver
+      android:name="expo.modules.bayaanwidgets.quicksurah.QuickSurahReceiver"
+      android:enabled="@bool/bayaan_widget_enabled_quick_surah"
+      android:exported="true"
+      android:label="@string/bayaan_widget_quick_surah_label">
+      <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+      </intent-filter>
+      <meta-data
+        android:name="android.appwidget.provider"
+        android:resource="@xml/quick_surah_info" />
+    </receiver>
+    <activity
+      android:name="expo.modules.bayaanwidgets.quicksurah.QuickSurahConfigActivity"
+      android:enabled="@bool/bayaan_widget_enabled_quick_surah"
+      android:exported="true"
+      android:excludeFromRecents="true"
+      android:taskAffinity=""
+      android:theme="@android:style/Theme.Translucent.NoTitleBar">
+      <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+      </intent-filter>
+    </activity>
+    <receiver
+      android:name="expo.modules.bayaanwidgets.pinnedreciter.PinnedReciterReceiver"
+      android:enabled="@bool/bayaan_widget_enabled_pinned_reciter"
+      android:exported="true"
+      android:label="@string/bayaan_widget_pinned_reciter_label">
+      <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+      </intent-filter>
+      <meta-data
+        android:name="android.appwidget.provider"
+        android:resource="@xml/pinned_reciter_info" />
+    </receiver>
+    <activity
+      android:name="expo.modules.bayaanwidgets.pinnedreciter.PinnedReciterConfigActivity"
+      android:enabled="@bool/bayaan_widget_enabled_pinned_reciter"
+      android:exported="true"
+      android:excludeFromRecents="true"
+      android:taskAffinity=""
+      android:theme="@android:style/Theme.Translucent.NoTitleBar">
+      <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+      </intent-filter>
+    </activity>
+    <receiver
+      android:name="expo.modules.bayaanwidgets.ayahoftheday.AyahOfTheDayReceiver"
+      android:enabled="@bool/bayaan_widget_enabled_ayah_of_the_day"
+      android:exported="true"
+      android:label="@string/bayaan_widget_ayah_label">
+      <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+      </intent-filter>
+      <meta-data
+        android:name="android.appwidget.provider"
+        android:resource="@xml/ayah_of_the_day_info" />
+    </receiver>
+    <receiver
+      android:name="expo.modules.bayaanwidgets.ayahoftheday.MidnightReceiver"
+      android:exported="false">
+      <intent-filter>
+        <action android:name="android.intent.action.TIME_SET" />
+        <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+        <action android:name="android.intent.action.DATE_CHANGED" />
+      </intent-filter>
+    </receiver>
+    <receiver
+      android:name="expo.modules.bayaanwidgets.ContextClockReceiver"
+      android:exported="false">
+      <intent-filter>
+        <action android:name="android.intent.action.BOOT_COMPLETED" />
+        <action android:name="android.intent.action.TIME_SET" />
+        <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+      </intent-filter>
+    </receiver>
+    <receiver
+      android:name="expo.modules.bayaanwidgets.continuereading.ContinueReadingReceiver"
+      android:enabled="@bool/bayaan_widget_enabled_continue_reading"
+      android:exported="true"
+      android:label="@string/bayaan_widget_continue_reading_label">
+      <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+      </intent-filter>
+      <meta-data
+        android:name="android.appwidget.provider"
+        android:resource="@xml/continue_reading_info" />
+    </receiver>
+    <receiver
+      android:name="expo.modules.bayaanwidgets.tasbeeh.TasbeehReceiver"
+      android:enabled="@bool/bayaan_widget_enabled_tasbeeh"
+      android:exported="true"
+      android:label="@string/bayaan_widget_tasbeeh_label">
+      <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+      </intent-filter>
+      <meta-data
+        android:name="android.appwidget.provider"
+        android:resource="@xml/tasbeeh_info" />
+    </receiver>
+    <activity
+      android:name="expo.modules.bayaanwidgets.tasbeeh.TasbeehConfigActivity"
+      android:enabled="@bool/bayaan_widget_enabled_tasbeeh"
+      android:exported="true"
+      android:excludeFromRecents="true"
+      android:taskAffinity=""
+      android:theme="@android:style/Theme.Translucent.NoTitleBar">
+      <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+      </intent-filter>
+    </activity>
+    <receiver
+      android:name="expo.modules.bayaanwidgets.recentlyplayed.RecentlyPlayedReceiver"
+      android:enabled="@bool/bayaan_widget_enabled_recently_played"
+      android:exported="true"
+      android:label="@string/bayaan_widget_recently_played_label">
+      <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+      </intent-filter>
+      <meta-data
+        android:name="android.appwidget.provider"
+        android:resource="@xml/recently_played_info" />
+    </receiver>
+    <receiver
+      android:name="expo.modules.bayaanwidgets.libraryshelf.LibraryShelfReceiver"
+      android:enabled="@bool/bayaan_widget_enabled_library_shelf"
+      android:exported="true"
+      android:label="@string/bayaan_widget_library_shelf_label">
+      <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+      </intent-filter>
+      <meta-data
+        android:name="android.appwidget.provider"
+        android:resource="@xml/library_shelf_info" />
+    </receiver>
+    <activity
+      android:name="expo.modules.bayaanwidgets.libraryshelf.LibraryShelfConfigActivity"
+      android:enabled="@bool/bayaan_widget_enabled_library_shelf"
+      android:exported="true"
+      android:excludeFromRecents="true"
+      android:taskAffinity=""
+      android:theme="@android:style/Theme.Translucent.NoTitleBar">
+      <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+      </intent-filter>
+    </activity>
+    <receiver
+      android:name="expo.modules.bayaanwidgets.bedtime.BedtimeReceiver"
+      android:enabled="@bool/bayaan_widget_enabled_bedtime"
+      android:exported="true"
+      android:label="@string/bayaan_widget_bedtime_label">
+      <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+      </intent-filter>
+      <meta-data
+        android:name="android.appwidget.provider"
+        android:resource="@xml/bedtime_info" />
+    </receiver>
+    <activity
+      android:name="expo.modules.bayaanwidgets.bedtime.BedtimeConfigActivity"
+      android:enabled="@bool/bayaan_widget_enabled_bedtime"
+      android:exported="true"
+      android:excludeFromRecents="true"
+      android:taskAffinity=""
+      android:theme="@android:style/Theme.Translucent.NoTitleBar">
+      <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+      </intent-filter>
+    </activity>
+    <receiver
+      android:name="expo.modules.bayaanwidgets.spotlight.ReciterSpotlightReceiver"
+      android:enabled="@bool/bayaan_widget_enabled_reciter_spotlight"
+      android:exported="true"
+      android:label="@string/bayaan_widget_spotlight_label">
+      <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+      </intent-filter>
+      <meta-data
+        android:name="android.appwidget.provider"
+        android:resource="@xml/reciter_spotlight_info" />
+    </receiver>
+    <receiver
+      android:name="expo.modules.bayaanwidgets.adhkar.AdhkarReceiver"
+      android:enabled="@bool/bayaan_widget_enabled_adhkar"
+      android:exported="true"
+      android:label="@string/bayaan_widget_adhkar_label">
+      <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+      </intent-filter>
+      <meta-data
+        android:name="android.appwidget.provider"
+        android:resource="@xml/adhkar_info" />
+    </receiver>
+    <receiver
+      android:name="expo.modules.bayaanwidgets.bayaannow.BayaanNowReceiver"
+      android:enabled="@bool/bayaan_widget_enabled_bayaan_now"
+      android:exported="true"
+      android:label="@string/bayaan_widget_now_label">
+      <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+      </intent-filter>
+      <meta-data
+        android:name="android.appwidget.provider"
+        android:resource="@xml/bayaan_now_info" />
+    </receiver>
+  </application>
+</manifest>

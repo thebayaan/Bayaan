@@ -31,6 +31,11 @@ import {CollectionStickyHeader} from '@/components/collection/CollectionStickyHe
 import {shuffleArray} from '@/utils/arrayUtils';
 import Color from 'color';
 import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
+// @ai-start
+import {flipX, forceLTR, latinLetterSpacing} from '@/utils/rtl';
+import {useTranslation} from 'react-i18next';
+import {getReciterDisplayName} from '@/i18n/format';
+// @ai-end
 
 interface DownloadDataItem {
   download: DownloadedSurah;
@@ -45,10 +50,12 @@ interface GroupedItem {
   downloadCount?: number;
 }
 
+// @ai-start
 export default function DownloadsScreen() {
   const {theme} = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const {t} = useTranslation(['collection', 'common']);
   const downloads = useDownloads();
   const {removeDownload, clearAllDownloads} = useDownloadActions();
   const {updateQueue, addToQueue, play} = usePlayerActions();
@@ -60,13 +67,13 @@ export default function DownloadsScreen() {
   const handleOptionsMenu = useCallback(() => {
     SheetManager.show('collection-options', {
       payload: {
-        title: 'Downloads',
-        subtitle: `${downloads.length} ${
-          downloads.length === 1 ? 'surah' : 'surahs'
-        } downloaded`,
+        title: t('common:terms.downloads'),
+        subtitle: t('downloadsScreen.surahsDownloaded', {
+          count: downloads.length,
+        }),
         options: [
           {
-            label: 'Remove All Downloads',
+            label: t('downloadsScreen.removeAll'),
             icon: 'trash-2',
             destructive: true,
             onPress: () => clearAllDownloads(),
@@ -74,7 +81,7 @@ export default function DownloadsScreen() {
         ],
       },
     });
-  }, [downloads.length, clearAllDownloads]);
+  }, [downloads.length, clearAllDownloads, t]);
 
   const renderHeaderRight = useCallback(
     () => (
@@ -90,7 +97,7 @@ export default function DownloadsScreen() {
   );
 
   useCollectionNativeHeader({
-    title: 'Downloads',
+    title: t('common:terms.downloads'),
     scrollY,
     hasContent: downloads.length > 0,
     headerRight: downloads.length > 0 ? renderHeaderRight : undefined,
@@ -148,7 +155,7 @@ export default function DownloadsScreen() {
           color: theme.colors.text,
           textAlign: 'center',
           marginBottom: moderateScale(8),
-          letterSpacing: -0.3,
+          letterSpacing: latinLetterSpacing(-0.3),
         },
         subtitle: {
           fontSize: moderateScale(12),
@@ -362,17 +369,20 @@ export default function DownloadsScreen() {
       const reciterDownloads = downloadData.filter(
         item => item.download.reciterId === reciterId,
       );
-      const reciterName = reciterDownloads[0]?.reciter?.name || 'Reciter';
+      const firstReciter = reciterDownloads[0]?.reciter;
+      const reciterName = firstReciter
+        ? getReciterDisplayName(firstReciter)
+        : t('common:terms.reciter');
 
       SheetManager.show('collection-options', {
         payload: {
           title: reciterName,
-          subtitle: `${reciterDownloads.length} ${
-            reciterDownloads.length === 1 ? 'surah' : 'surahs'
-          } downloaded`,
+          subtitle: t('downloadsScreen.surahsDownloaded', {
+            count: reciterDownloads.length,
+          }),
           options: [
             {
-              label: 'Play All',
+              label: t('downloadsScreen.playAll'),
               icon: 'play',
               customIcon: (
                 <PlayIcon color={theme.colors.text} size={moderateScale(20)} />
@@ -395,7 +405,7 @@ export default function DownloadsScreen() {
               },
             },
             {
-              label: 'Remove All Downloads',
+              label: t('downloadsScreen.removeAll'),
               icon: 'trash-2',
               destructive: true,
               onPress: async () => {
@@ -412,7 +422,7 @@ export default function DownloadsScreen() {
         },
       });
     },
-    [downloadData, updateQueue, play, removeDownload, theme.colors.text],
+    [downloadData, updateQueue, play, removeDownload, theme.colors.text, t],
   );
 
   const handlePlayAll = useCallback(async () => {
@@ -483,9 +493,12 @@ export default function DownloadsScreen() {
                 name="arrow-left"
                 size={moderateScale(22)}
                 color={theme.colors.text}
+                style={flipX}
               />
             </Pressable>
-            <Text style={styles.emptyHeaderTitle}>Downloads</Text>
+            <Text style={styles.emptyHeaderTitle}>
+              {t('common:terms.downloads')}
+            </Text>
             <View style={styles.emptyHeaderBack} />
           </View>
         )}
@@ -497,9 +510,11 @@ export default function DownloadsScreen() {
               filled={true}
             />
           </View>
-          <Text style={styles.emptyTitle}>No downloads yet</Text>
+          <Text style={styles.emptyTitle}>
+            {t('collectionScreen.empty.downloads')}
+          </Text>
           <Text style={styles.emptySubtitle}>
-            Download surahs to see them here
+            {t('downloadsScreen.emptySubtitle')}
           </Text>
         </View>
       </View>
@@ -520,15 +535,14 @@ export default function DownloadsScreen() {
                 />
               </View>
             </View>
-            <Text style={styles.title}>Downloads</Text>
+            <Text style={styles.title}>{t('common:terms.downloads')}</Text>
             <Text style={styles.subtitle}>
-              {downloads.length} {downloads.length === 1 ? 'surah' : 'surahs'}{' '}
-              downloaded
+              {t('downloadsScreen.surahsDownloaded', {count: downloads.length})}
             </Text>
           </View>
         </View>
 
-        <View style={styles.actionButtons}>
+        <View style={[styles.actionButtons, forceLTR]}>
           {!USE_GLASS && (
             <Pressable
               style={[
@@ -626,6 +640,7 @@ export default function DownloadsScreen() {
               name="arrow-left"
               size={moderateScale(24)}
               color={theme.colors.text}
+              style={flipX}
             />
           </Pressable>
         </RNAnimated.View>
@@ -650,8 +665,12 @@ export default function DownloadsScreen() {
         contentInsetAdjustmentBehavior="automatic"
       />
       {!USE_GLASS && (
-        <CollectionStickyHeader title="Downloads" scrollY={scrollY} />
+        <CollectionStickyHeader
+          title={t('common:terms.downloads')}
+          scrollY={scrollY}
+        />
       )}
     </View>
   );
 }
+// @ai-end

@@ -4,6 +4,9 @@ import {useTheme} from '@/hooks/useTheme';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {DownloadIcon} from '@/components/Icons';
 import Color from 'color';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+// @ai-end
 
 interface DownloadCardProps {
   itemCount: number;
@@ -12,6 +15,7 @@ interface DownloadCardProps {
   height?: number;
 }
 
+// @ai-start
 export const DownloadCard: React.FC<DownloadCardProps> = ({
   itemCount,
   onPress,
@@ -19,6 +23,7 @@ export const DownloadCard: React.FC<DownloadCardProps> = ({
   height,
 }) => {
   const {theme} = useTheme();
+  const {t} = useTranslation(['home', 'common']);
 
   // Green color for downloads
   const downloadColor = '#10AC84';
@@ -68,11 +73,12 @@ export const DownloadCard: React.FC<DownloadCardProps> = ({
         <DownloadIcon color={downloadColor} size={iconSize} />
       </View>
       <Text style={styles.name} numberOfLines={1}>
-        Downloads
+        {t('common:terms.downloads')}
       </Text>
       <Text style={styles.subtitle} numberOfLines={1}>
-        {itemCount} {itemCount === 1 ? 'surah' : 'surahs'}
+        {t('common:counts.surahs', {count: itemCount})}
       </Text>
     </TouchableOpacity>
   );
 };
+// @ai-end

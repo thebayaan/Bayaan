@@ -5,6 +5,33 @@ import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {Theme} from '@/utils/themeUtils';
 import Color from 'color';
 import {VersionDisplay} from '@/components/VersionDisplay';
+// @ai-start
+import {latinLetterSpacing} from '@/utils/rtl';
+import {useTranslation} from 'react-i18next';
+import branding from '@/config/branding';
+// @ai-end
+
+// @ai-start
+const FEATURE_KEYS = [
+  'offlineDownloads',
+  'customPlaylists',
+  'browseByJuz',
+  'audioControls',
+  'highQualityAudio',
+  'curatedCollections',
+  'personalization',
+] as const;
+// @ai-end
+
+// @ai-start
+const COMING_SOON_KEYS = [
+  'translations',
+  'wordByWord',
+  'bookmarking',
+  'learningTools',
+  'community',
+] as const;
+// @ai-end
 
 interface FeatureProps {
   title: string;
@@ -19,9 +46,12 @@ const Feature = ({title, description, styles}: FeatureProps) => (
   </View>
 );
 
+// @ai-start
 export default function AboutScreen() {
   const {theme} = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const {t} = useTranslation('settings');
+  const appName = branding.appName;
 
   return (
     <View style={styles.container}>
@@ -41,116 +71,63 @@ export default function AboutScreen() {
 
           <VersionDisplay style={styles.version} />
 
-          <Text style={styles.tagline}>
-            Your Companion for Quranic Recitation
-          </Text>
+          <Text style={styles.tagline}>{t('about.tagline')}</Text>
 
           <View style={styles.section}>
-            <Text style={styles.contentHeading}>Alhamdulillah</Text>
+            <Text style={styles.contentHeading}>
+              {t('about.alhamdulillahHeading')}
+            </Text>
+            <Text style={styles.bodyText}>{t('about.alhamdulillahBody')}</Text>
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.contentHeading}>
+              {t('about.missionHeading')}
+            </Text>
             <Text style={styles.bodyText}>
-              All praise is due to Allah for blessing us with the opportunity to
-              serve His Book and the Ummah. We are deeply grateful for being
-              chosen to develop this platform that connects people with the
-              beautiful recitation of the Holy Quran.
+              {t('about.missionBody', {appName})}
             </Text>
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.contentHeading}>Our Mission</Text>
-            <Text style={styles.bodyText}>
-              Bayaan is dedicated to making the beautiful recitation of the Holy
-              Quran accessible to everyone. We strive to provide a serene and
-              intuitive experience for listening to the Quran, featuring the
-              world&apos;s most renowned reciters and a few Bayaan Exclusives.
+            <Text style={styles.sectionHeader}>
+              {t('about.featuresHeader')}
             </Text>
-          </View>
-
-          <View style={styles.section}>
-            <Text style={styles.sectionHeader}>FEATURES</Text>
             <View style={styles.featureList}>
-              <Feature
-                title="Offline Downloads"
-                description="Download surahs for offline listening anytime, anywhere without internet connection"
-                styles={styles}
-              />
-              <Feature
-                title="Custom Playlists"
-                description="Create and manage your own personalized playlists of your favorite recitations"
-                styles={styles}
-              />
-              <Feature
-                title="Browse by Juz"
-                description="Easily navigate through the Quran with Juz-based organization and grouping"
-                styles={styles}
-              />
-              <Feature
-                title="Advanced Audio Controls"
-                description="Precise playback control with continuous play and adjustable recitation speed"
-                styles={styles}
-              />
-              <Feature
-                title="High-Quality Audio"
-                description="Crystal clear recitations from the world's best Qaris with optimized streaming"
-                styles={styles}
-              />
-              <Feature
-                title="Curated Collections"
-                description="Thoughtfully organized surahs for different occasions and themes"
-                styles={styles}
-              />
-              <Feature
-                title="Personalization"
-                description="Customize themes, accent colors, and audio settings to your liking"
-                styles={styles}
-              />
+              {FEATURE_KEYS.map(key => (
+                <Feature
+                  key={key}
+                  title={t(`about.features.${key}.title`)}
+                  description={t(`about.features.${key}.description`)}
+                  styles={styles}
+                />
+              ))}
             </View>
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionHeader}>COMING SOON</Text>
-            <Text style={styles.bodyText}>
-              We&apos;re working hard to bring you even more features to enhance
-              your Quranic journey, including:
+            <Text style={styles.sectionHeader}>
+              {t('about.comingSoonHeader')}
             </Text>
+            <Text style={styles.bodyText}>{t('about.comingSoonIntro')}</Text>
             <View style={[styles.featureList, {marginTop: moderateScale(12)}]}>
-              <Feature
-                title="Multiple Translations"
-                description="Access Quran translations in various languages to better understand the meanings"
-                styles={styles}
-              />
-              <Feature
-                title="Word-by-Word Follow Along"
-                description="Real-time word highlighting synchronized with recitations to help you follow and learn"
-                styles={styles}
-              />
-              <Feature
-                title="Smart Bookmarking"
-                description="Save your favorite verses and track your progress across surahs"
-                styles={styles}
-              />
-              <Feature
-                title="Learning Tools"
-                description="Interactive features to help you memorize and understand the Quran better"
-                styles={styles}
-              />
-              <Feature
-                title="Community Features"
-                description="Connect with others, share your journey, and grow together in your Quranic experience"
-                styles={styles}
-              />
+              {COMING_SOON_KEYS.map(key => (
+                <Feature
+                  key={key}
+                  title={t(`about.comingSoon.${key}.title`)}
+                  description={t(`about.comingSoon.${key}.description`)}
+                  styles={styles}
+                />
+              ))}
             </View>
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.contentHeading}>Our Commitment</Text>
+            <Text style={styles.contentHeading}>
+              {t('about.commitmentHeading')}
+            </Text>
             <Text style={styles.bodyText}>
-              We are committed to continuous improvement and maintaining the
-              highest standards of quality. Our team works diligently to ensure
-              that Bayaan remains a reliable and respectful platform for Quranic
-              recitation. InshaAllah, with the help of Allah, we will continue
-              to develop and enhance these features to better serve the Ummah.
-              We are grateful for your support and feedback as we continue this
-              blessed journey together.
+              {t('about.commitmentBody', {appName})}
             </Text>
           </View>
         </View>
@@ -158,7 +135,9 @@ export default function AboutScreen() {
     </View>
   );
 }
+// @ai-end
 
+// @ai-start
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({
     container: {
@@ -202,7 +181,7 @@ const createStyles = (theme: Theme) =>
       fontSize: moderateScale(10.5),
       fontFamily: 'Manrope-SemiBold',
       color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
-      letterSpacing: 1.2,
+      letterSpacing: latinLetterSpacing(1.2),
       textTransform: 'uppercase',
       marginBottom: moderateScale(10),
       marginLeft: moderateScale(2),
@@ -242,3 +221,4 @@ const createStyles = (theme: Theme) =>
       lineHeight: moderateScale(17),
     },
   });
+// @ai-end

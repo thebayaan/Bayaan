@@ -4,41 +4,82 @@ import React, {
   useCallback,
   useMemo,
   useLayoutEffect,
+  useRef,
 } from 'react';
-import {View, Text, FlatList, Pressable, StyleSheet} from 'react-native';
-import {useRouter, useNavigation, Link} from 'expo-router';
+import {
+  View,
+  Text,
+  FlatList,
+  Pressable,
+  StyleSheet,
+  ViewToken,
+} from 'react-native';
+import {useRouter, useNavigation, useFocusEffect, Link} from 'expo-router';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {Ionicons} from '@expo/vector-icons';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+// @ai-end
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {LoadingIndicator} from '@/components/LoadingIndicator';
 import {DhikrListItem} from '@/components/adhkar/DhikrListItem';
 import {PlayAllButton} from '@/components/adhkar/PlayAllButton';
+import {
+  AdhkarJumpPill,
+  jumpPillDirection,
+  visibleRowIndices,
+} from '@/components/adhkar/AdhkarJumpPill';
 import {Dhikr, SavedDhikr} from '@/types/adhkar';
 import {adhkarService} from '@/services/adhkar/AdhkarService';
 import {useAdhkar} from '@/hooks/useAdhkar';
-import {useAdhkarPlayAllStore} from '@/store/adhkarPlayAllStore';
+import {useAdhkarSessionStore} from '@/store/adhkarSessionStore';
+import {
+  playAllState,
+  toSessionItems,
+} from '@/services/adhkar/playback/sessionReducer';
+import {
+  setAdhkarFocus,
+  clearAdhkarFocus,
+  type AdhkarFocus,
+} from '@/services/adhkar/playback/openPlayingDhikr';
 import {useBottomInset} from '@/hooks/useBottomInset';
-import {useHeaderHeight} from '@react-navigation/elements';
+import {useHeaderHeight} from 'expo-router/react-navigation';
 import {USE_GLASS} from '@/hooks/useGlassProps';
 
+// Space between the header and a card the jump pill scrolls to.
+const JUMP_GAP = 8;
+
+// @ai-start
 const SavedAdhkarScreen: React.FC = () => {
   const router = useRouter();
   const navigation = useNavigation();
   const {theme} = useTheme();
+  const {t} = useTranslation('home');
   const styles = useMemo(() => createStyles(theme), [theme]);
   const headerHeight = useHeaderHeight();
   const bottomInset = useBottomInset();
   const {savedIds} = useAdhkar();
 
-  // Play All store
-  const isPlayAllMode = useAdhkarPlayAllStore(state => state.isPlayAllMode);
-  const playAllSourceId = useAdhkarPlayAllStore(state => state.sourceId);
-  const startPlayAll = useAdhkarPlayAllStore(state => state.startPlayAll);
-  const stopPlayAll = useAdhkarPlayAllStore(state => state.stopPlayAll);
-
   // Check if currently playing saved adhkar
-  const isSavedPlaying = isPlayAllMode && playAllSourceId === 'saved';
+  const playAllStatus = useAdhkarSessionStore(s =>
+    playAllState(s.session, 'saved'),
+  );
+
+  const currentDhikrId = useAdhkarSessionStore(s =>
+    s.session?.listId === 'saved'
+      ? (s.session.items[s.session.index]?.dhikrId ?? null)
+      : null,
+  );
+  const sessionPlaying = useAdhkarSessionStore(
+    s =>
+      s.session?.listId === 'saved' &&
+      (s.session.status === 'playing' || s.session.status === 'loading'),
+  );
+
+  const revealToken = useAdhkarSessionStore(s => s.revealToken);
+  const [visibleIndices, setVisibleIndices] = useState<number[]>([]);
+  const flatListRef = useRef<FlatList<Dhikr>>(null);
 
   const [adhkarList, setAdhkarList] = useState<Dhikr[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -69,29 +110,123 @@ const SavedAdhkarScreen: React.FC = () => {
     loadSavedAdhkar();
   }, [savedIds.size]); // Reload when saved count changes
 
-  // Play All handler
-  const handlePlayAll = useCallback(() => {
-    if (isSavedPlaying) {
-      // Stop if already playing saved
-      stopPlayAll();
+  // Where the session's dhikr sits in this screen's rows (session.index
+  // counts the session's own items, which keep a row unsaved since).
+  const sessionIndex = useMemo(() => {
+    if (currentDhikrId === null) return null;
+    const found = adhkarList.findIndex(d => d.id === currentDhikrId);
+    return found < 0 ? null : found;
+  }, [currentDhikrId, adhkarList]);
+
+  // The playing card's top lands just under the transparent header. On iOS
+  // glass the list scrolls under the header (contentInset); elsewhere it
+  // starts below it (marginTop).
+  const scrollViewOffset =
+    (USE_GLASS ? headerHeight : 0) + moderateScale(JUMP_GAP);
+
+  const scrollToPlaying = useCallback(() => {
+    if (sessionIndex === null) return;
+    flatListRef.current?.scrollToIndex({
+      index: sessionIndex,
+      viewPosition: 0,
+      viewOffset: scrollViewOffset,
+      animated: true,
+    });
+  }, [sessionIndex, scrollViewOffset]);
+
+  // A surface asked to show the playing dhikr.
+  const lastReveal = useRef(revealToken);
+  useEffect(() => {
+    if (revealToken === lastReveal.current) return;
+    // Not this list's session: drop the request.
+    if (sessionIndex === null) {
+      lastReveal.current = revealToken;
       return;
     }
+    // Still loading: keep the request pending until the rows exist.
+    if (isLoading) return;
+    lastReveal.current = revealToken;
+    retriedScroll.current = false;
+    scrollToPlaying();
+  }, [revealToken, sessionIndex, isLoading, scrollToPlaying]);
 
+  // Unmeasured rows: scroll toward the playing row, then retry once per press.
+  const retriedScroll = useRef(false);
+  const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (retryTimer.current) clearTimeout(retryTimer.current);
+    },
+    [],
+  );
+  const onScrollToIndexFailed = useCallback(
+    (info: {highestMeasuredFrameIndex: number}) => {
+      if (retriedScroll.current) return;
+      retriedScroll.current = true;
+      flatListRef.current?.scrollToIndex({
+        index: Math.max(0, info.highestMeasuredFrameIndex),
+        animated: false,
+      });
+      retryTimer.current = setTimeout(scrollToPlaying, 100);
+    },
+    [scrollToPlaying],
+  );
+  const handleJumpPress = useCallback(() => {
+    retriedScroll.current = false;
+    scrollToPlaying();
+  }, [scrollToPlaying]);
+
+  // Rows changed (e.g. unsave): drop stale viewability until the list reports.
+  useEffect(() => {
+    setVisibleIndices([]);
+  }, [adhkarList]);
+
+  const onViewableItemsChanged = useCallback(
+    ({viewableItems}: {viewableItems: ViewToken<Dhikr>[]}) => {
+      setVisibleIndices(
+        visibleRowIndices(viewableItems, v => v.index ?? undefined),
+      );
+    },
+    [],
+  );
+  const viewabilityConfig = useRef({
+    itemVisiblePercentThreshold: 50,
+  }).current;
+
+  // Play All handler
+  const dispatch = useAdhkarSessionStore(s => s.dispatch);
+  const handlePlayAll = useCallback(() => {
     if (adhkarList.length === 0) return;
-
-    startPlayAll(adhkarList, 0, 'saved', 'saved');
-
-    // Navigate to reader with first dhikr
-    const firstDhikr = adhkarList[0];
+    const source = {
+      listId: 'saved',
+      listTitle: t('adhkar.saved'),
+      items: toSessionItems(adhkarList),
+    };
+    const wasActive = playAllStatus !== 'idle';
+    dispatch({type: 'pressPlayAll', source});
+    if (wasActive) return;
+    const session = useAdhkarSessionStore.getState().session;
+    if (!session || session.listId !== 'saved') return;
+    const firstId = session.items[session.index]?.dhikrId;
+    const firstIndex = adhkarList.findIndex(d => d.id === firstId);
+    if (firstIndex < 0) return;
     router.push({
       pathname: '/(tabs)/(a.home)/adhkar/saved/[dhikrId]',
       params: {
-        dhikrId: firstDhikr.id,
-        globalIndex: '0',
+        dhikrId: adhkarList[firstIndex].id,
+        globalIndex: String(firstIndex),
         playAll: 'true',
       },
     });
-  }, [isSavedPlaying, adhkarList, startPlayAll, stopPlayAll, router]);
+  }, [adhkarList, t, playAllStatus, dispatch, router]);
+
+  useFocusEffect(
+    useCallback(() => {
+      const mine: AdhkarFocus = {kind: 'list', listId: 'saved'};
+      setAdhkarFocus(mine);
+      return () => clearAdhkarFocus(mine);
+    }, []),
+  );
 
   // Set native header options dynamically
   useLayoutEffect(() => {
@@ -113,7 +248,7 @@ const SavedAdhkarScreen: React.FC = () => {
               fontFamily: theme.fonts.semiBold,
               color: theme.colors.text,
             }}>
-            Saved
+            {t('adhkar.saved')}
           </Text>
           <Text
             style={{
@@ -122,7 +257,7 @@ const SavedAdhkarScreen: React.FC = () => {
               color: theme.colors.textSecondary,
               marginTop: moderateScale(2),
             }}>
-            {adhkarList.length} adhkar
+            {t('adhkar.count', {count: adhkarList.length})}
           </Text>
         </View>
       ),
@@ -130,7 +265,7 @@ const SavedAdhkarScreen: React.FC = () => {
         <View style={{paddingHorizontal: moderateScale(4)}}>
           <PlayAllButton
             onPress={handlePlayAll}
-            isPlaying={isSavedPlaying}
+            state={playAllStatus}
             disabled={isLoading || adhkarList.length === 0}
           />
         </View>
@@ -140,9 +275,10 @@ const SavedAdhkarScreen: React.FC = () => {
     navigation,
     adhkarList.length,
     handlePlayAll,
-    isSavedPlaying,
+    playAllStatus,
     isLoading,
     theme,
+    t,
   ]);
 
   const renderItem = useCallback(
@@ -159,15 +295,25 @@ const SavedAdhkarScreen: React.FC = () => {
         <Pressable style={StyleSheet.flatten([{flex: 1}])}>
           {USE_GLASS ? (
             <Link.AppleZoom>
-              <DhikrListItem dhikr={item} index={index} />
+              <DhikrListItem
+                dhikr={item}
+                index={index}
+                isCurrent={item.id === currentDhikrId}
+                isPlaying={item.id === currentDhikrId && sessionPlaying}
+              />
             </Link.AppleZoom>
           ) : (
-            <DhikrListItem dhikr={item} index={index} />
+            <DhikrListItem
+              dhikr={item}
+              index={index}
+              isCurrent={item.id === currentDhikrId}
+              isPlaying={item.id === currentDhikrId && sessionPlaying}
+            />
           )}
         </Pressable>
       </Link>
     ),
-    [],
+    [currentDhikrId, sessionPlaying],
   );
 
   const keyExtractor = useCallback((item: Dhikr) => item.id, []);
@@ -191,10 +337,8 @@ const SavedAdhkarScreen: React.FC = () => {
             size={moderateScale(48)}
             color={theme.colors.textSecondary}
           />
-          <Text style={styles.emptyText}>No saved adhkar yet</Text>
-          <Text style={styles.emptySubtext}>
-            Tap the bookmark icon on any dhikr to save it here
-          </Text>
+          <Text style={styles.emptyText}>{t('adhkar.noSavedYet')}</Text>
+          <Text style={styles.emptySubtext}>{t('adhkar.noSavedHint')}</Text>
         </View>
       </View>
     );
@@ -203,6 +347,7 @@ const SavedAdhkarScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       <FlatList
+        ref={flatListRef}
         data={adhkarList}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
@@ -218,10 +363,20 @@ const SavedAdhkarScreen: React.FC = () => {
         initialNumToRender={10}
         maxToRenderPerBatch={10}
         windowSize={5}
+        onViewableItemsChanged={onViewableItemsChanged}
+        viewabilityConfig={viewabilityConfig}
+        onScrollToIndexFailed={onScrollToIndexFailed}
+      />
+      <AdhkarJumpPill
+        direction={jumpPillDirection(visibleIndices, sessionIndex)}
+        playing={sessionPlaying}
+        top={headerHeight + moderateScale(8)}
+        onPress={handleJumpPress}
       />
     </View>
   );
 };
+// @ai-end
 
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({

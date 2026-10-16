@@ -1,0 +1,137 @@
+{
+  "collectionScreen": {
+    "addToCollection": "Add to Collection",
+    "loved": "Loved",
+    "notes": "Notes",
+    "itemsCount_one": "{{count}} item",
+    "itemsCount_other": "{{count}} items",
+    "empty": {
+      "playlists": "Create your first playlist",
+      "reciters": "No favorites yet",
+      "downloads": "No downloads yet",
+      "loved": "No loved surahs yet",
+      "bookmarks": "No bookmarks yet",
+      "notes": "No notes yet",
+      "uploads": "No uploads yet"
+    }
+  },
+  "bookmarksScreen": {
+    "count_one": "{{count}} bookmark",
+    "count_other": "{{count}} bookmarks",
+    "removeBookmark": "Remove Bookmark",
+    "openingIn": "Opening in",
+    "emptySubtitle": "Bookmark verses to see them here"
+  },
+  "notesScreen": {
+    "count_one": "{{count}} note",
+    "count_other": "{{count}} notes",
+    "editNote": "Edit Note",
+    "deleteNote": "Delete Note",
+    "emptySubtitle": "Add notes to verses to see them here"
+  },
+  "playlistsScreen": {
+    "count_one": "{{count}} playlist",
+    "count_other": "{{count}} playlists",
+    "emptyTitle": "No playlists yet",
+    "emptySubtitle": "Create playlists to see them here",
+    "createNew": "Create New Playlist"
+  },
+  "favoriteRecitersScreen": {
+    "title": "Favorite Reciters",
+    "removeFromFavorites": "Remove from Favorites",
+    "emptyTitle": "No favorite reciters yet",
+    "emptySubtitle": "Add reciters to see them here",
+    "addReciters": "Add Reciters",
+    "searchPlaceholder": "Search favorite reciters"
+  },
+  "downloadsScreen": {
+    "surahsDownloaded_one": "{{count}} surah downloaded",
+    "surahsDownloaded_other": "{{count}} surahs downloaded",
+    "removeAll": "Remove All Downloads",
+    "playAll": "Play All",
+    "emptySubtitle": "Download surahs to see them here"
+  },
+  "lovedScreen": {
+    "allDownloaded": "All Downloaded",
+    "downloadAll": "Download All",
+    "unloveAll": "Unlove All Surahs",
+    "emptySubtitle": "Love surahs to see them here",
+    "alreadyDownloadedTitle": "Already Downloaded",
+    "alreadyDownloadedMessage": "All loved surahs are already downloaded.",
+    "downloadCompleteTitle": "Download Complete",
+    "downloadCompleteMessage": "All loved surahs have been downloaded.",
+    "downloadErrorTitle": "Download Error",
+    "downloadErrorMessage": "Some downloads may have failed."
+  },
+  "uploadsScreen": {
+    "recitationsCount_one": "{{count}} recitation",
+    "recitationsCount_other": "{{count}} recitations",
+    "removeAll": "Remove All Uploads",
+    "emptySubtitle": "Upload recitations to see them here",
+    "opening": "Opening...",
+    "addRecitation": "Add Recitation",
+    "untagged": "Untagged",
+    "verseShort": "v{{verse}}",
+    "recordingType": {
+      "salah": "Salah",
+      "studio": "Studio"
+    },
+    "category": {
+      "dua": "Dua",
+      "lecture": "Lecture",
+      "tafsir": "Tafsir",
+      "other": "Other"
+    }
+  },
+  "playlistModal": {
+    "newTitle": "New Playlist",
+    "editTitle": "Edit Playlist",
+    "namePreview": "Your Playlist",
+    "nameLabel": "Playlist Name",
+    "namePlaceholder": "Name"
+  },
+  "searchModal": {
+    "placeholder": "Search playlists, reciters, surahs, rewayat...",
+    "emptyTitle": "Search Your Collection",
+    "emptySubtitle": "Search playlists, reciters, surahs, rewayat, and downloads",
+    "searching": "Searching...",
+    "tryDifferent": "Try different keywords",
+    "resultsCount_one": "{{count}} result",
+    "resultsCount_other": "{{count}} results",
+    "unknownReciter": "Unknown Reciter",
+    "inPlaylist": "{{reciter}} • in \"{{playlist}}\" playlist",
+    "lovedBy": "Loved • {{reciter}}",
+    "downloadedTitle": "Downloaded: {{surah}}",
+    "rewayatAvailable_one": "{{count}} rewayat available",
+    "rewayatAvailable_other": "{{count}} rewayat available",
+    "rewayahBy": "{{rewayah}} by {{reciter}}",
+    "typeLoved": "Loved",
+    "typeInPlaylist": "In Playlist"
+  },
+  "playlistDetail": {
+    "empty": "No surahs in this playlist"
+  },
+  "reciterDownloads": {
+    "empty": "No downloads for this reciter"
+  },
+  "systemPlaylist": {
+    "curatedBadge": "{{appName}} Curated",
+    "withReciter": "with {{reciter}}",
+    "durationHoursMinutes": "{{hours}}h {{minutes}}m",
+    "durationHours": "{{hours}}h",
+    "durationMinutes": "{{minutes}}m",
+    "noReciterTitle": "No Reciter Available",
+    "noReciterMessage": "Could not find a reciter with all surahs in this playlist. Please try a different playlist.",
+    "errorTitle": "Error",
+    "playFailed": "Failed to play playlist. Please try again.",
+    "shuffleFailed": "Failed to shuffle playlist. Please try again.",
+    "playTrackFailed": "Failed to play track. Please try again."
+  },
+  "playlistItem": {
+    "subtitle": "Playlist • {{surahs}}"
+  },
+  "reciterDownloadsItem": {
+    "subtitle": "Downloaded • {{surahs}}"
+  },
+  "followAlongBadge": "Follow Along"
+}

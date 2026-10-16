@@ -10,9 +10,10 @@ import Social
 import UIKit
 
 class ShareViewController: UIViewController {
-  let hostAppGroupIdentifier = "group.com.bayaan.app"
-  let shareProtocol = "bayaan"
-  let sharedKey = "bayaanShareKey"
+  let hostAppGroupIdentifier: String = "group.com.bayaan.app"
+  let shareProtocol: String = "bayaan"
+  let sharedKey: String = "bayaanShareKey"
+  let hideView: Bool = true
   var sharedMedia: [SharedMediaFile] = []
   var sharedWebUrl: [WebUrl] = []
   var sharedText: [String] = []
@@ -28,10 +29,21 @@ class ShareViewController: UIViewController {
 
   override func viewDidLoad() {
     super.viewDidLoad()
+    if hideView {
+      view.backgroundColor = .clear
+      view.isOpaque = false
+      handleViewLoad()
+    }
   }
 
   override func viewDidAppear(_ animated: Bool) {
     super.viewDidAppear(animated)
+    if !hideView {
+      handleViewLoad()
+    }
+  }
+
+  private func handleViewLoad() {
     Task {
       guard let extensionContext = self.extensionContext,
         let content = extensionContext.inputItems.first as? NSExtensionItem,
@@ -73,7 +85,7 @@ class ShareViewController: UIViewController {
         if let url = try? await attachment.loadItem(forTypeIdentifier: self.vcardContentType) as? URL {
           // ensure a .vcf file extension so mime resolves properly
           let tmp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".vcf")
-          _ = self.copyFile(at: url, to: tmp)
+          _ = Self.copyFile(at: url, to: tmp)
           Task { @MainActor in
             await self.handleFileURL(content: content, url: tmp, index: index)
           }
@@ -289,7 +301,7 @@ class ShareViewController: UIViewController {
               forSecurityApplicationGroupIdentifier: self.hostAppGroupIdentifier)!
             .appendingPathComponent(newName)
           
-          let copied = self.copyFile(at: safeURL, to: newPath)
+          let copied = Self.copyFile(at: safeURL, to: newPath)
           
           if copied {
             self.sharedMedia.append(
@@ -373,7 +385,7 @@ class ShareViewController: UIViewController {
             .containerURL(
               forSecurityApplicationGroupIdentifier: self.hostAppGroupIdentifier)!
             .appendingPathComponent(newName)
-          let copied = self.copyFile(at: url, to: newPath)
+          let copied = Self.copyFile(at: url, to: newPath)
           if copied {
             guard
               let sharedFile = self.getSharedMediaFile(
@@ -444,7 +456,7 @@ class ShareViewController: UIViewController {
       .containerURL(
         forSecurityApplicationGroupIdentifier: self.hostAppGroupIdentifier)!
       .appendingPathComponent(newName)
-    let copied = self.copyFile(at: url, to: newPath)
+    let copied = Self.copyFile(at: url, to: newPath)
     if copied {
       self.sharedMedia.append(
         SharedMediaFile(
@@ -478,7 +490,8 @@ class ShareViewController: UIViewController {
   }
 
   private func redirectToHostApp(type: RedirectType) {
-    let url = URL(string: "\(shareProtocol)://dataUrl=\(sharedKey)#\(type)")!
+    let nonce = UUID().uuidString
+    let url = URL(string: "\(shareProtocol)://dataUrl=\(sharedKey)?nonce=\(nonce)#\(type)")!
     var responder = self as UIResponder?
 
     while responder != nil {
@@ -542,7 +555,7 @@ class ShareViewController: UIViewController {
     }
   }
 
-  func copyFile(at srcURL: URL, to dstURL: URL) -> Bool {
+  nonisolated static func copyFile(at srcURL: URL, to dstURL: URL) -> Bool {
     do {
       if FileManager.default.fileExists(atPath: dstURL.path) {
         try FileManager.default.removeItem(at: dstURL)

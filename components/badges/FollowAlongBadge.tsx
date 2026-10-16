@@ -4,14 +4,19 @@ import {moderateScale} from 'react-native-size-matters';
 import {Ionicons} from '@expo/vector-icons';
 import {useTheme} from '@/hooks/useTheme';
 import Color from 'color';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+// @ai-end
 
 interface FollowAlongBadgeProps {
   size?: 'small' | 'default';
 }
 
+// @ai-start
 export const FollowAlongBadge: React.FC<FollowAlongBadgeProps> = React.memo(
   ({size = 'default'}) => {
     const {theme} = useTheme();
+    const {t} = useTranslation(['collection', 'common']);
 
     const backgroundColor = Color(theme.colors.text).alpha(0.06).toString();
     const iconColor = theme.colors.textSecondary;
@@ -43,12 +48,13 @@ export const FollowAlongBadge: React.FC<FollowAlongBadgeProps> = React.memo(
               fontFamily: theme.fonts.medium,
             },
           ]}>
-          Follow Along
+          {t('followAlongBadge')}
         </Text>
       </View>
     );
   },
 );
+// @ai-end
 
 FollowAlongBadge.displayName = 'FollowAlongBadge';
 

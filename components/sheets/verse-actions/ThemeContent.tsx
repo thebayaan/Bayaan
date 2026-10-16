@@ -10,6 +10,11 @@ import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import Color from 'color';
 import {themeDataService} from '@/services/mushaf/ThemeDataService';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+import {getSurahDisplayName, localizeDigits} from '@/i18n/format';
+import {rewayahThemePassage, type UnitStart} from './verseUnitScreens';
+// @ai-end
 
 const surahData = require('@/data/surahData.json');
 
@@ -18,18 +23,30 @@ const surahData = require('@/data/surahData.json');
 interface ThemeContentProps {
   surahNumber: number;
   ayahNumber: number;
+  // @ai-start
+  /** Another rewayah's verse: its theme is the theme of the first Hafs
+   *  verse holding its words, and the passage is told in the rewayah's
+   *  numbering. Absent for Hafs (unchanged). */
+  unitStart?: UnitStart;
+  // @ai-end
   onBack: () => void;
 }
 
+// @ai-start
 export const ThemeContent: React.FC<ThemeContentProps> = ({
   surahNumber,
   ayahNumber,
+  unitStart, // @ai
   onBack,
 }) => {
   const {theme} = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const {t} = useTranslation(['sheets', 'common']);
 
-  const verseKey = `${surahNumber}:${ayahNumber}`;
+  // Themes are keyed by Hafs verses. @ai
+  const verseKey = unitStart
+    ? unitStart.unit.hafsKeys[0]
+    : `${surahNumber}:${ayahNumber}`;
   const themeInfo = themeDataService.getThemeForVerse(verseKey);
 
   if (!themeInfo) {
@@ -40,18 +57,39 @@ export const ThemeContent: React.FC<ThemeContentProps> = ({
           contentContainerStyle={styles.scrollInner}
           showsVerticalScrollIndicator={false}
           bounces={true}>
-          <Text style={styles.emptyText}>No thematic data for this verse.</Text>
+          <Text style={styles.emptyText}>{t('themeContent.empty')}</Text>
         </ScrollView>
       </View>
     );
   }
 
   const surah = surahData.find(
-    (s: {id: number; name: string}) => s.id === themeInfo.surah,
+    (s: {id: number; name: string; name_arabic: string}) =>
+      s.id === themeInfo.surah,
   );
-  const surahName = surah?.name ?? `Surah ${themeInfo.surah}`;
-  const passageRange = `${themeInfo.surah}:${themeInfo.ayahFrom} \u2013 ${themeInfo.surah}:${themeInfo.ayahTo}`;
-  const verseCount = themeInfo.ayahTo - themeInfo.ayahFrom + 1;
+  const surahName = surah
+    ? getSurahDisplayName(surah)
+    : t('common:labels.surahNumber', {number: themeInfo.surah});
+  // @ai-start
+  // Another rewayah: the rewayah verses holding the passage's words (never
+  // Hafs numbers under the rewayah's name).
+  const rewayahPassage = unitStart
+    ? rewayahThemePassage(
+        unitStart.model,
+        themeInfo.surah,
+        themeInfo.ayahFrom,
+        themeInfo.ayahTo,
+      )
+    : null;
+  const passageRange = localizeDigits(
+    unitStart
+      ? (rewayahPassage?.range ?? '')
+      : `${themeInfo.surah}:${themeInfo.ayahFrom} \u2013 ${themeInfo.surah}:${themeInfo.ayahTo}`,
+  );
+  const verseCount = unitStart
+    ? (rewayahPassage?.count ?? 0)
+    : themeInfo.ayahTo - themeInfo.ayahFrom + 1;
+  // @ai-end
 
   return (
     <View style={styles.container}>
@@ -67,7 +105,7 @@ export const ThemeContent: React.FC<ThemeContentProps> = ({
         <View style={styles.card}>
           {/* Surah name row */}
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Surah</Text>
+            <Text style={styles.infoLabel}>{t('common:terms.surah')}</Text>
             <Text style={styles.infoValue}>{surahName}</Text>
           </View>
 
@@ -75,7 +113,7 @@ export const ThemeContent: React.FC<ThemeContentProps> = ({
 
           {/* Passage range row */}
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Passage</Text>
+            <Text style={styles.infoLabel}>{t('themeContent.passage')}</Text>
             <Text style={styles.infoValue}>{passageRange}</Text>
           </View>
 
@@ -83,14 +121,15 @@ export const ThemeContent: React.FC<ThemeContentProps> = ({
 
           {/* Verse count row */}
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Verses</Text>
-            <Text style={styles.infoValue}>{verseCount}</Text>
+            <Text style={styles.infoLabel}>{t('themeContent.verses')}</Text>
+            <Text style={styles.infoValue}>{localizeDigits(verseCount)}</Text>
           </View>
         </View>
       </ScrollView>
     </View>
   );
 };
+// @ai-end
 
 // ─── Styles ───────────────────────────────────────────────────────────────
 

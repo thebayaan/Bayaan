@@ -5,6 +5,10 @@ import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {ReciterImage} from '@/components/ReciterImage';
 import {getReciterById} from '@/services/dataService';
 import {Reciter} from '@/data/reciterData';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+import {getReciterDisplayName} from '@/i18n/format';
+// @ai-end
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -22,10 +26,12 @@ interface ReciterDownloadsStackCardProps {
 const AnimatedTouchableOpacity =
   Animated.createAnimatedComponent(TouchableOpacity);
 
+// @ai-start
 export const ReciterDownloadsStackCard: React.FC<
   ReciterDownloadsStackCardProps
 > = ({reciterId, downloadCount, onPress, width, height}) => {
   const {theme} = useTheme();
+  const {t} = useTranslation('home');
   const [reciter, setReciter] = useState<Reciter | null>(null);
 
   // Animation values
@@ -118,11 +124,12 @@ export const ReciterDownloadsStackCard: React.FC<
         />
       </View>
       <Text style={styles.name} numberOfLines={1}>
-        {reciter.name}
+        {getReciterDisplayName(reciter)}
       </Text>
       <Text style={styles.subtitle} numberOfLines={1}>
-        Downloaded • {downloadCount} {downloadCount === 1 ? 'surah' : 'surahs'}
+        {t('cards.downloadedCount', {count: downloadCount})}
       </Text>
     </AnimatedTouchableOpacity>
   );
 };
+// @ai-end

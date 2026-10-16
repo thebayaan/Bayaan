@@ -68,6 +68,15 @@ import {
   QueueIcon,
   AmbientIcon,
 } from '@/components/Icons';
+// @ai-start
+import {
+  localizeDigits,
+  getTrackDisplayTitle,
+  getTrackArtistDisplay,
+} from '@/i18n/format';
+import {forceLTR} from '@/utils/rtl';
+import {getRecitationStyleLabel} from './recitationStyle';
+// @ai-end
 
 interface TabletPlayerProps {
   onSpeedPress: () => void;
@@ -96,6 +105,7 @@ const formatTime = (s: number) => {
   return h > 0 ? `${h}:${mm}:${ss}` : `${m}:${ss}`;
 };
 
+// @ai-start
 const TabletPlayer: React.FC<TabletPlayerProps> = ({
   onSpeedPress,
   onSleepTimerPress,
@@ -437,7 +447,10 @@ const TabletPlayer: React.FC<TabletPlayerProps> = ({
     return (
       <View
         style={[styles.rootCol, {backgroundColor: readingColors.background}]}>
-        <View style={styles.contentPane}>{body}</View>
+        {/* @ai: This pane has no top bar to consume the status-bar inset. */}
+        <View style={[styles.contentPane, {paddingTop: insets.top}]}>
+          {body}
+        </View>
       </View>
     );
   }
@@ -489,7 +502,7 @@ const TabletPlayer: React.FC<TabletPlayerProps> = ({
             {color: textColor},
           ]}
           numberOfLines={1}>
-          {currentTrack?.title || ''}
+          {currentTrack ? getTrackDisplayTitle(currentTrack) : ''}
         </Text>
         <Text
           style={[
@@ -498,14 +511,16 @@ const TabletPlayer: React.FC<TabletPlayerProps> = ({
             {color: textColor},
           ]}
           numberOfLines={1}>
-          {currentTrack?.artist || ''}
+          {currentTrack ? getTrackArtistDisplay(currentTrack) : ''}
         </Text>
         {resolvedRewayah && (rewayat || currentTrack?.rewayahName) && (
           <Text
             style={[styles.trackRewayat, {color: secondaryColor}]}
             numberOfLines={1}>
             {`${getShortLabel(resolvedRewayah.id)}${
-              rewayat?.style ? ` • ${rewayat.style}` : ''
+              rewayat?.style
+                ? ` • ${getRecitationStyleLabel(rewayat.style)}`
+                : ''
             }`}
           </Text>
         )}
@@ -526,7 +541,7 @@ const TabletPlayer: React.FC<TabletPlayerProps> = ({
   );
 
   const renderScrubber = () => (
-    <View style={styles.scrubber}>
+    <View style={[styles.scrubber, forceLTR]}>
       <Slider
         style={styles.slider}
         minimumValue={0}
@@ -542,17 +557,20 @@ const TabletPlayer: React.FC<TabletPlayerProps> = ({
       />
       <View style={styles.timeRow}>
         <Text style={[styles.timeText, {color: textColor}]}>
-          {formatTime(displayTime)}
+          {localizeDigits(formatTime(displayTime))}
         </Text>
         <Text style={[styles.timeText, {color: secondaryColor}]}>
-          -{formatTime(Math.max(0, progress.duration - displayTime))}
+          -
+          {localizeDigits(
+            formatTime(Math.max(0, progress.duration - displayTime)),
+          )}
         </Text>
       </View>
     </View>
   );
 
   const renderTransport = () => (
-    <View style={styles.transport}>
+    <View style={[styles.transport, forceLTR]}>
       <Pressable
         onPress={handleSeekBack}
         disabled={trackLoading}
@@ -568,7 +586,7 @@ const TabletPlayer: React.FC<TabletPlayerProps> = ({
               styles.seekLabelLeft,
               {color: trackLoading ? secondaryColor : textColor},
             ]}>
-            {SEEK_INTERVAL}
+            {localizeDigits(SEEK_INTERVAL)}
           </Text>
         </View>
       </Pressable>
@@ -621,7 +639,7 @@ const TabletPlayer: React.FC<TabletPlayerProps> = ({
               styles.seekLabelRight,
               {color: trackLoading ? secondaryColor : textColor},
             ]}>
-            {SEEK_INTERVAL}
+            {localizeDigits(SEEK_INTERVAL)}
           </Text>
         </View>
       </Pressable>
@@ -644,7 +662,7 @@ const TabletPlayer: React.FC<TabletPlayerProps> = ({
         ]}
         onPress={onSpeedPress}>
         <Text style={[styles.toolLabel, {color: textColor}]}>
-          {`${playbackRate}x`}
+          {localizeDigits(`${playbackRate}x`)}
         </Text>
       </Pressable>
       <Pressable
@@ -749,7 +767,10 @@ const TabletPlayer: React.FC<TabletPlayerProps> = ({
         </GestureDetector>
 
         {/* Right: Mushaf / Queue / Upload */}
-        <View style={styles.contentPane}>{body}</View>
+        {/* @ai: Match the control sidebar's top safe area. */}
+        <View style={[styles.contentPane, {paddingTop: insets.top}]}>
+          {body}
+        </View>
       </View>
     );
   }
@@ -818,6 +839,7 @@ const TabletPlayer: React.FC<TabletPlayerProps> = ({
     </View>
   );
 };
+// @ai-end
 
 const styles = StyleSheet.create({
   // Layout roots

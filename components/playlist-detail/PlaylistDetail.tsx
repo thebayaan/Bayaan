@@ -26,6 +26,9 @@ import {UserPlaylist} from '@/services/database/DatabaseService';
 import {CollectionStickyHeader} from '@/components/collection/CollectionStickyHeader';
 import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
 import {USE_GLASS} from '@/hooks/useGlassProps';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+// @ai-end
 
 interface PlaylistTrack {
   id: string;
@@ -47,9 +50,11 @@ interface PlaylistDetailProps {
   id: string;
 }
 
+// @ai-start
 const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
   const {theme} = useTheme();
   const router = useRouter();
+  const {t} = useTranslation(['collection', 'common']);
   const {
     getPlaylist,
     getPlaylistItems,
@@ -149,16 +154,16 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
         });
 
         const validTracks = (await Promise.all(trackPromises)).filter(
-          (t): t is NonNullable<typeof t> => t !== null,
+          (vt): vt is NonNullable<typeof vt> => vt !== null,
         );
 
         if (validTracks.length === 0) return;
 
         const selectedIndex = validTracks.findIndex(
-          t =>
-            t.reciterId === reciter.id &&
-            t.surahId === surah.id.toString() &&
-            (track.rewayatId ? t.rewayatId === track.rewayatId : true),
+          vt =>
+            vt.reciterId === reciter.id &&
+            vt.surahId === surah.id.toString() &&
+            (track.rewayatId ? vt.rewayatId === track.rewayatId : true),
         );
 
         if (selectedIndex === -1) return;
@@ -337,7 +342,7 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
   );
 
   useCollectionNativeHeader({
-    title: playlist?.name || 'Playlist',
+    title: playlist?.name || t('common:terms.playlist'),
     scrollY,
     hasContent: !loading && playlistData.length > 0,
     headerRight: !loading && playlist ? renderHeaderRight : undefined,
@@ -379,9 +384,7 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
     return (
       <PlaylistHeader
         title={playlist.name}
-        subtitle={`${playlistData.length} ${
-          playlistData.length === 1 ? 'surah' : 'surahs'
-        }`}
+        subtitle={t('common:counts.surahs', {count: playlistData.length})}
         onPlayPress={handlePlayAll}
         onShufflePress={handleShuffle}
         onOptionsPress={USE_GLASS ? undefined : handleOptionsPress}
@@ -395,6 +398,7 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
     handleShuffle,
     handleOptionsPress,
     theme,
+    t,
   ]);
 
   const renderItem: ListRenderItem<PlaylistDataItem> = ({item}) => {
@@ -421,7 +425,7 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
   if (loading || !playlist) {
     return (
       <View style={styles.container}>
-        <Text style={styles.emptyText}>Loading...</Text>
+        <Text style={styles.emptyText}>{t('common:status.loading')}</Text>
       </View>
     );
   }
@@ -436,7 +440,7 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
         contentContainerStyle={styles.listContentContainer}
         contentInsetAdjustmentBehavior="automatic"
         ListEmptyComponent={
-          <Text style={styles.emptyText}>No surahs in this playlist</Text>
+          <Text style={styles.emptyText}>{t('playlistDetail.empty')}</Text>
         }
         onScroll={RNAnimated.event(
           [{nativeEvent: {contentOffset: {y: scrollY}}}],
@@ -451,5 +455,6 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
     </View>
   );
 };
+// @ai-end
 
 export default PlaylistDetail;

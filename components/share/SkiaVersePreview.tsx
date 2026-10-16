@@ -1,14 +1,15 @@
-import React, {useEffect, useMemo, useReducer, useState} from 'react';
+import React, {useMemo, useState} from 'react';
 import {View, Text} from 'react-native';
 import {
+  getDkFontFamily, // @ai
   useMushafSettingsStore,
   type RewayahId,
 } from '@/store/mushafSettingsStore';
-import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {useMushafFontMgr} from '@/hooks/useMushafFontMgr';
 import {useTheme} from '@/hooks/useTheme';
 import {getAllahNameHighlightColorHex} from '@/constants/mushafAllahHighlight';
 import SkiaVerseText from '@/components/player/v2/PlayerContent/QuranView/SkiaVerseText';
+import {useRewayahVerseTexts} from './useRewayahVerseTexts'; // @ai
 
 interface SkiaVersePreviewProps {
   verseKey: string;
@@ -18,13 +19,25 @@ interface SkiaVersePreviewProps {
    *  mushaf rewayah. Player-context callers pass the currently-playing
    *  track's rewayah so the preview matches what the user is listening to. */
   rewayah?: RewayahId;
+  // @ai-start
+  /**
+   * Text to draw instead of reading verseKey(s): the own text of rewayah
+   * verse units (RewayahVerseUnits.unitText), for rows that show a
+   * rewayah's verse in its own numbering (bookmarks and notes saved in a
+   * non-Hafs rewayah). verseKey(s) are then not read. '' draws nothing yet.
+   */
+  text?: string;
+  // @ai-end
 }
+
+const NO_VERSE_KEYS: readonly string[] = []; // @ai
 
 const SkiaVersePreview: React.FC<SkiaVersePreviewProps> = ({
   verseKey,
   verseKeys,
   numberOfLines = 2,
   rewayah: rewayahOverride,
+  text: textOverride, // @ai
 }) => {
   const {theme} = useTheme();
   const [width, setWidth] = useState(0);
@@ -47,35 +60,35 @@ const SkiaVersePreview: React.FC<SkiaVersePreviewProps> = ({
     [allahNameHighlightColorSetting, theme.isDarkMode],
   );
   const rewayah: RewayahId = rewayahOverride ?? activeRewayah;
-  const fontFamily =
-    mushafRenderer === 'dk_indopak'
-      ? 'DigitalKhattIndoPak'
-      : mushafRenderer === 'dk_v1'
-        ? 'DigitalKhattV1'
-        : 'DigitalKhattV2';
+  // @ai-start
+  // IndoPak cannot draw non-Hafs marks, so a bookmark or track in another
+  // rewayah is drawn with a Madani DigitalKhatt font.
+  const fontFamily = getDkFontFamily(mushafRenderer, rewayah);
+  // @ai-end
 
   const fontMgr = useMushafFontMgr();
 
-  // Lazy-load the override rewayah's DB if it's not the active one.
-  const [, bump] = useReducer(x => x + 1, 0);
-  useEffect(() => {
-    if (rewayah === digitalKhattDataService.rewayah) return;
-    let cancelled = false;
-    digitalKhattDataService.ensureRewayahLoaded(rewayah).then(() => {
-      if (!cancelled) bump();
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [rewayah]);
-
-  const text = useMemo(() => {
-    const keys = verseKeys && verseKeys.length > 1 ? verseKeys : [verseKey];
-    return keys
-      .map(vk => digitalKhattDataService.getVerseText(vk, rewayah))
-      .filter(Boolean)
-      .join(' ');
-  }, [verseKey, verseKeys, rewayah]);
+  // @ai-start
+  // Reactive read: loads the rewayah's side cache when it is not the active
+  // one and re-renders when it lands (a plain memo stayed empty until the
+  // preview remounted). Shows nothing while loading or if the load fails,
+  // never another rewayah's text.
+  const keys =
+    textOverride !== undefined // @ai: drawn text given, read no verse
+      ? NO_VERSE_KEYS
+      : verseKeys && verseKeys.length > 1
+        ? verseKeys
+        : [verseKey];
+  const verseTexts = useRewayahVerseTexts(keys, rewayah);
+  const text = useMemo(
+    () =>
+      textOverride ??
+      (verseTexts.status === 'ready'
+        ? verseTexts.texts.filter(Boolean).join(' ')
+        : ''),
+    [textOverride, verseTexts],
+  );
+  // @ai-end
 
   if (!fontMgr || !text) {
     return (

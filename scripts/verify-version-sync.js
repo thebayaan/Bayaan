@@ -189,6 +189,13 @@ function readVersionFromInfoPlist(repoRoot = REPO) {
 // blocks whose `INFOPLIST_FILE` points at a file ending `-Info.plist`
 // (Xcode's convention for non-main-app target stub plists). Each such
 // block carries one Debug + one Release entry; we read + patch both.
+function isExtensionInfoPlistPath(infoPlistRelPath) {
+  return (
+    infoPlistRelPath.endsWith('-Info.plist') ||
+    infoPlistRelPath.startsWith('../targets/')
+  );
+}
+
 function findExtensionConfigBlocks(repoRoot = REPO) {
   const candidates = [];
   const iosDir = path.join(repoRoot, 'ios');
@@ -222,7 +229,10 @@ function findExtensionConfigBlocks(repoRoot = REPO) {
     // (or sometimes `Info.plist` inside an `<Extension>/` directory we
     // already skip in findInfoPlistPath). The `-Info.plist` suffix is the
     // reliable marker. The main app's plist is just `<App>/Info.plist`.
-    if (!infoPlistRelPath.endsWith('-Info.plist')) continue;
+    // @bacons/apple-targets extensions (the widget) keep their Info.plist
+    // under the repo-root `targets/` folder, so the pbxproj points at
+    // `../targets/<name>/Info.plist` with no `-Info.plist` suffix.
+    if (!isExtensionInfoPlistPath(infoPlistRelPath)) continue;
     const cpvMatch = /CURRENT_PROJECT_VERSION\s+=\s+([^;]+);/.exec(block);
     const mvMatch = /MARKETING_VERSION\s+=\s+([^;]+);/.exec(block);
     if (!cpvMatch || !mvMatch) continue;
@@ -496,6 +506,7 @@ module.exports = {
   readVersionFromInfoPlist,
   readVersionFromAndroidGradle,
   findExtensionConfigBlocks,
+  isExtensionInfoPlistPath,
   patchInfoPlist,
   patchAndroidGradle,
   patchExtensionConfigBlocks,

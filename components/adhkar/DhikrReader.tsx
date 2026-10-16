@@ -18,6 +18,13 @@ import {Theme} from '@/utils/themeUtils';
 import {AdhkarAudioControls} from './AdhkarAudioControls';
 import {useAdhkarSettingsStore} from '@/store/adhkarSettingsStore';
 import {Dhikr} from '@/types/adhkar';
+import {adhkarCopyText, adhkarTranslationCopyText} from '@/utils/adhkarText';
+import {AdhkarArabicText} from './AdhkarArabicText';
+import {AdhkarLatinText} from './AdhkarLatinText';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+import {isRTL} from '@/utils/rtl';
+// @ai-end
 
 // Enable LayoutAnimation for Android
 if (
@@ -33,12 +40,14 @@ interface DhikrReaderProps {
   onSaveToggle: () => void;
 }
 
+// @ai-start
 export const DhikrReader: React.FC<DhikrReaderProps> = ({
   dhikr,
   isSaved,
   onSaveToggle,
 }) => {
   const {theme} = useTheme();
+  const {t} = useTranslation('player');
   const [showInstruction, setShowInstruction] = useState(false);
 
   // Lazy load audio controls after first paint for better performance
@@ -82,16 +91,20 @@ export const DhikrReader: React.FC<DhikrReaderProps> = ({
 
   const handleShare = useCallback(async () => {
     const content = [
-      dhikr.arabic,
-      dhikr.translation ? `\n\n${dhikr.translation}` : '',
-      dhikr.transliteration ? `\n\n${dhikr.transliteration}` : '',
+      adhkarCopyText(dhikr.arabic),
+      showTranslation && dhikr.translation
+        ? `\n\n${adhkarTranslationCopyText(dhikr.translation)}`
+        : '',
+      showTransliteration && dhikr.transliteration
+        ? `\n\n${adhkarCopyText(dhikr.transliteration)}`
+        : '',
       dhikr.instruction ? `\n\n${dhikr.instruction}` : '',
     ].join('');
 
     await Share.share({
       message: content,
     });
-  }, [dhikr]);
+  }, [dhikr, showTranslation, showTransliteration]);
 
   return (
     <View style={styles.container}>
@@ -104,7 +117,7 @@ export const DhikrReader: React.FC<DhikrReaderProps> = ({
           <View style={styles.repeatBadgeContainer}>
             <View style={styles.repeatBadge}>
               <Text style={styles.repeatBadgeText}>
-                Recite {dhikr.repeatCount} times
+                {t('adhkar.reciteTimes', {count: dhikr.repeatCount})}
               </Text>
             </View>
           </View>
@@ -113,7 +126,13 @@ export const DhikrReader: React.FC<DhikrReaderProps> = ({
         {/* Arabic Text */}
         {dhikr.arabic ? (
           <View style={styles.arabicSection}>
-            <Text style={styles.arabicText}>{dhikr.arabic}</Text>
+            <AdhkarArabicText
+              dhikrId={dhikr.id}
+              arabic={dhikr.arabic}
+              fontSize={moderateScale(arabicFontSize)}
+              style={styles.arabicText}
+              horizontalPadding={moderateScale(8)}
+            />
           </View>
         ) : null}
 
@@ -121,6 +140,7 @@ export const DhikrReader: React.FC<DhikrReaderProps> = ({
         {showControls && (
           <View style={styles.audioSection}>
             <AdhkarAudioControls
+              dhikrId={dhikr.id}
               audioFile={dhikr.audioFile}
               onCopy={handleOpenCopyOptions}
               onBookmark={onSaveToggle}
@@ -139,7 +159,13 @@ export const DhikrReader: React.FC<DhikrReaderProps> = ({
         {/* Translation */}
         {showTranslation && dhikr.translation ? (
           <View style={styles.translationSection}>
-            <Text style={styles.translationText}>{dhikr.translation}</Text>
+            <AdhkarLatinText
+              text={dhikr.translation}
+              variant="translation"
+              fontSize={moderateScale(translationFontSize)}
+              color={theme.colors.textSecondary}
+              style={styles.translationText}
+            />
           </View>
         ) : null}
 
@@ -151,9 +177,13 @@ export const DhikrReader: React.FC<DhikrReaderProps> = ({
         {/* Transliteration */}
         {showTransliteration && dhikr.transliteration ? (
           <View style={styles.transliterationSection}>
-            <Text style={styles.transliterationText}>
-              {dhikr.transliteration}
-            </Text>
+            <AdhkarLatinText
+              text={dhikr.transliteration}
+              variant="transliteration"
+              fontSize={moderateScale(transliterationFontSize)}
+              color={transliterationColor(theme)}
+              style={styles.transliterationText}
+            />
           </View>
         ) : null}
 
@@ -166,7 +196,9 @@ export const DhikrReader: React.FC<DhikrReaderProps> = ({
               activeOpacity={1}
               accessibilityRole="button"
               accessibilityLabel={
-                showInstruction ? 'Hide instruction' : 'Show instruction'
+                showInstruction
+                  ? t('adhkar.a11y.hideInstruction')
+                  : t('adhkar.a11y.showInstruction')
               }>
               <View style={styles.instructionToggleContent}>
                 <Feather
@@ -175,7 +207,9 @@ export const DhikrReader: React.FC<DhikrReaderProps> = ({
                   color={theme.colors.textSecondary}
                 />
                 <Text style={styles.instructionToggleText}>
-                  {showInstruction ? 'Hide Info' : 'Show Info'}
+                  {showInstruction
+                    ? t('adhkar.hideInfo')
+                    : t('adhkar.showInfo')}
                 </Text>
               </View>
               <Feather
@@ -199,8 +233,12 @@ export const DhikrReader: React.FC<DhikrReaderProps> = ({
     </View>
   );
 };
+// @ai-end
 
 DhikrReader.displayName = 'DhikrReader';
+
+const transliterationColor = (theme: Theme) =>
+  Color(theme.colors.textSecondary).alpha(0.7).toString();
 
 // Secondary background color used throughout
 const getSecondaryBg = (theme: Theme) =>
@@ -212,6 +250,7 @@ interface FontSizes {
   transliterationFontSize: number;
 }
 
+// @ai-start
 const createStyles = (theme: Theme, fontSizes?: FontSizes) =>
   ScaledSheet.create({
     container: {
@@ -249,7 +288,8 @@ const createStyles = (theme: Theme, fontSizes?: FontSizes) =>
       fontSize: moderateScale(fontSizes?.arabicFontSize ?? 28),
       fontFamily: 'ScheherazadeNew-Regular',
       color: theme.colors.text,
-      textAlign: 'right',
+      // RN swaps left/right alignment in RTL; keep Arabic text physically right.
+      textAlign: isRTL ? 'left' : 'right',
       writingDirection: 'rtl',
       lineHeight: moderateScale((fontSizes?.arabicFontSize ?? 28) * 1.8),
       paddingHorizontal: moderateScale(8),
@@ -280,7 +320,7 @@ const createStyles = (theme: Theme, fontSizes?: FontSizes) =>
       fontSize: moderateScale(fontSizes?.transliterationFontSize ?? 15),
       fontFamily: theme.fonts.light,
       fontStyle: 'italic',
-      color: Color(theme.colors.textSecondary).alpha(0.7).toString(),
+      color: transliterationColor(theme),
       lineHeight: moderateScale(
         (fontSizes?.transliterationFontSize ?? 15) * 1.6,
       ),
@@ -328,3 +368,4 @@ const createStyles = (theme: Theme, fontSizes?: FontSizes) =>
       height: moderateScale(40),
     },
   });
+// @ai-end

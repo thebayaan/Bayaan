@@ -8,12 +8,17 @@ import ActionSheet, {
   SheetManager,
 } from 'react-native-actions-sheet';
 import Color from 'color';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+// @ai-end
 
 const TIMER_OPTIONS = [5, 15, 30, 45, 60];
 
+// @ai-start
 export const SleepTimerSheet = (props: SheetProps<'sleep-timer'>) => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
+  const {t} = useTranslation('sheets');
 
   const payload = props.payload;
   const sleepTimer = payload?.sleepTimer ?? 0;
@@ -42,17 +47,18 @@ export const SleepTimerSheet = (props: SheetProps<'sleep-timer'>) => {
       indicatorStyle={styles.indicator}
       gestureEnabled={true}>
       <View style={styles.headerContainer}>
-        <Text style={styles.headerTitle}>Sleep Timer</Text>
+        <Text style={styles.headerTitle}>{t('sleepTimer.title')}</Text>
       </View>
       <View style={styles.container}>
         {remainingTime !== null && remainingTime > 0 && (
           <Text style={styles.remainingTime}>
             {remainingTime < 1
-              ? `${Math.round(remainingTime * 60)} seconds`
-              : `${Math.round(remainingTime)} ${
-                  remainingTime === 1 ? 'minute' : 'minutes'
-                }`}{' '}
-            remaining
+              ? t('sleepTimer.secondsRemaining', {
+                  count: Math.round(remainingTime * 60),
+                })
+              : t('sleepTimer.minutesRemaining', {
+                  count: Math.round(remainingTime),
+                })}
           </Text>
         )}
         <View style={styles.optionsContainer}>
@@ -79,7 +85,7 @@ export const SleepTimerSheet = (props: SheetProps<'sleep-timer'>) => {
                     styles.timerText,
                     isSelected && styles.selectedTimerText,
                   ]}>
-                  {minutes} min
+                  {t('sleepTimer.minutesOption', {count: minutes})}
                 </Text>
               </Pressable>
             );
@@ -92,13 +98,14 @@ export const SleepTimerSheet = (props: SheetProps<'sleep-timer'>) => {
               pressed && styles.optionPressed,
             ]}
             onPress={handleTurnOff}>
-            <Text style={styles.turnOffText}>Turn Off Timer</Text>
+            <Text style={styles.turnOffText}>{t('sleepTimer.turnOff')}</Text>
           </Pressable>
         )}
       </View>
     </ActionSheet>
   );
 };
+// @ai-end
 
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({

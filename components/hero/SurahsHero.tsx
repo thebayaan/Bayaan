@@ -16,6 +16,15 @@ import {
   MESH_PALETTES,
   SurahGradientMesh,
 } from '@/components/hero/SurahGradientMesh';
+// @ai-start
+import {latinLetterSpacing} from '@/utils/rtl';
+import {useTranslation} from 'react-i18next';
+import {
+  getSurahDisplayName,
+  getSurahMeaning,
+  localizeDigits,
+} from '@/i18n/format';
+// @ai-end
 
 // Same SECTION_HEIGHT as ScrollingHero for consistency
 const SECTION_HEIGHT = moderateScale(150);
@@ -36,14 +45,17 @@ interface SurahHeroSectionProps {
  * Individual Surah hero section component that displays surah information
  * with zoom transition to mushaf.
  */
+// @ai-start
 export const SurahHeroSection = ({
   surah,
   onLongPress,
-  title = 'SURAH OF THE DAY',
+  title,
   style,
   resumePage,
 }: SurahHeroSectionProps) => {
   const {theme} = useTheme();
+  const {t} = useTranslation('home');
+  const surahMeaning = getSurahMeaning(surah);
   const glassColorScheme = useGlassColorScheme();
   const heroTheme = useMemo(() => pickHeroTheme(), []);
   const handleLongPress = useCallback(() => {
@@ -79,7 +91,9 @@ export const SurahHeroSection = ({
       <View style={styles.content}>
         <View style={styles.topSection}>
           <View style={styles.topRow}>
-            <Text style={styles.heroTitle}>{title}</Text>
+            <Text style={styles.heroTitle}>
+              {title ?? t('hero.surahOfTheDay')}
+            </Text>
             <View style={styles.revelationPlace}>
               {revelationPlace === 'makkah' ? (
                 <MakkahIcon
@@ -95,18 +109,20 @@ export const SurahHeroSection = ({
           <Text style={styles.heroGlyph}>{surahGlyphMap[surah.id]}</Text>
         </View>
         <View style={styles.bottomSection}>
-          <Text style={styles.heroSurahName}>{surah.name}</Text>
-          <Text style={styles.translatedName}>
-            {surah.translated_name_english}
-          </Text>
+          <Text style={styles.heroSurahName}>{getSurahDisplayName(surah)}</Text>
+          {surahMeaning && (
+            <Text style={styles.translatedName}>{surahMeaning}</Text>
+          )}
           <View style={styles.statsRow}>
             <View style={styles.stat}>
-              <Text style={styles.statValue}>{surah.verses_count}</Text>
-              <Text style={styles.statLabel}>Verses</Text>
+              <Text style={styles.statValue}>
+                {localizeDigits(surah.verses_count)}
+              </Text>
+              <Text style={styles.statLabel}>{t('hero.verses')}</Text>
             </View>
             <View style={styles.stat}>
-              <Text style={styles.statValue}>{surah.id}</Text>
-              <Text style={styles.statLabel}>Number</Text>
+              <Text style={styles.statValue}>{localizeDigits(surah.id)}</Text>
+              <Text style={styles.statLabel}>{t('hero.number')}</Text>
             </View>
           </View>
         </View>
@@ -161,8 +177,10 @@ export const SurahHeroSection = ({
     </Link>
   );
 };
+// @ai-end
 
 // Styles for the SurahHeroSection component
+// @ai-start
 const createStyles = (
   theme: Theme,
   heroTheme: import('@/components/hero/heroThemes').HeroColorTheme,
@@ -215,7 +233,7 @@ const createStyles = (
     heroTitle: {
       fontSize: moderateScale(10),
       fontFamily: 'Manrope-Bold',
-      letterSpacing: moderateScale(0.8),
+      letterSpacing: latinLetterSpacing(moderateScale(0.8)),
       color: isDark ? heroTheme.accentDim : heroTheme.accentDark,
     },
     revelationPlace: {
@@ -258,6 +276,7 @@ const createStyles = (
       textTransform: 'uppercase',
     },
   });
+// @ai-end
 
 interface SurahsHeroProps {
   surahOfTheDay: Surah;

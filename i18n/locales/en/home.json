@@ -1,0 +1,248 @@
+{
+  "translations": {
+    "title": "Translations & Tafaseer",
+    "downloadFailedTitle": "Download Failed",
+    "translationDownloadFailed": "Unable to download this translation. Please check your internet connection and try again.",
+    "tafseerDownloadFailed": "Unable to download this tafseer. Please check your internet connection and try again.",
+    "deleteTranslationTitle": "Delete Translation",
+    "deleteTafseerTitle": "Delete Tafseer",
+    "deleteMessage": "Remove \"{{name}}\"? You can download it again later.",
+    "available": "AVAILABLE",
+    "activeTranslation": "ACTIVE TRANSLATION",
+    "activeTafseer": "ACTIVE TAFSEER",
+    "active": "Active",
+    "noTranslations": "No translations found",
+    "noTafaseer": "No tafaseer found",
+    "downloadInProgress": "Download In Progress",
+    "waitForDownload": "Please wait until the current download completes before starting another."
+  },
+  "browse": {
+    "browseAll": "Browse All",
+    "allSurahs": "All Surahs",
+    "browseRecitersForSurah": "Browse Reciters - {{surah}}",
+    "allChip": "All",
+    "rewayahSeparator": "A'n",
+    "searchReciters": "Search reciters...",
+    "hasPhoto": "Has photo",
+    "recitersFound_one": "{{count}} reciters found with current filters",
+    "recitersFound_other": "{{count}} reciters found with current filters",
+    "clearAll": "Clear All",
+    "searchSurahs": "Search surahs..."
+  },
+  "search": {
+    "placeholder": "Search surahs or reciters",
+    "recentSearches": "Recent searches",
+    "noRecent": "No recent searches",
+    "noRecentHint": "Your search history will appear here",
+    "noResultsHint": "Try different keywords or check the spelling"
+  },
+  "systemPlaylist": {
+    "invalidId": "Invalid playlist ID",
+    "notFound": "Playlist not found"
+  },
+  "adhkar": {
+    "saved": "Saved",
+    "count_one": "{{count}} adhkar",
+    "count_other": "{{count}} adhkar",
+    "noSavedYet": "No saved adhkar yet",
+    "noSavedHint": "Tap the bookmark icon on any dhikr to save it here",
+    "noSaved": "No saved adhkar",
+    "noneFound": "No adhkar found",
+    "play": "Play adhkar",
+    "pause": "Pause adhkar",
+    "stopSession": "Stop adhkar",
+    "openPlaying": "Open the playing dhikr",
+    "jumpToPlaying": "Now playing",
+    "position": "{{current}} of {{total}}",
+    "dhikrPosition": "Dhikr {{current}} of {{total}}",
+    "remaining_one": "{{count}} left",
+    "remaining_other": "{{count}} left",
+    "dhikr": "Dhikr",
+    "shareCategory": "Check out {{title}} on {{appName}}",
+    "shareDhikr": "Check out this dhikr on {{appName}}"
+  },
+  "hero": {
+    "surahOfTheDay": "SURAH OF THE DAY",
+    "continueReading": "CONTINUE READING",
+    "browseAllSurahs": "Browse all {{total}} surahs",
+    "verses": "Verses",
+    "number": "Number"
+  },
+  "randomHero": {
+    "finding": "Finding random recitations from different reciters...",
+    "findFailed": "Failed to find random recitations. Please try again.",
+    "playing": "Playing {{surah}} by {{reciter}}",
+    "playFailed": "Failed to play random recitation. Please try again.",
+    "shuffleListen": "Shuffle & Listen",
+    "letQuranSurprise": "Let the Quran surprise you",
+    "discover": "Discover",
+    "hearSomethingNew": "Hear something new",
+    "explore": "Explore",
+    "discoverNewVoice": "Discover a new voice",
+    "randomRecitation": "Random Recitation",
+    "surpriseMe": "Surprise me",
+    "exploreUnexpected": "Explore the unexpected",
+    "randomMix": "Random Mix",
+    "chosenForMoment": "A recitation chosen just for this moment"
+  },
+  "adhkarHero": {
+    "title_one": "SAVED DHIKR",
+    "title_other": "SAVED ADHKAR",
+    "yourCollection": "Your collection"
+  },
+  "browseAllHero": {
+    "titles": {
+      "fullCollection": "Browse the Full Collection",
+      "everyReciter": "Explore Every Reciter",
+      "everyVoice": "Every Voice, One Place",
+      "worldOfRecitations": "A World of Recitations",
+      "allRecitersAwait": "All Reciters Await",
+      "oneTap": "Every Reciter, One Tap"
+    },
+    "labels": {
+      "allReciters": "All Reciters",
+      "browseVoices": "Browse Voices",
+      "discover": "Discover",
+      "fullLibrary": "Full Library",
+      "explore": "Explore",
+      "browse": "Browse"
+    }
+  },
+  "reciterCard": {
+    "rewayatAvailable_one": "{{count}} rewayat available",
+    "rewayatAvailable_other": "{{count}} rewayat available"
+  },
+  "filters": {
+    "title": "Filter Reciters",
+    "recitationStyles": "Recitation Styles",
+    "rewayatTypes": "Rewayat Types"
+  },
+  "surahItem": {
+    "a11yName": "Surah {{name}}",
+    "a11yPlaying": "currently playing",
+    "a11ySeparator": ", ",
+    "a11yPlayHint": "Tap to play Surah",
+    "makkah": "Makkah",
+    "madinah": "Madinah",
+    "moreOptions": "More options",
+    "moreOptionsHint": "Opens menu with additional actions for this Surah",
+    "verses_one": "{{count}} verse",
+    "verses_other": "{{count}} verses"
+  },
+  "sort": {
+    "asc": "Asc",
+    "desc": "Desc",
+    "revelation": "Rev"
+  },
+  "juz": {
+    "amma": "Juz 'Amma"
+  },
+  "home": {
+    "myRecitations": "My Recitations",
+    "upload": "Upload",
+    "continueListening": "Continue Listening",
+    "newToQuran": "New to Quran? Start Here",
+    "yourFavorites": "Your Favorites",
+    "featuredReciters": "Featured Reciters",
+    "seeMore": "See More",
+    "followAlong": "Follow Along",
+    "yourPlaylists": "Your Playlists",
+    "exclusives": "Exclusives",
+    "bestForTajweed": "Best for Tajweed",
+    "bestForMemorization": "Best for Memorization",
+    "exploreByRewayah": "Explore by Rewayah",
+    "fromYourCollection": "From your Collection"
+  },
+  "reciterBrowse": {
+    "title": "Browse Reciters",
+    "noneFound": "No reciters found"
+  },
+  "network": {
+    "offline": "No internet connection",
+    "restored": "Connection restored",
+    "showingCached": "Showing cached data",
+    "backendUnreachable": "Backend unreachable"
+  },
+  "errorBoundary": {
+    "message": "Sorry.. there was an error"
+  },
+  "input": {
+    "characterCount": "{{current}}/{{max}} characters"
+  },
+  "cards": {
+    "lovedSurahs": "Loved Surahs",
+    "recitations_one": "{{count}} recitation",
+    "recitations_other": "{{count}} recitations",
+    "downloadedCount_one": "Downloaded • {{count}} surah",
+    "downloadedCount_other": "Downloaded • {{count}} surahs"
+  },
+  "duration": {
+    "seconds": "{{value}}s",
+    "minutes": "{{value}}m",
+    "hours": "{{value}}h"
+  },
+  "languages": {
+    "en": "English",
+    "ar": "Arabic",
+    "fr": "French",
+    "de": "German",
+    "es": "Spanish",
+    "pt": "Portuguese",
+    "ru": "Russian",
+    "tr": "Turkish",
+    "ur": "Urdu",
+    "id": "Indonesian",
+    "ms": "Malay",
+    "bn": "Bengali",
+    "hi": "Hindi",
+    "fa": "Persian",
+    "zh": "Chinese",
+    "ja": "Japanese",
+    "ko": "Korean",
+    "it": "Italian",
+    "nl": "Dutch",
+    "pl": "Polish",
+    "sv": "Swedish",
+    "th": "Thai",
+    "vi": "Vietnamese",
+    "ha": "Hausa",
+    "so": "Somali",
+    "sw": "Swahili",
+    "am": "Amharic",
+    "az": "Azerbaijani",
+    "bs": "Bosnian",
+    "cs": "Czech",
+    "dv": "Dhivehi",
+    "ku": "Kurdish",
+    "ml": "Malayalam",
+    "no": "Norwegian",
+    "ro": "Romanian",
+    "sq": "Albanian",
+    "ta": "Tamil",
+    "tt": "Tatar",
+    "ug": "Uyghur",
+    "uz": "Uzbek"
+  },
+  "tafseerNames": {
+    "169": "Ibn Kathir (Abridged)",
+    "381": "Tafsir Fathul Majid",
+    "16": "Tafsir Muyassar",
+    "165": "Tafsir Ahsanul Bayaan",
+    "166": "Tafsir Abu Bakr Zakaria",
+    "93": "Al-Tafsir al-Wasit (Tantawi)",
+    "14": "Tafsir Ibn Kathir",
+    "15": "Tafsir al-Tabari",
+    "164": "Tafseer ibn Kathir",
+    "90": "Al-Qurtubi",
+    "168": "Ma'arif al-Qur'an",
+    "91": "السعدي Al-Sa'di",
+    "170": "Al-Sa'di",
+    "94": "Tafseer Al-Baghawi",
+    "157": "Fi Zilal al-Quran",
+    "804": "Rebar Kurdish Tafsir",
+    "817": "Tazkirul Quran(Maulana Wahiduddin Khan)",
+    "160": "Tafsir Ibn Kathir",
+    "818": "Tazkir ul Quran",
+    "159": "Bayan ul Quran"
+  }
+}

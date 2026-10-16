@@ -1,0 +1,88 @@
+{
+  "queue": {
+    "empty": "Queue is empty",
+    "verseShort": "v{{verse}}"
+  },
+  "uploads": {
+    "recordingType": {
+      "salah": "Salah",
+      "studio": "Studio"
+    },
+    "untagged": "Untagged",
+    "addRecitation": "Add Recitation",
+    "emptyTitle": "No uploads yet",
+    "emptySubtitle": "Upload recitations to see them here"
+  },
+  "uploadPlaceholder": {
+    "hint": "Tag this recitation to see surah text and details",
+    "editDetails": "Edit Details"
+  },
+  "verse": {
+    "footnote": "Footnote",
+    "footnoteContentUnavailable": "Footnote content not available",
+    "footnoteDataUnavailable": "Footnote data not available",
+    "wbwHafsNotice": "Word-by-word shown in Hafs"
+  },
+  "reciterProfile": {
+    "shareMessage": "Listen to {{name}} on {{appName}}",
+    "thisReciter": "this reciter",
+    "myUploads": "My Uploads",
+    "sort": {
+      "asc": "Asc",
+      "desc": "Desc",
+      "revelation": "Rev"
+    },
+    "searchPlaceholder": "Search surahs",
+    "noSurahsAvailable": "No surahs available",
+    "noSurahsFound": "No surahs found",
+    "juzAmma": "Juz 'Amma",
+    "playAll": "Play all",
+    "favorite": "Favorite",
+    "favorited": "Favorited",
+    "downloaded": "Downloaded",
+    "surahCount_one": "{{count}} surah",
+    "surahCount_other": "{{count}} surahs",
+    "rewayatCount_one": "{{count}} rewayah",
+    "rewayatCount_other": "{{count}} rewayat"
+  },
+  "adhkar": {
+    "otherSection": "Other",
+    "playAll": "Play All",
+    "resume": "Resume",
+    "hideInfo": "Hide Info",
+    "showInfo": "Show Info",
+    "reciteTimes_one": "Recite {{count}} time",
+    "reciteTimes_other": "Recite {{count}} times",
+    "repeatTimes": "Repeat {{times}}×",
+    "dhikrCount_one": "{{count}} dhikr",
+    "dhikrCount_other": "{{count}} adhkar",
+    "tasbeeh": {
+      "a11yLabel": "Tasbeeh counter, {{current}} of {{target}}",
+      "a11yHint": "Tap to increment count",
+      "complete": "Complete",
+      "tapToCount": "Tap to count",
+      "percent": "{{value}}%",
+      "resetA11yLabel": "Reset counter",
+      "resetA11yHint": "Resets the count to zero"
+    },
+    "a11y": {
+      "copyArabic": "Copy Arabic text",
+      "addBookmark": "Add bookmark",
+      "removeBookmark": "Remove bookmark",
+      "shareDhikr": "Share dhikr",
+      "layoutSettings": "Layout settings",
+      "playAudio": "Play audio",
+      "pauseAudio": "Pause audio",
+      "enableRepeat": "Enable repeat",
+      "disableRepeat": "Disable repeat",
+      "showInstruction": "Show instruction",
+      "hideInstruction": "Hide instruction",
+      "playAll": "Play all",
+      "pauseAll": "Pause all",
+      "resumeAll": "Resume all"
+    }
+  },
+  "a11y": {
+    "openPlayer": "Opens the full player"
+  }
+}

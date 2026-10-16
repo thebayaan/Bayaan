@@ -5,7 +5,12 @@ import {moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {useProgress} from '@/services/player/store/progressStore';
+// @ai-start
+import {localizeDigits} from '@/i18n/format';
+import {forceLTR} from '@/utils/rtl';
+// @ai-end
 
+// @ai-start
 export const ProgressBar = React.memo(() => {
   const {theme} = useTheme();
   const {seekTo} = usePlayerActions();
@@ -56,13 +61,13 @@ export const ProgressBar = React.memo(() => {
   }, []);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, forceLTR]}>
       <View style={styles.timeContainer}>
         <Text style={[styles.timeText, {color: theme.colors.text}]}>
-          {formatTime(displayTime)}
+          {localizeDigits(formatTime(displayTime))}
         </Text>
         <Text style={[styles.timeText, {color: theme.colors.textSecondary}]}>
-          {'-'} {formatTime(progress.duration - displayTime)}
+          {'-'} {localizeDigits(formatTime(progress.duration - displayTime))}
         </Text>
       </View>
       <Slider
@@ -81,6 +86,7 @@ export const ProgressBar = React.memo(() => {
     </View>
   );
 });
+// @ai-end
 
 ProgressBar.displayName = 'ProgressBar';
 

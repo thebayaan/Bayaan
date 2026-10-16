@@ -22,12 +22,18 @@ import {ReciterImage} from '@/components/ReciterImage';
 import {reciterImages} from '@/utils/reciterImages';
 import {Theme} from '@/utils/themeUtils';
 import {Feather} from '@expo/vector-icons';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+// @ai-end
 import Color from 'color';
 import {Link} from 'expo-router';
 import {LinearGradient} from 'expo-linear-gradient';
 import {getRandomColors} from '@/utils/gradientColors';
 import {GlassView} from 'expo-glass-effect';
 import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
+// @ai-start
+import {flipX, latinLetterSpacing} from '@/utils/rtl';
+// @ai-end
 
 // Error Boundary for ScrollingHero
 class ScrollingHeroErrorBoundary extends React.Component<{
@@ -151,8 +157,10 @@ interface BrowseButtonProps {
 // Add color palettes
 
 // Update BrowseButton component
+// @ai-start
 const BrowseButton = React.memo(
   ({onPress, theme, styles}: BrowseButtonProps) => {
+    const {t} = useTranslation('home');
     return (
       <TouchableOpacity
         style={[
@@ -166,12 +174,12 @@ const BrowseButton = React.memo(
         ]}
         onPress={onPress}
         activeOpacity={0.8}>
-        <Text style={styles.buttonText}>Browse All</Text>
+        <Text style={styles.buttonText}>{t('browse.browseAll')}</Text>
         <Feather
           name="arrow-right"
           size={moderateScale(18)}
           color={theme.colors.text}
-          style={styles.buttonIcon}
+          style={[styles.buttonIcon, flipX]}
         />
       </TouchableOpacity>
     );
@@ -180,6 +188,7 @@ const BrowseButton = React.memo(
     prevProps.onPress === nextProps.onPress &&
     prevProps.theme === nextProps.theme,
 );
+// @ai-end
 
 BrowseButton.displayName = 'BrowseButton';
 
@@ -343,6 +352,7 @@ Column.displayName = 'Column';
 
 const SECTION_HEIGHT = moderateScale(150); // Reduced from 400
 
+// @ai-start
 function createStyles(theme: Theme) {
   return StyleSheet.create({
     wrapper: {
@@ -381,11 +391,11 @@ function createStyles(theme: Theme) {
       borderRadius: moderateScale(4),
     },
     overlay: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       borderRadius: moderateScale(20),
     },
     contentOverlay: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       justifyContent: 'center',
       alignItems: 'center',
     },
@@ -413,17 +423,20 @@ function createStyles(theme: Theme) {
       fontSize: moderateScale(14),
       fontFamily: 'Manrope-Bold',
       color: theme.colors.text,
-      letterSpacing: -0.5,
+      letterSpacing: latinLetterSpacing(-0.5),
     },
     buttonIcon: {
       opacity: 0.8,
     },
   });
 }
+// @ai-end
 
+// @ai-start
 export const ScrollingHero = React.memo(
   () => {
     const {theme} = useTheme();
+    const {t} = useTranslation('home');
     const glassColorScheme = useGlassColorScheme();
     const styles = useMemo(() => createStyles(theme), [theme]);
 
@@ -451,12 +464,12 @@ export const ScrollingHero = React.memo(
               style={[styles.browseButton, {borderRadius: moderateScale(25)}]}
               glassEffectStyle="regular"
               colorScheme={glassColorScheme}>
-              <Text style={styles.buttonText}>Browse All</Text>
+              <Text style={styles.buttonText}>{t('browse.browseAll')}</Text>
               <Feather
                 name="arrow-right"
                 size={moderateScale(16)}
                 color={theme.colors.text}
-                style={styles.buttonIcon}
+                style={[styles.buttonIcon, flipX]}
               />
             </GlassView>
           ) : (
@@ -472,12 +485,12 @@ export const ScrollingHero = React.memo(
                   borderRadius: moderateScale(25),
                 },
               ]}>
-              <Text style={styles.buttonText}>Browse All</Text>
+              <Text style={styles.buttonText}>{t('browse.browseAll')}</Text>
               <Feather
                 name="arrow-right"
                 size={moderateScale(16)}
                 color={theme.colors.text}
-                style={styles.buttonIcon}
+                style={[styles.buttonIcon, flipX]}
               />
             </View>
           )}
@@ -516,5 +529,6 @@ export const ScrollingHero = React.memo(
   },
   () => true,
 );
+// @ai-end
 
 ScrollingHero.displayName = 'ScrollingHero';

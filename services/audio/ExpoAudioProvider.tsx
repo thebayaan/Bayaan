@@ -2,7 +2,7 @@
  * ExpoAudioProvider - React provider that bridges expo-audio to the store
  *
  * This provider:
- * 1. Creates and manages the expo-audio player instance
+ * 1. Owns the runtime's single expo-audio player instance (never released)
  * 2. Connects the player to ExpoAudioService
  * 3. Uses useAudioPlayerStatus to get reactive updates
  * 4. Updates the playerStore with progress/state changes
@@ -11,9 +11,10 @@
  * Must be mounted at the app root level for audio to work.
  */
 
-import React, {useEffect, useRef, useCallback} from 'react';
+import {markPlayerReadyForWidgets} from '@/services/widgets/syncWidgets';
+import React, {useEffect, useLayoutEffect, useRef, useCallback} from 'react';
 import {AppState, Platform} from 'react-native';
-import {useAudioPlayer, useAudioPlayerStatus} from 'expo-audio';
+import {AudioPlayer, createAudioPlayer, useAudioPlayerStatus} from 'expo-audio';
 import {expoAudioService} from './ExpoAudioService';
 import {lockScreenService} from './LockScreenService';
 import {ambientAudioService} from './AmbientAudioService';
@@ -24,6 +25,12 @@ import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStor
 import {useAmbientStore} from '@/store/ambientStore';
 import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
 import {mushafAudioService} from './MushafAudioService';
+import {startAdhkarPlaybackEngine} from '@/services/adhkar/playback/adhkarPlaybackEngine';
+import {startAdhkarActivitySync} from '@/services/widgets/live-activity/syncAdhkarActivity';
+import {
+  startSessionSaving,
+  restoreSavedSession,
+} from '@/services/adhkar/playback/sessionPersistence';
 
 // Throttle interval for progress updates — wider on Android to reduce re-renders
 const PROGRESS_UPDATE_INTERVAL = Platform.OS === 'android' ? 2000 : 1000;
@@ -31,11 +38,57 @@ const PROGRESS_PERSIST_INTERVAL = 10000;
 
 interface ExpoAudioProviderProps {
   children: React.ReactNode;
+  /**
+   * 'car' is the headless Android Auto root, which mounts a provider only
+   * while the phone layout's provider is not mounted.
+   */
+  owner?: 'phone' | 'car';
 }
 
-export function ExpoAudioProvider({children}: ExpoAudioProviderProps) {
-  // Create the audio player instance
-  const player = useAudioPlayer(null);
+// One player per JS runtime, never released: Android Auto's headless root
+// hands the player to the phone layout (and back) without stopping audio.
+let sharedPlayer: AudioPlayer | null = null;
+let mountedProviders = 0;
+let lockScreenSyncing = false;
+let stopAdhkarEngine: (() => void) | null = null;
+let stopAdhkarActivity: (() => void) | null = null;
+let stopAdhkarSaving: (() => void) | null = null;
+let phoneProviderMounted = false;
+const phoneProviderListeners = new Set<() => void>();
+
+function getSharedPlayer(): AudioPlayer {
+  if (!sharedPlayer) sharedPlayer = createAudioPlayer(null);
+  return sharedPlayer;
+}
+
+function setPhoneProviderMounted(mounted: boolean): void {
+  phoneProviderMounted = mounted;
+  phoneProviderListeners.forEach(listener => listener());
+}
+
+export function subscribePhoneProvider(listener: () => void): () => void {
+  phoneProviderListeners.add(listener);
+  return () => {
+    phoneProviderListeners.delete(listener);
+  };
+}
+
+export function isPhoneProviderMounted(): boolean {
+  return phoneProviderMounted;
+}
+
+export function ExpoAudioProvider({
+  children,
+  owner = 'phone',
+}: ExpoAudioProviderProps) {
+  const player = getSharedPlayer();
+
+  // Tell the headless car root to step aside before its effects double up.
+  useLayoutEffect(() => {
+    if (owner !== 'phone') return;
+    setPhoneProviderMounted(true);
+    return () => setPhoneProviderMounted(false);
+  }, [owner]);
 
   // Get reactive status updates
   const status = useAudioPlayerStatus(player);
@@ -126,8 +179,18 @@ export function ExpoAudioProvider({children}: ExpoAudioProviderProps) {
         // Connect the player instance to the service
         expoAudioService.setPlayer(player);
 
-        // Start lock screen sync after player is connected
-        await lockScreenService.startSync();
+        // Start lock screen sync after player is connected. In a handover
+        // the provider that is leaving already started it.
+        if (!lockScreenSyncing) {
+          lockScreenSyncing = true;
+          await lockScreenService.startSync();
+          stopAdhkarEngine = startAdhkarPlaybackEngine();
+          stopAdhkarActivity = startAdhkarActivitySync();
+          stopAdhkarSaving = startSessionSaving();
+          restoreSavedSession().catch(() => {});
+        }
+
+        markPlayerReadyForWidgets();
 
         if (__DEV__)
           console.log('[ExpoAudioProvider] Player connected to service');
@@ -137,10 +200,24 @@ export function ExpoAudioProvider({children}: ExpoAudioProviderProps) {
     };
 
     initializePlayer();
+    mountedProviders += 1;
 
-    // Cleanup on unmount
+    // Cleanup on unmount. Sync is shared across a handover, so only the last
+    // provider out stops it.
     return () => {
-      lockScreenService.stopSync();
+      mountedProviders -= 1;
+      // Let a handover partner (the car root remounting) mount first.
+      setTimeout(() => {
+        if (mountedProviders > 0 || !lockScreenSyncing) return;
+        lockScreenSyncing = false;
+        lockScreenService.stopSync();
+        stopAdhkarEngine?.();
+        stopAdhkarEngine = null;
+        stopAdhkarActivity?.();
+        stopAdhkarActivity = null;
+        stopAdhkarSaving?.();
+        stopAdhkarSaving = null;
+      }, 0);
       if (__DEV__) console.log('[ExpoAudioProvider] Unmounting, cleaning up');
     };
   }, [player]);

@@ -10,6 +10,9 @@ import {ADHKAR_CATEGORY_IMAGES} from '@/constants/adhkarImages';
 import {Link} from 'expo-router';
 import {GlassView} from 'expo-glass-effect';
 import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
+// @ai-start
+import {getSuperCategoryDisplayTitle} from '@/utils/adhkarUtils';
+// @ai-end
 
 interface AdhkarBentoCardProps {
   category: SuperCategory;
@@ -28,6 +31,7 @@ const LABEL_MARGIN_TOP = moderateScale(4);
 const LABEL_FONT_SIZE = moderateScale(13);
 const LABEL_OVERHEAD = LABEL_LINE_HEIGHT + LABEL_MARGIN_TOP;
 
+// @ai-start
 export const AdhkarBentoCard = React.memo(function AdhkarBentoCard({
   category,
   width,
@@ -66,7 +70,7 @@ export const AdhkarBentoCard = React.memo(function AdhkarBentoCard({
 
   const label = (
     <Text style={styles.title} numberOfLines={2}>
-      {category.title}
+      {getSuperCategoryDisplayTitle(category)}
     </Text>
   );
 
@@ -105,6 +109,7 @@ export const AdhkarBentoCard = React.memo(function AdhkarBentoCard({
     </Link>
   );
 });
+// @ai-end
 
 const createStyles = (
   theme: ReturnType<typeof useTheme>['theme'],

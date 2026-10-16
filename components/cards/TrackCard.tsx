@@ -19,6 +19,24 @@ import {CircularProgress} from '@/components/CircularProgress';
 import {Ionicons} from '@expo/vector-icons';
 import {GradientText} from '@/components/GradientText';
 import {getDisplayLabelFromName} from '@/services/rewayah/RewayahIdentity';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+import {
+  getReciterDisplayName,
+  getSurahDisplayName,
+  localizeDigits,
+} from '@/i18n/format';
+// @ai-end
+
+// @ai-start
+const KNOWN_STYLES = ['murattal', 'mojawwad', 'molim'] as const;
+// @ai-end
+
+// @ai-start
+function isKnownStyle(style: string): style is (typeof KNOWN_STYLES)[number] {
+  return (KNOWN_STYLES as readonly string[]).includes(style);
+}
+// @ai-end
 
 interface TrackCardProps {
   reciterId: string;
@@ -29,6 +47,7 @@ interface TrackCardProps {
   height?: number;
 }
 
+// @ai-start
 export const TrackCard: React.FC<TrackCardProps> = ({
   reciterId,
   surahId,
@@ -38,6 +57,7 @@ export const TrackCard: React.FC<TrackCardProps> = ({
   height,
 }) => {
   const {theme} = useTheme();
+  const {t} = useTranslation(['home', 'common']);
   const [reciter, setReciter] = useState<Reciter | null>(null);
   const [rewayat, setRewayat] = useState<Rewayat | null>(null);
 
@@ -119,6 +139,13 @@ export const TrackCard: React.FC<TrackCardProps> = ({
   if (!surah || !reciter) return null;
 
   const surahGlyph = surahGlyphMap[surah.id];
+  const surahTitle = `${localizeDigits(surah.id)}. ${getSurahDisplayName(
+    surah,
+  )}`;
+  const baseStyle = rewayat?.style.replace(/\d+$/, '').toLowerCase() ?? '';
+  const styleLabel = isKnownStyle(baseStyle)
+    ? t(`common:styles.${baseStyle}`)
+    : rewayat?.style;
 
   // Use provided dimensions or fall back to default
   const cardWidth = width || moderateScale(120);
@@ -217,11 +244,11 @@ export const TrackCard: React.FC<TrackCardProps> = ({
       <View style={styles.surahInfo}>
         {isCurrentTrack ? (
           <GradientText style={styles.surahName} surahId={surah.id}>
-            {surah.id + '. ' + surah.name}
+            {surahTitle}
           </GradientText>
         ) : (
           <Text style={styles.surahName} numberOfLines={1}>
-            {surah.id}. {surah.name}
+            {surahTitle}
           </Text>
         )}
         <Text style={styles.surahGlyph}>{surahGlyph}</Text>
@@ -243,15 +270,16 @@ export const TrackCard: React.FC<TrackCardProps> = ({
           />
         ) : null}
         <Text style={styles.reciterName} numberOfLines={1}>
-          {reciter.name}
+          {getReciterDisplayName(reciter)}
         </Text>
       </View>
       {rewayat && (
         <Text style={styles.rewayatText} numberOfLines={1}>
           {getDisplayLabelFromName(rewayat.name)}
-          {rewayat.style ? ` • ${rewayat.style}` : ''}
+          {styleLabel ? ` • ${styleLabel}` : ''}
         </Text>
       )}
     </TouchableOpacity>
   );
 };
+// @ai-end

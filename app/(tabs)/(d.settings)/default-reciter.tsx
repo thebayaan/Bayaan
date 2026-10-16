@@ -14,14 +14,22 @@ import {ReciterItem} from '@/components/ReciterItem';
 import {useReciterStore} from '@/store/reciterStore';
 import {useRouter} from 'expo-router';
 import {ReciterImage} from '@/components/ReciterImage';
-import {useHeaderHeight} from '@react-navigation/elements';
+import {useHeaderHeight} from 'expo-router/react-navigation';
 import {USE_GLASS} from '@/hooks/useGlassProps';
 import {getDisplayLabelFromName} from '@/services/rewayah/RewayahIdentity';
+import {rankReciters} from '@/utils/search/catalog'; // @ai
+// @ai-start
+import {latinLetterSpacing} from '@/utils/rtl';
+import {useTranslation} from 'react-i18next';
+import {getReciterDisplayName} from '@/i18n/format';
+// @ai-end
 
+// @ai-start
 export default function DefaultReciterScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Reciter[]>([]);
   const {theme} = useTheme();
+  const {t} = useTranslation('settings');
   const styles = useMemo(() => createStyles(theme), [theme]);
   const defaultReciter = useReciterStore(state => state.defaultReciter);
   const setDefaultReciter = useReciterStore(state => state.setDefaultReciter);
@@ -35,22 +43,22 @@ export default function DefaultReciterScreen() {
     );
   }, []);
 
+  // @ai-start
+  // Stable subset so rankReciters reuses its index across keystrokes.
+  const completeReciters = useMemo(
+    () => RECITERS.filter(hasCompleteQuran),
+    [hasCompleteQuran],
+  );
   const handleSearch = useCallback(
     (query: string) => {
       setSearchQuery(query);
-      if (query.trim() === '') {
-        setSearchResults([]);
-      } else {
-        const filtered = RECITERS.filter(
-          reciter =>
-            hasCompleteQuran(reciter) &&
-            reciter.name.toLowerCase().includes(query.toLowerCase()),
-        );
-        setSearchResults(filtered);
-      }
+      setSearchResults(
+        query.trim() ? [...rankReciters(query, completeReciters)] : [],
+      );
     },
-    [hasCompleteQuran],
+    [completeReciters],
   );
+  // @ai-end
 
   const handleReciterSelect = useCallback(
     (reciter: Reciter) => {
@@ -90,7 +98,7 @@ export default function DefaultReciterScreen() {
               />
               <View style={styles.currentReciterInfo}>
                 <Text style={styles.currentReciterName}>
-                  {defaultReciter.name}
+                  {getReciterDisplayName(defaultReciter)}
                 </Text>
                 <Text style={styles.currentReciterMoshaf}>
                   {getDisplayLabelFromName(defaultReciter.rewayat[0].name)}
@@ -101,9 +109,11 @@ export default function DefaultReciterScreen() {
         )}
 
         <View style={styles.searchSection}>
-          <Text style={styles.searchLabel}>CHANGE DEFAULT RECITER</Text>
+          <Text style={styles.searchLabel}>
+            {t('defaultReciter.changeHeader')}
+          </Text>
           <SearchInput
-            placeholder="Search reciters..."
+            placeholder={t('defaultReciter.searchPlaceholder')}
             value={searchQuery}
             onChangeText={handleSearch}
             showCancelButton={false}
@@ -127,8 +137,8 @@ export default function DefaultReciterScreen() {
           ListEmptyComponent={
             <Text style={styles.emptyText}>
               {searchQuery.trim() === ''
-                ? 'Only reciters with complete Quran are shown'
-                : 'No reciters found'}
+                ? t('defaultReciter.completeOnly')
+                : t('defaultReciter.noResults')}
             </Text>
           }
         />
@@ -136,7 +146,9 @@ export default function DefaultReciterScreen() {
     </View>
   );
 }
+// @ai-end
 
+// @ai-start
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({
     container: {
@@ -188,7 +200,7 @@ const createStyles = (theme: Theme) =>
       fontSize: moderateScale(10.5),
       fontFamily: 'Manrope-SemiBold',
       color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
-      letterSpacing: 1.2,
+      letterSpacing: latinLetterSpacing(1.2),
       textTransform: 'uppercase',
       marginBottom: verticalScale(8),
       marginLeft: moderateScale(2),
@@ -205,3 +217,4 @@ const createStyles = (theme: Theme) =>
       paddingVertical: moderateScale(15),
     },
   });
+// @ai-end

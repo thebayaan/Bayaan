@@ -44,6 +44,14 @@ import RenderHtml, {
   RenderHTMLProps,
   defaultSystemFonts,
 } from 'react-native-render-html';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+import {
+  getReciterDisplayName,
+  getSurahDisplayName,
+  getSurahMeaning,
+} from '@/i18n/format';
+// @ai-end
 
 // Import surah info data
 const surahInfo = require('@/data/surahInfo.json');
@@ -69,9 +77,11 @@ const renderHtmlDefaultProps: Partial<RenderHTMLProps> = {
   },
 };
 
+// @ai-start
 export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
+  const {t} = useTranslation(['sheets', 'common']);
   const {width} = useWindowDimensions();
   const [showSurahInfo, setShowSurahInfo] = useState(false);
 
@@ -260,8 +270,14 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
     const rewayat = reciter.rewayat.find(rw => rw.id === rewayatId);
     if (!rewayat) return;
     const url = recitationShareUrl(reciter.slug, surah.id, rewayat.id);
-    shareUrl(url, `Listen to ${surah.name} on ${branding.appName}`);
-  }, [reciterId, rewayatId, surah]);
+    shareUrl(
+      url,
+      t('options.shareListenSurah', {
+        surah: getSurahDisplayName(surah),
+        appName: branding.appName,
+      }),
+    );
+  }, [reciterId, rewayatId, surah, t]);
 
   const handleSheetChange = useCallback((index: number) => {
     if (index === -1) {
@@ -272,6 +288,11 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
   if (!surah) {
     return null;
   }
+
+  const headerReciter = reciterId ? getReciterByIdSync(reciterId) : undefined;
+  const reciterDisplayName = headerReciter
+    ? getReciterDisplayName(headerReciter)
+    : reciterId && getReciterName(reciterId);
 
   return (
     <ActionSheet
@@ -286,7 +307,9 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
       {showSurahInfo ? (
         <>
           <View style={styles.headerContainer}>
-            <Text style={styles.headerTitle}>About {surah.name}</Text>
+            <Text style={styles.headerTitle}>
+              {t('options.aboutSurah', {surah: getSurahDisplayName(surah)})}
+            </Text>
           </View>
           <ScrollView
             style={styles.scrollView}
@@ -294,10 +317,14 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
             bounces={true}>
             <View style={styles.infoContent}>
               <View style={styles.surahInfoHeader}>
-                <Text style={styles.surahInfoName}>{surah.name}</Text>
-                <Text style={styles.surahInfoTranslation}>
-                  {surah.translated_name_english}
+                <Text style={styles.surahInfoName}>
+                  {getSurahDisplayName(surah)}
                 </Text>
+                {getSurahMeaning(surah) ? (
+                  <Text style={styles.surahInfoTranslation}>
+                    {getSurahMeaning(surah)}
+                  </Text>
+                ) : null}
               </View>
               {currentSurahInfo && (
                 <RenderHtml
@@ -313,10 +340,9 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
       ) : (
         <View style={styles.container}>
           <View style={styles.header}>
-            <Text style={styles.surahName}>{surah.name}</Text>
+            <Text style={styles.surahName}>{getSurahDisplayName(surah)}</Text>
             <Text style={styles.surahTranslation}>
-              {(reciterId && getReciterName(reciterId)) ||
-                surah.translated_name_english}
+              {reciterDisplayName || getSurahMeaning(surah)}
             </Text>
           </View>
 
@@ -338,7 +364,9 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
                   styles.optionText,
                   !reciterId && styles.optionTextDisabled,
                 ]}>
-                {isLovedState ? 'Remove from Loved' : 'Add to Loved'}
+                {isLovedState
+                  ? t('options.removeFromLoved')
+                  : t('options.addToLoved')}
               </Text>
             </Pressable>
 
@@ -369,10 +397,12 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
               )}
               <Text style={[styles.optionText]}>
                 {isCurrentlyDownloading
-                  ? `Downloading ${Math.round(downloadProgress * 100)}%`
+                  ? t('options.downloading', {
+                      percent: Math.round(downloadProgress * 100),
+                    })
                   : isTrackDownloaded
-                    ? 'Downloaded'
-                    : 'Download'}
+                    ? t('options.downloaded')
+                    : t('common:actions.download')}
               </Text>
             </Pressable>
 
@@ -397,7 +427,7 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
                   styles.optionText,
                   !onAddToQueue && styles.optionTextDisabled,
                 ]}>
-                Add to Queue
+                {t('options.addToQueue')}
               </Text>
             </Pressable>
 
@@ -420,7 +450,7 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
                   styles.optionText,
                   !reciterId && styles.optionTextDisabled,
                 ]}>
-                Add to Collection
+                {t('options.addToCollection')}
               </Text>
             </Pressable>
 
@@ -438,7 +468,9 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
                     size={moderateScale(18)}
                     color={theme.colors.text}
                   />
-                  <Text style={styles.optionText}>Share</Text>
+                  <Text style={styles.optionText}>
+                    {t('common:actions.share')}
+                  </Text>
                 </Pressable>
               </>
             )}
@@ -457,7 +489,9 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
                     size={moderateScale(18)}
                     filled={false}
                   />
-                  <Text style={styles.optionText}>Go to Reciter</Text>
+                  <Text style={styles.optionText}>
+                    {t('options.goToReciter')}
+                  </Text>
                 </Pressable>
               </>
             )}
@@ -474,7 +508,9 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
                 size={moderateScale(18)}
                 color={theme.colors.text}
               />
-              <Text style={styles.optionText}>Learn About Surah</Text>
+              <Text style={styles.optionText}>
+                {t('options.learnAboutSurah')}
+              </Text>
             </Pressable>
           </View>
 
@@ -492,7 +528,7 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
                   color="#ff4444"
                 />
                 <Text style={styles.optionTextDestructive}>
-                  Remove from Playlist
+                  {t('options.removeFromPlaylist')}
                 </Text>
               </Pressable>
             </View>
@@ -502,6 +538,7 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
     </ActionSheet>
   );
 };
+// @ai-end
 
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({

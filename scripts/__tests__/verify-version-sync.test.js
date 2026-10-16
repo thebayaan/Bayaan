@@ -17,6 +17,7 @@ const {
   readVersionFromInfoPlist,
   readVersionFromAndroidGradle,
   findExtensionConfigBlocks,
+  isExtensionInfoPlistPath,
   patchInfoPlist,
   patchAndroidGradle,
   patchExtensionConfigBlocks,
@@ -482,6 +483,83 @@ describe('patchExtensionConfigBlocks', () => {
     });
     const text = fs.readFileSync(pbxprojPath, 'utf8');
     // Main app block still has the 1.0 / 1 placeholders.
+    expect(text).toMatch(/MARKETING_VERSION = 1\.0;/);
+    expect(text).toMatch(/CURRENT_PROJECT_VERSION = 1;/);
+  });
+});
+
+// The widget extension comes from @bacons/apple-targets, whose Info.plist
+// lives in the repo-root targets/ folder (no `-Info.plist` suffix).
+const WIDGET_BLOCKS = `\t\tXXEC4E8DB8ABBF920D0C31XX /* Debug */ = {
+\t\t\tisa = XCBuildConfiguration;
+\t\t\tbuildSettings = {
+\t\t\t\tCURRENT_PROJECT_VERSION = 940;
+\t\t\t\tGENERATE_INFOPLIST_FILE = YES;
+\t\t\t\tINFOPLIST_FILE = ../targets/widgets/Info.plist;
+\t\t\t\tMARKETING_VERSION = 1.0;
+\t\t\t\tPRODUCT_BUNDLE_IDENTIFIER = com.bayaan.app.widget;
+\t\t\t};
+\t\t\tname = Debug;
+\t\t};
+\t\tXXF561E2786D5BE6B90256XX /* Release */ = {
+\t\t\tisa = XCBuildConfiguration;
+\t\t\tbuildSettings = {
+\t\t\t\tCURRENT_PROJECT_VERSION = 940;
+\t\t\t\tGENERATE_INFOPLIST_FILE = YES;
+\t\t\t\tINFOPLIST_FILE = ../targets/widgets/Info.plist;
+\t\t\t\tMARKETING_VERSION = 1.0;
+\t\t\t\tPRODUCT_BUNDLE_IDENTIFIER = com.bayaan.app.widget;
+\t\t\t};
+\t\t\tname = Release;
+\t\t};
+/* End XCBuildConfiguration section */`;
+const PBXPROJ_WITH_WIDGET = SAMPLE_PBXPROJ.replace(
+  '/* End XCBuildConfiguration section */',
+  WIDGET_BLOCKS,
+);
+
+describe('apple-targets widget extension', () => {
+  it('classifies targets/ plists as extensions but not the main app plist', () => {
+    expect(isExtensionInfoPlistPath('../targets/widgets/Info.plist')).toBe(
+      true,
+    );
+    expect(
+      isExtensionInfoPlistPath('ShareExtension/ShareExtension-Info.plist'),
+    ).toBe(true);
+    expect(isExtensionInfoPlistPath('Bayaan/Info.plist')).toBe(false);
+  });
+
+  it('finds the widget Debug + Release blocks alongside the share extension', () => {
+    writeFile('ios/Bayaan.xcodeproj/project.pbxproj', PBXPROJ_WITH_WIDGET);
+    const result = findExtensionConfigBlocks(tmpRoot);
+    const widget = result.blocks.filter(
+      b => b.infoPlistRelPath === '../targets/widgets/Info.plist',
+    );
+    expect(result.blocks).toHaveLength(4);
+    expect(widget.map(b => b.configName).sort()).toEqual(['Debug', 'Release']);
+    for (const block of widget) {
+      expect(block.marketingVersion).toBe('1.0');
+      expect(block.currentProjectVersion).toBe('940');
+    }
+  });
+
+  it('patches the widget to the app version and leaves the main app alone', () => {
+    const pbxprojPath = writeFile(
+      'ios/Bayaan.xcodeproj/project.pbxproj',
+      PBXPROJ_WITH_WIDGET,
+    );
+    const before = findExtensionConfigBlocks(tmpRoot);
+    patchExtensionConfigBlocks(pbxprojPath, before.blocks, {
+      semanticVersion: '2.3.0',
+      buildNumber: '1100',
+    });
+    const after = findExtensionConfigBlocks(tmpRoot);
+    expect(after.blocks).toHaveLength(4);
+    for (const block of after.blocks) {
+      expect(block.marketingVersion).toBe('2.3.0');
+      expect(block.currentProjectVersion).toBe('1100');
+    }
+    const text = fs.readFileSync(pbxprojPath, 'utf8');
     expect(text).toMatch(/MARKETING_VERSION = 1\.0;/);
     expect(text).toMatch(/CURRENT_PROJECT_VERSION = 1;/);
   });

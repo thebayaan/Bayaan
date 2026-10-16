@@ -26,7 +26,7 @@ import {Theme} from '@/utils/themeUtils';
 import {DesignFamily, FullWidthDesign} from './types';
 
 // ===== SHARED STYLES =====
-const abs = StyleSheet.absoluteFillObject;
+const abs = StyleSheet.absoluteFill;
 
 // ===== D1: ARABESQUE BACKGROUND =====
 function ArabesqueBackground({theme}: {theme: Theme}) {

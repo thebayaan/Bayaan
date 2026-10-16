@@ -10,6 +10,9 @@
  */
 
 import branding from '@/config/branding';
+// @ai-start
+import i18n from '@/i18n';
+// @ai-end
 
 export interface SystemPlaylistItem {
   surahId: number;
@@ -35,6 +38,7 @@ export interface SystemPlaylist {
  * inside the array resolve `branding.appName` at call time.
  * Total: 12 playlists (6 per column).
  */
+// @ai-start
 export function getSystemPlaylists(): SystemPlaylist[] {
   return [
     // ========== LEFT COLUMN ==========
@@ -42,9 +46,10 @@ export function getSystemPlaylists(): SystemPlaylist[] {
     // Time-based: Morning Reflections
     {
       id: 'morning-reflections',
-      title: 'Morning Reflections',
-      description:
-        'Start your day with uplifting surahs that inspire gratitude and hope',
+      title: i18n.t('content:systemPlaylists.morningReflections.title'),
+      description: i18n.t(
+        'content:systemPlaylists.morningReflections.description',
+      ),
       backgroundColor: '#F59E0B', // Warm amber
       type: 'surah-only',
       items: [
@@ -63,10 +68,9 @@ export function getSystemPlaylists(): SystemPlaylist[] {
     // Duration: Quick Listen
     {
       id: 'quick-listen',
-      title: 'Quick Listen',
-      subtitle: '5-15 minutes',
-      description:
-        'Perfect for short listening sessions during your commute or breaks',
+      title: i18n.t('content:systemPlaylists.quickListen.title'),
+      subtitle: i18n.t('content:systemPlaylists.quickListen.title'),
+      description: i18n.t('content:systemPlaylists.quickListen.description'),
       backgroundColor: '#8B5CF6', // Purple
       type: 'surah-only',
       items: [
@@ -84,9 +88,8 @@ export function getSystemPlaylists(): SystemPlaylist[] {
     // Purpose: Heart Softeners
     {
       id: 'heart-softeners',
-      title: 'Heart Softeners',
-      description:
-        'Emotional and touching recitations that deeply move the soul',
+      title: i18n.t('content:systemPlaylists.heartSofteners.title'),
+      description: i18n.t('content:systemPlaylists.heartSofteners.description'),
       backgroundColor: '#EC4899', // Pink
       type: 'surah-only',
       items: [
@@ -105,8 +108,10 @@ export function getSystemPlaylists(): SystemPlaylist[] {
     // Educational: Stories of the Prophets
     {
       id: 'stories-prophets',
-      title: 'Stories of the Prophets',
-      description: 'Surahs featuring narratives of the messengers of Allah',
+      title: i18n.t('content:systemPlaylists.storiesProphets.title'),
+      description: i18n.t(
+        'content:systemPlaylists.storiesProphets.description',
+      ),
       backgroundColor: '#0EA5E9', // Sky blue
       type: 'surah-only',
       items: [
@@ -125,8 +130,10 @@ export function getSystemPlaylists(): SystemPlaylist[] {
     // Special: Protection & Healing
     {
       id: 'protection-healing',
-      title: 'Protection & Healing',
-      description: 'Surahs for ruqyah and seeking refuge in Allah',
+      title: i18n.t('content:systemPlaylists.protectionHealing.title'),
+      description: i18n.t(
+        'content:systemPlaylists.protectionHealing.description',
+      ),
       backgroundColor: '#10B981', // Emerald
       type: 'surah-only',
       items: [
@@ -144,8 +151,8 @@ export function getSystemPlaylists(): SystemPlaylist[] {
     // Trending: Most Loved
     {
       id: 'most-loved',
-      title: 'Most Loved',
-      description: 'Community favorites that resonate with listeners worldwide',
+      title: i18n.t('content:systemPlaylists.mostLoved.title'),
+      description: i18n.t('content:systemPlaylists.mostLoved.description'),
       backgroundColor: '#EF4444', // Red
       type: 'surah-only',
       items: [
@@ -165,8 +172,10 @@ export function getSystemPlaylists(): SystemPlaylist[] {
     // Time-based: Evening Serenity
     {
       id: 'evening-serenity',
-      title: 'Evening Serenity',
-      description: 'Calm and peaceful surahs perfect for evening reflection',
+      title: i18n.t('content:systemPlaylists.eveningSerenity.title'),
+      description: i18n.t(
+        'content:systemPlaylists.eveningSerenity.description',
+      ),
       backgroundColor: '#6366F1', // Indigo
       type: 'surah-only',
       items: [
@@ -184,8 +193,10 @@ export function getSystemPlaylists(): SystemPlaylist[] {
     // Time-based: Friday Essentials
     {
       id: 'friday-essentials',
-      title: 'Friday Essentials',
-      description: 'Al-Kahf and other recommended Friday recitations',
+      title: i18n.t('content:systemPlaylists.fridayEssentials.title'),
+      description: i18n.t(
+        'content:systemPlaylists.fridayEssentials.description',
+      ),
       backgroundColor: '#059669', // Green
       type: 'surah-only',
       items: [
@@ -202,8 +213,8 @@ export function getSystemPlaylists(): SystemPlaylist[] {
     // Purpose: Focus & Study
     {
       id: 'focus-study',
-      title: 'Focus & Study',
-      description: 'Measured, clear recitations ideal for background listening',
+      title: i18n.t('content:systemPlaylists.focusStudy.title'),
+      description: i18n.t('content:systemPlaylists.focusStudy.description'),
       backgroundColor: '#14B8A6', // Teal
       type: 'surah-only',
       items: [
@@ -220,9 +231,9 @@ export function getSystemPlaylists(): SystemPlaylist[] {
     // Special: Juz Amma
     {
       id: 'juz-amma',
-      title: 'Juz Amma',
-      subtitle: 'The 30th Juz',
-      description: 'Complete collection of short surahs from the last juz',
+      title: i18n.t('content:systemPlaylists.juzAmma.title'),
+      subtitle: i18n.t('content:systemPlaylists.juzAmma.title'),
+      description: i18n.t('content:systemPlaylists.juzAmma.description'),
       backgroundColor: '#F97316', // Orange
       type: 'surah-only',
       items: [
@@ -272,9 +283,10 @@ export function getSystemPlaylists(): SystemPlaylist[] {
     // Special: Memorization Station
     {
       id: 'memorization-station',
-      title: 'Memorization Station',
-      description:
-        'Short surahs perfect for those beginning their memorization',
+      title: i18n.t('content:systemPlaylists.memorizationStation.title'),
+      description: i18n.t(
+        'content:systemPlaylists.memorizationStation.description',
+      ),
       backgroundColor: '#7C3AED', // Violet
       type: 'surah-only',
       items: [
@@ -296,8 +308,10 @@ export function getSystemPlaylists(): SystemPlaylist[] {
     // Trending: Bayaan Essentials
     {
       id: 'bayaan-essentials',
-      title: `${branding.appName} Essentials`,
-      description: 'Our top recommendations for every listener',
+      title: i18n.t('content:systemPlaylists.appEssentials.title', {
+        appName: branding.appName,
+      }),
+      description: i18n.t('content:systemPlaylists.appEssentials.description'),
       backgroundColor: '#DC2626', // Deep red
       type: 'surah-only',
       items: [
@@ -314,6 +328,7 @@ export function getSystemPlaylists(): SystemPlaylist[] {
     },
   ];
 }
+// @ai-end
 
 /**
  * Get a system playlist by ID

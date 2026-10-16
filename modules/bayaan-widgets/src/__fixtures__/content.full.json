@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "generatedAt": 1791460800000,
+  "downloads": [
+    {"surahId": 67, "surahName": "Al-Mulk", "reciterId": "r-alafasi", "reciterName": "Mishary Alafasi", "rewayatId": "rw-1", "itemId": null},
+    {"surahId": 18, "surahName": "Al-Kahf", "reciterId": "r-minshawi", "reciterName": "Mohammed Siddiq Al-Minshawi", "rewayatId": "rw-9", "itemId": null}
+  ],
+  "downloadCount": 12,
+  "playlists": [
+    {
+      "id": "playlist_1",
+      "name": "Night",
+      "itemCount": 3,
+      "items": [
+        {"surahId": 67, "surahName": "Al-Mulk", "reciterId": "r-alafasi", "reciterName": "Mishary Alafasi", "rewayatId": null, "itemId": "item_1"},
+        {"surahId": 32, "surahName": "As-Sajdah", "reciterId": "r-alafasi", "reciterName": "Mishary Alafasi", "rewayatId": null, "itemId": "item_2"}
+      ]
+    },
+    {"id": "playlist_2", "name": "Uploads only", "itemCount": 2, "items": []}
+  ],
+  "spotlight": [
+    {"id": "r-basfar", "name": "Albaraa Basfar", "artworkFile": "reciter-r-basfar.jpg", "surahIds": [1, 18, 36]},
+    {"id": "r-balilah", "name": "Bandar Balilah", "artworkFile": "reciter-r-balilah.jpg", "surahIds": [1]}
+  ],
+  "sleepTimerEndsAt": 1791462600000
+}

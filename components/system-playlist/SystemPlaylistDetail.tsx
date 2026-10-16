@@ -31,17 +31,43 @@ import {createTrack} from '@/utils/track';
 import {moderateScale} from 'react-native-size-matters';
 import {SystemPlaylistHeader} from './SystemPlaylistHeader';
 import {SystemPlaylist} from '@/data/systemPlaylists';
-import {
-  formatDuration,
-  getSystemPlaylistEstimatedDuration,
-} from '@/utils/systemPlaylistHelpers';
+// @ai-start
+import {getSystemPlaylistEstimatedDuration} from '@/utils/systemPlaylistHelpers';
+// @ai-end
 import Color from 'color';
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
 import {getFeaturedReciters} from '@/data/featuredReciters';
 import {SheetManager} from 'react-native-actions-sheet';
 import {useNavigation} from 'expo-router';
-import {useHeaderHeight} from '@react-navigation/elements';
+import {useHeaderHeight} from 'expo-router/react-navigation';
 import {CollectionStickyHeader} from '@/components/collection/CollectionStickyHeader';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+import i18n from '@/i18n';
+import {
+  getReciterDisplayName,
+  getSurahDisplayName,
+  getSurahMeaning,
+  localizeDigits,
+} from '@/i18n/format';
+// @ai-end
+
+// @ai-start
+function formatDuration(seconds: number): string {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+
+  if (hours > 0) {
+    return minutes > 0
+      ? i18n.t('collection:systemPlaylist.durationHoursMinutes', {
+          hours,
+          minutes,
+        })
+      : i18n.t('collection:systemPlaylist.durationHours', {hours});
+  }
+  return i18n.t('collection:systemPlaylist.durationMinutes', {minutes});
+}
+// @ai-end
 
 interface PlaylistTrack {
   surahId: number;
@@ -128,10 +154,12 @@ function findBestRewayat(
 
 const isGlass = USE_GLASS;
 
+// @ai-start
 const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
   playlist,
 }) => {
   const {theme} = useTheme();
+  const {t} = useTranslation(['collection', 'common']);
   const {updateQueue, addToQueue, play} = usePlayerActions();
   const {startNewChain} = useRecentlyPlayedStore();
   const navigation = useNavigation();
@@ -286,8 +314,8 @@ const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
       if (!selectedReciter || !selectedRewayatId) {
         console.error('No suitable reciter found for playlist');
         Alert.alert(
-          'No Reciter Available',
-          'Could not find a reciter with all surahs in this playlist. Please try a different playlist.',
+          t('systemPlaylist.noReciterTitle'),
+          t('systemPlaylist.noReciterMessage'),
         );
         return null;
       }
@@ -323,7 +351,7 @@ const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
         return null;
       }
     },
-    [selectedReciter, selectedRewayatId, playlistData],
+    [selectedReciter, selectedRewayatId, playlistData, t],
   );
 
   // Create tracks for fully-curated playlist
@@ -408,7 +436,10 @@ const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
       }
     } catch (error) {
       console.error('Error playing system playlist:', error);
-      Alert.alert('Error', 'Failed to play playlist. Please try again.');
+      Alert.alert(
+        t('systemPlaylist.errorTitle'),
+        t('systemPlaylist.playFailed'),
+      );
     }
   }, [
     playlist.type,
@@ -418,6 +449,7 @@ const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
     updateQueue,
     play,
     startNewChain,
+    t,
   ]);
 
   const handleShufflePlay = useCallback(async () => {
@@ -461,7 +493,10 @@ const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
       }
     } catch (error) {
       console.error('Error shuffling system playlist:', error);
-      Alert.alert('Error', 'Failed to shuffle playlist. Please try again.');
+      Alert.alert(
+        t('systemPlaylist.errorTitle'),
+        t('systemPlaylist.shuffleFailed'),
+      );
     }
   }, [
     playlist.type,
@@ -471,6 +506,7 @@ const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
     updateQueue,
     play,
     startNewChain,
+    t,
   ]);
 
   const handleSurahPress = useCallback(
@@ -512,7 +548,10 @@ const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
         }
       } catch (error) {
         console.error('Error playing track:', error);
-        Alert.alert('Error', 'Failed to play track. Please try again.');
+        Alert.alert(
+          t('systemPlaylist.errorTitle'),
+          t('systemPlaylist.playTrackFailed'),
+        );
       }
     },
     [
@@ -523,6 +562,7 @@ const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
       updateQueue,
       play,
       startNewChain,
+      t,
     ],
   );
 
@@ -562,19 +602,25 @@ const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
             onPress={() => handleSurahPress(track, index)}>
             <View style={styles.surahOnlyContent}>
               <Text style={styles.surahOnlyTitle}>
-                {surah.id}. {surah.name}
+                {localizeDigits(surah.id)}. {getSurahDisplayName(surah)}
               </Text>
-              <Text style={styles.surahOnlySubtitle}>
-                {surah.translated_name_english}
-              </Text>
+              {getSurahMeaning(surah) && (
+                <Text style={styles.surahOnlySubtitle}>
+                  {getSurahMeaning(surah)}
+                </Text>
+              )}
               {selectedReciter && (
                 <Text style={styles.reciterInfo}>
-                  with {selectedReciter.name}
+                  {t('systemPlaylist.withReciter', {
+                    reciter: getReciterDisplayName(selectedReciter),
+                  })}
                 </Text>
               )}
             </View>
             <View style={styles.playButton}>
-              <Text style={styles.playButtonText}>Play</Text>
+              <Text style={styles.playButtonText}>
+                {t('common:actions.play')}
+              </Text>
             </View>
           </Pressable>
         );
@@ -604,6 +650,7 @@ const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
       selectedReciter,
       handleSurahPress,
       handleShowTrackOptions,
+      t,
     ],
   );
 
@@ -648,14 +695,14 @@ const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
   );
 
   const listEmptyComponent = useMemo(
-    () => <Text style={styles.emptyText}>No surahs in this playlist</Text>,
-    [styles.emptyText],
+    () => <Text style={styles.emptyText}>{t('playlistDetail.empty')}</Text>,
+    [styles.emptyText, t],
   );
 
   if (loading) {
     return (
       <View style={styles.container}>
-        <Text style={styles.emptyText}>Loading...</Text>
+        <Text style={styles.emptyText}>{t('common:status.loading')}</Text>
       </View>
     );
   }
@@ -700,5 +747,6 @@ const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
     </View>
   );
 };
+// @ai-end
 
 export default SystemPlaylistDetail;

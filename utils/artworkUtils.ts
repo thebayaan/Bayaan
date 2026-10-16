@@ -5,7 +5,7 @@ import {Reciter} from '@/data/reciterData';
 /**
  * Formats a reciter name to match our local image naming convention
  */
-function formatReciterName(name: string): string {
+export function formatReciterName(name: string): string {
   return name.toLowerCase().replace(/\s+/g, '-').replace(/-+/g, '-');
 }
 

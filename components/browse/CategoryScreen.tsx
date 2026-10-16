@@ -9,6 +9,12 @@ import {TouchableOpacity} from 'react-native-gesture-handler';
 import Animated, {FadeInDown} from 'react-native-reanimated';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import Color from 'color';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+import {flipX} from '@/utils/rtl';
+import {SURAHS} from '@/data/surahData';
+import {getSurahDisplayName, localizeDigits} from '@/i18n/format';
+// @ai-end
 
 interface CategoryScreenProps {
   category: Category;
@@ -19,6 +25,7 @@ interface CategoryScreenProps {
   };
 }
 
+// @ai-start
 export function CategoryScreen({
   category,
   backgroundColor,
@@ -26,6 +33,7 @@ export function CategoryScreen({
 }: CategoryScreenProps) {
   const router = useRouter();
   const {theme} = useTheme();
+  const {t} = useTranslation(['home', 'common']);
   const insets = useSafeAreaInsets();
 
   const handleSurahPress = (surahId: number) => {
@@ -52,23 +60,29 @@ export function CategoryScreen({
         ]}>
         <View style={styles.surahNumberContainer}>
           <Text style={[styles.surahNumber, {color: theme.colors.text}]}>
-            {surah.id}
+            {localizeDigits(surah.id)}
           </Text>
         </View>
         <View style={styles.surahInfo}>
           <Text style={[styles.surahName, {color: theme.colors.text}]}>
-            {surah.name}
+            {SURAHS[surah.id - 1]
+              ? getSurahDisplayName(SURAHS[surah.id - 1])
+              : surah.name}
           </Text>
           {surah.verses && (
             <Text
               style={[styles.surahVerses, {color: theme.colors.textSecondary}]}>
-              {surah.verses} verses
+              {t('common:counts.ayahs', {count: surah.verses})}
             </Text>
           )}
           {surah.period && (
             <Text
               style={[styles.surahPeriod, {color: theme.colors.textSecondary}]}>
-              {surah.period}
+              {t(
+                surah.period === 'meccan'
+                  ? 'common:revelation.Makkah'
+                  : 'common:revelation.Madinah',
+              )}
             </Text>
           )}
         </View>
@@ -76,6 +90,7 @@ export function CategoryScreen({
           name="chevron-right"
           size={20}
           color={theme.colors.textSecondary}
+          style={flipX}
         />
       </TouchableOpacity>
     </Animated.View>
@@ -96,7 +111,12 @@ export function CategoryScreen({
           style={styles.backButton}
           activeOpacity={0.7}
           onPress={() => router.back()}>
-          <Feather name="arrow-left" size={24} color={'#FFFFFF'} />
+          <Feather
+            name="arrow-left"
+            size={24}
+            color={'#FFFFFF'}
+            style={flipX}
+          />
         </TouchableOpacity>
         <View style={styles.titleContainer}>
           <Feather
@@ -129,6 +149,7 @@ export function CategoryScreen({
     </View>
   );
 }
+// @ai-end
 
 const styles = StyleSheet.create({
   container: {

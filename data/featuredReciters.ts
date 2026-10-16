@@ -1,6 +1,7 @@
 import {RECITERS, Reciter} from './reciterData';
 
-const FEATURED_RECITER_NAMES = [
+export const FEATURED_RECITER_NAMES: readonly string[] = [
+  // @ai
   'Albaraa Basfar',
   'Mishary Alafasi',
   'Abdulbasit Abdulsamad',

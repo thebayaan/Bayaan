@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "reciters": [
+    {"id": "r-alafasi", "name": "Mishary Alafasi", "artworkFile": "reciter-r-alafasi.jpg"},
+    {"id": "r-sudais", "name": "Abdul Rahman Al-Sudais", "artworkFile": "reciter-r-sudais.jpg"}
+  ],
+  "adhkar": [
+    {"id": "91", "arabic": "سُبْحَانَ اللَّهِ وَبِحَمْدِهِ", "translation": "How perfect Allah is and I praise Him.", "repeatCount": 100},
+    {"id": "33", "arabic": "سُبْحانَ رَبِّيَ الْعَظِيمِ", "translation": null, "repeatCount": 3}
+  ]
+}

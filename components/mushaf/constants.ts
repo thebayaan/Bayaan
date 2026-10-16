@@ -491,6 +491,21 @@ export function getHizbForPage(page: number): number {
  * (phone-portrait snapshot). iPad / rotation-aware callers should pass the
  * values returned by `useMushafLayout()` instead.
  */
+// @ai-start
+/**
+ * Room (pt) a mushaf page canvas keeps below its last line. A DigitalKhatt
+ * line box is taller than the line pitch, and marks below the last line (an
+ * open tanween, a small low meem, a deep tail) reach past the content height:
+ * up to about 4.4 pt on an iPhone 17 Pro and 11.2 pt on an iPhone SE-class
+ * screen (every page's last ayah line, measured on CanvasKit). The canvas
+ * extends this far below the content. It is transparent and the lines keep
+ * their positions, so the only change is that those marks are no longer cut.
+ */
+export function canvasBottomOverflow(fontSize: number): number {
+  return Math.ceil(fontSize);
+}
+// @ai-end
+
 export function calculateLineYPositions(
   lines: {line_type: string}[],
   pageNumber: number,
