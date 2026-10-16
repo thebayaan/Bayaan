@@ -10,6 +10,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 import {Ionicons} from '@expo/vector-icons';
+import Color from 'color';
 import {moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {showToast} from '@/utils/toastUtils';
@@ -152,6 +153,9 @@ export function peekOnPage(kind: 'word' | 'ayah', page: number): void {
   if (start) peekRecitation(kind, start);
 }
 
+/** The mic while it is listening, so it reads as live. iOS system red. */
+export const LIVE_MIC_COLOR = '#FF3B30';
+
 interface RecitationMicButtonProps {
   currentPage: number;
   style?: StyleProp<ViewStyle>;
@@ -166,10 +170,14 @@ export function RecitationMicButton({
     useRecitationMic(currentPage);
 
   if (!enabled) return null;
+  const live = status === 'listening';
 
   return (
     <Pressable
-      style={style}
+      style={[
+        style,
+        live && {backgroundColor: Color(LIVE_MIC_COLOR).alpha(0.15).toString()},
+      ]}
       onPress={toggle}
       hitSlop={8}
       accessibilityRole="button"
@@ -192,9 +200,9 @@ export function RecitationMicButton({
         </View>
       ) : (
         <Ionicons
-          name={status === 'listening' ? 'mic' : 'mic-outline'}
+          name={live ? 'mic' : 'mic-outline'}
           size={moderateScale(20)}
-          color={theme.colors.text}
+          color={live ? LIVE_MIC_COLOR : theme.colors.text}
         />
       )}
     </Pressable>

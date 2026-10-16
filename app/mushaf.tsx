@@ -40,6 +40,7 @@ import MushafViewer from '@/components/mushaf/main';
 import {USE_GLASS} from '@/hooks/useGlassProps';
 import {
   peekOnPage,
+  LIVE_MIC_COLOR,
   useRecitationMic,
   useRecitationStatusText,
 } from '@/components/mushaf/RecitationMicButton';
@@ -275,23 +276,6 @@ const surahNameOf = (surah: number): string =>
 // shows: the verse label in the numbering of the mushaf on screen, "Verse
 // tracking unavailable" (with prev / next disabled), and, as one-off notices,
 // refused playback requests.
-// Status text for the toolbar while following the reader's recitation.
-function RecitationToolbarLabel({text}: {text: string}): React.JSX.Element {
-  const {theme} = useTheme();
-  return (
-    <Text
-      numberOfLines={1}
-      style={{
-        fontSize: 15,
-        fontFamily: 'Manrope-SemiBold',
-        color: theme.colors.text,
-        paddingHorizontal: 12,
-      }}>
-      {text}
-    </Text>
-  );
-}
-
 export function MushafToolbar() {
   const playbackState = useMushafPlayerStore(s => s.playbackState);
   const currentPage = useMushafPlayerStore(s => s.currentPage);
@@ -378,7 +362,7 @@ export function MushafToolbar() {
   if (isImmersive || isSearchMode) return null;
 
   if (recitationText !== null) {
-    // Reciting: [Stop] — spacer — what the reader is reciting — spacer
+    // Reciting: [Stop], then the live mic (or the peek buttons), then [eye].
     return (
       <Stack.Toolbar>
         <Stack.Toolbar.Button
@@ -399,9 +383,13 @@ export function MushafToolbar() {
             </Stack.Toolbar.Button>
           </>
         ) : (
-          <Stack.Toolbar.View>
-            <RecitationToolbarLabel text={recitationText} />
-          </Stack.Toolbar.View>
+          <Stack.Toolbar.Button
+            icon="mic.fill"
+            tintColor={LIVE_MIC_COLOR}
+            accessibilityLabel={`Listening. ${recitationText}`}
+            onPress={() => void stopRecitationTracking()}>
+            Listening
+          </Stack.Toolbar.Button>
         )}
         <Stack.Toolbar.Spacer />
         <Stack.Toolbar.Button
