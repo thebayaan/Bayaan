@@ -345,7 +345,8 @@ export const HomeCardOptionsSheet = (
 };
 // @ai-end
 
-const createStyles = (theme: Theme) =>
+// Exported so AdhkarSessionOptionsSheet shares this sheet's look.
+export const createStyles = (theme: Theme) =>
   ScaledSheet.create({
     sheetContainer: {
       backgroundColor: theme.colors.background,

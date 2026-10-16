@@ -5,6 +5,7 @@ type LiveActivityConfig = typeof import('../live-activity/config');
 function withWidgets<T>(
   widgets: string[] | undefined,
   run: (enabled: EnabledWidgets, live: LiveActivityConfig) => T,
+  flags: Record<string, boolean> = {},
 ): T {
   let result: T | undefined;
   let ran = false;
@@ -13,6 +14,10 @@ function withWidgets<T>(
       __esModule: true,
       default: {widgets},
     }));
+    jest.doMock('@/config/featureFlags', () => {
+      const actual = jest.requireActual('@/config/featureFlags');
+      return {...actual, featureFlags: {...actual.featureFlags, ...flags}};
+    });
     const enabled: EnabledWidgets = require('../enabledWidgets');
     const live: LiveActivityConfig = require('../live-activity/config');
     result = run(enabled, live);
@@ -58,9 +63,9 @@ describe('enabledKinds', () => {
 });
 
 describe('liveActivityMode', () => {
-  it('is on by default', () => {
+  it('is off for Quran playback, even with LiveActivity shipped', () => {
     expect(withWidgets(undefined, (_, live) => live.liveActivityMode())).toBe(
-      'surah',
+      'off',
     );
   });
 
@@ -68,5 +73,29 @@ describe('liveActivityMode', () => {
     expect(
       withWidgets(['ContinueListening'], (_, live) => live.liveActivityMode()),
     ).toBe('off');
+  });
+});
+
+describe('adhkarLiveActivityEnabled', () => {
+  it('is on by default', () => {
+    expect(
+      withWidgets(undefined, (_, live) => live.adhkarLiveActivityEnabled()),
+    ).toBe(true);
+  });
+
+  it('is off when a fork lists LiveActivity out', () => {
+    expect(
+      withWidgets(['ContinueListening'], (_, live) =>
+        live.adhkarLiveActivityEnabled(),
+      ),
+    ).toBe(false);
+  });
+
+  it('is off when the adhkar feature is off', () => {
+    expect(
+      withWidgets(undefined, (_, live) => live.adhkarLiveActivityEnabled(), {
+        adhkar: false,
+      }),
+    ).toBe(false);
   });
 });

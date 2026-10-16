@@ -16,16 +16,23 @@ import {
   type ActivityStartResult,
   type NowPlayingActivityState,
 } from './liveActivity';
+import type {AdhkarSessionActivityState} from './adhkarActivity';
 import {parsePendingTasbeeh, type PendingTasbeeh} from './tasbeeh';
+import {
+  parsePendingWidgetEvents,
+  type PendingWidgetEvent,
+} from './widgetEvents';
 
 export * from './snapshot';
 export * from './commands';
 export * from './tasbeeh';
+export * from './widgetEvents';
 export * from './widgetKinds';
 export * from './catalog';
 export * from './artworkRequests';
 export * from './dayMath';
 export * from './liveActivity';
+export * from './adhkarActivity';
 export * from './content';
 export * from './contentKinds';
 export * from './contextRules';
@@ -53,6 +60,13 @@ export function takeQueuedCommands(): QueuedWidgetCommand[] {
 export function takePendingTasbeeh(): PendingTasbeeh[] {
   if (!NativeBayaanWidgets) return [];
   return parsePendingTasbeeh(NativeBayaanWidgets.takePendingTasbeeh());
+}
+
+export function takePendingWidgetEvents(): PendingWidgetEvent[] {
+  if (!NativeBayaanWidgets) return [];
+  return parsePendingWidgetEvents(
+    NativeBayaanWidgets.takePendingWidgetEvents(),
+  );
 }
 
 export async function cacheArtwork(
@@ -133,4 +147,37 @@ export async function endNowPlayingActivities(): Promise<void> {
   const native = NativeBayaanWidgets;
   if (!native?.endNowPlayingActivities) return;
   await native.endNowPlayingActivities();
+}
+
+export async function startAdhkarSessionActivity(
+  state: AdhkarSessionActivityState,
+  staleAt: number,
+): Promise<ActivityStartResult> {
+  const native = NativeBayaanWidgets;
+  if (!native?.startAdhkarSessionActivity) return 'unavailable';
+  const result: unknown = await native.startAdhkarSessionActivity(
+    JSON.stringify(state),
+    staleAt,
+  );
+  return isActivityStartResult(result) ? result : 'error';
+}
+
+export async function updateAdhkarSessionActivity(
+  state: AdhkarSessionActivityState,
+  staleAt: number,
+): Promise<boolean> {
+  const native = NativeBayaanWidgets;
+  if (!native?.updateAdhkarSessionActivity) return false;
+  return native.updateAdhkarSessionActivity(JSON.stringify(state), staleAt);
+}
+
+// With dismissAtMs the ended activity stays on screen until that time (it
+// is cleared on schedule even if the app is then suspended); without it the
+// activity is dismissed at once.
+export async function endAdhkarSessionActivities(
+  dismissAtMs?: number,
+): Promise<void> {
+  const native = NativeBayaanWidgets;
+  if (!native?.endAdhkarSessionActivities) return;
+  await native.endAdhkarSessionActivities(dismissAtMs ?? null);
 }

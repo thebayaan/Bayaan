@@ -116,7 +116,7 @@ const TITLE_SHORTENINGS: Record<string, ShortTitleKey> = {
     'loveForAllah',
   'Invocation for someone who tells you: May Allah bless you':
     'receivingBlessing',
-  'vocation for someone who says: May Allah forgive you':
+  'Invocation for someone who says: May Allah forgive you':
     'receivingForgiveness',
   'Invocation for someone you have spoken ill to': 'afterBackbiting',
   'Invocation for someone who offers you a share of his wealth':

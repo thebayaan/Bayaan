@@ -181,17 +181,17 @@ fun ReciterPhoto(context: Context, file: String?, name: String, widthDp: Int, he
 @Composable
 fun ArabicText(
   context: Context, text: String, font: String, widthDp: Float, maxHeightDp: Float,
-  maxSp: Float, minSp: Float, maxLines: Int, center: Boolean,
+  maxSp: Float, minSp: Float, maxLines: Int, center: Boolean, wholeLines: Boolean = false,
 ) {
   val metrics = context.resources.displayMetrics
   val widthPx = (widthDp * metrics.density).roundToInt()
   val heightPx = (maxHeightDp * metrics.density).roundToInt()
-  val bmp = remember(text, font, widthPx, heightPx, maxSp, minSp, maxLines, center) {
+  val bmp = remember(text, font, widthPx, heightPx, maxSp, minSp, maxLines, center, wholeLines) {
     ArabicBitmap.render(
       context, text, font, widthPx, heightPx,
       TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, maxSp, metrics),
       TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, minSp, metrics),
-      android.graphics.Color.WHITE, center, maxLines,
+      android.graphics.Color.WHITE, center, maxLines, wholeLines,
     )
   } ?: return
   Image(

@@ -12,6 +12,10 @@ import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {Dhikr} from '@/types/adhkar';
+import {adhkarCardLabel} from '@/utils/adhkarText';
+import {AdhkarArabicText} from './AdhkarArabicText';
+import {AdhkarLatinText} from './AdhkarLatinText';
+import {PlayingBars} from './PlayingBars';
 import Color from 'color';
 // @ai-start
 import {useTranslation} from 'react-i18next';
@@ -19,15 +23,20 @@ import {localizeDigits} from '@/i18n/format';
 import {useAdhkarSettingsStore} from '@/store/adhkarSettingsStore';
 // @ai-end
 
+const CARD_ARABIC_SIZE = moderateScale(18);
+const CARD_TRANSLATION_SIZE = moderateScale(13);
+
 interface DhikrListItemProps {
   dhikr: Dhikr;
   index: number;
   style?: StyleProp<ViewStyle>;
+  isCurrent?: boolean;
+  isPlaying?: boolean;
 }
 
 // @ai-start
 export const DhikrListItem: React.FC<DhikrListItemProps> = React.memo(
-  ({dhikr, index, style}) => {
+  ({dhikr, index, style, isCurrent = false, isPlaying = false}) => {
     const {theme} = useTheme();
     const {t} = useTranslation('player');
     const showTranslation = useAdhkarSettingsStore(s => s.showTranslation);
@@ -38,30 +47,50 @@ export const DhikrListItem: React.FC<DhikrListItemProps> = React.memo(
 
     return (
       <View
-        style={[styles.container, style]}
+        style={[styles.container, isCurrent && styles.containerCurrent, style]}
         accessibilityRole="button"
-        accessibilityLabel={dhikr.translation || dhikr.arabic}>
+        accessibilityLabel={adhkarCardLabel(dhikr.arabic, dhikr.translation)}>
         {/* Ornate top border pattern */}
         <View style={styles.ornamentBar}>
           <View style={styles.ornamentLeft} />
           <View style={styles.ornamentCenter}>
-            <Text style={styles.ornamentNumber}>
-              {localizeDigits(displayNumber)}
-            </Text>
+            <View style={styles.numberRow}>
+              <Text style={styles.ornamentNumber}>
+                {localizeDigits(displayNumber)}
+              </Text>
+              {isCurrent ? (
+                <PlayingBars
+                  animating={isPlaying}
+                  color={theme.colors.textSecondary}
+                />
+              ) : null}
+            </View>
           </View>
           <View style={styles.ornamentRight} />
         </View>
 
         {/* Arabic text */}
         <View style={styles.arabicContainer}>
-          <Text style={styles.arabicText}>{dhikr.arabic}</Text>
+          <AdhkarArabicText
+            dhikrId={dhikr.id}
+            arabic={dhikr.arabic}
+            fontSize={CARD_ARABIC_SIZE}
+            style={styles.arabicText}
+            align="center"
+          />
         </View>
 
         {/* Translation */}
         {showTranslation && dhikr.translation ? (
           <View style={styles.annotationContainer}>
             <View style={styles.annotationLine} />
-            <Text style={styles.translationText}>{dhikr.translation}</Text>
+            <AdhkarLatinText
+              text={dhikr.translation}
+              variant="translation"
+              fontSize={CARD_TRANSLATION_SIZE}
+              color={theme.colors.textSecondary}
+              style={styles.translationText}
+            />
           </View>
         ) : null}
 
@@ -96,6 +125,17 @@ const createStyles = (theme: Theme) => {
       borderWidth: 1,
       borderColor: Color(accentColor).alpha(0.15).toString(),
     },
+    // The text color at 6% mixed over the card, so the card stays opaque.
+    containerCurrent: {
+      backgroundColor: Color(theme.colors.card)
+        .mix(Color(theme.colors.text), 0.06)
+        .toString(),
+    },
+    numberRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: moderateScale(8),
+    },
     ornamentBar: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -129,7 +169,7 @@ const createStyles = (theme: Theme) => {
       paddingBottom: moderateScale(16),
     },
     arabicText: {
-      fontSize: moderateScale(18),
+      fontSize: CARD_ARABIC_SIZE,
       fontFamily: 'ScheherazadeNew-Regular',
       color: theme.colors.text,
       textAlign: 'center',
@@ -146,7 +186,7 @@ const createStyles = (theme: Theme) => {
       marginBottom: moderateScale(12),
     },
     translationText: {
-      fontSize: moderateScale(13),
+      fontSize: CARD_TRANSLATION_SIZE,
       fontFamily: theme.fonts.regular,
       color: accentColor,
       textAlign: 'center',

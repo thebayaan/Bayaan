@@ -1,4 +1,4 @@
-import React, {useState, useRef} from 'react';
+import React, {useState, useRef, useCallback} from 'react';
 import {
   View,
   Text,
@@ -7,7 +7,7 @@ import {
   StyleSheet,
   Keyboard,
 } from 'react-native';
-import {Stack} from 'expo-router';
+import {Stack, useFocusEffect} from 'expo-router';
 // @ai-start
 import {useTranslation} from 'react-i18next';
 // @ai-end
@@ -28,6 +28,24 @@ export default function SearchScreen() {
   const [isSearchActive, setIsSearchActive] = useState(false);
   const inputRef = useRef<TextInput>(null);
 
+  // iOS 27 only renders the search tab as the detached trailing pill while
+  // `automaticallyActivatesSearch` is set on it (see app/(tabs)/_layout.tsx).
+  // That same flag makes UIKit focus a native search bar the instant the tab
+  // is selected, dropping the user straight into the keyboard instead of this
+  // browse screen. UIKit performs that check once, at selection, and never
+  // re-checks, so mounting the search bar from the screen's focus effect
+  // leaves nothing for it to activate: the tab keeps its detached placement
+  // and the keyboard stays down until the user taps the field. Mounting in
+  // the effect rather than behind a timer keeps the bar part of the tab
+  // transition, so it animates in with the screen instead of popping in.
+  const [searchBarMounted, setSearchBarMounted] = useState(false);
+  useFocusEffect(
+    useCallback(() => {
+      setSearchBarMounted(true);
+      return () => setSearchBarMounted(false);
+    }, []),
+  );
+
   const handleCancel = () => {
     setQuery('');
     setIsSearchActive(false);
@@ -38,7 +56,7 @@ export default function SearchScreen() {
   return (
     <View
       style={[styles.container, {backgroundColor: theme.colors.background}]}>
-      {USE_GLASS && (
+      {USE_GLASS && searchBarMounted && (
         <Stack.SearchBar
           placement="automatic"
           placeholder={t('search.placeholder')}

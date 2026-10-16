@@ -21,12 +21,6 @@ struct ContentWidgets: WidgetBundle {
     #if !BAYAAN_NO_WIDGET_ADHKAR
     AdhkarWidget()
     #endif
-    #if !BAYAAN_NO_WIDGET_HIJRI_DATE
-    HijriDateWidget()
-    #endif
-    #if !BAYAAN_NO_WIDGET_OCCASION
-    OccasionWidget()
-    #endif
     #if !BAYAAN_NO_WIDGET_BAYAAN_NOW
     BayaanNowWidget()
     #endif

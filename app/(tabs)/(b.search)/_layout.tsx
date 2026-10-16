@@ -10,6 +10,10 @@ import {MaxWidthContainer} from '@/components/layout/MaxWidthContainer';
 
 const EmptyHeaderBackground = () => <View />;
 
+// A deep link (widget, Live Activity, App Link) that opens a screen in this
+// stack lands on top of its first screen, so back always has a target.
+export const unstable_settings = {initialRouteName: 'index'};
+
 // @ai-start
 export default function SearchLayout() {
   const {theme} = useTheme();

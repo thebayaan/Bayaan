@@ -33,7 +33,6 @@ import expo.modules.bayaanwidgets.BayaanNowMode
 import expo.modules.bayaanwidgets.ContentConfigJson
 import expo.modules.bayaanwidgets.ContentLogic
 import expo.modules.bayaanwidgets.GlanceState
-import expo.modules.bayaanwidgets.IcuHijri
 import expo.modules.bayaanwidgets.SnapshotModels
 import expo.modules.bayaanwidgets.StaticData
 import expo.modules.bayaanwidgets.WidgetFeatures
@@ -41,8 +40,6 @@ import expo.modules.bayaanwidgets.WidgetInputs
 import expo.modules.bayaanwidgets.WidgetSnapshot
 import expo.modules.bayaanwidgets.adhkar.AdhkarContent
 import expo.modules.bayaanwidgets.bedtime.BedtimeContent
-import expo.modules.bayaanwidgets.hijri.HijriSmallContent
-import expo.modules.bayaanwidgets.hijri.OccasionContent
 import expo.modules.bayaanwidgets.ui.ContentMessage
 import expo.modules.bayaanwidgets.ui.Logo
 import expo.modules.bayaanwidgets.ui.ReciterPhoto
@@ -59,7 +56,10 @@ import org.json.JSONObject
 import java.util.TimeZone
 
 class BayaanNowWidget : GlanceAppWidget() {
-  override val sizeMode = SizeMode.Responsive(setOf(WidgetSizes.SMALL, WidgetSizes.SMALL_TALL, WidgetSizes.MEDIUM))
+  // MEDIUM_TALL gives a 3x2 or 4x2 adhkar session two lines instead of the compact one; listening and bedtime only check width.
+  override val sizeMode = SizeMode.Responsive(
+    setOf(WidgetSizes.SMALL, WidgetSizes.SMALL_TALL, WidgetSizes.MEDIUM, WidgetSizes.MEDIUM_TALL),
+  )
   override val stateDefinition: GlanceStateDefinition<*> = PreferencesGlanceStateDefinition
 
   override suspend fun provideGlance(context: Context, id: GlanceId) {
@@ -88,13 +88,11 @@ class BayaanNowWidget : GlanceAppWidget() {
     val snapshot = remember(inputs.snapshotJson) { inputs.snapshotJson?.let { SnapshotModels.decode(it) } }
     val playing = ContentLogic.playingAt(snapshot, now)
     val mode = ContentLogic.mode(
-      ContentLogic.hour(now, tz), playing, ContentLogic.occasionAt(now, tz, IcuHijri),
+      ContentLogic.hour(now, tz), playing,
       adhkar = WidgetFeatures.adhkar(context), bedtime = WidgetFeatures.sleepTimer(context),
     )
-    val small = LocalSize.current.width < WidgetSizes.MEDIUM.width
     when (mode) {
       BayaanNowMode.LISTENING -> NowPlayingCard(context, snapshot, now)
-      BayaanNowMode.OCCASION -> if (small) HijriSmallContent(context, now) else OccasionContent(context, now)
       BayaanNowMode.MORNING_ADHKAR, BayaanNowMode.EVENING_ADHKAR -> AdhkarContent(context, now)
       BayaanNowMode.BEDTIME -> BedtimeContent(context, ContentConfigJson.DEFAULT_BEDTIME, inputs)
     }

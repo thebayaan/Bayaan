@@ -34,6 +34,7 @@ import {MushafRepeatOptionsSheet} from './MushafRepeatOptionsSheet';
 import {FollowAlongSheet} from './FollowAlongSheet';
 import {WordDetailSheet} from './WordDetailSheet';
 import {HomeCardOptionsSheet} from './HomeCardOptionsSheet';
+import {AdhkarSessionOptionsSheet} from './AdhkarSessionOptionsSheet';
 import {installRewayahFallbackNotice} from './rewayahFallbackNotice'; // @ai
 
 // Register all sheets
@@ -69,6 +70,7 @@ registerSheet('mushaf-repeat-options', MushafRepeatOptionsSheet);
 registerSheet('follow-along', FollowAlongSheet);
 registerSheet('word-detail', WordDetailSheet);
 registerSheet('home-card-options', HomeCardOptionsSheet);
+registerSheet('adhkar-session-options', AdhkarSessionOptionsSheet);
 
 // @ai-start
 // App-wide notice when the saved rewayah fails to load at startup and Hafs
@@ -296,6 +298,12 @@ declare module 'react-native-actions-sheet' {
         recentIndex?: number;
         variant: 'recent' | 'reciter';
         onContinuePlaying?: () => void;
+      };
+    }>;
+    'adhkar-session-options': SheetDefinition<{
+      payload: {
+        title: string;
+        subtitle: string;
       };
     }>;
   }

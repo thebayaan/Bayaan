@@ -6,28 +6,11 @@ import org.json.JSONObject
 import org.junit.Assert.*
 import org.junit.Test
 import java.io.File
-import java.time.LocalDate
-import java.time.chrono.HijrahDate
-import java.time.temporal.ChronoField
 import java.util.TimeZone
 
 class ContentLogicTest {
   private fun fixture(name: String) = File("../src/__fixtures__/$name").readText()
   private fun asset(name: String) = File("src/main/assets/widgets/$name").readText()
-
-  // java.time's Hijrah calendar is Umm al-Qura. Devices use android.icu (IcuHijri), which the JVM lacks.
-  private val javaHijri = HijriOf { day ->
-    val h = HijrahDate.from(LocalDate.ofEpochDay(day))
-    HijriDate(h.get(ChronoField.YEAR), h.get(ChronoField.MONTH_OF_YEAR), h.get(ChronoField.DAY_OF_MONTH))
-  }
-
-  private val table = JSONObject(fixture("hijri.table.json"))
-  private val from = table.getLong("from")
-  private val rows = table.getJSONArray("rows")
-  private val tableHijri = HijriOf { day ->
-    val i = (day - from).toInt()
-    if (i < 0 || i >= rows.length()) null else rows.getJSONArray(i).let { HijriDate(it.getInt(0), it.getInt(1), it.getInt(2)) }
-  }
 
   private val content = ContentModels.decodeContent(fixture("content.full.json"))!!
 
@@ -45,19 +28,14 @@ class ContentLogicTest {
 
   @Test fun parsesGeneratedStaticData() {
     val adhkar = ContentModels.decodeAdhkarPeriods(asset("adhkar-periods.json"))!!
-    assertEquals(24, adhkar.morning.count)
+    assertEquals(23, adhkar.morning.count)
+    assertEquals(23, adhkar.morning.items.size)
+    assertEquals("75", adhkar.morning.items[0].id)
+    assertEquals(21, adhkar.evening.count)
+    assertEquals(21, adhkar.evening.items.size)
+    assertTrue(adhkar.evening.featured.none { it.id == "94" })
     assertEquals("evening-adhkar", adhkar.of(AdhkarPeriod.EVENING).superId)
     assertTrue(adhkar.evening.featured.any { it.id == "97" } && adhkar.morning.featured.none { it.id == "97" })
-    val occasions = ContentModels.decodeOccasions(asset("occasions.json"))!!
-    assertEquals(12, occasions.months.size)
-    assertEquals(listOf("eidFitr", "arafah", "eidAdha", "lastTen", "ramadan", "dhulHijjah", "ashura", "jumuah"), occasions.occasions.map { it.id })
-    assertEquals(18, occasions.occasion("jumuah")!!.listenSurahId)
-    assertTrue(occasions.occasions.all { o -> o.ayat.isNotEmpty() && o.ayat.all { it.arabic.isNotEmpty() && it.translation.isNotEmpty() } })
-  }
-
-  @Test fun javaUmmAlQuraMatchesTheTable() {
-    for (i in 0 until rows.length()) assertEquals("day ${from + i}", tableHijri.at(from + i), javaHijri.at(from + i))
-    assertEquals(HijriDate(1447, 9, 1), tableHijri.at(20502))
   }
 
   @Test fun ruleVectors() {
@@ -68,19 +46,10 @@ class ContentLogicTest {
         assertEquals("$p", p.getString(1), ContentLogic.adhkarPeriod(p.getInt(0)).name.lowercase())
       }
     }
-    v.getJSONArray("occasion").let { a ->
-      for (i in 0 until a.length()) {
-        val c = a.getJSONObject(i)
-        val h = if (c.isNull("hijri")) null else c.getJSONArray("hijri").let { HijriDate(it.getInt(0), it.getInt(1), it.getInt(2)) }
-        val expect = if (c.isNull("expect")) null else c.getString("expect")
-        assertEquals("$c", expect, ContentLogic.occasion(h, c.getInt("weekday"), c.getInt("hour")))
-      }
-    }
     v.getJSONArray("mode").let { a ->
       for (i in 0 until a.length()) {
         val c = a.getJSONObject(i)
-        val occasion = if (c.isNull("occasion")) null else c.getString("occasion")
-        assertEquals("$c", c.getString("expect"), ContentLogic.mode(c.getInt("hour"), c.getBoolean("playing"), occasion).wire)
+        assertEquals("$c", c.getString("expect"), ContentLogic.mode(c.getInt("hour"), c.getBoolean("playing")).wire)
       }
     }
     v.getJSONArray("nextBoundary").let { a ->
@@ -98,32 +67,13 @@ class ContentLogicTest {
     }
   }
 
-  @Test fun nextOccasionVectors() {
-    val nv = JSONObject(fixture("next-occasions.vectors.json"))
-    val count = nv.getInt("count")
-    val cases = nv.getJSONArray("cases")
-    for (i in 0 until cases.length()) {
-      val c = cases.getJSONObject(i)
-      val today = c.getLong("today")
-      val e = c.getJSONArray("expect")
-      val expect = (0 until e.length()).map { e.getJSONObject(it).let { o -> UpcomingOccasion(o.getString("id"), o.getInt("days")) } }
-      assertEquals("table $today", expect, ContentLogic.nextOccasions(today, count, tableHijri))
-      assertEquals("java $today", expect, ContentLogic.nextOccasions(today, count, javaHijri))
-    }
-  }
-
   @Test fun timeZones() {
-    // 2026-02-19T03:30Z: 22:30 Wednesday 18 Feb in New York (1 Ramadan 1447), 12:30 Thursday 19 Feb in Tokyo.
+    // 2026-02-19T03:30Z: 22:30 Wednesday 18 Feb in New York, 12:30 Thursday 19 Feb in Tokyo.
     val now = 1_771_471_800_000L
     val ny = TimeZone.getTimeZone("America/New_York")
     val tokyo = TimeZone.getTimeZone("Asia/Tokyo")
-    assertEquals(HijriDate(1447, 9, 1), ContentLogic.hijri(now, ny, tableHijri))
-    assertEquals(tableHijri.at(20503), ContentLogic.hijri(now, tokyo, tableHijri))
     assertEquals(22, ContentLogic.hour(now, ny))
-    assertEquals(4, ContentLogic.weekday(now, ny))
     assertEquals(12, ContentLogic.hour(now, tokyo))
-    assertEquals(5, ContentLogic.weekday(now, tokyo))
-    assertEquals("ramadan", ContentLogic.occasionAt(now, ny, tableHijri))
     assertEquals(1_771_477_200_000L, ContentLogic.nextBoundaryMs(now, ny)) // 00:00 Thursday in New York
   }
 
@@ -168,10 +118,6 @@ class ContentLogicTest {
   }
 
   @Test fun textHelpers() {
-    val months = ContentModels.decodeOccasions(asset("occasions.json"))!!.months
-    assertEquals("29 Rabi al-Thani 1448", ContentLogic.hijriLine(HijriDate(1448, 4, 29), months))
-    assertEquals("Tomorrow", ContentLogic.daysLabel(1))
-    assertEquals("in 23 days", ContentLogic.daysLabel(23))
     assertEquals("1 surah", ContentLogic.surahCount(1))
     assertEquals("12 surahs", ContentLogic.surahCount(12))
     assertNull(ContentLogic.repeatLabel(1))
@@ -195,11 +141,10 @@ class ContentLogicTest {
 
   // RFC-021: same cases as contextRules.test.ts and check-widget-content.sh.
   @Test fun modeWithCardsTurnedOff() {
-    assertEquals(BayaanNowMode.LISTENING, ContentLogic.mode(8, false, null, adhkar = false))
-    assertEquals(BayaanNowMode.LISTENING, ContentLogic.mode(17, false, null, adhkar = false))
-    assertEquals(BayaanNowMode.BEDTIME, ContentLogic.mode(22, false, null, adhkar = false))
-    assertEquals(BayaanNowMode.LISTENING, ContentLogic.mode(22, false, null, bedtime = false))
-    assertEquals(BayaanNowMode.MORNING_ADHKAR, ContentLogic.mode(8, false, null, bedtime = false))
-    assertEquals(BayaanNowMode.OCCASION, ContentLogic.mode(8, false, "jumuah", adhkar = false))
+    assertEquals(BayaanNowMode.LISTENING, ContentLogic.mode(8, false, adhkar = false))
+    assertEquals(BayaanNowMode.LISTENING, ContentLogic.mode(17, false, adhkar = false))
+    assertEquals(BayaanNowMode.BEDTIME, ContentLogic.mode(22, false, adhkar = false))
+    assertEquals(BayaanNowMode.LISTENING, ContentLogic.mode(22, false, bedtime = false))
+    assertEquals(BayaanNowMode.MORNING_ADHKAR, ContentLogic.mode(8, false, bedtime = false))
   }
 }

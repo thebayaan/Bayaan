@@ -67,9 +67,9 @@ The list lives in its own dependency-free file, not in `branding.js`: the plugin
 | `ambientAudioOverlay` | Bedtime keeps working without its ambient option (iOS parameter compiled out, Android menu row hidden, stored sounds ignored, the app ignores a stale command's sound) |
 | `userUploads` | CarPlay / Android Auto lose the Library "Uploads" row and list |
 
-No control, Live Activity or App Shortcut depends on adhkar or ambient audio, so none follows those flags; each can still be listed out by id (`PlaybackControl`, `PlaySurahControl`, `LiveActivity`, `ListeningAccessory`). The car has no adhkar or ambient surfaces.
+No control, Live Activity or App Shortcut depends on adhkar or ambient audio, so none follows those flags; each can still be listed out by id (`PlaybackControl`, `PlaySurahControl`, `LiveActivity`, `ListeningAccessory`, `VerseOfTheDayAccessory`). The car has no adhkar or ambient surfaces.
 
-Ids: `ContinueListening`, `ContinueReading`, `QuickSurah`, `PinnedReciter`, `AyahOfTheDay`, `Tasbeeh`, `RecentlyPlayed`, `LibraryShelf`, `Bedtime`, `ReciterSpotlight`, `Adhkar`, `HijriDate`, `Occasion`, `BayaanNow`, and iOS-only `ListeningAccessory`, `LiveActivity`, `PlaybackControl`, `PlaySurahControl`.
+Ids: `ContinueListening`, `ContinueReading`, `QuickSurah`, `PinnedReciter`, `AyahOfTheDay`, `Tasbeeh`, `RecentlyPlayed`, `LibraryShelf`, `Bedtime`, `ReciterSpotlight`, `Adhkar`, `BayaanNow`, and iOS-only `ListeningAccessory`, `VerseOfTheDayAccessory`, `LiveActivity`, `PlaybackControl`, `PlaySurahControl`.
 
 Enforcement:
 

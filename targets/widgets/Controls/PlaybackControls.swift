@@ -29,7 +29,7 @@ struct PlaybackControl: ControlWidget {
 
   var body: some ControlWidgetConfiguration {
     StaticControlConfiguration(kind: Self.kind, provider: PlaybackControlValueProvider()) { isPlaying in
-      ControlWidgetToggle("\(AppBrand.name)", isOn: isPlaying, action: SetPlayingControlIntent()) { isOn in
+      ControlWidgetToggle(AppBrand.name, isOn: isPlaying, action: SetPlayingControlIntent()) { isOn in
         Label(isOn ? "Playing" : "Paused", systemImage: isOn ? "pause.fill" : "play.fill")
       }
     }
