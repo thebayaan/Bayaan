@@ -7,6 +7,8 @@ import {GradientFill} from '../brand/GradientFill';
 import {SurahGlyph} from '../brand/SurahGlyph';
 import {Scrim} from '../adhkar/AdhkarListCard';
 import {PortraitCard} from './ResultCards';
+import {popularReciters} from '../../services/listeningChoices';
+import {getReciterArtwork} from '../../services/reciterArtwork';
 import {SURAHS, type Surah} from '../../../data/surahData';
 import {
   ADHKAR_LISTS,
@@ -67,10 +69,11 @@ export function BrowsePanel({
     const list = ADHKAR_LISTS.find(l => l.id === id);
     return list ? [list] : [];
   });
-  const featured = reciters.filter(r => r.is_featured);
-  const shownReciters = (
-    featured.length >= RECITER_COUNT ? featured : reciters
-  ).slice(0, RECITER_COUNT);
+  const shownReciters = popularReciters(
+    reciters,
+    RECITER_COUNT,
+    r => getReciterArtwork(r) !== null,
+  );
   return (
     <View>
       <Text style={styles.kicker}>Browse</Text>

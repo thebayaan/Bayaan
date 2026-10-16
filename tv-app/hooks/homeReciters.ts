@@ -1,9 +1,10 @@
 /**
  * Who appears in Home's reciters rail: favourites, then recently played,
- * then the default reciter, topped up with featured reciters so the row is
+ * then the default reciter, topped up with well-known reciters so the row is
  * never short. Pure, so the order is unit-tested.
  */
 import type {Reciter} from '../types/reciter';
+import {popularReciters} from '../services/listeningChoices';
 
 export type HomeRecitersInput = {
   reciters: readonly Reciter[];
@@ -41,7 +42,9 @@ export function pickHomeReciters({
   recentIds.forEach(add);
   const personal = out.length > 0;
   add(defaultId);
-  reciters.filter(r => r.is_featured).forEach(r => add(r.id));
+  // The best-known voices first (as onboarding offers them), not the
+  // catalog's alphabetical order.
+  popularReciters(reciters, limit).forEach(r => add(r.id));
   reciters.forEach(r => add(r.id));
   return {
     title: personal ? 'Your reciters' : 'Reciters to begin with',

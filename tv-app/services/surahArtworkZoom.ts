@@ -3,7 +3,7 @@
 /** The cards are 1200 x 630 with the calligraphy and name in the middle. */
 const CARD_ASPECT = 1200 / 630;
 /** Share of the slot's width the card's middle should fill. */
-const CONTENT_SHARE = 0.5;
+const CONTENT_SHARE = 0.4;
 /** Least share of the card's height left visible, so the name never clips. */
 const MIN_HEIGHT_SHARE = 0.45;
 
