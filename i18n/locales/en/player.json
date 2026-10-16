@@ -35,7 +35,15 @@
     "searchPlaceholder": "Search surahs",
     "noSurahsAvailable": "No surahs available",
     "noSurahsFound": "No surahs found",
-    "juzAmma": "Juz 'Amma"
+    "juzAmma": "Juz 'Amma",
+    "playAll": "Play all",
+    "favorite": "Favorite",
+    "favorited": "Favorited",
+    "downloaded": "Downloaded",
+    "surahCount_one": "{{count}} surah",
+    "surahCount_other": "{{count}} surahs",
+    "rewayatCount_one": "{{count}} rewayah",
+    "rewayatCount_other": "{{count}} rewayat"
   },
   "adhkar": {
     "otherSection": "Other",

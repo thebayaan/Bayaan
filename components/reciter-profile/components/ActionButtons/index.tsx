@@ -1,15 +1,59 @@
 import React from 'react';
-import {View, Pressable, Text} from 'react-native';
+import {View, Pressable, Text, type TextStyle} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {ScaledSheet} from 'react-native-size-matters';
+import {useTranslation} from 'react-i18next';
 import {Theme} from '@/utils/themeUtils';
 import {useTheme} from '@/hooks/useTheme';
-import {PlayIcon, ShuffleIcon} from '@/components/Icons';
+import {DownloadIcon, PlayIcon, ShuffleIcon} from '@/components/Icons';
+import {CircularProgress} from '@/components/CircularProgress';
 import {ActionButtonsProps} from '@/components/reciter-profile/types';
 import Color from 'color';
 import {Ionicons} from '@expo/vector-icons';
 
 const GOLD_COLOR = '#FFD700';
+
+interface StableLabelProps {
+  labels: string[];
+  active: string;
+  textStyle: TextStyle;
+}
+
+/**
+ * Renders every label variant stacked so the slot is always as wide as the
+ * longest one. Only the active label is visible, so toggling state never
+ * shifts the button's content.
+ */
+const StableLabel: React.FC<StableLabelProps> = ({
+  labels,
+  active,
+  textStyle,
+}) => (
+  <View style={stableLabelStyles.container}>
+    {labels.map(label => (
+      <Text
+        key={label}
+        style={[textStyle, label !== active && stableLabelStyles.hidden]}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.8}
+        importantForAccessibility={label === active ? 'auto' : 'no'}>
+        {label}
+      </Text>
+    ))}
+  </View>
+);
+
+const stableLabelStyles = ScaledSheet.create({
+  container: {
+    flexShrink: 1,
+    alignItems: 'center',
+  },
+  hidden: {
+    height: 0,
+    opacity: 0,
+  },
+});
 
 export const ActionButtons: React.FC<ActionButtonsProps> = ({
   onFavoritePress,
@@ -22,6 +66,7 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
   allDownloaded = false,
 }) => {
   const {theme} = useTheme();
+  const {t} = useTranslation(['player', 'common']);
   const styles = createStyles(theme);
 
   const getDownloadAllLabel = () => {
@@ -30,86 +75,156 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
     return 'Download all surahs';
   };
 
-  return (
-    <View style={styles.actionButtons}>
-      <Pressable style={styles.circleButton} onPress={onFavoritePress}>
-        <Ionicons
-          name={isFavoriteReciter ? 'star' : 'star-outline'}
-          size={moderateScale(20)}
-          color={isFavoriteReciter ? GOLD_COLOR : theme.colors.textSecondary}
+  const favoriteLabel = t('player:reciterProfile.favorite');
+  const favoritedLabel = t('player:reciterProfile.favorited');
+  const downloadLabel = t('common:actions.download');
+  const downloadedLabel = t('player:reciterProfile.downloaded');
+  const progressLabel = `${Math.round(downloadAllProgress * 100)}%`;
+
+  const getDownloadText = () => {
+    if (isDownloadingAll) return progressLabel;
+    if (allDownloaded) return downloadedLabel;
+    return downloadLabel;
+  };
+
+  const renderDownloadIcon = () => {
+    if (isDownloadingAll) {
+      return (
+        <CircularProgress
+          progress={downloadAllProgress}
+          size={moderateScale(15)}
+          strokeWidth={moderateScale(1.8)}
+          color={theme.colors.text}
         />
-      </Pressable>
+      );
+    }
+    if (allDownloaded) {
+      return (
+        <Ionicons
+          name="arrow-down-circle"
+          size={moderateScale(16)}
+          color={theme.colors.text}
+        />
+      );
+    }
+    return <DownloadIcon color={theme.colors.text} size={moderateScale(16)} />;
+  };
+
+  return (
+    <View style={styles.container}>
       <Pressable
-        style={[styles.circleButton, styles.playButton]}
-        onPress={onPlayPress}>
-        <View style={styles.playIconContainer}>
-          <PlayIcon color={theme.colors.background} size={moderateScale(18)} />
-        </View>
+        style={({pressed}) => [styles.playButton, pressed && styles.pressed]}
+        onPress={onPlayPress}
+        accessibilityRole="button">
+        <PlayIcon color={theme.colors.background} size={moderateScale(15)} />
+        <Text style={styles.playText}>
+          {t('player:reciterProfile.playAll')}
+        </Text>
       </Pressable>
-      <Pressable style={styles.circleButton} onPress={onShufflePress}>
-        <ShuffleIcon color={theme.colors.text} size={moderateScale(20)} />
-      </Pressable>
-      {/* @ai-start */}
-      {onDownloadAllPress ? (
+      <View style={styles.row}>
         <Pressable
-          style={styles.circleButton}
-          onPress={onDownloadAllPress}
-          accessibilityRole="button"
-          accessibilityLabel={getDownloadAllLabel()}>
-          {isDownloadingAll ? (
-            <Text style={styles.progressText} numberOfLines={1}>
-              {`${Math.round(downloadAllProgress * 100)}%`}
-            </Text>
-          ) : (
-            <Ionicons
-              name={allDownloaded ? 'checkmark-circle' : 'download-outline'}
-              size={moderateScale(20)}
-              color={
-                allDownloaded
-                  ? theme.colors.text
-                  : Color(theme.colors.text).alpha(0.7).toString()
-              }
-            />
-          )}
+          style={({pressed}) => [
+            styles.secondaryButton,
+            pressed && styles.pressed,
+          ]}
+          onPress={onShufflePress}
+          accessibilityRole="button">
+          <ShuffleIcon color={theme.colors.text} size={moderateScale(15)} />
+          <Text style={styles.secondaryText} numberOfLines={1}>
+            {t('common:actions.shuffle')}
+          </Text>
         </Pressable>
-      ) : null}
-      {/* @ai-end */}
+        <Pressable
+          style={({pressed}) => [
+            styles.secondaryButton,
+            pressed && styles.pressed,
+          ]}
+          onPress={onFavoritePress}
+          accessibilityRole="button"
+          accessibilityLabel={t('player:reciterProfile.favorite')}
+          accessibilityState={{selected: isFavoriteReciter}}>
+          <Ionicons
+            name={isFavoriteReciter ? 'star' : 'star-outline'}
+            size={moderateScale(15)}
+            color={isFavoriteReciter ? GOLD_COLOR : theme.colors.text}
+          />
+          <StableLabel
+            labels={[favoriteLabel, favoritedLabel]}
+            active={isFavoriteReciter ? favoritedLabel : favoriteLabel}
+            textStyle={styles.secondaryText}
+          />
+        </Pressable>
+        {/* @ai-start */}
+        {onDownloadAllPress ? (
+          <Pressable
+            style={({pressed}) => [
+              styles.secondaryButton,
+              pressed && styles.pressed,
+            ]}
+            onPress={onDownloadAllPress}
+            accessibilityRole="button"
+            accessibilityLabel={getDownloadAllLabel()}>
+            {renderDownloadIcon()}
+            <StableLabel
+              labels={
+                isDownloadingAll
+                  ? [downloadLabel, downloadedLabel, progressLabel]
+                  : [downloadLabel, downloadedLabel]
+              }
+              active={getDownloadText()}
+              textStyle={styles.secondaryText}
+            />
+          </Pressable>
+        ) : null}
+        {/* @ai-end */}
+      </View>
     </View>
   );
 };
 
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({
-    actionButtons: {
-      flexDirection: 'row',
-      justifyContent: 'center',
-      alignItems: 'center',
-      gap: moderateScale(16),
-      paddingVertical: moderateScale(4),
-      paddingHorizontal: moderateScale(20),
-    },
-    circleButton: {
-      width: moderateScale(42),
-      height: moderateScale(42),
-      justifyContent: 'center',
-      alignItems: 'center',
-      borderRadius: moderateScale(12),
-      backgroundColor: Color(theme.colors.textSecondary).alpha(0.08).toString(),
-      padding: moderateScale(8),
+    container: {
+      paddingTop: moderateScale(6),
+      gap: moderateScale(8),
     },
     playButton: {
-      width: moderateScale(42),
-      height: moderateScale(42),
+      height: moderateScale(50),
+      borderRadius: moderateScale(12),
       backgroundColor: theme.colors.text,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: moderateScale(8),
     },
-    playIconContainer: {
-      paddingLeft: moderateScale(4),
+    playText: {
+      fontSize: moderateScale(15),
+      fontFamily: 'Manrope-ExtraBold',
+      color: theme.colors.background,
     },
-    // @ai-start
-    progressText: {
-      fontSize: moderateScale(11),
-      fontWeight: '600',
+    row: {
+      flexDirection: 'row',
+      gap: moderateScale(8),
+    },
+    secondaryButton: {
+      flex: 1,
+      height: moderateScale(44),
+      borderRadius: moderateScale(12),
+      borderWidth: 1,
+      borderColor: Color(theme.colors.text).alpha(0.16).toString(),
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: moderateScale(5),
+      paddingHorizontal: moderateScale(8),
+    },
+    secondaryText: {
+      flexShrink: 1,
+      fontSize: moderateScale(13),
+      fontFamily: 'Manrope-Bold',
       color: theme.colors.text,
     },
-    // @ai-end
+    pressed: {
+      opacity: 0.7,
+    },
   });
