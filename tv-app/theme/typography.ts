@@ -39,6 +39,15 @@ export const surahNameFontFamily = 'SurahNames';
  */
 export const quranFontFamily = 'DigitalKhatt';
 
+/**
+ * Quran text in the listening room. The TV app has no Skia, so it can't run
+ * the Digital Khatt pipeline; until Skia is proven on tvOS and Vega it uses
+ * the KFGQPC Uthmanic Hafs font, the font `data/quran.json`'s text is encoded
+ * for, as plain text. Vega can't register it and falls back to the system
+ * Arabic font (see `theme/calligraphy`).
+ */
+export const quranTextFontFamily = 'UthmanicHafs';
+
 type TypographyStyle = {
   fontFamily: string;
   fontSize: number;

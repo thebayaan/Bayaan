@@ -4,3 +4,6 @@
  * fall back to the transliterated name there.
  */
 export const surahGlyphsAvailable = false;
+
+/** Same for the Quran text font: Vega uses the system Arabic font instead. */
+export const quranTextFontAvailable = false;

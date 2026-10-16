@@ -15,14 +15,18 @@
 10-play-surah 12 select
 11-paused 3 playpause
 12-resumed 3 playpause
-13-seek-forward 3 right
-14-back-to-detail 3 back
-15-back-to-home 3 back
-16-sidebar-open 2 left left left left left
-17-search 4 down select
-18-search-typed 5 right select text:fati
-19-reciters 4 left left left down select
-20-library 4 down select
-21-settings 4 down select
-22-back-to-home 3 back
-23-relaunch-home 20 relaunch
+13-next-verse 3 right
+14-controls 3 select
+15-repeat-verse 3 right right select
+16-speed 3 right select
+17-controls-lowered 3 back
+18-back-to-detail 3 back
+19-back-to-home 3 back
+20-sidebar-open 2 left left left left left
+21-search 4 down select
+22-search-typed 5 right select text:fati
+23-reciters 4 left left left down select
+24-library 4 down select
+25-settings 4 down select
+26-back-to-home 3 back
+27-relaunch-home 20 relaunch

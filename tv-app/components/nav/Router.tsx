@@ -3,6 +3,7 @@ import {View} from 'react-native';
 import {useNavStore} from '../../store/navStore';
 import {useOverlayStore} from '../../store/overlayStore';
 import {useContextMenuStore} from '../../store/contextMenuStore';
+import {useListeningStore} from '../../store/listeningStore';
 import {useOnboarded} from '../../hooks/useOnboarded';
 import {useReciters} from '../../hooks/useReciters';
 import {HomeScreen} from '../../screens/HomeScreen';
@@ -33,6 +34,10 @@ export function Router(): React.ReactElement {
     }
     if (useOverlayStore.getState().active) {
       useOverlayStore.getState().close();
+      return true;
+    }
+    if (useListeningStore.getState().trayOpen) {
+      useListeningStore.getState().setTrayOpen(false);
       return true;
     }
     if (stack.length > 0) {
