@@ -68,14 +68,18 @@ export function Sidebar(): React.ReactElement {
   const open = focusedKey !== null;
 
   return (
-    <View
-      pointerEvents="box-none"
+    // The guide spans the sidebar's full height, so Left from any row of the
+    // screen lands in it, even rows below the last item where the focus engine
+    // would otherwise find nothing (tvOS) or the nearest item (Android). Focus
+    // enters on Home the first time, then wherever it last was.
+    <TVFocusGuideView
+      autoFocus
       style={[styles.root, open ? styles.rootOpen : styles.rootFolded]}>
       <View style={styles.brand}>
         <LogoMark size={scale(36)} color={colors.text} />
         {open ? <Text style={styles.brandText}>BAYAAN</Text> : null}
       </View>
-      <TVFocusGuideView autoFocus style={styles.places}>
+      <View style={styles.places}>
         {PLACES.map(place => (
           <SidebarItem
             key={place.key}
@@ -89,7 +93,7 @@ export function Sidebar(): React.ReactElement {
             onPress={() => switchTab(place.key)}
           />
         ))}
-      </TVFocusGuideView>
+      </View>
       <View style={styles.spacer} />
       <SidebarNowPlaying
         open={open}
@@ -97,7 +101,7 @@ export function Sidebar(): React.ReactElement {
         onFocus={() => handleFocus('nowPlaying')}
         onBlur={handleBlur}
       />
-    </View>
+    </TVFocusGuideView>
   );
 }
 

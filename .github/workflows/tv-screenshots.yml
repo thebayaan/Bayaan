@@ -120,7 +120,9 @@ jobs:
           OUT="$(mktemp -d)"
           for f in "$SRC"/*.png; do
             name=$(basename "$f" .png)
-            convert "$f" -resize 1280x -quality 72 "$OUT/$name.jpg" 2>/dev/null || cp "$f" "$OUT/$name.png"
+            convert "$f" -resize 1280x -quality 72 "$OUT/$name.jpg" 2>/dev/null \
+              || ffmpeg -loglevel error -y -i "$f" -vf scale=1280:-2 -q:v 5 "$OUT/$name.jpg" \
+              || cp "$f" "$OUT/$name.png"
           done
           cd "$OUT"
           git init -q

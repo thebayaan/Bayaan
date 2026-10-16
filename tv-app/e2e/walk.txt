@@ -11,22 +11,23 @@
 06-home-rail-3-next-card 2 right
 07-reciter-detail 6 select
 08-reciter-detail-rewayah-tabs 2 down
-09-reciter-detail-surah-grid 2 down
-10-play-surah 12 select
-11-paused 3 playpause
-12-resumed 3 playpause
-13-next-verse 3 right
-14-controls 3 select
-15-repeat-verse 3 right right select
-16-speed 3 right select
-17-controls-lowered 3 back
-18-back-to-detail 3 back
-19-back-to-home 3 back
-20-sidebar-open 2 left left left left left
-21-search 4 down select
-22-search-typed 5 right select text:fati
-23-reciters 4 left left left down select
-24-library 4 down select
-25-settings 4 down select
-26-back-to-home 3 back
-27-relaunch-home 20 relaunch
+09-rewayah-hafs 3 right select
+10-reciter-detail-surah-grid 2 down left
+11-play-surah 12 select
+12-paused 3 playpause
+13-resumed 3 playpause
+14-next-verse 3 right
+15-controls 3 select
+16-repeat-verse 3 right right select
+17-speed 3 right select
+18-controls-lowered 3 back
+19-back-to-detail 3 back
+20-back-to-home 3 back
+21-sidebar-open 2 left left left left left
+22-search 4 down select
+23-search-typed 5 right select text:fati
+24-reciters 4 left left left down select
+25-library 4 down select
+26-settings 4 down select
+27-back-to-home 3 back
+28-relaunch-home 20 relaunch
