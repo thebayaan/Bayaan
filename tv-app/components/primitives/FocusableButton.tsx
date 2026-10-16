@@ -60,6 +60,9 @@ export function FocusableButton({
         hasTVPreferredFocus={hasTVPreferredFocus}
         accessibilityLabel={accessibilityLabel}
         style={[
+          // Buttons are squircles: a continuous corner curve where the
+          // platform draws one (Apple TV), a plain rounded rect elsewhere.
+          {borderCurve: 'continuous'},
           outlined && {borderWidth: 2, borderColor: colors.outline},
           style,
           isFocused && {

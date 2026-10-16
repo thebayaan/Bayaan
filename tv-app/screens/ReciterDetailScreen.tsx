@@ -463,11 +463,13 @@ const styles = createScaledStyles({
   back: {
     position: 'absolute',
     top: 24,
-    left: spacing.xl - 18,
+    // Not left of the grid's edge: Android's focus finder would treat Back
+    // as "left of" the first surah and jump up to it.
+    left: spacing.xl,
     zIndex: 10,
     paddingHorizontal: 18,
     paddingVertical: 10,
-    borderRadius: 999,
+    borderRadius: 16,
   },
   backText: {
     fontFamily: fonts.bold,
@@ -534,7 +536,7 @@ const styles = createScaledStyles({
   actionBtn: {
     paddingHorizontal: 24,
     paddingVertical: 12,
-    borderRadius: 999,
+    borderRadius: 16,
   },
   actionText: {
     fontFamily: fonts.bold,
@@ -545,7 +547,7 @@ const styles = createScaledStyles({
     paddingHorizontal: 18,
     paddingTop: 10,
     paddingBottom: 6,
-    borderRadius: 999,
+    borderRadius: 16,
     alignItems: 'center',
   },
   tabSmall: {paddingHorizontal: 14, paddingTop: 7, paddingBottom: 4},
@@ -671,7 +673,7 @@ const styles = createScaledStyles({
   notFoundBtn: {
     paddingHorizontal: 30,
     paddingVertical: 14,
-    borderRadius: 999,
+    borderRadius: 16,
     marginTop: spacing.sm,
   },
   notFoundBtnText: {

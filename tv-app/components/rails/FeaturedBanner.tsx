@@ -167,7 +167,8 @@ const styles = createScaledStyles({
     paddingVertical: 12,
     borderWidth: 2,
     borderColor: colors.outline,
-    borderRadius: 999,
+    borderRadius: 16,
+    borderCurve: 'continuous',
   },
   ctaFocused: {
     backgroundColor: colors.focusFill,

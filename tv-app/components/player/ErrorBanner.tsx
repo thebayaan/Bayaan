@@ -133,7 +133,7 @@ const styles = createScaledStyles({
   cta: {
     paddingHorizontal: 26,
     paddingVertical: 12,
-    borderRadius: 999,
+    borderRadius: 16,
   },
   ctaText: {
     fontSize: 17,
@@ -142,6 +142,6 @@ const styles = createScaledStyles({
   ctaSecondary: {
     paddingHorizontal: 22,
     paddingVertical: 12,
-    borderRadius: 999,
+    borderRadius: 16,
   },
 });

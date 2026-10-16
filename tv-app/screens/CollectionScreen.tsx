@@ -269,7 +269,7 @@ const styles = createScaledStyles({
     marginTop: spacing.sm,
     paddingHorizontal: 30,
     paddingVertical: 14,
-    borderRadius: 999,
+    borderRadius: 16,
   },
   emptyCtaText: {
     fontFamily: fonts.bold,

@@ -265,7 +265,8 @@ const styles = createScaledStyles({
   item: {
     height: 56,
     width: 64,
-    borderRadius: 28,
+    borderRadius: 16,
+    borderCurve: 'continuous',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

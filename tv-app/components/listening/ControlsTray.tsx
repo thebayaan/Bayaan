@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import {Text, TVFocusGuideView, View} from 'react-native';
 import {FocusableButton} from '../primitives/FocusableButton';
 import {FocusIcon, FocusText} from '../primitives/focusContext';
@@ -67,6 +67,18 @@ export function ControlsTray({
   const mode = useDisplayStore(s => s.mode);
   const edition = useDisplayStore(s => s.edition);
 
+  // When a panel closes, focus goes back to the setting that opened it
+  // (otherwise the panel unmounting drops focus on the nearest transport
+  // button).
+  const [returnTo, setReturnTo] = useState<PanelKey | null>(null);
+  const lastPanel = useRef<PanelKey | null>(null);
+  useEffect(() => {
+    if (panel === null && lastPanel.current !== null) {
+      setReturnTo(lastPanel.current);
+    }
+    lastPanel.current = panel;
+  }, [panel]);
+
   const isPlaying = status === 'playing';
   const sleepOn = sleep.kind !== 'off';
   const press = (fn: () => void) => () => {
@@ -97,7 +109,7 @@ export function ControlsTray({
           <FocusableButton
             onPress={press(toggle)}
             accessibilityLabel={isPlaying ? 'Pause' : 'Play'}
-            hasTVPreferredFocus
+            hasTVPreferredFocus={returnTo === null}
             outlined
             style={[styles.round, styles.roundBig]}>
             <FocusIcon icon={isPlaying ? PauseIcon : PlayIcon} size={40} />
@@ -115,6 +127,7 @@ export function ControlsTray({
             value={repeatLabel(repeat)}
             on={repeat.kind !== 'off'}
             active={panel === 'repeat'}
+            focusOnReturn={returnTo === 'repeat' && panel === null}
             onPress={open('repeat')}
           />
           <Tool
@@ -122,6 +135,7 @@ export function ControlsTray({
             value={formatSpeed(speed)}
             on={speed !== 1}
             active={panel === 'speed'}
+            focusOnReturn={returnTo === 'speed' && panel === null}
             onPress={open('speed')}
           />
           <Tool
@@ -129,6 +143,7 @@ export function ControlsTray({
             value={onScreenLabel(mode, edition)}
             on={false}
             active={panel === 'onScreen'}
+            focusOnReturn={returnTo === 'onScreen' && panel === null}
             onPress={open('onScreen')}
           />
           <Tool
@@ -136,6 +151,7 @@ export function ControlsTray({
             value={sleepOn ? sleepLabel(sleepChoice) : 'Off'}
             on={sleepOn}
             active={panel === 'sleep'}
+            focusOnReturn={returnTo === 'sleep' && panel === null}
             onPress={open('sleep')}
           />
         </View>
@@ -149,6 +165,7 @@ function Tool({
   value,
   on,
   active,
+  focusOnReturn,
   onPress,
 }: {
   label: string;
@@ -156,12 +173,15 @@ function Tool({
   on: boolean;
   /** Its panel is open. */
   active: boolean;
+  /** Take focus back when its panel closes. */
+  focusOnReturn: boolean;
   onPress: () => void;
 }): React.ReactElement {
   return (
     <FocusableButton
       onPress={onPress}
       accessibilityLabel={`${label}: ${value}`}
+      hasTVPreferredFocus={focusOnReturn}
       style={[styles.tool, active && styles.toolActive]}>
       <FocusText
         style={styles.toolLabel}
@@ -207,20 +227,20 @@ const styles = createScaledStyles({
   round: {
     width: 72,
     height: 72,
-    borderRadius: 36,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
   },
   roundBig: {
     width: 96,
     height: 96,
-    borderRadius: 48,
+    borderRadius: 30,
   },
   tools: {flexDirection: 'row', gap: 14},
   tool: {
     paddingHorizontal: 26,
     paddingVertical: 12,
-    borderRadius: 999,
+    borderRadius: 16,
     gap: 2,
   },
   // Its panel is open beside the tray.

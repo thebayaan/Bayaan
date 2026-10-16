@@ -247,7 +247,7 @@ const styles = createScaledStyles({
   clearBtn: {
     paddingHorizontal: 16,
     paddingVertical: 9,
-    borderRadius: 999,
+    borderRadius: 16,
   },
   clearBtnText: {
     fontFamily: fonts.bold,
@@ -276,7 +276,7 @@ const styles = createScaledStyles({
   recentRemove: {
     paddingHorizontal: 18,
     paddingVertical: 12,
-    borderRadius: 999,
+    borderRadius: 16,
   },
   recentRemoveText: {
     fontFamily: fonts.bold,

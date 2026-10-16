@@ -497,7 +497,7 @@ const styles = createScaledStyles({
   emptyCta: {
     paddingHorizontal: 32,
     paddingVertical: 16,
-    borderRadius: 999,
+    borderRadius: 16,
     marginTop: 8,
   },
   emptyCtaText: {
