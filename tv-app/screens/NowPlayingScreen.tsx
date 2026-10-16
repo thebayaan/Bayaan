@@ -12,28 +12,31 @@ import {GlowBackdrop} from '../components/listening/GlowBackdrop';
 import {VerseStage} from '../components/listening/VerseStage';
 import {ControlsTray} from '../components/listening/ControlsTray';
 import {ListeningPanels} from '../components/listening/ListeningPanels';
-import {ProgressLine} from '../components/listening/ProgressLine';
+import {ListeningFooter} from '../components/listening/ListeningFooter';
+import {ControlsHint} from '../components/listening/ControlsHint';
 import {ErrorBanner} from '../components/player/ErrorBanner';
 import {FocusableButton} from '../components/primitives/FocusableButton';
 import {FocusText} from '../components/primitives/focusContext';
 import {SLEEP_FADE_MS, useTVPlayerStore} from '../store/tvPlayerStore';
 import {useNavStore} from '../store/navStore';
-import {
-  repeatLabel,
-  sleepLabel,
-  useListeningStore,
-} from '../store/listeningStore';
+import {footerChips, useListeningStore} from '../store/listeningStore';
 import {textScale, useDisplayStore} from '../store/displayStore';
+import {ambientLabel, useAmbientStore} from '../store/ambientStore';
 import {useReciters} from '../hooks/useReciters';
+import {usePlayer} from '../hooks/usePlayer';
 import {useVerseSync} from '../hooks/useVerseSync';
 import {
   advanceRepeat,
   stepTarget,
   verseAt,
+  verseSpan,
   verseTicks,
+  type VerseTimeline,
 } from '../services/verseTimeline';
 import {createRemoteKeyFilter} from '../services/remoteKeys';
-import type {Rewayah} from '../types/reciter';
+import {AMBIENT_AVAILABLE} from '../services/ambientPlayer';
+import {startAmbientSync} from '../services/ambientSync';
+import {rewayahLabel, type ReciterChoice} from '../services/listeningChoices';
 import {colors} from '../theme/colors';
 import {fonts, typography} from '../theme/typography';
 import {spacing} from '../theme/spacing';
@@ -43,24 +46,11 @@ import {createScaledStyles} from '../theme/scale';
 const SEEK_STEP_SECONDS = 15;
 /** The tray lowers itself after this long without a press. */
 const TRAY_IDLE_MS = 8000;
-/** The screen dims after this long without a press. */
-const DIM_IDLE_MS = 10 * 60 * 1000;
-/** How long "Press OK for controls" shows when the player opens. */
-const HINT_MS = 5000;
+/** How long "Press OK for controls" is up when the player opens. */
+const HINT_MS = 6000;
 
-function capitalize(value: string): string {
-  return value.length === 0
-    ? value
-    : value.charAt(0).toUpperCase() + value.slice(1);
-}
-
-function rewayahLabel(rewayah: Rewayah | null): string {
-  if (!rewayah) return '';
-  const style = rewayah.style.trim();
-  if (style.length === 0) return rewayah.name;
-  if (rewayah.name.length === 0) return capitalize(style);
-  return `${capitalize(style)} · ${rewayah.name}`;
-}
+// The ambience follows the recitation app-wide, wherever playback starts.
+startAmbientSync();
 
 /**
  * The listening room: the verse being recited and its translation, full
@@ -90,7 +80,13 @@ export function NowPlayingScreen(): React.ReactElement {
   const onScreen = useDisplayStore(s => s.mode);
   const edition = useDisplayStore(s => s.edition);
   const textSize = useDisplayStore(s => s.textSize);
+  const dimAfterMin = useDisplayStore(s => s.dimAfterMin);
+  const speed = useTVPlayerStore(s => s.speed);
+  const status = useTVPlayerStore(s => s.status);
+  const ambientOn = useAmbientStore(s => s.enabled);
+  const ambientSound = useAmbientStore(s => s.currentSound);
   const {reciters} = useReciters();
+  const {playRewayah} = usePlayer();
 
   const item = queue[currentIndex];
   const reciter = item
@@ -120,20 +116,25 @@ export function NowPlayingScreen(): React.ReactElement {
   const [lastActivity, setLastActivity] = useState(() => Date.now());
   const [now, setNow] = useState(() => Date.now());
   const [openedAt] = useState(() => Date.now());
+  // The hint is for the first moments only, not every time the tray lowers.
+  const [trayUsed, setTrayUsed] = useState(false);
+  useEffect(() => {
+    if (trayOpen) setTrayUsed(true);
+  }, [trayOpen]);
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, []);
   const markActivity = useCallback(() => setLastActivity(Date.now()), []);
   const idleMs = now - lastActivity;
-  const dimmed = idleMs > DIM_IDLE_MS;
+  const dimmed = dimAfterMin > 0 && idleMs > dimAfterMin * 60 * 1000;
   // With a sleep timer, the screen fades toward black along with the audio.
   const sleepLeftMs = sleep.kind === 'timer' ? sleep.endsAt - now : Infinity;
   const sleepFade =
     sleepLeftMs < SLEEP_FADE_MS
       ? 0.85 * (1 - Math.max(0, sleepLeftMs) / SLEEP_FADE_MS)
       : 0;
-  const showHint = !trayOpen && now - openedAt < HINT_MS;
+  const showHint = !trayOpen && !trayUsed && now - openedAt < HINT_MS;
 
   useEffect(() => {
     // A panel stays up until Back, since reading a list takes a while.
@@ -202,6 +203,48 @@ export function NowPlayingScreen(): React.ReactElement {
     },
     [],
   );
+
+  // Switching reciter mid-surah picks up at the same verse once the new
+  // recitation's timings arrive (or at the start when it has none). The old
+  // timeline is kept to tell the new one apart from it.
+  const resume = useRef<{
+    key: string;
+    ayah: number;
+    stale: VerseTimeline | null;
+  } | null>(null);
+  const switchReciter = useCallback(
+    (choice: ReciterChoice) => {
+      if (!item) return;
+      const ayah = timeline ? (currentAyah ?? 0) : 0;
+      resume.current =
+        ayah > 1
+          ? {
+              key: `${choice.reciter.id}:${choice.rewayah.id}:${item.surahNumber}`,
+              ayah,
+              stale: timeline,
+            }
+          : null;
+      void playRewayah(
+        choice.reciter.id,
+        choice.reciter.name,
+        choice.rewayah,
+        item.surahNumber,
+      );
+    },
+    [item, timeline, currentAyah, playRewayah],
+  );
+  useEffect(() => {
+    const pending = resume.current;
+    if (!pending || pending.key !== surahKey) return;
+    if (!sync.timingsSettled || timeline === pending.stale) return;
+    if (status !== 'playing') return;
+    resume.current = null;
+    const span = timeline ? verseSpan(timeline, pending.ayah) : null;
+    if (span) {
+      lastRepeatSeek.current = Date.now();
+      seekTo(span.fromMs / 1000);
+    }
+  }, [surahKey, sync.timingsSettled, timeline, status, seekTo]);
 
   const step = useCallback(
     (direction: 1 | -1) => {
@@ -282,10 +325,13 @@ export function NowPlayingScreen(): React.ReactElement {
   // Before the timing lookup settles, show the opening rather than flash the
   // "not synced" layout.
   const stageAyah = sync.timingsSettled ? currentAyah : 0;
-  const chips = [
-    repeat.kind !== 'off' ? `Repeat ${repeatLabel(repeat)}` : null,
-    sleep.kind !== 'off' ? `Sleep ${sleepLabel(sleepChoice)}` : null,
-  ].filter((c): c is string => c !== null);
+  const chips = footerChips({
+    repeat,
+    speed,
+    ambient: AMBIENT_AVAILABLE && ambientOn ? ambientLabel(ambientSound) : null,
+    sleepOn: sleep.kind !== 'off',
+    sleepChoice,
+  });
 
   return (
     <View style={styles.container}>
@@ -340,12 +386,16 @@ export function NowPlayingScreen(): React.ReactElement {
             synced={timeline !== null}
             ticks={ticks}
             onStep={step}
+            reciterName={reciterName}
             onActivity={markActivity}
           />
           <ListeningPanels
             currentAyah={currentAyah ?? 0}
             synced={timeline !== null}
             onActivity={markActivity}
+            reciters={reciters}
+            rewayahName={rewayah?.name ?? ''}
+            onSwitchReciter={switchReciter}
           />
         </>
       ) : (
@@ -364,27 +414,14 @@ export function NowPlayingScreen(): React.ReactElement {
               repeatCurrentVerse();
             }}
           />
-          {showHint ? (
-            <Text style={styles.hint}>Press OK for controls</Text>
-          ) : null}
-          <View style={styles.foot} pointerEvents="none">
-            <View style={styles.who}>
-              <Text style={styles.whoName} numberOfLines={1}>
-                {reciterName}
-              </Text>
-              <Text style={styles.whoSub} numberOfLines={1}>
-                {rewayahLabel(rewayah)}
-              </Text>
-            </View>
-            <ProgressLine progress={duration > 0 ? position / duration : 0} />
-            <View style={styles.chips}>
-              {chips.map(chip => (
-                <Text key={chip} style={styles.chip}>
-                  {chip}
-                </Text>
-              ))}
-            </View>
-          </View>
+          {showHint ? <ControlsHint /> : null}
+          <ListeningFooter
+            reciter={reciter}
+            reciterName={reciterName}
+            rewayah={rewayahLabel(rewayah)}
+            progress={duration > 0 ? position / duration : 0}
+            chips={chips}
+          />
         </>
       )}
 
@@ -418,51 +455,6 @@ const styles = createScaledStyles({
     fontFamily: fonts.semiBold,
     fontWeight: '600',
     fontSize: 24,
-  },
-  hint: {
-    position: 'absolute',
-    top: 56,
-    right: 96,
-    color: colors.textSecondary,
-    fontFamily: fonts.semiBold,
-    fontWeight: '600',
-    fontSize: 18,
-    letterSpacing: 0.5,
-  },
-  foot: {
-    position: 'absolute',
-    left: 96,
-    right: 96,
-    bottom: 56,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 32,
-  },
-  who: {maxWidth: 420},
-  whoName: {
-    color: colors.text,
-    fontFamily: fonts.bold,
-    fontWeight: '700',
-    fontSize: 22,
-  },
-  whoSub: {
-    color: colors.textSecondary,
-    fontFamily: fonts.medium,
-    fontWeight: '500',
-    fontSize: 16,
-    marginTop: 2,
-  },
-  chips: {flexDirection: 'row', gap: 10},
-  chip: {
-    color: colors.accent,
-    backgroundColor: colors.accentSoft,
-    fontFamily: fonts.semiBold,
-    fontWeight: '600',
-    fontSize: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 14,
-    overflow: 'hidden',
   },
   dim: {...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)'},
   fade: {...StyleSheet.absoluteFillObject, backgroundColor: '#000'},

@@ -11,11 +11,17 @@ import {
   type PanelKey,
 } from '../../store/listeningStore';
 import {onScreenLabel, useDisplayStore} from '../../store/displayStore';
+import {ambientChoiceLabel, useAmbientStore} from '../../store/ambientStore';
+import {AMBIENT_AVAILABLE} from '../../services/ambientPlayer';
+import {shortReciterName} from '../../services/listeningChoices';
+import {toggleLovedSurah} from '../../services/lovedSurahsStore';
+import {useLovedSurahs} from '../../hooks/useLovedSurahs';
 import {formatSpeed} from './ListeningPanels';
 import {colors} from '../../theme/colors';
 import {fonts} from '../../theme/typography';
 import {createScaledStyles} from '../../theme/scale';
 import {
+  HeartIcon,
   NextIcon,
   PauseIcon,
   PlayIcon,
@@ -27,6 +33,8 @@ type Props = {
   synced: boolean;
   ticks: number[];
   onStep: (direction: 1 | -1) => void;
+  /** The reciter's name, for the Reciter control. */
+  reciterName: string;
   /** Any press inside the tray, so the screen can keep it open. */
   onActivity: () => void;
 };
@@ -44,14 +52,16 @@ export function formatTime(seconds: number): string {
 
 /**
  * The player's controls, raised from the bottom on OK: progress with verse
- * ticks, verse-by-verse transport, and one row of labeled settings that each
- * show their current value. Pressing a setting opens its panel beside the
- * tray.
+ * ticks, verse-by-verse transport with a heart for favorite surahs, and one
+ * row of labeled tools (Repeat, Speed, On screen, Reciter, Sleep, Sound,
+ * Queue) that each show their current value. Pressing a tool opens its panel
+ * beside the tray.
  */
 export function ControlsTray({
   synced,
   ticks,
   onStep,
+  reciterName,
   onActivity,
 }: Props): React.ReactElement {
   const status = useTVPlayerStore(s => s.status);
@@ -60,6 +70,11 @@ export function ControlsTray({
   const speed = useTVPlayerStore(s => s.speed);
   const sleep = useTVPlayerStore(s => s.sleep);
   const toggle = useTVPlayerStore(s => s.toggle);
+  const queue = useTVPlayerStore(s => s.queue);
+  const currentIndex = useTVPlayerStore(s => s.currentIndex);
+  const ambientOn = useAmbientStore(s => s.enabled);
+  const ambientSound = useAmbientStore(s => s.currentSound);
+  const loved = useLovedSurahs();
   const repeat = useListeningStore(s => s.repeat);
   const sleepChoice = useListeningStore(s => s.sleepChoice);
   const panel = useListeningStore(s => s.panel);
@@ -86,6 +101,22 @@ export function ControlsTray({
     fn();
   };
   const open = (key: PanelKey) => press(() => setPanel(key));
+  const tool = (key: PanelKey) => ({
+    active: panel === key,
+    focusOnReturn: returnTo === key && panel === null,
+    onPress: open(key),
+  });
+
+  const item = queue[currentIndex];
+  const isLoved = item
+    ? loved.some(e => e.surahNumber === item.surahNumber)
+    : false;
+  const toggleLoved = press(() => {
+    if (item) {
+      toggleLovedSurah(item.surahNumber, item.reciterId, item.rewayahId ?? '');
+    }
+  });
+  const nextCount = Math.max(0, queue.length - currentIndex - 1);
 
   return (
     <View style={styles.tray}>
@@ -120,39 +151,64 @@ export function ControlsTray({
             style={styles.round}>
             <FocusIcon icon={NextIcon} size={30} />
           </FocusableButton>
+          <FocusableButton
+            onPress={toggleLoved}
+            accessibilityLabel={
+              isLoved ? 'Remove from favorite surahs' : 'Add to favorite surahs'
+            }
+            style={styles.round}>
+            <FocusIcon
+              icon={HeartIcon}
+              size={30}
+              filled={isLoved}
+              color={isLoved ? colors.accent : colors.text}
+            />
+          </FocusableButton>
         </View>
         <View style={styles.tools}>
           <Tool
             label="Repeat"
             value={repeatLabel(repeat)}
             on={repeat.kind !== 'off'}
-            active={panel === 'repeat'}
-            focusOnReturn={returnTo === 'repeat' && panel === null}
-            onPress={open('repeat')}
+            {...tool('repeat')}
           />
           <Tool
             label="Speed"
             value={formatSpeed(speed)}
             on={speed !== 1}
-            active={panel === 'speed'}
-            focusOnReturn={returnTo === 'speed' && panel === null}
-            onPress={open('speed')}
+            {...tool('speed')}
           />
           <Tool
             label="On screen"
             value={onScreenLabel(mode, edition)}
             on={false}
-            active={panel === 'onScreen'}
-            focusOnReturn={returnTo === 'onScreen' && panel === null}
-            onPress={open('onScreen')}
+            {...tool('onScreen')}
+          />
+          <Tool
+            label="Reciter"
+            value={shortReciterName(reciterName)}
+            on={false}
+            {...tool('reciter')}
           />
           <Tool
             label="Sleep"
             value={sleepOn ? sleepLabel(sleepChoice) : 'Off'}
             on={sleepOn}
-            active={panel === 'sleep'}
-            focusOnReturn={returnTo === 'sleep' && panel === null}
-            onPress={open('sleep')}
+            {...tool('sleep')}
+          />
+          {AMBIENT_AVAILABLE ? (
+            <Tool
+              label="Sound"
+              value={ambientChoiceLabel(ambientOn ? ambientSound : 'off')}
+              on={ambientOn}
+              {...tool('sound')}
+            />
+          ) : null}
+          <Tool
+            label="Queue"
+            value={nextCount > 0 ? `${nextCount} next` : 'Last'}
+            on={false}
+            {...tool('queue')}
           />
         </View>
       </TVFocusGuideView>
@@ -191,7 +247,8 @@ function Tool({
       </FocusText>
       <FocusText
         style={styles.toolValue}
-        color={on ? colors.accent : colors.text}>
+        color={on ? colors.accent : colors.text}
+        numberOfLines={1}>
         {value}
       </FocusText>
     </FocusableButton>
@@ -223,7 +280,7 @@ const styles = createScaledStyles({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  transport: {flexDirection: 'row', alignItems: 'center', gap: 18},
+  transport: {flexDirection: 'row', alignItems: 'center', gap: 16},
   round: {
     width: 72,
     height: 72,
@@ -236,9 +293,10 @@ const styles = createScaledStyles({
     height: 96,
     borderRadius: 30,
   },
-  tools: {flexDirection: 'row', gap: 14},
+  tools: {flexDirection: 'row', gap: 8, flexShrink: 1},
   tool: {
-    paddingHorizontal: 26,
+    maxWidth: 280,
+    paddingHorizontal: 22,
     paddingVertical: 12,
     borderRadius: 16,
     gap: 2,
@@ -249,12 +307,12 @@ const styles = createScaledStyles({
     fontFamily: fonts.semiBold,
     fontWeight: '600',
     fontSize: 13,
-    letterSpacing: 2,
+    letterSpacing: 1.8,
     textTransform: 'uppercase',
   },
   toolValue: {
     fontFamily: fonts.bold,
     fontWeight: '700',
-    fontSize: 22,
+    fontSize: 21,
   },
 });
