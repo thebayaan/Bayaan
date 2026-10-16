@@ -6,7 +6,7 @@
     "done": "ተጠናቋል",
     "ok": "እሺ",
     "retry": "እንደገና ሞክር",
-    "share": "አጋራ",
+    "share": "ሼር",
     "play": "አጫውት",
     "pause": "ለአፍታ አቁም",
     "shuffle": "ቀላቅል",
@@ -102,7 +102,7 @@
     "fileImported": "ፋይሉ ገብቷል",
     "fontError": "ፊደሎችን በመጫን ላይ ስህተት ተፈጥሯል",
     "initError": "ማጫወቻውን በማስጀመር ላይ ስህተት ተፈጥሯል፦ {{message}}",
-    "sharedAudio": "የተጋራ ድምፅ"
+    "sharedAudio": "ሼር የተደረገ ድምፅ"
   },
   "language": {
     "title": "ቋንቋ",

@@ -99,12 +99,12 @@
     "showTransliteration": "የፊደል ቅየራ አሳይ"
   },
   "share": {
-    "title": "አንቀጽ አጋራ",
+    "title": "አንቀጽ ሼር አድርግ",
     "showBasmallah": "ቢስሚላህን አሳይ",
     "showWatermark": "የውኃ ምልክት አሳይ",
-    "asImage": "እንደ ምስል አጋራ",
-    "asText": "እንደ ጽሑፍ አጋራ",
-    "link": "አገናኝ አጋራ",
+    "asImage": "እንደ ምስል ሼር አድርግ",
+    "asText": "እንደ ጽሑፍ ሼር አድርግ",
+    "link": "አገናኝ ሼር አድርግ",
     "reference": "ቁርአን {{ref}}",
     "referenceWithRewayah": "ቁርአን {{ref}} · {{rewayah}}"
   },
@@ -297,18 +297,18 @@
     "loadFailed": "የ{{rewayah}} ጽሑፍ መጫን አልተቻለም",
     "nothingDone": {
       "copied": "ምንም አልተቀዳም።",
-      "shared": "ምንም አልተጋራም።",
+      "shared": "ምንም ሼር አልተደረገም።",
       "saved": "ምንም አልተቀመጠም።",
       "played": "ምንም አልተጫወተም።"
     },
     "nothingDoneRetry": {
       "copied": "ምንም አልተቀዳም። እባክዎ እንደገና ይሞክሩ።",
-      "shared": "ምንም አልተጋራም። እባክዎ እንደገና ይሞክሩ።",
+      "shared": "ምንም ሼር አልተደረገም። እባክዎ እንደገና ይሞክሩ።",
       "saved": "ምንም አልተቀመጠም። እባክዎ እንደገና ይሞክሩ።",
       "played": "ምንም አልተጫወተም። እባክዎ እንደገና ይሞክሩ።"
     },
     "nothingToCopy": "የሚቀዳ የለም",
-    "nothingToShare": "የሚጋራ የለም",
+    "nothingToShare": "ሼር የሚደረግ የለም",
     "noOwnText": "በ{{rewayah}} ይህ ምርጫ የሚነበበው ከአጎራባች አንቀጽ አካል ጋር ነው።"
   },
   "percent": "{{value}}%"
