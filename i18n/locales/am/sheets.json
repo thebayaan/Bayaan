@@ -208,7 +208,7 @@
     "emptyMessage": "ይህ የማጫወቻ ዝርዝር ባዶ ነው።",
     "alreadyDownloadedTitle": "አስቀድሞ ወርዷል",
     "alreadyDownloadedMessage": "በዚህ የማጫወቻ ዝርዝር ውስጥ ያሉ ሁሉም ንጥሎች አስቀድመው ወርደዋል።",
-    "completeTitle": "ውርደቱ ተጠናቋል",
+    "completeTitle": "ማውረዱ ተጠናቋል",
     "completeMessage_one": "ከ\"{{name}}\" {{count}} ንጥል በተሳካ ሁኔታ ወርዷል።",
     "completeMessage_other": "ከ\"{{name}}\" {{count}} ንጥሎች በተሳካ ሁኔታ ወርደዋል።",
     "failedMessage": "የማጫወቻ ዝርዝሩን በማውረድ ላይ ስህተት ተከስቷል። እባክዎ እንደገና ይሞክሩ።",

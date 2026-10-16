@@ -58,10 +58,10 @@
     "emptySubtitle": "እዚህ ለማየት ሱራዎችን ወደ የተወደዱ ያክሉ",
     "alreadyDownloadedTitle": "አስቀድሞ ወርዷል",
     "alreadyDownloadedMessage": "ሁሉም የተወደዱ ሱራዎች አስቀድመው ወርደዋል።",
-    "downloadCompleteTitle": "ውርደቱ ተጠናቋል",
+    "downloadCompleteTitle": "ማውረዱ ተጠናቋል",
     "downloadCompleteMessage": "ሁሉም የተወደዱ ሱራዎች ወርደዋል።",
     "downloadErrorTitle": "የማውረድ ስህተት",
-    "downloadErrorMessage": "አንዳንድ ውርደቶች አልተሳኩ ሊሆኑ ይችላሉ።"
+    "downloadErrorMessage": "አንዳንድ ማውረዶች አልተሳኩ ሊሆኑ ይችላሉ።"
   },
   "uploadsScreen": {
     "recitationsCount_one": "{{count}} ንባብ",
