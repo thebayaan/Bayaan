@@ -1,6 +1,6 @@
 // @ai-generated
 import React, {useMemo, useState} from 'react';
-import {View, Text, Pressable, ScrollView, Platform} from 'react-native';
+import {View, Text, Pressable, ScrollView, Platform, Alert} from 'react-native';
 import {useTranslation} from 'react-i18next';
 import {useTheme} from '@/hooks/useTheme';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
@@ -39,7 +39,9 @@ export default function LanguageScreen() {
   const handleSelect = (value: LanguagePreference) => {
     if (value === selected) return;
     setSelected(value);
-    setLanguagePreference(value);
+    if (setLanguagePreference(value)) {
+      Alert.alert(t('languageRestart.title'), t('languageRestart.message'));
+    }
   };
 
   return (
