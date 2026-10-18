@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useRef, useState} from 'react';
 import {Platform, Text, TVFocusGuideView, View} from 'react-native';
 import {GradientFill} from '../components/brand/GradientFill';
 import {SurahGlyph} from '../components/brand/SurahGlyph';
@@ -78,7 +78,10 @@ export function PlaylistEditScreen({
   // Save rather than on the nearest swatch.
   const [saveButton, setSaveButton] = useState<View | null>(null);
   // Focus is on the name keyboard (focus and blur bubble from its keys).
+  // Keyed by the key that has focus: tvOS can deliver the new key's focus
+  // before the old key's blur, which must not turn the strip off.
   const [onKeyboard, setOnKeyboard] = useState(false);
+  const focusedKey = useRef<unknown>(null);
 
   const renaming = playlistId !== undefined;
   const seedVoice = seed
@@ -147,8 +150,15 @@ export function PlaylistEditScreen({
         </Text>
         <View
           style={styles.keyboard}
-          onFocus={() => setOnKeyboard(true)}
-          onBlur={() => setOnKeyboard(false)}>
+          onFocus={e => {
+            focusedKey.current = e.target;
+            setOnKeyboard(true);
+          }}
+          onBlur={e => {
+            if (focusedKey.current !== e.target) return;
+            focusedKey.current = null;
+            setOnKeyboard(false);
+          }}>
           <SearchKeyboard
             mode={mode}
             onKey={key => setDraft(d => draftKey(d, key))}
