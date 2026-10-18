@@ -36,7 +36,7 @@ export function requestFocus(target: unknown): boolean {
  * Where focus is inside a part of the screen (a layer, the app), from the
  * focus and blur events that bubble up to its wrapper. Keyed by the event's
  * target, so either order of the old view's blur and the new view's focus
- * holds. Remembers the element focused last, for putting focus back there.
+ * holds. Remembers the elements focused last, for putting focus back there.
  */
 export type FocusMemory = {
   focus: (target: unknown) => void;
@@ -45,31 +45,47 @@ export type FocusMemory = {
   inside: () => boolean;
   /** The element focused last, while it can still take focus. */
   last: () => FocusTarget | null;
+  /**
+   * The elements focused last, newest first, that can still take focus.
+   * When the newest has left the screen (a menu removed its card) the one
+   * before it is where focus came from: next to it on the D-pad.
+   */
+  recent: () => FocusTarget[];
   /** Focus events seen so far: a change means focus arrived somewhere. */
   count: () => number;
 };
 
+/** How many elements a memory keeps (see recent). */
+export const RECENT_FOCUS = 3;
+
+function focusable(target: unknown): FocusTarget | null {
+  if (!target || typeof target !== 'object') return null;
+  const view = target as FocusTarget;
+  if (view.isConnected === false) return null;
+  return typeof view.requestTVFocus === 'function' ? view : null;
+}
+
 export function createFocusMemory(): FocusMemory {
   let focused: unknown = null;
-  let last: unknown = null;
+  let recent: unknown[] = [];
   let seen = 0;
   return {
     focus: target => {
       if (target == null) return;
       seen += 1;
       focused = target;
-      last = target;
+      recent = [target, ...recent.filter(t => t !== target)].slice(
+        0,
+        RECENT_FOCUS,
+      );
     },
     blur: target => {
       if (target != null && focused === target) focused = null;
     },
     inside: () => focused !== null,
-    last: () => {
-      if (!last || typeof last !== 'object') return null;
-      const view = last as FocusTarget;
-      if (view.isConnected === false) return null;
-      return typeof view.requestTVFocus === 'function' ? view : null;
-    },
+    last: () => focusable(recent[0]),
+    recent: () =>
+      recent.map(focusable).filter((v): v is FocusTarget => v !== null),
     count: () => seen,
   };
 }

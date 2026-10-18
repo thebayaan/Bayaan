@@ -77,6 +77,34 @@ describe('createFocusMemory', () => {
   });
 });
 
+describe('recent', () => {
+  it('keeps the last few elements, newest first, without repeats', () => {
+    const memory = createFocusMemory();
+    const [a, b, c, d] = [view(), view(), view(), view()];
+    [a, b, a, c, d].forEach(memory.focus);
+    expect(memory.recent()).toEqual([d, c, a]);
+  });
+
+  it('steps back to where focus came from when the newest has gone', () => {
+    const memory = createFocusMemory();
+    const hero = view(() => memory.focus(hero));
+    // A removed card: still referenced, but its view went with it.
+    const card = view();
+    memory.focus(hero);
+    memory.focus(card);
+    memory.blur(card); // the menu took focus
+    const {schedule, run} = manualSchedule();
+    focusInSteps(
+      memory.recent().map(v => () => requestFocus(v)),
+      landedSince(memory),
+      schedule,
+    );
+    expect(card.requestTVFocus).toHaveBeenCalledTimes(1);
+    run();
+    expect(hero.requestTVFocus).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('focusInSteps', () => {
   it('stops at the first step whose focus lands', () => {
     const memory = createFocusMemory();

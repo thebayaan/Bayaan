@@ -61,13 +61,14 @@ type Props = {
  * layers stay mounted, hidden (see HIDE_WITH_DISPLAY), keeping their state,
  * scroll offsets and focus.
  *
- * The layer notes the element focused last inside it (focus events bubble up
- * to its guide). When the layer is uncovered, focus is asked back onto that
- * element: the card, row, key or sidebar tile that was pressed, not the
- * screen's first item. The layer is also an autoFocus guide, whose native
- * memory is the next try, then `fallback`; each try is checked (focusInSteps)
- * before the next, so a request either engine drops never leaves the screen
- * with nothing focused and the remote dead.
+ * The layer notes the elements focused last inside it (focus events bubble
+ * up to its guide). When the layer is uncovered, focus is asked back onto
+ * the newest: the card, row, key or sidebar tile that was pressed, not the
+ * screen's first item (or, when that one has gone, the one before it). The
+ * layer is also an autoFocus guide, whose native memory is the next try,
+ * then `fallback`; each try is checked (focusInSteps) before the next, so a
+ * request either engine drops never leaves the screen with nothing focused
+ * and the remote dead.
  */
 export function ScreenLayer({
   active,
@@ -92,7 +93,9 @@ export function ScreenLayer({
       stop?.();
       stop = focusInSteps(
         [
-          () => requestFocus(memory.last()),
+          // Newest first: when that element left the screen (its card was
+          // removed), the one focus came to it from.
+          ...memory.recent().map(view => () => requestFocus(view)),
           () => requestFocus(guide.current),
           () => fallbackRef.current?.() ?? false,
         ],

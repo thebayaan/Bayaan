@@ -261,7 +261,10 @@ const RootPlace = React.memo(function RootPlace({
       if (!memory.last() && !guide.current) return false;
       stop?.();
       stop = focusInSteps(
-        [() => requestFocus(memory.last()), () => requestFocus(guide.current)],
+        [
+          ...memory.recent().map(view => () => requestFocus(view)),
+          () => requestFocus(guide.current),
+        ],
         landedSince(memory),
       );
       return true;
