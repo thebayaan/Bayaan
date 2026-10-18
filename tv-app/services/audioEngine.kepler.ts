@@ -64,8 +64,9 @@ export function attachMediaControls(
 }
 
 /**
- * Media-control commands for one engine. Without a transport (the adhkar
- * reader's engine) the default W3C handling drives its element, still gated.
+ * Media-control commands for one engine. Without a transport (an engine
+ * nothing answers for) the default W3C handling drives its element, still
+ * gated.
  */
 class TransportHandler extends KeplerMediaControlHandler {
   private readonly transport: () => MediaTransport | null;

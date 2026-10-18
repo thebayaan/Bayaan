@@ -7,6 +7,7 @@
 
 import React, {useEffect} from 'react';
 import {useKeplerAppStateManager} from '@amazon-devices/react-native-kepler';
+import {adhkarReaderTransport} from '../../services/adhkarReaderTransport';
 import {attachMediaControls} from '../../services/audioEngine';
 import {playerTransport} from '../../services/mediaTransport';
 import {useTVPlayerStore} from '../../store/tvPlayerStore';
@@ -22,9 +23,11 @@ export function TVAudioProvider({
 
   useEffect(() => {
     // The recitation's engine answers through the player store; any other
-    // engine (the adhkar reader's) keeps the default handling.
+    // engine (the adhkar reader's) through the open reader's session.
     attachMediaControls(appStateManager.getComponentInstance(), engine =>
-      engine === useTVPlayerStore.getState().engine ? playerTransport : null,
+      engine === useTVPlayerStore.getState().engine
+        ? playerTransport
+        : adhkarReaderTransport(),
     );
   }, [appStateManager]);
 

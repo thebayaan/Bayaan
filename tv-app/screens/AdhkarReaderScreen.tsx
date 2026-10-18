@@ -1,6 +1,5 @@
-import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {Platform, Pressable, Text, View, useTVEventHandler} from 'react-native';
-import type {HWEvent} from 'react-native';
 import {CheckIcon, PauseIcon, PlayIcon} from '../../components/Icons';
 import {AdhkarClock, useNow} from '../components/adhkar/AdhkarClock';
 import {AdhkarGlow} from '../components/adhkar/AdhkarGlow';
@@ -16,11 +15,20 @@ import {countLabel, periodLabel} from '../services/adhkarBrowse';
 import {
   arabicFontSize,
   dhikrPages,
+  instructionNote,
+  notesFontSize,
+  pageAtProgress,
+  runsLength,
   sourceLine,
   translationFontSize,
 } from '../services/adhkarPages';
 import {createQuranHandoff} from '../services/adhkarQuranHandoff';
-import {createRemoteKeyFilter} from '../services/remoteKeys';
+import {
+  createReaderKeyHandler,
+  readerTransport,
+  setAdhkarReaderTransport,
+  type ReaderControls,
+} from '../services/adhkarReaderTransport';
 import {
   advanceModeOf,
   type AdhkarAudio,
@@ -28,7 +36,11 @@ import {
 } from '../store/adhkarSessionController';
 import {useAdhkarSessionStore} from '../store/adhkarSessionStore';
 import {useKeepAwakeWhile} from '../hooks/useKeepAwakeWhile';
-import {useNavStore, type AdhkarStartMode} from '../store/navStore';
+import {
+  useNavStore,
+  type AdhkarStartMode,
+  type ScreenEntry,
+} from '../store/navStore';
 import {showToast} from '../store/toastStore';
 import {useTVPlayerStore} from '../store/tvPlayerStore';
 import {colors} from '../theme/colors';
@@ -55,6 +67,10 @@ const START: Record<
   listen: {autoplay: true, advance: 'once'},
   count: {autoplay: true, advance: 'count'},
 };
+
+// Title-safe insets for the top bar and foot, in design px.
+const SAFE_X = 96;
+const SAFE_Y = 60;
 
 // The Android fallback for the Uthmanic face draws ﴿ ﴾ as "{·".
 const PLAIN_BRACKETS = Platform.OS === 'android';
@@ -88,7 +104,9 @@ type PageEntry = {index: number; page: number | 'last'};
  * the bottom, and the recitation playing from the CDN. Left / Right move
  * (through the pages of a long dhikr first), OK counts (turning the pages of
  * a long one first), Play/Pause plays, Down reaches the audio and
- * Auto-advance chips. Back is the Router's.
+ * Auto-advance chips. The transport keys work wherever focus is: Next /
+ * Previous move between adhkar, Fast-forward / Rewind turn pages. Back is
+ * the Router's.
  */
 export function AdhkarReaderScreen({listId, mode}: Props): React.ReactElement {
   const list = adhkarList(listId);
@@ -100,8 +118,18 @@ export function AdhkarReaderScreen({listId, mode}: Props): React.ReactElement {
   const audio = useAdhkarSessionStore(s => s.audio);
   const advance = useAdhkarSessionStore(advanceModeOf);
   const resumed = useAdhkarSessionStore(s => s.resumed);
-  const {open, close, press, next, prev, restart, togglePlay, setAutoAdvance} =
-    useAdhkarSessionStore.getState();
+  const storedPage = useAdhkarSessionStore(s => s.page);
+  const {
+    open,
+    close,
+    press,
+    next,
+    prev,
+    restart,
+    togglePlay,
+    setAutoAdvance,
+    setPage,
+  } = useAdhkarSessionStore.getState();
 
   // Whether the Quran was playing as the reader opened, and whether a
   // recitation here has since paused it, for the top bar's note.
@@ -138,11 +166,26 @@ export function AdhkarReaderScreen({listId, mode}: Props): React.ReactElement {
     );
     return () => {
       unsubscribe();
-      close();
-      // Opened the player from the pill: it shows the Quran paused, as the
-      // pill said, rather than resuming on its own.
-      const {stack} = useNavStore.getState();
-      if (stack[stack.length - 1]?.screen === 'nowPlaying') return;
+      // Still on the stack: it only went under the player (the now-playing
+      // pill) and comes back on Back, on the same page, waiting for Play.
+      const onStack = (stack: readonly ScreenEntry[]): boolean =>
+        stack.some(e => e.screen === 'adhkarReader' && e.listId === listId);
+      const covered = onStack(useNavStore.getState().stack);
+      close({covered});
+      if (covered) {
+        // Left from under the player (a place switch clears the stack): the
+        // next open is a fresh visit again, autoplay and all. A plain close
+        // forgets the covered visit; skip it while another reader is open,
+        // whose own close forgets it.
+        const stop = useNavStore.subscribe(s => {
+          if (onStack(s.stack)) return;
+          stop();
+          if (!useAdhkarSessionStore.getState().session) close();
+        });
+        // Opened the player from the pill: it shows the Quran paused, as the
+        // pill said, rather than resuming on its own.
+        return;
+      }
       if (handoff.leave()) {
         const {queue, currentIndex} = useTVPlayerStore.getState();
         const surah = queue[currentIndex]?.title;
@@ -167,23 +210,45 @@ export function AdhkarReaderScreen({listId, mode}: Props): React.ReactElement {
       dhikr
         ? dhikrPages(dhikr.arabic, dhikr.translation, {
             plainBrackets: PLAIN_BRACKETS,
+            note: instructionNote(dhikr.instruction),
           })
         : [],
     [dhikr],
   );
-  const [entry, setEntry] = useState<PageEntry>({index: 0, page: 0});
-  // Any other move (auto-advance, OK, start again) opens on the first page.
+  // The session keeps the page (resuming, or back from the player, opens on
+  // it); any other move (auto-advance, OK, start again) opens on the first.
+  const [entry, setEntry] = useState<PageEntry>({index: -1, page: 0});
   useEffect(() => {
-    setEntry(e => (e.index === index ? e : {index, page: 0}));
+    setEntry(e =>
+      e.index === index
+        ? e
+        : {index, page: useAdhkarSessionStore.getState().page},
+    );
   }, [index]);
   const lastPage = Math.max(0, pages.length - 1);
   const page =
     entry.index !== index
-      ? 0
+      ? Math.min(storedPage, lastPage)
       : entry.page === 'last'
         ? lastPage
         : Math.min(entry.page, lastPage);
   const shown = pages[page];
+  useEffect(() => {
+    if (ready && !finished) setPage(page);
+  }, [ready, finished, index, page, setPage]);
+
+  // Listening through or counting, the pages of a long dhikr turn with the
+  // recitation (and go back to the first as it plays again).
+  const following =
+    advance !== 'off' &&
+    audio === 'playing' &&
+    pages.filter(p => p.arabic.length > 0).length > 1;
+  const followedPage = useAdhkarSessionStore(s =>
+    following ? pageAtProgress(pages, s.clipProgress) : -1,
+  );
+  useEffect(() => {
+    if (followedPage >= 0) setEntry({index, page: followedPage});
+  }, [followedPage, index]);
 
   // Arrows act on the dhikr only while the stage has focus; on the chips
   // they move between chips. The state draws the stage's focus.
@@ -202,29 +267,52 @@ export function AdhkarReaderScreen({listId, mode}: Props): React.ReactElement {
   const pageRef = useRef({index, page, count: pages.length});
   pageRef.current = {index, page, count: pages.length};
 
-  const remoteFilter = useMemo(createRemoteKeyFilter, []);
-  const handleTVEvent = useCallback(
-    (event: HWEvent): void => {
-      const action = remoteFilter(event);
-      if (!action) return;
-      if (action === 'playPause') {
-        togglePlay();
-        return;
-      }
-      if (!stageFocusedRef.current) return;
-      const {index: i, page: p, count} = pageRef.current;
-      if (action === 'right' || action === 'seekForward') {
+  // One set of controls for the remote's keys and, on Vega, the system's
+  // media commands, so both turn the same pages through the same store.
+  const controls = useMemo<ReaderControls>(() => {
+    const audioActive = (): boolean => {
+      const a = useAdhkarSessionStore.getState().audio;
+      return a === 'playing' || a === 'loading';
+    };
+    return {
+      toggle: togglePlay,
+      play: () => {
+        if (!audioActive()) togglePlay();
+      },
+      pause: () => {
+        if (audioActive()) togglePlay();
+      },
+      nextDhikr: next,
+      previousDhikr: () => {
+        // Like a track's Previous: the dhikr before, from its start.
+        const {index: i} = pageRef.current;
+        setEntry({index: Math.max(0, i - 1), page: 0});
+        prev();
+      },
+      pageForward: () => {
+        const {index: i, page: p, count} = pageRef.current;
         if (p < count - 1) setEntry({index: i, page: p + 1});
         else next();
-      } else if (p > 0) {
-        setEntry({index: i, page: p - 1});
-      } else if (i > 0) {
-        // Back into the previous dhikr at its end, where it was left.
-        setEntry({index: i - 1, page: 'last'});
-        prev();
-      }
-    },
-    [remoteFilter, togglePlay, next, prev],
+      },
+      pageBack: () => {
+        const {index: i, page: p} = pageRef.current;
+        if (p > 0) {
+          setEntry({index: i, page: p - 1});
+        } else if (i > 0) {
+          // Back into the previous dhikr at its end, where it was left.
+          setEntry({index: i - 1, page: 'last'});
+          prev();
+        }
+      },
+    };
+  }, [togglePlay, next, prev]);
+  useEffect(
+    () => setAdhkarReaderTransport(readerTransport(controls)),
+    [controls],
+  );
+  const handleTVEvent = useMemo(
+    () => createReaderKeyHandler(controls, () => stageFocusedRef.current),
+    [controls],
   );
   useTVEventHandler(handleTVEvent);
 
@@ -258,11 +346,15 @@ export function AdhkarReaderScreen({listId, mode}: Props): React.ReactElement {
     : [];
   const morePages = page < pages.length - 1;
   const arabicSize = arabicFontSize(shown?.arabicLength ?? 0);
-  const translationChars = (shown?.translation ?? []).reduce(
-    (n, r) => n + r.text.length,
-    0,
+  const translationSize = translationFontSize(
+    runsLength(shown?.translation ?? []),
   );
-  const translationSize = translationFontSize(translationChars);
+  // A page of notes alone follows a dhikr whose notes would crowd it.
+  const notesOnly = !!shown && shown.arabic.length === 0;
+  const notesSize = notesFontSize(shown?.notes.length ?? 0, notesOnly);
+  // The Names are learnt by their sound too: the transliteration under each.
+  const transliteration =
+    listId === 'names-of-allah' && page === 0 ? dhikr?.transliteration : '';
   const source = dhikr ? sourceLine(target, dhikr.instruction) : '';
   const sourceText = [
     source,
@@ -271,17 +363,19 @@ export function AdhkarReaderScreen({listId, mode}: Props): React.ReactElement {
     .filter(Boolean)
     .join('  ·  ');
   const counting = advance !== 'off' && audio === 'playing';
-  const hint = morePages
-    ? 'OK for the next page'
-    : counting
-      ? advance === 'once'
-        ? 'Listening through'
-        : 'Counting with the recitation'
-      : count >= target
-        ? 'Done'
-        : target > 1
-          ? 'OK to count'
-          : 'OK when you have said it';
+  const hint = counting
+    ? advance === 'once'
+      ? 'Listening through'
+      : 'Counting with the recitation'
+    : audio === 'error' && advance !== 'off'
+      ? "Couldn't play the recitation"
+      : morePages
+        ? 'OK for the next page'
+        : count >= target
+          ? 'Done · OK for the next'
+          : target > 1
+            ? 'OK to count'
+            : 'OK when you have said it';
   // Once a recitation here has paused the Quran it stays paused (Pause on
   // the adhkar doesn't bring it back) until the reader closes.
   const quranNote = quranWasPlaying
@@ -292,8 +386,20 @@ export function AdhkarReaderScreen({listId, mode}: Props): React.ReactElement {
 
   const onStagePress = (): void => {
     // A long dhikr shows all of its pages before OK counts it.
-    if (morePages) setEntry({index, page: page + 1});
-    else press();
+    if (morePages) {
+      setEntry({index, page: page + 1});
+      return;
+    }
+    press();
+    // Said again: each repetition of a long dhikr starts on its first page.
+    const after = useAdhkarSessionStore.getState().session;
+    if (
+      pages.length > 1 &&
+      after?.index === index &&
+      (after.counts[index] ?? 0) < (after.targets[index] ?? 1)
+    ) {
+      setEntry({index, page: 0});
+    }
   };
 
   // Start over (resumed) and Start again (closing card): the first page of
@@ -344,11 +450,15 @@ export function AdhkarReaderScreen({listId, mode}: Props): React.ReactElement {
             <FocusableButton
               onPress={startOver}
               outlined
-              hasTVPreferredFocus
               style={styles.endButton}>
               <FocusText style={styles.endButtonText}>Start again</FocusText>
             </FocusableButton>
-            <FocusableButton onPress={pop} style={styles.endButton}>
+            {/* Focus lands on Done: the OK that counted the last dhikr is
+                often pressed once more, and Start again clears every count. */}
+            <FocusableButton
+              onPress={pop}
+              hasTVPreferredFocus
+              style={styles.endButton}>
               <FocusText style={styles.endButtonText}>Done</FocusText>
             </FocusableButton>
           </View>
@@ -374,7 +484,8 @@ export function AdhkarReaderScreen({listId, mode}: Props): React.ReactElement {
                 ? `Count, ${count} of ${target}`
                 : 'Next dhikr'
           }>
-          {shown ? (
+          {notesOnly ? <Text style={styles.kicker}>NOTES</Text> : null}
+          {shown && shown.arabic.length > 0 ? (
             <DhikrText
               runs={shown.arabic}
               fontSize={scale(arabicSize)}
@@ -385,6 +496,9 @@ export function AdhkarReaderScreen({listId, mode}: Props): React.ReactElement {
               ]}
             />
           ) : null}
+          {transliteration ? (
+            <Text style={styles.transliteration}>{transliteration}</Text>
+          ) : null}
           {shown && shown.translation.length > 0 ? (
             <DhikrText
               runs={shown.translation}
@@ -394,6 +508,19 @@ export function AdhkarReaderScreen({listId, mode}: Props): React.ReactElement {
                 {lineHeight: scale(translationSize * 1.45)},
               ]}
             />
+          ) : null}
+          {shown?.notes ? (
+            <Text
+              style={[
+                styles.notes,
+                notesOnly && styles.notesAlone,
+                {
+                  fontSize: scale(notesSize),
+                  lineHeight: scale(notesSize * 1.45),
+                },
+              ]}>
+              {shown.notes}
+            </Text>
           ) : null}
           {sourceText ? (
             <Text style={styles.source} numberOfLines={2}>
@@ -492,11 +619,12 @@ export function AdhkarReaderScreen({listId, mode}: Props): React.ReactElement {
 
 const styles = createScaledStyles({
   root: {flex: 1, backgroundColor: colors.background},
+  // The top bar and foot keep inside the title-safe area (90 x 60 at 1080p).
   top: {
     position: 'absolute',
-    top: 56,
-    left: 72,
-    right: 72,
+    top: SAFE_Y,
+    left: SAFE_X,
+    right: SAFE_X,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
@@ -532,34 +660,53 @@ const styles = createScaledStyles({
     textAlign: 'center',
     maxWidth: 1320,
   },
-  source: {
-    marginTop: 16,
-    color: colors.textTertiary,
+  transliteration: {
+    marginTop: 4,
+    color: colors.textSecondary,
     fontFamily: fonts.medium,
     fontWeight: '500',
-    fontSize: 19,
+    fontSize: 30,
+    textAlign: 'center',
+  },
+  // Notes: the translator's glossary, a Name's meaning. Under the
+  // translation, or a page of their own after the last.
+  notes: {
+    marginTop: 18,
+    color: colors.textSecondary,
+    fontFamily: fonts.regular,
+    fontWeight: '400',
+    textAlign: 'center',
+    maxWidth: 1320,
+  },
+  notesAlone: {marginTop: 16, color: colors.text},
+  source: {
+    marginTop: 16,
+    color: colors.textSecondary,
+    fontFamily: fonts.medium,
+    fontWeight: '500',
+    fontSize: 23,
     textAlign: 'center',
     maxWidth: 1320,
   },
   note: {
     marginTop: 10,
     marginLeft: 48,
-    color: colors.textTertiary,
+    color: colors.textSecondary,
     fontFamily: fonts.medium,
     fontWeight: '500',
-    fontSize: 18,
+    fontSize: 20,
   },
   counter: {marginTop: 36, alignItems: 'center', justifyContent: 'center'},
   // Focus is on the chips: the counter steps back.
   counterRest: {opacity: 0.55},
   hint: {
     marginTop: 12,
-    color: colors.textTertiary,
+    color: colors.textSecondary,
     fontFamily: fonts.medium,
     fontWeight: '500',
-    fontSize: 19,
+    fontSize: 23,
   },
-  hintFocused: {color: colors.textSecondary},
+  hintFocused: {color: colors.text},
   // A single dhikr's "OK when you have said it", cream while OK means it.
   okPill: {
     borderRadius: 16,
@@ -582,9 +729,9 @@ const styles = createScaledStyles({
   okTextOn: {color: colors.onFocus},
   foot: {
     position: 'absolute',
-    left: 72,
-    right: 72,
-    bottom: 56,
+    left: SAFE_X,
+    right: SAFE_X,
+    bottom: SAFE_Y,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 28,
@@ -593,9 +740,9 @@ const styles = createScaledStyles({
     color: colors.textSecondary,
     fontFamily: fonts.bold,
     fontWeight: '700',
-    fontSize: 17,
+    fontSize: 20,
     letterSpacing: 2,
-    minWidth: 110,
+    minWidth: 130,
   },
   chips: {flexDirection: 'row', gap: 10},
   chip: {

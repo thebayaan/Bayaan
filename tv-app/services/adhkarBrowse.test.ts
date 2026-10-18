@@ -9,6 +9,7 @@ import {
   listSubtitle,
   mixHex,
   nowListId,
+  periodLabel,
 } from './adhkarBrowse';
 
 const at = (hour: number, minute = 0): Date =>
@@ -20,7 +21,7 @@ describe('adhkar grouping', () => {
     expect(groups.map(g => g.label)).toEqual([
       'Daily',
       'Prayer',
-      'Home',
+      'At home',
       'Travel',
       'Hardship',
       'All',
@@ -80,6 +81,13 @@ describe('the list for now', () => {
     expect(nowListId(at(21))).toBe('before-sleep');
     expect(nowListId(at(0, 30))).toBe('before-sleep');
     expect(nowListId(at(3, 59))).toBe('before-sleep');
+  });
+
+  it('captions the clock by the same windows as the NOW list', () => {
+    expect(periodLabel(at(12, 30))).toBe('Morning');
+    expect(periodLabel(at(15, 30))).toBe('Evening');
+    expect(periodLabel(at(21))).toBe('Night');
+    expect(periodLabel(at(3))).toBe('Night');
   });
 });
 
