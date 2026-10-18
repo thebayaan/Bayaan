@@ -21,13 +21,6 @@ type Props = {
 
 const CELL_PAD = 13;
 const CELL_WIDTH = RECITER_CARD_WIDTH + CELL_PAD * 2;
-/** Portrait 184 + name and subtitle lines + the cell's vertical padding. */
-const ROW_HEIGHT = 278;
-
-function overrideItemLayout(layout: {span?: number; size?: number}): void {
-  layout.span = 1;
-  layout.size = scale(ROW_HEIGHT);
-}
 
 /** One grid of round reciter portraits, sized to the screen's width. */
 export function ReciterGrid({
@@ -55,9 +48,11 @@ export function ReciterGrid({
       key={numColumns}
       data={reciters}
       numColumns={numColumns}
-      overrideItemLayout={overrideItemLayout}
       renderItem={renderItem}
       extraData={focusFirst}
+      // Rows ready well below the fold, so a held Down never reaches the
+      // edge of what is mounted and jumps out of the grid.
+      drawDistance={scale(900)}
       keyExtractor={r => r.id}
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
