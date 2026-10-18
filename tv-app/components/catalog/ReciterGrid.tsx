@@ -60,7 +60,7 @@ export function ReciterGrid({
       // edge of what is mounted and jumps out of the grid.
       drawDistance={scale(900)}
       keyExtractor={r => r.id}
-          overrideItemLayout={cellLayout}
+      overrideItemLayout={cellLayout}
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
       ListEmptyComponent={ListEmptyComponent}

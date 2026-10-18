@@ -25,10 +25,7 @@ import {SurahRow, SURAH_ROW_HEIGHT} from '../components/browse/SurahRow';
 import {cellHeightLayout} from '../components/browse/gridLayout';
 import {FocusableButton} from '../components/primitives/FocusableButton';
 import {FocusSpinner} from '../components/primitives/FocusSpinner';
-import {
-  FocusIcon,
-  FocusText,
-} from '../components/primitives/focusContext';
+import {FocusIcon, FocusText} from '../components/primitives/focusContext';
 import {fetchRewayat, getCachedRewayat} from '../services/tvDataService';
 import {toggleFavorite} from '../services/favoritesStore';
 import {
