@@ -11,6 +11,26 @@ const MAX_ENTRIES = 10;
  */
 export const MIN_PROGRESS_SECONDS = 5;
 
+/**
+ * A surah counts as finished, and leaves "Continue listening", once it is
+ * this far through or this close to the end. The progress writer runs every
+ * few seconds, so its last write lands just short of the end; without these
+ * thresholds a finished surah would sit there as "Almost done" forever.
+ */
+export const FINISHED_FRACTION = 0.97;
+export const FINISHED_TAIL_SECONDS = 15;
+
+export function isFinishedProgress(
+  positionSeconds: number,
+  durationSeconds: number,
+): boolean {
+  if (!(durationSeconds > 0)) return false;
+  return (
+    positionSeconds >= durationSeconds * FINISHED_FRACTION ||
+    positionSeconds >= durationSeconds - FINISHED_TAIL_SECONDS
+  );
+}
+
 export type ContinueEntry = {
   reciterId: string;
   rewayahId: string;
@@ -26,9 +46,11 @@ function readEntries(): ContinueEntry[] {
   return readJSON<ContinueEntry[]>(KEY) ?? [];
 }
 
-/** Continue-listening entries, most-recently updated first. */
+/** Continue-listening entries, most-recently updated first, unfinished only. */
 export function getContinueListening(): ContinueEntry[] {
-  return readEntries().sort((a, b) => b.updatedAt - a.updatedAt);
+  return readEntries()
+    .filter(e => !isFinishedProgress(e.positionSeconds, e.durationSeconds))
+    .sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
 /** Alias of {@link getContinueListening} kept for existing call sites. */
@@ -38,6 +60,11 @@ export function getContinueEntries(): ContinueEntry[] {
 
 export function recordProgress(input: ProgressInput): void {
   if (input.positionSeconds < MIN_PROGRESS_SECONDS) return;
+  // Near the end the surah is done: drop it rather than save "Almost done".
+  if (isFinishedProgress(input.positionSeconds, input.durationSeconds)) {
+    removeContinue(input.reciterId, input.surahNumber);
+    return;
+  }
   const now = Date.now();
   const existing = readEntries();
   const filtered = existing.filter(
@@ -48,6 +75,15 @@ export function recordProgress(input: ProgressInput): void {
   filtered.unshift(next);
   filtered.sort((a, b) => b.updatedAt - a.updatedAt);
   writeJSON(KEY, filtered.slice(0, MAX_ENTRIES));
+}
+
+/** Drops one surah's entry (a finished track, or "Remove from Continue"). */
+export function removeContinue(reciterId: string, surahNumber: number): void {
+  const existing = readEntries();
+  const next = existing.filter(
+    e => !(e.reciterId === reciterId && e.surahNumber === surahNumber),
+  );
+  if (next.length !== existing.length) writeJSON(KEY, next);
 }
 
 export function clearContinue(): void {

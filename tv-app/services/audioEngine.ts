@@ -22,6 +22,7 @@ import {
   releaseAudioFocus,
   type AudioFocusOwner,
 } from './audioFocus';
+import {createPauseDetector} from './pauseDetector';
 
 export type {AudioEngine, EngineEvent, EngineStatus} from './audioEngineTypes';
 
@@ -73,6 +74,7 @@ export function createAudioEngine(): AudioEngine {
     },
   };
   const otherHasFocus = (): boolean => audioFocusHeldByOther(focusOwner);
+  const pausedElsewhere = createPauseDetector();
 
   function safeGet<T>(fn: () => T, fallback: T): T {
     try {
@@ -93,12 +95,26 @@ export function createAudioEngine(): AudioEngine {
     // returns it to idle), so report the end here: the player stopped at the
     // end of the track. The store treats playing -> idle at the end as
     // finished and moves on (next surah, repeat, sleep at end of surah).
+    const isPlaying = safeGet(() => expoAudioService.getIsPlaying(), true);
     const ranOut =
       status === 'playing' &&
       durationSeconds > 0 &&
       positionSeconds >= durationSeconds - 0.5 &&
-      !safeGet(() => expoAudioService.getIsPlaying(), true);
-    return {status: ranOut ? 'idle' : status, positionSeconds, durationSeconds};
+      !isPlaying;
+    if (ranOut) return {status: 'idle', positionSeconds, durationSeconds};
+    // Stopped by the system rather than by us: say so, or the UI keeps
+    // showing "playing" over silence.
+    const paused = pausedElsewhere({
+      reportedPlaying: status === 'playing',
+      isPlaying,
+      isBuffering: safeGet(() => expoAudioService.getIsBuffering(), false),
+      isLoaded: safeGet(() => expoAudioService.getIsLoaded(), false),
+    });
+    return {
+      status: paused ? 'paused' : status,
+      positionSeconds,
+      durationSeconds,
+    };
   }
 
   // Lost the player and not yet taken it back: whatever it reports now is

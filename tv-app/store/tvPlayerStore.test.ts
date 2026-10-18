@@ -7,6 +7,10 @@ import {
 } from '../services/tvDataService';
 import {normalizeReciters} from '../services/normalizeReciter';
 import {storage} from '../services/storage';
+import {
+  getContinueListening,
+  recordProgress,
+} from '../services/continueListeningStore';
 
 function volumeOf(engine: AudioEngine): jest.Mock {
   return engine.setVolume as jest.Mock;
@@ -159,6 +163,123 @@ describe('tvPlayerStore', () => {
     engine.emit({status: 'idle', positionSeconds: 60, durationSeconds: 60});
     await new Promise(r => setTimeout(r, 10));
     expect(useTVPlayerStore.getState().currentIndex).toBe(1);
+  });
+
+  it('loadQueue plays in order unless it asks for shuffle', async () => {
+    const engine = makeMockEngine();
+    useTVPlayerStore.getState().setEngine(engine);
+    await useTVPlayerStore.getState().loadQueue(queue, 0, {shuffle: true});
+    expect(useTVPlayerStore.getState().shuffle).toBe(true);
+    await useTVPlayerStore.getState().loadQueue(queue, 1);
+    expect(useTVPlayerStore.getState().shuffle).toBe(false);
+  });
+
+  it('loadQueue with startSeconds seeks before playing', async () => {
+    const engine = makeMockEngine();
+    useTVPlayerStore.getState().setEngine(engine);
+    await useTVPlayerStore.getState().loadQueue(queue, 1, {startSeconds: 42});
+    expect(engine.seek).toHaveBeenCalledWith(42);
+    expect((engine.seek as jest.Mock).mock.invocationCallOrder[0]).toBeLessThan(
+      (engine.play as jest.Mock).mock.invocationCallOrder[0],
+    );
+  });
+
+  it('a load replaced by a newer one neither plays nor reports its error', async () => {
+    const engine = makeMockEngine();
+    let failFirst: (e: Error) => void = () => {};
+    (engine.load as jest.Mock).mockImplementationOnce(
+      () => new Promise<void>((_, reject) => (failFirst = reject)),
+    );
+    useTVPlayerStore.getState().setEngine(engine);
+    const first = useTVPlayerStore.getState().loadQueue(queue, 0);
+    await useTVPlayerStore.getState().loadQueue(queue, 2);
+    failFirst(new Error('Network request failed'));
+    await first;
+    const s = useTVPlayerStore.getState();
+    expect(s.currentIndex).toBe(2);
+    expect(s.status).not.toBe('error');
+    expect(engine.play).toHaveBeenCalledTimes(1);
+  });
+
+  it('the last surah ending marks the queue finished; play starts it again', async () => {
+    const engine = makeMockEngine();
+    useTVPlayerStore.getState().setEngine(engine);
+    await useTVPlayerStore.getState().loadQueue(queue, 2);
+    engine.emit({
+      status: 'playing',
+      positionSeconds: 59.8,
+      durationSeconds: 60,
+    });
+    engine.emit({status: 'idle', positionSeconds: 60, durationSeconds: 60});
+    expect(useTVPlayerStore.getState().finished).toBe(true);
+    expect(useTVPlayerStore.getState().currentIndex).toBe(2);
+    (engine.play as jest.Mock).mockClear();
+    useTVPlayerStore.getState().toggle();
+    expect(engine.seek).toHaveBeenLastCalledWith(0);
+    expect(engine.play).toHaveBeenCalled();
+    expect(useTVPlayerStore.getState().finished).toBe(false);
+  });
+
+  it('a surah heard to the end leaves Continue listening', async () => {
+    storage.clearAll();
+    recordProgress({
+      reciterId: 'r1',
+      rewayahId: 'w1',
+      surahNumber: 1,
+      positionSeconds: 30,
+      durationSeconds: 600,
+    });
+    const engine = makeMockEngine();
+    useTVPlayerStore.getState().setEngine(engine);
+    await useTVPlayerStore.getState().loadQueue(queue, 0);
+    engine.emit({
+      status: 'playing',
+      positionSeconds: 599.8,
+      durationSeconds: 600,
+    });
+    engine.emit({status: 'idle', positionSeconds: 600, durationSeconds: 600});
+    expect(getContinueListening()).toEqual([]);
+  });
+
+  it('toggle after an error retries the track', async () => {
+    const engine = makeMockEngine();
+    (engine.load as jest.Mock).mockRejectedValueOnce(new Error('boom'));
+    useTVPlayerStore.getState().setEngine(engine);
+    await useTVPlayerStore.getState().loadQueue(queue, 1);
+    expect(useTVPlayerStore.getState().status).toBe('error');
+    useTVPlayerStore.getState().toggle();
+    await new Promise(r => setTimeout(r, 0));
+    expect(engine.load).toHaveBeenCalledTimes(2);
+    expect(engine.load).toHaveBeenLastCalledWith('https://x/002.mp3');
+  });
+
+  it('while pending, the old track is paused and its events ignored', async () => {
+    const engine = makeMockEngine();
+    useTVPlayerStore.getState().setEngine(engine);
+    await useTVPlayerStore.getState().loadQueue(queue, 0);
+    const retry = jest.fn();
+    const token = useTVPlayerStore
+      .getState()
+      .beginPending({...queue[1], audioUrl: ''}, retry);
+    expect(engine.pause).toHaveBeenCalled();
+    engine.emit({status: 'paused', positionSeconds: 12, durationSeconds: 60});
+    expect(useTVPlayerStore.getState().status).toBe('loading');
+    useTVPlayerStore.getState().failPending(token, 'Offline');
+    expect(useTVPlayerStore.getState().status).toBe('error');
+    expect(useTVPlayerStore.getState().lastError).toBe('Offline');
+    await useTVPlayerStore.getState().retry();
+    expect(retry).toHaveBeenCalled();
+  });
+
+  it('failPending is ignored once a newer load started', async () => {
+    const engine = makeMockEngine();
+    useTVPlayerStore.getState().setEngine(engine);
+    const token = useTVPlayerStore
+      .getState()
+      .beginPending({...queue[0], audioUrl: ''}, () => {});
+    await useTVPlayerStore.getState().loadQueue(queue, 0);
+    useTVPlayerStore.getState().failPending(token, 'late');
+    expect(useTVPlayerStore.getState().status).not.toBe('error');
   });
 
   it('setSpeed calls engine.setRate', async () => {

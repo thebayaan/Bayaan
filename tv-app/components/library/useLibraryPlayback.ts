@@ -1,24 +1,20 @@
-import {useCallback, useMemo, useRef} from 'react';
+import {useCallback, useMemo} from 'react';
 import {useDefaultReciter} from '../../hooks/useDefaultReciter';
-import {usePlayer} from '../../hooks/usePlayer';
-import {featuredFirst, pickPlayableRewayah} from '../../services/browseCatalog';
-import {rewayahForSurah} from '../../services/listeningChoices';
+import {featuredFirst} from '../../services/browseCatalog';
 import type {ShelfSurah} from '../../services/libraryShelf';
-import {fetchRewayat, getCachedRewayat} from '../../services/tvDataService';
-import {useNavStore} from '../../store/navStore';
-import type {Reciter, Rewayah} from '../../types/reciter';
-
-async function rewayatFor(reciter: Reciter): Promise<Rewayah[]> {
-  const cached = getCachedRewayat(reciter.id);
-  if (cached && cached.length > 0) return cached;
-  if (reciter.rewayat && reciter.rewayat.length > 0) return reciter.rewayat;
-  return fetchRewayat(reciter.id);
-}
+import {
+  playOrOpen,
+  surahTitle,
+  voiceForSurah,
+} from '../../services/playbackRouting';
+import {showToast} from '../../store/toastStore';
+import type {Reciter} from '../../types/reciter';
 
 /**
  * What OK does on the Library: resume an unfinished surah where it stopped,
  * play a loved surah in the voice it was loved in, or play a surah in the
- * default reciter (first run). One press at a time.
+ * default reciter (first run). playOrOpen opens the player at once, and the
+ * surah already playing just opens it.
  */
 export function useLibraryPlayback(
   reciters: readonly Reciter[],
@@ -29,9 +25,6 @@ export function useLibraryPlayback(
   playInDefault: (surahNumber: number) => Promise<void>;
 } {
   const {defaultReciterId} = useDefaultReciter();
-  const {playRewayah, resumeContinue} = usePlayer();
-  const push = useNavStore(s => s.push);
-  const busy = useRef(false);
 
   const defaultReciter = useMemo<Reciter | null>(
     () =>
@@ -41,74 +34,35 @@ export function useLibraryPlayback(
     [defaultReciterId, reciterById, reciters],
   );
 
-  const once = useCallback(async (run: () => Promise<void>): Promise<void> => {
-    if (busy.current) return;
-    busy.current = true;
-    try {
-      await run();
-    } finally {
-      busy.current = false;
-    }
+  const playTile = useCallback(async (tile: ShelfSurah): Promise<void> => {
+    // The saved rewayah when it still has the surah (else another of the
+    // reciter's); the position only counts in the recitation it belongs to,
+    // which playOrOpen keeps by playing that rewayah.
+    await playOrOpen({
+      reciterId: tile.reciterId,
+      rewayahId: tile.rewayahId || undefined,
+      surahNumber: tile.surahNumber,
+      startSeconds: tile.progress?.positionSeconds,
+      source: 'library',
+    });
   }, []);
 
-  const playTile = useCallback(
-    (tile: ShelfSurah) =>
-      once(async () => {
-        const reciter = reciterById.get(tile.reciterId);
-        if (!reciter) return;
-        const rewayat = await rewayatFor(reciter);
-        const saved = rewayat.find(
-          r =>
-            r.id === tile.rewayahId && r.surah_list.includes(tile.surahNumber),
-        );
-        const rewayah =
-          saved ??
-          rewayahForSurah({...reciter, rewayat}, tile.surahNumber) ??
-          rewayat[0];
-        if (!rewayah) return;
-        push({screen: 'nowPlaying'});
-        // Resume only in the recitation the position belongs to.
-        if (tile.progress && saved) {
-          await resumeContinue(
-            reciter.id,
-            reciter.name,
-            rewayah,
-            tile.surahNumber,
-            tile.progress.positionSeconds,
-          );
-        } else {
-          await playRewayah(
-            reciter.id,
-            reciter.name,
-            rewayah,
-            tile.surahNumber,
-          );
-        }
-      }),
-    [once, reciterById, push, resumeContinue, playRewayah],
-  );
-
   const playInDefault = useCallback(
-    (surahNumber: number) =>
-      once(async () => {
-        // The default reciter first; if they lack this surah, the first
-        // featured reciter who has it, so a press always plays something.
-        const candidates = [
-          ...(defaultReciter ? [defaultReciter] : []),
-          ...featuredFirst(reciters).filter(r => r.id !== defaultReciter?.id),
-        ].slice(0, 12);
-        for (const candidate of candidates) {
-          const rewayah = pickPlayableRewayah(
-            await rewayatFor(candidate),
-            surahNumber,
-          );
-          if (!rewayah || !rewayah.surah_list.includes(surahNumber)) continue;
-          await playRewayah(candidate.id, candidate.name, rewayah, surahNumber);
-          push({screen: 'nowPlaying'});
-          return;
-        }
-      }),
-    [once, defaultReciter, reciters, playRewayah, push],
+    async (surahNumber: number): Promise<void> => {
+      // The default reciter first; if they lack this surah, the first
+      // featured reciter who has it, so a press always plays something.
+      const candidates = [
+        ...(defaultReciter ? [defaultReciter] : []),
+        ...featuredFirst(reciters).filter(r => r.id !== defaultReciter?.id),
+      ];
+      const voice = voiceForSurah(candidates, surahNumber);
+      if (!voice) {
+        showToast(`No reciter has ${surahTitle(surahNumber)} yet.`, 'error');
+        return;
+      }
+      await playOrOpen({...voice, source: 'library-default'});
+    },
+    [defaultReciter, reciters],
   );
 
   return {defaultReciter, playTile, playInDefault};

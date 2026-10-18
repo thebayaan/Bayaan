@@ -18,7 +18,13 @@ import {CatalogGridScreen} from '../../screens/CatalogGridScreen';
 import {SurahsScreen} from '../../screens/SurahsScreen';
 import {AdhkarScreen} from '../../screens/AdhkarScreen';
 import {AdhkarReaderScreen} from '../../screens/AdhkarReaderScreen';
+import {PlaylistScreen} from '../../screens/PlaylistScreen';
+import {PlaylistEditScreen} from '../../screens/PlaylistEditScreen';
 import {ReciterContextMenu} from '../overlays/ReciterContextMenu';
+import {SurahContextMenu} from '../overlays/SurahContextMenu';
+import {Toast} from '../overlays/Toast';
+import {useGlobalRemoteKeys} from '../../hooks/useGlobalRemoteKeys';
+import {usePlaybackAlerts} from '../../hooks/usePlaybackAlerts';
 import {Sidebar, SIDEBAR_COLLAPSED_WIDTH} from './Sidebar';
 import {useTVBackHandler} from '../../hooks/useTVBackHandler';
 import {consumeScreenBack} from '../../services/screenBack';
@@ -31,11 +37,13 @@ export function Router(): React.ReactElement {
   const switchTab = useNavStore(s => s.switchTab);
   const {onboarded} = useOnboarded();
   const {reciters} = useReciters();
+  useGlobalRemoteKeys();
+  usePlaybackAlerts();
 
   const handleBack = useCallback((): boolean => {
     // A screen's own open panel (e.g. Search's reciter picker) closes first.
     if (consumeScreenBack()) return true;
-    if (useContextMenuStore.getState().reciterId) {
+    if (useContextMenuStore.getState().target) {
       useContextMenuStore.getState().close();
       return true;
     }
@@ -67,7 +75,7 @@ export function Router(): React.ReactElement {
     return false;
   }, [stack.length, pop, currentTab, switchTab]);
 
-  const contextMenuOpen = useContextMenuStore(s => s.reciterId !== null);
+  const contextMenuOpen = useContextMenuStore(s => s.target !== null);
   const overlayOpen = useOverlayStore(s => Boolean(s.active));
   useTVBackHandler(
     handleBack,
@@ -78,7 +86,7 @@ export function Router(): React.ReactElement {
     return (
       <View style={{flex: 1}}>
         <OnboardingScreen />
-        <ReciterContextMenu />
+        <Overlays />
       </View>
     );
   }
@@ -90,23 +98,44 @@ export function Router(): React.ReactElement {
       return (
         <View style={{flex: 1}}>
           <NowPlayingScreen />
-          <ReciterContextMenu />
+          <Overlays />
         </View>
       );
     if (top.screen === 'reciterDetail')
       return (
         <View style={{flex: 1}}>
           <ReciterDetailScreen key={top.reciterId} reciterId={top.reciterId} />
-          <ReciterContextMenu />
+          <Overlays />
+        </View>
+      );
+    if (top.screen === 'playlist')
+      return (
+        <View style={{flex: 1}}>
+          <PlaylistScreen key={top.playlistId} playlistId={top.playlistId} />
+          <Overlays />
+        </View>
+      );
+    if (top.screen === 'playlistEdit')
+      return (
+        <View style={{flex: 1}}>
+          <PlaylistEditScreen
+            key={`${top.playlistId ?? 'new'}:${top.seed?.surahNumber ?? ''}`}
+            playlistId={top.playlistId}
+            seed={top.seed}
+          />
+          <Toast />
         </View>
       );
     if (top.screen === 'adhkarReader')
       return (
-        <AdhkarReaderScreen
-          key={top.listId}
-          listId={top.listId}
-          mode={top.mode}
-        />
+        <View style={{flex: 1}}>
+          <AdhkarReaderScreen
+            key={top.listId}
+            listId={top.listId}
+            mode={top.mode}
+          />
+          <Toast />
+        </View>
       );
   }
 
@@ -124,7 +153,18 @@ export function Router(): React.ReactElement {
         {currentTab === 'settings' && <SettingsScreen />}
       </View>
       <Sidebar />
-      <ReciterContextMenu />
+      <Overlays />
     </View>
+  );
+}
+
+/** The menus and the toast, drawn over whichever screen is showing. */
+function Overlays(): React.ReactElement {
+  return (
+    <>
+      <ReciterContextMenu />
+      <SurahContextMenu />
+      <Toast />
+    </>
   );
 }

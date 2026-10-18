@@ -13,6 +13,8 @@
  * a key-up that had no key-down, so every platform yields one action per press.
  */
 
+import type {ScreenEntry} from '../store/navStore';
+
 export type RemoteAction =
   | 'left'
   | 'right'
@@ -56,4 +58,13 @@ export function createRemoteKeyFilter(): (
     }
     return action;
   };
+}
+
+/**
+ * Screens that handle the remote's Play/Pause themselves (the listening room
+ * toggles the recitation, the adhkar reader its own audio). Everywhere else
+ * the app-wide handler toggles the recitation, so the key never toggles twice.
+ */
+export function screenOwnsPlayPause(top: ScreenEntry | undefined): boolean {
+  return top?.screen === 'nowPlaying' || top?.screen === 'adhkarReader';
 }

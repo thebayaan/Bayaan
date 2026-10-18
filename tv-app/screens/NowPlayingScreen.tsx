@@ -25,6 +25,7 @@ import {ambientLabel, useAmbientStore} from '../store/ambientStore';
 import {useReciters} from '../hooks/useReciters';
 import {usePlayer} from '../hooks/usePlayer';
 import {useVerseSync} from '../hooks/useVerseSync';
+import {useKeepAwakeWhile} from '../hooks/useKeepAwakeWhile';
 import {
   advanceRepeat,
   stepTarget,
@@ -87,6 +88,11 @@ export function NowPlayingScreen(): React.ReactElement {
   const ambientSound = useAmbientStore(s => s.currentSound);
   const {reciters} = useReciters();
   const {playRewayah} = usePlayer();
+  // No screensaver over the verse while it is being recited.
+  useKeepAwakeWhile(
+    status === 'playing' || status === 'loading' || status === 'buffering',
+    'listening-room',
+  );
 
   const item = queue[currentIndex];
   const reciter = item
@@ -229,6 +235,7 @@ export function NowPlayingScreen(): React.ReactElement {
         choice.reciter.name,
         choice.rewayah,
         item.surahNumber,
+        {shuffle: useTVPlayerStore.getState().shuffle},
       );
     },
     [item, timeline, currentAyah, playRewayah],

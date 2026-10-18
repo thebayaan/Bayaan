@@ -36,7 +36,7 @@ import {
 import {useReciters} from '../hooks/useReciters';
 import {useFavorites} from '../hooks/useFavorites';
 import {useContinueListening} from '../hooks/useContinueListening';
-import {usePlayer} from '../hooks/usePlayer';
+import {playOrOpen, randomSurah} from '../services/playbackRouting';
 import {useNavStore} from '../store/navStore';
 import {useSettingsStore} from '../store/settingsStore';
 import type {Rewayah, Surah} from '../types/reciter';
@@ -90,7 +90,6 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
   const [activeRewayahId, setActive] = useState<string | null>(() =>
     firstRewayahId(getCachedRewayat(reciterId) ?? []),
   );
-  const {playRewayah, shufflePlayRewayah} = usePlayer();
   const favorites = useFavorites();
   const continueEntries = useContinueListening();
   const isFav = favorites.some(f => f.reciterId === reciterId);
@@ -178,12 +177,17 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
   }, [continueEntries, reciterId]);
 
   const playSurah = useCallback(
-    async (surahNumber: number): Promise<void> => {
+    (surahNumber: number, startSeconds?: number): void => {
       if (!reciter || !current) return;
-      await playRewayah(reciter.id, reciter.name, current, surahNumber);
-      push({screen: 'nowPlaying'});
+      void playOrOpen({
+        reciterId: reciter.id,
+        rewayahId: current.id,
+        surahNumber,
+        startSeconds,
+        source: 'reciter',
+      });
     },
-    [reciter, current, playRewayah, push],
+    [reciter, current],
   );
 
   const renderItem = useCallback(
@@ -310,10 +314,16 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
             ) : null}
             <TVFocusGuideView autoFocus style={styles.heroActions}>
               <FocusableButton
-                onPress={async () => {
-                  const target = resumeEntry?.surahNumber ?? firstSurah;
-                  if (target === undefined) return;
-                  await playSurah(target);
+                onPress={() => {
+                  // "Continue" picks up where the surah was left.
+                  if (resumeEntry) {
+                    playSurah(
+                      resumeEntry.surahNumber,
+                      resumeEntry.positionSeconds,
+                    );
+                  } else if (firstSurah !== undefined) {
+                    playSurah(firstSurah);
+                  }
                 }}
                 accessibilityLabel={playLabel}
                 hasTVPreferredFocus
@@ -326,9 +336,14 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
               </FocusableButton>
               {current && sortedSurahs.length > 1 ? (
                 <FocusableButton
-                  onPress={async () => {
-                    await shufflePlayRewayah(reciter.id, reciter.name, current);
-                    push({screen: 'nowPlaying'});
+                  onPress={() => {
+                    void playOrOpen({
+                      reciterId: reciter.id,
+                      rewayahId: current.id,
+                      surahNumber: randomSurah(current.surah_list) ?? 1,
+                      shuffle: true,
+                      source: 'reciter-shuffle',
+                    });
                   }}
                   accessibilityLabel="Shuffle play"
                   style={styles.actionBtn}>

@@ -1,4 +1,4 @@
-import React, {useMemo, useRef} from 'react';
+import React, {useMemo} from 'react';
 import {ScrollView, Text, View} from 'react-native';
 import {HomeHero, type HeroArt} from '../components/home/HomeHero';
 import {HomeClock} from '../components/home/HomeClock';
@@ -12,7 +12,7 @@ import {useContinueListening} from '../hooks/useContinueListening';
 import {useDefaultReciter} from '../hooks/useDefaultReciter';
 import {useFavorites} from '../hooks/useFavorites';
 import {useRecentlyPlayed} from '../hooks/useRecentlyPlayed';
-import {usePlayer} from '../hooks/usePlayer';
+import {playOrOpen} from '../services/playbackRouting';
 import {useClock} from '../hooks/useClock';
 import {
   adhkarFacts,
@@ -28,7 +28,7 @@ import {
 } from '../hooks/homeMoments';
 import {pickHomeReciters} from '../hooks/homeReciters';
 import {useNavStore} from '../store/navStore';
-import {fetchRewayat, getDefaultReciter} from '../services/tvDataService';
+import {getDefaultReciter} from '../services/tvDataService';
 import {adhkarForList, adhkarList} from '../services/adhkarData';
 import type {Reciter} from '../types/reciter';
 import type {ContinueEntry} from '../services/continueListeningStore';
@@ -124,11 +124,9 @@ export function HomeScreen(): React.ReactElement {
   const favorites = useFavorites();
   const recent = useRecentlyPlayed();
   const {defaultReciterId} = useDefaultReciter();
-  const {playRewayah, resumeContinue} = usePlayer();
   const push = useNavStore(s => s.push);
   const switchTab = useNavStore(s => s.switchTab);
   const now = useClock();
-  const busy = useRef(false);
 
   // Re-plan when the hour turns, not on every minute tick.
   const hourStart = new Date(
@@ -175,31 +173,12 @@ export function HomeScreen(): React.ReactElement {
     hasMoments: (plan.moments?.items.length ?? 0) > 0,
   });
 
-  // One playback request at a time: a second OK while the rewayat load
-  // would otherwise start two queues.
-  async function guarded(task: () => Promise<void>): Promise<void> {
-    if (busy.current) return;
-    busy.current = true;
-    try {
-      await task();
-    } catch {
-      // Playback failures surface in the player's own error banner.
-    } finally {
-      busy.current = false;
-    }
-  }
-
+  // playOrOpen opens the player at once and shows any failure there; the
+  // track already playing just opens.
   function playSurah(surahNumber: number): void {
     const reciter = playReciter;
     if (!reciter) return;
-    void guarded(async () => {
-      const rewayat = await fetchRewayat(reciter.id);
-      const rewayah =
-        rewayat.find(r => r.surah_list.includes(surahNumber)) ?? rewayat[0];
-      if (!rewayah) return;
-      await playRewayah(reciter.id, reciter.name, rewayah, surahNumber);
-      push({screen: 'nowPlaying'});
-    });
+    void playOrOpen({reciterId: reciter.id, surahNumber, source: 'home'});
   }
 
   function openAdhkar(listId: string): void {
@@ -207,20 +186,12 @@ export function HomeScreen(): React.ReactElement {
   }
 
   function handleContinue(entry: ContinueEntry): void {
-    const reciter = reciterById.get(entry.reciterId);
-    if (!reciter) return;
-    void guarded(async () => {
-      const rewayat = await fetchRewayat(entry.reciterId);
-      const rewayah = rewayat.find(r => r.id === entry.rewayahId) ?? rewayat[0];
-      if (!rewayah) return;
-      await resumeContinue(
-        reciter.id,
-        reciter.name,
-        rewayah,
-        entry.surahNumber,
-        entry.positionSeconds,
-      );
-      push({screen: 'nowPlaying'});
+    void playOrOpen({
+      reciterId: entry.reciterId,
+      rewayahId: entry.rewayahId || undefined,
+      surahNumber: entry.surahNumber,
+      startSeconds: entry.positionSeconds,
+      source: 'home-continue',
     });
   }
 

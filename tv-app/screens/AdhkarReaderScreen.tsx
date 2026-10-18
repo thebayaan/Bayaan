@@ -22,6 +22,7 @@ import {
 import {createRemoteKeyFilter} from '../services/remoteKeys';
 import type {AdhkarAudio} from '../store/adhkarSessionController';
 import {useAdhkarSessionStore} from '../store/adhkarSessionStore';
+import {useKeepAwakeWhile} from '../hooks/useKeepAwakeWhile';
 import {useNavStore, type AdhkarStartMode} from '../store/navStore';
 import {colors} from '../theme/colors';
 import {fonts} from '../theme/typography';
@@ -94,6 +95,15 @@ export function AdhkarReaderScreen({listId, mode}: Props): React.ReactElement {
   const index = ready ? session.index : 0;
   const dhikr = adhkar[index];
   const finished = ready && session.finished;
+  // Listening through (or counting) runs without a press: keep the screen on
+  // while a recitation plays, and between dhikr while auto-advance carries on.
+  useKeepAwakeWhile(
+    !finished &&
+      (audio === 'playing' ||
+        audio === 'loading' ||
+        (autoAdvance && audio === 'ended')),
+    'adhkar-reader',
+  );
   const pages = useMemo(
     () => (dhikr ? dhikrPages(dhikr.arabic, dhikr.translation) : []),
     [dhikr],

@@ -7,7 +7,11 @@ import {useContextMenuStore} from '../../store/contextMenuStore';
 import {useReciters} from '../../hooks/useReciters';
 import {useFavorites} from '../../hooks/useFavorites';
 import {useNavStore} from '../../store/navStore';
-import {usePlayer} from '../../hooks/usePlayer';
+import {
+  chooseRewayah,
+  playOrOpen,
+  randomSurah,
+} from '../../services/playbackRouting';
 import {toggleFavorite} from '../../services/favoritesStore';
 import {fetchRewayat, getCachedRewayat} from '../../services/tvDataService';
 import {
@@ -22,12 +26,13 @@ import {createScaledStyles} from '../../theme/scale';
 import {getReciterArtwork} from '../../services/reciterArtwork';
 
 export function ReciterContextMenu(): React.ReactElement | null {
-  const reciterId = useContextMenuStore(s => s.reciterId);
+  const reciterId = useContextMenuStore(s =>
+    s.target?.kind === 'reciter' ? s.target.reciterId : null,
+  );
   const close = useContextMenuStore(s => s.close);
   const {reciters} = useReciters();
   const favorites = useFavorites();
   const push = useNavStore(s => s.push);
-  const {playRewayah, shufflePlayRewayah} = usePlayer();
 
   const reciter = useMemo(
     () => (reciterId ? reciters.find(r => r.id === reciterId) : null),
@@ -47,26 +52,32 @@ export function ReciterContextMenu(): React.ReactElement | null {
     return fetchRewayat(reciterId);
   }
 
+  // The menu closes at once; the player opens and shows any failure.
   async function handlePlay(): Promise<void> {
     if (!reciter) return;
-    const rewayat = await ensureRewayat();
-    const rewayah = rewayat[0];
-    if (!rewayah) return;
-    const first = rewayah.surah_list.find(n => n > 0);
-    if (first === undefined) return;
     close();
-    await playRewayah(reciter.id, reciter.name, rewayah, first);
-    push({screen: 'nowPlaying'});
+    const rewayah = chooseRewayah(await ensureRewayat(), 1);
+    const first = rewayah?.surah_list.find(n => n > 0) ?? 1;
+    void playOrOpen({
+      reciterId: reciter.id,
+      rewayahId: rewayah?.id,
+      surahNumber: first,
+      source: 'reciter-menu',
+    });
   }
 
   async function handleShuffle(): Promise<void> {
     if (!reciter) return;
-    const rewayat = await ensureRewayat();
-    const rewayah = rewayat[0];
-    if (!rewayah) return;
     close();
-    await shufflePlayRewayah(reciter.id, reciter.name, rewayah);
-    push({screen: 'nowPlaying'});
+    const rewayat = await ensureRewayat();
+    const rewayah = chooseRewayah(rewayat, 1) ?? rewayat[0];
+    void playOrOpen({
+      reciterId: reciter.id,
+      rewayahId: rewayah?.id,
+      surahNumber: (rewayah && randomSurah(rewayah.surah_list)) ?? 1,
+      shuffle: true,
+      source: 'reciter-menu',
+    });
   }
 
   function handleFavorite(): void {
@@ -82,31 +93,31 @@ export function ReciterContextMenu(): React.ReactElement | null {
 
   const artwork = getReciterArtwork(reciter);
   return (
-    <View style={styles.scrim}>
-      <View style={styles.sheet}>
-        <View style={styles.header}>
+    <View style={menuStyles.scrim}>
+      <View style={menuStyles.sheet}>
+        <View style={menuStyles.header}>
           {artwork ? (
             <Image
               source={artwork}
-              style={styles.portrait}
+              style={menuStyles.portrait}
               contentFit="cover"
               cachePolicy="memory-disk"
             />
           ) : (
-            <View style={[styles.portrait, styles.portraitPlaceholder]}>
-              <Text style={styles.initial}>
+            <View style={[menuStyles.portrait, menuStyles.portraitPlaceholder]}>
+              <Text style={menuStyles.initial}>
                 {reciter.name.charAt(0).toUpperCase()}
               </Text>
             </View>
           )}
-          <View style={styles.headerMeta}>
-            <Text style={styles.kicker}>RECITER</Text>
-            <Text style={styles.name} numberOfLines={2}>
+          <View style={menuStyles.headerMeta}>
+            <Text style={menuStyles.kicker}>RECITER</Text>
+            <Text style={menuStyles.name} numberOfLines={2}>
               {reciter.name}
             </Text>
           </View>
         </View>
-        <View style={styles.rows}>
+        <View style={menuStyles.rows}>
           <MenuRow
             icon={<FocusIcon icon={PlayIcon} size={20} />}
             label="Play"
@@ -134,14 +145,14 @@ export function ReciterContextMenu(): React.ReactElement | null {
   );
 }
 
-type MenuRowProps = {
+export type MenuRowProps = {
   icon: React.ReactNode;
   label: string;
   onPress: () => void;
   hasTVPreferredFocus?: boolean;
 };
 
-function MenuRow({
+export function MenuRow({
   icon,
   label,
   onPress,
@@ -152,16 +163,16 @@ function MenuRow({
       onPress={onPress}
       accessibilityLabel={label}
       hasTVPreferredFocus={hasTVPreferredFocus}
-      style={styles.row}>
-      <View style={styles.rowInner}>
-        <View style={styles.iconBubble}>{icon}</View>
-        <FocusText style={styles.rowLabel}>{label}</FocusText>
+      style={menuStyles.row}>
+      <View style={menuStyles.rowInner}>
+        <View style={menuStyles.iconBubble}>{icon}</View>
+        <FocusText style={menuStyles.rowLabel}>{label}</FocusText>
       </View>
     </FocusableButton>
   );
 }
 
-const styles = createScaledStyles({
+export const menuStyles = createScaledStyles({
   scrim: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.7)',

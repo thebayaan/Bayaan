@@ -155,7 +155,7 @@ export function SearchScreen(): React.ReactElement {
         <BrowsePanel
           reciters={reciters}
           onReciter={actions.openReciter}
-          onSurah={surah => void actions.playSurah(surah)}
+          onSurah={surah => void actions.playSurahOrSay(surah)}
           onAdhkar={list => actions.openAdhkar(list)}
           onBrowseAll={tab => actions.switchTab(tab)}
         />
@@ -177,7 +177,7 @@ export function SearchScreen(): React.ReactElement {
         />
         <ResultSections
           results={results}
-          onSurah={surah => void actions.playSurah(surah)}
+          onSurah={surah => void actions.playSurahOrSay(surah)}
           onReciter={actions.openReciter}
           onAdhkar={list => actions.openAdhkar(list)}
         />

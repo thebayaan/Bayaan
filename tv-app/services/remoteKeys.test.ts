@@ -1,4 +1,4 @@
-import {createRemoteKeyFilter} from './remoteKeys';
+import {createRemoteKeyFilter, screenOwnsPlayPause} from './remoteKeys';
 
 describe('createRemoteKeyFilter', () => {
   it('passes tvOS events, which carry no key phase', () => {
@@ -30,5 +30,24 @@ describe('createRemoteKeyFilter', () => {
     const filter = createRemoteKeyFilter();
     expect(filter({eventType: 'select'})).toBeNull();
     expect(filter({eventType: 'up', eventKeyAction: 0})).toBeNull();
+  });
+});
+
+describe('screenOwnsPlayPause', () => {
+  it('the player and the adhkar reader handle Play/Pause themselves', () => {
+    expect(screenOwnsPlayPause({screen: 'nowPlaying'})).toBe(true);
+    expect(screenOwnsPlayPause({screen: 'adhkarReader', listId: 'x'})).toBe(
+      true,
+    );
+  });
+
+  it('root places and other screens leave it to the app-wide handler', () => {
+    expect(screenOwnsPlayPause(undefined)).toBe(false);
+    expect(screenOwnsPlayPause({screen: 'reciterDetail', reciterId: 'r'})).toBe(
+      false,
+    );
+    expect(screenOwnsPlayPause({screen: 'playlist', playlistId: 'p'})).toBe(
+      false,
+    );
   });
 });

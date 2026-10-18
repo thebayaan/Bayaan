@@ -34,4 +34,30 @@ describe('navStore', () => {
     useNavStore.getState().pop();
     expect(useNavStore.getState().stack).toEqual([]);
   });
+
+  it('pushing the screen already on top is a no-op', () => {
+    useNavStore.getState().push({screen: 'reciterDetail', reciterId: 'r1'});
+    useNavStore.getState().push({screen: 'nowPlaying'});
+    useNavStore.getState().push({screen: 'nowPlaying'});
+    expect(useNavStore.getState().stack).toEqual([
+      {screen: 'reciterDetail', reciterId: 'r1'},
+      {screen: 'nowPlaying'},
+    ]);
+  });
+
+  it('pushing the player while it is deeper pops back to it', () => {
+    const {push} = useNavStore.getState();
+    push({screen: 'nowPlaying'});
+    push({screen: 'reciterDetail', reciterId: 'r1'});
+    push({screen: 'playlist', playlistId: 'p1'});
+    push({screen: 'nowPlaying'});
+    expect(useNavStore.getState().stack).toEqual([{screen: 'nowPlaying'}]);
+  });
+
+  it('a different entry of the same screen still stacks', () => {
+    const {push} = useNavStore.getState();
+    push({screen: 'reciterDetail', reciterId: 'r1'});
+    push({screen: 'reciterDetail', reciterId: 'r2'});
+    expect(useNavStore.getState().stack).toHaveLength(2);
+  });
 });

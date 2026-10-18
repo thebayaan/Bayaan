@@ -4,6 +4,7 @@ import {LogoMark} from '../brand/LogoMark';
 import {SurahArtwork} from '../brand/SurahArtwork';
 import {useNavStore, type TabKey} from '../../store/navStore';
 import {useTVPlayerStore} from '../../store/tvPlayerStore';
+import {openPlayer} from '../../services/playbackRouting';
 import {colors} from '../../theme/colors';
 import {fonts} from '../../theme/typography';
 import {createScaledStyles, scale} from '../../theme/scale';
@@ -174,19 +175,41 @@ function SidebarNowPlaying({
   onBlur,
 }: NowPlayingProps): React.ReactElement | null {
   const status = useTVPlayerStore(s => s.status);
+  const finished = useTVPlayerStore(s => s.finished);
   const item = useTVPlayerStore(s => s.queue[s.currentIndex]);
-  const push = useNavStore(s => s.push);
   if (!item) return null;
 
   const isPlaying = status === 'playing';
+  const failed = status === 'error';
+  const loading = status === 'loading' || status === 'buffering';
+  // The second line says what OK will do when it's not just "open".
+  const note = failed
+    ? "Couldn't play · Open to retry"
+    : finished
+      ? 'Finished · Play again'
+      : loading
+        ? 'Loading…'
+        : item.subtitle;
+  const state = failed
+    ? "Couldn't play"
+    : finished
+      ? 'Finished'
+      : isPlaying
+        ? 'Playing'
+        : loading
+          ? 'Loading'
+          : 'Paused';
   return (
     <Pressable
-      onPress={() => push({screen: 'nowPlaying'})}
+      onPress={() => {
+        if (finished) useTVPlayerStore.getState().replay();
+        openPlayer();
+      }}
       onFocus={onFocus}
       onBlur={onBlur}
-      accessibilityLabel={`${isPlaying ? 'Playing' : 'Paused'}: ${
-        item.title
-      }. Open player.`}
+      accessibilityLabel={`${state}: ${item.title}. ${
+        finished ? 'Play again' : 'Open player'
+      }.`}
       style={[
         styles.nowPlaying,
         open && styles.nowPlayingOpen,
@@ -198,8 +221,10 @@ function SidebarNowPlaying({
           glyphSize={26}
           id="sidebar-now-playing"
         />
-        <View style={styles.badge}>
-          {isPlaying ? (
+        <View style={[styles.badge, failed && styles.badgeError]}>
+          {failed ? (
+            <Text style={styles.badgeMark}>!</Text>
+          ) : isPlaying ? (
             <PauseIcon color={colors.accentInk} size={scale(10)} />
           ) : (
             <PlayIcon color={colors.accentInk} size={scale(10)} />
@@ -219,7 +244,7 @@ function SidebarNowPlaying({
           <Text
             numberOfLines={1}
             style={[styles.nowPlayingSub, focused && styles.itemLabelFocused]}>
-            {item.subtitle}
+            {note}
           </Text>
         </View>
       ) : null}
@@ -316,6 +341,19 @@ const styles = createScaledStyles({
     backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  // A failure: a hollow ring with "!" (sky stays the only indicator color).
+  badgeError: {
+    backgroundColor: colors.background,
+    borderWidth: 2,
+    borderColor: colors.accent,
+  },
+  badgeMark: {
+    color: colors.accent,
+    fontFamily: fonts.extraBold,
+    fontWeight: '800',
+    fontSize: 12,
+    lineHeight: 14,
   },
   nowPlayingText: {flex: 1, minWidth: 0},
   nowPlayingTitle: {

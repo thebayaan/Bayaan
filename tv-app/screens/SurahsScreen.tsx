@@ -1,5 +1,5 @@
 import {FlashList} from '@shopify/flash-list';
-import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {ScrollView, Text, TVFocusGuideView, View} from 'react-native';
 import {FilterChip} from '../components/browse/FilterChip';
 import {SurahTile, SURAH_TILE_WIDTH} from '../components/browse/SurahTile';
@@ -8,21 +8,24 @@ import {FocusableButton} from '../components/primitives/FocusableButton';
 import {FocusText} from '../components/primitives/focusContext';
 import {useContinueListening} from '../hooks/useContinueListening';
 import {useDefaultReciter} from '../hooks/useDefaultReciter';
-import {usePlayer} from '../hooks/usePlayer';
 import {useReciters} from '../hooks/useReciters';
 import {
   featuredFirst,
   filterSurahs,
-  pickPlayableRewayah,
   type SurahFilter,
 } from '../services/browseCatalog';
-import {fetchRewayat, getCachedRewayat} from '../services/tvDataService';
+import {
+  playOrOpen,
+  surahTitle,
+  voiceForSurah,
+} from '../services/playbackRouting';
+import {showToast} from '../store/toastStore';
 import {useNavStore} from '../store/navStore';
 import {colors} from '../theme/colors';
 import {spacing} from '../theme/spacing';
 import {fonts, typography} from '../theme/typography';
 import {createScaledStyles, scale} from '../theme/scale';
-import type {Reciter, Rewayah, Surah} from '../types/reciter';
+import type {Reciter, Surah} from '../types/reciter';
 
 const FILTERS: ReadonlyArray<{key: SurahFilter; label: string}> = [
   {key: 'all', label: 'All 114'},
@@ -40,13 +43,6 @@ const CELL_WIDTH = SURAH_TILE_WIDTH + CELL_PAD * 2;
 /** Art 168 + label row and gaps + the cell's vertical padding. */
 const ROW_HEIGHT = 196;
 
-async function rewayatFor(reciter: Reciter): Promise<Rewayah[]> {
-  const cached = getCachedRewayat(reciter.id);
-  if (cached && cached.length > 0) return cached;
-  if (reciter.rewayat && reciter.rewayat.length > 0) return reciter.rewayat;
-  return fetchRewayat(reciter.id);
-}
-
 function overrideItemLayout(layout: {span?: number; size?: number}): void {
   layout.span = 1;
   layout.size = scale(ROW_HEIGHT);
@@ -56,7 +52,6 @@ export function SurahsScreen(): React.ReactElement {
   const {reciters} = useReciters();
   const {defaultReciterId} = useDefaultReciter();
   const continueEntries = useContinueListening();
-  const {playRewayah} = usePlayer();
   const push = useNavStore(s => s.push);
   const numColumns = useGridColumns(CELL_WIDTH);
 
@@ -71,7 +66,6 @@ export function SurahsScreen(): React.ReactElement {
     const timer = setTimeout(() => setFocusGridFirst(false), 1500);
     return () => clearTimeout(timer);
   }, []);
-  const busyRef = useRef<boolean>(false);
 
   const reciter = useMemo<Reciter | null>(() => {
     const chosen = defaultReciterId
@@ -96,31 +90,21 @@ export function SurahsScreen(): React.ReactElement {
   }, [continueEntries]);
 
   const handleSelect = useCallback(
-    async (surahNumber: number): Promise<void> => {
-      if (busyRef.current) return;
-      busyRef.current = true;
-      try {
-        // The default reciter first; if they lack this surah, the first
-        // featured reciter who has it, so a press always plays something.
-        const candidates = [
-          ...(reciter ? [reciter] : []),
-          ...featuredFirst(reciters).filter(r => r.id !== reciter?.id),
-        ].slice(0, 12);
-        for (const candidate of candidates) {
-          const rewayah = pickPlayableRewayah(
-            await rewayatFor(candidate),
-            surahNumber,
-          );
-          if (!rewayah || !rewayah.surah_list.includes(surahNumber)) continue;
-          await playRewayah(candidate.id, candidate.name, rewayah, surahNumber);
-          push({screen: 'nowPlaying'});
-          return;
-        }
-      } finally {
-        busyRef.current = false;
+    (surahNumber: number): void => {
+      // The default reciter first; if they lack this surah, the first
+      // featured reciter who has it, so a press always plays something.
+      const candidates = [
+        ...(reciter ? [reciter] : []),
+        ...featuredFirst(reciters).filter(r => r.id !== reciter?.id),
+      ];
+      const voice = voiceForSurah(candidates, surahNumber);
+      if (!voice) {
+        showToast(`No reciter has ${surahTitle(surahNumber)} yet.`, 'error');
+        return;
       }
+      void playOrOpen({...voice, source: 'surahs'});
     },
-    [reciter, reciters, playRewayah, push],
+    [reciter, reciters],
   );
 
   function chooseFilter(next: SurahFilter): void {
