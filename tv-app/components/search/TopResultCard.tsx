@@ -186,9 +186,12 @@ function ReciterTop({
 function AdhkarTop({top, actions, takeFocus}: Props): React.ReactElement {
   // The hands glyph stands in until the list's illustration has loaded, and
   // stays when it can't be (offline).
-  const [imageShown, setImageShown] = useState(false);
+  // Kept per list: another list's illustration may not be loaded (or
+  // loadable) yet.
+  const [loadedFor, setLoadedFor] = useState<string | null>(null);
   const list = top.type === 'adhkar' ? top.item : null;
   if (!list) return <View />;
+  const imageShown = loadedFor === list.id;
   const count = adhkarCount(list.id);
   const minutes = estimateMinutes(adhkarForList(list.id));
   return (
@@ -210,7 +213,7 @@ function AdhkarTop({top, actions, takeFocus}: Props): React.ReactElement {
             cachePolicy="memory-disk"
             transition={250}
             accessible={false}
-            onLoad={() => setImageShown(true)}
+            onLoad={() => setLoadedFor(list.id)}
           />
         </View>
       }
