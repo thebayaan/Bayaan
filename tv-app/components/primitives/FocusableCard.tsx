@@ -9,6 +9,8 @@ import {FocusedContext} from './focusContext';
 type Props = {
   onPress: () => void;
   onLongPress?: () => void;
+  /** Called when the card gains focus (e.g. to scroll its row into place). */
+  onFocus?: () => void;
   children: React.ReactNode;
   hasTVPreferredFocus?: boolean;
   style?: StyleProp<ViewStyle>;
@@ -35,6 +37,7 @@ type Props = {
 export function FocusableCard({
   onPress,
   onLongPress,
+  onFocus,
   children,
   hasTVPreferredFocus,
   style,
@@ -64,6 +67,7 @@ export function FocusableCard({
         onFocus={() => {
           setFocused(true);
           animateFocusScale(scale, focusScale);
+          onFocus?.();
         }}
         onBlur={() => {
           setFocused(false);

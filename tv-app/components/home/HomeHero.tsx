@@ -22,13 +22,22 @@ type Props = {
   onPrimary: () => void;
   secondaryLabel: string;
   onSecondary: () => void;
+  /** Which button takes focus: the primary on arrival, the secondary when
+      returning from its picker, neither when "Now playing" leads. */
+  preferredFocus: 'primary' | 'secondary' | null;
+  /** Any of the hero's buttons took focus. */
+  onFocus: () => void;
+  /** Drawn above the kicker ("Now playing"). */
+  header?: React.ReactNode;
+  /** Drawn in the top right corner, scrolling with the hero (the clock). */
+  corner?: React.ReactNode;
 };
 
 /**
  * The moment at the top of Home: kicker, big title, one sentence, a primary
  * action (outlined squircle, cream on focus) and a quiet secondary, with
- * the surah's or list's calligraphy large on the right. The primary takes
- * the screen's first focus.
+ * the surah's or list's calligraphy large on the right, under the clock.
+ * The primary takes the screen's first focus unless "Now playing" leads.
  */
 export function HomeHero({
   kicker,
@@ -39,12 +48,16 @@ export function HomeHero({
   onPrimary,
   secondaryLabel,
   onSecondary,
+  preferredFocus,
+  onFocus,
+  header,
+  corner,
 }: Props): React.ReactElement {
   return (
     <View style={styles.hero}>
       <View style={styles.art} pointerEvents="none" accessible={false}>
         {art.kind === 'surah' ? (
-          <SurahGlyph surahNumber={art.surahNumber} size={300} />
+          <SurahGlyph surahNumber={art.surahNumber} size={260} />
         ) : (
           <Text
             numberOfLines={1}
@@ -57,12 +70,18 @@ export function HomeHero({
           </Text>
         )}
       </View>
+      {corner ? (
+        <View style={styles.corner} pointerEvents="none">
+          {corner}
+        </View>
+      ) : null}
       <View style={styles.text}>
+        {header}
         <Text style={styles.kicker}>{kicker}</Text>
         <Text style={styles.title} numberOfLines={1}>
           {title}
         </Text>
-        <Text style={styles.sentence} numberOfLines={3}>
+        <Text style={styles.sentence} numberOfLines={2}>
           {sentence}
         </Text>
         {/* autoFocus: coming up from the rails lands on these buttons (the
@@ -70,7 +89,8 @@ export function HomeHero({
         <TVFocusGuideView autoFocus style={styles.actions}>
           <FocusableButton
             onPress={onPrimary}
-            hasTVPreferredFocus
+            onFocus={onFocus}
+            hasTVPreferredFocus={preferredFocus === 'primary'}
             outlined
             accessibilityLabel={`${primaryLabel} ${title}`}
             style={styles.button}>
@@ -81,6 +101,8 @@ export function HomeHero({
           </FocusableButton>
           <FocusableButton
             onPress={onSecondary}
+            onFocus={onFocus}
+            hasTVPreferredFocus={preferredFocus === 'secondary'}
             accessibilityLabel={secondaryLabel}
             style={styles.button}>
             <FocusText style={styles.buttonText}>{secondaryLabel}</FocusText>
@@ -92,25 +114,26 @@ export function HomeHero({
 }
 
 const styles = createScaledStyles({
-  hero: {height: 430, justifyContent: 'center'},
+  hero: {height: 440, justifyContent: 'center'},
+  corner: {position: 'absolute', top: 12, right: 0},
   art: {
     position: 'absolute',
     right: 40,
-    // Below the clock, which sits over the top right corner.
-    top: 60,
+    // Clear of the clock block in the top right corner.
+    top: 120,
     bottom: 0,
-    width: 820,
+    width: 760,
     alignItems: 'flex-end',
     justifyContent: 'center',
   },
   arabic: {
     color: colors.text,
-    fontSize: 150,
-    lineHeight: 250,
+    fontSize: 130,
+    lineHeight: 220,
     textAlign: 'right',
     writingDirection: 'rtl',
   },
-  text: {width: 820, gap: 14},
+  text: {width: 820, gap: 12},
   kicker: {
     color: colors.accent,
     fontFamily: fonts.extraBold,

@@ -8,17 +8,20 @@ import {createScaledStyles} from '../../theme/scale';
 type Props = {
   /** The time to show; pass the screen's useClock() value. */
   now: Date;
+  /** Show the weekday under the time (Home hides it when the hero names the day). */
+  showDay?: boolean;
 };
 
 /**
  * Time and weekday, top right, as on every approved screen. Pin it with the
- * parent's layout (Home places it absolutely); it never takes focus.
+ * parent's layout (Home places it in the hero, so it scrolls away with it);
+ * it never takes focus.
  */
-export function HomeClock({now}: Props): React.ReactElement {
+export function HomeClock({now, showDay = true}: Props): React.ReactElement {
   return (
     <View style={styles.wrap} accessible={false} pointerEvents="none">
       <Text style={styles.time}>{formatClockTime(now)}</Text>
-      <Text style={styles.day}>{formatWeekday(now)}</Text>
+      {showDay ? <Text style={styles.day}>{formatWeekday(now)}</Text> : null}
     </View>
   );
 }

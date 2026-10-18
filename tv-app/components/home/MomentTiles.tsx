@@ -4,56 +4,136 @@ import {FocusableCard} from '../primitives/FocusableCard';
 import {FocusFrame, FocusText} from '../primitives/focusContext';
 import {SurahArtwork} from '../brand/SurahArtwork';
 import {GradientFill} from '../brand/GradientFill';
-import {useContextMenuStore} from '../../store/contextMenuStore';
+import {useRailFocus} from './HomeRail';
 import {quranTextFontAvailable} from '../../theme/calligraphy';
 import {colors} from '../../theme/colors';
 import {fonts, quranTextFontFamily} from '../../theme/typography';
 import {createScaledStyles} from '../../theme/scale';
 
 const TILE_W = 236;
+const WIDE_W = 320;
 const TILE_H = 176;
 const RADIUS = 16;
 
 type SurahTileProps = {
   surahNumber: number;
   surahName: string;
+  /**
+   * The line under the card. The artwork already names the surah, so this
+   * says something new: its length, or the voice it plays in.
+   */
+  caption: string;
   onSelect: (surahNumber: number) => void;
+  /** Long press: the surah menu. */
+  onLongPress?: (surahNumber: number) => void;
+  /** Unique per rail, for the artwork's gradient id. */
+  idPrefix: string;
 };
 
-/** A surah as its artwork card with the name below (moments, quick picks). */
+/** A surah as its artwork card with a caption below. */
 function SurahTileImpl({
   surahNumber,
   surahName,
+  caption,
   onSelect,
+  onLongPress,
+  idPrefix,
 }: SurahTileProps): React.ReactElement {
+  const onFocusRail = useRailFocus();
   return (
     <FocusableCard
       ring={false}
       style={styles.tile}
       onPress={() => onSelect(surahNumber)}
-      onLongPress={() =>
-        useContextMenuStore.getState().openSurah({surahNumber, origin: 'home'})
-      }
-      accessibilityLabel={`Play ${surahName}`}>
+      onLongPress={onLongPress ? () => onLongPress(surahNumber) : undefined}
+      onFocus={onFocusRail}
+      accessibilityLabel={`Play ${surahName}, ${caption}`}>
       <FocusFrame radius={RADIUS} style={styles.frame}>
         <SurahArtwork
           surahNumber={surahNumber}
           glyphSize={84}
-          id={`home-tile-${surahNumber}`}
+          id={`home-${idPrefix}-${surahNumber}`}
         />
       </FocusFrame>
-      <FocusText
-        style={styles.label}
-        color={colors.textSecondary}
-        focusedColor={colors.text}
-        numberOfLines={1}>
-        {surahName}
-      </FocusText>
+      <Caption text={caption} />
     </FocusableCard>
   );
 }
 
 export const SurahTile = React.memo(SurahTileImpl);
+
+type ColorTileProps = {
+  /** Unique on Home, for the gradient id. */
+  id: string;
+  title: string;
+  /** A second line inside the card, under the title. */
+  subtitle?: string;
+  /** Arabic title in the top corner (adhkar lists). */
+  arabic?: string;
+  /** The line under the card, level with the surah tiles' captions. */
+  caption: string;
+  color: string;
+  onSelect: () => void;
+  accessibilityLabel: string;
+};
+
+/**
+ * A wide card in a colour fading into ink, for adhkar lists, collections,
+ * playlists and "All ..." tiles: the title inside, a caption below so the
+ * row's baseline matches the surah tiles beside it.
+ */
+function ColorTileImpl({
+  id,
+  title,
+  subtitle,
+  arabic,
+  caption,
+  color,
+  onSelect,
+  accessibilityLabel,
+}: ColorTileProps): React.ReactElement {
+  const onFocusRail = useRailFocus();
+  return (
+    <FocusableCard
+      ring={false}
+      style={styles.wideTile}
+      onPress={onSelect}
+      onFocus={onFocusRail}
+      accessibilityLabel={accessibilityLabel}>
+      <FocusFrame radius={RADIUS} style={styles.wideFrame}>
+        <GradientFill
+          colors={[colors.surfaceElevated, color]}
+          id={`home-tile-${id}`}
+        />
+        <View style={styles.scrim} />
+        {arabic ? (
+          <Text
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            style={[
+              styles.arabic,
+              quranTextFontAvailable && {fontFamily: quranTextFontFamily},
+            ]}>
+            {arabic}
+          </Text>
+        ) : null}
+        <View style={styles.wideText}>
+          <Text style={styles.wideTitle} numberOfLines={subtitle ? 1 : 2}>
+            {title}
+          </Text>
+          {subtitle ? (
+            <Text style={styles.wideSubtitle} numberOfLines={1}>
+              {subtitle}
+            </Text>
+          ) : null}
+        </View>
+      </FocusFrame>
+      <Caption text={caption} />
+    </FocusableCard>
+  );
+}
+
+export const ColorTile = React.memo(ColorTileImpl);
 
 type AdhkarTileProps = {
   listId: string;
@@ -64,10 +144,7 @@ type AdhkarTileProps = {
   onSelect: (listId: string) => void;
 };
 
-/**
- * An adhkar list among the surah tiles: its colour fading into ink, the
- * Arabic title in the corner, and title, count and minutes below.
- */
+/** An adhkar list: its colour, the Arabic title, and count and minutes below. */
 function AdhkarTileImpl({
   listId,
   title,
@@ -77,55 +154,46 @@ function AdhkarTileImpl({
   onSelect,
 }: AdhkarTileProps): React.ReactElement {
   return (
-    <FocusableCard
-      ring={false}
-      style={styles.adhkarTile}
-      onPress={() => onSelect(listId)}
-      accessibilityLabel={`${title} adhkar, ${meta}`}>
-      <FocusFrame radius={RADIUS} style={styles.adhkarFrame}>
-        <GradientFill
-          colors={[colors.surfaceElevated, color]}
-          id={`home-adhkar-${listId}`}
-        />
-        <View style={styles.adhkarScrim} />
-        <Text
-          numberOfLines={1}
-          adjustsFontSizeToFit
-          style={[
-            styles.arabic,
-            quranTextFontAvailable && {fontFamily: quranTextFontFamily},
-          ]}>
-          {arabicTitle}
-        </Text>
-        <View style={styles.adhkarText}>
-          <Text style={styles.adhkarTitle} numberOfLines={1}>
-            {title}
-          </Text>
-          <Text style={styles.adhkarMeta} numberOfLines={1}>
-            {meta}
-          </Text>
-        </View>
-      </FocusFrame>
-    </FocusableCard>
+    <ColorTile
+      id={`adhkar-${listId}`}
+      title={title}
+      arabic={arabicTitle}
+      caption={meta}
+      color={color}
+      onSelect={() => onSelect(listId)}
+      accessibilityLabel={`${title} adhkar, ${meta}`}
+    />
   );
 }
 
 export const AdhkarTile = React.memo(AdhkarTileImpl);
+
+function Caption({text}: {text: string}): React.ReactElement {
+  return (
+    <FocusText
+      style={styles.caption}
+      color={colors.textSecondary}
+      focusedColor={colors.text}
+      numberOfLines={1}>
+      {text}
+    </FocusText>
+  );
+}
 
 const FRAME_PAD = 18; // FocusFrame ring 4 + gap 5, both sides
 
 const styles = createScaledStyles({
   tile: {width: TILE_W + FRAME_PAD, gap: 10},
   frame: {width: TILE_W + FRAME_PAD, height: TILE_H + FRAME_PAD},
-  label: {
+  caption: {
     fontFamily: fonts.semiBold,
     fontWeight: '600',
-    fontSize: 18,
+    fontSize: 17,
     paddingHorizontal: 12,
   },
-  adhkarTile: {width: 320 + FRAME_PAD},
-  adhkarFrame: {width: 320 + FRAME_PAD, height: TILE_H + FRAME_PAD},
-  adhkarScrim: {
+  wideTile: {width: WIDE_W + FRAME_PAD, gap: 10},
+  wideFrame: {width: WIDE_W + FRAME_PAD, height: TILE_H + FRAME_PAD},
+  scrim: {
     position: 'absolute',
     left: 0,
     right: 0,
@@ -143,14 +211,14 @@ const styles = createScaledStyles({
     lineHeight: 64,
     writingDirection: 'rtl',
   },
-  adhkarText: {position: 'absolute', left: 20, right: 20, bottom: 18, gap: 4},
-  adhkarTitle: {
+  wideText: {position: 'absolute', left: 20, right: 20, bottom: 18, gap: 4},
+  wideTitle: {
     color: colors.text,
     fontFamily: fonts.bold,
     fontWeight: '700',
     fontSize: 22,
   },
-  adhkarMeta: {
+  wideSubtitle: {
     color: colors.textSecondary,
     fontFamily: fonts.medium,
     fontWeight: '500',

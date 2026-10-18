@@ -12,6 +12,8 @@ type Props = {
   onPress: () => void;
   /** Hold OK; the button gets focus back when the menu it opens closes. */
   onLongPress?: () => void;
+  /** Called when the button gains focus. */
+  onFocus?: () => void;
   children: React.ReactNode | ((focused: boolean) => React.ReactNode);
   hasTVPreferredFocus?: boolean;
   style?: StyleProp<ViewStyle>;
@@ -38,6 +40,7 @@ type Props = {
 export function FocusableButton({
   onPress,
   onLongPress,
+  onFocus,
   children,
   hasTVPreferredFocus,
   style,
@@ -56,6 +59,7 @@ export function FocusableButton({
   const handleFocus = (): void => {
     setIsFocused(true);
     animateFocusScale(scaleValue, focusScale);
+    onFocus?.();
   };
 
   const handleBlur = (): void => {
