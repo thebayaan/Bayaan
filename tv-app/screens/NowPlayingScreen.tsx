@@ -67,6 +67,11 @@ const SLEPT_SHADE = 0.92;
  * soon after (the same press seen twice) are swallowed too.
  */
 const WAKE_SWALLOW_MS = 400;
+/**
+ * Holding OK to wake the room reaches onLongPress well after the press that
+ * woke it, so a long press this soon after waking isn't a verse repeat.
+ */
+const WAKE_SWALLOW_LONG_MS = 1500;
 
 // The ambience follows the recitation app-wide, wherever playback starts,
 // and so does a verse repeat while the listener browses.
@@ -299,15 +304,18 @@ export function NowPlayingScreen(): React.ReactElement {
   // The press that wakes a dimmed room, or one a sleep timer left dark,
   // only wakes it.
   const wokeAt = useRef(0);
-  const wakeIfAsleep = useCallback((): boolean => {
-    if (Date.now() - wokeAt.current < WAKE_SWALLOW_MS) return true;
-    const asleep = useTVPlayerStore.getState().slept || dimmedRef.current;
-    if (!asleep) return false;
-    wokeAt.current = Date.now();
-    wake();
-    markActivity();
-    return true;
-  }, [wake, markActivity]);
+  const wakeIfAsleep = useCallback(
+    (swallowMs: number = WAKE_SWALLOW_MS): boolean => {
+      if (Date.now() - wokeAt.current < swallowMs) return true;
+      const asleep = useTVPlayerStore.getState().slept || dimmedRef.current;
+      if (!asleep) return false;
+      wokeAt.current = Date.now();
+      wake();
+      markActivity();
+      return true;
+    },
+    [wake, markActivity],
+  );
 
   const remoteFilter = useMemo(createRemoteKeyFilter, []);
   const handleTVEvent = useCallback(
@@ -469,7 +477,7 @@ export function NowPlayingScreen(): React.ReactElement {
                 setTrayOpen(true);
               }}
               onLongPress={() => {
-                if (wakeIfAsleep()) return;
+                if (wakeIfAsleep(WAKE_SWALLOW_LONG_MS)) return;
                 markActivity();
                 repeatCurrentVerse();
               }}

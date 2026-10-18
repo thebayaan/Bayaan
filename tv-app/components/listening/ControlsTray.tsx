@@ -319,11 +319,13 @@ function Tool({
       onPress={onPress}
       accessibilityLabel={accessibilityLabel ?? `${label}: ${value ?? ''}`}
       hasTVPreferredFocus={focusOnReturn}
+      containerStyle={styles.toolBox}
       style={styles.tool}>
       <FocusText
         style={styles.toolLabel}
         color={colors.textSecondary}
-        focusedColor={colors.onFocusSecondary}>
+        focusedColor={colors.onFocusSecondary}
+        numberOfLines={1}>
         {label}
       </FocusText>
       {icon ?? (
@@ -387,6 +389,9 @@ const styles = createScaledStyles({
     flexShrink: 1,
     marginLeft: 24,
   },
+  // Long values (a reciter's name, "End of surah") shrink and truncate
+  // rather than push the last tools off the screen.
+  toolBox: {flexShrink: 1, minWidth: 0},
   tool: {
     maxWidth: 280,
     minHeight: 72,

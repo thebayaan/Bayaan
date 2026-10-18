@@ -66,6 +66,11 @@ const QUEUE_SHOWN = 40;
 const QUEUE_PLAYED_SHOWN = 10;
 /** The Save panel's "New playlist" row, among the playlist ids. */
 const NEW_PLAYLIST = '__new__';
+/**
+ * The Queue panel's "Start again" row. Not index 0 itself: the first surah
+ * can be listed already among the played ones, and rows are keyed by value.
+ */
+const START_AGAIN = -2;
 
 type Props = {
   currentAyah: number;
@@ -281,7 +286,10 @@ export function ListeningPanels({
     });
     const last = currentIndex >= queue.length - 1;
     if (last && queue.length > 1) {
-      options.push({value: 0, label: 'Start again from the first surah'});
+      options.push({
+        value: START_AGAIN,
+        label: 'Start again from the first surah',
+      });
     } else if (queue.length <= 1) {
       options.push({value: -1, label: 'Nothing else is queued'});
     }
@@ -294,7 +302,10 @@ export function ListeningPanels({
         onSelect: (index: number) => {
           setPanel(null);
           // The surah playing is already where the listener wants to be.
-          if (index >= 0 && index !== currentIndex) void jumpToIndex(index);
+          if (index === START_AGAIN) void jumpToIndex(0);
+          else if (index >= 0 && index !== currentIndex) {
+            void jumpToIndex(index);
+          }
         },
       },
     ];
