@@ -515,6 +515,10 @@ export function HomeScreen(): React.ReactElement {
     index: number;
   } | null>(null);
   const [menuFocusKey, setMenuFocusKey] = useState<string | null>(null);
+  const menuFocusKeyRef = useRef<string | null>(null);
+  menuFocusKeyRef.current = menuFocusKey;
+  // A key to prefer again once the prop has been committed as false.
+  const pendingFocusKey = useRef<string | null>(null);
   const heroPrimary = useRef<View>(null);
   const reciterByIdRef = useRef(reciterById);
   reciterByIdRef.current = reciterById;
@@ -542,13 +546,23 @@ export function HomeScreen(): React.ReactElement {
         if (key === undefined) return;
         claimFocusReturn();
         if (key === null) restoreFocusTo(heroPrimary);
-        else setMenuFocusKey(key);
+        else if (menuFocusKeyRef.current === key) {
+          // Still preferred from a removal a moment ago: the native prop
+          // only moves focus when it turns true, so turn it off first.
+          pendingFocusKey.current = key;
+          setMenuFocusKey(null);
+        } else setMenuFocusKey(key);
       }),
     [],
   );
   // Dropped once focus has landed, so a later re-render never pulls it back.
   useEffect(() => {
-    if (menuFocusKey === null) return;
+    if (menuFocusKey === null) {
+      const pending = pendingFocusKey.current;
+      pendingFocusKey.current = null;
+      if (pending !== null) setMenuFocusKey(pending);
+      return;
+    }
     const timer = setTimeout(() => setMenuFocusKey(null), 1500);
     return () => clearTimeout(timer);
   }, [menuFocusKey]);
