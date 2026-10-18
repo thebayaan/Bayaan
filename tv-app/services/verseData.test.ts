@@ -95,6 +95,8 @@ describe('fetchTranslation', () => {
       'Lord of the worlds—',
     ]);
     expect(cleanTranslationText('pre-dawn')).toBe('pre-dawn');
+    // A cached gap reads back as null and is passed over, not thrown on.
+    expect(cleanTranslationText(null as unknown as string)).toBeNull();
   });
 
   it('gives up on a request that never answers', async () => {

@@ -52,4 +52,17 @@ describe('retryUntilDone', () => {
     stop();
     expect(foreground).toBeNull();
   });
+
+  it('keeps trying after a lookup that throws', async () => {
+    const attempt = jest
+      .fn<Promise<boolean>, []>()
+      .mockRejectedValueOnce(new Error('boom'))
+      .mockResolvedValue(true);
+    const stop = retryUntilDone(attempt);
+    await flush();
+    jest.advanceTimersByTime(SYNC_RETRY_MS);
+    await flush();
+    expect(attempt).toHaveBeenCalledTimes(2);
+    stop();
+  });
 });

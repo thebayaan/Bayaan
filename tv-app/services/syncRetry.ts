@@ -18,10 +18,17 @@ export function retryUntilDone(
   const run = (): void => {
     if (stopped || busy) return;
     busy = true;
-    void attempt().then(done => {
-      busy = false;
-      if (done) stop();
-    });
+    // A lookup that throws past its own handlers counts as not done yet,
+    // rather than leave `busy` set and the retries stopped for good.
+    attempt().then(
+      done => {
+        busy = false;
+        if (done) stop();
+      },
+      () => {
+        busy = false;
+      },
+    );
   };
   const timer = setInterval(run, SYNC_RETRY_MS);
   const unsubscribe = onForeground?.(run);

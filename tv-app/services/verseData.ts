@@ -58,6 +58,8 @@ async function withTimeout<T>(
  * closed-up em dash.
  */
 export function cleanTranslationText(text: string): string {
+  // A cached translation with a gap reads back null there (JSON has no holes).
+  if (typeof text !== 'string') return text;
   return text.replace(/\s+[-–—]\s*$/, '—');
 }
 
