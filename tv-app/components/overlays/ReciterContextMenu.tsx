@@ -98,7 +98,7 @@ export function ReciterContextMenu(): React.ReactElement | null {
       />
       <MenuRow
         icon={<FocusIcon icon={HeartIcon} size={24} filled={isFav} />}
-        label={isFav ? 'Remove from favorites' : 'Add to favorites'}
+        label={isFav ? 'Remove from favourites' : 'Add to favourites'}
         onPress={handleFavorite}
       />
       <MenuRow

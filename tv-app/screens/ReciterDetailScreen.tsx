@@ -459,13 +459,13 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
               <FocusableButton
                 onPress={pressFavorite}
                 accessibilityLabel={
-                  isFav ? 'Remove from favorites' : 'Add to favorites'
+                  isFav ? 'Remove from favourites' : 'Add to favourites'
                 }
                 style={[styles.actionBtn, styles.favoriteBtn]}>
                 <View style={styles.actionInner}>
                   <FocusIcon icon={HeartIcon} size={20} filled={isFav} />
                   <FocusText style={styles.actionText}>
-                    {isFav ? 'Favorited' : 'Favorite'}
+                    {isFav ? 'Favourited' : 'Favourite'}
                   </FocusText>
                 </View>
               </FocusableButton>

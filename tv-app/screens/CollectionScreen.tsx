@@ -93,7 +93,7 @@ const EMPTY: Record<
     tab: 'surahs',
   },
   reciters: {
-    text: 'Open a reciter and choose Favorite.',
+    text: 'Open a reciter and choose Favourite.',
     action: 'Browse reciters',
     tab: 'reciters',
   },

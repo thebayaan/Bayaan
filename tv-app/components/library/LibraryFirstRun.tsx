@@ -51,7 +51,7 @@ const EXPLAINERS: readonly Explainer[] = [
     icon: PersonAudioIcon,
     round: true,
     title: 'Your reciters',
-    text: 'Open a reciter and choose Favorite.',
+    text: 'Open a reciter and choose Favourite.',
   },
 ];
 

@@ -168,7 +168,7 @@ function ReciterTop({
         onPress={() => actions.openReciter(reciter)}
       />
       <Action
-        label={favorite ? 'Favorited' : 'Favorite'}
+        label={favorite ? 'Favourited' : 'Favourite'}
         icon={HeartIcon}
         filled={favorite}
         onPress={() => actions.favoriteReciter(reciter)}
