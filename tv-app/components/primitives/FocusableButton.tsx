@@ -8,6 +8,8 @@ export {FocusText, useButtonFocused, useFocusTint} from './focusContext';
 
 type Props = {
   onPress: () => void;
+  /** Called when the button gains focus. */
+  onFocus?: () => void;
   children: React.ReactNode | ((focused: boolean) => React.ReactNode);
   hasTVPreferredFocus?: boolean;
   style?: StyleProp<ViewStyle>;
@@ -29,6 +31,7 @@ type Props = {
  */
 export function FocusableButton({
   onPress,
+  onFocus,
   children,
   hasTVPreferredFocus,
   style,
@@ -44,6 +47,7 @@ export function FocusableButton({
   const handleFocus = (): void => {
     setIsFocused(true);
     animateFocusScale(scaleValue, focusScale);
+    onFocus?.();
   };
 
   const handleBlur = (): void => {

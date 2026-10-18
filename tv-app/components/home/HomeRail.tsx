@@ -1,5 +1,11 @@
-import React from 'react';
-import {ScrollView, Text, TVFocusGuideView, View} from 'react-native';
+import React, {useContext} from 'react';
+import {
+  ScrollView,
+  Text,
+  TVFocusGuideView,
+  View,
+  type LayoutChangeEvent,
+} from 'react-native';
 import {colors} from '../../theme/colors';
 import {fonts} from '../../theme/typography';
 import {createScaledStyles} from '../../theme/scale';
@@ -7,9 +13,24 @@ import {createScaledStyles} from '../../theme/scale';
 /** Home's horizontal gutter; rails bleed past it so cards scroll to the edge. */
 export const HOME_GUTTER = 64;
 
+/**
+ * Lets a card tell its rail it took focus, so Home can bring the whole rail
+ * (title included) into view. Home's cards pass it to their onFocus.
+ */
+const RailFocusContext = React.createContext<(() => void) | undefined>(
+  undefined,
+);
+
+export function useRailFocus(): (() => void) | undefined {
+  return useContext(RailFocusContext);
+}
+
 type Props = {
   title: string;
   children: React.ReactNode;
+  /** A card in the rail took focus. */
+  onFocusRail?: () => void;
+  onLayout?: (e: LayoutChangeEvent) => void;
 };
 
 /**
@@ -17,16 +38,23 @@ type Props = {
  * the row scrolls out to the screen edge. autoFocus makes Up/Down land on
  * the row's first (or last focused) card instead of the nearest one.
  */
-export function HomeRail({title, children}: Props): React.ReactElement {
+export function HomeRail({
+  title,
+  children,
+  onFocusRail,
+  onLayout,
+}: Props): React.ReactElement {
   return (
-    <View style={styles.section}>
+    <View style={styles.section} onLayout={onLayout}>
       <Text style={styles.title}>{title}</Text>
       <TVFocusGuideView autoFocus style={styles.bleed}>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.row}>
-          {children}
+          <RailFocusContext.Provider value={onFocusRail}>
+            {children}
+          </RailFocusContext.Provider>
         </ScrollView>
       </TVFocusGuideView>
     </View>
@@ -34,7 +62,7 @@ export function HomeRail({title, children}: Props): React.ReactElement {
 }
 
 const styles = createScaledStyles({
-  section: {marginBottom: 20},
+  section: {marginBottom: 12},
   title: {
     color: colors.text,
     fontFamily: fonts.bold,

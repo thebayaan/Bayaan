@@ -1,17 +1,21 @@
 /**
- * What Home suggests at a given moment: the hero and the contextual rail.
+ * What Home suggests at a given moment: the hero and the contextual rail,
+ * and which rails Home shows in what order.
  *
- * Pure (the Date is injected) so the windows are unit-tested and Home can
- * re-evaluate them every minute. Windows are fixed clock hours, not prayer
- * times, like the phone's adhkar windows (services/adhkar/timeWindows.ts):
+ * Pure (the Date is injected) so the windows are unit-tested. Windows are
+ * fixed clock hours, not prayer times, like the phone's adhkar windows
+ * (services/adhkar/timeWindows.ts):
  *   04:00-09:59  after Fajr  -> Morning adhkar
  *   10:00-15:59  daytime     -> a surah of the day
  *   16:00-19:59  evening     -> Evening adhkar
  *   20:00-03:59  night       -> Al-Mulk, before sleep
- * Friday (the whole calendar day) puts Al-Kahf in the hero instead, and the
- * time window still decides the rail under it.
+ * Friday puts Al-Kahf in the hero instead, from the night before (Thursday
+ * from 20:00, after maghrib all year) until Friday's evening window, when
+ * the evening adhkar return. The time window still decides the rail under
+ * it, and every window has a rail of its own.
  */
 import {SURAHS} from '../../data/surahData';
+import {groupLists, nowListId} from '../services/adhkarBrowse';
 
 export type DayWindow = 'morning' | 'day' | 'evening' | 'night';
 
@@ -32,6 +36,8 @@ export const SURAH = {
   waqiah: 56,
   mulk: 67,
   muzzammil: 73,
+  insan: 76,
+  duha: 93,
   ikhlas: 112,
 } as const;
 
@@ -62,10 +68,11 @@ export type HomeMoments = {title: string; items: MomentItem[]};
 
 export type HomePlan = {
   window: DayWindow;
+  /** The time for Al-Kahf (see isFridayTime). */
   isFriday: boolean;
   hero: HomeHero;
-  /** Null when this moment has no rail of its own (Home shows reciters). */
-  moments: HomeMoments | null;
+  /** The moment's rail; it never repeats what the hero offers. */
+  moments: HomeMoments;
 };
 
 export function dayWindowAt(date: Date): DayWindow {
@@ -74,6 +81,32 @@ export function dayWindowAt(date: Date): DayWindow {
   if (h >= DAY_START_HOUR && h < EVENING_START_HOUR) return 'day';
   if (h >= EVENING_START_HOUR && h < NIGHT_START_HOUR) return 'evening';
   return 'night';
+}
+
+/**
+ * Whether it is the time for Al-Kahf: the eve of Friday (Thursday from the
+ * night window) through Friday until its evening window.
+ */
+export function isFridayTime(date: Date): boolean {
+  const h = date.getHours();
+  switch (date.getDay()) {
+    case 4:
+      return h >= NIGHT_START_HOUR;
+    case 5:
+      return h < EVENING_START_HOUR;
+    default:
+      return false;
+  }
+}
+
+/** The hour a plan belongs to; Home re-plans only when this changes. */
+export function planHourOf(date: Date): number {
+  return new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+    date.getHours(),
+  ).getTime();
 }
 
 /** A daytime surah that changes with the weekday, stable within a day. */
@@ -93,12 +126,19 @@ function surahOfTheDay(date: Date): number {
 
 function heroFor(window: DayWindow, isFriday: boolean, date: Date): HomeHero {
   if (isFriday) {
-    return {
-      kind: 'surah',
-      kicker: 'FRIDAY',
-      surahNumber: SURAH.kahf,
-      lead: 'Reciting Al-Kahf on Friday is a sunnah.',
-    };
+    return date.getDay() === 5
+      ? {
+          kind: 'surah',
+          kicker: 'FRIDAY',
+          surahNumber: SURAH.kahf,
+          lead: 'Reciting Al-Kahf on Friday is a sunnah.',
+        }
+      : {
+          kind: 'surah',
+          kicker: 'EVE OF FRIDAY',
+          surahNumber: SURAH.kahf,
+          lead: 'The time for Al-Kahf begins tonight.',
+        };
   }
   switch (window) {
     case 'morning':
@@ -137,84 +177,106 @@ function heroFor(window: DayWindow, isFriday: boolean, date: Date): HomeHero {
 const s = (surahNumber: number): MomentItem => ({kind: 'surah', surahNumber});
 const a = (listId: string): MomentItem => ({kind: 'adhkar', listId});
 
-/**
- * The rail of moments under a surah hero. An adhkar hero has none: its
- * moment is the list itself, so Home shows the user's reciters instead.
- */
-function momentsFor(window: DayWindow, hero: HomeHero): HomeMoments | null {
-  if (hero.kind !== 'surah') return null;
-  const without = (items: MomentItem[]): MomentItem[] =>
-    items.filter(i => i.kind !== 'surah' || i.surahNumber !== hero.surahNumber);
+function windowMoments(
+  window: DayWindow,
+  isFriday: boolean,
+  date: Date,
+): HomeMoments {
   switch (window) {
     case 'morning':
       return {
         title: 'This morning',
-        items: without([
+        items: [
           a('morning-adhkar'),
           s(SURAH.yasin),
+          s(SURAH.duha),
           s(SURAH.rahman),
           s(SURAH.fatihah),
           s(SURAH.ikhlas),
-        ]),
+        ],
       };
     case 'evening':
       return {
         title: 'This evening',
-        items: without([
+        items: [
           s(SURAH.waqiah),
           s(SURAH.mulk),
           s(SURAH.rahman),
+          s(SURAH.insan),
           s(SURAH.ikhlas),
           a('evening-adhkar'),
-        ]),
+        ],
       };
     case 'night':
       return {
         title: 'Tonight',
-        items: without([
+        items: [
           s(SURAH.mulk),
           s(SURAH.sajdah),
           s(SURAH.waqiah),
           s(SURAH.ikhlas),
           a('before-sleep'),
-        ]),
+        ],
       };
     case 'day':
       // Friday daytime: send blessings on the Prophet, a Friday practice.
-      return hero.surahNumber === SURAH.kahf
+      return isFriday
         ? {
             title: 'On Friday',
-            items: without([
+            items: [
               a('salawat'),
               s(SURAH.yasin),
               s(SURAH.rahman),
               s(SURAH.waqiah),
-            ]),
+            ],
           }
-        : null;
+        : {
+            title: 'Today',
+            items: [
+              s(surahOfTheDay(date)),
+              s(SURAH.yasin),
+              s(SURAH.rahman),
+              s(SURAH.waqiah),
+              s(SURAH.mulk),
+              s(SURAH.yusuf),
+              a('salawat'),
+            ],
+          };
   }
+}
+
+/**
+ * The rail of moments under the hero. What the hero already offers (its
+ * surah, or its adhkar list and "instead" surah) is left out.
+ */
+function momentsFor(
+  window: DayWindow,
+  isFriday: boolean,
+  date: Date,
+  hero: HomeHero,
+): HomeMoments {
+  const offered = (item: MomentItem): boolean => {
+    if (hero.kind === 'surah') {
+      return item.kind === 'surah' && item.surahNumber === hero.surahNumber;
+    }
+    return item.kind === 'adhkar'
+      ? item.listId === hero.listId
+      : item.surahNumber === hero.insteadSurah;
+  };
+  const moments = windowMoments(window, isFriday, date);
+  return {...moments, items: moments.items.filter(i => !offered(i))};
 }
 
 export function homePlanAt(date: Date): HomePlan {
   const window = dayWindowAt(date);
-  const isFriday = date.getDay() === 5;
+  const isFriday = isFridayTime(date);
   const hero = heroFor(window, isFriday, date);
-  return {window, isFriday, hero, moments: momentsFor(window, hero)};
-}
-
-/** Surahs for the first-launch "Quick picks" rail (the hero's is left out). */
-export const QUICK_PICK_SURAHS: readonly number[] = [
-  SURAH.fatihah,
-  SURAH.kahf,
-  SURAH.yasin,
-  SURAH.rahman,
-  SURAH.waqiah,
-  SURAH.mulk,
-  SURAH.ikhlas,
-];
-
-export function quickPicks(heroSurah: number | null): number[] {
-  return QUICK_PICK_SURAHS.filter(n => n !== heroSurah);
+  return {
+    window,
+    isFriday,
+    hero,
+    moments: momentsFor(window, isFriday, date, hero),
+  };
 }
 
 // ---- Reading-time estimates -------------------------------------------
@@ -275,25 +337,91 @@ export function adhkarTileMeta(count: number, minutes: number): string {
   return `${count} adhkar · ${minutes} min`;
 }
 
+/** "110 verses · 41 min", under a surah tile (its artwork already names it). */
+export function surahCaption(surahNumber: number): string {
+  const surah = SURAHS.find(x => x.id === surahNumber);
+  const minutes = estimateSurahMinutes(surahNumber);
+  return surah
+    ? `${surah.verses_count} verses · ${minutes} min`
+    : `${minutes} min`;
+}
+
+/** "6 surahs · 40 min" for a collection or a playlist. */
+export function surahListMeta(surahNumbers: readonly number[]): string {
+  const count = surahNumbers.length;
+  if (count === 0) return 'No surahs yet';
+  const minutes = surahNumbers.reduce(
+    (sum, n) => sum + estimateSurahMinutes(n),
+    0,
+  );
+  const time =
+    minutes >= 60
+      ? `${Math.floor(minutes / 60)} h ${minutes % 60} min`
+      : `${minutes} min`;
+  return `${count === 1 ? '1 surah' : `${count} surahs`} · ${time}`;
+}
+
 // ---- Which rails Home shows ---------------------------------------------
 
-export type HomeSection = 'continue' | 'moments' | 'quickPicks' | 'reciters';
+export type HomeRow =
+  | 'continue'
+  | 'moments'
+  | 'recent'
+  | 'favorites'
+  | 'playlists'
+  | 'loved'
+  | 'adhkar'
+  | 'collections'
+  | 'featured'
+  | 'juzAmma';
 
 /**
- * The two rails under the hero (three sections at most). A first launch
- * gets Quick picks and reciters; after that, Continue listening leads and
- * the moment's rail (or the user's reciters) follows.
+ * Home's rails under the hero, in order: what you were listening to, the
+ * moment, your own things, then what Bayaan suggests. There is no row of
+ * every reciter; the reciter rows are personal or curated, and capped.
  */
-export function homeSections({
-  hasContinue,
-  hasHistory,
-  hasMoments,
-}: {
-  hasContinue: boolean;
-  hasHistory: boolean;
-  hasMoments: boolean;
-}): HomeSection[] {
-  if (!hasContinue && !hasHistory) return ['quickPicks', 'reciters'];
-  if (hasContinue) return ['continue', hasMoments ? 'moments' : 'reciters'];
-  return [hasMoments ? 'moments' : 'quickPicks', 'reciters'];
+export const HOME_ROW_ORDER: readonly HomeRow[] = [
+  'continue',
+  'moments',
+  'recent',
+  'favorites',
+  'playlists',
+  'loved',
+  'adhkar',
+  'collections',
+  'featured',
+  'juzAmma',
+];
+
+/** The rails that have something to show, in order; empty ones are left out. */
+export function homeRows(sizes: Partial<Record<HomeRow, number>>): HomeRow[] {
+  return HOME_ROW_ORDER.filter(row => (sizes[row] ?? 0) > 0);
+}
+
+/** How many lists Home's Adhkar rail shows before its "All adhkar" tile. */
+export const ADHKAR_ROW_LIMIT = 6;
+
+/**
+ * The Adhkar rail: the list for this time of day first, then the everyday
+ * lists, leaving out the ones the hero and the moment's rail already show.
+ */
+export function adhkarRowIds(
+  date: Date,
+  exclude: readonly string[],
+  limit = ADHKAR_ROW_LIMIT,
+): string[] {
+  const daily = groupLists('daily');
+  const ids = [
+    nowListId(date),
+    ...[...daily.featured, ...daily.rest].map(l => l.id),
+  ];
+  return [...new Set(ids)].filter(id => !exclude.includes(id)).slice(0, limit);
+}
+
+/** The adhkar lists a plan's hero and moment rail already offer. */
+export function planListIds(plan: HomePlan): string[] {
+  const ids = plan.moments.items.flatMap(i =>
+    i.kind === 'adhkar' ? [i.listId] : [],
+  );
+  return plan.hero.kind === 'adhkar' ? [plan.hero.listId, ...ids] : ids;
 }

@@ -1,0 +1,54 @@
+import {continueKey, resumableContinue, stableContinue} from './homeContinue';
+import type {ContinueEntry} from '../services/continueListeningStore';
+
+const e = (
+  reciterId: string,
+  surahNumber: number,
+  positionSeconds = 30,
+): ContinueEntry => ({
+  reciterId,
+  rewayahId: 'rw',
+  surahNumber,
+  positionSeconds,
+  durationSeconds: 600,
+  updatedAt: 0,
+});
+
+describe('stableContinue', () => {
+  it('shows the store order the first time', () => {
+    const out = stableContinue([], [e('a', 1), e('b', 2)]);
+    expect(out.keys).toEqual(['a:1', 'b:2']);
+    expect(out.entries.map(continueKey)).toEqual(['a:1', 'b:2']);
+  });
+
+  it('keeps the shown order when the store re-sorts, with fresh progress', () => {
+    const out = stableContinue(['a:1', 'b:2'], [e('b', 2, 99), e('a', 1)]);
+    expect(out.keys).toEqual(['a:1', 'b:2']);
+    expect(out.entries[1].positionSeconds).toBe(99);
+  });
+
+  it('adds a new entry at the end instead of shifting the cards', () => {
+    const out = stableContinue(
+      ['a:1', 'b:2'],
+      [e('c', 3), e('a', 1), e('b', 2)],
+    );
+    expect(out.keys).toEqual(['a:1', 'b:2', 'c:3']);
+  });
+
+  it('drops entries that left the store', () => {
+    const out = stableContinue(['a:1', 'b:2'], [e('b', 2)]);
+    expect(out.keys).toEqual(['b:2']);
+    expect(out.entries).toHaveLength(1);
+  });
+});
+
+describe('resumableContinue', () => {
+  it('leaves out entries whose reciter is not in the catalog', () => {
+    const known = new Set(['a']);
+    expect(
+      resumableContinue([e('a', 1), e('gone', 2)], id => known.has(id)).map(
+        continueKey,
+      ),
+    ).toEqual(['a:1']);
+  });
+});

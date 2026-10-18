@@ -4,17 +4,24 @@ import {
   dayWindowAt,
   estimateAdhkarMinutes,
   estimateSurahMinutes,
+  adhkarRowIds,
   homePlanAt,
-  homeSections,
-  quickPicks,
+  homeRows,
+  HOME_ROW_ORDER,
+  isFridayTime,
+  planHourOf,
+  planListIds,
+  surahCaption,
   surahFacts,
+  surahListMeta,
   SURAH,
 } from './homeMoments';
 import {adhkarForList} from '../services/adhkarData';
 
-// 2026-10-16 is a Friday; 2026-10-17 a Saturday.
+// 2026-10-15 is a Thursday, 2026-10-16 a Friday, 2026-10-17 a Saturday.
 const sat = (h: number, m = 0): Date => new Date(2026, 9, 17, h, m);
 const fri = (h: number, m = 0): Date => new Date(2026, 9, 16, h, m);
+const thu = (h: number, m = 0): Date => new Date(2026, 9, 15, h, m);
 
 describe('dayWindowAt', () => {
   it.each([
@@ -41,7 +48,7 @@ describe('dayWindowAt', () => {
 });
 
 describe('homePlanAt', () => {
-  it('after Fajr: Morning adhkar, Yasin instead, reciters rail', () => {
+  it('after Fajr: Morning adhkar, Yasin instead, a morning rail without either', () => {
     const plan = homePlanAt(sat(6, 41));
     expect(plan.hero).toMatchObject({
       kind: 'adhkar',
@@ -49,20 +56,33 @@ describe('homePlanAt', () => {
       listId: 'morning-adhkar',
       insteadSurah: SURAH.yasin,
     });
-    expect(plan.moments).toBeNull();
+    expect(plan.moments.title).toBe('This morning');
+    expect(plan.moments.items.length).toBeGreaterThan(2);
+    expect(plan.moments.items).not.toContainEqual({
+      kind: 'adhkar',
+      listId: 'morning-adhkar',
+    });
+    expect(plan.moments.items).not.toContainEqual({
+      kind: 'surah',
+      surahNumber: SURAH.yasin,
+    });
   });
 
-  it('evening: Evening adhkar', () => {
+  it('evening: Evening adhkar with an evening rail', () => {
     const plan = homePlanAt(sat(17));
     expect(plan.hero).toMatchObject({kind: 'adhkar', listId: 'evening-adhkar'});
-    expect(plan.moments).toBeNull();
+    expect(plan.moments.title).toBe('This evening');
+    expect(plan.moments.items).not.toContainEqual({
+      kind: 'adhkar',
+      listId: 'evening-adhkar',
+    });
   });
 
   it('night: Al-Mulk, Tonight rail with a before-sleep tile, no repeat of the hero', () => {
     const plan = homePlanAt(sat(22));
     expect(plan.hero).toMatchObject({kind: 'surah', surahNumber: SURAH.mulk});
-    expect(plan.moments?.title).toBe('Tonight');
-    const items = plan.moments?.items ?? [];
+    expect(plan.moments.title).toBe('Tonight');
+    const items = plan.moments.items;
     expect(items).toContainEqual({kind: 'adhkar', listId: 'before-sleep'});
     expect(items).not.toContainEqual({kind: 'surah', surahNumber: SURAH.mulk});
   });
@@ -71,23 +91,36 @@ describe('homePlanAt', () => {
     expect(homePlanAt(sat(2)).hero).toMatchObject({surahNumber: SURAH.mulk});
   });
 
-  it('daytime: a surah of the day that follows the weekday', () => {
+  it('daytime: a surah of the day that follows the weekday, and a Today rail', () => {
     const plan = homePlanAt(sat(12));
     expect(plan.hero).toMatchObject({kind: 'surah', kicker: 'TODAY'});
-    expect(plan.moments).toBeNull();
+    expect(plan.moments.title).toBe('Today');
+    expect(plan.moments.items).not.toContainEqual({
+      kind: 'surah',
+      surahNumber: SURAH.qaf,
+    });
     const sunday = homePlanAt(new Date(2026, 9, 18, 12));
     expect(sunday.hero).toMatchObject({surahNumber: SURAH.rahman});
   });
 
-  it('Friday evening: Al-Kahf with the Tonight moments (mockup 00)', () => {
-    const plan = homePlanAt(fri(21, 12));
+  it('every window has a rail', () => {
+    for (let h = 0; h < 24; h++) {
+      for (const date of [thu(h), fri(h), sat(h)]) {
+        expect(homePlanAt(date).moments.items.length).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('the eve of Friday: Al-Kahf from Thursday night, with the Tonight moments', () => {
+    expect(homePlanAt(thu(19)).hero).toMatchObject({kind: 'adhkar'});
+    const plan = homePlanAt(thu(21, 12));
     expect(plan.isFriday).toBe(true);
     expect(plan.hero).toMatchObject({
       kind: 'surah',
-      kicker: 'FRIDAY',
+      kicker: 'EVE OF FRIDAY',
       surahNumber: SURAH.kahf,
     });
-    expect(plan.moments?.items).toEqual([
+    expect(plan.moments.items).toEqual([
       {kind: 'surah', surahNumber: SURAH.mulk},
       {kind: 'surah', surahNumber: SURAH.sajdah},
       {kind: 'surah', surahNumber: SURAH.waqiah},
@@ -96,34 +129,65 @@ describe('homePlanAt', () => {
     ]);
   });
 
-  it('Friday all day: morning and daytime keep Al-Kahf', () => {
+  it('Friday until the evening keeps Al-Kahf', () => {
+    expect(homePlanAt(fri(1)).hero).toMatchObject({
+      kicker: 'FRIDAY',
+      surahNumber: SURAH.kahf,
+    });
     const morning = homePlanAt(fri(6));
     expect(morning.hero).toMatchObject({surahNumber: SURAH.kahf});
-    expect(morning.moments?.title).toBe('This morning');
-    expect(morning.moments?.items[0]).toEqual({
+    expect(morning.moments.title).toBe('This morning');
+    expect(morning.moments.items[0]).toEqual({
       kind: 'adhkar',
       listId: 'morning-adhkar',
     });
     const noon = homePlanAt(fri(12));
     expect(noon.hero).toMatchObject({surahNumber: SURAH.kahf});
-    expect(noon.moments?.items[0]).toEqual({kind: 'adhkar', listId: 'salawat'});
-    expect(homePlanAt(fri(17)).moments?.title).toBe('This evening');
+    expect(noon.moments.title).toBe('On Friday');
+    expect(noon.moments.items[0]).toEqual({kind: 'adhkar', listId: 'salawat'});
+  });
+
+  it('Friday evening brings back the evening adhkar, then Al-Mulk', () => {
+    const evening = homePlanAt(fri(17));
+    expect(evening.isFriday).toBe(false);
+    expect(evening.hero).toMatchObject({
+      kind: 'adhkar',
+      listId: 'evening-adhkar',
+    });
+    expect(homePlanAt(fri(21, 40)).hero).toMatchObject({
+      surahNumber: SURAH.mulk,
+    });
   });
 
   it('every adhkar the plan points at exists', () => {
     for (let h = 0; h < 24; h++) {
-      for (const date of [sat(h), fri(h)]) {
+      for (const date of [sat(h), fri(h), thu(h)]) {
         const plan = homePlanAt(date);
         if (plan.hero.kind === 'adhkar') {
           expect(adhkarForList(plan.hero.listId).length).toBeGreaterThan(0);
         }
-        for (const item of plan.moments?.items ?? []) {
+        for (const item of plan.moments.items) {
           if (item.kind === 'adhkar') {
             expect(adhkarForList(item.listId).length).toBeGreaterThan(0);
           }
         }
       }
     }
+  });
+});
+
+describe('isFridayTime and planHourOf', () => {
+  it('runs from Thursday 20:00 to Friday 15:59', () => {
+    expect(isFridayTime(thu(19, 59))).toBe(false);
+    expect(isFridayTime(thu(20))).toBe(true);
+    expect(isFridayTime(fri(15, 59))).toBe(true);
+    expect(isFridayTime(fri(16))).toBe(false);
+    expect(isFridayTime(sat(10))).toBe(false);
+  });
+
+  it('is the same within an hour and changes when it turns', () => {
+    expect(planHourOf(sat(9, 1))).toBe(planHourOf(sat(9, 59)));
+    expect(planHourOf(sat(9, 59))).not.toBe(planHourOf(sat(10)));
   });
 });
 
@@ -162,34 +226,54 @@ describe('estimates and copy', () => {
     expect(adhkarTileMeta(13, 6)).toBe('13 adhkar · 6 min');
   });
 
-  it('quick picks leave out the hero surah', () => {
-    expect(quickPicks(SURAH.kahf)).not.toContain(SURAH.kahf);
-    expect(quickPicks(null)).toContain(SURAH.kahf);
+  it('captions surah tiles and surah lists', () => {
+    expect(surahCaption(SURAH.kahf)).toBe('110 verses · 41 min');
+    expect(surahListMeta([])).toBe('No surahs yet');
+    expect(surahListMeta([SURAH.ikhlas])).toBe('1 surah · 1 min');
+    expect(surahListMeta([SURAH.kahf, SURAH.kahf])).toBe(
+      '2 surahs · 1 h 22 min',
+    );
   });
 });
 
-describe('homeSections', () => {
-  it('first launch: quick picks and reciters', () => {
-    expect(
-      homeSections({hasContinue: false, hasHistory: false, hasMoments: true}),
-    ).toEqual(['quickPicks', 'reciters']);
+describe('homeRows', () => {
+  it('shows only rails with content, in the fixed order', () => {
+    expect(homeRows({featured: 3, moments: 4, continue: 0, adhkar: 2})).toEqual(
+      ['moments', 'adhkar', 'featured'],
+    );
   });
 
-  it('continue leads, then moments (mockup 00) or reciters (mockup 01)', () => {
-    expect(
-      homeSections({hasContinue: true, hasHistory: true, hasMoments: true}),
-    ).toEqual(['continue', 'moments']);
-    expect(
-      homeSections({hasContinue: true, hasHistory: true, hasMoments: false}),
-    ).toEqual(['continue', 'reciters']);
+  it('keeps the full order when everything has content', () => {
+    const all = Object.fromEntries(HOME_ROW_ORDER.map(r => [r, 1]));
+    expect(homeRows(all)).toEqual(HOME_ROW_ORDER);
+    expect(HOME_ROW_ORDER[0]).toBe('continue');
   });
 
-  it('history without anything to resume', () => {
-    expect(
-      homeSections({hasContinue: false, hasHistory: true, hasMoments: true}),
-    ).toEqual(['moments', 'reciters']);
-    expect(
-      homeSections({hasContinue: false, hasHistory: true, hasMoments: false}),
-    ).toEqual(['quickPicks', 'reciters']);
+  it('has no row of every reciter', () => {
+    expect(HOME_ROW_ORDER).not.toContain('reciters');
+  });
+});
+
+describe('adhkar rail', () => {
+  it('leads with the list for the time and leaves out what the plan shows', () => {
+    const night = homePlanAt(sat(22));
+    const exclude = planListIds(night);
+    expect(exclude).toEqual(['before-sleep']);
+    const ids = adhkarRowIds(sat(22), exclude);
+    expect(ids).not.toContain('before-sleep');
+    expect(ids.length).toBeGreaterThan(0);
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const id of ids) {
+      expect(adhkarForList(id).length).toBeGreaterThan(0);
+    }
+    expect(adhkarRowIds(sat(13), [])[0]).toBe('morning-adhkar');
+  });
+
+  it('counts the adhkar hero among the plan lists', () => {
+    expect(planListIds(homePlanAt(sat(6)))[0]).toBe('morning-adhkar');
+  });
+
+  it('respects the limit', () => {
+    expect(adhkarRowIds(sat(22), [], 2)).toHaveLength(2);
   });
 });
