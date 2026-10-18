@@ -7,6 +7,7 @@ import {
   dhikrPages,
   instructionNote,
   notesFontSize,
+  pageAtProgress,
   pageCount,
   plainQuranBrackets,
   runText,
@@ -217,5 +218,20 @@ describe('adhkar pages', () => {
     expect(notesFontSize(pages[1].notes.length, true)).toBeGreaterThanOrEqual(
       notesFontSize(pages[1].notes.length, false),
     );
+  });
+
+  it('follows a recitation through the reading pages by their Arabic', () => {
+    const page = (arabicLength: number) => ({
+      arabic: arabicLength ? [{tone: 'dhikr' as const, text: 'x'}] : [],
+      translation: [],
+      notes: arabicLength ? '' : 'notes',
+      arabicLength,
+    });
+    const pages = [page(100), page(300), page(0)];
+    expect(pageAtProgress(pages, 0)).toBe(0);
+    expect(pageAtProgress(pages, 0.2)).toBe(0);
+    expect(pageAtProgress(pages, 0.3)).toBe(1);
+    // The notes page is never reached by the recitation.
+    expect(pageAtProgress(pages, 1)).toBe(1);
   });
 });

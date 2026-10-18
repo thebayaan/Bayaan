@@ -17,6 +17,7 @@ import {
   dhikrPages,
   instructionNote,
   notesFontSize,
+  pageAtProgress,
   runsLength,
   sourceLine,
   translationFontSize,
@@ -113,8 +114,18 @@ export function AdhkarReaderScreen({listId, mode}: Props): React.ReactElement {
   const audio = useAdhkarSessionStore(s => s.audio);
   const advance = useAdhkarSessionStore(advanceModeOf);
   const resumed = useAdhkarSessionStore(s => s.resumed);
-  const {open, close, press, next, prev, restart, togglePlay, setAutoAdvance} =
-    useAdhkarSessionStore.getState();
+  const storedPage = useAdhkarSessionStore(s => s.page);
+  const {
+    open,
+    close,
+    press,
+    next,
+    prev,
+    restart,
+    togglePlay,
+    setAutoAdvance,
+    setPage,
+  } = useAdhkarSessionStore.getState();
 
   // Whether the Quran was playing as the reader opened, and whether a
   // recitation here has since paused it, for the top bar's note.
@@ -151,7 +162,12 @@ export function AdhkarReaderScreen({listId, mode}: Props): React.ReactElement {
     );
     return () => {
       unsubscribe();
-      close();
+      // Still on the stack: it only went under the player (the now-playing
+      // pill) and comes back on Back, on the same page, waiting for Play.
+      const covered = useNavStore
+        .getState()
+        .stack.some(e => e.screen === 'adhkarReader' && e.listId === listId);
+      close({covered});
       if (handoff.leave()) {
         const {queue, currentIndex} = useTVPlayerStore.getState();
         const surah = queue[currentIndex]?.title;
@@ -181,19 +197,40 @@ export function AdhkarReaderScreen({listId, mode}: Props): React.ReactElement {
         : [],
     [dhikr],
   );
-  const [entry, setEntry] = useState<PageEntry>({index: 0, page: 0});
-  // Any other move (auto-advance, OK, start again) opens on the first page.
+  // The session keeps the page (resuming, or back from the player, opens on
+  // it); any other move (auto-advance, OK, start again) opens on the first.
+  const [entry, setEntry] = useState<PageEntry>({index: -1, page: 0});
   useEffect(() => {
-    setEntry(e => (e.index === index ? e : {index, page: 0}));
+    setEntry(e =>
+      e.index === index
+        ? e
+        : {index, page: useAdhkarSessionStore.getState().page},
+    );
   }, [index]);
   const lastPage = Math.max(0, pages.length - 1);
   const page =
     entry.index !== index
-      ? 0
+      ? Math.min(storedPage, lastPage)
       : entry.page === 'last'
         ? lastPage
         : Math.min(entry.page, lastPage);
   const shown = pages[page];
+  useEffect(() => {
+    if (ready && !finished) setPage(page);
+  }, [ready, finished, index, page, setPage]);
+
+  // Listening through or counting, the pages of a long dhikr turn with the
+  // recitation (and go back to the first as it plays again).
+  const following =
+    advance !== 'off' &&
+    audio === 'playing' &&
+    pages.filter(p => p.arabic.length > 0).length > 1;
+  const followedPage = useAdhkarSessionStore(s =>
+    following ? pageAtProgress(pages, s.clipProgress) : -1,
+  );
+  useEffect(() => {
+    if (followedPage >= 0) setEntry({index, page: followedPage});
+  }, [followedPage, index]);
 
   // Arrows act on the dhikr only while the stage has focus; on the chips
   // they move between chips. The state draws the stage's focus.
@@ -308,17 +345,19 @@ export function AdhkarReaderScreen({listId, mode}: Props): React.ReactElement {
     .filter(Boolean)
     .join('  ·  ');
   const counting = advance !== 'off' && audio === 'playing';
-  const hint = morePages
-    ? 'OK for the next page'
-    : counting
-      ? advance === 'once'
-        ? 'Listening through'
-        : 'Counting with the recitation'
-      : count >= target
-        ? 'Done · OK for the next'
-        : target > 1
-          ? 'OK to count'
-          : 'OK when you have said it';
+  const hint = counting
+    ? advance === 'once'
+      ? 'Listening through'
+      : 'Counting with the recitation'
+    : audio === 'error' && advance !== 'off'
+      ? "Couldn't play the recitation"
+      : morePages
+        ? 'OK for the next page'
+        : count >= target
+          ? 'Done · OK for the next'
+          : target > 1
+            ? 'OK to count'
+            : 'OK when you have said it';
   // Once a recitation here has paused the Quran it stays paused (Pause on
   // the adhkar doesn't bring it back) until the reader closes.
   const quranNote = quranWasPlaying
@@ -329,8 +368,20 @@ export function AdhkarReaderScreen({listId, mode}: Props): React.ReactElement {
 
   const onStagePress = (): void => {
     // A long dhikr shows all of its pages before OK counts it.
-    if (morePages) setEntry({index, page: page + 1});
-    else press();
+    if (morePages) {
+      setEntry({index, page: page + 1});
+      return;
+    }
+    press();
+    // Said again: each repetition of a long dhikr starts on its first page.
+    const after = useAdhkarSessionStore.getState().session;
+    if (
+      pages.length > 1 &&
+      after?.index === index &&
+      (after.counts[index] ?? 0) < (after.targets[index] ?? 1)
+    ) {
+      setEntry({index, page: 0});
+    }
   };
 
   // Start over (resumed) and Start again (closing card): the first page of

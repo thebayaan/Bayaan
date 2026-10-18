@@ -380,6 +380,28 @@ export function dhikrPages(
   return pages;
 }
 
+/**
+ * The page a recitation has reached, `progress` (0 to 1) of the way
+ * through: the reading pages share the clip by their Arabic letters. A page
+ * of notes alone is never reached; it stays for OK to turn to.
+ */
+export function pageAtProgress(
+  pages: readonly DhikrPage[],
+  progress: number,
+): number {
+  const total = pages.reduce((n, p) => n + p.arabicLength, 0);
+  if (total <= 0) return 0;
+  let reached = 0;
+  let last = 0;
+  for (let i = 0; i < pages.length; i++) {
+    if (pages[i].arabicLength <= 0) continue;
+    if (progress * total < reached) break;
+    last = i;
+    reached += pages[i].arabicLength;
+  }
+  return last;
+}
+
 /** Arabic type size (design px) for a page with this many letters. */
 export function arabicFontSize(letters: number): number {
   if (letters <= 30) return 92;
