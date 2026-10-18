@@ -57,7 +57,11 @@ import {spacing} from '../theme/spacing';
 import {createScaledStyles, scale} from '../theme/scale';
 import {getReciterArtwork} from '../services/reciterArtwork';
 
-type Props = {reciterId: string};
+type Props = {
+  reciterId: string;
+  /** The recitation to open on (a menu's voice); else the default one. */
+  rewayahId?: string;
+};
 type SortMode = 'asc' | 'desc' | 'revelation';
 
 /** The sort control cycles through these, in order. */
@@ -90,16 +94,32 @@ function firstRewayahId(rewayat: Rewayah[]): string | null {
   return defaultRewayah(rewayat)?.id ?? null;
 }
 
-export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
+export function ReciterDetailScreen({
+  reciterId,
+  rewayahId,
+}: Props): React.ReactElement {
   const {reciters} = useReciters();
   const reciter = reciters.find(r => r.id === reciterId);
-  const [rewayat, setRewayat] = useState<Rewayah[]>(
+  const [fetched, setFetched] = useState<Rewayah[]>(
     () => getCachedRewayat(reciterId) ?? [],
   );
-  const groups = useMemo(() => groupRewayat(rewayat), [rewayat]);
-  const [activeRewayahId, setActive] = useState<string | null>(() =>
-    firstRewayahId(getCachedRewayat(reciterId) ?? []),
+  // Until (or unless) the rewayat load, the catalog's own list: offline,
+  // the page still shows what the player can play.
+  const catalogRewayat = reciter?.rewayat;
+  const rewayat = useMemo<Rewayah[]>(
+    () => (fetched.length > 0 ? fetched : (catalogRewayat ?? [])),
+    [fetched, catalogRewayat],
   );
+  const groups = useMemo(() => groupRewayat(rewayat), [rewayat]);
+  // The tab picked (or asked for by whoever opened the page); else, and
+  // whenever it isn't one of the rewayat, the reciter's default voice.
+  const [chosenRewayahId, setActive] = useState<string | null>(
+    rewayahId ?? null,
+  );
+  const activeRewayahId =
+    chosenRewayahId && rewayat.some(r => r.id === chosenRewayahId)
+      ? chosenRewayahId
+      : firstRewayahId(rewayat);
   const favorites = useFavorites();
   const continueEntries = useContinueListening();
   const isFav = favorites.some(f => f.reciterId === reciterId);
@@ -123,10 +143,7 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
     fetchRewayat(reciterId)
       .then(r => {
         if (cancelled || r.length === 0) return;
-        setRewayat(r);
-        setActive(prev =>
-          prev && r.some(x => x.id === prev) ? prev : firstRewayahId(r),
-        );
+        setFetched(r);
       })
       .catch(() => undefined)
       .finally(() => {
@@ -346,10 +363,7 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
   // anyone else would hand most surahs to another voice.
   const canBeDefault =
     isDefault ||
-    hasCompleteQuran({
-      ...reciter,
-      rewayat: rewayat.length > 0 ? rewayat : reciter.rewayat,
-    });
+    hasCompleteQuran({...reciter, rewayat});
 
   function pressDefault(): void {
     if (isDefault) {
@@ -573,17 +587,42 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
     </View>
   ) : null;
 
-  const empty = loading ? (
-    <View style={[styles.bleed, styles.loadingRow]}>
-      <FocusSpinner size="large" />
-    </View>
-  ) : (
-    <View style={[styles.bleed, styles.noSurahs]}>
-      <Text style={styles.noSurahsText}>
-        No surahs are available for this rewayah yet.
-      </Text>
-    </View>
-  );
+  function retry(): void {
+    setLoading(true);
+    setAttempt(a => a + 1);
+  }
+
+  // Nothing known about the reciter's recitations means the load failed
+  // (the network, not the catalog): say so, with a way to try again that
+  // stays in place while it does, so focus is not dropped.
+  const empty =
+    rewayat.length === 0 && (!loading || attempt > 0) ? (
+      <View style={[styles.bleed, styles.noSurahs]}>
+        <Text style={styles.noSurahsText}>{OFFLINE_MESSAGE}</Text>
+        <FocusableButton
+          onPress={loading ? () => undefined : retry}
+          accessibilityLabel={loading ? 'Trying again' : 'Try again'}
+          outlined
+          style={[styles.actionBtn, styles.retryBtn]}>
+          <View style={styles.actionInner}>
+            {loading ? <FocusSpinner /> : null}
+            <FocusText style={styles.actionText}>
+              {loading ? 'Trying again…' : 'Try again'}
+            </FocusText>
+          </View>
+        </FocusableButton>
+      </View>
+    ) : loading ? (
+      <View style={[styles.bleed, styles.loadingRow]}>
+        <FocusSpinner size="large" />
+      </View>
+    ) : (
+      <View style={[styles.bleed, styles.noSurahs]}>
+        <Text style={styles.noSurahsText}>
+          No surahs are available for this rewayah yet.
+        </Text>
+      </View>
+    );
 
   return (
     <View style={styles.container}>
@@ -745,7 +784,10 @@ const styles = createScaledStyles({
   noSurahs: {
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.lg,
+    alignItems: 'flex-start',
+    gap: spacing.md,
   },
+  retryBtn: {minWidth: 236},
   noSurahsText: {
     color: colors.textSecondary,
     fontFamily: fonts.medium,

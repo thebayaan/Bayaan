@@ -175,7 +175,12 @@ function SurahMenu({target}: {target: SurahMenuTarget}): React.ReactElement {
   function handleReciter(): void {
     if (!reciter) return;
     close({restoreFocus: false});
-    push({screen: 'reciterDetail', reciterId: reciter.id});
+    // On the menu's recitation (a loved Warsh surah opens the Warsh tab).
+    push({
+      screen: 'reciterDetail',
+      reciterId: reciter.id,
+      ...(voice?.rewayahId ? {rewayahId: voice.rewayahId} : {}),
+    });
   }
 
   function handleRemoveContinue(): void {
