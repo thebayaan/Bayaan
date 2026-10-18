@@ -1,5 +1,10 @@
 import type {Reciter, Rewayah} from '../types/reciter';
 import type {QueueItem} from '../types/player';
+import {
+  recitationStyle,
+  rewayahDisplayName,
+  styleLabel,
+} from './browseCatalog';
 
 /**
  * The best-known voices, in the order onboarding shows them (the approved
@@ -54,40 +59,60 @@ export function popularReciters(
 
 /**
  * The reciter's recitation of `surahNumber` to switch to: the same rewayah
- * as now when they have it, else Hafs, else whichever has the surah.
+ * in the same style as now when they have it (Murattal stays Murattal), then
+ * the same rewayah in any style, then Hafs (in that style first), then
+ * whichever has the surah.
  */
 export function rewayahForSurah(
   reciter: Reciter,
   surahNumber: number,
   preferName?: string,
+  preferStyle?: string,
 ): Rewayah | null {
   const withSurah = reciter.rewayat.filter(rw =>
     rw.surah_list.includes(surahNumber),
   );
   if (withSurah.length === 0) return null;
-  const named = (name: string) =>
-    withSurah.find(rw => rw.name.toLowerCase().includes(name.toLowerCase()));
+  const style = preferStyle ? recitationStyle(preferStyle) : null;
+  const named = (name: string, sameStyle: boolean) =>
+    withSurah.find(
+      rw =>
+        rw.name.toLowerCase().includes(name.toLowerCase()) &&
+        (!sameStyle || style === null || recitationStyle(rw.style) === style),
+    );
   return (
-    (preferName ? named(preferName) : undefined) ??
-    named('hafs') ??
+    (preferName ? named(preferName, true) : undefined) ??
+    (preferName ? named(preferName, false) : undefined) ??
+    named('hafs', true) ??
+    named('hafs', false) ??
     withSurah[0]
   );
 }
 
 export type ReciterChoice = {reciter: Reciter; rewayah: Rewayah};
 
+/** Identifies one row of the Reciter panel: a reciter in one recitation. */
+export function choiceKey(reciterId: string, rewayahId?: string): string {
+  return `${reciterId}:${rewayahId ?? ''}`;
+}
+
 /**
  * Reciters who can recite this surah, for the player's Reciter panel: the
  * current one first, then `preferredIds` in order (favorites, the default,
  * recently played), then the popular voices, then everyone else by name.
+ * The current reciter is listed in the recitation playing now
+ * (`currentRewayahId`), followed by their other styles of the surah
+ * (Mujawwad, Teaching), so the style can be switched too.
  */
 export function reciterChoicesForSurah(
   reciters: readonly Reciter[],
   surahNumber: number,
   options: {
     currentId: string | null;
+    currentRewayahId?: string;
     preferredIds: readonly string[];
     preferRewayahName?: string;
+    preferStyle?: string;
     limit: number;
   },
 ): ReciterChoice[] {
@@ -100,10 +125,25 @@ export function reciterChoicesForSurah(
     if (pop >= 0) return 1000 + pop;
     return 10000;
   };
-  return reciters
+  const playingNow = (reciter: Reciter): Rewayah | undefined =>
+    reciter.id === options.currentId
+      ? reciter.rewayat.find(
+          rw =>
+            rw.id === options.currentRewayahId &&
+            rw.surah_list.includes(surahNumber),
+        )
+      : undefined;
+  const choices = reciters
     .map(reciter => ({
       reciter,
-      rewayah: rewayahForSurah(reciter, surahNumber, options.preferRewayahName),
+      rewayah:
+        playingNow(reciter) ??
+        rewayahForSurah(
+          reciter,
+          surahNumber,
+          options.preferRewayahName,
+          options.preferStyle,
+        ),
     }))
     .filter((c): c is ReciterChoice => c.rewayah !== null)
     .sort(
@@ -112,6 +152,57 @@ export function reciterChoicesForSurah(
         a.reciter.name.localeCompare(b.reciter.name),
     )
     .slice(0, options.limit);
+  const current = choices.find(c => c.reciter.id === options.currentId);
+  if (!current) return choices;
+  const otherStyles = current.reciter.rewayat
+    .filter(
+      rw => rw.id !== current.rewayah.id && rw.surah_list.includes(surahNumber),
+    )
+    .map(rewayah => ({reciter: current.reciter, rewayah}));
+  const at = choices.indexOf(current) + 1;
+  return [...choices.slice(0, at), ...otherStyles, ...choices.slice(at)];
+}
+
+/**
+ * The queue after switching the current surah to another voice
+ * (`swap` gives an item in the new recitation, or null when it has no
+ * recording of that surah). A queue that is the old voice's whole
+ * recitation (`fullLength` surahs, all by that reciter in that rewayah,
+ * in any order, shuffled too) carries on in the new voice, leaving out the
+ * surahs it doesn't have. Any other queue (a playlist, loved surahs, a
+ * filtered list) keeps its other items as they were: only the surah playing
+ * changes, as the panel says.
+ */
+export function queueInVoice(
+  queue: readonly QueueItem[],
+  currentIndex: number,
+  fullLength: number | null,
+  swap: (item: QueueItem) => QueueItem | null,
+): {queue: QueueItem[]; index: number} {
+  const current = queue[currentIndex];
+  const replaced = current ? swap(current) : null;
+  if (!current || !replaced) return {queue: queue.slice(), index: currentIndex};
+  const wholeRecitation =
+    fullLength !== null &&
+    queue.length === fullLength &&
+    queue.every(
+      q =>
+        q.reciterId === current.reciterId && q.rewayahId === current.rewayahId,
+    );
+  if (!wholeRecitation) {
+    const next = queue.slice();
+    next[currentIndex] = replaced;
+    return {queue: next, index: currentIndex};
+  }
+  const next: QueueItem[] = [];
+  let index = 0;
+  queue.forEach((item, i) => {
+    const swapped = i === currentIndex ? replaced : swap(item);
+    if (!swapped) return;
+    if (i === currentIndex) index = next.length;
+    next.push(swapped);
+  });
+  return {queue: next, index};
 }
 
 /** What plays after the current item, with each one's place in the queue. */
@@ -157,17 +248,17 @@ export function shortReciterName(name: string): string {
   return words[words.length - 1];
 }
 
-function capitalize(value: string): string {
-  return value.length === 0
-    ? value
-    : value.charAt(0).toUpperCase() + value.slice(1);
-}
-
-/** "Murattal · Hafs A'n Assem", the style and rewayah of a recitation. */
+/**
+ * "Murattal · Hafs 'an 'Asim": the style and rewayah of a recitation, in the
+ * display names the reciter pages use (browseCatalog's styleLabel and
+ * rewayahDisplayName), never the API's raw "molim" or "Hafs A'n Assem". The
+ * one label for a recitation wherever the app names one.
+ */
 export function rewayahLabel(rewayah: Rewayah | null | undefined): string {
   if (!rewayah) return '';
   const style = rewayah.style.trim();
-  if (style.length === 0) return rewayah.name;
-  if (rewayah.name.length === 0) return capitalize(style);
-  return `${capitalize(style)} · ${rewayah.name}`;
+  const name = rewayah.name.trim();
+  if (style.length === 0) return rewayahDisplayName(name);
+  if (name.length === 0) return styleLabel(style);
+  return `${styleLabel(style)} · ${rewayahDisplayName(name)}`;
 }
