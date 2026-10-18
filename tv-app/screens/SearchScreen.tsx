@@ -267,7 +267,12 @@ export function SearchScreen(): React.ReactElement {
 
   return (
     <View style={styles.container}>
-      <TVFocusGuideView autoFocus style={styles.left}>
+      <TVFocusGuideView
+        autoFocus
+        style={styles.left}
+        // Focus on this side means it has left the results, even when the
+        // results changed under the focused view and its blur never came.
+        onFocus={() => inResults.reset()}>
         <SearchBar query={query} onChangeQuery={setQuery} />
         <View style={styles.keyboardGap} />
         <SearchKeyboard
