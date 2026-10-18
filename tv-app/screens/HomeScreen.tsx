@@ -149,8 +149,12 @@ function heroView(plan: HeroPlan, reciterName: string | null): HeroView {
   };
 }
 
-/** Juz 'Amma's rail shows its shortest surahs, then a tile for all of it. */
-const JUZ_AMMA_TILES = JUZ_AMMA_SURAHS.slice(-12);
+/**
+ * The short surahs rail: Juz 'Amma's shortest twelve in the order they are
+ * learnt by heart (An-Nas, Al-Falaq, Al-Ikhlas ...), then a tile for all
+ * of Juz 'Amma.
+ */
+const JUZ_AMMA_TILES = [...JUZ_AMMA_SURAHS].reverse().slice(0, 12);
 
 /** Loved surahs shown on Home; the Library has them all. */
 const LOVED_TILES = 12;
@@ -164,7 +168,7 @@ const GLOW_FADE_Y = 220;
  * Friday, Al-Mulk at night, a surah of the day otherwise) with the clock,
  * then rails that show only when they have something: Continue listening,
  * the moment's rail, your reciters, playlists and loved surahs, adhkar,
- * collections, featured reciters and Juz 'Amma.
+ * collections, featured reciters and the short surahs of Juz 'Amma.
  */
 export function HomeScreen(): React.ReactElement {
   const {reciters} = useReciters();
@@ -774,7 +778,7 @@ export function HomeScreen(): React.ReactElement {
           renderPortraits(featuredReciters),
         );
       case 'juzAmma':
-        return rail(row, "Juz 'Amma", [
+        return rail(row, 'Short surahs', [
           ...JUZ_AMMA_TILES.map(n => (
             <SurahTile
               key={n}
