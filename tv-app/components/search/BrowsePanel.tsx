@@ -3,6 +3,7 @@ import {StyleSheet, Text, TVFocusGuideView, View} from 'react-native';
 import {Image} from 'expo-image';
 import {FocusableCard} from '../primitives/FocusableCard';
 import {FocusableButton, FocusText} from '../primitives/FocusableButton';
+import {FocusFrame} from '../primitives/focusContext';
 import {GradientFill} from '../brand/GradientFill';
 import {SurahGlyph} from '../brand/SurahGlyph';
 import {Scrim} from '../adhkar/AdhkarListCard';
@@ -48,6 +49,11 @@ const surahById = new Map(SURAHS.map(s => [s.id, s]));
 
 /** Reciters shown before typing, so it's clear Search finds them too. */
 const RECITER_COUNT = 6;
+/**
+ * Wider than the 112 portrait so the popular reciters' long names ("Mohammed
+ * Siddiq Al-Minshawi") fit on two lines; six still fit the row.
+ */
+const PORTRAIT_WIDTH = 160;
 
 type Props = {
   reciters: readonly Reciter[];
@@ -110,6 +116,7 @@ export function BrowsePanel({
                 key={reciter.id}
                 reciter={reciter}
                 size={112}
+                width={PORTRAIT_WIDTH}
                 onPress={onReciter}
               />
             ))}
@@ -172,39 +179,47 @@ function BrowseTile({
   onPress: () => void;
 }): React.ReactElement {
   return (
+    // The result cards' focus treatment: a cream ring set off the artwork,
+    // around a radius-16 tile, so Search has one focus style.
     <FocusableCard
+      ring={false}
       onPress={onPress}
       accessibilityLabel={`${title}, ${subtitle}`}
       style={styles.tile}>
-      {/* One clipped layer for the artwork, so it always fills the tile. */}
-      <View style={styles.tileFill}>
-        <GradientFill colors={gradient} id={id} />
-        {image ? (
-          <Image
-            source={{uri: image}}
-            style={[StyleSheet.absoluteFill, styles.tileImage]}
-            contentFit="cover"
-            cachePolicy="memory-disk"
-            transition={250}
-            accessible={false}
-          />
-        ) : null}
-        {art ? <View style={styles.tileArt}>{art}</View> : null}
-        <Scrim id={`${id}-scrim`} direction="up" from={0.75} to={0} />
-        <View style={styles.tileText}>
-          <Text style={styles.tileTitle} numberOfLines={1}>
-            {title}
-          </Text>
-          <Text style={styles.tileSub} numberOfLines={1}>
-            {subtitle}
-          </Text>
+      <FocusFrame radius={TILE_RADIUS} style={styles.tile}>
+        {/* One clipped layer for the artwork, so it always fills the tile. */}
+        <View style={styles.tileFill}>
+          <GradientFill colors={gradient} id={id} />
+          {image ? (
+            <Image
+              source={{uri: image}}
+              style={[StyleSheet.absoluteFill, styles.tileImage]}
+              contentFit="cover"
+              cachePolicy="memory-disk"
+              transition={250}
+              accessible={false}
+            />
+          ) : null}
+          {art ? <View style={styles.tileArt}>{art}</View> : null}
+          <Scrim id={`${id}-scrim`} direction="up" from={0.75} to={0} />
+          <View style={styles.tileText}>
+            <Text style={styles.tileTitle} numberOfLines={1}>
+              {title}
+            </Text>
+            <Text style={styles.tileSub} numberOfLines={1}>
+              {subtitle}
+            </Text>
+          </View>
         </View>
-      </View>
+      </FocusFrame>
     </FocusableCard>
   );
 }
 
 const TILE_GAP = 22;
+const TILE_RADIUS = 16;
+/** FocusFrame's ring and gap on each side, kept clear around the artwork. */
+const FRAME_INSET = 9;
 
 const styles = createScaledStyles({
   kicker: {...typography.label, color: colors.accent, marginBottom: 16},
@@ -212,11 +227,9 @@ const styles = createScaledStyles({
   row: {flexDirection: 'row', gap: TILE_GAP},
   allRow: {marginTop: 48},
   reciterRow: {flexDirection: 'row', gap: 14},
-  tile: {width: 320, height: 176},
+  tile: {width: 320 + FRAME_INSET * 2, height: 176 + FRAME_INSET * 2},
   tileFill: {
     ...StyleSheet.absoluteFillObject,
-    borderRadius: 10,
-    overflow: 'hidden',
     backgroundColor: colors.surfaceElevated,
   },
   tileImage: {opacity: 0.85},

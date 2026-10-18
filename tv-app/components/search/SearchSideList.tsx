@@ -48,7 +48,7 @@ export function SearchSideList({
             <SuggestionText suggestion={s} />
             <FocusText
               style={styles.tag}
-              color={colors.textTertiary}
+              color={colors.textSecondary}
               focusedColor={colors.onFocusSecondary}>
               {s.kind}
             </FocusText>
@@ -155,9 +155,10 @@ const styles = createScaledStyles({
     fontWeight: '500',
   },
   match: {fontFamily: fonts.bold, fontWeight: '700'},
+  // Read from across the room: no smaller than 16.
   tag: {
     ...typography.label,
-    fontSize: 13,
+    fontSize: 16,
   },
   clear: {
     fontFamily: fonts.semiBold,
