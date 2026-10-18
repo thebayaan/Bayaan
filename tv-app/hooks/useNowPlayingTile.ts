@@ -1,8 +1,12 @@
 import {useCallback, useMemo} from 'react';
 import {useTVPlayerStore} from '../store/tvPlayerStore';
 import {useContinueListening} from './useContinueListening';
-import {openPlayer, playOrOpen, surahTitle} from '../services/playbackRouting';
-import {getCachedReciter} from '../services/tvDataService';
+import {
+  findReciter,
+  openPlayer,
+  playOrOpen,
+  surahTitle,
+} from '../services/playbackRouting';
 import {nowPlayingTile, type NowPlayingTile} from '../services/nowPlayingTile';
 
 /**
@@ -20,17 +24,23 @@ export function useNowPlayingTile(): {
   const positionSeconds = useTVPlayerStore(s => s.positionSeconds);
   const durationSeconds = useTVPlayerStore(s => s.durationSeconds);
   const continueEntries = useContinueListening();
-  const newest = item ? null : (continueEntries[0] ?? null);
-
+  // The newest entry that can still resume: one whose reciter is gone has
+  // no name and only leads to an error.
   const resume = useMemo(() => {
-    if (!newest) return null;
-    const reciter = getCachedReciter(newest.reciterId);
-    return {
-      title: surahTitle(newest.surahNumber),
-      subtitle: reciter?.name ?? '',
-      entry: newest,
-    };
-  }, [newest]);
+    if (item) return null;
+    for (const entry of continueEntries) {
+      const reciter = findReciter(entry.reciterId);
+      if (reciter) {
+        return {
+          title: surahTitle(entry.surahNumber),
+          subtitle: reciter.name,
+          entry,
+        };
+      }
+    }
+    return null;
+  }, [item, continueEntries]);
+  const newest = resume?.entry ?? null;
 
   const tile = nowPlayingTile({
     item,
