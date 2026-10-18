@@ -6,7 +6,6 @@ import {useContextMenuStore} from '../../store/contextMenuStore';
 import {useListeningStore} from '../../store/listeningStore';
 import {useSettingsStore} from '../../store/settingsStore';
 import {useOnboarded} from '../../hooks/useOnboarded';
-import {useReciters} from '../../hooks/useReciters';
 import {HomeScreen} from '../../screens/HomeScreen';
 import {SearchScreen} from '../../screens/SearchScreen';
 import {CollectionScreen} from '../../screens/CollectionScreen';
@@ -36,11 +35,13 @@ export function Router(): React.ReactElement {
   const pop = useNavStore(s => s.pop);
   const switchTab = useNavStore(s => s.switchTab);
   const {onboarded} = useOnboarded();
-  const {reciters} = useReciters();
   useGlobalRemoteKeys();
   usePlaybackAlerts();
 
   const handleBack = useCallback((): boolean => {
+    // The welcome handles its own Back (also when opened from Settings,
+    // where the tab below it would otherwise take the press).
+    if (!onboarded) return false;
     // A screen's own open panel (e.g. Search's reciter picker) closes first.
     if (consumeScreenBack()) return true;
     if (useContextMenuStore.getState().target) {
@@ -73,7 +74,7 @@ export function Router(): React.ReactElement {
       return true;
     }
     return false;
-  }, [stack.length, pop, currentTab, switchTab]);
+  }, [onboarded, stack.length, pop, currentTab, switchTab]);
 
   const contextMenuOpen = useContextMenuStore(s => s.target !== null);
   const overlayOpen = useOverlayStore(s => Boolean(s.active));
@@ -82,7 +83,7 @@ export function Router(): React.ReactElement {
     contextMenuOpen || overlayOpen || stack.length > 0 || currentTab !== 'home',
   );
 
-  if (!onboarded && reciters.length > 0) {
+  if (!onboarded) {
     return (
       <View style={{flex: 1}}>
         <OnboardingScreen />

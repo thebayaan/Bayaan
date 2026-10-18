@@ -8,7 +8,7 @@ import {
   FocusText,
   useButtonFocused,
 } from '../components/primitives/focusContext';
-import {SidePanel} from '../components/listening/SidePanel';
+import {ReciterPickerPanel} from '../components/settings/ReciterPickerPanel';
 import {GlowBackdrop} from '../components/listening/GlowBackdrop';
 import {LogoMark} from '../components/brand/LogoMark';
 import {useOnboarded} from '../hooks/useOnboarded';
@@ -16,6 +16,7 @@ import {useReciters} from '../hooks/useReciters';
 import {useVerseSync} from '../hooks/useVerseSync';
 import {useTVBackHandler} from '../hooks/useTVBackHandler';
 import {setTVMenuKeyEnabled} from '../hooks/tvMenuKey';
+import {useNavStore} from '../store/navStore';
 import {useSettingsStore} from '../store/settingsStore';
 import {
   findTranslation,
@@ -25,6 +26,7 @@ import {
 } from '../store/displayStore';
 import {getReciterArtwork} from '../services/reciterArtwork';
 import {popularReciters} from '../services/listeningChoices';
+import {defaultReciterChoices} from '../services/reciterPicker';
 import type {Reciter} from '../types/reciter';
 import {colors} from '../theme/colors';
 import {quranTextFontAvailable} from '../theme/calligraphy';
@@ -33,8 +35,6 @@ import {createScaledStyles, scale} from '../theme/scale';
 
 /** Portraits on the first step. */
 const FEATURED_COUNT = 6;
-/** Reciters in the "Browse all reciters" panel. */
-const BROWSE_LIMIT = 80;
 /** The verse the step-two cards preview (Al-Mulk 1). */
 const PREVIEW_SURAH = 67;
 const FALLBACK_TRANSLATION = 'Blessed is He in whose hand is dominion…';
@@ -54,19 +54,24 @@ function styleLabel(reciter: Reciter): string {
  * First launch in two steps, then Home: whose voice everything plays in
  * (round portraits of the best-known reciters, or the full list), and what
  * the listening room shows (Arabic, translation or both, and in which
- * language). Back on step two returns to step one.
+ * language). Back on step two returns to step one. Opened again from
+ * Settings, it starts on your current choices and Back on step one closes it.
  */
 export function OnboardingScreen(): React.ReactElement {
   const {reciters} = useReciters();
-  const {markOnboarded} = useOnboarded();
+  const {markOnboarded, rerun} = useOnboarded();
   const defaultReciterId = useSettingsStore(s => s.defaultReciterId);
   const setDefaultReciterId = useSettingsStore(s => s.setDefaultReciterId);
   const [step, setStep] = useState<1 | 2>(1);
   const [browsing, setBrowsing] = useState(false);
-  // The portrait to focus when coming back to step one.
+  // Closing the browse panel puts focus back on its button.
+  const [returnToBrowse, setReturnToBrowse] = useState(false);
+  // The reciter picked here. On first launch the stored default was only
+  // seeded, so it is not shown as a choice until one is made.
   const [pickedId, setPickedId] = useState<string | null>(null);
+  const shownId = pickedId ?? (rerun ? defaultReciterId : null);
 
-  const featured = useMemo(
+  const popular = useMemo(
     () =>
       popularReciters(
         reciters,
@@ -75,10 +80,22 @@ export function OnboardingScreen(): React.ReactElement {
       ),
     [reciters],
   );
+  // A pick from the full list takes the last portrait, so step one still
+  // shows (and focuses) it when you come back.
+  const featured = useMemo(() => {
+    const chosen = reciters.find(r => r.id === shownId);
+    if (!chosen || popular.includes(chosen)) return popular;
+    return [...popular.slice(0, FEATURED_COUNT - 1), chosen];
+  }, [popular, reciters, shownId]);
+  const browseList = useMemo(
+    () => (browsing ? defaultReciterChoices(reciters, defaultReciterId) : []),
+    [browsing, reciters, defaultReciterId],
+  );
 
   const pick = (id: string): void => {
     setDefaultReciterId(id);
     setPickedId(id);
+    setReturnToBrowse(false);
     setBrowsing(false);
     setStep(2);
   };
@@ -92,11 +109,22 @@ export function OnboardingScreen(): React.ReactElement {
       setStep(1);
       return true;
     }
+    if (rerun) {
+      markOnboarded();
+      return true;
+    }
     return false;
-  }, [browsing, step]);
-  useTVBackHandler(handleBack, browsing || step === 2);
-  // Home opens as a root place, where the Menu key leaves the app again.
-  useEffect(() => () => setTVMenuKeyEnabled(false), []);
+  }, [browsing, step, rerun, markOnboarded]);
+  useTVBackHandler(handleBack, browsing || step === 2 || rerun);
+  // Leaving hands the Menu key back to the place underneath: Home is a root
+  // place, where it leaves the app again; Settings (a rerun) is not.
+  useEffect(
+    () => () => {
+      const nav = useNavStore.getState();
+      setTVMenuKeyEnabled(nav.currentTab !== 'home' || nav.stack.length > 0);
+    },
+    [],
+  );
 
   return (
     <View style={styles.container}>
@@ -109,10 +137,13 @@ export function OnboardingScreen(): React.ReactElement {
       {step === 1 ? (
         <StepOne
           featured={featured}
-          selectedId={defaultReciterId}
-          focusId={pickedId}
+          selectedId={shownId}
+          returnToBrowse={returnToBrowse}
           onPick={pick}
-          onBrowse={() => setBrowsing(true)}
+          onBrowse={() => {
+            setReturnToBrowse(true);
+            setBrowsing(true);
+          }}
           hidden={browsing}
         />
       ) : (
@@ -125,41 +156,32 @@ export function OnboardingScreen(): React.ReactElement {
       </View>
 
       {browsing ? (
-        <SidePanel
+        <ReciterPickerPanel
           title="All reciters"
-          onActivity={noop}
-          sections={[
-            {
-              title: 'Everything plays in this voice',
-              options: reciters.slice(0, BROWSE_LIMIT).map(r => ({
-                value: r.id,
-                label: r.name,
-                detail: styleLabel(r) || undefined,
-                face: {source: getReciterArtwork(r), name: r.name},
-              })),
-              selected: defaultReciterId,
-              onSelect: pick,
-            },
-          ]}
+          subtitle="Everything plays in this voice"
+          reciters={browseList}
+          selectedId={shownId}
+          onSelect={pick}
+          detail={styleLabel}
         />
       ) : null}
     </View>
   );
 }
 
-function noop(): void {}
-
 function StepOne({
   featured,
   selectedId,
-  focusId,
+  returnToBrowse,
   onPick,
   onBrowse,
   hidden,
 }: {
   featured: Reciter[];
+  /** Your pick, shown with the sky ring and focused. */
   selectedId: string | null;
-  focusId: string | null;
+  /** The browse panel just closed: focus its button, not a portrait. */
+  returnToBrowse: boolean;
   onPick: (id: string) => void;
   onBrowse: () => void;
   /** The browse panel is open over the right side. */
@@ -167,7 +189,7 @@ function StepOne({
 }): React.ReactElement {
   const focusIndex = Math.max(
     0,
-    featured.findIndex(r => r.id === focusId),
+    featured.findIndex(r => r.id === selectedId),
   );
   return (
     <View style={[styles.step, hidden && styles.stepBesidePanel]}>
@@ -183,7 +205,7 @@ function StepOne({
             reciter={r}
             selected={r.id === selectedId}
             onSelect={() => onPick(r.id)}
-            hasTVPreferredFocus={!hidden && i === focusIndex}
+            hasTVPreferredFocus={!hidden && !returnToBrowse && i === focusIndex}
           />
         ))}
       </TVFocusGuideView>
@@ -191,6 +213,7 @@ function StepOne({
         <FocusableButton
           onPress={onBrowse}
           accessibilityLabel="Browse all reciters"
+          hasTVPreferredFocus={!hidden && returnToBrowse}
           outlined
           style={styles.button}>
           <FocusText style={styles.buttonText}>Browse all reciters</FocusText>
@@ -380,7 +403,7 @@ function ModeCard({
               styles.modeTranslation,
               !showArabic && styles.modeTranslationAlone,
             ]}
-            numberOfLines={3}>
+            numberOfLines={showArabic ? 2 : 3}>
             {sample.translation}
           </Text>
         ) : null}
@@ -548,7 +571,7 @@ const styles = createScaledStyles({
   },
   modeCard: {
     width: 440,
-    height: 220,
+    height: 290,
     borderRadius: 22,
     backgroundColor: colors.surfaceElevated,
   },
@@ -557,6 +580,8 @@ const styles = createScaledStyles({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 26,
+    paddingTop: 18,
+    paddingBottom: 14,
     gap: 8,
   },
   modeArabic: {

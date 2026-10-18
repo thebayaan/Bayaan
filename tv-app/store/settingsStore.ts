@@ -23,11 +23,22 @@ export const DISPLAY_PICKERS: readonly SettingsPicker[] = [
   'textSize',
 ];
 
+/** A Settings row: one that opens a picker, or one that acts on a press. */
+export type SettingsRow = SettingsPicker | 'history' | 'favorites' | 'welcome';
+
 type SettingsState = {
   defaultReciterId: string | null;
   setDefaultReciterId: (id: string | null) => void;
   picker: SettingsPicker | null;
+  /** Opening a picker also remembers its row, for focus when it closes. */
   setPicker: (picker: SettingsPicker | null) => void;
+  /**
+   * The row that takes focus when the rows show again (a picker closed, or
+   * the welcome opened from Settings finished). Kept in the same update that
+   * opens a picker, so the first render after it closes is already right.
+   */
+  focusRow: SettingsRow | null;
+  setFocusRow: (row: SettingsRow | null) => void;
 };
 
 export function readPersistedDefaultReciterId(): string | null {
@@ -45,7 +56,9 @@ export const useSettingsStore = create<SettingsState>(set => ({
     set({defaultReciterId: id});
   },
   picker: null,
-  setPicker: picker => set({picker}),
+  setPicker: picker => set(s => ({picker, focusRow: picker ?? s.focusRow})),
+  focusRow: null,
+  setFocusRow: focusRow => set({focusRow}),
 }));
 
 // Reflect external MMKV writes (e.g. the Onboarding screen still sets the

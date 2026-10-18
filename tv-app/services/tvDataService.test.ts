@@ -6,6 +6,7 @@ import fallback from '../../data/reciters-fallback.json';
 // is loaded (via the dynamic import in beforeAll below), then exercise the
 // live-fetch and killswitch paths.
 process.env.EXPO_PUBLIC_BAYAAN_API_URL = 'https://api.test';
+process.env.EXPO_PUBLIC_KILLSWITCH_URL = 'https://config.test/app-config.json';
 
 let service: typeof import('./tvDataService');
 
@@ -67,6 +68,27 @@ describe('tvDataService', () => {
     const result = await service.fetchReciters();
     expect(result.length).toBeGreaterThan(0);
     expect(mockFetch).toHaveBeenCalledTimes(1); // only killswitch call
+    expect(mockFetch.mock.calls[0][0]).toBe(
+      'https://config.test/app-config.json',
+    );
+  });
+
+  it('skips the killswitch when no config URL is set', async () => {
+    const saved = process.env.EXPO_PUBLIC_KILLSWITCH_URL;
+    delete process.env.EXPO_PUBLIC_KILLSWITCH_URL;
+    let isolated!: typeof import('./tvDataService');
+    jest.isolateModules(() => {
+      isolated = require('./tvDataService');
+    });
+    process.env.EXPO_PUBLIC_KILLSWITCH_URL = saved;
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => [{id: '1', name: 'Test', image_url: null}],
+    });
+    const result = await isolated.fetchReciters();
+    expect(result).toHaveLength(1);
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    expect(mockFetch.mock.calls[0][0]).toBe('https://api.test/reciters');
   });
 
   it('buildAudioUrl pads surah number to 3 digits', () => {
