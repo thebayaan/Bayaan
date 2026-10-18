@@ -28,7 +28,6 @@ import {
   removePlaylistItem,
   type PlaylistItem,
 } from '../../services/playlistsStore';
-import {shortReciterName} from '../../services/listeningChoices';
 import {pushScreenBack} from '../../services/screenBack';
 import {getCachedRewayat} from '../../services/tvDataService';
 import {showToast} from '../../store/toastStore';
@@ -224,11 +223,12 @@ function SurahMenu({target}: {target: SurahMenuTarget}): React.ReactElement {
     <View style={styles.art}>
       <SurahArtwork
         surahNumber={surahNumber}
-        glyphSize={34}
+        glyphSize={44}
         id={`surah-menu-${surahNumber}`}
       />
     </View>
   );
+  // One form of the name on both pages, so the header never changes.
   const subtitle = reciter ? reciter.name : undefined;
 
   // From a playlist row, that playlist is left out of the picker: taking
@@ -245,7 +245,7 @@ function SurahMenu({target}: {target: SurahMenuTarget}): React.ReactElement {
         art={art}
         kicker="ADD TO PLAYLIST"
         title={title}
-        subtitle={reciter ? shortReciterName(reciter.name) : undefined}>
+        subtitle={subtitle}>
         <MenuRow
           icon={<FocusIcon icon={PlusIcon} size={24} />}
           label="New playlist…"

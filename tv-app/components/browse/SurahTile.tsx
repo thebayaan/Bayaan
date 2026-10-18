@@ -25,8 +25,8 @@ const ART_HEIGHT = 168;
 
 /**
  * A surah's artwork card with a cream ring on focus and its number in the
- * corner. The meaning printed inside the artwork is too small to read from
- * the sofa, so it is repeated below as real text.
+ * corner. The artwork carries the calligraphy and the name; the English
+ * meaning is printed once, below it.
  */
 function SurahTileImpl({
   surahNumber,
@@ -52,7 +52,7 @@ function SurahTileImpl({
           glyphSize={64}
           id={`surah-tile-${surahNumber}`}
         />
-        {/* The card carries the name; the number sits in its corner. */}
+        {/* The artwork carries the name; the number sits in its corner. */}
         <Text style={styles.num}>{surahNumber}</Text>
         {started ? (
           <View style={styles.track}>
