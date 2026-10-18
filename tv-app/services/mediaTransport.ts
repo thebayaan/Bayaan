@@ -1,5 +1,6 @@
 import {useTVPlayerStore} from '../store/tvPlayerStore';
 import {MEDIA_SEEK_SECONDS, type MediaKey} from './remoteKeys';
+import {resumeNewestContinue} from './continueResume';
 
 /**
  * Transport commands from outside the app's own key handling: on Vega, the
@@ -49,11 +50,17 @@ export const playerTransport: MediaTransport = {
 
 /**
  * What an app-wide transport key does to the recitation (see
- * hooks/useGlobalRemoteKeys). Nothing without a queue.
+ * hooks/useGlobalRemoteKeys). Without a queue, Play and Play/Pause resume
+ * the newest Continue listening entry, and the other keys do nothing.
  */
 export function applyMediaKey(key: MediaKey): void {
   const player = useTVPlayerStore.getState();
-  if (player.queue.length === 0) return;
+  if (player.queue.length === 0) {
+    if (key === 'playPause' || key === 'play') {
+      resumeNewestContinue('media-key');
+    }
+    return;
+  }
   switch (key) {
     case 'playPause':
       player.toggle();

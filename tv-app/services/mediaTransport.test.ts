@@ -2,6 +2,9 @@ import {useTVPlayerStore} from '../store/tvPlayerStore';
 import type {AudioEngine} from './audioEngine';
 import {applyMediaKey, playerTransport} from './mediaTransport';
 import {MEDIA_SEEK_SECONDS} from './remoteKeys';
+import {resumeNewestContinue} from './continueResume';
+
+jest.mock('./continueResume', () => ({resumeNewestContinue: jest.fn()}));
 
 const item = {
   reciterId: 'r1',
@@ -61,13 +64,29 @@ describe('applyMediaKey', () => {
     expect(playing.engine.pause).toHaveBeenCalledTimes(1);
   });
 
-  it('does nothing before anything was played', () => {
+  it('resumes Continue listening on Play with an empty queue', () => {
+    const resume = jest.mocked(resumeNewestContinue);
+    resume.mockClear();
     const player = stubPlayer();
     useTVPlayerStore.setState({queue: []});
     applyMediaKey('playPause');
+    applyMediaKey('play');
+    expect(resume).toHaveBeenCalledTimes(2);
+    // The other keys have nothing to act on.
     applyMediaKey('next');
+    applyMediaKey('pause');
+    applyMediaKey('fastForward');
+    expect(resume).toHaveBeenCalledTimes(2);
     expect(player.toggle).not.toHaveBeenCalled();
     expect(player.next).not.toHaveBeenCalled();
+  });
+
+  it('never resumes Continue listening while a queue is loaded', () => {
+    const resume = jest.mocked(resumeNewestContinue);
+    resume.mockClear();
+    stubPlayer();
+    applyMediaKey('playPause');
+    expect(resume).not.toHaveBeenCalled();
   });
 });
 
