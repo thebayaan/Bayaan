@@ -107,18 +107,29 @@ export function PlaylistEditScreen({
     ? reciters.find(r => r.id === seed.reciterId)?.name
     : undefined;
   const previewSurah = seed?.surahNumber ?? existing?.items[0]?.surahNumber;
-  const name = uniquePlaylistName(
-    cleanPlaylistName(draft.text, suggested),
-    playlists,
-    playlistId,
-  );
+  const typed = cleanPlaylistName(draft.text, suggested);
+  // A renamed playlist keeping its own name keeps it as is, even when an
+  // older (phone-made) playlist shares it: an untouched Save writes nothing.
+  const name =
+    existing && typed === existing.name
+      ? typed
+      : uniquePlaylistName(typed, playlists, playlistId);
   const arabic = isArabicText(draft.text);
 
   function save(): void {
     if (renaming) {
       // Only what changed is written, so an untouched Save keeps the
       // playlist's place in the Recent order.
-      if (existing) editPlaylist(existing.id, {name, color});
+      // A playlist saved without a colour shows the fallback; keeping it
+      // is no change.
+      if (existing) {
+        const keptFallback =
+          existing.color === undefined && color === FALLBACK_PLAYLIST_COLOR;
+        editPlaylist(existing.id, {
+          name,
+          color: keptFallback ? undefined : color,
+        });
+      }
       pop();
       return;
     }
@@ -190,10 +201,13 @@ export function PlaylistEditScreen({
         </View>
       </View>
 
-      <TVFocusGuideView
-        destinations={saveButton && !inSide ? [saveButton] : undefined}
-        style={styles.toSave}
-      />
+      {/* Mounted only while focus is on the keyboard. Passing no
+          destinations does not clear a guide's native ones (on either
+          platform), so a kept guide would still bounce Left from Create
+          back to Create; unmounting it is what turns it off. */}
+      {saveButton && !inSide ? (
+        <TVFocusGuideView destinations={[saveButton]} style={styles.toSave} />
+      ) : null}
 
       <TVFocusGuideView trapFocusRight style={styles.side}>
         <View style={styles.preview}>
