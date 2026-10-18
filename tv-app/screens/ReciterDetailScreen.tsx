@@ -53,7 +53,7 @@ import {
 } from '../../components/Icons';
 import {colors} from '../theme/colors';
 import {fonts, typography} from '../theme/typography';
-import {spacing} from '../theme/spacing';
+import {SCREEN_CLOCK_TOP, spacing} from '../theme/spacing';
 import {createScaledStyles, scale} from '../theme/scale';
 import {getReciterArtwork} from '../services/reciterArtwork';
 
@@ -653,7 +653,9 @@ const styles = createScaledStyles({
   bleed: {marginHorizontal: -LIST_PAD_X},
   back: {
     position: 'absolute',
-    top: 24,
+    // Below the overscan band, centred on the now-playing pill (56 tall,
+    // at the same top).
+    top: SCREEN_CLOCK_TOP + 6,
     // Not left of the list's edge: Android's focus finder would treat Back
     // as "left of" the first surah and jump up to it.
     left: spacing.xl,
@@ -681,7 +683,8 @@ const styles = createScaledStyles({
     alignItems: 'center',
     gap: spacing.lg + 8,
     paddingHorizontal: spacing.xl,
-    paddingTop: 96,
+    // Clear of Back and the pill above.
+    paddingTop: 128,
     paddingBottom: spacing.lg,
   },
   portrait: {

@@ -3,6 +3,7 @@ import {Platform, Pressable, Text, TVFocusGuideView, View} from 'react-native';
 import {NowPlayingGlyph} from './NowPlayingGlyph';
 import {useNowPlayingTile} from '../../hooks/useNowPlayingTile';
 import {colors} from '../../theme/colors';
+import {SCREEN_CLOCK_TOP} from '../../theme/spacing';
 import {fonts} from '../../theme/typography';
 import {createScaledStyles} from '../../theme/scale';
 
@@ -71,7 +72,8 @@ const styles = createScaledStyles({
     left: 0,
     right: 0,
     zIndex: 20,
-    paddingTop: 40,
+    // Below the overscan band, level with the root screens' clock.
+    paddingTop: SCREEN_CLOCK_TOP,
     paddingHorizontal: 80,
     alignItems: 'flex-end',
   },
