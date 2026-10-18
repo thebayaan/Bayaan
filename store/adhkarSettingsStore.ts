@@ -1,6 +1,6 @@
 import {create} from 'zustand';
-import {persist, createJSONStorage} from 'zustand/middleware';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import {persist} from 'zustand/middleware';
+import {createGuardedJSONStorage} from '@/utils/guardedJSONStorage'; // @ai
 // @ai-start
 import {
   defaultShowEnglishReadingAids,
@@ -67,7 +67,7 @@ export const useAdhkarSettingsStore = create<AdhkarSettingsState>()(
     }),
     {
       name: 'adhkar-settings',
-      storage: createJSONStorage(() => AsyncStorage),
+      storage: createGuardedJSONStorage(), // @ai
     },
   ),
 );

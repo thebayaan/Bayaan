@@ -1,6 +1,6 @@
 import {create} from 'zustand';
-import {createJSONStorage, persist} from 'zustand/middleware';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import {persist} from 'zustand/middleware';
+import {createGuardedJSONStorage} from '@/utils/guardedJSONStorage'; // @ai
 
 interface DevSettingsState {
   showFloatingDevMenu: boolean;
@@ -36,7 +36,7 @@ export const useDevSettingsStore = create<DevSettingsState>()(
     }),
     {
       name: 'dev-settings-store',
-      storage: createJSONStorage(() => AsyncStorage),
+      storage: createGuardedJSONStorage(), // @ai
     },
   ),
 );
