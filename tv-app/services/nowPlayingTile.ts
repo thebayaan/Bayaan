@@ -9,6 +9,7 @@
  */
 import type {PlayerStatus} from '../types/player';
 import type {ContinueEntry} from './continueListeningStore';
+import {shortReciterName} from './listeningChoices';
 
 export type TileState =
   | 'playing'
@@ -18,8 +19,12 @@ export type TileState =
   | 'finished'
   | 'resume';
 
-/** What OK on the tile does. */
-export type TileAction = 'open' | 'replay' | 'resume';
+/**
+ * What OK on the tile does: open the player; resume a paused or failed
+ * track and open it (the same as Home's Now playing strip); play a finished
+ * queue again; or resume the newest Continue entry after a relaunch.
+ */
+export type TileAction = 'open' | 'toggle' | 'replay' | 'resume';
 
 export type NowPlayingTile = {
   state: TileState;
@@ -67,6 +72,23 @@ const LABELS: Record<TileState, string> = {
   resume: 'Continue',
 };
 
+/**
+ * The newest entry that can be resumed: its reciter is still in the catalog
+ * (Home's Continue rail hides the others), so the tile and the first
+ * Continue card always agree.
+ */
+export function newestResumable(
+  entries: readonly ContinueEntry[],
+  isKnownReciter: (id: string) => boolean,
+): ContinueEntry | null {
+  return entries.find(e => isKnownReciter(e.reciterId)) ?? null;
+}
+
+// The second line is narrow: "Al-Minshawi", not "Mohammed Siddiq Al-…".
+function detailLine(label: string, reciter: string): string {
+  return reciter ? `${label} · ${shortReciterName(reciter)}` : label;
+}
+
 export function nowPlayingTile(input: TileInput): NowPlayingTile | null {
   const {item, resume} = input;
   if (!item) {
@@ -78,7 +100,7 @@ export function nowPlayingTile(input: TileInput): NowPlayingTile | null {
       action: 'resume',
       label,
       title: resume.title,
-      detail: resume.subtitle ? `${label} · ${resume.subtitle}` : label,
+      detail: detailLine(label, resume.subtitle),
       progress: fraction(entry.positionSeconds, entry.durationSeconds),
       accessibilityLabel: `${label} ${resume.title}${
         resume.subtitle ? ` with ${resume.subtitle}` : ''
@@ -90,13 +112,24 @@ export function nowPlayingTile(input: TileInput): NowPlayingTile | null {
   const label = LABELS[state];
   const detail =
     state === 'error'
-      ? `${label} · Open to retry`
+      ? `${label} · Try again`
       : state === 'finished'
         ? `${label} · Play again`
-        : item.subtitle
-          ? `${label} · ${item.subtitle}`
-          : label;
-  const action: TileAction = state === 'finished' ? 'replay' : 'open';
+        : detailLine(label, item.subtitle);
+  const action: TileAction =
+    state === 'finished'
+      ? 'replay'
+      : state === 'paused' || state === 'error'
+        ? 'toggle'
+        : 'open';
+  const does =
+    action === 'replay'
+      ? 'Play again'
+      : state === 'error'
+        ? 'Try again'
+        : action === 'toggle'
+          ? 'Resume'
+          : 'Open player';
   return {
     state,
     action,
@@ -107,8 +140,8 @@ export function nowPlayingTile(input: TileInput): NowPlayingTile | null {
       state === 'finished'
         ? 1
         : fraction(input.positionSeconds, input.durationSeconds),
-    accessibilityLabel: `${label}: ${item.title}. ${
-      action === 'replay' ? 'Play again' : 'Open player'
-    }.`,
+    accessibilityLabel: `${label}: ${item.title}${
+      item.subtitle ? ` with ${item.subtitle}` : ''
+    }. ${does}.`,
   };
 }
