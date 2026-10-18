@@ -71,6 +71,10 @@ export function requestSidebarFocus(place?: TabKey): boolean {
   return requestFocus(placeItem(place));
 }
 
+// The sidebar item (place, or 'nowPlaying') that has focus now, from the
+// items' own events, keyed so either order of blur and focus holds.
+let sidebarHolder: string | null = null;
+
 let pendingFocus: (() => void) | null = null;
 
 /**
@@ -92,7 +96,8 @@ export function focusSidebar(place?: TabKey): boolean {
       () => requestFocus(placeItem(place)),
       restoreScreenFocus,
     ],
-    () => useNavStore.getState().sidebarFocused,
+    // Onto that place's item: still on the place just left is not there.
+    () => (place ? sidebarHolder === place : sidebarHolder !== null),
   );
   return true;
 }
@@ -115,16 +120,15 @@ export function Sidebar(): React.ReactElement {
   const [lastTag, setLastTag] = useState<number | undefined>();
   const [tileTag, setTileTag] = useState<number | undefined>();
 
-  // Whether the sidebar has focus follows the items' own events at once,
-  // keyed so either order of blur and focus holds: Back reads it, and a
-  // Right then Back must never act on a sidebar focus that already left.
-  const holder = useRef<string | null>(null);
+  // Whether the sidebar has focus (navStore.sidebarFocused) follows the
+  // items' own events at once (sidebarHolder): Back reads it, and a Right
+  // then Back must never act on a sidebar focus that already left.
   // Moving focus between two sidebar items fires blur then focus; waiting a
   // beat before folding keeps the sidebar from flickering closed in between
   // (the fold only: the flag above never waits).
   const handleFocus = useCallback(
     (key: string) => {
-      holder.current = key;
+      sidebarHolder = key;
       if (!useNavStore.getState().sidebarFocused) setSidebarFocused(true);
       if (blurTimer.current) clearTimeout(blurTimer.current);
       setFocusedKey(key);
@@ -133,8 +137,8 @@ export function Sidebar(): React.ReactElement {
   );
   const handleBlur = useCallback(
     (key: string) => {
-      if (holder.current === key) {
-        holder.current = null;
+      if (sidebarHolder === key) {
+        sidebarHolder = null;
         setSidebarFocused(false);
       }
       if (blurTimer.current) clearTimeout(blurTimer.current);
@@ -145,6 +149,8 @@ export function Sidebar(): React.ReactElement {
   useEffect(
     () => () => {
       if (blurTimer.current) clearTimeout(blurTimer.current);
+      sidebarHolder = null;
+      pendingFocus?.();
       setSidebarFocused(false);
     },
     [setSidebarFocused],
