@@ -83,6 +83,14 @@ export function PlaylistScreen({playlistId}: Props): React.ReactElement {
   // the player lands on the row played from by itself: the screen stays
   // mounted under the player, see ScreenLayer.)
   const [focusRow, setFocusRow] = useState<number | null>(null);
+  // Play takes focus when the page opens, then lets go: tvOS asks again on
+  // every layout of a view that keeps the prop, which would pull focus off
+  // the row Back from the player landed on (the page stays mounted).
+  const [preferPlay, setPreferPlay] = useState(true);
+  useEffect(() => {
+    const timer = setTimeout(() => setPreferPlay(false), 1500);
+    return () => clearTimeout(timer);
+  }, []);
   useEffect(() => {
     if (focusRow === null) return;
     const timer = setTimeout(() => setFocusRow(null), 1500);
@@ -270,7 +278,7 @@ export function PlaylistScreen({playlistId}: Props): React.ReactElement {
               <FocusableButton
                 onPress={() => playFrom(0)}
                 accessibilityLabel={`Play ${playlist.name}`}
-                hasTVPreferredFocus
+                hasTVPreferredFocus={preferPlay}
                 outlined
                 style={styles.btn}>
                 <View style={styles.btnInner}>
