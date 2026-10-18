@@ -4,23 +4,31 @@ import {ScrollView, Text, TVFocusGuideView, View} from 'react-native';
 import {FilterChip} from '../components/browse/FilterChip';
 import {SurahTile, SURAH_TILE_WIDTH} from '../components/browse/SurahTile';
 import {BROWSE_GUTTER, useGridColumns} from '../components/browse/gridLayout';
+import {ReciterGrid} from '../components/catalog/ReciterGrid';
 import {FocusableButton} from '../components/primitives/FocusableButton';
-import {FocusText} from '../components/primitives/focusContext';
-import {useContinueListening} from '../hooks/useContinueListening';
-import {useDefaultReciter} from '../hooks/useDefaultReciter';
+import {FocusIcon, FocusText} from '../components/primitives/focusContext';
+import {PlayIcon} from '../../components/Icons';
+import {useFavorites} from '../hooks/useFavorites';
 import {useReciters} from '../hooks/useReciters';
+import {useSurahProgress} from '../hooks/useSurahProgress';
 import {
   featuredFirst,
   filterSurahs,
+  surahFilterPlayLabel,
   type SurahFilter,
 } from '../services/browseCatalog';
 import {
   playOrOpen,
   surahTitle,
   voiceForSurah,
+  type PlayItemInput,
 } from '../services/playbackRouting';
+import {pushScreenBack} from '../services/screenBack';
+import {firstVoice, visibleQueue} from '../services/surahsPlayback';
+import {getCachedRewayat} from '../services/tvDataService';
+import {useContextMenuStore} from '../store/contextMenuStore';
+import {useSettingsStore} from '../store/settingsStore';
 import {showToast} from '../store/toastStore';
-import {useNavStore} from '../store/navStore';
 import {colors} from '../theme/colors';
 import {spacing} from '../theme/spacing';
 import {fonts, typography} from '../theme/typography';
@@ -40,32 +48,60 @@ const JUZ_NUMBERS = Array.from({length: 30}, (_, i) => i + 1);
 /** Horizontal room around a tile inside its column, in design pixels. */
 const CELL_PAD = 14;
 const CELL_WIDTH = SURAH_TILE_WIDTH + CELL_PAD * 2;
-/** Art 168 + label row and gaps + the cell's vertical padding. */
-const ROW_HEIGHT = 196;
+/** How long a focus request stays up before it is dropped. */
+const FOCUS_REQUEST_MS = 1500;
 
-function overrideItemLayout(layout: {span?: number; size?: number}): void {
-  layout.span = 1;
-  layout.size = scale(ROW_HEIGHT);
-}
-
+/**
+ * Surahs: every surah as artwork, filtered by chips (a juz, the short ones,
+ * Makki, Madani). A press plays the surahs shown, from the one pressed, with
+ * the reciter named on the right of the chips; that chip changes him in
+ * place. Holding Select on a tile opens its menu.
+ *
+ * Focus: the first tile on arrival; the selected juz when entering the juz
+ * row; the reciter chip again after the reciter picker closes.
+ */
 export function SurahsScreen(): React.ReactElement {
   const {reciters} = useReciters();
-  const {defaultReciterId} = useDefaultReciter();
-  const continueEntries = useContinueListening();
-  const push = useNavStore(s => s.push);
+  const defaultReciterId = useSettingsStore(s => s.defaultReciterId);
+  const setDefaultReciterId = useSettingsStore(s => s.setDefaultReciterId);
+  const favorites = useFavorites();
+  const progressBySurah = useSurahProgress();
   const numColumns = useGridColumns(CELL_WIDTH);
 
   const [filter, setFilter] = useState<SurahFilter>('all');
   const [juz, setJuz] = useState<number>(1);
+  const [picking, setPicking] = useState<boolean>(false);
+  // Entering the juz row lands on the selected juz.
+  const [selectedJuzChip, setSelectedJuzChip] = useState<View | null>(null);
   // The first tile takes focus when the screen opens, but not after a chip
   // changes the grid: focus stays on the chip the viewer pressed.
   const [focusGridFirst, setFocusGridFirst] = useState<boolean>(true);
-  // Drop the request once it has had time to land: FlashList recycles cells,
-  // and a recycled cell becoming index 0 again would pull focus back up.
+  // After the reciter picker closes, focus goes back to the reciter chip.
+  const [focusReciterChip, setFocusReciterChip] = useState<boolean>(false);
+  // Drop the requests once they have had time to land: FlashList recycles
+  // cells, and a recycled cell becoming index 0 again would pull focus back.
   useEffect(() => {
-    const timer = setTimeout(() => setFocusGridFirst(false), 1500);
+    const timer = setTimeout(() => setFocusGridFirst(false), FOCUS_REQUEST_MS);
     return () => clearTimeout(timer);
   }, []);
+  useEffect(() => {
+    if (!focusReciterChip) return;
+    const timer = setTimeout(
+      () => setFocusReciterChip(false),
+      FOCUS_REQUEST_MS,
+    );
+    return () => clearTimeout(timer);
+  }, [focusReciterChip]);
+  // The picker opens on its first portrait (the current reciter).
+  const [focusPickerFirst, setFocusPickerFirst] = useState<boolean>(false);
+  useEffect(() => {
+    if (!focusPickerFirst) return;
+    const timer = setTimeout(
+      () => setFocusPickerFirst(false),
+      FOCUS_REQUEST_MS,
+    );
+    return () => clearTimeout(timer);
+  }, [focusPickerFirst]);
 
   const reciter = useMemo<Reciter | null>(() => {
     const chosen = defaultReciterId
@@ -74,37 +110,115 @@ export function SurahsScreen(): React.ReactElement {
     return chosen ?? featuredFirst(reciters)[0] ?? null;
   }, [reciters, defaultReciterId]);
 
-  const surahs = useMemo(() => filterSurahs(filter, juz), [filter, juz]);
+  // The default reciter first; if they lack a surah, the first featured
+  // reciter who has it, so a press always plays something.
+  const candidates = useMemo<Reciter[]>(
+    () => [
+      ...(reciter ? [reciter] : []),
+      ...featuredFirst(reciters).filter(r => r.id !== reciter?.id),
+    ],
+    [reciter, reciters],
+  );
 
-  const progressBySurah = useMemo(() => {
-    const map = new Map<number, number>();
-    // Entries are most recent first: keep the latest per surah.
-    for (const e of continueEntries) {
-      if (map.has(e.surahNumber) || e.durationSeconds <= 0) continue;
-      map.set(
-        e.surahNumber,
-        Math.min(1, e.positionSeconds / e.durationSeconds),
-      );
-    }
-    return map;
-  }, [continueEntries]);
+  const surahs = useMemo(() => filterSurahs(filter, juz), [filter, juz]);
+  const shownNumbers = useMemo(() => surahs.map(s => s.id), [surahs]);
+
+  // Who the picker offers: the current reciter first (where focus lands),
+  // then favourites, then the featured order.
+  const pickerReciters = useMemo<Reciter[]>(() => {
+    if (!picking) return [];
+    const favoriteIds = new Set(favorites.map(f => f.reciterId));
+    const ordered = featuredFirst(reciters);
+    const rank = (r: Reciter): number =>
+      r.id === reciter?.id ? 0 : favoriteIds.has(r.id) ? 1 : 2;
+    return ordered
+      .map((r, i) => ({r, i}))
+      .sort((a, b) => rank(a.r) - rank(b.r) || a.i - b.i)
+      .map(x => x.r);
+  }, [picking, reciters, reciter, favorites]);
+
+  const play = useCallback(
+    (voice: PlayItemInput, source: string): void => {
+      if (reciter && voice.reciterId !== reciter.id) {
+        const who = reciters.find(r => r.id === voice.reciterId);
+        showToast(
+          `Playing with ${who?.name ?? 'another reciter'}: ${reciter.name} has no recording of ${surahTitle(voice.surahNumber)}.`,
+        );
+      }
+      // A filtered grid plays what it shows; "All 114" plays the recitation.
+      const queue =
+        filter === 'all'
+          ? undefined
+          : visibleQueue(
+              voice,
+              shownNumbers,
+              getCachedRewayat(voice.reciterId) ??
+                reciters.find(r => r.id === voice.reciterId)?.rewayat,
+            );
+      void playOrOpen({...voice, queue, source});
+    },
+    [reciter, reciters, filter, shownNumbers],
+  );
 
   const handleSelect = useCallback(
     (surahNumber: number): void => {
-      // The default reciter first; if they lack this surah, the first
-      // featured reciter who has it, so a press always plays something.
-      const candidates = [
-        ...(reciter ? [reciter] : []),
-        ...featuredFirst(reciters).filter(r => r.id !== reciter?.id),
-      ];
       const voice = voiceForSurah(candidates, surahNumber);
       if (!voice) {
         showToast(`No reciter has ${surahTitle(surahNumber)} yet.`, 'error');
         return;
       }
-      void playOrOpen({...voice, source: 'surahs'});
+      play(voice, 'surahs');
     },
-    [reciter, reciters],
+    [candidates, play],
+  );
+
+  const handleLongPress = useCallback(
+    (surahNumber: number): void => {
+      const voice = voiceForSurah(candidates, surahNumber);
+      useContextMenuStore.getState().openSurah({
+        surahNumber,
+        reciterId: voice?.reciterId,
+        rewayahId: voice?.rewayahId,
+        origin: 'surahs',
+      });
+    },
+    [candidates],
+  );
+
+  function playShown(): void {
+    const voice = firstVoice(candidates, shownNumbers);
+    if (!voice) {
+      showToast('No reciter has these surahs yet.', 'error');
+      return;
+    }
+    play(voice, 'surahs-all');
+  }
+
+  const closePicker = useCallback((): void => {
+    setPicking(false);
+    setFocusReciterChip(true);
+  }, []);
+
+  // Back closes the reciter picker before it leaves Surahs (after a menu
+  // opened over it, which closes first).
+  useEffect(() => {
+    if (!picking) return;
+    return pushScreenBack(() => {
+      if (useContextMenuStore.getState().target) return false;
+      closePicker();
+      return true;
+    });
+  }, [picking, closePicker]);
+
+  const pickReciter = useCallback(
+    (next: Reciter): void => {
+      if (next.id !== reciter?.id) {
+        setDefaultReciterId(next.id);
+        showToast(`${next.name} is now your default reciter.`);
+      }
+      closePicker();
+    },
+    [reciter, setDefaultReciterId, closePicker],
   );
 
   function chooseFilter(next: SurahFilter): void {
@@ -123,14 +237,52 @@ export function SurahsScreen(): React.ReactElement {
         <SurahTile
           surahNumber={item.id}
           name={item.name}
+          meaning={item.translated_name_english}
           progress={progressBySurah.get(item.id) ?? 0}
           onSelect={handleSelect}
+          onLongPress={handleLongPress}
           hasTVPreferredFocus={focusGridFirst && index === 0}
         />
       </View>
     ),
-    [progressBySurah, handleSelect, focusGridFirst],
+    [progressBySurah, handleSelect, handleLongPress, focusGridFirst],
   );
+
+  if (picking) {
+    return (
+      <View style={styles.container}>
+        {/* A guide across the full width, so Up from any column of the
+            grid reaches Cancel at the far right (tvOS looks straight up). */}
+        <TVFocusGuideView
+          autoFocus
+          style={[styles.header, styles.pickerHeader]}>
+          <View style={styles.pickerText}>
+            <Text style={styles.kicker}>Choose a reciter</Text>
+            <Text style={styles.title}>Who recites the surahs</Text>
+            <Text style={styles.pickerMeta}>
+              Saved as your default reciter · Back returns to the surahs
+            </Text>
+          </View>
+          <FocusableButton
+            onPress={closePicker}
+            accessibilityLabel="Cancel"
+            outlined
+            style={styles.cancel}>
+            <FocusText style={styles.buttonText}>Cancel</FocusText>
+          </FocusableButton>
+        </TVFocusGuideView>
+        <TVFocusGuideView autoFocus style={styles.gridWrap}>
+          <ReciterGrid
+            reciters={pickerReciters}
+            onSelect={pickReciter}
+            focusFirst={focusPickerFirst}
+          />
+        </TVFocusGuideView>
+      </View>
+    );
+  }
+
+  const playLabel = surahFilterPlayLabel(filter, juz);
 
   return (
     <View style={styles.container}>
@@ -148,28 +300,49 @@ export function SurahsScreen(): React.ReactElement {
             />
           ))}
           <View style={styles.chipSpacer} />
+          <FocusableButton
+            onPress={playShown}
+            accessibilityLabel={playLabel}
+            style={styles.actionChip}>
+            <View style={styles.actionInner}>
+              <FocusIcon icon={PlayIcon} size={18} />
+              <FocusText style={styles.buttonText}>{playLabel}</FocusText>
+            </View>
+          </FocusableButton>
           {reciter ? (
             <FocusableButton
-              onPress={() =>
-                push({screen: 'reciterDetail', reciterId: reciter.id})
-              }
-              accessibilityLabel={`Playing with ${reciter.name}. Open reciter`}
+              onPress={() => {
+                setFocusPickerFirst(true);
+                setPicking(true);
+              }}
+              accessibilityLabel={`Reciter: ${reciter.name}. Change reciter`}
+              hasTVPreferredFocus={focusReciterChip}
               outlined
-              style={styles.playingChip}>
+              style={[styles.actionChip, styles.reciterChip]}>
               <Text numberOfLines={1}>
                 <FocusText
-                  style={styles.playingText}
+                  style={styles.reciterKicker}
                   color={colors.textSecondary}
                   focusedColor={colors.onFocusSecondary}>
-                  {'Playing with '}
+                  {'Reciter  '}
                 </FocusText>
-                <FocusText style={styles.playingName}>{reciter.name}</FocusText>
+                <FocusText style={styles.buttonText}>{reciter.name}</FocusText>
+                <FocusText
+                  style={styles.reciterKicker}
+                  color={colors.textSecondary}
+                  focusedColor={colors.onFocusSecondary}>
+                  {'  ·  Change'}
+                </FocusText>
               </Text>
             </FocusableButton>
           ) : null}
         </TVFocusGuideView>
         {filter === 'juz' ? (
-          <TVFocusGuideView autoFocus style={styles.juzWrap}>
+          // The row mounts afresh with each visit to Juz, so it has nothing
+          // to remember: point it at the selected juz instead.
+          <TVFocusGuideView
+            destinations={selectedJuzChip ? [selectedJuzChip] : undefined}
+            style={styles.juzWrap}>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -182,6 +355,7 @@ export function SurahsScreen(): React.ReactElement {
                   label={String(n)}
                   accessibilityLabel={`Juz ${n}`}
                   selected={juz === n}
+                  chipRef={juz === n ? setSelectedJuzChip : undefined}
                   onPress={() => chooseJuz(n)}
                 />
               ))}
@@ -196,8 +370,10 @@ export function SurahsScreen(): React.ReactElement {
           numColumns={numColumns}
           renderItem={renderItem}
           keyExtractor={s => String(s.id)}
-          overrideItemLayout={overrideItemLayout}
           extraData={focusGridFirst}
+          // Rows ready well below the fold, so a held Down never reaches the
+          // edge of what is mounted and jumps out of the grid.
+          drawDistance={scale(900)}
           contentContainerStyle={styles.gridContent}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
@@ -225,19 +401,19 @@ const styles = createScaledStyles({
   },
   chipRow: {flexDirection: 'row', alignItems: 'center', gap: 8},
   chipSpacer: {flex: 1},
-  playingChip: {
+  actionChip: {
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 16,
-    marginRight: 18,
-    maxWidth: 560,
   },
-  playingText: {
+  reciterChip: {marginRight: 18, maxWidth: 620},
+  actionInner: {flexDirection: 'row', alignItems: 'center', gap: 10},
+  reciterKicker: {
     fontFamily: fonts.medium,
     fontSize: 17,
     fontWeight: '500',
   },
-  playingName: {
+  buttonText: {
     fontFamily: fonts.bold,
     fontSize: 17,
     fontWeight: '700',
@@ -264,5 +440,24 @@ const styles = createScaledStyles({
     fontWeight: '500',
     paddingHorizontal: CELL_PAD,
     paddingTop: spacing.md,
+  },
+  pickerHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 24,
+    paddingBottom: spacing.md,
+  },
+  pickerText: {flex: 1, gap: 6},
+  kicker: {...typography.label, color: colors.accent},
+  pickerMeta: {
+    color: colors.textSecondary,
+    fontFamily: fonts.medium,
+    fontSize: 18,
+    fontWeight: '500',
+  },
+  cancel: {
+    paddingHorizontal: 26,
+    paddingVertical: 14,
+    borderRadius: 16,
   },
 });

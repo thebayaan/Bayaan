@@ -1,31 +1,40 @@
 import React from 'react';
 import {Text, View} from 'react-native';
 import {FocusableCard} from '../primitives/FocusableCard';
-import {FocusFrame} from '../primitives/focusContext';
+import {FocusFrame, FocusText} from '../primitives/focusContext';
 import {SurahArtwork} from '../brand/SurahArtwork';
 import {colors} from '../../theme/colors';
 import {fonts} from '../../theme/typography';
 import {createScaledStyles} from '../../theme/scale';
-import {useContextMenuStore} from '../../store/contextMenuStore';
 
 type Props = {
   surahNumber: number;
   name: string;
+  /** The English meaning ("The Opener"), shown under the artwork. */
+  meaning: string;
   /** Listening progress 0-1 for a started surah, else 0. */
   progress?: number;
   onSelect: (surahNumber: number) => void;
+  /** Hold Select: the surah's menu. */
+  onLongPress?: (surahNumber: number) => void;
   hasTVPreferredFocus?: boolean;
 };
 
 export const SURAH_TILE_WIDTH = 252;
 const ART_HEIGHT = 168;
 
-/** A surah's artwork card with a cream ring on focus and its number in the corner. */
+/**
+ * A surah's artwork card with a cream ring on focus and its number in the
+ * corner. The meaning printed inside the artwork is too small to read from
+ * the sofa, so it is repeated below as real text.
+ */
 function SurahTileImpl({
   surahNumber,
   name,
+  meaning,
   progress = 0,
   onSelect,
+  onLongPress,
   hasTVPreferredFocus,
 }: Props): React.ReactElement {
   const started = progress > 0.02 && progress < 0.97;
@@ -34,13 +43,9 @@ function SurahTileImpl({
       ring={false}
       style={styles.card}
       onPress={() => onSelect(surahNumber)}
-      onLongPress={() =>
-        useContextMenuStore
-          .getState()
-          .openSurah({surahNumber, origin: 'surahs'})
-      }
+      onLongPress={onLongPress ? () => onLongPress(surahNumber) : undefined}
       hasTVPreferredFocus={hasTVPreferredFocus}
-      accessibilityLabel={`Play ${name}, surah ${surahNumber}`}>
+      accessibilityLabel={`Play ${name}, ${meaning}, surah ${surahNumber}`}>
       <FocusFrame radius={14} style={styles.frame}>
         <SurahArtwork
           surahNumber={surahNumber}
@@ -55,6 +60,13 @@ function SurahTileImpl({
           </View>
         ) : null}
       </FocusFrame>
+      <FocusText
+        style={styles.meaning}
+        color={colors.textSecondary}
+        focusedColor={colors.text}
+        numberOfLines={1}>
+        {meaning}
+      </FocusText>
     </FocusableCard>
   );
 }
@@ -62,7 +74,7 @@ function SurahTileImpl({
 export const SurahTile = React.memo(SurahTileImpl);
 
 const styles = createScaledStyles({
-  card: {width: SURAH_TILE_WIDTH},
+  card: {width: SURAH_TILE_WIDTH, gap: 10},
   frame: {width: SURAH_TILE_WIDTH, height: ART_HEIGHT},
   track: {
     position: 'absolute',
@@ -81,5 +93,11 @@ const styles = createScaledStyles({
     fontFamily: fonts.bold,
     fontSize: 16,
     fontWeight: '700',
+  },
+  meaning: {
+    fontFamily: fonts.medium,
+    fontSize: 17,
+    fontWeight: '500',
+    textAlign: 'center',
   },
 });

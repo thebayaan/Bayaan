@@ -226,13 +226,16 @@ export function groupRewayat(rewayat: readonly Rewayah[]): RewayahGroup[] {
     .map(x => x.g);
 }
 
-/** "Hafs", "Hafs, Warsh", "Hafs · 3 styles", "Hafs · Mujawwad". */
+/**
+ * "Hafs", "Hafs, Warsh", "Hafs · 3 styles", "Hafs · Mujawwad". Rewayat are
+ * named in the reciter page's tab order, fullest first ("Hafs, Ad-Duri").
+ */
 export function reciterSubtitle(reciter: Reciter): string {
   const rewayat = reciter.rewayat ?? [];
   if (rewayat.length === 0) return '';
   const names: string[] = [];
-  for (const r of rewayat) {
-    const short = rewayahShortName(r.name);
+  for (const group of groupRewayat(rewayat)) {
+    const short = rewayahShortName(group.items[0].name);
     if (!names.includes(short)) names.push(short);
   }
   if (names.length > 1) {
@@ -287,8 +290,15 @@ export function matchesChips(
   );
 }
 
-/** The chips that would leave at least one reciter in the grid. */
-export function availableChips(reciters: readonly Reciter[]): {
+/**
+ * The chips that would leave at least one reciter in the grid. Styles are
+ * counted within `selected` (the rewayah chip in use), so no rewayah and
+ * style pair can empty the grid.
+ */
+export function availableChips(
+  reciters: readonly Reciter[],
+  selected: RewayahChip = 'all',
+): {
   rewayah: Set<RewayahChip>;
   style: Set<StyleChip>;
 } {
@@ -296,12 +306,31 @@ export function availableChips(reciters: readonly Reciter[]): {
   const style = new Set<StyleChip>();
   for (const reciter of reciters) {
     for (const r of reciter.rewayat ?? []) {
-      rewayah.add(rewayahFamily(r.name));
+      const family = rewayahFamily(r.name);
+      rewayah.add(family);
       const s = recitationStyle(r.style);
-      if (s !== 'other') style.add(s);
+      if (s !== 'other' && (selected === 'all' || selected === family)) {
+        style.add(s);
+      }
     }
   }
   return {rewayah, style};
+}
+
+/** "Play all", "Play Juz 27", "Play short surahs": the Surahs play button. */
+export function surahFilterPlayLabel(filter: SurahFilter, juz: number): string {
+  switch (filter) {
+    case 'juz':
+      return `Play Juz ${juz}`;
+    case 'short':
+      return 'Play short surahs';
+    case 'makki':
+      return 'Play Makki surahs';
+    case 'madani':
+      return 'Play Madani surahs';
+    default:
+      return 'Play all';
+  }
 }
 
 /**
