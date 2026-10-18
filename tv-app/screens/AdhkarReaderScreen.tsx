@@ -1,6 +1,5 @@
-import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {Platform, Pressable, Text, View, useTVEventHandler} from 'react-native';
-import type {HWEvent} from 'react-native';
 import {CheckIcon, PauseIcon, PlayIcon} from '../../components/Icons';
 import {AdhkarClock, useNow} from '../components/adhkar/AdhkarClock';
 import {AdhkarGlow} from '../components/adhkar/AdhkarGlow';
@@ -20,7 +19,12 @@ import {
   translationFontSize,
 } from '../services/adhkarPages';
 import {createQuranHandoff} from '../services/adhkarQuranHandoff';
-import {createRemoteKeyFilter} from '../services/remoteKeys';
+import {
+  createReaderKeyHandler,
+  readerTransport,
+  setAdhkarReaderTransport,
+  type ReaderControls,
+} from '../services/adhkarReaderTransport';
 import {
   advanceModeOf,
   type AdhkarAudio,
@@ -88,7 +92,9 @@ type PageEntry = {index: number; page: number | 'last'};
  * the bottom, and the recitation playing from the CDN. Left / Right move
  * (through the pages of a long dhikr first), OK counts (turning the pages of
  * a long one first), Play/Pause plays, Down reaches the audio and
- * Auto-advance chips. Back is the Router's.
+ * Auto-advance chips. The transport keys work wherever focus is: Next /
+ * Previous move between adhkar, Fast-forward / Rewind turn pages. Back is
+ * the Router's.
  */
 export function AdhkarReaderScreen({listId, mode}: Props): React.ReactElement {
   const list = adhkarList(listId);
@@ -198,29 +204,52 @@ export function AdhkarReaderScreen({listId, mode}: Props): React.ReactElement {
   const pageRef = useRef({index, page, count: pages.length});
   pageRef.current = {index, page, count: pages.length};
 
-  const remoteFilter = useMemo(createRemoteKeyFilter, []);
-  const handleTVEvent = useCallback(
-    (event: HWEvent): void => {
-      const action = remoteFilter(event);
-      if (!action) return;
-      if (action === 'playPause') {
-        togglePlay();
-        return;
-      }
-      if (!stageFocusedRef.current) return;
-      const {index: i, page: p, count} = pageRef.current;
-      if (action === 'right' || action === 'seekForward') {
+  // One set of controls for the remote's keys and, on Vega, the system's
+  // media commands, so both turn the same pages through the same store.
+  const controls = useMemo<ReaderControls>(() => {
+    const audioActive = (): boolean => {
+      const a = useAdhkarSessionStore.getState().audio;
+      return a === 'playing' || a === 'loading';
+    };
+    return {
+      toggle: togglePlay,
+      play: () => {
+        if (!audioActive()) togglePlay();
+      },
+      pause: () => {
+        if (audioActive()) togglePlay();
+      },
+      nextDhikr: next,
+      previousDhikr: () => {
+        // Like a track's Previous: the dhikr before, from its start.
+        const {index: i} = pageRef.current;
+        setEntry({index: Math.max(0, i - 1), page: 0});
+        prev();
+      },
+      pageForward: () => {
+        const {index: i, page: p, count} = pageRef.current;
         if (p < count - 1) setEntry({index: i, page: p + 1});
         else next();
-      } else if (p > 0) {
-        setEntry({index: i, page: p - 1});
-      } else if (i > 0) {
-        // Back into the previous dhikr at its end, where it was left.
-        setEntry({index: i - 1, page: 'last'});
-        prev();
-      }
-    },
-    [remoteFilter, togglePlay, next, prev],
+      },
+      pageBack: () => {
+        const {index: i, page: p} = pageRef.current;
+        if (p > 0) {
+          setEntry({index: i, page: p - 1});
+        } else if (i > 0) {
+          // Back into the previous dhikr at its end, where it was left.
+          setEntry({index: i - 1, page: 'last'});
+          prev();
+        }
+      },
+    };
+  }, [togglePlay, next, prev]);
+  useEffect(
+    () => setAdhkarReaderTransport(readerTransport(controls)),
+    [controls],
+  );
+  const handleTVEvent = useMemo(
+    () => createReaderKeyHandler(controls, () => stageFocusedRef.current),
+    [controls],
   );
   useTVEventHandler(handleTVEvent);
 
