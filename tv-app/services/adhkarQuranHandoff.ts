@@ -14,6 +14,8 @@ export type QuranHandoff = {
   readonly wasPlaying: boolean;
   /** An adhkar recitation started (which pauses the Quran). */
   adhkarPlayed: () => void;
+  /** A recitation here paused the Quran: leaving will resume it. */
+  tookOver: () => boolean;
   /**
    * Leaving the reader: resumes the Quran when a recitation here paused it
    * and nothing else has changed it since. True when it resumed.
@@ -33,6 +35,7 @@ export function createQuranHandoff({
     adhkarPlayed: () => {
       if (wasPlaying) tookOver = true;
     },
+    tookOver: () => tookOver,
     leave: () => {
       if (left) return false;
       left = true;

@@ -103,10 +103,12 @@ export function AdhkarReaderScreen({listId, mode}: Props): React.ReactElement {
   const {open, close, press, next, prev, restart, togglePlay, setAutoAdvance} =
     useAdhkarSessionStore.getState();
 
-  // Whether the Quran was playing as the reader opened, for the foot's note.
+  // Whether the Quran was playing as the reader opened, and whether a
+  // recitation here has since paused it, for the top bar's note.
   const [quranWasPlaying] = useState(
     () => useTVPlayerStore.getState().status === 'playing',
   );
+  const [quranTaken, setQuranTaken] = useState(false);
 
   useEffect(() => {
     // An adhkar recitation pauses the Quran; leaving hands it back.
@@ -117,6 +119,7 @@ export function AdhkarReaderScreen({listId, mode}: Props): React.ReactElement {
     const unsubscribe = useAdhkarSessionStore.subscribe(s => {
       if (s.audio === 'loading' || s.audio === 'playing') {
         handoff.adhkarPlayed();
+        if (handoff.tookOver()) setQuranTaken(true);
       }
     });
     open(
@@ -267,8 +270,10 @@ export function AdhkarReaderScreen({listId, mode}: Props): React.ReactElement {
         : target > 1
           ? 'OK to count'
           : 'OK when you have said it';
+  // Once a recitation here has paused the Quran it stays paused (Pause on
+  // the adhkar doesn't bring it back) until the reader closes.
   const quranNote = quranWasPlaying
-    ? audioActive
+    ? quranTaken || audioActive
       ? 'The Quran resumes when you leave'
       : 'The Quran plays on until you press Play'
     : null;
@@ -279,6 +284,8 @@ export function AdhkarReaderScreen({listId, mode}: Props): React.ReactElement {
     else press();
   };
 
+  // Start over (resumed) and Start again (closing card): the first page of
+  // the first dhikr, whichever page that dhikr was last left on.
   const startOver = (): void => {
     restart();
     setEntry({index: 0, page: 0});
@@ -323,7 +330,7 @@ export function AdhkarReaderScreen({listId, mode}: Props): React.ReactElement {
               <FocusText style={styles.endButtonText}>Review last</FocusText>
             </FocusableButton>
             <FocusableButton
-              onPress={restart}
+              onPress={startOver}
               outlined
               hasTVPreferredFocus
               style={styles.endButton}>
@@ -422,7 +429,7 @@ export function AdhkarReaderScreen({listId, mode}: Props): React.ReactElement {
               <FocusableButton
                 onPress={startOver}
                 style={styles.chip}
-                accessibilityLabel={`Resumed at ${index + 1} of ${adhkar.length}. Start over`}>
+                accessibilityLabel="Resumed where you left off. Start over">
                 <FocusText style={styles.chipText}>
                   Resumed · Start over
                 </FocusText>

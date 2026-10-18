@@ -14,7 +14,9 @@ describe('adhkar Quran handoff', () => {
   it('resumes the Quran a recitation paused', () => {
     const {handoff, resumeQuran, setStatus} = setup('playing');
     expect(handoff.wasPlaying).toBe(true);
+    expect(handoff.tookOver()).toBe(false);
     handoff.adhkarPlayed();
+    expect(handoff.tookOver()).toBe(true);
     setStatus('paused');
     expect(handoff.leave()).toBe(true);
     expect(resumeQuran).toHaveBeenCalledTimes(1);
