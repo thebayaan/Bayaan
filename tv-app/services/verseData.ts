@@ -126,7 +126,12 @@ export async function fetchTranslation(
   const key = translationKey(edition, surahNumber);
   const cached = readJSON<string[]>(key);
   // Cleaned on read too, so surahs cached before the cleanup show clean.
-  if (cached && cached.length > 0) return cached.map(cleanTranslationVerse);
+  // A verse missing from the response was cached as null: keep it missing.
+  if (cached && cached.length > 0) {
+    return cached.map(v =>
+      typeof v === 'string' ? cleanTranslationVerse(v) : v,
+    );
+  }
 
   const res = await fetchImpl(
     `${TRANSLATION_API}/surah/${surahNumber}/${encodeURIComponent(edition)}`,
