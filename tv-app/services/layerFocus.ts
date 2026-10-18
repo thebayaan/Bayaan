@@ -82,7 +82,9 @@ export function createFocusMemory(): FocusMemory {
     blur: target => {
       if (target != null && focused === target) focused = null;
     },
-    inside: () => focused !== null,
+    // A focused view that unmounts sends no blur: it no longer counts.
+    inside: () =>
+      focused !== null && (focused as FocusTarget).isConnected !== false,
     last: () => focusable(recent[0]),
     recent: () =>
       recent.map(focusable).filter((v): v is FocusTarget => v !== null),

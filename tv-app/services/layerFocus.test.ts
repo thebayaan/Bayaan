@@ -75,6 +75,15 @@ describe('createFocusMemory', () => {
     expect(memory.last()).toBeNull();
     expect(memory.inside()).toBe(true);
   });
+
+  it('does not count a focused element that unmounted without a blur', () => {
+    const memory = createFocusMemory();
+    const row = {...view(), isConnected: true};
+    memory.focus(row);
+    expect(memory.inside()).toBe(true);
+    row.isConnected = false;
+    expect(memory.inside()).toBe(false);
+  });
 });
 
 describe('recent', () => {
