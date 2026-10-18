@@ -192,8 +192,14 @@ export function SurahsScreen(): React.ReactElement {
         showToast(`No reciter has ${surahTitle(surahNumber)} yet.`, 'error');
         return;
       }
-      // A started surah (the tile's bar) picks up where it was left.
-      play(resumeRequest(getContinueListening(), voice), 'surahs');
+      // A started surah (the tile's bar) picks up where it was left. The
+      // bars are the reciter's latest per surah in any recitation, so the
+      // resume follows that entry's recitation rather than the default one.
+      const resumed = resumeRequest(getContinueListening(), {
+        reciterId: voice.reciterId,
+        surahNumber,
+      });
+      play(resumed.startSeconds !== undefined ? resumed : voice, 'surahs');
     },
     [candidates, play],
   );
