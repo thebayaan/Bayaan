@@ -23,7 +23,6 @@ import {createRemoteKeyFilter} from '../services/remoteKeys';
 import type {AdhkarAudio} from '../store/adhkarSessionController';
 import {useAdhkarSessionStore} from '../store/adhkarSessionStore';
 import {useKeepAwakeWhile} from '../hooks/useKeepAwakeWhile';
-import {useScreenActive} from '../components/nav/ScreenLayer';
 import {useNavStore, type AdhkarStartMode} from '../store/navStore';
 import {colors} from '../theme/colors';
 import {fonts} from '../theme/typography';
@@ -123,17 +122,11 @@ export function AdhkarReaderScreen({listId, mode}: Props): React.ReactElement {
   const pageRef = useRef({page, count: pages.length});
   pageRef.current = {page, count: pages.length};
 
-  // Covered by the player (opened from the now-playing pill), the reader
-  // stays mounted but must leave the remote's keys to it.
-  const active = useScreenActive();
-  const activeRef = useRef(active);
-  activeRef.current = active;
-
   const remoteFilter = useMemo(createRemoteKeyFilter, []);
   const handleTVEvent = useCallback(
     (event: HWEvent): void => {
       const action = remoteFilter(event);
-      if (!action || !activeRef.current) return;
+      if (!action) return;
       if (action === 'playPause') {
         togglePlay();
         return;

@@ -4,6 +4,7 @@
  * pill shows, and what the remote's Back does next.
  */
 import type {ScreenEntry, TabKey} from '../store/navStore';
+import {screenOwnsPlayPause} from './remoteKeys';
 
 export type StackLayer = {
   entry: ScreenEntry;
@@ -16,14 +17,18 @@ export type StackLayer = {
 /**
  * The stacked screens to render, bottom first. Every covered screen stays
  * mounted (hidden) so Back returns to its exact focus, scroll and state,
- * except the player: it handles the remote's keys while mounted, and all of
- * its state lives in the player store, so it remounts when uncovered.
+ * except the two that play audio and handle the remote's keys while
+ * mounted (see screenOwnsPlayPause): the player, whose state lives in the
+ * player store, and the adhkar reader, whose session (and place in the
+ * list) the session store keeps. Unmounting stops the reader's recitation,
+ * so it never plays over the player opened from it; both remount when
+ * uncovered.
  */
 export function stackLayers(stack: readonly ScreenEntry[]): StackLayer[] {
   const top = stack.length - 1;
   const layers: StackLayer[] = [];
   stack.forEach((entry, i) => {
-    if (i < top && entry.screen === 'nowPlaying') return;
+    if (i < top && screenOwnsPlayPause(entry)) return;
     layers.push({
       entry,
       key: `${i}:${JSON.stringify(entry)}`,

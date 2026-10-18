@@ -42,6 +42,14 @@ describe('stackLayers', () => {
     expect(layers[0].active).toBe(true);
   });
 
+  it('drops a covered adhkar reader, so its audio stops under the player', () => {
+    const reader: ScreenEntry = {screen: 'adhkarReader', listId: 'l'};
+    expect(stackLayers([reader, player]).map(l => l.entry.screen)).toEqual([
+      'nowPlaying',
+    ]);
+    expect(stackLayers([reader]).map(l => l.active)).toEqual([true]);
+  });
+
   it('keeps a key per depth, so a layer is not remounted by a push above it', () => {
     const before = stackLayers([reciter]);
     const after = stackLayers([reciter, player]);
