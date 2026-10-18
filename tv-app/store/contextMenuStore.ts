@@ -27,6 +27,8 @@ export type SurahMenuTarget = {
   playlistId?: string;
   /** ...and its position there (moving it updates this). */
   playlistIndex?: number;
+  /** What Play does, when the place plays a press its own way (its queue). */
+  onPlay?: () => void;
 };
 
 export type ReciterMenuTarget = {kind: 'reciter'; reciterId: string};

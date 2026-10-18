@@ -134,6 +134,12 @@ function SurahMenu({target}: {target: SurahMenuTarget}): React.ReactElement {
 
   function handlePlay(): void {
     close({restoreFocus: false});
+    if (target.onPlay) {
+      // The place's own press (Surahs' filtered queue, the reciter page's
+      // order), so Play here and OK on the tile never differ.
+      target.onPlay();
+      return;
+    }
     if (inPlaylist && playlist) {
       // The playlist from this row on, like OK on the row.
       void playOrOpen({

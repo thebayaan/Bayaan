@@ -21,14 +21,19 @@ import {
   surahFilterPlayLabel,
   type SurahFilter,
 } from '../services/browseCatalog';
+import {getContinueListening} from '../services/continueListeningStore';
 import {
   playOrOpen,
   surahTitle,
   voiceForSurah,
-  type PlayItemInput,
+  type PlayRequest,
 } from '../services/playbackRouting';
 import {pushScreenBack} from '../services/screenBack';
-import {firstVoice, visibleQueue} from '../services/surahsPlayback';
+import {
+  firstVoice,
+  resumeRequest,
+  visibleQueue,
+} from '../services/surahsPlayback';
 import {getCachedRewayat} from '../services/tvDataService';
 import {useContextMenuStore} from '../store/contextMenuStore';
 import {useSettingsStore} from '../store/settingsStore';
@@ -71,7 +76,6 @@ export function SurahsScreen(): React.ReactElement {
   const defaultReciterId = useSettingsStore(s => s.defaultReciterId);
   const setDefaultReciterId = useSettingsStore(s => s.setDefaultReciterId);
   const favorites = useFavorites();
-  const progressBySurah = useSurahProgress();
   const numColumns = useGridColumns(CELL_WIDTH);
 
   const [filter, setFilter] = useState<SurahFilter>('all');
@@ -115,6 +119,8 @@ export function SurahsScreen(): React.ReactElement {
       : undefined;
     return chosen ?? featuredFirst(reciters)[0] ?? null;
   }, [reciters, defaultReciterId]);
+  // Bars for the reciter a press plays, so a bar always means "resumes".
+  const progressBySurah = useSurahProgress(reciter?.id);
 
   // The default reciter first; if they lack a surah, the first featured
   // reciter who has it, so a press always plays something.
@@ -144,7 +150,7 @@ export function SurahsScreen(): React.ReactElement {
   }, [picking, reciters, reciter, favorites]);
 
   const play = useCallback(
-    (voice: PlayItemInput, source: string): void => {
+    (voice: PlayRequest, source: string): void => {
       if (reciter && voice.reciterId !== reciter.id) {
         const who = reciters.find(r => r.id === voice.reciterId);
         showToast(
@@ -173,7 +179,8 @@ export function SurahsScreen(): React.ReactElement {
         showToast(`No reciter has ${surahTitle(surahNumber)} yet.`, 'error');
         return;
       }
-      play(voice, 'surahs');
+      // A started surah (the tile's bar) picks up where it was left.
+      play(resumeRequest(getContinueListening(), voice), 'surahs');
     },
     [candidates, play],
   );
@@ -186,9 +193,12 @@ export function SurahsScreen(): React.ReactElement {
         reciterId: voice?.reciterId,
         rewayahId: voice?.rewayahId,
         origin: 'surahs',
+        // The menu's Play does what OK on the tile does: the filtered
+        // grid as the queue, the resume, the fallback toast.
+        onPlay: () => handleSelect(surahNumber),
       });
     },
-    [candidates],
+    [candidates, handleSelect],
   );
 
   function playShown(): void {

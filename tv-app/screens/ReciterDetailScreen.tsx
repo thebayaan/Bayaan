@@ -44,6 +44,8 @@ import {
   randomSurah,
 } from '../services/playbackRouting';
 import {defaultRewayah} from '../services/menuChoices';
+import {getContinueListening} from '../services/continueListeningStore';
+import {resumeRequest} from '../services/surahsPlayback';
 import {useContextMenuStore} from '../store/contextMenuStore';
 import {useNavStore} from '../store/navStore';
 import {useSettingsStore} from '../store/settingsStore';
@@ -184,23 +186,50 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
     );
   }, [continueEntries, current, reciterId]);
 
-  const progressByNumber = useSurahProgress(reciterId);
+  // Bars for the recitation shown, the one a press on a row plays.
+  const progressByNumber = useSurahProgress(reciterId, current?.id);
 
+  // The queue follows the order shown; the default order is the recitation
+  // itself, which playOrOpen builds without one.
   const playSurah = useCallback(
     (surahNumber: number, startSeconds?: number): void => {
       if (!reciter || !current) return;
+      const queue =
+        sort === 'asc'
+          ? undefined
+          : sortedSurahs.map(s => ({
+              reciterId: reciter.id,
+              rewayahId: current.id,
+              surahNumber: s.id,
+            }));
       void playOrOpen({
         reciterId: reciter.id,
         rewayahId: current.id,
         surahNumber,
         startSeconds,
+        queue,
         source: 'reciter',
       });
     },
-    [reciter, current],
+    [reciter, current, sort, sortedSurahs],
   );
 
-  // Hold OK on a row: the surah's menu, in the recitation shown.
+  // OK on a row: a started surah (the row's bar) picks up where it was left.
+  const selectRow = useCallback(
+    (surahNumber: number): void => {
+      if (!current) return;
+      const {startSeconds} = resumeRequest(getContinueListening(), {
+        reciterId,
+        rewayahId: current.id,
+        surahNumber,
+      });
+      playSurah(surahNumber, startSeconds);
+    },
+    [reciterId, current, playSurah],
+  );
+
+  // Hold OK on a row: the surah's menu, in the recitation shown. Its Play
+  // is the row's OK.
   const openSurahMenu = useCallback(
     (surahNumber: number): void => {
       useContextMenuStore.getState().openSurah({
@@ -208,9 +237,10 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
         reciterId,
         ...(current ? {rewayahId: current.id} : {}),
         origin: 'reciter',
+        onPlay: () => selectRow(surahNumber),
       });
     },
-    [reciterId, current],
+    [reciterId, current, selectRow],
   );
 
   const firstSurah = sortedSurahs[0]?.id;
@@ -277,12 +307,12 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
         <SurahRow
           surah={item}
           progress={progressByNumber.get(item.id) ?? 0}
-          onSelect={playSurah}
+          onSelect={selectRow}
           onLongPress={openSurahMenu}
         />
       </View>
     ),
-    [progressByNumber, playSurah, openSurahMenu],
+    [progressByNumber, selectRow, openSurahMenu],
   );
 
   if (!reciter) {
