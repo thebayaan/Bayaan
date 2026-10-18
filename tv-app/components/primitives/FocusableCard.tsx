@@ -1,5 +1,6 @@
 import React, {useRef, useState} from 'react';
-import {Animated, Pressable, StyleProp, ViewStyle} from 'react-native';
+import {Animated, Pressable, StyleProp, View, ViewStyle} from 'react-native';
+import {noteLongPressOrigin} from '../../services/focusReturn';
 import {colors} from '../../theme/colors';
 import {createScaledStyles} from '../../theme/scale';
 import {animateFocusScale, focusScaleDefault} from './focusMotion';
@@ -44,12 +45,22 @@ export function FocusableCard({
 }: Props): React.ReactElement {
   const [focused, setFocused] = useState(false);
   const scale = useRef(new Animated.Value(1)).current;
+  // A long-press usually opens a menu: it gives focus back here on close.
+  const pressable = useRef<View>(null);
 
   return (
     <Animated.View style={{transform: [{scale}]}}>
       <Pressable
+        ref={pressable}
         onPress={onPress}
-        onLongPress={onLongPress}
+        onLongPress={
+          onLongPress
+            ? () => {
+                noteLongPressOrigin(pressable);
+                onLongPress();
+              }
+            : undefined
+        }
         onFocus={() => {
           setFocused(true);
           animateFocusScale(scale, focusScale);

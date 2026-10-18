@@ -15,6 +15,8 @@ type Props = {
   /** Listening progress 0-1, or 0 when not started. */
   progress?: number;
   onSelect: (surahNumber: number) => void;
+  /** Hold OK: the surah's menu. */
+  onLongPress?: (surahNumber: number) => void;
   hasTVPreferredFocus?: boolean;
 };
 
@@ -40,6 +42,7 @@ function SurahRowImpl({
   surah,
   progress = 0,
   onSelect,
+  onLongPress,
   hasTVPreferredFocus,
 }: Props): React.ReactElement {
   const completed = progress >= 0.97;
@@ -47,6 +50,7 @@ function SurahRowImpl({
   return (
     <FocusableButton
       onPress={() => onSelect(surah.id)}
+      onLongPress={onLongPress ? () => onLongPress(surah.id) : undefined}
       hasTVPreferredFocus={hasTVPreferredFocus}
       accessibilityLabel={`${surah.name}, ${surah.translated_name_english}, ${surah.verses_count} verses`}
       focusScale={1.03}

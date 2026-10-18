@@ -38,6 +38,7 @@ import {useFavorites} from '../hooks/useFavorites';
 import {useContinueListening} from '../hooks/useContinueListening';
 import {playOrOpen, randomSurah} from '../services/playbackRouting';
 import {useNavStore} from '../store/navStore';
+import {useContextMenuStore} from '../store/contextMenuStore';
 import {useSettingsStore} from '../store/settingsStore';
 import type {Rewayah, Surah} from '../types/reciter';
 import {
@@ -190,6 +191,19 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
     [reciter, current],
   );
 
+  // Hold OK on a row: the surah's menu, in the recitation shown.
+  const openSurahMenu = useCallback(
+    (surahNumber: number): void => {
+      useContextMenuStore.getState().openSurah({
+        surahNumber,
+        reciterId,
+        ...(current ? {rewayahId: current.id} : {}),
+        origin: 'reciter',
+      });
+    },
+    [reciterId, current],
+  );
+
   const renderItem = useCallback(
     ({item}: {item: Surah}) => (
       <View style={styles.cell}>
@@ -197,10 +211,11 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
           surah={item}
           progress={progressByNumber.get(item.id) ?? 0}
           onSelect={playSurah}
+          onLongPress={openSurahMenu}
         />
       </View>
     ),
-    [progressByNumber, playSurah],
+    [progressByNumber, playSurah, openSurahMenu],
   );
 
   if (!reciter) {

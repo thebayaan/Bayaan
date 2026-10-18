@@ -1,5 +1,6 @@
 import React, {useRef} from 'react';
-import {Animated, Pressable, StyleProp, ViewStyle} from 'react-native';
+import {Animated, Pressable, StyleProp, View, ViewStyle} from 'react-native';
+import {noteLongPressOrigin} from '../../services/focusReturn';
 import {colors} from '../../theme/colors';
 import {createScaledStyles} from '../../theme/scale';
 import {animateFocusScale, focusScaleDefault} from './focusMotion';
@@ -9,6 +10,8 @@ export {FocusText, useButtonFocused, useFocusTint} from './focusContext';
 
 type Props = {
   onPress: () => void;
+  /** Hold OK; the button gets focus back when the menu it opens closes. */
+  onLongPress?: () => void;
   children: React.ReactNode | ((focused: boolean) => React.ReactNode);
   hasTVPreferredFocus?: boolean;
   style?: StyleProp<ViewStyle>;
@@ -34,6 +37,7 @@ type Props = {
  */
 export function FocusableButton({
   onPress,
+  onLongPress,
   children,
   hasTVPreferredFocus,
   style,
@@ -47,6 +51,7 @@ export function FocusableButton({
 }: Props): React.ReactElement {
   const scaleValue = useRef(new Animated.Value(1)).current;
   const [isFocused, setIsFocused] = React.useState(false);
+  const pressable = useRef<View>(null);
 
   const handleFocus = (): void => {
     setIsFocused(true);
@@ -61,7 +66,16 @@ export function FocusableButton({
   return (
     <Animated.View style={[containerStyle, {transform: [{scale: scaleValue}]}]}>
       <Pressable
+        ref={pressable}
         onPress={disabled ? undefined : onPress}
+        onLongPress={
+          onLongPress && !disabled
+            ? () => {
+                noteLongPressOrigin(pressable);
+                onLongPress();
+              }
+            : undefined
+        }
         onFocus={handleFocus}
         onBlur={handleBlur}
         hasTVPreferredFocus={hasTVPreferredFocus}

@@ -1,5 +1,6 @@
 import React, {createContext, useContext, useEffect, useRef} from 'react';
 import {StyleSheet, TVFocusGuideView} from 'react-native';
+import {setScreenFocusRestore} from '../../services/focusReturn';
 
 const ScreenActiveContext = createContext(true);
 
@@ -13,19 +14,6 @@ export function useScreenActive(): boolean {
 }
 
 type Focusable = {requestTVFocus?: () => void};
-
-// The showing layer's focus restore, for focus that went outside it (a menu).
-let restoreActive: (() => void) | null = null;
-
-/**
- * Puts focus back where it was on the showing screen, for when something
- * drawn over it (a context menu) closes. False when there's no layer.
- */
-export function restoreScreenFocus(): boolean {
-  if (!restoreActive) return false;
-  restoreActive();
-  return true;
-}
 
 type Props = {
   active: boolean;
@@ -64,7 +52,7 @@ export function ScreenLayer({
       return;
     }
     const restore = (): void => ref.current?.requestTVFocus?.();
-    restoreActive = restore;
+    const unregister = setScreenFocusRestore(restore);
     let frame: number | null = null;
     const covered = coveredWith.current;
     coveredWith.current = null;
@@ -78,7 +66,7 @@ export function ScreenLayer({
     }
     return () => {
       if (frame !== null) cancelAnimationFrame(frame);
-      if (restoreActive === restore) restoreActive = null;
+      unregister();
     };
   }, [active, contentKey]);
 

@@ -4,6 +4,7 @@ import {FocusableCard} from '../primitives/FocusableCard';
 import {FocusFrame, FocusText} from '../primitives/focusContext';
 import {SurahArtwork} from '../brand/SurahArtwork';
 import {GradientFill} from '../brand/GradientFill';
+import {useContextMenuStore} from '../../store/contextMenuStore';
 import {quranTextFontAvailable} from '../../theme/calligraphy';
 import {colors} from '../../theme/colors';
 import {fonts, quranTextFontFamily} from '../../theme/typography';
@@ -30,6 +31,9 @@ function SurahTileImpl({
       ring={false}
       style={styles.tile}
       onPress={() => onSelect(surahNumber)}
+      onLongPress={() =>
+        useContextMenuStore.getState().openSurah({surahNumber, origin: 'home'})
+      }
       accessibilityLabel={`Play ${surahName}`}>
       <FocusFrame radius={RADIUS} style={styles.frame}>
         <SurahArtwork

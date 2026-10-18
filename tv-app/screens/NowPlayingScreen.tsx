@@ -19,6 +19,7 @@ import {FocusableButton} from '../components/primitives/FocusableButton';
 import {FocusText} from '../components/primitives/focusContext';
 import {SLEEP_FADE_MS, useTVPlayerStore} from '../store/tvPlayerStore';
 import {useNavStore} from '../store/navStore';
+import {useContextMenuStore} from '../store/contextMenuStore';
 import {footerChips, useListeningStore} from '../store/listeningStore';
 import {textScale, useDisplayStore} from '../store/displayStore';
 import {ambientLabel, useAmbientStore} from '../store/ambientStore';
@@ -77,6 +78,8 @@ export function NowPlayingScreen(): React.ReactElement {
   const setVerseRepeat = useListeningStore(s => s.setVerseRepeat);
   const sleepChoice = useListeningStore(s => s.sleepChoice);
   const panel = useListeningStore(s => s.panel);
+  // A menu over the player (the Save tool's playlist picker) keeps the tray up.
+  const menuOpen = useContextMenuStore(s => s.target !== null);
   const repeatPauseMs = useListeningStore(s => s.repeatPauseMs);
   const onScreen = useDisplayStore(s => s.mode);
   const edition = useDisplayStore(s => s.edition);
@@ -144,8 +147,10 @@ export function NowPlayingScreen(): React.ReactElement {
 
   useEffect(() => {
     // A panel stays up until Back, since reading a list takes a while.
-    if (trayOpen && !panel && idleMs > TRAY_IDLE_MS) setTrayOpen(false);
-  }, [trayOpen, panel, idleMs, setTrayOpen]);
+    if (trayOpen && !panel && !menuOpen && idleMs > TRAY_IDLE_MS) {
+      setTrayOpen(false);
+    }
+  }, [trayOpen, panel, menuOpen, idleMs, setTrayOpen]);
 
   // Leaving the player lowers the tray so it isn't up next time.
   useEffect(() => () => setTrayOpen(false), [setTrayOpen]);

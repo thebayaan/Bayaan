@@ -11,7 +11,15 @@
 import {useNavStore} from '../store/navStore';
 
 type Handler = () => boolean;
-type Entry = {handler: Handler; layer: number};
+type Entry = {handler: Handler; layer: number; overlay: boolean};
+type PushOptions = {
+  /**
+   * Registered by an overlay drawn over the screen (the context menu). While
+   * one is open only overlay handlers are asked, so the screen underneath
+   * never takes a Back meant for the overlay.
+   */
+  overlay?: boolean;
+};
 
 const entries: Entry[] = [];
 const listeners = new Set<() => void>();
@@ -25,8 +33,11 @@ function changed(): void {
 }
 
 /** Registers `handler`; returns the function that removes it. */
-export function pushScreenBack(handler: Handler): () => void {
-  const entry: Entry = {handler, layer: currentLayer()};
+export function pushScreenBack(
+  handler: Handler,
+  {overlay = false}: PushOptions = {},
+): () => void {
+  const entry: Entry = {handler, layer: currentLayer(), overlay};
   entries.push(entry);
   changed();
   return () => {
@@ -37,12 +48,18 @@ export function pushScreenBack(handler: Handler): () => void {
   };
 }
 
-/** True when a screen on the showing layer handled Back. */
-export function consumeScreenBack(): boolean {
+/**
+ * True when a screen on the showing layer handled Back. With `overlayOpen`
+ * (a context menu is drawn over the screen), only overlay handlers count.
+ */
+export function consumeScreenBack({
+  overlayOpen = false,
+}: {overlayOpen?: boolean} = {}): boolean {
   const layer = currentLayer();
   for (let i = entries.length - 1; i >= 0; i--) {
     const entry = entries[i];
-    if (entry.layer === layer && entry.handler()) return true;
+    if (entry.layer !== layer || (overlayOpen && !entry.overlay)) continue;
+    if (entry.handler()) return true;
   }
   return false;
 }

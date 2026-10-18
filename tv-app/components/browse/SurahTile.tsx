@@ -6,6 +6,7 @@ import {SurahArtwork} from '../brand/SurahArtwork';
 import {colors} from '../../theme/colors';
 import {fonts} from '../../theme/typography';
 import {createScaledStyles} from '../../theme/scale';
+import {useContextMenuStore} from '../../store/contextMenuStore';
 
 type Props = {
   surahNumber: number;
@@ -33,6 +34,11 @@ function SurahTileImpl({
       ring={false}
       style={styles.card}
       onPress={() => onSelect(surahNumber)}
+      onLongPress={() =>
+        useContextMenuStore
+          .getState()
+          .openSurah({surahNumber, origin: 'surahs'})
+      }
       hasTVPreferredFocus={hasTVPreferredFocus}
       accessibilityLabel={`Play ${name}, surah ${surahNumber}`}>
       <FocusFrame radius={14} style={styles.frame}>

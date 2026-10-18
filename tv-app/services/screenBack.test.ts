@@ -69,4 +69,19 @@ describe('screenBack', () => {
     pushScreenBack(() => true)();
     expect(listener).toHaveBeenCalledTimes(2);
   });
+
+  it('asks only overlay handlers while an overlay is open', () => {
+    const screen = jest.fn(() => true);
+    const removeScreen = pushScreenBack(screen);
+    expect(consumeScreenBack({overlayOpen: true})).toBe(false);
+    expect(screen).not.toHaveBeenCalled();
+    const menu = jest.fn(() => true);
+    const removeMenu = pushScreenBack(menu, {overlay: true});
+    expect(consumeScreenBack({overlayOpen: true})).toBe(true);
+    expect(menu).toHaveBeenCalledTimes(1);
+    removeMenu();
+    expect(consumeScreenBack()).toBe(true);
+    expect(screen).toHaveBeenCalledTimes(1);
+    removeScreen();
+  });
 });

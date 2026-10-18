@@ -1,6 +1,7 @@
 import {useCallback, useMemo} from 'react';
 import {useDefaultReciter} from '../../hooks/useDefaultReciter';
 import {featuredFirst} from '../../services/browseCatalog';
+import {getContinueListening} from '../../services/continueListeningStore';
 import type {ShelfSurah} from '../../services/libraryShelf';
 import {
   playOrOpen,
@@ -11,10 +12,10 @@ import {showToast} from '../../store/toastStore';
 import type {Reciter} from '../../types/reciter';
 
 /**
- * What OK does on the Library: resume an unfinished surah where it stopped,
- * play a loved surah in the voice it was loved in, or play a surah in the
- * default reciter (first run). playOrOpen opens the player at once, and the
- * surah already playing just opens it.
+ * What OK does on the Library: play a loved surah in the voice it was loved
+ * in (picking up where it stopped when it was left unfinished), or play a
+ * surah in the default reciter (first run). playOrOpen opens the player at
+ * once, and the surah already playing just opens it.
  */
 export function useLibraryPlayback(
   reciters: readonly Reciter[],
@@ -35,14 +36,22 @@ export function useLibraryPlayback(
   );
 
   const playTile = useCallback(async (tile: ShelfSurah): Promise<void> => {
-    // The saved rewayah when it still has the surah (else another of the
-    // reciter's); the position only counts in the recitation it belongs to,
-    // which playOrOpen keeps by playing that rewayah.
+    // Continue listening is not listed here (it lives on Home), but a loved
+    // surah left partway still resumes. The saved rewayah plays when it
+    // still has the surah (else another of the reciter's); the position only
+    // counts in the recitation it belongs to, which playOrOpen keeps.
+    const unfinished = getContinueListening().find(
+      e => e.reciterId === tile.reciterId && e.surahNumber === tile.surahNumber,
+    );
+    const rewayahId = tile.rewayahId || unfinished?.rewayahId || undefined;
     await playOrOpen({
       reciterId: tile.reciterId,
-      rewayahId: tile.rewayahId || undefined,
+      rewayahId,
       surahNumber: tile.surahNumber,
-      startSeconds: tile.progress?.positionSeconds,
+      startSeconds:
+        unfinished && (!rewayahId || unfinished.rewayahId === rewayahId)
+          ? unfinished.positionSeconds
+          : undefined,
       source: 'library',
     });
   }, []);

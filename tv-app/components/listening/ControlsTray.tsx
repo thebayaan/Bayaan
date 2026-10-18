@@ -14,8 +14,12 @@ import {onScreenLabel, useDisplayStore} from '../../store/displayStore';
 import {ambientChoiceLabel, useAmbientStore} from '../../store/ambientStore';
 import {AMBIENT_AVAILABLE} from '../../services/ambientPlayer';
 import {shortReciterName} from '../../services/listeningChoices';
-import {toggleLovedSurah} from '../../services/lovedSurahsStore';
+import {isLovedIn, toggleLovedSurah} from '../../services/lovedSurahsStore';
 import {useLovedSurahs} from '../../hooks/useLovedSurahs';
+import {useMenuReturn} from '../../hooks/useMenuReturn';
+import {usePlaylists} from '../../hooks/usePlaylists';
+import {playlistHas} from '../../services/playlistsStore';
+import {useContextMenuStore} from '../../store/contextMenuStore';
 import {formatSpeed} from './ListeningPanels';
 import {colors} from '../../theme/colors';
 import {fonts} from '../../theme/typography';
@@ -109,7 +113,7 @@ export function ControlsTray({
 
   const item = queue[currentIndex];
   const isLoved = item
-    ? loved.some(e => e.surahNumber === item.surahNumber)
+    ? isLovedIn(loved, item.surahNumber, item.reciterId)
     : false;
   const toggleLoved = press(() => {
     if (item) {
@@ -117,6 +121,30 @@ export function ControlsTray({
     }
   });
   const nextCount = Math.max(0, queue.length - currentIndex - 1);
+
+  // Save: the playlists this surah (in this voice) is in; OK opens the
+  // playlist picker over the player, and focus comes back here after.
+  const playlists = usePlaylists();
+  const savedIn = item
+    ? playlists.filter(p =>
+        playlistHas(p, {
+          surahNumber: item.surahNumber,
+          reciterId: item.reciterId,
+          ...(item.rewayahId ? {rewayahId: item.rewayahId} : {}),
+        }),
+      ).length
+    : 0;
+  const saveReturn = useMenuReturn('player');
+  const openSave = press(() => {
+    if (!item) return;
+    useContextMenuStore.getState().openSurah({
+      surahNumber: item.surahNumber,
+      reciterId: item.reciterId,
+      ...(item.rewayahId ? {rewayahId: item.rewayahId} : {}),
+      origin: 'player',
+      page: 'playlists',
+    });
+  });
 
   return (
     <View style={styles.tray}>
@@ -196,6 +224,14 @@ export function ControlsTray({
             value={nextCount > 0 ? `${nextCount} next` : 'Last'}
             on={false}
             {...tool('queue')}
+          />
+          <Tool
+            label="Save"
+            value={savedIn > 0 ? `In ${savedIn}` : 'Not saved'}
+            on={savedIn > 0}
+            active={false}
+            focusOnReturn={saveReturn}
+            onPress={openSave}
           />
           <FocusableButton
             onPress={toggleLoved}

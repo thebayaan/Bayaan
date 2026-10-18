@@ -12,6 +12,7 @@ import {countLabel} from '../../services/search/adhkarArt';
 import {colors} from '../../theme/colors';
 import {fonts} from '../../theme/typography';
 import {createScaledStyles, scale} from '../../theme/scale';
+import {useContextMenuStore} from '../../store/contextMenuStore';
 import type {Surah} from '../../../data/surahData';
 import type {Reciter} from '../../types/reciter';
 
@@ -29,6 +30,11 @@ export const SurahResultCard = React.memo(function SurahResultCard({
     <FocusableCard
       ring={false}
       onPress={() => onPress(surah)}
+      onLongPress={() =>
+        useContextMenuStore
+          .getState()
+          .openSurah({surahNumber: surah.id, origin: 'search'})
+      }
       accessibilityLabel={`${surah.name}, surah ${surah.id}`}
       style={styles.surahCard}>
       <FocusFrame radius={16} style={styles.surahFrame}>

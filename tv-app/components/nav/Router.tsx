@@ -1,4 +1,4 @@
-import React, {useEffect, useRef, useSyncExternalStore} from 'react';
+import React, {useSyncExternalStore} from 'react';
 import {TVFocusGuideView, View} from 'react-native';
 import {useNavStore, type ScreenEntry, type TabKey} from '../../store/navStore';
 import {useOverlayStore} from '../../store/overlayStore';
@@ -27,7 +27,7 @@ import {useGlobalRemoteKeys} from '../../hooks/useGlobalRemoteKeys';
 import {usePlaybackAlerts} from '../../hooks/usePlaybackAlerts';
 import {Sidebar, SIDEBAR_COLLAPSED_WIDTH, focusSidebar} from './Sidebar';
 import {NowPlayingPill} from './NowPlayingPill';
-import {ScreenLayer, restoreScreenFocus} from './ScreenLayer';
+import {ScreenLayer} from './ScreenLayer';
 import {useTVBackHandler} from '../../hooks/useTVBackHandler';
 import {
   consumeScreenBack,
@@ -84,7 +84,10 @@ function readBackState(): BackState {
  * a root place content -> sidebar -> Home -> out of the app.
  */
 function handleBack(): boolean {
-  if (consumeScreenBack()) return true;
+  // While a menu is open, only its own handlers (its picker page) come
+  // before closing it: the screen underneath keeps its Back for later.
+  const overlayOpen = useContextMenuStore.getState().target !== null;
+  if (consumeScreenBack({overlayOpen})) return true;
   const state = readBackState();
   let step = backStep(state);
   // Nothing to hand focus to: carry on as if the sidebar had it.
@@ -125,29 +128,6 @@ function handleBack(): boolean {
 }
 
 /**
- * Puts focus back on the opener when a context menu closes over the same
- * screen (one that pushed a screen leaves focus to it). The menu's rows go
- * away with it, and neither focus engine would otherwise find the way back.
- */
-function useMenuFocusReturn(): void {
-  const menuOpen = useContextMenuStore(s => s.target !== null);
-  const openedOver = useRef<ScreenEntry[] | null>(null);
-  useEffect(() => {
-    if (menuOpen) {
-      openedOver.current = useNavStore.getState().stack;
-      return;
-    }
-    const over = openedOver.current;
-    openedOver.current = null;
-    if (!over || useNavStore.getState().stack !== over) return;
-    const frame = requestAnimationFrame(() => {
-      if (useNavStore.getState().stack === over) restoreScreenFocus();
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [menuOpen]);
-}
-
-/**
  * Wires the remote's Back (see handleBack). Its own component, so the state
  * it follows (sidebar focus, panels, pickers) never redraws the screens.
  *
@@ -174,7 +154,6 @@ export function Router(): React.ReactElement {
   const {reciters} = useReciters();
   useGlobalRemoteKeys();
   usePlaybackAlerts();
-  useMenuFocusReturn();
 
   const onboarding = !onboarded && reciters.length > 0;
   if (onboarding) {

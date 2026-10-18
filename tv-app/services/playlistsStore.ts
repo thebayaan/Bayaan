@@ -150,7 +150,13 @@ export function addPlaylistItem(id: string, item: PlaylistItem): boolean {
 }
 
 export function hasPlaylistItem(id: string, item: PlaylistItem): boolean {
-  return getPlaylist(id)?.items.some(i => sameItem(i, item)) ?? false;
+  const playlist = getPlaylist(id);
+  return playlist ? playlistHas(playlist, item) : false;
+}
+
+/** Whether a playlist (already read) holds this surah in this recitation. */
+export function playlistHas(playlist: Playlist, item: PlaylistItem): boolean {
+  return playlist.items.some(i => sameItem(i, item));
 }
 
 /** Removes an item by its position, or by surah + reciter (+ rewayah). */
