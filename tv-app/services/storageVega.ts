@@ -41,8 +41,10 @@ export function createVegaStorage(
   const retryDelayMs = opts.retryDelayMs ?? 250;
   const values = new Map<string, string>();
   const listeners = new Set<(key: string) => void>();
-  // Lazy keys already looked up in AsyncStorage this session.
-  const looked = new Set<string>();
+  // Lazy keys looked up in AsyncStorage this session, with the read, so a
+  // second caller for the same key waits for the first read instead of
+  // seeing an empty cache while it runs.
+  const looked = new Map<string, Promise<void>>();
   // After clearAll, stored lazy caches are on their way out: never read one.
   let lazyCleared = false;
   // False after a failed hydrate: memory then holds only what this session
@@ -100,17 +102,29 @@ export function createVegaStorage(
    * Reads one lazy cache key into memory, so the synchronous read after it
    * sees the stored value. Other keys are already in memory.
    */
-  async function preload(key: string): Promise<void> {
-    if (!isLazy(key) || lazyCleared || values.has(key) || looked.has(key)) {
-      return;
+  function preload(key: string): Promise<void> {
+    if (!isLazy(key) || lazyCleared || values.has(key)) {
+      return Promise.resolve();
     }
-    looked.add(key);
-    try {
-      const value = await store.getItem(PREFIX + key);
-      if (value !== null && !values.has(key)) values.set(key, value);
-    } catch {
-      // A cache miss: the caller fetches it again.
+    let read = looked.get(key);
+    if (!read) {
+      const thisRead: Promise<void> = store
+        .getItem(PREFIX + key)
+        .then(value => {
+          // A write, remove or clearAll while it ran is newer than the
+          // stored value.
+          const current = looked.get(key) === thisRead;
+          if (value !== null && current && !values.has(key) && !lazyCleared) {
+            values.set(key, value);
+          }
+        })
+        .catch(() => {
+          // A cache miss: the caller fetches it again.
+        });
+      read = thisRead;
+      looked.set(key, read);
     }
+    return read;
   }
 
   const storage = {
@@ -123,7 +137,7 @@ export function createVegaStorage(
     },
     remove: (key: string): void => {
       values.delete(key);
-      looked.add(key);
+      looked.set(key, Promise.resolve());
       persist(() => store.removeItem(PREFIX + key));
       notify(key);
     },

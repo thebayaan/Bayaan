@@ -93,6 +93,27 @@ describe('Vega storage', () => {
     expect(store.getItem).toHaveBeenCalledTimes(2);
   });
 
+  it('a second preload of the same key waits for the first read', async () => {
+    const store = fakeStore({bayaan_tv_tr_en_2: '["a"]'});
+    const vega = createVegaStorage(store, {retryDelayMs: 0});
+    await vega.hydrate();
+    const first = vega.preload('bayaan_tv_tr_en_2');
+    await vega.preload('bayaan_tv_tr_en_2');
+    expect(vega.storage.getString('bayaan_tv_tr_en_2')).toBe('["a"]');
+    await first;
+    expect(store.getItem).toHaveBeenCalledTimes(1);
+  });
+
+  it('a cache removed while its preload runs stays removed', async () => {
+    const store = fakeStore({bayaan_tv_ts_r1_2: '{}'});
+    const vega = createVegaStorage(store, {retryDelayMs: 0});
+    await vega.hydrate();
+    const reading = vega.preload('bayaan_tv_ts_r1_2');
+    vega.storage.remove('bayaan_tv_ts_r1_2');
+    await reading;
+    expect(vega.storage.getString('bayaan_tv_ts_r1_2')).toBeUndefined();
+  });
+
   it('clears unread caches too, and does not bring them back', async () => {
     const store = fakeStore({settings: '{}', bayaan_tv_ts_r1_2: '{}'});
     const vega = createVegaStorage(store, {retryDelayMs: 0});
