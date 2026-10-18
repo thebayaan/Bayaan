@@ -11,6 +11,7 @@ import {ReciterPickerPanel} from '../components/settings/ReciterPickerPanel';
 import {ListFade} from '../components/settings/ListFade';
 import {HomeClock} from '../components/home/HomeClock';
 import {useClock} from '../hooks/useClock';
+import {useScreenActive} from '../components/nav/ScreenLayer';
 import {formatSpeed} from '../components/listening/ListeningPanels';
 import {useReciters} from '../hooks/useReciters';
 import {useContinueListening} from '../hooks/useContinueListening';
@@ -102,6 +103,28 @@ export function SettingsScreen(): React.ReactElement {
   const current =
     resolveDefaultReciter(reciters, getDefaultReciter) ?? undefined;
   const [confirm, setConfirm] = useState<ConfirmKey>(null);
+  const active = useScreenActive();
+  const welcomeRow = useRef<View>(null);
+  // Opening the player from the welcome rerun's pill mounts Settings hidden
+  // under it, so the welcome row's preferred focus fires while hidden and
+  // the layer's own restore (a frame after Back shows it) has nothing to go
+  // back to. Once shown, focus goes to that row, after the layer's restore.
+  const welcomeOnShow = useRef(!active && focusRow === 'welcome');
+  useEffect(() => {
+    if (!active || !welcomeOnShow.current) return;
+    let inner: number | null = null;
+    const outer = requestAnimationFrame(() => {
+      inner = requestAnimationFrame(() => {
+        inner = null;
+        welcomeOnShow.current = false;
+        welcomeRow.current?.requestTVFocus?.();
+      });
+    });
+    return () => {
+      cancelAnimationFrame(outer);
+      if (inner !== null) cancelAnimationFrame(inner);
+    };
+  }, [active]);
 
   // An armed clear does not wait forever for its second press.
   useEffect(() => {
@@ -281,6 +304,7 @@ export function SettingsScreen(): React.ReactElement {
 
                 <Text style={styles.group}>Welcome</Text>
                 <Row
+                  ref={welcomeRow}
                   label="Show welcome again"
                   value="Reciter and display"
                   hasTVPreferredFocus={focusOn('welcome')}
@@ -491,6 +515,7 @@ function Row({
   onPress,
   onBlur,
   hasTVPreferredFocus,
+  ref,
 }: {
   label: string;
   value: string;
@@ -502,9 +527,11 @@ function Row({
   /** Focus left the row (an armed clear disarms). */
   onBlur?: () => void;
   hasTVPreferredFocus?: boolean;
+  ref?: React.Ref<View>;
 }): React.ReactElement {
   return (
     <FocusableButton
+      ref={ref}
       onPress={onPress}
       accessibilityLabel={`${label}: ${value}`}
       hasTVPreferredFocus={hasTVPreferredFocus}
