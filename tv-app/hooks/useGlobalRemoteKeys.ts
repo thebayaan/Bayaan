@@ -1,31 +1,27 @@
 import {useCallback, useMemo} from 'react';
 import {useTVEventHandler} from 'react-native';
 import type {HWEvent} from 'react-native';
-import {
-  createRemoteKeyFilter,
-  screenOwnsPlayPause,
-} from '../services/remoteKeys';
+import {applyMediaKey} from '../services/mediaTransport';
+import {createMediaKeyFilter, screenOwnsMediaKey} from '../services/remoteKeys';
 import {useNavStore} from '../store/navStore';
-import {useTVPlayerStore} from '../store/tvPlayerStore';
 
 /**
- * The remote's Play/Pause works on every screen: it toggles the recitation
- * wherever focus is, except on the screens that handle the key themselves
- * (see screenOwnsPlayPause), so one press never toggles twice. Mounted once,
- * by the Router.
+ * The remote's transport keys (Play/Pause, Next, Previous, Fast-forward,
+ * Rewind) work on every screen: they drive the recitation wherever focus is,
+ * except for the keys the screen on top handles itself (screenOwnsMediaKey),
+ * so one press never acts twice. Mounted once, by the Router.
  */
 export function useGlobalRemoteKeys(): void {
-  const remoteFilter = useMemo(createRemoteKeyFilter, []);
+  const mediaFilter = useMemo(createMediaKeyFilter, []);
   const handleTVEvent = useCallback(
     (event: HWEvent): void => {
-      if (remoteFilter(event) !== 'playPause') return;
+      const key = mediaFilter(event);
+      if (!key) return;
       const {stack} = useNavStore.getState();
-      if (screenOwnsPlayPause(stack[stack.length - 1])) return;
-      const player = useTVPlayerStore.getState();
-      if (player.queue.length === 0) return;
-      player.toggle();
+      if (screenOwnsMediaKey(stack[stack.length - 1], key)) return;
+      applyMediaKey(key);
     },
-    [remoteFilter],
+    [mediaFilter],
   );
   useTVEventHandler(handleTVEvent);
 }

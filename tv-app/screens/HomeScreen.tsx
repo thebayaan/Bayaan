@@ -37,6 +37,7 @@ import {surahGlow} from '../theme/surahColors';
 import {colors} from '../theme/colors';
 import {fonts} from '../theme/typography';
 import {createScaledStyles} from '../theme/scale';
+import {SCREEN_CLOCK_RIGHT, SCREEN_CLOCK_TOP} from '../theme/spacing';
 
 const surahNameMap = new Map<number, string>(SURAHS.map(s => [s.id, s.name]));
 
@@ -324,7 +325,11 @@ const styles = createScaledStyles({
     paddingTop: 40,
     paddingBottom: 90,
   },
-  clock: {position: 'absolute', top: 52, right: HOME_GUTTER},
+  clock: {
+    position: 'absolute',
+    top: SCREEN_CLOCK_TOP,
+    right: SCREEN_CLOCK_RIGHT,
+  },
   status: {
     color: colors.textSecondary,
     fontFamily: fonts.medium,

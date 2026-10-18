@@ -14,9 +14,10 @@ import {useNavStore} from '../store/navStore';
 import {colors} from '../theme/colors';
 import {fonts} from '../theme/typography';
 import {createScaledStyles} from '../theme/scale';
+import {SCREEN_GUTTER} from '../theme/spacing';
 
 // Layout in design px: the screen beside the folded sidebar (1920 - 112).
-const PAD_LEFT = 72;
+const PAD_LEFT = SCREEN_GUTTER;
 const PAD_RIGHT = 90;
 const COLUMNS = 4;
 const GAP = 28;

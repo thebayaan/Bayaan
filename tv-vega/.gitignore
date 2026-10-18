@@ -11,3 +11,6 @@ node_modules
 CMakeUserPresets.json
 npm-debug.log
 buildinfo.json
+
+# Copied from ../tv-app/assets/fonts by scripts/sync-fonts.js
+assets/fonts

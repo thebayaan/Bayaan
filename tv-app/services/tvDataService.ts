@@ -17,40 +17,101 @@ const CDN_CONFIG_URL = 'https://cdn.example.com/config/app-config.json';
 const API_URL = process.env.EXPO_PUBLIC_BAYAAN_API_URL ?? '';
 const API_KEY = process.env.EXPO_PUBLIC_BAYAAN_API_KEY ?? '';
 
-type Cached<T> = {version: string; data: T};
+/** How long a fetched reciter list is used before the next fetch refreshes it. */
+export const RECITERS_TTL_MS = 12 * 60 * 60 * 1000;
+
+type Cached<T> = {version: string; data: T; savedAt?: number};
 
 async function isBackendEnabled(): Promise<boolean> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 3000);
   try {
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 3000);
     const res = await fetch(CDN_CONFIG_URL, {signal: ctrl.signal});
-    clearTimeout(timer);
     if (!res.ok) return true;
     const json = (await res.json()) as {useBackendApi?: boolean};
     return json.useBackendApi !== false;
   } catch {
     return true;
+  } finally {
+    clearTimeout(timer);
   }
 }
 
+// The reciter list is about 500 KB of JSON and is read on every screen, so
+// it is parsed once per stored value, not on every read. Comparing the raw
+// string is far cheaper than parsing it and keeps the memo exact whatever
+// writes the key.
+let readMemo: {
+  raw: string;
+  cached: Cached<Reciter[]> | null;
+  byId: Map<string, Reciter> | null;
+} | null = null;
+
+function readCachedReciters(): Cached<Reciter[]> | null {
+  const raw = storage.getString(RECITERS_KEY);
+  if (!raw) return null;
+  if (readMemo?.raw !== raw) {
+    let cached: Cached<Reciter[]> | null = null;
+    try {
+      cached = JSON.parse(raw) as Cached<Reciter[]>;
+    } catch {
+      cached = null;
+    }
+    readMemo = {raw, cached, byId: null};
+  }
+  const {cached} = readMemo;
+  return cached && cached.version === DATA_VERSION ? cached : null;
+}
+
+function writeCachedReciters(data: Reciter[]): void {
+  writeJSON<Cached<Reciter[]>>(RECITERS_KEY, {
+    version: DATA_VERSION,
+    data,
+    savedAt: Date.now(),
+  });
+}
+
+let fallbackMemo: Reciter[] | null = null;
+
+/** The bundled reciter list, normalized once. */
+export function fallbackReciterList(): Reciter[] {
+  fallbackMemo ??= normalizeReciters(fallbackReciters);
+  return fallbackMemo;
+}
+
 export function getCachedReciters(): Reciter[] | null {
-  const cached = readJSON<Cached<Reciter[]>>(RECITERS_KEY);
-  if (!cached || cached.version !== DATA_VERSION) return null;
-  return cached.data;
+  return readCachedReciters()?.data ?? null;
+}
+
+/** One cached reciter by id, from an index built once per stored list. */
+export function getCachedReciter(reciterId: string): Reciter | undefined {
+  const cached = readCachedReciters();
+  if (!cached || !readMemo) return undefined;
+  readMemo.byId ??= new Map(cached.data.map(r => [r.id, r]));
+  return readMemo.byId.get(reciterId);
+}
+
+export function isReciterCacheFresh(
+  savedAt: number | undefined,
+  now: number = Date.now(),
+): boolean {
+  return savedAt !== undefined && now - savedAt < RECITERS_TTL_MS;
 }
 
 export async function fetchReciters(opts?: {
   skipCache?: boolean;
 }): Promise<Reciter[]> {
+  // A list older than RECITERS_TTL_MS is refreshed; if that fails the stale
+  // copy is still returned below.
   if (!opts?.skipCache) {
-    const cached = getCachedReciters();
-    if (cached) return cached;
+    const cached = readCachedReciters();
+    if (cached && isReciterCacheFresh(cached.savedAt)) return cached.data;
   }
 
   const enabled = API_URL ? await isBackendEnabled() : false;
   if (!enabled) {
-    const data = normalizeReciters(fallbackReciters);
-    writeJSON<Cached<Reciter[]>>(RECITERS_KEY, {version: DATA_VERSION, data});
+    const data = fallbackReciterList();
+    writeCachedReciters(data);
     return data;
   }
 
@@ -60,13 +121,13 @@ export async function fetchReciters(opts?: {
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = normalizeReciters(await res.json());
-    writeJSON<Cached<Reciter[]>>(RECITERS_KEY, {version: DATA_VERSION, data});
+    writeCachedReciters(data);
     return data;
   } catch {
     const cached = getCachedReciters();
     if (cached) return cached;
-    const data = normalizeReciters(fallbackReciters);
-    writeJSON<Cached<Reciter[]>>(RECITERS_KEY, {version: DATA_VERSION, data});
+    const data = fallbackReciterList();
+    writeCachedReciters(data);
     return data;
   }
 }
@@ -77,9 +138,9 @@ export function getCachedRewayat(reciterId: string): Rewayah[] | null {
   if (cached && cached.version === DATA_VERSION && cached.data.length > 0) {
     return cached.data;
   }
-  const embedded = getCachedReciters()?.find(r => r.id === reciterId)?.rewayat;
+  const embedded = getCachedReciter(reciterId)?.rewayat;
   if (embedded && embedded.length > 0) return embedded;
-  const fromFallback = normalizeReciters(fallbackReciters).find(
+  const fromFallback = fallbackReciterList().find(
     r => r.id === reciterId,
   )?.rewayat;
   return fromFallback ?? null;
@@ -92,14 +153,14 @@ export async function fetchRewayat(reciterId: string): Promise<Rewayah[]> {
     return cached.data;
   }
 
-  const embedded = getCachedReciters()?.find(r => r.id === reciterId)?.rewayat;
+  const embedded = getCachedReciter(reciterId)?.rewayat;
   if (embedded && embedded.length > 0) {
     writeJSON<Cached<Rewayah[]>>(key, {version: DATA_VERSION, data: embedded});
     return embedded;
   }
 
   if (!API_URL) {
-    const fromFallback = normalizeReciters(fallbackReciters).find(
+    const fromFallback = fallbackReciterList().find(
       r => r.id === reciterId,
     )?.rewayat;
     return fromFallback ?? [];

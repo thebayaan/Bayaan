@@ -1,4 +1,12 @@
-import {createRemoteKeyFilter, screenOwnsPlayPause} from './remoteKeys';
+import {
+  createMediaKeyFilter,
+  createRemoteKeyFilter,
+  screenOwnsMediaKey,
+  screenOwnsPlayPause,
+} from './remoteKeys';
+import {claimTransport, resetTransportGate} from './transportGate';
+
+beforeEach(resetTransportGate);
 
 describe('createRemoteKeyFilter', () => {
   it('passes tvOS events, which carry no key phase', () => {
@@ -49,5 +57,92 @@ describe('screenOwnsPlayPause', () => {
     expect(screenOwnsPlayPause({screen: 'playlist', playlistId: 'p'})).toBe(
       false,
     );
+  });
+});
+
+describe('createMediaKeyFilter', () => {
+  it('maps the Android TV transport keys (key-up only)', () => {
+    const filter = createMediaKeyFilter();
+    expect(filter({eventType: 'playPause', eventKeyAction: 1})).toBe(
+      'playPause',
+    );
+    expect(filter({eventType: 'next', eventKeyAction: 1})).toBe('next');
+    expect(filter({eventType: 'previous', eventKeyAction: 1})).toBe('previous');
+    expect(filter({eventType: 'fastForward', eventKeyAction: 1})).toBe(
+      'fastForward',
+    );
+    expect(filter({eventType: 'rewind', eventKeyAction: 1})).toBe('rewind');
+  });
+
+  it('maps the Vega transport keys once per down/up pair', () => {
+    const filter = createMediaKeyFilter();
+    expect(filter({eventType: 'skip_forward', eventKeyAction: 0})).toBe(
+      'fastForward',
+    );
+    expect(filter({eventType: 'skip_forward', eventKeyAction: 1})).toBeNull();
+    expect(filter({eventType: 'forward', eventKeyAction: 0})).toBe(
+      'fastForward',
+    );
+    expect(filter({eventType: 'skip_backward', eventKeyAction: 0})).toBe(
+      'rewind',
+    );
+  });
+
+  it('ignores the D-pad and touch-surface swipes, which move focus', () => {
+    const filter = createMediaKeyFilter();
+    expect(filter({eventType: 'right'})).toBeNull();
+    expect(filter({eventType: 'swipeRight'})).toBeNull();
+    expect(filter({eventType: 'swipeLeft'})).toBeNull();
+    expect(filter({eventType: 'select'})).toBeNull();
+  });
+});
+
+describe('Play/Pause and the transport gate', () => {
+  it('drops a key press the system already handled as a media command', () => {
+    claimTransport('system');
+    expect(createRemoteKeyFilter()({eventType: 'playpause'})).toBeNull();
+    expect(createMediaKeyFilter()({eventType: 'playpause'})).toBeNull();
+  });
+
+  it('lets every listener see the same key press', () => {
+    const screen = createRemoteKeyFilter();
+    const global = createMediaKeyFilter();
+    expect(screen({eventType: 'playPause'})).toBe('playPause');
+    expect(global({eventType: 'playPause'})).toBe('playPause');
+  });
+
+  it('never gates the other keys', () => {
+    claimTransport('system');
+    expect(createMediaKeyFilter()({eventType: 'next'})).toBe('next');
+    expect(createRemoteKeyFilter()({eventType: 'right'})).toBe('right');
+  });
+});
+
+describe('screenOwnsMediaKey', () => {
+  it('the player keeps play/pause and seeking but not surah changes', () => {
+    const player = {screen: 'nowPlaying' as const};
+    expect(screenOwnsMediaKey(player, 'playPause')).toBe(true);
+    expect(screenOwnsMediaKey(player, 'fastForward')).toBe(true);
+    expect(screenOwnsMediaKey(player, 'rewind')).toBe(true);
+    expect(screenOwnsMediaKey(player, 'next')).toBe(false);
+    expect(screenOwnsMediaKey(player, 'previous')).toBe(false);
+  });
+
+  it('the adhkar reader owns every transport key', () => {
+    const reader = {screen: 'adhkarReader' as const, listId: 'x'};
+    for (const key of [
+      'playPause',
+      'next',
+      'previous',
+      'fastForward',
+      'rewind',
+    ] as const) {
+      expect(screenOwnsMediaKey(reader, key)).toBe(true);
+    }
+  });
+
+  it('root places leave every key to the app-wide handler', () => {
+    expect(screenOwnsMediaKey(undefined, 'next')).toBe(false);
+    expect(screenOwnsMediaKey(undefined, 'fastForward')).toBe(false);
   });
 });

@@ -69,6 +69,71 @@ describe('tvDataService', () => {
     expect(mockFetch).toHaveBeenCalledTimes(1); // only killswitch call
   });
 
+  it('parses the stored list once and re-reads it when it changes', () => {
+    const parse = jest.spyOn(JSON, 'parse');
+    storage.set(
+      'bayaan_reciters',
+      JSON.stringify({version: '4', data: fallback.slice(0, 2)}),
+    );
+    const first = service.getCachedReciters();
+    expect(service.getCachedReciters()).toBe(first);
+    expect(service.getCachedReciter(String(fallback[1].id))?.id).toBe(
+      String(fallback[1].id),
+    );
+    expect(parse).toHaveBeenCalledTimes(1);
+
+    storage.set(
+      'bayaan_reciters',
+      JSON.stringify({version: '4', data: fallback.slice(0, 3)}),
+    );
+    expect(service.getCachedReciters()).toHaveLength(3);
+    expect(parse).toHaveBeenCalledTimes(2);
+    parse.mockRestore();
+  });
+
+  it('serves a fresh cache without the network', async () => {
+    storage.set(
+      'bayaan_reciters',
+      JSON.stringify({
+        version: '4',
+        data: fallback.slice(0, 2),
+        savedAt: Date.now(),
+      }),
+    );
+    const result = await service.fetchReciters();
+    expect(result).toHaveLength(2);
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it('refreshes a stale cache, and keeps it when the refresh fails', async () => {
+    const stale = Date.now() - service.RECITERS_TTL_MS - 1;
+    storage.set(
+      'bayaan_reciters',
+      JSON.stringify({
+        version: '4',
+        data: fallback.slice(0, 2),
+        savedAt: stale,
+      }),
+    );
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({useBackendApi: true}),
+    });
+    mockFetch.mockRejectedValueOnce(new Error('offline'));
+    const result = await service.fetchReciters();
+    expect(result).toHaveLength(2);
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('judges freshness by the save time', () => {
+    const now = 1_000_000_000;
+    expect(service.isReciterCacheFresh(undefined, now)).toBe(false);
+    expect(service.isReciterCacheFresh(now - 1000, now)).toBe(true);
+    expect(
+      service.isReciterCacheFresh(now - service.RECITERS_TTL_MS, now),
+    ).toBe(false);
+  });
+
   it('buildAudioUrl pads surah number to 3 digits', () => {
     expect(service.buildAudioUrl('https://cdn.example.com/reciter', 7)).toBe(
       'https://cdn.example.com/reciter/007.mp3',

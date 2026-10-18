@@ -3,9 +3,10 @@ import {ScrollView, Text, TVFocusGuideView, View} from 'react-native';
 import {colors} from '../../theme/colors';
 import {fonts} from '../../theme/typography';
 import {createScaledStyles} from '../../theme/scale';
+import {SCREEN_GUTTER} from '../../theme/spacing';
 
 /** Home's horizontal gutter; rails bleed past it so cards scroll to the edge. */
-export const HOME_GUTTER = 64;
+export const HOME_GUTTER = SCREEN_GUTTER;
 
 type Props = {
   title: string;
@@ -20,7 +21,9 @@ type Props = {
 export function HomeRail({title, children}: Props): React.ReactElement {
   return (
     <View style={styles.section}>
-      <Text style={styles.title}>{title}</Text>
+      <Text style={styles.title} accessibilityRole="header">
+        {title}
+      </Text>
       <TVFocusGuideView autoFocus style={styles.bleed}>
         <ScrollView
           horizontal

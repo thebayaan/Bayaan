@@ -1,6 +1,7 @@
 import React, {useRef} from 'react';
 import {Animated, Pressable, StyleProp, ViewStyle} from 'react-native';
 import {colors} from '../../theme/colors';
+import {createScaledStyles} from '../../theme/scale';
 import {animateFocusScale, focusScaleDefault} from './focusMotion';
 import {FocusedContext} from './focusContext';
 
@@ -19,6 +20,10 @@ type Props = {
   focusScale?: number;
   /** Draw the hairline outline a screen's main action wears at rest. */
   outlined?: boolean;
+  /** Read out as selected (a chosen tab, option or chip). */
+  selected?: boolean;
+  /** Not pressable; read out as dimmed. Focus can still land on it. */
+  disabled?: boolean;
 };
 
 /**
@@ -37,6 +42,8 @@ export function FocusableButton({
   accessibilityLabel,
   focusScale = focusScaleDefault,
   outlined,
+  selected,
+  disabled,
 }: Props): React.ReactElement {
   const scaleValue = useRef(new Animated.Value(1)).current;
   const [isFocused, setIsFocused] = React.useState(false);
@@ -54,26 +61,22 @@ export function FocusableButton({
   return (
     <Animated.View style={[containerStyle, {transform: [{scale: scaleValue}]}]}>
       <Pressable
-        onPress={onPress}
+        onPress={disabled ? undefined : onPress}
         onFocus={handleFocus}
         onBlur={handleBlur}
         hasTVPreferredFocus={hasTVPreferredFocus}
+        accessibilityRole="button"
         accessibilityLabel={accessibilityLabel}
+        accessibilityState={
+          selected === undefined && disabled === undefined
+            ? undefined
+            : {selected, disabled}
+        }
         style={[
-          // Buttons are squircles: a continuous corner curve where the
-          // platform draws one (Apple TV), a plain rounded rect elsewhere.
-          {borderCurve: 'continuous'},
-          outlined && {borderWidth: 2, borderColor: colors.outline},
+          styles.base,
+          outlined && styles.outlined,
           style,
-          isFocused && {
-            backgroundColor: colors.focusFill,
-            borderColor: colors.focusFill,
-            shadowColor: '#000',
-            shadowOpacity: 0.5,
-            shadowRadius: 16,
-            shadowOffset: {width: 0, height: 8},
-            elevation: 8,
-          },
+          isFocused && styles.focused,
           isFocused && focusedStyle,
         ]}>
         <FocusedContext.Provider value={isFocused}>
@@ -83,3 +86,19 @@ export function FocusableButton({
     </Animated.View>
   );
 }
+
+const styles = createScaledStyles({
+  // Buttons are squircles: a continuous corner curve where the platform
+  // draws one (Apple TV), a plain rounded rect elsewhere.
+  base: {borderCurve: 'continuous'},
+  outlined: {borderWidth: 2, borderColor: colors.outline},
+  focused: {
+    backgroundColor: colors.focusFill,
+    borderColor: colors.focusFill,
+    shadowColor: '#000',
+    shadowOpacity: 0.5,
+    shadowRadius: 16,
+    shadowOffset: {width: 0, height: 8},
+    elevation: 8,
+  },
+});

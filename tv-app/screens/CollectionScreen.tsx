@@ -39,10 +39,15 @@ import {useNavStore} from '../store/navStore';
 import {colors} from '../theme/colors';
 import {fonts} from '../theme/typography';
 import {createScaledStyles, scale} from '../theme/scale';
+import {
+  SCREEN_CLOCK_RIGHT,
+  SCREEN_CLOCK_TOP,
+  SCREEN_GUTTER,
+} from '../theme/spacing';
 import type {Reciter} from '../types/reciter';
 
 // Layout in design px, beside the folded sidebar (1920 - 112 = 1808 wide).
-const PAD_LEFT = 72;
+const PAD_LEFT = SCREEN_GUTTER;
 const PAD_RIGHT = 84;
 const COLUMNS = 6;
 const COLUMN_GAP = 44;
@@ -310,7 +315,11 @@ export function CollectionScreen(): React.ReactElement {
 
 const styles = createScaledStyles({
   container: {flex: 1, backgroundColor: colors.background},
-  clock: {position: 'absolute', top: 62, right: PAD_RIGHT},
+  clock: {
+    position: 'absolute',
+    top: SCREEN_CLOCK_TOP,
+    right: SCREEN_CLOCK_RIGHT,
+  },
   title: {
     color: colors.text,
     fontFamily: fonts.bold,

@@ -1,11 +1,36 @@
 import React, {Component} from 'react';
-import {Pressable, Text, View} from 'react-native';
+import {Text, View} from 'react-native';
+import {FocusableButton, FocusText} from './primitives/FocusableButton';
+import {setTVMenuKeyEnabled} from '../hooks/tvMenuKey';
+import {useContextMenuStore} from '../store/contextMenuStore';
+import {useListeningStore} from '../store/listeningStore';
+import {useNavStore} from '../store/navStore';
+import {useOverlayStore} from '../store/overlayStore';
+import {useSettingsStore} from '../store/settingsStore';
 import {colors} from '../theme/colors';
 import {createScaledStyles} from '../theme/scale';
+import {fonts} from '../theme/typography';
 
 type Props = {children: React.ReactNode};
 type State = {error: Error | null};
 
+/**
+ * Puts every screen-level store back to Home with nothing open, so Reload
+ * renders a fresh place instead of the one that just threw. Playback stores
+ * are left alone: the recitation keeps playing through the error.
+ */
+export function resetToHome(): void {
+  useContextMenuStore.getState().close();
+  useOverlayStore.getState().close();
+  useListeningStore.getState().setTrayOpen(false);
+  useSettingsStore.getState().setPicker(null);
+  useNavStore.getState().reset();
+}
+
+/**
+ * Catches a render error below it (the Router, inside the audio provider, so
+ * a crashing screen never stops the recitation). Reload returns to Home.
+ */
 export class ErrorBoundary extends Component<Props, State> {
   state: State = {error: null};
 
@@ -14,12 +39,15 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo): void {
-    if (__DEV__) {
-      console.error('[tv ErrorBoundary]', error, info.componentStack);
-    }
+    // Kept in release builds too: it reaches logcat / the device console.
+    console.error('[tv ErrorBoundary]', error, info.componentStack);
+    // The Router (and its back handler) is gone; let tvOS Menu leave the app
+    // instead of being swallowed by a handler that no longer exists.
+    setTVMenuKeyEnabled(false);
   }
 
   reset = (): void => {
+    resetToHome();
     this.setState({error: null});
   };
 
@@ -34,12 +62,14 @@ export class ErrorBoundary extends Component<Props, State> {
         <Text style={styles.message} numberOfLines={4}>
           {error.message || String(error)}
         </Text>
-        <Pressable
+        <FocusableButton
           onPress={this.reset}
-          accessibilityLabel="Reload the app"
-          style={styles.cta}>
-          <Text style={styles.ctaText}>Reload</Text>
-        </Pressable>
+          accessibilityLabel="Reload and go to Home"
+          style={styles.cta}
+          outlined
+          hasTVPreferredFocus>
+          <FocusText style={styles.ctaText}>Reload</FocusText>
+        </FocusableButton>
       </View>
     );
   }
@@ -56,6 +86,7 @@ const styles = createScaledStyles({
   },
   kicker: {
     color: colors.text,
+    fontFamily: fonts.extraBold,
     fontSize: 13,
     fontWeight: '800',
     letterSpacing: 2.4,
@@ -64,6 +95,7 @@ const styles = createScaledStyles({
   },
   title: {
     color: colors.text,
+    fontFamily: fonts.extraBold,
     fontSize: 36,
     fontWeight: '800',
     letterSpacing: -0.5,
@@ -71,6 +103,7 @@ const styles = createScaledStyles({
   },
   message: {
     color: colors.textSecondary,
+    fontFamily: fonts.regular,
     fontSize: 16,
     lineHeight: 24,
     textAlign: 'center',
@@ -80,15 +113,14 @@ const styles = createScaledStyles({
     opacity: 0.8,
   },
   cta: {
-    paddingHorizontal: 28,
+    paddingHorizontal: 32,
     paddingVertical: 14,
-    borderRadius: 28,
-    backgroundColor: colors.text,
+    borderRadius: 16,
   },
   ctaText: {
-    color: colors.background,
-    fontSize: 16,
-    fontWeight: '800',
+    fontFamily: fonts.bold,
+    fontSize: 18,
+    fontWeight: '700',
     letterSpacing: 0.3,
   },
 });

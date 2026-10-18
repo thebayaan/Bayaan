@@ -1,5 +1,10 @@
 import React, {useState} from 'react';
-import {StyleSheet, View, type LayoutChangeEvent} from 'react-native';
+import {
+  StyleSheet,
+  View,
+  type ImageStyle,
+  type LayoutChangeEvent,
+} from 'react-native';
 import {Image} from 'expo-image';
 import {GradientFill} from './GradientFill';
 import {SurahGlyph} from './SurahGlyph';
@@ -40,16 +45,34 @@ export function SurahArtwork({
     <View style={styles.fill} onLayout={onLayout}>
       <GradientFill colors={surahGradient(surahNumber)} id={id} />
       <SurahGlyph surahNumber={surahNumber} size={glyphSize} />
+      {/* Zoomed by layout, not a transform: expo-image decodes the 1200 px
+          card down to the view's laid-out size, so a transform would blow a
+          small bitmap back up (jagged text on Android). recyclingKey clears
+          a recycled grid cell at once instead of showing the last surah. */}
       <Image
         source={{uri: surahArtworkUrl(surahNumber)}}
-        style={[StyleSheet.absoluteFill, {transform: [{scale: zoom}]}]}
+        style={zoomedFill(zoom)}
         contentFit="cover"
         cachePolicy="memory-disk"
+        recyclingKey={String(surahNumber)}
         transition={200}
         accessible={false}
       />
     </View>
   );
+}
+
+/** Fills the parent at `zoom` times its size, centred (parent clips). */
+function zoomedFill(zoom: number): ImageStyle {
+  const overflow = `${((zoom - 1) / 2) * -100}%` as const;
+  const size = `${zoom * 100}%` as const;
+  return {
+    position: 'absolute',
+    left: overflow,
+    top: overflow,
+    width: size,
+    height: size,
+  };
 }
 
 const styles = StyleSheet.create({

@@ -10,6 +10,7 @@
  */
 
 import React, {useEffect} from 'react';
+import {AppState, Platform} from 'react-native';
 import {useAudioPlayer} from 'expo-audio';
 import {expoAudioService} from '../../../services/audio/ExpoAudioService';
 
@@ -38,6 +39,21 @@ export function TVAudioProvider({
 
     initializePlayer();
   }, [player]);
+
+  useEffect(() => {
+    // Android TV gives this player no media session or notification, so
+    // audio left running after Home (or Back out of the app) could not be
+    // paused from anywhere, and the system stops it a few minutes later
+    // anyway. Pause on leaving instead; Play resumes on return. tvOS keeps
+    // playing in the background as Apple TV audio apps do.
+    if (Platform.OS !== 'android') return;
+    const sub = AppState.addEventListener('change', state => {
+      if (state === 'background' && expoAudioService.getIsPlaying()) {
+        void expoAudioService.pause().catch(() => {});
+      }
+    });
+    return () => sub.remove();
+  }, []);
 
   return <>{children}</>;
 }

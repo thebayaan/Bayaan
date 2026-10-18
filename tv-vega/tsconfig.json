@@ -11,9 +11,7 @@
       "@react-native-async-storage/async-storage": [
         "node_modules/@amazon-devices/react-native-async-storage__async-storage"
       ],
-      "@shopify/flash-list": [
-        "node_modules/@amazon-devices/shopify__flash-list"
-      ],
+      "@shopify/flash-list": ["shims/flash-list.tsx"],
       "react-native-svg": ["node_modules/@amazon-devices/react-native-svg"],
       "expo-image": ["shims/expo-image.tsx"],
       "react": ["node_modules/@types/react"],
