@@ -3,19 +3,23 @@
  * and which rails Home shows in what order.
  *
  * Pure (the Date is injected) so the windows are unit-tested. Windows are
- * fixed clock hours, not prayer times, like the phone's adhkar windows
- * (services/adhkar/timeWindows.ts):
+ * fixed clock hours, not prayer times. The evening and the night open when
+ * the Adhkar screen's do (the phone's adhkar windows in
+ * services/adhkar/timeWindows.ts, and before sleep from adhkarBrowse), so
+ * Home's hero and the Adhkar screen's "now" list always agree:
  *   04:00-09:59  after Fajr  -> Morning adhkar
- *   10:00-15:59  daytime     -> a surah of the day
- *   16:00-19:59  evening     -> Evening adhkar
- *   20:00-03:59  night       -> Al-Mulk, before sleep
+ *   10:00-14:59  daytime     -> a surah of the day
+ *   15:00-20:59  evening     -> Evening adhkar
+ *   21:00-03:59  night       -> Al-Mulk, before sleep
  * Friday puts Al-Kahf in the hero instead, from the night before (Thursday
  * from 20:00, after maghrib all year) until Friday's evening window, when
  * the evening adhkar return. The time window still decides the rail under
  * it, and every window has a rail of its own.
  */
 import {SURAHS} from '../../data/surahData';
+import {adhkarWindowAt} from '../../services/adhkar/timeWindows';
 import {
+  BEFORE_SLEEP_HOUR,
   estimateDhikrMinutes,
   groupLists,
   nowListId,
@@ -25,8 +29,9 @@ export type DayWindow = 'morning' | 'day' | 'evening' | 'night';
 
 export const MORNING_START_HOUR = 4;
 export const DAY_START_HOUR = 10;
-export const EVENING_START_HOUR = 16;
-export const NIGHT_START_HOUR = 20;
+export const NIGHT_START_HOUR = BEFORE_SLEEP_HOUR;
+/** The eve of Friday begins after maghrib, which is before 20:00 all year. */
+export const FRIDAY_EVE_HOUR = 20;
 
 export const SURAH = {
   fatihah: 1,
@@ -81,23 +86,26 @@ export type HomePlan = {
 
 export function dayWindowAt(date: Date): DayWindow {
   const h = date.getHours();
-  if (h >= MORNING_START_HOUR && h < DAY_START_HOUR) return 'morning';
-  if (h >= DAY_START_HOUR && h < EVENING_START_HOUR) return 'day';
-  if (h >= EVENING_START_HOUR && h < NIGHT_START_HOUR) return 'evening';
-  return 'night';
+  if (h >= NIGHT_START_HOUR || h < MORNING_START_HOUR) return 'night';
+  if (h < DAY_START_HOUR) return 'morning';
+  return adhkarWindowAt(date.getTime()) === 'evening' ? 'evening' : 'day';
 }
 
 /**
- * Whether it is the time for Al-Kahf: the eve of Friday (Thursday from the
- * night window) through Friday until its evening window.
+ * Whether it is the time for Al-Kahf: the eve of Friday (Thursday after
+ * maghrib) through Friday until its evening window.
  */
 export function isFridayTime(date: Date): boolean {
-  const h = date.getHours();
   switch (date.getDay()) {
     case 4:
-      return h >= NIGHT_START_HOUR;
-    case 5:
-      return h < EVENING_START_HOUR;
+      return date.getHours() >= FRIDAY_EVE_HOUR;
+    case 5: {
+      // From midnight until the evening window opens.
+      const window = dayWindowAt(date);
+      return window === 'night'
+        ? date.getHours() < MORNING_START_HOUR
+        : window !== 'evening';
+    }
     default:
       return false;
   }
@@ -406,6 +414,8 @@ export const ADHKAR_ROW_LIMIT = 6;
 /**
  * The Adhkar rail: the list for this time of day first, then the everyday
  * lists, leaving out the ones the hero and the moment's rail already show.
+ * The other half of the day's list (evening adhkar in the morning, morning
+ * adhkar in the evening) goes last, so it never leads the rail.
  */
 export function adhkarRowIds(
   date: Date,
@@ -413,11 +423,16 @@ export function adhkarRowIds(
   limit = ADHKAR_ROW_LIMIT,
 ): string[] {
   const daily = groupLists('daily');
+  const now = nowListId(date);
+  const opposite =
+    now === 'morning-adhkar' ? 'evening-adhkar' : 'morning-adhkar';
   const ids = [
-    nowListId(date),
-    ...[...daily.featured, ...daily.rest].map(l => l.id),
-  ];
-  return [...new Set(ids)].filter(id => !exclude.includes(id)).slice(0, limit);
+    ...new Set([now, ...[...daily.featured, ...daily.rest].map(l => l.id)]),
+  ].filter(id => !exclude.includes(id));
+  return [
+    ...ids.filter(id => id !== opposite),
+    ...ids.filter(id => id === opposite),
+  ].slice(0, limit);
 }
 
 /** The adhkar lists a plan's hero and moment rail already offer. */

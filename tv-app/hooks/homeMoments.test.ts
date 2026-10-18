@@ -1,4 +1,4 @@
-import {estimateMinutes} from '../services/adhkarBrowse';
+import {estimateMinutes, nowListId} from '../services/adhkarBrowse';
 import {
   adhkarFacts,
   adhkarTileMeta,
@@ -32,10 +32,10 @@ describe('dayWindowAt', () => {
     [4, 'morning'],
     [9, 'morning'],
     [10, 'day'],
-    [15, 'day'],
-    [16, 'evening'],
-    [19, 'evening'],
-    [20, 'night'],
+    [14, 'day'],
+    [15, 'evening'],
+    [20, 'evening'],
+    [21, 'night'],
     [23, 'night'],
   ])('%i:00 is %s', (hour, expected) => {
     expect(dayWindowAt(sat(hour))).toBe(expected);
@@ -44,8 +44,18 @@ describe('dayWindowAt', () => {
   it('switches exactly on the boundary minute', () => {
     expect(dayWindowAt(sat(3, 59))).toBe('night');
     expect(dayWindowAt(sat(9, 59))).toBe('morning');
-    expect(dayWindowAt(sat(15, 59))).toBe('day');
-    expect(dayWindowAt(sat(19, 59))).toBe('evening');
+    expect(dayWindowAt(sat(14, 59))).toBe('day');
+    expect(dayWindowAt(sat(20, 59))).toBe('evening');
+  });
+
+  it("agrees with the Adhkar screen's list for the time", () => {
+    for (let h = 0; h < 24; h++) {
+      const window = dayWindowAt(sat(h));
+      const list = nowListId(sat(h));
+      if (window === 'evening') expect(list).toBe('evening-adhkar');
+      if (window === 'night') expect(list).toBe('before-sleep');
+      if (window === 'morning') expect(list).toBe('morning-adhkar');
+    }
   });
 });
 
@@ -179,11 +189,13 @@ describe('homePlanAt', () => {
 });
 
 describe('isFridayTime and planHourOf', () => {
-  it('runs from Thursday 20:00 to Friday 15:59', () => {
+  it('runs from Thursday 20:00 to Friday 14:59', () => {
     expect(isFridayTime(thu(19, 59))).toBe(false);
     expect(isFridayTime(thu(20))).toBe(true);
-    expect(isFridayTime(fri(15, 59))).toBe(true);
-    expect(isFridayTime(fri(16))).toBe(false);
+    expect(isFridayTime(fri(0, 30))).toBe(true);
+    expect(isFridayTime(fri(14, 59))).toBe(true);
+    expect(isFridayTime(fri(15))).toBe(false);
+    expect(isFridayTime(fri(22))).toBe(false);
     expect(isFridayTime(sat(10))).toBe(false);
   });
 
@@ -275,6 +287,19 @@ describe('adhkar rail', () => {
       expect(adhkarForList(id).length).toBeGreaterThan(0);
     }
     expect(adhkarRowIds(sat(13), [])[0]).toBe('morning-adhkar');
+  });
+
+  it("puts the other half of the day's list last", () => {
+    const morning = adhkarRowIds(sat(9, 48), ['morning-adhkar'], 99);
+    expect(morning[0]).not.toBe('evening-adhkar');
+    if (morning.includes('evening-adhkar')) {
+      expect(morning[morning.length - 1]).toBe('evening-adhkar');
+    }
+    const evening = adhkarRowIds(sat(17), ['evening-adhkar'], 99);
+    expect(evening[0]).not.toBe('morning-adhkar');
+    if (evening.includes('morning-adhkar')) {
+      expect(evening[evening.length - 1]).toBe('morning-adhkar');
+    }
   });
 
   it('counts the adhkar hero among the plan lists', () => {
