@@ -1,163 +1,277 @@
 # End-to-end walk through the TV app, shared by the Apple TV and Android TV
-# screenshot runs. Each line is: <screenshot-name> <seconds-to-wait> <keys...>
-# The keys are pressed in order, the runner waits, then saves a screenshot.
+# screenshot runs, from a fresh install. Each line is:
+#   <screenshot-name> <seconds-to-wait> <keys...>
+# The keys are pressed in order (the runner waits 1 s after each), then the
+# runner waits the given seconds and saves a screenshot.
 # Keys: up down left right select back playpause hold relaunch none text:<word>
-# ("hold" is a long press of OK, which opens a surah's or reciter's menu.)
+# A key may carry a repeat count: "up*7" is seven Ups (arrows, select, back,
+# playpause). "hold" is a long press of OK, which opens a surah's, reciter's
+# or playlist's menu. Run DRY_RUN=1 bash e2e/run-walk.sh android (or tvos) to
+# check this file.
 #
-# Sidebar order: Home, Search, Surahs, Reciters, Adhkar, Library, Settings,
-# then the now-playing tile under Settings while something is queued. Up is
-# trapped at Home and Down at the tile, so "up x7 down xN" from any place
-# item lands on place N (Home is 0), and from the tile "up x8" reaches Home.
-#
-# Back on a root place is stepwise: from the content it focuses that place's
-# own sidebar item; from the sidebar of any other place it goes Home; on
-# Home's sidebar it leaves the app. So every section starts from a known
-# focus with exactly one Back from the content ("back up x7 down xN select"),
-# or with no Back at all when focus is already on the sidebar. The walk never
-# presses Back on the sidebar: where focus lands after the switch to Home is
-# not something to build on, and on Home's sidebar it would exit.
-# Run DRY_RUN=1 bash e2e/run-walk.sh android to check this file.
+# Staying in sync on both focus engines:
+# - Sidebar order: Home, Search, Surahs, Reciters, Adhkar, Library, Settings,
+#   then the now-playing tile under Settings while something is queued (or a
+#   relaunch's Continue). Up is trapped at Home and Down at the last item, so
+#   "up*7 down*N select" from any place item opens place N (Home is 0), and
+#   from the tile "up*8" reaches Home.
+# - Back on a root place is stepwise: from the content it focuses that
+#   place's own sidebar item; from another place's sidebar it goes Home onto
+#   Home's sidebar item; from a place jumped to from content (an empty
+#   playlist's Browse surahs) it goes back where the jump came from; on
+#   Home's sidebar it leaves the app. So each section starts from a known
+#   focus: "back up*7 down*N select" from a place's content, or "up*7 down*N
+#   select" when focus is already on a sidebar item. The walk never presses
+#   Back on Home's sidebar, and never starts a section with Back while a
+#   stacked screen (player, reciter page, playlist, reader) is showing.
+# - Back from the player or any stacked screen lands on the tile, row or
+#   button that opened it, with the sidebar closed, on both engines.
+# - The player's tray drops after 8 s idle without a panel, so tray steps wait
+#   2-3 s. Closing a panel puts focus back on its tool.
+# - The relaunch steps are the only other anchors: after a relaunch Home
+#   focuses the hero's first button and nothing is queued.
+# - Nothing is ever deleted: Settings' clear rows are pressed once each (and
+#   the next press comes after the 5 s arm has run out), and a playlist's
+#   Delete only once.
 
 # ---- First launch: the welcome
-000-launch 20 none
-001-onboarding-step-1 3 none
-002-onboarding-browse-all 4 down select
-003-onboarding-browse-closed 3 back
-004-onboarding-step-2 4 up select
-005-onboarding-start-focused 3 down down
+000-launch-welcome-step-1 20 none
+001-onboarding-browse-all 4 down select
+002-onboarding-browse-closed 3 back
+003-onboarding-step-2 4 up select
+004-onboarding-language-chip 3 down
+005-onboarding-continue-focused 3 down
 006-home-top 8 select
 
-# ---- Home before anything was played: every rail, then Back to the sidebar
-007-home-row-1 3 down
-008-home-row-2 3 down
-009-home-row-3 3 down
-010-home-row-4 3 down
-011-home-row-5 3 down
-012-home-back-sidebar-open 3 back
-# From Home's sidebar item (no Back: it would leave the app).
-013-library-first-run 6 up up up up up up up down down down down down select
+# ---- Home before anything was played: every rail top to bottom (Down stays
+# on the last), then Back from deep in the rails to Home's sidebar item
+007-home-moments-rail 3 down
+008-home-adhkar-rail 3 down
+009-home-collections-rail 3 down
+010-home-featured-reciters 3 down
+011-home-best-for-memorisation 3 down
+012-home-best-for-tajweed 3 down
+013-home-short-surahs 3 down
+014-home-back-sidebar-on-home 3 back
 
-# ---- Surahs, then play: the listening room, its tray and every panel
-014-surahs 6 back up up up up up up up down down select
-015-player-playing 12 select
-016-player-next-verse 3 right
-017-tray-up 3 select
-# Love is the tray's last control: extra Rights stay on it.
-018-tray-love-focused 3 right right right right right right right right right right right
-019-panel-repeat 3 left left left left left left left left select
-020-panel-repeat-verse 3 down select
-021-panel-repeat-off 3 up select
-022-panel-speed 3 back right select
-023-panel-on-screen 3 back right select
-024-panel-reciter 3 back right select
-025-panel-sleep 3 back right select
-026-panel-sound 3 back right select
-027-panel-queue 3 back right select
-028-panel-add-to-playlist 3 back right select
+# ---- Library's first run; Back to its sidebar item, then Back from another
+# place's sidebar lands on Home's sidebar item
+015-library-first-run 6 up*7 down*5 select
+016-library-back-sidebar 3 back
+017-library-sidebar-back-home-item 4 back
 
-# ---- New playlist from the player's panel, named "fajr" on the key grid
-029-playlist-editor 4 select
-030-playlist-typed-fajr 3 right right right right right select left left left left left select down right right select down right select
+# ---- Surahs, Al-Baqarah: the listening room, its tray and every panel
+# (Al-Baqarah, not Al-Fatihah, so the surah doesn't end mid-section)
+018-surahs 6 up*7 down*2 select
+019-surahs-al-baqarah-focused 3 right
+020-player-playing 12 select
+021-player-next-verse 3 right
+022-tray-up 3 select
+# Play/Pause -> Forward a verse -> Next surah -> Repeat.
+023-panel-repeat 3 right*3 select
+024-panel-repeat-verse 3 down select
+025-panel-repeat-off 3 up select
+026-panel-speed 3 back right select
+027-panel-on-screen 3 back right select
+028-panel-reciter 3 back right select
+029-panel-sleep 3 back right select
+030-panel-sound 3 back right select
+031-panel-queue 3 back right select
+032-panel-save 3 back right select
+
+# ---- Save panel > New playlist > the editor, named "Fajr" on the key grid >
+# Create > back in the player with the Save panel open and Fajr ticked
+033-playlist-editor-from-player 4 select
+# a -> f, f -> a, a -> h -> j, j -> q -> r.
+034-playlist-typed-fajr 3 right*5 select left*5 select down right*2 select down right select
 # r -> s -> t -> u (the last column), then Right onto Create.
-031-playlist-create-focused 3 right right right right
-032-playlist-created-toast 4 select
-# The player comes back with its tray down: raise it, Right to Love (the
-# last control), then Left onto Save (Add to playlist).
-033-panel-add-to-playlist-saved 4 select right right right right right right right right right right right left select
-034-tray-lowered 3 back back
-035-back-to-surahs-same-tile 5 back
+035-playlist-create-focused 3 right*4
+036-player-save-panel-fajr-ticked 4 select
+037-tray-save-focused 3 back
+038-tray-love-focused 3 right
+039-tray-loved 3 select
+040-tray-lowered 2 back
+041-player-back-on-al-baqarah 5 back
 
-# ---- A surah's long-press menu on Surahs
-# Left from the first column opens the sidebar on Surahs (and stays there if
-# focus is on it already); Right returns to the tile last focused.
-036-surahs-third-tile 3 left right right right
-037-surah-menu 4 hold
-038-surah-menu-liked 3 down select
-039-surah-menu-playlists 3 down select
-040-surah-menu-added-to-fajr 3 down select
-041-surah-menu-back-to-main 3 back
-042-surah-menu-closed-focus-back 3 back
+# ---- A surah's long-press menu on Surahs: Love, its playlist page, Back to
+# the tile; then Play from the menu and Back from the player onto the tile
+042-surahs-ali-imran-focused 3 right
+043-surah-menu 4 hold
+044-surah-menu-loved 3 down select
+045-surah-menu-playlists 3 down select
+046-surah-menu-added-to-fajr 3 down select
+047-surah-menu-back-to-main 3 back
+048-surah-menu-closed-on-tile 3 back
+049-surah-menu-again 4 hold
+050-surah-menu-play-player 10 select
+051-player-back-on-ali-imran 5 back
 
-# ---- Reciters: a reciter's menu, their page and its pill to the player
-043-reciters 6 back up up up up up up up down down down select
-044-reciter-menu 4 hold
-045-reciter-menu-favorited 3 down down select
-046-reciter-page 6 down select
-# The rightmost action (extra Rights stay put), then Up to the pill.
-047-reciter-page-pill-focused 3 right right right up
-048-reciter-pill-to-player 6 select
-049-reciter-page-back-on-pill 4 back
-050-reciters-back-on-card 4 back
+# ---- Reciters: a reciter's menu, their page, its pill -> player -> Back
+052-reciters 6 back up*7 down*3 select
+053-reciter-menu 4 hold
+054-reciter-menu-favourited 3 down*2 select
+055-reciter-page 6 down select
+# Up from Play reaches '‹ Back' or the pill; Right from Back is the pill and
+# Right from the pill stays there.
+056-reciter-page-pill-focused 3 up right
+057-reciter-pill-to-player 6 select
+058-reciter-page-back-on-pill 4 back
+059-reciters-back-on-card 4 back
 
-# ---- The sidebar's now-playing tile, Back to the same place, Play/Pause
-051-sidebar-tile-focused 3 back down down down down down down down down
-052-sidebar-tile-to-player 6 select
-053-player-back-to-tile 4 back
-054-playpause-paused-on-tile 4 playpause
+# ---- The sidebar's now-playing tile (on Reciters' sidebar): player and Back
+# onto the tile, Play/Pause on it, OK while paused resumes into the player
+# Reciters' item -> Adhkar, Library, Settings, the tile (Down stays on it).
+060-sidebar-tile-focused 3 back down*8
+061-sidebar-tile-to-player 6 select
+062-player-back-on-tile 4 back
+063-tile-paused 4 playpause
+064-tile-ok-resumes-player 6 select
+065-player-back-on-tile-again 4 back
 
-# ---- Home with history: Now playing strip, the Continue card's menu, every rail
-# From the tile: Up reaches Settings, then Home; OK opens Home on its strip.
-055-home-strip-paused 6 up up up up up up up up select
-056-home-strip-playing 4 playpause
-057-home-hero-buttons 3 down
-058-home-continue-row 3 down
-059-home-continue-menu 4 hold
-060-home-continue-menu-closed 3 back
-061-home-row-02 3 down
-062-home-row-03 3 down
-063-home-row-04 3 down
-064-home-row-05 3 down
-065-home-row-06 3 down
-066-home-row-07 3 down
-067-home-row-08 3 down
-068-home-row-09 3 down
-069-home-row-10 3 down
-070-home-back-sidebar-open 3 back
+# ---- Home with history, opened from the tile: Now playing strip, the
+# Continue card's menu, then every rail top to bottom and Back
+066-home-strip-playing 6 up*8 select
+067-home-strip-paused 4 playpause
+068-home-strip-playing-again 4 playpause
+069-home-hero-buttons 3 down
+070-home-continue-rail 3 down
+071-home-continue-menu 4 hold
+072-home-continue-menu-closed 3 back
+073-home-history-moments-rail 3 down
+074-home-history-recently-played 3 down
+075-home-history-favourite-reciters 3 down
+076-home-history-your-playlists 3 down
+077-home-history-loved-surahs 3 down
+078-home-history-adhkar-rail 3 down
+079-home-history-collections-rail 3 down
+080-home-history-featured-reciters 3 down
+081-home-history-best-for-memorisation 3 down
+082-home-history-best-for-tajweed 3 down
+083-home-history-short-surahs 3 down
+084-home-history-back-sidebar 3 back
 
-# ---- Library: Playlists (New playlist, fajr), a playlist and its row menu,
-# a new playlist made here, then the Loved and Reciters tabs
-# From Home's sidebar item (no Back).
-071-library-playlists 6 up up up up up up up down down down down down select
-072-library-fajr-focused 3 right
-073-playlist-detail 6 select
-# Play -> Shuffle -> the first row.
-074-playlist-row-focused 3 right right
-075-playlist-row-menu 4 hold
-076-playlist-row-menu-closed 3 back
-077-library-back-on-fajr 4 back
-078-library-new-playlist-editor 5 left select
+# ---- Library: a playlist made here (Create opens it empty), its Browse
+# surahs jump and the Backs that undo it, then Fajr's page, a row's menu,
+# the playlist's own menu and Rename, and the Playlists / Loved / Reciters tabs
+085-library-playlists 6 up*7 down*5 select
+086-library-new-playlist-editor 4 select
 # a -> g (the last column), then Right onto Create; the suggested name stays.
-079-library-new-playlist-create 3 right right right right right right right
-080-library-new-playlist-opened 6 select
-081-library-back-on-new-playlist 4 back
-082-library-tabs-playlists 3 up
-083-library-loved 4 right
-084-library-reciters 4 right
+087-library-new-playlist-create 3 right*7
+088-library-new-playlist-opened 5 select
+089-library-browse-surahs-jump 6 select
+090-library-jump-surahs-sidebar 3 back
+091-library-jump-back-to-playlist 5 back
+092-library-back-on-new-playlist 5 back
+093-library-fajr-focused 3 right
+094-playlist-detail 6 select
+# Play -> Shuffle -> the first row.
+095-playlist-row-focused 3 right*2
+096-playlist-row-menu 4 hold
+# Play from here, Love, Add to playlist, Move up, Move down.
+097-playlist-row-moved-down 3 down*4 select
+098-playlist-row-menu-closed 3 back
+099-library-back-on-fajr 5 back
+100-library-playlist-menu 4 hold
+# Play, Shuffle, Rename, Delete playlist: pressed once, never twice.
+101-library-playlist-delete-armed 3 down*3 select
+102-library-playlist-menu-closed 3 back
+103-library-playlist-menu-again 4 hold
+104-library-rename-editor 4 down*2 select
+# a -> h -> o -> v -> space, Right to delete.
+105-library-rename-deleted-letter 3 down*4 right select
+# delete -> clear -> mode, then Right onto Save. Back cancels the rename.
+106-library-rename-save-focused 3 right*3
+107-library-rename-cancelled 5 back
+# Fajr -> the new playlist -> New playlist, then Up to the tabs.
+108-library-tabs-playlists 3 left*2 up
+109-library-loved 4 right
+110-library-reciters 4 right
 
-# ---- Adhkar: browse, the reader
-085-adhkar 6 back up up up up up up up down down down down select
-086-adhkar-reader 6 select
-087-adhkar-next 3 right
-088-adhkar-count 3 select
-089-adhkar-controls 3 down
-090-adhkar-back-to-browse 4 back
+# ---- Adhkar: browse, the reader (next dhikr, a page, a count, controls), Back
+111-adhkar 6 back up*7 down*4 select
+112-adhkar-reader 6 select
+113-adhkar-next-dhikr 3 right
+114-adhkar-page-2 3 select
+115-adhkar-counted 3 select
+116-adhkar-controls 3 down
+117-adhkar-back-on-card 4 back
 
-# ---- Search: type "sleep" on the key grid, the top result, a start mode
-091-search 6 back up up up up up up up down select
-092-search-typed-sleep 5 down down right right right right select up select up select select down down left left left select
-093-search-result-focused 3 right right right right right right
-094-search-count-mode-reader 8 right right select
-095-search-back-to-result 4 back
-096-search-back-to-keyboard 3 back
+# ---- Search on the key grid, one query per kind of top result, each with
+# Back from what it opened. Keys: a-g / h-n / o-u / v-' then space, delete,
+# clear, mode; focus starts on "a". Down from z's column lands on clear and
+# Up from clear on z, so every query after the first starts from clear.
+118-search 6 back up*7 down select
+# fat: a -> f, f -> a, a -> h -> o -> t.
+119-search-typed-fat 5 right*5 select left*5 select down*2 right*5 select
+# t -> u, then Right into the results: the top result's Play (Al-Fatihah).
+120-search-fatihah-play-focused 3 right*2
+121-search-choose-reciter-focused 3 right
+122-search-reciter-picker 4 select
+123-search-picker-closed-on-choose 3 back
+124-search-reciter-picker-again 4 select
+125-search-picker-pick-player 8 select
+126-search-player-back-on-choose 5 back
+127-search-more-surahs-row 3 down
+128-search-back-to-keyboard 3 back
+# t -> s, then Down to clear.
+129-search-cleared 4 left down*2 select
+# kursi: clear -> z -> s -> l -> k, k -> r -> u, u -> r, r -> s, s -> l -> i.
+130-search-typed-kursi 5 up*3 left select down right*3 select left*3 select right select up left*3 select
+# i -> n, then Right into the results: the verse's Play verse.
+131-search-kursi-play-verse-focused 3 right*6
+132-search-verse-player 8 select
+133-search-player-back-on-play-verse 5 back
+134-search-kursi-back-to-keyboard 3 back
+# i -> l, then Down to clear.
+135-search-cleared-again 4 right*3 down*3 select
+# sleep: clear -> z -> s, s -> l, l -> e (twice), e -> l -> s -> p.
+136-search-typed-sleep 5 up*2 select up select up select select down*2 left*3 select
+# p -> u, then Right into the results: the adhkar list's Start.
+137-search-sleep-start-focused 3 right*6
+138-search-count-each-focused 3 right*2
+139-search-count-mode-reader 8 select
+140-search-reader-back-on-count-each 5 back
+141-search-sleep-back-to-keyboard 3 back
+# p -> s, then Down to clear.
+142-search-cleared-third 4 right*3 down*2 select
+# ghamdi: clear -> z -> e -> g, g -> n -> h, h -> a, a -> h -> m, m -> f -> d,
+# d -> k -> i.
+143-search-typed-ghamdi 5 up*4 right*2 select down left*6 select up select down right*5 select up left*2 select down left*2 select
+# i -> n, then Right into the results: the reciter's Shuffle play.
+144-search-ghamdi-shuffle-focused 3 right*6
+145-search-open-profile-focused 3 right
+146-search-reciter-page 6 select
+147-search-reciter-back-on-open-profile 5 back
+148-search-ghamdi-back-to-keyboard 3 back
+# i -> l, then Down to clear: the recent searches show under the keyboard.
+149-search-cleared-recents 4 right*3 down*3 select
+150-search-recent-focused 3 down
+151-search-recent-top-result-focused 5 select
+152-search-recent-back-to-keyboard 3 back
 
-# ---- Settings: a full reciter picker, the bottom rows, the welcome again
-097-settings 6 back up up up up up up up down down down down down down select
-098-settings-reciter-picker 4 select
-099-settings-picker-closed 3 back
-100-settings-bottom-welcome-row 3 down down down down down down down down down down
-101-settings-welcome-rerun 5 select
-102-settings-after-welcome 4 back
+# ---- Settings: a picker from a row and Back onto it, the clear rows (one
+# press each, nothing deleted), the welcome again and Back
+153-settings 6 back up*7 down*6 select
+154-settings-reciter-picker 4 select
+155-settings-picker-closed 3 back
+# Default speed, Background sound, Text.
+156-settings-text-picker 4 down*3 select
+157-settings-text-picker-closed 3 back
+# Translation, Text size, Dim when idle, Clear listening history, Clear loved surahs.
+158-settings-clear-loved-row 3 down*5
+159-settings-clear-loved-armed 2 select
+160-settings-clear-favourites-row 4 down
+161-settings-clear-favourites-armed 2 select
+162-settings-welcome-row 4 down
+163-settings-welcome-rerun 5 select
+164-settings-welcome-closed-on-row 5 back
 
-# ---- Relaunch: Home without a queue, the tile offers to continue
-103-relaunch-home 20 relaunch
-104-relaunch-sidebar-tile 3 back down down down down down down down down
+# ---- Relaunch: Home without a queue, the tile offers to continue; then
+# Play/Pause after a relaunch resumes the newest Continue entry
+165-relaunch-home 20 relaunch
+166-relaunch-sidebar-tile-continue 3 back down*8
+167-relaunch-tile-continue-player 10 select
+168-relaunch-player-back-on-tile 4 back
+169-relaunch-again-home 20 relaunch
+170-relaunch-playpause-player 10 playpause
+171-relaunch-player-back-home 5 back

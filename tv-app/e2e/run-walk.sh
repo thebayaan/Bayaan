@@ -8,6 +8,9 @@
 #
 # Fails if the app is not running at the end of the walk.
 #
+# A key can carry a repeat count: "up*7" presses Up seven times (1 to 30;
+# arrows, select, back and playpause only).
+#
 # DRY_RUN=1 run-walk.sh <android|tvos> [out-dir]
 #   Checks walk.txt and prints every step's key presses (as the device would
 #   get them) without touching a device. Exits non-zero on a malformed line
@@ -70,6 +73,22 @@ android_keycode() {
     back) echo KEYCODE_BACK ;;
     playpause) echo KEYCODE_MEDIA_PLAY_PAUSE ;;
   esac
+}
+
+# The walk's key tokens with repeats spelled out ("up*3" -> up up up). A
+# repeat on a key that can't take one is left as is, so valid_key rejects it.
+expand_keys() {
+  local tok key n i
+  for tok in "$@"; do
+    if [[ $tok =~ ^(up|down|left|right|select|back|playpause)\*([0-9]+)$ ]] &&
+      ((10#${BASH_REMATCH[2]} >= 1 && 10#${BASH_REMATCH[2]} <= 30)); then
+      key=${BASH_REMATCH[1]}
+      n=$((10#${BASH_REMATCH[2]}))
+      for ((i = 0; i < n; i++)); do echo "$key"; done
+    else
+      echo "$tok"
+    fi
+  done
 }
 
 # Whether a token is something press() knows.
@@ -238,7 +257,12 @@ if [[ $DRY_RUN == 1 ]]; then
     fi
     seen[$name]=$lineno
     out=()
-    for key in ${keys:-}; do
+    # read -a, not word splitting: a repeat's "*" must never glob.
+    toks=()
+    read -ra toks <<<"${keys:-}"
+    expanded=()
+    while IFS= read -r key; do expanded+=("$key"); done < <(expand_keys ${toks[@]+"${toks[@]}"})
+    for key in ${expanded[@]+"${expanded[@]}"}; do
       if ! valid_key "$key"; then
         echo "line $lineno ($name): unknown key '$key'" >&2
         errors=$((errors + 1))
@@ -284,7 +308,13 @@ launch_app
 
 while read -r name wait keys <&3; do
   [[ -z "$name" || "$name" == \#* ]] && continue
-  for key in $keys; do
+  # read -a, not word splitting: a repeat's "*" must never glob. Built
+  # with a read loop (not mapfile) for the macOS runner's bash.
+  toks=()
+  read -ra toks <<<"$keys"
+  expanded=()
+  while IFS= read -r key; do expanded+=("$key"); done < <(expand_keys ${toks[@]+"${toks[@]}"})
+  for key in ${expanded[@]+"${expanded[@]}"}; do
     if ! valid_key "$key"; then
       echo "step $name: unknown key '$key' skipped (check with DRY_RUN=1)"
       continue
