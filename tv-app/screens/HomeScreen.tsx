@@ -209,8 +209,12 @@ export function HomeScreen(): React.ReactElement {
     offsetY.current = target;
     scrollRef.current?.scrollTo({y: target, animated: true});
   }, []);
+  // Whether focus is in Continue listening, whose order holds still only
+  // then (see homeContinue).
+  const [continueHeld, setContinueHeld] = useState(false);
   const onHeroFocus = useCallback((): void => {
     heroFocused.current = true;
+    setContinueHeld(false);
     // Catch up with an hour that turned while focus was in the rails.
     setPlanHour(planHourOf(new Date()));
     scrollToY(0);
@@ -222,6 +226,7 @@ export function HomeScreen(): React.ReactElement {
       if (!handler) {
         handler = () => {
           heroFocused.current = false;
+          setContinueHeld(row === 'continue');
           const y = railY.current.get(row);
           if (y !== undefined) scrollToY(y - scale(RAIL_TOP_GAP));
         };
@@ -286,16 +291,17 @@ export function HomeScreen(): React.ReactElement {
     [plan.hero, heroVoice, reciterById],
   );
 
-  // Continue listening keeps the order it first showed (see homeContinue).
+  // Continue listening holds its order while focus is in it, and is newest
+  // first otherwise (see homeContinue).
   const continueOrder = useRef<string[]>([]);
   const continueEntries = useMemo(() => {
     const resumable = resumableContinue(liveContinue, id =>
       reciterById.has(id),
     );
-    const out = stableContinue(continueOrder.current, resumable);
+    const out = stableContinue(continueOrder.current, resumable, continueHeld);
     continueOrder.current = out.keys;
     return out.entries;
-  }, [liveContinue, reciterById]);
+  }, [liveContinue, reciterById, continueHeld]);
 
   const recentReciters = useMemo(
     () => recitersByIds(recentIds, reciters),

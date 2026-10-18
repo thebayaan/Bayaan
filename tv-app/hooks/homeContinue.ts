@@ -1,9 +1,11 @@
 /**
  * Home's Continue listening rail. The store re-sorts its entries every few
  * seconds while audio plays (the newest write first), which would slide the
- * cards, focused one included, under the user. Home keeps the order it first
- * showed and only updates each card's progress in place; a new entry joins
- * at the end. Pure, so the ordering is unit-tested.
+ * cards, focused one included, under the user. While focus is in the rail,
+ * Home keeps the order it showed and only updates each card's progress in
+ * place (a new entry joins at the end); once focus leaves, the rail goes
+ * back to newest first, so the surah just played leads it. Pure, so the
+ * ordering is unit-tested.
  */
 import type {ContinueEntry} from '../services/continueListeningStore';
 
@@ -15,16 +17,18 @@ export function continueKey(entry: {
 }
 
 /**
- * `entries` in the order of `shownKeys` (the keys Home showed before), then
- * any new ones in the store's order. Entries that left the store (finished,
- * removed) drop out. Returns the entries and the keys to remember.
+ * While `held` (focus is in the rail): `entries` in the order of `shownKeys`
+ * (the keys Home showed before), then any new ones in the store's order.
+ * Otherwise the store's order, newest first. Entries that left the store
+ * (finished, removed) drop out. Returns the entries and the keys to remember.
  */
 export function stableContinue(
   shownKeys: readonly string[],
   entries: readonly ContinueEntry[],
+  held = true,
 ): {entries: ContinueEntry[]; keys: string[]} {
   const byKey = new Map(entries.map(e => [continueKey(e), e]));
-  const kept = shownKeys.filter(k => byKey.has(k));
+  const kept = held ? shownKeys.filter(k => byKey.has(k)) : [];
   const keptSet = new Set(kept);
   const added = entries.map(continueKey).filter(k => !keptSet.has(k));
   const keys = [...kept, ...added];

@@ -35,6 +35,15 @@ describe('stableContinue', () => {
     expect(out.keys).toEqual(['a:1', 'b:2', 'c:3']);
   });
 
+  it('goes back to newest first once focus has left the rail', () => {
+    const out = stableContinue(
+      ['a:1', 'b:2'],
+      [e('c', 3), e('b', 2), e('a', 1)],
+      false,
+    );
+    expect(out.keys).toEqual(['c:3', 'b:2', 'a:1']);
+  });
+
   it('drops entries that left the store', () => {
     const out = stableContinue(['a:1', 'b:2'], [e('b', 2)]);
     expect(out.keys).toEqual(['b:2']);
