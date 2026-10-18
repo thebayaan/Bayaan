@@ -48,7 +48,7 @@ async function withTimeout<T>(
   try {
     return await Promise.race([run(controller?.signal), timeout]);
   } finally {
-    clearTimeout(timer);
+    if (timer !== undefined) clearTimeout(timer);
   }
 }
 

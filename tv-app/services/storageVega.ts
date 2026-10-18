@@ -108,7 +108,7 @@ export function createVegaStorage(
       } catch (error) {
         lastError = error;
         if (attempt < HYDRATE_ATTEMPTS) {
-          await new Promise(r => setTimeout(r, retryDelayMs * attempt));
+          await new Promise<void>(r => setTimeout(r, retryDelayMs * attempt));
         }
       }
     }

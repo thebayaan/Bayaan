@@ -460,18 +460,20 @@ export function createTvSearch(
       const top = ranked[0] ?? null;
       const isTop = (item: SearchItem): boolean =>
         top !== null && top.type === item.type && top.item === item.item;
-      const pick = <K extends SearchKind>(kind: K, limit: number) =>
+      // Each kind's items, typed by the caller (Vega's older TypeScript
+      // can't narrow an indexed Extract through a generic).
+      const pick = (kind: SearchKind, limit: number): unknown[] =>
         ranked
           .filter(r => r.type === kind && !isTop(r))
           .slice(0, limit)
-          .map(r => r.item as Extract<SearchItem, {type: K}>['item']);
+          .map(r => r.item);
 
       return {
         top: top ? ({type: top.type, item: top.item} as SearchItem) : null,
         ranked,
-        surahs: pick('surah', LIMITS.surahs),
-        reciters: pick('reciter', LIMITS.reciters),
-        adhkar: pick('adhkar', LIMITS.adhkar),
+        surahs: pick('surah', LIMITS.surahs) as Surah[],
+        reciters: pick('reciter', LIMITS.reciters) as Reciter[],
+        adhkar: pick('adhkar', LIMITS.adhkar) as AdhkarList[],
       };
     },
   };
