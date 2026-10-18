@@ -108,6 +108,15 @@ type TranslationResponse = {
   data?: {ayahs?: {numberInSurah: number; text: string}[]};
 };
 
+/**
+ * A translated verse as shown. Saheeh International (as alquran.cloud serves
+ * it) ends a verse whose sentence runs on into the next with " -"; on screen,
+ * one verse at a time, that reads as a stray dash, so it is dropped.
+ */
+export function cleanTranslationVerse(text: string): string {
+  return text.replace(/\s+[-–—]\s*$/, '').trim();
+}
+
 /** A surah's translation, verse 1 first. Thrown errors mean offline or down. */
 export async function fetchTranslation(
   edition: string,
@@ -116,7 +125,8 @@ export async function fetchTranslation(
 ): Promise<string[]> {
   const key = translationKey(edition, surahNumber);
   const cached = readJSON<string[]>(key);
-  if (cached && cached.length > 0) return cached;
+  // Cleaned on read too, so surahs cached before the cleanup show clean.
+  if (cached && cached.length > 0) return cached.map(cleanTranslationVerse);
 
   const res = await fetchImpl(
     `${TRANSLATION_API}/surah/${surahNumber}/${encodeURIComponent(edition)}`,
@@ -125,7 +135,9 @@ export async function fetchTranslation(
   const json = (await res.json()) as TranslationResponse;
   const ayahs = json.data?.ayahs ?? [];
   const verses: string[] = [];
-  for (const a of ayahs) verses[a.numberInSurah - 1] = a.text;
+  for (const a of ayahs) {
+    verses[a.numberInSurah - 1] = cleanTranslationVerse(a.text);
+  }
   if (verses.length === 0) throw new Error('Translation response was empty');
   writeJSON(key, verses);
   return verses;

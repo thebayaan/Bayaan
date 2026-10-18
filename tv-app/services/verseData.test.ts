@@ -1,6 +1,7 @@
 import ikhlas from './__fixtures__/timings/hafs-112.json';
-import {storage} from './storage';
+import {storage, writeJSON} from './storage';
 import {
+  cleanTranslationVerse,
   fetchTimings,
   fetchTranslation,
   getArabicVerses,
@@ -78,5 +79,30 @@ describe('fetchTranslation', () => {
     ]);
     await fetchTranslation('en.sahih', 108, fetchImpl);
     expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+  it("drops Saheeh's run-on dash, also from surahs cached before", async () => {
+    const fetchImpl = jest.fn().mockResolvedValue(
+      response(200, {
+        data: {ayahs: [{numberInSurah: 1, text: 'And He is competent -'}]},
+      }),
+    );
+    expect(await fetchTranslation('en.sahih', 67, fetchImpl)).toEqual([
+      'And He is competent',
+    ]);
+    writeJSON('bayaan_tv_tr_en.sahih_2', ['Guidance -', 'Who believe']);
+    expect(await fetchTranslation('en.sahih', 2, fetchImpl)).toEqual([
+      'Guidance',
+      'Who believe',
+    ]);
+  });
+});
+
+describe('cleanTranslationVerse', () => {
+  it('drops a trailing dash only, not one inside the verse', () => {
+    expect(cleanTranslationVerse('Say, - He is Allah -')).toBe(
+      'Say, - He is Allah',
+    );
+    expect(cleanTranslationVerse('well-known')).toBe('well-known');
+    expect(cleanTranslationVerse('Allah — ')).toBe('Allah');
   });
 });
