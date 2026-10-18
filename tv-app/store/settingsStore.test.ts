@@ -33,7 +33,11 @@ function getDefaultReciter(reciters: Reciter[]): Reciter | null {
 
 beforeEach(() => {
   storage.clearAll();
-  useSettingsStore.setState({defaultReciterId: null});
+  useSettingsStore.setState({
+    defaultReciterId: null,
+    picker: null,
+    focusRow: null,
+  });
 });
 
 describe('settingsStore', () => {
@@ -59,6 +63,28 @@ describe('settingsStore', () => {
     useSettingsStore.getState().setDefaultReciterId(null);
     expect(useSettingsStore.getState().defaultReciterId).toBeNull();
     expect(readPersistedDefaultReciterId()).toBeNull();
+  });
+
+  describe('picker focus', () => {
+    it('remembers the row a picker opened from, in the same update', () => {
+      useSettingsStore.getState().setPicker('speed');
+      expect(useSettingsStore.getState().focusRow).toBe('speed');
+      useSettingsStore.getState().setPicker(null);
+      // Closing keeps the row, so focus goes straight back to it.
+      expect(useSettingsStore.getState()).toMatchObject({
+        picker: null,
+        focusRow: 'speed',
+      });
+    });
+
+    it('lets a plain row take focus back', () => {
+      useSettingsStore.getState().setPicker('dim');
+      useSettingsStore.getState().setPicker(null);
+      useSettingsStore.getState().setFocusRow('welcome');
+      expect(useSettingsStore.getState().focusRow).toBe('welcome');
+      useSettingsStore.getState().setFocusRow(null);
+      expect(useSettingsStore.getState().focusRow).toBeNull();
+    });
   });
 
   describe('resolveDefaultReciter', () => {

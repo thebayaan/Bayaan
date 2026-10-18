@@ -6,7 +6,6 @@ import {useContextMenuStore} from '../../store/contextMenuStore';
 import {useListeningStore} from '../../store/listeningStore';
 import {useSettingsStore} from '../../store/settingsStore';
 import {useOnboarded} from '../../hooks/useOnboarded';
-import {useReciters} from '../../hooks/useReciters';
 import {HomeScreen} from '../../screens/HomeScreen';
 import {SearchScreen} from '../../screens/SearchScreen';
 import {CollectionScreen} from '../../screens/CollectionScreen';
@@ -128,6 +127,14 @@ function handleBack(): boolean {
 }
 
 /**
+ * Back while the welcome shows (first launch, or a rerun over Settings): only
+ * its own steps take it, never the places hidden behind it.
+ */
+function handleOnboardingBack(): boolean {
+  return consumeScreenBack();
+}
+
+/**
  * Wires the remote's Back (see handleBack). Its own component, so the state
  * it follows (sidebar focus, panels, pickers) never redraws the screens.
  *
@@ -143,7 +150,7 @@ function BackRouting({onboarding}: {onboarding: boolean}): null {
   // Onboarding has no sidebar or stack: only its own steps take Back.
   const canGoBack =
     screenBackHandlers > 0 || (!onboarding && backStep(backState) !== 'exit');
-  useTVBackHandler(handleBack, canGoBack);
+  useTVBackHandler(onboarding ? handleOnboardingBack : handleBack, canGoBack);
   return null;
 }
 
@@ -151,11 +158,12 @@ export function Router(): React.ReactElement {
   const currentTab = useNavStore(s => s.currentTab);
   const stack = useNavStore(s => s.stack);
   const {onboarded} = useOnboarded();
-  const {reciters} = useReciters();
   useGlobalRemoteKeys();
   usePlaybackAlerts();
 
-  const onboarding = !onboarded && reciters.length > 0;
+  // The welcome (first launch, or rerun from Settings) replaces the places;
+  // its own steps take Back.
+  const onboarding = !onboarded;
   if (onboarding) {
     return (
       <View style={{flex: 1}}>

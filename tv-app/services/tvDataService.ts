@@ -13,7 +13,10 @@ const SERVERS_KEY = 'bayaan_reciter_servers';
  * Home screen Quick Play rail appears once a default is seeded.
  */
 export const DEFAULT_RECITER_KEY = 'bayaan_tv_default_reciter_id';
-const CDN_CONFIG_URL = 'https://cdn.example.com/config/app-config.json';
+// The backend kill switch, as in the phone app (services/dataService.ts): only
+// checked when EXPO_PUBLIC_KILLSWITCH_URL is set, so a build without one never
+// waits on a config request before loading reciters.
+const KILLSWITCH_URL = process.env.EXPO_PUBLIC_KILLSWITCH_URL ?? '';
 const API_URL = process.env.EXPO_PUBLIC_BAYAAN_API_URL ?? '';
 const API_KEY = process.env.EXPO_PUBLIC_BAYAAN_API_KEY ?? '';
 
@@ -23,10 +26,11 @@ export const RECITERS_TTL_MS = 12 * 60 * 60 * 1000;
 type Cached<T> = {version: string; data: T; savedAt?: number};
 
 async function isBackendEnabled(): Promise<boolean> {
+  if (!KILLSWITCH_URL) return true;
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 3000);
   try {
-    const res = await fetch(CDN_CONFIG_URL, {signal: ctrl.signal});
+    const res = await fetch(KILLSWITCH_URL, {signal: ctrl.signal});
     if (!res.ok) return true;
     const json = (await res.json()) as {useBackendApi?: boolean};
     return json.useBackendApi !== false;

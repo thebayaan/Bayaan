@@ -40,7 +40,8 @@ export function VersePreview({large = false}: Props): React.ReactElement {
   const showTranslation = mode === 'both' || mode === 'translation';
   const translationText =
     translation?.[0] ?? (edition === 'en.sahih' ? FALLBACK_TRANSLATION : '');
-  // Scaled like the static styles (Android TV would draw them twice the size).
+  // Inline sizes miss createScaledStyles, so they go through scale() here
+  // (SurahGlyph scales its own size).
   const arabicSize = scale(52 * factor);
   const translationSize = scale((mode === 'translation' ? 34 : 24) * factor);
 
