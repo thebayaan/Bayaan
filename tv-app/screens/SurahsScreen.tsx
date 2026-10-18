@@ -322,9 +322,12 @@ export function SurahsScreen(): React.ReactElement {
             />
           ))}
           <View style={styles.chipSpacer} />
+          {/* The screen's main action wears the outline; the reciter is a
+              setting beside it, plain until focused. */}
           <FocusableButton
             onPress={playShown}
             accessibilityLabel={playLabel}
+            outlined
             style={styles.actionChip}>
             <View style={styles.actionInner}>
               <FocusIcon icon={PlayIcon} size={18} />
@@ -339,7 +342,6 @@ export function SurahsScreen(): React.ReactElement {
               }}
               accessibilityLabel={`Reciter: ${reciter.name}. Change reciter`}
               hasTVPreferredFocus={focusReciterChip}
-              outlined
               style={[styles.actionChip, styles.reciterChip]}>
               <Text numberOfLines={1}>
                 <FocusText
