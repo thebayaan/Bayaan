@@ -28,6 +28,8 @@ type Props = {
   preferredFocus: 'primary' | 'secondary' | null;
   /** Any of the hero's buttons took focus. */
   onFocus: () => void;
+  /** The primary button, for Home to focus when a rail it was in empties. */
+  primaryRef?: React.Ref<View>;
   /** Drawn above the kicker ("Now playing"). */
   header?: React.ReactNode;
   /** Drawn in the top right corner, scrolling with the hero (the clock). */
@@ -51,6 +53,7 @@ export function HomeHero({
   onSecondary,
   preferredFocus,
   onFocus,
+  primaryRef,
   header,
   corner,
 }: Props): React.ReactElement {
@@ -89,6 +92,7 @@ export function HomeHero({
             last one focused), never on whatever is geometrically nearest. */}
         <TVFocusGuideView autoFocus style={styles.actions}>
           <FocusableButton
+            ref={primaryRef}
             onPress={onPrimary}
             onFocus={onFocus}
             hasTVPreferredFocus={preferredFocus === 'primary'}

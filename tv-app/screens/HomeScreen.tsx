@@ -46,9 +46,13 @@ import {
 } from '../hooks/homeReciters';
 import {
   continueKey,
+  focusAfterRemoval,
   resumableContinue,
   stableContinue,
 } from '../hooks/homeContinue';
+import {getContinueListening} from '../services/continueListeningStore';
+import {getLovedSurahs} from '../services/lovedSurahsStore';
+import {claimFocusReturn, restoreFocusTo} from '../services/focusReturn';
 import {
   playOrOpen,
   surahTitle,
@@ -397,6 +401,12 @@ export function HomeScreen(): React.ReactElement {
   }, []);
 
   const handleContinueMenu = useCallback((entry: ContinueEntry): void => {
+    const key = continueKey(entry);
+    menuFrom.current = {
+      row: 'continue',
+      key,
+      index: continueOrder.current.indexOf(key),
+    };
     useContextMenuStore.getState().openSurah({
       surahNumber: entry.surahNumber,
       reciterId: entry.reciterId,
@@ -429,14 +439,70 @@ export function HomeScreen(): React.ReactElement {
     },
     [lovedQueue],
   );
-  const handleLovedMenu = useCallback((entry: LovedSurah): void => {
-    useContextMenuStore.getState().openSurah({
-      surahNumber: entry.surahNumber,
-      reciterId: entry.reciterId,
-      rewayahId: entry.rewayahId || undefined,
-      origin: 'loved',
-    });
-  }, []);
+  const handleLovedMenu = useCallback(
+    (entry: LovedSurah): void => {
+      const key = lovedKey(entry);
+      menuFrom.current = {
+        row: 'loved',
+        key,
+        index: lovedSurahs.findIndex(e => lovedKey(e) === key),
+      };
+      useContextMenuStore.getState().openSurah({
+        surahNumber: entry.surahNumber,
+        reciterId: entry.reciterId,
+        rewayahId: entry.rewayahId || undefined,
+        origin: 'loved',
+      });
+    },
+    [lovedSurahs],
+  );
+
+  // ---- A menu that removed its own card (Remove from Continue listening,
+  // Unlike) leaves focus on the card now in its place, or on the hero when
+  // the rail emptied, not wherever the focus engine falls back to.
+  const menuFrom = useRef<{
+    row: 'continue' | 'loved';
+    key: string;
+    index: number;
+  } | null>(null);
+  const [menuFocusKey, setMenuFocusKey] = useState<string | null>(null);
+  const heroPrimary = useRef<View>(null);
+  const reciterByIdRef = useRef(reciterById);
+  reciterByIdRef.current = reciterById;
+  useEffect(
+    () =>
+      useContextMenuStore.subscribe((next, prev) => {
+        if (!prev.target || next.target) return;
+        const from = menuFrom.current;
+        menuFrom.current = null;
+        if (!from) return;
+        // Read the stores, not this render: Remove closes the menu in the
+        // same tick as it writes, before Home re-renders.
+        const known = (id: string): boolean => reciterByIdRef.current.has(id);
+        const liveKeys =
+          from.row === 'continue'
+            ? stableContinue(
+                continueOrder.current,
+                resumableContinue(getContinueListening(), known),
+              ).keys
+            : getLovedSurahs()
+                .filter(e => known(e.reciterId))
+                .slice(0, LOVED_TILES)
+                .map(lovedKey);
+        const key = focusAfterRemoval(from.key, from.index, liveKeys);
+        if (key === undefined) return;
+        claimFocusReturn();
+        if (key === null) restoreFocusTo(heroPrimary);
+        else setMenuFocusKey(key);
+      }),
+    [],
+  );
+  // Dropped once focus has landed, so a later re-render never pulls it back.
+  useEffect(() => {
+    if (menuFocusKey === null) return;
+    const timer = setTimeout(() => setMenuFocusKey(null), 1500);
+    return () => clearTimeout(timer);
+  }, [menuFocusKey]);
 
   const openPlaylist = useCallback(
     (playlistId: string): void => push({screen: 'playlist', playlistId}),
@@ -565,6 +631,7 @@ export function HomeScreen(): React.ReactElement {
               reciterName={reciterById.get(e.reciterId)?.name ?? ''}
               onSelect={handleContinue}
               onLongPress={handleContinueMenu}
+              hasTVPreferredFocus={menuFocusKey === continueKey(e)}
             />
           )),
         );
@@ -606,6 +673,7 @@ export function HomeScreen(): React.ReactElement {
                 reciterName={reciterById.get(e.reciterId)?.name ?? ''}
                 onSelect={handleLoved}
                 onLongPress={handleLovedMenu}
+                hasTVPreferredFocus={menuFocusKey === lovedKey(e)}
               />
             )),
           ...(lovedSurahs.length > LOVED_TILES
@@ -708,6 +776,7 @@ export function HomeScreen(): React.ReactElement {
           secondaryLabel={hero.secondaryLabel}
           onSecondary={handleSecondary}
           preferredFocus={heroFocus}
+          primaryRef={heroPrimary}
           onFocus={onHeroFocus}
           header={
             <NowPlayingStrip
@@ -752,11 +821,13 @@ const LovedTile = React.memo(function LovedTile({
   reciterName,
   onSelect,
   onLongPress,
+  hasTVPreferredFocus,
 }: {
   entry: LovedSurah;
   reciterName: string;
   onSelect: (entry: LovedSurah) => void;
   onLongPress: (entry: LovedSurah) => void;
+  hasTVPreferredFocus: boolean;
 }): React.ReactElement {
   return (
     <SurahTile
@@ -766,6 +837,7 @@ const LovedTile = React.memo(function LovedTile({
       onSelect={() => onSelect(entry)}
       onLongPress={() => onLongPress(entry)}
       idPrefix={`loved-${entry.reciterId}`}
+      hasTVPreferredFocus={hasTVPreferredFocus}
     />
   );
 });

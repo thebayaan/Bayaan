@@ -17,6 +17,8 @@ type Props = {
   onSelect: (entry: ContinueEntry) => void;
   /** Long press: the surah menu (with "Remove from Continue listening"). */
   onLongPress?: (entry: ContinueEntry) => void;
+  /** Takes focus (the neighbour of a card its menu removed). */
+  hasTVPreferredFocus?: boolean;
 };
 
 /**
@@ -30,6 +32,7 @@ function ContinueWideCardImpl({
   reciterName,
   onSelect,
   onLongPress,
+  hasTVPreferredFocus,
 }: Props): React.ReactElement {
   const onFocusRail = useRailFocus();
   const progress = entry.durationSeconds
@@ -41,6 +44,7 @@ function ContinueWideCardImpl({
       style={styles.card}
       onPress={() => onSelect(entry)}
       onLongPress={onLongPress ? () => onLongPress(entry) : undefined}
+      hasTVPreferredFocus={hasTVPreferredFocus}
       onFocus={onFocusRail}
       accessibilityLabel={`Resume ${surahName}${reciterName ? ` by ${reciterName}` : ''}, ${timeLeft}`}>
       <View style={styles.body}>

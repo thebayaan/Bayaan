@@ -1,5 +1,6 @@
 import {
   continueKey,
+  focusAfterRemoval,
   resumableContinue,
   stableContinue,
   timeLeftLabel,
@@ -64,6 +65,24 @@ describe('resumableContinue', () => {
         continueKey,
       ),
     ).toEqual(['a:1']);
+  });
+});
+
+describe('focusAfterRemoval', () => {
+  it('leaves focus to the menu while the card is still there', () => {
+    expect(focusAfterRemoval('b', 1, ['a', 'b', 'c'])).toBeUndefined();
+  });
+
+  it('focuses the card that took its place', () => {
+    expect(focusAfterRemoval('b', 1, ['a', 'c'])).toBe('c');
+  });
+
+  it('focuses the new last card when the last one went', () => {
+    expect(focusAfterRemoval('c', 2, ['a', 'b'])).toBe('b');
+  });
+
+  it('says so when the rail is now empty', () => {
+    expect(focusAfterRemoval('a', 0, [])).toBeNull();
   });
 });
 

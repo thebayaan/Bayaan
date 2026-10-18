@@ -51,6 +51,24 @@ export function resumableContinue(
 }
 
 /**
+ * Where focus goes after a menu removed the Home card it was opened from
+ * (Remove from Continue listening, Unlike): the card now in its place, or
+ * the new last one when it was at the end. `index` is the card's place when
+ * the menu opened and `liveKeys` the rail's keys now. Undefined while the
+ * card is still there (the menu gives focus back to it); null when the rail
+ * is now empty.
+ */
+export function focusAfterRemoval(
+  openedKey: string,
+  index: number,
+  liveKeys: readonly string[],
+): string | null | undefined {
+  if (liveKeys.includes(openedKey)) return undefined;
+  if (liveKeys.length === 0) return null;
+  return liveKeys[Math.min(Math.max(0, index), liveKeys.length - 1)];
+}
+
+/**
  * A Continue card's time left: "12 min left", "2 h 14 min left" (written
  * like collection lengths), "40 s left" in the last minute of a short surah,
  * "Almost done" only near the end, or "Started" when the length is unknown.

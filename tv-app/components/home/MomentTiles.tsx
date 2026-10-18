@@ -28,6 +28,8 @@ type SurahTileProps = {
   onLongPress?: (surahNumber: number) => void;
   /** Unique per rail, for the artwork's gradient id. */
   idPrefix: string;
+  /** Takes focus (the neighbour of a tile its menu removed). */
+  hasTVPreferredFocus?: boolean;
 };
 
 /** A surah as its artwork card with a caption below. */
@@ -38,6 +40,7 @@ function SurahTileImpl({
   onSelect,
   onLongPress,
   idPrefix,
+  hasTVPreferredFocus,
 }: SurahTileProps): React.ReactElement {
   const onFocusRail = useRailFocus();
   return (
@@ -46,6 +49,7 @@ function SurahTileImpl({
       style={styles.tile}
       onPress={() => onSelect(surahNumber)}
       onLongPress={onLongPress ? () => onLongPress(surahNumber) : undefined}
+      hasTVPreferredFocus={hasTVPreferredFocus}
       onFocus={onFocusRail}
       accessibilityLabel={`Play ${surahName}, ${caption}`}>
       <FocusFrame radius={RADIUS} style={styles.frame}>
