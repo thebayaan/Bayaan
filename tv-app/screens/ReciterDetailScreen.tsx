@@ -137,6 +137,9 @@ export function ReciterDetailScreen({
   // The row of tabs, styles and sort: where focus lands coming from above
   // or below (the selected tab, else the selected style, else sort).
   const [rowEntry, setRowEntry] = useState<View | null>(null);
+  // Try again succeeded while focused: the button gives way to the rows, so
+  // the first row takes focus instead of it dropping to nowhere.
+  const [landOnRows, setLandOnRows] = useState<boolean>(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -292,18 +295,28 @@ export function ReciterDetailScreen({
   }, [queued, ready, loading, rewayat, playMain, playShuffled]);
 
   const renderItem = useCallback(
-    ({item}: {item: Surah}) => (
+    ({item, index}: {item: Surah; index: number}) => (
       <View style={styles.cell}>
         <SurahRow
           surah={item}
           progress={progressByNumber.get(item.id) ?? 0}
           onSelect={selectRow}
           onLongPress={openSurahMenu}
+          hasTVPreferredFocus={landOnRows && index === 0}
         />
       </View>
     ),
-    [progressByNumber, selectRow, openSurahMenu],
+    [progressByNumber, selectRow, openSurahMenu, landOnRows],
   );
+
+  // Once the rows have taken focus (or the retry failed and Try again
+  // stays), stop asking: a held preference would pull focus back to the
+  // first row on later renders.
+  useEffect(() => {
+    if (!landOnRows || (sortedSurahs.length === 0 && loading)) return;
+    const t = setTimeout(() => setLandOnRows(false), 0);
+    return () => clearTimeout(t);
+  }, [landOnRows, sortedSurahs.length, loading]);
 
   if (!reciter) {
     return (
@@ -588,6 +601,7 @@ export function ReciterDetailScreen({
   ) : null;
 
   function retry(): void {
+    setLandOnRows(true);
     setLoading(true);
     setAttempt(a => a + 1);
   }
