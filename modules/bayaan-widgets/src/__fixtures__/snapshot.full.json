@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "generatedAt": 1791460800000,
+  "theme": "dark",
+  "nowPlaying": {
+    "track": {
+      "surahId": 18,
+      "surahName": "Al-Kahf",
+      "reciterId": "r-alafasi",
+      "reciterName": "Mishary Alafasi",
+      "rewayatId": "rw-1",
+      "artworkFile": "reciter-r-alafasi.jpg",
+      "isUserUpload": false
+    },
+    "isPlaying": true,
+    "positionSec": 120.5,
+    "durationSec": 1800,
+    "rate": 1
+  },
+  "upNext": [
+    {
+      "surahId": 36,
+      "surahName": "Ya-Sin",
+      "reciterId": "r-alafasi",
+      "reciterName": "Mishary Alafasi",
+      "rewayatId": "rw-1",
+      "artworkFile": "reciter-r-alafasi.jpg",
+      "isUserUpload": false
+    }
+  ],
+  "recent": [],
+  "defaultReciter": {
+    "id": "r-alafasi",
+    "name": "Mishary Alafasi",
+    "artworkFile": "reciter-r-alafasi.jpg"
+  },
+  "reciterRecents": {},
+  "lastRead": {
+    "page": 293,
+    "surahId": 18,
+    "surahName": "Al-Kahf",
+    "juz": 15,
+    "openingText": "ٱلْحَمْدُ لِلَّهِ"
+  },
+  "tasbeeh": {
+    "tasbeeh-subhanallah": {"count": 12, "target": 33, "day": "2026-10-08"}
+  }
+}

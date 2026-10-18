@@ -27,6 +27,10 @@ import {SheetManager} from 'react-native-actions-sheet';
 import {SurahList} from '@/components/reciter-profile/components/SurahList';
 import {ReciterImage} from '@/components/ReciterImage';
 import {Feather} from '@expo/vector-icons';
+// @ai-start
+import {getReciterDisplayName, getSurahDisplayName} from '@/i18n/format';
+import {getRecitationStyleLabel} from '@/components/player/v2/recitationStyle';
+// @ai-end
 
 function sortRewayat(rewayat: Rewayat[]): Rewayat[] {
   return [...rewayat].sort((a, b) => {
@@ -63,6 +67,7 @@ type SortOption = 'asc' | 'desc' | 'revelation';
  * Right column beside the full player on iPad: reciter identity + rewayah chips + surah list.
  * Mirrors reciter profile playback behavior; opens full profile via header action.
  */
+// @ai-start
 export const TabletPlayerReciterColumn: React.FC<{
   reciterId: string;
   initialRewayatId?: string;
@@ -173,7 +178,7 @@ export const TabletPlayerReciterColumn: React.FC<{
             s.id.toString(),
             selectedRewayat.id,
           ),
-          title: s.name,
+          title: getSurahDisplayName(s),
           artist: reciter.name,
           reciterId: reciter.id,
           artwork,
@@ -234,13 +239,15 @@ export const TabletPlayerReciterColumn: React.FC<{
             <Text
               style={[styles.reciterName, {color: theme.colors.text}]}
               numberOfLines={2}>
-              {reciter.name}
+              {getReciterDisplayName(reciter)}
             </Text>
             <Text
               style={[styles.sub, {color: theme.colors.textSecondary}]}
               numberOfLines={1}>
               {selectedRewayat
-                ? `${selectedRewayat.name} · ${selectedRewayat.style}`
+                ? `${selectedRewayat.name} · ${getRecitationStyleLabel(
+                    selectedRewayat.style,
+                  )}`
                 : ''}
             </Text>
           </View>
@@ -281,7 +288,7 @@ export const TabletPlayerReciterColumn: React.FC<{
                   <Text
                     style={[styles.chipText, {color: theme.colors.text}]}
                     numberOfLines={1}>
-                    {r.name} · {r.style}
+                    {r.name} · {getRecitationStyleLabel(r.style)}
                   </Text>
                 </Pressable>
               );
@@ -312,6 +319,7 @@ export const TabletPlayerReciterColumn: React.FC<{
     </View>
   );
 };
+// @ai-end
 
 const styles = StyleSheet.create({
   root: {

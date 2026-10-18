@@ -12,10 +12,17 @@ import Color from 'color';
 import {RewayatIcon} from '@/components/Icons';
 import ReadMore from '@fawazahmed/react-native-read-more';
 import {getDisplayLabelFromName} from '@/services/rewayah/RewayahIdentity';
+// @ai-start
+import {latinLetterSpacing} from '@/utils/rtl';
+import {useTranslation} from 'react-i18next';
+import {getStyleLabel} from './sheetLabels';
+// @ai-end
 
+// @ai-start
 export const RewayatInfoSheet = (props: SheetProps<'rewayat-info'>) => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
+  const {t} = useTranslation('sheets');
   const [, setIsExpanded] = useState(false);
 
   const payload = props.payload;
@@ -29,16 +36,7 @@ export const RewayatInfoSheet = (props: SheetProps<'rewayat-info'>) => {
     });
   };
 
-  const explanationText = `A Rewayah (رواية, plural: Rewayat رِوَايَات) is a specific method of reciting the Quran that represents a particular transmission route within a larger Qira'at (قِرَاءَة, plural: Qira'at قِرَاءَات) tradition.
-
-While Qira'at are the major schools of Quranic recitation attributed to famous reciters, Rewayat are the specific ways these recitations were transmitted through chains of narrators back to the Prophet Muhammad ﷺ.
-
-"The Quran was revealed in seven ahruf (styles). So recite what is easier for you from it."
-- Sahih al-Bukhari 2419, Sahih Muslim 818
-
-The most widely used Rewayah today is Hafs 'an Assem (حَفْص عَن عَاصِم), which is considered the standard version used in most printed Qurans and is instantly recognizable to most Muslims worldwide.
-
-Each Rewayah may have slight variations in pronunciation, elongation, or articulation points. These differences are purely phonetic and never alter the meaning of the Quranic text, as they all represent authentic ways of reciting the Quran that have been meticulously preserved.`;
+  const explanationText = t('rewayatInfo.explanation');
 
   if (availableRewayat.length === 0) {
     return null;
@@ -57,7 +55,7 @@ Each Rewayah may have slight variations in pronunciation, elongation, or articul
       ]}
       gestureEnabled={true}>
       <View style={styles.headerContainer}>
-        <Text style={styles.headerTitle}>About Rewayat</Text>
+        <Text style={styles.headerTitle}>{t('rewayatInfo.title')}</Text>
       </View>
       <ScrollView
         style={styles.scrollView}
@@ -72,8 +70,8 @@ Each Rewayah may have slight variations in pronunciation, elongation, or articul
           <ReadMore
             numberOfLines={3}
             style={[styles.description, {color: theme.colors.text}]}
-            seeMoreText="read more"
-            seeLessText="show less"
+            seeMoreText={t('rewayatInfo.readMore')}
+            seeLessText={t('rewayatInfo.showLess')}
             seeMoreStyle={[styles.readMoreText, {color: theme.colors.text}]}
             seeLessStyle={[styles.readMoreText, {color: theme.colors.text}]}
             onCollapse={() => setIsExpanded(false)}
@@ -83,7 +81,7 @@ Each Rewayah may have slight variations in pronunciation, elongation, or articul
 
           <View style={styles.divider} />
 
-          <Text style={styles.sectionTitle}>Available Rewayat</Text>
+          <Text style={styles.sectionTitle}>{t('rewayatInfo.available')}</Text>
           <View style={styles.rewayatList}>
             {availableRewayat.map(rewayat => (
               <Pressable
@@ -98,7 +96,9 @@ Each Rewayah may have slight variations in pronunciation, elongation, or articul
                   <Text style={styles.rewayatName}>
                     {getDisplayLabelFromName(rewayat.name)}
                   </Text>
-                  <Text style={styles.rewayatStyle}>{rewayat.style}</Text>
+                  <Text style={styles.rewayatStyle}>
+                    {getStyleLabel(rewayat.style)}
+                  </Text>
                 </View>
                 {selectedRewayatId === rewayat.id && (
                   <View style={styles.selectedIndicator} />
@@ -111,9 +111,11 @@ Each Rewayah may have slight variations in pronunciation, elongation, or articul
     </ActionSheet>
   );
 };
+// @ai-end
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 
+// @ai-start
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({
     sheetContainer: {
@@ -173,7 +175,7 @@ const createStyles = (theme: Theme) =>
       fontFamily: 'Manrope-SemiBold',
       color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
       marginBottom: moderateScale(16),
-      letterSpacing: 1.2,
+      letterSpacing: latinLetterSpacing(1.2),
       textTransform: 'uppercase',
     },
     rewayatList: {
@@ -215,3 +217,4 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.colors.text,
     },
   });
+// @ai-end

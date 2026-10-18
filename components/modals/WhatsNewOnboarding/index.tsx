@@ -32,6 +32,10 @@ import {
 import {getOnboardingPages, OnboardingPage} from '@/data/onboardingPages';
 import OnboardingPageComponent from './OnboardingPage';
 import DotIndicator from './DotIndicator';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+import {appLayoutDirection, isRTL} from '@/utils/rtl';
+// @ai-end
 
 const {width: SCREEN_WIDTH, height: SCREEN_HEIGHT} = Dimensions.get('window');
 
@@ -39,8 +43,10 @@ export interface WhatsNewModalRef {
   show: () => void;
 }
 
+// @ai-start
 export const WhatsNewModal = forwardRef<WhatsNewModalRef>((_, ref) => {
   const {theme} = useTheme();
+  const {t} = useTranslation(['settings', 'common']);
   const [visible, setVisible] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
   const [pages, setPages] = useState<OnboardingPage[]>(getOnboardingPages());
@@ -116,7 +122,13 @@ export const WhatsNewModal = forwardRef<WhatsNewModalRef>((_, ref) => {
 
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: event => {
-      scrollX.value = event.contentOffset.x;
+      // A right-to-left scroll view reports its offset from the left edge,
+      // where the last page sits. The dots need the distance from page one.
+      scrollX.value = isRTL
+        ? event.contentSize.width -
+          event.layoutMeasurement.width -
+          event.contentOffset.x
+        : event.contentOffset.x;
     },
   });
 
@@ -168,14 +180,17 @@ export const WhatsNewModal = forwardRef<WhatsNewModalRef>((_, ref) => {
             hitSlop={12}>
             <Text
               style={[styles.skipText, {color: theme.colors.textSecondary}]}>
-              Skip
+              {t('onboarding.skip')}
             </Text>
           </Pressable>
 
           {/* Pages */}
           <View style={styles.pagesContainer}>
+            {/* Runs in the app's direction: the list's index math follows
+                the native direction, so forcing LTR here breaks Next in RTL. */}
             <Animated.FlatList
               ref={flatListRef as any}
+              style={appLayoutDirection}
               data={pages}
               renderItem={renderItem}
               keyExtractor={keyExtractor}
@@ -209,7 +224,9 @@ export const WhatsNewModal = forwardRef<WhatsNewModalRef>((_, ref) => {
             onPress={handleNext}>
             <Text
               style={[styles.buttonText, {color: theme.colors.textSecondary}]}>
-              {isLastPage ? 'Get Started' : 'Next'}
+              {isLastPage
+                ? t('onboarding.getStarted')
+                : t('common:actions.next')}
             </Text>
           </Pressable>
         </Animated.View>
@@ -217,6 +234,7 @@ export const WhatsNewModal = forwardRef<WhatsNewModalRef>((_, ref) => {
     </Modal>
   );
 });
+// @ai-end
 
 WhatsNewModal.displayName = 'WhatsNewModal';
 
@@ -228,7 +246,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   modalContainer: {
     borderRadius: moderateScale(24),

@@ -40,23 +40,113 @@ Additional licensing:
 
 - **Manrope** — Apache-2.0 (https://github.com/sharanda/manrope)
 - **Scheherazade New** — SIL Open Font License 1.1 (https://software.sil.org/scheherazade/)
+- **IBM Plex Sans Arabic** — SIL Open Font License 1.1, © 2017 IBM Corp. (https://github.com/IBM/plex)
 - **UthmanicHafs** / **Uthmani** — King Fahd Glorious Qur’an Printing Complex (used with permission)
-- **Digital Khatt** (`data/mushaf/digitalkhatt/DigitalKhattFont.otf`) — SIL Open Font License 1.1, © Amine Anane and contributors (https://github.com/DigitalKhatt/DigitalKhatt). The companion SQLite layout/word databases (`digital-khatt-*.db`, `dk_words_*.db`) and diff JSON files in the same directory are derivative works generated from the Digital Khatt project and are distributed under the same license.
+- **Digital Khatt** (`data/mushaf/digitalkhatt/DigitalKhattFont.otf`) — SIL Open Font License 1.1, © Amine Anane and contributors (https://github.com/DigitalKhatt/DigitalKhatt). The companion Hafs SQLite layout/word databases (`digital-khatt-*.db`) in the same directory are derivative works generated from the Digital Khatt project and are distributed under the same license.
 - **surah_names / surah_names_2** — Custom glyphs bundled with this project
+
+## Qur'an texts of the other rewayat
+
+The word text of the seven non-Hafs rewayah databases (`data/mushaf/digitalkhatt/dk_words_<id>.db`: Warsh, Qalun, al-Bazzi, Qunbul, al-Duri, al-Susi, Shu'bah), the highlight and verse-map files derived from it (`<id>-diff.json`, `<id>-versemap.json`) and the basmala files (`<id>-basmala.json`) come from the official Uthmanic riwayah texts of the **King Fahd Glorious Qur'an Printing Complex** (KFGQPC, https://qurancomplex.gov.sa), version 2.x; the basmala lines come from KFGQPC's signed Word typesetting of each riwayah. The exact files and their checksums are listed in `scripts/rewayah/sources/SOURCES.md` and `scripts/rewayah/sources/sources.lock.json`. The text is used as published; the only changes are the display adaptations listed in `docs/features/rewayat.md`, needed because the Digital Khatt font cannot draw some riwayah marks. The word rows and page layout these texts are placed into come from Digital Khatt (above).
+
+**Licence status.** KFGQPC offers these packages to developers on its developer page (https://qurancomplex.gov.sa/en/techquran/dev/). No licence or terms of use for the text was found in the packages. The end-user licence embedded in their riwayah fonts covers only those fonts, and Bayaan does not ship them. No written permission from KFGQPC for these texts is recorded in this repository yet. Until one is, this section records where the text comes from, not a licence grant. Details are in `scripts/rewayah/sources/SOURCES.md` (Licence status).
 
 ## Adhkar content & audio
 
-The Arabic adhkar text, English translations, and accompanying MP3 recitations
-bundled in `assets/audio/adhkar/` and referenced in `data/adhkar.json` are
-sourced from **Hisn al-Muslim** (https://www.hisnmuslim.com) — the compilation
-"Fortress of the Muslim" by Sa'id bin Ali bin Wahf al-Qahtani. Audio recitations
-are from the publicly available HisnMuslim archive. Bayaan redistributes this
-content for non-commercial Islamic use and attributes the source here and in
-the app's About screen.
+The Arabic adhkar text and English translations in `data/adhkar.json` are
+sourced from **Hisn al-Muslim** (https://www.hisnmuslim.com), the compilation
+"Fortress of the Muslim" by Sa'id bin Ali bin Wahf al-Qahtani.
 
-If you are the content owner and have concerns about redistribution, please
-open an issue at https://github.com/thebayaan/Bayaan/issues so we can address
-it promptly.
+The MP3 recitations bundled in `assets/audio/adhkar/` come from two reciters:
+
+- **Mishary Rashid Alafasy:** the Morning and Evening adhkar and the 40
+  Quranic duas. The Morning and Evening recitations are cut from his official
+  1434H recordings on his YouTube channel. The Quranic duas are cut from his
+  Quran recitation as distributed by mp3quran.net (https://mp3quran.net).
+  A further 29 Hisn al-Muslim rows are voiced by him, cut from clips on his
+  official YouTube channel. Only categories in which every row has an
+  Alafasy clip use him; the rest stay with Hamad al-Duraihim. The categories
+  are: Invocation when getting dressed; Invocation when putting on new
+  clothes; Invocations for someone who has put on new clothes; What to say
+  when undressing; What to say before performing ablution; What to say when
+  leaving the home; Invocation for going to the mosque; Invocation for
+  entering the mosque; How to recite blessings on the Prophet after the
+  Tashahhud; What to say if you are afraid to go to sleep or feel lonely and
+  depressed; Invocations for the setting of a debt; Invocation for when you
+  find something becoming difficult for you; Invocation for when tragedy
+  strikes; Invocation for when it rains; Invocations for breaking the fast;
+  Invocations after eating; Invocation for anger; Invocation for riding in a
+  vehicle or on an animal; Invocation for entering a market; Invocation for
+  when your vehicle or mount begins to fail; Invocation for a layover
+  (stopping along the way) on the journey; What a Muslim should say when he
+  is praised; What to say to foil the devil's plots. The source clip and time
+  range of each row are in `scripts/adhkar-content/alafasy-hisn-cuts.json`.
+- **Hamad al-Duraihim, via IslamHouse.com:** all other Hisn al-Muslim audio,
+  including rows 72 and 149. These recitations are from the publicly available
+  HisnMuslim archive (https://www.hisnmuslim.com) and IslamHouse.com
+  (https://islamhouse.com).
+
+Bayaan redistributes this content for non-commercial Islamic use and
+attributes the sources here and in the app's Credits screen.
+
+If you are the content owner and have concerns about redistribution, rights
+holders can request removal through the support link in the app's Credits
+screen, and we will address it promptly.
+
+### Adhkar text sources
+
+The adhkar text in `data/adhkar.json` is generated by
+`scripts/adhkar-content/apply-content-fixes.ts` from the inputs in
+`scripts/adhkar-content/`, which record the source of each value.
+
+- **hisnmuslim.com** (https://www.hisnmuslim.com): source of the Hisn al-Muslim
+  Arabic text, English translations and most transliterations, taken from the
+  site's public JSON API (`/api/ar/<chapter>.json`, `/api/en/<chapter>.json`).
+  The site publishes no license or terms of use; this entry records where the
+  text comes from, not a license grant.
+- **Tanzil** (https://tanzil.net/trans/): the "English Transliteration" of the
+  Quran (`en.transliteration`), used for the transliteration of Quran passages
+  in the adhkar. Tanzil's terms: "The translations provided at this page are
+  for non-commercial purposes only. If used otherwise, you need to obtain
+  necessary permission from the translator or the publisher. If you are using
+  more than three of the following translations in a website or application,
+  we require you to put a link back to this page." The app's Credits screen
+  links to https://tanzil.net/trans/. The Tanzil transliteration is licensed
+  for non-commercial use only. That restriction applies to the 48 adhkar rows
+  that carry it (the rows whose transliteration is a Quran passage), and it
+  is not lifted by this repository's own license. Anyone redistributing or
+  using the app commercially must obtain permission from Tanzil first.
+- **Wikipedia contributors, "Names of God in Islam"**
+  (https://en.wikipedia.org/wiki/Names_of_God_in_Islam), al-Tirmidhi's list,
+  revision 1373211198
+  (https://en.wikipedia.org/w/index.php?title=Names_of_God_in_Islam&oldid=1373211198):
+  English meanings of the 99 Names, by Wikipedia contributors. Licensed under
+  CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/). The Credits
+  screen names "Wikipedia contributors" and links to that license.
+- **fitrahive/dua-dhikr** (https://github.com/fitrahive/dua-dhikr): the
+  transliterations of three morning and evening adhkar (rows 77, evening-77,
+  evening-90). MIT License, Copyright (c) 2023 Fitrahive. Permission notice:
+
+  > Permission is hereby granted, free of charge, to any person obtaining a
+  > copy of this software and associated documentation files (the "Software"),
+  > to deal in the Software without restriction, including without limitation
+  > the rights to use, copy, modify, merge, publish, distribute, sublicense,
+  > and/or sell copies of the Software, and to permit persons to whom the
+  > Software is furnished to do so, subject to the following conditions:
+  >
+  > The above copyright notice and this permission notice shall be included in
+  > all copies or substantial portions of the Software.
+  >
+  > THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  > IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  > FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  > AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  > LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+  > FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+  > DEALINGS IN THE SOFTWARE.
+
+  The repository snapshot did not include the upstream LICENSE file, so this
+  is the standard MIT text with the copyright line recorded in sources.
 
 ## npm production dependencies
 

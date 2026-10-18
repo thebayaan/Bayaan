@@ -9,17 +9,9 @@ import {LinearGradient} from 'expo-linear-gradient';
 import {GlassView} from 'expo-glass-effect';
 import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
 import {Slider} from '@miblanchard/react-native-slider';
-import {
-  getReciterById,
-  getSurahById,
-  getAvailableSurahsForRewayat,
-} from '@/services/dataService';
-import {createTracksForReciter} from '@/utils/track';
 import {usePlayerActions} from '@/hooks/usePlayerActions';
-import {generateSmartAudioUrl} from '@/utils/audioUtils';
-import {getReciterArtwork} from '@/utils/artworkUtils';
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
-import {Surah} from '@/data/surahData';
+import {resumeRecent} from '@/services/player/utils/resumeRecent';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {shallow} from 'zustand/shallow';
 import {NowPlayingIndicator} from '@/components/NowPlayingIndicator';
@@ -27,6 +19,11 @@ import {useRouter, Link} from 'expo-router';
 import {SheetManager} from 'react-native-actions-sheet';
 import {useUploadsStore} from '@/store/uploadsStore';
 import {createUserUploadTrack} from '@/utils/track';
+import {createStyles} from '@/components/cards/recentCardStyles';
+// @ai-start
+import {forceLTR} from '@/utils/rtl';
+import {useTranslation} from 'react-i18next';
+// @ai-end
 
 interface RecentReciterCardProps {
   imageUrl?: string;
@@ -44,6 +41,7 @@ interface RecentReciterCardProps {
   userRecitationId?: string;
 }
 
+// @ai-start
 export const RecentReciterCard = ({
   imageUrl,
   reciterName,
@@ -59,6 +57,7 @@ export const RecentReciterCard = ({
   userRecitationId,
 }: RecentReciterCardProps) => {
   const {theme} = useTheme();
+  const {t} = useTranslation('home');
   const {updateQueue} = usePlayerActions();
   const router = useRouter();
   // Single consolidated subscription with shallow equality
@@ -138,21 +137,23 @@ export const RecentReciterCard = ({
       remainingSeconds = effectiveDuration * (1 - progress);
     }
 
-    if (remainingSeconds <= 0) return '0s';
+    if (remainingSeconds <= 0) return t('duration.seconds', {value: 0});
 
     // Under a minute → show seconds so short surahs (Al-Fatihah / An-Nas
     // / Al-Falaq / Al-Ikhlas) don't all collapse to "0m" near the end.
     if (remainingSeconds < 60) {
-      return `${Math.max(1, Math.ceil(remainingSeconds))}s`;
+      return t('duration.seconds', {
+        value: Math.max(1, Math.ceil(remainingSeconds)),
+      });
     }
 
     const totalMinutes = Math.round(remainingSeconds / 60);
     if (totalMinutes >= 60) {
       const hours = Math.round(totalMinutes / 60);
-      return `${hours}h`;
+      return t('duration.hours', {value: hours});
     }
-    return `${totalMinutes}m`;
-  }, [isCurrentlyPlaying, storeDuration, storePosition, duration, progress]);
+    return t('duration.minutes', {value: totalMinutes});
+  }, [isCurrentlyPlaying, storeDuration, storePosition, duration, progress, t]);
 
   // Calculate current progress value for the slider
   const currentSliderProgress =
@@ -182,36 +183,6 @@ export const RecentReciterCard = ({
         return;
       }
 
-      const [reciter, surah] = await Promise.all([
-        getReciterById(reciterId),
-        getSurahById(surahId),
-      ]);
-
-      if (!reciter || !surah) {
-        console.error('Could not find reciter or surah');
-        return;
-      }
-
-      const rewayatToUseId = rewayatId || reciter.rewayat[0]?.id;
-      if (!rewayatToUseId) {
-        console.error('Could not determine rewayat ID');
-        return;
-      }
-
-      const availableSurahIds =
-        await getAvailableSurahsForRewayat(rewayatToUseId);
-
-      const allSurahsForRewayat = availableSurahIds
-        .map(id => getSurahById(id))
-        .filter((s): s is Surah => s !== undefined);
-
-      if (allSurahsForRewayat.length === 0) {
-        console.error('No available surahs found for this rewayat');
-        return;
-      }
-
-      const startIndex = allSurahsForRewayat.findIndex(s => s.id === surahId);
-
       const startPosition =
         isCurrentlyPlaying && storePosition >= 0
           ? storePosition
@@ -226,43 +197,14 @@ export const RecentReciterCard = ({
           startPosition,
         });
 
-      if (startIndex === -1) {
-        const track = await createTracksForReciter(
-          reciter,
-          [surah],
-          rewayatToUseId,
-        );
-        if (!track || track.length === 0) {
-          console.error('Failed to create fallback track');
-          return;
-        }
-        await updateQueue(track, 0, startPosition);
-        useRecentlyPlayedStore.getState().resumeChain(index);
-        return;
-      }
-
-      const artwork = getReciterArtwork(reciter);
-
-      const reorderedSurahs = [
-        allSurahsForRewayat[startIndex],
-        ...allSurahsForRewayat.slice(startIndex + 1),
-        ...allSurahsForRewayat.slice(0, startIndex),
-      ];
-
-      const allTracks = reorderedSurahs.map(s => ({
-        id: `${reciter.id}:${s.id}`,
-        url: generateSmartAudioUrl(reciter, s.id.toString(), rewayatToUseId),
-        title: s.name,
-        artist: reciter.name,
-        reciterId: reciter.id,
-        artwork,
-        surahId: s.id.toString(),
-        reciterName: reciter.name,
-        rewayatId: rewayatToUseId,
-      }));
-
-      await updateQueue(allTracks, 0, startPosition);
-      useRecentlyPlayedStore.getState().resumeChain(index);
+      await resumeRecent({
+        reciterId,
+        surahId,
+        rewayatId,
+        startPosition,
+        recentIndex: index,
+        updateQueue,
+      });
     } catch (error) {
       console.error('Error playing surah:', error);
     }
@@ -336,7 +278,7 @@ export const RecentReciterCard = ({
             ]}
             start={{x: 0, y: 0}}
             end={{x: 1, y: 1}}
-            style={StyleSheet.absoluteFillObject}
+            style={StyleSheet.absoluteFill}
           />
         </>
       )}
@@ -400,7 +342,7 @@ export const RecentReciterCard = ({
             {surahName}
           </Text>
         </View>
-        <View style={styles.progressRow}>
+        <View style={[styles.progressRow, forceLTR]}>
           <View style={styles.playButtonContainer}>
             {isCurrentlyPlaying &&
             (playbackStatus === 'playing' || playbackStatus === 'buffering') ? (
@@ -441,88 +383,4 @@ export const RecentReciterCard = ({
     </CardWrapper>
   );
 };
-
-function createStyles(theme: {
-  colors: {
-    border: string;
-    card: string;
-    shadow: string;
-    text: string;
-    textSecondary: string;
-    background: string;
-  };
-}) {
-  return StyleSheet.create({
-    container: {
-      width: moderateScale(120),
-      borderRadius: moderateScale(14),
-      overflow: 'hidden',
-      borderWidth: 1,
-      borderColor: Color(theme.colors.text).alpha(0.06).toString(),
-      padding: moderateScale(6),
-      gap: moderateScale(4),
-    },
-    glassContainer: {
-      borderWidth: 0,
-    },
-    imageContainer: {
-      aspectRatio: 1,
-      borderRadius: moderateScale(8),
-      overflow: 'hidden',
-      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
-    },
-    image: {
-      width: '100%',
-      height: '100%',
-    },
-    reciterName: {
-      fontSize: moderateScale(11.5),
-      fontFamily: 'Manrope-SemiBold',
-      color: theme.colors.text,
-      letterSpacing: -0.3,
-    },
-    // Bottom zone: surah + playback controls
-    playbackZone: {
-      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
-      borderRadius: moderateScale(8),
-      paddingHorizontal: moderateScale(6),
-      paddingVertical: moderateScale(5),
-      gap: moderateScale(4),
-    },
-    playbackZonePressed: {
-      backgroundColor: Color(theme.colors.text).alpha(0.1).toString(),
-    },
-    playbackRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-    },
-    surahName: {
-      fontSize: moderateScale(9.5),
-      fontFamily: 'Manrope-Medium',
-      color: Color(theme.colors.text).alpha(0.7).toString(),
-      letterSpacing: -0.2,
-    },
-    progressRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: moderateScale(4),
-    },
-    playButtonContainer: {
-      width: moderateScale(12),
-      height: moderateScale(12),
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    sliderContainer: {
-      height: moderateScale(4),
-      flex: 1,
-    },
-    timeRemaining: {
-      fontSize: moderateScale(7.5),
-      fontFamily: 'Manrope-Bold',
-      color: Color(theme.colors.text).alpha(0.5).toString(),
-      minWidth: moderateScale(12),
-      textAlign: 'right',
-    },
-  });
-}
+// @ai-end

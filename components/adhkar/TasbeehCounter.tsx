@@ -8,22 +8,35 @@ import {useTheme} from '@/hooks/useTheme';
 import {useAdhkar} from '@/hooks/useAdhkar';
 import {Theme} from '@/utils/themeUtils';
 import {analyticsService} from '@/services/analytics/AnalyticsService';
+import {dhikrCountKey} from '@/services/adhkar/dhikrCountKey';
+import type {SuperCategory} from '@/types/adhkar';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+import {localizeDigits} from '@/i18n/format';
+// @ai-end
 
 interface TasbeehCounterProps {
   dhikrId: string;
   targetCount: number; // From dhikr.repeatCount
+  // The list the counter is shown in. Morning and evening (lists with their
+  // own dhikrIds) keep a separate count per list; omit it elsewhere.
+  superCategory?: Pick<SuperCategory, 'id' | 'dhikrIds'> | null;
 }
 
 // Success color constant
 const SUCCESS_COLOR = '#22C55E';
 
+// @ai-start
 export const TasbeehCounter: React.FC<TasbeehCounterProps> = ({
   dhikrId,
   targetCount,
+  superCategory,
 }) => {
   const {theme} = useTheme();
+  const {t} = useTranslation(['player', 'common']);
   const {getCount, incrementCount, resetCount} = useAdhkar();
-  const count = getCount(dhikrId);
+  const countKey = dhikrCountKey(dhikrId, superCategory);
+  const count = getCount(countKey);
 
   // Animation for tap feedback
   const scaleAnim = React.useRef(new Animated.Value(1)).current;
@@ -54,7 +67,7 @@ export const TasbeehCounter: React.FC<TasbeehCounterProps> = ({
     animateTap();
 
     // Increment count
-    const newCount = await incrementCount(dhikrId);
+    const newCount = await incrementCount(countKey);
 
     // Light haptic on every tap
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -67,12 +80,12 @@ export const TasbeehCounter: React.FC<TasbeehCounterProps> = ({
         count: targetCount,
       });
     }
-  }, [dhikrId, incrementCount, targetCount, animateTap]);
+  }, [dhikrId, countKey, incrementCount, targetCount, animateTap]);
 
   const handleReset = useCallback(async () => {
-    await resetCount(dhikrId);
+    await resetCount(countKey);
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-  }, [dhikrId, resetCount]);
+  }, [countKey, resetCount]);
 
   const styles = createStyles(theme, targetReached);
 
@@ -85,8 +98,11 @@ export const TasbeehCounter: React.FC<TasbeehCounterProps> = ({
           onPress={handleTap}
           style={styles.tapArea}
           accessibilityRole="button"
-          accessibilityLabel={`Tasbeeh counter, ${count} of ${targetCount}`}
-          accessibilityHint="Tap to increment count">
+          accessibilityLabel={t('adhkar.tasbeeh.a11yLabel', {
+            current: count,
+            target: targetCount,
+          })}
+          accessibilityHint={t('adhkar.tasbeeh.a11yHint')}>
           {/* Circular progress background */}
           <View style={styles.progressCircle}>
             {/* Progress indicator - using a simple overlay technique */}
@@ -105,9 +121,11 @@ export const TasbeehCounter: React.FC<TasbeehCounterProps> = ({
             <View style={styles.innerCircle}>
               {/* Count display */}
               <View style={styles.countDisplay}>
-                <Text style={styles.currentCount}>{count}</Text>
+                <Text style={styles.currentCount}>{localizeDigits(count)}</Text>
                 <Text style={styles.separator}> / </Text>
-                <Text style={styles.targetCount}>{targetCount}</Text>
+                <Text style={styles.targetCount}>
+                  {localizeDigits(targetCount)}
+                </Text>
               </View>
 
               {/* Target reached indicator */}
@@ -118,15 +136,21 @@ export const TasbeehCounter: React.FC<TasbeehCounterProps> = ({
                     size={moderateScale(20)}
                     color={SUCCESS_COLOR}
                   />
-                  <Text style={styles.successText}>Complete</Text>
+                  <Text style={styles.successText}>
+                    {t('adhkar.tasbeeh.complete')}
+                  </Text>
                 </View>
               ) : (
-                <Text style={styles.instructionText}>Tap to count</Text>
+                <Text style={styles.instructionText}>
+                  {t('adhkar.tasbeeh.tapToCount')}
+                </Text>
               )}
 
               {/* Progress text */}
               <Text style={styles.progressText}>
-                {Math.round(progress * 100)}%
+                {t('adhkar.tasbeeh.percent', {
+                  value: Math.round(progress * 100),
+                })}
               </Text>
             </View>
           </View>
@@ -139,18 +163,19 @@ export const TasbeehCounter: React.FC<TasbeehCounterProps> = ({
         onPress={handleReset}
         hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
         accessibilityRole="button"
-        accessibilityLabel="Reset counter"
-        accessibilityHint="Resets the count to zero">
+        accessibilityLabel={t('adhkar.tasbeeh.resetA11yLabel')}
+        accessibilityHint={t('adhkar.tasbeeh.resetA11yHint')}>
         <Feather
           name="refresh-cw"
           size={moderateScale(18)}
           color={theme.colors.textSecondary}
         />
-        <Text style={styles.resetText}>Reset</Text>
+        <Text style={styles.resetText}>{t('common:actions.reset')}</Text>
       </TouchableOpacity>
     </View>
   );
 };
+// @ai-end
 
 TasbeehCounter.displayName = 'TasbeehCounter';
 

@@ -1,0 +1,30 @@
+[
+  {
+    "surahId": 18,
+    "surahName": "Al-Kahf",
+    "reciterName": "Mishary Alafasy",
+    "artworkFile": "surah-18.jpg",
+    "isPlaying": true,
+    "positionSec": 120.5,
+    "durationSec": 1800,
+    "rate": 1,
+    "anchorAt": 1791460800000,
+    "ayah": {
+      "number": 10,
+      "count": 110,
+      "text": "إِذۡ أَوَى ٱلۡفِتۡيَةُ إِلَى ٱلۡكَهۡفِ"
+    }
+  },
+  {
+    "surahId": 36,
+    "surahName": "Ya-Sin",
+    "reciterName": "Mishary Alafasy",
+    "artworkFile": null,
+    "isPlaying": false,
+    "positionSec": 900,
+    "durationSec": 1800,
+    "rate": 1.5,
+    "anchorAt": 1791460800000,
+    "ayah": null
+  }
+]

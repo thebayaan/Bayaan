@@ -22,10 +22,8 @@ module.exports = {
       },
     ],
     'react/prop-types': 'off',
-    // Catch a silent-bug class where a component declares a prop in its
-    // TypeScript interface but never destructures / uses it, so callers
-    // pass values that get silently dropped. Set to 'warn' to avoid
-    // breaking pre-existing findings; flip to 'error' once triaged.
+
+    'no-dupe-keys': 'error',
     'react/no-unused-prop-types': 'warn',
     'react/react-in-jsx-scope': 'off',
     '@typescript-eslint/explicit-function-return-type': 'off',

@@ -53,22 +53,6 @@ export interface StickyHeaderProps {
 }
 
 /**
- * Props for the SearchHeader component
- */
-export interface SearchHeaderProps {
-  /** Whether the search bar is visible */
-  showSearch: boolean;
-  /** Current search query */
-  searchQuery: string;
-  /** Handler for search query changes */
-  onSearchChange: (query: string) => void;
-  /** Safe area insets for proper padding */
-  insets: {
-    top: number;
-  };
-}
-
-/**
  * Props for the SurahList component
  */
 export interface SurahListProps {
@@ -120,4 +104,14 @@ export interface ActionButtonsProps {
   onPlayPress: () => void;
   /** Whether the reciter is in the user's favorites */
   isFavoriteReciter: boolean;
+  // @ai-start
+  /** Handler for the "download all surahs" button (tap again to cancel). */
+  onDownloadAllPress?: () => void;
+  /** Whether a bulk download is currently running. */
+  isDownloadingAll?: boolean;
+  /** Aggregate bulk-download progress, 0–1. */
+  downloadAllProgress?: number;
+  /** Whether every surah in the current view is already downloaded. */
+  allDownloaded?: boolean;
+  // @ai-end
 }

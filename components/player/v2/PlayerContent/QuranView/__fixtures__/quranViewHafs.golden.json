@@ -1,0 +1,2810 @@
+{
+ "idle list": {
+  "rows": [
+   {
+    "verse": {
+     "id": 8,
+     "verse_key": "2:1",
+     "surah_number": 2,
+     "ayah_number": 1,
+     "text": "HAFS-TEXT-2:1",
+     "translation": "TRANSLATION-2:1",
+     "transliteration": "TRANSLITERATION-2:1"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 9,
+     "verse_key": "2:2",
+     "surah_number": 2,
+     "ayah_number": 2,
+     "text": "HAFS-TEXT-2:2",
+     "translation": "TRANSLATION-2:2",
+     "transliteration": "TRANSLITERATION-2:2"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 10,
+     "verse_key": "2:3",
+     "surah_number": 2,
+     "ayah_number": 3,
+     "text": "HAFS-TEXT-2:3",
+     "translation": "TRANSLATION-2:3",
+     "transliteration": "TRANSLITERATION-2:3"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 11,
+     "verse_key": "2:4",
+     "surah_number": 2,
+     "ayah_number": 4,
+     "text": "HAFS-TEXT-2:4",
+     "translation": "TRANSLATION-2:4",
+     "transliteration": "TRANSLITERATION-2:4"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 12,
+     "verse_key": "2:5",
+     "surah_number": 2,
+     "ayah_number": 5,
+     "text": "HAFS-TEXT-2:5",
+     "translation": "TRANSLATION-2:5",
+     "transliteration": "TRANSLITERATION-2:5"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 13,
+     "verse_key": "2:6",
+     "surah_number": 2,
+     "ayah_number": 6,
+     "text": "HAFS-TEXT-2:6",
+     "translation": "TRANSLATION-2:6",
+     "transliteration": "TRANSLITERATION-2:6"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   }
+  ],
+  "list": [
+   {
+    "style": {
+     "width": 705.4285714285714,
+     "height": "100%"
+    },
+    "renderItem": "fn",
+    "extraData": "false-true-false-false-24-normal-true-true-false-#A86A00",
+    "keyExtractor": "fn",
+    "ListHeaderComponent": "element",
+    "contentContainerStyle": {
+     "paddingTop": 30,
+     "paddingBottom": 117.48470588235294
+    },
+    "showsVerticalScrollIndicator": false,
+    "bounces": true,
+    "overScrollMode": "never",
+    "drawDistance": 1500,
+    "onScrollBeginDrag": "fn",
+    "keys": [
+     "2:1",
+     "2:2",
+     "2:3",
+     "2:4",
+     "2:5",
+     "2:6"
+    ]
+   }
+  ],
+  "calls": [
+   [
+    "scrollToOffset",
+    {
+     "offset": 0,
+     "animated": false
+    }
+   ]
+  ],
+  "tree": {
+   "type": "View",
+   "props": {
+    "style": {
+     "width": "100%",
+     "height": "100%",
+     "backgroundColor": "transparent",
+     "overflow": "hidden",
+     "alignItems": "center"
+    }
+   },
+   "children": [
+    {
+     "type": "View",
+     "props": {},
+     "children": null
+    }
+   ]
+  },
+  "unitsRequested": []
+ },
+ "follow-along on verse 3, then verse 4": {
+  "rows": [
+   {
+    "verse": {
+     "id": 8,
+     "verse_key": "2:1",
+     "surah_number": 2,
+     "ayah_number": 1,
+     "text": "HAFS-TEXT-2:1",
+     "translation": "TRANSLATION-2:1",
+     "transliteration": "TRANSLITERATION-2:1"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 9,
+     "verse_key": "2:2",
+     "surah_number": 2,
+     "ayah_number": 2,
+     "text": "HAFS-TEXT-2:2",
+     "translation": "TRANSLATION-2:2",
+     "transliteration": "TRANSLITERATION-2:2"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 10,
+     "verse_key": "2:3",
+     "surah_number": 2,
+     "ayah_number": 3,
+     "text": "HAFS-TEXT-2:3",
+     "translation": "TRANSLATION-2:3",
+     "transliteration": "TRANSLITERATION-2:3"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 11,
+     "verse_key": "2:4",
+     "surah_number": 2,
+     "ayah_number": 4,
+     "text": "HAFS-TEXT-2:4",
+     "translation": "TRANSLATION-2:4",
+     "transliteration": "TRANSLITERATION-2:4"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 12,
+     "verse_key": "2:5",
+     "surah_number": 2,
+     "ayah_number": 5,
+     "text": "HAFS-TEXT-2:5",
+     "translation": "TRANSLATION-2:5",
+     "transliteration": "TRANSLITERATION-2:5"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 13,
+     "verse_key": "2:6",
+     "surah_number": 2,
+     "ayah_number": 6,
+     "text": "HAFS-TEXT-2:6",
+     "translation": "TRANSLATION-2:6",
+     "transliteration": "TRANSLITERATION-2:6"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 8,
+     "verse_key": "2:1",
+     "surah_number": 2,
+     "ayah_number": 1,
+     "text": "HAFS-TEXT-2:1",
+     "translation": "TRANSLATION-2:1",
+     "transliteration": "TRANSLITERATION-2:1"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 9,
+     "verse_key": "2:2",
+     "surah_number": 2,
+     "ayah_number": 2,
+     "text": "HAFS-TEXT-2:2",
+     "translation": "TRANSLATION-2:2",
+     "transliteration": "TRANSLITERATION-2:2"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 10,
+     "verse_key": "2:3",
+     "surah_number": 2,
+     "ayah_number": 3,
+     "text": "HAFS-TEXT-2:3",
+     "translation": "TRANSLATION-2:3",
+     "transliteration": "TRANSLITERATION-2:3"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": true,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 11,
+     "verse_key": "2:4",
+     "surah_number": 2,
+     "ayah_number": 4,
+     "text": "HAFS-TEXT-2:4",
+     "translation": "TRANSLATION-2:4",
+     "transliteration": "TRANSLITERATION-2:4"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 12,
+     "verse_key": "2:5",
+     "surah_number": 2,
+     "ayah_number": 5,
+     "text": "HAFS-TEXT-2:5",
+     "translation": "TRANSLATION-2:5",
+     "transliteration": "TRANSLITERATION-2:5"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 13,
+     "verse_key": "2:6",
+     "surah_number": 2,
+     "ayah_number": 6,
+     "text": "HAFS-TEXT-2:6",
+     "translation": "TRANSLATION-2:6",
+     "transliteration": "TRANSLITERATION-2:6"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 8,
+     "verse_key": "2:1",
+     "surah_number": 2,
+     "ayah_number": 1,
+     "text": "HAFS-TEXT-2:1",
+     "translation": "TRANSLATION-2:1",
+     "transliteration": "TRANSLITERATION-2:1"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 9,
+     "verse_key": "2:2",
+     "surah_number": 2,
+     "ayah_number": 2,
+     "text": "HAFS-TEXT-2:2",
+     "translation": "TRANSLATION-2:2",
+     "transliteration": "TRANSLITERATION-2:2"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 10,
+     "verse_key": "2:3",
+     "surah_number": 2,
+     "ayah_number": 3,
+     "text": "HAFS-TEXT-2:3",
+     "translation": "TRANSLATION-2:3",
+     "transliteration": "TRANSLITERATION-2:3"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 11,
+     "verse_key": "2:4",
+     "surah_number": 2,
+     "ayah_number": 4,
+     "text": "HAFS-TEXT-2:4",
+     "translation": "TRANSLATION-2:4",
+     "transliteration": "TRANSLITERATION-2:4"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": true,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 12,
+     "verse_key": "2:5",
+     "surah_number": 2,
+     "ayah_number": 5,
+     "text": "HAFS-TEXT-2:5",
+     "translation": "TRANSLATION-2:5",
+     "transliteration": "TRANSLITERATION-2:5"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 13,
+     "verse_key": "2:6",
+     "surah_number": 2,
+     "ayah_number": 6,
+     "text": "HAFS-TEXT-2:6",
+     "translation": "TRANSLATION-2:6",
+     "transliteration": "TRANSLITERATION-2:6"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   }
+  ],
+  "list": [
+   {
+    "style": {
+     "width": 705.4285714285714,
+     "height": "100%"
+    },
+    "renderItem": "fn",
+    "extraData": "false-true-false-false-24-normal-true-true-false-#A86A00",
+    "keyExtractor": "fn",
+    "ListHeaderComponent": "element",
+    "contentContainerStyle": {
+     "paddingTop": 30,
+     "paddingBottom": 117.48470588235294
+    },
+    "showsVerticalScrollIndicator": false,
+    "bounces": true,
+    "overScrollMode": "never",
+    "drawDistance": 1500,
+    "onScrollBeginDrag": "fn",
+    "keys": [
+     "2:1",
+     "2:2",
+     "2:3",
+     "2:4",
+     "2:5",
+     "2:6"
+    ]
+   },
+   {
+    "style": {
+     "width": 705.4285714285714,
+     "height": "100%"
+    },
+    "renderItem": "fn",
+    "extraData": "false-true-false-false-24-normal-true-true-false-#A86A00",
+    "keyExtractor": "fn",
+    "ListHeaderComponent": "element",
+    "contentContainerStyle": {
+     "paddingTop": 30,
+     "paddingBottom": 117.48470588235294
+    },
+    "showsVerticalScrollIndicator": false,
+    "bounces": true,
+    "overScrollMode": "never",
+    "drawDistance": 1500,
+    "onScrollBeginDrag": "fn",
+    "keys": [
+     "2:1",
+     "2:2",
+     "2:3",
+     "2:4",
+     "2:5",
+     "2:6"
+    ]
+   },
+   {
+    "style": {
+     "width": 705.4285714285714,
+     "height": "100%"
+    },
+    "renderItem": "fn",
+    "extraData": "false-true-false-false-24-normal-true-true-false-#A86A00",
+    "keyExtractor": "fn",
+    "ListHeaderComponent": "element",
+    "contentContainerStyle": {
+     "paddingTop": 30,
+     "paddingBottom": 117.48470588235294
+    },
+    "showsVerticalScrollIndicator": false,
+    "bounces": true,
+    "overScrollMode": "never",
+    "drawDistance": 1500,
+    "onScrollBeginDrag": "fn",
+    "keys": [
+     "2:1",
+     "2:2",
+     "2:3",
+     "2:4",
+     "2:5",
+     "2:6"
+    ]
+   }
+  ],
+  "calls": [
+   [
+    "scrollToOffset",
+    {
+     "offset": 0,
+     "animated": false
+    }
+   ],
+   [
+    "scrollToIndex",
+    {
+     "index": 2,
+     "animated": true,
+     "viewPosition": 0.3,
+     "viewOffset": 0
+    }
+   ],
+   [
+    "scrollToIndex",
+    {
+     "index": 3,
+     "animated": true,
+     "viewPosition": 0.3,
+     "viewOffset": 0
+    }
+   ]
+  ],
+  "tree": {
+   "type": "View",
+   "props": {
+    "style": {
+     "width": "100%",
+     "height": "100%",
+     "backgroundColor": "transparent",
+     "overflow": "hidden",
+     "alignItems": "center"
+    }
+   },
+   "children": [
+    {
+     "type": "View",
+     "props": {},
+     "children": null
+    }
+   ]
+  },
+  "unitsRequested": []
+ },
+ "a state without verseKeys (older writers)": {
+  "rows": [
+   {
+    "verse": {
+     "id": 8,
+     "verse_key": "2:1",
+     "surah_number": 2,
+     "ayah_number": 1,
+     "text": "HAFS-TEXT-2:1",
+     "translation": "TRANSLATION-2:1",
+     "transliteration": "TRANSLITERATION-2:1"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 9,
+     "verse_key": "2:2",
+     "surah_number": 2,
+     "ayah_number": 2,
+     "text": "HAFS-TEXT-2:2",
+     "translation": "TRANSLATION-2:2",
+     "transliteration": "TRANSLITERATION-2:2"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 10,
+     "verse_key": "2:3",
+     "surah_number": 2,
+     "ayah_number": 3,
+     "text": "HAFS-TEXT-2:3",
+     "translation": "TRANSLATION-2:3",
+     "transliteration": "TRANSLITERATION-2:3"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 11,
+     "verse_key": "2:4",
+     "surah_number": 2,
+     "ayah_number": 4,
+     "text": "HAFS-TEXT-2:4",
+     "translation": "TRANSLATION-2:4",
+     "transliteration": "TRANSLITERATION-2:4"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 12,
+     "verse_key": "2:5",
+     "surah_number": 2,
+     "ayah_number": 5,
+     "text": "HAFS-TEXT-2:5",
+     "translation": "TRANSLATION-2:5",
+     "transliteration": "TRANSLITERATION-2:5"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 13,
+     "verse_key": "2:6",
+     "surah_number": 2,
+     "ayah_number": 6,
+     "text": "HAFS-TEXT-2:6",
+     "translation": "TRANSLATION-2:6",
+     "transliteration": "TRANSLITERATION-2:6"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 8,
+     "verse_key": "2:1",
+     "surah_number": 2,
+     "ayah_number": 1,
+     "text": "HAFS-TEXT-2:1",
+     "translation": "TRANSLATION-2:1",
+     "transliteration": "TRANSLITERATION-2:1"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 9,
+     "verse_key": "2:2",
+     "surah_number": 2,
+     "ayah_number": 2,
+     "text": "HAFS-TEXT-2:2",
+     "translation": "TRANSLATION-2:2",
+     "transliteration": "TRANSLITERATION-2:2"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 10,
+     "verse_key": "2:3",
+     "surah_number": 2,
+     "ayah_number": 3,
+     "text": "HAFS-TEXT-2:3",
+     "translation": "TRANSLATION-2:3",
+     "transliteration": "TRANSLITERATION-2:3"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 11,
+     "verse_key": "2:4",
+     "surah_number": 2,
+     "ayah_number": 4,
+     "text": "HAFS-TEXT-2:4",
+     "translation": "TRANSLATION-2:4",
+     "transliteration": "TRANSLITERATION-2:4"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 12,
+     "verse_key": "2:5",
+     "surah_number": 2,
+     "ayah_number": 5,
+     "text": "HAFS-TEXT-2:5",
+     "translation": "TRANSLATION-2:5",
+     "transliteration": "TRANSLITERATION-2:5"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": true,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 13,
+     "verse_key": "2:6",
+     "surah_number": 2,
+     "ayah_number": 6,
+     "text": "HAFS-TEXT-2:6",
+     "translation": "TRANSLATION-2:6",
+     "transliteration": "TRANSLITERATION-2:6"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   }
+  ],
+  "list": [
+   {
+    "style": {
+     "width": 705.4285714285714,
+     "height": "100%"
+    },
+    "renderItem": "fn",
+    "extraData": "false-true-false-false-24-normal-true-true-false-#A86A00",
+    "keyExtractor": "fn",
+    "ListHeaderComponent": "element",
+    "contentContainerStyle": {
+     "paddingTop": 30,
+     "paddingBottom": 117.48470588235294
+    },
+    "showsVerticalScrollIndicator": false,
+    "bounces": true,
+    "overScrollMode": "never",
+    "drawDistance": 1500,
+    "onScrollBeginDrag": "fn",
+    "keys": [
+     "2:1",
+     "2:2",
+     "2:3",
+     "2:4",
+     "2:5",
+     "2:6"
+    ]
+   },
+   {
+    "style": {
+     "width": 705.4285714285714,
+     "height": "100%"
+    },
+    "renderItem": "fn",
+    "extraData": "false-true-false-false-24-normal-true-true-false-#A86A00",
+    "keyExtractor": "fn",
+    "ListHeaderComponent": "element",
+    "contentContainerStyle": {
+     "paddingTop": 30,
+     "paddingBottom": 117.48470588235294
+    },
+    "showsVerticalScrollIndicator": false,
+    "bounces": true,
+    "overScrollMode": "never",
+    "drawDistance": 1500,
+    "onScrollBeginDrag": "fn",
+    "keys": [
+     "2:1",
+     "2:2",
+     "2:3",
+     "2:4",
+     "2:5",
+     "2:6"
+    ]
+   }
+  ],
+  "calls": [
+   [
+    "scrollToOffset",
+    {
+     "offset": 0,
+     "animated": false
+    }
+   ],
+   [
+    "scrollToIndex",
+    {
+     "index": 4,
+     "animated": true,
+     "viewPosition": 0.3,
+     "viewOffset": 0
+    }
+   ]
+  ],
+  "tree": {
+   "type": "View",
+   "props": {
+    "style": {
+     "width": "100%",
+     "height": "100%",
+     "backgroundColor": "transparent",
+     "overflow": "hidden",
+     "alignItems": "center"
+    }
+   },
+   "children": [
+    {
+     "type": "View",
+     "props": {},
+     "children": null
+    }
+   ]
+  },
+  "unitsRequested": []
+ },
+ "scrolled away (unlocked), then recentred": {
+  "rows": [
+   {
+    "verse": {
+     "id": 8,
+     "verse_key": "2:1",
+     "surah_number": 2,
+     "ayah_number": 1,
+     "text": "HAFS-TEXT-2:1",
+     "translation": "TRANSLATION-2:1",
+     "transliteration": "TRANSLITERATION-2:1"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 9,
+     "verse_key": "2:2",
+     "surah_number": 2,
+     "ayah_number": 2,
+     "text": "HAFS-TEXT-2:2",
+     "translation": "TRANSLATION-2:2",
+     "transliteration": "TRANSLITERATION-2:2"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": true,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 10,
+     "verse_key": "2:3",
+     "surah_number": 2,
+     "ayah_number": 3,
+     "text": "HAFS-TEXT-2:3",
+     "translation": "TRANSLATION-2:3",
+     "transliteration": "TRANSLITERATION-2:3"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 11,
+     "verse_key": "2:4",
+     "surah_number": 2,
+     "ayah_number": 4,
+     "text": "HAFS-TEXT-2:4",
+     "translation": "TRANSLATION-2:4",
+     "transliteration": "TRANSLITERATION-2:4"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 12,
+     "verse_key": "2:5",
+     "surah_number": 2,
+     "ayah_number": 5,
+     "text": "HAFS-TEXT-2:5",
+     "translation": "TRANSLATION-2:5",
+     "transliteration": "TRANSLITERATION-2:5"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 13,
+     "verse_key": "2:6",
+     "surah_number": 2,
+     "ayah_number": 6,
+     "text": "HAFS-TEXT-2:6",
+     "translation": "TRANSLATION-2:6",
+     "transliteration": "TRANSLITERATION-2:6"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 8,
+     "verse_key": "2:1",
+     "surah_number": 2,
+     "ayah_number": 1,
+     "text": "HAFS-TEXT-2:1",
+     "translation": "TRANSLATION-2:1",
+     "transliteration": "TRANSLITERATION-2:1"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 9,
+     "verse_key": "2:2",
+     "surah_number": 2,
+     "ayah_number": 2,
+     "text": "HAFS-TEXT-2:2",
+     "translation": "TRANSLATION-2:2",
+     "transliteration": "TRANSLITERATION-2:2"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 10,
+     "verse_key": "2:3",
+     "surah_number": 2,
+     "ayah_number": 3,
+     "text": "HAFS-TEXT-2:3",
+     "translation": "TRANSLATION-2:3",
+     "transliteration": "TRANSLITERATION-2:3"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 11,
+     "verse_key": "2:4",
+     "surah_number": 2,
+     "ayah_number": 4,
+     "text": "HAFS-TEXT-2:4",
+     "translation": "TRANSLATION-2:4",
+     "transliteration": "TRANSLITERATION-2:4"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 12,
+     "verse_key": "2:5",
+     "surah_number": 2,
+     "ayah_number": 5,
+     "text": "HAFS-TEXT-2:5",
+     "translation": "TRANSLATION-2:5",
+     "transliteration": "TRANSLITERATION-2:5"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 13,
+     "verse_key": "2:6",
+     "surah_number": 2,
+     "ayah_number": 6,
+     "text": "HAFS-TEXT-2:6",
+     "translation": "TRANSLATION-2:6",
+     "transliteration": "TRANSLITERATION-2:6"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 8,
+     "verse_key": "2:1",
+     "surah_number": 2,
+     "ayah_number": 1,
+     "text": "HAFS-TEXT-2:1",
+     "translation": "TRANSLATION-2:1",
+     "transliteration": "TRANSLITERATION-2:1"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 9,
+     "verse_key": "2:2",
+     "surah_number": 2,
+     "ayah_number": 2,
+     "text": "HAFS-TEXT-2:2",
+     "translation": "TRANSLATION-2:2",
+     "transliteration": "TRANSLITERATION-2:2"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": true,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 10,
+     "verse_key": "2:3",
+     "surah_number": 2,
+     "ayah_number": 3,
+     "text": "HAFS-TEXT-2:3",
+     "translation": "TRANSLATION-2:3",
+     "transliteration": "TRANSLITERATION-2:3"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 11,
+     "verse_key": "2:4",
+     "surah_number": 2,
+     "ayah_number": 4,
+     "text": "HAFS-TEXT-2:4",
+     "translation": "TRANSLATION-2:4",
+     "transliteration": "TRANSLITERATION-2:4"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 12,
+     "verse_key": "2:5",
+     "surah_number": 2,
+     "ayah_number": 5,
+     "text": "HAFS-TEXT-2:5",
+     "translation": "TRANSLATION-2:5",
+     "transliteration": "TRANSLITERATION-2:5"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 13,
+     "verse_key": "2:6",
+     "surah_number": 2,
+     "ayah_number": 6,
+     "text": "HAFS-TEXT-2:6",
+     "translation": "TRANSLATION-2:6",
+     "transliteration": "TRANSLITERATION-2:6"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   }
+  ],
+  "list": [
+   {
+    "style": {
+     "width": 705.4285714285714,
+     "height": "100%"
+    },
+    "renderItem": "fn",
+    "extraData": "false-true-false-false-24-normal-true-true-false-#A86A00",
+    "keyExtractor": "fn",
+    "ListHeaderComponent": "element",
+    "contentContainerStyle": {
+     "paddingTop": 30,
+     "paddingBottom": 117.48470588235294
+    },
+    "showsVerticalScrollIndicator": false,
+    "bounces": true,
+    "overScrollMode": "never",
+    "drawDistance": 1500,
+    "onScrollBeginDrag": "fn",
+    "keys": [
+     "2:1",
+     "2:2",
+     "2:3",
+     "2:4",
+     "2:5",
+     "2:6"
+    ]
+   },
+   {
+    "style": {
+     "width": 705.4285714285714,
+     "height": "100%"
+    },
+    "renderItem": "fn",
+    "extraData": "false-true-false-false-24-normal-true-true-false-#A86A00",
+    "keyExtractor": "fn",
+    "ListHeaderComponent": "element",
+    "contentContainerStyle": {
+     "paddingTop": 30,
+     "paddingBottom": 117.48470588235294
+    },
+    "showsVerticalScrollIndicator": false,
+    "bounces": true,
+    "overScrollMode": "never",
+    "drawDistance": 1500,
+    "onScrollBeginDrag": "fn",
+    "keys": [
+     "2:1",
+     "2:2",
+     "2:3",
+     "2:4",
+     "2:5",
+     "2:6"
+    ]
+   },
+   {
+    "style": {
+     "width": 705.4285714285714,
+     "height": "100%"
+    },
+    "renderItem": "fn",
+    "extraData": "false-true-false-false-24-normal-true-true-false-#A86A00",
+    "keyExtractor": "fn",
+    "ListHeaderComponent": "element",
+    "contentContainerStyle": {
+     "paddingTop": 30,
+     "paddingBottom": 117.48470588235294
+    },
+    "showsVerticalScrollIndicator": false,
+    "bounces": true,
+    "overScrollMode": "never",
+    "drawDistance": 1500,
+    "onScrollBeginDrag": "fn",
+    "keys": [
+     "2:1",
+     "2:2",
+     "2:3",
+     "2:4",
+     "2:5",
+     "2:6"
+    ]
+   }
+  ],
+  "calls": [
+   [
+    "scrollToOffset",
+    {
+     "offset": 0,
+     "animated": false
+    }
+   ],
+   [
+    "scrollToIndex",
+    {
+     "index": 1,
+     "animated": true,
+     "viewPosition": 0.3,
+     "viewOffset": 0
+    }
+   ],
+   [
+    "scrollToIndex",
+    {
+     "index": 1,
+     "animated": true,
+     "viewPosition": 0.3,
+     "viewOffset": 0
+    }
+   ],
+   [
+    "scrollToIndex",
+    {
+     "index": 1,
+     "animated": true,
+     "viewPosition": 0.3,
+     "viewOffset": 0
+    }
+   ]
+  ],
+  "tree": {
+   "type": "View",
+   "props": {
+    "style": {
+     "width": "100%",
+     "height": "100%",
+     "backgroundColor": "transparent",
+     "overflow": "hidden",
+     "alignItems": "center"
+    }
+   },
+   "children": [
+    {
+     "type": "View",
+     "props": {},
+     "children": null
+    }
+   ]
+  },
+  "unitsRequested": []
+ },
+ "fork anchor (initialPlayerVerseKey) on 2:3": {
+  "rows": [
+   {
+    "verse": {
+     "id": 8,
+     "verse_key": "2:1",
+     "surah_number": 2,
+     "ayah_number": 1,
+     "text": "HAFS-TEXT-2:1",
+     "translation": "TRANSLATION-2:1",
+     "transliteration": "TRANSLITERATION-2:1"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 9,
+     "verse_key": "2:2",
+     "surah_number": 2,
+     "ayah_number": 2,
+     "text": "HAFS-TEXT-2:2",
+     "translation": "TRANSLATION-2:2",
+     "transliteration": "TRANSLITERATION-2:2"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 10,
+     "verse_key": "2:3",
+     "surah_number": 2,
+     "ayah_number": 3,
+     "text": "HAFS-TEXT-2:3",
+     "translation": "TRANSLATION-2:3",
+     "transliteration": "TRANSLITERATION-2:3"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 11,
+     "verse_key": "2:4",
+     "surah_number": 2,
+     "ayah_number": 4,
+     "text": "HAFS-TEXT-2:4",
+     "translation": "TRANSLATION-2:4",
+     "transliteration": "TRANSLITERATION-2:4"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 12,
+     "verse_key": "2:5",
+     "surah_number": 2,
+     "ayah_number": 5,
+     "text": "HAFS-TEXT-2:5",
+     "translation": "TRANSLATION-2:5",
+     "transliteration": "TRANSLITERATION-2:5"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 13,
+     "verse_key": "2:6",
+     "surah_number": 2,
+     "ayah_number": 6,
+     "text": "HAFS-TEXT-2:6",
+     "translation": "TRANSLATION-2:6",
+     "transliteration": "TRANSLITERATION-2:6"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": false,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": false,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": false,
+    "rewayah": "hafs"
+   }
+  ],
+  "list": [
+   {
+    "style": {
+     "width": 705.4285714285714,
+     "height": "100%"
+    },
+    "renderItem": "fn",
+    "extraData": "false-true-false-false-24-normal-true-true-false-#A86A00",
+    "keyExtractor": "fn",
+    "initialScrollIndex": 2,
+    "ListHeaderComponent": "element",
+    "contentContainerStyle": {
+     "paddingTop": 30,
+     "paddingBottom": 117.48470588235294
+    },
+    "showsVerticalScrollIndicator": false,
+    "bounces": true,
+    "overScrollMode": "never",
+    "drawDistance": 1500,
+    "onScrollBeginDrag": "fn",
+    "keys": [
+     "2:1",
+     "2:2",
+     "2:3",
+     "2:4",
+     "2:5",
+     "2:6"
+    ]
+   }
+  ],
+  "calls": [
+   [
+    "scrollToIndex",
+    {
+     "index": 2,
+     "animated": false,
+     "viewPosition": 0.05,
+     "viewOffset": 0
+    }
+   ]
+  ],
+  "tree": {
+   "type": "View",
+   "props": {
+    "style": {
+     "width": "100%",
+     "height": "100%",
+     "backgroundColor": "transparent",
+     "overflow": "hidden",
+     "alignItems": "center"
+    }
+   },
+   "children": [
+    {
+     "type": "View",
+     "props": {},
+     "children": null
+    }
+   ]
+  },
+  "unitsRequested": []
+ },
+ "translation, transliteration and word by word settings": {
+  "rows": [
+   {
+    "verse": {
+     "id": 8,
+     "verse_key": "2:1",
+     "surah_number": 2,
+     "ayah_number": 1,
+     "text": "HAFS-TEXT-2:1",
+     "translation": "TRANSLATION-2:1",
+     "transliteration": "TRANSLITERATION-2:1"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": true,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": true,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": true,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 9,
+     "verse_key": "2:2",
+     "surah_number": 2,
+     "ayah_number": 2,
+     "text": "HAFS-TEXT-2:2",
+     "translation": "TRANSLATION-2:2",
+     "transliteration": "TRANSLITERATION-2:2"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": true,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": true,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": true,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 10,
+     "verse_key": "2:3",
+     "surah_number": 2,
+     "ayah_number": 3,
+     "text": "HAFS-TEXT-2:3",
+     "translation": "TRANSLATION-2:3",
+     "transliteration": "TRANSLITERATION-2:3"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": true,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": true,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": true,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 11,
+     "verse_key": "2:4",
+     "surah_number": 2,
+     "ayah_number": 4,
+     "text": "HAFS-TEXT-2:4",
+     "translation": "TRANSLATION-2:4",
+     "transliteration": "TRANSLITERATION-2:4"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": true,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": true,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": true,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 12,
+     "verse_key": "2:5",
+     "surah_number": 2,
+     "ayah_number": 5,
+     "text": "HAFS-TEXT-2:5",
+     "translation": "TRANSLATION-2:5",
+     "transliteration": "TRANSLITERATION-2:5"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": true,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": true,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": true,
+    "rewayah": "hafs"
+   },
+   {
+    "verse": {
+     "id": 13,
+     "verse_key": "2:6",
+     "surah_number": 2,
+     "ayah_number": 6,
+     "text": "HAFS-TEXT-2:6",
+     "translation": "TRANSLATION-2:6",
+     "transliteration": "TRANSLITERATION-2:6"
+    },
+    "onVersePress": "fn",
+    "textColor": "#111111",
+    "borderColor": "#cccccc",
+    "showTranslation": true,
+    "showTransliteration": true,
+    "showTajweed": true,
+    "arabicFontFamily": "Uthmani",
+    "transliterationFontSize": 14,
+    "translationFontSize": 15,
+    "arabicFontSize": 24,
+    "fontMgr": {
+     "fake": "fontMgr"
+    },
+    "dkFontFamily": "DigitalKhattV2",
+    "wbwFontFamily": "DigitalKhattV2",
+    "indexedTajweedData": null,
+    "isActive": false,
+    "translationName": "Translation",
+    "translationId": "saheeh",
+    "showWBW": true,
+    "wbwShowTranslation": true,
+    "wbwShowTransliteration": true,
+    "rewayah": "hafs"
+   }
+  ],
+  "list": [
+   {
+    "style": {
+     "width": 705.4285714285714,
+     "height": "100%"
+    },
+    "renderItem": "fn",
+    "extraData": "true-true-true-true-24-normal-true-true-false-#A86A00",
+    "keyExtractor": "fn",
+    "ListHeaderComponent": "element",
+    "contentContainerStyle": {
+     "paddingTop": 30,
+     "paddingBottom": 117.48470588235294
+    },
+    "showsVerticalScrollIndicator": false,
+    "bounces": true,
+    "overScrollMode": "never",
+    "drawDistance": 1500,
+    "onScrollBeginDrag": "fn",
+    "keys": [
+     "2:1",
+     "2:2",
+     "2:3",
+     "2:4",
+     "2:5",
+     "2:6"
+    ]
+   }
+  ],
+  "calls": [
+   [
+    "scrollToOffset",
+    {
+     "offset": 0,
+     "animated": false
+    }
+   ]
+  ],
+  "tree": {
+   "type": "View",
+   "props": {
+    "style": {
+     "width": "100%",
+     "height": "100%",
+     "backgroundColor": "transparent",
+     "overflow": "hidden",
+     "alignItems": "center"
+    }
+   },
+   "children": [
+    {
+     "type": "View",
+     "props": {},
+     "children": null
+    }
+   ]
+  },
+  "unitsRequested": []
+ }
+}

@@ -18,6 +18,10 @@ import {GradientText} from '@/components/GradientText';
 import {surahGlyphMap} from '@/utils/surahGlyphMap';
 
 import type {RecordingType} from '@/types/uploads';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+import {localizeDigits} from '@/i18n/format';
+// @ai-end
 
 interface UploadCardProps {
   title: string;
@@ -33,6 +37,7 @@ interface UploadCardProps {
   recordingType?: RecordingType;
 }
 
+// @ai-start
 export const UploadCard: React.FC<UploadCardProps> = ({
   title,
   subtitle,
@@ -47,6 +52,7 @@ export const UploadCard: React.FC<UploadCardProps> = ({
   recordingType,
 }) => {
   const {theme} = useTheme();
+  const {t} = useTranslation('player');
 
   const playbackState = usePlayerStore(state => state.playback.state);
   const currentIndex = usePlayerStore(state => state.queue.currentIndex);
@@ -183,15 +189,17 @@ export const UploadCard: React.FC<UploadCardProps> = ({
               <View style={styles.tag}>
                 <Text style={styles.tagText}>
                   {endVerse != null
-                    ? `${startVerse}-${endVerse}`
-                    : `v${startVerse}`}
+                    ? localizeDigits(`${startVerse}-${endVerse}`)
+                    : t('queue.verseShort', {verse: startVerse})}
                 </Text>
               </View>
             )}
             {recordingType != null && (
               <View style={styles.tag}>
                 <Text style={styles.tagText}>
-                  {recordingType === 'salah' ? 'Salah' : 'Studio'}
+                  {recordingType === 'salah'
+                    ? t('uploads.recordingType.salah')
+                    : t('uploads.recordingType.studio')}
                 </Text>
               </View>
             )}
@@ -210,3 +218,4 @@ export const UploadCard: React.FC<UploadCardProps> = ({
     </Pressable>
   );
 };
+// @ai-end

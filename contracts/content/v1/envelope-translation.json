@@ -1,0 +1,88 @@
+{
+  "envelope": 1,
+  "key": "qf:translations:20",
+  "version": 1,
+  "source": "qf",
+  "fetched_at": "2026-01-01T00:00:00.000Z",
+  "snapshot": {
+    "resource_group": "translations",
+    "resource_id": 20,
+    "resource_content_id": 20,
+    "schema_version": 1,
+    "sync_sequence": 1,
+    "records": [
+      {
+        "id": 900001,
+        "resource_id": 20,
+        "resource_content_id": 20,
+        "verse_id": 1,
+        "verse_key": "1:1",
+        "chapter_id": 1,
+        "verse_number": 1,
+        "text": "Synthetic translation one",
+        "foot_notes": [],
+        "language_id": 38,
+        "language_name": "english",
+        "juz_number": 1,
+        "hizb_number": 1,
+        "rub_el_hizb_number": 1,
+        "manzil_number": 1,
+        "ruku_number": 1,
+        "surah_ruku_number": 1,
+        "page_number": 1,
+        "updated_at": "2024-02-02T21:23:47.000Z"
+      },
+      {
+        "id": 900002,
+        "resource_id": 20,
+        "resource_content_id": 20,
+        "verse_id": 2,
+        "verse_key": "1:2",
+        "chapter_id": 1,
+        "verse_number": 2,
+        "text": "Synthetic translation two<sup foot_note=254011>1</sup>",
+        "foot_notes": [
+          {
+            "id": 254011,
+            "translation_id": 900002,
+            "resource_content_id": 20,
+            "language_id": 38,
+            "language_name": "english",
+            "text": "<p>Synthetic footnote</p>"
+          }
+        ],
+        "language_id": 38,
+        "language_name": "english",
+        "juz_number": 1,
+        "hizb_number": 1,
+        "rub_el_hizb_number": 1,
+        "manzil_number": 1,
+        "ruku_number": 1,
+        "surah_ruku_number": 1,
+        "page_number": 1,
+        "updated_at": "2024-02-02T21:23:47.000Z"
+      },
+      {
+        "id": 900003,
+        "resource_id": 20,
+        "resource_content_id": 20,
+        "verse_id": 3,
+        "verse_key": "1:3",
+        "chapter_id": 1,
+        "verse_number": 3,
+        "text": "Synthetic translation three",
+        "foot_notes": [],
+        "language_id": 38,
+        "language_name": "english",
+        "juz_number": 1,
+        "hizb_number": 1,
+        "rub_el_hizb_number": 1,
+        "manzil_number": 1,
+        "ruku_number": 1,
+        "surah_ruku_number": 1,
+        "page_number": 1,
+        "updated_at": "2024-02-02T21:23:47.000Z"
+      }
+    ]
+  }
+}

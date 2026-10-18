@@ -1,4 +1,7 @@
 import {useEffect, useRef} from 'react';
+// @ai-start
+import i18n from '@/i18n';
+// @ai-end
 import {useCurrentTrackResolvedRewayah} from '@/hooks/useCurrentTrackRewayah';
 import {getShortLabel} from '@/services/rewayah/RewayahIdentity';
 import {showToast} from '@/utils/toastUtils';
@@ -18,6 +21,7 @@ import {showToast} from '@/utils/toastUtils';
 //
 // Mount once at the player-sheet level. Per-track re-mounts would
 // re-trigger the first-observation suppression and drop every toast.
+// @ai-start
 export function usePlayingRewayahObserver(): void {
   const resolved = useCurrentTrackResolvedRewayah();
   const lastAnnouncedRef = useRef<string | null>(null);
@@ -37,9 +41,10 @@ export function usePlayingRewayahObserver(): void {
     if (lastAnnouncedRef.current === key) return;
     lastAnnouncedRef.current = key;
     if (resolved.isFallback) {
-      showToast('Showing in Hafs');
+      showToast(i18n.t('content:toasts.showingInHafs'));
       return;
     }
-    showToast('Now reading', getShortLabel(resolved.id));
+    showToast(i18n.t('content:toasts.nowReading'), getShortLabel(resolved.id));
   }, [resolved]);
 }
+// @ai-end

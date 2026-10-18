@@ -15,6 +15,8 @@ import {
   StackedVolumesIcon,
   GroupedLinesIcon,
   TasbihIcon,
+  MushafiIcon,
+  DualPagesIcon,
 } from '@/components/Icons';
 
 const CUSTOM_ICONS: Record<
@@ -30,6 +32,8 @@ const CUSTOM_ICONS: Record<
   adhkar: {component: TasbihIcon, size: moderateScale(56)},
   translations: {component: StackedVolumesIcon, size: moderateScale(56)},
   themes: {component: GroupedLinesIcon, size: moderateScale(56)},
+  'mushaf-1440': {component: MushafiIcon, size: moderateScale(52)},
+  ipad: {component: DualPagesIcon, size: moderateScale(56)},
 };
 
 function renderIcon(page: OnboardingPageType) {

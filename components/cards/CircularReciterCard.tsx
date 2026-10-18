@@ -15,6 +15,9 @@ import {Feather} from '@expo/vector-icons';
 import Color from 'color';
 import {Link} from 'expo-router';
 import {USE_GLASS} from '@/hooks/useGlassProps';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+// @ai-end
 
 interface CircularReciterCardProps {
   imageUrl?: string;
@@ -31,6 +34,7 @@ interface CircularReciterCardProps {
   showFollowAlong?: boolean;
 }
 
+// @ai-start
 export const CircularReciterCard: React.FC<CircularReciterCardProps> = ({
   imageUrl,
   name,
@@ -46,6 +50,7 @@ export const CircularReciterCard: React.FC<CircularReciterCardProps> = ({
   showFollowAlong,
 }) => {
   const {theme} = useTheme();
+  const {t} = useTranslation(['home', 'common']);
 
   const sizeMap = {
     small: 50,
@@ -79,7 +84,7 @@ export const CircularReciterCard: React.FC<CircularReciterCardProps> = ({
           height: '100%',
         },
         selectedOverlay: {
-          ...StyleSheet.absoluteFillObject,
+          ...StyleSheet.absoluteFill,
           backgroundColor: Color(theme.colors.text).alpha(0.25).toString(),
           justifyContent: 'center',
           alignItems: 'center',
@@ -166,7 +171,7 @@ export const CircularReciterCard: React.FC<CircularReciterCardProps> = ({
             </View>
           ) : (
             <Text style={styles.subtitle} numberOfLines={1}>
-              Reciter
+              {t('common:terms.reciter')}
             </Text>
           )}
         </>
@@ -206,3 +211,4 @@ export const CircularReciterCard: React.FC<CircularReciterCardProps> = ({
     </Pressable>
   );
 };
+// @ai-end

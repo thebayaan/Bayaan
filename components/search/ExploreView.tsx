@@ -18,6 +18,10 @@ import {useBottomInset} from '@/hooks/useBottomInset';
 import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
 import {useResponsive} from '@/hooks/useResponsive';
 import {GlassView} from 'expo-glass-effect';
+// @ai-start
+import {latinLetterSpacing} from '@/utils/rtl';
+import i18n from '@/i18n';
+// @ai-end
 
 // CONFIGURABLE ROW HEIGHT MULTIPLIER - This is the 'x' variable you can adjust
 const ROW_HEIGHT_UNIT = 80; // Base unit 'x' in points - adjust this value to change all card heights proportionally
@@ -38,11 +42,16 @@ interface BentoTile {
 }
 
 // Browse tiles - always show these
+// @ai-start
 const BROWSE_TILES: BentoTile[] = [
   {
     id: 'all-reciters',
-    title: 'Browse All',
-    subtitle: 'Reciters',
+    get title() {
+      return i18n.t('home:browse.browseAll');
+    },
+    get subtitle() {
+      return i18n.t('common:terms.reciters');
+    },
     backgroundColor: '#1E40AF',
     route: '/(tabs)/(b.search)/browse-all',
     heightMultiplier: 1,
@@ -52,8 +61,12 @@ const BROWSE_TILES: BentoTile[] = [
   },
   {
     id: 'all-surahs',
-    title: 'Browse All',
-    subtitle: 'Surahs',
+    get title() {
+      return i18n.t('home:browse.browseAll');
+    },
+    get subtitle() {
+      return i18n.t('common:terms.surahs');
+    },
     backgroundColor: '#7C3AED',
     route: '/(tabs)/(b.search)/browse-all-surahs',
     heightMultiplier: 1,
@@ -62,6 +75,7 @@ const BROWSE_TILES: BentoTile[] = [
     type: 'browse',
   },
 ];
+// @ai-end
 
 // Convert system playlists to BentoTiles
 function systemPlaylistToTile(playlist: SystemPlaylist): BentoTile {
@@ -219,6 +233,7 @@ BentoTileComponent.displayName = 'BentoTileComponent';
 // Static inner styles for BentoTileComponent (no theme dependency).
 // Per-tile tinted-border style is built inline (needs dynamic borderColor);
 // everything theme-independent lives here.
+// @ai-start
 const tileInnerStyles = StyleSheet.create({
   glassInner: {
     flex: 1,
@@ -245,7 +260,7 @@ const tileInnerStyles = StyleSheet.create({
     fontFamily: 'Manrope-Bold',
     lineHeight: moderateScale(22),
     textAlign: 'left',
-    letterSpacing: 0.2,
+    letterSpacing: latinLetterSpacing(0.2),
   },
   subtitle: {
     fontFamily: 'Manrope-Medium',
@@ -253,10 +268,12 @@ const tileInnerStyles = StyleSheet.create({
     lineHeight: moderateScale(16),
     textAlign: 'left',
     opacity: 0.9,
-    letterSpacing: 0.1,
+    letterSpacing: latinLetterSpacing(0.1),
   },
 });
+// @ai-end
 
+// @ai-start
 export const ExploreView = React.memo(
   function ExploreView({}: ExploreViewProps) {
     const {theme} = useTheme();
@@ -270,15 +287,19 @@ export const ExploreView = React.memo(
     // visible area and tiles don't overlap. On phones we keep the original
     // `useWindowDimensions` behavior untouched.
     const [measuredWidth, setMeasuredWidth] = useState<number | null>(null);
-    const onContentLayout = useCallback((e: LayoutChangeEvent) => {
-      if (!isTablet) return;
-      const w = e.nativeEvent.layout.width;
-      if (w > 0) {
-        setMeasuredWidth(prev => (prev === w ? prev : w));
-      }
-    }, [isTablet]);
+    const onContentLayout = useCallback(
+      (e: LayoutChangeEvent) => {
+        if (!isTablet) return;
+        const w = e.nativeEvent.layout.width;
+        if (w > 0) {
+          setMeasuredWidth(prev => (prev === w ? prev : w));
+        }
+      },
+      [isTablet],
+    );
 
-    const width = isTablet && measuredWidth != null ? measuredWidth : windowWidth;
+    const width =
+      isTablet && measuredWidth != null ? measuredWidth : windowWidth;
 
     // Calculate tile dimensions based on screen width - strict two-column grid
     const tileDimensions = useMemo(() => {
@@ -371,6 +392,7 @@ export const ExploreView = React.memo(
     );
   },
 );
+// @ai-end
 
 const createStyles = (theme: ReturnType<typeof useTheme>['theme']) =>
   StyleSheet.create({

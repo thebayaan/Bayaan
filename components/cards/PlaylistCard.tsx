@@ -7,6 +7,9 @@ import Color from 'color';
 import {Link} from 'expo-router';
 import {LinearGradient} from 'expo-linear-gradient';
 import {USE_GLASS} from '@/hooks/useGlassProps';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+// @ai-end
 
 interface PlaylistCardProps {
   name: string;
@@ -19,6 +22,7 @@ interface PlaylistCardProps {
   height?: number;
 }
 
+// @ai-start
 export const PlaylistCard: React.FC<PlaylistCardProps> = ({
   name,
   itemCount,
@@ -30,6 +34,7 @@ export const PlaylistCard: React.FC<PlaylistCardProps> = ({
   height,
 }) => {
   const {theme} = useTheme();
+  const {t} = useTranslation(['home', 'common']);
 
   const playlistColor = color || theme.colors.text;
 
@@ -106,7 +111,7 @@ export const PlaylistCard: React.FC<PlaylistCardProps> = ({
           {name}
         </Text>
         <Text style={styles.subtitle} numberOfLines={1}>
-          {itemCount} {itemCount === 1 ? 'surah' : 'surahs'}
+          {t('common:counts.surahs', {count: itemCount})}
         </Text>
       </LinearGradient>
     </View>
@@ -137,3 +142,4 @@ export const PlaylistCard: React.FC<PlaylistCardProps> = ({
     </Pressable>
   );
 };
+// @ai-end

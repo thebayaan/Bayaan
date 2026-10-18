@@ -36,6 +36,9 @@ import {
   getQCFSurahNameChar,
 } from '@/constants/surahNameGlyphs';
 import Color from 'color';
+// @ai-start
+import {latinLetterSpacing} from '@/utils/rtl';
+// @ai-end
 
 const ICON_PAGE = 604;
 const LINES_PER_PAGE = 15;
@@ -46,6 +49,7 @@ interface MushafPageIconProps {
   borderColor?: string;
 }
 
+// @ai-start
 const MushafPageIcon: React.FC<MushafPageIconProps> = ({
   size,
   color,
@@ -302,7 +306,7 @@ const MushafPageIcon: React.FC<MushafPageIconProps> = ({
                   : (justResult.simpleSpacing - SPACEWIDTH) * scale;
               paragraphBuilder.pushStyle({
                 ...textStyle,
-                letterSpacing: spacing,
+                letterSpacing: latinLetterSpacing(spacing),
               });
               paragraphBuilder.addText(' ');
               paragraphBuilder.pop();
@@ -340,6 +344,7 @@ const MushafPageIcon: React.FC<MushafPageIconProps> = ({
     </View>
   );
 };
+// @ai-end
 
 const styles = StyleSheet.create({
   container: {

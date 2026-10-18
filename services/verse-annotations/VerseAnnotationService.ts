@@ -115,6 +115,14 @@ class VerseAnnotationService {
   removeHighlight = verseAnnotationDatabaseService.removeHighlight.bind(
     verseAnnotationDatabaseService,
   );
+  // @ai-start
+  // The bookmark / highlight writes of one change in ONE transaction (all or
+  // none); each row names the rewayah it is saved in.
+  applyAnnotationChanges =
+    verseAnnotationDatabaseService.applyAnnotationChanges.bind(
+      verseAnnotationDatabaseService,
+    );
+  // @ai-end
   getHighlightsBySurah =
     verseAnnotationDatabaseService.getHighlightsBySurah.bind(
       verseAnnotationDatabaseService,

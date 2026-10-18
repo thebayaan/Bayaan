@@ -4,6 +4,9 @@
  * Usage:
  *   npx tsx scripts/generate-surah-og-images.ts            # generate + upload all 114
  *   npx tsx scripts/generate-surah-og-images.ts --dry-run   # generate first 3 to /tmp/ and open
+ *
+ * --car renders the CarPlay / Android Auto variant instead: 512x512, large
+ * names that stay legible at dashboard size, uploaded to assets/car/surah/.
  */
 
 import * as fs from 'fs';
@@ -15,8 +18,11 @@ import dotenv from 'dotenv';
 
 // ── Config ──────────────────────────────────────────────────────────────────
 
-const SIZE = 1200;
+const CAR = process.argv.includes('--car');
+const SIZE = CAR ? 512 : 1200;
 const DRY_RUN = process.argv.includes('--dry-run');
+const KEY_PREFIX = CAR ? 'assets/car/surah' : 'assets/og-images/surah';
+const FILE_PREFIX = CAR ? '/tmp/surah-car' : '/tmp/surah-og';
 
 // ── Load env ────────────────────────────────────────────────────────────────
 
@@ -253,8 +259,8 @@ function buildHtml(surah: SurahData, dark: boolean): string {
   const baseBg = dark ? HERO_BG_DARK[idx] : HERO_BG_LIGHT[idx];
   const accentColor = HERO_ACCENT_DARK[idx];
   const textColor = dark ? 'white' : '#1A1A1A';
-  const mainOpacity = dark ? 0.18 : 0.22;
-  const secondaryOpacity = dark ? 0.1 : 0.14;
+  const mainOpacity = CAR ? (dark ? 0.42 : 0.5) : dark ? 0.18 : 0.22;
+  const secondaryOpacity = CAR ? (dark ? 0.26 : 0.32) : dark ? 0.1 : 0.14;
   const subtleAlpha = dark ? '0.15' : '0.25';
 
   const isMakkah = surah.revelation_place === 'Makkah';
@@ -388,6 +394,15 @@ function buildHtml(surah: SurahData, dark: boolean): string {
     height: 36px;
     color: ${textColor};
   }
+${
+  CAR
+    ? `
+  .content { padding: 28px; }
+  .top-row, .bottom-row, .translated { display: none; }
+  .arabic-name { font-size: 150px; line-height: 1; margin-bottom: 4px; }
+  .surah-name { font-size: 64px; font-weight: 600; letter-spacing: -0.5px; }`
+    : ''
+}
 </style>
 </head>
 <body>
@@ -395,19 +410,27 @@ function buildHtml(surah: SurahData, dark: boolean): string {
   <svg class="mesh" width="${SIZE}" height="${SIZE}" xmlns="http://www.w3.org/2000/svg">
     <defs>
       <radialGradient id="g1" cx="0.2" cy="0.3" r="0.45">
-        <stop offset="0%" stop-color="${palette[0]}" stop-opacity="${mainOpacity}"/>
+        <stop offset="0%" stop-color="${
+          palette[0]
+        }" stop-opacity="${mainOpacity}"/>
         <stop offset="100%" stop-color="${palette[0]}" stop-opacity="0"/>
       </radialGradient>
       <radialGradient id="g2" cx="0.8" cy="0.75" r="0.4">
-        <stop offset="0%" stop-color="${palette[1]}" stop-opacity="${mainOpacity}"/>
+        <stop offset="0%" stop-color="${
+          palette[1]
+        }" stop-opacity="${mainOpacity}"/>
         <stop offset="100%" stop-color="${palette[1]}" stop-opacity="0"/>
       </radialGradient>
       <radialGradient id="g3" cx="0.6" cy="0.2" r="0.32">
-        <stop offset="0%" stop-color="${palette[2]}" stop-opacity="${secondaryOpacity}"/>
+        <stop offset="0%" stop-color="${
+          palette[2]
+        }" stop-opacity="${secondaryOpacity}"/>
         <stop offset="100%" stop-color="${palette[2]}" stop-opacity="0"/>
       </radialGradient>
       <radialGradient id="g4" cx="0.3" cy="0.85" r="0.28">
-        <stop offset="0%" stop-color="${palette[3]}" stop-opacity="${secondaryOpacity}"/>
+        <stop offset="0%" stop-color="${
+          palette[3]
+        }" stop-opacity="${secondaryOpacity}"/>
         <stop offset="100%" stop-color="${palette[3]}" stop-opacity="0"/>
       </radialGradient>
     </defs>
@@ -423,7 +446,9 @@ function buildHtml(surah: SurahData, dark: boolean): string {
         <span class="place-icon">${placeIcon}</span>
       </div>
     </div>
-    <div class="arabic-name">&#x${(SURAH_GLYPHS[surah.id]?.codePointAt(0) ?? 0xe904).toString(16)};</div>
+    <div class="arabic-name">&#x${(
+      SURAH_GLYPHS[surah.id]?.codePointAt(0) ?? 0xe904
+    ).toString(16)};</div>
     <div class="surah-name">${surah.name}</div>
     <div class="translated">${surah.translated_name_english}</div>
     <div class="bottom-row">
@@ -457,11 +482,16 @@ async function uploadToR2(key: string, data: Buffer): Promise<void> {
 // ── Main ────────────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
-  const toProcess = DRY_RUN ? surahs.slice(0, 3) : surahs;
+  const previewIds = CAR ? [1, 18, 67] : [1, 2, 3];
+  const toProcess = DRY_RUN
+    ? surahs.filter(s => previewIds.includes(s.id))
+    : surahs;
   console.log(
     DRY_RUN
       ? `Dry run: generating ${toProcess.length} images to /tmp/`
-      : `Generating and uploading ${toProcess.length} surah OG images...`,
+      : `Generating and uploading ${toProcess.length} surah ${
+          CAR ? 'car' : 'OG'
+        } images...`,
   );
 
   const browser = await chromium.launch();
@@ -486,11 +516,11 @@ async function main(): Promise<void> {
       const suffix = mode === 'light' ? '-light' : '';
 
       if (DRY_RUN) {
-        const outPath = `/tmp/surah-og-${surah.id}${suffix}.png`;
+        const outPath = `${FILE_PREFIX}-${surah.id}${suffix}.png`;
         fs.writeFileSync(outPath, png);
         console.log(`  [${surah.id}] ${surah.name} (${mode}) -> ${outPath}`);
       } else {
-        const key = `assets/og-images/surah/${surah.id}${suffix}.png`;
+        const key = `${KEY_PREFIX}/${surah.id}${suffix}.png`;
         await uploadToR2(key, Buffer.from(png));
         console.log(`  [${surah.id}] ${surah.name} (${mode}) -> ${key}`);
       }
@@ -503,11 +533,11 @@ async function main(): Promise<void> {
     console.log('\nOpening generated images...');
     const files = toProcess
       .flatMap(s => [
-        `/tmp/surah-og-${s.id}.png`,
-        `/tmp/surah-og-${s.id}-light.png`,
+        `${FILE_PREFIX}-${s.id}.png`,
+        `${FILE_PREFIX}-${s.id}-light.png`,
       ])
       .join(' ');
-    execSync(`open ${files}`);
+    if (!process.env.NO_OPEN) execSync(`open ${files}`);
   }
 
   console.log('Done.');

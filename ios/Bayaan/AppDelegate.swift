@@ -1,5 +1,7 @@
 internal import Expo
 import React
+import Intents
+internal import BayaanCar
 import ReactAppDependencyProvider
 
 @main
@@ -21,15 +23,32 @@ class AppDelegate: ExpoAppDelegate {
     reactNativeFactory = factory
 
 #if os(iOS) || os(tvOS)
-    window = UIWindow(frame: UIScreen.main.bounds)
-    factory.startReactNative(
-      withModuleName: "main",
-      in: window,
-      launchOptions: launchOptions)
+    // @bayaan-car scene bridge start
+    BayaanCarSceneBridge.shared.configure(
+      start: { hostWindow, extra in
+        let merged = (launchOptions ?? [:]).merging(extra) { _, new in new }
+        factory.startReactNative(withModuleName: "main", in: hostWindow, launchOptions: merged)
+      },
+      onWindow: { [weak self] hostWindow in self?.window = hostWindow })
+    // @bayaan-car scene bridge end
 #endif
 
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
+
+  // @bayaan-car siri start
+  func application(_ application: UIApplication, handlerFor intent: INIntent) -> Any? {
+    return BayaanCarSiri.handler(for: intent)
+  }
+
+  func application(
+    _ application: UIApplication,
+    handle intent: INIntent,
+    completionHandler: @escaping (INIntentResponse) -> Void
+  ) {
+    BayaanCarSiri.handle(intent, completion: completionHandler)
+  }
+  // @bayaan-car siri end
 
   // Linking API
   public override func application(

@@ -307,12 +307,13 @@ All lazy-loaded via `react-native-actions-sheet`:
 
 | Sheet | File | Purpose |
 |-------|------|---------|
-| `verse-actions` | `VerseActionsSheet.tsx` | Main action grid |
-| `verse-highlight` | `VerseHighlightSheet.tsx` | Color picker (6 circles) |
+| `verse-actions` | `VerseActionsSheet.tsx` | Main action grid. Highlight, copy, share, similar verses, tafseer, translation and the other actions open as content views inside this sheet (`components/sheets/verse-actions/`). |
 | `verse-note` | `VerseNoteSheet.tsx` | TextInput with Save/Delete |
-| `verse-copy` | `VerseCopySheet.tsx` | Checkbox copy options |
-| `verse-tafseer` | `VerseTafseerSheet.tsx` | Scrollable tafseer content |
-| `verse-translation` | `VerseTranslationSheet.tsx` | Translation picker |
+
+The standalone highlight, copy, share, tafseer and translation sheets of the
+v1 plan no longer exist. Copy and share resolve the text of the rewayah they
+are labelled with, never Hafs under a rewayah label (see
+[rewayat.md](./rewayat.md)).
 
 **VerseActionsSheet layout** (follows `SurahOptionsSheet` options grid pattern):
 
@@ -326,7 +327,7 @@ Header: "Al-Baqarah 2:255"
 ```
 
 - Actions that complete instantly (bookmark toggle, share) close the sheet
-- Actions needing sub-sheets (highlight, note, copy, translation, tafseer) open the sub-sheet
+- Note opens the `verse-note` sheet; the other actions switch the sheet's content view
 
 **Share** uses React Native's `Share.share()`:
 
@@ -335,7 +336,8 @@ Header: "Al-Baqarah 2:255"
 
 {translation}
 
-— Quran {surah}:{ayah}
+Quran {surah}:{ayah}            (Hafs)
+Quran {surah}:{ayah} · Warsh    (any other rewayah: its short label)
 ```
 
 All sheets registered in `components/sheets/sheets.tsx` using `lazySheet` + type declarations.
@@ -384,11 +386,9 @@ hooks/
 components/
   sheets/
     VerseActionsSheet.tsx
-    VerseHighlightSheet.tsx
     VerseNoteSheet.tsx
-    VerseCopySheet.tsx
-    VerseTafseerSheet.tsx
-    VerseTranslationSheet.tsx
+    verse-actions/        (content views: highlight, share, similar verses,
+                           tafseer, translation, note, theme, WBW, ...)
 ```
 
 ### Modified Files

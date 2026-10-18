@@ -6,9 +6,14 @@ import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {surahGlyphMap} from '@/utils/surahGlyphMap';
 import Color from 'color';
-import SkiaVersePreview from '@/components/share/SkiaVersePreview';
 import {getRewayahShortLabel} from '@/utils/rewayahLabels';
 import type {RewayahId} from '@/store/mushafSettingsStore';
+// @ai-start
+import {localizeDigits} from '@/i18n/format';
+import {CollectionVersePreview} from './CollectionVersePreview';
+import {useSavedVerseDescription} from '@/hooks/useSavedVerseDescription';
+import {savedVerseLabel} from '@/services/verse-annotations/unitAnnotations';
+// @ai-end
 
 interface NoteItemProps {
   surahName: string;
@@ -22,6 +27,7 @@ interface NoteItemProps {
   onOptionsPress: () => void;
 }
 
+// @ai-start
 export const NoteItem = memo<NoteItemProps>(
   ({
     surahName,
@@ -53,6 +59,18 @@ export const NoteItem = memo<NoteItemProps>(
       return `${firstSurah}:${firstAyah} - ${lastKey}`;
     }, [isRange, verseKeys, surahNumber, ayahNumber]);
 
+    // @ai-start
+    // A note saved in a non-Hafs rewayah names that rewayah's own verses
+    // (verse_key / verse_keys keep their Hafs anchors): label them in the
+    // rewayah's numbering and preview their own text. Hafs notes unchanged.
+    const description = useSavedVerseDescription({
+      verseKey,
+      verseKeys,
+      rewayahId,
+    });
+    const verseLabel = savedVerseLabel(description, verseRefText);
+    // @ai-end
+
     return (
       <Pressable
         style={styles.container}
@@ -60,9 +78,15 @@ export const NoteItem = memo<NoteItemProps>(
         onLongPress={onOptionsPress}>
         {/* Top bar: pill + surah glyph + options */}
         <View style={styles.topBar}>
-          <View style={styles.versePill}>
-            <Text style={styles.versePillText}>{verseRefText}</Text>
-          </View>
+          {/* @ai-start */}
+          {verseLabel ? (
+            <View style={styles.versePill}>
+              <Text style={styles.versePillText}>
+                {localizeDigits(verseLabel)}
+              </Text>
+            </View>
+          ) : null}
+          {/* @ai-end */}
           {rewayahId && rewayahId !== 'hafs' && (
             <View style={styles.rewayahPill}>
               <Text style={styles.rewayahPillText}>
@@ -89,12 +113,15 @@ export const NoteItem = memo<NoteItemProps>(
 
         {/* Arabic text */}
         <View style={styles.arabicContainer}>
-          <SkiaVersePreview
+          {/* @ai-start */}
+          <CollectionVersePreview
+            description={description}
             verseKey={verseKey}
             verseKeys={verseKeys}
             numberOfLines={isRange ? 3 : undefined}
             rewayah={rewayahId}
           />
+          {/* @ai-end */}
         </View>
 
         {/* Note preview */}
@@ -108,6 +135,7 @@ export const NoteItem = memo<NoteItemProps>(
     );
   },
 );
+// @ai-end
 
 NoteItem.displayName = 'NoteItem';
 

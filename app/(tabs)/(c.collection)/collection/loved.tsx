@@ -39,6 +39,10 @@ import {useCollectionDownloadState} from '@/hooks/useCollectionDownloadState';
 import {CollectionStickyHeader} from '@/components/collection/CollectionStickyHeader';
 import {SheetManager} from 'react-native-actions-sheet';
 import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+import {flipX} from '@/utils/rtl';
+// @ai-end
 
 interface LovedTrack {
   reciterId: string;
@@ -53,10 +57,12 @@ interface LovedTrackData {
   surah: Surah | null;
 }
 
+// @ai-start
 const LovedScreen = () => {
   const {theme} = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const {t} = useTranslation(['collection', 'common']);
   const {lovedTracks, toggleLoved, unloveAll} = useLoved();
   const {addToQueue, updateQueue, play, toggleShuffle} = usePlayerActions();
   const shuffleEnabled = usePlayerStore(state => state.settings.shuffle);
@@ -189,7 +195,9 @@ const LovedScreen = () => {
   useEffect(() => {
     // Create a stable string representation of lovedTracks
     const currentTracksString = JSON.stringify(
-      lovedTracks.map(t => `${t.reciterId}:${t.surahId}:${t.rewayatId || ''}`),
+      lovedTracks.map(
+        lt => `${lt.reciterId}:${lt.surahId}:${lt.rewayatId || ''}`,
+      ),
     );
 
     // Only reload if the content actually changed
@@ -257,7 +265,7 @@ const LovedScreen = () => {
               rewayatId: itemRewayatId,
             };
           })
-          .filter((t): t is NonNullable<typeof t> => t !== null);
+          .filter((qt): qt is NonNullable<typeof qt> => qt !== null);
 
         if (allTracks.length === 0) return;
 
@@ -305,7 +313,7 @@ const LovedScreen = () => {
             rewayatId: itemRewayatId,
           };
         })
-        .filter((t): t is NonNullable<typeof t> => t !== null);
+        .filter((qt): qt is NonNullable<typeof qt> => qt !== null);
 
       if (allTracks.length === 0) return;
 
@@ -365,7 +373,7 @@ const LovedScreen = () => {
             rewayatId: itemRewayatId,
           };
         })
-        .filter((t): t is NonNullable<typeof t> => t !== null);
+        .filter((qt): qt is NonNullable<typeof qt> => qt !== null);
 
       await updateQueue(allTracks, 0);
 
@@ -403,8 +411,8 @@ const LovedScreen = () => {
 
       if (itemsToDownload.length === 0) {
         Alert.alert(
-          'Already Downloaded',
-          'All loved surahs are already downloaded.',
+          t('lovedScreen.alreadyDownloadedTitle'),
+          t('lovedScreen.alreadyDownloadedMessage'),
         );
         setIsDownloadingBulk(false);
         return;
@@ -485,12 +493,15 @@ const LovedScreen = () => {
       }
 
       Alert.alert(
-        'Download Complete',
-        'All loved surahs have been downloaded.',
+        t('lovedScreen.downloadCompleteTitle'),
+        t('lovedScreen.downloadCompleteMessage'),
       );
     } catch (error) {
       console.error('Error in bulk download:', error);
-      Alert.alert('Download Error', 'Some downloads may have failed.');
+      Alert.alert(
+        t('lovedScreen.downloadErrorTitle'),
+        t('lovedScreen.downloadErrorMessage'),
+      );
     } finally {
       setIsDownloadingBulk(false);
     }
@@ -505,6 +516,7 @@ const LovedScreen = () => {
     addDownload,
     clearDownloading,
     setDownloadProgress,
+    t,
   ]);
 
   // Calculate download state for all loved tracks using custom hook
@@ -514,15 +526,13 @@ const LovedScreen = () => {
   const handleOptionsMenu = useCallback(() => {
     SheetManager.show('collection-options', {
       payload: {
-        title: 'Loved',
-        subtitle: `${lovedData.length} ${
-          lovedData.length === 1 ? 'surah' : 'surahs'
-        }`,
+        title: t('collectionScreen.loved'),
+        subtitle: t('common:counts.surahs', {count: lovedData.length}),
         options: [
           {
             label: downloadState.allDownloaded
-              ? 'All Downloaded'
-              : 'Download All',
+              ? t('lovedScreen.allDownloaded')
+              : t('lovedScreen.downloadAll'),
             icon: 'download',
             onPress: handleBulkDownload,
             disabled: downloadState.allDownloaded || downloadState.hasNoTracks,
@@ -532,7 +542,7 @@ const LovedScreen = () => {
               ) : undefined,
           },
           {
-            label: 'Unlove All Surahs',
+            label: t('lovedScreen.unloveAll'),
             icon: 'heart',
             destructive: true,
             customIcon: (
@@ -553,6 +563,7 @@ const LovedScreen = () => {
     handleBulkDownload,
     unloveAll,
     theme.colors.text,
+    t,
   ]);
 
   const renderHeaderRight = useCallback(
@@ -569,7 +580,7 @@ const LovedScreen = () => {
   );
 
   useCollectionNativeHeader({
-    title: 'Loved',
+    title: t('collectionScreen.loved'),
     scrollY,
     hasContent: lovedData.length > 0 && !loading,
     headerRight: lovedData.length > 0 ? renderHeaderRight : undefined,
@@ -617,10 +628,8 @@ const LovedScreen = () => {
   const ListHeaderComponent = useCallback(() => {
     return (
       <LovedHeader
-        title="Loved"
-        subtitle={`${lovedData.length} ${
-          lovedData.length === 1 ? 'surah' : 'surahs'
-        }`}
+        title={t('collectionScreen.loved')}
+        subtitle={t('common:counts.surahs', {count: lovedData.length})}
         onPlayPress={handlePlayAll}
         onShufflePress={handleShuffle}
         onOptionsPress={USE_GLASS ? undefined : handleOptionsMenu}
@@ -633,6 +642,7 @@ const LovedScreen = () => {
     handleShuffle,
     handleOptionsMenu,
     theme,
+    t,
   ]);
 
   const renderItem: ListRenderItem<LovedTrackData> = ({item}) => {
@@ -676,14 +686,17 @@ const LovedScreen = () => {
                 name="arrow-left"
                 size={moderateScale(22)}
                 color={theme.colors.text}
+                style={flipX}
               />
             </Pressable>
-            <Text style={styles.emptyHeaderTitle}>Loved</Text>
+            <Text style={styles.emptyHeaderTitle}>
+              {t('collectionScreen.loved')}
+            </Text>
             <View style={styles.emptyHeaderBack} />
           </View>
         )}
         <View style={styles.emptyContent}>
-          <Text style={styles.loadingText}>Loading...</Text>
+          <Text style={styles.loadingText}>{t('common:status.loading')}</Text>
         </View>
       </View>
     );
@@ -702,9 +715,12 @@ const LovedScreen = () => {
                 name="arrow-left"
                 size={moderateScale(22)}
                 color={theme.colors.text}
+                style={flipX}
               />
             </Pressable>
-            <Text style={styles.emptyHeaderTitle}>Loved</Text>
+            <Text style={styles.emptyHeaderTitle}>
+              {t('collectionScreen.loved')}
+            </Text>
             <View style={styles.emptyHeaderBack} />
           </View>
         )}
@@ -716,8 +732,12 @@ const LovedScreen = () => {
               filled={true}
             />
           </View>
-          <Text style={styles.emptyTitle}>No loved surahs yet</Text>
-          <Text style={styles.emptySubtitle}>Love surahs to see them here</Text>
+          <Text style={styles.emptyTitle}>
+            {t('collectionScreen.empty.loved')}
+          </Text>
+          <Text style={styles.emptySubtitle}>
+            {t('lovedScreen.emptySubtitle')}
+          </Text>
         </View>
       </View>
     );
@@ -744,6 +764,7 @@ const LovedScreen = () => {
               name="arrow-left"
               size={moderateScale(24)}
               color={theme.colors.text}
+              style={flipX}
             />
           </Pressable>
         </RNAnimated.View>
@@ -763,9 +784,15 @@ const LovedScreen = () => {
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
       />
-      {!USE_GLASS && <CollectionStickyHeader title="Loved" scrollY={scrollY} />}
+      {!USE_GLASS && (
+        <CollectionStickyHeader
+          title={t('collectionScreen.loved')}
+          scrollY={scrollY}
+        />
+      )}
     </View>
   );
 };
+// @ai-end
 
 export default LovedScreen;

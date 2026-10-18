@@ -1,4 +1,4 @@
-import {DefaultTheme} from '@react-navigation/native';
+import {DefaultTheme} from 'expo-router';
 
 export const lightColors = {
   ...DefaultTheme.colors,

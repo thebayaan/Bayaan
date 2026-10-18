@@ -28,6 +28,23 @@ import {
   type TafseerResult,
 } from '@/services/tafseer/TafseerDbService';
 import {TafseerHtmlRenderer} from './TafseerHtmlRenderer';
+// @ai-start
+import {flipX, latinLetterSpacing} from '@/utils/rtl';
+import {useTranslation} from 'react-i18next';
+import {localizeDigits} from '@/i18n/format';
+import {
+  compareTafaseer,
+  getTafseerDisplayName,
+  getTafseerLanguageDisplayName,
+} from '@/i18n/tafseer';
+import {
+  distinctTafseerResults,
+  hafsPagerPage,
+  tafseerBadge,
+  unitPagerPage,
+  type UnitStart,
+} from './verseUnitScreens';
+// @ai-end
 
 // ─── Data loading (module scope, runs once) ───────────────────────────────
 const quranData = require('@/data/quran.json') as QuranData;
@@ -65,31 +82,63 @@ interface TafseerContentProps {
   surahNumber: number;
   ayahNumber: number;
   rewayah?: import('@/store/mushafSettingsStore').RewayahId;
+  // @ai-start
+  /** Another rewayah: page through ITS verses (its numbering), starting at
+   *  `unit`. Absent for Hafs, which pages the Hafs verses as before. */
+  unitStart?: UnitStart;
+  // @ai-end
   onBack: () => void;
 }
 
+// @ai-start
 export const TafseerContent: React.FC<TafseerContentProps> = ({
   surahNumber,
   ayahNumber,
   rewayah,
+  unitStart, // @ai
   onBack,
 }) => {
   const {theme} = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const {t} = useTranslation(['sheets', 'common']);
   const downloadedMeta = useTafseerStore(s => s.downloadedMeta);
+  const sortedTafaseer = useMemo(
+    () => [...downloadedMeta].sort(compareTafaseer),
+    [downloadedMeta],
+  );
   const selectedTafseerId = useTafseerStore(s => s.selectedTafseerId);
   const setSelectedTafseerId = useTafseerStore(s => s.setSelectedTafseerId);
 
   const initialVerseKey = `${surahNumber}:${ayahNumber}`;
-  const initialIndex = verseKeyToIndex[initialVerseKey] ?? 0;
+  // @ai-start
+  const unitModel = unitStart?.model ?? null;
+  const initialIndex = unitStart
+    ? unitStart.unit.index
+    : (verseKeyToIndex[initialVerseKey] ?? 0);
+  const total = unitModel ? unitModel.units.length : TOTAL_VERSES;
+  // @ai-end
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
-  const [tafseerResult, setTafseerResult] = useState<TafseerResult | null>(
-    null,
-  );
+  // @ai-start
+  // One passage per distinct tafsir entry of the page's Hafs verses (a Hafs
+  // page has at most one, as before).
+  const [tafseerResults, setTafseerResults] = useState<TafseerResult[]>([]);
+  // @ai-end
   const [loading, setLoading] = useState(true);
   const [showSelector, setShowSelector] = useState(false);
 
-  const verse = allVerses[currentIndex];
+  // @ai-start
+  const page = useMemo(
+    () =>
+      unitModel
+        ? unitPagerPage(
+            unitModel,
+            unitModel.units[Math.min(currentIndex, total - 1)],
+            'tafsir',
+          )
+        : hafsPagerPage(allVerses[currentIndex].verseKey),
+    [unitModel, currentIndex, total],
+  );
+  // @ai-end
 
   const activeTafseer = useMemo(
     () => downloadedMeta.find(m => m.identifier === selectedTafseerId),
@@ -99,7 +148,7 @@ export const TafseerContent: React.FC<TafseerContentProps> = ({
   // Load tafseer text when verse or tafseer changes
   useEffect(() => {
     if (!selectedTafseerId) {
-      setTafseerResult(null);
+      setTafseerResults([]); // @ai
       setLoading(false);
       return;
     }
@@ -107,36 +156,43 @@ export const TafseerContent: React.FC<TafseerContentProps> = ({
     let cancelled = false;
     setLoading(true);
 
-    tafseerDbService
-      .getTafseerForVerse(verse.verseKey, selectedTafseerId)
-      .then(result => {
+    // @ai-start
+    Promise.all(
+      page.hafsKeys.map(hafsKey =>
+        tafseerDbService.getTafseerForVerse(hafsKey, selectedTafseerId),
+      ),
+    )
+      .then(results => {
         if (!cancelled) {
-          setTafseerResult(result);
+          setTafseerResults(distinctTafseerResults(results));
           setLoading(false);
         }
       })
       .catch(() => {
         if (!cancelled) {
-          setTafseerResult(null);
+          setTafseerResults([]);
           setLoading(false);
         }
       });
+    // @ai-end
 
     return () => {
       cancelled = true;
     };
-  }, [verse.verseKey, selectedTafseerId]);
+    // page.key changes exactly when page.hafsKeys can. @ai
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page.key, selectedTafseerId]);
 
   const isFirst = currentIndex === 0;
-  const isLast = currentIndex === TOTAL_VERSES - 1;
+  const isLast = currentIndex === total - 1; // @ai
 
   const goToPrevious = useCallback(() => {
     setCurrentIndex(i => Math.max(0, i - 1));
   }, []);
 
   const goToNext = useCallback(() => {
-    setCurrentIndex(i => Math.min(TOTAL_VERSES - 1, i + 1));
-  }, []);
+    setCurrentIndex(i => Math.min(total - 1, i + 1)); // @ai
+  }, [total]);
 
   const handleSelectTafseer = useCallback(
     (id: string) => {
@@ -152,18 +208,26 @@ export const TafseerContent: React.FC<TafseerContentProps> = ({
     <View style={styles.container}>
       {/* Scrollable verse content */}
       <ScrollView
-        key={`${verse.verseKey}-${selectedTafseerId}`}
+        key={`${page.key}-${selectedTafseerId}`} // @ai
         style={styles.scrollContent}
         contentContainerStyle={styles.scrollInner}
         showsVerticalScrollIndicator={false}
         bounces={true}>
         {/* Verse badge */}
         <View style={styles.verseBadge}>
-          <Text style={styles.verseBadgeText}>{verse.verseKey}</Text>
+          <Text style={styles.verseBadgeText}>
+            {localizeDigits(page.label)}
+          </Text>
         </View>
 
         {/* Arabic text */}
-        <SkiaVersePreview verseKey={verse.verseKey} rewayah={rewayah} />
+        {/* @ai-start */}
+        <SkiaVersePreview
+          verseKey={page.previewVerseKey}
+          text={page.previewText}
+          rewayah={rewayah}
+        />
+        {/* @ai-end */}
 
         {/* Divider */}
         <View style={styles.divider} />
@@ -183,9 +247,11 @@ export const TafseerContent: React.FC<TafseerContentProps> = ({
               size={moderateScale(32)}
               color={Color(theme.colors.text).alpha(0.2).toString()}
             />
-            <Text style={styles.emptyStateTitle}>No Tafaseer Downloaded</Text>
+            <Text style={styles.emptyStateTitle}>
+              {t('tafseerContent.emptyTitle')}
+            </Text>
             <Text style={styles.emptyStateText}>
-              Tap here to download a tafseer and view commentary.
+              {t('tafseerContent.emptyMessage')}
             </Text>
           </Pressable>
         ) : (
@@ -196,7 +262,9 @@ export const TafseerContent: React.FC<TafseerContentProps> = ({
                 style={styles.selectorButton}
                 onPress={() => setShowSelector(!showSelector)}>
                 <Text style={styles.selectorButtonText} numberOfLines={1}>
-                  {activeTafseer?.englishName ?? 'Select Tafseer'}
+                  {activeTafseer
+                    ? getTafseerDisplayName(activeTafseer)
+                    : t('tafseerContent.select')}
                 </Text>
                 <Feather
                   name={showSelector ? 'chevron-up' : 'chevron-down'}
@@ -209,7 +277,7 @@ export const TafseerContent: React.FC<TafseerContentProps> = ({
             {/* Selector dropdown */}
             {showSelector && (
               <View style={styles.selectorDropdown}>
-                {downloadedMeta.map(meta => {
+                {sortedTafaseer.map(meta => {
                   const isActive = meta.identifier === selectedTafseerId;
                   return (
                     <Pressable
@@ -226,15 +294,13 @@ export const TafseerContent: React.FC<TafseerContentProps> = ({
                             isActive && styles.selectorOptionNameActive,
                           ]}
                           numberOfLines={1}>
-                          {meta.englishName}
+                          {getTafseerDisplayName(meta)}
                         </Text>
-                        {meta.name !== meta.englishName && (
-                          <Text
-                            style={styles.selectorOptionNative}
-                            numberOfLines={1}>
-                            {meta.name}
-                          </Text>
-                        )}
+                        <Text
+                          style={styles.selectorOptionNative}
+                          numberOfLines={1}>
+                          {getTafseerLanguageDisplayName(meta.language)}
+                        </Text>
                       </View>
                       {isActive && (
                         <Feather
@@ -252,7 +318,7 @@ export const TafseerContent: React.FC<TafseerContentProps> = ({
             {/* Tafseer label */}
             {activeTafseer && downloadedMeta.length === 1 && (
               <Text style={styles.tafseerLabel}>
-                {activeTafseer.englishName.toUpperCase()}
+                {getTafseerDisplayName(activeTafseer).toUpperCase()}
               </Text>
             )}
 
@@ -261,22 +327,40 @@ export const TafseerContent: React.FC<TafseerContentProps> = ({
               <View style={styles.loadingContainer}>
                 <ActivityIndicator size="small" color={theme.colors.text} />
               </View>
-            ) : tafseerResult ? (
+            ) : tafseerResults.length > 0 ? (
+              // @ai-start
               <>
-                {tafseerResult.fromAyah !== tafseerResult.toAyah && (
-                  <Text style={styles.rangeBadge}>
-                    {`VERSES ${tafseerResult.surahNumber}:${tafseerResult.fromAyah} \u2013 ${tafseerResult.surahNumber}:${tafseerResult.toAyah}`}
+                {tafseerResults.map(result => {
+                  const badge = tafseerBadge(
+                    result,
+                    page,
+                    tafseerResults.length,
+                  );
+                  return (
+                    <React.Fragment
+                      key={`${result.surahNumber}:${result.fromAyah}-${result.toAyah}`}>
+                      {badge !== null && (
+                        <Text style={styles.rangeBadge}>{badge}</Text>
+                      )}
+                      <TafseerHtmlRenderer
+                        html={result.text}
+                        isRtl={activeTafseer?.direction === 'rtl'}
+                        theme={theme}
+                      />
+                    </React.Fragment>
+                  );
+                })}
+                {/* A Hafs verse the rewayah divides: its whole tafsir, noted. */}
+                {page.notes.map(note => (
+                  <Text key={note} style={styles.sharedNote}>
+                    {note}
                   </Text>
-                )}
-                <TafseerHtmlRenderer
-                  html={tafseerResult.text}
-                  isRtl={activeTafseer?.direction === 'rtl'}
-                  theme={theme}
-                />
+                ))}
               </>
             ) : (
+              // @ai-end
               <Text style={styles.noTafseer}>
-                Tafseer not available for this verse
+                {t('tafseerContent.notAvailable')}
               </Text>
             )}
           </>
@@ -301,17 +385,18 @@ export const TafseerContent: React.FC<TafseerContentProps> = ({
                 ? Color(theme.colors.text).alpha(0.2).toString()
                 : theme.colors.text
             }
+            style={flipX}
           />
           <Text
             style={[
               styles.navButtonText,
               isFirst && styles.navButtonTextDisabled,
             ]}>
-            Prev
+            {t('translationContent.prev')}
           </Text>
         </Pressable>
 
-        <Text style={styles.footerCounter}>{verse.verseKey}</Text>
+        <Text style={styles.footerCounter}>{localizeDigits(page.label)}</Text>
 
         <Pressable
           onPress={goToNext}
@@ -326,7 +411,7 @@ export const TafseerContent: React.FC<TafseerContentProps> = ({
               styles.navButtonText,
               isLast && styles.navButtonTextDisabled,
             ]}>
-            Next
+            {t('common:actions.next')}
           </Text>
           <Feather
             name="chevron-right"
@@ -336,15 +421,18 @@ export const TafseerContent: React.FC<TafseerContentProps> = ({
                 ? Color(theme.colors.text).alpha(0.2).toString()
                 : theme.colors.text
             }
+            style={flipX}
           />
         </Pressable>
       </View>
     </View>
   );
 };
+// @ai-end
 
 // ─── Styles ───────────────────────────────────────────────────────────────
 
+// @ai-start
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({
     container: {
@@ -370,7 +458,7 @@ const createStyles = (theme: Theme) =>
       fontSize: moderateScale(11.5),
       fontFamily: 'Manrope-SemiBold',
       color: Color(theme.colors.textSecondary).alpha(0.7).toString(),
-      letterSpacing: 0.3,
+      letterSpacing: latinLetterSpacing(0.3),
     },
     divider: {
       height: 1,
@@ -458,7 +546,7 @@ const createStyles = (theme: Theme) =>
       fontSize: moderateScale(10.5),
       fontFamily: 'Manrope-SemiBold',
       color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
-      letterSpacing: 1.2,
+      letterSpacing: latinLetterSpacing(1.2),
       textTransform: 'uppercase',
       marginBottom: verticalScale(6),
     },
@@ -466,7 +554,7 @@ const createStyles = (theme: Theme) =>
       fontSize: moderateScale(10.5),
       fontFamily: 'Manrope-SemiBold',
       color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
-      letterSpacing: 1.2,
+      letterSpacing: latinLetterSpacing(1.2),
       marginBottom: verticalScale(8),
     },
     noTafseer: {
@@ -474,6 +562,15 @@ const createStyles = (theme: Theme) =>
       fontFamily: 'Manrope-Regular',
       color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
     },
+    // @ai-start
+    sharedNote: {
+      fontSize: moderateScale(12),
+      fontFamily: 'Manrope-Medium',
+      color: Color(theme.colors.textSecondary).alpha(0.6).toString(),
+      lineHeight: moderateScale(18),
+      marginTop: verticalScale(8),
+    },
+    // @ai-end
     loadingContainer: {
       paddingVertical: verticalScale(20),
       alignItems: 'center',
@@ -514,6 +611,7 @@ const createStyles = (theme: Theme) =>
       fontSize: moderateScale(12.5),
       fontFamily: 'Manrope-SemiBold',
       color: Color(theme.colors.textSecondary).alpha(0.6).toString(),
-      letterSpacing: 0.3,
+      letterSpacing: latinLetterSpacing(0.3),
     },
   });
+// @ai-end

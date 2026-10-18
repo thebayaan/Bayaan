@@ -31,9 +31,24 @@ import {
 } from './events';
 import {localAggregationStore} from './LocalAggregationStore';
 import {MeaningfulListenTracker} from './MeaningfulListenTracker';
+import {useAnalyticsConsentStore} from '@/store/analyticsConsentStore';
 
 function isAnalyticsEnabled(): boolean {
   return process.env.EXPO_PUBLIC_ANALYTICS_ENABLED !== 'false';
+}
+
+/**
+ * Whether the user currently consents to analytics.
+ *
+ * Fails CLOSED until the persisted consent store has hydrated: `zustand/persist`
+ * loads from AsyncStorage asynchronously, so on a cold launch the in-memory
+ * value is the default (`true`) until the stored choice arrives. Returning
+ * `false` while un-hydrated guarantees we never emit an event (or identify a
+ * person) before the user's saved opt-out is known.
+ */
+function isConsentGranted(): boolean {
+  if (!useAnalyticsConsentStore.persist.hasHydrated()) return false;
+  return useAnalyticsConsentStore.getState().analyticsEnabled;
 }
 
 class AnalyticsServiceImpl {
@@ -43,6 +58,7 @@ class AnalyticsServiceImpl {
   private meaningfulListenTracker: MeaningfulListenTracker;
   private sessionStartTime: number = Date.now();
   private sessionListenMs: number = 0;
+  private readyListeners = new Set<() => void>();
 
   constructor() {
     this.meaningfulListenTracker = new MeaningfulListenTracker(
@@ -50,11 +66,24 @@ class AnalyticsServiceImpl {
         this.trackMeaningfulListen(props);
       },
     );
+    // Keep the live PostHog instance in lock-step with the consent flag so a
+    // caller can never desync the SDK from the store: any change to
+    // `analyticsEnabled` (e.g. the Settings → Privacy toggle) pushes straight
+    // through to optIn()/optOut().
+    useAnalyticsConsentStore.subscribe(state => {
+      this.applyConsent(state.analyticsEnabled);
+    });
+    useAnalyticsConsentStore.persist.onFinishHydration(() => {
+      this.notifyIfReady();
+    });
   }
 
   async initialize(): Promise<void> {
     this.enabled = isAnalyticsEnabled();
-    if (!this.enabled) return;
+    if (!this.enabled) {
+      this.notifyIfReady();
+      return;
+    }
     this.deviceId = getOrCreateDeviceId();
     this.sessionStartTime = Date.now();
     this.sessionListenMs = 0;
@@ -64,12 +93,76 @@ class AnalyticsServiceImpl {
     if (!this.enabled) return;
     this.posthog = instance;
     instance.register({platform: 'mobile'});
+    // Honor the user's runtime opt-out choice on the fresh instance — but only
+    // once the persisted choice has hydrated, so we don't optIn() on the
+    // default before a saved opt-out loads. If already hydrated, apply now;
+    // otherwise apply on hydration finish.
+    const persist = useAnalyticsConsentStore.persist;
+    if (persist.hasHydrated()) {
+      this.applyConsent(useAnalyticsConsentStore.getState().analyticsEnabled);
+      this.notifyIfReady();
+    } else {
+      const unsub = persist.onFinishHydration(state => {
+        unsub();
+        this.applyConsent(state.analyticsEnabled);
+      });
+    }
+  }
+
+  /**
+   * Whether an event tracked now reaches its final destination: the saved
+   * consent choice is known and, when consent is granted, the PostHog instance
+   * is attached. With analytics off or consent declined the event is dropped
+   * from PostHog by design, so that also counts as ready. Queued events (widget
+   * completions) wait for this before they are drained.
+   */
+  isReadyToCapture(): boolean {
+    if (!useAnalyticsConsentStore.persist.hasHydrated()) return false;
+    if (!this.enabled || !isConsentGranted()) return true;
+    return this.posthog !== null;
+  }
+
+  /** Calls `listener` each time `isReadyToCapture()` may have become true. */
+  onReadyToCapture(listener: () => void): () => void {
+    this.readyListeners.add(listener);
+    return () => {
+      this.readyListeners.delete(listener);
+    };
+  }
+
+  private notifyIfReady(): void {
+    if (!this.isReadyToCapture()) return;
+    this.readyListeners.forEach(listener => listener());
+  }
+
+  /**
+   * Apply the user's analytics consent choice to the live PostHog instance.
+   * `optIn()`/`optOut()` are persisted by the SDK and respected across launches.
+   * Call this whenever the Settings → Privacy toggle changes.
+   */
+  applyConsent(enabled: boolean): void {
+    if (!this.posthog) return;
+    // Don't swallow rejections silently — failing to apply an opt-out is
+    // privacy-sensitive and should at least surface in logs.
+    const applied = enabled ? this.posthog.optIn() : this.posthog.optOut();
+    void applied.catch((error: unknown) => {
+      console.warn('[Analytics] Failed to apply consent choice:', error);
+    });
   }
 
   private capture(
     event: string,
     properties: Record<string, string | number | boolean | null>,
+    timestamp?: Date,
   ): void {
+    // Respect the user's runtime opt-out (Settings → Privacy) in addition to
+    // PostHog's own opt-out state — belt-and-suspenders. Fails closed until the
+    // consent store has hydrated.
+    if (!isConsentGranted()) return;
+    if (timestamp) {
+      this.posthog?.capture(event, properties, {timestamp});
+      return;
+    }
     this.posthog?.capture(event, properties);
   }
 
@@ -161,10 +254,20 @@ class AnalyticsServiceImpl {
     this.capture(ANALYTICS_EVENTS.ADHKAR_SESSION_STARTED, {...props});
   }
 
-  trackAdhkarSessionCompleted(props: AdhkarSessionCompletedProps): void {
-    this.capture(ANALYTICS_EVENTS.ADHKAR_SESSION_COMPLETED, {...props});
+  /** `completedAt` dates a completion made earlier (a queued widget event). */
+  trackAdhkarSessionCompleted(
+    props: AdhkarSessionCompletedProps,
+    completedAt?: Date,
+  ): void {
+    this.capture(
+      ANALYTICS_EVENTS.ADHKAR_SESSION_COMPLETED,
+      {...props},
+      completedAt,
+    );
     localAggregationStore.incrementAdhkarSessions(
-      localAggregationStore.getToday(),
+      completedAt
+        ? localAggregationStore.dayKey(completedAt)
+        : localAggregationStore.getToday(),
     );
   }
 
@@ -237,6 +340,9 @@ class AnalyticsServiceImpl {
   // --- Identity ---
 
   identifyUser(userId: string): void {
+    // identify() creates a person profile server-side (more sensitive than a
+    // generic event), so it must honor the same opt-out / hydration gate.
+    if (!isConsentGranted()) return;
     this.posthog?.identify(userId);
   }
 

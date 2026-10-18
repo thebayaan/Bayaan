@@ -1,0 +1,611 @@
+{
+  "errors": {
+    "title": "Error",
+    "unexpected": "An unexpected error occurred. Please try again.",
+    "storageLoadFailed": "Failed to load storage information",
+    "timestampsUnavailable": "Timestamps unavailable for this reciter on this surah. Try a different reciter."
+  },
+  "toasts": {
+    "showingInHafs": "Showing in Hafs",
+    "nowReading": "Now reading"
+  },
+  "importAudio": {
+    "fileImported": "File Imported",
+    "editDetails": "Edit Details"
+  },
+  "uploads": {
+    "unknownReciter": "Unknown",
+    "categories": {
+      "dua": "Dua",
+      "lecture": "Lecture",
+      "tafsir": "Tafsir",
+      "other": "Recitation"
+    }
+  },
+  "units": {
+    "bytes": "{{value}} Bytes",
+    "kb": "{{value}} KB",
+    "mb": "{{value}} MB",
+    "gb": "{{value}} GB"
+  },
+  "duration": {
+    "hoursMinutes": "{{hours}}h {{minutes}}m",
+    "hours": "{{hours}}h",
+    "minutes": "{{minutes}}m"
+  },
+  "systemPlaylists": {
+    "readyToPlay": "Ready to play",
+    "selectReciters": "Select reciters to play",
+    "morningReflections": {
+      "title": "Morning Reflections",
+      "description": "Start your day with uplifting surahs that inspire gratitude and hope"
+    },
+    "quickListen": {
+      "title": "Quick Listen",
+      "subtitle": "5-15 minutes",
+      "description": "Perfect for short listening sessions during your commute or breaks"
+    },
+    "heartSofteners": {
+      "title": "Heart Softeners",
+      "description": "Emotional and touching recitations that deeply move the soul"
+    },
+    "storiesProphets": {
+      "title": "Stories of the Prophets",
+      "description": "Surahs featuring narratives of the messengers of Allah"
+    },
+    "protectionHealing": {
+      "title": "Protection & Healing",
+      "description": "Surahs for ruqyah and seeking refuge in Allah"
+    },
+    "mostLoved": {
+      "title": "Most Loved",
+      "description": "Community favorites that resonate with listeners worldwide"
+    },
+    "eveningSerenity": {
+      "title": "Evening Serenity",
+      "description": "Calm and peaceful surahs perfect for evening reflection"
+    },
+    "fridayEssentials": {
+      "title": "Friday Essentials",
+      "description": "Al-Kahf and other recommended Friday recitations"
+    },
+    "focusStudy": {
+      "title": "Focus & Study",
+      "description": "Measured, clear recitations ideal for background listening"
+    },
+    "juzAmma": {
+      "title": "Juz Amma",
+      "subtitle": "The 30th Juz",
+      "description": "Complete collection of short surahs from the last juz"
+    },
+    "memorizationStation": {
+      "title": "Memorization Station",
+      "description": "Short surahs perfect for those beginning their memorization"
+    },
+    "appEssentials": {
+      "title": "{{appName}} Essentials",
+      "description": "Our top recommendations for every listener"
+    }
+  },
+  "onboarding": {
+    "welcome": {
+      "title": "Welcome to {{appName}}",
+      "subtitle": "A New Chapter",
+      "description": "A beautiful Mushaf, ayah highlighting, word-by-word translation, adhkar, ambient sounds, and so much more."
+    },
+    "mushaf": {
+      "title": "The Mushaf",
+      "description": "A dedicated reading screen with the full Uthmani script, beautiful tajweed coloring, and an immersive reading mode."
+    },
+    "highlighting": {
+      "title": "Follow Along",
+      "description": "Each ayah highlights in sync with the recitation so you never lose your place. Available for most of your favorite reciters, and coming to all reciters soon."
+    },
+    "memorize": {
+      "title": "Listen to Memorize",
+      "description": "Repeat a single ayah, play a range of verses, or loop an entire page. Perfect for hifdh and review."
+    },
+    "uploads": {
+      "title": "Personal Recitations",
+      "description": "Import your own audio recordings, tag them with surah and reciter metadata, and organize your personal collection."
+    },
+    "ambient": {
+      "title": "Ambient Sounds",
+      "description": "Layer calming nature soundscapes like rain, ocean, forest, and more over your recitation for a focused experience."
+    },
+    "verseInteractions": {
+      "title": "Verse Interactions",
+      "description": "Bookmark, highlight, take notes, copy, and share any verse. Your annotations sync across the app."
+    },
+    "adhkar": {
+      "title": "Adhkar (Remembrance)",
+      "description": "The complete Hisnul Muslim collection with audio playback, Play All mode, and saved favorites."
+    },
+    "wbw": {
+      "title": "Word by Word",
+      "description": "Tap any word to see its meaning, transliteration, and grammar — right in the mushaf or player."
+    },
+    "translations": {
+      "title": "Translations & Tafseer",
+      "description": "Browse dozens of translations and scholarly commentaries in multiple languages, all downloadable for offline use."
+    },
+    "themes": {
+      "title": "Thematic Highlighting",
+      "description": "Verses are color-coded by theme so you can see the structure and topics of each surah at a glance."
+    },
+    "indopak": {
+      "title": "IndoPak Script",
+      "description": "Switch to the IndoPak Nastaliq script in the mushaf for the style used across South Asia."
+    },
+    "widgets": {
+      "title": "Widgets",
+      "description": "Continue Listening, Ayah of the Day, Tasbeeh, an interactive adhkar session and more on your Home Screen. iPhone also gets Lock Screen widgets, controls and Siri."
+    },
+    "carplay": {
+      "title": "CarPlay & Android\u00a0Auto",
+      "description": "Play your reciters, surahs, playlists and downloads from your car’s screen, or just ask with your voice."
+    },
+    "arabic": {
+      "title": "Now in Arabic",
+      "description": "The app is now available in Arabic, with a right-to-left layout. It follows your device language, and you can change it anytime in Settings › Language."
+    },
+    "adhkarPlayback": {
+      "title": "Adhkar, Anywhere",
+      "description": "Play All keeps going across the app and on your Lock Screen, with a Live Activity on iPhone. Morning, Evening and Quranic duas are now recited by Mishary Rashid Alafasy."
+    },
+    "mushaf1440": {
+      "title": "Mushaf 1440",
+      "description": "A new mushaf in beta with the look of the printed Madinah mushaf and a preview of tajweed coloring. You can also make the text bolder and highlight Allah’s name."
+    },
+    "search": {
+      "title": "Smarter Search",
+      "description": "Every search bar now puts the best match first, forgives typos, ignores diacritics, and understands surah numbers and nicknames like “tabarak”."
+    },
+    "ipad": {
+      "title": "Redesigned for iPad",
+      "description": "A sidebar replaces the tab bar, the player opens as a split view, and landscape shows two facing mushaf pages, just like a printed mushaf."
+    },
+    "downloads": {
+      "title": "Offline Downloads",
+      "description": "Download individual surahs or entire playlists so you can listen without an internet connection."
+    },
+    "playlists": {
+      "title": "Playlists",
+      "description": "Create custom playlists, reorder tracks, and build your own listening routines."
+    }
+  },
+  "categories": {
+    "juzAmma": {
+      "title": "Juz Amma",
+      "description": "The last 37 surahs of the Quran"
+    },
+    "sevenLong": {
+      "title": "The Seven Long Surahs",
+      "description": "Al-Sab' Al-Tiwal"
+    },
+    "heartOfQuran": {
+      "title": "Heart of the Quran",
+      "description": "Most impactful surahs"
+    },
+    "dailyAdhkar": {
+      "title": "Daily Adhkar",
+      "description": "Surahs commonly recited daily"
+    },
+    "prophets": {
+      "title": "Stories of the Prophets"
+    },
+    "mercy": {
+      "title": "Mercy and Forgiveness"
+    },
+    "faith": {
+      "title": "Faith and Belief"
+    },
+    "short": {
+      "title": "Short Surahs",
+      "description": "Less than 20 verses"
+    },
+    "medium": {
+      "title": "Medium Surahs",
+      "description": "20-100 verses"
+    },
+    "long": {
+      "title": "Long Surahs",
+      "description": "More than 100 verses"
+    },
+    "meccan": {
+      "title": "Notable Meccan Surahs"
+    },
+    "medinan": {
+      "title": "Notable Medinan Surahs"
+    },
+    "mostRecited": {
+      "title": "Most Recited"
+    },
+    "mostLoved": {
+      "title": "Most Loved by Community"
+    },
+    "browse": {
+      "juzAmma": "Juz Amma",
+      "dailyAdhkar": "Daily Adhkar",
+      "prophets": "Stories of Prophets",
+      "heartOfQuran": "Heart of Quran",
+      "mostRecited": "Most Recited",
+      "short": "Short Surahs",
+      "meccan": "Meccan Surahs",
+      "medinan": "Medinan Surahs"
+    }
+  },
+  "juz": {
+    "amma": "Juz 'Amma"
+  },
+  "recitation": {
+    "styles": {
+      "murattal": "Murattal",
+      "mojawwad": "Mojawwad",
+      "molim": "Molim",
+      "hadr": "Hadr"
+    },
+    "recordingTypes": {
+      "studio": "Studio",
+      "salah": "Salah"
+    }
+  },
+  "allahHighlight": {
+    "gold": "Gold",
+    "emerald": "Emerald",
+    "blue": "Blue",
+    "rose": "Rose"
+  },
+  "readingThemes": {
+    "default": "Cream",
+    "parchment": "Parchment",
+    "white": "White",
+    "sage": "Sage",
+    "rose": "Rose",
+    "cool": "Cool Gray",
+    "sand": "Sand",
+    "darkDefault": "Dark Navy",
+    "darkSepia": "Dark Sepia",
+    "oled": "True Black",
+    "darkSage": "Dark Sage",
+    "charcoal": "Charcoal",
+    "indigo": "Indigo",
+    "darkAmber": "Dark Amber"
+  },
+  "adhkarTags": {
+    "daily": "Daily Adhkar",
+    "prayer": "Prayer",
+    "protection": "Protection",
+    "health": "Health & Healing",
+    "travel": "Travel",
+    "food": "Food & Drink",
+    "social": "Social",
+    "nature": "Nature",
+    "spiritual": "Spiritual",
+    "home": "Home & Family",
+    "clothing": "Clothing",
+    "general": "General"
+  },
+  "rewayah": {
+    "short": {
+      "hafs": "Hafs",
+      "shubah": "Shu'bah",
+      "al-bazzi": "Al-Bazzi",
+      "qunbul": "Qunbul",
+      "warsh": "Warsh",
+      "qalun": "Qalun",
+      "al-duri-abi-amr": "Al-Duri (Abu Amr)",
+      "al-susi": "Al-Susi",
+      "hisham": "Hisham",
+      "ibn-dhakwan": "Ibn Dhakwan",
+      "khalaf-an-hamzah": "Khalaf (Hamzah)",
+      "khallad": "Khallad",
+      "al-duri-al-kisai": "Al-Duri (al-Kisa'i)",
+      "abu-al-harith": "Abu al-Harith",
+      "ibn-jammaz": "Ibn Jammaz",
+      "ibn-wardan": "Ibn Wardan",
+      "rawh": "Rawh",
+      "ruwais": "Ruwais",
+      "idris": "Idris",
+      "ishaq": "Ishaq"
+    },
+    "long": {
+      "hafs": "Hafs 'an Asim",
+      "shubah": "Shu'bah 'an Asim",
+      "al-bazzi": "Al-Bazzi 'an Ibn Kathir",
+      "qunbul": "Qunbul 'an Ibn Kathir",
+      "warsh": "Warsh 'an Nafi'",
+      "qalun": "Qalun 'an Nafi'",
+      "al-duri-abi-amr": "Al-Duri 'an Abu Amr",
+      "al-susi": "Al-Susi 'an Abu Amr",
+      "hisham": "Hisham 'an Ibn Amir",
+      "ibn-dhakwan": "Ibn Dhakwan 'an Ibn Amir",
+      "khalaf-an-hamzah": "Khalaf 'an Hamzah",
+      "khallad": "Khallad 'an Hamzah",
+      "al-duri-al-kisai": "Al-Duri 'an al-Kisa'i",
+      "abu-al-harith": "Abu al-Harith 'an al-Kisa'i",
+      "ibn-jammaz": "Ibn Jammaz 'an Abu Ja'far",
+      "ibn-wardan": "Ibn Wardan 'an Abu Ja'far",
+      "rawh": "Rawh 'an Ya'qub",
+      "ruwais": "Ruways 'an Ya'qub",
+      "idris": "Idris 'an Khalaf al-Bazzar",
+      "ishaq": "Ishaq 'an Khalaf al-Bazzar"
+    },
+    "description": {
+      "hafs": "The standard reading, used by most of the Muslim world",
+      "shubah": "The second Kufan transmission from Asim",
+      "al-bazzi": "Meccan transmission from Ibn Kathir, read throughout Mecca and Yemen",
+      "qunbul": "The second Meccan transmission from Ibn Kathir",
+      "warsh": "Medinan transmission from Nafi' — dominant across North Africa",
+      "qalun": "The second Medinan transmission from Nafi' — read in Libya and parts of Tunisia",
+      "al-duri-abi-amr": "Basran transmission from Abu Amr — common in Sudan and parts of West Africa",
+      "al-susi": "The second Basran transmission from Abu Amr",
+      "hisham": "Damascene transmission from Ibn Amir",
+      "ibn-dhakwan": "The second Damascene transmission from Ibn Amir",
+      "khalaf-an-hamzah": "Kufan transmission from Hamzah",
+      "khallad": "The second Kufan transmission from Hamzah",
+      "al-duri-al-kisai": "Kufan transmission from al-Kisa'i (distinct from Al-Duri 'an Abu Amr)",
+      "abu-al-harith": "The second Kufan transmission from al-Kisa'i",
+      "ibn-jammaz": "Medinan transmission from Abu Ja'far (10th Qira'ah)",
+      "ibn-wardan": "The second Medinan transmission from Abu Ja'far (10th Qira'ah)",
+      "rawh": "Basran transmission from Ya'qub (10th Qira'ah)",
+      "ruwais": "The second Basran transmission from Ya'qub (10th Qira'ah)",
+      "idris": "Transmission from Khalaf al-Bazzar (10th Qira'ah)",
+      "ishaq": "The second transmission from Khalaf al-Bazzar (10th Qira'ah)"
+    }
+  },
+  "rewayat": {
+    "entries": {
+      "warsh-an-nafi": {
+        "displayName": "Warsh",
+        "description": "Narration of Warsh from Imam Nafi'"
+      },
+      "qalon-an-nafi": {
+        "displayName": "Qalun",
+        "description": "Narration of Qalun from Imam Nafi'"
+      },
+      "albizi-an-ibn-katheer": {
+        "displayName": "Al-Bazzi",
+        "description": "Narration of Al-Bazzi from Ibn Kathir"
+      },
+      "qunbol-an-ibn-katheer": {
+        "displayName": "Qunbul",
+        "description": "Narration of Qunbul from Ibn Kathir"
+      },
+      "aldori-an-abi-amr": {
+        "displayName": "Al-Duri (Abu Amr)",
+        "description": "Narration of Al-Duri from Abu Amr"
+      },
+      "assosi-an-abi-amr": {
+        "displayName": "Al-Susi",
+        "description": "Narration of Al-Susi from Abu Amr"
+      },
+      "ibn-thakwan-an-ibn-amer": {
+        "displayName": "Ibn Dhakwan",
+        "description": "Narration of Ibn Dhakwan from Ibn Amir"
+      },
+      "hesham-an-ibn-amer": {
+        "displayName": "Hisham",
+        "description": "Narration of Hisham from Ibn Amir"
+      },
+      "hafs-an-assem": {
+        "displayName": "Hafs",
+        "description": "Narration of Hafs from Imam Asim"
+      },
+      "shubah-an-assem": {
+        "displayName": "Shu'bah",
+        "description": "Narration of Shu'bah from Imam Asim"
+      },
+      "khalaf-an-hamzah": {
+        "displayName": "Khalaf (Hamzah)",
+        "description": "Narration of Khalaf from Hamzah"
+      },
+      "khallad-an-hamzah": {
+        "displayName": "Khallad",
+        "description": "Narration of Khallad from Hamzah"
+      },
+      "aldorai-an-alkisaai": {
+        "displayName": "Al-Duri (al-Kisa'i)",
+        "description": "Narration of Al-Duri from al-Kisa'i"
+      },
+      "abu-al-harith-an-alkisai": {
+        "displayName": "Abu al-Harith",
+        "description": "Narration of Abu al-Harith from al-Kisa'i"
+      },
+      "ibn-jammaz-an-abi-jafar": {
+        "displayName": "Ibn Jammaz",
+        "description": "Narration of Ibn Jammaz from Abu Ja'far"
+      },
+      "ibn-wardan-an-abi-jafar": {
+        "displayName": "Ibn Wardan",
+        "description": "Narration of Ibn Wardan from Abu Ja'far"
+      },
+      "rowis-rawh-an-yakoob": {
+        "displayName": "Ruwais & Rawh",
+        "description": "Narration of Ruwais and Rawh from Ya'qub al-Hadrami"
+      },
+      "rawh-an-yaqub": {
+        "displayName": "Rawh",
+        "description": "Narration of Rawh from Ya'qub al-Hadrami"
+      },
+      "ruwais-an-yaqub": {
+        "displayName": "Ruwais",
+        "description": "Narration of Ruwais from Ya'qub al-Hadrami"
+      },
+      "idris-an-khalaf": {
+        "displayName": "Idris",
+        "description": "Narration of Idris from Khalaf al-Bazzar"
+      },
+      "ishaq-an-khalaf": {
+        "displayName": "Ishaq",
+        "description": "Narration of Ishaq from Khalaf al-Bazzar"
+      }
+    },
+    "people": {
+      "nafi": "Nafi'",
+      "ibnKathir": "Ibn Kathir",
+      "abuAmr": "Abu Amr",
+      "ibnAmir": "Ibn Amir",
+      "asim": "Asim",
+      "hamzah": "Hamzah",
+      "kisai": "al-Kisa'i",
+      "abuJafar": "Abu Ja'far",
+      "yaqub": "Ya'qub",
+      "khalafAlBazzar": "Khalaf al-Bazzar",
+      "warsh": "Warsh",
+      "qalun": "Qalun",
+      "bazzi": "Al-Bazzi",
+      "qunbul": "Qunbul",
+      "duri": "Al-Duri",
+      "susi": "Al-Susi",
+      "ibnDhakwan": "Ibn Dhakwan",
+      "hisham": "Hisham",
+      "hafs": "Hafs",
+      "shubah": "Shu'bah",
+      "khalaf": "Khalaf",
+      "khallad": "Khallad",
+      "abuAlHarith": "Abu al-Harith",
+      "ibnJammaz": "Ibn Jammaz",
+      "ibnWardan": "Ibn Wardan",
+      "ruwaisAndRawh": "Ruwais and Rawh",
+      "rawh": "Rawh",
+      "ruwais": "Ruwais",
+      "idris": "Idris",
+      "ishaq": "Ishaq"
+    }
+  },
+  "adhkarShortTitles": {
+    "morningAndEvening": "Morning & Evening",
+    "beforeSleep": "Before Sleep",
+    "wakingUp": "Waking Up",
+    "badDreams": "Bad Dreams",
+    "fearOfSleep": "Fear of Sleep",
+    "stirringAtNight": "Stirring at Night",
+    "enteringRestroom": "Entering Restroom",
+    "leavingRestroom": "Leaving Restroom",
+    "beforeWudu": "Before Wudu",
+    "afterWudu": "After Wudu",
+    "leavingHome": "Leaving Home",
+    "enteringHome": "Entering Home",
+    "goingToMosque": "Going to Mosque",
+    "enteringMosque": "Entering Mosque",
+    "leavingMosque": "Leaving Mosque",
+    "hearingAdhan": "Hearing Adhan",
+    "openingPrayer": "Opening Prayer",
+    "duringRuku": "During Ruku",
+    "risingFromRuku": "Rising from Ruku",
+    "duringSujood": "During Sujood",
+    "betweenProstrations": "Between Prostrations",
+    "tashahhud": "Tashahhud",
+    "salawatInPrayer": "Salawat in Prayer",
+    "beforeSalam": "Before Salam",
+    "afterPrayer": "After Prayer",
+    "sujoodTilawah": "Sujood Tilawah",
+    "qunut": "Qunut",
+    "afterWitr": "After Witr",
+    "againstDistraction": "Against Distraction",
+    "gettingDressed": "Getting Dressed",
+    "newClothes": "New Clothes",
+    "complimentingClothes": "Complimenting Clothes",
+    "undressing": "Undressing",
+    "beforeEating": "Before Eating",
+    "afterEating": "After Eating",
+    "breakingFast": "Breaking Fast",
+    "iftarInvitation": "Iftar Invitation",
+    "forHost": "For Host",
+    "offeredDrink": "Offered Drink",
+    "decliningFood": "Declining Food",
+    "startingTravel": "Starting Travel",
+    "ridingVehicle": "Riding Vehicle",
+    "duringJourney": "During Journey",
+    "travelerAtDawn": "Traveler at Dawn",
+    "travelStop": "Travel Stop",
+    "enteringTown": "Entering Town",
+    "returningHome": "Returning Home",
+    "forTraveler": "For Traveler",
+    "leavingBehind": "Leaving Behind",
+    "vehicleTrouble": "Vehicle Trouble",
+    "windBlowing": "Wind Blowing",
+    "whenRaining": "When Raining",
+    "afterRain": "After Rain",
+    "seekingRain": "Seeking Rain",
+    "drought": "Drought",
+    "thunder": "Thunder",
+    "newMoon": "New Moon",
+    "firstFruits": "First Fruits",
+    "givingSalam": "Giving Salam",
+    "respondingToSalam": "Responding to Salam",
+    "sneezing": "Sneezing",
+    "othersSneezing": "Others Sneezing",
+    "thankingOthers": "Thanking Others",
+    "loveForAllah": "Love for Allah",
+    "receivingBlessing": "Receiving Blessing",
+    "receivingForgiveness": "Receiving Forgiveness",
+    "afterBackbiting": "After Backbiting",
+    "offeredWealth": "Offered Wealth",
+    "praisingOthers": "Praising Others",
+    "beingPraised": "Being Praised",
+    "seeingMisfortune": "Seeing Misfortune",
+    "avoidingEvilEye": "Avoiding Evil Eye",
+    "leavingGathering": "Leaving Gathering",
+    "inGatherings": "In Gatherings",
+    "communityEtiquette": "Community Etiquette",
+    "worryAndGrief": "Worry & Grief",
+    "anguish": "Anguish",
+    "anger": "Anger",
+    "tragedy": "Tragedy",
+    "goodOrBadNews": "Good or Bad News",
+    "goodNews": "Good News",
+    "surprise": "Surprise",
+    "fear": "Fear",
+    "disappointment": "Disappointment",
+    "difficulty": "Difficulty",
+    "pain": "Pain",
+    "rudenessWhileFasting": "Rudeness While Fasting",
+    "fearOfHarm": "Fear of Harm",
+    "againstShaytan": "Against Shaytan",
+    "foilingShaytan": "Foiling Shaytan",
+    "fearOfShirk": "Fear of Shirk",
+    "doubtInFaith": "Doubt in Faith",
+    "againstDajjal": "Against Dajjal",
+    "againstBadOmens": "Against Bad Omens",
+    "againstEnemy": "Against Enemy",
+    "againstOppression": "Against Oppression",
+    "meetingAdversary": "Meeting Adversary",
+    "dogBarking": "Dog Barking",
+    "animalsCalling": "Animals Calling",
+    "protectingChildren": "Protecting Children",
+    "excellenceOfDhikr": "Excellence of Dhikr",
+    "excellenceOfSalawat": "Excellence of Salawat",
+    "glorifyingAllah": "Glorifying Allah",
+    "istighfar": "Istighfar",
+    "istikharah": "Istikharah",
+    "enteringMarket": "Entering Market",
+    "settlingDebt": "Settling Debt",
+    "receivingLoan": "Receiving Loan",
+    "forGroom": "For Groom",
+    "weddingNight": "Wedding Night",
+    "newParents": "New Parents",
+    "beforeIntimacy": "Before Intimacy",
+    "visitingSick": "Visiting Sick",
+    "rewardOfVisiting": "Reward of Visiting",
+    "terminalIllness": "Terminal Illness",
+    "forDyingPerson": "For Dying Person",
+    "closingEyes": "Closing Eyes",
+    "janazahPrayer": "Janazah Prayer",
+    "childJanazah": "Child Janazah",
+    "condolences": "Condolences",
+    "placingInGrave": "Placing in Grave",
+    "afterBurial": "After Burial",
+    "visitingGraves": "Visiting Graves",
+    "afterSinning": "After Sinning",
+    "talbiyah": "Talbiyah",
+    "atBlackStone": "At Black Stone",
+    "betweenCorners": "Between Corners",
+    "safaAndMarwah": "Safa & Marwah",
+    "atMuzdalifah": "At Muzdalifah",
+    "dayOfArafat": "Day of Arafat",
+    "stoningJamarat": "Stoning Jamarat",
+    "slaughtering": "Slaughtering"
+  }
+}

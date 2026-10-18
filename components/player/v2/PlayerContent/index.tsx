@@ -49,6 +49,7 @@ const ANIMATION_DURATION = 300;
 const DEFAULT_HEADER_HEIGHT = 100;
 const DEFAULT_CONTROLS_HEIGHT = 250;
 
+// @ai-start
 const PlayerContent: React.FC<PlayerContentProps> = ({
   onSpeedPress,
   onSleepTimerPress,
@@ -349,6 +350,7 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
     </View>
   );
 };
+// @ai-end
 
 const styles = StyleSheet.create({
   container: {

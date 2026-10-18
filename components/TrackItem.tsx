@@ -18,6 +18,19 @@ import {CircularProgress} from '@/components/CircularProgress';
 import {Feather, Ionicons} from '@expo/vector-icons';
 import {GradientText} from '@/components/GradientText';
 import {getDisplayLabelFromName} from '@/services/rewayah/RewayahIdentity';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+import {currentLanguageConfig} from '@/i18n/language'; // @ai
+import {
+  getReciterDisplayName,
+  getSurahDisplayName,
+  localizeDigits,
+} from '@/i18n/format';
+// @ai-end
+
+// @ai-start
+const KNOWN_STYLES = ['murattal', 'mojawwad', 'molim'] as const;
+// @ai-end
 
 interface TrackItemProps {
   reciterId: string;
@@ -31,6 +44,7 @@ interface TrackItemProps {
   onLongPress?: () => void;
 }
 
+// @ai-start
 export const TrackItem: React.FC<TrackItemProps> = React.memo(
   ({
     reciterId,
@@ -44,6 +58,7 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
     onLongPress,
   }) => {
     const {theme} = useTheme();
+    const {t} = useTranslation(['collection', 'common']);
 
     // Sync data loading — no async, no useState, no useEffect
     const reciter = useMemo(
@@ -116,7 +131,20 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
     const surah = getSurahById(parseInt(surahId, 10));
     if (!surah || !reciter) return null;
 
-    const surahGlyph = surahGlyphMap[surah.id];
+    // The Arabic surah name is already shown as text in Arabic mode.
+    const surahGlyph =
+      currentLanguageConfig.bilingualContent === 'ar' // @ai
+        ? undefined
+        : surahGlyphMap[surah.id];
+    const surahTitle = `${localizeDigits(surah.id)}. ${getSurahDisplayName(
+      surah,
+    )}`;
+    const knownStyle = KNOWN_STYLES.find(
+      s => s === rewayat?.style?.toLowerCase(),
+    );
+    const styleLabel = knownStyle
+      ? t(`common:styles.${knownStyle}`)
+      : rewayat?.style;
 
     // Create a compact badge for the rewayat if available
     const renderRewayatBadge = () => {
@@ -124,7 +152,7 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
       return (
         <Text style={[styles.rewayatText, {color: theme.colors.textSecondary}]}>
           {getDisplayLabelFromName(rewayat.name)}
-          {rewayat.style ? ` \u2022 ${rewayat.style}` : ''}
+          {styleLabel ? ` \u2022 ${styleLabel}` : ''}
         </Text>
       );
     };
@@ -150,11 +178,11 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
                 <GradientText
                   style={[styles.surahName, {color: theme.colors.text}]}
                   surahId={surah.id}>
-                  {surah.id + '. ' + surah.name}
+                  {surahTitle}
                 </GradientText>
               ) : (
                 <Text style={[styles.surahName, {color: theme.colors.text}]}>
-                  {surah.id + '. ' + surah.name}
+                  {surahTitle}
                 </Text>
               )}
               {surahGlyph && (
@@ -185,7 +213,7 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
                   styles.reciterName,
                   {color: theme.colors.textSecondary},
                 ]}>
-                {reciter.name}
+                {getReciterDisplayName(reciter)}
               </Text>
             </View>
             {renderRewayatBadge()}
@@ -218,9 +246,11 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
     );
   },
 );
+// @ai-end
 
 TrackItem.displayName = 'TrackItem';
 
+// @ai-start
 const styles = StyleSheet.create({
   trackItem: {
     flexDirection: 'row',
@@ -234,7 +264,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: moderateScale(18),
   },
   imageContainer: {
-    marginRight: moderateScale(12),
+    marginEnd: moderateScale(12),
   },
   reciterImage: {
     width: moderateScale(50),
@@ -256,7 +286,7 @@ const styles = StyleSheet.create({
   surahGlyphInline: {
     fontSize: moderateScale(16),
     fontFamily: 'SurahNames',
-    marginLeft: moderateScale(6),
+    marginStart: moderateScale(6),
   },
   reciterInfoRow: {
     flexDirection: 'row',
@@ -283,7 +313,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: moderateScale(8),
-    paddingRight: moderateScale(12),
+    paddingEnd: moderateScale(12),
     alignSelf: 'stretch' as const,
   },
 });
+// @ai-end

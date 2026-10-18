@@ -1,28 +1,13 @@
 import React, {useCallback, useMemo, useState} from 'react';
 import {View, ViewStyle} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
-import {useFocusEffect} from '@react-navigation/native';
-import {SURAHS, Surah} from '@/data/surahData';
+import {useFocusEffect} from 'expo-router';
+import {Surah} from '@/data/surahData';
+import {useTranslation} from 'react-i18next';
 import {mushafSessionStore} from '@/services/mushaf/MushafSessionStore';
+import {getSurahOfTheDay, getSurahForPage} from '@/utils/quranPages';
 import {HeroSection} from './HeroSection';
 import {SurahHeroSection} from './SurahsHero';
-
-function getSurahOfTheDay(): Surah {
-  const today = new Date();
-  const startOfYear = new Date(today.getFullYear(), 0, 0);
-  const dayOfYear = Math.floor(
-    (today.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24),
-  );
-  const surahIndex = dayOfYear % 114;
-  return SURAHS[surahIndex];
-}
-
-function getSurahForPage(page: number): Surah | undefined {
-  return SURAHS.find(s => {
-    const [start, end] = s.pages.split('-').map(Number);
-    return page >= start && page <= end;
-  });
-}
 
 interface ContinueReadingHeroProps {
   onSurahLongPress?: (surah: Surah) => void;
@@ -35,9 +20,11 @@ const SECTION_HEIGHT = moderateScale(150);
  * Shows "Continue Reading" with the last-read surah if the user has history,
  * otherwise falls back to Surah of the Day.
  */
+// @ai-start
 export function ContinueReadingHero({
   onSurahLongPress,
 }: ContinueReadingHeroProps) {
+  const {t} = useTranslation('home');
   // MMKV reads aren't reactive, and this component is typically cached
   // inside a memoized FlashList header — so re-read the session value
   // every time the Surahs tab regains focus (e.g. after backing out of
@@ -51,14 +38,16 @@ export function ContinueReadingHero({
     }, []),
   );
 
-  const surahOfTheDay = useMemo(() => getSurahOfTheDay(), []);
+  const surahOfTheDay = useMemo(() => getSurahOfTheDay(new Date()), []);
 
   const lastReadSurah = lastReadPage
     ? getSurahForPage(lastReadPage)
     : undefined;
 
   const displaySurah = lastReadSurah ?? surahOfTheDay;
-  const title = lastReadSurah ? 'CONTINUE READING' : 'SURAH OF THE DAY';
+  const title = lastReadSurah
+    ? t('hero.continueReading')
+    : t('hero.surahOfTheDay');
 
   const cardStyle: ViewStyle = useMemo(
     () => ({width: '100%', height: SECTION_HEIGHT}),
@@ -85,3 +74,4 @@ export function ContinueReadingHero({
     />
   );
 }
+// @ai-end

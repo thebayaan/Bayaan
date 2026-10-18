@@ -3,6 +3,26 @@ import {useDownloadStore} from './downloadStore';
 
 export const useDownloads = () => useDownloadStore(state => state.downloads);
 
+/**
+ * True when every provided surah is downloaded for the given rewayah.
+ *
+ * Subscribes with a primitive-returning selector so the consuming component
+ * only re-renders when this boolean flips — not on every mutation of the
+ * `downloads` array (single-surah downloads, removals, each batch item). Reuses
+ * the store's `isDownloadedWithRewayat` so the semantics stay in one place.
+ */
+export const useAreAllSurahsDownloaded = (
+  reciterId: string,
+  surahIds: string[],
+  rewayatId: string | undefined,
+) =>
+  useDownloadStore(state => {
+    if (!rewayatId || surahIds.length === 0) return false;
+    return surahIds.every(surahId =>
+      state.isDownloadedWithRewayat(reciterId, surahId, rewayatId),
+    );
+  });
+
 export const useDownloadProgress = (id: string) =>
   useDownloadStore(state => state.downloadProgress[id] ?? 0);
 

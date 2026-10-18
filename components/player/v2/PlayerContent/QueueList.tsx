@@ -3,7 +3,9 @@ import {View, Text, Pressable, StyleSheet} from 'react-native';
 import {moderateScale, verticalScale} from '@/utils/scale';
 import {Feather} from '@expo/vector-icons';
 import {useTheme} from '@/hooks/useTheme';
-import {useBottomSheetScrollableCreator} from '@gorhom/bottom-sheet';
+// @ai-start
+import {usePlayerScrollable} from '@/hooks/usePlayerScrollable';
+// @ai-end
 import {FlashList, type ListRenderItemInfo} from '@shopify/flash-list';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {MaterialCommunityIcons} from '@expo/vector-icons';
@@ -14,6 +16,14 @@ import {NowPlayingIndicator} from '@/components/NowPlayingIndicator';
 import {GradientText} from '@/components/GradientText';
 import {useUploadsStore} from '@/store/uploadsStore';
 import Color from 'color';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+import {
+  localizeDigits,
+  getTrackDisplayTitle,
+  getTrackArtistDisplay,
+} from '@/i18n/format';
+// @ai-end
 
 interface UploadQueueItemProps {
   track: Track;
@@ -21,9 +31,11 @@ interface UploadQueueItemProps {
   onPress: () => void;
 }
 
+// @ai-start
 const UploadQueueItem: React.FC<UploadQueueItemProps> = React.memo(
   ({track, index, onPress}) => {
     const {theme} = useTheme();
+    const {t} = useTranslation(['player', 'common']);
 
     const playbackState = usePlayerStore(state => state.playback.state);
     const currentIndex = usePlayerStore(state => state.queue.currentIndex);
@@ -34,7 +46,9 @@ const UploadQueueItem: React.FC<UploadQueueItemProps> = React.memo(
       (playbackState === 'playing' || playbackState === 'buffering');
 
     const surahNum = track.surahId ? parseInt(track.surahId, 10) : undefined;
-    const displayTitle = surahNum ? `${surahNum}. ${track.title}` : track.title;
+    const displayTitle = surahNum
+      ? `${localizeDigits(surahNum)}. ${getTrackDisplayTitle(track)}`
+      : track.title;
 
     // Look up the full recitation for tags
     const recitation = useUploadsStore(state =>
@@ -46,15 +60,19 @@ const UploadQueueItem: React.FC<UploadQueueItemProps> = React.memo(
     const verseLabel = React.useMemo(() => {
       if (!recitation?.startVerse) return null;
       if (recitation.endVerse)
-        return `${recitation.startVerse}-${recitation.endVerse}`;
-      return `v${recitation.startVerse}`;
-    }, [recitation?.startVerse, recitation?.endVerse]);
+        return localizeDigits(
+          `${recitation.startVerse}-${recitation.endVerse}`,
+        );
+      return t('queue.verseShort', {verse: recitation.startVerse});
+    }, [recitation?.startVerse, recitation?.endVerse, t]);
 
     const recordingLabel = React.useMemo(() => {
-      if (recitation?.recordingType === 'salah') return 'Salah';
-      if (recitation?.recordingType === 'studio') return 'Studio';
+      if (recitation?.recordingType === 'salah')
+        return t('uploads.recordingType.salah');
+      if (recitation?.recordingType === 'studio')
+        return t('uploads.recordingType.studio');
       return null;
-    }, [recitation?.recordingType]);
+    }, [recitation?.recordingType, t]);
 
     const categoryLabel = React.useMemo(() => {
       if (recitation?.type !== 'other' || !recitation?.category) return null;
@@ -138,7 +156,7 @@ const UploadQueueItem: React.FC<UploadQueueItemProps> = React.memo(
               {color: theme.colors.textSecondary},
             ]}
             numberOfLines={1}>
-            {track.artist}
+            {getTrackArtistDisplay(track)}
           </Text>
         </View>
         {isCurrentTrack && (
@@ -154,6 +172,7 @@ const UploadQueueItem: React.FC<UploadQueueItemProps> = React.memo(
     );
   },
 );
+// @ai-end
 
 UploadQueueItem.displayName = 'UploadQueueItem';
 
@@ -220,13 +239,15 @@ interface IndexedTrack extends Track {
   _queueIndex: number;
 }
 
+// @ai-start
 export const QueueList: React.FC<QueueListProps> = ({
   onQueueItemPress,
   onRemoveQueueItem,
 }) => {
   const {theme} = useTheme();
+  const {t} = useTranslation(['player', 'common']);
   const tracks = usePlayerStore(s => s.queue.tracks);
-  const renderScrollComponent = useBottomSheetScrollableCreator();
+  const renderScrollComponent = usePlayerScrollable();
 
   const indexedTracks: IndexedTrack[] = React.useMemo(
     () => tracks.map((t, i) => ({...t, _queueIndex: i})),
@@ -281,17 +302,17 @@ export const QueueList: React.FC<QueueListProps> = ({
       <View style={[styles.header, {borderBottomColor: theme.colors.border}]}>
         <View style={styles.headerLeft}>
           <Text style={[styles.headerTitle, {color: theme.colors.text}]}>
-            Queue
+            {t('common:terms.queue')}
           </Text>
         </View>
         <View style={styles.headerRight}>
           <Text style={[styles.queueCount, {color: theme.colors.text}]}>
-            {tracks.length} track{tracks.length !== 1 ? 's' : ''}
+            {t('common:counts.tracks', {count: tracks.length})}
           </Text>
         </View>
       </View>
     ),
-    [theme.colors.border, theme.colors.text, tracks.length],
+    [theme.colors.border, theme.colors.text, tracks.length, t],
   );
 
   if (!tracks?.length) {
@@ -305,7 +326,7 @@ export const QueueList: React.FC<QueueListProps> = ({
             style={styles.emptyIcon}
           />
           <Text style={[styles.emptyText, {color: theme.colors.text}]}>
-            Queue is empty
+            {t('queue.empty')}
           </Text>
         </View>
       </View>
@@ -329,6 +350,7 @@ export const QueueList: React.FC<QueueListProps> = ({
     </View>
   );
 };
+// @ai-end
 
 const styles = StyleSheet.create({
   container: {

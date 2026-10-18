@@ -195,6 +195,7 @@ export const MyComponent: React.FC<MyComponentProps> = ({ title, onPress }) => {
 - Avoid `useEffect`/`useState` when possible — prefer Zustand stores and context
 - Use `usePlayerActions` for audio controls, not the deprecated `useUnifiedPlayer`
 - Name variables/functions camelCase, components PascalCase, directories lowercase-with-hyphens
+- Put all UI text through `t()` and add it to every shipped language; never branch on a language code. See [docs/i18n/README.md](docs/i18n/README.md)
 
 ### Scripts: common pitfalls
 
