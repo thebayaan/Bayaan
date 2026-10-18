@@ -1,5 +1,5 @@
 import ikhlas from './__fixtures__/timings/hafs-112.json';
-import {storage} from './storage';
+import {storage, writeJSON} from './storage';
 import {
   fetchTimings,
   fetchTranslation,

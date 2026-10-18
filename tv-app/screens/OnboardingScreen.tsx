@@ -11,10 +11,13 @@ import {
 import {ReciterPickerPanel} from '../components/settings/ReciterPickerPanel';
 import {GlowBackdrop} from '../components/listening/GlowBackdrop';
 import {LogoMark} from '../components/brand/LogoMark';
+import {NowPlayingPill} from '../components/nav/NowPlayingPill';
 import {useOnboarded} from '../hooks/useOnboarded';
 import {useReciters} from '../hooks/useReciters';
-import {useVerseSync} from '../hooks/useVerseSync';
+import {usePreviewTranslation} from '../hooks/usePreviewTranslation';
 import {pushScreenBack} from '../services/screenBack';
+import {getArabicVerses} from '../services/verseData';
+import {reciterSubtitle} from '../services/browseCatalog';
 import {useSettingsStore} from '../store/settingsStore';
 import {
   findTranslation,
@@ -35,7 +38,6 @@ import {createScaledStyles, scale} from '../theme/scale';
 const FEATURED_COUNT = 6;
 /** The verse the step-two cards preview (Al-Mulk 1). */
 const PREVIEW_SURAH = 67;
-const FALLBACK_TRANSLATION = 'Blessed is He in whose hand is dominion…';
 
 const MODE_CHOICES: readonly {value: OnScreenMode; label: string}[] = [
   {value: 'both', label: 'Arabic + translation'},
@@ -43,10 +45,8 @@ const MODE_CHOICES: readonly {value: OnScreenMode; label: string}[] = [
   {value: 'translation', label: 'Translation'},
 ];
 
-function styleLabel(reciter: Reciter): string {
-  const style = reciter.rewayat[0]?.style.trim() ?? '';
-  return style ? style.charAt(0).toUpperCase() + style.slice(1) : '';
-}
+/** Arabic-script labels (اردو), which Manrope has no glyphs for. */
+const ARABIC_SCRIPT = /[\u0600-\u06FF]/;
 
 /**
  * First launch in two steps, then Home: whose voice everything plays in
@@ -146,7 +146,7 @@ export function OnboardingScreen(): React.ReactElement {
           hidden={browsing}
         />
       ) : (
-        <StepTwo onDone={markOnboarded} />
+        <StepTwo onDone={markOnboarded} rerun={rerun} />
       )}
 
       <View style={styles.dots} pointerEvents="none">
@@ -161,9 +161,14 @@ export function OnboardingScreen(): React.ReactElement {
           reciters={browseList}
           selectedId={shownId}
           onSelect={pick}
-          detail={styleLabel}
+          detail={reciterSubtitle}
         />
       ) : null}
+
+      {/* Over Settings, a recitation may be playing: the player stays one
+          press away (opening it ends the rerun; see endRerunForPlayer). The
+          browse panel holds focus while open, so the pill steps aside. */}
+      {rerun && !browsing ? <NowPlayingPill /> : null}
     </View>
   );
 }
@@ -243,15 +248,17 @@ function ReciterPortrait({
         selected ? `${reciter.name}, your reciter` : reciter.name
       }>
       <PortraitImage reciter={reciter} selected={selected} />
+      {/* Two lines, so long names read in full; the box keeps the row even. */}
       <FocusText
         style={styles.portraitName}
         color={selected ? colors.text : colors.textSecondary}
         focusedColor={colors.text}
-        numberOfLines={1}>
+        numberOfLines={2}>
         {reciter.name}
       </FocusText>
+      {/* As the Reciters grid names it ("Hafs · Teaching"). */}
       <Text style={styles.portraitSub} numberOfLines={1}>
-        {styleLabel(reciter)}
+        {reciterSubtitle(reciter)}
       </Text>
     </FocusableCard>
   );
@@ -289,26 +296,34 @@ function PortraitImage({
   );
 }
 
-function StepTwo({onDone}: {onDone: () => void}): React.ReactElement {
+function StepTwo({
+  onDone,
+  rerun,
+}: {
+  onDone: () => void;
+  /** Opened again from Settings: the button returns there. */
+  rerun: boolean;
+}): React.ReactElement {
   const mode = useDisplayStore(s => s.mode);
   const setMode = useDisplayStore(s => s.setMode);
   const edition = useDisplayStore(s => s.edition);
   const setEdition = useDisplayStore(s => s.setEdition);
   const languages = useMemo(translationLanguages, []);
-  const {arabic, translation} = useVerseSync(
-    PREVIEW_SURAH,
-    undefined,
-    '',
-    edition,
-  );
+  // The translation keeps the last one loaded while a new language loads,
+  // and says so when it can't load (offline).
+  const {line} = usePreviewTranslation(PREVIEW_SURAH, 1, edition);
   const currentLanguage = findTranslation(edition).language;
   const sample = {
-    arabic: arabic[0] ?? '',
-    translation:
-      translation?.[0] ?? (edition === 'en.sahih' ? FALLBACK_TRANSLATION : ''),
+    arabic: getArabicVerses(PREVIEW_SURAH)[0] ?? '',
+    translation: line,
   };
-  // Calligraphy-only from Settings counts as Arabic here.
-  const selectedMode: OnScreenMode = mode === 'calligraphy' ? 'arabic' : mode;
+  // Calligraphy only (from Settings) has no card: none shows as chosen, and
+  // the first card takes focus, until one is picked.
+  const selectedMode: OnScreenMode | null =
+    mode === 'calligraphy' ? null : mode;
+  // Down from the cards lands on the language in use, not the first chip.
+  const [selectedChip, setSelectedChip] = useState<View | null>(null);
+  const doneLabel = rerun ? 'Done' : 'Continue';
 
   return (
     <View style={styles.step}>
@@ -319,33 +334,47 @@ function StepTwo({onDone}: {onDone: () => void}): React.ReactElement {
         anytime.
       </Text>
       <TVFocusGuideView autoFocus style={styles.modes}>
-        {MODE_CHOICES.map(choice => (
+        {MODE_CHOICES.map((choice, i) => (
           <ModeCard
             key={choice.value}
             mode={choice.value}
             label={choice.label}
             selected={selectedMode === choice.value}
+            preferred={
+              selectedMode === null ? i === 0 : selectedMode === choice.value
+            }
             sample={sample}
             onSelect={() => setMode(choice.value)}
           />
         ))}
       </TVFocusGuideView>
-      {selectedMode !== 'arabic' ? (
+      {selectedMode === 'both' || selectedMode === 'translation' ? (
         <View style={styles.languageBlock}>
           <Text style={styles.languageTitle}>Translation language</Text>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.languageRow}>
-            <TVFocusGuideView autoFocus style={styles.languageGuide}>
-              {languages.map(l => (
-                <LanguageChip
-                  key={l.edition}
-                  label={l.language}
-                  selected={l.language === currentLanguage}
-                  onSelect={() => setEdition(l.edition)}
-                />
-              ))}
+            <TVFocusGuideView
+              autoFocus
+              destinations={selectedChip ? [selectedChip] : undefined}
+              style={styles.languageGuide}>
+              {languages.map(l => {
+                const selected = l.language === currentLanguage;
+                return (
+                  <LanguageChip
+                    key={l.edition}
+                    ref={selected ? setSelectedChip : undefined}
+                    label={l.language}
+                    selected={selected}
+                    // The language already in use keeps its translation
+                    // (Hilali stays Hilali); only a new language switches.
+                    onSelect={() => {
+                      if (!selected) setEdition(l.edition);
+                    }}
+                  />
+                );
+              })}
             </TVFocusGuideView>
           </ScrollView>
         </View>
@@ -353,10 +382,10 @@ function StepTwo({onDone}: {onDone: () => void}): React.ReactElement {
       <TVFocusGuideView autoFocus style={styles.browseRow}>
         <FocusableButton
           onPress={onDone}
-          accessibilityLabel="Start listening"
+          accessibilityLabel={doneLabel}
           outlined
           style={styles.button}>
-          <FocusText style={styles.buttonText}>Start listening</FocusText>
+          <FocusText style={styles.buttonText}>{doneLabel}</FocusText>
         </FocusableButton>
       </TVFocusGuideView>
     </View>
@@ -367,12 +396,15 @@ function ModeCard({
   mode,
   label,
   selected,
+  preferred,
   sample,
   onSelect,
 }: {
   mode: OnScreenMode;
   label: string;
   selected: boolean;
+  /** Takes focus when the step opens. */
+  preferred: boolean;
   sample: {arabic: string; translation: string};
   onSelect: () => void;
 }): React.ReactElement {
@@ -383,7 +415,7 @@ function ModeCard({
       style={styles.modeCard}
       focusScale={1.04}
       onPress={onSelect}
-      hasTVPreferredFocus={selected}
+      hasTVPreferredFocus={preferred}
       accessibilityLabel={selected ? `${label}, selected` : label}>
       <View style={styles.modeSample}>
         {showArabic ? (
@@ -423,18 +455,25 @@ function LanguageChip({
   label,
   selected,
   onSelect,
+  ref,
 }: {
   label: string;
   selected: boolean;
   onSelect: () => void;
+  ref?: React.Ref<View>;
 }): React.ReactElement {
   return (
     <FocusableButton
+      ref={ref}
       onPress={onSelect}
       accessibilityLabel={selected ? `${label}, selected` : label}
+      selected={selected}
       style={styles.chip}>
       <FocusText
-        style={styles.chipText}
+        style={[
+          styles.chipText,
+          ARABIC_SCRIPT.test(label) && styles.chipTextArabic,
+        ]}
         color={selected ? colors.text : colors.textSecondary}>
         {label}
       </FocusText>
@@ -470,8 +509,9 @@ const styles = createScaledStyles({
     paddingTop: 150,
     paddingHorizontal: 96,
   },
-  // Keeps step one visible left of the browse panel.
-  stepBesidePanel: {paddingRight: 620 + 48, opacity: 0.35},
+  // Step one stays laid out as it was (no reflow), dimmed under the browse
+  // panel, which covers its right side.
+  stepBesidePanel: {opacity: 0.35},
   kicker: {
     color: colors.accent,
     fontFamily: fonts.extraBold,
@@ -526,12 +566,15 @@ const styles = createScaledStyles({
     fontFamily: fonts.bold,
     fontWeight: '700',
     fontSize: 22,
+    lineHeight: 28,
+    height: 56,
+    textAlign: 'center',
   },
   portraitSub: {
-    color: colors.textTertiary,
+    color: colors.textSecondary,
     fontFamily: fonts.medium,
     fontWeight: '500',
-    fontSize: 17,
+    fontSize: 20,
   },
   browseRow: {
     position: 'absolute',
@@ -594,8 +637,8 @@ const styles = createScaledStyles({
     color: colors.textSecondary,
     fontFamily: fonts.medium,
     fontWeight: '500',
-    fontSize: 17,
-    lineHeight: 24,
+    fontSize: 19,
+    lineHeight: 26,
     textAlign: 'center',
   },
   modeTranslationAlone: {color: colors.text, fontSize: 22, lineHeight: 32},
@@ -623,7 +666,7 @@ const styles = createScaledStyles({
     color: colors.textSecondary,
     fontFamily: fonts.extraBold,
     fontWeight: '800',
-    fontSize: 14,
+    fontSize: 16,
     letterSpacing: 2.5,
     textTransform: 'uppercase',
   },
@@ -634,8 +677,13 @@ const styles = createScaledStyles({
     paddingVertical: 10,
     borderRadius: 16,
     alignItems: 'center',
+    // The Arabic chip is a little taller; the others centre beside it.
+    justifyContent: 'center',
   },
   chipText: {fontFamily: fonts.bold, fontWeight: '700', fontSize: 19},
+  // Drawn by the system Arabic font, which runs small and light at the same
+  // size: bigger, so its label reads as heavy as the Latin chips beside it.
+  chipTextArabic: {fontSize: 25},
   chipLine: {
     position: 'absolute',
     bottom: 4,

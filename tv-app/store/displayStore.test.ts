@@ -5,6 +5,7 @@ import {
   dimLabel,
   textScale,
   translationLanguages,
+  translationRowLabel,
   TRANSLATIONS,
   useDisplayStore,
 } from './displayStore';
@@ -60,5 +61,18 @@ describe('displayStore', () => {
     expect(languages[0]).toEqual({language: 'English', edition: 'en.sahih'});
     expect(languages.filter(l => l.language === 'English')).toHaveLength(1);
     expect(languages.some(l => l.edition === 'fr.hamidullah')).toBe(true);
+  });
+
+  it('names the translation row language first, then the translator', () => {
+    expect(translationRowLabel('fr.hamidullah')).toBe(
+      'Français · Muhammad Hamidullah',
+    );
+    expect(translationRowLabel('en.sahih')).toBe(
+      'English · Saheeh International',
+    );
+    // An unknown edition falls back like findTranslation.
+    expect(translationRowLabel('xx.gone')).toBe(
+      'English · Saheeh International',
+    );
   });
 });

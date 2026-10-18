@@ -2,6 +2,7 @@ import {
   useSettingsStore,
   resolveDefaultReciter,
   readPersistedDefaultReciterId,
+  savedCountLabel,
 } from './settingsStore';
 import {storage} from '../services/storage';
 import type {Reciter} from '../types/reciter';
@@ -116,5 +117,13 @@ describe('settingsStore', () => {
     it('returns null when there are no reciters and nothing persisted', () => {
       expect(resolveDefaultReciter([], getDefaultReciter)).toBeNull();
     });
+  });
+});
+
+describe('savedCountLabel', () => {
+  it('names the count as the Library does, or says nothing is saved', () => {
+    expect(savedCountLabel(0, 'surah', 'surahs')).toBe('Nothing saved');
+    expect(savedCountLabel(1, 'reciter', 'reciters')).toBe('1 reciter');
+    expect(savedCountLabel(2, 'surah', 'surahs')).toBe('2 surahs');
   });
 });

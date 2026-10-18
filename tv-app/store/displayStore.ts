@@ -58,6 +58,16 @@ export function findTranslation(id: string): TranslationEdition {
 }
 
 /**
+ * The Translation row's value, language first ("Français · Muhammad
+ * Hamidullah"), as onboarding and the player name it; a long translator
+ * name is what gets truncated.
+ */
+export function translationRowLabel(id: string): string {
+  const t = findTranslation(id);
+  return `${t.language} · ${t.name}`;
+}
+
+/**
  * One entry per language, with the first edition offered in it (so English
  * picks Saheeh International), for choosing by language at onboarding.
  */
