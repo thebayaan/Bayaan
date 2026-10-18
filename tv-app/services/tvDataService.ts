@@ -2,11 +2,10 @@ import fallbackReciters from '../../data/reciters-fallback.json';
 import {normalizeReciters} from './normalizeReciter';
 import {resolveDefaultReciter} from '../store/settingsStore';
 import type {Reciter, Rewayah} from '../types/reciter';
-import {readJSON, storage, writeJSON} from './storage';
+import {storage, writeJSON} from './storage';
 
 const DATA_VERSION = '4';
 const RECITERS_KEY = 'bayaan_reciters';
-const SERVERS_KEY = 'bayaan_reciter_servers';
 /**
  * MMKV key holding the user's default reciter id. Mirrored by the
  * `useDefaultReciter` hook, which reads this same key reactively so the
@@ -191,12 +190,14 @@ async function loadReciters(): Promise<Reciter[]> {
   }
 }
 
+/**
+ * A reciter's rewayat, read from the catalog (stored, then bundled). Older
+ * builds kept a per-reciter copy under `bayaan_reciter_servers_<id>`; it is
+ * no longer read or written, because that copy never refreshed with the
+ * catalog and would keep serving a reciter's old audio servers after a live
+ * catalog update changed them.
+ */
 export function getCachedRewayat(reciterId: string): Rewayah[] | null {
-  const key = `${SERVERS_KEY}_${reciterId}`;
-  const cached = readJSON<Cached<Rewayah[]>>(key);
-  if (cached && cached.version === DATA_VERSION && cached.data.length > 0) {
-    return cached.data;
-  }
   const embedded = getCachedReciter(reciterId)?.rewayat;
   if (embedded && embedded.length > 0) return embedded;
   const fromFallback = fallbackReciterList().find(
@@ -211,22 +212,7 @@ export function getCachedRewayat(reciterId: string): Rewayah[] | null {
  * reads them from the stored catalog, then the bundled list.
  */
 export async function fetchRewayat(reciterId: string): Promise<Rewayah[]> {
-  const key = `${SERVERS_KEY}_${reciterId}`;
-  const cached = readJSON<Cached<Rewayah[]>>(key);
-  if (cached && cached.version === DATA_VERSION && cached.data.length > 0) {
-    return cached.data;
-  }
-
-  const embedded = getCachedReciter(reciterId)?.rewayat;
-  if (embedded && embedded.length > 0) {
-    writeJSON<Cached<Rewayah[]>>(key, {version: DATA_VERSION, data: embedded});
-    return embedded;
-  }
-
-  const fromFallback = fallbackReciterList().find(
-    r => r.id === reciterId,
-  )?.rewayat;
-  return fromFallback ?? [];
+  return getCachedRewayat(reciterId) ?? [];
 }
 
 export function buildAudioUrl(server: string, surahNumber: number): string {

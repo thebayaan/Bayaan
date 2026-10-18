@@ -137,6 +137,22 @@ describe('tvDataService', () => {
     expect(mockFetch).not.toHaveBeenCalled();
   });
 
+  it('reads rewayat from the current catalog, not an old per-reciter copy', async () => {
+    const withRewayat = fallback.find(r => (r.rewayat ?? []).length > 0)!;
+    const id = String(withRewayat.id);
+    storage.set(
+      'bayaan_reciters',
+      JSON.stringify({version: '4', data: [withRewayat]}),
+    );
+    storage.set(
+      `bayaan_reciter_servers_${id}`,
+      JSON.stringify({version: '4', data: [{id: 'old', server: 'https://old'}]}),
+    );
+    const rewayat = await service.fetchRewayat(id);
+    expect(rewayat.map(r => r.id)).not.toContain('old');
+    expect(service.getCachedRewayat(id)?.map(r => r.id)).not.toContain('old');
+  });
+
   it('falls back to bundled JSON when fetch fails and cache empty', async () => {
     mockFetch.mockRejectedValue(new Error('network'));
     const result = await service.fetchReciters();
