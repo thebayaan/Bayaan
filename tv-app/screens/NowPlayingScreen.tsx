@@ -46,6 +46,7 @@ import {createSeekStepper} from '../services/seekStep';
 import {AMBIENT_AVAILABLE} from '../services/ambientPlayer';
 import {startAmbientSync} from '../services/ambientSync';
 import {rewayahLabel, type ReciterChoice} from '../services/listeningChoices';
+import {returningToSave} from '../services/playlistsPicker';
 import {colors} from '../theme/colors';
 import {fonts, typography} from '../theme/typography';
 import {spacing} from '../theme/spacing';
@@ -217,8 +218,12 @@ export function NowPlayingScreen(): React.ReactElement {
     if (panel === null) markActivity();
   }, [panel, markActivity]);
 
-  // Leaving the player lowers the tray so it isn't up next time.
-  useEffect(() => () => setTrayOpen(false), [setTrayOpen]);
+  // Leaving the player lowers the tray so it isn't up next time, except
+  // back from the playlist editor its Save panel opened: up, on Save.
+  useEffect(() => {
+    if (returningToSave()) setTrayOpen(true);
+    return () => setTrayOpen(false);
+  }, [setTrayOpen]);
 
   // An error card or the sleep timer's dark room has the screen to itself.
   const errored = status === 'error';

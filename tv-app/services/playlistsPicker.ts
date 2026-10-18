@@ -52,6 +52,28 @@ export function removeFromPlaylist(
   showToast(`Removed from ${playlist.name}`);
 }
 
+// The player's Save panel opened the editor. The player unmounts under it
+// (it owns play/pause, see navShell.stackLayers), so on the way back it
+// raises its tray again with focus on Save rather than starting over.
+let backToSave = false;
+
+/** The Save panel is opening the playlist editor. */
+export function noteEditorFromSave(): void {
+  backToSave = true;
+}
+
+/** Whether the player is coming back from that editor (kept until taken). */
+export function returningToSave(): boolean {
+  return backToSave;
+}
+
+/** The same, once: the tray takes it to focus its Save tool. */
+export function takeReturnToSave(): boolean {
+  const was = backToSave;
+  backToSave = false;
+  return was;
+}
+
 /**
  * Whether another playlist fits; at the cap it says so before the editor
  * opens, so no name is typed for nothing. Every "New playlist" asks this.

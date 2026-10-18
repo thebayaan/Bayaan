@@ -21,6 +21,10 @@ import {isLovedIn, toggleLovedSurah} from '../../services/lovedSurahsStore';
 import {useLovedSurahs} from '../../hooks/useLovedSurahs';
 import {usePlaylists} from '../../hooks/usePlaylists';
 import {playlistHas} from '../../services/playlistsStore';
+import {
+  returningToSave,
+  takeReturnToSave,
+} from '../../services/playlistsPicker';
 import {formatSpeed} from './ListeningPanels';
 import {colors} from '../../theme/colors';
 import {fonts} from '../../theme/typography';
@@ -98,7 +102,13 @@ export function ControlsTray({
   // When a panel closes, focus goes back to the tool that opened it. It is
   // set when the tool is pressed, so the tools mount again already knowing
   // which one takes focus.
-  const [returnTo, setReturnTo] = useState<PanelKey | null>(null);
+  // Back from the playlist editor the Save panel opened, Save takes it.
+  const [returnTo, setReturnTo] = useState<PanelKey | null>(() =>
+    returningToSave() ? 'save' : null,
+  );
+  useEffect(() => {
+    takeReturnToSave();
+  }, []);
 
   const panelOpen = panel !== null;
   // A verse repeat's gap counts as playing: Pause there stops the replay.

@@ -1,7 +1,10 @@
 import {
+  noteEditorFromSave,
   pickerDetail,
   removeFromPlaylist,
+  returningToSave,
   roomForPlaylist,
+  takeReturnToSave,
   togglePlaylistItem,
 } from './playlistsPicker';
 import {
@@ -61,6 +64,18 @@ describe('pickerDetail', () => {
     expect(pickerDetail({items: []})).toBe('Empty');
     expect(pickerDetail({items: [1]})).toBe('1 surah');
     expect(pickerDetail({items: [1, 2]})).toBe('2 surahs');
+  });
+});
+
+describe('the way back to the Save panel', () => {
+  it('is kept for the player until the tray takes it', () => {
+    expect(returningToSave()).toBe(false);
+    noteEditorFromSave();
+    expect(returningToSave()).toBe(true);
+    expect(returningToSave()).toBe(true);
+    expect(takeReturnToSave()).toBe(true);
+    expect(returningToSave()).toBe(false);
+    expect(takeReturnToSave()).toBe(false);
   });
 });
 

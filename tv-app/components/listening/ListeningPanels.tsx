@@ -41,6 +41,7 @@ import {hasPlaylistItem, type PlaylistItem} from '../../services/playlistsStore'
 import {
   NEW_PLAYLIST_DETAIL,
   NEW_PLAYLIST_LABEL,
+  noteEditorFromSave,
   pickerDetail,
   roomForPlaylist,
   togglePlaylistItem,
@@ -344,6 +345,7 @@ export function ListeningPanels({
           if (!entry) return;
           if (id === NEW_PLAYLIST) {
             if (!roomForPlaylist(playlists.length)) return;
+            noteEditorFromSave();
             setPanel(null);
             push({screen: 'playlistEdit', seed: entry});
             return;
