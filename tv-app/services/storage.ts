@@ -2,6 +2,13 @@ import {createMMKV} from 'react-native-mmkv';
 
 export const storage = createMMKV({id: 'bayaan-tv'});
 
+/**
+ * MMKV reads every key synchronously already. Vega reads its large per-surah
+ * caches on demand, so callers of those await this before reading (see
+ * services/storageVega.ts).
+ */
+export async function preload(_key: string): Promise<void> {}
+
 export function readJSON<T>(key: string): T | null {
   const raw = storage.getString(key);
   if (!raw) return null;
