@@ -1,5 +1,5 @@
-import {FlashList, type FlashListRef} from '@shopify/flash-list';
-import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import {FlashList} from '@shopify/flash-list';
+import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {Image} from 'expo-image';
 import Svg, {
   Defs,
@@ -8,14 +8,7 @@ import Svg, {
   Rect,
   Stop,
 } from 'react-native-svg';
-import {
-  NativeScrollEvent,
-  NativeSyntheticEvent,
-  StyleSheet,
-  Text,
-  TVFocusGuideView,
-  View,
-} from 'react-native';
+import {StyleSheet, Text, TVFocusGuideView, View} from 'react-native';
 import {FilterChip} from '../components/browse/FilterChip';
 import {
   ReciterPortrait,
@@ -86,8 +79,6 @@ const cellLayout = cellHeightLayout(SURAH_ROW_HEIGHT + CELL_PAD_Y * 2);
 const LIST_PAD_X = spacing.xl - CELL_PAD_X;
 const PORTRAIT = 240;
 
-const scrollPositions = new Map<string, number>();
-
 const surahById = new Map<number, Surah>(SURAHS.map(s => [s.id, s]));
 
 function surahName(n: number): string {
@@ -127,9 +118,6 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
   // or below (the selected tab, else the selected style, else sort).
   const [rowEntry, setRowEntry] = useState<View | null>(null);
 
-  const listRef = useRef<FlashListRef<Surah>>(null);
-  const restoredRef = useRef<boolean>(false);
-
   useEffect(() => {
     let cancelled = false;
     fetchRewayat(reciterId)
@@ -148,22 +136,6 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
       cancelled = true;
     };
   }, [reciterId, attempt]);
-
-  function handleScroll(e: NativeSyntheticEvent<NativeScrollEvent>): void {
-    scrollPositions.set(reciterId, e.nativeEvent.contentOffset.y);
-  }
-
-  function handleContentSizeChange(_: number, height: number): void {
-    if (restoredRef.current) return;
-    const saved = scrollPositions.get(reciterId);
-    if (saved === undefined || saved <= 0) {
-      restoredRef.current = true;
-      return;
-    }
-    if (height < saved) return;
-    listRef.current?.scrollToOffset({offset: saved, animated: false});
-    restoredRef.current = true;
-  }
 
   const current = rewayat.find(r => r.id === activeRewayahId);
   const activeGroup = groups.find(g => g.items.some(r => r.id === current?.id));
@@ -615,8 +587,9 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
 
   return (
     <View style={styles.container}>
+      {/* No scroll restore: the page stays mounted under the screens
+          stacked on it, and a new visit starts at the hero, where focus is. */}
       <FlashList
-        ref={listRef}
         data={sortedSurahs}
         numColumns={COLUMNS}
         renderItem={renderItem}
@@ -630,9 +603,6 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
         ListEmptyComponent={empty}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
-        scrollEventThrottle={250}
-        onScroll={handleScroll}
-        onContentSizeChange={handleContentSizeChange}
       />
     </View>
   );
