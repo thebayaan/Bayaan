@@ -1,40 +1,209 @@
-import React, {useMemo} from 'react';
-import {ScrollView, Text, TVFocusGuideView, View} from 'react-native';
+import {FlashList} from '@shopify/flash-list';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import {Text, TVFocusGuideView, View} from 'react-native';
+import {GradientFill} from '../components/brand/GradientFill';
+import {SurahGlyph} from '../components/brand/SurahGlyph';
+import {PencilIcon} from '../components/library/LibraryIcons';
 import {FocusableButton} from '../components/primitives/FocusableButton';
 import {FocusIcon, FocusText} from '../components/primitives/focusContext';
 import {usePlaylist} from '../hooks/usePlaylists';
 import {useReciters} from '../hooks/useReciters';
+import {rewayahFamily, rewayahShortName} from '../services/browseCatalog';
+import {playlistCaption} from '../services/libraryShelf';
+import {shortReciterName} from '../services/listeningChoices';
 import {playOrOpen, surahTitle} from '../services/playbackRouting';
-import type {PlaylistItem} from '../services/playlistsStore';
+import {playlistGradient} from '../services/playlistFormat';
+import {removePlaylist, type PlaylistItem} from '../services/playlistsStore';
+import {getCachedRewayat} from '../services/tvDataService';
+import {useContextMenuStore} from '../store/contextMenuStore';
 import {useNavStore} from '../store/navStore';
-import {PlayIcon, ShuffleIcon} from '../../components/Icons';
+import {showToast} from '../store/toastStore';
+import {
+  PlaylistIcon,
+  PlayIcon,
+  ShuffleIcon,
+  TrashIcon,
+} from '../../components/Icons';
 import {colors} from '../theme/colors';
 import {fonts} from '../theme/typography';
-import {spacing} from '../theme/spacing';
-import {createScaledStyles} from '../theme/scale';
+import {createScaledStyles, scale} from '../theme/scale';
+import type {Reciter} from '../types/reciter';
 
 type Props = {playlistId: string};
 
+const ROW_HEIGHT = 96;
+const ART = 300;
+/** How long the Delete button waits for its second press. */
+const CONFIRM_MS = 4000;
+
+// The row last played from, per playlist, so Back from the player lands on
+// it rather than on Play.
+const lastRow = new Map<string, number>();
+
+function itemKey(item: PlaylistItem): string {
+  return `${item.surahNumber}:${item.reciterId}:${item.rewayahId ?? ''}`;
+}
+
 /**
- * One playlist: Play / Shuffle / Edit, then its surahs in order. OK on a
- * surah plays the playlist from there.
+ * One playlist. On the left its art, name and actions (Play, Shuffle,
+ * Rename, Delete); on the right its surahs in order. OK on a row plays the
+ * playlist from there; holding OK opens the row's menu (play from here,
+ * like, add to another playlist, move up or down, remove).
  */
 export function PlaylistScreen({playlistId}: Props): React.ReactElement {
   const playlist = usePlaylist(playlistId);
   const {reciters} = useReciters();
   const push = useNavStore(s => s.push);
   const pop = useNavStore(s => s.pop);
+  const switchTab = useNavStore(s => s.switchTab);
+  const [confirmDelete, setConfirmDelete] = useState<boolean>(false);
 
-  const reciterNames = useMemo(
-    () => new Map(reciters.map(r => [r.id, r.name])),
+  const reciterById = useMemo(
+    () => new Map<string, Reciter>(reciters.map(r => [r.id, r])),
     [reciters],
+  );
+  const voiceOf = useCallback(
+    (id: string): string => {
+      const reciter = reciterById.get(id);
+      return reciter ? shortReciterName(reciter.name) : '';
+    },
+    [reciterById],
+  );
+
+  const items = useMemo(() => playlist?.items ?? [], [playlist]);
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
+
+  // Which row takes focus: the one played from last (coming back from the
+  // player), or after a row's menu closes, that row (moved) or the one now
+  // in its place (removed). Dropped once it has landed.
+  const [focusRow, setFocusRow] = useState<number | null>(() => {
+    const row = lastRow.get(playlistId);
+    return row !== undefined && row < items.length ? row : null;
+  });
+  const initialRow = useRef<number | null>(focusRow).current;
+  useEffect(() => {
+    if (focusRow === null) return;
+    const timer = setTimeout(() => setFocusRow(null), 1500);
+    return () => clearTimeout(timer);
+  }, [focusRow]);
+
+  useEffect(() => {
+    let menuRow: number | null = null;
+    return useContextMenuStore.subscribe(next => {
+      const t = next.target;
+      if (
+        t?.kind === 'surah' &&
+        t.origin === 'playlist' &&
+        t.playlistId === playlistId
+      ) {
+        menuRow = t.playlistIndex ?? null;
+        return;
+      }
+      if (t === null && menuRow !== null) {
+        const count = itemsRef.current.length;
+        if (count > 0) setFocusRow(Math.min(menuRow, count - 1));
+        menuRow = null;
+      }
+    });
+  }, [playlistId]);
+
+  // The second press of Delete must come soon after the first.
+  useEffect(() => {
+    if (!confirmDelete) return;
+    const timer = setTimeout(() => setConfirmDelete(false), CONFIRM_MS);
+    return () => clearTimeout(timer);
+  }, [confirmDelete]);
+
+  const playFrom = useCallback(
+    (index: number, shuffle = false): void => {
+      const list = itemsRef.current;
+      const from = list[index];
+      if (!from) return;
+      if (!shuffle) lastRow.set(playlistId, index);
+      void playOrOpen({
+        ...from,
+        queue: list,
+        ...(shuffle ? {shuffle: true} : {}),
+        source: 'playlist',
+      });
+    },
+    [playlistId],
+  );
+
+  const renderItem = useCallback(
+    ({item, index}: {item: PlaylistItem; index: number}) => {
+      const reciter = reciterById.get(item.reciterId);
+      const rewayah = (
+        getCachedRewayat(item.reciterId) ??
+        reciter?.rewayat ??
+        []
+      ).find(r => r.id === item.rewayahId);
+      const voice = voiceOf(item.reciterId);
+      const sub = [
+        voice,
+        rewayah && rewayahFamily(rewayah.name) !== 'hafs'
+          ? rewayahShortName(rewayah.name)
+          : '',
+      ]
+        .filter(Boolean)
+        .join(' · ');
+      const title = surahTitle(item.surahNumber);
+      return (
+        <View style={styles.cell}>
+          <FocusableButton
+            onPress={() => playFrom(index)}
+            onLongPress={() =>
+              useContextMenuStore.getState().openSurah({
+                surahNumber: item.surahNumber,
+                reciterId: item.reciterId,
+                ...(item.rewayahId ? {rewayahId: item.rewayahId} : {}),
+                origin: 'playlist',
+                playlistId,
+                playlistIndex: index,
+              })
+            }
+            hasTVPreferredFocus={focusRow === index}
+            accessibilityLabel={`${index + 1}. ${title}${
+              voice ? `, ${voice}` : ''
+            }. Hold OK for more`}
+            focusScale={1.02}
+            containerStyle={styles.rowWrap}
+            style={styles.row}>
+            <View style={styles.rowInner}>
+              <FocusText
+                style={styles.rowNum}
+                color={colors.textTertiary}
+                focusedColor={colors.onFocusSecondary}>
+                {`${index + 1}`}
+              </FocusText>
+              <View style={styles.rowText}>
+                <FocusText style={styles.rowTitle} numberOfLines={1}>
+                  {title}
+                </FocusText>
+                {sub ? (
+                  <FocusText
+                    style={styles.rowSub}
+                    numberOfLines={1}
+                    color={colors.textSecondary}
+                    focusedColor={colors.onFocusSecondary}>
+                    {sub}
+                  </FocusText>
+                ) : null}
+              </View>
+            </View>
+          </FocusableButton>
+        </View>
+      );
+    },
+    [reciterById, voiceOf, playFrom, focusRow, playlistId],
   );
 
   if (!playlist) {
     return (
       <View style={[styles.container, styles.center]}>
-        <Text style={styles.title}>Playlist not found</Text>
-        <Text style={styles.sub}>It may have been deleted.</Text>
+        <Text style={styles.name}>Playlist not found</Text>
+        <Text style={styles.caption}>It may have been deleted.</Text>
         <FocusableButton
           onPress={pop}
           accessibilityLabel="Go back"
@@ -47,82 +216,135 @@ export function PlaylistScreen({playlistId}: Props): React.ReactElement {
     );
   }
 
-  const items = playlist.items;
+  const hasItems = items.length > 0;
 
-  function play(from: PlaylistItem, shuffle = false): void {
-    void playOrOpen({...from, queue: items, shuffle, source: 'playlist'});
+  function remove(): void {
+    if (!playlist) return;
+    if (!confirmDelete) {
+      setConfirmDelete(true);
+      return;
+    }
+    removePlaylist(playlist.id);
+    lastRow.delete(playlist.id);
+    showToast(`Deleted ${playlist.name}`);
+    pop();
   }
 
   return (
     <View style={styles.container}>
-      <Text style={styles.kicker}>PLAYLIST</Text>
-      <Text style={styles.title} numberOfLines={1}>
-        {playlist.name}
-      </Text>
-      <Text style={styles.sub}>
-        {items.length === 1 ? '1 surah' : `${items.length} surahs`}
-      </Text>
-      <TVFocusGuideView autoFocus style={styles.actions}>
-        {items.length > 0 ? (
-          <>
-            <FocusableButton
-              onPress={() => play(items[0])}
-              accessibilityLabel="Play playlist"
-              hasTVPreferredFocus
-              outlined
-              style={styles.btn}>
-              <View style={styles.btnInner}>
-                <FocusIcon icon={PlayIcon} size={20} />
-                <FocusText style={styles.btnText}>Play</FocusText>
-              </View>
-            </FocusableButton>
-            {items.length > 1 ? (
+      <View style={styles.side}>
+        <View style={styles.art}>
+          <GradientFill
+            colors={playlistGradient(playlist.color)}
+            id={`playlist-art-${playlist.id}`}
+          />
+          <View style={styles.artGlyph}>
+            {hasItems ? (
+              <SurahGlyph surahNumber={items[0].surahNumber} size={120} />
+            ) : (
+              <PlaylistIcon color={colors.textSecondary} size={scale(80)} />
+            )}
+          </View>
+        </View>
+        <Text style={styles.kicker}>PLAYLIST</Text>
+        <Text style={styles.name} numberOfLines={2}>
+          {playlist.name}
+        </Text>
+        <Text style={styles.caption} numberOfLines={1}>
+          {playlistCaption(items, voiceOf)}
+        </Text>
+        <TVFocusGuideView autoFocus trapFocusLeft style={styles.actions}>
+          {hasItems ? (
+            <View style={styles.actionRow}>
               <FocusableButton
-                onPress={() =>
-                  play(items[Math.floor(Math.random() * items.length)], true)
-                }
-                accessibilityLabel="Shuffle playlist"
+                onPress={() => playFrom(0)}
+                accessibilityLabel={`Play ${playlist.name}`}
+                hasTVPreferredFocus={initialRow === null}
+                outlined
                 style={styles.btn}>
                 <View style={styles.btnInner}>
-                  <FocusIcon icon={ShuffleIcon} size={20} />
-                  <FocusText style={styles.btnText}>Shuffle</FocusText>
+                  <FocusIcon icon={PlayIcon} size={22} />
+                  <FocusText style={styles.btnText}>Play</FocusText>
                 </View>
               </FocusableButton>
-            ) : null}
-          </>
-        ) : null}
-        <FocusableButton
-          onPress={() => push({screen: 'playlistEdit', playlistId})}
-          accessibilityLabel="Edit playlist"
-          hasTVPreferredFocus={items.length === 0}
-          style={styles.btn}>
-          <FocusText style={styles.btnText}>Edit</FocusText>
-        </FocusableButton>
-      </TVFocusGuideView>
-      {items.length === 0 ? (
-        <Text style={styles.empty}>
-          Long-press a surah anywhere and choose Add to playlist.
-        </Text>
-      ) : (
-        <ScrollView contentContainerStyle={styles.list}>
-          {items.map((item, i) => (
+              {items.length > 1 ? (
+                <FocusableButton
+                  onPress={() =>
+                    playFrom(Math.floor(Math.random() * items.length), true)
+                  }
+                  accessibilityLabel={`Shuffle ${playlist.name}`}
+                  style={styles.btn}>
+                  <View style={styles.btnInner}>
+                    <FocusIcon icon={ShuffleIcon} size={22} />
+                    <FocusText style={styles.btnText}>Shuffle</FocusText>
+                  </View>
+                </FocusableButton>
+              ) : null}
+            </View>
+          ) : null}
+          <View style={styles.actionRow}>
             <FocusableButton
-              key={`${item.reciterId}:${item.rewayahId ?? ''}:${item.surahNumber}`}
-              onPress={() => play(item)}
-              accessibilityLabel={`Play ${surahTitle(item.surahNumber)}`}
-              style={styles.row}>
-              <View style={styles.rowInner}>
-                <FocusText style={styles.rowNum}>{`${i + 1}`}</FocusText>
-                <FocusText style={styles.rowTitle}>
-                  {surahTitle(item.surahNumber)}
-                </FocusText>
-                <FocusText style={styles.rowSub}>
-                  {reciterNames.get(item.reciterId) ?? ''}
+              onPress={() => push({screen: 'playlistEdit', playlistId})}
+              accessibilityLabel="Rename playlist"
+              style={styles.btn}>
+              <View style={styles.btnInner}>
+                <FocusIcon icon={PencilIcon} size={22} />
+                <FocusText style={styles.btnText}>Rename</FocusText>
+              </View>
+            </FocusableButton>
+            <FocusableButton
+              onPress={remove}
+              accessibilityLabel={
+                confirmDelete
+                  ? `Press again to delete ${playlist.name}`
+                  : 'Delete playlist'
+              }
+              style={styles.btn}>
+              <View style={styles.btnInner}>
+                <FocusIcon icon={TrashIcon} size={22} />
+                <FocusText style={styles.btnText}>
+                  {confirmDelete ? 'Press again to delete' : 'Delete'}
                 </FocusText>
               </View>
             </FocusableButton>
-          ))}
-        </ScrollView>
+          </View>
+        </TVFocusGuideView>
+      </View>
+
+      {hasItems ? (
+        <TVFocusGuideView
+          autoFocus
+          trapFocusUp
+          trapFocusDown
+          trapFocusRight
+          style={styles.list}>
+          <FlashList
+            data={items}
+            renderItem={renderItem}
+            keyExtractor={itemKey}
+            extraData={focusRow}
+            initialScrollIndex={
+              initialRow !== null && initialRow > 0 ? initialRow : undefined
+            }
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+          />
+        </TVFocusGuideView>
+      ) : (
+        <TVFocusGuideView autoFocus style={styles.empty}>
+          <Text style={styles.emptyTitle}>No surahs yet</Text>
+          <Text style={styles.emptyText}>
+            Hold OK on any surah and choose Add to playlist.
+          </Text>
+          <FocusableButton
+            onPress={() => switchTab('surahs')}
+            accessibilityLabel="Browse surahs"
+            hasTVPreferredFocus
+            outlined
+            style={[styles.btn, styles.emptyButton]}>
+            <FocusText style={styles.btnText}>Browse surahs</FocusText>
+          </FocusableButton>
+        </TVFocusGuideView>
       )}
     </View>
   );
@@ -131,53 +353,90 @@ export function PlaylistScreen({playlistId}: Props): React.ReactElement {
 const styles = createScaledStyles({
   container: {
     flex: 1,
+    flexDirection: 'row',
     backgroundColor: colors.background,
-    paddingTop: 72,
-    paddingHorizontal: 96,
+    paddingTop: 96,
+    paddingLeft: 96,
+    paddingRight: 84,
+    gap: 72,
   },
-  center: {alignItems: 'center', justifyContent: 'center', gap: spacing.md},
+  center: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 16,
+    paddingTop: 0,
+  },
+  side: {width: 560},
+  art: {
+    width: ART,
+    height: ART,
+    borderRadius: 28,
+    borderCurve: 'continuous',
+    overflow: 'hidden',
+  },
+  artGlyph: {flex: 1, alignItems: 'center', justifyContent: 'center'},
   kicker: {
-    color: colors.accent,
+    color: colors.textTertiary,
     fontFamily: fonts.extraBold,
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '800',
-    letterSpacing: 2.4,
+    letterSpacing: 3,
+    marginTop: 36,
   },
-  title: {
+  name: {
     color: colors.text,
-    fontFamily: fonts.extraBold,
-    fontSize: 52,
-    fontWeight: '800',
-    letterSpacing: -0.8,
+    fontFamily: fonts.bold,
+    fontSize: 54,
+    fontWeight: '700',
+    letterSpacing: -1.2,
     marginTop: 8,
   },
-  sub: {
+  caption: {
     color: colors.textSecondary,
     fontFamily: fonts.medium,
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '500',
-    marginTop: 6,
+    marginTop: 8,
   },
-  actions: {flexDirection: 'row', gap: 14, marginTop: 28, marginBottom: 28},
+  actions: {marginTop: 32, gap: 12, alignSelf: 'flex-start'},
+  actionRow: {flexDirection: 'row', gap: 12},
   btn: {paddingHorizontal: 26, paddingVertical: 14, borderRadius: 16},
-  btnInner: {flexDirection: 'row', alignItems: 'center', gap: 10},
-  btnText: {fontFamily: fonts.bold, fontSize: 19, fontWeight: '700'},
-  empty: {
-    color: colors.textSecondary,
-    fontFamily: fonts.medium,
-    fontSize: 20,
-    fontWeight: '500',
+  btnInner: {flexDirection: 'row', alignItems: 'center', gap: 12},
+  btnText: {fontFamily: fonts.bold, fontSize: 22, fontWeight: '700'},
+  list: {flex: 1},
+  listContent: {paddingBottom: 120},
+  cell: {height: ROW_HEIGHT, paddingVertical: 4},
+  rowWrap: {flex: 1},
+  row: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    borderRadius: 16,
   },
-  list: {gap: 6, paddingBottom: 96},
-  row: {paddingHorizontal: 20, paddingVertical: 16, borderRadius: 16},
   rowInner: {flexDirection: 'row', alignItems: 'center', gap: 24},
   rowNum: {
-    width: 40,
+    width: 44,
     fontFamily: fonts.semiBold,
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '600',
-    opacity: 0.6,
   },
-  rowTitle: {flex: 1, fontFamily: fonts.bold, fontSize: 22, fontWeight: '700'},
-  rowSub: {fontFamily: fonts.medium, fontSize: 18, fontWeight: '500'},
+  rowText: {flex: 1, gap: 2},
+  rowTitle: {fontFamily: fonts.bold, fontSize: 26, fontWeight: '700'},
+  rowSub: {fontFamily: fonts.medium, fontSize: 19, fontWeight: '500'},
+  empty: {flex: 1, gap: 18, paddingTop: 8},
+  emptyTitle: {
+    color: colors.text,
+    fontFamily: fonts.bold,
+    fontSize: 34,
+    fontWeight: '700',
+  },
+  emptyText: {
+    color: colors.textSecondary,
+    fontFamily: fonts.medium,
+    fontSize: 24,
+    fontWeight: '500',
+    lineHeight: 34,
+  },
+  emptyButton: {alignSelf: 'flex-start', marginTop: 12},
 });

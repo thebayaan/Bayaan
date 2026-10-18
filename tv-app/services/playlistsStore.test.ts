@@ -6,6 +6,7 @@ import {
   getPlaylists,
   hasPlaylistItem,
   movePlaylistItem,
+  playlistHas,
   removePlaylist,
   removePlaylistItem,
   renamePlaylist,
@@ -49,6 +50,14 @@ describe('playlistsStore', () => {
     expect(addPlaylistItem(id, item(1, 'r2'))).toBe(true);
     expect(getPlaylist(id)?.items).toHaveLength(2);
     expect(hasPlaylistItem(id, item(1, 'r2'))).toBe(true);
+  });
+
+  it('checks a playlist it is given by surah, reciter and rewayah', () => {
+    const p = getPlaylist(createPlaylist('Has', [item(1)]));
+    if (!p) throw new Error('missing');
+    expect(playlistHas(p, item(1))).toBe(true);
+    expect(playlistHas(p, item(1, 'r1', 'other'))).toBe(false);
+    expect(playlistHas(p, item(2))).toBe(false);
   });
 
   it('rejects invalid surah numbers', () => {
