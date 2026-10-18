@@ -1,3 +1,14 @@
+const path = require('path');
+
+// jest-expo's setup requires expo-modules-core, which npm nests under
+// expo/node_modules instead of hoisting it, so point the components project
+// at expo's own copy.
+const expoModulesCore = path.dirname(
+  require.resolve('expo-modules-core/package.json', {
+    paths: [path.dirname(require.resolve('expo/package.json'))],
+  }),
+);
+
 module.exports = {
   projects: [
     {
@@ -29,6 +40,10 @@ module.exports = {
         '<rootDir>/theme/surahColors.test.ts',
       ],
       setupFiles: ['<rootDir>/__tests__/setup.ts'],
+      moduleNameMapper: {
+        '^expo-modules-core$': expoModulesCore,
+        '^expo-modules-core/(.*)$': `${expoModulesCore}/$1`,
+      },
       transformIgnorePatterns: [
         'node_modules/(?!(jest-)?react-native|@react-native|expo(nent)?|@expo(nent)?/.*|react-native-tvos)',
       ],
