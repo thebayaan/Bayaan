@@ -60,6 +60,10 @@ const START: Record<
   count: {autoplay: true, advance: 'count'},
 };
 
+// Title-safe insets for the top bar and foot, in design px.
+const SAFE_X = 96;
+const SAFE_Y = 60;
+
 // The Android fallback for the Uthmanic face draws ﴿ ﴾ as "{·".
 const PLAIN_BRACKETS = Platform.OS === 'android';
 
@@ -303,7 +307,7 @@ export function AdhkarReaderScreen({listId, mode}: Props): React.ReactElement {
         ? 'Listening through'
         : 'Counting with the recitation'
       : count >= target
-        ? 'Done'
+        ? 'Done · OK for the next'
         : target > 1
           ? 'OK to count'
           : 'OK when you have said it';
@@ -369,11 +373,15 @@ export function AdhkarReaderScreen({listId, mode}: Props): React.ReactElement {
             <FocusableButton
               onPress={startOver}
               outlined
-              hasTVPreferredFocus
               style={styles.endButton}>
               <FocusText style={styles.endButtonText}>Start again</FocusText>
             </FocusableButton>
-            <FocusableButton onPress={pop} style={styles.endButton}>
+            {/* Focus lands on Done: the OK that counted the last dhikr is
+                often pressed once more, and Start again clears every count. */}
+            <FocusableButton
+              onPress={pop}
+              hasTVPreferredFocus
+              style={styles.endButton}>
               <FocusText style={styles.endButtonText}>Done</FocusText>
             </FocusableButton>
           </View>
@@ -517,11 +525,12 @@ export function AdhkarReaderScreen({listId, mode}: Props): React.ReactElement {
 
 const styles = createScaledStyles({
   root: {flex: 1, backgroundColor: colors.background},
+  // The top bar and foot keep inside the title-safe area (90 x 60 at 1080p).
   top: {
     position: 'absolute',
-    top: 56,
-    left: 72,
-    right: 72,
+    top: SAFE_Y,
+    left: SAFE_X,
+    right: SAFE_X,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
@@ -559,32 +568,32 @@ const styles = createScaledStyles({
   },
   source: {
     marginTop: 16,
-    color: colors.textTertiary,
+    color: colors.textSecondary,
     fontFamily: fonts.medium,
     fontWeight: '500',
-    fontSize: 19,
+    fontSize: 23,
     textAlign: 'center',
     maxWidth: 1320,
   },
   note: {
     marginTop: 10,
     marginLeft: 48,
-    color: colors.textTertiary,
+    color: colors.textSecondary,
     fontFamily: fonts.medium,
     fontWeight: '500',
-    fontSize: 18,
+    fontSize: 20,
   },
   counter: {marginTop: 36, alignItems: 'center', justifyContent: 'center'},
   // Focus is on the chips: the counter steps back.
   counterRest: {opacity: 0.55},
   hint: {
     marginTop: 12,
-    color: colors.textTertiary,
+    color: colors.textSecondary,
     fontFamily: fonts.medium,
     fontWeight: '500',
-    fontSize: 19,
+    fontSize: 23,
   },
-  hintFocused: {color: colors.textSecondary},
+  hintFocused: {color: colors.text},
   // A single dhikr's "OK when you have said it", cream while OK means it.
   okPill: {
     borderRadius: 16,
@@ -607,9 +616,9 @@ const styles = createScaledStyles({
   okTextOn: {color: colors.onFocus},
   foot: {
     position: 'absolute',
-    left: 72,
-    right: 72,
-    bottom: 56,
+    left: SAFE_X,
+    right: SAFE_X,
+    bottom: SAFE_Y,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 28,
@@ -618,9 +627,9 @@ const styles = createScaledStyles({
     color: colors.textSecondary,
     fontFamily: fonts.bold,
     fontWeight: '700',
-    fontSize: 17,
+    fontSize: 20,
     letterSpacing: 2,
-    minWidth: 110,
+    minWidth: 130,
   },
   chips: {flexDirection: 'row', gap: 10},
   chip: {
