@@ -6,6 +6,7 @@ import {SurahArtwork} from '../brand/SurahArtwork';
 import {colors} from '../../theme/colors';
 import {fonts} from '../../theme/typography';
 import {createScaledStyles} from '../../theme/scale';
+import {useContextMenuStore} from '../../store/contextMenuStore';
 import type {ContinueEntry} from '../../services/continueListeningStore';
 
 /** "12 min left", "Almost done", or "Started" when the length is unknown. */
@@ -47,6 +48,14 @@ function ContinueWideCardImpl({
     <FocusableCard
       style={styles.card}
       onPress={() => onSelect(entry)}
+      onLongPress={() =>
+        useContextMenuStore.getState().openSurah({
+          surahNumber: entry.surahNumber,
+          reciterId: entry.reciterId,
+          ...(entry.rewayahId ? {rewayahId: entry.rewayahId} : {}),
+          origin: 'continue',
+        })
+      }
       accessibilityLabel={`Resume ${surahName}${reciterName ? ` by ${reciterName}` : ''}`}>
       <View style={styles.body}>
         <View style={styles.thumb}>
