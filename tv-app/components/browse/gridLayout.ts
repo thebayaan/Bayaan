@@ -1,10 +1,10 @@
 import {useWindowDimensions} from 'react-native';
 import {SIDEBAR_COLLAPSED_WIDTH} from '../nav/Sidebar';
-import {spacing} from '../../theme/spacing';
+import {SCREEN_GUTTER} from '../../theme/spacing';
 import {scaleFactor} from '../../theme/scale';
 
 /** Side padding of the browse screens, in design pixels. */
-export const BROWSE_GUTTER = spacing.xl;
+export const BROWSE_GUTTER = SCREEN_GUTTER;
 
 /**
  * How many cells of `cellWidth` design pixels fit across a root browse

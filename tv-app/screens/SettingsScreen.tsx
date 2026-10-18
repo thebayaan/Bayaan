@@ -41,7 +41,7 @@ import {SPEED_CYCLE} from '../store/listeningStore';
 import type {Reciter} from '../types/reciter';
 import appConfig from '../app.json';
 import {colors} from '../theme/colors';
-import {spacing} from '../theme/spacing';
+import {SCREEN_GUTTER, spacing} from '../theme/spacing';
 import {fonts, typography} from '../theme/typography';
 import {createScaledStyles} from '../theme/scale';
 
@@ -406,7 +406,8 @@ const styles = createScaledStyles({
     letterSpacing: -0.5,
     marginTop: spacing.xl,
     marginBottom: spacing.xs,
-    paddingLeft: spacing.xl + ROW_PAD,
+    // Lines up with the rows' edge, like every root screen's title.
+    paddingLeft: SCREEN_GUTTER,
   },
   columns: {flex: 1, flexDirection: 'row', gap: spacing.xl},
   listScroll: {width: LIST_W + spacing.xl, flexGrow: 0},

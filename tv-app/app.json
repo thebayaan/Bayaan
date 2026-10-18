@@ -37,6 +37,78 @@
             "minSdkVersion": 24
           }
         }
+      ],
+      [
+        "expo-font",
+        {
+          "android": {
+            "fonts": [
+              {
+                "fontFamily": "Manrope-Regular",
+                "fontDefinitions": [
+                  {
+                    "path": "./assets/fonts/Manrope-Regular.ttf",
+                    "weight": 400
+                  }
+                ]
+              },
+              {
+                "fontFamily": "Manrope-Medium",
+                "fontDefinitions": [
+                  {
+                    "path": "./assets/fonts/Manrope-Medium.ttf",
+                    "weight": 500
+                  }
+                ]
+              },
+              {
+                "fontFamily": "Manrope-SemiBold",
+                "fontDefinitions": [
+                  {
+                    "path": "./assets/fonts/Manrope-SemiBold.ttf",
+                    "weight": 600
+                  }
+                ]
+              },
+              {
+                "fontFamily": "Manrope-Bold",
+                "fontDefinitions": [
+                  {
+                    "path": "./assets/fonts/Manrope-Bold.ttf",
+                    "weight": 700
+                  }
+                ]
+              },
+              {
+                "fontFamily": "Manrope-ExtraBold",
+                "fontDefinitions": [
+                  {
+                    "path": "./assets/fonts/Manrope-ExtraBold.ttf",
+                    "weight": 800
+                  }
+                ]
+              },
+              {
+                "fontFamily": "Manrope-Light",
+                "fontDefinitions": [
+                  {
+                    "path": "./assets/fonts/Manrope-Light.ttf",
+                    "weight": 300
+                  }
+                ]
+              },
+              {
+                "fontFamily": "Manrope-ExtraLight",
+                "fontDefinitions": [
+                  {
+                    "path": "./assets/fonts/Manrope-ExtraLight.ttf",
+                    "weight": 200
+                  }
+                ]
+              }
+            ]
+          }
+        }
       ]
     ]
   }

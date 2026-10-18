@@ -45,11 +45,13 @@ export default function App(): React.ReactElement {
   return (
     <View style={styles.root}>
       <AppStatusBar />
-      <ErrorBoundary>
-        <TVAudioProvider>
+      {/* The boundary sits inside the audio provider so a crashing screen
+          never unmounts the player and stops the recitation. */}
+      <TVAudioProvider>
+        <ErrorBoundary>
           <Router />
-        </TVAudioProvider>
-      </ErrorBoundary>
+        </ErrorBoundary>
+      </TVAudioProvider>
     </View>
   );
 }

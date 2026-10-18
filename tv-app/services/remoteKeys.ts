@@ -11,10 +11,14 @@
  *
  * The filter acts on a key-down and swallows the matching key-up, and acts on
  * a key-up that had no key-down, so every platform yields one action per press.
+ *
+ * Transport keys also pass through the transport gate (services/transportGate),
+ * so on Vega a press the system already delivered as a media command does
+ * not act a second time from the key event.
  */
 
 import type {ScreenEntry} from '../store/navStore';
-import type {PlayerStatus} from '../types/player';
+import {claimTransport, type TransportChannel} from './transportGate';
 
 export type RemoteAction =
   | 'left'
@@ -42,85 +46,109 @@ const ACTIONS: Readonly<Record<string, RemoteAction>> = {
   rewind: 'seekBackward',
 };
 
-export function createRemoteKeyFilter(): (
-  event: RemoteKeyEvent,
-) => RemoteAction | null {
-  return createKeyFilter(ACTIONS);
-}
-
 /**
- * Discrete media keys (HDMI-CEC remotes, Shield and other Android TV
- * remotes, keyboards): explicit Play and Pause, and next/previous track.
- * Kept apart from createRemoteKeyFilter so screens that switch on its
- * actions never see these.
+ * The remote's dedicated transport keys, never the D-pad or touch-surface
+ * swipes (which also move focus): Android TV / Fire OS send `playPause`,
+ * `next`, `previous`, `fastForward`, `rewind`; Vega sends `playpause`,
+ * `skip_forward` / `skip_backward` and `forward` / `rewind`. Remotes that
+ * drive the TV over HDMI-CEC and keyboards often send separate `play` and
+ * `pause` keys. The Siri Remote only has Play/Pause.
  */
-export type MediaKeyAction = 'play' | 'pause' | 'next' | 'previous';
+export type MediaKey =
+  | 'playPause'
+  | 'play'
+  | 'pause'
+  | 'next'
+  | 'previous'
+  | 'fastForward'
+  | 'rewind';
 
-const MEDIA_ACTIONS: Readonly<Record<string, MediaKeyAction>> = {
+const MEDIA_KEYS: Readonly<Record<string, MediaKey>> = {
+  playPause: 'playPause',
+  playpause: 'playPause',
   play: 'play',
   pause: 'pause',
   next: 'next',
   previous: 'previous',
+  fastForward: 'fastForward',
+  forward: 'fastForward',
+  skip_forward: 'fastForward',
+  rewind: 'rewind',
+  skip_backward: 'rewind',
 };
 
-export function createMediaKeyFilter(): (
-  event: RemoteKeyEvent,
-) => MediaKeyAction | null {
-  return createKeyFilter(MEDIA_ACTIONS);
-}
-
-function createKeyFilter<A extends string>(
-  actions: Readonly<Record<string, A>>,
-): (event: RemoteKeyEvent) => A | null {
+function createPhaseFilter<T extends string>(
+  map: Readonly<Record<string, T>>,
+  channels: Readonly<Partial<Record<T, TransportChannel>>>,
+): (event: RemoteKeyEvent) => T | null {
   const pendingDown = new Set<string>();
-  return function filter(event: RemoteKeyEvent): A | null {
-    const action = actions[event.eventType];
+  const gated = (action: T): T | null => {
+    const channel = channels[action];
+    return channel && !claimTransport('key', channel) ? null : action;
+  };
+  return function filter(event: RemoteKeyEvent): T | null {
+    const action = map[event.eventType];
     if (!action) return null;
     if (event.eventKeyAction === KEY_DOWN) {
       pendingDown.add(event.eventType);
-      return action;
+      return gated(action);
     }
     if (event.eventKeyAction === KEY_UP) {
       if (pendingDown.delete(event.eventType)) return null;
-      return action;
+      return gated(action);
     }
-    return action;
+    return gated(action);
   };
 }
 
-/**
- * Screens that handle the remote's Play/Pause themselves (the listening room
- * toggles the recitation, the adhkar reader its own audio). Everywhere else
- * the app-wide handler toggles the recitation, so the key never toggles twice.
- */
-export function screenOwnsPlayPause(top: ScreenEntry | undefined): boolean {
-  return top?.screen === 'nowPlaying' || top?.screen === 'adhkarReader';
+export function createRemoteKeyFilter(): (
+  event: RemoteKeyEvent,
+) => RemoteAction | null {
+  return createPhaseFilter(ACTIONS, {
+    playPause: 'playPause',
+    seekForward: 'seek',
+    seekBackward: 'seek',
+  });
 }
 
-export type MediaCommand = 'toggle' | 'next' | 'previous';
+/** Like createRemoteKeyFilter, for the transport keys only (see MediaKey). */
+export function createMediaKeyFilter(): (
+  event: RemoteKeyEvent,
+) => MediaKey | null {
+  return createPhaseFilter(MEDIA_KEYS, {
+    playPause: 'playPause',
+    play: 'playPause',
+    pause: 'playPause',
+    fastForward: 'seek',
+    rewind: 'seek',
+    next: 'track',
+    previous: 'track',
+  });
+}
 
 /**
- * What a discrete media key does to the recitation, app-wide (no screen
- * handles these itself): Play only starts, Pause only stops, and both leave
- * a loading track alone. The adhkar reader keeps them away from the Quran
- * player, as it does Play/Pause, since its own audio is the one on screen.
+ * Transport keys a screen handles itself, so the app-wide handler
+ * (hooks/useGlobalRemoteKeys) leaves them alone and no key acts twice. The
+ * listening room toggles and steps through the recitation (fast-forward and
+ * rewind move by verse there); Next / Previous still change surah through
+ * the app-wide handler. The adhkar reader plays its own audio, so every
+ * transport key belongs to it.
  */
-export function mediaKeyCommand(
-  action: MediaKeyAction,
+export function screenOwnsMediaKey(
   top: ScreenEntry | undefined,
-  status: PlayerStatus,
-): MediaCommand | null {
-  if (top?.screen === 'adhkarReader') return null;
-  switch (action) {
-    case 'play':
-      return status === 'paused' || status === 'idle' || status === 'error'
-        ? 'toggle'
-        : null;
-    case 'pause':
-      return status === 'playing' ? 'toggle' : null;
-    case 'next':
-      return 'next';
-    case 'previous':
-      return 'previous';
+  key: MediaKey,
+): boolean {
+  if (top?.screen === 'adhkarReader') return true;
+  if (top?.screen === 'nowPlaying') {
+    return key === 'playPause' || key === 'fastForward' || key === 'rewind';
   }
+  return false;
 }
+
+/** Whether the screen on top handles the remote's Play/Pause itself. */
+export function screenOwnsPlayPause(top: ScreenEntry | undefined): boolean {
+  return screenOwnsMediaKey(top, 'playPause');
+}
+
+/** How far the app-wide Fast-forward / Rewind keys move, in seconds. */
+export const MEDIA_SEEK_SECONDS = 10;

@@ -11,10 +11,16 @@ import {
  * `typography.fontFamily` resolves to the real brand font instead of the
  * platform fallback. The map keys are the
  * family names exported from `theme/typography.ts` so registered names always
- * match what styles reference. Returns true once the fonts are ready.
+ * match what styles reference. Returns true once the fonts are ready, or once
+ * loading failed: the app then draws in the system font rather than holding
+ * a blank screen forever.
+ *
+ * Android also gets the Manrope faces at build time (the expo-font plugin in
+ * app.json, see `theme/typography.ts`), because a runtime-registered face has
+ * no bold style there and a bold `fontWeight` would fall back to Roboto.
  */
 export function useBrandFonts(): boolean {
-  const [loaded] = useFonts({
+  const [loaded, error] = useFonts({
     [fonts.regular]: require('../assets/fonts/Manrope-Regular.ttf'),
     [fonts.medium]: require('../assets/fonts/Manrope-Medium.ttf'),
     [fonts.semiBold]: require('../assets/fonts/Manrope-SemiBold.ttf'),
@@ -26,5 +32,5 @@ export function useBrandFonts(): boolean {
     [surahNameFontFamily]: require('../../assets/fonts/surah_names.ttf'),
     [quranTextFontFamily]: require('../../assets/fonts/UthmanicHafs1Ver18.ttf'),
   });
-  return loaded;
+  return loaded || error != null;
 }
