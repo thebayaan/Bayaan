@@ -22,7 +22,7 @@ import {useFavorites} from '../hooks/useFavorites';
 import {useLovedSurahs} from '../hooks/useLovedSurahs';
 import {usePlaylists} from '../hooks/usePlaylists';
 import {useReciters} from '../hooks/useReciters';
-import {SURAHS} from '../services/browseCatalog';
+import {surahTitle} from '../services/playbackRouting';
 import {
   buildShelf,
   isShelfEmpty,
@@ -40,9 +40,11 @@ import {shortReciterName} from '../services/listeningChoices';
 import {getCachedRewayat} from '../services/tvDataService';
 import {useContextMenuStore} from '../store/contextMenuStore';
 import {useNavStore} from '../store/navStore';
+import {useScreenActive} from '../components/nav/ScreenLayer';
 import {colors} from '../theme/colors';
 import {fonts} from '../theme/typography';
-import {createScaledStyles, scale} from '../theme/scale';
+import {createScaledStyles} from '../theme/scale';
+import {cellHeightLayout} from '../components/browse/gridLayout';
 import {
   SCREEN_CLOCK_RIGHT,
   SCREEN_CLOCK_TOP,
@@ -103,16 +105,8 @@ let lastFilter: ShelfFilter = 'playlists';
 let lastSort: ShelfSort = 'recent';
 let lastTile: {filter: ShelfFilter; key: string; index: number} | null = null;
 
-const surahNames = new Map<number, string>(SURAHS.map(s => [s.id, s.name]));
-
-function surahName(n: number): string {
-  return surahNames.get(n) ?? `Surah ${n}`;
-}
-
-function overrideItemLayout(layout: {span?: number; size?: number}): void {
-  layout.span = 1;
-  layout.size = scale(ROW_HEIGHT);
-}
+/** For Vega's FlashList (see cellHeightLayout). */
+const overrideItemLayout = cellHeightLayout(ROW_HEIGHT);
 
 /** The tile to focus: the key's place, else the nearest one still there. */
 function placeOf(
@@ -185,7 +179,7 @@ export function CollectionScreen(): React.ReactElement {
     (item: ShelfItem): string => {
       if (item.kind === 'playlist') return item.name;
       if (item.kind === 'surah') {
-        return `${surahName(item.surahNumber)} ${voiceOf(item.reciterId)}`;
+        return `${surahTitle(item.surahNumber)} ${voiceOf(item.reciterId)}`;
       }
       if (item.kind === 'reciter') return voiceOf(item.reciterId);
       return '';
@@ -218,13 +212,16 @@ export function CollectionScreen(): React.ReactElement {
   // The first-run page and the shelf swap only while no menu is open: a
   // Like on a starter surah (or an Unlike of the last loved one) must not
   // swap the page, and mount its preferred focus, under the open menu.
+  // Nor while a stacked screen covers the Library (a Love in the player):
+  // a hidden layer must not take preferred focus; the swap waits for Back.
   const menuOpen = useContextMenuStore(s => s.target !== null);
+  const active = useScreenActive();
   const shelfEmpty = isShelfEmpty(shelf);
   const [firstRun, setFirstRun] = useState<boolean>(shelfEmpty);
   const leavingFirstRun = useRef<boolean>(false);
   leavingFirstRun.current = firstRun && !shelfEmpty;
   useEffect(() => {
-    if (menuOpen || shelfEmpty === firstRun) return;
+    if (menuOpen || !active || shelfEmpty === firstRun) return;
     setFirstRun(shelfEmpty);
     if (shelfEmpty) return;
     // The first thing kept: open its tab with focus on it.
@@ -233,7 +230,7 @@ export function CollectionScreen(): React.ReactElement {
     lastFilter = tab;
     setFilter(tab);
     setFocusIndex(0);
-  }, [menuOpen, shelfEmpty, firstRun, counts, filter]);
+  }, [menuOpen, active, shelfEmpty, firstRun, counts, filter]);
 
   // A menu that removed its own tile (Unlike, Remove from favorites) leaves
   // focus on the neighbour that took its place, not wherever the engine
@@ -339,7 +336,7 @@ export function CollectionScreen(): React.ReactElement {
           </View>
         );
       }
-      const name = surahName(item.surahNumber);
+      const name = surahTitle(item.surahNumber);
       const voice = reciter ? shortReciterName(reciter.name) : '';
       const rewayah = (
         getCachedRewayat(item.reciterId) ??

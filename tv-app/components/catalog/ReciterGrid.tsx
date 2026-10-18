@@ -5,7 +5,11 @@ import {
   BrowseReciterCard,
   RECITER_CARD_WIDTH,
 } from '../browse/BrowseReciterCard';
-import {BROWSE_GUTTER, useGridColumns} from '../browse/gridLayout';
+import {
+  BROWSE_GUTTER,
+  cellHeightLayout,
+  useGridColumns,
+} from '../browse/gridLayout';
 import {reciterSubtitle} from '../../services/browseCatalog';
 import {spacing} from '../../theme/spacing';
 import type {Reciter} from '../../types/reciter';
@@ -21,6 +25,8 @@ type Props = {
 
 const CELL_PAD = 13;
 const CELL_WIDTH = RECITER_CARD_WIDTH + CELL_PAD * 2;
+/** A portrait card plus its cell padding, for Vega's FlashList. */
+const cellLayout = cellHeightLayout(278);
 
 /** One grid of round reciter portraits, sized to the screen's width. */
 export function ReciterGrid({
@@ -54,6 +60,7 @@ export function ReciterGrid({
       // edge of what is mounted and jumps out of the grid.
       drawDistance={scale(900)}
       keyExtractor={r => r.id}
+          overrideItemLayout={cellLayout}
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
       ListEmptyComponent={ListEmptyComponent}

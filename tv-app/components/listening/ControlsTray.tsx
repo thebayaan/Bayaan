@@ -1,7 +1,8 @@
 import React, {useEffect, useRef, useState} from 'react';
-import {ActivityIndicator, Text, TVFocusGuideView, View} from 'react-native';
+import {Text, TVFocusGuideView, View} from 'react-native';
 import {FocusableButton} from '../primitives/FocusableButton';
-import {FocusIcon, FocusText, useFocusTint} from '../primitives/focusContext';
+import {FocusSpinner} from '../primitives/FocusSpinner';
+import {FocusIcon, FocusText} from '../primitives/focusContext';
 import {ProgressLine} from './ProgressLine';
 import {PANEL_WIDTH} from './SidePanel';
 import {StepBackIcon, StepForwardIcon} from './StepIcons';
@@ -175,7 +176,7 @@ export function ControlsTray({
             outlined
             style={[styles.round, styles.roundBig]}>
             {loading ? (
-              <LoadingMark />
+              <FocusSpinner size="large" />
             ) : (
               <FocusIcon icon={isPlaying ? PauseIcon : PlayIcon} size={38} />
             )}
@@ -277,11 +278,6 @@ export function ControlsTray({
       </TVFocusGuideView>
     </View>
   );
-}
-
-/** A spinner in the play button while the recitation loads. */
-function LoadingMark(): React.ReactElement {
-  return <ActivityIndicator color={useFocusTint(colors.text)} size="large" />;
 }
 
 function Tool({

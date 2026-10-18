@@ -9,6 +9,7 @@ import {FocusIcon, FocusText} from '../components/primitives/focusContext';
 import {usePlaylist} from '../hooks/usePlaylists';
 import {useReciters} from '../hooks/useReciters';
 import {rewayahFamily, rewayahShortName} from '../services/browseCatalog';
+import {cellHeightLayout} from '../components/browse/gridLayout';
 import {playlistCaption} from '../services/libraryShelf';
 import {shortReciterName} from '../services/listeningChoices';
 import {playOrOpen, surahTitle} from '../services/playbackRouting';
@@ -37,6 +38,8 @@ import type {Reciter} from '../types/reciter';
 type Props = {playlistId: string};
 
 const ROW_HEIGHT = 96;
+/** For Vega's FlashList (see cellHeightLayout). */
+const rowLayout = cellHeightLayout(ROW_HEIGHT);
 const ART = 300;
 /** How long the Delete button waits for its second press. */
 const CONFIRM_MS = 4000;
@@ -339,6 +342,7 @@ export function PlaylistScreen({playlistId}: Props): React.ReactElement {
             data={items}
             renderItem={renderItem}
             keyExtractor={itemKey}
+            overrideItemLayout={rowLayout}
             extraData={focusRow}
             initialScrollIndex={
               initialRow !== null && initialRow > 0 ? initialRow : undefined

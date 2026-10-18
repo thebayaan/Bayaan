@@ -3,7 +3,11 @@ import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {ScrollView, Text, TVFocusGuideView, View} from 'react-native';
 import {FilterChip} from '../components/browse/FilterChip';
 import {SurahTile, SURAH_TILE_WIDTH} from '../components/browse/SurahTile';
-import {BROWSE_GUTTER, useGridColumns} from '../components/browse/gridLayout';
+import {
+  BROWSE_GUTTER,
+  cellHeightLayout,
+  useGridColumns,
+} from '../components/browse/gridLayout';
 import {ReciterGrid} from '../components/catalog/ReciterGrid';
 import {FocusableButton} from '../components/primitives/FocusableButton';
 import {FocusIcon, FocusText} from '../components/primitives/focusContext';
@@ -48,6 +52,8 @@ const JUZ_NUMBERS = Array.from({length: 30}, (_, i) => i + 1);
 /** Horizontal room around a tile inside its column, in design pixels. */
 const CELL_PAD = 14;
 const CELL_WIDTH = SURAH_TILE_WIDTH + CELL_PAD * 2;
+/** A tile (artwork, meaning) plus its cell padding, for Vega's FlashList. */
+const cellLayout = cellHeightLayout(222);
 /** How long a focus request stays up before it is dropped. */
 const FOCUS_REQUEST_MS = 1500;
 
@@ -370,6 +376,7 @@ export function SurahsScreen(): React.ReactElement {
           numColumns={numColumns}
           renderItem={renderItem}
           keyExtractor={s => String(s.id)}
+          overrideItemLayout={cellLayout}
           extraData={focusGridFirst}
           // Rows ready well below the fold, so a held Down never reaches the
           // edge of what is mounted and jumps out of the grid.

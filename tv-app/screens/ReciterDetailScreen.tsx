@@ -9,10 +9,8 @@ import Svg, {
   Stop,
 } from 'react-native-svg';
 import {
-  ActivityIndicator,
   NativeScrollEvent,
   NativeSyntheticEvent,
-  Platform,
   StyleSheet,
   Text,
   TVFocusGuideView,
@@ -23,12 +21,13 @@ import {
   ReciterPortrait,
   reciterArabicName,
 } from '../components/browse/ReciterPortrait';
-import {SurahRow} from '../components/browse/SurahRow';
+import {SurahRow, SURAH_ROW_HEIGHT} from '../components/browse/SurahRow';
+import {cellHeightLayout} from '../components/browse/gridLayout';
 import {FocusableButton} from '../components/primitives/FocusableButton';
+import {FocusSpinner} from '../components/primitives/FocusSpinner';
 import {
   FocusIcon,
   FocusText,
-  useFocusTint,
 } from '../components/primitives/focusContext';
 import {fetchRewayat, getCachedRewayat} from '../services/tvDataService';
 import {toggleFavorite} from '../services/favoritesStore';
@@ -47,6 +46,7 @@ import {
   playOrOpen,
   randomSurah,
 } from '../services/playbackRouting';
+import {defaultRewayah} from '../services/menuChoices';
 import {useContextMenuStore} from '../store/contextMenuStore';
 import {useNavStore} from '../store/navStore';
 import {useSettingsStore} from '../store/settingsStore';
@@ -80,6 +80,8 @@ type QueuedPlay = 'play' | 'shuffle' | null;
 const COLUMNS = 3;
 const CELL_PAD_X = 10;
 const CELL_PAD_Y = 8;
+/** A surah row plus its cell padding, for Vega's FlashList. */
+const cellLayout = cellHeightLayout(SURAH_ROW_HEIGHT + CELL_PAD_Y * 2);
 /** The list's side padding, so rows (inside their cell padding) sit on the gutter. */
 const LIST_PAD_X = spacing.xl - CELL_PAD_X;
 const PORTRAIT = 240;
@@ -92,21 +94,9 @@ function surahName(n: number): string {
   return surahById.get(n)?.name ?? `Surah ${n}`;
 }
 
+/** The tab a reciter's page opens on: the same voice their menu's Play uses. */
 function firstRewayahId(rewayat: Rewayah[]): string | null {
-  return groupRewayat(rewayat)[0]?.items[0]?.id ?? null;
-}
-
-/** A spinner in a button: ink on the cream while the button is focused. */
-function ButtonSpinner(): React.ReactElement {
-  // Android takes a size in dp (its "small" is twice the design size at the
-  // 0.5 scale and would make the button grow while loading); tvOS only knows
-  // small and large.
-  return (
-    <ActivityIndicator
-      size={Platform.OS === 'android' ? scale(20) : 'small'}
-      color={useFocusTint()}
-    />
-  );
+  return defaultRewayah(rewayat)?.id ?? null;
 }
 
 export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
@@ -449,7 +439,7 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
                 style={[styles.actionBtn, styles.playBtn]}>
                 <View style={styles.actionInner}>
                   {waiting ? (
-                    <ButtonSpinner />
+                    <FocusSpinner />
                   ) : (
                     <FocusIcon icon={PlayIcon} size={20} />
                   )}
@@ -572,7 +562,7 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
 
   const empty = loading ? (
     <View style={[styles.bleed, styles.loadingRow]}>
-      <ActivityIndicator color={colors.text} size="large" />
+      <FocusSpinner size="large" />
     </View>
   ) : (
     <View style={[styles.bleed, styles.noSurahs]}>
@@ -590,6 +580,7 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
         numColumns={COLUMNS}
         renderItem={renderItem}
         keyExtractor={s => String(s.id)}
+        overrideItemLayout={cellLayout}
         // Rows ready well below the fold, so a held Down never reaches the
         // edge of what is mounted and jumps out of the list.
         drawDistance={scale(900)}
