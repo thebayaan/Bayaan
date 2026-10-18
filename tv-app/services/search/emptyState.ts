@@ -9,6 +9,7 @@ import {
   normalizeSearchText,
   toSearchKey,
 } from '../../../utils/search/normalize';
+import {JUZ_COUNT, juzNumber, parseJuz} from './tvSearch';
 
 export type EmptyCopy = {title: string; hint: string};
 
@@ -28,6 +29,12 @@ export function emptyStateCopy(query: string): EmptyCopy {
     return {
       title: 'Now type the surah',
       hint: 'Its name or number, like “surah Yasin” or “surah 36”.',
+    };
+  }
+  if (juzNumber(query) !== null && parseJuz(query) === null) {
+    return {
+      title: `There are ${JUZ_COUNT} juz`,
+      hint: `Type a juz from 1 to ${JUZ_COUNT}: juz 30 is Juz ʿAmma.`,
     };
   }
   const unprefixed = normalizeSearchText(query)

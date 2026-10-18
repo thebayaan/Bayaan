@@ -22,6 +22,11 @@ describe('emptyStateCopy', () => {
     expect(emptyStateCopy('١١٢:٩').title).toBe('Al-Ikhlas has 4 verses');
   });
 
+  it('says how many juz there are for a juz out of range', () => {
+    expect(emptyStateCopy('juz 31').title).toBe('There are 30 juz');
+    expect(emptyStateCopy('juz 0').title).toBe('There are 30 juz');
+  });
+
   it('falls back to the generic copy, naming the query', () => {
     expect(emptyStateCopy(' xq ').title).toBe('No matches for “xq”');
   });

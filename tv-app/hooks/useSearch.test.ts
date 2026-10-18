@@ -151,6 +151,11 @@ describe('surahs', () => {
     expect(topVerse('juz 30')).toBeNull();
   });
 
+  it('finds nothing for a juz out of range, never a verse of An-Naba', () => {
+    expect(top('juz 31')).toBeNull();
+    expect(top('juz 0')).toBeNull();
+  });
+
   it('lists more surahs under the top one, without repeating it', () => {
     const {results} = runSearch(engine, 'ash');
     expect(results.top?.type).toBe('surah');

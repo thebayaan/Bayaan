@@ -49,12 +49,18 @@ export const TV_SURAH_ALIASES: Readonly<Record<number, readonly string[]>> = {
 // juz by number, never a verse of a surah called "juz".
 const JUZ_NUMBER = /^(?:juz|juzz|jus|para|جز)\s*(\d{1,2})$/;
 
+export const JUZ_COUNT = 30;
+
+/** The number a "juz N" query names, in range or not, or null. */
+export function juzNumber(query: string): number | null {
+  const match = toSearchKey(query).match(JUZ_NUMBER);
+  return match ? Number(match[1]) : null;
+}
+
 /** The juz a query names by number (1-30), or null. */
 export function parseJuz(query: string): number | null {
-  const match = toSearchKey(query).match(JUZ_NUMBER);
-  if (!match) return null;
-  const juz = Number(match[1]);
-  return juz >= 1 && juz <= 30 ? juz : null;
+  const juz = juzNumber(query);
+  return juz !== null && juz >= 1 && juz <= JUZ_COUNT ? juz : null;
 }
 
 /**
@@ -397,6 +403,11 @@ export function createTvSearch(
       const key = toSearchKey(query);
       if (!key) return EMPTY_RESULTS;
 
+      // "juz 31" names no juz; it is never a verse of An-Naba (whose
+      // "Juz Amma" alias would otherwise read it as 78:31).
+      if (juzNumber(query) !== null && parseJuz(query) === null) {
+        return EMPTY_RESULTS;
+      }
       const ranked: RankedItem[] = [];
       const juz = parseJuz(query);
       const ref = juz
