@@ -27,6 +27,11 @@ import {fonts} from '../theme/typography';
 import type {Reciter} from '../types/reciter';
 import {createScaledStyles} from '../theme/scale';
 
+// The chips picked last time, so coming back to Reciters from another place
+// keeps them, as Library keeps its tab.
+let lastRewayah: RewayahChip = 'all';
+let lastStyle: StyleChip | null = null;
+
 /**
  * Reciters: one grid of round portraits, featured reciters first, filtered
  * by a rewayah chip and a style chip ("Any style" or one style), both single
@@ -36,8 +41,18 @@ import {createScaledStyles} from '../theme/scale';
 export function CatalogGridScreen(): React.ReactElement {
   const {reciters} = useReciters();
   const push = useNavStore(s => s.push);
-  const [rewayah, setRewayah] = useState<RewayahChip>('all');
-  const [chosenStyle, setStyle] = useState<StyleChip | null>(null);
+  const [rewayah, setRewayahState] = useState<RewayahChip>(() => lastRewayah);
+  const [chosenStyle, setStyleState] = useState<StyleChip | null>(
+    () => lastStyle,
+  );
+  const setRewayah = (next: RewayahChip): void => {
+    lastRewayah = next;
+    setRewayahState(next);
+  };
+  const setStyle = (next: StyleChip | null): void => {
+    lastStyle = next;
+    setStyleState(next);
+  };
   // The first portrait takes focus on entry (and after "Show all
   // reciters", whose button goes away), not after a chip press.
   const [focusFirst, setFocusFirst] = useState<boolean>(true);
@@ -98,7 +113,9 @@ export function CatalogGridScreen(): React.ReactElement {
     setStyle(next);
   }
 
-  const filtered = rewayah !== 'all' || style !== null;
+  // Before the catalog loads, a remembered chip is not why the grid is
+  // empty.
+  const filtered = hasReciters && (rewayah !== 'all' || style !== null);
 
   return (
     <View style={styles.container}>

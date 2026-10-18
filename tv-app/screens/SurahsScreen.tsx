@@ -60,6 +60,11 @@ const FILTERS: ReadonlyArray<{key: SurahFilter; label: string}> = [
 
 const JUZ_NUMBERS = Array.from({length: 30}, (_, i) => i + 1);
 
+// The filter (and juz) picked last time, so coming back to Surahs from
+// another place keeps it, as Library keeps its tab.
+let lastFilter: SurahFilter = 'all';
+let lastJuz = 1;
+
 /** Horizontal room around a tile inside its column, in design pixels. */
 const CELL_PAD = 14;
 const CELL_WIDTH = SURAH_TILE_WIDTH + CELL_PAD * 2;
@@ -84,8 +89,8 @@ export function SurahsScreen(): React.ReactElement {
   const favorites = useFavorites();
   const numColumns = useGridColumns(CELL_WIDTH);
 
-  const [filter, setFilter] = useState<SurahFilter>('all');
-  const [juz, setJuz] = useState<number>(1);
+  const [filter, setFilter] = useState<SurahFilter>(() => lastFilter);
+  const [juz, setJuz] = useState<number>(() => lastJuz);
   const [picking, setPicking] = useState<boolean>(false);
   // Entering the juz row lands on the selected juz.
   const [selectedJuzChip, setSelectedJuzChip] = useState<View | null>(null);
@@ -248,11 +253,13 @@ export function SurahsScreen(): React.ReactElement {
   function chooseFilter(next: SurahFilter): void {
     setFocusGridFirst(false);
     setFilter(next);
+    lastFilter = next;
   }
 
   function chooseJuz(next: number): void {
     setFocusGridFirst(false);
     setJuz(next);
+    lastJuz = next;
   }
 
   const renderItem = useCallback(
