@@ -12,6 +12,7 @@
  * time window still decides the rail under it.
  */
 import {SURAHS} from '../../data/surahData';
+import {estimateDhikrMinutes} from '../services/adhkarBrowse';
 
 export type DayWindow = 'morning' | 'day' | 'evening' | 'night';
 
@@ -238,18 +239,14 @@ export function estimateSurahMinutes(surahNumber: number): number {
   return Math.max(1, Math.min(4, Math.round(surah.verses_count * 0.15)));
 }
 
-/** Arabic characters read per second, repeats included (morning: ~14 min). */
-const ADHKAR_CHARS_PER_SECOND = 45;
-
-/** About how many minutes reading a list of adhkar takes, repeats included. */
+/**
+ * About how many minutes reading a list of adhkar takes, repeats included:
+ * the Adhkar screen's estimate, so both screens give a list the same time.
+ */
 export function estimateAdhkarMinutes(
   adhkar: readonly {arabic: string; repeatCount: number}[],
 ): number {
-  const chars = adhkar.reduce(
-    (sum, d) => sum + d.arabic.length * Math.max(1, d.repeatCount),
-    0,
-  );
-  return Math.max(1, Math.round(chars / ADHKAR_CHARS_PER_SECOND / 60));
+  return estimateDhikrMinutes(adhkar);
 }
 
 /** "110 verses, about 41 minutes with Al-Minshawi." */

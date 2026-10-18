@@ -9,10 +9,14 @@ import {
   prev as prevDhikr,
   press as pressDhikr,
   restart as restartSession,
+  isUnderway,
   startSession,
   trackEnded,
+  type AdvanceMode,
   type SessionState,
 } from './adhkarSession';
+
+export type {AdvanceMode};
 
 /** After OK completes a dhikr, the full ring shows this long before moving on. */
 export const ADVANCE_DELAY_MS = 650;
@@ -33,16 +37,24 @@ export type AdhkarSessionStore = {
   session: SessionState | null;
   /** Recitation URL of each dhikr (null when it has none). */
   urls: readonly (string | null)[];
+  /** The viewer's own Auto-advance choice, kept between visits. */
   autoAdvance: boolean;
+  /**
+   * How this visit advances when a start mode chose it ("Listen through",
+   * "Count each for me"); null follows `autoAdvance`. Never persisted.
+   */
+  sessionAdvance: AdvanceMode | null;
   audio: AdhkarAudio;
   /** The listener wants recitations to play as they move through the list. */
   wantsAudio: boolean;
+  /** The list picked up where it was left earlier today. */
+  resumed: boolean;
 
   open: (
     listId: string,
     targets: readonly number[],
     urls: readonly (string | null)[],
-    options?: {autoplay?: boolean},
+    options?: {autoplay?: boolean; advance?: AdvanceMode},
   ) => void;
   /** OK: count one, moving on when the count is reached. */
   press: () => void;
@@ -50,6 +62,8 @@ export type AdhkarSessionStore = {
   prev: () => void;
   restart: () => void;
   togglePlay: () => void;
+  /** The Auto-advance chip: this visit's mode when one was chosen, else the
+   *  viewer's saved choice. */
   setAutoAdvance: (on: boolean) => void;
   close: () => void;
 };
@@ -62,6 +76,14 @@ type Options = {
   /** Today's date key, so a list left part way resumes the same day only. */
   dayKey?: () => string;
 };
+
+/** How the session advances as a recitation ends, all choices applied. */
+export function advanceModeOf(state: {
+  autoAdvance: boolean;
+  sessionAdvance: AdvanceMode | null;
+}): AdvanceMode {
+  return state.sessionAdvance ?? (state.autoAdvance ? 'count' : 'off');
+}
 
 function localDayKey(): string {
   const d = new Date();
@@ -86,6 +108,10 @@ export function createAdhkarSessionStore({
   let armed = false;
   let lastPosition = -1;
   let loadedIndex = -1;
+  // OK was pressed while this recitation played: its end doesn't count again.
+  let countedThisPlay = false;
+  // The advance a start mode chose for this visit, for the chip to turn back on.
+  let plannedAdvance: AdvanceMode | null = null;
   // Lists left part way, per day, so reopening one picks up where it was.
   const left = new Map<string, {day: string; state: SessionState}>();
 
@@ -146,10 +172,11 @@ export function createAdhkarSessionStore({
     }
 
     function onTrackEnded(): void {
-      const {session, autoAdvance} = get();
+      const {session} = get();
       if (!session) return;
       armed = false;
-      const result = trackEnded(session, autoAdvance);
+      const result = trackEnded(session, advanceModeOf(get()), countedThisPlay);
+      countedThisPlay = false;
       set({session: result.state});
       if (result.action === 'stop') {
         set({audio: 'ended'});
@@ -174,6 +201,7 @@ export function createAdhkarSessionStore({
       const mine = token;
       endHandled = true;
       armed = false;
+      countedThisPlay = false;
       lastPosition = -1;
       loadedIndex = -1;
       if (!url) {
@@ -201,6 +229,7 @@ export function createAdhkarSessionStore({
       const mine = token;
       endHandled = true;
       armed = false;
+      countedThisPlay = false;
       lastPosition = -1;
       try {
         await engine.play();
@@ -241,9 +270,12 @@ export function createAdhkarSessionStore({
     return {
       session: null,
       urls: [],
-      autoAdvance: loadAutoAdvance() ?? true,
+      // Off until the viewer turns it on, like the phone's explicit Play all.
+      autoAdvance: loadAutoAdvance() ?? false,
+      sessionAdvance: null,
       audio: 'idle',
       wantsAudio: false,
+      resumed: false,
 
       open: (listId, targets, urls, options = {}) => {
         get().close();
@@ -256,13 +288,26 @@ export function createAdhkarSessionStore({
           ? saved.state
           : startSession(listId, targets, 0);
         const autoplay = options.autoplay ?? true;
-        set({session, urls, audio: 'idle', wantsAudio: autoplay});
+        plannedAdvance = options.advance ?? null;
+        set({
+          session,
+          urls,
+          audio: 'idle',
+          wantsAudio: autoplay,
+          sessionAdvance: plannedAdvance,
+          resumed: isUnderway(session),
+        });
         if (autoplay && targets.length > 0) void loadCurrent();
       },
 
       press: () => {
-        const {session} = get();
+        const {session, audio} = get();
         if (!session) return;
+        // Counting along with a recitation that counts itself: this press is
+        // its saying, so the clip's end must not count it again.
+        if (audio === 'playing' && advanceModeOf(get()) !== 'off') {
+          countedThisPlay = true;
+        }
         const result = pressDhikr(session);
         set({session: result.state});
         remember(result.state);
@@ -298,7 +343,7 @@ export function createAdhkarSessionStore({
         if (!session) return;
         clearTimer();
         const fresh = restartSession(session);
-        set({session: fresh});
+        set({session: fresh, resumed: false});
         remember(fresh);
         if (get().wantsAudio) void loadCurrent();
         else stopAudio('idle');
@@ -333,6 +378,14 @@ export function createAdhkarSessionStore({
       },
 
       setAutoAdvance: on => {
+        if (get().sessionAdvance !== null) {
+          const planned =
+            plannedAdvance && plannedAdvance !== 'off'
+              ? plannedAdvance
+              : 'count';
+          set({sessionAdvance: on ? planned : 'off'});
+          return;
+        }
         set({autoAdvance: on});
         saveAutoAdvance(on);
       },
@@ -350,7 +403,16 @@ export function createAdhkarSessionStore({
           current.destroy();
         }
         unsubscribe = null;
-        set({session: null, urls: [], audio: 'idle', wantsAudio: false});
+        countedThisPlay = false;
+        plannedAdvance = null;
+        set({
+          session: null,
+          urls: [],
+          audio: 'idle',
+          wantsAudio: false,
+          sessionAdvance: null,
+          resumed: false,
+        });
       },
     };
   });

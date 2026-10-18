@@ -1,5 +1,6 @@
 import {PIGMENTS} from '../../theme/surahColors';
 import type {AdhkarList} from '../../data/adhkarLists';
+import {estimateDhikrMinutes} from '../adhkarBrowse';
 
 const INK = '#06151c';
 
@@ -42,18 +43,13 @@ export const ADHKAR_WHEN: Readonly<Record<string, string>> = {
 };
 
 /**
- * Roughly how long a list takes to say, in minutes: words times repeats at
- * a calm two words a second, at least one minute.
+ * Roughly how long a list takes to say, in minutes: the Adhkar screen's
+ * estimate, so Search, Home and Adhkar agree.
  */
 export function estimateMinutes(
   dhikrs: readonly {arabic: string; repeatCount: number}[],
 ): number {
-  const words = dhikrs.reduce(
-    (sum, d) =>
-      sum + d.arabic.split(/\s+/).filter(Boolean).length * d.repeatCount,
-    0,
-  );
-  return Math.max(1, Math.round(words / 2 / 60));
+  return estimateDhikrMinutes(dhikrs);
 }
 
 export function countLabel(count: number): string {

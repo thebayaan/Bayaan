@@ -101,7 +101,14 @@ export function AdhkarListCard({
           <Scrim
             id={`adhkar-scrim-${list.id}`}
             direction="up"
-            from={0.85}
+            from={0.9}
+            to={0}
+          />
+          {/* The title and meta sit at the left over the illustration. */}
+          <Scrim
+            id={`adhkar-side-${list.id}`}
+            direction="left"
+            from={0.55}
             to={0}
           />
           <Text style={[styles.bigArabic, arabicFontStyle]} numberOfLines={1}>
@@ -144,8 +151,12 @@ export function AdhkarListCard({
               color={colors.surfaceElevated}
             />
           </View>
-          <View style={styles.smallText}>
-            <Text style={styles.smallTitle} numberOfLines={1}>
+          <View style={[styles.smallText, {paddingRight: scale(width * 0.36)}]}>
+            <Text
+              style={styles.smallTitle}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.8}>
               {list.title}
             </Text>
             <Text style={styles.smallSub} numberOfLines={1}>
@@ -175,8 +186,8 @@ const styles = createScaledStyles({
     color: colors.text,
     fontSize: 46,
     lineHeight: 84,
-    textShadowColor: 'rgba(0,0,0,0.45)',
-    textShadowRadius: 12,
+    textShadowColor: 'rgba(0,0,0,0.7)',
+    textShadowRadius: 14,
   },
   badge: {
     position: 'absolute',
@@ -217,11 +228,12 @@ const styles = createScaledStyles({
     width: '46%',
     opacity: 0.75,
   },
+  // The text keeps clear of the art (46% wide, its left edge faded into the
+  // card): paddingRight is set per card, 36% of its width.
   smallText: {
     flex: 1,
     justifyContent: 'center',
     paddingLeft: 26,
-    paddingRight: 120,
   },
   smallTitle: {
     color: colors.text,

@@ -1,5 +1,5 @@
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
-import {Pressable, Text, View, useTVEventHandler} from 'react-native';
+import {Platform, Pressable, Text, View, useTVEventHandler} from 'react-native';
 import type {HWEvent} from 'react-native';
 import {CheckIcon, PauseIcon, PlayIcon} from '../../components/Icons';
 import {AdhkarClock, useNow} from '../components/adhkar/AdhkarClock';
@@ -19,20 +19,45 @@ import {
   sourceLine,
   translationFontSize,
 } from '../services/adhkarPages';
+import {createQuranHandoff} from '../services/adhkarQuranHandoff';
 import {createRemoteKeyFilter} from '../services/remoteKeys';
-import type {AdhkarAudio} from '../store/adhkarSessionController';
+import {
+  advanceModeOf,
+  type AdhkarAudio,
+  type AdvanceMode,
+} from '../store/adhkarSessionController';
 import {useAdhkarSessionStore} from '../store/adhkarSessionStore';
 import {useKeepAwakeWhile} from '../hooks/useKeepAwakeWhile';
 import {useNavStore, type AdhkarStartMode} from '../store/navStore';
+import {showToast} from '../store/toastStore';
+import {useTVPlayerStore} from '../store/tvPlayerStore';
 import {colors} from '../theme/colors';
 import {fonts} from '../theme/typography';
 import {createScaledStyles, scale} from '../theme/scale';
 
 type Props = {
   listId: string;
-  /** From Search: listen straight through, or count each without audio. */
+  /** From Search: listen straight through, or have each counted out. */
   mode?: AdhkarStartMode;
 };
+
+/**
+ * How each start mode opens a list. Read is silent and at your own pace
+ * (Play and Auto-advance are there when wanted, like the phone's Play all);
+ * Listen through plays every recitation once, in order; Count each for me
+ * plays each one as many times as it is said, counting as it goes.
+ */
+const START: Record<
+  AdhkarStartMode,
+  {autoplay: boolean; advance?: AdvanceMode}
+> = {
+  read: {autoplay: false},
+  listen: {autoplay: true, advance: 'once'},
+  count: {autoplay: true, advance: 'count'},
+};
+
+// The Android fallback for the Uthmanic face draws ﴿ ﴾ as "{·".
+const PLAIN_BRACKETS = Platform.OS === 'android';
 
 /** "Morning adhkar" for the time-of-day lists, the list's title otherwise. */
 function readerTitle(listId: string, title: string): string {
@@ -54,12 +79,16 @@ function playLabel(audio: AdhkarAudio): string {
   }
 }
 
+/** The page to show as a dhikr opens: the first, or the last going back. */
+type PageEntry = {index: number; page: number | 'last'};
+
 /**
  * The adhkar reader: one dhikr at a time in large Arabic with its
  * translation and source, a tasbeeh ring for repeated adhkar, progress along
  * the bottom, and the recitation playing from the CDN. Left / Right move
- * (through the pages of a long dhikr first), OK counts, Play/Pause plays,
- * Down reaches the audio and Auto-advance chips. Back is the Router's.
+ * (through the pages of a long dhikr first), OK counts (turning the pages of
+ * a long one first), Play/Pause plays, Down reaches the audio and
+ * Auto-advance chips. Back is the Router's.
  */
 export function AdhkarReaderScreen({listId, mode}: Props): React.ReactElement {
   const list = adhkarList(listId);
@@ -69,58 +98,94 @@ export function AdhkarReaderScreen({listId, mode}: Props): React.ReactElement {
 
   const session = useAdhkarSessionStore(s => s.session);
   const audio = useAdhkarSessionStore(s => s.audio);
-  const autoAdvance = useAdhkarSessionStore(s => s.autoAdvance);
+  const advance = useAdhkarSessionStore(advanceModeOf);
+  const resumed = useAdhkarSessionStore(s => s.resumed);
   const {open, close, press, next, prev, restart, togglePlay, setAutoAdvance} =
     useAdhkarSessionStore.getState();
 
+  // Whether the Quran was playing as the reader opened, for the foot's note.
+  const [quranWasPlaying] = useState(
+    () => useTVPlayerStore.getState().status === 'playing',
+  );
+
   useEffect(() => {
-    // Search's "Listen through" and "Count each for me" both let the
-    // recitations play and count themselves (Auto-advance) for this visit
-    // only; the viewer's own Auto-advance choice comes back on the way out.
-    const saved = useAdhkarSessionStore.getState().autoAdvance;
-    const forced = mode === 'listen' || mode === 'count';
-    if (forced) setAutoAdvance(true);
+    // An adhkar recitation pauses the Quran; leaving hands it back.
+    const handoff = createQuranHandoff({
+      quranStatus: () => useTVPlayerStore.getState().status,
+      resumeQuran: () => useTVPlayerStore.getState().toggle(),
+    });
+    const unsubscribe = useAdhkarSessionStore.subscribe(s => {
+      if (s.audio === 'loading' || s.audio === 'playing') {
+        handoff.adhkarPlayed();
+      }
+    });
     open(
       listId,
       adhkar.map(d => d.repeatCount),
       adhkar.map(d => d.audioUrl),
+      START[mode ?? 'read'],
     );
     return () => {
+      unsubscribe();
       close();
-      if (forced) setAutoAdvance(saved);
+      if (handoff.leave()) {
+        const {queue, currentIndex} = useTVPlayerStore.getState();
+        const surah = queue[currentIndex]?.title;
+        showToast(surah ? `Resuming ${surah}` : 'Resuming the Quran');
+      }
     };
-  }, [listId, mode, adhkar, open, close, setAutoAdvance]);
+  }, [listId, mode, adhkar, open, close]);
 
   const ready = session !== null && session.listId === listId;
   const index = ready ? session.index : 0;
   const dhikr = adhkar[index];
   const finished = ready && session.finished;
+  const audioActive = audio === 'playing' || audio === 'loading';
   // Listening through (or counting) runs without a press: keep the screen on
   // while a recitation plays, and between dhikr while auto-advance carries on.
   useKeepAwakeWhile(
-    !finished &&
-      (audio === 'playing' ||
-        audio === 'loading' ||
-        (autoAdvance && audio === 'ended')),
+    !finished && (audioActive || (advance !== 'off' && audio === 'ended')),
     'adhkar-reader',
   );
   const pages = useMemo(
-    () => (dhikr ? dhikrPages(dhikr.arabic, dhikr.translation) : []),
+    () =>
+      dhikr
+        ? dhikrPages(dhikr.arabic, dhikr.translation, {
+            plainBrackets: PLAIN_BRACKETS,
+          })
+        : [],
     [dhikr],
   );
-  const [page, setPage] = useState(0);
-  useEffect(() => setPage(0), [index]);
-  const shown = pages[Math.min(page, pages.length - 1)];
+  const [entry, setEntry] = useState<PageEntry>({index: 0, page: 0});
+  // Any other move (auto-advance, OK, start again) opens on the first page.
+  useEffect(() => {
+    setEntry(e => (e.index === index ? e : {index, page: 0}));
+  }, [index]);
+  const lastPage = Math.max(0, pages.length - 1);
+  const page =
+    entry.index !== index
+      ? 0
+      : entry.page === 'last'
+        ? lastPage
+        : Math.min(entry.page, lastPage);
+  const shown = pages[page];
 
   // Arrows act on the dhikr only while the stage has focus; on the chips
-  // they move between chips.
-  const stageFocused = useRef(false);
+  // they move between chips. The state draws the stage's focus.
+  const stageFocusedRef = useRef(false);
+  const [stageFocused, setStageFocused] = useState(false);
   useEffect(() => {
     // The stage unmounts under the closing card without a blur.
-    if (finished) stageFocused.current = false;
+    if (finished) {
+      stageFocusedRef.current = false;
+      setStageFocused(false);
+    }
   }, [finished]);
-  const pageRef = useRef({page, count: pages.length});
-  pageRef.current = {page, count: pages.length};
+  // A new key remounts the stage, whose preferred focus then takes focus
+  // back (after Start over, whose chip goes away).
+  const [stageKey, setStageKey] = useState(0);
+  const pageRef = useRef({index, page, count: pages.length});
+  pageRef.current = {index, page, count: pages.length};
 
   const remoteFilter = useMemo(createRemoteKeyFilter, []);
   const handleTVEvent = useCallback(
@@ -131,14 +196,16 @@ export function AdhkarReaderScreen({listId, mode}: Props): React.ReactElement {
         togglePlay();
         return;
       }
-      if (!stageFocused.current) return;
-      const {page: p, count} = pageRef.current;
+      if (!stageFocusedRef.current) return;
+      const {index: i, page: p, count} = pageRef.current;
       if (action === 'right' || action === 'seekForward') {
-        if (p < count - 1) setPage(p + 1);
+        if (p < count - 1) setEntry({index: i, page: p + 1});
         else next();
       } else if (p > 0) {
-        setPage(p - 1);
-      } else {
+        setEntry({index: i, page: p - 1});
+      } else if (i > 0) {
+        // Back into the previous dhikr at its end, where it was left.
+        setEntry({index: i - 1, page: 'last'});
         prev();
       }
     },
@@ -174,6 +241,7 @@ export function AdhkarReaderScreen({listId, mode}: Props): React.ReactElement {
   const done = ready
     ? session.counts.map((c, i) => c >= (session.targets[i] ?? 1))
     : [];
+  const morePages = page < pages.length - 1;
   const arabicSize = arabicFontSize(shown?.arabicLength ?? 0);
   const translationChars = (shown?.translation ?? []).reduce(
     (n, r) => n + r.text.length,
@@ -187,17 +255,58 @@ export function AdhkarReaderScreen({listId, mode}: Props): React.ReactElement {
   ]
     .filter(Boolean)
     .join('  ·  ');
+  const counting = advance !== 'off' && audio === 'playing';
+  const hint = morePages
+    ? 'OK for the next page'
+    : counting
+      ? advance === 'once'
+        ? 'Listening through'
+        : 'Counting with the recitation'
+      : count >= target
+        ? 'Done'
+        : target > 1
+          ? 'OK to count'
+          : 'OK when you have said it';
+  const quranNote = quranWasPlaying
+    ? audioActive
+      ? 'The Quran resumes when you leave'
+      : 'The Quran plays on until you press Play'
+    : null;
+
+  const onStagePress = (): void => {
+    // A long dhikr shows all of its pages before OK counts it.
+    if (morePages) setEntry({index, page: page + 1});
+    else press();
+  };
+
+  const startOver = (): void => {
+    restart();
+    setEntry({index: 0, page: 0});
+    setStageKey(k => k + 1);
+  };
+
+  const reviewLast = (): void => {
+    setEntry({index: adhkar.length - 1, page: 'last'});
+    prev();
+  };
 
   return (
     <View style={styles.root}>
       <AdhkarGlow color={color} dim={finished ? 0.4 : 0} />
 
       <View style={styles.top} pointerEvents="none">
-        <View style={styles.brand}>
-          <LogoMark size={scale(34)} color={colors.text} />
-          <Text style={styles.listTitle} numberOfLines={1}>
-            {title}
-          </Text>
+        <View>
+          <View style={styles.brand}>
+            <LogoMark size={scale(34)} color={colors.text} />
+            <Text style={styles.listTitle} numberOfLines={1}>
+              {title}
+            </Text>
+          </View>
+          {quranNote && !finished ? (
+            <Text style={styles.note} numberOfLines={1}>
+              {quranNote}
+            </Text>
+          ) : null}
         </View>
         <AdhkarClock now={now} caption={periodLabel(now)} />
       </View>
@@ -210,6 +319,9 @@ export function AdhkarReaderScreen({listId, mode}: Props): React.ReactElement {
             {`${countLabel(adhkar.length)} · May Allah accept from you`}
           </Text>
           <View style={styles.endActions}>
+            <FocusableButton onPress={reviewLast} style={styles.endButton}>
+              <FocusText style={styles.endButtonText}>Review last</FocusText>
+            </FocusableButton>
             <FocusableButton
               onPress={restart}
               outlined
@@ -224,17 +336,24 @@ export function AdhkarReaderScreen({listId, mode}: Props): React.ReactElement {
         </View>
       ) : (
         <Pressable
+          key={stageKey}
           style={styles.stage}
           hasTVPreferredFocus
           onFocus={() => {
-            stageFocused.current = true;
+            stageFocusedRef.current = true;
+            setStageFocused(true);
           }}
           onBlur={() => {
-            stageFocused.current = false;
+            stageFocusedRef.current = false;
+            setStageFocused(false);
           }}
-          onPress={press}
+          onPress={onStagePress}
           accessibilityLabel={
-            target > 1 ? `Count, ${count} of ${target}` : 'Next dhikr'
+            morePages
+              ? 'Next page'
+              : target > 1
+                ? `Count, ${count} of ${target}`
+                : 'Next dhikr'
           }>
           {shown ? (
             <DhikrText
@@ -262,17 +381,25 @@ export function AdhkarReaderScreen({listId, mode}: Props): React.ReactElement {
               {sourceText}
             </Text>
           ) : null}
-          <View style={styles.counter}>
+          <View style={[styles.counter, !stageFocused && styles.counterRest]}>
             {target > 1 ? (
-              <CountRing
-                count={count}
-                target={target}
-                size={(shown?.arabicLength ?? 0) > 160 ? 120 : 156}
-              />
+              <>
+                <CountRing
+                  count={count}
+                  target={target}
+                  size={(shown?.arabicLength ?? 0) > 160 ? 120 : 156}
+                  focused={stageFocused}
+                />
+                <Text style={[styles.hint, stageFocused && styles.hintFocused]}>
+                  {hint}
+                </Text>
+              </>
             ) : (
-              <Text style={styles.hint}>
-                {count >= target ? 'Done' : 'Press OK when you have said it'}
-              </Text>
+              <View style={[styles.okPill, stageFocused && styles.okPillOn]}>
+                <Text style={[styles.okText, stageFocused && styles.okTextOn]}>
+                  {hint}
+                </Text>
+              </View>
             )}
           </View>
         </Pressable>
@@ -287,40 +414,58 @@ export function AdhkarReaderScreen({listId, mode}: Props): React.ReactElement {
           index={finished ? adhkar.length : index}
           done={done}
         />
-        <View style={styles.chips}>
-          <FocusableButton
-            onPress={togglePlay}
-            style={styles.chip}
-            accessibilityLabel={playLabel(audio)}>
-            <View style={styles.chipInner}>
-              <FocusIcon
-                icon={audio === 'playing' ? PauseIcon : PlayIcon}
-                size={22}
-              />
-              <FocusText style={styles.chipText}>{playLabel(audio)}</FocusText>
-            </View>
-          </FocusableButton>
-          <FocusableButton
-            onPress={() => setAutoAdvance(!autoAdvance)}
-            style={styles.chip}
-            accessibilityLabel={`Auto-advance ${autoAdvance ? 'on' : 'off'}`}>
-            {focused => (
+        {/* The closing card's buttons hold focus on their own; these
+            chips would do nothing there. */}
+        {finished ? null : (
+          <View style={styles.chips}>
+            {resumed ? (
+              <FocusableButton
+                onPress={startOver}
+                style={styles.chip}
+                accessibilityLabel={`Resumed at ${index + 1} of ${adhkar.length}. Start over`}>
+                <FocusText style={styles.chipText}>
+                  Resumed · Start over
+                </FocusText>
+              </FocusableButton>
+            ) : null}
+            <FocusableButton
+              onPress={togglePlay}
+              style={styles.chip}
+              accessibilityLabel={playLabel(audio)}>
               <View style={styles.chipInner}>
-                {autoAdvance ? (
-                  <CheckIcon
-                    color={focused ? colors.onFocus : colors.accent}
-                    size={scale(22)}
-                  />
-                ) : null}
-                <FocusText
-                  style={styles.chipText}
-                  color={autoAdvance ? colors.text : colors.textSecondary}>
-                  Auto-advance
+                <FocusIcon
+                  icon={audio === 'playing' ? PauseIcon : PlayIcon}
+                  size={22}
+                />
+                <FocusText style={styles.chipText}>
+                  {playLabel(audio)}
                 </FocusText>
               </View>
-            )}
-          </FocusableButton>
-        </View>
+            </FocusableButton>
+            <FocusableButton
+              onPress={() => setAutoAdvance(advance === 'off')}
+              style={styles.chip}
+              accessibilityLabel={`Auto-advance ${advance === 'off' ? 'off' : 'on'}`}>
+              {focused => (
+                <View style={styles.chipInner}>
+                  {advance !== 'off' ? (
+                    <CheckIcon
+                      color={focused ? colors.onFocus : colors.accent}
+                      size={scale(22)}
+                    />
+                  ) : null}
+                  <FocusText
+                    style={styles.chipText}
+                    color={
+                      advance !== 'off' ? colors.text : colors.textSecondary
+                    }>
+                    Auto-advance
+                  </FocusText>
+                </View>
+              )}
+            </FocusableButton>
+          </View>
+        )}
       </View>
     </View>
   );
@@ -377,13 +522,45 @@ const styles = createScaledStyles({
     textAlign: 'center',
     maxWidth: 1320,
   },
+  note: {
+    marginTop: 10,
+    marginLeft: 48,
+    color: colors.textTertiary,
+    fontFamily: fonts.medium,
+    fontWeight: '500',
+    fontSize: 18,
+  },
   counter: {marginTop: 36, alignItems: 'center', justifyContent: 'center'},
+  // Focus is on the chips: the counter steps back.
+  counterRest: {opacity: 0.55},
   hint: {
+    marginTop: 12,
     color: colors.textTertiary,
     fontFamily: fonts.medium,
     fontWeight: '500',
     fontSize: 19,
   },
+  hintFocused: {color: colors.textSecondary},
+  // A single dhikr's "OK when you have said it", cream while OK means it.
+  okPill: {
+    borderRadius: 16,
+    borderCurve: 'continuous',
+    borderWidth: 2,
+    borderColor: colors.border,
+    paddingHorizontal: 28,
+    paddingVertical: 12,
+  },
+  okPillOn: {
+    backgroundColor: colors.focusFill,
+    borderColor: colors.focusFill,
+  },
+  okText: {
+    color: colors.textSecondary,
+    fontFamily: fonts.bold,
+    fontWeight: '700',
+    fontSize: 21,
+  },
+  okTextOn: {color: colors.onFocus},
   foot: {
     position: 'absolute',
     left: 72,
