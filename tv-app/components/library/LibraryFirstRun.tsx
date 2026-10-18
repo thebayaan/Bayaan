@@ -166,7 +166,7 @@ const styles = createScaledStyles({
   calligraphy: {position: 'absolute', right: 150, top: 120},
   hero: {marginTop: 88, width: 1000},
   kicker: {
-    color: colors.textTertiary,
+    color: colors.accent,
     fontFamily: fonts.extraBold,
     fontWeight: '800',
     fontSize: 19,
@@ -192,7 +192,7 @@ const styles = createScaledStyles({
   button: {paddingHorizontal: 30, paddingVertical: 16, borderRadius: 16},
   buttonInner: {flexDirection: 'row', alignItems: 'center', gap: 12},
   buttonText: {fontFamily: fonts.bold, fontWeight: '700', fontSize: 24},
-  explainers: {flexDirection: 'row', gap: 40, marginTop: 80},
+  explainers: {flexDirection: 'row', gap: 40, marginTop: 48},
   explainer: {flex: 1, flexDirection: 'row', alignItems: 'flex-start', gap: 24},
   ghost: {
     width: 92,
@@ -219,7 +219,9 @@ const styles = createScaledStyles({
     fontSize: 20,
     lineHeight: 28,
   },
-  starter: {marginTop: 72},
+  // Tight enough that the starter captions end above the bottom overscan
+  // band (the page does not scroll).
+  starter: {marginTop: 48},
   starterTitle: {
     color: colors.text,
     fontFamily: fonts.bold,
