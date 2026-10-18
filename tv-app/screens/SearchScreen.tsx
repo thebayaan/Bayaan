@@ -206,10 +206,16 @@ export function SearchScreen(): React.ReactElement {
         onPick={reciter => {
           // "Choose reciter" takes focus as the card remounts, before the
           // player covers Search, so Back from the player lands on it
-          // rather than on a picker portrait that no longer exists.
+          // rather than on a picker portrait that no longer exists. The
+          // player waits two frames, so the card is mounted natively and
+          // has focus before Search's layer is hidden.
           const surah = picker;
           closePicker();
-          void actions.playSurah(surah, {reciter});
+          requestAnimationFrame(() =>
+            requestAnimationFrame(() => {
+              void actions.playSurah(surah, {reciter});
+            }),
+          );
         }}
       />
     );
