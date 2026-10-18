@@ -139,6 +139,10 @@ export function AdhkarReaderScreen({listId, mode}: Props): React.ReactElement {
     return () => {
       unsubscribe();
       close();
+      // Opened the player from the pill: it shows the Quran paused, as the
+      // pill said, rather than resuming on its own.
+      const {stack} = useNavStore.getState();
+      if (stack[stack.length - 1]?.screen === 'nowPlaying') return;
       if (handoff.leave()) {
         const {queue, currentIndex} = useTVPlayerStore.getState();
         const surah = queue[currentIndex]?.title;
