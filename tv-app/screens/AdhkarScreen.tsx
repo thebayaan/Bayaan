@@ -3,6 +3,7 @@ import {ScrollView, Text, TVFocusGuideView, View} from 'react-native';
 import {AdhkarChip} from '../components/adhkar/AdhkarChip';
 import {AdhkarClock, useNow} from '../components/adhkar/AdhkarClock';
 import {AdhkarListCard} from '../components/adhkar/AdhkarListCard';
+import {ROOT_TITLE_TEXT} from '../components/browse/RootHeader';
 import {
   adhkarGroups,
   groupLists,
@@ -12,7 +13,6 @@ import {
 } from '../services/adhkarBrowse';
 import {useNavStore} from '../store/navStore';
 import {colors} from '../theme/colors';
-import {fonts} from '../theme/typography';
 import {createScaledStyles} from '../theme/scale';
 import {SCREEN_GUTTER} from '../theme/spacing';
 
@@ -156,12 +156,7 @@ const styles = createScaledStyles({
     paddingLeft: PAD_LEFT,
     paddingRight: PAD_RIGHT,
   },
-  title: {
-    color: colors.text,
-    fontFamily: fonts.extraBold,
-    fontWeight: '800',
-    fontSize: 60,
-  },
+  title: {color: colors.text, ...ROOT_TITLE_TEXT},
   chips: {
     flexDirection: 'row',
     alignSelf: 'flex-start',

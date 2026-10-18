@@ -26,7 +26,7 @@ type Props = {
 const CELL_PAD = 13;
 const CELL_WIDTH = RECITER_CARD_WIDTH + CELL_PAD * 2;
 /** A portrait card plus its cell padding, for Vega's FlashList. */
-const cellLayout = cellHeightLayout(278);
+const cellLayout = cellHeightLayout(302);
 
 /** One grid of round reciter portraits, sized to the screen's width. */
 export function ReciterGrid({

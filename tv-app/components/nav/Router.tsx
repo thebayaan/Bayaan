@@ -325,7 +325,12 @@ function StackScreenBody({entry}: {entry: ScreenEntry}): React.ReactElement {
     case 'nowPlaying':
       return <NowPlayingScreen />;
     case 'reciterDetail':
-      return <ReciterDetailScreen reciterId={entry.reciterId} />;
+      return (
+        <ReciterDetailScreen
+          reciterId={entry.reciterId}
+          rewayahId={entry.rewayahId}
+        />
+      );
     case 'playlist':
       return <PlaylistScreen playlistId={entry.playlistId} />;
     case 'playlistEdit':

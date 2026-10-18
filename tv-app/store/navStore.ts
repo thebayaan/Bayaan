@@ -19,7 +19,7 @@ export type AdhkarStartMode = 'read' | 'listen' | 'count';
 
 export type ScreenEntry =
   | {screen: 'nowPlaying'}
-  | {screen: 'reciterDetail'; reciterId: string}
+  | {screen: 'reciterDetail'; reciterId: string; rewayahId?: string}
   | {screen: 'adhkarReader'; listId: string; mode?: AdhkarStartMode}
   | {screen: 'playlist'; playlistId: string}
   /** No id creates a playlist, seeded with `seed` when one is given. */

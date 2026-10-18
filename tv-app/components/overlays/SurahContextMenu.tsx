@@ -28,7 +28,6 @@ import {
   removePlaylistItem,
   type PlaylistItem,
 } from '../../services/playlistsStore';
-import {shortReciterName} from '../../services/listeningChoices';
 import {pushScreenBack} from '../../services/screenBack';
 import {getCachedRewayat} from '../../services/tvDataService';
 import {showToast} from '../../store/toastStore';
@@ -134,6 +133,12 @@ function SurahMenu({target}: {target: SurahMenuTarget}): React.ReactElement {
 
   function handlePlay(): void {
     close({restoreFocus: false});
+    if (target.onPlay) {
+      // The place's own press (Surahs' filtered queue, the reciter page's
+      // order), so Play here and OK on the tile never differ.
+      target.onPlay();
+      return;
+    }
     if (inPlaylist && playlist) {
       // The playlist from this row on, like OK on the row.
       void playOrOpen({
@@ -169,7 +174,12 @@ function SurahMenu({target}: {target: SurahMenuTarget}): React.ReactElement {
   function handleReciter(): void {
     if (!reciter) return;
     close({restoreFocus: false});
-    push({screen: 'reciterDetail', reciterId: reciter.id});
+    // On the menu's recitation (a loved Warsh surah opens the Warsh tab).
+    push({
+      screen: 'reciterDetail',
+      reciterId: reciter.id,
+      ...(voice?.rewayahId ? {rewayahId: voice.rewayahId} : {}),
+    });
   }
 
   function handleRemoveContinue(): void {
@@ -213,11 +223,12 @@ function SurahMenu({target}: {target: SurahMenuTarget}): React.ReactElement {
     <View style={styles.art}>
       <SurahArtwork
         surahNumber={surahNumber}
-        glyphSize={34}
+        glyphSize={44}
         id={`surah-menu-${surahNumber}`}
       />
     </View>
   );
+  // One form of the name on both pages, so the header never changes.
   const subtitle = reciter ? reciter.name : undefined;
 
   // From a playlist row, that playlist is left out of the picker: taking
@@ -234,7 +245,7 @@ function SurahMenu({target}: {target: SurahMenuTarget}): React.ReactElement {
         art={art}
         kicker="ADD TO PLAYLIST"
         title={title}
-        subtitle={reciter ? shortReciterName(reciter.name) : undefined}>
+        subtitle={subtitle}>
         <MenuRow
           icon={<FocusIcon icon={PlusIcon} size={24} />}
           label="New playlist…"
@@ -294,9 +305,11 @@ function SurahMenu({target}: {target: SurahMenuTarget}): React.ReactElement {
       {voice ? (
         <MenuRow
           icon={<FocusIcon icon={HeartIcon} size={24} filled={isLoved} />}
-          label={isLoved ? 'Unlike' : 'Like'}
+          label={isLoved ? 'Remove from Loved' : 'Love'}
           accessibilityLabel={
-            isLoved ? `Unlike ${title}` : `Like ${title} in this voice`
+            isLoved
+              ? `Remove ${title} from Loved`
+              : `Love ${title} in this voice`
           }
           onPress={handleLove}
         />

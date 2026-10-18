@@ -1,9 +1,8 @@
 import React from 'react';
 import {View} from 'react-native';
 import {FocusableButton} from '../primitives/FocusableButton';
-import {FocusIcon, FocusText, useFocusTint} from '../primitives/focusContext';
+import {FocusText, useFocusTint} from '../primitives/focusContext';
 import {SurahGlyph} from '../brand/SurahGlyph';
-import {CheckIcon} from '../../../components/Icons';
 import {surahGlyphsAvailable} from '../../theme/calligraphy';
 import {colors} from '../../theme/colors';
 import {fonts} from '../../theme/typography';
@@ -45,8 +44,9 @@ function SurahRowImpl({
   onLongPress,
   hasTVPreferredFocus,
 }: Props): React.ReactElement {
-  const completed = progress >= 0.97;
-  const inProgress = progress > 0.02 && !completed;
+  // Finished surahs leave Continue listening, so there is no "done" state
+  // to show: only a bar for one under way.
+  const inProgress = progress > 0.02 && progress < 0.97;
   return (
     <FocusableButton
       onPress={() => onSelect(surah.id)}
@@ -75,9 +75,6 @@ function SurahRowImpl({
               {surah.translated_name_english} · {surah.verses_count} verses
             </FocusText>
           </View>
-          {completed ? (
-            <FocusIcon icon={CheckIcon} color={colors.accent} size={20} />
-          ) : null}
           {surahGlyphsAvailable ? <Glyph surahNumber={surah.id} /> : null}
           {inProgress ? (
             <View style={[styles.track, focused && styles.trackFocused]}>
@@ -124,7 +121,7 @@ const styles = createScaledStyles({
   },
   sub: {
     fontFamily: fonts.medium,
-    fontSize: 15,
+    fontSize: 17,
     fontWeight: '500',
   },
   glyph: {textAlign: 'right'},
