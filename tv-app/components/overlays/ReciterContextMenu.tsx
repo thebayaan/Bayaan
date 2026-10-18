@@ -1,6 +1,6 @@
 import React, {useMemo} from 'react';
-import {Image} from 'expo-image';
-import {Text, View} from 'react-native';
+import {View} from 'react-native';
+import {ReciterPortrait} from '../browse/ReciterPortrait';
 import {FocusIcon} from '../primitives/focusContext';
 import {MenuRow, MenuSheet, menuStyles} from './MenuSheet';
 import {useContextMenuStore} from '../../store/contextMenuStore';
@@ -17,7 +17,6 @@ import {
   ShuffleIcon,
   InfoRoundedIcon,
 } from '../../../components/Icons';
-import {getReciterArtwork} from '../../services/reciterArtwork';
 
 export {MenuRow, menuStyles} from './MenuSheet';
 export type {MenuRowProps} from './MenuSheet';
@@ -64,26 +63,16 @@ export function ReciterContextMenu(): React.ReactElement | null {
     push({screen: 'reciterDetail', reciterId});
   }
 
-  const artwork = getReciterArtwork(reciter);
   return (
     <MenuSheet
       kicker="RECITER"
       title={reciter.name}
       art={
-        artwork ? (
-          <Image
-            source={artwork}
-            style={menuStyles.portrait}
-            contentFit="cover"
-            cachePolicy="memory-disk"
-          />
-        ) : (
-          <View style={[menuStyles.portrait, menuStyles.portraitPlaceholder]}>
-            <Text style={menuStyles.initial}>
-              {reciter.name.charAt(0).toUpperCase()}
-            </Text>
-          </View>
-        )
+        // The same portrait as the grids: the photo, or the pigment and
+        // Arabic initial when there is none.
+        <View style={menuStyles.portrait}>
+          <ReciterPortrait reciter={reciter} size={88} idPrefix="menu" />
+        </View>
       }>
       <MenuRow
         icon={<FocusIcon icon={PlayIcon} size={24} />}
