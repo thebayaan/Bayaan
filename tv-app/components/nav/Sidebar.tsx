@@ -51,15 +51,19 @@ type Focusable = View & {requestTVFocus?: () => void};
 
 // The current place's item, for Back from the content (see focusSidebar).
 let currentPlaceItem: Focusable | null = null;
+// Every place's item, for focusing a given place (see focusSidebar).
+const placeItems = new Map<TabKey, Focusable>();
 
 /**
- * Moves focus onto the current place in the sidebar. Back on a root place
- * does this first, so it never leaves the app from deep in the content.
- * False when the sidebar isn't there to take it.
+ * Moves focus onto a place in the sidebar, the current one by default. Back
+ * on a root place does this first, so it never leaves the app from deep in
+ * the content, and again onto Home after it switches there. False when the
+ * sidebar isn't there to take it.
  */
-export function focusSidebar(): boolean {
-  if (!currentPlaceItem?.requestTVFocus) return false;
-  currentPlaceItem.requestTVFocus();
+export function focusSidebar(place?: TabKey): boolean {
+  const item = place ? (placeItems.get(place) ?? null) : currentPlaceItem;
+  if (!item?.requestTVFocus) return false;
+  item.requestTVFocus();
   return true;
 }
 
@@ -177,8 +181,13 @@ export function Sidebar(): React.ReactElement {
             <SidebarItem
               key={place.key}
               itemRef={node => {
-                if (node) itemRefs.current.set(place.key, node);
-                else itemRefs.current.delete(place.key);
+                if (node) {
+                  itemRefs.current.set(place.key, node);
+                  placeItems.set(place.key, node);
+                } else {
+                  itemRefs.current.delete(place.key);
+                  placeItems.delete(place.key);
+                }
               }}
               label={place.label}
               icon={place.icon}

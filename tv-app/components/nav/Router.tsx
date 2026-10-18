@@ -114,6 +114,10 @@ function handleBack(): boolean {
       return true;
     case 'goHome':
       useNavStore.getState().switchTab('home');
+      // Focus follows onto Home's own item once Home is drawn, so the open
+      // sidebar shows where Back went (not the place just left, which OK
+      // would reopen) and the next Back leaves from Home's sidebar.
+      requestAnimationFrame(() => focusSidebar('home'));
       return true;
     case 'exit':
       return false;
