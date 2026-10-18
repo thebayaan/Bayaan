@@ -95,10 +95,12 @@ export function ControlsTray({
   const mode = useDisplayStore(s => s.mode);
   const edition = useDisplayStore(s => s.edition);
 
-  // When a panel closes, focus goes back to the tool that opened it. It is
-  // set when the tool is pressed, so the tools mount again already knowing
-  // which one takes focus.
-  const [returnTo, setReturnTo] = useState<PanelKey | null>(null);
+  // When a panel closes, focus goes back to the tool that opened it, set
+  // when the tool is pressed. A panel already open when the tray mounts
+  // (reopened after the playlist editor) counts as opened by its own tool.
+  const [returnTo, setReturnTo] = useState<PanelKey | null>(
+    () => useListeningStore.getState().panel,
+  );
 
   const panelOpen = panel !== null;
   // A verse repeat's gap counts as playing: Pause there stops the replay.

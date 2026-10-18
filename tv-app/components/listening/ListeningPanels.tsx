@@ -342,6 +342,8 @@ export function ListeningPanels({
         onSelect: (id: string) => {
           if (!entry) return;
           if (id === NEW_PLAYLIST) {
+            // Back from the editor reopens this panel in the player.
+            useListeningStore.getState().setReopen('save');
             setPanel(null);
             push({screen: 'playlistEdit', seed: entry});
             return;

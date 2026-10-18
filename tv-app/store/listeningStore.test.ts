@@ -279,3 +279,12 @@ describe('verse repeat, app-wide', () => {
     expect(useListeningStore.getState().repeat).toEqual({kind: 'off'});
   });
 });
+
+describe('reopen', () => {
+  it('holds a panel for the player to reopen, until reset', () => {
+    useListeningStore.getState().setReopen('save');
+    expect(useListeningStore.getState().reopen).toBe('save');
+    useListeningStore.getState().reset();
+    expect(useListeningStore.getState().reopen).toBeNull();
+  });
+});

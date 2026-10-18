@@ -219,6 +219,13 @@ export function NowPlayingScreen(): React.ReactElement {
 
   // Leaving the player lowers the tray so it isn't up next time.
   useEffect(() => () => setTrayOpen(false), [setTrayOpen]);
+  // Back from the playlist editor its Save panel opened: the tray and the
+  // panel come back as they were left.
+  useEffect(() => {
+    const {reopen} = useListeningStore.getState();
+    if (reopen === null) return;
+    useListeningStore.setState({reopen: null, trayOpen: true, panel: reopen});
+  }, []);
 
   // An error card or the sleep timer's dark room has the screen to itself.
   const errored = status === 'error';

@@ -149,6 +149,13 @@ type ListeningState = {
   /** Back closes an open panel before it lowers the tray. */
   panel: PanelKey | null;
   setPanel: (panel: PanelKey | null) => void;
+  /**
+   * A panel to open again, with the tray, when the player mounts next: the
+   * Save panel after the playlist editor it opened (the player unmounts
+   * under the editor). The player takes it once.
+   */
+  reopen: PanelKey | null;
+  setReopen: (panel: PanelKey | null) => void;
   /** Milliseconds to wait before each replay of a repeated verse. */
   repeatPauseMs: number;
   setRepeatPause: (ms: number) => void;
@@ -185,6 +192,8 @@ export const useListeningStore = create<ListeningState>(set => ({
   setTrayOpen: trayOpen => set(trayOpen ? {trayOpen} : {trayOpen, panel: null}),
   panel: null,
   setPanel: panel => set({panel}),
+  reopen: null,
+  setReopen: reopen => set({reopen}),
   repeatPauseMs: 0,
   setRepeatPause: repeatPauseMs => set({repeatPauseMs}),
   repeat: {kind: 'off'},
@@ -232,6 +241,7 @@ export const useListeningStore = create<ListeningState>(set => ({
     set({
       trayOpen: false,
       panel: null,
+      reopen: null,
       repeatPauseMs: 0,
       repeat: {kind: 'off'},
       verseRepeat: null,
