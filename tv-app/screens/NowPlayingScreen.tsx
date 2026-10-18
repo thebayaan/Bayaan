@@ -84,6 +84,19 @@ const WAKE_SWALLOW_LONG_MS = 1500;
 startAmbientSync();
 startVerseRepeatSync();
 
+// A panel kept to reopen (see takeResumePanel) is for the player still under
+// the screen opened over it. Leaving that player some other way (another
+// tab from the editor) forgets it, so the next visit opens plainly.
+useNavStore.subscribe(nav => {
+  const listening = useListeningStore.getState();
+  if (
+    listening.resumePanel !== null &&
+    !nav.stack.some(entry => entry.screen === 'nowPlaying')
+  ) {
+    listening.setResumePanel(null);
+  }
+});
+
 /**
  * The listening room: the verse being recited and its translation, full
  * screen over the surah's color field. Controls stay out of the way until OK
