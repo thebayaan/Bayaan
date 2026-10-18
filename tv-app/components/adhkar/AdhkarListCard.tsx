@@ -25,8 +25,20 @@ type Props = {
 
 export const BIG_CARD_HEIGHT = 240;
 export const SMALL_CARD_HEIGHT = 132;
+/** Share of a small card's width its text keeps clear of, at the right. */
+const SMALL_TEXT_CLEAR = 0.4;
 
-/** A vertical or horizontal ink scrim over artwork, so text stays legible. */
+const SCRIM_COORDS = {
+  up: {x1: '0', y1: '1', x2: '0', y2: '0'},
+  down: {x1: '0', y1: '0', x2: '0', y2: '1'},
+  left: {x1: '0', y1: '0', x2: '1', y2: '0'},
+} as const;
+
+/**
+ * A vertical or horizontal ink scrim over artwork, so text stays legible:
+ * `from` is the opacity at the edge it rises from (the bottom for up, the
+ * top for down, the left for left), `to` at the far edge.
+ */
 export function Scrim({
   id,
   direction,
@@ -35,15 +47,12 @@ export function Scrim({
   color = colors.background,
 }: {
   id: string;
-  direction: 'up' | 'left';
+  direction: 'up' | 'down' | 'left';
   from: number;
   to: number;
   color?: string;
 }): React.ReactElement {
-  const coords =
-    direction === 'up'
-      ? {x1: '0', y1: '1', x2: '0', y2: '0'}
-      : {x1: '0', y1: '0', x2: '1', y2: '0'};
+  const coords = SCRIM_COORDS[direction];
   return (
     <Svg
       style={StyleSheet.absoluteFill}
@@ -98,19 +107,30 @@ export function AdhkarListCard({
             transition={250}
             accessible={false}
           />
-          <Scrim
-            id={`adhkar-scrim-${list.id}`}
-            direction="up"
-            from={0.9}
-            to={0}
-          />
-          {/* The title and meta sit at the left over the illustration. */}
-          <Scrim
-            id={`adhkar-side-${list.id}`}
-            direction="left"
-            from={0.55}
-            to={0}
-          />
+          {/* The scrims draw in a layer of their own above the image (on
+              Android they were left under it as its siblings). */}
+          <View style={styles.scrims} pointerEvents="none">
+            <Scrim
+              id={`adhkar-scrim-${list.id}`}
+              direction="up"
+              from={0.9}
+              to={0}
+            />
+            {/* The title and meta sit at the left over the illustration. */}
+            <Scrim
+              id={`adhkar-side-${list.id}`}
+              direction="left"
+              from={0.55}
+              to={0}
+            />
+            {/* And the Arabic title along the top. */}
+            <Scrim
+              id={`adhkar-top-${list.id}`}
+              direction="down"
+              from={0.75}
+              to={0}
+            />
+          </View>
           <Text style={[styles.bigArabic, arabicFontStyle]} numberOfLines={1}>
             {list.arabicTitle}
           </Text>
@@ -120,7 +140,11 @@ export function AdhkarListCard({
             </View>
           ) : null}
           <View style={styles.bigText}>
-            <Text style={styles.bigTitle} numberOfLines={1}>
+            <Text
+              style={styles.bigTitle}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.8}>
               {list.title}
             </Text>
             <Text style={styles.bigSub} numberOfLines={1}>
@@ -143,20 +167,28 @@ export function AdhkarListCard({
               transition={250}
               accessible={false}
             />
+          </View>
+          {/* The art's left edge fades into the card: drawn above the art,
+              outside its translucent group, so it shows on Android too. */}
+          <View style={styles.smallFade} pointerEvents="none">
             <Scrim
               id={`adhkar-fade-${list.id}`}
               direction="left"
               from={1}
-              to={0.1}
+              to={0}
               color={colors.surfaceElevated}
             />
           </View>
-          <View style={[styles.smallText, {paddingRight: scale(width * 0.36)}]}>
+          <View
+            style={[
+              styles.smallText,
+              {paddingRight: scale(width * SMALL_TEXT_CLEAR)},
+            ]}>
             <Text
               style={styles.smallTitle}
               numberOfLines={1}
               adjustsFontSizeToFit
-              minimumFontScale={0.8}>
+              minimumFontScale={0.75}>
               {list.title}
             </Text>
             <Text style={styles.smallSub} numberOfLines={1}>
@@ -176,7 +208,8 @@ const styles = createScaledStyles({
     borderRadius: 10,
     overflow: 'hidden',
   },
-  bigImage: {opacity: 0.8},
+  bigImage: {opacity: 0.7},
+  scrims: {...StyleSheet.absoluteFillObject, zIndex: 1},
   bigArabic: {
     position: 'absolute',
     top: 18,
@@ -228,8 +261,17 @@ const styles = createScaledStyles({
     width: '46%',
     opacity: 0.75,
   },
+  smallFade: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    width: '46%',
+    zIndex: 1,
+  },
   // The text keeps clear of the art (46% wide, its left edge faded into the
-  // card): paddingRight is set per card, 36% of its width.
+  // card): paddingRight is set per card (SMALL_TEXT_CLEAR of its width), and
+  // a long title shrinks to fit.
   smallText: {
     flex: 1,
     justifyContent: 'center',

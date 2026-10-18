@@ -60,17 +60,19 @@ export function AdhkarClock({now, caption}: Props): React.ReactElement {
 
 const styles = createScaledStyles({
   root: {alignItems: 'flex-end'},
+  // The same type as the other places' clock (HomeClock).
   time: {
     color: colors.text,
-    fontFamily: fonts.bold,
-    fontWeight: '700',
+    fontFamily: fonts.semiBold,
+    fontWeight: '600',
     fontSize: 30,
+    letterSpacing: -0.3,
   },
   caption: {
     color: colors.textSecondary,
     fontFamily: fonts.medium,
     fontWeight: '500',
-    fontSize: 20,
+    fontSize: 19,
     marginTop: 2,
   },
 });
