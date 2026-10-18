@@ -34,7 +34,10 @@ import {
   type MomentItem,
 } from '../hooks/homeMoments';
 import {
+  curatedRow,
   featuredRow,
+  MEMORIZATION_RECITER_NAMES,
+  TAJWEED_RECITER_NAMES,
   hasReciterChoice,
   homeVoiceCandidates,
   preferredReciterIds,
@@ -168,7 +171,8 @@ const GLOW_FADE_Y = 220;
  * Friday, Al-Mulk at night, a surah of the day otherwise) with the clock,
  * then rails that show only when they have something: Continue listening,
  * the moment's rail, your reciters, playlists and loved surahs, adhkar,
- * collections, featured reciters and the short surahs of Juz 'Amma.
+ * collections, featured reciters, the best voices for memorisation and
+ * for tajweed, and the short surahs of Juz 'Amma.
  */
 export function HomeScreen(): React.ReactElement {
   const {reciters} = useReciters();
@@ -346,6 +350,24 @@ export function HomeScreen(): React.ReactElement {
     () => featuredRow(reciters, [...recentIds, ...favoriteIds]),
     [reciters, recentIds, favoriteIds],
   );
+  // The phone's curated rows, each adding voices the rails above don't show.
+  const {memorizationReciters, tajweedReciters} = useMemo(() => {
+    const shown = [
+      ...recentReciters,
+      ...favoriteReciters,
+      ...featuredReciters,
+    ].map(r => r.id);
+    const memorization = curatedRow(
+      reciters,
+      MEMORIZATION_RECITER_NAMES,
+      shown,
+    );
+    const tajweed = curatedRow(reciters, TAJWEED_RECITER_NAMES, [
+      ...shown,
+      ...memorization.map(r => r.id),
+    ]);
+    return {memorizationReciters: memorization, tajweedReciters: tajweed};
+  }, [reciters, recentReciters, favoriteReciters, featuredReciters]);
   const lovedSurahs = useMemo(
     () => loved.filter(e => reciterById.has(e.reciterId)),
     [loved, reciterById],
@@ -365,6 +387,8 @@ export function HomeScreen(): React.ReactElement {
     adhkar: adhkarIds.length,
     collections: SURAH_COLLECTIONS.length,
     featured: featuredReciters.length,
+    memorization: memorizationReciters.length,
+    tajweed: tajweedReciters.length,
     juzAmma: JUZ_AMMA_TILES.length,
   });
 
@@ -777,6 +801,14 @@ export function HomeScreen(): React.ReactElement {
           'Featured reciters',
           renderPortraits(featuredReciters),
         );
+      case 'memorization':
+        return rail(
+          row,
+          'Best for memorisation',
+          renderPortraits(memorizationReciters),
+        );
+      case 'tajweed':
+        return rail(row, 'Best for tajweed', renderPortraits(tajweedReciters));
       case 'juzAmma':
         return rail(row, 'Short surahs', [
           ...JUZ_AMMA_TILES.map(n => (

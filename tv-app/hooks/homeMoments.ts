@@ -383,12 +383,15 @@ export type HomeRow =
   | 'adhkar'
   | 'collections'
   | 'featured'
+  | 'memorization'
+  | 'tajweed'
   | 'juzAmma';
 
 /**
  * Home's rails under the hero, in order: what you were listening to, the
- * moment, your own things, then what Bayaan suggests. There is no row of
- * every reciter; the reciter rows are personal or curated, and capped.
+ * moment, your own things, then what Bayaan suggests (the phone's curated
+ * reciter rows among them). There is no row of every reciter; the reciter
+ * rows are personal or curated, and capped.
  */
 export const HOME_ROW_ORDER: readonly HomeRow[] = [
   'continue',
@@ -400,6 +403,8 @@ export const HOME_ROW_ORDER: readonly HomeRow[] = [
   'adhkar',
   'collections',
   'featured',
+  'memorization',
+  'tajweed',
   'juzAmma',
 ];
 

@@ -64,6 +64,63 @@ export function featuredRow(
 }
 
 /**
+ * The phone's "Best for memorization" and "Best for tajweed" reciters
+ * (data/reciterCollections.ts), in its order. Copied rather than imported:
+ * that module pulls in the phone's stores.
+ */
+export const MEMORIZATION_RECITER_NAMES: readonly string[] = [
+  'Mishary Alafasi',
+  'Mahmoud Khalil Al-Hussary',
+  'Mohammed Siddiq Al-Minshawi Muallim',
+  'Khalifa Al-Tunaiji',
+  'Mohammed Jibreel',
+  'Salah Al-Budair',
+  'Abdullah Al-Mattrod',
+  'Idrees Abkr',
+  'Yassin Al-Jazaery',
+  'Abu Bakr Al-Shatri',
+];
+
+export const TAJWEED_RECITER_NAMES: readonly string[] = [
+  'Mahmoud Khalil Al-Hussary',
+  'Mohammed Ayyub',
+  'Mohammed Siddiq Al-Minshawi',
+  'Abdulbasit Abdulsamad',
+  'Mahmoud Ali Albanna',
+  'Mustafa Ismail',
+  'Abdulrasheed Soufi',
+];
+
+/** A name compared loosely: "Khalifa Al-Tunaiji" matches "Khalifa Altunaiji". */
+function nameKey(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+/**
+ * A curated reciter rail: the catalog's reciters behind `names`, in that
+ * order, leaving out names the catalog lacks and reciters the rails above
+ * already show, so the row adds someone new.
+ */
+export function curatedRow(
+  reciters: readonly Reciter[],
+  names: readonly string[],
+  exclude: readonly string[],
+  limit = RECITER_ROW_LIMIT,
+): Reciter[] {
+  const byName = new Map(reciters.map(r => [nameKey(r.name), r]));
+  const shown = new Set(exclude);
+  const out: Reciter[] = [];
+  for (const name of names) {
+    const reciter = byName.get(nameKey(name));
+    if (reciter && !shown.has(reciter.id) && !out.includes(reciter)) {
+      out.push(reciter);
+    }
+    if (out.length >= limit) break;
+  }
+  return out;
+}
+
+/**
  * Whose voice Home plays a surah in, best first: the chosen default (or the
  * app's pick), then favourites, then the best-known voices. Home plays with
  * the first who has the surah (playbackRouting.voiceForSurah), so a default

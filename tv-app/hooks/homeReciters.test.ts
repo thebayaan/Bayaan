@@ -1,4 +1,5 @@
 import {
+  curatedRow,
   featuredRow,
   hasReciterChoice,
   homeVoiceCandidates,
@@ -10,6 +11,36 @@ import type {Reciter} from '../types/reciter';
 
 const r = (id: string, featured = false, name = id): Reciter =>
   ({id, name, is_featured: featured, rewayat: []}) as unknown as Reciter;
+
+describe('curatedRow', () => {
+  const catalog = [
+    r('hus', false, 'Mahmoud Khalil Al-Hussary'),
+    r('tun', false, 'Khalifa Altunaiji'),
+    r('afs', false, 'Mishary Alafasi'),
+  ];
+  const names = [
+    'Mishary Alafasi',
+    'Nobody In The Catalog',
+    'Khalifa Al-Tunaiji',
+    'Mahmoud Khalil Al-Hussary',
+  ];
+
+  it('follows the list order, matching names loosely and skipping unknowns', () => {
+    expect(curatedRow(catalog, names, []).map(x => x.id)).toEqual([
+      'afs',
+      'tun',
+      'hus',
+    ]);
+  });
+
+  it('leaves out reciters the rails above show, and caps', () => {
+    expect(curatedRow(catalog, names, ['afs']).map(x => x.id)).toEqual([
+      'tun',
+      'hus',
+    ]);
+    expect(curatedRow(catalog, names, [], 1).map(x => x.id)).toEqual(['afs']);
+  });
+});
 
 describe('portraitName', () => {
   it.each([
