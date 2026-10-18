@@ -76,7 +76,7 @@ export function PlaylistEditScreen({
   const [mode, setMode] = useState<KeyboardMode>('letters');
   // Right from the keyboard (or up from nothing) enters the side column on
   // Save rather than on the nearest swatch.
-  const [saveWrap, setSaveWrap] = useState<View | null>(null);
+  const [saveButton, setSaveButton] = useState<View | null>(null);
 
   const renaming = playlistId !== undefined;
   const seedVoice = seed
@@ -157,7 +157,7 @@ export function PlaylistEditScreen({
       </View>
 
       <TVFocusGuideView
-        destinations={saveWrap ? [saveWrap] : undefined}
+        destinations={saveButton ? [saveButton] : undefined}
         trapFocusRight
         style={styles.side}>
         <View style={styles.preview}>
@@ -197,7 +197,7 @@ export function PlaylistEditScreen({
                 plain wrapper View is flattened away natively, so Right from
                 the keyboard found nothing to land on. */}
             <FocusableButton
-              ref={setSaveWrap}
+              ref={setSaveButton}
               onPress={save}
               accessibilityLabel={
                 renaming ? 'Save' : `Create ${cleanPlaylistName(draft.text)}`
