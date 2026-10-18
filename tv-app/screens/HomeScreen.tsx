@@ -3,7 +3,11 @@ import {ScrollView, View, type LayoutChangeEvent} from 'react-native';
 import {HomeHero, type HeroArt} from '../components/home/HomeHero';
 import {HomeClock} from '../components/home/HomeClock';
 import {HomeGlow} from '../components/home/HomeGlow';
-import {HomeRail, HOME_GUTTER} from '../components/home/HomeRail';
+import {
+  HomeRail,
+  HOME_GUTTER,
+  RAIL_TOP_GAP,
+} from '../components/home/HomeRail';
 import {ContinueWideCard} from '../components/home/ContinueWideCard';
 import {AdhkarTile, ColorTile, SurahTile} from '../components/home/MomentTiles';
 import {ReciterPortrait} from '../components/home/ReciterPortrait';
@@ -144,9 +148,6 @@ const JUZ_AMMA_TILES = JUZ_AMMA_SURAHS.slice(-12);
 
 /** Loved surahs shown on Home; the Library has them all. */
 const LOVED_TILES = 12;
-
-/** How far above a focused rail's top Home scrolls, so its title shows. */
-const RAIL_TOP_GAP = 36;
 
 /**
  * Home: "Now playing" while the player holds a track, a hero that follows

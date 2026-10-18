@@ -14,6 +14,12 @@ import {SCREEN_GUTTER} from '../../theme/spacing';
 /** Home's horizontal gutter; rails bleed past it so cards scroll to the edge. */
 export const HOME_GUTTER = SCREEN_GUTTER;
 
+/** How far above a focused rail's top Home scrolls, so its title shows. */
+export const RAIL_TOP_GAP = 36;
+
+/** Room above and below a row's cards for a focused card's scale and ring. */
+const ROW_PAD_V = 18;
+
 /**
  * Lets a card tell its rail it took focus, so Home can bring the whole rail
  * (title included) into view. Home's cards pass it to their onFocus.
@@ -65,7 +71,10 @@ export function HomeRail({
 }
 
 const styles = createScaledStyles({
-  section: {marginBottom: 12},
+  // The empty band above each title (the row above's bottom padding plus
+  // this margin) is taller than RAIL_TOP_GAP, so a rail scrolled to the top
+  // never shows a clipped sliver of the row above at the screen's edge.
+  section: {marginBottom: RAIL_TOP_GAP - ROW_PAD_V + 2},
   title: {
     color: colors.text,
     fontFamily: fonts.bold,
@@ -74,10 +83,9 @@ const styles = createScaledStyles({
     letterSpacing: -0.3,
   },
   bleed: {marginHorizontal: -HOME_GUTTER},
-  // Room above and below for a focused card's scale and ring.
   row: {
     gap: 24,
     paddingHorizontal: HOME_GUTTER,
-    paddingVertical: 18,
+    paddingVertical: ROW_PAD_V,
   },
 });

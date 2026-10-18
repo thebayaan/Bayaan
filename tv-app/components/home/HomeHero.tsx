@@ -8,6 +8,7 @@ import {quranTextFontAvailable} from '../../theme/calligraphy';
 import {colors} from '../../theme/colors';
 import {fonts, quranTextFontFamily} from '../../theme/typography';
 import {createScaledStyles} from '../../theme/scale';
+import {RAIL_TOP_GAP} from './HomeRail';
 
 export type HeroArt =
   | {kind: 'surah'; surahNumber: number}
@@ -114,7 +115,16 @@ export function HomeHero({
 }
 
 const styles = createScaledStyles({
-  hero: {height: 440, justifyContent: 'center'},
+  // Grows past 440 when "Now playing" sits above the kicker, instead of
+  // pushing the strip into the top overscan and the buttons onto the first
+  // rail. The padding keeps the buttons clear of the screen's top edge when
+  // Home scrolls to that rail (RAIL_TOP_GAP), and leaves the hero without
+  // the strip exactly as it was (its content is shorter than 440 - 2 * 44).
+  hero: {
+    minHeight: 440,
+    paddingVertical: RAIL_TOP_GAP + 8,
+    justifyContent: 'center',
+  },
   corner: {position: 'absolute', top: 12, right: 0},
   art: {
     position: 'absolute',
