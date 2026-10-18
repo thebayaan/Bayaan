@@ -69,6 +69,8 @@ export type MenuRowProps = {
   /** Drawn at the row's end: a check for a playlist the surah is in. */
   trailing?: React.ReactNode;
   accessibilityLabel?: string;
+  /** The row's pressable view, to ask for focus when a menu page swaps. */
+  ref?: React.Ref<View>;
 };
 
 /** One menu action: unfilled at rest, cream with ink text on focus. */
@@ -79,9 +81,11 @@ export function MenuRow({
   hasTVPreferredFocus,
   trailing,
   accessibilityLabel,
+  ref,
 }: MenuRowProps): React.ReactElement {
   return (
     <FocusableButton
+      ref={ref}
       onPress={onPress}
       accessibilityLabel={accessibilityLabel ?? label}
       hasTVPreferredFocus={hasTVPreferredFocus}

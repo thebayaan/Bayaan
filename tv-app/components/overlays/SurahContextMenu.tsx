@@ -1,4 +1,4 @@
-import React, {useEffect, useMemo, useState} from 'react';
+import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {ScrollView, View} from 'react-native';
 import {SurahArtwork} from '../brand/SurahArtwork';
 import {FocusIcon} from '../primitives/focusContext';
@@ -79,6 +79,13 @@ function SurahMenu({target}: {target: SurahMenuTarget}): React.ReactElement {
   const [page, setPage] = useState<Page>('main');
   // Coming back from the playlist page, focus returns to the row that went.
   const [backToAdd, setBackToAdd] = useState<boolean>(false);
+  // Swapping pages unmounts the focused row, and Android then hands focus
+  // to the screen behind the scrim, so the new page's first row asks for it.
+  const preferredRow = useRef<View>(null);
+  useEffect(() => {
+    const id = setTimeout(() => preferredRow.current?.requestTVFocus?.(), 0);
+    return () => clearTimeout(id);
+  }, [page]);
 
   const {surahNumber, origin} = target;
   const title = surahTitle(surahNumber);
@@ -233,6 +240,7 @@ function SurahMenu({target}: {target: SurahMenuTarget}): React.ReactElement {
           label="New playlist…"
           onPress={handleNewPlaylist}
           hasTVPreferredFocus
+          ref={preferredRow}
         />
         {pickable.length > 0 ? (
           <ScrollView
@@ -281,6 +289,7 @@ function SurahMenu({target}: {target: SurahMenuTarget}): React.ReactElement {
         }
         onPress={handlePlay}
         hasTVPreferredFocus={!backToAdd}
+        ref={backToAdd ? undefined : preferredRow}
       />
       {voice ? (
         <MenuRow
@@ -298,6 +307,7 @@ function SurahMenu({target}: {target: SurahMenuTarget}): React.ReactElement {
           label="Add to playlist…"
           onPress={() => setPage('playlists')}
           hasTVPreferredFocus={backToAdd}
+          ref={backToAdd ? preferredRow : undefined}
         />
       ) : null}
       {inPlaylist && playlist ? (
