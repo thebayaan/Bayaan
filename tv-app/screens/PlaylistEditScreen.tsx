@@ -192,8 +192,12 @@ export function PlaylistEditScreen({
           })}
         </View>
         <View style={styles.actions}>
-          <View ref={setSaveWrap}>
+          <View>
+            {/* The guide's destination must be the focusable button itself: a
+                plain wrapper View is flattened away natively, so Right from
+                the keyboard found nothing to land on. */}
             <FocusableButton
+              ref={setSaveWrap}
               onPress={save}
               accessibilityLabel={
                 renaming ? 'Save' : `Create ${cleanPlaylistName(draft.text)}`

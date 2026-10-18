@@ -83,15 +83,22 @@ valid_key() {
 
 # How Android holds OK, picked once per run (see hold_android):
 #   duration  `input keyevent --duration <ms>` (Android 14+ shell)
-#   emu       the emulator console: key down, sleep, key up
-#   longpress `input keyevent --longpress` (last resort: Android holds it for
-#             the system long-press timeout, 400 ms on Android 12+, shorter
-#             than React Native's 500 ms, so it may register as a plain OK)
+#   longpress `input keyevent --longpress`, which holds the key for the
+#             system long-press timeout; the runner first raises that
+#             timeout to HOLD_SECONDS so the hold outlasts React Native's
+#             500 ms long press (Android 12+ defaults to 400 ms)
+#   emu       the emulator console (key down, sync, sleep, key up, sync),
+#             only if the settings write is refused
 ANDROID_HOLD=${ANDROID_HOLD:-}
 
 pick_android_hold() {
+  local ms
+  ms=$(awk -v s="$HOLD_SECONDS" 'BEGIN { printf "%d", s * 1000 }')
   if adb_ shell input 2>&1 | grep -q -- '--duration'; then
     ANDROID_HOLD=duration
+  elif adb_ shell settings put secure long_press_timeout "$ms" >/dev/null 2>&1 &&
+    [[ "$(adb_ shell settings get secure long_press_timeout | tr -d '\r')" == "$ms" ]]; then
+    ANDROID_HOLD=longpress
   elif [[ "$(adb_ get-serialno 2>/dev/null | tr -d '\r')" == emulator-* ]]; then
     ANDROID_HOLD=emu
   else
@@ -111,9 +118,11 @@ hold_android() {
     emu)
       # KEY_ENTER reaches the app as KEYCODE_ENTER, which React Native and
       # Android's views treat exactly like DPAD_CENTER (select).
-      if adb_ emu event send EV_KEY:KEY_ENTER:1 >/dev/null 2>&1; then
+      # Each event needs a SYN_REPORT, or the guest only sees the key once
+      # the next report arrives (down and up together: a plain OK).
+      if adb_ emu event send EV_KEY:KEY_ENTER:1 EV_SYN:0:0 >/dev/null 2>&1; then
         sleep "$HOLD_SECONDS"
-        adb_ emu event send EV_KEY:KEY_ENTER:0 >/dev/null 2>&1
+        adb_ emu event send EV_KEY:KEY_ENTER:0 EV_SYN:0:0 >/dev/null 2>&1
       else
         echo "emulator console unavailable; falling back to --longpress"
         ANDROID_HOLD=longpress
