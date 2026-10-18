@@ -404,7 +404,8 @@ export function HomeScreen(): React.ReactElement {
   }, []);
 
   // A loved surah plays in the voice it was loved in, with the rest of the
-  // loved surahs after it.
+  // loved surahs after it. One surah can be loved in several voices, so a
+  // tile stands for its entry (surah and reciter), never the surah alone.
   const lovedQueue = useMemo(
     () =>
       lovedSurahs.map(e => ({
@@ -415,25 +416,25 @@ export function HomeScreen(): React.ReactElement {
     [lovedSurahs],
   );
   const handleLoved = useCallback(
-    (surahNumber: number): void => {
-      const item = lovedQueue.find(e => e.surahNumber === surahNumber);
+    (entry: LovedSurah): void => {
+      const item = lovedQueue.find(
+        e =>
+          e.surahNumber === entry.surahNumber &&
+          e.reciterId === entry.reciterId,
+      );
       if (!item) return;
       void playOrOpen({...item, queue: lovedQueue, source: 'home-loved'});
     },
     [lovedQueue],
   );
-  const handleLovedMenu = useCallback(
-    (surahNumber: number): void => {
-      const item = lovedQueue.find(e => e.surahNumber === surahNumber);
-      useContextMenuStore.getState().openSurah({
-        surahNumber,
-        reciterId: item?.reciterId,
-        rewayahId: item?.rewayahId,
-        origin: 'loved',
-      });
-    },
-    [lovedQueue],
-  );
+  const handleLovedMenu = useCallback((entry: LovedSurah): void => {
+    useContextMenuStore.getState().openSurah({
+      surahNumber: entry.surahNumber,
+      reciterId: entry.reciterId,
+      rewayahId: entry.rewayahId || undefined,
+      origin: 'loved',
+    });
+  }, []);
 
   const openPlaylist = useCallback(
     (playlistId: string): void => push({screen: 'playlist', playlistId}),
@@ -597,16 +598,12 @@ export function HomeScreen(): React.ReactElement {
           ...lovedSurahs
             .slice(0, LOVED_TILES)
             .map((e: LovedSurah) => (
-              <SurahTile
-                key={e.surahNumber}
-                surahNumber={e.surahNumber}
-                surahName={surahTitle(e.surahNumber)}
-                caption={shortReciterName(
-                  reciterById.get(e.reciterId)?.name ?? '',
-                )}
+              <LovedTile
+                key={lovedKey(e)}
+                entry={e}
+                reciterName={reciterById.get(e.reciterId)?.name ?? ''}
                 onSelect={handleLoved}
                 onLongPress={handleLovedMenu}
-                idPrefix="loved"
               />
             )),
           ...(lovedSurahs.length > LOVED_TILES
@@ -738,6 +735,35 @@ export function HomeScreen(): React.ReactElement {
     </View>
   );
 }
+
+/** A loved surah's tile, keyed by surah and reciter. */
+function lovedKey(entry: {reciterId: string; surahNumber: number}): string {
+  return `${entry.reciterId}:${entry.surahNumber}`;
+}
+
+/** A loved surah in the voice it was loved in; OK plays that recitation. */
+const LovedTile = React.memo(function LovedTile({
+  entry,
+  reciterName,
+  onSelect,
+  onLongPress,
+}: {
+  entry: LovedSurah;
+  reciterName: string;
+  onSelect: (entry: LovedSurah) => void;
+  onLongPress: (entry: LovedSurah) => void;
+}): React.ReactElement {
+  return (
+    <SurahTile
+      surahNumber={entry.surahNumber}
+      surahName={surahTitle(entry.surahNumber)}
+      caption={shortReciterName(reciterName)}
+      onSelect={() => onSelect(entry)}
+      onLongPress={() => onLongPress(entry)}
+      idPrefix={`loved-${entry.reciterId}`}
+    />
+  );
+});
 
 /** A user playlist; OK opens it. */
 const PlaylistTile = React.memo(function PlaylistTile({
