@@ -1,5 +1,5 @@
 import fallbackReciters from '../../data/reciters-fallback.json';
-import {normalizeReciters, normalizeRewayat} from './normalizeReciter';
+import {normalizeReciters} from './normalizeReciter';
 import {resolveDefaultReciter} from '../store/settingsStore';
 import type {Reciter, Rewayah} from '../types/reciter';
 import {readJSON, storage, writeJSON} from './storage';
@@ -17,8 +17,13 @@ export const DEFAULT_RECITER_KEY = 'bayaan_tv_default_reciter_id';
 // checked when EXPO_PUBLIC_KILLSWITCH_URL is set, so a build without one never
 // waits on a config request before loading reciters.
 const KILLSWITCH_URL = process.env.EXPO_PUBLIC_KILLSWITCH_URL ?? '';
+// The TV build workflows set no API URL today, so shipped builds run on the
+// bundled list (data/reciters-fallback.json). Setting one switches the TV to
+// the live catalog through fetchCatalogFromApi below, the same paged /v1 API
+// the phone uses (services/dataService.ts).
 const API_URL = process.env.EXPO_PUBLIC_BAYAAN_API_URL ?? '';
 const API_KEY = process.env.EXPO_PUBLIC_BAYAAN_API_KEY ?? '';
+const PAGE_SIZE = 200;
 
 /** How long a fetched reciter list is used before the next fetch refreshes it. */
 export const RECITERS_TTL_MS = 12 * 60 * 60 * 1000;
@@ -64,7 +69,13 @@ function readCachedReciters(): Cached<Reciter[]> | null {
     readMemo = {raw, cached, byId: null};
   }
   const {cached} = readMemo;
-  return cached && cached.version === DATA_VERSION ? cached : null;
+  // An empty list (stored by an older build) counts as no list.
+  return cached &&
+    cached.version === DATA_VERSION &&
+    Array.isArray(cached.data) &&
+    cached.data.length > 0
+    ? cached
+    : null;
 }
 
 /**
@@ -107,16 +118,56 @@ export function isReciterCacheFresh(
   return savedAt !== undefined && now - savedAt < RECITERS_TTL_MS;
 }
 
-export async function fetchReciters(opts?: {
-  skipCache?: boolean;
-}): Promise<Reciter[]> {
+type CatalogPage = {data?: unknown; meta?: {total_pages?: number}};
+
+/**
+ * The whole catalog from the Bayaan API: `/v1/reciters`, paged, each page a
+ * `{data, meta}` envelope. Throws on an HTTP error or a response that is not
+ * that envelope, so a changed API never reads as an empty catalog.
+ */
+async function fetchCatalogFromApi(): Promise<Reciter[]> {
+  const headers: Record<string, string> = API_KEY
+    ? {Authorization: `Bearer ${API_KEY}`}
+    : {};
+  const all: Reciter[] = [];
+  for (let page = 1; ; page++) {
+    const res = await fetch(
+      `${API_URL}/v1/reciters?page=${page}&limit=${PAGE_SIZE}`,
+      {headers},
+    );
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = (await res.json()) as CatalogPage;
+    if (!json || !Array.isArray(json.data)) {
+      throw new Error('Unexpected reciters response');
+    }
+    all.push(...normalizeReciters(json.data));
+    const totalPages = json.meta?.total_pages;
+    if (!totalPages || page >= totalPages) break;
+  }
+  return all;
+}
+
+// Callers that ask while a fetch is under way (App's default-reciter seed
+// and the shared reciter list both ask on first launch) share it, so the
+// catalog is downloaded and parsed once.
+let inFlight: Promise<Reciter[]> | null = null;
+
+export function fetchReciters(opts?: {skipCache?: boolean}): Promise<Reciter[]> {
   // A list older than RECITERS_TTL_MS is refreshed; if that fails the stale
   // copy is still returned below.
   if (!opts?.skipCache) {
     const cached = readCachedReciters();
-    if (cached && isReciterCacheFresh(cached.savedAt)) return cached.data;
+    if (cached && isReciterCacheFresh(cached.savedAt)) {
+      return Promise.resolve(cached.data);
+    }
   }
+  inFlight ??= loadReciters().finally(() => {
+    inFlight = null;
+  });
+  return inFlight;
+}
 
+async function loadReciters(): Promise<Reciter[]> {
   const enabled = API_URL ? await isBackendEnabled() : false;
   if (!enabled) {
     const data = fallbackReciterList();
@@ -125,11 +176,10 @@ export async function fetchReciters(opts?: {
   }
 
   try {
-    const res = await fetch(`${API_URL}/reciters`, {
-      headers: API_KEY ? {Authorization: `Bearer ${API_KEY}`} : {},
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = normalizeReciters(await res.json());
+    const data = await fetchCatalogFromApi();
+    // An empty catalog is a broken response, not a catalog: never store it
+    // as fresh over a good list.
+    if (data.length === 0) throw new Error('Empty reciters response');
     writeCachedReciters(data);
     return data;
   } catch {
@@ -155,6 +205,11 @@ export function getCachedRewayat(reciterId: string): Rewayah[] | null {
   return fromFallback ?? null;
 }
 
+/**
+ * A reciter's rewayat. The API has no per-reciter endpoint: every reciter
+ * comes with its rewayat in the catalog (see fetchCatalogFromApi), so this
+ * reads them from the stored catalog, then the bundled list.
+ */
 export async function fetchRewayat(reciterId: string): Promise<Rewayah[]> {
   const key = `${SERVERS_KEY}_${reciterId}`;
   const cached = readJSON<Cached<Rewayah[]>>(key);
@@ -168,23 +223,10 @@ export async function fetchRewayat(reciterId: string): Promise<Rewayah[]> {
     return embedded;
   }
 
-  if (!API_URL) {
-    const fromFallback = fallbackReciterList().find(
-      r => r.id === reciterId,
-    )?.rewayat;
-    return fromFallback ?? [];
-  }
-  try {
-    const res = await fetch(`${API_URL}/reciters/${reciterId}/rewayat`, {
-      headers: API_KEY ? {Authorization: `Bearer ${API_KEY}`} : {},
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = normalizeRewayat(await res.json());
-    writeJSON<Cached<Rewayah[]>>(key, {version: DATA_VERSION, data});
-    return data;
-  } catch {
-    return [];
-  }
+  const fromFallback = fallbackReciterList().find(
+    r => r.id === reciterId,
+  )?.rewayat;
+  return fromFallback ?? [];
 }
 
 export function buildAudioUrl(server: string, surahNumber: number): string {
@@ -213,6 +255,7 @@ export function getDefaultReciter(reciters: Reciter[]): Reciter | null {
 export async function seedDefaultReciter(): Promise<string | null> {
   const existing = storage.getString(DEFAULT_RECITER_KEY);
   if (existing && existing.length > 0) return existing;
+  // A list fetch already under way (useReciters asks too) is shared.
   const reciters = getCachedReciters() ?? (await fetchReciters());
   // Honour the persisted Settings picker choice when it matches a known
   // reciter; otherwise fall back to the featured/first default.
