@@ -28,17 +28,19 @@ import {resetOnboarded, useOnboardingStore} from '../hooks/useOnboarded';
 import {
   DISPLAY_PICKERS,
   resolveDefaultReciter,
+  savedCountLabel,
   useSettingsStore,
+  type ClearRow,
   type SettingsPicker,
   type SettingsRow,
 } from '../store/settingsStore';
 import {
   DIM_CHOICES,
   dimLabel,
-  findTranslation,
   ON_SCREEN_MODES,
   TEXT_SIZES,
   TRANSLATIONS,
+  translationRowLabel,
   useDisplayStore,
 } from '../store/displayStore';
 import {
@@ -61,18 +63,13 @@ import {
 import {fonts, typography} from '../theme/typography';
 import {createScaledStyles} from '../theme/scale';
 
-type ConfirmKey = 'history' | 'favorites' | null;
+type ConfirmKey = ClearRow | null;
 
 /** An armed clear row disarms itself after this long. */
 const ARM_MS = 5000;
 /** The armed warning: a dark red on the cream focus fill, a soft one at rest. */
 const WARN_ON_FOCUS = '#8a1f1f';
 const WARN_AT_REST = '#e8a598';
-
-function countLabel(count: number): string {
-  if (count === 0) return 'Nothing saved';
-  return `${count} ${count === 1 ? 'item' : 'items'}`;
-}
 
 /**
  * Settings as grouped rows, each with its current value on the right, beside
@@ -124,22 +121,33 @@ export function SettingsScreen(): React.ReactElement {
   );
 
   const historyCount = continueEntries.length + recent.length;
-  const favoritesCount = favorites.length + loved.length;
+  // Each kept thing has its own row, named as its Library tab names it, so a
+  // clear never takes more than its label says.
+  const counts: Record<ClearRow, number> = {
+    history: historyCount,
+    loved: loved.length,
+    favorites: favorites.length,
+  };
 
-  function runClear(key: Exclude<ConfirmKey, null>): void {
+  function runClear(key: ClearRow): void {
     setFocusRow(key);
     // Nothing saved: there is nothing to confirm.
-    if ((key === 'history' ? historyCount : favoritesCount) === 0) return;
+    if (counts[key] === 0) return;
     if (confirm !== key) {
       setConfirm(key);
       return;
     }
-    if (key === 'history') {
-      clearContinue();
-      clearRecent();
-    } else {
-      clearFavorites();
-      clearLovedSurahs();
+    switch (key) {
+      case 'history':
+        clearContinue();
+        clearRecent();
+        break;
+      case 'loved':
+        clearLovedSurahs();
+        break;
+      case 'favorites':
+        clearFavorites();
+        break;
     }
     setConfirm(null);
   }
@@ -163,8 +171,15 @@ export function SettingsScreen(): React.ReactElement {
   const displayPicker = picker !== null && DISPLAY_PICKERS.includes(picker);
   // Stable, so the reciter list does not re-render on every progress save.
   const closePicker = useCallback(() => setPicker(null), [setPicker]);
-  const disarm = (key: Exclude<ConfirmKey, null>) => () =>
+  const disarm = (key: ClearRow) => () =>
     setConfirm(c => (c === key ? null : c));
+  const clearRow = (key: ClearRow, value: string) => ({
+    value: confirm === key ? 'Press again to clear' : value,
+    warn: confirm === key,
+    hasTVPreferredFocus: focusOn(key),
+    onPress: () => runClear(key),
+    onBlur: disarm(key),
+  });
 
   return (
     <View style={styles.container}>
@@ -225,7 +240,7 @@ export function SettingsScreen(): React.ReactElement {
                 />
                 <Row
                   label="Translation"
-                  value={findTranslation(edition).name}
+                  value={translationRowLabel(edition)}
                   {...row('translation')}
                 />
                 <Row
@@ -244,27 +259,24 @@ export function SettingsScreen(): React.ReactElement {
                 <Text style={styles.group}>Your data</Text>
                 <Row
                   label="Clear listening history"
-                  value={
-                    confirm === 'history'
-                      ? 'Press again to clear'
-                      : countLabel(historyCount)
-                  }
-                  warn={confirm === 'history'}
-                  hasTVPreferredFocus={focusOn('history')}
-                  onPress={() => runClear('history')}
-                  onBlur={disarm('history')}
+                  {...clearRow(
+                    'history',
+                    savedCountLabel(historyCount, 'item', 'items'),
+                  )}
                 />
                 <Row
-                  label="Clear favorites"
-                  value={
-                    confirm === 'favorites'
-                      ? 'Press again to clear'
-                      : countLabel(favoritesCount)
-                  }
-                  warn={confirm === 'favorites'}
-                  hasTVPreferredFocus={focusOn('favorites')}
-                  onPress={() => runClear('favorites')}
-                  onBlur={disarm('favorites')}
+                  label="Clear loved surahs"
+                  {...clearRow(
+                    'loved',
+                    savedCountLabel(loved.length, 'surah', 'surahs'),
+                  )}
+                />
+                <Row
+                  label="Clear favourite reciters"
+                  {...clearRow(
+                    'favorites',
+                    savedCountLabel(favorites.length, 'reciter', 'reciters'),
+                  )}
                 />
 
                 <Text style={styles.group}>Welcome</Text>
