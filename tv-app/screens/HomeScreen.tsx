@@ -58,6 +58,7 @@ import {
 import {shortReciterName} from '../services/listeningChoices';
 import {getDefaultReciter} from '../services/tvDataService';
 import {adhkarForList, adhkarList, ADHKAR_LISTS} from '../services/adhkarData';
+import {openLibraryAt} from './CollectionScreen';
 import {useNavStore} from '../store/navStore';
 import {useContextMenuStore} from '../store/contextMenuStore';
 import {useTVPlayerStore} from '../store/tvPlayerStore';
@@ -616,7 +617,10 @@ export function HomeScreen(): React.ReactElement {
                   subtitle="In your Library"
                   caption={`${lovedSurahs.length} surahs`}
                   color={colors.surfaceElevated}
-                  onSelect={() => switchTab('collection')}
+                  onSelect={() => {
+                    openLibraryAt('loved');
+                    switchTab('collection');
+                  }}
                   accessibilityLabel="All loved surahs, in your Library"
                 />,
               ]
