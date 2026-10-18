@@ -283,7 +283,8 @@ export function ListeningPanels({
     if (hidden > 0) {
       options.push({
         value: ALL_RECITERS,
-        label: `All ${choices.length} reciters`,
+        // The current reciter's extra styles are rows, not more reciters.
+        label: `All ${new Set(choices.map(c => c.reciter.id)).size} reciters`,
         detail: `${hidden} more who recite this surah`,
       });
     }
