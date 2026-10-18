@@ -255,11 +255,7 @@ export function ControlsTray({
           <Tool
             label="Save"
             value={
-              savedIn === 0
-                ? 'Add'
-                : savedIn === 1
-                  ? 'Saved'
-                  : `In ${savedIn}`
+              savedIn === 0 ? 'Add' : savedIn === 1 ? 'Saved' : `In ${savedIn}`
             }
             on={savedIn > 0}
             {...tool('save')}

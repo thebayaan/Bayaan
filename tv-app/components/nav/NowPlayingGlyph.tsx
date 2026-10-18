@@ -53,7 +53,10 @@ function StillBars({
       {BARS.map((h, i) => (
         <View
           key={i}
-          style={[styles.bar, {backgroundColor: tint, transform: [{scaleY: h}]}]}
+          style={[
+            styles.bar,
+            {backgroundColor: tint, transform: [{scaleY: h}]},
+          ]}
         />
       ))}
     </View>

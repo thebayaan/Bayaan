@@ -171,10 +171,7 @@ export function PlaylistEditScreen({
             Right from the keyboard lands on Create there too. Only while
             focus is on the keyboard: Left from a swatch must not meet it. */}
         {Platform.OS === 'ios' && saveButton && onKeyboard ? (
-          <TVFocusGuideView
-            destinations={[saveButton]}
-            style={styles.toSave}
-          />
+          <TVFocusGuideView destinations={[saveButton]} style={styles.toSave} />
         ) : null}
         <View style={styles.preview}>
           <GradientFill colors={playlistGradient(color)} id="playlist-edit" />
