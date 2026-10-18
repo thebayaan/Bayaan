@@ -23,6 +23,7 @@ import {
   type AudioFocusOwner,
 } from './audioFocus';
 import {createPauseDetector} from './pauseDetector';
+import {createLoadStallDetector, LOAD_TIMEOUT_MESSAGE} from './loadStall';
 
 export type {AudioEngine, EngineEvent, EngineStatus} from './audioEngineTypes';
 
@@ -75,6 +76,14 @@ export function createAudioEngine(): AudioEngine {
   };
   const otherHasFocus = (): boolean => audioFocusHeldByOther(focusOwner);
   const pausedElsewhere = createPauseDetector();
+  // A source that never loaded (see loadStall.ts) is reported as an error
+  // until the next load or play.
+  let neverLoaded = createLoadStallDetector();
+  let loadFailed = false;
+  const clearLoadFailure = (): void => {
+    neverLoaded = createLoadStallDetector();
+    loadFailed = false;
+  };
 
   function safeGet<T>(fn: () => T, fallback: T): T {
     try {
@@ -102,13 +111,32 @@ export function createAudioEngine(): AudioEngine {
       positionSeconds >= durationSeconds - 0.5 &&
       !isPlaying;
     if (ranOut) return {status: 'idle', positionSeconds, durationSeconds};
+    const isLoaded = safeGet(() => expoAudioService.getIsLoaded(), false);
+    // Asked to play but nothing ever loaded: stop asking (so it can't start
+    // up unseen later) and report the failure, or the player would show
+    // "Now playing" at 0:00 over silence for good.
+    if (
+      !loadFailed &&
+      neverLoaded({reportedPlaying: status === 'playing', isLoaded})
+    ) {
+      loadFailed = true;
+      expoAudioService.pause().catch(() => undefined);
+    }
+    if (loadFailed) {
+      return {
+        status: 'error',
+        positionSeconds,
+        durationSeconds,
+        error: LOAD_TIMEOUT_MESSAGE,
+      };
+    }
     // Stopped by the system rather than by us: say so, or the UI keeps
     // showing "playing" over silence.
     const paused = pausedElsewhere({
       reportedPlaying: status === 'playing',
       isPlaying,
       isBuffering: safeGet(() => expoAudioService.getIsBuffering(), false),
-      isLoaded: safeGet(() => expoAudioService.getIsLoaded(), false),
+      isLoaded,
     });
     return {
       status: paused ? 'paused' : status,
@@ -159,6 +187,7 @@ export function createAudioEngine(): AudioEngine {
       claimAudioFocus(focusOwner);
       lastUrl = url;
       resumeAt = null;
+      clearLoadFailure();
       await expoAudioService.loadTrack(url);
       expoAudioService.setRate(currentRate);
       expoAudioService.setVolume(currentVolume);
@@ -177,6 +206,7 @@ export function createAudioEngine(): AudioEngine {
         expoAudioService.setVolume(currentVolume);
         if (resume.seconds > 0) await expoAudioService.seekTo(resume.seconds);
       }
+      clearLoadFailure();
       await expoAudioService.play();
       startPolling();
     },
@@ -192,7 +222,9 @@ export function createAudioEngine(): AudioEngine {
         if (resumeAt) resumeAt = {...resumeAt, seconds};
         return;
       }
-      void expoAudioService.seekTo(seconds);
+      // Nothing polls while paused, so report the new place once the player
+      // has it.
+      expoAudioService.seekTo(seconds).then(emit, () => undefined);
     },
 
     setRate: (rate: number): void => {
