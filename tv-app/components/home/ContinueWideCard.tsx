@@ -116,7 +116,7 @@ const styles = createScaledStyles({
     color: colors.textSecondary,
     fontFamily: fonts.medium,
     fontWeight: '500',
-    fontSize: 16,
+    fontSize: 19,
   },
   track: {height: 4, backgroundColor: 'rgba(244,243,236,0.14)'},
   fill: {height: '100%', backgroundColor: colors.accent},

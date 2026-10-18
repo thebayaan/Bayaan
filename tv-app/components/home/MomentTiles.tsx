@@ -192,7 +192,8 @@ const styles = createScaledStyles({
   caption: {
     fontFamily: fonts.semiBold,
     fontWeight: '600',
-    fontSize: 17,
+    // Captions and meta lines stay readable from the couch: 19-20 at least.
+    fontSize: 20,
     paddingHorizontal: 12,
   },
   wideTile: {width: WIDE_W + FRAME_PAD, gap: 10},
@@ -226,6 +227,6 @@ const styles = createScaledStyles({
     color: colors.textSecondary,
     fontFamily: fonts.medium,
     fontWeight: '500',
-    fontSize: 16,
+    fontSize: 19,
   },
 });

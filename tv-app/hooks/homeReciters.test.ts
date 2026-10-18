@@ -2,6 +2,7 @@ import {
   featuredRow,
   hasReciterChoice,
   homeVoiceCandidates,
+  portraitName,
   preferredReciterIds,
   recitersByIds,
 } from './homeReciters';
@@ -9,6 +10,19 @@ import type {Reciter} from '../types/reciter';
 
 const r = (id: string, featured = false, name = id): Reciter =>
   ({id, name, is_featured: featured, rewayat: []}) as unknown as Reciter;
+
+describe('portraitName', () => {
+  it.each([
+    ['Mishary Alafasi', 'Mishary Alafasi'],
+    ['Mohammed Jibreel', 'Mohammed Jibreel'],
+    ['Mohammed Siddiq Al-Minshawi', 'Al-Minshawi'],
+    ['Mahmoud Khalil Al-Hussary', 'Al-Hussary'],
+    ['Abdulbasit Abdulsamad', 'Abdulsamad'],
+    ['  Saud   Al-Shuraim ', 'Saud Al-Shuraim'],
+  ])('%s -> %s', (name, expected) => {
+    expect(portraitName(name)).toBe(expected);
+  });
+});
 
 const all = [r('a'), r('b', true), r('c'), r('d', true), r('e')];
 

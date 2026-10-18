@@ -110,7 +110,7 @@ const styles = createScaledStyles({
   kicker: {
     fontFamily: fonts.extraBold,
     fontWeight: '800',
-    fontSize: 13,
+    fontSize: 15,
     letterSpacing: 2,
   },
   title: {fontFamily: fonts.bold, fontWeight: '700', fontSize: 20},
@@ -121,5 +121,5 @@ const styles = createScaledStyles({
     gap: 8,
     marginLeft: 12,
   },
-  hintText: {fontFamily: fonts.bold, fontWeight: '700', fontSize: 17},
+  hintText: {fontFamily: fonts.bold, fontWeight: '700', fontSize: 19},
 });

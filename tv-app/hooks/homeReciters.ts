@@ -10,6 +10,25 @@ import {popularReciters, rewayahForSurah} from '../services/listeningChoices';
 /** How many reciters a Home rail shows at most. */
 export const RECITER_ROW_LIMIT = 12;
 
+/** The longest name a Home portrait shows whole on its one line. */
+export const PORTRAIT_NAME_MAX = 16;
+
+/**
+ * A reciter's name under a Home portrait, short enough for one line the
+ * way the Loved captions write it: "Mohammed Siddiq Al-Minshawi" becomes
+ * "Al-Minshawi", "Abdulbasit Abdulsamad" becomes "Abdulsamad"; names that
+ * fit stay whole. The portrait reads out the full name.
+ */
+export function portraitName(name: string): string {
+  const trimmed = name.trim().replace(/\s+/g, ' ');
+  if (trimmed.length <= PORTRAIT_NAME_MAX) return trimmed;
+  const words = trimmed.split(' ');
+  for (let i = words.length - 1; i > 0; i--) {
+    if (/^al(-|$)/i.test(words[i])) return words.slice(i).join(' ');
+  }
+  return words[words.length - 1];
+}
+
 /**
  * The reciters behind `ids`, in that order: unknown ids (a reciter no longer
  * in the catalog) and repeats are left out.
