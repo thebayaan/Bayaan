@@ -108,6 +108,17 @@ describe('playerTransport', () => {
     expect(player.toggle).toHaveBeenCalledTimes(1);
   });
 
+  it('resumes the newest Continue entry on Vega Play before anything was played', () => {
+    const player = stubPlayer();
+    useTVPlayerStore.setState({queue: []});
+    jest.mocked(resumeNewestContinue).mockClear();
+    playerTransport.toggle();
+    playerTransport.play();
+    playerTransport.pause();
+    expect(resumeNewestContinue).toHaveBeenCalledTimes(2);
+    expect(player.toggle).not.toHaveBeenCalled();
+  });
+
   it("treats a verse repeat's gap as playing", () => {
     const player = stubPlayer('paused');
     useTVPlayerStore.setState({held: true});

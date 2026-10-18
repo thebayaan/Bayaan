@@ -26,10 +26,21 @@ const isPlaying = (): boolean => {
   return held || status === 'playing' || status === 'buffering';
 };
 
+// Nothing queued (after a relaunch): Play resumes the newest Continue entry,
+// as the sidebar tile offers to. True when it was that case.
+const resumeWhenEmpty = (): boolean => {
+  if (useTVPlayerStore.getState().queue.length > 0) return false;
+  resumeNewestContinue('media-key');
+  return true;
+};
+
 /** The recitation's transport (the player store). */
 export const playerTransport: MediaTransport = {
-  toggle: () => useTVPlayerStore.getState().toggle(),
+  toggle: () => {
+    if (!resumeWhenEmpty()) useTVPlayerStore.getState().toggle();
+  },
   play: () => {
+    if (resumeWhenEmpty()) return;
     if (!isPlaying()) useTVPlayerStore.getState().toggle();
   },
   pause: () => {
@@ -57,9 +68,7 @@ export const playerTransport: MediaTransport = {
 export function applyMediaKey(key: MediaKey): void {
   const player = useTVPlayerStore.getState();
   if (player.queue.length === 0) {
-    if (key === 'playPause' || key === 'play') {
-      resumeNewestContinue('media-key');
-    }
+    if (key === 'playPause' || key === 'play') resumeWhenEmpty();
     return;
   }
   switch (key) {
