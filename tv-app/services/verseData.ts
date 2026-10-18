@@ -6,7 +6,7 @@
  * timings stream per surah and are cached in MMKV, so a surah you've played
  * once works offline and opens instantly.
  */
-import {readJSON, writeJSON} from './storage';
+import {preload, readJSON, writeJSON} from './storage';
 import type {TimingEntry} from './verseTimeline';
 
 export const TIMESTAMP_CDN = 'https://cdn.thebayaan.com/timestamps';
@@ -124,6 +124,7 @@ export async function fetchTimings(
   fetchImpl: typeof fetch = fetch,
 ): Promise<TimingEntry[] | null> {
   const key = timingsKey(rewayahId, surahNumber);
+  await preload(key);
   const cached = readJSON<CachedTimings>(key);
   if (cached && 'entries' in cached) return cached.entries;
   if (cached && Date.now() - cached.missingAt < MISSING_RETRY_MS) return null;
@@ -170,6 +171,7 @@ export async function fetchTranslation(
   fetchImpl: typeof fetch = fetch,
 ): Promise<string[]> {
   const key = translationKey(edition, surahNumber);
+  await preload(key);
   const cached = readJSON<string[]>(key);
   if (cached && cached.length > 0) return cached.map(cleanTranslationText);
 

@@ -55,6 +55,7 @@ import {
   shuffled,
   voiceForSurah,
 } from './playbackRouting';
+import {getContinueListening, recordProgress} from './continueListeningStore';
 import {useNavStore} from '../store/navStore';
 import {useTVPlayerStore} from '../store/tvPlayerStore';
 import type {AudioEngine, EngineEvent} from './audioEngine';
@@ -251,6 +252,19 @@ describe('playOrOpen', () => {
     await playOrOpen({reciterId: 'nobody', surahNumber: 1});
     expect(useTVPlayerStore.getState().status).toBe('error');
     expect(stack()).toEqual([{screen: 'nowPlaying'}]);
+  });
+
+  it("drops an unknown reciter's Continue entry, which can never resume", async () => {
+    recordProgress({
+      reciterId: 'nobody',
+      rewayahId: 'x',
+      surahNumber: 1,
+      positionSeconds: 120,
+      durationSeconds: 600,
+    });
+    expect(getContinueListening()).toHaveLength(1);
+    await playOrOpen({reciterId: 'nobody', surahNumber: 1});
+    expect(getContinueListening()).toHaveLength(0);
   });
 
   it('pressing the finished track plays it again', async () => {

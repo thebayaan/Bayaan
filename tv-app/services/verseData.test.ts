@@ -104,8 +104,10 @@ describe('fetchTranslation', () => {
     try {
       const fetchImpl = jest.fn(() => new Promise<Response>(() => undefined));
       const pending = fetchTranslation('en.sahih', 2, fetchImpl);
-      jest.advanceTimersByTime(FETCH_TIMEOUT_MS);
-      await expect(pending).rejects.toThrow('timed out');
+      const failed = expect(pending).rejects.toThrow('timed out');
+      // Async: the cache preload comes before the request starts its timer.
+      await jest.advanceTimersByTimeAsync(FETCH_TIMEOUT_MS);
+      await failed;
     } finally {
       jest.useRealTimers();
     }

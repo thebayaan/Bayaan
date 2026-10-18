@@ -13,6 +13,18 @@ let service: typeof import('./tvDataService');
 const mockFetch = jest.fn();
 global.fetch = mockFetch as unknown as typeof fetch;
 
+function reciter(id: string) {
+  return {id, name: `Reciter ${id}`, image_url: null, rewayat: []};
+}
+
+/** One page of the API's `{data, meta}` envelope. */
+function page(data: unknown[], totalPages: number) {
+  return {
+    ok: true,
+    json: async () => ({data, meta: {total_pages: totalPages}}),
+  };
+}
+
 beforeAll(async () => {
   service = await import('./tvDataService');
 });
@@ -45,13 +57,100 @@ describe('tvDataService', () => {
       ok: true,
       json: async () => ({useBackendApi: true}),
     });
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => [{id: '1', name: 'Test', image_url: null}],
-    });
+    mockFetch.mockResolvedValueOnce(page([reciter('1')], 1));
     const result = await service.fetchReciters();
     expect(result).toHaveLength(1);
     expect(service.getCachedReciters()).toHaveLength(1);
+    expect(mockFetch.mock.calls[1][0]).toBe(
+      'https://api.test/v1/reciters?page=1&limit=200',
+    );
+  });
+
+  it('reads every page of the catalog', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({useBackendApi: true}),
+    });
+    mockFetch.mockResolvedValueOnce(page([reciter('1'), reciter('2')], 2));
+    mockFetch.mockResolvedValueOnce(page([reciter('3')], 2));
+    const result = await service.fetchReciters();
+    expect(result.map(r => r.id)).toEqual(['1', '2', '3']);
+    expect(mockFetch.mock.calls[2][0]).toBe(
+      'https://api.test/v1/reciters?page=2&limit=200',
+    );
+  });
+
+  it('never stores an empty or unexpected response as the catalog', async () => {
+    storage.set(
+      'bayaan_reciters',
+      JSON.stringify({version: '4', data: fallback.slice(0, 2), savedAt: 0}),
+    );
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({useBackendApi: true}),
+    });
+    mockFetch.mockResolvedValueOnce(page([], 1));
+    expect(await service.fetchReciters()).toHaveLength(2);
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({useBackendApi: true}),
+    });
+    // An old-style bare array is not the envelope.
+    mockFetch.mockResolvedValueOnce({ok: true, json: async () => [reciter('9')]});
+    expect(await service.fetchReciters()).toHaveLength(2);
+    expect(service.getCachedReciters()).toHaveLength(2);
+  });
+
+  it('treats a stored empty list as no list', () => {
+    storage.set(
+      'bayaan_reciters',
+      JSON.stringify({version: '4', data: [], savedAt: Date.now()}),
+    );
+    expect(service.getCachedReciters()).toBeNull();
+  });
+
+  it('shares one fetch between callers that ask at the same time', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({useBackendApi: true}),
+    });
+    mockFetch.mockResolvedValueOnce(page([reciter('1')], 1));
+    const [a, b] = await Promise.all([
+      service.fetchReciters(),
+      service.seedDefaultReciter().then(() => service.fetchReciters()),
+    ]);
+    expect(a).toHaveLength(1);
+    expect(b).toHaveLength(1);
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('reads rewayat from the catalog without a network call', async () => {
+    const withRewayat = fallback.find(r => (r.rewayat ?? []).length > 0)!;
+    storage.set(
+      'bayaan_reciters',
+      JSON.stringify({version: '4', data: [withRewayat]}),
+    );
+    const rewayat = await service.fetchRewayat(String(withRewayat.id));
+    expect(rewayat.length).toBeGreaterThan(0);
+    expect(await service.fetchRewayat('no-such-reciter')).toEqual([]);
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it('reads rewayat from the current catalog, not an old per-reciter copy', async () => {
+    const withRewayat = fallback.find(r => (r.rewayat ?? []).length > 0)!;
+    const id = String(withRewayat.id);
+    storage.set(
+      'bayaan_reciters',
+      JSON.stringify({version: '4', data: [withRewayat]}),
+    );
+    storage.set(
+      `bayaan_reciter_servers_${id}`,
+      JSON.stringify({version: '4', data: [{id: 'old', server: 'https://old'}]}),
+    );
+    const rewayat = await service.fetchRewayat(id);
+    expect(rewayat.map(r => r.id)).not.toContain('old');
+    expect(service.getCachedRewayat(id)?.map(r => r.id)).not.toContain('old');
   });
 
   it('falls back to bundled JSON when fetch fails and cache empty', async () => {
@@ -89,14 +188,13 @@ describe('tvDataService', () => {
       isolated = require('./tvDataService');
     });
     process.env.EXPO_PUBLIC_KILLSWITCH_URL = saved;
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => [{id: '1', name: 'Test', image_url: null}],
-    });
+    mockFetch.mockResolvedValueOnce(page([reciter('1')], 1));
     const result = await isolated.fetchReciters();
     expect(result).toHaveLength(1);
     expect(mockFetch).toHaveBeenCalledTimes(1);
-    expect(mockFetch.mock.calls[0][0]).toBe('https://api.test/reciters');
+    expect(mockFetch.mock.calls[0][0]).toBe(
+      'https://api.test/v1/reciters?page=1&limit=200',
+    );
   });
 
   it('parses the stored list once and re-reads it when it changes', () => {

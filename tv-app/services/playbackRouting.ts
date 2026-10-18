@@ -21,6 +21,7 @@ import type {QueueItem} from '../types/player';
 import type {Reciter, Rewayah} from '../types/reciter';
 import {pickPlayableRewayah} from './browseCatalog';
 import {normalizeReciters} from './normalizeReciter';
+import {removeContinue} from './continueListeningStore';
 import {recordVisit} from './recentlyPlayedStore';
 import {
   buildAudioUrl,
@@ -61,7 +62,8 @@ export function surahTitle(surahNumber: number): string {
 
 let fallbackCatalog: Reciter[] | null = null;
 
-function findReciter(reciterId: string): Reciter | null {
+/** A reciter from the catalog or the bundled list, or null when gone. */
+export function findReciter(reciterId: string): Reciter | null {
   const cached = getCachedReciters()?.find(r => r.id === reciterId);
   if (cached) return cached;
   fallbackCatalog ??= normalizeReciters(fallbackReciters);
@@ -246,7 +248,11 @@ async function start(req: PlayRequest): Promise<boolean> {
     return false;
   };
 
-  if (!reciter) return fail('This reciter is no longer available.');
+  if (!reciter) {
+    // Its Continue entry can never resume again.
+    removeContinue(req.reciterId, req.surahNumber);
+    return fail('This reciter is no longer available.');
+  }
   const built = await buildQueue(req, reciter);
   if (request !== latestRequest) return false;
   if (!built) {
