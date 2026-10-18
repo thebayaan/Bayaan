@@ -1,43 +1,137 @@
 # End-to-end walk through the TV app, shared by the Apple TV and Android TV
 # screenshot runs. Each line is: <screenshot-name> <seconds-to-wait> <keys...>
 # The keys are pressed in order, the runner waits, then saves a screenshot.
-# Keys: up down left right select back playpause relaunch none text:<word>
-# Sidebar order: Home, Search, Surahs, Reciters, Adhkar, Library, Settings;
-# "left up up up up up up down xN select" opens place N from anywhere on a root screen.
-00-launch 20 none
-01-onboarding-step-1 3 none
-02-onboarding-step-2 3 select
-03-onboarding-start 2 down down
-04-home 8 select
-05-home-rail-2 2 down
-06-home-rail-3 2 down
-07-sidebar-open 2 left
-08-surahs 5 up up up up up up down down select
-09-play-surah 12 select
-10-next-verse 3 right
-11-controls 3 select
-12-repeat-panel 3 right right select
-13-repeat-verse 3 down select
-14-on-screen-panel 3 back right right select
-15-reciter-panel 3 back right select
-16-sound-panel 3 back right right select
-17-queue-panel 3 back right select
-18-controls-lowered 3 back back
-19-back-to-surahs 3 back
-20-surahs-juz 3 up right select
-21-reciters 5 left left up up up up up up down down down select
-22-reciter-page 6 select
-23-reciter-rows 3 down down
-24-adhkar 5 back left up up up up up up down down down down select
-25-adhkar-reader 6 select
-26-adhkar-next 3 right
-27-adhkar-count 3 select
-28-adhkar-chips 3 down
-29-library 5 back left left left left up up up up up up down down down down down select
-30-settings 5 left up up up up up up down down down down down down select
-31-settings-picker 3 select
-32-search 5 back left up up up up up up down select
-33-search-typed 5 down right right right select up left left left select down select up right right right right right select
-34-search-result 3 right
-34b-search-reciter 5 down down down down left select up up up right select left left left left select down right right right select up left left left left select
-35-relaunch-home 20 relaunch
+# Keys: up down left right select back playpause hold relaunch none text:<word>
+# ("hold" is a long press of OK, which opens a surah's or reciter's menu.)
+# Sidebar order: Home, Search, Surahs, Reciters, Adhkar, Library, Settings,
+# then the now-playing tile under Settings while something is queued.
+# "back up x7 down xN select" opens place N from a root screen's content:
+# Back on a root place moves focus to its own sidebar item first (a second
+# Back would go Home), and Up is trapped at Home. "left" works the same from
+# the content's left edge. Down from Settings reaches the now-playing tile.
+# Run DRY_RUN=1 bash e2e/run-walk.sh android to check this file.
+
+# ---- First launch: the welcome
+000-launch 20 none
+001-onboarding-step-1 3 none
+002-onboarding-browse-all 4 down select
+003-onboarding-browse-closed 3 back
+004-onboarding-step-2 4 up select
+005-onboarding-start-focused 3 down down
+006-home-top 8 select
+
+# ---- Home before anything was played: every rail, then Back to the sidebar
+007-home-row-1 3 down
+008-home-row-2 3 down
+009-home-row-3 3 down
+010-home-row-4 3 down
+011-home-row-5 3 down
+012-home-back-sidebar-open 3 back
+013-library-first-run 6 up up up up up up up down down down down down select
+
+# ---- Surahs, then play: the listening room, its tray and every panel
+014-surahs 6 back up up up up up up up down down select
+015-player-playing 12 select
+016-player-next-verse 3 right
+017-tray-up 3 select
+018-tray-love-focused 3 right right right right right right right right right right right
+019-panel-repeat 3 left left left left left left left left select
+020-panel-repeat-verse 3 down select
+021-panel-repeat-off 3 up select
+022-panel-speed 3 back right select
+023-panel-on-screen 3 back right select
+024-panel-reciter 3 back right select
+025-panel-sleep 3 back right select
+026-panel-sound 3 back right select
+027-panel-queue 3 back right select
+028-panel-add-to-playlist 3 back right select
+
+# ---- New playlist from the player's panel, named "fajr" on the key grid
+029-playlist-editor 4 select
+030-playlist-typed-fajr 3 right right right right right select left left left left left select down right right select down right select
+031-playlist-create-focused 3 right right right right
+032-playlist-created-toast 4 select
+033-panel-add-to-playlist-saved 4 select right right right right right right right right right right right left select
+034-tray-lowered 3 back back
+035-back-to-surahs-same-tile 5 back
+
+# ---- A surah's long-press menu on Surahs
+036-surahs-third-tile 3 right right
+037-surah-menu 4 hold
+038-surah-menu-liked 3 down select
+039-surah-menu-playlists 3 down select
+040-surah-menu-added-to-fajr 3 down select
+041-surah-menu-back-to-main 3 back
+042-surah-menu-closed-focus-back 3 back
+
+# ---- Reciters: a reciter's menu, their page and its pill to the player
+043-reciters 6 back up up up up up up up down down down select
+044-reciter-menu 4 hold
+045-reciter-menu-favorited 3 down down select
+046-reciter-page 6 down select
+047-reciter-page-pill-focused 3 right right right up
+048-reciter-pill-to-player 6 select
+049-reciter-page-back-on-pill 4 back
+050-reciters-back-on-card 4 back
+
+# ---- The sidebar's now-playing tile, Back to the same place, Play/Pause
+051-sidebar-tile-focused 3 back down down down down down down down down
+052-sidebar-tile-to-player 6 select
+053-player-back-to-tile 4 back
+054-playpause-paused-on-tile 4 playpause
+
+# ---- Home with history: Now playing strip, every rail, stepwise Back
+055-back-goes-home 6 back
+056-home-strip-paused 4 right
+057-home-strip-playing 4 playpause
+058-home-hero-buttons 3 down
+059-home-row-01 3 down
+060-home-row-01-menu 4 hold
+061-home-row-01-menu-closed 3 back
+062-home-row-02 3 down
+063-home-row-03 3 down
+064-home-row-04 3 down
+065-home-row-05 3 down
+066-home-row-06 3 down
+067-home-row-07 3 down
+068-home-row-08 3 down
+069-home-row-09 3 down
+070-home-row-10 3 down
+071-home-back-sidebar-open 3 back
+
+# ---- Library: Playlists (with fajr), a playlist, Loved, Reciters
+072-library-playlists 6 up up up up up up up down down down down down select
+073-library-fajr-focused 3 right
+074-playlist-detail 6 select
+075-playlist-row-focused 3 right right
+076-library-back-on-fajr 4 back
+077-library-loved 4 up right
+078-library-reciters 4 right
+
+# ---- Adhkar: browse, the reader
+079-adhkar 6 back up up up up up up up down down down down select
+080-adhkar-reader 6 select
+081-adhkar-next 3 right
+082-adhkar-count 3 select
+083-adhkar-controls 3 down
+084-adhkar-back-to-browse 4 back
+
+# ---- Search: type "sleep" on the key grid, the top result, a start mode
+085-search 6 back up up up up up up up down select
+086-search-typed-sleep 5 down down right right right right select up select up select select down down left left left select
+087-search-result-focused 3 right right right right right right
+088-search-count-mode-reader 8 right right select
+089-search-back-to-result 4 back
+090-search-back-to-keyboard 3 back
+
+# ---- Settings: a full reciter picker, the bottom rows, the welcome again
+091-settings 6 back up up up up up up up down down down down down down select
+092-settings-reciter-picker 4 select
+093-settings-picker-closed 3 back
+094-settings-bottom-welcome-row 3 down down down down down down down down down down
+095-settings-welcome-rerun 5 select
+096-settings-after-welcome 4 back
+
+# ---- Relaunch: Home without a queue, the tile offers to continue
+097-relaunch-home 20 relaunch
+098-relaunch-sidebar-tile 3 back down down down down down down down down
