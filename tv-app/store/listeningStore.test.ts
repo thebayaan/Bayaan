@@ -10,8 +10,10 @@ import {
   timesLabel,
   checkVerseRepeat,
   itemKey,
+  sleepLeftLabel,
   startVerseRepeatSync,
   useListeningStore,
+  verseRepeatAtEnd,
 } from './listeningStore';
 import {useTVPlayerStore} from './tvPlayerStore';
 import type {AudioEngine, EngineEvent} from '../services/audioEngine';
@@ -113,6 +115,24 @@ describe('cycles', () => {
   });
 });
 
+describe('repeat choices on the player', () => {
+  it('maps queue repeat onto repeat all, and back off', () => {
+    useListeningStore.getState().setRepeat({kind: 'queue'}, 0);
+    expect(useTVPlayerStore.getState().repeat).toBe('all');
+    expect(repeatLabel({kind: 'queue'})).toBe('Queue');
+    useListeningStore.getState().setRepeat({kind: 'off'}, 0);
+    expect(useTVPlayerStore.getState().repeat).toBe('off');
+  });
+});
+
+describe('resumePanel', () => {
+  it('is handed back once', () => {
+    useListeningStore.getState().setResumePanel('save');
+    expect(useListeningStore.getState().takeResumePanel()).toBe('save');
+    expect(useListeningStore.getState().takeResumePanel()).toBeNull();
+  });
+});
+
 describe('labels', () => {
   it('names repeat counts and pauses', () => {
     expect([3, Infinity].map(timesLabel)).toEqual(['3×', '∞']);
@@ -155,6 +175,28 @@ describe('footerChips', () => {
     expect(footerChips({...base, sleepOn: true, sleepChoice: -1})).toEqual([
       'Sleep at end of surah',
     ]);
+  });
+
+  it('writes speed as the tray does, and names queue repeat', () => {
+    expect(footerChips({...base, speed: 2})).toEqual(['2.0×']);
+    expect(footerChips({...base, repeat: {kind: 'queue'}})).toEqual([
+      'Repeat queue',
+    ]);
+  });
+
+  it('counts a running sleep timer down', () => {
+    expect(
+      footerChips({
+        ...base,
+        sleepOn: true,
+        sleepChoice: 30,
+        sleepLeftMs: 299000,
+      }),
+    ).toEqual(['Sleep · 5 min left']);
+    expect(sleepLeftLabel(42 * 1000)).toBe('0:42 left');
+    expect(sleepLeftLabel(60 * 1000)).toBe('1 min left');
+    expect(sleepLeftLabel(61 * 1000)).toBe('2 min left');
+    expect(sleepLeftLabel(-5)).toBe('0:00 left');
   });
 
   it('hides a sleep choice once the timer has run out', () => {
@@ -278,13 +320,42 @@ describe('verse repeat, app-wide', () => {
     expect(useListeningStore.getState().verseRepeat).toBeNull();
     expect(useListeningStore.getState().repeat).toEqual({kind: 'off'});
   });
+
+  it('repeats the last verse when the track ends on it', () => {
+    useListeningStore.getState().setRepeat({kind: 'verse', times: 3}, 3);
+    const again = verseRepeatAtEnd();
+    expect(again).toEqual({seconds: 10, holdMs: 0});
+    expect(useListeningStore.getState().verseRepeat?.played).toBe(1);
+  });
+
+  it('lets the surah end once the last verse has had its plays', () => {
+    useListeningStore.getState().setRepeat({kind: 'verse', times: 2}, 3);
+    expect(verseRepeatAtEnd()).not.toBeNull();
+    expect(verseRepeatAtEnd()).toBeNull();
+    expect(useListeningStore.getState().repeat).toEqual({kind: 'off'});
+  });
+
+  it('leaves the end alone for a repeat of another verse', () => {
+    useListeningStore.getState().setRepeat({kind: 'verse', times: 3}, 1);
+    expect(verseRepeatAtEnd()).toBeNull();
+  });
+
+  it('keeps the player on the surah when the end arrives mid-repeat', () => {
+    startVerseRepeatSync();
+    useListeningStore.getState().setRepeat({kind: 'verse', times: 3}, 3);
+    at(14);
+    engine.emit({status: 'idle', positionSeconds: 60, durationSeconds: 60});
+    expect(useTVPlayerStore.getState().currentIndex).toBe(0);
+    expect(engine.seek).toHaveBeenLastCalledWith(10);
+    expect(engine.play).toHaveBeenCalled();
+  });
 });
 
-describe('reopen', () => {
+describe('resumePanel', () => {
   it('holds a panel for the player to reopen, until reset', () => {
-    useListeningStore.getState().setReopen('save');
-    expect(useListeningStore.getState().reopen).toBe('save');
+    useListeningStore.getState().setResumePanel('save');
+    expect(useListeningStore.getState().resumePanel).toBe('save');
     useListeningStore.getState().reset();
-    expect(useListeningStore.getState().reopen).toBeNull();
+    expect(useListeningStore.getState().resumePanel).toBeNull();
   });
 });

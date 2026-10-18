@@ -36,6 +36,7 @@ import {
   type AudioFocusOwner,
 } from './audioFocus';
 import type {MediaTransport} from './mediaTransport';
+import {isEndOfMediaPause} from './mediaEnd';
 import {MEDIA_SEEK_SECONDS} from './remoteKeys';
 import {claimTransport, type TransportChannel} from './transportGate';
 import {useNavStore} from '../store/navStore';
@@ -214,7 +215,22 @@ export function createAudioEngine(): AudioEngine {
   }
 
   const onPlaying = (): void => setStatus('playing');
-  const onPause = (): void => setStatus('paused');
+  // The pause that comes just before `ended` (see mediaEnd.ts) is left out,
+  // so the store sees playing -> idle and moves on.
+  const onPause = (): void => {
+    const audio = player;
+    if (
+      audio &&
+      isEndOfMediaPause(
+        finiteOr(audio.currentTime, 0),
+        finiteOr(audio.duration, 0),
+        (audio as {ended?: boolean}).ended === true,
+      )
+    ) {
+      return;
+    }
+    setStatus('paused');
+  };
   const onWaiting = (): void => setStatus('buffering');
   const onEnded = (): void => setStatus('idle');
   const onError = (): void => setStatus('error');

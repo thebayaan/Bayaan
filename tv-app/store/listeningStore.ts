@@ -1,22 +1,44 @@
 import {create} from 'zustand';
-import {useTVPlayerStore} from './tvPlayerStore';
+import {
+  setEndOfTrackHook,
+  useTVPlayerStore,
+  type PlayAgain,
+  type RepeatMode,
+} from './tvPlayerStore';
 import {
   advanceRepeat,
+  verseAt,
   type VerseRepeat,
   type VerseTimeline,
 } from '../services/verseTimeline';
 import type {QueueItem} from '../types/player';
 
 /**
- * Listening-room choices that sit on top of the player: repeating a verse or
- * the whole surah. Surah repeat rides the player's own repeat-one; verse
- * repeat is enforced app-wide against the verse timings (see
- * startVerseRepeatSync), so it keeps going while the listener browses.
+ * Listening-room choices that sit on top of the player: repeating a verse,
+ * the whole surah or the whole queue. Surah and queue repeat ride the
+ * player's own repeat-one and repeat-all; verse repeat is enforced app-wide
+ * against the verse timings (see startVerseRepeatSync), so it keeps going
+ * while the listener browses.
  */
 export type RepeatChoice =
   | {kind: 'off'}
   | {kind: 'verse'; times: number}
-  | {kind: 'surah'};
+  | {kind: 'surah'}
+  | {kind: 'queue'};
+
+/**
+ * How many times a verse plays when verse repeat starts without a count of
+ * its own: the Repeat panel's "This verse", and holding OK in the room.
+ */
+export const DEFAULT_VERSE_TIMES = 3;
+
+function playerRepeatFor(choice: RepeatChoice): RepeatMode {
+  return choice.kind === 'surah'
+    ? 'one'
+    : choice.kind === 'queue'
+      ? 'all'
+      : 'off';
+}
 
 /** The order the Repeat control steps through. */
 export const REPEAT_CYCLE: readonly RepeatChoice[] = [
@@ -32,6 +54,8 @@ export function repeatLabel(choice: RepeatChoice): string {
       return 'Off';
     case 'surah':
       return 'Surah';
+    case 'queue':
+      return 'Queue';
     case 'verse':
       return Number.isFinite(choice.times)
         ? `Verse · ${choice.times}×`
@@ -89,6 +113,8 @@ export function repeatChip(choice: RepeatChoice): string | null {
       return null;
     case 'surah':
       return 'Repeat surah';
+    case 'queue':
+      return 'Repeat queue';
     case 'verse':
       return Number.isFinite(choice.times)
         ? `Repeat verse ${choice.times}×`
@@ -96,10 +122,35 @@ export function repeatChip(choice: RepeatChoice): string | null {
   }
 }
 
-/** The footer chip for the sleep timer, or null when it is off. */
-export function sleepChip(sleepOn: boolean, minutes: number): string | null {
+/**
+ * What is left of a sleep timer: "12 min left", or "0:42 left" in its last
+ * minute. Minutes round up, so it never says "0 min".
+ */
+export function sleepLeftLabel(msLeft: number): string {
+  const seconds = Math.max(0, Math.ceil(msLeft / 1000));
+  if (seconds >= 60) return `${Math.ceil(seconds / 60)} min left`;
+  return `0:${String(seconds).padStart(2, '0')} left`;
+}
+
+/**
+ * The footer chip for the sleep timer, or null when it is off. A running
+ * timer says how long is left (when `msLeft` is known), not what was chosen.
+ */
+export function sleepChip(
+  sleepOn: boolean,
+  minutes: number,
+  msLeft?: number,
+): string | null {
   if (!sleepOn || minutes === 0) return null;
-  return minutes < 0 ? 'Sleep at end of surah' : `Sleep ${minutes} min`;
+  if (minutes < 0) return 'Sleep at end of surah';
+  return msLeft !== undefined
+    ? `Sleep · ${sleepLeftLabel(msLeft)}`
+    : `Sleep ${minutes} min`;
+}
+
+/** "1.0×", "1.25×": a playback speed as the tray, panels and footer write it. */
+export function formatSpeed(speed: number): string {
+  return `${Number.isInteger(speed) ? speed.toFixed(1) : speed}×`;
 }
 
 /**
@@ -113,12 +164,14 @@ export function footerChips(input: {
   ambient: string | null;
   sleepOn: boolean;
   sleepChoice: number;
+  /** Time left on a running sleep timer. */
+  sleepLeftMs?: number;
 }): string[] {
   return [
     repeatChip(input.repeat),
-    input.speed !== 1 ? `${input.speed}×` : null,
+    input.speed !== 1 ? formatSpeed(input.speed) : null,
     input.ambient,
-    sleepChip(input.sleepOn, input.sleepChoice),
+    sleepChip(input.sleepOn, input.sleepChoice, input.sleepLeftMs),
   ].filter((c): c is string => c !== null);
 }
 
@@ -150,12 +203,14 @@ type ListeningState = {
   panel: PanelKey | null;
   setPanel: (panel: PanelKey | null) => void;
   /**
-   * A panel to open again, with the tray, when the player mounts next: the
-   * Save panel after the playlist editor it opened (the player unmounts
-   * under the editor). The player takes it once.
+   * The panel to bring back when the player returns from a screen opened
+   * over it (the Save panel's New playlist editor). The player unmounts
+   * while covered, so it is kept here; see takeResumePanel.
    */
-  reopen: PanelKey | null;
-  setReopen: (panel: PanelKey | null) => void;
+  resumePanel: PanelKey | null;
+  setResumePanel: (panel: PanelKey | null) => void;
+  /** The panel to reopen, once: reading it clears it. */
+  takeResumePanel: () => PanelKey | null;
   /** Milliseconds to wait before each replay of a repeated verse. */
   repeatPauseMs: number;
   setRepeatPause: (ms: number) => void;
@@ -187,13 +242,18 @@ function currentKey(): string {
   return itemKey(queue[currentIndex]);
 }
 
-export const useListeningStore = create<ListeningState>(set => ({
+export const useListeningStore = create<ListeningState>((set, get) => ({
   trayOpen: false,
   setTrayOpen: trayOpen => set(trayOpen ? {trayOpen} : {trayOpen, panel: null}),
   panel: null,
   setPanel: panel => set({panel}),
-  reopen: null,
-  setReopen: reopen => set({reopen}),
+  resumePanel: null,
+  setResumePanel: resumePanel => set({resumePanel}),
+  takeResumePanel: () => {
+    const panel = get().resumePanel;
+    if (panel !== null) set({resumePanel: null});
+    return panel;
+  },
   repeatPauseMs: 0,
   setRepeatPause: repeatPauseMs => set({repeatPauseMs}),
   repeat: {kind: 'off'},
@@ -203,9 +263,7 @@ export const useListeningStore = create<ListeningState>(set => ({
   timeline: null,
 
   setRepeat: (choice, currentAyah) => {
-    useTVPlayerStore
-      .getState()
-      .setRepeat(choice.kind === 'surah' ? 'one' : 'off');
+    useTVPlayerStore.getState().setRepeat(playerRepeatFor(choice));
     // During the opening (the basmala, verse 0) "this verse" is verse 1.
     const verse = choice.kind === 'verse';
     set({
@@ -241,7 +299,7 @@ export const useListeningStore = create<ListeningState>(set => ({
     set({
       trayOpen: false,
       panel: null,
-      reopen: null,
+      resumePanel: null,
       repeatPauseMs: 0,
       repeat: {kind: 'off'},
       verseRepeat: null,
@@ -297,12 +355,39 @@ export function checkVerseRepeat(): void {
   }
 }
 
+/**
+ * Verse repeat when the track itself ends. The last verse often runs to the
+ * end of the file, so the end arrives (as the engine's "idle") before any
+ * position past the verse does, and checkVerseRepeat never sees it. When the
+ * verse being repeated is the one the surah ends on and plays are left, the
+ * player goes back to its start instead of moving on. Exported for tests;
+ * startVerseRepeatSync hands it to the player.
+ */
+export function verseRepeatAtEnd(): PlayAgain | null {
+  const listening = useListeningStore.getState();
+  const {verseRepeat, repeatKey, timeline, repeatPauseMs} = listening;
+  if (!verseRepeat) return null;
+  const key = currentKey();
+  if (repeatKey !== null && key !== repeatKey) return null;
+  if (!timeline?.timeline || timeline.key !== key) return null;
+  if (verseAt(timeline.timeline, Infinity) !== verseRepeat.ayah) return null;
+  const result = advanceRepeat(timeline.timeline, verseRepeat, Infinity);
+  if (result.seekToMs === null) {
+    if (result.done) listening.setRepeat({kind: 'off'}, 0);
+    return null;
+  }
+  noteRepeatSeek();
+  listening.setVerseRepeat(result.repeat);
+  return {seconds: result.seekToMs / 1000, holdMs: repeatPauseMs};
+}
+
 let repeatSyncStarted = false;
 
 /** Starts enforcing verse repeat app-wide; safe to call more than once. */
 export function startVerseRepeatSync(): void {
   if (repeatSyncStarted) return;
   repeatSyncStarted = true;
+  setEndOfTrackHook(verseRepeatAtEnd);
   useTVPlayerStore.subscribe((state, prev) => {
     if (
       state.positionSeconds !== prev.positionSeconds ||

@@ -118,6 +118,24 @@ describe('playOrOpen', () => {
     expect(stack()).toEqual([{screen: 'nowPlaying'}]);
   });
 
+  it('a playlist whose first surah is playing loads the playlist, carrying on', async () => {
+    await playOrOpen({reciterId: 'r1', surahNumber: 1});
+    engine.emit({status: 'playing', positionSeconds: 30, durationSeconds: 60});
+    const playlist = [
+      {reciterId: 'r1', surahNumber: 1},
+      {reciterId: 'r2', surahNumber: 18},
+    ];
+    await playOrOpen({reciterId: 'r1', surahNumber: 1, queue: playlist});
+    const {queue, currentIndex} = useTVPlayerStore.getState();
+    expect(queue.map(q => q.surahNumber)).toEqual([1, 18]);
+    expect(currentIndex).toBe(0);
+    expect(engine.seek).toHaveBeenLastCalledWith(30);
+    // The same playlist again only opens the player.
+    (engine.load as jest.Mock).mockClear();
+    await playOrOpen({reciterId: 'r1', surahNumber: 1, queue: playlist});
+    expect(engine.load).not.toHaveBeenCalled();
+  });
+
   it('a double press loads once and stacks one player', async () => {
     const first = playOrOpen({reciterId: 'r1', surahNumber: 1});
     const second = playOrOpen({reciterId: 'r1', surahNumber: 1});

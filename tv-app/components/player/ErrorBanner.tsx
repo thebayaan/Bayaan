@@ -9,8 +9,14 @@ import {
 } from 'react-native';
 import {FocusableButton} from '../primitives/FocusableButton';
 import {FocusText} from '../primitives/focusContext';
-import {isNetworkError, useTVPlayerStore} from '../../store/tvPlayerStore';
+import {
+  hasNextIn,
+  isNetworkError,
+  PLAYBACK_FAILED_MESSAGE,
+  useTVPlayerStore,
+} from '../../store/tvPlayerStore';
 import {colors} from '../../theme/colors';
+import {fonts} from '../../theme/typography';
 import {createScaledStyles} from '../../theme/scale';
 
 type Copy = {kicker: string; title: string; body: string};
@@ -23,10 +29,12 @@ function copyFor(lastError: string | null): Copy {
       body: 'Playback needs an internet connection. Check your Wi-Fi and try again.',
     };
   }
+  // lastError is already copy for the screen: the store keeps only its
+  // own sentences (PLAYBACK_FAILED_MESSAGE, a lookup's "no recording of").
   return {
     kicker: 'PLAYBACK ERROR',
     title: 'Could not play this recitation',
-    body: lastError ?? 'Something went wrong while loading the audio.',
+    body: lastError ?? PLAYBACK_FAILED_MESSAGE,
   };
 }
 
@@ -35,8 +43,8 @@ export function ErrorBanner(): React.ReactElement | null {
   const lastError = useTVPlayerStore(s => s.lastError);
   const retry = useTVPlayerStore(s => s.retry);
   const next = useTVPlayerStore(s => s.next);
-  // Skip only where there is a next surah to skip to.
-  const canSkip = useTVPlayerStore(s => s.currentIndex < s.queue.length - 1);
+  // Skip only where there is a next surah to skip to (as the tray's Next).
+  const canSkip = useTVPlayerStore(hasNextIn);
 
   const visible = status === 'error' && !!lastError;
   // Try again takes focus when the card shows; asked once mounted too, since
@@ -119,52 +127,56 @@ const styles = createScaledStyles({
     justifyContent: 'center',
     backgroundColor: 'rgba(0,0,0,0.5)',
   },
+  // The player's type scale, read from across the room.
   card: {
-    paddingHorizontal: 32,
-    paddingVertical: 28,
-    borderRadius: 16,
+    paddingHorizontal: 56,
+    paddingVertical: 48,
+    borderRadius: 24,
     backgroundColor: colors.surface,
-    maxWidth: 560,
+    maxWidth: 880,
     alignItems: 'center',
-    gap: 6,
+    gap: 10,
   },
   kicker: {
     color: colors.accent,
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 2.2,
+    fontFamily: fonts.bold,
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 2.5,
   },
   title: {
     color: colors.text,
-    fontSize: 24,
+    fontFamily: fonts.extraBold,
+    fontSize: 32,
     fontWeight: '800',
-    letterSpacing: -0.3,
+    letterSpacing: -0.4,
     marginTop: 4,
     textAlign: 'center',
   },
   message: {
     color: colors.textSecondary,
-    fontSize: 15,
+    fontFamily: fonts.medium,
+    fontSize: 22,
     fontWeight: '500',
     textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: 10,
+    lineHeight: 32,
+    marginBottom: 18,
     marginTop: 4,
-    opacity: 0.9,
   },
-  row: {flexDirection: 'row', gap: 10, marginTop: 4},
+  row: {flexDirection: 'row', gap: 16, marginTop: 4},
   cta: {
-    paddingHorizontal: 26,
-    paddingVertical: 12,
+    paddingHorizontal: 32,
+    paddingVertical: 16,
     borderRadius: 16,
   },
   ctaText: {
-    fontSize: 17,
+    fontFamily: fonts.bold,
+    fontSize: 20,
     fontWeight: '700',
   },
   ctaSecondary: {
-    paddingHorizontal: 22,
-    paddingVertical: 12,
+    paddingHorizontal: 32,
+    paddingVertical: 16,
     borderRadius: 16,
   },
 });
