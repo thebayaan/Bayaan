@@ -26,6 +26,7 @@ import {
 } from '../../../utils/search/normalize';
 import ADHKAR from '../../../data/adhkar.json';
 import {ADHKAR_LISTS, type AdhkarList} from '../../data/adhkarLists';
+import {surahsInJuz} from '../browseCatalog';
 import type {Reciter} from '../../types/reciter';
 
 export {TIER};
@@ -34,6 +35,27 @@ export {TIER};
 // Same pattern as utils/search/catalog.ts.
 const SURAH_PREFIX = /^(surah|surat|sura|soorah|سوره|سورت)\s+/;
 const FEATURED = new Set(FEATURED_RECITER_NAMES);
+
+/**
+ * TV-only surah names, on top of the phone's shared SURAH_ALIASES (which
+ * stay as they are so both apps keep ranking alike). Browse shows a
+ * "Juz ʿAmma" tile, so typing it has to find the juz's first surah.
+ */
+export const TV_SURAH_ALIASES: Readonly<Record<number, readonly string[]>> = {
+  78: ['Juz Amma', 'Juz ʿAmma', 'جزء عم'],
+};
+
+// "juz 30", "juz30", "جزء ٣٠" (the hamza folds away in the search key): a
+// juz by number, never a verse of a surah called "juz".
+const JUZ_NUMBER = /^(?:juz|juzz|jus|para|جز)\s*(\d{1,2})$/;
+
+/** The juz a query names by number (1-30), or null. */
+export function parseJuz(query: string): number | null {
+  const match = toSearchKey(query).match(JUZ_NUMBER);
+  if (!match) return null;
+  const juz = Number(match[1]);
+  return juz >= 1 && juz <= 30 ? juz : null;
+}
 
 /**
  * "Ash-Sharh" -> "Sharh": the name without its article, so a few typed
@@ -59,6 +81,7 @@ export function createSurahSearch(
       {get: surah => surah.name_arabic, weight: 1},
       {get: surah => surah.translated_name_english, weight: 0.8},
       {get: surah => SURAH_ALIASES[surah.id] ?? [], weight: 0.9},
+      {get: surah => TV_SURAH_ALIASES[surah.id] ?? [], weight: 0.9},
     ],
   });
   return {
@@ -326,8 +349,10 @@ export const EMPTY_RESULTS: GroupedResults = {
 const LIMITS = {surahs: 12, reciters: 12, adhkar: 8};
 
 // Below these scores a match is noise for that kind: a long category title
-// that shares one short word, or a fuzzy hit on a verse nickname.
-const MIN_ADHKAR_SCORE = 20;
+// that shares one short word, a typo-budget hit on an alias ("fatiha" finding
+// "Faith"), or a fuzzy hit on a verse nickname. Skeleton and fuzzy adhkar
+// hits score 20-45 and are almost never what was meant.
+export const MIN_ADHKAR_SCORE = 40;
 const MIN_VERSE_SCORE = 40;
 
 // On equal scores: an explicit verse reference, then surahs (the phone puts
@@ -373,8 +398,21 @@ export function createTvSearch(
       if (!key) return EMPTY_RESULTS;
 
       const ranked: RankedItem[] = [];
-      const ref = parseVerseRef(query) ?? nameAndVerse(query, surahIndex);
-      if (ref) {
+      const juz = parseJuz(query);
+      const ref = juz
+        ? null
+        : (parseVerseRef(query) ?? nameAndVerse(query, surahIndex));
+      if (juz) {
+        // The juz's surahs in mushaf order; the first (where it starts)
+        // is the top result.
+        surahsInJuz(juz, options.surahs ?? SURAHS).forEach((surah, i) =>
+          ranked.push({
+            type: 'surah',
+            item: surah,
+            score: TIER.exact - i / 100,
+          }),
+        );
+      } else if (ref) {
         // Above any name match: the person typed exactly which verse.
         ranked.push({type: 'verse', item: ref, score: TIER.exact + 5});
         ranked.push({type: 'surah', item: ref.surah, score: TIER.exact});

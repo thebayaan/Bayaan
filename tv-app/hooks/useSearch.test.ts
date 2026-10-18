@@ -5,7 +5,7 @@
  * recent-searches store the screen shows before typing.
  */
 import fallback from '../../data/reciters-fallback.json';
-import {isActiveQuery, isPending, runSearch} from './useSearch';
+import {isActiveQuery, isPending, runSearch, searchPane} from './useSearch';
 import {createTvSearch, type SearchItem} from '../services/search/tvSearch';
 import {normalizeReciters} from '../services/normalizeReciter';
 import {
@@ -58,6 +58,16 @@ describe('isActiveQuery', () => {
     // A picked recent settles with the query, so nothing waits.
     expect(isPending('kahf', 'kahf')).toBe(false);
     expect(isPending(' ', '')).toBe(false);
+  });
+
+  it('keeps the right side steady while a query settles', () => {
+    expect(searchPane('', '', false)).toBe('browse');
+    // The first letters from Browse: the tiles stay until results arrive.
+    expect(searchPane('k', '', false)).toBe('browse');
+    expect(searchPane('kah', 'ka', true)).toBe('results');
+    // More letters of a query with no matches: the empty state stays up.
+    expect(searchPane('xqz', 'xq', false)).toBe('empty');
+    expect(searchPane('xq', 'xq', false)).toBe('empty');
   });
 
   it('returns no results or suggestions when inactive', () => {
@@ -121,6 +131,26 @@ describe('surahs', () => {
     expect(topSurah(query)).toBe(id);
   });
 
+  it.each([
+    ['juz', 78],
+    ['juz amma', 78],
+    ['جزء عم', 78],
+    ['juz 30', 78],
+    ['juz30', 78],
+    ['جزء ٣٠', 78],
+    ['juz 2', 2],
+    ['juz 1', 1],
+  ])('by juz: %s', (query, id) => {
+    expect(topSurah(query)).toBe(id);
+  });
+
+  it('lists a juz by number as its surahs in order, never as a verse', () => {
+    const {results} = runSearch(engine, 'juz 30');
+    expect(results.top?.type).toBe('surah');
+    expect(results.surahs.slice(0, 3).map(s => s.id)).toEqual([79, 80, 81]);
+    expect(topVerse('juz 30')).toBeNull();
+  });
+
   it('lists more surahs under the top one, without repeating it', () => {
     const {results} = runSearch(engine, 'ash');
     expect(results.top?.type).toBe('surah');
@@ -178,6 +208,15 @@ describe('adhkar', () => {
     ];
     expect(ids).toContain('nature');
   });
+
+  it.each(['fatiha', 'mish', 'kahf'])(
+    'leaves unrelated adhkar out of "%s"',
+    query => {
+      const {results, suggestions} = runSearch(engine, query);
+      expect(results.adhkar).toEqual([]);
+      expect(suggestions.map(s => s.kind)).not.toContain('Adhkar');
+    },
+  );
 
   it('lists adhkar beside surahs and reciters', () => {
     const {results} = runSearch(engine, 'sh');
@@ -240,6 +279,13 @@ describe('suggestions', () => {
     const sharh = suggestions.find(s => s.label === 'Ash-Sharh');
     if (sharh?.match) {
       expect(sharh.label.slice(...sharh.match).toLowerCase()).toBe('sh');
+    }
+  });
+
+  it('keeps Ya-Sin among the suggestions while "yas" is typed', () => {
+    for (const q of ['ya', 'yas', 'yasi']) {
+      const labels = runSearch(engine, q).suggestions.map(s => s.label);
+      expect(labels).toContain('Ya-Sin');
     }
   });
 
