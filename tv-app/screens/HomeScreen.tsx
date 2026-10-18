@@ -35,6 +35,7 @@ import {
 } from '../hooks/homeMoments';
 import {
   featuredRow,
+  hasReciterChoice,
   homeVoiceCandidates,
   preferredReciterIds,
   recitersByIds,
@@ -188,7 +189,10 @@ export function HomeScreen(): React.ReactElement {
   const [heroFocus, setHeroFocus] = useState<'primary' | 'secondary' | null>(
     nowPlayingFirst ? null : 'primary',
   );
-  const [pickerOpen, setPickerOpen] = useState(false);
+  // The surah the reciter picker is for, frozen while it is open so an hour
+  // turning (which can swap the hero) never pulls the panel away under focus.
+  const [pickerSurah, setPickerSurah] = useState<number | null>(null);
+  const pickerOpen = pickerSurah !== null;
 
   // ---- Scrolling: a focused rail scrolls up to sit under the screen's top
   // with its title showing; the hero scrolls back to the very top. This
@@ -446,27 +450,34 @@ export function HomeScreen(): React.ReactElement {
       playSurah(hero.insteadSurah);
       return;
     }
+    const surahNumber = hero.primarySurah;
+    if (!surahNumber) return;
+    // An empty panel would trap focus with nothing to press.
+    if (!hasReciterChoice(reciters, surahNumber)) {
+      showToast(`No reciter has ${surahTitle(surahNumber)} yet.`, 'error');
+      return;
+    }
     setHeroFocus(null);
-    setPickerOpen(true);
+    setPickerSurah(surahNumber);
   }
 
   const closePicker = useCallback((): void => {
-    setPickerOpen(false);
+    setPickerSurah(null);
     setHeroFocus('secondary');
   }, []);
 
   const pickReciter = useCallback(
     (reciter: Reciter, rewayah: Rewayah): void => {
-      if (!hero.primarySurah) return;
-      setPickerOpen(false);
+      if (pickerSurah === null) return;
+      setPickerSurah(null);
       void playOrOpen({
         reciterId: reciter.id,
         rewayahId: rewayah.id,
-        surahNumber: hero.primarySurah,
+        surahNumber: pickerSurah,
         source: 'home-hero-reciter',
       });
     },
-    [hero.primarySurah],
+    [pickerSurah],
   );
 
   const pickerPreferred = useMemo(
@@ -708,9 +719,9 @@ export function HomeScreen(): React.ReactElement {
         />
         {rows.map(renderRow)}
       </ScrollView>
-      {pickerOpen && hero.primarySurah ? (
+      {pickerSurah !== null ? (
         <HeroReciterPicker
-          surahNumber={hero.primarySurah}
+          surahNumber={pickerSurah}
           reciters={reciters}
           currentId={heroVoice?.reciterId ?? null}
           preferredIds={pickerPreferred}

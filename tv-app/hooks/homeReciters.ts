@@ -5,7 +5,7 @@
  */
 import type {Reciter} from '../types/reciter';
 import {featuredFirst} from '../services/browseCatalog';
-import {popularReciters} from '../services/listeningChoices';
+import {popularReciters, rewayahForSurah} from '../services/listeningChoices';
 
 /** How many reciters a Home rail shows at most. */
 export const RECITER_ROW_LIMIT = 12;
@@ -86,4 +86,15 @@ export function preferredReciterIds({
       ...recentIds,
     ]),
   ];
+}
+
+/**
+ * Whether "Another reciter" has anyone to offer for the surah. Home checks
+ * first, so the picker never opens empty with focus trapped in it.
+ */
+export function hasReciterChoice(
+  reciters: readonly Reciter[],
+  surahNumber: number,
+): boolean {
+  return reciters.some(r => rewayahForSurah(r, surahNumber) !== null);
 }

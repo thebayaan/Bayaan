@@ -1,5 +1,6 @@
 import {
   featuredRow,
+  hasReciterChoice,
   homeVoiceCandidates,
   preferredReciterIds,
   recitersByIds,
@@ -76,5 +77,26 @@ describe('preferredReciterIds', () => {
     expect(
       preferredReciterIds({favoriteIds: [], defaultId: null, recentIds: []}),
     ).toEqual([]);
+  });
+});
+
+describe('hasReciterChoice', () => {
+  const withSurahs = (id: string, surahs: number[]): Reciter =>
+    ({
+      id,
+      name: id,
+      is_featured: false,
+      rewayat: [{id: `${id}-hafs`, name: 'Hafs', surah_list: surahs}],
+    }) as unknown as Reciter;
+
+  it('is true when someone recites the surah', () => {
+    expect(
+      hasReciterChoice([withSurahs('a', [1]), withSurahs('b', [18])], 18),
+    ).toBe(true);
+  });
+
+  it('is false when nobody does, or there are no reciters yet', () => {
+    expect(hasReciterChoice([withSurahs('a', [1])], 18)).toBe(false);
+    expect(hasReciterChoice([], 18)).toBe(false);
   });
 });
