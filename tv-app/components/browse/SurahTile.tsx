@@ -91,7 +91,7 @@ const styles = createScaledStyles({
     left: 14,
     color: colors.textSecondary,
     fontFamily: fonts.bold,
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '700',
   },
   meaning: {

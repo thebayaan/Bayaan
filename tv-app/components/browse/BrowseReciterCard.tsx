@@ -47,7 +47,7 @@ function BrowseReciterCardImpl({
           style={styles.name}
           color={colors.textSecondary}
           focusedColor={colors.text}
-          numberOfLines={1}>
+          numberOfLines={2}>
           {reciter.name}
         </FocusText>
         {subtitle ? (
@@ -68,21 +68,27 @@ export const BrowseReciterCard = React.memo(BrowseReciterCardImpl);
 
 // Portrait diameter inside the focus frame (ring 4 + gap 5 on each side).
 const PORTRAIT = RECITER_CARD_WIDTH - 18;
+const NAME_LINE = 23;
 
 const styles = createScaledStyles({
   card: {width: RECITER_CARD_WIDTH, alignItems: 'center', gap: 10},
   frame: {width: RECITER_CARD_WIDTH, height: RECITER_CARD_WIDTH},
   meta: {alignItems: 'center', gap: 2, alignSelf: 'stretch'},
+  // Long names wrap to a second line rather than losing their end; every
+  // card keeps the two-line slot, so the subtitles of a row stay level.
   name: {
     fontFamily: fonts.semiBold,
     fontSize: 18,
     fontWeight: '600',
+    lineHeight: NAME_LINE,
+    minHeight: NAME_LINE * 2,
     textAlign: 'center',
   },
   sub: {
     fontFamily: fonts.medium,
-    fontSize: 15,
+    fontSize: 17,
     fontWeight: '500',
+    lineHeight: 22,
     textAlign: 'center',
   },
 });

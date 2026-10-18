@@ -121,7 +121,7 @@ const styles = createScaledStyles({
   },
   sub: {
     fontFamily: fonts.medium,
-    fontSize: 15,
+    fontSize: 17,
     fontWeight: '500',
   },
   glyph: {textAlign: 'right'},
