@@ -305,9 +305,11 @@ function SurahMenu({target}: {target: SurahMenuTarget}): React.ReactElement {
       {voice ? (
         <MenuRow
           icon={<FocusIcon icon={HeartIcon} size={24} filled={isLoved} />}
-          label={isLoved ? 'Unlike' : 'Like'}
+          label={isLoved ? 'Remove from Loved' : 'Love'}
           accessibilityLabel={
-            isLoved ? `Unlike ${title}` : `Like ${title} in this voice`
+            isLoved
+              ? `Remove ${title} from Loved`
+              : `Love ${title} in this voice`
           }
           onPress={handleLove}
         />

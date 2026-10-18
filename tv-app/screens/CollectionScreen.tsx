@@ -88,12 +88,12 @@ const EMPTY: Record<
   {text: string; action: string; tab: 'surahs' | 'reciters'}
 > = {
   loved: {
-    text: 'Hold OK on any surah and choose Like, or press the heart in the player.',
+    text: 'Hold OK on any surah and choose Love, or press the heart in the player.',
     action: 'Browse surahs',
     tab: 'surahs',
   },
   reciters: {
-    text: 'Open a reciter and choose Favorite.',
+    text: 'Open a reciter and choose Favourite.',
     action: 'Browse reciters',
     tab: 'reciters',
   },
@@ -210,7 +210,7 @@ export function CollectionScreen(): React.ReactElement {
   }, [focusIndex]);
 
   // The first-run page and the shelf swap only while no menu is open: a
-  // Like on a starter surah (or an Unlike of the last loved one) must not
+  // Love on a starter surah (or un-loving the last loved one) must not
   // swap the page, and mount its preferred focus, under the open menu.
   // Nor while a stacked screen covers the Library (a Love in the player):
   // a hidden layer must not take preferred focus; the swap waits for Back.
@@ -232,9 +232,10 @@ export function CollectionScreen(): React.ReactElement {
     setFocusIndex(0);
   }, [menuOpen, active, shelfEmpty, firstRun, counts, filter]);
 
-  // A menu that removed its own tile (Unlike, Remove from favorites) leaves
-  // focus on the neighbour that took its place, not wherever the engine
-  // falls back to (or a recycled cell that held the tile).
+  // A menu that removed its own tile (Remove from Loved, Remove from
+  // favourites) leaves focus on the neighbour that took its place, not
+  // wherever the engine falls back to (or a recycled cell that held the
+  // tile).
   const menuFrom = useRef<{key: string; index: number} | null>(null);
   useEffect(
     () =>

@@ -243,7 +243,7 @@ export function SettingsScreen(): React.ReactElement {
                 onBlur={disarm('history')}
               />
               <Row
-                label="Clear favorites"
+                label="Clear favourites"
                 value={
                   confirm === 'favorites'
                     ? 'Press again to clear'

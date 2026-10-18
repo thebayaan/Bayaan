@@ -45,13 +45,13 @@ const EXPLAINERS: readonly Explainer[] = [
   {
     icon: HeartIcon,
     title: 'Loved surahs',
-    text: 'Hold OK on a surah and choose Like, or press the heart in the player.',
+    text: 'Hold OK on a surah and choose Love, or press the heart in the player.',
   },
   {
     icon: PersonAudioIcon,
     round: true,
     title: 'Your reciters',
-    text: 'Open a reciter and choose Favorite.',
+    text: 'Open a reciter and choose Favourite.',
   },
 ];
 

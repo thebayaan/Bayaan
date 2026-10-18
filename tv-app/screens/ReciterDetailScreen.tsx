@@ -452,7 +452,7 @@ export function ReciterDetailScreen({
             ) : null}
             <TVFocusGuideView autoFocus style={styles.heroActions}>
               {/* Each button keeps a minimum width, so a label changing
-                  (Favorite → Favorited, Loading… → Play from ...) doesn't
+                  (Favourite → Favourited, Loading… → Play from ...) doesn't
                   shift its neighbours. */}
               <FocusableButton
                 onPress={() => pressPlay('play')}
@@ -485,13 +485,13 @@ export function ReciterDetailScreen({
               <FocusableButton
                 onPress={pressFavorite}
                 accessibilityLabel={
-                  isFav ? 'Remove from favorites' : 'Add to favorites'
+                  isFav ? 'Remove from favourites' : 'Add to favourites'
                 }
                 style={[styles.actionBtn, styles.favoriteBtn]}>
                 <View style={styles.actionInner}>
                   <FocusIcon icon={HeartIcon} size={20} filled={isFav} />
                   <FocusText style={styles.actionText}>
-                    {isFav ? 'Favorited' : 'Favorite'}
+                    {isFav ? 'Favourited' : 'Favourite'}
                   </FocusText>
                 </View>
               </FocusableButton>
@@ -745,7 +745,7 @@ const styles = createScaledStyles({
   },
   // Wide enough for the longer of each button's labels.
   playBtn: {minWidth: 300},
-  favoriteBtn: {minWidth: 190},
+  favoriteBtn: {minWidth: 204},
   defaultBtn: {minWidth: 236},
   actionText: {
     fontFamily: fonts.bold,
