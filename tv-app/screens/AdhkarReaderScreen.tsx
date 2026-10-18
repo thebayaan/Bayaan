@@ -36,7 +36,11 @@ import {
 } from '../store/adhkarSessionController';
 import {useAdhkarSessionStore} from '../store/adhkarSessionStore';
 import {useKeepAwakeWhile} from '../hooks/useKeepAwakeWhile';
-import {useNavStore, type AdhkarStartMode} from '../store/navStore';
+import {
+  useNavStore,
+  type AdhkarStartMode,
+  type ScreenEntry,
+} from '../store/navStore';
 import {showToast} from '../store/toastStore';
 import {useTVPlayerStore} from '../store/tvPlayerStore';
 import {colors} from '../theme/colors';
@@ -164,10 +168,21 @@ export function AdhkarReaderScreen({listId, mode}: Props): React.ReactElement {
       unsubscribe();
       // Still on the stack: it only went under the player (the now-playing
       // pill) and comes back on Back, on the same page, waiting for Play.
-      const covered = useNavStore
-        .getState()
-        .stack.some(e => e.screen === 'adhkarReader' && e.listId === listId);
+      const onStack = (stack: readonly ScreenEntry[]): boolean =>
+        stack.some(e => e.screen === 'adhkarReader' && e.listId === listId);
+      const covered = onStack(useNavStore.getState().stack);
       close({covered});
+      if (covered) {
+        // Left from under the player (a place switch clears the stack): the
+        // next open is a fresh visit again, autoplay and all. A plain close
+        // forgets the covered visit; skip it while another reader is open,
+        // whose own close forgets it.
+        const stop = useNavStore.subscribe(s => {
+          if (onStack(s.stack)) return;
+          stop();
+          if (!useAdhkarSessionStore.getState().session) close();
+        });
+      }
       if (handoff.leave()) {
         const {queue, currentIndex} = useTVPlayerStore.getState();
         const surah = queue[currentIndex]?.title;
