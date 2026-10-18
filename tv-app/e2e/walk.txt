@@ -61,7 +61,8 @@
 # r -> s -> t -> u (the last column), then Right onto Create.
 031-playlist-create-focused 3 right right right right
 032-playlist-created-toast 4 select
-# The player comes back with its tray down: raise it, Love, then Save.
+# The player comes back with its tray down: raise it, Right to Love (the
+# last control), then Left onto Save (Add to playlist).
 033-panel-add-to-playlist-saved 4 select right right right right right right right right right right right left select
 034-tray-lowered 3 back back
 035-back-to-surahs-same-tile 5 back
