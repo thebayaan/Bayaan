@@ -309,6 +309,10 @@ export function CollectionScreen(): React.ReactElement {
                 remember(item, index);
                 push({screen: 'playlist', playlistId: playlist.id});
               }}
+              onLongPress={() => {
+                menuFrom.current = {key: item.key, index};
+                useContextMenuStore.getState().openPlaylist(playlist.id);
+              }}
               hasTVPreferredFocus={preferred}
             />
           </View>

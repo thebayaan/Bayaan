@@ -31,7 +31,14 @@ export type SurahMenuTarget = {
 
 export type ReciterMenuTarget = {kind: 'reciter'; reciterId: string};
 
-export type ContextMenuTarget = ReciterMenuTarget | SurahMenuTarget | null;
+/** A playlist tile's menu (the Library). */
+export type PlaylistMenuTarget = {kind: 'playlist'; playlistId: string};
+
+export type ContextMenuTarget =
+  | ReciterMenuTarget
+  | SurahMenuTarget
+  | PlaylistMenuTarget
+  | null;
 
 type CloseOptions = {
   /**
@@ -54,16 +61,17 @@ type State = {
     target: Omit<SurahMenuTarget, 'kind'>,
     opener?: FocusRef | null,
   ) => void;
+  openPlaylist: (playlistId: string, opener?: FocusRef | null) => void;
   /** Changes the open surah menu's target in place (a moved playlist row). */
   updateSurah: (change: Partial<Omit<SurahMenuTarget, 'kind'>>) => void;
   close: (options?: CloseOptions) => void;
 };
 
 /**
- * The one long-press menu, for a reciter or a surah. It remembers the view
- * that opened it (passed in, or noted by the long-press) and hands focus
- * back to it on close. Any navigation closes it, so a menu never carries
- * over to another screen.
+ * The one long-press menu, for a reciter, a surah or a playlist. It
+ * remembers the view that opened it (passed in, or noted by the long-press)
+ * and hands focus back to it on close. Any navigation closes it, so a menu
+ * never carries over to another screen.
  */
 export const useContextMenuStore = create<State>((set, get) => {
   const openReciter = (reciterId: string, opener?: FocusRef | null): void =>
@@ -81,6 +89,12 @@ export const useContextMenuStore = create<State>((set, get) => {
     openSurah: (target, opener) =>
       set({
         target: {kind: 'surah', ...target},
+        reciterId: null,
+        opener: opener ?? takeLongPressOrigin(),
+      }),
+    openPlaylist: (playlistId, opener) =>
+      set({
+        target: {kind: 'playlist', playlistId},
         reciterId: null,
         opener: opener ?? takeLongPressOrigin(),
       }),

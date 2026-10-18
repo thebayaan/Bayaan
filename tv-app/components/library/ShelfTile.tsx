@@ -153,6 +153,8 @@ type PlaylistProps = {
   firstSurah: number | null;
   caption: string;
   onPress: () => void;
+  /** Hold OK: the playlist's menu (play, shuffle, rename, delete). */
+  onLongPress?: () => void;
   hasTVPreferredFocus?: boolean;
   idPrefix: string;
 };
@@ -164,6 +166,7 @@ function ShelfPlaylistTileImpl({
   firstSurah,
   caption,
   onPress,
+  onLongPress,
   hasTVPreferredFocus,
   idPrefix,
 }: PlaylistProps): React.ReactElement {
@@ -172,8 +175,11 @@ function ShelfPlaylistTileImpl({
       ring={false}
       style={styles.card}
       onPress={onPress}
+      onLongPress={onLongPress}
       hasTVPreferredFocus={hasTVPreferredFocus}
-      accessibilityLabel={`Playlist ${name}, ${caption}`}>
+      accessibilityLabel={`Playlist ${name}, ${caption}${
+        onLongPress ? '. Hold OK for more' : ''
+      }`}>
       <FocusFrame radius={ART_RADIUS} style={styles.frame}>
         <GradientFill colors={playlistGradient(color)} id={idPrefix} />
         <View style={styles.playlistArt}>
