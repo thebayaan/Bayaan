@@ -9,6 +9,7 @@ import {
   findVerseSpan,
   pickReciterForSurah,
   pickRewayah,
+  verseFallbackNote,
 } from '../../services/search/playback';
 import {stopVerseWatch, watchVerseEnd} from '../../services/search/verseWatch';
 import type {VerseRef} from '../../services/search/tvSearch';
@@ -99,15 +100,29 @@ export function useSearchActions(
   /**
    * Plays a verse: from its start ('from'), just the verse ('verse'), or the
    * verse on repeat ('repeat'). Without verse timings for the recitation the
-   * surah plays from the beginning and the returned note says so.
+   * surah plays from the beginning and a toast says so. Notes go to the toast,
+   * not the search card: by the time they are known the player has replaced
+   * Search.
    */
   const playVerse = useCallback(
-    async (ref: VerseRef, action: VerseAction): Promise<string | null> => {
+    async (ref: VerseRef, action: VerseAction): Promise<void> => {
       remember();
       const choice = await startSurah(ref.surah);
-      if (!choice) return 'No reciter has this surah yet.';
+      if (!choice) {
+        showToast(`No reciter has ${ref.surah.name} yet.`, 'error');
+        return;
+      }
+      const player = useTVPlayerStore.getState();
       // The player is up with its error and Try again.
-      if (useTVPlayerStore.getState().status === 'error') return null;
+      if (player.status === 'error') return;
+      // A newer press (or the listener) moved on to something else.
+      const item = player.queue[player.currentIndex];
+      if (
+        item?.reciterId !== choice.reciter.id ||
+        item?.surahNumber !== ref.surah.id
+      ) {
+        return;
+      }
       const span = await findVerseSpan(
         choice.rewayah,
         ref.surah.id,
@@ -115,7 +130,8 @@ export function useSearchActions(
         ref.ayah,
       );
       if (!span) {
-        return `${choice.reciter.name} has no verse timings here, so ${ref.surah.name} plays from the start.`;
+        showToast(verseFallbackNote(choice.reciter.name, ref.surah.name));
+        return;
       }
       useTVPlayerStore.getState().seekTo(span.fromMs / 1000);
       if (action === 'verse') {
@@ -130,7 +146,6 @@ export function useSearchActions(
             .setRepeat({kind: 'verse', times: Infinity}, ref.ayah);
         }, AFTER_PLAYER_OPENS_MS);
       }
-      return null;
     },
     [remember, startSurah],
   );

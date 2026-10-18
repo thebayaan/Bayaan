@@ -107,6 +107,17 @@ export async function findVerseSpan(
 }
 
 /**
+ * What the toast over the player says when a verse can't be found in the
+ * recitation that plays, so the surah starting from verse 1 isn't a mystery.
+ */
+export function verseFallbackNote(
+  reciterName: string,
+  surahName: string,
+): string {
+  return `${reciterName} has no verse timings for ${surahName}, so it plays from the start.`;
+}
+
+/**
  * For "Play verse": whether playback has reached the end of the verse and
  * should pause. `gone` means the listener moved elsewhere (another surah, or
  * seeked well outside the verse), so the watch should stop without pausing.

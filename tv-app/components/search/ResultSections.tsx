@@ -40,7 +40,12 @@ export function ResultSections({
       {results.reciters.length > 0 ? (
         <Section title="Reciters">
           {results.reciters.map(r => (
-            <PortraitCard key={r.id} reciter={r} onPress={onReciter} />
+            <PortraitCard
+              key={r.id}
+              reciter={r}
+              onPress={onReciter}
+              idPrefix="search-more-r"
+            />
           ))}
         </Section>
       ) : null}

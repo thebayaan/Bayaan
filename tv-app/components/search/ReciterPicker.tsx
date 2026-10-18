@@ -21,6 +21,9 @@ type Props = {
  * "Choose reciter" for a surah, in place of the results: the reciters who
  * recite it, your default and favourites first. Back (or Cancel) returns to
  * the results.
+ *
+ * The header is a focus guide across the full width, so Up from any column
+ * of the grid lands on Cancel (on tvOS only the last column sits under it).
  */
 export function ReciterPicker({
   surah,
@@ -30,7 +33,7 @@ export function ReciterPicker({
 }: Props): React.ReactElement {
   return (
     <View style={styles.root}>
-      <View style={styles.header}>
+      <TVFocusGuideView autoFocus style={styles.header}>
         <View style={styles.headerText}>
           <Text style={styles.kicker}>Choose a reciter</Text>
           <Text style={styles.title} numberOfLines={1}>
@@ -46,7 +49,7 @@ export function ReciterPicker({
           style={styles.cancel}>
           <FocusText style={styles.cancelText}>Cancel</FocusText>
         </FocusableButton>
-      </View>
+      </TVFocusGuideView>
       <TVFocusGuideView autoFocus style={styles.gridWrap}>
         <FlatList
           data={reciters as Reciter[]}
@@ -63,6 +66,7 @@ export function ReciterPicker({
                 reciter={item}
                 onPress={onPick}
                 size={140}
+                idPrefix="search-pick"
                 hasTVPreferredFocus={index === 0}
               />
             </View>
