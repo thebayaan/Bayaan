@@ -1,4 +1,9 @@
-import {createRemoteKeyFilter, screenOwnsPlayPause} from './remoteKeys';
+import {
+  createMediaKeyFilter,
+  createRemoteKeyFilter,
+  mediaKeyCommand,
+  screenOwnsPlayPause,
+} from './remoteKeys';
 
 describe('createRemoteKeyFilter', () => {
   it('passes tvOS events, which carry no key phase', () => {
@@ -49,5 +54,51 @@ describe('screenOwnsPlayPause', () => {
     expect(screenOwnsPlayPause({screen: 'playlist', playlistId: 'p'})).toBe(
       false,
     );
+  });
+});
+
+describe('createMediaKeyFilter', () => {
+  it('maps the discrete media keys once per press', () => {
+    const filter = createMediaKeyFilter();
+    expect(filter({eventType: 'play', eventKeyAction: 1})).toBe('play');
+    expect(filter({eventType: 'pause', eventKeyAction: 0})).toBe('pause');
+    expect(filter({eventType: 'pause', eventKeyAction: 1})).toBeNull();
+    expect(filter({eventType: 'next'})).toBe('next');
+    expect(filter({eventType: 'previous'})).toBe('previous');
+  });
+
+  it('leaves the keys createRemoteKeyFilter maps alone', () => {
+    const filter = createMediaKeyFilter();
+    expect(filter({eventType: 'playPause'})).toBeNull();
+    expect(filter({eventType: 'right'})).toBeNull();
+    // ...and the other way round, so screens never see media keys.
+    expect(createRemoteKeyFilter()({eventType: 'play'})).toBeNull();
+    expect(createRemoteKeyFilter()({eventType: 'next'})).toBeNull();
+  });
+});
+
+describe('mediaKeyCommand', () => {
+  const root = undefined;
+  it('Play only starts and Pause only stops', () => {
+    expect(mediaKeyCommand('play', root, 'paused')).toBe('toggle');
+    expect(mediaKeyCommand('play', root, 'error')).toBe('toggle');
+    expect(mediaKeyCommand('play', root, 'playing')).toBeNull();
+    expect(mediaKeyCommand('play', root, 'loading')).toBeNull();
+    expect(mediaKeyCommand('pause', root, 'playing')).toBe('toggle');
+    expect(mediaKeyCommand('pause', root, 'paused')).toBeNull();
+    expect(mediaKeyCommand('pause', root, 'loading')).toBeNull();
+  });
+
+  it('moves through the queue, in the player too', () => {
+    expect(mediaKeyCommand('next', {screen: 'nowPlaying'}, 'playing')).toBe(
+      'next',
+    );
+    expect(mediaKeyCommand('previous', root, 'paused')).toBe('previous');
+  });
+
+  it('stays out of the adhkar reader, which plays its own audio', () => {
+    const reader = {screen: 'adhkarReader' as const, listId: 'x'};
+    expect(mediaKeyCommand('pause', reader, 'playing')).toBeNull();
+    expect(mediaKeyCommand('next', reader, 'playing')).toBeNull();
   });
 });

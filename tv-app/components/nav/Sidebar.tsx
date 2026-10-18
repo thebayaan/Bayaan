@@ -1,19 +1,24 @@
-import React, {useCallback, useEffect, useRef, useState} from 'react';
-import {Pressable, Text, TVFocusGuideView, View} from 'react-native';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  TVFocusGuideView,
+  View,
+  findNodeHandle,
+} from 'react-native';
+import Svg, {Defs, LinearGradient, Rect, Stop} from 'react-native-svg';
 import {LogoMark} from '../brand/LogoMark';
-import {SurahArtwork} from '../brand/SurahArtwork';
+import {NowPlayingGlyph} from './NowPlayingGlyph';
 import {useNavStore, type TabKey} from '../../store/navStore';
-import {useTVPlayerStore} from '../../store/tvPlayerStore';
-import {openPlayer} from '../../services/playbackRouting';
+import {useNowPlayingTile} from '../../hooks/useNowPlayingTile';
 import {colors} from '../../theme/colors';
 import {fonts} from '../../theme/typography';
 import {createScaledStyles, scale} from '../../theme/scale';
 import {
   CollectionIcon,
   HomeIcon,
-  PauseIcon,
   PersonAudioIcon,
-  PlayIcon,
   QuranBookIcon,
   SearchIcon,
   SettingsIcon,
@@ -24,6 +29,10 @@ import {
 /** Width the sidebar keeps when folded; screens leave this much room on the left. */
 export const SIDEBAR_COLLAPSED_WIDTH = 112;
 const SIDEBAR_EXPANDED_WIDTH = 300;
+// The soft edge past the open panel, so it reads as a layer over the
+// content rather than a cut through it.
+const EDGE_WIDTH = 180;
+const PANEL_INK = 'rgba(5,11,16,0.97)';
 
 type Place = {key: TabKey; label: string; icon: React.FC<IconProps>};
 
@@ -36,18 +45,41 @@ const PLACES: Place[] = [
   {key: 'collection', label: 'Library', icon: CollectionIcon},
   {key: 'settings', label: 'Settings', icon: SettingsIcon},
 ];
+const LAST_PLACE = PLACES[PLACES.length - 1].key;
+
+type Focusable = View & {requestTVFocus?: () => void};
+
+// The current place's item, for Back from the content (see focusSidebar).
+let currentPlaceItem: Focusable | null = null;
+
+/**
+ * Moves focus onto the current place in the sidebar. Back on a root place
+ * does this first, so it never leaves the app from deep in the content.
+ * False when the sidebar isn't there to take it.
+ */
+export function focusSidebar(): boolean {
+  if (!currentPlaceItem?.requestTVFocus) return false;
+  currentPlaceItem.requestTVFocus();
+  return true;
+}
 
 /**
  * Left navigation for the TV app. Folded to icons while focus is in the
  * content, it opens with labels as soon as focus moves onto it, drawing over
- * the screen instead of pushing it, so content never reflows. Whatever is
- * playing stays pinned at the bottom, one press from the player.
+ * the screen (dimmed behind it) instead of pushing it, so content never
+ * reflows. Whatever is playing sits right under the places, one Down from
+ * Settings and one press from the player.
  */
 export function Sidebar(): React.ReactElement {
   const current = useNavStore(s => s.currentTab);
   const switchTab = useNavStore(s => s.switchTab);
+  const setSidebarFocused = useNavStore(s => s.setSidebarFocused);
   const [focusedKey, setFocusedKey] = useState<string | null>(null);
   const blurTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const itemRefs = useRef(new Map<TabKey, Focusable>());
+  // Native tags for the explicit Settings <-> tile links (nextFocusDown/Up).
+  const [lastTag, setLastTag] = useState<number | undefined>();
+  const [tileTag, setTileTag] = useState<number | undefined>();
 
   // Moving focus between two sidebar items fires blur then focus; waiting a
   // beat before folding keeps the sidebar from flickering closed in between.
@@ -62,67 +94,226 @@ export function Sidebar(): React.ReactElement {
   useEffect(
     () => () => {
       if (blurTimer.current) clearTimeout(blurTimer.current);
+      setSidebarFocused(false);
     },
-    [],
+    [setSidebarFocused],
   );
 
   const open = focusedKey !== null;
+  useEffect(() => setSidebarFocused(open), [open, setSidebarFocused]);
+
+  // Entering from the content (Left from any row, at any height) always
+  // lands on the current place, never on whatever was focused here last, so
+  // an OK straight after never switches places by surprise.
+  const [entry, setEntry] = useState<Focusable | null>(null);
+  useEffect(() => {
+    const item = itemRefs.current.get(current) ?? null;
+    currentPlaceItem = item;
+    setEntry(item);
+    return () => {
+      if (currentPlaceItem === item) currentPlaceItem = null;
+    };
+  }, [current]);
+  const destinations = useMemo(() => (entry ? [entry] : undefined), [entry]);
+
+  // Down from Settings goes to the tile and Up from the tile to Settings, on
+  // both focus engines, whatever sits behind the open panel.
+  useEffect(() => {
+    const last = itemRefs.current.get(LAST_PLACE);
+    setLastTag(last ? (findNodeHandle(last) ?? undefined) : undefined);
+  }, []);
 
   return (
-    // The guide spans the sidebar's full height, so Left from any row of the
-    // screen lands in it, even rows below the last item where the focus engine
-    // would otherwise find nothing (tvOS) or the nearest item (Android). Focus
-    // enters on Home the first time, then wherever it last was.
-    <TVFocusGuideView
-      autoFocus
-      style={[styles.root, open ? styles.rootOpen : styles.rootFolded]}>
-      <View style={styles.brand}>
-        <LogoMark size={scale(36)} color={colors.text} />
-        {open ? <Text style={styles.brandText}>BAYAAN</Text> : null}
-      </View>
-      <View style={styles.places}>
-        {PLACES.map(place => (
-          <SidebarItem
-            key={place.key}
-            label={place.label}
-            icon={place.icon}
-            active={current === place.key}
-            open={open}
-            focused={focusedKey === place.key}
-            onFocus={() => handleFocus(place.key)}
-            onBlur={handleBlur}
-            onPress={() => switchTab(place.key)}
-          />
-        ))}
-      </View>
-      <View style={styles.spacer} />
-      <SidebarNowPlaying
-        open={open}
-        focused={focusedKey === 'nowPlaying'}
-        onFocus={() => handleFocus('nowPlaying')}
-        onBlur={handleBlur}
-      />
-    </TVFocusGuideView>
+    <>
+      {open ? (
+        <View style={styles.scrim} pointerEvents="none">
+          <View style={styles.edge}>
+            <Svg
+              style={StyleSheet.absoluteFill}
+              width="100%"
+              height="100%"
+              preserveAspectRatio="none">
+              <Defs>
+                <LinearGradient id="sidebar-edge" x1="0" y1="0" x2="1" y2="0">
+                  <Stop
+                    offset="0"
+                    stopColor={colors.background}
+                    stopOpacity={0.97}
+                  />
+                  <Stop
+                    offset="1"
+                    stopColor={colors.background}
+                    stopOpacity={0}
+                  />
+                </LinearGradient>
+              </Defs>
+              <Rect
+                x="0"
+                y="0"
+                width="100%"
+                height="100%"
+                fill="url(#sidebar-edge)"
+              />
+            </Svg>
+          </View>
+        </View>
+      ) : null}
+      {/* The guide spans the sidebar's full height, so Left from any row of
+          the screen lands in it, even rows below the last item. Up and Down
+          are trapped: the open panel draws over content, and without the
+          trap the focus engines pick the cards under it. */}
+      <TVFocusGuideView
+        destinations={destinations}
+        trapFocusUp
+        trapFocusDown
+        trapFocusLeft
+        style={[styles.root, open ? styles.rootOpen : styles.rootFolded]}>
+        <View style={styles.brand}>
+          <LogoMark size={scale(36)} color={colors.text} />
+          {open ? <Text style={styles.brandText}>BAYAAN</Text> : null}
+        </View>
+        <View style={styles.places}>
+          {PLACES.map(place => (
+            <SidebarItem
+              key={place.key}
+              itemRef={node => {
+                if (node) itemRefs.current.set(place.key, node);
+                else itemRefs.current.delete(place.key);
+              }}
+              label={place.label}
+              icon={place.icon}
+              active={current === place.key}
+              open={open}
+              focused={focusedKey === place.key}
+              nextFocusDown={place.key === LAST_PLACE ? tileTag : undefined}
+              onFocus={() => handleFocus(place.key)}
+              onBlur={handleBlur}
+              onPress={() => switchTab(place.key)}
+            />
+          ))}
+        </View>
+        <SidebarNowPlaying
+          open={open}
+          focused={focusedKey === 'nowPlaying'}
+          nextFocusUp={lastTag}
+          onTag={setTileTag}
+          onFocus={() => handleFocus('nowPlaying')}
+          onBlur={handleBlur}
+        />
+      </TVFocusGuideView>
+    </>
+  );
+}
+
+type NowPlayingProps = {
+  open: boolean;
+  focused: boolean;
+  nextFocusUp?: number;
+  /** Reports the tile's native tag (or undefined while there is no tile). */
+  onTag: (tag: number | undefined) => void;
+  onFocus: () => void;
+  onBlur: () => void;
+};
+
+/**
+ * The way back to the player: the same squircle as the places, a little
+ * taller for two lines once the panel opens (the surah, then the state and
+ * the reciter, or what OK will do). Its own component, so the progress it
+ * follows doesn't redraw the places.
+ */
+function SidebarNowPlaying({
+  open,
+  focused,
+  nextFocusUp,
+  onTag,
+  onFocus,
+  onBlur,
+}: NowPlayingProps): React.ReactElement | null {
+  const {tile, press} = useNowPlayingTile();
+  const ref = useRef<Focusable | null>(null);
+  const shown = tile !== null;
+
+  useEffect(() => {
+    onTag(
+      shown && ref.current
+        ? (findNodeHandle(ref.current) ?? undefined)
+        : undefined,
+    );
+  }, [shown, onTag]);
+
+  if (!tile) return null;
+  return (
+    <>
+      <View style={[styles.divider, open && styles.dividerOpen]} />
+      <Pressable
+        ref={node => {
+          ref.current = node as Focusable | null;
+        }}
+        onPress={press}
+        onFocus={onFocus}
+        onBlur={onBlur}
+        nextFocusUp={nextFocusUp}
+        accessibilityRole="button"
+        accessibilityLabel={tile.accessibilityLabel}
+        style={[
+          styles.tile,
+          open && styles.tileOpen,
+          focused && styles.tileFocused,
+        ]}>
+        <View style={styles.tileGlyph}>
+          <NowPlayingGlyph state={tile.state} focused={focused} />
+        </View>
+        {open ? (
+          <View style={styles.tileText}>
+            <Text
+              numberOfLines={1}
+              style={[styles.tileTitle, focused && styles.onFocus]}>
+              {tile.title}
+            </Text>
+            <Text
+              numberOfLines={1}
+              style={[styles.tileDetail, focused && styles.onFocusSecondary]}>
+              {tile.detail}
+            </Text>
+          </View>
+        ) : null}
+        {tile.progress !== null ? (
+          <View style={styles.progressTrack}>
+            <View
+              style={[
+                styles.progressFill,
+                {width: `${Math.round(tile.progress * 100)}%`},
+                focused && styles.progressFocused,
+              ]}
+            />
+          </View>
+        ) : null}
+      </Pressable>
+    </>
   );
 }
 
 type ItemProps = {
+  itemRef: (node: Focusable | null) => void;
   label: string;
   icon: React.FC<IconProps>;
   active: boolean;
   open: boolean;
   focused: boolean;
+  nextFocusDown?: number;
   onFocus: () => void;
   onBlur: () => void;
   onPress: () => void;
 };
 
 function SidebarItem({
+  itemRef,
   label,
   icon: Icon,
   active,
   open,
   focused,
+  nextFocusDown,
   onFocus,
   onBlur,
   onPress,
@@ -135,9 +326,11 @@ function SidebarItem({
       : colors.textSecondary;
   return (
     <Pressable
+      ref={node => itemRef(node as Focusable | null)}
       onPress={onPress}
       onFocus={onFocus}
       onBlur={onBlur}
+      nextFocusDown={nextFocusDown}
       accessibilityLabel={label}
       accessibilityState={{selected: active}}
       style={[
@@ -152,101 +345,10 @@ function SidebarItem({
           style={[
             styles.itemLabel,
             active && styles.itemLabelActive,
-            focused && styles.itemLabelFocused,
+            focused && styles.onFocus,
           ]}>
           {label}
         </Text>
-      ) : null}
-    </Pressable>
-  );
-}
-
-type NowPlayingProps = {
-  open: boolean;
-  focused: boolean;
-  onFocus: () => void;
-  onBlur: () => void;
-};
-
-function SidebarNowPlaying({
-  open,
-  focused,
-  onFocus,
-  onBlur,
-}: NowPlayingProps): React.ReactElement | null {
-  const status = useTVPlayerStore(s => s.status);
-  const finished = useTVPlayerStore(s => s.finished);
-  const item = useTVPlayerStore(s => s.queue[s.currentIndex]);
-  if (!item) return null;
-
-  const isPlaying = status === 'playing';
-  const failed = status === 'error';
-  const loading = status === 'loading' || status === 'buffering';
-  // The second line says what OK will do when it's not just "open".
-  const note = failed
-    ? "Couldn't play · Open to retry"
-    : finished
-      ? 'Finished · Play again'
-      : loading
-        ? 'Loading…'
-        : item.subtitle;
-  const state = failed
-    ? "Couldn't play"
-    : finished
-      ? 'Finished'
-      : isPlaying
-        ? 'Playing'
-        : loading
-          ? 'Loading'
-          : 'Paused';
-  return (
-    <Pressable
-      onPress={() => {
-        if (finished) useTVPlayerStore.getState().replay();
-        openPlayer();
-      }}
-      onFocus={onFocus}
-      onBlur={onBlur}
-      accessibilityLabel={`${state}: ${item.title}. ${
-        finished ? 'Play again' : 'Open player'
-      }.`}
-      style={[
-        styles.nowPlaying,
-        open && styles.nowPlayingOpen,
-        focused && styles.itemFocused,
-      ]}>
-      <View style={styles.tile}>
-        <SurahArtwork
-          surahNumber={item.surahNumber}
-          glyphSize={26}
-          id="sidebar-now-playing"
-        />
-        <View style={[styles.badge, failed && styles.badgeError]}>
-          {failed ? (
-            <Text style={styles.badgeMark}>!</Text>
-          ) : isPlaying ? (
-            <PauseIcon color={colors.accentInk} size={scale(10)} />
-          ) : (
-            <PlayIcon color={colors.accentInk} size={scale(10)} />
-          )}
-        </View>
-      </View>
-      {open ? (
-        <View style={styles.nowPlayingText}>
-          <Text
-            numberOfLines={1}
-            style={[
-              styles.nowPlayingTitle,
-              focused && styles.itemLabelFocused,
-            ]}>
-            {item.title}
-          </Text>
-          <Text
-            numberOfLines={1}
-            style={[styles.nowPlayingSub, focused && styles.itemLabelFocused]}>
-            {note}
-          </Text>
-        </View>
       ) : null}
     </Pressable>
   );
@@ -260,7 +362,7 @@ const styles = createScaledStyles({
     bottom: 0,
     zIndex: 10,
     paddingTop: 48,
-    paddingBottom: 40,
+    paddingBottom: 60,
     paddingHorizontal: 24,
   },
   rootFolded: {
@@ -269,7 +371,20 @@ const styles = createScaledStyles({
   },
   rootOpen: {
     width: SIDEBAR_EXPANDED_WIDTH,
-    backgroundColor: 'rgba(5,11,16,0.97)',
+    backgroundColor: PANEL_INK,
+  },
+  // Dims the content while the panel is open, with a soft edge after it.
+  scrim: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 9,
+    backgroundColor: 'rgba(5,11,16,0.45)',
+  },
+  edge: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: SIDEBAR_EXPANDED_WIDTH,
+    width: EDGE_WIDTH,
   },
   brand: {
     height: 40,
@@ -310,62 +425,61 @@ const styles = createScaledStyles({
     fontSize: 20,
   },
   itemLabelActive: {color: colors.text},
-  itemLabelFocused: {color: colors.onFocus},
-  spacer: {flex: 1},
-  nowPlaying: {
+  onFocus: {color: colors.onFocus},
+  onFocusSecondary: {color: colors.onFocusSecondary},
+  divider: {
+    height: 1,
+    width: 40,
+    marginLeft: 12,
+    marginVertical: 14,
+    backgroundColor: colors.border,
+  },
+  dividerOpen: {width: 228},
+  // The same squircle as the places, a little taller for two lines. The
+  // glyph sits where the place icons do, so it doesn't jump as the panel
+  // opens. A hairline outline marks it as the player's control at rest.
+  tile: {
+    height: 64,
     width: 64,
-    borderRadius: 14,
-    padding: 0,
+    borderRadius: 16,
+    borderCurve: 'continuous',
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: 'hidden',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
   },
-  // No negative margin: an edge left of the items' makes Android treat the
-  // tile as "left of" Home, so an extra Left press would jump down to it.
-  nowPlayingOpen: {width: 252, padding: 8},
-  tile: {
-    width: 64,
-    height: 52,
-    borderRadius: 10,
-    overflow: 'hidden',
+  tileOpen: {width: 252},
+  tileFocused: {
+    backgroundColor: colors.focusFill,
+    borderColor: colors.focusFill,
+  },
+  tileGlyph: {
+    width: 62,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  badge: {
-    position: 'absolute',
-    right: 4,
-    bottom: 4,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: colors.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  // A failure: a hollow ring with "!" (sky stays the only indicator color).
-  badgeError: {
-    backgroundColor: colors.background,
-    borderWidth: 2,
-    borderColor: colors.accent,
-  },
-  badgeMark: {
-    color: colors.accent,
-    fontFamily: fonts.extraBold,
-    fontWeight: '800',
-    fontSize: 12,
-    lineHeight: 14,
-  },
-  nowPlayingText: {flex: 1, minWidth: 0},
-  nowPlayingTitle: {
+  tileText: {flex: 1, minWidth: 0, paddingRight: 14},
+  tileTitle: {
     color: colors.text,
     fontFamily: fonts.bold,
     fontWeight: '700',
-    fontSize: 16,
+    fontSize: 18,
   },
-  nowPlayingSub: {
+  tileDetail: {
     color: colors.textSecondary,
     fontFamily: fonts.medium,
     fontWeight: '500',
-    fontSize: 13,
+    fontSize: 14,
+    marginTop: 2,
   },
+  progressTrack: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 3,
+  },
+  progressFill: {height: 3, backgroundColor: colors.accent},
+  progressFocused: {backgroundColor: colors.onFocus},
 });

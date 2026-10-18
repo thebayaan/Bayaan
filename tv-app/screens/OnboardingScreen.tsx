@@ -14,8 +14,7 @@ import {LogoMark} from '../components/brand/LogoMark';
 import {useOnboarded} from '../hooks/useOnboarded';
 import {useReciters} from '../hooks/useReciters';
 import {useVerseSync} from '../hooks/useVerseSync';
-import {useTVBackHandler} from '../hooks/useTVBackHandler';
-import {setTVMenuKeyEnabled} from '../hooks/tvMenuKey';
+import {pushScreenBack} from '../services/screenBack';
 import {useSettingsStore} from '../store/settingsStore';
 import {
   findTranslation,
@@ -94,9 +93,12 @@ export function OnboardingScreen(): React.ReactElement {
     }
     return false;
   }, [browsing, step]);
-  useTVBackHandler(handleBack, browsing || step === 2);
-  // Home opens as a root place, where the Menu key leaves the app again.
-  useEffect(() => () => setTVMenuKeyEnabled(false), []);
+  // Back is the Router's; it asks this first while there is a step to undo
+  // (and keeps the tvOS Menu key for it until then).
+  useEffect(() => {
+    if (!browsing && step !== 2) return;
+    return pushScreenBack(handleBack);
+  }, [browsing, step, handleBack]);
 
   return (
     <View style={styles.container}>

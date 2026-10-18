@@ -28,6 +28,13 @@ export type ScreenEntry =
 type NavState = {
   currentTab: TabKey;
   stack: ScreenEntry[];
+  /**
+   * Focus is on the sidebar (a root place's navigation) rather than in the
+   * place's content. Back on a root place steps content -> sidebar -> Home ->
+   * out of the app, so it never leaves from deep in the content.
+   */
+  sidebarFocused: boolean;
+  setSidebarFocused: (focused: boolean) => void;
   switchTab: (tab: TabKey) => void;
   push: (entry: ScreenEntry) => void;
   pop: () => void;
@@ -37,10 +44,12 @@ type NavState = {
 export const useNavStore = create<NavState>(set => ({
   currentTab: 'home',
   stack: [],
+  sidebarFocused: false,
+  setSidebarFocused: focused => set({sidebarFocused: focused}),
   switchTab: tab => set({currentTab: tab, stack: []}),
   push: entry => set(s => ({stack: pushed(s.stack, entry)})),
   pop: () => set(s => ({stack: s.stack.slice(0, -1)})),
-  reset: () => set({currentTab: 'home', stack: []}),
+  reset: () => set({currentTab: 'home', stack: [], sidebarFocused: false}),
 }));
 
 function sameEntry(a: ScreenEntry, b: ScreenEntry): boolean {
