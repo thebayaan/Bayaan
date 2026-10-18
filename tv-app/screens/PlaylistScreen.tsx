@@ -44,10 +44,6 @@ const ART = 300;
 /** How long the Delete button waits for its second press. */
 const CONFIRM_MS = 4000;
 
-// The row last played from, per playlist, so Back from the player lands on
-// it rather than on Play.
-const lastRow = new Map<string, number>();
-
 function itemKey(item: PlaylistItem): string {
   return `${item.surahNumber}:${item.reciterId}:${item.rewayahId ?? ''}`;
 }
@@ -82,14 +78,11 @@ export function PlaylistScreen({playlistId}: Props): React.ReactElement {
   const itemsRef = useRef(items);
   itemsRef.current = items;
 
-  // Which row takes focus: the one played from last (coming back from the
-  // player), or after a row's menu closes, that row (moved) or the one now
-  // in its place (removed). Dropped once it has landed.
-  const [focusRow, setFocusRow] = useState<number | null>(() => {
-    const row = lastRow.get(playlistId);
-    return row !== undefined && row < items.length ? row : null;
-  });
-  const initialRow = useRef<number | null>(focusRow).current;
+  // Which row takes focus after a row's menu closes: that row (moved) or the
+  // one now in its place (removed). Dropped once it has landed. (Back from
+  // the player lands on the row played from by itself: the screen stays
+  // mounted under the player, see ScreenLayer.)
+  const [focusRow, setFocusRow] = useState<number | null>(null);
   useEffect(() => {
     if (focusRow === null) return;
     const timer = setTimeout(() => setFocusRow(null), 1500);
@@ -140,7 +133,6 @@ export function PlaylistScreen({playlistId}: Props): React.ReactElement {
       const list = itemsRef.current;
       const from = list[index];
       if (!from) return;
-      if (!shuffle) lastRow.set(playlistId, index);
       void playOrOpen({
         ...from,
         queue: list,
@@ -245,7 +237,6 @@ export function PlaylistScreen({playlistId}: Props): React.ReactElement {
       return;
     }
     removePlaylist(playlist.id);
-    lastRow.delete(playlist.id);
     showToast(`Deleted ${playlist.name}`);
     pop();
   }
@@ -279,7 +270,7 @@ export function PlaylistScreen({playlistId}: Props): React.ReactElement {
               <FocusableButton
                 onPress={() => playFrom(0)}
                 accessibilityLabel={`Play ${playlist.name}`}
-                hasTVPreferredFocus={initialRow === null}
+                hasTVPreferredFocus
                 outlined
                 style={styles.btn}>
                 <View style={styles.btnInner}>
@@ -332,9 +323,9 @@ export function PlaylistScreen({playlistId}: Props): React.ReactElement {
       </View>
 
       {hasItems ? (
+        // Up from the first row reaches the now-playing pill above it.
         <TVFocusGuideView
           autoFocus
-          trapFocusUp
           trapFocusDown
           trapFocusRight
           style={styles.list}>
@@ -344,9 +335,6 @@ export function PlaylistScreen({playlistId}: Props): React.ReactElement {
             keyExtractor={itemKey}
             overrideItemLayout={rowLayout}
             extraData={focusRow}
-            initialScrollIndex={
-              initialRow !== null && initialRow > 0 ? initialRow : undefined
-            }
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
           />
@@ -426,7 +414,8 @@ const styles = createScaledStyles({
   btnInner: {flexDirection: 'row', alignItems: 'center', gap: 12},
   btnText: {fontFamily: fonts.bold, fontSize: 22, fontWeight: '700'},
   list: {flex: 1},
-  listContent: {paddingBottom: 120},
+  // Clear of the now-playing pill drawn top right (its bottom is at 116).
+  listContent: {paddingTop: 40, paddingBottom: 120},
   cell: {height: ROW_HEIGHT, paddingVertical: 4},
   rowWrap: {flex: 1},
   row: {

@@ -306,9 +306,11 @@ const StackScreen = React.memo(function StackScreen({
     <>
       <StackScreenBody entry={entry} />
       {showsNowPlayingPill(entry) ? (
-        // The adhkar reader keeps its clock top right.
+        // The adhkar reader keeps its clock top right; the reciter page has
+        // '‹ Back' top left.
         <NowPlayingPill
           align={entry.screen === 'adhkarReader' ? 'center' : 'right'}
+          clearTopLeft={entry.screen === 'reciterDetail'}
         />
       ) : null}
     </>
