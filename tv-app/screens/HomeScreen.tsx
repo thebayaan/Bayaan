@@ -52,7 +52,12 @@ import {
 } from '../hooks/homeContinue';
 import {getContinueListening} from '../services/continueListeningStore';
 import {getLovedSurahs} from '../services/lovedSurahsStore';
-import {claimFocusReturn, restoreFocusTo} from '../services/focusReturn';
+import {
+  claimFocusReturn,
+  restoreFocusTo,
+  type FocusableView,
+} from '../services/focusReturn';
+import {useScreenActive} from '../components/nav/ScreenLayer';
 import {
   playOrOpen,
   surahTitle,
@@ -545,6 +550,7 @@ export function HomeScreen(): React.ReactElement {
     (reciter: Reciter, rewayah: Rewayah): void => {
       if (pickerSurah === null) return;
       setPickerSurah(null);
+      focusSecondaryOnReturn.current = true;
       void playOrOpen({
         reciterId: reciter.id,
         rewayahId: rewayah.id,
@@ -554,6 +560,28 @@ export function HomeScreen(): React.ReactElement {
     },
     [pickerSurah],
   );
+
+  // Back from the player a pick opened lands on "Another reciter". The
+  // layer's own memory holds the picker's row, which has unmounted, so Home
+  // focuses the button itself, a frame after the layer's restore runs.
+  const heroSecondary = useRef<View>(null);
+  const focusSecondaryOnReturn = useRef(false);
+  const active = useScreenActive();
+  useEffect(() => {
+    if (!active || !focusSecondaryOnReturn.current) return;
+    focusSecondaryOnReturn.current = false;
+    let inner: number | null = null;
+    const outer = requestAnimationFrame(() => {
+      inner = requestAnimationFrame(() => {
+        inner = null;
+        (heroSecondary.current as FocusableView | null)?.requestTVFocus?.();
+      });
+    });
+    return () => {
+      cancelAnimationFrame(outer);
+      if (inner !== null) cancelAnimationFrame(inner);
+    };
+  }, [active]);
 
   const pickerPreferred = useMemo(
     () =>
@@ -777,6 +805,7 @@ export function HomeScreen(): React.ReactElement {
           onSecondary={handleSecondary}
           preferredFocus={heroFocus}
           primaryRef={heroPrimary}
+          secondaryRef={heroSecondary}
           onFocus={onHeroFocus}
           header={
             <NowPlayingStrip

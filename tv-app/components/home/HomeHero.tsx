@@ -30,6 +30,8 @@ type Props = {
   onFocus: () => void;
   /** The primary button, for Home to focus when a rail it was in empties. */
   primaryRef?: React.Ref<View>;
+  /** The secondary, for Home to focus on coming back from its picker. */
+  secondaryRef?: React.Ref<View>;
   /** Drawn above the kicker ("Now playing"). */
   header?: React.ReactNode;
   /** Drawn in the top right corner, scrolling with the hero (the clock). */
@@ -54,6 +56,7 @@ export function HomeHero({
   preferredFocus,
   onFocus,
   primaryRef,
+  secondaryRef,
   header,
   corner,
 }: Props): React.ReactElement {
@@ -105,6 +108,7 @@ export function HomeHero({
             </View>
           </FocusableButton>
           <FocusableButton
+            ref={secondaryRef}
             onPress={onSecondary}
             onFocus={onFocus}
             hasTVPreferredFocus={preferredFocus === 'secondary'}
