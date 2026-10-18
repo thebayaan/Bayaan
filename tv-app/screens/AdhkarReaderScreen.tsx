@@ -15,6 +15,9 @@ import {countLabel, periodLabel} from '../services/adhkarBrowse';
 import {
   arabicFontSize,
   dhikrPages,
+  instructionNote,
+  notesFontSize,
+  runsLength,
   sourceLine,
   translationFontSize,
 } from '../services/adhkarPages';
@@ -173,6 +176,7 @@ export function AdhkarReaderScreen({listId, mode}: Props): React.ReactElement {
       dhikr
         ? dhikrPages(dhikr.arabic, dhikr.translation, {
             plainBrackets: PLAIN_BRACKETS,
+            note: instructionNote(dhikr.instruction),
           })
         : [],
     [dhikr],
@@ -287,11 +291,15 @@ export function AdhkarReaderScreen({listId, mode}: Props): React.ReactElement {
     : [];
   const morePages = page < pages.length - 1;
   const arabicSize = arabicFontSize(shown?.arabicLength ?? 0);
-  const translationChars = (shown?.translation ?? []).reduce(
-    (n, r) => n + r.text.length,
-    0,
+  const translationSize = translationFontSize(
+    runsLength(shown?.translation ?? []),
   );
-  const translationSize = translationFontSize(translationChars);
+  // A page of notes alone follows a dhikr whose notes would crowd it.
+  const notesOnly = !!shown && shown.arabic.length === 0;
+  const notesSize = notesFontSize(shown?.notes.length ?? 0, notesOnly);
+  // The Names are learnt by their sound too: the transliteration under each.
+  const transliteration =
+    listId === 'names-of-allah' && page === 0 ? dhikr?.transliteration : '';
   const source = dhikr ? sourceLine(target, dhikr.instruction) : '';
   const sourceText = [
     source,
@@ -407,7 +415,8 @@ export function AdhkarReaderScreen({listId, mode}: Props): React.ReactElement {
                 ? `Count, ${count} of ${target}`
                 : 'Next dhikr'
           }>
-          {shown ? (
+          {notesOnly ? <Text style={styles.kicker}>NOTES</Text> : null}
+          {shown && shown.arabic.length > 0 ? (
             <DhikrText
               runs={shown.arabic}
               fontSize={scale(arabicSize)}
@@ -418,6 +427,9 @@ export function AdhkarReaderScreen({listId, mode}: Props): React.ReactElement {
               ]}
             />
           ) : null}
+          {transliteration ? (
+            <Text style={styles.transliteration}>{transliteration}</Text>
+          ) : null}
           {shown && shown.translation.length > 0 ? (
             <DhikrText
               runs={shown.translation}
@@ -427,6 +439,19 @@ export function AdhkarReaderScreen({listId, mode}: Props): React.ReactElement {
                 {lineHeight: scale(translationSize * 1.45)},
               ]}
             />
+          ) : null}
+          {shown?.notes ? (
+            <Text
+              style={[
+                styles.notes,
+                notesOnly && styles.notesAlone,
+                {
+                  fontSize: scale(notesSize),
+                  lineHeight: scale(notesSize * 1.45),
+                },
+              ]}>
+              {shown.notes}
+            </Text>
           ) : null}
           {sourceText ? (
             <Text style={styles.source} numberOfLines={2}>
@@ -566,6 +591,25 @@ const styles = createScaledStyles({
     textAlign: 'center',
     maxWidth: 1320,
   },
+  transliteration: {
+    marginTop: 4,
+    color: colors.textSecondary,
+    fontFamily: fonts.medium,
+    fontWeight: '500',
+    fontSize: 30,
+    textAlign: 'center',
+  },
+  // Notes: the translator's glossary, a Name's meaning. Under the
+  // translation, or a page of their own after the last.
+  notes: {
+    marginTop: 18,
+    color: colors.textSecondary,
+    fontFamily: fonts.regular,
+    fontWeight: '400',
+    textAlign: 'center',
+    maxWidth: 1320,
+  },
+  notesAlone: {marginTop: 16, color: colors.text},
   source: {
     marginTop: 16,
     color: colors.textSecondary,

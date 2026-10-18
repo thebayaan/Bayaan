@@ -1,6 +1,6 @@
 import React from 'react';
 import {Text, type TextStyle} from 'react-native';
-import type {Run, Tone} from '../../services/adhkarPages';
+import {runText, type Run, type Tone} from '../../services/adhkarPages';
 import {colors} from '../../theme/colors';
 
 type Props = {
@@ -18,6 +18,7 @@ const TONE_SCALE: Record<Tone, number> = {
   addition: 1,
   narration: 0.8,
   reference: 0.8,
+  heading: 0.8,
 };
 
 const TONE_COLOR: Record<Tone, string> = {
@@ -25,11 +26,13 @@ const TONE_COLOR: Record<Tone, string> = {
   addition: 'rgba(244,243,236,0.78)',
   narration: colors.textSecondary,
   reference: colors.textSecondary,
+  heading: colors.textSecondary,
 };
 
 /**
  * A page of dhikr text in one flowing block, the phone's markers rendered as
- * tone: the words to say in full cream, narration and notes smaller and softer.
+ * tone: the words to say in full cream, narration and notes smaller and
+ * softer, a quoted surah's heading on its own line.
  */
 export function DhikrText({runs, style, fontSize}: Props): React.ReactElement {
   return (
@@ -41,7 +44,7 @@ export function DhikrText({runs, style, fontSize}: Props): React.ReactElement {
             fontSize: fontSize * TONE_SCALE[run.tone],
             color: TONE_COLOR[run.tone],
           }}>
-          {i > 0 ? ` ${run.text}` : run.text}
+          {runText(runs, i)}
         </Text>
       ))}
     </Text>
