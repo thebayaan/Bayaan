@@ -1,4 +1,9 @@
-import {continueKey, resumableContinue, stableContinue} from './homeContinue';
+import {
+  continueKey,
+  resumableContinue,
+  stableContinue,
+  timeLeftLabel,
+} from './homeContinue';
 import type {ContinueEntry} from '../services/continueListeningStore';
 
 const e = (
@@ -59,5 +64,29 @@ describe('resumableContinue', () => {
         continueKey,
       ),
     ).toEqual(['a:1']);
+  });
+});
+
+describe('timeLeftLabel', () => {
+  const at = (positionSeconds: number, durationSeconds: number): string =>
+    timeLeftLabel({positionSeconds, durationSeconds});
+
+  it('says Started when the length is unknown', () => {
+    expect(at(30, 0)).toBe('Started');
+  });
+
+  it('counts seconds in the last minute of a short surah, not Almost done', () => {
+    // Al-'Asr: about a quarter through with 29 s to go.
+    expect(at(11, 40)).toBe('29 s left');
+  });
+
+  it('says Almost done only near the end', () => {
+    expect(at(36, 40)).toBe('Almost done');
+    expect(at(560, 600)).toBe('Almost done');
+  });
+
+  it('writes minutes, and hours the way collection lengths are written', () => {
+    expect(at(0, 12 * 60)).toBe('12 min left');
+    expect(at(60, 60 + 134 * 60)).toBe('2 h 14 min left');
   });
 });

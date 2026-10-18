@@ -346,6 +346,12 @@ export function surahCaption(surahNumber: number): string {
     : `${minutes} min`;
 }
 
+/** "40 min", or "2 h 14 min" from an hour on: how Home writes a length. */
+export function formatMinutes(minutes: number): string {
+  const m = Math.max(0, Math.round(minutes));
+  return m >= 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m} min`;
+}
+
 /** "6 surahs · 40 min" for a collection or a playlist. */
 export function surahListMeta(surahNumbers: readonly number[]): string {
   const count = surahNumbers.length;
@@ -354,11 +360,7 @@ export function surahListMeta(surahNumbers: readonly number[]): string {
     (sum, n) => sum + estimateSurahMinutes(n),
     0,
   );
-  const time =
-    minutes >= 60
-      ? `${Math.floor(minutes / 60)} h ${minutes % 60} min`
-      : `${minutes} min`;
-  return `${count === 1 ? '1 surah' : `${count} surahs`} · ${time}`;
+  return `${count === 1 ? '1 surah' : `${count} surahs`} · ${formatMinutes(minutes)}`;
 }
 
 // ---- Which rails Home shows ---------------------------------------------

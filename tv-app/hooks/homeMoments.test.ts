@@ -15,6 +15,7 @@ import {
   surahCaption,
   surahFacts,
   surahListMeta,
+  formatMinutes,
   SURAH,
 } from './homeMoments';
 import {adhkarForList} from '../services/adhkarData';
@@ -234,6 +235,12 @@ describe('estimates and copy', () => {
     expect(surahListMeta([SURAH.kahf, SURAH.kahf])).toBe(
       '2 surahs · 1 h 22 min',
     );
+  });
+
+  it('formatMinutes writes hours from 60 minutes on', () => {
+    expect(formatMinutes(59)).toBe('59 min');
+    expect(formatMinutes(60)).toBe('1 h 0 min');
+    expect(formatMinutes(134)).toBe('2 h 14 min');
   });
 });
 

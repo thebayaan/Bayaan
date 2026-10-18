@@ -8,6 +8,10 @@
  * ordering is unit-tested.
  */
 import type {ContinueEntry} from '../services/continueListeningStore';
+import {formatMinutes} from './homeMoments';
+
+/** From this far through, a Continue card says "Almost done". */
+export const ALMOST_DONE_FRACTION = 0.9;
 
 export function continueKey(entry: {
   reciterId: string;
@@ -44,4 +48,21 @@ export function resumableContinue(
   isKnownReciter: (id: string) => boolean,
 ): ContinueEntry[] {
   return entries.filter(e => isKnownReciter(e.reciterId));
+}
+
+/**
+ * A Continue card's time left: "12 min left", "2 h 14 min left" (written
+ * like collection lengths), "40 s left" in the last minute of a short surah,
+ * "Almost done" only near the end, or "Started" when the length is unknown.
+ */
+export function timeLeftLabel(
+  entry: Pick<ContinueEntry, 'positionSeconds' | 'durationSeconds'>,
+): string {
+  if (!(entry.durationSeconds > 0)) return 'Started';
+  if (entry.positionSeconds >= entry.durationSeconds * ALMOST_DONE_FRACTION) {
+    return 'Almost done';
+  }
+  const left = entry.durationSeconds - entry.positionSeconds;
+  if (left < 60) return `${Math.max(1, Math.round(left))} s left`;
+  return `${formatMinutes(left / 60)} left`;
 }

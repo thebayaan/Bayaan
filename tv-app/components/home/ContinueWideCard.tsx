@@ -4,24 +4,11 @@ import {FocusableCard} from '../primitives/FocusableCard';
 import {FocusText} from '../primitives/focusContext';
 import {SurahArtwork} from '../brand/SurahArtwork';
 import {useRailFocus} from './HomeRail';
+import {timeLeftLabel} from '../../hooks/homeContinue';
 import {colors} from '../../theme/colors';
 import {fonts} from '../../theme/typography';
 import {createScaledStyles} from '../../theme/scale';
 import type {ContinueEntry} from '../../services/continueListeningStore';
-
-/** "12 min left", "Almost done", or "Started" when the length is unknown. */
-function timeLeftLabel(entry: ContinueEntry): string {
-  if (!entry.durationSeconds) return 'Started';
-  const left = Math.max(0, entry.durationSeconds - entry.positionSeconds);
-  const minutes = Math.round(left / 60);
-  if (minutes < 1) return 'Almost done';
-  if (minutes >= 60) {
-    const h = Math.floor(minutes / 60);
-    const m = minutes % 60;
-    return `${h}:${String(m).padStart(2, '0')} left`;
-  }
-  return `${minutes} min left`;
-}
 
 type Props = {
   entry: ContinueEntry;
