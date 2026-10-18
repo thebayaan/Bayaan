@@ -45,7 +45,7 @@ const EXPLAINERS: readonly Explainer[] = [
   {
     icon: HeartIcon,
     title: 'Loved surahs',
-    text: 'Hold OK on a surah and choose Like, or press the heart in the player.',
+    text: 'Hold OK on a surah and choose Love, or press Love in the player.',
   },
   {
     icon: PersonAudioIcon,
@@ -91,7 +91,7 @@ export function LibraryFirstRun({
           <Text style={styles.kicker}>YOUR LIBRARY</Text>
           <Text style={styles.title}>Keep what you love</Text>
           <Text style={styles.sentence}>
-            Surahs you love, reciters you favourite and your playlists live
+            Surahs you love, reciters you favorite and your playlists live
             here.
           </Text>
           <TVFocusGuideView autoFocus style={styles.actions}>
@@ -132,7 +132,7 @@ export function LibraryFirstRun({
         <View style={styles.starter}>
           <Text style={styles.starterTitle}>Good places to start</Text>
           <Text style={styles.starterHint}>
-            Hold OK on a surah to like it or add it to a playlist.
+            Hold OK on a surah to love it or add it to a playlist.
           </Text>
           <TVFocusGuideView autoFocus style={styles.starterRow}>
             {STARTER_SURAHS.map(s => (

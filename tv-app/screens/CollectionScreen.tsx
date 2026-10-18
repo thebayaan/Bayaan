@@ -88,7 +88,7 @@ const EMPTY: Record<
   {text: string; action: string; tab: 'surahs' | 'reciters'}
 > = {
   loved: {
-    text: 'Hold OK on any surah and choose Like, or press the heart in the player.',
+    text: 'Hold OK on any surah and choose Love, or press Love in the player.',
     action: 'Browse surahs',
     tab: 'surahs',
   },
