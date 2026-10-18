@@ -28,6 +28,7 @@ import {
   voiceForSurah,
   type PlayRequest,
 } from '../services/playbackRouting';
+import {defaultReciterChoices} from '../services/reciterPicker';
 import {pushScreenBack} from '../services/screenBack';
 import {
   firstVoice,
@@ -135,12 +136,14 @@ export function SurahsScreen(): React.ReactElement {
   const surahs = useMemo(() => filterSurahs(filter, juz), [filter, juz]);
   const shownNumbers = useMemo(() => surahs.map(s => s.id), [surahs]);
 
-  // Who the picker offers: the current reciter first (where focus lands),
-  // then favourites, then the featured order.
+  // Who the picker offers: the reciters Settings offers as the default (the
+  // whole Quran, so a pick never falls back on most surahs), the current
+  // one first (where focus lands), then favourites, then the popular ones
+  // and everyone else by name.
   const pickerReciters = useMemo<Reciter[]>(() => {
     if (!picking) return [];
     const favoriteIds = new Set(favorites.map(f => f.reciterId));
-    const ordered = featuredFirst(reciters);
+    const ordered = defaultReciterChoices(reciters, reciter?.id ?? null);
     const rank = (r: Reciter): number =>
       r.id === reciter?.id ? 0 : favoriteIds.has(r.id) ? 1 : 2;
     return ordered

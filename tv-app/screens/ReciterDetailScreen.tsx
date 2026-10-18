@@ -45,6 +45,7 @@ import {
 } from '../services/playbackRouting';
 import {defaultRewayah} from '../services/menuChoices';
 import {getContinueListening} from '../services/continueListeningStore';
+import {hasCompleteQuran} from '../services/reciterPicker';
 import {resumeRequest} from '../services/surahsPlayback';
 import {useContextMenuStore} from '../store/contextMenuStore';
 import {useNavStore} from '../store/navStore';
@@ -369,6 +370,15 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
     );
   }
 
+  // Only a reciter with the whole Quran can be the default, as in Settings:
+  // anyone else would hand most surahs to another voice.
+  const canBeDefault =
+    isDefault ||
+    hasCompleteQuran({
+      ...reciter,
+      rewayat: rewayat.length > 0 ? rewayat : reciter.rewayat,
+    });
+
   function pressDefault(): void {
     if (isDefault) {
       showToast(
@@ -499,19 +509,23 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
                   </FocusText>
                 </View>
               </FocusableButton>
-              <FocusableButton
-                onPress={pressDefault}
-                accessibilityLabel={
-                  isDefault ? 'Your default reciter' : 'Make default reciter'
-                }
-                style={[styles.actionBtn, styles.defaultBtn]}>
-                <View style={styles.actionInner}>
-                  {isDefault ? <FocusIcon icon={CheckIcon} size={20} /> : null}
-                  <FocusText style={styles.actionText}>
-                    {isDefault ? 'Default reciter' : 'Make default'}
-                  </FocusText>
-                </View>
-              </FocusableButton>
+              {canBeDefault ? (
+                <FocusableButton
+                  onPress={pressDefault}
+                  accessibilityLabel={
+                    isDefault ? 'Your default reciter' : 'Make default reciter'
+                  }
+                  style={[styles.actionBtn, styles.defaultBtn]}>
+                  <View style={styles.actionInner}>
+                    {isDefault ? (
+                      <FocusIcon icon={CheckIcon} size={20} />
+                    ) : null}
+                    <FocusText style={styles.actionText}>
+                      {isDefault ? 'Default reciter' : 'Make default'}
+                    </FocusText>
+                  </View>
+                </FocusableButton>
+              ) : null}
             </TVFocusGuideView>
           </View>
         </View>
