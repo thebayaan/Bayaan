@@ -2,7 +2,9 @@ import {adhkarForList} from './adhkarData';
 import {
   ARABIC_PAGE_LETTERS,
   arabicFontSize,
+  chooseBreaks,
   dhikrPages,
+  plainQuranBrackets,
   sourceLine,
   splitEvenly,
   toRuns,
@@ -34,6 +36,43 @@ describe('adhkar pages', () => {
         );
       }
     }
+  });
+
+  it('turns the page between quoted surahs, never inside one', () => {
+    const [first] = adhkarForList('before-sleep');
+    const pages = dhikrPages(first.arabic, first.translation);
+    expect(pages.length).toBeGreaterThan(1);
+    const end = pages[0].arabic[pages[0].arabic.length - 1].text;
+    expect(end).toMatch(/﴾\.?$/);
+    // The translation turns outside its parenthesis, with the Arabic.
+    const enEnd = pages[0].translation[pages[0].translation.length - 1].text;
+    const opens = (enEnd.match(/\(/g) ?? []).length;
+    expect((enEnd.match(/\)/g) ?? []).length).toBe(opens);
+  });
+
+  it('prefers a sentence end near the even split', () => {
+    const tokens = Array.from({length: 8}, () => ({weight: 5, brk: 0}));
+    expect(chooseBreaks(tokens, [20], 20, 0.3, 1)).toEqual([4]);
+    // A sentence ends one word later: the page turns there instead.
+    tokens[4].brk = 2;
+    expect(chooseBreaks(tokens, [20], 20, 0.3, 1)).toEqual([5]);
+    // Further than the window allows, the even split wins.
+    expect(chooseBreaks(tokens, [20], 20, 0.2, 1)).toEqual([4]);
+    // Never inside a parenthesis when a way round is near.
+    tokens[4].brk = 0;
+    tokens[3].brk = -1;
+    expect(chooseBreaks(tokens, [20], 20, 0.3, 1)).not.toEqual([4]);
+  });
+
+  it('draws the ornate brackets plainly when asked', () => {
+    expect(plainQuranBrackets('﴿قُلْ﴾')).toBe('(قُلْ)');
+    const [first] = adhkarForList('before-sleep');
+    const text = dhikrPages(first.arabic, first.translation, {
+      plainBrackets: true,
+    })
+      .flatMap(p => p.arabic.map(r => r.text))
+      .join(' ');
+    expect(text).not.toMatch(/[﴾﴿]/);
   });
 
   it('splits by weight without leaving a page empty', () => {

@@ -1,3 +1,4 @@
+import {estimateMinutes} from '../services/adhkarBrowse';
 import {
   adhkarFacts,
   adhkarTileMeta,
@@ -207,12 +208,12 @@ describe('estimates and copy', () => {
 
   it('adhkar minutes count repeats and never go below one', () => {
     expect(estimateAdhkarMinutes([])).toBe(1);
-    const one = {arabic: 'x'.repeat(45 * 60), repeatCount: 1};
+    const one = {arabic: 'س'.repeat(14 * 60), repeatCount: 1};
     expect(estimateAdhkarMinutes([one])).toBe(1);
     expect(estimateAdhkarMinutes([{...one, repeatCount: 3}])).toBe(3);
+    // The same time the Adhkar screen shows for the list.
     const morning = estimateAdhkarMinutes(adhkarForList('morning-adhkar'));
-    expect(morning).toBeGreaterThanOrEqual(10);
-    expect(morning).toBeLessThanOrEqual(20);
+    expect(morning).toBe(estimateMinutes('morning-adhkar'));
   });
 
   it('builds the hero sentences', () => {
