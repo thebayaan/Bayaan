@@ -113,7 +113,7 @@ export function SidePanel({
                       {option.detail ? (
                         <FocusText
                           style={styles.detail}
-                          color={colors.textTertiary}
+                          color={colors.textSecondary}
                           focusedColor={colors.onFocusSecondary}
                           numberOfLines={1}>
                           {option.detail}
@@ -173,7 +173,9 @@ const styles = createScaledStyles({
     borderLeftWidth: 1,
     borderLeftColor: colors.border,
     paddingTop: 64,
-    paddingHorizontal: 40,
+    paddingLeft: 40,
+    // Flush right: keeps a focused row inside the title-safe area.
+    paddingRight: 80,
   },
   title: {
     color: colors.text,
@@ -190,7 +192,7 @@ const styles = createScaledStyles({
     color: colors.accent,
     fontFamily: fonts.bold,
     fontWeight: '700',
-    fontSize: 14,
+    fontSize: 16,
     letterSpacing: 2.5,
     textTransform: 'uppercase',
     paddingHorizontal: 20,
@@ -201,7 +203,7 @@ const styles = createScaledStyles({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 12,
-    borderRadius: 14,
+    borderRadius: 16,
     gap: 16,
   },
   optionText: {flex: 1, minWidth: 0},
@@ -224,7 +226,7 @@ const styles = createScaledStyles({
   detail: {
     fontFamily: fonts.medium,
     fontWeight: '500',
-    fontSize: 16,
+    fontSize: 18,
     marginTop: 2,
   },
 });

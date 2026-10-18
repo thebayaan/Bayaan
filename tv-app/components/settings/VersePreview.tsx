@@ -113,7 +113,7 @@ const styles = createScaledStyles({
     color: colors.accent,
     fontFamily: fonts.bold,
     fontWeight: '700',
-    fontSize: 15,
+    fontSize: 16,
     letterSpacing: 2.4,
     textTransform: 'uppercase',
     marginTop: 6,
