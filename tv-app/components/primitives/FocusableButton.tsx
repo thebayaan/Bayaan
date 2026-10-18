@@ -1,5 +1,5 @@
 import React, {useRef} from 'react';
-import {Animated, Pressable, StyleProp, ViewStyle} from 'react-native';
+import {Animated, Pressable, StyleProp, View, ViewStyle} from 'react-native';
 import {colors} from '../../theme/colors';
 import {animateFocusScale, focusScaleDefault} from './focusMotion';
 import {FocusedContext} from './focusContext';
@@ -19,6 +19,10 @@ type Props = {
   focusScale?: number;
   /** Draw the hairline outline a screen's main action wears at rest. */
   outlined?: boolean;
+  /** False takes the button out of focus (both engines) without restyling it. */
+  focusable?: boolean;
+  /** The pressable view, e.g. to call requestTVFocus() on it. */
+  ref?: React.Ref<View>;
 };
 
 /**
@@ -37,6 +41,8 @@ export function FocusableButton({
   accessibilityLabel,
   focusScale = focusScaleDefault,
   outlined,
+  focusable,
+  ref,
 }: Props): React.ReactElement {
   const scaleValue = useRef(new Animated.Value(1)).current;
   const [isFocused, setIsFocused] = React.useState(false);
@@ -54,6 +60,8 @@ export function FocusableButton({
   return (
     <Animated.View style={[containerStyle, {transform: [{scale: scaleValue}]}]}>
       <Pressable
+        ref={ref}
+        focusable={focusable}
         onPress={onPress}
         onFocus={handleFocus}
         onBlur={handleBlur}

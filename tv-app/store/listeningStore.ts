@@ -1,11 +1,17 @@
 import {create} from 'zustand';
 import {useTVPlayerStore} from './tvPlayerStore';
-import type {VerseRepeat} from '../services/verseTimeline';
+import {
+  advanceRepeat,
+  type VerseRepeat,
+  type VerseTimeline,
+} from '../services/verseTimeline';
+import type {QueueItem} from '../types/player';
 
 /**
  * Listening-room choices that sit on top of the player: repeating a verse or
  * the whole surah. Surah repeat rides the player's own repeat-one; verse
- * repeat is enforced by the listening room against the verse timings.
+ * repeat is enforced app-wide against the verse timings (see
+ * startVerseRepeatSync), so it keeps going while the listener browses.
  */
 export type RepeatChoice =
   | {kind: 'off'}
@@ -73,7 +79,8 @@ export type PanelKey =
   | 'reciter'
   | 'sleep'
   | 'sound'
-  | 'queue';
+  | 'queue'
+  | 'save';
 
 /** The footer chip for a repeat choice, or null when repeat is off. */
 export function repeatChip(choice: RepeatChoice): string | null {
@@ -155,8 +162,23 @@ type ListeningState = {
   setRepeatTimes: (times: number) => void;
   setVerseRepeat: (repeat: VerseRepeat | null) => void;
   setSleepChoice: (minutes: number) => void;
+  /** The track a verse repeat belongs to (see itemKey); another track ends it. */
+  repeatKey: string | null;
+  /** The verse timings the listening room last loaded, and for which track. */
+  timeline: {key: string; timeline: VerseTimeline | null} | null;
+  setTimeline: (key: string, timeline: VerseTimeline | null) => void;
   reset: () => void;
 };
+
+/** Identifies a track: the same surah by another reciter or rewayah differs. */
+export function itemKey(item: QueueItem | undefined): string {
+  return item ? `${item.reciterId}:${item.rewayahId}:${item.surahNumber}` : '';
+}
+
+function currentKey(): string {
+  const {queue, currentIndex} = useTVPlayerStore.getState();
+  return itemKey(queue[currentIndex]);
+}
 
 export const useListeningStore = create<ListeningState>(set => ({
   trayOpen: false,
@@ -168,17 +190,21 @@ export const useListeningStore = create<ListeningState>(set => ({
   repeat: {kind: 'off'},
   verseRepeat: null,
   sleepChoice: 0,
+  repeatKey: null,
+  timeline: null,
 
   setRepeat: (choice, currentAyah) => {
     useTVPlayerStore
       .getState()
       .setRepeat(choice.kind === 'surah' ? 'one' : 'off');
+    // During the opening (the basmala, verse 0) "this verse" is verse 1.
+    const verse = choice.kind === 'verse';
     set({
       repeat: choice,
-      verseRepeat:
-        choice.kind === 'verse' && currentAyah > 0
-          ? {ayah: currentAyah, times: choice.times, played: 0}
-          : null,
+      verseRepeat: verse
+        ? {ayah: Math.max(1, currentAyah), times: choice.times, played: 0}
+        : null,
+      repeatKey: verse ? currentKey() : null,
     });
   },
 
@@ -195,6 +221,12 @@ export const useListeningStore = create<ListeningState>(set => ({
     set({sleepChoice: minutes});
   },
 
+  setTimeline: (key, timeline) => {
+    const current = useListeningStore.getState().timeline;
+    if (current?.key === key && current.timeline === timeline) return;
+    set({timeline: {key, timeline}});
+  },
+
   reset: () => {
     useTVPlayerStore.getState().setRepeat('off');
     set({
@@ -204,6 +236,70 @@ export const useListeningStore = create<ListeningState>(set => ({
       repeat: {kind: 'off'},
       verseRepeat: null,
       sleepChoice: 0,
+      repeatKey: null,
+      timeline: null,
     });
   },
 }));
+
+/** Positions reported this soon after a seek may still be from before it. */
+const SEEK_SETTLE_MS = 600;
+let lastSeekAt = 0;
+
+/** Call on any seek inside the surah, so stale positions don't count. */
+export function noteRepeatSeek(): void {
+  lastSeekAt = Date.now();
+}
+
+/**
+ * Verse repeat, checked on every position update: sends playback back to the
+ * verse start until the count runs out, then lets it carry on. With a pause
+ * set, the player holds at the verse start before each replay so the
+ * listener can recite it back. Exported for tests; startVerseRepeatSync runs
+ * it.
+ */
+export function checkVerseRepeat(): void {
+  const listening = useListeningStore.getState();
+  const {verseRepeat, repeatKey, timeline, repeatPauseMs} = listening;
+  if (!verseRepeat) return;
+  const key = currentKey();
+  // A new surah (or reciter) ends the verse repeat from the last one.
+  if (repeatKey !== null && key !== repeatKey) {
+    listening.setRepeat({kind: 'off'}, 0);
+    return;
+  }
+  const player = useTVPlayerStore.getState();
+  if (player.pending || player.held || player.status !== 'playing') return;
+  if (!timeline?.timeline || timeline.key !== key) return;
+  if (Date.now() - lastSeekAt < SEEK_SETTLE_MS) return;
+  const result = advanceRepeat(
+    timeline.timeline,
+    verseRepeat,
+    player.positionSeconds * 1000,
+  );
+  if (result.seekToMs !== null) {
+    noteRepeatSeek();
+    player.seekTo(result.seekToMs / 1000);
+    listening.setVerseRepeat(result.repeat);
+    if (repeatPauseMs > 0) player.hold(repeatPauseMs);
+  } else if (result.done) {
+    listening.setRepeat({kind: 'off'}, 0);
+  }
+}
+
+let repeatSyncStarted = false;
+
+/** Starts enforcing verse repeat app-wide; safe to call more than once. */
+export function startVerseRepeatSync(): void {
+  if (repeatSyncStarted) return;
+  repeatSyncStarted = true;
+  useTVPlayerStore.subscribe((state, prev) => {
+    if (
+      state.positionSeconds !== prev.positionSeconds ||
+      state.currentIndex !== prev.currentIndex ||
+      state.queue !== prev.queue
+    ) {
+      checkVerseRepeat();
+    }
+  });
+}

@@ -7,7 +7,7 @@ import {textScale, useDisplayStore} from '../../store/displayStore';
 import {colors} from '../../theme/colors';
 import {quranTextFontAvailable} from '../../theme/calligraphy';
 import {fonts, quranTextFontFamily} from '../../theme/typography';
-import {createScaledStyles} from '../../theme/scale';
+import {createScaledStyles, scale} from '../../theme/scale';
 
 /** Al-Mulk opens the preview, as in the approved Settings screen. */
 const PREVIEW_SURAH = 67;
@@ -40,8 +40,9 @@ export function VersePreview({large = false}: Props): React.ReactElement {
   const showTranslation = mode === 'both' || mode === 'translation';
   const translationText =
     translation?.[0] ?? (edition === 'en.sahih' ? FALLBACK_TRANSLATION : '');
-  const arabicSize = 52 * factor;
-  const translationSize = (mode === 'translation' ? 34 : 24) * factor;
+  // Scaled like the static styles (Android TV would draw them twice the size).
+  const arabicSize = scale(52 * factor);
+  const translationSize = scale((mode === 'translation' ? 34 : 24) * factor);
 
   return (
     <View style={[styles.box, large && styles.boxLarge]}>

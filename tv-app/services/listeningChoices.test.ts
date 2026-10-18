@@ -3,6 +3,7 @@ import {
   reciterChoicesForSurah,
   rewayahForSurah,
   rewayahLabel,
+  queueWindow,
   shortReciterName,
   upcoming,
 } from './listeningChoices';
@@ -122,6 +123,41 @@ describe('upcoming', () => {
 
   it('is empty at the end of the queue', () => {
     expect(upcoming(queue, 3, 5)).toEqual([]);
+  });
+});
+
+describe('queueWindow', () => {
+  const queue = [1, 2, 3, 4, 5, 6].map(
+    n =>
+      ({
+        reciterId: 'r',
+        surahNumber: n,
+        audioUrl: '',
+        title: `S${n}`,
+        subtitle: '',
+      }) as QueueItem,
+  );
+  const numbers = (w: ReturnType<typeof queueWindow>) =>
+    w.map(u => [u.item.surahNumber, u.index]);
+
+  it('shows played surahs before the current one and the next after', () => {
+    expect(numbers(queueWindow(queue, 3, 2, 1))).toEqual([
+      [2, 1],
+      [3, 2],
+      [4, 3],
+      [5, 4],
+    ]);
+  });
+
+  it('stops at both ends of the queue', () => {
+    expect(numbers(queueWindow(queue, 0, 3, 1))).toEqual([
+      [1, 0],
+      [2, 1],
+    ]);
+    expect(numbers(queueWindow(queue, 5, 1, 4))).toEqual([
+      [5, 4],
+      [6, 5],
+    ]);
   });
 });
 

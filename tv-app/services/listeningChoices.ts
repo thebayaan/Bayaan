@@ -115,6 +115,21 @@ export function reciterChoicesForSurah(
 }
 
 /** What plays after the current item, with each one's place in the queue. */
+/**
+ * The Queue panel's window onto the queue: up to `before` surahs already
+ * played, the one playing, then up to `after` coming next, with indexes.
+ */
+export function queueWindow(
+  queue: readonly QueueItem[],
+  currentIndex: number,
+  before: number,
+  after: number,
+): {item: QueueItem; index: number}[] {
+  const from = Math.max(0, currentIndex - before);
+  const to = Math.min(queue.length, currentIndex + 1 + after);
+  return queue.slice(from, to).map((item, i) => ({item, index: from + i}));
+}
+
 export function upcoming(
   queue: readonly QueueItem[],
   currentIndex: number,

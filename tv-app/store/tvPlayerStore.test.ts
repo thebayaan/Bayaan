@@ -382,3 +382,101 @@ describe('seedDefaultReciter', () => {
     }
   });
 });
+
+describe('listening-room playback states', () => {
+  beforeEach(() => {
+    useTVPlayerStore.getState().reset();
+  });
+
+  it("a verse repeat's gap resumes on its own", async () => {
+    jest.useFakeTimers();
+    try {
+      const engine = makeMockEngine();
+      useTVPlayerStore.getState().setEngine(engine);
+      await useTVPlayerStore.getState().loadQueue(queue, 0);
+      (engine.play as jest.Mock).mockClear();
+      useTVPlayerStore.getState().hold(2000);
+      expect(engine.pause).toHaveBeenCalled();
+      expect(useTVPlayerStore.getState().held).toBe(true);
+      jest.advanceTimersByTime(2000);
+      expect(engine.play).toHaveBeenCalledTimes(1);
+      expect(useTVPlayerStore.getState().held).toBe(false);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('Play/Pause in the gap stays paused and cancels the replay', async () => {
+    jest.useFakeTimers();
+    try {
+      const engine = makeMockEngine();
+      useTVPlayerStore.getState().setEngine(engine);
+      await useTVPlayerStore.getState().loadQueue(queue, 0);
+      useTVPlayerStore.getState().hold(5000);
+      engine.emit({status: 'paused', positionSeconds: 3, durationSeconds: 60});
+      (engine.play as jest.Mock).mockClear();
+      useTVPlayerStore.getState().toggle();
+      expect(useTVPlayerStore.getState().held).toBe(false);
+      jest.advanceTimersByTime(6000);
+      expect(engine.play).not.toHaveBeenCalled();
+      // The next press plays as usual.
+      useTVPlayerStore.getState().toggle();
+      expect(engine.play).toHaveBeenCalledTimes(1);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('a new track cancels a pending replay', async () => {
+    jest.useFakeTimers();
+    try {
+      const engine = makeMockEngine();
+      useTVPlayerStore.getState().setEngine(engine);
+      await useTVPlayerStore.getState().loadQueue(queue, 0);
+      useTVPlayerStore.getState().hold(2000);
+      await useTVPlayerStore.getState().next();
+      (engine.play as jest.Mock).mockClear();
+      jest.advanceTimersByTime(3000);
+      expect(engine.play).not.toHaveBeenCalled();
+      expect(useTVPlayerStore.getState().held).toBe(false);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('a sleep timer that stops playback leaves the room slept until a press', () => {
+    jest.useFakeTimers();
+    try {
+      const engine = makeMockEngine();
+      useTVPlayerStore.getState().setEngine(engine);
+      useTVPlayerStore.getState().setSleep(1);
+      jest.advanceTimersByTime(61 * 1000);
+      expect(useTVPlayerStore.getState().slept).toBe(true);
+      useTVPlayerStore.getState().wake();
+      expect(useTVPlayerStore.getState().slept).toBe(false);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('after "sleep at end of surah", play goes on to the next surah', async () => {
+    const engine = makeMockEngine();
+    useTVPlayerStore.getState().setEngine(engine);
+    await useTVPlayerStore.getState().loadQueue(queue, 0);
+    useTVPlayerStore.getState().setSleep(-1);
+    engine.emit({
+      status: 'playing',
+      positionSeconds: 59.8,
+      durationSeconds: 60,
+    });
+    engine.emit({status: 'idle', positionSeconds: 60, durationSeconds: 60});
+    expect(engine.pause).toHaveBeenCalled();
+    expect(useTVPlayerStore.getState().slept).toBe(true);
+    expect(useTVPlayerStore.getState().currentIndex).toBe(0);
+    useTVPlayerStore.getState().toggle();
+    await Promise.resolve();
+    expect(useTVPlayerStore.getState().currentIndex).toBe(1);
+    expect(engine.load).toHaveBeenLastCalledWith('https://x/002.mp3');
+    expect(useTVPlayerStore.getState().slept).toBe(false);
+  });
+});
