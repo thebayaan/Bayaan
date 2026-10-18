@@ -1,14 +1,18 @@
-import React from 'react';
+import React, {useEffect, useState} from 'react';
 import {SidePanel, type PanelOption, type PanelSection} from './SidePanel';
+import {useSleepLeftMs} from './useSleepLeft';
 import SURAHS from '../../../data/surahData.json';
 import {useTVPlayerStore} from '../../store/tvPlayerStore';
 import {useOverlayStore} from '../../store/overlayStore';
 import {
+  DEFAULT_VERSE_TIMES,
+  formatSpeed,
   pauseLabel,
   REPEAT_PAUSES,
   REPEAT_TIMES,
   SLEEP_CYCLE,
   sleepLabel,
+  sleepLeftLabel,
   SPEED_CYCLE,
   timesLabel,
   useListeningStore,
@@ -33,9 +37,11 @@ import {useFavorites} from '../../hooks/useFavorites';
 import {useRecentlyPlayed} from '../../hooks/useRecentlyPlayed';
 import {usePlaylists} from '../../hooks/usePlaylists';
 import {
+  choiceKey,
   queueWindow,
   reciterChoicesForSurah,
   rewayahLabel,
+  shortReciterName,
   type ReciterChoice,
 } from '../../services/listeningChoices';
 import {
@@ -58,8 +64,13 @@ const surahMeta = new Map<number, SurahMeta>(
   (SURAHS as SurahMeta[]).map(s => [s.id, s]),
 );
 
-/** Reciters offered in the Reciter panel. */
+/**
+ * Reciters the Reciter panel lists at first; an "All reciters" row reveals
+ * the rest in place (each row has a portrait, so not all at once).
+ */
 const RECITER_CHOICES = 40;
+/** The Reciter panel's "All reciters" row, among the choice keys. */
+const ALL_RECITERS = '__all__';
 /** Surahs listed in the Queue panel after the one playing. */
 const QUEUE_SHOWN = 40;
 /** Surahs already played that the Queue panel lists before it. */
@@ -71,6 +82,11 @@ const NEW_PLAYLIST = '__new__';
  * can be listed already among the played ones, and rows are keyed by value.
  */
 const START_AGAIN = -2;
+/** The Queue panel's note that more surahs follow than it lists. */
+const MORE_QUEUED = -3;
+
+// Kept here too for the screens that import it from the panels.
+export {formatSpeed};
 
 type Props = {
   currentAyah: number;
@@ -80,13 +96,11 @@ type Props = {
   reciters: Reciter[];
   /** The rewayah playing now, so a new reciter keeps it when they have it. */
   rewayahName: string;
+  /** Its style (Murattal, Mujawwad...), kept the same way. */
+  rewayahStyle: string;
   /** Switch the current surah to another reciter. */
   onSwitchReciter: (choice: ReciterChoice) => void;
 };
-
-export function formatSpeed(speed: number): string {
-  return `${Number.isInteger(speed) ? speed.toFixed(1) : speed}×`;
-}
 
 /** The panel for whichever tray setting is open, or nothing. */
 export function ListeningPanels({
@@ -95,10 +109,19 @@ export function ListeningPanels({
   onActivity,
   reciters,
   rewayahName,
+  rewayahStyle,
   onSwitchReciter,
 }: Props): React.ReactElement | null {
   const panel = useListeningStore(s => s.panel);
   const setPanel = useListeningStore(s => s.setPanel);
+  const setResumePanel = useListeningStore(s => s.setResumePanel);
+  const sleepLeftMs = useSleepLeftMs();
+  // The Reciter panel's full list, once asked for; it starts short again
+  // each time the panel opens.
+  const [allReciters, setAllReciters] = useState(false);
+  useEffect(() => {
+    if (panel !== 'reciter') setAllReciters(false);
+  }, [panel]);
   const queue = useTVPlayerStore(s => s.queue);
   const currentIndex = useTVPlayerStore(s => s.currentIndex);
   const jumpToIndex = useTVPlayerStore(s => s.jumpToIndex);
@@ -153,8 +176,17 @@ export function ListeningPanels({
           ]
         : []),
       {value: 'surah', label: 'Surah'},
+      ...(queue.length > 1
+        ? [
+            {
+              value: 'queue' as const,
+              label: 'Whole queue',
+              detail: `All ${queue.length} surahs, then from the first again`,
+            },
+          ]
+        : []),
     ];
-    const times = repeat.kind === 'verse' ? repeat.times : 3;
+    const times = repeat.kind === 'verse' ? repeat.times : DEFAULT_VERSE_TIMES;
     sections = [
       {
         title: 'Repeat',
@@ -164,7 +196,7 @@ export function ListeningPanels({
           setRepeat(
             kind === 'verse'
               ? {kind, times}
-              : kind === 'surah'
+              : kind === 'surah' || kind === 'queue'
                 ? {kind}
                 : {kind: 'off'},
             currentAyah,
@@ -205,7 +237,15 @@ export function ListeningPanels({
     sections = [
       {
         title: 'Stop playing after',
-        options: SLEEP_CYCLE.map(m => ({value: m, label: sleepLabel(m)})),
+        // The running timer's row says how long is left.
+        options: SLEEP_CYCLE.map(m => ({
+          value: m,
+          label: sleepLabel(m),
+          detail:
+            sleepLeftMs !== undefined && m === sleepChoice
+              ? sleepLeftLabel(sleepLeftMs)
+              : undefined,
+        })),
         selected: sleep.kind === 'off' ? 0 : sleepChoice,
         onSelect: setSleepChoice,
       },
@@ -221,24 +261,52 @@ export function ListeningPanels({
     ];
     const choices = reciterChoicesForSurah(reciters, surahNumber, {
       currentId: item?.reciterId ?? null,
+      currentRewayahId: item?.rewayahId,
       preferredIds,
       preferRewayahName: rewayahName,
-      limit: RECITER_CHOICES,
+      preferStyle: rewayahStyle,
+      limit: Infinity,
     });
+    const listed = choices.filter(
+      (c, i) =>
+        allReciters || i < RECITER_CHOICES || c.reciter.id === item?.reciterId,
+    );
+    const hidden = choices.length - listed.length;
+    const keyOf = (c: ReciterChoice): string =>
+      choiceKey(c.reciter.id, c.rewayah.id);
+    const options: PanelOption<string>[] = listed.map(c => ({
+      value: keyOf(c),
+      label: c.reciter.name,
+      detail: rewayahLabel(c.rewayah),
+      face: {source: getReciterArtwork(c.reciter), name: c.reciter.name},
+    }));
+    if (hidden > 0) {
+      options.push({
+        value: ALL_RECITERS,
+        label: `All ${choices.length} reciters`,
+        detail: `${hidden} more who recite this surah`,
+      });
+    }
+    const current = item ? choiceKey(item.reciterId, item.rewayahId) : null;
     sections = [
       {
         title: `Recite ${surahMeta.get(surahNumber)?.name ?? 'this surah'} with`,
-        options: choices.map(c => ({
-          value: c.reciter.id,
-          label: c.reciter.name,
-          detail: rewayahLabel(c.rewayah),
-          face: {source: getReciterArtwork(c.reciter), name: c.reciter.name},
-        })),
-        selected: item?.reciterId ?? null,
-        onSelect: (id: string) => {
-          const choice = choices.find(c => c.reciter.id === id);
+        options,
+        selected: current,
+        // Once the full list shows, focus goes to the first reciter it
+        // added, where the "All reciters" row was.
+        focusOn:
+          allReciters && listed.length > RECITER_CHOICES
+            ? keyOf(listed[RECITER_CHOICES])
+            : undefined,
+        onSelect: (key: string) => {
+          if (key === ALL_RECITERS) {
+            setAllReciters(true);
+            return;
+          }
+          const choice = choices.find(c => keyOf(c) === key);
           setPanel(null);
-          if (choice && id !== item?.reciterId) onSwitchReciter(choice);
+          if (choice && key !== current) onSwitchReciter(choice);
         },
       },
     ];
@@ -273,18 +341,35 @@ export function ListeningPanels({
       QUEUE_PLAYED_SHOWN,
       QUEUE_SHOWN,
     );
+    // A queue of several voices (a playlist) says who recites each surah.
+    const mixed = queue.some(q => q.reciterId !== queue[0]?.reciterId);
     const options: PanelOption<number>[] = shown.map(({item, index}) => {
       const meta = surahMeta.get(item.surahNumber);
       const about = meta
         ? `${meta.translated_name_english} · ${meta.verses_count} verses`
         : undefined;
+      const voice = mixed ? shortReciterName(item.subtitle) : null;
       return {
         value: index,
         label: `${item.surahNumber}. ${item.title}`,
-        detail: index === currentIndex ? 'Playing now' : about,
+        detail:
+          index === currentIndex
+            ? voice
+              ? `Playing now · ${voice}`
+              : 'Playing now'
+            : voice
+              ? `${voice} · ${meta?.translated_name_english ?? ''}`
+              : about,
       };
     });
     const last = currentIndex >= queue.length - 1;
+    const beyond = queue.length - 1 - (shown[shown.length - 1]?.index ?? 0);
+    if (beyond > 0) {
+      options.push({
+        value: MORE_QUEUED,
+        label: `${beyond} more ${beyond === 1 ? 'surah follows' : 'surahs follow'}`,
+      });
+    }
     if (last && queue.length > 1) {
       options.push({
         value: START_AGAIN,
@@ -296,7 +381,8 @@ export function ListeningPanels({
     const playing = queue[currentIndex];
     sections = [
       {
-        title: playing ? `Queue with ${playing.subtitle}` : 'Queue',
+        // One voice is named once; several are named on each row.
+        title: playing && !mixed ? `Queue with ${playing.subtitle}` : 'Queue',
         options,
         selected: currentIndex,
         onSelect: (index: number) => {
@@ -342,6 +428,9 @@ export function ListeningPanels({
         onSelect: (id: string) => {
           if (!entry) return;
           if (id === NEW_PLAYLIST) {
+            // The player unmounts under the editor; it comes back to this
+            // panel, showing the new playlist checked.
+            setResumePanel('save');
             setPanel(null);
             push({screen: 'playlistEdit', seed: entry});
             return;
