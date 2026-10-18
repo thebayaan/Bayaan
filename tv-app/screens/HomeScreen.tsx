@@ -189,6 +189,16 @@ export function HomeScreen(): React.ReactElement {
   const [heroFocus, setHeroFocus] = useState<'primary' | 'secondary' | null>(
     nowPlayingFirst ? null : 'primary',
   );
+  // Home's first focus is a one-shot request: claimed once anything here
+  // has focus (left on, tvOS asks again on every layout of the view), and
+  // never made when Back arrived on Home's sidebar item (navStore arrival),
+  // so focus stays there and the next Back leaves the app.
+  const [firstFocusTaken, setFirstFocusTaken] = useState(
+    () => useNavStore.getState().arrival === 'sidebar',
+  );
+  useEffect(() => useNavStore.getState().clearArrival(), []);
+  const heroPreferred =
+    firstFocusTaken && heroFocus === 'primary' ? null : heroFocus;
   // The surah the reciter picker is for, frozen while it is open so an hour
   // turning (which can swap the hero) never pulls the panel away under focus.
   const [pickerSurah, setPickerSurah] = useState<number | null>(null);
@@ -211,6 +221,7 @@ export function HomeScreen(): React.ReactElement {
   }, []);
   const onHeroFocus = useCallback((): void => {
     heroFocused.current = true;
+    setFirstFocusTaken(true);
     // Catch up with an hour that turned while focus was in the rails.
     setPlanHour(planHourOf(new Date()));
     scrollToY(0);
@@ -222,6 +233,7 @@ export function HomeScreen(): React.ReactElement {
       if (!handler) {
         handler = () => {
           heroFocused.current = false;
+          setFirstFocusTaken(true);
           const y = railY.current.get(row);
           if (y !== undefined) scrollToY(y - scale(RAIL_TOP_GAP));
         };
@@ -699,12 +711,15 @@ export function HomeScreen(): React.ReactElement {
           onPrimary={handlePrimary}
           secondaryLabel={hero.secondaryLabel}
           onSecondary={handleSecondary}
-          preferredFocus={heroFocus}
+          preferredFocus={heroPreferred}
           onFocus={onHeroFocus}
           header={
             <NowPlayingStrip
               hasTVPreferredFocus={
-                nowPlayingFirst && heroFocus === null && !pickerOpen
+                nowPlayingFirst &&
+                heroFocus === null &&
+                !pickerOpen &&
+                !firstFocusTaken
               }
               onFocus={onHeroFocus}
             />

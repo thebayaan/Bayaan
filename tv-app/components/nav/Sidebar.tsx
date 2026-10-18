@@ -12,6 +12,11 @@ import {LogoMark} from '../brand/LogoMark';
 import {NowPlayingGlyph} from './NowPlayingGlyph';
 import {useNavStore, type TabKey} from '../../store/navStore';
 import {useNowPlayingTile} from '../../hooks/useNowPlayingTile';
+import {
+  restorePlaceContent,
+  restoreScreenFocus,
+} from '../../services/focusReturn';
+import {focusInSteps, requestFocus} from '../../services/layerFocus';
 import {colors} from '../../theme/colors';
 import {fonts} from '../../theme/typography';
 import {createScaledStyles, scale} from '../../theme/scale';
@@ -54,16 +59,41 @@ let currentPlaceItem: Focusable | null = null;
 // Every place's item, for focusing a given place (see focusSidebar).
 const placeItems = new Map<TabKey, Focusable>();
 
+function placeItem(place?: TabKey): Focusable | null {
+  return place ? (placeItems.get(place) ?? null) : currentPlaceItem;
+}
+
+/**
+ * Asks a place's item for focus, once and unchecked (the root layer's last
+ * resort, which is itself checked). False when the sidebar isn't there.
+ */
+export function requestSidebarFocus(place?: TabKey): boolean {
+  return requestFocus(placeItem(place));
+}
+
+let pendingFocus: (() => void) | null = null;
+
 /**
  * Moves focus onto a place in the sidebar, the current one by default. Back
  * on a root place does this first, so it never leaves the app from deep in
  * the content, and again onto Home after it switches there. False when the
  * sidebar isn't there to take it.
+ *
+ * Checked: a request the focus engine drops (Home still mounting, a view
+ * that just left) is asked again, and if the sidebar still has no focus the
+ * screen's own memory takes it, so Back never leaves focus nowhere.
  */
 export function focusSidebar(place?: TabKey): boolean {
-  const item = place ? (placeItems.get(place) ?? null) : currentPlaceItem;
-  if (!item?.requestTVFocus) return false;
-  item.requestTVFocus();
+  if (!placeItem(place)) return false;
+  pendingFocus?.();
+  pendingFocus = focusInSteps(
+    [
+      () => requestFocus(placeItem(place)),
+      () => requestFocus(placeItem(place)),
+      restoreScreenFocus,
+    ],
+    () => useNavStore.getState().sidebarFocused,
+  );
   return true;
 }
 
@@ -85,16 +115,33 @@ export function Sidebar(): React.ReactElement {
   const [lastTag, setLastTag] = useState<number | undefined>();
   const [tileTag, setTileTag] = useState<number | undefined>();
 
+  // Whether the sidebar has focus follows the items' own events at once,
+  // keyed so either order of blur and focus holds: Back reads it, and a
+  // Right then Back must never act on a sidebar focus that already left.
+  const holder = useRef<string | null>(null);
   // Moving focus between two sidebar items fires blur then focus; waiting a
-  // beat before folding keeps the sidebar from flickering closed in between.
-  const handleFocus = useCallback((key: string) => {
-    if (blurTimer.current) clearTimeout(blurTimer.current);
-    setFocusedKey(key);
-  }, []);
-  const handleBlur = useCallback(() => {
-    if (blurTimer.current) clearTimeout(blurTimer.current);
-    blurTimer.current = setTimeout(() => setFocusedKey(null), 80);
-  }, []);
+  // beat before folding keeps the sidebar from flickering closed in between
+  // (the fold only: the flag above never waits).
+  const handleFocus = useCallback(
+    (key: string) => {
+      holder.current = key;
+      if (!useNavStore.getState().sidebarFocused) setSidebarFocused(true);
+      if (blurTimer.current) clearTimeout(blurTimer.current);
+      setFocusedKey(key);
+    },
+    [setSidebarFocused],
+  );
+  const handleBlur = useCallback(
+    (key: string) => {
+      if (holder.current === key) {
+        holder.current = null;
+        setSidebarFocused(false);
+      }
+      if (blurTimer.current) clearTimeout(blurTimer.current);
+      blurTimer.current = setTimeout(() => setFocusedKey(null), 80);
+    },
+    [setSidebarFocused],
+  );
   useEffect(
     () => () => {
       if (blurTimer.current) clearTimeout(blurTimer.current);
@@ -104,7 +151,6 @@ export function Sidebar(): React.ReactElement {
   );
 
   const open = focusedKey !== null;
-  useEffect(() => setSidebarFocused(open), [open, setSidebarFocused]);
 
   // Entering from the content (Left from any row, at any height) always
   // lands on the current place, never on whatever was focused here last, so
@@ -196,8 +242,12 @@ export function Sidebar(): React.ReactElement {
               focused={focusedKey === place.key}
               nextFocusDown={place.key === LAST_PLACE ? tileTag : undefined}
               onFocus={() => handleFocus(place.key)}
-              onBlur={handleBlur}
-              onPress={() => switchTab(place.key)}
+              onBlur={() => handleBlur(place.key)}
+              onPress={() => {
+                // OK on the place already showing goes into it, like Right.
+                if (place.key === current && restorePlaceContent()) return;
+                switchTab(place.key);
+              }}
             />
           ))}
         </View>
@@ -207,7 +257,7 @@ export function Sidebar(): React.ReactElement {
           nextFocusUp={lastTag}
           onTag={setTileTag}
           onFocus={() => handleFocus('nowPlaying')}
-          onBlur={handleBlur}
+          onBlur={() => handleBlur('nowPlaying')}
         />
       </TVFocusGuideView>
     </>
@@ -482,13 +532,18 @@ const styles = createScaledStyles({
     fontSize: 14,
     marginTop: 2,
   },
+  // Inset from the squircle's curve, on a faint track, so it reads as
+  // progress rather than a stray mark in the corner.
   progressTrack: {
     position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
+    left: 12,
+    right: 12,
+    bottom: 7,
     height: 3,
+    borderRadius: 2,
+    overflow: 'hidden',
+    backgroundColor: colors.border,
   },
-  progressFill: {height: 3, backgroundColor: colors.accent},
+  progressFill: {height: 3, borderRadius: 2, backgroundColor: colors.accent},
   progressFocused: {backgroundColor: colors.onFocus},
 });

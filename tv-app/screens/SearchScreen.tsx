@@ -18,6 +18,7 @@ import {useSearchRecents} from '../hooks/useSearchRecents';
 import {isActiveQuery, useSearch} from '../hooks/useSearch';
 import {clearRecentSearches} from '../services/searchRecentsStore';
 import {pushScreenBack} from '../services/screenBack';
+import {useNavStore} from '../store/navStore';
 import {createFocusWithin} from '../services/search/focusWithin';
 import {
   deleteKey,
@@ -219,7 +220,7 @@ export function SearchScreen(): React.ReactElement {
           onReciter={actions.openReciter}
           onSurah={surah => void actions.playSurahOrSay(surah)}
           onAdhkar={list => actions.openAdhkar(list)}
-          onBrowseAll={tab => actions.switchTab(tab)}
+          onBrowseAll={tab => useNavStore.getState().jumpTo(tab)}
         />
       </ScrollView>
     );

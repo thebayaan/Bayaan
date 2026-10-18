@@ -1,7 +1,6 @@
-import React, {useSyncExternalStore} from 'react';
-import {TVFocusGuideView, View} from 'react-native';
+import React, {useEffect, useRef, useSyncExternalStore} from 'react';
+import {TVFocusGuideView, View, type NativeSyntheticEvent} from 'react-native';
 import {useNavStore, type ScreenEntry, type TabKey} from '../../store/navStore';
-import {useOverlayStore} from '../../store/overlayStore';
 import {useContextMenuStore} from '../../store/contextMenuStore';
 import {useListeningStore} from '../../store/listeningStore';
 import {useSettingsStore} from '../../store/settingsStore';
@@ -24,7 +23,12 @@ import {SurahContextMenu} from '../overlays/SurahContextMenu';
 import {Toast} from '../overlays/Toast';
 import {useGlobalRemoteKeys} from '../../hooks/useGlobalRemoteKeys';
 import {usePlaybackAlerts} from '../../hooks/usePlaybackAlerts';
-import {Sidebar, SIDEBAR_COLLAPSED_WIDTH, focusSidebar} from './Sidebar';
+import {
+  Sidebar,
+  SIDEBAR_COLLAPSED_WIDTH,
+  focusSidebar,
+  requestSidebarFocus,
+} from './Sidebar';
 import {NowPlayingPill} from './NowPlayingPill';
 import {ScreenLayer} from './ScreenLayer';
 import {useTVBackHandler} from '../../hooks/useTVBackHandler';
@@ -38,15 +42,35 @@ import {
   showsNowPlayingPill,
   stackLayers,
   type BackState,
+  type BackStep,
 } from '../../services/navShell';
+import {
+  noteAppBlur,
+  noteAppFocus,
+  setPlaceContentRestore,
+} from '../../services/focusReturn';
+import {
+  createFocusMemory,
+  focusInSteps,
+  landedSince,
+  requestFocus,
+} from '../../services/layerFocus';
 import {scale} from '../../theme/scale';
+
+/** Bubbling focus and blur events; `target` is the focused host view. */
+type FocusEvent = NativeSyntheticEvent<unknown> & {target?: unknown};
+
+// Every focus in the app bubbles up to the Router's root view: whether a
+// focus request went anywhere (see services/focusReturn).
+const onAppFocus = (e: FocusEvent): void => noteAppFocus(e.target);
+const onAppBlur = (e: FocusEvent): void => noteAppBlur(e.target);
 
 function useBackState(): BackState {
   const stack = useNavStore(s => s.stack);
   const tab = useNavStore(s => s.currentTab);
   const sidebarFocused = useNavStore(s => s.sidebarFocused);
+  const canReturn = useNavStore(s => s.returnTo !== null);
   const menuOpen = useContextMenuStore(s => s.target !== null);
-  const overlayOpen = useOverlayStore(s => Boolean(s.active));
   const panelOpen = useListeningStore(s => s.panel !== null);
   const trayOpen = useListeningStore(s => s.trayOpen);
   const pickerOpen = useSettingsStore(s => s.picker !== null);
@@ -54,11 +78,11 @@ function useBackState(): BackState {
     stack,
     tab,
     menuOpen,
-    overlayOpen,
     panelOpen,
     trayOpen,
     pickerOpen,
     sidebarFocused,
+    canReturn,
   };
 }
 
@@ -69,8 +93,8 @@ function readBackState(): BackState {
     stack: nav.stack,
     tab: nav.currentTab,
     sidebarFocused: nav.sidebarFocused,
+    canReturn: nav.returnTo !== null,
     menuOpen: useContextMenuStore.getState().target !== null,
-    overlayOpen: Boolean(useOverlayStore.getState().active),
     panelOpen: listening.panel !== null,
     trayOpen: listening.trayOpen,
     pickerOpen: useSettingsStore.getState().picker !== null,
@@ -93,12 +117,13 @@ function handleBack(): boolean {
   if (step === 'focusSidebar' && !focusSidebar()) {
     step = backStep({...state, sidebarFocused: true});
   }
+  return applyBackStep(step);
+}
+
+function applyBackStep(step: BackStep): boolean {
   switch (step) {
     case 'closeMenu':
       useContextMenuStore.getState().close();
-      return true;
-    case 'closeOverlay':
-      useOverlayStore.getState().close();
       return true;
     case 'closePanel':
       useListeningStore.getState().setPanel(null);
@@ -114,11 +139,16 @@ function handleBack(): boolean {
       return true;
     case 'focusSidebar':
       return true;
+    case 'returnBack':
+      useNavStore.getState().returnBack();
+      return true;
     case 'goHome':
-      useNavStore.getState().switchTab('home');
-      // Focus follows onto Home's own item once Home is drawn, so the open
+      // Home arrives without claiming a first focus of its own (arrival),
+      // and focus follows onto Home's item once Home is drawn, so the open
       // sidebar shows where Back went (not the place just left, which OK
-      // would reopen) and the next Back leaves from Home's sidebar.
+      // would reopen) and the next Back leaves from Home's sidebar. Checked
+      // and asked again if it doesn't land (focusSidebar).
+      useNavStore.getState().switchTab('home', {arrival: 'sidebar'});
       requestAnimationFrame(() => focusSidebar('home'));
       return true;
     case 'exit':
@@ -127,11 +157,16 @@ function handleBack(): boolean {
 }
 
 /**
- * Back while the welcome shows (first launch, or a rerun over Settings): only
- * its own steps take it, never the places hidden behind it.
+ * Back while the welcome shows (first launch, or a rerun over Settings): its
+ * own steps, or the player opened over it from the pill, never the places
+ * hidden behind it.
  */
 function handleOnboardingBack(): boolean {
-  return consumeScreenBack();
+  const overlayOpen = useContextMenuStore.getState().target !== null;
+  if (consumeScreenBack({overlayOpen})) return true;
+  const state = readBackState();
+  if (!state.menuOpen && state.stack.length === 0) return false;
+  return applyBackStep(backStep(state));
 }
 
 /**
@@ -147,9 +182,12 @@ function BackRouting({onboarding}: {onboarding: boolean}): null {
     subscribeScreenBack,
     screenBackCount,
   );
-  // Onboarding has no sidebar or stack: only its own steps take Back.
+  // Onboarding has no sidebar: only its own steps, or the player over it.
   const canGoBack =
-    screenBackHandlers > 0 || (!onboarding && backStep(backState) !== 'exit');
+    screenBackHandlers > 0 ||
+    (onboarding
+      ? backState.menuOpen || backState.stack.length > 0
+      : backStep(backState) !== 'exit');
   useTVBackHandler(onboarding ? handleOnboardingBack : handleBack, canGoBack);
   return null;
 }
@@ -162,13 +200,23 @@ export function Router(): React.ReactElement {
   usePlaybackAlerts();
 
   // The welcome (first launch, or rerun from Settings) replaces the places;
-  // its own steps take Back.
+  // its own steps take Back. A rerun while something is queued keeps the
+  // pill, the way to the player (nothing is queued on a first launch).
   const onboarding = !onboarded;
+  const layers = stackLayers(stack).map(layer => (
+    <ScreenLayer key={layer.key} active={layer.active}>
+      <StackScreen entry={layer.entry} />
+    </ScreenLayer>
+  ));
   if (onboarding) {
     return (
-      <View style={{flex: 1}}>
+      <View style={{flex: 1}} onFocus={onAppFocus} onBlur={onAppBlur}>
         <BackRouting onboarding />
-        <OnboardingScreen />
+        <ScreenLayer active={stack.length === 0}>
+          <OnboardingScreen />
+          <NowPlayingPill />
+        </ScreenLayer>
+        {layers}
         <Overlays />
       </View>
     );
@@ -178,16 +226,15 @@ export function Router(): React.ReactElement {
   // covered stacked screens, so Back lands on the exact row, card, filter,
   // query and scroll that was left. See ScreenLayer.
   return (
-    <View style={{flex: 1}}>
+    <View style={{flex: 1}} onFocus={onAppFocus} onBlur={onAppBlur}>
       <BackRouting onboarding={false} />
-      <ScreenLayer active={stack.length === 0} contentKey={currentTab}>
+      <ScreenLayer
+        active={stack.length === 0}
+        contentKey={currentTab}
+        fallback={requestSidebarFocus}>
         <RootPlace tab={currentTab} />
       </ScreenLayer>
-      {stackLayers(stack).map(layer => (
-        <ScreenLayer key={layer.key} active={layer.active}>
-          <StackScreen entry={layer.entry} />
-        </ScreenLayer>
-      ))}
+      {layers}
       <Overlays />
     </View>
   );
@@ -198,19 +245,43 @@ export function Router(): React.ReactElement {
  * the sidebar never reflows the content. The content is one autoFocus
  * guide: Right from the sidebar returns to the element last focused there,
  * and Up and Down never leave it for the sidebar (Up from a top row of chips
- * on Android, Down from a bottom row onto the now-playing tile).
+ * on Android, Down from a bottom row onto the now-playing tile). It also
+ * notes that element itself, for OK on the current place in the sidebar.
  */
 const RootPlace = React.memo(function RootPlace({
   tab,
 }: {
   tab: TabKey;
 }): React.ReactElement {
+  const guide = useRef<unknown>(null);
+  const memory = useRef(createFocusMemory()).current;
+  useEffect(() => {
+    let stop: (() => void) | null = null;
+    const unregister = setPlaceContentRestore(() => {
+      if (!memory.last() && !guide.current) return false;
+      stop?.();
+      stop = focusInSteps(
+        [() => requestFocus(memory.last()), () => requestFocus(guide.current)],
+        landedSince(memory),
+      );
+      return true;
+    });
+    return () => {
+      stop?.();
+      unregister();
+    };
+  }, [memory]);
   return (
     <>
       <TVFocusGuideView
+        ref={node => {
+          guide.current = node;
+        }}
         autoFocus
         trapFocusUp
         trapFocusDown
+        onFocus={(e: FocusEvent) => memory.focus(e.target)}
+        onBlur={(e: FocusEvent) => memory.blur(e.target)}
         style={{flex: 1, marginLeft: scale(SIDEBAR_COLLAPSED_WIDTH)}}>
         {tab === 'home' && <HomeScreen />}
         {tab === 'search' && <SearchScreen />}

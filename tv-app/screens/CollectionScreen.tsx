@@ -132,7 +132,7 @@ export function CollectionScreen(): React.ReactElement {
   const playlists = usePlaylists();
   const {reciters} = useReciters();
   const push = useNavStore(s => s.push);
-  const switchTab = useNavStore(s => s.switchTab);
+  const jumpTo = useNavStore(s => s.jumpTo);
 
   const reciterById = useMemo(() => {
     const map = new Map<string, Reciter>();
@@ -389,7 +389,7 @@ export function CollectionScreen(): React.ReactElement {
         <LibraryFirstRun
           reciter={defaultReciter}
           onNewPlaylist={() => push({screen: 'playlistEdit'})}
-          onBrowseSurahs={() => switchTab('surahs')}
+          onBrowseSurahs={() => jumpTo('surahs')}
           onPlaySurah={n => {
             playInDefault(n).catch(() => undefined);
           }}
@@ -453,7 +453,7 @@ export function CollectionScreen(): React.ReactElement {
         <TVFocusGuideView autoFocus style={styles.empty}>
           <Text style={styles.emptyText}>{empty.text}</Text>
           <FocusableButton
-            onPress={() => switchTab(empty.tab)}
+            onPress={() => jumpTo(empty.tab)}
             accessibilityLabel={empty.action}
             outlined
             hasTVPreferredFocus={focusIndex !== null}

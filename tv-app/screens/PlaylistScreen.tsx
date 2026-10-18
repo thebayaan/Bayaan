@@ -63,7 +63,7 @@ export function PlaylistScreen({playlistId}: Props): React.ReactElement {
   const {reciters} = useReciters();
   const push = useNavStore(s => s.push);
   const pop = useNavStore(s => s.pop);
-  const switchTab = useNavStore(s => s.switchTab);
+  const jumpTo = useNavStore(s => s.jumpTo);
   const [confirmDelete, setConfirmDelete] = useState<boolean>(false);
 
   const reciterById = useMemo(
@@ -358,7 +358,7 @@ export function PlaylistScreen({playlistId}: Props): React.ReactElement {
             Hold OK on any surah and choose Add to playlist.
           </Text>
           <FocusableButton
-            onPress={() => switchTab('surahs')}
+            onPress={() => jumpTo('surahs')}
             accessibilityLabel="Browse surahs"
             hasTVPreferredFocus
             outlined
