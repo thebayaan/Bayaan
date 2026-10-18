@@ -210,8 +210,10 @@ const styles = createScaledStyles({
   },
   bigImage: {opacity: 0.7},
   scrims: {...StyleSheet.absoluteFillObject, zIndex: 1},
+  // The text draws above the scrims' layer (zIndex 1), never under it.
   bigArabic: {
     position: 'absolute',
+    zIndex: 2,
     top: 18,
     right: 26,
     left: 110,
@@ -224,6 +226,7 @@ const styles = createScaledStyles({
   },
   badge: {
     position: 'absolute',
+    zIndex: 2,
     top: 24,
     left: 24,
     backgroundColor: colors.accent,
@@ -238,7 +241,13 @@ const styles = createScaledStyles({
     fontSize: 15,
     letterSpacing: 1.6,
   },
-  bigText: {position: 'absolute', left: 26, right: 26, bottom: 22},
+  bigText: {
+    position: 'absolute',
+    zIndex: 2,
+    left: 26,
+    right: 26,
+    bottom: 22,
+  },
   bigTitle: {
     color: colors.text,
     fontFamily: fonts.bold,
@@ -274,6 +283,7 @@ const styles = createScaledStyles({
   // a long title shrinks to fit.
   smallText: {
     flex: 1,
+    zIndex: 2,
     justifyContent: 'center',
     paddingLeft: 26,
   },
