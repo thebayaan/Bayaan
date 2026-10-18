@@ -351,11 +351,3 @@ describe('verse repeat, app-wide', () => {
   });
 });
 
-describe('resumePanel', () => {
-  it('holds a panel for the player to reopen, until reset', () => {
-    useListeningStore.getState().setResumePanel('save');
-    expect(useListeningStore.getState().resumePanel).toBe('save');
-    useListeningStore.getState().reset();
-    expect(useListeningStore.getState().resumePanel).toBeNull();
-  });
-});

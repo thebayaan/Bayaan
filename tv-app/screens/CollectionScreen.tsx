@@ -106,6 +106,12 @@ let lastFilter: ShelfFilter = 'playlists';
 let lastSort: ShelfSort = 'recent';
 let lastTile: {filter: ShelfFilter; key: string; index: number} | null = null;
 
+/** The Library opens next on `filter`'s first tile (Home's "All loved"). */
+export function openLibraryAt(filter: ShelfFilter): void {
+  lastFilter = filter;
+  lastTile = null;
+}
+
 /** For Vega's FlashList (see cellHeightLayout). */
 const overrideItemLayout = cellHeightLayout(ROW_HEIGHT);
 

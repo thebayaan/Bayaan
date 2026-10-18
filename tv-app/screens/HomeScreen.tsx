@@ -1,10 +1,10 @@
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
-import {ScrollView, View, type LayoutChangeEvent} from 'react-native';
+import {Animated, ScrollView, View, type LayoutChangeEvent} from 'react-native';
 import {HomeHero, type HeroArt} from '../components/home/HomeHero';
 import {HomeClock} from '../components/home/HomeClock';
 import {useScreenActive} from '../components/nav/ScreenLayer';
 import {HomeGlow} from '../components/home/HomeGlow';
-import {HomeRail, HOME_GUTTER} from '../components/home/HomeRail';
+import {HomeRail, HOME_GUTTER, RAIL_TOP_GAP} from '../components/home/HomeRail';
 import {ContinueWideCard} from '../components/home/ContinueWideCard';
 import {AdhkarTile, ColorTile, SurahTile} from '../components/home/MomentTiles';
 import {ReciterPortrait} from '../components/home/ReciterPortrait';
@@ -35,7 +35,10 @@ import {
   type MomentItem,
 } from '../hooks/homeMoments';
 import {
+  curatedRow,
   featuredRow,
+  MEMORIZATION_RECITER_NAMES,
+  TAJWEED_RECITER_NAMES,
   hasReciterChoice,
   homeVoiceCandidates,
   preferredReciterIds,
@@ -43,9 +46,17 @@ import {
 } from '../hooks/homeReciters';
 import {
   continueKey,
+  focusAfterRemoval,
   resumableContinue,
   stableContinue,
 } from '../hooks/homeContinue';
+import {getContinueListening} from '../services/continueListeningStore';
+import {getLovedSurahs} from '../services/lovedSurahsStore';
+import {
+  claimFocusReturn,
+  restoreFocusTo,
+  type FocusableView,
+} from '../services/focusReturn';
 import {
   playOrOpen,
   surahTitle,
@@ -55,6 +66,7 @@ import {
 import {shortReciterName} from '../services/listeningChoices';
 import {getDefaultReciter} from '../services/tvDataService';
 import {adhkarForList, adhkarList, ADHKAR_LISTS} from '../services/adhkarData';
+import {openLibraryAt} from './CollectionScreen';
 import {useNavStore} from '../store/navStore';
 import {useContextMenuStore} from '../store/contextMenuStore';
 import {useTVPlayerStore} from '../store/tvPlayerStore';
@@ -140,14 +152,18 @@ function heroView(plan: HeroPlan, reciterName: string | null): HeroView {
   };
 }
 
-/** Juz 'Amma's rail shows its shortest surahs, then a tile for all of it. */
-const JUZ_AMMA_TILES = JUZ_AMMA_SURAHS.slice(-12);
+/**
+ * The short surahs rail: Juz 'Amma's shortest twelve in the order they are
+ * learnt by heart (An-Nas, Al-Falaq, Al-Ikhlas ...), then a tile for all
+ * of Juz 'Amma.
+ */
+const JUZ_AMMA_TILES = [...JUZ_AMMA_SURAHS].reverse().slice(0, 12);
 
 /** Loved surahs shown on Home; the Library has them all. */
 const LOVED_TILES = 12;
 
-/** How far above a focused rail's top Home scrolls, so its title shows. */
-const RAIL_TOP_GAP = 36;
+/** Scrolled this far (about half the hero), Home's glow fades to ink. */
+const GLOW_FADE_Y = 220;
 
 /**
  * Home: "Now playing" while the player holds a track, a hero that follows
@@ -155,7 +171,8 @@ const RAIL_TOP_GAP = 36;
  * Friday, Al-Mulk at night, a surah of the day otherwise) with the clock,
  * then rails that show only when they have something: Continue listening,
  * the moment's rail, your reciters, playlists and loved surahs, adhkar,
- * collections, featured reciters and Juz 'Amma.
+ * collections, featured reciters, the best voices for memorisation and
+ * for tajweed, and the short surahs of Juz 'Amma.
  */
 export function HomeScreen(): React.ReactElement {
   const {reciters} = useReciters();
@@ -220,6 +237,23 @@ export function HomeScreen(): React.ReactElement {
   const viewportH = useRef(0);
   const contentH = useRef(0);
   const railY = useRef(new Map<HomeRow, number>());
+  // The hero's glow fades out once the hero has scrolled away, so the rails
+  // below sit on plain ink, and back in when Home returns to the top.
+  const glowOpacity = useRef(new Animated.Value(1)).current;
+  const glowShown = useRef(true);
+  const fadeGlowFor = useCallback(
+    (y: number): void => {
+      const show = y < scale(GLOW_FADE_Y);
+      if (show === glowShown.current) return;
+      glowShown.current = show;
+      Animated.timing(glowOpacity, {
+        toValue: show ? 1 : 0,
+        duration: 450,
+        useNativeDriver: true,
+      }).start();
+    },
+    [glowOpacity],
+  );
   const scrollToY = useCallback((y: number): void => {
     const max = Math.max(0, contentH.current - viewportH.current);
     const target = Math.min(max, Math.max(0, y));
@@ -227,9 +261,13 @@ export function HomeScreen(): React.ReactElement {
     offsetY.current = target;
     scrollRef.current?.scrollTo({y: target, animated: true});
   }, []);
+  // Whether focus is in Continue listening, whose order holds still only
+  // then (see homeContinue).
+  const [continueHeld, setContinueHeld] = useState(false);
   const onHeroFocus = useCallback((): void => {
     heroFocused.current = true;
     setFirstFocusTaken(true);
+    setContinueHeld(false);
     // Catch up with an hour that turned while focus was in the rails.
     setPlanHour(planHourOf(new Date()));
     scrollToY(0);
@@ -242,6 +280,7 @@ export function HomeScreen(): React.ReactElement {
         handler = () => {
           heroFocused.current = false;
           setFirstFocusTaken(true);
+          setContinueHeld(row === 'continue');
           const y = railY.current.get(row);
           if (y !== undefined) scrollToY(y - scale(RAIL_TOP_GAP));
         };
@@ -306,16 +345,17 @@ export function HomeScreen(): React.ReactElement {
     [plan.hero, heroVoice, reciterById],
   );
 
-  // Continue listening keeps the order it first showed (see homeContinue).
+  // Continue listening holds its order while focus is in it, and is newest
+  // first otherwise (see homeContinue).
   const continueOrder = useRef<string[]>([]);
   const continueEntries = useMemo(() => {
     const resumable = resumableContinue(liveContinue, id =>
       reciterById.has(id),
     );
-    const out = stableContinue(continueOrder.current, resumable);
+    const out = stableContinue(continueOrder.current, resumable, continueHeld);
     continueOrder.current = out.keys;
     return out.entries;
-  }, [liveContinue, reciterById]);
+  }, [liveContinue, reciterById, continueHeld]);
 
   const recentReciters = useMemo(
     () => recitersByIds(recentIds, reciters),
@@ -329,6 +369,24 @@ export function HomeScreen(): React.ReactElement {
     () => featuredRow(reciters, [...recentIds, ...favoriteIds]),
     [reciters, recentIds, favoriteIds],
   );
+  // The phone's curated rows, each adding voices the rails above don't show.
+  const {memorizationReciters, tajweedReciters} = useMemo(() => {
+    const shown = [
+      ...recentReciters,
+      ...favoriteReciters,
+      ...featuredReciters,
+    ].map(r => r.id);
+    const memorization = curatedRow(
+      reciters,
+      MEMORIZATION_RECITER_NAMES,
+      shown,
+    );
+    const tajweed = curatedRow(reciters, TAJWEED_RECITER_NAMES, [
+      ...shown,
+      ...memorization.map(r => r.id),
+    ]);
+    return {memorizationReciters: memorization, tajweedReciters: tajweed};
+  }, [reciters, recentReciters, favoriteReciters, featuredReciters]);
   const lovedSurahs = useMemo(
     () => loved.filter(e => reciterById.has(e.reciterId)),
     [loved, reciterById],
@@ -348,6 +406,8 @@ export function HomeScreen(): React.ReactElement {
     adhkar: adhkarIds.length,
     collections: SURAH_COLLECTIONS.length,
     featured: featuredReciters.length,
+    memorization: memorizationReciters.length,
+    tajweed: tajweedReciters.length,
     juzAmma: JUZ_AMMA_TILES.length,
   });
 
@@ -409,6 +469,12 @@ export function HomeScreen(): React.ReactElement {
   }, []);
 
   const handleContinueMenu = useCallback((entry: ContinueEntry): void => {
+    const key = continueKey(entry);
+    menuFrom.current = {
+      row: 'continue',
+      key,
+      index: continueOrder.current.indexOf(key),
+    };
     useContextMenuStore.getState().openSurah({
       surahNumber: entry.surahNumber,
       reciterId: entry.reciterId,
@@ -418,7 +484,8 @@ export function HomeScreen(): React.ReactElement {
   }, []);
 
   // A loved surah plays in the voice it was loved in, with the rest of the
-  // loved surahs after it.
+  // loved surahs after it. One surah can be loved in several voices, so a
+  // tile stands for its entry (surah and reciter), never the surah alone.
   const lovedQueue = useMemo(
     () =>
       lovedSurahs.map(e => ({
@@ -429,25 +496,95 @@ export function HomeScreen(): React.ReactElement {
     [lovedSurahs],
   );
   const handleLoved = useCallback(
-    (surahNumber: number): void => {
-      const item = lovedQueue.find(e => e.surahNumber === surahNumber);
+    (entry: LovedSurah): void => {
+      const item = lovedQueue.find(
+        e =>
+          e.surahNumber === entry.surahNumber &&
+          e.reciterId === entry.reciterId,
+      );
       if (!item) return;
       void playOrOpen({...item, queue: lovedQueue, source: 'home-loved'});
     },
     [lovedQueue],
   );
   const handleLovedMenu = useCallback(
-    (surahNumber: number): void => {
-      const item = lovedQueue.find(e => e.surahNumber === surahNumber);
+    (entry: LovedSurah): void => {
+      const key = lovedKey(entry);
+      menuFrom.current = {
+        row: 'loved',
+        key,
+        index: lovedSurahs.findIndex(e => lovedKey(e) === key),
+      };
       useContextMenuStore.getState().openSurah({
-        surahNumber,
-        reciterId: item?.reciterId,
-        rewayahId: item?.rewayahId,
+        surahNumber: entry.surahNumber,
+        reciterId: entry.reciterId,
+        rewayahId: entry.rewayahId || undefined,
         origin: 'loved',
       });
     },
-    [lovedQueue],
+    [lovedSurahs],
   );
+
+  // ---- A menu that removed its own card (Remove from Continue listening,
+  // Unlike) leaves focus on the card now in its place, or on the hero when
+  // the rail emptied, not wherever the focus engine falls back to.
+  const menuFrom = useRef<{
+    row: 'continue' | 'loved';
+    key: string;
+    index: number;
+  } | null>(null);
+  const [menuFocusKey, setMenuFocusKey] = useState<string | null>(null);
+  const menuFocusKeyRef = useRef<string | null>(null);
+  menuFocusKeyRef.current = menuFocusKey;
+  // A key to prefer again once the prop has been committed as false.
+  const pendingFocusKey = useRef<string | null>(null);
+  const heroPrimary = useRef<View>(null);
+  const reciterByIdRef = useRef(reciterById);
+  reciterByIdRef.current = reciterById;
+  useEffect(
+    () =>
+      useContextMenuStore.subscribe((next, prev) => {
+        if (!prev.target || next.target) return;
+        const from = menuFrom.current;
+        menuFrom.current = null;
+        if (!from) return;
+        // Read the stores, not this render: Remove closes the menu in the
+        // same tick as it writes, before Home re-renders.
+        const known = (id: string): boolean => reciterByIdRef.current.has(id);
+        const liveKeys =
+          from.row === 'continue'
+            ? stableContinue(
+                continueOrder.current,
+                resumableContinue(getContinueListening(), known),
+              ).keys
+            : getLovedSurahs()
+                .filter(e => known(e.reciterId))
+                .slice(0, LOVED_TILES)
+                .map(lovedKey);
+        const key = focusAfterRemoval(from.key, from.index, liveKeys);
+        if (key === undefined) return;
+        claimFocusReturn();
+        if (key === null) restoreFocusTo(heroPrimary);
+        else if (menuFocusKeyRef.current === key) {
+          // Still preferred from a removal a moment ago: the native prop
+          // only moves focus when it turns true, so turn it off first.
+          pendingFocusKey.current = key;
+          setMenuFocusKey(null);
+        } else setMenuFocusKey(key);
+      }),
+    [],
+  );
+  // Dropped once focus has landed, so a later re-render never pulls it back.
+  useEffect(() => {
+    if (menuFocusKey === null) {
+      const pending = pendingFocusKey.current;
+      pendingFocusKey.current = null;
+      if (pending !== null) setMenuFocusKey(pending);
+      return;
+    }
+    const timer = setTimeout(() => setMenuFocusKey(null), 1500);
+    return () => clearTimeout(timer);
+  }, [menuFocusKey]);
 
   const openPlaylist = useCallback(
     (playlistId: string): void => push({screen: 'playlist', playlistId}),
@@ -490,6 +627,7 @@ export function HomeScreen(): React.ReactElement {
     (reciter: Reciter, rewayah: Rewayah): void => {
       if (pickerSurah === null) return;
       setPickerSurah(null);
+      focusSecondaryOnReturn.current = true;
       void playOrOpen({
         reciterId: reciter.id,
         rewayahId: rewayah.id,
@@ -499,6 +637,27 @@ export function HomeScreen(): React.ReactElement {
     },
     [pickerSurah],
   );
+
+  // Back from the player a pick opened lands on "Another reciter". The
+  // layer's own memory holds the picker's row, which has unmounted, so Home
+  // focuses the button itself, a frame after the layer's restore runs.
+  const heroSecondary = useRef<View>(null);
+  const focusSecondaryOnReturn = useRef(false);
+  useEffect(() => {
+    if (!active || !focusSecondaryOnReturn.current) return;
+    focusSecondaryOnReturn.current = false;
+    let inner: number | null = null;
+    const outer = requestAnimationFrame(() => {
+      inner = requestAnimationFrame(() => {
+        inner = null;
+        (heroSecondary.current as FocusableView | null)?.requestTVFocus?.();
+      });
+    });
+    return () => {
+      cancelAnimationFrame(outer);
+      if (inner !== null) cancelAnimationFrame(inner);
+    };
+  }, [active]);
 
   const pickerPreferred = useMemo(
     () =>
@@ -576,6 +735,7 @@ export function HomeScreen(): React.ReactElement {
               reciterName={reciterById.get(e.reciterId)?.name ?? ''}
               onSelect={handleContinue}
               onLongPress={handleContinueMenu}
+              hasTVPreferredFocus={menuFocusKey === continueKey(e)}
             />
           )),
         );
@@ -611,16 +771,13 @@ export function HomeScreen(): React.ReactElement {
           ...lovedSurahs
             .slice(0, LOVED_TILES)
             .map((e: LovedSurah) => (
-              <SurahTile
-                key={e.surahNumber}
-                surahNumber={e.surahNumber}
-                surahName={surahTitle(e.surahNumber)}
-                caption={shortReciterName(
-                  reciterById.get(e.reciterId)?.name ?? '',
-                )}
+              <LovedTile
+                key={lovedKey(e)}
+                entry={e}
+                reciterName={reciterById.get(e.reciterId)?.name ?? ''}
                 onSelect={handleLoved}
                 onLongPress={handleLovedMenu}
-                idPrefix="loved"
+                hasTVPreferredFocus={menuFocusKey === lovedKey(e)}
               />
             )),
           ...(lovedSurahs.length > LOVED_TILES
@@ -632,7 +789,10 @@ export function HomeScreen(): React.ReactElement {
                   subtitle="In your Library"
                   caption={`${lovedSurahs.length} surahs`}
                   color={colors.surfaceElevated}
-                  onSelect={() => switchTab('collection')}
+                  onSelect={() => {
+                    openLibraryAt('loved');
+                    switchTab('collection');
+                  }}
                   accessibilityLabel="All loved surahs, in your Library"
                 />,
               ]
@@ -656,8 +816,15 @@ export function HomeScreen(): React.ReactElement {
         return rail(
           row,
           'Collections',
-          SURAH_COLLECTIONS.map(c => (
-            <CollectionTile key={c.id} collection={c} onPlay={playList} />
+          SURAH_COLLECTIONS.map((c, i) => (
+            <CollectionTile
+              key={c.id}
+              collection={c}
+              // The muted pigments, not the phone's saturated hex, so the
+              // row sits with the surah art (Ink & Cream).
+              color={TILE_HUES[i % TILE_HUES.length]}
+              onPlay={playList}
+            />
           )),
         );
       case 'featured':
@@ -666,8 +833,16 @@ export function HomeScreen(): React.ReactElement {
           'Featured reciters',
           renderPortraits(featuredReciters),
         );
+      case 'memorization':
+        return rail(
+          row,
+          'Best for memorisation',
+          renderPortraits(memorizationReciters),
+        );
+      case 'tajweed':
+        return rail(row, 'Best for tajweed', renderPortraits(tajweedReciters));
       case 'juzAmma':
-        return rail(row, "Juz 'Amma", [
+        return rail(row, 'Short surahs', [
           ...JUZ_AMMA_TILES.map(n => (
             <SurahTile
               key={n}
@@ -695,13 +870,14 @@ export function HomeScreen(): React.ReactElement {
 
   return (
     <View style={styles.container}>
-      <HomeGlow palette={hero.glow} />
+      <HomeGlow palette={hero.glow} opacity={glowOpacity} />
       <ScrollView
         ref={scrollRef}
         showsVerticalScrollIndicator={false}
         scrollEventThrottle={16}
         onScroll={e => {
           offsetY.current = e.nativeEvent.contentOffset.y;
+          fadeGlowFor(offsetY.current);
         }}
         onLayout={e => {
           viewportH.current = e.nativeEvent.layout.height;
@@ -720,6 +896,8 @@ export function HomeScreen(): React.ReactElement {
           secondaryLabel={hero.secondaryLabel}
           onSecondary={handleSecondary}
           preferredFocus={heroPreferred}
+          primaryRef={heroPrimary}
+          secondaryRef={heroSecondary}
           onFocus={onHeroFocus}
           header={
             <NowPlayingStrip
@@ -756,6 +934,38 @@ export function HomeScreen(): React.ReactElement {
   );
 }
 
+/** A loved surah's tile, keyed by surah and reciter. */
+function lovedKey(entry: {reciterId: string; surahNumber: number}): string {
+  return `${entry.reciterId}:${entry.surahNumber}`;
+}
+
+/** A loved surah in the voice it was loved in; OK plays that recitation. */
+const LovedTile = React.memo(function LovedTile({
+  entry,
+  reciterName,
+  onSelect,
+  onLongPress,
+  hasTVPreferredFocus,
+}: {
+  entry: LovedSurah;
+  reciterName: string;
+  onSelect: (entry: LovedSurah) => void;
+  onLongPress: (entry: LovedSurah) => void;
+  hasTVPreferredFocus: boolean;
+}): React.ReactElement {
+  return (
+    <SurahTile
+      surahNumber={entry.surahNumber}
+      surahName={surahTitle(entry.surahNumber)}
+      caption={shortReciterName(reciterName)}
+      onSelect={() => onSelect(entry)}
+      onLongPress={() => onLongPress(entry)}
+      idPrefix={`loved-${entry.reciterId}`}
+      hasTVPreferredFocus={hasTVPreferredFocus}
+    />
+  );
+});
+
 /** A user playlist; OK opens it. */
 const PlaylistTile = React.memo(function PlaylistTile({
   playlist,
@@ -782,9 +992,11 @@ const PlaylistTile = React.memo(function PlaylistTile({
 /** A curated collection; OK plays it from the top. */
 const CollectionTile = React.memo(function CollectionTile({
   collection,
+  color,
   onPlay,
 }: {
   collection: SurahCollection;
+  color: string;
   onPlay: (surahs: readonly number[], source: string) => void;
 }): React.ReactElement {
   const meta = surahListMeta(collection.surahs);
@@ -794,7 +1006,7 @@ const CollectionTile = React.memo(function CollectionTile({
       title={collection.title}
       subtitle={collection.description}
       caption={meta}
-      color={collection.color}
+      color={color}
       onSelect={() => onPlay(collection.surahs, 'home-collection')}
       accessibilityLabel={`Play ${collection.title}, ${meta}`}
     />

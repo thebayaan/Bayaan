@@ -144,7 +144,7 @@ export function groupLists(groupId: AdhkarGroupId): {
 }
 
 /** From this hour until the morning window, before-sleep adhkar fit best. */
-const BEFORE_SLEEP_HOUR = 21;
+export const BEFORE_SLEEP_HOUR = 21;
 
 /**
  * The list that fits the time: morning and evening by the phone's windows

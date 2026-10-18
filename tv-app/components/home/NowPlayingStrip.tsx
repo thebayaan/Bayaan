@@ -2,7 +2,7 @@ import React from 'react';
 import {View} from 'react-native';
 import {FocusableButton} from '../primitives/FocusableButton';
 import {FocusIcon, FocusText} from '../primitives/focusContext';
-import {SurahArtwork} from '../brand/SurahArtwork';
+import {SurahThumb} from './SurahThumb';
 import {useTVPlayerStore} from '../../store/tvPlayerStore';
 import {openPlayer} from '../../services/playbackRouting';
 import {nowPlayingView} from '../../hooks/homeNowPlaying';
@@ -51,9 +51,9 @@ export function NowPlayingStrip({
       containerStyle={styles.container}
       style={styles.strip}>
       <View style={styles.thumb}>
-        <SurahArtwork
+        <SurahThumb
           surahNumber={item.surahNumber}
-          glyphSize={22}
+          glyphSize={26}
           id="home-now-playing"
         />
       </View>
@@ -110,7 +110,7 @@ const styles = createScaledStyles({
   kicker: {
     fontFamily: fonts.extraBold,
     fontWeight: '800',
-    fontSize: 13,
+    fontSize: 15,
     letterSpacing: 2,
   },
   title: {fontFamily: fonts.bold, fontWeight: '700', fontSize: 20},
@@ -121,5 +121,5 @@ const styles = createScaledStyles({
     gap: 8,
     marginLeft: 12,
   },
-  hintText: {fontFamily: fonts.bold, fontWeight: '700', fontSize: 17},
+  hintText: {fontFamily: fonts.bold, fontWeight: '700', fontSize: 19},
 });
