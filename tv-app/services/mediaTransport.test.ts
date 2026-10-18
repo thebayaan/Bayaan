@@ -20,7 +20,13 @@ function stubPlayer(status: 'playing' | 'paused' | 'buffering' = 'paused') {
     seekBy: jest.fn(),
   };
   const engine = {pause: jest.fn()} as unknown as AudioEngine;
-  useTVPlayerStore.setState({queue: [item], status, engine, ...actions});
+  useTVPlayerStore.setState({
+    queue: [item],
+    status,
+    held: false,
+    engine,
+    ...actions,
+  });
   return {...actions, engine};
 }
 
@@ -90,5 +96,16 @@ describe('playerTransport', () => {
     expect(player.next).toHaveBeenCalledTimes(1);
     expect(player.prev).toHaveBeenCalledTimes(1);
     expect(player.toggle).toHaveBeenCalledTimes(1);
+  });
+
+  it("treats a verse repeat's gap as playing", () => {
+    const player = stubPlayer('paused');
+    useTVPlayerStore.setState({held: true});
+    playerTransport.play();
+    expect(player.toggle).not.toHaveBeenCalled();
+    // Pause in the gap cancels the replay (the store's toggle does that).
+    playerTransport.pause();
+    expect(player.toggle).toHaveBeenCalledTimes(1);
+    expect(player.engine.pause).not.toHaveBeenCalled();
   });
 });

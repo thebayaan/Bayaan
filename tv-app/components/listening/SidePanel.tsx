@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useEffect, useRef} from 'react';
 import {Image} from 'expo-image';
 import {ScrollView, Text, TVFocusGuideView, View} from 'react-native';
 import {FocusableButton} from '../primitives/FocusableButton';
@@ -21,8 +21,16 @@ export type PanelSection<T = unknown> = {
   title: string;
   options: readonly PanelOption<T>[];
   selected: T;
+  /**
+   * For a section where several options can be checked at once (the
+   * playlists holding this surah). Focus then starts on the first option.
+   */
+  isSelected?: (value: T) => boolean;
   onSelect: (value: T) => void;
 };
+
+/** The panel's width in design pixels; the tray and verse keep clear of it. */
+export const PANEL_WIDTH = 620;
 
 type Props = {
   title: string;
@@ -33,14 +41,22 @@ type Props = {
 
 /**
  * A settings panel that slides in from the right beside the controls tray.
- * The player stays visible behind it, so a change previews live. Focus is
- * kept inside the panel; Back closes it.
+ * The verse moves left of it, so a change previews live. Focus is kept
+ * inside the panel; Back closes it.
  */
 export function SidePanel({
   title,
   sections,
   onActivity,
 }: Props): React.ReactElement {
+  // The selected row takes focus through hasTVPreferredFocus, which tvOS
+  // can miss when the panel mounts while a tray tool still holds focus, so
+  // the row is also asked for focus once the panel is up.
+  const preferred = useRef<View>(null);
+  useEffect(() => {
+    const id = setTimeout(() => preferred.current?.requestTVFocus?.(), 0);
+    return () => clearTimeout(id);
+  }, [title]);
   return (
     <View style={styles.panel}>
       <Text style={styles.title}>{title}</Text>
@@ -58,14 +74,24 @@ export function SidePanel({
             <View key={section.title} style={styles.section}>
               <Text style={styles.sectionTitle}>{section.title}</Text>
               {section.options.map((option, oi) => {
-                const selected = Object.is(option.value, section.selected);
-                // With nothing selected (the queue), focus the first option.
-                const noneSelected = !section.options.some(o =>
-                  Object.is(o.value, section.selected),
-                );
+                const selected = section.isSelected
+                  ? section.isSelected(option.value)
+                  : Object.is(option.value, section.selected);
+                // With nothing selected, focus the first option.
+                const noneSelected =
+                  section.isSelected !== undefined ||
+                  !section.options.some(o =>
+                    Object.is(o.value, section.selected),
+                  );
+                const focusFirst =
+                  si === 0 &&
+                  (section.isSelected
+                    ? oi === 0
+                    : selected || (noneSelected && oi === 0));
                 return (
                   <FocusableButton
                     key={String(option.value)}
+                    ref={focusFirst ? preferred : undefined}
                     onPress={() => {
                       onActivity();
                       section.onSelect(option.value);
@@ -73,9 +99,7 @@ export function SidePanel({
                     accessibilityLabel={
                       selected ? `${option.label}, selected` : option.label
                     }
-                    hasTVPreferredFocus={
-                      si === 0 && (selected || (noneSelected && oi === 0))
-                    }
+                    hasTVPreferredFocus={focusFirst}
                     focusScale={1.02}
                     style={styles.option}>
                     {option.face ? <Face {...option.face} /> : null}
@@ -143,8 +167,9 @@ const styles = createScaledStyles({
     top: 0,
     right: 0,
     bottom: 0,
-    width: 620,
-    backgroundColor: 'rgba(6,21,28,0.96)',
+    width: PANEL_WIDTH,
+    // Opaque: nothing of the room shows through the rows.
+    backgroundColor: colors.surface,
     borderLeftWidth: 1,
     borderLeftColor: colors.border,
     paddingTop: 64,

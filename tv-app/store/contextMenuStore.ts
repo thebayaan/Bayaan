@@ -15,8 +15,7 @@ export type SurahMenuOrigin =
   | 'surahs'
   | 'reciter'
   | 'search'
-  | 'home'
-  | 'player';
+  | 'home';
 
 export type SurahMenuTarget = {
   kind: 'surah';
@@ -28,11 +27,6 @@ export type SurahMenuTarget = {
   playlistId?: string;
   /** ...and its position there (moving it updates this). */
   playlistIndex?: number;
-  /**
-   * Open straight on the playlist picker (the player's Save tool); Back then
-   * closes the menu rather than going to its first page.
-   */
-  page?: 'playlists';
 };
 
 export type ReciterMenuTarget = {kind: 'reciter'; reciterId: string};

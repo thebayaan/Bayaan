@@ -76,7 +76,7 @@ function SurahMenu({target}: {target: SurahMenuTarget}): React.ReactElement {
   const loved = useLovedSurahs();
   const playlists = usePlaylists();
   const playlist = usePlaylist(target.playlistId);
-  const [page, setPage] = useState<Page>(target.page ?? 'main');
+  const [page, setPage] = useState<Page>('main');
   // Coming back from the playlist page, focus returns to the row that went.
   const [backToAdd, setBackToAdd] = useState<boolean>(false);
 
@@ -112,9 +112,9 @@ function SurahMenu({target}: {target: SurahMenuTarget}): React.ReactElement {
     index < playlist.items.length;
 
   // Back on the playlist page returns to the first page, not out of the
-  // menu (unless the menu opened on it).
+  // menu.
   useEffect(() => {
-    if (page !== 'playlists' || target.page === 'playlists') return;
+    if (page !== 'playlists') return;
     return pushScreenBack(
       () => {
         setBackToAdd(true);
@@ -123,7 +123,7 @@ function SurahMenu({target}: {target: SurahMenuTarget}): React.ReactElement {
       },
       {overlay: true},
     );
-  }, [page, target.page]);
+  }, [page]);
 
   function handlePlay(): void {
     close({restoreFocus: false});

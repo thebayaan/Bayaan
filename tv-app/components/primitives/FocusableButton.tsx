@@ -1,4 +1,4 @@
-import React, {useRef} from 'react';
+import React, {useCallback, useRef} from 'react';
 import {Animated, Pressable, StyleProp, View, ViewStyle} from 'react-native';
 import {noteLongPressOrigin} from '../../services/focusReturn';
 import {colors} from '../../theme/colors';
@@ -29,6 +29,10 @@ type Props = {
   selected?: boolean;
   /** Not pressable; read out as dimmed. Focus can still land on it. */
   disabled?: boolean;
+  /** False takes the button out of focus (both engines) without restyling it. */
+  focusable?: boolean;
+  /** The pressable view, e.g. to call requestTVFocus() on it. */
+  ref?: React.Ref<View>;
 };
 
 /**
@@ -51,10 +55,21 @@ export function FocusableButton({
   outlined,
   selected,
   disabled,
+  focusable,
+  ref,
 }: Props): React.ReactElement {
   const scaleValue = useRef(new Animated.Value(1)).current;
   const [isFocused, setIsFocused] = React.useState(false);
-  const pressable = useRef<View>(null);
+  // Kept for the long-press focus return, and handed to the caller's ref.
+  const pressable = useRef<View | null>(null);
+  const setPressable = useCallback(
+    (node: View | null): void => {
+      pressable.current = node;
+      if (typeof ref === 'function') ref(node);
+      else if (ref) (ref as React.MutableRefObject<View | null>).current = node;
+    },
+    [ref],
+  );
 
   const handleFocus = (): void => {
     setIsFocused(true);
@@ -70,7 +85,8 @@ export function FocusableButton({
   return (
     <Animated.View style={[containerStyle, {transform: [{scale: scaleValue}]}]}>
       <Pressable
-        ref={pressable}
+        ref={setPressable}
+        focusable={focusable}
         onPress={disabled ? undefined : onPress}
         onLongPress={
           onLongPress && !disabled

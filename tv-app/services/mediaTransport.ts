@@ -18,11 +18,11 @@ export type MediaTransport = {
   seekBy: (seconds: number) => void;
 };
 
-// Buffering counts as playing: it resumes on its own, so Play has nothing to
-// do and Pause has something to stop.
+// Buffering, and a verse repeat's gap (held), count as playing: they resume
+// on their own, so Play has nothing to do and Pause has something to stop.
 const isPlaying = (): boolean => {
-  const {status} = useTVPlayerStore.getState();
-  return status === 'playing' || status === 'buffering';
+  const {status, held} = useTVPlayerStore.getState();
+  return held || status === 'playing' || status === 'buffering';
 };
 
 /** The recitation's transport (the player store). */
@@ -32,7 +32,11 @@ export const playerTransport: MediaTransport = {
     if (!isPlaying()) useTVPlayerStore.getState().toggle();
   },
   pause: () => {
-    if (isPlaying()) useTVPlayerStore.getState().engine?.pause();
+    if (!isPlaying()) return;
+    const player = useTVPlayerStore.getState();
+    // In the gap, toggle cancels the replay to come and stays paused.
+    if (player.held) player.toggle();
+    else player.engine?.pause();
   },
   next: () => {
     void useTVPlayerStore.getState().next();

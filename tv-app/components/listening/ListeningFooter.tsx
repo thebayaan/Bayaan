@@ -16,6 +16,11 @@ type Props = {
   progress: number;
   /** Active listening settings, such as "Repeat verse 3×" or "Rain". */
   chips: string[];
+  /**
+   * What the recitation is doing when it isn't simply playing ("Paused",
+   * "Loading"), so the room never looks like it's playing when it isn't.
+   */
+  state?: string | null;
 };
 
 /**
@@ -29,6 +34,7 @@ export function ListeningFooter({
   rewayah,
   progress,
   chips,
+  state = null,
 }: Props): React.ReactElement {
   const artwork = getReciterArtwork(reciter);
   return (
@@ -60,6 +66,14 @@ export function ListeningFooter({
         </View>
       </View>
       <ProgressLine progress={progress} />
+      {state ? (
+        <View style={styles.state}>
+          <View style={styles.stateDot} />
+          <Text style={styles.stateText} numberOfLines={1}>
+            {state}
+          </Text>
+        </View>
+      ) : null}
       {chips.length > 0 ? (
         <View style={styles.chips}>
           {chips.map(chip => (
@@ -119,6 +133,22 @@ const styles = createScaledStyles({
     marginTop: 2,
   },
   chips: {flexDirection: 'row', gap: 10},
+  // Sky, like other indicators: a dot and the word, no fill.
+  state: {flexDirection: 'row', alignItems: 'center', gap: 10},
+  stateDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: colors.accent,
+  },
+  stateText: {
+    color: colors.accent,
+    fontFamily: fonts.bold,
+    fontWeight: '700',
+    fontSize: 16,
+    letterSpacing: 2.2,
+    textTransform: 'uppercase',
+  },
   chip: {
     paddingHorizontal: 16,
     paddingVertical: 7,

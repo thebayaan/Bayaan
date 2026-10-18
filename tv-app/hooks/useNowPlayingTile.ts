@@ -2,7 +2,7 @@ import {useCallback, useMemo} from 'react';
 import {useTVPlayerStore} from '../store/tvPlayerStore';
 import {useContinueListening} from './useContinueListening';
 import {openPlayer, playOrOpen, surahTitle} from '../services/playbackRouting';
-import {getCachedReciters} from '../services/tvDataService';
+import {getCachedReciter} from '../services/tvDataService';
 import {nowPlayingTile, type NowPlayingTile} from '../services/nowPlayingTile';
 
 /**
@@ -14,7 +14,8 @@ export function useNowPlayingTile(): {
   press: () => void;
 } {
   const item = useTVPlayerStore(s => s.queue[s.currentIndex] ?? null);
-  const status = useTVPlayerStore(s => s.status);
+  // A verse repeat's gap (held) is still listening, not a pause.
+  const status = useTVPlayerStore(s => (s.held ? 'playing' : s.status));
   const finished = useTVPlayerStore(s => s.finished);
   const positionSeconds = useTVPlayerStore(s => s.positionSeconds);
   const durationSeconds = useTVPlayerStore(s => s.durationSeconds);
@@ -23,7 +24,7 @@ export function useNowPlayingTile(): {
 
   const resume = useMemo(() => {
     if (!newest) return null;
-    const reciter = getCachedReciters()?.find(r => r.id === newest.reciterId);
+    const reciter = getCachedReciter(newest.reciterId);
     return {
       title: surahTitle(newest.surahNumber),
       subtitle: reciter?.name ?? '',

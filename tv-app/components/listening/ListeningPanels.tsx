@@ -1,5 +1,5 @@
 import React from 'react';
-import {SidePanel, type PanelSection} from './SidePanel';
+import {SidePanel, type PanelOption, type PanelSection} from './SidePanel';
 import SURAHS from '../../../data/surahData.json';
 import {useTVPlayerStore} from '../../store/tvPlayerStore';
 import {useOverlayStore} from '../../store/overlayStore';
@@ -27,14 +27,23 @@ import {
   type AmbientChoice,
 } from '../../store/ambientStore';
 import {useSettingsStore} from '../../store/settingsStore';
+import {useNavStore} from '../../store/navStore';
+import {showToast} from '../../store/toastStore';
 import {useFavorites} from '../../hooks/useFavorites';
 import {useRecentlyPlayed} from '../../hooks/useRecentlyPlayed';
+import {usePlaylists} from '../../hooks/usePlaylists';
 import {
+  queueWindow,
   reciterChoicesForSurah,
   rewayahLabel,
-  upcoming,
   type ReciterChoice,
 } from '../../services/listeningChoices';
+import {
+  addPlaylistItem,
+  hasPlaylistItem,
+  removePlaylistItem,
+  type PlaylistItem,
+} from '../../services/playlistsStore';
 import {getReciterArtwork} from '../../services/reciterArtwork';
 import type {Reciter} from '../../types/reciter';
 
@@ -51,8 +60,17 @@ const surahMeta = new Map<number, SurahMeta>(
 
 /** Reciters offered in the Reciter panel. */
 const RECITER_CHOICES = 40;
-/** Surahs listed in the Queue panel. */
+/** Surahs listed in the Queue panel after the one playing. */
 const QUEUE_SHOWN = 40;
+/** Surahs already played that the Queue panel lists before it. */
+const QUEUE_PLAYED_SHOWN = 10;
+/** The Save panel's "New playlist" row, among the playlist ids. */
+const NEW_PLAYLIST = '__new__';
+/**
+ * The Queue panel's "Start again" row. Not index 0 itself: the first surah
+ * can be listed already among the played ones, and rows are keyed by value.
+ */
+const START_AGAIN = -2;
 
 type Props = {
   currentAyah: number;
@@ -92,6 +110,8 @@ export function ListeningPanels({
   const defaultReciterId = useSettingsStore(s => s.defaultReciterId);
   const favorites = useFavorites();
   const recent = useRecentlyPlayed();
+  const playlists = usePlaylists();
+  const push = useNavStore(s => s.push);
   const repeat = useListeningStore(s => s.repeat);
   const setRepeat = useListeningStore(s => s.setRepeat);
   const setRepeatTimes = useListeningStore(s => s.setRepeatTimes);
@@ -127,7 +147,8 @@ export function ListeningPanels({
             {
               value: 'verse' as const,
               label: 'This verse',
-              detail: currentAyah > 0 ? `Verse ${currentAyah}` : undefined,
+              // During the opening, "this verse" is the first one.
+              detail: `Verse ${Math.max(1, currentAyah)}`,
             },
           ]
         : []),
@@ -244,31 +265,96 @@ export function ListeningPanels({
     }
   } else if (panel === 'queue') {
     title = 'Queue';
-    const next = upcoming(queue, currentIndex, QUEUE_SHOWN);
-    const options = next.map(({item, index}) => {
+    // Already played surahs sit above the one playing (checked, and where
+    // focus starts), so the previous surah is a press away too.
+    const shown = queueWindow(
+      queue,
+      currentIndex,
+      QUEUE_PLAYED_SHOWN,
+      QUEUE_SHOWN,
+    );
+    const options: PanelOption<number>[] = shown.map(({item, index}) => {
       const meta = surahMeta.get(item.surahNumber);
+      const about = meta
+        ? `${meta.translated_name_english} · ${meta.verses_count} verses`
+        : undefined;
       return {
         value: index,
         label: `${item.surahNumber}. ${item.title}`,
-        detail: meta
-          ? `${meta.translated_name_english} · ${meta.verses_count} verses`
-          : undefined,
+        detail: index === currentIndex ? 'Playing now' : about,
       };
     });
+    const last = currentIndex >= queue.length - 1;
+    if (last && queue.length > 1) {
+      options.push({
+        value: START_AGAIN,
+        label: 'Start again from the first surah',
+      });
+    } else if (queue.length <= 1) {
+      options.push({value: -1, label: 'Nothing else is queued'});
+    }
     const playing = queue[currentIndex];
     sections = [
       {
-        title: playing ? `Up next with ${playing.subtitle}` : 'Up next',
-        options:
-          options.length > 0
-            ? options
-            : queue.length > 1
-              ? [{value: 0, label: 'Start again from the first surah'}]
-              : [{value: -1, label: 'Nothing else is queued'}],
-        selected: null,
+        title: playing ? `Queue with ${playing.subtitle}` : 'Queue',
+        options,
+        selected: currentIndex,
         onSelect: (index: number) => {
           setPanel(null);
-          if (index >= 0) void jumpToIndex(index);
+          // The surah playing is already where the listener wants to be.
+          if (index === START_AGAIN) void jumpToIndex(0);
+          else if (index >= 0 && index !== currentIndex) {
+            void jumpToIndex(index);
+          }
+        },
+      },
+    ];
+  } else if (panel === 'save') {
+    title = 'Add to playlist';
+    const item = queue[currentIndex];
+    const entry: PlaylistItem | null = item
+      ? {
+          surahNumber: item.surahNumber,
+          reciterId: item.reciterId,
+          ...(item.rewayahId ? {rewayahId: item.rewayahId} : {}),
+        }
+      : null;
+    // Read through `playlists` above, so the checks follow every change.
+    const holds = (id: string): boolean =>
+      entry !== null && hasPlaylistItem(id, entry);
+    sections = [
+      {
+        title: item ? `${item.title} · ${item.subtitle}` : 'This surah',
+        options: [
+          {
+            value: NEW_PLAYLIST,
+            label: 'New playlist',
+            detail: 'Starts with this surah',
+          },
+          ...playlists.map(p => ({
+            value: p.id,
+            label: p.name,
+            detail: `${p.items.length} ${p.items.length === 1 ? 'surah' : 'surahs'}`,
+          })),
+        ],
+        selected: null,
+        isSelected: (id: string) => holds(id),
+        onSelect: (id: string) => {
+          if (!entry) return;
+          if (id === NEW_PLAYLIST) {
+            setPanel(null);
+            push({screen: 'playlistEdit', seed: entry});
+            return;
+          }
+          const name = playlists.find(p => p.id === id)?.name ?? 'playlist';
+          if (holds(id)) {
+            removePlaylistItem(id, entry);
+            showToast(`Removed from ${name}`);
+          } else if (addPlaylistItem(id, entry)) {
+            showToast(`Added to ${name}`);
+          } else {
+            showToast(`${name} is full`, 'error');
+          }
         },
       },
     ];

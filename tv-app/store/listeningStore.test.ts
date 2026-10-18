@@ -8,9 +8,14 @@ import {
   SPEED_CYCLE,
   repeatLabel,
   timesLabel,
+  checkVerseRepeat,
+  itemKey,
+  startVerseRepeatSync,
   useListeningStore,
 } from './listeningStore';
 import {useTVPlayerStore} from './tvPlayerStore';
+import type {AudioEngine, EngineEvent} from '../services/audioEngine';
+import type {VerseTimeline} from '../services/verseTimeline';
 
 describe('nextRepeatChoice', () => {
   it('steps off → verse 3× → verse ∞ → surah → off', () => {
@@ -154,5 +159,123 @@ describe('footerChips', () => {
 
   it('hides a sleep choice once the timer has run out', () => {
     expect(footerChips({...base, sleepOn: false, sleepChoice: 30})).toEqual([]);
+  });
+});
+
+describe('verse repeat, app-wide', () => {
+  const tracks = [1, 2].map(n => ({
+    reciterId: 'r1',
+    rewayahId: 'w1',
+    surahNumber: n,
+    audioUrl: `https://x/00${n}.mp3`,
+    title: `S${n}`,
+    subtitle: 'Reciter',
+  }));
+  const timeline = {
+    surahNumber: 1,
+    verses: [
+      {ayah: 1, fromMs: 0, toMs: 5000},
+      {ayah: 2, fromMs: 5000, toMs: 10000},
+      {ayah: 3, fromMs: 10000, toMs: 15000},
+    ],
+  };
+  let engine: AudioEngine & {emit: (e: EngineEvent) => void};
+
+  function at(seconds: number): void {
+    engine.emit({
+      status: 'playing',
+      positionSeconds: seconds,
+      durationSeconds: 60,
+    });
+  }
+
+  let run = 0;
+
+  beforeEach(async () => {
+    jest.useFakeTimers();
+    // Each test's clock starts well after the last one's seeks.
+    jest.setSystemTime(Date.now() + ++run * 60 * 1000);
+    useTVPlayerStore.getState().reset();
+    useListeningStore.getState().reset();
+    let listener: ((e: EngineEvent) => void) | null = null;
+    engine = {
+      load: jest.fn().mockResolvedValue(undefined),
+      play: jest.fn().mockResolvedValue(undefined),
+      pause: jest.fn(),
+      seek: jest.fn(),
+      setRate: jest.fn(),
+      setVolume: jest.fn(),
+      destroy: jest.fn(),
+      subscribe: cb => {
+        listener = cb;
+        return () => {
+          listener = null;
+        };
+      },
+      emit: e => listener?.(e),
+    };
+    useTVPlayerStore.getState().setEngine(engine);
+    await useTVPlayerStore.getState().loadQueue(tracks, 0);
+    useListeningStore
+      .getState()
+      .setTimeline(itemKey(tracks[0]), timeline as VerseTimeline);
+    // Past the settle window of any earlier seek.
+    jest.advanceTimersByTime(1000);
+  });
+
+  afterEach(() => {
+    useTVPlayerStore.getState().reset();
+    useListeningStore.getState().reset();
+    jest.useRealTimers();
+  });
+
+  it('treats the opening (verse 0) as verse 1', () => {
+    useListeningStore.getState().setRepeat({kind: 'verse', times: 3}, 0);
+    expect(useListeningStore.getState().verseRepeat?.ayah).toBe(1);
+    expect(useListeningStore.getState().repeatKey).toBe(itemKey(tracks[0]));
+  });
+
+  it('sends playback back to the verse start until the count runs out', () => {
+    useListeningStore.getState().setRepeat({kind: 'verse', times: 2}, 2);
+    at(10.2);
+    checkVerseRepeat();
+    expect(engine.seek).toHaveBeenLastCalledWith(5);
+    expect(useListeningStore.getState().verseRepeat?.played).toBe(1);
+    jest.advanceTimersByTime(1000);
+    (engine.seek as jest.Mock).mockClear();
+    at(10.2);
+    checkVerseRepeat();
+    expect(engine.seek).not.toHaveBeenCalled();
+    expect(useListeningStore.getState().repeat).toEqual({kind: 'off'});
+  });
+
+  it('holds at the verse start for the pause between plays', () => {
+    useListeningStore.getState().setRepeatPause(2000);
+    useListeningStore.getState().setRepeat({kind: 'verse', times: 3}, 1);
+    at(5.1);
+    checkVerseRepeat();
+    expect(useTVPlayerStore.getState().held).toBe(true);
+    expect(engine.pause).toHaveBeenCalled();
+    jest.advanceTimersByTime(2000);
+    expect(useTVPlayerStore.getState().held).toBe(false);
+    expect(engine.play).toHaveBeenCalled();
+  });
+
+  it('keeps going while the player screen is away (store-driven)', () => {
+    startVerseRepeatSync();
+    useListeningStore.getState().setRepeat({kind: 'verse', times: 3}, 1);
+    at(5.1);
+    expect(engine.seek).toHaveBeenLastCalledWith(0);
+  });
+
+  it('ends when another surah starts, and leaves the choice alone otherwise', async () => {
+    useListeningStore.getState().setRepeat({kind: 'verse', times: 3}, 1);
+    at(2);
+    checkVerseRepeat();
+    expect(useListeningStore.getState().verseRepeat).not.toBeNull();
+    await useTVPlayerStore.getState().next();
+    checkVerseRepeat();
+    expect(useListeningStore.getState().verseRepeat).toBeNull();
+    expect(useListeningStore.getState().repeat).toEqual({kind: 'off'});
   });
 });

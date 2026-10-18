@@ -1,5 +1,12 @@
 import React, {useEffect, useRef} from 'react';
-import {Animated, Easing, StyleSheet, Text, View} from 'react-native';
+import {
+  Animated,
+  Easing,
+  StyleSheet,
+  Text,
+  TVFocusGuideView,
+  View,
+} from 'react-native';
 import {FocusableButton} from '../primitives/FocusableButton';
 import {FocusText} from '../primitives/focusContext';
 import {isNetworkError, useTVPlayerStore} from '../../store/tvPlayerStore';
@@ -28,9 +35,18 @@ export function ErrorBanner(): React.ReactElement | null {
   const lastError = useTVPlayerStore(s => s.lastError);
   const retry = useTVPlayerStore(s => s.retry);
   const next = useTVPlayerStore(s => s.next);
-  const queueLen = useTVPlayerStore(s => s.queue.length);
+  // Skip only where there is a next surah to skip to.
+  const canSkip = useTVPlayerStore(s => s.currentIndex < s.queue.length - 1);
 
   const visible = status === 'error' && !!lastError;
+  // Try again takes focus when the card shows; asked once mounted too, since
+  // hasTVPreferredFocus alone can miss when focus was elsewhere.
+  const retryRef = useRef<View>(null);
+  useEffect(() => {
+    if (!visible) return;
+    const id = setTimeout(() => retryRef.current?.requestTVFocus?.(), 0);
+    return () => clearTimeout(id);
+  }, [visible]);
   const opacity = useRef(new Animated.Value(0)).current;
   const scale = useRef(new Animated.Value(0.96)).current;
 
@@ -66,8 +82,15 @@ export function ErrorBanner(): React.ReactElement | null {
         <Text style={styles.message} numberOfLines={3}>
           {copy.body}
         </Text>
-        <View style={styles.row}>
+        <TVFocusGuideView
+          style={styles.row}
+          autoFocus
+          trapFocusUp
+          trapFocusDown
+          trapFocusLeft
+          trapFocusRight>
           <FocusableButton
+            ref={retryRef}
             onPress={() => void retry()}
             accessibilityLabel="Retry playback"
             style={styles.cta}
@@ -75,7 +98,7 @@ export function ErrorBanner(): React.ReactElement | null {
             hasTVPreferredFocus>
             <FocusText style={styles.ctaText}>Try again</FocusText>
           </FocusableButton>
-          {queueLen > 1 && (
+          {canSkip && (
             <FocusableButton
               onPress={() => void next()}
               accessibilityLabel="Skip to next track"
@@ -83,7 +106,7 @@ export function ErrorBanner(): React.ReactElement | null {
               <FocusText style={styles.ctaText}>Skip</FocusText>
             </FocusableButton>
           )}
-        </View>
+        </TVFocusGuideView>
       </Animated.View>
     </Animated.View>
   );

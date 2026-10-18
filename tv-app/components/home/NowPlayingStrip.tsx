@@ -26,7 +26,8 @@ export function NowPlayingStrip({
   onFocus,
 }: Props): React.ReactElement | null {
   const item = useTVPlayerStore(s => s.queue[s.currentIndex]);
-  const status = useTVPlayerStore(s => s.status);
+  // A verse repeat's gap (held) is still listening, not a pause.
+  const status = useTVPlayerStore(s => (s.held ? 'playing' : s.status));
   const finished = useTVPlayerStore(s => s.finished);
   const pending = useTVPlayerStore(s => s.pending);
   if (!item) return null;
