@@ -13,7 +13,12 @@ import {playlistCaption} from '../services/libraryShelf';
 import {shortReciterName} from '../services/listeningChoices';
 import {playOrOpen, surahTitle} from '../services/playbackRouting';
 import {playlistGradient} from '../services/playlistFormat';
-import {removePlaylist, type PlaylistItem} from '../services/playlistsStore';
+import {claimFocusReturn} from '../services/focusReturn';
+import {
+  getPlaylist,
+  removePlaylist,
+  type PlaylistItem,
+} from '../services/playlistsStore';
 import {getCachedRewayat} from '../services/tvDataService';
 import {useContextMenuStore} from '../store/contextMenuStore';
 import {useNavStore} from '../store/navStore';
@@ -89,6 +94,7 @@ export function PlaylistScreen({playlistId}: Props): React.ReactElement {
   }, [focusRow]);
 
   useEffect(() => {
+    let openedAt: number | null = null;
     let menuRow: number | null = null;
     return useContextMenuStore.subscribe(next => {
       const t = next.target;
@@ -97,12 +103,23 @@ export function PlaylistScreen({playlistId}: Props): React.ReactElement {
         t.origin === 'playlist' &&
         t.playlistId === playlistId
       ) {
+        openedAt ??= t.playlistIndex ?? null;
         menuRow = t.playlistIndex ?? null;
         return;
       }
       if (t === null && menuRow !== null) {
-        const count = itemsRef.current.length;
-        if (count > 0) setFocusRow(Math.min(menuRow, count - 1));
+        // Read the store, not the last render: a removal has only just
+        // been written.
+        const count = getPlaylist(playlistId)?.items.length ?? 0;
+        const before = itemsRef.current.length;
+        // A row that stayed put gets focus back from the menu itself; a
+        // moved or removed one is placed here, since a recycled cell may
+        // now show another surah.
+        if (count > 0 && (menuRow !== openedAt || count !== before)) {
+          setFocusRow(Math.min(menuRow, count - 1));
+          claimFocusReturn();
+        }
+        openedAt = null;
         menuRow = null;
       }
     });

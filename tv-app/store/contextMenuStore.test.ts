@@ -1,4 +1,8 @@
-import {noteLongPressOrigin, ORIGIN_TTL_MS} from '../services/focusReturn';
+import {
+  claimFocusReturn,
+  noteLongPressOrigin,
+  ORIGIN_TTL_MS,
+} from '../services/focusReturn';
 import {useContextMenuStore} from './contextMenuStore';
 import {useNavStore} from './navStore';
 
@@ -76,6 +80,23 @@ describe('contextMenuStore', () => {
     useContextMenuStore.getState().close({restoreFocus: false});
     jest.runAllTimers();
     expect(requestTVFocus).not.toHaveBeenCalled();
+  });
+
+  it('leaves focus to a screen that claims it on close', () => {
+    const {ref, requestTVFocus} = opener();
+    useContextMenuStore.getState().openReciter('r1', ref);
+    const unsubscribe = useContextMenuStore.subscribe(next => {
+      if (next.target === null) claimFocusReturn();
+    });
+    useContextMenuStore.getState().close();
+    unsubscribe();
+    jest.runAllTimers();
+    expect(requestTVFocus).not.toHaveBeenCalled();
+    // The claim is used up: the next close restores again.
+    useContextMenuStore.getState().openReciter('r1', ref);
+    useContextMenuStore.getState().close();
+    jest.runAllTimers();
+    expect(requestTVFocus).toHaveBeenCalledTimes(1);
   });
 
   it('closes on navigation without restoring focus', () => {

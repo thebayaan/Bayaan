@@ -210,6 +210,14 @@ function SurahMenu({target}: {target: SurahMenuTarget}): React.ReactElement {
   );
   const subtitle = reciter ? reciter.name : undefined;
 
+  // From a playlist row, that playlist is left out of the picker: taking
+  // the row out goes through Remove from playlist, which moves focus to
+  // its neighbour (and keeps this menu's row index true).
+  const pickable =
+    origin === 'playlist'
+      ? playlists.filter(p => p.id !== target.playlistId)
+      : playlists;
+
   if (page === 'playlists') {
     return (
       <MenuSheet
@@ -223,12 +231,12 @@ function SurahMenu({target}: {target: SurahMenuTarget}): React.ReactElement {
           onPress={handleNewPlaylist}
           hasTVPreferredFocus
         />
-        {playlists.length > 0 ? (
+        {pickable.length > 0 ? (
           <ScrollView
             style={styles.pickList}
             contentContainerStyle={styles.pickContent}
             showsVerticalScrollIndicator={false}>
-            {playlists.map(p => {
+            {pickable.map(p => {
               const has = voice !== null && playlistHas(p, voice);
               return (
                 <MenuRow

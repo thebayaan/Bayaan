@@ -1,6 +1,7 @@
 import {create} from 'zustand';
 import {
   restoreFocusTo,
+  takeFocusClaim,
   takeLongPressOrigin,
   type FocusRef,
 } from '../services/focusReturn';
@@ -97,7 +98,10 @@ export const useContextMenuStore = create<State>((set, get) => {
       const {target, opener} = get();
       if (!target) return;
       set({target: null, reciterId: null, opener: null});
-      if (restoreFocus) restoreFocusTo(opener);
+      // Subscribers ran during set(): a screen that placed focus itself
+      // (its tile went away) has claimed it.
+      const claimed = takeFocusClaim();
+      if (restoreFocus && !claimed) restoreFocusTo(opener);
     },
   };
 });

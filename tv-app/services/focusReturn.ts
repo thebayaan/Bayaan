@@ -28,6 +28,24 @@ export function takeLongPressOrigin(): FocusRef | null {
   return noted.ref;
 }
 
+let claimed = false;
+
+/**
+ * Called by a screen while the menu closes (from a contextMenuStore
+ * subscriber) when it moves focus itself: the opener's tile was removed or
+ * moved, and a recycled list cell may now hold another item.
+ */
+export function claimFocusReturn(): void {
+  claimed = true;
+}
+
+/** Whether a screen claimed this close's focus; resets the claim. */
+export function takeFocusClaim(): boolean {
+  const was = claimed;
+  claimed = false;
+  return was;
+}
+
 const nextFrame: (cb: () => void) => void =
   typeof requestAnimationFrame === 'function'
     ? cb => {

@@ -22,6 +22,7 @@ import {
   type NameDraft,
 } from '../services/playlistFormat';
 import {
+  MAX_PLAYLISTS,
   cleanPlaylistName,
   createPlaylist,
   renamePlaylist,
@@ -91,6 +92,14 @@ export function PlaylistEditScreen({
         setPlaylistColor(existing.id, color);
       }
       pop();
+      return;
+    }
+    // The store keeps at most MAX_PLAYLISTS and would drop the oldest.
+    if (playlists.length >= MAX_PLAYLISTS) {
+      showToast(
+        `You have ${MAX_PLAYLISTS} playlists, the most this TV keeps. Delete one first.`,
+        'error',
+      );
       return;
     }
     const id = createPlaylist(name, seed ? [seed] : [], color);

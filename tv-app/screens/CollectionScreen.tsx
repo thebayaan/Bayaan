@@ -35,6 +35,7 @@ import {
   type ShelfItem,
   type ShelfSort,
 } from '../services/libraryShelf';
+import {claimFocusReturn} from '../services/focusReturn';
 import {shortReciterName} from '../services/listeningChoices';
 import {getCachedRewayat} from '../services/tvDataService';
 import {useContextMenuStore} from '../store/contextMenuStore';
@@ -209,20 +210,44 @@ export function CollectionScreen(): React.ReactElement {
     return () => clearTimeout(timer);
   }, [focusIndex]);
 
+  // The first-run page and the shelf swap only while no menu is open: a
+  // Like on a starter surah (or an Unlike of the last loved one) must not
+  // swap the page, and mount its preferred focus, under the open menu.
+  const menuOpen = useContextMenuStore(s => s.target !== null);
+  const shelfEmpty = isShelfEmpty(shelf);
+  const [firstRun, setFirstRun] = useState<boolean>(shelfEmpty);
+  const leavingFirstRun = useRef<boolean>(false);
+  leavingFirstRun.current = firstRun && !shelfEmpty;
+  useEffect(() => {
+    if (menuOpen || shelfEmpty === firstRun) return;
+    setFirstRun(shelfEmpty);
+    if (shelfEmpty) return;
+    // The first thing kept: open its tab with focus on it.
+    const tab: ShelfFilter =
+      counts.loved > 0 ? 'loved' : counts.reciters > 0 ? 'reciters' : filter;
+    lastFilter = tab;
+    setFilter(tab);
+    setFocusIndex(0);
+  }, [menuOpen, shelfEmpty, firstRun, counts, filter]);
+
   // A menu that removed its own tile (Unlike, Remove from favorites) leaves
   // focus on the neighbour that took its place, not wherever the engine
-  // falls back to.
+  // falls back to (or a recycled cell that held the tile).
   const menuFrom = useRef<{key: string; index: number} | null>(null);
   useEffect(
     () =>
       useContextMenuStore.subscribe((next, prev) => {
-        if (!prev.target || next.target || !menuFrom.current) return;
+        if (!prev.target || next.target) return;
+        // Leaving the first run: the shelf's first tile takes focus.
+        if (leavingFirstRun.current) claimFocusReturn();
+        if (!menuFrom.current) return;
         const from = menuFrom.current;
         menuFrom.current = null;
         const now = itemsRef.current;
         if (now.some(i => i.key === from.key)) return;
         // An emptied tab focuses its one action instead.
         setFocusIndex(Math.max(0, placeOf(now, from.key, from.index)));
+        claimFocusReturn();
       }),
     [],
   );
@@ -356,7 +381,7 @@ export function CollectionScreen(): React.ReactElement {
     </View>
   );
 
-  if (isShelfEmpty(shelf)) {
+  if (firstRun) {
     return (
       <View style={styles.container}>
         <LibraryFirstRun
