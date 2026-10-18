@@ -1,0 +1,151 @@
+import {
+  CONFIRM_MS,
+  createFocusMemory,
+  focusInSteps,
+  landedSince,
+  requestFocus,
+  type Schedule,
+} from './layerFocus';
+
+function view(onFocus?: () => void) {
+  const v = {requestTVFocus: jest.fn(() => onFocus?.())};
+  return v;
+}
+
+/** A scheduler driven by hand: run() fires what is due, in order. */
+function manualSchedule() {
+  const due: Array<{cb: () => void; ms: number; live: boolean}> = [];
+  const schedule: Schedule = (cb, ms) => {
+    const job = {cb, ms, live: true};
+    due.push(job);
+    return () => {
+      job.live = false;
+    };
+  };
+  const run = (): void => {
+    const job = due.shift();
+    if (job?.live) job.cb();
+  };
+  return {schedule, run, pending: () => due.filter(j => j.live).length, due};
+}
+
+describe('requestFocus', () => {
+  it('asks a view that can take focus', () => {
+    const v = view();
+    expect(requestFocus(v)).toBe(true);
+    expect(v.requestTVFocus).toHaveBeenCalledTimes(1);
+  });
+
+  it('has nothing to ask of a missing, detached or plain target', () => {
+    expect(requestFocus(null)).toBe(false);
+    expect(requestFocus(42)).toBe(false);
+    expect(requestFocus({})).toBe(false);
+    const detached = {...view(), isConnected: false};
+    expect(requestFocus(detached)).toBe(false);
+    expect(detached.requestTVFocus).not.toHaveBeenCalled();
+  });
+});
+
+describe('createFocusMemory', () => {
+  it('remembers the element focused last, and whether focus is inside', () => {
+    const memory = createFocusMemory();
+    const a = view();
+    const b = view();
+    expect(memory.inside()).toBe(false);
+    expect(memory.last()).toBeNull();
+    memory.focus(a);
+    memory.focus(b);
+    memory.blur(a); // the old view's blur after the new one's focus
+    expect(memory.inside()).toBe(true);
+    expect(memory.last()).toBe(b);
+    memory.blur(b);
+    expect(memory.inside()).toBe(false);
+    // Focus left the part: the element is still what to go back to.
+    expect(memory.last()).toBe(b);
+    expect(memory.count()).toBe(2);
+  });
+
+  it('forgets an element that can no longer take focus', () => {
+    const memory = createFocusMemory();
+    const gone = {...view(), isConnected: true};
+    memory.focus(gone);
+    gone.isConnected = false;
+    expect(memory.last()).toBeNull();
+    memory.focus(7); // a bare tag (old renderer): nothing to refocus
+    expect(memory.last()).toBeNull();
+    expect(memory.inside()).toBe(true);
+  });
+});
+
+describe('focusInSteps', () => {
+  it('stops at the first step whose focus lands', () => {
+    const memory = createFocusMemory();
+    const tile = view(() => memory.focus(tile));
+    const guide = view();
+    const {schedule, run} = manualSchedule();
+    focusInSteps(
+      [() => requestFocus(tile), () => requestFocus(guide)],
+      landedSince(memory),
+      schedule,
+    );
+    expect(tile.requestTVFocus).toHaveBeenCalledTimes(1);
+    run();
+    expect(guide.requestTVFocus).not.toHaveBeenCalled();
+  });
+
+  it('tries the next step when a request goes nowhere, after CONFIRM_MS', () => {
+    const memory = createFocusMemory();
+    const dropped = view(); // never sends a focus event
+    const sidebar = view(() => memory.focus(sidebar));
+    const {schedule, run, due} = manualSchedule();
+    focusInSteps(
+      [() => requestFocus(dropped), () => requestFocus(sidebar)],
+      landedSince(memory),
+      schedule,
+    );
+    expect(due[0].ms).toBe(CONFIRM_MS);
+    expect(sidebar.requestTVFocus).not.toHaveBeenCalled();
+    run();
+    expect(sidebar.requestTVFocus).toHaveBeenCalledTimes(1);
+  });
+
+  it('skips steps with nothing to try at once', () => {
+    const memory = createFocusMemory();
+    const guide = view();
+    const {schedule} = manualSchedule();
+    focusInSteps(
+      [() => requestFocus(memory.last()), () => requestFocus(guide)],
+      landedSince(memory),
+      schedule,
+    );
+    expect(guide.requestTVFocus).toHaveBeenCalledTimes(1);
+  });
+
+  it('does nothing more once cancelled', () => {
+    const memory = createFocusMemory();
+    const dropped = view();
+    const next = view();
+    const {schedule, run, pending} = manualSchedule();
+    const cancel = focusInSteps(
+      [() => requestFocus(dropped), () => requestFocus(next)],
+      landedSince(memory),
+      schedule,
+    );
+    cancel();
+    expect(pending()).toBe(0);
+    run();
+    expect(next.requestTVFocus).not.toHaveBeenCalled();
+  });
+});
+
+describe('landedSince', () => {
+  it('counts focus already inside, unless told not to', () => {
+    const memory = createFocusMemory();
+    memory.focus(view());
+    expect(landedSince(memory)()).toBe(true);
+    expect(landedSince(memory, {orInside: false})()).toBe(false);
+    const landed = landedSince(memory, {orInside: false});
+    memory.focus(view());
+    expect(landed()).toBe(true);
+  });
+});

@@ -1,5 +1,6 @@
 import {
   claimFocusReturn,
+  noteAppFocus,
   noteLongPressOrigin,
   ORIGIN_TTL_MS,
   setScreenFocusRestore,
@@ -7,9 +8,12 @@ import {
 import {useContextMenuStore} from './contextMenuStore';
 import {useNavStore} from './navStore';
 
+// A view that takes focus when asked (the focus event reaches the app).
 function opener() {
-  const requestTVFocus = jest.fn();
-  return {ref: {current: {requestTVFocus}}, requestTVFocus};
+  const view: {requestTVFocus: jest.Mock} = {
+    requestTVFocus: jest.fn(() => noteAppFocus(view)),
+  };
+  return {ref: {current: view}, requestTVFocus: view.requestTVFocus};
 }
 
 describe('contextMenuStore', () => {
@@ -128,6 +132,15 @@ describe('contextMenuStore', () => {
       jest.runAllTimers();
       expect(requestTVFocus).toHaveBeenCalledTimes(1);
       expect(screenRestore).not.toHaveBeenCalled();
+    });
+
+    it("falls back to the layer's memory when focus never reaches the opener", () => {
+      const dropped = {current: {requestTVFocus: jest.fn()}};
+      useContextMenuStore.getState().openReciter('r1', dropped);
+      useContextMenuStore.getState().close();
+      jest.runAllTimers();
+      expect(dropped.current.requestTVFocus).toHaveBeenCalledTimes(1);
+      expect(screenRestore).toHaveBeenCalledTimes(1);
     });
 
     it("falls back to the layer's memory when the opener is gone or unknown", () => {
