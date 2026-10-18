@@ -1,13 +1,15 @@
-import React, {useRef, useState} from 'react';
-import {Platform, Text, TVFocusGuideView, View} from 'react-native';
+import React, {useCallback, useRef, useState} from 'react';
+import {Text, TVFocusGuideView, View} from 'react-native';
 import {GradientFill} from '../components/brand/GradientFill';
 import {SurahGlyph} from '../components/brand/SurahGlyph';
+import {FocusWatch} from '../components/library/FocusWatch';
 import {FocusableButton} from '../components/primitives/FocusableButton';
 import {FocusableCard} from '../components/primitives/FocusableCard';
 import {FocusFrame, FocusText} from '../components/primitives/focusContext';
 import {SearchKeyboard} from '../components/search/SearchKeyboard';
 import {usePlaylist, usePlaylists} from '../hooks/usePlaylists';
 import {useReciters} from '../hooks/useReciters';
+import {focusLibraryTile} from '../services/libraryShelf';
 import {shortReciterName} from '../services/listeningChoices';
 import {surahTitle} from '../services/playbackRouting';
 import {
@@ -16,17 +18,20 @@ import {
   draftDelete,
   draftKey,
   draftSpace,
+  isArabicText,
   nextPlaylistColor,
   nextPlaylistName,
+  playlistColorName,
   playlistGradient,
+  playlistTint,
+  uniquePlaylistName,
   type NameDraft,
 } from '../services/playlistFormat';
+import {roomForPlaylist} from '../services/playlistsPicker';
 import {
-  MAX_PLAYLISTS,
   cleanPlaylistName,
   createPlaylist,
-  renamePlaylist,
-  setPlaylistColor,
+  editPlaylist,
   type PlaylistItem,
 } from '../services/playlistsStore';
 import {nextMode, type KeyboardMode} from '../services/search/keyboard';
@@ -46,13 +51,18 @@ type Props = {
 
 const SWATCH = 64;
 const PREVIEW = 260;
+// Layout in design px (the container's padding and gaps below).
+const PAD_LEFT = 120;
+const MAIN_WIDTH = 640;
+const GAP = 120;
 
 /**
  * Name a new playlist (or rename one) on the grid keyboard and pick its
- * colour. The name comes prefilled ("Playlist 3") so Save works at once; the
- * first key replaces it. Right from the keyboard lands on Save. Back
- * cancels. A playlist made from the Library opens straight away; one made
- * from a surah's menu takes that surah and returns to where you were.
+ * colour. The name comes prefilled ("Playlist 3") so Create works at once;
+ * the first letter replaces it. Right from the keyboard lands on Create (or
+ * Save). Back cancels. A playlist made from the Library opens straight away;
+ * one made from a surah's menu takes that surah and returns to where you
+ * were.
  */
 export function PlaylistEditScreen({
   playlistId,
@@ -64,8 +74,12 @@ export function PlaylistEditScreen({
   const pop = useNavStore(s => s.pop);
   const push = useNavStore(s => s.push);
 
+  // What an emptied name saves as: the suggestion, or the name being renamed.
+  const [suggested] = useState<string>(
+    () => existing?.name ?? nextPlaylistName(playlists),
+  );
   const [draft, setDraft] = useState<NameDraft>(() => ({
-    text: existing?.name ?? nextPlaylistName(playlists),
+    text: suggested,
     fresh: true,
   }));
   const [color, setColor] = useState<string>(
@@ -74,49 +88,66 @@ export function PlaylistEditScreen({
       (existing ? FALLBACK_PLAYLIST_COLOR : nextPlaylistColor(playlists)),
   );
   const [mode, setMode] = useState<KeyboardMode>('letters');
-  // Right from the keyboard (or up from nothing) enters the side column on
-  // Save rather than on the nearest swatch.
+  // Right from the keyboard enters the side column on Create rather than on
+  // the nearest swatch: an empty guide in the gap between the two redirects
+  // to the button. A guide around the column itself does not work on tvOS
+  // (UIKit focuses the swatch inside it directly), so the redirect lives in
+  // the gap, and only while focus is on the keyboard: from the column, Left
+  // must reach the keyboard, not bounce back to Create.
   const [saveButton, setSaveButton] = useState<View | null>(null);
-  // Focus is on the name keyboard (focus and blur bubble from its keys).
-  // Keyed by the key that has focus: tvOS can deliver the new key's focus
-  // before the old key's blur, which must not turn the strip off.
-  const [onKeyboard, setOnKeyboard] = useState(false);
-  const focusedKey = useRef<unknown>(null);
+  const sideFocus = useRef(0);
+  const [inSide, setInSide] = useState<boolean>(false);
+  const onSideFocus = useCallback((focused: boolean): void => {
+    sideFocus.current = Math.max(0, sideFocus.current + (focused ? 1 : -1));
+    setInSide(sideFocus.current > 0);
+  }, []);
 
   const renaming = playlistId !== undefined;
   const seedVoice = seed
     ? reciters.find(r => r.id === seed.reciterId)?.name
     : undefined;
   const previewSurah = seed?.surahNumber ?? existing?.items[0]?.surahNumber;
+  const typed = cleanPlaylistName(draft.text, suggested);
+  // A renamed playlist keeping its own name keeps it as is, even when an
+  // older (phone-made) playlist shares it: an untouched Save writes nothing.
+  const name =
+    existing && typed === existing.name
+      ? typed
+      : uniquePlaylistName(typed, playlists, playlistId);
+  const arabic = isArabicText(draft.text);
 
   function save(): void {
-    const name = cleanPlaylistName(draft.text);
     if (renaming) {
+      // Only what changed is written, so an untouched Save keeps the
+      // playlist's place in the Recent order.
+      // A playlist saved without a colour shows the fallback; keeping it
+      // is no change.
       if (existing) {
-        renamePlaylist(existing.id, name);
-        setPlaylistColor(existing.id, color);
+        const keptFallback =
+          existing.color === undefined && color === FALLBACK_PLAYLIST_COLOR;
+        editPlaylist(existing.id, {
+          name,
+          color: keptFallback ? undefined : color,
+        });
       }
       pop();
       return;
     }
     // The store keeps at most MAX_PLAYLISTS and would drop the oldest.
-    if (playlists.length >= MAX_PLAYLISTS) {
-      showToast(
-        `You have ${MAX_PLAYLISTS} playlists, the most this TV keeps. Delete one first.`,
-        'error',
-      );
-      return;
-    }
+    if (!roomForPlaylist(playlists.length)) return;
     const id = createPlaylist(name, seed ? [seed] : [], color);
     pop();
     if (seed) {
       showToast(`Added ${surahTitle(seed.surahNumber)} to ${name}`);
     } else {
       // Made from the Library: open it, where its empty state says how to
-      // fill it.
+      // fill it. Back from it lands on its tile, not on New playlist.
+      focusLibraryTile('playlists', `p:${id}`);
       push({screen: 'playlist', playlistId: id});
     }
   }
+
+  const action = renaming ? 'Save' : 'Create';
 
   return (
     <View style={styles.container}>
@@ -124,20 +155,29 @@ export function PlaylistEditScreen({
         <Text style={styles.kicker}>
           {renaming ? 'RENAME PLAYLIST' : 'NEW PLAYLIST'}
         </Text>
-        <View style={styles.field}>
+        {/* Arabic is typed right to left: the caret goes on the left, where
+            the next letter appears, and the name uses the system Arabic
+            face (as the keyboard's Arabic keys do). */}
+        <View style={[styles.field, arabic && styles.fieldArabic]}>
           {draft.text.length === 0 ? (
             <Text style={[styles.name, styles.placeholder]} numberOfLines={1}>
               Playlist name
             </Text>
           ) : (
             <Text
-              style={[styles.name, draft.fresh && styles.nameFresh]}
+              style={[
+                styles.name,
+                arabic && styles.nameArabic,
+                draft.fresh && styles.nameFresh,
+              ]}
               numberOfLines={1}
               ellipsizeMode="head">
               {draft.text}
             </Text>
           )}
-          {draft.fresh ? null : <View style={styles.caret} />}
+          {draft.fresh ? null : (
+            <View style={[styles.caret, arabic && styles.caretArabic]} />
+          )}
         </View>
         <Text style={styles.hint} numberOfLines={1}>
           {seed
@@ -145,20 +185,10 @@ export function PlaylistEditScreen({
                 seedVoice ? ` · ${shortReciterName(seedVoice)}` : ''
               }`
             : draft.fresh
-              ? 'Type to replace the name, or Save to keep it.'
+              ? `Type to replace the name, or ${action} to keep it.`
               : ' '}
         </Text>
-        <View
-          style={styles.keyboard}
-          onFocus={e => {
-            focusedKey.current = e.target;
-            setOnKeyboard(true);
-          }}
-          onBlur={e => {
-            if (focusedKey.current !== e.target) return;
-            focusedKey.current = null;
-            setOnKeyboard(false);
-          }}>
+        <View style={styles.keyboard}>
           <SearchKeyboard
             mode={mode}
             onKey={key => setDraft(d => draftKey(d, key))}
@@ -171,23 +201,24 @@ export function PlaylistEditScreen({
         </View>
       </View>
 
-      <TVFocusGuideView
-        destinations={saveButton ? [saveButton] : undefined}
-        trapFocusRight
-        style={styles.side}>
-        {/* tvOS: a guide redirects only when it is itself the nearest
-            candidate, and the swatches inside the column are nearer to the
-            keyboard than its edge. This strip in the gap is nearer still, so
-            Right from the keyboard lands on Create there too. Only while
-            focus is on the keyboard: Left from a swatch must not meet it. */}
-        {Platform.OS === 'ios' && saveButton && onKeyboard ? (
-          <TVFocusGuideView destinations={[saveButton]} style={styles.toSave} />
-        ) : null}
+      {/* Mounted only while focus is on the keyboard. Passing no
+          destinations does not clear a guide's native ones (on either
+          platform), so a kept guide would still bounce Left from Create
+          back to Create; unmounting it is what turns it off. */}
+      {saveButton && !inSide ? (
+        <TVFocusGuideView destinations={[saveButton]} style={styles.toSave} />
+      ) : null}
+
+      <TVFocusGuideView trapFocusRight style={styles.side}>
         <View style={styles.preview}>
           <GradientFill colors={playlistGradient(color)} id="playlist-edit" />
           <View style={styles.previewArt}>
             {previewSurah ? (
-              <SurahGlyph surahNumber={previewSurah} size={110} />
+              <SurahGlyph
+                surahNumber={previewSurah}
+                size={110}
+                fitWidth={PREVIEW - 40}
+              />
             ) : (
               <PlaylistIcon color={colors.textSecondary} size={scale(76)} />
             )}
@@ -197,14 +228,23 @@ export function PlaylistEditScreen({
         <View style={styles.swatches}>
           {PLAYLIST_COLORS.map(c => {
             const selected = c.toUpperCase() === color.toUpperCase();
+            const colorName = playlistColorName(c);
             return (
               <FocusableCard
                 key={c}
                 ring={false}
                 onPress={() => setColor(c)}
-                accessibilityLabel={selected ? 'Colour, selected' : 'Colour'}>
+                selected={selected}
+                accessibilityLabel={
+                  selected ? `${colorName}, selected` : colorName
+                }>
+                <FocusWatch onChange={onSideFocus} />
                 <FocusFrame radius={SWATCH / 2} style={styles.swatchFrame}>
-                  <View style={[styles.swatch, {backgroundColor: c}]}>
+                  <View
+                    style={[
+                      styles.swatch,
+                      {backgroundColor: playlistTint(c)},
+                    ]}>
                     {selected ? (
                       <CheckIcon color={colors.text} size={scale(28)} />
                     ) : null}
@@ -215,27 +255,22 @@ export function PlaylistEditScreen({
           })}
         </View>
         <View style={styles.actions}>
-          <View>
-            {/* The guide's destination must be the focusable button itself: a
-                plain wrapper View is flattened away natively, so Right from
-                the keyboard found nothing to land on. */}
-            <FocusableButton
-              ref={setSaveButton}
-              onPress={save}
-              accessibilityLabel={
-                renaming ? 'Save' : `Create ${cleanPlaylistName(draft.text)}`
-              }
-              outlined
-              style={styles.btn}>
-              <FocusText style={styles.btnText}>
-                {renaming ? 'Save' : 'Create'}
-              </FocusText>
-            </FocusableButton>
-          </View>
+          {/* The guide's destination must be the focusable button itself: a
+              plain wrapper View is flattened away natively. */}
+          <FocusableButton
+            ref={setSaveButton}
+            onPress={save}
+            accessibilityLabel={renaming ? 'Save' : `Create ${name}`}
+            outlined
+            style={styles.btn}>
+            <FocusWatch onChange={onSideFocus} />
+            <FocusText style={styles.btnText}>{action}</FocusText>
+          </FocusableButton>
           <FocusableButton
             onPress={pop}
             accessibilityLabel="Cancel"
             style={styles.btn}>
+            <FocusWatch onChange={onSideFocus} />
             <FocusText style={styles.btnText}>Cancel</FocusText>
           </FocusableButton>
         </View>
@@ -252,13 +287,13 @@ const styles = createScaledStyles({
     flexDirection: 'row',
     backgroundColor: colors.background,
     paddingTop: 88,
-    paddingLeft: 120,
+    paddingLeft: PAD_LEFT,
     paddingRight: 96,
-    gap: 120,
+    gap: GAP,
   },
-  main: {width: 640},
+  main: {width: MAIN_WIDTH},
   kicker: {
-    color: colors.textTertiary,
+    color: colors.accent,
     fontFamily: fonts.extraBold,
     fontSize: 16,
     fontWeight: '800',
@@ -272,6 +307,7 @@ const styles = createScaledStyles({
     borderBottomWidth: 2,
     borderColor: colors.border,
   },
+  fieldArabic: {flexDirection: 'row-reverse'},
   name: {
     flexShrink: 1,
     color: colors.text,
@@ -280,6 +316,7 @@ const styles = createScaledStyles({
     fontWeight: '700',
     letterSpacing: -1,
   },
+  nameArabic: {fontFamily: undefined, letterSpacing: 0},
   // A prefilled name reads as a suggestion until the first key.
   nameFresh: {color: colors.textSecondary},
   placeholder: {color: colors.textTertiary},
@@ -290,6 +327,7 @@ const styles = createScaledStyles({
     borderRadius: 2,
     backgroundColor: colors.accent,
   },
+  caretArabic: {marginLeft: 0, marginRight: 4},
   hint: {
     color: colors.textSecondary,
     fontFamily: fonts.medium,
@@ -298,8 +336,16 @@ const styles = createScaledStyles({
     marginTop: 14,
   },
   keyboard: {marginTop: 36},
+  // A thin, empty strip down the middle of the gap between the keyboard and
+  // the side column (absolute, so it takes no part in the row's gaps).
+  toSave: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: PAD_LEFT + MAIN_WIDTH + GAP / 2 - 1,
+    width: 2,
+  },
   side: {width: 560},
-  toSave: {position: 'absolute', left: -64, top: 0, bottom: 0, width: 8},
   preview: {
     width: PREVIEW,
     height: PREVIEW,
@@ -309,7 +355,7 @@ const styles = createScaledStyles({
   },
   previewArt: {flex: 1, alignItems: 'center', justifyContent: 'center'},
   label: {
-    color: colors.textTertiary,
+    color: colors.accent,
     fontFamily: fonts.extraBold,
     fontSize: 15,
     fontWeight: '800',

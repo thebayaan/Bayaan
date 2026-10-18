@@ -45,7 +45,7 @@ const EXPLAINERS: readonly Explainer[] = [
   {
     icon: HeartIcon,
     title: 'Loved surahs',
-    text: 'Hold OK on a surah and choose Love, or press the heart in the player.',
+    text: 'Hold OK on a surah and choose Love, or press Love in the player.',
   },
   {
     icon: PersonAudioIcon,
@@ -91,7 +91,7 @@ export function LibraryFirstRun({
           <Text style={styles.kicker}>YOUR LIBRARY</Text>
           <Text style={styles.title}>Keep what you love</Text>
           <Text style={styles.sentence}>
-            Surahs you love, reciters you favourite and your playlists live
+            Surahs you love, reciters you favorite and your playlists live
             here.
           </Text>
           <TVFocusGuideView autoFocus style={styles.actions}>
@@ -132,7 +132,7 @@ export function LibraryFirstRun({
         <View style={styles.starter}>
           <Text style={styles.starterTitle}>Good places to start</Text>
           <Text style={styles.starterHint}>
-            Hold OK on a surah to like it or add it to a playlist.
+            Hold OK on a surah to love it or add it to a playlist.
           </Text>
           <TVFocusGuideView autoFocus style={styles.starterRow}>
             {STARTER_SURAHS.map(s => (
@@ -166,7 +166,7 @@ const styles = createScaledStyles({
   calligraphy: {position: 'absolute', right: 150, top: 120},
   hero: {marginTop: 88, width: 1000},
   kicker: {
-    color: colors.textTertiary,
+    color: colors.accent,
     fontFamily: fonts.extraBold,
     fontWeight: '800',
     fontSize: 19,
@@ -192,7 +192,7 @@ const styles = createScaledStyles({
   button: {paddingHorizontal: 30, paddingVertical: 16, borderRadius: 16},
   buttonInner: {flexDirection: 'row', alignItems: 'center', gap: 12},
   buttonText: {fontFamily: fonts.bold, fontWeight: '700', fontSize: 24},
-  explainers: {flexDirection: 'row', gap: 40, marginTop: 80},
+  explainers: {flexDirection: 'row', gap: 40, marginTop: 48},
   explainer: {flex: 1, flexDirection: 'row', alignItems: 'flex-start', gap: 24},
   ghost: {
     width: 92,
@@ -219,7 +219,9 @@ const styles = createScaledStyles({
     fontSize: 20,
     lineHeight: 28,
   },
-  starter: {marginTop: 72},
+  // Tight enough that the starter captions end above the bottom overscan
+  // band (the page does not scroll).
+  starter: {marginTop: 48},
   starterTitle: {
     color: colors.text,
     fontFamily: fonts.bold,

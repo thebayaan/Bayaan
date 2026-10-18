@@ -50,6 +50,22 @@ describe('contextMenuStore', () => {
     });
   });
 
+  it('opens a playlist menu and leaves the surah target alone', () => {
+    const {ref} = opener();
+    useContextMenuStore.getState().openPlaylist('p1', ref);
+    expect(useContextMenuStore.getState().target).toEqual({
+      kind: 'playlist',
+      playlistId: 'p1',
+    });
+    expect(useContextMenuStore.getState().reciterId).toBeNull();
+    expect(useContextMenuStore.getState().opener).toBe(ref);
+    useContextMenuStore.getState().updateSurah({playlistIndex: 1});
+    expect(useContextMenuStore.getState().target).toEqual({
+      kind: 'playlist',
+      playlistId: 'p1',
+    });
+  });
+
   it('gives focus back to the view that opened it', () => {
     const {ref, requestTVFocus} = opener();
     useContextMenuStore.getState().openReciter('r1', ref);

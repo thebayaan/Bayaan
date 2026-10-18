@@ -22,12 +22,16 @@ import {isLovedIn, toggleLovedSurah} from '../../services/lovedSurahsStore';
 import {surahMenuVoice} from '../../services/menuChoices';
 import {playOrOpen, surahTitle} from '../../services/playbackRouting';
 import {
-  addPlaylistItem,
   movePlaylistItem,
   playlistHas,
-  removePlaylistItem,
   type PlaylistItem,
 } from '../../services/playlistsStore';
+import {
+  NEW_PLAYLIST_LABEL,
+  removeFromPlaylist,
+  roomForPlaylist,
+  togglePlaylistItem,
+} from '../../services/playlistsPicker';
 import {pushScreenBack} from '../../services/screenBack';
 import {getCachedRewayat} from '../../services/tvDataService';
 import {showToast} from '../../store/toastStore';
@@ -198,25 +202,16 @@ function SurahMenu({target}: {target: SurahMenuTarget}): React.ReactElement {
   }
 
   function handleRemoveFromPlaylist(): void {
-    if (!inPlaylist || !target.playlistId) return;
-    removePlaylistItem(target.playlistId, index);
+    if (!inPlaylist || !playlist) return;
+    removeFromPlaylist(playlist, index);
     // The row is gone: the playlist screen focuses its neighbour.
     close({restoreFocus: false});
   }
 
   function handleNewPlaylist(): void {
-    if (!voice) return;
+    if (!voice || !roomForPlaylist(playlists.length)) return;
     close({restoreFocus: false});
     push({screen: 'playlistEdit', seed: voice});
-  }
-
-  function toggleIn(id: string, name: string, has: boolean): void {
-    if (!voice) return;
-    if (has) {
-      removePlaylistItem(id, voice);
-      return;
-    }
-    if (!addPlaylistItem(id, voice)) showToast(`${name} is full.`, 'error');
   }
 
   const art = (
@@ -248,7 +243,7 @@ function SurahMenu({target}: {target: SurahMenuTarget}): React.ReactElement {
         subtitle={subtitle}>
         <MenuRow
           icon={<FocusIcon icon={PlusIcon} size={24} />}
-          label="New playlist…"
+          label={NEW_PLAYLIST_LABEL}
           onPress={handleNewPlaylist}
           hasTVPreferredFocus
           ref={preferredRow}
@@ -268,7 +263,9 @@ function SurahMenu({target}: {target: SurahMenuTarget}): React.ReactElement {
                   accessibilityLabel={
                     has ? `${p.name}, added. Remove` : `Add to ${p.name}`
                   }
-                  onPress={() => toggleIn(p.id, p.name, has)}
+                  onPress={() => {
+                    if (voice) togglePlaylistItem(p, voice, has);
+                  }}
                   trailing={
                     has ? (
                       <CheckIcon color={colors.accent} size={scale(24)} />

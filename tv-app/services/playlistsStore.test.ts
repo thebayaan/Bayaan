@@ -2,6 +2,7 @@ import {
   addPlaylistItem,
   cleanPlaylistName,
   createPlaylist,
+  editPlaylist,
   getPlaylist,
   getPlaylists,
   hasPlaylistItem,
@@ -107,6 +108,30 @@ describe('playlistsStore', () => {
     await new Promise(r => setTimeout(r, 5));
     addPlaylistItem(a, item(5));
     expect(getPlaylists().map(p => p.name)).toEqual(['A', 'B']);
+  });
+
+  it('falls back to the name given when a name is empty', () => {
+    expect(cleanPlaylistName(' ', 'Playlist 3')).toBe('Playlist 3');
+  });
+
+  it('edits name and colour in one write, and skips an unchanged edit', async () => {
+    const a = createPlaylist('A', [], '#6366F1');
+    await new Promise(r => setTimeout(r, 5));
+    createPlaylist('B');
+    expect(getPlaylists().map(p => p.name)).toEqual(['B', 'A']);
+    const before = storage.getString(PLAYLISTS_KEY);
+    // Unchanged (the colour in another case): nothing written, order kept.
+    expect(editPlaylist(a, {name: 'A ', color: '#6366f1'})).toBe(false);
+    expect(storage.getString(PLAYLISTS_KEY)).toBe(before);
+    expect(getPlaylists().map(p => p.name)).toEqual(['B', 'A']);
+    await new Promise(r => setTimeout(r, 5));
+    // An empty name keeps the old one.
+    expect(editPlaylist(a, {name: '', color: '#EC4899'})).toBe(true);
+    expect(getPlaylist(a)).toMatchObject({name: 'A', color: '#EC4899'});
+    expect(getPlaylists().map(p => p.name)).toEqual(['A', 'B']);
+    expect(editPlaylist(a, {name: 'Fajr', color: '#EC4899'})).toBe(true);
+    expect(getPlaylist(a)?.name).toBe('Fajr');
+    expect(editPlaylist('nope', {name: 'x'})).toBe(false);
   });
 
   it('changes to a missing playlist report false', () => {

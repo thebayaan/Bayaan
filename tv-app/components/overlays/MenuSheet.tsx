@@ -137,7 +137,7 @@ export const menuStyles = createScaledStyles({
   },
   headerMeta: {flex: 1, gap: 4},
   kicker: {
-    color: colors.textTertiary,
+    color: colors.accent,
     fontFamily: fonts.extraBold,
     fontSize: 15,
     fontWeight: '800',

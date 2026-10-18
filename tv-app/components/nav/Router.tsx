@@ -20,6 +20,7 @@ import {PlaylistScreen} from '../../screens/PlaylistScreen';
 import {PlaylistEditScreen} from '../../screens/PlaylistEditScreen';
 import {ReciterContextMenu} from '../overlays/ReciterContextMenu';
 import {SurahContextMenu} from '../overlays/SurahContextMenu';
+import {PlaylistContextMenu} from '../library/PlaylistContextMenu';
 import {Toast} from '../overlays/Toast';
 import {useGlobalRemoteKeys} from '../../hooks/useGlobalRemoteKeys';
 import {usePlaybackAlerts} from '../../hooks/usePlaybackAlerts';
@@ -348,6 +349,7 @@ function Overlays(): React.ReactElement {
     <>
       <ReciterContextMenu />
       <SurahContextMenu />
+      <PlaylistContextMenu />
       <Toast />
     </>
   );

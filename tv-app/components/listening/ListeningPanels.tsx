@@ -32,7 +32,6 @@ import {
 } from '../../store/ambientStore';
 import {useSettingsStore} from '../../store/settingsStore';
 import {useNavStore} from '../../store/navStore';
-import {showToast} from '../../store/toastStore';
 import {useFavorites} from '../../hooks/useFavorites';
 import {useRecentlyPlayed} from '../../hooks/useRecentlyPlayed';
 import {usePlaylists} from '../../hooks/usePlaylists';
@@ -44,12 +43,14 @@ import {
   shortReciterName,
   type ReciterChoice,
 } from '../../services/listeningChoices';
+import {hasPlaylistItem, type PlaylistItem} from '../../services/playlistsStore';
 import {
-  addPlaylistItem,
-  hasPlaylistItem,
-  removePlaylistItem,
-  type PlaylistItem,
-} from '../../services/playlistsStore';
+  NEW_PLAYLIST_DETAIL,
+  NEW_PLAYLIST_LABEL,
+  pickerDetail,
+  roomForPlaylist,
+  togglePlaylistItem,
+} from '../../services/playlistsPicker';
 import {getReciterArtwork} from '../../services/reciterArtwork';
 import type {Reciter} from '../../types/reciter';
 
@@ -415,13 +416,13 @@ export function ListeningPanels({
         options: [
           {
             value: NEW_PLAYLIST,
-            label: 'New playlist',
-            detail: 'Starts with this surah',
+            label: NEW_PLAYLIST_LABEL,
+            detail: NEW_PLAYLIST_DETAIL,
           },
           ...playlists.map(p => ({
             value: p.id,
             label: p.name,
-            detail: `${p.items.length} ${p.items.length === 1 ? 'surah' : 'surahs'}`,
+            detail: pickerDetail(p),
           })),
         ],
         selected: null,
@@ -429,6 +430,7 @@ export function ListeningPanels({
         onSelect: (id: string) => {
           if (!entry) return;
           if (id === NEW_PLAYLIST) {
+            if (!roomForPlaylist(playlists.length)) return;
             // The player unmounts under the editor; it comes back to this
             // panel, showing the new playlist checked.
             setResumePanel('save');
@@ -436,15 +438,8 @@ export function ListeningPanels({
             push({screen: 'playlistEdit', seed: entry});
             return;
           }
-          const name = playlists.find(p => p.id === id)?.name ?? 'playlist';
-          if (holds(id)) {
-            removePlaylistItem(id, entry);
-            showToast(`Removed from ${name}`);
-          } else if (addPlaylistItem(id, entry)) {
-            showToast(`Added to ${name}`);
-          } else {
-            showToast(`${name} is full`, 'error');
-          }
+          const playlist = playlists.find(p => p.id === id);
+          if (playlist) togglePlaylistItem(playlist, entry, holds(id));
         },
       },
     ];

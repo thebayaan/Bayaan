@@ -3,6 +3,7 @@ import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {Text, TVFocusGuideView, View} from 'react-native';
 import {GradientFill} from '../components/brand/GradientFill';
 import {SurahGlyph} from '../components/brand/SurahGlyph';
+import {FocusWatch} from '../components/library/FocusWatch';
 import {PencilIcon} from '../components/library/LibraryIcons';
 import {FocusableButton} from '../components/primitives/FocusableButton';
 import {FocusIcon, FocusText} from '../components/primitives/focusContext';
@@ -10,7 +11,7 @@ import {usePlaylist} from '../hooks/usePlaylists';
 import {useReciters} from '../hooks/useReciters';
 import {rewayahFamily, rewayahShortName} from '../services/browseCatalog';
 import {cellHeightLayout} from '../components/browse/gridLayout';
-import {playlistCaption} from '../services/libraryShelf';
+import {focusLibraryTile, playlistCaption} from '../services/libraryShelf';
 import {shortReciterName} from '../services/listeningChoices';
 import {playOrOpen, surahTitle} from '../services/playbackRouting';
 import {playlistGradient} from '../services/playlistFormat';
@@ -129,12 +130,16 @@ export function PlaylistScreen({playlistId}: Props): React.ReactElement {
     });
   }, [playlistId]);
 
-  // The second press of Delete must come soon after the first.
+  // The second press of Delete must come soon after the first, and on the
+  // button: moving off it disarms it.
   useEffect(() => {
     if (!confirmDelete) return;
     const timer = setTimeout(() => setConfirmDelete(false), CONFIRM_MS);
     return () => clearTimeout(timer);
   }, [confirmDelete]);
+  const onDeleteFocus = useCallback((focused: boolean): void => {
+    if (!focused) setConfirmDelete(false);
+  }, []);
 
   const playFrom = useCallback(
     (index: number, shuffle = false): void => {
@@ -259,7 +264,11 @@ export function PlaylistScreen({playlistId}: Props): React.ReactElement {
           />
           <View style={styles.artGlyph}>
             {hasItems ? (
-              <SurahGlyph surahNumber={items[0].surahNumber} size={120} />
+              <SurahGlyph
+                surahNumber={items[0].surahNumber}
+                size={120}
+                fitWidth={ART - 40}
+              />
             ) : (
               <PlaylistIcon color={colors.textSecondary} size={scale(80)} />
             )}
@@ -319,6 +328,7 @@ export function PlaylistScreen({playlistId}: Props): React.ReactElement {
                   : 'Delete playlist'
               }
               style={styles.btn}>
+              <FocusWatch onChange={onDeleteFocus} />
               <View style={styles.btnInner}>
                 <FocusIcon icon={TrashIcon} size={22} />
                 <FocusText style={styles.btnText}>
@@ -354,7 +364,11 @@ export function PlaylistScreen({playlistId}: Props): React.ReactElement {
             Hold OK on any surah and choose Add to playlist.
           </Text>
           <FocusableButton
-            onPress={() => jumpTo('surahs')}
+            onPress={() => {
+              // The Library opens on this playlist when you come back to it.
+              focusLibraryTile('playlists', `p:${playlist.id}`);
+              jumpTo('surahs');
+            }}
             accessibilityLabel="Browse surahs"
             hasTVPreferredFocus
             outlined
@@ -394,7 +408,7 @@ const styles = createScaledStyles({
   },
   artGlyph: {flex: 1, alignItems: 'center', justifyContent: 'center'},
   kicker: {
-    color: colors.textTertiary,
+    color: colors.accent,
     fontFamily: fonts.extraBold,
     fontSize: 16,
     fontWeight: '800',
