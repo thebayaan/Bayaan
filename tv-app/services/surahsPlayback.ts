@@ -34,16 +34,21 @@ export function visibleQueue(
 }
 
 /**
- * The first shown surah someone can play, and who: what "Play Juz 27"
- * starts with. Null when no candidate has any of them.
+ * What "Play Juz 27" starts with, and who: the first candidate (the chosen
+ * reciter) from the first shown surah they have, so a reciter missing only
+ * the juz's first surah still plays the rest of it. Later candidates step in
+ * only when an earlier one has none of the shown surahs. Null when nobody
+ * has any of them.
  */
 export function firstVoice(
   candidates: readonly Reciter[],
   surahNumbers: readonly number[],
 ): PlayItemInput | null {
-  for (const n of surahNumbers) {
-    const voice = voiceForSurah(candidates, n);
-    if (voice) return voice;
+  for (const candidate of candidates) {
+    for (const n of surahNumbers) {
+      const voice = voiceForSurah([candidate], n);
+      if (voice) return voice;
+    }
   }
   return null;
 }
@@ -54,7 +59,8 @@ const PROGRESS_STEP = 0.02;
 /**
  * Listening progress (0-1) per surah, the latest entry per surah, limited
  * to one reciter when given; plus a key that changes only when a bar would
- * visibly change, for memoising on.
+ * visibly change, for memoising on. The shares themselves stay exact, so
+ * the started / completed thresholds are not moved by the rounding.
  */
 export function surahProgress(
   entries: readonly ContinueEntry[],
@@ -65,12 +71,14 @@ export function surahProgress(
   for (const e of entries) {
     if (reciterId !== undefined && e.reciterId !== reciterId) continue;
     if (bySurah.has(e.surahNumber) || e.durationSeconds <= 0) continue;
-    const share = Math.min(1, e.positionSeconds / e.durationSeconds);
     bySurah.set(
       e.surahNumber,
-      Math.round(share / PROGRESS_STEP) * PROGRESS_STEP,
+      Math.min(1, e.positionSeconds / e.durationSeconds),
     );
   }
-  const key = Array.from(bySurah, ([n, p]) => `${n}:${p.toFixed(2)}`).join(',');
+  const key = Array.from(
+    bySurah,
+    ([n, p]) => `${n}:${Math.round(p / PROGRESS_STEP)}`,
+  ).join(',');
   return {key, bySurah};
 }

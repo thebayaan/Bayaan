@@ -52,6 +52,13 @@ const CELL_WIDTH = SURAH_TILE_WIDTH + CELL_PAD * 2;
 const FOCUS_REQUEST_MS = 1500;
 
 /**
+ * The filter in use, kept across visits: the screen unmounts while the
+ * player is open, and Back from the player should return to the juz the
+ * viewer was playing from, not to "All 114".
+ */
+const lastView: {filter: SurahFilter; juz: number} = {filter: 'all', juz: 1};
+
+/**
  * Surahs: every surah as artwork, filtered by chips (a juz, the short ones,
  * Makki, Madani). A press plays the surahs shown, from the one pressed, with
  * the reciter named on the right of the chips; that chip changes him in
@@ -68,8 +75,8 @@ export function SurahsScreen(): React.ReactElement {
   const progressBySurah = useSurahProgress();
   const numColumns = useGridColumns(CELL_WIDTH);
 
-  const [filter, setFilter] = useState<SurahFilter>('all');
-  const [juz, setJuz] = useState<number>(1);
+  const [filter, setFilter] = useState<SurahFilter>(() => lastView.filter);
+  const [juz, setJuz] = useState<number>(() => lastView.juz);
   const [picking, setPicking] = useState<boolean>(false);
   // Entering the juz row lands on the selected juz.
   const [selectedJuzChip, setSelectedJuzChip] = useState<View | null>(null);
@@ -224,11 +231,13 @@ export function SurahsScreen(): React.ReactElement {
   function chooseFilter(next: SurahFilter): void {
     setFocusGridFirst(false);
     setFilter(next);
+    lastView.filter = next;
   }
 
   function chooseJuz(next: number): void {
     setFocusGridFirst(false);
     setJuz(next);
+    lastView.juz = next;
   }
 
   const renderItem = useCallback(

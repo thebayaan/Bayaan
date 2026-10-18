@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
   NativeScrollEvent,
   NativeSyntheticEvent,
+  Platform,
   StyleSheet,
   Text,
   TVFocusGuideView,
@@ -84,6 +85,15 @@ const LIST_PAD_X = spacing.xl - CELL_PAD_X;
 const PORTRAIT = 240;
 
 const scrollPositions = new Map<string, number>();
+/**
+ * The rewayah and sort in use per reciter. The page unmounts while the
+ * player is open; coming back should show the list the viewer played from
+ * (and that the saved scroll position belongs to), not the first tab.
+ */
+const viewStates = new Map<
+  string,
+  {rewayahId: string | null; sort: SortMode}
+>();
 
 const surahById = new Map<number, Surah>(SURAHS.map(s => [s.id, s]));
 
@@ -97,7 +107,15 @@ function firstRewayahId(rewayat: Rewayah[]): string | null {
 
 /** A spinner in a button: ink on the cream while the button is focused. */
 function ButtonSpinner(): React.ReactElement {
-  return <ActivityIndicator size="small" color={useFocusTint()} />;
+  // Android takes a size in dp (its "small" is twice the design size at the
+  // 0.5 scale and would make the button grow while loading); tvOS only knows
+  // small and large.
+  return (
+    <ActivityIndicator
+      size={Platform.OS === 'android' ? scale(20) : 'small'}
+      color={useFocusTint()}
+    />
+  );
 }
 
 export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
@@ -107,9 +125,13 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
     () => getCachedRewayat(reciterId) ?? [],
   );
   const groups = useMemo(() => groupRewayat(rewayat), [rewayat]);
-  const [activeRewayahId, setActive] = useState<string | null>(() =>
-    firstRewayahId(getCachedRewayat(reciterId) ?? []),
-  );
+  const [activeRewayahId, setActiveState] = useState<string | null>(() => {
+    const cached = getCachedRewayat(reciterId) ?? [];
+    const kept = viewStates.get(reciterId)?.rewayahId;
+    return kept && cached.some(r => r.id === kept)
+      ? kept
+      : firstRewayahId(cached);
+  });
   const favorites = useFavorites();
   const continueEntries = useContinueListening();
   const isFav = favorites.some(f => f.reciterId === reciterId);
@@ -117,7 +139,18 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
   const setDefaultReciterId = useSettingsStore(s => s.setDefaultReciterId);
   const isDefault = defaultReciterId === reciterId;
   const pop = useNavStore(s => s.pop);
-  const [sort, setSort] = useState<SortMode>('asc');
+  const [sort, setSortState] = useState<SortMode>(
+    () => viewStates.get(reciterId)?.sort ?? 'asc',
+  );
+  // Remember what the viewer picked (not what a load chose for them).
+  function setActive(next: string | null): void {
+    setActiveState(next);
+    viewStates.set(reciterId, {rewayahId: next, sort});
+  }
+  function setSort(next: SortMode): void {
+    setSortState(next);
+    viewStates.set(reciterId, {rewayahId: activeRewayahId, sort: next});
+  }
   const [loading, setLoading] = useState<boolean>(
     () => (getCachedRewayat(reciterId)?.length ?? 0) === 0,
   );
@@ -137,8 +170,13 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
       .then(r => {
         if (cancelled || r.length === 0) return;
         setRewayat(r);
-        setActive(prev =>
-          prev && r.some(x => x.id === prev) ? prev : firstRewayahId(r),
+        const kept = viewStates.get(reciterId)?.rewayahId;
+        setActiveState(prev =>
+          prev && r.some(x => x.id === prev)
+            ? prev
+            : kept && r.some(x => x.id === kept)
+              ? kept
+              : firstRewayahId(r),
         );
       })
       .catch(() => undefined)

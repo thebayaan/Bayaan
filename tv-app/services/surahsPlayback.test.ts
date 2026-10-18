@@ -74,6 +74,18 @@ describe('firstVoice', () => {
     expect(firstVoice(list, [1])?.reciterId).toBe('b');
     expect(firstVoice(list, [50])).toBeNull();
   });
+
+  it('keeps the chosen reciter when only the first shown surah is missing', () => {
+    const list = [
+      reciter('a', [rewayah('w', [2, 3])]),
+      reciter('b', [rewayah('v', [1, 2, 3])]),
+    ];
+    expect(firstVoice(list, [1, 2, 3])).toEqual({
+      reciterId: 'a',
+      rewayahId: 'w',
+      surahNumber: 2,
+    });
+  });
 });
 
 describe('surahProgress', () => {
@@ -99,6 +111,11 @@ describe('surahProgress', () => {
     ]);
     expect(bySurah.get(1)).toBeCloseTo(0.5);
     expect(bySurah.has(2)).toBe(false);
+  });
+
+  it('keeps exact shares, so thresholds are not moved by the rounding', () => {
+    const {bySurah} = surahProgress([entry('a', 1, 970, 1000)]);
+    expect(bySurah.get(1)).toBe(0.97);
   });
 
   it('limits to one reciter when asked', () => {

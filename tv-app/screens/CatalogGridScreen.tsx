@@ -33,17 +33,18 @@ export function CatalogGridScreen(): React.ReactElement {
   const push = useNavStore(s => s.push);
   const [rewayah, setRewayah] = useState<RewayahChip>('all');
   const [chosenStyle, setStyle] = useState<StyleChip | null>(null);
-  // The first portrait takes focus on entry, not after a chip press.
+  // The first portrait takes focus on entry (and after "Show all
+  // reciters", whose button goes away), not after a chip press.
   const [focusFirst, setFocusFirst] = useState<boolean>(true);
   // Drop the request once the grid has had time to take it: FlashList
   // recycles cells, and a recycled cell becoming index 0 again would pull
   // focus back to the first portrait.
   const hasReciters = reciters.length > 0;
   useEffect(() => {
-    if (!hasReciters) return;
+    if (!hasReciters || !focusFirst) return;
     const timer = setTimeout(() => setFocusFirst(false), 1500);
     return () => clearTimeout(timer);
-  }, [hasReciters]);
+  }, [hasReciters, focusFirst]);
 
   const ordered = useMemo(() => featuredFirst(reciters), [reciters]);
   const available = useMemo(
@@ -79,6 +80,12 @@ export function CatalogGridScreen(): React.ReactElement {
   function chooseRewayah(next: RewayahChip): void {
     setFocusFirst(false);
     setRewayah(next);
+    // A style the new rewayah doesn't offer is dropped, not kept hidden to
+    // come back when the viewer returns to a rewayah that has it.
+    const offered = availableChips(reciters, next).style;
+    if (chosenStyle && (offered.size <= 1 || !offered.has(chosenStyle))) {
+      setStyle(null);
+    }
   }
 
   function chooseStyle(next: StyleChip | null): void {
@@ -139,8 +146,10 @@ export function CatalogGridScreen(): React.ReactElement {
               {filtered ? (
                 <FocusableButton
                   onPress={() => {
-                    chooseRewayah('all');
-                    chooseStyle(null);
+                    setRewayah('all');
+                    setStyle(null);
+                    // This button goes away: hand focus to the grid.
+                    setFocusFirst(true);
                   }}
                   accessibilityLabel="Show all reciters"
                   outlined
