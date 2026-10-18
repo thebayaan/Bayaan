@@ -139,6 +139,7 @@ export function SettingsScreen(): React.ReactElement {
   // When the rows show again, focus goes back to the row last used. The
   // store sets it in the same update that opens a picker, so no other row
   // is asked for focus first.
+  const listRef = useRef<ScrollView>(null);
   const focusOn = (key: SettingsRow): boolean =>
     picker === null && (focusRow ?? 'reciter') === key;
 
@@ -172,6 +173,15 @@ export function SettingsScreen(): React.ReactElement {
       ) : (
         <View style={styles.columns}>
           <ScrollView
+            ref={listRef}
+            onContentSizeChange={() => {
+              // Coming back from the welcome rerun, the row that opened it is
+              // the last one: put it on screen so its preferred focus can land
+              // (it showed no focus at all on Android TV before).
+              if (focusRow === 'welcome' && picker === null) {
+                listRef.current?.scrollToEnd({animated: false});
+              }
+            }}
             style={styles.listScroll}
             contentContainerStyle={styles.scroll}
             showsVerticalScrollIndicator={false}>
