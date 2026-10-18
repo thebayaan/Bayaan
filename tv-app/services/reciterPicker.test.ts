@@ -64,6 +64,11 @@ describe('defaultReciterChoices', () => {
     expect(list.map(r => r.id)).toEqual(['z', 'f', 's', 'a']);
   });
 
+  it('leads with popular voices when nothing is picked yet', () => {
+    const list = defaultReciterChoices([zed, amy, sudais, afasy], null, 2);
+    expect(list.map(r => r.id)).toEqual(['f', 's', 'a', 'z']);
+  });
+
   it('leaves out reciters without the whole Quran', () => {
     const list = defaultReciterChoices([zed, partial, amy], null, 0);
     expect(list.map(r => r.id)).toEqual(['a', 'z']);

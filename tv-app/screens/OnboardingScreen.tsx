@@ -87,18 +87,23 @@ export function OnboardingScreen(): React.ReactElement {
     if (!chosen || popular.includes(chosen)) return popular;
     return [...popular.slice(0, FEATURED_COUNT - 1), chosen];
   }, [popular, reciters, shownId]);
+  // Led by your pick; on first launch the seeded default is not one, so the
+  // popular voices lead instead.
   const browseList = useMemo(
-    () => (browsing ? defaultReciterChoices(reciters, defaultReciterId) : []),
-    [browsing, reciters, defaultReciterId],
+    () => (browsing ? defaultReciterChoices(reciters, shownId) : []),
+    [browsing, reciters, shownId],
   );
 
-  const pick = (id: string): void => {
-    setDefaultReciterId(id);
-    setPickedId(id);
-    setReturnToBrowse(false);
-    setBrowsing(false);
-    setStep(2);
-  };
+  const pick = useCallback(
+    (id: string): void => {
+      setDefaultReciterId(id);
+      setPickedId(id);
+      setReturnToBrowse(false);
+      setBrowsing(false);
+      setStep(2);
+    },
+    [setDefaultReciterId],
+  );
 
   const handleBack = useCallback((): boolean => {
     if (browsing) {

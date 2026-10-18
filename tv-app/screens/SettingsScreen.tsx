@@ -1,4 +1,4 @@
-import React, {useEffect, useRef, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {ScrollView, Text, TVFocusGuideView, View} from 'react-native';
 import {FocusableButton} from '../components/primitives/FocusableButton';
 import {
@@ -152,6 +152,8 @@ export function SettingsScreen(): React.ReactElement {
   });
 
   const displayPicker = picker !== null && DISPLAY_PICKERS.includes(picker);
+  // Stable, so the reciter list does not re-render on every progress save.
+  const closePicker = useCallback(() => setPicker(null), [setPicker]);
   const disarm = (key: Exclude<ConfirmKey, null>) => () =>
     setConfirm(c => (c === key ? null : c));
 
@@ -274,7 +276,7 @@ export function SettingsScreen(): React.ReactElement {
           picker={picker}
           reciters={reciters}
           current={current}
-          onDone={() => setPicker(null)}
+          onDone={closePicker}
         />
       ) : null}
     </View>
@@ -306,6 +308,21 @@ function SettingsPickerPanel({
   const ambientOn = useAmbientStore(s => s.enabled);
   const ambientSound = useAmbientStore(s => s.currentSound);
   const chooseAmbient = useAmbientStore(s => s.choose);
+  // Settings re-renders while audio plays (continue-listening saves), so the
+  // 200+ reciter list is built once per open, not on every render.
+  const currentId = current?.id ?? null;
+  const reciterChoices = useMemo(
+    () =>
+      picker === 'reciter' ? defaultReciterChoices(reciters, currentId) : [],
+    [picker, reciters, currentId],
+  );
+  const pickReciter = useCallback(
+    (id: string) => {
+      setDefaultReciterId(id);
+      onDone();
+    },
+    [setDefaultReciterId, onDone],
+  );
 
   let title: string;
   let section: PanelSection<any>;
@@ -315,12 +332,9 @@ function SettingsPickerPanel({
         <ReciterPickerPanel
           title="Default reciter"
           subtitle="Plays when you pick a surah"
-          reciters={defaultReciterChoices(reciters, current?.id ?? null)}
-          selectedId={current?.id ?? null}
-          onSelect={id => {
-            setDefaultReciterId(id);
-            onDone();
-          }}
+          reciters={reciterChoices}
+          selectedId={currentId}
+          onSelect={pickReciter}
         />
       );
     case 'speed':
