@@ -11,11 +11,11 @@
  * through attachMediaControls() before the first track loads, along with
  * which transport each engine's commands should drive.
  *
- * Media-control commands go through TransportHandler: Play/Pause claims the
- * transport gate (so a press that also arrives as a key event toggles once)
- * and, for the recitation's engine, runs through the player store; Next and
- * Previous change surah, which the default W3C handler can't (it has no
- * queue). Whichever engine last took audio focus also takes media-control
+ * Media-control commands go through TransportHandler: each transport command
+ * claims the transport gate (so a press that also arrives as a key event acts
+ * once) and, for the recitation's engine, runs through the player store; Next
+ * and Previous change surah, which the default W3C handler can't (it has no
+ * queue), and seeks stay within the store's bounds. Whichever engine last took audio focus also takes media-control
  * focus, so after the adhkar reader the remote drives the recitation again.
  */
 
@@ -26,6 +26,7 @@ import {
 import type {
   ICommandContext,
   IMediaSessionId,
+  ITimeValue,
 } from '@amazon-devices/kepler-media-controls';
 import type {IComponentInstance} from '@amazon-devices/react-native-kepler';
 import type {AudioEngine, EngineEvent, EngineStatus} from './audioEngineTypes';
@@ -35,11 +36,15 @@ import {
   type AudioFocusOwner,
 } from './audioFocus';
 import type {MediaTransport} from './mediaTransport';
+import {MEDIA_SEEK_SECONDS} from './remoteKeys';
 import {claimTransport} from './transportGate';
 
 export type {AudioEngine, EngineEvent, EngineStatus} from './audioEngineTypes';
 
 const POLL_INTERVAL_MS = 500;
+
+const toSeconds = (time: ITimeValue): number =>
+  time.seconds + time.nanoseconds / 1e9;
 
 type TransportFor = (engine: AudioEngine) => MediaTransport | null;
 
@@ -69,14 +74,14 @@ class TransportHandler extends KeplerMediaControlHandler {
   }
 
   async handleTogglePlayPause(sessionId?: IMediaSessionId): Promise<void> {
-    if (!claimTransport('system')) return;
+    if (!claimTransport('system', 'playPause')) return;
     const transport = this.transport();
     if (transport) transport.toggle();
     else await super.handleTogglePlayPause(sessionId);
   }
 
   async handlePlay(sessionId?: IMediaSessionId): Promise<void> {
-    if (!claimTransport('system')) return;
+    if (!claimTransport('system', 'playPause')) return;
     const transport = this.transport();
     if (transport) transport.play();
     else await super.handlePlay(sessionId);
@@ -86,22 +91,58 @@ class TransportHandler extends KeplerMediaControlHandler {
     sessionId?: IMediaSessionId,
     context?: ICommandContext,
   ): Promise<void> {
-    if (!claimTransport('system')) return;
+    if (!claimTransport('system', 'playPause')) return;
     const transport = this.transport();
     if (transport) transport.pause();
     else await super.handlePause(sessionId, context);
   }
 
   async handleNext(sessionId?: IMediaSessionId): Promise<void> {
+    if (!claimTransport('system', 'track')) return;
     const transport = this.transport();
     if (transport) transport.next();
     else await super.handleNext(sessionId);
   }
 
   async handlePrevious(): Promise<void> {
+    if (!claimTransport('system', 'track')) return;
     const transport = this.transport();
     if (transport) transport.previous();
     else await super.handlePrevious();
+  }
+
+  async handleFastForward(sessionId?: IMediaSessionId): Promise<void> {
+    if (!claimTransport('system', 'seek')) return;
+    const transport = this.transport();
+    if (transport) transport.seekBy(MEDIA_SEEK_SECONDS);
+    else await super.handleFastForward(sessionId);
+  }
+
+  async handleRewind(sessionId?: IMediaSessionId): Promise<void> {
+    if (!claimTransport('system', 'seek')) return;
+    const transport = this.transport();
+    if (transport) transport.seekBy(-MEDIA_SEEK_SECONDS);
+    else await super.handleRewind(sessionId);
+  }
+
+  async handleSkipForward(
+    delta: ITimeValue,
+    sessionId?: IMediaSessionId,
+  ): Promise<void> {
+    if (!claimTransport('system', 'seek')) return;
+    const transport = this.transport();
+    if (transport) transport.seekBy(Math.abs(toSeconds(delta)));
+    else await super.handleSkipForward(delta, sessionId);
+  }
+
+  async handleSkipBackward(
+    delta: ITimeValue,
+    sessionId?: IMediaSessionId,
+  ): Promise<void> {
+    if (!claimTransport('system', 'seek')) return;
+    const transport = this.transport();
+    if (transport) transport.seekBy(-Math.abs(toSeconds(delta)));
+    else await super.handleSkipBackward(delta, sessionId);
   }
 }
 

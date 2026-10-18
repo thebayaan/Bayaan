@@ -14,6 +14,8 @@ export type MediaTransport = {
   pause: () => void;
   next: () => void;
   previous: () => void;
+  /** Moves within the surah by `seconds` (negative goes back). */
+  seekBy: (seconds: number) => void;
 };
 
 // Buffering counts as playing: it resumes on its own, so Play has nothing to
@@ -38,6 +40,7 @@ export const playerTransport: MediaTransport = {
   previous: () => {
     void useTVPlayerStore.getState().prev();
   },
+  seekBy: seconds => useTVPlayerStore.getState().seekBy(seconds),
 };
 
 /**
@@ -50,6 +53,12 @@ export function applyMediaKey(key: MediaKey): void {
   switch (key) {
     case 'playPause':
       player.toggle();
+      return;
+    case 'play':
+      playerTransport.play();
+      return;
+    case 'pause':
+      playerTransport.pause();
       return;
     case 'next':
       void player.next();

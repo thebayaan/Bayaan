@@ -12,13 +12,13 @@
  * The filter acts on a key-down and swallows the matching key-up, and acts on
  * a key-up that had no key-down, so every platform yields one action per press.
  *
- * Play/Pause also passes through the transport gate (services/transportGate),
- * so on Vega a press the system already delivered as a media command is not
- * toggled a second time from the key event.
+ * Transport keys also pass through the transport gate (services/transportGate),
+ * so on Vega a press the system already delivered as a media command does
+ * not act a second time from the key event.
  */
 
 import type {ScreenEntry} from '../store/navStore';
-import {claimTransport} from './transportGate';
+import {claimTransport, type TransportChannel} from './transportGate';
 
 export type RemoteAction =
   | 'left'
@@ -50,11 +50,14 @@ const ACTIONS: Readonly<Record<string, RemoteAction>> = {
  * The remote's dedicated transport keys, never the D-pad or touch-surface
  * swipes (which also move focus): Android TV / Fire OS send `playPause`,
  * `next`, `previous`, `fastForward`, `rewind`; Vega sends `playpause`,
- * `skip_forward` / `skip_backward` and `forward` / `rewind`. The Siri Remote
- * only has Play/Pause.
+ * `skip_forward` / `skip_backward` and `forward` / `rewind`. Remotes that
+ * drive the TV over HDMI-CEC and keyboards often send separate `play` and
+ * `pause` keys. The Siri Remote only has Play/Pause.
  */
 export type MediaKey =
   | 'playPause'
+  | 'play'
+  | 'pause'
   | 'next'
   | 'previous'
   | 'fastForward'
@@ -63,6 +66,8 @@ export type MediaKey =
 const MEDIA_KEYS: Readonly<Record<string, MediaKey>> = {
   playPause: 'playPause',
   playpause: 'playPause',
+  play: 'play',
+  pause: 'pause',
   next: 'next',
   previous: 'previous',
   fastForward: 'fastForward',
@@ -74,11 +79,13 @@ const MEDIA_KEYS: Readonly<Record<string, MediaKey>> = {
 
 function createPhaseFilter<T extends string>(
   map: Readonly<Record<string, T>>,
-  playPause: T,
+  channels: Readonly<Partial<Record<T, TransportChannel>>>,
 ): (event: RemoteKeyEvent) => T | null {
   const pendingDown = new Set<string>();
-  const gated = (action: T): T | null =>
-    action === playPause && !claimTransport('key') ? null : action;
+  const gated = (action: T): T | null => {
+    const channel = channels[action];
+    return channel && !claimTransport('key', channel) ? null : action;
+  };
   return function filter(event: RemoteKeyEvent): T | null {
     const action = map[event.eventType];
     if (!action) return null;
@@ -97,14 +104,26 @@ function createPhaseFilter<T extends string>(
 export function createRemoteKeyFilter(): (
   event: RemoteKeyEvent,
 ) => RemoteAction | null {
-  return createPhaseFilter(ACTIONS, 'playPause');
+  return createPhaseFilter(ACTIONS, {
+    playPause: 'playPause',
+    seekForward: 'seek',
+    seekBackward: 'seek',
+  });
 }
 
 /** Like createRemoteKeyFilter, for the transport keys only (see MediaKey). */
 export function createMediaKeyFilter(): (
   event: RemoteKeyEvent,
 ) => MediaKey | null {
-  return createPhaseFilter(MEDIA_KEYS, 'playPause');
+  return createPhaseFilter(MEDIA_KEYS, {
+    playPause: 'playPause',
+    play: 'playPause',
+    pause: 'playPause',
+    fastForward: 'seek',
+    rewind: 'seek',
+    next: 'track',
+    previous: 'track',
+  });
 }
 
 /**

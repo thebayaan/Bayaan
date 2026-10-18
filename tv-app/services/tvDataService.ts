@@ -63,11 +63,16 @@ function readCachedReciters(): Cached<Reciter[]> | null {
   return cached && cached.version === DATA_VERSION ? cached : null;
 }
 
-function writeCachedReciters(data: Reciter[]): void {
+/**
+ * Stores a reciter list. A `stale` one (the bundled list written because the
+ * network failed) carries no savedAt, so the next fetch tries again instead
+ * of serving it as fresh for RECITERS_TTL_MS.
+ */
+function writeCachedReciters(data: Reciter[], stale = false): void {
   writeJSON<Cached<Reciter[]>>(RECITERS_KEY, {
     version: DATA_VERSION,
     data,
-    savedAt: Date.now(),
+    savedAt: stale ? undefined : Date.now(),
   });
 }
 
@@ -127,7 +132,7 @@ export async function fetchReciters(opts?: {
     const cached = getCachedReciters();
     if (cached) return cached;
     const data = fallbackReciterList();
-    writeCachedReciters(data);
+    writeCachedReciters(data, true);
     return data;
   }
 }

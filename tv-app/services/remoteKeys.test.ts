@@ -72,6 +72,8 @@ describe('createMediaKeyFilter', () => {
       'fastForward',
     );
     expect(filter({eventType: 'rewind', eventKeyAction: 1})).toBe('rewind');
+    expect(filter({eventType: 'play', eventKeyAction: 1})).toBe('play');
+    expect(filter({eventType: 'pause', eventKeyAction: 1})).toBe('pause');
   });
 
   it('maps the Vega transport keys once per down/up pair', () => {
@@ -111,10 +113,20 @@ describe('Play/Pause and the transport gate', () => {
     expect(global({eventType: 'playPause'})).toBe('playPause');
   });
 
-  it('never gates the other keys', () => {
+  it('gates seeks and surah changes on their own channels', () => {
+    claimTransport('system', 'seek');
+    expect(createMediaKeyFilter()({eventType: 'forward'})).toBeNull();
+    expect(createRemoteKeyFilter()({eventType: 'forward'})).toBeNull();
+    expect(createMediaKeyFilter()({eventType: 'playPause'})).toBe('playPause');
+    claimTransport('system', 'track');
+    expect(createMediaKeyFilter()({eventType: 'previous'})).toBeNull();
+  });
+
+  it('never gates the D-pad', () => {
     claimTransport('system');
-    expect(createMediaKeyFilter()({eventType: 'next'})).toBe('next');
+    claimTransport('system', 'seek');
     expect(createRemoteKeyFilter()({eventType: 'right'})).toBe('right');
+    expect(createRemoteKeyFilter()({eventType: 'left'})).toBe('left');
   });
 });
 

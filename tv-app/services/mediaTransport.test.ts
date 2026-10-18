@@ -41,6 +41,20 @@ describe('applyMediaKey', () => {
     ]);
   });
 
+  it('maps the separate Play and Pause keys without toggling back', () => {
+    const paused = stubPlayer('paused');
+    applyMediaKey('pause');
+    applyMediaKey('play');
+    expect(paused.toggle).toHaveBeenCalledTimes(1);
+    expect(paused.engine.pause).not.toHaveBeenCalled();
+
+    const playing = stubPlayer('playing');
+    applyMediaKey('play');
+    applyMediaKey('pause');
+    expect(playing.toggle).not.toHaveBeenCalled();
+    expect(playing.engine.pause).toHaveBeenCalledTimes(1);
+  });
+
   it('does nothing before anything was played', () => {
     const player = stubPlayer();
     useTVPlayerStore.setState({queue: []});
@@ -71,6 +85,8 @@ describe('playerTransport', () => {
     playerTransport.next();
     playerTransport.previous();
     playerTransport.toggle();
+    playerTransport.seekBy(-15);
+    expect(player.seekBy).toHaveBeenCalledWith(-15);
     expect(player.next).toHaveBeenCalledTimes(1);
     expect(player.prev).toHaveBeenCalledTimes(1);
     expect(player.toggle).toHaveBeenCalledTimes(1);

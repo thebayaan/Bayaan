@@ -13,6 +13,8 @@ import React, {useEffect} from 'react';
 import {AppState, Platform} from 'react-native';
 import {useAudioPlayer} from 'expo-audio';
 import {expoAudioService} from '../../../services/audio/ExpoAudioService';
+import {useKeepAwakeWhile} from '../../hooks/useKeepAwakeWhile';
+import {useTVPlayerStore} from '../../store/tvPlayerStore';
 
 interface TVAudioProviderProps {
   children: React.ReactNode;
@@ -39,6 +41,15 @@ export function TVAudioProvider({
 
     initializePlayer();
   }, [player]);
+
+  // The pause below also runs when the screensaver starts (it backgrounds the
+  // app like Home does), so on Android the recitation keeps the screen awake
+  // on every screen, not just in the listening room; a paused TV still
+  // sleeps.
+  const reciting = useTVPlayerStore(
+    s => s.status === 'playing' || s.status === 'buffering',
+  );
+  useKeepAwakeWhile(Platform.OS === 'android' && reciting, 'recitation');
 
   useEffect(() => {
     // Android TV gives this player no media session or notification, so

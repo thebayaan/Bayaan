@@ -59,6 +59,14 @@ describe('tvDataService', () => {
     expect(result.length).toBeGreaterThan(0);
   });
 
+  it('tries the network again on the next fetch after falling back', async () => {
+    mockFetch.mockRejectedValue(new Error('network'));
+    await service.fetchReciters();
+    const calls = mockFetch.mock.calls.length;
+    await service.fetchReciters();
+    expect(mockFetch.mock.calls.length).toBeGreaterThan(calls);
+  });
+
   it('respects killswitch (useBackendApi=false)', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
