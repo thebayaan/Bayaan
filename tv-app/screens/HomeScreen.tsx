@@ -1,5 +1,5 @@
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
-import {ScrollView, View, type LayoutChangeEvent} from 'react-native';
+import {Animated, ScrollView, View, type LayoutChangeEvent} from 'react-native';
 import {HomeHero, type HeroArt} from '../components/home/HomeHero';
 import {HomeClock} from '../components/home/HomeClock';
 import {HomeGlow} from '../components/home/HomeGlow';
@@ -155,6 +155,9 @@ const JUZ_AMMA_TILES = JUZ_AMMA_SURAHS.slice(-12);
 /** Loved surahs shown on Home; the Library has them all. */
 const LOVED_TILES = 12;
 
+/** Scrolled this far (about half the hero), Home's glow fades to ink. */
+const GLOW_FADE_Y = 220;
+
 /**
  * Home: "Now playing" while the player holds a track, a hero that follows
  * the day (adhkar after Fajr and in the evening, Al-Kahf from the eve of
@@ -209,6 +212,23 @@ export function HomeScreen(): React.ReactElement {
   const viewportH = useRef(0);
   const contentH = useRef(0);
   const railY = useRef(new Map<HomeRow, number>());
+  // The hero's glow fades out once the hero has scrolled away, so the rails
+  // below sit on plain ink, and back in when Home returns to the top.
+  const glowOpacity = useRef(new Animated.Value(1)).current;
+  const glowShown = useRef(true);
+  const fadeGlowFor = useCallback(
+    (y: number): void => {
+      const show = y < scale(GLOW_FADE_Y);
+      if (show === glowShown.current) return;
+      glowShown.current = show;
+      Animated.timing(glowOpacity, {
+        toValue: show ? 1 : 0,
+        duration: 450,
+        useNativeDriver: true,
+      }).start();
+    },
+    [glowOpacity],
+  );
   const scrollToY = useCallback((y: number): void => {
     const max = Math.max(0, contentH.current - viewportH.current);
     const target = Math.min(max, Math.max(0, y));
@@ -782,13 +802,14 @@ export function HomeScreen(): React.ReactElement {
 
   return (
     <View style={styles.container}>
-      <HomeGlow palette={hero.glow} />
+      <HomeGlow palette={hero.glow} opacity={glowOpacity} />
       <ScrollView
         ref={scrollRef}
         showsVerticalScrollIndicator={false}
         scrollEventThrottle={16}
         onScroll={e => {
           offsetY.current = e.nativeEvent.contentOffset.y;
+          fadeGlowFor(offsetY.current);
         }}
         onLayout={e => {
           viewportH.current = e.nativeEvent.layout.height;

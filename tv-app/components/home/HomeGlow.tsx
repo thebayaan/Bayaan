@@ -1,10 +1,12 @@
 import React from 'react';
-import {StyleSheet, View} from 'react-native';
+import {Animated, StyleSheet} from 'react-native';
 import Svg, {Defs, Ellipse, RadialGradient, Stop} from 'react-native-svg';
 
 type Props = {
   /** One to three colours; the first is the main pool behind the art. */
   palette: readonly string[];
+  /** Home fades the glow out once the hero has scrolled away. */
+  opacity?: Animated.Value;
 };
 
 // Pools in a 100x100 viewBox stretched over the screen: the main one behind
@@ -18,13 +20,16 @@ const POOLS = [
 
 /**
  * Home's background: a soft glow taken from the hero's surah or adhkar
- * colour, fading into ink. Static, so a screen left on stays calm.
+ * colour, fading into ink. Static, so a screen left on stays calm; it only
+ * fades (opacity) as the hero it belongs to scrolls away.
  */
-export function HomeGlow({palette}: Props): React.ReactElement {
+export function HomeGlow({palette, opacity}: Props): React.ReactElement {
   const colorAt = (i: number): string =>
     palette[i] ?? palette[palette.length - 1] ?? '#000000';
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+    <Animated.View
+      style={[StyleSheet.absoluteFill, opacity ? {opacity} : null]}
+      pointerEvents="none">
       <Svg
         width="100%"
         height="100%"
@@ -58,6 +63,6 @@ export function HomeGlow({palette}: Props): React.ReactElement {
           />
         ))}
       </Svg>
-    </View>
+    </Animated.View>
   );
 }
