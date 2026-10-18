@@ -99,8 +99,9 @@ const EMPTY: Record<
   },
 };
 
-// The place kept between visits (the screen unmounts under the player, a
-// reciter page or a playlist): the tab, the sort, and the tile last opened.
+// The place kept between visits (the screen stays mounted under stacked
+// screens, but unmounts when another place is chosen): the tab, the sort,
+// and the tile last opened.
 let lastFilter: ShelfFilter = 'playlists';
 let lastSort: ShelfSort = 'recent';
 let lastTile: {filter: ShelfFilter; key: string; index: number} | null = null;

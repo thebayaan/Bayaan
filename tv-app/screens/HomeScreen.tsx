@@ -2,6 +2,7 @@ import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {ScrollView, View, type LayoutChangeEvent} from 'react-native';
 import {HomeHero, type HeroArt} from '../components/home/HomeHero';
 import {HomeClock} from '../components/home/HomeClock';
+import {useScreenActive} from '../components/nav/ScreenLayer';
 import {HomeGlow} from '../components/home/HomeGlow';
 import {HomeRail, HOME_GUTTER} from '../components/home/HomeRail';
 import {ContinueWideCard} from '../components/home/ContinueWideCard';
@@ -158,7 +159,14 @@ const RAIL_TOP_GAP = 36;
  */
 export function HomeScreen(): React.ReactElement {
   const {reciters} = useReciters();
-  const liveContinue = useContinueListening();
+  // Covered by the player, Home keeps the Continue entries it last showed:
+  // the progress writer rewrites them every few seconds, and the hidden
+  // rails would be rebuilt for each write.
+  const active = useScreenActive();
+  const continueNow = useContinueListening();
+  const shownContinue = useRef(continueNow);
+  if (active) shownContinue.current = continueNow;
+  const liveContinue = shownContinue.current;
   const favorites = useFavorites();
   const recent = useRecentlyPlayed();
   const loved = useLovedSurahs();
