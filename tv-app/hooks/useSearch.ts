@@ -1,4 +1,4 @@
-import {useEffect, useMemo, useState} from 'react';
+import {useCallback, useEffect, useMemo, useState} from 'react';
 import {
   createTvSearch,
   EMPTY_RESULTS,
@@ -21,6 +21,12 @@ export interface SearchState {
   suggestions: Suggestion[];
   /** True while a freshly typed query waits for the debounce to settle. */
   pending: boolean;
+  /**
+   * Settles `text` at once, skipping the debounce: for a picked recent or
+   * suggestion, so its rows and results arrive in the same render as the
+   * query and the focused row never unmounts in between.
+   */
+  settleNow: (text: string) => void;
 }
 
 export type TvSearchEngine = ReturnType<typeof createTvSearch>;
@@ -28,6 +34,11 @@ export type TvSearchEngine = ReturnType<typeof createTvSearch>;
 /** Anything with a letter or digit in it searches; the phone has no minimum. */
 export function isActiveQuery(query: string): boolean {
   return toSearchKey(query).length > 0;
+}
+
+/** Whether the typed query still waits for its results. */
+export function isPending(query: string, settled: string): boolean {
+  return isActiveQuery(query) && settled !== query;
 }
 
 /** Results and suggestions for one query: the hook's whole logic, pure. */
@@ -66,10 +77,16 @@ export function useSearch(query: string, reciters: Reciter[]): SearchState {
     [engine, settled],
   );
 
+  const settleNow = useCallback(
+    (text: string) => setSettled(isActiveQuery(text) ? text : ''),
+    [],
+  );
+
   return {
     settled,
     results,
     suggestions,
-    pending: active && settled !== query,
+    pending: isPending(query, settled),
+    settleNow,
   };
 }

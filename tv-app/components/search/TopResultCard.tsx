@@ -1,6 +1,5 @@
 import React, {useEffect, useState} from 'react';
 import {Text, TVFocusGuideView, View} from 'react-native';
-import {Image} from 'expo-image';
 import {FocusableButton, FocusText} from '../primitives/FocusableButton';
 import {FocusIcon} from '../primitives/focusContext';
 import {SurahArtwork} from '../brand/SurahArtwork';
@@ -27,7 +26,7 @@ import {
   fetchTranslation,
   getArabicVerses,
 } from '../../services/verseData';
-import {getReciterArtwork} from '../../services/reciterArtwork';
+import {ReciterPortrait} from '../browse/ReciterPortrait';
 import {useFavorites} from '../../hooks/useFavorites';
 import {surahGradient} from '../../theme/surahColors';
 import {quranTextFontAvailable} from '../../theme/calligraphy';
@@ -134,21 +133,11 @@ function ReciterTop({
   const favorites = useFavorites();
   const favorite = favorites.some(f => f.reciterId === reciter.id);
   const rewayah = pickRewayah(reciter.rewayat);
-  const artwork = getReciterArtwork(reciter);
   return (
     <Card
       art={
         <View style={[styles.art, styles.round]}>
-          {artwork ? (
-            <Image
-              source={artwork}
-              style={styles.fill}
-              contentFit="cover"
-              cachePolicy="memory-disk"
-            />
-          ) : (
-            <Text style={styles.initial}>{reciter.name.charAt(0)}</Text>
-          )}
+          <ReciterPortrait reciter={reciter} size={ART} idPrefix="search-top" />
         </View>
       }
       eyebrow={['Top result · Reciter', rewayah?.name, rewayah?.style]
@@ -233,7 +222,6 @@ function VerseTop({
   actions,
   takeFocus,
 }: Props & {verse: VerseRef}): React.ReactElement {
-  const [note, setNote] = useState<string | null>(null);
   const [translation, setTranslation] = useState<string | null>(null);
   const arabic = getArabicVerses(verse.surah.id)[verse.ayah - 1] ?? '';
 
@@ -251,8 +239,9 @@ function VerseTop({
     };
   }, [verse.surah.id, verse.ayah]);
 
-  const run = async (action: VerseAction) => {
-    setNote(await actions.playVerse(verse, action));
+  // The player opens at once; any note about the verse shows as a toast.
+  const run = (action: VerseAction) => {
+    void actions.playVerse(verse, action);
   };
 
   return (
@@ -286,7 +275,7 @@ function VerseTop({
               verse.surah.translated_name_english,
             ]
       }
-      note={note}>
+      note={null}>
       <Action
         label="Play verse"
         icon={PlayIcon}
@@ -397,8 +386,6 @@ const styles = createScaledStyles({
     backgroundColor: colors.surfaceElevated,
   },
   round: {borderRadius: ART / 2},
-  fill: {width: '100%', height: '100%'},
-  initial: {color: colors.textTertiary, fontSize: 96, fontWeight: '300'},
   verseArt: {padding: 22},
   verseText: {
     color: colors.text,
