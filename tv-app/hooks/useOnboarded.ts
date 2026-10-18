@@ -1,5 +1,6 @@
 import {create} from 'zustand';
 import {storage} from '../services/storage';
+import {useNavStore, type ScreenEntry} from '../store/navStore';
 
 const KEY = 'bayaan_tv_onboarded';
 
@@ -27,11 +28,28 @@ export function markOnboarded(): void {
   useOnboardingStore.setState({onboarded: true, rerun: false});
 }
 
-/** Shows the welcome again (Settings > Show welcome again). */
+/**
+ * Shows the welcome again (Settings > Show welcome again). Only in memory:
+ * the saved flag stays, so an app killed during the rerun relaunches to
+ * Home, not to a first-launch welcome.
+ */
 export function resetOnboarded(): void {
-  storage.remove(KEY);
   useOnboardingStore.setState({onboarded: false, rerun: true});
 }
+
+/**
+ * Opening the player during a rerun (its now-playing pill) ends the rerun,
+ * so the player shows over Settings and Back returns there. A first-launch
+ * welcome is never skipped this way.
+ */
+export function endRerunForPlayer(stack: readonly ScreenEntry[]): void {
+  if (!useOnboardingStore.getState().rerun) return;
+  if (stack.some(e => e.screen === 'nowPlaying')) markOnboarded();
+}
+
+useNavStore.subscribe((state, prev) => {
+  if (state.stack !== prev.stack) endRerunForPlayer(state.stack);
+});
 
 // Reflect external MMKV writes back into the store. Guarded because the node
 // test mock does not implement the listener API.
