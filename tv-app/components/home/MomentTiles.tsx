@@ -1,5 +1,6 @@
 import React from 'react';
-import {Text, View} from 'react-native';
+import {StyleSheet, Text, View} from 'react-native';
+import Svg, {Defs, LinearGradient, Rect, Stop} from 'react-native-svg';
 import {FocusableCard} from '../primitives/FocusableCard';
 import {FocusFrame, FocusText} from '../primitives/focusContext';
 import {SurahArtwork} from '../brand/SurahArtwork';
@@ -109,7 +110,7 @@ function ColorTileImpl({
           colors={[colors.surfaceElevated, color]}
           id={`home-tile-${id}`}
         />
-        <View style={styles.scrim} />
+        <Scrim id={`home-scrim-${id}`} />
         {arabic ? (
           <Text
             numberOfLines={1}
@@ -184,6 +185,28 @@ function Caption({text}: {text: string}): React.ReactElement {
   );
 }
 
+/**
+ * Ink deepening smoothly toward the bottom of a colour tile, so the title
+ * reads on any hue without the hard edge a flat band leaves across it.
+ */
+function Scrim({id}: {id: string}): React.ReactElement {
+  return (
+    <Svg
+      style={StyleSheet.absoluteFill}
+      width="100%"
+      height="100%"
+      preserveAspectRatio="none">
+      <Defs>
+        <LinearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+          <Stop offset="0.25" stopColor={colors.background} stopOpacity={0} />
+          <Stop offset="1" stopColor={colors.background} stopOpacity={0.5} />
+        </LinearGradient>
+      </Defs>
+      <Rect x="0" y="0" width="100%" height="100%" fill={`url(#${id})`} />
+    </Svg>
+  );
+}
+
 const FRAME_PAD = 18; // FocusFrame ring 4 + gap 5, both sides
 
 const styles = createScaledStyles({
@@ -198,14 +221,6 @@ const styles = createScaledStyles({
   },
   wideTile: {width: WIDE_W + FRAME_PAD, gap: 10},
   wideFrame: {width: WIDE_W + FRAME_PAD, height: TILE_H + FRAME_PAD},
-  scrim: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: '55%',
-    backgroundColor: 'rgba(5,11,16,0.35)',
-  },
   arabic: {
     position: 'absolute',
     top: 10,

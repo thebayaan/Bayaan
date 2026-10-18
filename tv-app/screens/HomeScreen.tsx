@@ -736,8 +736,15 @@ export function HomeScreen(): React.ReactElement {
         return rail(
           row,
           'Collections',
-          SURAH_COLLECTIONS.map(c => (
-            <CollectionTile key={c.id} collection={c} onPlay={playList} />
+          SURAH_COLLECTIONS.map((c, i) => (
+            <CollectionTile
+              key={c.id}
+              collection={c}
+              // The muted pigments, not the phone's saturated hex, so the
+              // row sits with the surah art (Ink & Cream).
+              color={TILE_HUES[i % TILE_HUES.length]}
+              onPlay={playList}
+            />
           )),
         );
       case 'featured':
@@ -893,9 +900,11 @@ const PlaylistTile = React.memo(function PlaylistTile({
 /** A curated collection; OK plays it from the top. */
 const CollectionTile = React.memo(function CollectionTile({
   collection,
+  color,
   onPlay,
 }: {
   collection: SurahCollection;
+  color: string;
   onPlay: (surahs: readonly number[], source: string) => void;
 }): React.ReactElement {
   const meta = surahListMeta(collection.surahs);
@@ -905,7 +914,7 @@ const CollectionTile = React.memo(function CollectionTile({
       title={collection.title}
       subtitle={collection.description}
       caption={meta}
-      color={collection.color}
+      color={color}
       onSelect={() => onPlay(collection.surahs, 'home-collection')}
       accessibilityLabel={`Play ${collection.title}, ${meta}`}
     />
