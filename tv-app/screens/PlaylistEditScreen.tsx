@@ -1,5 +1,5 @@
 import React, {useState} from 'react';
-import {Text, TVFocusGuideView, View} from 'react-native';
+import {Platform, Text, TVFocusGuideView, View} from 'react-native';
 import {GradientFill} from '../components/brand/GradientFill';
 import {SurahGlyph} from '../components/brand/SurahGlyph';
 import {FocusableButton} from '../components/primitives/FocusableButton';
@@ -77,6 +77,8 @@ export function PlaylistEditScreen({
   // Right from the keyboard (or up from nothing) enters the side column on
   // Save rather than on the nearest swatch.
   const [saveButton, setSaveButton] = useState<View | null>(null);
+  // Focus is on the name keyboard (focus and blur bubble from its keys).
+  const [onKeyboard, setOnKeyboard] = useState(false);
 
   const renaming = playlistId !== undefined;
   const seedVoice = seed
@@ -143,7 +145,10 @@ export function PlaylistEditScreen({
               ? 'Type to replace the name, or Save to keep it.'
               : ' '}
         </Text>
-        <View style={styles.keyboard}>
+        <View
+          style={styles.keyboard}
+          onFocus={() => setOnKeyboard(true)}
+          onBlur={() => setOnKeyboard(false)}>
           <SearchKeyboard
             mode={mode}
             onKey={key => setDraft(d => draftKey(d, key))}
@@ -160,6 +165,17 @@ export function PlaylistEditScreen({
         destinations={saveButton ? [saveButton] : undefined}
         trapFocusRight
         style={styles.side}>
+        {/* tvOS: a guide redirects only when it is itself the nearest
+            candidate, and the swatches inside the column are nearer to the
+            keyboard than its edge. This strip in the gap is nearer still, so
+            Right from the keyboard lands on Create there too. Only while
+            focus is on the keyboard: Left from a swatch must not meet it. */}
+        {Platform.OS === 'ios' && saveButton && onKeyboard ? (
+          <TVFocusGuideView
+            destinations={[saveButton]}
+            style={styles.toSave}
+          />
+        ) : null}
         <View style={styles.preview}>
           <GradientFill colors={playlistGradient(color)} id="playlist-edit" />
           <View style={styles.previewArt}>
@@ -276,6 +292,7 @@ const styles = createScaledStyles({
   },
   keyboard: {marginTop: 36},
   side: {width: 560},
+  toSave: {position: 'absolute', left: -64, top: 0, bottom: 0, width: 8},
   preview: {
     width: PREVIEW,
     height: PREVIEW,

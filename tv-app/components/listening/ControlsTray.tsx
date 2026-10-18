@@ -110,6 +110,7 @@ export function ControlsTray({
     fn();
   };
   const tool = (key: PanelKey) => ({
+    hidden: panelOpen,
     focusOnReturn: returnTo === key,
     onPress: press(() => {
       setReturnTo(key);
@@ -198,83 +199,88 @@ export function ControlsTray({
             </FocusableButton>
           </View>
         </View>
-        {panelOpen ? null : (
-          <View style={styles.tools}>
+        {/* Hidden and unfocusable under an open panel, not unmounted: when
+            the panel closes the tool that opened it takes focus in the same
+            frame, with nothing to remount (a remount behind the reciter
+            list's unmount let the next key go nowhere on Android). */}
+        <View
+          style={[styles.tools, panelOpen && styles.toolsHidden]}
+          pointerEvents={panelOpen ? 'none' : 'auto'}>
+          <Tool
+            label="Repeat"
+            value={repeatLabel(repeat)}
+            on={repeat.kind !== 'off'}
+            {...tool('repeat')}
+          />
+          <Tool
+            label="Speed"
+            value={formatSpeed(speed)}
+            on={speed !== 1}
+            {...tool('speed')}
+          />
+          <Tool
+            label="On screen"
+            value={onScreenLabel(mode, edition)}
+            on={false}
+            {...tool('onScreen')}
+          />
+          <Tool
+            label="Reciter"
+            value={shortReciterName(reciterName)}
+            on={false}
+            {...tool('reciter')}
+          />
+          <Tool
+            label="Sleep"
+            value={sleepOn ? sleepLabel(sleepChoice) : 'Off'}
+            on={sleepOn}
+            {...tool('sleep')}
+          />
+          {AMBIENT_AVAILABLE ? (
             <Tool
-              label="Repeat"
-              value={repeatLabel(repeat)}
-              on={repeat.kind !== 'off'}
-              {...tool('repeat')}
+              label="Sound"
+              value={ambientChoiceLabel(ambientOn ? ambientSound : 'off')}
+              on={ambientOn}
+              {...tool('sound')}
             />
-            <Tool
-              label="Speed"
-              value={formatSpeed(speed)}
-              on={speed !== 1}
-              {...tool('speed')}
-            />
-            <Tool
-              label="On screen"
-              value={onScreenLabel(mode, edition)}
-              on={false}
-              {...tool('onScreen')}
-            />
-            <Tool
-              label="Reciter"
-              value={shortReciterName(reciterName)}
-              on={false}
-              {...tool('reciter')}
-            />
-            <Tool
-              label="Sleep"
-              value={sleepOn ? sleepLabel(sleepChoice) : 'Off'}
-              on={sleepOn}
-              {...tool('sleep')}
-            />
-            {AMBIENT_AVAILABLE ? (
-              <Tool
-                label="Sound"
-                value={ambientChoiceLabel(ambientOn ? ambientSound : 'off')}
-                on={ambientOn}
-                {...tool('sound')}
+          ) : null}
+          <Tool
+            label="Queue"
+            value={nextCount > 0 ? `${nextCount} next` : 'Last'}
+            on={false}
+            {...tool('queue')}
+          />
+          <Tool
+            label="Save"
+            value={
+              savedIn === 0
+                ? 'Add'
+                : savedIn === 1
+                  ? 'Saved'
+                  : `In ${savedIn}`
+            }
+            on={savedIn > 0}
+            {...tool('save')}
+          />
+          <Tool
+            label={isLoved ? 'Loved' : 'Love'}
+            accessibilityLabel={
+              isLoved ? 'Remove from loved surahs' : 'Add to loved surahs'
+            }
+            icon={
+              <FocusIcon
+                icon={HeartIcon}
+                size={26}
+                filled={isLoved}
+                color={isLoved ? colors.accent : colors.text}
               />
-            ) : null}
-            <Tool
-              label="Queue"
-              value={nextCount > 0 ? `${nextCount} next` : 'Last'}
-              on={false}
-              {...tool('queue')}
-            />
-            <Tool
-              label="Save"
-              value={
-                savedIn === 0
-                  ? 'Add'
-                  : savedIn === 1
-                    ? 'Saved'
-                    : `In ${savedIn}`
-              }
-              on={savedIn > 0}
-              {...tool('save')}
-            />
-            <Tool
-              label={isLoved ? 'Loved' : 'Love'}
-              accessibilityLabel={
-                isLoved ? 'Remove from loved surahs' : 'Add to loved surahs'
-              }
-              icon={
-                <FocusIcon
-                  icon={HeartIcon}
-                  size={26}
-                  filled={isLoved}
-                  color={isLoved ? colors.accent : colors.text}
-                />
-              }
-              on={isLoved}
-              focusOnReturn={false}
-              onPress={toggleLoved}
-            />
-          </View>
-        )}
+            }
+            on={isLoved}
+            hidden={panelOpen}
+            focusOnReturn={false}
+            onPress={toggleLoved}
+          />
+        </View>
       </TVFocusGuideView>
     </View>
   );
@@ -285,6 +291,7 @@ function Tool({
   value,
   icon,
   on,
+  hidden,
   focusOnReturn,
   onPress,
   accessibilityLabel,
@@ -294,16 +301,18 @@ function Tool({
   value?: string;
   icon?: React.ReactNode;
   on: boolean;
+  /** Under an open panel: kept mounted, but not focusable. */
+  hidden: boolean;
   /** Take focus when the tray comes back from this tool's panel. */
   focusOnReturn: boolean;
   onPress: () => void;
   accessibilityLabel?: string;
 }): React.ReactElement {
-  // The tools mount again when a panel closes; hasTVPreferredFocus takes
-  // focus then, and asking once mounted backs it up in case the focus
-  // engine was still busy with the closing panel.
+  // When the panel closes, hasTVPreferredFocus turns on and takes focus;
+  // asking once more after that backs it up in case the focus engine was
+  // still busy with the closing panel.
   const ref = useRef<View>(null);
-  const returning = useRef(focusOnReturn).current;
+  const returning = focusOnReturn && !hidden;
   useEffect(() => {
     if (!returning) return;
     const id = setTimeout(() => ref.current?.requestTVFocus?.(), 0);
@@ -314,7 +323,8 @@ function Tool({
       ref={ref}
       onPress={onPress}
       accessibilityLabel={accessibilityLabel ?? `${label}: ${value ?? ''}`}
-      hasTVPreferredFocus={focusOnReturn}
+      hasTVPreferredFocus={returning}
+      focusable={!hidden}
       containerStyle={styles.toolBox}
       style={styles.tool}>
       <FocusText
@@ -385,6 +395,7 @@ const styles = createScaledStyles({
     flexShrink: 1,
     marginLeft: 24,
   },
+  toolsHidden: {opacity: 0},
   // Long values (a reciter's name, "End of surah") shrink and truncate
   // rather than push the last tools off the screen.
   toolBox: {flexShrink: 1, minWidth: 0},
