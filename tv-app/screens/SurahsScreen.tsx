@@ -8,6 +8,11 @@ import {
   cellHeightLayout,
   useGridColumns,
 } from '../components/browse/gridLayout';
+import {
+  ROOT_TITLE_GAP,
+  RootClock,
+  RootTitle,
+} from '../components/browse/RootHeader';
 import {ReciterGrid} from '../components/catalog/ReciterGrid';
 import {FocusableButton} from '../components/primitives/FocusableButton';
 import {FocusIcon, FocusText} from '../components/primitives/focusContext';
@@ -305,9 +310,7 @@ export function SurahsScreen(): React.ReactElement {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Surahs</Text>
-      </View>
+      <RootTitle title="Surahs" hint="Hold OK on a surah for more" />
       <View style={styles.chipBar}>
         <TVFocusGuideView autoFocus style={styles.chipRow}>
           {FILTERS.map(f => (
@@ -401,6 +404,7 @@ export function SurahsScreen(): React.ReactElement {
           }
         />
       </TVFocusGuideView>
+      <RootClock />
     </View>
   );
 }
@@ -416,10 +420,16 @@ const styles = createScaledStyles({
   // Chips carry 18 px of side padding: pull the row out so their text lines
   // up with the title and the tiles.
   chipBar: {
+    marginTop: ROOT_TITLE_GAP,
     paddingHorizontal: BROWSE_GUTTER - 18,
     paddingBottom: spacing.xs,
   },
-  chipRow: {flexDirection: 'row', alignItems: 'center', gap: 8},
+  chipRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    minHeight: 64,
+  },
   chipSpacer: {flex: 1},
   actionChip: {
     paddingHorizontal: 20,

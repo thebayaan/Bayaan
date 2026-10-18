@@ -3,7 +3,11 @@ import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {Text, TVFocusGuideView, View} from 'react-native';
 import {AdhkarChip} from '../components/adhkar/AdhkarChip';
 import {FilterChip} from '../components/browse/FilterChip';
-import {HomeClock} from '../components/home/HomeClock';
+import {
+  ROOT_TITLE_GAP,
+  RootClock,
+  RootTitle,
+} from '../components/browse/RootHeader';
 import {LibraryFirstRun} from '../components/library/LibraryFirstRun';
 import {ShelfFade} from '../components/library/ShelfFade';
 import {
@@ -17,7 +21,6 @@ import {
 import {useLibraryPlayback} from '../components/library/useLibraryPlayback';
 import {FocusableButton} from '../components/primitives/FocusableButton';
 import {FocusText} from '../components/primitives/focusContext';
-import {useClock} from '../hooks/useClock';
 import {useFavorites} from '../hooks/useFavorites';
 import {useLovedSurahs} from '../hooks/useLovedSurahs';
 import {usePlaylists} from '../hooks/usePlaylists';
@@ -45,11 +48,7 @@ import {colors} from '../theme/colors';
 import {fonts} from '../theme/typography';
 import {createScaledStyles} from '../theme/scale';
 import {cellHeightLayout} from '../components/browse/gridLayout';
-import {
-  SCREEN_CLOCK_RIGHT,
-  SCREEN_CLOCK_TOP,
-  SCREEN_GUTTER,
-} from '../theme/spacing';
+import {SCREEN_GUTTER} from '../theme/spacing';
 import type {Playlist} from '../services/playlistsStore';
 import type {Reciter} from '../types/reciter';
 
@@ -126,7 +125,6 @@ function placeOf(
  * Before anything is kept, a first-run page explains the three.
  */
 export function CollectionScreen(): React.ReactElement {
-  const now = useClock();
   const favorites = useFavorites();
   const loved = useLovedSurahs();
   const playlists = usePlaylists();
@@ -378,11 +376,7 @@ export function CollectionScreen(): React.ReactElement {
     [reciterById, playlistById, focusIndex, push, playTile, voiceOf, remember],
   );
 
-  const clock = (
-    <View style={styles.clock} pointerEvents="none">
-      <HomeClock now={now} />
-    </View>
-  );
+  const clock = <RootClock />;
 
   if (firstRun) {
     return (
@@ -411,7 +405,7 @@ export function CollectionScreen(): React.ReactElement {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Library</Text>
+      <RootTitle title="Library" />
 
       <View style={styles.bar}>
         <TVFocusGuideView
@@ -500,24 +494,10 @@ export function CollectionScreen(): React.ReactElement {
 
 const styles = createScaledStyles({
   container: {flex: 1, backgroundColor: colors.background},
-  clock: {
-    position: 'absolute',
-    top: SCREEN_CLOCK_TOP,
-    right: SCREEN_CLOCK_RIGHT,
-  },
-  title: {
-    color: colors.text,
-    fontFamily: fonts.bold,
-    fontWeight: '700',
-    fontSize: 66,
-    letterSpacing: -1.6,
-    marginTop: 58,
-    paddingLeft: PAD_LEFT,
-  },
   bar: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 18,
+    marginTop: ROOT_TITLE_GAP,
     minHeight: 64,
     paddingLeft: PAD_LEFT - CHIP_PAD,
     paddingRight: PAD_RIGHT - 18,

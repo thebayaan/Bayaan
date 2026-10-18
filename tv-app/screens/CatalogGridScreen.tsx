@@ -2,6 +2,11 @@ import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {Text, TVFocusGuideView, View} from 'react-native';
 import {FilterChip} from '../components/browse/FilterChip';
 import {BROWSE_GUTTER} from '../components/browse/gridLayout';
+import {
+  ROOT_TITLE_GAP,
+  RootClock,
+  RootTitle,
+} from '../components/browse/RootHeader';
 import {ReciterGrid} from '../components/catalog/ReciterGrid';
 import {FocusableButton} from '../components/primitives/FocusableButton';
 import {FocusText} from '../components/primitives/focusContext';
@@ -18,7 +23,7 @@ import {
 import {useNavStore} from '../store/navStore';
 import {colors} from '../theme/colors';
 import {spacing} from '../theme/spacing';
-import {fonts, typography} from '../theme/typography';
+import {fonts} from '../theme/typography';
 import type {Reciter} from '../types/reciter';
 import {createScaledStyles} from '../theme/scale';
 
@@ -97,9 +102,7 @@ export function CatalogGridScreen(): React.ReactElement {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Reciters</Text>
-      </View>
+      <RootTitle title="Reciters" hint="Hold OK on a reciter for more" />
       <TVFocusGuideView autoFocus style={styles.chipRow}>
         {rewayahChips.map(c => (
           <FilterChip
@@ -163,18 +166,13 @@ export function CatalogGridScreen(): React.ReactElement {
           }
         />
       </TVFocusGuideView>
+      <RootClock />
     </View>
   );
 }
 
 const styles = createScaledStyles({
   container: {flex: 1, backgroundColor: colors.background},
-  header: {
-    paddingHorizontal: BROWSE_GUTTER,
-    paddingTop: spacing.xl,
-    paddingBottom: spacing.sm,
-  },
-  title: {color: colors.text, ...typography.title, letterSpacing: -0.5},
   // Chips carry 18 px of side padding: pull the row out so their text lines
   // up with the title and the portraits.
   chipRow: {
@@ -182,6 +180,8 @@ const styles = createScaledStyles({
     alignItems: 'center',
     flexWrap: 'wrap',
     gap: 8,
+    marginTop: ROOT_TITLE_GAP,
+    minHeight: 64,
     paddingHorizontal: BROWSE_GUTTER - 18,
     paddingBottom: spacing.xs,
   },
