@@ -8,6 +8,9 @@ import {
 import {SidePanel, type PanelSection} from '../components/listening/SidePanel';
 import {VersePreview} from '../components/settings/VersePreview';
 import {ReciterPickerPanel} from '../components/settings/ReciterPickerPanel';
+import {ListFade} from '../components/settings/ListFade';
+import {HomeClock} from '../components/home/HomeClock';
+import {useClock} from '../hooks/useClock';
 import {formatSpeed} from '../components/listening/ListeningPanels';
 import {useReciters} from '../hooks/useReciters';
 import {useContinueListening} from '../hooks/useContinueListening';
@@ -47,9 +50,14 @@ import {
 import {useOverlayStore} from '../store/overlayStore';
 import {SPEED_CYCLE} from '../store/listeningStore';
 import type {Reciter} from '../types/reciter';
-import appConfig from '../app.json';
+import {APP_VERSION} from '../services/appVersion';
 import {colors} from '../theme/colors';
-import {SCREEN_GUTTER, spacing} from '../theme/spacing';
+import {
+  SCREEN_CLOCK_RIGHT,
+  SCREEN_CLOCK_TOP,
+  SCREEN_GUTTER,
+  spacing,
+} from '../theme/spacing';
 import {fonts, typography} from '../theme/typography';
 import {createScaledStyles} from '../theme/scale';
 
@@ -161,6 +169,7 @@ export function SettingsScreen(): React.ReactElement {
   return (
     <View style={styles.container}>
       <Text style={styles.pageTitle}>Settings</Text>
+      <SettingsClock />
       {displayPicker ? (
         // The rows step aside so the preview sits beside the picker.
         <View style={styles.besidePicker}>
@@ -172,102 +181,108 @@ export function SettingsScreen(): React.ReactElement {
         </View>
       ) : (
         <View style={styles.columns}>
-          <ScrollView
-            ref={listRef}
-            onContentSizeChange={() => {
-              // Coming back from the welcome rerun, the row that opened it is
-              // the last one: put it on screen so its preferred focus can land
-              // (it showed no focus at all on Android TV before).
-              if (focusRow === 'welcome' && picker === null) {
-                listRef.current?.scrollToEnd({animated: false});
-              }
-            }}
-            style={styles.listScroll}
-            contentContainerStyle={styles.scroll}
-            showsVerticalScrollIndicator={false}>
-            <TVFocusGuideView autoFocus style={styles.list}>
-              <Text style={styles.group}>Listening</Text>
-              <Row
-                label="Default reciter"
-                value={current?.name ?? 'Choose'}
-                {...row('reciter')}
-              />
-              <Row
-                label="Default speed"
-                value={formatSpeed(speed)}
-                {...row('speed')}
-              />
-              {AMBIENT_AVAILABLE ? (
+          <View style={styles.listColumn}>
+            <ScrollView
+              ref={listRef}
+              onContentSizeChange={() => {
+                // Coming back from the welcome rerun, the row that opened it is
+                // the last one: put it on screen so its preferred focus can land
+                // (it showed no focus at all on Android TV before).
+                if (focusRow === 'welcome' && picker === null) {
+                  listRef.current?.scrollToEnd({animated: false});
+                }
+              }}
+              style={styles.listScroll}
+              contentContainerStyle={styles.scroll}
+              showsVerticalScrollIndicator={false}>
+              <TVFocusGuideView autoFocus style={styles.list}>
+                <Text style={styles.group}>Listening</Text>
                 <Row
-                  label="Background sound"
-                  value={ambientChoiceLabel(ambientOn ? ambientSound : 'off')}
-                  {...row('sound')}
+                  label="Default reciter"
+                  value={current?.name ?? 'Choose'}
+                  {...row('reciter')}
                 />
-              ) : null}
+                <Row
+                  label="Default speed"
+                  value={formatSpeed(speed)}
+                  {...row('speed')}
+                />
+                {AMBIENT_AVAILABLE ? (
+                  <Row
+                    label="Background sound"
+                    value={ambientChoiceLabel(ambientOn ? ambientSound : 'off')}
+                    {...row('sound')}
+                  />
+                ) : null}
 
-              <Text style={styles.group}>On screen</Text>
-              <Row
-                label="Text"
-                value={ON_SCREEN_MODES.find(m => m.value === mode)?.label ?? ''}
-                {...row('mode')}
-              />
-              <Row
-                label="Translation"
-                value={findTranslation(edition).name}
-                {...row('translation')}
-              />
-              <Row
-                label="Text size"
-                value={
-                  TEXT_SIZES.find(s => s.value === textSize)?.label ?? 'Large'
-                }
-                {...row('textSize')}
-              />
-              <Row
-                label="Dim when idle"
-                value={dimLabel(dimAfterMin)}
-                {...row('dim')}
-              />
+                <Text style={styles.group}>On screen</Text>
+                <Row
+                  label="Text"
+                  value={
+                    ON_SCREEN_MODES.find(m => m.value === mode)?.label ?? ''
+                  }
+                  {...row('mode')}
+                />
+                <Row
+                  label="Translation"
+                  value={findTranslation(edition).name}
+                  {...row('translation')}
+                />
+                <Row
+                  label="Text size"
+                  value={
+                    TEXT_SIZES.find(s => s.value === textSize)?.label ?? 'Large'
+                  }
+                  {...row('textSize')}
+                />
+                <Row
+                  label="Dim when idle"
+                  value={dimLabel(dimAfterMin)}
+                  {...row('dim')}
+                />
 
-              <Text style={styles.group}>Your data</Text>
-              <Row
-                label="Clear listening history"
-                value={
-                  confirm === 'history'
-                    ? 'Press again to clear'
-                    : countLabel(historyCount)
-                }
-                warn={confirm === 'history'}
-                hasTVPreferredFocus={focusOn('history')}
-                onPress={() => runClear('history')}
-                onBlur={disarm('history')}
-              />
-              <Row
-                label="Clear favorites"
-                value={
-                  confirm === 'favorites'
-                    ? 'Press again to clear'
-                    : countLabel(favoritesCount)
-                }
-                warn={confirm === 'favorites'}
-                hasTVPreferredFocus={focusOn('favorites')}
-                onPress={() => runClear('favorites')}
-                onBlur={disarm('favorites')}
-              />
+                <Text style={styles.group}>Your data</Text>
+                <Row
+                  label="Clear listening history"
+                  value={
+                    confirm === 'history'
+                      ? 'Press again to clear'
+                      : countLabel(historyCount)
+                  }
+                  warn={confirm === 'history'}
+                  hasTVPreferredFocus={focusOn('history')}
+                  onPress={() => runClear('history')}
+                  onBlur={disarm('history')}
+                />
+                <Row
+                  label="Clear favorites"
+                  value={
+                    confirm === 'favorites'
+                      ? 'Press again to clear'
+                      : countLabel(favoritesCount)
+                  }
+                  warn={confirm === 'favorites'}
+                  hasTVPreferredFocus={focusOn('favorites')}
+                  onPress={() => runClear('favorites')}
+                  onBlur={disarm('favorites')}
+                />
 
-              <Text style={styles.group}>Welcome</Text>
-              <Row
-                label="Show welcome again"
-                value="Reciter and display"
-                hasTVPreferredFocus={focusOn('welcome')}
-                onPress={() => {
-                  setConfirm(null);
-                  setFocusRow('welcome');
-                  resetOnboarded();
-                }}
-              />
-            </TVFocusGuideView>
-          </ScrollView>
+                <Text style={styles.group}>Welcome</Text>
+                <Row
+                  label="Show welcome again"
+                  value="Reciter and display"
+                  hasTVPreferredFocus={focusOn('welcome')}
+                  onPress={() => {
+                    setConfirm(null);
+                    setFocusRow('welcome');
+                    resetOnboarded();
+                  }}
+                />
+              </TVFocusGuideView>
+            </ScrollView>
+            {/* Rows scrolled up under the title fade out instead of being cut. */}
+            <ListFade height={LIST_FADE} />
+          </View>
           <View style={styles.previewColumn}>
             <Text style={styles.previewLabel}>Preview</Text>
             <VersePreview />
@@ -275,9 +290,9 @@ export function SettingsScreen(): React.ReactElement {
               How verses show while you listen. Text, Translation and Text size
               change it.
             </Text>
-            <Text style={styles.version}>
-              Bayaan TV {appConfig.expo.version}
-            </Text>
+            {APP_VERSION ? (
+              <Text style={styles.version}>Bayaan TV {APP_VERSION}</Text>
+            ) : null}
           </View>
         </View>
       )}
@@ -421,6 +436,19 @@ function SettingsPickerPanel({
 function noop(): void {}
 
 /**
+ * The clock every root place shows top right. Its own component, so the
+ * minute tick redraws only the clock, not the rows.
+ */
+function SettingsClock(): React.ReactElement {
+  const now = useClock();
+  return (
+    <View style={styles.clock} pointerEvents="none">
+      <HomeClock now={now} />
+    </View>
+  );
+}
+
+/**
  * For the display pickers, which stay open so each choice previews live:
  * choosing the option already selected closes the picker, like the others.
  */
@@ -487,6 +515,13 @@ function Row({
 
 const ROW_PAD = 28;
 const LIST_W = 760;
+/**
+ * Room right of the rows for a focused row's 1.02 scale (about 8px a side)
+ * and its drop shadow, which the list would otherwise clip flat.
+ */
+const FOCUS_ROOM = 24;
+/** The fade over the list's top edge; the first group label starts below it. */
+const LIST_FADE = 32;
 
 const styles = createScaledStyles({
   container: {flex: 1, backgroundColor: colors.background},
@@ -499,15 +534,25 @@ const styles = createScaledStyles({
     // Lines up with the rows' edge, like every root screen's title.
     paddingLeft: SCREEN_GUTTER,
   },
-  columns: {flex: 1, flexDirection: 'row', gap: spacing.xl},
-  listScroll: {width: LIST_W + spacing.xl, flexGrow: 0},
-  scroll: {paddingLeft: spacing.xl, paddingBottom: spacing.xxl},
+  clock: {
+    position: 'absolute',
+    top: SCREEN_CLOCK_TOP,
+    right: SCREEN_CLOCK_RIGHT,
+  },
+  columns: {flex: 1, flexDirection: 'row', gap: spacing.xl - FOCUS_ROOM},
+  listColumn: {width: LIST_W + spacing.xl + FOCUS_ROOM},
+  listScroll: {flex: 1},
+  scroll: {
+    paddingLeft: spacing.xl,
+    paddingRight: FOCUS_ROOM,
+    paddingBottom: spacing.xxl,
+  },
   list: {gap: 8},
   group: {
     color: colors.accent,
     fontFamily: fonts.extraBold,
     fontWeight: '800',
-    fontSize: 14,
+    fontSize: 16,
     letterSpacing: 2.5,
     textTransform: 'uppercase',
     marginTop: 32,
@@ -545,22 +590,23 @@ const styles = createScaledStyles({
     color: colors.textSecondary,
     fontFamily: fonts.extraBold,
     fontWeight: '800',
-    fontSize: 14,
+    fontSize: 16,
     letterSpacing: 2.5,
     textTransform: 'uppercase',
   },
+  // Read from the sofa: 10-foot sizes, and secondary (not tertiary) cream.
   previewNote: {
-    color: colors.textTertiary,
+    color: colors.textSecondary,
     fontFamily: fonts.medium,
     fontWeight: '500',
-    fontSize: 17,
-    lineHeight: 24,
+    fontSize: 20,
+    lineHeight: 28,
   },
   version: {
-    color: colors.textTertiary,
+    color: colors.textSecondary,
     fontFamily: fonts.medium,
     fontWeight: '500',
-    fontSize: 15,
+    fontSize: 18,
     letterSpacing: 0.5,
     marginTop: 8,
   },
