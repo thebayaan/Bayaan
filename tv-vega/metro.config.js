@@ -16,7 +16,9 @@ const tvAppRoot = path.join(repoRoot, 'tv-app');
 const VEGA_PORTS = {
   '@react-native-async-storage/async-storage':
     '@amazon-devices/react-native-async-storage__async-storage',
-  '@shopify/flash-list': '@amazon-devices/shopify__flash-list',
+  // Amazon's port is FlashList 1.6.3; the shim adapts the v2-style props the
+  // shared screens pass (see shims/flash-list.tsx).
+  '@shopify/flash-list': path.join(__dirname, 'shims', 'flash-list.tsx'),
   'react-native-svg': '@amazon-devices/react-native-svg',
   // Vega's expo-image port crashes on render; see shims/expo-image.tsx.
   'expo-image': path.join(__dirname, 'shims', 'expo-image.tsx'),

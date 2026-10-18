@@ -1,6 +1,9 @@
 import {create} from 'zustand';
 import type {AudioEngine, EngineEvent} from '../services/audioEngine';
-import {recordProgress} from '../services/continueListeningStore';
+import {
+  recordProgress,
+  removeContinue,
+} from '../services/continueListeningStore';
 import type {PlayerStatus, QueueItem} from '../types/player';
 
 export type RepeatMode = 'off' | 'one' | 'all';
@@ -26,13 +29,45 @@ type TVPlayerState = {
   repeat: RepeatMode;
   sleep: SleepMode;
   lastError: string | null;
+  /** The queue ran out on its own (last surah ended, repeat off). */
+  finished: boolean;
+  /**
+   * True while the player is open for a track whose recitation is still
+   * being looked up (see beginPending); the engine's events are ignored
+   * meanwhile, so the old track's state never shows under the new title.
+   */
+  pending: boolean;
+  /** Runs the pending lookup again when Try again is pressed after it failed. */
+  pendingRetry: (() => void) | null;
+  /** Bumped by every load; a load that finds it changed has been replaced. */
+  loadToken: number;
+  /**
+   * The engine is paused for a verse repeat's gap before the replay (see
+   * hold). The listener is still listening, so Play/Pause during the gap
+   * means "stop here" and cancels the replay.
+   */
+  held: boolean;
+  /**
+   * A sleep timer (or "end of surah") stopped playback. The listening room
+   * stays dark until the next press instead of lighting back up.
+   */
+  slept: boolean;
   unsubscribe: (() => void) | null;
   progressWriteTimer: ReturnType<typeof setInterval> | null;
   sleepTimerId: ReturnType<typeof setTimeout> | null;
 
   setEngine: (engine: AudioEngine) => void;
-  loadQueue: (queue: QueueItem[], startIndex: number) => Promise<void>;
+  loadQueue: (
+    queue: QueueItem[],
+    startIndex: number,
+    opts?: LoadOptions,
+  ) => Promise<void>;
+  beginPending: (item: QueueItem, retry: () => void) => number;
+  failPending: (token: number, message: string) => void;
   toggle: () => void;
+  replay: () => void;
+  hold: (ms: number) => void;
+  wake: () => void;
   next: () => Promise<void>;
   prev: () => Promise<void>;
   seekBy: (deltaSeconds: number) => void;
@@ -44,6 +79,16 @@ type TVPlayerState = {
   retry: () => Promise<void>;
   jumpToIndex: (index: number) => Promise<void>;
   reset: () => void;
+};
+
+export type LoadOptions = {
+  /**
+   * Whether next/previous pick at random. Every queue load states it, so a
+   * surah chosen after a shuffle play plays in order (defaults to false).
+   */
+  shuffle?: boolean;
+  /** Where to start the first track, for resuming. */
+  startSeconds?: number;
 };
 
 export const useTVPlayerStore = create<TVPlayerState>((set, get) => ({
@@ -58,6 +103,12 @@ export const useTVPlayerStore = create<TVPlayerState>((set, get) => ({
   repeat: 'off',
   sleep: {kind: 'off'},
   lastError: null,
+  finished: false,
+  pending: false,
+  pendingRetry: null,
+  loadToken: 0,
+  held: false,
+  slept: false,
   unsubscribe: null,
   progressWriteTimer: null,
   sleepTimerId: null,
@@ -70,6 +121,7 @@ export const useTVPlayerStore = create<TVPlayerState>((set, get) => ({
 
     const unsubscribe = engine.subscribe((e: EngineEvent) => {
       const current = get();
+      if (current.pending) return;
       const errored = e.status === 'error' && current.status !== 'error';
       set({
         status: e.status,
@@ -85,14 +137,23 @@ export const useTVPlayerStore = create<TVPlayerState>((set, get) => ({
         current.positionSeconds > 0 &&
         e.positionSeconds >= e.durationSeconds - 0.5;
       if (!ended) return;
+      // A surah heard to the end leaves Continue listening.
+      const done = current.queue[current.currentIndex];
+      if (done) removeContinue(done.reciterId, done.surahNumber);
       if (current.sleep.kind === 'endOfSurah') {
         engine.pause();
-        set({sleep: {kind: 'off'}});
+        set({sleep: {kind: 'off'}, slept: true});
         return;
       }
+      const last =
+        current.currentIndex >= current.queue.length - 1 &&
+        current.repeat === 'off' &&
+        !(current.shuffle && current.queue.length > 1);
       if (current.repeat === 'one') {
         engine.seek(0);
         void engine.play();
+      } else if (last) {
+        set({finished: true});
       } else {
         void get().next();
       }
@@ -100,27 +161,119 @@ export const useTVPlayerStore = create<TVPlayerState>((set, get) => ({
     set({engine, unsubscribe});
   },
 
-  loadQueue: async (queue: QueueItem[], startIndex: number): Promise<void> => {
+  loadQueue: async (
+    queue: QueueItem[],
+    startIndex: number,
+    opts: LoadOptions = {},
+  ): Promise<void> => {
     const engine = get().engine;
     if (!engine || queue.length === 0) return;
-    set({queue, currentIndex: startIndex, status: 'loading', lastError: null});
-    try {
-      await engine.load(queue[startIndex].audioUrl);
-      await engine.play();
-      startProgressWriter(get, set);
-    } catch (err) {
-      set({status: 'error', lastError: describeError(err)});
-    }
+    const index = Math.max(0, Math.min(queue.length - 1, startIndex));
+    set({
+      queue,
+      shuffle: opts.shuffle ?? false,
+      pending: false,
+      pendingRetry: null,
+    });
+    startProgressWriter(get, set);
+    await loadIndex(get, set, index, opts.startSeconds);
+  },
+
+  beginPending: (item: QueueItem, retry: () => void): number => {
+    const token = get().loadToken + 1;
+    // Stop the old track: the player now shows the new one loading.
+    if (!get().pending) get().engine?.pause();
+    clearHold();
+    set({
+      held: false,
+      slept: false,
+      queue: [item],
+      currentIndex: 0,
+      status: 'loading',
+      positionSeconds: 0,
+      durationSeconds: 0,
+      lastError: null,
+      finished: false,
+      pending: true,
+      pendingRetry: retry,
+      loadToken: token,
+    });
+    return token;
+  },
+
+  failPending: (token: number, message: string): void => {
+    if (get().loadToken !== token) return;
+    set({status: 'error', lastError: message, pending: false});
   },
 
   toggle: (): void => {
-    const {engine, status} = get();
-    if (!engine) return;
+    const {
+      engine,
+      status,
+      finished,
+      positionSeconds,
+      durationSeconds,
+      pending,
+    } = get();
+    // Nothing of the new track is loaded yet; playing would resume the old.
+    if (!engine || pending) return;
+    set({slept: false});
+    // Pressed in a verse repeat's gap: stay paused, with no replay to come.
+    if (get().held) {
+      clearHold();
+      set({held: false});
+      return;
+    }
+    if (status === 'error') {
+      void get().retry();
+      return;
+    }
+    // At the end, play starts the surah again (the engine would resume at
+    // the end and stop at once).
+    const atEnd =
+      durationSeconds > 0 && positionSeconds >= durationSeconds - 0.5;
+    if (status !== 'playing' && (finished || atEnd)) {
+      // Stopped at the end of a surah by "sleep at end of surah": play goes
+      // on to the next one rather than hear this one again.
+      const {queue, currentIndex, repeat} = get();
+      if (!finished && repeat !== 'one' && currentIndex < queue.length - 1) {
+        void get().next();
+        return;
+      }
+      get().replay();
+      return;
+    }
     if (status === 'playing') {
       engine.pause();
     } else {
       void engine.play();
     }
+  },
+
+  replay: (): void => {
+    const {engine, queue} = get();
+    if (!engine || queue.length === 0) return;
+    set({finished: false});
+    engine.seek(0);
+    void engine.play();
+  },
+
+  hold: (ms: number): void => {
+    const engine = get().engine;
+    if (!engine) return;
+    clearHold();
+    engine.pause();
+    set({held: true});
+    holdTimer = setTimeout(() => {
+      holdTimer = null;
+      if (!get().held) return;
+      set({held: false});
+      void get().engine?.play();
+    }, ms);
+  },
+
+  wake: (): void => {
+    if (get().slept) set({slept: false});
   },
 
   next: async (): Promise<void> => {
@@ -141,13 +294,7 @@ export const useTVPlayerStore = create<TVPlayerState>((set, get) => ({
         }
       }
     }
-    set({currentIndex: nextIndex, status: 'loading', lastError: null});
-    try {
-      await engine.load(queue[nextIndex].audioUrl);
-      await engine.play();
-    } catch (err) {
-      set({status: 'error', lastError: describeError(err)});
-    }
+    await loadIndex(get, set, nextIndex);
   },
 
   prev: async (): Promise<void> => {
@@ -165,13 +312,7 @@ export const useTVPlayerStore = create<TVPlayerState>((set, get) => ({
     } else {
       prevIndex = Math.max(0, currentIndex - 1);
     }
-    set({currentIndex: prevIndex, status: 'loading', lastError: null});
-    try {
-      await engine.load(queue[prevIndex].audioUrl);
-      await engine.play();
-    } catch (err) {
-      set({status: 'error', lastError: describeError(err)});
-    }
+    await loadIndex(get, set, prevIndex);
   },
 
   seekBy: (delta: number): void => {
@@ -199,15 +340,15 @@ export const useTVPlayerStore = create<TVPlayerState>((set, get) => ({
   setRepeat: (repeat: RepeatMode): void => set({repeat}),
 
   retry: async (): Promise<void> => {
-    const {engine, queue, currentIndex} = get();
+    const {engine, queue, currentIndex, pendingRetry, positionSeconds} = get();
     if (!engine || queue.length === 0) return;
-    set({status: 'loading', lastError: null});
-    try {
-      await engine.load(queue[currentIndex].audioUrl);
-      await engine.play();
-    } catch (err) {
-      set({status: 'error', lastError: describeError(err)});
+    // The recitation was never found: look it up again.
+    if (!queue[currentIndex].audioUrl) {
+      pendingRetry?.();
+      return;
     }
+    // A track that failed partway picks up where it stopped.
+    await loadIndex(get, set, currentIndex, positionSeconds);
   },
 
   jumpToIndex: async (index: number): Promise<void> => {
@@ -219,13 +360,7 @@ export const useTVPlayerStore = create<TVPlayerState>((set, get) => ({
       void engine.play();
       return;
     }
-    set({currentIndex: index, status: 'loading', lastError: null});
-    try {
-      await engine.load(queue[index].audioUrl);
-      await engine.play();
-    } catch (err) {
-      set({status: 'error', lastError: describeError(err)});
-    }
+    await loadIndex(get, set, index);
   },
 
   setSleep: (minutes: number): void => {
@@ -251,7 +386,7 @@ export const useTVPlayerStore = create<TVPlayerState>((set, get) => ({
       if (left <= 0) {
         engine?.pause();
         engine?.setVolume(1);
-        set({sleep: {kind: 'off'}, sleepTimerId: null});
+        set({sleep: {kind: 'off'}, sleepTimerId: null, slept: true});
         return;
       }
       engine?.setVolume(left / SLEEP_FADE_MS);
@@ -269,6 +404,7 @@ export const useTVPlayerStore = create<TVPlayerState>((set, get) => ({
     engine?.destroy();
     if (progressWriteTimer !== null) clearInterval(progressWriteTimer);
     if (sleepTimerId !== null) clearTimeout(sleepTimerId);
+    clearHold();
     set({
       engine: null,
       queue: [],
@@ -281,12 +417,26 @@ export const useTVPlayerStore = create<TVPlayerState>((set, get) => ({
       repeat: 'off',
       sleep: {kind: 'off'},
       lastError: null,
+      finished: false,
+      pending: false,
+      pendingRetry: null,
+      loadToken: 0,
+      held: false,
+      slept: false,
       unsubscribe: null,
       progressWriteTimer: null,
       sleepTimerId: null,
     });
   },
 }));
+
+/** The pending replay of a verse repeat's gap (see hold). */
+let holdTimer: ReturnType<typeof setTimeout> | null = null;
+
+function clearHold(): void {
+  if (holdTimer !== null) clearTimeout(holdTimer);
+  holdTimer = null;
+}
 
 const NETWORK_HINTS = [
   'Network request failed',
@@ -311,6 +461,50 @@ function describeError(err: unknown): string {
   if (err instanceof Error) return err.message;
   if (typeof err === 'string') return err;
   return 'Playback failed';
+}
+
+/**
+ * Loads and plays the queue's track at `index`. Each load takes a new token,
+ * so when another load starts before this one finishes (a double press, Next
+ * pressed twice), the older one stops quietly instead of playing over it or
+ * reporting its error.
+ */
+async function loadIndex(
+  get: () => TVPlayerState,
+  set: (partial: Partial<TVPlayerState>) => void,
+  index: number,
+  startSeconds?: number,
+): Promise<void> {
+  const {engine, queue} = get();
+  const item = queue[index];
+  if (!engine || !item) return;
+  const token = get().loadToken + 1;
+  clearHold();
+  set({
+    held: false,
+    slept: false,
+    currentIndex: index,
+    status: 'loading',
+    positionSeconds: 0,
+    durationSeconds: 0,
+    lastError: null,
+    finished: false,
+    pending: false,
+    loadToken: token,
+  });
+  const stale = (): boolean => get().loadToken !== token;
+  try {
+    await engine.load(item.audioUrl);
+    if (stale()) return;
+    // Seek before play so a resume never blips from the start.
+    if (startSeconds !== undefined && startSeconds > 0) {
+      engine.seek(startSeconds);
+    }
+    await engine.play();
+  } catch (err) {
+    if (stale()) return;
+    set({status: 'error', lastError: describeError(err)});
+  }
 }
 
 function startProgressWriter(

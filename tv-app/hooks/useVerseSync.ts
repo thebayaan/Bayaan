@@ -15,7 +15,21 @@ export type VerseSync = {
   timeline: VerseTimeline | null;
   /** True once the timing lookup has finished, whatever it found. */
   timingsSettled: boolean;
+  /**
+   * The recitation this state is for (syncKey), so a caller can tell it
+   * apart from the previous surah's state in the render before the new
+   * lookup starts.
+   */
+  loadedFor: string | null;
 };
+
+/** What useVerseSync's state is loaded for: one rewayah's surah. */
+export function syncKey(
+  surahNumber: number | null,
+  rewayahId: string | undefined,
+): string | null {
+  return surahNumber === null ? null : `${rewayahId ?? ''}:${surahNumber}`;
+}
 
 /**
  * Loads what the listening room shows for one recitation of a surah: the
@@ -33,6 +47,7 @@ export function useVerseSync(
     translation: null,
     timeline: null,
     timingsSettled: false,
+    loadedFor: null,
   });
 
   useEffect(() => {
@@ -45,6 +60,7 @@ export function useVerseSync(
       translation: null,
       timeline: null,
       timingsSettled: false,
+      loadedFor: syncKey(surahNumber, rewayahId),
     });
 
     const timings = rewayahId

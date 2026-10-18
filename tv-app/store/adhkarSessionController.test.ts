@@ -3,6 +3,7 @@ import {
   ADVANCE_DELAY_MS,
   NEXT_GAP_MS,
   REPLAY_GAP_MS,
+  advanceModeOf,
   createAdhkarSessionStore,
 } from './adhkarSessionController';
 
@@ -33,12 +34,14 @@ const flush = async (): Promise<void> => {
 
 function setup(autoAdvance: boolean | null = true) {
   const {engine, emit} = fakeEngine();
+  const saveAutoAdvance = jest.fn();
   const store = createAdhkarSessionStore({
     createEngine: () => engine,
     loadAutoAdvance: () => autoAdvance,
+    saveAutoAdvance,
     dayKey: () => 'today',
   });
-  return {store, engine, emit};
+  return {store, engine, emit, saveAutoAdvance};
 }
 
 /** A clip of `duration` seconds playing through to its end. */
@@ -177,5 +180,73 @@ describe('adhkar session controller', () => {
     expect(engine.pause).toHaveBeenCalled();
     expect(engine.destroy).toHaveBeenCalled();
     expect(store.getState().session).toBeNull();
+  });
+
+  it('auto-advance is off until the viewer turns it on', () => {
+    const {store} = setup(null);
+    expect(store.getState().autoAdvance).toBe(false);
+    expect(advanceModeOf(store.getState())).toBe('off');
+  });
+
+  it('reading opens quietly', async () => {
+    const {store, engine} = setup();
+    store.getState().open('l', [1], ['a.mp3'], {autoplay: false});
+    await flush();
+    expect(engine.load).not.toHaveBeenCalled();
+    expect(store.getState().audio).toBe('idle');
+  });
+
+  it('listening through plays each dhikr once and moves on', async () => {
+    const {store, engine, emit} = setup(false);
+    store.getState().open('l', [3, 1], ['a.mp3', 'b.mp3'], {advance: 'once'});
+    await flush();
+    playThrough(emit);
+    expect(store.getState().session?.counts[0]).toBe(1);
+    expect(engine.seek).not.toHaveBeenCalled();
+    jest.advanceTimersByTime(NEXT_GAP_MS);
+    await flush();
+    expect(store.getState().session?.index).toBe(1);
+    expect(engine.load).toHaveBeenLastCalledWith('b.mp3');
+  });
+
+  it("a start mode's advance is for the visit only", async () => {
+    const {store, saveAutoAdvance} = setup(false);
+    store.getState().open('l', [2], ['a.mp3'], {advance: 'count'});
+    expect(advanceModeOf(store.getState())).toBe('count');
+    store.getState().setAutoAdvance(false);
+    expect(advanceModeOf(store.getState())).toBe('off');
+    store.getState().setAutoAdvance(true);
+    expect(advanceModeOf(store.getState())).toBe('count');
+    expect(saveAutoAdvance).not.toHaveBeenCalled();
+    store.getState().close();
+    expect(store.getState().sessionAdvance).toBeNull();
+    expect(store.getState().autoAdvance).toBe(false);
+    // Without a start mode the chip is the viewer's saved choice.
+    store.getState().open('l', [2], ['a.mp3'], {autoplay: false});
+    store.getState().setAutoAdvance(true);
+    expect(saveAutoAdvance).toHaveBeenCalledWith(true);
+  });
+
+  it("OK during a counting recitation is that recitation's count", async () => {
+    const {store, emit} = setup(true);
+    store.getState().open('l', [3], ['a.mp3']);
+    await flush();
+    emit({status: 'playing', positionSeconds: 1, durationSeconds: 4});
+    store.getState().press();
+    emit({status: 'playing', positionSeconds: 4, durationSeconds: 4});
+    expect(store.getState().session?.counts[0]).toBe(1);
+  });
+
+  it('says when a list resumed, until it starts over', () => {
+    const {store} = setup();
+    store.getState().open('l', [1, 1, 1], ['a', 'b', 'c'], {autoplay: false});
+    expect(store.getState().resumed).toBe(false);
+    store.getState().next();
+    store.getState().close();
+    store.getState().open('l', [1, 1, 1], ['a', 'b', 'c'], {autoplay: false});
+    expect(store.getState().resumed).toBe(true);
+    store.getState().restart();
+    expect(store.getState().resumed).toBe(false);
+    expect(store.getState().session?.index).toBe(0);
   });
 });

@@ -1,22 +1,17 @@
 import React from 'react';
-import {StyleSheet, Text, TVFocusGuideView, View} from 'react-native';
-import {Image} from 'expo-image';
+import {Text, TVFocusGuideView, View} from 'react-native';
 import {FocusableButton} from '../primitives/FocusableButton';
-import {FocusableCard} from '../primitives/FocusableCard';
-import {FocusFrame, FocusIcon, FocusText} from '../primitives/focusContext';
-import {GradientFill} from '../brand/GradientFill';
+import {FocusIcon, FocusText} from '../primitives/focusContext';
 import {SurahGlyph} from '../brand/SurahGlyph';
 import {HomeGlow} from '../home/HomeGlow';
-import {arabicFontStyle} from '../adhkar/arabicFont';
-import {ShelfSurahTile, SHELF_RING, TileLabels} from './ShelfTile';
+import {ShelfSurahTile, SHELF_RING} from './ShelfTile';
+import {PlusIcon} from './LibraryIcons';
 import {
   HeartIcon,
   PersonAudioIcon,
-  PlayIcon,
+  PlaylistIcon,
   type IconProps,
 } from '../../../components/Icons';
-import {adhkarImageUrl, adhkarList} from '../../services/adhkarData';
-import {listGradient, listSubtitle} from '../../services/adhkarBrowse';
 import {shortReciterName} from '../../services/listeningChoices';
 import {colors} from '../../theme/colors';
 import {fonts} from '../../theme/typography';
@@ -43,14 +38,14 @@ type Explainer = {
 
 const EXPLAINERS: readonly Explainer[] = [
   {
-    icon: PlayIcon,
-    title: 'Continue listening',
-    text: 'Stop partway and it waits here, to the verse.',
+    icon: PlaylistIcon,
+    title: 'Playlists',
+    text: 'Hold OK on any surah and choose Add to playlist.',
   },
   {
     icon: HeartIcon,
     title: 'Loved surahs',
-    text: 'While a surah plays, press OK and choose the heart.',
+    text: 'Hold OK on a surah and choose Like, or press the heart in the player.',
   },
   {
     icon: PersonAudioIcon,
@@ -63,27 +58,27 @@ const EXPLAINERS: readonly Explainer[] = [
 type Props = {
   /** The voice the starter surahs play in. */
   reciter: Reciter | null;
-  /** The adhkar list for this time of day (morning, evening, before sleep). */
-  adhkarListId: string;
+  onNewPlaylist: () => void;
+  onBrowseSurahs: () => void;
   onPlaySurah: (surahNumber: number) => void;
-  onBrowseReciters: () => void;
-  onOpenAdhkar: (listId: string) => void;
+  /** Hold OK on a starter surah: its menu (like, add to a playlist). */
+  onSurahMenu: (surahNumber: number) => void;
 };
 
 /**
- * The Library before anything is kept: one clear first step (Play
- * Al-Fatihah, focused), what will gather here (not focusable), and a row of
- * good places to start in the default voice.
+ * The Library before anything is kept: what lives here (playlists, loved
+ * surahs, favourite reciters; not focusable), one clear first step (New
+ * playlist, focused) and a row of good places to start in the default
+ * voice, where holding OK shows how to keep a surah.
  */
 export function LibraryFirstRun({
   reciter,
-  adhkarListId,
+  onNewPlaylist,
+  onBrowseSurahs,
   onPlaySurah,
-  onBrowseReciters,
-  onOpenAdhkar,
+  onSurahMenu,
 }: Props): React.ReactElement {
   const voice = reciter ? shortReciterName(reciter.name) : '';
-  const list = adhkarList(adhkarListId);
   return (
     <View style={styles.root}>
       <HomeGlow palette={GLOW} />
@@ -94,29 +89,28 @@ export function LibraryFirstRun({
       <View style={styles.content}>
         <View style={styles.hero}>
           <Text style={styles.kicker}>YOUR LIBRARY</Text>
-          <Text style={styles.title}>Start with one surah</Text>
+          <Text style={styles.title}>Keep what you love</Text>
           <Text style={styles.sentence}>
-            Whatever you begin, love or come back to collects here on its own.
+            Surahs you love, reciters you favourite and your playlists live
+            here.
           </Text>
           <TVFocusGuideView autoFocus style={styles.actions}>
             <FocusableButton
-              onPress={() => onPlaySurah(1)}
+              onPress={onNewPlaylist}
               hasTVPreferredFocus
               outlined
-              accessibilityLabel={
-                voice ? `Play Al-Fatihah with ${voice}` : 'Play Al-Fatihah'
-              }
+              accessibilityLabel="New playlist"
               style={styles.button}>
               <View style={styles.buttonInner}>
-                <FocusIcon icon={PlayIcon} size={20} />
-                <FocusText style={styles.buttonText}>Play Al-Fatihah</FocusText>
+                <FocusIcon icon={PlusIcon} size={22} />
+                <FocusText style={styles.buttonText}>New playlist</FocusText>
               </View>
             </FocusableButton>
             <FocusableButton
-              onPress={onBrowseReciters}
-              accessibilityLabel="Browse reciters"
+              onPress={onBrowseSurahs}
+              accessibilityLabel="Browse surahs"
               style={styles.button}>
-              <FocusText style={styles.buttonText}>Browse reciters</FocusText>
+              <FocusText style={styles.buttonText}>Browse surahs</FocusText>
             </FocusableButton>
           </TVFocusGuideView>
         </View>
@@ -137,6 +131,9 @@ export function LibraryFirstRun({
 
         <View style={styles.starter}>
           <Text style={styles.starterTitle}>Good places to start</Text>
+          <Text style={styles.starterHint}>
+            Hold OK on a surah to like it or add it to a playlist.
+          </Text>
           <TVFocusGuideView autoFocus style={styles.starterRow}>
             {STARTER_SURAHS.map(s => (
               <ShelfSurahTile
@@ -146,60 +143,21 @@ export function LibraryFirstRun({
                 reciter={reciter}
                 caption={voice}
                 loved={false}
-                progress={null}
                 art={STARTER_ART}
                 idPrefix="lib-start"
                 onPress={() => onPlaySurah(s.n)}
+                onLongPress={() => onSurahMenu(s.n)}
                 accessibilityLabel={
                   voice ? `Play ${s.name} with ${voice}` : `Play ${s.name}`
                 }
               />
             ))}
-            {list ? (
-              <FocusableCard
-                ring={false}
-                style={styles.adhkarCard}
-                onPress={() => onOpenAdhkar(list.id)}
-                accessibilityLabel={`${list.title} adhkar, ${listSubtitle(list.id, true)}`}>
-                <FocusFrame radius={18} style={styles.adhkarFrame}>
-                  <GradientFill
-                    colors={listGradient(list.color)}
-                    id={`lib-start-adhkar-${list.id}`}
-                  />
-                  <Image
-                    source={{uri: adhkarImageUrl(list.id)}}
-                    style={StyleSheet.absoluteFill}
-                    contentFit="cover"
-                    cachePolicy="memory-disk"
-                    transition={200}
-                    accessible={false}
-                  />
-                  <Text
-                    numberOfLines={1}
-                    style={[styles.adhkarArabic, arabicFontStyle]}>
-                    {list.arabicTitle}
-                  </Text>
-                </FocusFrame>
-                <TileLabels
-                  small
-                  title={adhkarTitle(list.title)}
-                  caption={listSubtitle(list.id, true)}
-                />
-              </FocusableCard>
-            ) : null}
           </TVFocusGuideView>
         </View>
       </View>
     </View>
   );
 }
-
-/** "Evening adhkar" for the two daily lists; other titles stand alone. */
-function adhkarTitle(title: string): string {
-  return title === 'Morning' || title === 'Evening' ? `${title} adhkar` : title;
-}
-
-const STARTER_FRAME = STARTER_ART + SHELF_RING * 2;
 
 const styles = createScaledStyles({
   root: {flex: 1},
@@ -208,7 +166,7 @@ const styles = createScaledStyles({
   calligraphy: {position: 'absolute', right: 150, top: 120},
   hero: {marginTop: 88, width: 1000},
   kicker: {
-    color: colors.accent,
+    color: colors.textTertiary,
     fontFamily: fonts.extraBold,
     fontWeight: '800',
     fontSize: 19,
@@ -234,7 +192,7 @@ const styles = createScaledStyles({
   button: {paddingHorizontal: 30, paddingVertical: 16, borderRadius: 16},
   buttonInner: {flexDirection: 'row', alignItems: 'center', gap: 12},
   buttonText: {fontFamily: fonts.bold, fontWeight: '700', fontSize: 24},
-  explainers: {flexDirection: 'row', gap: 40, marginTop: 96},
+  explainers: {flexDirection: 'row', gap: 40, marginTop: 80},
   explainer: {flex: 1, flexDirection: 'row', alignItems: 'flex-start', gap: 24},
   ghost: {
     width: 92,
@@ -261,12 +219,19 @@ const styles = createScaledStyles({
     fontSize: 20,
     lineHeight: 28,
   },
-  starter: {marginTop: 84},
+  starter: {marginTop: 72},
   starterTitle: {
     color: colors.text,
     fontFamily: fonts.bold,
     fontWeight: '700',
     fontSize: 28,
+  },
+  starterHint: {
+    color: colors.textSecondary,
+    fontFamily: fonts.medium,
+    fontWeight: '500',
+    fontSize: 20,
+    marginTop: 6,
   },
   // Pull the row left by the focus ring's reserved space so the artwork
   // lines up with the heading.
@@ -276,19 +241,5 @@ const styles = createScaledStyles({
     gap: 34 - SHELF_RING * 2,
     marginTop: 22 - SHELF_RING,
     marginLeft: -SHELF_RING,
-  },
-  adhkarCard: {width: STARTER_FRAME},
-  adhkarFrame: {width: STARTER_FRAME, height: STARTER_FRAME},
-  adhkarArabic: {
-    position: 'absolute',
-    top: 10,
-    right: 14,
-    left: 14,
-    textAlign: 'right',
-    color: colors.text,
-    fontSize: 24,
-    lineHeight: 40,
-    textShadowColor: 'rgba(0,0,0,0.5)',
-    textShadowRadius: 8,
   },
 });

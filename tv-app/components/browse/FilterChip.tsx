@@ -14,6 +14,8 @@ type Props = {
   small?: boolean;
   accessibilityLabel?: string;
   hasTVPreferredFocus?: boolean;
+  /** The chip's focusable view, for a focus guide's destinations. */
+  chipRef?: React.Ref<View>;
 };
 
 /**
@@ -28,10 +30,12 @@ export function FilterChip({
   small,
   accessibilityLabel,
   hasTVPreferredFocus,
+  chipRef,
 }: Props): React.ReactElement {
   const name = accessibilityLabel ?? label;
   return (
     <FocusableButton
+      ref={chipRef}
       onPress={onPress}
       hasTVPreferredFocus={hasTVPreferredFocus}
       accessibilityLabel={selected ? `${name}, selected` : name}

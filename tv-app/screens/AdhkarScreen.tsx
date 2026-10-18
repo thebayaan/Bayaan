@@ -14,9 +14,10 @@ import {useNavStore} from '../store/navStore';
 import {colors} from '../theme/colors';
 import {fonts} from '../theme/typography';
 import {createScaledStyles} from '../theme/scale';
+import {SCREEN_GUTTER} from '../theme/spacing';
 
 // Layout in design px: the screen beside the folded sidebar (1920 - 112).
-const PAD_LEFT = 72;
+const PAD_LEFT = SCREEN_GUTTER;
 const PAD_RIGHT = 90;
 const COLUMNS = 4;
 const GAP = 28;
@@ -37,9 +38,22 @@ export function AdhkarScreen(): React.ReactElement {
   const now = useNow();
   const groups = useMemo(adhkarGroups, []);
   const [groupId, setGroupId] = useState<AdhkarGroupId>(lastGroup);
-  // Initial focus goes to the NOW card once; after the chips have been used,
-  // re-rendering a group must not pull focus back to a card.
+  // Initial focus goes to the NOW card once, chosen as the screen opens: the
+  // NOW badge moves with the clock, focus never does. After the chips have
+  // been used, re-rendering a group must not pull focus back to a card.
+  const [initialId] = useState(() => {
+    const {featured, rest} = groupLists(lastGroup);
+    const lists = [...featured, ...rest];
+    const id = nowListId(new Date());
+    return (lists.find(l => l.id === id) ?? lists[0])?.id;
+  });
   const [chipsUsed, setChipsUsed] = useState(false);
+  // OK on the selected chip moves focus to the group's first card: that card
+  // mounts afresh (a new key) with preferred focus, which takes it.
+  const [focusTarget, setFocusTarget] = useState<{
+    id: string;
+    n: number;
+  } | null>(null);
   const scrollRef = useRef<ScrollView>(null);
   // Focus coming up from the cards lands on the selected chip.
   const [selectedChip, setSelectedChip] = useState<View | null>(null);
@@ -48,17 +62,28 @@ export function AdhkarScreen(): React.ReactElement {
   const nowId = nowListId(now);
   const {featured, rest} = useMemo(() => groupLists(groupId), [groupId]);
   const all = [...featured, ...rest];
-  const preferredId = chipsUsed
-    ? null
-    : (all.find(l => l.id === nowId) ?? all[0])?.id;
+  const preferredId = chipsUsed ? null : initialId;
 
   const select = (id: AdhkarGroupId): void => {
     if (id === groupId) return;
     lastGroup = id;
     setChipsUsed(true);
+    setFocusTarget(null);
     setGroupId(id);
     scrollRef.current?.scrollTo({y: 0, animated: false});
   };
+
+  const focusFirstCard = (): void => {
+    const first = all[0];
+    if (!first) return;
+    setChipsUsed(true);
+    setFocusTarget(t => ({id: first.id, n: (t?.n ?? 0) + 1}));
+  };
+
+  const cardKey = (id: string): string =>
+    focusTarget?.id === id ? `${id}-${focusTarget.n}` : id;
+  const prefers = (id: string): boolean =>
+    id === preferredId || id === focusTarget?.id;
 
   const open = (listId: string): void => push({screen: 'adhkarReader', listId});
 
@@ -81,6 +106,9 @@ export function AdhkarScreen(): React.ReactElement {
             count={group.id === 'all' ? group.listIds.length : undefined}
             selected={group.id === groupId}
             onSelect={() => select(group.id)}
+            onPress={() =>
+              group.id === groupId ? focusFirstCard() : select(group.id)
+            }
           />
         ))}
       </TVFocusGuideView>
@@ -93,24 +121,24 @@ export function AdhkarScreen(): React.ReactElement {
         <TVFocusGuideView autoFocus style={styles.grid}>
           {featured.map(list => (
             <AdhkarListCard
-              key={list.id}
+              key={cardKey(list.id)}
               list={list}
               size="big"
               width={CARD_WIDTH}
               now={list.id === nowId}
               onPress={() => open(list.id)}
-              hasTVPreferredFocus={list.id === preferredId}
+              hasTVPreferredFocus={prefers(list.id)}
             />
           ))}
           {rest.map(list => (
             <AdhkarListCard
-              key={list.id}
+              key={cardKey(list.id)}
               list={list}
               size="small"
               width={CARD_WIDTH}
               now={list.id === nowId}
               onPress={() => open(list.id)}
-              hasTVPreferredFocus={list.id === preferredId}
+              hasTVPreferredFocus={prefers(list.id)}
             />
           ))}
         </TVFocusGuideView>

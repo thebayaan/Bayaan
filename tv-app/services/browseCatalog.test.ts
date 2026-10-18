@@ -14,6 +14,7 @@ import {
   rewayahFamily,
   rewayahShortName,
   styleLabel,
+  surahFilterPlayLabel,
   surahsInJuz,
 } from './browseCatalog';
 import type {Reciter, Rewayah} from '../types/reciter';
@@ -195,6 +196,18 @@ describe('rewayat and styles', () => {
     ).toBe('Hafs · Mujawwad');
     expect(reciterSubtitle(reciter('e', []))).toBe('');
   });
+
+  it('names the fullest rewayah first in the subtitle', () => {
+    // The API lists Alafasi's six surahs of Ad-Duri before his Hafs.
+    expect(
+      reciterSubtitle(
+        reciter('alafasi', [
+          rewayah("Rewayat Aldori A'n Abi Amr", 'murattal', [1, 2]),
+          rewayah("Hafs A'n Assem", 'murattal', [1, 2, 3, 4]),
+        ]),
+      ),
+    ).toBe('Hafs, Ad-Duri');
+  });
 });
 
 describe('reciters grid', () => {
@@ -220,6 +233,27 @@ describe('reciters grid', () => {
     expect(chips.rewayah.has('qalun')).toBe(false);
     expect(chips.style.has('mujawwad')).toBe(true);
     expect(chips.style.has('teaching')).toBe(false);
+  });
+
+  it('offers only the styles recorded in the chosen rewayah', () => {
+    const teacher = reciter('T', [rewayah("Hafs A'n Assem", 'molim')]);
+    const all = [minshawi, warshOnly, teacher];
+    expect(availableChips(all).style.has('teaching')).toBe(true);
+    const warsh = availableChips(all, 'warsh');
+    expect(Array.from(warsh.style)).toEqual(['murattal']);
+    // Every rewayah chip is still offered.
+    expect(warsh.rewayah.has('hafs')).toBe(true);
+    // No offered pair empties the grid.
+    for (const style of warsh.style) {
+      expect(all.some(r => matchesChips(r, 'warsh', style))).toBe(true);
+    }
+  });
+
+  it('labels the Surahs play button by filter', () => {
+    expect(surahFilterPlayLabel('all', 1)).toBe('Play all');
+    expect(surahFilterPlayLabel('juz', 27)).toBe('Play Juz 27');
+    expect(surahFilterPlayLabel('short', 1)).toBe('Play short surahs');
+    expect(surahFilterPlayLabel('makki', 1)).toBe('Play Makki surahs');
   });
 
   it('puts featured reciters first, in the phone’s order', () => {

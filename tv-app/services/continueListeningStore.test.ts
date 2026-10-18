@@ -3,7 +3,9 @@ import {
   getContinueEntries,
   getContinueListening,
   clearContinue,
+  isFinishedProgress,
   MIN_PROGRESS_SECONDS,
+  removeContinue,
 } from './continueListeningStore';
 import {storage} from './storage';
 
@@ -138,5 +140,58 @@ describe('continueListeningStore', () => {
     const got = getContinueListening();
     expect(got[0].reciterId).toBe('new');
     expect(got[1].reciterId).toBe('old');
+  });
+
+  it('isFinishedProgress: 97% through or within 15 s of the end', () => {
+    // A long surah: 97% comes first.
+    expect(isFinishedProgress(2909, 3000)).toBe(false);
+    expect(isFinishedProgress(2910, 3000)).toBe(true);
+    // A short one: the last 15 seconds come first.
+    expect(isFinishedProgress(84, 100)).toBe(false);
+    expect(isFinishedProgress(85, 100)).toBe(true);
+    // Unknown duration never counts as finished.
+    expect(isFinishedProgress(500, 0)).toBe(false);
+  });
+
+  it('a write near the end removes the entry instead of saving it', () => {
+    recordProgress(entry('a', 1, 30));
+    recordProgress({...entry('a', 1, 0), positionSeconds: 58});
+    expect(getContinueEntries()).toEqual([]);
+  });
+
+  it('hides finished entries already in storage', () => {
+    storage.set(
+      KEY,
+      JSON.stringify([
+        {
+          reciterId: 'done',
+          rewayahId: 'r1',
+          surahNumber: 1,
+          positionSeconds: 59,
+          durationSeconds: 60,
+          updatedAt: 200,
+        },
+        {
+          reciterId: 'open',
+          rewayahId: 'r1',
+          surahNumber: 2,
+          positionSeconds: 10,
+          durationSeconds: 60,
+          updatedAt: 100,
+        },
+      ]),
+    );
+    expect(getContinueListening().map(e => e.reciterId)).toEqual(['open']);
+  });
+
+  it('removeContinue drops only that reciter and surah', () => {
+    recordProgress(entry('a', 1));
+    recordProgress(entry('a', 2));
+    recordProgress(entry('b', 1));
+    removeContinue('a', 1);
+    const got = getContinueEntries().map(
+      e => `${e.reciterId}:${e.surahNumber}`,
+    );
+    expect(got.sort()).toEqual(['a:2', 'b:1']);
   });
 });

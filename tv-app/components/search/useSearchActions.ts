@@ -1,6 +1,7 @@
 import {useCallback} from 'react';
 import type {Surah} from '../../../data/surahData';
-import {usePlayer} from '../../hooks/usePlayer';
+import {playOrOpen, randomSurah} from '../../services/playbackRouting';
+import {showToast} from '../../store/toastStore';
 import {fetchRewayat} from '../../services/tvDataService';
 import {recordSearch} from '../../services/searchRecentsStore';
 import {getFavorites, toggleFavorite} from '../../services/favoritesStore';
@@ -8,6 +9,7 @@ import {
   findVerseSpan,
   pickReciterForSurah,
   pickRewayah,
+  verseFallbackNote,
 } from '../../services/search/playback';
 import {stopVerseWatch, watchVerseEnd} from '../../services/search/verseWatch';
 import type {VerseRef} from '../../services/search/tvSearch';
@@ -37,13 +39,12 @@ export function useSearchActions(
   reciters: readonly Reciter[],
   defaultReciterId: string | null,
 ) {
-  const {playRewayah, shufflePlayRewayah} = usePlayer();
   const push = useNavStore(s => s.push);
   const switchTab = useNavStore(s => s.switchTab);
 
   const remember = useCallback(() => recordSearch(query), [query]);
 
-  /** Starts a surah and opens the listening room; false when nobody has it. */
+  /** Opens the listening room on a surah; null when nobody has it. */
   const startSurah = useCallback(
     async (
       surah: Surah,
@@ -63,20 +64,20 @@ export function useSearchActions(
       }
       if (!choice) return null;
       stopVerseWatch();
-      useTVPlayerStore.getState().setShuffle(false);
       useListeningStore
         .getState()
         .setRepeat(opts.repeat ? {kind: 'surah'} : {kind: 'off'}, 0);
-      await playRewayah(
-        choice.reciter.id,
-        choice.reciter.name,
-        choice.rewayah,
-        surah.id,
-      );
-      push({screen: 'nowPlaying'});
+      // Opens the player at once and resolves once the audio is playing, so
+      // a verse can then be sought. A failure shows in the player.
+      await playOrOpen({
+        reciterId: choice.reciter.id,
+        rewayahId: choice.rewayah.id,
+        surahNumber: surah.id,
+        source: 'search',
+      });
       return choice;
     },
-    [reciters, defaultReciterId, playRewayah, push],
+    [reciters, defaultReciterId],
   );
 
   const playSurah = useCallback(
@@ -87,16 +88,41 @@ export function useSearchActions(
     [remember, startSurah],
   );
 
+  /** playSurah for presses with no note of their own: a toast says why not. */
+  const playSurahOrSay = useCallback(
+    async (surah: Surah): Promise<void> => {
+      if (await playSurah(surah)) return;
+      showToast(`No reciter has ${surah.name} yet.`, 'error');
+    },
+    [playSurah],
+  );
+
   /**
    * Plays a verse: from its start ('from'), just the verse ('verse'), or the
    * verse on repeat ('repeat'). Without verse timings for the recitation the
-   * surah plays from the beginning and the returned note says so.
+   * surah plays from the beginning and a toast says so. Notes go to the toast,
+   * not the search card: by the time they are known the player has replaced
+   * Search.
    */
   const playVerse = useCallback(
-    async (ref: VerseRef, action: VerseAction): Promise<string | null> => {
+    async (ref: VerseRef, action: VerseAction): Promise<void> => {
       remember();
       const choice = await startSurah(ref.surah);
-      if (!choice) return 'No reciter has this surah yet.';
+      if (!choice) {
+        showToast(`No reciter has ${ref.surah.name} yet.`, 'error');
+        return;
+      }
+      const player = useTVPlayerStore.getState();
+      // The player is up with its error and Try again.
+      if (player.status === 'error') return;
+      // A newer press (or the listener) moved on to something else.
+      const item = player.queue[player.currentIndex];
+      if (
+        item?.reciterId !== choice.reciter.id ||
+        item?.surahNumber !== ref.surah.id
+      ) {
+        return;
+      }
       const span = await findVerseSpan(
         choice.rewayah,
         ref.surah.id,
@@ -104,7 +130,8 @@ export function useSearchActions(
         ref.ayah,
       );
       if (!span) {
-        return `${choice.reciter.name} has no verse timings here, so ${ref.surah.name} plays from the start.`;
+        showToast(verseFallbackNote(choice.reciter.name, ref.surah.name));
+        return;
       }
       useTVPlayerStore.getState().seekTo(span.fromMs / 1000);
       if (action === 'verse') {
@@ -119,7 +146,6 @@ export function useSearchActions(
             .setRepeat({kind: 'verse', times: Infinity}, ref.ayah);
         }, AFTER_PLAYER_OPENS_MS);
       }
-      return null;
     },
     [remember, startSurah],
   );
@@ -131,11 +157,16 @@ export function useSearchActions(
       if (!rewayah) return false;
       stopVerseWatch();
       useListeningStore.getState().setRepeat({kind: 'off'}, 0);
-      await shufflePlayRewayah(reciter.id, reciter.name, rewayah);
-      push({screen: 'nowPlaying'});
+      void playOrOpen({
+        reciterId: reciter.id,
+        rewayahId: rewayah.id,
+        surahNumber: randomSurah(rewayah.surah_list) ?? 1,
+        shuffle: true,
+        source: 'search-shuffle',
+      });
       return true;
     },
-    [remember, shufflePlayRewayah, push],
+    [remember],
   );
 
   const openReciter = useCallback(
@@ -168,6 +199,7 @@ export function useSearchActions(
 
   return {
     playSurah,
+    playSurahOrSay,
     playVerse,
     shuffleReciter,
     openReciter,
