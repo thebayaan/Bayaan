@@ -32,6 +32,16 @@ export const LAZY_PREFIXES = ['bayaan_tv_ts_', 'bayaan_tv_tr_'];
 const isLazy = (key: string): boolean =>
   LAZY_PREFIXES.some(p => key.startsWith(p));
 
+/**
+ * Keys no build reads any more: per-reciter rewayat copies older builds
+ * kept (services/tvDataService now reads rewayat from the catalog). They
+ * are left out of the launch read and deleted after it.
+ */
+export const DROPPED_PREFIXES = ['bayaan_reciter_servers_'];
+
+const isDropped = (key: string): boolean =>
+  DROPPED_PREFIXES.some(p => key.startsWith(p));
+
 export const HYDRATE_ATTEMPTS = 3;
 
 export function createVegaStorage(
@@ -65,14 +75,22 @@ export function createVegaStorage(
   }
 
   async function load(): Promise<void> {
-    const keys = (await store.getAllKeys()).filter(
-      k => k.startsWith(PREFIX) && !isLazy(k.slice(PREFIX.length)),
-    );
+    const all = (await store.getAllKeys()).filter(k => k.startsWith(PREFIX));
+    const dropped = all.filter(k => isDropped(k.slice(PREFIX.length)));
+    const keys = all.filter(k => {
+      const key = k.slice(PREFIX.length);
+      return !isLazy(key) && !isDropped(key);
+    });
     const entries = await store.multiGet(keys);
     for (const [fullKey, value] of entries) {
       const key = fullKey.slice(PREFIX.length);
       // A write made while a retry waited is newer than the stored value.
       if (value !== null && !values.has(key)) values.set(key, value);
+    }
+    if (dropped.length > 0) {
+      store.multiRemove(dropped).catch(() => {
+        // Tried again next launch.
+      });
     }
   }
 

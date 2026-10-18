@@ -93,6 +93,15 @@ describe('Vega storage', () => {
     expect(store.getItem).toHaveBeenCalledTimes(2);
   });
 
+  it('drops the old per-reciter rewayat copies at launch', async () => {
+    const store = fakeStore({settings: '{}', bayaan_reciter_servers_7: '{}'});
+    const vega = createVegaStorage(store, {retryDelayMs: 0});
+    await vega.hydrate();
+    expect(store.multiGet.mock.calls[0][0]).toEqual([PREFIX + 'settings']);
+    await flush();
+    expect([...store.data.keys()]).toEqual([PREFIX + 'settings']);
+  });
+
   it('a second preload of the same key waits for the first read', async () => {
     const store = fakeStore({bayaan_tv_tr_en_2: '["a"]'});
     const vega = createVegaStorage(store, {retryDelayMs: 0});
