@@ -1,5 +1,6 @@
 import React, {useEffect, useState} from 'react';
-import {Text, TVFocusGuideView, View} from 'react-native';
+import {StyleSheet, Text, TVFocusGuideView, View} from 'react-native';
+import {Image} from 'expo-image';
 import {FocusableButton, FocusText} from '../primitives/FocusableButton';
 import {FocusIcon} from '../primitives/focusContext';
 import {SurahArtwork} from '../brand/SurahArtwork';
@@ -14,7 +15,12 @@ import {
 } from '../../../components/Icons';
 import type {SearchItem, VerseRef} from '../../services/search/tvSearch';
 import {pickRewayah} from '../../services/search/playback';
-import {adhkarCount, adhkarForList} from '../../services/adhkarData';
+import {
+  adhkarCount,
+  adhkarForList,
+  adhkarImageUrl,
+} from '../../services/adhkarData';
+import {rewayahLabel} from '../../services/listeningChoices';
 import {
   ADHKAR_WHEN,
   adhkarGradient,
@@ -140,7 +146,7 @@ function ReciterTop({
           <ReciterPortrait reciter={reciter} size={ART} idPrefix="search-top" />
         </View>
       }
-      eyebrow={['Top result · Reciter', rewayah?.name, rewayah?.style]
+      eyebrow={['Top result · Reciter', rewayahLabel(rewayah)]
         .filter(Boolean)
         .join(' · ')}
       title={reciter.name}
@@ -178,8 +184,14 @@ function ReciterTop({
 }
 
 function AdhkarTop({top, actions, takeFocus}: Props): React.ReactElement {
+  // The hands glyph stands in until the list's illustration has loaded, and
+  // stays when it can't be (offline).
+  // Kept per list: another list's illustration may not be loaded (or
+  // loadable) yet.
+  const [loadedFor, setLoadedFor] = useState<string | null>(null);
   const list = top.type === 'adhkar' ? top.item : null;
   if (!list) return <View />;
+  const imageShown = loadedFor === list.id;
   const count = adhkarCount(list.id);
   const minutes = estimateMinutes(adhkarForList(list.id));
   return (
@@ -190,7 +202,19 @@ function AdhkarTop({top, actions, takeFocus}: Props): React.ReactElement {
             colors={adhkarGradient(list)}
             id={`search-top-${list.id}`}
           />
-          <HandsGlyph color={colors.text} size={scale(110)} />
+          {imageShown ? null : (
+            <HandsGlyph color={colors.text} size={scale(110)} />
+          )}
+          {/* The same illustration as the Browse tile and the Adhkar tab. */}
+          <Image
+            source={{uri: adhkarImageUrl(list.id)}}
+            style={[StyleSheet.absoluteFill, styles.adhkarImage]}
+            contentFit="cover"
+            cachePolicy="memory-disk"
+            transition={250}
+            accessible={false}
+            onLoad={() => setLoadedFor(list.id)}
+          />
         </View>
       }
       eyebrow="Top result · Adhkar"
@@ -386,6 +410,7 @@ const styles = createScaledStyles({
     backgroundColor: colors.surfaceElevated,
   },
   round: {borderRadius: ART / 2},
+  adhkarImage: {opacity: 0.85},
   verseArt: {padding: 22},
   verseText: {
     color: colors.text,

@@ -6,8 +6,10 @@ import {
   verseLabel,
 } from './suggestions';
 import type {RankedItem} from './tvSearch';
+import type {Reciter} from '../../types/reciter';
 import {
   deleteKey,
+  isRtlText,
   keyRows,
   KEY_COLUMNS,
   MAX_QUERY_CHARS,
@@ -94,6 +96,37 @@ describe('buildSuggestions', () => {
     expect(buildSuggestions('  ', ranked)).toEqual([]);
   });
 
+  const reciter = (id: string, name: string, score: number): RankedItem => ({
+    type: 'reciter',
+    item: {id, name, rewayat: []} as unknown as Reciter,
+    score,
+  });
+
+  it('keeps a close surah in the last place when other kinds crowd it out', () => {
+    const crowded: RankedItem[] = [
+      reciter('1', 'Yasser Al-Dosari', 91),
+      reciter('2', 'Yasser Al-Faylakawi', 90),
+      reciter('3', 'Yasser Al-Mazroyee', 90),
+      reciter('4', 'Yasser Al-Qurashi', 90),
+      reciter('5', 'Yasser Salamah', 90),
+      {type: 'surah', item: surah(36), score: 81},
+    ];
+    const got = buildSuggestions('yas', crowded);
+    expect(got).toHaveLength(5);
+    expect(got[0].label).toBe('Yasser Al-Dosari');
+    expect(got[4]).toMatchObject({label: 'Ya-Sin', kind: 'Surah'});
+  });
+
+  it('leaves a far-off surah out', () => {
+    const crowded: RankedItem[] = [
+      ...['1', '2', '3', '4', '5'].map(id => reciter(id, `R${id}`, 90)),
+      {type: 'surah', item: surah(36), score: 60},
+    ];
+    expect(buildSuggestions('r', crowded).map(s => s.kind)).not.toContain(
+      'Surah',
+    );
+  });
+
   it('labels verses with their reference', () => {
     expect(verseLabel({surah: surah(1), ayah: 1, name: null})).toBe(
       'Al-Fatihah · 1:1',
@@ -136,5 +169,13 @@ describe('keyboard', () => {
     expect(typeSpace('al ')).toBe('al ');
     expect(deleteKey('kahf')).toBe('kah');
     expect(deleteKey('')).toBe('');
+  });
+
+  it('reads a query right to left when its first letter is Arabic', () => {
+    expect(isRtlText('يس')).toBe(true);
+    expect(isRtlText('36 يس')).toBe(true);
+    expect(isRtlText('yasin')).toBe(false);
+    expect(isRtlText('2:255')).toBe(false);
+    expect(isRtlText('')).toBe(false);
   });
 });

@@ -1,6 +1,10 @@
 import {useCallback} from 'react';
 import type {Surah} from '../../../data/surahData';
-import {playOrOpen, randomSurah} from '../../services/playbackRouting';
+import {
+  isCurrentTrack,
+  playOrOpen,
+  randomSurah,
+} from '../../services/playbackRouting';
 import {showToast} from '../../store/toastStore';
 import {fetchRewayat} from '../../services/tvDataService';
 import {recordSearch} from '../../services/searchRecentsStore';
@@ -10,6 +14,7 @@ import {
   pickReciterForSurah,
   pickRewayah,
   verseFallbackNote,
+  within,
 } from '../../services/search/playback';
 import {stopVerseWatch, watchVerseEnd} from '../../services/search/verseWatch';
 import type {VerseRef} from '../../services/search/tvSearch';
@@ -21,8 +26,28 @@ import type {Reciter, Rewayah} from '../../types/reciter';
 
 export type VerseAction = 'verse' | 'repeat' | 'from';
 
-/** The listening room resets verse repeat as it opens; set it after that. */
-const AFTER_PLAYER_OPENS_MS = 600;
+/**
+ * How long a verse press waits for its verse timings before opening the
+ * player, so playback starts at the verse rather than at verse 1 and then
+ * jumping. Cached timings (any surah played before) arrive at once, a quick
+ * fetch inside this; slower than this, the player opens and loads while the
+ * fetch goes on, and the seek follows as soon as both are done. Short, as
+ * nothing shows the press until the player opens.
+ */
+const TIMINGS_WAIT_MS = 400;
+
+type Choice = {reciter: Reciter; rewayah: Rewayah};
+
+/** Whether the player is still on the choice's surah (nobody moved on). */
+function onTrack(choice: Choice, surah: number): boolean {
+  const player = useTVPlayerStore.getState();
+  const item = player.queue[player.currentIndex];
+  return (
+    player.status !== 'error' &&
+    item?.reciterId === choice.reciter.id &&
+    item?.surahNumber === surah
+  );
+}
 
 async function rewayatOf(reciter: Reciter): Promise<Rewayah[]> {
   if (reciter.rewayat.length > 0) return reciter.rewayat;
@@ -44,40 +69,60 @@ export function useSearchActions(
 
   const remember = useCallback(() => recordSearch(query), [query]);
 
+  /** Who plays a surah: the asked-for reciter, or the usual order. */
+  const chooseVoice = useCallback(
+    async (surah: Surah, reciter?: Reciter): Promise<Choice | null> => {
+      if (reciter) {
+        const rewayah = pickRewayah(await rewayatOf(reciter), surah.id);
+        return rewayah ? {reciter, rewayah} : null;
+      }
+      return pickReciterForSurah(
+        reciters,
+        surah.id,
+        defaultReciterId,
+        getFavorites().map(f => f.reciterId),
+      );
+    },
+    [reciters, defaultReciterId],
+  );
+
+  /**
+   * Opens the listening room on a surah in the chosen voice. Resolves once
+   * the audio is playing (a failure shows in the player).
+   */
+  const playChoice = useCallback(
+    async (
+      surah: Surah,
+      choice: Choice,
+      opts: {repeat?: boolean; startSeconds?: number} = {},
+    ): Promise<void> => {
+      stopVerseWatch();
+      useListeningStore
+        .getState()
+        .setRepeat(opts.repeat ? {kind: 'surah'} : {kind: 'off'}, 0);
+      await playOrOpen({
+        reciterId: choice.reciter.id,
+        rewayahId: choice.rewayah.id,
+        surahNumber: surah.id,
+        startSeconds: opts.startSeconds,
+        source: 'search',
+      });
+    },
+    [],
+  );
+
   /** Opens the listening room on a surah; null when nobody has it. */
   const startSurah = useCallback(
     async (
       surah: Surah,
       opts: {reciter?: Reciter; repeat?: boolean} = {},
-    ): Promise<{reciter: Reciter; rewayah: Rewayah} | null> => {
-      let choice: {reciter: Reciter; rewayah: Rewayah} | null = null;
-      if (opts.reciter) {
-        const rewayah = pickRewayah(await rewayatOf(opts.reciter), surah.id);
-        choice = rewayah ? {reciter: opts.reciter, rewayah} : null;
-      } else {
-        choice = pickReciterForSurah(
-          reciters,
-          surah.id,
-          defaultReciterId,
-          getFavorites().map(f => f.reciterId),
-        );
-      }
+    ): Promise<Choice | null> => {
+      const choice = await chooseVoice(surah, opts.reciter);
       if (!choice) return null;
-      stopVerseWatch();
-      useListeningStore
-        .getState()
-        .setRepeat(opts.repeat ? {kind: 'surah'} : {kind: 'off'}, 0);
-      // Opens the player at once and resolves once the audio is playing, so
-      // a verse can then be sought. A failure shows in the player.
-      await playOrOpen({
-        reciterId: choice.reciter.id,
-        rewayahId: choice.rewayah.id,
-        surahNumber: surah.id,
-        source: 'search',
-      });
+      await playChoice(surah, choice, {repeat: opts.repeat});
       return choice;
     },
-    [reciters, defaultReciterId],
+    [chooseVoice, playChoice],
   );
 
   const playSurah = useCallback(
@@ -99,55 +144,64 @@ export function useSearchActions(
 
   /**
    * Plays a verse: from its start ('from'), just the verse ('verse'), or the
-   * verse on repeat ('repeat'). Without verse timings for the recitation the
-   * surah plays from the beginning and a toast says so. Notes go to the toast,
-   * not the search card: by the time they are known the player has replaced
-   * Search.
+   * verse on repeat ('repeat'). The verse timings are fetched first, for a
+   * moment (TIMINGS_WAIT_MS), so the recitation starts at the verse; when
+   * they come later they load beside the audio and the seek follows.
+   * Without timings for the recitation the surah plays from the beginning
+   * and a toast says so. Notes go to the toast, not the search card: by the
+   * time they are known the player has replaced Search.
    */
   const playVerse = useCallback(
     async (ref: VerseRef, action: VerseAction): Promise<void> => {
       remember();
-      const choice = await startSurah(ref.surah);
+      const surah = ref.surah;
+      const choice = await chooseVoice(surah);
       if (!choice) {
-        showToast(`No reciter has ${ref.surah.name} yet.`, 'error');
+        showToast(`No reciter has ${surah.name} yet.`, 'error');
         return;
       }
-      const player = useTVPlayerStore.getState();
-      // The player is up with its error and Try again.
-      if (player.status === 'error') return;
-      // A newer press (or the listener) moved on to something else.
-      const item = player.queue[player.currentIndex];
-      if (
-        item?.reciterId !== choice.reciter.id ||
-        item?.surahNumber !== ref.surah.id
-      ) {
-        return;
-      }
-      const span = await findVerseSpan(
+      const lookup = findVerseSpan(
         choice.rewayah,
-        ref.surah.id,
-        ref.surah.verses_count,
+        surah.id,
+        surah.verses_count,
         ref.ayah,
       );
+      const early = await within(lookup, TIMINGS_WAIT_MS);
+      const track = {
+        reciterId: choice.reciter.id,
+        rewayahId: choice.rewayah.id,
+        surahNumber: surah.id,
+      };
+      // The track already playing just opens the player, ignoring a start.
+      const wasPlaying = isCurrentTrack(track);
+      await playChoice(surah, choice, {
+        startSeconds: early ? early.fromMs / 1000 : undefined,
+      });
+      // The player is up with its error, or a newer press (or the
+      // listener) moved on to something else.
+      if (!onTrack(choice, surah.id)) return;
+      const span = early === undefined ? await lookup : early;
       if (!span) {
-        showToast(verseFallbackNote(choice.reciter.name, ref.surah.name));
+        showToast(verseFallbackNote(choice.reciter.name, surah.name));
         return;
       }
-      useTVPlayerStore.getState().seekTo(span.fromMs / 1000);
+      // Checked again after the wait for the timings: the verse belongs to
+      // this surah only.
+      if (!onTrack(choice, surah.id)) return;
+      if (early === undefined || wasPlaying) {
+        useTVPlayerStore.getState().seekTo(span.fromMs / 1000);
+      }
       if (action === 'verse') {
-        watchVerseEnd(span, {
-          reciterId: choice.reciter.id,
-          surahNumber: ref.surah.id,
-        });
+        watchVerseEnd(span, track);
       } else if (action === 'repeat') {
-        setTimeout(() => {
-          useListeningStore
-            .getState()
-            .setRepeat({kind: 'verse', times: Infinity}, ref.ayah);
-        }, AFTER_PLAYER_OPENS_MS);
+        // The listening room keeps whatever repeat is set; set here, it is
+        // stamped with this track, never one played after it.
+        useListeningStore
+          .getState()
+          .setRepeat({kind: 'verse', times: Infinity}, ref.ayah);
       }
     },
-    [remember, startSurah],
+    [remember, chooseVoice, playChoice],
   );
 
   const shuffleReciter = useCallback(

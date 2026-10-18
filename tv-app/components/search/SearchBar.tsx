@@ -1,12 +1,19 @@
 import React, {useCallback, useEffect, useRef, useState} from 'react';
-import {Keyboard, Platform, Text, TextInput, View} from 'react-native';
+import {
+  Keyboard,
+  Platform,
+  Text,
+  TextInput,
+  TVFocusGuideView,
+  View,
+} from 'react-native';
 import {FocusableButton} from '../primitives/FocusableButton';
 import {FocusIcon} from '../primitives/focusContext';
 import {MicrophoneIcon, SearchIcon} from '../../../components/Icons';
 import {colors} from '../../theme/colors';
 import {fonts} from '../../theme/typography';
 import {createScaledStyles, scale} from '../../theme/scale';
-import {MAX_QUERY_CHARS} from '../../services/search/keyboard';
+import {isRtlText, MAX_QUERY_CHARS} from '../../services/search/keyboard';
 
 /** How long the mic asks for focus back after the system entry closes. */
 const REFOCUS_MS = 800;
@@ -26,6 +33,11 @@ type Props = {
  * focus back to the mic in the same render the input unmounts, so focus never
  * falls to wherever the platform puts it. Android's Back hides the IME
  * without ending the edit, so the keyboard hiding closes it there too.
+ *
+ * The bar is a focus guide across the keyboard's full width, so Up from any
+ * key of the top row reaches the mic (on tvOS only the last column sits
+ * under it). An Arabic query is drawn right to left with the caret on its
+ * left, where the next letter appears.
  */
 export function SearchBar({query, onChangeQuery}: Props): React.ReactElement {
   const [systemEntry, setSystemEntry] = useState(false);
@@ -34,6 +46,7 @@ export function SearchBar({query, onChangeQuery}: Props): React.ReactElement {
   // Submit, end-editing and blur can all fire for one close; act once.
   const open = useRef(false);
   const empty = query.length === 0;
+  const rtl = isRtlText(query);
 
   const openEntry = useCallback(() => {
     open.current = true;
@@ -63,19 +76,24 @@ export function SearchBar({query, onChangeQuery}: Props): React.ReactElement {
   }, [focusMic]);
 
   return (
-    <View style={styles.bar}>
+    <TVFocusGuideView autoFocus style={styles.bar}>
       <SearchIcon color={colors.textSecondary} size={scale(30)} />
-      <View style={styles.textWrap}>
+      <View style={[styles.textWrap, rtl && styles.textWrapRtl]}>
         {empty ? (
           <Text style={[styles.text, styles.placeholder]} numberOfLines={1}>
             Surah, reciter or dua
           </Text>
         ) : (
-          <Text style={styles.text} numberOfLines={1} ellipsizeMode="head">
+          // "head" keeps the end of a long query, the letters just typed,
+          // in either direction.
+          <Text
+            style={[styles.text, rtl && styles.textRtl]}
+            numberOfLines={1}
+            ellipsizeMode="head">
             {query}
           </Text>
         )}
-        {empty ? null : <View style={styles.caret} />}
+        {empty ? null : <View style={[styles.caret, rtl && styles.caretRtl]} />}
       </View>
       <FocusableButton
         onPress={openEntry}
@@ -105,7 +123,7 @@ export function SearchBar({query, onChangeQuery}: Props): React.ReactElement {
           style={styles.hiddenInput}
         />
       ) : null}
-    </View>
+    </TVFocusGuideView>
   );
 }
 
@@ -119,6 +137,10 @@ const styles = createScaledStyles({
     borderColor: colors.border,
   },
   textWrap: {flex: 1, flexDirection: 'row', alignItems: 'center'},
+  // The caret leads in the row, so it sits on the left of the text, and the
+  // text hugs the bar's right edge like Arabic does.
+  textWrapRtl: {flexDirection: 'row-reverse'},
+  textRtl: {writingDirection: 'rtl'},
   text: {
     flexShrink: 1,
     color: colors.text,
@@ -135,6 +157,7 @@ const styles = createScaledStyles({
     borderRadius: 2,
     backgroundColor: colors.accent,
   },
+  caretRtl: {marginLeft: 0, marginRight: 4},
   mic: {
     width: 60,
     height: 60,

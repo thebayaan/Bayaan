@@ -113,7 +113,18 @@ export function highlightRange(
   return null;
 }
 
-/** Completions for `query`, best first, one per label. */
+/**
+ * How far below the best match the best surah may score and still keep a
+ * place in the suggestions: "yas" ranks five reciters named Yasser just
+ * above Ya-Sin, and Ya-Sin is what most people typing it want.
+ */
+export const SURAH_SLOT_WITHIN = 15;
+
+/**
+ * Completions for `query`, best first, one per label. When the best surah
+ * scores close to the top but other kinds crowd it out, it takes the last
+ * place, so a surah being typed never drops out of the list.
+ */
 export function buildSuggestions(
   query: string,
   ranked: readonly RankedItem[],
@@ -121,14 +132,30 @@ export function buildSuggestions(
 ): Suggestion[] {
   if (!toSearchKey(query)) return [];
   const seen = new Set<string>();
+  const picked: RankedItem[] = [];
   const out: Suggestion[] = [];
   for (const r of ranked) {
     const s = describe(r);
     const dedupe = s.label.toLowerCase();
     if (seen.has(dedupe)) continue;
     seen.add(dedupe);
+    picked.push(r);
     out.push({...s, match: highlightRange(s.label, query)});
     if (out.length >= limit) break;
+  }
+  const best = ranked[0];
+  const surah = ranked.find(r => r.type === 'surah');
+  if (
+    best &&
+    surah &&
+    out.length >= limit &&
+    !picked.some(r => r.type === 'surah') &&
+    surah.score >= best.score - SURAH_SLOT_WITHIN
+  ) {
+    const s = describe(surah);
+    if (!out.some(o => o.label.toLowerCase() === s.label.toLowerCase())) {
+      out[out.length - 1] = {...s, match: highlightRange(s.label, query)};
+    }
   }
   return out;
 }

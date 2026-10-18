@@ -60,17 +60,24 @@ export const SurahResultCard = React.memo(function SurahResultCard({
 /**
  * A reciter as a round portrait, name below. Without a photo the portrait is
  * the pigment monogram the Reciters tab uses, never a bare grey initial.
+ * Long press opens the reciter menu, like reciter cards everywhere else.
  */
 export const PortraitCard = React.memo(function PortraitCard({
   reciter,
   onPress,
   size = 150,
+  width,
   hasTVPreferredFocus,
   idPrefix = 'search-portrait',
 }: {
   reciter: Reciter;
   onPress: (reciter: Reciter) => void;
   size?: number;
+  /**
+   * The card's width when it should be wider than the portrait, so long
+   * names fit on their two lines; the portrait stays centred.
+   */
+  width?: number;
   hasTVPreferredFocus?: boolean;
   /** Gradient id prefix for the monogram, unique per screen. */
   idPrefix?: string;
@@ -80,9 +87,13 @@ export const PortraitCard = React.memo(function PortraitCard({
     <FocusableCard
       ring={false}
       onPress={() => onPress(reciter)}
+      onLongPress={() => useContextMenuStore.getState().open(reciter.id)}
       hasTVPreferredFocus={hasTVPreferredFocus}
       accessibilityLabel={reciter.name}
-      style={[styles.portraitCard, {width: scale(frame)}]}>
+      style={[
+        styles.portraitCard,
+        {width: scale(Math.max(frame, width ?? 0))},
+      ]}>
       <FocusFrame
         radius={size / 2}
         style={{width: scale(frame), height: scale(frame)}}>
@@ -151,9 +162,9 @@ const styles = createScaledStyles({
     paddingHorizontal: 9,
   },
   sub: {
-    color: colors.textTertiary,
+    color: colors.textSecondary,
     fontFamily: fonts.medium,
-    fontSize: 15,
+    fontSize: 18,
     fontWeight: '500',
     paddingHorizontal: 9,
   },
@@ -178,5 +189,5 @@ const styles = createScaledStyles({
   },
   adhkarText: {flex: 1, gap: 2},
   adhkarTitle: {fontFamily: fonts.bold, fontSize: 20, fontWeight: '700'},
-  adhkarSub: {fontFamily: fonts.medium, fontSize: 15, fontWeight: '500'},
+  adhkarSub: {fontFamily: fonts.medium, fontSize: 18, fontWeight: '500'},
 });
