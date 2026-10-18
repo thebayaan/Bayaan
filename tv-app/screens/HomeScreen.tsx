@@ -3,11 +3,7 @@ import {ScrollView, View, type LayoutChangeEvent} from 'react-native';
 import {HomeHero, type HeroArt} from '../components/home/HomeHero';
 import {HomeClock} from '../components/home/HomeClock';
 import {HomeGlow} from '../components/home/HomeGlow';
-import {
-  HomeRail,
-  HOME_GUTTER,
-  RAIL_TOP_GAP,
-} from '../components/home/HomeRail';
+import {HomeRail, HOME_GUTTER, RAIL_TOP_GAP} from '../components/home/HomeRail';
 import {ContinueWideCard} from '../components/home/ContinueWideCard';
 import {AdhkarTile, ColorTile, SurahTile} from '../components/home/MomentTiles';
 import {ReciterPortrait} from '../components/home/ReciterPortrait';
