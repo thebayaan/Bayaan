@@ -14,6 +14,7 @@
  */
 
 import type {ScreenEntry} from '../store/navStore';
+import type {PlayerStatus} from '../types/player';
 
 export type RemoteAction =
   | 'left'
@@ -44,9 +45,36 @@ const ACTIONS: Readonly<Record<string, RemoteAction>> = {
 export function createRemoteKeyFilter(): (
   event: RemoteKeyEvent,
 ) => RemoteAction | null {
+  return createKeyFilter(ACTIONS);
+}
+
+/**
+ * Discrete media keys (HDMI-CEC remotes, Shield and other Android TV
+ * remotes, keyboards): explicit Play and Pause, and next/previous track.
+ * Kept apart from createRemoteKeyFilter so screens that switch on its
+ * actions never see these.
+ */
+export type MediaKeyAction = 'play' | 'pause' | 'next' | 'previous';
+
+const MEDIA_ACTIONS: Readonly<Record<string, MediaKeyAction>> = {
+  play: 'play',
+  pause: 'pause',
+  next: 'next',
+  previous: 'previous',
+};
+
+export function createMediaKeyFilter(): (
+  event: RemoteKeyEvent,
+) => MediaKeyAction | null {
+  return createKeyFilter(MEDIA_ACTIONS);
+}
+
+function createKeyFilter<A extends string>(
+  actions: Readonly<Record<string, A>>,
+): (event: RemoteKeyEvent) => A | null {
   const pendingDown = new Set<string>();
-  return function filter(event: RemoteKeyEvent): RemoteAction | null {
-    const action = ACTIONS[event.eventType];
+  return function filter(event: RemoteKeyEvent): A | null {
+    const action = actions[event.eventType];
     if (!action) return null;
     if (event.eventKeyAction === KEY_DOWN) {
       pendingDown.add(event.eventType);
@@ -67,4 +95,32 @@ export function createRemoteKeyFilter(): (
  */
 export function screenOwnsPlayPause(top: ScreenEntry | undefined): boolean {
   return top?.screen === 'nowPlaying' || top?.screen === 'adhkarReader';
+}
+
+export type MediaCommand = 'toggle' | 'next' | 'previous';
+
+/**
+ * What a discrete media key does to the recitation, app-wide (no screen
+ * handles these itself): Play only starts, Pause only stops, and both leave
+ * a loading track alone. The adhkar reader keeps them away from the Quran
+ * player, as it does Play/Pause, since its own audio is the one on screen.
+ */
+export function mediaKeyCommand(
+  action: MediaKeyAction,
+  top: ScreenEntry | undefined,
+  status: PlayerStatus,
+): MediaCommand | null {
+  if (top?.screen === 'adhkarReader') return null;
+  switch (action) {
+    case 'play':
+      return status === 'paused' || status === 'idle' || status === 'error'
+        ? 'toggle'
+        : null;
+    case 'pause':
+      return status === 'playing' ? 'toggle' : null;
+    case 'next':
+      return 'next';
+    case 'previous':
+      return 'previous';
+  }
 }

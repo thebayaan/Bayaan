@@ -60,4 +60,11 @@ describe('navStore', () => {
     push({screen: 'reciterDetail', reciterId: 'r2'});
     expect(useNavStore.getState().stack).toHaveLength(2);
   });
+
+  it('tracks sidebar focus, cleared by reset', () => {
+    useNavStore.getState().setSidebarFocused(true);
+    expect(useNavStore.getState().sidebarFocused).toBe(true);
+    useNavStore.getState().reset();
+    expect(useNavStore.getState().sidebarFocused).toBe(false);
+  });
 });
