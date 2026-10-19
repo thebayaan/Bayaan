@@ -1,5 +1,5 @@
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
-import {ScrollView, Text, TVFocusGuideView, View} from 'react-native';
+import {Platform, ScrollView, Text, TVFocusGuideView, View} from 'react-native';
 import {FocusableButton} from '../components/primitives/FocusableButton';
 import {
   FocusText,
@@ -62,7 +62,7 @@ import {
   spacing,
 } from '../theme/spacing';
 import {fonts, typography} from '../theme/typography';
-import {createScaledStyles} from '../theme/scale';
+import {scale, createScaledStyles} from '../theme/scale';
 
 type ConfirmKey = ClearRow | null;
 
@@ -232,6 +232,12 @@ export function SettingsScreen(): React.ReactElement {
               }}
               style={styles.listScroll}
               contentContainerStyle={styles.scroll}
+              // Android: the list's edges fade, and its focus scroll keeps the
+              // focused row a fade's height clear of the edge, so it never
+              // sits on the screen's bottom edge or half under the title.
+              fadingEdgeLength={
+                NATIVE_FADE ? Math.round(scale(LIST_FADE)) : undefined
+              }
               showsVerticalScrollIndicator={false}>
               <TVFocusGuideView autoFocus style={styles.list}>
                 <Text style={styles.group}>Listening</Text>
@@ -316,8 +322,9 @@ export function SettingsScreen(): React.ReactElement {
                 />
               </TVFocusGuideView>
             </ScrollView>
-            {/* Rows scrolled up under the title fade out instead of being cut. */}
-            <ListFade height={LIST_FADE} />
+            {/* Rows scrolled up under the title fade out instead of being cut
+                (drawn natively on Android, see fadingEdgeLength). */}
+            {NATIVE_FADE ? null : <ListFade height={LIST_FADE} />}
           </View>
           <View style={styles.previewColumn}>
             <Text style={styles.previewLabel}>Preview</Text>
@@ -559,8 +566,16 @@ const LIST_W = 760;
  * and its drop shadow, which the list would otherwise clip flat.
  */
 const FOCUS_ROOM = 24;
-/** The fade over the list's top edge; the first group label starts below it. */
-const LIST_FADE = 32;
+/** Android draws the list's fade itself, and scrolls clear of it. */
+const NATIVE_FADE = Platform.OS === 'android';
+/**
+ * The fade over the list's top edge; the first group label starts below it.
+ * On Android it is about a row tall, top and bottom, so a row scrolled under
+ * the title fades away rather than showing cut in half, and the focused row
+ * stays that far from either edge. Apple TV's focus scroll already keeps the
+ * focused row clear of the edges, so its fade stays short.
+ */
+const LIST_FADE = NATIVE_FADE ? 72 : 32;
 
 const styles = createScaledStyles({
   container: {flex: 1, backgroundColor: colors.background},
@@ -580,8 +595,11 @@ const styles = createScaledStyles({
   },
   columns: {flex: 1, flexDirection: 'row', gap: spacing.xl - FOCUS_ROOM},
   listColumn: {width: LIST_W + spacing.xl + FOCUS_ROOM},
-  listScroll: {flex: 1},
+  // Ends above the screen's bottom edge, inside the title-safe area.
+  listScroll: {flex: 1, marginBottom: NATIVE_FADE ? spacing.lg : 0},
   scroll: {
+    // With the group label's own 32, the first label starts below the fade.
+    paddingTop: LIST_FADE - 32,
     paddingLeft: spacing.xl,
     paddingRight: FOCUS_ROOM,
     paddingBottom: spacing.xxl,
