@@ -47,6 +47,9 @@ const FOCUS_REQUEST_MS = 800;
  * rows' own 12 (ResultSections' scroller bleed).
  */
 const BLEED = 24;
+const PAD_LEFT = 48;
+/** Between the keyboard column and the results. */
+const PANE_GAP = 80;
 
 function itemKey(item: SearchItem): string {
   switch (item.type) {
@@ -86,6 +89,10 @@ export function SearchScreen(): React.ReactElement {
   const [focusChooser, setFocusChooser] = useState(false);
   const [focusKeyboard, setFocusKeyboard] = useState(false);
   const inResults = useRef(createFocusWithin()).current;
+  // The top result's first button, and which side focus is on, for the
+  // guide that sends Right from the keyboard to that button.
+  const [primary, setPrimary] = useState<View | null>(null);
+  const [onRight, setOnRight] = useState(false);
 
   const {reciters} = useReciters();
   const {defaultReciterId} = useDefaultReciter();
@@ -255,6 +262,7 @@ export function SearchScreen(): React.ReactElement {
           onChooseReciter={setPicker}
           takeFocus={focusTopFor !== null && focusTopFor === settled}
           focusChooser={focusChooser}
+          primaryRef={setPrimary}
         />
         <ResultSections
           results={results}
@@ -288,7 +296,10 @@ export function SearchScreen(): React.ReactElement {
         style={styles.left}
         // Focus on this side means it has left the results, even when the
         // results changed under the focused view and its blur never came.
-        onFocus={() => inResults.reset()}>
+        onFocus={() => {
+          inResults.reset();
+          setOnRight(false);
+        }}>
         <SearchBar query={query} onChangeQuery={setQuery} />
         <View style={styles.keyboardGap} />
         <SearchKeyboard
@@ -310,10 +321,22 @@ export function SearchScreen(): React.ReactElement {
           onClearRecents={onClearRecents}
         />
       </TVFocusGuideView>
+      {/* Right from the keyboard (or the list under it) lands on the top
+          result's first button, not on whichever card of the rows below sits
+          nearest the pane's corner. Mounted only while focus is on the left:
+          a guide kept with no destinations still redirects natively, and
+          unmounting it is what turns it off, so Left from the results goes
+          back through the left side's guide to the last key used. */}
+      {primary && !onRight && !picker && pane === 'results' ? (
+        <TVFocusGuideView destinations={[primary]} style={styles.toTop} />
+      ) : null}
       <TVFocusGuideView
         autoFocus
         style={styles.right}
-        onFocus={e => inResults.focus(e.nativeEvent.target)}
+        onFocus={e => {
+          inResults.focus(e.nativeEvent.target);
+          setOnRight(true);
+        }}
         onBlur={e => inResults.blur(e.nativeEvent.target)}>
         {right}
       </TVFocusGuideView>
@@ -327,12 +350,21 @@ const styles = createScaledStyles({
     flexDirection: 'row',
     backgroundColor: colors.background,
     paddingTop: 84,
-    paddingLeft: 48,
+    paddingLeft: PAD_LEFT,
     paddingRight: 64,
   },
   left: {width: KEYBOARD_WIDTH},
   keyboardGap: {height: 28},
-  right: {flex: 1, marginLeft: 80},
+  right: {flex: 1, marginLeft: PANE_GAP},
+  // A thin, empty strip down the middle of the gap between the keyboard and
+  // the results (absolute, so it takes no part in the row's layout).
+  toTop: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: PAD_LEFT + KEYBOARD_WIDTH + PANE_GAP / 2 - 1,
+    width: 2,
+  },
   // The pane's scrollers clip at their own bounds: they reach BLEED past the
   // pane on each side and pad it back, so a focused card's scale and ring at
   // a row's start (or end) are drawn whole rather than cut flat.

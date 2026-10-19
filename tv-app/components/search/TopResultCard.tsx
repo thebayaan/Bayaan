@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, {createContext, useContext, useEffect, useState} from 'react';
 import {StyleSheet, Text, TVFocusGuideView, View} from 'react-native';
 import {Image} from 'expo-image';
 import {FocusableButton, FocusText} from '../primitives/FocusableButton';
@@ -53,7 +53,15 @@ type Props = {
   takeFocus: boolean;
   /** Focus "Choose reciter" instead (coming back from the picker). */
   focusChooser: boolean;
+  /**
+   * Handed the first (primary) button's view, for the focus guide that sends
+   * Right from the keyboard to it.
+   */
+  primaryRef?: React.Ref<View>;
 };
+
+/** The card's primary button takes this ref (one per card). */
+const PrimaryRef = createContext<React.Ref<View> | undefined>(undefined);
 
 /**
  * The best match, large, with the buttons its kind needs. The first button is
@@ -61,6 +69,14 @@ type Props = {
  * obvious thing.
  */
 export function TopResultCard(props: Props): React.ReactElement {
+  return (
+    <PrimaryRef.Provider value={props.primaryRef}>
+      <TopResultBody {...props} />
+    </PrimaryRef.Provider>
+  );
+}
+
+function TopResultBody(props: Props): React.ReactElement {
   const {top} = props;
   switch (top.type) {
     case 'surah':
@@ -386,8 +402,10 @@ function Action({
   focus?: boolean;
   onPress: () => void;
 }): React.ReactElement {
+  const primaryRef = useContext(PrimaryRef);
   return (
     <FocusableButton
+      ref={primary ? primaryRef : undefined}
       onPress={onPress}
       hasTVPreferredFocus={focus}
       accessibilityLabel={label}
