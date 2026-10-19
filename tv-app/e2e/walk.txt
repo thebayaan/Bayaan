@@ -30,12 +30,18 @@
 #   2-3 s. Closing a panel puts focus back on its tool.
 # - The relaunch steps are the only other anchors: after a relaunch Home
 #   focuses the hero's first button and nothing is queued.
+# - Toasts last 4.5 s and a Delete stays armed 4 s, so the steps that catch
+#   one wait 1-2 s.
+# - Apple TV: the simulator can't be sent the remote's Play/Pause, so the
+#   playpause steps are skipped there and listed in logs/unverified.txt (see
+#   run-walk.sh); the walk stays in step either way (063 and 067/068 leave
+#   the recitation as it was, and 170 is followed only by the last step).
 # - Nothing is ever deleted: Settings' clear rows are pressed once each (and
 #   the next press comes after the 5 s arm has run out), and a playlist's
 #   Delete only once.
 
 # ---- First launch: the welcome
-000-launch-welcome-step-1 20 none
+000-launch-welcome-step-1 30 none
 001-onboarding-browse-all 4 down select
 002-onboarding-browse-closed 3 back
 003-onboarding-step-2 4 up select
@@ -86,7 +92,8 @@
 034-playlist-typed-fajr 3 right*5 select left*5 select down right*2 select down right select
 # r -> s -> t -> u (the last column), then Right onto Create.
 035-playlist-create-focused 3 right*4
-036-player-save-panel-fajr-ticked 4 select
+# The 'Added Al-Baqarah to Fajr' toast is still up.
+036-player-save-panel-fajr-ticked 2 select
 037-tray-save-focused 3 back
 038-tray-love-focused 3 right
 039-tray-loved 3 select
@@ -99,7 +106,8 @@
 043-surah-menu 4 hold
 044-surah-menu-loved 3 down select
 045-surah-menu-playlists 3 down select
-046-surah-menu-added-to-fajr 3 down select
+# The 'Added Ali 'Imran to Fajr' toast is still up.
+046-surah-menu-added-to-fajr 1 down select
 047-surah-menu-back-to-main 3 back
 048-surah-menu-closed-on-tile 3 back
 049-surah-menu-again 4 hold
@@ -172,8 +180,9 @@
 098-playlist-row-menu-closed 3 back
 099-library-back-on-fajr 5 back
 100-library-playlist-menu 4 hold
-# Play, Shuffle, Rename, Delete playlist: pressed once, never twice.
-101-library-playlist-delete-armed 3 down*3 select
+# Play, Shuffle, Rename, Delete playlist: pressed once, never twice. It
+# reads 'Press again to delete' for 4 s.
+101-library-playlist-delete-armed 1 down*3 select
 102-library-playlist-menu-closed 3 back
 103-library-playlist-menu-again 4 hold
 104-library-rename-editor 4 down*2 select
@@ -182,8 +191,10 @@
 # delete -> clear -> mode, then Right onto Save. Back cancels the rename.
 106-library-rename-save-focused 3 right*3
 107-library-rename-cancelled 5 back
-# Fajr -> the new playlist -> New playlist, then Up to the tabs.
-108-library-tabs-playlists 3 left*2 up
+# Under the Recent sort, 097's reorder moved Fajr to the front, so the order
+# is New playlist, Fajr, the new playlist: Fajr -> New playlist, then Up to
+# the tabs.
+108-library-tabs-playlists 3 left up
 109-library-loved 4 right
 110-library-reciters 4 right
 
