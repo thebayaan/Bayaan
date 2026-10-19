@@ -2,8 +2,8 @@
  * Android TV: the remote's transport keys belong to the app while it is in
  * front.
  *
- * react-native-tvos hands Play/Pause, Fast-forward, Rewind, Next and Previous
- * to JS (useTVEventHandler), where the player store toggles and seeks with
+ * react-native-tvos hands Play/Pause, Play, Pause, Fast-forward, Rewind,
+ * Next and Previous to JS (useTVEventHandler), where the player store toggles and seeks with
  * its own rules. Android then also passes the same unhandled key on to the
  * active media session, and expo-audio gives every player a basic media3
  * session that toggles the player itself (a beat later, after its double-tap
@@ -19,8 +19,13 @@ const {withMainActivity} = require('expo/config-plugins');
 const MARKER = '// Bayaan: transport keys stay with the app';
 
 // The keys react-native-tvos forwards to JS (ReactAndroidHWInputDeviceHelper).
+// Play and Pause too: the app plays or pauses its own audio on them (the
+// adhkar reader's, say), which the session must not answer with the Quran
+// player.
 const KEYS = [
   'KEYCODE_MEDIA_PLAY_PAUSE',
+  'KEYCODE_MEDIA_PLAY',
+  'KEYCODE_MEDIA_PAUSE',
   'KEYCODE_MEDIA_FAST_FORWARD',
   'KEYCODE_MEDIA_REWIND',
   'KEYCODE_MEDIA_NEXT',

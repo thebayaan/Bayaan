@@ -130,6 +130,8 @@ export function ControlsTray({
       if (prev.panel === null || state.panel !== null || !state.trayOpen) {
         return;
       }
+      // A flag left from a close React never redrew must not skip this one.
+      handedOff.current = false;
       const key = returnToRef.current;
       const node = key === null ? null : toolRefs.current[key];
       if (!node?.requestTVFocus) return;

@@ -29,6 +29,8 @@ describe('withAppMediaKeys', () => {
     );
     for (const key of [
       'PLAY_PAUSE',
+      'PLAY',
+      'PAUSE',
       'FAST_FORWARD',
       'REWIND',
       'NEXT',
