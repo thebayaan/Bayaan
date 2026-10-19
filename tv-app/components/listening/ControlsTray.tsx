@@ -1,15 +1,18 @@
 import React, {useEffect, useRef, useState} from 'react';
-import {Text, TVFocusGuideView, View} from 'react-native';
+import {Platform, Text, TVFocusGuideView, View} from 'react-native';
 import {FocusableButton} from '../primitives/FocusableButton';
 import {FocusSpinner} from '../primitives/FocusSpinner';
 import {FocusIcon, FocusText} from '../primitives/focusContext';
 import {ProgressLine} from './ProgressLine';
 import {PANEL_WIDTH} from './SidePanel';
 import {StepBackIcon, StepForwardIcon} from './StepIcons';
-import {useTVPlayerStore} from '../../store/tvPlayerStore';
+import {useSleepLeftMs} from './useSleepLeft';
+import {hasNextIn, useTVPlayerStore} from '../../store/tvPlayerStore';
 import {
+  formatSpeed,
   repeatLabel,
   sleepLabel,
+  sleepLeftLabel,
   useListeningStore,
   type PanelKey,
 } from '../../store/listeningStore';
@@ -21,7 +24,6 @@ import {isLovedIn, toggleLovedSurah} from '../../services/lovedSurahsStore';
 import {useLovedSurahs} from '../../hooks/useLovedSurahs';
 import {usePlaylists} from '../../hooks/usePlaylists';
 import {playlistHas} from '../../services/playlistsStore';
-import {formatSpeed} from './ListeningPanels';
 import {colors} from '../../theme/colors';
 import {fonts} from '../../theme/typography';
 import {createScaledStyles} from '../../theme/scale';
@@ -56,13 +58,26 @@ export function formatTime(seconds: number): string {
 }
 
 /**
+ * Android and Vega keep the whole tray focusable under a panel (its guide
+ * traps the D-pad, so the tray can't be reached). Making the transport
+ * focusable again in the redraw that closes the panel pulled focus off the
+ * tool onto Previous surah (seen in the emulator's focus log), and a tool
+ * made focusable in that redraw could be asked for focus before the change
+ * reached the view. tvOS hides the tray from focus and moves focus itself.
+ */
+const TOOLS_STAY_FOCUSABLE = Platform.OS !== 'ios';
+
+/**
  * The player's controls, raised from the bottom on OK: progress with verse
  * ticks; transport (previous surah, a verse back, play, a verse on, next
  * surah); and one row of labeled tools (Repeat, Speed, On screen, Reciter,
  * Sleep, Sound, Queue, Save, Love) that each show their current value.
  * Pressing a tool opens its panel on the right. While a panel is open the
- * tray keeps left of it and the tools step aside, so nothing focusable sits
- * hidden under the panel.
+ * tray keeps left of it and the tools are hidden and out of focus, so
+ * nothing focusable sits hidden under the panel (on Android they stay
+ * focusable, see TOOLS_STAY_FOCUSABLE). They stay mounted, so when the
+ * panel closes the tool that opened it is still there to take focus back,
+ * while the closed panel stays drawn a moment (ListeningPanels LINGER_MS).
  */
 export function ControlsTray({
   synced,
@@ -82,8 +97,8 @@ export function ControlsTray({
   const next = useTVPlayerStore(s => s.next);
   const queue = useTVPlayerStore(s => s.queue);
   const currentIndex = useTVPlayerStore(s => s.currentIndex);
-  const playerRepeat = useTVPlayerStore(s => s.repeat);
-  const shuffle = useTVPlayerStore(s => s.shuffle);
+  const hasNext = useTVPlayerStore(hasNextIn);
+  const sleepLeftMs = useSleepLeftMs();
   const ambientOn = useAmbientStore(s => s.enabled);
   const ambientSound = useAmbientStore(s => s.currentSound);
   const loved = useLovedSurahs();
@@ -95,12 +110,52 @@ export function ControlsTray({
   const mode = useDisplayStore(s => s.mode);
   const edition = useDisplayStore(s => s.edition);
 
-  // When a panel closes, focus goes back to the tool that opened it. It is
-  // set when the tool is pressed, so the tools mount again already knowing
-  // which one takes focus.
-  const [returnTo, setReturnTo] = useState<PanelKey | null>(null);
-
+  // When a panel closes, focus goes back to the tool that opened it: asked
+  // for once, on the tool's own button. A tray that mounts with a panel
+  // already open (back from the New playlist editor) returns to its tool.
+  const [returnTo, setReturnTo] = useState<PanelKey | null>(
+    () => useListeningStore.getState().panel,
+  );
+  const toolRefs = useRef<Partial<Record<PanelKey, View | null>>>({});
+  // Whether focus is on the tray (a tool or the transport); cleared when a
+  // panel opens, so a late ask never pulls focus back from where a press
+  // already moved it.
+  const trayFocused = useRef(false);
   const panelOpen = panel !== null;
+  const toolsFocusable = TOOLS_STAY_FOCUSABLE || !panelOpen;
+  const noteTrayFocus = (): void => {
+    trayFocused.current = true;
+  };
+  const returnToRef = useRef(returnTo);
+  returnToRef.current = returnTo;
+  // Android: ask for the tool the moment the panel closes, inside the
+  // store's set, before React redraws. A long panel's redraw can keep the
+  // JS thread busy long enough that the next D-pad press, handled natively,
+  // would still find focus in the closing panel. The closed panel stays
+  // drawn a moment (ListeningPanels LINGER_MS), so the row is never
+  // removed while focused.
+  useEffect(() => {
+    if (!TOOLS_STAY_FOCUSABLE) return;
+    return useListeningStore.subscribe((state, prev) => {
+      if (prev.panel === null || state.panel !== null) return;
+      const key = returnToRef.current;
+      if (key !== null) toolRefs.current[key]?.requestTVFocus?.();
+    });
+  }, []);
+  // tvOS (and Android, if the ask above found nothing): once the redraw has
+  // made the tools focusable again.
+  const wasOpen = useRef(panelOpen);
+  useEffect(() => {
+    const closed = wasOpen.current && !panelOpen;
+    wasOpen.current = panelOpen;
+    if (!closed || returnTo === null) return;
+    const id = setTimeout(() => {
+      if (trayFocused.current) return;
+      toolRefs.current[returnTo]?.requestTVFocus?.();
+    }, 0);
+    return () => clearTimeout(id);
+  }, [panelOpen, returnTo]);
+
   // A verse repeat's gap counts as playing: Pause there stops the replay.
   const isPlaying = status === 'playing' || held;
   const loading = status === 'loading' || status === 'buffering';
@@ -110,8 +165,13 @@ export function ControlsTray({
     fn();
   };
   const tool = (key: PanelKey) => ({
-    focusOnReturn: returnTo === key,
+    focusable: toolsFocusable,
+    buttonRef: (node: View | null) => {
+      toolRefs.current[key] = node;
+    },
+    onFocus: noteTrayFocus,
     onPress: press(() => {
+      trayFocused.current = false;
       setReturnTo(key);
       setPanel(key);
     }),
@@ -136,11 +196,15 @@ export function ControlsTray({
       ).length
     : 0;
   const nextCount = Math.max(0, queue.length - currentIndex - 1);
-  const hasNext =
-    nextCount > 0 || playerRepeat === 'all' || (shuffle && queue.length > 1);
 
   return (
-    <View style={[styles.tray, panelOpen && styles.trayBesidePanel]}>
+    // collapsable={false} on the views whose style changes with the panel:
+    // a view that becomes flattenable when the panel closes (opacity gone)
+    // is removed on Android and its children re-parented, which drops the
+    // focus the tool just took and sends it to Previous surah.
+    <View
+      collapsable={false}
+      style={[styles.tray, panelOpen && styles.trayBesidePanel]}>
       <View style={styles.progressRow}>
         <Text style={styles.time}>{formatTime(position)}</Text>
         <ProgressLine
@@ -155,14 +219,16 @@ export function ControlsTray({
           <FocusableButton
             onPress={press(() => void prev())}
             accessibilityLabel="Previous surah"
-            focusable={!panelOpen}
+            onFocus={noteTrayFocus}
+            focusable={toolsFocusable}
             style={styles.round}>
             <FocusIcon icon={PreviousIcon} size={26} />
           </FocusableButton>
           <FocusableButton
             onPress={press(() => onStep(-1))}
             accessibilityLabel={synced ? 'Previous verse' : 'Back 15 seconds'}
-            focusable={!panelOpen}
+            onFocus={noteTrayFocus}
+            focusable={toolsFocusable}
             style={styles.round}>
             <FocusIcon icon={StepBackIcon} size={34} />
           </FocusableButton>
@@ -172,8 +238,8 @@ export function ControlsTray({
               loading ? 'Loading' : isPlaying ? 'Pause' : 'Play'
             }
             hasTVPreferredFocus={returnTo === null}
-            focusable={!panelOpen}
-            outlined
+            onFocus={noteTrayFocus}
+            focusable={toolsFocusable}
             style={[styles.round, styles.roundBig]}>
             {loading ? (
               <FocusSpinner size="large" />
@@ -184,97 +250,109 @@ export function ControlsTray({
           <FocusableButton
             onPress={press(() => onStep(1))}
             accessibilityLabel={synced ? 'Next verse' : 'Forward 15 seconds'}
-            focusable={!panelOpen}
+            onFocus={noteTrayFocus}
+            focusable={toolsFocusable}
             style={styles.round}>
             <FocusIcon icon={StepForwardIcon} size={34} />
           </FocusableButton>
-          <View style={!hasNext && styles.unavailable}>
+          {/* At the end of the queue Next stays a stop for focus (it can
+              be the button that just played the last surah) but is dimmed
+              and does nothing. */}
+          <View collapsable={false} style={!hasNext && styles.unavailable}>
             <FocusableButton
               onPress={press(() => void next())}
               accessibilityLabel="Next surah"
-              focusable={!panelOpen && hasNext}
+              disabled={!hasNext}
+              onFocus={noteTrayFocus}
+              focusable={toolsFocusable}
               style={styles.round}>
               <FocusIcon icon={NextIcon} size={26} />
             </FocusableButton>
           </View>
         </View>
-        {panelOpen ? null : (
-          <View style={styles.tools}>
+        <View
+          collapsable={false}
+          style={[styles.tools, panelOpen && styles.toolsHidden]}
+          importantForAccessibility={
+            panelOpen ? 'no-hide-descendants' : 'auto'
+          }>
+          <Tool
+            label="Repeat"
+            value={repeatLabel(repeat)}
+            on={repeat.kind !== 'off'}
+            {...tool('repeat')}
+          />
+          <Tool
+            label="Speed"
+            value={formatSpeed(speed)}
+            on={speed !== 1}
+            {...tool('speed')}
+          />
+          <Tool
+            label="On screen"
+            value={onScreenLabel(mode, edition)}
+            on={false}
+            {...tool('onScreen')}
+          />
+          <Tool
+            label="Reciter"
+            value={shortReciterName(reciterName)}
+            on={false}
+            {...tool('reciter')}
+          />
+          <Tool
+            label="Sleep"
+            value={
+              sleepLeftMs !== undefined
+                ? sleepLeftLabel(sleepLeftMs)
+                : sleepOn
+                  ? sleepLabel(sleepChoice)
+                  : 'Off'
+            }
+            on={sleepOn}
+            {...tool('sleep')}
+          />
+          {AMBIENT_AVAILABLE ? (
             <Tool
-              label="Repeat"
-              value={repeatLabel(repeat)}
-              on={repeat.kind !== 'off'}
-              {...tool('repeat')}
+              label="Sound"
+              value={ambientChoiceLabel(ambientOn ? ambientSound : 'off')}
+              on={ambientOn}
+              {...tool('sound')}
             />
-            <Tool
-              label="Speed"
-              value={formatSpeed(speed)}
-              on={speed !== 1}
-              {...tool('speed')}
-            />
-            <Tool
-              label="On screen"
-              value={onScreenLabel(mode, edition)}
-              on={false}
-              {...tool('onScreen')}
-            />
-            <Tool
-              label="Reciter"
-              value={shortReciterName(reciterName)}
-              on={false}
-              {...tool('reciter')}
-            />
-            <Tool
-              label="Sleep"
-              value={sleepOn ? sleepLabel(sleepChoice) : 'Off'}
-              on={sleepOn}
-              {...tool('sleep')}
-            />
-            {AMBIENT_AVAILABLE ? (
-              <Tool
-                label="Sound"
-                value={ambientChoiceLabel(ambientOn ? ambientSound : 'off')}
-                on={ambientOn}
-                {...tool('sound')}
+          ) : null}
+          <Tool
+            label="Queue"
+            value={nextCount > 0 ? `${nextCount} next` : 'Last'}
+            on={false}
+            {...tool('queue')}
+          />
+          <Tool
+            label="Save"
+            value={
+              savedIn === 0 ? 'Add' : savedIn === 1 ? 'Saved' : `In ${savedIn}`
+            }
+            on={savedIn > 0}
+            {...tool('save')}
+          />
+          <Tool
+            label={isLoved ? 'Loved' : 'Love'}
+            accessibilityLabel={
+              isLoved ? 'Remove from loved surahs' : 'Add to loved surahs'
+            }
+            icon={
+              <FocusIcon
+                icon={HeartIcon}
+                size={30}
+                filled={isLoved}
+                color={isLoved ? colors.accent : colors.text}
               />
-            ) : null}
-            <Tool
-              label="Queue"
-              value={nextCount > 0 ? `${nextCount} next` : 'Last'}
-              on={false}
-              {...tool('queue')}
-            />
-            <Tool
-              label="Save"
-              value={
-                savedIn === 0
-                  ? 'Add'
-                  : savedIn === 1
-                    ? 'Saved'
-                    : `In ${savedIn}`
-              }
-              on={savedIn > 0}
-              {...tool('save')}
-            />
-            <Tool
-              label={isLoved ? 'Loved' : 'Love'}
-              accessibilityLabel={
-                isLoved ? 'Remove from loved surahs' : 'Add to loved surahs'
-              }
-              icon={
-                <FocusIcon
-                  icon={HeartIcon}
-                  size={26}
-                  filled={isLoved}
-                  color={isLoved ? colors.accent : colors.text}
-                />
-              }
-              on={isLoved}
-              focusOnReturn={false}
-              onPress={toggleLoved}
-            />
-          </View>
-        )}
+            }
+            on={isLoved}
+            focusable={toolsFocusable}
+            onFocus={noteTrayFocus}
+            onPress={toggleLoved}
+          />
+        </View>
       </TVFocusGuideView>
     </View>
   );
@@ -285,7 +363,9 @@ function Tool({
   value,
   icon,
   on,
-  focusOnReturn,
+  focusable,
+  buttonRef,
+  onFocus,
   onPress,
   accessibilityLabel,
 }: {
@@ -294,27 +374,21 @@ function Tool({
   value?: string;
   icon?: React.ReactNode;
   on: boolean;
-  /** Take focus when the tray comes back from this tool's panel. */
-  focusOnReturn: boolean;
+  /** False while a panel is open and the tools are hidden (tvOS). */
+  focusable: boolean;
+  /** The button, so focus can come back to it when its panel closes. */
+  buttonRef?: (node: View | null) => void;
+  onFocus?: () => void;
   onPress: () => void;
   accessibilityLabel?: string;
 }): React.ReactElement {
-  // The tools mount again when a panel closes; hasTVPreferredFocus takes
-  // focus then, and asking once mounted backs it up in case the focus
-  // engine was still busy with the closing panel.
-  const ref = useRef<View>(null);
-  const returning = useRef(focusOnReturn).current;
-  useEffect(() => {
-    if (!returning) return;
-    const id = setTimeout(() => ref.current?.requestTVFocus?.(), 0);
-    return () => clearTimeout(id);
-  }, [returning]);
   return (
     <FocusableButton
-      ref={ref}
+      ref={buttonRef}
+      onFocus={onFocus}
       onPress={onPress}
       accessibilityLabel={accessibilityLabel ?? `${label}: ${value ?? ''}`}
-      hasTVPreferredFocus={focusOnReturn}
+      focusable={focusable}
       containerStyle={styles.toolBox}
       style={styles.tool}>
       <FocusText
@@ -324,14 +398,18 @@ function Tool({
         numberOfLines={1}>
         {label}
       </FocusText>
-      {icon ?? (
-        <FocusText
-          style={styles.toolValue}
-          color={on ? colors.accent : colors.text}
-          numberOfLines={1}>
-          {value}
-        </FocusText>
-      )}
+      {/* An icon sits in the value's own line box, so its label lines up
+          with the others. */}
+      <View style={styles.toolValueSlot}>
+        {icon ?? (
+          <FocusText
+            style={styles.toolValue}
+            color={on ? colors.accent : colors.text}
+            numberOfLines={1}>
+            {value}
+          </FocusText>
+        )}
+      </View>
     </FocusableButton>
   );
 }
@@ -371,12 +449,17 @@ const styles = createScaledStyles({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // The main control is told apart by its size. At rest it wears only the
+  // faint divider line, never a bright ring that reads as a second focus
+  // beside a focused tool or panel row (Ink & Cream: only focus is cream).
   roundBig: {
     width: 88,
     height: 88,
     borderRadius: 24,
+    borderWidth: 2,
+    borderColor: colors.border,
   },
-  // Next surah at the end of the queue: shown, but not a stop for focus.
+  // Next surah at the end of the queue: dimmed, and does nothing.
   unavailable: {opacity: 0.3},
   tools: {
     flexDirection: 'row',
@@ -385,6 +468,8 @@ const styles = createScaledStyles({
     flexShrink: 1,
     marginLeft: 24,
   },
+  // Beside an open panel: kept mounted but invisible (and out of focus).
+  toolsHidden: {opacity: 0},
   // Long values (a reciter's name, "End of surah") shrink and truncate
   // rather than push the last tools off the screen.
   toolBox: {flexShrink: 1, minWidth: 0},
@@ -404,9 +489,11 @@ const styles = createScaledStyles({
     letterSpacing: 1.6,
     textTransform: 'uppercase',
   },
+  toolValueSlot: {height: 30, justifyContent: 'center'},
   toolValue: {
     fontFamily: fonts.bold,
     fontWeight: '700',
     fontSize: 22,
+    lineHeight: 30,
   },
 });

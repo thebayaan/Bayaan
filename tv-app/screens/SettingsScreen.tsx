@@ -1,5 +1,5 @@
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
-import {ScrollView, Text, TVFocusGuideView, View} from 'react-native';
+import {Platform, ScrollView, Text, TVFocusGuideView, View} from 'react-native';
 import {FocusableButton} from '../components/primitives/FocusableButton';
 import {
   FocusText,
@@ -8,6 +8,10 @@ import {
 import {SidePanel, type PanelSection} from '../components/listening/SidePanel';
 import {VersePreview} from '../components/settings/VersePreview';
 import {ReciterPickerPanel} from '../components/settings/ReciterPickerPanel';
+import {ListFade} from '../components/settings/ListFade';
+import {HomeClock} from '../components/home/HomeClock';
+import {useClock} from '../hooks/useClock';
+import {useScreenActive} from '../components/nav/ScreenLayer';
 import {formatSpeed} from '../components/listening/ListeningPanels';
 import {useReciters} from '../hooks/useReciters';
 import {useContinueListening} from '../hooks/useContinueListening';
@@ -25,17 +29,19 @@ import {resetOnboarded, useOnboardingStore} from '../hooks/useOnboarded';
 import {
   DISPLAY_PICKERS,
   resolveDefaultReciter,
+  savedCountLabel,
   useSettingsStore,
+  type ClearRow,
   type SettingsPicker,
   type SettingsRow,
 } from '../store/settingsStore';
 import {
   DIM_CHOICES,
   dimLabel,
-  findTranslation,
   ON_SCREEN_MODES,
   TEXT_SIZES,
   TRANSLATIONS,
+  translationRowLabel,
   useDisplayStore,
 } from '../store/displayStore';
 import {
@@ -47,24 +53,24 @@ import {
 import {useOverlayStore} from '../store/overlayStore';
 import {SPEED_CYCLE} from '../store/listeningStore';
 import type {Reciter} from '../types/reciter';
-import appConfig from '../app.json';
+import {APP_VERSION} from '../services/appVersion';
 import {colors} from '../theme/colors';
-import {SCREEN_GUTTER, spacing} from '../theme/spacing';
+import {
+  SCREEN_CLOCK_RIGHT,
+  SCREEN_CLOCK_TOP,
+  SCREEN_GUTTER,
+  spacing,
+} from '../theme/spacing';
 import {fonts, typography} from '../theme/typography';
-import {createScaledStyles} from '../theme/scale';
+import {scale, createScaledStyles} from '../theme/scale';
 
-type ConfirmKey = 'history' | 'favorites' | null;
+type ConfirmKey = ClearRow | null;
 
 /** An armed clear row disarms itself after this long. */
 const ARM_MS = 5000;
 /** The armed warning: a dark red on the cream focus fill, a soft one at rest. */
 const WARN_ON_FOCUS = '#8a1f1f';
 const WARN_AT_REST = '#e8a598';
-
-function countLabel(count: number): string {
-  if (count === 0) return 'Nothing saved';
-  return `${count} ${count === 1 ? 'item' : 'items'}`;
-}
 
 /**
  * Settings as grouped rows, each with its current value on the right, beside
@@ -97,6 +103,28 @@ export function SettingsScreen(): React.ReactElement {
   const current =
     resolveDefaultReciter(reciters, getDefaultReciter) ?? undefined;
   const [confirm, setConfirm] = useState<ConfirmKey>(null);
+  const active = useScreenActive();
+  const welcomeRow = useRef<View>(null);
+  // Opening the player from the welcome rerun's pill mounts Settings hidden
+  // under it, so the welcome row's preferred focus fires while hidden and
+  // the layer's own restore (a frame after Back shows it) has nothing to go
+  // back to. Once shown, focus goes to that row, after the layer's restore.
+  const welcomeOnShow = useRef(!active && focusRow === 'welcome');
+  useEffect(() => {
+    if (!active || !welcomeOnShow.current) return;
+    let inner: number | null = null;
+    const outer = requestAnimationFrame(() => {
+      inner = requestAnimationFrame(() => {
+        inner = null;
+        welcomeOnShow.current = false;
+        welcomeRow.current?.requestTVFocus?.();
+      });
+    });
+    return () => {
+      cancelAnimationFrame(outer);
+      if (inner !== null) cancelAnimationFrame(inner);
+    };
+  }, [active]);
 
   // An armed clear does not wait forever for its second press.
   useEffect(() => {
@@ -116,22 +144,33 @@ export function SettingsScreen(): React.ReactElement {
   );
 
   const historyCount = continueEntries.length + recent.length;
-  const favoritesCount = favorites.length + loved.length;
+  // Each kept thing has its own row, named as its Library tab names it, so a
+  // clear never takes more than its label says.
+  const counts: Record<ClearRow, number> = {
+    history: historyCount,
+    loved: loved.length,
+    favorites: favorites.length,
+  };
 
-  function runClear(key: Exclude<ConfirmKey, null>): void {
+  function runClear(key: ClearRow): void {
     setFocusRow(key);
     // Nothing saved: there is nothing to confirm.
-    if ((key === 'history' ? historyCount : favoritesCount) === 0) return;
+    if (counts[key] === 0) return;
     if (confirm !== key) {
       setConfirm(key);
       return;
     }
-    if (key === 'history') {
-      clearContinue();
-      clearRecent();
-    } else {
-      clearFavorites();
-      clearLovedSurahs();
+    switch (key) {
+      case 'history':
+        clearContinue();
+        clearRecent();
+        break;
+      case 'loved':
+        clearLovedSurahs();
+        break;
+      case 'favorites':
+        clearFavorites();
+        break;
     }
     setConfirm(null);
   }
@@ -155,12 +194,20 @@ export function SettingsScreen(): React.ReactElement {
   const displayPicker = picker !== null && DISPLAY_PICKERS.includes(picker);
   // Stable, so the reciter list does not re-render on every progress save.
   const closePicker = useCallback(() => setPicker(null), [setPicker]);
-  const disarm = (key: Exclude<ConfirmKey, null>) => () =>
+  const disarm = (key: ClearRow) => () =>
     setConfirm(c => (c === key ? null : c));
+  const clearRow = (key: ClearRow, value: string) => ({
+    value: confirm === key ? 'Press again to clear' : value,
+    warn: confirm === key,
+    hasTVPreferredFocus: focusOn(key),
+    onPress: () => runClear(key),
+    onBlur: disarm(key),
+  });
 
   return (
     <View style={styles.container}>
       <Text style={styles.pageTitle}>Settings</Text>
+      <SettingsClock />
       {displayPicker ? (
         // The rows step aside so the preview sits beside the picker.
         <View style={styles.besidePicker}>
@@ -172,112 +219,128 @@ export function SettingsScreen(): React.ReactElement {
         </View>
       ) : (
         <View style={styles.columns}>
-          <ScrollView
-            ref={listRef}
-            onContentSizeChange={() => {
-              // Coming back from the welcome rerun, the row that opened it is
-              // the last one: put it on screen so its preferred focus can land
-              // (it showed no focus at all on Android TV before).
-              if (focusRow === 'welcome' && picker === null) {
-                listRef.current?.scrollToEnd({animated: false});
+          <View style={styles.listColumn}>
+            <ScrollView
+              ref={listRef}
+              onContentSizeChange={() => {
+                // Coming back from the welcome rerun, the row that opened it is
+                // the last one: put it on screen so its preferred focus can land
+                // (it showed no focus at all on Android TV before).
+                if (focusRow === 'welcome' && picker === null) {
+                  listRef.current?.scrollToEnd({animated: false});
+                }
+              }}
+              style={styles.listScroll}
+              contentContainerStyle={styles.scroll}
+              // Android: the list's edges fade, and its focus scroll keeps the
+              // focused row a fade's height clear of the edge, so it never
+              // sits on the screen's bottom edge or half under the title.
+              fadingEdgeLength={
+                NATIVE_FADE ? Math.round(scale(LIST_FADE)) : undefined
               }
-            }}
-            style={styles.listScroll}
-            contentContainerStyle={styles.scroll}
-            showsVerticalScrollIndicator={false}>
-            <TVFocusGuideView autoFocus style={styles.list}>
-              <Text style={styles.group}>Listening</Text>
-              <Row
-                label="Default reciter"
-                value={current?.name ?? 'Choose'}
-                {...row('reciter')}
-              />
-              <Row
-                label="Default speed"
-                value={formatSpeed(speed)}
-                {...row('speed')}
-              />
-              {AMBIENT_AVAILABLE ? (
+              showsVerticalScrollIndicator={false}>
+              <TVFocusGuideView autoFocus style={styles.list}>
+                <Text style={styles.group}>Listening</Text>
                 <Row
-                  label="Background sound"
-                  value={ambientChoiceLabel(ambientOn ? ambientSound : 'off')}
-                  {...row('sound')}
+                  label="Default reciter"
+                  value={current?.name ?? 'Choose'}
+                  {...row('reciter')}
                 />
-              ) : null}
+                <Row
+                  label="Default speed"
+                  value={formatSpeed(speed)}
+                  {...row('speed')}
+                />
+                {AMBIENT_AVAILABLE ? (
+                  <Row
+                    label="Background sound"
+                    value={ambientChoiceLabel(ambientOn ? ambientSound : 'off')}
+                    {...row('sound')}
+                  />
+                ) : null}
 
-              <Text style={styles.group}>On screen</Text>
-              <Row
-                label="Text"
-                value={ON_SCREEN_MODES.find(m => m.value === mode)?.label ?? ''}
-                {...row('mode')}
-              />
-              <Row
-                label="Translation"
-                value={findTranslation(edition).name}
-                {...row('translation')}
-              />
-              <Row
-                label="Text size"
-                value={
-                  TEXT_SIZES.find(s => s.value === textSize)?.label ?? 'Large'
-                }
-                {...row('textSize')}
-              />
-              <Row
-                label="Dim when idle"
-                value={dimLabel(dimAfterMin)}
-                {...row('dim')}
-              />
+                <Text style={styles.group}>On screen</Text>
+                <Row
+                  label="Text"
+                  value={
+                    ON_SCREEN_MODES.find(m => m.value === mode)?.label ?? ''
+                  }
+                  {...row('mode')}
+                />
+                <Row
+                  label="Translation"
+                  value={translationRowLabel(edition)}
+                  {...row('translation')}
+                />
+                <Row
+                  label="Text size"
+                  value={
+                    TEXT_SIZES.find(s => s.value === textSize)?.label ?? 'Large'
+                  }
+                  {...row('textSize')}
+                />
+                <Row
+                  label="Dim when idle"
+                  value={dimLabel(dimAfterMin)}
+                  {...row('dim')}
+                />
 
-              <Text style={styles.group}>Your data</Text>
-              <Row
-                label="Clear listening history"
-                value={
-                  confirm === 'history'
-                    ? 'Press again to clear'
-                    : countLabel(historyCount)
-                }
-                warn={confirm === 'history'}
-                hasTVPreferredFocus={focusOn('history')}
-                onPress={() => runClear('history')}
-                onBlur={disarm('history')}
-              />
-              <Row
-                label="Clear favorites"
-                value={
-                  confirm === 'favorites'
-                    ? 'Press again to clear'
-                    : countLabel(favoritesCount)
-                }
-                warn={confirm === 'favorites'}
-                hasTVPreferredFocus={focusOn('favorites')}
-                onPress={() => runClear('favorites')}
-                onBlur={disarm('favorites')}
-              />
+                <Text style={styles.group}>Your data</Text>
+                <Row
+                  label="Clear listening history"
+                  {...clearRow(
+                    'history',
+                    savedCountLabel(historyCount, 'item', 'items'),
+                  )}
+                />
+                <Row
+                  label="Clear loved surahs"
+                  {...clearRow(
+                    'loved',
+                    savedCountLabel(loved.length, 'surah', 'surahs'),
+                  )}
+                />
+                <Row
+                  label="Clear favourite reciters"
+                  {...clearRow(
+                    'favorites',
+                    savedCountLabel(favorites.length, 'reciter', 'reciters'),
+                  )}
+                />
 
-              <Text style={styles.group}>Welcome</Text>
-              <Row
-                label="Show welcome again"
-                value="Reciter and display"
-                hasTVPreferredFocus={focusOn('welcome')}
-                onPress={() => {
-                  setConfirm(null);
-                  setFocusRow('welcome');
-                  resetOnboarded();
-                }}
-              />
-            </TVFocusGuideView>
-          </ScrollView>
-          <View style={styles.previewColumn}>
+                <Text style={styles.group}>Welcome</Text>
+                <Row
+                  ref={welcomeRow}
+                  label="Show welcome again"
+                  value="Reciter and display"
+                  hasTVPreferredFocus={focusOn('welcome')}
+                  onPress={() => {
+                    setConfirm(null);
+                    setFocusRow('welcome');
+                    resetOnboarded();
+                  }}
+                />
+              </TVFocusGuideView>
+            </ScrollView>
+            {/* Rows scrolled up under the title fade out instead of being cut
+                (drawn natively on Android, see fadingEdgeLength). */}
+            {NATIVE_FADE ? null : <ListFade height={LIST_FADE} />}
+          </View>
+          {/* A picker that changes no verse (reciter, speed, sound, dim)
+              covers this side, so the preview steps away rather than show
+              cut off under the panel; the display pickers move it beside
+              theirs instead (besidePicker). */}
+          <View
+            style={[styles.previewColumn, picker !== null && styles.hidden]}>
             <Text style={styles.previewLabel}>Preview</Text>
             <VersePreview />
             <Text style={styles.previewNote}>
               How verses show while you listen. Text, Translation and Text size
               change it.
             </Text>
-            <Text style={styles.version}>
-              Bayaan TV {appConfig.expo.version}
-            </Text>
+            {APP_VERSION ? (
+              <Text style={styles.version}>Bayaan TV {APP_VERSION}</Text>
+            ) : null}
           </View>
         </View>
       )}
@@ -421,6 +484,19 @@ function SettingsPickerPanel({
 function noop(): void {}
 
 /**
+ * The clock every root place shows top right. Its own component, so the
+ * minute tick redraws only the clock, not the rows.
+ */
+function SettingsClock(): React.ReactElement {
+  const now = useClock();
+  return (
+    <View style={styles.clock} pointerEvents="none">
+      <HomeClock now={now} />
+    </View>
+  );
+}
+
+/**
  * For the display pickers, which stay open so each choice previews live:
  * choosing the option already selected closes the picker, like the others.
  */
@@ -451,6 +527,7 @@ function Row({
   onPress,
   onBlur,
   hasTVPreferredFocus,
+  ref,
 }: {
   label: string;
   value: string;
@@ -462,9 +539,11 @@ function Row({
   /** Focus left the row (an armed clear disarms). */
   onBlur?: () => void;
   hasTVPreferredFocus?: boolean;
+  ref?: React.Ref<View>;
 }): React.ReactElement {
   return (
     <FocusableButton
+      ref={ref}
       onPress={onPress}
       accessibilityLabel={`${label}: ${value}`}
       hasTVPreferredFocus={hasTVPreferredFocus}
@@ -487,6 +566,21 @@ function Row({
 
 const ROW_PAD = 28;
 const LIST_W = 760;
+/**
+ * Room right of the rows for a focused row's 1.02 scale (about 8px a side)
+ * and its drop shadow, which the list would otherwise clip flat.
+ */
+const FOCUS_ROOM = 24;
+/** Android draws the list's fade itself, and scrolls clear of it. */
+const NATIVE_FADE = Platform.OS === 'android';
+/**
+ * The fade over the list's top edge; the first group label starts below it.
+ * On Android it is about a row tall, top and bottom, so a row scrolled under
+ * the title fades away rather than showing cut in half, and the focused row
+ * stays that far from either edge. Apple TV's focus scroll already keeps the
+ * focused row clear of the edges, so its fade stays short.
+ */
+const LIST_FADE = NATIVE_FADE ? 72 : 32;
 
 const styles = createScaledStyles({
   container: {flex: 1, backgroundColor: colors.background},
@@ -499,15 +593,28 @@ const styles = createScaledStyles({
     // Lines up with the rows' edge, like every root screen's title.
     paddingLeft: SCREEN_GUTTER,
   },
-  columns: {flex: 1, flexDirection: 'row', gap: spacing.xl},
-  listScroll: {width: LIST_W + spacing.xl, flexGrow: 0},
-  scroll: {paddingLeft: spacing.xl, paddingBottom: spacing.xxl},
+  clock: {
+    position: 'absolute',
+    top: SCREEN_CLOCK_TOP,
+    right: SCREEN_CLOCK_RIGHT,
+  },
+  columns: {flex: 1, flexDirection: 'row', gap: spacing.xl - FOCUS_ROOM},
+  listColumn: {width: LIST_W + spacing.xl + FOCUS_ROOM},
+  // Ends above the screen's bottom edge, inside the title-safe area.
+  listScroll: {flex: 1, marginBottom: NATIVE_FADE ? spacing.lg : 0},
+  scroll: {
+    // With the group label's own 32, the first label starts below the fade.
+    paddingTop: LIST_FADE - 32,
+    paddingLeft: spacing.xl,
+    paddingRight: FOCUS_ROOM,
+    paddingBottom: spacing.xxl,
+  },
   list: {gap: 8},
   group: {
     color: colors.accent,
     fontFamily: fonts.extraBold,
     fontWeight: '800',
-    fontSize: 14,
+    fontSize: 16,
     letterSpacing: 2.5,
     textTransform: 'uppercase',
     marginTop: 32,
@@ -545,25 +652,27 @@ const styles = createScaledStyles({
     color: colors.textSecondary,
     fontFamily: fonts.extraBold,
     fontWeight: '800',
-    fontSize: 14,
+    fontSize: 16,
     letterSpacing: 2.5,
     textTransform: 'uppercase',
   },
+  // Read from the sofa: 10-foot sizes, and secondary (not tertiary) cream.
   previewNote: {
-    color: colors.textTertiary,
+    color: colors.textSecondary,
     fontFamily: fonts.medium,
     fontWeight: '500',
-    fontSize: 17,
-    lineHeight: 24,
+    fontSize: 20,
+    lineHeight: 28,
   },
   version: {
-    color: colors.textTertiary,
+    color: colors.textSecondary,
     fontFamily: fonts.medium,
     fontWeight: '500',
-    fontSize: 15,
+    fontSize: 18,
     letterSpacing: 0.5,
     marginTop: 8,
   },
+  hidden: {opacity: 0},
   // Left of the 620-wide picker panel.
   besidePicker: {
     position: 'absolute',

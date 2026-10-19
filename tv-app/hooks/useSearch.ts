@@ -41,6 +41,26 @@ export function isPending(query: string, settled: string): boolean {
   return isActiveQuery(query) && settled !== query;
 }
 
+export type SearchPane = 'browse' | 'results' | 'empty';
+
+/**
+ * What the right side shows, decided by the settled query so it never
+ * blanks for the debounce: the browse tiles before typing (and while the
+ * first query settles), the results once there is a top result (the last
+ * ones stay up while a new query settles), and the empty state when the
+ * settled query found nothing (it stays up, unblinking, while more letters
+ * of a query with no matches settle).
+ */
+export function searchPane(
+  query: string,
+  settled: string,
+  hasTop: boolean,
+): SearchPane {
+  if (!isActiveQuery(query)) return 'browse';
+  if (hasTop) return 'results';
+  return isActiveQuery(settled) ? 'empty' : 'browse';
+}
+
 /** Results and suggestions for one query: the hook's whole logic, pure. */
 export function runSearch(
   engine: TvSearchEngine,

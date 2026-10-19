@@ -29,7 +29,7 @@ function subscribe(cb: () => void): () => void {
   return () => listener.remove();
 }
 
-/** The listener's favorite surahs, live. */
+/** The listener's loved surahs, live. */
 export function useLovedSurahs(): LovedSurah[] {
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }

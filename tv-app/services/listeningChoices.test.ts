@@ -1,10 +1,12 @@
 import {
   popularReciters,
+  queueInVoice,
   reciterChoicesForSurah,
   rewayahForSurah,
   rewayahLabel,
   queueWindow,
   shortReciterName,
+  SHORT_NAME_MAX,
   upcoming,
 } from './listeningChoices';
 import type {Reciter, Rewayah} from '../types/reciter';
@@ -163,26 +165,138 @@ describe('queueWindow', () => {
 
 describe('shortReciterName', () => {
   it('keeps names that fit', () => {
-    expect(shortReciterName('Abdulbasit Abdulsamad')).toBe(
-      'Abdulbasit Abdulsamad',
-    );
+    expect(shortReciterName('Mishary Alafasi')).toBe('Mishary Alafasi');
+    expect(shortReciterName('  Saud   Al-Shuraim ')).toBe('Saud Al-Shuraim');
+  });
+
+  it('never runs past SHORT_NAME_MAX', () => {
+    for (const name of [
+      'Mal-Allah Abdulrhman Aljaber',
+      'Mohammed Al-Amin Qeniwa',
+      'Muamar (From Indonesia)',
+      'Akhil Abdulhayy Rawa',
+    ]) {
+      expect(shortReciterName(name).length).toBeLessThanOrEqual(SHORT_NAME_MAX);
+    }
+  });
+
+  it('writes the family name the one way', () => {
+    expect(shortReciterName('Abdulrahman Alsudaes')).toBe('Al-Sudaes');
+    expect(shortReciterName('Ahmad Issa Al Maasaraawi')).toBe('Al-Maasaraawi');
+    expect(shortReciterName('Tareq Abdulgani daawob')).toBe('Daawob');
+    expect(shortReciterName('Mohammad Saleh Alim Shah')).toBe('Alim Shah');
+    expect(shortReciterName('Mahmoud Abdul Hakam')).toBe('Abdul Hakam');
+    expect(shortReciterName('Muamar (From Indonesia)')).toBe('Muamar');
+    expect(shortReciterName('Abdulelah bin Aoun')).toBe('Bin Aoun');
   });
 
   it('shortens long names to the family name', () => {
     expect(shortReciterName('Mohammed Siddiq Al-Minshawi')).toBe('Al-Minshawi');
+    expect(shortReciterName('Abdulbasit Abdulsamad')).toBe('Abdulsamad');
     expect(shortReciterName('Mahmoud Khalil Al Hussary Al Masri')).toBe(
-      'Al Masri',
+      'Al-Masri',
     );
-    expect(shortReciterName('Abdulrahman Mohammed Alsudaes Bin X')).toBe('X');
+    expect(shortReciterName('Mohammed Jibreel')).toBe('Jibreel');
   });
 });
 
 describe('rewayahLabel', () => {
-  it('joins style and rewayah', () => {
-    expect(rewayahLabel(rewayah('x', 'Hafs', [1]))).toBe('Murattal · Hafs');
-    expect(rewayahLabel({...rewayah('x', 'Hafs', [1]), style: ''})).toBe(
-      'Hafs',
+  it('joins style and rewayah in their display names', () => {
+    expect(rewayahLabel(rewayah('x', "Hafs A'n Assem", [1]))).toBe(
+      "Murattal · Hafs 'an 'Asim",
     );
+    expect(
+      rewayahLabel({...rewayah('x', "Hafs A'n Assem", [1]), style: 'molim'}),
+    ).toBe("Teaching · Hafs 'an 'Asim");
+    expect(
+      rewayahLabel({...rewayah('x', 'Hafs', [1]), style: 'mojawwad'}),
+    ).toBe("Mujawwad · Hafs 'an 'Asim");
+    expect(
+      rewayahLabel({...rewayah('x', 'Something New', [1]), style: ''}),
+    ).toBe('Something New');
     expect(rewayahLabel(null)).toBe('');
+  });
+});
+
+describe('the current reciter in the Reciter panel', () => {
+  const styled = (id: string, style: string): Rewayah => ({
+    ...rewayah(id, "Hafs A'n Assem", all),
+    style,
+  });
+  const hussary = reciter('h', 'Mahmoud Khalil Al-Hussary', [
+    styled('h-mj', 'mojawwad'),
+    styled('h-mr', 'murattal'),
+    styled('h-ml', 'molim'),
+  ]);
+
+  it('shows the recitation playing now, then its other styles', () => {
+    const choices = reciterChoicesForSurah([hussary, amy], 2, {
+      currentId: 'h',
+      currentRewayahId: 'h-mr',
+      preferredIds: [],
+      limit: 10,
+    });
+    expect(choices.map(c => c.rewayah.id)).toEqual([
+      'h-mr',
+      'h-mj',
+      'h-ml',
+      'y1',
+    ]);
+  });
+
+  it('keeps the style when switching to another reciter', () => {
+    expect(rewayahForSurah(hussary, 2, 'hafs', 'murattal')?.id).toBe('h-mr');
+    expect(rewayahForSurah(hussary, 2, 'hafs', 'molim')?.id).toBe('h-ml');
+    expect(rewayahForSurah(hussary, 2, 'warsh', 'murattal')?.id).toBe('h-mr');
+  });
+});
+
+describe('queueInVoice', () => {
+  const item = (
+    reciterId: string,
+    rewayahId: string,
+    surahNumber: number,
+  ): QueueItem => ({
+    reciterId,
+    rewayahId,
+    surahNumber,
+    audioUrl: `https://${reciterId}/${surahNumber}`,
+    title: `S${surahNumber}`,
+    subtitle: reciterId,
+  });
+  // The new voice has every surah but 3.
+  const swap = (q: QueueItem): QueueItem | null =>
+    q.surahNumber === 3 ? null : item('new', 'n1', q.surahNumber);
+
+  it('changes only the surah playing in a playlist', () => {
+    const playlist = [
+      item('a', 'a1', 1),
+      item('b', 'b1', 5),
+      item('a', 'a1', 9),
+    ];
+    const result = queueInVoice(playlist, 1, 114, swap);
+    expect(result.index).toBe(1);
+    expect(result.queue.map(q => `${q.reciterId}:${q.surahNumber}`)).toEqual([
+      'a:1',
+      'new:5',
+      'a:9',
+    ]);
+  });
+
+  it("keeps a filtered list of one reciter's surahs as it was", () => {
+    const juz = [item('a', 'a1', 78), item('a', 'a1', 79), item('a', 'a1', 80)];
+    const result = queueInVoice(juz, 0, 114, swap);
+    expect(result.queue.map(q => q.reciterId)).toEqual(['new', 'a', 'a']);
+  });
+
+  it("carries a reciter's whole recitation on in the new voice, in its order", () => {
+    const whole = [4, 3, 1, 2].map(n => item('a', 'a1', n));
+    const result = queueInVoice(whole, 2, 4, swap);
+    expect(result.queue.map(q => `${q.reciterId}:${q.surahNumber}`)).toEqual([
+      'new:4',
+      'new:1',
+      'new:2',
+    ]);
+    expect(result.index).toBe(1);
   });
 });

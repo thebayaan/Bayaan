@@ -36,8 +36,10 @@ import {
   type AudioFocusOwner,
 } from './audioFocus';
 import type {MediaTransport} from './mediaTransport';
+import {isEndOfMediaPause} from './mediaEnd';
 import {MEDIA_SEEK_SECONDS} from './remoteKeys';
-import {claimTransport} from './transportGate';
+import {claimTransport, type TransportChannel} from './transportGate';
+import {useNavStore} from '../store/navStore';
 
 export type {AudioEngine, EngineEvent, EngineStatus} from './audioEngineTypes';
 
@@ -62,8 +64,9 @@ export function attachMediaControls(
 }
 
 /**
- * Media-control commands for one engine. Without a transport (the adhkar
- * reader's engine) the default W3C handling drives its element, still gated.
+ * Media-control commands for one engine. Without a transport (an engine
+ * nothing answers for) the default W3C handling drives its element, still
+ * gated.
  */
 class TransportHandler extends KeplerMediaControlHandler {
   private readonly transport: () => MediaTransport | null;
@@ -73,15 +76,30 @@ class TransportHandler extends KeplerMediaControlHandler {
     this.transport = transport;
   }
 
+  /**
+   * Claims the transport gate for a system command. The adhkar reader
+   * handles every transport key itself (see screenOwnsMediaKey): while it
+   * is on top the recitation's controls stand aside without claiming, so
+   * the key event that follows reaches the reader instead of being dropped
+   * as a repeat.
+   */
+  private claim(channel: TransportChannel): boolean {
+    if (this.transport() !== null) {
+      const {stack} = useNavStore.getState();
+      if (stack[stack.length - 1]?.screen === 'adhkarReader') return false;
+    }
+    return claimTransport('system', channel);
+  }
+
   async handleTogglePlayPause(sessionId?: IMediaSessionId): Promise<void> {
-    if (!claimTransport('system', 'playPause')) return;
+    if (!this.claim('playPause')) return;
     const transport = this.transport();
     if (transport) transport.toggle();
     else await super.handleTogglePlayPause(sessionId);
   }
 
   async handlePlay(sessionId?: IMediaSessionId): Promise<void> {
-    if (!claimTransport('system', 'playPause')) return;
+    if (!this.claim('playPause')) return;
     const transport = this.transport();
     if (transport) transport.play();
     else await super.handlePlay(sessionId);
@@ -91,35 +109,35 @@ class TransportHandler extends KeplerMediaControlHandler {
     sessionId?: IMediaSessionId,
     context?: ICommandContext,
   ): Promise<void> {
-    if (!claimTransport('system', 'playPause')) return;
+    if (!this.claim('playPause')) return;
     const transport = this.transport();
     if (transport) transport.pause();
     else await super.handlePause(sessionId, context);
   }
 
   async handleNext(sessionId?: IMediaSessionId): Promise<void> {
-    if (!claimTransport('system', 'track')) return;
+    if (!this.claim('track')) return;
     const transport = this.transport();
     if (transport) transport.next();
     else await super.handleNext(sessionId);
   }
 
   async handlePrevious(): Promise<void> {
-    if (!claimTransport('system', 'track')) return;
+    if (!this.claim('track')) return;
     const transport = this.transport();
     if (transport) transport.previous();
     else await super.handlePrevious();
   }
 
   async handleFastForward(sessionId?: IMediaSessionId): Promise<void> {
-    if (!claimTransport('system', 'seek')) return;
+    if (!this.claim('seek')) return;
     const transport = this.transport();
     if (transport) transport.seekBy(MEDIA_SEEK_SECONDS);
     else await super.handleFastForward(sessionId);
   }
 
   async handleRewind(sessionId?: IMediaSessionId): Promise<void> {
-    if (!claimTransport('system', 'seek')) return;
+    if (!this.claim('seek')) return;
     const transport = this.transport();
     if (transport) transport.seekBy(-MEDIA_SEEK_SECONDS);
     else await super.handleRewind(sessionId);
@@ -129,7 +147,7 @@ class TransportHandler extends KeplerMediaControlHandler {
     delta: ITimeValue,
     sessionId?: IMediaSessionId,
   ): Promise<void> {
-    if (!claimTransport('system', 'seek')) return;
+    if (!this.claim('seek')) return;
     const transport = this.transport();
     if (transport) transport.seekBy(Math.abs(toSeconds(delta)));
     else await super.handleSkipForward(delta, sessionId);
@@ -139,7 +157,7 @@ class TransportHandler extends KeplerMediaControlHandler {
     delta: ITimeValue,
     sessionId?: IMediaSessionId,
   ): Promise<void> {
-    if (!claimTransport('system', 'seek')) return;
+    if (!this.claim('seek')) return;
     const transport = this.transport();
     if (transport) transport.seekBy(-Math.abs(toSeconds(delta)));
     else await super.handleSkipBackward(delta, sessionId);
@@ -198,7 +216,22 @@ export function createAudioEngine(): AudioEngine {
   }
 
   const onPlaying = (): void => setStatus('playing');
-  const onPause = (): void => setStatus('paused');
+  // The pause that comes just before `ended` (see mediaEnd.ts) is left out,
+  // so the store sees playing -> idle and moves on.
+  const onPause = (): void => {
+    const audio = player;
+    if (
+      audio &&
+      isEndOfMediaPause(
+        finiteOr(audio.currentTime, 0),
+        finiteOr(audio.duration, 0),
+        (audio as {ended?: boolean}).ended === true,
+      )
+    ) {
+      return;
+    }
+    setStatus('paused');
+  };
   const onWaiting = (): void => setStatus('buffering');
   const onEnded = (): void => setStatus('idle');
   const onError = (): void => setStatus('error');

@@ -117,7 +117,7 @@ const ReciterRow = React.memo(function ReciterRow({
         {detail ? (
           <FocusText
             style={styles.detail}
-            color={colors.textTertiary}
+            color={colors.textSecondary}
             focusedColor={colors.onFocusSecondary}
             numberOfLines={1}>
             {detail}
@@ -160,11 +160,15 @@ const styles = createScaledStyles({
     right: 0,
     bottom: 0,
     width: 620,
-    backgroundColor: 'rgba(6,21,28,0.96)',
+    // Opaque: nothing of the screen behind shows through the rows.
+    backgroundColor: colors.surface,
     borderLeftWidth: 1,
     borderLeftColor: colors.border,
     paddingTop: 64,
-    paddingHorizontal: 40,
+    paddingLeft: 40,
+    // The panel is flush right: a focused row stays inside the title-safe
+    // area instead of running to 40px from the screen's edge.
+    paddingRight: 80,
   },
   title: {
     color: colors.text,
@@ -180,7 +184,7 @@ const styles = createScaledStyles({
     color: colors.accent,
     fontFamily: fonts.bold,
     fontWeight: '700',
-    fontSize: 14,
+    fontSize: 16,
     letterSpacing: 2.5,
     textTransform: 'uppercase',
     paddingHorizontal: 20,
@@ -214,7 +218,7 @@ const styles = createScaledStyles({
   detail: {
     fontFamily: fonts.medium,
     fontWeight: '500',
-    fontSize: 16,
+    fontSize: 18,
     marginTop: 2,
   },
 });

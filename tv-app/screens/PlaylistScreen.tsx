@@ -3,6 +3,7 @@ import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {Text, TVFocusGuideView, View} from 'react-native';
 import {GradientFill} from '../components/brand/GradientFill';
 import {SurahGlyph} from '../components/brand/SurahGlyph';
+import {FocusWatch} from '../components/library/FocusWatch';
 import {PencilIcon} from '../components/library/LibraryIcons';
 import {FocusableButton} from '../components/primitives/FocusableButton';
 import {FocusIcon, FocusText} from '../components/primitives/focusContext';
@@ -10,7 +11,7 @@ import {usePlaylist} from '../hooks/usePlaylists';
 import {useReciters} from '../hooks/useReciters';
 import {rewayahFamily, rewayahShortName} from '../services/browseCatalog';
 import {cellHeightLayout} from '../components/browse/gridLayout';
-import {playlistCaption} from '../services/libraryShelf';
+import {focusLibraryTile, playlistCaption} from '../services/libraryShelf';
 import {shortReciterName} from '../services/listeningChoices';
 import {playOrOpen, surahTitle} from '../services/playbackRouting';
 import {playlistGradient} from '../services/playlistFormat';
@@ -44,9 +45,16 @@ const ART = 300;
 /** How long the Delete button waits for its second press. */
 const CONFIRM_MS = 4000;
 
-// The row last played from, per playlist, so Back from the player lands on
-// it rather than on Play.
-const lastRow = new Map<string, number>();
+/**
+ * FlashList v2 keeps the first visible row's key in place when the data
+ * changes, so moving the top row down scrolled the list by a row and pushed
+ * the new first row off the top. A playlist keeps its scroll instead. Typed
+ * loosely: Vega's FlashList v1 types this prop differently, and its shim
+ * drops it (v1 never anchors).
+ */
+const KEEP_SCROLL = {
+  maintainVisibleContentPosition: {disabled: true},
+} as object;
 
 function itemKey(item: PlaylistItem): string {
   return `${item.surahNumber}:${item.reciterId}:${item.rewayahId ?? ''}`;
@@ -63,7 +71,7 @@ export function PlaylistScreen({playlistId}: Props): React.ReactElement {
   const {reciters} = useReciters();
   const push = useNavStore(s => s.push);
   const pop = useNavStore(s => s.pop);
-  const switchTab = useNavStore(s => s.switchTab);
+  const jumpTo = useNavStore(s => s.jumpTo);
   const [confirmDelete, setConfirmDelete] = useState<boolean>(false);
 
   const reciterById = useMemo(
@@ -82,14 +90,19 @@ export function PlaylistScreen({playlistId}: Props): React.ReactElement {
   const itemsRef = useRef(items);
   itemsRef.current = items;
 
-  // Which row takes focus: the one played from last (coming back from the
-  // player), or after a row's menu closes, that row (moved) or the one now
-  // in its place (removed). Dropped once it has landed.
-  const [focusRow, setFocusRow] = useState<number | null>(() => {
-    const row = lastRow.get(playlistId);
-    return row !== undefined && row < items.length ? row : null;
-  });
-  const initialRow = useRef<number | null>(focusRow).current;
+  // Which row takes focus after a row's menu closes: that row (moved) or the
+  // one now in its place (removed). Dropped once it has landed. (Back from
+  // the player lands on the row played from by itself: the screen stays
+  // mounted under the player, see ScreenLayer.)
+  const [focusRow, setFocusRow] = useState<number | null>(null);
+  // Play takes focus when the page opens, then lets go: tvOS asks again on
+  // every layout of a view that keeps the prop, which would pull focus off
+  // the row Back from the player landed on (the page stays mounted).
+  const [preferPlay, setPreferPlay] = useState(true);
+  useEffect(() => {
+    const timer = setTimeout(() => setPreferPlay(false), 1500);
+    return () => clearTimeout(timer);
+  }, []);
   useEffect(() => {
     if (focusRow === null) return;
     const timer = setTimeout(() => setFocusRow(null), 1500);
@@ -128,19 +141,22 @@ export function PlaylistScreen({playlistId}: Props): React.ReactElement {
     });
   }, [playlistId]);
 
-  // The second press of Delete must come soon after the first.
+  // The second press of Delete must come soon after the first, and on the
+  // button: moving off it disarms it.
   useEffect(() => {
     if (!confirmDelete) return;
     const timer = setTimeout(() => setConfirmDelete(false), CONFIRM_MS);
     return () => clearTimeout(timer);
   }, [confirmDelete]);
+  const onDeleteFocus = useCallback((focused: boolean): void => {
+    if (!focused) setConfirmDelete(false);
+  }, []);
 
   const playFrom = useCallback(
     (index: number, shuffle = false): void => {
       const list = itemsRef.current;
       const from = list[index];
       if (!from) return;
-      if (!shuffle) lastRow.set(playlistId, index);
       void playOrOpen({
         ...from,
         queue: list,
@@ -245,7 +261,6 @@ export function PlaylistScreen({playlistId}: Props): React.ReactElement {
       return;
     }
     removePlaylist(playlist.id);
-    lastRow.delete(playlist.id);
     showToast(`Deleted ${playlist.name}`);
     pop();
   }
@@ -260,7 +275,11 @@ export function PlaylistScreen({playlistId}: Props): React.ReactElement {
           />
           <View style={styles.artGlyph}>
             {hasItems ? (
-              <SurahGlyph surahNumber={items[0].surahNumber} size={120} />
+              <SurahGlyph
+                surahNumber={items[0].surahNumber}
+                size={120}
+                fitWidth={ART - 40}
+              />
             ) : (
               <PlaylistIcon color={colors.textSecondary} size={scale(80)} />
             )}
@@ -279,7 +298,7 @@ export function PlaylistScreen({playlistId}: Props): React.ReactElement {
               <FocusableButton
                 onPress={() => playFrom(0)}
                 accessibilityLabel={`Play ${playlist.name}`}
-                hasTVPreferredFocus={initialRow === null}
+                hasTVPreferredFocus={preferPlay}
                 outlined
                 style={styles.btn}>
                 <View style={styles.btnInner}>
@@ -320,6 +339,7 @@ export function PlaylistScreen({playlistId}: Props): React.ReactElement {
                   : 'Delete playlist'
               }
               style={styles.btn}>
+              <FocusWatch onChange={onDeleteFocus} />
               <View style={styles.btnInner}>
                 <FocusIcon icon={TrashIcon} size={22} />
                 <FocusText style={styles.btnText}>
@@ -332,9 +352,9 @@ export function PlaylistScreen({playlistId}: Props): React.ReactElement {
       </View>
 
       {hasItems ? (
+        // Up from the first row reaches the now-playing pill above it.
         <TVFocusGuideView
           autoFocus
-          trapFocusUp
           trapFocusDown
           trapFocusRight
           style={styles.list}>
@@ -344,9 +364,7 @@ export function PlaylistScreen({playlistId}: Props): React.ReactElement {
             keyExtractor={itemKey}
             overrideItemLayout={rowLayout}
             extraData={focusRow}
-            initialScrollIndex={
-              initialRow !== null && initialRow > 0 ? initialRow : undefined
-            }
+            {...KEEP_SCROLL}
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
           />
@@ -358,7 +376,11 @@ export function PlaylistScreen({playlistId}: Props): React.ReactElement {
             Hold OK on any surah and choose Add to playlist.
           </Text>
           <FocusableButton
-            onPress={() => switchTab('surahs')}
+            onPress={() => {
+              // The Library opens on this playlist when you come back to it.
+              focusLibraryTile('playlists', `p:${playlist.id}`);
+              jumpTo('surahs');
+            }}
             accessibilityLabel="Browse surahs"
             hasTVPreferredFocus
             outlined
@@ -398,7 +420,7 @@ const styles = createScaledStyles({
   },
   artGlyph: {flex: 1, alignItems: 'center', justifyContent: 'center'},
   kicker: {
-    color: colors.textTertiary,
+    color: colors.accent,
     fontFamily: fonts.extraBold,
     fontSize: 16,
     fontWeight: '800',
@@ -426,7 +448,8 @@ const styles = createScaledStyles({
   btnInner: {flexDirection: 'row', alignItems: 'center', gap: 12},
   btnText: {fontFamily: fonts.bold, fontSize: 22, fontWeight: '700'},
   list: {flex: 1},
-  listContent: {paddingBottom: 120},
+  // Clear of the now-playing pill drawn top right (its bottom is at 116).
+  listContent: {paddingTop: 40, paddingBottom: 120},
   cell: {height: ROW_HEIGHT, paddingVertical: 4},
   rowWrap: {flex: 1},
   row: {

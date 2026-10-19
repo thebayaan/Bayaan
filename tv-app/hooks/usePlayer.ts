@@ -1,5 +1,5 @@
 import {recordVisit} from '../services/recentlyPlayedStore';
-import {rewayahQueue, shuffled} from '../services/playbackRouting';
+import {rewayahQueue} from '../services/playbackRouting';
 import {useTVPlayerStore} from '../store/tvPlayerStore';
 import type {Rewayah} from '../types/reciter';
 
@@ -15,18 +15,6 @@ export type UsePlayerReturn = {
     rewayah: Rewayah,
     startSurahNumber: number,
     opts?: {shuffle?: boolean; startSeconds?: number},
-  ) => Promise<void>;
-  shufflePlayRewayah: (
-    reciterId: string,
-    reciterName: string,
-    rewayah: Rewayah,
-  ) => Promise<void>;
-  resumeContinue: (
-    reciterId: string,
-    reciterName: string,
-    rewayah: Rewayah,
-    surahNumber: number,
-    positionSeconds: number,
   ) => Promise<void>;
 };
 
@@ -46,29 +34,5 @@ export function usePlayer(): UsePlayerReturn {
     await loadQueue(queue, idx >= 0 ? idx : 0, opts);
   };
 
-  const shufflePlayRewayah = async (
-    reciterId: string,
-    reciterName: string,
-    rewayah: Rewayah,
-  ): Promise<void> => {
-    const queue = shuffled(
-      rewayahQueue({id: reciterId, name: reciterName}, rewayah),
-    );
-    if (queue.length === 0) return;
-    recordVisit(reciterId);
-    await loadQueue(queue, 0, {shuffle: true});
-  };
-
-  const resumeContinue = (
-    reciterId: string,
-    reciterName: string,
-    rewayah: Rewayah,
-    surahNumber: number,
-    positionSeconds: number,
-  ): Promise<void> =>
-    playRewayah(reciterId, reciterName, rewayah, surahNumber, {
-      startSeconds: positionSeconds,
-    });
-
-  return {playRewayah, shufflePlayRewayah, resumeContinue};
+  return {playRewayah};
 }

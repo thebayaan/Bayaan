@@ -11,7 +11,7 @@ const FADE_MS = 900;
 /** The hint's words: what OK, Left/Right and holding OK do here. */
 export function hintText(synced: boolean): string {
   return synced
-    ? 'OK for controls  ·  Left / Right for a verse  ·  Hold OK to repeat it'
+    ? 'OK for controls  ·  Left / Right for a verse  ·  Hold OK to repeat it, again to stop'
     : 'OK for controls  ·  Left / Right to skip 15 seconds';
 }
 

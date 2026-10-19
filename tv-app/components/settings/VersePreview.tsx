@@ -2,7 +2,8 @@ import React from 'react';
 import {Text, View} from 'react-native';
 import {GlowBackdrop} from '../listening/GlowBackdrop';
 import {SurahGlyph} from '../brand/SurahGlyph';
-import {useVerseSync} from '../../hooks/useVerseSync';
+import {usePreviewTranslation} from '../../hooks/usePreviewTranslation';
+import {getArabicVerses} from '../../services/verseData';
 import {textScale, useDisplayStore} from '../../store/displayStore';
 import {colors} from '../../theme/colors';
 import {quranTextFontAvailable} from '../../theme/calligraphy';
@@ -11,9 +12,6 @@ import {createScaledStyles, scale} from '../../theme/scale';
 
 /** Al-Mulk opens the preview, as in the approved Settings screen. */
 const PREVIEW_SURAH = 67;
-/** Shown until (or unless) the chosen translation loads. */
-const FALLBACK_TRANSLATION =
-  'Blessed is He in whose hand is dominion, and He is over all things competent.';
 
 type Props = {
   /** The bigger layout beside an open picker. */
@@ -29,17 +27,17 @@ export function VersePreview({large = false}: Props): React.ReactElement {
   const mode = useDisplayStore(s => s.mode);
   const edition = useDisplayStore(s => s.edition);
   const size = useDisplayStore(s => s.textSize);
-  const {arabic, translation} = useVerseSync(
+  // The Arabic is bundled; the translation keeps the last one loaded while
+  // a new choice loads, and says so when it can't load (offline).
+  const arabic = getArabicVerses(PREVIEW_SURAH);
+  const {line: translationText, offline} = usePreviewTranslation(
     PREVIEW_SURAH,
-    undefined,
-    '',
+    1,
     edition,
   );
   const factor = textScale(size) * (large ? 1 : 0.72);
   const showArabic = mode === 'both' || mode === 'arabic';
   const showTranslation = mode === 'both' || mode === 'translation';
-  const translationText =
-    translation?.[0] ?? (edition === 'en.sahih' ? FALLBACK_TRANSLATION : '');
   // Inline sizes miss createScaledStyles, so they go through scale() here
   // (SurahGlyph scales its own size).
   const arabicSize = scale(52 * factor);
@@ -66,10 +64,17 @@ export function VersePreview({large = false}: Props): React.ReactElement {
         ) : null}
         {showTranslation && translationText ? (
           <Text
-            style={[
-              styles.translation,
-              {fontSize: translationSize, lineHeight: translationSize * 1.45},
-            ]}>
+            style={
+              offline
+                ? styles.offline
+                : [
+                    styles.translation,
+                    {
+                      fontSize: translationSize,
+                      lineHeight: translationSize * 1.45,
+                    },
+                  ]
+            }>
             {translationText}
           </Text>
         ) : null}
@@ -109,11 +114,18 @@ const styles = createScaledStyles({
     fontWeight: '500',
     textAlign: 'center',
   },
+  offline: {
+    color: colors.textSecondary,
+    fontFamily: fonts.medium,
+    fontWeight: '500',
+    fontSize: 20,
+    textAlign: 'center',
+  },
   reference: {
     color: colors.accent,
     fontFamily: fonts.bold,
     fontWeight: '700',
-    fontSize: 15,
+    fontSize: 16,
     letterSpacing: 2.4,
     textTransform: 'uppercase',
     marginTop: 6,

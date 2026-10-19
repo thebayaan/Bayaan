@@ -240,3 +240,74 @@ export function playlistCaption(
   }
   return `${size} · ${voices.size} reciters`;
 }
+
+/**
+ * A surah's title as A–Z sorts it: without the article ("Al-Mulk" under M,
+ * "Ar-Rahman" under R), or most surahs would pile up under A.
+ */
+export function surahSortName(title: string): string {
+  return title.replace(/^a(?:l|n|r|s|t|d|z|dh|sh)-/i, '');
+}
+
+const TAB_ORDER: readonly ShelfFilter[] = ['playlists', 'loved', 'reciters'];
+
+/**
+ * The tab the Library opens on: the one left last (this session), else the
+ * first with something in it, so someone who only loves surahs does not land
+ * on an empty Playlists tab every launch.
+ */
+export function openingFilter(
+  counts: Record<ShelfFilter, number>,
+  remembered: ShelfFilter | null,
+): ShelfFilter {
+  if (remembered) return remembered;
+  return TAB_ORDER.find(f => counts[f] > 0) ?? 'playlists';
+}
+
+/** A tile the Library put focus on, under the tab and sort it was in. */
+export type LibraryTile = {
+  filter: ShelfFilter;
+  sort: ShelfSort;
+  key: string;
+  index: number;
+};
+
+// Where the Library was left, kept for the session: the screen remounts
+// after a tab switch and under the player. Not persisted; a fresh launch
+// opens on openingFilter.
+const place: {
+  filter: ShelfFilter | null;
+  sort: ShelfSort;
+  tile: LibraryTile | null;
+} = {filter: null, sort: 'recent', tile: null};
+
+// A tile to focus when the Library is next shown (see focusLibraryTile).
+let wanted: {filter: ShelfFilter; key: string} | null = null;
+
+/** The Library's remembered tab, sort and tile. */
+export function libraryPlace(): Readonly<typeof place> {
+  return place;
+}
+
+export function rememberLibraryPlace(change: Partial<typeof place>): void {
+  Object.assign(place, change);
+}
+
+/**
+ * Asks the Library to focus a tile when it is next shown: a playlist just
+ * made from it (Back from the new playlist lands on it, not on New playlist),
+ * or the playlist an empty playlist's Browse surahs left. A mounted, covered
+ * Library takes it with takeLibraryFocus; a remounted one opens on it.
+ */
+export function focusLibraryTile(filter: ShelfFilter, key: string): void {
+  wanted = {filter, key};
+  place.filter = filter;
+  place.tile = {filter, sort: place.sort, key, index: 0};
+}
+
+/** The tile asked for by focusLibraryTile, once. */
+export function takeLibraryFocus(): {filter: ShelfFilter; key: string} | null {
+  const was = wanted;
+  wanted = null;
+  return was;
+}

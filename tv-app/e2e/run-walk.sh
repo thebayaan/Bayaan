@@ -8,10 +8,30 @@
 #
 # Fails if the app is not running at the end of the walk.
 #
+# A key can carry a repeat count: "up*7" presses Up seven times (1 to 30;
+# arrows, select, back and playpause only).
+#
 # DRY_RUN=1 run-walk.sh <android|tvos> [out-dir]
 #   Checks walk.txt and prints every step's key presses (as the device would
 #   get them) without touching a device. Exits non-zero on a malformed line
 #   or an unknown key.
+#
+# tvOS Play/Pause: the Apple TV simulator has no keyboard key for the
+# remote's Play/Pause (Apple's simulator guide maps only the arrows, Return
+# and Escape; Space arrives as a plain keyboard press, never as
+# UIPressTypePlayPause, so react-native-tvos sends no 'playPause' event), and
+# idb can't send one either (`idb ui button` knows APPLE_PAY, HOME, LOCK,
+# SIDE_BUTTON and SIRI; `idb ui key` sends keyboard usages only). So on tvOS
+# a playpause is sent only through TVOS_PLAYPAUSE_CMD when it is set (run
+# with the simulator's UDID as $DEVICE, e.g. a UI-test runner pressing
+# XCUIRemote's playPause); otherwise it is skipped, and every step that
+# needed it is listed in <out-dir>/logs/unverified.txt, so its frame is read
+# as unverified on Apple TV, not as a failure. Android is unchanged.
+#
+# tvOS start: the runner waits for the simulator to finish booting
+# (simctl bootstatus -b), for the app to run, and for the screen to stop
+# showing the boot logo (a mostly black frame, a small PNG) before the first
+# step, for up to TVOS_SETTLE_SECONDS (default 240).
 #
 # "hold" is a long press of OK (Select held for HOLD_SECONDS, default 1.5):
 # React Native fires onLongPress after 500 ms of a held press on both
@@ -30,6 +50,10 @@ DEVICE=${3:-}
 APP_ID=${APP_ID:-com.bayaan.tvsmoke}
 WALK=${WALK:-$(dirname "$0")/walk.txt}
 HOLD_SECONDS=${HOLD_SECONDS:-1.5}
+TVOS_PLAYPAUSE_CMD=${TVOS_PLAYPAUSE_CMD:-}
+TVOS_SETTLE_SECONDS=${TVOS_SETTLE_SECONDS:-240}
+# A full-screen frame of the app is far larger than the boot logo's PNG.
+BOOT_FRAME_MAX_BYTES=${BOOT_FRAME_MAX_BYTES:-150000}
 
 case $PLATFORM in
   android | tvos) ;;
@@ -46,8 +70,8 @@ adb_() {
 }
 
 # tvOS simulator remote presses go through idb as hardware keyboard HID
-# usages: arrows move focus, Return selects, Escape is Menu (back), Space is
-# play/pause.
+# usages: arrows move focus, Return selects, Escape is Menu (back). There is
+# no usage for Play/Pause (see TVOS_PLAYPAUSE_CMD above).
 tvos_hid() {
   case $1 in
     up) echo 82 ;;
@@ -56,7 +80,6 @@ tvos_hid() {
     right) echo 79 ;;
     select) echo 40 ;;
     back) echo 41 ;;
-    playpause) echo 44 ;;
   esac
 }
 
@@ -70,6 +93,22 @@ android_keycode() {
     back) echo KEYCODE_BACK ;;
     playpause) echo KEYCODE_MEDIA_PLAY_PAUSE ;;
   esac
+}
+
+# The walk's key tokens with repeats spelled out ("up*3" -> up up up). A
+# repeat on a key that can't take one is left as is, so valid_key rejects it.
+expand_keys() {
+  local tok key n i
+  for tok in "$@"; do
+    if [[ $tok =~ ^(up|down|left|right|select|back|playpause|none)\*([0-9]+)$ ]] &&
+      ((10#${BASH_REMATCH[2]} >= 1 && 10#${BASH_REMATCH[2]} <= 30)); then
+      key=${BASH_REMATCH[1]}
+      n=$((10#${BASH_REMATCH[2]}))
+      for ((i = 0; i < n; i++)); do echo "$key"; done
+    else
+      echo "$tok"
+    fi
+  done
 }
 
 # Whether a token is something press() knows.
@@ -170,10 +209,37 @@ app_running() {
   fi
 }
 
+# The step being walked, for logs/unverified.txt.
+STEP=
+
+# tvOS Play/Pause (see TVOS_PLAYPAUSE_CMD above).
+playpause_tvos() {
+  if [[ -n $TVOS_PLAYPAUSE_CMD ]]; then
+    DEVICE=$DEVICE bash -c "$TVOS_PLAYPAUSE_CMD" ||
+      echo "step $STEP: TVOS_PLAYPAUSE_CMD failed" >&2
+    return
+  fi
+  echo "step $STEP: playpause not sent (no tvOS simulator path); frame unverified"
+  grep -qx "$STEP" "$OUT_DIR/logs/unverified.txt" 2>/dev/null ||
+    echo "$STEP" >>"$OUT_DIR/logs/unverified.txt"
+}
+
 press() {
   local key=$1
   case $key in
-    none) return ;;
+    # A pause: lets a slow redraw land before the next key (the Reciter
+    # panel's close on the CI emulator takes over a second).
+    none)
+      sleep 1
+      return
+      ;;
+    playpause)
+      if [[ $PLATFORM == tvos ]]; then
+        playpause_tvos
+        sleep 1
+        return
+      fi
+      ;;
     hold)
       if [[ $PLATFORM == android ]]; then hold_android; else hold_tvos; fi
       sleep 1
@@ -238,7 +304,12 @@ if [[ $DRY_RUN == 1 ]]; then
     fi
     seen[$name]=$lineno
     out=()
-    for key in ${keys:-}; do
+    # read -a, not word splitting: a repeat's "*" must never glob.
+    toks=()
+    read -ra toks <<<"${keys:-}"
+    expanded=()
+    while IFS= read -r key; do expanded+=("$key"); done < <(expand_keys ${toks[@]+"${toks[@]}"})
+    for key in ${expanded[@]+"${expanded[@]}"}; do
       if ! valid_key "$key"; then
         echo "line $lineno ($name): unknown key '$key'" >&2
         errors=$((errors + 1))
@@ -251,6 +322,15 @@ if [[ $DRY_RUN == 1 ]]; then
             out+=("hold(DPAD_CENTER ${HOLD_SECONDS}s)")
           else
             out+=("hold(hid $(tvos_hid select) ${HOLD_SECONDS}s)")
+          fi
+          ;;
+        playpause)
+          if [[ $PLATFORM == android ]]; then
+            out+=("$(android_keycode "$key")")
+          elif [[ -n $TVOS_PLAYPAUSE_CMD ]]; then
+            out+=("playpause(cmd)")
+          else
+            out+=("playpause(unsent)")
           fi
           ;;
         *)
@@ -279,12 +359,60 @@ fi
 LOG_PID=$!
 trap 'kill $LOG_PID 2>/dev/null || true' EXIT
 
+# tvOS: the simulator must have finished booting, the app must be running
+# and the screen must show it (not the boot logo, which simctl's screenshot
+# keeps returning for a while after boot) before the first step.
+settle_tvos() {
+  local start=$SECONDS probe="$OUT_DIR/logs/settle.png" size
+  xcrun simctl bootstatus "$DEVICE" -b >/dev/null 2>&1 ||
+    echo "simctl bootstatus failed; carrying on" >&2
+  launch_app
+  while ! app_running; do
+    if ((SECONDS - start > TVOS_SETTLE_SECONDS)); then
+      echo "app not running after ${TVOS_SETTLE_SECONDS}s; relaunching" >&2
+      launch_app
+      break
+    fi
+    sleep 2
+  done
+  while :; do
+    # A probe left by an earlier run (or a failed shot) must never pass.
+    rm -f "$probe"
+    xcrun simctl io "$DEVICE" screenshot "$probe" >/dev/null 2>&1
+    size=$(wc -c <"$probe" 2>/dev/null || echo 0)
+    if ((size > BOOT_FRAME_MAX_BYTES)); then
+      echo "app on screen after $((SECONDS - start))s"
+      break
+    fi
+    if ((SECONDS - start > TVOS_SETTLE_SECONDS)); then
+      echo "screen still looks like the boot logo after ${TVOS_SETTLE_SECONDS}s; walking anyway" >&2
+      break
+    fi
+    sleep 5
+  done
+}
+
 STOPPED=()
-launch_app
+if [[ $PLATFORM == tvos ]]; then
+  : >"$OUT_DIR/logs/unverified.txt"
+  settle_tvos
+else
+  launch_app
+fi
 
 while read -r name wait keys <&3; do
   [[ -z "$name" || "$name" == \#* ]] && continue
-  for key in $keys; do
+  STEP=$name
+  if [[ $PLATFORM == android && $DRY_RUN != 1 ]]; then
+    adb_ shell log -t WALK "step $name" >/dev/null 2>&1 || true
+  fi
+  # read -a, not word splitting: a repeat's "*" must never glob. Built
+  # with a read loop (not mapfile) for the macOS runner's bash.
+  toks=()
+  read -ra toks <<<"$keys"
+  expanded=()
+  while IFS= read -r key; do expanded+=("$key"); done < <(expand_keys ${toks[@]+"${toks[@]}"})
+  for key in ${expanded[@]+"${expanded[@]}"}; do
     if ! valid_key "$key"; then
       echo "step $name: unknown key '$key' skipped (check with DRY_RUN=1)"
       continue
@@ -310,5 +438,8 @@ done 3<"$WALK"
 if ((${#STOPPED[@]} > 0)); then
   echo "App stopped running after: ${STOPPED[*]}"
   exit 1
+fi
+if [[ $PLATFORM == tvos && -s "$OUT_DIR/logs/unverified.txt" ]]; then
+  echo "Unverified on Apple TV (playpause not sent): $(tr '\n' ' ' <"$OUT_DIR/logs/unverified.txt")"
 fi
 echo "Walk finished with the app still running"

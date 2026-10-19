@@ -22,13 +22,16 @@ import {isLovedIn, toggleLovedSurah} from '../../services/lovedSurahsStore';
 import {surahMenuVoice} from '../../services/menuChoices';
 import {playOrOpen, surahTitle} from '../../services/playbackRouting';
 import {
-  addPlaylistItem,
   movePlaylistItem,
   playlistHas,
-  removePlaylistItem,
   type PlaylistItem,
 } from '../../services/playlistsStore';
-import {shortReciterName} from '../../services/listeningChoices';
+import {
+  NEW_PLAYLIST_LABEL,
+  removeFromPlaylist,
+  roomForPlaylist,
+  togglePlaylistItem,
+} from '../../services/playlistsPicker';
 import {pushScreenBack} from '../../services/screenBack';
 import {getCachedRewayat} from '../../services/tvDataService';
 import {showToast} from '../../store/toastStore';
@@ -41,7 +44,7 @@ import {
   TrashIcon,
 } from '../../../components/Icons';
 import {colors} from '../../theme/colors';
-import {createScaledStyles, scale} from '../../theme/scale';
+import {createScaledStyles} from '../../theme/scale';
 import type {Reciter} from '../../types/reciter';
 
 /**
@@ -134,6 +137,12 @@ function SurahMenu({target}: {target: SurahMenuTarget}): React.ReactElement {
 
   function handlePlay(): void {
     close({restoreFocus: false});
+    if (target.onPlay) {
+      // The place's own press (Surahs' filtered queue, the reciter page's
+      // order), so Play here and OK on the tile never differ.
+      target.onPlay();
+      return;
+    }
     if (inPlaylist && playlist) {
       // The playlist from this row on, like OK on the row.
       void playOrOpen({
@@ -169,7 +178,12 @@ function SurahMenu({target}: {target: SurahMenuTarget}): React.ReactElement {
   function handleReciter(): void {
     if (!reciter) return;
     close({restoreFocus: false});
-    push({screen: 'reciterDetail', reciterId: reciter.id});
+    // On the menu's recitation (a loved Warsh surah opens the Warsh tab).
+    push({
+      screen: 'reciterDetail',
+      reciterId: reciter.id,
+      ...(voice?.rewayahId ? {rewayahId: voice.rewayahId} : {}),
+    });
   }
 
   function handleRemoveContinue(): void {
@@ -188,36 +202,28 @@ function SurahMenu({target}: {target: SurahMenuTarget}): React.ReactElement {
   }
 
   function handleRemoveFromPlaylist(): void {
-    if (!inPlaylist || !target.playlistId) return;
-    removePlaylistItem(target.playlistId, index);
+    if (!inPlaylist || !playlist) return;
+    removeFromPlaylist(playlist, index);
     // The row is gone: the playlist screen focuses its neighbour.
     close({restoreFocus: false});
   }
 
   function handleNewPlaylist(): void {
-    if (!voice) return;
+    if (!voice || !roomForPlaylist(playlists.length)) return;
     close({restoreFocus: false});
     push({screen: 'playlistEdit', seed: voice});
-  }
-
-  function toggleIn(id: string, name: string, has: boolean): void {
-    if (!voice) return;
-    if (has) {
-      removePlaylistItem(id, voice);
-      return;
-    }
-    if (!addPlaylistItem(id, voice)) showToast(`${name} is full.`, 'error');
   }
 
   const art = (
     <View style={styles.art}>
       <SurahArtwork
         surahNumber={surahNumber}
-        glyphSize={34}
+        glyphSize={44}
         id={`surah-menu-${surahNumber}`}
       />
     </View>
   );
+  // One form of the name on both pages, so the header never changes.
   const subtitle = reciter ? reciter.name : undefined;
 
   // From a playlist row, that playlist is left out of the picker: taking
@@ -234,10 +240,10 @@ function SurahMenu({target}: {target: SurahMenuTarget}): React.ReactElement {
         art={art}
         kicker="ADD TO PLAYLIST"
         title={title}
-        subtitle={reciter ? shortReciterName(reciter.name) : undefined}>
+        subtitle={subtitle}>
         <MenuRow
           icon={<FocusIcon icon={PlusIcon} size={24} />}
-          label="New playlist…"
+          label={NEW_PLAYLIST_LABEL}
           onPress={handleNewPlaylist}
           hasTVPreferredFocus
           ref={preferredRow}
@@ -257,10 +263,17 @@ function SurahMenu({target}: {target: SurahMenuTarget}): React.ReactElement {
                   accessibilityLabel={
                     has ? `${p.name}, added. Remove` : `Add to ${p.name}`
                   }
-                  onPress={() => toggleIn(p.id, p.name, has)}
+                  onPress={() => {
+                    if (voice) togglePlaylistItem(p, voice, has);
+                  }}
                   trailing={
                     has ? (
-                      <CheckIcon color={colors.accent} size={scale(24)} />
+                      // Sky at rest, ink on the cream, like every check.
+                      <FocusIcon
+                        icon={CheckIcon}
+                        color={colors.accent}
+                        size={24}
+                      />
                     ) : null
                   }
                 />
@@ -294,9 +307,11 @@ function SurahMenu({target}: {target: SurahMenuTarget}): React.ReactElement {
       {voice ? (
         <MenuRow
           icon={<FocusIcon icon={HeartIcon} size={24} filled={isLoved} />}
-          label={isLoved ? 'Unlike' : 'Like'}
+          label={isLoved ? 'Remove from Loved' : 'Love'}
           accessibilityLabel={
-            isLoved ? `Unlike ${title}` : `Like ${title} in this voice`
+            isLoved
+              ? `Remove ${title} from Loved`
+              : `Love ${title} in this voice`
           }
           onPress={handleLove}
         />
@@ -364,6 +379,9 @@ function SurahMenu({target}: {target: SurahMenuTarget}): React.ReactElement {
   );
 }
 
+/** Room around the playlist rows for a focused row's scale. */
+const PICK_ROOM = 12;
+
 const styles = createScaledStyles({
   art: {
     width: 88,
@@ -373,6 +391,8 @@ const styles = createScaledStyles({
     overflow: 'hidden',
   },
   // Long lists scroll inside the sheet; focus scrolls them.
-  pickList: {maxHeight: 420},
-  pickContent: {gap: 4},
+  // The list reaches past the rows' edges by the room a focused row's 1.03
+  // scale takes, so it isn't clipped narrower than the rows above it.
+  pickList: {maxHeight: 420 + 2 * PICK_ROOM, margin: -PICK_ROOM},
+  pickContent: {gap: 4, padding: PICK_ROOM},
 });

@@ -1,10 +1,12 @@
 import ikhlas from './__fixtures__/timings/hafs-112.json';
-import {storage} from './storage';
+import {storage, writeJSON} from './storage';
 import {
   fetchTimings,
   fetchTranslation,
   getArabicVerses,
   getBasmala,
+  cleanTranslationText,
+  FETCH_TIMEOUT_MS,
   TIMESTAMP_CDN,
 } from './verseData';
 
@@ -36,7 +38,7 @@ describe('fetchTimings', () => {
   it('fetches the padded CDN path and caches the result', async () => {
     const fetchImpl = jest.fn().mockResolvedValue(response(200, ikhlas));
     const first = await fetchTimings('rw-1', 112, fetchImpl);
-    expect(fetchImpl).toHaveBeenCalledWith(`${TIMESTAMP_CDN}/rw-1/112.json`);
+    expect(fetchImpl.mock.calls[0][0]).toBe(`${TIMESTAMP_CDN}/rw-1/112.json`);
     expect(first).toHaveLength(4);
     const second = await fetchTimings('rw-1', 112, fetchImpl);
     expect(second).toEqual(first);
@@ -78,5 +80,36 @@ describe('fetchTranslation', () => {
     ]);
     await fetchTranslation('en.sahih', 108, fetchImpl);
     expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it("closes up Saheeh's run-on dash, fresh or cached", async () => {
+    const fetchImpl = jest.fn().mockResolvedValue(
+      response(200, {
+        data: {ayahs: [{numberInSurah: 1, text: 'Lord of the worlds -'}]},
+      }),
+    );
+    expect(await fetchTranslation('en.sahih', 1, fetchImpl)).toEqual([
+      'Lord of the worlds—',
+    ]);
+    expect(await fetchTranslation('en.sahih', 1, fetchImpl)).toEqual([
+      'Lord of the worlds—',
+    ]);
+    expect(cleanTranslationText('pre-dawn')).toBe('pre-dawn');
+    // A cached gap reads back as null and is passed over, not thrown on.
+    expect(cleanTranslationText(null as unknown as string)).toBeNull();
+  });
+
+  it('gives up on a request that never answers', async () => {
+    jest.useFakeTimers();
+    try {
+      const fetchImpl = jest.fn(() => new Promise<Response>(() => undefined));
+      const pending = fetchTranslation('en.sahih', 2, fetchImpl);
+      const failed = expect(pending).rejects.toThrow('timed out');
+      // Async: the cache preload comes before the request starts its timer.
+      await jest.advanceTimersByTimeAsync(FETCH_TIMEOUT_MS);
+      await failed;
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });

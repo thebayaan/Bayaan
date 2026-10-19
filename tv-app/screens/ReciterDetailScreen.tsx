@@ -1,5 +1,5 @@
-import {FlashList, type FlashListRef} from '@shopify/flash-list';
-import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import {FlashList} from '@shopify/flash-list';
+import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {Image} from 'expo-image';
 import Svg, {
   Defs,
@@ -8,14 +8,7 @@ import Svg, {
   Rect,
   Stop,
 } from 'react-native-svg';
-import {
-  NativeScrollEvent,
-  NativeSyntheticEvent,
-  StyleSheet,
-  Text,
-  TVFocusGuideView,
-  View,
-} from 'react-native';
+import {StyleSheet, Text, TVFocusGuideView, View} from 'react-native';
 import {FilterChip} from '../components/browse/FilterChip';
 import {
   ReciterPortrait,
@@ -44,6 +37,9 @@ import {
   randomSurah,
 } from '../services/playbackRouting';
 import {defaultRewayah} from '../services/menuChoices';
+import {getContinueListening} from '../services/continueListeningStore';
+import {hasCompleteQuran} from '../services/reciterPicker';
+import {resumeRequest} from '../services/surahsPlayback';
 import {useContextMenuStore} from '../store/contextMenuStore';
 import {useNavStore} from '../store/navStore';
 import {useSettingsStore} from '../store/settingsStore';
@@ -57,11 +53,15 @@ import {
 } from '../../components/Icons';
 import {colors} from '../theme/colors';
 import {fonts, typography} from '../theme/typography';
-import {spacing} from '../theme/spacing';
+import {SCREEN_CLOCK_TOP, spacing} from '../theme/spacing';
 import {createScaledStyles, scale} from '../theme/scale';
 import {getReciterArtwork} from '../services/reciterArtwork';
 
-type Props = {reciterId: string};
+type Props = {
+  reciterId: string;
+  /** The recitation to open on (a menu's voice); else the default one. */
+  rewayahId?: string;
+};
 type SortMode = 'asc' | 'desc' | 'revelation';
 
 /** The sort control cycles through these, in order. */
@@ -83,8 +83,6 @@ const cellLayout = cellHeightLayout(SURAH_ROW_HEIGHT + CELL_PAD_Y * 2);
 const LIST_PAD_X = spacing.xl - CELL_PAD_X;
 const PORTRAIT = 240;
 
-const scrollPositions = new Map<string, number>();
-
 const surahById = new Map<number, Surah>(SURAHS.map(s => [s.id, s]));
 
 function surahName(n: number): string {
@@ -96,16 +94,32 @@ function firstRewayahId(rewayat: Rewayah[]): string | null {
   return defaultRewayah(rewayat)?.id ?? null;
 }
 
-export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
+export function ReciterDetailScreen({
+  reciterId,
+  rewayahId,
+}: Props): React.ReactElement {
   const {reciters} = useReciters();
   const reciter = reciters.find(r => r.id === reciterId);
-  const [rewayat, setRewayat] = useState<Rewayah[]>(
+  const [fetched, setFetched] = useState<Rewayah[]>(
     () => getCachedRewayat(reciterId) ?? [],
   );
-  const groups = useMemo(() => groupRewayat(rewayat), [rewayat]);
-  const [activeRewayahId, setActive] = useState<string | null>(() =>
-    firstRewayahId(getCachedRewayat(reciterId) ?? []),
+  // Until (or unless) the rewayat load, the catalog's own list: offline,
+  // the page still shows what the player can play.
+  const catalogRewayat = reciter?.rewayat;
+  const rewayat = useMemo<Rewayah[]>(
+    () => (fetched.length > 0 ? fetched : (catalogRewayat ?? [])),
+    [fetched, catalogRewayat],
   );
+  const groups = useMemo(() => groupRewayat(rewayat), [rewayat]);
+  // The tab picked (or asked for by whoever opened the page); else, and
+  // whenever it isn't one of the rewayat, the reciter's default voice.
+  const [chosenRewayahId, setActive] = useState<string | null>(
+    rewayahId ?? null,
+  );
+  const activeRewayahId =
+    chosenRewayahId && rewayat.some(r => r.id === chosenRewayahId)
+      ? chosenRewayahId
+      : firstRewayahId(rewayat);
   const favorites = useFavorites();
   const continueEntries = useContinueListening();
   const isFav = favorites.some(f => f.reciterId === reciterId);
@@ -123,19 +137,16 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
   // The row of tabs, styles and sort: where focus lands coming from above
   // or below (the selected tab, else the selected style, else sort).
   const [rowEntry, setRowEntry] = useState<View | null>(null);
-
-  const listRef = useRef<FlashListRef<Surah>>(null);
-  const restoredRef = useRef<boolean>(false);
+  // Try again succeeded while focused: the button gives way to the rows, so
+  // the first row takes focus instead of it dropping to nowhere.
+  const [landOnRows, setLandOnRows] = useState<boolean>(false);
 
   useEffect(() => {
     let cancelled = false;
     fetchRewayat(reciterId)
       .then(r => {
         if (cancelled || r.length === 0) return;
-        setRewayat(r);
-        setActive(prev =>
-          prev && r.some(x => x.id === prev) ? prev : firstRewayahId(r),
-        );
+        setFetched(r);
       })
       .catch(() => undefined)
       .finally(() => {
@@ -145,22 +156,6 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
       cancelled = true;
     };
   }, [reciterId, attempt]);
-
-  function handleScroll(e: NativeSyntheticEvent<NativeScrollEvent>): void {
-    scrollPositions.set(reciterId, e.nativeEvent.contentOffset.y);
-  }
-
-  function handleContentSizeChange(_: number, height: number): void {
-    if (restoredRef.current) return;
-    const saved = scrollPositions.get(reciterId);
-    if (saved === undefined || saved <= 0) {
-      restoredRef.current = true;
-      return;
-    }
-    if (height < saved) return;
-    listRef.current?.scrollToOffset({offset: saved, animated: false});
-    restoredRef.current = true;
-  }
 
   const current = rewayat.find(r => r.id === activeRewayahId);
   const activeGroup = groups.find(g => g.items.some(r => r.id === current?.id));
@@ -184,23 +179,50 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
     );
   }, [continueEntries, current, reciterId]);
 
-  const progressByNumber = useSurahProgress(reciterId);
+  // Bars for the recitation shown, the one a press on a row plays.
+  const progressByNumber = useSurahProgress(reciterId, current?.id);
 
+  // The queue follows the order shown; the default order is the recitation
+  // itself, which playOrOpen builds without one.
   const playSurah = useCallback(
     (surahNumber: number, startSeconds?: number): void => {
       if (!reciter || !current) return;
+      const queue =
+        sort === 'asc'
+          ? undefined
+          : sortedSurahs.map(s => ({
+              reciterId: reciter.id,
+              rewayahId: current.id,
+              surahNumber: s.id,
+            }));
       void playOrOpen({
         reciterId: reciter.id,
         rewayahId: current.id,
         surahNumber,
         startSeconds,
+        queue,
         source: 'reciter',
       });
     },
-    [reciter, current],
+    [reciter, current, sort, sortedSurahs],
   );
 
-  // Hold OK on a row: the surah's menu, in the recitation shown.
+  // OK on a row: a started surah (the row's bar) picks up where it was left.
+  const selectRow = useCallback(
+    (surahNumber: number): void => {
+      if (!current) return;
+      const {startSeconds} = resumeRequest(getContinueListening(), {
+        reciterId,
+        rewayahId: current.id,
+        surahNumber,
+      });
+      playSurah(surahNumber, startSeconds);
+    },
+    [reciterId, current, playSurah],
+  );
+
+  // Hold OK on a row: the surah's menu, in the recitation shown. Its Play
+  // is the row's OK.
   const openSurahMenu = useCallback(
     (surahNumber: number): void => {
       useContextMenuStore.getState().openSurah({
@@ -208,9 +230,10 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
         reciterId,
         ...(current ? {rewayahId: current.id} : {}),
         origin: 'reciter',
+        onPlay: () => selectRow(surahNumber),
       });
     },
-    [reciterId, current],
+    [reciterId, current, selectRow],
   );
 
   const firstSurah = sortedSurahs[0]?.id;
@@ -272,18 +295,28 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
   }, [queued, ready, loading, rewayat, playMain, playShuffled]);
 
   const renderItem = useCallback(
-    ({item}: {item: Surah}) => (
+    ({item, index}: {item: Surah; index: number}) => (
       <View style={styles.cell}>
         <SurahRow
           surah={item}
           progress={progressByNumber.get(item.id) ?? 0}
-          onSelect={playSurah}
+          onSelect={selectRow}
           onLongPress={openSurahMenu}
+          hasTVPreferredFocus={landOnRows && index === 0}
         />
       </View>
     ),
-    [progressByNumber, playSurah, openSurahMenu],
+    [progressByNumber, selectRow, openSurahMenu, landOnRows],
   );
+
+  // Once the rows have taken focus (or the retry failed and Try again
+  // stays), stop asking: a held preference would pull focus back to the
+  // first row on later renders.
+  useEffect(() => {
+    if (!landOnRows || (sortedSurahs.length === 0 && loading)) return;
+    const t = setTimeout(() => setLandOnRows(false), 0);
+    return () => clearTimeout(t);
+  }, [landOnRows, sortedSurahs.length, loading]);
 
   if (!reciter) {
     return (
@@ -338,6 +371,12 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
         : `${reciter?.name} added to your Library.`,
     );
   }
+
+  // Only a reciter with the whole Quran can be the default, as in Settings:
+  // anyone else would hand most surahs to another voice.
+  const canBeDefault =
+    isDefault ||
+    hasCompleteQuran({...reciter, rewayat});
 
   function pressDefault(): void {
     if (isDefault) {
@@ -426,7 +465,7 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
             ) : null}
             <TVFocusGuideView autoFocus style={styles.heroActions}>
               {/* Each button keeps a minimum width, so a label changing
-                  (Favorite → Favorited, Loading… → Play from ...) doesn't
+                  (Favourite → Favourited, Loading… → Play from ...) doesn't
                   shift its neighbours. */}
               <FocusableButton
                 onPress={() => pressPlay('play')}
@@ -459,29 +498,33 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
               <FocusableButton
                 onPress={pressFavorite}
                 accessibilityLabel={
-                  isFav ? 'Remove from favorites' : 'Add to favorites'
+                  isFav ? 'Remove from favourites' : 'Add to favourites'
                 }
                 style={[styles.actionBtn, styles.favoriteBtn]}>
                 <View style={styles.actionInner}>
                   <FocusIcon icon={HeartIcon} size={20} filled={isFav} />
                   <FocusText style={styles.actionText}>
-                    {isFav ? 'Favorited' : 'Favorite'}
+                    {isFav ? 'Favourited' : 'Favourite'}
                   </FocusText>
                 </View>
               </FocusableButton>
-              <FocusableButton
-                onPress={pressDefault}
-                accessibilityLabel={
-                  isDefault ? 'Your default reciter' : 'Make default reciter'
-                }
-                style={[styles.actionBtn, styles.defaultBtn]}>
-                <View style={styles.actionInner}>
-                  {isDefault ? <FocusIcon icon={CheckIcon} size={20} /> : null}
-                  <FocusText style={styles.actionText}>
-                    {isDefault ? 'Default reciter' : 'Make default'}
-                  </FocusText>
-                </View>
-              </FocusableButton>
+              {canBeDefault ? (
+                <FocusableButton
+                  onPress={pressDefault}
+                  accessibilityLabel={
+                    isDefault ? 'Your default reciter' : 'Make default reciter'
+                  }
+                  style={[styles.actionBtn, styles.defaultBtn]}>
+                  <View style={styles.actionInner}>
+                    {isDefault ? (
+                      <FocusIcon icon={CheckIcon} size={20} />
+                    ) : null}
+                    <FocusText style={styles.actionText}>
+                      {isDefault ? 'Default reciter' : 'Make default'}
+                    </FocusText>
+                  </View>
+                </FocusableButton>
+              ) : null}
             </TVFocusGuideView>
           </View>
         </View>
@@ -557,22 +600,49 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
     </View>
   ) : null;
 
-  const empty = loading ? (
-    <View style={[styles.bleed, styles.loadingRow]}>
-      <FocusSpinner size="large" />
-    </View>
-  ) : (
-    <View style={[styles.bleed, styles.noSurahs]}>
-      <Text style={styles.noSurahsText}>
-        No surahs are available for this rewayah yet.
-      </Text>
-    </View>
-  );
+  function retry(): void {
+    setLandOnRows(true);
+    setLoading(true);
+    setAttempt(a => a + 1);
+  }
+
+  // Nothing known about the reciter's recitations means the load failed
+  // (the network, not the catalog): say so, with a way to try again that
+  // stays in place while it does, so focus is not dropped.
+  const empty =
+    rewayat.length === 0 && (!loading || attempt > 0) ? (
+      <View style={[styles.bleed, styles.noSurahs]}>
+        <Text style={styles.noSurahsText}>{OFFLINE_MESSAGE}</Text>
+        <FocusableButton
+          onPress={loading ? () => undefined : retry}
+          accessibilityLabel={loading ? 'Trying again' : 'Try again'}
+          outlined
+          style={[styles.actionBtn, styles.retryBtn]}>
+          <View style={styles.actionInner}>
+            {loading ? <FocusSpinner /> : null}
+            <FocusText style={styles.actionText}>
+              {loading ? 'Trying again…' : 'Try again'}
+            </FocusText>
+          </View>
+        </FocusableButton>
+      </View>
+    ) : loading ? (
+      <View style={[styles.bleed, styles.loadingRow]}>
+        <FocusSpinner size="large" />
+      </View>
+    ) : (
+      <View style={[styles.bleed, styles.noSurahs]}>
+        <Text style={styles.noSurahsText}>
+          No surahs are available for this rewayah yet.
+        </Text>
+      </View>
+    );
 
   return (
     <View style={styles.container}>
+      {/* No scroll restore: the page stays mounted under the screens
+          stacked on it, and a new visit starts at the hero, where focus is. */}
       <FlashList
-        ref={listRef}
         data={sortedSurahs}
         numColumns={COLUMNS}
         renderItem={renderItem}
@@ -586,9 +656,6 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
         ListEmptyComponent={empty}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
-        scrollEventThrottle={250}
-        onScroll={handleScroll}
-        onContentSizeChange={handleContentSizeChange}
       />
     </View>
   );
@@ -600,7 +667,9 @@ const styles = createScaledStyles({
   bleed: {marginHorizontal: -LIST_PAD_X},
   back: {
     position: 'absolute',
-    top: 24,
+    // Below the overscan band, centred on the now-playing pill (56 tall,
+    // at the same top).
+    top: SCREEN_CLOCK_TOP + 6,
     // Not left of the list's edge: Android's focus finder would treat Back
     // as "left of" the first surah and jump up to it.
     left: spacing.xl,
@@ -628,7 +697,8 @@ const styles = createScaledStyles({
     alignItems: 'center',
     gap: spacing.lg + 8,
     paddingHorizontal: spacing.xl,
-    paddingTop: 96,
+    // Clear of Back and the pill above.
+    paddingTop: 128,
     paddingBottom: spacing.lg,
   },
   portrait: {
@@ -689,7 +759,7 @@ const styles = createScaledStyles({
   },
   // Wide enough for the longer of each button's labels.
   playBtn: {minWidth: 300},
-  favoriteBtn: {minWidth: 190},
+  favoriteBtn: {minWidth: 204},
   defaultBtn: {minWidth: 236},
   actionText: {
     fontFamily: fonts.bold,
@@ -731,7 +801,10 @@ const styles = createScaledStyles({
   noSurahs: {
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.lg,
+    alignItems: 'flex-start',
+    gap: spacing.md,
   },
+  retryBtn: {minWidth: 236},
   noSurahsText: {
     color: colors.textSecondary,
     fontFamily: fonts.medium,

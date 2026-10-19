@@ -16,6 +16,11 @@ export type EngineEvent = {
   status: EngineStatus;
   positionSeconds: number;
   durationSeconds: number;
+  /**
+   * Why playback failed, with status 'error', when the engine knows (a
+   * native message for the logs; the store decides what the screen says).
+   */
+  error?: string;
 };
 
 export type AudioEngine = {

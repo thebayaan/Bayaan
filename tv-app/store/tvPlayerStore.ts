@@ -83,8 +83,9 @@ type TVPlayerState = {
 
 export type LoadOptions = {
   /**
-   * Whether next/previous pick at random. Every queue load states it, so a
-   * surah chosen after a shuffle play plays in order (defaults to false).
+   * Whether the queue was shuffled before loading. It still plays in its own
+   * order (so the Queue panel shows what comes next); the flag is for the
+   * player to say so. Every queue load states it (defaults to false).
    */
   shuffle?: boolean;
   /** Where to start the first track, for resuming. */
@@ -125,10 +126,10 @@ export const useTVPlayerStore = create<TVPlayerState>((set, get) => ({
       const errored = e.status === 'error' && current.status !== 'error';
       set({
         status: e.status,
-        positionSeconds: e.positionSeconds,
+        positionSeconds: settledPosition(e),
         durationSeconds: e.durationSeconds,
         ...(errored && !current.lastError
-          ? {lastError: 'Playback failed'}
+          ? {lastError: describeError(e.error)}
           : {}),
       });
       const ended =
@@ -137,6 +138,15 @@ export const useTVPlayerStore = create<TVPlayerState>((set, get) => ({
         current.positionSeconds > 0 &&
         e.positionSeconds >= e.durationSeconds - 0.5;
       if (!ended) return;
+      // A verse repeat on the surah's last verse goes round again rather
+      // than let the surah end.
+      const again = endOfTrackHook?.() ?? null;
+      if (again) {
+        seekEngine(get, set, again.seconds);
+        if (again.holdMs > 0) get().hold(again.holdMs);
+        else void engine.play();
+        return;
+      }
       // A surah heard to the end leaves Continue listening.
       const done = current.queue[current.currentIndex];
       if (done) removeContinue(done.reciterId, done.surahNumber);
@@ -145,10 +155,7 @@ export const useTVPlayerStore = create<TVPlayerState>((set, get) => ({
         set({sleep: {kind: 'off'}, slept: true});
         return;
       }
-      const last =
-        current.currentIndex >= current.queue.length - 1 &&
-        current.repeat === 'off' &&
-        !(current.shuffle && current.queue.length > 1);
+      const last = current.repeat === 'off' && !hasNextIn(current);
       if (current.repeat === 'one') {
         engine.seek(0);
         void engine.play();
@@ -251,10 +258,10 @@ export const useTVPlayerStore = create<TVPlayerState>((set, get) => ({
   },
 
   replay: (): void => {
-    const {engine, queue} = get();
-    if (!engine || queue.length === 0) return;
+    const {engine, queue, pending} = get();
+    if (!engine || queue.length === 0 || pending) return;
     set({finished: false});
-    engine.seek(0);
+    seekEngine(get, set, 0);
     void engine.play();
   },
 
@@ -276,58 +283,51 @@ export const useTVPlayerStore = create<TVPlayerState>((set, get) => ({
     if (get().slept) set({slept: false});
   },
 
+  // A shuffled queue was shuffled when it loaded, so next and previous
+  // always follow the queue's order: what the Queue panel lists is what
+  // plays, Previous is the surah just heard, and the queue ends.
   next: async (): Promise<void> => {
-    const {engine, queue, currentIndex, repeat, shuffle} = get();
-    if (!engine || queue.length === 0) return;
-    let nextIndex: number;
-    if (shuffle && queue.length > 1) {
-      do {
-        nextIndex = Math.floor(Math.random() * queue.length);
-      } while (nextIndex === currentIndex);
-    } else {
-      nextIndex = currentIndex + 1;
-      if (nextIndex >= queue.length) {
-        if (repeat === 'all') {
-          nextIndex = 0;
-        } else {
-          return;
-        }
-      }
+    const {engine, queue, currentIndex, repeat, pending} = get();
+    // While a recitation is looked up the queue is only its placeholder.
+    if (!engine || queue.length === 0 || pending) return;
+    let nextIndex = currentIndex + 1;
+    if (nextIndex >= queue.length) {
+      if (repeat !== 'all') return;
+      nextIndex = 0;
     }
     await loadIndex(get, set, nextIndex);
   },
 
   prev: async (): Promise<void> => {
-    const {engine, queue, currentIndex, positionSeconds, shuffle} = get();
-    if (!engine || queue.length === 0) return;
-    if (positionSeconds > 3) {
-      engine.seek(0);
+    const {engine, queue, currentIndex, positionSeconds, repeat, pending} =
+      get();
+    if (!engine || queue.length === 0 || pending) return;
+    const prevIndex =
+      currentIndex > 0
+        ? currentIndex - 1
+        : repeat === 'all'
+          ? queue.length - 1
+          : currentIndex;
+    // A few seconds in, Previous starts this surah again, as on any player.
+    // The position follows every seek, even paused, so a second press goes
+    // back a surah. At the first surah there is only the restart.
+    if (positionSeconds > 3 || prevIndex === currentIndex) {
+      seekEngine(get, set, 0);
       return;
-    }
-    let prevIndex: number;
-    if (shuffle && queue.length > 1) {
-      do {
-        prevIndex = Math.floor(Math.random() * queue.length);
-      } while (prevIndex === currentIndex);
-    } else {
-      prevIndex = Math.max(0, currentIndex - 1);
     }
     await loadIndex(get, set, prevIndex);
   },
 
   seekBy: (delta: number): void => {
-    const {engine, positionSeconds, durationSeconds} = get();
-    if (!engine) return;
-    const target = Math.max(
-      0,
-      Math.min(durationSeconds, positionSeconds + delta),
-    );
-    engine.seek(target);
+    const {engine, positionSeconds, pending} = get();
+    if (!engine || pending) return;
+    seekEngine(get, set, positionSeconds + delta);
   },
 
   seekTo: (seconds: number): void => {
-    const {engine} = get();
-    engine?.seek(Math.max(0, seconds));
+    const {engine, pending} = get();
+    if (!engine || pending) return;
+    seekEngine(get, set, seconds);
   },
 
   setSpeed: (speed: number): void => {
@@ -352,12 +352,11 @@ export const useTVPlayerStore = create<TVPlayerState>((set, get) => ({
   },
 
   jumpToIndex: async (index: number): Promise<void> => {
-    const {engine, queue, currentIndex} = get();
-    if (!engine || queue.length === 0) return;
+    const {engine, queue, currentIndex, pending} = get();
+    if (!engine || queue.length === 0 || pending) return;
     if (index < 0 || index >= queue.length) return;
     if (index === currentIndex) {
-      engine.seek(0);
-      void engine.play();
+      get().replay();
       return;
     }
     await loadIndex(get, set, index);
@@ -405,6 +404,7 @@ export const useTVPlayerStore = create<TVPlayerState>((set, get) => ({
     if (progressWriteTimer !== null) clearInterval(progressWriteTimer);
     if (sleepTimerId !== null) clearTimeout(sleepTimerId);
     clearHold();
+    seekGuard = null;
     set({
       engine: null,
       queue: [],
@@ -457,10 +457,105 @@ export function isNetworkError(message: string | null | undefined): boolean {
   return NETWORK_HINTS.some(hint => lower.includes(hint.toLowerCase()));
 }
 
-function describeError(err: unknown): string {
-  if (err instanceof Error) return err.message;
-  if (typeof err === 'string') return err;
-  return 'Playback failed';
+/**
+ * What the error card says when a recording fails for a reason other than
+ * the connection. The native player's own words (an AVFoundation code, an
+ * ExoPlayer exception) are for the logs, not the screen.
+ */
+export const PLAYBACK_FAILED_MESSAGE =
+  "This recording couldn't be played. Try again, or choose another reciter.";
+
+/**
+ * The error to keep for the card: a connection problem keeps its message,
+ * which the card and toasts recognise (isNetworkError) and word themselves;
+ * anything else becomes PLAYBACK_FAILED_MESSAGE.
+ */
+export function describeError(err: unknown): string {
+  const message =
+    err instanceof Error ? err.message : typeof err === 'string' ? err : '';
+  if (isNetworkError(message)) return message;
+  if (message) console.warn('[tvPlayer] playback failed:', message);
+  return PLAYBACK_FAILED_MESSAGE;
+}
+
+/**
+ * Whether Next has somewhere to go: a surah after this one, or the start of
+ * the queue again with repeat all. The tray's Next and the error card's Skip
+ * both follow it.
+ */
+export function hasNextIn(
+  state: Pick<TVPlayerState, 'queue' | 'currentIndex' | 'repeat'>,
+): boolean {
+  const {queue, currentIndex, repeat} = state;
+  return (
+    currentIndex < queue.length - 1 || (repeat === 'all' && queue.length > 1)
+  );
+}
+
+/**
+ * Where to go instead of ending the track, as the end-of-track hook answers
+ * (see setEndOfTrackHook): seek here, then play, after holdMs for a verse
+ * repeat's pause.
+ */
+export type PlayAgain = {seconds: number; holdMs: number};
+
+let endOfTrackHook: (() => PlayAgain | null) | null = null;
+
+/**
+ * Lets the listening store keep a verse repeat on the surah's last verse
+ * going when the track itself ends (it can't be imported from here).
+ */
+export function setEndOfTrackHook(
+  hook: (() => PlayAgain | null) | null,
+): void {
+  endOfTrackHook = hook;
+}
+
+/** Positions the engine reports this soon after a seek may predate it. */
+const SEEK_SETTLE_MS = 600;
+
+/** The last seek's target while it settles (see settledPosition). */
+let seekGuard: {target: number; until: number} | null = null;
+
+/**
+ * The position to show for an engine event. Right after a seek the engine
+ * can still report where it was, which would snap the screen back and make
+ * the next step start from the old place, so the target holds until the
+ * engine reports it (or the settle time passes).
+ */
+function settledPosition(e: EngineEvent): number {
+  if (!seekGuard) return e.positionSeconds;
+  const reached = Math.abs(e.positionSeconds - seekGuard.target) < 1;
+  if (reached || e.status === 'idle' || Date.now() > seekGuard.until) {
+    seekGuard = null;
+    return e.positionSeconds;
+  }
+  return seekGuard.target;
+}
+
+/**
+ * Seeks within the current track. The store takes the target at once, so the
+ * screen moves even while paused (the engine reports nothing then) and quick
+ * repeated presses each start from the last one's target. Seeking back from
+ * the end means the queue is no longer finished.
+ */
+function seekEngine(
+  get: () => TVPlayerState,
+  set: (partial: Partial<TVPlayerState>) => void,
+  seconds: number,
+): void {
+  const {engine, durationSeconds, finished} = get();
+  if (!engine) return;
+  const target = Math.max(
+    0,
+    durationSeconds > 0 ? Math.min(durationSeconds, seconds) : seconds,
+  );
+  seekGuard = {target, until: Date.now() + SEEK_SETTLE_MS};
+  engine.seek(target);
+  set({
+    positionSeconds: target,
+    ...(finished && target < durationSeconds - 0.5 ? {finished: false} : {}),
+  });
 }
 
 /**
@@ -478,6 +573,12 @@ async function loadIndex(
   const {engine, queue} = get();
   const item = queue[index];
   if (!engine || !item) return;
+  // The lookup's placeholder has no recording yet: look it up again rather
+  // than load an empty source.
+  if (!item.audioUrl) {
+    get().pendingRetry?.();
+    return;
+  }
   const token = get().loadToken + 1;
   clearHold();
   set({
@@ -498,7 +599,7 @@ async function loadIndex(
     if (stale()) return;
     // Seek before play so a resume never blips from the start.
     if (startSeconds !== undefined && startSeconds > 0) {
-      engine.seek(startSeconds);
+      seekEngine(get, set, startSeconds);
     }
     await engine.play();
   } catch (err) {

@@ -69,7 +69,7 @@ const styles = createScaledStyles({
     fontSize: 20,
     fontWeight: '600',
   },
-  textSmall: {fontSize: 16},
+  textSmall: {fontSize: 18},
   line: {
     marginTop: 6,
     height: 3,

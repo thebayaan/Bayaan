@@ -16,6 +16,11 @@ type Props = {
   ayah: number | null;
   arabic: string[];
   translation: string[] | null;
+  /**
+   * The translation couldn't be fetched (offline, nothing cached). Shown on
+   * its own, the stage says so rather than show only the calligraphy.
+   */
+  translationUnavailable?: boolean;
   /** Smaller, dimmer layout while the controls tray is up. */
   compact: boolean;
   /** Extra line under the verse reference, such as the repeat count. */
@@ -49,6 +54,7 @@ export function VerseStage({
   ayah,
   arabic,
   translation,
+  translationUnavailable = false,
   compact,
   note,
   show = 'both',
@@ -90,6 +96,12 @@ export function VerseStage({
     (translationAlone ? 40 : compact ? 22 : 30) * textScale,
   );
   const hasText = arabicText !== null || (translationAlone && translationText);
+  const missingNote =
+    translationAlone &&
+    !translationText &&
+    translationUnavailable &&
+    ayah !== null &&
+    ayah > 0;
 
   return (
     <View
@@ -127,6 +139,11 @@ export function VerseStage({
             compact && styles.dim,
           ]}>
           {translationText}
+        </Text>
+      ) : null}
+      {missingNote ? (
+        <Text style={styles.missing}>
+          Translation unavailable offline · trying again
         </Text>
       ) : null}
       {ayah === null ? <Text style={styles.surahName}>{surahName}</Text> : null}
@@ -170,6 +187,12 @@ const styles = createScaledStyles({
     lineHeight: 44,
     textAlign: 'center',
     maxWidth: 1240,
+  },
+  missing: {
+    color: colors.textTertiary,
+    fontFamily: fonts.medium,
+    fontWeight: '500',
+    fontSize: 22,
   },
   surahName: {
     color: colors.textSecondary,

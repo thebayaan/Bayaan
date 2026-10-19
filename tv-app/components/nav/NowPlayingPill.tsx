@@ -9,6 +9,12 @@ import {createScaledStyles} from '../../theme/scale';
 type Props = {
   /** Right-aligned by default; centred where the screen keeps a clock top right. */
   align?: 'right' | 'center';
+  /**
+   * The screen has its own control at the top left (the reciter page's
+   * '‹ Back'): the tvOS band starts past it, so Up from below still reaches
+   * that control rather than being handed to the pill.
+   */
+  clearTopLeft?: boolean;
 };
 
 // Apple TV only: its focus engine looks for Up in a cone, so a pill in the
@@ -24,6 +30,7 @@ const NEEDS_TOP_GUIDE = Platform.OS === 'ios' && Platform.isTV;
  */
 export function NowPlayingPill({
   align = 'right',
+  clearTopLeft = false,
 }: Props): React.ReactElement | null {
   const {tile, press} = useNowPlayingTile();
   const [focused, setFocused] = useState(false);
@@ -38,7 +45,10 @@ export function NowPlayingPill({
       style={[styles.bar, align === 'center' && styles.barCenter]}
       pointerEvents="box-none">
       {NEEDS_TOP_GUIDE && destinations ? (
-        <TVFocusGuideView destinations={destinations} style={styles.band} />
+        <TVFocusGuideView
+          destinations={destinations}
+          style={[styles.band, clearTopLeft && styles.bandPastLeft]}
+        />
       ) : null}
       <Pressable
         ref={setPill}
@@ -71,7 +81,8 @@ const styles = createScaledStyles({
     left: 0,
     right: 0,
     zIndex: 20,
-    paddingTop: 40,
+    // Inside the title-safe area (tvOS insets 60 at the top).
+    paddingTop: 60,
     paddingHorizontal: 80,
     alignItems: 'flex-end',
   },
@@ -81,8 +92,10 @@ const styles = createScaledStyles({
     top: 0,
     left: 0,
     right: 0,
-    height: 136,
+    height: 156,
   },
+  // Past the reciter page's '‹ Back' (left 64, about 120 wide).
+  bandPastLeft: {left: 320},
   pill: {
     height: 56,
     maxWidth: 560,

@@ -24,6 +24,8 @@ export const ADVANCE_DELAY_MS = 650;
 export const REPLAY_GAP_MS = 600;
 /** Silence before the next dhikr starts (auto-advance). */
 export const NEXT_GAP_MS = 1200;
+/** Recitations that fail in a row before auto-advance stops trying. */
+export const MAX_AUDIO_FAILURES = 3;
 
 export type AdhkarAudio =
   | 'idle'
@@ -49,6 +51,10 @@ export type AdhkarSessionStore = {
   wantsAudio: boolean;
   /** The list picked up where it was left earlier today. */
   resumed: boolean;
+  /** The page of the current dhikr the reader shows (0 on each new dhikr). */
+  page: number;
+  /** How far the playing recitation is, 0 to 1, for pages to follow it. */
+  clipProgress: number;
 
   open: (
     listId: string,
@@ -65,8 +71,18 @@ export type AdhkarSessionStore = {
   /** The Auto-advance chip: this visit's mode when one was chosen, else the
    *  viewer's saved choice. */
   setAutoAdvance: (on: boolean) => void;
-  close: () => void;
+  /** The reader turned to this page of the current dhikr. */
+  setPage: (page: number) => void;
+  /**
+   * The reader closes. `covered`: it only went under another screen (the
+   * player) and comes back on Back, where it opens on the same page and
+   * waits for Play rather than taking the audio back.
+   */
+  close: (options?: {covered?: boolean}) => void;
 };
+
+/** A list left part way: the day, where it was, and the page shown. */
+export type LeftSession = {day: string; state: SessionState; page: number};
 
 type Options = {
   createEngine: () => AudioEngine;
@@ -75,6 +91,11 @@ type Options = {
   saveAutoAdvance?: (on: boolean) => void;
   /** Today's date key, so a list left part way resumes the same day only. */
   dayKey?: () => string;
+  /** Where lists left part way are kept, so they resume after a relaunch. */
+  loadLeft?: () => Record<string, LeftSession> | null;
+  saveLeft?: (left: Record<string, LeftSession>) => void;
+  /** Tells the viewer something they would otherwise miss (a toast). */
+  notify?: (message: string) => void;
 };
 
 /** How the session advances as a recitation ends, all choices applied. */
@@ -83,6 +104,24 @@ export function advanceModeOf(state: {
   sessionAdvance: AdvanceMode | null;
 }): AdvanceMode {
   return state.sessionAdvance ?? (state.autoAdvance ? 'count' : 'off');
+}
+
+/** Whether a stored entry is a usable session (storage can hold anything). */
+function isLeftSession(value: unknown): value is LeftSession {
+  const v = value as LeftSession | null;
+  return (
+    !!v &&
+    typeof v.day === 'string' &&
+    typeof v.page === 'number' &&
+    !!v.state &&
+    typeof v.state.listId === 'string' &&
+    Array.isArray(v.state.targets) &&
+    Array.isArray(v.state.counts) &&
+    v.state.counts.length === v.state.targets.length &&
+    typeof v.state.index === 'number' &&
+    v.state.index >= 0 &&
+    v.state.index < v.state.targets.length
+  );
 }
 
 function localDayKey(): string {
@@ -95,6 +134,9 @@ export function createAdhkarSessionStore({
   loadAutoAdvance = () => null,
   saveAutoAdvance = () => {},
   dayKey = localDayKey,
+  loadLeft = () => null,
+  saveLeft = () => {},
+  notify = () => {},
 }: Options): UseBoundStore<StoreApi<AdhkarSessionStore>> {
   let engine: AudioEngine | null = null;
   let unsubscribe: (() => void) | null = null;
@@ -112,8 +154,17 @@ export function createAdhkarSessionStore({
   let countedThisPlay = false;
   // The advance a start mode chose for this visit, for the chip to turn back on.
   let plannedAdvance: AdvanceMode | null = null;
-  // Lists left part way, per day, so reopening one picks up where it was.
-  const left = new Map<string, {day: string; state: SessionState}>();
+  // Recitations that failed in a row while auto-advance carried on.
+  let failures = 0;
+  // The reader that went under the player, to come back to as it was.
+  let covered: {listId: string; resumed: boolean} | null = null;
+  // Lists left part way, per day, so reopening one picks up where it was;
+  // kept in storage, so a relaunch the same day picks up too.
+  const left = new Map<string, LeftSession>();
+  const today = dayKey();
+  for (const [listId, saved] of Object.entries(loadLeft() ?? {})) {
+    if (isLeftSession(saved) && saved.day === today) left.set(listId, saved);
+  }
 
   function clearTimer(): void {
     if (timer !== null) clearTimeout(timer);
@@ -142,10 +193,13 @@ export function createAdhkarSessionStore({
       if (audio !== 'playing') return;
       if (e.status === 'error') {
         token += 1;
-        set({audio: 'error'});
+        failed('error');
         return;
       }
       const known = e.durationSeconds > 0;
+      if (known) {
+        set({clipProgress: Math.min(1, e.positionSeconds / e.durationSeconds)});
+      }
       const atEnd = known && e.positionSeconds >= e.durationSeconds - 1;
       if (e.status === 'paused') {
         // A media element reports a pause as it reaches the end.
@@ -184,8 +238,37 @@ export function createAdhkarSessionStore({
       }
       if (result.action === 'replay') {
         engine?.seek(0);
+        set({clipProgress: 0});
         schedule(REPLAY_GAP_MS, replay);
         return;
+      }
+      schedule(NEXT_GAP_MS, () => {
+        const current = get().session;
+        if (current) moveTo(nextDhikr(current));
+      });
+    }
+
+    /**
+     * A recitation couldn't play (or the dhikr has none). Listening through
+     * or counting, the session moves on rather than stopping silently, until
+     * several fail in a row (likely offline): then it stops and says so.
+     */
+    function failed(reason: 'error' | 'missing'): void {
+      set({audio: reason === 'error' ? 'error' : 'idle'});
+      const {session, wantsAudio} = get();
+      if (!session || session.finished || !wantsAudio) return;
+      if (advanceModeOf(get()) === 'off') return;
+      if (reason === 'error') {
+        failures += 1;
+        if (failures >= MAX_AUDIO_FAILURES) {
+          failures = 0;
+          set({wantsAudio: false});
+          notify('Recitations need a connection');
+          return;
+        }
+        notify("Couldn't play this recitation, moving on");
+      } else {
+        notify('No recitation for this one, moving on');
       }
       schedule(NEXT_GAP_MS, () => {
         const current = get().session;
@@ -204,8 +287,9 @@ export function createAdhkarSessionStore({
       countedThisPlay = false;
       lastPosition = -1;
       loadedIndex = -1;
+      set({clipProgress: 0});
       if (!url) {
-        set({audio: 'idle'});
+        failed('missing');
         return;
       }
       set({audio: 'loading'});
@@ -217,9 +301,10 @@ export function createAdhkarSessionStore({
         await audioEngine.play();
         if (mine !== token) return;
         endHandled = false;
+        failures = 0;
         set({audio: 'playing'});
       } catch {
-        if (mine === token) set({audio: 'error'});
+        if (mine === token) failed('error');
       }
     }
 
@@ -237,7 +322,7 @@ export function createAdhkarSessionStore({
         endHandled = false;
         set({audio: 'playing'});
       } catch {
-        if (mine === token) set({audio: 'error'});
+        if (mine === token) failed('error');
       }
     }
 
@@ -248,16 +333,24 @@ export function createAdhkarSessionStore({
       set({audio});
     }
 
-    function remember(state: SessionState): void {
+    function remember(state: SessionState, page = get().page): void {
       if (state.finished) left.delete(state.listId);
-      else left.set(state.listId, {day: dayKey(), state});
+      else left.set(state.listId, {day: dayKey(), state, page});
+      // Lists from other days are never resumed: drop them as we go.
+      const day = dayKey();
+      for (const [listId, saved] of left) {
+        if (saved.day !== day) left.delete(listId);
+      }
+      saveLeft(Object.fromEntries(left));
     }
 
     function moveTo(state: SessionState): void {
       clearTimer();
       const before = get().session;
-      set({session: state});
-      remember(state);
+      const newDhikr = !before || before.index !== state.index;
+      const page = newDhikr ? 0 : get().page;
+      set({session: state, page});
+      remember(state, page);
       if (state.finished) {
         stopAudio('ended');
         return;
@@ -276,8 +369,13 @@ export function createAdhkarSessionStore({
       audio: 'idle',
       wantsAudio: false,
       resumed: false,
+      page: 0,
+      clipProgress: 0,
 
       open: (listId, targets, urls, options = {}) => {
+        // Back from the player: the same visit, as it was, waiting for Play
+        // (the listener went to the Quran; it shouldn't be paused again).
+        const returning = covered?.listId === listId ? covered : null;
         get().close();
         const saved = left.get(listId);
         const resumable =
@@ -287,15 +385,18 @@ export function createAdhkarSessionStore({
         const session = resumable
           ? saved.state
           : startSession(listId, targets, 0);
-        const autoplay = options.autoplay ?? true;
+        const autoplay = returning ? false : (options.autoplay ?? true);
         plannedAdvance = options.advance ?? null;
+        failures = 0;
         set({
           session,
           urls,
           audio: 'idle',
           wantsAudio: autoplay,
           sessionAdvance: plannedAdvance,
-          resumed: isUnderway(session),
+          resumed: returning ? returning.resumed : isUnderway(session),
+          page: resumable ? saved.page : 0,
+          clipProgress: 0,
         });
         if (autoplay && targets.length > 0) void loadCurrent();
       },
@@ -330,8 +431,8 @@ export function createAdhkarSessionStore({
           // Back from the closing card: the last dhikr shows, quietly.
           const reopened = prevDhikr(session);
           clearTimer();
-          set({session: reopened});
-          remember(reopened);
+          set({session: reopened, page: 0});
+          remember(reopened, 0);
           stopAudio('idle');
           return;
         }
@@ -343,8 +444,8 @@ export function createAdhkarSessionStore({
         if (!session) return;
         clearTimer();
         const fresh = restartSession(session);
-        set({session: fresh, resumed: false});
-        remember(fresh);
+        set({session: fresh, resumed: false, page: 0});
+        remember(fresh, 0);
         if (get().wantsAudio) void loadCurrent();
         else stopAudio('idle');
       },
@@ -369,7 +470,7 @@ export function createAdhkarSessionStore({
               if (mine === token) endHandled = false;
             },
             () => {
-              if (mine === token) set({audio: 'error'});
+              if (mine === token) failed('error');
             },
           );
           return;
@@ -390,7 +491,19 @@ export function createAdhkarSessionStore({
         saveAutoAdvance(on);
       },
 
-      close: () => {
+      setPage: page => {
+        const {session} = get();
+        if (!session || get().page === page) return;
+        set({page});
+        remember(session, page);
+      },
+
+      close: options => {
+        const {session, resumed} = get();
+        covered =
+          options?.covered && session && !session.finished
+            ? {listId: session.listId, resumed}
+            : null;
         clearTimer();
         token += 1;
         endHandled = true;
@@ -412,6 +525,8 @@ export function createAdhkarSessionStore({
           wantsAudio: false,
           sessionAdvance: null,
           resumed: false,
+          page: 0,
+          clipProgress: 0,
         });
       },
     };

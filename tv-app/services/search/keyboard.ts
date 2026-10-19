@@ -67,3 +67,21 @@ export function deleteKey(query: string): string {
   // Code points, so a non-BMP character is deleted whole.
   return Array.from(query).slice(0, -1).join('');
 }
+
+// Arabic script (with its supplements and presentation forms) and Latin
+// letters: the strong characters that set a line's direction.
+const RTL_CHAR = /[֐-ࣿיִ-﷿ﹰ-﻿]/;
+const LTR_CHAR = /[A-Za-zÀ-ɏ]/;
+
+/**
+ * Whether a query reads right to left: its first strong character is Arabic
+ * (digits and spaces don't count), so the bar draws the caret on the left,
+ * where the next letter will appear.
+ */
+export function isRtlText(text: string): boolean {
+  for (const ch of text) {
+    if (RTL_CHAR.test(ch)) return true;
+    if (LTR_CHAR.test(ch)) return false;
+  }
+  return false;
+}

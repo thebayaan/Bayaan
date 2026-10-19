@@ -30,6 +30,7 @@
         }
       ],
       "expo-image",
+      "./plugins/withAppMediaKeys",
       [
         "expo-build-properties",
         {

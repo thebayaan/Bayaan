@@ -131,6 +131,12 @@ jobs:
               [ -n "$url" ] && echo "$(curl -s -o /dev/null -w '%{http_code} %{content_type} %{size_download}' -m 10 "$url") $url"
             done > "$OUT/cdn-probe.txt" || true
           fi
+          # The walk's step marks and the app's JS log, for agents that
+          # can't download the run's artifact.
+          LOGCAT="$RUNNER_TEMP/tv-screens/android-tv/logs/logcat.txt"
+          if [ -f "$LOGCAT" ]; then
+            grep -E " WALK |ReactNativeJS" "$LOGCAT" > "$OUT/logcat-js.txt" || true
+          fi
           cd "$OUT"
           git init -q
           git checkout -q --orphan screens

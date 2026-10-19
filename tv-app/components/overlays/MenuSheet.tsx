@@ -135,17 +135,9 @@ export const menuStyles = createScaledStyles({
     overflow: 'hidden',
     backgroundColor: colors.surfaceElevated,
   },
-  portraitPlaceholder: {alignItems: 'center', justifyContent: 'center'},
-  initial: {
-    color: colors.text,
-    fontFamily: fonts.light,
-    fontSize: 38,
-    fontWeight: '300',
-    opacity: 0.55,
-  },
   headerMeta: {flex: 1, gap: 4},
   kicker: {
-    color: colors.textTertiary,
+    color: colors.accent,
     fontFamily: fonts.extraBold,
     fontSize: 15,
     fontWeight: '800',

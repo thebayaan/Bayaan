@@ -85,9 +85,10 @@ export const typography: Record<string, TypographyStyle> = {
     fontSize: 16,
     fontWeight: '400',
   },
+  // Tracked uppercase labels read at 16 or more from across the room.
   label: {
     fontFamily: fonts.semiBold,
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 1.6,

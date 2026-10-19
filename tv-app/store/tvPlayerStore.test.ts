@@ -1,4 +1,10 @@
-import {useTVPlayerStore} from './tvPlayerStore';
+import {
+  describeError,
+  hasNextIn,
+  PLAYBACK_FAILED_MESSAGE,
+  setEndOfTrackHook,
+  useTVPlayerStore,
+} from './tvPlayerStore';
 import type {AudioEngine, EngineEvent} from '../services/audioEngine';
 import {
   DEFAULT_RECITER_KEY,
@@ -480,3 +486,190 @@ describe('listening-room playback states', () => {
     expect(useTVPlayerStore.getState().slept).toBe(false);
   });
 });
+
+describe('seeking and stepping', () => {
+  beforeEach(() => {
+    useTVPlayerStore.getState().reset();
+  });
+
+  async function pausedAt(seconds: number) {
+    const engine = makeMockEngine();
+    useTVPlayerStore.getState().setEngine(engine);
+    await useTVPlayerStore.getState().loadQueue(queue, 1);
+    engine.emit({
+      status: 'paused',
+      positionSeconds: seconds,
+      durationSeconds: 60,
+    });
+    return engine;
+  }
+
+  it('moves the position at once while paused, so presses add up', async () => {
+    const engine = await pausedAt(20);
+    useTVPlayerStore.getState().seekBy(15);
+    useTVPlayerStore.getState().seekBy(15);
+    expect(useTVPlayerStore.getState().positionSeconds).toBe(50);
+    expect(engine.seek).toHaveBeenLastCalledWith(50);
+    useTVPlayerStore.getState().seekBy(30);
+    expect(useTVPlayerStore.getState().positionSeconds).toBe(60);
+    useTVPlayerStore.getState().seekTo(-4);
+    expect(useTVPlayerStore.getState().positionSeconds).toBe(0);
+  });
+
+  it("holds a seek's target against a report from before it", async () => {
+    const engine = await pausedAt(20);
+    useTVPlayerStore.getState().seekTo(40);
+    engine.emit({status: 'paused', positionSeconds: 20, durationSeconds: 60});
+    expect(useTVPlayerStore.getState().positionSeconds).toBe(40);
+    engine.emit({
+      status: 'playing',
+      positionSeconds: 40.4,
+      durationSeconds: 60,
+    });
+    expect(useTVPlayerStore.getState().positionSeconds).toBe(40.4);
+  });
+
+  it('a second Previous while paused goes back a surah', async () => {
+    const engine = await pausedAt(30);
+    await useTVPlayerStore.getState().prev();
+    expect(engine.seek).toHaveBeenLastCalledWith(0);
+    expect(useTVPlayerStore.getState().currentIndex).toBe(1);
+    await useTVPlayerStore.getState().prev();
+    expect(useTVPlayerStore.getState().currentIndex).toBe(0);
+  });
+
+  it('Previous on the first surah restarts it rather than reload it', async () => {
+    const engine = makeMockEngine();
+    useTVPlayerStore.getState().setEngine(engine);
+    await useTVPlayerStore.getState().loadQueue(queue, 0);
+    await useTVPlayerStore.getState().prev();
+    expect(engine.load).toHaveBeenCalledTimes(1);
+    expect(engine.seek).toHaveBeenLastCalledWith(0);
+  });
+
+  it('stepping back from the end of a finished queue plays from there', async () => {
+    const engine = makeMockEngine();
+    useTVPlayerStore.getState().setEngine(engine);
+    await useTVPlayerStore.getState().loadQueue(queue, 2);
+    engine.emit({
+      status: 'playing',
+      positionSeconds: 59.8,
+      durationSeconds: 60,
+    });
+    engine.emit({status: 'idle', positionSeconds: 60, durationSeconds: 60});
+    expect(useTVPlayerStore.getState().finished).toBe(true);
+    useTVPlayerStore.getState().seekTo(45);
+    expect(useTVPlayerStore.getState().finished).toBe(false);
+    (engine.seek as jest.Mock).mockClear();
+    useTVPlayerStore.getState().toggle();
+    expect(engine.seek).not.toHaveBeenCalled();
+    expect(engine.play).toHaveBeenCalled();
+  });
+});
+
+describe('shuffled queues', () => {
+  beforeEach(() => {
+    useTVPlayerStore.getState().reset();
+  });
+
+  it('play in their (already shuffled) order and end', async () => {
+    const engine = makeMockEngine();
+    useTVPlayerStore.getState().setEngine(engine);
+    await useTVPlayerStore.getState().loadQueue(queue, 0, {shuffle: true});
+    await useTVPlayerStore.getState().next();
+    expect(useTVPlayerStore.getState().currentIndex).toBe(1);
+    await useTVPlayerStore.getState().prev();
+    expect(useTVPlayerStore.getState().currentIndex).toBe(0);
+    await useTVPlayerStore.getState().jumpToIndex(2);
+    engine.emit({
+      status: 'playing',
+      positionSeconds: 59.8,
+      durationSeconds: 60,
+    });
+    engine.emit({status: 'idle', positionSeconds: 60, durationSeconds: 60});
+    expect(useTVPlayerStore.getState().finished).toBe(true);
+    expect(hasNextIn(useTVPlayerStore.getState())).toBe(false);
+  });
+});
+
+describe('while a recitation is looked up', () => {
+  beforeEach(() => {
+    useTVPlayerStore.getState().reset();
+  });
+
+  it('transport presses leave the placeholder alone, so a failure still shows', async () => {
+    const engine = makeMockEngine();
+    useTVPlayerStore.getState().setEngine(engine);
+    await useTVPlayerStore.getState().loadQueue(queue, 1);
+    const token = useTVPlayerStore
+      .getState()
+      .beginPending({...queue[0], audioUrl: ''}, jest.fn());
+    (engine.load as jest.Mock).mockClear();
+    (engine.seek as jest.Mock).mockClear();
+    await useTVPlayerStore.getState().prev();
+    await useTVPlayerStore.getState().next();
+    useTVPlayerStore.getState().seekBy(15);
+    useTVPlayerStore.getState().replay();
+    await useTVPlayerStore.getState().jumpToIndex(0);
+    expect(engine.load).not.toHaveBeenCalled();
+    expect(engine.seek).not.toHaveBeenCalled();
+    useTVPlayerStore.getState().failPending(token, 'Offline');
+    expect(useTVPlayerStore.getState().status).toBe('error');
+  });
+});
+
+describe('error messages', () => {
+  it('keeps connection errors and hides native ones', () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    expect(describeError(new Error('The network connection was lost.'))).toBe(
+      'The network connection was lost.',
+    );
+    expect(
+      describeError(
+        new Error('[ExpoAudioService] Player not set. Call setPlayer first.'),
+      ),
+    ).toBe(PLAYBACK_FAILED_MESSAGE);
+    expect(describeError(undefined)).toBe(PLAYBACK_FAILED_MESSAGE);
+    warn.mockRestore();
+  });
+
+  it("an engine error carries the engine's reason through", async () => {
+    useTVPlayerStore.getState().reset();
+    const engine = makeMockEngine();
+    useTVPlayerStore.getState().setEngine(engine);
+    await useTVPlayerStore.getState().loadQueue(queue, 0);
+    engine.emit({
+      status: 'error',
+      positionSeconds: 0,
+      durationSeconds: 0,
+      error: 'The network connection timed out',
+    });
+    expect(useTVPlayerStore.getState().lastError).toBe(
+      'The network connection timed out',
+    );
+  });
+});
+
+describe('the end-of-track hook', () => {
+  afterEach(() => setEndOfTrackHook(null));
+
+  it('plays the track again from where the hook says instead of moving on', async () => {
+    useTVPlayerStore.getState().reset();
+    const engine = makeMockEngine();
+    useTVPlayerStore.getState().setEngine(engine);
+    await useTVPlayerStore.getState().loadQueue(queue, 0);
+    setEndOfTrackHook(() => ({seconds: 50, holdMs: 0}));
+    engine.emit({
+      status: 'playing',
+      positionSeconds: 59.8,
+      durationSeconds: 60,
+    });
+    engine.emit({status: 'idle', positionSeconds: 60, durationSeconds: 60});
+    expect(engine.seek).toHaveBeenLastCalledWith(50);
+    expect(useTVPlayerStore.getState().currentIndex).toBe(0);
+    expect(useTVPlayerStore.getState().finished).toBe(false);
+  });
+});
+
+// The progress writer's interval would keep Jest from exiting.
+afterAll(() => useTVPlayerStore.getState().reset());

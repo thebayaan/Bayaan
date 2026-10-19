@@ -15,6 +15,11 @@ type Props = {
   size: number;
   color?: string;
   style?: StyleProp<TextStyle>;
+  /**
+   * Widest the calligraphy may be, in design px: long names (Ali 'Imran)
+   * shrink to fit instead of running past a fixed, clipped art square.
+   */
+  fitWidth?: number;
 };
 
 function surahName(surahNumber: number): string {
@@ -34,13 +39,21 @@ export function SurahGlyph({
   size,
   color = colors.text,
   style,
+  fitWidth,
 }: Props): React.ReactElement {
   const glyph = surahGlyphMap[surahNumber];
   if (surahGlyphsAvailable && glyph) {
+    const fit =
+      fitWidth === undefined
+        ? null
+        : {width: scale(fitWidth), textAlign: 'center' as const};
     return (
       <Text
         accessibilityLabel={surahName(surahNumber)}
+        numberOfLines={fit ? 1 : undefined}
+        adjustsFontSizeToFit={fit !== null}
         style={[
+          fit,
           {
             fontFamily: surahNameFontFamily,
             fontSize: scale(size),
@@ -64,6 +77,7 @@ export function SurahGlyph({
           fontSize: scale(size * 0.4),
           color,
         },
+        fitWidth === undefined ? null : {maxWidth: scale(fitWidth)},
         style,
       ]}>
       {surahName(surahNumber)}

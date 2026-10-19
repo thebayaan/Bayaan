@@ -1,4 +1,10 @@
-import {continueKey, resumableContinue, stableContinue} from './homeContinue';
+import {
+  continueKey,
+  focusAfterRemoval,
+  resumableContinue,
+  stableContinue,
+  timeLeftLabel,
+} from './homeContinue';
 import type {ContinueEntry} from '../services/continueListeningStore';
 
 const e = (
@@ -35,6 +41,15 @@ describe('stableContinue', () => {
     expect(out.keys).toEqual(['a:1', 'b:2', 'c:3']);
   });
 
+  it('goes back to newest first once focus has left the rail', () => {
+    const out = stableContinue(
+      ['a:1', 'b:2'],
+      [e('c', 3), e('b', 2), e('a', 1)],
+      false,
+    );
+    expect(out.keys).toEqual(['c:3', 'b:2', 'a:1']);
+  });
+
   it('drops entries that left the store', () => {
     const out = stableContinue(['a:1', 'b:2'], [e('b', 2)]);
     expect(out.keys).toEqual(['b:2']);
@@ -50,5 +65,47 @@ describe('resumableContinue', () => {
         continueKey,
       ),
     ).toEqual(['a:1']);
+  });
+});
+
+describe('focusAfterRemoval', () => {
+  it('leaves focus to the menu while the card is still there', () => {
+    expect(focusAfterRemoval('b', 1, ['a', 'b', 'c'])).toBeUndefined();
+  });
+
+  it('focuses the card that took its place', () => {
+    expect(focusAfterRemoval('b', 1, ['a', 'c'])).toBe('c');
+  });
+
+  it('focuses the new last card when the last one went', () => {
+    expect(focusAfterRemoval('c', 2, ['a', 'b'])).toBe('b');
+  });
+
+  it('says so when the rail is now empty', () => {
+    expect(focusAfterRemoval('a', 0, [])).toBeNull();
+  });
+});
+
+describe('timeLeftLabel', () => {
+  const at = (positionSeconds: number, durationSeconds: number): string =>
+    timeLeftLabel({positionSeconds, durationSeconds});
+
+  it('says Started when the length is unknown', () => {
+    expect(at(30, 0)).toBe('Started');
+  });
+
+  it('counts seconds in the last minute of a short surah, not Almost done', () => {
+    // Al-'Asr: about a quarter through with 29 s to go.
+    expect(at(11, 40)).toBe('29 s left');
+  });
+
+  it('says Almost done only near the end', () => {
+    expect(at(36, 40)).toBe('Almost done');
+    expect(at(560, 600)).toBe('Almost done');
+  });
+
+  it('writes minutes, and hours the way collection lengths are written', () => {
+    expect(at(0, 12 * 60)).toBe('12 min left');
+    expect(at(60, 60 + 134 * 60)).toBe('2 h 14 min left');
   });
 });
