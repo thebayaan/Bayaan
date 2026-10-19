@@ -85,7 +85,7 @@ const styles = createScaledStyles({
     gap: 8,
   },
   kicker: {
-    color: colors.text,
+    color: colors.accent,
     fontFamily: fonts.extraBold,
     fontSize: 13,
     fontWeight: '800',
