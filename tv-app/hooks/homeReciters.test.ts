@@ -1,4 +1,6 @@
 import {
+  CURATED_ROW_MIN,
+  curatedRail,
   curatedRow,
   featuredRow,
   hasReciterChoice,
@@ -39,6 +41,27 @@ describe('curatedRow', () => {
       'hus',
     ]);
     expect(curatedRow(catalog, names, [], 1).map(x => x.id)).toEqual(['afs']);
+  });
+
+  it('matches a catalog name that holds the listed one', () => {
+    const shatri = r('sha', false, 'Shaik Abu Bakr Al Shatri');
+    const minshawi = r('min', false, 'Mohammed Siddiq Al-Minshawi');
+    expect(
+      curatedRow(
+        [shatri, minshawi],
+        ['Abu Bakr Al-Shatri', 'Mohammed Siddiq Al-Minshawi Muallim'],
+        [],
+      ).map(x => x.id),
+    ).toEqual(['sha', 'min']);
+  });
+});
+
+describe('curatedRail', () => {
+  it('shows the whole list, or nothing when fewer than the minimum', () => {
+    const five = ['a1', 'b2', 'c3', 'd4', 'e5'].map(n => r(n, false, n));
+    const names = five.map(x => x.name);
+    expect(curatedRail(five, names)).toHaveLength(CURATED_ROW_MIN);
+    expect(curatedRail(five.slice(0, 4), names)).toEqual([]);
   });
 });
 

@@ -35,7 +35,7 @@ import {
   type MomentItem,
 } from '../hooks/homeMoments';
 import {
-  curatedRow,
+  curatedRail,
   featuredRow,
   MEMORIZATION_RECITER_NAMES,
   TAJWEED_RECITER_NAMES,
@@ -373,24 +373,16 @@ export function HomeScreen(): React.ReactElement {
     () => featuredRow(reciters, [...recentIds, ...favoriteIds]),
     [reciters, recentIds, favoriteIds],
   );
-  // The phone's curated rows, each adding voices the rails above don't show.
-  const {memorizationReciters, tajweedReciters} = useMemo(() => {
-    const shown = [
-      ...recentReciters,
-      ...favoriteReciters,
-      ...featuredReciters,
-    ].map(r => r.id);
-    const memorization = curatedRow(
-      reciters,
-      MEMORIZATION_RECITER_NAMES,
-      shown,
-    );
-    const tajweed = curatedRow(reciters, TAJWEED_RECITER_NAMES, [
-      ...shown,
-      ...memorization.map(r => r.id),
-    ]);
-    return {memorizationReciters: memorization, tajweedReciters: tajweed};
-  }, [reciters, recentReciters, favoriteReciters, featuredReciters]);
+  // The phone's curated rows, whole (a voice may also be in Featured
+  // reciters), or left out when the catalog has too few of their voices.
+  const memorizationReciters = useMemo(
+    () => curatedRail(reciters, MEMORIZATION_RECITER_NAMES),
+    [reciters],
+  );
+  const tajweedReciters = useMemo(
+    () => curatedRail(reciters, TAJWEED_RECITER_NAMES),
+    [reciters],
+  );
   const lovedSurahs = useMemo(
     () => loved.filter(e => reciterById.has(e.reciterId)),
     [loved, reciterById],
