@@ -78,13 +78,13 @@
 023-panel-repeat 3 right*3 select
 024-panel-repeat-verse 3 down select
 025-panel-repeat-off 3 up select
-026-panel-speed 3 back right select
-027-panel-on-screen 3 back right select
-028-panel-reciter 3 back right select
+026-panel-speed 3 back none*2 right select
+027-panel-on-screen 3 back none*2 right select
+028-panel-reciter 3 back none*2 right select
 029-panel-sleep 3 back none*2 right select
-030-panel-sound 3 back right select
-031-panel-queue 3 back right select
-032-panel-save 3 back right select
+030-panel-sound 3 back none*2 right select
+031-panel-queue 3 back none*2 right select
+032-panel-save 3 back none*2 right select
 
 # ---- Save panel > New playlist > the editor, named "Fajr" on the key grid >
 # Create > back in the player with the Save panel open and Fajr ticked
