@@ -124,6 +124,23 @@ export function ControlsTray({
   const focusedTool = useRef<PanelKey | null>(null);
   const panelOpen = panel !== null;
   const toolsFocusable = TOOLS_STAY_FOCUSABLE || !panelOpen;
+  const returnToRef = useRef(returnTo);
+  returnToRef.current = returnTo;
+  // Android: ask for the tool the moment the panel closes, inside the
+  // store's set, before React redraws. A long panel's redraw can keep the
+  // JS thread busy long enough that the next D-pad press, handled natively,
+  // would still find focus in the closing panel. The closed panel stays
+  // drawn a moment (ListeningPanels LINGER_MS), so the row is never
+  // removed while focused.
+  useEffect(() => {
+    if (!TOOLS_STAY_FOCUSABLE) return;
+    return useListeningStore.subscribe((state, prev) => {
+      if (prev.panel === null || state.panel !== null) return;
+      const key = returnToRef.current;
+      console.log(`[focusdbg] handoff ${key}`);
+      if (key !== null) toolRefs.current[key]?.requestTVFocus?.();
+    });
+  }, []);
   const wasOpen = useRef(panelOpen);
   useEffect(() => {
     const closed = wasOpen.current && !panelOpen;

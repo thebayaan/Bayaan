@@ -373,20 +373,25 @@ export function HomeScreen(): React.ReactElement {
     () => featuredRow(reciters, [...recentIds, ...favoriteIds]),
     [reciters, recentIds, favoriteIds],
   );
+  // Voices in the reciter rails above the curated ones.
+  const shownAbove = useMemo(
+    () => [...recentReciters, ...favoriteReciters, ...featuredReciters],
+    [recentReciters, favoriteReciters, featuredReciters],
+  );
   // The phone's curated rows, whole, or left out when the catalog has too
   // few of their voices. Voices already in a rail above go to the end, so
   // the three rails don't open on the same faces.
   const memorizationReciters = useMemo(
-    () => curatedRail(reciters, MEMORIZATION_RECITER_NAMES, featuredReciters),
-    [reciters, featuredReciters],
+    () => curatedRail(reciters, MEMORIZATION_RECITER_NAMES, shownAbove),
+    [reciters, shownAbove],
   );
   const tajweedReciters = useMemo(
     () =>
       curatedRail(reciters, TAJWEED_RECITER_NAMES, [
-        ...featuredReciters,
+        ...shownAbove,
         ...memorizationReciters.slice(0, 6),
       ]),
-    [reciters, featuredReciters, memorizationReciters],
+    [reciters, shownAbove, memorizationReciters],
   );
   const lovedSurahs = useMemo(
     () => loved.filter(e => reciterById.has(e.reciterId)),
