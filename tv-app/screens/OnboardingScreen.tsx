@@ -1,6 +1,6 @@
 import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {Image} from 'expo-image';
-import {ScrollView, Text, TVFocusGuideView, View} from 'react-native';
+import {Text, TVFocusGuideView, View} from 'react-native';
 import {FocusableButton} from '../components/primitives/FocusableButton';
 import {FocusableCard} from '../components/primitives/FocusableCard';
 import {
@@ -353,10 +353,9 @@ function StepTwo({
       {selectedMode === 'both' || selectedMode === 'translation' ? (
         <View style={styles.languageBlock}>
           <Text style={styles.languageTitle}>Translation language</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.languageRow}>
+          {/* A plain row, not a ScrollView: all the chips fit, and nothing
+              clips or shifts the focused chip as it grows. */}
+          <View style={styles.languageRow}>
             <TVFocusGuideView
               autoFocus
               destinations={selectedChip ? [selectedChip] : undefined}
@@ -378,7 +377,7 @@ function StepTwo({
                 );
               })}
             </TVFocusGuideView>
-          </ScrollView>
+          </View>
         </View>
       ) : null}
       <TVFocusGuideView autoFocus style={styles.browseRow}>
@@ -673,7 +672,14 @@ const styles = createScaledStyles({
     textTransform: 'uppercase',
   },
   languageRow: {paddingHorizontal: 24, paddingVertical: 10},
-  languageGuide: {flexDirection: 'row', gap: 8},
+  // Centred, so each chip keeps its own height and grows about its middle.
+  languageGuide: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+  },
   chip: {
     paddingHorizontal: 20,
     paddingVertical: 10,
