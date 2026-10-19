@@ -1,5 +1,6 @@
 import {
   adhkarGradient,
+  browseAdhkarIds,
   countLabel,
   estimateMinutes,
   towardInk,
@@ -34,5 +35,24 @@ describe('adhkarArt', () => {
   it('counts', () => {
     expect(countLabel(1)).toBe('1 dhikr');
     expect(countLabel(24)).toBe('24 adhkar');
+  });
+
+  it('leads Browse with the list for the time of day', () => {
+    const at = (h: number) => new Date(2026, 9, 19, h, 30);
+    expect(browseAdhkarIds(at(8))).toEqual([
+      'morning-adhkar',
+      'before-sleep',
+      'evening-adhkar',
+    ]);
+    expect(browseAdhkarIds(at(17))).toEqual([
+      'evening-adhkar',
+      'before-sleep',
+      'morning-adhkar',
+    ]);
+    expect(browseAdhkarIds(at(0))).toEqual([
+      'before-sleep',
+      'evening-adhkar',
+      'morning-adhkar',
+    ]);
   });
 });

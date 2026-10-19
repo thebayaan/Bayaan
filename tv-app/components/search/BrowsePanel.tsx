@@ -20,6 +20,7 @@ import {
 import {
   ADHKAR_WHEN,
   adhkarGradient,
+  browseAdhkarIds,
   countLabel,
 } from '../../services/search/adhkarArt';
 import {surahGradient} from '../../theme/surahColors';
@@ -36,8 +37,6 @@ const SURAH_ENTRIES: readonly SurahEntry[] = [
   {surah: 78, title: 'Juz ʿAmma', subtitle: 'An-Naba to An-Nas'},
   {surah: 67, title: 'Every night', subtitle: 'Al-Mulk'},
 ];
-
-const ADHKAR_ENTRIES = ['morning-adhkar', 'evening-adhkar', 'before-sleep'];
 
 const BROWSE_ALL: readonly {tab: TabKey; label: string}[] = [
   {tab: 'surahs', label: 'All surahs'},
@@ -71,7 +70,8 @@ export function BrowsePanel({
   onAdhkar,
   onBrowseAll,
 }: Props): React.ReactElement {
-  const lists = ADHKAR_ENTRIES.flatMap(id => {
+  // The list for now leads, as on Home and the Adhkar screen.
+  const lists = browseAdhkarIds(new Date()).flatMap(id => {
     const list = ADHKAR_LISTS.find(l => l.id === id);
     return list ? [list] : [];
   });
