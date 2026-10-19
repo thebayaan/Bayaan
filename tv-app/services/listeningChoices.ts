@@ -1,10 +1,6 @@
 import type {Reciter, Rewayah} from '../types/reciter';
 import type {QueueItem} from '../types/player';
-import {
-  recitationStyle,
-  rewayahDisplayName,
-  styleLabel,
-} from './browseCatalog';
+import {recitationStyle, rewayahDisplayName, styleLabel} from './browseCatalog';
 
 /**
  * The best-known voices, in the order onboarding shows them (the approved
@@ -232,20 +228,63 @@ export function upcoming(
 }
 
 /**
- * A reciter's name short enough for the tray, the way the approved screens
- * write it: "Mohammed Siddiq Al-Minshawi" becomes "Al-Minshawi"; names that
- * already fit stay whole.
+ * The longest reciter name shown whole wherever the app writes a short name
+ * (portrait captions, the tray, tiles, Home's hero). Sized to the narrowest
+ * place, a Home portrait's one-line caption, so a short name is never cut.
+ */
+export const SHORT_NAME_MAX = 15;
+
+/** Words that belong with the name after them: "Abu Dalal", "Abdul Hakam". */
+const NAME_PARTICLES = new Set(['abu', 'bin', 'ibn', 'abdul', 'abdel', 'al']);
+
+/** A family name written the one way: "Alsudaes" becomes "Al-Sudaes". */
+function tidyWord(word: string): string {
+  if (NAME_PARTICLES.has(word.toLowerCase())) return word;
+  const prefixed = /^al[a-z]{3,}$/i.test(word) ? `Al-${word.slice(2)}` : word;
+  return prefixed
+    .split('-')
+    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+    .join('-');
+}
+
+/**
+ * A reciter's short name, the one way everywhere the app shortens one:
+ * names up to SHORT_NAME_MAX letters stay whole; longer ones become the
+ * family name, from its "Al-" ("Mohammed Siddiq Al-Minshawi" becomes
+ * "Al-Minshawi", "Abdulrahman Alsudaes" becomes "Al-Sudaes"), keeping a
+ * particle or a very short last word with the word before it ("Hashim Abu
+ * Dalal" becomes "Abu Dalal"). A note in brackets is dropped. The full name
+ * stays the spoken label.
  */
 export function shortReciterName(name: string): string {
-  const trimmed = name.trim().replace(/\s+/g, ' ');
-  if (trimmed.length <= 22) return trimmed;
+  const trimmed = name
+    .replace(/\([^)]*\)/g, ' ')
+    .trim()
+    .replace(/\s+/g, ' ');
+  if (trimmed.length <= SHORT_NAME_MAX) return trimmed;
   const words = trimmed.split(' ');
+  const fits = (from: number): boolean =>
+    words.slice(from).join(' ').length <= SHORT_NAME_MAX;
+  let start = words.length - 1;
   for (let i = words.length - 1; i > 0; i--) {
     if (/^al(-|$)/i.test(words[i])) {
-      return words.slice(i).join(' ');
+      if (fits(i)) start = i;
+      break;
     }
   }
-  return words[words.length - 1];
+  while (start > 1) {
+    const before = words[start - 1];
+    const tail = words.slice(start).join(' ');
+    const joinsNext =
+      NAME_PARTICLES.has(before.toLowerCase()) || tail.length < 5;
+    if (!joinsNext || !fits(start - 1)) break;
+    start -= 1;
+  }
+  const tail = words.slice(start);
+  if (tail.length > 1 && /^al$/i.test(tail[0])) {
+    tail.splice(0, 2, `Al-${tail[1]}`);
+  }
+  return tail.map(tidyWord).join(' ');
 }
 
 /**

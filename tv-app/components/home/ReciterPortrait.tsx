@@ -57,7 +57,9 @@ function ReciterPortraitImpl({reciter, onSelect}: Props): React.ReactElement {
         style={styles.name}
         color={colors.textSecondary}
         focusedColor={colors.text}
-        numberOfLines={1}>
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.8}>
         {portraitName(reciter.name)}
       </FocusText>
     </FocusableCard>

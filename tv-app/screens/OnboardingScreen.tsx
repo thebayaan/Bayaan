@@ -26,7 +26,7 @@ import {
   type OnScreenMode,
 } from '../store/displayStore';
 import {getReciterArtwork} from '../services/reciterArtwork';
-import {popularReciters} from '../services/listeningChoices';
+import {popularReciters, shortReciterName} from '../services/listeningChoices';
 import {defaultReciterChoices} from '../services/reciterPicker';
 import type {Reciter} from '../types/reciter';
 import {colors} from '../theme/colors';
@@ -248,13 +248,15 @@ function ReciterPortrait({
         selected ? `${reciter.name}, your reciter` : reciter.name
       }>
       <PortraitImage reciter={reciter} selected={selected} />
-      {/* Two lines, so long names read in full; the box keeps the row even. */}
+      {/* The short name on one line, as Home's portraits write it. */}
       <FocusText
         style={styles.portraitName}
         color={selected ? colors.text : colors.textSecondary}
         focusedColor={colors.text}
-        numberOfLines={2}>
-        {reciter.name}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.8}>
+        {shortReciterName(reciter.name)}
       </FocusText>
       {/* As the Reciters grid names it ("Hafs · Teaching"). */}
       <Text style={styles.portraitSub} numberOfLines={1}>
@@ -567,7 +569,7 @@ const styles = createScaledStyles({
     fontWeight: '700',
     fontSize: 22,
     lineHeight: 28,
-    height: 56,
+    height: 28,
     textAlign: 'center',
   },
   portraitSub: {

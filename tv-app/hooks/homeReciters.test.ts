@@ -45,7 +45,10 @@ describe('curatedRow', () => {
 describe('portraitName', () => {
   it.each([
     ['Mishary Alafasi', 'Mishary Alafasi'],
-    ['Mohammed Jibreel', 'Mohammed Jibreel'],
+    ['Mohammed Jibreel', 'Jibreel'],
+    ['Abdulrahman Alsudaes', 'Al-Sudaes'],
+    ['Hashim Abu Dalal', 'Abu Dalal'],
+    ['Mohammed Osman Khan', 'Osman Khan'],
     ['Mohammed Siddiq Al-Minshawi', 'Al-Minshawi'],
     ['Mahmoud Khalil Al-Hussary', 'Al-Hussary'],
     ['Abdulbasit Abdulsamad', 'Abdulsamad'],

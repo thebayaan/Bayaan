@@ -6,6 +6,7 @@ import {
   rewayahLabel,
   queueWindow,
   shortReciterName,
+  SHORT_NAME_MAX,
   upcoming,
 } from './listeningChoices';
 import type {Reciter, Rewayah} from '../types/reciter';
@@ -164,17 +165,37 @@ describe('queueWindow', () => {
 
 describe('shortReciterName', () => {
   it('keeps names that fit', () => {
-    expect(shortReciterName('Abdulbasit Abdulsamad')).toBe(
-      'Abdulbasit Abdulsamad',
-    );
+    expect(shortReciterName('Mishary Alafasi')).toBe('Mishary Alafasi');
+    expect(shortReciterName('  Saud   Al-Shuraim ')).toBe('Saud Al-Shuraim');
+  });
+
+  it('never runs past SHORT_NAME_MAX', () => {
+    for (const name of [
+      'Mal-Allah Abdulrhman Aljaber',
+      'Mohammed Al-Amin Qeniwa',
+      'Muamar (From Indonesia)',
+      'Akhil Abdulhayy Rawa',
+    ]) {
+      expect(shortReciterName(name).length).toBeLessThanOrEqual(SHORT_NAME_MAX);
+    }
+  });
+
+  it('writes the family name the one way', () => {
+    expect(shortReciterName('Abdulrahman Alsudaes')).toBe('Al-Sudaes');
+    expect(shortReciterName('Ahmad Issa Al Maasaraawi')).toBe('Al-Maasaraawi');
+    expect(shortReciterName('Tareq Abdulgani daawob')).toBe('Daawob');
+    expect(shortReciterName('Mohammad Saleh Alim Shah')).toBe('Alim Shah');
+    expect(shortReciterName('Mahmoud Abdul Hakam')).toBe('Abdul Hakam');
+    expect(shortReciterName('Muamar (From Indonesia)')).toBe('Muamar');
   });
 
   it('shortens long names to the family name', () => {
     expect(shortReciterName('Mohammed Siddiq Al-Minshawi')).toBe('Al-Minshawi');
+    expect(shortReciterName('Abdulbasit Abdulsamad')).toBe('Abdulsamad');
     expect(shortReciterName('Mahmoud Khalil Al Hussary Al Masri')).toBe(
-      'Al Masri',
+      'Al-Masri',
     );
-    expect(shortReciterName('Abdulrahman Mohammed Alsudaes Bin X')).toBe('X');
+    expect(shortReciterName('Mohammed Jibreel')).toBe('Jibreel');
   });
 });
 
