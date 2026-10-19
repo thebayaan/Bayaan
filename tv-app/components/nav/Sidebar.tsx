@@ -12,10 +12,7 @@ import {LogoMark} from '../brand/LogoMark';
 import {NowPlayingGlyph} from './NowPlayingGlyph';
 import {useNavStore, type TabKey} from '../../store/navStore';
 import {useNowPlayingTile} from '../../hooks/useNowPlayingTile';
-import {
-  restorePlaceContent,
-  restoreScreenFocus,
-} from '../../services/focusReturn';
+import {restorePlaceContent} from '../../services/focusReturn';
 import {focusInSteps, requestFocus} from '../../services/layerFocus';
 import {colors} from '../../theme/colors';
 import {fonts} from '../../theme/typography';
@@ -75,6 +72,11 @@ export function requestSidebarFocus(place?: TabKey): boolean {
 // items' own events, keyed so either order of blur and focus holds.
 let sidebarHolder: string | null = null;
 
+/** Whether a sidebar item (a place or the tile) has focus now. */
+export function sidebarHasFocus(): boolean {
+  return sidebarHolder !== null;
+}
+
 let pendingFocus: (() => void) | null = null;
 
 /**
@@ -85,7 +87,9 @@ let pendingFocus: (() => void) | null = null;
  *
  * Checked: a request the focus engine drops (Home still mounting, a view
  * that just left) is asked again, and if the sidebar still has no focus the
- * screen's own memory takes it, so Back never leaves focus nowhere.
+ * place's content takes it back (its last element, else its first, and its
+ * own chain ends on the sidebar again, retried), so Back never leaves focus
+ * nowhere.
  */
 export function focusSidebar(place?: TabKey): boolean {
   if (!placeItem(place)) return false;
@@ -94,7 +98,7 @@ export function focusSidebar(place?: TabKey): boolean {
     [
       () => requestFocus(placeItem(place)),
       () => requestFocus(placeItem(place)),
-      restoreScreenFocus,
+      restorePlaceContent,
     ],
     // Onto that place's item: still on the place just left is not there.
     () => (place ? sidebarHolder === place : sidebarHolder !== null),
@@ -125,7 +129,11 @@ export function Sidebar(): React.ReactElement {
   // then Back must never act on a sidebar focus that already left.
   // Moving focus between two sidebar items fires blur then focus; waiting a
   // beat before folding keeps the sidebar from flickering closed in between
-  // (the fold only: the flag above never waits).
+  // (the fold only: the flag above never waits). On tvOS the new item's
+  // focus often comes before the old item's blur (Settings -> tile, Library
+  // -> Home after Back, one item to the next), so when the beat is over the
+  // panel follows whichever item holds focus then, and folds only when none
+  // does: a late blur never folds the panel over a focused item.
   const handleFocus = useCallback(
     (key: string) => {
       sidebarHolder = key;
@@ -142,7 +150,7 @@ export function Sidebar(): React.ReactElement {
         setSidebarFocused(false);
       }
       if (blurTimer.current) clearTimeout(blurTimer.current);
-      blurTimer.current = setTimeout(() => setFocusedKey(null), 80);
+      blurTimer.current = setTimeout(() => setFocusedKey(sidebarHolder), 80);
     },
     [setSidebarFocused],
   );
