@@ -329,7 +329,11 @@ function SidebarNowPlaying({
           <NowPlayingGlyph state={tile.state} focused={focused} />
         </View>
         {open ? (
-          <View style={styles.tileText}>
+          <View
+            style={[
+              styles.tileText,
+              tile.progress !== null && styles.tileTextAboveProgress,
+            ]}>
             <Text
               numberOfLines={1}
               style={[styles.tileTitle, focused && styles.onFocus]}>
@@ -525,17 +529,23 @@ const styles = createScaledStyles({
     justifyContent: 'center',
   },
   tileText: {flex: 1, minWidth: 0, paddingRight: 14},
+  // The two lines sit higher, so the progress bar runs below the detail
+  // line's descenders, not through them.
+  tileTextAboveProgress: {paddingBottom: 8},
+  // Line heights fixed, so Android's font padding can't push the lines down.
   tileTitle: {
     color: colors.text,
     fontFamily: fonts.bold,
     fontWeight: '700',
     fontSize: 18,
+    lineHeight: 22,
   },
   tileDetail: {
     color: colors.textSecondary,
     fontFamily: fonts.medium,
     fontWeight: '500',
     fontSize: 14,
+    lineHeight: 18,
     marginTop: 2,
   },
   // Inset from the squircle's curve, on a faint track, so it reads as
@@ -544,7 +554,7 @@ const styles = createScaledStyles({
     position: 'absolute',
     left: 12,
     right: 12,
-    bottom: 7,
+    bottom: 6,
     height: 3,
     borderRadius: 2,
     overflow: 'hidden',
