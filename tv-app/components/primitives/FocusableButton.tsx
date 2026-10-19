@@ -72,8 +72,6 @@ export function FocusableButton({
   );
 
   const handleFocus = (): void => {
-    // TEMP focusdbg
-    console.log(`[focusdbg] focus ${accessibilityLabel ?? '?'}`);
     setIsFocused(true);
     animateFocusScale(scaleValue, focusScale);
     onFocus?.();

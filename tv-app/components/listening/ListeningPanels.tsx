@@ -130,12 +130,7 @@ function useShownPanel(): PanelKey | null {
   }
   useEffect(() => {
     if (lingering === null) return;
-    // TEMP focusdbg
-    console.log(`[focusdbg] linger ${lingering}`);
-    const id = setTimeout(() => {
-      console.log(`[focusdbg] linger end ${lingering}`);
-      setLingering(null);
-    }, LINGER_MS);
+    const id = setTimeout(() => setLingering(null), LINGER_MS);
     return () => clearTimeout(id);
   }, [lingering]);
   return panel ?? lingering;

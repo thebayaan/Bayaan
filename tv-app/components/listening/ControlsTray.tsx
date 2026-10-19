@@ -67,9 +67,6 @@ export function formatTime(seconds: number): string {
  */
 const TOOLS_STAY_FOCUSABLE = Platform.OS !== 'ios';
 
-/** When focus is asked for again if the tool hasn't reported it (ms). */
-const RETURN_RETRIES = [0, 50, 100, 200, 300];
-
 /**
  * The player's controls, raised from the bottom on OK: progress with verse
  * ticks; transport (previous surah, a verse back, play, a verse on, next
@@ -120,12 +117,14 @@ export function ControlsTray({
     () => useListeningStore.getState().panel,
   );
   const toolRefs = useRef<Partial<Record<PanelKey, View | null>>>({});
-  // The tool that last reported focus; cleared when its panel opens.
-  const focusedTool = useRef<PanelKey | null>(null);
+  // Whether focus is on the tray (a tool or the transport); cleared when a
+  // panel opens, so a late ask never pulls focus back from where a press
+  // already moved it.
+  const trayFocused = useRef(false);
   const panelOpen = panel !== null;
   const toolsFocusable = TOOLS_STAY_FOCUSABLE || !panelOpen;
-  const clearToolFocus = (): void => {
-    focusedTool.current = null;
+  const noteTrayFocus = (): void => {
+    trayFocused.current = true;
   };
   const returnToRef = useRef(returnTo);
   returnToRef.current = returnTo;
@@ -140,26 +139,21 @@ export function ControlsTray({
     return useListeningStore.subscribe((state, prev) => {
       if (prev.panel === null || state.panel !== null) return;
       const key = returnToRef.current;
-      console.log(`[focusdbg] handoff ${key}`);
       if (key !== null) toolRefs.current[key]?.requestTVFocus?.();
     });
   }, []);
+  // tvOS (and Android, if the ask above found nothing): once the redraw has
+  // made the tools focusable again.
   const wasOpen = useRef(panelOpen);
   useEffect(() => {
     const closed = wasOpen.current && !panelOpen;
     wasOpen.current = panelOpen;
     if (!closed || returnTo === null) return;
-    const ids = RETURN_RETRIES.map(ms =>
-      setTimeout(() => {
-        // TEMP focus trace for the device walk; removed after.
-        console.log(
-          `[focusdbg] retry ${ms} ${returnTo} has=${focusedTool.current}`,
-        );
-        if (focusedTool.current === returnTo) return;
-        toolRefs.current[returnTo]?.requestTVFocus?.();
-      }, ms),
-    );
-    return () => ids.forEach(clearTimeout);
+    const id = setTimeout(() => {
+      if (trayFocused.current) return;
+      toolRefs.current[returnTo]?.requestTVFocus?.();
+    }, 0);
+    return () => clearTimeout(id);
   }, [panelOpen, returnTo]);
 
   // A verse repeat's gap counts as playing: Pause there stops the replay.
@@ -175,12 +169,9 @@ export function ControlsTray({
     buttonRef: (node: View | null) => {
       toolRefs.current[key] = node;
     },
-    onFocus: () => {
-      console.log(`[focusdbg] tool focus ${key}`);
-      focusedTool.current = key;
-    },
+    onFocus: noteTrayFocus,
     onPress: press(() => {
-      focusedTool.current = null;
+      trayFocused.current = false;
       setReturnTo(key);
       setPanel(key);
     }),
@@ -228,7 +219,7 @@ export function ControlsTray({
           <FocusableButton
             onPress={press(() => void prev())}
             accessibilityLabel="Previous surah"
-            onFocus={clearToolFocus}
+            onFocus={noteTrayFocus}
             focusable={toolsFocusable}
             style={styles.round}>
             <FocusIcon icon={PreviousIcon} size={26} />
@@ -236,7 +227,7 @@ export function ControlsTray({
           <FocusableButton
             onPress={press(() => onStep(-1))}
             accessibilityLabel={synced ? 'Previous verse' : 'Back 15 seconds'}
-            onFocus={clearToolFocus}
+            onFocus={noteTrayFocus}
             focusable={toolsFocusable}
             style={styles.round}>
             <FocusIcon icon={StepBackIcon} size={34} />
@@ -247,7 +238,7 @@ export function ControlsTray({
               loading ? 'Loading' : isPlaying ? 'Pause' : 'Play'
             }
             hasTVPreferredFocus={returnTo === null}
-            onFocus={clearToolFocus}
+            onFocus={noteTrayFocus}
             focusable={toolsFocusable}
             style={[styles.round, styles.roundBig]}>
             {loading ? (
@@ -259,7 +250,7 @@ export function ControlsTray({
           <FocusableButton
             onPress={press(() => onStep(1))}
             accessibilityLabel={synced ? 'Next verse' : 'Forward 15 seconds'}
-            onFocus={clearToolFocus}
+            onFocus={noteTrayFocus}
             focusable={toolsFocusable}
             style={styles.round}>
             <FocusIcon icon={StepForwardIcon} size={34} />
@@ -272,7 +263,7 @@ export function ControlsTray({
               onPress={press(() => void next())}
               accessibilityLabel="Next surah"
               disabled={!hasNext}
-              onFocus={clearToolFocus}
+              onFocus={noteTrayFocus}
               focusable={toolsFocusable}
               style={styles.round}>
               <FocusIcon icon={NextIcon} size={26} />
@@ -358,6 +349,7 @@ export function ControlsTray({
             }
             on={isLoved}
             focusable={toolsFocusable}
+            onFocus={noteTrayFocus}
             onPress={toggleLoved}
           />
         </View>
