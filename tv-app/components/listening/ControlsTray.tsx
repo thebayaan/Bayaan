@@ -230,7 +230,6 @@ export function ControlsTray({
             }
             hasTVPreferredFocus={returnTo === null}
             focusable={!panelOpen}
-            outlined
             style={[styles.round, styles.roundBig]}>
             {loading ? (
               <FocusSpinner size="large" />
@@ -433,10 +432,15 @@ const styles = createScaledStyles({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // The main control is told apart by its size. At rest it wears only the
+  // faint divider line, never a bright ring that reads as a second focus
+  // beside a focused tool or panel row (Ink & Cream: only focus is cream).
   roundBig: {
     width: 88,
     height: 88,
     borderRadius: 24,
+    borderWidth: 2,
+    borderColor: colors.border,
   },
   // Next surah at the end of the queue: dimmed, and does nothing.
   unavailable: {opacity: 0.3},
