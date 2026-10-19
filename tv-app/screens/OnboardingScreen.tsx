@@ -1,6 +1,6 @@
 import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {Image} from 'expo-image';
-import {ScrollView, Text, TVFocusGuideView, View} from 'react-native';
+import {Text, TVFocusGuideView, View} from 'react-native';
 import {FocusableButton} from '../components/primitives/FocusableButton';
 import {FocusableCard} from '../components/primitives/FocusableCard';
 import {
@@ -26,7 +26,7 @@ import {
   type OnScreenMode,
 } from '../store/displayStore';
 import {getReciterArtwork} from '../services/reciterArtwork';
-import {popularReciters} from '../services/listeningChoices';
+import {popularReciters, shortReciterName} from '../services/listeningChoices';
 import {defaultReciterChoices} from '../services/reciterPicker';
 import type {Reciter} from '../types/reciter';
 import {colors} from '../theme/colors';
@@ -248,13 +248,15 @@ function ReciterPortrait({
         selected ? `${reciter.name}, your reciter` : reciter.name
       }>
       <PortraitImage reciter={reciter} selected={selected} />
-      {/* Two lines, so long names read in full; the box keeps the row even. */}
+      {/* The short name on one line, as Home's portraits write it. */}
       <FocusText
         style={styles.portraitName}
         color={selected ? colors.text : colors.textSecondary}
         focusedColor={colors.text}
-        numberOfLines={2}>
-        {reciter.name}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.8}>
+        {shortReciterName(reciter.name)}
       </FocusText>
       {/* As the Reciters grid names it ("Hafs · Teaching"). */}
       <Text style={styles.portraitSub} numberOfLines={1}>
@@ -351,10 +353,9 @@ function StepTwo({
       {selectedMode === 'both' || selectedMode === 'translation' ? (
         <View style={styles.languageBlock}>
           <Text style={styles.languageTitle}>Translation language</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.languageRow}>
+          {/* A plain row, not a ScrollView: all the chips fit, and nothing
+              clips or shifts the focused chip as it grows. */}
+          <View style={styles.languageRow}>
             <TVFocusGuideView
               autoFocus
               destinations={selectedChip ? [selectedChip] : undefined}
@@ -376,7 +377,7 @@ function StepTwo({
                 );
               })}
             </TVFocusGuideView>
-          </ScrollView>
+          </View>
         </View>
       ) : null}
       <TVFocusGuideView autoFocus style={styles.browseRow}>
@@ -567,7 +568,7 @@ const styles = createScaledStyles({
     fontWeight: '700',
     fontSize: 22,
     lineHeight: 28,
-    height: 56,
+    height: 28,
     textAlign: 'center',
   },
   portraitSub: {
@@ -671,7 +672,14 @@ const styles = createScaledStyles({
     textTransform: 'uppercase',
   },
   languageRow: {paddingHorizontal: 24, paddingVertical: 10},
-  languageGuide: {flexDirection: 'row', gap: 8},
+  // Centred, so each chip keeps its own height and grows about its middle.
+  languageGuide: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+  },
   chip: {
     paddingHorizontal: 20,
     paddingVertical: 10,

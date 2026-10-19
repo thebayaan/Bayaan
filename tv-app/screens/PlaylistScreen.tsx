@@ -45,6 +45,17 @@ const ART = 300;
 /** How long the Delete button waits for its second press. */
 const CONFIRM_MS = 4000;
 
+/**
+ * FlashList v2 keeps the first visible row's key in place when the data
+ * changes, so moving the top row down scrolled the list by a row and pushed
+ * the new first row off the top. A playlist keeps its scroll instead. Typed
+ * loosely: Vega's FlashList v1 types this prop differently, and its shim
+ * drops it (v1 never anchors).
+ */
+const KEEP_SCROLL = {
+  maintainVisibleContentPosition: {disabled: true},
+} as object;
+
 function itemKey(item: PlaylistItem): string {
   return `${item.surahNumber}:${item.reciterId}:${item.rewayahId ?? ''}`;
 }
@@ -353,6 +364,7 @@ export function PlaylistScreen({playlistId}: Props): React.ReactElement {
             keyExtractor={itemKey}
             overrideItemLayout={rowLayout}
             extraData={focusRow}
+            {...KEEP_SCROLL}
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
           />

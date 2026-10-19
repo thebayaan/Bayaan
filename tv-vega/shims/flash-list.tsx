@@ -29,9 +29,18 @@ function FlashListShim<T>(
 ): React.ReactElement {
   const estimatedItemSize =
     props.estimatedItemSize ?? estimateFromLayout(props);
+  // v2's `{disabled: true}` turns off an anchoring v1 never does; passed on,
+  // the native ScrollView would read it as v1's {minIndexForVisible}.
+  const {maintainVisibleContentPosition, ...rest} = props;
+  const anchor =
+    maintainVisibleContentPosition &&
+    'minIndexForVisible' in maintainVisibleContentPosition
+      ? maintainVisibleContentPosition
+      : undefined;
   return (
     <VegaFlashList<T>
-      {...props}
+      {...rest}
+      maintainVisibleContentPosition={anchor}
       ref={ref}
       estimatedItemSize={estimatedItemSize}
     />

@@ -91,7 +91,7 @@ export function LibraryFirstRun({
           <Text style={styles.kicker}>YOUR LIBRARY</Text>
           <Text style={styles.title}>Keep what you love</Text>
           <Text style={styles.sentence}>
-            Surahs you love, reciters you favorite and your playlists live
+            Surahs you love, your favourite reciters and your playlists live
             here.
           </Text>
           <TVFocusGuideView autoFocus style={styles.actions}>

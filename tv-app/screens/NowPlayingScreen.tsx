@@ -619,7 +619,7 @@ const styles = createScaledStyles({
     paddingHorizontal: spacing.xl,
     gap: 8,
   },
-  emptyKicker: {color: colors.text, ...typography.label, opacity: 0.55},
+  emptyKicker: {color: colors.accent, ...typography.label},
   emptyTitle: {
     color: colors.text,
     fontFamily: fonts.extraBold,

@@ -5,28 +5,23 @@
  */
 import type {Reciter} from '../types/reciter';
 import {featuredFirst} from '../services/browseCatalog';
-import {popularReciters, rewayahForSurah} from '../services/listeningChoices';
+import {
+  popularReciters,
+  rewayahForSurah,
+  shortReciterName,
+} from '../services/listeningChoices';
 
 /** How many reciters a Home rail shows at most. */
 export const RECITER_ROW_LIMIT = 12;
 
-/** The longest name a Home portrait shows whole on its one line. */
-export const PORTRAIT_NAME_MAX = 16;
-
 /**
- * A reciter's name under a Home portrait, short enough for one line the
- * way the Loved captions write it: "Mohammed Siddiq Al-Minshawi" becomes
- * "Al-Minshawi", "Abdulbasit Abdulsamad" becomes "Abdulsamad"; names that
- * fit stay whole. The portrait reads out the full name.
+ * A reciter's name under a portrait: the app's one short name
+ * (listeningChoices' shortReciterName), so a portrait, the tray and the
+ * tiles all write a reciter the same way. The portrait reads out the full
+ * name.
  */
 export function portraitName(name: string): string {
-  const trimmed = name.trim().replace(/\s+/g, ' ');
-  if (trimmed.length <= PORTRAIT_NAME_MAX) return trimmed;
-  const words = trimmed.split(' ');
-  for (let i = words.length - 1; i > 0; i--) {
-    if (/^al(-|$)/i.test(words[i])) return words.slice(i).join(' ');
-  }
-  return words[words.length - 1];
+  return shortReciterName(name);
 }
 
 /**
@@ -96,10 +91,14 @@ function nameKey(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
+/** Fewer curated voices than this and Home leaves the rail out. */
+export const CURATED_ROW_MIN = 5;
+
 /**
  * A curated reciter rail: the catalog's reciters behind `names`, in that
- * order, leaving out names the catalog lacks and reciters the rails above
- * already show, so the row adds someone new.
+ * order, leaving out names the catalog lacks and any ids in `exclude`. A
+ * name matches loosely, and a catalog name that holds it or that it holds
+ * also matches ("Abu Bakr Al-Shatri" is "Shaik Abu Bakr Al Shatri").
  */
 export function curatedRow(
   reciters: readonly Reciter[],
@@ -107,17 +106,40 @@ export function curatedRow(
   exclude: readonly string[],
   limit = RECITER_ROW_LIMIT,
 ): Reciter[] {
-  const byName = new Map(reciters.map(r => [nameKey(r.name), r]));
+  const keyed = reciters.map(r => ({key: nameKey(r.name), reciter: r}));
+  const byName = new Map(keyed.map(k => [k.key, k.reciter]));
+  const find = (name: string): Reciter | undefined => {
+    const key = nameKey(name);
+    const exact = byName.get(key);
+    if (exact || key.length < 8) return exact;
+    return keyed.find(
+      k => k.key.length >= 8 && (k.key.includes(key) || key.includes(k.key)),
+    )?.reciter;
+  };
   const shown = new Set(exclude);
   const out: Reciter[] = [];
   for (const name of names) {
-    const reciter = byName.get(nameKey(name));
+    const reciter = find(name);
     if (reciter && !shown.has(reciter.id) && !out.includes(reciter)) {
       out.push(reciter);
     }
     if (out.length >= limit) break;
   }
   return out;
+}
+
+/**
+ * A curated rail as Home shows it: the whole list (it may repeat a voice
+ * from Featured reciters, as the phone's lists do), or nothing when the
+ * catalog has fewer than CURATED_ROW_MIN of its voices, so a rail never
+ * shows a few portraits beside empty space.
+ */
+export function curatedRail(
+  reciters: readonly Reciter[],
+  names: readonly string[],
+): Reciter[] {
+  const row = curatedRow(reciters, names, []);
+  return row.length >= CURATED_ROW_MIN ? row : [];
 }
 
 /**
