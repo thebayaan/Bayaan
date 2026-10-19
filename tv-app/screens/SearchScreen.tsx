@@ -93,6 +93,9 @@ export function SearchScreen(): React.ReactElement {
   // guide that sends Right from the keyboard to that button.
   const [primary, setPrimary] = useState<View | null>(null);
   const [onRight, setOnRight] = useState(false);
+  // One array per button: a fresh one each render would resend the guide's
+  // destinations to the native view on every keystroke.
+  const toPrimary = useMemo(() => (primary ? [primary] : []), [primary]);
 
   const {reciters} = useReciters();
   const {defaultReciterId} = useDefaultReciter();
@@ -328,7 +331,7 @@ export function SearchScreen(): React.ReactElement {
           unmounting it is what turns it off, so Left from the results goes
           back through the left side's guide to the last key used. */}
       {primary && !onRight && !picker && pane === 'results' ? (
-        <TVFocusGuideView destinations={[primary]} style={styles.toTop} />
+        <TVFocusGuideView destinations={toPrimary} style={styles.toTop} />
       ) : null}
       <TVFocusGuideView
         autoFocus
