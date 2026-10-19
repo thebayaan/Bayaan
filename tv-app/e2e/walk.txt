@@ -4,6 +4,7 @@
 # The keys are pressed in order (the runner waits 1 s after each), then the
 # runner waits the given seconds and saves a screenshot.
 # Keys: up down left right select back playpause hold relaunch none text:<word>
+# (none is a 1 s pause; none*2 is two)
 # A key may carry a repeat count: "up*7" is seven Ups (arrows, select, back,
 # playpause). "hold" is a long press of OK, which opens a surah's, reciter's
 # or playlist's menu. Run DRY_RUN=1 bash e2e/run-walk.sh android (or tvos) to
@@ -80,7 +81,7 @@
 026-panel-speed 3 back right select
 027-panel-on-screen 3 back right select
 028-panel-reciter 3 back right select
-029-panel-sleep 3 back right select
+029-panel-sleep 3 back none*2 right select
 030-panel-sound 3 back right select
 031-panel-queue 3 back right select
 032-panel-save 3 back right select

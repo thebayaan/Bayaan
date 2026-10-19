@@ -100,7 +100,7 @@ android_keycode() {
 expand_keys() {
   local tok key n i
   for tok in "$@"; do
-    if [[ $tok =~ ^(up|down|left|right|select|back|playpause)\*([0-9]+)$ ]] &&
+    if [[ $tok =~ ^(up|down|left|right|select|back|playpause|none)\*([0-9]+)$ ]] &&
       ((10#${BASH_REMATCH[2]} >= 1 && 10#${BASH_REMATCH[2]} <= 30)); then
       key=${BASH_REMATCH[1]}
       n=$((10#${BASH_REMATCH[2]}))
@@ -227,7 +227,12 @@ playpause_tvos() {
 press() {
   local key=$1
   case $key in
-    none) return ;;
+    # A pause: lets a slow redraw land before the next key (the Reciter
+    # panel's close on the CI emulator takes over a second).
+    none)
+      sleep 1
+      return
+      ;;
     playpause)
       if [[ $PLATFORM == tvos ]]; then
         playpause_tvos
