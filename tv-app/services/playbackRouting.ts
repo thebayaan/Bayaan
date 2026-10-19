@@ -202,17 +202,25 @@ function sameQueue(req: PlayRequest): boolean {
 }
 
 /**
- * Plays a surah, or just opens the player when it is the current track (in
- * the queue asked for). Resolves true once the track is playing (or already
- * was), false when the request failed or a newer one replaced it.
+ * Plays a surah, or opens the player on it when it is the current track (in
+ * the queue asked for), resuming it if it was paused: an explicit Play or OK
+ * always means listen, as the Now playing strip, tile and pill do. Resolves
+ * true once the track is playing (or already was), false when the request
+ * failed or a newer one replaced it.
  */
 export async function playOrOpen(req: PlayRequest): Promise<boolean> {
   const player = useTVPlayerStore.getState();
   if (!isCurrentTrack(req)) return start(req);
   if (sameQueue(req)) {
     openPlayer();
-    // A finished or failed track starts again; anything else is left as is.
-    if (player.finished || player.status === 'error') player.toggle();
+    // Paused, finished (starts again) or failed (retries): toggle. Playing,
+    // still loading, or in a verse repeat's gap is left as is.
+    const listening =
+      player.held ||
+      player.status === 'playing' ||
+      player.status === 'buffering' ||
+      player.status === 'loading';
+    if (player.finished || !listening) player.toggle();
     return true;
   }
   // The surah playing now, in a new queue: it carries on from where it is.

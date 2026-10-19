@@ -119,6 +119,28 @@ describe('playOrOpen', () => {
     expect(stack()).toEqual([{screen: 'nowPlaying'}]);
   });
 
+  it('Play on the current track while it is paused resumes it', async () => {
+    await playOrOpen({reciterId: 'r1', surahNumber: 2});
+    engine.emit({status: 'paused', positionSeconds: 30, durationSeconds: 60});
+    useNavStore.getState().pop();
+    (engine.play as jest.Mock).mockClear();
+    await playOrOpen({reciterId: 'r1', surahNumber: 2});
+    expect(engine.play).toHaveBeenCalledTimes(1);
+    expect(engine.load).toHaveBeenCalledTimes(1);
+    expect(stack()).toEqual([{screen: 'nowPlaying'}]);
+  });
+
+  it('Play on the current track while it is playing leaves it playing', async () => {
+    await playOrOpen({reciterId: 'r1', surahNumber: 2});
+    engine.emit({status: 'playing', positionSeconds: 30, durationSeconds: 60});
+    useNavStore.getState().pop();
+    (engine.play as jest.Mock).mockClear();
+    (engine.pause as jest.Mock).mockClear();
+    await playOrOpen({reciterId: 'r1', surahNumber: 2});
+    expect(engine.play).not.toHaveBeenCalled();
+    expect(engine.pause).not.toHaveBeenCalled();
+  });
+
   it('a playlist whose first surah is playing loads the playlist, carrying on', async () => {
     await playOrOpen({reciterId: 'r1', surahNumber: 1});
     engine.emit({status: 'playing', positionSeconds: 30, durationSeconds: 60});
