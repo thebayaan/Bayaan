@@ -1,5 +1,5 @@
 import React, {useEffect, useRef, useState} from 'react';
-import {Text, TVFocusGuideView, View} from 'react-native';
+import {Platform, Text, TVFocusGuideView, View} from 'react-native';
 import {FocusableButton} from '../primitives/FocusableButton';
 import {FocusSpinner} from '../primitives/FocusSpinner';
 import {FocusIcon, FocusText} from '../primitives/focusContext';
@@ -58,16 +58,29 @@ export function formatTime(seconds: number): string {
 }
 
 /**
+ * Android and Vega keep the tools focusable under a panel (its guide traps
+ * the D-pad, so they can't be reached). A tool made focusable in the same
+ * redraw that closes the panel could be asked for focus before that change
+ * reached the view (view commands run ahead of view updates), and the ask
+ * failed, leaving focus on a panel row about to be removed. tvOS hides them
+ * from focus and moves focus itself.
+ */
+const TOOLS_STAY_FOCUSABLE = Platform.OS !== 'ios';
+
+/** When focus is asked for again if the tool hasn't reported it (ms). */
+const RETURN_RETRIES = [0, 50, 100];
+
+/**
  * The player's controls, raised from the bottom on OK: progress with verse
  * ticks; transport (previous surah, a verse back, play, a verse on, next
  * surah); and one row of labeled tools (Repeat, Speed, On screen, Reciter,
  * Sleep, Sound, Queue, Save, Love) that each show their current value.
  * Pressing a tool opens its panel on the right. While a panel is open the
  * tray keeps left of it and the tools are hidden and out of focus, so
- * nothing focusable sits hidden under the panel. They stay mounted, so when
- * the panel closes the tool that opened it is still there to take focus
- * back (remounting them raced the closing panel on Android and lost the
- * next press).
+ * nothing focusable sits hidden under the panel (on Android they stay
+ * focusable, see TOOLS_STAY_FOCUSABLE). They stay mounted, so when the
+ * panel closes the tool that opened it is still there to take focus back,
+ * while the closed panel stays drawn a moment (ListeningPanels LINGER_MS).
  */
 export function ControlsTray({
   synced,
@@ -107,17 +120,26 @@ export function ControlsTray({
     () => useListeningStore.getState().panel,
   );
   const toolRefs = useRef<Partial<Record<PanelKey, View | null>>>({});
+  // The tool that last reported focus; cleared when its panel opens.
+  const focusedTool = useRef<PanelKey | null>(null);
   const panelOpen = panel !== null;
+  const toolsFocusable = TOOLS_STAY_FOCUSABLE || !panelOpen;
   const wasOpen = useRef(panelOpen);
   useEffect(() => {
     const closed = wasOpen.current && !panelOpen;
     wasOpen.current = panelOpen;
     if (!closed || returnTo === null) return;
-    const id = setTimeout(
-      () => toolRefs.current[returnTo]?.requestTVFocus?.(),
-      0,
+    const ids = RETURN_RETRIES.map(ms =>
+      setTimeout(() => {
+        // TEMP focus trace for the device walk; removed after.
+        console.log(
+          `[focusdbg] retry ${ms} ${returnTo} has=${focusedTool.current}`,
+        );
+        if (focusedTool.current === returnTo) return;
+        toolRefs.current[returnTo]?.requestTVFocus?.();
+      }, ms),
     );
-    return () => clearTimeout(id);
+    return () => ids.forEach(clearTimeout);
   }, [panelOpen, returnTo]);
 
   // A verse repeat's gap counts as playing: Pause there stops the replay.
@@ -129,11 +151,16 @@ export function ControlsTray({
     fn();
   };
   const tool = (key: PanelKey) => ({
-    focusable: !panelOpen,
+    focusable: toolsFocusable,
     buttonRef: (node: View | null) => {
       toolRefs.current[key] = node;
     },
+    onFocus: () => {
+      console.log(`[focusdbg] tool focus ${key}`);
+      focusedTool.current = key;
+    },
     onPress: press(() => {
+      focusedTool.current = null;
       setReturnTo(key);
       setPanel(key);
     }),
@@ -298,7 +325,7 @@ export function ControlsTray({
               />
             }
             on={isLoved}
-            focusable={!panelOpen}
+            focusable={toolsFocusable}
             onPress={toggleLoved}
           />
         </View>
@@ -314,6 +341,7 @@ function Tool({
   on,
   focusable,
   buttonRef,
+  onFocus,
   onPress,
   accessibilityLabel,
 }: {
@@ -322,16 +350,18 @@ function Tool({
   value?: string;
   icon?: React.ReactNode;
   on: boolean;
-  /** False while a panel is open and the tools are hidden. */
+  /** False while a panel is open and the tools are hidden (tvOS). */
   focusable: boolean;
   /** The button, so focus can come back to it when its panel closes. */
   buttonRef?: (node: View | null) => void;
+  onFocus?: () => void;
   onPress: () => void;
   accessibilityLabel?: string;
 }): React.ReactElement {
   return (
     <FocusableButton
       ref={buttonRef}
+      onFocus={onFocus}
       onPress={onPress}
       accessibilityLabel={accessibilityLabel ?? `${label}: ${value ?? ''}`}
       focusable={focusable}

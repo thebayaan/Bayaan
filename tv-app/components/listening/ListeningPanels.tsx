@@ -116,7 +116,7 @@ type Props = {
  * still there while the tray's tool takes focus back, so nothing focused is
  * removed. tvOS moves focus itself when the row goes.
  */
-const LINGER_MS = Platform.OS === 'ios' ? 0 : 120;
+const LINGER_MS = Platform.OS === 'ios' ? 0 : 200;
 
 /** The open panel, or on Android the one just closed, for LINGER_MS. */
 function useShownPanel(): PanelKey | null {

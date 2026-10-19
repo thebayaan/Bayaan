@@ -398,6 +398,9 @@ fi
 while read -r name wait keys <&3; do
   [[ -z "$name" || "$name" == \#* ]] && continue
   STEP=$name
+  if [[ $PLATFORM == android && $DRY_RUN != 1 ]]; then
+    adb_ shell log -t WALK "step $name" >/dev/null 2>&1 || true
+  fi
   # read -a, not word splitting: a repeat's "*" must never glob. Built
   # with a read loop (not mapfile) for the macOS runner's bash.
   toks=()
