@@ -1,5 +1,6 @@
 import {
   CONFIRM_MS,
+  LAST_STEP_RETRIES,
   createFocusMemory,
   focusInSteps,
   landedSince,
@@ -172,6 +173,76 @@ describe('focusInSteps', () => {
     expect(pending()).toBe(0);
     run();
     expect(next.requestTVFocus).not.toHaveBeenCalled();
+  });
+});
+
+describe('focusInSteps retries', () => {
+  it('asks the last request again until it lands', () => {
+    const memory = createFocusMemory();
+    let mounted = false;
+    const sidebar = view(() => {
+      if (mounted) memory.focus(sidebar);
+    });
+    const {schedule, run, pending} = manualSchedule();
+    focusInSteps(
+      [() => false, () => requestFocus(sidebar)],
+      landedSince(memory),
+      schedule,
+      LAST_STEP_RETRIES,
+    );
+    expect(sidebar.requestTVFocus).toHaveBeenCalledTimes(1);
+    run(); // dropped: asked again
+    expect(sidebar.requestTVFocus).toHaveBeenCalledTimes(2);
+    mounted = true;
+    run(); // dropped again: asked a third time, and this one lands
+    expect(sidebar.requestTVFocus).toHaveBeenCalledTimes(3);
+    run();
+    expect(sidebar.requestTVFocus).toHaveBeenCalledTimes(3);
+    expect(pending()).toBe(0);
+  });
+
+  it('gives up after the retries', () => {
+    const memory = createFocusMemory();
+    const dropped = view();
+    const {schedule, run, pending} = manualSchedule();
+    focusInSteps(
+      [() => requestFocus(dropped)],
+      landedSince(memory),
+      schedule,
+      2,
+    );
+    run();
+    run();
+    run();
+    expect(dropped.requestTVFocus).toHaveBeenCalledTimes(3);
+    expect(pending()).toBe(0);
+  });
+
+  it('retries only the last request, never an earlier step', () => {
+    const memory = createFocusMemory();
+    const first = view();
+    const last = view();
+    const {schedule, run} = manualSchedule();
+    focusInSteps(
+      [() => requestFocus(first), () => requestFocus(last)],
+      landedSince(memory),
+      schedule,
+      1,
+    );
+    run();
+    run();
+    expect(first.requestTVFocus).toHaveBeenCalledTimes(1);
+    expect(last.requestTVFocus).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not retry by default', () => {
+    const memory = createFocusMemory();
+    const dropped = view();
+    const {schedule, run, pending} = manualSchedule();
+    focusInSteps([() => requestFocus(dropped)], landedSince(memory), schedule);
+    run();
+    expect(dropped.requestTVFocus).toHaveBeenCalledTimes(1);
+    expect(pending()).toBe(0);
   });
 });
 

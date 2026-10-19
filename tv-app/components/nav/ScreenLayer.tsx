@@ -7,6 +7,7 @@ import {
 } from 'react-native';
 import {setScreenFocusRestore} from '../../services/focusReturn';
 import {
+  LAST_STEP_RETRIES,
   createFocusMemory,
   focusInSteps,
   landedSince,
@@ -100,6 +101,10 @@ export function ScreenLayer({
           () => fallbackRef.current?.() ?? false,
         ],
         landedSince(memory),
+        undefined,
+        // The last try (the fallback, else the guide) is asked again until
+        // it lands: a layer is never left with nothing focused.
+        LAST_STEP_RETRIES,
       );
     };
     const unregister = setScreenFocusRestore(restore);

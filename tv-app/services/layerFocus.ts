@@ -100,29 +100,54 @@ const timeoutSchedule: Schedule = (cb, ms) => {
   return () => clearTimeout(id);
 };
 
+/** How often a chain's last request is asked again when it doesn't land. */
+export const LAST_STEP_RETRIES = 3;
+
 /**
  * Tries each step in turn until focus lands. A step returns false when it
  * has nothing to try (no remembered element, no sidebar), and the next one
  * runs at once; after a step that asked for focus, `landed` is checked once
- * CONFIRM_MS has passed, and only then does the next step run. Returns the
- * cancel (the screen changed again, or the layer was covered).
+ * CONFIRM_MS has passed, and only then does the next step run.
+ *
+ * With `retries`, the last request of the chain is itself checked: when no
+ * later step has anything to try, it is asked again (up to `retries` times,
+ * CONFIRM_MS apart), so a target that was still mounting gets its focus and
+ * the chain never just ends with focus nowhere. Leave it at 0 when the last
+ * step hands over to a chain of its own (restoring a layer), which checks
+ * itself. Returns the cancel (the screen changed again, or the layer was
+ * covered).
  */
 export function focusInSteps(
   steps: ReadonlyArray<() => boolean>,
   landed: () => boolean,
   schedule: Schedule = timeoutSchedule,
+  retries = 0,
 ): () => void {
   let cancel: (() => void) | null = null;
   let stopped = false;
-  const run = (from: number): void => {
-    let i = from;
-    while (i < steps.length && !steps[i]()) i += 1;
-    if (i >= steps.length) return;
+  let retriesLeft = retries;
+  const check = (i: number): void => {
     cancel = schedule(() => {
       cancel = null;
       if (stopped || landed()) return;
-      run(i + 1);
+      if (run(i + 1)) return;
+      // Nothing after it to try: ask the last request again.
+      while (retriesLeft > 0) {
+        retriesLeft -= 1;
+        if (steps[i]()) {
+          check(i);
+          return;
+        }
+      }
     }, CONFIRM_MS);
+  };
+  // Runs from step `from`; false when no step had anything to ask.
+  const run = (from: number): boolean => {
+    let i = from;
+    while (i < steps.length && !steps[i]()) i += 1;
+    if (i >= steps.length) return false;
+    check(i);
+    return true;
   };
   run(0);
   return () => {

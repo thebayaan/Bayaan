@@ -29,6 +29,7 @@ import {
   SIDEBAR_COLLAPSED_WIDTH,
   focusSidebar,
   requestSidebarFocus,
+  sidebarHasFocus,
 } from './Sidebar';
 import {NowPlayingPill} from './NowPlayingPill';
 import {ScreenLayer} from './ScreenLayer';
@@ -51,6 +52,7 @@ import {
   setPlaceContentRestore,
 } from '../../services/focusReturn';
 import {
+  LAST_STEP_RETRIES,
   createFocusMemory,
   focusInSteps,
   landedSince,
@@ -261,12 +263,19 @@ const RootPlace = React.memo(function RootPlace({
     const unregister = setPlaceContentRestore(() => {
       if (!memory.last() && !guide.current) return false;
       stop?.();
+      const inContent = landedSince(memory);
       stop = focusInSteps(
         [
           ...memory.recent().map(view => () => requestFocus(view)),
           () => requestFocus(guide.current),
+          // The content took nothing (still mounting, nothing focusable
+          // yet): the current place's item, asked until it lands, so focus
+          // never ends up nowhere.
+          () => requestSidebarFocus(),
         ],
-        landedSince(memory),
+        () => inContent() || sidebarHasFocus(),
+        undefined,
+        LAST_STEP_RETRIES,
       );
       return true;
     });
