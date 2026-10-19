@@ -1,0 +1,211 @@
+10-19 04:01:49.075  3166  3166 I WALK    : step 000-launch-welcome-step-1
+10-19 04:01:50.700  3153  3184 I ReactNativeJS: Running "main"
+10-19 04:02:21.773  3488  3488 I WALK    : step 001-onboarding-browse-all
+10-19 04:02:31.017  3724  3724 I WALK    : step 002-onboarding-browse-closed
+10-19 04:02:38.035  3832  3832 I WALK    : step 003-onboarding-step-2
+10-19 04:02:46.398  4082  4082 I WALK    : step 004-onboarding-language-chip
+10-19 04:02:52.253  4116  4116 I WALK    : step 005-onboarding-continue-focused
+10-19 04:02:58.091  4152  4152 I WALK    : step 006-home-top
+10-19 04:03:08.015  4409  4409 I WALK    : step 007-home-moments-rail
+10-19 04:03:12.777  4498  4498 I WALK    : step 008-home-adhkar-rail
+10-19 04:03:17.351  4591  4591 I WALK    : step 009-home-collections-rail
+10-19 04:03:21.842  4608  4608 I WALK    : step 010-home-featured-reciters
+10-19 04:03:26.362  4623  4623 I WALK    : step 011-home-best-for-memorisation
+10-19 04:03:30.824  4638  4638 I WALK    : step 012-home-best-for-tajweed
+10-19 04:03:35.286  4655  4655 I WALK    : step 013-home-short-surahs
+10-19 04:03:39.748  4671  4671 I WALK    : step 014-home-back-sidebar-on-home
+10-19 04:03:44.203  4688  4688 I WALK    : step 015-library-first-run
+10-19 04:04:03.948  4781  4781 I WALK    : step 016-library-back-sidebar
+10-19 04:04:08.324  4797  4797 I WALK    : step 017-library-sidebar-back-home-item
+10-19 04:04:13.725  4821  4821 I WALK    : step 018-surahs
+10-19 04:04:30.364  4882  4882 I WALK    : step 019-surahs-al-baqarah-focused
+10-19 04:04:34.799  4901  4901 I WALK    : step 020-player-playing
+10-19 04:04:49.061  4956  4956 I WALK    : step 021-player-next-verse
+10-19 04:04:54.616  4973  4973 I WALK    : step 022-tray-up
+10-19 04:05:00.077  4988  4988 I WALK    : step 023-panel-repeat
+10-19 04:05:02.889  3153  3184 I ReactNativeJS: [focusdbg] tool focus repeat
+10-19 04:05:09.107  5017  5017 I WALK    : step 024-panel-repeat-verse
+10-19 04:05:15.403  5041  5041 I WALK    : step 025-panel-repeat-off
+10-19 04:05:21.884  5060  5060 I WALK    : step 026-panel-speed
+10-19 04:05:22.419  3153  3184 I ReactNativeJS: [focusdbg] retry 0 repeat has=null
+10-19 04:05:22.419  3153  3184 I ReactNativeJS: [focusdbg] retry 50 repeat has=null
+10-19 04:05:22.457  3153  3184 I ReactNativeJS: [focusdbg] retry 100 repeat has=null
+10-19 04:05:22.484  3153  3184 I ReactNativeJS: [focusdbg] tool focus repeat
+10-19 04:05:23.320  3153  3184 I ReactNativeJS: [focusdbg] tool focus speed
+10-19 04:05:29.660  5084  5084 I WALK    : step 027-panel-on-screen
+10-19 04:05:30.476  3153  3184 I ReactNativeJS: [focusdbg] retry 0 speed has=null
+10-19 04:05:30.477  3153  3184 I ReactNativeJS: [focusdbg] retry 50 speed has=null
+10-19 04:05:30.477  3153  3184 I ReactNativeJS: [focusdbg] retry 100 speed has=null
+10-19 04:05:30.604  3153  3184 I ReactNativeJS: [focusdbg] tool focus speed
+10-19 04:05:31.465  3153  3184 I ReactNativeJS: [focusdbg] tool focus onScreen
+10-19 04:05:37.304  5116  5116 I WALK    : step 028-panel-reciter
+10-19 04:05:37.983  3153  3184 I ReactNativeJS: [focusdbg] retry 0 onScreen has=null
+10-19 04:05:37.984  3153  3184 I ReactNativeJS: [focusdbg] retry 50 onScreen has=null
+10-19 04:05:38.032  3153  3184 I ReactNativeJS: [focusdbg] retry 100 onScreen has=null
+10-19 04:05:38.033  3153  3184 I ReactNativeJS: [focusdbg] tool focus onScreen
+10-19 04:05:38.755  3153  3184 I ReactNativeJS: [focusdbg] tool focus reciter
+10-19 04:05:45.027  5143  5143 I WALK    : step 029-panel-sleep
+10-19 04:05:47.206  3153  3184 I ReactNativeJS: [focusdbg] retry 0 reciter has=null
+10-19 04:05:47.321  3153  3184 I ReactNativeJS: [focusdbg] retry 50 reciter has=null
+10-19 04:05:47.321  3153  3184 I ReactNativeJS: [focusdbg] retry 100 reciter has=null
+10-19 04:05:47.484  3153  3184 I ReactNativeJS: [focusdbg] tool focus reciter
+10-19 04:05:52.412  5167  5167 I WALK    : step 030-panel-sound
+10-19 04:05:56.969  3153  3184 I ReactNativeJS: [focusdbg] retry 0 reciter has=null
+10-19 04:05:56.973  3153  3184 I ReactNativeJS: [focusdbg] retry 50 reciter has=null
+10-19 04:05:56.975  3153  3184 I ReactNativeJS: [focusdbg] retry 100 reciter has=null
+10-19 04:05:58.324  3153  3184 I ReactNativeJS: [focusdbg] tool focus reciter
+10-19 04:06:00.176  5191  5191 I WALK    : step 031-panel-queue
+10-19 04:06:07.888  5219  5219 I WALK    : step 032-panel-save
+10-19 04:06:15.559  5245  5245 I WALK    : step 033-playlist-editor-from-player
+10-19 04:06:21.852  5260  5260 I WALK    : step 034-playlist-typed-fajr
+10-19 04:06:24.421  3153  3184 I ReactNativeJS: [focusdbg] tool focus repeat
+10-19 04:06:25.585  3153  3184 I ReactNativeJS: [focusdbg] tool focus speed
+10-19 04:06:26.813  3153  3184 I ReactNativeJS: [focusdbg] tool focus onScreen
+10-19 04:06:49.037  5376  5376 I WALK    : step 035-playlist-create-focused
+10-19 04:06:58.056  5418  5418 I WALK    : step 036-player-save-panel-fajr-ticked
+10-19 04:07:02.429  5437  5437 I WALK    : step 037-tray-save-focused
+10-19 04:07:02.742  3153  3184 I ReactNativeJS: [focusdbg] retry 0 onScreen has=null
+10-19 04:07:02.765  3153  3184 I ReactNativeJS: [focusdbg] retry 50 onScreen has=null
+10-19 04:07:02.767  3153  3184 I ReactNativeJS: [focusdbg] tool focus onScreen
+10-19 04:07:02.869  3153  3184 I ReactNativeJS: [focusdbg] retry 100 onScreen has=onScreen
+10-19 04:07:07.702  5451  5451 I WALK    : step 038-tray-love-focused
+10-19 04:07:07.785  3153  3184 I ReactNativeJS: [focusdbg] tool focus reciter
+10-19 04:07:12.989  5467  5467 I WALK    : step 039-tray-loved
+10-19 04:07:18.297  5487  5487 I WALK    : step 040-tray-lowered
+10-19 04:07:18.951  3153  3184 I ReactNativeJS: [focusdbg] retry 0 reciter has=null
+10-19 04:07:18.952  3153  3184 I ReactNativeJS: [focusdbg] retry 50 reciter has=null
+10-19 04:07:18.952  3153  3184 I ReactNativeJS: [focusdbg] retry 100 reciter has=null
+10-19 04:07:18.960  3153  3184 I ReactNativeJS: [focusdbg] tool focus reciter
+10-19 04:07:22.537  5501  5501 I WALK    : step 041-player-back-on-al-baqarah
+10-19 04:07:29.646  5515  5515 I WALK    : step 042-surahs-ali-imran-focused
+10-19 04:07:34.999  5535  5535 I WALK    : step 043-surah-menu
+10-19 04:07:43.384  5581  5581 I WALK    : step 044-surah-menu-loved
+10-19 04:07:49.883  5602  5602 I WALK    : step 045-surah-menu-playlists
+10-19 04:07:56.358  5621  5621 I WALK    : step 046-surah-menu-added-to-fajr
+10-19 04:08:00.972  5641  5641 I WALK    : step 047-surah-menu-back-to-main
+10-19 04:08:06.366  5655  5655 I WALK    : step 048-surah-menu-closed-on-tile
+10-19 04:08:11.390  5680  5680 I WALK    : step 049-surah-menu-again
+10-19 04:08:18.952  5694  5694 I WALK    : step 050-surah-menu-play-player
+10-19 04:08:31.357  5715  5715 I WALK    : step 051-player-back-on-ali-imran
+10-19 04:08:38.577  5735  5735 I WALK    : step 052-reciters
+10-19 04:08:59.489  5805  5805 I WALK    : step 053-reciter-menu
+10-19 04:09:07.232  5820  5820 I WALK    : step 054-reciter-menu-favourited
+10-19 04:09:14.659  5845  5845 I WALK    : step 055-reciter-page
+10-19 04:09:24.034  5867  5867 I WALK    : step 056-reciter-page-pill-focused
+10-19 04:09:30.219  5887  5887 I WALK    : step 057-reciter-pill-to-player
+10-19 04:09:38.379  5905  5905 I WALK    : step 058-reciter-page-back-on-pill
+10-19 04:09:44.572  5919  5919 I WALK    : step 059-reciters-back-on-card
+10-19 04:09:50.958  5933  5933 I WALK    : step 060-sidebar-tile-focused
+10-19 04:10:05.335  5988  5988 I WALK    : step 061-sidebar-tile-to-player
+10-19 04:10:13.755  6003  6003 I WALK    : step 062-player-back-on-tile
+10-19 04:10:20.244  6017  6017 I WALK    : step 063-tile-paused
+10-19 04:10:25.871  6031  6031 I WALK    : step 064-tile-ok-resumes-player
+10-19 04:10:33.922  6047  6047 I WALK    : step 065-player-back-on-tile-again
+10-19 04:10:40.559  6064  6064 I WALK    : step 066-home-strip-playing
+10-19 04:10:57.819  6120  6120 I WALK    : step 067-home-strip-paused
+10-19 04:11:03.359  6134  6134 I WALK    : step 068-home-strip-playing-again
+10-19 04:11:09.453  6149  6149 I WALK    : step 069-home-hero-buttons
+10-19 04:11:14.576  6163  6163 I WALK    : step 070-home-continue-rail
+10-19 04:11:19.454  6177  6177 I WALK    : step 071-home-continue-menu
+10-19 04:11:26.797  6192  6192 I WALK    : step 072-home-continue-menu-closed
+10-19 04:11:31.742  6207  6207 I WALK    : step 073-home-history-moments-rail
+10-19 04:11:36.602  6224  6224 I WALK    : step 074-home-history-recently-played
+10-19 04:11:41.609  6346  6346 I WALK    : step 075-home-history-favourite-reciters
+10-19 04:11:46.706  6362  6362 I WALK    : step 076-home-history-your-playlists
+10-19 04:11:52.007  6501  6501 I WALK    : step 077-home-history-loved-surahs
+10-19 04:11:57.570  6517  6517 I WALK    : step 078-home-history-adhkar-rail
+10-19 04:12:03.060  6531  6531 I WALK    : step 079-home-history-collections-rail
+10-19 04:12:08.383  6546  6546 I WALK    : step 080-home-history-featured-reciters
+10-19 04:12:13.671  6560  6560 I WALK    : step 081-home-history-best-for-memorisation
+10-19 04:12:19.007  6595  6595 I WALK    : step 082-home-history-best-for-tajweed
+10-19 04:12:24.381  6613  6613 I WALK    : step 083-home-history-short-surahs
+10-19 04:12:29.696  6627  6627 I WALK    : step 084-home-history-back-sidebar
+10-19 04:12:34.882  6644  6644 I WALK    : step 085-library-playlists
+10-19 04:12:56.336  6721  6721 I WALK    : step 086-library-new-playlist-editor
+10-19 04:13:02.407  6735  6735 I WALK    : step 087-library-new-playlist-create
+10-19 04:13:14.469  6779  6779 I WALK    : step 088-library-new-playlist-opened
+10-19 04:13:22.105  6820  6820 I WALK    : step 089-library-browse-surahs-jump
+10-19 04:13:30.314  6834  6834 I WALK    : step 090-library-jump-surahs-sidebar
+10-19 04:13:35.805  6851  6851 I WALK    : step 091-library-jump-back-to-playlist
+10-19 04:13:42.961  6865  6865 I WALK    : step 092-library-back-on-new-playlist
+10-19 04:13:49.924  6880  6880 I WALK    : step 093-library-fajr-focused
+10-19 04:13:54.886  6894  6894 I WALK    : step 094-playlist-detail
+10-19 04:14:03.217  6909  6909 I WALK    : step 095-playlist-row-focused
+10-19 04:14:09.480  6928  6928 I WALK    : step 096-playlist-row-menu
+10-19 04:14:17.224  6942  6942 I WALK    : step 097-playlist-row-moved-down
+10-19 04:14:27.099  6993  6993 I WALK    : step 098-playlist-row-menu-closed
+10-19 04:14:32.604  7007  7007 I WALK    : step 099-library-back-on-fajr
+10-19 04:14:39.892  7024  7024 I WALK    : step 100-library-playlist-menu
+10-19 04:14:46.949  7039  7039 I WALK    : step 101-library-playlist-delete-armed
+10-19 04:14:52.343  7068  7068 I WALK    : step 102-library-playlist-menu-closed
+10-19 04:14:57.515  7082  7082 I WALK    : step 103-library-playlist-menu-again
+10-19 04:15:04.510  7097  7097 I WALK    : step 104-library-rename-editor
+10-19 04:15:11.884  7121  7121 I WALK    : step 105-library-rename-deleted-letter
+10-19 04:15:21.346  7160  7160 I WALK    : step 106-library-rename-save-focused
+10-19 04:15:27.735  7184  7184 I WALK    : step 107-library-rename-cancelled
+10-19 04:15:35.136  7198  7198 I WALK    : step 108-library-tabs-playlists
+10-19 04:15:41.376  7221  7221 I WALK    : step 109-library-loved
+10-19 04:15:47.550  7235  7235 I WALK    : step 110-library-reciters
+10-19 04:15:53.726  7252  7252 I WALK    : step 111-adhkar
+10-19 04:16:15.817  7355  7355 I WALK    : step 112-adhkar-reader
+10-19 04:16:24.181  7370  7370 I WALK    : step 113-adhkar-next-dhikr
+10-19 04:16:29.617  7388  7388 I WALK    : step 114-adhkar-page-2
+10-19 04:16:34.906  7403  7403 I WALK    : step 115-adhkar-counted
+10-19 04:16:40.277  7557  7557 I WALK    : step 116-adhkar-controls
+10-19 04:16:45.668  7573  7573 I WALK    : step 117-adhkar-back-on-card
+10-19 04:16:51.830  7596  7596 I WALK    : step 118-search
+10-19 04:17:10.165  7658  7658 I WALK    : step 119-search-typed-fat
+10-19 04:17:38.384  7775  7775 I WALK    : step 120-search-fatihah-play-focused
+10-19 04:17:44.412  7795  7795 I WALK    : step 121-search-choose-reciter-focused
+10-19 04:17:49.343  7809  7809 I WALK    : step 122-search-reciter-picker
+10-19 04:17:55.501  7824  7824 I WALK    : step 123-search-picker-closed-on-choose
+10-19 04:18:00.302  7838  7838 I WALK    : step 124-search-reciter-picker-again
+10-19 04:18:06.495  7853  7853 I WALK    : step 125-search-picker-pick-player
+10-19 04:18:16.835  7883  7883 I WALK    : step 126-search-player-back-on-choose
+10-19 04:18:23.914  7897  7897 I WALK    : step 127-search-more-surahs-row
+10-19 04:18:28.854  7911  7911 I WALK    : step 128-search-back-to-keyboard
+10-19 04:18:33.672  7925  7925 I WALK    : step 129-search-cleared
+10-19 04:18:43.069  7958  7958 I WALK    : step 130-search-typed-kursi
+10-19 04:19:12.205  8079  8079 I WALK    : step 131-search-kursi-play-verse-focused
+10-19 04:19:22.759  8118  8118 I WALK    : step 132-search-verse-player
+10-19 04:19:33.256  8146  8146 I WALK    : step 133-search-player-back-on-play-verse
+10-19 04:19:40.289  8163  8163 I WALK    : step 134-search-kursi-back-to-keyboard
+10-19 04:19:45.120  8177  8177 I WALK    : step 135-search-cleared-again
+10-19 04:19:57.803  8222  8222 I WALK    : step 136-search-typed-sleep
+10-19 04:20:19.105  8301  8301 I WALK    : step 137-search-sleep-start-focused
+10-19 04:20:29.420  8340  8340 I WALK    : step 138-search-count-each-focused
+10-19 04:20:34.956  8359  8359 I WALK    : step 139-search-count-mode-reader
+10-19 04:20:45.049  8393  8393 I WALK    : step 140-search-reader-back-on-count-each
+10-19 04:20:51.598  8407  8407 I WALK    : step 141-search-sleep-back-to-keyboard
+10-19 04:20:55.916  8421  8421 I WALK    : step 142-search-cleared-third
+10-19 04:21:06.435  8462  8462 I WALK    : step 143-search-typed-ghamdi
+10-19 04:21:44.571  8640  8640 I WALK    : step 144-search-ghamdi-shuffle-focused
+10-19 04:21:54.034  8680  8680 I WALK    : step 145-search-open-profile-focused
+10-19 04:21:58.375  8695  8695 I WALK    : step 146-search-reciter-page
+10-19 04:22:05.747  8713  8713 I WALK    : step 147-search-reciter-back-on-open-profile
+10-19 04:22:12.088  8727  8727 I WALK    : step 148-search-ghamdi-back-to-keyboard
+10-19 04:22:16.421  8741  8741 I WALK    : step 149-search-cleared-recents
+10-19 04:22:27.925  8788  8788 I WALK    : step 150-search-recent-focused
+10-19 04:22:32.292  8803  8803 I WALK    : step 151-search-recent-top-result-focused
+10-19 04:22:38.629  8821  8821 I WALK    : step 152-search-recent-back-to-keyboard
+10-19 04:22:42.964  8852  8852 I WALK    : step 153-settings
+10-19 04:23:05.124  8941  8941 I WALK    : step 154-settings-reciter-picker
+10-19 04:23:10.709  9082  9082 I WALK    : step 155-settings-picker-closed
+10-19 04:23:15.702  9096  9096 I WALK    : step 156-settings-text-picker
+10-19 04:23:25.310  9127  9127 I WALK    : step 157-settings-text-picker-closed
+10-19 04:23:30.381  9141  9141 I WALK    : step 158-settings-clear-loved-row
+10-19 04:23:39.925  9178  9178 I WALK    : step 159-settings-clear-loved-armed
+10-19 04:23:43.927  9194  9194 I WALK    : step 160-settings-clear-favourites-row
+10-19 04:23:49.925  9208  9208 I WALK    : step 161-settings-clear-favourites-armed
+10-19 04:23:53.934  9224  9224 I WALK    : step 162-settings-welcome-row
+10-19 04:23:59.882  9244  9244 I WALK    : step 163-settings-welcome-rerun
+10-19 04:24:07.551  9260  9260 I WALK    : step 164-settings-welcome-closed-on-row
+10-19 04:24:14.670  9274  9274 I WALK    : step 165-relaunch-home
+10-19 04:24:18.419  9441  9473 I ReactNativeJS: Running "main"
+10-19 04:24:38.108  9518  9518 I WALK    : step 166-relaunch-sidebar-tile-continue
+10-19 04:24:50.663  9573  9573 I WALK    : step 167-relaunch-tile-continue-player
+10-19 04:25:02.936  9618  9618 I WALK    : step 168-relaunch-player-back-on-tile
+10-19 04:25:09.143  9633  9633 I WALK    : step 169-relaunch-again-home
+10-19 04:25:12.351  9657  9678 I ReactNativeJS: Running "main"
+10-19 04:25:32.112  9709  9709 I WALK    : step 170-relaunch-playpause-player
+10-19 04:25:44.512  9756  9756 I WALK    : step 171-relaunch-player-back-home
