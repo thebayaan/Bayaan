@@ -1,5 +1,5 @@
 import React, {useEffect, useRef, useState} from 'react';
-import {Text, TVFocusGuideView, View} from 'react-native';
+import {Platform, Text, TVFocusGuideView, View} from 'react-native';
 import {FocusableButton} from '../primitives/FocusableButton';
 import {FocusSpinner} from '../primitives/FocusSpinner';
 import {FocusIcon, FocusText} from '../primitives/focusContext';
@@ -58,16 +58,28 @@ export function formatTime(seconds: number): string {
 }
 
 /**
+ * Android hands focus back to a panel's tool before the panel unmounts.
+ * Removing the focused panel row makes Android park focus on the screen's
+ * focus guide and pick a new focus a frame later (ReactViewGroup
+ * recoverFocus); a long panel (the Reciter list, with portraits) takes long
+ * enough to unmount that the next press arrived in that gap and was lost.
+ * So on Android the tools stay focusable under a panel (its guide traps the
+ * D-pad, so they can't be reached), and the tool is asked for focus the
+ * moment the panel closes, before React redraws: view commands run ahead of
+ * the redraw's view changes, so focus is on the tool before the row goes.
+ */
+const HANDOFF_BEFORE_UNMOUNT = Platform.OS === 'android';
+
+/**
  * The player's controls, raised from the bottom on OK: progress with verse
  * ticks; transport (previous surah, a verse back, play, a verse on, next
  * surah); and one row of labeled tools (Repeat, Speed, On screen, Reciter,
  * Sleep, Sound, Queue, Save, Love) that each show their current value.
  * Pressing a tool opens its panel on the right. While a panel is open the
  * tray keeps left of it and the tools are hidden and out of focus, so
- * nothing focusable sits hidden under the panel. They stay mounted, so when
- * the panel closes the tool that opened it is still there to take focus
- * back (remounting them raced the closing panel on Android and lost the
- * next press).
+ * nothing focusable sits hidden under the panel (on Android they stay
+ * focusable, see HANDOFF_BEFORE_UNMOUNT). They stay mounted, so when the
+ * panel closes the tool that opened it is still there to take focus back.
  */
 export function ControlsTray({
   synced,
@@ -107,12 +119,39 @@ export function ControlsTray({
     () => useListeningStore.getState().panel,
   );
   const toolRefs = useRef<Partial<Record<PanelKey, View | null>>>({});
+  const returnToRef = useRef(returnTo);
+  returnToRef.current = returnTo;
+  // Set when the tool already took focus as the panel closed (Android).
+  const handedOff = useRef(false);
+  useEffect(() => {
+    if (!HANDOFF_BEFORE_UNMOUNT) return;
+    // Store listeners run inside the store's set, before React redraws.
+    return useListeningStore.subscribe((state, prev) => {
+      if (prev.panel === null || state.panel !== null || !state.trayOpen) {
+        return;
+      }
+      // A flag left from a close React never redrew must not skip this one.
+      handedOff.current = false;
+      const key = returnToRef.current;
+      const node = key === null ? null : toolRefs.current[key];
+      if (!node?.requestTVFocus) return;
+      node.requestTVFocus();
+      handedOff.current = true;
+    });
+  }, []);
   const panelOpen = panel !== null;
+  const toolsFocusable = HANDOFF_BEFORE_UNMOUNT || !panelOpen;
   const wasOpen = useRef(panelOpen);
   useEffect(() => {
     const closed = wasOpen.current && !panelOpen;
     wasOpen.current = panelOpen;
     if (!closed || returnTo === null) return;
+    // Asked again later, it would pull focus back from a tool the next
+    // press already moved to.
+    if (handedOff.current) {
+      handedOff.current = false;
+      return;
+    }
     const id = setTimeout(
       () => toolRefs.current[returnTo]?.requestTVFocus?.(),
       0,
@@ -129,7 +168,7 @@ export function ControlsTray({
     fn();
   };
   const tool = (key: PanelKey) => ({
-    focusable: !panelOpen,
+    focusable: toolsFocusable,
     buttonRef: (node: View | null) => {
       toolRefs.current[key] = node;
     },
@@ -193,7 +232,6 @@ export function ControlsTray({
             }
             hasTVPreferredFocus={returnTo === null}
             focusable={!panelOpen}
-            outlined
             style={[styles.round, styles.roundBig]}>
             {loading ? (
               <FocusSpinner size="large" />
@@ -299,7 +337,7 @@ export function ControlsTray({
               />
             }
             on={isLoved}
-            focusable={!panelOpen}
+            focusable={toolsFocusable}
             onPress={toggleLoved}
           />
         </View>
@@ -323,7 +361,7 @@ function Tool({
   value?: string;
   icon?: React.ReactNode;
   on: boolean;
-  /** False while a panel is open and the tools are hidden. */
+  /** False while a panel is open and the tools are hidden (not Android). */
   focusable: boolean;
   /** The button, so focus can come back to it when its panel closes. */
   buttonRef?: (node: View | null) => void;
@@ -396,10 +434,15 @@ const styles = createScaledStyles({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // The main control is told apart by its size. At rest it wears only the
+  // faint divider line, never a bright ring that reads as a second focus
+  // beside a focused tool or panel row (Ink & Cream: only focus is cream).
   roundBig: {
     width: 88,
     height: 88,
     borderRadius: 24,
+    borderWidth: 2,
+    borderColor: colors.border,
   },
   // Next surah at the end of the queue: dimmed, and does nothing.
   unavailable: {opacity: 0.3},
