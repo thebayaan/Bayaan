@@ -141,7 +141,11 @@ function heroView(plan: HeroPlan, reciterName: string | null): HeroView {
   return {
     kicker: plan.kicker,
     title: surahTitle(plan.surahNumber),
-    sentence: `${plan.lead} ${surahFacts(plan.surahNumber, reciterName)}`,
+    // The short name ("with Al-Minshawi"), so the two lines never cut it.
+    sentence: `${plan.lead} ${surahFacts(
+      plan.surahNumber,
+      reciterName ? shortReciterName(reciterName) : null,
+    )}`,
     art: {kind: 'surah', surahNumber: plan.surahNumber},
     glow: surahGlow(plan.surahNumber),
     primaryLabel: 'Play',
