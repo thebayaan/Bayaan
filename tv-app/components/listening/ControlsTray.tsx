@@ -207,7 +207,13 @@ export function ControlsTray({
   const nextCount = Math.max(0, queue.length - currentIndex - 1);
 
   return (
-    <View style={[styles.tray, panelOpen && styles.trayBesidePanel]}>
+    // collapsable={false} on the views whose style changes with the panel:
+    // a view that becomes flattenable when the panel closes (opacity gone)
+    // is removed on Android and its children re-parented, which drops the
+    // focus the tool just took and sends it to Previous surah.
+    <View
+      collapsable={false}
+      style={[styles.tray, panelOpen && styles.trayBesidePanel]}>
       <View style={styles.progressRow}>
         <Text style={styles.time}>{formatTime(position)}</Text>
         <ProgressLine
@@ -261,7 +267,7 @@ export function ControlsTray({
           {/* At the end of the queue Next stays a stop for focus (it can
               be the button that just played the last surah) but is dimmed
               and does nothing. */}
-          <View style={!hasNext && styles.unavailable}>
+          <View collapsable={false} style={!hasNext && styles.unavailable}>
             <FocusableButton
               onPress={press(() => void next())}
               accessibilityLabel="Next surah"
@@ -274,6 +280,7 @@ export function ControlsTray({
           </View>
         </View>
         <View
+          collapsable={false}
           style={[styles.tools, panelOpen && styles.toolsHidden]}
           importantForAccessibility={
             panelOpen ? 'no-hide-descendants' : 'auto'
