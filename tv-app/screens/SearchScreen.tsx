@@ -42,6 +42,12 @@ import {createScaledStyles} from '../theme/scale';
 /** How long a "focus this when it appears" request stays open. */
 const FOCUS_REQUEST_MS = 800;
 
+/**
+ * Room around the results for a focused card's scale and ring, past the
+ * rows' own 12 (ResultSections' scroller bleed).
+ */
+const BLEED = 24;
+
 function itemKey(item: SearchItem): string {
   switch (item.type) {
     case 'surah':
@@ -224,6 +230,7 @@ export function SearchScreen(): React.ReactElement {
     right = (
       <ScrollView
         showsVerticalScrollIndicator={false}
+        style={styles.scroller}
         contentContainerStyle={styles.scroll}>
         <BrowsePanel
           reciters={reciters}
@@ -238,6 +245,7 @@ export function SearchScreen(): React.ReactElement {
     right = (
       <ScrollView
         showsVerticalScrollIndicator={false}
+        style={styles.scroller}
         contentContainerStyle={styles.scroll}>
         <TopResultCard
           key={itemKey(top)}
@@ -325,7 +333,11 @@ const styles = createScaledStyles({
   left: {width: KEYBOARD_WIDTH},
   keyboardGap: {height: 28},
   right: {flex: 1, marginLeft: 80},
-  scroll: {paddingTop: 8, paddingBottom: 96},
+  // The pane's scrollers clip at their own bounds: they reach BLEED past the
+  // pane on each side and pad it back, so a focused card's scale and ring at
+  // a row's start (or end) are drawn whole rather than cut flat.
+  scroller: {marginHorizontal: -BLEED},
+  scroll: {paddingTop: 8, paddingBottom: 96, paddingHorizontal: BLEED},
   empty: {paddingTop: 120, gap: 14, maxWidth: 760},
   emptyTitle: {
     color: colors.text,
