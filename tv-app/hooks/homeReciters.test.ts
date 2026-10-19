@@ -63,6 +63,13 @@ describe('curatedRail', () => {
     expect(curatedRail(five, names)).toHaveLength(CURATED_ROW_MIN);
     expect(curatedRail(five.slice(0, 4), names)).toEqual([]);
   });
+
+  it('moves voices already shown above to the end', () => {
+    const five = ['a1', 'b2', 'c3', 'd4', 'e5'].map(n => r(n, false, n));
+    const names = five.map(x => x.name);
+    const ids = curatedRail(five, names, [five[0], five[2]]).map(x => x.id);
+    expect(ids).toEqual(['b2', 'd4', 'e5', 'a1', 'c3']);
+  });
 });
 
 describe('portraitName', () => {

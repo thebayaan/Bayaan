@@ -355,11 +355,18 @@ function SidebarNowPlaying({
           </View>
         ) : null}
         {tile.progress !== null ? (
-          <View style={styles.progressTrack}>
+          <View
+            style={[
+              styles.progressTrack,
+              focused && styles.progressTrackFocused,
+            ]}>
             <View
               style={[
                 styles.progressFill,
-                {width: `${Math.round(tile.progress * 100)}%`},
+                // A started surah always shows a little of the bar.
+                {
+                  width: `${Math.max(3, Math.round(tile.progress * 100))}%`,
+                },
                 focused && styles.progressFocused,
               ]}
             />
@@ -570,4 +577,6 @@ const styles = createScaledStyles({
   },
   progressFill: {height: 3, borderRadius: 2, backgroundColor: colors.accent},
   progressFocused: {backgroundColor: colors.onFocus},
+  // Ink at low strength on the cream tile, so track and fill both read.
+  progressTrackFocused: {backgroundColor: 'rgba(6, 21, 28, 0.2)'},
 });

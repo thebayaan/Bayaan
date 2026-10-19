@@ -1,4 +1,5 @@
 import React, {useEffect, useState} from 'react';
+import {Platform} from 'react-native';
 import {SidePanel, type PanelOption, type PanelSection} from './SidePanel';
 import {useSleepLeftMs} from './useSleepLeft';
 import SURAHS from '../../../data/surahData.json';
@@ -16,6 +17,7 @@ import {
   SPEED_CYCLE,
   timesLabel,
   useListeningStore,
+  type PanelKey,
   type RepeatChoice,
 } from '../../store/listeningStore';
 import {
@@ -43,7 +45,10 @@ import {
   shortReciterName,
   type ReciterChoice,
 } from '../../services/listeningChoices';
-import {hasPlaylistItem, type PlaylistItem} from '../../services/playlistsStore';
+import {
+  hasPlaylistItem,
+  type PlaylistItem,
+} from '../../services/playlistsStore';
 import {
   NEW_PLAYLIST_DETAIL,
   NEW_PLAYLIST_LABEL,
@@ -103,6 +108,34 @@ type Props = {
   onSwitchReciter: (choice: ReciterChoice) => void;
 };
 
+/**
+ * How long a closed panel stays drawn on Android. Removing the focused row
+ * makes Android park focus on the screen's focus guide and choose a new
+ * focus a frame later (ReactViewGroup recoverFocus), which landed on the
+ * first transport button or lost the next press. Kept a moment, the row is
+ * still there while the tray's tool takes focus back, so nothing focused is
+ * removed. tvOS moves focus itself when the row goes.
+ */
+const LINGER_MS = Platform.OS === 'ios' ? 0 : 120;
+
+/** The open panel, or on Android the one just closed, for LINGER_MS. */
+function useShownPanel(): PanelKey | null {
+  const panel = useListeningStore(s => s.panel);
+  const [lingering, setLingering] = useState<PanelKey | null>(null);
+  const [last, setLast] = useState<PanelKey | null>(panel);
+  if (panel !== last) {
+    // Set while drawing, so the closing draw already keeps the panel.
+    setLast(panel);
+    setLingering(panel === null && LINGER_MS > 0 ? last : null);
+  }
+  useEffect(() => {
+    if (lingering === null) return;
+    const id = setTimeout(() => setLingering(null), LINGER_MS);
+    return () => clearTimeout(id);
+  }, [lingering]);
+  return panel ?? lingering;
+}
+
 /** The panel for whichever tray setting is open, or nothing. */
 export function ListeningPanels({
   currentAyah,
@@ -113,7 +146,7 @@ export function ListeningPanels({
   rewayahStyle,
   onSwitchReciter,
 }: Props): React.ReactElement | null {
-  const panel = useListeningStore(s => s.panel);
+  const panel = useShownPanel();
   const setPanel = useListeningStore(s => s.setPanel);
   const setResumePanel = useListeningStore(s => s.setResumePanel);
   const sleepLeftMs = useSleepLeftMs();

@@ -409,8 +409,7 @@ function Action({
       onPress={onPress}
       hasTVPreferredFocus={focus}
       accessibilityLabel={label}
-      outlined={primary}
-      style={[styles.action, !primary && styles.actionQuiet]}>
+      style={[styles.action, primary ? styles.actionMain : styles.actionQuiet]}>
       {icon ? <FocusIcon icon={icon} size={22} filled={filled} /> : null}
       <FocusText style={styles.actionText}>{label}</FocusText>
     </FocusableButton>
@@ -483,6 +482,9 @@ const styles = createScaledStyles({
     alignItems: 'center',
     gap: 12,
   },
+  // The main action wears only the faint divider line at rest, so the one
+  // cream thing on screen is the focus (Ink & Cream).
+  actionMain: {borderWidth: 2, borderColor: colors.border},
   actionQuiet: {paddingHorizontal: 22},
   actionText: {fontFamily: fonts.bold, fontSize: 22, fontWeight: '700'},
   note: {

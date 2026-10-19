@@ -137,9 +137,16 @@ export function curatedRow(
 export function curatedRail(
   reciters: readonly Reciter[],
   names: readonly string[],
+  /** Voices in rails above; they move to the end, so each rail opens new. */
+  shown: readonly Reciter[] = [],
 ): Reciter[] {
   const row = curatedRow(reciters, names, []);
-  return row.length >= CURATED_ROW_MIN ? row : [];
+  if (row.length < CURATED_ROW_MIN) return [];
+  const seen = new Set(shown.map(x => x.id));
+  return [
+    ...row.filter(x => !seen.has(x.id)),
+    ...row.filter(x => seen.has(x.id)),
+  ];
 }
 
 /**
