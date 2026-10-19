@@ -264,6 +264,10 @@ const RootPlace = React.memo(function RootPlace({
       if (!memory.last() && !guide.current) return false;
       stop?.();
       const inContent = landedSince(memory);
+      // The sidebar counts as landed only once it was asked for: OK on the
+      // current place comes from the sidebar, which must not end the chain
+      // before the content's other tries.
+      let sidebarAsked = false;
       stop = focusInSteps(
         [
           ...memory.recent().map(view => () => requestFocus(view)),
@@ -271,9 +275,12 @@ const RootPlace = React.memo(function RootPlace({
           // The content took nothing (still mounting, nothing focusable
           // yet): the current place's item, asked until it lands, so focus
           // never ends up nowhere.
-          () => requestSidebarFocus(),
+          () => {
+            sidebarAsked = true;
+            return requestSidebarFocus();
+          },
         ],
-        () => inContent() || sidebarHasFocus(),
+        () => inContent() || (sidebarAsked && sidebarHasFocus()),
         undefined,
         LAST_STEP_RETRIES,
       );
