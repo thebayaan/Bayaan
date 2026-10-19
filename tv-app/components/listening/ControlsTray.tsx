@@ -58,17 +58,17 @@ export function formatTime(seconds: number): string {
 }
 
 /**
- * Android and Vega keep the tools focusable under a panel (its guide traps
- * the D-pad, so they can't be reached). A tool made focusable in the same
- * redraw that closes the panel could be asked for focus before that change
- * reached the view (view commands run ahead of view updates), and the ask
- * failed, leaving focus on a panel row about to be removed. tvOS hides them
- * from focus and moves focus itself.
+ * Android and Vega keep the whole tray focusable under a panel (its guide
+ * traps the D-pad, so the tray can't be reached). Making the transport
+ * focusable again in the redraw that closes the panel pulled focus off the
+ * tool onto Previous surah (seen in the emulator's focus log), and a tool
+ * made focusable in that redraw could be asked for focus before the change
+ * reached the view. tvOS hides the tray from focus and moves focus itself.
  */
 const TOOLS_STAY_FOCUSABLE = Platform.OS !== 'ios';
 
 /** When focus is asked for again if the tool hasn't reported it (ms). */
-const RETURN_RETRIES = [0, 50, 100];
+const RETURN_RETRIES = [0, 50, 100, 200, 300];
 
 /**
  * The player's controls, raised from the bottom on OK: progress with verse
@@ -124,6 +124,9 @@ export function ControlsTray({
   const focusedTool = useRef<PanelKey | null>(null);
   const panelOpen = panel !== null;
   const toolsFocusable = TOOLS_STAY_FOCUSABLE || !panelOpen;
+  const clearToolFocus = (): void => {
+    focusedTool.current = null;
+  };
   const returnToRef = useRef(returnTo);
   returnToRef.current = returnTo;
   // Android: ask for the tool the moment the panel closes, inside the
@@ -219,14 +222,16 @@ export function ControlsTray({
           <FocusableButton
             onPress={press(() => void prev())}
             accessibilityLabel="Previous surah"
-            focusable={!panelOpen}
+            onFocus={clearToolFocus}
+            focusable={toolsFocusable}
             style={styles.round}>
             <FocusIcon icon={PreviousIcon} size={26} />
           </FocusableButton>
           <FocusableButton
             onPress={press(() => onStep(-1))}
             accessibilityLabel={synced ? 'Previous verse' : 'Back 15 seconds'}
-            focusable={!panelOpen}
+            onFocus={clearToolFocus}
+            focusable={toolsFocusable}
             style={styles.round}>
             <FocusIcon icon={StepBackIcon} size={34} />
           </FocusableButton>
@@ -236,7 +241,8 @@ export function ControlsTray({
               loading ? 'Loading' : isPlaying ? 'Pause' : 'Play'
             }
             hasTVPreferredFocus={returnTo === null}
-            focusable={!panelOpen}
+            onFocus={clearToolFocus}
+            focusable={toolsFocusable}
             style={[styles.round, styles.roundBig]}>
             {loading ? (
               <FocusSpinner size="large" />
@@ -247,7 +253,8 @@ export function ControlsTray({
           <FocusableButton
             onPress={press(() => onStep(1))}
             accessibilityLabel={synced ? 'Next verse' : 'Forward 15 seconds'}
-            focusable={!panelOpen}
+            onFocus={clearToolFocus}
+            focusable={toolsFocusable}
             style={styles.round}>
             <FocusIcon icon={StepForwardIcon} size={34} />
           </FocusableButton>
@@ -259,7 +266,8 @@ export function ControlsTray({
               onPress={press(() => void next())}
               accessibilityLabel="Next surah"
               disabled={!hasNext}
-              focusable={!panelOpen}
+              onFocus={clearToolFocus}
+              focusable={toolsFocusable}
               style={styles.round}>
               <FocusIcon icon={NextIcon} size={26} />
             </FocusableButton>
