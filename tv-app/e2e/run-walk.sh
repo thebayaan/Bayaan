@@ -371,6 +371,8 @@ settle_tvos() {
     sleep 2
   done
   while :; do
+    # A probe left by an earlier run (or a failed shot) must never pass.
+    rm -f "$probe"
     xcrun simctl io "$DEVICE" screenshot "$probe" >/dev/null 2>&1
     size=$(wc -c <"$probe" 2>/dev/null || echo 0)
     if ((size > BOOT_FRAME_MAX_BYTES)); then
