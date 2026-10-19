@@ -326,7 +326,12 @@ export function SettingsScreen(): React.ReactElement {
                 (drawn natively on Android, see fadingEdgeLength). */}
             {NATIVE_FADE ? null : <ListFade height={LIST_FADE} />}
           </View>
-          <View style={styles.previewColumn}>
+          {/* A picker that changes no verse (reciter, speed, sound, dim)
+              covers this side, so the preview steps away rather than show
+              cut off under the panel; the display pickers move it beside
+              theirs instead (besidePicker). */}
+          <View
+            style={[styles.previewColumn, picker !== null && styles.hidden]}>
             <Text style={styles.previewLabel}>Preview</Text>
             <VersePreview />
             <Text style={styles.previewNote}>
@@ -667,6 +672,7 @@ const styles = createScaledStyles({
     letterSpacing: 0.5,
     marginTop: 8,
   },
+  hidden: {opacity: 0},
   // Left of the 620-wide picker panel.
   besidePicker: {
     position: 'absolute',
