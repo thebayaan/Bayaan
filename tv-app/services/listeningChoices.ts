@@ -284,7 +284,9 @@ export function shortReciterName(name: string): string {
   if (tail.length > 1 && /^al$/i.test(tail[0])) {
     tail.splice(0, 2, `Al-${tail[1]}`);
   }
-  return tail.map(tidyWord).join(' ');
+  // A caption never starts lower-case ("bin Aoun" reads "Bin Aoun").
+  const short = tail.map(tidyWord).join(' ');
+  return short.charAt(0).toUpperCase() + short.slice(1);
 }
 
 /**

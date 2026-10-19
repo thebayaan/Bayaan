@@ -187,6 +187,7 @@ describe('shortReciterName', () => {
     expect(shortReciterName('Mohammad Saleh Alim Shah')).toBe('Alim Shah');
     expect(shortReciterName('Mahmoud Abdul Hakam')).toBe('Abdul Hakam');
     expect(shortReciterName('Muamar (From Indonesia)')).toBe('Muamar');
+    expect(shortReciterName('Abdulelah bin Aoun')).toBe('Bin Aoun');
   });
 
   it('shortens long names to the family name', () => {
