@@ -44,7 +44,7 @@ import {
   TrashIcon,
 } from '../../../components/Icons';
 import {colors} from '../../theme/colors';
-import {createScaledStyles, scale} from '../../theme/scale';
+import {createScaledStyles} from '../../theme/scale';
 import type {Reciter} from '../../types/reciter';
 
 /**
@@ -268,7 +268,12 @@ function SurahMenu({target}: {target: SurahMenuTarget}): React.ReactElement {
                   }}
                   trailing={
                     has ? (
-                      <CheckIcon color={colors.accent} size={scale(24)} />
+                      // Sky at rest, ink on the cream, like every check.
+                      <FocusIcon
+                        icon={CheckIcon}
+                        color={colors.accent}
+                        size={24}
+                      />
                     ) : null
                   }
                 />
@@ -374,6 +379,9 @@ function SurahMenu({target}: {target: SurahMenuTarget}): React.ReactElement {
   );
 }
 
+/** Room around the playlist rows for a focused row's scale. */
+const PICK_ROOM = 12;
+
 const styles = createScaledStyles({
   art: {
     width: 88,
@@ -383,6 +391,8 @@ const styles = createScaledStyles({
     overflow: 'hidden',
   },
   // Long lists scroll inside the sheet; focus scrolls them.
-  pickList: {maxHeight: 420},
-  pickContent: {gap: 4},
+  // The list reaches past the rows' edges by the room a focused row's 1.03
+  // scale takes, so it isn't clipped narrower than the rows above it.
+  pickList: {maxHeight: 420 + 2 * PICK_ROOM, margin: -PICK_ROOM},
+  pickContent: {gap: 4, padding: PICK_ROOM},
 });
