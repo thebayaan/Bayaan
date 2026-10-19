@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, {createContext, useContext, useEffect, useState} from 'react';
 import {StyleSheet, Text, TVFocusGuideView, View} from 'react-native';
 import {Image} from 'expo-image';
 import {FocusableButton, FocusText} from '../primitives/FocusableButton';
@@ -53,7 +53,15 @@ type Props = {
   takeFocus: boolean;
   /** Focus "Choose reciter" instead (coming back from the picker). */
   focusChooser: boolean;
+  /**
+   * Handed the first (primary) button's view, for the focus guide that sends
+   * Right from the keyboard to it.
+   */
+  primaryRef?: React.Ref<View>;
 };
+
+/** The card's primary button takes this ref (one per card). */
+const PrimaryRef = createContext<React.Ref<View> | undefined>(undefined);
 
 /**
  * The best match, large, with the buttons its kind needs. The first button is
@@ -61,6 +69,14 @@ type Props = {
  * obvious thing.
  */
 export function TopResultCard(props: Props): React.ReactElement {
+  return (
+    <PrimaryRef.Provider value={props.primaryRef}>
+      <TopResultBody {...props} />
+    </PrimaryRef.Provider>
+  );
+}
+
+function TopResultBody(props: Props): React.ReactElement {
   const {top} = props;
   switch (top.type) {
     case 'surah':
@@ -271,19 +287,23 @@ function VerseTop({
   return (
     <Card
       art={
-        <View style={[styles.art, styles.verseArt]}>
+        <View style={styles.art}>
+          {/* The tile itself has no padding, so the gradient (sized from it)
+              reaches every edge; the padding is the verse's own. */}
           <GradientFill
             colors={surahGradient(verse.surah.id)}
             id={`search-top-v${verse.surah.id}`}
           />
-          <Text
-            style={[
-              styles.verseText,
-              quranTextFontAvailable && {fontFamily: quranTextFontFamily},
-            ]}
-            numberOfLines={5}>
-            {arabic}
-          </Text>
+          <View style={styles.verseFrame}>
+            <Text
+              style={[
+                styles.verseText,
+                quranTextFontAvailable && {fontFamily: quranTextFontFamily},
+              ]}
+              numberOfLines={VERSE_LINES}>
+              {arabic}
+            </Text>
+          </View>
         </View>
       }
       eyebrow={`Top result · ${verse.surah.name} · Verse ${verse.ayah}`}
@@ -382,8 +402,10 @@ function Action({
   focus?: boolean;
   onPress: () => void;
 }): React.ReactElement {
+  const primaryRef = useContext(PrimaryRef);
   return (
     <FocusableButton
+      ref={primary ? primaryRef : undefined}
       onPress={onPress}
       hasTVPreferredFocus={focus}
       accessibilityLabel={label}
@@ -396,6 +418,8 @@ function Action({
 }
 
 const ART = 280;
+const VERSE_PAD = 22;
+const VERSE_LINES = 4;
 
 const styles = createScaledStyles({
   card: {flexDirection: 'row', gap: 40, alignItems: 'center'},
@@ -411,11 +435,18 @@ const styles = createScaledStyles({
   },
   round: {borderRadius: ART / 2},
   adhkarImage: {opacity: 0.85},
-  verseArt: {padding: 22},
+  // Four lines of 48 fit the 236 left inside the padding; the frame clips
+  // anything a taller Quran face adds rather than let it run off the tile.
+  verseFrame: {
+    width: ART,
+    maxHeight: ART,
+    padding: VERSE_PAD,
+    overflow: 'hidden',
+  },
   verseText: {
     color: colors.text,
     fontSize: 30,
-    lineHeight: 54,
+    lineHeight: 48,
     textAlign: 'center',
     writingDirection: 'rtl',
   },
