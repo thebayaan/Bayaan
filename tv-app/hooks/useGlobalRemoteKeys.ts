@@ -15,6 +15,8 @@ export function useGlobalRemoteKeys(): void {
   const mediaFilter = useMemo(createMediaKeyFilter, []);
   const handleTVEvent = useCallback(
     (event: HWEvent): void => {
+      // TEMP focusdbg
+      console.log(`[focusdbg] key ${event.eventType} ${event.eventKeyAction}`);
       const key = mediaFilter(event);
       if (!key) return;
       const {stack} = useNavStore.getState();
