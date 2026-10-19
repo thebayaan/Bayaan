@@ -1,0 +1,984 @@
+10-19 05:52:38.174  3074  3074 I WALK    : step 000-launch-welcome-step-1
+10-19 05:52:39.403  3059  3088 I ReactNativeJS: Running "main"
+10-19 05:53:10.913  3611  3611 I WALK    : step 001-onboarding-browse-all
+10-19 05:53:11.323  3059  3088 I ReactNativeJS: [focusdbg] focus Browse all reciters
+10-19 05:53:11.377  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 05:53:12.783  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 05:53:13.280  3059  3088 I ReactNativeJS: [focusdbg] focus Mohammed Siddiq Al-Minshawi
+10-19 05:53:19.676  3748  3748 I WALK    : step 002-onboarding-browse-closed
+10-19 05:53:20.136  3059  3088 I ReactNativeJS: [focusdbg] focus Browse all reciters
+10-19 05:53:25.860  3801  3801 I WALK    : step 003-onboarding-step-2
+10-19 05:53:26.194  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 05:53:27.535  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 05:53:34.186  3949  3949 I WALK    : step 004-onboarding-language-chip
+10-19 05:53:34.316  3059  3088 I ReactNativeJS: [focusdbg] focus English, selected
+10-19 05:53:34.404  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 05:53:40.280  3998  3998 I WALK    : step 005-onboarding-continue-focused
+10-19 05:53:40.420  3059  3088 I ReactNativeJS: [focusdbg] focus Continue
+10-19 05:53:40.499  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 05:53:45.754  4079  4079 I WALK    : step 006-home-top
+10-19 05:53:45.919  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 05:53:47.865  3059  3088 I ReactNativeJS: [focusdbg] focus Begin Morning adhkar
+10-19 05:53:55.442  4409  4409 I WALK    : step 007-home-moments-rail
+10-19 05:53:55.477  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 05:53:59.824  4429  4429 I WALK    : step 008-home-adhkar-rail
+10-19 05:53:59.847  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 05:54:04.214  4446  4446 I WALK    : step 009-home-collections-rail
+10-19 05:54:04.235  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 05:54:08.620  4460  4460 I WALK    : step 010-home-featured-reciters
+10-19 05:54:08.641  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 05:54:13.074  4474  4474 I WALK    : step 011-home-best-for-memorisation
+10-19 05:54:13.100  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 05:54:17.479  4488  4488 I WALK    : step 012-home-best-for-tajweed
+10-19 05:54:17.499  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 05:54:21.851  4502  4502 I WALK    : step 013-home-short-surahs
+10-19 05:54:21.872  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 05:54:26.235  4528  4528 I WALK    : step 014-home-back-sidebar-on-home
+10-19 05:54:30.622  4542  4542 I WALK    : step 015-library-first-run
+10-19 05:54:30.646  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 05:54:31.667  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 05:54:32.688  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 05:54:33.710  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 05:54:34.731  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 05:54:35.753  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 05:54:36.775  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 05:54:37.801  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 05:54:38.844  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 05:54:39.870  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 05:54:40.895  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 05:54:41.920  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 05:54:42.941  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 05:54:43.028  3059  3088 I ReactNativeJS: [focusdbg] focus New playlist
+10-19 05:54:50.277  4622  4622 I WALK    : step 016-library-back-sidebar
+10-19 05:54:54.577  4636  4636 I WALK    : step 017-library-sidebar-back-home-item
+10-19 05:55:00.206  4740  4740 I WALK    : step 018-surahs
+10-19 05:55:00.242  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 05:55:01.263  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 05:55:02.284  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 05:55:03.309  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 05:55:04.329  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 05:55:05.355  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 05:55:06.376  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 05:55:07.399  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 05:55:08.425  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 05:55:09.450  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 05:55:16.816  4815  4815 I WALK    : step 019-surahs-al-baqarah-focused
+10-19 05:55:16.841  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 05:55:21.159  4832  4832 I WALK    : step 020-player-playing
+10-19 05:55:21.178  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 05:55:35.285  4888  4888 I WALK    : step 021-player-next-verse
+10-19 05:55:35.785  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 05:55:40.683  4907  4907 I WALK    : step 022-tray-up
+10-19 05:55:40.952  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 05:55:41.549  3059  3088 I ReactNativeJS: [focusdbg] focus Pause
+10-19 05:55:45.649  4922  4922 I WALK    : step 023-panel-repeat
+10-19 05:55:45.877  3059  3088 I ReactNativeJS: [focusdbg] focus Next verse
+10-19 05:55:45.889  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 05:55:47.338  3059  3088 I ReactNativeJS: [focusdbg] focus Next surah
+10-19 05:55:47.419  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 05:55:48.583  3059  3088 I ReactNativeJS: [focusdbg] focus Repeat: Off
+10-19 05:55:48.584  3059  3088 I ReactNativeJS: [focusdbg] tool focus repeat
+10-19 05:55:48.622  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 05:55:49.681  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 05:55:50.185  3059  3088 I ReactNativeJS: [focusdbg] focus Off, selected
+10-19 05:55:54.374  5021  5021 I WALK    : step 024-panel-repeat-verse
+10-19 05:55:54.895  3059  3088 I ReactNativeJS: [focusdbg] focus This verse
+10-19 05:55:54.904  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 05:55:56.128  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 05:56:00.525  5046  5046 I WALK    : step 025-panel-repeat-off
+10-19 05:56:00.990  3059  3088 I ReactNativeJS: [focusdbg] focus Off
+10-19 05:56:01.137  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 05:56:02.074  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 05:56:06.948  5065  5065 I WALK    : step 026-panel-speed
+10-19 05:56:07.190  3059  3088 I ReactNativeJS: [focusdbg] handoff repeat
+10-19 05:56:07.268  3059  3088 I ReactNativeJS: [focusdbg] linger repeat
+10-19 05:56:07.309  3059  3088 I ReactNativeJS: [focusdbg] retry 0 repeat has=null
+10-19 05:56:07.751  3059  3088 I ReactNativeJS: [focusdbg] focus Repeat: Off
+10-19 05:56:07.755  3059  3088 I ReactNativeJS: [focusdbg] tool focus repeat
+10-19 05:56:07.756  3059  3088 I ReactNativeJS: [focusdbg] focus Previous surah
+10-19 05:56:07.757  3059  3088 I ReactNativeJS: [focusdbg] focus Repeat: Off
+10-19 05:56:07.760  3059  3088 I ReactNativeJS: [focusdbg] tool focus repeat
+10-19 05:56:07.850  3059  3088 I ReactNativeJS: [focusdbg] retry 50 repeat has=repeat
+10-19 05:56:07.850  3059  3088 I ReactNativeJS: [focusdbg] retry 100 repeat has=repeat
+10-19 05:56:07.850  3059  3088 I ReactNativeJS: [focusdbg] retry 200 repeat has=repeat
+10-19 05:56:07.850  3059  3088 I ReactNativeJS: [focusdbg] linger end repeat
+10-19 05:56:07.850  3059  3088 I ReactNativeJS: [focusdbg] retry 300 repeat has=repeat
+10-19 05:56:08.357  3059  3088 I ReactNativeJS: [focusdbg] focus Speed: 1.0×
+10-19 05:56:08.357  3059  3088 I ReactNativeJS: [focusdbg] tool focus speed
+10-19 05:56:08.405  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 05:56:09.878  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 05:56:10.118  3059  3088 I ReactNativeJS: [focusdbg] focus 1.0×, selected
+10-19 05:56:14.450  5089  5089 I WALK    : step 027-panel-on-screen
+10-19 05:56:14.726  3059  3088 I ReactNativeJS: [focusdbg] handoff speed
+10-19 05:56:14.846  3059  3088 I ReactNativeJS: [focusdbg] linger speed
+10-19 05:56:15.042  3059  3088 I ReactNativeJS: [focusdbg] focus Speed: 1.0×
+10-19 05:56:15.042  3059  3088 I ReactNativeJS: [focusdbg] tool focus speed
+10-19 05:56:15.043  3059  3088 I ReactNativeJS: [focusdbg] focus Previous surah
+10-19 05:56:15.130  3059  3088 I ReactNativeJS: [focusdbg] retry 0 speed has=null
+10-19 05:56:15.130  3059  3088 I ReactNativeJS: [focusdbg] retry 50 speed has=null
+10-19 05:56:15.130  3059  3088 I ReactNativeJS: [focusdbg] retry 100 speed has=null
+10-19 05:56:15.130  3059  3088 I ReactNativeJS: [focusdbg] retry 200 speed has=null
+10-19 05:56:15.130  3059  3088 I ReactNativeJS: [focusdbg] linger end speed
+10-19 05:56:15.206  3059  3088 I ReactNativeJS: [focusdbg] focus Speed: 1.0×
+10-19 05:56:15.212  3059  3088 I ReactNativeJS: [focusdbg] tool focus speed
+10-19 05:56:15.236  3059  3088 I ReactNativeJS: [focusdbg] retry 300 speed has=speed
+10-19 05:56:15.752  3059  3088 I ReactNativeJS: [focusdbg] focus On screen: Arabic + English
+10-19 05:56:15.753  3059  3088 I ReactNativeJS: [focusdbg] tool focus onScreen
+10-19 05:56:15.810  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 05:56:16.948  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 05:56:17.953  3059  3088 I ReactNativeJS: [focusdbg] focus Arabic + translation, selected
+10-19 05:56:21.713  5113  5113 I WALK    : step 028-panel-reciter
+10-19 05:56:21.856  3059  3088 I ReactNativeJS: [focusdbg] handoff onScreen
+10-19 05:56:21.948  3059  3088 I ReactNativeJS: [focusdbg] linger onScreen
+10-19 05:56:22.375  3059  3088 I ReactNativeJS: [focusdbg] retry 0 onScreen has=null
+10-19 05:56:22.376  3059  3088 I ReactNativeJS: [focusdbg] focus On screen: Arabic + English
+10-19 05:56:22.376  3059  3088 I ReactNativeJS: [focusdbg] tool focus onScreen
+10-19 05:56:22.377  3059  3088 I ReactNativeJS: [focusdbg] focus Previous surah
+10-19 05:56:22.391  3059  3088 I ReactNativeJS: [focusdbg] retry 50 onScreen has=null
+10-19 05:56:22.391  3059  3088 I ReactNativeJS: [focusdbg] retry 100 onScreen has=null
+10-19 05:56:22.391  3059  3088 I ReactNativeJS: [focusdbg] retry 200 onScreen has=null
+10-19 05:56:22.392  3059  3088 I ReactNativeJS: [focusdbg] linger end onScreen
+10-19 05:56:22.392  3059  3088 I ReactNativeJS: [focusdbg] retry 300 onScreen has=null
+10-19 05:56:22.793  3059  3088 I ReactNativeJS: [focusdbg] focus On screen: Arabic + English
+10-19 05:56:22.794  3059  3088 I ReactNativeJS: [focusdbg] tool focus onScreen
+10-19 05:56:22.944  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 05:56:23.275  3059  3088 I ReactNativeJS: [focusdbg] focus Reciter: Al-Minshawi
+10-19 05:56:23.280  3059  3088 I ReactNativeJS: [focusdbg] tool focus reciter
+10-19 05:56:24.903  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 05:56:25.501  3059  3088 I ReactNativeJS: [focusdbg] focus Mohammed Siddiq Al-Minshawi, selected
+10-19 05:56:28.755  5144  5144 I WALK    : step 029-panel-sleep
+10-19 05:56:29.471  3059  3088 I ReactNativeJS: [focusdbg] handoff reciter
+10-19 05:56:29.651  3059  3088 I ReactNativeJS: [focusdbg] linger reciter
+10-19 05:56:30.249  3059  3088 I ReactNativeJS: [focusdbg] retry 0 reciter has=null
+10-19 05:56:30.250  3059  3088 I ReactNativeJS: [focusdbg] focus Reciter: Al-Minshawi
+10-19 05:56:30.250  3059  3088 I ReactNativeJS: [focusdbg] tool focus reciter
+10-19 05:56:30.250  3059  3088 I ReactNativeJS: [focusdbg] focus Previous surah
+10-19 05:56:30.254  3059  3088 I ReactNativeJS: [focusdbg] focus Previous verse
+10-19 05:56:30.432  3059  3088 I ReactNativeJS: [focusdbg] retry 50 reciter has=null
+10-19 05:56:30.432  3059  3088 I ReactNativeJS: [focusdbg] retry 100 reciter has=null
+10-19 05:56:30.961  3059  3088 I ReactNativeJS: [focusdbg] retry 200 reciter has=null
+10-19 05:56:30.965  3059  3088 I ReactNativeJS: [focusdbg] linger end reciter
+10-19 05:56:30.965  3059  3088 I ReactNativeJS: [focusdbg] retry 300 reciter has=null
+10-19 05:56:30.966  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 05:56:30.967  3059  3088 I ReactNativeJS: [focusdbg] focus Reciter: Al-Minshawi
+10-19 05:56:30.967  3059  3088 I ReactNativeJS: [focusdbg] tool focus reciter
+10-19 05:56:32.042  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 05:56:32.988  3059  3088 I ReactNativeJS: [focusdbg] focus Mohammed Siddiq Al-Minshawi, selected
+10-19 05:56:36.401  5175  5175 I WALK    : step 030-panel-sound
+10-19 05:56:36.882  3059  3088 I ReactNativeJS: [focusdbg] handoff reciter
+10-19 05:56:37.272  3059  3088 I ReactNativeJS: [focusdbg] linger reciter
+10-19 05:56:38.048  3059  3088 I ReactNativeJS: [focusdbg] retry 0 reciter has=null
+10-19 05:56:38.050  3059  3088 I ReactNativeJS: [focusdbg] focus Reciter: Al-Minshawi
+10-19 05:56:38.051  3059  3088 I ReactNativeJS: [focusdbg] tool focus reciter
+10-19 05:56:38.051  3059  3088 I ReactNativeJS: [focusdbg] focus Previous surah
+10-19 05:56:38.052  3059  3088 I ReactNativeJS: [focusdbg] focus Previous verse
+10-19 05:56:38.068  3059  3088 I ReactNativeJS: [focusdbg] retry 50 reciter has=null
+10-19 05:56:38.069  3059  3088 I ReactNativeJS: [focusdbg] retry 100 reciter has=null
+10-19 05:56:38.069  3059  3088 I ReactNativeJS: [focusdbg] retry 200 reciter has=null
+10-19 05:56:38.070  3059  3088 I ReactNativeJS: [focusdbg] linger end reciter
+10-19 05:56:38.070  3059  3088 I ReactNativeJS: [focusdbg] retry 300 reciter has=null
+10-19 05:56:38.393  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 05:56:38.394  3059  3088 I ReactNativeJS: [focusdbg] focus Reciter: Al-Minshawi
+10-19 05:56:38.394  3059  3088 I ReactNativeJS: [focusdbg] tool focus reciter
+10-19 05:56:39.372  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 05:56:39.939  3059  3088 I ReactNativeJS: [focusdbg] focus Mohammed Siddiq Al-Minshawi, selected
+10-19 05:56:43.888  5199  5199 I WALK    : step 031-panel-queue
+10-19 05:56:44.182  3059  3088 I ReactNativeJS: [focusdbg] handoff reciter
+10-19 05:56:44.428  3059  3088 I ReactNativeJS: [focusdbg] linger reciter
+10-19 05:56:44.855  3059  3088 I ReactNativeJS: [focusdbg] retry 0 reciter has=null
+10-19 05:56:44.858  3059  3088 I ReactNativeJS: [focusdbg] focus Reciter: Al-Minshawi
+10-19 05:56:44.860  3059  3088 I ReactNativeJS: [focusdbg] tool focus reciter
+10-19 05:56:44.863  3059  3088 I ReactNativeJS: [focusdbg] focus Previous surah
+10-19 05:56:44.875  3059  3088 I ReactNativeJS: [focusdbg] retry 50 reciter has=null
+10-19 05:56:44.876  3059  3088 I ReactNativeJS: [focusdbg] retry 100 reciter has=null
+10-19 05:56:45.343  3059  3088 I ReactNativeJS: [focusdbg] retry 200 reciter has=null
+10-19 05:56:45.345  3059  3088 I ReactNativeJS: [focusdbg] linger end reciter
+10-19 05:56:45.345  3059  3088 I ReactNativeJS: [focusdbg] retry 300 reciter has=null
+10-19 05:56:45.346  3059  3088 I ReactNativeJS: [focusdbg] focus Reciter: Al-Minshawi
+10-19 05:56:45.346  3059  3088 I ReactNativeJS: [focusdbg] tool focus reciter
+10-19 05:56:45.351  3059  3088 I ReactNativeJS: [focusdbg] focus Sleep: Off
+10-19 05:56:45.351  3059  3088 I ReactNativeJS: [focusdbg] tool focus sleep
+10-19 05:56:45.809  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 05:56:45.810  3059  3088 I ReactNativeJS: [focusdbg] focus Reciter: Al-Minshawi
+10-19 05:56:45.810  3059  3088 I ReactNativeJS: [focusdbg] tool focus reciter
+10-19 05:56:46.891  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 05:56:47.410  3059  3088 I ReactNativeJS: [focusdbg] focus Mohammed Siddiq Al-Minshawi, selected
+10-19 05:56:51.378  5223  5223 I WALK    : step 032-panel-save
+10-19 05:56:51.794  3059  3088 I ReactNativeJS: [focusdbg] handoff reciter
+10-19 05:56:52.099  3059  3088 I ReactNativeJS: [focusdbg] linger reciter
+10-19 05:56:52.540  3059  3088 I ReactNativeJS: [focusdbg] retry 0 reciter has=null
+10-19 05:56:52.541  3059  3088 I ReactNativeJS: [focusdbg] focus Reciter: Al-Minshawi
+10-19 05:56:52.541  3059  3088 I ReactNativeJS: [focusdbg] tool focus reciter
+10-19 05:56:52.542  3059  3088 I ReactNativeJS: [focusdbg] focus Previous surah
+10-19 05:56:52.565  3059  3088 I ReactNativeJS: [focusdbg] retry 50 reciter has=null
+10-19 05:56:52.565  3059  3088 I ReactNativeJS: [focusdbg] retry 100 reciter has=null
+10-19 05:56:52.891  3059  3088 I ReactNativeJS: [focusdbg] retry 200 reciter has=null
+10-19 05:56:52.891  3059  3088 I ReactNativeJS: [focusdbg] linger end reciter
+10-19 05:56:52.892  3059  3088 I ReactNativeJS: [focusdbg] retry 300 reciter has=null
+10-19 05:56:53.008  3059  3088 I ReactNativeJS: [focusdbg] focus Reciter: Al-Minshawi
+10-19 05:56:53.009  3059  3088 I ReactNativeJS: [focusdbg] tool focus reciter
+10-19 05:56:53.009  3059  3088 I ReactNativeJS: [focusdbg] focus Sleep: Off
+10-19 05:56:53.010  3059  3088 I ReactNativeJS: [focusdbg] tool focus sleep
+10-19 05:56:53.010  3059  3088 I ReactNativeJS: [focusdbg] focus Reciter: Al-Minshawi
+10-19 05:56:53.010  3059  3088 I ReactNativeJS: [focusdbg] tool focus reciter
+10-19 05:56:53.023  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 05:56:53.911  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 05:56:54.684  3059  3088 I ReactNativeJS: [focusdbg] focus Mohammed Siddiq Al-Minshawi, selected
+10-19 05:56:58.763  5247  5247 I WALK    : step 033-playlist-editor-from-player
+10-19 05:56:59.496  3059  3088 I ReactNativeJS: [focusdbg] handoff reciter
+10-19 05:56:59.664  3059  3088 I ReactNativeJS: [focusdbg] linger reciter
+10-19 05:56:59.665  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 05:57:00.510  3059  3088 I ReactNativeJS: [focusdbg] retry 0 reciter has=null
+10-19 05:57:00.511  3059  3088 I ReactNativeJS: [focusdbg] focus Reciter: Al-Minshawi
+10-19 05:57:00.511  3059  3088 I ReactNativeJS: [focusdbg] tool focus reciter
+10-19 05:57:00.511  3059  3088 I ReactNativeJS: [focusdbg] focus Previous surah
+10-19 05:57:00.524  3059  3088 I ReactNativeJS: [focusdbg] retry 50 reciter has=null
+10-19 05:57:00.525  3059  3088 I ReactNativeJS: [focusdbg] retry 100 reciter has=null
+10-19 05:57:00.527  3059  3088 I ReactNativeJS: [focusdbg] retry 200 reciter has=null
+10-19 05:57:00.528  3059  3088 I ReactNativeJS: [focusdbg] linger end reciter
+10-19 05:57:00.529  3059  3088 I ReactNativeJS: [focusdbg] retry 300 reciter has=null
+10-19 05:57:01.008  3059  3088 I ReactNativeJS: [focusdbg] focus Reciter: Al-Minshawi
+10-19 05:57:01.009  3059  3088 I ReactNativeJS: [focusdbg] tool focus reciter
+10-19 05:57:04.827  5277  5277 I WALK    : step 034-playlist-typed-fajr
+10-19 05:57:05.178  3059  3088 I ReactNativeJS: [focusdbg] focus Sleep: Off
+10-19 05:57:05.178  3059  3088 I ReactNativeJS: [focusdbg] tool focus sleep
+10-19 05:57:05.189  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 05:57:06.285  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 05:57:06.285  3059  3088 I ReactNativeJS: [focusdbg] focus Sound: Off
+10-19 05:57:06.286  3059  3088 I ReactNativeJS: [focusdbg] tool focus sound
+10-19 05:57:07.309  3059  3088 I ReactNativeJS: [focusdbg] focus Queue: 112 next
+10-19 05:57:07.336  3059  3088 I ReactNativeJS: [focusdbg] tool focus queue
+10-19 05:57:07.394  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 05:57:08.405  3059  3088 I ReactNativeJS: [focusdbg] focus Save: Add
+10-19 05:57:08.406  3059  3088 I ReactNativeJS: [focusdbg] tool focus save
+10-19 05:57:08.448  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 05:57:09.517  3059  3088 I ReactNativeJS: [focusdbg] focus Add to loved surahs
+10-19 05:57:09.584  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 05:57:11.121  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 05:57:12.060  3059  3088 I ReactNativeJS: [focusdbg] focus Save: Add
+10-19 05:57:12.060  3059  3088 I ReactNativeJS: [focusdbg] tool focus save
+10-19 05:57:12.089  3059  3088 I ReactNativeJS: [focusdbg] key left 1
+10-19 05:57:13.141  3059  3088 I ReactNativeJS: [focusdbg] focus Queue: 112 next
+10-19 05:57:13.141  3059  3088 I ReactNativeJS: [focusdbg] tool focus queue
+10-19 05:57:13.230  3059  3088 I ReactNativeJS: [focusdbg] key left 1
+10-19 05:57:14.366  3059  3088 I ReactNativeJS: [focusdbg] focus Sound: Off
+10-19 05:57:14.366  3059  3088 I ReactNativeJS: [focusdbg] tool focus sound
+10-19 05:57:14.429  3059  3088 I ReactNativeJS: [focusdbg] key left 1
+10-19 05:57:15.750  3059  3088 I ReactNativeJS: [focusdbg] focus Sleep: Off
+10-19 05:57:15.751  3059  3088 I ReactNativeJS: [focusdbg] tool focus sleep
+10-19 05:57:15.760  3059  3088 I ReactNativeJS: [focusdbg] key left 1
+10-19 05:57:16.864  3059  3088 I ReactNativeJS: [focusdbg] key left 1
+10-19 05:57:16.911  3059  3088 I ReactNativeJS: [focusdbg] focus Reciter: Al-Minshawi
+10-19 05:57:16.914  3059  3088 I ReactNativeJS: [focusdbg] tool focus reciter
+10-19 05:57:18.366  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 05:57:18.934  3059  3088 I ReactNativeJS: [focusdbg] focus Mohammed Siddiq Al-Minshawi, selected
+10-19 05:57:19.582  3059  3088 I ReactNativeJS: [focusdbg] focus Mohammed Siddiq Al-Minshawi
+10-19 05:57:19.584  3059  3088 I ReactNativeJS: [focusdbg] focus Mohammed Siddiq Al-Minshawi, selected
+10-19 05:57:19.585  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 05:57:20.588  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 05:57:21.414  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 05:57:22.998  3059  3088 I ReactNativeJS: [focusdbg] handoff reciter
+10-19 05:57:23.137  3059  3088 I ReactNativeJS: [focusdbg] linger reciter
+10-19 05:57:23.140  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 05:57:23.655  3059  3088 I ReactNativeJS: [focusdbg] retry 0 reciter has=null
+10-19 05:57:23.658  3059  3088 I ReactNativeJS: [focusdbg] focus Reciter: Al-Minshawi
+10-19 05:57:23.660  3059  3088 I ReactNativeJS: [focusdbg] tool focus reciter
+10-19 05:57:23.661  3059  3088 I ReactNativeJS: [focusdbg] focus Previous surah
+10-19 05:57:23.676  3059  3088 I ReactNativeJS: [focusdbg] retry 50 reciter has=null
+10-19 05:57:23.679  3059  3088 I ReactNativeJS: [focusdbg] retry 100 reciter has=null
+10-19 05:57:23.679  3059  3088 I ReactNativeJS: [focusdbg] retry 200 reciter has=null
+10-19 05:57:23.680  3059  3088 I ReactNativeJS: [focusdbg] linger end reciter
+10-19 05:57:24.100  3059  3088 I ReactNativeJS: [focusdbg] retry 300 reciter has=null
+10-19 05:57:24.102  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 05:57:24.102  3059  3088 I ReactNativeJS: [focusdbg] focus Reciter: Al-Minshawi
+10-19 05:57:24.102  3059  3088 I ReactNativeJS: [focusdbg] tool focus reciter
+10-19 05:57:24.879  3059  3088 I ReactNativeJS: [focusdbg] focus Sleep: Off
+10-19 05:57:24.879  3059  3088 I ReactNativeJS: [focusdbg] tool focus sleep
+10-19 05:57:24.890  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 05:57:25.980  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 05:57:26.513  3059  3088 I ReactNativeJS: [focusdbg] focus Off, selected
+10-19 05:57:30.820  5390  5390 I WALK    : step 035-playlist-create-focused
+10-19 05:57:31.057  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 05:57:32.271  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 05:57:33.850  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 05:57:34.825  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 05:57:39.476  5422  5422 I WALK    : step 036-player-save-panel-fajr-ticked
+10-19 05:57:39.886  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 05:57:43.403  5437  5437 I WALK    : step 037-tray-save-focused
+10-19 05:57:43.628  3059  3088 I ReactNativeJS: [focusdbg] handoff sleep
+10-19 05:57:43.690  3059  3088 I ReactNativeJS: [focusdbg] linger sleep
+10-19 05:57:43.841  3059  3088 I ReactNativeJS: [focusdbg] retry 0 sleep has=null
+10-19 05:57:43.843  3059  3088 I ReactNativeJS: [focusdbg] focus Sleep: Off
+10-19 05:57:43.844  3059  3088 I ReactNativeJS: [focusdbg] tool focus sleep
+10-19 05:57:43.845  3059  3088 I ReactNativeJS: [focusdbg] focus Previous surah
+10-19 05:57:43.917  3059  3088 I ReactNativeJS: [focusdbg] retry 50 sleep has=null
+10-19 05:57:43.917  3059  3088 I ReactNativeJS: [focusdbg] retry 100 sleep has=null
+10-19 05:57:43.919  3059  3088 I ReactNativeJS: [focusdbg] focus Sleep: Off
+10-19 05:57:43.919  3059  3088 I ReactNativeJS: [focusdbg] tool focus sleep
+10-19 05:57:43.931  3059  3088 I ReactNativeJS: [focusdbg] retry 200 sleep has=sleep
+10-19 05:57:43.931  3059  3088 I ReactNativeJS: [focusdbg] linger end sleep
+10-19 05:57:44.017  3059  3088 I ReactNativeJS: [focusdbg] retry 300 sleep has=sleep
+10-19 05:57:48.370  5451  5451 I WALK    : step 038-tray-love-focused
+10-19 05:57:48.467  3059  3088 I ReactNativeJS: [focusdbg] focus Sound: Off
+10-19 05:57:48.468  3059  3088 I ReactNativeJS: [focusdbg] tool focus sound
+10-19 05:57:48.504  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 05:57:53.540  5465  5465 I WALK    : step 039-tray-loved
+10-19 05:57:53.797  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 05:57:54.259  3059  3088 I ReactNativeJS: [focusdbg] focus Off, selected
+10-19 05:57:58.861  5488  5488 I WALK    : step 040-tray-lowered
+10-19 05:57:59.117  3059  3088 I ReactNativeJS: [focusdbg] handoff sound
+10-19 05:57:59.159  3059  3088 I ReactNativeJS: [focusdbg] linger sound
+10-19 05:57:59.262  3059  3088 I ReactNativeJS: [focusdbg] retry 0 sound has=null
+10-19 05:57:59.264  3059  3088 I ReactNativeJS: [focusdbg] focus Sound: Off
+10-19 05:57:59.264  3059  3088 I ReactNativeJS: [focusdbg] tool focus sound
+10-19 05:57:59.266  3059  3088 I ReactNativeJS: [focusdbg] focus Previous surah
+10-19 05:57:59.280  3059  3088 I ReactNativeJS: [focusdbg] retry 50 sound has=null
+10-19 05:57:59.611  3059  3088 I ReactNativeJS: [focusdbg] retry 100 sound has=null
+10-19 05:57:59.612  3059  3088 I ReactNativeJS: [focusdbg] focus Sound: Off
+10-19 05:57:59.612  3059  3088 I ReactNativeJS: [focusdbg] tool focus sound
+10-19 05:57:59.623  3059  3088 I ReactNativeJS: [focusdbg] retry 200 sound has=sound
+10-19 05:57:59.623  3059  3088 I ReactNativeJS: [focusdbg] linger end sound
+10-19 05:57:59.623  3059  3088 I ReactNativeJS: [focusdbg] retry 300 sound has=sound
+10-19 05:58:03.131  5502  5502 I WALK    : step 041-player-back-on-al-baqarah
+10-19 05:58:10.389  5516  5516 I WALK    : step 042-surahs-ali-imran-focused
+10-19 05:58:10.680  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 05:58:15.518  5532  5532 I WALK    : step 043-surah-menu
+10-19 05:58:17.555  3059  3088 I ReactNativeJS: [focusdbg] key longSelect 0
+10-19 05:58:17.556  3059  3088 I ReactNativeJS: [focusdbg] key longSelect 1
+10-19 05:58:23.807  5570  5570 I WALK    : step 044-surah-menu-loved
+10-19 05:58:23.914  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 05:58:24.107  3059  3088 I ReactNativeJS: [focusdbg] focus Pause
+10-19 05:58:25.154  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 05:58:29.904  5592  5592 I WALK    : step 045-surah-menu-playlists
+10-19 05:58:30.139  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 05:58:31.285  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 05:58:36.055  5612  5612 I WALK    : step 046-surah-menu-added-to-fajr
+10-19 05:58:36.519  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 05:58:37.872  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 05:58:40.166  5631  5631 I WALK    : step 047-surah-menu-back-to-main
+10-19 05:58:45.386  5646  5646 I WALK    : step 048-surah-menu-closed-on-tile
+10-19 05:58:49.872  5663  5663 I WALK    : step 049-surah-menu-again
+10-19 05:58:50.485  3059  3088 I ReactNativeJS: [focusdbg] focus Play
+10-19 05:58:51.395  3059  3088 I ReactNativeJS: [focusdbg] key longSelect 0
+10-19 05:58:51.396  3059  3088 I ReactNativeJS: [focusdbg] key longSelect 1
+10-19 05:58:56.636  5677  5677 I WALK    : step 050-surah-menu-play-player
+10-19 05:58:56.656  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 05:59:08.731  5698  5698 I WALK    : step 051-player-back-on-ali-imran
+10-19 05:59:15.779  5712  5712 I WALK    : step 052-reciters
+10-19 05:59:17.026  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 05:59:18.154  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 05:59:19.255  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 05:59:20.523  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 05:59:21.592  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 05:59:22.607  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 05:59:23.699  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 05:59:24.807  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 05:59:25.904  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 05:59:27.050  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 05:59:28.360  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 05:59:36.472  5788  5788 I WALK    : step 053-reciter-menu
+10-19 05:59:37.266  3059  3088 I ReactNativeJS: [focusdbg] focus Play
+10-19 05:59:38.102  3059  3088 I ReactNativeJS: [focusdbg] key longSelect 0
+10-19 05:59:38.223  3059  3088 I ReactNativeJS: [focusdbg] key longSelect 1
+10-19 05:59:44.121  5802  5802 I WALK    : step 054-reciter-menu-favourited
+10-19 05:59:44.208  3059  3088 I ReactNativeJS: [focusdbg] focus Shuffle play
+10-19 05:59:44.238  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 05:59:45.329  3059  3088 I ReactNativeJS: [focusdbg] focus Add to favourites
+10-19 05:59:45.364  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 05:59:46.572  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 05:59:51.505  5827  5827 I WALK    : step 055-reciter-page
+10-19 05:59:51.602  3059  3088 I ReactNativeJS: [focusdbg] focus Open reciter page
+10-19 05:59:51.633  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 05:59:52.755  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 05:59:53.304  3059  3088 I ReactNativeJS: [focusdbg] focus Play from Al-Fatihah
+10-19 06:00:00.658  5854  5854 I WALK    : step 056-reciter-page-pill-focused
+10-19 06:00:00.749  3059  3088 I ReactNativeJS: [focusdbg] focus Back
+10-19 06:00:00.790  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 06:00:01.918  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:00:06.730  5875  5875 I WALK    : step 057-reciter-pill-to-player
+10-19 06:00:07.007  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 06:00:14.905  5894  5894 I WALK    : step 058-reciter-page-back-on-pill
+10-19 06:00:21.078  5909  5909 I WALK    : step 059-reciters-back-on-card
+10-19 06:00:27.759  5927  5927 I WALK    : step 060-sidebar-tile-focused
+10-19 06:00:29.053  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:00:30.185  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:00:31.368  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:00:32.616  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:00:33.683  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:00:34.723  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:00:35.826  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:00:36.994  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:00:42.150  5982  5982 I WALK    : step 061-sidebar-tile-to-player
+10-19 06:00:42.270  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 06:00:50.309  5997  5997 I WALK    : step 062-player-back-on-tile
+10-19 06:00:56.857  6011  6011 I WALK    : step 063-tile-paused
+10-19 06:00:57.008  3059  3088 I ReactNativeJS: [focusdbg] key playPause 1
+10-19 06:01:02.440  6025  6025 I WALK    : step 064-tile-ok-resumes-player
+10-19 06:01:02.460  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 06:01:10.506  6041  6041 I WALK    : step 065-player-back-on-tile-again
+10-19 06:01:16.874  6055  6055 I WALK    : step 066-home-strip-playing
+10-19 06:01:16.998  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 06:01:18.118  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 06:01:19.278  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 06:01:20.534  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 06:01:21.576  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 06:01:22.627  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 06:01:23.720  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 06:01:24.834  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 06:01:25.954  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 06:01:26.902  3059  3088 I ReactNativeJS: [focusdbg] focus now playing: Al-Baqarah · Mohammed Siddiq Al-Minshawi. Open player.
+10-19 06:01:33.910  6122  6122 I WALK    : step 067-home-strip-paused
+10-19 06:01:34.074  3059  3088 I ReactNativeJS: [focusdbg] key playPause 1
+10-19 06:01:39.425  6150  6150 I WALK    : step 068-home-strip-playing-again
+10-19 06:01:39.445  3059  3088 I ReactNativeJS: [focusdbg] key playPause 1
+10-19 06:01:45.327  6168  6168 I WALK    : step 069-home-hero-buttons
+10-19 06:01:45.410  3059  3088 I ReactNativeJS: [focusdbg] focus Begin Morning adhkar
+10-19 06:01:45.475  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:01:50.333  6182  6182 I WALK    : step 070-home-continue-rail
+10-19 06:01:50.607  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:01:55.278  6196  6196 I WALK    : step 071-home-continue-menu
+10-19 06:01:55.975  3059  3088 I ReactNativeJS: [focusdbg] focus Resume
+10-19 06:01:56.880  3059  3088 I ReactNativeJS: [focusdbg] key longSelect 0
+10-19 06:01:56.908  3059  3088 I ReactNativeJS: [focusdbg] key longSelect 1
+10-19 06:02:02.516  6210  6210 I WALK    : step 072-home-continue-menu-closed
+10-19 06:02:07.400  6224  6224 I WALK    : step 073-home-history-moments-rail
+10-19 06:02:07.458  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:02:12.189  6238  6238 I WALK    : step 074-home-history-recently-played
+10-19 06:02:12.325  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:02:17.004  6254  6254 I WALK    : step 075-home-history-favourite-reciters
+10-19 06:02:17.168  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:02:21.876  6351  6351 I WALK    : step 076-home-history-your-playlists
+10-19 06:02:22.000  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:02:26.925  6367  6367 I WALK    : step 077-home-history-loved-surahs
+10-19 06:02:27.165  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:02:32.082  6509  6509 I WALK    : step 078-home-history-adhkar-rail
+10-19 06:02:32.255  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:02:37.378  6524  6524 I WALK    : step 079-home-history-collections-rail
+10-19 06:02:37.703  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:02:42.703  6539  6539 I WALK    : step 080-home-history-featured-reciters
+10-19 06:02:42.940  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:02:48.047  6553  6553 I WALK    : step 081-home-history-best-for-memorisation
+10-19 06:02:48.246  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:02:53.442  6567  6567 I WALK    : step 082-home-history-best-for-tajweed
+10-19 06:02:53.558  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:02:58.479  6581  6581 I WALK    : step 083-home-history-short-surahs
+10-19 06:02:58.592  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:03:03.595  6595  6595 I WALK    : step 084-home-history-back-sidebar
+10-19 06:03:08.669  6609  6609 I WALK    : step 085-library-playlists
+10-19 06:03:08.808  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 06:03:10.038  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 06:03:11.067  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 06:03:12.138  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 06:03:13.189  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 06:03:14.296  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 06:03:15.424  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 06:03:16.550  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:03:17.646  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:03:18.766  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:03:19.871  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:03:21.109  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:03:22.290  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 06:03:29.667  6687  6687 I WALK    : step 086-library-new-playlist-editor
+10-19 06:03:29.838  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 06:03:35.837  6701  6701 I WALK    : step 087-library-new-playlist-create
+10-19 06:03:36.029  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:03:37.342  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:03:38.618  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:03:39.589  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:03:40.792  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:03:42.267  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:03:43.411  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:03:48.526  6764  6764 I WALK    : step 088-library-new-playlist-opened
+10-19 06:03:48.719  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 06:03:49.300  3059  3088 I ReactNativeJS: [focusdbg] focus Pause
+10-19 06:03:55.810  6779  6779 I WALK    : step 089-library-browse-surahs-jump
+10-19 06:03:56.575  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 06:04:03.983  6794  6794 I WALK    : step 090-library-jump-surahs-sidebar
+10-19 06:04:09.206  6808  6808 I WALK    : step 091-library-jump-back-to-playlist
+10-19 06:04:15.649  6822  6822 I WALK    : step 092-library-back-on-new-playlist
+10-19 06:04:21.893  6836  6836 I WALK    : step 093-library-fajr-focused
+10-19 06:04:21.916  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:04:26.148  6852  6852 I WALK    : step 094-playlist-detail
+10-19 06:04:26.169  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 06:04:34.322  6870  6870 I WALK    : step 095-playlist-row-focused
+10-19 06:04:34.579  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:04:36.040  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:04:41.037  6895  6895 I WALK    : step 096-playlist-row-menu
+10-19 06:04:42.667  3059  3088 I ReactNativeJS: [focusdbg] key longSelect 0
+10-19 06:04:42.960  3059  3088 I ReactNativeJS: [focusdbg] key longSelect 1
+10-19 06:04:48.727  6910  6910 I WALK    : step 097-playlist-row-moved-down
+10-19 06:04:48.839  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:04:49.379  3059  3088 I ReactNativeJS: [focusdbg] focus Pause
+10-19 06:04:50.075  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:04:51.428  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:04:52.605  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:04:53.562  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 06:04:58.294  6945  6945 I WALK    : step 098-playlist-row-menu-closed
+10-19 06:05:03.743  6959  6959 I WALK    : step 099-library-back-on-fajr
+10-19 06:05:10.155  6973  6973 I WALK    : step 100-library-playlist-menu
+10-19 06:05:10.760  3059  3088 I ReactNativeJS: [focusdbg] focus Play
+10-19 06:05:11.679  3059  3088 I ReactNativeJS: [focusdbg] key longSelect 0
+10-19 06:05:11.679  3059  3088 I ReactNativeJS: [focusdbg] key longSelect 1
+10-19 06:05:16.915  6987  6987 I WALK    : step 101-library-playlist-delete-armed
+10-19 06:05:16.937  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:05:16.943  3059  3088 I ReactNativeJS: [focusdbg] focus Remove Al-Baqarah from Loved
+10-19 06:05:17.962  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:05:17.976  3059  3088 I ReactNativeJS: [focusdbg] focus Add to playlist…
+10-19 06:05:18.989  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:05:18.993  3059  3088 I ReactNativeJS: [focusdbg] focus Go to reciter
+10-19 06:05:20.013  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 06:05:20.141  3059  3088 I ReactNativeJS: [focusdbg] focus Continue Al-Baqarah
+10-19 06:05:22.312  7021  7021 I WALK    : step 102-library-playlist-menu-closed
+10-19 06:05:26.569  7035  7035 I WALK    : step 103-library-playlist-menu-again
+10-19 06:05:27.144  3059  3088 I ReactNativeJS: [focusdbg] focus Play
+10-19 06:05:28.092  3059  3088 I ReactNativeJS: [focusdbg] key longSelect 0
+10-19 06:05:28.092  3059  3088 I ReactNativeJS: [focusdbg] key longSelect 1
+10-19 06:05:33.322  7052  7052 I WALK    : step 104-library-rename-editor
+10-19 06:05:33.343  3059  3088 I ReactNativeJS: [focusdbg] focus Remove Al-Baqarah from Loved
+10-19 06:05:33.364  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:05:34.393  3059  3088 I ReactNativeJS: [focusdbg] focus Add to playlist…
+10-19 06:05:34.399  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:05:35.432  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 06:05:35.479  3059  3088 I ReactNativeJS: [focusdbg] focus New playlist
+10-19 06:05:40.669  7078  7078 I WALK    : step 105-library-rename-deleted-letter
+10-19 06:05:40.689  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:05:41.713  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:05:42.736  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:05:43.760  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:05:44.784  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:05:45.807  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 06:05:45.932  3059  3088 I ReactNativeJS: [focusdbg] focus a
+10-19 06:05:50.050  7119  7119 I WALK    : step 106-library-rename-save-focused
+10-19 06:05:50.077  3059  3088 I ReactNativeJS: [focusdbg] focus b
+10-19 06:05:50.086  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:05:51.116  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:05:51.126  3059  3088 I ReactNativeJS: [focusdbg] focus c
+10-19 06:05:52.142  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:05:52.143  3059  3088 I ReactNativeJS: [focusdbg] focus d
+10-19 06:05:56.384  7144  7144 I WALK    : step 107-library-rename-cancelled
+10-19 06:06:02.638  7158  7158 I WALK    : step 108-library-tabs-playlists
+10-19 06:06:02.700  3059  3088 I ReactNativeJS: [focusdbg] key left 1
+10-19 06:06:03.703  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 06:06:07.939  7179  7179 I WALK    : step 109-library-loved
+10-19 06:06:07.968  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:06:13.214  7194  7194 I WALK    : step 110-library-reciters
+10-19 06:06:13.236  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:06:18.482  7221  7221 I WALK    : step 111-adhkar
+10-19 06:06:19.544  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 06:06:20.570  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 06:06:21.610  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 06:06:22.631  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 06:06:23.657  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 06:06:24.681  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 06:06:25.704  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 06:06:26.730  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:06:27.757  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:06:28.780  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:06:29.807  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:06:30.829  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 06:06:38.175  7348  7348 I WALK    : step 112-adhkar-reader
+10-19 06:06:38.196  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 06:06:46.152  7363  7363 I WALK    : step 113-adhkar-next-dhikr
+10-19 06:06:46.365  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:06:51.505  7377  7377 I WALK    : step 114-adhkar-page-2
+10-19 06:06:51.656  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 06:06:56.683  7393  7393 I WALK    : step 115-adhkar-counted
+10-19 06:06:56.825  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 06:07:01.686  7408  7408 I WALK    : step 116-adhkar-controls
+10-19 06:07:01.777  3059  3088 I ReactNativeJS: [focusdbg] focus Play
+10-19 06:07:01.822  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:07:07.140  7674  7674 I WALK    : step 117-adhkar-back-on-card
+10-19 06:07:12.693  7690  7690 I WALK    : step 118-search
+10-19 06:07:13.738  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 06:07:14.767  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 06:07:15.791  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 06:07:16.829  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 06:07:17.851  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 06:07:18.874  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 06:07:19.899  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 06:07:20.936  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:07:21.968  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 06:07:22.279  3059  3088 I ReactNativeJS: [focusdbg] focus a
+10-19 06:07:29.261  7772  7772 I WALK    : step 119-search-typed-fat
+10-19 06:07:29.281  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:07:29.295  3059  3088 I ReactNativeJS: [focusdbg] focus b
+10-19 06:07:30.309  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:07:30.310  3059  3088 I ReactNativeJS: [focusdbg] focus c
+10-19 06:07:31.341  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:07:31.343  3059  3088 I ReactNativeJS: [focusdbg] focus d
+10-19 06:07:32.377  3059  3088 I ReactNativeJS: [focusdbg] focus e
+10-19 06:07:32.387  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:07:33.419  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:07:33.427  3059  3088 I ReactNativeJS: [focusdbg] focus f
+10-19 06:07:34.443  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 06:07:35.484  3059  3088 I ReactNativeJS: [focusdbg] key left 1
+10-19 06:07:35.493  3059  3088 I ReactNativeJS: [focusdbg] focus e
+10-19 06:07:36.508  3059  3088 I ReactNativeJS: [focusdbg] key left 1
+10-19 06:07:36.510  3059  3088 I ReactNativeJS: [focusdbg] focus d
+10-19 06:07:37.532  3059  3088 I ReactNativeJS: [focusdbg] key left 1
+10-19 06:07:37.544  3059  3088 I ReactNativeJS: [focusdbg] focus c
+10-19 06:07:38.557  3059  3088 I ReactNativeJS: [focusdbg] key left 1
+10-19 06:07:38.560  3059  3088 I ReactNativeJS: [focusdbg] focus b
+10-19 06:07:39.580  3059  3088 I ReactNativeJS: [focusdbg] key left 1
+10-19 06:07:39.593  3059  3088 I ReactNativeJS: [focusdbg] focus a
+10-19 06:07:40.602  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 06:07:41.627  3059  3088 I ReactNativeJS: [focusdbg] focus h
+10-19 06:07:41.636  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:07:42.674  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:07:42.676  3059  3088 I ReactNativeJS: [focusdbg] focus o
+10-19 06:07:43.711  3059  3088 I ReactNativeJS: [focusdbg] focus p
+10-19 06:07:43.717  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:07:44.743  3059  3088 I ReactNativeJS: [focusdbg] focus q
+10-19 06:07:44.748  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:07:45.777  3059  3088 I ReactNativeJS: [focusdbg] focus r
+10-19 06:07:45.782  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:07:46.808  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:07:46.810  3059  3088 I ReactNativeJS: [focusdbg] focus s
+10-19 06:07:47.839  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:07:47.844  3059  3088 I ReactNativeJS: [focusdbg] focus t
+10-19 06:07:48.862  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 06:07:55.117  7885  7885 I WALK    : step 120-search-fatihah-play-focused
+10-19 06:07:55.141  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:07:55.143  3059  3088 I ReactNativeJS: [focusdbg] focus u
+10-19 06:07:56.170  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:07:56.176  3059  3088 I ReactNativeJS: [focusdbg] focus Play
+10-19 06:08:00.419  7905  7905 I WALK    : step 121-search-choose-reciter-focused
+10-19 06:08:00.442  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:08:00.443  3059  3088 I ReactNativeJS: [focusdbg] focus Choose reciter
+10-19 06:08:04.700  7920  7920 I WALK    : step 122-search-reciter-picker
+10-19 06:08:04.721  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 06:08:10.048  7937  7937 I WALK    : step 123-search-picker-closed-on-choose
+10-19 06:08:10.187  3059  3088 I ReactNativeJS: [focusdbg] focus Choose reciter
+10-19 06:08:14.328  7954  7954 I WALK    : step 124-search-reciter-picker-again
+10-19 06:08:14.349  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 06:08:19.666  7970  7970 I WALK    : step 125-search-picker-pick-player
+10-19 06:08:19.686  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 06:08:19.946  3059  3088 I ReactNativeJS: [focusdbg] focus Choose reciter
+10-19 06:08:29.549  8016  8016 I WALK    : step 126-search-player-back-on-choose
+10-19 06:08:29.887  3059  3088 I ReactNativeJS: [focusdbg] focus Choose reciter
+10-19 06:08:36.362  8030  8030 I WALK    : step 127-search-more-surahs-row
+10-19 06:08:36.483  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:08:41.001  8044  8044 I WALK    : step 128-search-back-to-keyboard
+10-19 06:08:41.132  3059  3088 I ReactNativeJS: [focusdbg] focus t
+10-19 06:08:45.622  8059  8059 I WALK    : step 129-search-cleared
+10-19 06:08:45.825  3059  3088 I ReactNativeJS: [focusdbg] focus s
+10-19 06:08:45.831  3059  3088 I ReactNativeJS: [focusdbg] key left 1
+10-19 06:08:46.832  3059  3088 I ReactNativeJS: [focusdbg] focus z
+10-19 06:08:46.837  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:08:47.877  3059  3088 I ReactNativeJS: [focusdbg] focus clear
+10-19 06:08:47.905  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:08:48.984  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 06:08:54.769  8089  8089 I WALK    : step 130-search-typed-kursi
+10-19 06:08:54.838  3059  3088 I ReactNativeJS: [focusdbg] focus z
+10-19 06:08:54.871  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 06:08:55.941  3059  3088 I ReactNativeJS: [focusdbg] focus s
+10-19 06:08:55.966  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 06:08:57.025  3059  3088 I ReactNativeJS: [focusdbg] focus l
+10-19 06:08:57.049  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 06:08:58.135  3059  3088 I ReactNativeJS: [focusdbg] focus k
+10-19 06:08:58.164  3059  3088 I ReactNativeJS: [focusdbg] key left 1
+10-19 06:08:59.418  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 06:09:00.487  3059  3088 I ReactNativeJS: [focusdbg] focus r
+10-19 06:09:00.493  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:09:01.499  3059  3088 I ReactNativeJS: [focusdbg] focus s
+10-19 06:09:01.503  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:09:02.567  3059  3088 I ReactNativeJS: [focusdbg] focus t
+10-19 06:09:02.613  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:09:03.704  3059  3088 I ReactNativeJS: [focusdbg] focus u
+10-19 06:09:03.723  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:09:04.851  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 06:09:05.936  3059  3088 I ReactNativeJS: [focusdbg] focus t
+10-19 06:09:05.956  3059  3088 I ReactNativeJS: [focusdbg] key left 1
+10-19 06:09:07.040  3059  3088 I ReactNativeJS: [focusdbg] focus s
+10-19 06:09:07.075  3059  3088 I ReactNativeJS: [focusdbg] key left 1
+10-19 06:09:08.217  3059  3088 I ReactNativeJS: [focusdbg] focus r
+10-19 06:09:08.231  3059  3088 I ReactNativeJS: [focusdbg] key left 1
+10-19 06:09:09.280  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 06:09:10.340  3059  3088 I ReactNativeJS: [focusdbg] focus s
+10-19 06:09:10.362  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:09:11.427  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 06:09:12.508  3059  3088 I ReactNativeJS: [focusdbg] focus l
+10-19 06:09:12.523  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 06:09:13.630  3059  3088 I ReactNativeJS: [focusdbg] focus k
+10-19 06:09:13.653  3059  3088 I ReactNativeJS: [focusdbg] key left 1
+10-19 06:09:14.707  3059  3088 I ReactNativeJS: [focusdbg] focus j
+10-19 06:09:14.728  3059  3088 I ReactNativeJS: [focusdbg] key left 1
+10-19 06:09:15.946  3059  3088 I ReactNativeJS: [focusdbg] focus i
+10-19 06:09:15.951  3059  3088 I ReactNativeJS: [focusdbg] key left 1
+10-19 06:09:16.970  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 06:09:23.586  8209  8209 I WALK    : step 131-search-kursi-play-verse-focused
+10-19 06:09:23.650  3059  3088 I ReactNativeJS: [focusdbg] focus j
+10-19 06:09:23.673  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:09:24.771  3059  3088 I ReactNativeJS: [focusdbg] focus k
+10-19 06:09:24.803  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:09:25.856  3059  3088 I ReactNativeJS: [focusdbg] focus l
+10-19 06:09:25.886  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:09:26.946  3059  3088 I ReactNativeJS: [focusdbg] focus m
+10-19 06:09:26.971  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:09:28.053  3059  3088 I ReactNativeJS: [focusdbg] focus n
+10-19 06:09:28.066  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:09:29.125  3059  3088 I ReactNativeJS: [focusdbg] focus Play verse
+10-19 06:09:29.221  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:09:33.805  8251  8251 I WALK    : step 132-search-verse-player
+10-19 06:09:33.929  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 06:09:44.149  8271  8271 I WALK    : step 133-search-player-back-on-play-verse
+10-19 06:09:44.425  3059  3088 I ReactNativeJS: [focusdbg] focus Play verse
+10-19 06:09:51.039  8285  8285 I WALK    : step 134-search-kursi-back-to-keyboard
+10-19 06:09:51.196  3059  3088 I ReactNativeJS: [focusdbg] focus i
+10-19 06:09:55.901  8299  8299 I WALK    : step 135-search-cleared-again
+10-19 06:09:56.095  3059  3088 I ReactNativeJS: [focusdbg] focus j
+10-19 06:09:56.108  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:09:57.109  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:09:57.117  3059  3088 I ReactNativeJS: [focusdbg] focus k
+10-19 06:09:58.203  3059  3088 I ReactNativeJS: [focusdbg] focus l
+10-19 06:09:58.241  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:09:59.298  3059  3088 I ReactNativeJS: [focusdbg] focus s
+10-19 06:09:59.312  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:10:00.388  3059  3088 I ReactNativeJS: [focusdbg] focus z
+10-19 06:10:00.410  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:10:01.475  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:10:01.488  3059  3088 I ReactNativeJS: [focusdbg] focus clear
+10-19 06:10:02.609  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 06:10:08.398  8344  8344 I WALK    : step 136-search-typed-sleep
+10-19 06:10:08.589  3059  3088 I ReactNativeJS: [focusdbg] focus z
+10-19 06:10:08.601  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 06:10:09.636  3059  3088 I ReactNativeJS: [focusdbg] focus s
+10-19 06:10:09.645  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 06:10:10.738  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 06:10:11.851  3059  3088 I ReactNativeJS: [focusdbg] focus l
+10-19 06:10:11.883  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 06:10:13.004  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 06:10:14.103  3059  3088 I ReactNativeJS: [focusdbg] focus e
+10-19 06:10:14.113  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 06:10:15.321  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 06:10:16.374  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 06:10:17.418  3059  3088 I ReactNativeJS: [focusdbg] focus l
+10-19 06:10:17.437  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:10:18.527  3059  3088 I ReactNativeJS: [focusdbg] focus s
+10-19 06:10:18.550  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:10:19.641  3059  3088 I ReactNativeJS: [focusdbg] focus r
+10-19 06:10:19.692  3059  3088 I ReactNativeJS: [focusdbg] key left 1
+10-19 06:10:20.751  3059  3088 I ReactNativeJS: [focusdbg] focus q
+10-19 06:10:20.767  3059  3088 I ReactNativeJS: [focusdbg] key left 1
+10-19 06:10:21.835  3059  3088 I ReactNativeJS: [focusdbg] focus p
+10-19 06:10:21.842  3059  3088 I ReactNativeJS: [focusdbg] key left 1
+10-19 06:10:22.977  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 06:10:29.643  8462  8462 I WALK    : step 137-search-sleep-start-focused
+10-19 06:10:29.711  3059  3088 I ReactNativeJS: [focusdbg] focus q
+10-19 06:10:29.727  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:10:30.880  3059  3088 I ReactNativeJS: [focusdbg] focus r
+10-19 06:10:30.882  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:10:31.949  3059  3088 I ReactNativeJS: [focusdbg] focus s
+10-19 06:10:31.984  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:10:33.048  3059  3088 I ReactNativeJS: [focusdbg] focus t
+10-19 06:10:33.078  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:10:34.144  3059  3088 I ReactNativeJS: [focusdbg] focus u
+10-19 06:10:34.151  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:10:35.231  3059  3088 I ReactNativeJS: [focusdbg] focus Start
+10-19 06:10:35.364  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:10:39.881  8501  8501 I WALK    : step 138-search-count-each-focused
+10-19 06:10:39.968  3059  3088 I ReactNativeJS: [focusdbg] focus Listen through
+10-19 06:10:39.978  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:10:41.080  3059  3088 I ReactNativeJS: [focusdbg] focus Count each for me
+10-19 06:10:41.103  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:10:45.326  8520  8520 I WALK    : step 139-search-count-mode-reader
+10-19 06:10:45.345  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 06:10:55.545  8565  8565 I WALK    : step 140-search-reader-back-on-count-each
+10-19 06:10:55.885  3059  3088 I ReactNativeJS: [focusdbg] focus Count each for me
+10-19 06:11:02.008  8582  8582 I WALK    : step 141-search-sleep-back-to-keyboard
+10-19 06:11:02.077  3059  3088 I ReactNativeJS: [focusdbg] focus p
+10-19 06:11:06.252  8596  8596 I WALK    : step 142-search-cleared-third
+10-19 06:11:06.273  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:11:06.279  3059  3088 I ReactNativeJS: [focusdbg] focus q
+10-19 06:11:07.310  3059  3088 I ReactNativeJS: [focusdbg] focus r
+10-19 06:11:07.323  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:11:08.350  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:11:08.360  3059  3088 I ReactNativeJS: [focusdbg] focus s
+10-19 06:11:09.373  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:11:09.377  3059  3088 I ReactNativeJS: [focusdbg] focus z
+10-19 06:11:10.397  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:11:10.410  3059  3088 I ReactNativeJS: [focusdbg] focus clear
+10-19 06:11:11.419  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 06:11:16.695  8637  8637 I WALK    : step 143-search-typed-ghamdi
+10-19 06:11:16.719  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 06:11:16.726  3059  3088 I ReactNativeJS: [focusdbg] focus z
+10-19 06:11:17.746  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 06:11:17.759  3059  3088 I ReactNativeJS: [focusdbg] focus s
+10-19 06:11:18.768  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 06:11:18.776  3059  3088 I ReactNativeJS: [focusdbg] focus l
+10-19 06:11:19.792  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 06:11:19.793  3059  3088 I ReactNativeJS: [focusdbg] focus e
+10-19 06:11:20.826  3059  3088 I ReactNativeJS: [focusdbg] focus f
+10-19 06:11:20.830  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:11:21.869  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:11:21.876  3059  3088 I ReactNativeJS: [focusdbg] focus g
+10-19 06:11:22.889  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 06:11:23.913  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:11:23.926  3059  3088 I ReactNativeJS: [focusdbg] focus n
+10-19 06:11:24.936  3059  3088 I ReactNativeJS: [focusdbg] key left 1
+10-19 06:11:24.948  3059  3088 I ReactNativeJS: [focusdbg] focus m
+10-19 06:11:25.958  3059  3088 I ReactNativeJS: [focusdbg] key left 1
+10-19 06:11:25.959  3059  3088 I ReactNativeJS: [focusdbg] focus l
+10-19 06:11:26.999  3059  3088 I ReactNativeJS: [focusdbg] key left 1
+10-19 06:11:27.010  3059  3088 I ReactNativeJS: [focusdbg] focus k
+10-19 06:11:28.023  3059  3088 I ReactNativeJS: [focusdbg] key left 1
+10-19 06:11:28.027  3059  3088 I ReactNativeJS: [focusdbg] focus j
+10-19 06:11:29.045  3059  3088 I ReactNativeJS: [focusdbg] key left 1
+10-19 06:11:29.060  3059  3088 I ReactNativeJS: [focusdbg] focus i
+10-19 06:11:30.068  3059  3088 I ReactNativeJS: [focusdbg] key left 1
+10-19 06:11:30.077  3059  3088 I ReactNativeJS: [focusdbg] focus h
+10-19 06:11:31.090  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 06:11:32.114  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 06:11:32.127  3059  3088 I ReactNativeJS: [focusdbg] focus a
+10-19 06:11:33.135  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 06:11:34.159  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:11:34.160  3059  3088 I ReactNativeJS: [focusdbg] focus h
+10-19 06:11:35.195  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:11:35.210  3059  3088 I ReactNativeJS: [focusdbg] focus i
+10-19 06:11:36.220  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:11:36.226  3059  3088 I ReactNativeJS: [focusdbg] focus j
+10-19 06:11:37.242  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:11:37.243  3059  3088 I ReactNativeJS: [focusdbg] focus k
+10-19 06:11:38.281  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:11:38.293  3059  3088 I ReactNativeJS: [focusdbg] focus l
+10-19 06:11:39.303  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:11:39.310  3059  3088 I ReactNativeJS: [focusdbg] focus m
+10-19 06:11:40.326  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 06:11:41.351  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 06:11:41.360  3059  3088 I ReactNativeJS: [focusdbg] focus f
+10-19 06:11:42.375  3059  3088 I ReactNativeJS: [focusdbg] key left 1
+10-19 06:11:42.377  3059  3088 I ReactNativeJS: [focusdbg] focus e
+10-19 06:11:43.401  3059  3088 I ReactNativeJS: [focusdbg] key left 1
+10-19 06:11:43.409  3059  3088 I ReactNativeJS: [focusdbg] focus d
+10-19 06:11:44.423  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 06:11:45.446  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:11:45.460  3059  3088 I ReactNativeJS: [focusdbg] focus k
+10-19 06:11:46.467  3059  3088 I ReactNativeJS: [focusdbg] key left 1
+10-19 06:11:46.476  3059  3088 I ReactNativeJS: [focusdbg] focus j
+10-19 06:11:47.491  3059  3088 I ReactNativeJS: [focusdbg] key left 1
+10-19 06:11:47.493  3059  3088 I ReactNativeJS: [focusdbg] focus i
+10-19 06:11:48.527  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 06:11:54.786  8811  8811 I WALK    : step 144-search-ghamdi-shuffle-focused
+10-19 06:11:54.808  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:11:54.810  3059  3088 I ReactNativeJS: [focusdbg] focus j
+10-19 06:11:55.838  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:11:55.843  3059  3088 I ReactNativeJS: [focusdbg] focus k
+10-19 06:11:56.861  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:11:56.876  3059  3088 I ReactNativeJS: [focusdbg] focus l
+10-19 06:11:57.885  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:11:57.893  3059  3088 I ReactNativeJS: [focusdbg] focus m
+10-19 06:11:58.909  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:11:58.910  3059  3088 I ReactNativeJS: [focusdbg] focus n
+10-19 06:11:59.945  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:11:59.959  3059  3088 I ReactNativeJS: [focusdbg] focus Shuffle play
+10-19 06:12:04.194  8851  8851 I WALK    : step 145-search-open-profile-focused
+10-19 06:12:04.215  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:12:04.226  3059  3088 I ReactNativeJS: [focusdbg] focus Open profile
+10-19 06:12:08.471  8869  8869 I WALK    : step 146-search-reciter-page
+10-19 06:12:08.491  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 06:12:08.605  3059  3088 I ReactNativeJS: [focusdbg] focus Play from Al-Fatihah
+10-19 06:12:15.776  8888  8888 I WALK    : step 147-search-reciter-back-on-open-profile
+10-19 06:12:15.831  3059  3088 I ReactNativeJS: [focusdbg] focus Open profile
+10-19 06:12:22.058  8903  8903 I WALK    : step 148-search-ghamdi-back-to-keyboard
+10-19 06:12:22.110  3059  3088 I ReactNativeJS: [focusdbg] focus i
+10-19 06:12:26.334  8917  8917 I WALK    : step 149-search-cleared-recents
+10-19 06:12:26.357  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:12:26.360  3059  3088 I ReactNativeJS: [focusdbg] focus j
+10-19 06:12:27.385  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:12:27.393  3059  3088 I ReactNativeJS: [focusdbg] focus k
+10-19 06:12:28.410  3059  3088 I ReactNativeJS: [focusdbg] key right 1
+10-19 06:12:28.411  3059  3088 I ReactNativeJS: [focusdbg] focus l
+10-19 06:12:29.445  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:12:29.460  3059  3088 I ReactNativeJS: [focusdbg] focus s
+10-19 06:12:30.472  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:12:30.476  3059  3088 I ReactNativeJS: [focusdbg] focus z
+10-19 06:12:31.497  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:12:31.509  3059  3088 I ReactNativeJS: [focusdbg] focus clear
+10-19 06:12:32.518  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 06:12:37.792  8966  8966 I WALK    : step 150-search-recent-focused
+10-19 06:12:37.814  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:12:37.826  3059  3088 I ReactNativeJS: [focusdbg] focus Search ghamdi
+10-19 06:12:42.086  8981  8981 I WALK    : step 151-search-recent-top-result-focused
+10-19 06:12:42.105  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 06:12:42.198  3059  3088 I ReactNativeJS: [focusdbg] focus Shuffle play
+10-19 06:12:48.365  8997  8997 I WALK    : step 152-search-recent-back-to-keyboard
+10-19 06:12:48.410  3059  3088 I ReactNativeJS: [focusdbg] focus clear
+10-19 06:12:52.645  9012  9012 I WALK    : step 153-settings
+10-19 06:12:53.689  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 06:12:54.711  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 06:12:55.734  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 06:12:56.756  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 06:12:57.779  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 06:12:58.801  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 06:12:59.823  3059  3088 I ReactNativeJS: [focusdbg] key up 1
+10-19 06:13:00.844  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:13:01.871  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:13:02.916  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:13:03.933  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:13:04.956  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:13:05.979  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:13:07.001  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 06:13:07.082  3059  3088 I ReactNativeJS: [focusdbg] focus Default reciter: Mohammed Siddiq Al-Minshawi
+10-19 06:13:14.819  9099  9099 I WALK    : step 154-settings-reciter-picker
+10-19 06:13:14.967  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 06:13:15.230  3059  3088 I ReactNativeJS: [focusdbg] focus Mohammed Siddiq Al-Minshawi, selected
+10-19 06:13:20.224  9114  9114 I WALK    : step 155-settings-picker-closed
+10-19 06:13:20.279  3059  3088 I ReactNativeJS: [focusdbg] focus Default reciter: Mohammed Siddiq Al-Minshawi
+10-19 06:13:24.890  9128  9128 I WALK    : step 156-settings-text-picker
+10-19 06:13:24.999  3059  3088 I ReactNativeJS: [focusdbg] focus Default speed: 1.0×
+10-19 06:13:25.033  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:13:26.152  3059  3088 I ReactNativeJS: [focusdbg] focus Background sound: Off
+10-19 06:13:26.217  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:13:27.305  3059  3088 I ReactNativeJS: [focusdbg] focus Text: Arabic + translation
+10-19 06:13:27.335  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:13:28.461  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 06:13:28.618  3059  3088 I ReactNativeJS: [focusdbg] focus Arabic + translation, selected
+10-19 06:13:34.299  9162  9162 I WALK    : step 157-settings-text-picker-closed
+10-19 06:13:34.552  3059  3088 I ReactNativeJS: [focusdbg] focus Text: Arabic + translation
+10-19 06:13:39.192  9176  9176 I WALK    : step 158-settings-clear-loved-row
+10-19 06:13:39.306  3059  3088 I ReactNativeJS: [focusdbg] focus Translation: English · Saheeh International
+10-19 06:13:39.342  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:13:40.422  3059  3088 I ReactNativeJS: [focusdbg] focus Text size: Large
+10-19 06:13:40.468  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:13:41.563  3059  3088 I ReactNativeJS: [focusdbg] focus Dim when idle: After 10 min
+10-19 06:13:41.591  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:13:42.696  3059  3088 I ReactNativeJS: [focusdbg] focus Clear listening history: 2 items
+10-19 06:13:42.718  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:13:43.803  3059  3088 I ReactNativeJS: [focusdbg] focus Clear loved surahs: 1 surah
+10-19 06:13:43.830  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:13:48.538  9211  9211 I WALK    : step 159-settings-clear-loved-armed
+10-19 06:13:48.624  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 06:13:52.410  9227  9227 I WALK    : step 160-settings-clear-favourites-row
+10-19 06:13:52.492  3059  3088 I ReactNativeJS: [focusdbg] focus Clear favourite reciters: 1 reciter
+10-19 06:13:52.561  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:13:58.352  9241  9241 I WALK    : step 161-settings-clear-favourites-armed
+10-19 06:13:58.491  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 06:14:02.225  9257  9257 I WALK    : step 162-settings-welcome-row
+10-19 06:14:02.406  3059  3088 I ReactNativeJS: [focusdbg] focus Show welcome again: Reciter and display
+10-19 06:14:02.432  3059  3088 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:14:08.285  9281  9281 I WALK    : step 163-settings-welcome-rerun
+10-19 06:14:08.404  3059  3088 I ReactNativeJS: [focusdbg] key select 1
+10-19 06:14:15.664  9297  9297 I WALK    : step 164-settings-welcome-closed-on-row
+10-19 06:14:16.127  3059  3088 I ReactNativeJS: [focusdbg] focus Show welcome again: Reciter and display
+10-19 06:14:22.658  9311  9311 I WALK    : step 165-relaunch-home
+10-19 06:14:26.428  9483  9513 I ReactNativeJS: Running "main"
+10-19 06:14:26.877  9483  9513 I ReactNativeJS: [focusdbg] focus Begin Morning adhkar
+10-19 06:14:46.152  9604  9604 I WALK    : step 166-relaunch-sidebar-tile-continue
+10-19 06:14:47.198  9483  9513 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:14:48.222  9483  9513 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:14:49.246  9483  9513 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:14:50.270  9483  9513 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:14:51.327  9483  9513 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:14:52.343  9483  9513 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:14:53.379  9483  9513 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:14:54.402  9483  9513 I ReactNativeJS: [focusdbg] key down 1
+10-19 06:14:58.683  9659  9659 I WALK    : step 167-relaunch-tile-continue-player
+10-19 06:14:58.703  9483  9513 I ReactNativeJS: [focusdbg] key select 1
+10-19 06:15:10.879  9702  9702 I WALK    : step 168-relaunch-player-back-on-tile
+10-19 06:15:16.872  9717  9717 I WALK    : step 169-relaunch-again-home
+10-19 06:15:20.346  9744  9764 I ReactNativeJS: Running "main"
+10-19 06:15:20.808  9744  9764 I ReactNativeJS: [focusdbg] focus Begin Morning adhkar
+10-19 06:15:40.154  9823  9823 I WALK    : step 170-relaunch-playpause-player
+10-19 06:15:40.174  9744  9764 I ReactNativeJS: [focusdbg] key playPause 1
+10-19 06:15:52.336  9869  9869 I WALK    : step 171-relaunch-player-back-home
+10-19 06:15:52.956  9744  9764 I ReactNativeJS: [focusdbg] focus Begin Morning adhkar
