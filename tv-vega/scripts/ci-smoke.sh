@@ -9,7 +9,7 @@
 # SMOKE_KEYS=0 skips the remote key presses.
 set -uo pipefail
 
-APP_ID=${SMOKE_APP_ID:-com.bayaan.tvsmoke.main}
+APP_ID=${SMOKE_APP_ID:-com.bayaan.app.tv.main}
 OUT_DIR=${1:?usage: ci-smoke.sh <out-dir>}
 mkdir -p "$OUT_DIR/screens" "$OUT_DIR/logs"
 

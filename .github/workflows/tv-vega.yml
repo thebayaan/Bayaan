@@ -18,7 +18,7 @@ concurrency:
 
 env:
   VEGA_SDK_VERSION: 0.24.12112
-  APP_ID: com.bayaan.tvsmoke.main
+  APP_ID: com.bayaan.app.tv.main
 
 env:
   # The TV ships no reciter data: the app reads the catalog from the live

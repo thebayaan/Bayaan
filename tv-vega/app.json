@@ -1,5 +1,5 @@
 {
   "//": "The declared app name must follow this pattern to be KRL-compatible",
-  "name": "com.bayaan.tvsmoke.main",
+  "name": "com.bayaan.app.tv.main",
   "displayName": "Bayaan"
 }
