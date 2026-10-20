@@ -473,7 +473,10 @@ const styles = createScaledStyles({
   // Long values (a reciter's name, "End of surah") shrink and truncate
   // rather than push the last tools off the screen.
   toolBox: {flexShrink: 1, minWidth: 0},
+  // Wide enough for each tool's widest value ("Saved", "Loved"), so the
+  // row never shifts when a value changes.
   tool: {
+    minWidth: 116,
     maxWidth: 280,
     minHeight: 72,
     paddingHorizontal: 18,

@@ -114,6 +114,14 @@ function SurahMenu({target}: {target: SurahMenuTarget}): React.ReactElement {
     ? isLovedIn(loved, surahNumber, voice.reciterId)
     : false;
 
+  // A surah part way through in this voice resumes, from whichever row the
+  // menu was opened (Continue, Loved, Surahs), so every menu says the same.
+  const resume = voice
+    ? getContinueListening().find(
+        e => e.reciterId === voice.reciterId && e.surahNumber === surahNumber,
+      )
+    : undefined;
+
   const index = target.playlistIndex ?? -1;
   const inPlaylist =
     origin === 'playlist' &&
@@ -156,13 +164,6 @@ function SurahMenu({target}: {target: SurahMenuTarget}): React.ReactElement {
       showToast(`No reciter has ${title} yet.`, 'error');
       return;
     }
-    const resume =
-      origin === 'continue'
-        ? getContinueListening().find(
-            e =>
-              e.reciterId === voice.reciterId && e.surahNumber === surahNumber,
-          )
-        : undefined;
     void playOrOpen({
       ...voice,
       ...(resume ? {startSeconds: resume.positionSeconds} : {}),
@@ -293,13 +294,7 @@ function SurahMenu({target}: {target: SurahMenuTarget}): React.ReactElement {
       subtitle={subtitle}>
       <MenuRow
         icon={<FocusIcon icon={PlayIcon} size={24} />}
-        label={
-          inPlaylist
-            ? 'Play from here'
-            : origin === 'continue'
-              ? 'Resume'
-              : 'Play'
-        }
+        label={inPlaylist ? 'Play from here' : resume ? 'Resume' : 'Play'}
         onPress={handlePlay}
         hasTVPreferredFocus={!backToAdd}
         ref={backToAdd ? undefined : preferredRow}
@@ -337,6 +332,7 @@ function SurahMenu({target}: {target: SurahMenuTarget}): React.ReactElement {
               />
             }
             label="Move up"
+            unavailable={index === 0}
             onPress={() => move(-1)}
           />
           <MenuRow
@@ -352,6 +348,7 @@ function SurahMenu({target}: {target: SurahMenuTarget}): React.ReactElement {
               />
             }
             label="Move down"
+            unavailable={index >= playlist.items.length - 1}
             onPress={() => move(1)}
           />
           <MenuRow

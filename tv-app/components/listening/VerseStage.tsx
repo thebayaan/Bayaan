@@ -69,7 +69,8 @@ export function VerseStage({
   if (ayah !== null && ayah > 0) {
     arabicText = arabic[ayah - 1] ?? null;
     translationText = translation?.[ayah - 1] ?? null;
-    reference = `Verse ${ayah} of ${total}`;
+    // Named in letters too: the calligraphy above is the only other name.
+    reference = `${surahName} · Verse ${ayah} of ${total}`;
   } else if (ayah === 0 && surahNumber !== 9) {
     // The opening before verse 1. Al-Fatihah's first verse is the basmala
     // itself, and At-Tawbah has none.

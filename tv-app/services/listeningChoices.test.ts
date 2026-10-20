@@ -164,9 +164,11 @@ describe('queueWindow', () => {
 });
 
 describe('shortReciterName', () => {
-  it('keeps names that fit', () => {
-    expect(shortReciterName('Mishary Alafasi')).toBe('Mishary Alafasi');
-    expect(shortReciterName('  Saud   Al-Shuraim ')).toBe('Saud Al-Shuraim');
+  it('shortens every name the same way, short or long', () => {
+    expect(shortReciterName('Mishary Alafasi')).toBe('Al-Afasi');
+    expect(shortReciterName('  Saud   Al-Shuraim ')).toBe('Al-Shuraim');
+    expect(shortReciterName('Salah Albudair')).toBe('Al-Budair');
+    expect(shortReciterName('Muamar')).toBe('Muamar');
   });
 
   it('never runs past SHORT_NAME_MAX', () => {

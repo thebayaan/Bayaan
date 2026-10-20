@@ -60,7 +60,10 @@ async function withTimeout<T>(
 export function cleanTranslationText(text: string): string {
   // A cached translation with a gap reads back null there (JSON has no holes).
   if (typeof text !== 'string') return text;
-  return text.replace(/\s+[-–—]\s*$/, '—');
+  // A spaced hyphen inside the verse is a dash the source typed as "-":
+  // set it as a spaced en dash, so it never reads as a word joined by a
+  // hyphen ("Allah - the Exalted" becomes "Allah – the Exalted").
+  return text.replace(/\s+[-–—]\s*$/, '—').replace(/ +- +/g, ' – ');
 }
 
 type QuranVerse = {surah_number: number; ayah_number: number; text: string};

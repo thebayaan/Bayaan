@@ -181,7 +181,9 @@ describe('sortShelf', () => {
 
 describe('labels', () => {
   it('names the count of loved surahs', () => {
-    expect(reciterTileLabel(0)).toBe('Reciter');
+    expect(reciterTileLabel(0)).toBe('Favourite reciter');
+    expect(reciterTileLabel(0, 114)).toBe('All 114 surahs');
+    expect(reciterTileLabel(0, 30)).toBe('30 surahs');
     expect(reciterTileLabel(1)).toBe('1 loved surah');
     expect(reciterTileLabel(3)).toBe('3 loved surahs');
   });

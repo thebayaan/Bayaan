@@ -1,5 +1,6 @@
 import {estimateMinutes, nowListId} from '../services/adhkarBrowse';
 import {
+  collectionsFor,
   adhkarFacts,
   adhkarTileMeta,
   dayWindowAt,
@@ -308,5 +309,42 @@ describe('adhkar rail', () => {
 
   it('respects the limit', () => {
     expect(adhkarRowIds(sat(22), [], 2)).toHaveLength(2);
+  });
+});
+
+describe('collectionsFor', () => {
+  const all = [
+    {id: 'most-loved'},
+    {id: 'morning-reflections'},
+    {id: 'quick-listen'},
+    {id: 'evening-serenity'},
+    {id: 'friday-essentials'},
+    {id: 'protection-healing'},
+  ];
+  const ids = (list: {id: string}[]): string[] => list.map(c => c.id);
+
+  it('leads with the collections for the time of day', () => {
+    expect(
+      ids(collectionsFor({window: 'morning', isFriday: false}, all)),
+    ).toEqual([
+      'morning-reflections',
+      'protection-healing',
+      'most-loved',
+      'quick-listen',
+      'evening-serenity',
+      'friday-essentials',
+    ]);
+    expect(
+      ids(collectionsFor({window: 'evening', isFriday: false}, all)).slice(
+        0,
+        2,
+      ),
+    ).toEqual(['evening-serenity', 'protection-healing']);
+  });
+
+  it('puts Friday Essentials first at Friday time', () => {
+    expect(ids(collectionsFor({window: 'day', isFriday: true}, all))[0]).toBe(
+      'friday-essentials',
+    );
   });
 });

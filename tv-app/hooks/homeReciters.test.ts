@@ -74,7 +74,7 @@ describe('curatedRail', () => {
 
 describe('portraitName', () => {
   it.each([
-    ['Mishary Alafasi', 'Mishary Alafasi'],
+    ['Mishary Alafasi', 'Al-Afasi'],
     ['Mohammed Jibreel', 'Jibreel'],
     ['Abdulrahman Alsudaes', 'Al-Sudaes'],
     ['Hashim Abu Dalal', 'Abu Dalal'],
@@ -82,7 +82,7 @@ describe('portraitName', () => {
     ['Mohammed Siddiq Al-Minshawi', 'Al-Minshawi'],
     ['Mahmoud Khalil Al-Hussary', 'Al-Hussary'],
     ['Abdulbasit Abdulsamad', 'Abdulsamad'],
-    ['  Saud   Al-Shuraim ', 'Saud Al-Shuraim'],
+    ['  Saud   Al-Shuraim ', 'Al-Shuraim'],
   ])('%s -> %s', (name, expected) => {
     expect(portraitName(name)).toBe(expected);
   });

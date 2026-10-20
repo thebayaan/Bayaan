@@ -60,7 +60,12 @@ export type AdhkarSessionStore = {
     listId: string,
     targets: readonly number[],
     urls: readonly (string | null)[],
-    options?: {autoplay?: boolean; advance?: AdvanceMode},
+    options?: {
+      autoplay?: boolean;
+      advance?: AdvanceMode;
+      /** Start from the first dhikr even if the list was left part way. */
+      fresh?: boolean;
+    },
   ) => void;
   /** OK: count one, moving on when the count is reached. */
   press: () => void;
@@ -379,6 +384,7 @@ export function createAdhkarSessionStore({
         get().close();
         const saved = left.get(listId);
         const resumable =
+          !options.fresh &&
           saved &&
           saved.day === dayKey() &&
           saved.state.targets.length === targets.length;

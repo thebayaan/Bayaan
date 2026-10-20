@@ -6,6 +6,7 @@ import {SurahThumb} from './SurahThumb';
 import {useTVPlayerStore} from '../../store/tvPlayerStore';
 import {openPlayer} from '../../services/playbackRouting';
 import {nowPlayingView} from '../../hooks/homeNowPlaying';
+import {shortReciterName} from '../../services/listeningChoices';
 import {PlayIcon} from '../../../components/Icons';
 import {colors} from '../../theme/colors';
 import {fonts} from '../../theme/typography';
@@ -38,7 +39,8 @@ export function NowPlayingStrip({
     if (view.action !== 'open') useTVPlayerStore.getState().toggle();
     openPlayer();
   };
-  const voice = item.subtitle ? ` · ${item.subtitle}` : '';
+  // The short name, as the hero, cards and sidebar write it.
+  const voice = item.subtitle ? ` · ${shortReciterName(item.subtitle)}` : '';
 
   return (
     <FocusableButton
@@ -47,7 +49,7 @@ export function NowPlayingStrip({
       hasTVPreferredFocus={hasTVPreferredFocus}
       outlined
       focusScale={1.03}
-      accessibilityLabel={`${view.kicker.toLowerCase()}: ${item.title}${voice}. ${view.hint}.`}
+      accessibilityLabel={`${view.kicker.toLowerCase()}: ${item.title}${item.subtitle ? `, ${item.subtitle}` : ''}. ${view.hint}.`}
       containerStyle={styles.container}
       style={styles.strip}>
       <View style={styles.thumb}>
@@ -88,7 +90,7 @@ export function NowPlayingStrip({
 }
 
 const styles = createScaledStyles({
-  container: {alignSelf: 'flex-start', marginBottom: 6},
+  container: {alignSelf: 'flex-start'},
   strip: {
     flexDirection: 'row',
     alignItems: 'center',

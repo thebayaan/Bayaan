@@ -629,12 +629,10 @@ const styles = createScaledStyles({
     paddingHorizontal: ROW_PAD,
     paddingVertical: 18,
     borderRadius: 16,
-    // Ink & Cream: nothing behind a row at rest; the outline is kept clear so
-    // the row whose picker is open can show one without shifting.
-    borderWidth: 2,
-    borderColor: 'transparent',
   },
-  rowActive: {borderColor: colors.outline},
+  // The row whose picker is open: a soft sky wash (selected, not focused),
+  // never an outline that reads as a second focus beside the picker's.
+  rowActive: {backgroundColor: colors.accentSoft},
   rowLabel: {
     flexShrink: 0,
     fontFamily: fonts.semiBold,

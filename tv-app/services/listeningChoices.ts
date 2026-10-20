@@ -248,20 +248,19 @@ function tidyWord(word: string): string {
 }
 
 /**
- * A reciter's short name, the one way everywhere the app shortens one:
- * names up to SHORT_NAME_MAX letters stay whole; longer ones become the
+ * A reciter's short name, the one way everywhere the app shortens one: the
  * family name, from its "Al-" ("Mohammed Siddiq Al-Minshawi" becomes
  * "Al-Minshawi", "Abdulrahman Alsudaes" becomes "Al-Sudaes"), keeping a
  * particle or a very short last word with the word before it ("Hashim Abu
- * Dalal" becomes "Abu Dalal"). A note in brackets is dropped. The full name
- * stays the spoken label.
+ * Dalal" becomes "Abu Dalal"), whatever the name's length, so a short name
+ * never sits beside a whole one ("Salah Albudair" by "Al-Tunaiji"). A note
+ * in brackets is dropped. The full name stays the spoken label.
  */
 export function shortReciterName(name: string): string {
   const trimmed = name
     .replace(/\([^)]*\)/g, ' ')
     .trim()
     .replace(/\s+/g, ' ');
-  if (trimmed.length <= SHORT_NAME_MAX) return trimmed;
   const words = trimmed.split(' ');
   const fits = (from: number): boolean =>
     words.slice(from).join(' ').length <= SHORT_NAME_MAX;
