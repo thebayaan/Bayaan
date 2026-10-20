@@ -23,7 +23,7 @@ import {
   browseAdhkarIds,
   countLabel,
 } from '../../services/search/adhkarArt';
-import {surahGradient} from '../../theme/surahColors';
+import {SurahFill} from '../brand/SurahFill';
 import {colors} from '../../theme/colors';
 import {fonts, typography} from '../../theme/typography';
 import {createScaledStyles} from '../../theme/scale';
@@ -91,7 +91,8 @@ export function BrowsePanel({
             <BrowseTile
               key={entry.surah}
               id={`search-browse-s${entry.surah}`}
-              colors={surahGradient(entry.surah)}
+              surahNumber={entry.surah}
+              colors={NO_GRADIENT}
               title={entry.title}
               subtitle={entry.subtitle}
               art={
@@ -159,8 +160,12 @@ export function BrowsePanel({
   );
 }
 
+/** BrowseTile's gradient when a surah's own fill is drawn instead. */
+const NO_GRADIENT = ['', ''] as const;
+
 function BrowseTile({
   id,
+  surahNumber,
   colors: gradient,
   title,
   subtitle,
@@ -169,6 +174,8 @@ function BrowseTile({
   onPress,
 }: {
   id: string;
+  /** A surah's tile: its card fill instead of `colors`. */
+  surahNumber?: number;
   colors: readonly [string, string];
   title: string;
   subtitle: string;
@@ -189,7 +196,11 @@ function BrowseTile({
       <FocusFrame radius={TILE_RADIUS} style={styles.tile}>
         {/* One clipped layer for the artwork, so it always fills the tile. */}
         <View style={styles.tileFill}>
-          <GradientFill colors={gradient} id={id} />
+          {surahNumber === undefined ? (
+            <GradientFill colors={gradient} id={id} />
+          ) : (
+            <SurahFill surahNumber={surahNumber} id={id} />
+          )}
           {image ? (
             <Image
               source={{uri: image}}

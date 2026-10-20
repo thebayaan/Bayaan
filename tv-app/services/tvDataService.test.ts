@@ -153,28 +153,36 @@ describe('tvDataService', () => {
     expect(service.getCachedRewayat(id)?.map(r => r.id)).not.toContain('old');
   });
 
-  it('falls back to bundled JSON when fetch fails and cache empty', async () => {
+  it('rejects when the fetch fails and nothing is stored (no bundled list)', async () => {
     mockFetch.mockRejectedValue(new Error('network'));
-    const result = await service.fetchReciters();
-    expect(result.length).toBeGreaterThan(0);
+    await expect(service.fetchReciters()).rejects.toThrow('network');
+    expect(service.getCachedReciters()).toBeNull();
   });
 
-  it('tries the network again on the next fetch after falling back', async () => {
+  it('tries the network again on the next fetch after a failure', async () => {
     mockFetch.mockRejectedValue(new Error('network'));
-    await service.fetchReciters();
+    await service.fetchReciters().catch(() => {});
     const calls = mockFetch.mock.calls.length;
-    await service.fetchReciters();
+    await service.fetchReciters().catch(() => {});
     expect(mockFetch.mock.calls.length).toBeGreaterThan(calls);
   });
 
-  it('respects killswitch (useBackendApi=false)', async () => {
+  it('respects killswitch (useBackendApi=false): stored list only', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({useBackendApi: false}),
     });
-    const result = await service.fetchReciters();
-    expect(result.length).toBeGreaterThan(0);
-    expect(mockFetch).toHaveBeenCalledTimes(1); // only killswitch call
+    await expect(service.fetchReciters()).rejects.toThrow();
+    storage.set(
+      'bayaan_reciters',
+      JSON.stringify({version: '4', data: fallback.slice(0, 2), savedAt: 0}),
+    );
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({useBackendApi: false}),
+    });
+    expect(await service.fetchReciters()).toHaveLength(2);
+    expect(mockFetch).toHaveBeenCalledTimes(2); // only killswitch calls
     expect(mockFetch.mock.calls[0][0]).toBe(
       'https://config.test/app-config.json',
     );

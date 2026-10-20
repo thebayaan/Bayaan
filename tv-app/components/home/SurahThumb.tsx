@@ -1,8 +1,5 @@
 import React from 'react';
-import {StyleSheet, View} from 'react-native';
-import {GradientFill} from '../brand/GradientFill';
-import {SurahGlyph} from '../brand/SurahGlyph';
-import {surahGradient} from '../../theme/surahColors';
+import {SurahArtwork} from '../brand/SurahArtwork';
 
 type Props = {
   surahNumber: number;
@@ -13,28 +10,15 @@ type Props = {
 };
 
 /**
- * A surah for slots too small for its CDN card (Continue thumbnails, the
- * Now playing strip): only the calligraphy on the surah's pigment. The
- * card's printed name and subtitle would shrink to an unreadable smear
- * there. Fills its parent, which sets size, radius and clipping.
+ * A surah for small slots (Continue thumbnails, the Now playing strip):
+ * the surah's card art, whose calligraphy shrinks to the slot's width and
+ * leaves the printed name off below tile size. Fills its parent, which sets
+ * size, radius and clipping.
  */
 export function SurahThumb({
   surahNumber,
   glyphSize,
   id,
 }: Props): React.ReactElement {
-  return (
-    <View style={styles.fill}>
-      <GradientFill colors={surahGradient(surahNumber)} id={id} />
-      <SurahGlyph surahNumber={surahNumber} size={glyphSize} />
-    </View>
-  );
+  return <SurahArtwork surahNumber={surahNumber} glyphSize={glyphSize} id={id} />;
 }
-
-const styles = StyleSheet.create({
-  fill: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});

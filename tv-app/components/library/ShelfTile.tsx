@@ -3,6 +3,7 @@ import {StyleSheet, Text, View} from 'react-native';
 import {FocusableCard} from '../primitives/FocusableCard';
 import {FocusFrame, FocusText} from '../primitives/focusContext';
 import {GradientFill} from '../brand/GradientFill';
+import {SurahFill} from '../brand/SurahFill';
 import {SurahGlyph} from '../brand/SurahGlyph';
 import {ReciterPortrait} from '../browse/ReciterPortrait';
 import {PlusIcon} from './LibraryIcons';
@@ -10,7 +11,6 @@ import {HeartIcon, PlaylistIcon} from '../../../components/Icons';
 import {shortReciterName} from '../../services/listeningChoices';
 import {playlistGradient} from '../../services/playlistFormat';
 import {colors} from '../../theme/colors';
-import {surahGradient} from '../../theme/surahColors';
 import {fonts} from '../../theme/typography';
 import {createScaledStyles, scale} from '../../theme/scale';
 import type {Reciter} from '../../types/reciter';
@@ -76,8 +76,8 @@ function ShelfSurahTileImpl({
           width: scale(art + SHELF_RING * 2),
           height: scale(art + SHELF_RING * 2),
         }}>
-        <GradientFill
-          colors={surahGradient(surahNumber)}
+        <SurahFill
+          surahNumber={surahNumber}
           id={`${idPrefix}-${surahNumber}-${reciter?.id ?? 'x'}`}
         />
         <View style={[styles.surahArt, {paddingTop: scale(badge / 2)}]}>

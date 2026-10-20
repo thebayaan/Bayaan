@@ -28,7 +28,6 @@ function Glyph({surahNumber}: {surahNumber: number}): React.ReactElement {
       surahNumber={surahNumber}
       size={36}
       color={color}
-      style={styles.glyph}
     />
   );
 }
@@ -124,7 +123,6 @@ const styles = createScaledStyles({
     fontSize: 17,
     fontWeight: '500',
   },
-  glyph: {textAlign: 'right'},
   track: {
     position: 'absolute',
     left: 0,

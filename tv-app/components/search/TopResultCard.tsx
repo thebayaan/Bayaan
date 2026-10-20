@@ -34,7 +34,7 @@ import {
 } from '../../services/verseData';
 import {ReciterPortrait} from '../browse/ReciterPortrait';
 import {useFavorites} from '../../hooks/useFavorites';
-import {surahGradient} from '../../theme/surahColors';
+import {SurahFill} from '../brand/SurahFill';
 import {quranTextFontAvailable} from '../../theme/calligraphy';
 import {colors} from '../../theme/colors';
 import {fonts, quranTextFontFamily, typography} from '../../theme/typography';
@@ -290,8 +290,8 @@ function VerseTop({
         <View style={styles.art}>
           {/* The tile itself has no padding, so the gradient (sized from it)
               reaches every edge; the padding is the verse's own. */}
-          <GradientFill
-            colors={surahGradient(verse.surah.id)}
+          <SurahFill
+            surahNumber={verse.surah.id}
             id={`search-top-v${verse.surah.id}`}
           />
           <View style={styles.verseFrame}>

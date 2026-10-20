@@ -1,20 +1,15 @@
 import React from 'react';
 import {Image} from 'expo-image';
 import {Text, View} from 'react-native';
-import {GradientFill} from '../brand/GradientFill';
+import {SurahFill} from '../brand/SurahFill';
 import {getReciterArtwork} from '../../services/reciterArtwork';
-import {surahGradient} from '../../theme/surahColors';
 import {colors} from '../../theme/colors';
 import {fonts} from '../../theme/typography';
 import {scale} from '../../theme/scale';
 import type {Reciter} from '../../types/reciter';
-import ARABIC_NAMES from '../../../data/reciterNamesAr.json';
-
-const arabicNames = ARABIC_NAMES as Record<string, string>;
-
-/** The reciter's Arabic name from the catalog or the phone's bundled list. */
+/** The reciter's Arabic name from the catalog. */
 export function reciterArabicName(reciter: Reciter): string | null {
-  return reciter.name_arabic || arabicNames[reciter.id] || null;
+  return reciter.name_arabic || null;
 }
 
 function hashString(value: string): number {
@@ -66,8 +61,8 @@ export function ReciterPortrait({
         justifyContent: 'center',
         backgroundColor: colors.surfaceElevated,
       }}>
-      <GradientFill
-        colors={surahGradient((hashString(reciter.id) % 114) + 1)}
+      <SurahFill
+        surahNumber={(hashString(reciter.id) % 114) + 1}
         id={`${idPrefix}-${reciter.id}`}
       />
       <Text

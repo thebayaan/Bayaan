@@ -28,9 +28,11 @@ export function useBrandFonts(): boolean {
     [fonts.extraBold]: require('../assets/fonts/Manrope-ExtraBold.ttf'),
     [fonts.light]: require('../assets/fonts/Manrope-Light.ttf'),
     [fonts.extraLight]: require('../assets/fonts/Manrope-ExtraLight.ttf'),
-    // Shared with the mobile app rather than copied, so both stay in sync.
-    [surahNameFontFamily]: require('../../assets/fonts/surah_names.ttf'),
-    [quranTextFontFamily]: require('../../assets/fonts/UthmanicHafs1Ver18.ttf'),
+    // The phone's surah_names.ttf and UthmanicHafs1Ver18.ttf with their
+    // family names set to these keys, so Vega (which resolves a font by
+    // file and family name, not a runtime map) loads the same files.
+    [surahNameFontFamily]: require('../assets/fonts/SurahNames.ttf'),
+    [quranTextFontFamily]: require('../assets/fonts/UthmanicHafs.ttf'),
   });
   return loaded || error != null;
 }

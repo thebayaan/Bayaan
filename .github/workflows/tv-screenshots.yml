@@ -28,6 +28,12 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.platform || 'all' }}-${{ inputs.checkout_ref || 'head' }}
   cancel-in-progress: true
 
+env:
+  # The TV ships no reciter data: the app reads the catalog from the live
+  # Bayaan API, whose key is a repository secret, inlined at bundle time.
+  EXPO_PUBLIC_BAYAAN_API_URL: https://api.thebayaan.com
+  EXPO_PUBLIC_BAYAAN_API_KEY: ${{ secrets.EXPO_PUBLIC_BAYAAN_API_KEY }}
+
 jobs:
   android-tv:
     name: Android TV walk
@@ -41,6 +47,15 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.checkout_ref || '' }}
+
+      # Without a catalog the app stops at its "Can't reach Bayaan" screen,
+      # so say up front whether the API answers this build's key.
+      - name: Check the Bayaan API
+        run: |
+          url="$EXPO_PUBLIC_BAYAAN_API_URL/v1/reciters?page=1&limit=1"
+          echo "key set: $([ -n "$EXPO_PUBLIC_BAYAAN_API_KEY" ] && echo yes || echo no)"
+          echo "without key: $(curl -s -o /dev/null -w '%{http_code}' "$url")"
+          echo "with key: $(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $EXPO_PUBLIC_BAYAAN_API_KEY" "$url")"
 
       - name: Enable KVM
         run: |

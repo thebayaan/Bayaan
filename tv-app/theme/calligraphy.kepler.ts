@@ -1,11 +1,10 @@
 /**
- * Vega has no expo-font; it serves packaged fonts by file name. That works for
- * Manrope (tv-vega/scripts/sync-fonts.js), but the calligraphy font's own
- * family name is 'icomoon', so until a device run shows how Vega resolves it
- * its private-use glyphs could render as empty boxes. Surah glyphs fall back
- * to the transliterated name there.
+ * Vega serves packaged fonts by file name (tv-vega/scripts/sync-fonts.js).
+ * The calligraphy and Quran fonts are packaged as SurahNames.ttf and
+ * UthmanicHafs.ttf, copies whose family names match their file names, so
+ * both resolve on Vega as they do on tvOS and Android TV.
  */
-export const surahGlyphsAvailable = false;
+export const surahGlyphsAvailable = true;
 
-/** Same for the Quran text font: Vega uses the system Arabic font instead. */
-export const quranTextFontAvailable = false;
+/** Whether the Uthmanic Hafs Quran text font is registered on this platform. */
+export const quranTextFontAvailable = true;

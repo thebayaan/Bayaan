@@ -6,10 +6,11 @@
  * 'Manrope-Bold'` (theme/typography.ts). The files stay owned by tv-app; the
  * copies are build output (gitignored), so the two never drift.
  *
- * Only Manrope is copied. The surah-name and Quran fonts name their families
- * differently from their files ('icomoon', 'KFGQPC HAFS Uthmanic Script'), so
- * they stay off on Vega (theme/calligraphy.kepler.ts) until a device run
- * confirms how Vega resolves them.
+ * The surah-name and Quran fonts are tv-app's renamed copies
+ * (SurahNames.ttf, UthmanicHafs.ttf): the phone's files call their families
+ * 'icomoon' and 'KFGQPC HAFS Uthmanic Script', which matched neither their
+ * file names nor theme/typography.ts, so the copies carry the family name
+ * in both places.
  */
 const fs = require('fs');
 const path = require('path');
@@ -20,9 +21,9 @@ const target = path.resolve(__dirname, '..', 'assets', 'fonts');
 fs.mkdirSync(target, {recursive: true});
 const files = fs
   .readdirSync(source)
-  .filter((name) => /^Manrope-.*\.ttf$/.test(name));
+  .filter((name) => /^(Manrope-.*|SurahNames|UthmanicHafs)\.ttf$/.test(name));
 if (files.length === 0) {
-  console.error(`sync-fonts: no Manrope fonts found in ${source}`);
+  console.error(`sync-fonts: no brand fonts found in ${source}`);
   process.exit(1);
 }
 for (const name of files) {
