@@ -1,0 +1,26 @@
+10-20 19:34:40.746  3064  3064 I WALK    : step 000-launch-welcome-step-1
+10-20 19:34:42.084  3045  3075 I ReactNativeJS: Running "main"
+10-20 19:35:12.261  4082  4082 I WALK    : step 001-onboarding-browse-all
+10-20 19:35:18.616  4239  4239 I WALK    : step 002-onboarding-browse-closed
+10-20 19:35:23.102  4286  4286 I WALK    : step 003-onboarding-step-2
+10-20 19:35:29.410  4322  4322 I WALK    : step 004-onboarding-language-chip
+10-20 19:35:33.803  4395  4395 I WALK    : step 005-onboarding-continue-focused
+10-20 19:35:38.459  4469  4469 I WALK    : step 006-home-top
+10-20 19:35:47.694  4485  4485 I WALK    : step 007-home-moments-rail
+10-20 19:35:51.938  4500  4500 I WALK    : step 008-home-adhkar-rail
+10-20 19:35:56.176  4514  4514 I WALK    : step 009-home-collections-rail
+10-20 19:36:00.413  4530  4530 I WALK    : step 010-home-featured-reciters
+10-20 19:36:04.656  4545  4545 I WALK    : step 011-home-best-for-memorisation
+10-20 19:36:08.892  4566  4566 I WALK    : step 012-home-best-for-tajweed
+10-20 19:36:13.121  4582  4582 I WALK    : step 013-home-short-surahs
+10-20 19:36:17.365  4621  4621 I WALK    : step 014-home-back-sidebar-on-home
+10-20 19:36:21.641  4644  4644 I WALK    : step 015-library-first-run
+10-20 19:36:41.202  4727  4727 I WALK    : step 016-library-back-sidebar
+10-20 19:36:45.451  4742  4742 I WALK    : step 017-library-sidebar-back-home-item
+10-20 19:36:50.699  4815  4815 I WALK    : step 018-surahs
+10-20 19:37:07.264  4880  4880 I WALK    : step 019-surahs-al-baqarah-focused
+10-20 19:37:11.542  4894  4894 I WALK    : step 020-player-playing
+10-20 19:37:24.774  4913  4913 I WALK    : step 021-player-next-verse
+10-20 19:37:29.006  4927  4927 I WALK    : step 022-tray-up
+10-20 19:37:33.240  4946  4946 I WALK    : step 023-panel-repeat
+10-20 19:37:40.552  4976  4976 I WALK    : step 024-panel-repeat-verse
