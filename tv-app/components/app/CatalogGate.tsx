@@ -40,8 +40,8 @@ export function CatalogGate({
         <>
           <Text style={styles.title}>Can't reach Bayaan</Text>
           <Text style={styles.body}>
-            The reciters load from the internet the first time you open the
-            app. Check the TV's connection, then try again.
+            The reciters load from the internet the first time you open the app.
+            Check the TV's connection, then try again.
           </Text>
           <FocusableButton
             onPress={() => void refreshReciters()}

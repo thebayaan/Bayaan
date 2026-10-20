@@ -23,13 +23,7 @@ export const SURAH_ROW_HEIGHT = 88;
 
 function Glyph({surahNumber}: {surahNumber: number}): React.ReactElement {
   const color = useFocusTint(colors.text, colors.onFocus);
-  return (
-    <SurahGlyph
-      surahNumber={surahNumber}
-      size={36}
-      color={color}
-    />
-  );
+  return <SurahGlyph surahNumber={surahNumber} size={36} color={color} />;
 }
 
 /**

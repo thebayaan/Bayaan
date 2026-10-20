@@ -145,7 +145,9 @@ let inFlight: Promise<Reciter[]> | null = null;
  * copy is returned. Rejects only when there is no copy at all and the API
  * can't be reached, which the app shows as its offline screen.
  */
-export function fetchReciters(opts?: {skipCache?: boolean}): Promise<Reciter[]> {
+export function fetchReciters(opts?: {
+  skipCache?: boolean;
+}): Promise<Reciter[]> {
   if (!opts?.skipCache) {
     const cached = readCachedReciters();
     if (cached && isReciterCacheFresh(cached.savedAt)) {

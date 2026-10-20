@@ -38,7 +38,6 @@ import {
   useReciters,
 } from './useReciters';
 
-
 beforeEach(() => {
   resetRecitersForTest();
   mockFetchReciters.mockReset();

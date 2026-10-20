@@ -97,7 +97,10 @@ describe('tvDataService', () => {
       json: async () => ({useBackendApi: true}),
     });
     // An old-style bare array is not the envelope.
-    mockFetch.mockResolvedValueOnce({ok: true, json: async () => [reciter('9')]});
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => [reciter('9')],
+    });
     expect(await service.fetchReciters()).toHaveLength(2);
     expect(service.getCachedReciters()).toHaveLength(2);
   });
@@ -146,7 +149,10 @@ describe('tvDataService', () => {
     );
     storage.set(
       `bayaan_reciter_servers_${id}`,
-      JSON.stringify({version: '4', data: [{id: 'old', server: 'https://old'}]}),
+      JSON.stringify({
+        version: '4',
+        data: [{id: 'old', server: 'https://old'}],
+      }),
     );
     const rewayat = await service.fetchRewayat(id);
     expect(rewayat.map(r => r.id)).not.toContain('old');

@@ -20,5 +20,7 @@ export function SurahThumb({
   glyphSize,
   id,
 }: Props): React.ReactElement {
-  return <SurahArtwork surahNumber={surahNumber} glyphSize={glyphSize} id={id} />;
+  return (
+    <SurahArtwork surahNumber={surahNumber} glyphSize={glyphSize} id={id} />
+  );
 }
