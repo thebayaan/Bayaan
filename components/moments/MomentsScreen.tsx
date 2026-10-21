@@ -230,8 +230,10 @@ export function MomentsScreen({entry = 'tab'}: MomentsScreenProps) {
     if (card) tracker.activate(card, activeIndexRef.current);
     // Don't take over if the main player started while away, e.g. a surah
     // played from the reciter profile.
-    const mainPlaying = usePlayerStore.getState().playback.state === 'playing';
-    if (resumeOnFocusRef.current && !mainPlaying) momentsAudioService.resume();
+    // Buffering counts too: a surah started just before back is still loading.
+    const mainState = usePlayerStore.getState().playback.state;
+    const mainActive = mainState === 'playing' || mainState === 'buffering';
+    if (resumeOnFocusRef.current && !mainActive) momentsAudioService.resume();
     return () => {
       resumeOnFocusRef.current = momentsAudioService.getState().playing;
       momentsAudioService.pause();
