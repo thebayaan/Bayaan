@@ -198,7 +198,11 @@ export const MomentCard = React.memo(function MomentCard({
         <View style={styles.bottomRow}>
           <View style={styles.meta}>
             {!!translation && (
-              <Text style={styles.caption} numberOfLines={7}>
+              <Text
+                style={styles.caption}
+                numberOfLines={7}
+                adjustsFontSizeToFit
+                minimumFontScale={0.7}>
                 {translation}
               </Text>
             )}

@@ -27,6 +27,7 @@ import {
   MomentCardData,
 } from '@/services/moments/useMomentsFeed';
 import {useMomentsStore} from '@/store/momentsStore';
+import {isWholeSurah} from '@/services/moments/passages';
 import {useLovedStore} from '@/services/player/store/lovedStore';
 import {useFavoriteRecitersStore} from '@/store/favoriteRecitersStore';
 import {usePlayerStore} from '@/services/player/store/playerStore';
@@ -186,10 +187,10 @@ export function MomentsScreen() {
       if (!surah) return;
       momentsAudioService.pause();
       const track = await createTrack(card.reciter, surah, card.rewayat.id);
-      // Pick up right where the moment stopped.
-      await usePlayerStore
-        .getState()
-        .updateQueue([track], 0, card.clip.endMs / 1000);
+      // Pick up right where the moment stopped, or from the top when the
+      // moment was the whole surah.
+      const startSec = isWholeSurah(card.passage) ? 0 : card.clip.endMs / 1000;
+      await usePlayerStore.getState().updateQueue([track], 0, startSec);
       // The player sheet sits under this full-screen route, so leave it
       // first and expand once the transition has settled.
       router.back();
