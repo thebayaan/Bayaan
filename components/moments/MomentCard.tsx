@@ -152,7 +152,14 @@ export const MomentCard = React.memo(function MomentCard({
       .failOffsetY([-15, 15])
       .runOnJS(true)
       .onEnd(e => {
-        if (e.translationX < -60) onOpenProfile();
+        // Only a clearly sideways drag, so a fast vertical flick that
+        // drifts left still just scrolls.
+        if (
+          e.translationX < -60 &&
+          Math.abs(e.translationY) < Math.abs(e.translationX) / 2
+        ) {
+          onOpenProfile();
+        }
       });
     return Gesture.Race(
       swipeLeft,
