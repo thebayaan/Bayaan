@@ -54,35 +54,6 @@ export function initCatalogVersionPolling(refetch: RefetchCatalog): void {
   );
 }
 
-// @ai-start
-const versionListeners = new Set<(version: number) => void>();
-
-/**
- * Calls `listener` after the poll has seen (and refetched for) a newer
- * catalog version. Caches derived from the catalog, such as the Moments
- * snippet list, use it to refresh. Returns the unsubscribe function.
- */
-export function onCatalogVersionChange(
-  listener: (version: number) => void,
-): () => void {
-  versionListeners.add(listener);
-  return () => {
-    versionListeners.delete(listener);
-  };
-}
-
-/** The last catalog version the poll saw, or null when it has seen none. */
-export async function getLastSeenCatalogVersion(): Promise<number | null> {
-  try {
-    const stored = await AsyncStorage.getItem(LAST_SEEN_KEY);
-    const version = stored === null ? NaN : Number(stored);
-    return Number.isFinite(version) ? version : null;
-  } catch {
-    return null;
-  }
-}
-// @ai-end
-
 export function teardownCatalogVersionPolling(): void {
   stateSubscription?.remove();
   stateSubscription = null;
@@ -110,16 +81,6 @@ async function pollOnce(
     if (!Number.isFinite(lastSeen) || body.version > lastSeen) {
       await refetch(body.version, body.url);
       await AsyncStorage.setItem(LAST_SEEN_KEY, String(body.version));
-      // @ai-start
-      const version = body.version;
-      versionListeners.forEach(listener => {
-        try {
-          listener(version);
-        } catch {
-          // a listener's failure must not stop the others
-        }
-      });
-      // @ai-end
     }
   } catch {
     // fail-open by design

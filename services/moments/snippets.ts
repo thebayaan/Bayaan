@@ -35,13 +35,15 @@ export interface Snippet {
 }
 
 export interface SnippetList {
-  version: number | string;
+  /** Monotonically increasing list version. */
+  version: number;
   snippets: Snippet[];
 }
 
 export interface CachedSnippetList extends SnippetList {
-  /** Catalog version the poll had seen when this list was fetched. */
-  catalogVersion: number | null;
+  /** The response's ETag, sent back as If-None-Match to revalidate. */
+  etag: string | null;
+  /** When the list was last fetched or revalidated. */
   fetchedAt: number;
 }
 
@@ -104,7 +106,7 @@ export function parseSnippet(raw: unknown): Snippet | null {
 export function parseSnippetResponse(body: unknown): SnippetList | null {
   if (!isRecord(body) || !Array.isArray(body.snippets)) return null;
   const version =
-    typeof body.version === 'number' || typeof body.version === 'string'
+    typeof body.version === 'number' && Number.isFinite(body.version)
       ? body.version
       : 0;
   const seen = new Set<string>();
@@ -128,39 +130,24 @@ export function parseCachedSnippetList(
     const list = parseSnippetResponse(body);
     if (!list || !isRecord(body)) return null;
     const fetchedAt = typeof body.fetchedAt === 'number' ? body.fetchedAt : 0;
-    const catalogVersion =
-      typeof body.catalogVersion === 'number' ? body.catalogVersion : null;
-    return {...list, fetchedAt, catalogVersion};
+    const etag = optionalString(body.etag);
+    return {...list, fetchedAt, etag};
   } catch {
     return null;
   }
 }
 
-export interface RefreshContext {
-  now: number;
-  /** Catalog version the poll has seen, or null when it has seen none. */
-  lastSeenCatalogVersion: number | null;
-  /** Refresh anyway once the list is this old. */
-  maxAgeMs: number;
-}
-
 /**
- * Whether the cached list should be fetched again: there is none, the catalog
- * moved on since it was fetched, or it is older than `maxAgeMs` (forks that
- * do not publish a catalog version still get updates).
+ * Whether the cached list is due to be revalidated: there is none, or it was
+ * last checked more than `maxAgeMs` ago (or, with a clock that went back, in
+ * the future). Revalidating sends the ETag, so an unchanged list costs a 304.
  */
 export function shouldRefreshSnippets(
   cache: CachedSnippetList | null,
-  {now, lastSeenCatalogVersion, maxAgeMs}: RefreshContext,
+  now: number,
+  maxAgeMs: number,
 ): boolean {
   if (!cache) return true;
-  if (
-    lastSeenCatalogVersion !== null &&
-    (cache.catalogVersion === null ||
-      lastSeenCatalogVersion > cache.catalogVersion)
-  ) {
-    return true;
-  }
   return now - cache.fetchedAt > maxAgeMs || now < cache.fetchedAt;
 }
 

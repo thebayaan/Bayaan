@@ -81,58 +81,44 @@ describe('parseSnippetResponse', () => {
     expect(parseSnippetResponse('nope')).toBeNull();
   });
 
-  it('reads back a cached list', () => {
+  it('treats a missing version as 0', () => {
+    expect(parseSnippetResponse({snippets: []})?.version).toBe(0);
+    expect(parseSnippetResponse({version: '3', snippets: []})?.version).toBe(0);
+  });
+
+  it('reads back a cached list with its ETag', () => {
     const cached = parseCachedSnippetList(
       JSON.stringify({
         version: 3,
         snippets: [raw],
-        catalogVersion: 8,
+        etag: '"abc"',
         fetchedAt: 1000,
       }),
     );
-    expect(cached).toMatchObject({
-      version: 3,
-      catalogVersion: 8,
-      fetchedAt: 1000,
-    });
+    expect(cached).toMatchObject({version: 3, etag: '"abc"', fetchedAt: 1000});
     expect(cached?.snippets).toHaveLength(1);
+    expect(
+      parseCachedSnippetList(JSON.stringify({version: 3, snippets: []}))?.etag,
+    ).toBeNull();
     expect(parseCachedSnippetList('{broken')).toBeNull();
     expect(parseCachedSnippetList(null)).toBeNull();
   });
 });
 
 describe('shouldRefreshSnippets', () => {
-  const cache = {
-    version: 1,
-    snippets: [],
-    catalogVersion: 5,
-    fetchedAt: 10_000,
-  };
-  const ctx = {now: 20_000, lastSeenCatalogVersion: 5, maxAgeMs: 60_000};
+  const cache = {version: 1, snippets: [], etag: null, fetchedAt: 10_000};
 
   it('refreshes with nothing cached', () => {
-    expect(shouldRefreshSnippets(null, ctx)).toBe(true);
+    expect(shouldRefreshSnippets(null, 20_000, 60_000)).toBe(true);
   });
 
-  it('keeps a fresh list for the same catalog version', () => {
-    expect(shouldRefreshSnippets(cache, ctx)).toBe(false);
-    expect(
-      shouldRefreshSnippets(cache, {...ctx, lastSeenCatalogVersion: null}),
-    ).toBe(false);
+  it('keeps a recently checked list', () => {
+    expect(shouldRefreshSnippets(cache, 20_000, 60_000)).toBe(false);
   });
 
-  it('refreshes when the catalog version moved on', () => {
-    expect(
-      shouldRefreshSnippets(cache, {...ctx, lastSeenCatalogVersion: 6}),
-    ).toBe(true);
-    expect(shouldRefreshSnippets({...cache, catalogVersion: null}, ctx)).toBe(
-      true,
-    );
-  });
-
-  it('refreshes an old list, or one from the future', () => {
-    expect(shouldRefreshSnippets(cache, {...ctx, now: 80_001})).toBe(true);
-    expect(shouldRefreshSnippets(cache, {...ctx, now: 5_000})).toBe(true);
+  it('revalidates an old list, or one from the future', () => {
+    expect(shouldRefreshSnippets(cache, 70_001, 60_000)).toBe(true);
+    expect(shouldRefreshSnippets(cache, 5_000, 60_000)).toBe(true);
   });
 });
 

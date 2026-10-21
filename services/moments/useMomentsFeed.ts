@@ -77,12 +77,16 @@ function collectOnDeviceCandidates(seed: number): FeedCandidate[] {
   return candidates;
 }
 
-/** Backend snippets whose reciter and rewayat this catalog knows. */
+/**
+ * Backend snippets whose reciter and rewayat this catalog knows. Only Hafs
+ * for now: the backend does not filter, and the card text is Hafs.
+ */
 function collectSnippetCandidates(snippets: Snippet[]): FeedCandidate[] {
   const candidates: FeedCandidate[] = [];
   for (const snippet of snippets) {
     const reciter = RECITERS.find(r => r.id === snippet.reciterId);
-    if (!reciter?.rewayat.some(r => r.id === snippet.rewayatId)) continue;
+    const rewayat = reciter?.rewayat.find(r => r.id === snippet.rewayatId);
+    if (!rewayat || !isHafs(rewayat)) continue;
     candidates.push(snippetToCandidate(snippet));
   }
   return candidates;

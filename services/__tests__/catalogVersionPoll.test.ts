@@ -38,9 +38,7 @@ jest.mock('../../config/branding', () => {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import branding from '../../config/branding';
 import {
-  getLastSeenCatalogVersion, // @ai
   initCatalogVersionPolling,
-  onCatalogVersionChange, // @ai
   teardownCatalogVersionPolling,
 } from '../catalogVersionPoll';
 
@@ -49,7 +47,7 @@ const mockStore = (
 ).__mockStore;
 const mockBranding = branding as unknown as {catalogVersionEndpoint?: string};
 
-const flush = () => new Promise(r => setImmediate(r));
+const flush = () => new Promise((r) => setImmediate(r));
 
 beforeEach(() => {
   mockStore.clear();
@@ -103,10 +101,7 @@ describe('initCatalogVersionPolling', () => {
     initCatalogVersionPolling(refetch);
     await flush();
     await flush();
-    expect(refetch).toHaveBeenCalledWith(
-      8,
-      'https://example.test/catalog/v8.json',
-    );
+    expect(refetch).toHaveBeenCalledWith(8, 'https://example.test/catalog/v8.json');
     expect(mockStore.get('bayaan:lastSeenCatalogVersion')).toBe('8');
   });
 
@@ -124,28 +119,3 @@ describe('initCatalogVersionPolling', () => {
     expect(refetch).not.toHaveBeenCalled();
   });
 });
-
-// @ai-start
-describe('onCatalogVersionChange', () => {
-  it('tells listeners about a newer version after the refetch', async () => {
-    mockBranding.catalogVersionEndpoint = 'https://example.test/version.json';
-    mockStore.set('bayaan:lastSeenCatalogVersion', '7');
-    (global.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve({version: 9}),
-    });
-    const listener = jest.fn();
-    const off = onCatalogVersionChange(listener);
-    initCatalogVersionPolling(jest.fn().mockResolvedValue(undefined));
-    await flush();
-    await flush();
-    expect(listener).toHaveBeenCalledWith(9);
-    expect(await getLastSeenCatalogVersion()).toBe(9);
-    off();
-  });
-
-  it('reads no version when none was seen', async () => {
-    expect(await getLastSeenCatalogVersion()).toBeNull();
-  });
-});
-// @ai-end

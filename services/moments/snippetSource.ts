@@ -1,20 +1,17 @@
 // @ai-start
 /**
- * Loads the Moments snippet list from the Bayaan backend.
+ * Loads the Moments snippet list from the Bayaan backend (`GET /v1/snippets`).
  *
- * The list is cached in AsyncStorage with its version. A cached list is used
- * at once and fetched again in the background when the catalog version the
- * poll has seen moved past the one it was fetched under, or when it is a day
- * old. With nothing cached the fetch is awaited (with a short timeout). An
- * empty result means "no server snippets": the feed then builds its moments
- * on the device from timestamps, as it did before the endpoint existed.
+ * The list is cached in AsyncStorage with its version and ETag. A cached list
+ * is used at once and revalidated in the background once it is an hour old:
+ * the request carries `If-None-Match`, so an unchanged list costs a 304 and
+ * the cache is kept. With nothing cached the fetch is awaited (with a short
+ * timeout). An empty result means "no server snippets": the feed then builds
+ * its moments on the device from timestamps, as it did before the endpoint
+ * existed.
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {
-  getLastSeenCatalogVersion,
-  onCatalogVersionChange,
-} from '@/services/catalogVersionPoll';
 import {
   CachedSnippetList,
   parseCachedSnippetList,
@@ -24,15 +21,14 @@ import {
 } from './snippets';
 
 export const SNIPPETS_CACHE_KEY = 'moments-snippets';
-/** Refetch a list this old even when no catalog version was published. */
-export const SNIPPETS_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+/** Revalidate a cached list once it was last checked this long ago. */
+export const SNIPPETS_MAX_AGE_MS = 60 * 60 * 1000;
 /** After a failed fetch, wait this long before trying again. */
 export const SNIPPETS_RETRY_AFTER_MS = 5 * 60 * 1000;
 const FETCH_TIMEOUT_MS = 3000;
 
 let lastFailureAt = 0;
 let inFlight: Promise<CachedSnippetList | null> | null = null;
-let unsubscribe: (() => void) | null = null;
 
 function apiConfig(): {base: string; key: string} | null {
   const base = process.env.EXPO_PUBLIC_BAYAAN_API_URL;
@@ -51,7 +47,17 @@ async function readCache(): Promise<CachedSnippetList | null> {
   }
 }
 
-async function fetchSnippets(): Promise<CachedSnippetList | null> {
+async function writeCache(list: CachedSnippetList): Promise<void> {
+  try {
+    await AsyncStorage.setItem(SNIPPETS_CACHE_KEY, JSON.stringify(list));
+  } catch {
+    // Still usable for this session.
+  }
+}
+
+async function fetchSnippets(
+  cache: CachedSnippetList | null,
+): Promise<CachedSnippetList | null> {
   const api = apiConfig();
   if (!api) return null;
   if (lastFailureAt && Date.now() - lastFailureAt < SNIPPETS_RETRY_AFTER_MS) {
@@ -60,28 +66,36 @@ async function fetchSnippets(): Promise<CachedSnippetList | null> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${api.key}`,
+    };
+    if (cache?.etag) headers['If-None-Match'] = cache.etag;
     const res = await fetch(`${api.base}/v1/snippets`, {
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${api.key}`,
-      },
+      headers,
       signal: controller.signal,
     });
-    if (!res.ok) throw new Error(`Bayaan API error: ${res.status}`);
-    const list = parseSnippetResponse(await res.json());
-    if (!list) throw new Error('Unexpected snippets response');
-    const cached: CachedSnippetList = {
-      ...list,
-      catalogVersion: await getLastSeenCatalogVersion(),
-      fetchedAt: Date.now(),
-    };
-    try {
-      await AsyncStorage.setItem(SNIPPETS_CACHE_KEY, JSON.stringify(cached));
-    } catch {
-      // Still usable for this session.
+    let next: CachedSnippetList;
+    if (res.status === 304 && cache) {
+      next = {...cache, fetchedAt: Date.now()};
+    } else {
+      if (!res.ok) throw new Error(`Bayaan API error: ${res.status}`);
+      const list = parseSnippetResponse(await res.json());
+      if (!list) throw new Error('Unexpected snippets response');
+      // Never step back to an older list (a stale edge or replica).
+      if (cache && list.version < cache.version) {
+        next = {...cache, fetchedAt: Date.now()};
+      } else {
+        next = {
+          ...list,
+          etag: res.headers?.get?.('ETag') ?? null,
+          fetchedAt: Date.now(),
+        };
+      }
     }
+    await writeCache(next);
     lastFailureAt = 0;
-    return cached;
+    return next;
   } catch (error) {
     lastFailureAt = Date.now();
     if (__DEV__) console.warn('[MomentsSnippets] Fetch failed:', error);
@@ -91,22 +105,16 @@ async function fetchSnippets(): Promise<CachedSnippetList | null> {
   }
 }
 
-/** Fetches the list again, sharing a fetch that is already running. */
-export function refreshMomentSnippets(): Promise<CachedSnippetList | null> {
+/** Fetches or revalidates the list, sharing a request already running. */
+export function refreshMomentSnippets(
+  cache: CachedSnippetList | null,
+): Promise<CachedSnippetList | null> {
   if (!inFlight) {
-    inFlight = fetchSnippets().finally(() => {
+    inFlight = fetchSnippets(cache).finally(() => {
       inFlight = null;
     });
   }
   return inFlight;
-}
-
-function watchCatalogVersion(): void {
-  if (unsubscribe) return;
-  unsubscribe = onCatalogVersionChange(() => {
-    lastFailureAt = 0;
-    void refreshMomentSnippets();
-  });
 }
 
 /**
@@ -114,18 +122,14 @@ function watchCatalogVersion(): void {
  * not configured, or cannot be reached and nothing is cached.
  */
 export async function loadMomentSnippets(): Promise<Snippet[]> {
-  watchCatalogVersion();
   const cache = await readCache();
-  const due = shouldRefreshSnippets(cache, {
-    now: Date.now(),
-    lastSeenCatalogVersion: await getLastSeenCatalogVersion(),
-    maxAgeMs: SNIPPETS_MAX_AGE_MS,
-  });
   if (cache) {
-    if (due) void refreshMomentSnippets();
+    if (shouldRefreshSnippets(cache, Date.now(), SNIPPETS_MAX_AGE_MS)) {
+      void refreshMomentSnippets(cache);
+    }
     return cache.snippets;
   }
-  const fresh = await refreshMomentSnippets();
+  const fresh = await refreshMomentSnippets(null);
   return fresh?.snippets ?? [];
 }
 
@@ -133,7 +137,5 @@ export async function loadMomentSnippets(): Promise<Snippet[]> {
 export function resetMomentSnippetsForTests(): void {
   lastFailureAt = 0;
   inFlight = null;
-  unsubscribe?.();
-  unsubscribe = null;
 }
 // @ai-end

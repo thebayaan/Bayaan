@@ -14,22 +14,7 @@ jest.mock('@react-native-async-storage/async-storage', () => {
   };
 });
 
-jest.mock('@/services/catalogVersionPoll', () => {
-  const listeners = new Set<(mockVersion: number) => void>();
-  const state = {lastSeen: null as number | null};
-  return {
-    getLastSeenCatalogVersion: jest.fn(() => Promise.resolve(state.lastSeen)),
-    onCatalogVersionChange: jest.fn((l: (mockVersion: number) => void) => {
-      listeners.add(l);
-      return () => listeners.delete(l);
-    }),
-    __state: state,
-    __listeners: listeners,
-  };
-});
-
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as poll from '@/services/catalogVersionPoll';
 import {
   loadMomentSnippets,
   resetMomentSnippetsForTests,
@@ -40,11 +25,6 @@ import {
 const mockStore = (
   AsyncStorage as unknown as {__mockStore: Map<string, string>}
 ).__mockStore;
-const pollState = (poll as unknown as {__state: {lastSeen: number | null}})
-  .__state;
-const pollListeners = (
-  poll as unknown as {__listeners: Set<(v: number) => void>}
-).__listeners;
 
 const snippet = {
   id: 'sn-1',
@@ -66,29 +46,33 @@ const snippet = {
 const flush = () => new Promise(r => setImmediate(r));
 let fetchMock: jest.Mock;
 
-function respond(status: number, body?: unknown) {
+function respond(status: number, body?: unknown, etag?: string) {
   fetchMock.mockResolvedValueOnce({
     ok: status >= 200 && status < 300,
     status,
+    headers: {get: (name: string) => (name === 'ETag' && etag ? etag : null)},
     json: () => Promise.resolve(body),
   });
 }
 
-function seedCache(fetchedAt: number, catalogVersion: number | null) {
+function seedCache(fetchedAt: number, version = 1, etag: string | null = null) {
   mockStore.set(
     SNIPPETS_CACHE_KEY,
     JSON.stringify({
-      version: 1,
+      version,
       snippets: [{...snippet, id: 'cached'}],
-      catalogVersion,
+      etag,
       fetchedAt,
     }),
   );
 }
 
+function stored() {
+  return JSON.parse(mockStore.get(SNIPPETS_CACHE_KEY)!);
+}
+
 beforeEach(() => {
   mockStore.clear();
-  pollState.lastSeen = null;
   resetMomentSnippetsForTests();
   process.env.EXPO_PUBLIC_BAYAAN_API_URL = 'https://api.example.test/';
   process.env.EXPO_PUBLIC_BAYAAN_API_KEY = 'key';
@@ -98,9 +82,8 @@ beforeEach(() => {
 });
 
 describe('loadMomentSnippets', () => {
-  it('fetches, returns and caches the list with its version', async () => {
-    pollState.lastSeen = 4;
-    respond(200, {version: 7, snippets: [snippet]});
+  it('fetches, returns and caches the list with its version and ETag', async () => {
+    respond(200, {version: 7, snippets: [snippet]}, '"sha-7"');
     const list = await loadMomentSnippets();
     expect(list.map(s => s.id)).toEqual(['sn-1']);
     expect(fetchMock).toHaveBeenCalledWith(
@@ -109,8 +92,8 @@ describe('loadMomentSnippets', () => {
         headers: expect.objectContaining({Authorization: 'Bearer key'}),
       }),
     );
-    const cached = JSON.parse(mockStore.get(SNIPPETS_CACHE_KEY)!);
-    expect(cached).toMatchObject({version: 7, catalogVersion: 4});
+    expect(fetchMock.mock.calls[0][1].headers['If-None-Match']).toBeUndefined();
+    expect(stored()).toMatchObject({version: 7, etag: '"sha-7"'});
   });
 
   it('returns nothing on a 404 (endpoint not deployed) and does not retry at once', async () => {
@@ -132,46 +115,49 @@ describe('loadMomentSnippets', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('uses a fresh cache without fetching', async () => {
-    pollState.lastSeen = 4;
-    seedCache(Date.now(), 4);
+  it('uses a recently checked cache without a request', async () => {
+    seedCache(Date.now());
     const list = await loadMomentSnippets();
     expect(list.map(s => s.id)).toEqual(['cached']);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('serves the cache and refreshes it when the catalog version changed', async () => {
-    pollState.lastSeen = 5;
-    seedCache(Date.now(), 4);
-    respond(200, {version: 8, snippets: [snippet]});
-    const list = await loadMomentSnippets();
-    expect(list.map(s => s.id)).toEqual(['cached']);
+  it('revalidates an old cache with its ETag and keeps it on a 304', async () => {
+    const old = Date.now() - SNIPPETS_MAX_AGE_MS - 1;
+    seedCache(old, 3, '"sha-3"');
+    respond(304);
+    expect((await loadMomentSnippets()).map(s => s.id)).toEqual(['cached']);
     await flush();
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(JSON.parse(mockStore.get(SNIPPETS_CACHE_KEY)!).version).toBe(8);
+    expect(fetchMock.mock.calls[0][1].headers['If-None-Match']).toBe('"sha-3"');
+    expect(stored()).toMatchObject({version: 3, etag: '"sha-3"'});
+    expect(stored().fetchedAt).toBeGreaterThan(old);
+    expect(stored().snippets[0].id).toBe('cached');
+  });
+
+  it('replaces an old cache when the list changed', async () => {
+    seedCache(Date.now() - SNIPPETS_MAX_AGE_MS - 1, 3, '"sha-3"');
+    respond(200, {version: 4, snippets: [snippet]}, '"sha-4"');
+    expect((await loadMomentSnippets()).map(s => s.id)).toEqual(['cached']);
+    await flush();
+    expect(stored()).toMatchObject({version: 4, etag: '"sha-4"'});
     expect((await loadMomentSnippets()).map(s => s.id)).toEqual(['sn-1']);
   });
 
-  it('refreshes a day-old cache, keeping it when the refresh fails', async () => {
-    seedCache(Date.now() - SNIPPETS_MAX_AGE_MS - 1, null);
+  it('never steps back to an older version', async () => {
+    seedCache(Date.now() - SNIPPETS_MAX_AGE_MS - 1, 5, '"sha-5"');
+    respond(200, {version: 4, snippets: [snippet]}, '"sha-4"');
+    await loadMomentSnippets();
+    await flush();
+    expect(stored()).toMatchObject({version: 5, etag: '"sha-5"'});
+  });
+
+  it('keeps the cache when revalidating fails', async () => {
+    seedCache(Date.now() - SNIPPETS_MAX_AGE_MS - 1);
     respond(500);
     expect((await loadMomentSnippets()).map(s => s.id)).toEqual(['cached']);
     await flush();
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(JSON.parse(mockStore.get(SNIPPETS_CACHE_KEY)!).snippets[0].id).toBe(
-      'cached',
-    );
-  });
-
-  it('refetches when the poll reports a new catalog version', async () => {
-    seedCache(Date.now(), null);
-    await loadMomentSnippets();
-    expect(fetchMock).not.toHaveBeenCalled();
-    respond(200, {version: 9, snippets: [snippet]});
-    pollListeners.forEach(l => l(9));
-    await flush();
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(JSON.parse(mockStore.get(SNIPPETS_CACHE_KEY)!).version).toBe(9);
+    expect(stored().snippets[0].id).toBe('cached');
   });
 });
 // @ai-end
