@@ -126,5 +126,29 @@ describe('buildFeed', () => {
   it('returns nothing for no candidates', () => {
     expect(buildFeed([], {seed: 1, length: 5})).toEqual([]);
   });
+
+  it('uses each candidate weight as a multiplier', () => {
+    // Per reciter: the first passage weighs 4, the other four weigh 1, so it
+    // should open the feed about half the time (4 of 8).
+    const weighted = candidates.map(c =>
+      c.passage.id === MOMENT_PASSAGES[0].id ? {...c, weight: 4} : c,
+    );
+    let heavy = 0;
+    const runs = 400;
+    for (let seed = 0; seed < runs; seed++) {
+      const first = buildFeed(weighted, {seed, length: 1})[0];
+      if (first.passage.id === MOMENT_PASSAGES[0].id) heavy++;
+    }
+    expect(heavy / runs).toBeGreaterThan(0.4);
+    expect(heavy / runs).toBeLessThan(0.6);
+
+    // Weight 1 everywhere is the same feed as no weights.
+    const ones = candidates.map(c => ({...c, weight: 1}));
+    expect(
+      buildFeed(ones, {seed: 9, length: 20}).map(c => c.passage.id),
+    ).toEqual(
+      buildFeed(candidates, {seed: 9, length: 20}).map(c => c.passage.id),
+    );
+  });
 });
 // @ai-end
