@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import {useFocusEffect, useRouter} from 'expo-router';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {StatusBar} from 'expo-status-bar';
+import {setStatusBarStyle} from 'expo-status-bar';
 import {Ionicons} from '@expo/vector-icons';
 import {moderateScale} from 'react-native-size-matters';
 import {useTranslation} from 'react-i18next';
@@ -37,9 +37,9 @@ import {createTrack} from '@/utils/track';
 import {recitationShareUrl, shareUrl} from '@/utils/shareUtils';
 import {showToast} from '@/utils/toastUtils';
 import {lightHaptics} from '@/utils/haptics';
-
-// Expanding during the navigation transition gets cancelled by the sheet.
-const CONTINUE_EXPAND_DELAY_MS = 400;
+import {useTheme} from '@/hooks/useTheme';
+import {useResponsive} from '@/hooks/useResponsive';
+import {useBottomInset} from '@/hooks/useBottomInset';
 
 function toSource(card: MomentCardData) {
   return {
@@ -54,6 +54,12 @@ export function MomentsScreen() {
   const {t} = useTranslation('home');
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const {isDarkMode} = useTheme();
+  const {isTablet} = useResponsive();
+  // Clear the tab bar; the player is hidden on this tab.
+  const tabInset = useBottomInset({ignorePlayer: true});
+  const bottomInset = isTablet ? insets.bottom : tabInset;
+  const resumeOnFocusRef = useRef(false);
   const {width, height} = useWindowDimensions();
   const {cards, loading, ensureAhead} = useMomentsFeed();
   const [activeIndex, setActiveIndex] = useState(0);
@@ -112,11 +118,18 @@ export function MomentsScreen() {
     [],
   );
 
-  // Stop when leaving the screen (Settings, a profile, the player).
+  // Pause when leaving the tab, and pick back up on return if it was
+  // playing. The status bar stays light over the black feed.
   useFocusEffect(
     useCallback(() => {
-      return () => momentsAudioService.pause();
-    }, []),
+      setStatusBarStyle('light');
+      if (resumeOnFocusRef.current) momentsAudioService.resume();
+      return () => {
+        resumeOnFocusRef.current = momentsAudioService.getState().playing;
+        momentsAudioService.pause();
+        setStatusBarStyle(isDarkMode ? 'light' : 'dark');
+      };
+    }, [isDarkMode]),
   );
 
   const setActive = useCallback(
@@ -181,23 +194,17 @@ export function MomentsScreen() {
     [router],
   );
 
-  const continueSurah = useCallback(
-    async (card: MomentCardData) => {
-      const surah = getSurahById(card.passage.surah);
-      if (!surah) return;
-      momentsAudioService.pause();
-      const track = await createTrack(card.reciter, surah, card.rewayat.id);
-      // Pick up right where the moment stopped, or from the top when the
-      // moment was the whole surah.
-      const startSec = isWholeSurah(card.passage) ? 0 : card.clip.endMs / 1000;
-      await usePlayerStore.getState().updateQueue([track], 0, startSec);
-      // The player sheet sits under this full-screen route, so leave it
-      // first and expand once the transition has settled.
-      router.back();
-      setTimeout(expandPlayerSheet, CONTINUE_EXPAND_DELAY_MS);
-    },
-    [router],
-  );
+  const continueSurah = useCallback(async (card: MomentCardData) => {
+    const surah = getSurahById(card.passage.surah);
+    if (!surah) return;
+    momentsAudioService.pause();
+    const track = await createTrack(card.reciter, surah, card.rewayat.id);
+    // Pick up right where the moment stopped, or from the top when the
+    // moment was the whole surah.
+    const startSec = isWholeSurah(card.passage) ? 0 : card.clip.endMs / 1000;
+    await usePlayerStore.getState().updateQueue([track], 0, startSec);
+    expandPlayerSheet();
+  }, []);
 
   const renderItem = useCallback(
     ({item, index}: {item: MomentCardData; index: number}) => (
@@ -206,7 +213,7 @@ export function MomentsScreen() {
         width={width}
         height={height}
         topInset={insets.top}
-        bottomInset={insets.bottom}
+        bottomInset={bottomInset}
         playback={index === activeIndex ? playback : null}
         isLiked={lovedTracks.some(
           l =>
@@ -230,7 +237,7 @@ export function MomentsScreen() {
       width,
       height,
       insets.top,
-      insets.bottom,
+      bottomInset,
       activeIndex,
       playback,
       lovedTracks,
@@ -246,7 +253,6 @@ export function MomentsScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="light" />
       {cards.length > 0 ? (
         <FlatList
           ref={listRef}
@@ -283,7 +289,7 @@ export function MomentsScreen() {
         style={[styles.header, {paddingTop: insets.top + 6}]}
         pointerEvents="box-none">
         <Pressable
-          onPress={() => router.push('/(tabs)/(d.settings)')}
+          onPress={() => router.push('/settings')}
           hitSlop={10}
           accessibilityRole="button"
           accessibilityLabel={t('moments.profile')}

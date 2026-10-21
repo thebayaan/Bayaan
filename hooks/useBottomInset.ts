@@ -20,12 +20,17 @@ const IOS_MINI_PLAYER_HEIGHT = 64;
  * - iOS: Accounts for NativeTabs tab bar + BottomAccessory (MiniPlayer) + safe area.
  * - Android: Accounts for floating tab bar + floating player + margins + safe area.
  */
-export function useBottomInset(): number {
+// @ai-start
+// `ignorePlayer` is for screens that hide the player, like Moments.
+// @ai-end
+export function useBottomInset({ignorePlayer = false} = {}): number {
   const insets = useSafeAreaInsets();
   const hasTrack = usePlayerStore(state => {
     const tracks = state.queue.tracks;
     const index = state.queue.currentIndex;
-    return tracks.length > 0 && tracks[index] != null;
+    return (
+      !ignorePlayer && tracks.length > 0 && tracks[index] != null // @ai
+    );
   });
 
   if (Platform.OS === 'ios') {
