@@ -37,6 +37,9 @@ import {recitationShareUrl, shareUrl} from '@/utils/shareUtils';
 import {showToast} from '@/utils/toastUtils';
 import {lightHaptics} from '@/utils/haptics';
 
+// Expanding during the navigation transition gets cancelled by the sheet.
+const CONTINUE_EXPAND_DELAY_MS = 400;
+
 function toSource(card: MomentCardData) {
   return {
     key: card.key,
@@ -177,17 +180,23 @@ export function MomentsScreen() {
     [router],
   );
 
-  const continueSurah = useCallback(async (card: MomentCardData) => {
-    const surah = getSurahById(card.passage.surah);
-    if (!surah) return;
-    momentsAudioService.pause();
-    const track = await createTrack(card.reciter, surah, card.rewayat.id);
-    // Pick up right where the moment stopped.
-    await usePlayerStore
-      .getState()
-      .updateQueue([track], 0, card.clip.endMs / 1000);
-    expandPlayerSheet();
-  }, []);
+  const continueSurah = useCallback(
+    async (card: MomentCardData) => {
+      const surah = getSurahById(card.passage.surah);
+      if (!surah) return;
+      momentsAudioService.pause();
+      const track = await createTrack(card.reciter, surah, card.rewayat.id);
+      // Pick up right where the moment stopped.
+      await usePlayerStore
+        .getState()
+        .updateQueue([track], 0, card.clip.endMs / 1000);
+      // The player sheet sits under this full-screen route, so leave it
+      // first and expand once the transition has settled.
+      router.back();
+      setTimeout(expandPlayerSheet, CONTINUE_EXPAND_DELAY_MS);
+    },
+    [router],
+  );
 
   const renderItem = useCallback(
     ({item, index}: {item: MomentCardData; index: number}) => (
