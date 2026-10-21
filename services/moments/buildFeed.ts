@@ -1,6 +1,7 @@
 // @ai-start
 import type {MomentPassage} from './passages';
 import type {Snippet} from './snippets';
+import type {FeedAdjustments} from './feedback';
 
 export interface FeedCandidate {
   reciterId: string;
@@ -28,6 +29,14 @@ export interface FeedOptions {
   length: number;
   favoriteIds?: Set<string>;
   history?: FeedHistory;
+  /** In-session weight multipliers per reciter (see feedback.ts). */
+  adjustments?: FeedAdjustments;
+  /**
+   * Cards already in the feed before this one starts, oldest first. They
+   * count for the spacing rules but are not returned. Used to re-order the
+   * rest of a feed after feedback.
+   */
+  precededBy?: FeedCandidate[];
 }
 
 /** Small seeded PRNG so a session's order is stable and testable. */
@@ -51,6 +60,7 @@ function reciterWeight(reciterId: string, options: FeedOptions): number {
   const plays = options.history?.plays[reciterId] ?? 0;
   if (plays === 0) weight *= 1.5;
   else weight /= 1 + plays * 0.25;
+  weight *= options.adjustments?.[reciterId] ?? 1;
   return weight;
 }
 
@@ -77,12 +87,16 @@ export function buildFeed(
     );
   }
   const gap = Math.min(15, Math.max(0, clipsPerReciter.size - 1));
+  const before = options.precededBy ?? [];
   const feed: FeedCandidate[] = [];
   const used = new Set<FeedCandidate>();
 
   while (feed.length < options.length) {
-    const recent = new Set(feed.slice(-gap).map(c => c.reciterId));
-    const lastPassage = feed[feed.length - 1]?.passage.id;
+    // Only reach back into `precededBy` while the feed is still too short.
+    const shown = feed.length > gap ? feed : [...before, ...feed];
+    const recent = new Set(shown.slice(-gap).map(c => c.reciterId));
+    const last = shown[shown.length - 1];
+    const lastPassage = last?.passage.id;
     const pool = candidates.filter(c => !used.has(c));
     if (pool.length === 0) {
       // Every candidate has been shown: start a fresh round.
@@ -94,9 +108,7 @@ export function buildFeed(
       c => !recent.has(c.reciterId) && c.passage.id !== lastPassage,
     );
     if (eligible.length === 0) {
-      eligible = pool.filter(
-        c => c.reciterId !== feed[feed.length - 1]?.reciterId,
-      );
+      eligible = pool.filter(c => c.reciterId !== last?.reciterId);
     }
     if (eligible.length === 0) eligible = pool;
 

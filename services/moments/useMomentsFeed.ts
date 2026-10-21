@@ -7,7 +7,8 @@ import {useFavoriteRecitersStore} from '@/store/favoriteRecitersStore';
 import {useMomentsStore} from '@/store/momentsStore';
 import {MOMENT_PASSAGES, MomentPassage} from './passages';
 import {buildMoment, MomentClip} from './buildMoment';
-import {buildFeed, FeedCandidate} from './buildFeed';
+import {buildFeed, FeedCandidate, FeedOptions} from './buildFeed';
+import type {FeedAdjustments} from './feedback';
 import {clipFromSnippet, Snippet, snippetToCandidate} from './snippets';
 import {loadMomentSnippets} from './snippetSource';
 import {
@@ -187,6 +188,8 @@ export function useMomentsFeed() {
   const cardsRef = useRef<MomentCardData[]>([]);
   const wantedRef = useRef(0);
   const activeRef = useRef(0);
+  const candidatesRef = useRef<FeedCandidate[]>([]);
+  const optionsRef = useRef<FeedOptions | null>(null);
 
   const fill = useCallback(async (activeIndex: number) => {
     activeRef.current = activeIndex;
@@ -229,12 +232,14 @@ export function useMomentsFeed() {
       const favoriteIds = new Set(
         useFavoriteRecitersStore.getState().favoriteReciters.map(r => r.id),
       );
-      orderRef.current = buildFeed(candidates, {
+      candidatesRef.current = candidates;
+      optionsRef.current = {
         seed,
         length: FEED_LENGTH,
         favoriteIds,
         history: {plays: useMomentsStore.getState().plays},
-      });
+      };
+      orderRef.current = buildFeed(candidatesRef.current, optionsRef.current);
       fill(activeRef.current);
     })();
     return () => {
@@ -242,6 +247,27 @@ export function useMomentsFeed() {
     };
   }, [fill]);
 
-  return {cards, loading, ensureAhead: fill};
+  /**
+   * Re-orders the part of the feed that has not been resolved yet, using the
+   * session's feedback. Cards already resolved (on screen or just ahead) stay.
+   */
+  const reorderTail = useCallback((adjustments: FeedAdjustments) => {
+    const options = optionsRef.current;
+    if (!options) return;
+    const head = orderRef.current.slice(0, cursorRef.current);
+    const inHead = new Set(head);
+    const tail = buildFeed(
+      candidatesRef.current.filter(c => !inHead.has(c)),
+      {
+        ...options,
+        length: Math.max(0, FEED_LENGTH - head.length),
+        adjustments,
+        precededBy: head,
+      },
+    );
+    orderRef.current = [...head, ...tail];
+  }, []);
+
+  return {cards, loading, ensureAhead: fill, reorderTail};
 }
 // @ai-end

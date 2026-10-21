@@ -33,7 +33,8 @@ interface MomentCardProps {
   onLike: () => void;
   onToggleFavorite: () => void;
   onShare: () => void;
-  onMore: () => void;
+  /** Gets the ayah on screen, for "Copy ayah text". */
+  onMore: (ayah: number) => void;
   onContinue: () => void;
   onOpenProfile: () => void;
   onSeek: (positionMs: number) => void;
@@ -270,7 +271,7 @@ export const MomentCard = React.memo(function MomentCard({
             <RailButton
               icon="ellipsis-horizontal"
               label={t('moments.more')}
-              onPress={onMore}
+              onPress={() => onMore(ayah)}
             />
           </View>
         </View>

@@ -20,4 +20,19 @@ export function getAyahTranslation(surah: number, ayah: number): string {
     .replace(/<[^>]*>/g, '')
     .trim();
 }
+
+/**
+ * Text for "Copy ayah text": Arabic, translation and citation, in the same
+ * layout as the verse actions sheet. Moments only plays Hafs, so the citation
+ * carries no rewayah label.
+ */
+export function getAyahCopyText(surah: number, ayah: number): string {
+  return [
+    getAyahArabic(surah, ayah),
+    getAyahTranslation(surah, ayah),
+    `Quran ${surah}:${ayah}`,
+  ]
+    .filter(Boolean)
+    .join('\n\n');
+}
 // @ai-end

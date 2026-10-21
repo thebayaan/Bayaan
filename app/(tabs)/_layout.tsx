@@ -17,6 +17,7 @@ import {USE_GLASS} from '@/hooks/useGlassProps';
 // @ai-start
 import {useTranslation} from 'react-i18next';
 import {appDirection, appLayoutDirection, forceLTR, isRTL} from '@/utils/rtl';
+import {useOnMomentsTab} from '@/hooks/useOnMomentsTab';
 // @ai-end
 
 // PNG tab icons for NativeTabs (iOS) — template-rendered by the native tab bar
@@ -56,6 +57,8 @@ function IOSTabs() {
     const index = state.queue.currentIndex;
     return tracks.length > 0 && tracks[index] != null;
   });
+  // Moments pauses the main player, so its mini player would only cover the feed.
+  const onMoments = useOnMomentsTab(); // @ai
 
   // UIKit mirrors the tabs via its layout-direction trait. Keep the accessory's
   // Yoga coordinates stable and apply app direction to its content separately.
@@ -67,7 +70,7 @@ function IOSTabs() {
         minimizeBehavior="onScrollDown"
         blurEffect="none"
         backgroundColor="transparent">
-        {hasTrack && (
+        {hasTrack && !onMoments && (
           <NativeTabs.BottomAccessory>
             <MiniPlayer />
           </NativeTabs.BottomAccessory>
@@ -150,19 +153,24 @@ function IOSTabs() {
           </NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
 
+        {/* @ai-start */}
         <NativeTabs.Trigger
-          name="(d.settings)"
+          name="(d.moments)"
           contentStyle={{
             ...appLayoutDirection,
-            backgroundColor: theme.colors.background,
+            backgroundColor: '#000000',
           }}>
           <NativeTabs.Trigger.Icon
-            sf={{default: 'gearshape', selected: 'gearshape.fill'}}
+            sf={{
+              default: 'play.square.stack',
+              selected: 'play.square.stack.fill',
+            }}
           />
           <NativeTabs.Trigger.Label>
-            {t('tabs.settings')}
+            {t('tabs.moments')}
           </NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
+        {/* @ai-end */}
       </NativeTabs>
     </View>
   );
@@ -172,6 +180,7 @@ function IOSTabs() {
 // @ai-start
 function AndroidTabs() {
   const {t} = useTranslation();
+  const onMoments = useOnMomentsTab();
   return (
     <View style={{flex: 1}}>
       <Tabs
@@ -194,12 +203,9 @@ function AndroidTabs() {
           name="(c.collection)"
           options={{title: t('tabs.collection')}}
         />
-        <Tabs.Screen
-          name="(d.settings)"
-          options={{title: t('tabs.settings')}}
-        />
+        <Tabs.Screen name="(d.moments)" options={{title: t('tabs.moments')}} />
       </Tabs>
-      <FloatingPlayer />
+      {!onMoments && <FloatingPlayer />}
     </View>
   );
 }
@@ -237,10 +243,7 @@ function TabletTabs() {
           name="(c.collection)"
           options={{title: t('tabs.collection')}}
         />
-        <Tabs.Screen
-          name="(d.settings)"
-          options={{title: t('tabs.settings')}}
-        />
+        <Tabs.Screen name="(d.moments)" options={{title: t('tabs.moments')}} />
       </Tabs>
     </View>
   );

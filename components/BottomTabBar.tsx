@@ -1,3 +1,4 @@
+import {Ionicons} from '@expo/vector-icons'; // @ai
 import React, {useCallback, useMemo} from 'react';
 import {View, Pressable, Text, StyleSheet} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
@@ -7,7 +8,6 @@ import {
   QuranIcon,
   SearchIcon,
   CollectionIcon,
-  SettingsIcon,
 } from '@/components/Icons';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {CommonActions} from 'expo-router/build/react-navigation/routers';
@@ -48,8 +48,16 @@ function getIcon(
       return (
         <CollectionIcon filled={isFocused} color={color} size={iconSize} />
       );
-    case '(d.settings)':
-      return <SettingsIcon filled={isFocused} color={color} size={iconSize} />;
+    // @ai-start
+    case '(d.moments)':
+      return (
+        <Ionicons
+          name={isFocused ? 'play-circle' : 'play-circle-outline'}
+          color={color}
+          size={iconSize}
+        />
+      );
+    // @ai-end
     default:
       return null;
   }
@@ -158,8 +166,8 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({
             options.tabBarLabel !== undefined
               ? options.tabBarLabel
               : options.title !== undefined
-                ? options.title
-                : route.name;
+              ? options.title
+              : route.name;
 
           const isFocused = state.index === index;
 

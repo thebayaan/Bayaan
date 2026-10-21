@@ -3,23 +3,36 @@ import {create} from 'zustand';
 import {createJSONStorage, persist} from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+type Counts = Record<string, number>;
+
 interface MomentsState {
   /** Reciter id to how many of their moments were played. */
-  plays: Record<string, number>;
+  plays: Counts;
+  /** Reciter id to how many of their moments were swiped away quickly. */
+  skips: Counts;
+  /** Reciter id to how many of their moments were heard to the end. */
+  completes: Counts;
   recordPlay: (reciterId: string) => void;
+  recordSkip: (reciterId: string) => void;
+  recordComplete: (reciterId: string) => void;
+}
+
+function increment(counts: Counts, reciterId: string): Counts {
+  return {...counts, [reciterId]: (counts[reciterId] ?? 0) + 1};
 }
 
 export const useMomentsStore = create<MomentsState>()(
   persist(
     set => ({
       plays: {},
+      skips: {},
+      completes: {},
       recordPlay: (reciterId: string) =>
-        set(state => ({
-          plays: {
-            ...state.plays,
-            [reciterId]: (state.plays[reciterId] ?? 0) + 1,
-          },
-        })),
+        set(state => ({plays: increment(state.plays, reciterId)})),
+      recordSkip: (reciterId: string) =>
+        set(state => ({skips: increment(state.skips, reciterId)})),
+      recordComplete: (reciterId: string) =>
+        set(state => ({completes: increment(state.completes, reciterId)})),
     }),
     {
       name: 'moments-store',

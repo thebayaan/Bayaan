@@ -136,6 +136,77 @@ describe('AnalyticsService', () => {
       });
     });
 
+    // @ai-start
+    it('captures Moments events without counting them as listening', async () => {
+      const {analyticsService} = await loadService(undefined);
+      const posthog = makeFakePostHog();
+      analyticsService.setPostHogInstance(
+        posthog as unknown as Parameters<
+          typeof analyticsService.setPostHogInstance
+        >[0],
+      );
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const {localAggregationStore} = require('../LocalAggregationStore');
+
+      analyticsService.trackMomentsOpened({entry: 'preview'});
+      analyticsService.trackMomentEnded({
+        moment_id: 'r-1/rw-1/112:1-4',
+        reciter_id: 'r-1',
+        listened_ms: 12_000,
+        reason: 'completed',
+      });
+      analyticsService.trackMomentsSessionEnded({
+        cards_seen: 4,
+        duration_ms: 60_000,
+        conversions: 1,
+        new_reciters_seen: 3,
+      });
+
+      expect(posthog.capture).toHaveBeenCalledWith('moments_opened', {
+        entry: 'preview',
+      });
+      expect(posthog.capture).toHaveBeenCalledWith('moment_ended', {
+        moment_id: 'r-1/rw-1/112:1-4',
+        reciter_id: 'r-1',
+        listened_ms: 12_000,
+        reason: 'completed',
+      });
+      expect(posthog.capture).toHaveBeenCalledWith(
+        'moments_session_ended',
+        expect.objectContaining({conversions: 1}),
+      );
+      expect(posthog.capture).not.toHaveBeenCalledWith(
+        'meaningful_listen',
+        expect.anything(),
+      );
+      expect(localAggregationStore.addListeningTime).not.toHaveBeenCalled();
+      expect(
+        localAggregationStore.incrementMeaningfulListens,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('drops Moments events while opted out', async () => {
+      const {analyticsService, consentStore} = await loadService(undefined);
+      const posthog = makeFakePostHog();
+      analyticsService.setPostHogInstance(
+        posthog as unknown as Parameters<
+          typeof analyticsService.setPostHogInstance
+        >[0],
+      );
+      consentStore.getState().setAnalyticsEnabled(false);
+
+      analyticsService.trackMomentAction({
+        moment_id: 'r-1/rw-1/112:1-4',
+        action: 'favorite',
+        reciter_id: 'r-1',
+        new_reciter: true,
+        enabled: true,
+      });
+
+      expect(posthog.capture).not.toHaveBeenCalled();
+    });
+    // @ai-end
+
     it('silently no-ops when posthog has not been connected yet', async () => {
       const {analyticsService} = await loadService(undefined);
 
