@@ -39,6 +39,7 @@ interface MockPlayer {
   url: string | null;
   seekTo: jest.Mock;
   play: jest.Mock;
+  pause: jest.Mock;
   replace: jest.Mock;
   emit: (status: Record<string, unknown>) => void;
 }
@@ -139,6 +140,113 @@ describe('MomentsAudioService with a cached clip', () => {
     expect(momentsAudioService.getState()).toMatchObject({
       key: 'card-1',
       positionMs: 125_000,
+    });
+  });
+});
+
+describe('MomentsAudioService across swipes', () => {
+  const source = (n: number) => ({
+    key: `card-${n}`,
+    url: `https://audio.example.test/${n}.mp3`,
+    startMs: 10_000,
+    endMs: 20_000,
+  });
+  const playerFor = (n: number) => players.find(p => p.url === source(n).url)!;
+
+  /** Plays card 1 and loads cards 2 (next) and 0 (previous) behind it. */
+  async function start() {
+    momentsAudioService.play(source(1));
+    momentsAudioService.preload(source(2), source(0));
+    players.forEach(p => p.emit(status(0)));
+    await flush();
+    playerFor(1).emit(status(10.1));
+  }
+
+  it('loads both neighbors into the idle players', async () => {
+    await start();
+    expect(players).toHaveLength(3);
+    expect(players.map(p => p.url).sort()).toEqual(
+      [0, 1, 2].map(n => source(n).url).sort(),
+    );
+    expect(playerFor(0).seekTo).toHaveBeenLastCalledWith(10);
+    expect(playerFor(2).seekTo).toHaveBeenLastCalledWith(10);
+    expect(playerFor(0).play).not.toHaveBeenCalled();
+    expect(playerFor(2).play).not.toHaveBeenCalled();
+  });
+
+  it('starts a waiting neighbor at once, without a seek', async () => {
+    await start();
+    const next = playerFor(2);
+    const seeks = next.seekTo.mock.calls.length;
+    momentsAudioService.play(source(2));
+    expect(next.play).toHaveBeenCalledTimes(1);
+    expect(next.seekTo).toHaveBeenCalledTimes(seeks);
+    expect(playerFor(1).pause).toHaveBeenCalled();
+    expect(momentsAudioService.getState()).toMatchObject({
+      key: 'card-2',
+      playing: true,
+    });
+  });
+
+  it('keeps the card swiped away loaded and rewinds it', async () => {
+    await start();
+    playerFor(1).emit(status(15));
+    momentsAudioService.play(source(2));
+    expect(playerFor(1).seekTo).toHaveBeenLastCalledWith(10);
+    momentsAudioService.preload(source(3), source(1));
+    // The new next card replaces card 0, not card 1.
+    expect(players.find(p => p.url === source(0).url)).toBeUndefined();
+    expect(playerFor(1)).toBeDefined();
+  });
+
+  it('replays a finished moment from the start when swiped back to', async () => {
+    const ended = jest.fn();
+    const off = momentsAudioService.onEnded(ended);
+    await start();
+    playerFor(1).emit(status(20));
+    expect(ended).toHaveBeenCalledTimes(1);
+
+    momentsAudioService.play(source(2));
+    await flush();
+    const first = playerFor(1);
+    expect(first.seekTo).toHaveBeenLastCalledWith(10);
+
+    momentsAudioService.play(source(1));
+    expect(first.play).toHaveBeenCalledTimes(2);
+    // A last status from before the rewind must not end it again.
+    first.emit(status(20, {didJustFinish: true}));
+    expect(ended).toHaveBeenCalledTimes(1);
+    first.emit(status(0));
+    await flush();
+    first.emit(status(10.2));
+    expect(momentsAudioService.getState()).toMatchObject({
+      key: 'card-1',
+      positionMs: 10_200,
+    });
+    off();
+  });
+
+  it('does not start anything twice when a seek lands after a swipe', async () => {
+    await start();
+    momentsAudioService.play(source(2));
+    playerFor(2).emit(status(12));
+    let resolveSeek: () => void = () => undefined;
+    playerFor(2).seekTo.mockImplementationOnce(
+      () => new Promise<void>(r => (resolveSeek = r)),
+    );
+    // Leaving card 2 rewinds it, and that seek hangs.
+    momentsAudioService.play(source(1));
+    // Back to card 2 (it waits for the rewind), then on to card 0.
+    momentsAudioService.play(source(2));
+    momentsAudioService.play(source(0));
+    const plays = playerFor(2).play.mock.calls.length;
+    resolveSeek();
+    await flush();
+    expect(playerFor(2).play).toHaveBeenCalledTimes(plays);
+    expect(playerFor(0).play).toHaveBeenCalledTimes(1);
+    expect(momentsAudioService.getState()).toMatchObject({
+      key: 'card-0',
+      playing: true,
     });
   });
 });

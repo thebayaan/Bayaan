@@ -12,10 +12,15 @@
  * of the service stay surah positions either way, so captions and seeking do
  * not care which file is playing. A clip that fails to load falls back to its
  * `fallback` source (the seek-into-surah one).
+ *
+ * There are three players: the card on screen and both neighbors, each idle
+ * one waiting at its start. A card that was swiped away is rewound in the
+ * background, so swiping back replays it from the top at once.
  */
 
 import {createAudioPlayer, AudioPlayer, AudioStatus} from 'expo-audio';
 import {audioCoordinator} from '@/services/audio/AudioCoordinator';
+import {planPreload} from './feedPlayback';
 
 type EventSubscription = {remove(): void};
 
@@ -51,10 +56,19 @@ interface Slot {
   ended: boolean;
   /** A position inside the moment has been seen since the last cue. */
   confirmed: boolean;
+  /** Cued and not played or seeked since, so it can start without a seek. */
+  atStart: boolean;
+  /** When it last became active or loaded, to pick which one to reuse. */
+  usedAt: number;
 }
 
 /** How often the players emit status updates (ms) */
 const STATUS_UPDATE_INTERVAL = 100;
+
+/** The card on screen, the next one and the previous one. */
+const SLOT_COUNT = 3;
+
+const noop = () => undefined;
 
 class MomentsAudioService {
   private static instance: MomentsAudioService;
@@ -62,6 +76,7 @@ class MomentsAudioService {
   private activeIndex = 0;
   private wantsPlay = false;
   private rate = 1;
+  private clock = 0;
   private state: MomentsPlaybackState = {
     key: null,
     positionMs: 0,
@@ -112,7 +127,7 @@ class MomentsAudioService {
 
   private ensureSlots(): void {
     if (this.slots.length) return;
-    for (let i = 0; i < 2; i++) {
+    for (let i = 0; i < SLOT_COUNT; i++) {
       const player = createAudioPlayer(null, {
         updateInterval: STATUS_UPDATE_INTERVAL,
       });
@@ -128,6 +143,8 @@ class MomentsAudioService {
         cueing: null,
         ended: false,
         confirmed: false,
+        atStart: false,
+        usedAt: 0,
       });
     }
   }
@@ -140,7 +157,20 @@ class MomentsAudioService {
     slot.source = source;
     slot.ready = false;
     slot.ended = false;
+    slot.confirmed = false;
+    slot.atStart = false;
+    slot.usedAt = ++this.clock;
     slot.player.replace({uri: source.url});
+  }
+
+  /** The idle player that was used longest ago. */
+  private leastRecentlyUsed(): number {
+    let best = -1;
+    this.slots.forEach((slot, i) => {
+      if (i === this.activeIndex) return;
+      if (best < 0 || slot.usedAt < this.slots[best].usedAt) best = i;
+    });
+    return best;
   }
 
   private cue(slot: Slot): Promise<void> {
@@ -152,6 +182,7 @@ class MomentsAudioService {
         slot.ready = true;
         slot.ended = false;
         slot.confirmed = false;
+        slot.atStart = true;
       })
       .finally(() => {
         slot.cueing = null;
@@ -190,10 +221,13 @@ class MomentsAudioService {
     const offset = slot.source.offsetMs ?? 0;
     // The seek landed on the previous source (replace had not finished
     // loading yet), so cue again once the new file is in. A clip starts at
-    // 0, so a stale position shows up past its end instead.
+    // 0, so a stale position shows up past its end instead. A moment that
+    // already finished can also report its old end once more after the
+    // rewind; that must replay, not end it again.
     if (
       positionMs < slot.source.startMs - 1000 ||
-      (!slot.confirmed && positionMs > slot.source.endMs + 1000)
+      (!slot.confirmed &&
+        (positionMs >= slot.source.endMs || status.didJustFinish))
     ) {
       slot.ready = false;
       return;
@@ -218,10 +252,20 @@ class MomentsAudioService {
 
   private startActive(): void {
     const slot = this.slots[this.activeIndex];
+    // Never two moments at once.
+    for (const other of this.slots) if (other !== slot) other.player.pause();
+    slot.atStart = false;
     audioCoordinator.momentsWillPlay();
     slot.player.setPlaybackRate(this.rate);
     slot.player.play();
     this.emit({playing: true});
+  }
+
+  /** Starts `slot` if it is still the active one (a seek may have raced a swipe). */
+  private startIfActive(slot: Slot): void {
+    if (this.wantsPlay && this.slots[this.activeIndex] === slot) {
+      this.startActive();
+    }
   }
 
   // ========== CONTROLS ==========
@@ -231,11 +275,15 @@ class MomentsAudioService {
     this.ensureSlots();
     const preloaded = this.slots.findIndex(s => s.source?.key === source.key);
     const previous = this.slots[this.activeIndex];
-    this.activeIndex =
-      preloaded >= 0 ? preloaded : (this.activeIndex + 1) % this.slots.length;
-    if (previous !== this.slots[this.activeIndex]) previous.player.pause();
-
+    this.activeIndex = preloaded >= 0 ? preloaded : this.leastRecentlyUsed();
     const slot = this.slots[this.activeIndex];
+    slot.usedAt = ++this.clock;
+    if (previous !== slot) {
+      previous.player.pause();
+      // Rewind it now, so swiping back to it starts at once from the top.
+      if (previous.ready) this.cue(previous).catch(noop);
+    }
+
     this.wantsPlay = true;
     this.emit({
       key: source.key,
@@ -247,19 +295,34 @@ class MomentsAudioService {
     if (preloaded >= 0 && slot.source?.url !== source.url) {
       // Preloaded from the other file (the clip finished downloading since).
       this.load(this.activeIndex, source);
+    } else if (preloaded >= 0 && slot.ready && slot.atStart && !slot.cueing) {
+      // Already waiting at its start: no seek, no wait.
+      this.startActive();
     } else if (preloaded >= 0 && slot.ready) {
-      this.cue(slot).then(() => this.wantsPlay && this.startActive());
+      this.cue(slot)
+        .then(() => this.startIfActive(slot))
+        .catch(noop);
     } else {
       this.load(this.activeIndex, source);
     }
   }
 
-  /** Loads the next moment into the idle player so it can start instantly. */
-  preload(source: MomentSource): void {
+  /**
+   * Loads neighbors into the idle players, most important first, so they
+   * can start instantly. Players already holding one of them keep it.
+   */
+  preload(...sources: (MomentSource | null | undefined)[]): void {
     this.ensureSlots();
-    const idle = (this.activeIndex + 1) % this.slots.length;
-    if (this.slots[this.activeIndex].source?.key === source.key) return;
-    this.load(idle, source);
+    const wanted = sources.filter((s): s is MomentSource => !!s);
+    const plan = planPreload(
+      this.slots.map(s => s.source?.key ?? null),
+      this.activeIndex,
+      wanted.map(s => s.key),
+    );
+    for (const {slot, key} of plan) {
+      const source = wanted.find(s => s.key === key);
+      if (source) this.load(slot, source);
+    }
   }
 
   pause(): void {
@@ -274,7 +337,9 @@ class MomentsAudioService {
     this.wantsPlay = true;
     if (!slot.ready) return;
     if (slot.ended) {
-      this.cue(slot).then(() => this.wantsPlay && this.startActive());
+      this.cue(slot)
+        .then(() => this.startIfActive(slot))
+        .catch(noop);
       return;
     }
     this.startActive();
@@ -290,6 +355,7 @@ class MomentsAudioService {
       slot.source.endMs - 250,
     );
     slot.ended = false;
+    slot.atStart = false;
     this.emit({positionMs: clamped + offset});
     await slot.player.seekTo(clamped / 1000);
   }
@@ -310,6 +376,7 @@ class MomentsAudioService {
     this.slots = [];
     this.activeIndex = 0;
     this.rate = 1;
+    this.clock = 0;
     this.emit({key: null, positionMs: 0, playing: false, buffering: false});
     audioCoordinator.sourceDidStop('moments');
   }

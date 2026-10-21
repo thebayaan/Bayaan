@@ -1,5 +1,5 @@
 // @ai-start
-import React, {useCallback, useEffect, useRef, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -60,6 +60,7 @@ import {
   signalForEnd,
 } from '@/services/moments/feedback';
 import {getAyahCopyText} from '@/services/moments/verses';
+import {PageTracker, samePlayback} from '@/services/moments/feedPlayback';
 
 // How long the options sheet takes to close before another sheet can open.
 const SHEET_CLOSE_MS = 400;
@@ -71,6 +72,105 @@ function toSource(card: MomentCardData) {
     : null;
   return momentSourceFor(card, local);
 }
+
+// The service only ever plays the active card, so this needs no binding.
+const seekActive = (positionMs: number) => momentsAudioService.seek(positionMs);
+
+/**
+ * Playback for one card: live while it is the active card, null otherwise.
+ * Only the active row subscribes, so status ticks re-render that card and
+ * nothing else (not the list, not the off-screen cards).
+ */
+function useCardPlayback(
+  cardKey: string,
+  active: boolean,
+): MomentsPlaybackState | null {
+  const [state, setState] = useState<MomentsPlaybackState | null>(null);
+  useEffect(() => {
+    if (!active) {
+      setState(null);
+      return;
+    }
+    return momentsAudioService.subscribe(next =>
+      setState(prev => (samePlayback(prev, next) ? prev : next)),
+    );
+  }, [active]);
+  // Until the service switches to this card, show it at its start.
+  return active && state?.key === cardKey ? state : null;
+}
+
+interface MomentActions {
+  togglePlay: () => void;
+  like: (card: MomentCardData) => void;
+  favorite: (card: MomentCardData) => void;
+  share: (card: MomentCardData) => void;
+  openMore: (card: MomentCardData, ayah: number) => void;
+  continueSurah: (card: MomentCardData) => void;
+  openProfile: (card: MomentCardData) => void;
+  holdSpeed: (card: MomentCardData, held: boolean) => void;
+}
+
+interface MomentRowProps {
+  card: MomentCardData;
+  active: boolean;
+  width: number;
+  height: number;
+  topInset: number;
+  bottomInset: number;
+  isLiked: boolean;
+  isFavorite: boolean;
+  actions: MomentActions;
+}
+
+/** Binds the screen's actions to one card, with stable callbacks. */
+const MomentRow = React.memo(function MomentRow({
+  card,
+  active,
+  actions,
+  ...rest
+}: MomentRowProps) {
+  const playback = useCardPlayback(card.key, active);
+  const onLike = useCallback(() => actions.like(card), [actions, card]);
+  const onToggleFavorite = useCallback(
+    () => actions.favorite(card),
+    [actions, card],
+  );
+  const onShare = useCallback(() => actions.share(card), [actions, card]);
+  const onMore = useCallback(
+    (ayah: number) => actions.openMore(card, ayah),
+    [actions, card],
+  );
+  const onContinue = useCallback(
+    () => actions.continueSurah(card),
+    [actions, card],
+  );
+  const onOpenProfile = useCallback(
+    () => actions.openProfile(card),
+    [actions, card],
+  );
+  const onHoldSpeed = useCallback(
+    (held: boolean) => actions.holdSpeed(card, held),
+    [actions, card],
+  );
+  return (
+    <MomentCard
+      card={card}
+      {...rest}
+      playback={playback}
+      onTogglePlay={actions.togglePlay}
+      onLike={onLike}
+      onToggleFavorite={onToggleFavorite}
+      onShare={onShare}
+      onMore={onMore}
+      onContinue={onContinue}
+      onOpenProfile={onOpenProfile}
+      onSeek={seekActive}
+      onHoldSpeed={onHoldSpeed}
+    />
+  );
+});
+
+const keyExtractor = (item: MomentCardData) => item.key;
 
 type LovedTracks = ReturnType<typeof useLovedStore.getState>['tracks'];
 
@@ -104,9 +204,6 @@ export function MomentsScreen({entry = 'tab'}: MomentsScreenProps) {
   const {width, height} = useWindowDimensions();
   const {cards, loading, ensureAhead, reorderTail} = useMomentsFeed();
   const [activeIndex, setActiveIndex] = useState(0);
-  const [playback, setPlayback] = useState<MomentsPlaybackState>(
-    momentsAudioService.getState(),
-  );
   const listRef = useRef<FlatList<MomentCardData>>(null);
   const activeIndexRef = useRef(0);
   const cardsRef = useRef(cards);
@@ -114,6 +211,8 @@ export function MomentsScreen({entry = 'tab'}: MomentsScreenProps) {
   const trackerRef = useRef<MomentsSessionTracker | null>(null);
   // Session-only weight per reciter from skips, finishes and taps.
   const adjustmentsRef = useRef<FeedAdjustments>({});
+  const pagerRef = useRef(new PageTracker(height, cards.length));
+  pagerRef.current.setLayout(height, cards.length);
 
   const recordPlay = useMomentsStore(s => s.recordPlay);
   const lovedTracks = useLovedStore(s => s.tracks);
@@ -162,18 +261,30 @@ export function MomentsScreen({entry = 'tab'}: MomentsScreenProps) {
   useEffect(
     () =>
       momentsAudioService.subscribe(state => {
-        setPlayback(state);
         trackerRef.current?.progress(state);
       }),
     [],
   );
   useEffect(() => () => momentsAudioService.release(), []);
 
-  // Play the card on screen and load the next one behind it.
+  // Load both neighbors, the next one first, so either swipe starts at once.
+  const preloadNeighbors = useCallback((index: number) => {
+    const next = cardsRef.current[index + 1];
+    const previous = cardsRef.current[index - 1];
+    momentsAudioService.preload(
+      next && toSource(next),
+      previous && toSource(previous),
+    );
+  }, []);
+
+  // Play the card on screen and load its neighbors.
   useEffect(() => {
     if (!activeCard) return;
     handleCardEnded(trackerRef.current?.activate(activeCard, activeIndex));
-    momentsAudioService.play(toSource(activeCard));
+    // A swipe already started it the moment the page was decided.
+    if (momentsAudioService.getState().key !== activeCard.key) {
+      momentsAudioService.play(toSource(activeCard));
+    }
     // Cards can finish loading after the user has left the tab.
     if (!visibleRef.current) {
       momentsAudioService.pause();
@@ -181,8 +292,7 @@ export function MomentsScreen({entry = 'tab'}: MomentsScreenProps) {
     }
     if (activeCard.clipFile) momentsClipCache.markPlayed(activeCard.clipFile);
     recordPlay(activeCard.reciter.id);
-    const next = cards[activeIndex + 1];
-    if (next) momentsAudioService.preload(toSource(next));
+    preloadNeighbors(activeIndex);
     // Only re-run when the card on screen changes, not when more cards load.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeCard?.key]);
@@ -190,10 +300,9 @@ export function MomentsScreen({entry = 'tab'}: MomentsScreenProps) {
   // Preload once the next card resolves after the current one started.
   const nextKey = cards[activeIndex + 1]?.key;
   useEffect(() => {
-    const next = cardsRef.current[activeIndexRef.current + 1];
-    if (next && playback.key) momentsAudioService.preload(toSource(next));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nextKey]);
+    if (!momentsAudioService.getState().key) return;
+    preloadNeighbors(activeIndexRef.current);
+  }, [nextKey, preloadNeighbors]);
 
   // Auto-advance when a moment ends.
   useEffect(
@@ -203,6 +312,8 @@ export function MomentsScreen({entry = 'tab'}: MomentsScreenProps) {
         if (cardsRef.current[index]?.key !== key) return;
         handleCardEnded(trackerRef.current?.complete(key));
         if (index + 1 < cardsRef.current.length) {
+          // Keep the scroll from switching back while it passes the old card.
+          pagerRef.current.expect(index + 1);
           listRef.current?.scrollToIndex({index: index + 1, animated: true});
           setActive(index + 1);
         }
@@ -245,20 +356,52 @@ export function MomentsScreen({entry = 'tab'}: MomentsScreenProps) {
   }, [visible, playerSheetOpen, isDarkMode]);
 
   const setActive = useCallback(
-    (index: number) => {
-      if (index === activeIndexRef.current) return;
+    (index: number | null) => {
+      if (index === null || index === activeIndexRef.current) return;
+      const card = cardsRef.current[index];
+      if (!card) return;
       activeIndexRef.current = index;
+      // Start it now rather than after the next render; the old card stops
+      // in the same call, so the two never overlap.
+      if (visibleRef.current) momentsAudioService.play(toSource(card));
       setActiveIndex(index);
       ensureAhead(index);
     },
     [ensureAhead],
   );
 
+  // Switch cards as soon as the page is decided, not when the list stops.
+  const handleBeginDrag = useCallback(() => {
+    pagerRef.current.beginDrag();
+  }, []);
+  const handleEndDrag = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const {contentOffset, targetContentOffset} = e.nativeEvent;
+      setActive(
+        pagerRef.current.endDrag(contentOffset.y, targetContentOffset?.y),
+      );
+    },
+    [setActive],
+  );
+  const handleScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      setActive(pagerRef.current.scroll(e.nativeEvent.contentOffset.y));
+    },
+    [setActive],
+  );
   const handleScrollEnd = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      setActive(Math.round(e.nativeEvent.contentOffset.y / height));
+      setActive(pagerRef.current.endMomentum(e.nativeEvent.contentOffset.y));
     },
-    [height, setActive],
+    [setActive],
+  );
+  const getItemLayout = useCallback(
+    (_: unknown, index: number) => ({
+      length: height,
+      offset: height * index,
+      index,
+    }),
+    [height],
   );
 
   const togglePlay = useCallback(() => {
@@ -401,26 +544,43 @@ export function MomentsScreen({entry = 'tab'}: MomentsScreenProps) {
     [t, openProfile, continueSurah, share, copyAyah],
   );
 
+  const actions = useMemo<MomentActions>(
+    () => ({
+      togglePlay,
+      like,
+      favorite,
+      share,
+      openMore,
+      continueSurah,
+      openProfile,
+      holdSpeed,
+    }),
+    [
+      togglePlay,
+      like,
+      favorite,
+      share,
+      openMore,
+      continueSurah,
+      openProfile,
+      holdSpeed,
+    ],
+  );
+
+  // Changes with layout, likes, favorites and the active card, never on a
+  // playback tick (the active row subscribes to that itself).
   const renderItem = useCallback(
     ({item, index}: {item: MomentCardData; index: number}) => (
-      <MomentCard
+      <MomentRow
         card={item}
+        active={index === activeIndex}
         width={width}
         height={height}
         topInset={insets.top}
         bottomInset={bottomInset}
-        playback={index === activeIndex ? playback : null}
         isLiked={isLoved(lovedTracks, item)}
         isFavorite={favoriteReciters.some(r => r.id === item.reciter.id)}
-        onTogglePlay={togglePlay}
-        onLike={() => like(item)}
-        onToggleFavorite={() => favorite(item)}
-        onShare={() => share(item)}
-        onMore={ayah => openMore(item, ayah)}
-        onContinue={() => continueSurah(item)}
-        onOpenProfile={() => openProfile(item)}
-        onSeek={ms => momentsAudioService.seek(ms)}
-        onHoldSpeed={held => holdSpeed(item, held)}
+        actions={actions}
       />
     ),
     [
@@ -429,17 +589,9 @@ export function MomentsScreen({entry = 'tab'}: MomentsScreenProps) {
       insets.top,
       bottomInset,
       activeIndex,
-      playback,
       lovedTracks,
       favoriteReciters,
-      togglePlay,
-      like,
-      favorite,
-      share,
-      openProfile,
-      continueSurah,
-      openMore,
-      holdSpeed,
+      actions,
     ],
   );
 
@@ -449,16 +601,16 @@ export function MomentsScreen({entry = 'tab'}: MomentsScreenProps) {
         <FlatList
           ref={listRef}
           data={cards}
-          keyExtractor={item => item.key}
+          keyExtractor={keyExtractor}
           renderItem={renderItem}
           pagingEnabled
           showsVerticalScrollIndicator={false}
           decelerationRate="fast"
-          getItemLayout={(_, index) => ({
-            length: height,
-            offset: height * index,
-            index,
-          })}
+          getItemLayout={getItemLayout}
+          onScrollBeginDrag={handleBeginDrag}
+          onScrollEndDrag={handleEndDrag}
+          onScroll={handleScroll}
+          scrollEventThrottle={32}
           onMomentumScrollEnd={handleScrollEnd}
           windowSize={3}
           initialNumToRender={2}
