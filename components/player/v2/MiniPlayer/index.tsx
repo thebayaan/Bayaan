@@ -12,11 +12,14 @@ import Color from 'color';
 import {useTranslation} from 'react-i18next';
 import {getTrackDisplayTitle, getTrackArtistDisplay} from '@/i18n/format';
 import {appLayoutDirection} from '@/utils/rtl';
+import {useOnMomentsFeed} from '@/hooks/useOnMomentsTab';
 // @ai-end
 
 // @ai-start
 function MiniPlayerInner() {
   const {theme} = useTheme();
+  // The feed is always black, whatever the theme.
+  const onMomentsFeed = useOnMomentsFeed();
   const {t} = useTranslation(['player', 'common']);
   const {play, pause} = usePlayerActions();
   const playbackState = usePlayerStore(state => state.playback.state);
@@ -53,7 +56,7 @@ function MiniPlayerInner() {
 
   if (stateRestoring || !currentTrack) return null;
 
-  const textColor = theme.colors.text;
+  const textColor = onMomentsFeed ? '#FFFFFF' : theme.colors.text;
 
   return (
     // a11y — plain View row (not a grouping Pressable) so the play/pause
@@ -64,7 +67,9 @@ function MiniPlayerInner() {
         onPress={handlePress}
         style={styles.body}
         accessibilityRole="button"
-        accessibilityLabel={`${getTrackDisplayTitle(currentTrack)}, ${getTrackArtistDisplay(currentTrack)}`}
+        accessibilityLabel={`${getTrackDisplayTitle(
+          currentTrack,
+        )}, ${getTrackArtistDisplay(currentTrack)}`}
         accessibilityHint={t('a11y.openPlayer')}>
         <ReciterImage
           reciterName={currentTrack.reciterName}

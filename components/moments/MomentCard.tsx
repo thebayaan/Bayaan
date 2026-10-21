@@ -323,7 +323,11 @@ function MomentCardView({
     <Animated.View style={[styles.card, {width, height}, followStyle]}>
       <GestureDetector gesture={gesture}>
         <View style={[styles.stage, {paddingTop: topInset + 56}]}>
-          <Text style={styles.arabic} numberOfLines={8} adjustsFontSizeToFit>
+          <Text
+            style={styles.arabic}
+            numberOfLines={8}
+            adjustsFontSizeToFit
+            minimumFontScale={0.5}>
             {arabic}
           </Text>
           <Text style={styles.reference}>
@@ -488,6 +492,7 @@ const styles = StyleSheet.create({
   },
   stage: {
     flex: 1,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: moderateScale(28),
@@ -501,8 +506,12 @@ const styles = StyleSheet.create({
     writingDirection: 'rtl',
     // Keep long ayat a comfortable measure on tablets.
     maxWidth: 640,
+    // Bounded by the stage, so a long ayah shrinks instead of pushing the
+    // reference line down into the caption.
+    flexShrink: 1,
   },
   reference: {
+    flexShrink: 0,
     marginTop: moderateScale(18),
     fontFamily: 'Manrope-Medium',
     fontSize: moderateScale(12),

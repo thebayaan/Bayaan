@@ -75,7 +75,9 @@ function IOSTabs() {
       <NativeTabs
         unstable_nativeProps={{direction: appDirection}}
         tintColor={onMoments ? '#FFFFFF' : theme.colors.text} // @ai
-        minimizeBehavior="onScrollDown"
+        // Paging the feed would shrink the tab bar and leave a gap above the
+        // mini player, so it stays full size on Moments.
+        minimizeBehavior={onMoments ? 'never' : 'onScrollDown'} // @ai
         blurEffect="none"
         backgroundColor="transparent">
         {hasTrack && !hideMiniPlayer && (
