@@ -262,3 +262,18 @@ describe('a narration wrapped in parentheses', () => {
     }
   });
 });
+
+describe('a dash typed as a hyphen', () => {
+  it('is shown as an en dash, and a hyphenated word is left alone', () => {
+    const pages = dhikrPages(
+      'كَلِمَةٌ كَلِمَةٌ',
+      'Who whispers into the breasts of mankind - From among the jinn and mankind, said Al-Bukhari.',
+    );
+    const text = pages
+      .flatMap(page => page.translation.map(r => r.text))
+      .join(' ');
+    expect(text).toContain('mankind – From');
+    expect(text).not.toContain(' - ');
+    expect(text).toContain('Al-Bukhari');
+  });
+});

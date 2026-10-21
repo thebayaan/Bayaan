@@ -207,6 +207,9 @@ function translationTokens(segments: readonly Segment[]): Token[] {
     if (next === 'then' || (next === 'and' && after === 'then')) {
       token.brk = Math.max(token.brk, 1);
     }
+    // A lone "-" between words is a dash typed as a hyphen: set it as an
+    // en dash, so "mankind - From among" never reads as a hyphenated word.
+    if (token.text === '-') token.text = '–';
   });
   return tokens;
 }
