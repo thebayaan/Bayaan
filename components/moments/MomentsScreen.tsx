@@ -45,7 +45,7 @@ import {lightHaptics} from '@/utils/haptics';
 import {useTheme} from '@/hooks/useTheme';
 import {useResponsive} from '@/hooks/useResponsive';
 import {useBottomInset} from '@/hooks/useBottomInset';
-import {useMainPlayerActive, useOnMomentsTab} from '@/hooks/useOnMomentsTab';
+import {useMainPlayerActive, useOnMomentsFeed} from '@/hooks/useOnMomentsTab';
 import {getSurahDisplayName} from '@/i18n/format';
 import {analyticsService} from '@/services/analytics/AnalyticsService';
 import type {MomentActionType, MomentsEntry} from '@/services/analytics/events';
@@ -98,7 +98,8 @@ export function MomentsScreen({entry = 'tab'}: MomentsScreenProps) {
   const tabInset = useBottomInset({ignorePlayer: !useMainPlayerActive()});
   const bottomInset = isTablet ? insets.bottom : tabInset;
   const resumeOnFocusRef = useRef(false);
-  const visible = useOnMomentsTab();
+  // Off the feed counts as away, including a profile pushed in this tab.
+  const visible = useOnMomentsFeed();
   const visibleRef = useRef(visible);
   const playerSheetOpen = usePlayerStore(s => s.sheetMode === 'full');
   const {width, height} = useWindowDimensions();
@@ -227,7 +228,12 @@ export function MomentsScreen({entry = 'tab'}: MomentsScreenProps) {
     tracker.start();
     const card = cardsRef.current[activeIndexRef.current];
     if (card) tracker.activate(card, activeIndexRef.current);
-    if (resumeOnFocusRef.current) momentsAudioService.resume();
+    // Don't take over if the main player started while away, e.g. a surah
+    // played from the reciter profile.
+    // Buffering counts too: a surah started just before back is still loading.
+    const mainState = usePlayerStore.getState().playback.state;
+    const mainActive = mainState === 'playing' || mainState === 'buffering';
+    if (resumeOnFocusRef.current && !mainActive) momentsAudioService.resume();
     return () => {
       resumeOnFocusRef.current = momentsAudioService.getState().playing;
       momentsAudioService.pause();
@@ -316,9 +322,11 @@ export function MomentsScreen({entry = 'tab'}: MomentsScreenProps) {
   const openProfile = useCallback(
     (card: MomentCardData) => {
       trackAction(card, 'profile');
-      momentsAudioService.pause();
+      // No pause here: leaving the feed pauses it and notes whether it was
+      // playing, so back resumes the same moment.
       router.push({
-        pathname: '/(tabs)/(a.home)/reciter/[id]',
+        // Inside the Moments stack, so back returns to this moment.
+        pathname: '/(tabs)/(d.moments)/reciter/[id]',
         params: {id: card.reciter.id},
       });
     },
