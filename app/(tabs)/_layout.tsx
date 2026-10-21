@@ -18,6 +18,7 @@ import {USE_GLASS} from '@/hooks/useGlassProps';
 import {useTranslation} from 'react-i18next';
 import {appDirection, appLayoutDirection, forceLTR, isRTL} from '@/utils/rtl';
 import {
+  MomentsTabTracker,
   useHideMiniPlayerOnMoments,
   useOnMomentsFeed,
 } from '@/hooks/useOnMomentsTab';
@@ -265,6 +266,7 @@ export default function TabsLayout() {
   return (
     <>
       <StatusBar style={isDarkMode ? 'light' : 'dark'} />
+      <MomentsTabTracker /* @ai */ />
       {isTablet ? <TabletTabs /> : USE_GLASS ? <IOSTabs /> : <AndroidTabs />}
     </>
   );

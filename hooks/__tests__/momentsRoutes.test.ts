@@ -12,8 +12,10 @@ jest.mock('@/services/player/store/playerStore', () => ({
     select({playback: {state: 'paused'}, setSheetMode: jest.fn()}),
 }));
 
+import {renderHook} from '@testing-library/react-hooks';
 import {reciterTabFor} from '@/hooks/useReciterNavigation';
 import {
+  MomentsTabTracker,
   useHideMiniPlayerOnMoments,
   useOnMomentsFeed,
   useOnMomentsTab,
@@ -36,18 +38,33 @@ describe('reciterTabFor', () => {
 });
 
 describe('Moments visibility', () => {
+  // The tracker writes the store from the segments; the hooks read it.
+  const at = (segments: string[]) => {
+    mockSegments = segments;
+    renderHook(() => MomentsTabTracker());
+    return renderHook(() => ({
+      tab: useOnMomentsTab(),
+      feed: useOnMomentsFeed(),
+      hideMini: useHideMiniPlayerOnMoments(),
+    })).result.current;
+  };
+
   it('counts only the feed as watching', () => {
-    mockSegments = ['(tabs)', '(d.moments)'];
-    expect(useOnMomentsFeed()).toBe(true);
-    expect(useHideMiniPlayerOnMoments()).toBe(true);
-
-    mockSegments = ['(tabs)', '(d.moments)', 'reciter', '[id]'];
-    expect(useOnMomentsTab()).toBe(true);
-    expect(useOnMomentsFeed()).toBe(false);
-    expect(useHideMiniPlayerOnMoments()).toBe(false);
-
-    mockSegments = ['(tabs)', '(a.home)'];
-    expect(useOnMomentsFeed()).toBe(false);
+    expect(at(['(tabs)', '(d.moments)'])).toEqual({
+      tab: true,
+      feed: true,
+      hideMini: true,
+    });
+    expect(at(['(tabs)', '(d.moments)', 'reciter', '[id]'])).toEqual({
+      tab: true,
+      feed: false,
+      hideMini: false,
+    });
+    expect(at(['(tabs)', '(a.home)'])).toEqual({
+      tab: false,
+      feed: false,
+      hideMini: false,
+    });
   });
 });
 // @ai-end
