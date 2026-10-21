@@ -299,7 +299,16 @@ export function MomentsScreen({entry = 'tab'}: MomentsScreenProps) {
         card.rewayat.id,
         Math.floor(card.clip.startMs / 1000),
       );
-      shareUrl(url, t('moments.shareMessage', {reciter: card.reciter.name}));
+      // Hold the moment while the share sheet is up, so it doesn't end and
+      // replay underneath it.
+      const wasPlaying = momentsAudioService.getState().playing;
+      momentsAudioService.pause();
+      shareUrl(
+        url,
+        t('moments.shareMessage', {reciter: card.reciter.name}),
+      ).finally(() => {
+        if (wasPlaying && visibleRef.current) momentsAudioService.resume();
+      });
     },
     [t, trackAction],
   );

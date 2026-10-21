@@ -208,9 +208,9 @@ export const MomentCard = React.memo(function MomentCard({
             {!!translation && (
               <Text
                 style={styles.caption}
-                numberOfLines={7}
+                numberOfLines={9}
                 adjustsFontSizeToFit
-                minimumFontScale={0.7}>
+                minimumFontScale={0.85}>
                 {translation}
               </Text>
             )}
