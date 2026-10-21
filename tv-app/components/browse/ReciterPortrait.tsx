@@ -7,11 +7,9 @@ import {colors} from '../../theme/colors';
 import {fonts} from '../../theme/typography';
 import {scale} from '../../theme/scale';
 import type {Reciter} from '../../types/reciter';
-/** The reciter's Arabic name from the catalog. */
-export function reciterArabicName(reciter: Reciter): string | null {
-  return reciter.name_arabic || null;
-}
+import {reciterArabicName} from '../../services/reciterNames';
 
+export {reciterArabicName};
 function hashString(value: string): number {
   let h = 0;
   for (let i = 0; i < value.length; i++) h = (h * 31 + value.charCodeAt(i)) | 0;
