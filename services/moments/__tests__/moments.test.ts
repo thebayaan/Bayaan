@@ -1,5 +1,5 @@
 // @ai-start
-import {buildMoment, ayahAt} from '../buildMoment';
+import {buildMoment, ayahAt, continueFromMs} from '../buildMoment';
 import {buildFeed, mulberry32, FeedCandidate} from '../buildFeed';
 import {MOMENT_PASSAGES, isWholeSurah, MomentPassage} from '../passages';
 import type {AyahTimestamp} from '@/types/timestamps';
@@ -56,6 +56,24 @@ describe('buildMoment', () => {
     expect(ayahAt(clip, 0)).toBe(1);
     expect(ayahAt(clip, 6_500)).toBe(2);
     expect(ayahAt(clip, 16_999)).toBe(4);
+  });
+});
+
+describe('continueFromMs', () => {
+  const clip = buildMoment(ikhlas, timestamps(112, [4, 3, 3, 5]))!;
+
+  it('restarts the ayah that is playing', () => {
+    expect(continueFromMs(clip, 2_000)).toBe(2_000);
+    expect(continueFromMs(clip, 7_500)).toBe(6_000);
+    expect(continueFromMs(clip, 16_900)).toBe(12_000);
+  });
+
+  it('moves on to the next ayah once the moment has finished', () => {
+    expect(continueFromMs(clip, 17_000)).toBe(17_000);
+  });
+
+  it('starts after the moment when nothing is playing', () => {
+    expect(continueFromMs(clip, null)).toBe(17_000);
   });
 });
 

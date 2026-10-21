@@ -20,6 +20,7 @@ import {useTranslation} from 'react-i18next';
 import {SheetManager} from 'react-native-actions-sheet';
 import * as Clipboard from 'expo-clipboard';
 import {MomentCard} from './MomentCard';
+import {continueFromMs} from '@/services/moments/buildMoment';
 import {
   momentsAudioService,
   MomentsPlaybackState,
@@ -323,10 +324,15 @@ export function MomentsScreen({entry = 'tab'}: MomentsScreenProps) {
       giveFeedback(card.reciter.id, 'positive');
       momentsAudioService.pause();
       const track = await createTrack(card.reciter, surah, card.rewayat.id);
-      // Pick up right where the moment stopped, or from the top when the
-      // moment was the whole surah or the user asked for the full surah.
+      // Restart the ayah that was playing (or the next one once the moment
+      // finished), or start from the top when the moment was the whole surah
+      // or the user asked for the full surah.
+      const state = momentsAudioService.getState();
+      const positionMs = state.key === card.key ? state.positionMs : null;
       const startSec =
-        fromStart || isWholeSurah(card.passage) ? 0 : card.clip.endMs / 1000;
+        fromStart || isWholeSurah(card.passage)
+          ? 0
+          : continueFromMs(card.clip, positionMs) / 1000;
       await usePlayerStore.getState().updateQueue([track], 0, startSec);
       expandPlayerSheet();
     },

@@ -64,4 +64,18 @@ export function ayahAt(clip: MomentClip, positionMs: number): number {
   }
   return current;
 }
+
+/**
+ * Where Continue should pick up in the surah file. Mid-moment it restarts the
+ * ayah that is playing, so tapping Continue never skips the rest of an ayah.
+ * Once the moment has played to the end, it starts with the next ayah.
+ */
+export function continueFromMs(
+  clip: MomentClip,
+  positionMs: number | null,
+): number {
+  if (positionMs === null || positionMs >= clip.endMs) return clip.endMs;
+  const ayah = ayahAt(clip, positionMs);
+  return clip.ayat.find(a => a.ayah === ayah)?.startMs ?? clip.endMs;
+}
 // @ai-end
