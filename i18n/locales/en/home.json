@@ -257,6 +257,9 @@
     "like": "Like",
     "share": "Share",
     "more": "More",
+    "goToReciter": "Go to reciter",
+    "copyAyah": "Copy ayah text",
+    "ayahCopied": "Ayah copied",
     "shareMessage": "Listen to {{reciter}} on Bayaan",
     "emptyTitle": "No moments yet",
     "emptyBody": "Moments need reciters with ayah timings. Check your connection and try again."

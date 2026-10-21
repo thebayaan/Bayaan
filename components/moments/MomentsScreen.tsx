@@ -17,6 +17,8 @@ import {StatusBar} from 'expo-status-bar';
 import {Ionicons} from '@expo/vector-icons';
 import {moderateScale} from 'react-native-size-matters';
 import {useTranslation} from 'react-i18next';
+import {SheetManager} from 'react-native-actions-sheet';
+import * as Clipboard from 'expo-clipboard';
 import {MomentCard} from './MomentCard';
 import {
   momentsAudioService,
@@ -37,6 +39,20 @@ import {createTrack} from '@/utils/track';
 import {recitationShareUrl, shareUrl} from '@/utils/shareUtils';
 import {showToast} from '@/utils/toastUtils';
 import {lightHaptics} from '@/utils/haptics';
+import {getSurahDisplayName} from '@/i18n/format';
+import {analyticsService} from '@/services/analytics/AnalyticsService';
+import type {MomentActionType, MomentsEntry} from '@/services/analytics/events';
+import {
+  EndedMoment,
+  MomentsSessionTracker,
+} from '@/services/moments/momentsAnalytics';
+import {
+  applyFeedback,
+  FeedAdjustments,
+  FeedbackSignal,
+  signalForEnd,
+} from '@/services/moments/feedback';
+import {getAyahCopyText} from '@/services/moments/verses';
 
 // Expanding during the navigation transition gets cancelled by the sheet.
 const CONTINUE_EXPAND_DELAY_MS = 400;
@@ -50,12 +66,28 @@ function toSource(card: MomentCardData) {
   };
 }
 
-export function MomentsScreen() {
+type LovedTracks = ReturnType<typeof useLovedStore.getState>['tracks'];
+
+function isLoved(tracks: LovedTracks, card: MomentCardData): boolean {
+  return tracks.some(
+    l =>
+      l.reciterId === card.reciter.id &&
+      l.surahId === String(card.passage.surah) &&
+      l.rewayatId === card.rewayat.id,
+  );
+}
+
+interface MomentsScreenProps {
+  /** Where Moments was opened from, for analytics. */
+  entry?: MomentsEntry;
+}
+
+export function MomentsScreen({entry = 'preview'}: MomentsScreenProps) {
   const {t} = useTranslation('home');
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const {width, height} = useWindowDimensions();
-  const {cards, loading, ensureAhead} = useMomentsFeed();
+  const {cards, loading, ensureAhead, reorderTail} = useMomentsFeed();
   const [activeIndex, setActiveIndex] = useState(0);
   const [playback, setPlayback] = useState<MomentsPlaybackState>(
     momentsAudioService.getState(),
@@ -64,6 +96,9 @@ export function MomentsScreen() {
   const activeIndexRef = useRef(0);
   const cardsRef = useRef(cards);
   cardsRef.current = cards;
+  const trackerRef = useRef<MomentsSessionTracker | null>(null);
+  // Session-only weight per reciter from skips, finishes and taps.
+  const adjustmentsRef = useRef<FeedAdjustments>({});
 
   const recordPlay = useMomentsStore(s => s.recordPlay);
   const lovedTracks = useLovedStore(s => s.tracks);
@@ -75,12 +110,69 @@ export function MomentsScreen() {
 
   const activeCard = cards[activeIndex];
 
-  useEffect(() => momentsAudioService.subscribe(setPlayback), []);
+  // One analytics session per mount of the screen.
+  useEffect(() => {
+    const tracker = new MomentsSessionTracker({
+      entry,
+      priorPlays: useMomentsStore.getState().plays,
+      sink: analyticsService,
+    });
+    trackerRef.current = tracker;
+    tracker.start();
+    return () => {
+      tracker.close();
+      trackerRef.current = null;
+    };
+  }, [entry]);
+
+  const giveFeedback = useCallback(
+    (reciterId: string, signal: FeedbackSignal) => {
+      adjustmentsRef.current = applyFeedback(
+        adjustmentsRef.current,
+        reciterId,
+        signal,
+      );
+      reorderTail(adjustmentsRef.current);
+    },
+    [reorderTail],
+  );
+
+  // A quick skip or a finish moves the reciter's weight for this session.
+  const handleCardEnded = useCallback(
+    (ended: EndedMoment | null | undefined) => {
+      if (!ended) return;
+      const signal = signalForEnd(ended.reason, ended.listenedMs);
+      if (!signal) return;
+      const reciterId = ended.card.reciter.id;
+      const store = useMomentsStore.getState();
+      if (signal === 'skip') store.recordSkip(reciterId);
+      else store.recordComplete(reciterId);
+      giveFeedback(reciterId, signal);
+    },
+    [giveFeedback],
+  );
+
+  const trackAction = useCallback(
+    (card: MomentCardData, action: MomentActionType, enabled?: boolean) => {
+      trackerRef.current?.action(card, action, enabled);
+    },
+    [],
+  );
+
+  useEffect(
+    () =>
+      momentsAudioService.subscribe(state => {
+        setPlayback(state);
+        trackerRef.current?.progress(state);
+      }),
+    [],
+  );
   useEffect(() => () => momentsAudioService.release(), []);
 
   // Play the card on screen and load the next one behind it.
   useEffect(() => {
     if (!activeCard) return;
+    handleCardEnded(trackerRef.current?.activate(activeCard, activeIndex));
     momentsAudioService.play(toSource(activeCard));
     recordPlay(activeCard.reciter.id);
     const next = cards[activeIndex + 1];
@@ -103,6 +195,7 @@ export function MomentsScreen() {
       momentsAudioService.onEnded(key => {
         const index = activeIndexRef.current;
         if (cardsRef.current[index]?.key !== key) return;
+        handleCardEnded(trackerRef.current?.complete(key));
         if (index + 1 < cardsRef.current.length) {
           listRef.current?.scrollToIndex({index: index + 1, animated: true});
           setActive(index + 1);
@@ -144,21 +237,30 @@ export function MomentsScreen() {
   const like = useCallback(
     (card: MomentCardData) => {
       lightHaptics();
+      const liking = !isLoved(useLovedStore.getState().tracks, card);
       toggleLoved(card.reciter.id, String(card.passage.surah), card.rewayat.id);
+      trackAction(card, 'like', liking);
+      if (liking) giveFeedback(card.reciter.id, 'positive');
     },
-    [toggleLoved],
+    [toggleLoved, trackAction, giveFeedback],
   );
 
   const favorite = useCallback(
     (card: MomentCardData) => {
       lightHaptics();
+      const adding = !useFavoriteRecitersStore
+        .getState()
+        .favoriteReciters.some(r => r.id === card.reciter.id);
       toggleFavoriteReciter(card.reciter.id);
+      trackAction(card, 'favorite', adding);
+      if (adding) giveFeedback(card.reciter.id, 'positive');
     },
-    [toggleFavoriteReciter],
+    [toggleFavoriteReciter, trackAction, giveFeedback],
   );
 
   const share = useCallback(
     (card: MomentCardData) => {
+      trackAction(card, 'share');
       const url = recitationShareUrl(
         card.reciter.slug ?? card.reciter.id,
         card.passage.surah,
@@ -167,36 +269,92 @@ export function MomentsScreen() {
       );
       shareUrl(url, t('moments.shareMessage', {reciter: card.reciter.name}));
     },
-    [t],
+    [t, trackAction],
   );
 
   const openProfile = useCallback(
     (card: MomentCardData) => {
+      trackAction(card, 'profile');
       momentsAudioService.pause();
       router.push({
         pathname: '/(tabs)/(a.home)/reciter/[id]',
         params: {id: card.reciter.id},
       });
     },
-    [router],
+    [router, trackAction],
   );
 
   const continueSurah = useCallback(
-    async (card: MomentCardData) => {
+    async (card: MomentCardData, fromStart = false) => {
       const surah = getSurahById(card.passage.surah);
       if (!surah) return;
+      trackAction(card, 'continue');
+      giveFeedback(card.reciter.id, 'positive');
       momentsAudioService.pause();
       const track = await createTrack(card.reciter, surah, card.rewayat.id);
       // Pick up right where the moment stopped, or from the top when the
-      // moment was the whole surah.
-      const startSec = isWholeSurah(card.passage) ? 0 : card.clip.endMs / 1000;
+      // moment was the whole surah or the user asked for the full surah.
+      const startSec =
+        fromStart || isWholeSurah(card.passage) ? 0 : card.clip.endMs / 1000;
       await usePlayerStore.getState().updateQueue([track], 0, startSec);
       // The player sheet sits under this full-screen route, so leave it
       // first and expand once the transition has settled.
       router.back();
       setTimeout(expandPlayerSheet, CONTINUE_EXPAND_DELAY_MS);
     },
-    [router],
+    [router, trackAction, giveFeedback],
+  );
+
+  const holdSpeed = useCallback(
+    (card: MomentCardData, held: boolean) => {
+      momentsAudioService.setRate(held ? 2 : 1);
+      if (held) trackAction(card, 'speed');
+    },
+    [trackAction],
+  );
+
+  const copyAyah = useCallback(
+    async (card: MomentCardData, ayah: number) => {
+      await Clipboard.setStringAsync(getAyahCopyText(card.passage.surah, ayah));
+      showToast(t('moments.ayahCopied'));
+    },
+    [t],
+  );
+
+  const openMore = useCallback(
+    (card: MomentCardData, ayah: number) => {
+      const surah = getSurahById(card.passage.surah);
+      const surahName = surah ? getSurahDisplayName(surah) : '';
+      SheetManager.show('collection-options', {
+        payload: {
+          title: card.reciter.name,
+          subtitle: `${surahName} ${card.passage.surah}:${ayah}`,
+          options: [
+            {
+              label: t('moments.goToReciter'),
+              icon: 'user',
+              onPress: () => openProfile(card),
+            },
+            {
+              label: t('moments.playInFull', {surah: surahName}),
+              icon: 'play',
+              onPress: () => continueSurah(card, true),
+            },
+            {
+              label: t('moments.share'),
+              icon: 'share',
+              onPress: () => share(card),
+            },
+            {
+              label: t('moments.copyAyah'),
+              icon: 'copy',
+              onPress: () => copyAyah(card, ayah),
+            },
+          ],
+        },
+      });
+    },
+    [t, openProfile, continueSurah, share, copyAyah],
   );
 
   const renderItem = useCallback(
@@ -208,22 +366,17 @@ export function MomentsScreen() {
         topInset={insets.top}
         bottomInset={insets.bottom}
         playback={index === activeIndex ? playback : null}
-        isLiked={lovedTracks.some(
-          l =>
-            l.reciterId === item.reciter.id &&
-            l.surahId === String(item.passage.surah) &&
-            l.rewayatId === item.rewayat.id,
-        )}
+        isLiked={isLoved(lovedTracks, item)}
         isFavorite={favoriteReciters.some(r => r.id === item.reciter.id)}
         onTogglePlay={togglePlay}
         onLike={() => like(item)}
         onToggleFavorite={() => favorite(item)}
         onShare={() => share(item)}
-        onMore={() => openProfile(item)}
+        onMore={ayah => openMore(item, ayah)}
         onContinue={() => continueSurah(item)}
         onOpenProfile={() => openProfile(item)}
         onSeek={ms => momentsAudioService.seek(ms)}
-        onHoldSpeed={held => momentsAudioService.setRate(held ? 2 : 1)}
+        onHoldSpeed={held => holdSpeed(item, held)}
       />
     ),
     [
@@ -241,6 +394,8 @@ export function MomentsScreen() {
       share,
       openProfile,
       continueSurah,
+      openMore,
+      holdSpeed,
     ],
   );
 
