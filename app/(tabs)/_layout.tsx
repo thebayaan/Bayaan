@@ -103,6 +103,26 @@ function IOSTabs() {
           </NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
 
+        {/* @ai-start */}
+        {/* Moments sits in the middle of the bar. */}
+        <NativeTabs.Trigger
+          name="(d.moments)"
+          contentStyle={{
+            ...appLayoutDirection,
+            backgroundColor: '#000000',
+          }}>
+          <NativeTabs.Trigger.Icon
+            sf={{
+              default: 'play.square.stack',
+              selected: 'play.square.stack.fill',
+            }}
+          />
+          <NativeTabs.Trigger.Label>
+            {t('tabs.moments')}
+          </NativeTabs.Trigger.Label>
+        </NativeTabs.Trigger>
+        {/* @ai-end */}
+
         {/*
           `role="search"` only reaches react-native-screens as
           `systemItem: 'search'`, the legacy UITabBarItem. The iOS 26 SDK gave
@@ -152,25 +172,6 @@ function IOSTabs() {
             {t('tabs.collection')}
           </NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
-
-        {/* @ai-start */}
-        <NativeTabs.Trigger
-          name="(d.moments)"
-          contentStyle={{
-            ...appLayoutDirection,
-            backgroundColor: '#000000',
-          }}>
-          <NativeTabs.Trigger.Icon
-            sf={{
-              default: 'play.square.stack',
-              selected: 'play.square.stack.fill',
-            }}
-          />
-          <NativeTabs.Trigger.Label>
-            {t('tabs.moments')}
-          </NativeTabs.Trigger.Label>
-        </NativeTabs.Trigger>
-        {/* @ai-end */}
       </NativeTabs>
     </View>
   );
@@ -198,12 +199,12 @@ function AndroidTabs() {
         tabBar={tabBarComponent}>
         <Tabs.Screen name="(a.home)" options={{title: t('tabs.home')}} />
         <Tabs.Screen name="(b.surahs)" options={{title: t('tabs.surahs')}} />
+        <Tabs.Screen name="(d.moments)" options={{title: t('tabs.moments')}} />
         <Tabs.Screen name="(b.search)" options={{title: t('tabs.search')}} />
         <Tabs.Screen
           name="(c.collection)"
           options={{title: t('tabs.collection')}}
         />
-        <Tabs.Screen name="(d.moments)" options={{title: t('tabs.moments')}} />
       </Tabs>
       {!onMoments && <FloatingPlayer />}
     </View>
@@ -238,12 +239,12 @@ function TabletTabs() {
         tabBar={tabletSidebarComponent}>
         <Tabs.Screen name="(a.home)" options={{title: t('tabs.home')}} />
         <Tabs.Screen name="(b.surahs)" options={{title: t('tabs.surahs')}} />
+        <Tabs.Screen name="(d.moments)" options={{title: t('tabs.moments')}} />
         <Tabs.Screen name="(b.search)" options={{title: t('tabs.search')}} />
         <Tabs.Screen
           name="(c.collection)"
           options={{title: t('tabs.collection')}}
         />
-        <Tabs.Screen name="(d.moments)" options={{title: t('tabs.moments')}} />
       </Tabs>
     </View>
   );
