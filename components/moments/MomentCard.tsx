@@ -1,11 +1,15 @@
 // @ai-start
-import React, {useCallback, useMemo} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {Gesture, GestureDetector} from 'react-native-gesture-handler';
 import Animated, {
+  FadeIn,
+  FadeOut,
+  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withSequence,
+  withSpring,
   withTiming,
 } from 'react-native-reanimated';
 import {Ionicons} from '@expo/vector-icons';
@@ -19,6 +23,21 @@ import type {MomentsPlaybackState} from '@/services/moments/MomentsAudioService'
 import {ayahAt} from '@/services/moments/buildMoment';
 import {isWholeSurah} from '@/services/moments/passages';
 import {getAyahArabic, getAyahTranslation} from '@/services/moments/verses';
+import {
+  cardGestureHitSlop,
+  classifySwipe,
+  DOUBLE_TAP_MAX_DELAY_MS,
+  DOUBLE_TAP_MAX_DISTANCE,
+  HOLD_MAX_DISTANCE,
+  HOLD_MIN_DURATION_MS,
+  HOLD_RATE,
+  isHoldZone,
+  SWIPE_ACTIVE_OFFSET_X,
+  SWIPE_FAIL_OFFSET_Y,
+  swipeFollowOffset,
+  TAP_MAX_DISTANCE,
+} from '@/services/moments/gestures';
+import {lightHaptics} from '@/utils/haptics';
 
 interface MomentCardProps {
   card: MomentCardData;
@@ -44,6 +63,7 @@ interface MomentCardProps {
 const WHITE = '#FFFFFF';
 const MUTED = 'rgba(255,255,255,0.62)';
 const TRACK = 'rgba(255,255,255,0.22)';
+const HEART_SIZE = moderateScale(96);
 
 function RailButton({
   icon,
@@ -109,21 +129,65 @@ export const MomentCard = React.memo(function MomentCard({
   );
   const paused = playback !== null && !playback.playing && !playback.buffering;
 
-  // Heart that pops on double tap
+  // Heart that pops where the double tap landed
   const heartScale = useSharedValue(0);
+  const heartX = useSharedValue(0);
+  const heartY = useSharedValue(0);
+  const heartTilt = useSharedValue(0);
   const heartStyle = useAnimatedStyle(() => ({
     opacity: heartScale.value > 0 ? 1 : 0,
-    transform: [{scale: heartScale.value}],
+    left: heartX.value - HEART_SIZE / 2,
+    top: heartY.value - HEART_SIZE / 2,
+    transform: [{rotate: `${heartTilt.value}deg`}, {scale: heartScale.value}],
   }));
 
-  const handleDoubleTap = useCallback(() => {
-    heartScale.value = withSequence(
-      withTiming(1.2, {duration: 160}),
-      withTiming(1, {duration: 120}),
-      withTiming(0, {duration: 260}),
-    );
-    if (!isLiked) onLike();
-  }, [heartScale, isLiked, onLike]);
+  const handleDoubleTap = useCallback(
+    (x: number, y: number) => {
+      heartX.value = x;
+      heartY.value = y;
+      heartTilt.value = Math.random() * 30 - 15;
+      heartScale.value = withSequence(
+        withTiming(1.2, {duration: 160}),
+        withTiming(1, {duration: 120}),
+        withTiming(0, {duration: 260}),
+      );
+      if (!isLiked) onLike();
+    },
+    [heartScale, heartX, heartY, heartTilt, isLiked, onLike],
+  );
+
+  // Hold an outer third for 2x; only a hold that sped up gets a release.
+  const [holding, setHolding] = useState(false);
+  const holdingRef = useRef(false);
+  const held = useSharedValue(false);
+  const startHold = useCallback(() => {
+    if (holdingRef.current) return;
+    holdingRef.current = true;
+    setHolding(true);
+    lightHaptics();
+    onHoldSpeed(true);
+  }, [onHoldSpeed]);
+  const endHold = useCallback(() => {
+    if (!holdingRef.current) return;
+    holdingRef.current = false;
+    setHolding(false);
+    onHoldSpeed(false);
+  }, [onHoldSpeed]);
+  // Don't leave the feed at 2x if the card unmounts mid-hold.
+  const onHoldSpeedRef = useRef(onHoldSpeed);
+  onHoldSpeedRef.current = onHoldSpeed;
+  useEffect(
+    () => () => {
+      if (holdingRef.current) onHoldSpeedRef.current(false);
+    },
+    [],
+  );
+
+  // The card slides a little with a leftward drag.
+  const followX = useSharedValue(0);
+  const followStyle = useAnimatedStyle(() => ({
+    transform: [{translateX: followX.value}],
+  }));
 
   const seekFromX = useCallback(
     (x: number) => {
@@ -134,40 +198,79 @@ export const MomentCard = React.memo(function MomentCard({
   );
 
   const gesture = useMemo(() => {
+    // Leave the header band to the profile and filter buttons.
+    const hitSlop = cardGestureHitSlop(topInset);
+    // Taps fail once the finger moves, so a vertical swipe only scrolls.
     const doubleTap = Gesture.Tap()
       .numberOfTaps(2)
+      .maxDelay(DOUBLE_TAP_MAX_DELAY_MS)
+      .maxDistance(DOUBLE_TAP_MAX_DISTANCE)
+      .hitSlop(hitSlop)
       .runOnJS(true)
-      .onEnd(handleDoubleTap);
-    const singleTap = Gesture.Tap().runOnJS(true).onEnd(onTogglePlay);
-    // Hold the left or right third for 2x, like Reels.
+      .onEnd((e, success) => {
+        if (success) handleDoubleTap(e.x, e.y);
+      });
+    const singleTap = Gesture.Tap()
+      .maxDistance(TAP_MAX_DISTANCE)
+      .hitSlop(hitSlop)
+      .runOnJS(true)
+      .onEnd((_e, success) => {
+        if (success) onTogglePlay();
+      });
+    // Hold the left or right third for 2x, like Reels. A hold in the middle
+    // fails right away, so a slow tap there still pauses. Runs on the UI
+    // thread, since only a worklet can fail a gesture by hand.
     const hold = Gesture.LongPress()
-      .minDuration(300)
-      .runOnJS(true)
-      .onStart(e => {
-        if (e.x < width / 3 || e.x > (width * 2) / 3) onHoldSpeed(true);
+      .minDuration(HOLD_MIN_DURATION_MS)
+      .maxDistance(HOLD_MAX_DISTANCE)
+      .hitSlop(hitSlop)
+      .onTouchesDown((e, manager) => {
+        const touch = e.allTouches[0];
+        if (touch && !isHoldZone(touch.x, width)) manager.fail();
       })
-      .onFinalize(() => onHoldSpeed(false));
-    // Drag left for the reciter's profile.
+      .onStart(e => {
+        if (!isHoldZone(e.x, width)) return;
+        held.value = true;
+        runOnJS(startHold)();
+      })
+      .onFinalize(() => {
+        if (!held.value) return;
+        held.value = false;
+        runOnJS(endHold)();
+      });
+    // Drag left for the reciter's profile. Runs on the UI thread so the card
+    // can follow the finger.
     const swipeLeft = Gesture.Pan()
-      .activeOffsetX(-30)
-      .failOffsetY([-15, 15])
-      .runOnJS(true)
-      .onEnd(e => {
-        // Only a clearly sideways drag, so a fast vertical flick that
-        // drifts left still just scrolls.
-        if (
-          e.translationX < -60 &&
-          Math.abs(e.translationY) < Math.abs(e.translationX) / 2
-        ) {
-          onOpenProfile();
+      .activeOffsetX(SWIPE_ACTIVE_OFFSET_X)
+      .failOffsetY([-SWIPE_FAIL_OFFSET_Y, SWIPE_FAIL_OFFSET_Y])
+      .hitSlop(hitSlop)
+      .onUpdate(e => {
+        followX.value = swipeFollowOffset(e.translationX);
+      })
+      .onEnd((e, success) => {
+        if (success && classifySwipe(e) === 'profile') {
+          runOnJS(onOpenProfile)();
         }
+      })
+      .onFinalize(() => {
+        followX.value = withSpring(0, {damping: 18, stiffness: 220});
       });
     return Gesture.Race(
       swipeLeft,
       hold,
       Gesture.Exclusive(doubleTap, singleTap),
     );
-  }, [width, handleDoubleTap, onTogglePlay, onHoldSpeed, onOpenProfile]);
+  }, [
+    width,
+    topInset,
+    followX,
+    held,
+    handleDoubleTap,
+    onTogglePlay,
+    startHold,
+    endHold,
+    onOpenProfile,
+  ]);
 
   const seekGesture = useMemo(
     () =>
@@ -180,7 +283,7 @@ export const MomentCard = React.memo(function MomentCard({
   );
 
   return (
-    <View style={[styles.card, {width, height}]}>
+    <Animated.View style={[styles.card, {width, height}, followStyle]}>
       <GestureDetector gesture={gesture}>
         <View style={[styles.stage, {paddingTop: topInset + 56}]}>
           <Text style={styles.arabic} numberOfLines={8} adjustsFontSizeToFit>
@@ -197,8 +300,24 @@ export const MomentCard = React.memo(function MomentCard({
           <Animated.View
             style={[styles.heart, heartStyle]}
             pointerEvents="none">
-            <Ionicons name="heart" size={moderateScale(96)} color="#FF3B5C" />
+            <Ionicons name="heart" size={HEART_SIZE} color="#FF3B5C" />
           </Animated.View>
+          {holding && (
+            <Animated.View
+              entering={FadeIn.duration(120)}
+              exiting={FadeOut.duration(120)}
+              style={[styles.speedBadge, {top: topInset + 64}]}
+              pointerEvents="none">
+              <Ionicons
+                name="play-forward"
+                size={moderateScale(12)}
+                color={WHITE}
+              />
+              <Text style={styles.speedText}>
+                {t('moments.holdRate', {rate: HOLD_RATE})}
+              </Text>
+            </Animated.View>
+          )}
         </View>
       </GestureDetector>
 
@@ -284,7 +403,7 @@ export const MomentCard = React.memo(function MomentCard({
           </View>
         </GestureDetector>
       </View>
-    </View>
+    </Animated.View>
   );
 });
 
@@ -323,6 +442,21 @@ const styles = StyleSheet.create({
   },
   heart: {
     position: 'absolute',
+  },
+  speedBadge: {
+    position: 'absolute',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: moderateScale(4),
+    paddingHorizontal: moderateScale(10),
+    paddingVertical: moderateScale(4),
+    borderRadius: moderateScale(12),
+    backgroundColor: 'rgba(255,255,255,0.16)',
+  },
+  speedText: {
+    fontFamily: 'Manrope-Bold',
+    fontSize: moderateScale(12),
+    color: WHITE,
   },
   bottom: {
     paddingHorizontal: moderateScale(16),

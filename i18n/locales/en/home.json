@@ -260,6 +260,7 @@
     "goToReciter": "Go to reciter",
     "copyAyah": "Copy ayah text",
     "ayahCopied": "Ayah copied",
+    "holdRate": "{{rate}}x",
     "shareMessage": "Listen to {{reciter}} on Bayaan",
     "emptyTitle": "No moments yet",
     "emptyBody": "Moments need reciters with ayah timings. Check your connection and try again."
