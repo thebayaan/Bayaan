@@ -39,6 +39,7 @@ import {
   TAP_MAX_DISTANCE,
 } from '@/services/moments/gestures';
 import {lightHaptics} from '@/utils/haptics';
+import {MomentScrubber} from './MomentScrubber';
 
 interface MomentCardProps {
   card: MomentCardData;
@@ -63,7 +64,6 @@ interface MomentCardProps {
 
 const WHITE = '#FFFFFF';
 const MUTED = 'rgba(255,255,255,0.62)';
-const TRACK = 'rgba(255,255,255,0.22)';
 const HEART_SIZE = moderateScale(96);
 
 function RailButton({
@@ -115,7 +115,9 @@ function MomentCardView({
   const surahName = surah ? getSurahDisplayName(surah) : '';
 
   const positionMs = playback?.positionMs ?? clip.startMs;
-  const ayah = ayahAt(clip, positionMs);
+  // The caption follows the finger while scrubbing.
+  const [scrubAyah, setScrubAyah] = useState<number | null>(null);
+  const ayah = scrubAyah ?? ayahAt(clip, positionMs);
   const arabic = useMemo(
     () => getAyahArabic(passage.surah, ayah),
     [passage.surah, ayah],
@@ -123,10 +125,6 @@ function MomentCardView({
   const translation = useMemo(
     () => getAyahTranslation(passage.surah, ayah),
     [passage.surah, ayah],
-  );
-  const progress = Math.min(
-    1,
-    Math.max(0, (positionMs - clip.startMs) / (clip.endMs - clip.startMs)),
   );
   const paused = playback !== null && !playback.playing && !playback.buffering;
 
@@ -202,14 +200,6 @@ function MomentCardView({
     transform: [{translateX: followX.value}],
   }));
 
-  const seekFromX = useCallback(
-    (x: number) => {
-      const ratio = Math.min(1, Math.max(0, x / width));
-      onSeek(clip.startMs + ratio * (clip.endMs - clip.startMs));
-    },
-    [width, clip, onSeek],
-  );
-
   const gesture = useMemo(() => {
     // Leave the header band to the profile and filter buttons.
     const hitSlop = cardGestureHitSlop(topInset);
@@ -284,16 +274,6 @@ function MomentCardView({
     endHold,
     openProfile,
   ]);
-
-  const seekGesture = useMemo(
-    () =>
-      Gesture.Pan()
-        .minDistance(0)
-        .runOnJS(true)
-        .onBegin(e => seekFromX(e.x))
-        .onUpdate(e => seekFromX(e.x)),
-    [seekFromX],
-  );
 
   return (
     <Animated.View style={[styles.card, {width, height}, followStyle]}>
@@ -408,13 +388,14 @@ function MomentCardView({
           </View>
         </View>
 
-        <GestureDetector gesture={seekGesture}>
-          <View style={styles.seekArea}>
-            <View style={styles.track}>
-              <View style={[styles.fill, {width: `${progress * 100}%`}]} />
-            </View>
-          </View>
-        </GestureDetector>
+        <MomentScrubber
+          clip={clip}
+          positionMs={positionMs}
+          playing={!!playback?.playing}
+          enabled={playback !== null}
+          onSeek={onSeek}
+          onScrubAyah={setScrubAyah}
+        />
       </View>
     </Animated.View>
   );
@@ -555,21 +536,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Manrope-SemiBold',
     fontSize: moderateScale(11),
     color: WHITE,
-  },
-  seekArea: {
-    height: moderateScale(28),
-    justifyContent: 'center',
-    marginTop: moderateScale(8),
-  },
-  track: {
-    height: 2,
-    borderRadius: 1,
-    backgroundColor: TRACK,
-    overflow: 'hidden',
-  },
-  fill: {
-    height: 2,
-    backgroundColor: WHITE,
   },
 });
 // @ai-end
