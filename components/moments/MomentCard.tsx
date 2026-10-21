@@ -18,6 +18,7 @@ import type {MomentCardData} from '@/services/moments/useMomentsFeed';
 import type {MomentsPlaybackState} from '@/services/moments/MomentsAudioService';
 import {ayahAt} from '@/services/moments/buildMoment';
 import {isWholeSurah} from '@/services/moments/passages';
+import {cardPropsEqual} from '@/services/moments/feedPlayback';
 import {getAyahArabic, getAyahTranslation} from '@/services/moments/verses';
 
 interface MomentCardProps {
@@ -69,7 +70,7 @@ function RailButton({
   );
 }
 
-export const MomentCard = React.memo(function MomentCard({
+function MomentCardView({
   card,
   width,
   height,
@@ -286,7 +287,10 @@ export const MomentCard = React.memo(function MomentCard({
       </View>
     </View>
   );
-});
+}
+
+// A playback tick with nothing new for the card does not re-render it.
+export const MomentCard = React.memo(MomentCardView, cardPropsEqual);
 
 const styles = StyleSheet.create({
   card: {
