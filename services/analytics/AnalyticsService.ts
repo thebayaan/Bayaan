@@ -28,6 +28,13 @@ import {
   SearchPerformedProps,
   TranslationViewedProps,
   AppBackgroundedProps,
+  // @ai-start
+  MomentsOpenedProps,
+  MomentViewedProps,
+  MomentEndedProps,
+  MomentActionProps,
+  MomentsSessionEndedProps,
+  // @ai-end
 } from './events';
 import {localAggregationStore} from './LocalAggregationStore';
 import {MeaningfulListenTracker} from './MeaningfulListenTracker';
@@ -320,6 +327,32 @@ class AnalyticsServiceImpl {
   trackTranslationViewed(props: TranslationViewedProps): void {
     this.capture(ANALYTICS_EVENTS.TRANSLATION_VIEWED, {...props});
   }
+
+  // @ai-start
+  // --- Moments ---
+  // Capture only: clip listening must not feed MeaningfulListen or the local
+  // listening totals, which describe full-surah listening.
+
+  trackMomentsOpened(props: MomentsOpenedProps): void {
+    this.capture(ANALYTICS_EVENTS.MOMENTS_OPENED, {...props});
+  }
+
+  trackMomentViewed(props: MomentViewedProps): void {
+    this.capture(ANALYTICS_EVENTS.MOMENT_VIEWED, {...props});
+  }
+
+  trackMomentEnded(props: MomentEndedProps): void {
+    this.capture(ANALYTICS_EVENTS.MOMENT_ENDED, {...props});
+  }
+
+  trackMomentAction(props: MomentActionProps): void {
+    this.capture(ANALYTICS_EVENTS.MOMENT_ACTION, {...props});
+  }
+
+  trackMomentsSessionEnded(props: MomentsSessionEndedProps): void {
+    this.capture(ANALYTICS_EVENTS.MOMENTS_SESSION_ENDED, {...props});
+  }
+  // @ai-end
 
   // --- Lifecycle ---
 
