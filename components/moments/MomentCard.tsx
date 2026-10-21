@@ -129,6 +129,20 @@ export const MomentCard = React.memo(function MomentCard({
   );
   const paused = playback !== null && !playback.playing && !playback.buffering;
 
+  // The parent hands in new callbacks on every playback tick. The gestures
+  // read the latest ones from here, so they aren't rebuilt (and their UI
+  // thread worklets re-sent) ten times a second, or swapped mid-gesture.
+  const latest = useRef({
+    isLiked,
+    onLike,
+    onTogglePlay,
+    onOpenProfile,
+    onHoldSpeed,
+  });
+  latest.current = {isLiked, onLike, onTogglePlay, onOpenProfile, onHoldSpeed};
+  const togglePlay = useCallback(() => latest.current.onTogglePlay(), []);
+  const openProfile = useCallback(() => latest.current.onOpenProfile(), []);
+
   // Heart that pops where the double tap landed
   const heartScale = useSharedValue(0);
   const heartX = useSharedValue(0);
@@ -151,9 +165,9 @@ export const MomentCard = React.memo(function MomentCard({
         withTiming(1, {duration: 120}),
         withTiming(0, {duration: 260}),
       );
-      if (!isLiked) onLike();
+      if (!latest.current.isLiked) latest.current.onLike();
     },
-    [heartScale, heartX, heartY, heartTilt, isLiked, onLike],
+    [heartScale, heartX, heartY, heartTilt],
   );
 
   // Hold an outer third for 2x; only a hold that sped up gets a release.
@@ -165,20 +179,18 @@ export const MomentCard = React.memo(function MomentCard({
     holdingRef.current = true;
     setHolding(true);
     lightHaptics();
-    onHoldSpeed(true);
-  }, [onHoldSpeed]);
+    latest.current.onHoldSpeed(true);
+  }, []);
   const endHold = useCallback(() => {
     if (!holdingRef.current) return;
     holdingRef.current = false;
     setHolding(false);
-    onHoldSpeed(false);
-  }, [onHoldSpeed]);
+    latest.current.onHoldSpeed(false);
+  }, []);
   // Don't leave the feed at 2x if the card unmounts mid-hold.
-  const onHoldSpeedRef = useRef(onHoldSpeed);
-  onHoldSpeedRef.current = onHoldSpeed;
   useEffect(
     () => () => {
-      if (holdingRef.current) onHoldSpeedRef.current(false);
+      if (holdingRef.current) latest.current.onHoldSpeed(false);
     },
     [],
   );
@@ -215,7 +227,7 @@ export const MomentCard = React.memo(function MomentCard({
       .hitSlop(hitSlop)
       .runOnJS(true)
       .onEnd((_e, success) => {
-        if (success) onTogglePlay();
+        if (success) togglePlay();
       });
     // Hold the left or right third for 2x, like Reels. A hold in the middle
     // fails right away, so a slow tap there still pauses. Runs on the UI
@@ -249,7 +261,7 @@ export const MomentCard = React.memo(function MomentCard({
       })
       .onEnd((e, success) => {
         if (success && classifySwipe(e) === 'profile') {
-          runOnJS(onOpenProfile)();
+          runOnJS(openProfile)();
         }
       })
       .onFinalize(() => {
@@ -266,10 +278,10 @@ export const MomentCard = React.memo(function MomentCard({
     followX,
     held,
     handleDoubleTap,
-    onTogglePlay,
+    togglePlay,
     startHold,
     endHold,
-    onOpenProfile,
+    openProfile,
   ]);
 
   const seekGesture = useMemo(
