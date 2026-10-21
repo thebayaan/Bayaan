@@ -21,10 +21,11 @@ export function pageAt(
 /**
  * Decides the active page as early as it is known, so audio can switch
  * before the list stops moving:
- * - on release, when the platform gives the snap target (iOS), that page;
+ * - on release, when the platform gives the snap target (iOS), that page,
+ *   at most one page from where the drag began;
  * - during the snap or a programmatic scroll, the page the offset crosses
- *   into (never while the finger is still down, so hovering around the
- *   midpoint does not flip audio back and forth);
+ *   into while moving toward it (never while the finger is still down, and
+ *   never on a snap back, so audio does not flip back and forth);
  * - when momentum ends, the page the list landed on.
  * Each method returns the page to make active, or null to leave it as is.
  */
@@ -33,6 +34,10 @@ export class PageTracker {
   private target: number | null = null;
   private pageHeight: number;
   private count: number;
+  /** The last offset seen, to tell which way the list is moving. */
+  private lastOffset = 0;
+  /** The page the current drag started on. */
+  private dragStartPage = 0;
 
   constructor(pageHeight: number, count: number) {
     this.pageHeight = pageHeight;
@@ -44,16 +49,24 @@ export class PageTracker {
     this.count = count;
   }
 
-  beginDrag(): null {
+  beginDrag(offset?: number): null {
     this.dragging = true;
     this.target = null;
+    if (offset != null) this.lastOffset = offset;
+    this.dragStartPage = pageAt(this.lastOffset, this.pageHeight, this.count);
     return null;
   }
 
   endDrag(offset: number, targetOffset?: number | null): number | null {
     this.dragging = false;
+    this.lastOffset = offset;
     if (targetOffset != null) {
-      this.target = pageAt(targetOffset, this.pageHeight, this.count);
+      // Paging moves one page per swipe at most, whatever the target says.
+      const page = pageAt(targetOffset, this.pageHeight, this.count);
+      this.target = Math.min(
+        Math.max(page, this.dragStartPage - 1),
+        this.dragStartPage + 1,
+      );
       return this.target;
     }
     // Released right on a page: no snap will follow.
@@ -67,12 +80,20 @@ export class PageTracker {
   }
 
   scroll(offset: number): number | null {
+    const heading = offset - this.lastOffset;
+    this.lastOffset = offset;
     if (this.dragging || this.target !== null) return null;
-    return pageAt(offset, this.pageHeight, this.count);
+    const page = pageAt(offset, this.pageHeight, this.count);
+    const toPage = page * this.pageHeight - offset;
+    // Only a page the list is moving toward (or resting on): a snap back
+    // from just past the midpoint must not flip to the page it is leaving.
+    if (Math.abs(toPage) < 1 || toPage * heading > 0) return page;
+    return null;
   }
 
   endMomentum(offset: number): number {
     this.target = null;
+    this.lastOffset = offset;
     return pageAt(offset, this.pageHeight, this.count);
   }
 }

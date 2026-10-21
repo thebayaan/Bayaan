@@ -284,6 +284,10 @@ export function MomentsScreen({entry = 'tab'}: MomentsScreenProps) {
     // A swipe already started it the moment the page was decided.
     if (momentsAudioService.getState().key !== activeCard.key) {
       momentsAudioService.play(toSource(activeCard));
+    } else {
+      // It started before the tracker knew about it; catch the tracker up so
+      // the first moments of listening count.
+      trackerRef.current?.progress(momentsAudioService.getState());
     }
     // Cards can finish loading after the user has left the tab.
     if (!visibleRef.current) {
@@ -371,9 +375,12 @@ export function MomentsScreen({entry = 'tab'}: MomentsScreenProps) {
   );
 
   // Switch cards as soon as the page is decided, not when the list stops.
-  const handleBeginDrag = useCallback(() => {
-    pagerRef.current.beginDrag();
-  }, []);
+  const handleBeginDrag = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      pagerRef.current.beginDrag(e.nativeEvent.contentOffset.y);
+    },
+    [],
+  );
   const handleEndDrag = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       const {contentOffset, targetContentOffset} = e.nativeEvent;

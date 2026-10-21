@@ -43,9 +43,31 @@ describe('PageTracker', () => {
     const pager = new PageTracker(H, 5);
     pager.beginDrag();
     expect(pager.endDrag(200)).toBeNull();
-    expect(pager.scroll(350)).toBe(0);
+    expect(pager.scroll(350)).toBeNull();
     expect(pager.scroll(450)).toBe(1);
     expect(pager.endMomentum(H)).toBe(1);
+  });
+
+  it('does not flip while a snap falls back from past the midpoint', () => {
+    const pager = new PageTracker(H, 5);
+    pager.beginDrag(0);
+    pager.scroll(450);
+    expect(pager.endDrag(450)).toBeNull();
+    // Still nearer page 1, but heading back to page 0.
+    expect(pager.scroll(440)).toBeNull();
+    expect(pager.scroll(410)).toBeNull();
+    expect(pager.scroll(390)).toBe(0);
+    expect(pager.endMomentum(0)).toBe(0);
+  });
+
+  it('caps the snap target at one page from where the drag began', () => {
+    const pager = new PageTracker(H, 10);
+    pager.endMomentum(H * 4);
+    pager.beginDrag(H * 4);
+    expect(pager.endDrag(H * 4.3, H * 7)).toBe(5);
+    pager.endMomentum(H * 5);
+    pager.beginDrag(H * 5);
+    expect(pager.endDrag(H * 4.8, H * 2)).toBe(4);
   });
 
   it('commits a release that lands exactly on a page', () => {

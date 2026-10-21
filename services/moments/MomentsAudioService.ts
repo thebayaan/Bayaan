@@ -155,6 +155,8 @@ class MomentsAudioService {
       return;
     slot.player.pause();
     slot.source = source;
+    // A seek still running belongs to the old source; do not wait on it.
+    slot.cueing = null;
     slot.ready = false;
     slot.ended = false;
     slot.confirmed = false;
@@ -176,18 +178,22 @@ class MomentsAudioService {
   private cue(slot: Slot): Promise<void> {
     if (!slot.source) return Promise.resolve();
     if (slot.cueing) return slot.cueing;
-    slot.cueing = slot.player
-      .seekTo(slot.source.startMs / 1000)
+    const source = slot.source;
+    const cueing: Promise<void> = slot.player
+      .seekTo(source.startMs / 1000)
       .then(() => {
+        // The player was given another source while this seek ran.
+        if (slot.source !== source) return;
         slot.ready = true;
         slot.ended = false;
         slot.confirmed = false;
         slot.atStart = true;
       })
       .finally(() => {
-        slot.cueing = null;
+        if (slot.cueing === cueing) slot.cueing = null;
       });
-    return slot.cueing;
+    slot.cueing = cueing;
+    return cueing;
   }
 
   private handleStatus(index: number, status: AudioStatus): void {
@@ -206,9 +212,7 @@ class MomentsAudioService {
     if (status.isLoaded && !slot.ready) {
       if (slot.cueing) return;
       this.cue(slot)
-        .then(() => {
-          if (index === this.activeIndex && this.wantsPlay) this.startActive();
-        })
+        .then(() => this.startIfActive(slot))
         .catch(error => {
           if (__DEV__) console.warn('[MomentsAudio] Seek failed:', error);
         });
@@ -263,7 +267,7 @@ class MomentsAudioService {
 
   /** Starts `slot` if it is still the active one (a seek may have raced a swipe). */
   private startIfActive(slot: Slot): void {
-    if (this.wantsPlay && this.slots[this.activeIndex] === slot) {
+    if (this.wantsPlay && slot.ready && this.slots[this.activeIndex] === slot) {
       this.startActive();
     }
   }

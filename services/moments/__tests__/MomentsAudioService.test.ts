@@ -226,6 +226,32 @@ describe('MomentsAudioService across swipes', () => {
     off();
   });
 
+  it('ignores a rewind that lands after the player got a new card', async () => {
+    await start();
+    const swiped = playerFor(1);
+    let resolveSeek: () => void = () => undefined;
+    swiped.seekTo.mockImplementationOnce(
+      () => new Promise<void>(r => (resolveSeek = r)),
+    );
+    // Leaving card 1 rewinds it, and that seek hangs.
+    momentsAudioService.play(source(2));
+    // A jump to a card nobody preloaded reuses that player.
+    momentsAudioService.play(source(3));
+    expect(swiped.url).toBe(source(3).url);
+    resolveSeek();
+    await flush();
+    const plays = swiped.play.mock.calls.length;
+    // The new file loads: it must be cued to its own start, then played.
+    swiped.emit(status(0));
+    await flush();
+    expect(swiped.seekTo).toHaveBeenLastCalledWith(10);
+    expect(swiped.play).toHaveBeenCalledTimes(plays + 1);
+    expect(momentsAudioService.getState()).toMatchObject({
+      key: 'card-3',
+      playing: true,
+    });
+  });
+
   it('does not start anything twice when a seek lands after a swipe', async () => {
     await start();
     momentsAudioService.play(source(2));
