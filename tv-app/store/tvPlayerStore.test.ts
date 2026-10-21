@@ -332,11 +332,27 @@ describe('seedDefaultReciter', () => {
     storage.clearAll();
   });
 
-  it('resolves and persists a non-null default reciter with no history', async () => {
+  it('resolves and persists a default reciter from the stored catalog', async () => {
     expect(storage.getString(DEFAULT_RECITER_KEY)).toBeUndefined();
+    storage.set(
+      'bayaan_reciters',
+      JSON.stringify({
+        version: '4',
+        data: [{id: 'a', name: 'Alpha', rewayat: []}],
+        savedAt: Date.now(),
+      }),
+    );
     const id = await seedDefaultReciter();
-    expect(id).not.toBeNull();
+    expect(id).toBe('a');
     expect(storage.getString(DEFAULT_RECITER_KEY)).toBe(id);
+  });
+
+  it('seeds nothing offline before the catalog has ever loaded', async () => {
+    const saved = global.fetch;
+    global.fetch = jest.fn().mockRejectedValue(new Error('offline'));
+    expect(await seedDefaultReciter()).toBeNull();
+    expect(storage.getString(DEFAULT_RECITER_KEY)).toBeUndefined();
+    global.fetch = saved;
   });
 
   it('does not overwrite an already-persisted default reciter', async () => {

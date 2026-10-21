@@ -1,11 +1,18 @@
 import React from 'react';
-import {Text, type StyleProp, type TextStyle} from 'react-native';
+import {
+  Text,
+  View,
+  type StyleProp,
+  type TextStyle,
+  type ViewStyle,
+} from 'react-native';
 import {surahGlyphMap} from '../../../utils/surahGlyphMap';
 import SURAHS from '../../../data/surahData.json';
 import {surahGlyphsAvailable} from '../../theme/calligraphy';
 import {colors} from '../../theme/colors';
 import {fonts, surahNameFontFamily} from '../../theme/typography';
 import {scale} from '../../theme/scale';
+import {surahGlyphBox} from '../../services/surahArtwork';
 
 type SurahMeta = {id: number; name: string};
 
@@ -14,10 +21,11 @@ type Props = {
   /** Glyph size in 1920x1080 design pixels. */
   size: number;
   color?: string;
-  style?: StyleProp<TextStyle>;
+  /** Layout for the glyph's box (margins, opacity), not its text. */
+  style?: StyleProp<ViewStyle>;
   /**
-   * Widest the calligraphy may be, in design px: long names (Ali 'Imran)
-   * shrink to fit instead of running past a fixed, clipped art square.
+   * Widest the calligraphy may be, in design px: long names (Al-Ikhlas,
+   * Ali 'Imran) shrink to fit instead of running off their card.
    */
   fitWidth?: number;
 };
@@ -31,8 +39,11 @@ function surahName(surahNumber: number): string {
 
 /**
  * A surah's name in calligraphy, used as artwork on tiles, the sidebar's
- * now-playing chip and the player. Where the calligraphy font is unavailable
- * (Vega) it shows the transliterated name instead, sized to fit the same box.
+ * now-playing chip and the player. The glyph takes exactly the space its ink
+ * covers (from the font's own measurements, see services/surahArtwork), so
+ * the parent centres the calligraphy itself, not the font's lopsided box,
+ * and `fitWidth` holds the ink inside a card. Where the calligraphy font is
+ * unavailable it shows the transliterated name, sized to fit the same box.
  */
 export function SurahGlyph({
   surahNumber,
@@ -43,27 +54,28 @@ export function SurahGlyph({
 }: Props): React.ReactElement {
   const glyph = surahGlyphMap[surahNumber];
   if (surahGlyphsAvailable && glyph) {
-    const fit =
-      fitWidth === undefined
-        ? null
-        : {width: scale(fitWidth), textAlign: 'center' as const};
+    const box = surahGlyphBox(surahNumber, size, fitWidth);
     return (
-      <Text
+      <View
+        accessible
         accessibilityLabel={surahName(surahNumber)}
-        numberOfLines={fit ? 1 : undefined}
-        adjustsFontSizeToFit={fit !== null}
-        style={[
-          fit,
-          {
+        style={[{width: scale(box.width), height: scale(box.height)}, style]}>
+        <Text
+          accessible={false}
+          numberOfLines={1}
+          style={{
+            position: 'absolute',
+            left: scale(box.textLeft),
+            top: scale(box.textTop),
+            width: scale(box.textWidth),
             fontFamily: surahNameFontFamily,
-            fontSize: scale(size),
-            lineHeight: scale(size * 1.25),
+            fontSize: scale(box.fontSize),
+            lineHeight: scale(box.lineHeight),
             color,
-          },
-          style,
-        ]}>
-        {glyph}
-      </Text>
+          }}>
+          {glyph}
+        </Text>
+      </View>
     );
   }
   return (
@@ -78,7 +90,7 @@ export function SurahGlyph({
           color,
         },
         fitWidth === undefined ? null : {maxWidth: scale(fitWidth)},
-        style,
+        style as StyleProp<TextStyle>,
       ]}>
       {surahName(surahNumber)}
     </Text>

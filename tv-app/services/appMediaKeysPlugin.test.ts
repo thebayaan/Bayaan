@@ -5,7 +5,7 @@ const {addMediaKeyOverrides} = require('../plugins/withAppMediaKeys') as {
   addMediaKeyOverrides: (src: string) => string;
 };
 
-const MAIN_ACTIVITY = `package com.bayaan.tvsmoke
+const MAIN_ACTIVITY = `package com.bayaan.app.tv
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Bundle

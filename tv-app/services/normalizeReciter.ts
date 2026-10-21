@@ -33,6 +33,26 @@ function coerceId(value: unknown): string | null {
   return null;
 }
 
+/** Lower-case particles that stay lower-case inside a name ("bin Aoun"). */
+const LOWER_PARTICLES = new Set(['bin', 'ibn', 'bint', 'al', 'el']);
+
+/**
+ * A catalog name as the app shows it: spaces tidied and a word typed all
+ * lower-case capitalised ("Abdelaziz sheim" reads "Abdelaziz Sheim"), the
+ * name's particles excepted. Spellings are the catalog's own.
+ */
+export function displayName(name: string): string {
+  return name
+    .trim()
+    .split(/\s+/)
+    .map((word, i) =>
+      /^\p{Ll}+$/u.test(word) && (i === 0 || !LOWER_PARTICLES.has(word))
+        ? word.charAt(0).toUpperCase() + word.slice(1)
+        : word,
+    )
+    .join(' ');
+}
+
 export function slugify(name: string): string {
   return name
     .normalize('NFKD')
@@ -98,7 +118,7 @@ export function normalizeReciter(raw: unknown): Reciter {
       rewayat: [],
     };
   }
-  const name = asString(raw.name);
+  const name = displayName(asString(raw.name));
   return {
     id: asString(raw.id),
     name,

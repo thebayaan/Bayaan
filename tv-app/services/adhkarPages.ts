@@ -158,9 +158,28 @@ function splitTranslation(translation: string): {
   };
 }
 
-function translationTokens(segments: readonly Segment[]): Token[] {
-  // Never turn inside a parenthesis, e.g. "(Al-Ikhlas, Al-Falaq, An-Nas)".
+/**
+ * Whether a whole text sits inside one pair of parentheses, as some
+ * narrations do ("(When retiring to his bed every night, ...)"): that outer
+ * pair says nothing about where a page may turn.
+ */
+export function wrappedInParens(text: string): boolean {
+  const t = text.trim().replace(/[.]$/, '');
+  if (!t.startsWith('(') || !t.endsWith(')')) return false;
   let depth = 0;
+  for (let i = 0; i < t.length; i++) {
+    if (t[i] === '(') depth += 1;
+    else if (t[i] === ')') depth -= 1;
+    if (depth === 0 && i < t.length - 1) return false;
+  }
+  return depth === 0;
+}
+
+function translationTokens(segments: readonly Segment[]): Token[] {
+  // Never turn inside a parenthesis, e.g. "(Al-Ikhlas, Al-Falaq, An-Nas)",
+  // except the one wrapping a whole segment.
+  let depth = 0;
+  let floor = 0;
   const strength = (word: string): number => {
     depth = Math.max(
       0,
@@ -168,14 +187,31 @@ function translationTokens(segments: readonly Segment[]): Token[] {
         (word.match(/\(/g)?.length ?? 0) -
         (word.match(/\)/g)?.length ?? 0),
     );
-    if (depth > 0) return -1;
+    if (depth > floor) return -1;
     if (/[.!?]["'”’)\]]*$/.test(word)) return 2;
     if (/[,;:]["'”’)\]]*$/.test(word)) return 1;
     return 0;
   };
-  return segments.flatMap(segment =>
-    words(segment.kind, segment.text, w => w.length + 1, strength),
-  );
+  const tokens = segments.flatMap(segment => {
+    depth = 0;
+    floor = wrappedInParens(segment.text) ? 1 : 0;
+    return words(segment.kind, segment.text, w => w.length + 1, strength);
+  });
+  // A long narration often runs as one sentence of steps ("... recite the
+  // last three chapters of the Quran and then wipe over his body"): the
+  // word before "then" or "and then" is as good a turn as a comma.
+  tokens.forEach((token, i) => {
+    const next = tokens[i + 1]?.text.toLowerCase();
+    const after = tokens[i + 2]?.text.toLowerCase();
+    if (token.brk < 0) return;
+    if (next === 'then' || (next === 'and' && after === 'then')) {
+      token.brk = Math.max(token.brk, 1);
+    }
+    // A lone "-" between words is a dash typed as a hyphen: set it as an
+    // en dash, so "mankind - From among" never reads as a hyphenated word.
+    if (token.text === '-') token.text = '–';
+  });
+  return tokens;
 }
 
 /** Splits tokens into `count` chunks of about equal weight, in order. */

@@ -14,13 +14,11 @@
  */
 
 import {SURAHS} from '../../data/surahData';
-import fallbackReciters from '../../data/reciters-fallback.json';
 import {useNavStore} from '../store/navStore';
 import {useTVPlayerStore} from '../store/tvPlayerStore';
 import type {QueueItem} from '../types/player';
 import type {Reciter, Rewayah} from '../types/reciter';
 import {pickPlayableRewayah} from './browseCatalog';
-import {normalizeReciters} from './normalizeReciter';
 import {removeContinue} from './continueListeningStore';
 import {recordVisit} from './recentlyPlayedStore';
 import {
@@ -60,14 +58,9 @@ export function surahTitle(surahNumber: number): string {
   return surahNames.get(surahNumber) ?? `Surah ${surahNumber}`;
 }
 
-let fallbackCatalog: Reciter[] | null = null;
-
-/** A reciter from the catalog or the bundled list, or null when gone. */
+/** A reciter from the stored catalog, or null when gone. */
 export function findReciter(reciterId: string): Reciter | null {
-  const cached = getCachedReciters()?.find(r => r.id === reciterId);
-  if (cached) return cached;
-  fallbackCatalog ??= normalizeReciters(fallbackReciters);
-  return fallbackCatalog.find(r => r.id === reciterId) ?? null;
+  return getCachedReciters()?.find(r => r.id === reciterId) ?? null;
 }
 
 async function rewayatOf(reciterId: string): Promise<Rewayah[]> {

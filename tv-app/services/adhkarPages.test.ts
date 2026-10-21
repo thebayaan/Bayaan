@@ -15,6 +15,7 @@ import {
   splitEvenly,
   surahHeading,
   toRuns,
+  wrappedInParens,
 } from './adhkarPages';
 
 describe('adhkar pages', () => {
@@ -233,5 +234,46 @@ describe('adhkar pages', () => {
     expect(pageAtProgress(pages, 0.3)).toBe(1);
     // The notes page is never reached by the recitation.
     expect(pageAtProgress(pages, 1)).toBe(1);
+  });
+});
+
+describe('a narration wrapped in parentheses', () => {
+  it('is recognised only when one pair wraps it all', () => {
+    expect(wrappedInParens('(He would do this three times.)')).toBe(true);
+    expect(wrappedInParens('(a) and (b)')).toBe(false);
+    expect(wrappedInParens('Say (this).')).toBe(false);
+  });
+
+  it('turns its pages at a sentence, not mid-sentence', () => {
+    const english =
+      '(When retiring to his bed every night, the Prophet would hold his palms together. ' +
+      'He would recite the last three chapters (Al-Ikhlas, Al-Falaq, An-Nas) of the Quran. ' +
+      'Then he would wipe over his entire body as much as possible with his hands, beginning with his head and face. ' +
+      'He would do this three times.)';
+    const arabic = Array.from({length: 120}, () => 'كَلِمَةٌ').join(' ');
+    const pages = dhikrPages(arabic, english);
+    expect(pages.length).toBeGreaterThan(1);
+    for (const page of pages.slice(0, -1)) {
+      const text = page.translation
+        .map(r => r.text)
+        .join(' ')
+        .trim();
+      if (text) expect(text).toMatch(/[.,]$/);
+    }
+  });
+});
+
+describe('a dash typed as a hyphen', () => {
+  it('is shown as an en dash, and a hyphenated word is left alone', () => {
+    const pages = dhikrPages(
+      'كَلِمَةٌ كَلِمَةٌ',
+      'Who whispers into the breasts of mankind - From among the jinn and mankind, said Al-Bukhari.',
+    );
+    const text = pages
+      .flatMap(page => page.translation.map(r => r.text))
+      .join(' ');
+    expect(text).toContain('mankind – From');
+    expect(text).not.toContain(' - ');
+    expect(text).toContain('Al-Bukhari');
   });
 });

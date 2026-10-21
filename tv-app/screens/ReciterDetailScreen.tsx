@@ -47,6 +47,7 @@ import {showToast} from '../store/toastStore';
 import type {Rewayah, Surah} from '../types/reciter';
 import {
   CheckIcon,
+  StarIcon,
   HeartIcon,
   PlayIcon,
   ShuffleIcon,
@@ -374,9 +375,7 @@ export function ReciterDetailScreen({
 
   // Only a reciter with the whole Quran can be the default, as in Settings:
   // anyone else would hand most surahs to another voice.
-  const canBeDefault =
-    isDefault ||
-    hasCompleteQuran({...reciter, rewayat});
+  const canBeDefault = isDefault || hasCompleteQuran({...reciter, rewayat});
 
   function pressDefault(): void {
     if (isDefault) {
@@ -516,9 +515,10 @@ export function ReciterDetailScreen({
                   }
                   style={[styles.actionBtn, styles.defaultBtn]}>
                   <View style={styles.actionInner}>
-                    {isDefault ? (
-                      <FocusIcon icon={CheckIcon} size={20} />
-                    ) : null}
+                    <FocusIcon
+                      icon={isDefault ? CheckIcon : StarIcon}
+                      size={20}
+                    />
                     <FocusText style={styles.actionText}>
                       {isDefault ? 'Default reciter' : 'Make default'}
                     </FocusText>
@@ -757,10 +757,12 @@ const styles = createScaledStyles({
     paddingVertical: 14,
     borderRadius: 16,
   },
-  // Wide enough for the longer of each button's labels.
-  playBtn: {minWidth: 300},
-  favoriteBtn: {minWidth: 204},
-  defaultBtn: {minWidth: 236},
+  // Each just wide enough for the longer of its labels (with its icon), so
+  // a label changing never shifts the row, and the gaps between buttons
+  // look the same rather than one button carrying a wide empty margin.
+  playBtn: {minWidth: 286},
+  favoriteBtn: {minWidth: 186},
+  defaultBtn: {minWidth: 222},
   actionText: {
     fontFamily: fonts.bold,
     fontSize: 19,

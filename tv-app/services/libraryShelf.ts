@@ -194,9 +194,21 @@ export function isShelfEmpty(shelf: Shelf): boolean {
   );
 }
 
-/** "3 loved surahs", "1 loved surah", or "Reciter". */
-export function reciterTileLabel(surahCount: number): string {
-  if (surahCount <= 0) return 'Reciter';
+/**
+ * "3 loved surahs", "1 loved surah"; with none loved, what the reciter has
+ * recorded ("All 114 surahs"), so the tile never says just "Reciter".
+ */
+export function reciterTileLabel(
+  surahCount: number,
+  /** Surahs the reciter has recorded, for one with none loved yet. */
+  recorded = 0,
+): string {
+  if (surahCount <= 0) {
+    if (recorded >= 114) return 'All 114 surahs';
+    return recorded > 0
+      ? `${recorded} ${recorded === 1 ? 'surah' : 'surahs'}`
+      : 'Favourite reciter';
+  }
   return `${surahCount} loved ${surahCount === 1 ? 'surah' : 'surahs'}`;
 }
 

@@ -71,6 +71,11 @@ export type MenuRowProps = {
   accessibilityLabel?: string;
   /** The row's pressable view, to ask for focus when a menu page swaps. */
   ref?: React.Ref<View>;
+  /**
+   * Nothing to do here (Move up on the first row): dimmed, label and all,
+   * but still focusable so focus never loses its place in the sheet.
+   */
+  unavailable?: boolean;
 };
 
 /** One menu action: unfilled at rest, cream with ink text on focus. */
@@ -82,18 +87,28 @@ export function MenuRow({
   trailing,
   accessibilityLabel,
   ref,
+  unavailable = false,
 }: MenuRowProps): React.ReactElement {
   return (
     <FocusableButton
       ref={ref}
       onPress={onPress}
+      disabled={unavailable || undefined}
       accessibilityLabel={accessibilityLabel ?? label}
       hasTVPreferredFocus={hasTVPreferredFocus}
       focusScale={1.03}
       style={menuStyles.row}>
       <View style={menuStyles.rowInner}>
         <View style={menuStyles.iconSlot}>{icon}</View>
-        <FocusText style={menuStyles.rowLabel} numberOfLines={1}>
+        <FocusText
+          style={menuStyles.rowLabel}
+          numberOfLines={1}
+          {...(unavailable
+            ? {
+                color: colors.textTertiary,
+                focusedColor: colors.onFocusSecondary,
+              }
+            : {})}>
           {label}
         </FocusText>
         {trailing ? <View style={menuStyles.trailing}>{trailing}</View> : null}
@@ -107,7 +122,10 @@ export const menuStyles = createScaledStyles({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: colors.scrimStrong,
     alignItems: 'center',
-    justifyContent: 'center',
+    // A fixed top, not centred: a menu page with more or fewer rows grows
+    // or shrinks downward instead of the whole sheet jumping.
+    justifyContent: 'flex-start',
+    paddingTop: 170,
     zIndex: 60,
   },
   sheet: {

@@ -1,6 +1,7 @@
 import React, {useEffect} from 'react';
 import {LogBox, View} from 'react-native';
 import {AppStatusBar} from './components/app/AppStatusBar';
+import {CatalogGate} from './components/app/CatalogGate';
 import {ErrorBoundary} from './components/ErrorBoundary';
 import {Router} from './components/nav/Router';
 import {TVAudioProvider} from './components/providers/TVAudioProvider';
@@ -49,7 +50,9 @@ export default function App(): React.ReactElement {
           never unmounts the player and stops the recitation. */}
       <TVAudioProvider>
         <ErrorBoundary>
-          <Router />
+          <CatalogGate>
+            <Router />
+          </CatalogGate>
         </ErrorBoundary>
       </TVAudioProvider>
     </View>

@@ -58,6 +58,11 @@ import {SCREEN_GUTTER} from '../theme/spacing';
 import type {Playlist} from '../services/playlistsStore';
 import type {Reciter} from '../types/reciter';
 
+/** The most surahs any one of a reciter's recitations has. */
+function recordedSurahs(reciter: Reciter): number {
+  return Math.max(0, ...(reciter.rewayat ?? []).map(r => r.surah_list.length));
+}
+
 // Layout in design px, beside the folded sidebar (1920 - 112 = 1808 wide).
 const PAD_LEFT = SCREEN_GUTTER;
 const PAD_RIGHT = 84;
@@ -367,7 +372,10 @@ export function CollectionScreen(): React.ReactElement {
             {reciter ? (
               <ShelfReciterTile
                 reciter={reciter}
-                caption={reciterTileLabel(item.surahCount)}
+                caption={reciterTileLabel(
+                  item.surahCount,
+                  recordedSurahs(reciter),
+                )}
                 onPress={() => {
                   remember(item, index);
                   push({screen: 'reciterDetail', reciterId: reciter.id});

@@ -1,11 +1,10 @@
 import React, {useState} from 'react';
 import {StyleSheet, Text, View, type LayoutChangeEvent} from 'react-native';
-import {GradientFill} from './GradientFill';
+import {SurahFill} from './SurahFill';
 import {SurahGlyph} from './SurahGlyph';
 import {SURAHS} from '../../services/browseCatalog';
 import {showsSurahName, surahNameSize} from '../../services/surahArtwork';
 import {colors} from '../../theme/colors';
-import {surahGradient} from '../../theme/surahColors';
 import {fonts} from '../../theme/typography';
 import {scale, scaleFactor} from '../../theme/scale';
 
@@ -18,9 +17,11 @@ type Props = {
 };
 
 /**
- * A surah's artwork, drawn rather than downloaded: its pigment gradient,
- * the name in calligraphy and, in a slot wide enough, the transliterated
- * name as real text. Every word on it is sharp at any size and on every
+ * A surah's artwork, drawn rather than downloaded, laid out like the phone's
+ * surah card: the surah's colour glows, the name in calligraphy and, in a
+ * slot wide enough, a short divider and the transliterated name as real
+ * text. The calligraphy is sized to the slot's width, so long names never
+ * run off the card. Every word on it is sharp at any size and on every
  * platform (the old 1200 px share cards, decoded down to tile size, left
  * their small print smeared), there is nothing to wait for or lose offline,
  * and the English meaning stays with the places that print it below.
@@ -31,33 +32,44 @@ export function SurahArtwork({
   glyphSize,
   id,
 }: Props): React.ReactElement {
-  const [named, setNamed] = useState(false);
+  // The slot's width in design px, once laid out.
+  const [width, setWidth] = useState<number | null>(null);
   const onLayout = (e: LayoutChangeEvent): void => {
-    setNamed(showsSurahName(e.nativeEvent.layout.width / scaleFactor));
+    setWidth(e.nativeEvent.layout.width / scaleFactor);
   };
+  const named = width !== null && showsSurahName(width);
   const name = SURAHS[surahNumber - 1]?.name;
   return (
     <View style={styles.fill} onLayout={onLayout}>
-      <GradientFill colors={surahGradient(surahNumber)} id={id} />
-      <SurahGlyph surahNumber={surahNumber} size={glyphSize} />
+      <SurahFill surahNumber={surahNumber} id={id} />
+      {width === null ? null : (
+        <SurahGlyph
+          surahNumber={surahNumber}
+          size={glyphSize}
+          fitWidth={width - Math.min(GLYPH_INSET, width * 0.1) * 2}
+        />
+      )}
       {named && name ? (
-        <Text
-          numberOfLines={1}
-          adjustsFontSizeToFit
-          accessible={false}
-          style={[
-            styles.name,
-            {
-              fontSize: scale(surahNameSize(glyphSize)),
-              marginTop: scale(-glyphSize * 0.12),
-            },
-          ]}>
-          {name}
-        </Text>
+        <>
+          <View style={styles.divider} />
+          <Text
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            accessible={false}
+            style={[styles.name, {fontSize: scale(surahNameSize(glyphSize))}]}>
+            {name}
+          </Text>
+        </>
       ) : null}
     </View>
   );
 }
+
+/**
+ * Room kept clear on each side of the calligraphy, in design px (a tenth of
+ * the width on thumbnails).
+ */
+const GLYPH_INSET = 20;
 
 const styles = StyleSheet.create({
   fill: {
@@ -65,6 +77,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
+  },
+  divider: {
+    width: '30%',
+    height: Math.max(1, scale(2)),
+    marginTop: scale(12),
+    marginBottom: scale(8),
+    backgroundColor: colors.text,
+    opacity: 0.18,
   },
   name: {
     color: colors.text,

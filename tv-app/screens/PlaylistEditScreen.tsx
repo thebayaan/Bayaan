@@ -175,9 +175,7 @@ export function PlaylistEditScreen({
               {draft.text}
             </Text>
           )}
-          {draft.fresh ? null : (
-            <View style={[styles.caret, arabic && styles.caretArabic]} />
-          )}
+          <View style={[styles.caret, arabic && styles.caretArabic]} />
         </View>
         <Text style={styles.hint} numberOfLines={1}>
           {seed
@@ -185,7 +183,7 @@ export function PlaylistEditScreen({
                 seedVoice ? ` · ${shortReciterName(seedVoice)}` : ''
               }`
             : draft.fresh
-              ? `Type to replace the name, or ${action} to keep it.`
+              ? `Typing replaces the name, Delete edits it, or ${action} to keep it.`
               : ' '}
         </Text>
         <View style={styles.keyboard}>
@@ -241,10 +239,7 @@ export function PlaylistEditScreen({
                 <FocusWatch onChange={onSideFocus} />
                 <FocusFrame radius={SWATCH / 2} style={styles.swatchFrame}>
                   <View
-                    style={[
-                      styles.swatch,
-                      {backgroundColor: playlistTint(c)},
-                    ]}>
+                    style={[styles.swatch, {backgroundColor: playlistTint(c)}]}>
                     {selected ? (
                       <CheckIcon color={colors.text} size={scale(28)} />
                     ) : null}
@@ -318,7 +313,13 @@ const styles = createScaledStyles({
   },
   nameArabic: {fontFamily: undefined, letterSpacing: 0},
   // A prefilled name reads as a suggestion until the first key.
-  nameFresh: {color: colors.textSecondary},
+  // A prefilled name is selected, as in a text field: real text on a sky
+  // wash, not greyed like a placeholder, since Delete edits it.
+  nameFresh: {
+    backgroundColor: colors.accentSoft,
+    borderRadius: 8,
+    paddingHorizontal: 6,
+  },
   placeholder: {color: colors.textTertiary},
   caret: {
     width: 3,

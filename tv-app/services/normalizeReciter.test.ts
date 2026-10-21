@@ -1,4 +1,5 @@
 import {
+  displayName,
   normalizeReciter,
   normalizeReciters,
   normalizeRewayah,
@@ -129,5 +130,15 @@ describe('normalizeReciters', () => {
     ]);
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe('ok');
+  });
+});
+
+describe('displayName', () => {
+  it('capitalises a word typed in lower case, not a particle', () => {
+    expect(displayName('Abdelaziz sheim')).toBe('Abdelaziz Sheim');
+    expect(displayName('  Abdulelah bin   Aoun ')).toBe('Abdulelah bin Aoun');
+    expect(displayName('Mohammed Siddiq Al-Minshawi')).toBe(
+      'Mohammed Siddiq Al-Minshawi',
+    );
   });
 });

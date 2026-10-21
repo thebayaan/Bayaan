@@ -570,6 +570,9 @@ const styles = createScaledStyles({
     lineHeight: 28,
     height: 28,
     textAlign: 'center',
+    // Android pads a font's box and draws the shrunk text low in it.
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   portraitSub: {
     color: colors.textSecondary,

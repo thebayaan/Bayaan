@@ -461,7 +461,7 @@ const styles = createScaledStyles({
   scrim: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 9,
-    backgroundColor: 'rgba(5,11,16,0.45)',
+    backgroundColor: 'rgba(5,11,16,0.62)',
   },
   edge: {
     position: 'absolute',

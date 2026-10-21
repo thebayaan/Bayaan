@@ -47,7 +47,7 @@ else
   OUT_DIR=${2:?usage: run-walk.sh <android|tvos> <out-dir> [device-id]}
 fi
 DEVICE=${3:-}
-APP_ID=${APP_ID:-com.bayaan.tvsmoke}
+APP_ID=${APP_ID:-com.bayaan.app.tv}
 WALK=${WALK:-$(dirname "$0")/walk.txt}
 HOLD_SECONDS=${HOLD_SECONDS:-1.5}
 TVOS_PLAYPAUSE_CMD=${TVOS_PLAYPAUSE_CMD:-}
@@ -353,7 +353,7 @@ if [[ $PLATFORM == android ]]; then
   adb_ logcat -c
   adb_ logcat >"$OUT_DIR/logs/logcat.txt" 2>&1 &
 else
-  xcrun simctl spawn "$DEVICE" log stream --level debug --predicate "process == \"tvsmoke\"" \
+  xcrun simctl spawn "$DEVICE" log stream --level debug --predicate "process == \"Bayaan\" OR process == \"tvsmoke\"" \
     >"$OUT_DIR/logs/device.log" 2>&1 &
 fi
 LOG_PID=$!

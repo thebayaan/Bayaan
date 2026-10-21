@@ -2,7 +2,6 @@ import type {Reciter} from '../types/reciter';
 
 const cachedList = [{id: 'cached'}] as unknown as Reciter[];
 const freshList = [{id: 'fresh'}] as unknown as Reciter[];
-const bundledList = [{id: 'bundled'}] as unknown as Reciter[];
 
 const mockFetchReciters = jest.fn<Promise<Reciter[]>, []>();
 const mockGetCached = jest.fn<Reciter[] | null, []>();
@@ -29,16 +28,15 @@ jest.mock('react-native', () => ({
 jest.mock('../services/tvDataService', () => ({
   fetchReciters: () => mockFetchReciters(),
   getCachedReciters: () => mockGetCached(),
-  fallbackReciterList: () => bundledList,
 }));
 
 import {
   currentReciters,
+  recitersFailed,
   refreshReciters,
   resetRecitersForTest,
   useReciters,
 } from './useReciters';
-
 
 beforeEach(() => {
   resetRecitersForTest();
@@ -54,9 +52,19 @@ describe('shared reciter list', () => {
     expect(mockGetCached).toHaveBeenCalledTimes(1);
   });
 
-  it('falls back to the bundled list without a cache', () => {
+  it('is empty without a cache, and failed once a load fails', async () => {
     mockGetCached.mockReturnValue(null);
-    expect(currentReciters()).toBe(bundledList);
+    expect(currentReciters()).toEqual([]);
+    expect(recitersFailed()).toBe(false);
+    mockFetchReciters.mockRejectedValueOnce(new Error('offline'));
+    await refreshReciters();
+    expect(recitersFailed()).toBe(true);
+    // Trying again clears the failure while it loads, then serves the list.
+    mockFetchReciters.mockResolvedValueOnce(freshList);
+    const retry = refreshReciters();
+    expect(recitersFailed()).toBe(false);
+    await retry;
+    expect(currentReciters()).toBe(freshList);
   });
 
   it('fetches once however many readers ask, then serves the fresh list', async () => {

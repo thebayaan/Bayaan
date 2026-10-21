@@ -4,6 +4,7 @@ import Svg, {Defs, LinearGradient, Rect, Stop} from 'react-native-svg';
 import {FocusableCard} from '../primitives/FocusableCard';
 import {FocusFrame, FocusText} from '../primitives/focusContext';
 import {SurahArtwork} from '../brand/SurahArtwork';
+import {SurahGlyph} from '../brand/SurahGlyph';
 import {GradientFill} from '../brand/GradientFill';
 import {useRailFocus} from './HomeRail';
 import {quranTextFontAvailable} from '../../theme/calligraphy';
@@ -75,6 +76,8 @@ type ColorTileProps = {
   subtitle?: string;
   /** Arabic title in the top corner (adhkar lists). */
   arabic?: string;
+  /** A surah's calligraphy in the top corner (a playlist's first surah). */
+  surahArt?: number;
   /** The line under the card, level with the surah tiles' captions. */
   caption: string;
   color: string;
@@ -92,6 +95,7 @@ function ColorTileImpl({
   title,
   subtitle,
   arabic,
+  surahArt,
   caption,
   color,
   onSelect,
@@ -122,12 +126,17 @@ function ColorTileImpl({
             {arabic}
           </Text>
         ) : null}
+        {surahArt ? (
+          <View style={styles.surahArt}>
+            <SurahGlyph surahNumber={surahArt} size={64} fitWidth={200} />
+          </View>
+        ) : null}
         <View style={styles.wideText}>
           <Text style={styles.wideTitle} numberOfLines={subtitle ? 1 : 2}>
             {title}
           </Text>
           {subtitle ? (
-            <Text style={styles.wideSubtitle} numberOfLines={1}>
+            <Text style={styles.wideSubtitle} numberOfLines={2}>
               {subtitle}
             </Text>
           ) : null}
@@ -231,6 +240,7 @@ const styles = createScaledStyles({
     lineHeight: 64,
     writingDirection: 'rtl',
   },
+  surahArt: {position: 'absolute', top: 22, right: 22},
   wideText: {position: 'absolute', left: 20, right: 20, bottom: 18, gap: 4},
   wideTitle: {
     color: colors.text,

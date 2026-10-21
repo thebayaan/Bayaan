@@ -37,7 +37,7 @@ describe('nowPlayingTile', () => {
     expect(tile.action).toBe('open');
     expect(tile.label).toBe('Now playing');
     expect(tile.title).toBe('Al-Baqarah');
-    expect(tile.detail).toBe('Now playing · Mishary Alafasi');
+    expect(tile.detail).toBe('Now playing · Al-Afasi');
     expect(tile.progress).toBeCloseTo(0.25);
     expect(tile.accessibilityLabel).toBe(
       'Now playing: Al-Baqarah with Mishary Alafasi. Open player.',
@@ -90,7 +90,7 @@ describe('nowPlayingTile', () => {
     )!;
     expect(tile.state).toBe('resume');
     expect(tile.action).toBe('resume');
-    expect(tile.detail).toBe('Continue · Mishary Alafasi');
+    expect(tile.detail).toBe('Continue · Al-Afasi');
     expect(tile.progress).toBeCloseTo(0.25);
   });
 });

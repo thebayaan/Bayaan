@@ -18,7 +18,11 @@ concurrency:
 
 env:
   VEGA_SDK_VERSION: 0.24.12112
-  APP_ID: com.bayaan.tvsmoke.main
+  APP_ID: com.bayaan.app.tv.main
+  # The TV ships no reciter data: the app reads the catalog from the live
+  # Bayaan API, whose key is a repository secret, inlined at bundle time.
+  EXPO_PUBLIC_BAYAAN_API_URL: https://api.thebayaan.com
+  EXPO_PUBLIC_BAYAAN_API_KEY: ${{ secrets.EXPO_PUBLIC_BAYAAN_API_KEY }}
 
 jobs:
   vega:
