@@ -260,6 +260,7 @@ export const MomentCard = React.memo(function MomentCard({
           clip={clip}
           positionMs={positionMs}
           playing={!!playback?.playing}
+          enabled={playback !== null}
           onSeek={onSeek}
           onScrubAyah={setScrubAyah}
         />

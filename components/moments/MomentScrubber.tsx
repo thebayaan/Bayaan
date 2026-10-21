@@ -24,7 +24,7 @@ import {
   clampToClip,
   clipProgress,
   formatClipTime,
-  isSeekSettled,
+  followsSeek,
   ratioToClipMs,
   xToRatio,
 } from '@/services/moments/scrub';
@@ -34,6 +34,8 @@ interface MomentScrubberProps {
   /** Playback position in the surah file. */
   positionMs: number;
   playing: boolean;
+  /** Off for cards that are not the active moment, so they cannot seek it. */
+  enabled?: boolean;
   /** Seeks to a position in the surah file, already clamped to the clip. */
   onSeek: (positionMs: number) => void;
   /** The ayah under the finger while scrubbing, null when the drag ends. */
@@ -60,6 +62,7 @@ export function MomentScrubber({
   clip,
   positionMs,
   playing,
+  enabled = true,
   onSeek,
   onScrubAyah,
 }: MomentScrubberProps) {
@@ -78,24 +81,55 @@ export function MomentScrubber({
   const touch = useSharedValue(0);
   const lastSecond = useSharedValue(-1);
 
+  // Set on the UI thread when a seek is released, until JS has taken it, so
+  // a render in between cannot pull the bar back to the old position.
+  const seekPending = useSharedValue(false);
+
   const [dragMs, setDragMs] = useState<number | null>(null);
-  const settleRef = useRef<{ms: number; until: number} | null>(null);
+  const settleRef = useRef<{ms: number; at: number} | null>(null);
   const lastUpdateRef = useRef<{ms: number; at: number} | null>(null);
   const scrubAyahRef = useRef<number | null>(null);
+  // Latest props for the gesture callbacks, so the gesture is not rebuilt on
+  // every position update (the feed passes a new onSeek each render).
+  const clipRef = useRef(clip);
+  clipRef.current = clip;
+  const onSeekRef = useRef(onSeek);
+  onSeekRef.current = onSeek;
+  const onScrubAyahRef = useRef(onScrubAyah);
+  onScrubAyahRef.current = onScrubAyah;
+
+  const reportAyah = useCallback((ayah: number | null) => {
+    if (ayah === scrubAyahRef.current) return;
+    scrubAyahRef.current = ayah;
+    onScrubAyahRef.current?.(ayah);
+  }, []);
 
   // Follow playback, unless a drag is holding the bar or a seek has not
   // landed yet (stale updates would make the bar jump back).
   useEffect(() => {
-    if (dragging.value) return;
-    const settle = settleRef.current;
-    if (settle) {
-      if (!isSeekSettled(positionMs, settle.ms) && Date.now() < settle.until) {
-        return;
-      }
+    if (!enabled) {
+      // Not the active moment any more: drop any seek in flight.
       settleRef.current = null;
       lastUpdateRef.current = null;
+      reportAyah(null);
+      progress.value = clipProgress(positionMs, clipRange);
+      return;
     }
+    if (dragging.value || seekPending.value) return;
     const now = Date.now();
+    const settle = settleRef.current;
+    if (settle) {
+      const elapsed = now - settle.at;
+      if (elapsed < SETTLE_TIMEOUT_MS) {
+        if (!followsSeek(positionMs, settle.ms, elapsed)) return;
+        // The caption follows the accepted positions, not the raw ones,
+        // until the seek has surely landed.
+        reportAyah(ayahAt(clipRef.current, positionMs));
+      } else {
+        settleRef.current = null;
+        reportAyah(null);
+      }
+    }
     const next = clipProgress(positionMs, clipRange);
     const last = lastUpdateRef.current;
     lastUpdateRef.current = {ms: positionMs, at: now};
@@ -107,41 +141,44 @@ export function MomentScrubber({
     } else {
       progress.value = next;
     }
-  }, [positionMs, playing, clipRange, dragging, progress]);
+  }, [
+    positionMs,
+    playing,
+    enabled,
+    clipRange,
+    dragging,
+    seekPending,
+    progress,
+    reportAyah,
+  ]);
 
   const updateDrag = useCallback(
     (ms: number) => {
       setDragMs(ms);
-      const ayah = ayahAt(clip, ms);
-      if (ayah !== scrubAyahRef.current) {
-        scrubAyahRef.current = ayah;
-        onScrubAyah?.(ayah);
-      }
+      reportAyah(ayahAt(clipRef.current, ms));
     },
-    [clip, onScrubAyah],
+    [reportAyah],
   );
 
   const commitSeek = useCallback(
     (ms: number) => {
-      const target = clampToClip(ms, clipRange);
-      settleRef.current = {ms: target, until: Date.now() + SETTLE_TIMEOUT_MS};
+      const target = clampToClip(ms, clipRef.current);
+      settleRef.current = {ms: target, at: Date.now()};
+      lastUpdateRef.current = null;
+      seekPending.value = false;
       setDragMs(null);
-      onSeek(target);
-      // The seek moves playback (and the caption) to this ayah; drop the
-      // preview after that so the caption does not flash the old ayah.
-      scrubAyahRef.current = null;
-      onScrubAyah?.(null);
+      // Show the target ayah right away (this also covers tap-to-seek); it
+      // is dropped once playback has surely moved there.
+      reportAyah(ayahAt(clipRef.current, target));
+      onSeekRef.current(target);
     },
-    [clipRange, onSeek, onScrubAyah],
+    [seekPending, reportAyah],
   );
 
   const cancelDrag = useCallback(() => {
     setDragMs(null);
-    if (scrubAyahRef.current !== null) {
-      scrubAyahRef.current = null;
-      onScrubAyah?.(null);
-    }
-  }, [onScrubAyah]);
+    if (!settleRef.current) reportAyah(null);
+  }, [reportAyah]);
 
   const gesture = useMemo(() => {
     const range = clipRange;
@@ -157,6 +194,7 @@ export function MomentScrubber({
     // Horizontal drags only, so a vertical swipe that starts on the bar
     // still scrolls the feed.
     const pan = Gesture.Pan()
+      .enabled(enabled)
       .activeOffsetX([-6, 6])
       .failOffsetY([-14, 14])
       .hitSlop({left: EDGE_SLOP, right: EDGE_SLOP})
@@ -175,6 +213,7 @@ export function MomentScrubber({
       })
       .onEnd((_e, success) => {
         if (!success) return;
+        seekPending.value = true;
         progress.value = dragProgress.value;
         runOnJS(commitSeek)(ratioToClipMs(dragProgress.value, range));
       })
@@ -185,16 +224,20 @@ export function MomentScrubber({
         if (wasDragging && !success) runOnJS(cancelDrag)();
       });
     const tap = Gesture.Tap()
+      .enabled(enabled)
       .hitSlop({left: EDGE_SLOP, right: EDGE_SLOP})
       .onEnd((e, success) => {
         if (!success) return;
         const ratio = xToRatio(e.x, trackWidth.value);
+        seekPending.value = true;
         progress.value = ratio;
         runOnJS(commitSeek)(ratioToClipMs(ratio, range));
       });
     return Gesture.Race(pan, tap);
   }, [
     clipRange,
+    enabled,
+    seekPending,
     updateDrag,
     commitSeek,
     cancelDrag,
@@ -233,6 +276,7 @@ export function MomentScrubber({
 
   const onAccessibilityAction = useCallback(
     (e: AccessibilityActionEvent) => {
+      if (!enabled) return;
       const {actionName} = e.nativeEvent;
       if (actionName === 'increment') {
         commitSeek(positionMs + ACCESSIBILITY_STEP_MS);
@@ -240,21 +284,21 @@ export function MomentScrubber({
         commitSeek(positionMs - ACCESSIBILITY_STEP_MS);
       }
     },
-    [commitSeek, positionMs],
+    [commitSeek, positionMs, enabled],
   );
 
   const totalMs = clip.endMs - clip.startMs;
+  const timeLabel = (ms: number) =>
+    t('moments.scrubTime', {
+      elapsed: localizeDigits(formatClipTime(ms - clip.startMs)),
+      total: localizeDigits(formatClipTime(totalMs)),
+    });
 
   return (
     <View style={styles.container}>
       {dragMs !== null && (
         <View style={styles.timeWrap} pointerEvents="none">
-          <Text style={styles.time}>
-            {t('moments.scrubTime', {
-              elapsed: localizeDigits(formatClipTime(dragMs - clip.startMs)),
-              total: localizeDigits(formatClipTime(totalMs)),
-            })}
-          </Text>
+          <Text style={styles.time}>{timeLabel(dragMs)}</Text>
         </View>
       )}
       <GestureDetector gesture={gesture}>
@@ -268,6 +312,7 @@ export function MomentScrubber({
             min: 0,
             max: 100,
             now: Math.round(clipProgress(positionMs, clipRange) * 100),
+            text: timeLabel(clampToClip(positionMs, clipRange)),
           }}
           accessibilityActions={[{name: 'increment'}, {name: 'decrement'}]}
           onAccessibilityAction={onAccessibilityAction}>

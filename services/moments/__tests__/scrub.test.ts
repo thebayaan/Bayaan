@@ -3,7 +3,7 @@ import {
   clampToClip,
   clipProgress,
   formatClipTime,
-  isSeekSettled,
+  followsSeek,
   ratioToClipMs,
   xToClipMs,
   xToRatio,
@@ -90,11 +90,21 @@ describe('xToClipMs', () => {
   });
 });
 
-describe('isSeekSettled', () => {
-  it('waits until playback is near the seek target', () => {
-    expect(isSeekSettled(12_000, 30_000)).toBe(false);
-    expect(isSeekSettled(30_100, 30_000)).toBe(true);
-    expect(isSeekSettled(29_000, 30_000, 500)).toBe(false);
+describe('followsSeek', () => {
+  it('accepts the target and positions playback could have reached', () => {
+    expect(followsSeek(30_000, 30_000, 0)).toBe(true);
+    expect(followsSeek(29_500, 30_000, 0)).toBe(true);
+    expect(followsSeek(31_000, 30_000, 500)).toBe(true);
+  });
+
+  it('rejects stale updates from before a forward seek', () => {
+    expect(followsSeek(12_000, 30_000, 100)).toBe(false);
+    expect(followsSeek(29_000, 30_000, 100, 500)).toBe(false);
+  });
+
+  it('rejects stale updates from before a backward seek', () => {
+    expect(followsSeek(35_000, 15_000, 200)).toBe(false);
+    expect(followsSeek(16_000, 15_000, 200)).toBe(true);
   });
 });
 // @ai-end

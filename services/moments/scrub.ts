@@ -62,14 +62,20 @@ export function formatClipTime(ms: number): string {
 }
 
 /**
- * Whether playback has caught up with a seek. Until it has, position updates
- * still describe the old spot and would make the bar jump back.
+ * Whether a position update can follow a seek to `targetMs` made `elapsedMs`
+ * ago. The audio service reports the target as soon as it seeks, but the
+ * player can still send a few updates from the old spot until the seek lands.
+ * Those would make the bar jump back, so only positions between the target
+ * and how far playback could have moved since (at up to `maxRate`) count.
  */
-export function isSeekSettled(
+export function followsSeek(
   positionMs: number,
   targetMs: number,
+  elapsedMs: number,
   toleranceMs = 600,
+  maxRate = 2,
 ): boolean {
-  return Math.abs(positionMs - targetMs) <= toleranceMs;
+  const ahead = Math.max(0, elapsedMs) * maxRate + toleranceMs;
+  return positionMs >= targetMs - toleranceMs && positionMs <= targetMs + ahead;
 }
 // @ai-end
