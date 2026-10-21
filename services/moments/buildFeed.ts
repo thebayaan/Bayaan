@@ -1,11 +1,22 @@
 // @ai-start
 import type {MomentPassage} from './passages';
+import type {Snippet} from './snippets';
 import type {FeedAdjustments} from './feedback';
 
 export interface FeedCandidate {
   reciterId: string;
   rewayatId: string;
   passage: MomentPassage;
+  /** Multiplier on how often this candidate is picked. Defaults to 1. */
+  weight?: number;
+  /** Set when the candidate is a snippet served by the backend. */
+  snippet?: Snippet;
+  /**
+   * Set for a passage derived from the thematic passages: the last ayah of
+   * this theme and of each consecutive theme after it. The end is chosen
+   * from these once the reciter's timestamps are loaded.
+   */
+  themeEnds?: number[];
 }
 
 export interface FeedHistory {
@@ -103,7 +114,7 @@ export function buildFeed(
 
     const weights = eligible.map(
       c =>
-        reciterWeight(c.reciterId, options) /
+        (reciterWeight(c.reciterId, options) * (c.weight ?? 1)) /
         (clipsPerReciter.get(c.reciterId) ?? 1),
     );
     const total = weights.reduce((sum, w) => sum + w, 0);

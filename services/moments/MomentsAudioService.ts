@@ -6,6 +6,12 @@
  * stop at the end of the last one. Two players take turns: while one plays the
  * current card, the other loads the next card and waits at its start, so a
  * swipe starts sound without a network round trip.
+ *
+ * A source can also be a pre-cut clip file (startMs 0, endMs its length) with
+ * `offsetMs` set to where the clip starts in the surah. Positions in and out
+ * of the service stay surah positions either way, so captions and seeking do
+ * not care which file is playing. A clip that fails to load falls back to its
+ * `fallback` source (the seek-into-surah one).
  */
 
 import {createAudioPlayer, AudioPlayer, AudioStatus} from 'expo-audio';
@@ -16,8 +22,16 @@ type EventSubscription = {remove(): void};
 export interface MomentSource {
   key: string;
   url: string;
+  /** Start and end, as positions in the file at `url`. */
   startMs: number;
   endMs: number;
+  /**
+   * Added to file positions to get the positions the service reports and
+   * `seek` takes (the clip's start in the surah, for a pre-cut clip).
+   */
+  offsetMs?: number;
+  /** Played instead, under the same key, if this source fails to load. */
+  fallback?: MomentSource;
 }
 
 export interface MomentsPlaybackState {
@@ -35,6 +49,8 @@ interface Slot {
   ready: boolean;
   cueing: Promise<void> | null;
   ended: boolean;
+  /** A position inside the moment has been seen since the last cue. */
+  confirmed: boolean;
 }
 
 /** How often the players emit status updates (ms) */
@@ -111,13 +127,15 @@ class MomentsAudioService {
         ready: false,
         cueing: null,
         ended: false,
+        confirmed: false,
       });
     }
   }
 
   private load(index: number, source: MomentSource): void {
     const slot = this.slots[index];
-    if (slot.source?.key === source.key) return;
+    if (slot.source?.key === source.key && slot.source.url === source.url)
+      return;
     slot.player.pause();
     slot.source = source;
     slot.ready = false;
@@ -133,6 +151,7 @@ class MomentsAudioService {
       .then(() => {
         slot.ready = true;
         slot.ended = false;
+        slot.confirmed = false;
       })
       .finally(() => {
         slot.cueing = null;
@@ -143,6 +162,15 @@ class MomentsAudioService {
   private handleStatus(index: number, status: AudioStatus): void {
     const slot = this.slots[index];
     if (!slot?.source) return;
+
+    // A cached clip that will not play: go back to seeking into the surah.
+    if (status.error && slot.source.fallback) {
+      if (__DEV__) console.warn('[MomentsAudio] Clip failed:', status.error);
+      const fallback = slot.source.fallback;
+      slot.cueing = null;
+      this.load(index, fallback);
+      return;
+    }
 
     if (status.isLoaded && !slot.ready) {
       if (slot.cueing) return;
@@ -159,9 +187,14 @@ class MomentsAudioService {
     if (index !== this.activeIndex || !slot.ready || slot.ended) return;
 
     const positionMs = status.currentTime * 1000;
+    const offset = slot.source.offsetMs ?? 0;
     // The seek landed on the previous source (replace had not finished
-    // loading yet), so cue again once the new file is in.
-    if (positionMs < slot.source.startMs - 1000) {
+    // loading yet), so cue again once the new file is in. A clip starts at
+    // 0, so a stale position shows up past its end instead.
+    if (
+      positionMs < slot.source.startMs - 1000 ||
+      (!slot.confirmed && positionMs > slot.source.endMs + 1000)
+    ) {
       slot.ready = false;
       return;
     }
@@ -169,14 +202,15 @@ class MomentsAudioService {
       slot.ended = true;
       slot.player.pause();
       this.wantsPlay = false;
-      this.emit({positionMs: slot.source.endMs, playing: false});
+      this.emit({positionMs: slot.source.endMs + offset, playing: false});
       const key = slot.source.key;
       this.endedListeners.forEach(listener => listener(key));
       return;
     }
 
+    slot.confirmed = true;
     this.emit({
-      positionMs: Math.max(slot.source.startMs, positionMs),
+      positionMs: Math.max(slot.source.startMs, positionMs) + offset,
       playing: status.playing,
       buffering: status.isBuffering,
     });
@@ -205,12 +239,15 @@ class MomentsAudioService {
     this.wantsPlay = true;
     this.emit({
       key: source.key,
-      positionMs: source.startMs,
+      positionMs: source.startMs + (source.offsetMs ?? 0),
       playing: false,
       buffering: true,
     });
 
-    if (preloaded >= 0 && slot.ready) {
+    if (preloaded >= 0 && slot.source?.url !== source.url) {
+      // Preloaded from the other file (the clip finished downloading since).
+      this.load(this.activeIndex, source);
+    } else if (preloaded >= 0 && slot.ready) {
       this.cue(slot).then(() => this.wantsPlay && this.startActive());
     } else {
       this.load(this.activeIndex, source);
@@ -247,12 +284,13 @@ class MomentsAudioService {
   async seek(positionMs: number): Promise<void> {
     const slot = this.slots[this.activeIndex];
     if (!slot?.source || !slot.ready) return;
+    const offset = slot.source.offsetMs ?? 0;
     const clamped = Math.min(
-      Math.max(positionMs, slot.source.startMs),
+      Math.max(positionMs - offset, slot.source.startMs),
       slot.source.endMs - 250,
     );
     slot.ended = false;
-    this.emit({positionMs: clamped});
+    this.emit({positionMs: clamped + offset});
     await slot.player.seekTo(clamped / 1000);
   }
 

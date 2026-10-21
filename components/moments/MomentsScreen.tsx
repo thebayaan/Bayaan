@@ -30,6 +30,8 @@ import {
 } from '@/services/moments/useMomentsFeed';
 import {useMomentsStore} from '@/store/momentsStore';
 import {isWholeSurah} from '@/services/moments/passages';
+import {momentSourceFor} from '@/services/moments/momentSource';
+import {momentsClipCache} from '@/services/moments/clipCache';
 import {useLovedStore} from '@/services/player/store/lovedStore';
 import {useFavoriteRecitersStore} from '@/store/favoriteRecitersStore';
 import {usePlayerStore} from '@/services/player/store/playerStore';
@@ -58,12 +60,11 @@ import {
 import {getAyahCopyText} from '@/services/moments/verses';
 
 function toSource(card: MomentCardData) {
-  return {
-    key: card.key,
-    url: card.url,
-    startMs: card.clip.startMs,
-    endMs: card.clip.endMs,
-  };
+  // The downloaded clip when there is one, else a seek into the surah file.
+  const local = card.clipFile
+    ? momentsClipCache.getLocalUri(card.clipFile)
+    : null;
+  return momentSourceFor(card, local);
 }
 
 type LovedTracks = ReturnType<typeof useLovedStore.getState>['tracks'];
@@ -165,6 +166,7 @@ export function MomentsScreen({entry = 'tab'}: MomentsScreenProps) {
     if (!activeCard) return;
     handleCardEnded(trackerRef.current?.activate(activeCard, activeIndex));
     momentsAudioService.play(toSource(activeCard));
+    if (activeCard.clipFile) momentsClipCache.markPlayed(activeCard.clipFile);
     recordPlay(activeCard.reciter.id);
     const next = cards[activeIndex + 1];
     if (next) momentsAudioService.preload(toSource(next));
