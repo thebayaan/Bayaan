@@ -244,5 +244,21 @@
     "160": "Tafsir Ibn Kathir",
     "818": "Tazkir ul Quran",
     "159": "Bayan ul Quran"
+  },
+  "moments": {
+    "title": "Moments",
+    "profile": "Profile",
+    "filters": "Filters",
+    "filtersSoon": "Filters are coming soon",
+    "favorite": "Favorite",
+    "favorited": "Favorited",
+    "continue": "Continue {{surah}}",
+    "playInFull": "Play {{surah}} in full",
+    "like": "Like",
+    "share": "Share",
+    "more": "More",
+    "shareMessage": "Listen to {{reciter}} on Bayaan",
+    "emptyTitle": "No moments yet",
+    "emptyBody": "Moments need reciters with ayah timings. Check your connection and try again."
   }
 }

@@ -461,6 +461,27 @@ export default function SettingsScreen() {
                 />
               </View>,
             )}
+            {/* @ai-start */}
+            {renderCard(
+              <Pressable
+                style={styles.settingsRow}
+                onPress={() => router.push('/moments')}>
+                <View style={styles.settingsItemIcon}>
+                  <Feather
+                    name="play-circle"
+                    size={moderateScale(20)}
+                    color={iconColor}
+                  />
+                </View>
+                <View style={styles.settingsTextContainer}>
+                  <Text style={styles.settingsTitle}>Moments (preview)</Text>
+                  <Text style={styles.settingsDescription}>
+                    Open the reciter snippet feed prototype
+                  </Text>
+                </View>
+              </Pressable>,
+            )}
+            {/* @ai-end */}
           </View>
         )}
       </ScrollView>

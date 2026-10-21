@@ -519,6 +519,16 @@ function RootLayout() {
                         name="adhkar-playing"
                         options={{headerShown: false, animation: 'none'}}
                       />
+                      {/* @ai-start */}
+                      <Stack.Screen
+                        name="moments"
+                        options={{
+                          headerShown: false,
+                          animation: 'slide_from_bottom',
+                          contentStyle: {backgroundColor: '#000000'},
+                        }}
+                      />
+                      {/* @ai-end */}
                       <Stack.Screen
                         name="mushaf"
                         options={{
