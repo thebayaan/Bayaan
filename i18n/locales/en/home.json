@@ -254,6 +254,8 @@
     "favorited": "Favorited",
     "continue": "Continue {{surah}}",
     "playInFull": "Play {{surah}} in full",
+    "seek": "Playback position",
+    "scrubTime": "{{elapsed}} / {{total}}",
     "like": "Like",
     "share": "Share",
     "more": "More",

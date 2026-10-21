@@ -286,6 +286,8 @@
     "favorited": "مفضّل",
     "continue": "متابعة {{surah}}",
     "playInFull": "تشغيل {{surah}} كاملة",
+    "seek": "موضع التشغيل",
+    "scrubTime": "{{elapsed}} / {{total}}",
     "like": "إعجاب",
     "share": "مشاركة",
     "more": "المزيد",

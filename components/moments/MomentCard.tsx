@@ -1,5 +1,5 @@
 // @ai-start
-import React, {useCallback, useMemo} from 'react';
+import React, {useCallback, useMemo, useState} from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {Gesture, GestureDetector} from 'react-native-gesture-handler';
 import Animated, {
@@ -19,6 +19,7 @@ import type {MomentsPlaybackState} from '@/services/moments/MomentsAudioService'
 import {ayahAt} from '@/services/moments/buildMoment';
 import {isWholeSurah} from '@/services/moments/passages';
 import {getAyahArabic, getAyahTranslation} from '@/services/moments/verses';
+import {MomentScrubber} from './MomentScrubber';
 
 interface MomentCardProps {
   card: MomentCardData;
@@ -43,7 +44,6 @@ interface MomentCardProps {
 
 const WHITE = '#FFFFFF';
 const MUTED = 'rgba(255,255,255,0.62)';
-const TRACK = 'rgba(255,255,255,0.22)';
 
 function RailButton({
   icon,
@@ -94,7 +94,9 @@ export const MomentCard = React.memo(function MomentCard({
   const surahName = surah ? getSurahDisplayName(surah) : '';
 
   const positionMs = playback?.positionMs ?? clip.startMs;
-  const ayah = ayahAt(clip, positionMs);
+  // The caption follows the finger while scrubbing.
+  const [scrubAyah, setScrubAyah] = useState<number | null>(null);
+  const ayah = scrubAyah ?? ayahAt(clip, positionMs);
   const arabic = useMemo(
     () => getAyahArabic(passage.surah, ayah),
     [passage.surah, ayah],
@@ -102,10 +104,6 @@ export const MomentCard = React.memo(function MomentCard({
   const translation = useMemo(
     () => getAyahTranslation(passage.surah, ayah),
     [passage.surah, ayah],
-  );
-  const progress = Math.min(
-    1,
-    Math.max(0, (positionMs - clip.startMs) / (clip.endMs - clip.startMs)),
   );
   const paused = playback !== null && !playback.playing && !playback.buffering;
 
@@ -124,14 +122,6 @@ export const MomentCard = React.memo(function MomentCard({
     );
     if (!isLiked) onLike();
   }, [heartScale, isLiked, onLike]);
-
-  const seekFromX = useCallback(
-    (x: number) => {
-      const ratio = Math.min(1, Math.max(0, x / width));
-      onSeek(clip.startMs + ratio * (clip.endMs - clip.startMs));
-    },
-    [width, clip, onSeek],
-  );
 
   const gesture = useMemo(() => {
     const doubleTap = Gesture.Tap()
@@ -168,16 +158,6 @@ export const MomentCard = React.memo(function MomentCard({
       Gesture.Exclusive(doubleTap, singleTap),
     );
   }, [width, handleDoubleTap, onTogglePlay, onHoldSpeed, onOpenProfile]);
-
-  const seekGesture = useMemo(
-    () =>
-      Gesture.Pan()
-        .minDistance(0)
-        .runOnJS(true)
-        .onBegin(e => seekFromX(e.x))
-        .onUpdate(e => seekFromX(e.x)),
-    [seekFromX],
-  );
 
   return (
     <View style={[styles.card, {width, height}]}>
@@ -276,13 +256,13 @@ export const MomentCard = React.memo(function MomentCard({
           </View>
         </View>
 
-        <GestureDetector gesture={seekGesture}>
-          <View style={styles.seekArea}>
-            <View style={styles.track}>
-              <View style={[styles.fill, {width: `${progress * 100}%`}]} />
-            </View>
-          </View>
-        </GestureDetector>
+        <MomentScrubber
+          clip={clip}
+          positionMs={positionMs}
+          playing={!!playback?.playing}
+          onSeek={onSeek}
+          onScrubAyah={setScrubAyah}
+        />
       </View>
     </View>
   );
@@ -405,21 +385,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Manrope-SemiBold',
     fontSize: moderateScale(11),
     color: WHITE,
-  },
-  seekArea: {
-    height: moderateScale(28),
-    justifyContent: 'center',
-    marginTop: moderateScale(8),
-  },
-  track: {
-    height: 2,
-    borderRadius: 1,
-    backgroundColor: TRACK,
-    overflow: 'hidden',
-  },
-  fill: {
-    height: 2,
-    backgroundColor: WHITE,
   },
 });
 // @ai-end
