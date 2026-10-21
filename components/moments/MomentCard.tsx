@@ -1,10 +1,11 @@
 // @ai-start
-import React, {useCallback, useEffect, useMemo} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {Platform, Pressable, StyleSheet, Text, View} from 'react-native';
 import {BlurView} from 'expo-blur';
 import {Gesture, GestureDetector} from 'react-native-gesture-handler';
 import Animated, {
   Easing,
+  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withSequence,
@@ -113,12 +114,32 @@ export const MomentCard = React.memo(function MomentCard({
   const paused = playback !== null && !playback.playing && !playback.buffering;
 
   // Play badge: pops in with a slight scale when pausing, fades on resume.
+  // Mounted only while visible, so idle cards don't each keep a live blur.
   const pauseAnim = useSharedValue(paused ? 1 : 0);
+  const [badgeMounted, setBadgeMounted] = useState(paused);
+  const pausedRef = useRef(paused);
+  pausedRef.current = paused;
+  const unmountBadge = useCallback(() => {
+    // A late fade-out callback must not hide a badge that was re-shown.
+    if (!pausedRef.current) setBadgeMounted(false);
+  }, []);
   useEffect(() => {
-    pauseAnim.value = paused
-      ? withTiming(1, {duration: 180, easing: Easing.out(Easing.back(1.6))})
-      : withTiming(0, {duration: 140, easing: Easing.in(Easing.quad)});
-  }, [paused, pauseAnim]);
+    if (paused) {
+      setBadgeMounted(true);
+      pauseAnim.value = withTiming(1, {
+        duration: 180,
+        easing: Easing.out(Easing.back(1.6)),
+      });
+    } else {
+      pauseAnim.value = withTiming(
+        0,
+        {duration: 140, easing: Easing.in(Easing.quad)},
+        finished => {
+          if (finished) runOnJS(unmountBadge)();
+        },
+      );
+    }
+  }, [paused, pauseAnim, unmountBadge]);
   const pauseStyle = useAnimatedStyle(() => ({
     opacity: Math.min(1, pauseAnim.value),
     transform: [{scale: 0.82 + 0.18 * pauseAnim.value}],
@@ -301,33 +322,35 @@ export const MomentCard = React.memo(function MomentCard({
 
       {/* Centered on the whole (full-screen) card, not the stage above the
           caption. Touches pass through to the tap gesture underneath. */}
-      <View
-        style={styles.pauseOverlay}
-        pointerEvents="none"
-        accessibilityElementsHidden
-        importantForAccessibility="no-hide-descendants">
-        <Animated.View style={[styles.playShadow, pauseStyle]}>
-          {Platform.OS === 'ios' ? (
-            <BlurView intensity={28} tint="dark" style={styles.playButton}>
-              <Ionicons
-                name="play"
-                size={moderateScale(34)}
-                color={WHITE}
-                style={styles.playGlyph}
-              />
-            </BlurView>
-          ) : (
-            <View style={[styles.playButton, styles.playButtonSolid]}>
-              <Ionicons
-                name="play"
-                size={moderateScale(34)}
-                color={WHITE}
-                style={styles.playGlyph}
-              />
-            </View>
-          )}
-        </Animated.View>
-      </View>
+      {badgeMounted && (
+        <View
+          style={styles.pauseOverlay}
+          pointerEvents="none"
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants">
+          <Animated.View style={[styles.playShadow, pauseStyle]}>
+            {Platform.OS === 'ios' ? (
+              <BlurView intensity={28} tint="dark" style={styles.playButton}>
+                <Ionicons
+                  name="play"
+                  size={moderateScale(34)}
+                  color={WHITE}
+                  style={styles.playGlyph}
+                />
+              </BlurView>
+            ) : (
+              <View style={[styles.playButton, styles.playButtonSolid]}>
+                <Ionicons
+                  name="play"
+                  size={moderateScale(34)}
+                  color={WHITE}
+                  style={styles.playGlyph}
+                />
+              </View>
+            )}
+          </Animated.View>
+        </View>
+      )}
     </View>
   );
 });
