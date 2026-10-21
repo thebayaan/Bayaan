@@ -19,7 +19,7 @@ import {useTranslation} from 'react-i18next';
 import {appDirection, appLayoutDirection, forceLTR, isRTL} from '@/utils/rtl';
 import {
   useHideMiniPlayerOnMoments,
-  useOnMomentsTab,
+  useOnMomentsFeed,
 } from '@/hooks/useOnMomentsTab';
 // @ai-end
 
@@ -63,7 +63,9 @@ function IOSTabs() {
   // Moments pauses the main player, so its mini player would only cover the
   // feed. It stays when the main player is playing, e.g. after Continue.
   const hideMiniPlayer = useHideMiniPlayerOnMoments(); // @ai
-  const onMoments = useOnMomentsTab(); // @ai
+  // White icons over the black feed only; a profile pushed in Moments is a
+  // normal themed screen.
+  const onMoments = useOnMomentsFeed(); // @ai
 
   // UIKit mirrors the tabs via its layout-direction trait. Keep the accessory's
   // Yoga coordinates stable and apply app direction to its content separately.
