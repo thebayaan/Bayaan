@@ -1,8 +1,10 @@
 // @ai-start
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
-import {Pressable, StyleSheet, Text, View} from 'react-native';
+import {Platform, Pressable, StyleSheet, Text, View} from 'react-native';
+import {BlurView} from 'expo-blur';
 import {Gesture, GestureDetector} from 'react-native-gesture-handler';
 import Animated, {
+  Easing,
   FadeIn,
   FadeOut,
   runOnJS,
@@ -65,6 +67,7 @@ interface MomentCardProps {
 const WHITE = '#FFFFFF';
 const MUTED = 'rgba(255,255,255,0.62)';
 const HEART_SIZE = moderateScale(96);
+const PLAY_SIZE = moderateScale(76);
 
 function RailButton({
   icon,
@@ -84,7 +87,7 @@ function RailButton({
       accessibilityRole="button"
       accessibilityLabel={label}
       style={styles.railButton}>
-      <Ionicons name={icon} size={moderateScale(28)} color={color} />
+      <Ionicons name={icon} size={moderateScale(30)} color={color} />
       <Text style={styles.railLabel}>{label}</Text>
     </Pressable>
   );
@@ -141,6 +144,38 @@ function MomentCardView({
   latest.current = {isLiked, onLike, onTogglePlay, onOpenProfile, onHoldSpeed};
   const togglePlay = useCallback(() => latest.current.onTogglePlay(), []);
   const openProfile = useCallback(() => latest.current.onOpenProfile(), []);
+
+  // Play badge: pops in with a slight scale when pausing, fades on resume.
+  // Mounted only while visible, so idle cards don't each keep a live blur.
+  const pauseAnim = useSharedValue(paused ? 1 : 0);
+  const [badgeMounted, setBadgeMounted] = useState(paused);
+  const pausedRef = useRef(paused);
+  pausedRef.current = paused;
+  const unmountBadge = useCallback(() => {
+    // A late fade-out callback must not hide a badge that was re-shown.
+    if (!pausedRef.current) setBadgeMounted(false);
+  }, []);
+  useEffect(() => {
+    if (paused) {
+      setBadgeMounted(true);
+      pauseAnim.value = withTiming(1, {
+        duration: 180,
+        easing: Easing.out(Easing.back(1.6)),
+      });
+    } else {
+      pauseAnim.value = withTiming(
+        0,
+        {duration: 140, easing: Easing.in(Easing.quad)},
+        finished => {
+          if (finished) runOnJS(unmountBadge)();
+        },
+      );
+    }
+  }, [paused, pauseAnim, unmountBadge]);
+  const pauseStyle = useAnimatedStyle(() => ({
+    opacity: Math.min(1, pauseAnim.value),
+    transform: [{scale: 0.82 + 0.18 * pauseAnim.value}],
+  }));
 
   // Heart that pops where the double tap landed
   const heartScale = useSharedValue(0);
@@ -285,11 +320,6 @@ function MomentCardView({
           <Text style={styles.reference}>
             {`${surahName} ${passage.surah}:${ayah} · ${rewayat.name}`}
           </Text>
-          {paused && (
-            <View style={styles.pauseBadge} pointerEvents="none">
-              <Ionicons name="play" size={moderateScale(34)} color={WHITE} />
-            </View>
-          )}
           <Animated.View
             style={[styles.heart, heartStyle]}
             pointerEvents="none">
@@ -357,7 +387,11 @@ function MomentCardView({
                     </Text>
                   </Pressable>
                 </View>
-                <Pressable onPress={onContinue} hitSlop={6}>
+                <Pressable
+                  onPress={onContinue}
+                  hitSlop={6}
+                  accessibilityRole="button"
+                  style={styles.continuePill}>
                   <Text style={styles.continue} numberOfLines={1}>
                     {isWholeSurah(passage)
                       ? t('moments.playInFull', {surah: surahName})
@@ -397,6 +431,38 @@ function MomentCardView({
           onScrubAyah={setScrubAyah}
         />
       </View>
+
+      {/* Centered on the whole (full-screen) card, not the stage above the
+          caption. Touches pass through to the tap gesture underneath. */}
+      {badgeMounted && (
+        <View
+          style={styles.pauseOverlay}
+          pointerEvents="none"
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants">
+          <Animated.View style={[styles.playShadow, pauseStyle]}>
+            {Platform.OS === 'ios' ? (
+              <BlurView intensity={28} tint="dark" style={styles.playButton}>
+                <Ionicons
+                  name="play"
+                  size={moderateScale(34)}
+                  color={WHITE}
+                  style={styles.playGlyph}
+                />
+              </BlurView>
+            ) : (
+              <View style={[styles.playButton, styles.playButtonSolid]}>
+                <Ionicons
+                  name="play"
+                  size={moderateScale(34)}
+                  color={WHITE}
+                  style={styles.playGlyph}
+                />
+              </View>
+            )}
+          </Animated.View>
+        </View>
+      )}
     </Animated.View>
   );
 }
@@ -421,21 +487,47 @@ const styles = StyleSheet.create({
     color: WHITE,
     textAlign: 'center',
     writingDirection: 'rtl',
+    // Keep long ayat a comfortable measure on tablets.
+    maxWidth: 640,
   },
   reference: {
-    marginTop: moderateScale(16),
+    marginTop: moderateScale(18),
     fontFamily: 'Manrope-Medium',
     fontSize: moderateScale(12),
+    letterSpacing: 0.2,
     color: MUTED,
   },
-  pauseBadge: {
-    position: 'absolute',
-    width: moderateScale(72),
-    height: moderateScale(72),
-    borderRadius: moderateScale(36),
-    backgroundColor: 'rgba(255,255,255,0.16)',
+  pauseOverlay: {
+    ...StyleSheet.absoluteFill,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  playShadow: {
+    width: PLAY_SIZE,
+    height: PLAY_SIZE,
+    borderRadius: PLAY_SIZE / 2,
+    shadowColor: '#000000',
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+    shadowOffset: {width: 0, height: 4},
+  },
+  playButton: {
+    width: PLAY_SIZE,
+    height: PLAY_SIZE,
+    borderRadius: PLAY_SIZE / 2,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.28)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.22)',
+  },
+  playButtonSolid: {
+    backgroundColor: 'rgba(30,30,30,0.62)',
+  },
+  playGlyph: {
+    // The triangle's visual mass sits left of its box; nudge it right.
+    marginLeft: moderateScale(4),
   },
   heart: {
     position: 'absolute',
@@ -469,8 +561,9 @@ const styles = StyleSheet.create({
   caption: {
     fontFamily: 'Manrope-Medium',
     fontSize: moderateScale(14),
-    lineHeight: moderateScale(20),
-    color: WHITE,
+    lineHeight: moderateScale(21),
+    // A step below the ayah so the Arabic leads.
+    color: 'rgba(255,255,255,0.9)',
     marginBottom: moderateScale(14),
   },
   reciterRow: {
@@ -481,6 +574,8 @@ const styles = StyleSheet.create({
     width: moderateScale(40),
     height: moderateScale(40),
     borderRadius: moderateScale(20),
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.3)',
   },
   reciterText: {
     flex: 1,
@@ -518,21 +613,33 @@ const styles = StyleSheet.create({
   pillTextActive: {
     color: '#000000',
   },
+  continuePill: {
+    alignSelf: 'flex-start',
+    maxWidth: '100%',
+    marginTop: moderateScale(6),
+    paddingHorizontal: moderateScale(10),
+    paddingVertical: moderateScale(3),
+    borderRadius: moderateScale(999),
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.28)',
+  },
   continue: {
-    marginTop: moderateScale(3),
     fontFamily: 'Manrope-SemiBold',
-    fontSize: moderateScale(13),
-    color: MUTED,
+    fontSize: moderateScale(12),
+    color: 'rgba(255,255,255,0.85)',
   },
   rail: {
     alignItems: 'center',
-    gap: moderateScale(18),
+    gap: moderateScale(20),
+    // Sit the last label level with the reciter row's bottom edge.
+    paddingBottom: moderateScale(2),
   },
   railButton: {
     alignItems: 'center',
+    minWidth: moderateScale(48),
   },
   railLabel: {
-    marginTop: moderateScale(3),
+    marginTop: moderateScale(4),
     fontFamily: 'Manrope-SemiBold',
     fontSize: moderateScale(11),
     color: WHITE,
