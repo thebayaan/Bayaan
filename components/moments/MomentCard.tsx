@@ -140,8 +140,16 @@ function MomentCardView({
     onTogglePlay,
     onOpenProfile,
     onHoldSpeed,
+    playing: !!playback?.playing,
   });
-  latest.current = {isLiked, onLike, onTogglePlay, onOpenProfile, onHoldSpeed};
+  latest.current = {
+    isLiked,
+    onLike,
+    onTogglePlay,
+    onOpenProfile,
+    onHoldSpeed,
+    playing: !!playback?.playing,
+  };
   const togglePlay = useCallback(() => latest.current.onTogglePlay(), []);
   const openProfile = useCallback(() => latest.current.onOpenProfile(), []);
 
@@ -209,7 +217,8 @@ function MomentCardView({
   const holdingRef = useRef(false);
   const held = useSharedValue(false);
   const startHold = useCallback(() => {
-    if (holdingRef.current) return;
+    // A paused moment has nothing to speed up.
+    if (holdingRef.current || !latest.current.playing) return;
     holdingRef.current = true;
     setHolding(true);
     lightHaptics();
@@ -433,33 +442,36 @@ function MomentCardView({
       </View>
 
       {/* Centered on the whole (full-screen) card, not the stage above the
-          caption. Touches pass through to the tap gesture underneath. */}
+          caption. The circle itself resumes, since on short screens it can
+          sit over the caption, which has no tap gesture. */}
       {badgeMounted && (
         <View
           style={styles.pauseOverlay}
-          pointerEvents="none"
+          pointerEvents="box-none"
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants">
           <Animated.View style={[styles.playShadow, pauseStyle]}>
-            {Platform.OS === 'ios' ? (
-              <BlurView intensity={28} tint="dark" style={styles.playButton}>
-                <Ionicons
-                  name="play"
-                  size={moderateScale(34)}
-                  color={WHITE}
-                  style={styles.playGlyph}
-                />
-              </BlurView>
-            ) : (
-              <View style={[styles.playButton, styles.playButtonSolid]}>
-                <Ionicons
-                  name="play"
-                  size={moderateScale(34)}
-                  color={WHITE}
-                  style={styles.playGlyph}
-                />
-              </View>
-            )}
+            <Pressable onPress={togglePlay} hitSlop={12}>
+              {Platform.OS === 'ios' ? (
+                <BlurView intensity={28} tint="dark" style={styles.playButton}>
+                  <Ionicons
+                    name="play"
+                    size={moderateScale(34)}
+                    color={WHITE}
+                    style={styles.playGlyph}
+                  />
+                </BlurView>
+              ) : (
+                <View style={[styles.playButton, styles.playButtonSolid]}>
+                  <Ionicons
+                    name="play"
+                    size={moderateScale(34)}
+                    color={WHITE}
+                    style={styles.playGlyph}
+                  />
+                </View>
+              )}
+            </Pressable>
           </Animated.View>
         </View>
       )}
