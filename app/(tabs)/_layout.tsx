@@ -17,7 +17,10 @@ import {USE_GLASS} from '@/hooks/useGlassProps';
 // @ai-start
 import {useTranslation} from 'react-i18next';
 import {appDirection, appLayoutDirection, forceLTR, isRTL} from '@/utils/rtl';
-import {useOnMomentsTab} from '@/hooks/useOnMomentsTab';
+import {
+  useHideMiniPlayerOnMoments,
+  useOnMomentsTab,
+} from '@/hooks/useOnMomentsTab';
 // @ai-end
 
 // PNG tab icons for NativeTabs (iOS) — template-rendered by the native tab bar
@@ -57,7 +60,9 @@ function IOSTabs() {
     const index = state.queue.currentIndex;
     return tracks.length > 0 && tracks[index] != null;
   });
-  // Moments pauses the main player, so its mini player would only cover the feed.
+  // Moments pauses the main player, so its mini player would only cover the
+  // feed. It stays when the main player is playing, e.g. after Continue.
+  const hideMiniPlayer = useHideMiniPlayerOnMoments(); // @ai
   const onMoments = useOnMomentsTab(); // @ai
 
   // UIKit mirrors the tabs via its layout-direction trait. Keep the accessory's
@@ -66,11 +71,11 @@ function IOSTabs() {
     <View style={[{flex: 1}, forceLTR]}>
       <NativeTabs
         unstable_nativeProps={{direction: appDirection}}
-        tintColor={theme.colors.text}
+        tintColor={onMoments ? '#FFFFFF' : theme.colors.text} // @ai
         minimizeBehavior="onScrollDown"
         blurEffect="none"
         backgroundColor="transparent">
-        {hasTrack && !onMoments && (
+        {hasTrack && !hideMiniPlayer && (
           <NativeTabs.BottomAccessory>
             <MiniPlayer />
           </NativeTabs.BottomAccessory>
@@ -181,7 +186,7 @@ function IOSTabs() {
 // @ai-start
 function AndroidTabs() {
   const {t} = useTranslation();
-  const onMoments = useOnMomentsTab();
+  const hideMiniPlayer = useHideMiniPlayerOnMoments();
   return (
     <View style={{flex: 1}}>
       <Tabs
@@ -206,7 +211,7 @@ function AndroidTabs() {
           options={{title: t('tabs.collection')}}
         />
       </Tabs>
-      {!onMoments && <FloatingPlayer />}
+      {!hideMiniPlayer && <FloatingPlayer />}
     </View>
   );
 }

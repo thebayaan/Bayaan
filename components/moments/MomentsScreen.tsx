@@ -11,7 +11,7 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
-import {useFocusEffect, useRouter} from 'expo-router';
+import {useRouter} from 'expo-router';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {setStatusBarStyle} from 'expo-status-bar';
 import {Ionicons} from '@expo/vector-icons';
@@ -44,6 +44,7 @@ import {lightHaptics} from '@/utils/haptics';
 import {useTheme} from '@/hooks/useTheme';
 import {useResponsive} from '@/hooks/useResponsive';
 import {useBottomInset} from '@/hooks/useBottomInset';
+import {useMainPlayerActive, useOnMomentsTab} from '@/hooks/useOnMomentsTab';
 import {getSurahDisplayName} from '@/i18n/format';
 import {analyticsService} from '@/services/analytics/AnalyticsService';
 import type {MomentActionType, MomentsEntry} from '@/services/analytics/events';
@@ -58,6 +59,9 @@ import {
   signalForEnd,
 } from '@/services/moments/feedback';
 import {getAyahCopyText} from '@/services/moments/verses';
+
+// How long the options sheet takes to close before another sheet can open.
+const SHEET_CLOSE_MS = 400;
 
 function toSource(card: MomentCardData) {
   // The downloaded clip when there is one, else a seek into the surah file.
@@ -89,10 +93,13 @@ export function MomentsScreen({entry = 'tab'}: MomentsScreenProps) {
   const insets = useSafeAreaInsets();
   const {isDarkMode} = useTheme();
   const {isTablet} = useResponsive();
-  // Clear the tab bar; the player is hidden on this tab.
-  const tabInset = useBottomInset({ignorePlayer: true});
+  // Clear the tab bar, and the mini player when it shows.
+  const tabInset = useBottomInset({ignorePlayer: !useMainPlayerActive()});
   const bottomInset = isTablet ? insets.bottom : tabInset;
   const resumeOnFocusRef = useRef(false);
+  const visible = useOnMomentsTab();
+  const visibleRef = useRef(visible);
+  const playerSheetOpen = usePlayerStore(s => s.sheetMode === 'full');
   const {width, height} = useWindowDimensions();
   const {cards, loading, ensureAhead, reorderTail} = useMomentsFeed();
   const [activeIndex, setActiveIndex] = useState(0);
@@ -166,6 +173,11 @@ export function MomentsScreen({entry = 'tab'}: MomentsScreenProps) {
     if (!activeCard) return;
     handleCardEnded(trackerRef.current?.activate(activeCard, activeIndex));
     momentsAudioService.play(toSource(activeCard));
+    // Cards can finish loading after the user has left the tab.
+    if (!visibleRef.current) {
+      momentsAudioService.pause();
+      resumeOnFocusRef.current = true;
+    }
     if (activeCard.clipFile) momentsClipCache.markPlayed(activeCard.clipFile);
     recordPlay(activeCard.reciter.id);
     const next = cards[activeIndex + 1];
@@ -199,30 +211,37 @@ export function MomentsScreen({entry = 'tab'}: MomentsScreenProps) {
   );
 
   // Pause when leaving the tab, and pick back up on return if it was
-  // playing. The status bar stays light over the black feed.
-  // One analytics session per visit, since the tab stays mounted.
-  useFocusEffect(
-    useCallback(() => {
-      setStatusBarStyle('light');
-      const tracker = new MomentsSessionTracker({
-        entry,
-        priorPlays: useMomentsStore.getState().plays,
-        sink: analyticsService,
-      });
-      trackerRef.current = tracker;
-      tracker.start();
-      const card = cardsRef.current[activeIndexRef.current];
-      if (card) tracker.activate(card, activeIndexRef.current);
-      if (resumeOnFocusRef.current) momentsAudioService.resume();
-      return () => {
-        resumeOnFocusRef.current = momentsAudioService.getState().playing;
-        momentsAudioService.pause();
-        handleCardEnded(tracker.close());
-        trackerRef.current = null;
-        setStatusBarStyle(isDarkMode ? 'light' : 'dark');
-      };
-    }, [entry, isDarkMode, handleCardEnded]),
-  );
+  // playing. Native tabs don't fire focus events reliably, so this follows
+  // the route segments instead. One analytics session per visit, since the
+  // tab stays mounted.
+  useEffect(() => {
+    visibleRef.current = visible;
+    if (!visible) return;
+    const tracker = new MomentsSessionTracker({
+      entry,
+      priorPlays: useMomentsStore.getState().plays,
+      sink: analyticsService,
+    });
+    trackerRef.current = tracker;
+    tracker.start();
+    const card = cardsRef.current[activeIndexRef.current];
+    if (card) tracker.activate(card, activeIndexRef.current);
+    if (resumeOnFocusRef.current) momentsAudioService.resume();
+    return () => {
+      resumeOnFocusRef.current = momentsAudioService.getState().playing;
+      momentsAudioService.pause();
+      handleCardEnded(tracker.close());
+      trackerRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible]);
+
+  // Light status bar over the black feed, but not over the full player.
+  useEffect(() => {
+    setStatusBarStyle(
+      visible && !playerSheetOpen ? 'light' : isDarkMode ? 'light' : 'dark',
+    );
+  }, [visible, playerSheetOpen, isDarkMode]);
 
   const setActive = useCallback(
     (index: number) => {
@@ -352,7 +371,8 @@ export function MomentsScreen({entry = 'tab'}: MomentsScreenProps) {
             {
               label: t('moments.share'),
               icon: 'share',
-              onPress: () => share(card),
+              // The share sheet can't open while this sheet is closing.
+              onPress: () => setTimeout(() => share(card), SHEET_CLOSE_MS),
             },
             {
               label: t('moments.copyAyah'),
