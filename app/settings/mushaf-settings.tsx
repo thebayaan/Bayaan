@@ -10,7 +10,7 @@ export default function MushafSettingsScreen() {
   const router = useRouter();
 
   const handleOpenThemePicker = useCallback(() => {
-    router.push('/(tabs)/(d.settings)/reading-theme');
+    router.push('/settings/reading-theme');
   }, [router]);
 
   return (

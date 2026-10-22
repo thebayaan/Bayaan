@@ -1,5 +1,5 @@
 /**
- * AudioCoordinator - Mutual exclusion between main player and mushaf player
+ * AudioCoordinator - Mutual exclusion between the app's audio sources
  *
  * Ensures only one audio source plays at a time. When one source starts,
  * the other is paused automatically.
@@ -7,7 +7,7 @@
 
 import {usePlayerStore} from '@/services/player/store/playerStore';
 
-type AudioSource = 'main' | 'mushaf' | 'adhkar' | 'none';
+type AudioSource = 'main' | 'mushaf' | 'adhkar' | 'moments' | 'none'; // @ai
 
 class AudioCoordinator {
   private static instance: AudioCoordinator;
@@ -47,6 +47,7 @@ class AudioCoordinator {
    */
   mushafWillPlay(): void {
     this.pauseAdhkarIfActive();
+    this.pauseMomentsIfActive(); // @ai
     if (this.activeSource === 'main') {
       const store = usePlayerStore.getState();
       if (
@@ -67,6 +68,7 @@ class AudioCoordinator {
    */
   mainWillPlay(): void {
     this.pauseAdhkarIfActive();
+    this.pauseMomentsIfActive(); // @ai
     if (this.activeSource === 'mushaf') {
       // Lazy import to avoid circular dependency
       const {mushafAudioService} = require('./MushafAudioService');
@@ -89,7 +91,25 @@ class AudioCoordinator {
   /**
    * Called before the adhkar player plays. Pauses the main and mushaf players.
    */
+  // @ai-start
   adhkarWillPlay(): void {
+    this.pauseMomentsIfActive();
+    this.pauseMainAndMushaf();
+    this.setActiveSource('adhkar');
+  }
+
+  /**
+   * Called before a Moments clip plays. Pauses every other source.
+   */
+  momentsWillPlay(): void {
+    if (this.activeSource !== 'moments') {
+      this.pauseAdhkarIfActive();
+      this.pauseMainAndMushaf();
+    }
+    this.setActiveSource('moments');
+  }
+
+  private pauseMainAndMushaf(): void {
     const store = usePlayerStore.getState();
     if (
       store.playback.state === 'playing' ||
@@ -103,8 +123,16 @@ class AudioCoordinator {
       const {useMushafPlayerStore} = require('@/store/mushafPlayerStore');
       useMushafPlayerStore.getState().setPlaybackState('paused');
     }
-    this.setActiveSource('adhkar');
   }
+
+  private pauseMomentsIfActive(): void {
+    if (this.activeSource !== 'moments') return;
+    const {
+      momentsAudioService,
+    } = require('@/services/moments/MomentsAudioService');
+    momentsAudioService.pause();
+  }
+  // @ai-end
 
   private pauseAdhkarIfActive(): void {
     if (this.activeSource !== 'adhkar') return;

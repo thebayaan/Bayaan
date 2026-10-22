@@ -28,6 +28,15 @@ export const ANALYTICS_EVENTS = {
   SHARE_CREATED: 'share_created',
   SEARCH_PERFORMED: 'search_performed',
   TRANSLATION_VIEWED: 'translation_viewed',
+  // @ai-start
+  // Moments (short clip feed). Clip listening is kept out of
+  // MeaningfulListen and the local listening totals on purpose.
+  MOMENTS_OPENED: 'moments_opened',
+  MOMENT_VIEWED: 'moment_viewed',
+  MOMENT_ENDED: 'moment_ended',
+  MOMENT_ACTION: 'moment_action',
+  MOMENTS_SESSION_ENDED: 'moments_session_ended',
+  // @ai-end
   // Lifecycle
   APP_OPENED: 'app_opened',
   APP_BACKGROUNDED: 'app_backgrounded',
@@ -183,6 +192,68 @@ export interface TranslationViewedProps {
   translation_id: string;
   language: string;
 }
+
+// @ai-start
+/** Where Moments was opened from. */
+export type MomentsEntry = 'preview' | 'tab';
+
+export interface MomentsOpenedProps {
+  entry: MomentsEntry;
+}
+
+export interface MomentViewedProps {
+  /** Stable across sessions: reciter, rewayah and passage. */
+  moment_id: string;
+  reciter_id: string;
+  rewayah_id: string;
+  surah: number;
+  /** 0-based card position in the session's feed. */
+  position: number;
+  /** From the card becoming active to the first audio progress past its start. */
+  start_latency_ms: number;
+  /** True when the reciter had never played in Moments before this session. */
+  new_reciter: boolean;
+}
+
+export type MomentEndReason = 'completed' | 'swiped' | 'left';
+
+export interface MomentEndedProps {
+  moment_id: string;
+  reciter_id: string;
+  /** Wall-clock time the clip was audibly playing. */
+  listened_ms: number;
+  reason: MomentEndReason;
+}
+
+export type MomentActionType =
+  | 'continue'
+  | 'like'
+  | 'favorite'
+  | 'share'
+  | 'profile'
+  | 'speed';
+
+export interface MomentActionProps {
+  moment_id: string;
+  action: MomentActionType;
+  reciter_id: string;
+  new_reciter: boolean;
+  /** For like and favorite: whether the toggle turned it on. */
+  enabled?: boolean;
+}
+
+export interface MomentsSessionEndedProps {
+  cards_seen: number;
+  duration_ms: number;
+  /**
+   * Distinct reciters new to Moments that got a Continue or a Favorite
+   * (turned on) this session.
+   */
+  conversions: number;
+  /** Distinct reciters new to Moments that were shown this session. */
+  new_reciters_seen: number;
+}
+// @ai-end
 
 export interface AppBackgroundedProps {
   session_duration_ms: number;

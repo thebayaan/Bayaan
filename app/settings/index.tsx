@@ -7,7 +7,6 @@ import {Theme} from '@/utils/themeUtils';
 import {Feather, MaterialIcons} from '@expo/vector-icons';
 import {clearPlayerCache} from '@/services/player/utils/storage';
 import Color from 'color';
-import {useBottomInset} from '@/hooks/useBottomInset';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
 import {GlassView} from 'expo-glass-effect';
@@ -234,7 +233,6 @@ const renderIcon = (
 export default function SettingsScreen() {
   const router = useRouter();
   const {theme} = useTheme();
-  const bottomInset = useBottomInset();
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const glassColorScheme = useGlassColorScheme();
@@ -263,22 +261,22 @@ export default function SettingsScreen() {
   const handleSettingPress = async (type: string) => {
     switch (type) {
       case 'mushafSettings':
-        router.push('/(d.settings)/mushaf-settings');
+        router.push('/settings/mushaf-settings');
         break;
       case 'translations':
-        router.push('/(d.settings)/translations');
+        router.push('/settings/translations');
         break;
       case 'defaultReciter':
-        router.push('/(d.settings)/default-reciter');
+        router.push('/settings/default-reciter');
         break;
       case 'reciterChoice':
-        router.push('/(d.settings)/reciter-choice');
+        router.push('/settings/reciter-choice');
         break;
       case 'language':
-        router.push('/(d.settings)/language');
+        router.push('/settings/language');
         break;
       case 'storage':
-        router.push('/(d.settings)/storage');
+        router.push('/settings/storage');
         break;
       case 'clearCache':
         await clearPlayerCache();
@@ -288,7 +286,7 @@ export default function SettingsScreen() {
         await openAppStoreForReview();
         break;
       case 'whatsNew':
-        router.push('/(d.settings)/whats-new');
+        router.push('/settings/whats-new');
         break;
       case 'support':
         await Linking.openURL(branding.supportUrl);
@@ -303,10 +301,10 @@ export default function SettingsScreen() {
         await Linking.openURL(branding.privacyUrl);
         break;
       case 'about':
-        router.push('/(d.settings)/about');
+        router.push('/settings/about');
         break;
       case 'credits':
-        router.push('/(d.settings)/credits');
+        router.push('/settings/credits');
         break;
       case 'github':
         await Linking.openURL('https://github.com/thebayaan/Bayaan');
@@ -316,15 +314,18 @@ export default function SettingsScreen() {
     }
   };
 
-  // iOS 26+ NativeTabs: automatic content insets handle top/bottom; manual
+  // iOS 26+: automatic content insets handle top/bottom; manual
   // padding would double-pad. Other platforms: opt out of automatic and pad
   // manually.
+  // @ai-start
+  // Settings is a pushed screen with its own header now, not a tab.
   const contentPadding = USE_GLASS
     ? undefined
     : {
-        paddingTop: insets.top + moderateScale(10),
-        paddingBottom: bottomInset,
+        paddingTop: moderateScale(10),
+        paddingBottom: insets.bottom + moderateScale(16),
       };
+  // @ai-end
 
   const renderCard = (children: React.ReactNode) =>
     USE_GLASS ? (
