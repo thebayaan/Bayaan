@@ -46,7 +46,7 @@ import {lightHaptics} from '@/utils/haptics';
 import {useTheme} from '@/hooks/useTheme';
 import {useResponsive} from '@/hooks/useResponsive';
 import {useBottomInset} from '@/hooks/useBottomInset';
-import {useMainPlayerActive, useOnMomentsFeed} from '@/hooks/useOnMomentsTab';
+import {useOnMomentsFeed} from '@/hooks/useOnMomentsTab';
 import {getSurahDisplayName} from '@/i18n/format';
 import {analyticsService} from '@/services/analytics/AnalyticsService';
 import type {MomentActionType, MomentsEntry} from '@/services/analytics/events';
@@ -198,8 +198,8 @@ export function MomentsScreen({entry = 'tab'}: MomentsScreenProps) {
   const insets = useSafeAreaInsets();
   const {isDarkMode} = useTheme();
   const {isTablet} = useResponsive();
-  // Clear the tab bar, and the mini player when it shows.
-  const tabInset = useBottomInset({ignorePlayer: !useMainPlayerActive()});
+  // Clear the tab bar. The mini player never shows on the feed.
+  const tabInset = useBottomInset({ignorePlayer: true});
   const bottomInset = isTablet ? insets.bottom : tabInset;
   const resumeOnFocusRef = useRef(false);
   // Off the feed counts as away, including a profile pushed in this tab.

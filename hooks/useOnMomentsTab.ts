@@ -2,7 +2,6 @@
 import {useLayoutEffect} from 'react';
 import {useSegments} from 'expo-router';
 import {create} from 'zustand';
-import {usePlayerStore} from '@/services/player/store/playerStore';
 
 // Whether Moments is the focused tab, kept in a store so screens re-render
 // only when it changes, not on every navigation like `useSegments` does.
@@ -40,20 +39,13 @@ export function useOnMomentsFeed(): boolean {
   return useMomentsTabStore(s => s.onFeed);
 }
 
-/** Whether the main player is playing, e.g. after Continue from a moment. */
-export function useMainPlayerActive(): boolean {
-  return usePlayerStore(
-    s => s.playback.state === 'playing' || s.playback.state === 'buffering',
-  );
-}
-
 /**
- * Moments hides the mini player while its own feed is in charge, and shows
- * it again when the main player is playing so it is clear what's on.
+ * The feed uses the mini player's space for its own content, so the mini
+ * player is always hidden there, whatever the main player is doing. Tying it
+ * to playback made it flicker in and out, and every flip moved the cards. It
+ * comes back on the reciter profile and the other tabs.
  */
 export function useHideMiniPlayerOnMoments(): boolean {
-  const onFeed = useOnMomentsFeed();
-  const mainActive = useMainPlayerActive();
-  return onFeed && !mainActive;
+  return useOnMomentsFeed();
 }
 // @ai-end
