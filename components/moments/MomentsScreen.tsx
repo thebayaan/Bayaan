@@ -73,6 +73,9 @@ function toSource(card: MomentCardData) {
   return momentSourceFor(card, local);
 }
 
+// How long a deferred card switch waits if the list never says it settled.
+const SETTLE_BACKSTOP_MS = 700;
+
 // The service only ever plays the active card, so this needs no binding.
 const seekActive = (positionMs: number) => momentsAudioService.seek(positionMs);
 
@@ -365,6 +368,25 @@ export function MomentsScreen({entry = 'tab'}: MomentsScreenProps) {
     );
   }, [visible, playerSheetOpen, isDarkMode]);
 
+  // While the finger or momentum moves the list, React work and new audio
+  // loads would compete with the scroll animation, so only the audio switches
+  // then. The render, preloads and feed top-up wait for the list to settle.
+  const scrollingRef = useRef(false);
+  const settleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const commitActive = useCallback(() => {
+    if (settleTimerRef.current) clearTimeout(settleTimerRef.current);
+    settleTimerRef.current = null;
+    const index = activeIndexRef.current;
+    setActiveIndex(index);
+    ensureAhead(index);
+  }, [ensureAhead]);
+  useEffect(
+    () => () => {
+      if (settleTimerRef.current) clearTimeout(settleTimerRef.current);
+    },
+    [],
+  );
+
   const setActive = useCallback(
     (index: number | null) => {
       if (index === null || index === activeIndexRef.current) return;
@@ -374,15 +396,24 @@ export function MomentsScreen({entry = 'tab'}: MomentsScreenProps) {
       // Start it now rather than after the next render; the old card stops
       // in the same call, so the two never overlap.
       if (visibleRef.current) momentsAudioService.play(toSource(card));
-      setActiveIndex(index);
-      ensureAhead(index);
+      if (!scrollingRef.current) {
+        commitActive();
+        return;
+      }
+      // A backstop in case the list never reports that it stopped.
+      if (settleTimerRef.current) clearTimeout(settleTimerRef.current);
+      settleTimerRef.current = setTimeout(() => {
+        scrollingRef.current = false;
+        commitActive();
+      }, SETTLE_BACKSTOP_MS);
     },
-    [ensureAhead],
+    [commitActive],
   );
 
   // Switch cards as soon as the page is decided, not when the list stops.
   const handleBeginDrag = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      scrollingRef.current = true;
       pagerRef.current.beginDrag(e.nativeEvent.contentOffset.y);
     },
     [],
@@ -405,8 +436,10 @@ export function MomentsScreen({entry = 'tab'}: MomentsScreenProps) {
   const handleScrollEnd = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       setActive(pagerRef.current.endMomentum(e.nativeEvent.contentOffset.y));
+      scrollingRef.current = false;
+      commitActive();
     },
-    [setActive],
+    [setActive, commitActive],
   );
   const getItemLayout = useCallback(
     (_: unknown, index: number) => ({
