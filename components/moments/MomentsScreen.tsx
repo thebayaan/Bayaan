@@ -2,6 +2,7 @@
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {
   ActivityIndicator,
+  AppState,
   FlatList,
   NativeScrollEvent,
   NativeSyntheticEvent,
@@ -360,6 +361,28 @@ export function MomentsScreen({entry = 'tab'}: MomentsScreenProps) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
+
+  // Moments is meant to be watched, like a video, so it never plays in the
+  // background: leaving the app or locking the phone pauses it, and coming
+  // back resumes it if it was playing and the feed is still on screen.
+  useEffect(() => {
+    let resumeOnActive = false;
+    const sub = AppState.addEventListener('change', next => {
+      if (next === 'background') {
+        if (!visibleRef.current) return;
+        resumeOnActive = momentsAudioService.getState().playing;
+        momentsAudioService.pause();
+      } else if (next === 'active') {
+        const mainState = usePlayerStore.getState().playback.state;
+        const mainActive = mainState === 'playing' || mainState === 'buffering';
+        if (resumeOnActive && visibleRef.current && !mainActive) {
+          momentsAudioService.resume();
+        }
+        resumeOnActive = false;
+      }
+    });
+    return () => sub.remove();
+  }, []);
 
   // Light status bar over the black feed, but not over the full player.
   useEffect(() => {
