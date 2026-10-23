@@ -12,6 +12,10 @@ interface DevSettingsState {
   randomCardVariantIndex: number;
   setRandomCardVariantIndex: (index: number) => void;
   cycleRandomCardVariant: (totalVariants: number) => void;
+  // Host the full player in the morphing PlayerSurface instead of the gorhom
+  // sheet while the new transition is being tuned on devices.
+  useMorphPlayer: boolean;
+  toggleUseMorphPlayer: () => void;
 }
 
 export const useDevSettingsStore = create<DevSettingsState>()(
@@ -33,6 +37,9 @@ export const useDevSettingsStore = create<DevSettingsState>()(
           const next = state.randomCardVariantIndex + 1;
           return {randomCardVariantIndex: next >= totalVariants ? -1 : next};
         }),
+      useMorphPlayer: false,
+      toggleUseMorphPlayer: () =>
+        set(state => ({useMorphPlayer: !state.useMorphPlayer})),
     }),
     {
       name: 'dev-settings-store',

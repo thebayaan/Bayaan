@@ -28,7 +28,7 @@ import {useTheme} from '@/hooks/useTheme';
 // @ai-start
 import {LocaleDirContext, ThemeProvider} from 'expo-router/react-navigation';
 // @ai-end
-import {PlayerSheet} from '@/components/player/v2/PlayerSheet';
+import {PlayerHost} from '@/components/player/v2/PlayerHost';
 import {
   WhatsNewModal,
   WhatsNewModalRef,
@@ -536,7 +536,7 @@ function RootLayout() {
                         }}
                       />
                     </Stack>
-                    <PlayerSheet />
+                    <PlayerHost />
                     <WhatsNewModal ref={whatsNewModalRef} />
                     <DevMenu whatsNewModalRef={whatsNewModalRef} />
                   </SheetProvider>

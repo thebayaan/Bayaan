@@ -3,6 +3,7 @@ import React from 'react';
 import {StyleSheet, Text, type ScrollViewProps} from 'react-native';
 import {act, create, type ReactTestRenderer} from 'react-test-renderer';
 import {usePlayerScrollable} from '../usePlayerScrollable';
+import {GorhomPlayerDismissProvider} from '@/components/player/v2/GorhomPlayerDismissProvider';
 
 let mockDirection: 'ltr' | 'rtl' = 'rtl';
 const mockCreateScrollable = jest.fn();
@@ -14,18 +15,71 @@ jest.mock('@/utils/rtl', () => ({
   },
 }));
 
+jest.mock('react-native-reanimated', () => ({runOnJS: (fn: unknown) => fn}));
+
+jest.mock('react-native-gesture-handler', () => {
+  const chain: Record<string, unknown> = {};
+  const self = () => chain;
+  for (const m of [
+    'onStart',
+    'onChange',
+    'onEnd',
+    'onFinalize',
+    'shouldCancelWhenOutside',
+    'runOnJS',
+    'enabled',
+  ]) {
+    chain[m] = self;
+  }
+  return {Gesture: {Pan: self}};
+});
+
+jest.mock('@/hooks/usePlayerActions', () => ({
+  usePlayerActions: () => ({setSheetMode: jest.fn()}),
+}));
+
+jest.mock('@/services/player/store/playerStore', () => ({
+  usePlayerStore: {getState: () => ({sheetMode: 'hidden'})},
+}));
+
 jest.mock('@gorhom/bottom-sheet', () => {
   const {createElement} = require('react');
   const {ScrollView: NativeScrollView} = require('react-native');
   const createScrollable = (props: ScrollViewProps) =>
     mockCreateScrollable(props) || createElement(NativeScrollView, props);
-  return {useBottomSheetScrollableCreator: () => createScrollable};
+  const handlePanGestureHandler = {
+    handleOnStart: jest.fn(),
+    handleOnChange: jest.fn(),
+    handleOnEnd: jest.fn(),
+    handleOnFinalize: jest.fn(),
+  };
+  return {
+    useBottomSheetScrollableCreator: () => createScrollable,
+    useBottomSheetGestureHandlers: () => ({handlePanGestureHandler}),
+    useBottomSheetInternal: () => ({
+      animatedPosition: {value: 0},
+      animatedLayoutState: {get: () => ({containerHeight: 0})},
+    }),
+  };
 });
 
 function PlayerList(props: ScrollViewProps) {
   const Scrollable = usePlayerScrollable();
+  if (!Scrollable) throw new Error('No player scrollable in context');
   return <Scrollable {...props} />;
 }
+
+it('is undefined outside a player container', () => {
+  let scrollable: unknown = 'unset';
+  function Probe() {
+    scrollable = usePlayerScrollable();
+    return null;
+  }
+  act(() => {
+    create(<Probe />);
+  });
+  expect(scrollable).toBeUndefined();
+});
 
 it.each(['ltr', 'rtl'] as const)(
   'keeps locked scroll coordinates stable with %s player content',
@@ -36,13 +90,15 @@ it.each(['ltr', 'rtl'] as const)(
     let tree: ReactTestRenderer | undefined;
     act(() => {
       tree = create(
-        <PlayerList
-          style={{width: 320, direction: 'rtl'}}
-          contentContainerStyle={{paddingBottom: 80}}
-          onScroll={onScroll}
-          scrollEventThrottle={16}>
-          <Text testID="verse-title">الفاتحة</Text>
-        </PlayerList>,
+        <GorhomPlayerDismissProvider>
+          <PlayerList
+            style={{width: 320, direction: 'rtl'}}
+            contentContainerStyle={{paddingBottom: 80}}
+            onScroll={onScroll}
+            scrollEventThrottle={16}>
+            <Text testID="verse-title">الفاتحة</Text>
+          </PlayerList>
+        </GorhomPlayerDismissProvider>,
       );
     });
 

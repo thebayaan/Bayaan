@@ -1,9 +1,14 @@
 import React, {useCallback, useMemo, useRef} from 'react';
 import {View, Text, Pressable, StyleSheet} from 'react-native';
+import {
+  GestureDetector,
+  GestureHandlerRootView,
+} from 'react-native-gesture-handler';
 import {useTheme} from '@/hooks/useTheme';
 import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {expandPlayerSheet} from '@/services/player/sheetRef';
+import {useMiniPlayerAnchor} from '@/components/player/v2/useMiniPlayerAnchor';
 import {PlayIcon, PauseIcon} from '@/components/Icons';
 import {LoadingIndicator} from '@/components/LoadingIndicator';
 import {ReciterImage} from '@/components/ReciterImage';
@@ -13,6 +18,9 @@ import {useTranslation} from 'react-i18next';
 import {getTrackDisplayTitle, getTrackArtistDisplay} from '@/i18n/format';
 import {appLayoutDirection} from '@/utils/rtl';
 // @ai-end
+
+const capsuleRadius = (height: number) => height / 2;
+const artworkCornerRadius = () => 8;
 
 // @ai-start
 function MiniPlayerInner() {
@@ -47,6 +55,12 @@ function MiniPlayerInner() {
     }
   }, [playbackState, pause, play]);
 
+  // The bottom accessory is a capsule; the player surface grows out of it.
+  const {anchorRef, artworkRef, openGesture} = useMiniPlayerAnchor({
+    radius: capsuleRadius,
+    artworkRadius: artworkCornerRadius,
+  });
+
   const handlePress = useCallback(() => {
     expandPlayerSheet();
   }, []);
@@ -59,52 +73,65 @@ function MiniPlayerInner() {
     // a11y — plain View row (not a grouping Pressable) so the play/pause
     // control is INDIVIDUALLY focusable by VoiceOver; the expand action lives
     // on the inner body only.
-    <View style={[styles.row, appLayoutDirection]}>
-      <Pressable
-        onPress={handlePress}
-        style={styles.body}
-        accessibilityRole="button"
-        accessibilityLabel={`${getTrackDisplayTitle(currentTrack)}, ${getTrackArtistDisplay(currentTrack)}`}
-        accessibilityHint={t('a11y.openPlayer')}>
-        <ReciterImage
-          reciterName={currentTrack.reciterName}
-          style={styles.artwork}
-        />
+    // The accessory is hosted by UIKit; its own gesture root makes sure the
+    // swipe-up pan is recognized there.
+    <GestureHandlerRootView style={styles.gestureRoot}>
+      <GestureDetector gesture={openGesture}>
+        <View ref={anchorRef} style={[styles.row, appLayoutDirection]}>
+          <Pressable
+            onPress={handlePress}
+            style={styles.body}
+            accessibilityRole="button"
+            accessibilityLabel={`${getTrackDisplayTitle(currentTrack)}, ${getTrackArtistDisplay(currentTrack)}`}
+            accessibilityHint={t('a11y.openPlayer')}>
+            <View
+              ref={artworkRef}
+              collapsable={false}
+              style={styles.artworkWrap}>
+              <ReciterImage
+                reciterName={currentTrack.reciterName}
+                style={styles.artwork}
+              />
+            </View>
 
-        <View style={styles.trackInfo}>
-          <Text style={[styles.title, {color: textColor}]} numberOfLines={1}>
-            {getTrackDisplayTitle(currentTrack)}
-          </Text>
-          <Text
-            style={[
-              styles.subtitle,
-              {color: Color(textColor).alpha(0.5).toString()},
-            ]}
-            numberOfLines={1}>
-            {getTrackArtistDisplay(currentTrack)}
-          </Text>
+            <View style={styles.trackInfo}>
+              <Text
+                style={[styles.title, {color: textColor}]}
+                numberOfLines={1}>
+                {getTrackDisplayTitle(currentTrack)}
+              </Text>
+              <Text
+                style={[
+                  styles.subtitle,
+                  {color: Color(textColor).alpha(0.5).toString()},
+                ]}
+                numberOfLines={1}>
+                {getTrackArtistDisplay(currentTrack)}
+              </Text>
+            </View>
+          </Pressable>
+
+          <Pressable
+            onPress={handlePlayPause}
+            style={styles.playButton}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel={t(
+              playbackState === 'playing'
+                ? 'common:actions.pause'
+                : 'common:actions.play',
+            )}>
+            {isLoadingNewTrack ? (
+              <LoadingIndicator color={textColor} />
+            ) : playbackState === 'playing' ? (
+              <PauseIcon color={textColor} size={22} />
+            ) : (
+              <PlayIcon color={textColor} size={22} />
+            )}
+          </Pressable>
         </View>
-      </Pressable>
-
-      <Pressable
-        onPress={handlePlayPause}
-        style={styles.playButton}
-        hitSlop={10}
-        accessibilityRole="button"
-        accessibilityLabel={t(
-          playbackState === 'playing'
-            ? 'common:actions.pause'
-            : 'common:actions.play',
-        )}>
-        {isLoadingNewTrack ? (
-          <LoadingIndicator color={textColor} />
-        ) : playbackState === 'playing' ? (
-          <PauseIcon color={textColor} size={22} />
-        ) : (
-          <PlayIcon color={textColor} size={22} />
-        )}
-      </Pressable>
-    </View>
+      </GestureDetector>
+    </GestureHandlerRootView>
   );
 }
 // @ai-end
@@ -129,6 +156,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+  },
+  // Explicit (empty) style: GestureHandlerRootView defaults to flex: 1,
+  // which would change how the accessory sizes the row.
+  gestureRoot: {},
+  artworkWrap: {
+    flexShrink: 0,
   },
   artwork: {
     width: 36,
