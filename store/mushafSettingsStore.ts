@@ -1,6 +1,6 @@
 import {create} from 'zustand';
-import {persist, createJSONStorage} from 'zustand/middleware';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import {persist} from 'zustand/middleware';
+import {createGuardedJSONStorage} from '@/utils/guardedJSONStorage'; // @ai
 import {getReadingThemeById} from '@/constants/readingThemes';
 import {defaultShowEnglishReadingAids} from '@/i18n/language'; // @ai
 import {
@@ -399,7 +399,7 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
     }),
     {
       name: 'mushaf-settings',
-      storage: createJSONStorage(() => AsyncStorage),
+      storage: createGuardedJSONStorage(), // @ai
       version: 19, // @ai
       // @ai-start
       // A startup fallback lasts one session: persist the reader's saved
