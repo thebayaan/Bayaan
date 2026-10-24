@@ -236,7 +236,10 @@ export async function openSettingsItem(
       await Linking.openURL(branding.privacyUrl);
       break;
     case 'github':
-      await Linking.openURL('https://github.com/thebayaan/Bayaan');
+      // @ai: forks set `branding.githubUrl`; absent = Bayaan's repo.
+      await Linking.openURL(
+        branding.githubUrl ?? 'https://github.com/thebayaan/Bayaan',
+      );
       break;
     default:
       break;

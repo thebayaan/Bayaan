@@ -349,6 +349,26 @@ export interface Branding {
    * See docs/rfcs/019-timestamp-local-provider.md.
    */
   timestampLocalSurahList?: (rewayatId: string) => number[] | null;
+  // @ai-start
+  /**
+   * Apple App Store numeric id (the `id…` segment of the App Store URL).
+   * Drives the "Write a Review" link in `utils/reviewUtils.ts`. Android
+   * already reads `bundleId.android`.
+   *
+   * Field absent → consumer applies `?? '6648769980'` (Bayaan's listing) at
+   * the call site → byte-equivalent to today's behavior. Bayaan ships this
+   * unset.
+   */
+  appStoreId?: string;
+  /**
+   * Source-code repository URL opened by Settings → "Contribute on GitHub".
+   *
+   * Field absent → consumer applies
+   * `?? 'https://github.com/thebayaan/Bayaan'` at the call site →
+   * byte-equivalent to today's behavior. Bayaan ships this unset.
+   */
+  githubUrl?: string;
+  // @ai-end
 }
 
 declare const branding: Branding;
