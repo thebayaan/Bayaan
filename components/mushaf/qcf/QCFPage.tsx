@@ -237,8 +237,17 @@ const QCFPage: React.FC<QCFPageProps> = ({
         pageNumber,
         CONTENT_HEIGHT,
         baseLineHeight,
+        // Phone landscape scrolls a page taller than the screen: start pages
+        // 1-2 at the top (see calculateLineYPositions).
+        !metrics.scrollContainerHeight,
       ),
-    [pageLines, pageNumber, CONTENT_HEIGHT, baseLineHeight],
+    [
+      pageLines,
+      pageNumber,
+      CONTENT_HEIGHT,
+      baseLineHeight,
+      metrics.scrollContainerHeight,
+    ],
     // @ai-end
   );
 

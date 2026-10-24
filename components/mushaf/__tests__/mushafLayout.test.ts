@@ -7,7 +7,7 @@
 // navigation bar through the same fields, so the insets count on iOS only.
 
 import {Platform} from 'react-native';
-import {getMushafLayout} from '../constants';
+import {calculateLineYPositions, getMushafLayout} from '../constants';
 
 // iPhone 15 Pro, landscape.
 const W = 852;
@@ -209,5 +209,58 @@ describe('getMushafLayout — no movement where there is no cutout', () => {
         getMushafLayout({...opts, insets: insets(ISLAND, ISLAND)}),
       ).toEqual(getMushafLayout({...opts, insets: insets(0, 0)}));
     }
+  });
+});
+
+// Pages 1-2 centre their short block inside contentHeight. In phone landscape
+// the page is much taller than its ScrollView, so the block starts below the
+// fold. centerShortPages: false starts it at the top.
+describe('calculateLineYPositions — pages 1-2 in a short scroll viewport', () => {
+  // A short block of 8 lines, the size of the pages 1-2 blocks.
+  const lines = Array.from({length: 8}, () => ({line_type: 'ayah'}));
+  const m = getMushafLayout({...baseOpts, insets: insets(0, 0)});
+
+  it('the centred block leaves no full line visible at offset 0 (the defect)', () => {
+    // Both chrome regimes main.tsx uses: 0 (iOS 26 glass) and 60.
+    for (const chrome of [0, 60]) {
+      const mm = getMushafLayout({
+        ...baseOpts,
+        headerHeight: chrome,
+        toolbarHeight: chrome,
+        insets: insets(0, 0),
+      });
+      const ys = calculateLineYPositions(
+        lines,
+        1,
+        mm.contentHeight,
+        mm.baseLineHeight,
+      );
+      // The first line does not fit in the viewport before a scroll.
+      expect(mm.scrollContainerHeight).toBe(H);
+      expect(mm.paddingTop + ys[0] + mm.baseLineHeight).toBeGreaterThan(H);
+    }
+  });
+
+  it('starts at the top when centering is turned off', () => {
+    for (const page of [1, 2]) {
+      const ys = calculateLineYPositions(
+        lines,
+        page,
+        m.contentHeight,
+        m.baseLineHeight,
+        false,
+      );
+      expect(ys[0]).toBe(0);
+      expect(ys[1]).toBeCloseTo(m.baseLineHeight);
+    }
+  });
+
+  it('keeps the centering by default, and never affects pages 3-604', () => {
+    const centred = calculateLineYPositions(lines, 1, 1000, 50);
+    expect(centred[0]).toBe((1000 - 8 * 50) / 2);
+
+    expect(calculateLineYPositions(lines, 3, 1000, 50, true)).toEqual(
+      calculateLineYPositions(lines, 3, 1000, 50, false),
+    );
   });
 });

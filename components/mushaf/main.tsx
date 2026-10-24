@@ -317,6 +317,7 @@ const DKPageView: React.FC<{
           baseLineHeight={metrics.baseLineHeight}
           paddingHorizontal={metrics.paddingHorizontal}
           paddingTop={metrics.paddingTop}
+          centerShortPages={!metrics.scrollContainerHeight} // @ai
         />
       )}
       {isBookLayout && (

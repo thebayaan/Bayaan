@@ -560,6 +560,10 @@ export function getHizbForPage(page: number): number {
  * `contentHeight` and `baseLineHeight` default to the module-level constants
  * (phone-portrait snapshot). iPad / rotation-aware callers should pass the
  * values returned by `useMushafLayout()` instead.
+ *
+ * @ai Pass `centerShortPages = false` when the page renders inside a scroll
+ * viewport shorter than the page (phone landscape). The centred block would
+ * start below the fold there, and the page would look blank.
  */
 // @ai-start
 /**
@@ -581,8 +585,9 @@ export function calculateLineYPositions(
   pageNumber: number,
   contentHeight: number = CONTENT_HEIGHT,
   baseLineHeight: number = BASE_LINE_HEIGHT,
+  centerShortPages = true, // @ai
 ): number[] {
-  if (pageNumber === 1 || pageNumber === 2) {
+  if ((pageNumber === 1 || pageNumber === 2) && centerShortPages) {
     const totalHeight = lines.length * baseLineHeight;
     const topOffset = (contentHeight - totalHeight) / 2;
     return lines.map((_, i) => topOffset + i * baseLineHeight);
