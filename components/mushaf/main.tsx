@@ -214,9 +214,13 @@ const DKPageView: React.FC<{
   // with all four corners rounded instead. `facingPages` is still the source
   // of truth: once we add the real two-page spread, that path will use the
   // asymmetric decoration on each half of the spread.
+  // @ai Phone landscape (the only layout with scrollContainerHeight) keeps
+  // the book-edge look, although its page is narrower than the screen by the
+  // cutout insets.
   const useSymmetricEdges =
     isBookLayout &&
     !metrics.facingPages &&
+    !metrics.scrollContainerHeight &&
     metrics.pageWidth < metrics.screenWidth;
 
   // In fullscreen mode, use symmetric padding; in book mode the content sits
@@ -407,7 +411,9 @@ const DKSpreadView: React.FC<{
 }) => {
   const spreadBg = isBookLayout ? edgeBg : cardColor;
 
-  // Phone landscape: full-width scrollable page.
+  // Phone landscape: scrollable page, offset past the cutout.
+  // @ai pageOffsetX is the left cutout inset, and 0 where there is none. The
+  // inverted list flips both the list and each cell, so left stays left.
   if (metrics.scrollContainerHeight) {
     return (
       <ScrollView
@@ -416,7 +422,10 @@ const DKSpreadView: React.FC<{
           height: metrics.scrollContainerHeight,
           backgroundColor: spreadBg,
         }}
-        contentContainerStyle={{height: metrics.screenHeight}}
+        contentContainerStyle={{
+          height: metrics.screenHeight,
+          paddingLeft: metrics.pageOffsetX, // @ai
+        }}
         showsVerticalScrollIndicator={false}
         bounces={false}>
         <DKPageView

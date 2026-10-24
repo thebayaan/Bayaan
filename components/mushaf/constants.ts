@@ -1,5 +1,10 @@
 import {useMemo} from 'react';
-import {Dimensions, useWindowDimensions, type ScaledSize} from 'react-native';
+import {
+  Dimensions,
+  Platform,
+  useWindowDimensions,
+  type ScaledSize,
+} from 'react-native';
 import type {EdgeInsets} from 'react-native-safe-area-context';
 import {getIsTablet} from '@/utils/responsive';
 
@@ -155,6 +160,15 @@ export function getMushafLayout(
   const height = opts.containerHeight ?? opts.height ?? _liveHeight;
   const insetTop = opts.insets?.top ?? 0;
   const insetBottom = opts.insets?.bottom ?? 0;
+  // @ai-start
+  // Horizontal safe-area insets count on iOS only. In landscape a notched or
+  // Dynamic Island iPhone reports its sensor housing there, on both sides
+  // (for example 59/59). On Android the same fields carry the navigation bar
+  // of the edge-to-edge app, and the page may sit under it.
+  const insetsAreCutout = Platform.OS === 'ios';
+  const insetLeft = insetsAreCutout ? (opts.insets?.left ?? 0) : 0;
+  const insetRight = insetsAreCutout ? (opts.insets?.right ?? 0) : 0;
+  // @ai-end
   const headerHeight = opts.headerHeight ?? 0;
   const toolbarHeight = opts.toolbarHeight ?? 0;
   const isTablet = opts.isTablet ?? getIsTablet();
@@ -208,13 +222,17 @@ export function getMushafLayout(
       };
     }
 
-    // Phone landscape: full-width "zoomed in" layout.
+    // Phone landscape: "zoomed in" layout, inset by the cutout safe area.
     //
-    // The page fills the full landscape width (edge to edge). Because the
-    // font size scales with contentWidth, the text is noticeably larger than
-    // in portrait. The page content is taller than the physical screen, so a
-    // ScrollView wraps it — the user scrolls vertically through the page and
-    // swipes horizontally to change pages.
+    // The page fills the width between the left and right cutout insets.
+    // Because the font size scales with contentWidth, the text is noticeably
+    // larger than in portrait. The page content is taller than the physical
+    // screen, so a ScrollView wraps it — the user scrolls vertically through
+    // the page and swipes horizontally to change pages.
+    //
+    // @ai pageOffsetX carries the left inset, and both readers place the page
+    // from it. screenWidth stays the full window width: the pager item must
+    // stay one window wide to snap (getItemLayout in main.tsx).
     //
     // fontSize ≈ contentWidth × 0.053 (from SkiaPage: FONTSIZE/PAGE_WIDTH × 0.9)
     // We maintain the portrait baseLineHeight/fontSize ratio of ~2.1 so
@@ -224,7 +242,13 @@ export function getMushafLayout(
     const landscapePaddingTop = headerH + insetTop + 12;
     const landscapePaddingBottom = toolbarH + insetBottom + 8;
 
-    const landscapeContentWidth = width - basePaddingHorizontal * 2;
+    // @ai-start
+    const landscapePageWidth = Math.max(width - insetLeft - insetRight, 1);
+    const landscapeContentWidth = Math.max(
+      landscapePageWidth - basePaddingHorizontal * 2,
+      1,
+    );
+    // @ai-end
     const fontSizeEst = landscapeContentWidth * 0.053;
     const landscapeBaseLineHeight = fontSizeEst * 2.1;
     const landscapeContentHeight = landscapeBaseLineHeight * LINES_PER_PAGE;
@@ -234,8 +258,8 @@ export function getMushafLayout(
     return {
       screenWidth: width,
       screenHeight: landscapeScreenHeight,
-      pageWidth: width,
-      pageOffsetX: 0,
+      pageWidth: landscapePageWidth, // @ai
+      pageOffsetX: insetLeft, // @ai
       facingGap: 0,
       contentWidth: landscapeContentWidth,
       contentHeight: landscapeContentHeight,
