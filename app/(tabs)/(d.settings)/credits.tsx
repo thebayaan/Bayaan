@@ -88,7 +88,9 @@ function getCredits(
         },
         {
           title: 'Wikipedia contributors',
-          description: t('credits.items.wikipediaNames'),
+          // @ai No digit post-processing: the licence name stays
+          // "CC BY-SA 4.0" in Arabic, not "CC BY-SA ٤.٠".
+          description: t('credits.items.wikipediaNames', {postProcess: []}),
           link: 'https://creativecommons.org/licenses/by-sa/4.0/',
         },
         {
