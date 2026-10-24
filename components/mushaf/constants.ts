@@ -39,6 +39,45 @@ export const PAGE_PADDING_HORIZONTAL = IS_COMPACT_DEVICE ? 4 : 8;
 export const PAGE_PADDING_TOP = IS_COMPACT_DEVICE ? 95 : 130;
 export const PAGE_PADDING_BOTTOM = IS_COMPACT_DEVICE ? 70 : 100;
 
+// @ai-start
+/**
+ * Where the per-page labels sit, measured inward from the page edge. The
+ * surah / juz labels sit `SURAH_JUZ_LABEL_OFFSET` up from the top gutter
+ * edge, the fullscreen page number `PAGE_NUMBER_LABEL_OFFSET` down from the
+ * bottom one. A gutter smaller than the offset puts the label off screen.
+ */
+export const SURAH_JUZ_LABEL_OFFSET = 30;
+export const PAGE_NUMBER_LABEL_OFFSET = 35;
+
+/**
+ * Smallest gutter (pt) that keeps a 12pt label on the page: the larger label
+ * offset (35), the label line (~15) and 2pt of slack.
+ */
+export const PAGE_LABEL_BAND = 52;
+
+/**
+ * Smallest iPad bottom gutter that keeps the fullscreen page number on
+ * screen: the label offset plus the 8pt edge margin the tablet gutter keeps.
+ */
+export const TABLET_MIN_PADDING_BOTTOM = PAGE_NUMBER_LABEL_OFFSET + 8;
+
+/**
+ * Label positions, measured inward from the page edge. The book-layout page
+ * number centres itself in the gutter below the card.
+ */
+export function getPageLabelOffsets(
+  metrics: Pick<MushafLayoutMetrics, 'paddingTop' | 'paddingBottom'>,
+  opts: {isBookLayout: boolean; insetTop: number},
+): {labelTop: number; pageNumberBottom: number} {
+  return {
+    labelTop: metrics.paddingTop - SURAH_JUZ_LABEL_OFFSET,
+    pageNumberBottom: opts.isBookLayout
+      ? opts.insetTop + (metrics.paddingBottom - opts.insetTop) / 2 - 8
+      : metrics.paddingBottom - PAGE_NUMBER_LABEL_OFFSET,
+  };
+}
+// @ai-end
+
 // Book page-edge decoration constants
 export const PAGE_EDGE_OUTER_MARGIN = 14;
 export const PAGE_EDGE_INNER_MARGIN = 2;
@@ -186,7 +225,14 @@ export function getMushafLayout(
   // pass `headerHeight=0, toolbarHeight=0` and measure the true container
   // height via `onLayout`.
   const tabletPaddingTop = headerHeight + Math.max(insetTop, 8) + 28;
-  const tabletPaddingBottom = toolbarHeight + Math.max(insetBottom, 8) + 24;
+  // @ai With glass chrome (headerHeight = toolbarHeight = 0) an iPad with no
+  // home indicator got a 32pt bottom gutter, and the fullscreen page number
+  // sat at 32 - 35 = -3. Floor only that gutter; every other iPad already
+  // clears the floor, and the top label never goes negative.
+  const tabletPaddingBottom = Math.max(
+    toolbarHeight + Math.max(insetBottom, 8) + 24,
+    TABLET_MIN_PADDING_BOTTOM,
+  );
 
   const paddingTop = isTablet ? tabletPaddingTop : basePaddingTop;
   const paddingBottom = isTablet ? tabletPaddingBottom : basePaddingBottom;
@@ -239,8 +285,20 @@ export function getMushafLayout(
     // harakat never overlap the line below.
     const headerH = opts.headerHeight ?? 60;
     const toolbarH = opts.toolbarHeight ?? 60;
-    const landscapePaddingTop = headerH + insetTop + 12;
-    const landscapePaddingBottom = toolbarH + insetBottom + 8;
+    // @ai-start
+    // Keep both gutters at least PAGE_LABEL_BAND deep, or the labels land at a
+    // negative offset. With glass chrome (0 heights) an iPhone 15 had a 29pt
+    // bottom gutter and the page number at -6. The page scrolls and the
+    // glyphs follow contentWidth, so a deeper gutter costs nothing.
+    const landscapePaddingTop = Math.max(
+      headerH + insetTop + 12,
+      insetTop + PAGE_LABEL_BAND,
+    );
+    const landscapePaddingBottom = Math.max(
+      toolbarH + insetBottom + 8,
+      insetBottom + PAGE_LABEL_BAND,
+    );
+    // @ai-end
 
     // @ai-start
     const landscapePageWidth = Math.max(width - insetLeft - insetRight, 1);
