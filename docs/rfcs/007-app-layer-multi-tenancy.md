@@ -90,6 +90,15 @@ export default branding;
 
 This RFC only adds the file. The call-site migrations each fit in a single-line goodwill PR; no RFC needed for those.
 
+#### Addendum: optional store-listing and repository keys
+
+Two more identity values are optional keys on `Branding`. They use the "field absent + `??` fallback at the call site" default (the RFC-015 pattern). Bayaan ships both unset, so `config/branding.js` does not change and Bayaan's behaviour is byte-identical.
+
+- **`appStoreId?: string`** — the Apple App Store numeric id. Call site: `utils/reviewUtils.ts`, which builds the iOS "Write a Review" URL with `branding.appStoreId ?? '6648769980'`. Android already reads `bundleId.android`.
+- **`githubUrl?: string`** — the source-code repository URL. Call site: Settings → "Contribute on GitHub" in `app/(tabs)/(d.settings)/index.tsx`, which opens `branding.githubUrl ?? 'https://github.com/thebayaan/Bayaan'`.
+
+Unlike `supportUrl` and `termsUrl`, these keys are optional. A fork that sets neither key keeps Bayaan's listing and repository link.
+
 ### 2. `config/featureFlags.ts` — feature gating
 
 ```ts
