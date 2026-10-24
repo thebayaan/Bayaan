@@ -899,7 +899,10 @@ export const usePlayerStore = create<PlayerStoreState>()(
       // Cleanup method
       cleanup: async () => {
         // In-flight loads must not play()/write state into a cleaned service.
-        invalidatePlayOps();
+        // @ai Then pause the native player before the reset. Settings ->
+        // Clear cache calls this while audio can play, and the reset empties
+        // the queue (see pauseForEmptyQueue).
+        await pauseForEmptyQueue();
         const state = get();
         if (
           typeof state.settings.sleepTimerInterval === 'object' &&

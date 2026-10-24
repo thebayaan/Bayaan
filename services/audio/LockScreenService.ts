@@ -376,6 +376,19 @@ class LockScreenService {
         this.lastTrackId = currentTrack.id;
         this.activateMainPlayer(currentTrack);
       }
+
+      // @ai The queue has no current track any more, for example after
+      // playerStore.cleanup() (Settings -> Clear cache), which pauses the
+      // main player before it resets the queue. Clear the main player's lock
+      // screen and notification controls once. Without this, a remote Play
+      // there resumed the old source while the app showed no player. A
+      // track change cannot get here: every queue write sets the tracks and
+      // the index together. The Mushaf player is not touched (see the
+      // isMushafActive return above).
+      if (!currentTrack && this.lastTrackId !== null) {
+        this.clearPlayer(expoAudioService.getPlayer());
+        this.lastTrackId = null;
+      }
     });
   }
 
@@ -427,8 +440,17 @@ class LockScreenService {
         // Clear mushaf lock screen and restore main player, unless adhkar
         // holds the lock screen.
         this.clearPlayer(mushafAudioService.getPlayer());
+        const hadMainTrack = this.lastTrackId !== null; // @ai
         this.lastTrackId = null;
-        if (!this.adhkarPlayer) this.syncCurrentState();
+        if (!this.adhkarPlayer) {
+          this.syncCurrentState();
+          // @ai The main queue lost its current track while the Mushaf played
+          // (the main-store subscription skips that time). Clear the main
+          // player's controls now, as the subscription does.
+          if (hadMainTrack && this.lastTrackId === null) {
+            this.clearPlayer(expoAudioService.getPlayer());
+          }
+        }
 
         if (__DEV__) console.log('[LockScreenService] Mushaf override cleared');
       }
