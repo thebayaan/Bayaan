@@ -519,6 +519,19 @@ function RootLayout() {
                         name="adhkar-playing"
                         options={{headerShown: false, animation: 'none'}}
                       />
+                      {/* @ai-start */}
+                      {/* Settings opens from the profile button on Moments,
+                          which took its tab slot. */}
+                      <Stack.Screen
+                        name="settings"
+                        options={{
+                          headerShown: false,
+                          animation: isRTL
+                            ? 'slide_from_left'
+                            : 'slide_from_right',
+                        }}
+                      />
+                      {/* @ai-end */}
                       <Stack.Screen
                         name="mushaf"
                         options={{
