@@ -1,5 +1,10 @@
-import React, {useMemo, useCallback} from 'react';
-import {View, StyleSheet, useWindowDimensions} from 'react-native';
+import React, {useMemo, useCallback, useState} from 'react';
+import {
+  View,
+  StyleSheet,
+  useWindowDimensions,
+  type LayoutChangeEvent,
+} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {moderateScale as moderateScaleCapped} from '@/utils/scale';
 import {LegendList, type LegendListRenderItemProps} from '@legendapp/list';
@@ -11,6 +16,7 @@ import {DownloadCard} from '@/components/cards/DownloadCard';
 import {TrackCard} from '@/components/cards/TrackCard';
 import {ReciterDownloadsStackCard} from '@/components/cards/ReciterDownloadsStackCard';
 import {UploadCard} from '@/components/cards/UploadCard';
+import {computeGridLayout} from '@/utils/gridLayout';
 
 export interface PlaylistItemData {
   name: string;
@@ -86,20 +92,26 @@ interface CollectionGridProps {
   bottomInset?: number;
 }
 
+// @ai-start
+// One source for the padding and gap so the column math matches the styles.
+const GRID_PADDING = moderateScale(16);
+const GRID_GAP = moderateScale(10);
+// @ai-end
+
 function createStyles(_theme: Theme, bottomInset = 0) {
   return StyleSheet.create({
     container: {
       flex: 1,
     },
     gridContainer: {
-      paddingHorizontal: moderateScale(16),
+      paddingHorizontal: GRID_PADDING, // @ai
       paddingBottom: Math.max(moderateScaleCapped(80), bottomInset),
       paddingTop: moderateScale(8),
     },
     row: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      marginBottom: moderateScale(10),
+      marginBottom: GRID_GAP, // @ai
     },
   });
 }
@@ -119,13 +131,28 @@ const createItemRows = (
 export const CollectionGrid = React.memo(
   ({items, theme, onScrollBeginDrag, bottomInset = 0}: CollectionGridProps) => {
     const {width: windowWidth} = useWindowDimensions();
+    // @ai-start
+    // Size the grid from its own container, not the window: on iPad it sits
+    // beside the sidebar inside a capped column, so window math overflowed
+    // and clipped the last column. Same approach as BrowseGrid.
+    const [containerWidth, setContainerWidth] = useState<number | null>(null);
+    const handleLayout = useCallback((e: LayoutChangeEvent) => {
+      const next = e.nativeEvent.layout.width;
+      setContainerWidth(prev => (prev === next ? prev : next));
+    }, []);
+    const gridWidth = containerWidth ?? windowWidth;
 
-    // Calculate number of columns based on screen width (same as BrowseGrid)
-    const numColumns = useMemo(() => {
-      const minCardWidth = moderateScale(120);
-      const calculated = Math.floor(windowWidth / minCardWidth);
-      return Math.max(3, calculated);
-    }, [windowWidth]);
+    const {numColumns, itemWidth} = useMemo(
+      () =>
+        computeGridLayout(gridWidth, {
+          minCardWidth: moderateScale(120),
+          horizontalPadding: GRID_PADDING,
+          gap: GRID_GAP,
+          minColumns: 3,
+        }),
+      [gridWidth],
+    );
+    // @ai-end
 
     // Convert flat list to rows for grid layout
     const itemRows = useMemo(() => {
@@ -137,19 +164,11 @@ export const CollectionGrid = React.memo(
       [theme, bottomInset],
     );
 
-    // Calculate item dimensions (same as BrowseGrid)
-    const itemDimensions = useMemo(() => {
-      const totalHorizontalPadding = moderateScale(32); // paddingHorizontal * 2
-      const gapSpace = moderateScale(10) * (numColumns - 1);
-      const availableWidth = windowWidth - totalHorizontalPadding - gapSpace;
-      const itemWidth = availableWidth / numColumns;
-      const itemHeight = itemWidth * 1.2; // Same ratio as BrowseGrid
-
-      return {
-        width: itemWidth,
-        height: itemHeight,
-      };
-    }, [windowWidth, numColumns]);
+    // Same ratio as BrowseGrid
+    const itemDimensions = useMemo(
+      () => ({width: itemWidth, height: itemWidth * 1.2}), // @ai
+      [itemWidth],
+    );
 
     // Render individual card based on type
     const renderCard = useCallback(
@@ -279,23 +298,32 @@ export const CollectionGrid = React.memo(
     );
 
     return (
-      <View style={styles.container}>
-        <LegendList
-          data={itemRows}
-          renderItem={renderRow}
-          keyExtractor={keyExtractor}
-          contentContainerStyle={styles.gridContainer}
-          scrollIndicatorInsets={{bottom: bottomInset}}
-          estimatedItemSize={moderateScale(140)}
-          recycleItems
-          drawDistance={2000}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          waitForInitialLayout
-          onEndReachedThreshold={0.5}
-          maintainVisibleContentPosition
-          onScrollBeginDrag={onScrollBeginDrag}
-        />
+      <View style={styles.container} onLayout={handleLayout}>
+        {/* @ai-start */}
+        {/* Wait for the measured width: LegendList recycles rows drawn at the
+            window-width guess and keeps them stale after onLayout reports.
+            extraData redraws rows when the width changes later (rotation,
+            Split View). */}
+        {containerWidth !== null && (
+          <LegendList
+            data={itemRows}
+            extraData={itemDimensions}
+            renderItem={renderRow}
+            keyExtractor={keyExtractor}
+            contentContainerStyle={styles.gridContainer}
+            scrollIndicatorInsets={{bottom: bottomInset}}
+            estimatedItemSize={moderateScale(140)}
+            recycleItems
+            drawDistance={2000}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            waitForInitialLayout
+            onEndReachedThreshold={0.5}
+            maintainVisibleContentPosition
+            onScrollBeginDrag={onScrollBeginDrag}
+          />
+        )}
+        {/* @ai-end */}
       </View>
     );
   },
