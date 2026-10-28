@@ -7,7 +7,7 @@ import {Reciter} from '@/data/reciterData';
 
 export function useReciterSelection() {
   const {updateQueue, play} = usePlayerActions();
-  const {startNewChain} = useRecentlyPlayedStore();
+  const startNewChain = useRecentlyPlayedStore(s => s.startNewChain); // @ai
 
   const playWithReciter = useCallback(
     async (reciter: Reciter, surahId: string) => {

@@ -72,7 +72,7 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
   const {t} = useTranslation(['collection', 'common']);
   const downloads = useDownloads();
   const {removeDownload} = useDownloadActions();
-  const {startNewChain} = useRecentlyPlayedStore();
+  const startNewChain = useRecentlyPlayedStore(s => s.startNewChain);
   const {addToQueue, updateQueue, toggleShuffle} = usePlayerActions();
   const shuffleEnabled = usePlayerStore(state => state.settings.shuffle);
 

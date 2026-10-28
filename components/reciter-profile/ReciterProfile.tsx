@@ -407,7 +407,7 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
     };
   }, []);
   // @ai-end
-  const {startNewChain} = useRecentlyPlayedStore();
+  const startNewChain = useRecentlyPlayedStore(s => s.startNewChain); // @ai
   const {reciterPreferences, setReciterPreference} = useSettings();
 
   // Retrieve persisted reciter profile settings

@@ -78,7 +78,7 @@ export const TabletPlayerReciterColumn: React.FC<{
   const insets = useSafeAreaInsets();
   const {updateQueue} = usePlayerActions();
   const {navigateToReciterProfile} = useReciterNavigation();
-  const {startNewChain} = useRecentlyPlayedStore();
+  const startNewChain = useRecentlyPlayedStore(s => s.startNewChain);
   const {isLovedWithRewayat} = useLoved();
   const {isDownloaded} = useDownloadQueries();
 

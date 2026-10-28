@@ -71,7 +71,7 @@ const LovedScreen = () => {
   const {lovedTracks, toggleLoved, unloveAll} = useLoved();
   const {addToQueue, updateQueue, play, toggleShuffle} = usePlayerActions();
   const shuffleEnabled = usePlayerStore(state => state.settings.shuffle);
-  const {startNewChain} = useRecentlyPlayedStore();
+  const startNewChain = useRecentlyPlayedStore(s => s.startNewChain);
   const {
     isDownloaded,
     isDownloadedWithRewayat,

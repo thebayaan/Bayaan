@@ -97,38 +97,40 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
     // Get download progress
     const downloadProgress = useDownloadProgress(downloadId);
 
-    // Get necessary state slices from player store
-    const playbackStatus = usePlayerStore(state => state.playback.state);
-    const currentIndex = usePlayerStore(state => state.queue.currentIndex);
-    const tracks = usePlayerStore(state => state.queue.tracks);
-
-    // Determine if this specific item is currently playing
-    const isCurrentlyPlaying = React.useMemo(() => {
-      // Check if playback is active
-      const isActive =
-        playbackStatus === 'playing' || playbackStatus === 'buffering';
-
-      // Ensure valid index and track exists
+    // Narrow selectors: each one returns a boolean, so a row re-renders only
+    // when its own playing/current state flips. A subscription to the whole
+    // `queue.tracks` array re-renders every row on each play, because
+    // `updateQueue` assigns a new tracks array.
+    const isCurrentlyPlaying = usePlayerStore(state => {
+      const status = state.playback.state;
+      if ((status !== 'playing' && status !== 'buffering') || !reciterId) {
+        return false;
+      }
+      const idx = state.queue.currentIndex;
       const currentTrack =
-        tracks && currentIndex >= 0 && currentIndex < tracks.length
-          ? tracks[currentIndex]
+        idx >= 0 && idx < (state.queue.tracks?.length ?? 0)
+          ? state.queue.tracks[idx]
           : null;
-
-      if (!reciterId || !currentTrack || !isActive) return false;
-
-      // Check if the current track matches this item
-      const isCorrectTrack =
+      if (!currentTrack) return false;
+      // Match rewayatId too, as isCurrentTrack does, so that a different
+      // rewayah of the same reciter and surah does not read as playing.
+      const rewayatMatches =
+        rewayatId && currentTrack.rewayatId
+          ? rewayatId === currentTrack.rewayatId
+          : true;
+      return (
         currentTrack.reciterId === reciterId &&
-        currentTrack.surahId === item.id.toString();
-
-      return isCorrectTrack; // No need to check isActive again, already done
-    }, [reciterId, item.id, playbackStatus, currentIndex, tracks]);
+        currentTrack.surahId === item.id.toString() &&
+        rewayatMatches
+      );
+    });
 
     // Check if this is the current track (regardless of play state)
-    const isCurrentTrack = React.useMemo(() => {
+    const isCurrentTrack = usePlayerStore(state => {
+      const idx = state.queue.currentIndex;
       const currentTrack =
-        tracks && currentIndex >= 0 && currentIndex < tracks.length
-          ? tracks[currentIndex]
+        idx >= 0 && idx < (state.queue.tracks?.length ?? 0)
+          ? state.queue.tracks[idx]
           : null;
 
       if (!reciterId || !currentTrack) return false;
@@ -143,7 +145,7 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
         currentTrack.surahId === item.id.toString() &&
         rewayatMatches
       );
-    }, [reciterId, item.id, rewayatId, currentIndex, tracks]);
+    });
 
     const handlePress = React.useCallback(() => {
       if (enableHaptics) {
@@ -309,9 +311,7 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
             accessibilityHint={t('surahItem.moreOptionsHint')}>
             {isCurrentTrack ? (
               <NowPlayingIndicator
-                isPlaying={
-                  playbackStatus === 'playing' || playbackStatus === 'buffering'
-                }
+                isPlaying={isCurrentlyPlaying}
                 barCount={3}
                 surahId={Number(item.id)}
               />
