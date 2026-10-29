@@ -760,7 +760,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
       <View
         style={[
           styles.container,
-          isTablet && styles.tabletContainer, // @ai
+          isTablet && !activeScreen && styles.tabletMenu, // @ai
           activeScreen && {flex: 1},
         ]}>
         {!activeScreen && (
@@ -1267,9 +1267,12 @@ const createStyles = (theme: Theme) =>
     },
     // @ai-start
     // On iPad the card has a max height; shrink to it so the menu scrolls
-    // instead of running off the card.
-    tabletContainer: {
+    // instead of running off the card. The card has its own bottom padding,
+    // so the menu drops the phone sheet's, which would only take rows'
+    // room once the menu shrinks.
+    tabletMenu: {
       flexShrink: 1,
+      paddingBottom: 0,
     },
     // @ai-end
     header: {
