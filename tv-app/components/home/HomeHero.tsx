@@ -32,7 +32,11 @@ type Props = {
   primaryRef?: React.Ref<View>;
   /** The secondary, for Home to focus on coming back from its picker. */
   secondaryRef?: React.Ref<View>;
-  /** Drawn above the kicker ("Now playing"). */
+  /**
+   * Drawn above the kicker ("Now playing"), in a slot of its own height
+   * whether or not it draws, so the strip coming and going never moves the
+   * hero or the rails.
+   */
   header?: React.ReactNode;
   /** Drawn in the top right corner, scrolling with the hero (the clock). */
   corner?: React.ReactNode;
@@ -83,7 +87,9 @@ export function HomeHero({
         </View>
       ) : null}
       <View style={styles.text}>
-        {header}
+        {header !== undefined ? (
+          <View style={styles.header}>{header}</View>
+        ) : null}
         <Text style={styles.kicker}>{kicker}</Text>
         <Text style={styles.title} numberOfLines={1}>
           {title}
@@ -123,13 +129,12 @@ export function HomeHero({
 }
 
 const styles = createScaledStyles({
-  // Grows past 440 when "Now playing" sits above the kicker, instead of
-  // pushing the strip into the top overscan and the buttons onto the first
-  // rail. The padding keeps the buttons clear of the screen's top edge when
-  // Home scrolls to that rail (RAIL_TOP_GAP), and leaves the hero without
-  // the strip exactly as it was (its content is shorter than 440 - 2 * 44).
+  // Tall enough for the "Now playing" slot above the kicker, so the strip
+  // never pushes into the top overscan or the buttons onto the first rail.
+  // The padding keeps the buttons clear of the screen's top edge when Home
+  // scrolls to that rail (RAIL_TOP_GAP).
   hero: {
-    minHeight: 440,
+    minHeight: 500,
     paddingVertical: RAIL_TOP_GAP + 8,
     justifyContent: 'center',
   },
@@ -152,6 +157,8 @@ const styles = createScaledStyles({
     writingDirection: 'rtl',
   },
   text: {width: 820, gap: 12},
+  // The strip's height (a 52 px thumb plus padding) and its gap.
+  header: {height: 78, justifyContent: 'flex-start'},
   kicker: {
     color: colors.accent,
     fontFamily: fonts.extraBold,

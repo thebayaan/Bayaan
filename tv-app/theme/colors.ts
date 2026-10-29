@@ -24,9 +24,11 @@ export const colors = {
   // Ink & Cream focus: one treatment everywhere, a cream fill with ink on it.
   focusFill: '#f4f3ec',
   onFocus: '#06151c',
-  onFocusSecondary: 'rgba(6,21,28,0.66)',
-  // Hairline outline for a screen's main action at rest.
-  outline: 'rgba(244,243,236,0.5)',
+  // Dark enough to read from the sofa on cream (small tool labels).
+  onFocusSecondary: 'rgba(6,21,28,0.8)',
+  // Hairline outline for a screen's main action at rest: faint enough never
+  // to read as a second focus beside the real one.
+  outline: 'rgba(244,243,236,0.3)',
   // Brand sky from the app icon, for indicators only: the selected tab's
   // underline, section labels (every tracked uppercase kicker above a title,
   // on every screen), live state and checks. Never a focus fill.

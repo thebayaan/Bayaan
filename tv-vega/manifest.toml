@@ -7,7 +7,7 @@ schema-version = 1
 [package]
 title = "Bayaan"
 version = "0.1.0"
-id = "com.bayaan.tvsmoke"
+id = "com.bayaan.app.tv"
 
 [os.version]
 min = "1.2"
@@ -15,7 +15,7 @@ target = "1.2"
 
 [components]
 [[components.interactive]]
-id = "com.bayaan.tvsmoke.main"
+id = "com.bayaan.app.tv.main"
 runtime-module = "/com.amazon.kepler.runtime.react_native_kepler_4@IReactNativeKepler_0"
 launch-type = "singleton"
 categories = ["com.amazon.category.main", "com.amazon.category.kepler.media"]
@@ -100,7 +100,7 @@ id = "com.amazon.gipc.uuid.*"
 # Vega Media Controls: lets the remote's transport keys and Alexa drive playback.
 [[extras]]
 key = "interface.provider"
-component-id = "com.bayaan.tvsmoke.main"
+component-id = "com.bayaan.app.tv.main"
 
 [[extras.value.application.interface]]
 interface_name = "com.amazon.kepler.media.IMediaPlaybackServer"

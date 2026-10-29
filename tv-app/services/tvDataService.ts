@@ -1,4 +1,3 @@
-import fallbackReciters from '../../data/reciters-fallback.json';
 import {normalizeReciters} from './normalizeReciter';
 import {resolveDefaultReciter} from '../store/settingsStore';
 import type {Reciter, Rewayah} from '../types/reciter';
@@ -16,11 +15,12 @@ export const DEFAULT_RECITER_KEY = 'bayaan_tv_default_reciter_id';
 // checked when EXPO_PUBLIC_KILLSWITCH_URL is set, so a build without one never
 // waits on a config request before loading reciters.
 const KILLSWITCH_URL = process.env.EXPO_PUBLIC_KILLSWITCH_URL ?? '';
-// The TV build workflows set no API URL today, so shipped builds run on the
-// bundled list (data/reciters-fallback.json). Setting one switches the TV to
-// the live catalog through fetchCatalogFromApi below, the same paged /v1 API
-// the phone uses (services/dataService.ts).
-const API_URL = process.env.EXPO_PUBLIC_BAYAAN_API_URL ?? '';
+// The TV ships no reciter data: the catalog always comes from the Bayaan API
+// (the same paged /v1 API the phone uses, services/dataService.ts) and is
+// kept in storage, so a TV that has loaded it once also starts offline. The
+// build sets the key (EXPO_PUBLIC_BAYAAN_API_KEY) and may point elsewhere.
+export const API_URL =
+  process.env.EXPO_PUBLIC_BAYAAN_API_URL || 'https://api.thebayaan.com';
 const API_KEY = process.env.EXPO_PUBLIC_BAYAAN_API_KEY ?? '';
 const PAGE_SIZE = 200;
 
@@ -77,25 +77,13 @@ function readCachedReciters(): Cached<Reciter[]> | null {
     : null;
 }
 
-/**
- * Stores a reciter list. A `stale` one (the bundled list written because the
- * network failed) carries no savedAt, so the next fetch tries again instead
- * of serving it as fresh for RECITERS_TTL_MS.
- */
-function writeCachedReciters(data: Reciter[], stale = false): void {
+/** Stores a freshly fetched reciter list. */
+function writeCachedReciters(data: Reciter[]): void {
   writeJSON<Cached<Reciter[]>>(RECITERS_KEY, {
     version: DATA_VERSION,
     data,
-    savedAt: stale ? undefined : Date.now(),
+    savedAt: Date.now(),
   });
-}
-
-let fallbackMemo: Reciter[] | null = null;
-
-/** The bundled reciter list, normalized once. */
-export function fallbackReciterList(): Reciter[] {
-  fallbackMemo ??= normalizeReciters(fallbackReciters);
-  return fallbackMemo;
 }
 
 export function getCachedReciters(): Reciter[] | null {
@@ -151,9 +139,15 @@ async function fetchCatalogFromApi(): Promise<Reciter[]> {
 // catalog is downloaded and parsed once.
 let inFlight: Promise<Reciter[]> | null = null;
 
-export function fetchReciters(opts?: {skipCache?: boolean}): Promise<Reciter[]> {
-  // A list older than RECITERS_TTL_MS is refreshed; if that fails the stale
-  // copy is still returned below.
+/**
+ * The reciter catalog: the stored copy while it is fresh, otherwise the API's.
+ * A list older than RECITERS_TTL_MS is refreshed; if that fails the stale
+ * copy is returned. Rejects only when there is no copy at all and the API
+ * can't be reached, which the app shows as its offline screen.
+ */
+export function fetchReciters(opts?: {
+  skipCache?: boolean;
+}): Promise<Reciter[]> {
   if (!opts?.skipCache) {
     const cached = readCachedReciters();
     if (cached && isReciterCacheFresh(cached.savedAt)) {
@@ -167,31 +161,24 @@ export function fetchReciters(opts?: {skipCache?: boolean}): Promise<Reciter[]> 
 }
 
 async function loadReciters(): Promise<Reciter[]> {
-  const enabled = API_URL ? await isBackendEnabled() : false;
-  if (!enabled) {
-    const data = fallbackReciterList();
-    writeCachedReciters(data);
-    return data;
-  }
-
   try {
+    // The kill switch pauses API calls; the stored list keeps serving.
+    if (!(await isBackendEnabled())) throw new Error('Backend disabled');
     const data = await fetchCatalogFromApi();
     // An empty catalog is a broken response, not a catalog: never store it
     // as fresh over a good list.
     if (data.length === 0) throw new Error('Empty reciters response');
     writeCachedReciters(data);
     return data;
-  } catch {
+  } catch (error) {
     const cached = getCachedReciters();
     if (cached) return cached;
-    const data = fallbackReciterList();
-    writeCachedReciters(data, true);
-    return data;
+    throw error;
   }
 }
 
 /**
- * A reciter's rewayat, read from the catalog (stored, then bundled). Older
+ * A reciter's rewayat, read from the stored catalog. Older
  * builds kept a per-reciter copy under `bayaan_reciter_servers_<id>`; it is
  * no longer read or written, because that copy never refreshed with the
  * catalog and would keep serving a reciter's old audio servers after a live
@@ -199,17 +186,13 @@ async function loadReciters(): Promise<Reciter[]> {
  */
 export function getCachedRewayat(reciterId: string): Rewayah[] | null {
   const embedded = getCachedReciter(reciterId)?.rewayat;
-  if (embedded && embedded.length > 0) return embedded;
-  const fromFallback = fallbackReciterList().find(
-    r => r.id === reciterId,
-  )?.rewayat;
-  return fromFallback ?? null;
+  return embedded && embedded.length > 0 ? embedded : null;
 }
 
 /**
  * A reciter's rewayat. The API has no per-reciter endpoint: every reciter
  * comes with its rewayat in the catalog (see fetchCatalogFromApi), so this
- * reads them from the stored catalog, then the bundled list.
+ * reads them from the stored catalog.
  */
 export async function fetchRewayat(reciterId: string): Promise<Rewayah[]> {
   return getCachedRewayat(reciterId) ?? [];
@@ -241,8 +224,10 @@ export function getDefaultReciter(reciters: Reciter[]): Reciter | null {
 export async function seedDefaultReciter(): Promise<string | null> {
   const existing = storage.getString(DEFAULT_RECITER_KEY);
   if (existing && existing.length > 0) return existing;
-  // A list fetch already under way (useReciters asks too) is shared.
-  const reciters = getCachedReciters() ?? (await fetchReciters());
+  // A list fetch already under way (useReciters asks too) is shared. Offline
+  // with no stored list, there is nothing to seed until the catalog loads.
+  const reciters =
+    getCachedReciters() ?? (await fetchReciters().catch(() => []));
   // Honour the persisted Settings picker choice when it matches a known
   // reciter; otherwise fall back to the featured/first default.
   const reciter = resolveDefaultReciter(reciters, getDefaultReciter);

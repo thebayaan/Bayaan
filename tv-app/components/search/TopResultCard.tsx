@@ -34,7 +34,7 @@ import {
 } from '../../services/verseData';
 import {ReciterPortrait} from '../browse/ReciterPortrait';
 import {useFavorites} from '../../hooks/useFavorites';
-import {surahGradient} from '../../theme/surahColors';
+import {SurahFill} from '../brand/SurahFill';
 import {quranTextFontAvailable} from '../../theme/calligraphy';
 import {colors} from '../../theme/colors';
 import {fonts, quranTextFontFamily, typography} from '../../theme/typography';
@@ -290,8 +290,8 @@ function VerseTop({
         <View style={styles.art}>
           {/* The tile itself has no padding, so the gradient (sized from it)
               reaches every edge; the padding is the verse's own. */}
-          <GradientFill
-            colors={surahGradient(verse.surah.id)}
+          <SurahFill
+            surahNumber={verse.surah.id}
             id={`search-top-v${verse.surah.id}`}
           />
           <View style={styles.verseFrame}>
@@ -327,12 +327,19 @@ function VerseTop({
         focus={takeFocus}
         onPress={() => run('verse')}
       />
+      {/* Short labels, so the three fit one row (the card is about this
+          verse, so "Repeat" and "Play from here" need no more words). */}
       <Action
-        label="Repeat verse"
+        label="Repeat"
+        accessibilityLabel="Repeat verse"
         icon={RepeatIcon}
         onPress={() => run('repeat')}
       />
-      <Action label="Play surah from here" onPress={() => run('from')} />
+      <Action
+        label="Play from here"
+        accessibilityLabel="Play the surah from this verse"
+        onPress={() => run('from')}
+      />
     </Card>
   );
 }
@@ -394,8 +401,11 @@ function Action({
   primary,
   focus,
   onPress,
+  accessibilityLabel,
 }: {
   label: string;
+  /** Read out instead of the label, when the label is shortened. */
+  accessibilityLabel?: string;
   icon?: React.FC<IconProps>;
   filled?: boolean;
   primary?: boolean;
@@ -408,7 +418,7 @@ function Action({
       ref={primary ? primaryRef : undefined}
       onPress={onPress}
       hasTVPreferredFocus={focus}
-      accessibilityLabel={label}
+      accessibilityLabel={accessibilityLabel ?? label}
       style={[styles.action, primary ? styles.actionMain : styles.actionQuiet]}>
       {icon ? <FocusIcon icon={icon} size={22} filled={filled} /> : null}
       <FocusText style={styles.actionText}>{label}</FocusText>

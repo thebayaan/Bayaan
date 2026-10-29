@@ -162,7 +162,9 @@ export function AdhkarReaderScreen({listId, mode}: Props): React.ReactElement {
       listId,
       adhkar.map(d => d.repeatCount),
       adhkar.map(d => d.audioUrl),
-      START[mode ?? 'read'],
+      // Listen through and Count each for me (from Search) start the list
+      // from the top, as asked, rather than resume an earlier count.
+      {...START[mode ?? 'read'], fresh: mode !== undefined && mode !== 'read'},
     );
     return () => {
       unsubscribe();
@@ -569,9 +571,15 @@ export function AdhkarReaderScreen({listId, mode}: Props): React.ReactElement {
                 onPress={startOver}
                 style={styles.chip}
                 accessibilityLabel="Resumed where you left off. Start over">
-                <FocusText style={styles.chipText}>
-                  Resumed · Start over
-                </FocusText>
+                <View style={styles.chipInner}>
+                  <FocusText
+                    style={styles.chipNote}
+                    color={colors.textSecondary}
+                    focusedColor={colors.onFocusSecondary}>
+                    Resumed
+                  </FocusText>
+                  <FocusText style={styles.chipText}>Start over</FocusText>
+                </View>
               </FocusableButton>
             ) : null}
             <FocusableButton
@@ -752,6 +760,7 @@ const styles = createScaledStyles({
   },
   chipInner: {flexDirection: 'row', alignItems: 'center', gap: 10},
   chipText: {fontFamily: fonts.bold, fontWeight: '700', fontSize: 21},
+  chipNote: {fontFamily: fonts.medium, fontWeight: '500', fontSize: 19},
   center: {
     position: 'absolute',
     top: 150,

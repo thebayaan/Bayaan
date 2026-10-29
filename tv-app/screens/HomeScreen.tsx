@@ -22,6 +22,7 @@ import {
   adhkarFacts,
   adhkarRowIds,
   adhkarTileMeta,
+  collectionsFor,
   estimateAdhkarMinutes,
   homePlanAt,
   homeRows,
@@ -81,6 +82,7 @@ import type {ContinueEntry} from '../services/continueListeningStore';
 import type {LovedSurah} from '../services/lovedSurahsStore';
 import type {Playlist} from '../services/playlistsStore';
 import {surahGlow, TILE_HUES} from '../theme/surahColors';
+import {playlistGradient} from '../services/playlistFormat';
 import {colors} from '../theme/colors';
 import {createScaledStyles, scale} from '../theme/scale';
 
@@ -396,6 +398,10 @@ export function HomeScreen(): React.ReactElement {
   const lovedSurahs = useMemo(
     () => loved.filter(e => reciterById.has(e.reciterId)),
     [loved, reciterById],
+  );
+  const collections = useMemo(
+    () => collectionsFor(plan, SURAH_COLLECTIONS),
+    [plan],
   );
   const adhkarIds = useMemo(
     () => adhkarRowIds(new Date(planHour), planListIds(plan)),
@@ -767,7 +773,9 @@ export function HomeScreen(): React.ReactElement {
             <PlaylistTile
               key={p.id}
               playlist={p}
-              color={p.color ?? TILE_HUES[i % TILE_HUES.length]}
+              color={
+                playlistGradient(p.color ?? TILE_HUES[i % TILE_HUES.length])[0]
+              }
               onSelect={openPlaylist}
             />
           )),
@@ -822,7 +830,7 @@ export function HomeScreen(): React.ReactElement {
         return rail(
           row,
           'Collections',
-          SURAH_COLLECTIONS.map((c, i) => (
+          collections.map((c, i) => (
             <CollectionTile
               key={c.id}
               collection={c}
@@ -989,6 +997,7 @@ const PlaylistTile = React.memo(function PlaylistTile({
       title={playlist.name}
       caption={meta}
       color={color}
+      surahArt={playlist.items[0]?.surahNumber}
       onSelect={() => onSelect(playlist.id)}
       accessibilityLabel={`Playlist ${playlist.name}, ${meta}`}
     />

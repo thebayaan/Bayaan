@@ -203,7 +203,9 @@ export function PlaylistScreen({playlistId}: Props): React.ReactElement {
             accessibilityLabel={`${index + 1}. ${title}${
               voice ? `, ${voice}` : ''
             }. Hold OK for more`}
-            focusScale={1.02}
+            // A wide row doesn't grow on focus: scaled, its number and title
+            // slid left of where they sat.
+            focusScale={1}
             containerStyle={styles.rowWrap}
             style={styles.row}>
             <View style={styles.rowInner}>
@@ -457,6 +459,8 @@ const styles = createScaledStyles({
     justifyContent: 'center',
     paddingHorizontal: 24,
     borderRadius: 16,
+    // Android draws the cream band square without it.
+    overflow: 'hidden',
   },
   rowInner: {flexDirection: 'row', alignItems: 'center', gap: 24},
   rowNum: {

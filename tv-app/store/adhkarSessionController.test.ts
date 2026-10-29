@@ -238,6 +238,18 @@ describe('adhkar session controller', () => {
     expect(store.getState().session?.counts[0]).toBe(1);
   });
 
+  it('starts from the top when asked to, though the list was left part way', () => {
+    const {store} = setup();
+    store.getState().open('l', [1, 1, 1], ['a', 'b', 'c'], {autoplay: false});
+    store.getState().next();
+    store.getState().close();
+    store
+      .getState()
+      .open('l', [1, 1, 1], ['a', 'b', 'c'], {autoplay: false, fresh: true});
+    expect(store.getState().resumed).toBe(false);
+    expect(store.getState().session?.index).toBe(0);
+  });
+
   it('says when a list resumed, until it starts over', () => {
     const {store} = setup();
     store.getState().open('l', [1, 1, 1], ['a', 'b', 'c'], {autoplay: false});

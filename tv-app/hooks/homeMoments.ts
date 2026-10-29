@@ -447,3 +447,34 @@ export function planListIds(plan: HomePlan): string[] {
   );
   return plan.hero.kind === 'adhkar' ? [plan.hero.listId, ...ids] : ids;
 }
+
+/** Collections that suit a part of the day, in the order they lead. */
+const COLLECTIONS_FOR: Record<DayWindow, readonly string[]> = {
+  morning: ['morning-reflections', 'protection-healing'],
+  day: ['quick-listen', 'memorization-station'],
+  evening: ['evening-serenity', 'protection-healing'],
+  night: ['evening-serenity', 'protection-healing', 'heart-softeners'],
+};
+
+/**
+ * Home's Collections rail for a plan: the ones that suit the time of day
+ * first (Friday Essentials leads at Friday time), then the rest in their
+ * usual order.
+ */
+export function collectionsFor<T extends {id: string}>(
+  plan: Pick<HomePlan, 'window' | 'isFriday'>,
+  collections: readonly T[],
+): T[] {
+  const lead = [
+    ...(plan.isFriday ? ['friday-essentials'] : []),
+    ...COLLECTIONS_FOR[plan.window],
+  ];
+  const rank = (c: T): number => {
+    const i = lead.indexOf(c.id);
+    return i === -1 ? lead.length : i;
+  };
+  return collections
+    .map((c, i) => ({c, i}))
+    .sort((a, b) => rank(a.c) - rank(b.c) || a.i - b.i)
+    .map(({c}) => c);
+}

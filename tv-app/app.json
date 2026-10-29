@@ -1,17 +1,17 @@
 {
   "expo": {
     "name": "Bayaan",
-    "slug": "tv-smoke",
+    "slug": "bayaan-tv",
     "version": "1.0.0",
     "orientation": "landscape",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "ios": {
-      "bundleIdentifier": "com.bayaan.tvsmoke"
+      "bundleIdentifier": "com.bayaan.app.tv"
     },
     "android": {
-      "package": "com.bayaan.tvsmoke"
+      "package": "com.bayaan.app.tv"
     },
     "plugins": [
       [
@@ -20,7 +20,25 @@
           "isTV": true,
           "tvosDeploymentTarget": "17.0",
           "removeFlipperOnAndroid": true,
-          "androidTVBanner": "./assets/tv/android-tv-banner.png"
+          "androidTVBanner": "./assets/tv/android-tv-banner.png",
+          "appleTVImages": {
+            "iconLayers": {
+              "front": "./assets/tv/icon-large-front.png",
+              "back": "./assets/tv/icon-large-back.png"
+            },
+            "iconSmallLayers": {
+              "front": "./assets/tv/icon-small-front.png",
+              "back": "./assets/tv/icon-small-back.png"
+            },
+            "iconSmall2xLayers": {
+              "front": "./assets/tv/icon-small2x-front.png",
+              "back": "./assets/tv/icon-small2x-back.png"
+            },
+            "topShelf": "./assets/tv/top-shelf.png",
+            "topShelf2x": "./assets/tv/top-shelf@2x.png",
+            "topShelfWide": "./assets/tv/top-shelf-wide.png",
+            "topShelfWide2x": "./assets/tv/top-shelf-wide@2x.png"
+          }
         }
       ],
       [
