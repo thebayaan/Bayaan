@@ -8,6 +8,15 @@ import {
 import {normalizeReciters} from '../services/normalizeReciter';
 import {storage} from '../services/storage';
 
+function volumeOf(engine: AudioEngine): jest.Mock {
+  return engine.setVolume as jest.Mock;
+}
+
+function lastVolume(engine: AudioEngine): number | undefined {
+  const calls = volumeOf(engine).mock.calls;
+  return calls.length > 0 ? calls[calls.length - 1][0] : undefined;
+}
+
 function makeMockEngine(): AudioEngine & {emit: (e: EngineEvent) => void} {
   let listener: ((e: EngineEvent) => void) | null = null;
   return {
@@ -16,6 +25,7 @@ function makeMockEngine(): AudioEngine & {emit: (e: EngineEvent) => void} {
     pause: jest.fn(),
     seek: jest.fn(),
     setRate: jest.fn(),
+    setVolume: jest.fn(),
     destroy: jest.fn(),
     subscribe: cb => {
       listener = cb;
@@ -207,5 +217,47 @@ describe('seedDefaultReciter', () => {
     const id = await seedDefaultReciter();
     expect(id).toBe('existing-id');
     expect(storage.getString(DEFAULT_RECITER_KEY)).toBe('existing-id');
+  });
+
+  it("fades the volume over the sleep timer's last 30 seconds, then pauses", () => {
+    jest.useFakeTimers();
+    try {
+      const engine = makeMockEngine();
+      useTVPlayerStore.getState().setEngine(engine);
+      useTVPlayerStore.getState().setSleep(1);
+      volumeOf(engine).mockClear();
+
+      jest.advanceTimersByTime(29 * 1000);
+      expect(volumeOf(engine)).not.toHaveBeenCalled();
+
+      jest.advanceTimersByTime(16 * 1000);
+      const mid = lastVolume(engine);
+      expect(mid).toBeGreaterThan(0.4);
+      expect(mid).toBeLessThan(0.6);
+      expect(engine.pause).not.toHaveBeenCalled();
+
+      jest.advanceTimersByTime(16 * 1000);
+      expect(engine.pause).toHaveBeenCalled();
+      expect(lastVolume(engine)).toBe(1);
+      expect(useTVPlayerStore.getState().sleep).toEqual({kind: 'off'});
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('restores full volume when the sleep timer is turned off mid-fade', () => {
+    jest.useFakeTimers();
+    try {
+      const engine = makeMockEngine();
+      useTVPlayerStore.getState().setEngine(engine);
+      useTVPlayerStore.getState().setSleep(1);
+      jest.advanceTimersByTime(50 * 1000);
+      useTVPlayerStore.getState().setSleep(0);
+      expect(lastVolume(engine)).toBe(1);
+      jest.advanceTimersByTime(20 * 1000);
+      expect(engine.pause).not.toHaveBeenCalled();
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });

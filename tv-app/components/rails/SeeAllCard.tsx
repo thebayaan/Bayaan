@@ -1,41 +1,51 @@
 import React from 'react';
 import {Text, View} from 'react-native';
 import {FocusableCard} from '../primitives/FocusableCard';
+import {FocusFrame, FocusText} from '../primitives/focusContext';
 import {colors} from '../../theme/colors';
+import {fonts} from '../../theme/typography';
 import {createScaledStyles} from '../../theme/scale';
 
-type Props = {onSelect: () => void; height?: number; width?: number};
+type Props = {onSelect: () => void};
 
-export function SeeAllCard({
-  onSelect,
-  height = 280,
-  width = 200,
-}: Props): React.ReactElement {
+/** The end of a reciter row: a hairline circle in the portraits' place. */
+export function SeeAllCard({onSelect}: Props): React.ReactElement {
   return (
     <FocusableCard
-      style={[styles.card, {height, width}]}
+      ring={false}
+      style={styles.card}
       onPress={onSelect}
       accessibilityLabel="See all reciters">
-      <View style={styles.inner}>
-        <Text style={styles.arrow}>→</Text>
-        <Text style={styles.label}>See all</Text>
-      </View>
+      <FocusFrame radius={91} style={styles.frame}>
+        <View style={styles.circle}>
+          <Text style={styles.arrow}>→</Text>
+        </View>
+      </FocusFrame>
+      <FocusText
+        style={styles.label}
+        color={colors.textSecondary}
+        focusedColor={colors.text}>
+        See all
+      </FocusText>
     </FocusableCard>
   );
 }
 
 const styles = createScaledStyles({
-  card: {
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
+  card: {width: 200, height: 280, alignItems: 'center', gap: 12},
+  frame: {width: 200, height: 200},
+  circle: {
+    flex: 1,
+    borderRadius: 91,
+    borderWidth: 2,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  inner: {flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10},
-  arrow: {color: colors.text, fontSize: 40, fontWeight: '300', opacity: 0.8},
+  arrow: {color: colors.text, fontSize: 44, fontWeight: '300'},
   label: {
-    color: colors.text,
-    fontSize: 16,
+    fontFamily: fonts.semiBold,
+    fontSize: 18,
     fontWeight: '600',
-    letterSpacing: 0.4,
   },
 });

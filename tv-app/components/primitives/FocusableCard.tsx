@@ -2,6 +2,7 @@ import React, {useRef, useState} from 'react';
 import {Animated, Pressable, StyleProp, ViewStyle} from 'react-native';
 import {colors} from '../../theme/colors';
 import {animateFocusScale, focusScaleDefault} from './focusMotion';
+import {FocusedContext} from './focusContext';
 
 type Props = {
   onPress: () => void;
@@ -11,8 +12,19 @@ type Props = {
   style?: StyleProp<ViewStyle>;
   accessibilityLabel?: string;
   focusScale?: number;
+  /**
+   * Draw the cream ring around the whole card (artwork cards). Cards whose
+   * artwork is only part of them pass false and wrap the artwork in a
+   * FocusFrame instead, so the label below stays outside the ring.
+   */
+  ring?: boolean;
 };
 
+/**
+ * Focus for artwork, where a cream fill would hide the picture: a slight
+ * scale plus a cream ring. Children can read the focus state through
+ * useButtonFocused / FocusText.
+ */
 export function FocusableCard({
   onPress,
   onLongPress,
@@ -21,6 +33,7 @@ export function FocusableCard({
   style,
   accessibilityLabel,
   focusScale = focusScaleDefault,
+  ring = true,
 }: Props): React.ReactElement {
   const [focused, setFocused] = useState(false);
   const scale = useRef(new Animated.Value(1)).current;
@@ -41,22 +54,25 @@ export function FocusableCard({
         hasTVPreferredFocus={hasTVPreferredFocus}
         accessibilityLabel={accessibilityLabel}
         style={[
-          {
-            borderRadius: 12,
+          ring && {
+            borderRadius: 14,
             borderWidth: 4,
             borderColor: 'transparent',
             overflow: 'hidden',
           },
-          focused && {
-            borderColor: colors.focusRing,
-            shadowColor: colors.focusRing,
-            shadowOpacity: 0.6,
-            shadowRadius: 18,
-            shadowOffset: {width: 0, height: 0},
-          },
+          ring &&
+            focused && {
+              borderColor: colors.focusRing,
+              shadowColor: '#000',
+              shadowOpacity: 0.55,
+              shadowRadius: 18,
+              shadowOffset: {width: 0, height: 10},
+            },
           style,
         ]}>
-        {children}
+        <FocusedContext.Provider value={focused}>
+          {children}
+        </FocusedContext.Provider>
       </Pressable>
     </Animated.View>
   );

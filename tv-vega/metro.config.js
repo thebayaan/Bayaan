@@ -60,6 +60,7 @@ const config = {
     path.join(repoRoot, 'components'),
     path.join(repoRoot, 'data'),
     path.join(repoRoot, 'utils'),
+    path.join(repoRoot, 'services', 'adhkar'),
     path.join(repoRoot, 'assets'),
   ],
   resolver: {

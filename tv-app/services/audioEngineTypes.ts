@@ -24,6 +24,8 @@ export type AudioEngine = {
   pause: () => void;
   seek: (seconds: number) => void;
   setRate: (rate: number) => void;
+  /** 0 to 1; used to fade out at the end of a sleep timer. */
+  setVolume: (volume: number) => void;
   subscribe: (cb: (e: EngineEvent) => void) => () => void;
   destroy: () => void;
 };

@@ -1,4 +1,9 @@
-import {useAmbientStore, readPersistedAmbient} from './ambientStore';
+import {
+  ambientChoiceLabel,
+  ambientShouldPlay,
+  useAmbientStore,
+  readPersistedAmbient,
+} from './ambientStore';
 import {storage} from '../services/storage';
 
 beforeEach(() => {
@@ -52,5 +57,32 @@ describe('ambientStore', () => {
         volume: 0.5,
       });
     });
+  });
+});
+
+describe('ambient choice and playback rule', () => {
+  beforeEach(() => useAmbientStore.getState().reset());
+
+  it('choose turns the sound on or off', () => {
+    useAmbientStore.getState().choose('ocean');
+    expect(useAmbientStore.getState().enabled).toBe(true);
+    expect(useAmbientStore.getState().currentSound).toBe('ocean');
+    useAmbientStore.getState().choose('off');
+    expect(useAmbientStore.getState().enabled).toBe(false);
+    expect(useAmbientStore.getState().currentSound).toBe('ocean');
+  });
+
+  it('labels choices', () => {
+    expect(ambientChoiceLabel('off')).toBe('Off');
+    expect(ambientChoiceLabel('fireplace')).toBe('Fireplace');
+  });
+
+  it('plays only alongside the recitation', () => {
+    expect(ambientShouldPlay(false, 'playing', true)).toBe(false);
+    expect(ambientShouldPlay(true, 'playing', false)).toBe(true);
+    expect(ambientShouldPlay(true, 'paused', true)).toBe(false);
+    expect(ambientShouldPlay(true, 'idle', true)).toBe(false);
+    expect(ambientShouldPlay(true, 'loading', true)).toBe(true);
+    expect(ambientShouldPlay(true, 'buffering', false)).toBe(false);
   });
 });

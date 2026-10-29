@@ -2,6 +2,7 @@ import React, {useMemo} from 'react';
 import {Image} from 'expo-image';
 import {StyleSheet, Text, View} from 'react-native';
 import {FocusableButton} from '../primitives/FocusableButton';
+import {FocusIcon, FocusText} from '../primitives/focusContext';
 import {useContextMenuStore} from '../../store/contextMenuStore';
 import {useReciters} from '../../hooks/useReciters';
 import {useFavorites} from '../../hooks/useFavorites';
@@ -17,7 +18,7 @@ import {
 } from '../../../components/Icons';
 import {colors} from '../../theme/colors';
 import {spacing} from '../../theme/spacing';
-import {createScaledStyles, scale} from '../../theme/scale';
+import {createScaledStyles} from '../../theme/scale';
 import {getReciterArtwork} from '../../services/reciterArtwork';
 
 export function ReciterContextMenu(): React.ReactElement | null {
@@ -107,25 +108,23 @@ export function ReciterContextMenu(): React.ReactElement | null {
         </View>
         <View style={styles.rows}>
           <MenuRow
-            icon={<PlayIcon color={colors.text} size={scale(20)} />}
+            icon={<FocusIcon icon={PlayIcon} size={20} />}
             label="Play"
             onPress={handlePlay}
             hasTVPreferredFocus
           />
           <MenuRow
-            icon={<ShuffleIcon color={colors.text} size={scale(20)} />}
+            icon={<FocusIcon icon={ShuffleIcon} size={20} />}
             label="Shuffle play"
             onPress={handleShuffle}
           />
           <MenuRow
-            icon={
-              <HeartIcon color={colors.text} size={scale(20)} filled={isFav} />
-            }
+            icon={<FocusIcon icon={HeartIcon} size={20} filled={isFav} />}
             label={isFav ? 'Remove from favorites' : 'Add to favorites'}
             onPress={handleFavorite}
           />
           <MenuRow
-            icon={<InfoRoundedIcon color={colors.text} size={scale(20)} />}
+            icon={<FocusIcon icon={InfoRoundedIcon} size={20} />}
             label="Open reciter page"
             onPress={handleOpenDetail}
           />
@@ -156,7 +155,7 @@ function MenuRow({
       style={styles.row}>
       <View style={styles.rowInner}>
         <View style={styles.iconBubble}>{icon}</View>
-        <Text style={styles.rowLabel}>{label}</Text>
+        <FocusText style={styles.rowLabel}>{label}</FocusText>
       </View>
     </FocusableButton>
   );
@@ -188,11 +187,10 @@ const styles = createScaledStyles({
   initial: {color: colors.text, fontSize: 32, fontWeight: '300', opacity: 0.55},
   headerMeta: {flex: 1, gap: 4},
   kicker: {
-    color: colors.text,
+    color: colors.accent,
     fontSize: 11,
     fontWeight: '800',
     letterSpacing: 2,
-    opacity: 0.55,
   },
   name: {
     color: colors.text,
@@ -205,19 +203,16 @@ const styles = createScaledStyles({
     paddingHorizontal: 12,
     paddingVertical: 12,
     borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.04)',
   },
   rowInner: {flexDirection: 'row', alignItems: 'center', gap: 14},
   iconBubble: {
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.08)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   rowLabel: {
-    color: colors.text,
     fontSize: 16,
     fontWeight: '600',
     letterSpacing: -0.2,
