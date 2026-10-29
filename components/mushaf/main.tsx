@@ -689,6 +689,20 @@ export default function MushafViewer({
         : undefined,
     [isTablet, metrics.screenWidth, metrics.screenHeight],
   );
+  // @ai-start
+  // iOS can lose a remounted pager's starting offset after a rotation: the
+  // offset is applied before the list has its new size, so the first page
+  // shows blank until a swipe. Scroll to the page again once each mount of
+  // the pager has laid out (a no-op when the offset held).
+  const pagesInitialIndex = Math.min(currentPage - 1, TOTAL_PAGES - 1);
+  const settledPager = useRef<FlatList | null>(null);
+  const settlePagesOffset = useCallback(() => {
+    const list = flatListRef.current;
+    if (!list || settledPager.current === list) return;
+    settledPager.current = list;
+    list.scrollToIndex({index: pagesInitialIndex, animated: false});
+  }, [pagesInitialIndex]);
+  // @ai-end
   // A tap on the status bar scrolls a vertical reader back to page 1. On
   // iPad the toolbar sits close enough to the status bar (the mini in
   // landscape) that tapping its buttons did that too, so iPads turn it off.
@@ -1330,6 +1344,7 @@ export default function MushafViewer({
         <FlatList
           key={readerListKey('pages', metrics.screenWidth)} // @ai
           ref={flatListRef}
+          onLayout={settlePagesOffset} // @ai
           data={pages}
           renderItem={({item}) => {
             if (viewMode === 'list') {
@@ -1369,7 +1384,7 @@ export default function MushafViewer({
           horizontal
           pagingEnabled
           showsHorizontalScrollIndicator={false}
-          initialScrollIndex={Math.min(currentPage - 1, TOTAL_PAGES - 1)}
+          initialScrollIndex={pagesInitialIndex} // @ai
           getItemLayout={(_, index) => ({
             length: metrics.screenWidth,
             offset: metrics.screenWidth * index,
