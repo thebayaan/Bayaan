@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
+import {useResponsive} from '@/hooks/useResponsive'; // @ai
 import {Theme} from '@/utils/themeUtils';
 import {SheetProps, SheetManager, ScrollView} from 'react-native-actions-sheet';
 import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
@@ -86,6 +87,7 @@ import {NoteContent} from './verse-actions/NoteContent';
 import {ShareContent} from './verse-actions/ShareContent';
 import {SimilarVersesContent} from './verse-actions/SimilarVersesContent';
 import {TranslationContent} from './verse-actions/TranslationContent';
+import {returnToVerseActionsAfterTranslations} from './verse-actions/returnAfterTranslations'; // @ai
 import {TafseerContent} from './verse-actions/TafseerContent';
 import {ThemeContent} from './verse-actions/ThemeContent';
 import {WBWContent} from './verse-actions/WBWContent';
@@ -200,9 +202,12 @@ const pendingStyles = StyleSheet.create({
 export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
   const {theme} = useTheme();
   const {height: windowHeight} = useWindowDimensions(); // @ai
+  const {isTablet} = useResponsive(); // @ai
   const styles = createStyles(theme);
   const {t} = useTranslation(['sheets', 'common']);
-  const [activeScreen, setActiveScreenRaw] = useState<ActiveScreen>(null);
+  const [activeScreen, setActiveScreenRaw] = useState<ActiveScreen>(
+    props.payload?.initialScreen ?? null, // @ai
+  );
 
   const setActiveScreen = useCallback((screen: ActiveScreen) => {
     LayoutAnimation.configureNext(
@@ -752,7 +757,12 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
       indicatorStyle={activeScreen ? {height: 0} : styles.indicator}
       gestureEnabled={true}
       onClose={handleOnClose}>
-      <View style={[styles.container, activeScreen && {flex: 1}]}>
+      <View
+        style={[
+          styles.container,
+          isTablet && styles.tabletContainer, // @ai
+          activeScreen && {flex: 1},
+        ]}>
         {!activeScreen && (
           <View style={styles.header}>
             <Text style={styles.surahName}>{surahName}</Text>
@@ -786,6 +796,19 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                 <Pressable
                   onPress={() => {
                     lightHaptics();
+                    // @ai-start
+                    // iPad: closing the dialog brings this card back. Not
+                    // from the player, which this closes too.
+                    if (isTablet && payload.source !== 'player') {
+                      returnToVerseActionsAfterTranslations({
+                        ...payload,
+                        initialScreen:
+                          activeScreen === 'tafseer'
+                            ? 'tafseer'
+                            : 'translation',
+                      });
+                    }
+                    // @ai-end
                     hideCurrentSheet();
                     usePlayerStore.getState().setSheetMode('hidden');
                     setTimeout(() => {
@@ -1242,6 +1265,13 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: moderateScale(20),
       paddingBottom: moderateScale(30),
     },
+    // @ai-start
+    // On iPad the card has a max height; shrink to it so the menu scrolls
+    // instead of running off the card.
+    tabletContainer: {
+      flexShrink: 1,
+    },
+    // @ai-end
     header: {
       alignItems: 'center',
       marginTop: moderateScale(4),
