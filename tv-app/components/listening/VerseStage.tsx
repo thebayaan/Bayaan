@@ -5,8 +5,9 @@ import {getBasmala} from '../../services/verseData';
 import {colors} from '../../theme/colors';
 import {quranTextFontAvailable} from '../../theme/calligraphy';
 import {fonts, quranTextFontFamily} from '../../theme/typography';
-import {createScaledStyles} from '../../theme/scale';
+import {createScaledStyles, scale} from '../../theme/scale';
 import type {OnScreenMode} from '../../store/displayStore';
+import {PANEL_WIDTH} from './SidePanel';
 
 type Props = {
   surahNumber: number;
@@ -78,8 +79,16 @@ export function VerseStage({
   // On its own, the translation takes the Arabic's place and size.
   const translationAlone = show === 'translation';
 
-  const fontSize = arabicText ? arabicSize(arabicText, compact, textScale) : 0;
-  const translationSize = (translationAlone ? 40 : 30) * textScale;
+  // Inline sizes go through scale() like the static styles, or Android TV
+  // (a 960x540 dp screen) would draw them twice the intended size.
+  const fontSize = arabicText
+    ? scale(arabicSize(arabicText, compact, textScale))
+    : 0;
+  // With the tray up, a translation under the Arabic shrinks to a short
+  // line or two rather than vanish, so "Arabic + translation" still holds.
+  const translationSize = scale(
+    (translationAlone ? 40 : compact ? 22 : 30) * textScale,
+  );
   const hasText = arabicText !== null || (translationAlone && translationText);
 
   return (
@@ -109,8 +118,9 @@ export function VerseStage({
           {arabicText}
         </Text>
       ) : null}
-      {translationText && (!compact || translationAlone) ? (
+      {translationText ? (
         <Text
+          numberOfLines={compact && !translationAlone ? 2 : undefined}
           style={[
             styles.translation,
             {fontSize: translationSize, lineHeight: translationSize * 1.45},
@@ -141,8 +151,8 @@ const styles = createScaledStyles({
     gap: 18,
   },
   stageCompact: {bottom: 330},
-  // The settings panel is 620 wide on the right.
-  stageBesidePanel: {left: 80, right: 700},
+  // Left of the settings panel on the right.
+  stageBesidePanel: {left: 80, right: PANEL_WIDTH + 80},
   glyph: {opacity: 0.9, marginBottom: 6},
   arabic: {
     color: colors.text,

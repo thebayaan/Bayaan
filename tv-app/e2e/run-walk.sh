@@ -7,15 +7,39 @@
 #   tvos:    device-id is a booted Apple TV simulator UDID
 #
 # Fails if the app is not running at the end of the walk.
+#
+# DRY_RUN=1 run-walk.sh <android|tvos> [out-dir]
+#   Checks walk.txt and prints every step's key presses (as the device would
+#   get them) without touching a device. Exits non-zero on a malformed line
+#   or an unknown key.
+#
+# "hold" is a long press of OK (Select held for HOLD_SECONDS, default 1.5):
+# React Native fires onLongPress after 500 ms of a held press on both
+# platforms (tvOS: its select long-press recognizer; Android: the JS timer
+# between the press-in on key down and the press-out on key up).
 set -uo pipefail
 
 PLATFORM=${1:?usage: run-walk.sh <android|tvos> <out-dir> [device-id]}
-OUT_DIR=${2:?usage: run-walk.sh <android|tvos> <out-dir> [device-id]}
+DRY_RUN=${DRY_RUN:-0}
+if [[ $DRY_RUN == 1 ]]; then
+  OUT_DIR=${2:-}
+else
+  OUT_DIR=${2:?usage: run-walk.sh <android|tvos> <out-dir> [device-id]}
+fi
 DEVICE=${3:-}
 APP_ID=${APP_ID:-com.bayaan.tvsmoke}
 WALK=${WALK:-$(dirname "$0")/walk.txt}
+HOLD_SECONDS=${HOLD_SECONDS:-1.5}
 
-mkdir -p "$OUT_DIR/screens" "$OUT_DIR/logs"
+case $PLATFORM in
+  android | tvos) ;;
+  *)
+    echo "unknown platform: $PLATFORM (android or tvos)" >&2
+    exit 2
+    ;;
+esac
+
+[[ $DRY_RUN == 1 ]] || mkdir -p "$OUT_DIR/screens" "$OUT_DIR/logs"
 
 adb_() {
   if [[ -n "$DEVICE" ]]; then adb -s "$DEVICE" "$@"; else adb "$@"; fi
@@ -46,6 +70,77 @@ android_keycode() {
     back) echo KEYCODE_BACK ;;
     playpause) echo KEYCODE_MEDIA_PLAY_PAUSE ;;
   esac
+}
+
+# Whether a token is something press() knows.
+valid_key() {
+  case $1 in
+    up | down | left | right | select | back | playpause | hold | none | relaunch) return 0 ;;
+    text:?*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+# How Android holds OK, picked once per run (see hold_android):
+#   duration  `input keyevent --duration <ms>` (Android 14+ shell)
+#   longpress `input keyevent --longpress`, which holds the key for the
+#             system long-press timeout; the runner first raises that
+#             timeout to HOLD_SECONDS so the hold outlasts React Native's
+#             500 ms long press (Android 12+ defaults to 400 ms)
+#   emu       the emulator console (key down, sync, sleep, key up, sync),
+#             only if the settings write is refused
+ANDROID_HOLD=${ANDROID_HOLD:-}
+
+pick_android_hold() {
+  local ms
+  ms=$(awk -v s="$HOLD_SECONDS" 'BEGIN { printf "%d", s * 1000 }')
+  if adb_ shell input 2>&1 | grep -q -- '--duration'; then
+    ANDROID_HOLD=duration
+  elif adb_ shell settings put secure long_press_timeout "$ms" >/dev/null 2>&1 &&
+    [[ "$(adb_ shell settings get secure long_press_timeout | tr -d '\r')" == "$ms" ]]; then
+    ANDROID_HOLD=longpress
+  elif [[ "$(adb_ get-serialno 2>/dev/null | tr -d '\r')" == emulator-* ]]; then
+    ANDROID_HOLD=emu
+  else
+    ANDROID_HOLD=longpress
+  fi
+  echo "android hold: $ANDROID_HOLD"
+}
+
+hold_android() {
+  [[ -n $ANDROID_HOLD ]] || pick_android_hold
+  local ms
+  ms=$(awk -v s="$HOLD_SECONDS" 'BEGIN { printf "%d", s * 1000 }')
+  case $ANDROID_HOLD in
+    duration)
+      adb_ shell input keyevent --duration "$ms" KEYCODE_DPAD_CENTER
+      ;;
+    emu)
+      # KEY_ENTER reaches the app as KEYCODE_ENTER, which React Native and
+      # Android's views treat exactly like DPAD_CENTER (select).
+      # Each event needs a SYN_REPORT, or the guest only sees the key once
+      # the next report arrives (down and up together: a plain OK).
+      if adb_ emu event send EV_KEY:KEY_ENTER:1 EV_SYN:0:0 >/dev/null 2>&1; then
+        sleep "$HOLD_SECONDS"
+        adb_ emu event send EV_KEY:KEY_ENTER:0 EV_SYN:0:0 >/dev/null 2>&1
+      else
+        echo "emulator console unavailable; falling back to --longpress"
+        ANDROID_HOLD=longpress
+        adb_ shell input keyevent --longpress KEYCODE_DPAD_CENTER
+      fi
+      ;;
+    *)
+      adb_ shell input keyevent --longpress KEYCODE_DPAD_CENTER
+      ;;
+  esac
+}
+
+# idb's `ui key` sends the HID usage down, waits --duration seconds, then
+# up, so the simulator sees a held Select (Return).
+hold_tvos() {
+  if ! idb ui key --udid "$DEVICE" --duration "$HOLD_SECONDS" "$(tvos_hid select)"; then
+    echo "hold failed: idb ui key --duration is unavailable" >&2
+  fi
 }
 
 launch_app() {
@@ -79,6 +174,11 @@ press() {
   local key=$1
   case $key in
     none) return ;;
+    hold)
+      if [[ $PLATFORM == android ]]; then hold_android; else hold_tvos; fi
+      sleep 1
+      return
+      ;;
     relaunch)
       stop_app
       sleep 2
@@ -113,6 +213,62 @@ screenshot() {
   [[ -s "$file" ]] && echo "screenshot: $1" || echo "screenshot $1 failed"
 }
 
+# Dry run: check the walk and print what each step presses, then stop.
+if [[ $DRY_RUN == 1 ]]; then
+  errors=0
+  steps=0
+  declare -A seen=()
+  lineno=0
+  while IFS= read -r line || [[ -n $line ]]; do
+    lineno=$((lineno + 1))
+    read -r name wait keys <<<"$line"
+    [[ -z "${name:-}" || "$name" == \#* ]] && continue
+    steps=$((steps + 1))
+    if ! [[ ${wait:-} =~ ^[0-9]+([.][0-9]+)?$ ]]; then
+      echo "line $lineno ($name): wait '${wait:-}' is not a number" >&2
+      errors=$((errors + 1))
+    fi
+    if [[ -z ${keys:-} ]]; then
+      echo "line $lineno ($name): no keys (use none)" >&2
+      errors=$((errors + 1))
+    fi
+    if [[ -n ${seen[$name]:-} ]]; then
+      echo "line $lineno ($name): duplicate step name (line ${seen[$name]})" >&2
+      errors=$((errors + 1))
+    fi
+    seen[$name]=$lineno
+    out=()
+    for key in ${keys:-}; do
+      if ! valid_key "$key"; then
+        echo "line $lineno ($name): unknown key '$key'" >&2
+        errors=$((errors + 1))
+        continue
+      fi
+      case $key in
+        none | relaunch | text:*) out+=("$key") ;;
+        hold)
+          if [[ $PLATFORM == android ]]; then
+            out+=("hold(DPAD_CENTER ${HOLD_SECONDS}s)")
+          else
+            out+=("hold(hid $(tvos_hid select) ${HOLD_SECONDS}s)")
+          fi
+          ;;
+        *)
+          if [[ $PLATFORM == android ]]; then
+            out+=("$(android_keycode "$key")")
+          else
+            out+=("hid:$(tvos_hid "$key")")
+          fi
+          ;;
+      esac
+    done
+    printf '%-34s wait %-3s %s\n' "$name" "${wait:-?}" "${out[*]}"
+  done <"$WALK"
+  echo "$steps steps, $errors errors"
+  ((errors == 0))
+  exit
+fi
+
 if [[ $PLATFORM == android ]]; then
   adb_ logcat -c
   adb_ logcat >"$OUT_DIR/logs/logcat.txt" 2>&1 &
@@ -129,6 +285,10 @@ launch_app
 while read -r name wait keys <&3; do
   [[ -z "$name" || "$name" == \#* ]] && continue
   for key in $keys; do
+    if ! valid_key "$key"; then
+      echo "step $name: unknown key '$key' skipped (check with DRY_RUN=1)"
+      continue
+    fi
     press "$key"
   done
   sleep "$wait"

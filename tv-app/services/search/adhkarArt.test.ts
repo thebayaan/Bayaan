@@ -5,6 +5,7 @@ import {
   towardInk,
 } from './adhkarArt';
 import {ADHKAR_LISTS} from '../../data/adhkarLists';
+import {estimateMinutes as listMinutes} from '../adhkarBrowse';
 import {adhkarForList} from '../adhkarData';
 
 describe('adhkarArt', () => {
@@ -21,12 +22,13 @@ describe('adhkarArt', () => {
     }
   });
 
-  it('estimates minutes from words and repeats', () => {
+  it('estimates minutes the way the Adhkar screen does', () => {
     expect(estimateMinutes([])).toBe(1);
-    expect(estimateMinutes([{arabic: 'a b c d', repeatCount: 60}])).toBe(2);
-    const morning = estimateMinutes(adhkarForList('morning-adhkar'));
-    expect(morning).toBeGreaterThan(3);
-    expect(morning).toBeLessThan(60);
+    for (const list of ADHKAR_LISTS) {
+      expect(estimateMinutes(adhkarForList(list.id))).toBe(
+        listMinutes(list.id),
+      );
+    }
   });
 
   it('counts', () => {

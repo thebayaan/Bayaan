@@ -21,3 +21,17 @@ export const radius = {
   // Fully rounded: circular artwork / avatars and pill-shaped chips.
   pill: 999,
 } as const;
+
+/**
+ * Layout of every root screen (the places beside the sidebar), in design
+ * pixels. One left/right gutter for titles, tab rows and the first column of
+ * rails and grids, so switching tabs never shifts the page; it also keeps
+ * content inside the TV's overscan-safe area. Cells that reserve room for a
+ * focus ring pull their padding out of it so the artwork edge, not the
+ * reserved space, lines up with the title.
+ */
+export const SCREEN_GUTTER = spacing.xl;
+
+/** Where a root screen's clock sits: top edge, and right edge. */
+export const SCREEN_CLOCK_TOP = 52;
+export const SCREEN_CLOCK_RIGHT = SCREEN_GUTTER;

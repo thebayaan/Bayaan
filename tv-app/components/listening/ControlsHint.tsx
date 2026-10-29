@@ -8,11 +8,23 @@ import {createScaledStyles} from '../../theme/scale';
 const HOLD_MS = 4000;
 const FADE_MS = 900;
 
+/** The hint's words: what OK, Left/Right and holding OK do here. */
+export function hintText(synced: boolean): string {
+  return synced
+    ? 'OK for controls  ·  Left / Right for a verse  ·  Hold OK to repeat it'
+    : 'OK for controls  ·  Left / Right to skip 15 seconds';
+}
+
 /**
- * "Press OK for controls", quiet at the top of the listening room when it
- * opens, fading away after a few seconds so the verse has the screen.
+ * How to drive the room, quiet at the top once the recitation starts,
+ * fading away after a few seconds so the verse has the screen.
  */
-export function ControlsHint(): React.ReactElement {
+export function ControlsHint({
+  synced,
+}: {
+  /** Whether the recitation has verse timings (verse steps and repeat). */
+  synced: boolean;
+}): React.ReactElement {
   const opacity = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     const animation = Animated.sequence([
@@ -36,7 +48,7 @@ export function ControlsHint(): React.ReactElement {
       style={[styles.hint, {opacity}]}
       pointerEvents="none"
       accessibilityElementsHidden>
-      Press OK for controls
+      {hintText(synced)}
     </Animated.Text>
   );
 }

@@ -14,19 +14,27 @@ import {ControlsTray} from '../components/listening/ControlsTray';
 import {ListeningPanels} from '../components/listening/ListeningPanels';
 import {ListeningFooter} from '../components/listening/ListeningFooter';
 import {ControlsHint} from '../components/listening/ControlsHint';
+import {PANEL_WIDTH} from '../components/listening/SidePanel';
 import {ErrorBanner} from '../components/player/ErrorBanner';
 import {FocusableButton} from '../components/primitives/FocusableButton';
 import {FocusText} from '../components/primitives/focusContext';
 import {SLEEP_FADE_MS, useTVPlayerStore} from '../store/tvPlayerStore';
 import {useNavStore} from '../store/navStore';
-import {footerChips, useListeningStore} from '../store/listeningStore';
+import {
+  footerChips,
+  itemKey,
+  noteRepeatSeek,
+  startVerseRepeatSync,
+  useListeningStore,
+} from '../store/listeningStore';
 import {textScale, useDisplayStore} from '../store/displayStore';
 import {ambientLabel, useAmbientStore} from '../store/ambientStore';
+import {showToast} from '../store/toastStore';
 import {useReciters} from '../hooks/useReciters';
 import {usePlayer} from '../hooks/usePlayer';
-import {useVerseSync} from '../hooks/useVerseSync';
+import {syncKey, useVerseSync} from '../hooks/useVerseSync';
+import {useKeepAwakeWhile} from '../hooks/useKeepAwakeWhile';
 import {
-  advanceRepeat,
   stepTarget,
   verseAt,
   verseSpan,
@@ -34,6 +42,7 @@ import {
   type VerseTimeline,
 } from '../services/verseTimeline';
 import {createRemoteKeyFilter} from '../services/remoteKeys';
+import {createSeekStepper} from '../services/seekStep';
 import {AMBIENT_AVAILABLE} from '../services/ambientPlayer';
 import {startAmbientSync} from '../services/ambientSync';
 import {rewayahLabel, type ReciterChoice} from '../services/listeningChoices';
@@ -42,21 +51,39 @@ import {fonts, typography} from '../theme/typography';
 import {spacing} from '../theme/spacing';
 import {createScaledStyles} from '../theme/scale';
 
-/** Seek step for recitations without verse timings. */
-const SEEK_STEP_SECONDS = 15;
 /** The tray lowers itself after this long without a press. */
 const TRAY_IDLE_MS = 8000;
-/** How long "Press OK for controls" is up when the player opens. */
+/**
+ * Left/Right this soon after the tray lowered itself were meant for the
+ * tray, so they don't step a verse.
+ */
+const TRAY_LOWERED_GUARD_MS = 1000;
+/** How long the hint is up once the recitation starts. */
 const HINT_MS = 6000;
+/** How dark the room gets at the end of a sleep timer, and stays. */
+const SLEPT_SHADE = 0.92;
+/**
+ * The press that wakes a dimmed or slept room only wakes it; events this
+ * soon after (the same press seen twice) are swallowed too.
+ */
+const WAKE_SWALLOW_MS = 400;
+/**
+ * Holding OK to wake the room reaches onLongPress well after the press that
+ * woke it, so a long press this soon after waking isn't a verse repeat.
+ */
+const WAKE_SWALLOW_LONG_MS = 1500;
 
-// The ambience follows the recitation app-wide, wherever playback starts.
+// The ambience follows the recitation app-wide, wherever playback starts,
+// and so does a verse repeat while the listener browses.
 startAmbientSync();
+startVerseRepeatSync();
 
 /**
  * The listening room: the verse being recited and its translation, full
  * screen over the surah's color field. Controls stay out of the way until OK
  * raises the tray. With the tray down, Left/Right step a verse (or 15 seconds
- * when the recitation has no verse timings) and holding OK repeats the verse.
+ * and more when the recitation has no verse timings) and holding OK repeats
+ * the verse.
  */
 export function NowPlayingScreen(): React.ReactElement {
   const queue = useTVPlayerStore(s => s.queue);
@@ -64,19 +91,23 @@ export function NowPlayingScreen(): React.ReactElement {
   const position = useTVPlayerStore(s => s.positionSeconds);
   const duration = useTVPlayerStore(s => s.durationSeconds);
   const sleep = useTVPlayerStore(s => s.sleep);
+  const slept = useTVPlayerStore(s => s.slept);
+  const held = useTVPlayerStore(s => s.held);
+  const finished = useTVPlayerStore(s => s.finished);
   const toggle = useTVPlayerStore(s => s.toggle);
+  const wake = useTVPlayerStore(s => s.wake);
   const seekBy = useTVPlayerStore(s => s.seekBy);
   const seekTo = useTVPlayerStore(s => s.seekTo);
-  const resetNav = useNavStore(s => s.reset);
+  const switchTab = useNavStore(s => s.switchTab);
   const trayOpen = useListeningStore(s => s.trayOpen);
   const setTrayOpen = useListeningStore(s => s.setTrayOpen);
   const repeat = useListeningStore(s => s.repeat);
   const verseRepeat = useListeningStore(s => s.verseRepeat);
   const setRepeat = useListeningStore(s => s.setRepeat);
   const setVerseRepeat = useListeningStore(s => s.setVerseRepeat);
+  const setTimeline = useListeningStore(s => s.setTimeline);
   const sleepChoice = useListeningStore(s => s.sleepChoice);
   const panel = useListeningStore(s => s.panel);
-  const repeatPauseMs = useListeningStore(s => s.repeatPauseMs);
   const onScreen = useDisplayStore(s => s.mode);
   const edition = useDisplayStore(s => s.edition);
   const textSize = useDisplayStore(s => s.textSize);
@@ -87,6 +118,14 @@ export function NowPlayingScreen(): React.ReactElement {
   const ambientSound = useAmbientStore(s => s.currentSound);
   const {reciters} = useReciters();
   const {playRewayah} = usePlayer();
+  // No screensaver over the verse while it is being recited.
+  useKeepAwakeWhile(
+    status === 'playing' ||
+      status === 'loading' ||
+      status === 'buffering' ||
+      held,
+    'listening-room',
+  );
 
   const item = queue[currentIndex];
   const reciter = item
@@ -103,7 +142,13 @@ export function NowPlayingScreen(): React.ReactElement {
     rewayah?.name ?? '',
     edition,
   );
-  const {timeline} = sync;
+  // The hook's state still holds the last surah for one render after the
+  // track changes; none of it counts until it is for this one.
+  const fresh =
+    item !== undefined &&
+    sync.loadedFor === syncKey(item.surahNumber, item.rewayahId);
+  const timeline = fresh ? sync.timeline : null;
+  const timingsSettled = fresh && sync.timingsSettled;
   const positionMs = position * 1000;
   const currentAyah = timeline ? verseAt(timeline, positionMs) : null;
   const ticks = useMemo(
@@ -111,11 +156,17 @@ export function NowPlayingScreen(): React.ReactElement {
     [timeline, duration],
   );
 
+  // The timings go to the listening store, which keeps a verse repeat going
+  // against them after the listener leaves the room.
+  const surahKey = itemKey(item);
+  useEffect(() => {
+    if (surahKey && timingsSettled) setTimeline(surahKey, timeline);
+  }, [surahKey, timingsSettled, timeline, setTimeline]);
+
   // Idle handling: the tray lowers after a few seconds, the screen dims after
-  // ten minutes, and the opening hint fades. Every remote press counts.
+  // the chosen minutes, and the opening hint fades. Every remote press counts.
   const [lastActivity, setLastActivity] = useState(() => Date.now());
   const [now, setNow] = useState(() => Date.now());
-  const [openedAt] = useState(() => Date.now());
   // The hint is for the first moments only, not every time the tray lowers.
   const [trayUsed, setTrayUsed] = useState(false);
   useEffect(() => {
@@ -125,84 +176,55 @@ export function NowPlayingScreen(): React.ReactElement {
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, []);
-  const markActivity = useCallback(() => setLastActivity(Date.now()), []);
+  const markActivity = useCallback(() => {
+    const t = Date.now();
+    setLastActivity(t);
+    setNow(t);
+  }, []);
   const idleMs = now - lastActivity;
   const dimmed = dimAfterMin > 0 && idleMs > dimAfterMin * 60 * 1000;
-  // With a sleep timer, the screen fades toward black along with the audio.
+  const dimmedRef = useRef(dimmed);
+  dimmedRef.current = dimmed;
+  // With a sleep timer, the screen fades toward black along with the audio,
+  // and stays dark once the timer has stopped playback.
   const sleepLeftMs = sleep.kind === 'timer' ? sleep.endsAt - now : Infinity;
-  const sleepFade =
-    sleepLeftMs < SLEEP_FADE_MS
-      ? 0.85 * (1 - Math.max(0, sleepLeftMs) / SLEEP_FADE_MS)
+  const sleepShade = slept
+    ? SLEPT_SHADE
+    : sleepLeftMs < SLEEP_FADE_MS
+      ? SLEPT_SHADE * (1 - Math.max(0, sleepLeftMs) / SLEEP_FADE_MS)
       : 0;
-  const showHint = !trayOpen && !trayUsed && now - openedAt < HINT_MS;
 
+  // The hint's clock starts when the recitation does, not when the room
+  // opens, so a slow load doesn't use it up.
+  const [hintFrom, setHintFrom] = useState<number | null>(null);
+  useEffect(() => {
+    if (hintFrom === null && status === 'playing') setHintFrom(Date.now());
+  }, [status, hintFrom]);
+  const showHint =
+    !trayOpen && !trayUsed && hintFrom !== null && now - hintFrom < HINT_MS;
+
+  const trayLoweredAt = useRef(0);
   useEffect(() => {
     // A panel stays up until Back, since reading a list takes a while.
-    if (trayOpen && !panel && idleMs > TRAY_IDLE_MS) setTrayOpen(false);
+    if (trayOpen && !panel && idleMs > TRAY_IDLE_MS) {
+      trayLoweredAt.current = Date.now();
+      setTrayOpen(false);
+    }
   }, [trayOpen, panel, idleMs, setTrayOpen]);
+  // Closing a panel (Back on Android never reaches the TV event handler)
+  // starts the tray's idle time over, so it doesn't drop at once.
+  useEffect(() => {
+    if (panel === null) markActivity();
+  }, [panel, markActivity]);
 
   // Leaving the player lowers the tray so it isn't up next time.
   useEffect(() => () => setTrayOpen(false), [setTrayOpen]);
 
-  // A new surah ends any verse repeat from the last one.
-  const surahKey = item
-    ? `${item.reciterId}:${item.rewayahId}:${item.surahNumber}`
-    : '';
+  // An error card or the sleep timer's dark room has the screen to itself.
+  const errored = status === 'error';
   useEffect(() => {
-    setVerseRepeat(null);
-    if (useListeningStore.getState().repeat.kind === 'verse') {
-      setRepeat({kind: 'off'}, 0);
-    }
-  }, [surahKey, setRepeat, setVerseRepeat]);
-
-  // Verse repeat: send playback back to the verse start until the count runs
-  // out, then let it carry on. With a pause set, playback waits at the verse
-  // start before each replay, so the listener can recite it back.
-  const lastRepeatSeek = useRef(0);
-  const resumeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => {
-    if (!timeline || !verseRepeat) return;
-    // Ignore the stale positions that arrive just after a seek.
-    if (Date.now() - lastRepeatSeek.current < 600) return;
-    if (resumeTimer.current) return;
-    const result = advanceRepeat(timeline, verseRepeat, positionMs);
-    if (result.seekToMs !== null) {
-      lastRepeatSeek.current = Date.now();
-      seekTo(result.seekToMs / 1000);
-      setVerseRepeat(result.repeat);
-      if (repeatPauseMs > 0) {
-        const engine = useTVPlayerStore.getState().engine;
-        engine?.pause();
-        resumeTimer.current = setTimeout(() => {
-          resumeTimer.current = null;
-          lastRepeatSeek.current = Date.now();
-          void engine?.play();
-        }, repeatPauseMs);
-      }
-    } else if (result.done) {
-      setRepeat({kind: 'off'}, 0);
-    }
-  }, [
-    timeline,
-    verseRepeat,
-    positionMs,
-    repeatPauseMs,
-    seekTo,
-    setVerseRepeat,
-    setRepeat,
-  ]);
-  // Turning repeat off, or leaving, cancels a pending replay.
-  useEffect(() => {
-    if (verseRepeat || !resumeTimer.current) return;
-    clearTimeout(resumeTimer.current);
-    resumeTimer.current = null;
-  }, [verseRepeat]);
-  useEffect(
-    () => () => {
-      if (resumeTimer.current) clearTimeout(resumeTimer.current);
-    },
-    [],
-  );
+    if (errored || slept) setTrayOpen(false);
+  }, [errored, slept, setTrayOpen]);
 
   // Switching reciter mid-surah picks up at the same verse once the new
   // recitation's timings arrive (or at the start when it has none). The old
@@ -229,6 +251,7 @@ export function NowPlayingScreen(): React.ReactElement {
         choice.reciter.name,
         choice.rewayah,
         item.surahNumber,
+        {shuffle: useTVPlayerStore.getState().shuffle},
       );
     },
     [item, timeline, currentAyah, playRewayah],
@@ -236,25 +259,26 @@ export function NowPlayingScreen(): React.ReactElement {
   useEffect(() => {
     const pending = resume.current;
     if (!pending || pending.key !== surahKey) return;
-    if (!sync.timingsSettled || timeline === pending.stale) return;
+    if (!timingsSettled || timeline === pending.stale) return;
     if (status !== 'playing') return;
     resume.current = null;
     const span = timeline ? verseSpan(timeline, pending.ayah) : null;
     if (span) {
-      lastRepeatSeek.current = Date.now();
+      noteRepeatSeek();
       seekTo(span.fromMs / 1000);
     }
-  }, [surahKey, sync.timingsSettled, timeline, status, seekTo]);
+  }, [surahKey, timingsSettled, timeline, status, seekTo]);
 
+  const seekStep = useMemo(() => createSeekStepper(), []);
   const step = useCallback(
     (direction: 1 | -1) => {
       if (!timeline) {
-        seekBy(direction * SEEK_STEP_SECONDS);
+        seekBy(seekStep(direction));
         return;
       }
       const target = stepTarget(timeline, positionMs, direction);
       if (target === null) return;
-      lastRepeatSeek.current = Date.now();
+      noteRepeatSeek();
       seekTo(target / 1000);
       // Stepping while a verse repeats moves the repeat to the new verse.
       const repeating = useListeningStore.getState().verseRepeat;
@@ -266,30 +290,58 @@ export function NowPlayingScreen(): React.ReactElement {
         });
       }
     },
-    [timeline, positionMs, seekBy, seekTo, setVerseRepeat],
+    [timeline, positionMs, seekBy, seekStep, seekTo, setVerseRepeat],
   );
 
   const repeatCurrentVerse = useCallback(() => {
-    if (currentAyah && currentAyah > 0) {
-      setRepeat({kind: 'verse', times: Infinity}, currentAyah);
-    }
+    // Without timings there is no verse to hold on to.
+    if (currentAyah === null) return;
+    const ayah = Math.max(1, currentAyah);
+    setRepeat({kind: 'verse', times: Infinity}, ayah);
+    showToast(`Repeating verse ${ayah}`);
   }, [currentAyah, setRepeat]);
+
+  // The press that wakes a dimmed room, or one a sleep timer left dark,
+  // only wakes it.
+  const wokeAt = useRef(0);
+  const wakeIfAsleep = useCallback(
+    (swallowMs: number = WAKE_SWALLOW_MS): boolean => {
+      if (Date.now() - wokeAt.current < swallowMs) return true;
+      const asleep = useTVPlayerStore.getState().slept || dimmedRef.current;
+      if (!asleep) return false;
+      wokeAt.current = Date.now();
+      wake();
+      markActivity();
+      return true;
+    },
+    [wake, markActivity],
+  );
 
   const remoteFilter = useMemo(createRemoteKeyFilter, []);
   const handleTVEvent = useCallback(
     (event: HWEvent): void => {
+      // Focus moving between the tray's buttons isn't a press.
+      if (event.eventType === 'focus' || event.eventType === 'blur') return;
+      if (wakeIfAsleep()) return;
       markActivity();
+      // A brush of the Siri Remote's touch surface isn't a request to skip.
+      if (event.eventType === 'swipeLeft' || event.eventType === 'swipeRight') {
+        return;
+      }
       const action = remoteFilter(event);
       if (action === 'playPause') {
         toggle();
         return;
       }
-      // With the tray up, arrows move focus between its controls.
-      if (useListeningStore.getState().trayOpen) return;
+      // With the tray up, arrows move focus between its controls; with the
+      // error card up, between its buttons.
+      const {trayOpen: open} = useListeningStore.getState();
+      if (open || useTVPlayerStore.getState().status === 'error') return;
+      if (Date.now() - trayLoweredAt.current < TRAY_LOWERED_GUARD_MS) return;
       if (action === 'right' || action === 'seekForward') step(1);
       else if (action === 'left' || action === 'seekBackward') step(-1);
     },
-    [markActivity, remoteFilter, toggle, step],
+    [wakeIfAsleep, markActivity, remoteFilter, toggle, step],
   );
   useTVEventHandler(handleTVEvent);
 
@@ -303,7 +355,7 @@ export function NowPlayingScreen(): React.ReactElement {
             Browse the catalog and pick a surah to start listening.
           </Text>
           <FocusableButton
-            onPress={resetNav}
+            onPress={() => switchTab('reciters')}
             accessibilityLabel="Browse reciters"
             style={styles.emptyCta}
             outlined
@@ -324,7 +376,7 @@ export function NowPlayingScreen(): React.ReactElement {
       : null;
   // Before the timing lookup settles, show the opening rather than flash the
   // "not synced" layout.
-  const stageAyah = sync.timingsSettled ? currentAyah : 0;
+  const stageAyah = timingsSettled ? currentAyah : 0;
   const chips = footerChips({
     repeat,
     speed,
@@ -332,24 +384,34 @@ export function NowPlayingScreen(): React.ReactElement {
     sleepOn: sleep.kind !== 'off',
     sleepChoice,
   });
+  // A verse repeat's gap is part of listening, not a pause.
+  const playState =
+    status === 'loading' || status === 'buffering'
+      ? 'Loading'
+      : status === 'playing' || held || errored
+        ? null
+        : finished
+          ? 'Finished'
+          : 'Paused';
+  const showTray = trayOpen && !errored;
 
   return (
     <View style={styles.container}>
-      <GlowBackdrop surahNumber={item.surahNumber} dim={trayOpen ? 0.3 : 0} />
+      <GlowBackdrop surahNumber={item.surahNumber} dim={showTray ? 0.3 : 0} />
       <VerseStage
         surahNumber={item.surahNumber}
         surahName={item.title}
         ayah={stageAyah}
-        arabic={sync.arabic}
-        translation={sync.translation}
-        compact={trayOpen}
+        arabic={fresh ? sync.arabic : []}
+        translation={fresh ? sync.translation : null}
+        compact={showTray}
         note={repeatNote}
         show={onScreen}
         textScale={textScale(textSize)}
-        besidePanel={panel !== null}
+        besidePanel={showTray && panel !== null}
       />
 
-      {trayOpen ? (
+      {showTray ? (
         <>
           <Svg
             style={styles.trayScrim}
@@ -378,7 +440,9 @@ export function NowPlayingScreen(): React.ReactElement {
               fill="url(#tray-scrim)"
             />
           </Svg>
-          <Text style={styles.title} numberOfLines={1}>
+          <Text
+            style={[styles.title, panel !== null && styles.titleBesidePanel]}
+            numberOfLines={1}>
             {item.title}
             <Text style={styles.titleSub}>{`  ·  ${reciterName}`}</Text>
           </Text>
@@ -400,37 +464,50 @@ export function NowPlayingScreen(): React.ReactElement {
         </>
       ) : (
         <>
-          {/* Holds focus while the tray is down so OK and the arrows reach this screen. */}
-          <Pressable
-            style={StyleSheet.absoluteFill}
-            hasTVPreferredFocus
-            accessibilityLabel="Show player controls"
-            onPress={() => {
-              markActivity();
-              setTrayOpen(true);
-            }}
-            onLongPress={() => {
-              markActivity();
-              repeatCurrentVerse();
-            }}
-          />
-          {showHint ? <ControlsHint /> : null}
+          {/* Holds focus while the tray is down so OK and the arrows reach
+              this screen. The error card takes its place while it shows. */}
+          {errored ? null : (
+            <Pressable
+              style={StyleSheet.absoluteFill}
+              hasTVPreferredFocus
+              accessibilityLabel="Show player controls"
+              onPress={() => {
+                if (wakeIfAsleep()) return;
+                markActivity();
+                setTrayOpen(true);
+              }}
+              onLongPress={() => {
+                if (wakeIfAsleep(WAKE_SWALLOW_LONG_MS)) return;
+                markActivity();
+                repeatCurrentVerse();
+              }}
+            />
+          )}
+          {showHint ? <ControlsHint synced={timeline !== null} /> : null}
           <ListeningFooter
             reciter={reciter}
             reciterName={reciterName}
             rewayah={rewayahLabel(rewayah)}
             progress={duration > 0 ? position / duration : 0}
             chips={chips}
+            state={playState}
           />
         </>
       )}
 
-      {dimmed ? <View style={styles.dim} pointerEvents="none" /> : null}
-      {sleepFade > 0 ? (
+      {dimmed && !slept ? (
+        <View style={styles.dim} pointerEvents="none" />
+      ) : null}
+      {sleepShade > 0 ? (
         <View
-          style={[styles.fade, {opacity: sleepFade}]}
+          style={[styles.fade, {opacity: sleepShade}]}
           pointerEvents="none"
         />
+      ) : null}
+      {slept ? (
+        <Text style={styles.sleptNote} pointerEvents="none">
+          Sleep timer ended · Press any button to wake
+        </Text>
       ) : null}
       <ErrorBanner />
     </View>
@@ -450,6 +527,7 @@ const styles = createScaledStyles({
     fontWeight: '800',
     fontSize: 30,
   },
+  titleBesidePanel: {right: PANEL_WIDTH + 48},
   titleSub: {
     color: colors.textSecondary,
     fontFamily: fonts.semiBold,
@@ -458,6 +536,18 @@ const styles = createScaledStyles({
   },
   dim: {...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)'},
   fade: {...StyleSheet.absoluteFillObject, backgroundColor: '#000'},
+  sleptNote: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 72,
+    textAlign: 'center',
+    color: colors.textTertiary,
+    fontFamily: fonts.semiBold,
+    fontWeight: '600',
+    fontSize: 18,
+    opacity: 0.6,
+  },
   empty: {
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',

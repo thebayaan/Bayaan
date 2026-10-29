@@ -5,7 +5,7 @@
  * recent-searches store the screen shows before typing.
  */
 import fallback from '../../data/reciters-fallback.json';
-import {isActiveQuery, runSearch} from './useSearch';
+import {isActiveQuery, isPending, runSearch} from './useSearch';
 import {createTvSearch, type SearchItem} from '../services/search/tvSearch';
 import {normalizeReciters} from '../services/normalizeReciter';
 import {
@@ -50,6 +50,14 @@ describe('isActiveQuery', () => {
     expect(isActiveQuery("'-")).toBe(false);
     expect(isActiveQuery('1')).toBe(true);
     expect(isActiveQuery('a')).toBe(true);
+  });
+
+  it('is pending only while an active query waits to settle', () => {
+    expect(isPending('kahf', '')).toBe(true);
+    expect(isPending('kahf', 'kah')).toBe(true);
+    // A picked recent settles with the query, so nothing waits.
+    expect(isPending('kahf', 'kahf')).toBe(false);
+    expect(isPending(' ', '')).toBe(false);
   });
 
   it('returns no results or suggestions when inactive', () => {

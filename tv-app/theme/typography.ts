@@ -8,10 +8,13 @@ import {TextStyle} from 'react-native';
  * Any Quran / Arabic text must use the Digital Khatt font (`quranFontFamily`)
  * rendered via SkiaVerseText, never Manrope or a system font.
  *
- * NOTE: the Manrope `.ttf` assets must be registered in the TV app bootstrap
- * via expo-font for `fontFamily` to take effect. Until then text falls back to
- * the platform system font (the explicit `fontWeight` keeps weights correct on
- * fallback); there is no crash. See the cross-file notes for this task.
+ * Each weight is its own family (`Manrope-Bold`, ...), registered at runtime
+ * by `hooks/useBrandFonts`. Styles still pair it with the matching
+ * `fontWeight`, which keeps weights right on a system-font fallback. On
+ * Android a runtime face only exists in the normal style, so a weight of 700+
+ * would look up a missing bold style and draw Roboto; app.json's expo-font
+ * plugin therefore also builds each family into the APK as a font resource
+ * with its real weight (keep the two lists in sync; brandFonts.test checks).
  */
 
 /** Manrope brand font-family names (must match the registered font assets). */

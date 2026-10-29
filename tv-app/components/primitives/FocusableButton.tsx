@@ -1,6 +1,8 @@
-import React, {useRef} from 'react';
-import {Animated, Pressable, StyleProp, ViewStyle} from 'react-native';
+import React, {useCallback, useRef} from 'react';
+import {Animated, Pressable, StyleProp, View, ViewStyle} from 'react-native';
+import {noteLongPressOrigin} from '../../services/focusReturn';
 import {colors} from '../../theme/colors';
+import {createScaledStyles} from '../../theme/scale';
 import {animateFocusScale, focusScaleDefault} from './focusMotion';
 import {FocusedContext} from './focusContext';
 
@@ -8,6 +10,10 @@ export {FocusText, useButtonFocused, useFocusTint} from './focusContext';
 
 type Props = {
   onPress: () => void;
+  /** Hold OK; the button gets focus back when the menu it opens closes. */
+  onLongPress?: () => void;
+  /** Called when the button gains focus. */
+  onFocus?: () => void;
   children: React.ReactNode | ((focused: boolean) => React.ReactNode);
   hasTVPreferredFocus?: boolean;
   style?: StyleProp<ViewStyle>;
@@ -19,6 +25,14 @@ type Props = {
   focusScale?: number;
   /** Draw the hairline outline a screen's main action wears at rest. */
   outlined?: boolean;
+  /** Read out as selected (a chosen tab, option or chip). */
+  selected?: boolean;
+  /** Not pressable; read out as dimmed. Focus can still land on it. */
+  disabled?: boolean;
+  /** False takes the button out of focus (both engines) without restyling it. */
+  focusable?: boolean;
+  /** The pressable view, e.g. to call requestTVFocus() on it. */
+  ref?: React.Ref<View>;
 };
 
 /**
@@ -29,6 +43,8 @@ type Props = {
  */
 export function FocusableButton({
   onPress,
+  onLongPress,
+  onFocus,
   children,
   hasTVPreferredFocus,
   style,
@@ -37,13 +53,28 @@ export function FocusableButton({
   accessibilityLabel,
   focusScale = focusScaleDefault,
   outlined,
+  selected,
+  disabled,
+  focusable,
+  ref,
 }: Props): React.ReactElement {
   const scaleValue = useRef(new Animated.Value(1)).current;
   const [isFocused, setIsFocused] = React.useState(false);
+  // Kept for the long-press focus return, and handed to the caller's ref.
+  const pressable = useRef<View | null>(null);
+  const setPressable = useCallback(
+    (node: View | null): void => {
+      pressable.current = node;
+      if (typeof ref === 'function') ref(node);
+      else if (ref) (ref as React.MutableRefObject<View | null>).current = node;
+    },
+    [ref],
+  );
 
   const handleFocus = (): void => {
     setIsFocused(true);
     animateFocusScale(scaleValue, focusScale);
+    onFocus?.();
   };
 
   const handleBlur = (): void => {
@@ -54,26 +85,32 @@ export function FocusableButton({
   return (
     <Animated.View style={[containerStyle, {transform: [{scale: scaleValue}]}]}>
       <Pressable
-        onPress={onPress}
+        ref={setPressable}
+        focusable={focusable}
+        onPress={disabled ? undefined : onPress}
+        onLongPress={
+          onLongPress && !disabled
+            ? () => {
+                noteLongPressOrigin(pressable);
+                onLongPress();
+              }
+            : undefined
+        }
         onFocus={handleFocus}
         onBlur={handleBlur}
         hasTVPreferredFocus={hasTVPreferredFocus}
+        accessibilityRole="button"
         accessibilityLabel={accessibilityLabel}
+        accessibilityState={
+          selected === undefined && disabled === undefined
+            ? undefined
+            : {selected, disabled}
+        }
         style={[
-          // Buttons are squircles: a continuous corner curve where the
-          // platform draws one (Apple TV), a plain rounded rect elsewhere.
-          {borderCurve: 'continuous'},
-          outlined && {borderWidth: 2, borderColor: colors.outline},
+          styles.base,
+          outlined && styles.outlined,
           style,
-          isFocused && {
-            backgroundColor: colors.focusFill,
-            borderColor: colors.focusFill,
-            shadowColor: '#000',
-            shadowOpacity: 0.5,
-            shadowRadius: 16,
-            shadowOffset: {width: 0, height: 8},
-            elevation: 8,
-          },
+          isFocused && styles.focused,
           isFocused && focusedStyle,
         ]}>
         <FocusedContext.Provider value={isFocused}>
@@ -83,3 +120,19 @@ export function FocusableButton({
     </Animated.View>
   );
 }
+
+const styles = createScaledStyles({
+  // Buttons are squircles: a continuous corner curve where the platform
+  // draws one (Apple TV), a plain rounded rect elsewhere.
+  base: {borderCurve: 'continuous'},
+  outlined: {borderWidth: 2, borderColor: colors.outline},
+  focused: {
+    backgroundColor: colors.focusFill,
+    borderColor: colors.focusFill,
+    shadowColor: '#000',
+    shadowOpacity: 0.5,
+    shadowRadius: 16,
+    shadowOffset: {width: 0, height: 8},
+    elevation: 8,
+  },
+});

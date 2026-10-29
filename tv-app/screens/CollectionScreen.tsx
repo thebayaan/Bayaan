@@ -1,5 +1,5 @@
 import {FlashList} from '@shopify/flash-list';
-import React, {useCallback, useEffect, useMemo, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {Text, TVFocusGuideView, View} from 'react-native';
 import {AdhkarChip} from '../components/adhkar/AdhkarChip';
 import {FilterChip} from '../components/browse/FilterChip';
@@ -9,40 +9,52 @@ import {ShelfFade} from '../components/library/ShelfFade';
 import {
   SHELF_ART,
   SHELF_RING,
+  ShelfNewPlaylistTile,
+  ShelfPlaylistTile,
   ShelfReciterTile,
   ShelfSurahTile,
 } from '../components/library/ShelfTile';
 import {useLibraryPlayback} from '../components/library/useLibraryPlayback';
+import {FocusableButton} from '../components/primitives/FocusableButton';
+import {FocusText} from '../components/primitives/focusContext';
 import {useClock} from '../hooks/useClock';
-import {useContinueListening} from '../hooks/useContinueListening';
 import {useFavorites} from '../hooks/useFavorites';
 import {useLovedSurahs} from '../hooks/useLovedSurahs';
-import {useRecentlyPlayed} from '../hooks/useRecentlyPlayed';
+import {usePlaylists} from '../hooks/usePlaylists';
 import {useReciters} from '../hooks/useReciters';
-import {nowListId} from '../services/adhkarBrowse';
-import {SURAHS} from '../services/browseCatalog';
+import {surahTitle} from '../services/playbackRouting';
 import {
   buildShelf,
-  filterShelf,
+  isShelfEmpty,
+  playlistCaption,
   reciterTileLabel,
   shelfCounts,
-  sortShelf,
   surahTileCaption,
+  tabItems,
   type ShelfFilter,
   type ShelfItem,
   type ShelfSort,
 } from '../services/libraryShelf';
+import {claimFocusReturn} from '../services/focusReturn';
 import {shortReciterName} from '../services/listeningChoices';
 import {getCachedRewayat} from '../services/tvDataService';
 import {useContextMenuStore} from '../store/contextMenuStore';
 import {useNavStore} from '../store/navStore';
+import {useScreenActive} from '../components/nav/ScreenLayer';
 import {colors} from '../theme/colors';
 import {fonts} from '../theme/typography';
-import {createScaledStyles, scale} from '../theme/scale';
+import {createScaledStyles} from '../theme/scale';
+import {cellHeightLayout} from '../components/browse/gridLayout';
+import {
+  SCREEN_CLOCK_RIGHT,
+  SCREEN_CLOCK_TOP,
+  SCREEN_GUTTER,
+} from '../theme/spacing';
+import type {Playlist} from '../services/playlistsStore';
 import type {Reciter} from '../types/reciter';
 
 // Layout in design px, beside the folded sidebar (1920 - 112 = 1808 wide).
-const PAD_LEFT = 72;
+const PAD_LEFT = SCREEN_GUTTER;
 const PAD_RIGHT = 84;
 const COLUMNS = 6;
 const COLUMN_GAP = 44;
@@ -60,8 +72,8 @@ const LIST_PAD_RIGHT = 1808 - LIST_PAD_LEFT - CELL_WIDTH * COLUMNS;
 const CHIP_PAD = 24;
 
 const TABS: ReadonlyArray<{key: ShelfFilter; label: string}> = [
-  {key: 'all', label: 'All'},
-  {key: 'surahs', label: 'Surahs'},
+  {key: 'playlists', label: 'Playlists'},
+  {key: 'loved', label: 'Loved'},
   {key: 'reciters', label: 'Reciters'},
 ];
 
@@ -70,33 +82,54 @@ const SORTS: ReadonlyArray<{key: ShelfSort; label: string}> = [
   {key: 'az', label: 'A–Z'},
 ];
 
-// The tab and sort chosen last time, so coming back keeps the place.
-let lastFilter: ShelfFilter = 'all';
+/** What an empty tab says, and the one place it sends you. */
+const EMPTY: Record<
+  Exclude<ShelfFilter, 'playlists'>,
+  {text: string; action: string; tab: 'surahs' | 'reciters'}
+> = {
+  loved: {
+    text: 'Hold OK on any surah and choose Like, or press the heart in the player.',
+    action: 'Browse surahs',
+    tab: 'surahs',
+  },
+  reciters: {
+    text: 'Open a reciter and choose Favorite.',
+    action: 'Browse reciters',
+    tab: 'reciters',
+  },
+};
+
+// The place kept between visits (the screen unmounts under the player, a
+// reciter page or a playlist): the tab, the sort, and the tile last opened.
+let lastFilter: ShelfFilter = 'playlists';
 let lastSort: ShelfSort = 'recent';
+let lastTile: {filter: ShelfFilter; key: string; index: number} | null = null;
 
-const surahNames = new Map<number, string>(SURAHS.map(s => [s.id, s.name]));
+/** For Vega's FlashList (see cellHeightLayout). */
+const overrideItemLayout = cellHeightLayout(ROW_HEIGHT);
 
-function surahName(n: number): string {
-  return surahNames.get(n) ?? `Surah ${n}`;
-}
-
-function overrideItemLayout(layout: {span?: number; size?: number}): void {
-  layout.span = 1;
-  layout.size = scale(ROW_HEIGHT);
+/** The tile to focus: the key's place, else the nearest one still there. */
+function placeOf(
+  items: readonly ShelfItem[],
+  key: string,
+  index: number,
+): number {
+  if (items.length === 0) return -1;
+  const at = items.findIndex(i => i.key === key);
+  return at >= 0 ? at : Math.min(index, items.length - 1);
 }
 
 /**
- * The Library as a shelf: everything kept (unfinished and loved surahs in
- * their voice, reciters played or favorited) as one grid of same-size tiles,
- * newest first, under All / Surahs / Reciters tabs and a Recent / A–Z sort.
- * Before anything is kept, a first-run page offers one clear first step.
+ * The Library: what the listener chose to keep, under Playlists / Loved /
+ * Reciters tabs and a Recent / A–Z sort. Playlists always start with a New
+ * playlist tile. History (continue listening, recently played) is Home's.
+ * Before anything is kept, a first-run page explains the three.
  */
 export function CollectionScreen(): React.ReactElement {
   const now = useClock();
   const favorites = useFavorites();
-  const continueEntries = useContinueListening();
-  const recent = useRecentlyPlayed();
   const loved = useLovedSurahs();
+  const playlists = usePlaylists();
   const {reciters} = useReciters();
   const push = useNavStore(s => s.push);
   const switchTab = useNavStore(s => s.switchTab);
@@ -107,6 +140,11 @@ export function CollectionScreen(): React.ReactElement {
     return map;
   }, [reciters]);
 
+  const playlistById = useMemo(
+    () => new Map<string, Playlist>(playlists.map(p => [p.id, p])),
+    [playlists],
+  );
+
   const {defaultReciter, playTile, playInDefault} = useLibraryPlayback(
     reciters,
     reciterById,
@@ -115,66 +153,168 @@ export function CollectionScreen(): React.ReactElement {
   const shelf = useMemo(
     () =>
       buildShelf({
-        continueEntries,
+        playlists,
         loved,
-        recent,
         favorites,
-        isKnownReciter: id => reciterById.has(id),
+        // Before the catalog loads every reciter counts, so tiles don't
+        // flash out and back.
+        isKnownReciter: id => reciterById.size === 0 || reciterById.has(id),
       }),
-    [continueEntries, loved, recent, favorites, reciterById],
+    [playlists, loved, favorites, reciterById],
   );
   const counts = useMemo(() => shelfCounts(shelf), [shelf]);
-  const tabs = TABS.filter(t => t.key === 'all' || counts[t.key] > 0);
 
-  const [filterChoice, setFilter] = useState<ShelfFilter>(lastFilter);
+  const [filter, setFilter] = useState<ShelfFilter>(lastFilter);
   const [sort, setSort] = useState<ShelfSort>(lastSort);
-  // A tab that has emptied (its last tile removed elsewhere) falls back to All.
-  const filter = counts[filterChoice] > 0 ? filterChoice : 'all';
 
-  // The first tile takes focus when the screen opens, but not after a tab
-  // or the sort changes the grid: focus stays where the viewer is. Dropped
-  // once it has landed, so a recycled cell becoming index 0 again does not
-  // pull focus back (as on Surahs).
-  const [focusGridFirst, setFocusGridFirst] = useState<boolean>(true);
+  const voiceOf = useCallback(
+    (reciterId: string): string => {
+      const reciter = reciterById.get(reciterId);
+      return reciter ? shortReciterName(reciter.name) : '';
+    },
+    [reciterById],
+  );
+
+  const nameOf = useCallback(
+    (item: ShelfItem): string => {
+      if (item.kind === 'playlist') return item.name;
+      if (item.kind === 'surah') {
+        return `${surahTitle(item.surahNumber)} ${voiceOf(item.reciterId)}`;
+      }
+      if (item.kind === 'reciter') return voiceOf(item.reciterId);
+      return '';
+    },
+    [voiceOf],
+  );
+
+  const items = useMemo(
+    () => tabItems(shelf, filter, sort, nameOf),
+    [shelf, filter, sort, nameOf],
+  );
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
+
+  // The tile that takes focus: on opening, the one last opened (coming back
+  // from what it opened) or the first; after a menu removed its tile, the
+  // one now in its place. Dropped once focus has landed, so a recycled cell
+  // taking that index does not pull focus back.
+  const [focusIndex, setFocusIndex] = useState<number | null>(() => {
+    if (!lastTile || lastTile.filter !== filter) return 0;
+    return Math.max(0, placeOf(items, lastTile.key, lastTile.index));
+  });
+  const initialIndex = useRef<number>(focusIndex ?? 0).current;
   useEffect(() => {
-    const timer = setTimeout(() => setFocusGridFirst(false), 1500);
+    if (focusIndex === null) return;
+    const timer = setTimeout(() => setFocusIndex(null), 1500);
     return () => clearTimeout(timer);
-  }, []);
+  }, [focusIndex]);
+
+  // The first-run page and the shelf swap only while no menu is open: a
+  // Like on a starter surah (or an Unlike of the last loved one) must not
+  // swap the page, and mount its preferred focus, under the open menu.
+  // Nor while a stacked screen covers the Library (a Love in the player):
+  // a hidden layer must not take preferred focus; the swap waits for Back.
+  const menuOpen = useContextMenuStore(s => s.target !== null);
+  const active = useScreenActive();
+  const shelfEmpty = isShelfEmpty(shelf);
+  const [firstRun, setFirstRun] = useState<boolean>(shelfEmpty);
+  const leavingFirstRun = useRef<boolean>(false);
+  leavingFirstRun.current = firstRun && !shelfEmpty;
+  useEffect(() => {
+    if (menuOpen || !active || shelfEmpty === firstRun) return;
+    setFirstRun(shelfEmpty);
+    if (shelfEmpty) return;
+    // The first thing kept: open its tab with focus on it.
+    const tab: ShelfFilter =
+      counts.loved > 0 ? 'loved' : counts.reciters > 0 ? 'reciters' : filter;
+    lastFilter = tab;
+    setFilter(tab);
+    setFocusIndex(0);
+  }, [menuOpen, active, shelfEmpty, firstRun, counts, filter]);
+
+  // A menu that removed its own tile (Unlike, Remove from favorites) leaves
+  // focus on the neighbour that took its place, not wherever the engine
+  // falls back to (or a recycled cell that held the tile).
+  const menuFrom = useRef<{key: string; index: number} | null>(null);
+  useEffect(
+    () =>
+      useContextMenuStore.subscribe((next, prev) => {
+        if (!prev.target || next.target) return;
+        // Leaving the first run: the shelf's first tile takes focus.
+        if (leavingFirstRun.current) claimFocusReturn();
+        if (!menuFrom.current) return;
+        const from = menuFrom.current;
+        menuFrom.current = null;
+        const now = itemsRef.current;
+        if (now.some(i => i.key === from.key)) return;
+        // An emptied tab focuses its one action instead.
+        setFocusIndex(Math.max(0, placeOf(now, from.key, from.index)));
+        claimFocusReturn();
+      }),
+    [],
+  );
 
   // Focus coming up from the grid lands on the selected tab.
   const [selectedTab, setSelectedTab] = useState<View | null>(null);
 
-  const nameOf = useCallback(
-    (item: ShelfItem): string =>
-      item.kind === 'surah'
-        ? `${surahName(item.surahNumber)} ${reciterById.get(item.reciterId)?.name ?? ''}`
-        : (reciterById.get(item.reciterId)?.name ?? ''),
-    [reciterById],
-  );
-
-  const items = useMemo(
-    () => sortShelf(filterShelf(shelf, filter), sort, nameOf),
-    [shelf, filter, sort, nameOf],
-  );
-
   const chooseFilter = (next: ShelfFilter): void => {
     if (next === filter) return;
     lastFilter = next;
-    setFocusGridFirst(false);
+    setFocusIndex(null);
     setFilter(next);
   };
 
   const chooseSort = (next: ShelfSort): void => {
     if (next === sort) return;
     lastSort = next;
-    setFocusGridFirst(false);
+    setFocusIndex(null);
     setSort(next);
   };
 
+  const remember = useCallback(
+    (item: ShelfItem, index: number): void => {
+      lastTile = {filter, key: item.key, index};
+    },
+    [filter],
+  );
+
   const renderItem = useCallback(
     ({item, index}: {item: ShelfItem; index: number}) => {
+      const preferred = focusIndex === index;
+      if (item.kind === 'new') {
+        return (
+          <View style={styles.cell}>
+            <ShelfNewPlaylistTile
+              onPress={() => {
+                remember(item, index);
+                push({screen: 'playlistEdit'});
+              }}
+              hasTVPreferredFocus={preferred}
+            />
+          </View>
+        );
+      }
+      if (item.kind === 'playlist') {
+        const playlist = playlistById.get(item.playlistId);
+        if (!playlist) return <View style={styles.cell} />;
+        return (
+          <View style={styles.cell}>
+            <ShelfPlaylistTile
+              name={playlist.name}
+              color={playlist.color}
+              firstSurah={playlist.items[0]?.surahNumber ?? null}
+              caption={playlistCaption(playlist.items, voiceOf)}
+              idPrefix={`lib-playlist-${playlist.id}`}
+              onPress={() => {
+                remember(item, index);
+                push({screen: 'playlist', playlistId: playlist.id});
+              }}
+              hasTVPreferredFocus={preferred}
+            />
+          </View>
+        );
+      }
       const reciter = reciterById.get(item.reciterId) ?? null;
-      const preferred = focusGridFirst && index === 0;
       if (item.kind === 'reciter') {
         return (
           <View style={styles.cell}>
@@ -182,26 +322,28 @@ export function CollectionScreen(): React.ReactElement {
               <ShelfReciterTile
                 reciter={reciter}
                 caption={reciterTileLabel(item.surahCount)}
-                onPress={() =>
-                  push({screen: 'reciterDetail', reciterId: reciter.id})
-                }
-                onLongPress={() =>
-                  useContextMenuStore.getState().open(reciter.id)
-                }
+                onPress={() => {
+                  remember(item, index);
+                  push({screen: 'reciterDetail', reciterId: reciter.id});
+                }}
+                onLongPress={() => {
+                  menuFrom.current = {key: item.key, index};
+                  useContextMenuStore.getState().openReciter(reciter.id);
+                }}
                 hasTVPreferredFocus={preferred}
               />
             ) : null}
           </View>
         );
       }
-      const name = surahName(item.surahNumber);
+      const name = surahTitle(item.surahNumber);
       const voice = reciter ? shortReciterName(reciter.name) : '';
       const rewayah = (
         getCachedRewayat(item.reciterId) ??
         reciter?.rewayat ??
         []
       ).find(r => r.id === item.rewayahId);
-      const caption = surahTileCaption(item, voice, rewayah?.name);
+      const caption = surahTileCaption(voice, rewayah?.name);
       return (
         <View style={styles.cell}>
           <ShelfSurahTile
@@ -209,23 +351,30 @@ export function CollectionScreen(): React.ReactElement {
             surahName={name}
             reciter={reciter}
             caption={caption}
-            loved={item.loved}
-            progress={item.progress}
+            loved
             idPrefix="lib-shelf"
             onPress={() => {
+              remember(item, index);
               playTile(item).catch(() => undefined);
             }}
+            onLongPress={() => {
+              menuFrom.current = {key: item.key, index};
+              useContextMenuStore.getState().openSurah({
+                surahNumber: item.surahNumber,
+                reciterId: item.reciterId,
+                ...(item.rewayahId ? {rewayahId: item.rewayahId} : {}),
+                origin: 'loved',
+              });
+            }}
             hasTVPreferredFocus={preferred}
-            accessibilityLabel={`${item.progress ? 'Resume' : 'Play'} ${name}${
+            accessibilityLabel={`Play ${name}${
               reciter ? ` by ${reciter.name}` : ''
-            }${caption && item.progress ? `, ${caption}` : ''}${
-              item.loved ? ', loved' : ''
-            }`}
+            }, loved. Hold OK for more`}
           />
         </View>
       );
     },
-    [reciterById, focusGridFirst, push, playTile],
+    [reciterById, playlistById, focusIndex, push, playTile, voiceOf, remember],
   );
 
   const clock = (
@@ -234,22 +383,30 @@ export function CollectionScreen(): React.ReactElement {
     </View>
   );
 
-  if (shelf.length === 0) {
+  if (firstRun) {
     return (
       <View style={styles.container}>
         <LibraryFirstRun
           reciter={defaultReciter}
-          adhkarListId={nowListId(now)}
+          onNewPlaylist={() => push({screen: 'playlistEdit'})}
+          onBrowseSurahs={() => switchTab('surahs')}
           onPlaySurah={n => {
             playInDefault(n).catch(() => undefined);
           }}
-          onBrowseReciters={() => switchTab('reciters')}
-          onOpenAdhkar={listId => push({screen: 'adhkarReader', listId})}
+          onSurahMenu={n =>
+            useContextMenuStore.getState().openSurah({
+              surahNumber: n,
+              ...(defaultReciter ? {reciterId: defaultReciter.id} : {}),
+            })
+          }
         />
         {clock}
       </View>
     );
   }
+
+  const empty =
+    filter !== 'playlists' && items.length === 0 ? EMPTY[filter] : null;
 
   return (
     <View style={styles.container}>
@@ -260,7 +417,7 @@ export function CollectionScreen(): React.ReactElement {
           autoFocus
           destinations={selectedTab ? [selectedTab] : undefined}
           style={styles.tabs}>
-          {tabs.map(t => (
+          {TABS.map(t => (
             <AdhkarChip
               key={t.key}
               ref={t.key === filter ? setSelectedTab : undefined}
@@ -272,36 +429,68 @@ export function CollectionScreen(): React.ReactElement {
           ))}
         </TVFocusGuideView>
         <View style={styles.barSpacer} />
-        <Text style={styles.sortKicker}>SORT</Text>
-        <TVFocusGuideView autoFocus style={styles.sorts}>
-          {SORTS.map(s => (
-            <FilterChip
-              key={s.key}
-              label={s.label}
-              accessibilityLabel={
-                s.key === 'az' ? 'Sort A to Z' : 'Sort by most recent'
-              }
-              selected={s.key === sort}
-              onPress={() => chooseSort(s.key)}
-            />
-          ))}
-        </TVFocusGuideView>
+        {empty ? null : (
+          <>
+            <Text style={styles.sortKicker}>SORT</Text>
+            <TVFocusGuideView autoFocus style={styles.sorts}>
+              {SORTS.map(s => (
+                <FilterChip
+                  key={s.key}
+                  label={s.label}
+                  accessibilityLabel={
+                    s.key === 'az' ? 'Sort A to Z' : 'Sort by most recent'
+                  }
+                  selected={s.key === sort}
+                  onPress={() => chooseSort(s.key)}
+                />
+              ))}
+            </TVFocusGuideView>
+          </>
+        )}
       </View>
 
-      <TVFocusGuideView autoFocus style={styles.gridWrap}>
-        <FlashList
-          key={`${filter}-${sort}`}
-          data={items}
-          numColumns={COLUMNS}
-          renderItem={renderItem}
-          keyExtractor={item => item.key}
-          overrideItemLayout={overrideItemLayout}
-          extraData={focusGridFirst}
-          contentContainerStyle={styles.gridContent}
-          showsVerticalScrollIndicator={false}
-        />
-        <ShelfFade height={130} />
-      </TVFocusGuideView>
+      {empty ? (
+        <TVFocusGuideView autoFocus style={styles.empty}>
+          <Text style={styles.emptyText}>{empty.text}</Text>
+          <FocusableButton
+            onPress={() => switchTab(empty.tab)}
+            accessibilityLabel={empty.action}
+            outlined
+            hasTVPreferredFocus={focusIndex !== null}
+            style={styles.emptyButton}>
+            <FocusText style={styles.emptyButtonText}>{empty.action}</FocusText>
+          </FocusableButton>
+        </TVFocusGuideView>
+      ) : (
+        // Right at the end of a short row stays put rather than jumping up
+        // to the sort chips; Up is the way to the bar.
+        <TVFocusGuideView autoFocus trapFocusRight style={styles.gridWrap}>
+          <FlashList
+            key={`${filter}-${sort}`}
+            data={items}
+            numColumns={COLUMNS}
+            renderItem={renderItem}
+            keyExtractor={item => item.key}
+            overrideItemLayout={overrideItemLayout}
+            initialScrollIndex={
+              initialIndex > 0 && initialIndex < items.length
+                ? initialIndex
+                : undefined
+            }
+            extraData={focusIndex}
+            contentContainerStyle={styles.gridContent}
+            showsVerticalScrollIndicator={false}
+            ListFooterComponent={
+              filter === 'playlists' && counts.playlists === 0 ? (
+                <Text style={styles.hint}>
+                  Hold OK on any surah and choose Add to playlist.
+                </Text>
+              ) : null
+            }
+          />
+          <ShelfFade height={130} />
+        </TVFocusGuideView>
+      )}
 
       {clock}
     </View>
@@ -310,7 +499,11 @@ export function CollectionScreen(): React.ReactElement {
 
 const styles = createScaledStyles({
   container: {flex: 1, backgroundColor: colors.background},
-  clock: {position: 'absolute', top: 62, right: PAD_RIGHT},
+  clock: {
+    position: 'absolute',
+    top: SCREEN_CLOCK_TOP,
+    right: SCREEN_CLOCK_RIGHT,
+  },
   title: {
     color: colors.text,
     fontFamily: fonts.bold,
@@ -324,6 +517,7 @@ const styles = createScaledStyles({
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 18,
+    minHeight: 64,
     paddingLeft: PAD_LEFT - CHIP_PAD,
     paddingRight: PAD_RIGHT - 18,
   },
@@ -346,4 +540,32 @@ const styles = createScaledStyles({
     paddingBottom: 160,
   },
   cell: {height: ROW_HEIGHT},
+  hint: {
+    color: colors.textSecondary,
+    fontFamily: fonts.medium,
+    fontWeight: '500',
+    fontSize: 22,
+    paddingLeft: SHELF_RING,
+  },
+  empty: {
+    alignSelf: 'flex-start',
+    marginTop: 72,
+    marginLeft: PAD_LEFT,
+    maxWidth: 900,
+    gap: 28,
+  },
+  emptyText: {
+    color: colors.textSecondary,
+    fontFamily: fonts.medium,
+    fontWeight: '500',
+    fontSize: 26,
+    lineHeight: 38,
+  },
+  emptyButton: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 30,
+    paddingVertical: 16,
+    borderRadius: 16,
+  },
+  emptyButtonText: {fontFamily: fonts.bold, fontWeight: '700', fontSize: 24},
 });

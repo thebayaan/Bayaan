@@ -3,6 +3,7 @@ import {Image} from 'expo-image';
 import {Text, View} from 'react-native';
 import {FocusableCard} from '../primitives/FocusableCard';
 import {FocusFrame, FocusText} from '../primitives/focusContext';
+import {useRailFocus} from './HomeRail';
 import {useContextMenuStore} from '../../store/contextMenuStore';
 import {getReciterArtwork} from '../../services/reciterArtwork';
 import {colors} from '../../theme/colors';
@@ -21,18 +22,26 @@ type Props = {
 /**
  * A reciter as a round portrait with the name below, sized so a full row
  * fits under the hero (the shared ReciterCard is larger). Long press opens
- * the reciter menu, like everywhere else.
+ * the reciter menu, like everywhere else. The initial sits under the photo,
+ * so a portrait that never loads (offline, not cached) still shows it.
  */
 function ReciterPortraitImpl({reciter, onSelect}: Props): React.ReactElement {
+  const onFocusRail = useRailFocus();
   const artwork = getReciterArtwork(reciter);
   return (
     <FocusableCard
       ring={false}
       style={styles.card}
       onPress={() => onSelect(reciter)}
-      onLongPress={() => useContextMenuStore.getState().open(reciter.id)}
+      onLongPress={() => useContextMenuStore.getState().openReciter(reciter.id)}
+      onFocus={onFocusRail}
       accessibilityLabel={reciter.name}>
       <FocusFrame radius={SIZE / 2} style={styles.frame}>
+        <View style={styles.placeholder}>
+          <Text style={styles.initial}>
+            {reciter.name.charAt(0).toUpperCase()}
+          </Text>
+        </View>
         {artwork ? (
           <Image
             source={artwork}
@@ -40,13 +49,7 @@ function ReciterPortraitImpl({reciter, onSelect}: Props): React.ReactElement {
             contentFit="cover"
             cachePolicy="memory-disk"
           />
-        ) : (
-          <View style={styles.placeholder}>
-            <Text style={styles.initial}>
-              {reciter.name.charAt(0).toUpperCase()}
-            </Text>
-          </View>
-        )}
+        ) : null}
       </FocusFrame>
       <FocusText
         style={styles.name}
@@ -64,7 +67,7 @@ export const ReciterPortrait = React.memo(ReciterPortraitImpl);
 const styles = createScaledStyles({
   card: {width: FRAME, alignItems: 'center', gap: 10},
   frame: {width: FRAME, height: FRAME},
-  img: {width: '100%', height: '100%'},
+  img: {position: 'absolute', top: 0, left: 0, right: 0, bottom: 0},
   placeholder: {
     flex: 1,
     backgroundColor: colors.surfaceElevated,

@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useMemo, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {ScrollView, Text, TVFocusGuideView, View} from 'react-native';
 import {SearchBar} from '../components/search/SearchBar';
 import {
@@ -18,6 +18,7 @@ import {useSearchRecents} from '../hooks/useSearchRecents';
 import {isActiveQuery, useSearch} from '../hooks/useSearch';
 import {clearRecentSearches} from '../services/searchRecentsStore';
 import {pushScreenBack} from '../services/screenBack';
+import {createFocusWithin} from '../services/search/focusWithin';
 import {
   deleteKey,
   nextMode,
@@ -61,7 +62,11 @@ function itemKey(item: SearchItem): string {
  * Focus: the keyboard's first key on arrival. Right from the keyboard enters
  * the results (the top result's first button); Left comes back to the last
  * key used; Down from the keyboard reaches the recents or suggestions; Left
- * from the keyboard's first column opens the sidebar.
+ * from the keyboard's first column opens the sidebar. Back from anywhere in
+ * the results returns to the keyboard first, keeping the search; Back again
+ * goes Home. Whenever the focused row under the keyboard goes away (recents
+ * cleared, a picked recent with no results) focus returns to the keyboard on
+ * purpose rather than falling wherever the platform puts it.
  */
 export function SearchScreen(): React.ReactElement {
   const [query, setQuery] = useState('');
@@ -71,12 +76,17 @@ export function SearchScreen(): React.ReactElement {
   // after a suggestion is picked, "Choose reciter" after the picker closes.
   const [focusTopFor, setFocusTopFor] = useState<string | null>(null);
   const [focusChooser, setFocusChooser] = useState(false);
+  const [focusKeyboard, setFocusKeyboard] = useState(false);
+  const inResults = useRef(createFocusWithin()).current;
 
   const {reciters} = useReciters();
   const {defaultReciterId} = useDefaultReciter();
   const favorites = useFavorites();
   const recents = useSearchRecents();
-  const {settled, results, suggestions, pending} = useSearch(query, reciters);
+  const {settled, results, suggestions, pending, settleNow} = useSearch(
+    query,
+    reciters,
+  );
   const actions = useSearchActions(settled, reciters, defaultReciterId);
 
   const favoriteIds = useMemo(
@@ -97,10 +107,38 @@ export function SearchScreen(): React.ReactElement {
     return () => clearTimeout(t);
   }, [focusChooser]);
 
+  useEffect(() => {
+    if (!focusKeyboard) return;
+    const t = setTimeout(() => setFocusKeyboard(false), FOCUS_REQUEST_MS);
+    return () => clearTimeout(t);
+  }, [focusKeyboard]);
+
+  // The picker belongs to the query it was opened from; typing closes it, so
+  // it never shows one surah while the keyboard says another. Focus is on the
+  // keyboard then, so nothing needs to take it.
+  useEffect(() => {
+    setPicker(null);
+  }, [query]);
+
   const closePicker = useCallback(() => {
     setPicker(null);
     setFocusChooser(true);
   }, []);
+
+  // Back from the results returns to the keyboard before it leaves Search.
+  // Registered first, so the picker's handler below runs before it. Like
+  // every screen-back handler it is asked only while Search's own layer is
+  // showing (services/screenBack), never under a pushed screen.
+  useEffect(
+    () =>
+      pushScreenBack(() => {
+        if (!inResults.inside()) return false;
+        inResults.reset();
+        setFocusKeyboard(true);
+        return true;
+      }),
+    [inResults],
+  );
 
   // Back closes the picker before it leaves Search.
   useEffect(() => {
@@ -111,9 +149,23 @@ export function SearchScreen(): React.ReactElement {
     });
   }, [picker, closePicker]);
 
-  const fillAndFocus = useCallback((text: string) => {
-    setQuery(text);
-    setFocusTopFor(text);
+  // A picked recent or suggestion settles at once: its suggestion rows and top
+  // result arrive in the same render, so the focused row never unmounts for
+  // the debounce and the top result's first button takes focus straight away.
+  const fillAndFocus = useCallback(
+    (text: string) => {
+      setQuery(text);
+      settleNow(text);
+      setFocusTopFor(text);
+    },
+    [settleNow],
+  );
+
+  const onClearRecents = useCallback(() => {
+    // The focused button goes with the list; hand focus to the keyboard in
+    // the same render.
+    setFocusKeyboard(true);
+    clearRecentSearches();
   }, []);
 
   const surahReciter = useCallback(
@@ -133,6 +185,16 @@ export function SearchScreen(): React.ReactElement {
 
   const top = results.top;
   const showResults = typing && top !== null;
+
+  // A picked recent that finds nothing has no first button to focus, and its
+  // row may have gone; focus goes back to the keyboard instead.
+  const pickedNothing =
+    focusTopFor !== null && focusTopFor === settled && top === null;
+  useEffect(() => {
+    if (!pickedNothing) return;
+    setFocusTopFor(null);
+    setFocusKeyboard(true);
+  }, [pickedNothing]);
 
   let right: React.ReactNode;
   if (picker) {
@@ -155,7 +217,7 @@ export function SearchScreen(): React.ReactElement {
         <BrowsePanel
           reciters={reciters}
           onReciter={actions.openReciter}
-          onSurah={surah => void actions.playSurah(surah)}
+          onSurah={surah => void actions.playSurahOrSay(surah)}
           onAdhkar={list => actions.openAdhkar(list)}
           onBrowseAll={tab => actions.switchTab(tab)}
         />
@@ -177,7 +239,7 @@ export function SearchScreen(): React.ReactElement {
         />
         <ResultSections
           results={results}
-          onSurah={surah => void actions.playSurah(surah)}
+          onSurah={surah => void actions.playSurahOrSay(surah)}
           onReciter={actions.openReciter}
           onAdhkar={list => actions.openAdhkar(list)}
         />
@@ -204,7 +266,12 @@ export function SearchScreen(): React.ReactElement {
 
   return (
     <View style={styles.container}>
-      <TVFocusGuideView autoFocus style={styles.left}>
+      <TVFocusGuideView
+        autoFocus
+        style={styles.left}
+        // Focus on this side means it has left the results, even when the
+        // results changed under the focused view and its blur never came.
+        onFocus={() => inResults.reset()}>
         <SearchBar query={query} onChangeQuery={setQuery} />
         <View style={styles.keyboardGap} />
         <SearchKeyboard
@@ -215,6 +282,7 @@ export function SearchScreen(): React.ReactElement {
           onClear={() => setQuery('')}
           onMode={() => setMode(nextMode)}
           preferFirstKey
+          focusLastKey={focusKeyboard}
         />
         <SearchSideList
           typing={typing}
@@ -222,10 +290,14 @@ export function SearchScreen(): React.ReactElement {
           suggestions={suggestions}
           onRecent={fillAndFocus}
           onSuggestion={onSuggestion}
-          onClearRecents={clearRecentSearches}
+          onClearRecents={onClearRecents}
         />
       </TVFocusGuideView>
-      <TVFocusGuideView autoFocus style={styles.right}>
+      <TVFocusGuideView
+        autoFocus
+        style={styles.right}
+        onFocus={e => inResults.focus(e.nativeEvent.target)}
+        onBlur={e => inResults.blur(e.nativeEvent.target)}>
         {right}
       </TVFocusGuideView>
     </View>

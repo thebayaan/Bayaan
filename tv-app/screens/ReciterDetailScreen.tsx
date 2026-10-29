@@ -9,7 +9,6 @@ import Svg, {
   Stop,
 } from 'react-native-svg';
 import {
-  ActivityIndicator,
   NativeScrollEvent,
   NativeSyntheticEvent,
   StyleSheet,
@@ -23,7 +22,9 @@ import {
   reciterArabicName,
 } from '../components/browse/ReciterPortrait';
 import {SurahRow, SURAH_ROW_HEIGHT} from '../components/browse/SurahRow';
+import {cellHeightLayout} from '../components/browse/gridLayout';
 import {FocusableButton} from '../components/primitives/FocusableButton';
+import {FocusSpinner} from '../components/primitives/FocusSpinner';
 import {FocusIcon, FocusText} from '../components/primitives/focusContext';
 import {fetchRewayat, getCachedRewayat} from '../services/tvDataService';
 import {toggleFavorite} from '../services/favoritesStore';
@@ -36,9 +37,17 @@ import {
 import {useReciters} from '../hooks/useReciters';
 import {useFavorites} from '../hooks/useFavorites';
 import {useContinueListening} from '../hooks/useContinueListening';
-import {usePlayer} from '../hooks/usePlayer';
+import {useSurahProgress} from '../hooks/useSurahProgress';
+import {
+  OFFLINE_MESSAGE,
+  playOrOpen,
+  randomSurah,
+} from '../services/playbackRouting';
+import {defaultRewayah} from '../services/menuChoices';
+import {useContextMenuStore} from '../store/contextMenuStore';
 import {useNavStore} from '../store/navStore';
 import {useSettingsStore} from '../store/settingsStore';
+import {showToast} from '../store/toastStore';
 import type {Rewayah, Surah} from '../types/reciter';
 import {
   CheckIcon,
@@ -55,10 +64,21 @@ import {getReciterArtwork} from '../services/reciterArtwork';
 type Props = {reciterId: string};
 type SortMode = 'asc' | 'desc' | 'revelation';
 
+/** The sort control cycles through these, in order. */
+const SORTS: ReadonlyArray<{key: SortMode; label: string; spoken: string}> = [
+  {key: 'asc', label: '1–114', spoken: '1 to 114'},
+  {key: 'desc', label: '114–1', spoken: '114 to 1'},
+  {key: 'revelation', label: 'Revelation', spoken: 'revelation order'},
+];
+
+/** A play press made before the rewayat arrive, carried out when they do. */
+type QueuedPlay = 'play' | 'shuffle' | null;
+
 const COLUMNS = 3;
 const CELL_PAD_X = 10;
 const CELL_PAD_Y = 8;
-const ROW_SIZE = SURAH_ROW_HEIGHT + CELL_PAD_Y * 2;
+/** A surah row plus its cell padding, for Vega's FlashList. */
+const cellLayout = cellHeightLayout(SURAH_ROW_HEIGHT + CELL_PAD_Y * 2);
 /** The list's side padding, so rows (inside their cell padding) sit on the gutter. */
 const LIST_PAD_X = spacing.xl - CELL_PAD_X;
 const PORTRAIT = 240;
@@ -71,13 +91,9 @@ function surahName(n: number): string {
   return surahById.get(n)?.name ?? `Surah ${n}`;
 }
 
+/** The tab a reciter's page opens on: the same voice their menu's Play uses. */
 function firstRewayahId(rewayat: Rewayah[]): string | null {
-  return groupRewayat(rewayat)[0]?.items[0]?.id ?? null;
-}
-
-function overrideItemLayout(layout: {span?: number; size?: number}): void {
-  layout.span = 1;
-  layout.size = scale(ROW_SIZE);
+  return defaultRewayah(rewayat)?.id ?? null;
 }
 
 export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
@@ -90,19 +106,23 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
   const [activeRewayahId, setActive] = useState<string | null>(() =>
     firstRewayahId(getCachedRewayat(reciterId) ?? []),
   );
-  const {playRewayah, shufflePlayRewayah} = usePlayer();
   const favorites = useFavorites();
   const continueEntries = useContinueListening();
   const isFav = favorites.some(f => f.reciterId === reciterId);
   const defaultReciterId = useSettingsStore(s => s.defaultReciterId);
   const setDefaultReciterId = useSettingsStore(s => s.setDefaultReciterId);
   const isDefault = defaultReciterId === reciterId;
-  const push = useNavStore(s => s.push);
   const pop = useNavStore(s => s.pop);
   const [sort, setSort] = useState<SortMode>('asc');
   const [loading, setLoading] = useState<boolean>(
     () => (getCachedRewayat(reciterId)?.length ?? 0) === 0,
   );
+  // Bumped to fetch the rewayat again after a failed load.
+  const [attempt, setAttempt] = useState<number>(0);
+  const [queued, setQueued] = useState<QueuedPlay>(null);
+  // The row of tabs, styles and sort: where focus lands coming from above
+  // or below (the selected tab, else the selected style, else sort).
+  const [rowEntry, setRowEntry] = useState<View | null>(null);
 
   const listRef = useRef<FlashListRef<Surah>>(null);
   const restoredRef = useRef<boolean>(false);
@@ -117,13 +137,14 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
           prev && r.some(x => x.id === prev) ? prev : firstRewayahId(r),
         );
       })
+      .catch(() => undefined)
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
     return () => {
       cancelled = true;
     };
-  }, [reciterId]);
+  }, [reciterId, attempt]);
 
   function handleScroll(e: NativeSyntheticEvent<NativeScrollEvent>): void {
     scrollPositions.set(reciterId, e.nativeEvent.contentOffset.y);
@@ -163,28 +184,92 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
     );
   }, [continueEntries, current, reciterId]);
 
-  const progressByNumber = useMemo(() => {
-    const map = new Map<number, number>();
-    continueEntries
-      .filter(e => e.reciterId === reciterId && e.durationSeconds > 0)
-      .forEach(e => {
-        if (map.has(e.surahNumber)) return;
-        map.set(
-          e.surahNumber,
-          Math.min(1, e.positionSeconds / e.durationSeconds),
-        );
-      });
-    return map;
-  }, [continueEntries, reciterId]);
+  const progressByNumber = useSurahProgress(reciterId);
 
   const playSurah = useCallback(
-    async (surahNumber: number): Promise<void> => {
+    (surahNumber: number, startSeconds?: number): void => {
       if (!reciter || !current) return;
-      await playRewayah(reciter.id, reciter.name, current, surahNumber);
-      push({screen: 'nowPlaying'});
+      void playOrOpen({
+        reciterId: reciter.id,
+        rewayahId: current.id,
+        surahNumber,
+        startSeconds,
+        source: 'reciter',
+      });
     },
-    [reciter, current, playRewayah, push],
+    [reciter, current],
   );
+
+  // Hold OK on a row: the surah's menu, in the recitation shown.
+  const openSurahMenu = useCallback(
+    (surahNumber: number): void => {
+      useContextMenuStore.getState().openSurah({
+        surahNumber,
+        reciterId,
+        ...(current ? {rewayahId: current.id} : {}),
+        origin: 'reciter',
+      });
+    },
+    [reciterId, current],
+  );
+
+  const firstSurah = sortedSurahs[0]?.id;
+
+  // "Continue" picks up where the surah was left; else the first surah in
+  // the order shown.
+  const playMain = useCallback((): void => {
+    if (resumeEntry) {
+      playSurah(resumeEntry.surahNumber, resumeEntry.positionSeconds);
+    } else if (firstSurah !== undefined) {
+      playSurah(firstSurah);
+    }
+  }, [resumeEntry, firstSurah, playSurah]);
+
+  const playShuffled = useCallback((): void => {
+    if (!reciter || !current) return;
+    void playOrOpen({
+      reciterId: reciter.id,
+      rewayahId: current.id,
+      surahNumber: randomSurah(current.surah_list) ?? 1,
+      shuffle: true,
+      source: 'reciter-shuffle',
+    });
+  }, [reciter, current]);
+
+  const ready = !!current && sortedSurahs.length > 0;
+
+  // Play and Shuffle work before the rewayat arrive: the press waits for
+  // them, and a failed load says so (and tries again) instead of doing
+  // nothing.
+  function pressPlay(kind: Exclude<QueuedPlay, null>): void {
+    if (ready) {
+      if (kind === 'play') playMain();
+      else playShuffled();
+      return;
+    }
+    setQueued(kind);
+    if (!loading) {
+      setLoading(true);
+      setAttempt(a => a + 1);
+    }
+  }
+
+  useEffect(() => {
+    if (queued === null) return;
+    if (ready) {
+      setQueued(null);
+      if (queued === 'play') playMain();
+      else playShuffled();
+    } else if (!loading) {
+      setQueued(null);
+      showToast(
+        rewayat.length === 0
+          ? OFFLINE_MESSAGE
+          : 'No surahs are available for this rewayah yet.',
+        'error',
+      );
+    }
+  }, [queued, ready, loading, rewayat, playMain, playShuffled]);
 
   const renderItem = useCallback(
     ({item}: {item: Surah}) => (
@@ -193,10 +278,11 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
           surah={item}
           progress={progressByNumber.get(item.id) ?? 0}
           onSelect={playSurah}
+          onLongPress={openSurahMenu}
         />
       </View>
     ),
-    [progressByNumber, playSurah],
+    [progressByNumber, playSurah, openSurahMenu],
   );
 
   if (!reciter) {
@@ -220,12 +306,14 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
 
   const artwork = getReciterArtwork(reciter);
   const arabicName = reciterArabicName(reciter);
-  const firstSurah = sortedSurahs[0]?.id;
-  const playLabel = resumeEntry
-    ? `Continue ${surahName(resumeEntry.surahNumber)}`
-    : firstSurah !== undefined
-      ? `Play from ${surahName(firstSurah)}`
-      : 'Play';
+  const waiting = !ready && (loading || queued !== null);
+  const playLabel = waiting
+    ? 'Loading…'
+    : resumeEntry
+      ? `Continue ${surahName(resumeEntry.surahNumber)}`
+      : firstSurah !== undefined
+        ? `Play from ${surahName(firstSurah)}`
+        : 'Play';
   const meta = [
     current ? rewayahDisplayName(current.name) : null,
     current ? `${sortedSurahs.length} surahs` : null,
@@ -233,6 +321,34 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
   ].filter((part): part is string => !!part);
   const styleItems =
     activeGroup && activeGroup.items.length > 1 ? activeGroup.items : [];
+  const showTabs = groups.length > 1;
+  const showSort = sortedSurahs.length > 1;
+  const sortIndex = SORTS.findIndex(s => s.key === sort);
+  const sortNow = SORTS[sortIndex];
+  const sortNext = SORTS[(sortIndex + 1) % SORTS.length];
+  // Shuffle stays in place while loading so the buttons don't shift under
+  // focus when the rewayat arrive.
+  const showShuffle = waiting || (current && sortedSurahs.length > 1);
+
+  function pressFavorite(): void {
+    toggleFavorite(reciterId);
+    showToast(
+      isFav
+        ? `${reciter?.name} removed from your Library.`
+        : `${reciter?.name} added to your Library.`,
+    );
+  }
+
+  function pressDefault(): void {
+    if (isDefault) {
+      showToast(
+        `${reciter?.name} plays when you pick a surah · change it in Settings or on Surahs.`,
+      );
+      return;
+    }
+    setDefaultReciterId(reciterId);
+    showToast(`${reciter?.name} is now your default reciter.`);
+  }
 
   // Header, footer and empty state sit inside the list's side padding: bleed
   // them back out so the hero spans the screen.
@@ -309,27 +425,29 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
               <Text style={styles.sub}>{meta.join('  ·  ')}</Text>
             ) : null}
             <TVFocusGuideView autoFocus style={styles.heroActions}>
+              {/* Each button keeps a minimum width, so a label changing
+                  (Favorite → Favorited, Loading… → Play from ...) doesn't
+                  shift its neighbours. */}
               <FocusableButton
-                onPress={async () => {
-                  const target = resumeEntry?.surahNumber ?? firstSurah;
-                  if (target === undefined) return;
-                  await playSurah(target);
-                }}
+                onPress={() => pressPlay('play')}
                 accessibilityLabel={playLabel}
                 hasTVPreferredFocus
                 outlined
-                style={styles.actionBtn}>
+                style={[styles.actionBtn, styles.playBtn]}>
                 <View style={styles.actionInner}>
-                  <FocusIcon icon={PlayIcon} size={20} />
-                  <FocusText style={styles.actionText}>{playLabel}</FocusText>
+                  {waiting ? (
+                    <FocusSpinner />
+                  ) : (
+                    <FocusIcon icon={PlayIcon} size={20} />
+                  )}
+                  <FocusText style={styles.actionText} numberOfLines={1}>
+                    {playLabel}
+                  </FocusText>
                 </View>
               </FocusableButton>
-              {current && sortedSurahs.length > 1 ? (
+              {showShuffle ? (
                 <FocusableButton
-                  onPress={async () => {
-                    await shufflePlayRewayah(reciter.id, reciter.name, current);
-                    push({screen: 'nowPlaying'});
-                  }}
+                  onPress={() => pressPlay('shuffle')}
                   accessibilityLabel="Shuffle play"
                   style={styles.actionBtn}>
                   <View style={styles.actionInner}>
@@ -339,11 +457,11 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
                 </FocusableButton>
               ) : null}
               <FocusableButton
-                onPress={() => toggleFavorite(reciterId)}
+                onPress={pressFavorite}
                 accessibilityLabel={
                   isFav ? 'Remove from favorites' : 'Add to favorites'
                 }
-                style={styles.actionBtn}>
+                style={[styles.actionBtn, styles.favoriteBtn]}>
                 <View style={styles.actionInner}>
                   <FocusIcon icon={HeartIcon} size={20} filled={isFav} />
                   <FocusText style={styles.actionText}>
@@ -352,13 +470,11 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
                 </View>
               </FocusableButton>
               <FocusableButton
-                onPress={() => {
-                  if (!isDefault) setDefaultReciterId(reciterId);
-                }}
+                onPress={pressDefault}
                 accessibilityLabel={
                   isDefault ? 'Your default reciter' : 'Make default reciter'
                 }
-                style={styles.actionBtn}>
+                style={[styles.actionBtn, styles.defaultBtn]}>
                 <View style={styles.actionInner}>
                   {isDefault ? <FocusIcon icon={CheckIcon} size={20} /> : null}
                   <FocusText style={styles.actionText}>
@@ -371,55 +487,61 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
         </View>
       </View>
 
-      {groups.length > 1 ? (
-        <TVFocusGuideView autoFocus style={styles.tabRow}>
-          {groups.map(g => (
-            <FilterChip
-              key={g.key}
-              label={g.label}
-              accessibilityLabel={g.key}
-              selected={activeGroup?.key === g.key}
-              onPress={() => setActive(g.items[0]?.id ?? null)}
-            />
-          ))}
-        </TVFocusGuideView>
-      ) : null}
-
-      {styleItems.length > 0 || sortedSurahs.length > 1 ? (
-        <TVFocusGuideView autoFocus style={styles.filterRow}>
-          {styleItems.map(r => (
-            <FilterChip
-              key={r.id}
-              small
-              label={styleLabel(r.style)}
-              selected={r.id === current?.id}
-              onPress={() => setActive(r.id)}
-            />
-          ))}
-          <View style={styles.filterSpacer} />
-          {sortedSurahs.length > 1 ? (
+      {/* Tabs, styles and sort share one left-aligned row, so Down goes
+          hero → this row → the first column of surahs on both Apple TV and
+          Android TV (a right-aligned sort row of its own drew tvOS to the
+          far right and was skipped by Android). Entering the row from above
+          or below lands on what is selected. */}
+      {showTabs || styleItems.length > 0 || showSort ? (
+        <TVFocusGuideView
+          autoFocus
+          destinations={rowEntry ? [rowEntry] : undefined}
+          style={styles.filterRow}>
+          {groups.length > 1
+            ? groups.map(g => {
+                const selected = activeGroup?.key === g.key;
+                return (
+                  <FilterChip
+                    key={g.key}
+                    label={g.label}
+                    accessibilityLabel={g.key}
+                    selected={selected}
+                    chipRef={selected ? setRowEntry : undefined}
+                    onPress={() => setActive(g.items[0]?.id ?? null)}
+                  />
+                );
+              })
+            : null}
+          {showTabs && styleItems.length > 0 ? (
+            <View style={styles.rowDivider} />
+          ) : null}
+          {styleItems.map(r => {
+            const selected = r.id === current?.id;
+            return (
+              <FilterChip
+                key={r.id}
+                small={showTabs}
+                label={styleLabel(r.style)}
+                selected={selected}
+                chipRef={!showTabs && selected ? setRowEntry : undefined}
+                onPress={() => setActive(r.id)}
+              />
+            );
+          })}
+          {showSort ? (
             <>
-              <Text style={styles.sortLabel}>SORT</Text>
+              {showTabs || styleItems.length > 0 ? (
+                <View style={styles.rowDivider} />
+              ) : null}
               <FilterChip
-                small
-                label="1–114"
-                accessibilityLabel="Sort 1 to 114"
-                selected={sort === 'asc'}
-                onPress={() => setSort('asc')}
-              />
-              <FilterChip
-                small
-                label="114–1"
-                accessibilityLabel="Sort 114 to 1"
-                selected={sort === 'desc'}
-                onPress={() => setSort('desc')}
-              />
-              <FilterChip
-                small
-                label="Revelation"
-                accessibilityLabel="Sort by revelation order"
-                selected={sort === 'revelation'}
-                onPress={() => setSort('revelation')}
+                small={showTabs || styleItems.length > 0}
+                label={`Sort: ${sortNow.label}`}
+                accessibilityLabel={`Sorted ${sortNow.spoken}. Sort ${sortNext.spoken}`}
+                selected={false}
+                chipRef={
+                  !showTabs && styleItems.length === 0 ? setRowEntry : undefined
+                }
+                onPress={() => setSort(sortNext.key)}
               />
             </>
           ) : null}
@@ -437,7 +559,7 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
 
   const empty = loading ? (
     <View style={[styles.bleed, styles.loadingRow]}>
-      <ActivityIndicator color={colors.text} size="large" />
+      <FocusSpinner size="large" />
     </View>
   ) : (
     <View style={[styles.bleed, styles.noSurahs]}>
@@ -455,7 +577,10 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
         numColumns={COLUMNS}
         renderItem={renderItem}
         keyExtractor={s => String(s.id)}
-        overrideItemLayout={overrideItemLayout}
+        overrideItemLayout={cellLayout}
+        // Rows ready well below the fold, so a held Down never reaches the
+        // edge of what is mounted and jumps out of the list.
+        drawDistance={scale(900)}
         ListHeaderComponent={header}
         ListFooterComponent={footer}
         ListEmptyComponent={empty}
@@ -551,38 +676,41 @@ const styles = createScaledStyles({
     gap: 14,
     flexWrap: 'wrap',
   },
-  actionInner: {flexDirection: 'row', alignItems: 'center', gap: 10},
+  actionInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
   actionBtn: {
     paddingHorizontal: 26,
     paddingVertical: 14,
     borderRadius: 16,
   },
+  // Wide enough for the longer of each button's labels.
+  playBtn: {minWidth: 300},
+  favoriteBtn: {minWidth: 190},
+  defaultBtn: {minWidth: 236},
   actionText: {
     fontFamily: fonts.bold,
     fontSize: 19,
     fontWeight: '700',
   },
-  // Chips carry side padding: pull the rows out so their text lines up with
-  // the portrait and the list.
-  tabRow: {
+  // Chips carry side padding (the first one is always full size): pull the
+  // row out so its text lines up with the portrait and the list.
+  filterRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    alignItems: 'center',
     gap: 8,
     paddingHorizontal: spacing.xl - 18,
     marginBottom: spacing.xs,
   },
-  filterRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: spacing.xl - 14,
-    marginBottom: spacing.xs,
-  },
-  filterSpacer: {flex: 1},
-  sortLabel: {
-    color: colors.textTertiary,
-    ...typography.label,
-    marginRight: 4,
+  rowDivider: {
+    width: 1,
+    height: 28,
+    marginHorizontal: spacing.sm,
+    backgroundColor: colors.border,
   },
   cell: {paddingHorizontal: CELL_PAD_X, paddingVertical: CELL_PAD_Y},
   sectionLabel: {

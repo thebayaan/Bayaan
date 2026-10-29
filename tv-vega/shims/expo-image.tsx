@@ -19,6 +19,7 @@ export type ImageProps = Omit<NativeImageProps, 'source'> & {
   contentFit?: ContentFit;
   cachePolicy?: 'none' | 'disk' | 'memory' | 'memory-disk';
   priority?: 'low' | 'normal' | 'high';
+  recyclingKey?: string | null;
   transition?: number;
 };
 
@@ -36,12 +37,16 @@ export function Image({
   cachePolicy: _cachePolicy,
   priority: _priority,
   transition: _transition,
+  recyclingKey,
   ...rest
 }: ImageProps): React.ReactElement | null {
   if (source == null) return null;
   return (
     <NativeImage
       {...rest}
+      // Remounts a recycled list cell's image for its new source, so the
+      // previous one never shows while the new one loads.
+      key={recyclingKey ?? undefined}
       source={source}
       resizeMode={RESIZE_MODES[contentFit]}
     />

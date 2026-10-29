@@ -1,5 +1,5 @@
-import React, {useState} from 'react';
-import {Text, TextInput, View} from 'react-native';
+import React, {useCallback, useEffect, useRef, useState} from 'react';
+import {Keyboard, Platform, Text, TextInput, View} from 'react-native';
 import {FocusableButton} from '../primitives/FocusableButton';
 import {FocusIcon} from '../primitives/focusContext';
 import {MicrophoneIcon, SearchIcon} from '../../../components/Icons';
@@ -7,6 +7,9 @@ import {colors} from '../../theme/colors';
 import {fonts} from '../../theme/typography';
 import {createScaledStyles, scale} from '../../theme/scale';
 import {MAX_QUERY_CHARS} from '../../services/search/keyboard';
+
+/** How long the mic asks for focus back after the system entry closes. */
+const REFOCUS_MS = 800;
 
 type Props = {
   query: string;
@@ -18,10 +21,47 @@ type Props = {
  * a mic. The mic opens the platform's own text entry, which takes dictation
  * on the Siri Remote and voice on Android TV remotes; whatever is said or
  * typed there comes back into the bar.
+ *
+ * The hidden input is mounted only while that entry is open. Closing it hands
+ * focus back to the mic in the same render the input unmounts, so focus never
+ * falls to wherever the platform puts it. Android's Back hides the IME
+ * without ending the edit, so the keyboard hiding closes it there too.
  */
 export function SearchBar({query, onChangeQuery}: Props): React.ReactElement {
   const [systemEntry, setSystemEntry] = useState(false);
+  const [focusMic, setFocusMic] = useState(false);
+  const input = useRef<TextInput>(null);
+  // Submit, end-editing and blur can all fire for one close; act once.
+  const open = useRef(false);
   const empty = query.length === 0;
+
+  const openEntry = useCallback(() => {
+    open.current = true;
+    setSystemEntry(true);
+  }, []);
+
+  const closeEntry = useCallback(() => {
+    if (!open.current) return;
+    open.current = false;
+    setSystemEntry(false);
+    setFocusMic(true);
+  }, []);
+
+  useEffect(() => {
+    if (!systemEntry || Platform.OS !== 'android') return;
+    const sub = Keyboard.addListener('keyboardDidHide', () => {
+      input.current?.blur();
+      closeEntry();
+    });
+    return () => sub.remove();
+  }, [systemEntry, closeEntry]);
+
+  useEffect(() => {
+    if (!focusMic) return;
+    const t = setTimeout(() => setFocusMic(false), REFOCUS_MS);
+    return () => clearTimeout(t);
+  }, [focusMic]);
+
   return (
     <View style={styles.bar}>
       <SearchIcon color={colors.textSecondary} size={scale(30)} />
@@ -38,7 +78,8 @@ export function SearchBar({query, onChangeQuery}: Props): React.ReactElement {
         {empty ? null : <View style={styles.caret} />}
       </View>
       <FocusableButton
-        onPress={() => setSystemEntry(true)}
+        onPress={openEntry}
+        hasTVPreferredFocus={focusMic}
         accessibilityLabel="Search by voice"
         style={styles.mic}>
         <FocusIcon
@@ -50,12 +91,13 @@ export function SearchBar({query, onChangeQuery}: Props): React.ReactElement {
       {systemEntry ? (
         // Mounted only while in use, so it never sits in the focus path.
         <TextInput
+          ref={input}
           autoFocus
           value={query}
           onChangeText={text => onChangeQuery(text.slice(0, MAX_QUERY_CHARS))}
-          onSubmitEditing={() => setSystemEntry(false)}
-          onEndEditing={() => setSystemEntry(false)}
-          onBlur={() => setSystemEntry(false)}
+          onSubmitEditing={closeEntry}
+          onEndEditing={closeEntry}
+          onBlur={closeEntry}
           placeholder="Surah, reciter or dua"
           autoCorrect={false}
           autoCapitalize="none"

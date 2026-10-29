@@ -182,20 +182,30 @@ export function arabicLength(text: string): number {
 const minutesCache = new Map<string, number>();
 
 /**
- * Roughly how long a list takes to recite, in whole minutes (at least 1):
- * the words to say (narration left out), each as many times as it is said.
+ * Roughly how long these adhkar take to recite, in whole minutes (at least
+ * 1): the words to say (narration left out), each as many times as it is
+ * said. The one estimate every screen shows (Home, Search, Adhkar).
  */
-export function estimateMinutes(listId: string): number {
-  const cached = minutesCache.get(listId);
-  if (cached !== undefined) return cached;
+export function estimateDhikrMinutes(
+  adhkar: readonly {arabic: string; repeatCount: number}[],
+): number {
   let seconds = 0;
-  for (const dhikr of adhkarForList(listId)) {
+  for (const dhikr of adhkar) {
     const said = parseAdhkarArabic(dhikr.arabic)
       .filter(s => s.kind !== 'narration')
       .reduce((n, s) => n + arabicLength(s.text), 0);
-    seconds += (said / LETTERS_PER_SECOND + BREATH_SECONDS) * dhikr.repeatCount;
+    seconds +=
+      (said / LETTERS_PER_SECOND + BREATH_SECONDS) *
+      Math.max(1, dhikr.repeatCount);
   }
-  const minutes = Math.max(1, Math.round(seconds / 60));
+  return Math.max(1, Math.round(seconds / 60));
+}
+
+/** estimateDhikrMinutes for a list, by id. */
+export function estimateMinutes(listId: string): number {
+  const cached = minutesCache.get(listId);
+  if (cached !== undefined) return cached;
+  const minutes = estimateDhikrMinutes(adhkarForList(listId));
   minutesCache.set(listId, minutes);
   return minutes;
 }

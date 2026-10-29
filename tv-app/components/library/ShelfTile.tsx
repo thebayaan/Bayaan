@@ -2,10 +2,14 @@ import React from 'react';
 import {Text, View} from 'react-native';
 import {FocusableCard} from '../primitives/FocusableCard';
 import {FocusFrame, FocusText} from '../primitives/focusContext';
+import {GradientFill} from '../brand/GradientFill';
 import {SurahArtwork} from '../brand/SurahArtwork';
+import {SurahGlyph} from '../brand/SurahGlyph';
 import {ReciterPortrait} from '../browse/ReciterPortrait';
-import {HeartIcon} from '../../../components/Icons';
-import {progressOf} from '../../services/libraryFormat';
+import {PlusIcon} from './LibraryIcons';
+import {HeartIcon, PlaylistIcon} from '../../../components/Icons';
+import {shortReciterName} from '../../services/listeningChoices';
+import {playlistGradient} from '../../services/playlistFormat';
 import {colors} from '../../theme/colors';
 import {fonts} from '../../theme/typography';
 import {createScaledStyles, scale} from '../../theme/scale';
@@ -26,8 +30,6 @@ type SurahProps = {
   reciter: Reciter | null;
   caption: string;
   loved: boolean;
-  /** Listening progress for an unfinished surah, else null. */
-  progress: {positionSeconds: number; durationSeconds: number} | null;
   onPress: () => void;
   onLongPress?: () => void;
   hasTVPreferredFocus?: boolean;
@@ -39,8 +41,7 @@ type SurahProps = {
 
 /**
  * A surah in one voice: the R2 surah card, the reciter's face in the top
- * right corner, a sky progress line when unfinished, and two lines below
- * (name; voice, time left, a heart when loved).
+ * right corner, and two lines below (name; voice, a heart when loved).
  */
 function ShelfSurahTileImpl({
   surahNumber,
@@ -48,7 +49,6 @@ function ShelfSurahTileImpl({
   reciter,
   caption,
   loved,
-  progress,
   onPress,
   onLongPress,
   hasTVPreferredFocus,
@@ -59,7 +59,6 @@ function ShelfSurahTileImpl({
   const ratio = art / SHELF_ART;
   const badge = Math.round(BADGE * ratio);
   const inset = Math.round(12 * ratio);
-  const fraction = progress ? progressOf(progress) : 0;
   return (
     <FocusableCard
       ring={false}
@@ -98,11 +97,6 @@ function ShelfSurahTileImpl({
             />
           </View>
         ) : null}
-        {progress ? (
-          <View style={styles.track}>
-            <View style={[styles.fill, {width: `${fraction * 100}%`}]} />
-          </View>
-        ) : null}
       </FocusFrame>
       <TileLabels title={surahName} caption={caption} heart={loved} />
     </FocusableCard>
@@ -119,7 +113,10 @@ type ReciterProps = {
   hasTVPreferredFocus?: boolean;
 };
 
-/** A reciter as a round portrait, the same size as the surah tiles. */
+/**
+ * A reciter as a round portrait, the same size as the surah tiles, under
+ * the short form of their name (the full one is read out).
+ */
 function ShelfReciterTileImpl({
   reciter,
   caption,
@@ -142,12 +139,85 @@ function ShelfReciterTileImpl({
           idPrefix="lib-reciter"
         />
       </FocusFrame>
-      <TileLabels title={reciter.name} caption={caption} />
+      <TileLabels title={shortReciterName(reciter.name)} caption={caption} />
     </FocusableCard>
   );
 }
 
 export const ShelfReciterTile = React.memo(ShelfReciterTileImpl);
+
+type PlaylistProps = {
+  name: string;
+  color?: string;
+  /** The first surah, drawn in calligraphy; none for an empty playlist. */
+  firstSurah: number | null;
+  caption: string;
+  onPress: () => void;
+  hasTVPreferredFocus?: boolean;
+  idPrefix: string;
+};
+
+/** A playlist: its colour fading into ink, its first surah in calligraphy. */
+function ShelfPlaylistTileImpl({
+  name,
+  color,
+  firstSurah,
+  caption,
+  onPress,
+  hasTVPreferredFocus,
+  idPrefix,
+}: PlaylistProps): React.ReactElement {
+  return (
+    <FocusableCard
+      ring={false}
+      style={styles.card}
+      onPress={onPress}
+      hasTVPreferredFocus={hasTVPreferredFocus}
+      accessibilityLabel={`Playlist ${name}, ${caption}`}>
+      <FocusFrame radius={ART_RADIUS} style={styles.frame}>
+        <GradientFill colors={playlistGradient(color)} id={idPrefix} />
+        <View style={styles.playlistArt}>
+          {firstSurah ? (
+            <SurahGlyph surahNumber={firstSurah} size={96} />
+          ) : (
+            <PlaylistIcon color={colors.textSecondary} size={scale(64)} />
+          )}
+        </View>
+      </FocusFrame>
+      <TileLabels title={name} caption={caption} />
+    </FocusableCard>
+  );
+}
+
+export const ShelfPlaylistTile = React.memo(ShelfPlaylistTileImpl);
+
+/**
+ * The Playlists tab's first tile: a dashed outline with a plus, so making a
+ * playlist is always one press away.
+ */
+export function ShelfNewPlaylistTile({
+  onPress,
+  hasTVPreferredFocus,
+}: {
+  onPress: () => void;
+  hasTVPreferredFocus?: boolean;
+}): React.ReactElement {
+  return (
+    <FocusableCard
+      ring={false}
+      style={styles.card}
+      onPress={onPress}
+      hasTVPreferredFocus={hasTVPreferredFocus}
+      accessibilityLabel="New playlist">
+      <FocusFrame radius={ART_RADIUS} style={styles.frame}>
+        <View style={styles.newArt}>
+          <PlusIcon color={colors.textSecondary} size={scale(64)} />
+        </View>
+      </FocusFrame>
+      <TileLabels title="New playlist" caption="Name it, then add surahs" />
+    </FocusableCard>
+  );
+}
 
 /** The two lines under a tile; brighter while the tile has focus. */
 export function TileLabels({
@@ -200,17 +270,17 @@ const styles = createScaledStyles({
     borderColor: 'rgba(5,11,16,0.85)',
     backgroundColor: colors.surfaceElevated,
   },
-  track: {
-    position: 'absolute',
-    left: 16,
-    right: 16,
-    bottom: 16,
-    height: 6,
-    borderRadius: 3,
-    overflow: 'hidden',
-    backgroundColor: 'rgba(244,243,236,0.24)',
+  playlistArt: {flex: 1, alignItems: 'center', justifyContent: 'center'},
+  newArt: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: ART_RADIUS,
+    borderCurve: 'continuous',
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderColor: 'rgba(244,243,236,0.32)',
   },
-  fill: {height: '100%', borderRadius: 3, backgroundColor: colors.accent},
   labels: {paddingHorizontal: SHELF_RING, marginTop: 9, gap: 4},
   title: {
     fontFamily: fonts.bold,

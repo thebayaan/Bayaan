@@ -1,17 +1,17 @@
 import React from 'react';
 import {Text, View} from 'react-native';
-import {Image} from 'expo-image';
 import {FocusableCard} from '../primitives/FocusableCard';
 import {FocusableButton, FocusText} from '../primitives/FocusableButton';
 import {FocusFrame, useFocusTint} from '../primitives/focusContext';
 import {SurahArtwork} from '../brand/SurahArtwork';
 import {HandsGlyph} from './SearchGlyphs';
-import {getReciterArtwork} from '../../services/reciterArtwork';
+import {ReciterPortrait} from '../browse/ReciterPortrait';
 import {adhkarCount, type AdhkarList} from '../../services/adhkarData';
 import {countLabel} from '../../services/search/adhkarArt';
 import {colors} from '../../theme/colors';
 import {fonts} from '../../theme/typography';
 import {createScaledStyles, scale} from '../../theme/scale';
+import {useContextMenuStore} from '../../store/contextMenuStore';
 import type {Surah} from '../../../data/surahData';
 import type {Reciter} from '../../types/reciter';
 
@@ -29,6 +29,11 @@ export const SurahResultCard = React.memo(function SurahResultCard({
     <FocusableCard
       ring={false}
       onPress={() => onPress(surah)}
+      onLongPress={() =>
+        useContextMenuStore
+          .getState()
+          .openSurah({surahNumber: surah.id, origin: 'search'})
+      }
       accessibilityLabel={`${surah.name}, surah ${surah.id}`}
       style={styles.surahCard}>
       <FocusFrame radius={16} style={styles.surahFrame}>
@@ -52,19 +57,24 @@ export const SurahResultCard = React.memo(function SurahResultCard({
   );
 });
 
-/** A reciter as a round portrait, name below. */
+/**
+ * A reciter as a round portrait, name below. Without a photo the portrait is
+ * the pigment monogram the Reciters tab uses, never a bare grey initial.
+ */
 export const PortraitCard = React.memo(function PortraitCard({
   reciter,
   onPress,
   size = 150,
   hasTVPreferredFocus,
+  idPrefix = 'search-portrait',
 }: {
   reciter: Reciter;
   onPress: (reciter: Reciter) => void;
   size?: number;
   hasTVPreferredFocus?: boolean;
+  /** Gradient id prefix for the monogram, unique per screen. */
+  idPrefix?: string;
 }): React.ReactElement {
-  const artwork = getReciterArtwork(reciter);
   const frame = size + 18;
   return (
     <FocusableCard
@@ -76,20 +86,7 @@ export const PortraitCard = React.memo(function PortraitCard({
       <FocusFrame
         radius={size / 2}
         style={{width: scale(frame), height: scale(frame)}}>
-        {artwork ? (
-          <Image
-            source={artwork}
-            style={styles.fill}
-            contentFit="cover"
-            cachePolicy="memory-disk"
-          />
-        ) : (
-          <View style={styles.placeholder}>
-            <Text style={styles.initial}>
-              {reciter.name.charAt(0).toUpperCase()}
-            </Text>
-          </View>
-        )}
+        <ReciterPortrait reciter={reciter} size={size} idPrefix={idPrefix} />
       </FocusFrame>
       <FocusText
         style={styles.portraitName}
@@ -161,14 +158,6 @@ const styles = createScaledStyles({
     paddingHorizontal: 9,
   },
   portraitCard: {alignItems: 'center', gap: 10},
-  fill: {width: '100%', height: '100%'},
-  placeholder: {
-    flex: 1,
-    backgroundColor: colors.surfaceElevated,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  initial: {color: colors.text, fontSize: 52, fontWeight: '300', opacity: 0.35},
   portraitName: {
     fontFamily: fonts.semiBold,
     fontSize: 17,

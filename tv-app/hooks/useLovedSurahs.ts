@@ -2,9 +2,14 @@ import {useSyncExternalStore} from 'react';
 import {
   LOVED_SURAHS_KEY,
   getLovedSurahs,
+  migrateLovedSurahs,
   storage,
   type LovedSurah,
 } from '../services/lovedSurahsStore';
+
+// Older builds saved one love per surah; bring them to the current shape
+// before anything reads them.
+migrateLovedSurahs();
 
 let cachedSnapshot: LovedSurah[] = [];
 let cachedRaw: string | undefined;

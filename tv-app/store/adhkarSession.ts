@@ -108,20 +108,35 @@ export function press(state: SessionState): PressResult {
 export type TrackEndAction = 'replay' | 'advance' | 'stop';
 
 /**
- * A recitation finished. With auto-advance it counts as one saying: the
- * same dhikr plays again until its count is reached, then the list moves
- * on. Without it, playback just stops there.
+ * What happens as a recitation ends: `off` stops there, `count` counts it
+ * as one saying and replays the dhikr until its count is reached ("Count
+ * each for me", and Auto-advance), `once` counts it and moves straight on
+ * ("Listen through": every dhikr heard once, in order).
+ */
+export type AdvanceMode = 'off' | 'count' | 'once';
+
+/**
+ * A recitation finished. `alreadyCounted` is set when the listener pressed
+ * OK while it played, so one recitation is never counted twice.
  */
 export function trackEnded(
   state: SessionState,
-  autoAdvance: boolean,
+  mode: AdvanceMode | boolean,
+  alreadyCounted = false,
 ): {state: SessionState; action: TrackEndAction} {
-  if (!autoAdvance || state.finished) return {state, action: 'stop'};
-  const counted = countOne(state);
+  const advance = mode === true ? 'count' : mode === false ? 'off' : mode;
+  if (advance === 'off' || state.finished) return {state, action: 'stop'};
+  const counted = alreadyCounted ? state : countOne(state);
+  if (advance === 'once') return {state: counted, action: 'advance'};
   return {
     state: counted,
     action: isCurrentComplete(counted) ? 'advance' : 'replay',
   };
+}
+
+/** Whether a list reopened part way: past the first dhikr or with counts. */
+export function isUnderway(state: SessionState): boolean {
+  return !state.finished && (state.index > 0 || state.counts.some(c => c > 0));
 }
 
 /** Adhkar finished so far (complete counts), for the progress line. */

@@ -4,6 +4,7 @@ import {
   currentCount,
   goTo,
   isCurrentComplete,
+  isUnderway,
   next,
   press,
   prev,
@@ -96,5 +97,25 @@ describe('adhkarSession', () => {
     const r = trackEnded(s, false);
     expect(r.action).toBe('stop');
     expect(currentCount(r.state)).toBe(0);
+  });
+
+  it('listening through counts each recitation once and moves on', () => {
+    const r = trackEnded(startSession('x', [3, 1]), 'once');
+    expect(r.action).toBe('advance');
+    expect(currentCount(r.state)).toBe(1);
+  });
+
+  it('a recitation already counted by OK is not counted again', () => {
+    const s = countOne(startSession('x', [3]));
+    const r = trackEnded(s, 'count', true);
+    expect(currentCount(r.state)).toBe(1);
+    expect(r.action).toBe('replay');
+  });
+
+  it('knows when a list is under way', () => {
+    const s = startSession('x', [2, 1]);
+    expect(isUnderway(s)).toBe(false);
+    expect(isUnderway(countOne(s))).toBe(true);
+    expect(isUnderway(next(s))).toBe(true);
   });
 });

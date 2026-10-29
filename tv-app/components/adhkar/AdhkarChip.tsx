@@ -12,6 +12,8 @@ type Props = {
   selected: boolean;
   /** Chips pick their group as focus lands on them, like tabs. */
   onSelect: () => void;
+  /** OK on the chip; picks the group when not given. */
+  onPress?: () => void;
   hasTVPreferredFocus?: boolean;
 };
 
@@ -20,7 +22,7 @@ type Props = {
  * with a sky underline when selected, a cream fill with ink text on focus.
  */
 export const AdhkarChip = forwardRef<View, Props>(function AdhkarChip(
-  {label, count, selected, onSelect, hasTVPreferredFocus},
+  {label, count, selected, onSelect, onPress, hasTVPreferredFocus},
   ref,
 ): React.ReactElement {
   const [focused, setFocused] = useState(false);
@@ -34,7 +36,7 @@ export const AdhkarChip = forwardRef<View, Props>(function AdhkarChip(
     <Animated.View style={{transform: [{scale}]}}>
       <Pressable
         ref={ref}
-        onPress={onSelect}
+        onPress={onPress ?? onSelect}
         onFocus={() => {
           setFocused(true);
           animateFocusScale(scale, focusScaleDefault);
