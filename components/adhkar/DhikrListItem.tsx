@@ -8,7 +8,7 @@
 
 import React from 'react';
 import {View, Text, StyleProp, ViewStyle} from 'react-native';
-import {ScaledSheet, moderateScale} from 'react-native-size-matters';
+import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {Dhikr} from '@/types/adhkar';
@@ -32,11 +32,23 @@ interface DhikrListItemProps {
   style?: StyleProp<ViewStyle>;
   isCurrent?: boolean;
   isPlaying?: boolean;
+  /**
+   * A cell of the iPad card grid: no outer margins, stretched to the row's
+   * tallest card with the footer kept at the bottom. @ai
+   */
+  fill?: boolean;
 }
 
 // @ai-start
 export const DhikrListItem: React.FC<DhikrListItemProps> = React.memo(
-  ({dhikr, index, style, isCurrent = false, isPlaying = false}) => {
+  ({
+    dhikr,
+    index,
+    style,
+    isCurrent = false,
+    isPlaying = false,
+    fill = false,
+  }) => {
     const {theme} = useTheme();
     const {t} = useTranslation('player');
     const showTranslation = useAdhkarSettingsStore(s => s.showTranslation);
@@ -47,7 +59,12 @@ export const DhikrListItem: React.FC<DhikrListItemProps> = React.memo(
 
     return (
       <View
-        style={[styles.container, isCurrent && styles.containerCurrent, style]}
+        style={[
+          styles.container,
+          fill && styles.containerFill, // @ai
+          isCurrent && styles.containerCurrent,
+          style,
+        ]}
         accessibilityRole="button"
         accessibilityLabel={adhkarCardLabel(dhikr.arabic, dhikr.translation)}>
         {/* Ornate top border pattern */}
@@ -95,7 +112,7 @@ export const DhikrListItem: React.FC<DhikrListItemProps> = React.memo(
         ) : null}
 
         {/* Footer with metadata */}
-        <View style={styles.footer}>
+        <View style={[styles.footer, fill && styles.footerFill]}>
           {dhikr.repeatCount > 1 ? (
             <Text style={styles.repeatText}>
               {t('adhkar.repeatTimes', {times: dhikr.repeatCount})}
@@ -125,6 +142,16 @@ const createStyles = (theme: Theme) => {
       borderWidth: 1,
       borderColor: Color(accentColor).alpha(0.15).toString(),
     },
+    // @ai-start
+    containerFill: {
+      flex: 1,
+      marginHorizontal: 0,
+      marginVertical: 0,
+    },
+    footerFill: {
+      marginTop: 'auto',
+    },
+    // @ai-end
     // The text color at 6% mixed over the card, so the card stays opaque.
     containerCurrent: {
       backgroundColor: Color(theme.colors.card)

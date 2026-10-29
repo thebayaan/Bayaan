@@ -1,7 +1,7 @@
 import React from 'react';
 import {View, ActivityIndicator} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
-import {moderateScale, ScaledSheet} from 'react-native-size-matters';
+import {moderateScale, ScaledSheet} from '@/utils/scale';
 import {PulseIndicator} from 'react-native-indicators';
 
 // Type assertion to work around type incompatibility with @types/react-native-indicators

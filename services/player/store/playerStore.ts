@@ -1,7 +1,8 @@
 import {create} from 'zustand';
-import {createJSONStorage, persist} from 'zustand/middleware';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import {persist} from 'zustand/middleware';
+import {persistStorage} from '@/utils/storage'; // @ai
 import {Track} from '@/types/audio';
+import {shuffleArray} from '@/utils/arrayUtils'; // @ai
 import {
   UnifiedPlayerState,
   PlaybackState,
@@ -60,6 +61,8 @@ export interface PlayerStoreState extends Omit<UnifiedPlayerState, 'ui'> {
   addToQueue: (tracks: Track[]) => Promise<void>;
   removeFromQueue: (indices: number[]) => Promise<void>;
   moveInQueue: (fromIndex: number, toIndex: number) => Promise<void>;
+  /** Shuffles the tracks after the current one, leaving it playing. @ai */
+  shuffleUpNext: () => void;
 
   // Settings Actions
   setRepeatMode: (mode: PlaybackSettings['repeatMode']) => void;
@@ -705,6 +708,23 @@ export const usePlayerStore = create<PlayerStoreState>()(
         }
       },
 
+      // @ai-start
+      shuffleUpNext: () => {
+        set(state => {
+          const {tracks, currentIndex} = state.queue;
+          return {
+            queue: {
+              ...state.queue,
+              tracks: [
+                ...tracks.slice(0, currentIndex + 1),
+                ...shuffleArray(tracks.slice(currentIndex + 1)),
+              ],
+            },
+          };
+        });
+      },
+      // @ai-end
+
       setRepeatMode: (mode: PlaybackSettings['repeatMode']) => {
         // Just update store state - expo-audio doesn't have native repeat mode
         // Repeat logic is handled in skipToNext/handleTrackEnd
@@ -869,7 +889,7 @@ export const usePlayerStore = create<PlayerStoreState>()(
     }),
     {
       name: STORAGE_KEY,
-      storage: createJSONStorage(() => AsyncStorage),
+      storage: persistStorage(), // @ai
       partialize: state => ({
         settings: {
           ...state.settings,

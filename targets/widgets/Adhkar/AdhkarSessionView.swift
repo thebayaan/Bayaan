@@ -72,6 +72,8 @@ struct AdhkarSessionView: View {
       if session.index > 0 {
         RoundIntentButton(intent: AdhkarPrevIntent(), systemName: "chevron.left", label: "Previous")
       }
+      RoundIntentButton( // @ai
+        intent: PlayAdhkarIntent(superId: data.superId, dhikrId: item.id), systemName: "play.fill", label: "Listen") // @ai
       if hint {
         Text("Read the rest in \(AppBrand.name) \u{2192}").font(.caption2.weight(.semibold)).opacity(0.7)
           .lineLimit(1).minimumScaleFactor(0.8)

@@ -2,6 +2,7 @@ internal import Expo
 import React
 import Intents
 internal import BayaanCar
+internal import BayaanKeyboard
 import ReactAppDependencyProvider
 
 @main
@@ -35,6 +36,26 @@ class AppDelegate: ExpoAppDelegate {
 
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
+
+  // @bayaan-keyboard start
+  // iPad keyboard shortcuts: the main menu lists them (menu bar and the
+  // ⌘-hold overlay), and a press comes back here up the responder chain.
+  override func buildMenu(with builder: UIMenuBuilder) {
+    super.buildMenu(with: builder)
+    KeyCommandCenter.shared.buildMenu(with: builder)
+  }
+
+  override func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool {
+    if action == KeyCommandCenter.action {
+      return KeyCommandCenter.shared.canPerform(sender)
+    }
+    return super.canPerformAction(action, withSender: sender)
+  }
+
+  @objc func bayaanKeyCommand(_ sender: UIKeyCommand) {
+    KeyCommandCenter.shared.perform(sender)
+  }
+  // @bayaan-keyboard end
 
   // @bayaan-car siri start
   func application(_ application: UIApplication, handlerFor intent: INIntent) -> Any? {

@@ -16,7 +16,7 @@ import {
   FlatList,
   ViewToken,
 } from 'react-native';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import Animated, {
   ZoomIn,
   useSharedValue,
@@ -34,7 +34,7 @@ import OnboardingPageComponent from './OnboardingPage';
 import DotIndicator from './DotIndicator';
 // @ai-start
 import {useTranslation} from 'react-i18next';
-import {forceLTR} from '@/utils/rtl';
+import {appLayoutDirection, isRTL} from '@/utils/rtl';
 // @ai-end
 
 const {width: SCREEN_WIDTH, height: SCREEN_HEIGHT} = Dimensions.get('window');
@@ -122,7 +122,13 @@ export const WhatsNewModal = forwardRef<WhatsNewModalRef>((_, ref) => {
 
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: event => {
-      scrollX.value = event.contentOffset.x;
+      // A right-to-left scroll view reports its offset from the left edge,
+      // where the last page sits. The dots need the distance from page one.
+      scrollX.value = isRTL
+        ? event.contentSize.width -
+          event.layoutMeasurement.width -
+          event.contentOffset.x
+        : event.contentOffset.x;
     },
   });
 
@@ -179,9 +185,12 @@ export const WhatsNewModal = forwardRef<WhatsNewModalRef>((_, ref) => {
           </Pressable>
 
           {/* Pages */}
-          <View style={[styles.pagesContainer, forceLTR]}>
+          <View style={styles.pagesContainer}>
+            {/* Runs in the app's direction: the list's index math follows
+                the native direction, so forcing LTR here breaks Next in RTL. */}
             <Animated.FlatList
               ref={flatListRef as any}
+              style={appLayoutDirection}
               data={pages}
               renderItem={renderItem}
               keyExtractor={keyExtractor}

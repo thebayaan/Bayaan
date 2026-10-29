@@ -1,7 +1,7 @@
 import React, {useMemo} from 'react';
 import {View, Text, Pressable, Switch, ScrollView} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
-import {ScaledSheet, moderateScale} from 'react-native-size-matters';
+import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {Theme} from '@/utils/themeUtils';
 import {AntDesign, Feather} from '@expo/vector-icons';
 import Color from 'color';

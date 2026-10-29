@@ -8,7 +8,7 @@ import {
   Modal,
   Platform,
 } from 'react-native';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import {Feather} from '@expo/vector-icons';
 import Color from 'color';
 import {Theme} from '@/utils/themeUtils';
@@ -16,6 +16,11 @@ import {RECITERS} from '@/data/reciterData';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 // @ai-start
 import {useTranslation} from 'react-i18next';
+import {useResponsive} from '@/hooks/useResponsive';
+import {TabletDialog} from '@/components/layout/TabletDialog';
+
+/** Card height on iPad; the chips scroll inside it. */
+const TABLET_HEIGHT = 640;
 // @ai-end
 import {
   ALL_REWAYAH_IDS,
@@ -235,6 +240,7 @@ export default function FilterModal({
   initialFilters,
 }: FilterModalProps) {
   const insets = useSafeAreaInsets();
+  const {isTablet} = useResponsive();
   const {t} = useTranslation(['home', 'common']);
   const styles = useMemo(() => createStyles(theme), [theme]);
   const rewayahChips = useMemo(() => getAvailableRewayahChips(), []);
@@ -306,133 +312,144 @@ export default function FilterModal({
     onClose();
   };
 
+  const panel = (
+    <View style={styles.innerContent}>
+      <View style={styles.contentWrapper}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>{t('filters.title')}</Text>
+          <TouchableOpacity
+            style={styles.closeButton}
+            onPress={onClose}
+            activeOpacity={0.7}>
+            <Feather
+              name="x"
+              size={moderateScale(24)}
+              color={theme.colors.text}
+            />
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView
+          style={styles.scrollContainer}
+          contentContainerStyle={[
+            styles.scrollContent,
+            Platform.OS === 'android' && {
+              paddingBottom: insets.bottom + moderateScale(100),
+            },
+          ]}
+          showsVerticalScrollIndicator={false}
+          nestedScrollEnabled={Platform.OS === 'android'}
+          scrollEventThrottle={16}>
+          {/* Recitation Styles */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>
+              {t('filters.recitationStyles')}
+            </Text>
+            <View style={styles.optionsContainer}>
+              {STYLE_OPTIONS.map(style => (
+                <TouchableOpacity
+                  key={style.value}
+                  style={[
+                    styles.optionChip,
+                    filters.styles.includes(style.value) &&
+                      styles.optionChipSelected,
+                  ]}
+                  onPress={() => toggleStyle(style.value)}
+                  activeOpacity={0.7}>
+                  <Text
+                    style={[
+                      styles.optionText,
+                      filters.styles.includes(style.value) &&
+                        styles.optionTextSelected,
+                    ]}>
+                    {t(style.labelKey)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Rewayat Types */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>{t('filters.rewayatTypes')}</Text>
+            <View style={styles.optionsContainer}>
+              {rewayahChips.map(({key, label}) => (
+                <TouchableOpacity
+                  key={key}
+                  style={[
+                    styles.optionChip,
+                    filters.rewayat.includes(key) && styles.optionChipSelected,
+                  ]}
+                  onPress={() => toggleRewaya(key)}
+                  activeOpacity={0.7}>
+                  <Text
+                    style={[
+                      styles.optionText,
+                      filters.rewayat.includes(key) &&
+                        styles.optionTextSelected,
+                    ]}>
+                    {label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </ScrollView>
+
+        <View
+          style={[
+            styles.footerContainer,
+            {
+              paddingBottom: isTablet
+                ? moderateScale(20)
+                : insets.bottom + moderateScale(30),
+            },
+          ]}>
+          <View style={styles.footer}>
+            <TouchableOpacity
+              style={styles.resetButton}
+              onPress={handleReset}
+              activeOpacity={0.7}>
+              <Text style={styles.resetButtonText}>
+                {t('common:actions.reset')}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.applyButton}
+              onPress={handleApply}
+              activeOpacity={0.7}>
+              <Text style={styles.applyButtonText}>
+                {t('common:actions.apply')}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+
+  // iPad: a centered card that fades in, not a full-width panel from the
+  // bottom edge.
   return (
     <Modal
       visible={visible}
       transparent
-      animationType="slide"
+      animationType={isTablet ? 'fade' : 'slide'}
       onRequestClose={onClose}>
-      <View style={styles.container}>
-        <TouchableOpacity
-          style={{flex: 1}}
-          activeOpacity={1}
-          onPress={onClose}
-        />
-        <View style={styles.modalContent}>
-          <View style={styles.innerContent}>
-            <View style={styles.contentWrapper}>
-              <View style={styles.header}>
-                <Text style={styles.headerTitle}>{t('filters.title')}</Text>
-                <TouchableOpacity
-                  style={styles.closeButton}
-                  onPress={onClose}
-                  activeOpacity={0.7}>
-                  <Feather
-                    name="x"
-                    size={moderateScale(24)}
-                    color={theme.colors.text}
-                  />
-                </TouchableOpacity>
-              </View>
-
-              <ScrollView
-                style={styles.scrollContainer}
-                contentContainerStyle={[
-                  styles.scrollContent,
-                  Platform.OS === 'android' && {
-                    paddingBottom: insets.bottom + moderateScale(100),
-                  },
-                ]}
-                showsVerticalScrollIndicator={false}
-                nestedScrollEnabled={Platform.OS === 'android'}
-                scrollEventThrottle={16}>
-                {/* Recitation Styles */}
-                <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>
-                    {t('filters.recitationStyles')}
-                  </Text>
-                  <View style={styles.optionsContainer}>
-                    {STYLE_OPTIONS.map(style => (
-                      <TouchableOpacity
-                        key={style.value}
-                        style={[
-                          styles.optionChip,
-                          filters.styles.includes(style.value) &&
-                            styles.optionChipSelected,
-                        ]}
-                        onPress={() => toggleStyle(style.value)}
-                        activeOpacity={0.7}>
-                        <Text
-                          style={[
-                            styles.optionText,
-                            filters.styles.includes(style.value) &&
-                              styles.optionTextSelected,
-                          ]}>
-                          {t(style.labelKey)}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </View>
-
-                {/* Rewayat Types */}
-                <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>
-                    {t('filters.rewayatTypes')}
-                  </Text>
-                  <View style={styles.optionsContainer}>
-                    {rewayahChips.map(({key, label}) => (
-                      <TouchableOpacity
-                        key={key}
-                        style={[
-                          styles.optionChip,
-                          filters.rewayat.includes(key) &&
-                            styles.optionChipSelected,
-                        ]}
-                        onPress={() => toggleRewaya(key)}
-                        activeOpacity={0.7}>
-                        <Text
-                          style={[
-                            styles.optionText,
-                            filters.rewayat.includes(key) &&
-                              styles.optionTextSelected,
-                          ]}>
-                          {label}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </View>
-              </ScrollView>
-
-              <View
-                style={[
-                  styles.footerContainer,
-                  {paddingBottom: insets.bottom + moderateScale(30)},
-                ]}>
-                <View style={styles.footer}>
-                  <TouchableOpacity
-                    style={styles.resetButton}
-                    onPress={handleReset}
-                    activeOpacity={0.7}>
-                    <Text style={styles.resetButtonText}>
-                      {t('common:actions.reset')}
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.applyButton}
-                    onPress={handleApply}
-                    activeOpacity={0.7}>
-                    <Text style={styles.applyButtonText}>
-                      {t('common:actions.apply')}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </View>
-          </View>
+      {isTablet ? (
+        <TabletDialog onClose={onClose} height={TABLET_HEIGHT}>
+          {panel}
+        </TabletDialog>
+      ) : (
+        <View style={styles.container}>
+          <TouchableOpacity
+            style={{flex: 1}}
+            activeOpacity={1}
+            onPress={onClose}
+          />
+          <View style={styles.modalContent}>{panel}</View>
         </View>
-      </View>
+      )}
     </Modal>
   );
 }

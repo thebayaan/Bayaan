@@ -1,21 +1,13 @@
 import React, {useCallback, useState, useMemo} from 'react';
-import {
-  View,
-  Text,
-  Pressable,
-  StyleSheet,
-  useWindowDimensions,
-  Dimensions,
-} from 'react-native';
-import {ScaledSheet, moderateScale} from 'react-native-size-matters';
+import {View, Text, Pressable, StyleSheet, Dimensions} from 'react-native';
+import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {CheckIcon, ProfileIcon, HeartIcon} from '@/components/Icons';
+import {SheetProps, SheetManager, ScrollView} from 'react-native-actions-sheet';
 import ActionSheet, {
-  SheetProps,
-  SheetManager,
-  ScrollView,
-} from 'react-native-actions-sheet';
+  useSheetWidth,
+} from '@/components/sheets/AdaptiveActionSheet';
 import {Feather, FontAwesome5, Ionicons} from '@expo/vector-icons';
 import {useLoved} from '@/hooks/useLoved';
 import {
@@ -77,7 +69,8 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
   const {t} = useTranslation(['sheets', 'common']);
-  const {width} = useWindowDimensions();
+  // Size HTML from the sheet, which stops at 560pt on iPad. @ai
+  const width = useSheetWidth(); // @ai
   const [showSurahInfo, setShowSurahInfo] = useState(false);
 
   // Extract payload
@@ -491,6 +484,7 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
   return (
     <ActionSheet
       id={props.sheetId}
+      tabletPresentation={showSurahInfo ? 'card' : 'menu'}
       containerStyle={[
         styles.sheetContainer,
         showSurahInfo && styles.sheetContainerExpanded,

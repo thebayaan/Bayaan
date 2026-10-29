@@ -15,6 +15,8 @@ import type {AyahTimestamp} from '@/types/timestamps';
 // every lookup against R2 / most CDNs that don't normalize doubled
 // slashes. Strip a trailing slash defensively so the runtime matches
 // the contract regardless of the fork-side value.
+const TIMESTAMP_DATA_VERSION = 2;
+
 const R2_BASE = (
   branding.timestampCdnBase ?? 'https://cdn.thebayaan.com/timestamps'
 ).replace(/\/+$/, '');
@@ -166,7 +168,9 @@ class TimestampFetchService {
     }
 
     const padded = String(surahNumber).padStart(3, '0');
-    const url = `${R2_BASE}/${rewayatId}/${padded}.json`;
+    // The CDN serves these as `immutable` for a year, so a changed file needs a
+    // new URL to get past HTTP caches. Bump with every regeneration.
+    const url = `${R2_BASE}/${rewayatId}/${padded}.json?v=${TIMESTAMP_DATA_VERSION}`;
 
     try {
       const res = await fetch(url);

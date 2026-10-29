@@ -13,7 +13,7 @@ import {Slider} from '@miblanchard/react-native-slider';
 import {SheetManager} from 'react-native-actions-sheet';
 import {useReducedMotion} from 'react-native-reanimated';
 import {useTranslation} from 'react-i18next';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
 import {PauseIcon, PlayIcon} from '@/components/Icons';
@@ -38,8 +38,11 @@ export function sessionRemaining(session: AdhkarSession): number {
 
 export function AdhkarSessionCard({
   session,
+  width, // @ai
 }: {
   session: AdhkarSession;
+  /** Card width. Defaults to RECENT_CARD_WIDTH; iPad shelves pass their own. */
+  width?: number; // @ai
 }): React.JSX.Element {
   const {theme} = useTheme();
   const {t} = useTranslation('home');
@@ -76,7 +79,11 @@ export function AdhkarSessionCard({
   return (
     <CardWrapper
       testID="adhkar-session-card"
-      style={[styles.container, USE_GLASS && styles.glassContainer]}
+      style={[
+        styles.container,
+        USE_GLASS && styles.glassContainer,
+        width != null && {width}, // @ai
+      ]}
       {...(USE_GLASS
         ? {glassEffectStyle: 'regular', colorScheme: glassColorScheme}
         : {})}>

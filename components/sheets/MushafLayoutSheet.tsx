@@ -3,14 +3,15 @@ import {
   View,
   Text,
   Pressable,
-  Dimensions,
+  useWindowDimensions, // @ai
   StyleSheet,
   LayoutAnimation,
 } from 'react-native';
-import {ScaledSheet, moderateScale} from 'react-native-size-matters';
+import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import ActionSheet, {SheetProps, ScrollView} from 'react-native-actions-sheet';
+import {SheetProps, ScrollView} from 'react-native-actions-sheet';
+import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import Color from 'color';
 import {Feather} from '@expo/vector-icons';
 import {MushafSettingsContent} from '@/components/MushafSettingsContent';
@@ -20,14 +21,17 @@ import {useTranslation} from 'react-i18next';
 import {flipX} from '@/utils/rtl';
 // @ai-end
 
-const SCREEN_HEIGHT = Dimensions.get('window').height;
-
 type ActiveScreen = 'theme' | null;
 
 // @ai-start
 export const MushafLayoutSheet = (props: SheetProps<'mushaf-layout'>) => {
   const {theme} = useTheme();
-  const styles = createStyles(theme);
+  // @ai-start
+  // Height follows the current window (the Mushaf rotates), not the one at
+  // import time, which overflowed the screen in landscape.
+  const {height: windowHeight} = useWindowDimensions();
+  const styles = createStyles(theme, windowHeight);
+  // @ai-end
   const {t} = useTranslation(['sheets', 'common']);
   const [activeScreen, setActiveScreenRaw] = useState<ActiveScreen>(null);
 
@@ -99,7 +103,7 @@ export const MushafLayoutSheet = (props: SheetProps<'mushaf-layout'>) => {
 };
 // @ai-end
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, windowHeight: number) =>
   ScaledSheet.create({
     sheetContainer: {
       backgroundColor: theme.colors.background,
@@ -110,7 +114,7 @@ const createStyles = (theme: Theme) =>
       borderRightWidth: StyleSheet.hairlineWidth,
       borderColor: Color(theme.colors.text).alpha(0.08).toString(),
       paddingTop: moderateScale(8),
-      height: SCREEN_HEIGHT * 0.82,
+      height: windowHeight * 0.82, // @ai
     },
     indicator: {
       backgroundColor: Color(theme.colors.text).alpha(0.3).toString(),

@@ -1,6 +1,6 @@
 import React, {useCallback, useMemo} from 'react';
 import {View, Text, Pressable, StyleSheet} from 'react-native';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {ReciterImage} from '@/components/ReciterImage';
 import {PlayIcon} from '@/components/Icons';
@@ -39,6 +39,8 @@ interface RecentReciterCardProps {
   index: number;
   isUserUpload?: boolean;
   userRecitationId?: string;
+  /** Card width. Defaults to RECENT_CARD_WIDTH; iPad shelves pass their own. */
+  width?: number; // @ai
 }
 
 // @ai-start
@@ -55,6 +57,7 @@ export const RecentReciterCard = ({
   index,
   isUserUpload,
   userRecitationId,
+  width,
 }: RecentReciterCardProps) => {
   const {theme} = useTheme();
   const {t} = useTranslation('home');
@@ -253,7 +256,11 @@ export const RecentReciterCard = ({
 
   return (
     <CardWrapper
-      style={[styles.container, USE_GLASS && styles.glassContainer]}
+      style={[
+        styles.container,
+        USE_GLASS && styles.glassContainer,
+        width != null && {width},
+      ]}
       {...(USE_GLASS
         ? {glassEffectStyle: 'regular', colorScheme: glassColorScheme}
         : {})}>

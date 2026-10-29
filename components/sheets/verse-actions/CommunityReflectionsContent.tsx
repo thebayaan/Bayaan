@@ -24,11 +24,7 @@ import {
   ActivityIndicator,
   Linking,
 } from 'react-native';
-import {
-  ScaledSheet,
-  moderateScale,
-  verticalScale,
-} from 'react-native-size-matters';
+import {ScaledSheet, moderateScale, verticalScale} from '@/utils/scale';
 import Color from 'color';
 import {Feather} from '@expo/vector-icons';
 import {useTheme} from '@/hooks/useTheme';

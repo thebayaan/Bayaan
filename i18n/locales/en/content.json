@@ -137,6 +137,34 @@
       "title": "IndoPak Script",
       "description": "Switch to the IndoPak Nastaliq script in the mushaf for the style used across South Asia."
     },
+    "widgets": {
+      "title": "Widgets",
+      "description": "Continue Listening, Ayah of the Day, Tasbeeh, an interactive adhkar session and more on your Home Screen. iPhone also gets Lock Screen widgets, controls and Siri."
+    },
+    "carplay": {
+      "title": "CarPlay & Android\u00a0Auto",
+      "description": "Play your reciters, surahs, playlists and downloads from your car’s screen, or just ask with your voice."
+    },
+    "arabic": {
+      "title": "Now in Arabic",
+      "description": "The app is now available in Arabic, with a right-to-left layout. It follows your device language, and you can change it anytime in Settings › Language."
+    },
+    "adhkarPlayback": {
+      "title": "Adhkar, Anywhere",
+      "description": "Play All keeps going across the app and on your Lock Screen, with a Live Activity on iPhone. Morning, Evening and Quranic duas are now recited by Mishary Rashid Alafasy."
+    },
+    "mushaf1440": {
+      "title": "Mushaf 1440",
+      "description": "A new mushaf in beta with the look of the printed Madinah mushaf and a preview of tajweed coloring. You can also make the text bolder and highlight Allah’s name."
+    },
+    "search": {
+      "title": "Smarter Search",
+      "description": "Every search bar now puts the best match first, forgives typos, ignores diacritics, and understands surah numbers and nicknames like “tabarak”."
+    },
+    "ipad": {
+      "title": "Redesigned for iPad",
+      "description": "A sidebar replaces the tab bar, the player opens as a split view, and landscape shows two facing mushaf pages, just like a printed mushaf."
+    },
     "downloads": {
       "title": "Offline Downloads",
       "description": "Download individual surahs or entire playlists so you can listen without an internet connection."

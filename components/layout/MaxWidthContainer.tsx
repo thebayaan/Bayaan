@@ -47,6 +47,33 @@ export const MaxWidthContainer: React.FC<MaxWidthContainerProps> = ({
   );
 };
 
+// @ai-start
+/**
+ * `screenLayout` for a tab stack: centers every screen in a capped column on
+ * tablets, except `fullWidthRoutes`. Grids and shelves go in that list so
+ * they take the whole pane and add columns (ipad-standards §5.3). Phones get
+ * every screen unchanged.
+ */
+export function capScreensExcept(
+  fullWidthRoutes: readonly string[],
+  maxWidth?: number,
+) {
+  // eslint-disable-next-line react/display-name
+  return ({
+    route,
+    children,
+  }: {
+    route: {name: string};
+    children: React.ReactElement;
+  }): React.ReactElement =>
+    fullWidthRoutes.includes(route.name) ? (
+      children
+    ) : (
+      <MaxWidthContainer maxWidth={maxWidth}>{children}</MaxWidthContainer>
+    );
+}
+// @ai-end
+
 const styles = StyleSheet.create({
   outerFill: {
     flex: 1,

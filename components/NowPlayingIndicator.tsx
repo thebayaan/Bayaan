@@ -11,7 +11,7 @@ import Animated, {
   Easing,
   Extrapolation,
 } from 'react-native-reanimated';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import {LinearGradient} from 'expo-linear-gradient';
 import {getRandomColors} from '@/utils/gradientColors';
 

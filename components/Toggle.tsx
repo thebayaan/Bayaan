@@ -1,10 +1,6 @@
 import React from 'react';
 import {View, Text, TouchableOpacity} from 'react-native';
-import {
-  ScaledSheet,
-  moderateScale,
-  verticalScale,
-} from 'react-native-size-matters';
+import {ScaledSheet, moderateScale, verticalScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/styles/theme';
 // @ai-start

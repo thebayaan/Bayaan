@@ -1,7 +1,7 @@
 import React from 'react';
 import {TouchableOpacity, View, Text, StyleSheet} from 'react-native';
 import {LinearGradient} from 'expo-linear-gradient';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import Color from 'color';
 import {useTheme} from '@/hooks/useTheme';
 import {AdhkarCategory} from '@/types/adhkar';

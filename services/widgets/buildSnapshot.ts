@@ -6,6 +6,7 @@ import {SURAHS} from '@/data/surahData';
 import {getJuzForPage, getSurahForPage} from '@/utils/quranPages';
 import {
   WIDGET_SNAPSHOT_VERSION,
+  WidgetAdhkarPlayback,
   WidgetLastRead,
   WidgetReciter,
   WidgetSnapshot,
@@ -40,6 +41,7 @@ export interface SnapshotInput {
   artworkFileFor: (reciterId: string) => string | null;
   surahArtworkFileFor: (surahId: number) => string | null;
   surahOfTheDayId: number;
+  adhkar?: WidgetAdhkarPlayback | null; // @ai
 }
 
 export function artworkFileName(reciterId: string): string {
@@ -210,5 +212,6 @@ export function buildSnapshot(input: SnapshotInput): WidgetSnapshot {
     reciterRecents: buildReciterRecents(allRecent),
     lastRead: buildLastRead(input),
     tasbeeh: input.tasbeeh,
+    adhkar: input.adhkar ?? null, // @ai
   };
 }

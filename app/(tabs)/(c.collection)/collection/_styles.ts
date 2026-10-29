@@ -1,9 +1,5 @@
 import {Theme} from '@/utils/themeUtils';
-import {
-  ScaledSheet,
-  moderateScale,
-  verticalScale,
-} from 'react-native-size-matters';
+import {ScaledSheet, moderateScale, verticalScale} from '@/utils/scale';
 import Color from 'color';
 
 export const createStyles = (theme: Theme) =>

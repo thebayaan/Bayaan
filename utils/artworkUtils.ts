@@ -1,13 +1,6 @@
 import {Image} from 'react-native';
-import {reciterImages} from './reciterImages';
+import {getLocalReciterImage} from './reciterImageLookup'; // @ai
 import {Reciter} from '@/data/reciterData';
-
-/**
- * Formats a reciter name to match our local image naming convention
- */
-export function formatReciterName(name: string): string {
-  return name.toLowerCase().replace(/\s+/g, '-').replace(/-+/g, '-');
-}
 
 /**
  * Gets the artwork URL for a reciter, with fallbacks:
@@ -37,8 +30,7 @@ export function getReciterArtwork(reciter: Reciter): string {
   }
 
   // 2. Try local asset
-  const formattedName = formatReciterName(reciter.name);
-  const localImage = reciterImages[formattedName];
+  const localImage = getLocalReciterImage(reciter.name); // @ai
   if (localImage) {
     const resolvedImage = Image.resolveAssetSource(localImage);
     if (resolvedImage?.uri) {
