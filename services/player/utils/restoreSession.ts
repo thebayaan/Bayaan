@@ -5,9 +5,12 @@ import {
 } from '@/services/player/store/playerStore';
 import {
   getAvailableSurahsForRewayat,
+  getReciterById, // @ai
   getSurahById,
 } from '@/services/dataService';
 import {Surah} from '@/data/surahData';
+import type {Reciter} from '@/data/reciterData'; // @ai
+import type {RecentlyPlayedTrack} from '@/services/player/store/recentlyPlayedStore'; // @ai
 import {generateSmartAudioUrl} from '@/utils/audioUtils';
 import {getReciterArtwork} from '@/utils/artworkUtils';
 import {expoAudioService} from '@/services/audio/ExpoAudioService';
@@ -142,6 +145,34 @@ export async function restoreSession(): Promise<void> {
     const {reciter, surah, rewayatId, progress, duration} = recent;
     const startPosition = progress * duration;
 
+    // @ai-start
+    // Keep the queue the user had when it still holds this track, so its
+    // order, the tracks already played and any other reciters survive.
+    const persistedTracks = await restorablePersistedQueue(
+      persistedState.queue,
+      recent,
+    );
+    if (persistedTracks) {
+      if (hasCarReplacedQueue()) return;
+      const {currentIndex} = persistedState.queue;
+      const playerStore = usePlayerStore.getState();
+      playerStore.updateQueueState({tracks: persistedTracks, currentIndex});
+      playerStore.updatePlaybackState({
+        position: startPosition,
+        duration,
+        state: 'paused',
+      });
+      if (__DEV__) {
+        console.log('[RestoreSession] Restored the persisted queue', {
+          queueSize: persistedTracks.length,
+          currentIndex,
+        });
+      }
+      loadAudioInBackground(persistedTracks[currentIndex].url, startPosition);
+      return;
+    }
+    // @ai-end
+
     // Build the full queue for auto-advance
     const availableSurahIds = await getAvailableSurahsForRewayat(rewayatId);
     const allSurahs = availableSurahIds
@@ -213,6 +244,54 @@ export async function restoreSession(): Promise<void> {
     console.error('[RestoreSession] Error restoring session:', error);
   }
 }
+
+// @ai-start
+/**
+ * The persisted queue, when its current track is the one being resumed.
+ * Null when it holds something else (or nothing), so the caller builds a
+ * queue from the recent track instead. URLs are rebuilt: a surah may have
+ * been downloaded since, and download paths change between app installs.
+ * Exported for tests.
+ */
+export async function restorablePersistedQueue(
+  queue: {tracks: Track[]; currentIndex: number},
+  recent: RecentlyPlayedTrack,
+): Promise<Track[] | null> {
+  const current = queue.tracks[queue.currentIndex];
+  if (
+    !current ||
+    current.isUserUpload ||
+    current.reciterId !== recent.reciter.id ||
+    current.surahId !== String(recent.surah.id) ||
+    current.rewayatId !== recent.rewayatId
+  ) {
+    return null;
+  }
+
+  const reciters = new Map<string, Reciter | undefined>([
+    [recent.reciter.id, recent.reciter],
+  ]);
+  for (const track of queue.tracks) {
+    if (!track.isUserUpload && !reciters.has(track.reciterId)) {
+      reciters.set(track.reciterId, await getReciterById(track.reciterId));
+    }
+  }
+
+  return queue.tracks.map(track => {
+    const reciter = reciters.get(track.reciterId);
+    if (track.isUserUpload || !reciter || !track.surahId) return track;
+    try {
+      return {
+        ...track,
+        url: generateSmartAudioUrl(reciter, track.surahId, track.rewayatId),
+      };
+    } catch {
+      // The reciter no longer lists this rewayah; keep the saved URL.
+      return track;
+    }
+  });
+}
+// @ai-end
 
 // The in-flight phase 2 load, if any.
 let restoreLoad: Promise<void> | null = null;
