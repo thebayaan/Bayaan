@@ -6,7 +6,7 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
-import {moderateScale, verticalScale} from 'react-native-size-matters';
+import {moderateScale, verticalScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {LinearGradient} from 'expo-linear-gradient';
 import {MushafiIcon} from '@/components/Icons';

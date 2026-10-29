@@ -13,7 +13,7 @@ import {
   Text, // @ai
 } from 'react-native';
 import {Stack, useLocalSearchParams} from 'expo-router';
-import * as ScreenOrientation from 'expo-screen-orientation';
+import {usePhoneOrientation} from '@/hooks/usePhoneOrientation'; // @ai
 import {useTheme} from '@/hooks/useTheme';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService'; // @ai
@@ -109,15 +109,10 @@ export default function MushafScreen() {
     return undefined;
   }, [surah, ayah]);
 
-  // Allow landscape while the mushaf screen is open; re-lock portrait on exit.
-  useEffect(() => {
-    ScreenOrientation.unlockAsync();
-    return () => {
-      ScreenOrientation.lockAsync(
-        ScreenOrientation.OrientationLock.PORTRAIT_UP,
-      );
-    };
-  }, []);
+  // Phones may turn to landscape while the mushaf screen is open and go back
+  // to portrait on exit. iPads aren't locked, so leaving the reader in
+  // landscape keeps the app in landscape. @ai
+  usePhoneOrientation('free'); // @ai
 
   // Track mushaf screen for session restore (MMKV — sync writes survive force-kill)
   useEffect(() => {

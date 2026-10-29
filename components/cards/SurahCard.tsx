@@ -10,7 +10,7 @@ import {
   GestureResponderEvent,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
-import {moderateScale, verticalScale} from 'react-native-size-matters';
+import {moderateScale, verticalScale} from '@/utils/scale';
 import {surahGlyphMap} from '@/utils/surahGlyphMap';
 import Color from 'color';
 import {
@@ -349,11 +349,6 @@ export const SurahCard: React.FC<SurahCardProps> = ({
     }
   };
 
-  // Choose Touchable component based on animation prop
-  const TouchableComponent = enableAnimation
-    ? AnimatedTouchableOpacity
-    : TouchableOpacity;
-
   const cardContent = (
     <>
       <SurahGradientMesh
@@ -504,13 +499,9 @@ export const SurahCard: React.FC<SurahCardProps> = ({
   }
 
   return (
-    <TouchableComponent
+    <AnimatedTouchableOpacity
       activeOpacity={1}
-      style={
-        enableAnimation
-          ? [styles.container, animatedStyle, style]
-          : [styles.container, style]
-      }
+      style={[styles.container, enableAnimation && animatedStyle, style]}
       onPress={handleCardPress}
       onLongPress={
         onLongPress || onOptionsPress ? handleLongPressWrapper : undefined
@@ -519,7 +510,7 @@ export const SurahCard: React.FC<SurahCardProps> = ({
       onPressIn={enableAnimation ? handlePressIn : undefined}
       onPressOut={enableAnimation ? handlePressOut : undefined}>
       {cardContent}
-    </TouchableComponent>
+    </AnimatedTouchableOpacity>
   );
 };
 // @ai-end

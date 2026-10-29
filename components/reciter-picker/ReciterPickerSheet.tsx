@@ -9,8 +9,9 @@ import {
   Dimensions,
   type ListRenderItemInfo,
 } from 'react-native';
-import {moderateScale} from 'react-native-size-matters';
-import ActionSheet, {FlatList} from 'react-native-actions-sheet';
+import {moderateScale} from '@/utils/scale';
+import {FlatList} from 'react-native-actions-sheet';
+import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import {Feather} from '@expo/vector-icons';
 import Color from 'color';
 import {useTheme} from '@/hooks/useTheme';

@@ -4,10 +4,11 @@ import {
   Text,
   Pressable,
   Animated,
+  type FlatList,
   NativeSyntheticEvent,
   NativeScrollEvent,
 } from 'react-native';
-import {ScaledSheet, moderateScale} from 'react-native-size-matters';
+import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {Feather} from '@expo/vector-icons';
 import Color from 'color';
 import {useTheme} from '@/hooks/useTheme';
@@ -232,7 +233,7 @@ ReciterUploadListItem.displayName = 'ReciterUploadListItem';
 
 // @ai-start
 export const UploadsTabContent = React.forwardRef<
-  Animated.FlatList,
+  FlatList<UploadedRecitation>,
   UploadsTabContentProps
 >(
   (
@@ -441,8 +442,8 @@ export const UploadsTabContent = React.forwardRef<
       return (
         <Animated.FlatList
           ref={ref}
-          data={[]}
-          renderItem={null}
+          data={[] as UploadedRecitation[]}
+          renderItem={() => null}
           ListHeaderComponent={ListHeaderComponent}
           ListEmptyComponent={emptyState}
           onScroll={onScroll}

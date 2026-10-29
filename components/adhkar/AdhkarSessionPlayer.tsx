@@ -10,7 +10,7 @@ import Color from 'color';
 import {Feather} from '@expo/vector-icons';
 import {GlassView} from 'expo-glass-effect';
 import {useTranslation} from 'react-i18next';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
 import {FrostedView} from '@/components/FrostedView';

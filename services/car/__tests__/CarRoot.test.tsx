@@ -7,6 +7,7 @@ const mockSetPlayer = jest.fn();
 const mockStartSync = jest.fn(() => Promise.resolve());
 const mockStopSync = jest.fn();
 const mockBootApp = jest.fn(() => Promise.resolve());
+const mockStopWidgetSync = jest.fn(); // @ai
 
 jest.mock('expo-audio', () => ({
   createAudioPlayer: () => mockCreateAudioPlayer(),
@@ -72,7 +73,16 @@ jest.mock('@/services/appBoot', () => ({
 }));
 jest.mock('@/services/widgets/syncWidgets', () => ({
   markPlayerReadyForWidgets: jest.fn(),
+  startWidgetSync: () => mockStopWidgetSync, // @ai
 }));
+// @ai-start
+jest.mock('@/services/widgets/syncConfiguredWidgets', () => ({
+  startConfiguredWidgetSync: () => mockStopWidgetSync,
+}));
+jest.mock('@/services/widgets/syncContentWidgets', () => ({
+  startContentWidgetSync: () => mockStopWidgetSync,
+}));
+// @ai-end
 
 import {ExpoAudioProvider} from '@/services/audio/ExpoAudioProvider';
 import {CarRoot} from '@/services/car/CarRoot';

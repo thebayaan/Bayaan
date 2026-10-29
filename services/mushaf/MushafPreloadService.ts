@@ -27,6 +27,14 @@ const FONT_ASSETS: Record<string, number> = {
 };
 // @ai-end
 
+function assetUri(asset: number): string {
+  const source = Image.resolveAssetSource(asset);
+  if (!source) {
+    throw new Error(`Unresolvable font asset ${asset}`);
+  }
+  return source.uri;
+}
+
 /**
  * Preloads everything the Mushaf screen needs at app startup (AppInitializer
  * priority 5). By the time the user navigates to the Mushaf tab, fonts and
@@ -199,7 +207,7 @@ class MushafPreloadService {
       let anyFailed = false;
 
       for (const [family, asset] of Object.entries(FONT_ASSETS)) {
-        const uri = Image.resolveAssetSource(asset).uri;
+        const uri = assetUri(asset);
         const data = await Skia.Data.fromURI(uri);
         const typeface = Skia.Typeface.MakeFreeTypeFaceFromData(data);
         if (!typeface) {
@@ -257,7 +265,7 @@ class MushafPreloadService {
 
       for (const [family, asset] of Object.entries(FONT_ASSETS)) {
         try {
-          const uri = Image.resolveAssetSource(asset).uri;
+          const uri = assetUri(asset);
           const data = await Skia.Data.fromURI(uri);
           const typeface = Skia.Typeface.MakeFreeTypeFaceFromData(data);
           if (!typeface) {

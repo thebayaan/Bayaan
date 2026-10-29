@@ -109,54 +109,67 @@ struct BedtimeView: View {
                        sleepMinutes: entry.settings.minutes, ambient: entry.settings.ambient.commandValue)
   }
 
+  // @ai-start
+  private var isPlaying: Bool {
+    PlayingNow.matches(PlayingNow.track(at: entry.date), surahId: entry.settings.surahId,
+                       reciterId: entry.settings.reciterId)
+  }
+  // @ai-end
+
   private var detail: String {
     ["\(entry.settings.minutes) min", entry.settings.ambient.label].compactMap { $0 }.joined(separator: " · ")
   }
 
   var body: some View {
     // The whole widget is the action.
-    Button(intent: intent) { content }
-      .buttonStyle(.plain)
-      .accessibilityLabel("Start bedtime with \(surah?.name ?? "")")
+    // @ai-start
+    PlayOrPauseButton(playing: isPlaying, play: intent, label: "Start bedtime with \(surah?.name ?? "")") { _ in
+      content
+    }
+    // @ai-end
       .foregroundStyle(.white)
-      .containerBackground(for: .widget) { WidgetPalette.background }
+      .containerBackground(for: .widget) { WidgetPalette.bedtime } // @ai
   }
 
   @ViewBuilder private var content: some View {
     if family == .systemSmall {
       VStack(alignment: .leading, spacing: 6) {
         HStack(alignment: .top) {
-          SurahCard(surah: surah, size: 54)
+          Image(systemName: "moon.fill").font(.system(size: 22)).foregroundStyle(WidgetPalette.moon) // @ai
           Spacer(minLength: 0)
-          BayaanLogo(size: 12)
+          SurahCard(surah: surah, size: 40) // @ai
         }
         Spacer(minLength: 0)
-        Text("Bedtime").font(.headline)
+        // @ai-start
+        Eyebrow(text: "Bedtime", color: WidgetPalette.moon)
+        Text(surah?.name ?? "").font(.system(size: 17, weight: .heavy)).lineLimit(1)
+        // @ai-end
         HStack(alignment: .bottom) {
-          subtitle.font(.caption).opacity(0.75).lineLimit(2)
+          subtitle.font(.caption.weight(.medium)).foregroundStyle(WidgetPalette.secondary).lineLimit(2) // @ai
           Spacer(minLength: 4)
-          RoundGlyph(systemName: "moon.zzz.fill")
+          PrimaryGlyph(systemName: isPlaying ? "pause.fill" : "play.fill", fill: WidgetPalette.moon, glyph: WidgetPalette.bedtime) // @ai
         }
       }
-      .padding(12)
+      .padding(14) // @ai
     } else {
       HStack(spacing: 12) {
         SurahCard(surah: surah, size: 96)
         VStack(alignment: .leading, spacing: 3) {
-          HStack {
-            Text("Bedtime").font(.caption.weight(.semibold)).opacity(0.6)
-            Spacer(minLength: 0)
-            BayaanLogo(size: 14)
+          // @ai-start
+          HStack(spacing: 6) {
+            Image(systemName: "moon.fill").font(.system(size: 13)).foregroundStyle(WidgetPalette.moon)
+            Eyebrow(text: "Bedtime", color: WidgetPalette.moon)
+          // @ai-end
           }
-          Text(surah?.name ?? "").font(.headline).lineLimit(1)
+          Text(surah?.name ?? "").font(.system(size: 18, weight: .heavy)).lineLimit(1) // @ai
           if let reciter = entry.settings.reciterName {
-            Text(reciter).font(.subheadline).opacity(0.75).lineLimit(1)
+            Text(reciter).font(.footnote.weight(.medium)).foregroundStyle(WidgetPalette.secondary).lineLimit(1) // @ai
           }
           Spacer(minLength: 0)
           HStack(alignment: .bottom) {
-            subtitle.font(.caption).opacity(0.75).lineLimit(1)
+            subtitle.font(.caption.weight(.medium)).foregroundStyle(WidgetPalette.secondary).lineLimit(1) // @ai
             Spacer(minLength: 4)
-            RoundGlyph(systemName: "moon.zzz.fill")
+            PrimaryGlyph(systemName: isPlaying ? "pause.fill" : "play.fill", fill: WidgetPalette.moon, glyph: WidgetPalette.bedtime) // @ai
           }
         }
       }

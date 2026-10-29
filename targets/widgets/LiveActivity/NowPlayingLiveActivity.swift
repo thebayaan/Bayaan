@@ -13,14 +13,14 @@ struct NowPlayingLiveActivity: Widget {
   var body: some WidgetConfiguration {
     ActivityConfiguration(for: NowPlayingAttributes.self) { context in
       NowPlayingLockScreenView(state: context.state)
-        .activityBackgroundTint(WidgetPalette.background)
+        .activityBackgroundTint(SurahTint.deep(context.state.surahId)) // @ai
         .activitySystemActionForegroundColor(.white)
         .widgetURL(playerURL)
     } dynamicIsland: { context in
       let state = context.state
       return DynamicIsland {
         DynamicIslandExpandedRegion(.leading) {
-          ActivityArtwork(file: state.artworkFile, size: 52).padding(.leading, 4)
+          ActivityArtwork(file: state.artworkFile, surahId: state.surahId, size: 52).padding(.leading, 4) // @ai
         }
         DynamicIslandExpandedRegion(.center) {
           ActivityTitles(state: state)
@@ -39,14 +39,14 @@ struct NowPlayingLiveActivity: Widget {
           .padding(.horizontal, 8)
         }
       } compactLeading: {
-        ActivityArtwork(file: state.artworkFile, size: 22)
+        ActivityArtwork(file: state.artworkFile, surahId: state.surahId, size: 22) // @ai
       } compactTrailing: {
         CompactProgress(state: state)
       } minimal: {
         CompactProgress(state: state)
       }
       .widgetURL(playerURL)
-      .keylineTint(.white)
+      .keylineTint(WidgetPalette.accent) // @ai
     }
   }
 }
@@ -57,7 +57,7 @@ struct NowPlayingLockScreenView: View {
   var body: some View {
     VStack(spacing: 10) {
       HStack(spacing: 12) {
-        ActivityArtwork(file: state.artworkFile, size: 56)
+        ActivityArtwork(file: state.artworkFile, surahId: state.surahId, size: 56) // @ai
         ActivityTitles(state: state)
         ActivityPlayButton(state: state)
       }
@@ -67,9 +67,6 @@ struct NowPlayingLockScreenView: View {
       ActivityProgress(state: state)
     }
     .padding(14)
-    .overlay(alignment: .topTrailing) {
-      BayaanLogo(size: 12).padding(8)
-    }
   }
 }
 
@@ -78,6 +75,7 @@ struct NowPlayingLockScreenView: View {
 /// a thumbnail at the size shown instead.
 struct ActivityArtwork: View {
   let file: String?
+  var surahId: Int = 0 // @ai
   let size: CGFloat
 
   var body: some View {
@@ -85,7 +83,7 @@ struct ActivityArtwork: View {
       if let image = Self.thumbnail(file, maxPixels: size * 3) {
         Image(uiImage: image).resizable()
       } else {
-        RoundedRectangle(cornerRadius: size * 0.16).fill(.white.opacity(0.15))
+        GeneratedSurahTile(surah: StaticData.surah(surahId), size: size) // @ai
       }
     }
     .aspectRatio(1, contentMode: .fill)
@@ -116,12 +114,12 @@ struct ActivityTitles: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 2) {
       Text(state.surahName)
-        .font(.headline)
+        .font(.headline.weight(.heavy)) // @ai
         .foregroundStyle(.white)
         .lineLimit(1)
       Text(state.reciterName)
         .font(.subheadline)
-        .foregroundStyle(.white.opacity(0.75))
+        .foregroundStyle(WidgetPalette.secondary) // @ai
         .lineLimit(1)
     }
     .frame(maxWidth: .infinity, alignment: .leading)
@@ -132,10 +130,13 @@ struct ActivityPlayButton: View {
   let state: NowPlayingActivityState
 
   var body: some View {
-    RoundIntentButton(
+    PrimaryIntentButton( // @ai
       intent: SetPlaybackIntent(playing: !state.isPlaying),
       systemName: state.isPlaying ? "pause.fill" : "play.fill",
-      label: state.isPlaying ? "Pause" : "Play")
+      // @ai-start
+      label: state.isPlaying ? "Pause" : "Play",
+      size: 40)
+      // @ai-end
   }
 }
 
@@ -192,7 +193,7 @@ struct CompactProgress: View {
         EmptyView()
       }
       .progressViewStyle(.circular)
-      .tint(.white)
+      .tint(WidgetPalette.accent) // @ai
       .frame(width: 20, height: 20)
     } else {
       Image(systemName: "pause.fill")

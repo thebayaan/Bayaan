@@ -13,6 +13,11 @@ export interface OnboardingPage {
   description: string;
   /** The minimum app version where this page was introduced (e.g. "2.0") */
   minVersion: string;
+  /**
+   * Release announcement: shown to people updating from an earlier version
+   * and left out of the first-launch tour.
+   */
+  updateOnly?: boolean;
 }
 
 /**
@@ -129,6 +134,71 @@ export function getOnboardingPages(): OnboardingPage[] {
       title: i18n.t('content:onboarding.indopak.title'),
       description: i18n.t('content:onboarding.indopak.description'),
       minVersion: '2.1',
+    },
+    {
+      id: 'widgets',
+      icon: 'grid-outline',
+      gradientColors: ['#3B82F6', '#4F46E5'],
+      title: i18n.t('content:onboarding.widgets.title'),
+      description: i18n.t('content:onboarding.widgets.description'),
+      minVersion: '2.3',
+      updateOnly: true,
+    },
+    {
+      id: 'carplay',
+      icon: 'car-outline',
+      gradientColors: ['#EF4444', '#B91C1C'],
+      title: i18n.t('content:onboarding.carplay.title'),
+      description: i18n.t('content:onboarding.carplay.description'),
+      minVersion: '2.3',
+      updateOnly: true,
+    },
+    {
+      id: 'arabic',
+      icon: 'language-outline',
+      gradientColors: ['#10B981', '#047857'],
+      title: i18n.t('content:onboarding.arabic.title'),
+      description: i18n.t('content:onboarding.arabic.description'),
+      minVersion: '2.3',
+      updateOnly: true,
+    },
+    {
+      id: 'adhkar-playback',
+      icon: 'headset-outline',
+      gradientColors: ['#EC4899', '#BE185D'],
+      title: i18n.t('content:onboarding.adhkarPlayback.title'),
+      description: i18n.t('content:onboarding.adhkarPlayback.description'),
+      minVersion: '2.3',
+      updateOnly: true,
+    },
+    {
+      id: 'mushaf-1440',
+      icon: 'book-outline',
+      isCustomIcon: true,
+      gradientColors: ['#CA8A04', '#854D0E'],
+      title: i18n.t('content:onboarding.mushaf1440.title'),
+      description: i18n.t('content:onboarding.mushaf1440.description'),
+      minVersion: '2.3',
+      updateOnly: true,
+    },
+    {
+      id: 'search',
+      icon: 'search-outline',
+      gradientColors: ['#8B5CF6', '#5B21B6'],
+      title: i18n.t('content:onboarding.search.title'),
+      description: i18n.t('content:onboarding.search.description'),
+      minVersion: '2.3',
+      updateOnly: true,
+    },
+    {
+      id: 'ipad',
+      icon: 'tablet-landscape-outline',
+      isCustomIcon: true,
+      gradientColors: ['#64748B', '#334155'],
+      title: i18n.t('content:onboarding.ipad.title'),
+      description: i18n.t('content:onboarding.ipad.description'),
+      minVersion: '2.3',
+      updateOnly: true,
     },
     {
       id: 'downloads',

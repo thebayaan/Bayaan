@@ -66,9 +66,9 @@ describe('adhkarTrackControls', () => {
 });
 
 describe('adhkarTrackEvent', () => {
-  it('is the swipe the reader dispatches', () => {
+  it('is a track skip to the target dhikr', () => {
     expect(adhkarTrackEvent(at(0), 'next')).toEqual({
-      type: 'swipedTo',
+      type: 'trackSkipped',
       listId: 'morning-adhkar',
       dhikrId: 'c',
     });
@@ -87,6 +87,24 @@ describe('skipAdhkarTrack', () => {
     useAdhkarSessionStore.setState({session: at(0)});
     skipAdhkarTrack('next');
     expect(useAdhkarSessionStore.getState().session?.index).toBe(2);
+  });
+
+  it('plays the next dhikr from a paused session', () => {
+    useAdhkarSessionStore.setState({session: {...at(0), status: 'paused'}});
+    skipAdhkarTrack('next');
+    expect(useAdhkarSessionStore.getState().session).toMatchObject({
+      index: 2,
+      status: 'loading',
+    });
+  });
+
+  it('plays the previous dhikr from a paused session', () => {
+    useAdhkarSessionStore.setState({session: {...at(4), status: 'paused'}});
+    skipAdhkarTrack('previous');
+    expect(useAdhkarSessionStore.getState().session).toMatchObject({
+      index: 2,
+      status: 'loading',
+    });
   });
 
   it('does nothing without a session', () => {

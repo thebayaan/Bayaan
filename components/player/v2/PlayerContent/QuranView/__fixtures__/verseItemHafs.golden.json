@@ -10,7 +10,7 @@
      "accessibilityValue": {},
      "style": [
       {
-       "paddingVertical": 13.496941176470589,
+       "paddingVertical": 16.44705882352941,
        "paddingHorizontal": 8.914285714285715,
        "borderBottomWidth": 0.5,
        "borderRadius": 8.914285714285715
@@ -28,7 +28,7 @@
       "type": "View",
       "props": {
        "style": {
-        "marginBottom": 6.748470588235294
+        "marginBottom": 8.223529411764705
        }
       },
       "children": [
@@ -199,8 +199,8 @@
           {
            "fontSize": 12.257142857142858,
            "fontFamily": "Manrope-Regular",
-           "marginTop": 2.2494901960784315,
-           "marginBottom": 4.498980392156863,
+           "marginTop": 2.7411764705882353,
+           "marginBottom": 5.482352941176471,
            "textAlign": "left",
            "fontStyle": "italic"
           },
@@ -246,7 +246,7 @@
      "accessibilityValue": {},
      "style": [
       {
-       "paddingVertical": 13.496941176470589,
+       "paddingVertical": 16.44705882352941,
        "paddingHorizontal": 8.914285714285715,
        "borderBottomWidth": 0.5,
        "borderRadius": 8.914285714285715
@@ -264,7 +264,7 @@
       "type": "View",
       "props": {
        "style": {
-        "marginBottom": 6.748470588235294
+        "marginBottom": 8.223529411764705
        }
       },
       "children": [
@@ -417,7 +417,7 @@
      "accessibilityValue": {},
      "style": [
       {
-       "paddingVertical": 13.496941176470589,
+       "paddingVertical": 16.44705882352941,
        "paddingHorizontal": 8.914285714285715,
        "borderBottomWidth": 0.5,
        "borderRadius": 8.914285714285715
@@ -435,7 +435,7 @@
       "type": "View",
       "props": {
        "style": {
-        "marginBottom": 6.748470588235294
+        "marginBottom": 8.223529411764705
        }
       },
       "children": [
@@ -575,7 +575,7 @@
      "accessibilityValue": {},
      "style": [
       {
-       "paddingVertical": 13.496941176470589,
+       "paddingVertical": 16.44705882352941,
        "paddingHorizontal": 8.914285714285715,
        "borderBottomWidth": 0.5,
        "borderRadius": 8.914285714285715
@@ -593,7 +593,7 @@
       "type": "View",
       "props": {
        "style": {
-        "marginBottom": 6.748470588235294
+        "marginBottom": 8.223529411764705
        }
       },
       "children": [
@@ -746,7 +746,7 @@
      "accessibilityValue": {},
      "style": [
       {
-       "paddingVertical": 13.496941176470589,
+       "paddingVertical": 16.44705882352941,
        "paddingHorizontal": 8.914285714285715,
        "borderBottomWidth": 0.5,
        "borderRadius": 8.914285714285715
@@ -764,7 +764,7 @@
       "type": "View",
       "props": {
        "style": {
-        "marginBottom": 6.748470588235294
+        "marginBottom": 8.223529411764705
        }
       },
       "children": [
@@ -903,7 +903,7 @@
      "accessibilityValue": {},
      "style": [
       {
-       "paddingVertical": 13.496941176470589,
+       "paddingVertical": 16.44705882352941,
        "paddingHorizontal": 8.914285714285715,
        "borderBottomWidth": 0.5,
        "borderRadius": 8.914285714285715
@@ -927,7 +927,7 @@
       "type": "View",
       "props": {
        "style": {
-        "marginBottom": 6.748470588235294
+        "marginBottom": 8.223529411764705
        }
       },
       "children": [
@@ -1114,7 +1114,7 @@
      "accessibilityValue": {},
      "style": [
       {
-       "paddingVertical": 13.496941176470589,
+       "paddingVertical": 16.44705882352941,
        "paddingHorizontal": 8.914285714285715,
        "borderBottomWidth": 0.5,
        "borderRadius": 8.914285714285715
@@ -1132,7 +1132,7 @@
       "type": "View",
       "props": {
        "style": {
-        "marginBottom": 6.748470588235294
+        "marginBottom": 8.223529411764705
        }
       },
       "children": [
@@ -1305,7 +1305,7 @@
      "accessibilityValue": {},
      "style": [
       {
-       "paddingVertical": 13.496941176470589,
+       "paddingVertical": 16.44705882352941,
        "paddingHorizontal": 8.914285714285715,
        "borderBottomWidth": 0.5,
        "borderRadius": 8.914285714285715
@@ -1323,7 +1323,7 @@
       "type": "View",
       "props": {
        "style": {
-        "marginBottom": 6.748470588235294
+        "marginBottom": 8.223529411764705
        }
       },
       "children": [
@@ -1412,7 +1412,7 @@
      "accessibilityValue": {},
      "style": [
       {
-       "paddingVertical": 13.496941176470589,
+       "paddingVertical": 16.44705882352941,
        "paddingHorizontal": 8.914285714285715,
        "borderBottomWidth": 0.5,
        "borderRadius": 8.914285714285715
@@ -1430,7 +1430,7 @@
       "type": "View",
       "props": {
        "style": {
-        "marginBottom": 6.748470588235294
+        "marginBottom": 8.223529411764705
        }
       },
       "children": [
@@ -1604,7 +1604,7 @@
      "accessibilityValue": {},
      "style": [
       {
-       "paddingVertical": 13.496941176470589,
+       "paddingVertical": 16.44705882352941,
        "paddingHorizontal": 8.914285714285715,
        "borderBottomWidth": 0.5,
        "borderRadius": 8.914285714285715
@@ -1622,7 +1622,7 @@
       "type": "View",
       "props": {
        "style": {
-        "marginBottom": 6.748470588235294
+        "marginBottom": 8.223529411764705
        }
       },
       "children": [
@@ -1775,7 +1775,7 @@
      "accessibilityValue": {},
      "style": [
       {
-       "paddingVertical": 13.496941176470589,
+       "paddingVertical": 16.44705882352941,
        "paddingHorizontal": 8.914285714285715,
        "borderBottomWidth": 0.5,
        "borderRadius": 8.914285714285715
@@ -1796,7 +1796,7 @@
       "type": "View",
       "props": {
        "style": {
-        "marginBottom": 6.748470588235294
+        "marginBottom": 8.223529411764705
        }
       },
       "children": [
@@ -1991,7 +1991,7 @@
      "accessibilityValue": {},
      "style": [
       {
-       "paddingVertical": 13.496941176470589,
+       "paddingVertical": 16.44705882352941,
        "paddingHorizontal": 8.914285714285715,
        "borderBottomWidth": 0.5,
        "borderRadius": 8.914285714285715
@@ -2009,7 +2009,7 @@
       "type": "View",
       "props": {
        "style": {
-        "marginBottom": 6.748470588235294
+        "marginBottom": 8.223529411764705
        }
       },
       "children": [
@@ -2162,7 +2162,7 @@
      "accessibilityValue": {},
      "style": [
       {
-       "paddingVertical": 13.496941176470589,
+       "paddingVertical": 16.44705882352941,
        "paddingHorizontal": 8.914285714285715,
        "borderBottomWidth": 0.5,
        "borderRadius": 8.914285714285715
@@ -2183,7 +2183,7 @@
       "type": "View",
       "props": {
        "style": {
-        "marginBottom": 6.748470588235294
+        "marginBottom": 8.223529411764705
        }
       },
       "children": [
@@ -2377,7 +2377,7 @@
      "accessibilityValue": {},
      "style": [
       {
-       "paddingVertical": 13.496941176470589,
+       "paddingVertical": 16.44705882352941,
        "paddingHorizontal": 8.914285714285715,
        "borderBottomWidth": 0.5,
        "borderRadius": 8.914285714285715
@@ -2395,7 +2395,7 @@
       "type": "View",
       "props": {
        "style": {
-        "marginBottom": 6.748470588235294
+        "marginBottom": 8.223529411764705
        }
       },
       "children": [
@@ -2557,8 +2557,8 @@
           {
            "fontSize": 12.257142857142858,
            "fontFamily": "Manrope-Regular",
-           "marginTop": 2.2494901960784315,
-           "marginBottom": 4.498980392156863,
+           "marginTop": 2.7411764705882353,
+           "marginBottom": 5.482352941176471,
            "textAlign": "left",
            "fontStyle": "italic"
           },
@@ -2584,7 +2584,7 @@
      "accessibilityValue": {},
      "style": [
       {
-       "paddingVertical": 13.496941176470589,
+       "paddingVertical": 16.44705882352941,
        "paddingHorizontal": 8.914285714285715,
        "borderBottomWidth": 0.5,
        "borderRadius": 8.914285714285715
@@ -2602,7 +2602,7 @@
       "type": "View",
       "props": {
        "style": {
-        "marginBottom": 6.748470588235294
+        "marginBottom": 8.223529411764705
        }
       },
       "children": [
@@ -2764,8 +2764,8 @@
           {
            "fontSize": 12.257142857142858,
            "fontFamily": "Manrope-Regular",
-           "marginTop": 2.2494901960784315,
-           "marginBottom": 4.498980392156863,
+           "marginTop": 2.7411764705882353,
+           "marginBottom": 5.482352941176471,
            "textAlign": "left",
            "fontStyle": "italic"
           },
@@ -2785,7 +2785,7 @@
       "props": {
        "style": [
         {
-         "marginTop": 8.997960784313726,
+         "marginTop": 10.964705882352941,
          "borderRadius": 8.914285714285715,
          "padding": 13.371428571428572
         },
@@ -2802,7 +2802,7 @@
           "flexDirection": "row",
           "justifyContent": "space-between",
           "alignItems": "center",
-          "marginBottom": 8.997960784313726
+          "marginBottom": 10.964705882352941
          }
         },
         "children": [

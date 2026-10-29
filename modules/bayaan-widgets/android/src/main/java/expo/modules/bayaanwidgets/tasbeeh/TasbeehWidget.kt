@@ -52,6 +52,9 @@ import expo.modules.bayaanwidgets.WidgetConfigJson
 import expo.modules.bayaanwidgets.WidgetInputs
 import expo.modules.bayaanwidgets.ui.ArabicText
 import expo.modules.bayaanwidgets.ui.Logo
+import expo.modules.bayaanwidgets.ui.WidgetPalette
+import androidx.compose.ui.graphics.toArgb
+import kotlin.math.roundToInt
 import expo.modules.bayaanwidgets.ui.RoundButton
 import expo.modules.bayaanwidgets.ui.WidgetColors
 import expo.modules.bayaanwidgets.ui.WidgetSizes
@@ -90,55 +93,66 @@ class TasbeehWidget : GlanceAppWidget() {
       snapshot?.tasbeeh?.get(dhikr.id), TasbeehLogic.parse(inputs.pendingTasbeehJson), dhikr.id,
       DayMath.localDayKey(System.currentTimeMillis(), TimeZone.getDefault()),
     )
+    // @ai-start
     val increment = actionRunCallback<IncrementTasbeehAction>(actionParametersOf(TasbeehActions.DHIKR_ID to dhikr.id))
     val size = LocalSize.current
     if (size.width >= WidgetSizes.MEDIUM.width) {
       val reset = actionRunCallback<ResetTasbeehAction>(actionParametersOf(TasbeehActions.DHIKR_ID to dhikr.id))
+      val ring = minOf(120, size.height.value.toInt() - 28)
       Row(root.padding(14.dp).clickable(appLink(context, "adhkar")), verticalAlignment = Alignment.CenterVertically) {
-        Box(GlanceModifier.clickable(increment)) { Ring(context, count, dhikr.repeatCount, 84) }
+        Box(GlanceModifier.clickable(increment)) { Beads(context, count, dhikr.repeatCount, ring, arabic = null) }
         Spacer(GlanceModifier.width(14.dp))
         Column(GlanceModifier.defaultWeight().fillMaxHeight(), horizontalAlignment = Alignment.End) {
-          Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            RoundButton(R.drawable.widget_reset, "Reset", reset)
-            Spacer(GlanceModifier.defaultWeight())
-            Logo(14)
-          }
+          // A 110 dp tall cell keeps the dhikr and reset only.
+          val short = WidgetSizes.isShort(size)
+          ArabicText(context, dhikr.arabic, ArabicBitmap.DHIKR_FONT, size.width.value - 28 - 14 - ring, 44f, 24f, 12f, 2, center = false)
+          if (!short) Translation(dhikr)
           Spacer(GlanceModifier.defaultWeight())
-          ArabicText(context, dhikr.arabic, ArabicBitmap.DHIKR_FONT, size.width.value - 28 - 14 - 84, 44f, 20f, 12f, 2, center = false)
-          Translation(dhikr)
+          Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            if (!short) {
+              Text("Tap the beads to count", maxLines = 2, modifier = GlanceModifier.defaultWeight(),
+                style = TextStyle(color = WidgetColors.SECONDARY, fontSize = 11.sp, fontWeight = FontWeight.Medium))
+            } else {
+              Spacer(GlanceModifier.defaultWeight())
+            }
+            RoundButton(R.drawable.widget_reset, "Reset", reset)
+          }
         }
       }
       return
     }
-    Column(root.padding(12.dp).clickable(increment), horizontalAlignment = Alignment.CenterHorizontally) {
-      Row(GlanceModifier.fillMaxWidth()) {
-        Spacer(GlanceModifier.defaultWeight())
-        Logo(12)
-      }
-      ArabicText(context, dhikr.arabic, ArabicBitmap.DHIKR_FONT, size.width.value - 24, 34f, 17f, 10f, 2, center = true)
-      Spacer(GlanceModifier.defaultWeight())
-      Ring(context, count, dhikr.repeatCount, 60)
+    // The whole small widget counts.
+    Box(root.padding(10.dp).clickable(increment), contentAlignment = Alignment.Center) {
+      Beads(context, count, dhikr.repeatCount, minOf(size.width.value, size.height.value).toInt() - 20, dhikr.arabic)
     }
   }
 
   @Composable
   private fun Translation(dhikr: CatalogDhikr) {
     val translation = dhikr.translation ?: return
-    Text(translation, maxLines = 2, style = TextStyle(color = WidgetColors.TERTIARY, fontSize = 11.sp, textAlign = TextAlign.End))
+    Text(translation, maxLines = 2, style = TextStyle(color = WidgetColors.SECONDARY, fontSize = 12.sp, textAlign = TextAlign.End))
   }
 
+  /** 33 beads around the count; the filled share follows the target. */
   @Composable
-  private fun Ring(context: Context, count: Int, target: Int, sizeDp: Int) {
+  private fun Beads(context: Context, count: Int, target: Int, sizeDp: Int, arabic: String?) {
     val px = dpToPx(context, sizeDp)
-    val bmp = remember(count, target, px) {
-      RingBitmap.render(px, px * 0.07f, TasbeehLogic.progress(count, target), android.graphics.Color.WHITE, 0x33FFFFFF)
+    val filled = (TasbeehLogic.progress(count, target) * BEADS).roundToInt()
+    val bmp = remember(filled, px) {
+      RingBitmap.beads(px, BEADS, filled, WidgetPalette.ACCENT.toArgb(), 0x33FFFFFF)
     }
     Box(GlanceModifier.size(sizeDp.dp), contentAlignment = Alignment.Center) {
       Image(ImageProvider(bmp), contentDescription = "Count, $count of $target", modifier = GlanceModifier.fillMaxSize())
       Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text("$count", style = TextStyle(color = WidgetColors.WHITE, fontSize = (sizeDp * 0.28f).sp, fontWeight = FontWeight.Bold))
-        Text("/ $target", style = TextStyle(color = WidgetColors.TERTIARY, fontSize = 10.sp))
+        if (arabic != null) ArabicText(context, arabic, ArabicBitmap.DHIKR_FONT, sizeDp * 0.62f, 22f, 15f, 10f, 1, center = true)
+        Text("$count", style = TextStyle(color = WidgetColors.WHITE, fontSize = (sizeDp * 0.24f).sp, fontWeight = FontWeight.Bold))
+        Text("of $target", style = TextStyle(color = WidgetColors.SECONDARY, fontSize = 11.sp, fontWeight = FontWeight.Medium))
       }
     }
   }
+
+  private companion object {
+    const val BEADS = 33
+  }
+  // @ai-end
 }

@@ -1,7 +1,6 @@
 import React from 'react';
 import {Animated, StyleSheet, Text, View} from 'react-native';
-import {moderateScale} from 'react-native-size-matters';
-import {ScaledSheet} from 'react-native-size-matters';
+import {moderateScale, ScaledSheet} from '@/utils/scale';
 import {Theme} from '@/utils/themeUtils';
 import {useTheme} from '@/hooks/useTheme';
 import {StickyHeaderProps} from '@/components/reciter-profile/types';

@@ -12,6 +12,16 @@ Bayaan welcomes AI-assisted development. This document explains the project's po
 
 ---
 
+## Rules for AI coding assistants
+
+`CLAUDE.md`, `AGENTS.md`, and similar files are gitignored in this repo, so these docs are the shared instructions for any assistant working on Bayaan. Point your local instruction file at them:
+
+- Code standards: [CONTRIBUTING.md](../../CONTRIBUTING.md#code-standards)
+- UI work of any kind: [docs/design/README.md](../design/README.md), and in particular the MUST rules in [ipad-standards.md](../design/ipad-standards.md). Run the [UI review checklist](../design/ipad-review-checklist.md) before proposing a UI change.
+- Translations and RTL: [docs/i18n/README.md](../i18n/README.md)
+
+---
+
 ## In-code marking convention
 
 Mark AI-generated code clearly so reviewers can give it appropriate scrutiny and so the codebase can be audited over time.
@@ -58,6 +68,7 @@ When reviewing a PR with AI-marked code, reviewers should:
 
 - Check that the logic is actually correct for the use case, not just syntactically valid
 - Verify that the code follows project conventions (Pressable not TouchableOpacity, FlashList not FlatList, `usePlayerActions` not `useUnifiedPlayer`, etc.)
+- For UI changes, verify the code follows [docs/design/ipad-standards.md](../design/ipad-standards.md) (scaling from `@/utils/scale`, width classes, type ramp) and that the PR includes the [UI review checklist](../design/ipad-review-checklist.md)
 - Confirm that any AI-generated types match the actual data shapes in `types/`
 - Not assume AI-generated code was tested — ask if it is unclear
 

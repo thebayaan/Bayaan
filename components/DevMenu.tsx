@@ -1,7 +1,7 @@
 import React, {useState} from 'react';
 import {View, Text, TouchableOpacity, StyleSheet, Alert} from 'react-native';
 import {router} from 'expo-router';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {quickTestWhatsNew, logVersionState} from '@/utils/devUtils';
 import {mushafLayoutCacheService} from '@/services/mushaf/MushafLayoutCacheService';

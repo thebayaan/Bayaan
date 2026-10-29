@@ -44,6 +44,48 @@ export function binarySearchAyah(
   return result;
 }
 
+// @ai-start
+/**
+ * True when the recitation of `surahNumber` opens with a basmala that is
+ * shown apart from its verses (the basmala line / header above verse 1):
+ * every surah but al-Fatihah (its basmala is verse 1, highlighted as such)
+ * and at-Tawbah (no basmala).
+ */
+export function surahHasBasmalaIntro(surahNumber: number): boolean {
+  return (
+    Number.isInteger(surahNumber) &&
+    surahNumber >= 2 &&
+    surahNumber <= 114 &&
+    surahNumber !== 9
+  );
+}
+
+/**
+ * True while the audio of `surahNumber` is in its intro, before its first
+ * verse starts (the isti'adha and / or basmala recited before verse 1), for
+ * a surah whose basmala is shown apart from its verses: the follow-along
+ * highlights that basmala there. The first verse is the first timing entry,
+ * after a leading ayah-0 pre-roll entry when the set has one (that entry is
+ * the intro itself). False without timings, for al-Fatihah and at-Tawbah
+ * (surahHasBasmalaIntro), and from the first verse's start on, where the
+ * verse highlight takes over.
+ */
+export function isInBasmalaIntro(
+  timestamps: readonly AyahTimestamp[] | null | undefined,
+  positionMs: number,
+  surahNumber: number,
+): boolean {
+  if (!timestamps || !surahHasBasmalaIntro(surahNumber)) return false;
+  if (!Number.isFinite(positionMs) || positionMs < 0) return false;
+  let first = 0;
+  while (first < timestamps.length && timestamps[first].ayahNumber === 0) {
+    first++; // pre-roll
+  }
+  if (first === timestamps.length) return false;
+  return positionMs < timestamps[first].timestampFrom;
+}
+// @ai-end
+
 /**
  * Timing entry where playback of HAFS ayah `ayahNumber` starts (the ayah of a
  * mushaf / verse-list verse key).

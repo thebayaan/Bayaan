@@ -697,12 +697,12 @@
  },
  "list 1 idle": {
   "count": 6464,
-  "sha256": "a084154271f986dba96525848eb95d80662e891610c7e7a7130a94ea97bb8f7b",
+  "sha256": "f4f7dcd25e51b38ec2d4aea1f6adc1a1029da30c1b5882aff59e35a118c47e6a",
   "head": [
    [
     "SurahDivider",
     {
-     "width": 724.8571428571429,
+     "width": 732.1714285714286,
      "surahNumber": 1,
      "textColor": "#666666",
      "nameColor": "#111111"
@@ -713,7 +713,7 @@
     {
      "visible": false,
      "surahNumber": 1,
-     "width": 724.8571428571429,
+     "width": 732.1714285714286,
      "textColor": "#111111",
      "showTajweed": false,
      "fontMgr": {
@@ -804,12 +804,12 @@
  "list 1 data": "40fe33057aec90e686eaa6aa7d2bd449fcded8a1d402276171cfce1fb2301614",
  "list 1 playing": {
   "count": 6464,
-  "sha256": "a2440e6aeb1be4ce86495e4ac4769fab1db42d91f86b6c90f09567327f3edd06",
+  "sha256": "0b79c918b9750191496c12c668ee43900407750b8af12b6db26d181bb0711cdc",
   "head": [
    [
     "SurahDivider",
     {
-     "width": 724.8571428571429,
+     "width": 732.1714285714286,
      "surahNumber": 1,
      "textColor": "#666666",
      "nameColor": "#111111"
@@ -820,7 +820,7 @@
     {
      "visible": false,
      "surahNumber": 1,
-     "width": 724.8571428571429,
+     "width": 732.1714285714286,
      "textColor": "#111111",
      "showTajweed": false,
      "fontMgr": {
@@ -965,12 +965,12 @@
  },
  "list 371 idle": {
   "count": 6464,
-  "sha256": "a084154271f986dba96525848eb95d80662e891610c7e7a7130a94ea97bb8f7b",
+  "sha256": "f4f7dcd25e51b38ec2d4aea1f6adc1a1029da30c1b5882aff59e35a118c47e6a",
   "head": [
    [
     "SurahDivider",
     {
-     "width": 724.8571428571429,
+     "width": 732.1714285714286,
      "surahNumber": 1,
      "textColor": "#666666",
      "nameColor": "#111111"
@@ -981,7 +981,7 @@
     {
      "visible": false,
      "surahNumber": 1,
-     "width": 724.8571428571429,
+     "width": 732.1714285714286,
      "textColor": "#111111",
      "showTajweed": false,
      "fontMgr": {
@@ -1072,12 +1072,12 @@
  "list 371 data": "40fe33057aec90e686eaa6aa7d2bd449fcded8a1d402276171cfce1fb2301614",
  "list 371 playing": {
   "count": 6464,
-  "sha256": "a2440e6aeb1be4ce86495e4ac4769fab1db42d91f86b6c90f09567327f3edd06",
+  "sha256": "0b79c918b9750191496c12c668ee43900407750b8af12b6db26d181bb0711cdc",
   "head": [
    [
     "SurahDivider",
     {
-     "width": 724.8571428571429,
+     "width": 732.1714285714286,
      "surahNumber": 1,
      "textColor": "#666666",
      "nameColor": "#111111"
@@ -1088,7 +1088,7 @@
     {
      "visible": false,
      "surahNumber": 1,
-     "width": 724.8571428571429,
+     "width": 732.1714285714286,
      "textColor": "#111111",
      "showTajweed": false,
      "fontMgr": {

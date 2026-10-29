@@ -2,7 +2,7 @@ import React, {useCallback} from 'react';
 import {View, Text, TouchableOpacity, Animated} from 'react-native';
 import * as Haptics from 'expo-haptics';
 import {Feather} from '@expo/vector-icons';
-import {ScaledSheet, moderateScale} from 'react-native-size-matters';
+import {ScaledSheet, moderateScale} from '@/utils/scale';
 import Color from 'color';
 import {useTheme} from '@/hooks/useTheme';
 import {useAdhkar} from '@/hooks/useAdhkar';

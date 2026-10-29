@@ -1,6 +1,6 @@
 import {create} from 'zustand';
-import {createJSONStorage, persist} from 'zustand/middleware';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import {persist} from 'zustand/middleware';
+import {persistStorage} from '@/utils/storage'; // @ai
 
 /**
  * User consent for anonymous product-usage analytics.
@@ -23,7 +23,7 @@ export const useAnalyticsConsentStore = create<AnalyticsConsentState>()(
     }),
     {
       name: 'analytics-consent-store',
-      storage: createJSONStorage(() => AsyncStorage),
+      storage: persistStorage(), // @ai
     },
   ),
 );

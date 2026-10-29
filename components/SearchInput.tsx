@@ -7,8 +7,9 @@ import {
   ViewStyle,
   TextStyle,
   TextInputProps,
+  type TextInputInstance,
 } from 'react-native';
-import {ScaledSheet, moderateScale} from 'react-native-size-matters';
+import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {Feather} from '@expo/vector-icons';
@@ -45,7 +46,7 @@ export interface SearchInputProps extends TextInputProps {
 }
 
 // @ai-start
-export const SearchInput = forwardRef<TextInput, SearchInputProps>(
+export const SearchInput = forwardRef<TextInputInstance, SearchInputProps>(
   (
     {
       value,

@@ -12,7 +12,7 @@ import {useTheme} from '@/hooks/useTheme';
 import {USE_GLASS} from '@/hooks/useGlassProps';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useRouter} from 'expo-router';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import {Feather} from '@expo/vector-icons';
 import {MicrophoneIcon, PlayIcon, ShuffleIcon} from '@/components/Icons';
 import {SheetManager} from 'react-native-actions-sheet';
@@ -31,6 +31,9 @@ import Color from 'color';
 import type {UploadedRecitation, RecordingType} from '@/types/uploads';
 import {CollectionStickyHeader} from '@/components/collection/CollectionStickyHeader';
 import {pickAndImportAudioFiles} from '@/utils/importAudio';
+// @ai-start
+import {confirmRemoveAllUploads} from '@/utils/confirmRemoveAllUploads';
+// @ai-end
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {NowPlayingIndicator} from '@/components/NowPlayingIndicator';
 import {GradientText} from '@/components/GradientText';
@@ -45,6 +48,7 @@ import {
   getSurahDisplayName,
   localizeDigits,
 } from '@/i18n/format';
+import {useLibraryListBottomPadding} from '@/hooks/useBottomInset'; // @ai
 // @ai-end
 
 // @ai-start
@@ -278,6 +282,7 @@ UploadListItem.displayName = 'UploadListItem';
 // @ai-start
 export default function UploadsScreen() {
   const {theme} = useTheme();
+  const listBottomPadding = useLibraryListBottomPadding(); // @ai
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const {t} = useTranslation(['collection', 'common']);
@@ -310,7 +315,9 @@ export default function UploadsScreen() {
             label: t('uploadsScreen.removeAll'),
             icon: 'trash-2',
             destructive: true,
-            onPress: () => deleteAllRecitations(),
+            // @ai-start
+            onPress: () => confirmRemoveAllUploads(deleteAllRecitations),
+            // @ai-end
           },
         ],
       },
@@ -625,7 +632,10 @@ export default function UploadsScreen() {
         renderItem={renderItem}
         keyExtractor={keyExtractor}
         ListHeaderComponent={ListHeaderComponent}
-        contentContainerStyle={styles.listContentContainer}
+        contentContainerStyle={[
+          styles.listContentContainer,
+          {paddingBottom: listBottomPadding}, // @ai
+        ]}
         showsVerticalScrollIndicator={false}
         onScroll={RNAnimated.event(
           [{nativeEvent: {contentOffset: {y: scrollY}}}],
@@ -747,7 +757,6 @@ const createStyles = (theme: {colors: any; fonts: any}) =>
     },
     listContentContainer: {
       flexGrow: 1,
-      paddingBottom: moderateScale(65),
     },
     fixedBackButton: {
       position: 'absolute',

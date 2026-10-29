@@ -36,6 +36,9 @@ export type SessionEvent =
   // The dhikr id, not a screen index: the reader's list can drift from the
   // session's items (an unsaved row leaves the Saved reader).
   | {type: 'swipedTo'; listId: string; dhikrId: string}
+  // Next / previous on the lock screen or in the car: like a swipe, but it
+  // always plays the dhikr it lands on, even from a paused session.
+  | {type: 'trackSkipped'; listId: string; dhikrId: string}
   | {type: 'toggle'}
   | {type: 'stop'}
   | {type: 'toggleLoop'}

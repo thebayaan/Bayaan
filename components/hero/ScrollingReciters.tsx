@@ -5,9 +5,9 @@ import {
   StyleSheet,
   Pressable,
   TouchableOpacity,
-  InteractionManager,
 } from 'react-native';
-import {moderateScale} from 'react-native-size-matters';
+import {runAfterInteractions} from '@/utils/afterInteractions';
+import {moderateScale} from '@/utils/scale';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -19,7 +19,7 @@ import Animated, {
 import {useTheme} from '@/hooks/useTheme';
 import {RECITERS, Reciter} from '@/data/reciterData';
 import {ReciterImage} from '@/components/ReciterImage';
-import {reciterImages} from '@/utils/reciterImages';
+import {getLocalReciterImage} from '@/utils/reciterImageLookup'; // @ai
 import {Theme} from '@/utils/themeUtils';
 import {Feather} from '@expo/vector-icons';
 // @ai-start
@@ -82,19 +82,12 @@ const MemoizedReciterImage = React.memo(ReciterImage, (prev, next) => {
 // Optimized reciter distribution with memoization
 function useDistributedReciters(reciters: Reciter[]) {
   return useMemo(() => {
-    // Create a stable mapping of reciter names
-    const reciterImageMap = new Map(
-      reciters.map(reciter => [
-        reciter,
-        reciter.name.toLowerCase().replace(/\s+/g, '-').replace(/-+/g, '-'),
-      ]),
+    // @ai-start
+    // Filter reciters with images
+    const recitersWithImages = reciters.filter(
+      reciter => !!getLocalReciterImage(reciter.name),
     );
-
-    // Filter reciters with images using the map
-    const recitersWithImages = reciters.filter(reciter => {
-      const formattedName = reciterImageMap.get(reciter);
-      return formattedName && reciterImages[formattedName];
-    });
+    // @ai-end
 
     if (recitersWithImages.length === 0) {
       console.warn('No reciters with images found');
@@ -281,7 +274,7 @@ const Column = React.memo(
         );
       };
 
-      const task = InteractionManager.runAfterInteractions(() => {
+      const task = runAfterInteractions(() => {
         if (isAnimating.value && isComponentMounted.current) {
           startAnimation();
         }

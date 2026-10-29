@@ -33,7 +33,7 @@
  *   again.
  */
 
-import {InteractionManager} from 'react-native';
+import {runAfterInteractions} from '@/utils/afterInteractions';
 import {
   digitalKhattDataService,
   getRewayahDataIdentityKey,
@@ -134,11 +134,10 @@ export function readRewayahSlots(
 }
 
 /**
- * When the chunks of a build run. The app's: the first one after
- * interactions (InteractionManager), each next one after a setTimeout(0),
- * so touches, gestures and renders run between chunks. React Native 0.85
- * deprecates InteractionManager and its runAfterInteractions only waits for
- * the next tick there: the chunks are what keep the JS thread free.
+ * When the chunks of a build run. The app's: the first one once the JS thread
+ * is idle (runAfterInteractions), each next one after a setTimeout(0), so
+ * touches, gestures and renders run between chunks. The chunks are what keep
+ * the JS thread free.
  */
 export interface VerseUnitsBuildScheduler {
   afterInteractions(task: () => void): void;
@@ -147,7 +146,7 @@ export interface VerseUnitsBuildScheduler {
 
 const APP_SCHEDULER: VerseUnitsBuildScheduler = {
   afterInteractions(task) {
-    InteractionManager.runAfterInteractions(task);
+    runAfterInteractions(task);
   },
   nextChunk(task) {
     setTimeout(task, 0);
@@ -391,7 +390,9 @@ export class RewayahVerseUnitsService {
       }
       if (problems.length > 0) {
         throw new Error(
-          `${job.rewayah} words DB and verse map disagree: ${problems.join('; ')}`,
+          `${job.rewayah} words DB and verse map disagree: ${problems.join(
+            '; ',
+          )}`,
         );
       }
       this.cache.set(job.rewayah, {dataKey: job.dataKey, units, error: null});

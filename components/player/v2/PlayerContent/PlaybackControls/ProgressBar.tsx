@@ -1,7 +1,7 @@
 import React, {useCallback, useMemo, useState} from 'react';
 import {View, Text, StyleSheet} from 'react-native';
 import Slider from '@react-native-community/slider';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {useProgress} from '@/services/player/store/progressStore';

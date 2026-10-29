@@ -1,7 +1,8 @@
 import React, {useMemo} from 'react';
 import {View, Text, Pressable, StyleSheet} from 'react-native';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
+import {useResponsive} from '@/hooks/useResponsive'; // @ai
 import {ReciterImage} from '@/components/ReciterImage';
 import {getSurahById, getReciterByIdSync} from '@/services/dataService';
 import {surahGlyphMap} from '@/utils/surahGlyphMap';
@@ -58,6 +59,20 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
     onLongPress,
   }) => {
     const {theme} = useTheme();
+    // @ai-start
+    // On iPad (not in a compact window) inset the row by the page margin
+    // (ipad-standards §5.2) so it never touches the pane edge when the
+    // capped column is as wide as the pane (11" portrait).
+    const {isTablet, width: windowWidth} = useResponsive();
+    const tabletInset =
+      isTablet && windowWidth >= 600
+        ? {
+            marginHorizontal: windowWidth >= 900 ? 32 : 24,
+            borderRadius: 12,
+            overflow: 'hidden' as const,
+          }
+        : null;
+    // @ai-end
     const {t} = useTranslation(['collection', 'common']);
 
     // Sync data loading — no async, no useState, no useEffect
@@ -69,7 +84,7 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
     const rewayat = useMemo(
       () =>
         rewayatId
-          ? (reciter?.rewayat?.find(r => r.id === rewayatId) ?? null)
+          ? reciter?.rewayat?.find(r => r.id === rewayatId) ?? null
           : null,
       [reciter, rewayatId],
     );
@@ -158,7 +173,12 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
     };
 
     return (
-      <View style={[styles.trackItem, {backgroundColor: theme.colors.card}]}>
+      <View
+        style={[
+          styles.trackItem,
+          {backgroundColor: theme.colors.card},
+          tabletInset, // @ai
+        ]}>
         {/* Play zone */}
         <Pressable
           style={styles.playZone}

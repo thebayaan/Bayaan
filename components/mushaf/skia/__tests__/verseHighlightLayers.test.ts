@@ -6,7 +6,9 @@
  * previous inline implementation, reproduced verbatim below as the oracle.
  */
 
+import type {DKLine} from '@/services/mushaf/DigitalKhattDataService';
 import {
+  basmalaPlaybackLines, // @ai
   computePageHighlightLayers,
   type LineHighlight,
   type PageHighlightLayersInput,
@@ -363,3 +365,60 @@ describe('single playback verse (Hafs): identical to the previous code', () => {
     expect(compared).toBe(3000);
   });
 });
+
+// @ai-start
+describe('the basmala being recited (the intro before verse 1)', () => {
+  const line = (
+    line_type: DKLine['line_type'],
+    line_number: number,
+  ): DKLine => ({
+    page_number: 50,
+    line_number,
+    line_type,
+    is_centered: 1,
+    first_word_id: 0,
+    last_word_id: 0,
+    surah_number: 0,
+  });
+  // A page closing surah 2 and opening surah 3 (surah name, basmala).
+  const lines = [
+    line('ayah', 1),
+    line('surah_name', 2),
+    line('basmallah', 3),
+    line('ayah', 4),
+  ];
+  const opens = (l: DKLine) => (l.line_type === 'basmallah' ? 3 : null);
+  const length = (lineIndex: number) => (lineIndex === 2 ? 38 : 60);
+
+  it('lights the whole basmallah line of the surah being recited', () => {
+    expect(basmalaPlaybackLines(lines, 3, opens, length)).toEqual([
+      {lineIndex: 2, length: 38},
+    ]);
+  });
+
+  it('nothing for another surah, none, or a line drawing no text', () => {
+    expect(basmalaPlaybackLines(lines, 2, opens, length)).toEqual([]);
+    expect(basmalaPlaybackLines(lines, null, opens, length)).toEqual([]);
+    expect(basmalaPlaybackLines(lines, 3, opens, () => 0)).toEqual([]);
+  });
+
+  it('is painted by the playback layer, with nothing else recited', () => {
+    const map = computePageHighlightLayers(
+      input({playbackBasmalaLines: [{lineIndex: 3, length: 38}]}),
+    );
+    expect(map?.get(3)).toEqual([{start: 0, end: 37, color: PLAY}]);
+    expect([...map!.keys()]).toEqual([3]);
+  });
+
+  it('without it the layers are unchanged', () => {
+    expect(computePageHighlightLayers(input({}))).toBeNull();
+    expect(
+      computePageHighlightLayers(input({playbackBasmalaLines: []})),
+    ).toBeNull();
+    const verse = input({playbackVerseKeys: ['2:3']});
+    expect(
+      computePageHighlightLayers({...verse, playbackBasmalaLines: []}),
+    ).toEqual(computePageHighlightLayers(verse));
+  });
+});
+// @ai-end

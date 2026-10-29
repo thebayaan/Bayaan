@@ -1,12 +1,10 @@
 import React, {useCallback} from 'react';
 import {View, Text, Pressable, StyleSheet} from 'react-native';
-import {ScaledSheet, moderateScale} from 'react-native-size-matters';
+import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import ActionSheet, {
-  SheetProps,
-  SheetManager,
-} from 'react-native-actions-sheet';
+import {SheetProps, SheetManager} from 'react-native-actions-sheet';
+import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import {Feather} from '@expo/vector-icons';
 import Color from 'color';
 import {useRouter} from 'expo-router';
@@ -36,9 +34,28 @@ import {getSurahDisplayName} from '@/i18n/format';
 // @ai-end
 
 // @ai-start
+type HomeCardOptionsPayload = NonNullable<
+  SheetProps<'home-card-options'>['payload']
+>;
+
+// The sheet can render before its payload arrives. Return early here, in a
+// component without hooks, so the content below always calls the same hooks.
 export const HomeCardOptionsSheet = (
   props: SheetProps<'home-card-options'>,
 ) => {
+  if (!props.payload) return null;
+  return (
+    <HomeCardOptionsContent sheetId={props.sheetId} payload={props.payload} />
+  );
+};
+
+const HomeCardOptionsContent = ({
+  sheetId,
+  payload,
+}: {
+  sheetId: string;
+  payload: HomeCardOptionsPayload;
+}) => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
   const router = useRouter();
@@ -46,9 +63,6 @@ export const HomeCardOptionsSheet = (
   const {isFavoriteReciter, toggleFavorite} = useFavoriteReciters();
   const {isLovedWithRewayat, toggleLoved} = useLoved();
   const {addToQueue} = usePlayerActions();
-
-  const payload = props.payload;
-  if (!payload) return null;
 
   const {
     reciterId,
@@ -200,7 +214,8 @@ export const HomeCardOptionsSheet = (
 
   return (
     <ActionSheet
-      id={props.sheetId}
+      id={sheetId}
+      tabletPresentation="menu"
       containerStyle={styles.sheetContainer}
       indicatorStyle={styles.indicator}
       gestureEnabled={true}>

@@ -372,6 +372,7 @@ jest.mock('@/store/mushafPlayerStore', () => {
   };
   return {
     usePlaybackVerseKeys: () => idle,
+    usePlaybackBasmalaSurah: () => null, // @ai
     useMushafPlayerStore: (selector: (s: typeof idleState) => unknown) =>
       selector(idleState),
   };

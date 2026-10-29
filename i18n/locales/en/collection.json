@@ -25,6 +25,7 @@
   "notesScreen": {
     "count_one": "{{count}} note",
     "count_other": "{{count}} notes",
+    "openVerse": "Open Verse",
     "editNote": "Edit Note",
     "deleteNote": "Delete Note",
     "emptySubtitle": "Add notes to verses to see them here"
@@ -48,6 +49,9 @@
     "surahsDownloaded_one": "{{count}} surah downloaded",
     "surahsDownloaded_other": "{{count}} surahs downloaded",
     "removeAll": "Remove All Downloads",
+    "removeAllTitle": "Remove All Downloads?",
+    "removeAllConfirm": "This deletes every downloaded surah from this device. You can download them again later.",
+    "removeReciterConfirm": "This deletes every downloaded surah by {{reciter}} from this device. You can download them again later.",
     "playAll": "Play All",
     "emptySubtitle": "Download surahs to see them here"
   },
@@ -55,6 +59,8 @@
     "allDownloaded": "All Downloaded",
     "downloadAll": "Download All",
     "unloveAll": "Unlove All Surahs",
+    "unloveAllTitle": "Unlove All Surahs?",
+    "unloveAllConfirm": "This removes every surah from your Loved list. This can't be undone.",
     "emptySubtitle": "Love surahs to see them here",
     "alreadyDownloadedTitle": "Already Downloaded",
     "alreadyDownloadedMessage": "All loved surahs are already downloaded.",
@@ -67,6 +73,8 @@
     "recitationsCount_one": "{{count}} recitation",
     "recitationsCount_other": "{{count}} recitations",
     "removeAll": "Remove All Uploads",
+    "removeAllTitle": "Remove All Uploads?",
+    "removeAllConfirm": "This permanently deletes all your imported recitations from this device. This can't be undone.",
     "emptySubtitle": "Upload recitations to see them here",
     "opening": "Opening...",
     "addRecitation": "Add Recitation",

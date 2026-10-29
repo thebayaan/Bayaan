@@ -14,6 +14,7 @@ Shipped languages: **English** (source) and **Arabic** (RTL). Every language the
 |------|-------|
 | Language registry (direction, script, digits, font, status) | `i18n/languages.ts` |
 | Session language, preference and native RTL direction | `i18n/language.ts` |
+| Applying a language change: Android process restart, iOS Settings (see [Changing the app language](#changing-the-app-language)) | `i18n/restart.ts`, `modules/bayaan-restart`, `app/(tabs)/(d.settings)/language.tsx` |
 | i18next setup | `i18n/index.ts` |
 | Locale files, one folder per language, one file per namespace | `i18n/locales/<lang>/<namespace>.json` |
 | Namespace imports | `i18n/resources.ts` |
@@ -104,13 +105,35 @@ A form may leave out `{{count}}` when the word already says the number (`تدب�
 
 ## Right-to-left
 
-- **Layout flips on its own.** `i18n/language.ts` turns on RTL with `I18nManager.forceRTL`. In RTL, `flexDirection: 'row'` runs right to left, and with `swapLeftAndRightInRTL(true)` (the default, set explicitly) `marginLeft`, `paddingLeft` and absolute `left`/`right` swap sides. `textAlign: 'left'` follows the text's direction, so it aligns to the right in Arabic. Don't add `row-reverse` or swap margins by hand to fix RTL.
+- **Layout flips on its own.** `i18n/language.ts` turns on RTL natively: with `I18nManager.forceRTL` on Android, and on iOS by allowing RTL so React Native follows the app language iOS launched with. In RTL, `flexDirection: 'row'` runs right to left, and with `swapLeftAndRightInRTL(true)` (the default, set explicitly) `marginLeft`, `paddingLeft` and absolute `left`/`right` swap sides. `textAlign: 'left'` follows the text's direction, so it aligns to the right in Arabic. Don't add `row-reverse` or swap margins by hand to fix RTL.
 - **These don't flip:** `transform: [{translateX}]`, Animated slide directions, gesture `dx` values and horizontal `ScrollView` offsets on Android. Check them in Arabic and negate where needed.
-- **A language change applies on the next launch.** `setLanguagePreference` saves the choice and the native direction, and returns `true` when the user must close and reopen the app. Never reload the runtime in process (`reloadAppAsync`, `Updates.reloadAsync`, `DevSettings.reload`): it crashes on React Native 0.86 bridgeless. `currentLanguage` is fixed for the session.
+- **A language change needs a fresh start.** See [Changing the app language](#changing-the-app-language). `currentLanguage` is fixed for the session.
 - **Mirror directional icons** with `flipX`: back buttons, chevrons, "next" arrows.
 - **Don't mirror** media transport (play, skip, rewind), playback progress bars, clocks, checkmarks, logos, or the Quran page itself. Wrap media controls and sliders in `forceLTR`. Material Design and Apple's HIG both say to keep these left to right.
 - **Horizontal `FlatList`s** follow the native direction even inside `forceLTR`; check their scroll and index logic in Arabic.
 - **Mixed-direction strings.** A Latin name inside an Arabic sentence (or the reverse) can scramble the punctuation around it. Wrap the inserted value in Unicode isolates, FSI (`\u2068`) and PDI (`\u2069`), when that happens. Don't use the older LRE/RLE characters.
+
+---
+
+## Changing the app language
+
+The layout direction and `currentLanguage` are read once, when the app starts, and about a hundred modules keep them as constants. So a new language only shows after a fresh start of the app process. Each platform gets one differently:
+
+| | Where the user picks | How it applies |
+|---|---|---|
+| **Android** | The in-app language screen | `restartWithLanguage` (`i18n/restart.ts`) saves the choice and the native direction, then relaunches the process through `modules/bayaan-restart` (ProcessPhoenix). |
+| **iOS** | iOS Settings › Apps › Bayaan › Language | iOS closes the app and opens it again in the new language. The in-app language screen shows the current language, and tapping another one offers to open Settings. |
+
+**Why iOS uses Settings.** An iOS app can't relaunch itself, and quitting with `exit()` looks like a crash and risks App Review. Apple's per-app language setting is the supported way to change an app's language: iOS relaunches the app for you (see [WWDC19 "Creating Great Localized Experiences with Xcode 11"](https://developer.apple.com/videos/play/wwdc2019/403/)).
+
+What this means for iOS code:
+
+- **iOS owns the preference.** `languageFollowsSystemSettings` is true on iOS. The language comes from `expo-localization`, which reports the per-app language first. There's no "System" option and no stored in-app preference on iOS.
+- **Never force the direction on iOS.** `I18nManager.forceRTL` is saved to disk and would outlive a language change made in Settings, so the relaunched app would start in the old direction. iOS calls `allowRTL(true)` and `forceRTL(false)`, and React Native takes the direction from the app language.
+- **The language must be an iOS localization.** A language shows in Settings only if it's in `supportedLocales.ios` in `app.config.js` (`CFBundleLocalizations`). `UIPrefersShowingLanguageSettings` in the Info.plist keeps the Language row visible when the device has a single preferred language; iOS otherwise hides it.
+- **Older installs migrate once.** A language picked in the app before this change is written to iOS's per-app `AppleLanguages` default at startup (`bootstrapDirection`), and the stored preference is removed.
+
+**Never reload the JS runtime in process** to apply a language: not `reloadAppAsync`, `Updates.reloadAsync` or `DevSettings.reload`. On React Native bridgeless it crashes: the old runtime can run a pending Fabric render after its scheduler is torn down, and Expo modules re-register while the old runtime is still shutting down. React Native 0.88 removed the `enableSchedulerDelegateInvalidation` guard, so the upgrade doesn't fix this. Remounting the React tree isn't enough either, because the module-level constants and the native direction keep their old values.
 
 ---
 
@@ -147,7 +170,7 @@ When a backend field exists only in Arabic and English, the registry's `bilingua
    - `bilingualContent`: `'ar'` if readers expect Arabic surah names (Urdu, Persian), otherwise `'en'`.
    - `understandsArabic`: `true` only if readers understand Quranic Arabic without a translation (Arabic itself).
 2. **Locale files.** Create `i18n/locales/<code>/` with every namespace file and register them in `i18n/resources.ts`. While the language is in progress, missing or empty keys fall back to English, CI doesn't require them, and the language only appears in development builds.
-3. **Platform settings (at ship time).** Add the code to `supportedLocales.ios` in `app.config.js` so the language appears in iOS's per-app language settings; the registry test requires it for shipped languages. Consider `supportedLocales.android` for Android 13+ per-app languages too.
+3. **Platform settings (at ship time).** Add the code to `supportedLocales.ios` in `app.config.js` so the language appears in iOS's per-app language settings, which is the only place iOS users can pick it; the registry test requires it for shipped languages. Consider `supportedLocales.android` for Android 13+ per-app languages too.
 4. **Font.** If the script is new, bundle a font that covers it, add it to `UiFont` and `i18n/fonts.ts`, and add the script to `FONT_SCRIPTS` in the registry test. For Amharic (Ethiopic script), use Noto Sans Ethiopic, which is under the OFL licence.
 5. **Plurals.** Write every CLDR category the language has for each plural key (the locale tests list them).
 6. **Glossary.** Add a column to the [glossary](#glossary) and follow it.

@@ -123,6 +123,9 @@ jest.mock('@/services/player/store/favoriteRecitersStore', () => ({
 }));
 jest.mock('expo-font', () => ({loadAsync: mockStep('fonts.loadAsync')}));
 jest.mock('@/services/car', () => ({startCarIntegration: jest.fn()}));
+jest.mock('@/services/reciterMergeMigration', () => ({
+  applyReciterMergesToSavedData: mockStep('reciterMerges.apply'),
+}));
 
 type Initializer = typeof import('../AppInitializer').appInitializer;
 
@@ -166,7 +169,7 @@ const REGISTRATIONS = [
 // The first step each non-critical service runs, in registration order.
 const NON_CRITICAL_FIRST_STEPS = [
   'analytics.initialize',
-  'playlistsStore.loadPlaylists',
+  'reciterMerges.apply',
   'adhkar.initialize',
   'mushafPreload.initialize',
   'adhkarStore.loadCategories',
@@ -267,6 +270,18 @@ describe('AppInitializer startup (characterization, develop behavior)', () => {
     await initializer.initialize();
     expect(initializer.isInitialized()).toBe(true);
     expect(mockCalls).not.toContain('tafseerStore.loadDownloadedMeta');
+  });
+
+  it('moves saved data off merged reciters before loading playlists, and still loads them if that fails', async () => {
+    await freshInitializer().initialize();
+    expect(indexOf('reciterMerges.apply')).toBeLessThan(
+      indexOf('playlistsStore.loadPlaylists'),
+    );
+
+    mockCalls.length = 0;
+    mockFailing.add('reciterMerges.apply');
+    await freshInitializer().initialize();
+    expect(mockCalls).toContain('playlistsStore.loadPlaylists');
   });
 
   it('completes startup when the Translation DB fails to open', async () => {

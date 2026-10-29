@@ -1,6 +1,6 @@
 import React from 'react';
-import {View, Text} from 'react-native';
-import {ScaledSheet, moderateScale} from 'react-native-size-matters';
+import {View, Text, StyleProp, ViewStyle} from 'react-native';
+import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 // @ai-start
@@ -9,15 +9,16 @@ import {latinLetterSpacing} from '@/utils/rtl';
 
 interface CategorySectionHeaderProps {
   title: string;
+  style?: StyleProp<ViewStyle>; // @ai
 }
 
 export const CategorySectionHeader: React.FC<CategorySectionHeaderProps> =
-  React.memo(({title}) => {
+  React.memo(({title, style}) => {
     const {theme} = useTheme();
     const styles = createStyles(theme);
 
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, style]}>
         <Text style={styles.title}>{title}</Text>
       </View>
     );

@@ -9,7 +9,13 @@ import {
 import {usePlayerStore} from './player/store/playerStore';
 import {useReciterStore} from '../store/reciterStore';
 import {useApiHealthStore} from '../store/apiHealthStore';
+import {audioFileUrl} from '../utils/audioFileUrl';
 import fallbackReciters from '../data/reciters-fallback.json';
+import {
+  canonicalReciterId,
+  canonicalReciterSlug,
+  foldMergedReciters,
+} from '../utils/reciterMerges'; // @ai
 // @ai-start
 import {rankSurahs} from '@/utils/search/catalog';
 // @ai-end
@@ -73,13 +79,16 @@ async function setStoredData<T>(key: string, data: T): Promise<void> {
 // We mutate it in-place so every importer automatically sees the data
 // without needing import changes anywhere.
 
-function populateReciters(data: Reciter[]): void {
-  RECITERS.splice(0, RECITERS.length, ...data);
-  markRecitersUpdated(); // @ai
-  // Refresh the store's default reciter now that RECITERS is populated
-  useReciterStore.getState().refreshDefaultReciter();
-  useReciterStore.setState({isInitialized: true});
+// @ai-start
+// Returns the list as the app shows it, with merged reciters folded in.
+function populateReciters(data: Reciter[]): Reciter[] {
+  const reciters = foldMergedReciters(data);
+  RECITERS.splice(0, RECITERS.length, ...reciters);
+  markRecitersUpdated();
+  useReciterStore.getState().catalogLoaded();
+  return reciters;
 }
+// @ai-end
 
 // ── API client ────────────────────────────────────────────────────────────────
 
@@ -173,20 +182,18 @@ export async function getAllReciters(): Promise<Reciter[]> {
       console.log(
         '[dataService] Killswitch active — using bundled fallback data',
       );
-      const fallback = fallbackReciters as Reciter[];
-      populateReciters(fallback);
-      return fallback;
+      return populateReciters(fallbackReciters as Reciter[]); // @ai
     }
   }
 
   const cached = await getStoredData<Reciter[]>(RECITERS_KEY);
 
   if (cached && cached.data.length > 0) {
-    populateReciters(cached.data);
+    const reciters = populateReciters(cached.data); // @ai
     if (canFetchFromApi) {
       refreshRecitersInBackground().catch(() => {});
     }
-    return cached.data;
+    return reciters; // @ai
   }
 
   // First launch — fetch from API (blocking)
@@ -195,9 +202,9 @@ export async function getAllReciters(): Promise<Reciter[]> {
       const apiReciters = await fetchAllRecitersFromApi();
       if (apiReciters.length > 0) {
         await setStoredData(RECITERS_KEY, apiReciters);
-        populateReciters(apiReciters);
+        const reciters = populateReciters(apiReciters); // @ai
         clearDisruption();
-        return apiReciters;
+        return reciters; // @ai
       }
     } catch (err) {
       console.warn('[dataService] API fetch failed on first load:', err);
@@ -206,9 +213,9 @@ export async function getAllReciters(): Promise<Reciter[]> {
         allowStale: true,
       });
       if (stale && stale.data.length > 0) {
-        populateReciters(stale.data);
+        const reciters = populateReciters(stale.data); // @ai
         setDisrupted(true, {reason: 'unreachable', stale: true});
-        return stale.data;
+        return reciters; // @ai
       }
       setDisrupted(true, {reason: 'unreachable', stale: false});
     }
@@ -218,8 +225,7 @@ export async function getAllReciters(): Promise<Reciter[]> {
   const fallback = fallbackReciters as Reciter[];
   if (fallback.length > 0) {
     console.log('[dataService] Using bundled fallback data');
-    populateReciters(fallback);
-    return fallback;
+    return populateReciters(fallback); // @ai
   }
 
   return [];
@@ -241,20 +247,23 @@ async function refreshRecitersInBackground(): Promise<void> {
 
 export async function getReciterById(id: string): Promise<Reciter | undefined> {
   const reciters = await getAllReciters();
-  return reciters.find(reciter => reciter.id === id);
+  const canonicalId = canonicalReciterId(id); // @ai
+  return reciters.find(reciter => reciter.id === canonicalId);
 }
 
 // Sync version reads from the in-memory RECITERS array (populated after first load)
 export function getReciterByIdSync(id: string): Reciter | undefined {
-  return RECITERS.find(reciter => reciter.id === id);
+  const canonicalId = canonicalReciterId(id); // @ai
+  return RECITERS.find(reciter => reciter.id === canonicalId);
 }
 
 export function getReciterBySlug(slug: string): Reciter | undefined {
-  return RECITERS.find(r => r.slug === slug);
+  const canonicalSlug = canonicalReciterSlug(slug); // @ai
+  return RECITERS.find(r => r.slug === canonicalSlug);
 }
 
 export function getReciterName(reciterId: string): string | null {
-  const reciter = RECITERS.find(r => r.id === reciterId);
+  const reciter = getReciterByIdSync(reciterId); // @ai
   return reciter ? reciter.name : null;
 }
 
@@ -332,8 +341,7 @@ export async function fetchAudioUrl(
     }
   }
 
-  const surahStr = surahId.toString().padStart(3, '0');
-  return `${rewayat.server}/${surahStr}.mp3`;
+  return audioFileUrl(rewayat, surahId);
 }
 
 // ── Utility ───────────────────────────────────────────────────────────────────

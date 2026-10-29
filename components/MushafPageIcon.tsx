@@ -10,7 +10,7 @@ import {
   TextHeightBehavior,
   TextDirection,
 } from '@shopify/react-native-skia';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
 import {useMushafFontMgr} from '@/hooks/useMushafFontMgr';
 import {

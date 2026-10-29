@@ -1,12 +1,10 @@
 import React from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
-import {ScaledSheet, moderateScale} from 'react-native-size-matters';
+import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import ActionSheet, {
-  SheetProps,
-  SheetManager,
-} from 'react-native-actions-sheet';
+import {SheetProps, SheetManager} from 'react-native-actions-sheet';
+import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import Color from 'color';
 // @ai-start
 import {useTranslation} from 'react-i18next';
@@ -34,6 +32,7 @@ export const PlaybackSpeedSheet = (props: SheetProps<'playback-speed'>) => {
   return (
     <ActionSheet
       id={props.sheetId}
+      tabletPresentation="menu"
       containerStyle={styles.sheetContainer}
       indicatorStyle={styles.indicator}
       gestureEnabled={true}>

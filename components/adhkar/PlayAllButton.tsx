@@ -8,7 +8,7 @@
 
 import React, {useMemo} from 'react';
 import {TouchableOpacity, Text, View} from 'react-native';
-import {ScaledSheet, moderateScale} from 'react-native-size-matters';
+import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import type {PlayAllState} from '@/services/adhkar/playback/sessionReducer';

@@ -1,10 +1,12 @@
 import {useCallback} from 'react';
-import {useRouter, usePathname} from 'expo-router';
+import {useRouter, usePathname, useSegments} from 'expo-router';
+import {reciterProfilePathname} from '@/hooks/useTabReciterPath'; // @ai
 import {usePlayerStore} from '@/services/player/store/playerStore';
 
 export const useReciterNavigation = () => {
   const router = useRouter();
   const pathname = usePathname();
+  const segments = useSegments(); // @ai
   const setSheetMode = usePlayerStore(state => state.setSheetMode);
 
   const navigateToReciterProfile = useCallback(
@@ -19,12 +21,13 @@ export const useReciterNavigation = () => {
       // Navigate after a short delay to allow the sheet to close
       setTimeout(() => {
         router.push({
-          pathname: '/(tabs)/(a.home)/reciter/[id]',
+          // Stay in the tab the user is on. @ai
+          pathname: reciterProfilePathname(segments),
           params: {id: reciterId},
         });
       }, 300); // Delay for bottom sheet animation
     },
-    [router, pathname, setSheetMode],
+    [router, pathname, segments, setSheetMode],
   );
 
   return {navigateToReciterProfile};

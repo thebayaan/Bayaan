@@ -1,6 +1,6 @@
 import React from 'react';
 import {View, Text, StyleSheet} from 'react-native';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import {Ionicons} from '@expo/vector-icons';
 import {useTheme} from '@/hooks/useTheme';
 import Color from 'color';

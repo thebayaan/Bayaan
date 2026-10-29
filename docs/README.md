@@ -17,6 +17,17 @@ New to the project? Start here:
 
 ---
 
+## Design
+
+| Document | Description |
+|----------|-------------|
+| [design/README.md](design/README.md) | Design docs hub: start here before any UI work |
+| [design/design-system.md](design/design-system.md) | The design system as built: themes, color tokens, typography, spacing, scaling, components |
+| [design/ipad-standards.md](design/ipad-standards.md) | **Standard** for iPad and large tablets: width classes, type ramp, layout, sheets, orientation, multitasking, accessibility |
+| [design/ipad-review-checklist.md](design/ipad-review-checklist.md) | Checklist for every PR that touches UI |
+
+---
+
 ## Architecture
 
 | Document | Description |
