@@ -40,6 +40,7 @@ private func takeString(_ key: String) -> String {
   }
 }
 
+// @ai-start
 /// App Shortcuts live in the app target (plugins/withAppShortcuts.js), which
 /// this pod cannot import, so call the refresher through the Objective-C runtime.
 private func refreshAppShortcuts() {
@@ -48,6 +49,7 @@ private func refreshAppShortcuts() {
   let selector = NSSelectorFromString("refresh")
   if target.responds(to: selector) { _ = target.perform(selector) }
 }
+// @ai-end
 
 public class BayaanWidgetsModule: Module {
   private var observer: NSObjectProtocol?

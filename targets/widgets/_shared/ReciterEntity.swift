@@ -39,6 +39,7 @@ struct ReciterEntityQuery: EntityStringQuery {
   }
 }
 
+// @ai-start
 /// The reciters in catalog.json. The app target cannot see WidgetCatalog
 /// (targets/widgets/Support), so this decodes only the fields the entity needs.
 enum ReciterCatalog {
@@ -63,3 +64,4 @@ enum ReciterCatalog {
     return file.reciters
   }
 }
+// @ai-end

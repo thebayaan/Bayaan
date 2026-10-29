@@ -17,6 +17,7 @@ struct BayaanAppShortcuts: AppShortcutsProvider {
       ],
       shortTitle: "Play Surah",
       systemImageName: "play.circle")
+    // @ai-start
     AppShortcut(
       intent: PlayReciterByNameIntent(),
       phrases: [
@@ -26,6 +27,7 @@ struct BayaanAppShortcuts: AppShortcutsProvider {
       ],
       shortTitle: "Play Reciter",
       systemImageName: "person.wave.2")
+    // @ai-end
     AppShortcut(
       intent: PausePlaybackIntent(),
       phrases: [

@@ -156,6 +156,7 @@ struct PlaySurahIntent: AudioPlaybackIntent {
   }
 }
 
+// @ai-start
 /// Siri and Shortcuts: resumes the reciter's last surah, or Al-Fatihah.
 /// The same command as the Pinned Reciter widget's hidden PlayReciterIntent.
 @available(iOS 17.0, *)
@@ -181,6 +182,7 @@ struct PlayReciterByNameIntent: AudioPlaybackIntent {
     return .result()
   }
 }
+// @ai-end
 
 @available(iOS 17.0, *)
 struct PausePlaybackIntent: AudioPlaybackIntent {
