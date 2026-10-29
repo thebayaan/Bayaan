@@ -18,7 +18,9 @@ import {useTheme} from '@/hooks/useTheme';
 import {useResponsive} from '@/hooks/useResponsive'; // @ai
 import {Theme} from '@/utils/themeUtils';
 import {SheetProps, SheetManager, ScrollView} from 'react-native-actions-sheet';
-import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
+import ActionSheet, {
+  CARD_BOTTOM_PADDING, // @ai
+} from '@/components/sheets/AdaptiveActionSheet';
 import {Feather, MaterialCommunityIcons} from '@expo/vector-icons';
 import {useVerseSelectionStore} from '@/store/verseSelectionStore';
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
@@ -937,7 +939,12 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
           <ScrollView
             showsVerticalScrollIndicator={false}
             bounces={false}
-            contentContainerStyle={{paddingBottom: moderateScale(10)}}>
+            contentContainerStyle={{
+              // On iPad the menu scrolls into the card's bottom padding, so
+              // its end keeps that padding once scrolled to. @ai
+              paddingBottom:
+                moderateScale(10) + (isTablet ? CARD_BOTTOM_PADDING : 0),
+            }}>
             {/* LISTEN */}
             <View style={styles.card}>
               <Pressable
@@ -1267,12 +1274,14 @@ const createStyles = (theme: Theme) =>
     },
     // @ai-start
     // On iPad the card has a max height; shrink to it so the menu scrolls
-    // instead of running off the card. The card has its own bottom padding,
-    // so the menu drops the phone sheet's, which would only take rows'
-    // room once the menu shrinks.
+    // instead of running off the card. The menu drops the phone sheet's
+    // bottom padding and runs to the card's bottom edge, so rows that fit
+    // before still show at rest; the scroll content adds the card's padding
+    // back at its end.
     tabletMenu: {
       flexShrink: 1,
       paddingBottom: 0,
+      marginBottom: -CARD_BOTTOM_PADDING,
     },
     // @ai-end
     header: {

@@ -300,14 +300,20 @@ const containerStyle = () =>
 
 it('lets the menu shrink to the iPad card so it scrolls', async () => {
   await openSheet();
-  // The card pads its own bottom, so the menu's padding would only cost rows.
-  expect(containerStyle()).toMatchObject({flexShrink: 1, paddingBottom: 0});
+  // The menu runs to the card's bottom edge instead of stopping at the
+  // card's padding, so rows that fit before still show at rest.
+  expect(containerStyle()).toMatchObject({
+    flexShrink: 1,
+    paddingBottom: 0,
+    marginBottom: -16,
+  });
 });
 
 it('leaves the phone menu as it was', async () => {
   mockIsTablet = false;
   await openSheet();
   expect(containerStyle().flexShrink).toBeUndefined();
+  expect(containerStyle().marginBottom).toBeUndefined();
   expect(containerStyle().paddingBottom).toBeGreaterThan(0);
 });
 
