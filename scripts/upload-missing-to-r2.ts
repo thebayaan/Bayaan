@@ -14,6 +14,8 @@
  *   BAYAAN_API_KEY — Bearer token for the backend API
  *
  * Or: reads from .env.r2-worker automatically if present.
+ *
+ * Optional: CDN_BASE — public base URL of the audio bucket.
  */
 
 import * as fs from 'fs';
@@ -117,7 +119,10 @@ const BAYAAN_API_KEY = process.env.BAYAAN_API_KEY;
 const DRY_RUN = process.argv.includes('--dry-run');
 const STATUS_ONLY = process.argv.includes('--status');
 const RESET_STATUS = process.argv.includes('--reset-status');
-const CDN_BASE = 'https://cdn.example.com';
+const CDN_BASE = (process.env.CDN_BASE ?? 'https://cdn.example.com').replace(
+  /\/$/,
+  '',
+);
 const R2_KEY_PREFIX = 'quran/recitations';
 const API_BASE = 'https://bayaan-backend-production.up.railway.app';
 const PAGE_LIMIT = 200;
@@ -329,7 +334,7 @@ async function main(): Promise<void> {
     for (const rewayat of reciter.rewayat) {
       const prefix = `[${reciter.name} / ${rewayat.name} (${rewayat.style})]`;
 
-      if (rewayat.server?.includes('cdn.example.com')) {
+      if (rewayat.server?.startsWith(CDN_BASE)) {
         stats.rewayatSkipped++;
         continue;
       }

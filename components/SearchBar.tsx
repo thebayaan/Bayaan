@@ -3,7 +3,7 @@ import {Pressable, Text, TextInput, Animated, View} from 'react-native';
 import {Feather, AntDesign} from '@expo/vector-icons';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import {ScaledSheet, moderateScale} from 'react-native-size-matters';
+import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {MotiView} from 'moti';
 // @ai-start
 import {useTranslation} from 'react-i18next';

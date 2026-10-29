@@ -10,7 +10,7 @@ import {
   GestureResponderEvent,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
-import {moderateScale, verticalScale} from 'react-native-size-matters';
+import {moderateScale, verticalScale} from '@/utils/scale';
 import {surahGlyphMap} from '@/utils/surahGlyphMap';
 import Color from 'color';
 import {

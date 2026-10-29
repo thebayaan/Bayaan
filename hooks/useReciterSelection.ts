@@ -4,6 +4,8 @@ import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {createTracksForReciter} from '@/utils/track';
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
 import {Reciter} from '@/data/reciterData';
+import {useSettings} from '@/hooks/useSettings'; // @ai
+import {pickRewayatId} from '@/utils/rewayatPreference'; // @ai
 
 export function useReciterSelection() {
   const {updateQueue, play} = usePlayerActions();
@@ -17,8 +19,15 @@ export function useReciterSelection() {
         const surah = await getSurahById(parseInt(surahId, 10));
         if (!surah) return;
 
-        // Create track for the selected surah
-        const rewayatId = reciter.rewayat[0]?.id;
+        // @ai-start
+        // Play the rewayat the user last picked for this reciter
+        const rewayatId = pickRewayatId(
+          reciter.rewayat,
+          [useSettings.getState().reciterPreferences[reciter.id]],
+          surah.id,
+        );
+        if (!rewayatId) return false;
+        // @ai-end
         const tracks = await createTracksForReciter(
           reciter,
           [surah],

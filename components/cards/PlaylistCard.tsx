@@ -1,7 +1,7 @@
 import React, {useMemo} from 'react';
 import {Text, Pressable, View, StyleSheet} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import {PlaylistIcon} from '@/components/Icons';
 import Color from 'color';
 import {Link} from 'expo-router';

@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import {Link} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,

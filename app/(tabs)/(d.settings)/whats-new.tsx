@@ -1,7 +1,7 @@
 import React from 'react';
 import {View, Text, ScrollView} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
-import {ScaledSheet, moderateScale} from 'react-native-size-matters';
+import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {Theme} from '@/utils/themeUtils';
 import {ChangelogContent} from '@/components/changelog/ChangelogContent';
 import changelogData from '@/data/changelog.json';
@@ -43,7 +43,7 @@ export default function WhatsNewScreen() {
           <ChangelogContent
             changelog={latestChangelog}
             showVersion={true}
-            showFullDetails={false}
+            showFullDetails={true}
           />
         </ScrollView>
       </View>

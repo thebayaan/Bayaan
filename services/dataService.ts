@@ -9,6 +9,7 @@ import {
 import {usePlayerStore} from './player/store/playerStore';
 import {useReciterStore} from '../store/reciterStore';
 import {useApiHealthStore} from '../store/apiHealthStore';
+import {audioFileUrl} from '../utils/audioFileUrl';
 import fallbackReciters from '../data/reciters-fallback.json';
 // @ai-start
 import {rankSurahs} from '@/utils/search/catalog';
@@ -76,9 +77,7 @@ async function setStoredData<T>(key: string, data: T): Promise<void> {
 function populateReciters(data: Reciter[]): void {
   RECITERS.splice(0, RECITERS.length, ...data);
   markRecitersUpdated(); // @ai
-  // Refresh the store's default reciter now that RECITERS is populated
-  useReciterStore.getState().refreshDefaultReciter();
-  useReciterStore.setState({isInitialized: true});
+  useReciterStore.getState().catalogLoaded(); // @ai
 }
 
 // ── API client ────────────────────────────────────────────────────────────────
@@ -332,8 +331,7 @@ export async function fetchAudioUrl(
     }
   }
 
-  const surahStr = surahId.toString().padStart(3, '0');
-  return `${rewayat.server}/${surahStr}.mp3`;
+  return audioFileUrl(rewayat, surahId);
 }
 
 // ── Utility ───────────────────────────────────────────────────────────────────

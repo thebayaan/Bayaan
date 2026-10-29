@@ -1,6 +1,6 @@
 import React, {useCallback, useMemo} from 'react';
 import {StyleSheet, Text, View, Pressable, ViewStyle} from 'react-native';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {Surah} from '@/data/surahData';

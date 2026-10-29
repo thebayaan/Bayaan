@@ -1,6 +1,6 @@
 import React, {useMemo} from 'react';
 import {View, Text, StyleSheet, Pressable, ViewStyle} from 'react-native';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import {LinearGradient} from 'expo-linear-gradient';
 import {Ionicons} from '@expo/vector-icons';
 import {useTheme} from '@/hooks/useTheme';
@@ -23,11 +23,13 @@ const SECTION_HEIGHT = moderateScale(150);
 interface TasbihBeadsSvgProps {
   theme: HeroColorTheme;
   isDarkMode: boolean;
+  /** Keeps the beads at phone size around the centred text on a wide card. @ai */
+  wide?: boolean;
 }
 
 /** SVG tasbih bead pattern rendered as card background decoration */
 // @ai-start
-const TasbihBeadsSvg = ({theme, isDarkMode}: TasbihBeadsSvgProps) => {
+const TasbihBeadsSvg = ({theme, isDarkMode, wide}: TasbihBeadsSvgProps) => {
   const beadOpacity = isDarkMode ? 0.25 : 0.3;
 
   // Left side bead positions (bottom to top arc)
@@ -76,7 +78,7 @@ const TasbihBeadsSvg = ({theme, isDarkMode}: TasbihBeadsSvgProps) => {
     <Svg
       viewBox="0 0 400 150"
       style={StyleSheet.absoluteFill}
-      preserveAspectRatio="xMidYMid slice">
+      preserveAspectRatio={wide ? 'xMidYMid meet' : 'xMidYMid slice'}>
       <Defs>
         <RadialGradient id="centerGlow" cx="50%" cy="50%" r="40%">
           <Stop offset="0%" stopColor={theme.accent} stopOpacity={0.08} />
@@ -136,6 +138,7 @@ const TasbihBeadsSvg = ({theme, isDarkMode}: TasbihBeadsSvgProps) => {
 interface SavedAdhkarCardProps {
   savedCount: number;
   style?: ViewStyle | ViewStyle[];
+  wide?: boolean; // @ai
 }
 
 /**
@@ -143,7 +146,7 @@ interface SavedAdhkarCardProps {
  * Matches the SurahHeroSection design pattern exactly
  */
 // @ai-start
-const SavedAdhkarCard = ({savedCount, style}: SavedAdhkarCardProps) => {
+const SavedAdhkarCard = ({savedCount, style, wide}: SavedAdhkarCardProps) => {
   const {theme} = useTheme();
   const {t} = useTranslation('home');
   const glassColorScheme = useGlassColorScheme();
@@ -164,7 +167,11 @@ const SavedAdhkarCard = ({savedCount, style}: SavedAdhkarCardProps) => {
         end={{x: 1, y: 1}}
         style={StyleSheet.absoluteFill}
       />
-      <TasbihBeadsSvg theme={heroTheme} isDarkMode={theme.isDarkMode} />
+      <TasbihBeadsSvg
+        theme={heroTheme}
+        isDarkMode={theme.isDarkMode}
+        wide={wide}
+      />
       <View style={styles.content}>
         {/* Top section - matching SurahHeroSection layout exactly */}
         <View style={styles.topSection}>
@@ -299,24 +306,39 @@ const createStyles = (theme: Theme, heroTheme: HeroColorTheme) =>
 
 interface SavedAdhkarHeroProps {
   savedCount: number;
+  /**
+   * iPad: the card's width. The caller places it in the grid, so it skips
+   * the hero section's own padding. @ai
+   */
+  width?: number;
 }
 
 /**
  * Hero section for saved adhkar in AdhkarView
  * Only renders when there are saved adhkar
  */
-export function SavedAdhkarHero({savedCount}: SavedAdhkarHeroProps) {
+export function SavedAdhkarHero({savedCount, width}: SavedAdhkarHeroProps) {
   const cardStyle: ViewStyle = useMemo(() => {
     return {
-      width: '100%' as const,
+      width: width ?? ('100%' as const), // @ai
       height: SECTION_HEIGHT,
     };
-  }, []);
+  }, [width]);
 
   // Don't render if no saved adhkar
   if (savedCount === 0) {
     return null;
   }
+
+  // @ai-start
+  if (width !== undefined) {
+    return (
+      <View style={cardStyle}>
+        <SavedAdhkarCard savedCount={savedCount} style={cardStyle} wide />
+      </View>
+    );
+  }
+  // @ai-end
 
   return (
     <HeroSection

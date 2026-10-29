@@ -1,7 +1,8 @@
 import React, {ReactNode} from 'react';
 import {View, StyleSheet} from 'react-native';
-import {moderateScale, verticalScale} from 'react-native-size-matters';
+import {moderateScale, verticalScale} from '@/utils/scale';
 import {RandomRecitationHero} from '@/components/hero/RandomRecitationHero';
+import {useResponsive} from '@/hooks/useResponsive'; // @ai
 
 interface HeroSectionProps {
   mainHero: ReactNode;
@@ -13,6 +14,22 @@ interface HeroSectionProps {
  * for hero components across the app.
  */
 export function HeroSection({mainHero, randomHero = true}: HeroSectionProps) {
+  const {isTablet} = useResponsive(); // @ai
+
+  // @ai-start
+  // iPad: the two heroes sit side by side, 2:1, at the main hero's height.
+  if (isTablet && randomHero) {
+    return (
+      <View style={[styles.container, styles.tabletRow]}>
+        <View style={styles.tabletMain}>{mainHero}</View>
+        <View style={styles.tabletRandom}>
+          <RandomRecitationHero isCompact={true} style={styles.fill} />
+        </View>
+      </View>
+    );
+  }
+  // @ai-end
+
   return (
     <View style={[styles.container, !randomHero && styles.containerNoRandom]}>
       {/* Main Hero Content */}
@@ -44,4 +61,20 @@ const styles = StyleSheet.create({
   randomHeroContainer: {
     paddingHorizontal: moderateScale(16),
   },
+  // @ai-start
+  tabletRow: {
+    flexDirection: 'row',
+  },
+  tabletMain: {
+    flex: 2,
+  },
+  // The main hero pads both sides, so this one only pads the trailing edge.
+  tabletRandom: {
+    flex: 1,
+    paddingEnd: moderateScale(16),
+  },
+  fill: {
+    flex: 1,
+  },
+  // @ai-end
 });

@@ -34,6 +34,7 @@ export function usePlayerActions() {
         usePlayerStore.getState().removeFromQueue(indices),
       moveInQueue: (fromIndex: number, toIndex: number) =>
         usePlayerStore.getState().moveInQueue(fromIndex, toIndex),
+      shuffleUpNext: () => usePlayerStore.getState().shuffleUpNext(), // @ai
 
       setSheetMode: (mode: 'hidden' | 'full') =>
         usePlayerStore.getState().setSheetMode(mode),

@@ -8,7 +8,7 @@ import {
   TextStyle,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
-import {moderateScale, verticalScale} from 'react-native-size-matters';
+import {moderateScale, verticalScale} from '@/utils/scale';
 import {ReciterImage} from '@/components/ReciterImage';
 import {FollowAlongBadge} from '@/components/badges/FollowAlongBadge';
 import {Feather} from '@expo/vector-icons';

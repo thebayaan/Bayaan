@@ -32,8 +32,8 @@
 
 import {useCallback, useMemo} from 'react'; // @ai
 import {create} from 'zustand';
-import {createJSONStorage, persist} from 'zustand/middleware';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import {persist} from 'zustand/middleware';
+import {persistStorage} from '@/utils/storage'; // @ai
 import type {AyahTimestamp} from '@/types/timestamps';
 import {RECITERS} from '@/data/reciterData';
 import {timestampService} from '@/services/timestamps/TimestampService';
@@ -1195,7 +1195,7 @@ export const useMushafPlayerStore = create<MushafPlayerStoreState>()(
     },
     {
       name: STORAGE_KEY,
-      storage: createJSONStorage(() => AsyncStorage),
+      storage: persistStorage(), // @ai
       partialize: state => ({
         rewayatId: state.rewayatId,
         reciterName: state.reciterName,

@@ -163,14 +163,14 @@ export async function markVersionAsSeen(): Promise<void> {
 
 /**
  * Filter onboarding pages to only those introduced after lastSeenVersion.
- * If no lastSeenVersion (fresh install), returns all pages.
+ * If no lastSeenVersion (fresh install), returns every page except the
+ * update-only release announcements.
  */
-export function filterPagesByVersion<T extends {minVersion: string}>(
-  pages: T[],
-  lastSeenVersion: string | null,
-): T[] {
+export function filterPagesByVersion<
+  T extends {minVersion: string; updateOnly?: boolean},
+>(pages: T[], lastSeenVersion: string | null): T[] {
   if (!lastSeenVersion) {
-    return pages;
+    return pages.filter(page => !page.updateOnly);
   }
 
   const lastNorm = normalizeVersion(lastSeenVersion);

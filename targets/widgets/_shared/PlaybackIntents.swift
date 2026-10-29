@@ -23,7 +23,7 @@ struct SetPlaybackIntent: AudioPlaybackIntent {
   }
 
   func perform() async throws -> some IntentResult {
-    PlaybackCommand.setPlaying(playing)
+    await PlaybackCommand.waitUntilHandled(PlaybackCommand.setPlaying(playing)) // @ai
     return .result()
   }
 }
@@ -49,8 +49,8 @@ struct PlayTrackIntent: AudioPlaybackIntent {
   }
 
   func perform() async throws -> some IntentResult {
-    PlaybackCommand.playTrack(
-      surahId: surahId, reciterId: reciterId, rewayatId: rewayatId, ayah: ayah)
+    await PlaybackCommand.waitUntilHandled(PlaybackCommand.playTrack( // @ai
+      surahId: surahId, reciterId: reciterId, rewayatId: rewayatId, ayah: ayah))
     return .result()
   }
 }
@@ -70,26 +70,43 @@ struct PlayReciterIntent: AudioPlaybackIntent {
   }
 
   func perform() async throws -> some IntentResult {
-    WidgetCommandQueue.enqueue(["type": "playReciter", "reciterId": reciterId])
+    await PlaybackCommand.waitUntilHandled( // @ai
+      WidgetCommandQueue.enqueue(["type": "playReciter", "reciterId": reciterId]))
     return .result()
   }
 }
 
 /// Every play/pause and play-track entry point (widgets, Live Activity, controls, Siri).
 enum PlaybackCommand {
-  static func setPlaying(_ playing: Bool) {
+  // @ai-start
+  /// Kinds that render the main player's state, for an optimistic reload.
+  static let playButtonKinds = [
+    "ContinueListening", "ListeningAccessory", "QuickSurah", "PinnedReciter", "AyahOfTheDay",
+    "RecentlyPlayed", "LibraryShelf", "ReciterSpotlight", "Bedtime", "BayaanNow",
+  ]
+  // @ai-end
+
+  @discardableResult // @ai
+  static func setPlaying(_ playing: Bool) -> Double {
     // Optimistic render first, then hand the command to the app.
     PlaybackOverrideStore.write(isPlaying: playing)
-    WidgetCenter.shared.reloadTimelines(ofKind: "ContinueListening")
-    WidgetCenter.shared.reloadTimelines(ofKind: "ListeningAccessory")
+    // @ai-start
+    // Every widget whose play button turns into pause while its item plays.
+    for kind in PlaybackCommand.playButtonKinds {
+      WidgetCenter.shared.reloadTimelines(ofKind: kind)
+    }
+    // @ai-end
     if #available(iOS 18.0, *) {
       ControlCenter.shared.reloadControls(ofKind: "PlaybackControl")
     }
-    WidgetCommandQueue.enqueue(["type": "setPlayback", "playing": playing])
+    return WidgetCommandQueue.enqueue(["type": "setPlayback", "playing": playing]) // @ai
   }
 
-  static func playTrack(surahId: Int, reciterId: String?, rewayatId: String?, ayah: Int? = nil) {
-    WidgetCommandQueue.enqueue([
+  @discardableResult // @ai
+  static func playTrack(surahId: Int, reciterId: String?, rewayatId: String?, ayah: Int? = nil)
+    -> Double
+  {
+    return WidgetCommandQueue.enqueue([ // @ai
       "type": "playTrack",
       "surahId": surahId,
       "reciterId": reciterId ?? NSNull(),
@@ -97,6 +114,14 @@ enum PlaybackCommand {
       "ayah": ayah ?? NSNull(),
     ])
   }
+
+  // @ai-start
+  /// See WidgetCommandQueue.waitUntilHandled. nil (nothing queued) returns at once.
+  static func waitUntilHandled(_ enqueuedAt: Double?) async {
+    guard let enqueuedAt else { return }
+    await WidgetCommandQueue.waitUntilHandled(enqueuedAt: enqueuedAt)
+  }
+  // @ai-end
 
   /// The app's last snapshot, readable from the app process (Siri) too.
   static func loadSnapshot() -> WidgetSnapshot? {
@@ -125,7 +150,8 @@ struct PlaySurahIntent: AudioPlaybackIntent {
   }
 
   func perform() async throws -> some IntentResult {
-    PlaybackCommand.playTrack(surahId: surah.id, reciterId: nil, rewayatId: nil)
+    await PlaybackCommand.waitUntilHandled( // @ai
+      PlaybackCommand.playTrack(surahId: surah.id, reciterId: nil, rewayatId: nil))
     return .result()
   }
 }
@@ -138,7 +164,7 @@ struct PausePlaybackIntent: AudioPlaybackIntent {
   init() {}
 
   func perform() async throws -> some IntentResult {
-    PlaybackCommand.setPlaying(false)
+    await PlaybackCommand.waitUntilHandled(PlaybackCommand.setPlaying(false)) // @ai
     return .result()
   }
 }
@@ -152,14 +178,17 @@ struct ResumePlaybackIntent: AudioPlaybackIntent {
   init() {}
 
   func perform() async throws -> some IntentResult {
+    var enqueuedAt: Double? // @ai
     switch PlaybackResume.action(for: PlaybackCommand.loadSnapshot()) {
     case .setPlaying:
-      PlaybackCommand.setPlaying(true)
+      enqueuedAt = PlaybackCommand.setPlaying(true) // @ai
     case let .playTrack(surahId, reciterId, rewayatId):
-      PlaybackCommand.playTrack(surahId: surahId, reciterId: reciterId, rewayatId: rewayatId)
+      enqueuedAt = PlaybackCommand.playTrack( // @ai
+        surahId: surahId, reciterId: reciterId, rewayatId: rewayatId)
     case .nothing:
       break
     }
+    await PlaybackCommand.waitUntilHandled(enqueuedAt) // @ai
     return .result()
   }
 }
@@ -176,7 +205,7 @@ struct SetPlayingControlIntent: SetValueIntent, AudioPlaybackIntent {
   init() {}
 
   func perform() async throws -> some IntentResult {
-    PlaybackCommand.setPlaying(value)
+    await PlaybackCommand.waitUntilHandled(PlaybackCommand.setPlaying(value)) // @ai
     return .result()
   }
 }

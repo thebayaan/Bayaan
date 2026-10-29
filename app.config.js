@@ -55,7 +55,9 @@ module.exports = {
           'This app uses Apple Music to play audio.',
         UILaunchStoryboardName: 'SplashScreen',
         LSRequiresIPhoneOS: true,
-        UIRequiresFullScreen: true,
+        // Matches ios/Bayaan/Info.plist: iPad multitasking (Split View, Stage
+        // Manager) is on, so iPad windows can be any size. @ai
+        UIRequiresFullScreen: false,
         ITSAppUsesNonExemptEncryption: false,
         NSCameraUsageDescription: 'This app does not use the camera.',
         BGTaskSchedulerPermittedIdentifiers: ['com.bayaan.app.audio'],
@@ -246,6 +248,7 @@ module.exports = {
       './plugins/withBayaanCar.js',
       './plugins/withAppShortcuts.js',
       './plugins/withBayaanWidgets.js',
+      './plugins/withBayaanKeyboard.js',
     ],
   },
 };

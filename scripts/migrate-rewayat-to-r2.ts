@@ -56,7 +56,11 @@ const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
 const DRY_RUN = process.argv.includes('--dry-run');
-const R2_BASE = 'https://cdn.example.com/quran/recitations';
+const CDN_BASE = (process.env.CDN_BASE ?? 'https://cdn.example.com').replace(
+  /\/$/,
+  '',
+);
+const R2_BASE = `${CDN_BASE}/quran/recitations`;
 const PAGE_LIMIT = 200;
 
 // ---------------------------------------------------------------------------
@@ -299,7 +303,7 @@ async function migrate(): Promise<void> {
       // ------------------------------------------------------------------
       // Skip if already on R2
       // ------------------------------------------------------------------
-      if (rewayat.server && rewayat.server.includes('cdn.example.com')) {
+      if (rewayat.server && rewayat.server.startsWith(CDN_BASE)) {
         console.log(`${prefix} Already on R2 — skipping`);
         result.skipped++;
         continue;

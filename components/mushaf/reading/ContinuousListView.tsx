@@ -9,7 +9,7 @@ import React, {
 import {View} from 'react-native';
 import {FlashList, type FlashListRef} from '@shopify/flash-list';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {moderateScale, verticalScale} from 'react-native-size-matters';
+import {moderateScale, verticalScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {
   getDkFontFamily, // @ai
@@ -34,7 +34,10 @@ import SurahDivider from '@/components/player/v2/PlayerContent/QuranView/SurahDi
 import BasmalaHeader from '@/components/player/v2/PlayerContent/QuranView/BasmalaHeader';
 import {getTranslationName} from '@/utils/translationLookup';
 import {getAllahNameHighlightColorHex} from '@/constants/mushafAllahHighlight';
-import {SCREEN_WIDTH} from '../constants';
+import {
+  SCREEN_WIDTH,
+  readingColumnPadding, // @ai
+} from '../constants';
 // @ai-start
 import {useRewayahVerseUnits} from '@/hooks/useRewayahVerseUnits';
 import {parseAnchorKey} from '@/services/mushaf/RewayahVerseUnits';
@@ -182,6 +185,16 @@ interface ContinuousListViewProps {
   initialPage: number;
   onCurrentSurahChange?: (surahId: number) => void;
   onCurrentPageChange?: (page: number) => void;
+  // @ai-start
+  /**
+   * The list's measured width on iPad, where the text also sits in a centred
+   * reading column. Phones leave it out and keep the launch-time screen
+   * width.
+   */
+  width?: number;
+  /** Whether a tap on the status bar scrolls back to the start. Default on. */
+  scrollsToTop?: boolean;
+  // @ai-end
 }
 
 // @ai-start
@@ -198,6 +211,8 @@ const ContinuousListView = forwardRef<
       initialPage,
       onCurrentSurahChange,
       onCurrentPageChange,
+      width,
+      scrollsToTop = true,
     },
     ref,
   ) => {
@@ -350,7 +365,11 @@ const ContinuousListView = forwardRef<
 
     const items = useMemo(() => buildContinuousListItems(), []);
 
-    const contentWidth = SCREEN_WIDTH - moderateScale(16);
+    const sidePadding =
+      width === undefined
+        ? moderateScale(8)
+        : readingColumnPadding(width, moderateScale(8));
+    const contentWidth = (width ?? SCREEN_WIDTH) - sidePadding * 2;
 
     // Load annotations for visible surahs
     const loadAnnotationsForSurah = useVerseAnnotationsStore(
@@ -521,9 +540,10 @@ const ContinuousListView = forwardRef<
         contentContainerStyle={{
           paddingTop: insets.top + verticalScale(60),
           paddingBottom: insets.bottom + verticalScale(80),
-          paddingHorizontal: moderateScale(8),
+          paddingHorizontal: sidePadding,
         }}
         showsVerticalScrollIndicator={false}
+        scrollsToTop={scrollsToTop}
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={{itemVisiblePercentThreshold: 50}}
       />

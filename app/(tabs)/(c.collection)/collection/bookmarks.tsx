@@ -12,13 +12,12 @@ import {USE_GLASS} from '@/hooks/useGlassProps';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useRouter} from 'expo-router';
 import {useFocusEffect} from 'expo-router';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import {Feather} from '@expo/vector-icons';
 import {ListRenderItem} from 'react-native';
 import {getSurahById} from '@/services/dataService';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
-import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {BookmarkItem} from '@/components/collection/BookmarkItem';
 import {CollectionStickyHeader} from '@/components/collection/CollectionStickyHeader';
 import {SheetManager} from 'react-native-actions-sheet';
@@ -34,12 +33,10 @@ import i18n from '@/i18n';
 import {getSurahDisplayName} from '@/i18n/format';
 import {flipX} from '@/utils/rtl';
 // @ai-start
-import {restoreSavedRewayah} from '@/services/verse-annotations/restoreSavedRewayah';
+import {savedVerseOpenParams} from '@/services/verse-annotations/openSavedVerse';
 import {describeSavedVerseNow} from '@/hooks/useSavedVerseDescription';
-import {
-  savedVerseRouteParams,
-  savedVerseSubtitle,
-} from '@/services/verse-annotations/unitAnnotations';
+import {savedVerseSubtitle} from '@/services/verse-annotations/unitAnnotations';
+import {useLibraryListBottomPadding} from '@/hooks/useBottomInset'; // @ai
 // @ai-end
 
 interface BookmarkData {
@@ -50,6 +47,7 @@ interface BookmarkData {
 // @ai-start
 const BookmarksScreen = () => {
   const {theme} = useTheme();
+  const listBottomPadding = useLibraryListBottomPadding(); // @ai
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const {t} = useTranslation(['collection', 'common']);
@@ -108,20 +106,9 @@ const BookmarksScreen = () => {
       if (openingRef.current) return;
       openingRef.current = true;
       try {
-        const verseKey = `${bookmark.surahNumber}:${bookmark.ayahNumber}`;
-        const surahStartPages = digitalKhattDataService.getSurahStartPages();
-        const fallbackPage = surahStartPages[bookmark.surahNumber] || 1;
-        // Restore the rewayah the bookmark was saved in so the opened verse
-        // matches what the user was reading at save time.
-        await restoreSavedRewayah(bookmark.rewayahId);
-        const page = digitalKhattDataService.getPageForVerse(verseKey);
-        // The page of the anchor's Hafs verse is the page the saved verse
-        // starts on. A bookmark saved in a non-Hafs rewayah also passes its
-        // anchor, so the mushaf selects exactly that rewayah verse (the two
-        // parts of a split Hafs verse are different bookmarks).
         router.push({
           pathname: '/mushaf',
-          params: savedVerseRouteParams(bookmark, page || fallbackPage),
+          params: await savedVerseOpenParams(bookmark),
         });
       } finally {
         openingRef.current = false;
@@ -314,7 +301,10 @@ const BookmarksScreen = () => {
         renderItem={renderItem}
         keyExtractor={getItemKey}
         ListHeaderComponent={ListHeaderComponent}
-        contentContainerStyle={styles.listContentContainer}
+        contentContainerStyle={[
+          styles.listContentContainer,
+          {paddingBottom: listBottomPadding}, // @ai
+        ]}
         onScroll={RNAnimated.event(
           [{nativeEvent: {contentOffset: {y: scrollY}}}],
           {useNativeDriver: true},
@@ -373,7 +363,6 @@ const styles = StyleSheet.create({
   },
   listContentContainer: {
     flexGrow: 1,
-    paddingBottom: moderateScale(65),
   },
   fixedBackButton: {
     position: 'absolute',

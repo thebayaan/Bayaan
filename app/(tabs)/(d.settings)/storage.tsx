@@ -1,7 +1,7 @@
 import React, {useState, useMemo} from 'react';
 import {View, Text, ScrollView, Pressable, Alert} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
-import {ScaledSheet, moderateScale} from 'react-native-size-matters';
+import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {Theme} from '@/utils/themeUtils';
 import Color from 'color';
 import {useStorageBreakdown} from '@/hooks/useStorageBreakdown';
@@ -41,6 +41,7 @@ interface ActionSectionProps {
   description: string;
   buttonLabel: string;
   onPress: () => void;
+  disabled?: boolean; // @ai
   theme: Theme;
   styles: ReturnType<typeof createStyles>;
 }
@@ -50,6 +51,7 @@ const ActionSection = ({
   description,
   buttonLabel,
   onPress,
+  disabled = false, // @ai
   theme,
   styles,
 }: ActionSectionProps) => (
@@ -63,8 +65,13 @@ const ActionSection = ({
         styles.actionButton,
         {backgroundColor: theme.colors.text},
         pressed && {opacity: 0.8},
+        disabled && {opacity: 0.4}, // @ai
       ]}
-      onPress={onPress}>
+      onPress={onPress}
+      // @ai: one clear at a time; a second tap mid-clear started another
+      disabled={disabled}
+      accessibilityRole="button"
+      accessibilityState={{disabled, busy: disabled}}>
       <Text style={styles.actionButtonText}>{buttonLabel}</Text>
     </Pressable>
   </View>
@@ -75,12 +82,13 @@ export default function StorageScreen() {
   const {theme} = useTheme();
   const {t} = useTranslation(['settings', 'common']);
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const [, setIsClearing] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
 
   const {free, downloads, cache, otherApps, loading, error, rawData, refresh} =
     useStorageBreakdown();
 
   const handleClearAllDownloads = () => {
+    if (isClearing) return;
     Alert.alert(
       t('storage.removeDownloadsTitle'),
       t('storage.removeDownloadsConfirm'),
@@ -113,6 +121,7 @@ export default function StorageScreen() {
   };
 
   const handleClearCache = () => {
+    if (isClearing) return;
     Alert.alert(t('storage.clearCacheTitle'), t('storage.clearCacheConfirm'), [
       {text: t('common:actions.cancel'), style: 'cancel'},
       {
@@ -281,6 +290,7 @@ export default function StorageScreen() {
                 description={t('storage.removeDownloadsDescription')}
                 buttonLabel={t('common:actions.remove')}
                 onPress={handleClearAllDownloads}
+                disabled={isClearing}
                 theme={theme}
                 styles={styles}
                 key="downloads"
@@ -293,6 +303,7 @@ export default function StorageScreen() {
                 description={t('storage.clearCacheDescription')}
                 buttonLabel={t('common:actions.clear')}
                 onPress={handleClearCache}
+                disabled={isClearing}
                 theme={theme}
                 styles={styles}
                 key="cache"
