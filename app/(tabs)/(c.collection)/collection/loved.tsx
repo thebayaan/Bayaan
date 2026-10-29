@@ -14,7 +14,7 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useRouter} from 'expo-router';
 import {TrackItem} from '@/components/TrackItem';
 import {getReciterById, getSurahById} from '@/services/dataService';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import {Feather} from '@expo/vector-icons';
 import {ListRenderItem} from 'react-native';
 import {Reciter} from '@/data/reciterData';
@@ -38,10 +38,14 @@ import {downloadSurah} from '@/services/downloadService';
 import {useCollectionDownloadState} from '@/hooks/useCollectionDownloadState';
 import {CollectionStickyHeader} from '@/components/collection/CollectionStickyHeader';
 import {SheetManager} from 'react-native-actions-sheet';
+// @ai-start
+import {confirmDestructive} from '@/utils/confirmDestructive';
+// @ai-end
 import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
 // @ai-start
 import {useTranslation} from 'react-i18next';
 import {flipX} from '@/utils/rtl';
+import {useLibraryListBottomPadding} from '@/hooks/useBottomInset'; // @ai
 // @ai-end
 
 interface LovedTrack {
@@ -60,6 +64,7 @@ interface LovedTrackData {
 // @ai-start
 const LovedScreen = () => {
   const {theme} = useTheme();
+  const listBottomPadding = useLibraryListBottomPadding(); // @ai
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const {t} = useTranslation(['collection', 'common']);
@@ -92,7 +97,6 @@ const LovedScreen = () => {
     },
     listContentContainer: {
       flexGrow: 1,
-      paddingBottom: moderateScale(65),
     },
     listItem: {
       marginVertical: moderateScale(2),
@@ -552,7 +556,16 @@ const LovedScreen = () => {
                 filled={true}
               />
             ),
-            onPress: () => unloveAll(),
+            // @ai-start
+            onPress: () =>
+              confirmDestructive({
+                title: t('lovedScreen.unloveAllTitle'),
+                message: t('lovedScreen.unloveAllConfirm'),
+                confirmText: t('common:actions.remove'),
+                cancelText: t('common:actions.cancel'),
+                onConfirm: unloveAll,
+              }),
+            // @ai-end
           },
         ],
       },
@@ -775,7 +788,10 @@ const LovedScreen = () => {
         renderItem={renderItem}
         keyExtractor={getItemKey}
         ListHeaderComponent={ListHeaderComponent}
-        contentContainerStyle={styles.listContentContainer}
+        contentContainerStyle={[
+          styles.listContentContainer,
+          {paddingBottom: listBottomPadding}, // @ai
+        ]}
         contentInsetAdjustmentBehavior="automatic"
         onScroll={RNAnimated.event(
           [{nativeEvent: {contentOffset: {y: scrollY}}}],

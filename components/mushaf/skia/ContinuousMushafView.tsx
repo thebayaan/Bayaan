@@ -20,7 +20,7 @@ import {useMushafFontMgr} from '@/hooks/useMushafFontMgr';
 import {Gesture, GestureDetector} from 'react-native-gesture-handler';
 import {runOnJS} from 'react-native-worklets';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {verticalScale} from 'react-native-size-matters';
+import {verticalScale} from '@/utils/scale';
 import Color from 'color';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import type {MushafArabicTextWeight} from '@/store/mushafSettingsStore';
@@ -62,8 +62,12 @@ import {
   isTajweedEnabled,
 } from './pageOverlays';
 // @ai-start
-import {computeUnitPageHighlightLayers} from './verseHighlightLayers';
+import {
+  basmalaPlaybackLines, // @ai
+  computeUnitPageHighlightLayers,
+} from './verseHighlightLayers';
 import {usePlaybackBand} from './playbackBand';
+import {usePlaybackBasmalaSurah} from '@/store/mushafPlayerStore'; // @ai
 import {useVerseUnitDragSelect, type LineCharHit} from './verseUnitDragSelect';
 // @ai-end
 import {type MushafLayoutMetrics, canvasBottomOverflow} from '../constants'; // @ai
@@ -182,6 +186,8 @@ interface ContinuousMushafViewProps {
   /** Live layout metrics from `useMushafLayout()`. Threaded through so the
    *  continuous view responds to iPad width caps + rotation. */
   metrics: MushafLayoutMetrics;
+  /** Whether a tap on the status bar scrolls back to page 1. Default on. @ai */
+  scrollsToTop?: boolean; // @ai
 }
 
 // ── Per-page content with gestures + highlights ──────────
@@ -416,6 +422,9 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
     const highlightRows = useVerseAnnotationsStore(s => s.highlightRows);
     // @ai — what the reciter is reciting, painted as verse units.
     const playbackBand = usePlaybackBand();
+    // @ai — the surah whose basmala is being recited (the intro before its
+    // first verse): its basmallah line is painted as a recited verse is.
+    const basmalaSurah = usePlaybackBasmalaSurah();
 
     // ── Hit testing ────────────────────────────────────────
     // @ai — the line and character under a touch point (this renderer's
@@ -548,6 +557,13 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
           rewayahDiffPaintEnabled,
         ),
         themes: null,
+        playbackBasmalaLines: basmalaPlaybackLines(
+          pageLines,
+          basmalaSurah,
+          line => digitalKhattDataService.getBasmalaSurah(line),
+          lineIndex =>
+            quranTextService.getLineText(pageNumber, lineIndex).length,
+        ), // @ai
         sources: {
           bookmarkedVerseKeys,
           persistentHighlights,
@@ -576,6 +592,7 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
       bookmarkRows, // @ai
       highlightRows, // @ai
       playbackBand, // @ai
+      basmalaSurah, // @ai
       playbackBgColor,
       selectedVerseKeys,
       selectedRewayah, // @ai
@@ -696,7 +713,15 @@ const ContinuousMushafView = forwardRef<
   ContinuousMushafViewProps
 >(
   (
-    {textColor, dividerColor, onTap, initialPage, onCurrentPageChange, metrics},
+    {
+      textColor,
+      dividerColor,
+      onTap,
+      initialPage,
+      onCurrentPageChange,
+      metrics,
+      scrollsToTop = true, // @ai
+    },
     ref,
   ) => {
     const insets = useSafeAreaInsets();
@@ -880,6 +905,7 @@ const ContinuousMushafView = forwardRef<
           paddingBottom: insets.bottom + verticalScale(80),
         }}
         showsVerticalScrollIndicator={false}
+        scrollsToTop={scrollsToTop} // @ai
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={{itemVisiblePercentThreshold: 50}}
       />

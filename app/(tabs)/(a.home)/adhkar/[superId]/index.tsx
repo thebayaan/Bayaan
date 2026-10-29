@@ -11,7 +11,6 @@ import {
   SectionList,
   FlatList,
   Text,
-  ViewToken,
   Pressable,
   StyleSheet,
 } from 'react-native';
@@ -23,7 +22,7 @@ import {
   Link,
 } from 'expo-router';
 import {Ionicons, Feather} from '@expo/vector-icons';
-import {ScaledSheet, moderateScale} from 'react-native-size-matters';
+import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {USE_GLASS} from '@/hooks/useGlassProps';
 import {useAdhkar} from '@/hooks/useAdhkar';
 import {useTheme} from '@/hooks/useTheme';
@@ -36,6 +35,7 @@ import {
   AdhkarJumpPill,
   jumpPillDirection,
   visibleRowIndices,
+  type RowToken,
 } from '@/components/adhkar/AdhkarJumpPill';
 import {Dhikr, SuperCategory} from '@/types/adhkar';
 import {adhkarService} from '@/services/adhkar/AdhkarService';
@@ -62,6 +62,12 @@ import branding from '@/config/branding';
 // @ai-start
 import {useTranslation} from 'react-i18next';
 import {flipX} from '@/utils/rtl';
+import {
+  DhikrCardRow,
+  chunkRows,
+  rowOf,
+  useDhikrColumns,
+} from '@/components/adhkar/DhikrCardRow';
 // @ai-end
 
 // Space between the header and a card the jump pill scrolls to.
@@ -79,6 +85,11 @@ interface Section {
   shortTitle: string;
   categoryId: string;
   data: DhikrItem[];
+}
+
+// A section's cards in rows: one card per row, two on a wide iPad. @ai
+interface RowSection extends Omit<Section, 'data'> {
+  data: DhikrItem[][];
 }
 
 interface CategoryGroup {
@@ -99,6 +110,7 @@ const SuperCategoryListScreen: React.FC = () => {
   const {t} = useTranslation(['home', 'common']);
   const styles = useMemo(() => createStyles(theme), [theme]);
   const headerHeight = useHeaderHeight();
+  const {columns, spacing} = useDhikrColumns(); // @ai
 
   const {getSuperCategoryById} = useAdhkar();
 
@@ -120,8 +132,8 @@ const SuperCategoryListScreen: React.FC = () => {
 
   const revealToken = useAdhkarSessionStore(s => s.revealToken);
   const [visibleIndices, setVisibleIndices] = useState<number[]>([]);
-  const sectionListRef = useRef<SectionList<DhikrItem, Section>>(null);
-  const flatListRef = useRef<FlatList<DhikrItem>>(null);
+  const sectionListRef = useRef<SectionList<DhikrItem[], RowSection>>(null);
+  const flatListRef = useRef<FlatList<DhikrItem[]>>(null);
 
   const [superCategory, setSuperCategory] = useState<SuperCategory | null>(
     null,
@@ -215,6 +227,16 @@ const SuperCategoryListScreen: React.FC = () => {
     }));
   }, [categoryGroups, isSingleCategory]);
 
+  // The lists render rows of cards; the scroll targets below are rows. @ai
+  const rowSections: RowSection[] = useMemo(
+    () => sections.map(s => ({...s, data: chunkRows(s.data, columns)})),
+    [sections, columns],
+  );
+  const flatRows = useMemo(
+    () => chunkRows(flatAdhkarList, columns),
+    [flatAdhkarList, columns],
+  );
+
   // A widget link (adhkar/<superId>?dhikr=<id>) opens the list at that dhikr. On an open screen a
   // new link changes the param: a different dhikr scrolls to it, a link without one scrolls to the top.
   // A link to another super category reuses this screen: until its list loads, the old one is still
@@ -230,7 +252,7 @@ const SuperCategoryListScreen: React.FC = () => {
   // rows render), which leaves the target off screen, so each content size change scrolls back to it.
   const pinnedIndex = useRef<number | null>(null);
 
-  const scrollToDhikr = useCallback(
+  const scrollToRow = useCallback(
     (index: number) => {
       flatListRef.current?.scrollToIndex({
         index,
@@ -261,26 +283,28 @@ const SuperCategoryListScreen: React.FC = () => {
       0,
       flatAdhkarList.findIndex(item => item.dhikr.id === target),
     );
-    if (index === 0 && opening) {
+    const row = rowOf(index, columns); // @ai
+    if (row === 0 && opening) {
       pinnedIndex.current = null;
       return;
     }
-    pinnedIndex.current = index;
-    requestAnimationFrame(() => scrollToDhikr(index));
+    pinnedIndex.current = row;
+    requestAnimationFrame(() => scrollToRow(row));
   }, [
     dhikr,
     superId,
     superCategory?.id,
     flatAdhkarList,
+    columns,
     headerHeight,
-    scrollToDhikr,
+    scrollToRow,
   ]);
 
   const onContentSizeChange = useCallback(() => {
     const index = pinnedIndex.current;
     if (index === null) return;
-    requestAnimationFrame(() => scrollToDhikr(index));
-  }, [scrollToDhikr]);
+    requestAnimationFrame(() => scrollToRow(index));
+  }, [scrollToRow]);
 
   const onScrollBeginDrag = useCallback(() => {
     pinnedIndex.current = null;
@@ -292,9 +316,9 @@ const SuperCategoryListScreen: React.FC = () => {
         offset: info.averageItemLength * info.index,
         animated: false,
       });
-      setTimeout(() => scrollToDhikr(info.index), 100);
+      setTimeout(() => scrollToRow(info.index), 100);
     },
-    [scrollToDhikr],
+    [scrollToRow],
   );
 
   // Build full adhkar list for Play All (works for both single and multi-category)
@@ -338,7 +362,7 @@ const SuperCategoryListScreen: React.FC = () => {
     if (sessionIndex === null) return;
     if (isSingleCategory) {
       flatListRef.current?.scrollToIndex({
-        index: sessionIndex,
+        index: rowOf(sessionIndex, columns),
         viewPosition: 0,
         viewOffset: scrollViewOffset,
         animated: true,
@@ -351,12 +375,12 @@ const SuperCategoryListScreen: React.FC = () => {
       sectionIndex: loc.sectionIndex,
       // scrollToLocation counts the section header as row 0 of the section,
       // so itemIndex k lands on the cell before the item.
-      itemIndex: loc.itemIndex + 1,
+      itemIndex: rowOf(loc.itemIndex, columns) + 1,
       viewPosition: 0,
       viewOffset: scrollViewOffset,
       animated: true,
     });
-  }, [sessionIndex, isSingleCategory, locationOf, scrollViewOffset]);
+  }, [sessionIndex, isSingleCategory, locationOf, columns, scrollViewOffset]);
 
   // A surface asked to show the playing dhikr.
   const lastReveal = useRef(revealToken);
@@ -424,7 +448,7 @@ const SuperCategoryListScreen: React.FC = () => {
   // Rows changed: drop stale viewability until the list reports again.
   useEffect(() => {
     setVisibleIndices([]);
-  }, [sections, flatAdhkarList]);
+  }, [rowSections, flatRows]);
 
   const handleShare = useCallback(() => {
     if (!superId) return;
@@ -507,6 +531,8 @@ const SuperCategoryListScreen: React.FC = () => {
         <Pressable
           onPress={() => router.back()}
           hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel={t('common:actions.back')}
           style={{padding: moderateScale(4)}}>
           <Ionicons
             name="chevron-back"
@@ -549,7 +575,11 @@ const SuperCategoryListScreen: React.FC = () => {
             gap: moderateScale(20),
             paddingHorizontal: moderateScale(6),
           }}>
-          <Pressable onPress={handleShare} hitSlop={8}>
+          <Pressable
+            onPress={handleShare}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={t('common:actions.share')}>
             <Feather
               name="share"
               size={moderateScale(20)}
@@ -575,11 +605,14 @@ const SuperCategoryListScreen: React.FC = () => {
     loading,
     allAdhkarForPlayAll.length,
     theme,
+    t,
+    router,
   ]);
 
-  const renderItem = useCallback(
-    ({item}: {item: DhikrItem}) => (
+  const renderCard = useCallback(
+    (item: DhikrItem) => (
       <Link
+        key={item.dhikr.id}
         href={{
           pathname: '/(tabs)/(a.home)/adhkar/[superId]/[dhikrId]',
           params: {
@@ -599,6 +632,7 @@ const SuperCategoryListScreen: React.FC = () => {
                 index={item.index}
                 isCurrent={item.dhikr.id === currentDhikrId}
                 isPlaying={item.dhikr.id === currentDhikrId && sessionPlaying}
+                fill={spacing !== null}
               />
             </Link.AppleZoom>
           ) : (
@@ -607,28 +641,49 @@ const SuperCategoryListScreen: React.FC = () => {
               index={item.index}
               isCurrent={item.dhikr.id === currentDhikrId}
               isPlaying={item.dhikr.id === currentDhikrId && sessionPlaying}
+              fill={spacing !== null}
             />
           )}
         </Pressable>
       </Link>
     ),
-    [superId, listTitle, currentDhikrId, sessionPlaying],
+    [superId, listTitle, currentDhikrId, sessionPlaying, spacing],
   );
 
-  const renderSectionHeader = useCallback(({section}: {section: Section}) => {
-    return <CategorySectionHeader title={section.shortTitle} />;
-  }, []);
+  // @ai-start
+  const renderItem = useCallback(
+    ({item: row}: {item: DhikrItem[]}) =>
+      spacing ? (
+        <DhikrCardRow spacing={spacing} columns={columns}>
+          {row.map(renderCard)}
+        </DhikrCardRow>
+      ) : (
+        renderCard(row[0])
+      ),
+    [spacing, columns, renderCard],
+  );
+
+  const renderSectionHeader = useCallback(
+    ({section}: {section: RowSection}) => (
+      <CategorySectionHeader
+        title={section.shortTitle}
+        style={spacing ? {paddingHorizontal: spacing.margin} : undefined}
+      />
+    ),
+    [spacing],
+  );
+  // @ai-end
 
   // Track current visible section for the subtitle
   const onViewableItemsChanged = useCallback(
-    ({viewableItems}: {viewableItems: ViewToken<DhikrItem | undefined>[]}) => {
+    ({viewableItems}: {viewableItems: RowToken<DhikrItem[] | undefined>[]}) => {
       setVisibleIndices(
-        visibleRowIndices(viewableItems, v => v.item?.globalIndex),
+        visibleRowIndices(viewableItems, v => v.item?.map(i => i.globalIndex)),
       );
       if (viewableItems.length > 0) {
         const firstItem = viewableItems[0];
         if (firstItem.section) {
-          setCurrentSectionTitle((firstItem.section as Section).shortTitle);
+          setCurrentSectionTitle((firstItem.section as RowSection).shortTitle);
         }
       }
     },
@@ -636,9 +691,9 @@ const SuperCategoryListScreen: React.FC = () => {
   );
 
   const onFlatViewableItemsChanged = useCallback(
-    ({viewableItems}: {viewableItems: ViewToken<DhikrItem>[]}) => {
+    ({viewableItems}: {viewableItems: RowToken<DhikrItem[]>[]}) => {
       setVisibleIndices(
-        visibleRowIndices(viewableItems, v => v.item.globalIndex),
+        visibleRowIndices(viewableItems, v => v.item.map(i => i.globalIndex)),
       );
     },
     [],
@@ -649,7 +704,7 @@ const SuperCategoryListScreen: React.FC = () => {
   }).current;
 
   const keyExtractor = useCallback(
-    (item: DhikrItem) => `dhikr-${item?.dhikr?.id ?? 'unknown'}`,
+    (row: DhikrItem[]) => `dhikr-${row?.[0]?.dhikr?.id ?? 'unknown'}`,
     [],
   );
 
@@ -681,10 +736,14 @@ const SuperCategoryListScreen: React.FC = () => {
       {isSingleCategory ? (
         <FlatList
           ref={flatListRef}
-          data={flatAdhkarList}
+          data={flatRows}
           renderItem={renderItem}
           keyExtractor={keyExtractor}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={
+            spacing
+              ? [styles.listContent, styles.listContentPaired]
+              : styles.listContent
+          }
           contentInset={USE_GLASS ? {top: headerHeight} : undefined}
           contentOffset={USE_GLASS ? {x: 0, y: -headerHeight} : undefined}
           scrollIndicatorInsets={USE_GLASS ? {top: headerHeight} : undefined}
@@ -704,7 +763,7 @@ const SuperCategoryListScreen: React.FC = () => {
       ) : (
         <SectionList
           ref={sectionListRef}
-          sections={sections}
+          sections={rowSections}
           renderItem={renderItem}
           renderSectionHeader={renderSectionHeader}
           keyExtractor={keyExtractor}
@@ -749,6 +808,11 @@ const createStyles = (theme: Theme) =>
     listContent: {
       paddingBottom: moderateScale(100),
     },
+    // @ai-start
+    listContentPaired: {
+      paddingTop: 12,
+    },
+    // @ai-end
     emptyContainer: {
       flex: 1,
       justifyContent: 'center',

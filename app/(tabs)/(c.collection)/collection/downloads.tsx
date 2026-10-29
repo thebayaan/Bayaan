@@ -23,10 +23,13 @@ import {Reciter} from '@/data/reciterData';
 import {Surah} from '@/data/surahData';
 import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {createDownloadedTrack} from '@/utils/track';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import {Feather} from '@expo/vector-icons';
 import {DownloadIcon, PlayIcon, ShuffleIcon} from '@/components/Icons';
 import {SheetManager} from 'react-native-actions-sheet';
+// @ai-start
+import {confirmDestructive} from '@/utils/confirmDestructive';
+// @ai-end
 import {CollectionStickyHeader} from '@/components/collection/CollectionStickyHeader';
 import {shuffleArray} from '@/utils/arrayUtils';
 import Color from 'color';
@@ -35,6 +38,7 @@ import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
 import {flipX, forceLTR, latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
 import {getReciterDisplayName} from '@/i18n/format';
+import {useLibraryListBottomPadding} from '@/hooks/useBottomInset'; // @ai
 // @ai-end
 
 interface DownloadDataItem {
@@ -53,6 +57,7 @@ interface GroupedItem {
 // @ai-start
 export default function DownloadsScreen() {
   const {theme} = useTheme();
+  const listBottomPadding = useLibraryListBottomPadding(); // @ai
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const {t} = useTranslation(['collection', 'common']);
@@ -76,7 +81,16 @@ export default function DownloadsScreen() {
             label: t('downloadsScreen.removeAll'),
             icon: 'trash-2',
             destructive: true,
-            onPress: () => clearAllDownloads(),
+            // @ai-start
+            onPress: () =>
+              confirmDestructive({
+                title: t('downloadsScreen.removeAllTitle'),
+                message: t('downloadsScreen.removeAllConfirm'),
+                confirmText: t('common:actions.remove'),
+                cancelText: t('common:actions.cancel'),
+                onConfirm: clearAllDownloads,
+              }),
+            // @ai-end
           },
         ],
       },
@@ -197,7 +211,6 @@ export default function DownloadsScreen() {
         },
         listContentContainer: {
           flexGrow: 1,
-          paddingBottom: moderateScale(65),
         },
         fixedBackButton: {
           position: 'absolute',
@@ -408,15 +421,26 @@ export default function DownloadsScreen() {
               label: t('downloadsScreen.removeAll'),
               icon: 'trash-2',
               destructive: true,
-              onPress: async () => {
-                for (const item of reciterDownloads) {
-                  await removeDownload(
-                    item.download.reciterId,
-                    item.download.surahId,
-                    item.download.rewayatId || undefined,
-                  );
-                }
-              },
+              // @ai-start
+              onPress: () =>
+                confirmDestructive({
+                  title: t('downloadsScreen.removeAllTitle'),
+                  message: t('downloadsScreen.removeReciterConfirm', {
+                    reciter: reciterName,
+                  }),
+                  confirmText: t('common:actions.remove'),
+                  cancelText: t('common:actions.cancel'),
+                  onConfirm: async () => {
+                    for (const item of reciterDownloads) {
+                      await removeDownload(
+                        item.download.reciterId,
+                        item.download.surahId,
+                        item.download.rewayatId || undefined,
+                      );
+                    }
+                  },
+                }),
+              // @ai-end
             },
           ],
         },
@@ -655,7 +679,10 @@ export default function DownloadsScreen() {
             : `single-${item.reciterId}-${item.downloadData!.download.surahId}`
         }
         ListHeaderComponent={ListHeaderComponent}
-        contentContainerStyle={styles.listContentContainer}
+        contentContainerStyle={[
+          styles.listContentContainer,
+          {paddingBottom: listBottomPadding}, // @ai
+        ]}
         onScroll={RNAnimated.event(
           [{nativeEvent: {contentOffset: {y: scrollY}}}],
           {useNativeDriver: true},

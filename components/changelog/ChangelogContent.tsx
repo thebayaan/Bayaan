@@ -1,6 +1,6 @@
 import React from 'react';
 import {View, Text, StyleSheet, ScrollView, Image} from 'react-native';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Ionicons} from '@expo/vector-icons';
 import Color from 'color';
@@ -136,6 +136,9 @@ function formatDate(dateString: string): string {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
+    // Release dates are calendar days ("2026-04-22"), which Date parses as UTC
+    // midnight. Format in UTC so time zones behind UTC don't show the day before.
+    timeZone: 'UTC',
   };
   // Hermes formats some locales with Western digits; match the UI's digits.
   return localizeDigits(

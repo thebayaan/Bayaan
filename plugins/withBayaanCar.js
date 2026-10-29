@@ -1,16 +1,47 @@
+const fs = require('fs');
+const path = require('path');
 const {
+  IOSConfig,
   withInfoPlist,
   withEntitlementsPlist,
   withAppDelegate,
+  withDangerousMod,
   createRunOncePlugin,
 } = require('expo/config-plugins');
 
+const SCENE_DELEGATE = path.join(
+  __dirname,
+  'bayaan-car',
+  'SceneDelegate.swift',
+);
+
 const START_MARKER = '// @bayaan-car scene bridge start';
+const END_MARKER = '// @bayaan-car scene bridge end';
 const SIRI_START_MARKER = '// @bayaan-car siri start';
 const SIRI_END_MARKER = '// @bayaan-car siri end';
-const SIRI_ANCHOR = '  // Linking API\n';
 
-const SIRI_BLOCK = `  ${SIRI_START_MARKER}
+// SDK 58 template: AppDelegate builds the React Native factory and leaves the
+// window to the scene delegate. The bridge block goes right before the
+// `super` call, and the Siri methods at the end of the AppDelegate class.
+const BRIDGE_ANCHOR =
+  '    return super.application(application, didFinishLaunchingWithOptions: launchOptions)\n';
+const SIRI_ANCHOR = '}\n\nclass ReactNativeDelegate';
+
+const BRIDGE_BLOCK = `    ${START_MARKER}
+    // SceneDelegate (the phone) and CarPlaySceneDelegate start React Native
+    // through the bridge, whichever scene connects first.
+    BayaanCarSceneBridge.shared.configure(
+      start: { hostWindow, extra in
+        let merged = (launchOptions ?? [:]).merging(extra) { _, new in new }
+        factory.startReactNative(withModuleName: "main", in: hostWindow, launchOptions: merged)
+      },
+      onWindow: { [weak self] hostWindow in self?.window = hostWindow })
+    ${END_MARKER}
+
+`;
+
+const SIRI_BLOCK = `
+  ${SIRI_START_MARKER}
   func application(_ application: UIApplication, handlerFor intent: INIntent) -> Any? {
     return BayaanCarSiri.handler(for: intent)
   }
@@ -23,25 +54,45 @@ const SIRI_BLOCK = `  ${SIRI_START_MARKER}
     BayaanCarSiri.handle(intent, completion: completionHandler)
   }
   ${SIRI_END_MARKER}
-
 `;
-const END_MARKER = '// @bayaan-car scene bridge end';
 
-const ORIGINAL_WINDOW_BLOCK = `    window = UIWindow(frame: UIScreen.main.bounds)
-    factory.startReactNative(
-      withModuleName: "main",
-      in: window,
-      launchOptions: launchOptions)`;
+function addImport(src, line) {
+  if (src.includes(`${line}\n`)) return src;
+  if (!src.includes('import React\n')) {
+    throw new Error(
+      '[withBayaanCar] AppDelegate "import React" anchor not found. Update the import anchor for this Expo SDK.',
+    );
+  }
+  return src.replace('import React\n', `import React\n${line}\n`);
+}
 
-const BRIDGE_BLOCK = `    ${START_MARKER}
-    BayaanCarSceneBridge.shared.configure(
-      start: { hostWindow, extra in
-        let merged = (launchOptions ?? [:]).merging(extra) { _, new in new }
-        factory.startReactNative(withModuleName: "main", in: hostWindow, launchOptions: merged)
-      },
-      onWindow: { [weak self] hostWindow in self?.window = hostWindow })
-    ${END_MARKER}`;
+/** Adds the scene bridge to an SDK 58 AppDelegate. Idempotent. */
+function applySceneAppDelegate(src) {
+  if (src.includes(START_MARKER)) return src;
+  if (!src.includes(BRIDGE_ANCHOR)) {
+    throw new Error(
+      '[withBayaanCar] AppDelegate didFinishLaunching super call not found. Update BRIDGE_ANCHOR for this Expo SDK.',
+    );
+  }
+  src = src.replace(BRIDGE_ANCHOR, BRIDGE_BLOCK + BRIDGE_ANCHOR);
+  return addImport(src, 'internal import BayaanCar');
+}
 
+/** Adds the in-app Siri intent handling to an SDK 58 AppDelegate. Idempotent. */
+function applySiriAppDelegate(src) {
+  if (src.includes(SIRI_START_MARKER)) return src;
+  if (!src.includes(SIRI_ANCHOR)) {
+    throw new Error(
+      '[withBayaanCar] end of the AppDelegate class not found. Update SIRI_ANCHOR for this Expo SDK.',
+    );
+  }
+  src = src.replace(SIRI_ANCHOR, SIRI_BLOCK + SIRI_ANCHOR);
+  return addImport(src, 'import Intents');
+}
+
+// Adds a CarPlay scene next to the SDK 58 template's phone scene. Either can
+// start React Native first, so the template's SceneDelegate.swift is replaced
+// with ours (withPhoneSceneDelegate).
 function withCarPlayInfoPlist(config) {
   return withInfoPlist(config, cfg => {
     cfg.modResults.UIApplicationSceneManifest = {
@@ -50,7 +101,7 @@ function withCarPlayInfoPlist(config) {
         UIWindowSceneSessionRoleApplication: [
           {
             UISceneConfigurationName: 'Phone',
-            UISceneDelegateClassName: 'PhoneSceneDelegate',
+            UISceneDelegateClassName: '$(PRODUCT_MODULE_NAME).SceneDelegate',
           },
         ],
         CPTemplateApplicationSceneSessionRoleApplication: [
@@ -85,18 +136,7 @@ function withSiriEntitlement(config) {
 
 function withSiriAppDelegate(config) {
   return withAppDelegate(config, cfg => {
-    let src = cfg.modResults.contents;
-    if (src.includes(SIRI_START_MARKER)) return cfg;
-    if (!src.includes(SIRI_ANCHOR)) {
-      throw new Error(
-        '[withBayaanCar] AppDelegate "// Linking API" anchor not found. Update SIRI_ANCHOR for this Expo SDK.',
-      );
-    }
-    src = src.replace(SIRI_ANCHOR, SIRI_BLOCK + SIRI_ANCHOR);
-    if (!src.includes('import Intents')) {
-      src = src.replace('import React\n', 'import React\nimport Intents\n');
-    }
-    cfg.modResults.contents = src;
+    cfg.modResults.contents = applySiriAppDelegate(cfg.modResults.contents);
     return cfg;
   });
 }
@@ -108,28 +148,34 @@ function withCarPlayEntitlement(config) {
   });
 }
 
-function withSceneAppDelegate(config) {
-  return withAppDelegate(config, cfg => {
-    let src = cfg.modResults.contents;
-    if (src.includes(START_MARKER)) return cfg;
-    if (!src.includes(ORIGINAL_WINDOW_BLOCK)) {
-      throw new Error(
-        '[withBayaanCar] AppDelegate window block not found. Update ORIGINAL_WINDOW_BLOCK for this Expo SDK.',
+// The template already adds SceneDelegate.swift to the app target; only its
+// contents change.
+function withPhoneSceneDelegate(config) {
+  return withDangerousMod(config, [
+    'ios',
+    async cfg => {
+      const projectName = IOSConfig.XcodeUtils.getProjectName(
+        cfg.modRequest.projectRoot,
       );
-    }
-    src = src.replace(ORIGINAL_WINDOW_BLOCK, BRIDGE_BLOCK);
-    if (!src.includes('import BayaanCar')) {
-      if (!src.includes('import React\n')) {
+      const dest = path.join(
+        cfg.modRequest.platformProjectRoot,
+        projectName,
+        'SceneDelegate.swift',
+      );
+      if (!fs.existsSync(dest)) {
         throw new Error(
-          '[withBayaanCar] AppDelegate "import React" anchor not found. Update the import anchor for this Expo SDK.',
+          '[withBayaanCar] SceneDelegate.swift not found in the iOS project. This plugin expects the Expo SDK 58+ template.',
         );
       }
-      src = src.replace(
-        'import React\n',
-        'import React\ninternal import BayaanCar\n',
-      );
-    }
-    cfg.modResults.contents = src;
+      fs.copyFileSync(SCENE_DELEGATE, dest);
+      return cfg;
+    },
+  ]);
+}
+
+function withSceneAppDelegate(config) {
+  return withAppDelegate(config, cfg => {
+    cfg.modResults.contents = applySceneAppDelegate(cfg.modResults.contents);
     return cfg;
   });
 }
@@ -141,6 +187,7 @@ function withBayaanCar(config, props) {
   config = withCarPlayInfoPlist(config);
   if (carPlayAudioEntitlement) config = withCarPlayEntitlement(config);
   config = withSceneAppDelegate(config);
+  config = withPhoneSceneDelegate(config);
   if (siri) {
     config = withSiriInfoPlist(config);
     config = withSiriEntitlement(config);
@@ -150,3 +197,5 @@ function withBayaanCar(config, props) {
 }
 
 module.exports = createRunOncePlugin(withBayaanCar, 'withBayaanCar', '1.0.0');
+module.exports.applySceneAppDelegate = applySceneAppDelegate;
+module.exports.applySiriAppDelegate = applySiriAppDelegate;

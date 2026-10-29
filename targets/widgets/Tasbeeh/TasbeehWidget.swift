@@ -98,23 +98,52 @@ struct TasbeehWidget: Widget {
   }
 }
 
+// @ai-start
+/// A ring of 33 beads, filled in the accent as the count grows (a target of
+/// 100 fills one bead per three counts or so), with the count in the middle.
+// @ai-end
 struct TasbeehRing: View {
+  static let beads = 33 // @ai
   let count: Int
   let target: Int
   let size: CGFloat
+  // @ai-start
+  var label: String? = nil
+
+  private var filled: Int {
+    Int((WidgetLogic.tasbeehProgress(count: count, target: target) * Double(Self.beads)).rounded(.down))
+  }
+  // @ai-end
 
   var body: some View {
+    // @ai-start
+    let bead = size * 0.056
+    let radius = Double(size / 2 - bead)
+    // @ai-end
     ZStack {
-      Circle().stroke(.white.opacity(0.2), lineWidth: 5)
-      Circle()
-        .trim(from: 0, to: WidgetLogic.tasbeehProgress(count: count, target: target))
-        .stroke(.white, style: StrokeStyle(lineWidth: 5, lineCap: .round))
-        .rotationEffect(.degrees(-90))
-      VStack(spacing: 0) {
-        Text("\(count)").font(.system(size: size * 0.3, weight: .bold, design: .rounded)).minimumScaleFactor(0.5)
-        Text("/ \(target)").font(.system(size: size * 0.13, weight: .medium)).opacity(0.6)
+      // @ai-start
+      ForEach(0..<Self.beads, id: \.self) { i in
+        let angle = (-90 + Double(i) * 360 / Double(Self.beads)) * .pi / 180
+        Circle()
+          .fill(i < filled ? WidgetPalette.accent : .white.opacity(0.2))
+          .frame(width: bead, height: bead)
+          .offset(x: CGFloat(radius * cos(angle)), y: CGFloat(radius * sin(angle)))
       }
-      .padding(8)
+      // @ai-end
+      VStack(spacing: 0) {
+        // @ai-start
+        if let label {
+          Text(label)
+            .font(WidgetFonts.dhikr(size * 0.1))
+            .lineLimit(1)
+            .minimumScaleFactor(0.5)
+            .environment(\.layoutDirection, .rightToLeft)
+        }
+        Text("\(count)").font(.system(size: size * 0.24, weight: .heavy, design: .rounded)).minimumScaleFactor(0.5)
+        Text("of \(target)").font(.system(size: size * 0.08, weight: .semibold)).foregroundStyle(WidgetPalette.secondary)
+        // @ai-end
+      }
+      .frame(width: size * 0.66) // @ai
     }
     .frame(width: size, height: size)
   }
@@ -170,44 +199,52 @@ struct TasbeehView: View {
     .gaugeStyle(.accessoryCircularCapacity)
   }
 
+  // The whole widget counts. // @ai
   private func small(_ dhikr: WidgetCatalogDhikr) -> some View {
     Button(intent: IncrementTasbeehIntent(dhikrId: dhikr.id)) {
-      VStack(spacing: 4) {
-        HStack { Spacer(minLength: 0); BayaanLogo(size: 12) }
-        dhikrText(dhikr, size: 17, alignment: .center)
-        Spacer(minLength: 0)
-        TasbeehRing(count: entry.count, target: dhikr.repeatCount, size: 64)
-      }
-      .padding(12)
-      .frame(maxWidth: .infinity, maxHeight: .infinity)
+      // @ai-start
+      TasbeehRing(count: entry.count, target: dhikr.repeatCount, size: 142, label: dhikr.arabic)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+      // @ai-end
     }
     .buttonStyle(.plain)
     .accessibilityLabel("Count, \(entry.count) of \(dhikr.repeatCount)")
   }
 
   private func medium(_ dhikr: WidgetCatalogDhikr) -> some View {
-    HStack(spacing: 14) {
+    HStack(spacing: 16) { // @ai
       Button(intent: IncrementTasbeehIntent(dhikrId: dhikr.id)) {
-        TasbeehRing(count: entry.count, target: dhikr.repeatCount, size: 100)
+        TasbeehRing(count: entry.count, target: dhikr.repeatCount, size: 142) // @ai
       }
       .buttonStyle(.plain)
       .accessibilityLabel("Count, \(entry.count) of \(dhikr.repeatCount)")
-      VStack(alignment: .trailing, spacing: 6) {
-        HStack {
-          RoundIntentButton(intent: ResetTasbeehIntent(dhikrId: dhikr.id), systemName: "arrow.counterclockwise", label: "Reset")
-          Spacer(minLength: 0)
-          BayaanLogo(size: 14)
-        }
-        Spacer(minLength: 0)
-        dhikrText(dhikr, size: 20, alignment: .trailing)
+      // @ai-start
+      VStack(alignment: .trailing, spacing: 4) {
+        dhikrText(dhikr, size: 24, alignment: .trailing)
+      // @ai-end
           .frame(maxWidth: .infinity, alignment: .trailing)
         if let translation = dhikr.translation {
-          Text(translation).font(.caption2).opacity(0.7).lineLimit(2).multilineTextAlignment(.trailing)
+          // @ai-start
+          Text(translation).font(.caption.weight(.medium)).foregroundStyle(WidgetPalette.secondary)
+            .lineLimit(2).multilineTextAlignment(.trailing)
+        }
+        Spacer(minLength: 0)
+        HStack {
+          Text("Tap the beads to count").font(.caption2.weight(.semibold)).foregroundStyle(WidgetPalette.secondary)
+            .lineLimit(1).minimumScaleFactor(0.8)
+          Spacer(minLength: 4)
+          RoundIntentButton(intent: ResetTasbeehIntent(dhikrId: dhikr.id), systemName: "arrow.counterclockwise",
+                            label: "Reset", size: 36)
+          // @ai-end
         }
       }
       .frame(maxWidth: .infinity)
     }
-    .padding(14)
+    // @ai-start
+    .padding(.leading, 14)
+    .padding(.trailing, 18)
+    .padding(.vertical, 14)
+    // @ai-end
   }
 }
 

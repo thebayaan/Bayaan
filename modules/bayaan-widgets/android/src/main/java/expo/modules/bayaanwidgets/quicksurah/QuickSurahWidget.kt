@@ -43,7 +43,17 @@ import expo.modules.bayaanwidgets.StaticData
 import expo.modules.bayaanwidgets.StaticSurah
 import expo.modules.bayaanwidgets.WidgetConfigJson
 import expo.modules.bayaanwidgets.WidgetInputs
-import expo.modules.bayaanwidgets.ui.Logo
+import expo.modules.bayaanwidgets.PlaybackState
+import expo.modules.bayaanwidgets.WidgetText
+import expo.modules.bayaanwidgets.WidgetTrack
+import expo.modules.bayaanwidgets.ui.PrimaryButton
+import expo.modules.bayaanwidgets.ui.SurahTile
+import expo.modules.bayaanwidgets.ui.SurahTint
+import expo.modules.bayaanwidgets.ui.WidgetPalette
+import expo.modules.bayaanwidgets.ui.playOrPause
+import expo.modules.bayaanwidgets.ui.playingTrack
+import expo.modules.bayaanwidgets.ui.surahCardShowsName
+import androidx.glance.unit.ColorProvider
 import expo.modules.bayaanwidgets.ui.ReciterPhoto
 import expo.modules.bayaanwidgets.ui.RoundButton
 import expo.modules.bayaanwidgets.ui.SurahCard
@@ -75,6 +85,7 @@ class QuickSurahWidget : GlanceAppWidget() {
           reciterName = reciter?.name ?: snapshot?.defaultReciter?.name ?: "Default reciter",
           photoId = reciter?.id ?: snapshot?.defaultReciter?.id,
           photoFile = reciter?.artworkFile ?: snapshot?.defaultReciter?.artworkFile,
+          playing = playingTrack(context, snapshot), // @ai
         )
       }
     }
@@ -90,67 +101,88 @@ class QuickSurahWidget : GlanceAppWidget() {
     recordMissingArtwork(context, config.surahIds, listOfNotNull(shown))
   }
 
+  // @ai-start
   @Composable
   private fun Content(
     context: Context, surahs: List<StaticSurah>, reciterId: String?, reciterName: String,
-    photoId: String?, photoFile: String?,
+    photoId: String?, photoFile: String?, playing: WidgetTrack?,
   ) {
-    val root = GlanceModifier.fillMaxSize().background(WidgetColors.BACKGROUND).cornerRadius(20.dp)
     val first = surahs.firstOrNull()
+    val small = LocalSize.current.width < WidgetSizes.MEDIUM.width
+    val tint = if (small && first != null) SurahTint.deep(first.id) else WidgetPalette.INK
+    val root = GlanceModifier.fillMaxSize().background(ColorProvider(tint)).cornerRadius(20.dp)
     if (first == null) {
       Box(root.padding(14.dp), contentAlignment = Alignment.Center) {
         Text("Open ${AppBrand.name(context)} to set up", style = TextStyle(color = WidgetColors.WHITE, fontWeight = FontWeight.Medium))
       }
       return
     }
-    if (LocalSize.current.width >= WidgetSizes.MEDIUM.width) {
-      Column(root.padding(12.dp)) {
+    // A tile pauses its surah while it plays from the shown reciter (or any, for the default).
+    val playingId = surahs.firstOrNull { PlaybackState.matches(playing, it.id, reciterId) }?.id
+    if (!small) {
+      Column(root.padding(horizontal = 14.dp, vertical = 10.dp)) {
         Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-          Text(reciterName, maxLines = 1, style = TextStyle(color = WidgetColors.TERTIARY, fontSize = 11.sp, fontWeight = FontWeight.Bold))
-          Spacer(GlanceModifier.defaultWeight())
-          Logo(14)
+          if (photoId != null) {
+            ReciterPhoto(context, photoFile, reciterName, 20, 20, 10)
+            Spacer(GlanceModifier.width(8.dp))
+          }
+          Text("with $reciterName", maxLines = 1, style = TextStyle(color = WidgetColors.SECONDARY, fontSize = 12.sp, fontWeight = FontWeight.Medium))
         }
-        Spacer(GlanceModifier.height(8.dp))
-        Row(GlanceModifier.fillMaxWidth()) { Tile(context, surahs.getOrNull(0), reciterId); Tile(context, surahs.getOrNull(1), reciterId) }
-        Spacer(GlanceModifier.height(8.dp))
-        Row(GlanceModifier.fillMaxWidth()) { Tile(context, surahs.getOrNull(2), reciterId); Tile(context, surahs.getOrNull(3), reciterId) }
+        Spacer(GlanceModifier.height(10.dp))
+        Row(GlanceModifier.fillMaxWidth()) {
+          for (i in 0 until 4) Tile(context, surahs.getOrNull(i), reciterId, surahs.getOrNull(i)?.id == playingId)
+        }
       }
       return
     }
+    val isPlaying = playingId == first.id
     val play = commandAction(context, playTrackCommand(first.id, reciterId, null, null), "quick/${first.id}/${reciterId ?: "default"}")
-    Column(root.padding(14.dp).clickable(play)) {
-      Row(GlanceModifier.fillMaxWidth()) {
-        SurahCard(context, first, 52)
-        Spacer(GlanceModifier.defaultWeight())
-        Logo(14)
-      }
-      Spacer(GlanceModifier.defaultWeight())
-      Text(first.name, maxLines = 1, style = TextStyle(color = WidgetColors.WHITE, fontSize = 15.sp, fontWeight = FontWeight.Bold))
-      Spacer(GlanceModifier.height(4.dp))
-      Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        if (photoId != null) {
-          ReciterPhoto(context, photoFile, reciterName, 18, 18, 9)
-          Spacer(GlanceModifier.width(6.dp))
+    // A cached card prints the surah name, so it is shown larger and not repeated;
+    // generated art gets the title beside it.
+    val cardNamed = surahCardShowsName(context, first)
+    val widthDp = LocalSize.current.width.value.toInt()
+    val reciterLine = WidgetText.fitName(reciterName, maxOf(6, (widthDp - 60) / 7))
+    if (!cardNamed) {
+      // Generated art: card and button on top, so the title gets the full width below.
+      Column(root.padding(12.dp).clickable(playOrPause(context, isPlaying, play))) {
+        Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+          SurahCard(context, first, 36)
+          Spacer(GlanceModifier.defaultWeight())
+          PrimaryButton(isPlaying, "Play ${first.name}", action = null, sizeDp = 32)
         }
-        Text(reciterName, maxLines = 1, modifier = GlanceModifier.defaultWeight(), style = TextStyle(color = WidgetColors.SECONDARY, fontSize = 12.sp))
-        RoundButton(android.R.drawable.ic_media_play, "Play ${first.name}", play)
+        Spacer(GlanceModifier.defaultWeight())
+        Text(first.name, maxLines = 1, style = TextStyle(color = WidgetColors.WHITE, fontSize = 14.sp, fontWeight = FontWeight.Bold))
+        Text(reciterLine, maxLines = 1,
+          style = TextStyle(color = WidgetColors.SECONDARY, fontSize = 12.sp, fontWeight = FontWeight.Medium))
+      }
+      return
+    }
+    Column(root.padding(12.dp).clickable(playOrPause(context, isPlaying, play))) {
+      SurahCard(context, first, 52)
+      Spacer(GlanceModifier.defaultWeight())
+      Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(reciterLine, maxLines = 1, modifier = GlanceModifier.defaultWeight(),
+          style = TextStyle(color = WidgetColors.SECONDARY, fontSize = 12.sp, fontWeight = FontWeight.Medium))
+        Spacer(GlanceModifier.width(4.dp))
+        PrimaryButton(isPlaying, "Play ${first.name}", action = null, sizeDp = 32)
       }
     }
   }
 
+  /** One tap per tile: the tile is the play button. */
   @Composable
-  private fun RowScope.Tile(context: Context, surah: StaticSurah?, reciterId: String?) {
+  private fun RowScope.Tile(context: Context, surah: StaticSurah?, reciterId: String?, playing: Boolean) {
     if (surah == null) {
       Spacer(GlanceModifier.defaultWeight())
       return
     }
     val play = commandAction(context, playTrackCommand(surah.id, reciterId, null, null), "quick/${surah.id}/${reciterId ?: "default"}")
-    Row(
-      GlanceModifier.defaultWeight().semantics { contentDescription = "Play ${surah.name}" }.clickable(play),
-      verticalAlignment = Alignment.CenterVertically) {
-      SurahCard(context, surah, 36)
-      Spacer(GlanceModifier.width(8.dp))
-      Text(surah.name, maxLines = 1, style = TextStyle(color = WidgetColors.WHITE, fontSize = 13.sp, fontWeight = FontWeight.Bold))
+    Column(
+      GlanceModifier.defaultWeight().semantics { contentDescription = if (playing) "Pause" else "Play ${surah.name}" },
+      horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+      SurahTile(context, surah.id, 48, play, caption = surah.name, playing = playing)
     }
   }
+  // @ai-end
 }

@@ -244,12 +244,11 @@ export interface Branding {
    * RFC-014 — strategy for wiring the player Mushaf FlashList's scroll
    * handling.
    *
-   * `'gorhom'` — `useBottomSheetScrollableCreator()` is called and its
-   *   result is passed as `renderScrollComponent` on FlashList. The
-   *   swipe-down-to-dismiss gesture on the player sheet is active.
-   *   Imperative `scrollToIndex` / `scrollToOffset` calls issued before
-   *   the sheet's animation has settled into EXTENDED/FILL_PARENT are
-   *   intercepted by the gorhom wrapper and silently no-op.
+   * `'gorhom'`: the player's dismiss-aware scroll component (see
+   *   `usePlayerScrollable`) is passed as `renderScrollComponent` on
+   *   FlashList, so a downward drag at the top of the list dismisses the
+   *   player. The name predates the move off the gorhom sheet and is kept
+   *   so existing branding configs keep working.
    *
    * `'native'` — gorhom wrapper skipped; imperative scroll calls reach
    *   the native scroll node immediately, regardless of the sheet's

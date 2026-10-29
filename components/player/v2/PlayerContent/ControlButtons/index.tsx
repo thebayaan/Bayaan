@@ -10,7 +10,7 @@ import {
 import {GlassView} from 'expo-glass-effect';
 import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
 import {FrostedView} from '@/components/FrostedView';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {usePlayerStore} from '@/services/player/store/playerStore';
@@ -26,6 +26,7 @@ import {useAmbientStore} from '@/store/ambientStore';
 import Color from 'color';
 // @ai-start
 import {localizeDigits} from '@/i18n/format';
+import {usePlayerA11y} from '@/hooks/usePlayerA11y'; // @ai
 // @ai-end
 
 interface ControlButtonsProps {
@@ -40,13 +41,13 @@ interface ControlButtonsProps {
   followAlongAvailable: boolean;
 }
 
-interface Styles {
+type Styles = {
   wrapper: ViewStyle;
   button: ViewStyle;
   glassButton: ViewStyle;
   glassButtonInner: ViewStyle;
   speedButtonText: TextStyle;
-}
+};
 
 // @ai-start
 export const ControlButtons: React.FC<ControlButtonsProps> = ({
@@ -61,6 +62,7 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
   followAlongAvailable,
 }) => {
   const {theme} = useTheme();
+  const a11y = usePlayerA11y(); // @ai
   const glassColorScheme = useGlassColorScheme();
   const {updateSettings} = usePlayerActions();
   const playbackRate = usePlayerStore(s => s.playback.rate);
@@ -106,6 +108,7 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
         <PillWrapper style={styles.glassButton} {...pillProps}>
           <Pressable
             onPress={handleMushafLayoutPress}
+            {...a11y.displayOptions}
             style={styles.glassButtonInner}>
             <Ionicons
               name="options-outline"
@@ -118,6 +121,7 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
 
       <Pressable
         onPress={onSpeedPress}
+        {...a11y.speed(playbackRate)}
         style={[
           styles.button,
           playbackRate !== 1 && {backgroundColor: activeBackgroundColor},
@@ -135,6 +139,7 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
 
       <Pressable
         onPress={handleRepeatPress}
+        {...a11y.repeat(settings.repeatMode)}
         style={[
           styles.button,
           settings.repeatMode !== 'none' && {
@@ -157,6 +162,7 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
 
       <Pressable
         onPress={onSleepTimerPress}
+        {...a11y.sleepTimer(!!isTimerActive)}
         style={[
           styles.button,
           isTimerActive && {backgroundColor: activeBackgroundColor},
@@ -170,6 +176,7 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
 
       <Pressable
         onPress={onAmbientPress}
+        {...a11y.ambient(ambientEnabled)}
         style={[
           styles.button,
           ambientEnabled && {backgroundColor: activeBackgroundColor},
@@ -183,6 +190,7 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
 
       <Pressable
         onPress={onFollowAlongPress}
+        {...a11y.followAlong(followAlongAvailable && followAlongActive)}
         style={[
           styles.button,
           followAlongAvailable &&
@@ -201,7 +209,10 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
       </Pressable>
 
       <PillWrapper style={styles.glassButton} {...pillProps}>
-        <Pressable onPress={onQueuePress} style={styles.glassButtonInner}>
+        <Pressable
+          onPress={onQueuePress}
+          {...a11y.queue(false)}
+          style={styles.glassButtonInner}>
           <QueueIcon
             size={moderateScale(20)}
             color={showQueue ? activeIconColor : defaultIconColor}

@@ -160,12 +160,14 @@ export function reduceSession(
       if (first < 0) return state;
       return startSession(event.source, first, 'all', token, now);
     }
-    case 'swipedTo': {
+    case 'swipedTo':
+    case 'trackSkipped': {
       if (!state || state.mode !== 'all' || state.listId !== event.listId)
         return state;
       const index = state.items.findIndex(i => i.dhikrId === event.dhikrId);
       if (index < 0 || index === state.index) return state;
-      return moveTo(state, index, state.status === 'paused', now);
+      const keepPaused = event.type === 'swipedTo' && state.status === 'paused';
+      return moveTo(state, index, keepPaused, now);
     }
     case 'trackEnded': {
       if (!state || event.token !== state.trackToken) return state;

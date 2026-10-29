@@ -11,7 +11,7 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {ReciterItem} from '@/components/ReciterItem';
 import {useFavoriteReciters} from '@/hooks/useFavoriteReciters';
 import {useRouter} from 'expo-router';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import {Feather} from '@expo/vector-icons';
 import {ProfileIcon} from '@/components/Icons';
 import {CollectionStickyHeader} from '@/components/collection/CollectionStickyHeader';
@@ -27,11 +27,13 @@ import {flipX, latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
 import {getReciterDisplayName} from '@/i18n/format';
 import {rankReciters} from '@/utils/search/catalog'; // @ai
+import {useLibraryListBottomPadding} from '@/hooks/useBottomInset'; // @ai
 // @ai-end
 
 // @ai-start
 export default function FavoriteRecitersScreen() {
   const {theme} = useTheme();
+  const listBottomPadding = useLibraryListBottomPadding(); // @ai
   const insets = useSafeAreaInsets();
   const {favoriteReciters, removeFavorite} = useFavoriteReciters();
   const router = useRouter();
@@ -157,7 +159,6 @@ export default function FavoriteRecitersScreen() {
         },
         listContentContainer: {
           flexGrow: 1,
-          paddingBottom: moderateScale(65),
         },
         fixedBackButton: {
           position: 'absolute',
@@ -450,7 +451,10 @@ export default function FavoriteRecitersScreen() {
         renderItem={renderItem}
         keyExtractor={item => item.id}
         ListHeaderComponent={renderListHeader()} // @ai
-        contentContainerStyle={styles.listContentContainer}
+        contentContainerStyle={[
+          styles.listContentContainer,
+          {paddingBottom: listBottomPadding}, // @ai
+        ]}
         onScroll={RNAnimated.event(
           [{nativeEvent: {contentOffset: {y: scrollY}}}],
           {useNativeDriver: true},

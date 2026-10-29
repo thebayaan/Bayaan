@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import {Ionicons} from '@expo/vector-icons';
 import Color from 'color';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {showToast} from '@/utils/toastUtils';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';

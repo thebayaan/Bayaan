@@ -27,7 +27,7 @@ struct BayaanMark: Shape {
 
 /// Corner logo shown on every Continue Listening size. A fork replaces the
 /// starburst by adding a `BrandMark` image set to targets/widgets/Assets.xcassets
-/// (a single-color PDF or SVG; it is drawn as a template in the same white),
+/// (a single-color PDF or SVG; it is drawn as a template in the foreground color), // @ai
 /// see RFC-021. Without one, the vector BayaanMark is drawn.
 struct BayaanLogo: View {
   var size: CGFloat = 16
@@ -45,9 +45,12 @@ struct BayaanLogo: View {
         .renderingMode(.template)
         .resizable()
         .scaledToFit()
-        .foregroundStyle(.white.opacity(0.9))
+        .opacity(0.9) // @ai
     } else {
-      BayaanMark().fill(.white.opacity(0.9))
+      // @ai-start
+      // Follows the widget's foreground, so it works on paper and ink alike.
+      BayaanMark().fill(.foreground).opacity(0.9)
+      // @ai-end
     }
   }
 }

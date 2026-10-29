@@ -10,7 +10,7 @@ import {
   type StyleProp, // @ai
   type ViewStyle, // @ai
 } from 'react-native';
-import {moderateScale, verticalScale} from 'react-native-size-matters';
+import {moderateScale, verticalScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import Color from 'color';
@@ -24,6 +24,7 @@ import {
   FullscreenPillIcon,
 } from '@/components/Icons';
 import {useTajweedStore} from '@/store/tajweedStore';
+import {adjustableStep} from '@/utils/adjustableStep'; // @ai
 import {tajweedColors} from '@/constants/tajweedColors';
 import FormattedTextRenderer from '@/components/utils/FormattedText';
 import {LinearGradient} from 'expo-linear-gradient';
@@ -295,7 +296,31 @@ const FontSizeControl: React.FC<FontSizeControlProps> = ({
     <View>
       <View style={styles.fontSizeControlRow}>
         <Text style={styles.optionLabel}>{label}</Text>
-        <View style={styles.fontSizeAdjuster}>
+        {/* @ai-start */}
+        {/* One adjustable control for VoiceOver/TalkBack: swipe up or down
+            to change the size, instead of two unlabeled +/- buttons. */}
+        <View
+          style={styles.fontSizeAdjuster}
+          accessible
+          accessibilityRole="adjustable"
+          accessibilityLabel={label}
+          accessibilityValue={{
+            min: DISPLAY_MIN,
+            max: DISPLAY_MAX,
+            now: currentDisplayValue,
+            text: localizeDigits(currentDisplayValue),
+          }}
+          accessibilityActions={[{name: 'increment'}, {name: 'decrement'}]}
+          onAccessibilityAction={e => {
+            const next = adjustableStep(
+              e.nativeEvent.actionName,
+              currentDisplayValue,
+              DISPLAY_MIN,
+              DISPLAY_MAX,
+            );
+            if (next !== null) onChange(getActualFontSize(next));
+          }}>
+          {/* @ai-end */}
           <Pressable
             onPress={handleDecrement}
             hitSlop={10}
@@ -431,7 +456,13 @@ const TajweedToggle: React.FC<TajweedToggleProps> = ({
   } as const;
 
   return (
-    <Pressable onPress={onValueChange} style={toggleStyle} disabled={disabled}>
+    <Pressable
+      onPress={onValueChange}
+      style={toggleStyle}
+      disabled={disabled}
+      accessibilityRole="switch" // @ai
+      accessibilityLabel={t('mushafSettings.tajweedColoring')} // @ai
+      accessibilityState={{checked: !disabled && value, disabled}}>
       <LinearGradient
         colors={
           gradientColors.length >= 2
@@ -481,7 +512,9 @@ const TextWeightControl: React.FC<TextWeightControlProps> = ({
                 styles.radioRow,
                 pressed && styles.radioRowPressed,
               ]}
-              onPress={() => onChange(option)}>
+              onPress={() => onChange(option)}
+              accessibilityRole="radio" // @ai
+              accessibilityState={{checked: isSelected}}>
               <View
                 style={[
                   styles.radioCircle,
@@ -623,7 +656,10 @@ const AllahNameColorControl: React.FC<AllahNameColorControlProps> = ({
             {backgroundColor: color},
             isActive && styles.colorSwatchActive,
           ]}
-          onPress={() => onChange(option.id)}>
+          onPress={() => onChange(option.id)}
+          accessibilityRole="radio" // @ai
+          accessibilityLabel={option.label} // @ai
+          accessibilityState={{checked: isActive}}>
           {isActive ? (
             <Feather
               name="check"
@@ -828,7 +864,9 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
                 styles.settingRow,
                 pressed && styles.settingRowPressed,
               ]}
-              onPress={() => setViewMode('mushaf')}>
+              onPress={() => setViewMode('mushaf')}
+              accessibilityRole="radio" // @ai
+              accessibilityState={{checked: viewMode === 'mushaf'}}>
               <MushafPagePillIcon
                 size={moderateScale(20)}
                 color={Color(theme.colors.text).alpha(0.7).toString()}
@@ -850,7 +888,9 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
                 styles.settingRow,
                 pressed && styles.settingRowPressed,
               ]}
-              onPress={() => setViewMode('list')}>
+              onPress={() => setViewMode('list')}
+              accessibilityRole="radio" // @ai
+              accessibilityState={{checked: viewMode === 'list'}}>
               <ListViewPillIcon
                 size={moderateScale(20)}
                 color={Color(theme.colors.text).alpha(0.7).toString()}
@@ -877,7 +917,9 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
                 styles.settingRow,
                 pressed && styles.settingRowPressed,
               ]}
-              onPress={() => setScrollDirection('horizontal')}>
+              onPress={() => setScrollDirection('horizontal')}
+              accessibilityRole="radio" // @ai
+              accessibilityState={{checked: scrollDirection === 'horizontal'}}>
               <HorizontalScrollPillIcon
                 size={moderateScale(20)}
                 color={Color(theme.colors.text).alpha(0.7).toString()}
@@ -899,7 +941,9 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
                 styles.settingRow,
                 pressed && styles.settingRowPressed,
               ]}
-              onPress={() => setScrollDirection('vertical')}>
+              onPress={() => setScrollDirection('vertical')}
+              accessibilityRole="radio" // @ai
+              accessibilityState={{checked: scrollDirection === 'vertical'}}>
               <VerticalScrollPillIcon
                 size={moderateScale(20)}
                 color={Color(theme.colors.text).alpha(0.7).toString()}
@@ -929,7 +973,9 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
                     styles.settingRow,
                     pressed && styles.settingRowPressed,
                   ]}
-                  onPress={() => setPageLayout('fullscreen')}>
+                  onPress={() => setPageLayout('fullscreen')}
+                  accessibilityRole="radio" // @ai
+                  accessibilityState={{checked: pageLayout === 'fullscreen'}}>
                   <FullscreenPillIcon
                     size={moderateScale(20)}
                     color={Color(theme.colors.text).alpha(0.7).toString()}
@@ -951,7 +997,9 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
                     styles.settingRow,
                     pressed && styles.settingRowPressed,
                   ]}
-                  onPress={() => setPageLayout('book')}>
+                  onPress={() => setPageLayout('book')}
+                  accessibilityRole="radio" // @ai
+                  accessibilityState={{checked: pageLayout === 'book'}}>
                   <BookLayoutPillIcon
                     size={moderateScale(20)}
                     color={Color(theme.colors.text).alpha(0.7).toString()}

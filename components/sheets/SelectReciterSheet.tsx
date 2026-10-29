@@ -1,14 +1,12 @@
 import React, {useCallback, useState} from 'react';
 import {View, Text, Pressable, Switch, StyleSheet} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
-import {ScaledSheet, moderateScale} from 'react-native-size-matters';
+import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useReciterStore} from '@/store/reciterStore';
 import {Theme} from '@/utils/themeUtils';
 import {getSurahById} from '@/services/dataService';
-import ActionSheet, {
-  SheetProps,
-  SheetManager,
-} from 'react-native-actions-sheet';
+import {SheetProps, SheetManager} from 'react-native-actions-sheet';
+import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import {useSettings} from '@/hooks/useSettings';
 import {useReciterSelection} from '@/hooks/useReciterSelection';
 import Color from 'color';

@@ -10,8 +10,8 @@ import {
   View,
   Text,
   FlatList,
-  Dimensions,
-  ViewToken,
+  type LayoutChangeEvent, // @ai
+  type ListViewToken,
   Pressable,
 } from 'react-native';
 import {
@@ -22,7 +22,7 @@ import {
 } from 'expo-router';
 import {Feather} from '@expo/vector-icons';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {ScaledSheet, moderateScale} from 'react-native-size-matters';
+import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useAdhkar} from '@/hooks/useAdhkar';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
@@ -53,19 +53,19 @@ import {useTranslation} from 'react-i18next';
 import {appLayoutDirection} from '@/utils/rtl';
 // @ai-end
 
-const {width: SCREEN_WIDTH} = Dimensions.get('window');
-
 const DhikrPage = React.memo(function DhikrPage({
   dhikr,
   isSaved,
   onSaveToggle,
+  width,
 }: {
   dhikr: Dhikr;
   isSaved: boolean;
   onSaveToggle: () => void;
+  width: number; // @ai: the pager's measured width
 }) {
   return (
-    <View style={{width: SCREEN_WIDTH, flex: 1}}>
+    <View style={{width, flex: 1}}>
       <DhikrReader
         dhikr={dhikr}
         isSaved={isSaved}
@@ -337,8 +337,8 @@ const DhikrReaderScreen: React.FC = () => {
   // user swipe.
   const sawFirstViewable = useRef(false);
   const onViewableItemsChanged = useCallback(
-    ({viewableItems}: {viewableItems: ViewToken<Dhikr>[]}) => {
-      if (viewableItems.length > 0 && viewableItems[0].index !== null) {
+    ({viewableItems}: {viewableItems: (ListViewToken & {item: Dhikr})[]}) => {
+      if (viewableItems.length > 0 && viewableItems[0].index != null) {
         const newIndex = viewableItems[0].index;
         setCurrentIndex(newIndex);
         if (!sawFirstViewable.current) {
@@ -385,14 +385,41 @@ const DhikrReaderScreen: React.FC = () => {
     itemVisiblePercentThreshold: 50,
   }).current;
 
+  // @ai-start
+  // Pages are as wide as the pager itself, not the window: on iPad the
+  // reader sits in a capped column beside the sidebar, where window-wide
+  // pages were clipped and off-centre. The list waits for this measurement.
+  const [pageWidth, setPageWidth] = useState<number | null>(null);
+  const handlePagerLayout = useCallback((e: LayoutChangeEvent) => {
+    const next = e.nativeEvent.layout.width;
+    if (next > 0) setPageWidth(prev => (prev === next ? prev : next));
+  }, []);
+
+  // Keep the current page in place if the width changes later (rotation,
+  // Split View).
+  const currentIndexRef = useRef(currentIndex);
+  currentIndexRef.current = currentIndex;
+  const lastPageWidth = useRef<number | null>(null);
+  useEffect(() => {
+    if (pageWidth === null) return;
+    const previous = lastPageWidth.current;
+    lastPageWidth.current = pageWidth;
+    if (previous === null || previous === pageWidth) return;
+    flatListRef.current?.scrollToOffset({
+      offset: currentIndexRef.current * pageWidth,
+      animated: false,
+    });
+  }, [pageWidth]);
+
   const getItemLayout = useCallback(
     (_: unknown, index: number) => ({
-      length: SCREEN_WIDTH,
-      offset: SCREEN_WIDTH * index,
+      length: pageWidth ?? 0,
+      offset: (pageWidth ?? 0) * index,
       index,
     }),
-    [],
+    [pageWidth],
   );
+  // @ai-end
 
   const renderItem = useCallback(
     ({item}: {item: Dhikr}) => {
@@ -401,10 +428,11 @@ const DhikrReaderScreen: React.FC = () => {
           dhikr={item}
           isSaved={isSaved(item.id)}
           onSaveToggle={() => handleSaveToggle(item)}
+          width={pageWidth ?? 0} // @ai
         />
       );
     },
-    [isSaved, handleSaveToggle],
+    [isSaved, handleSaveToggle, pageWidth],
   );
 
   const keyExtractor = useCallback((item: Dhikr) => item.id, []);
@@ -440,30 +468,34 @@ const DhikrReaderScreen: React.FC = () => {
           style={[
             styles.listContainer,
             {paddingTop: contentTop, paddingBottom: contentBottom},
-          ]}>
-          <FlatList
-            ref={flatListRef}
-            style={appLayoutDirection}
-            data={adhkarList}
-            renderItem={renderItem}
-            keyExtractor={keyExtractor}
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            initialScrollIndex={initialIndex}
-            getItemLayout={getItemLayout}
-            onViewableItemsChanged={onViewableItemsChanged}
-            onScrollBeginDrag={handleScrollBeginDrag}
-            onMomentumScrollEnd={handleMomentumScrollEnd}
-            viewabilityConfig={viewabilityConfig}
-            windowSize={3}
-            maxToRenderPerBatch={2}
-            removeClippedSubviews={true}
-            initialNumToRender={1}
-            decelerationRate="fast"
-            snapToInterval={SCREEN_WIDTH}
-            snapToAlignment="start"
-          />
+          ]}
+          onLayout={handlePagerLayout}>
+          {/* @ai: render once the pager width is known */}
+          {pageWidth !== null && (
+            <FlatList
+              ref={flatListRef}
+              style={appLayoutDirection}
+              data={adhkarList}
+              renderItem={renderItem}
+              keyExtractor={keyExtractor}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              initialScrollIndex={initialIndex}
+              getItemLayout={getItemLayout}
+              onViewableItemsChanged={onViewableItemsChanged}
+              onScrollBeginDrag={handleScrollBeginDrag}
+              onMomentumScrollEnd={handleMomentumScrollEnd}
+              viewabilityConfig={viewabilityConfig}
+              windowSize={3}
+              maxToRenderPerBatch={2}
+              removeClippedSubviews={true}
+              initialNumToRender={1}
+              decelerationRate="fast"
+              snapToInterval={pageWidth}
+              snapToAlignment="start"
+            />
+          )}
         </View>
       </View>
     </AdhkarSessionSourceProvider>

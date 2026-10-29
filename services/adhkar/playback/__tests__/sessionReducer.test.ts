@@ -264,6 +264,22 @@ describe('rule 5: swiping in the reader', () => {
     );
     expect(s).toMatchObject({index: 1, status: 'paused'});
   });
+  it('plays when a track skip moves a paused all session', () => {
+    const s = reduceSession(
+      session({status: 'paused', trackToken: 1}),
+      {type: 'trackSkipped', listId: 'morning-adhkar', dhikrId: 'b'},
+      NOW,
+    );
+    expect(s).toMatchObject({index: 1, status: 'loading', trackToken: 2});
+  });
+  it('still pauses when a track skip lands on a row without audio', () => {
+    const s = reduceSession(
+      session({status: 'paused'}),
+      {type: 'trackSkipped', listId: 'morning-adhkar', dhikrId: 'c'},
+      NOW,
+    );
+    expect(s).toMatchObject({index: 2, status: 'paused'});
+  });
   it('pauses on a row without audio', () => {
     const s = reduceSession(
       session(),

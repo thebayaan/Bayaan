@@ -9,16 +9,13 @@ import {
   Keyboard,
   ViewStyle,
 } from 'react-native';
-import {ScaledSheet, moderateScale} from 'react-native-size-matters';
+import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {PlaylistIcon} from '@/components/Icons';
 import {Input} from '@/components/Input';
-import ActionSheet, {
-  SheetProps,
-  SheetManager,
-  ScrollView,
-} from 'react-native-actions-sheet';
+import {SheetProps, SheetManager, ScrollView} from 'react-native-actions-sheet';
+import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import Color from 'color';
 import {LinearGradient} from 'expo-linear-gradient';
 // @ai-start

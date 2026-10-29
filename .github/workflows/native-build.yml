@@ -8,6 +8,7 @@ on:
       - app.config.js
       - '*.config.js'
       - android/**
+      - modules/**
       - plugins/**
       - patches/**
       - .github/workflows/native-build.yml
@@ -71,11 +72,32 @@ jobs:
       # @ai-end
 
       # Build a single ABI to keep native compile time down; this job checks
-      # that the project compiles, not that every ABI links.
+      # that the project compiles, not that every ABI links. On Expo SDK 58 the
+      # hosted runner shut down mid-build with unbounded workers (most likely
+      # out of memory), so cap them like the preview builds below; df/free
+      # are logged to diagnose a repeat.
       - name: Assemble debug APK
         if: ${{ !inputs.preview_apk }} # @ai
         working-directory: android
-        run: ./gradlew assembleDebug --no-daemon -PreactNativeArchitectures=x86_64
+        run: |
+          df -h / && free -h
+          ./gradlew assembleDebug --no-daemon --max-workers=2 -PreactNativeArchitectures=x86_64
+
+      # @ai-start
+      # plugins/withOkHttpFloor.js raises OkHttp to 4.12.1, which refuses the
+      # compromised eMudhra CAs. Fail if any module drags the release app
+      # below it.
+      - name: Check OkHttp is 4.12.1 or newer
+        if: ${{ !inputs.preview_apk }}
+        working-directory: android
+        run: |
+          ./gradlew :app:dependencies --configuration releaseRuntimeClasspath --no-daemon -q > okhttp-deps.txt
+          versions=$(grep -oE 'com\.squareup\.okhttp3:okhttp:[^ ]+( -> [^ ]+)?' okhttp-deps.txt | sed -E 's/.* -> //; s/.*://' | sort -uV)
+          echo "OkHttp resolves to: $versions"
+          [ -n "$versions" ] || { echo "OkHttp not found in releaseRuntimeClasspath"; exit 1; }
+          lowest=$(printf '%s\n' $versions 4.12.1 | sort -V | head -1)
+          [ "$lowest" = "4.12.1" ] || { echo "OkHttp $lowest is below 4.12.1"; exit 1; }
+      # @ai-end
 
       # @ai-start
       # Release bundles JavaScript and uses the committed debug key when no

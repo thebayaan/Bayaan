@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {Redirect, router} from 'expo-router';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import Color from 'color';
 import type {WorkerOutbound} from '@tilawa/core';
 import {useTheme} from '@/hooks/useTheme';

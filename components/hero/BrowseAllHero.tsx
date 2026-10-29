@@ -1,14 +1,9 @@
 import React, {useMemo, useEffect, useRef} from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  InteractionManager,
-} from 'react-native';
+import {View, Text, StyleSheet, Pressable} from 'react-native';
+import {runAfterInteractions} from '@/utils/afterInteractions';
 import {Link} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -152,7 +147,7 @@ const TileColumn = React.memo(
     }));
 
     useEffect(() => {
-      const task = InteractionManager.runAfterInteractions(() => {
+      const task = runAfterInteractions(() => {
         if (!mountedRef.current) return;
         scrollY.value = startOffset;
         scrollY.value = withRepeat(

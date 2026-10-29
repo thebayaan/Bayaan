@@ -6,7 +6,7 @@ import BottomSheet, {
   BottomSheetHandleProps,
 } from '@gorhom/bottom-sheet';
 import {useTheme} from '@/hooks/useTheme';
-import {moderateScale, ScaledSheet} from 'react-native-size-matters';
+import {moderateScale, ScaledSheet} from '@/utils/scale';
 import {Theme} from '@/utils/themeUtils';
 import Color from 'color';
 

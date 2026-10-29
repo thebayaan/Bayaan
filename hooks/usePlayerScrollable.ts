@@ -1,31 +1,12 @@
 // @ai-generated
-import {useCallback} from 'react';
-import {type ScrollViewProps} from 'react-native';
-import {useBottomSheetScrollableCreator} from '@gorhom/bottom-sheet';
-import {appLayoutDirection, forceLTR} from '@/utils/rtl';
+import {usePlayerDismissApi} from '@/components/player/v2/PlayerDismissContext';
 
 /**
- * Gorhom locks vertical scrollables with scrollTo(ref, 0, y). Fabric converts
- * that x coordinate in RTL, which can trigger another scroll event and lock
- * recursively while the player is closed. Keep only the native viewport LTR;
- * its content still inherits the selected language's direction.
+ * Scroll component for the player's Mushaf and queue lists, supplied by the
+ * player container (the morphing PlayerSurface) so a
+ * downward drag at the top of the list dismisses the player. Undefined when
+ * rendered outside a player container.
  */
 export function usePlayerScrollable() {
-  const createScrollable = useBottomSheetScrollableCreator<ScrollViewProps>();
-
-  return useCallback(
-    (props: ScrollViewProps, ref?: never) =>
-      createScrollable(
-        {
-          ...props,
-          style: [props.style, forceLTR],
-          contentContainerStyle: [
-            props.contentContainerStyle,
-            appLayoutDirection,
-          ],
-        },
-        ref,
-      ),
-    [createScrollable],
-  );
+  return usePlayerDismissApi().renderScrollComponent;
 }
