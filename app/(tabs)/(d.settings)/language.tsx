@@ -1,6 +1,6 @@
 // @ai-generated
 import React, {useMemo, useState} from 'react';
-import {View, Text, Pressable, ScrollView, Platform, Alert} from 'react-native';
+import {View, Text, Pressable, ScrollView, Alert, Linking} from 'react-native';
 import {useTranslation} from 'react-i18next';
 import {useTheme} from '@/hooks/useTheme';
 import {ScaledSheet, moderateScale} from '@/utils/scale';
@@ -8,8 +8,10 @@ import {Theme} from '@/utils/themeUtils';
 import {Feather} from '@expo/vector-icons';
 import Color from 'color';
 import {
+  currentLanguage,
   getLanguagePreference,
   languageChangeRequiresRestart,
+  languageFollowsSystemSettings,
   setLanguagePreference,
   AVAILABLE_LANGUAGES,
   type LanguagePreference,
@@ -21,16 +23,22 @@ export default function LanguageScreen() {
   const {theme} = useTheme();
   const {t} = useTranslation();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const [selected, setSelected] = useState<LanguagePreference>(
-    getLanguagePreference,
+  // iOS owns the language (Settings › Apps › Bayaan › Language), so the
+  // screen shows the language this session runs in and has no System option.
+  const [selected, setSelected] = useState<LanguagePreference>(() =>
+    languageFollowsSystemSettings ? currentLanguage : getLanguagePreference(),
   );
 
   const options: {value: LanguagePreference; label: string; hint?: string}[] = [
-    {
-      value: 'system',
-      label: t('language.system'),
-      hint: t('language.systemDescription'),
-    },
+    ...(languageFollowsSystemSettings
+      ? []
+      : [
+          {
+            value: 'system' as const,
+            label: t('language.system'),
+            hint: t('language.systemDescription'),
+          },
+        ]),
     // Each language is listed by its own name, in its own script.
     ...AVAILABLE_LANGUAGES.map(code => ({
       value: code,
@@ -60,13 +68,35 @@ export default function LanguageScreen() {
       ],
     );
 
+  // iOS relaunches the app in the language chosen in its Settings.
+  const confirmOpenSettings = () =>
+    Alert.alert(
+      t('language.iosSettingsTitle'),
+      t('language.iosSettingsMessage'),
+      [
+        {text: t('actions.cancel'), style: 'cancel'},
+        {
+          text: t('language.openSettings'),
+          onPress: () => {
+            // Nothing to fall back to if Settings can't open; the screen
+            // note already says where the language lives.
+            Linking.openSettings().catch(() => undefined);
+          },
+        },
+      ],
+    );
+
   const handleSelect = (value: LanguagePreference) => {
     if (value === selected) return;
+    if (languageFollowsSystemSettings) {
+      confirmOpenSettings();
+      return;
+    }
     if (canRestartToApplyLanguage && languageChangeRequiresRestart(value)) {
       confirmRestart(value);
       return;
     }
-    // iOS cannot relaunch an app: the choice applies when it is next opened.
+    // No process restart available: the choice applies when the app reopens.
     setSelected(value);
     if (setLanguagePreference(value)) {
       showReopenNotice();
@@ -79,7 +109,11 @@ export default function LanguageScreen() {
         contentContainerStyle={styles.scrollContent}
         contentInsetAdjustmentBehavior="automatic"
         showsVerticalScrollIndicator={false}>
-        <Text style={styles.subtitle}>{t('language.restartNote')}</Text>
+        <Text style={styles.subtitle}>
+          {languageFollowsSystemSettings
+            ? t('language.iosNote')
+            : t('language.restartNote')}
+        </Text>
 
         <View style={styles.optionsContainer}>
           {options.map(option => {
@@ -126,10 +160,6 @@ export default function LanguageScreen() {
             );
           })}
         </View>
-
-        {Platform.OS === 'ios' && (
-          <Text style={styles.footnote}>{t('language.iosNote')}</Text>
-        )}
       </ScrollView>
     </View>
   );
@@ -187,14 +217,6 @@ const createStyles = (theme: Theme) =>
       fontSize: moderateScale(11.5),
       fontFamily: 'Manrope-Regular',
       color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
-      lineHeight: moderateScale(17),
-    },
-    footnote: {
-      textAlign: 'left',
-      fontSize: moderateScale(11),
-      fontFamily: 'Manrope-Regular',
-      color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
-      marginTop: moderateScale(16),
       lineHeight: moderateScale(17),
     },
   });

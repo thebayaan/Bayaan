@@ -5,6 +5,7 @@ import {
   StyleSheet,
   Text,
   type LayoutChangeEvent,
+  type ScrollViewInstance,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useTheme} from '@/hooks/useTheme';
@@ -14,6 +15,7 @@ import {
 } from '@/store/mushafSettingsStore';
 import {
   useMushafPlayerStore,
+  usePlaybackBasmalaSurah, // @ai
   usePlaybackVerseKeys, // @ai
 } from '@/store/mushafPlayerStore';
 import {useTajweedStore} from '@/store/tajweedStore';
@@ -101,7 +103,7 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
 }) => {
   const {theme} = useTheme();
   const insets = useSafeAreaInsets();
-  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollViewRef = useRef<ScrollViewInstance>(null);
   const verseOffsetsRef = useRef<Map<string, number>>(new Map());
 
   // Settings subscriptions
@@ -167,6 +169,9 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
   const playbackVerseKeys = usePlaybackVerseKeys(); // @ai
   const playbackState = useMushafPlayerStore(s => s.playbackState);
   const isPlaying = playbackState === 'playing';
+  // @ai — the surah whose basmala is being recited (the intro before its
+  // first verse): its header's basmala is lit as a recited verse is.
+  const basmalaSurah = usePlaybackBasmalaSurah();
 
   // @ai-start
   // Decision 3 (Release 1): a non-Hafs text lists the page's verses as its
@@ -290,6 +295,11 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
               arabicTextWeight={arabicTextWeight}
               showAllahNameHighlight={showAllahNameHighlight}
               allahNameHighlightColor={allahNameHighlightColor}
+              // @ai — lit while its basmala is recited; unset otherwise, so the
+              // header's props stay exactly as before (readingViews.hafsGolden)
+              isActive={
+                (isPlaying && basmalaSurah === item.surahNumber) || undefined
+              }
             />
           </View>
         );
@@ -372,6 +382,7 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
       indexedTajweedData,
       handleVersePress,
       playbackVerseKeys, // @ai
+      basmalaSurah, // @ai
       bandKeys, // @ai
       isPlaying,
       translationName,

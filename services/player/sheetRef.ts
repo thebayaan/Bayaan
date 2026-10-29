@@ -1,4 +1,4 @@
-import type {PanGesture} from 'react-native-gesture-handler';
+import type {LegacyPanGesture} from 'react-native-gesture-handler';
 import {usePlayerStore} from './store/playerStore';
 
 /**
@@ -26,7 +26,7 @@ export interface PlayerSheetController {
    * Swipe-up-to-open pan for the mini player, driving the open with the
    * finger.
    */
-  createOpenGesture: () => PanGesture;
+  createOpenGesture: () => LegacyPanGesture;
 }
 
 type AnchorMeasurer = (done: (origin?: PlayerOrigin) => void) => void;

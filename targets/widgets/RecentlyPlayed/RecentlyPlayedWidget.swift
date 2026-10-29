@@ -66,27 +66,36 @@ struct RecentlyPlayedView: View {
     .widgetURL(AppLinks.url("player"))
   }
 
+  // @ai-start
+  private func isPlaying(_ t: WidgetTrack, _ now: WidgetTrack?) -> Bool {
+    PlayingNow.matches(now, surahId: t.surahId, reciterId: t.reciterId)
+  }
+  // @ai-end
+
   private func intent(_ t: WidgetTrack) -> PlayTrackIntent {
     PlayTrackIntent(surahId: t.surahId, reciterId: t.reciterId, rewayatId: t.rewayatId)
   }
 
   private var medium: some View {
-    HStack(spacing: 8) {
+    let now = PlayingNow.track(at: entry.date) // @ai
+    return HStack(spacing: 8) { // @ai
       ForEach(Array(entry.shelf.tracks.prefix(4).enumerated()), id: \.offset) { _, t in
-        SurahTileButton(surahId: t.surahId, size: 62, intent: intent(t)).frame(maxWidth: .infinity)
+        SurahTileButton(surahId: t.surahId, size: 72, intent: intent(t), playing: isPlaying(t, now)).frame(maxWidth: .infinity) // @ai
       }
     }
   }
 
   private var large: some View {
     let tracks = Array(entry.shelf.tracks.prefix(6))
+    let now = PlayingNow.track(at: entry.date) // @ai
     return VStack(spacing: 12) {
       ForEach(0..<2, id: \.self) { row in
         HStack(spacing: 10) {
           ForEach(0..<3, id: \.self) { col in
             let i = row * 3 + col
             if i < tracks.count {
-              SurahTileButton(surahId: tracks[i].surahId, size: 84, intent: intent(tracks[i]), caption: tracks[i].reciterName)
+              SurahTileButton(surahId: tracks[i].surahId, size: 98, intent: intent(tracks[i]), caption: tracks[i].reciterName,
+                              playing: isPlaying(tracks[i], now)) // @ai
                 .frame(maxWidth: .infinity)
             } else {
               Color.clear.frame(maxWidth: .infinity, maxHeight: 1)

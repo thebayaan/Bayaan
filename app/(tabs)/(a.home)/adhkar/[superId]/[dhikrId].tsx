@@ -11,7 +11,7 @@ import {
   Text,
   FlatList,
   type LayoutChangeEvent, // @ai
-  ViewToken,
+  type ListViewToken,
   Pressable,
 } from 'react-native';
 import {
@@ -337,8 +337,8 @@ const DhikrReaderScreen: React.FC = () => {
   // user swipe.
   const sawFirstViewable = useRef(false);
   const onViewableItemsChanged = useCallback(
-    ({viewableItems}: {viewableItems: ViewToken<Dhikr>[]}) => {
-      if (viewableItems.length > 0 && viewableItems[0].index !== null) {
+    ({viewableItems}: {viewableItems: (ListViewToken & {item: Dhikr})[]}) => {
+      if (viewableItems.length > 0 && viewableItems[0].index != null) {
         const newIndex = viewableItems[0].index;
         setCurrentIndex(newIndex);
         if (!sawFirstViewable.current) {

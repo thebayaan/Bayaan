@@ -41,13 +41,13 @@ interface ControlButtonsProps {
   followAlongAvailable: boolean;
 }
 
-interface Styles {
+type Styles = {
   wrapper: ViewStyle;
   button: ViewStyle;
   glassButton: ViewStyle;
   glassButtonInner: ViewStyle;
   speedButtonText: TextStyle;
-}
+};
 
 // @ai-start
 export const ControlButtons: React.FC<ControlButtonsProps> = ({

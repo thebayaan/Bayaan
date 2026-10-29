@@ -39,7 +39,16 @@ import expo.modules.bayaanwidgets.StaticAyah
 import expo.modules.bayaanwidgets.StaticData
 import expo.modules.bayaanwidgets.WidgetText
 import expo.modules.bayaanwidgets.ui.ArabicText
-import expo.modules.bayaanwidgets.ui.Logo
+import expo.modules.bayaanwidgets.PlaybackState
+import expo.modules.bayaanwidgets.SnapshotModels
+import expo.modules.bayaanwidgets.WidgetTrack
+import expo.modules.bayaanwidgets.ui.Eyebrow
+import expo.modules.bayaanwidgets.ui.PrimaryButton
+import expo.modules.bayaanwidgets.ui.ReadingColors
+import expo.modules.bayaanwidgets.ui.isNightMode
+import expo.modules.bayaanwidgets.ui.playOrPause
+import expo.modules.bayaanwidgets.ui.playingTrack
+import androidx.glance.text.TextAlign
 import expo.modules.bayaanwidgets.ui.RoundButton
 import expo.modules.bayaanwidgets.ui.WidgetColors
 import expo.modules.bayaanwidgets.ui.WidgetSizes
@@ -56,70 +65,96 @@ class AyahOfTheDayWidget : GlanceAppWidget() {
     val stored = GlanceState.stored(context, GlanceState.appWidgetId(context, id))
     provideContent {
       // Read state so a midnight push recomposes; the ayah itself depends only on today's date.
-      GlanceState.current(currentState(), stored)
-      Content(context, StaticData.ayahOfTheDay(context, System.currentTimeMillis(), TimeZone.getDefault()))
+      val inputs = GlanceState.current(currentState(), stored) // @ai
+      val playing = playingTrack(context, inputs.snapshotJson?.let { SnapshotModels.decode(it) }) // @ai
+      Content(context, StaticData.ayahOfTheDay(context, System.currentTimeMillis(), TimeZone.getDefault()), playing) // @ai
     }
   }
 
+  // @ai-start
   @Composable
-  private fun Content(context: Context, ayah: StaticAyah?) {
+  private fun Content(context: Context, ayah: StaticAyah?, playing: WidgetTrack?) {
     val size = LocalSize.current
-    val root = GlanceModifier.fillMaxSize().background(WidgetColors.BACKGROUND).cornerRadius(20.dp)
+    val root = GlanceModifier.fillMaxSize().background(ReadingColors.BACKGROUND).cornerRadius(20.dp)
     if (ayah == null) {
       Box(root, contentAlignment = Alignment.Center) {
-        Text("Open ${AppBrand.name(context)}", style = TextStyle(color = WidgetColors.WHITE, fontWeight = FontWeight.Medium))
+        Text("Open ${AppBrand.name(context)}", style = TextStyle(color = ReadingColors.PRIMARY, fontWeight = FontWeight.Medium))
       }
       return
     }
     val open = appLink(context, "quran/${ayah.surahId}?ayah=${ayah.ayah}")
-    val listen = commandAction(context, playTrackCommand(ayah.surahId, null, null, ayah.ayah), "ayah/${ayah.key}")
+    // The ayah's surah is playing, from any reciter.
+    val isPlaying = PlaybackState.matches(playing, ayah.surahId, null)
+    val listen = playOrPause(context, isPlaying, commandAction(context, playTrackCommand(ayah.surahId, null, null, ayah.ayah), "ayah/${ayah.key}"))
+    val ink = if (isNightMode(context)) 0xFFF4F3EC.toInt() else 0xFF06151C.toInt()
     val width = size.width.value
     when {
-      size.height >= WidgetSizes.LARGE.height -> Column(root.padding(16.dp).clickable(open)) {
-        Header(ayah, listen)
+      size.height >= WidgetSizes.LARGE.height -> Column(root.padding(20.dp).clickable(open), horizontalAlignment = Alignment.CenterHorizontally) {
+        Eyebrow("Ayah of the Day", ReadingColors.LABEL)
         Spacer(GlanceModifier.defaultWeight())
-        ArabicText(context, ayah.arabic, ArabicBitmap.QURAN_FONT, width - 32, 130f, 32f, 14f, 6, center = true)
-        Spacer(GlanceModifier.height(12.dp))
-        Text(ayah.translation, maxLines = 5, style = TextStyle(color = WidgetColors.SECONDARY, fontSize = 14.sp))
+        ArabicText(context, ayah.arabic, ArabicBitmap.QURAN_FONT, width - 40, 110f, 28f, 14f, 4, center = true, color = ink, wholeLines = true)
+        Spacer(GlanceModifier.height(10.dp))
+        Text(ayah.translation, maxLines = 3, style = TextStyle(color = ReadingColors.SECONDARY, fontSize = 13.sp, textAlign = TextAlign.Center))
         Spacer(GlanceModifier.defaultWeight())
+        Footer(ayah, isPlaying, listen, 38)
       }
       size.width >= WidgetSizes.MEDIUM.width -> Column(root.padding(14.dp).clickable(open)) {
-        Header(ayah, listen)
-        Spacer(GlanceModifier.height(6.dp))
-        // A 2-row widget is often taller than the 110 dp bucket; the TALL buckets give the ayah that room.
-        val arabicHeight = maxOf(44f, size.height.value - MEDIUM_CHROME_DP)
-        ArabicText(context, ayah.arabic, ArabicBitmap.QURAN_FONT, width - 28, arabicHeight, 24f, 12f, 3, center = true)
+        Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+          Eyebrow("Ayah of the Day · ${WidgetText.reference(ayah.surahName, ayah.key)}", ReadingColors.LABEL)
+          Spacer(GlanceModifier.defaultWeight())
+          PrimaryButton(isPlaying, "Listen", listen, sizeDp = 30, fill = ReadingColors.BUTTON, glyph = ReadingColors.BUTTON_GLYPH)
+        }
         Spacer(GlanceModifier.height(4.dp))
-        Text(ayah.translation, maxLines = 2, style = TextStyle(color = WidgetColors.SECONDARY, fontSize = 12.sp))
+        // The 110 dp bucket gives the ayah everything below the header; the TALL buckets add the translation.
+        val short = WidgetSizes.isShort(size)
+        val arabicHeight = size.height.value - (if (short) SHORT_CHROME_DP else MEDIUM_CHROME_DP)
+        ArabicText(context, ayah.arabic, ArabicBitmap.QURAN_FONT, width - 28, arabicHeight, 24f, 11f, 3, center = true, color = ink,
+          wholeLines = true)
+        if (!short) {
+          Spacer(GlanceModifier.height(4.dp))
+          Text(ayah.translation, maxLines = 2, style = TextStyle(color = ReadingColors.SECONDARY, fontSize = 12.sp, textAlign = TextAlign.Center),
+            modifier = GlanceModifier.fillMaxWidth())
+        }
       }
       else -> Column(root.padding(12.dp).clickable(open), horizontalAlignment = Alignment.CenterHorizontally) {
-        Row(GlanceModifier.fillMaxWidth()) {
-          Spacer(GlanceModifier.defaultWeight())
-          Logo(12)
-        }
         Spacer(GlanceModifier.defaultWeight())
-        ArabicText(context, ayah.arabic, ArabicBitmap.QURAN_FONT, width - 24, size.height.value - 24 - 20, 26f, 10f, 6, center = true)
+        ArabicText(context, ayah.arabic, ArabicBitmap.QURAN_FONT, width - 24, size.height.value - 24 - 40, 26f, 10f, 5, center = true, color = ink)
         Spacer(GlanceModifier.defaultWeight())
+        SmallFooter(ayah, isPlaying, listen)
       }
     }
   }
 
+  /** Reference on the left, listen button on the right. */
   @Composable
-  private fun Header(ayah: StaticAyah, listen: Action) {
+  private fun Footer(ayah: StaticAyah, isPlaying: Boolean, listen: Action, buttonDp: Int) {
     Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-      RoundButton(android.R.drawable.ic_media_play, "Listen", listen)
-      Spacer(GlanceModifier.width(8.dp))
-      Text(WidgetText.reference(ayah.surahName, ayah.key), maxLines = 1,
-        style = TextStyle(color = WidgetColors.TERTIARY, fontSize = 12.sp, fontWeight = FontWeight.Bold))
-      Spacer(GlanceModifier.defaultWeight())
-      Logo(14)
+      Text(WidgetText.reference(ayah.surahName, ayah.key), maxLines = 1, modifier = GlanceModifier.defaultWeight(),
+        style = TextStyle(color = ReadingColors.LABEL, fontSize = 11.sp, fontWeight = FontWeight.Bold))
+      PrimaryButton(isPlaying, "Listen", listen, sizeDp = buttonDp, fill = ReadingColors.BUTTON, glyph = ReadingColors.BUTTON_GLYPH)
     }
   }
+
+  /** Surah over the ayah number, so a 110 dp cell never cuts the reference. */
+  @Composable
+  private fun SmallFooter(ayah: StaticAyah, isPlaying: Boolean, listen: Action) {
+    Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+      Column(GlanceModifier.defaultWeight()) {
+        Text(WidgetText.shortSurahName(ayah.surahName, 9), maxLines = 1,
+          style = TextStyle(color = ReadingColors.LABEL, fontSize = 10.sp, fontWeight = FontWeight.Medium))
+        Text(ayah.key, maxLines = 1, style = TextStyle(color = ReadingColors.LABEL, fontSize = 11.sp, fontWeight = FontWeight.Bold))
+      }
+      PrimaryButton(isPlaying, "Listen", listen, sizeDp = 28, fill = ReadingColors.BUTTON, glyph = ReadingColors.BUTTON_GLYPH)
+    }
+  }
+  // @ai-end
 
   private companion object {
     val SMALL_TALL = DpSize(110.dp, 180.dp)
     val MEDIUM_TALL = DpSize(250.dp, 180.dp)
     /** Padding, header, spacers and a two-line translation around the medium ayah. */
     const val MEDIUM_CHROME_DP = 104f
+    /** Padding, the header row and its gap around the 110 dp medium ayah. */ // @ai
+    const val SHORT_CHROME_DP = 64f // @ai
   }
 }

@@ -1,5 +1,5 @@
 // @ai-generated
-import {I18nManager} from 'react-native';
+import {I18nManager, Platform, Settings} from 'react-native';
 import {createMMKV} from 'react-native-mmkv';
 import {getLocales} from 'expo-localization';
 
@@ -92,23 +92,58 @@ function directionDiffers(language: AppLanguage): boolean {
 }
 
 /**
+ * iOS owns the app language: users change it in Settings › Apps › Bayaan ›
+ * Language, and iOS relaunches the app in it. An app cannot relaunch itself on
+ * iOS, so this is the only way a new language applies without the user
+ * closing the app by hand. The language screen sends users there.
+ */
+export const languageFollowsSystemSettings = Platform.OS === 'ios';
+
+/**
  * Persists the native layout direction for `language`. iOS and Android read it
  * when React Native starts, so it takes effect on the next launch.
  *
+ * On iOS the direction is never forced. The persisted flag would outlive a
+ * language change made in Settings and start the relaunched app in the old
+ * direction. Allowing RTL lets React Native follow the app language iOS
+ * launches with instead.
+ *
  * Never reload the JS runtime in process to apply it. On React Native 0.86
- * bridgeless, `reloadAppAsync`, `Updates.reloadAsync` and `DevSettings.reload`
- * can crash: the old runtime may run a pending Fabric render after its
- * scheduler is torn down (`enableSchedulerDelegateInvalidation` is off in
- * stable builds), and Expo modules re-register while the old runtime is still
- * being torn down. Android relaunches the whole process instead (i18n/restart).
+ * and 0.88 bridgeless, `reloadAppAsync`, `Updates.reloadAsync` and
+ * `DevSettings.reload` can crash: the old runtime may run a pending Fabric
+ * render after its scheduler is torn down (0.88 dropped the
+ * `enableSchedulerDelegateInvalidation` guard), and Expo modules re-register
+ * while the old runtime is still being torn down. Android relaunches the whole
+ * process instead (i18n/restart).
  */
 function applyDirection(language: AppLanguage): void {
+  if (languageFollowsSystemSettings) {
+    I18nManager.allowRTL(true);
+    I18nManager.swapLeftAndRightInRTL(true);
+    I18nManager.forceRTL(false);
+    return;
+  }
   const shouldBeRTL = isRTLLanguage(language);
   I18nManager.allowRTL(shouldBeRTL);
   I18nManager.swapLeftAndRightInRTL(true);
   // Write both directions even if the cached JS isRTL already matches. The
   // native persisted flag may have changed since those constants were read.
   I18nManager.forceRTL(shouldBeRTL);
+}
+
+/**
+ * Before iOS owned the language, iOS users picked it in the app. Hands such a
+ * choice to iOS (the per-app `AppleLanguages` default that Settings writes) so
+ * it survives, then drops the in-app preference. This session keeps the
+ * language it started with; the next launch follows iOS.
+ */
+function migratePreferenceToSystemSettings(): void {
+  const preference = getLanguagePreference();
+  if (preference === 'system') {
+    return;
+  }
+  Settings.set({AppleLanguages: [preference]});
+  storage.remove(PREFERENCE_KEY);
 }
 
 /**
@@ -136,8 +171,12 @@ export function setLanguagePreference(preference: LanguagePreference): boolean {
  * Called once at startup. Keeps the persisted native direction in step with
  * the resolved language (e.g. System after the device language changed). A
  * mismatch is corrected on the next launch; JS layout already follows
- * `currentLanguage` through utils/rtl.
+ * `currentLanguage` through utils/rtl. On iOS it also hands a language picked
+ * in the app to iOS Settings.
  */
 export function bootstrapDirection(): void {
+  if (languageFollowsSystemSettings) {
+    migratePreferenceToSystemSettings();
+  }
   applyDirection(currentLanguage);
 }

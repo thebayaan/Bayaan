@@ -55,6 +55,9 @@ module.exports = {
           'This app uses Apple Music to play audio.',
         UILaunchStoryboardName: 'SplashScreen',
         LSRequiresIPhoneOS: true,
+        // Show Settings › Apps › Bayaan › Language even when the device has a
+        // single preferred language. The language screen sends users there.
+        UIPrefersShowingLanguageSettings: true,
         // Matches ios/Bayaan/Info.plist: iPad multitasking (Split View, Stage
         // Manager) is on, so iPad windows can be any size. @ai
         UIRequiresFullScreen: false,
@@ -174,6 +177,15 @@ module.exports = {
     plugins: [
       'expo-router',
       [
+        'expo-build-properties',
+        {
+          // SDK 58 turns R8 on for release builds. Keep it off until a
+          // minified release (Android Auto, widgets, MMKV/Nitro, Sentry) has
+          // been tested and any keep rules are in android/app/proguard-rules.pro.
+          android: {enableMinifyInReleaseBuilds: false},
+        },
+      ],
+      [
         'expo-localization',
         // Direction is controlled by the in-app language preference. Static
         // supportsRTL/forcesRTL resets I18nManager to the device locale on iOS.
@@ -249,6 +261,7 @@ module.exports = {
       './plugins/withAppShortcuts.js',
       './plugins/withBayaanWidgets.js',
       './plugins/withBayaanKeyboard.js',
+      './plugins/withOkHttpFloor.js',
     ],
   },
 };

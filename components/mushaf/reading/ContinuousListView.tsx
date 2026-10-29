@@ -28,6 +28,7 @@ import {
 import {VerseItem} from '@/components/player/v2/PlayerContent/QuranView/VerseItem';
 import {
   useMushafPlayerStore,
+  usePlaybackBasmalaSurah, // @ai
   usePlaybackVerseKeys, // @ai
 } from '@/store/mushafPlayerStore';
 import SurahDivider from '@/components/player/v2/PlayerContent/QuranView/SurahDivider';
@@ -225,6 +226,9 @@ const ContinuousListView = forwardRef<
     const playbackVerseKeys = usePlaybackVerseKeys(); // @ai
     const playbackState = useMushafPlayerStore(s => s.playbackState);
     const isPlaying = playbackState === 'playing';
+    // @ai — the surah whose basmala is being recited (the intro before its
+    // first verse): its header's basmala is lit as a recited verse is.
+    const basmalaSurah = usePlaybackBasmalaSurah();
 
     // @ai-start
     // Decision 3 (Release 1): a non-Hafs text lists its rewayah's OWN verses
@@ -433,6 +437,11 @@ const ContinuousListView = forwardRef<
                 arabicTextWeight={arabicTextWeight}
                 showAllahNameHighlight={showAllahNameHighlight}
                 allahNameHighlightColor={allahNameHighlightColor}
+                // @ai — lit while its basmala is recited; unset otherwise, so the
+                // header's props stay exactly as before (readingViews.hafsGolden)
+                isActive={
+                  (isPlaying && basmalaSurah === item.surahNumber) || undefined
+                }
               />
             </View>
           );
@@ -489,6 +498,7 @@ const ContinuousListView = forwardRef<
         indexedTajweedData,
         handleVersePress,
         playbackVerseKeys, // @ai
+        basmalaSurah, // @ai
         bandKeys, // @ai
         isPlaying,
         translationName,

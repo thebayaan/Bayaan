@@ -6,6 +6,7 @@ import {
   StyleSheet,
   ScrollView,
   type LayoutChangeEvent, // @ai
+  type ScrollViewInstance,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {useResponsive} from '@/hooks/useResponsive';
@@ -26,7 +27,7 @@ import {
   // @ai-end
 } from '@/components/Icons';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {BottomTabBarProps} from 'expo-router/build/react-navigation/bottom-tabs';
+import type {BottomTabBarProps} from 'expo-router/js-tabs';
 import {Theme} from '@/utils/themeUtils';
 import Color from 'color';
 import {usePlayerStore} from '@/services/player/store/playerStore';
@@ -47,7 +48,7 @@ import {
   sidebarWidth,
   type SidebarItemId,
 } from '@/components/tablet/sidebarNav';
-import {useIsFocused} from 'expo-router';
+import {router, useIsFocused, type Href} from 'expo-router';
 import {useHover} from '@/hooks/useHover';
 import {useKeyCommands} from '@/hooks/useKeyCommands';
 import type {KeyBinding} from '@/services/keyboard/keyCommands';
@@ -180,7 +181,8 @@ const SidebarItem = React.memo(function SidebarItem({
 // @ai-start
 export const TabletSidebar: React.FC<BottomTabBarProps> = ({
   state,
-  navigation,
+  descriptors,
+  emitter,
 }) => {
   const {theme, isDarkMode} = useTheme();
   const {t} = useTranslation(['common', 'collection']);
@@ -221,7 +223,7 @@ export const TabletSidebar: React.FC<BottomTabBarProps> = ({
   // A short window (the iPad mini in landscape) can't fit every section, and
   // a list cut off between two rows looks complete. Flash the scroll
   // indicator whenever the list gets taller than the space it has.
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ScrollViewInstance>(null);
   const scrollSize = useRef({viewport: 0, content: 0, flashed: false});
   const checkOverflow = useCallback(() => {
     const size = scrollSize.current;
@@ -248,16 +250,24 @@ export const TabletSidebar: React.FC<BottomTabBarProps> = ({
     (item: SidebarItemId) => {
       const press = sidebarPress(state, item);
       if (press.tabPress) {
-        const event = navigation.emit({
+        const event = emitter.emit({
           type: 'tabPress',
           target: press.tabPress,
           canPreventDefault: true,
         });
         if (event.defaultPrevented) return;
       }
+      // Expo Router 58 gives a tab bar no navigation prop. Each tab's
+      // descriptor still carries the tab navigator's, which handles these.
+      const {navigation} = descriptors[state.routes[state.index].key];
       press.actions.forEach(action => navigation.dispatch(action));
+      if (press.open) {
+        router.navigate(press.open.href as Href, {
+          withAnchor: press.open.withAnchor,
+        });
+      }
     },
-    [state, navigation],
+    [state, descriptors, emitter],
   );
 
   // Keyboard: ⌘1–⌘5 press the items, ⌘F opens Search with the cursor in

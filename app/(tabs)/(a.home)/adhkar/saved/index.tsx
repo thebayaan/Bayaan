@@ -6,14 +6,7 @@ import React, {
   useLayoutEffect,
   useRef,
 } from 'react';
-import {
-  View,
-  Text,
-  FlatList,
-  Pressable,
-  StyleSheet,
-  ViewToken,
-} from 'react-native';
+import {View, Text, FlatList, Pressable, StyleSheet} from 'react-native';
 import {useRouter, useNavigation, useFocusEffect, Link} from 'expo-router';
 import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {Ionicons} from '@expo/vector-icons';
@@ -29,6 +22,7 @@ import {
   AdhkarJumpPill,
   jumpPillDirection,
   visibleRowIndices,
+  type RowToken,
 } from '@/components/adhkar/AdhkarJumpPill';
 import {Dhikr, SavedDhikr} from '@/types/adhkar';
 import {adhkarService} from '@/services/adhkar/AdhkarService';
@@ -195,10 +189,10 @@ const SavedAdhkarScreen: React.FC = () => {
   }, [rows]);
 
   const onViewableItemsChanged = useCallback(
-    ({viewableItems}: {viewableItems: ViewToken<Dhikr[]>[]}) => {
+    ({viewableItems}: {viewableItems: RowToken<Dhikr[]>[]}) => {
       setVisibleIndices(
         visibleRowIndices(viewableItems, ({index, item}) =>
-          index === null ? undefined : item.map((_, k) => index * columns + k),
+          index == null ? undefined : item.map((_, k) => index * columns + k),
         ),
       );
     },

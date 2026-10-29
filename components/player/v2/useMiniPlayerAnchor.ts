@@ -1,7 +1,7 @@
 // @ai-generated
 import {useEffect, useMemo, useRef, useSyncExternalStore} from 'react';
-import type {View} from 'react-native';
-import {Gesture, type PanGesture} from 'react-native-gesture-handler';
+import type {ViewInstance} from 'react-native';
+import {Gesture, type LegacyPanGesture} from 'react-native-gesture-handler';
 import {
   getPlayerSheetController,
   registerMiniPlayerAnchor,
@@ -12,7 +12,7 @@ import {
 } from '@/services/player/sheetRef';
 
 function measureRect(
-  view: View | null,
+  view: ViewInstance | null,
   radius: (height: number) => number,
   done: (rect?: PlayerRect) => void,
 ) {
@@ -41,7 +41,7 @@ interface MiniPlayerAnchorOptions {
  * until the player has mounted.
  */
 export function useMiniPlayerAnchor({radius}: MiniPlayerAnchorOptions) {
-  const anchorRef = useRef<View>(null);
+  const anchorRef = useRef<ViewInstance>(null);
   const radiusRef = useRef(radius);
   radiusRef.current = radius;
 
@@ -57,7 +57,7 @@ export function useMiniPlayerAnchor({radius}: MiniPlayerAnchorOptions) {
     subscribePlayerSheetController,
     getPlayerSheetController,
   );
-  const openGesture = useMemo<PanGesture>(
+  const openGesture = useMemo<LegacyPanGesture>(
     () => controller?.createOpenGesture() ?? Gesture.Pan().enabled(false),
     [controller],
   );

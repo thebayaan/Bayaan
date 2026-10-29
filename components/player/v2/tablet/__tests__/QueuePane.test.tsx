@@ -36,11 +36,12 @@ jest.mock('@/hooks/useReciterNavigation', () => ({
 
 type MockTrack = {id: string; title: string; reciterId?: string};
 let mockQueue: {tracks: MockTrack[]; currentIndex: number};
+let mockRepeatMode = 'none';
 jest.mock('@/services/player/store/playerStore', () => ({
   usePlayerStore: (selector: (s: unknown) => unknown) =>
     selector({
       queue: mockQueue,
-      settings: {repeatMode: 'none'},
+      settings: {repeatMode: mockRepeatMode},
       playback: {state: 'paused'},
     }),
 }));
@@ -72,40 +73,51 @@ jest.mock('@expo/vector-icons', () => ({
 }));
 
 // The real list needs Reanimated and gesture handler; this one renders the
-// header, each row and the footer, and keeps onDragEnd to call directly.
+// header, each row and the footer, and keeps its callbacks to call directly.
 interface MockListProps {
   data: unknown[];
   keyExtractor: (item: unknown) => string;
   renderItem: (params: object) => React.ReactNode;
   onDragEnd: (params: {from: number; to: number}) => void;
+  onContentSizeChange: (width: number, height: number) => void;
+  onContainerLayout: (params: {layout: {height: number}}) => void;
+  onScrollOffsetChange: (offset: number) => void;
   scrollEnabled?: boolean;
   ListHeaderComponent: React.ReactNode;
   ListFooterComponent: React.ReactNode;
 }
 const mockDrag = jest.fn();
+const mockScrollToOffset = jest.fn();
 jest.mock('react-native-draggable-flatlist', () => {
+  const {forwardRef, useImperativeHandle} = jest.requireActual('react');
   const {View: MockView} = jest.requireActual('react-native');
   return {
     __esModule: true,
-    default: (props: MockListProps) => (
-      <MockView
-        testID="list"
-        onDragEnd={props.onDragEnd}
-        scrollEnabled={props.scrollEnabled}>
-        {props.ListHeaderComponent}
-        {props.data.map((item, i) => (
-          <MockView key={props.keyExtractor(item)}>
-            {props.renderItem({
-              item,
-              drag: mockDrag,
-              isActive: false,
-              getIndex: () => i,
-            })}
-          </MockView>
-        ))}
-        {props.ListFooterComponent}
-      </MockView>
-    ),
+    default: forwardRef((props: MockListProps, ref: unknown) => {
+      useImperativeHandle(ref, () => ({scrollToOffset: mockScrollToOffset}));
+      return (
+        <MockView
+          testID="list"
+          onDragEnd={props.onDragEnd}
+          onContentSizeChange={props.onContentSizeChange}
+          onContainerLayout={props.onContainerLayout}
+          onScrollOffsetChange={props.onScrollOffsetChange}
+          scrollEnabled={props.scrollEnabled}>
+          {props.ListHeaderComponent}
+          {props.data.map((item, i) => (
+            <MockView key={props.keyExtractor(item)}>
+              {props.renderItem({
+                item,
+                drag: mockDrag,
+                isActive: false,
+                getIndex: () => i,
+              })}
+            </MockView>
+          ))}
+          {props.ListFooterComponent}
+        </MockView>
+      );
+    }),
   };
 });
 
@@ -140,9 +152,20 @@ const texts = (r: TestRenderer.ReactTestRenderer) =>
     .findAll(n => (n.type as unknown) === Text)
     .map(n => [n.props.children].flat().join(''));
 
+/** The Played row, which opens and closes the played tracks. */
+const disclosure = (r: TestRenderer.ReactTestRenderer) =>
+  r.root
+    .findAll(
+      n =>
+        n.props.accessibilityState?.expanded !== undefined &&
+        typeof n.props.onPress === 'function',
+    )
+    .pop();
+
 beforeEach(() => {
   // a was played, b is playing, c and d are up next.
   mockQueue = {tracks: ['a', 'b', 'c', 'd'].map(track), currentIndex: 1};
+  mockRepeatMode = 'none';
   jest.clearAllMocks();
 });
 
@@ -181,6 +204,14 @@ describe('QueuePane', () => {
     expect(mockActions.updateSettings).toHaveBeenCalledWith({
       repeatMode: 'queue',
     });
+  });
+
+  it('names the repeat mode on its chip', () => {
+    expect(texts(render())).toContain('Repeat');
+    mockRepeatMode = 'queue';
+    expect(texts(render())).toContain('Repeat All');
+    mockRepeatMode = 'track';
+    expect(texts(render())).toContain('Repeat One');
   });
 
   it('opens a menu for a row that can play it next', () => {
@@ -261,16 +292,51 @@ describe('QueuePane', () => {
 
   it('shows the played tracks when their row is opened', () => {
     const r = render();
-    const disclosure = r.root
-      .findAll(
-        n =>
-          n.props.accessibilityState?.expanded !== undefined &&
-          typeof n.props.onPress === 'function',
-      )
-      .pop();
-    expect(disclosure).toBeDefined();
-    act(() => disclosure?.props.onPress());
+    expect(disclosure(r)).toBeDefined();
+    act(() => disclosure(r)?.props.onPress());
     expect(texts(r)).toEqual(expect.arrayContaining(['Played (1)', 'Surah a']));
+  });
+
+  describe('scrolling the played tracks into view', () => {
+    // A 500pt list scrolled to 400 of 900pt. The 44pt Played row ends at the
+    // bottom padding (20 + 24), so it starts at 900 - 44 - 44 = 812.
+    function openPlayed(newHeight: number, offset = 400) {
+      const r = render();
+      const list = r.root.findByProps({testID: 'list'});
+      act(() => {
+        list.props.onContainerLayout({layout: {height: 500}});
+        list.props.onContentSizeChange(320, 900);
+        list.props.onScrollOffsetChange(offset);
+        disclosure(r)?.props.onLayout({nativeEvent: {layout: {height: 44}}});
+      });
+      act(() => disclosure(r)?.props.onPress());
+      act(() => list.props.onContentSizeChange(320, newHeight));
+      return {r, list};
+    }
+
+    it('scrolls to the end when the rows fit under the Played row', () => {
+      openPlayed(1300);
+      expect(mockScrollToOffset).toHaveBeenCalledWith({
+        offset: 800,
+        animated: true,
+      });
+    });
+
+    it('stops with the Played row at the top when they do not', () => {
+      openPlayed(2000);
+      expect(mockScrollToOffset).toHaveBeenCalledWith({
+        offset: 812,
+        animated: true,
+      });
+    });
+
+    it('never scrolls back up, nor when the rows close', () => {
+      const {r, list} = openPlayed(1300, 850);
+      expect(mockScrollToOffset).not.toHaveBeenCalled();
+      act(() => disclosure(r)?.props.onPress());
+      act(() => list.props.onContentSizeChange(320, 900));
+      expect(mockScrollToOffset).not.toHaveBeenCalled();
+    });
   });
 
   it('plays a tapped row', async () => {

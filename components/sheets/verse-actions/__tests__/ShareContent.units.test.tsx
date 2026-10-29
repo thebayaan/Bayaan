@@ -182,9 +182,10 @@ beforeEach(() => {
   mockCards.length = 0;
   mockUnits.models = new Map([['warsh', warsh]]);
   jest.clearAllMocks();
-  shareSpy = jest
-    .spyOn(Share, 'share')
-    .mockImplementation(async () => ({action: 'sharedAction'}));
+  shareSpy = jest.spyOn(Share, 'share').mockImplementation(async () => ({
+    action: 'sharedAction',
+    activityType: undefined,
+  }));
   useMushafSettingsStore.setState({rewayah: 'hafs', mushafRenderer: 'dk_v2'});
 });
 

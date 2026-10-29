@@ -16,7 +16,7 @@ const FormattedTextRenderer = memo(function FormattedTextRenderer({
   let baseFontSize = 14; // Default
   if (baseStyle && typeof baseStyle !== 'function') {
     const flattenedStyle = StyleSheet.flatten(baseStyle);
-    if (flattenedStyle.fontSize) {
+    if (flattenedStyle?.fontSize) {
       baseFontSize = flattenedStyle.fontSize;
     }
   }

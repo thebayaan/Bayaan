@@ -1,12 +1,12 @@
 internal import Expo
 import React
-import Intents
 internal import BayaanCar
+import Intents
 internal import BayaanKeyboard
 import ReactAppDependencyProvider
 
 @main
-class AppDelegate: ExpoAppDelegate {
+class AppDelegate: ExpoAppDelegate, ExpoReactNativeFactoryProvider {
   var window: UIWindow?
 
   var reactNativeDelegate: ExpoReactNativeFactoryDelegate?
@@ -23,8 +23,11 @@ class AppDelegate: ExpoAppDelegate {
     reactNativeDelegate = delegate
     reactNativeFactory = factory
 
-#if os(iOS) || os(tvOS)
+    // The window is created and React Native is started by `SceneDelegate` under the
+    // scene-based life cycle (required by the iOS 27 SDK).
     // @bayaan-car scene bridge start
+    // SceneDelegate (the phone) and CarPlaySceneDelegate start React Native
+    // through the bridge, whichever scene connects first.
     BayaanCarSceneBridge.shared.configure(
       start: { hostWindow, extra in
         let merged = (launchOptions ?? [:]).merging(extra) { _, new in new }
@@ -32,7 +35,6 @@ class AppDelegate: ExpoAppDelegate {
       },
       onWindow: { [weak self] hostWindow in self?.window = hostWindow })
     // @bayaan-car scene bridge end
-#endif
 
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
@@ -70,25 +72,6 @@ class AppDelegate: ExpoAppDelegate {
     BayaanCarSiri.handle(intent, completion: completionHandler)
   }
   // @bayaan-car siri end
-
-  // Linking API
-  public override func application(
-    _ app: UIApplication,
-    open url: URL,
-    options: [UIApplication.OpenURLOptionsKey: Any] = [:]
-  ) -> Bool {
-    return super.application(app, open: url, options: options) || RCTLinkingManager.application(app, open: url, options: options)
-  }
-
-  // Universal Links
-  public override func application(
-    _ application: UIApplication,
-    continue userActivity: NSUserActivity,
-    restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void
-  ) -> Bool {
-    let result = RCTLinkingManager.application(application, continue: userActivity, restorationHandler: restorationHandler)
-    return super.application(application, continue: userActivity, restorationHandler: restorationHandler) || result
-  }
 }
 
 class ReactNativeDelegate: ExpoReactNativeFactoryDelegate {

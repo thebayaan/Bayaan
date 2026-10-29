@@ -55,7 +55,8 @@ describe('disposeAfterPendingDraws', () => {
     expect(typeof worklet).toBe('function');
     expect(rest).toHaveLength(0);
     expect(worklet.__workletHash).toBeDefined();
-    expect(worklet.__closure).toEqual({});
+    // Worklets 0.13 omits `__closure` when a worklet captures nothing.
+    expect(worklet.__closure).toBeUndefined();
   });
 
   it('skips null and undefined entries', async () => {

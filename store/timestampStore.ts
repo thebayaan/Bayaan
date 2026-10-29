@@ -42,6 +42,13 @@ interface TimestampState {
    * timings ('disabled': they cannot be followed). Null while unknown.
    */
   trackingNumberingMode: TimingNumberingMode | null;
+  /**
+   * Surah whose basmala is being recited: the audio is in the intro before
+   * that surah's first timing entry (isInBasmalaIntro), so the follow-along
+   * highlights its basmala instead of a verse. Null otherwise (also for
+   * al-Fatihah and at-Tawbah). Written by the follow-along tracker.
+   */
+  basmalaIntroSurah: number | null;
   // @ai-end
   isLocked: boolean;
 
@@ -63,6 +70,8 @@ interface TimestampState {
   retryTimestamps: () => Promise<void>;
   /** Written by the follow-along tracker (useAyahTracker). @ai */
   setTrackingNumberingMode: (mode: TimingNumberingMode | null) => void;
+  /** Written by the follow-along tracker (useAyahTracker). @ai */
+  setBasmalaIntroSurah: (surah: number | null) => void;
   loadFollowAlongRegistry: () => void;
   toggleFollowAlong: () => void;
 }
@@ -74,6 +83,7 @@ export const useTimestampStore = create<TimestampState>()((set, get) => ({
   timestampRequest: null, // @ai
   timestampLoadStatus: 'idle', // @ai
   trackingNumberingMode: null, // @ai
+  basmalaIntroSurah: null, // @ai
   isLocked: true,
 
   // Follow Along registry defaults
@@ -137,6 +147,7 @@ export const useTimestampStore = create<TimestampState>()((set, get) => ({
           ? 'failed'
           : 'not-covered',
       trackingNumberingMode: null, // the tracker resolves the new timings
+      basmalaIntroSurah: null,
       // @ai-end
     });
   },
@@ -149,6 +160,7 @@ export const useTimestampStore = create<TimestampState>()((set, get) => ({
       timestampRequest: null, // @ai
       timestampLoadStatus: 'idle', // @ai
       trackingNumberingMode: null, // @ai
+      basmalaIntroSurah: null, // @ai
     }),
 
   // @ai-start
@@ -162,6 +174,8 @@ export const useTimestampStore = create<TimestampState>()((set, get) => ({
   },
 
   setTrackingNumberingMode: mode => set({trackingNumberingMode: mode}),
+
+  setBasmalaIntroSurah: surah => set({basmalaIntroSurah: surah}),
   // @ai-end
 
   loadFollowAlongRegistry: () => {

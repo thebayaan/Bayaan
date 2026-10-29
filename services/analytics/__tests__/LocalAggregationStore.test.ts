@@ -178,3 +178,24 @@ describe('getDailyAggregate', () => {
     expect(store.getDailyAggregate('2020-01-01')).toBeNull();
   });
 });
+
+// @ai-start
+describe('remapReciterId', () => {
+  it('adds the merged reciter time to the kept reciter on every day', () => {
+    store.addListeningTime('2026-04-12', 5000, '1', 'old');
+    store.addListeningTime('2026-04-12', 2000, '1', 'kept');
+    store.addListeningTime('2026-04-13', 1000, '2', 'old');
+    store.setListeningGoal(15);
+
+    store.remapReciterId('old', 'kept');
+
+    expect(store.getDailyAggregate('2026-04-12')!.reciters).toEqual({
+      kept: 7000,
+    });
+    expect(store.getDailyAggregate('2026-04-13')!.reciters).toEqual({
+      kept: 1000,
+    });
+    expect(store.getListeningGoal()).toBe(15);
+  });
+});
+// @ai-end

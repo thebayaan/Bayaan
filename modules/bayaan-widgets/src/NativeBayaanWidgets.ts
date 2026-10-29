@@ -7,6 +7,8 @@ export interface NativeBayaanWidgetsModule {
   writeSnapshot(json: string): void;
   reloadWidgets(kinds: string[]): void;
   takeQueuedCommands(): string;
+  // Newest enqueuedAt JS has handled; a waiting widget tap reads it. // @ai
+  markCommandsHandled?(through: number): void; // @ai
   takePendingTasbeeh(): string;
   takePendingWidgetEvents(): string;
   cacheArtwork(sourceUrl: string, fileName: string): Promise<boolean>;

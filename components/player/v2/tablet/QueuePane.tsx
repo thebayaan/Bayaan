@@ -1,12 +1,14 @@
 // @ai-generated
-import React, {useCallback, useMemo, useState} from 'react';
+import React, {useCallback, useMemo, useRef, useState} from 'react';
 import {
   View,
   Text,
   Pressable,
   StyleSheet,
   type AccessibilityActionEvent,
+  type LayoutChangeEvent,
 } from 'react-native';
+import type {FlatList} from 'react-native-gesture-handler';
 import DraggableFlatList, {
   type RenderItemParams,
 } from 'react-native-draggable-flatlist';
@@ -38,6 +40,13 @@ import type {Track} from '@/types/audio';
 import {useRowDisplay} from '../PlayerContent/QueueList';
 
 const EMPTY_TRACKS: Track[] = [];
+
+// The chip says which repeat is on, as Apple Music's does.
+const REPEAT_LABELS = {
+  none: 'a11y.repeat',
+  queue: 'queue.repeatAll',
+  track: 'queue.repeatOne',
+} as const;
 
 /**
  * How long the handle is held before a row lifts. Starting on touch down let
@@ -298,6 +307,14 @@ export function QueuePane({bottomInset}: {bottomInset: number}) {
   const repeatMode = usePlayerStore(s => s.settings.repeatMode);
   const [showPlayed, setShowPlayed] = useState(false);
   const [handleTouched, setHandleTouched] = useState(false);
+  const listRef = useRef<FlatList<UpNextItem>>(null);
+  const scrollOffset = useRef(0);
+  const viewportHeight = useRef(0);
+  const contentHeight = useRef(0);
+  const disclosureHeight = useRef(0);
+  // Where the Played row starts while its rows are being revealed.
+  const revealFrom = useRef<number | null>(null);
+  const paddingBottom = bottomInset + 24;
 
   const current = tracks[currentIndex];
   const upNext = useMemo(
@@ -388,6 +405,26 @@ export function QueuePane({bottomInset}: {bottomInset: number}) {
     });
   }, [repeatMode, updateSettings]);
 
+  const togglePlayed = useCallback(() => {
+    revealFrom.current = showPlayed
+      ? null
+      : contentHeight.current - paddingBottom - disclosureHeight.current;
+    setShowPlayed(!showPlayed);
+  }, [showPlayed, paddingBottom]);
+
+  // Opened, Played adds its rows under the fold. Scroll them into view, as
+  // far as keeping the Played row itself on screen allows.
+  const onContentSizeChange = useCallback((_width: number, height: number) => {
+    contentHeight.current = height;
+    const from = revealFrom.current;
+    if (from === null) return;
+    revealFrom.current = null;
+    const target = Math.min(from, height - viewportHeight.current);
+    if (target > scrollOffset.current) {
+      listRef.current?.scrollToOffset({offset: target, animated: true});
+    }
+  }, []);
+
   const clearUpNext = useCallback(() => {
     removeFromQueue(upNext.map(item => item.index));
   }, [removeFromQueue, upNext]);
@@ -426,7 +463,7 @@ export function QueuePane({bottomInset}: {bottomInset: number}) {
         </View>
         <View style={styles.headerActions}>
           <Chip
-            label={t('a11y.repeat')}
+            label={t(REPEAT_LABELS[repeatMode])}
             selected={repeatMode !== 'none'}
             onPress={cycleRepeat}
             a11y={a11y.repeat(repeatMode)}
@@ -480,7 +517,10 @@ export function QueuePane({bottomInset}: {bottomInset: number}) {
     played.length > 0 ? (
       <View>
         <Pressable
-          onPress={() => setShowPlayed(v => !v)}
+          onPress={togglePlayed}
+          onLayout={(e: LayoutChangeEvent) => {
+            disclosureHeight.current = e.nativeEvent.layout.height;
+          }}
           accessibilityRole="button"
           accessibilityState={{expanded: showPlayed}}
           style={({pressed}) => [styles.disclosure, pressed && {opacity: 0.6}]}>
@@ -510,6 +550,7 @@ export function QueuePane({bottomInset}: {bottomInset: number}) {
 
   return (
     <DraggableFlatList
+      ref={listRef}
       data={upNext}
       scrollEnabled={!handleTouched}
       autoscrollThreshold={AUTOSCROLL_EDGE}
@@ -521,12 +562,16 @@ export function QueuePane({bottomInset}: {bottomInset: number}) {
         }
       }}
       ListHeaderComponent={header}
-      ListFooterComponent={footer}
+      ListFooterComponent={footer ?? undefined}
+      onContentSizeChange={onContentSizeChange}
+      onContainerLayout={({layout}) => {
+        viewportHeight.current = layout.height;
+      }}
+      onScrollOffsetChange={offset => {
+        scrollOffset.current = offset;
+      }}
       containerStyle={styles.fill}
-      contentContainerStyle={[
-        styles.content,
-        {paddingBottom: bottomInset + 24},
-      ]}
+      contentContainerStyle={[styles.content, {paddingBottom}]}
       showsVerticalScrollIndicator={false}
     />
   );

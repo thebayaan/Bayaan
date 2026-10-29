@@ -21,4 +21,14 @@ describe('audioFileUrl', () => {
       ),
     ).toBe(`${SERVER}/024.mp3?v=2`);
   });
+
+  it('versions only the listed surahs of a per-surah entry', () => {
+    const rewayat = {
+      id: 'f877d4f8-0834-4401-a169-f1435a7dff09',
+      server: SERVER,
+    };
+    expect(audioFileUrl(rewayat, 1)).toBe(`${SERVER}/001.mp3?v=2`);
+    expect(audioFileUrl(rewayat, '001')).toBe(`${SERVER}/001.mp3?v=2`);
+    expect(audioFileUrl(rewayat, 2)).toBe(`${SERVER}/002.mp3`);
+  });
 });

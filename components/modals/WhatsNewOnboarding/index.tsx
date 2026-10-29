@@ -14,7 +14,7 @@ import {
   Dimensions,
   Pressable,
   FlatList,
-  ViewToken,
+  type ListViewToken,
 } from 'react-native';
 import {moderateScale} from '@/utils/scale';
 import Animated, {
@@ -109,8 +109,8 @@ export const WhatsNewModal = forwardRef<WhatsNewModalRef>((_, ref) => {
   }
 
   const onViewableItemsChanged = useRef(
-    ({viewableItems}: {viewableItems: ViewToken[]}) => {
-      if (viewableItems.length > 0 && viewableItems[0].index !== null) {
+    ({viewableItems}: {viewableItems: ListViewToken[]}) => {
+      if (viewableItems.length > 0 && viewableItems[0].index != null) {
         setCurrentPage(viewableItems[0].index);
       }
     },

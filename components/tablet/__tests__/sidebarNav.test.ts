@@ -9,10 +9,12 @@ import {
 } from '../sidebarNav';
 
 type Route = {name: string; key?: string; state?: Stack};
-type Stack = {index: number; routes: Route[]};
-type TabRoute = {name: string; key: string; params?: object; state?: Stack};
+type Stack = {key: string; index: number; routes: Route[]};
+type TabRoute = {name: string; key: string; state?: Stack};
 
+/** A mounted stack of these screens. */
 const stack = (names: string[], top = names.length - 1): Stack => ({
+  key: 'stack-key',
   index: top,
   routes: names.map(name => ({name, key: `${name}-key`})),
 });
@@ -38,11 +40,19 @@ function tabs(
   };
 }
 
-/** The navigate action that opens a tab with its stack set. */
-const opens = (tab: string, index: number, routes: Route[]) => ({
-  type: 'NAVIGATE',
-  payload: {name: tab, params: {state: {index, routes}}},
+/** The reset that sets a mounted stack's screens. */
+const resets = (mounted: Stack, index: number, routes: Route[]) => ({
+  type: 'RESET',
+  payload: {...mounted, index, routes},
+  target: mounted.key,
 });
+
+/** The navigate action that brings a tab on show. */
+const focuses = (tab: string) =>
+  expect.objectContaining({
+    type: 'NAVIGATE',
+    payload: {name: tab, merge: true},
+  });
 
 describe('sidebar width', () => {
   it('is the rail below 900pt and labelled from 900pt', () => {
@@ -68,32 +78,18 @@ describe('sidebar width', () => {
 });
 
 describe('tabStack', () => {
-  const route = (params?: object, state?: Stack): TabRoute => ({
+  const route = (state?: Stack): TabRoute => ({
     name: '(c.collection)',
     key: 'tab',
-    params,
     state,
   });
 
   it('reads the stack from its state once it has one', () => {
     const state = stack(['collection/loved', 'playlist/[id]']);
-    expect(tabStack(route({screen: 'collection/notes'}, state))).toBe(state);
+    expect(tabStack(route(state))).toBe(state);
   });
 
-  it('reads a stack that has not changed yet from the params it opened with', () => {
-    expect(tabStack(route({screen: 'collection/notes'}))).toEqual({
-      routes: [{name: 'collection/notes'}],
-    });
-    expect(
-      tabStack(route({screen: 'adhkar', initial: false})).routes.map(
-        r => r.name,
-      ),
-    ).toEqual(['index', 'adhkar']);
-    const state = {routes: [{name: 'collection/loved'}]};
-    expect(tabStack(route({state}))).toBe(state);
-  });
-
-  it('is on its first screen otherwise', () => {
+  it('is on its first screen before it mounts', () => {
     expect(tabStack(route())).toEqual({routes: [{name: 'index'}]});
   });
 });
@@ -150,7 +146,17 @@ describe('sidebarPress', () => {
       'downloads',
     );
     expect(press).toEqual({
-      actions: [opens('(c.collection)', 0, [{name: 'collection/downloads'}])],
+      actions: [
+        resets(lib, 0, [{name: 'collection/downloads'}]),
+        focuses('(c.collection)'),
+      ],
+    });
+  });
+
+  it('opens a section by its href before Collection has mounted', () => {
+    expect(sidebarPress(tabs('(a.home)'), 'downloads')).toEqual({
+      actions: [],
+      open: {href: '/(c.collection)/collection/downloads', withAnchor: false},
     });
   });
 
@@ -170,14 +176,13 @@ describe('sidebarPress', () => {
     expect(
       sidebarPress(tabs('(a.home)', {'(a.home)': home}), 'adhkar').actions,
     ).toEqual([
-      opens('(a.home)', 1, [
-        {name: 'index', key: 'index-key'},
-        {name: 'adhkar'},
-      ]),
+      resets(home, 1, [{name: 'index', key: 'index-key'}, {name: 'adhkar'}]),
     ]);
-    expect(sidebarPress(tabs('(b.search)'), 'adhkar').actions).toEqual([
-      opens('(a.home)', 1, [{name: 'index'}, {name: 'adhkar'}]),
-    ]);
+    // Before Home has mounted, Home's first screen is its anchor.
+    expect(sidebarPress(tabs('(b.search)'), 'adhkar')).toEqual({
+      actions: [],
+      open: {href: '/(a.home)/adhkar', withAnchor: true},
+    });
   });
 
   it('takes Adhkar back to its first screen when it is on show', () => {
@@ -186,10 +191,7 @@ describe('sidebarPress', () => {
     expect(
       sidebarPress(tabs('(a.home)', {'(a.home)': home}), 'adhkar').actions,
     ).toEqual([
-      opens('(a.home)', 1, [
-        {name: 'index', key: 'index-key'},
-        {name: 'adhkar'},
-      ]),
+      resets(home, 1, [{name: 'index', key: 'index-key'}, {name: 'adhkar'}]),
     ]);
     // Already there: nothing to do.
     const atTop = stack(['index', 'adhkar']);
@@ -202,12 +204,7 @@ describe('sidebarPress', () => {
     const home = stack(['index', 'adhkar']);
     expect(
       sidebarPress(tabs('(b.search)', {'(a.home)': home}), 'adhkar').actions,
-    ).toEqual([
-      expect.objectContaining({
-        type: 'NAVIGATE',
-        payload: {name: '(a.home)', merge: true},
-      }),
-    ]);
+    ).toEqual([focuses('(a.home)')]);
   });
 
   it('leaves Adhkar when Home is pressed', () => {
@@ -215,7 +212,10 @@ describe('sidebarPress', () => {
     expect(
       sidebarPress(tabs('(b.search)', {'(a.home)': home}), 'home'),
     ).toEqual({
-      actions: [opens('(a.home)', 0, [{name: 'index', key: 'index-key'}])],
+      actions: [
+        resets(home, 0, [{name: 'index', key: 'index-key'}]),
+        focuses('(a.home)'),
+      ],
     });
     // On show, tabPress pops to Home.
     expect(sidebarPress(tabs('(a.home)', {'(a.home)': home}), 'home')).toEqual({
@@ -230,15 +230,16 @@ describe('sidebarPress', () => {
       sidebarPress(tabs('(a.home)', {'(c.collection)': lib}), 'library')
         .actions,
     ).toEqual([
-      opens('(c.collection)', 1, [
+      resets(lib, 1, [
         {name: 'index'},
         {name: 'collection/loved', key: 'collection/loved-key'},
       ]),
+      focuses('(c.collection)'),
     ]);
     expect(
       sidebarPress(tabs('(c.collection)', {'(c.collection)': lib}), 'library')
         .actions,
-    ).toEqual([opens('(c.collection)', 0, [{name: 'index'}])]);
+    ).toEqual([resets(lib, 0, [{name: 'index'}])]);
   });
 
   it('treats a Collection stack that starts at its home as a tab', () => {

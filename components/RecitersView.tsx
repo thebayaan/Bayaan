@@ -200,7 +200,7 @@ const MemoizedFlatList = React.memo(
               width={shelf?.cardWidth} // @ai
             />
           </View>
-        ) : null
+        ) : undefined
       }
       removeClippedSubviews={true}
       maxToRenderPerBatch={5}

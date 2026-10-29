@@ -1,6 +1,6 @@
 import {create} from 'zustand';
-import {createJSONStorage, persist} from 'zustand/middleware';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import {persist} from 'zustand/middleware';
+import {persistStorage} from '@/utils/storage'; // @ai
 import {Track} from '@/types/audio';
 import {shuffleArray} from '@/utils/arrayUtils'; // @ai
 import {
@@ -889,7 +889,7 @@ export const usePlayerStore = create<PlayerStoreState>()(
     }),
     {
       name: STORAGE_KEY,
-      storage: createJSONStorage(() => AsyncStorage),
+      storage: persistStorage(), // @ai
       partialize: state => ({
         settings: {
           ...state.settings,

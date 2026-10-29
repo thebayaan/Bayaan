@@ -174,7 +174,7 @@ export const OrganizeRecitationSheet = (
   );
 
   // Keyboard-aware scrolling
-  const scrollViewRef = useRef<import('react-native').ScrollView>(null);
+  const scrollViewRef = useRef<import('react-native').ScrollViewInstance>(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const reciterSectionY = useRef(0);
   const surahSectionY = useRef(0);

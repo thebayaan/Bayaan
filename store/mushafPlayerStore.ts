@@ -32,8 +32,8 @@
 
 import {useCallback, useMemo} from 'react'; // @ai
 import {create} from 'zustand';
-import {createJSONStorage, persist} from 'zustand/middleware';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import {persist} from 'zustand/middleware';
+import {persistStorage} from '@/utils/storage'; // @ai
 import type {AyahTimestamp} from '@/types/timestamps';
 import {RECITERS} from '@/data/reciterData';
 import {timestampService} from '@/services/timestamps/TimestampService';
@@ -162,6 +162,14 @@ export interface MushafPlayerStoreState {
   currentUnitKeys: readonly string[];
   /** The rewayah currentUnitKeys are numbered in (null when none). */
   currentUnitRewayah: RewayahId | null;
+  /**
+   * Surah whose basmala is being recited: the audio is in the intro before
+   * its first verse (MushafAudioService's intro; isInBasmalaIntro), so the
+   * follow-along highlights its basmala line / header instead of a verse.
+   * Null otherwise, also for al-Fatihah and at-Tawbah and for a surah
+   * without verse tracking. Read it with usePlaybackBasmalaSurah().
+   */
+  basmalaIntroSurah: number | null;
   // @ai-end
   /** Numbering of the loaded surah ('disabled' = no follow-along / seeking). */
   numberingMode: TimingNumberingMode | null;
@@ -643,6 +651,7 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
     mushafAudioService.stop();
     set({
       ...CLEARED_VERSE,
+      basmalaIntroSurah: null, // @ai
       playbackState: 'idle',
       _versePlayCount: 1,
       _rangePlayCount: 1,
@@ -667,6 +676,7 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
     mushafAudioService.setRate(get().rate);
     set({
       ...CLEARED_VERSE,
+      basmalaIntroSurah: null, // @ai
       currentSurah: surah,
       timestamps,
       _numbering: numbering,
@@ -845,6 +855,25 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
     }
   };
 
+  // @ai-start
+  /**
+   * The audio entered or left the intro before the surah's first verse:
+   * there its basmala is highlighted and no verse (scrubbing back from a
+   * verse clears it). Nothing is highlighted without verse tracking.
+   */
+  const handleIntroChange = (surah: number, inIntro: boolean) => {
+    const state = get();
+    if (state.playbackState === 'idle') return;
+    if (audioSession !== playbackSession) return;
+    if (!inIntro) {
+      if (state.basmalaIntroSurah !== null) set({basmalaIntroSurah: null});
+      return;
+    }
+    if (state._numbering?.mode === 'disabled') return;
+    set({...CLEARED_VERSE, currentSurah: surah, basmalaIntroSurah: surah});
+  };
+  // @ai-end
+
   const handleSurahEnd = (reason: SurahEndReason) => {
     const state = get();
 
@@ -915,6 +944,7 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
   const registerCallbacks = () => {
     mushafAudioService.setOnAyahChange(handleEntryChange);
     mushafAudioService.setOnSurahEnd(handleSurahEnd);
+    mushafAudioService.setOnIntroChange(handleIntroChange); // @ai
   };
 
   return {
@@ -941,6 +971,7 @@ export const useMushafPlayerStore = create<MushafPlayerStoreState>()(
         currentVerseLabel: null,
         currentUnitKeys: NO_KEYS, // @ai
         currentUnitRewayah: null, // @ai
+        basmalaIntroSurah: null, // @ai
         numberingMode: null,
         currentPage: null,
         timestamps: null,
@@ -1149,6 +1180,7 @@ export const useMushafPlayerStore = create<MushafPlayerStoreState>()(
           mushafAudioService.stop();
           set({
             ...CLEARED_VERSE,
+            basmalaIntroSurah: null, // @ai
             playbackState: 'idle',
             currentSurah: 0,
             numberingMode: null,
@@ -1195,7 +1227,7 @@ export const useMushafPlayerStore = create<MushafPlayerStoreState>()(
     },
     {
       name: STORAGE_KEY,
-      storage: createJSONStorage(() => AsyncStorage),
+      storage: persistStorage(), // @ai
       partialize: state => ({
         rewayatId: state.rewayatId,
         reciterName: state.reciterName,
@@ -1262,6 +1294,27 @@ export function selectPlaybackVerseKeys(
 ): readonly string[] {
   return s.playbackState === 'idle' ? NO_KEYS : s.currentVerseKeys;
 }
+
+// @ai-start
+/**
+ * Surah whose basmala the mushaf player is reciting (the intro before its
+ * first verse), or null (also when idle). Use with
+ * `useMushafPlayerStore(selectPlaybackBasmalaSurah)`.
+ */
+export function selectPlaybackBasmalaSurah(
+  s: Pick<MushafPlayerStoreState, 'playbackState' | 'basmalaIntroSurah'>,
+): number | null {
+  return s.playbackState === 'idle' ? null : s.basmalaIntroSurah;
+}
+
+/**
+ * Surah whose basmala the mushaf player is reciting, or null: what every
+ * follow-along highlight paints on that surah's basmala line / header.
+ */
+export function usePlaybackBasmalaSurah(): number | null {
+  return useMushafPlayerStore(selectPlaybackBasmalaSurah);
+}
+// @ai-end
 
 /** True while `verseKey` (Hafs) is being recited by the mushaf player. */
 export function isVerseKeyPlaying(

@@ -1,7 +1,7 @@
 // "Now playing" pill under the header: shown while the playing row of this
 // list is scrolled away, pointing toward it.
 import React, {useEffect} from 'react';
-import {Pressable, Text} from 'react-native';
+import {Pressable, Text, type ListViewToken} from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useReducedMotion,
@@ -27,15 +27,20 @@ export function jumpPillDirection(
   return target < Math.min(...visible) ? 'up' : 'down';
 }
 
-// Row indices of the viewable tokens. Section headers and footers report
-// index null and are not rows, so they are dropped. A token holding several
-// cards (the iPad's paired rows) gives one index per card.
-export function visibleRowIndices<T extends {index: number | null}>(
+// A viewable token of a list whose items are rows of type T. React Native's
+// ListViewToken types its item as any.
+export type RowToken<T> = Omit<ListViewToken, 'item'> & {item: T};
+
+// Row indices of the viewable tokens. Section headers and footers report no
+// index (null at runtime, undefined in the types) and are not rows, so they
+// are dropped. A token holding several cards (the iPad's paired rows) gives
+// one index per card.
+export function visibleRowIndices<T extends {index?: number | null}>(
   tokens: readonly T[],
   toRowIndex: (token: T) => number | readonly number[] | undefined,
 ): number[] {
   return tokens
-    .filter(v => v.index !== null)
+    .filter(v => v.index != null)
     .flatMap(toRowIndex)
     .filter((i): i is number => typeof i === 'number');
 }

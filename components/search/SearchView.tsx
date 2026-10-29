@@ -620,7 +620,7 @@ export function SearchView({
                     {t('search.noResultsHint')}
                   </Text>
                 </View>
-              ) : null
+              ) : undefined
             }
             ListFooterComponent={<View style={styles.footer} />}
           />

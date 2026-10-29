@@ -1,7 +1,7 @@
 // @ai-generated
 import React, {createContext, useContext, useMemo} from 'react';
 import type {ScrollViewProps} from 'react-native';
-import {Gesture, type PanGesture} from 'react-native-gesture-handler';
+import {Gesture, type LegacyPanGesture} from 'react-native-gesture-handler';
 
 /**
  * What the player content needs from the container hosting it (the morphing
@@ -14,7 +14,7 @@ import {Gesture, type PanGesture} from 'react-native-gesture-handler';
  */
 export interface PlayerDismissApi {
   /** Builds a fresh pan gesture; each GestureDetector gets its own. */
-  createDismissGesture: () => PanGesture;
+  createDismissGesture: () => LegacyPanGesture;
   /** FlashList `renderScrollComponent`; undefined = plain native scroll. */
   renderScrollComponent?:
     | React.ComponentType<ScrollViewProps>
@@ -34,7 +34,7 @@ export function usePlayerDismissApi(): PlayerDismissApi {
 }
 
 /** Drag-to-dismiss pan for one GestureDetector. */
-export function usePlayerDismissGesture(): PanGesture {
+export function usePlayerDismissGesture(): LegacyPanGesture {
   const {createDismissGesture} = usePlayerDismissApi();
   return useMemo(() => createDismissGesture(), [createDismissGesture]);
 }

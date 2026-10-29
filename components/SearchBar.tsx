@@ -1,14 +1,29 @@
 import React, {useState, useImperativeHandle, forwardRef, useRef} from 'react';
-import {Pressable, Text, TextInput, Animated, View} from 'react-native';
+import {
+  Pressable,
+  Text,
+  TextInput,
+  Animated,
+  View,
+  type TextInputInstance,
+} from 'react-native';
 import {Feather, AntDesign} from '@expo/vector-icons';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {ScaledSheet, moderateScale} from '@/utils/scale';
-import {MotiView} from 'moti';
+import {MotiView, type MotiTransitionProp} from 'moti';
 // @ai-start
 import {useTranslation} from 'react-i18next';
 import {isRTL} from '@/utils/rtl';
 // @ai-end
+
+// Moti 0.29's transition type no longer accepts a plain spring config with
+// Reanimated 4.7's split spring types, though the runtime handles it fine.
+const SPRING_TRANSITION = {
+  type: 'spring',
+  damping: 20,
+  stiffness: 300,
+} as MotiTransitionProp;
 
 interface SearchBarProps {
   placeholder: string;
@@ -43,7 +58,7 @@ const SearchBar = forwardRef<SearchBarRef, SearchBarProps>(
     ref,
   ) => {
     const [isFocused, setIsFocused] = useState(false);
-    const inputRef = useRef<TextInput>(null);
+    const inputRef = useRef<TextInputInstance>(null);
     const {theme} = useTheme();
     const {t} = useTranslation(['home', 'common']);
     const styles = createStyles(theme);
@@ -87,11 +102,7 @@ const SearchBar = forwardRef<SearchBarRef, SearchBarProps>(
         animate={{
           width: isFocused ? '95%' : '100%',
         }}
-        transition={{
-          type: 'spring',
-          damping: 20,
-          stiffness: 300,
-        }}>
+        transition={SPRING_TRANSITION}>
         <MotiView
           style={[
             styles.inputContainer,

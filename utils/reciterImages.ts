@@ -1,6 +1,5 @@
-import {ImageSourcePropType} from 'react-native';
-
-export const reciterImages: {[key: string]: ImageSourcePropType} = {
+// Bundled asset ids (what `require` returns for an image in React Native).
+export const reciterImages: {[key: string]: number} = {
   'abdelaziz-sheim': require('@/assets/reciter-images/Abdelaziz-sheim.jpeg'),
   'abdelbari-al-toubayti': require('@/assets/reciter-images/Abdelbari-Al-Toubayti.jpeg'),
   'abdelmoujib-benkirane': require('@/assets/reciter-images/Abdelmoujib-Benkirane.jpeg'),

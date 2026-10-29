@@ -1,5 +1,5 @@
 import {useMemo} from 'react';
-import {Dimensions, useWindowDimensions} from 'react-native';
+import {Dimensions, useWindowDimensions, type ScaledSize} from 'react-native';
 import type {EdgeInsets} from 'react-native-safe-area-context';
 import {getIsTablet} from '@/utils/responsive';
 
@@ -10,7 +10,7 @@ import {getIsTablet} from '@/utils/responsive';
 let _liveWidth = Dimensions.get('window').width;
 let _liveHeight = Dimensions.get('window').height;
 
-Dimensions.addEventListener('change', ({window}) => {
+Dimensions.addEventListener('change', ({window}: {window: ScaledSize}) => {
   _liveWidth = window.width;
   _liveHeight = window.height;
 });

@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.view.WindowManager // @ai
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
@@ -15,6 +16,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay // @ai
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
@@ -26,9 +28,15 @@ import kotlin.coroutines.resumeWithException
 /**
  * Invisible target of every widget tap. A broadcast receiver cannot open the
  * app on Android 14+ (background activity launch is blocked), and JS timers
- * are paused while the app is backgrounded, so anything JS must do runs with
- * the app in front. Play/pause on a live media session stays in place.
- */
+ * are paused while the app is backgrounded. Play/pause on a live media
+ * session stays in place.
+ *
+ * Anything JS must do runs in [WidgetReactRoot], a headless React root, while
+ * this activity stays up (touch-through, nothing drawn) until JS has handled
+ * the command. Being visible keeps the app in the foreground, which Android
+ * requires for the player to start its foreground media service. If JS does
+ * not answer in time, the app opens and drains the queue itself.
+ */ // @ai
 class WidgetCommandActivity : Activity() {
   private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
@@ -39,6 +47,9 @@ class WidgetCommandActivity : Activity() {
       finish()
       return
     }
+    // Touches go to the home screen underneath while this waits. // @ai
+    window.addFlags( // @ai
+      WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE) // @ai
     val raw = intent.getStringExtra(EXTRA_COMMAND)
     val command = raw?.let { runCatching { JSONObject(it) }.getOrNull() }
     if (command == null) {
@@ -69,7 +80,7 @@ class WidgetCommandActivity : Activity() {
 
   private suspend fun handle(context: Context, command: JSONObject) {
     if (command.optString("type") != "setPlayback") {
-      queueAndOpenApp(context, command)
+      playInBackground(context, command) // @ai
       return
     }
     val playing = command.optBoolean("playing")
@@ -85,8 +96,32 @@ class WidgetCommandActivity : Activity() {
       return
     }
     if (controlSession(context, playing)) return
-    queueAndOpenApp(context, command)
+    playInBackground(context, command) // @ai
   }
+
+  // @ai-start
+  /** Queues the command for the headless root and waits until JS has handled it. */
+  private suspend fun playInBackground(context: Context, command: JSONObject) {
+    val enqueuedAt = withContext(Dispatchers.IO) { WidgetStorage.enqueueCommand(context, command) }
+    WidgetReactRoot.hold(context)
+    try {
+      val handled = withTimeoutOrNull(HANDLE_TIMEOUT_MS) {
+        while (!withContext(Dispatchers.IO) { WidgetStorage.isHandled(context, enqueuedAt) }) {
+          delay(HANDLE_POLL_MS)
+        }
+        true
+      } ?: false
+      if (handled) {
+        // Stay visible while the player promotes its service to the foreground.
+        delay(FOREGROUND_GRACE_MS)
+      } else {
+        openApp(context)
+      }
+    } finally {
+      WidgetReactRoot.release()
+    }
+  }
+  // @ai-end
 
   /** Returns true when a live session with a loaded item took the command. */
   private suspend fun controlSession(context: Context, playing: Boolean): Boolean {
@@ -121,9 +156,9 @@ class WidgetCommandActivity : Activity() {
     cont.invokeOnCancellation { cancel(false) }
   }
 
-  private suspend fun queueAndOpenApp(context: Context, command: JSONObject) {
-    withContext(Dispatchers.IO) { WidgetStorage.enqueueCommand(context, command) }
-    // Allowed from a foreground activity; the app drains the queue once active.
+  /** The command is already queued; the app drains it once active. */ // @ai
+  private fun openApp(context: Context) { // @ai
+    // Allowed from a foreground activity.
     context.packageManager.getLaunchIntentForPackage(context.packageName)?.let {
       it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
       runCatching { startActivity(it) }
@@ -134,6 +169,13 @@ class WidgetCommandActivity : Activity() {
     const val EXTRA_COMMAND = "command"
     private const val AUDIO_SERVICE = "expo.modules.audio.service.AudioControlsService"
     private const val CONTROLLER_TIMEOUT_MS = 3_000L
+    // @ai-start
+    // A cold start boots React, restores the session and loads the track; an
+    // emulator took up to 10.4 s, so leave room for slower phones under load.
+    private const val HANDLE_TIMEOUT_MS = 20_000L
+    private const val HANDLE_POLL_MS = 100L
+    private const val FOREGROUND_GRACE_MS = 1_500L
+    // @ai-end
 
     fun intent(context: Context, command: JSONObject): Intent =
       Intent(context, WidgetCommandActivity::class.java)

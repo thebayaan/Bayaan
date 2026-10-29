@@ -1,25 +1,18 @@
 // @ai-generated
 /**
- * The iPad sidebar driving real navigation state: a tab navigator with
- * stacks inside, as in app/(tabs). The stacks pop to their first screen on
- * a tabPress like the native stack does.
+ * The iPad sidebar driving real navigation state: Expo Router's tab
+ * navigator with stacks inside, laid out as in app/(tabs).
  */
-import React, {act, useEffect, useRef} from 'react';
+import 'react-native-gesture-handler/jestSetup';
+import React, {act} from 'react';
 import {View} from 'react-native';
 import TestRenderer, {type ReactTestRenderer} from 'react-test-renderer';
-import {
-  BaseNavigationContainer,
-  createNavigationContainerRef,
-  createNavigatorFactory,
-  useNavigationBuilder,
-  type NavigationState,
-  type ParamListBase,
-} from 'expo-router/build/react-navigation/core';
-import {
-  StackActions,
-  StackRouter,
-  TabRouter,
-} from 'expo-router/build/react-navigation/routers';
+import {router, type NavigationState} from 'expo-router';
+import {Tabs} from 'expo-router/js-tabs';
+import Stack from 'expo-router/build/layouts/JSStack';
+import {ExpoRoot} from 'expo-router/build/ExpoRoot';
+import {navigationRef} from 'expo-router/build/global-state/navigationRef';
+import {getMockContext} from 'expo-router/build/testing-library/mock-config';
 import {TabletSidebar} from '../TabletSidebar';
 import {useTabletSidebarStore} from '@/store/tabletSidebarStore';
 import {
@@ -46,6 +39,7 @@ jest.mock('@/components/Icons', () => {
 });
 jest.mock('@expo/vector-icons', () => ({Feather: () => null}));
 jest.mock('react-native-safe-area-context', () => ({
+  ...jest.requireActual('react-native-safe-area-context'),
   useSafeAreaInsets: () => ({top: 0, bottom: 0, left: 0, right: 0}),
 }));
 jest.mock('@/services/player/store/playerStore', () => ({
@@ -67,88 +61,33 @@ jest.mock('@/config/branding', () => ({
   default: {appName: 'Bayaan'},
 }));
 
-type NavigatorProps = {
-  initialRouteName?: string;
-  children: React.ReactNode;
-};
-
-function TestStack({initialRouteName, children}: NavigatorProps) {
-  const {state, navigation, descriptors, NavigationContent} =
-    useNavigationBuilder(StackRouter, {initialRouteName, children});
-  const stateRef = useRef(state);
-  stateRef.current = state;
-  useEffect(
-    () =>
-      // As the native stack: a tabPress on the tab on show pops to the top.
-      (
-        navigation as unknown as {
-          addListener: (
-            type: 'tabPress',
-            cb: (e: {defaultPrevented: boolean}) => void,
-          ) => () => void;
-        }
-      ).addListener('tabPress', e => {
-        const focused = navigation.isFocused();
-        requestAnimationFrame(() => {
-          const current = stateRef.current;
-          if (current.index > 0 && focused && !e.defaultPrevented) {
-            navigation.dispatch({
-              ...StackActions.popToTop(),
-              target: current.key,
-            });
-          }
-        });
-      }),
-    [navigation],
-  );
-  return (
-    <NavigationContent>
-      {descriptors[state.routes[state.index].key].render()}
-    </NavigationContent>
-  );
-}
-
-function TestTabs({initialRouteName, children}: NavigatorProps) {
-  const {state, navigation, descriptors, NavigationContent} =
-    useNavigationBuilder(TabRouter, {initialRouteName, children});
-  // Tabs mount on first visit, as with lazy tabs.
-  const visited = useRef(new Set<string>());
-  visited.current.add(state.routes[state.index].key);
-  return (
-    <NavigationContent>
-      <TabletSidebar
-        {...({
-          state,
-          navigation,
-          descriptors,
-        } as unknown as React.ComponentProps<typeof TabletSidebar>)}
-      />
-      {state.routes
-        .filter(r => visited.current.has(r.key))
-        .map(r => (
-          <View key={r.key}>{descriptors[r.key].render()}</View>
-        ))}
-    </NavigationContent>
-  );
-}
-
-const Stack = createNavigatorFactory(TestStack)();
-const Tabs = createNavigatorFactory(TestTabs)();
 const Blank = () => null;
 
-const AdhkarStack = () => (
-  <Stack.Navigator initialRouteName="index">
-    <Stack.Screen name="index" component={Blank} />
-    <Stack.Screen name="[superId]/index" component={Blank} />
-  </Stack.Navigator>
-);
+const StackLayout = () => <Stack screenOptions={{headerShown: false}} />;
 
-const HomeStack = () => (
-  <Stack.Navigator initialRouteName="index">
-    <Stack.Screen name="index" component={Blank} />
-    <Stack.Screen name="adhkar" component={AdhkarStack} />
-    <Stack.Screen name="reciter/[id]" component={Blank} />
-  </Stack.Navigator>
+// The tab stacks anchor on their first screen, as their layouts in app/(tabs)
+// do.
+const TabStackLayout = {
+  default: StackLayout,
+  unstable_settings: {initialRouteName: 'index'},
+};
+
+const TAB_ROUTES = [
+  '(a.home)',
+  '(b.surahs)',
+  '(b.search)',
+  '(c.collection)',
+  '(d.settings)',
+];
+
+const TabsLayout = () => (
+  <Tabs
+    screenOptions={{headerShown: false}}
+    tabBar={props => <TabletSidebar {...props} />}>
+    {TAB_ROUTES.map(name => (
+      <Tabs.Screen key={name} name={name} />
+    ))}
+  </Tabs>
 );
 
 const COLLECTION_SCREENS = [
@@ -163,45 +102,58 @@ const COLLECTION_SCREENS = [
   'playlist/[id]',
 ];
 
-const CollectionStack = () => (
-  <Stack.Navigator initialRouteName="index">
-    {COLLECTION_SCREENS.map(name => (
-      <Stack.Screen key={name} name={name} component={Blank} />
-    ))}
-  </Stack.Navigator>
-);
+const APP = {
+  _layout: StackLayout,
+  '(tabs)/_layout': TabsLayout,
+  '(tabs)/(a.home)/_layout': TabStackLayout,
+  '(tabs)/(a.home)/index': Blank,
+  '(tabs)/(a.home)/adhkar/_layout': StackLayout,
+  '(tabs)/(a.home)/adhkar/index': Blank,
+  '(tabs)/(a.home)/adhkar/[superId]/index': Blank,
+  '(tabs)/(a.home)/reciter/[id]': Blank,
+  '(tabs)/(b.surahs)/_layout': TabStackLayout,
+  '(tabs)/(b.surahs)/index': Blank,
+  '(tabs)/(b.search)/_layout': TabStackLayout,
+  '(tabs)/(b.search)/index': Blank,
+  '(tabs)/(c.collection)/_layout': TabStackLayout,
+  ...Object.fromEntries(
+    COLLECTION_SCREENS.map(name => [`(tabs)/(c.collection)/${name}`, Blank]),
+  ),
+  '(tabs)/(d.settings)/_layout': TabStackLayout,
+  '(tabs)/(d.settings)/index': Blank,
+};
 
-const nav = createNavigationContainerRef<ParamListBase>();
 let mounted: ReactTestRenderer | undefined;
 
-function renderApp(): ReactTestRenderer {
+function renderApp(location = '/'): ReactTestRenderer {
+  process.env.EXPO_ROUTER_IMPORT_MODE = 'sync';
   act(() => {
     mounted = TestRenderer.create(
-      <BaseNavigationContainer ref={nav}>
-        <Tabs.Navigator initialRouteName="(a.home)">
-          <Tabs.Screen name="(a.home)" component={HomeStack} />
-          <Tabs.Screen name="(b.surahs)" component={Blank} />
-          <Tabs.Screen name="(b.search)" component={Blank} />
-          <Tabs.Screen name="(c.collection)" component={CollectionStack} />
-          <Tabs.Screen name="(d.settings)" component={Blank} />
-        </Tabs.Navigator>
-      </BaseNavigationContainer>,
+      <ExpoRoot context={getMockContext(APP)} location={location} />,
     );
   });
+  act(() => jest.runOnlyPendingTimers());
   if (!mounted) throw new Error('not rendered');
   return mounted;
 }
 
 type AnyState = NavigationState | undefined;
 
+/** The tab navigator's state. */
 function tabState(): NavigationState {
-  return nav.getRootState() as NavigationState;
+  let state = navigationRef.getRootState() as AnyState;
+  while (state && state.type !== 'tab') {
+    state = state.routes[state.index].state as AnyState;
+  }
+  if (!state) throw new Error('no tab state');
+  return state;
 }
 
 /** The screens of a tab's stack, bottom to top. */
 function stackOf(tab: string): string[] {
   const route = tabState().routes.find(r => r.name === tab);
-  return ((route?.state as AnyState)?.routes ?? []).map(r => r.name);
+  const stack = route?.state as AnyState;
+  return (stack?.routes ?? []).map(r => r.name);
 }
 
 /** The route names on show, from the tab down. */
@@ -214,6 +166,11 @@ function onShow(): string[] {
     state = route.state as AnyState;
   }
   return names;
+}
+
+function push(href: string) {
+  act(() => router.push(href as never));
+  act(() => jest.runOnlyPendingTimers());
 }
 
 function items(r: ReactTestRenderer) {
@@ -282,12 +239,7 @@ describe('labelled sidebar', () => {
     expect(selected(r)).toEqual(['Loved']);
 
     // A playlist opened from a section keeps the section marked.
-    act(() =>
-      nav.dispatch({
-        ...StackActions.push('playlist/[id]'),
-        target: (tabState().routes[3].state as NavigationState).key,
-      }),
-    );
+    push('/playlist/1');
     expect(selected(r)).toEqual(['Loved']);
 
     press(r, 'Downloads');
@@ -304,12 +256,7 @@ describe('labelled sidebar', () => {
   it('returns a section to its first screen when pressed again', () => {
     const r = renderApp();
     press(r, 'Playlists');
-    act(() =>
-      nav.dispatch({
-        ...StackActions.push('playlist/[id]'),
-        target: (tabState().routes[3].state as NavigationState).key,
-      }),
-    );
+    push('/playlist/1');
     expect(stackOf('(c.collection)')).toEqual([
       'collection/playlists',
       'playlist/[id]',
@@ -336,17 +283,19 @@ describe('labelled sidebar', () => {
     expect(onShow()).toEqual(['(a.home)', 'index']);
   });
 
+  it('opens Adhkar above Home before Home has opened', () => {
+    const r = renderApp('/collection/loved');
+    expect(stackOf('(a.home)')).toEqual([]);
+    press(r, 'Adhkar');
+    expect(onShow()).toEqual(['(a.home)', 'adhkar', 'index']);
+    expect(stackOf('(a.home)')).toEqual(['index', 'adhkar']);
+    expect(selected(r)).toEqual(['Adhkar']);
+  });
+
   it('takes Adhkar back to its first screen when pressed again', () => {
     const r = renderApp();
     press(r, 'Adhkar');
-    const home = tabState().routes[0].state as NavigationState;
-    const adhkar = home.routes[1].state as NavigationState;
-    act(() =>
-      nav.dispatch({
-        ...StackActions.push('[superId]/index'),
-        target: adhkar.key,
-      }),
-    );
+    push('/adhkar/1');
     expect(onShow()).toEqual(['(a.home)', 'adhkar', '[superId]/index']);
 
     // From another tab it comes back where it was.
@@ -438,12 +387,7 @@ describe('icon rail', () => {
     const r = renderApp();
     press(r, 'Collection');
     expect(onShow()).toEqual(['(c.collection)', 'index']);
-    act(() =>
-      nav.dispatch({
-        ...StackActions.push('collection/loved'),
-        target: (tabState().routes[3].state as NavigationState).key,
-      }),
-    );
+    push('/collection/loved');
     expect(selected(r)).toEqual(['Collection']);
     press(r, 'Collection');
     expect(stackOf('(c.collection)')).toEqual(['index']);
@@ -502,7 +446,7 @@ describe('keyboard', () => {
   it('presses the items with ⌘1–⌘5', () => {
     renderApp();
     key('cmd-2');
-    expect(onShow()).toEqual(['(b.surahs)']);
+    expect(onShow()).toEqual(['(b.surahs)', 'index']);
     key('cmd-4');
     expect(onShow()).toEqual(['(a.home)', 'adhkar', 'index']);
     key('cmd-5');
@@ -514,7 +458,7 @@ describe('keyboard', () => {
   it('opens Search with its field focused on ⌘F', () => {
     renderApp();
     key('cmd-f');
-    expect(onShow()).toEqual(['(b.search)']);
+    expect(onShow()).toEqual(['(b.search)', 'index']);
     expect(takeSearchFocusRequest()).toBe(true);
   });
 

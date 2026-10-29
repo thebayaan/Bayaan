@@ -11,6 +11,7 @@ import {
   Animated as RNAnimated,
   BackHandler,
   type ListRenderItemInfo,
+  type TextInputInstance,
 } from 'react-native';
 import {
   FlashList,
@@ -517,7 +518,7 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
   const [sortOption, setSortOption] = useState<SortOption>(browseSortOption);
 
   const recentPages = useMushafSettingsStore(s => s.recentPages);
-  const searchInputRef = useRef<TextInput>(null);
+  const searchInputRef = useRef<TextInputInstance>(null);
 
   // @ai-start
   // The rewayah whose text is on screen and its verse units (decision 3):

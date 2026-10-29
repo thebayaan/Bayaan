@@ -2,7 +2,7 @@
 import {
   CommonActions,
   type NavigationAction,
-} from 'expo-router/build/react-navigation/routers';
+} from 'expo-router/build/react-navigation/routers/index';
 
 /**
  * What the iPad sidebar shows and which item is selected (ipad-standards §6,
@@ -95,11 +95,16 @@ interface StackStateLike {
   routes: readonly RouteLike[];
 }
 
+/** The state of a stack that has mounted, complete as the tab bar gets it. */
+interface MountedStackLike extends StackStateLike {
+  key: string;
+}
+
 interface TabRouteLike {
   name: string;
   key: string;
-  params?: object;
-  state?: StackStateLike;
+  /** Unset until the tab's stack mounts. */
+  state?: MountedStackLike;
 }
 
 interface TabStateLike {
@@ -111,25 +116,11 @@ interface TabStateLike {
 const STACK_ROOT = 'index';
 
 /**
- * The screens of a tab's stack. A stack's state reaches the tab bar only
- * once it changes after mounting, so until then it is read from the params
- * the tab was opened with, or the stack is on its first screen.
+ * The screens of a tab's stack. A stack that hasn't mounted has no state yet
+ * and will open on its first screen.
  */
 export function tabStack(route: TabRouteLike): StackStateLike {
-  if (route.state) return route.state;
-  const params = route.params as
-    | {state?: StackStateLike; screen?: unknown; initial?: boolean}
-    | undefined;
-  if (params?.state) return params.state;
-  if (typeof params?.screen === 'string') {
-    return {
-      routes:
-        params.initial === false
-          ? [{name: STACK_ROOT}, {name: params.screen}]
-          : [{name: params.screen}],
-    };
-  }
-  return {routes: [{name: STACK_ROOT}]};
+  return route.state ?? {routes: [{name: STACK_ROOT}]};
 }
 
 /** A stack's routes from its first screen up to the one on show. */
@@ -179,15 +170,23 @@ export function selectedSidebarItem(
   }
 }
 
-/** What a press does: an optional tabPress event, then actions in order. */
+/**
+ * What a press does: an optional tabPress event, then actions in order, then
+ * an optional screen to open by its href.
+ */
 export interface SidebarPress {
   /**
    * The tab route to emit tabPress on first, as a tab bar does. On the tab
    * on show it pops the stack to its first screen and scrolls that to the
-   * top. A listener that prevents it cancels the actions.
+   * top. A listener that prevents it cancels the rest.
    */
   tabPress?: string;
   actions: NavigationAction[];
+  /**
+   * For a stack that hasn't mounted: the screen to open, with the stack's
+   * first screen under it when withAnchor is set.
+   */
+  open?: {href: string; withAnchor: boolean};
 }
 
 function tabOfItem(item: SidebarItemId): TabItemId {
@@ -197,16 +196,37 @@ function tabOfItem(item: SidebarItemId): TabItemId {
 }
 
 /**
- * Opens a tab with its stack set to these screens. A stack that is mounted
- * resets to them; one that isn't starts with them. Routes passed with their
- * key keep their screen.
+ * Opens a tab with its stack set to these screens. Routes passed with their
+ * key keep their screen. Expo Router 58 ignores navigation params that hold
+ * objects, so the screens can't travel with the tab's navigate action:
+ * - A mounted stack is reset in place, by its key.
+ * - A stack that hasn't mounted can only be given screens by href. It opens
+ *   on the top one, anchored on the stack's first screen (its layout's
+ *   initialRouteName) when that goes under it.
  */
 function openWithStack(
-  tab: string,
+  tab: TabRouteLike,
+  focusTab: NavigationAction[],
   index: number,
   routes: readonly RouteLike[],
-): NavigationAction {
-  return CommonActions.navigate({name: tab, params: {state: {index, routes}}});
+): SidebarPress {
+  if (tab.state) {
+    // A reset needs the complete state, which the tab bar has; the routes
+    // without a key get one from the stack.
+    const reset = CommonActions.reset({
+      ...tab.state,
+      index,
+      routes,
+    } as Parameters<typeof CommonActions.reset>[0]);
+    return {actions: [{...reset, target: tab.state.key}, ...focusTab]};
+  }
+  // Only Adhkar ([first screen, Adhkar]) and a section ([section]) open a
+  // stack that may not have mounted, so the top screen and whether the
+  // first screen goes under it are all there is to say.
+  return {
+    actions: [],
+    open: {href: `/${tab.name}/${routes[index].name}`, withAnchor: index > 0},
+  };
 }
 
 /**
@@ -246,16 +266,14 @@ export function sidebarPress(
       const innerTop = inner ? (inner.index ?? inner.routes.length - 1) : 0;
       if (at === shown.length - 1 && innerTop === 0) return {actions: []};
     }
-    return {
-      actions: [openWithStack(tab.name, 1, [root, {name: ADHKAR_ROUTE}])],
-    };
+    return openWithStack(tab, focusTab, 1, [root, {name: ADHKAR_ROUTE}]);
   }
 
   if (item === 'home') {
     const showsAdhkar = shownRoutes(stack).some(r => r.name === ADHKAR_ROUTE);
     // On show, tabPress pops to Home.
     if (showsAdhkar && !focused) {
-      return {actions: [openWithStack(tab.name, 0, [root])]};
+      return openWithStack(tab, focusTab, 0, [root]);
     }
     return asTab;
   }
@@ -265,20 +283,19 @@ export function sidebarPress(
     // A section is at the bottom of the stack. Put the Collection home
     // back under it, or show the home if Collection is already on show.
     if (focused) {
-      return {actions: [openWithStack(tab.name, 0, [{name: STACK_ROOT}])]};
+      return openWithStack(tab, focusTab, 0, [{name: STACK_ROOT}]);
     }
     const top = stack.index ?? stack.routes.length - 1;
-    return {
-      actions: [
-        openWithStack(tab.name, top + 1, [{name: STACK_ROOT}, ...stack.routes]),
-      ],
-    };
+    return openWithStack(tab, focusTab, top + 1, [
+      {name: STACK_ROOT},
+      ...stack.routes,
+    ]);
   }
 
   const section = LIBRARY_SECTIONS.find(s => s.id === item);
   if (section) {
     if (root.name === section.route) return asTab;
-    return {actions: [openWithStack(tab.name, 0, [{name: section.route}])]};
+    return openWithStack(tab, focusTab, 0, [{name: section.route}]);
   }
 
   return asTab;

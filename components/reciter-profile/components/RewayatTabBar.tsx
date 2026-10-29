@@ -6,6 +6,7 @@ import {
   StyleSheet,
   LayoutChangeEvent,
   Animated as RNAnimated,
+  type ScrollViewInstance,
 } from 'react-native';
 import {moderateScale} from '@/utils/scale';
 import {Theme} from '@/utils/themeUtils';
@@ -37,7 +38,7 @@ export const RewayatTabBar: React.FC<RewayatTabBarProps> = ({
   screenWidth,
 }) => {
   const styles = createStyles(theme);
-  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollViewRef = useRef<ScrollViewInstance>(null);
 
   const [tabLayouts, setTabLayouts] = useState<
     Map<string, {x: number; width: number}>

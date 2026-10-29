@@ -62,8 +62,12 @@ import {
   isTajweedEnabled,
 } from './pageOverlays';
 // @ai-start
-import {computeUnitPageHighlightLayers} from './verseHighlightLayers';
+import {
+  basmalaPlaybackLines, // @ai
+  computeUnitPageHighlightLayers,
+} from './verseHighlightLayers';
 import {usePlaybackBand} from './playbackBand';
+import {usePlaybackBasmalaSurah} from '@/store/mushafPlayerStore'; // @ai
 import {useVerseUnitDragSelect, type LineCharHit} from './verseUnitDragSelect';
 // @ai-end
 import {type MushafLayoutMetrics, canvasBottomOverflow} from '../constants'; // @ai
@@ -416,6 +420,9 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
     const highlightRows = useVerseAnnotationsStore(s => s.highlightRows);
     // @ai — what the reciter is reciting, painted as verse units.
     const playbackBand = usePlaybackBand();
+    // @ai — the surah whose basmala is being recited (the intro before its
+    // first verse): its basmallah line is painted as a recited verse is.
+    const basmalaSurah = usePlaybackBasmalaSurah();
 
     // ── Hit testing ────────────────────────────────────────
     // @ai — the line and character under a touch point (this renderer's
@@ -548,6 +555,13 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
           rewayahDiffPaintEnabled,
         ),
         themes: null,
+        playbackBasmalaLines: basmalaPlaybackLines(
+          pageLines,
+          basmalaSurah,
+          line => digitalKhattDataService.getBasmalaSurah(line),
+          lineIndex =>
+            quranTextService.getLineText(pageNumber, lineIndex).length,
+        ), // @ai
         sources: {
           bookmarkedVerseKeys,
           persistentHighlights,
@@ -576,6 +590,7 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
       bookmarkRows, // @ai
       highlightRows, // @ai
       playbackBand, // @ai
+      basmalaSurah, // @ai
       playbackBgColor,
       selectedVerseKeys,
       selectedRewayah, // @ai

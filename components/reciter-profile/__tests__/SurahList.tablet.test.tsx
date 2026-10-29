@@ -1,6 +1,6 @@
 // @ai-generated
 import React from 'react';
-import {InteractionManager, StyleSheet} from 'react-native';
+import {StyleSheet} from 'react-native';
 import TestRenderer, {act} from 'react-test-renderer';
 import {SurahList, SurahListTableHeader} from '../components/SurahList';
 import {SURAHS} from '@/data/surahData';
@@ -42,19 +42,19 @@ jest.mock('@/components/cards/SurahCard', () => {
   };
 });
 
+// FlashList 2.3 ships ES modules, which Jest does not transform. Inline mode
+// renders no FlashList, so the module only has to load.
+jest.mock('@shopify/flash-list', () => ({FlashList: () => null}));
+
 const surahs = SURAHS.slice(0, 10);
 
-beforeEach(() => {
-  // Render every batch at once instead of after the test has finished.
-  jest
-    .spyOn(InteractionManager, 'runAfterInteractions')
-    .mockImplementation(task => {
-      if (typeof task === 'function') task();
-      return {cancel: jest.fn()} as unknown as ReturnType<
-        typeof InteractionManager.runAfterInteractions
-      >;
-    });
-});
+// Render every batch at once instead of after the test has finished.
+jest.mock('@/utils/afterInteractions', () => ({
+  runAfterInteractions: (task: () => void) => {
+    task();
+    return {cancel: jest.fn()};
+  },
+}));
 
 function render(props: {
   viewMode: 'list' | 'card';

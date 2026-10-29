@@ -121,7 +121,10 @@
     "system": "System default",
     "systemDescription": "Follow the device language",
     "restartNote": "A new language applies after the app restarts.",
-    "iosNote": "Your selection applies to the app language and layout."
+    "iosNote": "iOS keeps Bayaan's language in Settings. When you change it there, the app reopens in the new language.",
+    "iosSettingsTitle": "Change language in Settings",
+    "iosSettingsMessage": "Tap Language in Bayaan's Settings and pick a language. The app reopens in it.",
+    "openSettings": "Open Settings"
   },
   "languageRestart": {
     "title": "Restart required",

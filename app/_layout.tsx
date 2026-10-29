@@ -18,12 +18,11 @@ import {
   View,
   Text,
   Platform,
-  StatusBar as RNStatusBar,
   Appearance,
-  InteractionManager,
   Linking,
   type AppStateStatus,
 } from 'react-native';
+import {runAfterInteractions} from '@/utils/afterInteractions';
 import {useTheme} from '@/hooks/useTheme';
 // @ai-start
 import {LocaleDirContext, ThemeProvider} from 'expo-router/react-navigation';
@@ -74,7 +73,9 @@ configureReanimatedLogger({
 });
 
 // Cache for expo-navigation-bar module (Android only)
-let NavigationBarModule: any = null;
+let NavigationBarModule:
+  | typeof import('expo-navigation-bar').NavigationBar
+  | null = null;
 
 // Prevent the splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync().catch(() => {
@@ -239,7 +240,7 @@ function RootLayout() {
 
   // Tajweed data — defer until after first frame + interactions complete
   useEffect(() => {
-    InteractionManager.runAfterInteractions(() => {
+    runAfterInteractions(() => {
       if (__DEV__) console.log('[App] Preloading tajweed data...');
       preloadTajweedData();
     });
@@ -308,24 +309,16 @@ function RootLayout() {
   useEffect(() => {
     SystemUI.setBackgroundColorAsync(theme.colors.background);
 
+    // Edge-to-edge: the app draws behind the navigation bar, so only the
+    // button style follows the theme.
     async function setupNavigationBar() {
       if (Platform.OS === 'android') {
         try {
           if (!NavigationBarModule) {
-            NavigationBarModule = await import('expo-navigation-bar').then(
-              module => module.default,
-            );
-            RNStatusBar.setTranslucent(true);
+            NavigationBarModule = (await import('expo-navigation-bar'))
+              .NavigationBar;
           }
-
-          if (NavigationBarModule) {
-            await NavigationBarModule.setBackgroundColorAsync(
-              theme.colors.background,
-            );
-            await NavigationBarModule.setButtonStyleAsync(
-              isDarkMode ? 'light' : 'dark',
-            );
-          }
+          NavigationBarModule?.setStyle(isDarkMode ? 'dark' : 'light');
         } catch (error) {
           if (__DEV__)
             console.warn(
@@ -425,7 +418,7 @@ function RootLayout() {
           params: lastReadPage ? {page: String(lastReadPage)} : undefined,
         });
         // Let the navigation animation finish behind the splash before revealing
-        InteractionManager.runAfterInteractions(() => {
+        runAfterInteractions(() => {
           setMushafRestoreHandled(true);
         });
       });

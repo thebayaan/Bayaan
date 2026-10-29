@@ -308,7 +308,6 @@ export function TransportRow({
         {...a11y.playPause(isPlaying, trackLoading)}
         style={({pressed}) => [
           styles.playButton,
-          {backgroundColor: Color(text).alpha(0.08).toString()},
           pressed && styles.playPressed,
         ]}>
         {isPlaying ? (

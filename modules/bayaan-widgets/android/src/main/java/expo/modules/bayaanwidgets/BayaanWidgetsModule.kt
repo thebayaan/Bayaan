@@ -80,6 +80,10 @@ class BayaanWidgetsModule : Module() {
     }
 
     Function("takeQueuedCommands") { WidgetStorage.takeQueue(context) }
+    // Releases a WidgetCommandActivity waiting for its command (see there). // @ai
+    Function("markCommandsHandled") { through: Double -> // @ai
+      WidgetStorage.markCommandsHandled(context, through.toLong()) // @ai
+    } // @ai
     Function("takePendingTasbeeh") { WidgetStorage.takeTasbeeh(context) }
     Function("takePendingWidgetEvents") { WidgetStorage.takePendingEvents(context) }
     Function("writeCatalog") { json: String -> WidgetStorage.writeCatalog(context, json) }

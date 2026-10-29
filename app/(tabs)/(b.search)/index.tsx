@@ -6,6 +6,7 @@ import {
   Pressable,
   StyleSheet,
   Keyboard,
+  type TextInputInstance,
 } from 'react-native';
 import {Stack, useFocusEffect, useIsFocused} from 'expo-router'; // @ai
 import type {SearchBarCommands} from 'react-native-screens'; // @ai
@@ -33,7 +34,7 @@ export default function SearchScreen() {
   const insets = useSafeAreaInsets();
   const [query, setQuery] = useState('');
   const [isSearchActive, setIsSearchActive] = useState(false);
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<TextInputInstance>(null);
 
   // iOS 27 only renders the search tab as the detached trailing pill while
   // `automaticallyActivatesSearch` is set on it (see app/(tabs)/_layout.tsx).

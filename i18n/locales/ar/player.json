@@ -7,6 +7,8 @@
     "played": "تم تشغيلها",
     "remove": "إزالة {{title}} من قائمة الانتظار",
     "playNext": "تشغيل تاليًا",
+    "repeatAll": "تكرار الكل",
+    "repeatOne": "تكرار واحد",
     "moveUp": "نقل لأعلى",
     "moveDown": "نقل لأسفل",
     "reorder": "إعادة ترتيب {{title}}",

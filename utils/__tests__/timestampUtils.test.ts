@@ -12,6 +12,8 @@ import {
   findAyahTimestamp,
   // @ai-start
   getPlayFromHereTarget,
+  isInBasmalaIntro,
+  surahHasBasmalaIntro,
   PLAY_FROM_HERE_LOAD_FAILED,
   PLAY_FROM_HERE_NO_TIMING,
   PLAY_FROM_HERE_OTHER_SURAH,
@@ -97,6 +99,65 @@ describe('binarySearchAyah', () => {
     expect(binarySearchAyah(t, 10_000_000)?.ayahNumber).toBe(4);
   });
 });
+
+// @ai-start
+describe('isInBasmalaIntro', () => {
+  const t = fresh('hafs-clean', 2); // verse 1 starts at 6.7 s
+
+  it('is the intro before the first entry, where binarySearchAyah has none', () => {
+    const first = t[0].timestampFrom;
+    expect(first).toBeGreaterThan(0);
+    for (const ms of [0, 1, first / 2, first - 1]) {
+      expect(isInBasmalaIntro(t, ms, 2)).toBe(true);
+      expect(binarySearchAyah(t, ms)).toBeNull();
+    }
+  });
+
+  it('ends where verse 1 starts: the verse highlight takes over', () => {
+    const first = t[0].timestampFrom;
+    expect(isInBasmalaIntro(t, first, 2)).toBe(false);
+    expect(binarySearchAyah(t, first)?.ayahNumber).toBe(1);
+    expect(isInBasmalaIntro(t, t[3].timestampFrom + 1, 2)).toBe(false);
+    expect(isInBasmalaIntro(t, 10_000_000, 2)).toBe(false);
+  });
+
+  it('al-Fatihah (its basmala is verse 1) and at-Tawbah (none): never', () => {
+    const fatiha = fresh('hafs-clean', 1);
+    expect(fatiha[0].timestampFrom).toBeGreaterThan(0);
+    expect(isInBasmalaIntro(fatiha, 0, 1)).toBe(false);
+    expect(isInBasmalaIntro(t, 0, 9)).toBe(false);
+    expect(surahHasBasmalaIntro(1)).toBe(false);
+    expect(surahHasBasmalaIntro(9)).toBe(false);
+    expect(surahHasBasmalaIntro(2)).toBe(true);
+    expect(surahHasBasmalaIntro(114)).toBe(true);
+    expect(surahHasBasmalaIntro(0)).toBe(false);
+    expect(surahHasBasmalaIntro(115)).toBe(false);
+  });
+
+  it('no timings or no position: never', () => {
+    expect(isInBasmalaIntro(null, 0, 2)).toBe(false);
+    expect(isInBasmalaIntro(undefined, 0, 2)).toBe(false);
+    expect(isInBasmalaIntro([], 0, 2)).toBe(false);
+    expect(isInBasmalaIntro(t, NaN, 2)).toBe(false);
+    expect(isInBasmalaIntro(t, -1, 2)).toBe(false);
+  });
+
+  it('a leading ayah-0 pre-roll entry is the intro itself', () => {
+    const preroll = fresh('hafs-preroll', 112);
+    expect(preroll[0]).toMatchObject({ayahNumber: 0, timestampFrom: 0});
+    const verse1 = preroll[1].timestampFrom;
+    expect(isInBasmalaIntro(preroll, 0, 112)).toBe(true);
+    expect(isInBasmalaIntro(preroll, verse1 - 1, 112)).toBe(true);
+    expect(isInBasmalaIntro(preroll, verse1, 112)).toBe(false);
+    expect(isInBasmalaIntro(preroll.slice(0, 1), 0, 112)).toBe(false);
+  });
+
+  it('a first entry starting at 0 has no intro', () => {
+    const atZero = [{...t[0], timestampFrom: 0}, ...t.slice(1)];
+    expect(isInBasmalaIntro(atZero, 0, 2)).toBe(false);
+  });
+});
+// @ai-end
 
 // @ai-start
 describe('getPlayFromHereTarget', () => {

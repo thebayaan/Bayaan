@@ -15,13 +15,14 @@ import {
   NativeScrollEvent,
   NativeSyntheticEvent,
   useWindowDimensions,
-  InteractionManager,
   PixelRatio, // @ai
   type LayoutChangeEvent, // @ai
   Platform,
   StyleSheet,
   Alert,
+  type ScrollViewInstance,
 } from 'react-native';
+import {runAfterInteractions} from '@/utils/afterInteractions';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useTheme} from '@/hooks/useTheme';
 import {Surah, SURAHS} from '@/data/surahData';
@@ -73,6 +74,7 @@ import {useUploadsStore} from '@/store/uploadsStore';
 import {moderateScale} from '@/utils/scale';
 import {useBottomInset} from '@/hooks/useBottomInset';
 import {HAFS_REWAYAT_NAME} from '@/data/rewayat';
+import {pickRewayatId} from '@/utils/rewayatPreference'; // @ai
 import {useNavigation} from 'expo-router';
 import {useGlassHeaderHeight} from '@/hooks/useGlassHeaderHeight'; // @ai
 import {USE_GLASS} from '@/hooks/useGlassProps';
@@ -251,16 +253,20 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
     () => initReciter(currentReciterId),
     [currentReciterId],
   );
-  // Prefer the rewayat passed via navigation, then fall back to the first one
+  // @ai-start
+  // Prefer the rewayat passed via navigation, then the one the user last
+  // picked for this reciter, then the first one. The saved pick is read once
+  // so saving a new pick does not move the open profile.
   const initialRewayatId = useMemo(() => {
-    if (
-      initialRewayatIdProp &&
-      initialReciter?.rewayat.some(r => r.id === initialRewayatIdProp)
-    ) {
-      return initialRewayatIdProp;
-    }
-    return initialReciter?.rewayat[0]?.id;
+    if (!initialReciter) return undefined;
+    const savedRewayatId =
+      useSettings.getState().reciterPreferences[initialReciter.id];
+    return pickRewayatId(initialReciter.rewayat, [
+      initialRewayatIdProp,
+      savedRewayatId,
+    ]);
   }, [initialRewayatIdProp, initialReciter]);
+  // @ai-end
 
   const [reciter, setReciter] = useState<Reciter | null>(initialReciter);
   const surahs = SURAHS;
@@ -380,8 +386,8 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
     activeTab !== 'uploads' &&
     pageWidth >= TABLE_MIN_WIDTH;
   const [neighborsReady, setNeighborsReady] = useState(false);
-  const outerScrollRef = useRef<ScrollView>(null);
-  const horizontalRef = useRef<ScrollView>(null);
+  const outerScrollRef = useRef<ScrollViewInstance>(null);
+  const horizontalRef = useRef<ScrollViewInstance>(null);
   const currentScrollYRef = useRef(0);
   const renderedTabsRef = useRef(new Set<string>());
   const pagerScrolledRef = useRef(
@@ -425,7 +431,7 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
   }, []);
   // @ai-end
   const {startNewChain} = useRecentlyPlayedStore();
-  const {reciterPreferences, setReciterPreference} = useSettings();
+  const {setReciterPreference} = useSettings(); // @ai
 
   // Retrieve persisted reciter profile settings
   const setReciterViewModeSetting = useSettings(
@@ -1462,8 +1468,8 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
 
 // Lightweight wrapper — defers mounting the heavy content until the navigation
 // transition finishes so the screen push feels instant.
-// On Android, InteractionManager can hang indefinitely if an interaction never
-// completes, so we race it against a short timeout.
+// The idle callback can be late while the JS thread stays busy, so we race it
+// against a short timeout.
 const ReciterProfile: React.FC<ReciterProfileProps> = props => {
   const [ready, setReady] = useState(false);
   const {theme} = useTheme();
@@ -1476,7 +1482,7 @@ const ReciterProfile: React.FC<ReciterProfileProps> = props => {
       setReady(true);
     };
 
-    const handle = InteractionManager.runAfterInteractions(markReady);
+    const handle = runAfterInteractions(markReady);
     // Fallback: if interactions don't settle within 300ms, mount anyway
     const timer = setTimeout(markReady, 300);
 

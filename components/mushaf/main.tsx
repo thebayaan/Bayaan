@@ -6,7 +6,7 @@ import {
   Text,
   Pressable,
   ScrollView,
-  ViewToken,
+  type ListViewToken,
   StatusBar,
   BackHandler,
   Platform,
@@ -120,6 +120,15 @@ function pageToSpreadIndex(page: number): number {
 function spreadPrimaryPage(spread: Spread): number {
   return spread.right;
 }
+
+// @ai-start
+/** The page a visible spread stands for: the current page if the spread
+ *  holds it, otherwise the spread's first page. */
+function spreadPageToKeep(spread: Spread, current: number): number {
+  if (current === spread.right || current === spread.left) return current;
+  return spreadPrimaryPage(spread);
+}
+// @ai-end
 
 // ============================================================================
 // Helpers
@@ -548,6 +557,14 @@ export default function MushafViewer({
   const {t} = useTranslation(['reader', 'common']);
   const [currentPage, setCurrentPage] = useState(initialPage);
   // @ai-start
+  // Read by the viewability handler, which must not change identity. A spread
+  // shows two pages, so keep whichever one the reader was already on instead
+  // of snapping to the spread's first page (page 2 would become page 1 after
+  // a round trip to landscape).
+  const currentPageRef = useRef(initialPage);
+  currentPageRef.current = currentPage;
+  // @ai-end
+  // @ai-start
   // Twelve pages open one surah and start another (591 has At-Tariq and
   // Al-A'la; 601-604 start three apiece). `pageToSurah` can only name one
   // surah per page, so it names the last one to start there. When the
@@ -950,14 +967,16 @@ export default function MushafViewer({
   ]);
 
   const onViewableItemsChanged = useCallback(
-    ({viewableItems}: {viewableItems: ViewToken[]}) => {
+    ({viewableItems}: {viewableItems: ListViewToken[]}) => {
       if (viewableItems.length === 0) return;
       const first = viewableItems[0].item;
       if (first == null) return;
       // Page number depends on data shape: `number` for single-page data,
       // `Spread` object for facing-pages data.
       const page: number =
-        typeof first === 'number' ? first : spreadPrimaryPage(first as Spread);
+        typeof first === 'number'
+          ? first
+          : spreadPageToKeep(first as Spread, currentPageRef.current); // @ai
       setCurrentPage(page);
       useMushafPlayerStore.setState({currentPage: page});
       mushafSessionStore.setLastReadPage(page);

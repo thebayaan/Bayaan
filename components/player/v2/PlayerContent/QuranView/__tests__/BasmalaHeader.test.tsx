@@ -65,6 +65,8 @@ jest.mock('@/services/mushaf/DigitalKhattVerseTajweedService', () => ({
   getBasmalaTajweedMap: () => mockTajweed(),
 }));
 
+import {StyleSheet} from 'react-native'; // @ai
+import Color from 'color'; // @ai
 import BasmalaHeader from '../BasmalaHeader';
 import {BASMALLAH_TEXT} from '@/services/mushaf/RewayahBasmalaService';
 import {EXPECTED_BASMALA} from '@/services/mushaf/__fixtures__/basmalaTexts';
@@ -168,3 +170,57 @@ describe('BasmalaHeader', () => {
     expect(draw({rewayah: 'hisham', surahNumber: 2, fontMgr: null})).toBe('');
   });
 });
+
+// @ai-start
+describe('BasmalaHeader follow-along', () => {
+  /** The header's outer container style, flattened. */
+  function containerStyle(props: {
+    isActive?: boolean;
+    fontMgr?: SkTypefaceFontProvider | null;
+    rewayah?: RewayahId;
+  }): Record<string, unknown> {
+    let out: TestRenderer.ReactTestRenderer | null = null;
+    act(() => {
+      out = TestRenderer.create(
+        <BasmalaHeader
+          visible
+          width={320}
+          textColor="#111111"
+          showTajweed={false}
+          fontMgr={props.fontMgr === undefined ? FONT_MGR : props.fontMgr}
+          dkFontFamily="DigitalKhattV2"
+          indexedTajweedData={TAJWEED}
+          rewayah={props.rewayah}
+          surahNumber={2}
+          isActive={props.isActive}
+        />,
+      );
+    });
+    const json = out!.toJSON() as TestRenderer.ReactTestRendererJSON;
+    const style = StyleSheet.flatten(json.props.style) as Record<
+      string,
+      unknown
+    >;
+    act(() => out!.unmount());
+    return style ?? {};
+  }
+
+  it('while the basmala is recited it takes the active verse band', () => {
+    const lit = containerStyle({isActive: true});
+    // VerseItem's active band: the text colour at 12%, rounded
+    expect(lit.backgroundColor).toBe(Color('#111111').alpha(0.12).toString());
+    expect(lit.borderRadius).toBeGreaterThan(0);
+    expect(containerStyle({isActive: true, fontMgr: null})).toMatchObject({
+      backgroundColor: lit.backgroundColor,
+    });
+  });
+
+  it('otherwise, and with no basmala drawn, no band', () => {
+    expect(containerStyle({}).backgroundColor).toBeUndefined();
+    expect(containerStyle({isActive: false}).backgroundColor).toBeUndefined();
+    expect(
+      containerStyle({isActive: true, rewayah: 'hisham'}).backgroundColor,
+    ).toBeUndefined();
+  });
+});
+// @ai-end

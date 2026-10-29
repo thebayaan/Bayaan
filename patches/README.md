@@ -1,6 +1,6 @@
 # Native tab direction
 
-Expo SDK 57 / React Native Screens 4.26 support native tab direction. Bayaan
+Expo SDK 57+ / React Native Screens 4.26+ support native tab direction. Bayaan
 passes `unstable_nativeProps={{direction: appDirection}}` to `NativeTabs`,
 placing Home on the right and the separate Search button on the left in Arabic
 while keeping the normal platform design. No Screens patch is required.
@@ -16,13 +16,21 @@ placement, tab switching, and regular/minimized mini-player accessories.
 
 # expo-audio lock screen next/previous
 
-`expo-audio+57.0.5.patch` adds opt-in next/previous track commands to the lock
-screen (iOS `MPRemoteCommandCenter`, Android media session `SEEK_TO_NEXT` /
-`SEEK_TO_PREVIOUS`). A player opts in per activation with
+`expo-audio+58.0.10.patch` adds opt-in next/previous track commands for a
+single `AudioPlayer` to the lock screen (iOS `MPRemoteCommandCenter`, Android
+media session `SEEK_TO_NEXT` / `SEEK_TO_PREVIOUS`). Upstream SDK 58 only offers
+these for `AudioPlaylist`; the patch plugs into the same `supportsNextTrack` /
+`nextTrack()` hooks. A player opts in per activation with
 `setActiveForLockScreen(..., {trackControls: {previous, next}})`, updates them
 with `setLockScreenTrackControls`, and receives `lockScreenTrackCommand`
 events. Players that do not opt in behave as upstream. Adhkar playback is the
 only user (`services/audio/LockScreenService.ts`).
+
+On iOS the patch also stops upstream from claiming `nextTrackCommand` /
+`previousTrackCommand` for players that did not ask for them. Upstream 58
+registers failing targets and disables both commands on every activation,
+which would take next/previous away from the CarPlay Now Playing screen
+(`modules/bayaan-car/ios/CarNowPlaying.swift`).
 
 Expo ships expo-audio prebuilt (an xcframework on iOS, an AAR in
 `local-maven-repo` on Android), which would ignore the patch, so
