@@ -84,10 +84,16 @@ export function getPlaylist(id: string): Playlist | null {
   return readAll().find(p => p.id === id) ?? null;
 }
 
-/** A playlist's name after trimming; empty names fall back to a default. */
-export function cleanPlaylistName(name: string): string {
+/**
+ * A playlist's name after trimming; an empty name falls back to `fallback`
+ * (the editor passes the suggested "Playlist N", or the name being renamed).
+ */
+export function cleanPlaylistName(
+  name: string,
+  fallback = 'My playlist',
+): string {
   const trimmed = name.replace(/\s+/g, ' ').trim().slice(0, 60);
-  return trimmed.length > 0 ? trimmed : 'My playlist';
+  return trimmed.length > 0 ? trimmed : fallback;
 }
 
 let lastId = 0;
@@ -129,6 +135,27 @@ export function setPlaylistColor(
   return update(id, p => {
     const {color: _old, ...rest} = p;
     return color ? {...rest, color} : rest;
+  });
+}
+
+/**
+ * Renames and recolours a playlist in one write. Nothing is written when
+ * neither changes, so saving the editor untouched does not move the playlist
+ * to the front of the Recent order. True when something changed.
+ */
+export function editPlaylist(
+  id: string,
+  change: {name: string; color?: string},
+): boolean {
+  const current = getPlaylist(id);
+  if (!current) return false;
+  const name = cleanPlaylistName(change.name, current.name);
+  const sameColor =
+    (current.color ?? '').toUpperCase() === (change.color ?? '').toUpperCase();
+  if (name === current.name && sameColor) return false;
+  return update(id, p => {
+    const {color: _old, ...rest} = p;
+    return change.color ? {...rest, name, color: change.color} : {...rest, name};
   });
 }
 
@@ -199,6 +226,7 @@ export const playlistsStore = {
   create: createPlaylist,
   rename: renamePlaylist,
   setColor: setPlaylistColor,
+  edit: editPlaylist,
   remove: removePlaylist,
   addItem: addPlaylistItem,
   hasItem: hasPlaylistItem,

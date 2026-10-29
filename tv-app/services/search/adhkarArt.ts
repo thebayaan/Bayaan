@@ -1,6 +1,6 @@
 import {PIGMENTS} from '../../theme/surahColors';
 import type {AdhkarList} from '../../data/adhkarLists';
-import {estimateDhikrMinutes} from '../adhkarBrowse';
+import {estimateDhikrMinutes, nowListId} from '../adhkarBrowse';
 
 const INK = '#06151c';
 
@@ -54,4 +54,24 @@ export function estimateMinutes(
 
 export function countLabel(count: number): string {
   return `${count} ${count === 1 ? 'dhikr' : 'adhkar'}`;
+}
+
+/** The times-of-day lists Search's Browse panel offers before typing. */
+const BROWSE_ADHKAR_IDS: readonly string[] = [
+  'morning-adhkar',
+  'evening-adhkar',
+  'before-sleep',
+];
+
+/**
+ * Browse's Adhkar row in the order Home's rail and the Adhkar screen's NOW
+ * badge use: the list for this time of day first, the other half of the
+ * day's list (evening in the morning, morning otherwise) last.
+ */
+export function browseAdhkarIds(date: Date): string[] {
+  const now = nowListId(date);
+  const opposite =
+    now === 'morning-adhkar' ? 'evening-adhkar' : 'morning-adhkar';
+  const rest = BROWSE_ADHKAR_IDS.filter(id => id !== now && id !== opposite);
+  return [now, ...rest, opposite];
 }

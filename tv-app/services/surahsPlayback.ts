@@ -58,18 +58,21 @@ const PROGRESS_STEP = 0.02;
 
 /**
  * Listening progress (0-1) per surah, the latest entry per surah, limited
- * to one reciter when given; plus a key that changes only when a bar would
- * visibly change, for memoising on. The shares themselves stay exact, so
- * the started / completed thresholds are not moved by the rounding.
+ * to one reciter (and one of their recitations) when given, so a bar only
+ * shows where a press would resume; plus a key that changes only when a bar
+ * would visibly change, for memoising on. The shares themselves stay exact,
+ * so the started threshold is not moved by the rounding.
  */
 export function surahProgress(
   entries: readonly ContinueEntry[],
   reciterId?: string,
+  rewayahId?: string,
 ): {key: string; bySurah: Map<number, number>} {
   const bySurah = new Map<number, number>();
   // Entries are most recent first: keep the latest per surah.
   for (const e of entries) {
     if (reciterId !== undefined && e.reciterId !== reciterId) continue;
+    if (rewayahId !== undefined && e.rewayahId !== rewayahId) continue;
     if (bySurah.has(e.surahNumber) || e.durationSeconds <= 0) continue;
     bySurah.set(
       e.surahNumber,
@@ -81,4 +84,30 @@ export function surahProgress(
     ([n, p]) => `${n}:${Math.round(p / PROGRESS_STEP)}`,
   ).join(',');
   return {key, bySurah};
+}
+
+/**
+ * The request for a press on a surah: `voice`, resumed where it was left
+ * off when it has a Continue listening entry (the latest for the same
+ * reciter and surah, in the same recitation when the voice names one, else
+ * in the recitation it was started in). Finished surahs have no entry, so
+ * they start from the top, as do surahs never started.
+ */
+export function resumeRequest(
+  entries: readonly ContinueEntry[],
+  voice: PlayItemInput,
+): PlayItemInput & {startSeconds?: number} {
+  // Entries are most recent first.
+  const entry = entries.find(
+    e =>
+      e.reciterId === voice.reciterId &&
+      e.surahNumber === voice.surahNumber &&
+      (!voice.rewayahId || e.rewayahId === voice.rewayahId),
+  );
+  if (!entry) return voice;
+  return {
+    ...voice,
+    rewayahId: voice.rewayahId ?? entry.rewayahId,
+    startSeconds: entry.positionSeconds,
+  };
 }

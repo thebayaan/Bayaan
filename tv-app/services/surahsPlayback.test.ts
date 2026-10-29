@@ -26,7 +26,12 @@ jest.mock('./tvDataService', () => {
   return {...actual, getCachedRewayat: () => null};
 });
 
-import {firstVoice, surahProgress, visibleQueue} from './surahsPlayback';
+import {
+  firstVoice,
+  resumeRequest,
+  surahProgress,
+  visibleQueue,
+} from './surahsPlayback';
 
 describe('visibleQueue', () => {
   const voice = {reciterId: 'a', rewayahId: 'w', surahNumber: 80};
@@ -126,6 +131,13 @@ describe('surahProgress', () => {
     expect(bySurah.get(1)).toBeCloseTo(0.5);
   });
 
+  it('limits to one recitation when asked', () => {
+    const other = {...entry('a', 1, 90), rewayahId: 'v'};
+    const {bySurah} = surahProgress([other, entry('a', 1, 50)], 'a', 'w');
+    expect(bySurah.get(1)).toBeCloseTo(0.5);
+    expect(surahProgress([other], 'a', 'w').bySurah.has(1)).toBe(false);
+  });
+
   it('changes its key only when a bar visibly moves', () => {
     const at = (pos: number): string =>
       surahProgress([entry('a', 1, pos, 1000)]).key;
@@ -133,5 +145,49 @@ describe('surahProgress', () => {
     expect(at(500)).toBe(at(505));
     expect(at(500)).not.toBe(at(530));
     expect(surahProgress([]).key).toBe('');
+  });
+});
+
+describe('resumeRequest', () => {
+  const saved = (
+    reciterId: string,
+    rewayahId: string,
+    surahNumber: number,
+    positionSeconds: number,
+  ): ContinueEntry => ({
+    reciterId,
+    rewayahId,
+    surahNumber,
+    positionSeconds,
+    durationSeconds: 1000,
+    updatedAt: 0,
+  });
+
+  it('resumes the surah where this voice left it', () => {
+    const voice = {reciterId: 'a', rewayahId: 'w', surahNumber: 18};
+    expect(resumeRequest([saved('a', 'w', 18, 600)], voice)).toEqual({
+      ...voice,
+      startSeconds: 600,
+    });
+  });
+
+  it('starts from the top for another reciter, recitation or surah', () => {
+    const voice = {reciterId: 'a', rewayahId: 'w', surahNumber: 18};
+    const entries = [
+      saved('b', 'w', 18, 600),
+      saved('a', 'v', 18, 600),
+      saved('a', 'w', 19, 600),
+    ];
+    expect(resumeRequest(entries, voice)).toEqual(voice);
+  });
+
+  it('takes the latest entry, in its recitation when the voice names none', () => {
+    const entries = [saved('a', 'v', 18, 300), saved('a', 'w', 18, 600)];
+    expect(resumeRequest(entries, {reciterId: 'a', surahNumber: 18})).toEqual({
+      reciterId: 'a',
+      rewayahId: 'v',
+      surahNumber: 18,
+      startSeconds: 300,
+    });
   });
 });

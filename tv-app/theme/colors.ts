@@ -28,7 +28,8 @@ export const colors = {
   // Hairline outline for a screen's main action at rest.
   outline: 'rgba(244,243,236,0.5)',
   // Brand sky from the app icon, for indicators only: the selected tab's
-  // underline, section labels, live state and checks. Never a focus fill.
+  // underline, section labels (every tracked uppercase kicker above a title,
+  // on every screen), live state and checks. Never a focus fill.
   accent: '#8dc9d6',
   // Logo ink: text and icons drawn on top of the sky accent.
   accentInk: '#101820',

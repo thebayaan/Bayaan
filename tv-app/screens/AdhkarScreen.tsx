@@ -3,6 +3,7 @@ import {ScrollView, Text, TVFocusGuideView, View} from 'react-native';
 import {AdhkarChip} from '../components/adhkar/AdhkarChip';
 import {AdhkarClock, useNow} from '../components/adhkar/AdhkarClock';
 import {AdhkarListCard} from '../components/adhkar/AdhkarListCard';
+import {ROOT_TITLE_TEXT} from '../components/browse/RootHeader';
 import {
   adhkarGroups,
   groupLists,
@@ -12,13 +13,16 @@ import {
 } from '../services/adhkarBrowse';
 import {useNavStore} from '../store/navStore';
 import {colors} from '../theme/colors';
-import {fonts} from '../theme/typography';
 import {createScaledStyles} from '../theme/scale';
-import {SCREEN_GUTTER} from '../theme/spacing';
+import {
+  SCREEN_CLOCK_RIGHT,
+  SCREEN_CLOCK_TOP,
+  SCREEN_GUTTER,
+} from '../theme/spacing';
 
 // Layout in design px: the screen beside the folded sidebar (1920 - 112).
 const PAD_LEFT = SCREEN_GUTTER;
-const PAD_RIGHT = 90;
+const PAD_RIGHT = SCREEN_GUTTER;
 const COLUMNS = 4;
 const GAP = 28;
 const CARD_WIDTH = Math.floor(
@@ -30,7 +34,7 @@ const INITIAL_GROUP: AdhkarGroupId = 'daily';
 let lastGroup: AdhkarGroupId = INITIAL_GROUP;
 
 /**
- * Adhkar browse: the phone's lists under chips (Daily, Prayer, Home,
+ * Adhkar browse: the phone's lists under chips (Daily, Prayer, At home,
  * Travel, Hardship, All), the main ones as big illustrated cards with the
  * list for the time of day marked NOW, the rest as smaller cards.
  */
@@ -91,7 +95,6 @@ export function AdhkarScreen(): React.ReactElement {
     <View style={styles.root}>
       <View style={styles.header}>
         <Text style={styles.title}>Adhkar</Text>
-        <AdhkarClock now={now} caption={periodLabel(now)} />
       </View>
 
       <TVFocusGuideView
@@ -143,6 +146,12 @@ export function AdhkarScreen(): React.ReactElement {
           ))}
         </TVFocusGuideView>
       </ScrollView>
+
+      {/* Where every root screen keeps its clock, so switching places never
+          moves it. */}
+      <View style={styles.clock} pointerEvents="none">
+        <AdhkarClock now={now} caption={periodLabel(now)} />
+      </View>
     </View>
   );
 }
@@ -150,18 +159,15 @@ export function AdhkarScreen(): React.ReactElement {
 const styles = createScaledStyles({
   root: {flex: 1, backgroundColor: colors.background, paddingTop: 64},
   header: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
     paddingLeft: PAD_LEFT,
     paddingRight: PAD_RIGHT,
   },
-  title: {
-    color: colors.text,
-    fontFamily: fonts.extraBold,
-    fontWeight: '800',
-    fontSize: 60,
+  clock: {
+    position: 'absolute',
+    top: SCREEN_CLOCK_TOP,
+    right: SCREEN_CLOCK_RIGHT,
   },
+  title: {color: colors.text, ...ROOT_TITLE_TEXT},
   chips: {
     flexDirection: 'row',
     alignSelf: 'flex-start',

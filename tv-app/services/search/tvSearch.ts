@@ -26,6 +26,7 @@ import {
 } from '../../../utils/search/normalize';
 import ADHKAR from '../../../data/adhkar.json';
 import {ADHKAR_LISTS, type AdhkarList} from '../../data/adhkarLists';
+import {surahsInJuz} from '../browseCatalog';
 import type {Reciter} from '../../types/reciter';
 
 export {TIER};
@@ -34,6 +35,33 @@ export {TIER};
 // Same pattern as utils/search/catalog.ts.
 const SURAH_PREFIX = /^(surah|surat|sura|soorah|سوره|سورت)\s+/;
 const FEATURED = new Set(FEATURED_RECITER_NAMES);
+
+/**
+ * TV-only surah names, on top of the phone's shared SURAH_ALIASES (which
+ * stay as they are so both apps keep ranking alike). Browse shows a
+ * "Juz ʿAmma" tile, so typing it has to find the juz's first surah.
+ */
+export const TV_SURAH_ALIASES: Readonly<Record<number, readonly string[]>> = {
+  78: ['Juz Amma', 'Juz ʿAmma', 'جزء عم'],
+};
+
+// "juz 30", "juz30", "جزء ٣٠" (the hamza folds away in the search key): a
+// juz by number, never a verse of a surah called "juz".
+const JUZ_NUMBER = /^(?:juz|juzz|jus|para|جز)\s*(\d{1,2})$/;
+
+export const JUZ_COUNT = 30;
+
+/** The number a "juz N" query names, in range or not, or null. */
+export function juzNumber(query: string): number | null {
+  const match = toSearchKey(query).match(JUZ_NUMBER);
+  return match ? Number(match[1]) : null;
+}
+
+/** The juz a query names by number (1-30), or null. */
+export function parseJuz(query: string): number | null {
+  const juz = juzNumber(query);
+  return juz !== null && juz >= 1 && juz <= JUZ_COUNT ? juz : null;
+}
 
 /**
  * "Ash-Sharh" -> "Sharh": the name without its article, so a few typed
@@ -59,6 +87,7 @@ export function createSurahSearch(
       {get: surah => surah.name_arabic, weight: 1},
       {get: surah => surah.translated_name_english, weight: 0.8},
       {get: surah => SURAH_ALIASES[surah.id] ?? [], weight: 0.9},
+      {get: surah => TV_SURAH_ALIASES[surah.id] ?? [], weight: 0.9},
     ],
   });
   return {
@@ -326,8 +355,10 @@ export const EMPTY_RESULTS: GroupedResults = {
 const LIMITS = {surahs: 12, reciters: 12, adhkar: 8};
 
 // Below these scores a match is noise for that kind: a long category title
-// that shares one short word, or a fuzzy hit on a verse nickname.
-const MIN_ADHKAR_SCORE = 20;
+// that shares one short word, a typo-budget hit on an alias ("fatiha" finding
+// "Faith"), or a fuzzy hit on a verse nickname. Skeleton and fuzzy adhkar
+// hits score 20-45 and are almost never what was meant.
+export const MIN_ADHKAR_SCORE = 40;
 const MIN_VERSE_SCORE = 40;
 
 // On equal scores: an explicit verse reference, then surahs (the phone puts
@@ -372,9 +403,27 @@ export function createTvSearch(
       const key = toSearchKey(query);
       if (!key) return EMPTY_RESULTS;
 
+      // "juz 31" names no juz; it is never a verse of An-Naba (whose
+      // "Juz Amma" alias would otherwise read it as 78:31).
+      if (juzNumber(query) !== null && parseJuz(query) === null) {
+        return EMPTY_RESULTS;
+      }
       const ranked: RankedItem[] = [];
-      const ref = parseVerseRef(query) ?? nameAndVerse(query, surahIndex);
-      if (ref) {
+      const juz = parseJuz(query);
+      const ref = juz
+        ? null
+        : (parseVerseRef(query) ?? nameAndVerse(query, surahIndex));
+      if (juz) {
+        // The juz's surahs in mushaf order; the first (where it starts)
+        // is the top result.
+        surahsInJuz(juz, options.surahs ?? SURAHS).forEach((surah, i) =>
+          ranked.push({
+            type: 'surah',
+            item: surah,
+            score: TIER.exact - i / 100,
+          }),
+        );
+      } else if (ref) {
         // Above any name match: the person typed exactly which verse.
         ranked.push({type: 'verse', item: ref, score: TIER.exact + 5});
         ranked.push({type: 'surah', item: ref.surah, score: TIER.exact});
@@ -411,18 +460,20 @@ export function createTvSearch(
       const top = ranked[0] ?? null;
       const isTop = (item: SearchItem): boolean =>
         top !== null && top.type === item.type && top.item === item.item;
-      const pick = <K extends SearchKind>(kind: K, limit: number) =>
+      // Each kind's items, typed by the caller (Vega's older TypeScript
+      // can't narrow an indexed Extract through a generic).
+      const pick = (kind: SearchKind, limit: number): unknown[] =>
         ranked
           .filter(r => r.type === kind && !isTop(r))
           .slice(0, limit)
-          .map(r => r.item as Extract<SearchItem, {type: K}>['item']);
+          .map(r => r.item);
 
       return {
         top: top ? ({type: top.type, item: top.item} as SearchItem) : null,
         ranked,
-        surahs: pick('surah', LIMITS.surahs),
-        reciters: pick('reciter', LIMITS.reciters),
-        adhkar: pick('adhkar', LIMITS.adhkar),
+        surahs: pick('surah', LIMITS.surahs) as Surah[],
+        reciters: pick('reciter', LIMITS.reciters) as Reciter[],
+        adhkar: pick('adhkar', LIMITS.adhkar) as AdhkarList[],
       };
     },
   };

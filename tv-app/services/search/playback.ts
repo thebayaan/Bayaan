@@ -107,6 +107,29 @@ export async function findVerseSpan(
 }
 
 /**
+ * What `promise` resolved to within `ms`, or undefined when it took longer
+ * (or failed); the promise keeps going for whoever awaits it after.
+ */
+export function within<T>(
+  promise: Promise<T>,
+  ms: number,
+): Promise<T | undefined> {
+  return new Promise(resolve => {
+    const timer = setTimeout(() => resolve(undefined), ms);
+    promise.then(
+      value => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      () => {
+        clearTimeout(timer);
+        resolve(undefined);
+      },
+    );
+  });
+}
+
+/**
  * What the toast over the player says when a verse can't be found in the
  * recitation that plays, so the surah starting from verse 1 isn't a mystery.
  */

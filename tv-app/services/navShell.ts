@@ -55,37 +55,37 @@ export type BackState = {
   stack: readonly ScreenEntry[];
   tab: TabKey;
   menuOpen: boolean;
-  overlayOpen: boolean;
   /** The listening room's settings panel and tray (player only). */
   panelOpen: boolean;
   trayOpen: boolean;
   /** Settings' side picker (Settings only). */
   pickerOpen: boolean;
   sidebarFocused: boolean;
+  /** The place showing was jumped to from inside content (see jumpTo). */
+  canReturn: boolean;
 };
 
 export type BackStep =
   | 'closeMenu'
-  | 'closeOverlay'
   | 'closePanel'
   | 'closePicker'
   | 'lowerTray'
   | 'pop'
   | 'focusSidebar'
+  | 'returnBack'
   | 'goHome'
   | 'exit';
 
 /**
  * What Back does (after a screen's own handler passed): close what is open
  * on top, then go back a screen. On a root place it steps out one level at a
- * time: from the content to the sidebar, from another place to Home, and
- * only from Home's sidebar out of the app, so a press deep in a rail never
- * leaves while a recitation plays.
+ * time: from the content to the sidebar, back to where a jump from content
+ * came from, from another place to Home, and only from Home's sidebar out of
+ * the app, so a press deep in a rail never leaves while a recitation plays.
  */
 export function backStep(s: BackState): BackStep {
   const top = s.stack[s.stack.length - 1];
   if (s.menuOpen) return 'closeMenu';
-  if (s.overlayOpen) return 'closeOverlay';
   if (top?.screen === 'nowPlaying') {
     if (s.panelOpen) return 'closePanel';
     if (s.trayOpen) return 'lowerTray';
@@ -93,6 +93,7 @@ export function backStep(s: BackState): BackStep {
   if (top) return 'pop';
   if (s.tab === 'settings' && s.pickerOpen) return 'closePicker';
   if (!s.sidebarFocused) return 'focusSidebar';
+  if (s.canReturn) return 'returnBack';
   if (s.tab !== 'home') return 'goHome';
   return 'exit';
 }

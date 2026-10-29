@@ -2,6 +2,11 @@ import {useTVPlayerStore} from '../store/tvPlayerStore';
 import type {AudioEngine} from './audioEngine';
 import {applyMediaKey, playerTransport} from './mediaTransport';
 import {MEDIA_SEEK_SECONDS} from './remoteKeys';
+import {resumeNewestContinue} from './resumeContinue';
+
+jest.mock('./resumeContinue', () => ({
+  resumeNewestContinue: jest.fn(() => true),
+}));
 
 const item = {
   reciterId: 'r1',
@@ -61,11 +66,16 @@ describe('applyMediaKey', () => {
     expect(playing.engine.pause).toHaveBeenCalledTimes(1);
   });
 
-  it('does nothing before anything was played', () => {
+  it('resumes the newest Continue entry on Play before anything was played', () => {
     const player = stubPlayer();
     useTVPlayerStore.setState({queue: []});
+    jest.mocked(resumeNewestContinue).mockClear();
     applyMediaKey('playPause');
+    applyMediaKey('play');
+    applyMediaKey('pause');
     applyMediaKey('next');
+    expect(resumeNewestContinue).toHaveBeenCalledTimes(2);
+    expect(resumeNewestContinue).toHaveBeenCalledWith('media-key');
     expect(player.toggle).not.toHaveBeenCalled();
     expect(player.next).not.toHaveBeenCalled();
   });
@@ -96,6 +106,17 @@ describe('playerTransport', () => {
     expect(player.next).toHaveBeenCalledTimes(1);
     expect(player.prev).toHaveBeenCalledTimes(1);
     expect(player.toggle).toHaveBeenCalledTimes(1);
+  });
+
+  it('resumes the newest Continue entry on Vega Play before anything was played', () => {
+    const player = stubPlayer();
+    useTVPlayerStore.setState({queue: []});
+    jest.mocked(resumeNewestContinue).mockClear();
+    playerTransport.toggle();
+    playerTransport.play();
+    playerTransport.pause();
+    expect(resumeNewestContinue).toHaveBeenCalledTimes(2);
+    expect(player.toggle).not.toHaveBeenCalled();
   });
 
   it("treats a verse repeat's gap as playing", () => {

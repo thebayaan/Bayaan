@@ -1,6 +1,6 @@
 import React from 'react';
 import {Text, type TextStyle} from 'react-native';
-import type {Run, Tone} from '../../services/adhkarPages';
+import {runText, type Run, type Tone} from '../../services/adhkarPages';
 import {colors} from '../../theme/colors';
 
 type Props = {
@@ -11,23 +11,28 @@ type Props = {
   fontSize: number;
 };
 
+// Narration and notes are set smaller, never fainter than secondary text:
+// they have to read from across the room too.
 const TONE_SCALE: Record<Tone, number> = {
   dhikr: 1,
   addition: 1,
-  narration: 0.72,
-  reference: 0.72,
+  narration: 0.8,
+  reference: 0.8,
+  heading: 0.8,
 };
 
 const TONE_COLOR: Record<Tone, string> = {
   dhikr: colors.text,
   addition: 'rgba(244,243,236,0.78)',
-  narration: colors.textTertiary,
-  reference: colors.textTertiary,
+  narration: colors.textSecondary,
+  reference: colors.textSecondary,
+  heading: colors.textSecondary,
 };
 
 /**
  * A page of dhikr text in one flowing block, the phone's markers rendered as
- * tone: the words to say in full cream, narration and notes smaller and muted.
+ * tone: the words to say in full cream, narration and notes smaller and
+ * softer, a quoted surah's heading on its own line.
  */
 export function DhikrText({runs, style, fontSize}: Props): React.ReactElement {
   return (
@@ -39,7 +44,7 @@ export function DhikrText({runs, style, fontSize}: Props): React.ReactElement {
             fontSize: fontSize * TONE_SCALE[run.tone],
             color: TONE_COLOR[run.tone],
           }}>
-          {i > 0 ? ` ${run.text}` : run.text}
+          {runText(runs, i)}
         </Text>
       ))}
     </Text>

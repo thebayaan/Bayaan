@@ -4,7 +4,8 @@
  * goes through playOrOpen, so a press behaves the same everywhere:
  *
  * - The track already playing (or loading) is never reloaded; the press just
- *   opens the player.
+ *   opens the player. Asked for in another queue (a playlist's Play), the
+ *   queue loads and the track carries on from where it was.
  * - Otherwise the player opens at once in its loading state, and the
  *   recitation is looked up and loaded behind it. A newer press supersedes an
  *   older one that is still loading, so stale loads never win.
@@ -20,6 +21,7 @@ import type {QueueItem} from '../types/player';
 import type {Reciter, Rewayah} from '../types/reciter';
 import {pickPlayableRewayah} from './browseCatalog';
 import {normalizeReciters} from './normalizeReciter';
+import {removeContinue} from './continueListeningStore';
 import {recordVisit} from './recentlyPlayedStore';
 import {
   buildAudioUrl,
@@ -43,7 +45,7 @@ export type PlayRequest = PlayItemInput & {
    * the requested one.
    */
   queue?: PlayItemInput[];
-  /** Next/previous pick at random; the requested surah plays first. */
+  /** Shuffle the queue, with the requested surah first. */
   shuffle?: boolean;
   /** Where the press came from, for debugging. */
   source?: string;
@@ -60,7 +62,8 @@ export function surahTitle(surahNumber: number): string {
 
 let fallbackCatalog: Reciter[] | null = null;
 
-function findReciter(reciterId: string): Reciter | null {
+/** A reciter from the catalog or the bundled list, or null when gone. */
+export function findReciter(reciterId: string): Reciter | null {
   const cached = getCachedReciters()?.find(r => r.id === reciterId);
   if (cached) return cached;
   fallbackCatalog ??= normalizeReciters(fallbackReciters);
@@ -183,19 +186,49 @@ export function openPlayer(): void {
 let latestRequest = 0;
 
 /**
- * Plays a surah, or just opens the player when it is the current track.
- * Resolves true once the track is playing (or already was), false when the
- * request failed or a newer one replaced it.
+ * Whether the press asks for nothing the player isn't already doing: no
+ * queue of its own (or the very queue playing now, in its order) and no
+ * shuffle. A playlist's Play on a surah that happens to be playing still has
+ * to load the playlist.
+ */
+function sameQueue(req: PlayRequest): boolean {
+  if (req.shuffle) return false;
+  if (!req.queue || req.queue.length === 0) return true;
+  const {queue} = useTVPlayerStore.getState();
+  return (
+    queue.length === req.queue.length &&
+    req.queue.every((input, i) => matches(queue[i], input))
+  );
+}
+
+/**
+ * Plays a surah, or opens the player on it when it is the current track (in
+ * the queue asked for), resuming it if it was paused: an explicit Play or OK
+ * always means listen, as the Now playing strip, tile and pill do. Resolves
+ * true once the track is playing (or already was), false when the request
+ * failed or a newer one replaced it.
  */
 export async function playOrOpen(req: PlayRequest): Promise<boolean> {
   const player = useTVPlayerStore.getState();
-  if (isCurrentTrack(req)) {
+  if (!isCurrentTrack(req)) return start(req);
+  if (sameQueue(req)) {
     openPlayer();
-    // A finished or failed track starts again; anything else is left as is.
-    if (player.finished || player.status === 'error') player.toggle();
+    // Paused, finished (starts again) or failed (retries): toggle. Playing,
+    // still loading, or in a verse repeat's gap is left as is.
+    const listening =
+      player.held ||
+      player.status === 'playing' ||
+      player.status === 'buffering' ||
+      player.status === 'loading';
+    if (player.finished || !listening) player.toggle();
     return true;
   }
-  return start(req);
+  // The surah playing now, in a new queue: it carries on from where it is.
+  const carryOn =
+    player.finished || player.status === 'error'
+      ? undefined
+      : player.positionSeconds;
+  return start({...req, startSeconds: req.startSeconds ?? carryOn});
 }
 
 async function start(req: PlayRequest): Promise<boolean> {
@@ -223,7 +256,11 @@ async function start(req: PlayRequest): Promise<boolean> {
     return false;
   };
 
-  if (!reciter) return fail('This reciter is no longer available.');
+  if (!reciter) {
+    // Its Continue entry can never resume again.
+    removeContinue(req.reciterId, req.surahNumber);
+    return fail('This reciter is no longer available.');
+  }
   const built = await buildQueue(req, reciter);
   if (request !== latestRequest) return false;
   if (!built) {

@@ -1,12 +1,17 @@
 import {
   buildShelf,
+  focusLibraryTile,
   isShelfEmpty,
+  libraryPlace,
+  openingFilter,
   playlistCaption,
   reciterTileLabel,
   shelfCounts,
   sortShelf,
   surahCountLabel,
+  surahSortName,
   surahTileCaption,
+  takeLibraryFocus,
   tabItems,
   type ShelfItem,
   type ShelfReciter,
@@ -207,5 +212,52 @@ describe('labels', () => {
       '2 surahs · 2 reciters',
     );
     expect(playlistCaption([{reciterId: 'gone'}], voice)).toBe('1 surah');
+  });
+});
+
+describe('surahSortName', () => {
+  it('sorts surahs without the article', () => {
+    expect(surahSortName('Al-Mulk')).toBe('Mulk');
+    expect(surahSortName('Ar-Rahman')).toBe('Rahman');
+    expect(surahSortName('Adh-Dhariyat')).toBe('Dhariyat');
+    expect(surahSortName('Ash-Shams')).toBe('Shams');
+    expect(surahSortName("Ali 'Imran")).toBe("Ali 'Imran");
+    expect(surahSortName('Ya-Sin')).toBe('Ya-Sin');
+    const names = ['Al-Mulk', 'Al-Baqarah', 'Ar-Rahman', 'Ya-Sin', 'Al-Kahf'];
+    expect(
+      [...names].sort((a, b) =>
+        surahSortName(a).localeCompare(surahSortName(b)),
+      ),
+    ).toEqual(['Al-Baqarah', 'Al-Kahf', 'Al-Mulk', 'Ar-Rahman', 'Ya-Sin']);
+  });
+});
+
+describe('openingFilter', () => {
+  const counts = {playlists: 0, loved: 2, reciters: 1};
+
+  it('opens on the first tab with something in it', () => {
+    expect(openingFilter(counts, null)).toBe('loved');
+    expect(openingFilter({...counts, loved: 0}, null)).toBe('reciters');
+    expect(openingFilter({...counts, playlists: 1}, null)).toBe('playlists');
+    expect(openingFilter({playlists: 0, loved: 0, reciters: 0}, null)).toBe(
+      'playlists',
+    );
+  });
+
+  it('keeps the tab left last this session', () => {
+    expect(openingFilter(counts, 'playlists')).toBe('playlists');
+  });
+});
+
+describe('focusLibraryTile', () => {
+  it('opens the Library on the tile, and hands it over once', () => {
+    focusLibraryTile('playlists', 'p:1');
+    expect(libraryPlace().filter).toBe('playlists');
+    expect(libraryPlace().tile).toMatchObject({
+      filter: 'playlists',
+      key: 'p:1',
+    });
+    expect(takeLibraryFocus()).toEqual({filter: 'playlists', key: 'p:1'});
+    expect(takeLibraryFocus()).toBeNull();
   });
 });

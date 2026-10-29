@@ -6,6 +6,7 @@ import {FocusFrame, FocusText} from '../primitives/focusContext';
 import {useRailFocus} from './HomeRail';
 import {useContextMenuStore} from '../../store/contextMenuStore';
 import {getReciterArtwork} from '../../services/reciterArtwork';
+import {portraitName} from '../../hooks/homeReciters';
 import {colors} from '../../theme/colors';
 import {fonts} from '../../theme/typography';
 import {createScaledStyles} from '../../theme/scale';
@@ -20,7 +21,8 @@ type Props = {
 };
 
 /**
- * A reciter as a round portrait with the name below, sized so a full row
+ * A reciter as a round portrait with the name below (short enough for one
+ * line, see portraitName; the full name is read out), sized so a full row
  * fits under the hero (the shared ReciterCard is larger). Long press opens
  * the reciter menu, like everywhere else. The initial sits under the photo,
  * so a portrait that never loads (offline, not cached) still shows it.
@@ -55,8 +57,10 @@ function ReciterPortraitImpl({reciter, onSelect}: Props): React.ReactElement {
         style={styles.name}
         color={colors.textSecondary}
         focusedColor={colors.text}
-        numberOfLines={1}>
-        {reciter.name}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.8}>
+        {portraitName(reciter.name)}
       </FocusText>
     </FocusableCard>
   );
@@ -78,7 +82,7 @@ const styles = createScaledStyles({
   name: {
     fontFamily: fonts.semiBold,
     fontWeight: '600',
-    fontSize: 17,
+    fontSize: 20,
     textAlign: 'center',
   },
 });

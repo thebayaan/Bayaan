@@ -23,8 +23,24 @@ export const DISPLAY_PICKERS: readonly SettingsPicker[] = [
   'textSize',
 ];
 
+/** The Your data rows; each clears one kind of saved thing. */
+export type ClearRow = 'history' | 'loved' | 'favorites';
+
 /** A Settings row: one that opens a picker, or one that acts on a press. */
-export type SettingsRow = SettingsPicker | 'history' | 'favorites' | 'welcome';
+export type SettingsRow = SettingsPicker | ClearRow | 'welcome';
+
+/**
+ * A clear row's value: how much it would clear, named as the Library names
+ * it ("2 surahs", "1 reciter"), or that nothing is saved.
+ */
+export function savedCountLabel(
+  count: number,
+  singular: string,
+  plural: string,
+): string {
+  if (count === 0) return 'Nothing saved';
+  return `${count} ${count === 1 ? singular : plural}`;
+}
 
 type SettingsState = {
   defaultReciterId: string | null;

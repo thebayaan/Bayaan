@@ -14,11 +14,11 @@ function state(over: Partial<BackState> = {}): BackState {
     stack: [],
     tab: 'home',
     menuOpen: false,
-    overlayOpen: false,
     panelOpen: false,
     trayOpen: false,
     pickerOpen: false,
     sidebarFocused: false,
+    canReturn: false,
     ...over,
   };
 }
@@ -81,7 +81,6 @@ describe('backStep', () => {
     expect(backStep(state({menuOpen: true, stack: [player]}))).toBe(
       'closeMenu',
     );
-    expect(backStep(state({overlayOpen: true}))).toBe('closeOverlay');
     expect(
       backStep(state({stack: [player], panelOpen: true, trayOpen: true})),
     ).toBe('closePanel');
@@ -116,5 +115,17 @@ describe('backStep', () => {
     );
     expect(backStep(state({tab: 'home'}))).toBe('focusSidebar');
     expect(backStep(state({tab: 'home', sidebarFocused: true}))).toBe('exit');
+  });
+
+  it('goes back to where a jump from content came from, before Home', () => {
+    expect(backStep(state({tab: 'surahs', canReturn: true}))).toBe(
+      'focusSidebar',
+    );
+    expect(
+      backStep(state({tab: 'surahs', canReturn: true, sidebarFocused: true})),
+    ).toBe('returnBack');
+    expect(
+      backStep(state({tab: 'surahs', canReturn: true, stack: [reciter]})),
+    ).toBe('pop');
   });
 });

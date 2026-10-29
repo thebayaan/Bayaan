@@ -7,6 +7,25 @@ const bundledList = [{id: 'bundled'}] as unknown as Reciter[];
 const mockFetchReciters = jest.fn<Promise<Reciter[]>, []>();
 const mockGetCached = jest.fn<Reciter[] | null, []>();
 
+// subscribe() is reached through useSyncExternalStore; call it directly.
+jest.mock('react', () => ({
+  useSyncExternalStore: (subscribe: (cb: () => void) => () => void) => {
+    mockUnsubscribe = subscribe(() => {});
+    return [];
+  },
+}));
+let mockUnsubscribe: (() => void) | null = null;
+
+let mockAppStateListener: ((state: string) => void) | null = null;
+jest.mock('react-native', () => ({
+  AppState: {
+    addEventListener: (_: string, cb: (state: string) => void) => {
+      mockAppStateListener = cb;
+      return {remove: () => (mockAppStateListener = null)};
+    },
+  },
+}));
+
 jest.mock('../services/tvDataService', () => ({
   fetchReciters: () => mockFetchReciters(),
   getCachedReciters: () => mockGetCached(),
@@ -17,7 +36,9 @@ import {
   currentReciters,
   refreshReciters,
   resetRecitersForTest,
+  useReciters,
 } from './useReciters';
+
 
 beforeEach(() => {
   resetRecitersForTest();
@@ -59,5 +80,28 @@ describe('shared reciter list', () => {
     currentReciters();
     await refreshReciters();
     expect(currentReciters()).toBe(cachedList);
+  });
+
+  it('asks again once a refresh has settled, so a long-lived TV refreshes when due', async () => {
+    mockGetCached.mockReturnValue(cachedList);
+    mockFetchReciters.mockResolvedValue(cachedList);
+    await refreshReciters();
+    await refreshReciters();
+    expect(mockFetchReciters).toHaveBeenCalledTimes(2);
+  });
+
+  it('re-checks the list when the app comes back to the foreground', async () => {
+    mockGetCached.mockReturnValue(cachedList);
+    mockFetchReciters.mockResolvedValue(cachedList);
+    useReciters();
+    await new Promise(r => setImmediate(r));
+    expect(mockFetchReciters).toHaveBeenCalledTimes(1);
+    mockFetchReciters.mockResolvedValue(freshList);
+    mockAppStateListener?.('background');
+    mockAppStateListener?.('active');
+    await new Promise(r => setImmediate(r));
+    expect(mockFetchReciters).toHaveBeenCalledTimes(2);
+    expect(currentReciters()).toBe(freshList);
+    mockUnsubscribe?.();
   });
 });

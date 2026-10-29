@@ -8,6 +8,11 @@ import {
   cellHeightLayout,
   useGridColumns,
 } from '../components/browse/gridLayout';
+import {
+  ROOT_TITLE_GAP,
+  RootClock,
+  RootTitle,
+} from '../components/browse/RootHeader';
 import {ReciterGrid} from '../components/catalog/ReciterGrid';
 import {FocusableButton} from '../components/primitives/FocusableButton';
 import {FocusIcon, FocusText} from '../components/primitives/focusContext';
@@ -21,14 +26,20 @@ import {
   surahFilterPlayLabel,
   type SurahFilter,
 } from '../services/browseCatalog';
+import {getContinueListening} from '../services/continueListeningStore';
 import {
   playOrOpen,
   surahTitle,
   voiceForSurah,
-  type PlayItemInput,
+  type PlayRequest,
 } from '../services/playbackRouting';
+import {defaultReciterChoices} from '../services/reciterPicker';
 import {pushScreenBack} from '../services/screenBack';
-import {firstVoice, visibleQueue} from '../services/surahsPlayback';
+import {
+  firstVoice,
+  resumeRequest,
+  visibleQueue,
+} from '../services/surahsPlayback';
 import {getCachedRewayat} from '../services/tvDataService';
 import {useContextMenuStore} from '../store/contextMenuStore';
 import {useSettingsStore} from '../store/settingsStore';
@@ -48,6 +59,11 @@ const FILTERS: ReadonlyArray<{key: SurahFilter; label: string}> = [
 ];
 
 const JUZ_NUMBERS = Array.from({length: 30}, (_, i) => i + 1);
+
+// The filter (and juz) picked last time, so coming back to Surahs from
+// another place keeps it, as Library keeps its tab.
+let lastFilter: SurahFilter = 'all';
+let lastJuz = 1;
 
 /** Horizontal room around a tile inside its column, in design pixels. */
 const CELL_PAD = 14;
@@ -71,11 +87,10 @@ export function SurahsScreen(): React.ReactElement {
   const defaultReciterId = useSettingsStore(s => s.defaultReciterId);
   const setDefaultReciterId = useSettingsStore(s => s.setDefaultReciterId);
   const favorites = useFavorites();
-  const progressBySurah = useSurahProgress();
   const numColumns = useGridColumns(CELL_WIDTH);
 
-  const [filter, setFilter] = useState<SurahFilter>('all');
-  const [juz, setJuz] = useState<number>(1);
+  const [filter, setFilter] = useState<SurahFilter>(() => lastFilter);
+  const [juz, setJuz] = useState<number>(() => lastJuz);
   const [picking, setPicking] = useState<boolean>(false);
   // Entering the juz row lands on the selected juz.
   const [selectedJuzChip, setSelectedJuzChip] = useState<View | null>(null);
@@ -115,6 +130,8 @@ export function SurahsScreen(): React.ReactElement {
       : undefined;
     return chosen ?? featuredFirst(reciters)[0] ?? null;
   }, [reciters, defaultReciterId]);
+  // Bars for the reciter a press plays, so a bar always means "resumes".
+  const progressBySurah = useSurahProgress(reciter?.id);
 
   // The default reciter first; if they lack a surah, the first featured
   // reciter who has it, so a press always plays something.
@@ -129,12 +146,14 @@ export function SurahsScreen(): React.ReactElement {
   const surahs = useMemo(() => filterSurahs(filter, juz), [filter, juz]);
   const shownNumbers = useMemo(() => surahs.map(s => s.id), [surahs]);
 
-  // Who the picker offers: the current reciter first (where focus lands),
-  // then favourites, then the featured order.
+  // Who the picker offers: the reciters Settings offers as the default (the
+  // whole Quran, so a pick never falls back on most surahs), the current
+  // one first (where focus lands), then favourites, then the popular ones
+  // and everyone else by name.
   const pickerReciters = useMemo<Reciter[]>(() => {
     if (!picking) return [];
     const favoriteIds = new Set(favorites.map(f => f.reciterId));
-    const ordered = featuredFirst(reciters);
+    const ordered = defaultReciterChoices(reciters, reciter?.id ?? null);
     const rank = (r: Reciter): number =>
       r.id === reciter?.id ? 0 : favoriteIds.has(r.id) ? 1 : 2;
     return ordered
@@ -144,7 +163,7 @@ export function SurahsScreen(): React.ReactElement {
   }, [picking, reciters, reciter, favorites]);
 
   const play = useCallback(
-    (voice: PlayItemInput, source: string): void => {
+    (voice: PlayRequest, source: string): void => {
       if (reciter && voice.reciterId !== reciter.id) {
         const who = reciters.find(r => r.id === voice.reciterId);
         showToast(
@@ -173,7 +192,14 @@ export function SurahsScreen(): React.ReactElement {
         showToast(`No reciter has ${surahTitle(surahNumber)} yet.`, 'error');
         return;
       }
-      play(voice, 'surahs');
+      // A started surah (the tile's bar) picks up where it was left. The
+      // bars are the reciter's latest per surah in any recitation, so the
+      // resume follows that entry's recitation rather than the default one.
+      const resumed = resumeRequest(getContinueListening(), {
+        reciterId: voice.reciterId,
+        surahNumber,
+      });
+      play(resumed.startSeconds !== undefined ? resumed : voice, 'surahs');
     },
     [candidates, play],
   );
@@ -186,9 +212,12 @@ export function SurahsScreen(): React.ReactElement {
         reciterId: voice?.reciterId,
         rewayahId: voice?.rewayahId,
         origin: 'surahs',
+        // The menu's Play does what OK on the tile does: the filtered
+        // grid as the queue, the resume, the fallback toast.
+        onPlay: () => handleSelect(surahNumber),
       });
     },
-    [candidates],
+    [candidates, handleSelect],
   );
 
   function playShown(): void {
@@ -230,11 +259,13 @@ export function SurahsScreen(): React.ReactElement {
   function chooseFilter(next: SurahFilter): void {
     setFocusGridFirst(false);
     setFilter(next);
+    lastFilter = next;
   }
 
   function chooseJuz(next: number): void {
     setFocusGridFirst(false);
     setJuz(next);
+    lastJuz = next;
   }
 
   const renderItem = useCallback(
@@ -292,9 +323,7 @@ export function SurahsScreen(): React.ReactElement {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Surahs</Text>
-      </View>
+      <RootTitle title="Surahs" hint="Hold OK on a surah for more" />
       <View style={styles.chipBar}>
         <TVFocusGuideView autoFocus style={styles.chipRow}>
           {FILTERS.map(f => (
@@ -306,9 +335,12 @@ export function SurahsScreen(): React.ReactElement {
             />
           ))}
           <View style={styles.chipSpacer} />
+          {/* The screen's main action wears the outline; the reciter is a
+              setting beside it, plain until focused. */}
           <FocusableButton
             onPress={playShown}
             accessibilityLabel={playLabel}
+            outlined
             style={styles.actionChip}>
             <View style={styles.actionInner}>
               <FocusIcon icon={PlayIcon} size={18} />
@@ -323,7 +355,6 @@ export function SurahsScreen(): React.ReactElement {
               }}
               accessibilityLabel={`Reciter: ${reciter.name}. Change reciter`}
               hasTVPreferredFocus={focusReciterChip}
-              outlined
               style={[styles.actionChip, styles.reciterChip]}>
               <Text numberOfLines={1}>
                 <FocusText
@@ -388,6 +419,7 @@ export function SurahsScreen(): React.ReactElement {
           }
         />
       </TVFocusGuideView>
+      <RootClock />
     </View>
   );
 }
@@ -403,10 +435,16 @@ const styles = createScaledStyles({
   // Chips carry 18 px of side padding: pull the row out so their text lines
   // up with the title and the tiles.
   chipBar: {
+    marginTop: ROOT_TITLE_GAP,
     paddingHorizontal: BROWSE_GUTTER - 18,
     paddingBottom: spacing.xs,
   },
-  chipRow: {flexDirection: 'row', alignItems: 'center', gap: 8},
+  chipRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    minHeight: 64,
+  },
   chipSpacer: {flex: 1},
   actionChip: {
     paddingHorizontal: 20,

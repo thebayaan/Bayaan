@@ -1,9 +1,8 @@
 import React from 'react';
-import {Text, View} from 'react-native';
+import {StyleSheet, Text, View} from 'react-native';
 import {FocusableCard} from '../primitives/FocusableCard';
 import {FocusFrame, FocusText} from '../primitives/focusContext';
 import {GradientFill} from '../brand/GradientFill';
-import {SurahArtwork} from '../brand/SurahArtwork';
 import {SurahGlyph} from '../brand/SurahGlyph';
 import {ReciterPortrait} from '../browse/ReciterPortrait';
 import {PlusIcon} from './LibraryIcons';
@@ -11,6 +10,7 @@ import {HeartIcon, PlaylistIcon} from '../../../components/Icons';
 import {shortReciterName} from '../../services/listeningChoices';
 import {playlistGradient} from '../../services/playlistFormat';
 import {colors} from '../../theme/colors';
+import {surahGradient} from '../../theme/surahColors';
 import {fonts} from '../../theme/typography';
 import {createScaledStyles, scale} from '../../theme/scale';
 import type {Reciter} from '../../types/reciter';
@@ -40,8 +40,11 @@ type SurahProps = {
 };
 
 /**
- * A surah in one voice: the R2 surah card, the reciter's face in the top
- * right corner, and two lines below (name; voice, a heart when loved).
+ * A surah in one voice: its calligraphy large on the surah's pigment, the
+ * reciter's face in the top right corner, and two lines below (name; voice,
+ * a heart when loved). Not the R2 surah card: that card prints the name and
+ * meaning too, which the square slot shrank to unreadable and the label
+ * then repeated.
  */
 function ShelfSurahTileImpl({
   surahNumber,
@@ -73,11 +76,17 @@ function ShelfSurahTileImpl({
           width: scale(art + SHELF_RING * 2),
           height: scale(art + SHELF_RING * 2),
         }}>
-        <SurahArtwork
-          surahNumber={surahNumber}
-          glyphSize={Math.round(96 * ratio)}
+        <GradientFill
+          colors={surahGradient(surahNumber)}
           id={`${idPrefix}-${surahNumber}-${reciter?.id ?? 'x'}`}
         />
+        <View style={[styles.surahArt, {paddingTop: scale(badge / 2)}]}>
+          <SurahGlyph
+            surahNumber={surahNumber}
+            size={Math.round(150 * ratio)}
+            fitWidth={Math.round((SHELF_ART - 56) * ratio)}
+          />
+        </View>
         {reciter ? (
           <View
             style={[
@@ -153,6 +162,8 @@ type PlaylistProps = {
   firstSurah: number | null;
   caption: string;
   onPress: () => void;
+  /** Hold OK: the playlist's menu (play, shuffle, rename, delete). */
+  onLongPress?: () => void;
   hasTVPreferredFocus?: boolean;
   idPrefix: string;
 };
@@ -164,6 +175,7 @@ function ShelfPlaylistTileImpl({
   firstSurah,
   caption,
   onPress,
+  onLongPress,
   hasTVPreferredFocus,
   idPrefix,
 }: PlaylistProps): React.ReactElement {
@@ -172,13 +184,20 @@ function ShelfPlaylistTileImpl({
       ring={false}
       style={styles.card}
       onPress={onPress}
+      onLongPress={onLongPress}
       hasTVPreferredFocus={hasTVPreferredFocus}
-      accessibilityLabel={`Playlist ${name}, ${caption}`}>
+      accessibilityLabel={`Playlist ${name}, ${caption}${
+        onLongPress ? '. Hold OK for more' : ''
+      }`}>
       <FocusFrame radius={ART_RADIUS} style={styles.frame}>
         <GradientFill colors={playlistGradient(color)} id={idPrefix} />
         <View style={styles.playlistArt}>
           {firstSurah ? (
-            <SurahGlyph surahNumber={firstSurah} size={96} />
+            <SurahGlyph
+              surahNumber={firstSurah}
+              size={96}
+              fitWidth={SHELF_ART - 56}
+            />
           ) : (
             <PlaylistIcon color={colors.textSecondary} size={scale(64)} />
           )}
@@ -269,6 +288,11 @@ const styles = createScaledStyles({
     borderWidth: 3,
     borderColor: 'rgba(5,11,16,0.85)',
     backgroundColor: colors.surfaceElevated,
+  },
+  surahArt: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   playlistArt: {flex: 1, alignItems: 'center', justifyContent: 'center'},
   newArt: {

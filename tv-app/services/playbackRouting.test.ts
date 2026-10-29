@@ -55,6 +55,7 @@ import {
   shuffled,
   voiceForSurah,
 } from './playbackRouting';
+import {getContinueListening, recordProgress} from './continueListeningStore';
 import {useNavStore} from '../store/navStore';
 import {useTVPlayerStore} from '../store/tvPlayerStore';
 import type {AudioEngine, EngineEvent} from './audioEngine';
@@ -116,6 +117,46 @@ describe('playOrOpen', () => {
     expect(engine.load).not.toHaveBeenCalled();
     expect(engine.seek).not.toHaveBeenCalled();
     expect(stack()).toEqual([{screen: 'nowPlaying'}]);
+  });
+
+  it('Play on the current track while it is paused resumes it', async () => {
+    await playOrOpen({reciterId: 'r1', surahNumber: 2});
+    engine.emit({status: 'paused', positionSeconds: 30, durationSeconds: 60});
+    useNavStore.getState().pop();
+    (engine.play as jest.Mock).mockClear();
+    await playOrOpen({reciterId: 'r1', surahNumber: 2});
+    expect(engine.play).toHaveBeenCalledTimes(1);
+    expect(engine.load).toHaveBeenCalledTimes(1);
+    expect(stack()).toEqual([{screen: 'nowPlaying'}]);
+  });
+
+  it('Play on the current track while it is playing leaves it playing', async () => {
+    await playOrOpen({reciterId: 'r1', surahNumber: 2});
+    engine.emit({status: 'playing', positionSeconds: 30, durationSeconds: 60});
+    useNavStore.getState().pop();
+    (engine.play as jest.Mock).mockClear();
+    (engine.pause as jest.Mock).mockClear();
+    await playOrOpen({reciterId: 'r1', surahNumber: 2});
+    expect(engine.play).not.toHaveBeenCalled();
+    expect(engine.pause).not.toHaveBeenCalled();
+  });
+
+  it('a playlist whose first surah is playing loads the playlist, carrying on', async () => {
+    await playOrOpen({reciterId: 'r1', surahNumber: 1});
+    engine.emit({status: 'playing', positionSeconds: 30, durationSeconds: 60});
+    const playlist = [
+      {reciterId: 'r1', surahNumber: 1},
+      {reciterId: 'r2', surahNumber: 18},
+    ];
+    await playOrOpen({reciterId: 'r1', surahNumber: 1, queue: playlist});
+    const {queue, currentIndex} = useTVPlayerStore.getState();
+    expect(queue.map(q => q.surahNumber)).toEqual([1, 18]);
+    expect(currentIndex).toBe(0);
+    expect(engine.seek).toHaveBeenLastCalledWith(30);
+    // The same playlist again only opens the player.
+    (engine.load as jest.Mock).mockClear();
+    await playOrOpen({reciterId: 'r1', surahNumber: 1, queue: playlist});
+    expect(engine.load).not.toHaveBeenCalled();
   });
 
   it('a double press loads once and stacks one player', async () => {
@@ -233,6 +274,19 @@ describe('playOrOpen', () => {
     await playOrOpen({reciterId: 'nobody', surahNumber: 1});
     expect(useTVPlayerStore.getState().status).toBe('error');
     expect(stack()).toEqual([{screen: 'nowPlaying'}]);
+  });
+
+  it("drops an unknown reciter's Continue entry, which can never resume", async () => {
+    recordProgress({
+      reciterId: 'nobody',
+      rewayahId: 'x',
+      surahNumber: 1,
+      positionSeconds: 120,
+      durationSeconds: 600,
+    });
+    expect(getContinueListening()).toHaveLength(1);
+    await playOrOpen({reciterId: 'nobody', surahNumber: 1});
+    expect(getContinueListening()).toHaveLength(0);
   });
 
   it('pressing the finished track plays it again', async () => {

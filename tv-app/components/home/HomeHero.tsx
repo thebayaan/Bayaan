@@ -8,6 +8,7 @@ import {quranTextFontAvailable} from '../../theme/calligraphy';
 import {colors} from '../../theme/colors';
 import {fonts, quranTextFontFamily} from '../../theme/typography';
 import {createScaledStyles} from '../../theme/scale';
+import {RAIL_TOP_GAP} from './HomeRail';
 
 export type HeroArt =
   | {kind: 'surah'; surahNumber: number}
@@ -27,6 +28,10 @@ type Props = {
   preferredFocus: 'primary' | 'secondary' | null;
   /** Any of the hero's buttons took focus. */
   onFocus: () => void;
+  /** The primary button, for Home to focus when a rail it was in empties. */
+  primaryRef?: React.Ref<View>;
+  /** The secondary, for Home to focus on coming back from its picker. */
+  secondaryRef?: React.Ref<View>;
   /** Drawn above the kicker ("Now playing"). */
   header?: React.ReactNode;
   /** Drawn in the top right corner, scrolling with the hero (the clock). */
@@ -50,6 +55,8 @@ export function HomeHero({
   onSecondary,
   preferredFocus,
   onFocus,
+  primaryRef,
+  secondaryRef,
   header,
   corner,
 }: Props): React.ReactElement {
@@ -88,6 +95,7 @@ export function HomeHero({
             last one focused), never on whatever is geometrically nearest. */}
         <TVFocusGuideView autoFocus style={styles.actions}>
           <FocusableButton
+            ref={primaryRef}
             onPress={onPrimary}
             onFocus={onFocus}
             hasTVPreferredFocus={preferredFocus === 'primary'}
@@ -100,6 +108,7 @@ export function HomeHero({
             </View>
           </FocusableButton>
           <FocusableButton
+            ref={secondaryRef}
             onPress={onSecondary}
             onFocus={onFocus}
             hasTVPreferredFocus={preferredFocus === 'secondary'}
@@ -114,7 +123,16 @@ export function HomeHero({
 }
 
 const styles = createScaledStyles({
-  hero: {height: 440, justifyContent: 'center'},
+  // Grows past 440 when "Now playing" sits above the kicker, instead of
+  // pushing the strip into the top overscan and the buttons onto the first
+  // rail. The padding keeps the buttons clear of the screen's top edge when
+  // Home scrolls to that rail (RAIL_TOP_GAP), and leaves the hero without
+  // the strip exactly as it was (its content is shorter than 440 - 2 * 44).
+  hero: {
+    minHeight: 440,
+    paddingVertical: RAIL_TOP_GAP + 8,
+    justifyContent: 'center',
+  },
   corner: {position: 'absolute', top: 12, right: 0},
   art: {
     position: 'absolute',

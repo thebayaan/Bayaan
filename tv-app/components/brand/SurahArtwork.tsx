@@ -1,78 +1,62 @@
 import React, {useState} from 'react';
-import {
-  StyleSheet,
-  View,
-  type ImageStyle,
-  type LayoutChangeEvent,
-} from 'react-native';
-import {Image} from 'expo-image';
+import {StyleSheet, Text, View, type LayoutChangeEvent} from 'react-native';
 import {GradientFill} from './GradientFill';
 import {SurahGlyph} from './SurahGlyph';
+import {SURAHS} from '../../services/browseCatalog';
+import {showsSurahName, surahNameSize} from '../../services/surahArtwork';
+import {colors} from '../../theme/colors';
 import {surahGradient} from '../../theme/surahColors';
-import {surahArtworkZoom} from '../../services/surahArtworkZoom';
-
-/** The surah cards on R2 (1200 px, dark): the set shared surah links use. */
-const SURAH_ARTWORK_BASE = 'https://cdn.thebayaan.com/assets/og-images/surah/';
-
-export function surahArtworkUrl(surahNumber: number): string {
-  return `${SURAH_ARTWORK_BASE}${surahNumber}.png`;
-}
+import {fonts} from '../../theme/typography';
+import {scale, scaleFactor} from '../../theme/scale';
 
 type Props = {
   surahNumber: number;
-  /** Size of the calligraphy shown until (or unless) the card loads. */
+  /** Size of the calligraphy, in design pixels. */
   glyphSize: number;
-  /** Gradient id for the placeholder, unique per screen. */
+  /** Gradient id for the pigment, unique per screen. */
   id: string;
 };
 
 /**
- * A surah's artwork card from the CDN. The pigment and calligraphy sit underneath, so the slot is never
- * empty while the card loads or when the network is down. Fills its parent
- * and zooms the card in (surahArtworkZoom) so the calligraphy fills the slot.
+ * A surah's artwork, drawn rather than downloaded: its pigment gradient,
+ * the name in calligraphy and, in a slot wide enough, the transliterated
+ * name as real text. Every word on it is sharp at any size and on every
+ * platform (the old 1200 px share cards, decoded down to tile size, left
+ * their small print smeared), there is nothing to wait for or lose offline,
+ * and the English meaning stays with the places that print it below.
+ * Fills its parent.
  */
 export function SurahArtwork({
   surahNumber,
   glyphSize,
   id,
 }: Props): React.ReactElement {
-  const [zoom, setZoom] = useState(1);
+  const [named, setNamed] = useState(false);
   const onLayout = (e: LayoutChangeEvent): void => {
-    const {width, height} = e.nativeEvent.layout;
-    if (height > 0) setZoom(surahArtworkZoom(width / height));
+    setNamed(showsSurahName(e.nativeEvent.layout.width / scaleFactor));
   };
+  const name = SURAHS[surahNumber - 1]?.name;
   return (
     <View style={styles.fill} onLayout={onLayout}>
       <GradientFill colors={surahGradient(surahNumber)} id={id} />
       <SurahGlyph surahNumber={surahNumber} size={glyphSize} />
-      {/* Zoomed by layout, not a transform: expo-image decodes the 1200 px
-          card down to the view's laid-out size, so a transform would blow a
-          small bitmap back up (jagged text on Android). recyclingKey clears
-          a recycled grid cell at once instead of showing the last surah. */}
-      <Image
-        source={{uri: surahArtworkUrl(surahNumber)}}
-        style={zoomedFill(zoom)}
-        contentFit="cover"
-        cachePolicy="memory-disk"
-        recyclingKey={String(surahNumber)}
-        transition={200}
-        accessible={false}
-      />
+      {named && name ? (
+        <Text
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          accessible={false}
+          style={[
+            styles.name,
+            {
+              fontSize: scale(surahNameSize(glyphSize)),
+              marginTop: scale(-glyphSize * 0.12),
+            },
+          ]}>
+          {name}
+        </Text>
+      ) : null}
     </View>
   );
-}
-
-/** Fills the parent at `zoom` times its size, centred (parent clips). */
-function zoomedFill(zoom: number): ImageStyle {
-  const overflow = `${((zoom - 1) / 2) * -100}%` as const;
-  const size = `${zoom * 100}%` as const;
-  return {
-    position: 'absolute',
-    left: overflow,
-    top: overflow,
-    width: size,
-    height: size,
-  };
 }
 
 const styles = StyleSheet.create({
@@ -81,5 +65,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
+  },
+  name: {
+    color: colors.text,
+    fontFamily: fonts.bold,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+    textAlign: 'center',
+    paddingHorizontal: scale(14),
+    maxWidth: '100%',
   },
 });

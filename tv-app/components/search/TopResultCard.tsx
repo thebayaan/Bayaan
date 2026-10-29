@@ -1,5 +1,6 @@
-import React, {useEffect, useState} from 'react';
-import {Text, TVFocusGuideView, View} from 'react-native';
+import React, {createContext, useContext, useEffect, useState} from 'react';
+import {StyleSheet, Text, TVFocusGuideView, View} from 'react-native';
+import {Image} from 'expo-image';
 import {FocusableButton, FocusText} from '../primitives/FocusableButton';
 import {FocusIcon} from '../primitives/focusContext';
 import {SurahArtwork} from '../brand/SurahArtwork';
@@ -14,7 +15,12 @@ import {
 } from '../../../components/Icons';
 import type {SearchItem, VerseRef} from '../../services/search/tvSearch';
 import {pickRewayah} from '../../services/search/playback';
-import {adhkarCount, adhkarForList} from '../../services/adhkarData';
+import {
+  adhkarCount,
+  adhkarForList,
+  adhkarImageUrl,
+} from '../../services/adhkarData';
+import {rewayahLabel} from '../../services/listeningChoices';
 import {
   ADHKAR_WHEN,
   adhkarGradient,
@@ -47,7 +53,15 @@ type Props = {
   takeFocus: boolean;
   /** Focus "Choose reciter" instead (coming back from the picker). */
   focusChooser: boolean;
+  /**
+   * Handed the first (primary) button's view, for the focus guide that sends
+   * Right from the keyboard to it.
+   */
+  primaryRef?: React.Ref<View>;
 };
+
+/** The card's primary button takes this ref (one per card). */
+const PrimaryRef = createContext<React.Ref<View> | undefined>(undefined);
 
 /**
  * The best match, large, with the buttons its kind needs. The first button is
@@ -55,6 +69,14 @@ type Props = {
  * obvious thing.
  */
 export function TopResultCard(props: Props): React.ReactElement {
+  return (
+    <PrimaryRef.Provider value={props.primaryRef}>
+      <TopResultBody {...props} />
+    </PrimaryRef.Provider>
+  );
+}
+
+function TopResultBody(props: Props): React.ReactElement {
   const {top} = props;
   switch (top.type) {
     case 'surah':
@@ -140,7 +162,7 @@ function ReciterTop({
           <ReciterPortrait reciter={reciter} size={ART} idPrefix="search-top" />
         </View>
       }
-      eyebrow={['Top result · Reciter', rewayah?.name, rewayah?.style]
+      eyebrow={['Top result · Reciter', rewayahLabel(rewayah)]
         .filter(Boolean)
         .join(' · ')}
       title={reciter.name}
@@ -168,7 +190,7 @@ function ReciterTop({
         onPress={() => actions.openReciter(reciter)}
       />
       <Action
-        label={favorite ? 'Favorited' : 'Favorite'}
+        label={favorite ? 'Favourited' : 'Favourite'}
         icon={HeartIcon}
         filled={favorite}
         onPress={() => actions.favoriteReciter(reciter)}
@@ -178,8 +200,14 @@ function ReciterTop({
 }
 
 function AdhkarTop({top, actions, takeFocus}: Props): React.ReactElement {
+  // The hands glyph stands in until the list's illustration has loaded, and
+  // stays when it can't be (offline).
+  // Kept per list: another list's illustration may not be loaded (or
+  // loadable) yet.
+  const [loadedFor, setLoadedFor] = useState<string | null>(null);
   const list = top.type === 'adhkar' ? top.item : null;
   if (!list) return <View />;
+  const imageShown = loadedFor === list.id;
   const count = adhkarCount(list.id);
   const minutes = estimateMinutes(adhkarForList(list.id));
   return (
@@ -190,7 +218,19 @@ function AdhkarTop({top, actions, takeFocus}: Props): React.ReactElement {
             colors={adhkarGradient(list)}
             id={`search-top-${list.id}`}
           />
-          <HandsGlyph color={colors.text} size={scale(110)} />
+          {imageShown ? null : (
+            <HandsGlyph color={colors.text} size={scale(110)} />
+          )}
+          {/* The same illustration as the Browse tile and the Adhkar tab. */}
+          <Image
+            source={{uri: adhkarImageUrl(list.id)}}
+            style={[StyleSheet.absoluteFill, styles.adhkarImage]}
+            contentFit="cover"
+            cachePolicy="memory-disk"
+            transition={250}
+            accessible={false}
+            onLoad={() => setLoadedFor(list.id)}
+          />
         </View>
       }
       eyebrow="Top result · Adhkar"
@@ -247,19 +287,23 @@ function VerseTop({
   return (
     <Card
       art={
-        <View style={[styles.art, styles.verseArt]}>
+        <View style={styles.art}>
+          {/* The tile itself has no padding, so the gradient (sized from it)
+              reaches every edge; the padding is the verse's own. */}
           <GradientFill
             colors={surahGradient(verse.surah.id)}
             id={`search-top-v${verse.surah.id}`}
           />
-          <Text
-            style={[
-              styles.verseText,
-              quranTextFontAvailable && {fontFamily: quranTextFontFamily},
-            ]}
-            numberOfLines={5}>
-            {arabic}
-          </Text>
+          <View style={styles.verseFrame}>
+            <Text
+              style={[
+                styles.verseText,
+                quranTextFontAvailable && {fontFamily: quranTextFontFamily},
+              ]}
+              numberOfLines={VERSE_LINES}>
+              {arabic}
+            </Text>
+          </View>
         </View>
       }
       eyebrow={`Top result · ${verse.surah.name} · Verse ${verse.ayah}`}
@@ -358,13 +402,14 @@ function Action({
   focus?: boolean;
   onPress: () => void;
 }): React.ReactElement {
+  const primaryRef = useContext(PrimaryRef);
   return (
     <FocusableButton
+      ref={primary ? primaryRef : undefined}
       onPress={onPress}
       hasTVPreferredFocus={focus}
       accessibilityLabel={label}
-      outlined={primary}
-      style={[styles.action, !primary && styles.actionQuiet]}>
+      style={[styles.action, primary ? styles.actionMain : styles.actionQuiet]}>
       {icon ? <FocusIcon icon={icon} size={22} filled={filled} /> : null}
       <FocusText style={styles.actionText}>{label}</FocusText>
     </FocusableButton>
@@ -372,6 +417,8 @@ function Action({
 }
 
 const ART = 280;
+const VERSE_PAD = 22;
+const VERSE_LINES = 4;
 
 const styles = createScaledStyles({
   card: {flexDirection: 'row', gap: 40, alignItems: 'center'},
@@ -386,11 +433,19 @@ const styles = createScaledStyles({
     backgroundColor: colors.surfaceElevated,
   },
   round: {borderRadius: ART / 2},
-  verseArt: {padding: 22},
+  adhkarImage: {opacity: 0.85},
+  // Four lines of 48 fit the 236 left inside the padding; the frame clips
+  // anything a taller Quran face adds rather than let it run off the tile.
+  verseFrame: {
+    width: ART,
+    maxHeight: ART,
+    padding: VERSE_PAD,
+    overflow: 'hidden',
+  },
   verseText: {
     color: colors.text,
     fontSize: 30,
-    lineHeight: 54,
+    lineHeight: 48,
     textAlign: 'center',
     writingDirection: 'rtl',
   },
@@ -427,6 +482,9 @@ const styles = createScaledStyles({
     alignItems: 'center',
     gap: 12,
   },
+  // The main action wears only the faint divider line at rest, so the one
+  // cream thing on screen is the focus (Ink & Cream).
+  actionMain: {borderWidth: 2, borderColor: colors.border},
   actionQuiet: {paddingHorizontal: 22},
   actionText: {fontFamily: fonts.bold, fontSize: 22, fontWeight: '700'},
   note: {

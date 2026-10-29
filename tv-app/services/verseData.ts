@@ -6,7 +6,7 @@
  * timings stream per surah and are cached in MMKV, so a surah you've played
  * once works offline and opens instantly.
  */
-import {readJSON, writeJSON} from './storage';
+import {preload, readJSON, writeJSON} from './storage';
 import type {TimingEntry} from './verseTimeline';
 
 export const TIMESTAMP_CDN = 'https://cdn.thebayaan.com/timestamps';
@@ -17,6 +17,51 @@ export const DEFAULT_TRANSLATION = 'en.sahih';
 
 /** Don't re-ask the CDN about a surah it had no timings for until this passes. */
 const MISSING_RETRY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * How long a timings or translation request may take. React Native's
+ * Android networking has no timeout of its own, so on a half-open network
+ * (a captive portal) a request would otherwise hang for good.
+ */
+export const FETCH_TIMEOUT_MS = 10 * 1000;
+
+/** A timed-out request's error; reads as a connection problem. */
+export const TIMEOUT_MESSAGE = 'The request timed out';
+
+/**
+ * Runs a request (`run` fetches and reads the body) and fails it after
+ * `ms`, aborting the fetch where the runtime supports it.
+ */
+async function withTimeout<T>(
+  run: (signal: AbortSignal | undefined) => Promise<T>,
+  ms: number = FETCH_TIMEOUT_MS,
+): Promise<T> {
+  const controller =
+    typeof AbortController === 'undefined' ? null : new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      controller?.abort();
+      reject(new Error(TIMEOUT_MESSAGE));
+    }, ms);
+  });
+  try {
+    return await Promise.race([run(controller?.signal), timeout]);
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+  }
+}
+
+/**
+ * Saheeh International ends a verse that runs on into the next with " -",
+ * which on a verse shown alone reads like a stray character; it becomes a
+ * closed-up em dash.
+ */
+export function cleanTranslationText(text: string): string {
+  // A cached translation with a gap reads back null there (JSON has no holes).
+  if (typeof text !== 'string') return text;
+  return text.replace(/\s+[-–—]\s*$/, '—');
+}
 
 type QuranVerse = {surah_number: number; ayah_number: number; text: string};
 
@@ -79,18 +124,26 @@ export async function fetchTimings(
   fetchImpl: typeof fetch = fetch,
 ): Promise<TimingEntry[] | null> {
   const key = timingsKey(rewayahId, surahNumber);
+  await preload(key);
   const cached = readJSON<CachedTimings>(key);
   if (cached && 'entries' in cached) return cached.entries;
   if (cached && Date.now() - cached.missingAt < MISSING_RETRY_MS) return null;
 
   const padded = String(surahNumber).padStart(3, '0');
-  const res = await fetchImpl(`${TIMESTAMP_CDN}/${rewayahId}/${padded}.json`);
-  if (res.status === 404 || res.status === 403) {
+  const reply = await withTimeout(async signal => {
+    const res = await fetchImpl(
+      `${TIMESTAMP_CDN}/${rewayahId}/${padded}.json`,
+      {signal},
+    );
+    if (res.status === 404 || res.status === 403) return null;
+    if (!res.ok) throw new Error(`Timings request failed (${res.status})`);
+    return {json: (await res.json()) as unknown};
+  });
+  if (reply === null) {
     writeJSON<CachedTimings>(key, {missingAt: Date.now()});
     return null;
   }
-  if (!res.ok) throw new Error(`Timings request failed (${res.status})`);
-  const json: unknown = await res.json();
+  const {json} = reply;
   if (!Array.isArray(json) || json.length === 0 || !isTimingEntry(json[0])) {
     writeJSON<CachedTimings>(key, {missingAt: Date.now()});
     return null;
@@ -108,25 +161,32 @@ type TranslationResponse = {
   data?: {ayahs?: {numberInSurah: number; text: string}[]};
 };
 
-/** A surah's translation, verse 1 first. Thrown errors mean offline or down. */
+/**
+ * A surah's translation, verse 1 first, ready to show one verse at a time
+ * (see cleanTranslationText). Thrown errors mean offline or down.
+ */
 export async function fetchTranslation(
   edition: string,
   surahNumber: number,
   fetchImpl: typeof fetch = fetch,
 ): Promise<string[]> {
   const key = translationKey(edition, surahNumber);
+  await preload(key);
   const cached = readJSON<string[]>(key);
-  if (cached && cached.length > 0) return cached;
+  if (cached && cached.length > 0) return cached.map(cleanTranslationText);
 
-  const res = await fetchImpl(
-    `${TRANSLATION_API}/surah/${surahNumber}/${encodeURIComponent(edition)}`,
-  );
-  if (!res.ok) throw new Error(`Translation request failed (${res.status})`);
-  const json = (await res.json()) as TranslationResponse;
+  const json = await withTimeout(async signal => {
+    const res = await fetchImpl(
+      `${TRANSLATION_API}/surah/${surahNumber}/${encodeURIComponent(edition)}`,
+      {signal},
+    );
+    if (!res.ok) throw new Error(`Translation request failed (${res.status})`);
+    return (await res.json()) as TranslationResponse;
+  });
   const ayahs = json.data?.ayahs ?? [];
   const verses: string[] = [];
   for (const a of ayahs) verses[a.numberInSurah - 1] = a.text;
   if (verses.length === 0) throw new Error('Translation response was empty');
   writeJSON(key, verses);
-  return verses;
+  return verses.map(cleanTranslationText);
 }

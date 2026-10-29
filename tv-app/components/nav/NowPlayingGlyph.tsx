@@ -32,31 +32,41 @@ export function NowPlayingGlyph({state, focused}: Props): React.ReactElement {
   }
   if (state === 'resume') return <PlayIcon color={tint} size={scale(24)} />;
   if (state === 'finished') return <RepeatIcon color={tint} size={scale(26)} />;
-  return (
-    <LevelBars
-      moving={state === 'playing'}
-      dim={state === 'loading'}
-      tint={tint}
-    />
-  );
+  // Still bars are plain views: a stopped native-driver loop writes its
+  // last value back after any reset, which froze them at whatever height
+  // they stopped on (often three dots, read as "more", not "paused").
+  if (state !== 'playing') {
+    return <StillBars dim={state === 'loading'} tint={tint} />;
+  }
+  return <MovingBars tint={tint} />;
 }
 
-function LevelBars({
-  moving,
+function StillBars({
   dim,
   tint,
 }: {
-  moving: boolean;
   dim: boolean;
   tint: string;
 }): React.ReactElement {
+  return (
+    <View style={[styles.bars, dim && styles.dim]}>
+      {BARS.map((h, i) => (
+        <View
+          key={i}
+          style={[
+            styles.bar,
+            {backgroundColor: tint, transform: [{scaleY: h}]},
+          ]}
+        />
+      ))}
+    </View>
+  );
+}
+
+function MovingBars({tint}: {tint: string}): React.ReactElement {
   const values = useRef(BARS.map(h => new Animated.Value(h))).current;
 
   useEffect(() => {
-    if (!moving) {
-      values.forEach((v, i) => v.setValue(BARS[i]));
-      return;
-    }
     // Each bar rises and falls on its own period, so together they never
     // fall into step.
     const loops = values.map((v, i) =>
@@ -79,10 +89,10 @@ function LevelBars({
     );
     loops.forEach(l => l.start());
     return () => loops.forEach(l => l.stop());
-  }, [moving, values]);
+  }, [values]);
 
   return (
-    <View style={[styles.bars, dim && styles.dim]}>
+    <View style={styles.bars}>
       {values.map((v, i) => (
         <Animated.View
           key={i}

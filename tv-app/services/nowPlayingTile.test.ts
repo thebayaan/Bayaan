@@ -1,4 +1,8 @@
-import {nowPlayingTile, type TileInput} from './nowPlayingTile';
+import {
+  newestResumable,
+  nowPlayingTile,
+  type TileInput,
+} from './nowPlayingTile';
 
 const item = {title: 'Al-Baqarah', subtitle: 'Mishary Alafasi'};
 const entry = {
@@ -36,8 +40,23 @@ describe('nowPlayingTile', () => {
     expect(tile.detail).toBe('Now playing · Mishary Alafasi');
     expect(tile.progress).toBeCloseTo(0.25);
     expect(tile.accessibilityLabel).toBe(
-      'Now playing: Al-Baqarah. Open player.',
+      'Now playing: Al-Baqarah with Mishary Alafasi. Open player.',
     );
+  });
+
+  it('shortens a long reciter name on the second line only', () => {
+    const tile = nowPlayingTile(
+      input({item: {title: 'Al-Asr', subtitle: 'Mohammed Siddiq Al-Minshawi'}}),
+    )!;
+    expect(tile.detail).toBe('Now playing · Al-Minshawi');
+    expect(tile.accessibilityLabel).toContain('Mohammed Siddiq Al-Minshawi');
+  });
+
+  it('resumes a paused track on OK, as the Home strip does', () => {
+    const paused = nowPlayingTile(input({status: 'paused'}))!;
+    expect(paused.action).toBe('toggle');
+    expect(paused.accessibilityLabel).toMatch(/Resume\.$/);
+    expect(nowPlayingTile(input({status: 'loading'}))!.action).toBe('open');
   });
 
   it('reads paused, loading and buffering', () => {
@@ -49,8 +68,8 @@ describe('nowPlayingTile', () => {
 
   it('says what OK does after an error or the end of the queue', () => {
     const failed = nowPlayingTile(input({status: 'error'}))!;
-    expect(failed.detail).toBe("Couldn't play · Open to retry");
-    expect(failed.action).toBe('open');
+    expect(failed.detail).toBe("Couldn't play · Try again");
+    expect(failed.action).toBe('toggle');
     const done = nowPlayingTile(input({status: 'paused', finished: true}))!;
     expect(done.detail).toBe('Finished · Play again');
     expect(done.action).toBe('replay');
@@ -73,5 +92,13 @@ describe('nowPlayingTile', () => {
     expect(tile.action).toBe('resume');
     expect(tile.detail).toBe('Continue · Mishary Alafasi');
     expect(tile.progress).toBeCloseTo(0.25);
+  });
+});
+
+describe('newestResumable', () => {
+  it("skips entries whose reciter left the catalog, as Home's rail does", () => {
+    const gone = {...entry, reciterId: 'gone', updatedAt: 2};
+    expect(newestResumable([gone, entry], id => id === 'r1')).toBe(entry);
+    expect(newestResumable([gone], id => id === 'r1')).toBeNull();
   });
 });

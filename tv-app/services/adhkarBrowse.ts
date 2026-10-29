@@ -103,7 +103,8 @@ const GROUPS: readonly Omit<AdhkarGroup, 'label'>[] = [
 const LABELS: Record<AdhkarGroupId, string> = {
   daily: 'Daily',
   prayer: 'Prayer',
-  home: 'Home',
+  // Not "Home": that is the app's first place, in the sidebar.
+  home: 'At home',
   travel: 'Travel',
   hardship: 'Hardship',
   all: 'All',
@@ -144,7 +145,7 @@ export function groupLists(groupId: AdhkarGroupId): {
 }
 
 /** From this hour until the morning window, before-sleep adhkar fit best. */
-const BEFORE_SLEEP_HOUR = 21;
+export const BEFORE_SLEEP_HOUR = 21;
 
 /**
  * The list that fits the time: morning and evening by the phone's windows
@@ -159,13 +160,20 @@ export function nowListId(date: Date): string {
     : 'evening-adhkar';
 }
 
-/** A short line for the time of day, under the clock. */
+/**
+ * A short line for the time of day, under the clock: the same windows as
+ * the NOW list (nowListId), so the caption never contradicts it ("Morning"
+ * until 14:59, with the morning adhkar marked NOW).
+ */
 export function periodLabel(date: Date): string {
-  const hour = date.getHours();
-  if (hour < 4) return 'Night';
-  if (hour < 12) return 'Morning';
-  if (hour < 15) return 'Afternoon';
-  return hour < BEFORE_SLEEP_HOUR ? 'Evening' : 'Night';
+  switch (nowListId(date)) {
+    case 'morning-adhkar':
+      return 'Morning';
+    case 'evening-adhkar':
+      return 'Evening';
+    default:
+      return 'Night';
+  }
 }
 
 // Reading pace for the estimate: base letters per second, plus a breath
