@@ -5,7 +5,7 @@ import React, {
   useSyncExternalStore, // @ai
 } from 'react';
 import {View, Text, StyleSheet} from 'react-native';
-import {moderateScale, verticalScale} from 'react-native-size-matters';
+import {moderateScale, verticalScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {getAllahNameHighlightColorHex} from '@/constants/mushafAllahHighlight';

@@ -1,6 +1,6 @@
 import React from 'react';
 import {View, Text, Pressable, GestureResponderEvent} from 'react-native';
-import {ScaledSheet, moderateScale} from 'react-native-size-matters';
+import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {surahGlyphMap} from '@/utils/surahGlyphMap';
@@ -28,6 +28,8 @@ import {
   getSurahMeaning,
   localizeDigits,
 } from '@/i18n/format';
+import {surahRowA11yKeys, type SurahRowPressAction} from '@/utils/surahRowA11y';
+import {latinLetterSpacing} from '@/utils/rtl';
 // @ai-end
 
 interface SurahItemProps {
@@ -41,6 +43,13 @@ interface SurahItemProps {
   enableHaptics?: boolean;
   rewayatId?: string;
   rewayatName?: string;
+  /** What a tap does on this screen; sets the VoiceOver hint. @ai */
+  pressAction?: SurahRowPressAction;
+  /**
+   * iPad table layout (mockup L9): Revelation and Verses columns replace the
+   * place chip, and the text grows. Pair it with SurahTableHeader. @ai
+   */
+  tableColumns?: boolean;
 }
 
 // @ai-start
@@ -55,6 +64,8 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
     enableHaptics = false,
     rewayatId,
     rewayatName,
+    pressAction = 'play', // @ai
+    tableColumns = false, // @ai
   }) => {
     const {theme} = useTheme();
     const {t} = useTranslation(['home', 'common']);
@@ -170,6 +181,13 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
       [item, onOptionsPress, enableHaptics],
     );
 
+    // @ai-start
+    const a11yKeys = surahRowA11yKeys({
+      pressAction,
+      hasLongPress: !!onLongPress,
+    });
+    // @ai-end
+
     const revelationPlace = item.revelation_place.toLowerCase() as
       | 'makkah'
       | 'madinah';
@@ -190,7 +208,15 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
           ]
             .filter(Boolean)
             .join(t('surahItem.a11ySeparator'))}
-          accessibilityHint={t('surahItem.a11yPlayHint')}>
+          accessibilityHint={t(a11yKeys.hintKey)}
+          accessibilityActions={
+            a11yKeys.longPressLabelKey
+              ? [{name: 'longpress', label: t(a11yKeys.longPressLabelKey)}]
+              : undefined
+          }
+          onAccessibilityAction={e => {
+            if (e.nativeEvent.actionName === 'longpress') handleLongPress();
+          }}>
           <View
             style={styles.surahGlyphContainer}
             accessibilityElementsHidden={true}>
@@ -207,12 +233,15 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
             <View style={styles.nameContainer}>
               {isCurrentTrack ? (
                 <GradientText
-                  style={styles.surahName}
+                  style={[styles.surahName, tableColumns && styles.tableName]}
                   surahId={Number(item.id)}>
                   {titleText}
                 </GradientText>
               ) : (
-                <Text style={styles.surahName}>{titleText}</Text>
+                <Text
+                  style={[styles.surahName, tableColumns && styles.tableName]}>
+                  {titleText}
+                </Text>
               )}
               {isLoved && (
                 <HeartIcon
@@ -238,11 +267,15 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
                   style={styles.downloadIcon}
                 />
               ) : null}
-              <Text style={styles.surahSecondaryInfo}>
+              <Text
+                style={[
+                  styles.surahSecondaryInfo,
+                  tableColumns && styles.tableSecondary,
+                ]}>
                 {meaning ?? versesLabel}
               </Text>
             </View>
-            {rewayatName ? (
+            {tableColumns ? null : rewayatName ? (
               <Text style={styles.rewayatText}>{rewayatName}</Text>
             ) : (
               <View
@@ -278,6 +311,24 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
               </View>
             )}
           </View>
+          {tableColumns && (
+            <>
+              <Text
+                style={[styles.tableCell, styles.tableRevelation]}
+                accessibilityElementsHidden={true}>
+                {t(
+                  revelationPlace === 'makkah'
+                    ? 'surahItem.makkah'
+                    : 'surahItem.madinah',
+                )}
+              </Text>
+              <Text
+                style={[styles.tableCell, styles.tableVerses]}
+                accessibilityElementsHidden={true}>
+                {localizeDigits(item.verses_count)}
+              </Text>
+            </>
+          )}
         </Pressable>
 
         {/* Right zone - Options action */}
@@ -312,6 +363,43 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
 // @ai-end
 
 SurahItem.displayName = 'SurahItem';
+
+// @ai-start
+/**
+ * Column labels for SurahItem rows in `tableColumns` mode. It reuses the
+ * row's styles so the columns line up. `withOptions` reserves the options
+ * column when the rows have one.
+ */
+export function SurahTableHeader({
+  withOptions = true,
+}: {
+  withOptions?: boolean;
+}) {
+  const {theme} = useTheme();
+  const {t} = useTranslation('home');
+  const styles = createStyles(theme);
+  return (
+    <View
+      style={styles.surahItem}
+      accessibilityElementsHidden={true}
+      importantForAccessibility="no-hide-descendants">
+      <View style={[styles.playZone, styles.tableHeaderZone]}>
+        <View style={styles.tableHeaderLead} />
+        <Text style={[styles.tableHeaderText, styles.tableHeaderTitle]}>
+          {t('surahItem.columnSurah')}
+        </Text>
+        <Text style={[styles.tableHeaderText, styles.tableRevelation]}>
+          {t('surahItem.columnRevelation')}
+        </Text>
+        <Text style={[styles.tableHeaderText, styles.tableVerses]}>
+          {t('surahItem.columnVerses')}
+        </Text>
+      </View>
+      {withOptions && <View style={styles.optionsZone} />}
+    </View>
+  );
+}
+// @ai-end
 
 // @ai-start
 const createStyles = (theme: Theme) =>
@@ -401,6 +489,41 @@ const createStyles = (theme: Theme) =>
       fontFamily: theme.fonts.regular,
       color: theme.colors.textSecondary,
       marginTop: moderateScale(2),
+    },
+    // iPad table layout (tableColumns and SurahTableHeader), in points.
+    tableName: {
+      fontSize: 16,
+    },
+    tableSecondary: {
+      fontSize: 13,
+    },
+    tableCell: {
+      fontSize: 14,
+      fontFamily: 'Manrope-Medium',
+      color: theme.colors.text,
+    },
+    tableRevelation: {
+      width: 130,
+    },
+    tableVerses: {
+      width: 80,
+    },
+    tableHeaderZone: {
+      paddingVertical: moderateScale(6),
+    },
+    tableHeaderLead: {
+      width: moderateScale(64),
+    },
+    tableHeaderTitle: {
+      flex: 1,
+      marginStart: moderateScale(4),
+    },
+    tableHeaderText: {
+      fontSize: 12,
+      fontFamily: 'Manrope-SemiBold',
+      color: theme.colors.textSecondary,
+      textTransform: 'uppercase',
+      letterSpacing: latinLetterSpacing(0.8),
     },
   });
 // @ai-end

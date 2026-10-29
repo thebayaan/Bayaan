@@ -68,6 +68,26 @@ describe('parseQueuedCommands', () => {
 });
 
 describe('selectFreshCommands', () => {
+  // @ai-start
+  it('keeps an adhkar pause tapped after a surah play, in order', () => {
+    const queued: QueuedWidgetCommand[] = [
+      {
+        command: {type: 'setAdhkarPlayback', playing: false},
+        enqueuedAt: NOW - 3_000,
+      },
+      {command: {type: 'playReciter', reciterId: 'b'}, enqueuedAt: NOW - 2_000},
+      {
+        command: {type: 'setAdhkarPlayback', playing: true},
+        enqueuedAt: NOW - 1_000,
+      },
+    ];
+    expect(selectFreshCommands(queued, NOW)).toEqual([
+      {type: 'playReciter', reciterId: 'b'},
+      {type: 'setAdhkarPlayback', playing: true},
+    ]);
+  });
+  // @ai-end
+
   it('orders by enqueue time and keeps only the last play command', () => {
     const queued: QueuedWidgetCommand[] = [
       {command: {type: 'playReciter', reciterId: 'b'}, enqueuedAt: NOW - 1_000},

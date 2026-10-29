@@ -4,6 +4,7 @@
     "headerMeta": "صفحة {{page}} · الجزء {{juz}} · {{rewayah}}",
     "searchSurahs": "البحث في السور",
     "settings": "إعدادات المصحف",
+    "sharePage": "مشاركة الصفحة",
     "shareMessage": "اطّلع على الصفحة {{page}} من القرآن الكريم على {{appName}}",
     "loadFailedTitle": "تعذّر تحميل المصحف",
     "loadFailedBody": "تأكّد من توفّر مساحة تخزين كافية على جهازك، ثم حاول مجددًا.",

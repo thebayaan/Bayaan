@@ -7,6 +7,8 @@ export interface NativeBayaanWidgetsModule {
   writeSnapshot(json: string): void;
   reloadWidgets(kinds: string[]): void;
   takeQueuedCommands(): string;
+  // iOS only (absent on Android): newest enqueuedAt JS has handled. // @ai
+  markCommandsHandled?(through: number): void; // @ai
   takePendingTasbeeh(): string;
   takePendingWidgetEvents(): string;
   cacheArtwork(sourceUrl: string, fileName: string): Promise<boolean>;

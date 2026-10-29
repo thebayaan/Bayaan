@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
   type ScrollViewProps,
 } from 'react-native';
-import {moderateScale, verticalScale} from 'react-native-size-matters';
+import {moderateScale, verticalScale} from '@/utils/scale';
 import SegmentedControl from '@react-native-segmented-control/segmented-control';
 import {
   Canvas,
@@ -43,6 +43,7 @@ import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService
 import {rewayahBasmalaService} from '@/services/mushaf/RewayahBasmalaService'; // @ai
 import {latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
+import {useResponsive} from '@/hooks/useResponsive'; // @ai
 
 const PREVIEW_BA = '\u0628';
 
@@ -197,8 +198,8 @@ export const ReadingThemeContent: React.FC<ReadingThemeContentProps> = ({
     mushafRenderer === 'dk_indopak'
       ? 'DigitalKhattIndoPak'
       : mushafRenderer === 'dk_v1'
-      ? 'DigitalKhattV1'
-      : 'DigitalKhattV2';
+        ? 'DigitalKhattV1'
+        : 'DigitalKhattV2';
   const fontsReady =
     mushafPreloadService.initialized && digitalKhattDataService.initialized;
   const subscribedFontMgr = useMushafFontMgr();
@@ -256,6 +257,9 @@ export const ReadingThemeContent: React.FC<ReadingThemeContentProps> = ({
             <Pressable
               key={option.id}
               onPress={() => handleThemeSelect(option.id)}
+              accessibilityRole="radio" // @ai
+              accessibilityLabel={option.name} // @ai
+              accessibilityState={{checked: isSelected}} // @ai
               style={[
                 styles.colorChip,
                 {
@@ -314,7 +318,10 @@ const AndroidSegment: React.FC<{
               androidStyles.segmentButton,
               isActive && {backgroundColor: segActiveBg},
             ]}
-            onPress={() => onPress(seg)}>
+            onPress={() => onPress(seg)}
+            accessibilityRole="tab" // @ai
+            accessibilityState={{selected: isActive}} // @ai
+          >
             <Text
               style={[
                 androidStyles.segmentText,
@@ -360,6 +367,7 @@ interface MiniaturePreviewProps {
 
 const MiniaturePreview: React.FC<MiniaturePreviewProps> = React.memo(
   ({readingTheme, fontMgr, dkFontFamily}) => {
+    const {isTablet} = useResponsive();
     const [containerWidth, setContainerWidth] = useState(0);
     const handleLayout = useCallback(
       (e: {nativeEvent: {layout: {width: number}}}) => {
@@ -375,6 +383,9 @@ const MiniaturePreview: React.FC<MiniaturePreviewProps> = React.memo(
         onLayout={handleLayout}
         style={[
           previewStyles.container,
+          // The preview grows with its width, so the wider iPad sheet
+          // needs more than the phone's fixed height to show it whole.
+          isTablet ? {minHeight: PREVIEW_HEIGHT} : {height: PREVIEW_HEIGHT},
           {backgroundColor: readingTheme.colors.background},
         ]}>
         {containerWidth > 0 && fontMgr && (
@@ -635,7 +646,6 @@ const PREVIEW_HEIGHT = moderateScale(240);
 
 const previewStyles = StyleSheet.create({
   container: {
-    height: PREVIEW_HEIGHT,
     borderRadius: moderateScale(14),
     paddingVertical: moderateScale(10),
     paddingHorizontal: moderateScale(12),

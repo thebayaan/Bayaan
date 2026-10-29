@@ -36,14 +36,16 @@ import PageEdgeDecoration, {
   EDGE_BORDER_RADIUS,
   EDGE_HORIZONTAL_INSET,
 } from '../PageEdgeDecoration';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import {
   SCREEN_WIDTH,
   SCREEN_HEIGHT,
   PAGE_PADDING_HORIZONTAL,
   PAGE_PADDING_TOP,
   PAGE_PADDING_BOTTOM,
+  READING_COLUMN_MAX_WIDTH, // @ai
   getPageEdgeLayout,
+  readingColumnPadding, // @ai
 } from '../constants';
 // @ai-start
 import {useRewayahVerseUnits} from '@/hooks/useRewayahVerseUnits';
@@ -72,6 +74,14 @@ interface ReadingPageViewProps {
   bgColor: string;
   isBookLayout: boolean;
   onTap?: () => void;
+  // @ai-start
+  /**
+   * The pager item's size on iPad, where the text also sits in a centred
+   * reading column. Phones leave it out and keep the launch-time screen
+   * size.
+   */
+  pageSize?: {width: number; height: number};
+  // @ai-end
 }
 
 // @ai-start
@@ -87,6 +97,7 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
   bgColor,
   isBookLayout,
   onTap,
+  pageSize,
 }) => {
   const {theme} = useTheme();
   const insets = useSafeAreaInsets();
@@ -196,17 +207,34 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
     [pageNumber],
   );
 
+  const pageWidth = pageSize?.width ?? SCREEN_WIDTH;
+  const pageHeight = pageSize?.height ?? SCREEN_HEIGHT;
+
   // Content area horizontal padding for the ScrollView
   const bookContentPadding = moderateScale(12);
   const contentHorizontalPadding = isBookLayout
     ? bookContentPadding
-    : PAGE_PADDING_HORIZONTAL + 8;
+    : pageSize
+      ? readingColumnPadding(pageWidth, PAGE_PADDING_HORIZONTAL + 8)
+      : PAGE_PADDING_HORIZONTAL + 8;
+
+  // Book layout on iPad: the card holds the reading column and is centred
+  // in the item with all four corners rounded, like a single mushaf page.
+  const sheetWidth = pageSize
+    ? Math.min(
+        pageWidth,
+        READING_COLUMN_MAX_WIDTH +
+          (bookContentPadding + EDGE_HORIZONTAL_INSET) * 2,
+      )
+    : pageWidth;
+  const symmetricEdges = sheetWidth < pageWidth;
 
   // Width available for SurahDivider / content items
-  const cardWidth = SCREEN_WIDTH - EDGE_HORIZONTAL_INSET;
+  const cardWidth =
+    sheetWidth - EDGE_HORIZONTAL_INSET * (symmetricEdges ? 2 : 1);
   const contentItemWidth = isBookLayout
     ? cardWidth - bookContentPadding * 2
-    : SCREEN_WIDTH - contentHorizontalPadding * 2;
+    : pageWidth - contentHorizontalPadding * 2;
 
   // Load annotations for the first surah on this page so
   // bookmark icons and highlights render correctly
@@ -393,12 +421,13 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
 
   return (
     <View
-      style={[
-        styles.page,
-        {backgroundColor: isBookLayout ? bgColor : cardColor},
-      ]}>
+      style={{
+        width: pageWidth,
+        height: pageHeight,
+        backgroundColor: isBookLayout ? bgColor : cardColor,
+      }}>
       {isBookLayout ? (
-        <>
+        <View style={[styles.sheet, {width: sheetWidth}]}>
           <View
             style={[
               styles.bookCard,
@@ -407,19 +436,25 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
                 bottom: insets.top,
                 backgroundColor: cardColor,
               },
-              isRightPage
+              symmetricEdges
                 ? {
-                    left: 0,
-                    right: EDGE_HORIZONTAL_INSET,
-                    borderTopRightRadius: EDGE_BORDER_RADIUS,
-                    borderBottomRightRadius: EDGE_BORDER_RADIUS,
-                  }
-                : {
                     left: EDGE_HORIZONTAL_INSET,
-                    right: 0,
-                    borderTopLeftRadius: EDGE_BORDER_RADIUS,
-                    borderBottomLeftRadius: EDGE_BORDER_RADIUS,
-                  },
+                    right: EDGE_HORIZONTAL_INSET,
+                    borderRadius: EDGE_BORDER_RADIUS,
+                  }
+                : isRightPage
+                  ? {
+                      left: 0,
+                      right: EDGE_HORIZONTAL_INSET,
+                      borderTopRightRadius: EDGE_BORDER_RADIUS,
+                      borderBottomRightRadius: EDGE_BORDER_RADIUS,
+                    }
+                  : {
+                      left: EDGE_HORIZONTAL_INSET,
+                      right: 0,
+                      borderTopLeftRadius: EDGE_BORDER_RADIUS,
+                      borderBottomLeftRadius: EDGE_BORDER_RADIUS,
+                    },
             ]}>
             <ScrollView
               ref={scrollViewRef}
@@ -438,8 +473,9 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
             isRightPage={isRightPage}
             borderColor={borderColor}
             pageColor={cardColor}
+            symmetric={symmetricEdges}
           />
-        </>
+        </View>
       ) : (
         <ScrollView
           ref={scrollViewRef}
@@ -460,9 +496,9 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
 // @ai-end
 
 const styles = StyleSheet.create({
-  page: {
-    width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT,
+  sheet: {
+    height: '100%',
+    alignSelf: 'center',
   },
   bookCard: {
     position: 'absolute',

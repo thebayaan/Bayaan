@@ -14,7 +14,7 @@ import {
   Image,
   ScrollView,
 } from 'react-native';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Ionicons} from '@expo/vector-icons';
 import {ChangelogEntry} from '@/types/changelog';
