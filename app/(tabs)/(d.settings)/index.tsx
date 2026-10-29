@@ -1,8 +1,8 @@
 import React, {useMemo} from 'react';
-import {Text, Pressable, ScrollView, View, Linking, Switch} from 'react-native';
+import {Text, Pressable, ScrollView, View, Switch} from 'react-native';
 import {useRouter} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
-import {ScaledSheet, moderateScale} from 'react-native-size-matters';
+import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {Theme} from '@/utils/themeUtils';
 import {Feather, MaterialIcons} from '@expo/vector-icons';
 import {clearPlayerCache} from '@/services/player/utils/storage';
@@ -11,22 +11,6 @@ import {useBottomInset} from '@/hooks/useBottomInset';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
 import {GlassView} from 'expo-glass-effect';
-import {openAppStoreForReview, markAsRated} from '@/utils/reviewUtils';
-import {
-  QuranIcon,
-  DualPagesIcon,
-  PersonAudioIcon,
-  SelectionListIcon,
-  DatabaseIcon,
-  ThreeStarsReviewIcon,
-  LightbulbIcon,
-  ChatBubbleIcon,
-  GiftBoxIcon,
-  InfoRoundedIcon,
-  MedalIcon,
-  DocCheckIcon,
-  ShieldLockIcon,
-} from '@/components/Icons';
 import {useDevSettingsStore} from '@/store/devSettingsStore';
 import {useAnalyticsConsentStore} from '@/store/analyticsConsentStore';
 import {ThemePicker} from '@/components/settings/ThemePicker';
@@ -34,173 +18,18 @@ import branding from '@/config/branding';
 // @ai-start
 import {flipX, latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
-import type {TFunction} from 'i18next';
+import {useResponsive} from '@/hooks/useResponsive';
+import {
+  SETTINGS_SPLIT_MIN_WIDTH,
+  customIconMap,
+  getSettingsSections,
+  isExternalLink,
+  openSettingsItem,
+  settingsHref,
+} from '@/components/settings/settingsItems';
+import {TabletSettingsHome} from '@/components/settings/TabletSettingsList';
+import MushafSettingsScreen from './mushaf-settings';
 // @ai-end
-
-const isExternalLink = (type: string): boolean => {
-  return [
-    'support',
-    'featureRequest',
-    'terms',
-    'privacy',
-    'rateApp',
-    'github',
-  ].includes(type);
-};
-
-// @ai-start
-const getSettingsSections = (t: TFunction<['settings', 'common']>) => {
-  const appName = branding.appName;
-  return [
-    {
-      section: t('settings:index.sections.quran'),
-      items: [
-        {
-          title: t('settings:index.items.mushafSettings.title'),
-          type: 'mushafSettings',
-          description: t('settings:index.items.mushafSettings.description'),
-          icon: 'quran',
-          iconType: 'custom',
-        },
-        {
-          title: t('settings:index.items.translations.title'),
-          type: 'translations',
-          description: t('settings:index.items.translations.description'),
-          icon: 'dualPages',
-          iconType: 'custom',
-        },
-      ],
-    },
-    {
-      section: t('settings:index.sections.audio'),
-      items: [
-        {
-          title: t('settings:index.items.defaultReciter.title'),
-          type: 'defaultReciter',
-          description: t('settings:index.items.defaultReciter.description'),
-          icon: 'personAudio',
-          iconType: 'custom',
-        },
-        {
-          title: t('settings:index.items.reciterChoice.title'),
-          type: 'reciterChoice',
-          description: t('settings:index.items.reciterChoice.description'),
-          icon: 'selectionList',
-          iconType: 'custom',
-        },
-      ],
-    },
-    {
-      section: t('settings:index.sections.appData'),
-      items: [
-        {
-          title: t('common:language.title'),
-          type: 'language',
-          description: t('common:language.description'),
-          icon: 'globe',
-          iconType: 'feather',
-        },
-        {
-          title: t('settings:index.items.storage.title'),
-          type: 'storage',
-          description: t('settings:index.items.storage.description'),
-          icon: 'database',
-          iconType: 'custom',
-        },
-      ],
-    },
-    {
-      section: t('settings:index.sections.feedback'),
-      items: [
-        {
-          title: t('settings:index.items.rateApp.title'),
-          type: 'rateApp',
-          description: t('settings:index.items.rateApp.description'),
-          icon: 'star',
-          iconType: 'custom',
-        },
-        {
-          title: t('settings:index.items.featureRequest.title'),
-          type: 'featureRequest',
-          description: t('settings:index.items.featureRequest.description'),
-          icon: 'lightbulb',
-          iconType: 'custom',
-        },
-        {
-          title: t('settings:index.items.support.title'),
-          type: 'support',
-          description: t('settings:index.items.support.description', {appName}),
-          icon: 'chatBubble',
-          iconType: 'custom',
-        },
-      ],
-    },
-    {
-      section: t('settings:index.sections.about', {appName}),
-      items: [
-        {
-          title: t('settings:index.items.whatsNew.title'),
-          type: 'whatsNew',
-          description: t('settings:index.items.whatsNew.description'),
-          icon: 'giftBox',
-          iconType: 'custom',
-        },
-        {
-          title: t('settings:index.items.about.title', {appName}),
-          type: 'about',
-          description: t('settings:index.items.about.description'),
-          icon: 'infoRounded',
-          iconType: 'custom',
-        },
-        {
-          title: t('settings:index.items.credits.title'),
-          type: 'credits',
-          description: t('settings:index.items.credits.description'),
-          icon: 'medal',
-          iconType: 'custom',
-        },
-        {
-          title: t('settings:index.items.github.title'),
-          type: 'github',
-          description: t('settings:index.items.github.description', {appName}),
-          icon: 'github',
-          iconType: 'feather',
-        },
-        {
-          title: t('settings:index.items.terms.title'),
-          type: 'terms',
-          description: t('settings:index.items.terms.description'),
-          icon: 'docCheck',
-          iconType: 'custom',
-        },
-        {
-          title: t('settings:index.items.privacy.title'),
-          type: 'privacy',
-          description: t('settings:index.items.privacy.description'),
-          icon: 'shieldLock',
-          iconType: 'custom',
-        },
-      ],
-    },
-  ];
-};
-// @ai-end
-
-const customIconMap: Record<string, React.FC<{size: number; color: string}>> = {
-  quran: QuranIcon,
-  dualPages: DualPagesIcon,
-  personAudio: PersonAudioIcon,
-  selectionList: SelectionListIcon,
-  database: DatabaseIcon,
-  star: ThreeStarsReviewIcon,
-  lightbulb: LightbulbIcon,
-  chatBubble: ChatBubbleIcon,
-  giftBox: GiftBoxIcon,
-  infoRounded: InfoRoundedIcon,
-  medal: MedalIcon,
-  docCheck: DocCheckIcon,
-  shieldLock: ShieldLockIcon,
-};
 
 const renderIcon = (
   item: {icon: string; iconType: string},
@@ -231,7 +60,23 @@ const renderIcon = (
 };
 
 // @ai-start
+/**
+ * On iPad, wide windows show the list beside the page, so this first screen
+ * of the stack is the default page there; narrower ones show the iPad list.
+ */
 export default function SettingsScreen() {
+  const {isTablet, width} = useResponsive();
+  if (!isTablet) {
+    return <PhoneSettingsScreen />;
+  }
+  return width >= SETTINGS_SPLIT_MIN_WIDTH ? (
+    <MushafSettingsScreen />
+  ) : (
+    <TabletSettingsHome />
+  );
+}
+
+function PhoneSettingsScreen() {
   const router = useRouter();
   const {theme} = useTheme();
   const bottomInset = useBottomInset();
@@ -261,59 +106,13 @@ export default function SettingsScreen() {
   );
 
   const handleSettingPress = async (type: string) => {
-    switch (type) {
-      case 'mushafSettings':
-        router.push('/(d.settings)/mushaf-settings');
-        break;
-      case 'translations':
-        router.push('/(d.settings)/translations');
-        break;
-      case 'defaultReciter':
-        router.push('/(d.settings)/default-reciter');
-        break;
-      case 'reciterChoice':
-        router.push('/(d.settings)/reciter-choice');
-        break;
-      case 'language':
-        router.push('/(d.settings)/language');
-        break;
-      case 'storage':
-        router.push('/(d.settings)/storage');
-        break;
-      case 'clearCache':
-        await clearPlayerCache();
-        break;
-      case 'rateApp':
-        await markAsRated();
-        await openAppStoreForReview();
-        break;
-      case 'whatsNew':
-        router.push('/(d.settings)/whats-new');
-        break;
-      case 'support':
-        await Linking.openURL(branding.supportUrl);
-        break;
-      case 'featureRequest':
-        await Linking.openURL(branding.supportUrl);
-        break;
-      case 'terms':
-        await Linking.openURL(branding.termsUrl);
-        break;
-      case 'privacy':
-        await Linking.openURL(branding.privacyUrl);
-        break;
-      case 'about':
-        router.push('/(d.settings)/about');
-        break;
-      case 'credits':
-        router.push('/(d.settings)/credits');
-        break;
-      case 'github':
-        await Linking.openURL('https://github.com/thebayaan/Bayaan');
-        break;
-      default:
-        break;
+    if (type === 'clearCache') {
+      await clearPlayerCache();
+      return;
     }
+    await openSettingsItem(type, routeName =>
+      router.push(settingsHref(routeName)),
+    );
   };
 
   // iOS 26+ NativeTabs: automatic content insets handle top/bottom; manual

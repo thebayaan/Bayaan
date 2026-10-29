@@ -4,6 +4,7 @@
     "headerMeta": "Page {{page}} · Juz {{juz}} · {{rewayah}}",
     "searchSurahs": "Search surahs",
     "settings": "Mushaf settings",
+    "sharePage": "Share page",
     "shareMessage": "Check out page {{page}} of the Quran on {{appName}}",
     "loadFailedTitle": "Couldn't load the mushaf",
     "loadFailedBody": "Check that your device has some free storage, then try again.",

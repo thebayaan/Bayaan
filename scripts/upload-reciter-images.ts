@@ -18,6 +18,7 @@
  *
  * Optional env (falls back to defaults):
  *   BAYAAN_API_URL       — Backend base URL (default: production Railway URL)
+ *   CDN_BASE             — Public base URL of the audio bucket
  *
  * Behaviour:
  *   - Parses utils/reciterImages.ts to build slug → filename mapping
@@ -111,7 +112,10 @@ const API_URL =
 const DRY_RUN = process.argv.includes('--dry-run');
 
 const R2_BUCKET = 'bayaan-audio';
-const CDN_BASE = 'https://cdn.example.com';
+const CDN_BASE = (process.env.CDN_BASE ?? 'https://cdn.example.com').replace(
+  /\/$/,
+  '',
+);
 const R2_KEY_PREFIX = 'assets/reciter-images';
 const PAGE_LIMIT = 200;
 

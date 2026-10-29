@@ -1,15 +1,9 @@
 import React, {useCallback, useMemo} from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  ToastAndroid,
-  Platform,
-} from 'react-native';
+import {View, Text, StyleSheet, Pressable} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
-import {moderateScale, verticalScale} from 'react-native-size-matters';
+import {moderateScale, verticalScale} from '@/utils/scale';
 import {pickRandomRecitations} from '@/utils/randomRecitation';
+import {showToast} from '@/utils/toastUtils'; // @ai
 import * as Haptics from 'expo-haptics';
 import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {createTracksForReciter} from '@/utils/track';
@@ -31,12 +25,6 @@ import {latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
 import {getReciterDisplayName, getSurahDisplayName} from '@/i18n/format';
 // @ai-end
-
-function showToast(message: string) {
-  if (Platform.OS === 'android') {
-    ToastAndroid.show(message, ToastAndroid.SHORT);
-  }
-}
 
 interface RandomRecitationHeroProps {
   style?: object;
@@ -78,11 +66,9 @@ export function RandomRecitationHero({
   const handleRandomPlay = useCallback(async () => {
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      showToast(t('randomHero.finding'));
-
       const picks = pickRandomRecitations(15);
       if (picks.length === 0) {
-        showToast(t('randomHero.findFailed'));
+        showToast(t('randomHero.findFailed'), undefined, 'error'); // @ai
         return;
       }
 
@@ -106,7 +92,7 @@ export function RandomRecitationHero({
       await startNewChain(reciter, surah, 0, 0, rewayatId);
     } catch (error) {
       console.error('Error playing random recitation:', error);
-      showToast(t('randomHero.playFailed'));
+      showToast(t('randomHero.playFailed'), undefined, 'error'); // @ai
     }
   }, [updateQueue, play, startNewChain, t]);
 

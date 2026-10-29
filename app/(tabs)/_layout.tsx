@@ -206,7 +206,7 @@ function AndroidTabs() {
 // @ai-end
 
 /**
- * Tablet shell: leading sidebar (rail in portrait, labeled in landscape)
+ * Tablet shell: leading sidebar (icon rail below 900pt wide, labelled from 900pt)
  * with the mini player docked in the sidebar footer. Replaces both the iOS
  * NativeTabs and the Android floating pill when `isTablet` is true.
  */

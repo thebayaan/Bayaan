@@ -1,6 +1,9 @@
 PODS:
   - BayaanCar (1.0.0):
     - ExpoModulesCore
+  - BayaanKeyboard (1.0.0):
+    - ExpoModulesCore
+    - React-Core
   - BayaanWidgets (0.1.0):
     - ExpoModulesCore
   - Burnt (0.13.0):
@@ -2765,6 +2768,7 @@ PODS:
 
 DEPENDENCIES:
   - BayaanCar (from `../modules/bayaan-car/ios`)
+  - BayaanKeyboard (from `../modules/bayaan-keyboard/ios`)
   - BayaanWidgets (from `../modules/bayaan-widgets/ios`)
   - Burnt (from `../node_modules/burnt/ios`)
   - EASClient (from `../node_modules/expo-eas-client/ios`)
@@ -2922,6 +2926,8 @@ SPEC REPOS:
 EXTERNAL SOURCES:
   BayaanCar:
     :path: "../modules/bayaan-car/ios"
+  BayaanKeyboard:
+    :path: "../modules/bayaan-keyboard/ios"
   BayaanWidgets:
     :path: "../modules/bayaan-widgets/ios"
   Burnt:
@@ -3214,6 +3220,7 @@ EXTERNAL SOURCES:
 
 SPEC CHECKSUMS:
   BayaanCar: 61579859b861a8460d5edaf3a962d43efdba4e13
+  BayaanKeyboard: 4f8a866e2d0c920709d3eabe7be01ccd155a4d8c
   BayaanWidgets: 393454ec6630b0903957462f90e8bd6e42df19f6
   Burnt: 0616363a206ed96ba9af3e2eb0e184dc97be1458
   EASClient: c0ccc7ee5d3da785fbbd8c87b881d151a7428742

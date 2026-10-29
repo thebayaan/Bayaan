@@ -1,7 +1,7 @@
 import React from 'react';
 import {Text, TouchableOpacity, View, StyleSheet} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
-import {moderateScale, verticalScale} from 'react-native-size-matters';
+import {moderateScale, verticalScale} from '@/utils/scale';
 import {HeartIcon} from '@/components/Icons';
 import Color from 'color';
 // @ai-start

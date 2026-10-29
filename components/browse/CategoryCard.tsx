@@ -5,7 +5,7 @@ import {
   StyleSheet,
   useWindowDimensions,
 } from 'react-native';
-import {moderateScale, scale} from 'react-native-size-matters';
+import {moderateScale, scale} from '@/utils/scale';
 import {LinearGradient} from 'expo-linear-gradient';
 import Color from 'color';
 

@@ -12,7 +12,7 @@ import {USE_GLASS} from '@/hooks/useGlassProps';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useRouter} from 'expo-router';
 import {useFocusEffect} from 'expo-router';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import {Feather} from '@expo/vector-icons';
 import {ListRenderItem} from 'react-native';
 import {getSurahById} from '@/services/dataService';
@@ -31,6 +31,8 @@ import {getSurahDisplayName} from '@/i18n/format';
 import {flipX} from '@/utils/rtl';
 import {describeSavedVerseNow} from '@/hooks/useSavedVerseDescription';
 import {savedVerseSubtitle} from '@/services/verse-annotations/unitAnnotations';
+import {savedVerseOpenParams} from '@/services/verse-annotations/openSavedVerse'; // @ai
+import {useLibraryListBottomPadding} from '@/hooks/useBottomInset'; // @ai
 // @ai-end
 
 interface NoteData {
@@ -41,6 +43,7 @@ interface NoteData {
 // @ai-start
 const NotesScreen = () => {
   const {theme} = useTheme();
+  const listBottomPadding = useLibraryListBottomPadding(); // @ai
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const {t} = useTranslation(['collection', 'common']);
@@ -109,6 +112,25 @@ const NotesScreen = () => {
     });
   }, []);
 
+  // @ai-start
+  const openingRef = useRef(false);
+  const handleOpenVerse = useCallback(
+    async (note: VerseNote) => {
+      if (openingRef.current) return;
+      openingRef.current = true;
+      try {
+        router.push({
+          pathname: '/mushaf',
+          params: await savedVerseOpenParams(note),
+        });
+      } finally {
+        openingRef.current = false;
+      }
+    },
+    [router],
+  );
+  // @ai-end
+
   const handleOptionsPress = useCallback(
     (item: NoteData) => {
       SheetManager.show('collection-options', {
@@ -121,6 +143,13 @@ const NotesScreen = () => {
             number => t('common:labels.ayahNumber', {number}),
           ),
           options: [
+            // @ai-start
+            {
+              label: t('notesScreen.openVerse'),
+              icon: 'book-open',
+              onPress: () => handleOpenVerse(item.note),
+            },
+            // @ai-end
             {
               label: t('notesScreen.editNote'),
               icon: 'edit-2',
@@ -136,7 +165,7 @@ const NotesScreen = () => {
         },
       });
     },
-    [handleDeleteNote, handleNotePress, t],
+    [handleDeleteNote, handleNotePress, handleOpenVerse, t],
   );
 
   const heroOuterBg = Color(theme.colors.textSecondary).alpha(0.1).toString();
@@ -299,7 +328,10 @@ const NotesScreen = () => {
         renderItem={renderItem}
         keyExtractor={getItemKey}
         ListHeaderComponent={ListHeaderComponent}
-        contentContainerStyle={styles.listContentContainer}
+        contentContainerStyle={[
+          styles.listContentContainer,
+          {paddingBottom: listBottomPadding}, // @ai
+        ]}
         onScroll={RNAnimated.event(
           [{nativeEvent: {contentOffset: {y: scrollY}}}],
           {useNativeDriver: true},
@@ -358,7 +390,6 @@ const styles = StyleSheet.create({
   },
   listContentContainer: {
     flexGrow: 1,
-    paddingBottom: moderateScale(65),
   },
   fixedBackButton: {
     position: 'absolute',

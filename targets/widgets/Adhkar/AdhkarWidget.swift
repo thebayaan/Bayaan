@@ -96,6 +96,14 @@ struct AdhkarView: View {
       Spacer(minLength: 0)
     }
     .padding(12)
+    // @ai-start
+    // Plays the period's adhkar audio from this dhikr, even with the app closed.
+    .overlay(alignment: .bottomTrailing) {
+      RoundIntentButton(
+        intent: PlayAdhkarIntent(superId: data.superId, dhikrId: dhikr.id), systemName: "play.fill", label: "Listen")
+        .padding(8)
+    }
+    // @ai-end
   }
 }
 

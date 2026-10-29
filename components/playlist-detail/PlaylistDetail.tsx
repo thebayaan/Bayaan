@@ -16,7 +16,7 @@ import {Surah} from '@/data/surahData';
 import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {createTrack, createUserUploadTrack} from '@/utils/track';
 import {useUploadsStore} from '@/store/uploadsStore';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import {Feather} from '@expo/vector-icons';
 import {PlaylistHeader} from './PlaylistHeader';
 import {SheetManager} from 'react-native-actions-sheet';
@@ -28,6 +28,7 @@ import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
 import {USE_GLASS} from '@/hooks/useGlassProps';
 // @ai-start
 import {useTranslation} from 'react-i18next';
+import {useLibraryListBottomPadding} from '@/hooks/useBottomInset'; // @ai
 // @ai-end
 
 interface PlaylistTrack {
@@ -53,6 +54,7 @@ interface PlaylistDetailProps {
 // @ai-start
 const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
   const {theme} = useTheme();
+  const listBottomPadding = useLibraryListBottomPadding(); // @ai
   const router = useRouter();
   const {t} = useTranslation(['collection', 'common']);
   const {
@@ -79,7 +81,6 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
     },
     listContentContainer: {
       flexGrow: 1,
-      paddingBottom: moderateScale(65),
     },
     emptyText: {
       fontSize: moderateScale(16),
@@ -437,7 +438,10 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
         renderItem={renderItem}
         keyExtractor={item => item.track.id}
         ListHeaderComponent={ListHeaderComponent}
-        contentContainerStyle={styles.listContentContainer}
+        contentContainerStyle={[
+          styles.listContentContainer,
+          {paddingBottom: listBottomPadding}, // @ai
+        ]}
         contentInsetAdjustmentBehavior="automatic"
         ListEmptyComponent={
           <Text style={styles.emptyText}>{t('playlistDetail.empty')}</Text>

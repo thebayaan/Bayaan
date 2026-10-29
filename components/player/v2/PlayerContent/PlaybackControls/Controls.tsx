@@ -1,6 +1,6 @@
 import React, {useCallback, useState} from 'react';
 import {View, Pressable, Text, StyleSheet} from 'react-native';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {usePlayerStore} from '@/services/player/store/playerStore';
@@ -15,6 +15,7 @@ import {
 // @ai-start
 import {localizeDigits} from '@/i18n/format';
 import {forceLTR} from '@/utils/rtl';
+import {usePlayerA11y} from '@/hooks/usePlayerA11y'; // @ai
 // @ai-end
 
 const SEEK_INTERVAL = 15; // seconds
@@ -22,6 +23,7 @@ const SEEK_INTERVAL = 15; // seconds
 // @ai-start
 export const Controls = () => {
   const {theme} = useTheme();
+  const a11y = usePlayerA11y(); // @ai
   const {play, pause, skipToNext, skipToPrevious, seekTo} = usePlayerActions();
   const playbackState = usePlayerStore(s => s.playback.state);
   const playbackPosition = usePlayerStore(s => s.playback.position);
@@ -86,6 +88,7 @@ export const Controls = () => {
     <View style={[styles.container, forceLTR]}>
       <Pressable
         onPress={handleSeekBackward}
+        {...a11y.skipBack(SEEK_INTERVAL, trackLoading)}
         disabled={trackLoading}
         style={trackLoading && styles.disabledButton}>
         <View style={styles.seekBackwardContainer}>
@@ -111,6 +114,7 @@ export const Controls = () => {
       <View style={styles.centerControls}>
         <Pressable
           onPress={handlePrevious}
+          {...a11y.previous(trackLoading)}
           style={[styles.sideButton, trackLoading && styles.disabledButton]}
           disabled={trackLoading}>
           <PreviousIcon
@@ -123,6 +127,7 @@ export const Controls = () => {
         <View style={styles.playPauseContainer}>
           <Pressable
             onPress={handlePlayPause}
+            {...a11y.playPause(optimisticIsPlaying, trackLoading)}
             disabled={trackLoading}
             style={styles.playPauseButton}>
             {optimisticIsPlaying ? (
@@ -134,6 +139,7 @@ export const Controls = () => {
         </View>
         <Pressable
           onPress={handleNext}
+          {...a11y.next(isLastTrack || trackLoading)}
           style={[styles.sideButton, isLastTrack && styles.disabledButton]}
           disabled={isLastTrack || trackLoading}>
           <NextIcon
@@ -144,6 +150,7 @@ export const Controls = () => {
       </View>
       <Pressable
         onPress={handleSeekForward}
+        {...a11y.skipForward(SEEK_INTERVAL, trackLoading)}
         disabled={trackLoading}
         style={trackLoading && styles.disabledButton}>
         <View style={styles.seekForwardContainer}>

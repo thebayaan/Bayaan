@@ -1,6 +1,6 @@
 import {create} from 'zustand';
-import {persist, createJSONStorage} from 'zustand/middleware';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import {persist} from 'zustand/middleware';
+import {persistStorage} from '@/utils/storage'; // @ai
 import type {DownloadedTafseerMeta} from '@/types/tafseer';
 import {tafseerApiService} from '@/services/tafseer/TafseerApiService';
 import {tafseerDbService} from '@/services/tafseer/TafseerDbService';
@@ -106,7 +106,7 @@ export const useTafseerStore = create<TafseerStoreState>()(
     }),
     {
       name: 'tafseer-store',
-      storage: createJSONStorage(() => AsyncStorage),
+      storage: persistStorage(), // @ai
       version: 3,
       // Only persist selected tafseer
       partialize: state => ({

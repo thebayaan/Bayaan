@@ -1,11 +1,7 @@
 import React, {useState, useCallback, useMemo} from 'react';
 import {View, Text, FlatList} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
-import {
-  ScaledSheet,
-  moderateScale,
-  verticalScale,
-} from 'react-native-size-matters';
+import {ScaledSheet, moderateScale, verticalScale} from '@/utils/scale';
 import {Theme} from '@/utils/themeUtils';
 import Color from 'color';
 import {SearchInput} from '@/components/SearchInput';
