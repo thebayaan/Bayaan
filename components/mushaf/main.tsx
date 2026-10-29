@@ -75,6 +75,7 @@ import PageEdgeDecoration, {
   EDGE_BORDER_RADIUS,
   EDGE_HORIZONTAL_INSET,
 } from './PageEdgeDecoration';
+import {useSettlePager} from './useSettlePager'; // @ai
 import {analyticsService} from '@/services/analytics/AnalyticsService';
 import {
   qcfFontLoader,
@@ -690,18 +691,9 @@ export default function MushafViewer({
     [isTablet, metrics.screenWidth, metrics.screenHeight],
   );
   // @ai-start
-  // iOS can lose a remounted pager's starting offset after a rotation: the
-  // offset is applied before the list has its new size, so the first page
-  // shows blank until a swipe. Scroll to the page again once each mount of
-  // the pager has laid out (a no-op when the offset held).
+  // Re-settle the pager on its page after each remount (see useSettlePager).
   const pagesInitialIndex = Math.min(currentPage - 1, TOTAL_PAGES - 1);
-  const settledPager = useRef<FlatList | null>(null);
-  const settlePagesOffset = useCallback(() => {
-    const list = flatListRef.current;
-    if (!list || settledPager.current === list) return;
-    settledPager.current = list;
-    list.scrollToIndex({index: pagesInitialIndex, animated: false});
-  }, [pagesInitialIndex]);
+  const settlePagesOffset = useSettlePager(flatListRef, pagesInitialIndex);
   // @ai-end
   // A tap on the status bar scrolls a vertical reader back to page 1. On
   // iPad the toolbar sits close enough to the status bar (the mini in
