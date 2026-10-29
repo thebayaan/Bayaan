@@ -156,6 +156,32 @@ struct PlaySurahIntent: AudioPlaybackIntent {
   }
 }
 
+/// Siri and Shortcuts: resumes the reciter's last surah, or Al-Fatihah.
+/// The same command as the Pinned Reciter widget's hidden PlayReciterIntent.
+@available(iOS 17.0, *)
+struct PlayReciterByNameIntent: AudioPlaybackIntent {
+  static var title: LocalizedStringResource = "Play Reciter"
+  static var description = IntentDescription(
+    "Plays the last surah you heard from a reciter in Bayaan.")
+
+  @Parameter(title: "Reciter") var reciter: ReciterEntity
+
+  static var parameterSummary: some ParameterSummary {
+    Summary("Play \(\.$reciter)")
+  }
+
+  init() {}
+
+  init(reciter: ReciterEntity) {
+    self.reciter = reciter
+  }
+
+  func perform() async throws -> some IntentResult {
+    WidgetCommandQueue.enqueue(["type": "playReciter", "reciterId": reciter.id])
+    return .result()
+  }
+}
+
 @available(iOS 17.0, *)
 struct PausePlaybackIntent: AudioPlaybackIntent {
   static var title: LocalizedStringResource = "Pause Recitation"

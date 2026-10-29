@@ -18,6 +18,15 @@ struct BayaanAppShortcuts: AppShortcutsProvider {
       shortTitle: "Play Surah",
       systemImageName: "play.circle")
     AppShortcut(
+      intent: PlayReciterByNameIntent(),
+      phrases: [
+        "Play \(\.$reciter) in \(.applicationName)",
+        "Play \(\.$reciter) on \(.applicationName)",
+        "Listen to \(\.$reciter) in \(.applicationName)",
+      ],
+      shortTitle: "Play Reciter",
+      systemImageName: "person.wave.2")
+    AppShortcut(
       intent: PausePlaybackIntent(),
       phrases: [
         "Pause \(.applicationName)",
