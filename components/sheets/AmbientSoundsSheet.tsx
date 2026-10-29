@@ -1,11 +1,12 @@
 import React, {useCallback} from 'react';
 import {View, Text, Pressable, StyleSheet} from 'react-native';
-import {ScaledSheet, moderateScale} from 'react-native-size-matters';
+import {ScaledSheet, moderateScale} from '@/utils/scale';
 import Slider from '@react-native-community/slider';
 import Svg, {Line, Circle, Path, Rect, Polygon} from 'react-native-svg';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import ActionSheet, {SheetProps} from 'react-native-actions-sheet';
+import {SheetProps} from 'react-native-actions-sheet';
+import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import Color from 'color';
 import {useAmbientStore} from '@/store/ambientStore';
 import {ambientAudioService} from '@/services/audio/AmbientAudioService';
@@ -17,6 +18,7 @@ import {
 } from '@/types/ambient';
 // @ai-start
 import {useTranslation} from 'react-i18next';
+import {useResponsive} from '@/hooks/useResponsive';
 // @ai-end
 
 /**
@@ -24,13 +26,15 @@ import {useTranslation} from 'react-i18next';
  *
  * A bottom sheet for selecting ambient nature sounds and adjusting volume.
  * Displays a 2-column grid of sound cards with "None" as the first option,
- * plus a volume slider at the bottom.
+ * plus a volume slider at the bottom. On iPad it is a menu beside the
+ * ambient button, with the sounds in rows of three.
  */
 // @ai-start
 export const AmbientSoundsSheet = (props: SheetProps<'ambient-sounds'>) => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
   const {t} = useTranslation('sheets');
+  const {isTablet} = useResponsive();
 
   const currentSound = useAmbientStore(s => s.currentSound);
   const isEnabled = useAmbientStore(s => s.isEnabled);
@@ -74,9 +78,51 @@ export const AmbientSoundsSheet = (props: SheetProps<'ambient-sounds'>) => {
 
   const isNoneSelected = !isEnabled;
 
+  const options: SoundOption[] = [
+    {
+      type: 'none',
+      label: t('ambient.none'),
+      selected: isNoneSelected,
+      onPress: handleNoneSelect,
+    },
+    ...AMBIENT_SOUND_LIST.map(soundType => ({
+      type: soundType,
+      label: t(`ambient.sounds.${soundType}`, {
+        defaultValue: AMBIENT_SOUNDS[soundType].label,
+      }),
+      selected: currentSound === soundType && isEnabled,
+      onPress: () => handleSoundSelect(soundType),
+    })),
+  ];
+
+  const renderTile = (option: SoundOption) => (
+    <Pressable
+      key={option.type}
+      accessibilityRole="button"
+      accessibilityState={{selected: option.selected}}
+      style={[
+        styles.soundCard,
+        isTablet && styles.soundCardTablet,
+        option.selected && styles.soundCardSelected,
+      ]}
+      onPress={option.onPress}>
+      <AmbientIcon type={option.type} color={theme.colors.text} />
+      <Text
+        numberOfLines={isTablet ? 1 : undefined}
+        style={[
+          styles.soundLabel,
+          isTablet && styles.soundLabelTablet,
+          option.selected && styles.soundLabelSelected,
+        ]}>
+        {option.label}
+      </Text>
+    </Pressable>
+  );
+
   return (
     <ActionSheet
       id={props.sheetId}
+      tabletPresentation="menu"
       containerStyle={styles.sheetContainer}
       indicatorStyle={styles.indicator}
       gestureEnabled={true}
@@ -84,53 +130,22 @@ export const AmbientSoundsSheet = (props: SheetProps<'ambient-sounds'>) => {
       <View style={styles.headerContainer}>
         <Text style={styles.headerTitle}>{t('ambient.title')}</Text>
       </View>
-      <View style={styles.container}>
-        {/* Sound Grid */}
-        <View style={styles.grid}>
-          {/* None option */}
-          <Pressable
-            style={[
-              styles.soundCard,
-              isNoneSelected && styles.soundCardSelected,
-            ]}
-            onPress={handleNoneSelect}>
-            <AmbientIcon type="none" color={theme.colors.text} />
-            <Text
-              style={[
-                styles.soundLabel,
-                isNoneSelected && styles.soundLabelSelected,
-              ]}>
-              {t('ambient.none')}
-            </Text>
-          </Pressable>
-
-          {/* Sound options */}
-          {AMBIENT_SOUND_LIST.map(soundType => {
-            const meta = AMBIENT_SOUNDS[soundType];
-            const label = t(`ambient.sounds.${soundType}`, {
-              defaultValue: meta.label,
-            });
-            const isSelected = currentSound === soundType && isEnabled;
-            return (
-              <Pressable
-                key={soundType}
-                style={[
-                  styles.soundCard,
-                  isSelected && styles.soundCardSelected,
-                ]}
-                onPress={() => handleSoundSelect(soundType)}>
-                <AmbientIcon type={soundType} color={theme.colors.text} />
-                <Text
-                  style={[
-                    styles.soundLabel,
-                    isSelected && styles.soundLabelSelected,
-                  ]}>
-                  {label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
+      <View style={[styles.container, isTablet && styles.containerTablet]}>
+        {isTablet ? (
+          // Rows of three equal tiles, so the grid fills a menu or a card.
+          <View style={styles.tabletGrid}>
+            {chunk(options, TABLET_COLUMNS).map(row => (
+              <View key={row[0].type} style={styles.tabletRow}>
+                {row.map(renderTile)}
+                {Array.from({length: TABLET_COLUMNS - row.length}, (_, i) => (
+                  <View key={i} style={styles.tabletSpacer} />
+                ))}
+              </View>
+            ))}
+          </View>
+        ) : (
+          <View style={styles.grid}>{options.map(renderTile)}</View>
+        )}
 
         {/* Volume Slider — only show when a sound is active */}
         {isEnabled && (
@@ -163,6 +178,24 @@ export const AmbientSoundsSheet = (props: SheetProps<'ambient-sounds'>) => {
 // @ai-end
 
 const ICON_SIZE = moderateScale(34);
+// @ai-start
+const TABLET_COLUMNS = 3;
+
+interface SoundOption {
+  type: AmbientSoundType | 'none';
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+}
+
+function chunk<T>(items: T[], size: number): T[][] {
+  const rows: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    rows.push(items.slice(i, i + size));
+  }
+  return rows;
+}
+// @ai-end
 
 interface AmbientIconProps {
   type: AmbientSoundType | 'none';
@@ -465,6 +498,38 @@ const createStyles = (theme: Theme) =>
       borderWidth: 1,
       borderColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
+    // @ai-start
+    containerTablet: {
+      paddingHorizontal: 16,
+      paddingTop: 16,
+      paddingBottom: 12,
+    },
+    tabletGrid: {
+      gap: 8,
+    },
+    tabletRow: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    // Matches a tile's side padding and border: a flex item never shrinks
+    // below those, so a bare spacer left the last row's tiles wider.
+    tabletSpacer: {
+      flex: 1,
+      paddingHorizontal: 6,
+      borderWidth: 1,
+      borderColor: 'transparent',
+    },
+    soundCardTablet: {
+      width: 'auto',
+      flex: 1,
+      paddingVertical: 14,
+      paddingHorizontal: 6,
+      borderRadius: 14,
+    },
+    soundLabelTablet: {
+      fontSize: 13,
+    },
+    // @ai-end
     soundCardSelected: {
       backgroundColor: Color(theme.colors.text).alpha(0.12).toString(),
       borderColor: Color(theme.colors.text).alpha(0.3).toString(),

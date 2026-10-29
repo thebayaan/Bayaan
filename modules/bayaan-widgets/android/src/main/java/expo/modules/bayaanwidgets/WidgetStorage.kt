@@ -14,6 +14,8 @@ object WidgetStorage {
   private const val KEY_CATALOG = "catalog"
   private const val KEY_CONTENT = "content"
   private const val KEY_ARTWORK_REQUESTS = "artworkRequests"
+  private const val KEY_ADHKAR_SESSION = "adhkarSession"
+  private const val KEY_PENDING_EVENTS = "pendingEvents"
   private fun configKey(appWidgetId: Int) = "config.$appWidgetId"
 
   @Volatile var onCommandQueued: (() -> Unit)? = null
@@ -68,6 +70,27 @@ object WidgetStorage {
   fun addPendingTasbeeh(context: Context, dhikrId: String, day: String, reset: Boolean) {
     val next = TasbeehLogic.append(TasbeehLogic.parse(readPendingTasbeehJson(context)), dhikrId, day, reset)
     prefs(context).edit().putString(KEY_TASBEEH, TasbeehLogic.encode(next)).commit()
+  }
+
+  fun readAdhkarSessionJson(context: Context): String? = prefs(context).getString(KEY_ADHKAR_SESSION, null)
+
+  fun writeAdhkarSession(context: Context, json: String) {
+    prefs(context).edit().putString(KEY_ADHKAR_SESSION, json).commit()
+  }
+
+  /** Analytics events from widget taps, sent by the app; same lock as takePendingEvents. */
+  @Synchronized
+  fun addPendingEvent(context: Context, event: JSONObject) {
+    val list = try { JSONArray(prefs(context).getString(KEY_PENDING_EVENTS, null) ?: "[]") } catch (e: Exception) { JSONArray() }
+    list.put(event)
+    prefs(context).edit().putString(KEY_PENDING_EVENTS, list.toString()).commit()
+  }
+
+  @Synchronized
+  fun takePendingEvents(context: Context): String {
+    val value = prefs(context).getString(KEY_PENDING_EVENTS, "[]") ?: "[]"
+    prefs(context).edit().remove(KEY_PENDING_EVENTS).commit()
+    return value
   }
 
   fun writeConfig(context: Context, appWidgetId: Int, json: String) =

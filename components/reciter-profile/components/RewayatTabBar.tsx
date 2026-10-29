@@ -7,7 +7,7 @@ import {
   LayoutChangeEvent,
   Animated as RNAnimated,
 } from 'react-native';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import {Theme} from '@/utils/themeUtils';
 // @ai-start
 import {forceLTR} from '@/utils/rtl';

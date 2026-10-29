@@ -1,19 +1,15 @@
-import React, {useState, useCallback, useEffect, useMemo} from 'react';
+import React, {useState, useCallback, useEffect} from 'react';
 import {View, StyleSheet, LayoutChangeEvent} from 'react-native';
 import {GlassView} from 'expo-glass-effect';
 import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
 import {FrostedView} from '@/components/FrostedView';
 import Animated, {
-  runOnJS,
   useSharedValue,
   useAnimatedStyle,
   withTiming,
 } from 'react-native-reanimated';
-import {Gesture, GestureDetector} from 'react-native-gesture-handler';
-import {
-  useBottomSheetGestureHandlers,
-  useBottomSheetInternal,
-} from '@gorhom/bottom-sheet';
+import {GestureDetector} from 'react-native-gesture-handler';
+import {usePlayerDismissGesture} from '@/components/player/v2/PlayerDismissContext';
 import {QueueList} from './QueueList';
 import {QuranView} from './QuranView';
 import {TrackInfo} from './TrackInfo';
@@ -21,7 +17,7 @@ import {PlaybackControls} from './PlaybackControls';
 import {ControlButtons} from './ControlButtons';
 import {UploadPlaceholder} from './UploadPlaceholder';
 import {Header} from './Header';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {useVerseSelectionStore} from '@/store/verseSelectionStore';
@@ -30,6 +26,7 @@ import {useReadingThemeColors} from '@/hooks/useReadingThemeColors';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import Color from 'color';
+import {LinearGradient} from 'expo-linear-gradient';
 import {useTimestampLoader} from '@/hooks/useTimestampLoader';
 import {useAyahTracker} from '@/hooks/useAyahTracker';
 import {useTimestampStore} from '@/store/timestampStore';
@@ -78,53 +75,9 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
   const isImmersive = usePlayerStore(s => s.isImmersive);
   const insets = useSafeAreaInsets();
 
-  // Use the bottom-sheet handle gesture so overlay pans close the sheet
-  // regardless of the FlashList scroll offset
-  const {handlePanGestureHandler} = useBottomSheetGestureHandlers();
-  const {animatedPosition, animatedLayoutState} = useBottomSheetInternal();
-
-  // Safety sync: when a gesture drags the sheet exactly to the closed
-  // position, gorhom's animateToPosition early-returns (no animation needed)
-  // so onChange never fires and sheetMode stays stale. This callback ensures
-  // the store is synced after every gesture.
-  const {setSheetMode} = usePlayerActions();
-  const syncSheetModeIfClosed = useCallback(() => {
-    const {sheetMode} = usePlayerStore.getState();
-    if (sheetMode !== 'hidden') {
-      setSheetMode('hidden');
-    }
-  }, [setSheetMode]);
-
-  const sheetDragGesture = useMemo(
-    () =>
-      Gesture.Pan()
-        .onStart(handlePanGestureHandler.handleOnStart)
-        .onChange(handlePanGestureHandler.handleOnChange)
-        .onEnd(handlePanGestureHandler.handleOnEnd)
-        .onFinalize(event => {
-          'worklet';
-          handlePanGestureHandler.handleOnFinalize(event);
-
-          // If position is at/near closed detent, force-sync sheetMode.
-          // This catches the edge case where handleOnEnd returns early
-          // without starting an animation (destination === current position).
-          const containerHeight = animatedLayoutState.get().containerHeight;
-          if (
-            containerHeight > 0 &&
-            animatedPosition.value >= containerHeight - 1
-          ) {
-            runOnJS(syncSheetModeIfClosed)();
-          }
-        })
-        .shouldCancelWhenOutside(false)
-        .runOnJS(false),
-    [
-      handlePanGestureHandler,
-      animatedPosition,
-      animatedLayoutState,
-      syncSheetModeIfClosed,
-    ],
-  );
+  // One gesture per GestureDetector: Gesture Handler can't share one.
+  const headerDragGesture = usePlayerDismissGesture();
+  const controlsDragGesture = usePlayerDismissGesture();
 
   // Overlay height measurement
   const [headerHeight, setHeaderHeight] = useState(DEFAULT_HEADER_HEIGHT);
@@ -258,6 +211,20 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
             <QueueList
               onQueueItemPress={handleQueueItemPress}
               onRemoveQueueItem={handleRemoveQueueItem}
+              contentPaddingTop={insets.top + moderateScale(4) + headerHeight}
+              contentPaddingBottom={controlsHeight}
+            />
+            {/* Fades rows out under the status bar as the queue scrolls. */}
+            <LinearGradient
+              pointerEvents="none"
+              colors={[
+                readingColors.background,
+                Color(readingColors.background).alpha(0).toString(),
+              ]}
+              style={[
+                styles.statusBarScrim,
+                {height: insets.top + moderateScale(12)},
+              ]}
             />
           </View>
         ) : (
@@ -282,7 +249,7 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
       </View>
 
       {/* Header overlay — floating glass card */}
-      <GestureDetector gesture={sheetDragGesture}>
+      <GestureDetector gesture={headerDragGesture}>
         <Animated.View
           style={[
             styles.headerOverlay,
@@ -297,7 +264,7 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
           {/* Glass/blur background */}
           {USE_GLASS ? (
             <GlassView
-              style={StyleSheet.absoluteFill}
+              style={styles.cardGlass}
               glassEffectStyle="regular"
               colorScheme={glassColorScheme}
             />
@@ -309,7 +276,7 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
       </GestureDetector>
 
       {/* Controls overlay — floating glass card */}
-      <GestureDetector gesture={sheetDragGesture}>
+      <GestureDetector gesture={controlsDragGesture}>
         <Animated.View
           style={[
             styles.controlsOverlay,
@@ -323,7 +290,7 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
           {/* Glass/blur background */}
           {USE_GLASS ? (
             <GlassView
-              style={StyleSheet.absoluteFill}
+              style={styles.cardGlass}
               glassEffectStyle="regular"
               colorScheme={glassColorScheme}
             />
@@ -361,6 +328,12 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: moderateScale(8),
   },
+  statusBarScrim: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+  },
   headerOverlay: {
     position: 'absolute',
     top: moderateScale(20),
@@ -371,6 +344,17 @@ const styles = StyleSheet.create({
     borderCurve: 'continuous',
     borderWidth: StyleSheet.hairlineWidth,
     overflow: 'hidden',
+  },
+  // The glass gets the card's shape itself: UIGlassEffect draws its own
+  // edge, which the card's clipping alone doesn't round.
+  cardGlass: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    borderRadius: moderateScale(38),
+    borderCurve: 'continuous',
   },
   controlsOverlay: {
     position: 'absolute',

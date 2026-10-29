@@ -20,7 +20,7 @@ import {useMushafFontMgr} from '@/hooks/useMushafFontMgr';
 import {Gesture, GestureDetector} from 'react-native-gesture-handler';
 import {runOnJS} from 'react-native-worklets';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {verticalScale} from 'react-native-size-matters';
+import {verticalScale} from '@/utils/scale';
 import Color from 'color';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import type {MushafArabicTextWeight} from '@/store/mushafSettingsStore';
@@ -180,6 +180,8 @@ interface ContinuousMushafViewProps {
   /** Live layout metrics from `useMushafLayout()`. Threaded through so the
    *  continuous view responds to iPad width caps + rotation. */
   metrics: MushafLayoutMetrics;
+  /** Whether a tap on the status bar scrolls back to page 1. Default on. @ai */
+  scrollsToTop?: boolean; // @ai
 }
 
 // ── Per-page content with gestures + highlights ──────────
@@ -681,7 +683,15 @@ const ContinuousMushafView = forwardRef<
   ContinuousMushafViewProps
 >(
   (
-    {textColor, dividerColor, onTap, initialPage, onCurrentPageChange, metrics},
+    {
+      textColor,
+      dividerColor,
+      onTap,
+      initialPage,
+      onCurrentPageChange,
+      metrics,
+      scrollsToTop = true, // @ai
+    },
     ref,
   ) => {
     const insets = useSafeAreaInsets();
@@ -865,6 +875,7 @@ const ContinuousMushafView = forwardRef<
           paddingBottom: insets.bottom + verticalScale(80),
         }}
         showsVerticalScrollIndicator={false}
+        scrollsToTop={scrollsToTop} // @ai
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={{itemVisiblePercentThreshold: 50}}
       />

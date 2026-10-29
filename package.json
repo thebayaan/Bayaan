@@ -14,7 +14,6 @@
     "test:ci": "jest --watchAll=false --ci --reporters=default",
     "test:widget-fixtures": "bash scripts/check-widget-fixtures.sh && bash scripts/check-widget-system-surfaces.sh && bash scripts/check-widget-content.sh",
     "generate:widget-data": "tsx scripts/generate-widget-data.ts",
-    "generate:widget-vectors": "swift scripts/generate-hijri-table.swift > modules/bayaan-widgets/src/__fixtures__/hijri.table.json && tsx scripts/generate-context-vectors.ts",
     "check:rewayah-manifest": "node scripts/rewayah/gen-manifest.mjs --check",
     "eas-build-pre-install": "node scripts/rewayah/gen-manifest.mjs --check",
     "lint": "eslint .",
@@ -132,7 +131,7 @@
     "react-native-reanimated-carousel": "^3.5.1",
     "react-native-render-html": "^6.3.4",
     "react-native-safe-area-context": "~5.7.0",
-    "react-native-screens": "~4.26.0",
+    "react-native-screens": "~4.29.0",
     "react-native-size-matters": "^0.4.2",
     "react-native-svg": "15.15.4",
     "react-native-svg-transformer": "^1.5.0",
@@ -192,5 +191,17 @@
   "workspaces": [
     "packages/*"
   ],
+  "expo": {
+    "install": {
+      "exclude": [
+        "react-native-screens"
+      ]
+    },
+    "autolinking": {
+      "buildFromSource": [
+        "expo-audio"
+      ]
+    }
+  },
   "private": true
 }

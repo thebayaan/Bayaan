@@ -100,9 +100,28 @@ function IOSTabs() {
           </NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
 
+        {/*
+          `role="search"` only reaches react-native-screens as
+          `systemItem: 'search'`, the legacy UITabBarItem. The iOS 26 SDK gave
+          that item the detached search chrome for free; the iOS 27 SDK does
+          not, which is why the tab started rendering inline. The detached
+          placement now comes from UISearchTab, which react-native-screens
+          builds only when the native `role` prop is set, and iOS 27 keys the
+          detachment off `automaticallyActivatesSearch`. expo-router does not
+          forward either prop yet, so both go through `unstable_nativeProps`.
+          `automaticallyActivatesSearch` also needs a native header search bar,
+          which (b.search)/index.tsx already declares via <Stack.SearchBar>.
+          Needs react-native-screens >= 4.29.0 (4.26.x has no UISearchTab).
+        */}
         <NativeTabs.Trigger
           name="(b.search)"
           role="search"
+          unstable_nativeProps={{
+            ios: {
+              role: 'search',
+              automaticallyActivatesSearch: true,
+            },
+          }}
           contentStyle={{
             ...appLayoutDirection,
             backgroundColor: theme.colors.background,
@@ -187,7 +206,7 @@ function AndroidTabs() {
 // @ai-end
 
 /**
- * Tablet shell: leading sidebar (rail in portrait, labeled in landscape)
+ * Tablet shell: leading sidebar (icon rail below 900pt wide, labelled from 900pt)
  * with the mini player docked in the sidebar footer. Replaces both the iOS
  * NativeTabs and the Android floating pill when `isTablet` is true.
  */

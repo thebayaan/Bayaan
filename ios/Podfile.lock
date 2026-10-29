@@ -1,6 +1,9 @@
 PODS:
   - BayaanCar (1.0.0):
     - ExpoModulesCore
+  - BayaanKeyboard (1.0.0):
+    - ExpoModulesCore
+    - React-Core
   - BayaanWidgets (0.1.0):
     - ExpoModulesCore
   - Burnt (0.13.0):
@@ -2571,7 +2574,7 @@ PODS:
     - ReactNativeDependencies
     - RNWorklets
     - Yoga
-  - RNScreens (4.26.2):
+  - RNScreens (4.29.0):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -2593,9 +2596,9 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
-    - RNScreens/common (= 4.26.2)
+    - RNScreens/common (= 4.29.0)
     - Yoga
-  - RNScreens/common (4.26.2):
+  - RNScreens/common (4.29.0):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -2765,6 +2768,7 @@ PODS:
 
 DEPENDENCIES:
   - BayaanCar (from `../modules/bayaan-car/ios`)
+  - BayaanKeyboard (from `../modules/bayaan-keyboard/ios`)
   - BayaanWidgets (from `../modules/bayaan-widgets/ios`)
   - Burnt (from `../node_modules/burnt/ios`)
   - EASClient (from `../node_modules/expo-eas-client/ios`)
@@ -2922,6 +2926,8 @@ SPEC REPOS:
 EXTERNAL SOURCES:
   BayaanCar:
     :path: "../modules/bayaan-car/ios"
+  BayaanKeyboard:
+    :path: "../modules/bayaan-keyboard/ios"
   BayaanWidgets:
     :path: "../modules/bayaan-widgets/ios"
   Burnt:
@@ -3214,6 +3220,7 @@ EXTERNAL SOURCES:
 
 SPEC CHECKSUMS:
   BayaanCar: 61579859b861a8460d5edaf3a962d43efdba4e13
+  BayaanKeyboard: 4f8a866e2d0c920709d3eabe7be01ccd155a4d8c
   BayaanWidgets: 393454ec6630b0903957462f90e8bd6e42df19f6
   Burnt: 0616363a206ed96ba9af3e2eb0e184dc97be1458
   EASClient: c0ccc7ee5d3da785fbbd8c87b881d151a7428742
@@ -3244,7 +3251,7 @@ SPEC CHECKSUMS:
   ExpoLinking: d6e69c2972e62a9c439e021d0ece176d301d0574
   ExpoLocalization: f204d4ca963bfcea932068a978247878f664f5a4
   ExpoLogBox: 80957303325cd4439137765c90a87d7f22aaf2ff
-  ExpoModulesCore: 92b5258ef0ef6d36a13d1524697d0a6653f4850a
+  ExpoModulesCore: 887048904e910eb3f52eeea722b7cfc1845a7e92
   ExpoModulesJSI: b767422763350d2b248fb218f71bbb286fd2ee77
   ExpoModulesWorklets: 1fb83b3dfe735f8c940ce8a69ca2904f164e888b
   ExpoModulesWorkletsAdapter: 867cac94038d535b74e2b0a300cfcca1f929e8ff
@@ -3355,7 +3362,7 @@ SPEC CHECKSUMS:
   RNGestureHandler: 92172e79df6e88e0e93b6341f9dcd8b5a02746ba
   RNImageColors: 977420bca17290f111104bcfcbfb698982cbfbba
   RNReanimated: fcf6a8cdd698fb09a811a8d6c5bcfe36575d965d
-  RNScreens: c1a06fd73d0581a2a28a160577be393f579662b9
+  RNScreens: 6d1f9193b5f146c54a1d5a74e45093bff8ec09be
   RNSentry: c2b739c5dbdd77f439fbd197d1d45724b22a0437
   RNSVG: 3fe8590403ac9f107b4d14591bc6e54da4894e5c
   RNWorklets: 43af89f696342f91118a2f1f3a879056e2f47331

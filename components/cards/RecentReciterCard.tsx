@@ -1,6 +1,6 @@
 import React, {useCallback, useMemo} from 'react';
 import {View, Text, Pressable, StyleSheet} from 'react-native';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {ReciterImage} from '@/components/ReciterImage';
 import {PlayIcon} from '@/components/Icons';
@@ -19,8 +19,9 @@ import {useRouter, Link} from 'expo-router';
 import {SheetManager} from 'react-native-actions-sheet';
 import {useUploadsStore} from '@/store/uploadsStore';
 import {createUserUploadTrack} from '@/utils/track';
+import {createStyles} from '@/components/cards/recentCardStyles';
 // @ai-start
-import {forceLTR, latinLetterSpacing} from '@/utils/rtl';
+import {forceLTR} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
 // @ai-end
 
@@ -38,6 +39,8 @@ interface RecentReciterCardProps {
   index: number;
   isUserUpload?: boolean;
   userRecitationId?: string;
+  /** Card width. Defaults to RECENT_CARD_WIDTH; iPad shelves pass their own. */
+  width?: number; // @ai
 }
 
 // @ai-start
@@ -54,6 +57,7 @@ export const RecentReciterCard = ({
   index,
   isUserUpload,
   userRecitationId,
+  width,
 }: RecentReciterCardProps) => {
   const {theme} = useTheme();
   const {t} = useTranslation('home');
@@ -252,7 +256,11 @@ export const RecentReciterCard = ({
 
   return (
     <CardWrapper
-      style={[styles.container, USE_GLASS && styles.glassContainer]}
+      style={[
+        styles.container,
+        USE_GLASS && styles.glassContainer,
+        width != null && {width},
+      ]}
       {...(USE_GLASS
         ? {glassEffectStyle: 'regular', colorScheme: glassColorScheme}
         : {})}>
@@ -382,91 +390,4 @@ export const RecentReciterCard = ({
     </CardWrapper>
   );
 };
-// @ai-end
-
-// @ai-start
-function createStyles(theme: {
-  colors: {
-    border: string;
-    card: string;
-    shadow: string;
-    text: string;
-    textSecondary: string;
-    background: string;
-  };
-}) {
-  return StyleSheet.create({
-    container: {
-      width: moderateScale(120),
-      borderRadius: moderateScale(14),
-      overflow: 'hidden',
-      borderWidth: 1,
-      borderColor: Color(theme.colors.text).alpha(0.06).toString(),
-      padding: moderateScale(6),
-      gap: moderateScale(4),
-    },
-    glassContainer: {
-      borderWidth: 0,
-    },
-    imageContainer: {
-      aspectRatio: 1,
-      borderRadius: moderateScale(8),
-      overflow: 'hidden',
-      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
-    },
-    image: {
-      width: '100%',
-      height: '100%',
-    },
-    reciterName: {
-      fontSize: moderateScale(11.5),
-      fontFamily: 'Manrope-SemiBold',
-      color: theme.colors.text,
-      letterSpacing: latinLetterSpacing(-0.3),
-    },
-    // Bottom zone: surah + playback controls
-    playbackZone: {
-      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
-      borderRadius: moderateScale(8),
-      paddingHorizontal: moderateScale(6),
-      paddingVertical: moderateScale(5),
-      gap: moderateScale(4),
-    },
-    playbackZonePressed: {
-      backgroundColor: Color(theme.colors.text).alpha(0.1).toString(),
-    },
-    playbackRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-    },
-    surahName: {
-      fontSize: moderateScale(9.5),
-      fontFamily: 'Manrope-Medium',
-      color: Color(theme.colors.text).alpha(0.7).toString(),
-      letterSpacing: latinLetterSpacing(-0.2),
-    },
-    progressRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: moderateScale(4),
-    },
-    playButtonContainer: {
-      width: moderateScale(12),
-      height: moderateScale(12),
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    sliderContainer: {
-      height: moderateScale(4),
-      flex: 1,
-    },
-    timeRemaining: {
-      fontSize: moderateScale(7.5),
-      fontFamily: 'Manrope-Bold',
-      color: Color(theme.colors.text).alpha(0.5).toString(),
-      minWidth: moderateScale(12),
-      textAlign: 'right',
-    },
-  });
-}
 // @ai-end

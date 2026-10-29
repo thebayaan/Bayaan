@@ -7,7 +7,7 @@ import {
   StyleSheet,
   Platform,
 } from 'react-native';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import Color from 'color';
@@ -35,6 +35,24 @@ function TabSelector<T extends string>({
   const selectedIndex = options.indexOf(selectedOption);
   const resolvedWidth = width ?? moderateScale(80 * options.length);
 
+  // @ai-start
+  // Hooks for the Android indicator run on every platform, before the iOS
+  // branch returns, so the hook order is the same on every render.
+  // @ai-end
+  const indicatorPosition = useRef(
+    new Animated.Value(options.indexOf(selectedOption)),
+  ).current;
+
+  useEffect(() => {
+    if (Platform.OS === 'ios') return; // @ai
+    Animated.spring(indicatorPosition, {
+      toValue: options.indexOf(selectedOption),
+      tension: 300,
+      friction: 30,
+      useNativeDriver: true,
+    }).start();
+  }, [selectedOption, indicatorPosition, options]);
+
   if (Platform.OS === 'ios') {
     return (
       <SegmentedControl
@@ -54,19 +72,6 @@ function TabSelector<T extends string>({
 
   // Android: original tab selector with sliding indicator
   const styles = createStyles(theme, options.length, resolvedWidth);
-
-  const indicatorPosition = useRef(
-    new Animated.Value(options.indexOf(selectedOption)),
-  ).current;
-
-  useEffect(() => {
-    Animated.spring(indicatorPosition, {
-      toValue: options.indexOf(selectedOption),
-      tension: 300,
-      friction: 30,
-      useNativeDriver: true,
-    }).start();
-  }, [selectedOption, indicatorPosition, options]);
 
   return (
     <View style={styles.container}>

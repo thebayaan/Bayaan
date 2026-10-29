@@ -29,7 +29,16 @@ import {ReciterImage} from '@/components/ReciterImage';
 import {Feather} from '@expo/vector-icons';
 // @ai-start
 import {getReciterDisplayName, getSurahDisplayName} from '@/i18n/format';
-import {getRecitationStyleLabel} from '@/components/player/v2/recitationStyle';
+import {getRecitationStyleTitle} from '@/components/player/v2/recitationStyle';
+import {getDisplayLabelFromName} from '@/services/rewayah/RewayahIdentity'; // @ai
+import {usePlayerA11y} from '@/hooks/usePlayerA11y'; // @ai
+// @ai-end
+
+// @ai-start
+/** "Hafs · Murattal", as the reciter profile labels its rewayah tabs. */
+function rewayatLabel(r: Rewayat): string {
+  return `${getDisplayLabelFromName(r.name)} · ${getRecitationStyleTitle(r.style)}`;
+}
 // @ai-end
 
 function sortRewayat(rewayat: Rewayat[]): Rewayat[] {
@@ -71,9 +80,18 @@ type SortOption = 'asc' | 'desc' | 'revelation';
 export const TabletPlayerReciterColumn: React.FC<{
   reciterId: string;
   initialRewayatId?: string;
-}> = ({reciterId, initialRewayatId}) => {
+  /**
+   * Rendered as a pane under the player's own top bar: no status-bar inset
+   * and no background of its own.
+   */
+  embedded?: boolean;
+  /** Space kept clear below the list (defaults to the safe area). */
+  bottomInset?: number;
+}> = ({reciterId, initialRewayatId, embedded = false, bottomInset}) => {
   const {theme} = useTheme();
+  const a11y = usePlayerA11y(); // @ai
   const insets = useSafeAreaInsets();
+  const topInset = embedded ? 0 : insets.top;
   const {updateQueue} = usePlayerActions();
   const {navigateToReciterProfile} = useReciterNavigation();
   const {startNewChain} = useRecentlyPlayedStore();
@@ -219,16 +237,19 @@ export const TabletPlayerReciterColumn: React.FC<{
 
   if (!reciter) {
     return (
-      <View style={[styles.centered, {paddingTop: insets.top}]}>
+      <View style={[styles.centered, {paddingTop: topInset}]}>
         <ActivityIndicator color={theme.colors.textSecondary} />
       </View>
     );
   }
 
   return (
-    <View style={[styles.root, {backgroundColor: theme.colors.background}]}>
-      <View
-        style={[styles.header, {paddingTop: insets.top + moderateScale(8)}]}>
+    <View
+      style={[
+        styles.root,
+        !embedded && {backgroundColor: theme.colors.background},
+      ]}>
+      <View style={[styles.header, {paddingTop: topInset + moderateScale(8)}]}>
         <View style={styles.headerMain}>
           <ReciterImage
             reciterName={reciter.name}
@@ -244,15 +265,12 @@ export const TabletPlayerReciterColumn: React.FC<{
             <Text
               style={[styles.sub, {color: theme.colors.textSecondary}]}
               numberOfLines={1}>
-              {selectedRewayat
-                ? `${selectedRewayat.name} · ${getRecitationStyleLabel(
-                    selectedRewayat.style,
-                  )}`
-                : ''}
+              {selectedRewayat ? rewayatLabel(selectedRewayat) : ''}
             </Text>
           </View>
           <Pressable
             onPress={handleOpenFullProfile}
+            {...a11y.openFullProfile}
             style={({pressed}) => [styles.openFull, pressed && {opacity: 0.6}]}
             hitSlop={12}>
             <Feather
@@ -274,6 +292,8 @@ export const TabletPlayerReciterColumn: React.FC<{
                 <Pressable
                   key={r.id}
                   onPress={() => setSelectedRewayatId(r.id)}
+                  accessibilityRole="button" // @ai
+                  accessibilityState={{selected: active}} // @ai
                   style={[
                     styles.chip,
                     {
@@ -288,7 +308,7 @@ export const TabletPlayerReciterColumn: React.FC<{
                   <Text
                     style={[styles.chipText, {color: theme.colors.text}]}
                     numberOfLines={1}>
-                    {r.name} · {getRecitationStyleLabel(r.style)}
+                    {rewayatLabel(r)}
                   </Text>
                 </Pressable>
               );
@@ -312,7 +332,7 @@ export const TabletPlayerReciterColumn: React.FC<{
           sortOption={sortOption}
           rewayatId={selectedRewayat?.id}
           contentContainerStyle={{
-            paddingBottom: insets.bottom + moderateScale(12),
+            paddingBottom: (bottomInset ?? insets.bottom) + moderateScale(12),
           }}
         />
       </View>

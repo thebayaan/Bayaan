@@ -1,3 +1,4 @@
+import {Platform} from 'react-native';
 import {BayaanCar} from '@/modules/bayaan-car';
 import {RECITERS} from '@/data/reciterData';
 import {SURAHS} from '@/data/surahData';
@@ -11,6 +12,10 @@ import {
 } from '@/utils/track';
 import type {UploadedRecitation} from '@/types/uploads';
 import {lockScreenService} from '@/services/audio/LockScreenService';
+import {
+  skipAdhkarTrack,
+  type TrackDirection,
+} from '@/services/adhkar/playback/trackControls';
 import {expoAudioService} from '@/services/audio/ExpoAudioService';
 import {startCarAyahTracker} from '@/services/car/carAyah';
 import {usePlayerStore} from '@/services/player/store/playerStore';
@@ -256,12 +261,28 @@ function pushNowPlaying(): void {
   );
 }
 
+/**
+ * Car next / previous while the adhkar session holds the lock screen move the
+ * session, not the Quran queue. True when handled. On iOS the remote command
+ * center is shared: when the adhkar entry shows its own next / previous, the
+ * same press already reached it, so it is not applied twice.
+ */
+function adhkarTookTrackTransport(direction: TrackDirection): boolean {
+  if (!lockScreenService.isAdhkarHeld()) return false;
+  if (Platform.OS === 'ios' && lockScreenService.hasAdhkarTrackControls())
+    return true;
+  skipAdhkarTrack(direction);
+  return true;
+}
+
 async function handleTransport(transport: CarTransport): Promise<void> {
   const player = usePlayerStore.getState();
   switch (transport.kind) {
     case 'next':
+      if (adhkarTookTrackTransport('next')) return;
       return player.skipToNext();
     case 'previous':
+      if (adhkarTookTrackTransport('previous')) return;
       return player.skipToPrevious();
     case 'play':
       return player.play();
@@ -335,6 +356,9 @@ export function startCarPlaybackBridge(
     useLovedStore.subscribe(pushNowPlaying),
     BayaanCar.addConnectionListener(connected => {
       lockScreenService.setCarMode(connected);
+      // CarPlay re-enables next / previous on a now playing push, after car
+      // mode took them off the adhkar entry.
+      pushNowPlaying();
       stopAyahTracker?.();
       stopAyahTracker = connected
         ? startCarAyahTracker(label => {

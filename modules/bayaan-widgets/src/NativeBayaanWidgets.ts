@@ -7,7 +7,10 @@ export interface NativeBayaanWidgetsModule {
   writeSnapshot(json: string): void;
   reloadWidgets(kinds: string[]): void;
   takeQueuedCommands(): string;
+  // iOS only (absent on Android): newest enqueuedAt JS has handled. // @ai
+  markCommandsHandled?(through: number): void; // @ai
   takePendingTasbeeh(): string;
+  takePendingWidgetEvents(): string;
   cacheArtwork(sourceUrl: string, fileName: string): Promise<boolean>;
   hasArtwork(fileName: string): boolean;
   writeCatalog(json: string): void;
@@ -20,6 +23,15 @@ export interface NativeBayaanWidgetsModule {
   // JSON content state of the activity on screen, or "" when there is none.
   currentNowPlayingActivity?(): string;
   endNowPlayingActivities?(): Promise<void>;
+  // iOS only (absent on Android): the adhkar session Live Activity.
+  startAdhkarSessionActivity?(json: string, staleAtMs: number): Promise<string>;
+  updateAdhkarSessionActivity?(
+    json: string,
+    staleAtMs: number,
+  ): Promise<boolean>;
+  // dismissAtMs: keep the ended activity on screen until then; omitted (or
+  // null) dismisses it at once.
+  endAdhkarSessionActivities?(dismissAtMs: number | null): Promise<void>;
   addListener(
     event: 'onCommandQueued',
     listener: () => void,

@@ -12,8 +12,6 @@ import expo.modules.bayaanwidgets.ayahoftheday.MidnightReceiver
 import expo.modules.bayaanwidgets.continuelistening.ContinueListeningWidget
 import expo.modules.bayaanwidgets.continuereading.ContinueReadingWidget
 import expo.modules.bayaanwidgets.bedtime.BedtimeWidget
-import expo.modules.bayaanwidgets.hijri.HijriDateWidget
-import expo.modules.bayaanwidgets.hijri.OccasionWidget
 import expo.modules.bayaanwidgets.libraryshelf.LibraryShelfWidget
 import expo.modules.bayaanwidgets.pinnedreciter.PinnedReciterWidget
 import expo.modules.bayaanwidgets.quicksurah.QuickSurahWidget
@@ -72,14 +70,6 @@ class BayaanWidgetsModule : Module() {
             push(AdhkarWidget())
             rearmContextClock()
           }
-          "HijriDate" -> {
-            push(HijriDateWidget())
-            rearmContextClock()
-          }
-          "Occasion" -> {
-            push(OccasionWidget())
-            rearmContextClock()
-          }
           "BayaanNow" -> {
             push(BayaanNowWidget())
             rearmContextClock()
@@ -91,6 +81,7 @@ class BayaanWidgetsModule : Module() {
 
     Function("takeQueuedCommands") { WidgetStorage.takeQueue(context) }
     Function("takePendingTasbeeh") { WidgetStorage.takeTasbeeh(context) }
+    Function("takePendingWidgetEvents") { WidgetStorage.takePendingEvents(context) }
     Function("writeCatalog") { json: String -> WidgetStorage.writeCatalog(context, json) }
     Function("writeContent") { json: String -> WidgetStorage.writeContent(context, json) }
     Function("readArtworkRequests") { WidgetStorage.readArtworkRequestsJson(context) }

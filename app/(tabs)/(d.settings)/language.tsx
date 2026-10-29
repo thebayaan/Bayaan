@@ -1,18 +1,20 @@
 // @ai-generated
 import React, {useMemo, useState} from 'react';
-import {View, Text, Pressable, ScrollView, Platform} from 'react-native';
+import {View, Text, Pressable, ScrollView, Platform, Alert} from 'react-native';
 import {useTranslation} from 'react-i18next';
 import {useTheme} from '@/hooks/useTheme';
-import {ScaledSheet, moderateScale} from 'react-native-size-matters';
+import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {Theme} from '@/utils/themeUtils';
 import {Feather} from '@expo/vector-icons';
 import Color from 'color';
 import {
   getLanguagePreference,
+  languageChangeRequiresRestart,
   setLanguagePreference,
   AVAILABLE_LANGUAGES,
   type LanguagePreference,
 } from '@/i18n/language';
+import {canRestartToApplyLanguage, restartWithLanguage} from '@/i18n/restart';
 import {LANGUAGES} from '@/i18n/languages';
 
 export default function LanguageScreen() {
@@ -36,10 +38,39 @@ export default function LanguageScreen() {
     })),
   ];
 
+  const showReopenNotice = () =>
+    Alert.alert(t('languageRestart.title'), t('languageRestart.message'));
+
+  // Android relaunches the app process so the language applies at once.
+  const confirmRestart = (value: LanguagePreference) =>
+    Alert.alert(
+      t('languageRestart.confirmTitle'),
+      t('languageRestart.confirmMessage'),
+      [
+        {text: t('actions.cancel'), style: 'cancel'},
+        {
+          text: t('languageRestart.restart'),
+          onPress: () => {
+            setSelected(value);
+            if (!restartWithLanguage(value)) {
+              showReopenNotice();
+            }
+          },
+        },
+      ],
+    );
+
   const handleSelect = (value: LanguagePreference) => {
     if (value === selected) return;
+    if (canRestartToApplyLanguage && languageChangeRequiresRestart(value)) {
+      confirmRestart(value);
+      return;
+    }
+    // iOS cannot relaunch an app: the choice applies when it is next opened.
     setSelected(value);
-    setLanguagePreference(value);
+    if (setLanguagePreference(value)) {
+      showReopenNotice();
+    }
   };
 
   return (

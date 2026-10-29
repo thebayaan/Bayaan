@@ -145,11 +145,13 @@ export function setLiveActivityAyah(next: NowPlayingAyah | null): void {
 
 // The root layout starts this after init, before startWidgetSync.
 export function startLiveActivitySync(): () => void {
-  if (
-    Platform.OS !== 'ios' ||
-    liveActivityMode() === 'off' ||
-    !isLiveActivitySupported()
-  ) {
+  if (Platform.OS !== 'ios' || !isLiveActivitySupported()) {
+    return () => undefined;
+  }
+  if (liveActivityMode() === 'off') {
+    // An earlier version may have left a surah activity on screen. The adhkar
+    // activity is another ActivityKit type, so this does not touch it.
+    endNowPlayingActivities().catch(logError);
     return () => undefined;
   }
   enabled = true;

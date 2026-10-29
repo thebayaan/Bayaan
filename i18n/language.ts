@@ -1,9 +1,7 @@
 // @ai-generated
-import {Alert, DevSettings, I18nManager} from 'react-native';
+import {I18nManager} from 'react-native';
 import {createMMKV} from 'react-native-mmkv';
-import {reloadAppAsync} from 'expo';
 import {getLocales} from 'expo-localization';
-import * as Updates from 'expo-updates';
 
 import {
   LANGUAGES,
@@ -13,7 +11,6 @@ import {
   isAppLanguage,
   type AppLanguage,
 } from './languages';
-import {resources} from './resources';
 
 export {SUPPORTED_LANGUAGES, type AppLanguage};
 export type LanguagePreference = 'system' | AppLanguage;
@@ -36,7 +33,6 @@ function isAvailableLanguage(value: unknown): value is AppLanguage {
 
 const storage = createMMKV({id: 'i18n'});
 const PREFERENCE_KEY = 'language_preference';
-const RTL_RELOAD_GUARD_KEY = 'rtl_reload_attempted_v3';
 
 export function getLanguagePreference(): LanguagePreference {
   const stored = storage.getString(PREFERENCE_KEY);
@@ -69,7 +65,7 @@ export function isRTLLanguage(language: AppLanguage): boolean {
   return getLanguageConfig(language).direction === 'rtl';
 }
 
-/** Language for this app session. Fixed until the next JS reload. */
+/** Language for this app session. Fixed until the next launch. */
 export const currentLanguage: AppLanguage = resolveLanguage();
 
 /** Registry entry for `currentLanguage` (see i18n/languages.ts). */
@@ -86,89 +82,62 @@ export const defaultShowEnglishReadingAids =
 export const defaultShowTransliteration =
   defaultShowEnglishReadingAids && currentLanguageConfig.script !== 'Arab';
 
-interface RestartText {
-  title?: string;
-  message?: string;
-}
-
-/** Restart alert strings, falling back to English for incomplete languages. */
-function restartText(): Required<RestartText> {
-  const source = resources[SOURCE_LANGUAGE].common.languageRestart;
-  const common: {languageRestart?: RestartText} =
-    resources[currentLanguage].common;
-  return {
-    title: common.languageRestart?.title ?? source.title,
-    message: common.languageRestart?.message ?? source.message,
-  };
-}
-
-async function reloadApp(): Promise<void> {
-  // Reload the React Native runtime in both development and standalone builds,
-  // including builds with OTA updates disabled.
-  try {
-    await reloadAppAsync('language direction change');
-    return;
-  } catch {
-    // Not available in every runtime.
-  }
-  try {
-    await Updates.reloadAsync();
-    return;
-  } catch {
-    // Updates.reloadAsync throws in development builds.
-  }
-  if (__DEV__) {
-    DevSettings.reload();
-    return;
-  }
-  // i18n/index.ts imports this file, so read the strings from the resources.
-  const {title, message} = restartText();
-  Alert.alert(title, message);
+/** Whether `language` needs a layout direction other than this session's. */
+function directionDiffers(language: AppLanguage): boolean {
+  const shouldBeRTL = isRTLLanguage(language);
+  return (
+    I18nManager.isRTL !== shouldBeRTL ||
+    (shouldBeRTL && !I18nManager.doLeftAndRightSwapInRTL)
+  );
 }
 
 /**
- * Applies the layout direction for `language`. Direction changes only take
- * effect after a reload, so this returns whether a reload is required.
+ * Persists the native layout direction for `language`. iOS and Android read it
+ * when React Native starts, so it takes effect on the next launch.
+ *
+ * Never reload the JS runtime in process to apply it. On React Native 0.86
+ * bridgeless, `reloadAppAsync`, `Updates.reloadAsync` and `DevSettings.reload`
+ * can crash: the old runtime may run a pending Fabric render after its
+ * scheduler is torn down (`enableSchedulerDelegateInvalidation` is off in
+ * stable builds), and Expo modules re-register while the old runtime is still
+ * being torn down. Android relaunches the whole process instead (i18n/restart).
  */
-function applyDirection(language: AppLanguage): boolean {
+function applyDirection(language: AppLanguage): void {
   const shouldBeRTL = isRTLLanguage(language);
-  const needsReload =
-    I18nManager.isRTL !== shouldBeRTL ||
-    (shouldBeRTL && !I18nManager.doLeftAndRightSwapInRTL);
   I18nManager.allowRTL(shouldBeRTL);
   I18nManager.swapLeftAndRightInRTL(true);
   // Write both directions even if the cached JS isRTL already matches. The
   // native persisted flag may have changed since those constants were read.
   I18nManager.forceRTL(shouldBeRTL);
-  return needsReload;
-}
-
-export async function setLanguagePreference(
-  preference: LanguagePreference,
-): Promise<void> {
-  storage.set(PREFERENCE_KEY, preference);
-  storage.remove(RTL_RELOAD_GUARD_KEY);
-  const nextLanguage = resolveLanguage(preference);
-  const directionChanged = applyDirection(nextLanguage);
-  if (directionChanged || nextLanguage !== currentLanguage) {
-    await reloadApp();
-  }
 }
 
 /**
- * Called once at startup. If the native layout direction disagrees with the
- * resolved language (e.g. first launch on an Arabic device), force it and
- * reload once. The guard prevents a reload loop if the platform refuses.
+ * Whether choosing `preference` needs a restart to show: a different language,
+ * or a layout direction other than the one this session started with.
+ */
+export function languageChangeRequiresRestart(
+  preference: LanguagePreference,
+): boolean {
+  const nextLanguage = resolveLanguage(preference);
+  return nextLanguage !== currentLanguage || directionDiffers(nextLanguage);
+}
+
+/**
+ * Saves the preference and the native direction for the next launch. Returns
+ * whether the app must restart for the change to apply.
+ */
+export function setLanguagePreference(preference: LanguagePreference): boolean {
+  storage.set(PREFERENCE_KEY, preference);
+  applyDirection(resolveLanguage(preference));
+  return languageChangeRequiresRestart(preference);
+}
+
+/**
+ * Called once at startup. Keeps the persisted native direction in step with
+ * the resolved language (e.g. System after the device language changed). A
+ * mismatch is corrected on the next launch; JS layout already follows
+ * `currentLanguage` through utils/rtl.
  */
 export function bootstrapDirection(): void {
-  const needsReload = applyDirection(currentLanguage);
-  if (!needsReload) {
-    storage.remove(RTL_RELOAD_GUARD_KEY);
-    return;
-  }
-  if (storage.getString(RTL_RELOAD_GUARD_KEY) === currentLanguage) {
-    return;
-  }
-  storage.set(RTL_RELOAD_GUARD_KEY, currentLanguage);
-  void reloadApp();
+  applyDirection(currentLanguage);
 }

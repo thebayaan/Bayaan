@@ -25,16 +25,24 @@ import {Feather} from '@expo/vector-icons';
 import {ReciterItem} from '@/components/ReciterItem';
 import {SurahItem} from '@/components/SurahItem';
 import {useTheme} from '@/hooks/useTheme';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import {LoadingIndicator} from '@/components/LoadingIndicator';
 import {useSettings} from '@/hooks/useSettings';
 import {useReciterStore} from '@/store/reciterStore';
+import {useReciterSelection} from '@/hooks/useReciterSelection'; // @ai
+import {resolveSurahPlaybackAction} from '@/utils/surahPlaybackChoice'; // @ai
 import {StyleSheet} from 'react-native';
 import Color from 'color';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {SheetManager} from 'react-native-actions-sheet';
 import {ExploreView} from '@/components/search/ExploreView';
 import {useBottomInset} from '@/hooks/useBottomInset';
+import {useResponsive} from '@/hooks/useResponsive'; // @ai
+import {useHeaderHeight} from 'expo-router/react-navigation'; // @ai
+import {USE_GLASS} from '@/hooks/useGlassProps'; // @ai
+import {usePlayerActions} from '@/hooks/usePlayerActions'; // @ai
+import {createTracksForReciter} from '@/utils/track'; // @ai
+import {TabletSearchResults} from '@/components/search/TabletSearchResults'; // @ai
 import {analyticsService} from '@/services/analytics/AnalyticsService';
 // @ai-start
 import {latinLetterSpacing} from '@/utils/rtl';
@@ -93,8 +101,21 @@ export function SearchView({
   const {t} = useTranslation(['home', 'common']);
   const {askEveryTime, defaultReciterSelection} = useSettings();
   const defaultReciter = useReciterStore(state => state.defaultReciter);
+  const {playWithReciter, playWithRandomReciter} = useReciterSelection();
+  const {addToQueue} = usePlayerActions();
   const insets = useSafeAreaInsets();
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  // Explore and the results fill the iPad pane, but recent searches and the
+  // loading and empty states stay in the 720pt reading column
+  // (ipad-standards §5.3).
+  const {isTablet} = useResponsive();
+  const listStyle = isTablet
+    ? [styles.flexFill, styles.tabletColumn]
+    : styles.flexFill;
+  // On iPad the native search field floats in the navigation bar, so results
+  // start below the whole bar instead of just the status bar.
+  const headerHeight = useHeaderHeight();
+  const topInset = isTablet && USE_GLASS ? headerHeight : insets.top;
 
   useEffect(() => {
     const showEvent =
@@ -295,43 +316,43 @@ export function SearchView({
       await addToRecentSearches(result);
 
       const surah = result.item as Surah;
-      if (askEveryTime) {
-        SheetManager.show('select-reciter', {
-          payload: {surahId: surah.id.toString(), source: 'search'},
-        });
-        return;
-      }
+      // @ai-start
+      const surahId = surah.id.toString();
+      const action = resolveSurahPlaybackAction({
+        askEveryTime,
+        defaultReciterSelection,
+        hasDefaultReciter: !!defaultReciter,
+      });
 
-      switch (defaultReciterSelection) {
+      switch (action) {
         case 'browseAll':
+        case 'browseFavorites':
           router.push({
             pathname: '/(tabs)/(b.search)/reciter/browse',
-            params: {view: 'all', surahId: surah.id},
+            params: {
+              view: action === 'browseAll' ? 'all' : 'favorites',
+              surahId: surah.id,
+            },
           });
           break;
-        case 'searchFavorites':
-          router.push({
-            pathname: '/(tabs)/(b.search)/reciter/browse',
-            params: {view: 'favorites', surahId: surah.id},
-          });
-          break;
-        case 'useDefault':
+        case 'playDefault':
           if (defaultReciter) {
-            router.push({
-              pathname: '/player',
-              params: {reciterImageUrl: defaultReciter.image_url},
-            });
-          } else {
-            SheetManager.show('select-reciter', {
-              payload: {surahId: surah.id.toString(), source: 'search'},
+            playWithReciter(defaultReciter, surahId).catch(error => {
+              console.error('Error playing with default reciter:', error);
             });
           }
           break;
+        case 'playRandom':
+          playWithRandomReciter(surahId).catch(error => {
+            console.error('Error playing with random reciter:', error);
+          });
+          break;
         default:
           SheetManager.show('select-reciter', {
-            payload: {surahId: surah.id.toString(), source: 'search'},
+            payload: {surahId, source: 'search'},
           });
       }
+      // @ai-end
     },
     [
       router,
@@ -339,7 +360,37 @@ export function SearchView({
       askEveryTime,
       defaultReciterSelection,
       defaultReciter,
+      playWithReciter,
+      playWithRandomReciter,
     ],
+  );
+
+  // The iPad results' options button. The menu acts on the default reciter
+  // and the rewayah its play button uses, and names the reciter in its
+  // header.
+  const handleSurahOptions = useCallback(
+    (result: SearchResult) => {
+      Keyboard.dismiss();
+      const rewayatId = defaultReciter?.rewayat[0]?.id;
+      SheetManager.show('surah-options', {
+        payload: {
+          surah: result.item as Surah,
+          reciterId: defaultReciter?.id,
+          rewayatId,
+          onAddToQueue: defaultReciter
+            ? async (surah: Surah) => {
+                const tracks = await createTracksForReciter(
+                  defaultReciter,
+                  [surah],
+                  rewayatId,
+                );
+                await addToQueue(tracks);
+              }
+            : undefined,
+        },
+      });
+    },
+    [defaultReciter, addToQueue],
   );
 
   const renderSearchResult = useCallback(
@@ -347,6 +398,7 @@ export function SearchView({
       if (item.type === 'surah') {
         return (
           <SurahItem
+            pressAction="read" // @ai
             item={item.item as Surah}
             onPress={() => handleResultPress(item)}
             onLongPress={() => handleSurahLongPress(item)}
@@ -376,7 +428,11 @@ export function SearchView({
 
       if (recentItem.type === 'surah') {
         return (
-          <SurahItem item={recentItem.item as Surah} onPress={handlePress} />
+          <SurahItem
+            pressAction="read" // @ai
+            item={recentItem.item as Surah}
+            onPress={handlePress}
+          />
         );
       } else {
         return (
@@ -411,16 +467,17 @@ export function SearchView({
         style={[
           styles.modeContainer,
           styles.modeOverlay,
+          isTablet && styles.tabletOverlay,
           {
             opacity: searchOpacity,
             backgroundColor: theme.colors.background,
-            paddingTop: skipTopInset ? 0 : insets.top,
+            paddingTop: skipTopInset ? 0 : topInset,
           },
         ]}
         pointerEvents={isSearchMode ? 'auto' : 'none'}>
         {query.length === 0 ? (
           <ScrollView
-            style={styles.flexFill}
+            style={listStyle}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={[
               styles.scrollContent,
@@ -504,9 +561,18 @@ export function SearchView({
               </View>
             )}
           </ScrollView>
+        ) : isTablet && !searching && searchResults.length > 0 ? (
+          <TabletSearchResults
+            results={searchResults}
+            onResultPress={handleResultPress}
+            onSurahPlay={handleSurahLongPress}
+            onSurahOptions={handleSurahOptions}
+            bottomPadding={Math.max(keyboardHeight, bottomInset)}
+            style={styles.tabletFullWidth}
+          />
         ) : (
           <FlatList
-            style={styles.flexFill}
+            style={listStyle}
             data={searchResults}
             renderItem={renderSearchResult}
             keyExtractor={(item, index) => `${item.type}-${index}`}
@@ -579,6 +645,16 @@ const styles = StyleSheet.create({
   },
   flexFill: {
     flex: 1,
+  },
+  tabletOverlay: {
+    alignItems: 'center',
+  },
+  tabletColumn: {
+    width: '100%',
+    maxWidth: 720,
+  },
+  tabletFullWidth: {
+    alignSelf: 'stretch',
   },
   scrollContent: {},
   sectionHeader: {

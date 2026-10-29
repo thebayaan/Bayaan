@@ -58,6 +58,7 @@ class AnalyticsServiceImpl {
   private meaningfulListenTracker: MeaningfulListenTracker;
   private sessionStartTime: number = Date.now();
   private sessionListenMs: number = 0;
+  private readyListeners = new Set<() => void>();
 
   constructor() {
     this.meaningfulListenTracker = new MeaningfulListenTracker(
@@ -72,11 +73,17 @@ class AnalyticsServiceImpl {
     useAnalyticsConsentStore.subscribe(state => {
       this.applyConsent(state.analyticsEnabled);
     });
+    useAnalyticsConsentStore.persist.onFinishHydration(() => {
+      this.notifyIfReady();
+    });
   }
 
   async initialize(): Promise<void> {
     this.enabled = isAnalyticsEnabled();
-    if (!this.enabled) return;
+    if (!this.enabled) {
+      this.notifyIfReady();
+      return;
+    }
     this.deviceId = getOrCreateDeviceId();
     this.sessionStartTime = Date.now();
     this.sessionListenMs = 0;
@@ -93,12 +100,39 @@ class AnalyticsServiceImpl {
     const persist = useAnalyticsConsentStore.persist;
     if (persist.hasHydrated()) {
       this.applyConsent(useAnalyticsConsentStore.getState().analyticsEnabled);
+      this.notifyIfReady();
     } else {
       const unsub = persist.onFinishHydration(state => {
         unsub();
         this.applyConsent(state.analyticsEnabled);
       });
     }
+  }
+
+  /**
+   * Whether an event tracked now reaches its final destination: the saved
+   * consent choice is known and, when consent is granted, the PostHog instance
+   * is attached. With analytics off or consent declined the event is dropped
+   * from PostHog by design, so that also counts as ready. Queued events (widget
+   * completions) wait for this before they are drained.
+   */
+  isReadyToCapture(): boolean {
+    if (!useAnalyticsConsentStore.persist.hasHydrated()) return false;
+    if (!this.enabled || !isConsentGranted()) return true;
+    return this.posthog !== null;
+  }
+
+  /** Calls `listener` each time `isReadyToCapture()` may have become true. */
+  onReadyToCapture(listener: () => void): () => void {
+    this.readyListeners.add(listener);
+    return () => {
+      this.readyListeners.delete(listener);
+    };
+  }
+
+  private notifyIfReady(): void {
+    if (!this.isReadyToCapture()) return;
+    this.readyListeners.forEach(listener => listener());
   }
 
   /**
@@ -119,11 +153,16 @@ class AnalyticsServiceImpl {
   private capture(
     event: string,
     properties: Record<string, string | number | boolean | null>,
+    timestamp?: Date,
   ): void {
     // Respect the user's runtime opt-out (Settings → Privacy) in addition to
     // PostHog's own opt-out state — belt-and-suspenders. Fails closed until the
     // consent store has hydrated.
     if (!isConsentGranted()) return;
+    if (timestamp) {
+      this.posthog?.capture(event, properties, {timestamp});
+      return;
+    }
     this.posthog?.capture(event, properties);
   }
 
@@ -215,10 +254,20 @@ class AnalyticsServiceImpl {
     this.capture(ANALYTICS_EVENTS.ADHKAR_SESSION_STARTED, {...props});
   }
 
-  trackAdhkarSessionCompleted(props: AdhkarSessionCompletedProps): void {
-    this.capture(ANALYTICS_EVENTS.ADHKAR_SESSION_COMPLETED, {...props});
+  /** `completedAt` dates a completion made earlier (a queued widget event). */
+  trackAdhkarSessionCompleted(
+    props: AdhkarSessionCompletedProps,
+    completedAt?: Date,
+  ): void {
+    this.capture(
+      ANALYTICS_EVENTS.ADHKAR_SESSION_COMPLETED,
+      {...props},
+      completedAt,
+    );
     localAggregationStore.incrementAdhkarSessions(
-      localAggregationStore.getToday(),
+      completedAt
+        ? localAggregationStore.dayKey(completedAt)
+        : localAggregationStore.getToday(),
     );
   }
 

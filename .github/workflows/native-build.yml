@@ -8,6 +8,7 @@ on:
       - app.config.js
       - '*.config.js'
       - android/**
+      - modules/**
       - plugins/**
       - patches/**
       - .github/workflows/native-build.yml

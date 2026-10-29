@@ -13,7 +13,8 @@ Shipped languages: **English** (source) and **Arabic** (RTL). Every language the
 | What | Where |
 |------|-------|
 | Language registry (direction, script, digits, font, status) | `i18n/languages.ts` |
-| Session language, preference, RTL bootstrap and reload | `i18n/language.ts` |
+| Session language, preference and native RTL direction | `i18n/language.ts` |
+| Applying a language change (Android process restart) | `i18n/restart.ts`, `modules/bayaan-restart` |
 | i18next setup | `i18n/index.ts` |
 | Locale files, one folder per language, one file per namespace | `i18n/locales/<lang>/<namespace>.json` |
 | Namespace imports | `i18n/resources.ts` |
@@ -106,7 +107,7 @@ A form may leave out `{{count}}` when the word already says the number (`تدب�
 
 - **Layout flips on its own.** `i18n/language.ts` turns on RTL with `I18nManager.forceRTL`. In RTL, `flexDirection: 'row'` runs right to left, and with `swapLeftAndRightInRTL(true)` (the default, set explicitly) `marginLeft`, `paddingLeft` and absolute `left`/`right` swap sides. `textAlign: 'left'` follows the text's direction, so it aligns to the right in Arabic. Don't add `row-reverse` or swap margins by hand to fix RTL.
 - **These don't flip:** `transform: [{translateX}]`, Animated slide directions, gesture `dx` values and horizontal `ScrollView` offsets on Android. Check them in Arabic and negate where needed.
-- **A direction change needs a reload.** `setLanguagePreference` restarts the app when the direction changes. `currentLanguage` is fixed for the session.
+- **A language change needs a fresh start.** `setLanguagePreference` saves the choice and the native direction. On Android, `restartWithLanguage` (`i18n/restart.ts`) relaunches the app process through `modules/bayaan-restart`. iOS cannot relaunch an app, so the screen asks the user to close and reopen it. Never reload the runtime in process (`reloadAppAsync`, `Updates.reloadAsync`, `DevSettings.reload`): it crashes on React Native 0.86 bridgeless. `currentLanguage` is fixed for the session.
 - **Mirror directional icons** with `flipX`: back buttons, chevrons, "next" arrows.
 - **Don't mirror** media transport (play, skip, rewind), playback progress bars, clocks, checkmarks, logos, or the Quran page itself. Wrap media controls and sliders in `forceLTR`. Material Design and Apple's HIG both say to keep these left to right.
 - **Horizontal `FlatList`s** follow the native direction even inside `forceLTR`; check their scroll and index logic in Arabic.

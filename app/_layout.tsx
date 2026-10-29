@@ -28,13 +28,19 @@ import {useTheme} from '@/hooks/useTheme';
 // @ai-start
 import {LocaleDirContext, ThemeProvider} from 'expo-router/react-navigation';
 // @ai-end
-import {PlayerSheet} from '@/components/player/v2/PlayerSheet';
+import {PlayerHost} from '@/components/player/v2/PlayerHost';
 import {
   WhatsNewModal,
   WhatsNewModalRef,
 } from '@/components/modals/WhatsNewOnboarding';
 import {DevMenu} from '@/components/DevMenu';
 import {SheetProvider} from 'react-native-actions-sheet';
+import {recordTouch} from '@/utils/lastTouch'; // @ai
+import {useResponsive} from '@/hooks/useResponsive'; // @ai
+// @ai-start
+import {AppKeyCommands} from '@/components/keyboard/AppKeyCommands';
+import {keyCommandsSupported} from '@/services/keyboard/keyCommands';
+// @ai-end
 import '@/components/sheets/sheets'; // Register action sheets
 import {
   configureReanimatedLogger,
@@ -59,7 +65,7 @@ import {mushafSessionStore} from '@/services/mushaf/MushafSessionStore';
 import {USE_GLASS} from '@/hooks/useGlassProps';
 import Constants from 'expo-constants';
 import * as Sentry from '@sentry/react-native';
-import * as ScreenOrientation from 'expo-screen-orientation';
+import {usePhoneOrientation} from '@/hooks/usePhoneOrientation'; // @ai
 
 // Configure Reanimated logger
 configureReanimatedLogger({
@@ -173,6 +179,7 @@ function RootLayout() {
   const initializationRef = useRef(false);
   const whatsNewModalRef = useRef<WhatsNewModalRef>(null);
   const {theme, isDarkMode} = useTheme();
+  const {isTablet} = useResponsive(); // @ai
   useNetworkMonitor();
 
   // Build React Navigation theme so card/background colors match during transitions
@@ -210,10 +217,9 @@ function RootLayout() {
     resetOnBackground: true,
   });
 
-  // Lock to portrait by default; mushaf.tsx unlocks when that screen is active.
-  useEffect(() => {
-    ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
-  }, []);
+  // Phones are portrait (mushaf.tsx allows landscape there); iPads turn
+  // freely. @ai
+  usePhoneOrientation('portrait'); // @ai
 
   // Start after init so the first snapshot sees the restored session and
   // stores instead of overwriting the widgets with an empty state.
@@ -498,6 +504,7 @@ function RootLayout() {
                   ]}
                   // @ts-ignore - RN supports this on iOS to override system theme for native UI (keyboard, menus, alerts)
                   overrideUserInterfaceStyle={isDarkMode ? 'dark' : 'light'}
+                  onTouchStart={recordTouch} // @ai
                   onLayout={onLayoutRootView}>
                   <NetworkStatusMonitor />
                   <SheetProvider>
@@ -516,6 +523,10 @@ function RootLayout() {
                         options={{headerShown: false}}
                       />
                       <Stack.Screen
+                        name="adhkar-playing"
+                        options={{headerShown: false, animation: 'none'}}
+                      />
+                      <Stack.Screen
                         name="mushaf"
                         options={{
                           headerShown: USE_GLASS,
@@ -531,8 +542,48 @@ function RootLayout() {
                           fullScreenGestureEnabled: false,
                         }}
                       />
+                      {/* @ai-start */}
+                      <Stack.Screen
+                        name="translations"
+                        options={
+                          isTablet
+                            ? {
+                                // iPad: a centered card over the reader
+                                // (TabletDialog), not a full page.
+                                presentation: 'transparentModal',
+                                animation: 'fade',
+                                headerShown: false,
+                                contentStyle: {
+                                  direction: appDirection,
+                                  backgroundColor: 'transparent',
+                                },
+                              }
+                            : {
+                                title: i18n.t('home:translations.title'),
+                                headerShown: true,
+                                headerTintColor: theme.colors.text,
+                                ...(USE_GLASS
+                                  ? {
+                                      headerTransparent: true,
+                                      headerStyle: {
+                                        backgroundColor: 'transparent',
+                                      },
+                                    }
+                                  : {
+                                      headerStyle: {
+                                        backgroundColor:
+                                          theme.colors.background,
+                                      },
+                                    }),
+                                headerShadowVisible: false,
+                                headerBackButtonDisplayMode: 'minimal',
+                              }
+                        }
+                      />
+                      {/* @ai-end */}
                     </Stack>
-                    <PlayerSheet />
+                    <PlayerHost />
+                    {keyCommandsSupported() && <AppKeyCommands />}
                     <WhatsNewModal ref={whatsNewModalRef} />
                     <DevMenu whatsNewModalRef={whatsNewModalRef} />
                   </SheetProvider>
@@ -546,5 +597,9 @@ function RootLayout() {
   );
 }
 // @ai-end
+
+// A deep link (widget, Live Activity, App Link) that opens a screen in this
+// stack lands on top of its first screen, so back always has a target.
+export const unstable_settings = {initialRouteName: '(tabs)'};
 
 export default Sentry.wrap(RootLayout);

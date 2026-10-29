@@ -1,7 +1,26 @@
 {
   "queue": {
     "empty": "قائمة الانتظار فارغة",
-    "verseShort": "آية {{verse}}"
+    "verseShort": "آية {{verse}}",
+    "nowPlaying": "قيد التشغيل",
+    "upNext": "التالي",
+    "played": "تم تشغيلها",
+    "remove": "إزالة {{title}} من قائمة الانتظار",
+    "playNext": "تشغيل تاليًا",
+    "repeatAll": "تكرار الكل",
+    "repeatOne": "تكرار واحد",
+    "moveUp": "نقل لأعلى",
+    "moveDown": "نقل لأسفل",
+    "reorder": "إعادة ترتيب {{title}}",
+    "reorderHint": "اسحب لنقله في قائمة الانتظار",
+    "moreFor": "خيارات إضافية لـ {{title}}",
+    "clearUpNext": "مسح التالي",
+    "nothingNext": "لا يوجد شيء تالٍ"
+  },
+  "panes": {
+    "text": "النص",
+    "queue": "قائمة الانتظار",
+    "reciters": "القرّاء"
   },
   "uploads": {
     "recordingType": {
@@ -35,11 +54,28 @@
     "searchPlaceholder": "ابحث في السور",
     "noSurahsAvailable": "لا توجد سور متاحة",
     "noSurahsFound": "لم يُعثر على سور",
-    "juzAmma": "جزء عمّ"
+    "juzAmma": "جزء عمّ",
+    "playAll": "تشغيل الكل",
+    "favorite": "المفضلة",
+    "favorited": "في المفضلة",
+    "downloaded": "تم التنزيل",
+    "surahCount_zero": "{{count}} سورة",
+    "surahCount_one": "سورة واحدة",
+    "surahCount_two": "سورتان",
+    "surahCount_few": "{{count}} سور",
+    "surahCount_many": "{{count}} سورة",
+    "surahCount_other": "{{count}} سورة",
+    "rewayatCount_zero": "{{count}} رواية",
+    "rewayatCount_one": "رواية واحدة",
+    "rewayatCount_two": "روايتان",
+    "rewayatCount_few": "{{count}} روايات",
+    "rewayatCount_many": "{{count}} رواية",
+    "rewayatCount_other": "{{count}} رواية"
   },
   "adhkar": {
     "otherSection": "أخرى",
     "playAll": "تشغيل الكل",
+    "resume": "استئناف",
     "hideInfo": "إخفاء التفاصيل",
     "showInfo": "عرض التفاصيل",
     "reciteTimes_zero": "تُقال {{count}} مرة",
@@ -77,10 +113,31 @@
       "showInstruction": "إظهار الإرشاد",
       "hideInstruction": "إخفاء الإرشاد",
       "playAll": "تشغيل الكل",
-      "pauseAll": "إيقاف الكل مؤقتًا"
+      "pauseAll": "إيقاف الكل مؤقتًا",
+      "resumeAll": "استئناف الكل"
     }
   },
   "a11y": {
-    "openPlayer": "يفتح المشغّل الكامل"
+    "openPlayer": "يفتح المشغّل الكامل",
+    "nowPlaying": "{{title}}، {{artist}}",
+    "openReciter": "يفتح صفحة القارئ",
+    "skipBack": "رجوع {{seconds}} ثانية",
+    "skipForward": "تقديم {{seconds}} ثانية",
+    "previous": "السابق",
+    "next": "التالي",
+    "love": "إعجاب",
+    "displayOptions": "خيارات العرض",
+    "speed": "سرعة التشغيل",
+    "repeat": "التكرار",
+    "repeatOff": "إيقاف",
+    "repeatAll": "الكل",
+    "repeatOne": "واحد",
+    "sleepTimer": "مؤقت النوم",
+    "ambient": "أصوات محيطة",
+    "followAlong": "المتابعة مع التلاوة",
+    "queue": "قائمة التشغيل",
+    "moreOptions": "خيارات إضافية",
+    "closePlayer": "إغلاق المشغّل",
+    "openFullProfile": "فتح الصفحة الكاملة"
   }
 }

@@ -20,6 +20,7 @@
     "browseAll": "Browse All",
     "allSurahs": "All Surahs",
     "browseRecitersForSurah": "Browse Reciters - {{surah}}",
+    "chooseReciterForSurah": "Choose a reciter · {{surah}}",
     "allChip": "All",
     "rewayahSeparator": "A'n",
     "searchReciters": "Search reciters...",
@@ -27,6 +28,8 @@
     "recitersFound_one": "{{count}} reciters found with current filters",
     "recitersFound_other": "{{count}} reciters found with current filters",
     "clearAll": "Clear All",
+    "reciterCount_one": "{{count}} reciter",
+    "reciterCount_other": "{{count}} reciters",
     "searchSurahs": "Search surahs..."
   },
   "search": {
@@ -34,7 +37,9 @@
     "recentSearches": "Recent searches",
     "noRecent": "No recent searches",
     "noRecentHint": "Your search history will appear here",
-    "noResultsHint": "Try different keywords or check the spelling"
+    "noResultsHint": "Try different keywords or check the spelling",
+    "all": "All",
+    "topResult": "Top result"
   },
   "systemPlaylist": {
     "invalidId": "Invalid playlist ID",
@@ -48,7 +53,15 @@
     "noSavedHint": "Tap the bookmark icon on any dhikr to save it here",
     "noSaved": "No saved adhkar",
     "noneFound": "No adhkar found",
+    "play": "Play adhkar",
+    "pause": "Pause adhkar",
+    "stopSession": "Stop adhkar",
+    "openPlaying": "Open the playing dhikr",
+    "jumpToPlaying": "Now playing",
     "position": "{{current}} of {{total}}",
+    "dhikrPosition": "Dhikr {{current}} of {{total}}",
+    "remaining_one": "{{count}} left",
+    "remaining_other": "{{count}} left",
     "dhikr": "Dhikr",
     "shareCategory": "Check out {{title}} on {{appName}}",
     "shareDhikr": "Check out this dhikr on {{appName}}"
@@ -56,12 +69,12 @@
   "hero": {
     "surahOfTheDay": "SURAH OF THE DAY",
     "continueReading": "CONTINUE READING",
+    "continueListening": "CONTINUE LISTENING",
     "browseAllSurahs": "Browse all {{total}} surahs",
     "verses": "Verses",
     "number": "Number"
   },
   "randomHero": {
-    "finding": "Finding random recitations from different reciters...",
     "findFailed": "Failed to find random recitations. Please try again.",
     "playing": "Playing {{surah}} by {{reciter}}",
     "playFailed": "Failed to play random recitation. Please try again.",
@@ -113,13 +126,19 @@
     "a11yName": "Surah {{name}}",
     "a11yPlaying": "currently playing",
     "a11ySeparator": ", ",
-    "a11yPlayHint": "Tap to play Surah",
+    "a11yPlayHint": "Plays the surah",
     "makkah": "Makkah",
     "madinah": "Madinah",
     "moreOptions": "More options",
     "moreOptionsHint": "Opens menu with additional actions for this Surah",
     "verses_one": "{{count}} verse",
-    "verses_other": "{{count}} verses"
+    "verses_other": "{{count}} verses",
+    "a11yReadHint": "Opens the surah in the reader",
+    "a11yPlayAction": "Play",
+    "a11yMoreAction": "More options",
+    "columnSurah": "Surah",
+    "columnRevelation": "Revelation",
+    "columnVerses": "Verses"
   },
   "sort": {
     "asc": "Asc",

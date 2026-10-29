@@ -1,20 +1,15 @@
 import React, {useState, useMemo, useCallback} from 'react';
 import {View, Text, Pressable, StyleSheet} from 'react-native';
-import {
-  ScaledSheet,
-  moderateScale,
-  verticalScale,
-} from 'react-native-size-matters';
+import {ScaledSheet, moderateScale, verticalScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import ActionSheet, {
-  SheetProps,
-  SheetManager,
-} from 'react-native-actions-sheet';
+import {SheetProps, SheetManager} from 'react-native-actions-sheet';
+import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import Color from 'color';
 import {Feather} from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import {Dhikr} from '@/types/adhkar';
+import {adhkarCopyText, adhkarTranslationCopyText} from '@/utils/adhkarText';
 // @ai-start
 import {useTranslation} from 'react-i18next';
 // @ai-end
@@ -90,15 +85,15 @@ export const AdhkarCopyOptionsSheet = (
     const parts: string[] = [];
 
     if (copyArabic && dhikr.arabic) {
-      parts.push(dhikr.arabic);
+      parts.push(adhkarCopyText(dhikr.arabic));
     }
 
     if (copyTranslation && dhikr.translation) {
-      parts.push(dhikr.translation);
+      parts.push(adhkarTranslationCopyText(dhikr.translation));
     }
 
     if (copyTransliteration && dhikr.transliteration) {
-      parts.push(dhikr.transliteration);
+      parts.push(adhkarCopyText(dhikr.transliteration));
     }
 
     if (parts.length > 0) {
@@ -114,6 +109,7 @@ export const AdhkarCopyOptionsSheet = (
   return (
     <ActionSheet
       id={props.sheetId}
+      tabletPresentation="menu"
       containerStyle={styles.sheetContainer}
       indicatorStyle={styles.indicator}
       gestureEnabled={true}>

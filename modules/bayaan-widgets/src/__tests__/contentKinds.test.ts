@@ -36,8 +36,28 @@ describe('changedContentKindsForSnapshot', () => {
   it('reloads Bayaan Now when Continue Listening would reload', () => {
     const next = snap();
     if (next.nowPlaying) next.nowPlaying.isPlaying = false;
-    expect(changedContentKindsForSnapshot(snap(), next)).toEqual(['BayaanNow']);
+    // Pausing also flips the play buttons on the content widgets. // @ai
+    expect(changedContentKindsForSnapshot(snap(), next)).toEqual([
+      'RecentlyPlayed',
+      'Bedtime',
+      'LibraryShelf',
+      'ReciterSpotlight',
+      'BayaanNow',
+    ]);
   });
+
+  // @ai-start
+  it('reloads Adhkar and Bayaan Now when adhkar playback changes', () => {
+    const next = {
+      ...snap(),
+      adhkar: {superId: 'morning', dhikrId: 'd1', isPlaying: true},
+    };
+    expect(changedContentKindsForSnapshot(snap(), next)).toEqual([
+      'Adhkar',
+      'BayaanNow',
+    ]);
+  });
+  // @ai-end
 
   it('reloads Recently Played and Bayaan Now when recent changes', () => {
     const next = snap();
@@ -94,7 +114,7 @@ describe('changedContentKindsForContent', () => {
     ]);
   });
 
-  it('lists eight kinds', () => {
-    expect(ALL_CONTENT_WIDGET_KINDS).toHaveLength(8);
+  it('lists six kinds', () => {
+    expect(ALL_CONTENT_WIDGET_KINDS).toHaveLength(6);
   });
 });

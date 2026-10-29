@@ -1,15 +1,12 @@
 import React from 'react';
 import {View, StyleSheet} from 'react-native';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import Animated, {
   useAnimatedStyle,
   interpolate,
   SharedValue,
 } from 'react-native-reanimated';
 import {useTheme} from '@/hooks/useTheme';
-// @ai-start
-import {forceLTR} from '@/utils/rtl';
-// @ai-end
 
 interface DotIndicatorProps {
   totalPages: number;
@@ -25,8 +22,14 @@ function DotIndicatorComponent({
 }: DotIndicatorProps) {
   const {theme} = useTheme();
 
+  // Someone skipping several releases can get more pages than the row has
+  // room for at full size, so shrink the dots until they fit the modal.
+  const naturalWidth =
+    (totalPages - 1) * (DOT_SIZE_INACTIVE + DOT_GAP) + DOT_SIZE_ACTIVE;
+  const fit = naturalWidth > pageWidth ? pageWidth / naturalWidth : 1;
+
   return (
-    <View style={[styles.container, forceLTR]}>
+    <View style={[styles.container, {gap: DOT_GAP * fit}]}>
       {Array.from({length: totalPages}).map((_, i) => (
         <Dot
           key={i}
@@ -34,6 +37,7 @@ function DotIndicatorComponent({
           scrollX={scrollX}
           pageWidth={pageWidth}
           color={theme.colors.text}
+          fit={fit}
         />
       ))}
     </View>
@@ -46,12 +50,18 @@ interface DotProps {
   scrollX: SharedValue<number>;
   pageWidth: number;
   color: string;
+  /** Scale applied to the dot sizes so the whole row fits (1 = full size). */
+  fit: number;
 }
 
 const DOT_SIZE_INACTIVE = moderateScale(8);
 const DOT_SIZE_ACTIVE = moderateScale(20);
+const DOT_GAP = moderateScale(6);
 
-function Dot({index, scrollX, pageWidth, color}: DotProps) {
+function Dot({index, scrollX, pageWidth, color, fit}: DotProps) {
+  const inactiveSize = DOT_SIZE_INACTIVE * fit;
+  const activeSize = DOT_SIZE_ACTIVE * fit;
+
   const animatedStyle = useAnimatedStyle(() => {
     const inputRange = [
       (index - 1) * pageWidth,
@@ -62,7 +72,7 @@ function Dot({index, scrollX, pageWidth, color}: DotProps) {
     const width = interpolate(
       scrollX.value,
       inputRange,
-      [DOT_SIZE_INACTIVE, DOT_SIZE_ACTIVE, DOT_SIZE_INACTIVE],
+      [inactiveSize, activeSize, inactiveSize],
       'clamp',
     );
 
@@ -78,7 +88,14 @@ function Dot({index, scrollX, pageWidth, color}: DotProps) {
 
   return (
     <Animated.View
-      style={[styles.dot, {backgroundColor: color}, animatedStyle]}
+      style={[
+        {
+          height: inactiveSize,
+          borderRadius: inactiveSize / 2,
+          backgroundColor: color,
+        },
+        animatedStyle,
+      ]}
     />
   );
 }
@@ -90,11 +107,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: moderateScale(6),
     paddingVertical: moderateScale(16),
-  },
-  dot: {
-    height: moderateScale(8),
-    borderRadius: moderateScale(4),
   },
 });

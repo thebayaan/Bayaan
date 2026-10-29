@@ -2,12 +2,14 @@ import React, {useCallback} from 'react';
 import {View, Text, TouchableOpacity, Animated} from 'react-native';
 import * as Haptics from 'expo-haptics';
 import {Feather} from '@expo/vector-icons';
-import {ScaledSheet, moderateScale} from 'react-native-size-matters';
+import {ScaledSheet, moderateScale} from '@/utils/scale';
 import Color from 'color';
 import {useTheme} from '@/hooks/useTheme';
 import {useAdhkar} from '@/hooks/useAdhkar';
 import {Theme} from '@/utils/themeUtils';
 import {analyticsService} from '@/services/analytics/AnalyticsService';
+import {dhikrCountKey} from '@/services/adhkar/dhikrCountKey';
+import type {SuperCategory} from '@/types/adhkar';
 // @ai-start
 import {useTranslation} from 'react-i18next';
 import {localizeDigits} from '@/i18n/format';
@@ -16,6 +18,9 @@ import {localizeDigits} from '@/i18n/format';
 interface TasbeehCounterProps {
   dhikrId: string;
   targetCount: number; // From dhikr.repeatCount
+  // The list the counter is shown in. Morning and evening (lists with their
+  // own dhikrIds) keep a separate count per list; omit it elsewhere.
+  superCategory?: Pick<SuperCategory, 'id' | 'dhikrIds'> | null;
 }
 
 // Success color constant
@@ -25,11 +30,13 @@ const SUCCESS_COLOR = '#22C55E';
 export const TasbeehCounter: React.FC<TasbeehCounterProps> = ({
   dhikrId,
   targetCount,
+  superCategory,
 }) => {
   const {theme} = useTheme();
   const {t} = useTranslation(['player', 'common']);
   const {getCount, incrementCount, resetCount} = useAdhkar();
-  const count = getCount(dhikrId);
+  const countKey = dhikrCountKey(dhikrId, superCategory);
+  const count = getCount(countKey);
 
   // Animation for tap feedback
   const scaleAnim = React.useRef(new Animated.Value(1)).current;
@@ -60,7 +67,7 @@ export const TasbeehCounter: React.FC<TasbeehCounterProps> = ({
     animateTap();
 
     // Increment count
-    const newCount = await incrementCount(dhikrId);
+    const newCount = await incrementCount(countKey);
 
     // Light haptic on every tap
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -73,12 +80,12 @@ export const TasbeehCounter: React.FC<TasbeehCounterProps> = ({
         count: targetCount,
       });
     }
-  }, [dhikrId, incrementCount, targetCount, animateTap]);
+  }, [dhikrId, countKey, incrementCount, targetCount, animateTap]);
 
   const handleReset = useCallback(async () => {
-    await resetCount(dhikrId);
+    await resetCount(countKey);
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-  }, [dhikrId, resetCount]);
+  }, [countKey, resetCount]);
 
   const styles = createStyles(theme, targetReached);
 

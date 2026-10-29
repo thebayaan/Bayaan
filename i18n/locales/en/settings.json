@@ -159,15 +159,25 @@
     "sections": {
       "quranData": "Quran Data",
       "audioSources": "Audio Sources",
+      "adhkarSources": "Adhkar Sources",
       "designResources": "Design Resources",
       "openSource": "Open Source Libraries",
-      "specialThanks": "Special Thanks",
-      "designArt": "Design & Art"
+      "specialThanks": "Special Thanks"
     },
     "items": {
       "qul": "Advanced Quranic data and word-level information by Tarteel",
       "quranFoundation": "Comprehensive Quran API services by Quran.com",
       "mp3quran": "Comprehensive reciter collection",
+      "alafasyTitle": "Mishary Rashid Alafasy",
+      "alafasy": "Morning and evening adhkar, Quranic duas and more Hisn al-Muslim adhkar",
+      "duraihimTitle": "Hamad al-Duraihim, IslamHouse.com",
+      "duraihim": "Hisn al-Muslim adhkar audio",
+      "removalTitle": "Content removal",
+      "removal": "Rights holders can request the removal of any content through {{supportUrl}}.",
+      "hisnmuslim": "Adhkar text, translations and transliterations",
+      "tanzil": "Quran transliteration",
+      "wikipediaNames": "99 Names meanings by Wikipedia contributors, CC BY-SA 4.0",
+      "fitrahive": "Transliterations of three morning and evening adhkar, MIT License",
       "svgrepo": "Beautiful open source icons and illustrations",
       "manropeTitle": "Manrope Font",
       "manrope": "Modern geometric sans-serif font family",
@@ -183,9 +193,7 @@
       "betaTestersTitle": "Beta Testers",
       "betaTesters": "For their valuable feedback and suggestions",
       "communityTitle": "Muslim Community",
-      "community": "For their continuous support and guidance",
-      "yamamotoTitle": "Dr. Naoki Yamamoto",
-      "yamamoto": "Custom designed splash screen calligraphy"
+      "community": "For their continuous support and guidance"
     }
   },
   "defaultReciter": {

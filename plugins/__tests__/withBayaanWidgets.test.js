@@ -243,7 +243,7 @@ describe('renderAndroidValues', () => {
       '<bool name="bayaan_widgets_feature_ambient">false</bool>',
     );
     expect(xml).toContain(
-      '<string name="bayaan_widget_now_desc">What fits this moment: listening, occasions or bedtime.</string>',
+      '<string name="bayaan_widget_now_desc">What fits this moment: listening or bedtime.</string>',
     );
     expect(xml).not.toContain('live_activity');
   });

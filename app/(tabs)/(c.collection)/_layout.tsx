@@ -2,7 +2,15 @@ import React from 'react';
 import {Stack} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
 import {USE_GLASS} from '@/hooks/useGlassProps';
-import {MaxWidthContainer} from '@/components/layout/MaxWidthContainer';
+import {capScreensExcept} from '@/components/layout/MaxWidthContainer';
+
+// A deep link (widget, Live Activity, App Link) that opens a screen in this
+// stack lands on top of its first screen, so back always has a target.
+export const unstable_settings = {initialRouteName: 'index'};
+
+// The Library home's tile grid and shelf take the whole pane on iPad; the
+// lists it opens stay in the 720pt column (ipad-standards §5.3). @ai
+const SCREEN_LAYOUT = capScreensExcept(['index']); // @ai
 
 export default function CollectionLayout() {
   const {theme} = useTheme();
@@ -21,12 +29,12 @@ export default function CollectionLayout() {
     : undefined;
 
   return (
-    <MaxWidthContainer>
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          freezeOnBlur: true,
-        }}>
+    <Stack
+      screenLayout={SCREEN_LAYOUT} // @ai
+      screenOptions={{
+        headerShown: false,
+        freezeOnBlur: true,
+      }}>
       <Stack.Screen
         name="index"
         options={USE_GLASS ? {title: '', headerBackTitle: ' '} : undefined}
@@ -74,11 +82,7 @@ export default function CollectionLayout() {
         name="collection/reciter-downloads/[reciterId]"
         options={collectionScreenOptions}
       />
-      <Stack.Screen
-        name="playlist/[id]"
-        options={collectionScreenOptions}
-      />
-      </Stack>
-    </MaxWidthContainer>
+      <Stack.Screen name="playlist/[id]" options={collectionScreenOptions} />
+    </Stack>
   );
 }

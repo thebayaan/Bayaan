@@ -53,7 +53,7 @@ beforeEach(() => {
   mockUpdatesReload.mockResolvedValue(undefined);
 });
 
-it('keeps startup imports free of reloads until the root mounts', () => {
+it('keeps startup imports free of reloads', () => {
   mockStorage.set('language_preference', 'ar');
   expect(loadLanguage().currentLanguage).toBe('ar');
   expect(mockReload).not.toHaveBeenCalled();
@@ -79,57 +79,83 @@ it('treats an unknown stored preference as System', () => {
   expect(loadLanguage().getLanguagePreference()).toBe('system');
 });
 
-it('persists Arabic and enables native mirroring before reloading', async () => {
-  await loadLanguage().setLanguagePreference('ar');
+// In-process reloads (reloadAppAsync, Updates.reloadAsync, DevSettings.reload)
+// crash on React Native 0.86 bridgeless: the old runtime can run a pending
+// Fabric render after its scheduler is torn down. Direction changes are
+// persisted natively and applied on the next launch instead.
+function expectNoReload() {
+  expect(mockReload).not.toHaveBeenCalled();
+  expect(mockUpdatesReload).not.toHaveBeenCalled();
+  expect(mockDevReload).not.toHaveBeenCalled();
+}
+
+it('persists Arabic and native mirroring without reloading in process', () => {
+  const restartRequired = loadLanguage().setLanguagePreference('ar');
+  expect(restartRequired).toBe(true);
   expect(mockStorage.get('language_preference')).toBe('ar');
   expect(mockDirection.allowRTL).toHaveBeenCalledWith(true);
   expect(mockDirection.forceRTL).toHaveBeenCalledWith(true);
   expect(mockDirection.swapLeftAndRightInRTL).toHaveBeenCalledWith(true);
-  expect(mockReload).toHaveBeenCalledTimes(1);
-  expect(mockDirection.forceRTL.mock.invocationCallOrder[0]).toBeLessThan(
-    mockReload.mock.invocationCallOrder[0],
-  );
+  expectNoReload();
 });
 
-it('switches back to English on an Arabic device', async () => {
+it('switches back to English on an Arabic device without reloading', () => {
   mockDirection.isRTL = true;
   mockDeviceLocales.mockReturnValue([{languageCode: 'ar'}]);
-  await loadLanguage().setLanguagePreference('en');
+  expect(loadLanguage().setLanguagePreference('en')).toBe(true);
   expect(mockDirection.allowRTL).toHaveBeenCalledWith(false);
   expect(mockDirection.forceRTL).toHaveBeenCalledWith(false);
-  expect(mockReload).toHaveBeenCalledTimes(1);
+  expectNoReload();
+});
+
+it('reports whether a preference needs a restart without saving it', () => {
+  const language = loadLanguage();
+  expect(language.languageChangeRequiresRestart('ar')).toBe(true);
+  expect(language.languageChangeRequiresRestart('en')).toBe(false);
+  expect(language.languageChangeRequiresRestart('system')).toBe(false);
+  expect(mockStorage.get('language_preference')).toBeUndefined();
+  expect(mockDirection.forceRTL).not.toHaveBeenCalled();
+});
+
+it('does not require a restart when the language and direction are unchanged', () => {
+  expect(loadLanguage().setLanguagePreference('en')).toBe(false);
+  expect(mockStorage.get('language_preference')).toBe('en');
+  expectNoReload();
+});
+
+it('does not require a restart when switching back before relaunching', () => {
+  mockStorage.set('language_preference', 'ar');
+  mockDirection.isRTL = true;
+  const language = loadLanguage();
+  expect(language.setLanguagePreference('en')).toBe(true);
+  // The user changes their mind before closing the app.
+  expect(language.setLanguagePreference('ar')).toBe(false);
+  expect(mockDirection.forceRTL).toHaveBeenLastCalledWith(true);
+  expectNoReload();
 });
 
 it('clears a stale native force flag even when cached isRTL already matches', () => {
   loadLanguage().bootstrapDirection();
   expect(mockDirection.forceRTL).toHaveBeenCalledWith(false);
-  expect(mockReload).not.toHaveBeenCalled();
+  expectNoReload();
 });
 
-it('recovers the unfinished build that disabled left/right style mirroring', () => {
+it('repairs disabled left/right style mirroring for the next launch', () => {
   mockStorage.set('language_preference', 'ar');
   mockDirection.isRTL = true;
   mockDirection.doLeftAndRightSwapInRTL = false;
   loadLanguage().bootstrapDirection();
   expect(mockDirection.swapLeftAndRightInRTL).toHaveBeenCalledWith(true);
-  expect(mockReload).toHaveBeenCalledTimes(1);
+  expectNoReload();
 });
 
-it('reloads only once if the native runtime refuses the requested direction', () => {
+it('never reloads at startup when the native direction disagrees', () => {
   mockStorage.set('language_preference', 'ar');
   loadLanguage().bootstrapDirection();
   jest.resetModules();
   loadLanguage().bootstrapDirection();
-  expect(mockReload).toHaveBeenCalledTimes(1);
-
-  // A later successful launch clears the guard for the next system change.
-  mockDirection.isRTL = true;
-  jest.resetModules();
-  loadLanguage().bootstrapDirection();
-  mockDirection.isRTL = false;
-  jest.resetModules();
-  loadLanguage().bootstrapDirection();
-  expect(mockReload).toHaveBeenCalledTimes(2);
+  expect(mockDirection.forceRTL).toHaveBeenCalledWith(true);
+  expectNoReload();
 });
 
 it('resolves System again when the device language changes between launches', () => {
@@ -139,21 +165,8 @@ it('resolves System again when the device language changes between launches', ()
   const language = loadLanguage();
   expect(language.currentLanguage).toBe('ar');
   language.bootstrapDirection();
-  expect(mockReload).toHaveBeenCalledTimes(1);
-});
-
-it('does not reload when selecting a preference with the same language and direction', async () => {
-  await loadLanguage().setLanguagePreference('en');
-  expect(mockStorage.get('language_preference')).toBe('en');
-  expect(mockReload).not.toHaveBeenCalled();
-});
-
-it('falls back to Updates and then the development reloader when needed', async () => {
-  mockReload.mockRejectedValue(new Error('Unavailable'));
-  mockUpdatesReload.mockRejectedValue(new Error('Unavailable'));
-  await loadLanguage().setLanguagePreference('ar');
-  expect(mockUpdatesReload).toHaveBeenCalledTimes(1);
-  expect(mockDevReload).toHaveBeenCalledTimes(1);
+  expect(mockDirection.forceRTL).toHaveBeenCalledWith(true);
+  expectNoReload();
 });
 
 it('keeps component direction and directional icons tied to the selected language', () => {
