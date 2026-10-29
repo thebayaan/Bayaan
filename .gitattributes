@@ -1,2 +1,0 @@
-# Prevent auto-merging of the signing configuration
-android/signing.gradle merge=ours 
