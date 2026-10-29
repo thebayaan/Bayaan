@@ -2,12 +2,19 @@
 import {useSegments} from 'expo-router';
 
 /** Tab stacks that declare a `reciter/[id]` screen. */
-export type ReciterTabStack = '(a.home)' | '(b.search)' | '(c.collection)';
+export type ReciterTabStack =
+  | '(a.home)'
+  | '(b.search)'
+  | '(b.surahs)'
+  | '(c.collection)';
 
-export type ReciterProfilePathname =
-  | '/(tabs)/(a.home)/reciter/[id]'
-  | '/(tabs)/(b.search)/reciter/[id]'
-  | '/(tabs)/(c.collection)/reciter/[id]';
+export type ReciterProfilePathname = `/(tabs)/${ReciterTabStack}/reciter/[id]`;
+
+/** Tab stacks that also declare `reciter/browse` (Library has none). */
+export type ReciterBrowseTabStack = Exclude<ReciterTabStack, '(c.collection)'>;
+
+export type ReciterBrowsePathname =
+  `/(tabs)/${ReciterBrowseTabStack}/reciter/browse`;
 
 /**
  * The tab stack a route belongs to, from `useSegments()`. Routes outside a
@@ -15,7 +22,8 @@ export type ReciterProfilePathname =
  */
 export function reciterTabStack(segments: readonly string[]): ReciterTabStack {
   const tab = segments[0] === '(tabs)' ? segments[1] : undefined;
-  if (tab === '(b.search)' || tab === '(c.collection)') return tab;
+  if (tab === '(b.search)' || tab === '(b.surahs)' || tab === '(c.collection)')
+    return tab;
   return '(a.home)';
 }
 
@@ -31,4 +39,12 @@ export function reciterProfilePathname(
  */
 export function useReciterProfilePathname(): ReciterProfilePathname {
   return reciterProfilePathname(useSegments());
+}
+
+/** Reciter browser in the tab the user is on; Library falls back to Home. */
+export function reciterBrowsePathname(
+  segments: readonly string[],
+): ReciterBrowsePathname {
+  const stack = reciterTabStack(segments);
+  return `/(tabs)/${stack === '(c.collection)' ? '(a.home)' : stack}/reciter/browse`;
 }
