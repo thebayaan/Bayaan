@@ -26,7 +26,6 @@ import {useReadingThemeColors} from '@/hooks/useReadingThemeColors';
 import {Ionicons, Feather} from '@expo/vector-icons';
 import {mushafShareUrl, shareUrl} from '@/utils/shareUtils';
 import branding from '@/config/branding';
-import {SheetManager} from 'react-native-actions-sheet';
 import {GlassView} from 'expo-glass-effect';
 import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
 import {FrostedView} from '@/components/FrostedView';
@@ -97,6 +96,7 @@ import {ReadingSettingsPopover} from '@/components/popovers/ToolPopovers'; // @a
 // @ai-end
 
 const TOTAL_PAGES = 604;
+import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 const ANIMATION_DURATION = 300;
 
 // ============================================================================
@@ -272,18 +272,18 @@ const DKPageView: React.FC<{
                     borderBottomRightRadius: EDGE_BORDER_RADIUS,
                   }
                 : isRightPage
-                  ? {
-                      left: 0,
-                      right: EDGE_HORIZONTAL_INSET,
-                      borderTopRightRadius: EDGE_BORDER_RADIUS,
-                      borderBottomRightRadius: EDGE_BORDER_RADIUS,
-                    }
-                  : {
-                      left: EDGE_HORIZONTAL_INSET,
-                      right: 0,
-                      borderTopLeftRadius: EDGE_BORDER_RADIUS,
-                      borderBottomLeftRadius: EDGE_BORDER_RADIUS,
-                    },
+                ? {
+                    left: 0,
+                    right: EDGE_HORIZONTAL_INSET,
+                    borderTopRightRadius: EDGE_BORDER_RADIUS,
+                    borderBottomRightRadius: EDGE_BORDER_RADIUS,
+                  }
+                : {
+                    left: EDGE_HORIZONTAL_INSET,
+                    right: 0,
+                    borderTopLeftRadius: EDGE_BORDER_RADIUS,
+                    borderBottomLeftRadius: EDGE_BORDER_RADIUS,
+                  },
             ]}
           />
         </>
@@ -840,7 +840,7 @@ export default function MushafViewer({
 
   // @ai-start
   const openReadingSettingsSheet = useCallback(() => {
-    SheetManager.show('mushaf-layout', {payload: {context: 'mushaf'}});
+    showSheet('mushaf-layout', {payload: {context: 'mushaf'}});
   }, []);
   // @ai-end
 
@@ -1254,8 +1254,8 @@ export default function MushafViewer({
           backgroundColor: isVertical
             ? readingColors.background
             : isBookLayout
-              ? edgeBg
-              : readingColors.card,
+            ? edgeBg
+            : readingColors.card,
         },
       ]}>
       {/* @ai-start */}

@@ -227,8 +227,8 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
                   percent: Math.round(downloadProgress * 100),
                 })
               : isTrackDownloaded
-                ? t('options.downloaded')
-                : t('common:actions.download')}
+              ? t('options.downloaded')
+              : t('common:actions.download')}
           </Text>
         </Pressable>
       ),

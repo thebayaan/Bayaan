@@ -26,7 +26,7 @@ import {AddToCollectionSheet} from './AddToCollectionSheet';
 import {AmbientSoundsSheet} from './AmbientSoundsSheet';
 import {CollectionOptionsSheet} from './CollectionOptionsSheet';
 import {VerseActionsSheet} from './VerseActionsSheet';
-import {setNativeVerseActionsSheet} from './sheetPresenter'; // @ai
+import {registerNativeSheet} from './sheetControl'; // @ai
 import {VerseNoteSheet} from './VerseNoteSheet';
 import {MushafPlayerOptionsSheet} from './MushafPlayerOptionsSheet';
 import {MushafReciterPickerSheet} from './MushafReciterPickerSheet'; // @ai
@@ -65,7 +65,6 @@ registerSheet('add-to-collection', AddToCollectionSheet);
 registerSheet('ambient-sounds', AmbientSoundsSheet);
 registerSheet('collection-options', CollectionOptionsSheet);
 registerSheet('verse-actions', VerseActionsSheet);
-setNativeVerseActionsSheet(VerseActionsSheet); // @ai
 // @ai-start
 // Copy, share, highlight and similar verses live inside 'verse-actions'.
 // Their old standalone sheets were removed: nothing opened them, and the
@@ -77,6 +76,18 @@ registerSheet('mushaf-reciter-picker', MushafReciterPickerSheet); // @ai
 registerSheet('mushaf-repeat-options', MushafRepeatOptionsSheet);
 registerSheet('follow-along', FollowAlongSheet);
 registerSheet('word-detail', WordDetailSheet);
+
+// @ai-start
+// Presented as native sheets on iPhone when nativeSheetsEnabled (showSheet).
+registerNativeSheet('verse-actions', VerseActionsSheet);
+registerNativeSheet('word-detail', WordDetailSheet);
+registerNativeSheet('mushaf-layout', MushafLayoutSheet);
+registerNativeSheet('mushaf-player-options', MushafPlayerOptionsSheet);
+registerNativeSheet('mushaf-repeat-options', MushafRepeatOptionsSheet);
+registerNativeSheet('mushaf-reciter-picker', MushafReciterPickerSheet);
+registerNativeSheet('follow-along', FollowAlongSheet);
+registerNativeSheet('ambient-sounds', AmbientSoundsSheet);
+// @ai-end
 registerSheet('home-card-options', HomeCardOptionsSheet);
 registerSheet('adhkar-session-options', AdhkarSessionOptionsSheet);
 

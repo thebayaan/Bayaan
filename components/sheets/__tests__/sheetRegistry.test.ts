@@ -56,7 +56,10 @@ function moduleOf(component: string): string | null {
   return null;
 }
 
-/** Every sheet name passed to SheetManager.show, and any non-literal call. */
+/**
+ * Every sheet name passed to SheetManager.show or showSheet, and any
+ * non-literal call.
+ */
 const opened = (() => {
   const names = new Set<string>();
   const nonLiteral: string[] = [];
@@ -69,8 +72,12 @@ const opened = (() => {
     'utils',
   ]) {
     for (const file of appSources(path.join(REPO, dir))) {
+      // sheetControl forwards the id it was given to SheetManager.show.
+      if (file.endsWith(path.join('sheets', 'sheetControl.tsx'))) continue;
       const source = fs.readFileSync(file, 'utf8');
-      for (const m of source.matchAll(/SheetManager\.show\(\s*([^,)]*)/g)) {
+      for (const m of source.matchAll(
+        /(?:SheetManager\.show|\bshowSheet)\(\s*([^,)]*)/g,
+      )) {
         const literal = /^['"]([^'"]+)['"]$/.exec(m[1].trim());
         if (literal) names.add(literal[1]);
         else nonLiteral.push(`${path.relative(REPO, file)}: ${m[1].trim()}`);

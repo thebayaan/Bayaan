@@ -1,5 +1,5 @@
 // @ai-generated
-import React, {useEffect, useState, type ReactNode} from 'react';
+import React, {useEffect, useSyncExternalStore} from 'react';
 import {StyleSheet, View} from 'react-native';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import {BottomSheet, Group, Host, RNHostView} from '@expo/ui/swift-ui';
@@ -8,33 +8,34 @@ import {
   presentationDetents,
   presentationDragIndicator,
 } from '@expo/ui/swift-ui/modifiers';
-import {notifyNativeSheetDismissed, setNativeSheetHost} from './nativeSheets';
+import {
+  getNativeSheetLevels,
+  notifyNativeSheetClosing,
+  notifyNativeSheetDismissed,
+  setNativeSheetHostMounted,
+  subscribeNativeSheets,
+  type NativeSheetLevel,
+} from './nativeSheets';
+import {NativeSheetLevelContext} from './nativeSheetContext';
 import {useNativeTheme} from './useNativeTheme';
 
 /**
- * Presents `presentNativeSheet` content as a SwiftUI sheet: medium and large
- * detents, the system grabber, and the page behind kept interactive up to
- * the medium detent so the selected verse stays visible and tappable. On
- * iOS 26 the sheet is the system's Liquid Glass. The React Native content
- * gets its own gesture root, because inside the sheet it sits outside the
- * app's. Mounted once at the root.
+ * One sheet level: a SwiftUI sheet with medium and large detents, the
+ * system grabber, and the page behind kept interactive up to the medium
+ * detent so a selected verse stays visible and tappable. On iOS 26 it is the
+ * system's Liquid Glass. The level above is rendered inside this one's
+ * content, so SwiftUI presents it from this sheet (a sheet on a sheet).
  */
-export function NativeSheetHost() {
-  const [content, setContent] = useState<ReactNode>(null);
-  const [isPresented, setIsPresented] = useState(false);
+function SheetLevel({
+  levels,
+  index,
+}: {
+  levels: NativeSheetLevel[];
+  index: number;
+}) {
   const native = useNativeTheme();
-
-  useEffect(
-    () =>
-      setNativeSheetHost({
-        present: next => {
-          setContent(next);
-          setIsPresented(true);
-        },
-        dismiss: () => setIsPresented(false),
-      }),
-    [],
-  );
+  const level = levels[index];
+  if (!level) return null;
 
   return (
     <View pointerEvents="box-none" style={styles.anchor}>
@@ -43,12 +44,11 @@ export function NativeSheetHost() {
         colorScheme={native.colorScheme}
         layoutDirection={native.layoutDirection}>
         <BottomSheet
-          isPresented={isPresented}
-          onIsPresentedChange={setIsPresented}
-          onDismiss={() => {
-            setContent(null);
-            notifyNativeSheetDismissed();
-          }}>
+          isPresented={level.presented}
+          onIsPresentedChange={isPresented => {
+            if (!isPresented) notifyNativeSheetClosing(level.key);
+          }}
+          onDismiss={() => notifyNativeSheetDismissed(level.key)}>
           {/* Presentation modifiers go on the sheet's content. */}
           <Group
             modifiers={[
@@ -60,8 +60,13 @@ export function NativeSheetHost() {
               }),
             ]}>
             <RNHostView>
+              {/* Inside the sheet the content sits outside the app's
+                  gesture root, so it gets its own. */}
               <GestureHandlerRootView style={styles.content}>
-                {content}
+                <NativeSheetLevelContext.Provider value={level.id}>
+                  {level.content}
+                </NativeSheetLevelContext.Provider>
+                <SheetLevel levels={levels} index={index + 1} />
               </GestureHandlerRootView>
             </RNHostView>
           </Group>
@@ -69,6 +74,21 @@ export function NativeSheetHost() {
       </Host>
     </View>
   );
+}
+
+/** Presents `nativeSheets` levels. Mounted once at the root. */
+export function NativeSheetHost() {
+  const levels = useSyncExternalStore(
+    subscribeNativeSheets,
+    getNativeSheetLevels,
+  );
+
+  useEffect(() => {
+    setNativeSheetHostMounted(true);
+    return () => setNativeSheetHostMounted(false);
+  }, []);
+
+  return <SheetLevel levels={levels} index={0} />;
 }
 
 const styles = StyleSheet.create({

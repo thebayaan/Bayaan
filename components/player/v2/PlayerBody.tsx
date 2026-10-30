@@ -19,6 +19,7 @@ import {
   PlayerOptionsMenu,
   type PlayerOptionsPayload,
 } from '@/components/sheets/options/playerOptions';
+import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 // @ai-end
 
 /**
@@ -86,18 +87,18 @@ export const PlayerBody = () => {
   }, [remainingTime, handleSleepTimerChange, handleTurnOffTimer]);
 
   const handleShowMushafLayoutSheet = useCallback(() => {
-    SheetManager.show('mushaf-layout', {payload: {context: 'player'}});
+    showSheet('mushaf-layout', {payload: {context: 'player'}});
   }, []);
 
   const handleShowAmbientSheet = useCallback(() => {
-    SheetManager.show('ambient-sounds');
+    showSheet('ambient-sounds');
   }, []);
 
   const followAlongAvailable = useRewayatFollowAlong(currentTrack?.rewayatId);
 
   const handleFollowAlongPress = useCallback(() => {
     if (!followAlongAvailable) {
-      SheetManager.show('follow-along');
+      showSheet('follow-along');
       return;
     }
 

@@ -23,7 +23,7 @@ import Animated, {
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import {SheetProps, SheetManager, ScrollView} from 'react-native-actions-sheet';
+import {SheetProps, ScrollView} from 'react-native-actions-sheet';
 import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import {
   useMushafPlayerStore,
@@ -51,6 +51,7 @@ import {
   pickerVerseLabel,
   rangePickerNumbering,
 } from '@/utils/playbackRangePicker';
+import {showSheet, hideSheet} from '@/components/sheets/sheetControl'; // @ai
 // @ai-end
 
 // ---------------------------------------------------------------------------
@@ -321,7 +322,7 @@ export const MushafPlayerOptionsSheet = (
   // @ai-start
   const handleOpenReciterPicker = useCallback(async () => {
     setExpandedSection(null);
-    const reciter: AvailableReciter | undefined = await SheetManager.show(
+    const reciter: AvailableReciter | undefined = await showSheet(
       'mushaf-reciter-picker',
       {payload: {selectedRewayatId}},
     );
@@ -374,7 +375,7 @@ export const MushafPlayerOptionsSheet = (
       currentPage,
       selection.kind === 'units' ? selection.first : startVerseKey,
     ); // @ai
-    SheetManager.hide('mushaf-player-options');
+    hideSheet('mushaf-player-options');
   }, [
     selectedRewayatId,
     selectedReciterName,
@@ -509,10 +510,10 @@ export const MushafPlayerOptionsSheet = (
                 {startPickStep === 'surahList'
                   ? renderSurahList(handleStartSurahPick)
                   : startPickSurah
-                    ? renderAyahGrid(startPickSurah, handleStartAyahPick, () =>
-                        setStartPickStep('surahList'),
-                      )
-                    : null}
+                  ? renderAyahGrid(startPickSurah, handleStartAyahPick, () =>
+                      setStartPickStep('surahList'),
+                    )
+                  : null}
               </AccordionScrollList>
             </View>
           )}
@@ -550,10 +551,10 @@ export const MushafPlayerOptionsSheet = (
                 {endPickStep === 'surahList'
                   ? renderSurahList(handleEndSurahPick)
                   : endPickSurah
-                    ? renderAyahGrid(endPickSurah, handleEndAyahPick, () =>
-                        setEndPickStep('surahList'),
-                      )
-                    : null}
+                  ? renderAyahGrid(endPickSurah, handleEndAyahPick, () =>
+                      setEndPickStep('surahList'),
+                    )
+                  : null}
               </AccordionScrollList>
             </View>
           )}

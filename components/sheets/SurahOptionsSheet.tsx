@@ -252,8 +252,8 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
                       percent: Math.round(downloadProgress * 100),
                     })
                   : isTrackDownloaded
-                    ? t('options.downloaded')
-                    : t('common:actions.download')}
+                  ? t('options.downloaded')
+                  : t('common:actions.download')}
               </Text>
             </Pressable>
 

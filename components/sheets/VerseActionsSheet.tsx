@@ -18,7 +18,10 @@ import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {SheetProps, SheetManager, ScrollView} from 'react-native-actions-sheet';
 import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
-import {useSheetPresenter} from '@/components/sheets/sheetPresenter'; // @ai
+import {
+  hideSheet as hideAnySheet,
+  showSheet,
+} from '@/components/sheets/sheetControl'; // @ai
 import {Feather, MaterialCommunityIcons} from '@expo/vector-icons';
 import {useVerseSelectionStore} from '@/store/verseSelectionStore';
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
@@ -213,13 +216,10 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
   }, []);
 
   // @ai-start
-  // Shown as a native sheet (showVerseActions), it hides through the
-  // presenter, which resolves once the sheet is fully gone.
-  const presenter = useSheetPresenter();
+  // Hides a native sheet too (sheetControl), resolving once it is gone.
   const hideSheet = useCallback(
-    (): Promise<unknown> =>
-      presenter ? presenter.hide() : SheetManager.hide(props.sheetId),
-    [presenter, props.sheetId],
+    (): Promise<unknown> => hideAnySheet('verse-actions'),
+    [],
   );
   // @ai-end
 
@@ -541,7 +541,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
         });
         if (units) store.setPendingStart(units[0]); // @ai
         await hideSheet();
-        SheetManager.show('mushaf-player-options', {
+        showSheet('mushaf-player-options', {
           payload: {currentPage: page},
         });
         return;
@@ -619,7 +619,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
   const handleShowFollowAlong = useCallback(async () => {
     lightHaptics();
     await hideSheet();
-    SheetManager.show('follow-along');
+    showSheet('follow-along');
   }, [hideSheet]);
 
   const handlePlayerPlayFromHere = useCallback(async () => {
@@ -716,7 +716,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
       },
     });
 
-    SheetManager.show('mushaf-player-options', {
+    showSheet('mushaf-player-options', {
       payload: {currentPage: page},
     });
   }, [readySelection, requireSelection, hideSheet]); // @ai
@@ -1204,9 +1204,6 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     </View>
   );
 
-  if (presenter) {
-    return <View style={styles.nativeSheet}>{content}</View>;
-  }
   // @ai-end
 
   return (
@@ -1245,11 +1242,6 @@ const createStyles = (theme: Theme) =>
     container: {
       paddingHorizontal: moderateScale(20),
       paddingBottom: moderateScale(30),
-    },
-    // @ai: the native sheet draws its own background, grabber and corners.
-    nativeSheet: {
-      flex: 1,
-      paddingTop: moderateScale(18),
     },
     header: {
       alignItems: 'center',

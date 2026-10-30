@@ -19,7 +19,6 @@ import {
   useVerseAnnotationsStore,
 } from '@/store/verseAnnotationsStore';
 import {useVerseSelectionStore} from '@/store/verseSelectionStore';
-import {SheetManager} from 'react-native-actions-sheet';
 import {mediumHaptics} from '@/utils/haptics';
 import {tajweedColors} from '@/constants/tajweedColors';
 import type {IndexedTajweedData} from '@/utils/tajweedLoader';
@@ -46,6 +45,7 @@ import {useTranslation} from 'react-i18next';
 import {localizeDigits} from '@/i18n/format';
 import {isRTL} from '@/utils/rtl';
 import {showVerseActions} from '@/components/sheets/showVerseActions'; // @ai
+import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 // @ai-end
 
 // Type for processed word data from store
@@ -425,7 +425,7 @@ export const VerseItem = memo<VerseItemProps>(
     const handleWordPress = useCallback(
       (position: number) => {
         setSelectedWordPosition(position);
-        SheetManager.show('word-detail', {
+        showSheet('word-detail', {
           payload: {verseKey, position},
         }).then(() => {
           setSelectedWordPosition(null);
@@ -439,7 +439,7 @@ export const VerseItem = memo<VerseItemProps>(
     // by word is Hafs data, keyed by Hafs verse and word position).
     const handleUnitWordPress = useCallback((word: UnitRowWord) => {
       setSelectedUnitWord(word);
-      SheetManager.show('word-detail', {
+      showSheet('word-detail', {
         payload: {verseKey: word.hafsKey, position: word.position},
       }).then(() => {
         setSelectedUnitWord(null);

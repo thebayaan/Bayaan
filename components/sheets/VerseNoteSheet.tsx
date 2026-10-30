@@ -85,8 +85,8 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
   // exactly as before.
   const mushafRewayah = useMushafSettingsStore(s => s.rewayah);
   const noteRewayah: RewayahId | null = noteId
-    ? (rewayah ?? (noteLoaded ? (savedNoteRewayah ?? 'hafs') : null))
-    : (rewayah ?? mushafRewayah);
+    ? rewayah ?? (noteLoaded ? savedNoteRewayah ?? 'hafs' : null)
+    : rewayah ?? mushafRewayah;
   const isHafsNote = noteRewayah === 'hafs';
 
   // A new note: the payload's verses (verse-units contract 4.1), as the
@@ -130,8 +130,8 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
       savedNoteKeys && savedNoteKeys.length > 0
         ? savedNoteKeys
         : isRange
-          ? verseKeys
-          : [verseKey];
+        ? verseKeys
+        : [verseKey];
     const described = describeStoredVerses(
       savedUnits.units,
       savedUnits.status,
@@ -160,8 +160,8 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
   const previewText = isHafsNote
     ? undefined
     : verses?.selection
-      ? (readUnitTexts(verses.selection) ?? []).join(' ')
-      : '';
+    ? (readUnitTexts(verses.selection) ?? []).join(' ')
+    : '';
   // @ai-end
 
   useEffect(() => {
@@ -231,8 +231,9 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
   const handleDelete = useCallback(async () => {
     if (!noteId) return;
     await verseAnnotationService.deleteNoteById(noteId);
-    const remaining =
-      await verseAnnotationService.getNotesCountForVerse(verseKey);
+    const remaining = await verseAnnotationService.getNotesCountForVerse(
+      verseKey,
+    );
     if (remaining === 0) {
       useVerseAnnotationsStore.getState().removeNote(verseKey);
     }
@@ -259,8 +260,8 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
               ? t('note.editTitle', {ref: verses.label})
               : t('note.editTitleWithoutRef')
             : verses?.label
-              ? t('note.title', {ref: verses.label})
-              : t('note.titleWithoutRef')}
+            ? t('note.title', {ref: verses.label})
+            : t('note.titleWithoutRef')}
         </Text>
 
         <View style={styles.ayahContainer}>
