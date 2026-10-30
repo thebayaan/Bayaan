@@ -2,11 +2,11 @@ import React, {useCallback, useLayoutEffect} from 'react';
 import {useRouter, useNavigation} from 'expo-router';
 import {useSettings} from '@/hooks/useSettings';
 import {useReciterStore} from '@/store/reciterStore';
-import {SheetManager} from 'react-native-actions-sheet';
 import {useReciterSelection} from '@/hooks/useReciterSelection';
 import {resolveSurahPlaybackAction} from '@/utils/surahPlaybackChoice'; // @ai
 import {Surah} from '@/data/surahData';
 import SurahsView from '@/components/SurahsView';
+import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 
 function SurahsScreen() {
   const router = useRouter();
@@ -65,7 +65,7 @@ function SurahsScreen() {
           });
           break;
         default:
-          SheetManager.show('select-reciter', {
+          showSheet('select-reciter', {
             payload: {surahId, source: 'home'},
           });
       }

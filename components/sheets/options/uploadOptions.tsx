@@ -1,7 +1,6 @@
 // @ai-generated
 import React from 'react';
 import {confirmDestructive} from '@/utils/confirmDestructive'; // @ai
-import {SheetManager} from 'react-native-actions-sheet';
 import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 import {useTranslation} from 'react-i18next';
 import {useLoved} from '@/hooks/useLoved';
@@ -113,7 +112,7 @@ export function UploadOptionsMenu({
       case 'play':
         return payload.onPlay();
       case 'organize':
-        SheetManager.show('organize-recitation', {
+        showSheet('organize-recitation', {
           payload: {recitation, prefillReciterId: reciterId},
         });
         return;

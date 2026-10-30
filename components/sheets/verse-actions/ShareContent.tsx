@@ -26,7 +26,6 @@ import {
   useMushafSettingsStore,
 } from '@/store/mushafSettingsStore';
 import {ScrollView} from 'react-native-actions-sheet';
-import {SheetManager} from 'react-native-actions-sheet';
 import {getTranslationTextRaw} from '@/utils/translationLookup';
 import {
   anchorShareUrl, // @ai
@@ -59,6 +58,7 @@ import type {RewayahId} from '@/store/mushafSettingsStore';
 // @ai-start
 import {useTranslation} from 'react-i18next';
 import {getSurahDisplayName} from '@/i18n/format';
+import {hideAllSheets} from '@/components/sheets/sheetControl'; // @ai
 // @ai-end
 
 // @ai-start
@@ -248,7 +248,7 @@ export const ShareContent: React.FC<ShareContentProps> = ({
         `-- ${formatQuranCitation(verseRefText, result.rewayah)}`,
       ].join('\n\n');
       await Share.share({message});
-      SheetManager.hideAll();
+      hideAllSheets();
     } finally {
       setIsPreparingText(false);
     }
@@ -288,7 +288,7 @@ export const ShareContent: React.FC<ShareContentProps> = ({
       formatQuranCitation(shareRefs(ready).linkRefText, rewayah),
     );
     // @ai-end
-    SheetManager.hideAll();
+    hideAllSheets();
   }, [requireSelection, shareRefs, isDarkMode, rewayah]); // @ai
   // @ai-end
 

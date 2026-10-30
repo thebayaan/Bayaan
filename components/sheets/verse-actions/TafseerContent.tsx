@@ -12,7 +12,6 @@ import {Theme} from '@/utils/themeUtils';
 import Color from 'color';
 import {Feather} from '@expo/vector-icons';
 import {router} from 'expo-router';
-import {SheetManager} from 'react-native-actions-sheet';
 import {lightHaptics} from '@/utils/haptics';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {StackedVolumesIcon} from '@/components/Icons';
@@ -40,6 +39,7 @@ import {
   unitPagerPage,
   type UnitStart,
 } from './verseUnitScreens';
+import {hideAllSheets} from '@/components/sheets/sheetControl'; // @ai
 // @ai-end
 
 // ─── Data loading (module scope, runs once) ───────────────────────────────
@@ -233,7 +233,7 @@ export const TafseerContent: React.FC<TafseerContentProps> = ({
             style={styles.emptyState}
             onPress={() => {
               lightHaptics();
-              SheetManager.hideAll();
+              hideAllSheets();
               usePlayerStore.getState().setSheetMode('hidden');
               setTimeout(() => {
                 router.push('/translations'); // @ai

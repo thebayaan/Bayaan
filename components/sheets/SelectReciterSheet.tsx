@@ -6,7 +6,7 @@ import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useReciterStore} from '@/store/reciterStore';
 import {Theme} from '@/utils/themeUtils';
 import {getSurahById} from '@/services/dataService';
-import {SheetProps, SheetManager} from 'react-native-actions-sheet';
+import {SheetProps} from 'react-native-actions-sheet';
 import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import {useSettings} from '@/hooks/useSettings';
 import {useReciterSelection} from '@/hooks/useReciterSelection';
@@ -16,6 +16,7 @@ import {Ionicons} from '@expo/vector-icons';
 import {DiscoverIcon} from '@/components/Icons';
 // @ai-start
 import {useTranslation} from 'react-i18next';
+import {hideSheet} from '@/components/sheets/sheetControl'; // @ai
 // @ai-end
 
 // @ai-start
@@ -51,7 +52,7 @@ export const SelectReciterSheet = (props: SheetProps<'select-reciter'>) => {
   }, [surahId]);
 
   const handleClose = useCallback(() => {
-    SheetManager.hide('select-reciter');
+    hideSheet('select-reciter');
   }, []);
 
   const handleUseDefaultReciter = useCallback(async () => {

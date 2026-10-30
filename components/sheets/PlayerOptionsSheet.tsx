@@ -4,7 +4,7 @@ import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {CheckIcon, ProfileIcon, HeartIcon} from '@/components/Icons';
-import {SheetProps, SheetManager, ScrollView} from 'react-native-actions-sheet';
+import {SheetProps, ScrollView} from 'react-native-actions-sheet';
 import ActionSheet, {
   useSheetWidth,
 } from '@/components/sheets/AdaptiveActionSheet';
@@ -27,6 +27,7 @@ import {
   getSurahDisplayName,
   getSurahMeaning,
 } from '@/i18n/format';
+import {hideSheet} from '@/components/sheets/sheetControl'; // @ai
 // @ai-end
 
 // Import surah info data
@@ -123,7 +124,7 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
   );
 
   const handleClose = useCallback(() => {
-    SheetManager.hide('player-options');
+    hideSheet('player-options');
   }, []);
 
   const handleViewInfo = useCallback(() => {

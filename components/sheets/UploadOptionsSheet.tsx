@@ -5,8 +5,8 @@ import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {QueueIcon, HeartIcon, PlayIcon, ProfileIcon} from '@/components/Icons';
-import {SheetProps, SheetManager, ScrollView} from 'react-native-actions-sheet';
-import {showSheet, hideSheet} from '@/components/sheets/sheetControl'; // @ai
+import {SheetProps, ScrollView} from 'react-native-actions-sheet';
+import {hideSheet, showSheet} from '@/components/sheets/sheetControl'; // @ai
 import ActionSheet, {
   useSheetWidth,
 } from '@/components/sheets/AdaptiveActionSheet';
@@ -198,7 +198,7 @@ export const UploadOptionsSheet = (props: SheetProps<'upload-options'>) => {
     if (!recitation) return;
     handleClose();
     setTimeout(() => {
-      SheetManager.show('organize-recitation', {
+      showSheet('organize-recitation', {
         payload: {recitation, prefillReciterId: reciterId},
       });
     }, 300);

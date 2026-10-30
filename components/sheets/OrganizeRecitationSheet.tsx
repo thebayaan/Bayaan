@@ -12,7 +12,7 @@ import {
 import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import {SheetProps, SheetManager, ScrollView} from 'react-native-actions-sheet';
+import {SheetProps, ScrollView} from 'react-native-actions-sheet';
 import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import Color from 'color';
 import {Feather} from '@expo/vector-icons';
@@ -47,6 +47,7 @@ import {
   getSurahMeaning,
   localizeDigits,
 } from '@/i18n/format';
+import {hideSheet} from '@/components/sheets/sheetControl'; // @ai
 // @ai-end
 
 type RecitationType = 'surah' | 'other';
@@ -313,7 +314,7 @@ export const OrganizeRecitationSheet = (
       style: style || null,
       recordingType,
     });
-    await SheetManager.hide('organize-recitation');
+    await hideSheet('organize-recitation');
   }, [
     recitation,
     hasChanges,
@@ -335,12 +336,12 @@ export const OrganizeRecitationSheet = (
     if (!recitation) return;
     Keyboard.dismiss();
     await deleteRecitation(recitation.id);
-    await SheetManager.hide('organize-recitation');
+    await hideSheet('organize-recitation');
   }, [recitation, deleteRecitation]);
 
   const handleClose = useCallback(() => {
     Keyboard.dismiss();
-    SheetManager.hide('organize-recitation');
+    hideSheet('organize-recitation');
   }, []);
 
   const handleTypeSelect = useCallback((newType: RecitationType) => {

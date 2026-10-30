@@ -16,7 +16,6 @@ import Color from 'color';
 import Animated, {FadeIn} from 'react-native-reanimated';
 import {useSettings} from '@/hooks/useSettings';
 import {useReciterStore} from '@/store/reciterStore';
-import {SheetManager} from 'react-native-actions-sheet';
 import {GRADIENT_COLORS} from '@/utils/gradientColors';
 import {useReciterSelection} from '@/hooks/useReciterSelection';
 import {resolveSurahPlaybackAction} from '@/utils/surahPlaybackChoice'; // @ai
@@ -28,6 +27,7 @@ import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
 // @ai-start
 import {latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
+import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 // @ai-end
 
 const isGlass = USE_GLASS;
@@ -307,7 +307,7 @@ export default function BrowseSurahs({theme, onBack}: BrowseSurahsProps) {
           });
           break;
         default:
-          SheetManager.show('select-reciter', {
+          showSheet('select-reciter', {
             payload: {surahId, source: 'home'},
           });
       }

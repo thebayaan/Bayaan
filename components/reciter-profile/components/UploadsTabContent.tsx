@@ -17,7 +17,6 @@ import {useUploadsStore} from '@/store/uploadsStore';
 import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {createUserUploadTrack} from '@/utils/track';
 import {getSurahById} from '@/services/dataService';
-import {SheetManager} from 'react-native-actions-sheet';
 import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 import {UploadCard} from './UploadCard';
 import type {UploadedRecitation, RecordingType} from '@/types/uploads';
@@ -286,7 +285,7 @@ export const UploadsTabContent = React.forwardRef<
 
     const handleOrganize = useCallback(
       (item: UploadedRecitation) => {
-        SheetManager.show('organize-recitation', {
+        showSheet('organize-recitation', {
           payload: {recitation: item, prefillReciterId: reciterId},
         });
       },
@@ -343,7 +342,7 @@ export const UploadsTabContent = React.forwardRef<
 
         const asset = result.assets[0];
         const recitation = await importFile(asset.uri, asset.name || 'Unknown');
-        SheetManager.show('organize-recitation', {
+        showSheet('organize-recitation', {
           payload: {recitation, prefillReciterId: reciterId},
         });
       } catch (error) {

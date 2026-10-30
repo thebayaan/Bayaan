@@ -3,7 +3,7 @@ import {View, Text, Pressable, StyleSheet} from 'react-native';
 import {ScaledSheet, moderateScale, verticalScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import {SheetProps, SheetManager} from 'react-native-actions-sheet';
+import {SheetProps} from 'react-native-actions-sheet';
 import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import Color from 'color';
 import {Feather} from '@expo/vector-icons';
@@ -12,6 +12,7 @@ import {Dhikr} from '@/types/adhkar';
 import {adhkarCopyText, adhkarTranslationCopyText} from '@/utils/adhkarText';
 // @ai-start
 import {useTranslation} from 'react-i18next';
+import {hideSheet} from '@/components/sheets/sheetControl'; // @ai
 // @ai-end
 
 interface CheckboxRowProps {
@@ -100,7 +101,7 @@ export const AdhkarCopyOptionsSheet = (
       await Clipboard.setStringAsync(parts.join('\n\n'));
     }
 
-    SheetManager.hide('adhkar-copy-options');
+    hideSheet('adhkar-copy-options');
   }, [dhikr, copyArabic, copyTranslation, copyTransliteration]);
 
   // Check if at least one option is selected

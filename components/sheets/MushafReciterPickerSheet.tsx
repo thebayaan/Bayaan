@@ -1,6 +1,6 @@
 // @ai-generated
 import React, {useCallback, useEffect, useMemo} from 'react';
-import {SheetProps, SheetManager} from 'react-native-actions-sheet';
+import {SheetProps} from 'react-native-actions-sheet';
 import {useTranslation} from 'react-i18next';
 import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
 import {getReciterDisplayName} from '@/i18n/format';

@@ -16,7 +16,6 @@ import {moderateScale} from '@/utils/scale';
 import {usePlaylists} from '@/hooks/usePlaylists';
 import {PlaylistIcon} from '@/components/Icons';
 import {CollectionStickyHeader} from '@/components/collection/CollectionStickyHeader';
-import {SheetManager} from 'react-native-actions-sheet';
 import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 // @ai-start
 import {useNativeOptionsMenu} from '@/components/sheets/options/OptionsMenu';
@@ -246,7 +245,7 @@ export default function PlaylistsScreen() {
 
   const handlePlaylistOptions = useCallback(
     (item: (typeof playlists)[0]) => {
-      SheetManager.show('playlist-context', {
+      showSheet('playlist-context', {
         payload: buildPlaylistOptions(item),
       });
     },

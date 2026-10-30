@@ -2,7 +2,7 @@ import React, {useState} from 'react';
 import {View, Text, Pressable, Dimensions, StyleSheet} from 'react-native';
 import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
-import {SheetProps, SheetManager, ScrollView} from 'react-native-actions-sheet';
+import {SheetProps, ScrollView} from 'react-native-actions-sheet';
 import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import {Theme} from '@/utils/themeUtils';
 import Color from 'color';
@@ -13,6 +13,7 @@ import {getDisplayLabelFromName} from '@/services/rewayah/RewayahIdentity';
 import {latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
 import {getStyleLabel} from './sheetLabels';
+import {hideSheet} from '@/components/sheets/sheetControl'; // @ai
 // @ai-end
 
 // @ai-start
@@ -28,7 +29,7 @@ export const RewayatInfoSheet = (props: SheetProps<'rewayat-info'>) => {
 
   const handleRewayatSelect = async (rewayatId: string) => {
     setIsExpanded(false);
-    await SheetManager.hide('rewayat-info', {
+    await hideSheet('rewayat-info', {
       payload: rewayatId,
     });
   };

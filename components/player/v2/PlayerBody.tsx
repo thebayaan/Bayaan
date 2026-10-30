@@ -1,6 +1,5 @@
 // @ai-generated
 import React, {useCallback, useMemo} from 'react';
-import {SheetManager} from 'react-native-actions-sheet';
 import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {SURAHS} from '@/data/surahData';
@@ -67,7 +66,7 @@ export const PlayerBody = () => {
 
   // Handlers for showing sheets via SheetManager
   const handleShowSpeedSheet = useCallback(() => {
-    SheetManager.show('playback-speed', {
+    showSheet('playback-speed', {
       payload: {
         currentSpeed: playbackRate,
         onSpeedChange: handleSpeedChange,
@@ -76,7 +75,7 @@ export const PlayerBody = () => {
   }, [playbackRate, handleSpeedChange]);
 
   const handleShowSleepTimerSheet = useCallback(() => {
-    SheetManager.show('sleep-timer', {
+    showSheet('sleep-timer', {
       payload: {
         sleepTimer: remainingTime || 0,
         remainingTime,
@@ -154,7 +153,7 @@ export const PlayerBody = () => {
 
   const handleShowOptionsSheet = useCallback(() => {
     if (optionsPayload) {
-      SheetManager.show('player-options', {payload: optionsPayload});
+      showSheet('player-options', {payload: optionsPayload});
     }
   }, [optionsPayload]);
 

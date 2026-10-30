@@ -15,7 +15,6 @@ import {useRouter} from 'expo-router';
 import {moderateScale} from '@/utils/scale';
 import {Feather} from '@expo/vector-icons';
 import {MicrophoneIcon, PlayIcon, ShuffleIcon} from '@/components/Icons';
-import {SheetManager} from 'react-native-actions-sheet';
 import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 import {useUploadsStore, getCustomReciterName} from '@/store/uploadsStore';
 import {usePlayerActions} from '@/hooks/usePlayerActions';
@@ -341,7 +340,7 @@ export default function UploadsScreen() {
   );
 
   const handleOptionsMenu = useCallback(() => {
-    SheetManager.show('collection-options', {payload: optionsPayload});
+    showSheet('collection-options', {payload: optionsPayload});
   }, [optionsPayload]);
 
   const renderHeaderRight = useCallback(
@@ -368,7 +367,7 @@ export default function UploadsScreen() {
   });
 
   const handleOrganize = useCallback((item: UploadedRecitation) => {
-    SheetManager.show('organize-recitation', {
+    showSheet('organize-recitation', {
       payload: {recitation: item},
     });
   }, []);

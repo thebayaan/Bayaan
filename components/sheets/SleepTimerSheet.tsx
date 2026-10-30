@@ -3,12 +3,13 @@ import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import {SheetProps, SheetManager} from 'react-native-actions-sheet';
+import {SheetProps} from 'react-native-actions-sheet';
 import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import Color from 'color';
 import {SLEEP_TIMER_OPTIONS} from '@/constants/playback'; // @ai
 // @ai-start
 import {useTranslation} from 'react-i18next';
+import {hideSheet} from '@/components/sheets/sheetControl'; // @ai
 // @ai-end
 
 const TIMER_OPTIONS = SLEEP_TIMER_OPTIONS; // @ai
@@ -29,14 +30,14 @@ export const SleepTimerSheet = (props: SheetProps<'sleep-timer'>) => {
     if (onTimerChange) {
       onTimerChange(minutes);
     }
-    SheetManager.hide('sleep-timer');
+    hideSheet('sleep-timer');
   };
 
   const handleTurnOff = () => {
     if (onTurnOffTimer) {
       onTurnOffTimer();
     }
-    SheetManager.hide('sleep-timer');
+    hideSheet('sleep-timer');
   };
 
   return (

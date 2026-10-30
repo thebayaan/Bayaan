@@ -10,7 +10,7 @@ import {
 import {confirmDestructive} from '@/utils/confirmDestructive'; // @ai
 import {moderateScale} from '@/utils/scale';
 import {Feather} from '@expo/vector-icons';
-import {SheetProps, SheetManager} from 'react-native-actions-sheet';
+import {SheetProps} from 'react-native-actions-sheet';
 import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import {useTheme} from '@/hooks/useTheme';
 import {usePlaylistsStore} from '@/store/playlistsStore';
@@ -22,6 +22,7 @@ import {useCollectionDownloadState} from '@/hooks/useCollectionDownloadState';
 import Color from 'color';
 // @ai-start
 import {useTranslation} from 'react-i18next';
+import {hideSheet} from '@/components/sheets/sheetControl'; // @ai
 // @ai-end
 
 // @ai-start
@@ -111,7 +112,7 @@ export const PlaylistContextSheet = (props: SheetProps<'playlist-context'>) => {
   const downloadState = useCollectionDownloadState(playlistData);
 
   const handleClose = useCallback(() => {
-    SheetManager.hide('playlist-context');
+    hideSheet('playlist-context');
   }, []);
 
   const handleEdit = useCallback(() => {
