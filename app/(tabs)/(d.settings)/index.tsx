@@ -1,11 +1,11 @@
 import React, {useMemo} from 'react';
-import {Text, Pressable, ScrollView, View} from 'react-native';
+import {Text, Pressable, ScrollView, StyleSheet, View} from 'react-native';
 import {NativeSwitch} from '@/components/native/NativeSwitch'; // @ai
 import {useRouter} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
-import {ScaledSheet, moderateScale} from '@/utils/scale';
+import {moderateScale} from '@/utils/scale';
 import {Theme} from '@/utils/themeUtils';
-import {Feather, MaterialIcons} from '@expo/vector-icons';
+import {Feather} from '@expo/vector-icons';
 import {clearPlayerCache} from '@/services/player/utils/storage';
 import Color from 'color';
 import {useBottomInset} from '@/hooks/useBottomInset';
@@ -14,15 +14,15 @@ import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
 import {GlassView} from 'expo-glass-effect';
 import {useDevSettingsStore} from '@/store/devSettingsStore';
 import {useAnalyticsConsentStore} from '@/store/analyticsConsentStore';
-import {ThemePicker} from '@/components/settings/ThemePicker';
+import {AppearancePicker} from '@/components/settings/AppearancePicker'; // @ai
 import branding from '@/config/branding';
 // @ai-start
-import {flipX, latinLetterSpacing} from '@/utils/rtl';
+import {flipX} from '@/utils/rtl';
+import {currentLanguageConfig} from '@/i18n/language';
 import {useTranslation} from 'react-i18next';
 import {useResponsive} from '@/hooks/useResponsive';
 import {
   SETTINGS_SPLIT_MIN_WIDTH,
-  customIconMap,
   getSettingsSections,
   isExternalLink,
   openSettingsItem,
@@ -31,34 +31,6 @@ import {
 import {TabletSettingsHome} from '@/components/settings/TabletSettingsList';
 import MushafSettingsScreen from './mushaf-settings';
 // @ai-end
-
-const renderIcon = (
-  item: {icon: string; iconType: string},
-  iconColor: string,
-) => {
-  if (item.iconType === 'custom') {
-    const IconComponent = customIconMap[item.icon];
-    if (IconComponent) {
-      return <IconComponent size={moderateScale(22)} color={iconColor} />;
-    }
-  }
-  if (item.iconType === 'material') {
-    return (
-      <MaterialIcons
-        name={item.icon as any}
-        size={moderateScale(20)}
-        color={iconColor}
-      />
-    );
-  }
-  return (
-    <Feather
-      name={item.icon as any}
-      size={moderateScale(20)}
-      color={iconColor}
-    />
-  );
-};
 
 // @ai-start
 /**
@@ -76,7 +48,6 @@ export default function SettingsScreen() {
     <TabletSettingsHome />
   );
 }
-
 function PhoneSettingsScreen() {
   const router = useRouter();
   const {theme} = useTheme();
@@ -95,9 +66,6 @@ function PhoneSettingsScreen() {
     setAnalyticsEnabled(value);
   };
 
-  const iconColor = theme.colors.text;
-  const chevronColor = theme.colors.textSecondary;
-
   const handleSettingPress = async (type: string) => {
     if (type === 'clearCache') {
       await clearPlayerCache();
@@ -107,6 +75,10 @@ function PhoneSettingsScreen() {
       router.push(settingsHref(routeName)),
     );
   };
+
+  /** A value shown at the trailing end of a row, before its chevron. */
+  const trailingValue = (type: string): string | undefined =>
+    type === 'language' ? currentLanguageConfig.endonym : undefined;
 
   // iOS 26+ NativeTabs: automatic content insets handle top/bottom; manual
   // padding would double-pad. Other platforms: opt out of automatic and pad
@@ -130,120 +102,108 @@ function PhoneSettingsScreen() {
       <View style={styles.card}>{children}</View>
     );
 
+  const renderIcon = (name: FeatherName) => (
+    <View style={styles.icon}>
+      <Feather name={name} size={ICON_SIZE} color={theme.colors.text} />
+    </View>
+  );
+
   return (
     <View style={styles.container}>
       <ScrollView
         contentInsetAdjustmentBehavior={USE_GLASS ? 'automatic' : 'never'}
         contentContainerStyle={[styles.scrollContent, contentPadding]}
         showsVerticalScrollIndicator={false}>
-        {/* Appearance */}
         <View style={styles.section}>
           <Text style={styles.sectionHeader}>
             {t('settings:index.appearance')}
           </Text>
-          <ThemePicker />
+          {renderCard(<AppearancePicker />)}
         </View>
 
-        {/* Settings Sections */}
         {settingsSections.map(section => (
           <View key={section.section} style={styles.section}>
-            <Text style={styles.sectionHeader}>
-              {section.section.toUpperCase()}
-            </Text>
+            <Text style={styles.sectionHeader}>{section.section}</Text>
             {renderCard(
-              section.items.map((item, itemIndex) => (
-                <React.Fragment key={item.type}>
-                  {itemIndex > 0 && <View style={styles.divider} />}
-                  <Pressable
-                    style={({pressed}) => [
-                      styles.settingsRow,
-                      pressed && styles.pressed,
-                    ]}
-                    onPress={() => handleSettingPress(item.type)}>
-                    <View style={styles.settingsItemIcon}>
-                      {renderIcon(item, iconColor)}
-                    </View>
-                    <View style={styles.settingsTextContainer}>
-                      <Text style={styles.settingsTitle}>{item.title}</Text>
-                      <Text style={styles.settingsDescription}>
-                        {item.description}
+              section.items.map((item, itemIndex) => {
+                const value = trailingValue(item.type);
+                const external = isExternalLink(item.type);
+                return (
+                  <React.Fragment key={item.type}>
+                    {itemIndex > 0 && <View style={styles.separator} />}
+                    <Pressable
+                      style={({pressed}) => [
+                        styles.row,
+                        pressed && styles.pressed,
+                      ]}
+                      onPress={() => handleSettingPress(item.type)}
+                      accessibilityRole={external ? 'link' : 'button'}
+                      accessibilityHint={item.description}>
+                      {renderIcon(ROW_ICONS[item.type] ?? 'circle')}
+                      <Text style={styles.title} numberOfLines={1}>
+                        {item.title}
                       </Text>
-                    </View>
-                    <Feather
-                      name={
-                        isExternalLink(item.type)
-                          ? 'external-link'
-                          : 'chevron-right'
-                      }
-                      size={moderateScale(16)}
-                      color={chevronColor}
-                      style={isExternalLink(item.type) ? undefined : flipX}
-                    />
-                  </Pressable>
-                </React.Fragment>
-              )),
+                      {value ? (
+                        <Text style={styles.value} numberOfLines={1}>
+                          {value}
+                        </Text>
+                      ) : null}
+                      <Feather
+                        name={external ? 'arrow-up-right' : 'chevron-right'}
+                        size={CHEVRON_SIZE}
+                        color={styles.chevron.color}
+                        style={external ? undefined : flipX}
+                      />
+                    </Pressable>
+                  </React.Fragment>
+                );
+              }),
             )}
           </View>
         ))}
 
-        {/* Privacy Section */}
         <View style={styles.section}>
           <Text style={styles.sectionHeader}>
             {t('settings:index.analytics.section')}
           </Text>
           {renderCard(
-            <View style={styles.settingsRow}>
-              <View style={styles.settingsItemIcon}>
-                <Feather
-                  name="bar-chart-2"
-                  size={moderateScale(20)}
-                  color={iconColor}
-                />
-              </View>
-              <View style={styles.settingsTextContainer}>
-                <Text style={styles.settingsTitle}>
-                  {t('settings:index.analytics.title')}
-                </Text>
-                <Text style={styles.settingsDescription}>
-                  {t('settings:index.analytics.description', {
-                    appName: branding.appName,
-                  })}
-                </Text>
-              </View>
+            <View
+              style={styles.row}
+              accessible
+              accessibilityHint={t('settings:index.analytics.description', {
+                appName: branding.appName,
+              })}>
+              {renderIcon('bar-chart-2')}
+              <Text style={styles.title} numberOfLines={1}>
+                {t('settings:index.analytics.title')}
+              </Text>
               <NativeSwitch
                 value={analyticsEnabled}
                 onValueChange={handleAnalyticsToggle}
-                style={styles.switchStyle}
               />
             </View>,
           )}
+          <Text style={styles.footnote}>
+            {t('settings:index.analytics.description', {
+              appName: branding.appName,
+            })}
+          </Text>
         </View>
 
-        {/* Developer Section */}
         {__DEV__ && (
           // Dev-only tools stay in English. // @ai
           // i18next-instrument-ignore
           <View style={styles.section}>
-            <Text style={styles.sectionHeader}>DEVELOPER</Text>
+            <Text style={styles.sectionHeader}>Developer</Text>
             {renderCard(
-              <View style={styles.settingsRow}>
-                <View style={styles.settingsItemIcon}>
-                  <Feather
-                    name="tool"
-                    size={moderateScale(20)}
-                    color={iconColor}
-                  />
-                </View>
-                <View style={styles.settingsTextContainer}>
-                  <Text style={styles.settingsTitle}>Floating Dev Menu</Text>
-                  <Text style={styles.settingsDescription}>
-                    Show the floating developer tools button
-                  </Text>
-                </View>
+              <View style={styles.row}>
+                {renderIcon('tool')}
+                <Text style={styles.title} numberOfLines={1}>
+                  Floating Dev Menu
+                </Text>
                 <NativeSwitch
                   value={showFloatingDevMenu}
                   onValueChange={toggleFloatingDevMenu}
-                  style={styles.switchStyle}
                 />
               </View>,
             )}
@@ -256,8 +216,36 @@ function PhoneSettingsScreen() {
 // @ai-end
 
 // @ai-start
-const createStyles = (theme: Theme) =>
-  ScaledSheet.create({
+type FeatherName = React.ComponentProps<typeof Feather>['name'];
+
+/** Monochrome outline icons for the phone list (the iPad list keeps its own). */
+const ROW_ICONS: Record<string, FeatherName> = {
+  mushafSettings: 'book-open',
+  translations: 'type',
+  defaultReciter: 'mic',
+  reciterChoice: 'sliders',
+  language: 'globe',
+  storage: 'hard-drive',
+  rateApp: 'star',
+  featureRequest: 'zap',
+  support: 'message-circle',
+  whatsNew: 'gift',
+  about: 'info',
+  credits: 'award',
+  github: 'github',
+  terms: 'file-text',
+  privacy: 'shield',
+};
+
+const ICON_SIZE = moderateScale(21);
+const CHEVRON_SIZE = moderateScale(18);
+/** Row padding; section headers line up with the icons at this inset. */
+const ROW_INSET = moderateScale(18);
+const ICON_GAP = moderateScale(16);
+
+const createStyles = (theme: Theme) => {
+  const isDark = theme.isDarkMode;
+  return StyleSheet.create({
     container: {
       flex: 1,
       backgroundColor: theme.colors.background,
@@ -266,75 +254,70 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: moderateScale(16),
     },
     section: {
-      marginBottom: moderateScale(14),
+      marginBottom: moderateScale(26),
     },
     sectionHeader: {
       textAlign: 'left',
-      fontSize: moderateScale(10.5),
-      fontFamily: 'Manrope-SemiBold',
-      color: theme.colors.textSecondary,
-      letterSpacing: latinLetterSpacing(1.2),
-      textTransform: 'uppercase',
-      marginBottom: moderateScale(6),
-      marginLeft: moderateScale(2),
+      fontSize: moderateScale(15),
+      fontFamily: theme.fonts.regular,
+      color: Color(theme.colors.text).alpha(0.55).toString(),
+      marginBottom: moderateScale(10),
+      marginStart: ROW_INSET,
     },
-
-    // --- Cards ---
     card: {
       backgroundColor: USE_GLASS
         ? undefined
-        : Color(theme.colors.text).alpha(0.04).toString(),
-      borderRadius: moderateScale(14),
-      borderWidth: USE_GLASS ? 0 : 1,
-      borderColor: USE_GLASS
-        ? undefined
-        : Color(theme.colors.text).alpha(0.06).toString(),
+        : isDark
+          ? Color('#ffffff').alpha(0.07).toString()
+          : '#ffffff',
+      borderRadius: moderateScale(24),
       overflow: 'hidden',
     },
-    divider: {
-      height: 1,
-      backgroundColor: Color(theme.colors.text)
-        .alpha(USE_GLASS ? 0.1 : 0.06)
-        .toString(),
-      marginHorizontal: moderateScale(16),
-    },
-
-    // --- Settings Rows ---
-    settingsRow: {
+    row: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: moderateScale(12),
-      paddingHorizontal: moderateScale(14),
+      minHeight: moderateScale(56),
+      paddingHorizontal: ROW_INSET,
+      gap: ICON_GAP,
     },
     pressed: {
       backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
-    settingsItemIcon: {
-      marginRight: moderateScale(12),
-      width: moderateScale(24),
+    icon: {
+      width: ICON_SIZE,
       alignItems: 'center',
     },
-    settingsTextContainer: {
+    title: {
       flex: 1,
-      marginRight: moderateScale(10),
-    },
-    settingsTitle: {
       textAlign: 'left',
-      fontSize: moderateScale(13.5),
-      fontFamily: 'Manrope-Medium',
+      fontSize: moderateScale(16.5),
+      fontFamily: theme.fonts.regular,
       color: theme.colors.text,
     },
-    settingsDescription: {
-      textAlign: 'left',
-      fontSize: moderateScale(11),
-      fontFamily: 'Manrope-Regular',
-      color: theme.colors.textSecondary,
-      marginTop: moderateScale(1),
+    value: {
+      maxWidth: '45%',
+      fontSize: moderateScale(15.5),
+      fontFamily: theme.fonts.regular,
+      color: Color(theme.colors.text).alpha(0.5).toString(),
     },
-
-    // --- Switch ---
-    switchStyle: {
-      transform: [{scaleX: 0.8}, {scaleY: 0.8}],
+    chevron: {
+      color: Color(theme.colors.text).alpha(0.35).toString(),
+    },
+    // Starts under the title, not the icon, and stops at the trailing inset.
+    separator: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: Color(theme.colors.text).alpha(0.14).toString(),
+      marginStart: ROW_INSET + ICON_SIZE + ICON_GAP,
+      marginEnd: ROW_INSET,
+    },
+    footnote: {
+      textAlign: 'left',
+      fontSize: moderateScale(13),
+      fontFamily: theme.fonts.regular,
+      color: Color(theme.colors.text).alpha(0.5).toString(),
+      marginTop: moderateScale(8),
+      marginHorizontal: ROW_INSET,
     },
   });
+};
 // @ai-end
