@@ -765,7 +765,9 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     <View
       style={[
         styles.container,
-        {paddingBottom: sheetBottomPadding},
+        // @ai: in a native sheet the menu scrolls to the screen edge and
+        // ends with the inset itself (below); the container adds nothing.
+        {paddingBottom: inNativeSheet ? 0 : sheetBottomPadding},
         (activeScreen || inNativeSheet) && {flex: 1},
       ]}>
       {!activeScreen && (
@@ -925,7 +927,10 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
         <ScrollView
           showsVerticalScrollIndicator={false}
           bounces={false}
-          contentContainerStyle={{paddingBottom: moderateScale(10)}}>
+          contentContainerStyle={{
+            paddingBottom:
+              moderateScale(10) + (inNativeSheet ? sheetBottomPadding : 0),
+          }}>
           {/* LISTEN */}
           <View style={styles.card}>
             <Pressable

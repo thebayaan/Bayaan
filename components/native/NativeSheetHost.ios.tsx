@@ -2,9 +2,13 @@
 import React, {useEffect, useMemo, useSyncExternalStore} from 'react';
 import {StyleSheet, View} from 'react-native';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
-import {SafeAreaInsetsContext} from 'react-native-safe-area-context';
+import {
+  SafeAreaInsetsContext,
+  initialWindowMetrics,
+} from 'react-native-safe-area-context';
 import {BottomSheet, Group, Host, RNHostView} from '@expo/ui/swift-ui';
 import {
+  ignoreSafeArea,
   presentationDetents,
   presentationDragIndicator,
 } from '@expo/ui/swift-ui/modifiers';
@@ -20,10 +24,16 @@ import {NativeSheetLevelContext} from './nativeSheetContext';
 import {useNativeTheme} from './useNativeTheme';
 
 /**
- * The sheet already keeps its content inside the safe area, so content
- * that pads itself by the window's insets (sticky footers) would pad twice.
+ * Sheet content runs under the home indicator, to the screen's bottom edge,
+ * so the indicator is the only inset: scroll content ends with it, sticky
+ * footers clear it. The top and sides are the sheet's own.
  */
-const NO_INSETS = {top: 0, bottom: 0, left: 0, right: 0};
+const SHEET_INSETS = {
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: initialWindowMetrics?.insets.bottom ?? 0,
+};
 
 /**
  * One sheet level: a SwiftUI sheet with its detents (medium and large
@@ -70,12 +80,15 @@ function SheetLevel({
             modifiers={[
               presentationDetents(level.detents),
               presentationDragIndicator('visible'),
+              // Without this the content stops above the home indicator and
+              // leaves a blank band at the bottom of every sheet.
+              ignoreSafeArea({regions: 'container', edges: 'bottom'}),
             ]}>
             <RNHostView>
               {/* Inside the sheet the content sits outside the app's
                   gesture root, so it gets its own. */}
               <GestureHandlerRootView style={styles.content}>
-                <SafeAreaInsetsContext.Provider value={NO_INSETS}>
+                <SafeAreaInsetsContext.Provider value={SHEET_INSETS}>
                   <NativeSheetLevelContext.Provider value={info}>
                     {level.content}
                   </NativeSheetLevelContext.Provider>

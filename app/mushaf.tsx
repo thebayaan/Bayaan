@@ -373,7 +373,7 @@ export function MushafToolbar() {
           {t('common:actions.play')}
         </Stack.Toolbar.Button>
         <Stack.Toolbar.Spacer />
-        <Stack.Toolbar.Button icon="ellipsis.circle" onPress={handleOptions}>
+        <Stack.Toolbar.Button icon="ellipsis" onPress={handleOptions}>
           {t('toolbar.options')}
         </Stack.Toolbar.Button>
       </Stack.Toolbar>
@@ -404,7 +404,7 @@ export function MushafToolbar() {
         disabled={verseNavDisabled} // @ai
       />
       <Stack.Toolbar.Spacer />
-      <Stack.Toolbar.Button icon="ellipsis.circle" onPress={handleOptions}>
+      <Stack.Toolbar.Button icon="ellipsis" onPress={handleOptions}>
         {t('toolbar.options')}
       </Stack.Toolbar.Button>
     </Stack.Toolbar>

@@ -48,7 +48,7 @@ export const FollowAlongSheet = (props: SheetProps<'follow-along'>) => {
       <View
         style={[
           styles.container,
-          {paddingBottom: sheetBottomPadding},
+          {paddingBottom: inNativeSheet ? 0 : sheetBottomPadding},
           // @ai: bounded by a native sheet, so the list scrolls inside it
           inNativeSheet && styles.fill,
         ]}>
@@ -64,6 +64,9 @@ export const FollowAlongSheet = (props: SheetProps<'follow-along'>) => {
             />
           )}
           style={[styles.list, inNativeSheet && styles.fill]}
+          contentContainerStyle={
+            inNativeSheet ? {paddingBottom: sheetBottomPadding} : undefined
+          }
           showsVerticalScrollIndicator={false}
         />
       </View>

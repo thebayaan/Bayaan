@@ -1,11 +1,15 @@
 // @ai-generated
+import {useContext} from 'react';
+import {SafeAreaInsetsContext} from 'react-native-safe-area-context';
 import {useNativeSheetId} from '@/components/native/nativeSheetContext';
 
 /**
- * Bottom padding for a sheet's content. A native sheet already keeps its
- * content above the home indicator, so it gets none; the
- * react-native-actions-sheet sheet keeps `fallback`.
+ * Bottom padding at the end of a sheet's content. A native sheet's content
+ * runs to the screen's bottom edge, so it ends with the home indicator's
+ * inset and nothing more; the react-native-actions-sheet sheet keeps
+ * `fallback`.
  */
 export function useSheetBottomPadding(fallback: number): number {
-  return useNativeSheetId() === null ? fallback : 0;
+  const insets = useContext(SafeAreaInsetsContext);
+  return useNativeSheetId() === null ? fallback : (insets?.bottom ?? 0);
 }
