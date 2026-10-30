@@ -1,12 +1,8 @@
 // @ai-generated
-import React, {useMemo, useState} from 'react';
-import {View, Text, Pressable, ScrollView, Alert, Linking} from 'react-native';
+import React, {useState} from 'react';
+import {View, ScrollView, Alert, Linking} from 'react-native';
 import {useTranslation} from 'react-i18next';
 import {useTheme} from '@/hooks/useTheme';
-import {ScaledSheet, moderateScale} from '@/utils/scale';
-import {Theme} from '@/utils/themeUtils';
-import {Feather} from '@expo/vector-icons';
-import Color from 'color';
 import {
   currentLanguage,
   getLanguagePreference,
@@ -18,11 +14,17 @@ import {
 } from '@/i18n/language';
 import {canRestartToApplyLanguage, restartWithLanguage} from '@/i18n/restart';
 import {LANGUAGES} from '@/i18n/languages';
+import {
+  SettingsIntro,
+  SettingsRow,
+  SettingsSection,
+  useSettingsStyles,
+} from '@/components/settings/SettingsList'; // @ai
 
 export default function LanguageScreen() {
   const {theme} = useTheme();
   const {t} = useTranslation();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const styles = useSettingsStyles(); // @ai
   // iOS owns the language (Settings › Apps › Bayaan › Language), so the
   // screen shows the language this session runs in and has no System option.
   const [selected, setSelected] = useState<LanguagePreference>(() =>
@@ -104,119 +106,32 @@ export default function LanguageScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={{flex: 1, backgroundColor: theme.colors.background}}>
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={styles.page}
         contentInsetAdjustmentBehavior="automatic"
         showsVerticalScrollIndicator={false}>
-        <Text style={styles.subtitle}>
-          {languageFollowsSystemSettings
-            ? t('language.iosNote')
-            : t('language.restartNote')}
-        </Text>
-
-        <View style={styles.optionsContainer}>
-          {options.map(option => {
-            const isSelected = option.value === selected;
-            return (
-              <Pressable
-                key={option.value}
-                accessibilityRole="radio"
-                accessibilityState={{selected: isSelected}}
-                style={({pressed}) => [
-                  styles.card,
-                  isSelected && styles.selectedCard,
-                  pressed && styles.pressed,
-                ]}
-                onPress={() => handleSelect(option.value)}>
-                <View style={styles.optionContent}>
-                  <View style={styles.optionTextContainer}>
-                    <Text
-                      style={[
-                        styles.optionTitle,
-                        {
-                          fontFamily: isSelected
-                            ? 'Manrope-SemiBold'
-                            : 'Manrope-Medium',
-                        },
-                      ]}>
-                      {option.label}
-                    </Text>
-                    {option.hint ? (
-                      <Text style={styles.optionDescription}>
-                        {option.hint}
-                      </Text>
-                    ) : null}
-                  </View>
-                  {isSelected && (
-                    <Feather
-                      name="check"
-                      size={moderateScale(20)}
-                      color={Color(theme.colors.text).alpha(0.7).toString()}
-                    />
-                  )}
-                </View>
-              </Pressable>
-            );
-          })}
-        </View>
+        <SettingsIntro
+          text={
+            languageFollowsSystemSettings
+              ? t('language.iosNote')
+              : t('language.restartNote')
+          }
+        />
+        <SettingsSection separatorInset="text">
+          {options.map(option => (
+            <SettingsRow
+              key={option.value}
+              title={option.label}
+              subtitle={option.hint}
+              accessory="check"
+              accessibilityRole="radio"
+              selected={option.value === selected}
+              onPress={() => handleSelect(option.value)}
+            />
+          ))}
+        </SettingsSection>
       </ScrollView>
     </View>
   );
 }
-
-const createStyles = (theme: Theme) =>
-  ScaledSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: theme.colors.background,
-    },
-    scrollContent: {
-      paddingHorizontal: moderateScale(16),
-      paddingBottom: moderateScale(160),
-    },
-    subtitle: {
-      textAlign: 'left',
-      fontSize: moderateScale(11.5),
-      fontFamily: 'Manrope-Regular',
-      color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
-      marginBottom: moderateScale(24),
-      lineHeight: moderateScale(18),
-    },
-    optionsContainer: {
-      gap: moderateScale(8),
-    },
-    card: {
-      backgroundColor: Color(theme.colors.text).alpha(0.04).toString(),
-      borderRadius: moderateScale(14),
-      borderWidth: 1,
-      borderColor: Color(theme.colors.text).alpha(0.06).toString(),
-      padding: moderateScale(14),
-    },
-    selectedCard: {
-      backgroundColor: Color(theme.colors.text).alpha(0.08).toString(),
-    },
-    pressed: {
-      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
-    },
-    optionContent: {
-      flexDirection: 'row',
-      alignItems: 'center',
-    },
-    optionTextContainer: {
-      flex: 1,
-    },
-    optionTitle: {
-      textAlign: 'left',
-      fontSize: moderateScale(13.5),
-      color: Color(theme.colors.text).alpha(0.85).toString(),
-      marginBottom: moderateScale(2),
-    },
-    optionDescription: {
-      textAlign: 'left',
-      fontSize: moderateScale(11.5),
-      fontFamily: 'Manrope-Regular',
-      color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
-      lineHeight: moderateScale(17),
-    },
-  });

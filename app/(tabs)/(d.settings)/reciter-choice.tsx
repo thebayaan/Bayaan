@@ -1,22 +1,24 @@
-import React, {useMemo} from 'react';
-import {View, Text, Pressable, ScrollView} from 'react-native';
+import React from 'react';
+import {ScrollView, View} from 'react-native';
 import {NativeSwitch} from '@/components/native/NativeSwitch'; // @ai
 import {useTheme} from '@/hooks/useTheme';
-import {ScaledSheet, moderateScale} from '@/utils/scale';
-import {Theme} from '@/utils/themeUtils';
-import {AntDesign, Feather} from '@expo/vector-icons';
-import Color from 'color';
 import {useSettings} from '@/hooks/useSettings';
 // @ai-start
-import {latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
+import {
+  SettingsIntro,
+  SettingsRow,
+  SettingsSection,
+  useSettingsStyles,
+  type SettingsIconName,
+} from '@/components/settings/SettingsList';
 // @ai-end
 
 // @ai-start
 export default function ReciterChoiceScreen() {
   const {theme} = useTheme();
   const {t} = useTranslation('settings');
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const styles = useSettingsStyles();
   const {
     askEveryTime,
     setAskEveryTime,
@@ -24,231 +26,66 @@ export default function ReciterChoiceScreen() {
     setDefaultReciterSelection,
   } = useSettings();
 
-  const options = [
+  const options: {
+    label: string;
+    action: 'browseAll' | 'useDefault';
+    description: string;
+    icon: SettingsIconName;
+  }[] = [
     {
       label: t('reciterChoice.browseAll'),
       action: 'browseAll',
       description: t('reciterChoice.browseAllDescription'),
-      icon: 'search1',
-      iconType: 'antdesign',
+      icon: 'search',
     },
     {
       label: t('reciterChoice.useDefault'),
       action: 'useDefault',
       description: t('reciterChoice.useDefaultDescription'),
       icon: 'user',
-      iconType: 'feather',
     },
   ];
 
   return (
-    <View style={styles.container}>
+    <View style={{flex: 1, backgroundColor: theme.colors.background}}>
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={styles.page}
         contentInsetAdjustmentBehavior="automatic"
         showsVerticalScrollIndicator={false}>
-        <Text style={styles.subtitle}>{t('reciterChoice.subtitle')}</Text>
+        <SettingsIntro text={t('reciterChoice.subtitle')} />
 
-        <View style={styles.section}>
-          <Text style={styles.sectionHeader}>
-            {t('reciterChoice.preferenceHeader')}
-          </Text>
-          <View style={styles.card}>
-            <View style={styles.settingRow}>
-              <View style={styles.settingInfo}>
-                <Text style={styles.settingTitle}>
-                  {t('reciterChoice.askEveryTime')}
-                </Text>
-                <Text style={styles.settingDescription}>
-                  {t('reciterChoice.askEveryTimeDescription')}
-                </Text>
-              </View>
+        <SettingsSection title={t('reciterChoice.preferenceHeader')}>
+          <SettingsRow
+            icon="help-circle"
+            title={t('reciterChoice.askEveryTime')}
+            subtitle={t('reciterChoice.askEveryTimeDescription')}
+            accessory={
               <NativeSwitch
                 value={askEveryTime}
                 onValueChange={() => setAskEveryTime(!askEveryTime)}
-                style={styles.switchStyle}
               />
-            </View>
-          </View>
-        </View>
+            }
+          />
+        </SettingsSection>
 
         {!askEveryTime && (
-          <View style={styles.section}>
-            <Text style={styles.sectionHeader}>
-              {t('reciterChoice.methodHeader')}
-            </Text>
-            <View style={styles.optionsContainer}>
-              {options.map(option => {
-                const isSelected = defaultReciterSelection === option.action;
-                return (
-                  <Pressable
-                    key={option.action}
-                    style={({pressed}) => [
-                      styles.card,
-                      isSelected && styles.selectedCard,
-                      pressed && styles.pressed,
-                    ]}
-                    onPress={() => setDefaultReciterSelection(option.action)}>
-                    <View style={styles.optionContent}>
-                      <View
-                        style={[
-                          styles.iconContainer,
-                          {
-                            backgroundColor: isSelected
-                              ? Color(theme.colors.text).alpha(0.08).toString()
-                              : Color(theme.colors.text).alpha(0.04).toString(),
-                          },
-                        ]}>
-                        {option.iconType === 'antdesign' ? (
-                          <AntDesign
-                            name={option.icon as any}
-                            size={moderateScale(20)}
-                            color={Color(theme.colors.text)
-                              .alpha(0.7)
-                              .toString()}
-                          />
-                        ) : (
-                          <Feather
-                            name={option.icon as any}
-                            size={moderateScale(20)}
-                            color={Color(theme.colors.text)
-                              .alpha(0.7)
-                              .toString()}
-                          />
-                        )}
-                      </View>
-                      <View style={styles.optionTextContainer}>
-                        <Text
-                          style={[
-                            styles.optionTitle,
-                            {
-                              fontFamily: isSelected
-                                ? 'Manrope-SemiBold'
-                                : 'Manrope-Medium',
-                            },
-                          ]}>
-                          {option.label}
-                        </Text>
-                        <Text style={styles.optionDescription}>
-                          {option.description}
-                        </Text>
-                      </View>
-                      {isSelected && (
-                        <Feather
-                          name="check-circle"
-                          size={moderateScale(20)}
-                          color={Color(theme.colors.text).alpha(0.7).toString()}
-                        />
-                      )}
-                    </View>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
+          <SettingsSection title={t('reciterChoice.methodHeader')}>
+            {options.map(option => (
+              <SettingsRow
+                key={option.action}
+                icon={option.icon}
+                title={option.label}
+                subtitle={option.description}
+                accessory="check"
+                accessibilityRole="radio"
+                selected={defaultReciterSelection === option.action}
+                onPress={() => setDefaultReciterSelection(option.action)}
+              />
+            ))}
+          </SettingsSection>
         )}
       </ScrollView>
     </View>
   );
 }
-// @ai-end
-
-// @ai-start
-const createStyles = (theme: Theme) =>
-  ScaledSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: theme.colors.background,
-    },
-    scrollContent: {
-      paddingHorizontal: moderateScale(16),
-      paddingBottom: moderateScale(160),
-    },
-    subtitle: {
-      fontSize: moderateScale(11.5),
-      fontFamily: 'Manrope-Regular',
-      color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
-      marginBottom: moderateScale(24),
-      lineHeight: moderateScale(18),
-    },
-    section: {
-      marginBottom: moderateScale(24),
-    },
-    sectionHeader: {
-      fontSize: moderateScale(10.5),
-      fontFamily: 'Manrope-SemiBold',
-      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
-      letterSpacing: latinLetterSpacing(1.2),
-      textTransform: 'uppercase',
-      marginBottom: moderateScale(6),
-      marginLeft: moderateScale(2),
-    },
-    card: {
-      backgroundColor: Color(theme.colors.text).alpha(0.04).toString(),
-      borderRadius: moderateScale(14),
-      borderWidth: 1,
-      borderColor: Color(theme.colors.text).alpha(0.06).toString(),
-      padding: moderateScale(14),
-      marginBottom: moderateScale(8),
-    },
-    selectedCard: {
-      backgroundColor: Color(theme.colors.text).alpha(0.08).toString(),
-    },
-    pressed: {
-      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
-    },
-    settingRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-    },
-    settingInfo: {
-      flex: 1,
-      marginRight: moderateScale(12),
-    },
-    settingTitle: {
-      fontSize: moderateScale(13.5),
-      fontFamily: 'Manrope-Medium',
-      color: Color(theme.colors.text).alpha(0.85).toString(),
-      marginBottom: moderateScale(2),
-    },
-    settingDescription: {
-      fontSize: moderateScale(11.5),
-      fontFamily: 'Manrope-Regular',
-      color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
-      lineHeight: moderateScale(17),
-    },
-    switchStyle: {
-      transform: [{scaleX: 0.8}, {scaleY: 0.8}],
-    },
-    optionsContainer: {
-      gap: moderateScale(8),
-    },
-    optionContent: {
-      flexDirection: 'row',
-      alignItems: 'center',
-    },
-    iconContainer: {
-      width: moderateScale(40),
-      height: moderateScale(40),
-      borderRadius: moderateScale(20),
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginRight: moderateScale(12),
-    },
-    optionTextContainer: {
-      flex: 1,
-    },
-    optionTitle: {
-      fontSize: moderateScale(13.5),
-      color: Color(theme.colors.text).alpha(0.85).toString(),
-      marginBottom: moderateScale(2),
-    },
-    optionDescription: {
-      fontSize: moderateScale(11.5),
-      fontFamily: 'Manrope-Regular',
-      color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
-      lineHeight: moderateScale(17),
-    },
-  });
 // @ai-end

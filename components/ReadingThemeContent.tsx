@@ -226,44 +226,53 @@ export const ReadingThemeContent: React.FC<ReadingThemeContentProps> = ({
         style={styles.segmentedControl}
       />
 
-      {/* Color chips grid */}
-      <View style={styles.chipGrid}>
+      {/* @ai-start: theme tiles, each a small page in that theme's colours */}
+      <View style={styles.tileGrid}>
         {visibleThemes.map(option => {
           const isSelected = option.id === selectedThemeId;
-          const brightness =
-            parseInt(option.colors.background.slice(1, 3), 16) +
-            parseInt(option.colors.background.slice(3, 5), 16) +
-            parseInt(option.colors.background.slice(5, 7), 16);
-          const needsBorder = brightness < 120;
-
           return (
             <Pressable
               key={option.id}
               onPress={() => handleThemeSelect(option.id)}
-              accessibilityRole="radio" // @ai
-              accessibilityLabel={option.name} // @ai
-              accessibilityState={{checked: isSelected}} // @ai
-              style={[
-                styles.colorChip,
-                {
-                  backgroundColor: option.colors.background,
-                  borderColor: isSelected ? option.colors.text : 'transparent',
-                },
-                needsBorder &&
-                  !isSelected && {
-                    borderColor: Color('#ffffff').alpha(0.12).toString(),
-                  },
-                isSelected && styles.colorChipSelected,
-              ]}>
+              accessibilityRole="radio"
+              accessibilityLabel={option.name}
+              accessibilityState={{checked: isSelected}}
+              style={styles.tile}>
+              <View style={[styles.tileRing, isSelected && styles.tileRingOn]}>
+                <View
+                  style={[
+                    styles.tilePage,
+                    {backgroundColor: option.colors.background},
+                  ]}>
+                  <Text
+                    style={[styles.tileLetter, {color: option.colors.text}]}>
+                    {PREVIEW_BA}
+                  </Text>
+                  <View
+                    style={[
+                      styles.tileLine,
+                      {
+                        backgroundColor: Color(option.colors.text)
+                          .alpha(0.35)
+                          .toString(),
+                      },
+                    ]}
+                  />
+                  <View
+                    style={[
+                      styles.tileLine,
+                      styles.tileLineShort,
+                      {
+                        backgroundColor: Color(option.colors.text)
+                          .alpha(0.35)
+                          .toString(),
+                      },
+                    ]}
+                  />
+                </View>
+              </View>
               <Text
-                style={[styles.colorChipLetter, {color: option.colors.text}]}>
-                {PREVIEW_BA}
-              </Text>
-              <Text
-                style={[
-                  styles.colorChipLabel,
-                  {color: Color(option.colors.text).alpha(0.7).toString()},
-                ]}
+                style={[styles.tileLabel, isSelected && styles.tileLabelOn]}
                 numberOfLines={1}>
                 {option.name}
               </Text>
@@ -271,6 +280,7 @@ export const ReadingThemeContent: React.FC<ReadingThemeContentProps> = ({
           );
         })}
       </View>
+      {/* @ai-end */}
     </ScrollView>
   );
 };
@@ -582,7 +592,7 @@ const createStyles = (theme: Theme) =>
       paddingBottom: moderateScale(40),
     },
     disclosureText: {
-      textAlign: 'center',
+      textAlign: 'left', // @ai
       fontSize: moderateScale(11),
       fontFamily: 'Manrope-Regular',
       color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
@@ -600,29 +610,59 @@ const createStyles = (theme: Theme) =>
       justifyContent: 'center',
       marginBottom: moderateScale(12),
     },
-    chipGrid: {
+    // @ai-start
+    tileGrid: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      gap: moderateScale(10),
+      rowGap: moderateScale(14),
+      columnGap: moderateScale(10),
     },
-    colorChip: {
-      width: moderateScale(60),
-      height: moderateScale(72),
-      borderRadius: moderateScale(14),
-      borderWidth: 2.5,
+    tile: {
+      width: '31%',
+      alignItems: 'center',
+      gap: moderateScale(6),
+    },
+    tileRing: {
+      width: '100%',
+      aspectRatio: 1.15,
+      borderRadius: moderateScale(20),
+      borderWidth: 3,
+      borderColor: 'transparent',
+      padding: 2,
+    },
+    tileRingOn: {
+      borderColor: theme.colors.text,
+    },
+    tilePage: {
+      flex: 1,
+      borderRadius: moderateScale(15),
       alignItems: 'center',
       justifyContent: 'center',
-      gap: moderateScale(2),
+      gap: moderateScale(4),
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: Color(theme.colors.text).alpha(0.15).toString(),
     },
-    colorChipSelected: {
-      transform: [{scale: 1.06}],
-    },
-    colorChipLetter: {
+    tileLetter: {
       fontFamily: 'ScheherazadeNew-Regular',
-      fontSize: moderateScale(18),
+      fontSize: moderateScale(24),
+      lineHeight: moderateScale(34),
     },
-    colorChipLabel: {
+    tileLine: {
+      width: '55%',
+      height: moderateScale(3),
+      borderRadius: moderateScale(2),
+    },
+    tileLineShort: {
+      width: '35%',
+    },
+    tileLabel: {
       fontFamily: 'Manrope-Medium',
-      fontSize: moderateScale(8),
+      fontSize: moderateScale(13),
+      color: Color(theme.colors.text).alpha(0.55).toString(),
     },
+    tileLabelOn: {
+      fontFamily: 'Manrope-SemiBold',
+      color: theme.colors.text,
+    },
+    // @ai-end
   });

@@ -1,88 +1,27 @@
-import React, {useState, useMemo} from 'react';
-import {View, Text, ScrollView, Pressable, Alert} from 'react-native';
+import React, {useState} from 'react';
+import {View, Text, ScrollView, Alert, StyleSheet} from 'react-native';
 import {confirmDestructive} from '@/utils/confirmDestructive'; // @ai
 import {useTheme} from '@/hooks/useTheme';
-import {ScaledSheet, moderateScale} from '@/utils/scale';
-import {Theme} from '@/utils/themeUtils';
-import Color from 'color';
+import {moderateScale} from '@/utils/scale';
 import {useStorageBreakdown} from '@/hooks/useStorageBreakdown';
 import {useDownloadStore} from '@/services/player/store/downloadStore';
 import {clearPlayerCache} from '@/services/player/utils/storage';
 import {Feather} from '@expo/vector-icons';
 // @ai-start
-import {latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
 import {localizeDigits} from '@/i18n/format';
+import {
+  SettingsRow,
+  SettingsSection,
+  useSettingsStyles,
+} from '@/components/settings/SettingsList';
 // @ai-end
-
-interface StorageCategoryProps {
-  color: string;
-  label: string;
-  size: string;
-  styles: ReturnType<typeof createStyles>;
-}
-
-// @ai-start
-const StorageCategory = ({
-  color,
-  label,
-  size,
-  styles,
-}: StorageCategoryProps) => (
-  <View style={styles.categoryRow}>
-    <View style={[styles.dot, {backgroundColor: color}]} />
-    <Text style={styles.categoryLabel}>{label}</Text>
-    <Text style={styles.categorySize}>{localizeDigits(size)}</Text>
-  </View>
-);
-// @ai-end
-
-interface ActionSectionProps {
-  title: string;
-  description: string;
-  buttonLabel: string;
-  onPress: () => void;
-  disabled?: boolean; // @ai
-  theme: Theme;
-  styles: ReturnType<typeof createStyles>;
-}
-
-const ActionSection = ({
-  title,
-  description,
-  buttonLabel,
-  onPress,
-  disabled = false, // @ai
-  theme,
-  styles,
-}: ActionSectionProps) => (
-  <View style={styles.actionSection}>
-    <View style={styles.actionContent}>
-      <Text style={styles.actionTitle}>{title}</Text>
-      <Text style={styles.actionDescription}>{description}</Text>
-    </View>
-    <Pressable
-      style={({pressed}) => [
-        styles.actionButton,
-        {backgroundColor: theme.colors.text},
-        pressed && {opacity: 0.8},
-        disabled && {opacity: 0.4}, // @ai
-      ]}
-      onPress={onPress}
-      // @ai: one clear at a time; a second tap mid-clear started another
-      disabled={disabled}
-      accessibilityRole="button"
-      accessibilityState={{disabled, busy: disabled}}>
-      <Text style={styles.actionButtonText}>{buttonLabel}</Text>
-    </Pressable>
-  </View>
-);
 
 // @ai-start
 export default function StorageScreen() {
   const {theme} = useTheme();
   const {t} = useTranslation(['settings', 'common']);
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const styles = useSettingsStyles(); // @ai
   const [isClearing, setIsClearing] = useState(false);
 
   const {free, downloads, cache, otherApps, loading, error, rawData, refresh} =
@@ -176,131 +115,87 @@ export default function StorageScreen() {
     free: '#E5E5EA',
   };
 
+  const dot = (color: string) => (
+    <View style={[local.dot, {backgroundColor: color}]} />
+  );
+  const segment = (percent: number, color: string) => (
+    <View
+      style={[local.segment, {width: `${percent}%`, backgroundColor: color}]}
+    />
+  );
+
   return (
-    <View style={styles.container}>
+    <View style={{flex: 1, backgroundColor: theme.colors.background}}>
       <ScrollView
-        style={styles.content}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={styles.page}
         contentInsetAdjustmentBehavior="automatic"
         showsVerticalScrollIndicator={false}>
         {loading ? (
-          <View style={styles.loadingContainer}>
-            <Text style={styles.loadingText}>{t('storage.loading')}</Text>
-          </View>
+          <Text style={[local.status, {color: theme.colors.textSecondary}]}>
+            {t('storage.loading')}
+          </Text>
         ) : error ? (
-          <View style={styles.errorContainer}>
+          <View style={local.errorContainer}>
             <Feather
               name="alert-circle"
               size={moderateScale(48)}
               color={theme.colors.error}
             />
-            <Text style={styles.errorText}>{error}</Text>
+            <Text style={[local.status, {color: theme.colors.error}]}>
+              {error}
+            </Text>
           </View>
         ) : (
           <>
-            {/* Storage Breakdown */}
-            <Text style={styles.sectionHeader}>
-              {t('storage.breakdownHeader')}
-            </Text>
-
-            {/* Progress Bar */}
-            <View style={styles.progressContainer}>
-              <View style={styles.progressBarContainer}>
-                <View
-                  style={[
-                    styles.progressSegment,
-                    {
-                      width: `${otherAppsPercentage}%`,
-                      backgroundColor: colors.otherApps,
-                    },
-                  ]}
-                />
-                <View
-                  style={[
-                    styles.progressSegment,
-                    {
-                      width: `${downloadsPercentage}%`,
-                      backgroundColor: colors.downloads,
-                    },
-                  ]}
-                />
-                <View
-                  style={[
-                    styles.progressSegment,
-                    {
-                      width: `${cachePercentage}%`,
-                      backgroundColor: colors.cache,
-                    },
-                  ]}
-                />
-                <View
-                  style={[
-                    styles.progressSegment,
-                    {
-                      width: `${freePercentage}%`,
-                      backgroundColor: colors.free,
-                    },
-                  ]}
-                />
+            <SettingsSection title={t('storage.breakdownHeader')}>
+              <View style={local.barRow}>
+                <View style={local.bar}>
+                  {segment(otherAppsPercentage, colors.otherApps)}
+                  {segment(downloadsPercentage, colors.downloads)}
+                  {segment(cachePercentage, colors.cache)}
+                  {segment(freePercentage, colors.free)}
+                </View>
               </View>
-            </View>
+              <SettingsRow
+                icon={dot(colors.otherApps)}
+                title={t('storage.otherApps')}
+                value={localizeDigits(otherApps)}
+              />
+              <SettingsRow
+                icon={dot(colors.downloads)}
+                title={t('storage.downloads')}
+                value={localizeDigits(downloads)}
+              />
+              <SettingsRow
+                icon={dot(colors.cache)}
+                title={t('storage.cache')}
+                value={localizeDigits(cache)}
+              />
+              <SettingsRow
+                icon={dot(colors.free)}
+                title={t('storage.free')}
+                value={localizeDigits(free)}
+              />
+            </SettingsSection>
 
-            <View style={styles.breakdownContainer}>
-              <StorageCategory
-                color={colors.otherApps}
-                label={t('storage.otherApps')}
-                size={otherApps}
-                styles={styles}
-              />
-              <StorageCategory
-                color={colors.downloads}
-                label={t('storage.downloads')}
-                size={downloads}
-                styles={styles}
-              />
-              <StorageCategory
-                color={colors.cache}
-                label={t('storage.cache')}
-                size={cache}
-                styles={styles}
-              />
-              <StorageCategory
-                color={colors.free}
-                label={t('storage.free')}
-                size={free}
-                styles={styles}
-              />
-            </View>
-
-            {/* Manage Storage */}
-            <Text style={styles.sectionHeader}>
-              {t('storage.manageHeader')}
-            </Text>
-            <View>
-              <ActionSection
+            <SettingsSection title={t('storage.manageHeader')}>
+              <SettingsRow
+                icon="trash-2"
                 title={t('storage.removeDownloadsTitle')}
-                description={t('storage.removeDownloadsDescription')}
-                buttonLabel={t('common:actions.remove')}
+                subtitle={t('storage.removeDownloadsDescription')}
+                destructive
+                disabled={isClearing}
                 onPress={handleClearAllDownloads}
-                disabled={isClearing}
-                theme={theme}
-                styles={styles}
-                key="downloads"
               />
-
-              <View style={styles.actionSpacer} />
-
-              <ActionSection
+              <SettingsRow
+                icon="refresh-cw"
                 title={t('storage.clearCacheTitle')}
-                description={t('storage.clearCacheDescription')}
-                buttonLabel={t('common:actions.clear')}
-                onPress={handleClearCache}
+                subtitle={t('storage.clearCacheDescription')}
+                destructive
                 disabled={isClearing}
-                theme={theme}
-                styles={styles}
-                key="cache"
+                onPress={handleClearCache}
               />
-            </View>
+            </SettingsSection>
           </>
         )}
       </ScrollView>
@@ -309,127 +204,27 @@ export default function StorageScreen() {
 }
 // @ai-end
 
-// @ai-start
-const createStyles = (theme: Theme) =>
-  ScaledSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: theme.colors.background,
-    },
-    content: {
-      flex: 1,
-    },
-    scrollContent: {
-      paddingHorizontal: moderateScale(24),
-      paddingVertical: moderateScale(20),
-      paddingBottom: moderateScale(160),
-    },
-    sectionHeader: {
-      fontSize: moderateScale(10.5),
-      fontFamily: 'Manrope-SemiBold',
-      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
-      letterSpacing: latinLetterSpacing(1.2),
-      textTransform: 'uppercase',
-      marginBottom: moderateScale(10),
-      marginLeft: moderateScale(2),
-    },
-    loadingContainer: {
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingVertical: moderateScale(60),
-    },
-    loadingText: {
-      fontSize: moderateScale(13),
-      fontFamily: 'Manrope-Regular',
-      color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
-    },
-    errorContainer: {
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingVertical: moderateScale(60),
-      gap: moderateScale(16),
-    },
-    errorText: {
-      fontSize: moderateScale(13.5),
-      fontFamily: 'Manrope-Medium',
-      color: Color(theme.colors.text).alpha(0.85).toString(),
-    },
-    progressContainer: {
-      marginBottom: moderateScale(24),
-    },
-    progressBarContainer: {
-      height: moderateScale(8),
-      borderRadius: moderateScale(4),
-      flexDirection: 'row',
-      overflow: 'hidden',
-      backgroundColor: Color(theme.colors.text).alpha(0.1).toString(),
-    },
-    progressSegment: {
-      height: '100%',
-    },
-    breakdownContainer: {
-      gap: moderateScale(16),
-      marginBottom: moderateScale(32),
-    },
-    categoryRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: moderateScale(12),
-    },
-    dot: {
-      width: moderateScale(10),
-      height: moderateScale(10),
-      borderRadius: moderateScale(5),
-    },
-    categoryLabel: {
-      flex: 1,
-      fontSize: moderateScale(13.5),
-      fontFamily: 'Manrope-Regular',
-      color: Color(theme.colors.text).alpha(0.85).toString(),
-    },
-    categorySize: {
-      fontSize: moderateScale(13.5),
-      fontFamily: 'Manrope-Medium',
-      color: Color(theme.colors.text).alpha(0.85).toString(),
-    },
-    actionSection: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      padding: moderateScale(16),
-      backgroundColor: Color(theme.colors.text).alpha(0.04).toString(),
-      borderRadius: moderateScale(14),
-      borderWidth: 1,
-      borderColor: Color(theme.colors.text).alpha(0.06).toString(),
-      gap: moderateScale(16),
-    },
-    actionContent: {
-      flex: 1,
-    },
-    actionTitle: {
-      fontSize: moderateScale(13.5),
-      fontFamily: 'Manrope-SemiBold',
-      color: Color(theme.colors.text).alpha(0.85).toString(),
-      marginBottom: moderateScale(4),
-    },
-    actionDescription: {
-      fontSize: moderateScale(11.5),
-      fontFamily: 'Manrope-Regular',
-      color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
-      lineHeight: moderateScale(17),
-    },
-    actionButton: {
-      paddingHorizontal: moderateScale(20),
-      paddingVertical: moderateScale(10),
-      borderRadius: moderateScale(8),
-    },
-    actionButtonText: {
-      color: theme.colors.background,
-      fontSize: moderateScale(14),
-      fontFamily: 'Manrope-SemiBold',
-    },
-    actionSpacer: {
-      height: moderateScale(12),
-    },
-  });
-// @ai-end
+const local = StyleSheet.create({
+  barRow: {
+    paddingHorizontal: moderateScale(18),
+    paddingVertical: moderateScale(16),
+  },
+  bar: {
+    flexDirection: 'row',
+    height: moderateScale(10),
+    borderRadius: moderateScale(5),
+    overflow: 'hidden',
+  },
+  segment: {height: '100%'},
+  dot: {
+    width: moderateScale(12),
+    height: moderateScale(12),
+    borderRadius: moderateScale(6),
+  },
+  status: {
+    textAlign: 'center',
+    fontSize: moderateScale(15),
+    marginTop: moderateScale(40),
+  },
+  errorContainer: {alignItems: 'center', marginTop: moderateScale(40)},
+});
