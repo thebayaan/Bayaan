@@ -330,7 +330,9 @@ function NativeSheetBody({
   }, []);
   const level = useNativeSheetLevel();
   const {height: windowHeight} = useWindowDimensions();
-  if (!level?.fit) return <View style={styles.nativeBody}>{children}</View>;
+  if (!level?.fitted) {
+    return <View style={styles.nativeBody}>{children}</View>;
+  }
 
   // A fitted sheet is as tall as its content plus the space above it; past
   // the large height its content scrolls. The content ends with the home
@@ -345,13 +347,20 @@ function NativeSheetBody({
       event.nativeEvent.layout.height + chrome,
       maxHeight,
     );
+  // The same tree whether fitted or given fixed detents for a while, so
+  // the content keeps its state; with fixed detents it fills the sheet.
   return (
     <ScrollView
       style={styles.nativeScroll}
       contentContainerStyle={styles.nativeFitBody}
+      scrollEnabled={level.fit}
       bounces={false}
       showsVerticalScrollIndicator={false}>
-      <View onLayout={onLayout}>{children}</View>
+      <View
+        onLayout={level.fit ? onLayout : undefined}
+        style={level.fit ? undefined : styles.nativeFill}>
+        {children}
+      </View>
     </ScrollView>
   );
 }
@@ -397,6 +406,7 @@ const styles = StyleSheet.create({
   nativeBody: {flex: 1, paddingTop: NATIVE_BODY_TOP},
   nativeFitBody: {flexGrow: 1, paddingTop: NATIVE_BODY_TOP},
   nativeScroll: {flex: 1},
+  nativeFill: {flex: 1},
   layer: {
     height: '100%',
     backgroundColor: 'transparent',

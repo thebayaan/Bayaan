@@ -7,6 +7,8 @@ export interface NativeSheetLevelInfo {
   key: number;
   /** The sheet is sized to its content, which reports its height. */
   fit: boolean;
+  /** Registered as fitted; its body keeps the measuring layout. */
+  fitted: boolean;
 }
 
 /**

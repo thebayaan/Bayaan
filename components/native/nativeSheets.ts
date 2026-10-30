@@ -24,6 +24,8 @@ export interface NativeSheetLevel {
   detents: NativeSheetDetent[];
   /** Sized to its content: the content reports its height (`fitNativeSheet`). */
   fit: boolean;
+  /** Registered as fitted (its body measures), even while `fit` is off. */
+  fitted: boolean;
   /** False while the level animates out. */
   presented: boolean;
 }
@@ -115,10 +117,13 @@ export function presentNativeSheet(
     finish(top.key);
     publish([
       ...levels.slice(0, -1),
-      {key, id, content, detents, fit, presented: true},
+      {key, id, content, detents, fit, fitted: fit, presented: true},
     ]);
   } else {
-    publish([...levels, {key, id, content, detents, fit, presented: true}]);
+    publish([
+      ...levels,
+      {key, id, content, detents, fit, fitted: fit, presented: true},
+    ]);
   }
   return promise;
 }
@@ -157,6 +162,25 @@ export function fitNativeSheet(
   const level = levels.find(item => item.key === key);
   if (!level?.fit || sameDetents(level.detents, detents)) return;
   publish(levels.map(item => (item.key === key ? {...item, detents} : item)));
+}
+
+/**
+ * Gives a fitted level fixed detents for a while (a full-screen view inside
+ * a menu sheet), or `null` to size it to its content again.
+ */
+export function setNativeSheetDetents(
+  key: number,
+  detents: NativeSheetDetent[] | null,
+): void {
+  publish(
+    levels.map(item =>
+      item.key !== key || !item.fitted
+        ? item
+        : detents
+          ? {...item, fit: false, detents}
+          : {...item, fit: true},
+    ),
+  );
 }
 
 function sameDetents(a: NativeSheetDetent[], b: NativeSheetDetent[]) {
