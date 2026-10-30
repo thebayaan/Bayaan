@@ -48,6 +48,7 @@ import {
   localizeDigits,
 } from '@/i18n/format';
 import {hideSheet} from '@/components/sheets/sheetControl'; // @ai
+import {useSheetBottomPadding} from '@/components/sheets/useSheetBottomPadding'; // @ai
 // @ai-end
 
 type RecitationType = 'surah' | 'other';
@@ -114,6 +115,7 @@ export const OrganizeRecitationSheet = (
   props: SheetProps<'organize-recitation'>,
 ) => {
   const {theme} = useTheme();
+  const sheetBottomPadding = useSheetBottomPadding(moderateScale(40)); // @ai
   const styles = createStyles(theme);
   const {t} = useTranslation(['sheets', 'common']);
   const {updateTags, deleteRecitation, customReciters, createCustomReciter} =
@@ -518,6 +520,7 @@ export const OrganizeRecitationSheet = (
         onContentSizeChange={handleContentSizeChange}
         contentContainerStyle={[
           styles.contentContainer,
+          {paddingBottom: sheetBottomPadding},
           keyboardHeight > 0 && {paddingBottom: keyboardHeight},
         ]}>
         {/* File Info */}

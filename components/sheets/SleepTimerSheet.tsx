@@ -10,6 +10,7 @@ import {SLEEP_TIMER_OPTIONS} from '@/constants/playback'; // @ai
 // @ai-start
 import {useTranslation} from 'react-i18next';
 import {hideSheet} from '@/components/sheets/sheetControl'; // @ai
+import {useSheetBottomPadding} from '@/components/sheets/useSheetBottomPadding'; // @ai
 // @ai-end
 
 const TIMER_OPTIONS = SLEEP_TIMER_OPTIONS; // @ai
@@ -17,6 +18,7 @@ const TIMER_OPTIONS = SLEEP_TIMER_OPTIONS; // @ai
 // @ai-start
 export const SleepTimerSheet = (props: SheetProps<'sleep-timer'>) => {
   const {theme} = useTheme();
+  const sheetBottomPadding = useSheetBottomPadding(moderateScale(40)); // @ai
   const styles = createStyles(theme);
   const {t} = useTranslation('sheets');
 
@@ -50,7 +52,7 @@ export const SleepTimerSheet = (props: SheetProps<'sleep-timer'>) => {
       <View style={styles.headerContainer}>
         <Text style={styles.headerTitle}>{t('sleepTimer.title')}</Text>
       </View>
-      <View style={styles.container}>
+      <View style={[styles.container, {paddingBottom: sheetBottomPadding}]}>
         {remainingTime !== null && remainingTime > 0 && (
           <Text style={styles.remainingTime}>
             {remainingTime < 1

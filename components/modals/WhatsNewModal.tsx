@@ -30,6 +30,7 @@ import Animated, {FadeIn, ZoomIn} from 'react-native-reanimated';
 // @ai-start
 import {Trans, useTranslation} from 'react-i18next';
 import branding from '@/config/branding';
+import {useVisibleAfterNativeSheets} from '@/components/native/useVisibleAfterNativeSheets'; // @ai
 // @ai-end
 
 const {width} = Dimensions.get('window');
@@ -43,6 +44,7 @@ export const WhatsNewModal = forwardRef<WhatsNewModalRef>((props, ref) => {
   const {theme} = useTheme();
   const {t} = useTranslation(['settings', 'common']);
   const [visible, setVisible] = useState(false);
+  const modalVisible = useVisibleAfterNativeSheets(visible); // @ai
   const [changelogs, setChangelogs] = useState<ChangelogEntry[]>([]);
   const [pressedButton, setPressedButton] = useState(false);
 
@@ -117,7 +119,7 @@ export const WhatsNewModal = forwardRef<WhatsNewModalRef>((props, ref) => {
 
   return (
     <Modal
-      visible={visible}
+      visible={modalVisible}
       transparent
       animationType="fade"
       onRequestClose={handleClose}>

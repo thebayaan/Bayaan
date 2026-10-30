@@ -28,11 +28,13 @@ import {
 } from '@/components/share/useVerseSelection';
 import {addSelectionNote} from './verse-actions/selectionAnnotations';
 import {hideAllSheets} from '@/components/sheets/sheetControl'; // @ai
+import {useSheetBottomPadding} from '@/components/sheets/useSheetBottomPadding'; // @ai
 // @ai-end
 
 // @ai-start
 export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
   const {theme} = useTheme();
+  const sheetBottomPadding = useSheetBottomPadding(moderateScale(40)); // @ai
   const styles = useMemo(() => createStyles(theme), [theme]);
   const {t} = useTranslation('sheets');
 
@@ -250,7 +252,10 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
       gestureEnabled={true}>
       <ScrollView
         style={styles.container}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          {paddingBottom: sheetBottomPadding},
+        ]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}>
         {/* @ai: the verses in the note's own rewayah numbering, once known */}

@@ -10,6 +10,7 @@ import {PLAYBACK_SPEEDS} from '@/constants/playback'; // @ai
 // @ai-start
 import {useTranslation} from 'react-i18next';
 import {hideSheet} from '@/components/sheets/sheetControl'; // @ai
+import {useSheetBottomPadding} from '@/components/sheets/useSheetBottomPadding'; // @ai
 // @ai-end
 
 const SPEEDS = PLAYBACK_SPEEDS; // @ai
@@ -17,6 +18,7 @@ const SPEEDS = PLAYBACK_SPEEDS; // @ai
 // @ai-start
 export const PlaybackSpeedSheet = (props: SheetProps<'playback-speed'>) => {
   const {theme} = useTheme();
+  const sheetBottomPadding = useSheetBottomPadding(moderateScale(40)); // @ai
   const styles = createStyles(theme);
   const {t} = useTranslation('sheets');
 
@@ -41,7 +43,7 @@ export const PlaybackSpeedSheet = (props: SheetProps<'playback-speed'>) => {
       <View style={styles.headerContainer}>
         <Text style={styles.headerTitle}>{t('playbackSpeed.title')}</Text>
       </View>
-      <View style={styles.container}>
+      <View style={[styles.container, {paddingBottom: sheetBottomPadding}]}>
         <View style={styles.speedContainer}>
           {SPEEDS.map(speed => (
             <Pressable

@@ -110,6 +110,26 @@ registerNativeSheet('create-playlist', CreatePlaylistSheet, {
 registerNativeSheet('favorite-reciters', FavoriteRecitersSheet, {
   detents: ['large'],
 });
+registerNativeSheet('select-reciter', SelectReciterSheet, {detents: 'fit'});
+registerNativeSheet('collection-options', CollectionOptionsSheet, {
+  detents: 'fit',
+});
+registerNativeSheet('playlist-context', PlaylistContextSheet, {detents: 'fit'});
+registerNativeSheet('player-options', PlayerOptionsSheet, {detents: 'fit'});
+registerNativeSheet('rewayat-info', RewayatInfoSheet, {detents: 'fit'});
+registerNativeSheet('adhkar-layout', AdhkarLayoutSheet, {detents: 'fit'});
+registerNativeSheet('adhkar-copy-options', AdhkarCopyOptionsSheet, {
+  detents: 'fit',
+});
+registerNativeSheet('adhkar-session-options', AdhkarSessionOptionsSheet, {
+  detents: 'fit',
+});
+registerNativeSheet('playback-speed', PlaybackSpeedSheet, {detents: 'fit'});
+registerNativeSheet('sleep-timer', SleepTimerSheet, {detents: 'fit'});
+registerNativeSheet('verse-note', VerseNoteSheet, {detents: ['large']});
+registerNativeSheet('organize-recitation', OrganizeRecitationSheet, {
+  detents: ['large'],
+});
 // @ai-end
 registerSheet('home-card-options', HomeCardOptionsSheet);
 registerSheet('adhkar-session-options', AdhkarSessionOptionsSheet);

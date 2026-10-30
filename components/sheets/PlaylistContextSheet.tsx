@@ -23,11 +23,13 @@ import Color from 'color';
 // @ai-start
 import {useTranslation} from 'react-i18next';
 import {hideSheet} from '@/components/sheets/sheetControl'; // @ai
+import {useSheetBottomPadding} from '@/components/sheets/useSheetBottomPadding'; // @ai
 // @ai-end
 
 // @ai-start
 export const PlaylistContextSheet = (props: SheetProps<'playlist-context'>) => {
   const {theme} = useTheme();
+  const sheetBottomPadding = useSheetBottomPadding(moderateScale(40)); // @ai
   const {t} = useTranslation(['sheets', 'common']);
   const payload = props.payload;
   const playlistId = payload?.playlistId ?? '';
@@ -424,7 +426,7 @@ export const PlaylistContextSheet = (props: SheetProps<'playlist-context'>) => {
         {backgroundColor: Color(theme.colors.text).alpha(0.3).toString()},
       ]}
       gestureEnabled={true}>
-      <View style={styles.container}>
+      <View style={[styles.container, {paddingBottom: sheetBottomPadding}]}>
         <Text style={[styles.playlistName, {color: theme.colors.text}]}>
           {playlistName}
         </Text>

@@ -14,11 +14,13 @@ import {latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
 import {getStyleLabel} from './sheetLabels';
 import {hideSheet} from '@/components/sheets/sheetControl'; // @ai
+import {useSheetBottomPadding} from '@/components/sheets/useSheetBottomPadding'; // @ai
 // @ai-end
 
 // @ai-start
 export const RewayatInfoSheet = (props: SheetProps<'rewayat-info'>) => {
   const {theme} = useTheme();
+  const sheetBottomPadding = useSheetBottomPadding(moderateScale(20)); // @ai
   const styles = createStyles(theme);
   const {t} = useTranslation('sheets');
   const [, setIsExpanded] = useState(false);
@@ -60,7 +62,7 @@ export const RewayatInfoSheet = (props: SheetProps<'rewayat-info'>) => {
         showsVerticalScrollIndicator={false}
         bounces={true}
         scrollEventThrottle={16}>
-        <View style={styles.content}>
+        <View style={[styles.content, {paddingBottom: sheetBottomPadding}]}>
           <View style={styles.iconContainer}>
             <RewayatIcon color={theme.colors.text} size={moderateScale(60)} />
           </View>
