@@ -98,7 +98,7 @@ const DhikrReaderScreen: React.FC = () => {
   const router = useRouter();
   const navigation = useNavigation();
   const {theme} = useTheme();
-  const {t} = useTranslation('home');
+  const {t} = useTranslation(['home', 'common']); // @ai
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const headerHeight = useHeaderHeight();
@@ -272,9 +272,15 @@ const DhikrReaderScreen: React.FC = () => {
   // Set native header with title + position subtitle
   useLayoutEffect(() => {
     navigation.setOptions({
+      // VoiceOver reads the native title, which fell back to the route
+      // name ("[superId]/[dhikrId]"). The custom view below still draws it. @ai
+      title: displayTitle,
       headerTitleAlign: 'center',
       headerTitle: () => (
-        <View style={{alignItems: 'center'}}>
+        <View
+          accessible // @ai
+          accessibilityRole="header" // @ai
+          style={{alignItems: 'center'}}>
           <Text
             style={{
               fontSize: moderateScale(16),
@@ -303,6 +309,8 @@ const DhikrReaderScreen: React.FC = () => {
       headerRight: () => (
         <Pressable
           onPress={handleShareDhikr}
+          accessibilityRole="button" // @ai
+          accessibilityLabel={t('common:actions.share')} // @ai
           hitSlop={8}
           style={{
             padding: moderateScale(4),
