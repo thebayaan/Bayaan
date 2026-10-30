@@ -124,14 +124,14 @@ const createStyles = (theme: Theme) =>
     tagline: {
       textAlign: 'center',
       fontSize: moderateScale(16),
-      fontFamily: theme.fonts.medium,
+      fontFamily: 'Manrope-Medium',
       color: theme.colors.text,
       marginHorizontal: moderateScale(18),
     },
     body: {
       textAlign: 'left',
       fontSize: moderateScale(15),
-      fontFamily: theme.fonts.regular,
+      fontFamily: 'Manrope-Regular',
       lineHeight: moderateScale(22),
       color: Color(theme.colors.text).alpha(0.8).toString(),
       padding: moderateScale(18),

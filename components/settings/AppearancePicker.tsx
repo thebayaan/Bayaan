@@ -190,13 +190,13 @@ function createStyles(theme: Theme) {
       borderRadius: moderateScale(6),
     },
     label: {
-      fontFamily: theme.fonts.medium,
+      fontFamily: 'Manrope-Medium',
       fontSize: moderateScale(14),
       color: Color(theme.colors.text).alpha(0.55).toString(),
     },
     labelSelected: {
       color: theme.colors.text,
-      fontFamily: theme.fonts.semiBold,
+      fontFamily: 'Manrope-SemiBold',
     },
   });
 }
