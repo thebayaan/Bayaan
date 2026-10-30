@@ -251,7 +251,7 @@ function createStyles(theme: Theme) {
     header: {
       textAlign: 'left',
       fontSize: moderateScale(15),
-      fontFamily: theme.fonts.regular,
+      fontFamily: 'Manrope-Regular',
       color: muted,
       marginBottom: HEADER_GAP,
       marginStart: SETTINGS_ROW_INSET,
@@ -259,7 +259,7 @@ function createStyles(theme: Theme) {
     footer: {
       textAlign: 'left',
       fontSize: moderateScale(13),
-      fontFamily: theme.fonts.regular,
+      fontFamily: 'Manrope-Regular',
       color: Color(theme.colors.text).alpha(0.5).toString(),
       marginTop: HEADER_GAP,
       marginHorizontal: SETTINGS_ROW_INSET,
@@ -268,7 +268,7 @@ function createStyles(theme: Theme) {
     intro: {
       textAlign: 'left',
       fontSize: moderateScale(14),
-      fontFamily: theme.fonts.regular,
+      fontFamily: 'Manrope-Regular',
       color: Color(theme.colors.text).alpha(0.5).toString(),
       marginHorizontal: SETTINGS_ROW_INSET,
       marginBottom: SECTION_GAP,
@@ -308,22 +308,22 @@ function createStyles(theme: Theme) {
     title: {
       textAlign: 'left',
       fontSize: moderateScale(16.5),
-      fontFamily: theme.fonts.regular,
+      fontFamily: 'Manrope-Regular',
     },
     titleSelected: {
-      fontFamily: theme.fonts.semiBold,
+      fontFamily: 'Manrope-SemiBold',
     },
     subtitle: {
       textAlign: 'left',
       fontSize: moderateScale(13),
-      fontFamily: theme.fonts.regular,
+      fontFamily: 'Manrope-Regular',
       color: Color(theme.colors.text).alpha(0.5).toString(),
       lineHeight: moderateScale(18),
     },
     value: {
       maxWidth: '45%',
       fontSize: moderateScale(15.5),
-      fontFamily: theme.fonts.regular,
+      fontFamily: 'Manrope-Regular',
       color: Color(theme.colors.text).alpha(0.5).toString(),
     },
     chevron: {
