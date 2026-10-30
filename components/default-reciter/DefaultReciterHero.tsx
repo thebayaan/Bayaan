@@ -10,6 +10,7 @@ import {moderateScale} from '@/utils/scale';
 import type {Reciter, Rewayat} from '@/data/reciterData';
 import {ReciterImage} from '@/components/ReciterImage';
 import {getReciterDisplayName} from '@/i18n/format';
+import {settingsTokens} from './settingsTokens';
 
 // Fixed bar heights for the preview's waveform; the fill shows progress.
 const WAVE = [
@@ -147,6 +148,7 @@ export function DefaultReciterHero({
 
 const createStyles = (theme: Theme, artworkSize: number) => {
   const text = Color(theme.colors.text);
+  const tokens = settingsTokens(theme);
   const glowSize = artworkSize * 1.9;
   return StyleSheet.create({
     container: {
@@ -186,8 +188,8 @@ const createStyles = (theme: Theme, artworkSize: number) => {
     },
     subtitle: {
       marginTop: moderateScale(2),
-      fontSize: moderateScale(14),
-      fontFamily: theme.fonts.regular,
+      fontSize: tokens.mediumSize,
+      fontFamily: 'Manrope-Regular',
       color: text.alpha(0.62).toString(),
       textAlign: 'center',
     },
@@ -196,11 +198,7 @@ const createStyles = (theme: Theme, artworkSize: number) => {
       alignSelf: 'stretch',
       height: moderateScale(52),
       borderRadius: moderateScale(26),
-      backgroundColor: theme.isDarkMode
-        ? text.alpha(0.1).toString()
-        : 'rgba(255,255,255,0.65)',
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: text.alpha(0.1).toString(),
+      backgroundColor: tokens.cardColor,
       flexDirection: 'row',
       alignItems: 'center',
       gap: moderateScale(12),
@@ -231,8 +229,8 @@ const createStyles = (theme: Theme, artworkSize: number) => {
       backgroundColor: theme.colors.text,
     },
     previewLabel: {
-      fontSize: moderateScale(12),
-      fontFamily: theme.fonts.semiBold,
+      fontSize: tokens.smallSize,
+      fontFamily: 'Manrope-SemiBold',
       color: text.alpha(0.62).toString(),
     },
     chipsScroll: {
@@ -247,19 +245,17 @@ const createStyles = (theme: Theme, artworkSize: number) => {
       paddingHorizontal: moderateScale(14),
       borderRadius: moderateScale(17),
       justifyContent: 'center',
-      backgroundColor: theme.isDarkMode
-        ? text.alpha(0.08).toString()
-        : 'rgba(255,255,255,0.6)',
+      backgroundColor: tokens.cardColor,
       borderWidth: StyleSheet.hairlineWidth,
-      borderColor: text.alpha(0.14).toString(),
+      borderColor: tokens.cardColor,
     },
     chipSelected: {
       backgroundColor: theme.colors.text,
       borderColor: theme.colors.text,
     },
     chipText: {
-      fontSize: moderateScale(13),
-      fontFamily: theme.fonts.bold,
+      fontSize: tokens.smallSize,
+      fontFamily: 'Manrope-SemiBold',
       color: theme.colors.text,
     },
     chipTextSelected: {

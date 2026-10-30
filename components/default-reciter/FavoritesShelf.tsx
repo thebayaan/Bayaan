@@ -9,6 +9,7 @@ import {moderateScale} from '@/utils/scale';
 import type {Reciter} from '@/data/reciterData';
 import {ReciterImage} from '@/components/ReciterImage';
 import {getReciterDisplayName} from '@/i18n/format';
+import {settingsTokens} from './settingsTokens';
 
 interface Props {
   reciters: Reciter[];
@@ -70,15 +71,9 @@ export function FavoritesShelf({
 
 const createStyles = (theme: Theme, avatarSize: number) => {
   const ringSize = avatarSize + 10;
+  const tokens = settingsTokens(theme);
   return StyleSheet.create({
-    header: {
-      fontSize: moderateScale(15),
-      fontFamily: theme.fonts.regular,
-      color: Color(theme.colors.text).alpha(0.6).toString(),
-      marginBottom: moderateScale(10),
-      marginStart: moderateScale(16),
-      textAlign: 'left',
-    },
+    header: tokens.header,
     row: {
       gap: moderateScale(10),
       paddingHorizontal: moderateScale(4),
@@ -106,9 +101,9 @@ const createStyles = (theme: Theme, avatarSize: number) => {
       borderRadius: avatarSize / 2,
     },
     name: {
-      fontSize: moderateScale(12),
-      lineHeight: moderateScale(15),
-      fontFamily: theme.fonts.semiBold,
+      fontSize: tokens.smallSize,
+      lineHeight: tokens.smallSize * 1.3,
+      fontFamily: 'Manrope-SemiBold',
       color: Color(theme.colors.text).alpha(0.8).toString(),
       textAlign: 'center',
     },

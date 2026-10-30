@@ -78,8 +78,8 @@ const createStyles = (theme: Theme) =>
     },
     message: {
       flex: 1,
-      fontSize: moderateScale(14),
-      fontFamily: theme.fonts.semiBold,
+      fontSize: theme.typography.mediumSize,
+      fontFamily: 'Manrope-SemiBold',
       color: theme.colors.background,
       textAlign: 'left',
     },
@@ -91,8 +91,8 @@ const createStyles = (theme: Theme) =>
       backgroundColor: Color(theme.colors.background).alpha(0.16).toString(),
     },
     undoText: {
-      fontSize: moderateScale(14),
-      fontFamily: theme.fonts.bold,
+      fontSize: theme.typography.mediumSize,
+      fontFamily: 'Manrope-Bold',
       color: theme.colors.background,
     },
     pressed: {

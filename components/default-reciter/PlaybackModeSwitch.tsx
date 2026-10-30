@@ -7,6 +7,7 @@ import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {moderateScale} from '@/utils/scale';
 import {useSettings} from '@/hooks/useSettings';
+import {settingsTokens} from './settingsTokens';
 
 /**
  * "When you tap a surah": play the default reciter, or ask each time. Other
@@ -67,15 +68,9 @@ export function PlaybackModeSwitch() {
 
 const createStyles = (theme: Theme) => {
   const text = Color(theme.colors.text);
+  const tokens = settingsTokens(theme);
   return StyleSheet.create({
-    header: {
-      fontSize: moderateScale(15),
-      fontFamily: theme.fonts.regular,
-      color: text.alpha(0.6).toString(),
-      marginBottom: moderateScale(8),
-      marginStart: moderateScale(16),
-      textAlign: 'left',
-    },
+    header: tokens.header,
     track: {
       height: moderateScale(44),
       padding: 4,
@@ -92,7 +87,7 @@ const createStyles = (theme: Theme) => {
     segmentOn: {
       backgroundColor: theme.isDarkMode
         ? text.alpha(0.16).toString()
-        : '#ffffff',
+        : tokens.cardColor,
       shadowColor: '#000',
       shadowOpacity: theme.isDarkMode ? 0 : 0.1,
       shadowRadius: 6,
@@ -100,8 +95,8 @@ const createStyles = (theme: Theme) => {
       elevation: theme.isDarkMode ? 0 : 2,
     },
     label: {
-      fontSize: moderateScale(14),
-      fontFamily: theme.fonts.bold,
+      fontSize: tokens.mediumSize,
+      fontFamily: 'Manrope-SemiBold',
       color: text.alpha(0.62).toString(),
     },
     labelOn: {

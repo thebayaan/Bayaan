@@ -40,6 +40,11 @@ import {
   recitationLabels,
   toRows,
 } from '@/components/default-reciter/reciterSections';
+import {
+  ROW_INSET,
+  SECTION_GAP,
+  settingsTokens,
+} from '@/components/default-reciter/settingsTokens';
 
 // The `expanded` width class (docs/design/ipad-standards.md §2).
 const EXPANDED_MIN_WIDTH = 900;
@@ -282,7 +287,7 @@ export default function DefaultReciterScreen() {
 }
 
 const createStyles = (theme: Theme) => {
-  const text = Color(theme.colors.text);
+  const tokens = settingsTokens(theme);
   return StyleSheet.create({
     container: {
       flex: 1,
@@ -313,45 +318,33 @@ const createStyles = (theme: Theme) => {
       paddingTop: moderateScale(8),
     },
     block: {
-      marginTop: moderateScale(24),
+      marginTop: SECTION_GAP,
     },
     allHeader: {
       flexDirection: 'row',
       alignItems: 'baseline',
       justifyContent: 'space-between',
-      marginTop: moderateScale(24),
-      marginBottom: moderateScale(8),
-      marginHorizontal: moderateScale(16),
+      marginTop: SECTION_GAP,
+      marginEnd: ROW_INSET,
     },
-    sectionTitle: {
-      fontSize: moderateScale(15),
-      fontFamily: theme.fonts.regular,
-      color: text.alpha(0.6).toString(),
-    },
+    sectionTitle: tokens.header,
     count: {
-      fontSize: moderateScale(13),
-      fontFamily: theme.fonts.regular,
-      color: text.alpha(0.6).toString(),
+      fontSize: tokens.smallSize,
+      fontFamily: 'Manrope-Regular',
+      color: tokens.secondary,
     },
     search: {
       paddingHorizontal: 0,
-      marginBottom: moderateScale(14),
+      marginBottom: SECTION_GAP,
     },
-    letter: {
-      fontSize: moderateScale(13),
-      fontFamily: theme.fonts.bold,
-      color: text.alpha(0.62).toString(),
-      marginStart: moderateScale(16),
-      marginBottom: moderateScale(6),
-      textAlign: 'left',
-    },
+    letter: tokens.header,
     sectionGap: {
-      height: moderateScale(14),
+      height: SECTION_GAP,
     },
     empty: {
-      fontSize: moderateScale(13),
-      fontFamily: theme.fonts.regular,
-      color: text.alpha(0.6).toString(),
+      fontSize: tokens.smallSize,
+      fontFamily: 'Manrope-Regular',
+      color: tokens.secondary,
       textAlign: 'center',
       paddingVertical: moderateScale(16),
     },

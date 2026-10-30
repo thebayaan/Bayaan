@@ -1,7 +1,6 @@
 // @ai-generated
 import React, {useMemo} from 'react';
 import {View, Text, Pressable, StyleSheet} from 'react-native';
-import Color from 'color';
 import {Feather} from '@expo/vector-icons';
 import {useTranslation} from 'react-i18next';
 import {useTheme} from '@/hooks/useTheme';
@@ -11,6 +10,7 @@ import type {Reciter} from '@/data/reciterData';
 import {ReciterImage} from '@/components/ReciterImage';
 import {getReciterDisplayName} from '@/i18n/format';
 import {completeRewayat} from './reciterSections';
+import {CARD_RADIUS, ROW_INSET, settingsTokens} from './settingsTokens';
 
 interface Props {
   reciters: Reciter[];
@@ -91,11 +91,9 @@ export const ReciterGridRow = React.memo(function ReciterGridRow({
 export const ROW_HEIGHT = moderateScale(66);
 
 const createStyles = (theme: Theme) => {
-  const text = Color(theme.colors.text);
-  const surface = theme.isDarkMode
-    ? text.alpha(0.07).toString()
-    : 'rgba(255,255,255,0.55)';
-  const radius = moderateScale(24);
+  const tokens = settingsTokens(theme);
+  const surface = tokens.cardColor;
+  const radius = CARD_RADIUS;
   return StyleSheet.create({
     row: {
       flexDirection: 'row',
@@ -113,7 +111,7 @@ const createStyles = (theme: Theme) => {
       flexDirection: 'row',
       alignItems: 'center',
       gap: moderateScale(12),
-      paddingHorizontal: moderateScale(16),
+      paddingHorizontal: ROW_INSET,
       backgroundColor: surface,
     },
     tile: {
@@ -136,10 +134,10 @@ const createStyles = (theme: Theme) => {
     separator: {
       position: 'absolute',
       top: 0,
-      start: moderateScale(16 + 44 + 12),
-      end: moderateScale(16),
+      start: ROW_INSET + moderateScale(44 + 12),
+      end: ROW_INSET,
       height: StyleSheet.hairlineWidth,
-      backgroundColor: text.alpha(0.14).toString(),
+      backgroundColor: tokens.separatorColor,
     },
     avatar: {
       width: moderateScale(44),
@@ -152,15 +150,15 @@ const createStyles = (theme: Theme) => {
       gap: 2,
     },
     name: {
-      fontSize: moderateScale(16),
-      fontFamily: theme.fonts.semiBold,
+      fontSize: tokens.mediumSize,
+      fontFamily: 'Manrope-SemiBold',
       color: theme.colors.text,
       textAlign: 'left',
     },
     sub: {
-      fontSize: moderateScale(13),
-      fontFamily: theme.fonts.regular,
-      color: text.alpha(0.6).toString(),
+      fontSize: tokens.smallSize,
+      fontFamily: 'Manrope-Regular',
+      color: tokens.secondary,
       textAlign: 'left',
     },
     check: {
