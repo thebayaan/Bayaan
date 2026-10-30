@@ -9,10 +9,8 @@ import {
   type ViewStyle,
 } from 'react-native';
 import {Feather} from '@expo/vector-icons';
-import {GlassView} from 'expo-glass-effect';
 import Color from 'color';
 import {useTheme} from '@/hooks/useTheme';
-import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
 import {moderateScale} from '@/utils/scale';
 import {flipX} from '@/utils/rtl';
 import type {Theme} from '@/utils/themeUtils';
@@ -79,7 +77,6 @@ export function SettingsCard({
   style?: StyleProp<ViewStyle>;
 }): React.JSX.Element {
   const styles = useSettingsStyles();
-  const glassColorScheme = useGlassColorScheme();
   const items = React.Children.toArray(children).filter(Boolean);
   const separatorStyle =
     separatorInset === 'icon'
@@ -95,16 +92,7 @@ export function SettingsCard({
       {child}
     </React.Fragment>
   ));
-  return USE_GLASS ? (
-    <GlassView
-      style={[styles.card, style]}
-      glassEffectStyle="regular"
-      colorScheme={glassColorScheme}>
-      {content}
-    </GlassView>
-  ) : (
-    <View style={[styles.card, style]}>{content}</View>
-  );
+  return <View style={[styles.card, style]}>{content}</View>;
 }
 
 export type SettingsAccessory =
@@ -240,6 +228,8 @@ export function SettingsIntro({text}: {text: string}): React.JSX.Element {
 function createStyles(theme: Theme) {
   const isDark = theme.isDarkMode;
   const muted = Color(theme.colors.text).alpha(0.55).toString();
+  // The theme's sizes are already scaled to the screen.
+  const {mediumSize, smallSize} = theme.typography;
   return StyleSheet.create({
     /** Padding for a Settings screen's scroll content. */
     page: {
@@ -250,36 +240,34 @@ function createStyles(theme: Theme) {
     },
     header: {
       textAlign: 'left',
-      fontSize: moderateScale(15),
-      fontFamily: 'Manrope-Regular',
+      fontSize: smallSize,
+      fontFamily: 'Manrope-SemiBold',
       color: muted,
       marginBottom: HEADER_GAP,
       marginStart: SETTINGS_ROW_INSET,
     },
     footer: {
       textAlign: 'left',
-      fontSize: moderateScale(13),
+      fontSize: smallSize,
       fontFamily: 'Manrope-Regular',
       color: Color(theme.colors.text).alpha(0.5).toString(),
       marginTop: HEADER_GAP,
       marginHorizontal: SETTINGS_ROW_INSET,
-      lineHeight: moderateScale(18),
+      lineHeight: smallSize * 1.4,
     },
     intro: {
       textAlign: 'left',
-      fontSize: moderateScale(14),
+      fontSize: smallSize,
       fontFamily: 'Manrope-Regular',
       color: Color(theme.colors.text).alpha(0.5).toString(),
       marginHorizontal: SETTINGS_ROW_INSET,
       marginBottom: SECTION_GAP,
-      lineHeight: moderateScale(20),
+      lineHeight: smallSize * 1.4,
     },
     card: {
-      backgroundColor: USE_GLASS
-        ? undefined
-        : isDark
-          ? Color('#ffffff').alpha(0.07).toString()
-          : '#ffffff',
+      backgroundColor: isDark
+        ? Color('#ffffff').alpha(0.07).toString()
+        : '#ffffff',
       borderRadius: moderateScale(24),
       overflow: 'hidden',
     },
@@ -307,22 +295,22 @@ function createStyles(theme: Theme) {
     },
     title: {
       textAlign: 'left',
-      fontSize: moderateScale(16.5),
-      fontFamily: 'Manrope-Regular',
+      fontSize: mediumSize,
+      fontFamily: 'Manrope-SemiBold',
     },
     titleSelected: {
-      fontFamily: 'Manrope-SemiBold',
+      fontFamily: 'Manrope-Bold',
     },
     subtitle: {
       textAlign: 'left',
-      fontSize: moderateScale(13),
+      fontSize: smallSize,
       fontFamily: 'Manrope-Regular',
       color: Color(theme.colors.text).alpha(0.5).toString(),
-      lineHeight: moderateScale(18),
+      lineHeight: smallSize * 1.4,
     },
     value: {
       maxWidth: '45%',
-      fontSize: moderateScale(15.5),
+      fontSize: mediumSize,
       fontFamily: 'Manrope-Regular',
       color: Color(theme.colors.text).alpha(0.5).toString(),
     },

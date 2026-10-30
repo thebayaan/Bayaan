@@ -131,7 +131,14 @@ export default function StorageScreen() {
         contentInsetAdjustmentBehavior="automatic"
         showsVerticalScrollIndicator={false}>
         {loading ? (
-          <Text style={[local.status, {color: theme.colors.textSecondary}]}>
+          <Text
+            style={[
+              local.status,
+              {
+                color: theme.colors.textSecondary,
+                fontSize: theme.typography.mediumSize,
+              },
+            ]}>
             {t('storage.loading')}
           </Text>
         ) : error ? (
@@ -141,7 +148,14 @@ export default function StorageScreen() {
               size={moderateScale(48)}
               color={theme.colors.error}
             />
-            <Text style={[local.status, {color: theme.colors.error}]}>
+            <Text
+              style={[
+                local.status,
+                {
+                  color: theme.colors.error,
+                  fontSize: theme.typography.mediumSize,
+                },
+              ]}>
               {error}
             </Text>
           </View>
@@ -223,7 +237,6 @@ const local = StyleSheet.create({
   },
   status: {
     textAlign: 'center',
-    fontSize: moderateScale(15),
     marginTop: moderateScale(40),
   },
   errorContainer: {alignItems: 'center', marginTop: moderateScale(40)},
