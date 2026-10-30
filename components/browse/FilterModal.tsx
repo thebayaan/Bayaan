@@ -13,7 +13,10 @@ import {Feather} from '@expo/vector-icons';
 import Color from 'color';
 import {Theme} from '@/utils/themeUtils';
 import {RECITERS} from '@/data/reciterData';
-import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {
+  initialWindowMetrics,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
 // @ai-start
 import {useTranslation} from 'react-i18next';
 import {useResponsive} from '@/hooks/useResponsive';
@@ -240,6 +243,16 @@ export default function FilterModal({
   initialFilters,
 }: FilterModalProps) {
   const insets = useSafeAreaInsets();
+  // @ai-start
+  // Inside the Modal on iOS the hook reports a far larger bottom inset than
+  // the home indicator, which left an empty band under Reset/Apply; the
+  // window's own inset is the one the panel sits on.
+  const footerBottom =
+    Platform.OS === 'ios'
+      ? (initialWindowMetrics?.insets.bottom ?? insets.bottom) +
+        moderateScale(12)
+      : insets.bottom + moderateScale(30);
+  // @ai-end
   const {isTablet} = useResponsive();
   const {t} = useTranslation(['home', 'common']);
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -400,9 +413,7 @@ export default function FilterModal({
           style={[
             styles.footerContainer,
             {
-              paddingBottom: isTablet
-                ? moderateScale(20)
-                : insets.bottom + moderateScale(30),
+              paddingBottom: isTablet ? moderateScale(20) : footerBottom,
             },
           ]}>
           <View style={styles.footer}>

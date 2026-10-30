@@ -19,7 +19,6 @@ import {
   useNavigation,
   useFocusEffect,
 } from 'expo-router';
-import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useAdhkar} from '@/hooks/useAdhkar';
 import {useTheme} from '@/hooks/useTheme';
@@ -78,7 +77,6 @@ const SavedDhikrReaderScreen: React.FC = () => {
   const navigation = useNavigation();
   const {theme} = useTheme();
   const {t} = useTranslation('home');
-  const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const headerHeight = useHeaderHeight();
   // Glass headers are transparent, so content is padded below them. The
@@ -88,7 +86,10 @@ const SavedDhikrReaderScreen: React.FC = () => {
   // Non-glass tab bars (and the floating player) overlay the screen, so the
   // page must clear them; glass keeps the safe-area inset only.
   const bottomInset = useBottomInset();
-  const contentBottom = USE_GLASS ? insets.bottom : bottomInset;
+  // @ai: the pager is not a scroll view, so the native tab bar does not
+  // inset it; clear the tab bar and mini player on every platform, or the
+  // dhikr's play/copy/share row sits under the floating player.
+  const contentBottom = bottomInset;
   const flatListRef = useRef<FlatList<Dhikr>>(null);
 
   const [initialIndex, setInitialIndex] = useState(
