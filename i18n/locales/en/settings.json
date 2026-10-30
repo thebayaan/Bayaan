@@ -79,7 +79,7 @@
       }
     },
     "analytics": {
-      "section": "PRIVACY",
+      "section": "Privacy",
       "title": "Share anonymous usage data",
       "description": "Help improve {{appName}} with anonymous, non-personal analytics. Your name and account are never shared."
     }
