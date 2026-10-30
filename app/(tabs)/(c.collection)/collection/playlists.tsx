@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {USE_GLASS} from '@/hooks/useGlassProps';
+import {NativeEmptyState} from '@/components/native/NativeEmptyState'; // @ai
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {PlaylistItem} from '@/components/PlaylistItem';
 import {useRouter} from 'expo-router';
@@ -309,32 +310,46 @@ export default function PlaylistsScreen() {
             <View style={styles.emptyHeaderBack} />
           </View>
         )}
-        <View style={styles.emptyContent}>
-          <View style={styles.emptyIcon}>
-            <PlaylistIcon
-              color={theme.colors.textSecondary}
-              size={moderateScale(48)}
-            />
-          </View>
-          <Text style={styles.emptyTitle}>
-            {t('playlistsScreen.emptyTitle')}
-          </Text>
-          <Text style={styles.emptySubtitle}>
-            {t('playlistsScreen.emptySubtitle')}
-          </Text>
-          <Pressable
-            style={styles.emptyActionBar}
-            onPress={handleCreatePlaylist}>
-            <Feather
-              name="plus"
-              size={moderateScale(16)}
-              color={theme.colors.textSecondary}
-            />
-            <Text style={styles.emptyActionText}>
-              {t('playlistsScreen.createNew')}
-            </Text>
-          </Pressable>
-        </View>
+        {/* @ai-start */}
+        <NativeEmptyState
+          title={t('playlistsScreen.emptyTitle')}
+          description={t('playlistsScreen.emptySubtitle')}
+          systemImage="music.note.list"
+          action={{
+            label: t('playlistsScreen.createNew'),
+            systemImage: 'plus',
+            onPress: handleCreatePlaylist,
+          }}
+          fallback={
+            <View style={styles.emptyContent}>
+              <View style={styles.emptyIcon}>
+                <PlaylistIcon
+                  color={theme.colors.textSecondary}
+                  size={moderateScale(48)}
+                />
+              </View>
+              <Text style={styles.emptyTitle}>
+                {t('playlistsScreen.emptyTitle')}
+              </Text>
+              <Text style={styles.emptySubtitle}>
+                {t('playlistsScreen.emptySubtitle')}
+              </Text>
+              <Pressable
+                style={styles.emptyActionBar}
+                onPress={handleCreatePlaylist}>
+                <Feather
+                  name="plus"
+                  size={moderateScale(16)}
+                  color={theme.colors.textSecondary}
+                />
+                <Text style={styles.emptyActionText}>
+                  {t('playlistsScreen.createNew')}
+                </Text>
+              </Pressable>
+            </View>
+          }
+        />
+        {/* @ai-end */}
       </View>
     );
   }

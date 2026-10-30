@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {USE_GLASS} from '@/hooks/useGlassProps';
+import {NativeEmptyState} from '@/components/native/NativeEmptyState'; // @ai
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useRouter} from 'expo-router';
 import {TrackItem} from '@/components/TrackItem';
@@ -563,21 +564,30 @@ export default function DownloadsScreen() {
             <View style={styles.emptyHeaderBack} />
           </View>
         )}
-        <View style={styles.emptyContent}>
-          <View style={styles.emptyIcon}>
-            <DownloadIcon
-              color={theme.colors.textSecondary}
-              size={moderateScale(48)}
-              filled={true}
-            />
-          </View>
-          <Text style={styles.emptyTitle}>
-            {t('collectionScreen.empty.downloads')}
-          </Text>
-          <Text style={styles.emptySubtitle}>
-            {t('downloadsScreen.emptySubtitle')}
-          </Text>
-        </View>
+        {/* @ai-start */}
+        <NativeEmptyState
+          title={t('collectionScreen.empty.downloads')}
+          description={t('downloadsScreen.emptySubtitle')}
+          systemImage="arrow.down.circle"
+          fallback={
+            <View style={styles.emptyContent}>
+              <View style={styles.emptyIcon}>
+                <DownloadIcon
+                  color={theme.colors.textSecondary}
+                  size={moderateScale(48)}
+                  filled={true}
+                />
+              </View>
+              <Text style={styles.emptyTitle}>
+                {t('collectionScreen.empty.downloads')}
+              </Text>
+              <Text style={styles.emptySubtitle}>
+                {t('downloadsScreen.emptySubtitle')}
+              </Text>
+            </View>
+          }
+        />
+        {/* @ai-end */}
       </View>
     );
   }
