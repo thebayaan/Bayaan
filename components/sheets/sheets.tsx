@@ -240,6 +240,9 @@ declare module 'react-native-actions-sheet' {
         // disclosure. Defaults to the mushaf's active rewayah.
         // Required with `unitKeys`: their numbering. @ai
         rewayah?: import('@/store/mushafSettingsStore').RewayahId;
+        // Open on this screen instead of the menu: the card coming back
+        // after the Translations dialog it opened closes. @ai
+        initialScreen?: 'translation' | 'tafseer';
       };
     }>;
     'verse-note': SheetDefinition<{
