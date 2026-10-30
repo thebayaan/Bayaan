@@ -13,11 +13,13 @@ import {useReciterNavigation} from '@/hooks/useReciterNavigation';
 // @ai-start
 import {useTranslation} from 'react-i18next';
 import {hideSheet} from '@/components/sheets/sheetControl'; // @ai
+import {useSheetBottomPadding} from '@/components/sheets/useSheetBottomPadding'; // @ai
 // @ai-end
 
 // @ai-start
 export const FollowAlongSheet = (props: SheetProps<'follow-along'>) => {
   const {theme} = useTheme();
+  const sheetBottomPadding = useSheetBottomPadding(moderateScale(40)); // @ai
   const styles = createStyles(theme);
   const {navigateToReciterProfile} = useReciterNavigation();
   const {t} = useTranslation('sheets');
@@ -41,7 +43,7 @@ export const FollowAlongSheet = (props: SheetProps<'follow-along'>) => {
       <View style={styles.headerContainer}>
         <Text style={styles.headerTitle}>{t('followAlong.title')}</Text>
       </View>
-      <View style={styles.container}>
+      <View style={[styles.container, {paddingBottom: sheetBottomPadding}]}>
         <Text style={styles.description}>{t('followAlong.description')}</Text>
         <FlatList
           data={supportedReciters}

@@ -14,6 +14,7 @@ import {usePlaylists} from '@/hooks/usePlaylists';
 import {pickAndImportAudioFiles} from '@/utils/importAudio';
 // @ai-start
 import {useTranslation} from 'react-i18next';
+import {useSheetBottomPadding} from '@/components/sheets/useSheetBottomPadding'; // @ai
 // @ai-end
 
 // @ai-start
@@ -21,6 +22,7 @@ export const AddToCollectionSheet = (
   props: SheetProps<'add-to-collection'>,
 ) => {
   const {theme} = useTheme();
+  const sheetBottomPadding = useSheetBottomPadding(moderateScale(40)); // @ai
   const styles = createStyles(theme);
   const {t} = useTranslation('sheets');
   const {importFile, importFiles} = useUploadsStore();
@@ -82,7 +84,7 @@ export const AddToCollectionSheet = (
       containerStyle={styles.sheetContainer}
       indicatorStyle={styles.indicator}
       gestureEnabled={true}>
-      <View style={styles.container}>
+      <View style={[styles.container, {paddingBottom: sheetBottomPadding}]}>
         <View style={styles.header}>
           <Text style={styles.title}>{t('addToCollection.title')}</Text>
         </View>

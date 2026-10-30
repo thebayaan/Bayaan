@@ -332,10 +332,11 @@ function NativeSheetBody({
   const {height: windowHeight} = useWindowDimensions();
   if (!level?.fit) return <View style={styles.nativeBody}>{children}</View>;
 
-  // A fitted sheet is as tall as its content plus the space above it and
-  // the home indicator below; past the large height its content scrolls.
+  // A fitted sheet is as tall as its content (which clears the home
+  // indicator itself) plus the space above it; past the large height its
+  // content scrolls.
   const insets = initialWindowMetrics?.insets;
-  const chrome = NATIVE_BODY_TOP + (insets?.bottom ?? 0);
+  const chrome = NATIVE_BODY_TOP;
   const maxHeight = windowHeight - (insets?.top ?? 0) - LARGE_DETENT_GAP;
   const onLayout = (event: LayoutChangeEvent) =>
     fitNativeSheet(

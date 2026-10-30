@@ -38,6 +38,7 @@ import {
   localizeDigits,
 } from '@/i18n/format';
 import {getUploadDisplayTitle} from './options/uploadOptions';
+import {useSheetBottomPadding} from '@/components/sheets/useSheetBottomPadding'; // @ai
 // @ai-end
 
 const surahInfo = require('@/data/surahInfo.json');
@@ -124,6 +125,7 @@ function getDisplaySubtitle(item: UploadedRecitation): string {
 // @ai-start
 export const UploadOptionsSheet = (props: SheetProps<'upload-options'>) => {
   const {theme} = useTheme();
+  const sheetBottomPadding = useSheetBottomPadding(moderateScale(40)); // @ai
   const styles = createStyles(theme);
   const {t} = useTranslation(['sheets', 'common']);
   // Size HTML from the sheet, which stops at 560pt on iPad. @ai
@@ -422,7 +424,8 @@ export const UploadOptionsSheet = (props: SheetProps<'upload-options'>) => {
             style={styles.scrollView}
             showsVerticalScrollIndicator={false}
             bounces={true}>
-            <View style={styles.infoContent}>
+            <View
+              style={[styles.infoContent, {paddingBottom: sheetBottomPadding}]}>
               <View style={styles.surahInfoHeader}>
                 <Text style={styles.surahInfoName}>
                   {surah ? getSurahDisplayName(surah) : ''}
@@ -445,7 +448,7 @@ export const UploadOptionsSheet = (props: SheetProps<'upload-options'>) => {
           </ScrollView>
         </>
       ) : (
-        <View style={styles.container}>
+        <View style={[styles.container, {paddingBottom: sheetBottomPadding}]}>
           <View style={styles.header}>
             <Text style={styles.title} numberOfLines={1}>
               {title}

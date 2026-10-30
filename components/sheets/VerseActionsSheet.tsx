@@ -101,6 +101,7 @@ import {flipX} from '@/utils/rtl';
 import {useNativeSheetId} from '@/components/native/nativeSheetContext'; // @ai
 // @ai-end
 import {CommunityReflectionsContent} from './verse-actions/CommunityReflectionsContent';
+import {useSheetBottomPadding} from '@/components/sheets/useSheetBottomPadding'; // @ai
 
 const surahData = require('@/data/surahData.json');
 
@@ -204,6 +205,7 @@ const pendingStyles = StyleSheet.create({
 
 export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
   const {theme} = useTheme();
+  const sheetBottomPadding = useSheetBottomPadding(moderateScale(30)); // @ai
   const {height: windowHeight} = useWindowDimensions(); // @ai
   const styles = createStyles(theme);
   const {t} = useTranslation(['sheets', 'common']);
@@ -761,7 +763,11 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
   // @ai-start
   const content = (
     <View
-      style={[styles.container, (activeScreen || inNativeSheet) && {flex: 1}]}>
+      style={[
+        styles.container,
+        {paddingBottom: sheetBottomPadding},
+        (activeScreen || inNativeSheet) && {flex: 1},
+      ]}>
       {!activeScreen && (
         <View style={styles.header}>
           <Text style={styles.surahName}>{surahName}</Text>

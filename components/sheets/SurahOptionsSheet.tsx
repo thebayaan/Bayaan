@@ -33,6 +33,7 @@ import {
   getSurahDisplayName,
   getSurahMeaning,
 } from '@/i18n/format';
+import {useSheetBottomPadding} from '@/components/sheets/useSheetBottomPadding'; // @ai
 // @ai-end
 
 // Import surah info data
@@ -62,6 +63,7 @@ const renderHtmlDefaultProps: Partial<RenderHTMLProps> = {
 // @ai-start
 export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
   const {theme} = useTheme();
+  const sheetBottomPadding = useSheetBottomPadding(moderateScale(40)); // @ai
   const styles = createStyles(theme);
   const {t} = useTranslation(['sheets', 'common']);
   // Size HTML from the sheet, which stops at 560pt on iPad. @ai
@@ -167,7 +169,8 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
             style={styles.scrollView}
             showsVerticalScrollIndicator={false}
             bounces={true}>
-            <View style={styles.infoContent}>
+            <View
+              style={[styles.infoContent, {paddingBottom: sheetBottomPadding}]}>
               <View style={styles.surahInfoHeader}>
                 <Text style={styles.surahInfoName}>
                   {getSurahDisplayName(surah)}
@@ -190,7 +193,7 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
           </ScrollView>
         </>
       ) : (
-        <View style={styles.container}>
+        <View style={[styles.container, {paddingBottom: sheetBottomPadding}]}>
           <View style={styles.header}>
             <Text style={styles.surahName}>{getSurahDisplayName(surah)}</Text>
             <Text style={styles.surahTranslation}>
