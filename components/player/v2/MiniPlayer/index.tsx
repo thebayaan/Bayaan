@@ -20,6 +20,8 @@ import {appLayoutDirection} from '@/utils/rtl';
 // @ai-end
 
 const capsuleRadius = (height: number) => height / 2;
+// @ai: inset of the round artwork from the capsule's edge.
+const ARTWORK_INSET = 5;
 
 // @ai-start
 function MiniPlayerInner() {
@@ -80,7 +82,9 @@ function MiniPlayerInner() {
             onPress={handlePress}
             style={styles.body}
             accessibilityRole="button"
-            accessibilityLabel={`${getTrackDisplayTitle(currentTrack)}, ${getTrackArtistDisplay(currentTrack)}`}
+            accessibilityLabel={`${getTrackDisplayTitle(
+              currentTrack,
+            )}, ${getTrackArtistDisplay(currentTrack)}`}
             accessibilityHint={t('a11y.openPlayer')}>
             <ReciterImage
               reciterName={currentTrack.reciterName}
@@ -137,8 +141,12 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 4,
+    // The artwork fills the frame's height less this inset and sits the
+    // same inset from the start edge, so its circle shares the capsule's
+    // centre whatever height the system gives the accessory.
+    paddingStart: ARTWORK_INSET,
+    paddingEnd: 14,
+    paddingVertical: ARTWORK_INSET,
     gap: 10,
   },
   body: {
@@ -146,6 +154,8 @@ const styles = StyleSheet.create({
     // `gap` as the row it was split out of, so the artwork|trackInfo rhythm is
     // unchanged: this refactor is a11y-only, with no visual delta.
     flex: 1,
+    // @ai: full row height, which the artwork's height resolves against.
+    alignSelf: 'stretch',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
@@ -158,9 +168,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   artwork: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
+    height: '100%',
+    aspectRatio: 1,
+    borderRadius: 9999,
     overflow: 'hidden',
     flexShrink: 0,
   },
