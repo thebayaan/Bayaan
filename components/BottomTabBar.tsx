@@ -18,7 +18,11 @@ import {
   FLOATING_TAB_BAR_BOTTOM_MARGIN,
 } from '@/utils/constants';
 import {GlassView} from 'expo-glass-effect';
-import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
+import {
+  USE_GLASS,
+  useGlassColorScheme,
+  useGlassTint,
+} from '@/hooks/useGlassProps';
 import {FrostedView} from '@/components/FrostedView';
 // @ai-start
 import {appDirection} from '@/utils/rtl';
@@ -101,6 +105,7 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({
 }) => {
   const {theme} = useTheme();
   const glassColorScheme = useGlassColorScheme();
+  const glassTint = useGlassTint(); // @ai
   const insets = useSafeAreaInsets();
   const iconSize = moderateScale(22, 0.2);
 
@@ -147,7 +152,11 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({
     <Container
       style={containerStyle}
       {...(USE_GLASS
-        ? {glassEffectStyle: 'regular' as const, colorScheme: glassColorScheme}
+        ? {
+            glassEffectStyle: 'regular' as const,
+            colorScheme: glassColorScheme,
+            tintColor: glassTint,
+          }
         : {})}>
       <View style={styles.content}>
         {state.routes.map((route, index) => {

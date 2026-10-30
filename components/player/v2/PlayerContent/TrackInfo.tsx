@@ -1,7 +1,11 @@
 import React, {useCallback, useEffect, useState} from 'react';
 import {View, Text, StyleSheet} from 'react-native';
 import {GlassView} from 'expo-glass-effect';
-import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
+import {
+  USE_GLASS,
+  useGlassColorScheme,
+  useGlassTint,
+} from '@/hooks/useGlassProps';
 import {FrostedView} from '@/components/FrostedView';
 import {SymbolView} from 'expo-symbols';
 import {Pressable} from 'react-native-gesture-handler';
@@ -34,6 +38,7 @@ export const TrackInfo = () => {
   const {theme} = useTheme();
   const a11y = usePlayerA11y(); // @ai
   const glassColorScheme = useGlassColorScheme();
+  const glassTint = useGlassTint(); // @ai
   const queue = usePlayerStore(s => s.queue);
   const {navigateToReciterProfile} = useReciterNavigation();
   const currentTrack = queue?.tracks?.[queue?.currentIndex ?? -1];
@@ -163,6 +168,7 @@ export const TrackInfo = () => {
             style={styles.loveButton}
             glassEffectStyle="regular"
             colorScheme={glassColorScheme}
+            tintColor={glassTint}
             isInteractive>
             <Pressable
               style={({pressed}) => [

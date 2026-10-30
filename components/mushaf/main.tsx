@@ -28,7 +28,11 @@ import {mushafShareUrl, shareUrl} from '@/utils/shareUtils';
 import branding from '@/config/branding';
 import {SheetManager} from 'react-native-actions-sheet';
 import {GlassView} from 'expo-glass-effect';
-import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
+import {
+  USE_GLASS,
+  useGlassColorScheme,
+  useGlassTint,
+} from '@/hooks/useGlassProps';
 import {FrostedView} from '@/components/FrostedView';
 import {BackButton} from '@/components/BackButton';
 import MushafSearchView from './MushafSearchView';
@@ -608,6 +612,7 @@ export default function MushafViewer({
   const {theme, isDarkMode} = useTheme();
   const readingColors = useReadingThemeColors();
   const glassColorScheme = useGlassColorScheme();
+  const glassTint = useGlassTint(); // @ai
   const pageLayout = useMushafSettingsStore(s => s.pageLayout);
   const viewMode = useMushafSettingsStore(s => s.viewMode);
   const scrollDirection = useMushafSettingsStore(s => s.scrollDirection);
@@ -863,7 +868,7 @@ export default function MushafViewer({
       ? {
           glassEffectStyle: 'regular' as const,
           colorScheme: glassColorScheme,
-          tintColor: isDarkMode ? 'rgba(0,0,0,0.5)' : undefined,
+          tintColor: isDarkMode ? 'rgba(0,0,0,0.5)' : glassTint,
         }
       : {};
     navigation.setOptions({

@@ -18,7 +18,11 @@ import {
   FLOATING_UI_HORIZONTAL_MARGIN,
 } from '@/utils/constants';
 import {GlassView} from 'expo-glass-effect';
-import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
+import {
+  USE_GLASS,
+  useGlassColorScheme,
+  useGlassTint,
+} from '@/hooks/useGlassProps';
 import {FrostedView} from '@/components/FrostedView';
 import {useResponsive} from '@/hooks/useResponsive';
 // @ai-start
@@ -33,6 +37,7 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
   const {theme} = useTheme();
   const {t} = useTranslation(['player', 'common']);
   const glassColorScheme = useGlassColorScheme();
+  const glassTint = useGlassTint(); // @ai
   const {play, pause} = usePlayerActions();
   const playbackState = usePlayerStore(state => state.playback.state);
   const queueTracks = usePlayerStore(state => state.queue.tracks);
@@ -113,7 +118,11 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
     <Container
       style={containerStyle}
       {...(USE_GLASS
-        ? {glassEffectStyle: 'regular' as const, colorScheme: glassColorScheme}
+        ? {
+            glassEffectStyle: 'regular' as const,
+            colorScheme: glassColorScheme,
+            tintColor: glassTint,
+          }
         : {})}>
       {/* a11y — the row is a plain View, not a grouping Pressable, so the
           play/pause control is INDIVIDUALLY focusable by TalkBack / VoiceOver

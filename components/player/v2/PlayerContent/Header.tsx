@@ -1,7 +1,11 @@
 import React, {useMemo} from 'react';
 import {View, Text, Pressable, StyleSheet} from 'react-native';
 import {GlassView} from 'expo-glass-effect';
-import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
+import {
+  USE_GLASS,
+  useGlassColorScheme,
+  useGlassTint,
+} from '@/hooks/useGlassProps';
 import {FrostedView} from '@/components/FrostedView';
 import {moderateScale} from '@/utils/scale';
 import {SymbolView} from 'expo-symbols';
@@ -37,6 +41,7 @@ export const Header: React.FC<HeaderProps> = ({onOptionsPress}) => {
   const a11y = usePlayerA11y(); // @ai
   const {isTablet} = useResponsive();
   const glassColorScheme = useGlassColorScheme();
+  const glassTint = useGlassTint(); // @ai
   const {setSheetMode} = usePlayerActions();
   const queue = usePlayerStore(s => s.queue);
 
@@ -144,6 +149,7 @@ export const Header: React.FC<HeaderProps> = ({onOptionsPress}) => {
     ? {
         glassEffectStyle: 'regular' as const,
         colorScheme: glassColorScheme,
+        tintColor: glassTint,
         isInteractive: true,
       }
     : {};
