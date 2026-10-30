@@ -10,6 +10,13 @@ import {useDownloadStore} from '@/services/player/store/downloadStore';
 import {clearPlayerCache} from '@/services/player/utils/storage';
 import {Feather} from '@expo/vector-icons';
 // @ai-start
+import {nativeSettingsFormsEnabled} from '@/components/native/nativeForms';
+import {
+  NativeStorageForm,
+  nativeStorageFormAvailable,
+} from '@/components/native/settings/NativeStorageForm';
+// @ai-end
+// @ai-start
 import {latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
 import {localizeDigits} from '@/i18n/format';
@@ -176,6 +183,102 @@ export default function StorageScreen() {
     free: '#E5E5EA',
   };
 
+  // @ai-start
+  const bar = (
+    <View style={styles.progressBarContainer}>
+      <View
+        style={[
+          styles.progressSegment,
+          {
+            width: `${otherAppsPercentage}%`,
+            backgroundColor: colors.otherApps,
+          },
+        ]}
+      />
+      <View
+        style={[
+          styles.progressSegment,
+          {
+            width: `${downloadsPercentage}%`,
+            backgroundColor: colors.downloads,
+          },
+        ]}
+      />
+      <View
+        style={[
+          styles.progressSegment,
+          {
+            width: `${cachePercentage}%`,
+            backgroundColor: colors.cache,
+          },
+        ]}
+      />
+      <View
+        style={[
+          styles.progressSegment,
+          {
+            width: `${freePercentage}%`,
+            backgroundColor: colors.free,
+          },
+        ]}
+      />
+    </View>
+  );
+
+  if (nativeSettingsFormsEnabled && nativeStorageFormAvailable) {
+    if (!loading && !error) {
+      return (
+        <NativeStorageForm
+          breakdownHeader={t('storage.breakdownHeader')}
+          manageHeader={t('storage.manageHeader')}
+          bar={bar}
+          busy={isClearing}
+          categories={[
+            {
+              key: 'otherApps',
+              label: t('storage.otherApps'),
+              size: localizeDigits(otherApps),
+              color: colors.otherApps,
+            },
+            {
+              key: 'downloads',
+              label: t('storage.downloads'),
+              size: localizeDigits(downloads),
+              color: colors.downloads,
+            },
+            {
+              key: 'cache',
+              label: t('storage.cache'),
+              size: localizeDigits(cache),
+              color: colors.cache,
+            },
+            {
+              key: 'free',
+              label: t('storage.free'),
+              size: localizeDigits(free),
+              color: colors.free,
+            },
+          ]}
+          actions={[
+            {
+              key: 'downloads',
+              title: t('storage.removeDownloadsTitle'),
+              description: t('storage.removeDownloadsDescription'),
+              onPress: handleClearAllDownloads,
+            },
+            {
+              key: 'cache',
+              title: t('storage.clearCacheTitle'),
+              description: t('storage.clearCacheDescription'),
+              onPress: handleClearCache,
+            },
+          ]}
+        />
+      );
+    }
+  }
+  // @ai-end
+
   return (
     <View style={styles.container}>
       <ScrollView
@@ -204,46 +307,7 @@ export default function StorageScreen() {
             </Text>
 
             {/* Progress Bar */}
-            <View style={styles.progressContainer}>
-              <View style={styles.progressBarContainer}>
-                <View
-                  style={[
-                    styles.progressSegment,
-                    {
-                      width: `${otherAppsPercentage}%`,
-                      backgroundColor: colors.otherApps,
-                    },
-                  ]}
-                />
-                <View
-                  style={[
-                    styles.progressSegment,
-                    {
-                      width: `${downloadsPercentage}%`,
-                      backgroundColor: colors.downloads,
-                    },
-                  ]}
-                />
-                <View
-                  style={[
-                    styles.progressSegment,
-                    {
-                      width: `${cachePercentage}%`,
-                      backgroundColor: colors.cache,
-                    },
-                  ]}
-                />
-                <View
-                  style={[
-                    styles.progressSegment,
-                    {
-                      width: `${freePercentage}%`,
-                      backgroundColor: colors.free,
-                    },
-                  ]}
-                />
-              </View>
-            </View>
+            <View style={styles.progressContainer}>{bar}</View>
 
             <View style={styles.breakdownContainer}>
               <StorageCategory
