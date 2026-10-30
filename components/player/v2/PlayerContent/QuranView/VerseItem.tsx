@@ -45,6 +45,7 @@ import {
 import {useTranslation} from 'react-i18next';
 import {localizeDigits} from '@/i18n/format';
 import {isRTL} from '@/utils/rtl';
+import {showVerseActions} from '@/components/sheets/showVerseActions'; // @ai
 // @ai-end
 
 // Type for processed word data from store
@@ -352,7 +353,7 @@ export const VerseItem = memo<VerseItemProps>(
           unitRow.unit.ayah,
           unitRow.rewayah,
         );
-        SheetManager.show('verse-actions', {payload});
+        showVerseActions(payload);
       },
       [unitRow, source, selectVerse],
     );
@@ -368,19 +369,17 @@ export const VerseItem = memo<VerseItemProps>(
       // @ai-end
       mediumHaptics();
       selectVerse(verseKey, verse.surah_number, verse.ayah_number);
-      SheetManager.show('verse-actions', {
-        payload: {
-          verseKey,
-          surahNumber: verse.surah_number,
-          ayahNumber: verse.ayah_number,
-          // arabicText omitted — the sheet reads from DK so it always
-          // matches the current rewayah instead of the static Hafs
-          // text on this VerseItem prop.
-          translation: verse.translation || '',
-          transliteration: verse.transliteration || '',
-          source: source ?? 'player',
-          rewayah,
-        },
+      showVerseActions({
+        verseKey,
+        surahNumber: verse.surah_number,
+        ayahNumber: verse.ayah_number,
+        // arabicText omitted — the sheet reads from DK so it always
+        // matches the current rewayah instead of the static Hafs
+        // text on this VerseItem prop.
+        translation: verse.translation || '',
+        transliteration: verse.transliteration || '',
+        source: source ?? 'player',
+        rewayah,
       });
     }, [
       verseKey,
@@ -401,19 +400,17 @@ export const VerseItem = memo<VerseItemProps>(
       }
       // @ai-end
       selectVerse(verseKey, verse.surah_number, verse.ayah_number);
-      SheetManager.show('verse-actions', {
-        payload: {
-          verseKey,
-          surahNumber: verse.surah_number,
-          ayahNumber: verse.ayah_number,
-          // arabicText omitted — the sheet reads from DK so it always
-          // matches the current rewayah instead of the static Hafs
-          // text on this VerseItem prop.
-          translation: verse.translation || '',
-          transliteration: verse.transliteration || '',
-          source: source ?? 'player',
-          rewayah,
-        },
+      showVerseActions({
+        verseKey,
+        surahNumber: verse.surah_number,
+        ayahNumber: verse.ayah_number,
+        // arabicText omitted — the sheet reads from DK so it always
+        // matches the current rewayah instead of the static Hafs
+        // text on this VerseItem prop.
+        translation: verse.translation || '',
+        transliteration: verse.transliteration || '',
+        source: source ?? 'player',
+        rewayah,
       });
     }, [
       verseKey,

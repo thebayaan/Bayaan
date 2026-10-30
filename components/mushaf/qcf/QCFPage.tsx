@@ -41,7 +41,6 @@ import {Gesture, GestureDetector} from 'react-native-gesture-handler';
 import {runOnJS} from 'react-native-worklets';
 import * as Haptics from 'expo-haptics';
 import Color from 'color';
-import {SheetManager} from 'react-native-actions-sheet';
 import {
   digitalKhattDataService,
   BASMALLAH_TEXT,
@@ -85,6 +84,7 @@ import {
   calculateLineYPositions,
   canvasBottomOverflow, // @ai
 } from '../constants';
+import {showVerseActions} from '@/components/sheets/showVerseActions'; // @ai
 
 interface QCFPageProps {
   metrics: MushafLayoutMetrics; // @ai
@@ -857,14 +857,12 @@ const QCFPage: React.FC<QCFPageProps> = ({
 
     const firstKey = keys[0];
     const [surahStr, ayahStr] = firstKey.split(':');
-    SheetManager.show('verse-actions', {
-      payload: {
-        verseKey: firstKey,
-        surahNumber: parseInt(surahStr, 10),
-        ayahNumber: parseInt(ayahStr, 10),
-        verseKeys: keys.length > 1 ? keys : undefined,
-        source: 'mushaf',
-      },
+    showVerseActions({
+      verseKey: firstKey,
+      surahNumber: parseInt(surahStr, 10),
+      ayahNumber: parseInt(ayahStr, 10),
+      verseKeys: keys.length > 1 ? keys : undefined,
+      source: 'mushaf',
     });
 
     dragStartVerseKeyRef.current = null;
