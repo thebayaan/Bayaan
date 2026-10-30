@@ -107,10 +107,8 @@ registerNativeSheet('add-to-collection', AddToCollectionSheet, {
   detents: 'fit',
 });
 registerNativeSheet('select-playlist', SelectPlaylistSheet, {detents: 'fit'});
-// A form with a keyboard and a long list: full height.
-registerNativeSheet('create-playlist', CreatePlaylistSheet, {
-  detents: ['large'],
-});
+// Forms: sized to their content, full height while the keyboard is up.
+registerNativeSheet('create-playlist', CreatePlaylistSheet, {detents: 'fit'});
 registerNativeSheet('favorite-reciters', FavoriteRecitersSheet, {
   detents: ['large'],
 });
@@ -130,7 +128,7 @@ registerNativeSheet('adhkar-session-options', AdhkarSessionOptionsSheet, {
 });
 registerNativeSheet('playback-speed', PlaybackSpeedSheet, {detents: 'fit'});
 registerNativeSheet('sleep-timer', SleepTimerSheet, {detents: 'fit'});
-registerNativeSheet('verse-note', VerseNoteSheet, {detents: ['large']});
+registerNativeSheet('verse-note', VerseNoteSheet, {detents: 'fit'});
 registerNativeSheet('organize-recitation', OrganizeRecitationSheet, {
   detents: ['large'],
 });

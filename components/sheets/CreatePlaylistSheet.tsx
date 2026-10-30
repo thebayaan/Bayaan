@@ -23,6 +23,7 @@ import {LinearGradient} from 'expo-linear-gradient';
 import {latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
 import {useSheetBottomPadding} from '@/components/sheets/useSheetBottomPadding'; // @ai
+import {useNativeSheetKeyboardHeight} from '@/components/sheets/useNativeSheetKeyboardHeight'; // @ai
 // @ai-end
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
@@ -47,6 +48,8 @@ const PLAYLIST_COLORS = [
 export const CreatePlaylistSheet = (props: SheetProps<'create-playlist'>) => {
   const {theme} = useTheme();
   const sheetBottomPadding = useSheetBottomPadding(moderateScale(40)); // @ai
+  // Sized to its content, the scroll view can't flex into the sheet. @ai
+  const fittingContent = useNativeSheetKeyboardHeight();
   const styles = createStyles(theme);
   const {t} = useTranslation(['sheets', 'common']);
 
@@ -117,7 +120,7 @@ export const CreatePlaylistSheet = (props: SheetProps<'create-playlist'>) => {
       </View>
 
       <ScrollView
-        style={styles.scrollView}
+        style={fittingContent ? undefined : styles.scrollView}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={[
