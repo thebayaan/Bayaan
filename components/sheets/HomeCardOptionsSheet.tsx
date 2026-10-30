@@ -44,7 +44,10 @@ const HomeCardOptionsContent = ({
   payload: HomeCardOptionsPayload;
 }) => {
   const {theme} = useTheme();
-  const sheetBottomPadding = useSheetBottomPadding(moderateScale(40)); // @ai
+  const sheetBottomPadding = useSheetBottomPadding(
+    moderateScale(40),
+    moderateScale(8),
+  ); // @ai
   const styles = createStyles(theme);
   const {t} = useTranslation(['sheets', 'common']);
   const handleClose = useCallback(() => {
