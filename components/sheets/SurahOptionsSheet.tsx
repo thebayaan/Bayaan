@@ -63,7 +63,11 @@ const renderHtmlDefaultProps: Partial<RenderHTMLProps> = {
 // @ai-start
 export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
   const {theme} = useTheme();
-  const sheetBottomPadding = useSheetBottomPadding(moderateScale(40)); // @ai
+  // The last card's margin, unless the playlist card (no margin) ends it.
+  const sheetBottomPadding = useSheetBottomPadding(
+    moderateScale(40),
+    props.payload?.onRemoveFromPlaylist ? 0 : moderateScale(8),
+  ); // @ai
   const styles = createStyles(theme);
   const {t} = useTranslation(['sheets', 'common']);
   // Size HTML from the sheet, which stops at 560pt on iPad. @ai

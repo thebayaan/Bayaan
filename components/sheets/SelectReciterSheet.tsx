@@ -23,7 +23,10 @@ import {useSheetBottomPadding} from '@/components/sheets/useSheetBottomPadding';
 // @ai-start
 export const SelectReciterSheet = (props: SheetProps<'select-reciter'>) => {
   const {theme} = useTheme();
-  const sheetBottomPadding = useSheetBottomPadding(moderateScale(40)); // @ai
+  const sheetBottomPadding = useSheetBottomPadding(
+    moderateScale(40),
+    moderateScale(16),
+  ); // @ai
   const styles = createStyles(theme);
   const {t} = useTranslation('sheets');
   const defaultReciter = useReciterStore(state => state.defaultReciter);

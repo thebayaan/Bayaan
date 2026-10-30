@@ -17,6 +17,7 @@ import {
 // @ai-start
 import {useTranslation} from 'react-i18next';
 import {useResponsive} from '@/hooks/useResponsive';
+import {useSheetBottomPadding} from '@/components/sheets/useSheetBottomPadding'; // @ai
 // @ai-end
 
 /**
@@ -48,6 +49,7 @@ export function AmbientSoundsPanel() {
   const styles = createStyles(theme);
   const {t} = useTranslation('sheets');
   const {isTablet} = useResponsive();
+  const sheetBottomPadding = useSheetBottomPadding(moderateScale(40)); // @ai
 
   const currentSound = useAmbientStore(s => s.currentSound);
   const isEnabled = useAmbientStore(s => s.isEnabled);
@@ -122,7 +124,12 @@ export function AmbientSoundsPanel() {
       <View style={styles.headerContainer}>
         <Text style={styles.headerTitle}>{t('ambient.title')}</Text>
       </View>
-      <View style={[styles.container, isTablet && styles.containerTablet]}>
+      <View
+        style={[
+          styles.container,
+          {paddingBottom: sheetBottomPadding},
+          isTablet && styles.containerTablet,
+        ]}>
         {isTablet ? (
           // Rows of three equal tiles, so the grid fills a menu or a card.
           <View style={styles.tabletGrid}>
