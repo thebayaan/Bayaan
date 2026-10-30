@@ -349,7 +349,7 @@ export function SearchView({
           break;
         default:
           SheetManager.show('select-reciter', {
-            payload: {surahId, source: 'search'},
+            payload: {surahId},
           });
       }
       // @ai-end

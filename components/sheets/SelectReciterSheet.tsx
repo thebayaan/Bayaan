@@ -10,7 +10,8 @@ import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import {useSettings} from '@/hooks/useSettings';
 import {useReciterSelection} from '@/hooks/useReciterSelection';
 import Color from 'color';
-import {useRouter} from 'expo-router';
+import {useRouter, useSegments} from 'expo-router'; // @ai
+import {reciterBrowsePathname} from '@/hooks/useTabReciterPath'; // @ai
 import {Ionicons} from '@expo/vector-icons';
 import {DiscoverIcon} from '@/components/Icons';
 // @ai-start
@@ -28,11 +29,11 @@ export const SelectReciterSheet = (props: SheetProps<'select-reciter'>) => {
 
   const payload = props.payload;
   const surahId = payload?.surahId ?? '';
-  const source = payload?.source;
 
   const {askEveryTime, setAskEveryTime, setDefaultReciterSelection} =
     useSettings();
   const router = useRouter();
+  const segments = useSegments(); // @ai
 
   React.useEffect(() => {
     const fetchSurahName = async () => {
@@ -72,10 +73,10 @@ export const SelectReciterSheet = (props: SheetProps<'select-reciter'>) => {
   const handleBrowseAllReciters = useCallback(() => {
     if (!surahId) return;
 
-    const route =
-      source === 'search'
-        ? '/(tabs)/(b.search)/reciter/browse'
-        : '/(tabs)/(a.home)/reciter/browse';
+    // @ai-start
+    // The browser in the tab the sheet opened over, so back returns there.
+    const route = reciterBrowsePathname(segments);
+    // @ai-end
 
     handleClose();
     router.push({
@@ -85,7 +86,7 @@ export const SelectReciterSheet = (props: SheetProps<'select-reciter'>) => {
         surahId,
       },
     });
-  }, [surahId, source, handleClose, router]);
+  }, [surahId, segments, handleClose, router]);
 
   const handleReciterSelection = useCallback(
     (action: () => void, selection: string | null) => {
