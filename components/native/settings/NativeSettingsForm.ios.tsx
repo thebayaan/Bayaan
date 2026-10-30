@@ -98,7 +98,8 @@ export function NativeSettingsForm({
           key={row.key}
           isOn={row.value}
           onIsOnChange={row.onChange}
-          modifiers={rowModifiers}>
+          // The text colour would put a white knob on a white track in dark.
+          modifiers={[...rowModifiers, tint(native.trackOn)]}>
           <HStack spacing={ICON_GAP}>
             {icon(row.systemImage)}
             <Text modifiers={[body, foregroundStyle(text)]}>{row.title}</Text>
