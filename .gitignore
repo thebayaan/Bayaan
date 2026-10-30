@@ -188,3 +188,6 @@ targets/widgets/*.ttf
 modules/bayaan-widgets/android/src/main/assets/fonts/DigitalKhattFont.otf
 modules/bayaan-widgets/android/src/main/assets/fonts/surah_names.ttf
 modules/bayaan-widgets/android/src/main/assets/fonts/ScheherazadeNew-Regular.ttf
+
+# migrate-reciter-images dry-run output
+.reciter-photos-out/

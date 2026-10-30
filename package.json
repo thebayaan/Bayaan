@@ -25,6 +25,7 @@
     "mirror:timestamps": "tsx scripts/mirror-timestamps-to-r2.ts",
     "strip:broken-qdc": "tsx scripts/strip-broken-qdc-ids.ts",
     "add:new-reciters": "tsx scripts/add-new-reciters.ts",
+    "photos:migrate": "tsx scripts/migrate-reciter-images.ts",
     "format": "prettier --write .",
     "generate-reciter-images": "tsx scripts/generateReciterImages.ts",
     "generate-icons": "node scripts/generate-icons.js",
@@ -180,6 +181,7 @@
     "react-test-renderer": "19.3.0",
     "satori": "^0.26.0",
     "sharp": "^0.33.5",
+    "thumbhash": "^0.1.1",
     "tsx": "^4.19.2",
     "typescript": "~6.0.3"
   },
