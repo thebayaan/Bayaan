@@ -103,6 +103,13 @@ registerNativeSheet('add-to-collection', AddToCollectionSheet, {
   detents: 'fit',
 });
 registerNativeSheet('select-playlist', SelectPlaylistSheet, {detents: 'fit'});
+// A form with a keyboard and a long list: full height.
+registerNativeSheet('create-playlist', CreatePlaylistSheet, {
+  detents: ['large'],
+});
+registerNativeSheet('favorite-reciters', FavoriteRecitersSheet, {
+  detents: ['large'],
+});
 // @ai-end
 registerSheet('home-card-options', HomeCardOptionsSheet);
 registerSheet('adhkar-session-options', AdhkarSessionOptionsSheet);

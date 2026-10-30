@@ -1,7 +1,8 @@
 import React, {useCallback, useMemo} from 'react';
 import {RECITERS} from '@/data/reciterData';
 import {useFavoriteReciters} from '@/hooks/useFavoriteReciters';
-import {SheetProps, SheetManager} from 'react-native-actions-sheet';
+import {SheetProps} from 'react-native-actions-sheet';
+import {hideSheet} from '@/components/sheets/sheetControl'; // @ai
 import {getDisplayLabelFromName} from '@/services/rewayah/RewayahIdentity';
 // @ai-start
 import {useTranslation} from 'react-i18next';
@@ -61,7 +62,7 @@ export const FavoriteRecitersSheet = (
       items={items}
       selectedIds={favoriteIds}
       onSelect={handleSelect}
-      onDone={() => SheetManager.hide('favorite-reciters')}
+      onDone={() => hideSheet('favorite-reciters')}
     />
   );
 };

@@ -23,6 +23,7 @@ import {
   createSearchIndex,
   type SearchField,
 } from '@/utils/search/createSearchIndex';
+import {useSheetBottomPadding} from '@/components/sheets/useSheetBottomPadding'; // @ai
 
 export interface ReciterPickerItem {
   id: string;
@@ -60,6 +61,7 @@ export function ReciterPickerSheet({
   onDone,
 }: ReciterPickerSheetProps): React.ReactElement {
   const {theme} = useTheme();
+  const sheetBottomPadding = useSheetBottomPadding(moderateScale(40)); // @ai
   const styles = useMemo(() => createStyles(theme), [theme]);
   const {t} = useTranslation(['sheets', 'common']);
   const [searchQuery, setSearchQuery] = useState('');
@@ -169,7 +171,10 @@ export function ReciterPickerSheet({
           data={filteredItems}
           renderItem={renderItem}
           keyExtractor={item => item.id}
-          contentContainerStyle={styles.listContainer}
+          contentContainerStyle={[
+            styles.listContainer,
+            {paddingBottom: sheetBottomPadding},
+          ]}
           showsVerticalScrollIndicator={false}
           initialNumToRender={15}
           maxToRenderPerBatch={10}

@@ -3,8 +3,8 @@ import {View, Text, Pressable, StyleSheet} from 'react-native';
 import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import {SheetProps, SheetManager} from 'react-native-actions-sheet';
-import {hideSheet} from '@/components/sheets/sheetControl'; // @ai
+import {SheetProps} from 'react-native-actions-sheet';
+import {hideSheet, showSheet} from '@/components/sheets/sheetControl'; // @ai
 import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import {Feather} from '@expo/vector-icons';
 import {PlaylistIcon} from '@/components/Icons';
@@ -40,14 +40,14 @@ export const AddToCollectionSheet = (
   const handleAddFavoriteReciter = useCallback(() => {
     handleClose();
     setTimeout(() => {
-      SheetManager.show('favorite-reciters');
+      showSheet('favorite-reciters');
     }, 300);
   }, [handleClose]);
 
   const handleNewPlaylist = useCallback(async () => {
     handleClose();
     setTimeout(async () => {
-      const result = await SheetManager.show('create-playlist', {
+      const result = await showSheet('create-playlist', {
         payload: {
           existingColors: existingPlaylistColors,
         },

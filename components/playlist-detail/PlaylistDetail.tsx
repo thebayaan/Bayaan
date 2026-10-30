@@ -283,7 +283,7 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
     const handleEditForThisPlaylist = async () => {
       shouldClearPlaylistRef.current = false;
 
-      const result = await SheetManager.show('create-playlist', {
+      const result = await showSheet('create-playlist', {
         payload: {
           existingColors: existingPlaylistColors,
           isEditMode: true,
