@@ -51,6 +51,7 @@ import {useMushafRangePickStore} from '@/store/mushafRangePickStore';
 import {showSheet, hideSheet} from '@/components/sheets/sheetControl';
 import {useNativeSheetId} from '@/components/native/nativeSheetContext';
 import {getStyleLabel} from './sheetLabels';
+import {useSheetBottomPadding} from './useSheetBottomPadding';
 import {
   FloatingAction,
   FOOTER_SPACE,
@@ -401,7 +402,9 @@ export const MushafPlayerOptionsSheet = (
     range,
   ]);
 
-  const bottomInset = insets.bottom + (inNativeSheet ? ms(4) : ms(12));
+  // Native sheet: end the Play capsule where every sheet ends, at the home
+  // indicator's inset and no further.
+  const bottomInset = useSheetBottomPadding(insets.bottom + ms(12));
   const close = () => hideSheet('mushaf-player-options');
 
   const mainView = (
