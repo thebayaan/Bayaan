@@ -14,12 +14,14 @@ import {useReciterNavigation} from '@/hooks/useReciterNavigation';
 import {useTranslation} from 'react-i18next';
 import {hideSheet} from '@/components/sheets/sheetControl'; // @ai
 import {useSheetBottomPadding} from '@/components/sheets/useSheetBottomPadding'; // @ai
+import {useNativeSheetId} from '@/components/native/nativeSheetContext'; // @ai
 // @ai-end
 
 // @ai-start
 export const FollowAlongSheet = (props: SheetProps<'follow-along'>) => {
   const {theme} = useTheme();
   const sheetBottomPadding = useSheetBottomPadding(moderateScale(40)); // @ai
+  const inNativeSheet = useNativeSheetId() !== null; // @ai
   const styles = createStyles(theme);
   const {navigateToReciterProfile} = useReciterNavigation();
   const {t} = useTranslation('sheets');
@@ -43,7 +45,13 @@ export const FollowAlongSheet = (props: SheetProps<'follow-along'>) => {
       <View style={styles.headerContainer}>
         <Text style={styles.headerTitle}>{t('followAlong.title')}</Text>
       </View>
-      <View style={[styles.container, {paddingBottom: sheetBottomPadding}]}>
+      <View
+        style={[
+          styles.container,
+          {paddingBottom: sheetBottomPadding},
+          // @ai: bounded by a native sheet, so the list scrolls inside it
+          inNativeSheet && styles.fill,
+        ]}>
         <Text style={styles.description}>{t('followAlong.description')}</Text>
         <FlatList
           data={supportedReciters}
@@ -55,7 +63,7 @@ export const FollowAlongSheet = (props: SheetProps<'follow-along'>) => {
               showFollowAlong
             />
           )}
-          style={styles.list}
+          style={[styles.list, inNativeSheet && styles.fill]}
           showsVerticalScrollIndicator={false}
         />
       </View>
@@ -93,6 +101,7 @@ const createStyles = (theme: Theme) =>
       fontFamily: 'Manrope-Bold',
       color: theme.colors.text,
     },
+    fill: {flex: 1}, // @ai
     container: {
       paddingVertical: moderateScale(16),
       paddingBottom: moderateScale(40),

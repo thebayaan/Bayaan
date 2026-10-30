@@ -102,21 +102,26 @@ const NotesScreen = () => {
     setNotes(prev => prev.filter(n => n.note.id !== note.id));
   }, []);
 
-  const handleNotePress = useCallback((item: NoteData) => {
-    showSheet('verse-note', {
-      payload: {
-        verseKey: item.note.verseKey,
-        surahNumber: item.note.surahNumber,
-        ayahNumber: item.note.ayahNumber,
-        noteId: item.note.id,
-        // The note's own rewayah names its verses (decision 3): the sheet
-        // labels them at once instead of after loading the note. A legacy
-        // note without one is a Hafs note (verse-units contract section 3),
-        // labelled from the first render as before Release 1. @ai
-        rewayah: item.note.rewayahId ?? 'hafs',
-      },
-    });
-  }, []);
+  const handleNotePress = useCallback(
+    (item: NoteData) => {
+      showSheet('verse-note', {
+        payload: {
+          verseKey: item.note.verseKey,
+          surahNumber: item.note.surahNumber,
+          ayahNumber: item.note.ayahNumber,
+          noteId: item.note.id,
+          // The note's own rewayah names its verses (decision 3): the sheet
+          // labels them at once instead of after loading the note. A legacy
+          // note without one is a Hafs note (verse-units contract section 3),
+          // labelled from the first render as before Release 1. @ai
+          rewayah: item.note.rewayahId ?? 'hafs',
+        },
+        // @ai: the sheet edits or deletes the note in place; the screen keeps
+        // focus, so reload when it closes.
+      }).then(loadNotes);
+    },
+    [loadNotes],
+  );
 
   // @ai-start
   const openingRef = useRef(false);

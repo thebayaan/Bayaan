@@ -52,6 +52,7 @@ import {
   rangePickerNumbering,
 } from '@/utils/playbackRangePicker';
 import {showSheet, hideSheet} from '@/components/sheets/sheetControl'; // @ai
+import {useNativeSheetId} from '@/components/native/nativeSheetContext'; // @ai
 // @ai-end
 
 // ---------------------------------------------------------------------------
@@ -140,6 +141,7 @@ export const MushafPlayerOptionsSheet = (
   const styles = createStyles(theme);
   const {t} = useTranslation('sheets');
   const insets = useSafeAreaInsets();
+  const inNativeSheet = useNativeSheetId() !== null; // @ai
 
   const currentPage = props.payload?.currentPage ?? 1;
 
@@ -462,7 +464,9 @@ export const MushafPlayerOptionsSheet = (
       // is expanded so the user can still swipe the sheet away.
       gestureEnabled={expandedSection === null}>
       <ScrollView
-        style={styles.scrollView}
+        // @ai: a native sheet is full height, so the scroll fills it and
+        // the Play footer sits at the sheet's bottom edge.
+        style={[styles.scrollView, inNativeSheet && styles.scrollViewFill]}
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
         bounces={true}>
@@ -721,6 +725,7 @@ const createStyles = (theme: Theme) =>
     scrollView: {
       flexGrow: 0,
     },
+    scrollViewFill: {flex: 1}, // @ai
     container: {
       paddingHorizontal: ms(20),
       paddingTop: ms(12),

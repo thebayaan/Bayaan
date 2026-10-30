@@ -80,16 +80,20 @@ registerSheet('word-detail', WordDetailSheet);
 // @ai-start
 // Presented as native sheets on iPhone when nativeSheetsEnabled (showSheet).
 registerNativeSheet('verse-actions', VerseActionsSheet);
-registerNativeSheet('word-detail', WordDetailSheet);
+registerNativeSheet('word-detail', WordDetailSheet, {detents: 'fit'});
 registerNativeSheet('mushaf-layout', MushafLayoutSheet);
 // Playback settings is a form that needs the room; it opens full height.
 registerNativeSheet('mushaf-player-options', MushafPlayerOptionsSheet, {
   detents: ['large'],
 });
-registerNativeSheet('mushaf-repeat-options', MushafRepeatOptionsSheet);
+registerNativeSheet('mushaf-repeat-options', MushafRepeatOptionsSheet, {
+  detents: 'fit',
+});
 registerNativeSheet('mushaf-reciter-picker', MushafReciterPickerSheet);
 registerNativeSheet('follow-along', FollowAlongSheet);
-registerNativeSheet('ambient-sounds', AmbientSoundsSheet);
+registerNativeSheet('ambient-sounds', AmbientSoundsSheet, {
+  detents: 'fit',
+});
 // Menus size to their content.
 registerNativeSheet('surah-options', SurahOptionsSheet, {detents: 'fit'});
 registerNativeSheet('home-card-options', HomeCardOptionsSheet, {
@@ -116,8 +120,8 @@ registerNativeSheet('collection-options', CollectionOptionsSheet, {
 });
 registerNativeSheet('playlist-context', PlaylistContextSheet, {detents: 'fit'});
 registerNativeSheet('player-options', PlayerOptionsSheet, {detents: 'fit'});
-registerNativeSheet('rewayat-info', RewayatInfoSheet, {detents: 'fit'});
-registerNativeSheet('adhkar-layout', AdhkarLayoutSheet, {detents: 'fit'});
+registerNativeSheet('rewayat-info', RewayatInfoSheet);
+registerNativeSheet('adhkar-layout', AdhkarLayoutSheet);
 registerNativeSheet('adhkar-copy-options', AdhkarCopyOptionsSheet, {
   detents: 'fit',
 });

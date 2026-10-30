@@ -10,6 +10,7 @@ import {useTranslation} from 'react-i18next';
 import {useTheme} from '@/hooks/useTheme';
 import {useAdhkarSessionStore} from '@/store/adhkarSessionStore';
 import {createStyles} from './HomeCardOptionsSheet';
+import {useSheetBottomPadding} from '@/components/sheets/useSheetBottomPadding'; // @ai
 import {hideSheet} from '@/components/sheets/sheetControl'; // @ai
 
 export function AdhkarSessionOptionsSheet(
@@ -17,6 +18,7 @@ export function AdhkarSessionOptionsSheet(
 ): React.JSX.Element {
   const {theme} = useTheme();
   const styles = createStyles(theme);
+  const sheetBottomPadding = useSheetBottomPadding(moderateScale(40)); // @ai
   const {t} = useTranslation('home');
   const dispatch = useAdhkarSessionStore(s => s.dispatch);
   const {sheetId, payload} = props;
@@ -33,7 +35,7 @@ export function AdhkarSessionOptionsSheet(
       containerStyle={styles.sheetContainer}
       indicatorStyle={styles.indicator}
       gestureEnabled={true}>
-      <View style={styles.container}>
+      <View style={[styles.container, {paddingBottom: sheetBottomPadding}]}>
         {payload && (
           <View style={styles.header}>
             <Text style={styles.title}>{payload.title}</Text>
