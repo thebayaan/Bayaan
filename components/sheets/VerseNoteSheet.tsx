@@ -29,12 +29,14 @@ import {
 import {addSelectionNote} from './verse-actions/selectionAnnotations';
 import {hideAllSheets} from '@/components/sheets/sheetControl'; // @ai
 import {useSheetBottomPadding} from '@/components/sheets/useSheetBottomPadding'; // @ai
+import {useNativeSheetKeyboardHeight} from '@/components/sheets/useNativeSheetKeyboardHeight'; // @ai
 // @ai-end
 
 // @ai-start
 export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
   const {theme} = useTheme();
   const sheetBottomPadding = useSheetBottomPadding(moderateScale(40)); // @ai
+  useNativeSheetKeyboardHeight(); // @ai
   const styles = useMemo(() => createStyles(theme), [theme]);
   const {t} = useTranslation('sheets');
 
