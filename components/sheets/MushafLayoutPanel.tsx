@@ -20,6 +20,7 @@ import {MushafSettingsContent} from '@/components/MushafSettingsContent';
 import {ReadingThemeContent} from '@/components/ReadingThemeContent';
 import {flipX} from '@/utils/rtl';
 import {useSheetBottomPadding} from '@/components/sheets/useSheetBottomPadding'; // @ai
+import {useNativeSheetId} from '@/components/native/nativeSheetContext'; // @ai
 
 type ActiveScreen = 'theme' | null;
 export type MushafLayoutContext = 'mushaf' | 'player';
@@ -38,6 +39,7 @@ export function MushafLayoutPanel({
 }) {
   const {theme} = useTheme();
   const sheetBottomPadding = useSheetBottomPadding(moderateScale(40)); // @ai
+  const inNativeSheet = useNativeSheetId() !== null; // @ai
   const {height: windowHeight} = useWindowDimensions();
   const styles = createStyles(theme, windowHeight);
   const {t} = useTranslation(['sheets', 'common']);
@@ -70,9 +72,7 @@ export function MushafLayoutPanel({
         showTitle={true}
         // @ai: in a native sheet the last card ends at the sheet's edge,
         // without the container's padding or the card's own bottom margin.
-        containerStyle={
-          sheetBottomPadding === 0 ? styles.flushBottom : undefined
-        }
+        containerStyle={inNativeSheet ? styles.flushBottom : undefined}
         context={context}
         onOpenThemePicker={handleOpenThemePicker}
       />
