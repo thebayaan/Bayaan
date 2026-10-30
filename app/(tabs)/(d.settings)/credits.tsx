@@ -1,15 +1,16 @@
 import React, {useMemo} from 'react';
-import {View, Text, ScrollView, Pressable, Linking} from 'react-native';
+import {View, ScrollView, Linking} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
-import {ScaledSheet, moderateScale} from '@/utils/scale';
-import {Feather} from '@expo/vector-icons';
-import Color from 'color';
-import {Theme} from '@/utils/themeUtils';
 import branding from '@/config/branding';
 // @ai-start
-import {latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
 import type {TFunction} from 'i18next';
+import {
+  SettingsIntro,
+  SettingsRow,
+  SettingsSection,
+  useSettingsStyles,
+} from '@/components/settings/SettingsList'; // @ai
 // @ai-end
 
 interface Credit {
@@ -167,153 +168,41 @@ function getCredits(
 // @ai-start
 export default function CreditsScreen() {
   const {theme} = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const styles = useSettingsStyles(); // @ai
   const {t} = useTranslation('settings');
   const credits = useMemo(() => getCredits(t), [t]);
 
-  const linkIconColor = Color(theme.colors.text).alpha(0.35).toString();
-  const pressedBg = Color(theme.colors.text).alpha(0.06).toString();
-
-  const handleLinkPress = async (url?: string) => {
-    if (url) {
-      await Linking.openURL(url);
-    }
-  };
-
   return (
-    <View style={styles.container}>
+    <View style={{flex: 1, backgroundColor: theme.colors.background}}>
       <ScrollView
-        style={styles.content}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={styles.page}
         contentInsetAdjustmentBehavior="automatic"
         showsVerticalScrollIndicator={false}>
-        <View>
-          <Text style={styles.introText}>
-            {t('credits.intro', {appName: branding.appName})}
-          </Text>
-
-          {credits.map(section => (
-            <View key={section.section} style={styles.section}>
-              <Text style={styles.sectionHeader}>
-                {section.section.toUpperCase()}
-              </Text>
-              <View style={styles.card}>
-                {section.items.map((item, index) => (
-                  <React.Fragment key={index}>
-                    {index > 0 && <View style={styles.divider} />}
-                    <Pressable
-                      style={({pressed}) => [
-                        styles.creditRow,
-                        pressed && item.link
-                          ? {backgroundColor: pressedBg}
-                          : null,
-                      ]}
-                      onPress={() => handleLinkPress(item.link)}
-                      disabled={!item.link}>
-                      <View style={styles.creditContent}>
-                        <Text style={styles.creditTitle}>{item.title}</Text>
-                        <Text style={styles.creditDescription}>
-                          {item.description}
-                        </Text>
-                      </View>
-                      {item.link && (
-                        <Feather
-                          name="external-link"
-                          size={moderateScale(14)}
-                          color={linkIconColor}
-                        />
-                      )}
-                    </Pressable>
-                  </React.Fragment>
-                ))}
-              </View>
-            </View>
-          ))}
-
-          <Text style={styles.footerText}>
-            {t('credits.footer', {appName: branding.appName})}
-          </Text>
-        </View>
+        <SettingsIntro text={t('credits.intro', {appName: branding.appName})} />
+        {credits.map(group => (
+          <SettingsSection
+            key={group.section}
+            title={group.section}
+            separatorInset="text">
+            {group.items.map(item => {
+              const link = item.link;
+              return (
+                <SettingsRow
+                  key={item.title}
+                  title={item.title}
+                  subtitle={item.description}
+                  accessory={link ? 'external' : 'none'}
+                  accessibilityRole={link ? 'link' : undefined}
+                  onPress={link ? () => Linking.openURL(link) : undefined}
+                />
+              );
+            })}
+          </SettingsSection>
+        ))}
+        <SettingsIntro
+          text={t('credits.footer', {appName: branding.appName})}
+        />
       </ScrollView>
     </View>
   );
 }
-// @ai-end
-
-// @ai-start
-const createStyles = (theme: Theme) =>
-  ScaledSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: theme.colors.background,
-    },
-    content: {
-      flex: 1,
-    },
-    scrollContent: {
-      paddingHorizontal: moderateScale(20),
-      paddingVertical: moderateScale(20),
-      paddingBottom: moderateScale(160),
-    },
-    introText: {
-      fontSize: moderateScale(13),
-      fontFamily: 'Manrope-Regular',
-      color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
-      lineHeight: moderateScale(20),
-      marginBottom: moderateScale(28),
-      textAlign: 'center',
-    },
-    section: {
-      marginBottom: moderateScale(20),
-    },
-    sectionHeader: {
-      fontSize: moderateScale(10.5),
-      fontFamily: 'Manrope-SemiBold',
-      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
-      letterSpacing: latinLetterSpacing(1.2),
-      textTransform: 'uppercase',
-      marginBottom: moderateScale(6),
-      marginLeft: moderateScale(2),
-    },
-    card: {
-      backgroundColor: Color(theme.colors.text).alpha(0.04).toString(),
-      borderRadius: moderateScale(14),
-      borderWidth: 1,
-      borderColor: Color(theme.colors.text).alpha(0.06).toString(),
-      overflow: 'hidden',
-    },
-    divider: {
-      height: 1,
-      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
-      marginHorizontal: moderateScale(16),
-    },
-    creditRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: moderateScale(12),
-      paddingHorizontal: moderateScale(16),
-    },
-    creditContent: {
-      flex: 1,
-      marginRight: moderateScale(12),
-    },
-    creditTitle: {
-      fontSize: moderateScale(13.5),
-      fontFamily: 'Manrope-SemiBold',
-      color: Color(theme.colors.text).alpha(0.85).toString(),
-      marginBottom: moderateScale(2),
-    },
-    creditDescription: {
-      fontSize: moderateScale(11.5),
-      fontFamily: 'Manrope-Regular',
-      color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
-    },
-    footerText: {
-      textAlign: 'center',
-      fontSize: moderateScale(13),
-      fontFamily: 'Manrope-Medium',
-      color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
-      marginTop: moderateScale(24),
-    },
-  });
-// @ai-end

@@ -197,6 +197,7 @@
     }
   },
   "defaultReciter": {
+    "currentHeader": "القارئ الحالي",
     "changeHeader": "تغيير القارئ الافتراضي",
     "searchPlaceholder": "ابحث عن القرّاء…",
     "completeOnly": "يُعرض فقط القرّاء الذين لديهم تلاوة كاملة للقرآن",

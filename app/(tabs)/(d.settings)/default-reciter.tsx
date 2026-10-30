@@ -15,9 +15,12 @@ import {USE_GLASS} from '@/hooks/useGlassProps';
 import {getDisplayLabelFromName} from '@/services/rewayah/RewayahIdentity';
 import {rankReciters} from '@/utils/search/catalog'; // @ai
 // @ai-start
-import {latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
 import {getReciterDisplayName} from '@/i18n/format';
+import {
+  SettingsSection,
+  useSettingsStyles,
+} from '@/components/settings/SettingsList';
 // @ai-end
 
 // @ai-start
@@ -27,6 +30,7 @@ export default function DefaultReciterScreen() {
   const {theme} = useTheme();
   const {t} = useTranslation('settings');
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const settings = useSettingsStyles(); // @ai
   const defaultReciter = useReciterStore(state => state.defaultReciter);
   const setDefaultReciter = useReciterStore(state => state.setDefaultReciter);
   const router = useRouter();
@@ -85,7 +89,9 @@ export default function DefaultReciterScreen() {
     <View style={styles.container}>
       <View style={[styles.content, {paddingTop: headerHeight}]}>
         {defaultReciter && (
-          <View style={styles.currentReciterContainer}>
+          <SettingsSection
+            title={t('defaultReciter.currentHeader')}
+            separatorInset="none">
             <View style={styles.currentReciterContent}>
               <ReciterImage
                 imageUrl={defaultReciter.image_url || undefined}
@@ -101,11 +107,11 @@ export default function DefaultReciterScreen() {
                 </Text>
               </View>
             </View>
-          </View>
+          </SettingsSection>
         )}
 
         <View style={styles.searchSection}>
-          <Text style={styles.searchLabel}>
+          <Text style={settings.header}>
             {t('defaultReciter.changeHeader')}
           </Text>
           <SearchInput
@@ -155,25 +161,16 @@ const createStyles = (theme: Theme) =>
       flex: 1,
       paddingHorizontal: moderateScale(16),
     },
-    currentReciterContainer: {
-      padding: moderateScale(16),
-      marginBottom: verticalScale(16),
-      borderRadius: moderateScale(14),
-      marginHorizontal: moderateScale(15),
-      marginTop: moderateScale(15),
-      backgroundColor: Color(theme.colors.text).alpha(0.04).toString(),
-      borderWidth: 1,
-      borderColor: Color(theme.colors.text).alpha(0.06).toString(),
-    },
     currentReciterContent: {
       flexDirection: 'row',
       alignItems: 'center',
+      padding: moderateScale(16),
     },
     currentReciterImage: {
       width: moderateScale(72),
       height: moderateScale(72),
       borderRadius: moderateScale(10),
-      marginRight: moderateScale(15),
+      marginEnd: moderateScale(15),
     },
     currentReciterInfo: {
       flex: 1,
@@ -190,20 +187,10 @@ const createStyles = (theme: Theme) =>
       color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
     },
     searchSection: {
-      paddingHorizontal: moderateScale(15),
-    },
-    searchLabel: {
-      fontSize: moderateScale(10.5),
-      fontFamily: 'Manrope-SemiBold',
-      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
-      letterSpacing: latinLetterSpacing(1.2),
-      textTransform: 'uppercase',
-      marginBottom: verticalScale(8),
-      marginLeft: moderateScale(2),
+      marginBottom: moderateScale(8),
     },
     reciterList: {
       flex: 1,
-      paddingHorizontal: moderateScale(15),
     },
     emptyText: {
       fontSize: moderateScale(13),

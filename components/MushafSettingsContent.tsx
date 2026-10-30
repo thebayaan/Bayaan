@@ -1708,24 +1708,25 @@ const createStyles = (theme: Theme) =>
     container: {
       padding: moderateScale(16),
     },
+    // @ai-start: the shared Settings card and header (SettingsList)
     card: {
-      backgroundColor: Color(theme.colors.text).alpha(0.04).toString(),
-      borderWidth: 1,
-      borderColor: Color(theme.colors.text).alpha(0.06).toString(),
-      borderRadius: moderateScale(14),
-      paddingHorizontal: moderateScale(14),
+      backgroundColor: theme.isDarkMode
+        ? Color('#ffffff').alpha(0.07).toString()
+        : '#ffffff',
+      borderRadius: moderateScale(24),
+      paddingHorizontal: moderateScale(18),
       overflow: 'hidden',
-      marginBottom: verticalScale(16),
+      marginBottom: moderateScale(22),
     },
     sectionHeader: {
-      fontSize: moderateScale(10.5),
-      fontFamily: 'Manrope-SemiBold',
-      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
-      letterSpacing: latinLetterSpacing(1.2),
-      textTransform: 'uppercase',
-      marginBottom: verticalScale(4),
-      marginLeft: moderateScale(4),
+      textAlign: 'left',
+      fontSize: moderateScale(15),
+      fontFamily: 'Manrope-Regular',
+      color: Color(theme.colors.text).alpha(0.55).toString(),
+      marginBottom: moderateScale(8),
+      marginStart: moderateScale(18),
     },
+    // @ai-end
     sectionSubHeader: {
       fontSize: moderateScale(11.5),
       fontFamily: 'Manrope-Regular',
@@ -1740,14 +1741,14 @@ const createStyles = (theme: Theme) =>
       paddingVertical: verticalScale(8),
     },
     optionLabel: {
-      fontSize: moderateScale(13.5),
-      fontFamily: 'Manrope-Medium',
-      color: Color(theme.colors.text).alpha(0.85).toString(),
+      fontSize: moderateScale(16), // @ai
+      fontFamily: 'Manrope-Regular', // @ai
+      color: theme.colors.text, // @ai
       marginRight: moderateScale(10),
     },
     divider: {
       height: StyleSheet.hairlineWidth,
-      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
+      backgroundColor: Color(theme.colors.text).alpha(0.14).toString(), // @ai
     },
     switchStyle: {
       transform: [{scaleX: 0.8}, {scaleY: 0.8}],
@@ -1865,9 +1866,10 @@ const createStyles = (theme: Theme) =>
     radioRow: {
       flexDirection: 'row',
       alignItems: 'center',
+      minHeight: moderateScale(52), // @ai
       paddingVertical: verticalScale(12),
-      paddingHorizontal: moderateScale(14),
-      marginHorizontal: -moderateScale(14),
+      paddingHorizontal: moderateScale(18),
+      marginHorizontal: -moderateScale(18),
     },
     radioRowPressed: {
       backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
@@ -1898,9 +1900,9 @@ const createStyles = (theme: Theme) =>
       flex: 1,
     },
     radioLabel: {
-      fontSize: moderateScale(13.5),
-      fontFamily: 'Manrope-SemiBold',
-      color: Color(theme.colors.text).alpha(0.85).toString(),
+      fontSize: moderateScale(16), // @ai
+      fontFamily: 'Manrope-Regular', // @ai
+      color: theme.colors.text, // @ai
     },
     radioLabelSelected: {
       color: theme.colors.text,
