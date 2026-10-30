@@ -1720,8 +1720,8 @@ const createStyles = (theme: Theme) =>
     },
     sectionHeader: {
       textAlign: 'left',
-      fontSize: moderateScale(15),
-      fontFamily: 'Manrope-Regular',
+      fontSize: theme.typography.smallSize,
+      fontFamily: 'Manrope-SemiBold',
       color: Color(theme.colors.text).alpha(0.55).toString(),
       marginBottom: moderateScale(8),
       marginStart: moderateScale(18),
@@ -1741,8 +1741,8 @@ const createStyles = (theme: Theme) =>
       paddingVertical: verticalScale(8),
     },
     optionLabel: {
-      fontSize: moderateScale(16), // @ai
-      fontFamily: 'Manrope-Regular', // @ai
+      fontSize: theme.typography.mediumSize, // @ai
+      fontFamily: 'Manrope-SemiBold', // @ai
       color: theme.colors.text, // @ai
       marginRight: moderateScale(10),
     },
@@ -1900,8 +1900,8 @@ const createStyles = (theme: Theme) =>
       flex: 1,
     },
     radioLabel: {
-      fontSize: moderateScale(16), // @ai
-      fontFamily: 'Manrope-Regular', // @ai
+      fontSize: theme.typography.mediumSize, // @ai
+      fontFamily: 'Manrope-SemiBold', // @ai
       color: theme.colors.text, // @ai
     },
     radioLabelSelected: {

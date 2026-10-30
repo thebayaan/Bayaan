@@ -26,6 +26,7 @@ jest.mock('@/hooks/useTheme', () => ({
         card: '#eeeeee',
         border: '#dddddd',
       },
+      typography: {bodySize: 16, mediumSize: 14, smallSize: 12},
     },
   }),
 }));
