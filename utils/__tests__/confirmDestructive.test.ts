@@ -1,5 +1,5 @@
 // @ai-generated
-import {Alert, Platform} from 'react-native';
+import {ActionSheetIOS, Alert, Platform} from 'react-native';
 import enCollection from '../../i18n/locales/en/collection.json';
 import arCollection from '../../i18n/locales/ar/collection.json';
 import {
@@ -36,8 +36,14 @@ function show(onConfirm: () => void | Promise<void>) {
 const flush = () => new Promise(resolve => setImmediate(resolve));
 
 describe('confirmDestructive', () => {
+  // The alert is the Android and web prompt; iOS cases set the OS themselves.
+  let os: ReturnType<typeof jest.replaceProperty>;
   beforeEach(() => {
     mockAlert.mockClear();
+    os = jest.replaceProperty(Platform, 'OS', 'android');
+  });
+  afterEach(() => {
+    os.restore();
   });
 
   it('shows the alert without running the action', () => {
@@ -112,28 +118,67 @@ describe('confirmDestructive', () => {
     }
   });
 
-  it.each([true, false])(
-    'hands the prompt to the iOS dialog host when one is listening (iPad: %s)',
-    isPad => {
-      const os = jest.replaceProperty(Platform, 'OS', 'ios');
-      const pad = Object.getOwnPropertyDescriptor(Platform, 'isPad');
-      Object.defineProperty(Platform, 'isPad', {
-        configurable: true,
-        get: () => isPad,
+  it('hands the prompt to the iPad dialog host when one is listening', () => {
+    const ios = jest.replaceProperty(Platform, 'OS', 'ios');
+    const pad = Object.getOwnPropertyDescriptor(Platform, 'isPad');
+    Object.defineProperty(Platform, 'isPad', {
+      configurable: true,
+      get: () => true,
+    });
+    const listener = jest.fn();
+    const unsubscribe = setConfirmationListener(listener);
+    try {
+      show(jest.fn());
+      expect(mockAlert).not.toHaveBeenCalled();
+      expect(listener).toHaveBeenCalledWith(
+        expect.objectContaining({title: 'Remove All Downloads?'}),
+      );
+    } finally {
+      unsubscribe();
+      ios.restore();
+      if (pad) Object.defineProperty(Platform, 'isPad', pad);
+    }
+  });
+
+  it('shows an action sheet on iPhone and confirms from its first button', async () => {
+    const ios = jest.replaceProperty(Platform, 'OS', 'ios');
+    const pad = Object.getOwnPropertyDescriptor(Platform, 'isPad');
+    Object.defineProperty(Platform, 'isPad', {
+      configurable: true,
+      get: () => false,
+    });
+    const sheet = jest
+      .spyOn(ActionSheetIOS, 'showActionSheetWithOptions')
+      .mockImplementation(() => {
+        // Native; the test reads the options and calls back itself.
       });
-      const listener = jest.fn();
-      const unsubscribe = setConfirmationListener(listener);
-      try {
-        show(jest.fn());
-        expect(mockAlert).not.toHaveBeenCalled();
-        expect(listener).toHaveBeenCalledWith(
-          expect.objectContaining({title: 'Remove All Downloads?'}),
-        );
-      } finally {
-        unsubscribe();
-        os.restore();
-        if (pad) Object.defineProperty(Platform, 'isPad', pad);
-      }
-    },
-  );
+    const listener = jest.fn();
+    const unsubscribe = setConfirmationListener(listener);
+    try {
+      const onConfirm = jest.fn();
+      show(onConfirm);
+      expect(mockAlert).not.toHaveBeenCalled();
+      expect(listener).not.toHaveBeenCalled();
+      const [options, callback] = sheet.mock.calls[0];
+      expect(options).toEqual(
+        expect.objectContaining({
+          title: 'Remove All Downloads?',
+          options: ['Remove', 'Cancel'],
+          destructiveButtonIndex: 0,
+          cancelButtonIndex: 1,
+        }),
+      );
+      callback(1);
+      await flush();
+      expect(onConfirm).not.toHaveBeenCalled();
+      callback(0);
+      await flush();
+      expect(onConfirm).toHaveBeenCalledTimes(1);
+    } finally {
+      unsubscribe();
+      sheet.mockRestore();
+      ios.restore();
+      if (pad) Object.defineProperty(Platform, 'isPad', pad);
+    }
+  });
 });

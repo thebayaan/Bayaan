@@ -501,7 +501,7 @@ function RootLayout() {
                   onTouchStart={recordTouch} // @ai
                   onLayout={onLayoutRootView}>
                   <NetworkStatusMonitor />
-                  <ConfirmationDialogHost /* @ai: iOS confirmations */ />
+                  <ConfirmationDialogHost /* @ai: iPad confirmations */ />
                   <SheetProvider>
                     <Stack
                       screenOptions={{
