@@ -7,6 +7,7 @@ import {
   Platform,
   Pressable,
   Dimensions,
+  ScrollView as RNScrollView,
   type ListRenderItemInfo,
 } from 'react-native';
 import {moderateScale} from '@/utils/scale';
@@ -44,6 +45,17 @@ interface ReciterPickerSheetProps {
   onSelect: (item: ReciterPickerItem) => void;
   // Renders a Done button in the header when provided.
   onDone?: () => void;
+  // @ai-start
+  // Shown above the full list while nothing is typed: a row of recent
+  // reciters and a Favorites group, by item id.
+  recentIds?: readonly string[];
+  favoriteIds?: readonly string[];
+  // Filter chips (e.g. rewayat); an item matches when filterOf lists the id.
+  filters?: readonly {id: string; label: string}[];
+  filterOf?: (item: ReciterPickerItem) => readonly string[];
+  // A note under the list (why some reciters are missing).
+  footerNote?: string;
+  // @ai-end
 }
 
 const PICKER_FIELDS: readonly SearchField<ReciterPickerItem>[] = [
@@ -59,6 +71,11 @@ export function ReciterPickerSheet({
   selectedIds,
   onSelect,
   onDone,
+  recentIds, // @ai
+  favoriteIds, // @ai
+  filters, // @ai
+  filterOf, // @ai
+  footerNote, // @ai
 }: ReciterPickerSheetProps): React.ReactElement {
   const {theme} = useTheme();
   const sheetBottomPadding = useSheetBottomPadding(moderateScale(40)); // @ai
@@ -71,20 +88,48 @@ export function ReciterPickerSheet({
     [items],
   );
   const deferredQuery = useDeferredValue(searchQuery);
-  const filteredItems = useMemo(
+  // @ai-start
+  const [filter, setFilter] = useState<string | null>(null);
+  const searched = useMemo(
     () =>
       deferredQuery.trim()
         ? searchIndex.search(deferredQuery).map(hit => hit.item)
         : items,
     [items, searchIndex, deferredQuery],
   );
+  const filteredItems = useMemo(
+    () =>
+      filter && filterOf
+        ? searched.filter(item => filterOf(item).includes(filter))
+        : searched,
+    [searched, filter, filterOf],
+  );
+  const browsing = !deferredQuery.trim() && !filter;
+  const byId = useMemo(
+    () => new Map(items.map(item => [item.id, item])),
+    [items],
+  );
+  const recentItems = useMemo(
+    () =>
+      browsing
+        ? (recentIds ?? []).flatMap(id => byId.get(id) ?? []).slice(0, 8)
+        : [],
+    [browsing, recentIds, byId],
+  );
+  const favoriteItems = useMemo(
+    () =>
+      browsing ? (favoriteIds ?? []).flatMap(id => byId.get(id) ?? []) : [],
+    [browsing, favoriteIds, byId],
+  );
+  // @ai-end
 
-  const renderItem = useCallback(
-    ({item}: ListRenderItemInfo<ReciterPickerItem>) => {
+  const renderRow = useCallback(
+    (item: ReciterPickerItem, key?: string) => {
       const isSelected = selectedIds.has(item.id);
 
       return (
         <Pressable
+          key={key}
           style={({pressed}) => [
             styles.reciterRow,
             pressed && styles.reciterRowPressed,
@@ -124,6 +169,94 @@ export function ReciterPickerSheet({
     },
     [selectedIds, onSelect, styles, theme.colors.text],
   );
+
+  const renderItem = useCallback(
+    ({item}: ListRenderItemInfo<ReciterPickerItem>) => renderRow(item),
+    [renderRow],
+  );
+
+  // @ai-start
+  const listHeader =
+    filters?.length || recentItems.length || favoriteItems.length ? (
+      <View>
+        {!!filters?.length && (
+          <RNScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filterRow}
+            keyboardShouldPersistTaps="handled">
+            {[
+              {id: null as string | null, label: t('mushafPlayer.filterAll')},
+              ...filters,
+            ].map(chip => {
+              const on = chip.id === filter;
+              return (
+                <Pressable
+                  key={chip.id ?? 'all'}
+                  onPress={() => setFilter(chip.id)}
+                  accessibilityRole="button"
+                  accessibilityState={{selected: on}}
+                  style={[styles.filterChip, on && styles.filterChipOn]}>
+                  <Text
+                    style={[
+                      styles.filterChipText,
+                      on && styles.filterChipTextOn,
+                    ]}>
+                    {chip.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </RNScrollView>
+        )}
+        {recentItems.length > 0 && (
+          <View>
+            <Text style={styles.groupTitle}>{t('mushafPlayer.recent')}</Text>
+            <RNScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.recentRow}
+              keyboardShouldPersistTaps="handled">
+              {recentItems.map(item => {
+                const on = selectedIds.has(item.id);
+                return (
+                  <Pressable
+                    key={item.id}
+                    onPress={() => onSelect(item)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${item.name}, ${item.subtitle}`}
+                    accessibilityState={{selected: on}}
+                    style={styles.recentItem}>
+                    <View
+                      style={[styles.recentPhoto, on && styles.recentPhotoOn]}>
+                      <ReciterImage
+                        imageUrl={item.imageUrl || undefined}
+                        reciterName={item.name}
+                        style={styles.recentImage}
+                        profileIconSize={moderateScale(22)}
+                      />
+                    </View>
+                    <Text style={styles.recentName} numberOfLines={2}>
+                      {item.name}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </RNScrollView>
+          </View>
+        )}
+        {favoriteItems.length > 0 && (
+          <View>
+            <Text style={styles.groupTitle}>{t('mushafPlayer.favorites')}</Text>
+            {favoriteItems.map(item => renderRow(item, `fav-${item.id}`))}
+          </View>
+        )}
+        {(recentItems.length > 0 || favoriteItems.length > 0) && (
+          <Text style={styles.groupTitle}>{t('mushafPlayer.allReciters')}</Text>
+        )}
+      </View>
+    ) : undefined;
+  // @ai-end
 
   return (
     <ActionSheet
@@ -181,6 +314,12 @@ export function ReciterPickerSheet({
           windowSize={5}
           removeClippedSubviews={Platform.OS === 'android'}
           keyboardShouldPersistTaps="handled"
+          ListHeaderComponent={listHeader} // @ai
+          ListFooterComponent={
+            footerNote ? (
+              <Text style={styles.footerNote}>{footerNote}</Text>
+            ) : undefined
+          } // @ai
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyText}>{t('reciterPicker.empty')}</Text>
@@ -309,6 +448,62 @@ const createStyles = (theme: Theme) =>
       backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
       borderColor: Color(theme.colors.text).alpha(0.12).toString(),
     },
+    // @ai-start
+    filterRow: {
+      gap: moderateScale(6),
+      paddingBottom: moderateScale(8),
+    },
+    filterChip: {
+      height: moderateScale(32),
+      paddingHorizontal: moderateScale(13),
+      borderRadius: moderateScale(16),
+      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
+      justifyContent: 'center',
+    },
+    filterChipOn: {backgroundColor: theme.colors.text},
+    filterChipText: {
+      fontSize: moderateScale(13),
+      fontFamily: 'Manrope-Bold',
+      color: theme.colors.text,
+    },
+    filterChipTextOn: {color: theme.colors.background},
+    groupTitle: {
+      fontSize: moderateScale(13),
+      fontFamily: 'Manrope-Bold',
+      color: Color(theme.colors.textSecondary).alpha(0.85).toString(),
+      marginTop: moderateScale(12),
+      marginBottom: moderateScale(8),
+      marginHorizontal: moderateScale(4),
+    },
+    recentRow: {gap: moderateScale(4)},
+    recentItem: {width: moderateScale(74), alignItems: 'center'},
+    recentPhoto: {
+      width: moderateScale(58),
+      height: moderateScale(58),
+      borderRadius: moderateScale(29),
+      overflow: 'hidden',
+      borderWidth: moderateScale(2.5),
+      borderColor: 'transparent',
+    },
+    recentPhotoOn: {borderColor: theme.colors.text},
+    recentImage: {width: '100%', height: '100%'},
+    recentName: {
+      marginTop: moderateScale(6),
+      fontSize: moderateScale(11),
+      fontFamily: 'Manrope-SemiBold',
+      color: theme.colors.text,
+      textAlign: 'center',
+    },
+    footerNote: {
+      fontSize: moderateScale(12),
+      fontFamily: 'Manrope-Medium',
+      color: theme.colors.textSecondary,
+      textAlign: 'center',
+      marginTop: moderateScale(16),
+      marginHorizontal: moderateScale(16),
+      lineHeight: moderateScale(17),
+    },
+    // @ai-end
     emptyContainer: {
       padding: moderateScale(40),
       alignItems: 'center',

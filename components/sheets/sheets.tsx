@@ -283,6 +283,8 @@ declare module 'react-native-actions-sheet' {
     'mushaf-player-options': SheetDefinition<{
       payload: {
         currentPage: number;
+        // @ai: back from "pick on the page" (store/mushafRangePickStore).
+        fromPick?: boolean;
       };
     }>;
     // @ai-start

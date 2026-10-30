@@ -36,6 +36,7 @@ import {showToast} from '@/utils/toastUtils'; // @ai
 import {mushafAudioService} from '@/services/audio/MushafAudioService';
 import {SURAHS} from '@/data/surahData';
 import MushafViewer from '@/components/mushaf/main';
+import {RangePickBar} from '@/components/mushaf/RangePickBar'; // @ai
 import {USE_GLASS} from '@/hooks/useGlassProps';
 // @ai-start
 import {playbackNoticeText} from '@/i18n/playback';
@@ -249,6 +250,7 @@ export default function MushafScreen() {
         initialSurahId={initialSurahId} // @ai
         initialVerseKey={initialVerseKey}
       />
+      <RangePickBar /* @ai: the Listen sheet's "pick on the page" */ />
     </View>
   );
 }
