@@ -40,6 +40,7 @@ interface PlayerContentProps {
   onAmbientPress: () => void;
   onOptionsPress: () => void;
   onFollowAlongPress: () => void;
+  optionsMenu?: React.ReactNode;
 }
 
 const ANIMATION_DURATION = 300;
@@ -54,6 +55,7 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
   onAmbientPress,
   onOptionsPress,
   onFollowAlongPress,
+  optionsMenu,
 }) => {
   const {theme} = useTheme();
   const readingColors = useReadingThemeColors();
@@ -271,7 +273,7 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
           ) : (
             <FrostedView style={StyleSheet.absoluteFill} />
           )}
-          <Header onOptionsPress={onOptionsPress} />
+          <Header onOptionsPress={onOptionsPress} optionsMenu={optionsMenu} />
         </Animated.View>
       </GestureDetector>
 

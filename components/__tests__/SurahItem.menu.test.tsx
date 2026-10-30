@@ -127,13 +127,15 @@ describe('SurahItem native options menu', () => {
     expect(menuTriggers()).not.toContain('longPress');
   });
 
-  it('keeps the sheet on phones', () => {
+  it('opens the options from a menu on phones too', () => {
     mockIsTablet = false;
-    const r = mount();
-    expect(MockMenu).not.toHaveBeenCalled();
+    const onOptionsPress = jest.fn();
+    const r = mount(onOptionsPress);
+    expect(menuTriggers()).toEqual(expect.arrayContaining(['longPress']));
     const more = r.root.findAll(
       n => n.props.accessibilityLabel === 'surahItem.moreOptions',
     )[0];
-    expect(more.props.onPress).toEqual(expect.any(Function));
+    expect(more.props.onPress).toBeUndefined();
+    expect(onOptionsPress).not.toHaveBeenCalled();
   });
 });

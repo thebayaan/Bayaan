@@ -15,10 +15,10 @@ import {
 import {useNativeTheme} from './useNativeTheme';
 
 /**
- * iPad: shows `confirmDestructive` prompts as a SwiftUI confirmation dialog.
- * A regular-width window presents it as a popover, so the host moves to the
- * touch that asked for it and the arrow points at that button. Mounted once
- * at the root; renders nothing on iPhone.
+ * Shows `confirmDestructive` prompts as a SwiftUI confirmation dialog. On
+ * iPhone it rises as an action sheet. A regular-width iPad window presents
+ * it as a popover, so the host moves to the touch that asked for it and the
+ * arrow points at that button. Mounted once at the root.
  */
 export function ConfirmationDialogHost() {
   const [pending, setPending] = useState<PendingConfirmation | null>(null);
@@ -27,7 +27,7 @@ export function ConfirmationDialogHost() {
   const native = useNativeTheme();
 
   useEffect(() => {
-    if (Platform.OS !== 'ios' || !Platform.isPad) return;
+    if (Platform.OS !== 'ios') return;
     return setConfirmationListener(next => {
       setPending(next);
       setPresented(!!next);

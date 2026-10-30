@@ -44,11 +44,11 @@ export function runConfirmed({title, onConfirm}: ConfirmDestructiveOptions) {
  * taps the destructive button; a rejected promise is logged rather than left
  * unhandled (the stores already record their own error state).
  *
- * On iPad it is a native confirmation dialog pointing at the button that
- * asked (a popover); elsewhere an alert.
+ * On iOS it is a native confirmation dialog: an action sheet on iPhone, and
+ * on iPad a popover pointing at the button that asked. Elsewhere an alert.
  */
 export function confirmDestructive(options: ConfirmDestructiveOptions): void {
-  if (Platform.OS === 'ios' && Platform.isPad && listener) {
+  if (Platform.OS === 'ios' && listener) {
     listener({...options, anchor: getRecentTouch()});
     return;
   }

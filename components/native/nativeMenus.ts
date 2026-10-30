@@ -6,7 +6,13 @@ export const nativeMenusAvailable =
   Platform.OS === 'ios' || Platform.OS === 'android';
 
 /**
- * Long-press and secondary-click menus on list rows and cards (iPad). One
+ * Native ••• and context menus on phones. Off, phones go back to their
+ * bottom sheets and only tablets get native menus.
+ */
+export const phoneMenusEnabled = true;
+
+/**
+ * Long-press and secondary-click menus on list rows and cards (iOS). One
  * switch to turn them off if hosting every visible row costs too much
  * scroll performance on a device.
  */

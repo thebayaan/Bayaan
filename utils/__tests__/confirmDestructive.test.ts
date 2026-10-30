@@ -112,25 +112,28 @@ describe('confirmDestructive', () => {
     }
   });
 
-  it('hands the prompt to the iPad dialog host when one is listening', () => {
-    const os = jest.replaceProperty(Platform, 'OS', 'ios');
-    const pad = Object.getOwnPropertyDescriptor(Platform, 'isPad');
-    Object.defineProperty(Platform, 'isPad', {
-      configurable: true,
-      get: () => true,
-    });
-    const listener = jest.fn();
-    const unsubscribe = setConfirmationListener(listener);
-    try {
-      show(jest.fn());
-      expect(mockAlert).not.toHaveBeenCalled();
-      expect(listener).toHaveBeenCalledWith(
-        expect.objectContaining({title: 'Remove All Downloads?'}),
-      );
-    } finally {
-      unsubscribe();
-      os.restore();
-      if (pad) Object.defineProperty(Platform, 'isPad', pad);
-    }
-  });
+  it.each([true, false])(
+    'hands the prompt to the iOS dialog host when one is listening (iPad: %s)',
+    isPad => {
+      const os = jest.replaceProperty(Platform, 'OS', 'ios');
+      const pad = Object.getOwnPropertyDescriptor(Platform, 'isPad');
+      Object.defineProperty(Platform, 'isPad', {
+        configurable: true,
+        get: () => isPad,
+      });
+      const listener = jest.fn();
+      const unsubscribe = setConfirmationListener(listener);
+      try {
+        show(jest.fn());
+        expect(mockAlert).not.toHaveBeenCalled();
+        expect(listener).toHaveBeenCalledWith(
+          expect.objectContaining({title: 'Remove All Downloads?'}),
+        );
+      } finally {
+        unsubscribe();
+        os.restore();
+        if (pad) Object.defineProperty(Platform, 'isPad', pad);
+      }
+    },
+  );
 });
