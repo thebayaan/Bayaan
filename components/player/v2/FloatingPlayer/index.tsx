@@ -27,6 +27,10 @@ import {getTrackDisplayTitle, getTrackArtistDisplay} from '@/i18n/format';
 // @ai-end
 
 const capsuleRadius = (height: number) => height / 2;
+// @ai: the capsule is the artwork plus this inset on every side, so the
+// round artwork is concentric with it (diameter = 2 * (radius - inset)).
+const ARTWORK_SIZE = moderateScale(36, 0.2);
+const ARTWORK_INSET = moderateScale(7, 0.2);
 
 // @ai-start
 export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
@@ -126,7 +130,9 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
             style={styles.body}
             android_ripple={{color: 'rgba(0, 0, 0, 0.1)', borderless: false}}
             accessibilityRole="button"
-            accessibilityLabel={`${getTrackDisplayTitle(currentTrack)}, ${getTrackArtistDisplay(currentTrack)}`}
+            accessibilityLabel={`${getTrackDisplayTitle(
+              currentTrack,
+            )}, ${getTrackArtistDisplay(currentTrack)}`}
             accessibilityHint={t('a11y.openPlayer')}>
             <ReciterImage
               reciterName={currentTrack.reciterName}
@@ -181,8 +187,11 @@ const styles = StyleSheet.create({
   content: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: moderateScale(14, 0.2),
-    paddingVertical: moderateScale(7, 0.2),
+    // The artwork sits as far from the start edge as from the top and
+    // bottom, so its circle shares the capsule's centre.
+    paddingStart: ARTWORK_INSET,
+    paddingEnd: moderateScale(14, 0.2),
+    paddingVertical: ARTWORK_INSET,
     gap: moderateScale(10, 0.2),
   },
   body: {
@@ -196,9 +205,9 @@ const styles = StyleSheet.create({
     gap: moderateScale(10, 0.2),
   },
   artwork: {
-    width: moderateScale(36, 0.2),
-    height: moderateScale(36, 0.2),
-    borderRadius: moderateScale(8, 0.2),
+    width: ARTWORK_SIZE,
+    height: ARTWORK_SIZE,
+    borderRadius: ARTWORK_SIZE / 2,
     overflow: 'hidden',
     flexShrink: 0,
   },
