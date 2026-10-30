@@ -127,11 +127,11 @@ describe('SurahItem native options menu', () => {
     expect(menuTriggers()).not.toContain('longPress');
   });
 
-  it('opens the options from a menu on phones too', () => {
+  it('opens the options from a menu on phones too, without a row menu', () => {
     mockIsTablet = false;
     const onOptionsPress = jest.fn();
     const r = mount(onOptionsPress);
-    expect(menuTriggers()).toEqual(expect.arrayContaining(['longPress']));
+    expect(menuTriggers()).not.toContain('longPress');
     const more = r.root.findAll(
       n => n.props.accessibilityLabel === 'surahItem.moreOptions',
     )[0];

@@ -12,7 +12,7 @@ export const nativeMenusAvailable =
 export const phoneMenusEnabled = true;
 
 /**
- * Long-press and secondary-click menus on list rows and cards (iOS). One
+ * Long-press and secondary-click menus on list rows and cards (iPad). One
  * switch to turn them off if hosting every visible row costs too much
  * scroll performance on a device.
  */

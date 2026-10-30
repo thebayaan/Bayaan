@@ -103,7 +103,7 @@ export const NoteItem = memo<NoteItemProps>(
           ) : null}
           <View style={styles.lineRight} />
           <Pressable
-            onPress={onOptionsPress}
+            onPress={optionsMenu ? undefined : onOptionsPress}
             hitSlop={8}
             style={styles.optionsButton}>
             <Feather

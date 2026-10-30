@@ -95,7 +95,7 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
     const rewayat = useMemo(
       () =>
         rewayatId
-          ? (reciter?.rewayat?.find(r => r.id === rewayatId) ?? null)
+          ? reciter?.rewayat?.find(r => r.id === rewayatId) ?? null
           : null,
       [reciter, rewayatId],
     );
@@ -284,7 +284,7 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
         {onOptionsPress && (
           <Pressable
             style={styles.optionsZone}
-            onPress={tapMenu ? undefined : onOptionsPress}>
+            onPress={tapMenu || optionsMenu ? undefined : onOptionsPress}>
             {isCurrentTrack ? (
               <NowPlayingIndicator
                 isPlaying={

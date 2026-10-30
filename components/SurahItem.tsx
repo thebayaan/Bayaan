@@ -380,7 +380,7 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
         {onOptionsPress && (
           <Pressable
             style={styles.optionsZone}
-            onPress={tapMenu ? undefined : handleOptionsPress} // @ai
+            onPress={tapMenu || optionsMenu ? undefined : handleOptionsPress} // @ai
             accessibilityRole="button"
             accessibilityLabel={t('surahItem.moreOptions')}
             accessibilityHint={t('surahItem.moreOptionsHint')}>

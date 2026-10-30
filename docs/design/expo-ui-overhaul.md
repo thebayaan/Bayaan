@@ -15,9 +15,10 @@ Status: Phase 1 in progress (2026-10-30). Builds on #476, which adopted `@expo/u
 ## Phase 1: native interaction on phones
 
 - [x] ••• options open as native menus on phones (iOS SwiftUI `Menu`, Android Compose dropdown): surah rows and cards, the full player, downloads, uploads, loved, notes, bookmarks, favourite reciters, collections, playlists, home cards, adhkar sessions. The menu models in `components/sheets/options/*` are shared with the sheets. Gate: `useNativeOptionsMenu`.
-- [x] Long-press context menus with the lifted row preview on iPhone (rows and cards that #476 wired for iPad). Android keeps long-press opening the sheet.
+- [ ] ~~Long-press context menus on iPhone.~~ Tried and reverted: a context menu wraps the whole row in a `Host` that sizes it. The reciter page renders all 114 rows unvirtualized, so the hosts stalled layout (BAYAAN-7G, a 3 to 4 s hang) and lost their size when the tab was reattached, blanking the list. Phones keep long-press opening the sheet; iPad keeps its row menus. Revisit with a lighter approach (a host only for the pressed row).
 - [x] Destructive confirmations (`confirmDestructive`) as a SwiftUI confirmation dialog on iPhone too, rising as an action sheet. Informational alerts stay `Alert.alert`, which is already the native alert.
-- [ ] Measure scroll performance on the Quran tab and Collection lists with row context menus on (each visible row hosts SwiftUI). Turn `rowContextMenusEnabled` off if it drops frames.
+- [x] A ••• button with a native menu laid over it must not keep its own `onPress`. Firing the sheet under an opening menu froze the screen (Playlists). Every item and header that takes `optionsMenu` now drops its press handler when one is present.
+- [ ] Check the iPad reciter page with row context menus (same unvirtualized list).
 - [ ] Not yet covered: Mushaf player options (`mushaf-player-options`) and the verse actions sheet, which mix toggles and navigation and need their own menu model.
 
 ## Phase 2: replace the remaining custom controls
