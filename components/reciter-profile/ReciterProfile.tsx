@@ -40,7 +40,7 @@ import {generateSmartAudioUrl} from '@/utils/audioUtils';
 import {getReciterArtwork} from '@/utils/artworkUtils';
 import {shuffleArray} from '@/utils/arrayUtils';
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
-import {SheetManager} from 'react-native-actions-sheet';
+import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 import {useFavoriteReciters} from '@/hooks/useFavoriteReciters';
 import {
   useDownloadQueries,
@@ -1341,7 +1341,7 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
                               }
                               isDownloaded={isDownloaded}
                               onOptionsPress={(surah: Surah) =>
-                                SheetManager.show('surah-options', {
+                                showSheet('surah-options', {
                                   payload: {
                                     surah,
                                     reciterId: currentReciterId,
@@ -1450,7 +1450,7 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
               reciterId={currentReciterId}
               isLoved={isLovedWithCurrentRewayat}
               onOptionsPress={(surah: Surah) =>
-                SheetManager.show('surah-options', {
+                showSheet('surah-options', {
                   payload: {
                     surah,
                     reciterId: currentReciterId,

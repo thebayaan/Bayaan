@@ -4,6 +4,7 @@ import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {SheetProps, SheetManager} from 'react-native-actions-sheet';
+import {hideSheet} from '@/components/sheets/sheetControl'; // @ai
 import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import {Feather} from '@expo/vector-icons';
 import {PlaylistIcon} from '@/components/Icons';
@@ -31,7 +32,7 @@ export const AddToCollectionSheet = (
   );
 
   const handleClose = useCallback(() => {
-    SheetManager.hide('add-to-collection');
+    hideSheet('add-to-collection');
   }, []);
 
   const handleAddFavoriteReciter = useCallback(() => {

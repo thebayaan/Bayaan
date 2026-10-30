@@ -46,6 +46,7 @@ import {downloadSurah} from '@/services/downloadService';
 import {useCollectionDownloadState} from '@/hooks/useCollectionDownloadState';
 import {CollectionStickyHeader} from '@/components/collection/CollectionStickyHeader';
 import {SheetManager} from 'react-native-actions-sheet';
+import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 // @ai-start
 import {confirmDestructive} from '@/utils/confirmDestructive';
 // @ai-end
@@ -664,7 +665,7 @@ const LovedScreen = () => {
         rewayatId: track.rewayatId,
         userRecitationId: track.userRecitationId,
       });
-      if (payload) SheetManager.show('surah-options', {payload});
+      if (payload) showSheet('surah-options', {payload});
     },
     [buildOptions],
   );

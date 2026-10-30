@@ -12,7 +12,7 @@ import Color from 'color';
 
 import {useDownloads} from '@/services/player/store/downloadSelectors';
 import {usePlaylists} from '@/hooks/usePlaylists';
-import {SheetManager} from 'react-native-actions-sheet';
+import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 import {
   HeartIcon,
   DownloadIcon,
@@ -69,7 +69,7 @@ export default function CollectionScreen() {
   );
 
   const handleAddPress = useCallback(() => {
-    SheetManager.show('add-to-collection');
+    showSheet('add-to-collection');
   }, []);
 
   const categories: CategoryItem[] = [

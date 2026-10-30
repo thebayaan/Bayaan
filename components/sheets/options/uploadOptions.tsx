@@ -2,6 +2,7 @@
 import React from 'react';
 import {confirmDestructive} from '@/utils/confirmDestructive'; // @ai
 import {SheetManager} from 'react-native-actions-sheet';
+import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 import {useTranslation} from 'react-i18next';
 import {useLoved} from '@/hooks/useLoved';
 import {useReciterNavigation} from '@/hooks/useReciterNavigation';
@@ -122,7 +123,7 @@ export function UploadOptionsMenu({
         return toggleLoved(reciterId, surahId, '', recitation.id);
       case 'collection':
         if (!surah) return;
-        SheetManager.show('select-playlist', {
+        showSheet('select-playlist', {
           payload: {
             surah,
             reciterId,
@@ -134,7 +135,7 @@ export function UploadOptionsMenu({
       case 'reciter':
         return navigateToReciterProfile(reciterId);
       case 'info':
-        SheetManager.show('upload-options', {
+        showSheet('upload-options', {
           payload: {...payload, showInfo: true},
         });
         return;

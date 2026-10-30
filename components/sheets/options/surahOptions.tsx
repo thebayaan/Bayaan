@@ -1,6 +1,6 @@
 // @ai-generated
 import React, {useCallback, useMemo, type ReactNode} from 'react';
-import {SheetManager} from 'react-native-actions-sheet';
+import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 import {useTranslation} from 'react-i18next';
 import type {Surah} from '@/data/surahData';
 import {useLoved} from '@/hooks/useLoved';
@@ -161,7 +161,7 @@ export function useSurahOptions(
 
   const handleAddToPlaylist = useCallback(() => {
     if (!reciterId || !surah) return;
-    SheetManager.show('select-playlist', {
+    showSheet('select-playlist', {
       payload: {surah, reciterId, rewayatId},
     });
   }, [reciterId, surah, rewayatId]);
@@ -292,7 +292,7 @@ function useSurahMenuModel(payload: SurahOptionsPayload): OptionsMenuModel {
       case 'reciter':
         return o.handleGoToReciter();
       case 'info':
-        SheetManager.show('surah-options', {
+        showSheet('surah-options', {
           payload: {...payload, showInfo: true},
         });
         return;

@@ -26,6 +26,7 @@ import {ReciterDownloadsHeader} from '@/components/playlist-detail/ReciterDownlo
 import {createDownloadedTrack} from '@/utils/track';
 import {CollectionStickyHeader} from '@/components/collection/CollectionStickyHeader';
 import {SheetManager} from 'react-native-actions-sheet';
+import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
 import {Feather} from '@expo/vector-icons';
@@ -377,7 +378,7 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
 
   const handleShowOptions = useCallback(
     (download: DownloadedSurah, itemReciter: Reciter, surah: Surah) => {
-      SheetManager.show('download-options', {
+      showSheet('download-options', {
         payload: buildDownloadOptions(download, itemReciter, surah),
       });
     },

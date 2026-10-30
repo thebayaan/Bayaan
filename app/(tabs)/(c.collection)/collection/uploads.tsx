@@ -16,6 +16,7 @@ import {moderateScale} from '@/utils/scale';
 import {Feather} from '@expo/vector-icons';
 import {MicrophoneIcon, PlayIcon, ShuffleIcon} from '@/components/Icons';
 import {SheetManager} from 'react-native-actions-sheet';
+import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 import {useUploadsStore, getCustomReciterName} from '@/store/uploadsStore';
 import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {createUserUploadTrack, addUploadToRecentlyPlayed} from '@/utils/track';
@@ -441,7 +442,7 @@ export default function UploadsScreen() {
 
   const handleShowOptions = useCallback(
     (item: UploadedRecitation, index: number) => {
-      SheetManager.show('upload-options', {
+      showSheet('upload-options', {
         payload: buildUploadOptions(item, index),
       });
     },

@@ -98,6 +98,7 @@ import {useTranslation} from 'react-i18next';
 import i18n from '@/i18n';
 import {getSurahDisplayName, localizeDigits} from '@/i18n/format';
 import {flipX} from '@/utils/rtl';
+import {useNativeSheetId} from '@/components/native/nativeSheetContext'; // @ai
 // @ai-end
 import {CommunityReflectionsContent} from './verse-actions/CommunityReflectionsContent';
 
@@ -207,6 +208,9 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
   const styles = createStyles(theme);
   const {t} = useTranslation(['sheets', 'common']);
   const [activeScreen, setActiveScreenRaw] = useState<ActiveScreen>(null);
+  // @ai: a native sheet sizes this view to its detent, so the menu fills
+  // it and scrolls instead of running past the bottom edge.
+  const inNativeSheet = useNativeSheetId() !== null;
 
   const setActiveScreen = useCallback((screen: ActiveScreen) => {
     LayoutAnimation.configureNext(
@@ -756,7 +760,8 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
 
   // @ai-start
   const content = (
-    <View style={[styles.container, activeScreen && {flex: 1}]}>
+    <View
+      style={[styles.container, (activeScreen || inNativeSheet) && {flex: 1}]}>
       {!activeScreen && (
         <View style={styles.header}>
           <Text style={styles.surahName}>{surahName}</Text>

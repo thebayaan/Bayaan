@@ -1,6 +1,6 @@
 // @ai-generated
 import React, {useCallback} from 'react';
-import {SheetManager} from 'react-native-actions-sheet';
+import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 import {useRouter} from 'expo-router';
 import {useTranslation} from 'react-i18next';
 import {useFavoriteReciters} from '@/hooks/useFavoriteReciters';
@@ -128,7 +128,7 @@ export function useHomeCardOptions(
     if (!surah) return;
     handleClose();
     setTimeout(() => {
-      SheetManager.show('select-playlist', {
+      showSheet('select-playlist', {
         payload: {surah, reciterId, rewayatId},
       });
     }, 300);

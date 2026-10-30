@@ -1,7 +1,7 @@
 // @ai-generated
 import React from 'react';
 import {confirmDestructive} from '@/utils/confirmDestructive'; // @ai
-import {SheetManager} from 'react-native-actions-sheet';
+import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 import {useTranslation} from 'react-i18next';
 import {useLoved} from '@/hooks/useLoved';
 import {getSurahDisplayName} from '@/i18n/format';
@@ -80,12 +80,12 @@ export function DownloadOptionsMenu({
       case 'queue':
         return payload.onAddToQueue();
       case 'collection':
-        SheetManager.show('select-playlist', {
+        showSheet('select-playlist', {
           payload: {surah, reciterId, rewayatId},
         });
         return;
       case 'info':
-        SheetManager.show('download-options', {
+        showSheet('download-options', {
           payload: {...payload, showInfo: true},
         });
         return;

@@ -10,7 +10,8 @@ import {
   ProfileIcon,
   LearnAboutIcon,
 } from '@/components/Icons';
-import {SheetProps, SheetManager, ScrollView} from 'react-native-actions-sheet';
+import {SheetProps, ScrollView} from 'react-native-actions-sheet';
+import {hideSheet} from '@/components/sheets/sheetControl'; // @ai
 import ActionSheet, {
   useSheetWidth,
 } from '@/components/sheets/AdaptiveActionSheet';
@@ -101,7 +102,7 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
   );
 
   const handleClose = useCallback(() => {
-    SheetManager.hide('surah-options');
+    hideSheet('surah-options');
   }, []);
 
   // @ai-start

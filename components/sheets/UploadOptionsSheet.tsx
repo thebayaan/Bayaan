@@ -6,6 +6,7 @@ import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {QueueIcon, HeartIcon, PlayIcon, ProfileIcon} from '@/components/Icons';
 import {SheetProps, SheetManager, ScrollView} from 'react-native-actions-sheet';
+import {showSheet, hideSheet} from '@/components/sheets/sheetControl'; // @ai
 import ActionSheet, {
   useSheetWidth,
 } from '@/components/sheets/AdaptiveActionSheet';
@@ -183,7 +184,7 @@ export const UploadOptionsSheet = (props: SheetProps<'upload-options'>) => {
   );
 
   const handleClose = useCallback(() => {
-    SheetManager.hide('upload-options');
+    hideSheet('upload-options');
   }, []);
 
   const handlePlay = useCallback(() => {
@@ -213,7 +214,7 @@ export const UploadOptionsSheet = (props: SheetProps<'upload-options'>) => {
 
   const handleAddToPlaylist = useCallback(() => {
     if (!reciterId || !surah) return;
-    SheetManager.show('select-playlist', {
+    showSheet('select-playlist', {
       payload: {
         surah,
         reciterId,
