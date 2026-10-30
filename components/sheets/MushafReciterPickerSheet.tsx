@@ -11,6 +11,7 @@ import {
 } from '@/components/reciter-picker/ReciterPickerSheet';
 import {getStyleLabel} from './sheetLabels';
 import {hideSheet} from '@/components/sheets/sheetControl'; // @ai
+import {useFavoriteRecitersStore} from '@/store/favoriteRecitersStore'; // @ai
 
 /**
  * Single-select reciter picker for Mushaf playback. Lists only rewayat that
@@ -23,6 +24,10 @@ export const MushafReciterPickerSheet = (
   const {t} = useTranslation('sheets');
   const availableReciters = useMushafPlayerStore(s => s.availableReciters);
   const selectedRewayatId = props.payload?.selectedRewayatId ?? null;
+  // @ai-start: Recent, Favorites and rewayah filters for the Listen sheet
+  const recentRewayatIds = useMushafPlayerStore(s => s.recentRewayatIds);
+  const favoriteReciters = useFavoriteRecitersStore(s => s.favoriteReciters);
+  // @ai-end
 
   useEffect(() => {
     if (availableReciters.length === 0) {
@@ -57,6 +62,44 @@ export const MushafReciterPickerSheet = (
     [availableReciters],
   );
 
+  // @ai-start
+  const rewayahOf = useMemo(
+    () =>
+      new Map(
+        availableReciters.map(r => [
+          r.rewayatId,
+          getDisplayLabelFromName(r.rewayahName),
+        ]),
+      ),
+    [availableReciters],
+  );
+
+  const filters = useMemo(() => {
+    const labels = [...new Set(rewayahOf.values())].filter(Boolean);
+    return labels.length > 1 ? labels.map(l => ({id: l, label: l})) : [];
+  }, [rewayahOf]);
+
+  const filterOf = useCallback(
+    (item: ReciterPickerItem) => {
+      const label = rewayahOf.get(item.id);
+      return label ? [label] : [];
+    },
+    [rewayahOf],
+  );
+
+  const recentIds = useMemo(
+    () => recentRewayatIds.filter(id => rewayahOf.has(id)),
+    [recentRewayatIds, rewayahOf],
+  );
+
+  const favoriteIds = useMemo(() => {
+    const fav = new Set(favoriteReciters.map(r => r.id));
+    return availableReciters
+      .filter(r => fav.has(r.reciterId))
+      .map(r => r.rewayatId);
+  }, [favoriteReciters, availableReciters]);
+  // @ai-end
+
   const selectedIds = useMemo(
     () => new Set(selectedRewayatId ? [selectedRewayatId] : []),
     [selectedRewayatId],
@@ -78,6 +121,11 @@ export const MushafReciterPickerSheet = (
       items={items}
       selectedIds={selectedIds}
       onSelect={handleSelect}
+      recentIds={recentIds} // @ai
+      favoriteIds={favoriteIds} // @ai
+      filters={filters} // @ai
+      filterOf={filterOf} // @ai
+      footerNote={t('mushafPlayer.untimedNote')} // @ai
     />
   );
 };
