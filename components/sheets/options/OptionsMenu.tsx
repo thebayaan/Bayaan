@@ -15,10 +15,10 @@ export type MenuTrigger = 'tap' | 'longPress';
 /**
  * Whether an options sheet shows as a native menu here instead.
  *
- * A tap on ••• opens the menu on iOS and Android, phones and tablets alike.
- * A long press (or secondary click) opens it on iPad only. Android keeps
- * long-press opening the sheet's menu card, because Compose has no
- * context-menu gesture to hand it to. Phones keep it too: a context menu
+ * iOS only (`nativeMenusAvailable`): Android keeps its bottom sheets. A tap
+ * on ••• opens the menu on iPhone and iPad alike. A long press (or secondary
+ * click) opens it on iPad only. Phones keep long press on the sheet: a
+ * context menu
  * wraps the whole row in a host that sizes it, and on long, unvirtualized
  * lists (the reciter page) those hosts stall layout and lose their size when
  * the tab is reattached. `phoneMenusEnabled` puts phones back on their
