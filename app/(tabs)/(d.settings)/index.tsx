@@ -174,7 +174,7 @@ function PhoneSettingsScreen() {
                 appName: branding.appName,
               })}>
               {renderIcon('bar-chart-2')}
-              <Text style={styles.title} numberOfLines={1}>
+              <Text style={styles.title} numberOfLines={2}>
                 {t('settings:index.analytics.title')}
               </Text>
               <NativeSwitch
