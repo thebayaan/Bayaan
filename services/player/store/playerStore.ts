@@ -107,6 +107,28 @@ export function currentPlayOpId(): number {
 }
 
 /**
+ * @ai Stop the audio before a write that leaves the queue with no current
+ * track. The app shows no player without a current track, so audio that kept
+ * playing would have no control in the app to stop it.
+ *
+ * It ends the in-flight loads first, so none of them can start audio after
+ * the pause, then pauses the native player. A pause failure must not block
+ * the caller's write. Returns the op id that it claimed: a caller compares it
+ * after the await to learn if a newer load started during the pause.
+ */
+async function pauseForEmptyQueue(): Promise<number> {
+  invalidatePlayOps();
+  const opId = playOpId;
+  try {
+    await expoAudioService.pause();
+  } catch (error) {
+    if (__DEV__)
+      console.warn('[PlayerStore] Pause before an empty queue failed:', error);
+  }
+  return opId;
+}
+
+/**
  * Helper to load and optionally play a track from the queue.
  *
  * Returns `false` when the operation was superseded mid-flight (a cleanup() or
@@ -613,6 +635,15 @@ export const usePlayerStore = create<PlayerStoreState>()(
           const state = get();
           const tracks = [...state.queue.tracks];
           let newCurrentIndex = state.queue.currentIndex;
+          // @ai Read the autoplay intent before the reload starts. Only the
+          // autoplaying loads (updateQueue, skipToNext, skipToPrevious) write
+          // 'loading'. So 'loading' means that a load which plays is in
+          // flight, and this reload supersedes it. Before, only 'playing'
+          // counted, so the replacement track loaded paused.
+          const autoPlay =
+            state.playback.state === 'playing' ||
+            state.playback.state === 'loading';
+          let reloaded = false;
 
           for (const index of sortedIndices) {
             if (index >= 0 && index < tracks.length) {
@@ -631,16 +662,33 @@ export const usePlayerStore = create<PlayerStoreState>()(
                     tracks,
                     newCurrentIndex,
                     0,
-                    state.playback.state === 'playing',
+                    autoPlay,
                   );
                   // Superseded by cleanup()/a newer load — bail before the
                   // trailing set() below re-writes queue.tracks (that would
                   // resurrect the queue the superseding action replaced).
                   if (!stillCurrent) return;
+                  reloaded = true;
                 }
               }
             }
           }
+
+          // @ai The removal left no track: the only track, or the last
+          // tracks with the current one. Stop the audio before the
+          // empty-queue write (see pauseForEmptyQueue). Before, nothing
+          // paused, and the state stayed 'playing' with no player shown.
+          const emptied = tracks.length === 0 && state.queue.tracks.length > 0;
+          if (emptied) {
+            const opId = await pauseForEmptyQueue();
+            if (opId !== playOpId) return; // a newer load owns the queue
+          }
+
+          // @ai The state that this op settles, or null when it leaves the
+          // state to the op that owns it (no reload, nothing emptied).
+          let settled: StorePlaybackState | null = null;
+          if (emptied) settled = 'paused';
+          else if (reloaded) settled = autoPlay ? 'playing' : 'ready';
 
           set(state => ({
             queue: {
@@ -649,14 +697,32 @@ export const usePlayerStore = create<PlayerStoreState>()(
               total: tracks.length,
               currentIndex: Math.max(0, newCurrentIndex),
             },
-            loading: {...state.loading, queueLoading: false},
+            loading: {
+              ...state.loading,
+              queueLoading: false,
+              // @ai The winning op clears all loading state. A skip that
+              // this reload superseded returned before its own clear, so
+              // without this, trackLoading stayed true (the player controls
+              // stayed disabled) and the state stayed 'loading'
+              // (ExpoAudioProvider skips its status sync in that state).
+              ...(settled ? {trackLoading: false} : {}),
+            },
+            ...(settled
+              ? {playback: {...state.playback, state: settled, position: 0}}
+              : {}),
           }));
         } catch (error) {
           console.error('[PlayerStore] Remove from queue failed:', error);
           if (error instanceof Error) {
             set(state => ({
               error: {...state.error, queue: error},
-              loading: {...state.loading, queueLoading: false},
+              // @ai A failed reload must not leave the controls disabled,
+              // the same as the catch in the other load paths.
+              loading: {
+                ...state.loading,
+                queueLoading: false,
+                trackLoading: false,
+              },
             }));
           }
         }
