@@ -217,8 +217,8 @@ export const WordDetailSheet = (props: SheetProps<'word-detail'>) => {
                   {audioLoading
                     ? t('common:status.loading')
                     : isPlaying
-                    ? t('common:actions.pause')
-                    : t('common:actions.play')}
+                      ? t('common:actions.pause')
+                      : t('common:actions.play')}
                 </Text>
               </Pressable>
             ) : null}

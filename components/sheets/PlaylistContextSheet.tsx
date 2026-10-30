@@ -552,8 +552,8 @@ export const PlaylistContextSheet = (props: SheetProps<'playlist-context'>) => {
                       option.disabled
                         ? theme.colors.textSecondary
                         : option.destructive
-                        ? '#ff4444'
-                        : theme.colors.text
+                          ? '#ff4444'
+                          : theme.colors.text
                     }
                   />
                 )}

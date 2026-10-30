@@ -98,7 +98,7 @@ function formatDuration(seconds: number | null): string {
 // @ai-start
 function getSystemReciterName(id: string): string {
   const reciter = RECITERS.find(r => r.id === id);
-  return reciter ? getReciterDisplayName(reciter) : getReciterName(id) ?? '';
+  return reciter ? getReciterDisplayName(reciter) : (getReciterName(id) ?? '');
 }
 // @ai-end
 
