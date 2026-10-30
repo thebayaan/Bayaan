@@ -25,8 +25,8 @@ import {useNativeTheme} from './useNativeTheme';
 
 /**
  * Sheet content runs under the home indicator, to the screen's bottom edge,
- * so the indicator is the only inset: scroll content ends with it, sticky
- * footers clear it. The top and sides are the sheet's own.
+ * so the indicator is the only inset: scroll views end with it on their own
+ * and sticky footers pad by it. The top and sides are the sheet's own.
  */
 const SHEET_INSETS = {
   top: 0,
