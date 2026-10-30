@@ -1,5 +1,5 @@
 // @ai-generated
-import React, {useEffect, useSyncExternalStore} from 'react';
+import React, {useEffect, useMemo, useSyncExternalStore} from 'react';
 import {StyleSheet, View} from 'react-native';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import {SafeAreaInsetsContext} from 'react-native-safe-area-context';
@@ -41,6 +41,16 @@ function SheetLevel({
 }) {
   const native = useNativeTheme();
   const level = levels[index];
+  const key = level?.key;
+  const id = level?.id;
+  const fit = level?.fit;
+  const info = useMemo(
+    () =>
+      key === undefined || id === undefined
+        ? null
+        : {key, id, fit: fit ?? false},
+    [key, id, fit],
+  );
   if (!level) return null;
 
   return (
@@ -66,7 +76,7 @@ function SheetLevel({
                   gesture root, so it gets its own. */}
               <GestureHandlerRootView style={styles.content}>
                 <SafeAreaInsetsContext.Provider value={NO_INSETS}>
-                  <NativeSheetLevelContext.Provider value={level.id}>
+                  <NativeSheetLevelContext.Provider value={info}>
                     {level.content}
                   </NativeSheetLevelContext.Provider>
                 </SafeAreaInsetsContext.Provider>

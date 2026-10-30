@@ -5,7 +5,8 @@ import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {QueueIcon, HeartIcon, PlayIcon} from '@/components/Icons';
-import {SheetProps, SheetManager, ScrollView} from 'react-native-actions-sheet';
+import {SheetProps, ScrollView} from 'react-native-actions-sheet';
+import {showSheet, hideSheet} from '@/components/sheets/sheetControl'; // @ai
 import ActionSheet, {
   useSheetWidth,
 } from '@/components/sheets/AdaptiveActionSheet';
@@ -105,7 +106,7 @@ export const DownloadOptionsSheet = (props: SheetProps<'download-options'>) => {
   );
 
   const handleClose = useCallback(() => {
-    SheetManager.hide('download-options');
+    hideSheet('download-options');
   }, []);
 
   const handlePlay = useCallback(() => {
@@ -125,7 +126,7 @@ export const DownloadOptionsSheet = (props: SheetProps<'download-options'>) => {
 
   const handleAddToPlaylist = useCallback(() => {
     if (!reciterId || !surah) return;
-    SheetManager.show('select-playlist', {
+    showSheet('select-playlist', {
       payload: {
         surah,
         reciterId,

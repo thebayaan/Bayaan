@@ -40,7 +40,7 @@ import {getSystemPlaylistEstimatedDuration} from '@/utils/systemPlaylistHelpers'
 import Color from 'color';
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
 import {getFeaturedReciters} from '@/data/featuredReciters';
-import {SheetManager} from 'react-native-actions-sheet';
+import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 import {useNavigation} from 'expo-router';
 import {useGlassHeaderHeight} from '@/hooks/useGlassHeaderHeight'; // @ai
 import {CollectionStickyHeader} from '@/components/collection/CollectionStickyHeader';
@@ -590,7 +590,7 @@ const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
 
   const handleShowTrackOptions = useCallback(
     (track: PlaylistTrack, reciter: Reciter, surah: Surah) => {
-      SheetManager.show('surah-options', {
+      showSheet('surah-options', {
         payload: buildTrackOptions(track, reciter, surah),
       });
     },

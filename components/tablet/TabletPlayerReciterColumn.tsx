@@ -24,7 +24,7 @@ import {getReciterArtwork} from '@/utils/artworkUtils';
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
 import {useDownloadQueries} from '@/services/player/store/downloadSelectors';
 import {useSettings} from '@/hooks/useSettings';
-import {SheetManager} from 'react-native-actions-sheet';
+import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 import {SurahList} from '@/components/reciter-profile/components/SurahList';
 import {ReciterImage} from '@/components/ReciterImage';
 import {Feather} from '@expo/vector-icons';
@@ -222,7 +222,7 @@ export const TabletPlayerReciterColumn: React.FC<{
   const onOptionsPress = useCallback(
     (surah: Surah) => {
       if (!selectedRewayat) return;
-      SheetManager.show('surah-options', {
+      showSheet('surah-options', {
         payload: {
           surah,
           reciterId,

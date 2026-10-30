@@ -27,6 +27,7 @@ import {moderateScale} from '@/utils/scale';
 import {Feather} from '@expo/vector-icons';
 import {DownloadIcon, PlayIcon, ShuffleIcon} from '@/components/Icons';
 import {SheetManager} from 'react-native-actions-sheet';
+import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 // @ai-start
 import {confirmDestructive} from '@/utils/confirmDestructive';
 // @ai-end
@@ -399,7 +400,7 @@ export default function DownloadsScreen() {
 
   const handleShowOptions = useCallback(
     (download: DownloadedSurah, reciter: Reciter, surah: Surah) => {
-      SheetManager.show('download-options', {
+      showSheet('download-options', {
         payload: buildDownloadOptions(download, reciter, surah),
       });
     },

@@ -9,14 +9,19 @@ import React, {
 } from 'react';
 import {
   Pressable,
+  ScrollView,
   StyleSheet,
   View,
+  useWindowDimensions,
   type GestureResponderEvent,
   type LayoutChangeEvent,
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import {SafeAreaInsetsContext} from 'react-native-safe-area-context';
+import {
+  SafeAreaInsetsContext,
+  initialWindowMetrics,
+} from 'react-native-safe-area-context';
 // eslint-disable-next-line no-restricted-imports -- this is the wrapper
 import ActionSheet, {
   type ActionSheetProps,
@@ -25,7 +30,13 @@ import ActionSheet, {
 import {useResponsive} from '@/hooks/useResponsive';
 import {getRecentTouch, type TouchPoint} from '@/utils/lastTouch';
 import {appLayoutDirection, forceLTR} from '@/utils/rtl';
-import {useNativeSheetId} from '@/components/native/nativeSheetContext'; // @ai
+// @ai-start
+import {
+  useNativeSheetId,
+  useNativeSheetLevel,
+} from '@/components/native/nativeSheetContext';
+import {fitNativeSheet} from '@/components/native/nativeSheets';
+// @ai-end
 
 /** Widest a sheet gets on iPad (ipad-standards §5.3, sheets and dialogs). */
 export const SHEET_MAX_WIDTH = 560;
@@ -97,8 +108,8 @@ export function placeMenu(
     anchor.x < third
       ? anchor.x
       : anchor.x > 2 * third
-      ? anchor.x - menu.width
-      : anchor.x - menu.width / 2;
+        ? anchor.x - menu.width
+        : anchor.x - menu.width / 2;
   const fitsBelow =
     anchor.y + ANCHOR_CLEARANCE + menu.height <= area.height - EDGE_MARGIN;
   const y = fitsBelow
@@ -317,8 +328,36 @@ function NativeSheetBody({
     callbacks.current.onOpen?.();
     return () => callbacks.current.onClose?.();
   }, []);
-  return <View style={styles.nativeBody}>{children}</View>;
+  const level = useNativeSheetLevel();
+  const {height: windowHeight} = useWindowDimensions();
+  if (!level?.fit) return <View style={styles.nativeBody}>{children}</View>;
+
+  // A fitted sheet is as tall as its content plus the space above it and
+  // the home indicator below; past the large height its content scrolls.
+  const insets = initialWindowMetrics?.insets;
+  const chrome = NATIVE_BODY_TOP + (insets?.bottom ?? 0);
+  const maxHeight = windowHeight - (insets?.top ?? 0) - LARGE_DETENT_GAP;
+  const onLayout = (event: LayoutChangeEvent) =>
+    fitNativeSheet(
+      level.key,
+      event.nativeEvent.layout.height + chrome,
+      maxHeight,
+    );
+  return (
+    <ScrollView
+      style={styles.nativeScroll}
+      contentContainerStyle={styles.nativeFitBody}
+      bounces={false}
+      showsVerticalScrollIndicator={false}>
+      <View onLayout={onLayout}>{children}</View>
+    </ScrollView>
+  );
 }
+
+/** Space between the native grabber and the content. */
+const NATIVE_BODY_TOP = 18;
+/** The large detent stops this far below the status bar. */
+const LARGE_DETENT_GAP = 10;
 // @ai-end
 
 /**
@@ -353,7 +392,9 @@ export default AdaptiveActionSheet;
 
 const styles = StyleSheet.create({
   // @ai: below the native grabber
-  nativeBody: {flex: 1, paddingTop: 18},
+  nativeBody: {flex: 1, paddingTop: NATIVE_BODY_TOP},
+  nativeFitBody: {flexGrow: 1, paddingTop: NATIVE_BODY_TOP},
+  nativeScroll: {flex: 1},
   layer: {
     height: '100%',
     backgroundColor: 'transparent',

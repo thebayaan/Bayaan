@@ -3,7 +3,8 @@ import {View, Text, Pressable, StyleSheet} from 'react-native';
 import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import {SheetProps, SheetManager} from 'react-native-actions-sheet';
+import {SheetProps} from 'react-native-actions-sheet';
+import {hideSheet} from '@/components/sheets/sheetControl'; // @ai
 import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import {Feather} from '@expo/vector-icons';
 import Color from 'color';
@@ -45,7 +46,7 @@ const HomeCardOptionsContent = ({
   const styles = createStyles(theme);
   const {t} = useTranslation(['sheets', 'common']);
   const handleClose = useCallback(() => {
-    SheetManager.hide('home-card-options');
+    hideSheet('home-card-options');
   }, []);
   const {
     variant,

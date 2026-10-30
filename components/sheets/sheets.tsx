@@ -90,6 +90,19 @@ registerNativeSheet('mushaf-repeat-options', MushafRepeatOptionsSheet);
 registerNativeSheet('mushaf-reciter-picker', MushafReciterPickerSheet);
 registerNativeSheet('follow-along', FollowAlongSheet);
 registerNativeSheet('ambient-sounds', AmbientSoundsSheet);
+// Menus size to their content.
+registerNativeSheet('surah-options', SurahOptionsSheet, {detents: 'fit'});
+registerNativeSheet('home-card-options', HomeCardOptionsSheet, {
+  detents: 'fit',
+});
+registerNativeSheet('download-options', DownloadOptionsSheet, {
+  detents: 'fit',
+});
+registerNativeSheet('upload-options', UploadOptionsSheet, {detents: 'fit'});
+registerNativeSheet('add-to-collection', AddToCollectionSheet, {
+  detents: 'fit',
+});
+registerNativeSheet('select-playlist', SelectPlaylistSheet, {detents: 'fit'});
 // @ai-end
 registerSheet('home-card-options', HomeCardOptionsSheet);
 registerSheet('adhkar-session-options', AdhkarSessionOptionsSheet);

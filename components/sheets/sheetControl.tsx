@@ -12,8 +12,9 @@ import {
   hideNativeSheet,
   isNativeSheetPresented,
   nativeSheetsEnabled,
+  nativeSheetsSettled,
   presentNativeSheet,
-  type NativeSheetDetent,
+  type NativeSheetSizing,
 } from '@/components/native/nativeSheets';
 
 type SheetId = keyof Sheets;
@@ -23,8 +24,8 @@ type ReturnValue<Id extends SheetId> = Sheets[Id]['returnValue'];
 interface NativeSheetEntry {
   // Each entry renders its own sheet's props; the map erases the id.
   Sheet: ComponentType<SheetProps<never>>;
-  /** Where the sheet can rest; the first is where it opens. */
-  detents?: NativeSheetDetent[];
+  /** Where the sheet can rest (the first is where it opens), or `fit`. */
+  detents?: NativeSheetSizing;
 }
 
 const nativeSheets = new Map<string, NativeSheetEntry>();
@@ -43,7 +44,7 @@ const openNativeSheets = new Map<string, Promise<unknown>>();
 export function registerNativeSheet<Id extends SheetId>(
   id: Id,
   Sheet: ComponentType<SheetProps<Id>>,
-  options?: {detents?: NativeSheetDetent[]},
+  options?: {detents?: NativeSheetSizing},
 ): void {
   nativeSheets.set(id, {
     Sheet: Sheet as ComponentType<SheetProps<never>>,
@@ -73,17 +74,19 @@ export function showSheet<Id extends SheetId>(
     const open = openNativeSheets.get(id);
     if (open) return open as Promise<ReturnValue<Id>>;
     const {Sheet} = entry;
-    const shown = presentNativeSheet(
-      id,
-      <Sheet sheetId={id} payload={options?.payload as never} />,
-      hasNativeSheet(),
-      entry.detents,
-    );
-    if (shown) {
-      const tracked = shown.finally(() => openNativeSheets.delete(id));
-      openNativeSheets.set(id, tracked);
-      return tracked as Promise<ReturnValue<Id>>;
-    }
+    const tracked = nativeSheetsSettled()
+      .then(
+        () =>
+          presentNativeSheet(
+            id,
+            <Sheet sheetId={id} payload={options?.payload as never} />,
+            hasNativeSheet(),
+            entry.detents,
+          ) ?? SheetManager.show(id, options as never),
+      )
+      .finally(() => openNativeSheets.delete(id));
+    openNativeSheets.set(id, tracked);
+    return tracked as Promise<ReturnValue<Id>>;
   }
   if (hasNativeSheet()) {
     // A React Native modal can't present while a native sheet is up (it

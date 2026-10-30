@@ -1,8 +1,12 @@
 // @ai-generated
 import type {ReactNode} from 'react';
 
-/** Heights a native sheet can rest at. The first is where it opens. */
-export type NativeSheetDetent = 'medium' | 'large';
+/**
+ * Heights a native sheet can rest at. The first is where it opens. `fit`
+ * sizes the sheet to its content (a menu), up to the large height.
+ */
+export type NativeSheetDetent = 'medium' | 'large' | {height: number};
+export type NativeSheetSizing = NativeSheetDetent[] | 'fit';
 
 /**
  * Sheets presented as SwiftUI sheets on iPhone (detents, the system grabber,
@@ -18,6 +22,8 @@ export interface NativeSheetLevel {
   id: string;
   content: ReactNode;
   detents: NativeSheetDetent[];
+  /** Sized to its content: the content reports its height (`fitNativeSheet`). */
+  fit: boolean;
   /** False while the level animates out. */
   presented: boolean;
 }
@@ -61,6 +67,23 @@ export function isNativeSheetPresented(id: string): boolean {
   return levels.some(level => level.id === id && level.presented);
 }
 
+/**
+ * Resolves once no sheet is animating out. SwiftUI can't present a sheet
+ * from one that is being dismissed.
+ */
+export function nativeSheetsSettled(): Promise<void> {
+  const closing = () => levels.some(level => !level.presented);
+  if (!closing()) return Promise.resolve();
+  return new Promise(resolve => {
+    const listener = () => {
+      if (closing()) return;
+      listeners.delete(listener);
+      resolve();
+    };
+    listeners.add(listener);
+  });
+}
+
 export function hasNativeSheet(): boolean {
   return levels.some(level => level.presented);
 }
@@ -76,9 +99,12 @@ export function presentNativeSheet(
   id: string,
   content: ReactNode,
   stack: boolean,
-  detents: NativeSheetDetent[] = ['medium', 'large'],
+  sizing: NativeSheetSizing = ['medium', 'large'],
 ): Promise<unknown> | null {
   if (!hostMounted) return null;
+  const fit = sizing === 'fit';
+  // A fitted sheet opens at medium until its content has been measured.
+  const detents: NativeSheetDetent[] = fit ? ['medium'] : sizing;
   const top = levels[levels.length - 1];
   const key = nextKey++;
   const promise = new Promise<unknown>(resolve => {
@@ -89,10 +115,10 @@ export function presentNativeSheet(
     finish(top.key);
     publish([
       ...levels.slice(0, -1),
-      {key, id, content, detents, presented: true},
+      {key, id, content, detents, fit, presented: true},
     ]);
   } else {
-    publish([...levels, {key, id, content, detents, presented: true}]);
+    publish([...levels, {key, id, content, detents, fit, presented: true}]);
   }
   return promise;
 }
@@ -115,6 +141,26 @@ export function hideNativeSheet(id: string, result?: unknown): Promise<void> {
     levels.map((item, i) => (i >= index ? {...item, presented: false} : item)),
   );
   return gone;
+}
+
+/**
+ * A fitted level's content reports its height (sheet chrome included). Too
+ * tall for the screen, the sheet goes full height and its content scrolls.
+ */
+export function fitNativeSheet(
+  key: number,
+  height: number,
+  maxHeight: number,
+): void {
+  const detents: NativeSheetDetent[] =
+    height >= maxHeight ? ['large'] : [{height: Math.ceil(height)}];
+  const level = levels.find(item => item.key === key);
+  if (!level?.fit || sameDetents(level.detents, detents)) return;
+  publish(levels.map(item => (item.key === key ? {...item, detents} : item)));
+}
+
+function sameDetents(a: NativeSheetDetent[], b: NativeSheetDetent[]) {
+  return JSON.stringify(a) === JSON.stringify(b);
 }
 
 /** The host reports a level swiped away (no longer presented). */

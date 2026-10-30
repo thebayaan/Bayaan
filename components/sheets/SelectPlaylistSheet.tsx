@@ -12,6 +12,7 @@ import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {PlaylistIcon, HeartIcon} from '@/components/Icons';
 import {SheetProps, SheetManager, ScrollView} from 'react-native-actions-sheet';
+import {hideSheet} from '@/components/sheets/sheetControl'; // @ai
 import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import {usePlaylists} from '@/hooks/usePlaylists';
 import {useLoved} from '@/hooks/useLoved';
@@ -49,7 +50,7 @@ export const SelectPlaylistSheet = (props: SheetProps<'select-playlist'>) => {
     : false;
 
   const handleClose = useCallback(() => {
-    SheetManager.hide('select-playlist');
+    hideSheet('select-playlist');
   }, []);
 
   // Handle playlist selection
