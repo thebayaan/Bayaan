@@ -29,6 +29,7 @@ import {
 } from '@/i18n/format';
 import {hideSheet} from '@/components/sheets/sheetControl'; // @ai
 import {useSheetBottomPadding} from '@/components/sheets/useSheetBottomPadding'; // @ai
+import {useNativeSheetId} from '@/components/native/nativeSheetContext'; // @ai
 // @ai-end
 
 // Import surah info data
@@ -59,6 +60,7 @@ const renderHtmlDefaultProps: Partial<RenderHTMLProps> = {
 export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
   const {theme} = useTheme();
   const sheetBottomPadding = useSheetBottomPadding(moderateScale(40)); // @ai
+  const inNativeSheet = useNativeSheetId() !== null; // @ai
   const styles = createStyles(theme);
   const {t} = useTranslation(['sheets', 'common']);
   // Size HTML from the sheet, which stops at 560pt on iPad. @ai
@@ -366,7 +368,8 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
             </Text>
           </View>
           <ScrollView
-            style={styles.scrollView}
+            // @ai: a fitted native sheet measures this; it scrolls there
+            style={inNativeSheet ? undefined : styles.scrollView}
             showsVerticalScrollIndicator={false}
             bounces={true}>
             <View
