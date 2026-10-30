@@ -15,6 +15,14 @@ import {GlassView} from 'expo-glass-effect';
 import {useDevSettingsStore} from '@/store/devSettingsStore';
 import {useAnalyticsConsentStore} from '@/store/analyticsConsentStore';
 import {AppearancePicker} from '@/components/settings/AppearancePicker'; // @ai
+// @ai-start
+import {
+  NativeSettingsForm,
+  nativeSettingsFormAvailable,
+} from '@/components/native/settings/NativeSettingsForm';
+import type {NativeSettingsSection} from '@/components/native/settings/settingsFormTypes';
+import type {SFSymbol} from 'sf-symbols-typescript';
+// @ai-end
 import branding from '@/config/branding';
 // @ai-start
 import {flipX} from '@/utils/rtl';
@@ -107,6 +115,52 @@ function PhoneSettingsScreen() {
       <Feather name={name} size={ICON_SIZE} color={theme.colors.text} />
     </View>
   );
+
+  if (nativeSettingsFormAvailable) {
+    const nativeSections: NativeSettingsSection[] = [
+      ...settingsSections.map(section => ({
+        key: section.section,
+        title: section.section,
+        rows: section.items.map(item => ({
+          kind: 'link' as const,
+          key: item.type,
+          title: item.title,
+          systemImage: ROW_SYMBOLS[item.type] ?? 'circle',
+          value: trailingValue(item.type),
+          external: isExternalLink(item.type),
+          onPress: () => {
+            handleSettingPress(item.type);
+          },
+        })),
+      })),
+      {
+        key: 'privacy',
+        title: t('settings:index.analytics.section'),
+        footer: t('settings:index.analytics.description', {
+          appName: branding.appName,
+        }),
+        rows: [
+          {
+            kind: 'toggle',
+            key: 'analytics',
+            title: t('settings:index.analytics.title'),
+            systemImage: 'chart.bar',
+            value: analyticsEnabled,
+            onChange: handleAnalyticsToggle,
+          },
+        ],
+      },
+    ];
+    return (
+      <View style={styles.container}>
+        <NativeSettingsForm
+          appearanceTitle={t('settings:index.appearance')}
+          appearance={<AppearancePicker />}
+          sections={nativeSections}
+        />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -235,6 +289,25 @@ const ROW_ICONS: Record<string, FeatherName> = {
   github: 'github',
   terms: 'file-text',
   privacy: 'shield',
+};
+
+/** Outline SF Symbols for the iOS form, matching ROW_ICONS. */
+const ROW_SYMBOLS: Record<string, SFSymbol> = {
+  mushafSettings: 'book',
+  translations: 'textformat',
+  defaultReciter: 'mic',
+  reciterChoice: 'slider.horizontal.3',
+  language: 'globe',
+  storage: 'internaldrive',
+  rateApp: 'star',
+  featureRequest: 'lightbulb',
+  support: 'bubble.left',
+  whatsNew: 'gift',
+  about: 'info.circle',
+  credits: 'rosette',
+  github: 'chevron.left.forwardslash.chevron.right',
+  terms: 'doc.text',
+  privacy: 'hand.raised',
 };
 
 const ICON_SIZE = moderateScale(21);
