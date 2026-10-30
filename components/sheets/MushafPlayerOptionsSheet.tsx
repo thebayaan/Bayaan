@@ -725,7 +725,7 @@ const createStyles = (theme: Theme) =>
     scrollView: {
       flexGrow: 0,
     },
-    scrollViewFill: {flex: 1}, // @ai
+    scrollViewFill: {flexGrow: 1, flexShrink: 1}, // @ai: flexGrow, since scrollView sets it
     container: {
       paddingHorizontal: ms(20),
       paddingTop: ms(12),
