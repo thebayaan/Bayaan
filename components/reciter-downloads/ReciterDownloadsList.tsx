@@ -25,7 +25,6 @@ import {usePlayerStore} from '@/services/player/store/playerStore';
 import {ReciterDownloadsHeader} from '@/components/playlist-detail/ReciterDownloadsHeader';
 import {createDownloadedTrack} from '@/utils/track';
 import {CollectionStickyHeader} from '@/components/collection/CollectionStickyHeader';
-import {SheetManager} from 'react-native-actions-sheet';
 import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
@@ -429,7 +428,7 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
   );
 
   const handleRemoveAllDownloads = useCallback(() => {
-    SheetManager.show('collection-options', {payload: optionsPayload});
+    showSheet('collection-options', {payload: optionsPayload});
   }, [optionsPayload]);
 
   const renderHeaderRight = useCallback(

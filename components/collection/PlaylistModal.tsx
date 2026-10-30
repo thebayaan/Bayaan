@@ -18,6 +18,7 @@ import {LinearGradient} from 'expo-linear-gradient';
 // @ai-start
 import {latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
+import {useVisibleAfterNativeSheets} from '@/components/native/useVisibleAfterNativeSheets'; // @ai
 // @ai-end
 
 interface PlaylistModalProps {
@@ -58,6 +59,7 @@ export const PlaylistModal: React.FC<PlaylistModalProps> = ({
   initialName = '',
   initialColor,
 }) => {
+  const modalVisible = useVisibleAfterNativeSheets(visible); // @ai
   const {t} = useTranslation(['collection', 'common']);
   const [playlistName, setPlaylistName] = useState(initialName);
 
@@ -115,7 +117,7 @@ export const PlaylistModal: React.FC<PlaylistModalProps> = ({
 
   return (
     <Modal
-      visible={visible}
+      visible={modalVisible}
       animationType="slide"
       presentationStyle="pageSheet"
       onRequestClose={handleClose}>

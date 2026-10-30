@@ -20,7 +20,6 @@ import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotati
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
 import {NoteItem} from '@/components/collection/NoteItem';
 import {CollectionStickyHeader} from '@/components/collection/CollectionStickyHeader';
-import {SheetManager} from 'react-native-actions-sheet';
 import Color from 'color';
 import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
 import type {VerseNote} from '@/types/verse-annotations';
@@ -38,6 +37,7 @@ import {
 } from '@/components/sheets/options/collectionOptions';
 import {savedVerseOpenParams} from '@/services/verse-annotations/openSavedVerse'; // @ai
 import {useLibraryListBottomPadding} from '@/hooks/useBottomInset'; // @ai
+import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 // @ai-end
 
 interface NoteData {
@@ -103,7 +103,7 @@ const NotesScreen = () => {
   }, []);
 
   const handleNotePress = useCallback((item: NoteData) => {
-    SheetManager.show('verse-note', {
+    showSheet('verse-note', {
       payload: {
         verseKey: item.note.verseKey,
         surahNumber: item.note.surahNumber,
@@ -171,7 +171,7 @@ const NotesScreen = () => {
 
   const handleOptionsPress = useCallback(
     (item: NoteData) => {
-      SheetManager.show('collection-options', {payload: buildOptions(item)});
+      showSheet('collection-options', {payload: buildOptions(item)});
     },
     [buildOptions],
   );

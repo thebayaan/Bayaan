@@ -10,7 +10,7 @@ import {
   ScrollView as RNScrollView,
   type ScrollViewProps,
 } from 'react-native';
-import {ScaledSheet, moderateScale} from '@/utils/scale';
+import {ScaledSheet, moderateScale, verticalScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import Color from 'color';
@@ -19,6 +19,7 @@ import {useTranslation} from 'react-i18next';
 import {MushafSettingsContent} from '@/components/MushafSettingsContent';
 import {ReadingThemeContent} from '@/components/ReadingThemeContent';
 import {flipX} from '@/utils/rtl';
+import {useSheetBottomPadding} from '@/components/sheets/useSheetBottomPadding'; // @ai
 
 type ActiveScreen = 'theme' | null;
 export type MushafLayoutContext = 'mushaf' | 'player';
@@ -36,6 +37,7 @@ export function MushafLayoutPanel({
   ScrollComponent?: React.ComponentType<ScrollViewProps>;
 }) {
   const {theme} = useTheme();
+  const sheetBottomPadding = useSheetBottomPadding(moderateScale(40)); // @ai
   const {height: windowHeight} = useWindowDimensions();
   const styles = createStyles(theme, windowHeight);
   const {t} = useTranslation(['sheets', 'common']);
@@ -60,9 +62,17 @@ export function MushafLayoutPanel({
     <ScrollComponent
       style={styles.scrollView}
       showsVerticalScrollIndicator={false}
-      contentContainerStyle={styles.scrollContent}>
+      contentContainerStyle={[
+        styles.scrollContent,
+        {paddingBottom: sheetBottomPadding},
+      ]}>
       <MushafSettingsContent
         showTitle={true}
+        // @ai: in a native sheet the last card ends at the sheet's edge,
+        // without the container's padding or the card's own bottom margin.
+        containerStyle={
+          sheetBottomPadding === 0 ? styles.flushBottom : undefined
+        }
         context={context}
         onOpenThemePicker={handleOpenThemePicker}
       />
@@ -117,6 +127,12 @@ export const createStyles = (theme: Theme, windowHeight: number) =>
     },
     scrollContent: {
       paddingBottom: moderateScale(40),
+    },
+    // @ai: cancels MushafSettingsContent's bottom padding and the last
+    // card's marginBottom (verticalScale(16)).
+    flushBottom: {
+      paddingBottom: 0,
+      marginBottom: -verticalScale(16),
     },
     subScreenContainer: {
       flex: 1,

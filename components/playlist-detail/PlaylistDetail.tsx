@@ -25,7 +25,6 @@ import {useUploadsStore} from '@/store/uploadsStore';
 import {moderateScale} from '@/utils/scale';
 import {Feather} from '@expo/vector-icons';
 import {PlaylistHeader} from './PlaylistHeader';
-import {SheetManager} from 'react-native-actions-sheet';
 import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 import {useRouter} from 'expo-router';
 import * as Haptics from 'expo-haptics';
@@ -283,7 +282,7 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
     const handleEditForThisPlaylist = async () => {
       shouldClearPlaylistRef.current = false;
 
-      const result = await SheetManager.show('create-playlist', {
+      const result = await showSheet('create-playlist', {
         payload: {
           existingColors: existingPlaylistColors,
           isEditMode: true,
@@ -339,7 +338,7 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     shouldClearPlaylistRef.current = true;
-    SheetManager.show('playlist-context', {payload: playlistOptions});
+    showSheet('playlist-context', {payload: playlistOptions});
   }, [playlistOptions]);
   // @ai-end
 

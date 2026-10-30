@@ -21,6 +21,7 @@ import {
   useHomeCardOptions,
   type HomeCardOptionsPayload,
 } from './options/homeCardOptions';
+import {useSheetBottomPadding} from '@/components/sheets/useSheetBottomPadding'; // @ai
 // @ai-end
 
 // @ai-start
@@ -43,6 +44,7 @@ const HomeCardOptionsContent = ({
   payload: HomeCardOptionsPayload;
 }) => {
   const {theme} = useTheme();
+  const sheetBottomPadding = useSheetBottomPadding(moderateScale(40)); // @ai
   const styles = createStyles(theme);
   const {t} = useTranslation(['sheets', 'common']);
   const handleClose = useCallback(() => {
@@ -74,7 +76,7 @@ const HomeCardOptionsContent = ({
       containerStyle={styles.sheetContainer}
       indicatorStyle={styles.indicator}
       gestureEnabled={true}>
-      <View style={styles.container}>
+      <View style={[styles.container, {paddingBottom: sheetBottomPadding}]}>
         <View style={styles.header}>
           <Text style={styles.title}>{title}</Text>
           {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}

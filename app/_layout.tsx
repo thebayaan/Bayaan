@@ -58,7 +58,6 @@ import {analyticsService} from '@/services/analytics/AnalyticsService';
 import {ExpoAudioProvider} from '@/services/audio';
 import {useShareIntent} from 'expo-share-intent';
 import {useUploadsStore} from '@/store/uploadsStore';
-import {SheetManager} from 'react-native-actions-sheet';
 import {showToast} from '@/utils/toastUtils';
 import {mushafSessionStore} from '@/services/mushaf/MushafSessionStore';
 import {USE_GLASS} from '@/hooks/useGlassProps';
@@ -67,6 +66,7 @@ import * as Sentry from '@sentry/react-native';
 import {usePhoneOrientation} from '@/hooks/usePhoneOrientation'; // @ai
 import {ConfirmationDialogHost} from '@/components/native/ConfirmationDialogHost'; // @ai
 import {NativeSheetHost} from '@/components/native/NativeSheetHost'; // @ai
+import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 
 // Configure Reanimated logger
 configureReanimatedLogger({
@@ -366,7 +366,7 @@ function RootLayout() {
           resetShareIntent();
           await SplashScreen.hideAsync();
           showToast(i18n.t('app.fileImported'));
-          SheetManager.show('organize-recitation', {
+          showSheet('organize-recitation', {
             payload: {recitation},
           });
         } else {

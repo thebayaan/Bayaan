@@ -3,6 +3,7 @@ import React, {type ComponentType} from 'react';
 import {Platform} from 'react-native';
 import {
   SheetManager,
+  getSheetStack,
   type SheetProps,
   type Sheets,
 } from 'react-native-actions-sheet';
@@ -110,7 +111,33 @@ export function hideSheet<Id extends SheetId>(
   if (isNativeSheetPresented(id)) {
     return hideNativeSheet(id, options?.payload);
   }
-  return SheetManager.hide(id, options as never);
+  return options
+    ? SheetManager.hide(id, options as never)
+    : SheetManager.hide(id);
+}
+
+/** `SheetManager.hideAll` for both kinds of sheet. */
+export function hideAllSheets(): Promise<void> {
+  SheetManager.hideAll();
+  return closeNativeSheets();
+}
+
+/**
+ * Closes the sheet on top (a native one first, it sits above the React
+ * Native ones). False when no sheet is open.
+ */
+export function hideTopSheet(): boolean {
+  const presented = getNativeSheetLevels().filter(level => level.presented);
+  const topNative = presented[presented.length - 1];
+  if (topNative) {
+    hideNativeSheet(topNative.id);
+    return true;
+  }
+  const stack = getSheetStack();
+  const top = stack[stack.length - 1];
+  if (!top) return false;
+  SheetManager.hide(top.id, {context: top.context});
+  return true;
 }
 
 function closeNativeSheets(): Promise<void> {

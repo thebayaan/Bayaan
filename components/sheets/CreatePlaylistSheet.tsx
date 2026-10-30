@@ -14,13 +14,15 @@ import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {PlaylistIcon} from '@/components/Icons';
 import {Input} from '@/components/Input';
-import {SheetProps, SheetManager, ScrollView} from 'react-native-actions-sheet';
+import {SheetProps, ScrollView} from 'react-native-actions-sheet';
+import {hideSheet} from '@/components/sheets/sheetControl'; // @ai
 import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import Color from 'color';
 import {LinearGradient} from 'expo-linear-gradient';
 // @ai-start
 import {latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
+import {useSheetBottomPadding} from '@/components/sheets/useSheetBottomPadding'; // @ai
 // @ai-end
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
@@ -44,6 +46,7 @@ const PLAYLIST_COLORS = [
 // @ai-start
 export const CreatePlaylistSheet = (props: SheetProps<'create-playlist'>) => {
   const {theme} = useTheme();
+  const sheetBottomPadding = useSheetBottomPadding(moderateScale(40)); // @ai
   const styles = createStyles(theme);
   const {t} = useTranslation(['sheets', 'common']);
 
@@ -71,7 +74,7 @@ export const CreatePlaylistSheet = (props: SheetProps<'create-playlist'>) => {
   const handleCreate = useCallback(async () => {
     if (playlistName.trim()) {
       Keyboard.dismiss();
-      await SheetManager.hide('create-playlist', {
+      await hideSheet('create-playlist', {
         payload: {
           name: playlistName.trim(),
           color: previewColor,
@@ -82,7 +85,7 @@ export const CreatePlaylistSheet = (props: SheetProps<'create-playlist'>) => {
 
   const handleClose = useCallback(() => {
     Keyboard.dismiss();
-    SheetManager.hide('create-playlist');
+    hideSheet('create-playlist');
   }, []);
 
   return (
@@ -117,7 +120,10 @@ export const CreatePlaylistSheet = (props: SheetProps<'create-playlist'>) => {
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={styles.contentContainer}>
+        contentContainerStyle={[
+          styles.contentContainer,
+          {paddingBottom: sheetBottomPadding},
+        ]}>
         {/* Hero Preview Card */}
         <View style={styles.heroSection}>
           <LinearGradient

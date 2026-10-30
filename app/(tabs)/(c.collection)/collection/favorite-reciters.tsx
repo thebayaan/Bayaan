@@ -18,7 +18,7 @@ import {CollectionStickyHeader} from '@/components/collection/CollectionStickyHe
 import {SearchInput} from '@/components/SearchInput';
 import Color from 'color';
 import {Reciter} from '@/data/reciterData';
-import {SheetManager} from 'react-native-actions-sheet';
+import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
 import {USE_GLASS} from '@/hooks/useGlassProps';
 import {getDisplayLabelFromName} from '@/services/rewayah/RewayahIdentity';
@@ -253,7 +253,7 @@ export default function FavoriteRecitersScreen() {
   );
 
   const handleOpenSelectReciters = useCallback(() => {
-    SheetManager.show('favorite-reciters');
+    showSheet('favorite-reciters');
   }, []);
 
   // @ai-start
@@ -275,7 +275,7 @@ export default function FavoriteRecitersScreen() {
 
   const handleReciterOptions = useCallback(
     (reciter: Reciter) => {
-      SheetManager.show('collection-options', {
+      showSheet('collection-options', {
         payload: buildReciterOptions(reciter),
       });
     },

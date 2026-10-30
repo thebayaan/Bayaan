@@ -1,20 +1,15 @@
 // @ai-generated
-import {SheetManager, getSheetStack} from 'react-native-actions-sheet';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
 import {mushafAudioService} from '@/services/audio/MushafAudioService';
-import {showSheet} from '@/components/sheets/sheetControl'; // @ai
+import {hideTopSheet, showSheet} from '@/components/sheets/sheetControl'; // @ai
 
 /** Matches the player's on-screen skip buttons. */
 export const KEY_SEEK_SECONDS = 15;
 
 /** Closes the action sheet on top, if one is open. */
 export function closeTopSheet(): boolean {
-  const stack = getSheetStack();
-  const top = stack[stack.length - 1];
-  if (!top) return false;
-  SheetManager.hide(top.id, {context: top.context});
-  return true;
+  return hideTopSheet();
 }
 
 /** Closes the full player, if it's open. */

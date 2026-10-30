@@ -3,8 +3,8 @@ import {View, Text, Pressable, StyleSheet} from 'react-native';
 import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import {SheetProps, SheetManager} from 'react-native-actions-sheet';
-import {hideSheet} from '@/components/sheets/sheetControl'; // @ai
+import {SheetProps} from 'react-native-actions-sheet';
+import {hideSheet, showSheet} from '@/components/sheets/sheetControl'; // @ai
 import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import {Feather} from '@expo/vector-icons';
 import {PlaylistIcon} from '@/components/Icons';
@@ -14,6 +14,7 @@ import {usePlaylists} from '@/hooks/usePlaylists';
 import {pickAndImportAudioFiles} from '@/utils/importAudio';
 // @ai-start
 import {useTranslation} from 'react-i18next';
+import {useSheetBottomPadding} from '@/components/sheets/useSheetBottomPadding'; // @ai
 // @ai-end
 
 // @ai-start
@@ -21,6 +22,7 @@ export const AddToCollectionSheet = (
   props: SheetProps<'add-to-collection'>,
 ) => {
   const {theme} = useTheme();
+  const sheetBottomPadding = useSheetBottomPadding(moderateScale(40)); // @ai
   const styles = createStyles(theme);
   const {t} = useTranslation('sheets');
   const {importFile, importFiles} = useUploadsStore();
@@ -38,14 +40,14 @@ export const AddToCollectionSheet = (
   const handleAddFavoriteReciter = useCallback(() => {
     handleClose();
     setTimeout(() => {
-      SheetManager.show('favorite-reciters');
+      showSheet('favorite-reciters');
     }, 300);
   }, [handleClose]);
 
   const handleNewPlaylist = useCallback(async () => {
     handleClose();
     setTimeout(async () => {
-      const result = await SheetManager.show('create-playlist', {
+      const result = await showSheet('create-playlist', {
         payload: {
           existingColors: existingPlaylistColors,
         },
@@ -82,7 +84,7 @@ export const AddToCollectionSheet = (
       containerStyle={styles.sheetContainer}
       indicatorStyle={styles.indicator}
       gestureEnabled={true}>
-      <View style={styles.container}>
+      <View style={[styles.container, {paddingBottom: sheetBottomPadding}]}>
         <View style={styles.header}>
           <Text style={styles.title}>{t('addToCollection.title')}</Text>
         </View>

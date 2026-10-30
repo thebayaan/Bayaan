@@ -11,7 +11,7 @@ import {ScaledSheet, moderateScale, verticalScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {getAllahNameHighlightColorHex} from '@/constants/mushafAllahHighlight';
-import {ScrollView, SheetManager} from 'react-native-actions-sheet';
+import {ScrollView} from 'react-native-actions-sheet';
 import {Feather} from '@expo/vector-icons';
 import Color from 'color';
 import {qulDataService} from '@/services/mushaf/QulDataService';
@@ -36,6 +36,7 @@ import type {SimilarAyah, MutashabihatPhrase} from '@/types/qul';
 import {flipX, isRTL, latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
 import {getSurahDisplayName, localizeDigits} from '@/i18n/format';
+import {hideAllSheets} from '@/components/sheets/sheetControl'; // @ai
 // @ai-end
 
 const surahData = require('@/data/surahData.json') as Array<{
@@ -191,7 +192,7 @@ export const SimilarVersesContent: React.FC<SimilarVersesContentProps> = ({
     const page = digitalKhattDataService.getPageForVerse(targetVerseKey);
     if (!page) return;
     useMushafNavigationStore.getState().navigateToVerse(targetVerseKey, page);
-    SheetManager.hideAll();
+    hideAllSheets();
   };
 
   if (loading) {

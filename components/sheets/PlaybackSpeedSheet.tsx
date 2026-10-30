@@ -3,12 +3,14 @@ import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import {SheetProps, SheetManager} from 'react-native-actions-sheet';
+import {SheetProps} from 'react-native-actions-sheet';
 import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import Color from 'color';
 import {PLAYBACK_SPEEDS} from '@/constants/playback'; // @ai
 // @ai-start
 import {useTranslation} from 'react-i18next';
+import {hideSheet} from '@/components/sheets/sheetControl'; // @ai
+import {useSheetBottomPadding} from '@/components/sheets/useSheetBottomPadding'; // @ai
 // @ai-end
 
 const SPEEDS = PLAYBACK_SPEEDS; // @ai
@@ -16,6 +18,7 @@ const SPEEDS = PLAYBACK_SPEEDS; // @ai
 // @ai-start
 export const PlaybackSpeedSheet = (props: SheetProps<'playback-speed'>) => {
   const {theme} = useTheme();
+  const sheetBottomPadding = useSheetBottomPadding(moderateScale(40)); // @ai
   const styles = createStyles(theme);
   const {t} = useTranslation('sheets');
 
@@ -27,7 +30,7 @@ export const PlaybackSpeedSheet = (props: SheetProps<'playback-speed'>) => {
     if (onSpeedChange) {
       onSpeedChange(speed);
     }
-    SheetManager.hide('playback-speed');
+    hideSheet('playback-speed');
   };
 
   return (
@@ -40,7 +43,7 @@ export const PlaybackSpeedSheet = (props: SheetProps<'playback-speed'>) => {
       <View style={styles.headerContainer}>
         <Text style={styles.headerTitle}>{t('playbackSpeed.title')}</Text>
       </View>
-      <View style={styles.container}>
+      <View style={[styles.container, {paddingBottom: sheetBottomPadding}]}>
         <View style={styles.speedContainer}>
           {SPEEDS.map(speed => (
             <Pressable

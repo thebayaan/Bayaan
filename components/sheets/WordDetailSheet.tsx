@@ -18,11 +18,13 @@ import {PlayIcon, PauseIcon} from '@/components/Icons';
 // @ai-start
 import {useTranslation} from 'react-i18next';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import {useSheetBottomPadding} from '@/components/sheets/useSheetBottomPadding'; // @ai
 // @ai-end
 
 // @ai-start
 export const WordDetailSheet = (props: SheetProps<'word-detail'>) => {
   const {theme} = useTheme();
+  const sheetBottomPadding = useSheetBottomPadding(moderateScale(30)); // @ai
   const styles = useMemo(() => createStyles(theme), [theme]);
   const {t} = useTranslation(['sheets', 'common']);
   const showTranslation = useMushafSettingsStore(s => s.wbwShowTranslation);
@@ -161,7 +163,7 @@ export const WordDetailSheet = (props: SheetProps<'word-detail'>) => {
       containerStyle={styles.sheetContainer}
       indicatorStyle={styles.indicator}
       gestureEnabled={true}>
-      <View style={styles.container}>
+      <View style={[styles.container, {paddingBottom: sheetBottomPadding}]}>
         {loading ? (
           <ActivityIndicator
             size="small"

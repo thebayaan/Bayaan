@@ -2,7 +2,7 @@
 // 'home-card-options' (same styles); its one action ends the session.
 import React, {useCallback} from 'react';
 import {Pressable, Text, View} from 'react-native';
-import {SheetManager, type SheetProps} from 'react-native-actions-sheet';
+import {type SheetProps} from 'react-native-actions-sheet';
 import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import {Feather} from '@expo/vector-icons';
 import {moderateScale} from '@/utils/scale';
@@ -10,6 +10,7 @@ import {useTranslation} from 'react-i18next';
 import {useTheme} from '@/hooks/useTheme';
 import {useAdhkarSessionStore} from '@/store/adhkarSessionStore';
 import {createStyles} from './HomeCardOptionsSheet';
+import {hideSheet} from '@/components/sheets/sheetControl'; // @ai
 
 export function AdhkarSessionOptionsSheet(
   props: SheetProps<'adhkar-session-options'>,
@@ -22,8 +23,8 @@ export function AdhkarSessionOptionsSheet(
 
   const handleStop = useCallback(() => {
     dispatch({type: 'stop'});
-    SheetManager.hide(sheetId);
-  }, [dispatch, sheetId]);
+    hideSheet('adhkar-session-options');
+  }, [dispatch]);
 
   return (
     <ActionSheet

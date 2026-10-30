@@ -5,11 +5,11 @@ import {useTheme} from '@/hooks/useTheme';
 import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {useUploadsStore} from '@/store/uploadsStore';
 import {MicrophoneIcon} from '@/components/Icons';
-import {SheetManager} from 'react-native-actions-sheet';
 import {FontAwesome5} from '@expo/vector-icons';
 import type {Track} from '@/types/audio';
 // @ai-start
 import {useTranslation} from 'react-i18next';
+import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 // @ai-end
 
 interface UploadPlaceholderProps {
@@ -34,7 +34,7 @@ export const UploadPlaceholder: React.FC<UploadPlaceholderProps> = ({
 
     setSheetMode('hidden');
     setTimeout(() => {
-      SheetManager.show('organize-recitation', {
+      showSheet('organize-recitation', {
         payload: {recitation},
       });
     }, 300);

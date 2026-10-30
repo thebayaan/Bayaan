@@ -3,7 +3,7 @@ import {View, Text, Pressable, StyleSheet} from 'react-native';
 import {ScaledSheet, moderateScale, verticalScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import {SheetProps, SheetManager} from 'react-native-actions-sheet';
+import {SheetProps} from 'react-native-actions-sheet';
 import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import Color from 'color';
 import {Feather} from '@expo/vector-icons';
@@ -12,6 +12,8 @@ import {Dhikr} from '@/types/adhkar';
 import {adhkarCopyText, adhkarTranslationCopyText} from '@/utils/adhkarText';
 // @ai-start
 import {useTranslation} from 'react-i18next';
+import {hideSheet} from '@/components/sheets/sheetControl'; // @ai
+import {useSheetBottomPadding} from '@/components/sheets/useSheetBottomPadding'; // @ai
 // @ai-end
 
 interface CheckboxRowProps {
@@ -70,6 +72,7 @@ export const AdhkarCopyOptionsSheet = (
   props: SheetProps<'adhkar-copy-options'>,
 ) => {
   const {theme} = useTheme();
+  const sheetBottomPadding = useSheetBottomPadding(moderateScale(40)); // @ai
   const styles = useMemo(() => createStyles(theme), [theme]);
   const {t} = useTranslation(['sheets', 'common']);
   const dhikr = props.payload?.dhikr as Dhikr | undefined;
@@ -100,7 +103,7 @@ export const AdhkarCopyOptionsSheet = (
       await Clipboard.setStringAsync(parts.join('\n\n'));
     }
 
-    SheetManager.hide('adhkar-copy-options');
+    hideSheet('adhkar-copy-options');
   }, [dhikr, copyArabic, copyTranslation, copyTransliteration]);
 
   // Check if at least one option is selected
@@ -113,7 +116,7 @@ export const AdhkarCopyOptionsSheet = (
       containerStyle={styles.sheetContainer}
       indicatorStyle={styles.indicator}
       gestureEnabled={true}>
-      <View style={styles.container}>
+      <View style={[styles.container, {paddingBottom: sheetBottomPadding}]}>
         <Text style={styles.title}>{t('copy.optionsTitle')}</Text>
         <Text style={styles.subtitle}>{t('copy.optionsSubtitle')}</Text>
 

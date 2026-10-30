@@ -34,7 +34,6 @@ import {resolveSurahPlaybackAction} from '@/utils/surahPlaybackChoice'; // @ai
 import {StyleSheet} from 'react-native';
 import Color from 'color';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {SheetManager} from 'react-native-actions-sheet';
 import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 import {ExploreView} from '@/components/search/ExploreView';
 import {useBottomInset} from '@/hooks/useBottomInset';
@@ -353,7 +352,7 @@ export function SearchView({
           });
           break;
         default:
-          SheetManager.show('select-reciter', {
+          showSheet('select-reciter', {
             payload: {surahId, source: 'search'},
           });
       }

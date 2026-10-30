@@ -13,7 +13,6 @@ import DraggableFlatList, {
   type RenderItemParams,
 } from 'react-native-draggable-flatlist';
 import {Feather, MaterialCommunityIcons} from '@expo/vector-icons';
-import {SheetManager} from 'react-native-actions-sheet';
 import Color from 'color';
 import {useTranslation} from 'react-i18next';
 import {useTheme} from '@/hooks/useTheme';
@@ -43,6 +42,7 @@ import {
   CollectionOptionsMenu,
   type CollectionOptionsPayload,
 } from '@/components/sheets/options/collectionOptions';
+import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 
 const EMPTY_TRACKS: Track[] = [];
 
@@ -406,7 +406,7 @@ export function QueuePane({bottomInset}: {bottomInset: number}) {
 
   const openMenu = useCallback(
     (track: Track, index: number) => {
-      SheetManager.show('collection-options', {
+      showSheet('collection-options', {
         payload: buildMenu(track, index),
       });
     },

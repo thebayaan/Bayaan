@@ -1,6 +1,5 @@
 // @ai-generated
 import React, {useCallback, useMemo} from 'react';
-import {SheetManager} from 'react-native-actions-sheet';
 import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 import {useTranslation} from 'react-i18next';
 import type {Surah} from '@/data/surahData';
@@ -149,7 +148,7 @@ export function usePlayerOptions(
     if (!rec) return;
     close();
     setTimeout(() => {
-      SheetManager.show('organize-recitation', {
+      showSheet('organize-recitation', {
         payload: {recitation: rec},
       });
     }, 300);
@@ -283,7 +282,7 @@ function PlayerMenu({
       case 'reciter':
         return o.handleGoToReciter();
       case 'info':
-        SheetManager.show('player-options', {
+        showSheet('player-options', {
           payload: {...payload, showInfo: true},
         });
         return;
