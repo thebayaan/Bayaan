@@ -13,14 +13,28 @@ import {
   isNativeSheetPresented,
   nativeSheetsEnabled,
   presentNativeSheet,
+  type NativeSheetDetent,
 } from '@/components/native/nativeSheets';
 
 type SheetId = keyof Sheets;
 type Payload<Id extends SheetId> = Sheets[Id]['payload'];
 type ReturnValue<Id extends SheetId> = Sheets[Id]['returnValue'];
 
-// Each entry renders its own sheet's props; the map erases the id.
-const nativeSheets = new Map<string, ComponentType<SheetProps<never>>>();
+interface NativeSheetEntry {
+  // Each entry renders its own sheet's props; the map erases the id.
+  Sheet: ComponentType<SheetProps<never>>;
+  /** Where the sheet can rest; the first is where it opens. */
+  detents?: NativeSheetDetent[];
+}
+
+const nativeSheets = new Map<string, NativeSheetEntry>();
+
+/**
+ * Native sheets that are open or still animating in or out, by id. A second
+ * show of the same sheet (a double tap) gets the first one's promise
+ * instead of presenting it again.
+ */
+const openNativeSheets = new Map<string, Promise<unknown>>();
 
 /**
  * `sheets.tsx` registers the sheets that may present natively, next to
@@ -29,8 +43,12 @@ const nativeSheets = new Map<string, ComponentType<SheetProps<never>>>();
 export function registerNativeSheet<Id extends SheetId>(
   id: Id,
   Sheet: ComponentType<SheetProps<Id>>,
+  options?: {detents?: NativeSheetDetent[]},
 ): void {
-  nativeSheets.set(id, Sheet as ComponentType<SheetProps<never>>);
+  nativeSheets.set(id, {
+    Sheet: Sheet as ComponentType<SheetProps<never>>,
+    detents: options?.detents,
+  });
 }
 
 function nativeSheetFor(id: string) {
@@ -50,14 +68,22 @@ export function showSheet<Id extends SheetId>(
   id: Id,
   options?: {payload?: Payload<Id>},
 ): Promise<ReturnValue<Id>> {
-  const Sheet = nativeSheetFor(id);
-  if (Sheet) {
+  const entry = nativeSheetFor(id);
+  if (entry) {
+    const open = openNativeSheets.get(id);
+    if (open) return open as Promise<ReturnValue<Id>>;
+    const {Sheet} = entry;
     const shown = presentNativeSheet(
       id,
       <Sheet sheetId={id} payload={options?.payload as never} />,
       hasNativeSheet(),
+      entry.detents,
     );
-    if (shown) return shown as Promise<ReturnValue<Id>>;
+    if (shown) {
+      const tracked = shown.finally(() => openNativeSheets.delete(id));
+      openNativeSheets.set(id, tracked);
+      return tracked as Promise<ReturnValue<Id>>;
+    }
   }
   if (hasNativeSheet()) {
     // A React Native modal can't present while a native sheet is up (it

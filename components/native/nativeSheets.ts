@@ -1,6 +1,9 @@
 // @ai-generated
 import type {ReactNode} from 'react';
 
+/** Heights a native sheet can rest at. The first is where it opens. */
+export type NativeSheetDetent = 'medium' | 'large';
+
 /**
  * Sheets presented as SwiftUI sheets on iPhone (detents, the system grabber,
  * the page behind kept live up to the medium detent). Off: every sheet stays
@@ -14,6 +17,7 @@ export interface NativeSheetLevel {
   key: number;
   id: string;
   content: ReactNode;
+  detents: NativeSheetDetent[];
   /** False while the level animates out. */
   presented: boolean;
 }
@@ -72,6 +76,7 @@ export function presentNativeSheet(
   id: string,
   content: ReactNode,
   stack: boolean,
+  detents: NativeSheetDetent[] = ['medium', 'large'],
 ): Promise<unknown> | null {
   if (!hostMounted) return null;
   const top = levels[levels.length - 1];
@@ -82,9 +87,12 @@ export function presentNativeSheet(
   if (!stack && top?.presented) {
     // Replacing: the old content's promise resolves as if it were hidden.
     finish(top.key);
-    publish([...levels.slice(0, -1), {key, id, content, presented: true}]);
+    publish([
+      ...levels.slice(0, -1),
+      {key, id, content, detents, presented: true},
+    ]);
   } else {
-    publish([...levels, {key, id, content, presented: true}]);
+    publish([...levels, {key, id, content, detents, presented: true}]);
   }
   return promise;
 }

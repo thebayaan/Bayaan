@@ -82,7 +82,10 @@ registerSheet('word-detail', WordDetailSheet);
 registerNativeSheet('verse-actions', VerseActionsSheet);
 registerNativeSheet('word-detail', WordDetailSheet);
 registerNativeSheet('mushaf-layout', MushafLayoutSheet);
-registerNativeSheet('mushaf-player-options', MushafPlayerOptionsSheet);
+// Playback settings is a form that needs the room; it opens full height.
+registerNativeSheet('mushaf-player-options', MushafPlayerOptionsSheet, {
+  detents: ['large'],
+});
 registerNativeSheet('mushaf-repeat-options', MushafRepeatOptionsSheet);
 registerNativeSheet('mushaf-reciter-picker', MushafReciterPickerSheet);
 registerNativeSheet('follow-along', FollowAlongSheet);
