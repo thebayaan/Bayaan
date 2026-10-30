@@ -1,4 +1,4 @@
-import {Platform, Settings} from 'react-native';
+import {Platform} from 'react-native';
 import {isLiquidGlassAvailable} from 'expo-glass-effect';
 import {useThemeStore} from '@/store/themeStore';
 import {useTheme} from '@/hooks/useTheme'; // @ai
@@ -25,29 +25,15 @@ export function useGlassColorScheme(): 'auto' | 'light' | 'dark' {
 
 // @ai-start
 /**
- * Dark wash laid over our own glass, as alpha: other apps' glass reads
- * darker than plain `regular` glass. Light themes get a subtler wash. The
- * experiment build takes `-BayaanGlassTint <dark alpha>` as a launch
- * argument so strengths can be compared without a rebuild.
+ * Dark wash laid over our own glass, as rgba alpha: plain `regular` glass
+ * reads lighter than other apps'. Dark themes take 0.20; light themes 0.10,
+ * since the page behind is lighter and a stronger wash turns grey.
  */
-const GLASS_TINT_DARK = 0.16;
-const GLASS_TINT_LIGHT_RATIO = 0.5;
+const GLASS_TINT_ALPHA = {dark: 0.2, light: 0.1};
 
-function glassTintOverride(): number | undefined {
-  if (Platform.OS !== 'ios') return undefined;
-  const value: unknown = Settings.get('BayaanGlassTint');
-  const parsed = typeof value === 'string' ? parseFloat(value) : value;
-  return typeof parsed === 'number' && Number.isFinite(parsed)
-    ? parsed
-    : undefined;
-}
-
-const darkAlpha = glassTintOverride() ?? GLASS_TINT_DARK;
-
-/** `tintColor` for every GlassView we draw, or undefined for none. */
-export function useGlassTint(): string | undefined {
+/** `tintColor` for every GlassView we draw. */
+export function useGlassTint(): string {
   const isDark = useTheme().theme.isDarkMode;
-  const alpha = isDark ? darkAlpha : darkAlpha * GLASS_TINT_LIGHT_RATIO;
-  return alpha > 0 ? `rgba(0,0,0,${alpha})` : undefined;
+  return `rgba(0,0,0,${isDark ? GLASS_TINT_ALPHA.dark : GLASS_TINT_ALPHA.light})`;
 }
 // @ai-end
