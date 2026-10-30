@@ -24,6 +24,7 @@ import {AdhkarLatinText} from './AdhkarLatinText';
 // @ai-start
 import {useTranslation} from 'react-i18next';
 import {isRTL} from '@/utils/rtl';
+import {USE_GLASS} from '@/hooks/useGlassProps'; // @ai
 // @ai-end
 
 // Enable LayoutAnimation for Android
@@ -111,6 +112,10 @@ export const DhikrReader: React.FC<DhikrReaderProps> = ({
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.contentContainer}
+        // @ai: on iOS 26 the page runs under the tab bar and mini player;
+        // the system insets the scroll so the end of the dhikr and its
+        // play/copy/share row can scroll clear of them.
+        contentInsetAdjustmentBehavior={USE_GLASS ? 'automatic' : 'never'}
         showsVerticalScrollIndicator={false}>
         {/* Repeat Count Badge - shown at top if repeatCount > 1 */}
         {dhikr.repeatCount > 1 ? (
