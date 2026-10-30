@@ -8,6 +8,7 @@ This folder is the source of truth for how Bayaan looks and behaves. Read it bef
 | [ipad-standards.md](ipad-standards.md) | **Normative** rules for iPad and large tablets: width classes, layout, type scale, touch/pointer targets, sheets, orientation, multitasking, accessibility, reading and listening patterns. Notes marked **Built** say what `develop` does today; [§13](ipad-standards.md#13-migration-plan) tracks migration and [§14](ipad-standards.md#14-known-open-issues) lists known open issues | Standard |
 | [ipad-review-checklist.md](ipad-review-checklist.md) | The checklist to run before opening any PR that touches UI | Checklist |
 | [screen-inventory.md](screen-inventory.md) | Every route, overlay, and sheet in the app, tagged by area. Use it as the index for app-wide design work | Inventory |
+| [expo-ui-overhaul.md](expo-ui-overhaul.md) | The phased plan for native system UI (`@expo/ui`) on phones and tablets: menus, dialogs, controls, and the Form and sheet prototypes | Plan |
 
 ## How to use these docs
 

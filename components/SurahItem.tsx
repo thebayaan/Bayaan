@@ -44,6 +44,7 @@ import {
   type SurahOptionsContextValue,
 } from '@/components/sheets/options/SurahOptionsContext';
 import {useNativeOptionsMenu} from '@/components/sheets/options/OptionsMenu';
+import {listRowContextMenusEnabled} from '@/components/native/nativeMenus'; // @ai
 // @ai-end
 // @ai-end
 
@@ -213,7 +214,10 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
         : null;
     const tapMenu = useNativeOptionsMenu('tap') && !!optionsPayload;
     const rowMenu =
-      useNativeOptionsMenu('longPress') && !!optionsPayload && !onLongPress;
+      useNativeOptionsMenu('longPress') &&
+      listRowContextMenusEnabled &&
+      !!optionsPayload &&
+      !onLongPress;
     // @ai-end
 
     // @ai-start
@@ -380,7 +384,7 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
         {onOptionsPress && (
           <Pressable
             style={styles.optionsZone}
-            onPress={tapMenu ? undefined : handleOptionsPress} // @ai
+            onPress={tapMenu || optionsMenu ? undefined : handleOptionsPress} // @ai
             accessibilityRole="button"
             accessibilityLabel={t('surahItem.moreOptions')}
             accessibilityHint={t('surahItem.moreOptionsHint')}>

@@ -25,6 +25,7 @@ import {currentLanguageConfig} from '@/i18n/language'; // @ai
 // @ai-start
 import {useSurahOptionsContext} from '@/components/sheets/options/SurahOptionsContext';
 import {useNativeOptionsMenu} from '@/components/sheets/options/OptionsMenu';
+import {listRowContextMenusEnabled} from '@/components/native/nativeMenus'; // @ai
 // @ai-end
 import {
   getReciterDisplayName,
@@ -95,7 +96,7 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
     const rewayat = useMemo(
       () =>
         rewayatId
-          ? (reciter?.rewayat?.find(r => r.id === rewayatId) ?? null)
+          ? reciter?.rewayat?.find(r => r.id === rewayatId) ?? null
           : null,
       [reciter, rewayatId],
     );
@@ -157,7 +158,8 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
     // @ai-start
     const options = useSurahOptionsContext();
     const tapMenuAvailable = useNativeOptionsMenu('tap');
-    const rowMenuAvailable = useNativeOptionsMenu('longPress');
+    const rowMenuAvailable =
+      useNativeOptionsMenu('longPress') && listRowContextMenusEnabled;
     // @ai-end
 
     const surah = getSurahById(parseInt(surahId, 10));
@@ -284,7 +286,7 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
         {onOptionsPress && (
           <Pressable
             style={styles.optionsZone}
-            onPress={tapMenu ? undefined : onOptionsPress}>
+            onPress={tapMenu || optionsMenu ? undefined : onOptionsPress}>
             {isCurrentTrack ? (
               <NowPlayingIndicator
                 isPlaying={
