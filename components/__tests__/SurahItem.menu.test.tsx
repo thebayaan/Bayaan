@@ -109,7 +109,8 @@ describe('SurahItem native options menu', () => {
   it('opens the options from a menu on tablets, not the sheet', () => {
     const onOptionsPress = jest.fn();
     const r = mount(onOptionsPress);
-    expect(menuTriggers()).toEqual(expect.arrayContaining(['longPress']));
+    // List rows have no long-press menu (listRowContextMenusEnabled).
+    expect(menuTriggers()).not.toContain('longPress');
     expect(
       MockMenu.mock.calls.some(
         ([props]) => (props as {layout?: string}).layout === 'overlay',
