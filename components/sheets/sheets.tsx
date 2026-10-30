@@ -26,6 +26,7 @@ import {AddToCollectionSheet} from './AddToCollectionSheet';
 import {AmbientSoundsSheet} from './AmbientSoundsSheet';
 import {CollectionOptionsSheet} from './CollectionOptionsSheet';
 import {VerseActionsSheet} from './VerseActionsSheet';
+import {setNativeVerseActionsSheet} from './sheetPresenter'; // @ai
 import {VerseNoteSheet} from './VerseNoteSheet';
 import {MushafPlayerOptionsSheet} from './MushafPlayerOptionsSheet';
 import {MushafReciterPickerSheet} from './MushafReciterPickerSheet'; // @ai
@@ -64,6 +65,7 @@ registerSheet('add-to-collection', AddToCollectionSheet);
 registerSheet('ambient-sounds', AmbientSoundsSheet);
 registerSheet('collection-options', CollectionOptionsSheet);
 registerSheet('verse-actions', VerseActionsSheet);
+setNativeVerseActionsSheet(VerseActionsSheet); // @ai
 // @ai-start
 // Copy, share, highlight and similar verses live inside 'verse-actions'.
 // Their old standalone sheets were removed: nothing opened them, and the

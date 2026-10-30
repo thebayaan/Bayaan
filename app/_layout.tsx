@@ -66,6 +66,7 @@ import Constants from 'expo-constants';
 import * as Sentry from '@sentry/react-native';
 import {usePhoneOrientation} from '@/hooks/usePhoneOrientation'; // @ai
 import {ConfirmationDialogHost} from '@/components/native/ConfirmationDialogHost'; // @ai
+import {NativeSheetHost} from '@/components/native/NativeSheetHost'; // @ai
 
 // Configure Reanimated logger
 configureReanimatedLogger({
@@ -502,6 +503,7 @@ function RootLayout() {
                   onLayout={onLayoutRootView}>
                   <NetworkStatusMonitor />
                   <ConfirmationDialogHost /* @ai: iPad confirmations */ />
+                  <NativeSheetHost /* @ai: native sheets (iPhone) */ />
                   <SheetProvider>
                     <Stack
                       screenOptions={{

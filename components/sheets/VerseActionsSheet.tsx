@@ -18,6 +18,7 @@ import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {SheetProps, SheetManager, ScrollView} from 'react-native-actions-sheet';
 import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
+import {useSheetPresenter} from '@/components/sheets/sheetPresenter'; // @ai
 import {Feather, MaterialCommunityIcons} from '@expo/vector-icons';
 import {useVerseSelectionStore} from '@/store/verseSelectionStore';
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
@@ -211,11 +212,22 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     setActiveScreenRaw(screen);
   }, []);
 
+  // @ai-start
+  // Shown as a native sheet (showVerseActions), it hides through the
+  // presenter, which resolves once the sheet is fully gone.
+  const presenter = useSheetPresenter();
+  const hideSheet = useCallback(
+    (): Promise<unknown> =>
+      presenter ? presenter.hide() : SheetManager.hide(props.sheetId),
+    [presenter, props.sheetId],
+  );
+  // @ai-end
+
   const hideCurrentSheet = useCallback(() => {
-    SheetManager.hide(props.sheetId).catch(error => {
+    hideSheet().catch(error => {
       console.warn('[VerseActionsSheet] Failed to hide sheet:', error);
     });
-  }, [props.sheetId]);
+  }, [hideSheet]);
 
   const payload = props.payload;
   const verseKey = payload?.verseKey ?? '';
@@ -345,12 +357,12 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     } catch (error) {
       console.error('[VerseActionsSheet] Bookmark toggle failed:', error);
     }
-    await SheetManager.hide(props.sheetId);
+    await hideSheet();
   }, [
     readySelection, // @ai
     requireSelection, // @ai
     isBookmarked,
-    props.sheetId,
+    hideSheet,
   ]);
 
   const handleHighlight = useCallback(async () => {
@@ -420,7 +432,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
           formatQuranCitation(ready.label, result.rewayah),
         ),
       );
-      await SheetManager.hide(props.sheetId);
+      await hideSheet();
     } finally {
       setIsCopying(false);
     }
@@ -432,7 +444,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     arabicTexts,
     resolvedRewayah,
     translationFor,
-    props.sheetId,
+    hideSheet,
   ]);
   // @ai-end
 
@@ -528,7 +540,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
           pendingStartVerseKey: firstKey,
         });
         if (units) store.setPendingStart(units[0]); // @ai
-        await SheetManager.hide(props.sheetId);
+        await hideSheet();
         SheetManager.show('mushaf-player-options', {
           payload: {currentPage: page},
         });
@@ -582,7 +594,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
       hideCurrentSheet();
       store.startPlayback(page, units ? units[0] : firstKey); // @ai
     },
-    [readySelection, requireSelection, props.sheetId, hideCurrentSheet], // @ai
+    [readySelection, requireSelection, hideSheet, hideCurrentSheet], // @ai
   );
 
   const handlePlaySelection = useCallback(
@@ -606,9 +618,9 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
 
   const handleShowFollowAlong = useCallback(async () => {
     lightHaptics();
-    await SheetManager.hide(props.sheetId);
+    await hideSheet();
     SheetManager.show('follow-along');
-  }, [props.sheetId]);
+  }, [hideSheet]);
 
   const handlePlayerPlayFromHere = useCallback(async () => {
     lightHaptics();
@@ -684,7 +696,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
       playerState.pause();
     }
 
-    await SheetManager.hide(props.sheetId);
+    await hideSheet();
     playerState.setSheetMode('hidden');
 
     useMushafPlayerStore.setState({
@@ -707,7 +719,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     SheetManager.show('mushaf-player-options', {
       payload: {currentPage: page},
     });
-  }, [readySelection, requireSelection, props.sheetId]); // @ai
+  }, [readySelection, requireSelection, hideSheet]); // @ai
 
   useEffect(() => {
     if (Platform.OS !== 'android' || !activeScreen) return;
@@ -742,6 +754,461 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     activeScreen === 'wbw' ||
     activeScreen === 'community-reflections';
 
+  // @ai-start
+  const content = (
+    <View style={[styles.container, activeScreen && {flex: 1}]}>
+      {!activeScreen && (
+        <View style={styles.header}>
+          <Text style={styles.surahName}>{surahName}</Text>
+          <Text style={styles.verseRef}>{localizeDigits(verseRefText)}</Text>
+        </View>
+      )}
+
+      {activeScreen ? (
+        <>
+          <View style={styles.backRowContainer}>
+            <Pressable
+              onPress={handleBack}
+              accessibilityRole="button" // @ai
+              style={({pressed}) => [styles.backRow, pressed && {opacity: 0.6}]}
+              hitSlop={8}>
+              <Feather
+                name="chevron-left"
+                size={moderateScale(16)}
+                color={theme.colors.text}
+                style={flipX}
+              />
+              <Text style={styles.backRowText}>
+                {t(SCREEN_TITLE_KEYS[activeScreen] ?? 'common:actions.back')}
+              </Text>
+            </Pressable>
+            {(activeScreen === 'translation' || activeScreen === 'tafseer') && (
+              <Pressable
+                onPress={() => {
+                  lightHaptics();
+                  hideCurrentSheet();
+                  usePlayerStore.getState().setSheetMode('hidden');
+                  setTimeout(() => {
+                    router.push('/translations'); // @ai
+                  }, 300);
+                }}
+                style={({pressed}) => [
+                  styles.settingsButton,
+                  pressed && {opacity: 0.6},
+                ]}
+                hitSlop={8}
+                // @ai
+                accessibilityRole="button"
+                accessibilityLabel={t('sheets:verseActions.contentSettings')}>
+                <Feather
+                  name="settings"
+                  size={moderateScale(16)}
+                  color={Color(theme.colors.text).alpha(0.5).toString()}
+                />
+              </Pressable>
+            )}
+          </View>
+          {/* @ai-start */}
+          {/* Every screen acts on the selected verses; until another
+              rewayah's verses can be named, a screen shows why instead
+              (never Hafs numbers under that rewayah's name). Hafs is
+              always ready. */}
+          {pendingSelection ? (
+            <SelectionPendingView
+              selection={pendingSelection}
+              theme={theme}
+              style={isFullScreen ? {flex: 1} : undefined}
+            />
+          ) : isFullScreen ? (
+            <View style={{flex: 1}}>
+              {activeScreen === 'translation' && (
+                <TranslationContent
+                  surahNumber={surahNumber}
+                  ayahNumber={ayahNumber}
+                  rewayah={resolvedRewayah}
+                  unitStart={unitStart}
+                  onBack={handleBack}
+                />
+              )}
+              {activeScreen === 'tafseer' && (
+                <TafseerContent
+                  surahNumber={surahNumber}
+                  ayahNumber={ayahNumber}
+                  rewayah={resolvedRewayah}
+                  unitStart={unitStart}
+                  onBack={handleBack}
+                />
+              )}
+              {activeScreen === 'theme' && (
+                <ThemeContent
+                  surahNumber={surahNumber}
+                  ayahNumber={ayahNumber}
+                  unitStart={unitStart}
+                  onBack={handleBack}
+                />
+              )}
+              {activeScreen === 'wbw' && (
+                <WBWContent
+                  surahNumber={surahNumber}
+                  ayahNumber={ayahNumber}
+                  rewayah={resolvedRewayah}
+                  unitStart={unitStart}
+                  onBack={handleBack}
+                />
+              )}
+              {activeScreen === 'community-reflections' && readySelection && (
+                // Reflections are per Hafs verse: the one holding the
+                // verse's first word; the badge is the verse's own label.
+                <CommunityReflectionsContent
+                  surahNumber={readySelection.linkVerse.surah}
+                  ayahNumber={readySelection.linkVerse.ayah}
+                  label={
+                    readySelection.units ? readySelection.label : undefined
+                  }
+                />
+              )}
+            </View>
+          ) : readySelection ? (
+            <>
+              {activeScreen === 'highlight' && (
+                <HighlightContent
+                  selection={readySelection}
+                  onDone={handleDismiss}
+                />
+              )}
+              {activeScreen === 'note' && (
+                <NoteContent
+                  selection={readySelection}
+                  onDone={handleDismiss}
+                />
+              )}
+              {activeScreen === 'share' && (
+                <ShareContent
+                  verseKey={verseKey}
+                  surahNumber={surahNumber}
+                  ayahNumber={ayahNumber}
+                  verseKeys={verseKeys}
+                  unitKeys={
+                    readySelection.units ? readySelection.keys : undefined
+                  }
+                  rewayah={resolvedRewayah}
+                  onDone={handleDismiss}
+                />
+              )}
+              {isSimilar && qulKey && (
+                <SimilarVersesContent
+                  verseKey={qulKey}
+                  surahNumber={surahNumber}
+                  ayahNumber={ayahNumber}
+                  section={activeScreen === 'similar' ? 'similar' : 'phrases'}
+                  rewayah={resolvedRewayah} // @ai
+                  onDone={handleDismiss}
+                  hafsReferences={resolvedRewayah !== 'hafs'}
+                />
+              )}
+            </>
+          ) : null}
+          {/* @ai-end */}
+        </>
+      ) : (
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+          contentContainerStyle={{paddingBottom: moderateScale(10)}}>
+          {/* LISTEN */}
+          <View style={styles.card}>
+            <Pressable
+              accessibilityRole="button" // @ai
+              style={({pressed}) => [
+                styles.option,
+                pressed && styles.optionPressed,
+              ]}
+              onPress={
+                source === 'player'
+                  ? isCurrentTrackTimestamped()
+                    ? handlePlayerPlayFromHere
+                    : handleShowFollowAlong
+                  : handlePlaySelection
+              }>
+              <PlayIcon size={moderateScale(18)} color={theme.colors.text} />
+              <Text style={styles.optionText}>
+                {isRange
+                  ? t('verseActions.playSelection')
+                  : t('verseActions.playFromHere')}
+              </Text>
+            </Pressable>
+            <View style={styles.divider} />
+            <Pressable
+              accessibilityRole="button" // @ai
+              style={({pressed}) => [
+                styles.option,
+                pressed && styles.optionPressed,
+              ]}
+              onPress={
+                source === 'player'
+                  ? isCurrentTrackTimestamped()
+                    ? handlePlayerRepeat
+                    : handleShowFollowAlong
+                  : handleRepeatSelection
+              }>
+              <RepeatIcon size={moderateScale(24)} color={theme.colors.text} />
+              <Text style={styles.optionText}>{t('verseActions.repeat')}</Text>
+            </Pressable>
+          </View>
+
+          {/* STUDY */}
+          <View style={styles.card}>
+            <Pressable
+              accessibilityRole="button" // @ai
+              style={({pressed}) => [
+                styles.option,
+                pressed && styles.optionPressed,
+              ]}
+              onPress={handleToggleBookmark}>
+              <Feather
+                name={isBookmarked ? 'minus-circle' : 'bookmark'}
+                size={moderateScale(18)}
+                color={theme.colors.text}
+              />
+              <Text style={styles.optionText}>
+                {isBookmarked
+                  ? t('verseActions.removeBookmark')
+                  : t('verseActions.bookmark')}
+              </Text>
+            </Pressable>
+            <View style={styles.divider} />
+            <Pressable
+              accessibilityRole="button" // @ai
+              style={({pressed}) => [
+                styles.option,
+                pressed && styles.optionPressed,
+              ]}
+              onPress={handleHighlight}>
+              {isHighlighted ? (
+                <Feather
+                  name="minus-circle"
+                  size={moderateScale(18)}
+                  color={theme.colors.text}
+                />
+              ) : (
+                <HighlightIcon
+                  size={moderateScale(18)}
+                  color={theme.colors.text}
+                />
+              )}
+              <Text style={styles.optionText}>
+                {isHighlighted
+                  ? t('highlight.remove')
+                  : t('verseActions.highlight')}
+              </Text>
+            </Pressable>
+            <View style={styles.divider} />
+            <Pressable
+              accessibilityRole="button" // @ai
+              style={({pressed}) => [
+                styles.option,
+                pressed && styles.optionPressed,
+              ]}
+              onPress={handleNote}>
+              <PageQuillIcon
+                size={moderateScale(18)}
+                color={theme.colors.text}
+              />
+              <Text style={styles.optionText}>{t('verseActions.addNote')}</Text>
+            </Pressable>
+          </View>
+
+          {/* EXPLORE */}
+          <View style={styles.card}>
+            <Pressable
+              accessibilityRole="button" // @ai
+              style={({pressed}) => [
+                styles.option,
+                pressed && styles.optionPressed,
+              ]}
+              onPress={handleTranslation}>
+              <MaterialCommunityIcons
+                name="translate"
+                size={moderateScale(19)}
+                color={theme.colors.text}
+              />
+              <Text style={styles.optionText}>
+                {t('verseActions.translation')}
+              </Text>
+            </Pressable>
+            {!isRange ? (
+              <>
+                <View style={styles.divider} />
+                <Pressable
+                  accessibilityRole="button" // @ai
+                  style={({pressed}) => [
+                    styles.option,
+                    pressed && styles.optionPressed,
+                  ]}
+                  onPress={handleTafseer}>
+                  <StackedVolumesIcon
+                    size={moderateScale(18)}
+                    color={theme.colors.text}
+                  />
+                  <Text style={styles.optionText}>
+                    {t('verseActions.tafseer')}
+                  </Text>
+                </Pressable>
+              </>
+            ) : null}
+            {!isRange ? (
+              <>
+                <View style={styles.divider} />
+                <Pressable
+                  accessibilityRole="button" // @ai
+                  style={({pressed}) => [
+                    styles.option,
+                    pressed && styles.optionPressed,
+                  ]}
+                  onPress={handleTheme}>
+                  <GroupedLinesIcon
+                    size={moderateScale(18)}
+                    color={theme.colors.text}
+                  />
+                  <Text style={styles.optionText}>
+                    {t('verseActions.theme')}
+                  </Text>
+                </Pressable>
+              </>
+            ) : null}
+            {!isRange ? (
+              <>
+                <View style={styles.divider} />
+                <Pressable
+                  accessibilityRole="button" // @ai
+                  style={({pressed}) => [
+                    styles.option,
+                    pressed && styles.optionPressed,
+                  ]}
+                  onPress={handleWBW}>
+                  <BreakdownIcon
+                    size={moderateScale(18)}
+                    color={theme.colors.text}
+                  />
+                  <Text style={styles.optionText}>
+                    {t('verseActions.wordByWord')}
+                  </Text>
+                </Pressable>
+              </>
+            ) : null}
+            {/* RFC-018 — Community Reflections row. Gated on a fork wiring
+                branding.communityReflectionsProvider (so Bayaan never shows
+                it) and single-ayah selection. Same predicate as the inline
+                slot + settings toggle; no new seam. */}
+            {branding.communityReflectionsProvider && !isRange ? (
+              <>
+                <View style={styles.divider} />
+                <Pressable
+                  accessibilityRole="button" // @ai
+                  style={({pressed}) => [
+                    styles.option,
+                    pressed && styles.optionPressed,
+                  ]}
+                  onPress={handleCommunityReflections}>
+                  <MaterialCommunityIcons
+                    name="comment-quote-outline"
+                    size={moderateScale(19)}
+                    color={theme.colors.text}
+                  />
+                  <Text style={styles.optionText}>
+                    {t('verseActions.communityReflections')}
+                  </Text>
+                </Pressable>
+              </>
+            ) : null}
+            {hasSimilarVerses && !isRange ? (
+              <>
+                <View style={styles.divider} />
+                <Pressable
+                  accessibilityRole="button" // @ai
+                  style={({pressed}) => [
+                    styles.option,
+                    pressed && styles.optionPressed,
+                  ]}
+                  onPress={handleSimilarVerses}>
+                  <MirrorWavesIcon
+                    size={moderateScale(18)}
+                    color={theme.colors.text}
+                  />
+                  <Text style={styles.optionText}>
+                    {t('verseActions.similarVerses')}
+                  </Text>
+                </Pressable>
+              </>
+            ) : null}
+            {hasSharedPhrases && !isRange ? (
+              <>
+                <View style={styles.divider} />
+                <Pressable
+                  accessibilityRole="button" // @ai
+                  style={({pressed}) => [
+                    styles.option,
+                    pressed && styles.optionPressed,
+                  ]}
+                  onPress={handleSharedPhrases}>
+                  <ChainLinksIcon
+                    size={moderateScale(18)}
+                    color={theme.colors.text}
+                  />
+                  <Text style={styles.optionText}>
+                    {t('verseActions.sharedPhrases')}
+                  </Text>
+                </Pressable>
+              </>
+            ) : null}
+          </View>
+
+          {/* SHARE */}
+          <View style={styles.card}>
+            <Pressable
+              accessibilityRole="button" // @ai
+              style={({pressed}) => [
+                styles.option,
+                pressed && styles.optionPressed,
+              ]}
+              onPress={handleCopy}
+              // @ai-start
+              disabled={isCopying}
+              accessibilityState={{busy: isCopying}}>
+              {isCopying ? (
+                <ActivityIndicator
+                  size="small"
+                  color={theme.colors.text}
+                  style={{width: moderateScale(18)}}
+                />
+              ) : (
+                <CopyIcon size={moderateScale(18)} color={theme.colors.text} />
+              )}
+              {/* @ai-end */}
+              <Text style={styles.optionText}>{t('common:actions.copy')}</Text>
+            </Pressable>
+            <View style={styles.divider} />
+            <Pressable
+              accessibilityRole="button" // @ai
+              style={({pressed}) => [
+                styles.option,
+                pressed && styles.optionPressed,
+              ]}
+              onPress={handleShare}>
+              <ShareIcon size={moderateScale(18)} color={theme.colors.text} />
+              <Text style={styles.optionText}>{t('common:actions.share')}</Text>
+            </Pressable>
+          </View>
+        </ScrollView>
+      )}
+    </View>
+  );
+
+  if (presenter) {
+    return <View style={styles.nativeSheet}>{content}</View>;
+  }
+  // @ai-end
+
   return (
     <ActionSheet
       id={props.sheetId}
@@ -752,470 +1219,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
       indicatorStyle={activeScreen ? {height: 0} : styles.indicator}
       gestureEnabled={true}
       onClose={handleOnClose}>
-      <View style={[styles.container, activeScreen && {flex: 1}]}>
-        {!activeScreen && (
-          <View style={styles.header}>
-            <Text style={styles.surahName}>{surahName}</Text>
-            <Text style={styles.verseRef}>{localizeDigits(verseRefText)}</Text>
-          </View>
-        )}
-
-        {activeScreen ? (
-          <>
-            <View style={styles.backRowContainer}>
-              <Pressable
-                onPress={handleBack}
-                accessibilityRole="button" // @ai
-                style={({pressed}) => [
-                  styles.backRow,
-                  pressed && {opacity: 0.6},
-                ]}
-                hitSlop={8}>
-                <Feather
-                  name="chevron-left"
-                  size={moderateScale(16)}
-                  color={theme.colors.text}
-                  style={flipX}
-                />
-                <Text style={styles.backRowText}>
-                  {t(SCREEN_TITLE_KEYS[activeScreen] ?? 'common:actions.back')}
-                </Text>
-              </Pressable>
-              {(activeScreen === 'translation' ||
-                activeScreen === 'tafseer') && (
-                <Pressable
-                  onPress={() => {
-                    lightHaptics();
-                    hideCurrentSheet();
-                    usePlayerStore.getState().setSheetMode('hidden');
-                    setTimeout(() => {
-                      router.push('/translations'); // @ai
-                    }, 300);
-                  }}
-                  style={({pressed}) => [
-                    styles.settingsButton,
-                    pressed && {opacity: 0.6},
-                  ]}
-                  hitSlop={8}
-                  // @ai
-                  accessibilityRole="button"
-                  accessibilityLabel={t('sheets:verseActions.contentSettings')}>
-                  <Feather
-                    name="settings"
-                    size={moderateScale(16)}
-                    color={Color(theme.colors.text).alpha(0.5).toString()}
-                  />
-                </Pressable>
-              )}
-            </View>
-            {/* @ai-start */}
-            {/* Every screen acts on the selected verses; until another
-                rewayah's verses can be named, a screen shows why instead
-                (never Hafs numbers under that rewayah's name). Hafs is
-                always ready. */}
-            {pendingSelection ? (
-              <SelectionPendingView
-                selection={pendingSelection}
-                theme={theme}
-                style={isFullScreen ? {flex: 1} : undefined}
-              />
-            ) : isFullScreen ? (
-              <View style={{flex: 1}}>
-                {activeScreen === 'translation' && (
-                  <TranslationContent
-                    surahNumber={surahNumber}
-                    ayahNumber={ayahNumber}
-                    rewayah={resolvedRewayah}
-                    unitStart={unitStart}
-                    onBack={handleBack}
-                  />
-                )}
-                {activeScreen === 'tafseer' && (
-                  <TafseerContent
-                    surahNumber={surahNumber}
-                    ayahNumber={ayahNumber}
-                    rewayah={resolvedRewayah}
-                    unitStart={unitStart}
-                    onBack={handleBack}
-                  />
-                )}
-                {activeScreen === 'theme' && (
-                  <ThemeContent
-                    surahNumber={surahNumber}
-                    ayahNumber={ayahNumber}
-                    unitStart={unitStart}
-                    onBack={handleBack}
-                  />
-                )}
-                {activeScreen === 'wbw' && (
-                  <WBWContent
-                    surahNumber={surahNumber}
-                    ayahNumber={ayahNumber}
-                    rewayah={resolvedRewayah}
-                    unitStart={unitStart}
-                    onBack={handleBack}
-                  />
-                )}
-                {activeScreen === 'community-reflections' && readySelection && (
-                  // Reflections are per Hafs verse: the one holding the
-                  // verse's first word; the badge is the verse's own label.
-                  <CommunityReflectionsContent
-                    surahNumber={readySelection.linkVerse.surah}
-                    ayahNumber={readySelection.linkVerse.ayah}
-                    label={
-                      readySelection.units ? readySelection.label : undefined
-                    }
-                  />
-                )}
-              </View>
-            ) : readySelection ? (
-              <>
-                {activeScreen === 'highlight' && (
-                  <HighlightContent
-                    selection={readySelection}
-                    onDone={handleDismiss}
-                  />
-                )}
-                {activeScreen === 'note' && (
-                  <NoteContent
-                    selection={readySelection}
-                    onDone={handleDismiss}
-                  />
-                )}
-                {activeScreen === 'share' && (
-                  <ShareContent
-                    verseKey={verseKey}
-                    surahNumber={surahNumber}
-                    ayahNumber={ayahNumber}
-                    verseKeys={verseKeys}
-                    unitKeys={
-                      readySelection.units ? readySelection.keys : undefined
-                    }
-                    rewayah={resolvedRewayah}
-                    onDone={handleDismiss}
-                  />
-                )}
-                {isSimilar && qulKey && (
-                  <SimilarVersesContent
-                    verseKey={qulKey}
-                    surahNumber={surahNumber}
-                    ayahNumber={ayahNumber}
-                    section={activeScreen === 'similar' ? 'similar' : 'phrases'}
-                    rewayah={resolvedRewayah} // @ai
-                    onDone={handleDismiss}
-                    hafsReferences={resolvedRewayah !== 'hafs'}
-                  />
-                )}
-              </>
-            ) : null}
-            {/* @ai-end */}
-          </>
-        ) : (
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            bounces={false}
-            contentContainerStyle={{paddingBottom: moderateScale(10)}}>
-            {/* LISTEN */}
-            <View style={styles.card}>
-              <Pressable
-                accessibilityRole="button" // @ai
-                style={({pressed}) => [
-                  styles.option,
-                  pressed && styles.optionPressed,
-                ]}
-                onPress={
-                  source === 'player'
-                    ? isCurrentTrackTimestamped()
-                      ? handlePlayerPlayFromHere
-                      : handleShowFollowAlong
-                    : handlePlaySelection
-                }>
-                <PlayIcon size={moderateScale(18)} color={theme.colors.text} />
-                <Text style={styles.optionText}>
-                  {isRange
-                    ? t('verseActions.playSelection')
-                    : t('verseActions.playFromHere')}
-                </Text>
-              </Pressable>
-              <View style={styles.divider} />
-              <Pressable
-                accessibilityRole="button" // @ai
-                style={({pressed}) => [
-                  styles.option,
-                  pressed && styles.optionPressed,
-                ]}
-                onPress={
-                  source === 'player'
-                    ? isCurrentTrackTimestamped()
-                      ? handlePlayerRepeat
-                      : handleShowFollowAlong
-                    : handleRepeatSelection
-                }>
-                <RepeatIcon
-                  size={moderateScale(24)}
-                  color={theme.colors.text}
-                />
-                <Text style={styles.optionText}>
-                  {t('verseActions.repeat')}
-                </Text>
-              </Pressable>
-            </View>
-
-            {/* STUDY */}
-            <View style={styles.card}>
-              <Pressable
-                accessibilityRole="button" // @ai
-                style={({pressed}) => [
-                  styles.option,
-                  pressed && styles.optionPressed,
-                ]}
-                onPress={handleToggleBookmark}>
-                <Feather
-                  name={isBookmarked ? 'minus-circle' : 'bookmark'}
-                  size={moderateScale(18)}
-                  color={theme.colors.text}
-                />
-                <Text style={styles.optionText}>
-                  {isBookmarked
-                    ? t('verseActions.removeBookmark')
-                    : t('verseActions.bookmark')}
-                </Text>
-              </Pressable>
-              <View style={styles.divider} />
-              <Pressable
-                accessibilityRole="button" // @ai
-                style={({pressed}) => [
-                  styles.option,
-                  pressed && styles.optionPressed,
-                ]}
-                onPress={handleHighlight}>
-                {isHighlighted ? (
-                  <Feather
-                    name="minus-circle"
-                    size={moderateScale(18)}
-                    color={theme.colors.text}
-                  />
-                ) : (
-                  <HighlightIcon
-                    size={moderateScale(18)}
-                    color={theme.colors.text}
-                  />
-                )}
-                <Text style={styles.optionText}>
-                  {isHighlighted
-                    ? t('highlight.remove')
-                    : t('verseActions.highlight')}
-                </Text>
-              </Pressable>
-              <View style={styles.divider} />
-              <Pressable
-                accessibilityRole="button" // @ai
-                style={({pressed}) => [
-                  styles.option,
-                  pressed && styles.optionPressed,
-                ]}
-                onPress={handleNote}>
-                <PageQuillIcon
-                  size={moderateScale(18)}
-                  color={theme.colors.text}
-                />
-                <Text style={styles.optionText}>
-                  {t('verseActions.addNote')}
-                </Text>
-              </Pressable>
-            </View>
-
-            {/* EXPLORE */}
-            <View style={styles.card}>
-              <Pressable
-                accessibilityRole="button" // @ai
-                style={({pressed}) => [
-                  styles.option,
-                  pressed && styles.optionPressed,
-                ]}
-                onPress={handleTranslation}>
-                <MaterialCommunityIcons
-                  name="translate"
-                  size={moderateScale(19)}
-                  color={theme.colors.text}
-                />
-                <Text style={styles.optionText}>
-                  {t('verseActions.translation')}
-                </Text>
-              </Pressable>
-              {!isRange ? (
-                <>
-                  <View style={styles.divider} />
-                  <Pressable
-                    accessibilityRole="button" // @ai
-                    style={({pressed}) => [
-                      styles.option,
-                      pressed && styles.optionPressed,
-                    ]}
-                    onPress={handleTafseer}>
-                    <StackedVolumesIcon
-                      size={moderateScale(18)}
-                      color={theme.colors.text}
-                    />
-                    <Text style={styles.optionText}>
-                      {t('verseActions.tafseer')}
-                    </Text>
-                  </Pressable>
-                </>
-              ) : null}
-              {!isRange ? (
-                <>
-                  <View style={styles.divider} />
-                  <Pressable
-                    accessibilityRole="button" // @ai
-                    style={({pressed}) => [
-                      styles.option,
-                      pressed && styles.optionPressed,
-                    ]}
-                    onPress={handleTheme}>
-                    <GroupedLinesIcon
-                      size={moderateScale(18)}
-                      color={theme.colors.text}
-                    />
-                    <Text style={styles.optionText}>
-                      {t('verseActions.theme')}
-                    </Text>
-                  </Pressable>
-                </>
-              ) : null}
-              {!isRange ? (
-                <>
-                  <View style={styles.divider} />
-                  <Pressable
-                    accessibilityRole="button" // @ai
-                    style={({pressed}) => [
-                      styles.option,
-                      pressed && styles.optionPressed,
-                    ]}
-                    onPress={handleWBW}>
-                    <BreakdownIcon
-                      size={moderateScale(18)}
-                      color={theme.colors.text}
-                    />
-                    <Text style={styles.optionText}>
-                      {t('verseActions.wordByWord')}
-                    </Text>
-                  </Pressable>
-                </>
-              ) : null}
-              {/* RFC-018 — Community Reflections row. Gated on a fork wiring
-                  branding.communityReflectionsProvider (so Bayaan never shows
-                  it) and single-ayah selection. Same predicate as the inline
-                  slot + settings toggle; no new seam. */}
-              {branding.communityReflectionsProvider && !isRange ? (
-                <>
-                  <View style={styles.divider} />
-                  <Pressable
-                    accessibilityRole="button" // @ai
-                    style={({pressed}) => [
-                      styles.option,
-                      pressed && styles.optionPressed,
-                    ]}
-                    onPress={handleCommunityReflections}>
-                    <MaterialCommunityIcons
-                      name="comment-quote-outline"
-                      size={moderateScale(19)}
-                      color={theme.colors.text}
-                    />
-                    <Text style={styles.optionText}>
-                      {t('verseActions.communityReflections')}
-                    </Text>
-                  </Pressable>
-                </>
-              ) : null}
-              {hasSimilarVerses && !isRange ? (
-                <>
-                  <View style={styles.divider} />
-                  <Pressable
-                    accessibilityRole="button" // @ai
-                    style={({pressed}) => [
-                      styles.option,
-                      pressed && styles.optionPressed,
-                    ]}
-                    onPress={handleSimilarVerses}>
-                    <MirrorWavesIcon
-                      size={moderateScale(18)}
-                      color={theme.colors.text}
-                    />
-                    <Text style={styles.optionText}>
-                      {t('verseActions.similarVerses')}
-                    </Text>
-                  </Pressable>
-                </>
-              ) : null}
-              {hasSharedPhrases && !isRange ? (
-                <>
-                  <View style={styles.divider} />
-                  <Pressable
-                    accessibilityRole="button" // @ai
-                    style={({pressed}) => [
-                      styles.option,
-                      pressed && styles.optionPressed,
-                    ]}
-                    onPress={handleSharedPhrases}>
-                    <ChainLinksIcon
-                      size={moderateScale(18)}
-                      color={theme.colors.text}
-                    />
-                    <Text style={styles.optionText}>
-                      {t('verseActions.sharedPhrases')}
-                    </Text>
-                  </Pressable>
-                </>
-              ) : null}
-            </View>
-
-            {/* SHARE */}
-            <View style={styles.card}>
-              <Pressable
-                accessibilityRole="button" // @ai
-                style={({pressed}) => [
-                  styles.option,
-                  pressed && styles.optionPressed,
-                ]}
-                onPress={handleCopy}
-                // @ai-start
-                disabled={isCopying}
-                accessibilityState={{busy: isCopying}}>
-                {isCopying ? (
-                  <ActivityIndicator
-                    size="small"
-                    color={theme.colors.text}
-                    style={{width: moderateScale(18)}}
-                  />
-                ) : (
-                  <CopyIcon
-                    size={moderateScale(18)}
-                    color={theme.colors.text}
-                  />
-                )}
-                {/* @ai-end */}
-                <Text style={styles.optionText}>
-                  {t('common:actions.copy')}
-                </Text>
-              </Pressable>
-              <View style={styles.divider} />
-              <Pressable
-                accessibilityRole="button" // @ai
-                style={({pressed}) => [
-                  styles.option,
-                  pressed && styles.optionPressed,
-                ]}
-                onPress={handleShare}>
-                <ShareIcon size={moderateScale(18)} color={theme.colors.text} />
-                <Text style={styles.optionText}>
-                  {t('common:actions.share')}
-                </Text>
-              </Pressable>
-            </View>
-          </ScrollView>
-        )}
-      </View>
+      {content}
     </ActionSheet>
   );
 };
@@ -1241,6 +1245,11 @@ const createStyles = (theme: Theme) =>
     container: {
       paddingHorizontal: moderateScale(20),
       paddingBottom: moderateScale(30),
+    },
+    // @ai: the native sheet draws its own background, grabber and corners.
+    nativeSheet: {
+      flex: 1,
+      paddingTop: moderateScale(18),
     },
     header: {
       alignItems: 'center',
