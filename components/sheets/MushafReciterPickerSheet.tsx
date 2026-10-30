@@ -10,6 +10,7 @@ import {
   type ReciterPickerItem,
 } from '@/components/reciter-picker/ReciterPickerSheet';
 import {getStyleLabel} from './sheetLabels';
+import {hideSheet} from '@/components/sheets/sheetControl'; // @ai
 
 /**
  * Single-select reciter picker for Mushaf playback. Lists only rewayat that
@@ -64,7 +65,7 @@ export const MushafReciterPickerSheet = (
   const handleSelect = useCallback(
     (item: ReciterPickerItem) => {
       const reciter = availableReciters.find(r => r.rewayatId === item.id);
-      SheetManager.hide('mushaf-reciter-picker', {payload: reciter});
+      hideSheet('mushaf-reciter-picker', {payload: reciter});
     },
     [availableReciters],
   );

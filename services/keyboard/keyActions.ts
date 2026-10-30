@@ -3,6 +3,7 @@ import {SheetManager, getSheetStack} from 'react-native-actions-sheet';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
 import {mushafAudioService} from '@/services/audio/MushafAudioService';
+import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 
 /** Matches the player's on-screen skip buttons. */
 export const KEY_SEEK_SECONDS = 15;
@@ -75,7 +76,7 @@ export function toggleRecitation(currentPage: number): void {
       return;
     case 'idle':
       useMushafPlayerStore.setState({currentPage});
-      SheetManager.show('mushaf-player-options', {payload: {currentPage}});
+      showSheet('mushaf-player-options', {payload: {currentPage}});
       return;
     case 'loading':
       return;

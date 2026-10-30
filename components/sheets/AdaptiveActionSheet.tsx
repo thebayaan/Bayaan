@@ -25,6 +25,7 @@ import ActionSheet, {
 import {useResponsive} from '@/hooks/useResponsive';
 import {getRecentTouch, type TouchPoint} from '@/utils/lastTouch';
 import {appLayoutDirection, forceLTR} from '@/utils/rtl';
+import {useNativeSheetId} from '@/components/native/nativeSheetContext'; // @ai
 
 /** Widest a sheet gets on iPad (ipad-standards §5.3, sheets and dialogs). */
 export const SHEET_MAX_WIDTH = 560;
@@ -96,8 +97,8 @@ export function placeMenu(
     anchor.x < third
       ? anchor.x
       : anchor.x > 2 * third
-        ? anchor.x - menu.width
-        : anchor.x - menu.width / 2;
+      ? anchor.x - menu.width
+      : anchor.x - menu.width / 2;
   const fitsBelow =
     anchor.y + ANCHOR_CLEARANCE + menu.height <= area.height - EDGE_MARGIN;
   const y = fitsBelow
@@ -299,16 +300,46 @@ const TabletSheet = forwardRef<ActionSheetRef, TabletSheetProps>(
 );
 TabletSheet.displayName = 'TabletSheet';
 
+// @ai-start
+/**
+ * A sheet's content inside a native sheet (`showSheet`): the native sheet
+ * draws the background, grabber and corners, so the content only fills it.
+ * `onOpen` and `onClose` still run, on mount and when the sheet is gone.
+ */
+function NativeSheetBody({
+  onOpen,
+  onClose,
+  children,
+}: Pick<ActionSheetProps, 'onOpen' | 'onClose' | 'children'>) {
+  const callbacks = useRef({onOpen, onClose});
+  callbacks.current = {onOpen, onClose};
+  useEffect(() => {
+    callbacks.current.onOpen?.();
+    return () => callbacks.current.onClose?.();
+  }, []);
+  return <View style={styles.nativeBody}>{children}</View>;
+}
+// @ai-end
+
 /**
  * `ActionSheet` that phones get unchanged. On iPad it never spans the
  * window: it shows as a centered card at most `SHEET_MAX_WIDTH` wide, or as
- * a menu beside its button when `tabletPresentation` is `menu`.
+ * a menu beside its button when `tabletPresentation` is `menu`. Inside a
+ * native sheet it draws only its content.
  */
 const AdaptiveActionSheet = forwardRef<
   ActionSheetRef,
   AdaptiveActionSheetProps
 >(({tabletPresentation = 'card', ...props}, ref) => {
   const {isTablet} = useResponsive();
+  const nativeSheetId = useNativeSheetId(); // @ai
+  if (nativeSheetId) {
+    return (
+      <NativeSheetBody onOpen={props.onOpen} onClose={props.onClose}>
+        {props.children}
+      </NativeSheetBody>
+    );
+  }
   if (isTablet) {
     return (
       <TabletSheet ref={ref} presentation={tabletPresentation} {...props} />
@@ -321,6 +352,8 @@ AdaptiveActionSheet.displayName = 'AdaptiveActionSheet';
 export default AdaptiveActionSheet;
 
 const styles = StyleSheet.create({
+  // @ai: below the native grabber
+  nativeBody: {flex: 1, paddingTop: 18},
   layer: {
     height: '100%',
     backgroundColor: 'transparent',

@@ -10,9 +10,9 @@ import {RECITERS, Reciter} from '@/data/reciterData';
 import {useTimestampStore} from '@/store/timestampStore';
 import {ReciterItem} from '@/components/ReciterItem';
 import {useReciterNavigation} from '@/hooks/useReciterNavigation';
-import {SheetManager} from 'react-native-actions-sheet';
 // @ai-start
 import {useTranslation} from 'react-i18next';
+import {hideSheet} from '@/components/sheets/sheetControl'; // @ai
 // @ai-end
 
 // @ai-start
@@ -28,7 +28,7 @@ export const FollowAlongSheet = (props: SheetProps<'follow-along'>) => {
   }, []);
 
   const handleReciterPress = (reciter: Reciter) => {
-    SheetManager.hide('follow-along');
+    hideSheet('follow-along');
     navigateToReciterProfile(reciter.id);
   };
 

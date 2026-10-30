@@ -4,64 +4,133 @@ import type {ReactNode} from 'react';
 /**
  * Sheets presented as SwiftUI sheets on iPhone (detents, the system grabber,
  * the page behind kept live up to the medium detent). Off: every sheet stays
- * on react-native-actions-sheet. Only the verse actions sheet uses it so far.
+ * on react-native-actions-sheet. `sheetControl` decides which sheets go
+ * native.
  */
 export const nativeSheetsEnabled = false;
 
-interface SheetHost {
-  present: (content: ReactNode) => void;
-  dismiss: () => void;
+/** One presented sheet. A sheet shown over another stacks a level. */
+export interface NativeSheetLevel {
+  key: number;
+  id: string;
+  content: ReactNode;
+  /** False while the level animates out. */
+  presented: boolean;
 }
 
-let host: SheetHost | null = null;
-let presented = false;
-let dismissWaiters: (() => void)[] = [];
-let onDismissed: (() => void) | undefined;
+interface Pending {
+  /** Resolves the `presentNativeSheet` promise with the hide result. */
+  resolve: (result: unknown) => void;
+  result: unknown;
+  /** `hideNativeSheet` calls waiting for this level to be gone. */
+  waiters: (() => void)[];
+}
 
-/** `NativeSheetHost` (mounted once at the root on iOS) registers here. */
-export function setNativeSheetHost(next: SheetHost): () => void {
-  host = next;
+let levels: NativeSheetLevel[] = [];
+const pending = new Map<number, Pending>();
+const listeners = new Set<() => void>();
+let nextKey = 1;
+let hostMounted = false;
+
+function publish(next: NativeSheetLevel[]) {
+  levels = next;
+  listeners.forEach(listener => listener());
+}
+
+export function subscribeNativeSheets(listener: () => void): () => void {
+  listeners.add(listener);
   return () => {
-    if (host === next) host = null;
+    listeners.delete(listener);
   };
 }
 
-/** The host calls this once the sheet has finished dismissing. */
-export function notifyNativeSheetDismissed(): void {
-  presented = false;
-  const callback = onDismissed;
-  onDismissed = undefined;
-  callback?.();
-  const waiters = dismissWaiters;
-  dismissWaiters = [];
-  waiters.forEach(resolve => resolve());
+export function getNativeSheetLevels(): NativeSheetLevel[] {
+  return levels;
+}
+
+/** `NativeSheetHost` (mounted once at the root on iOS) reports itself. */
+export function setNativeSheetHostMounted(mounted: boolean): void {
+  hostMounted = mounted;
+}
+
+export function isNativeSheetPresented(id: string): boolean {
+  return levels.some(level => level.id === id && level.presented);
+}
+
+export function hasNativeSheet(): boolean {
+  return levels.some(level => level.presented);
 }
 
 /**
- * Presents `content` in the native sheet, replacing what it shows if one is
- * already up. `onDismiss` runs once the sheet is gone (the latest one wins
- * when the content is replaced). Returns false when no host is mounted, so
- * callers fall back to their React Native sheet.
+ * Presents `content` as a native sheet. With `stack`, it goes over the
+ * sheets already up (presented from inside the top one); otherwise it
+ * replaces what the top sheet shows. Resolves with the value the sheet is
+ * hidden with, once it is gone. Null when no host is mounted, so callers
+ * fall back to their React Native sheet.
  */
 export function presentNativeSheet(
+  id: string,
   content: ReactNode,
-  onDismiss?: () => void,
-): boolean {
-  if (!host) return false;
-  presented = true;
-  onDismissed = onDismiss;
-  host.present(content);
-  return true;
+  stack: boolean,
+): Promise<unknown> | null {
+  if (!hostMounted) return null;
+  const top = levels[levels.length - 1];
+  const key = nextKey++;
+  const promise = new Promise<unknown>(resolve => {
+    pending.set(key, {resolve, result: undefined, waiters: []});
+  });
+  if (!stack && top?.presented) {
+    // Replacing: the old content's promise resolves as if it were hidden.
+    finish(top.key);
+    publish([...levels.slice(0, -1), {key, id, content, presented: true}]);
+  } else {
+    publish([...levels, {key, id, content, presented: true}]);
+  }
+  return promise;
 }
 
 /**
- * Dismisses the native sheet. Resolves once it is fully gone, so a React
- * Native modal shown next never races its dismissal (a modal presented while
- * a native presentation is up fails and leaves the screen unresponsive).
+ * Dismisses the sheet `id` (and anything stacked on it), resolving its
+ * `presentNativeSheet` promise with `result`. Resolves once it is fully
+ * gone, so a React Native modal shown next never races the dismissal.
  */
-export function hideNativeSheet(): Promise<void> {
-  if (!host || !presented) return Promise.resolve();
-  const done = new Promise<void>(resolve => dismissWaiters.push(resolve));
-  host.dismiss();
-  return done;
+export function hideNativeSheet(id: string, result?: unknown): Promise<void> {
+  const index = levels.findIndex(level => level.id === id && level.presented);
+  if (index < 0) return Promise.resolve();
+  const entry = pending.get(levels[index].key);
+  if (entry) entry.result = result;
+  const gone = new Promise<void>(resolve => {
+    if (entry) entry.waiters.push(resolve);
+    else resolve();
+  });
+  publish(
+    levels.map((item, i) => (i >= index ? {...item, presented: false} : item)),
+  );
+  return gone;
+}
+
+/** The host reports a level swiped away (no longer presented). */
+export function notifyNativeSheetClosing(key: number): void {
+  publish(
+    levels.map(level =>
+      level.key === key ? {...level, presented: false} : level,
+    ),
+  );
+}
+
+/** The host reports a level fully dismissed (by a hide or a swipe). */
+export function notifyNativeSheetDismissed(key: number): void {
+  const index = levels.findIndex(level => level.key === key);
+  if (index < 0) return;
+  // Dismissing a level takes every level stacked on it with it.
+  levels.slice(index).forEach(level => finish(level.key));
+  publish(levels.slice(0, index));
+}
+
+function finish(key: number) {
+  const entry = pending.get(key);
+  if (!entry) return;
+  pending.delete(key);
+  entry.resolve(entry.result);
+  entry.waiters.forEach(resolve => resolve());
 }
