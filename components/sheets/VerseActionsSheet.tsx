@@ -98,7 +98,8 @@ import {useTranslation} from 'react-i18next';
 import i18n from '@/i18n';
 import {getSurahDisplayName, localizeDigits} from '@/i18n/format';
 import {flipX} from '@/utils/rtl';
-import {useNativeSheetId} from '@/components/native/nativeSheetContext'; // @ai
+import {useNativeSheetLevel} from '@/components/native/nativeSheetContext'; // @ai
+import {setNativeSheetDetents} from '@/components/native/nativeSheets'; // @ai
 // @ai-end
 import {CommunityReflectionsContent} from './verse-actions/CommunityReflectionsContent';
 import {useSheetBottomPadding} from '@/components/sheets/useSheetBottomPadding'; // @ai
@@ -212,7 +213,8 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
   const [activeScreen, setActiveScreenRaw] = useState<ActiveScreen>(null);
   // @ai: a native sheet sizes this view to its detent, so the menu fills
   // it and scrolls instead of running past the bottom edge.
-  const inNativeSheet = useNativeSheetId() !== null;
+  const nativeLevel = useNativeSheetLevel();
+  const inNativeSheet = nativeLevel !== null;
 
   const setActiveScreen = useCallback((screen: ActiveScreen) => {
     LayoutAnimation.configureNext(
@@ -761,6 +763,17 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     activeScreen === 'community-reflections';
 
   // @ai-start
+  // In a native sheet the menu sizes the sheet to itself; the full-screen
+  // views, the similar-verse lists and the note (keyboard) take full height.
+  const needsFullHeight = isFullScreen || isSimilar || activeScreen === 'note';
+  const nativeKey = nativeLevel?.key;
+  useEffect(() => {
+    if (nativeKey === undefined) return;
+    setNativeSheetDetents(nativeKey, needsFullHeight ? ['large'] : null);
+  }, [nativeKey, needsFullHeight]);
+  // @ai-end
+
+  // @ai-start
   const content = (
     <View
       style={[
@@ -768,7 +781,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
         // @ai: in a native sheet the menu scrolls to the screen edge and
         // ends with the inset itself (below); the container adds nothing.
         {paddingBottom: inNativeSheet ? 0 : sheetBottomPadding},
-        (activeScreen || inNativeSheet) && {flex: 1},
+        activeScreen && (!inNativeSheet || needsFullHeight) && {flex: 1},
       ]}>
       {!activeScreen && (
         <View style={styles.header}>

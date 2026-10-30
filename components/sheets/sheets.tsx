@@ -79,7 +79,7 @@ registerSheet('word-detail', WordDetailSheet);
 
 // @ai-start
 // Presented as native sheets on iPhone when nativeSheetsEnabled (showSheet).
-registerNativeSheet('verse-actions', VerseActionsSheet);
+registerNativeSheet('verse-actions', VerseActionsSheet, {detents: 'fit'});
 registerNativeSheet('word-detail', WordDetailSheet, {detents: 'fit'});
 registerNativeSheet('mushaf-layout', MushafLayoutSheet);
 // Playback settings is a form that needs the room; it opens full height.

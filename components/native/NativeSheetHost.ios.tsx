@@ -54,12 +54,13 @@ function SheetLevel({
   const key = level?.key;
   const id = level?.id;
   const fit = level?.fit;
+  const fitted = level?.fitted;
   const info = useMemo(
     () =>
       key === undefined || id === undefined
         ? null
-        : {key, id, fit: fit ?? false},
-    [key, id, fit],
+        : {key, id, fit: fit ?? false, fitted: fitted ?? false},
+    [key, id, fit, fitted],
   );
   if (!level) return null;
 
