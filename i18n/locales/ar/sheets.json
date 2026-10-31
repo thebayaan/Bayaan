@@ -360,5 +360,170 @@
     "nothingToCopy": "لا يوجد ما يُنسخ",
     "nothingToShare": "لا يوجد ما تتم مشاركته",
     "noOwnText": "في رواية {{rewayah}}، يُقرأ هذا التحديد جزءًا من آية مجاورة."
+  },
+  "mushafOptions": {
+    "title": "القراءة",
+    "close": "إغلاق",
+    "listSeparator": "، ",
+    "view": {
+      "header": "العرض",
+      "mushaf": "المصحف",
+      "list": "قائمة",
+      "mushafHelp": "الصفحة المطبوعة كما هي في المصحف.",
+      "listHelp": "آية بعد آية، وتحتها الترجمة."
+    },
+    "layout": {
+      "header": "التخطيط",
+      "single": "صفحة واحدة",
+      "book": "كتاب",
+      "scroll": "تمرير",
+      "pages": "صفحات",
+      "continuous": "متصل",
+      "help": {
+        "single": "اسحب جانبًا، صفحة في كل مرة.",
+        "book": "اسحب جانبًا، بكعب وحواف صفحات كالمصحف المطبوع.",
+        "scroll": "تتوالى الصفحات من الأعلى إلى الأسفل. مرّر لأعلى لتواصل القراءة.",
+        "pages": "اسحب جانبًا عبر صفحة من الآيات في كل مرة.",
+        "continuous": "تتوالى الآيات من الأعلى إلى الأسفل بلا فواصل."
+      }
+    },
+    "theme": {
+      "header": "السمة",
+      "help": "الفاتح والداكن والتلقائي تغيّر التطبيق كله. التلقائي يتبع هاتفك.",
+      "modes": {
+        "light": "فاتح",
+        "dark": "داكن",
+        "system": "تلقائي"
+      },
+      "modeLabel": "المظهر، {{mode}}",
+      "modeHint": "ينتقل إلى المظهر التالي"
+    },
+    "text": {
+      "title": "النص",
+      "summaryMushaf": "السماكة: {{weight}}",
+      "summaryList": "حجم العربي {{size}} · {{weight}}",
+      "weightHeader": "السماكة",
+      "targets": {
+        "arabic": "العربي",
+        "translation": "الترجمة",
+        "transliteration": "النطق"
+      },
+      "targetNames": {
+        "arabic": "النص العربي",
+        "translation": "الترجمة",
+        "transliteration": "النطق اللاتيني"
+      },
+      "targetsLabel": "النص الذي يتغير حجمه",
+      "sizeLabel": "حجم {{target}}",
+      "mushafHelp": "صفحات المصحف تبقى بحجمها المطبوع. انتقل إلى القائمة لتغيير الحجم.",
+      "listHelp": "لكل نص حجمه الخاص."
+    },
+    "verse": {
+      "title": "تحت كل آية",
+      "translation": "الترجمة",
+      "transliteration": "النطق اللاتيني",
+      "wordByWord": "كلمة بكلمة",
+      "nothing": "لا شيء",
+      "help": "اختر ما تشاء. الترجمة هي ترجمة صحيح إنترناشونال."
+    },
+    "highlights": {
+      "title": "التلوين",
+      "off": "متوقف",
+      "summaryTajweed": "التجويد",
+      "summaryAllah": "أسماء الله",
+      "summaryThemes": "المواضيع",
+      "previewLabel": "معاينة التلوين",
+      "tajweed": "ألوان التجويد",
+      "tajweedHelp": "لكل حكم من أحكام التلاوة لونه",
+      "tajweedPreview": "معاينة في مصحف 1440",
+      "legend": "معاني الألوان",
+      "allah": "أسماء الله",
+      "allahHelp": "لفظ الجلالة والرب باللون الذي تختاره",
+      "colorLabel": "لون التمييز",
+      "themes": "المقاطع الموضوعية",
+      "themesHelp": "يظلل كل مقطع لترى أين يتغير الموضوع",
+      "reflections": "تأملات المجتمع",
+      "reflectionsHelp": "إظهار التأملات تحت كل آية في عرض القائمة"
+    },
+    "legend": {
+      "necessary": {
+        "label": "مد لازم",
+        "detail": "6 حركات"
+      },
+      "obligatory": {
+        "label": "مد واجب",
+        "detail": "4 أو 5 حركات"
+      },
+      "permissible": {
+        "label": "مد جائز",
+        "detail": "2 أو 4 أو 6"
+      },
+      "normal": {
+        "label": "مد طبيعي",
+        "detail": "حركتان"
+      },
+      "ghunnah": {
+        "label": "غنة",
+        "detail": "صوت من الأنف"
+      },
+      "qalqalah": {
+        "label": "قلقلة",
+        "detail": "صدى"
+      },
+      "tafkhim": {
+        "label": "تفخيم",
+        "detail": "حروف مفخمة"
+      },
+      "silent": {
+        "label": "لا يُنطق",
+        "detail": "حرف ساكت"
+      }
+    },
+    "words": {
+      "title": "تفاصيل الكلمات",
+      "meaning": "المعنى",
+      "transliteration": "النطق اللاتيني",
+      "off": "متوقف",
+      "previewLabel": "معاينة تفاصيل الكلمات",
+      "help": "تظهر عند لمس كلمة، وتحت كل كلمة عند تشغيل كلمة بكلمة.",
+      "sample": {
+        "rahim": {
+          "meaning": "the Most Merciful",
+          "translit": "ar-raḥīm"
+        },
+        "allah": {
+          "meaning": "(of) Allah",
+          "translit": "allāhi"
+        }
+      }
+    },
+    "mushafText": {
+      "title": "نص المصحف",
+      "summary": "{{script}} · {{rewayah}}",
+      "back": "القراءة",
+      "scriptHeader": "الخط",
+      "beta": "تجريبي",
+      "scripts": {
+        "dkV1": "طبعة مجمع الملك فهد الكلاسيكية",
+        "dkV2": "طبعة مجمع الملك فهد الحديثة",
+        "indopak": "على طريقة شبه القارة الهندية",
+        "qcfV2": "طبعة المدينة الحديثة · تجريبي"
+      },
+      "rewayahHeader": "الرواية",
+      "rewayahLocked": "مصحف 1440 تجريبي ويعرض رواية حفص فقط.",
+      "qurra": {
+        "asim": "عاصم",
+        "nafi": "نافع",
+        "ibnKathir": "ابن كثير",
+        "abuAmr": "أبو عمرو"
+      },
+      "moreComing": "{{number}} رواية أخرى قادمة حين يجهز نصها.",
+      "about": "الرواية طريقة منقولة في تلاوة القرآن. وحفص هي الأوسع طباعة.",
+      "differences": "إظهار الفروق عن حفص",
+      "differencesHelp": {
+        "words": "يلوّن الكلمات التي تُقرأ بشكل مختلف",
+        "wordsAndSilah": "يلوّن الكلمات التي تُقرأ بشكل مختلف وعلامات الصلة"
+      }
+    }
   }
 }

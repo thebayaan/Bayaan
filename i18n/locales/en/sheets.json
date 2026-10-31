@@ -312,5 +312,170 @@
     "nothingToCopy": "Nothing to copy",
     "nothingToShare": "Nothing to share",
     "noOwnText": "In {{rewayah}}, this selection is read as part of a neighboring verse."
+  },
+  "mushafOptions": {
+    "title": "Reading",
+    "close": "Close",
+    "listSeparator": ", ",
+    "view": {
+      "header": "View",
+      "mushaf": "Mushaf",
+      "list": "List",
+      "mushafHelp": "The printed page, exactly as in the mushaf.",
+      "listHelp": "One verse at a time, with translation underneath."
+    },
+    "layout": {
+      "header": "Layout",
+      "single": "Single page",
+      "book": "Book",
+      "scroll": "Scroll",
+      "pages": "Pages",
+      "continuous": "Continuous",
+      "help": {
+        "single": "Swipe sideways, one page at a time.",
+        "book": "Swipe sideways, with a spine and page edges like a printed mushaf.",
+        "scroll": "Pages run top to bottom. Scroll up to keep reading.",
+        "pages": "Swipe sideways through a page of verses at a time.",
+        "continuous": "Verses flow top to bottom without breaks."
+      }
+    },
+    "theme": {
+      "header": "Theme",
+      "help": "Light, Dark and Auto change the whole app. Auto follows your phone.",
+      "modes": {
+        "light": "Light",
+        "dark": "Dark",
+        "system": "Auto"
+      },
+      "modeLabel": "Appearance, {{mode}}",
+      "modeHint": "Switches to the next appearance"
+    },
+    "text": {
+      "title": "Text",
+      "summaryMushaf": "{{weight}} weight",
+      "summaryList": "Arabic size {{size}} · {{weight}}",
+      "weightHeader": "Weight",
+      "targets": {
+        "arabic": "Arabic",
+        "translation": "Translation",
+        "transliteration": "Translit."
+      },
+      "targetNames": {
+        "arabic": "Arabic",
+        "translation": "Translation",
+        "transliteration": "Transliteration"
+      },
+      "targetsLabel": "Which text to resize",
+      "sizeLabel": "{{target}} size",
+      "mushafHelp": "Mushaf pages keep their printed size. Switch to List to resize.",
+      "listHelp": "Each text keeps its own size."
+    },
+    "verse": {
+      "title": "Under each verse",
+      "translation": "Translation",
+      "transliteration": "Transliteration",
+      "wordByWord": "Word by word",
+      "nothing": "Nothing",
+      "help": "Pick any. Translation is Saheeh International."
+    },
+    "highlights": {
+      "title": "Highlights",
+      "off": "Off",
+      "summaryTajweed": "Tajweed",
+      "summaryAllah": "Names of Allah",
+      "summaryThemes": "Thematic",
+      "previewLabel": "Preview of your highlights",
+      "tajweed": "Tajweed colors",
+      "tajweedHelp": "Each rule of recitation gets its own color",
+      "tajweedPreview": "Preview in Mushaf 1440",
+      "legend": "What the colors mean",
+      "allah": "Names of Allah",
+      "allahHelp": "Allah and Rabb in the color you pick",
+      "colorLabel": "Highlight color",
+      "themes": "Thematic passages",
+      "themesHelp": "Shades each passage so you can see where the theme changes",
+      "reflections": "Community reflections",
+      "reflectionsHelp": "Show reflections under each verse in List view"
+    },
+    "legend": {
+      "necessary": {
+        "label": "Necessary madd",
+        "detail": "6 counts"
+      },
+      "obligatory": {
+        "label": "Obligatory madd",
+        "detail": "4 or 5 counts"
+      },
+      "permissible": {
+        "label": "Permissible madd",
+        "detail": "2, 4 or 6"
+      },
+      "normal": {
+        "label": "Normal madd",
+        "detail": "2 counts"
+      },
+      "ghunnah": {
+        "label": "Ghunnah",
+        "detail": "nasal sound"
+      },
+      "qalqalah": {
+        "label": "Qalqalah",
+        "detail": "echo"
+      },
+      "tafkhim": {
+        "label": "Tafkhim",
+        "detail": "heavy letters"
+      },
+      "silent": {
+        "label": "Silent",
+        "detail": "not pronounced"
+      }
+    },
+    "words": {
+      "title": "Word details",
+      "meaning": "Meaning",
+      "transliteration": "Transliteration",
+      "off": "Off",
+      "previewLabel": "Preview of word details",
+      "help": "Shown when you tap a word, and under each word when Word by word is on.",
+      "sample": {
+        "rahim": {
+          "meaning": "the Most Merciful",
+          "translit": "ar-raḥīm"
+        },
+        "allah": {
+          "meaning": "(of) Allah",
+          "translit": "allāhi"
+        }
+      }
+    },
+    "mushafText": {
+      "title": "Mushaf text",
+      "summary": "{{script}} · {{rewayah}}",
+      "back": "Reading",
+      "scriptHeader": "Script",
+      "beta": "Beta",
+      "scripts": {
+        "dkV1": "Classic King Fahd Complex print",
+        "dkV2": "Modern King Fahd Complex print",
+        "indopak": "Subcontinent style",
+        "qcfV2": "Modern Madinah print · beta"
+      },
+      "rewayahHeader": "Rewayah",
+      "rewayahLocked": "Mushaf 1440 is in beta and shows Hafs only.",
+      "qurra": {
+        "asim": "ʿĀṣim",
+        "nafi": "Nāfiʿ",
+        "ibnKathir": "Ibn Kathīr",
+        "abuAmr": "Abū ʿAmr"
+      },
+      "moreComing": "{{number}} more rewayat are coming once their text is ready.",
+      "about": "A rewayah is one transmitted way of reciting the Quran. Hafs is the most widely printed.",
+      "differences": "Show differences from Hafs",
+      "differencesHelp": {
+        "words": "Tints words that read differently",
+        "wordsAndSilah": "Tints words that read differently and colors silah marks"
+      }
+    }
   }
 }
