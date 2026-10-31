@@ -71,7 +71,7 @@ import {usePlaybackBasmalaSurah} from '@/store/mushafPlayerStore'; // @ai
 import {useVerseUnitDragSelect, type LineCharHit} from './verseUnitDragSelect';
 // @ai-end
 import {type MushafLayoutMetrics, canvasBottomOverflow} from '../constants'; // @ai
-import {useInitialPageLanding} from './useInitialPageLanding'; // @ai
+import {continuousPagePlacement} from './continuousPagePlacement'; // @ai
 
 // Rendering constants are now derived from live `metrics` (see
 // `useRenderConstants` below). On phones the old frozen values are
@@ -714,11 +714,8 @@ const ContinuousMushafView = forwardRef<
     const {theme} = useTheme();
     const flashListRef = useRef<FlashListRef<number>>(null);
     const render = useMemo(() => buildRenderConstants(metrics), [metrics]);
-    // @ai: open on the reader's page, not where the size estimates land
-    const scrollToPageIndex = useCallback((index: number) => {
-      flashListRef.current?.scrollToIndex({index, animated: false});
-    }, []);
-    const landing = useInitialPageLanding(initialPage, scrollToPageIndex);
+    // @ai: opens on the reader's page (see continuousPagePlacement)
+    const placement = continuousPagePlacement(initialPage);
     const {lineWidth} = render;
 
     // Subscribe to preloaded fontMgr; no useFonts fallback that races
@@ -829,13 +826,12 @@ const ContinuousMushafView = forwardRef<
     const onViewableItemsChanged = useCallback(
       ({viewableItems}: {viewableItems: Array<{item: number}>}) => {
         if (viewableItems.length === 0) return;
-        if (!landing.hasLanded()) return; // @ai
         const page = viewableItems[0].item;
         onCurrentPageChange?.(page);
         const surahId = pageToSurah[page];
         if (surahId) loadAnnotationsForSurah(surahId);
       },
-      [onCurrentPageChange, pageToSurah, loadAnnotationsForSurah, landing],
+      [onCurrentPageChange, pageToSurah, loadAnnotationsForSurah],
     );
 
     const renderItem = useCallback(
@@ -891,8 +887,10 @@ const ContinuousMushafView = forwardRef<
         renderItem={renderItem}
         extraData={`${showTajweed}-${arabicTextWeight}-${showAllahNameHighlight}-${allahNameHighlightColor}-${rewayah}-${showRewayahDiffs}-${textIdentity}`} // @ai
         keyExtractor={keyExtractor}
-        initialScrollIndex={initialPage - 1}
-        onLoad={landing.onLoad} // @ai
+        initialScrollIndex={placement.initialScrollIndex} // @ai
+        maintainVisibleContentPosition={
+          placement.maintainVisibleContentPosition
+        } // @ai
         contentContainerStyle={{
           paddingTop: insets.top + verticalScale(60),
           paddingBottom: insets.bottom + verticalScale(80),
