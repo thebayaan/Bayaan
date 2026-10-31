@@ -421,7 +421,7 @@
         "system": "Auto"
       },
       "modeLabel": "Appearance, {{mode}}",
-      "modeHint": "Switches to the next appearance"
+      "modeMenuTitle": "Appearance"
     },
     "text": {
       "title": "Text",

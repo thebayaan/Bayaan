@@ -1,5 +1,5 @@
 // @ai-generated
-import React, {useCallback, useEffect, useMemo, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {
   Pressable,
   ScrollView as RNScrollView,
@@ -7,6 +7,8 @@ import {
   Text,
   View,
   type LayoutChangeEvent,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
   type ScrollViewProps,
 } from 'react-native';
 import Animated, {
@@ -49,6 +51,9 @@ import {useSheetGrowth} from './useSheetGrowth';
 
 export type MushafOptionsContext = 'mushaf' | 'player';
 
+/** Scrolled at most this far, the options count as at their top. */
+export const NEAR_TOP = moderateScale(48);
+
 /**
  * The Reading options: View, Layout and Theme always showing, then folded
  * cards (one open at a time) and a row that pushes the Mushaf text screen.
@@ -61,6 +66,7 @@ export function MushafOptionsContent({
   ScrollComponent = RNScrollView,
   onClose,
   onGrow,
+  onShrink,
   crossfadeBackground = false,
 }: {
   context?: MushafOptionsContext;
@@ -70,6 +76,8 @@ export function MushafOptionsContent({
   onClose?: () => void;
   /** Snaps the React Native sheet to its top point. */
   onGrow?: () => void;
+  /** Snaps the React Native sheet back to its opening point. */
+  onShrink?: () => void;
   /** Fade the sheet's own background on a theme change (no native sheet). */
   crossfadeBackground?: boolean;
 }): React.JSX.Element {
@@ -86,7 +94,22 @@ export function MushafOptionsContent({
   const [openCard, setOpenCard] = useState<OptionsCard | null>(null);
   const [pushed, setPushed] = useState(false);
   const [pushMounted, setPushMounted] = useState(false);
-  useSheetGrowth(openCard !== null || pushed, onGrow);
+  // Where the options are scrolled to: the sheet only drops back to its
+  // opening height when the last card closes near the top.
+  const scrollY = useRef(0);
+  const onScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      scrollY.current = event.nativeEvent.contentOffset.y;
+    },
+    [],
+  );
+  const canShrink = useCallback(() => scrollY.current <= NEAR_TOP, []);
+  useSheetGrowth({
+    grow: openCard !== null || pushed,
+    canShrink,
+    onGrow,
+    onShrink,
+  });
 
   // The cards the current view no longer shows cannot stay open.
   useEffect(() => {
@@ -177,6 +200,8 @@ export function MushafOptionsContent({
             <ScrollComponent
               style={local.scroll}
               showsVerticalScrollIndicator={false}
+              onScroll={onScroll}
+              scrollEventThrottle={32}
               contentContainerStyle={[
                 local.content,
                 {paddingBottom: bottomPadding},

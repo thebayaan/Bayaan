@@ -31,24 +31,46 @@ jest.mock('@/hooks/useTheme', () => ({
     setThemeMode: mockSetThemeMode,
   }),
 }));
+// Animated styles and animation callbacks run on the UI thread, where a
+// plain JS function call is fatal in Release (the app closes). Each one
+// must be a worklet that captures only worklets (Reanimated Babel plugin
+// `__closure`); offenders fail the test that rendered them.
+const mockOffenders: string[] = [];
+function mockCheckWorklet(fn: unknown, where: string): void {
+  if (typeof fn !== 'function') return;
+  if (!('__closure' in fn)) {
+    mockOffenders.push(`${where}: not a worklet`);
+    return;
+  }
+  const closure: unknown = fn.__closure;
+  if (typeof closure !== 'object' || closure === null) return;
+  for (const [name, value] of Object.entries(closure)) {
+    if (typeof value === 'function' && !('__workletHash' in value)) {
+      mockOffenders.push(`${where}: captures non-worklet ${name}`);
+    }
+  }
+}
 jest.mock('react-native-reanimated', () => {
   const {View: MockView} = jest.requireActual('react-native');
   const identity = (value: unknown) => value;
   return {
     __esModule: true,
     default: {View: MockView},
-    Easing: {
-      bezier: () => identity,
-      bezierFn: () => identity,
-      linear: identity,
-    },
+    Easing: jest.requireActual('react-native-reanimated/lib/module/Easing')
+      .Easing,
     cancelAnimation: jest.fn(),
-    useAnimatedStyle: () => ({}),
+    useAnimatedStyle: (updater: unknown) => {
+      mockCheckWorklet(updater, 'animated style');
+      return {};
+    },
     useReducedMotion: () => false,
     useSharedValue: (value: number) => ({value}),
     withRepeat: identity,
     withSpring: identity,
-    withTiming: identity,
+    withTiming: (value: unknown, _config?: unknown, callback?: unknown) => {
+      mockCheckWorklet(callback, 'animation callback');
+      return value;
+    },
   };
 });
 jest.mock('react-native-worklets', () => ({
@@ -77,6 +99,12 @@ jest.mock('@/components/native/NativeSegmentedControl', () => {
   };
 });
 jest.mock('../QuranText', () => ({QuranText: () => null}));
+jest.mock('@/components/native/NativeMenu', () => {
+  const {View: MockView} = jest.requireActual('react-native');
+  return {
+    NativeMenu: (props: {children: React.ReactNode}) => <MockView {...props} />,
+  };
+});
 jest.mock('@expo/vector-icons', () => ({Feather: () => null}));
 jest.mock('@/hooks/useRewayahWords', () => ({
   useRewayahWords: () => ({words: [], status: 'ready'}),
@@ -130,6 +158,7 @@ import {
 import {hideSheet} from '@/components/sheets/sheetControl';
 import {setNativeSheetDetents} from '@/components/native/nativeSheets';
 import {NativeSheetLevelContext} from '@/components/native/nativeSheetContext';
+import {SHRINK_SETTLE_MS} from '../useSheetGrowth';
 
 declare const global: {IS_REACT_ACT_ENVIRONMENT?: boolean};
 global.IS_REACT_ACT_ENVIRONMENT = true;
@@ -184,6 +213,16 @@ function texts(r: TestRenderer.ReactTestRenderer): string[] {
 
 const state = () => useMushafSettingsStore.getState();
 
+/** Scrolls the options list to `y`. */
+function scrollTo(r: TestRenderer.ReactTestRenderer, y: number): void {
+  const list = r.root.findAll(
+    node =>
+      typeof node.props.onScroll === 'function' &&
+      node.props.scrollEventThrottle !== undefined,
+  )[0];
+  act(() => list.props.onScroll({nativeEvent: {contentOffset: {x: 0, y}}}));
+}
+
 beforeEach(() => {
   jest.clearAllMocks();
   mockThemeMode = 'light';
@@ -217,6 +256,8 @@ beforeEach(() => {
 afterEach(() => {
   act(() => renderer?.unmount());
   renderer = null;
+  expect(mockOffenders).toEqual([]);
+  mockOffenders.length = 0;
 });
 
 describe('settings written through the Reading sheet', () => {
@@ -257,16 +298,27 @@ describe('settings written through the Reading sheet', () => {
     ).toMatchObject({checked: false});
   });
 
-  it('Theme writes the current mode theme id and cycles the app mode', () => {
+  it('Theme writes the current mode theme id and picks the app mode from a menu', () => {
     const r = render(<MushafOptionsContent />);
     const theme = LIGHT_READING_THEMES[3];
     press(r, `mushaf-options-theme-${theme.id}`);
     expect(state().lightThemeId).toBe(theme.id);
     expect(state().darkThemeId).toBe('dark-default');
 
-    press(r, 'mushaf-options-theme-mode');
+    const menu = byId(r, 'mushaf-options-theme-mode', 'onSelect');
+    // Light, Dark and Auto, with a check on the current one.
+    expect(
+      menu.props.entries.map((e: {title: string; checked: boolean}) => [
+        e.title,
+        e.checked,
+      ]),
+    ).toEqual([
+      ['Light', true],
+      ['Dark', false],
+      ['Auto', false],
+    ]);
+    act(() => menu.props.onSelect('dark'));
     expect(mockSetThemeMode).toHaveBeenCalledWith('dark');
-    // The dark theme at the same position is picked.
     expect(state().darkThemeId).toBe(DARK_READING_THEMES[3].id);
   });
 
@@ -407,21 +459,54 @@ describe('the accordion', () => {
   });
 
   it('grows a native sheet to large while a card is open', () => {
+    jest.useFakeTimers();
     const r = render(
       <NativeSheetLevelContext.Provider
         value={{id: 'mushaf-layout', key: 7, fit: false, fitted: false}}>
         <MushafOptionsContent />
       </NativeSheetLevelContext.Provider>,
     );
-    expect(setNativeSheetDetents).toHaveBeenLastCalledWith(7, null);
+    // Opening at medium touches nothing.
+    expect(setNativeSheetDetents).not.toHaveBeenCalled();
     press(r, 'mushaf-options-card-words');
     expect(setNativeSheetDetents).toHaveBeenLastCalledWith(7, ['large']);
     press(r, 'mushaf-options-card-text');
     expect(setNativeSheetDetents).toHaveBeenLastCalledWith(7, ['large']);
+    // Closing the last card near the top moves the sheet back to medium,
+    // then gives it both detents again.
     press(r, 'mushaf-options-card-text');
+    expect(setNativeSheetDetents).toHaveBeenLastCalledWith(7, ['medium']);
+    act(() => jest.advanceTimersByTime(SHRINK_SETTLE_MS));
     expect(setNativeSheetDetents).toHaveBeenLastCalledWith(7, null);
     press(r, 'mushaf-options-mushaf-text');
     expect(setNativeSheetDetents).toHaveBeenLastCalledWith(7, ['large']);
+    jest.useRealTimers();
+  });
+
+  it('stays large when the last card closes scrolled down', () => {
+    const r = render(
+      <NativeSheetLevelContext.Provider
+        value={{id: 'mushaf-layout', key: 7, fit: false, fitted: false}}>
+        <MushafOptionsContent />
+      </NativeSheetLevelContext.Provider>,
+    );
+    press(r, 'mushaf-options-card-highlights');
+    scrollTo(r, 400);
+    press(r, 'mushaf-options-card-highlights');
+    expect(setNativeSheetDetents).toHaveBeenLastCalledWith(7, null);
+    expect(setNativeSheetDetents).not.toHaveBeenCalledWith(7, ['medium']);
+  });
+
+  it('snaps the React Native sheet back down only near the top', () => {
+    const onShrink = jest.fn();
+    const r = render(<MushafOptionsContent onShrink={onShrink} />);
+    press(r, 'mushaf-options-card-text');
+    press(r, 'mushaf-options-card-text');
+    expect(onShrink).toHaveBeenCalledTimes(1);
+    press(r, 'mushaf-options-card-text');
+    scrollTo(r, 400);
+    press(r, 'mushaf-options-card-text');
+    expect(onShrink).toHaveBeenCalledTimes(1);
   });
 
   it('snaps the React Native sheet up when a card opens', () => {
