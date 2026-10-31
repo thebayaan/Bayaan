@@ -135,13 +135,15 @@ export function VersePicker({
     [env, query],
   );
 
+  const searching = query !== '';
   useEffect(() => {
     pillsRef.current?.scrollToIndex({
       index: surah - 1,
       animated: true,
       viewPosition: 0.3,
     });
-  }, [surah]);
+    // Also when the pills come back after a search.
+  }, [surah, searching]);
 
   const keys = useMemo(
     () =>
@@ -410,90 +412,98 @@ export function VersePicker({
             </View>
           )}
         </View>
+        {!query && (
+          <>
+            <RNScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.bleed}
+              contentContainerStyle={styles.chips}
+              keyboardShouldPersistTaps="handled">
+              {(
+                [
+                  ['plus5', t('mushafPlayer.extendPlus5')],
+                  ['page', t('mushafPlayer.extendPage')],
+                  ['surah', t('mushafPlayer.extendSurah')],
+                  ['juz', t('mushafPlayer.extendJuz')],
+                ] as const
+              ).map(([kind, label]) => (
+                <Pressable
+                  key={kind}
+                  onPress={() => extend(kind)}
+                  accessibilityRole="button"
+                  style={({pressed}) => [
+                    styles.chip,
+                    {borderColor: c.divider},
+                    pressed && {backgroundColor: c.cardPressed},
+                  ]}>
+                  <Text style={[styles.chipText, {color: c.text}]}>
+                    {label}
+                  </Text>
+                </Pressable>
+              ))}
+            </RNScrollView>
+            <RNFlatList
+              ref={pillsRef}
+              horizontal
+              data={SURAHS.map(s => s.id)}
+              keyExtractor={id => String(id)}
+              showsHorizontalScrollIndicator={false}
+              style={styles.bleed}
+              contentContainerStyle={styles.chips}
+              initialNumToRender={SURAHS.length}
+              onScrollToIndexFailed={info =>
+                setTimeout(
+                  () =>
+                    pillsRef.current?.scrollToIndex({
+                      index: info.index,
+                      animated: false,
+                      viewPosition: 0.3,
+                    }),
+                  100,
+                )
+              }
+              keyboardShouldPersistTaps="handled"
+              renderItem={({item}) => {
+                const on = item === surah;
+                return (
+                  <Pressable
+                    onPress={() => setSurah(item)}
+                    accessibilityRole="button"
+                    accessibilityState={{selected: on}}
+                    style={[
+                      styles.surahPill,
+                      {backgroundColor: on ? c.text : c.chip},
+                    ]}>
+                    <Text
+                      style={[
+                        styles.surahPillNumber,
+                        {color: on ? theme.colors.background : c.faint},
+                      ]}>
+                      {localizeDigits(item)}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.chipText,
+                        {color: on ? theme.colors.background : c.text},
+                      ]}>
+                      {surahNameOf(item)}
+                    </Text>
+                  </Pressable>
+                );
+              }}
+            />
+          </>
+        )}
       </View>
     </View>
   );
 
+  // Scrolls with the grid: only the caption, so the chips stay in view
+  // when the grid jumps to the range.
   const listHeader = (
     <View onLayout={e => setHeaderHeight(e.nativeEvent.layout.height)}>
       <View style={styles.listBody}>
-        <RNScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.bleed}
-          contentContainerStyle={styles.chips}
-          keyboardShouldPersistTaps="handled">
-          {(
-            [
-              ['plus5', t('mushafPlayer.extendPlus5')],
-              ['page', t('mushafPlayer.extendPage')],
-              ['surah', t('mushafPlayer.extendSurah')],
-              ['juz', t('mushafPlayer.extendJuz')],
-            ] as const
-          ).map(([kind, label]) => (
-            <Pressable
-              key={kind}
-              onPress={() => extend(kind)}
-              accessibilityRole="button"
-              style={({pressed}) => [
-                styles.chip,
-                {borderColor: c.divider},
-                pressed && {backgroundColor: c.cardPressed},
-              ]}>
-              <Text style={[styles.chipText, {color: c.text}]}>{label}</Text>
-            </Pressable>
-          ))}
-        </RNScrollView>
-        <RNFlatList
-          ref={pillsRef}
-          horizontal
-          data={SURAHS.map(s => s.id)}
-          keyExtractor={id => String(id)}
-          showsHorizontalScrollIndicator={false}
-          style={styles.bleed}
-          contentContainerStyle={styles.chips}
-          initialNumToRender={SURAHS.length}
-          onScrollToIndexFailed={info =>
-            setTimeout(
-              () =>
-                pillsRef.current?.scrollToIndex({
-                  index: info.index,
-                  animated: false,
-                  viewPosition: 0.3,
-                }),
-              100,
-            )
-          }
-          keyboardShouldPersistTaps="handled"
-          renderItem={({item}) => {
-            const on = item === surah;
-            return (
-              <Pressable
-                onPress={() => setSurah(item)}
-                accessibilityRole="button"
-                accessibilityState={{selected: on}}
-                style={[
-                  styles.surahPill,
-                  {backgroundColor: on ? c.text : c.chip},
-                ]}>
-                <Text
-                  style={[
-                    styles.surahPillNumber,
-                    {color: on ? theme.colors.background : c.faint},
-                  ]}>
-                  {localizeDigits(item)}
-                </Text>
-                <Text
-                  style={[
-                    styles.chipText,
-                    {color: on ? theme.colors.background : c.text},
-                  ]}>
-                  {surahNameOf(item)}
-                </Text>
-              </Pressable>
-            );
-          }}
-        />
         <View style={styles.listHeader}>
           <Text style={[styles.caption, {color: c.secondary}]}>
             {surahNameOf(surah)} ·{' '}

@@ -100,8 +100,10 @@ export const MushafPlayerOptionsSheet = (
   const currentPage = props.payload?.currentPage ?? 1;
   // Back from "pick on the page": its range and the settings kept meanwhile.
   const [returning] = useState(() => {
-    if (!props.payload?.fromPick) return null;
-    const {range, draft} = useMushafRangePickStore.getState();
+    // An active pick means this open is its return (Use or Cancel), whether
+    // or not the payload has reached this first render.
+    const {active, range, draft} = useMushafRangePickStore.getState();
+    if (!active && !props.payload?.fromPick) return null;
     return {range, draft};
   });
   // The pick is over once the sheet is back (not during render).
@@ -263,6 +265,12 @@ export const MushafPlayerOptionsSheet = (
     if (!reciter) return;
     setSelectedRewayatId(reciter.rewayatId);
     setSelectedReciterName(reciter.reciterName);
+    // Keep the choice (across restarts too) unless audio is playing, where
+    // it applies with "Restart with changes".
+    const player = useMushafPlayerStore.getState();
+    if (player.playbackState === 'idle') {
+      player.setReciter(reciter.rewayatId, reciter.reciterName);
+    }
   }, [selectedRewayatId]);
 
   const selectedReciter = availableReciters.find(
