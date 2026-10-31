@@ -396,7 +396,7 @@
         "system": "تلقائي"
       },
       "modeLabel": "المظهر، {{mode}}",
-      "modeHint": "ينتقل إلى المظهر التالي"
+      "modeMenuTitle": "المظهر"
     },
     "text": {
       "title": "النص",

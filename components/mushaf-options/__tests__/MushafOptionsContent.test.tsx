@@ -77,6 +77,12 @@ jest.mock('@/components/native/NativeSegmentedControl', () => {
   };
 });
 jest.mock('../QuranText', () => ({QuranText: () => null}));
+jest.mock('@/components/native/NativeMenu', () => {
+  const {View: MockView} = jest.requireActual('react-native');
+  return {
+    NativeMenu: (props: {children: React.ReactNode}) => <MockView {...props} />,
+  };
+});
 jest.mock('@expo/vector-icons', () => ({Feather: () => null}));
 jest.mock('@/hooks/useRewayahWords', () => ({
   useRewayahWords: () => ({words: [], status: 'ready'}),
@@ -268,16 +274,27 @@ describe('settings written through the Reading sheet', () => {
     ).toMatchObject({checked: false});
   });
 
-  it('Theme writes the current mode theme id and cycles the app mode', () => {
+  it('Theme writes the current mode theme id and picks the app mode from a menu', () => {
     const r = render(<MushafOptionsContent />);
     const theme = LIGHT_READING_THEMES[3];
     press(r, `mushaf-options-theme-${theme.id}`);
     expect(state().lightThemeId).toBe(theme.id);
     expect(state().darkThemeId).toBe('dark-default');
 
-    press(r, 'mushaf-options-theme-mode');
+    const menu = byId(r, 'mushaf-options-theme-mode', 'onSelect');
+    // Light, Dark and Auto, with a check on the current one.
+    expect(
+      menu.props.entries.map((e: {title: string; checked: boolean}) => [
+        e.title,
+        e.checked,
+      ]),
+    ).toEqual([
+      ['Light', true],
+      ['Dark', false],
+      ['Auto', false],
+    ]);
+    act(() => menu.props.onSelect('dark'));
     expect(mockSetThemeMode).toHaveBeenCalledWith('dark');
-    // The dark theme at the same position is picked.
     expect(state().darkThemeId).toBe(DARK_READING_THEMES[3].id);
   });
 

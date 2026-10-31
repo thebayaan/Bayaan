@@ -14,10 +14,13 @@ import {Feather} from '@expo/vector-icons';
 import Color from 'color';
 import {useTranslation} from 'react-i18next';
 import {useTheme} from '@/hooks/useTheme';
+import {NativeMenu} from '@/components/native/NativeMenu';
+import {nativeMenusAvailable} from '@/components/native/nativeMenus';
+import type {NativeMenuItem} from '@/components/native/menuTypes';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import type {ReadingTheme} from '@/constants/readingThemes';
 import {moderateScale} from '@/utils/scale';
-import type {Theme} from '@/utils/themeUtils';
+import type {Theme, ThemeMode} from '@/utils/themeUtils';
 import {PictureTile} from './PictureTile';
 import {TileArt} from './TileArt';
 import {
@@ -142,25 +145,44 @@ export function ThemeSection(): React.JSX.Element {
   const selectedId = mode === 'dark' ? darkThemeId : lightThemeId;
   const modeName = t(`mushafOptions.theme.modes.${themeMode}`);
 
-  const cycleMode = useCallback(() => {
-    const next = nextThemeMode(themeMode);
-    const paired = pairedThemeId(
+  // Switching light and dark picks the theme at the same position in the
+  // other mode's list, as the reading-theme screen does.
+  const chooseMode = useCallback(
+    (next: ThemeMode) => {
+      const paired = pairedThemeId(
+        mode,
+        effectiveModeOf(next, systemScheme),
+        lightThemeId,
+        darkThemeId,
+      );
+      if (paired) setReadingTheme(paired);
+      setThemeMode(next);
+    },
+    [
       mode,
-      effectiveModeOf(next, systemScheme),
+      systemScheme,
       lightThemeId,
       darkThemeId,
-    );
-    if (paired) setReadingTheme(paired);
-    setThemeMode(next);
-  }, [
-    themeMode,
-    mode,
-    systemScheme,
-    lightThemeId,
-    darkThemeId,
-    setReadingTheme,
-    setThemeMode,
-  ]);
+      setReadingTheme,
+      setThemeMode,
+    ],
+  );
+  const modeEntries: NativeMenuItem[] = THEME_MODES.map(option => ({
+    id: option,
+    title: t(`mushafOptions.theme.modes.${option}`),
+    checked: option === themeMode,
+  }));
+  const modeLabel = t('mushafOptions.theme.modeLabel', {mode: modeName});
+  const chip = (
+    <View style={themeStyles.modeChip}>
+      <Text style={themeStyles.modeText}>{modeName}</Text>
+      <Feather
+        name="chevron-down"
+        size={moderateScale(12)}
+        color={theme.colors.text}
+      />
+    </View>
+  );
 
   return (
     <View style={styles.section}>
@@ -170,26 +192,33 @@ export function ThemeSection(): React.JSX.Element {
           accessibilityRole="header">
           {t('mushafOptions.theme.header')}
         </Text>
-        <Pressable
-          onPress={cycleMode}
-          style={({pressed}) => [
-            themeStyles.modeChip,
-            pressed && styles.pressed,
-          ]}
-          accessibilityRole="button"
-          accessibilityLabel={t('mushafOptions.theme.modeLabel', {
-            mode: modeName,
-          })}
-          accessibilityHint={t('mushafOptions.theme.modeHint')}
-          hitSlop={8}
-          testID="mushaf-options-theme-mode">
-          <Text style={themeStyles.modeText}>{modeName}</Text>
-          <Feather
-            name="chevron-down"
-            size={moderateScale(12)}
-            color={theme.colors.text}
-          />
-        </Pressable>
+        {nativeMenusAvailable ? (
+          <NativeMenu
+            title={t('mushafOptions.theme.modeMenuTitle')}
+            entries={modeEntries}
+            onSelect={id => {
+              const next = THEME_MODES.find(option => option === id);
+              if (next) chooseMode(next);
+            }}
+            accessibilityLabel={modeLabel}
+            testID="mushaf-options-theme-mode">
+            {chip}
+          </NativeMenu>
+        ) : (
+          // No native menus (web): the chip steps through the modes.
+          <Pressable
+            onPress={() => chooseMode(nextThemeMode(themeMode))}
+            style={({pressed}) => [
+              themeStyles.modeChipPress,
+              pressed && styles.pressed,
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={modeLabel}
+            hitSlop={8}
+            testID="mushaf-options-theme-mode">
+            {chip}
+          </Pressable>
+        )}
       </View>
       <ScrollView
         horizontal
@@ -267,6 +296,9 @@ function ThemeTile({
   );
 }
 
+/** Light, Dark, Auto: the appearance menu's order. */
+const THEME_MODES: readonly ThemeMode[] = ['light', 'dark', 'system'];
+
 const THEME_LINE_WIDTHS: readonly DimensionValue[] = ['100%', '100%', '60%'];
 
 const local = StyleSheet.create({
@@ -295,6 +327,9 @@ function createThemeStyles(theme: Theme) {
       paddingVertical: moderateScale(5),
       borderRadius: moderateScale(14),
       backgroundColor: textAlpha(theme, 0.07),
+    },
+    modeChipPress: {
+      borderRadius: moderateScale(14),
     },
     modeText: {
       fontSize: theme.typography.smallSize,
