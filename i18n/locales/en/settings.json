@@ -93,7 +93,7 @@
     "tagline": "Your Companion for Quranic Recitation",
     "alhamdulillahHeading": "Alhamdulillah",
     "alhamdulillahBody": "All praise is due to Allah for blessing us with the opportunity to serve His Book and the Ummah. We are deeply grateful for being chosen to develop this platform that connects people with the beautiful recitation of the Holy Quran.",
-    "missionHeading": "Our Mission",
+    "missionHeading": "Our mission",
     "missionBody": "{{appName}} is dedicated to making the beautiful recitation of the Holy Quran accessible to everyone. We strive to provide a serene and intuitive experience for listening to the Quran, featuring the world's most renowned reciters and a few {{appName}} Exclusives.",
     "featuresHeader": "Features",
     "features": {
@@ -157,9 +157,9 @@
     "intro": "{{appName}} wouldn't be possible without the incredible work of these projects, organizations, and individuals. We're deeply grateful for their contributions to the Muslim community and the tech world.",
     "footer": "Made with ❤️ by the {{appName}} team",
     "sections": {
-      "quranData": "Quran Data",
-      "audioSources": "Audio Sources",
-      "adhkarSources": "Adhkar Sources",
+      "quranData": "Quran data",
+      "audioSources": "Audio sources",
+      "adhkarSources": "Adhkar sources",
       "designResources": "Design Resources",
       "openSource": "Open Source Libraries",
       "specialThanks": "Special Thanks"
@@ -205,8 +205,8 @@
   },
   "reciterChoice": {
     "subtitle": "Choose how you want to select reciters when playing Surahs",
-    "preferenceHeader": "Selection Preference",
-    "askEveryTime": "Ask Every Time",
+    "preferenceHeader": "Selection preference",
+    "askEveryTime": "Ask every time",
     "askEveryTimeDescription": "Choose a reciter each time you play",
     "methodHeader": "Default Selection Method",
     "browseAll": "Browse All Reciters",
@@ -216,8 +216,8 @@
   },
   "storage": {
     "loading": "Loading storage information...",
-    "breakdownHeader": "Storage Breakdown",
-    "manageHeader": "Manage Storage",
+    "breakdownHeader": "Storage breakdown",
+    "manageHeader": "Manage storage",
     "otherApps": "Other apps",
     "downloads": "Downloads",
     "cache": "Cache",
