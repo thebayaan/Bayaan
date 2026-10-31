@@ -5,6 +5,7 @@ import {
   getTafseerDisplayName,
   getTafseerLanguageDisplayName,
   isPreferredTafseerLanguage,
+  shownActiveTafseerId,
 } from '../tafseer';
 
 const ibnKathir = {
@@ -51,5 +52,19 @@ describe('isPreferredTafseerLanguage', () => {
     expect(isPreferredTafseerLanguage('ar', 'ar')).toBe(true);
     expect(isPreferredTafseerLanguage('english', 'en')).toBe(true);
     expect(isPreferredTafseerLanguage('arabic', 'en')).toBe(false);
+  });
+});
+
+describe('shownActiveTafseerId', () => {
+  it('is the selection when it is downloaded', () => {
+    expect(shownActiveTafseerId('94', new Set(['94', '169']))).toBe('94');
+  });
+
+  it('is null for a selection that is not downloaded, so it stays in its group', () => {
+    expect(shownActiveTafseerId('94', new Set(['169']))).toBeNull();
+  });
+
+  it('is null with nothing selected', () => {
+    expect(shownActiveTafseerId(null, new Set(['169']))).toBeNull();
   });
 });
