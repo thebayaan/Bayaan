@@ -1,17 +1,16 @@
-import React, {useCallback} from 'react';
-import {View, StyleSheet, ScrollView} from 'react-native';
+import React from 'react';
+import {View, StyleSheet, ScrollView, type ScrollViewProps} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
-import {MushafSettingsContent} from '@/components/MushafSettingsContent';
-import {verticalScale} from '@/utils/scale';
-import {useRouter} from 'expo-router';
+import {MushafOptionsContent} from '@/components/mushaf-options/MushafOptionsContent'; // @ai
+
+// @ai: the screen's scroll view sits under the large title, as on every
+// settings screen.
+function SettingsScrollView(props: ScrollViewProps): React.JSX.Element {
+  return <ScrollView {...props} contentInsetAdjustmentBehavior="automatic" />;
+}
 
 export default function MushafSettingsScreen() {
   const {theme} = useTheme();
-  const router = useRouter();
-
-  const handleOpenThemePicker = useCallback(() => {
-    router.push('/(tabs)/(d.settings)/reading-theme');
-  }, [router]);
 
   return (
     <View
@@ -21,16 +20,11 @@ export default function MushafSettingsScreen() {
           backgroundColor: theme.colors.background,
         },
       ]}>
-      <ScrollView
-        style={styles.content}
-        contentContainerStyle={styles.scrollContent}
-        contentInsetAdjustmentBehavior="automatic"
-        showsVerticalScrollIndicator={false}>
-        <MushafSettingsContent
-          showTitle={false}
-          onOpenThemePicker={handleOpenThemePicker}
-        />
-      </ScrollView>
+      {/* @ai: the same Reading options as the mushaf's sheet */}
+      <MushafOptionsContent
+        context="settings"
+        ScrollComponent={SettingsScrollView}
+      />
     </View>
   );
 }
@@ -38,15 +32,5 @@ export default function MushafSettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  // flex: 1 on the ScrollView itself is what lets iOS 26's NativeTabs
-  // BottomAccessory (mini player) auto-collapse on scroll; the tab bar
-  // tracks the screen's primary scroll view by its frame, and a ScrollView
-  // sized to content doesn't register as primary.
-  content: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: verticalScale(40),
   },
 });
