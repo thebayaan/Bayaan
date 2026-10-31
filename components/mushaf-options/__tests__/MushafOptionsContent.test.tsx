@@ -130,6 +130,7 @@ import {
 import {hideSheet} from '@/components/sheets/sheetControl';
 import {setNativeSheetDetents} from '@/components/native/nativeSheets';
 import {NativeSheetLevelContext} from '@/components/native/nativeSheetContext';
+import {SHRINK_SETTLE_MS} from '../useSheetGrowth';
 
 declare const global: {IS_REACT_ACT_ENVIRONMENT?: boolean};
 global.IS_REACT_ACT_ENVIRONMENT = true;
@@ -183,6 +184,16 @@ function texts(r: TestRenderer.ReactTestRenderer): string[] {
 }
 
 const state = () => useMushafSettingsStore.getState();
+
+/** Scrolls the options list to `y`. */
+function scrollTo(r: TestRenderer.ReactTestRenderer, y: number): void {
+  const list = r.root.findAll(
+    node =>
+      typeof node.props.onScroll === 'function' &&
+      node.props.scrollEventThrottle !== undefined,
+  )[0];
+  act(() => list.props.onScroll({nativeEvent: {contentOffset: {x: 0, y}}}));
+}
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -407,21 +418,54 @@ describe('the accordion', () => {
   });
 
   it('grows a native sheet to large while a card is open', () => {
+    jest.useFakeTimers();
     const r = render(
       <NativeSheetLevelContext.Provider
         value={{id: 'mushaf-layout', key: 7, fit: false, fitted: false}}>
         <MushafOptionsContent />
       </NativeSheetLevelContext.Provider>,
     );
-    expect(setNativeSheetDetents).toHaveBeenLastCalledWith(7, null);
+    // Opening at medium touches nothing.
+    expect(setNativeSheetDetents).not.toHaveBeenCalled();
     press(r, 'mushaf-options-card-words');
     expect(setNativeSheetDetents).toHaveBeenLastCalledWith(7, ['large']);
     press(r, 'mushaf-options-card-text');
     expect(setNativeSheetDetents).toHaveBeenLastCalledWith(7, ['large']);
+    // Closing the last card near the top moves the sheet back to medium,
+    // then gives it both detents again.
     press(r, 'mushaf-options-card-text');
+    expect(setNativeSheetDetents).toHaveBeenLastCalledWith(7, ['medium']);
+    act(() => jest.advanceTimersByTime(SHRINK_SETTLE_MS));
     expect(setNativeSheetDetents).toHaveBeenLastCalledWith(7, null);
     press(r, 'mushaf-options-mushaf-text');
     expect(setNativeSheetDetents).toHaveBeenLastCalledWith(7, ['large']);
+    jest.useRealTimers();
+  });
+
+  it('stays large when the last card closes scrolled down', () => {
+    const r = render(
+      <NativeSheetLevelContext.Provider
+        value={{id: 'mushaf-layout', key: 7, fit: false, fitted: false}}>
+        <MushafOptionsContent />
+      </NativeSheetLevelContext.Provider>,
+    );
+    press(r, 'mushaf-options-card-highlights');
+    scrollTo(r, 400);
+    press(r, 'mushaf-options-card-highlights');
+    expect(setNativeSheetDetents).toHaveBeenLastCalledWith(7, null);
+    expect(setNativeSheetDetents).not.toHaveBeenCalledWith(7, ['medium']);
+  });
+
+  it('snaps the React Native sheet back down only near the top', () => {
+    const onShrink = jest.fn();
+    const r = render(<MushafOptionsContent onShrink={onShrink} />);
+    press(r, 'mushaf-options-card-text');
+    press(r, 'mushaf-options-card-text');
+    expect(onShrink).toHaveBeenCalledTimes(1);
+    press(r, 'mushaf-options-card-text');
+    scrollTo(r, 400);
+    press(r, 'mushaf-options-card-text');
+    expect(onShrink).toHaveBeenCalledTimes(1);
   });
 
   it('snaps the React Native sheet up when a card opens', () => {
