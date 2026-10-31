@@ -56,14 +56,6 @@ export function DefaultReciterHero({
 
   return (
     <View style={styles.container}>
-      <View style={styles.glow} pointerEvents="none">
-        <ReciterImage
-          imageUrl={reciter.image_url || undefined}
-          reciterName={reciter.name}
-          style={styles.glowImage}
-          blurRadius={60}
-        />
-      </View>
       <ReciterImage
         imageUrl={reciter.image_url || undefined}
         reciterName={reciter.name}
@@ -150,26 +142,10 @@ export function DefaultReciterHero({
 const createStyles = (theme: Theme, artworkSize: number) => {
   const text = Color(theme.colors.text);
   const tokens = settingsTokens(theme);
-  const glowSize = artworkSize * 1.9;
   return StyleSheet.create({
-    // Clips the glow so it never runs up behind the navigation title.
     container: {
       alignItems: 'center',
       paddingTop: moderateScale(8),
-      overflow: 'hidden',
-    },
-    glow: {
-      position: 'absolute',
-      top: -artworkSize * 0.15,
-      width: glowSize,
-      height: glowSize,
-      borderRadius: glowSize / 2,
-      overflow: 'hidden',
-      opacity: theme.isDarkMode ? 0.45 : 0.35,
-    },
-    glowImage: {
-      width: '100%',
-      height: '100%',
     },
     artwork: {
       width: artworkSize,
