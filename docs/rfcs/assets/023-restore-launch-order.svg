@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 300" width="760" height="300" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif" font-size="13">
+  <title>RFC-023: the order of a launch that restores the reader</title>
+  <rect x="0" y="0" width="760" height="300" fill="#ffffff"/>
+  <text x="20" y="28" font-size="15" font-weight="600" fill="#1f2328">A launch whose last screen was the reader</text>
+  <text x="20" y="48" fill="#57606a">The order of events, not to scale. First-page times: Samsung Galaxy A10s, median of 4 launches.</text>
+
+  <!-- Today -->
+  <text x="20" y="92" font-weight="600" fill="#1f2328">Today</text>
+  <rect x="110" y="72" width="150" height="34" rx="4" fill="#d0d7de"/>
+  <text x="185" y="94" text-anchor="middle" fill="#1f2328">Splash</text>
+  <rect x="264" y="72" width="150" height="34" rx="4" fill="#eaeef2" stroke="#8c959f" stroke-dasharray="4 3"/>
+  <text x="339" y="88" text-anchor="middle" fill="#1f2328">Home route renders</text>
+  <text x="339" y="101" text-anchor="middle" fill="#57606a" font-size="11">under the reader, unseen</text>
+  <rect x="418" y="72" width="70" height="34" rx="4" fill="#d0d7de"/>
+  <text x="453" y="94" text-anchor="middle" fill="#1f2328">Push</text>
+  <rect x="492" y="72" width="150" height="34" rx="4" fill="#ffffff" stroke="#8c959f"/>
+  <text x="567" y="88" text-anchor="middle" fill="#1f2328">Empty reader frame</text>
+  <text x="567" y="101" text-anchor="middle" fill="#57606a" font-size="11">splash already hidden</text>
+  <rect x="646" y="72" width="94" height="34" rx="4" fill="#0969da"/>
+  <text x="693" y="94" text-anchor="middle" fill="#ffffff" font-weight="600">Page</text>
+  <text x="693" y="124" text-anchor="middle" fill="#0969da" font-weight="600">11.0 s</text>
+
+  <!-- Proposed -->
+  <text x="20" y="182" font-weight="600" fill="#1f2328">Proposed</text>
+  <rect x="110" y="162" width="150" height="34" rx="4" fill="#d0d7de"/>
+  <text x="185" y="184" text-anchor="middle" fill="#1f2328">Splash</text>
+  <rect x="264" y="162" width="70" height="34" rx="4" fill="#d0d7de"/>
+  <text x="299" y="184" text-anchor="middle" fill="#1f2328">Push</text>
+  <rect x="338" y="162" width="150" height="34" rx="4" fill="#d0d7de"/>
+  <text x="413" y="178" text-anchor="middle" fill="#1f2328">Splash stays</text>
+  <text x="413" y="191" text-anchor="middle" fill="#57606a" font-size="11">home route draws nothing</text>
+  <rect x="492" y="162" width="94" height="34" rx="4" fill="#0969da"/>
+  <text x="539" y="184" text-anchor="middle" fill="#ffffff" font-weight="600">Page</text>
+  <text x="539" y="214" text-anchor="middle" fill="#0969da" font-weight="600">6.9 s</text>
+  <text x="539" y="230" text-anchor="middle" fill="#57606a" font-size="11">splash hides at this draw</text>
+  <rect x="590" y="162" width="150" height="34" rx="4" fill="#eaeef2" stroke="#8c959f" stroke-dasharray="4 3"/>
+  <text x="665" y="178" text-anchor="middle" fill="#1f2328">Home route renders</text>
+  <text x="665" y="191" text-anchor="middle" fill="#57606a" font-size="11">1 s after the page</text>
+
+  <text x="20" y="276" fill="#57606a" font-size="12">Both rows read the words on demand (part 1). Dashed boxes are work that the user does not see.</text>
+</svg>
