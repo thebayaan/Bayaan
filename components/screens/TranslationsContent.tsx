@@ -693,10 +693,14 @@ export default function TranslationsContent({
 
   // --- Render ---
   const renderHeaderItem = useCallback(
-    (item: FlatItem) => {
+    (item: FlatItem, followsCard: boolean) => {
       if (item.type === 'meta-header') {
         return (
-          <View style={styles.metaHeaderContainer}>
+          <View
+            style={[
+              styles.metaHeaderContainer,
+              followsCard && styles.metaHeaderAfterCard,
+            ]}>
             <Text style={styles.metaHeader}>{item.title}</Text>
           </View>
         );
@@ -716,7 +720,8 @@ export default function TranslationsContent({
 
   const renderTranslationItem = useCallback(
     ({item}: ListRenderItemInfo<FlatItem>) => {
-      if (item.type !== 'row') return renderHeaderItem(item);
+      // The active translation's card always sits above the list. @ai
+      if (item.type !== 'row') return renderHeaderItem(item, true);
       return renderTranslationRow(item);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -724,12 +729,14 @@ export default function TranslationsContent({
   );
 
   const renderTafseerItem = useCallback(
-    ({item}: ListRenderItemInfo<FlatItem>) => {
-      if (item.type !== 'row') return renderHeaderItem(item);
+    ({item, index}: ListRenderItemInfo<FlatItem>) => {
+      if (item.type !== 'row') {
+        return renderHeaderItem(item, tafseerListHeader !== null || index > 0);
+      }
       return renderTafseerRow(item);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [styles, theme, renderHeaderItem, renderTafseerRow],
+    [styles, theme, renderHeaderItem, renderTafseerRow, tafseerListHeader],
   );
 
   function renderTranslationRow(item: RowItem) {
@@ -1072,6 +1079,9 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: moderateScale(16) + moderateScale(18),
       paddingTop: moderateScale(8),
       paddingBottom: moderateScale(8),
+    },
+    metaHeaderAfterCard: {
+      paddingTop: moderateScale(22),
     },
     metaHeader: {
       textAlign: 'left',
