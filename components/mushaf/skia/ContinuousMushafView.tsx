@@ -2,12 +2,13 @@ import React, {
   useMemo,
   useCallback,
   useRef,
+  useState,
   useEffect,
   useImperativeHandle,
   useSyncExternalStore,
   forwardRef,
 } from 'react';
-import {View, Platform} from 'react-native';
+import {View, Platform, StyleSheet} from 'react-native';
 import {FlashList, type FlashListRef} from '@shopify/flash-list';
 import {
   Canvas,
@@ -714,8 +715,22 @@ const ContinuousMushafView = forwardRef<
     const {theme} = useTheme();
     const flashListRef = useRef<FlashListRef<number>>(null);
     const render = useMemo(() => buildRenderConstants(metrics), [metrics]);
-    // @ai: opens on the reader's page (see continuousPagePlacement)
-    const placement = continuousPagePlacement(initialPage);
+    // @ai-start: opens on the reader's page (see continuousPagePlacement)
+    const [placement] = useState(() => continuousPagePlacement(initialPage));
+    const isPlacedRef = useRef(false);
+    const [isPlaced, setIsPlaced] = useState(false);
+    const handleLoad = useCallback(() => {
+      const markPlaced = () => {
+        isPlacedRef.current = true;
+        setIsPlaced(true);
+      };
+      const list = flashListRef.current;
+      if (!list) return markPlaced();
+      list
+        .scrollToIndex({index: placement.openingIndex, animated: false})
+        .then(markPlaced, markPlaced);
+    }, [placement]);
+    // @ai-end
     const {lineWidth} = render;
 
     // Subscribe to preloaded fontMgr; no useFonts fallback that races
@@ -826,6 +841,7 @@ const ContinuousMushafView = forwardRef<
     const onViewableItemsChanged = useCallback(
       ({viewableItems}: {viewableItems: Array<{item: number}>}) => {
         if (viewableItems.length === 0) return;
+        if (!isPlacedRef.current) return; // @ai
         const page = viewableItems[0].item;
         onCurrentPageChange?.(page);
         const surahId = pageToSurah[page];
@@ -887,7 +903,8 @@ const ContinuousMushafView = forwardRef<
         renderItem={renderItem}
         extraData={`${showTajweed}-${arabicTextWeight}-${showAllahNameHighlight}-${allahNameHighlightColor}-${rewayah}-${showRewayahDiffs}-${textIdentity}`} // @ai
         keyExtractor={keyExtractor}
-        initialScrollIndex={placement.initialScrollIndex} // @ai
+        onLoad={handleLoad} // @ai
+        style={isPlaced ? undefined : styles.hidden} // @ai
         maintainVisibleContentPosition={
           placement.maintainVisibleContentPosition
         } // @ai
@@ -904,5 +921,10 @@ const ContinuousMushafView = forwardRef<
   },
 );
 ContinuousMushafView.displayName = 'ContinuousMushafView';
+
+// @ai: the list stays hidden until it has scrolled to the opening page
+const styles = StyleSheet.create({
+  hidden: {opacity: 0},
+});
 
 export default React.memo(ContinuousMushafView);
