@@ -33,6 +33,10 @@ import {QuranText} from './QuranText';
 import {TAJWEED_LEGEND} from './readingLayout';
 import {ROW_INSET, textAlpha, useOptionStyles} from './optionStyles';
 
+const LEGEND_ROW_HEIGHT = 36;
+/** Brings the legend row's 36pt to a 44pt tap target. */
+const LEGEND_ROW_SLOP = {top: 4, bottom: 4};
+
 /** The preview verse (2:7), cut to the words that show every highlight. */
 const PREVIEW_VERSE = '2:7';
 const PREVIEW_WORDS = 9;
@@ -130,6 +134,7 @@ function HighlightOptions(): React.JSX.Element {
       <Pressable
         onPress={() => setLegendOpen(value => !value)}
         style={({pressed}) => [local.legendRow, pressed && styles.pressed]}
+        hitSlop={LEGEND_ROW_SLOP}
         accessibilityRole="button"
         accessibilityState={{expanded: legendOpen}}
         testID="mushaf-options-tajweed-legend">
@@ -149,7 +154,7 @@ function HighlightOptions(): React.JSX.Element {
         <Text style={local.legendTitle}>
           {t('sheets:mushafOptions.highlights.legend')}
         </Text>
-        <Chevron open={legendOpen} size={moderateScale(14)} />
+        <Chevron open={legendOpen} size={moderateScale(12)} />
       </Pressable>
       <Collapsible open={legendOpen}>
         <View style={local.legend}>
@@ -335,11 +340,13 @@ function createStyles(theme: Theme) {
       ...StyleSheet.absoluteFill,
       backgroundColor: textAlpha(theme, 0.12),
     },
+    // A secondary row under the tajweed switch: drawn 36pt tall, with
+    // hit slop making the tap area 44pt.
     legendRow: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: moderateScale(8),
-      minHeight: moderateScale(44),
+      minHeight: LEGEND_ROW_HEIGHT,
       paddingHorizontal: ROW_INSET,
     },
     legendDots: {
@@ -347,16 +354,17 @@ function createStyles(theme: Theme) {
       gap: 3,
     },
     dot: {
-      width: 8,
-      height: 8,
-      borderRadius: 4,
+      width: 7,
+      height: 7,
+      borderRadius: 3.5,
     },
+    // Smaller than the option rows' titles (mediumSize): a link, not a row.
     legendTitle: {
       flex: 1,
       textAlign: 'left',
       fontSize: small,
       fontFamily: 'Manrope-SemiBold',
-      color: theme.colors.text,
+      color: textAlpha(theme, 0.8),
     },
     legend: {
       paddingBottom: moderateScale(8),
