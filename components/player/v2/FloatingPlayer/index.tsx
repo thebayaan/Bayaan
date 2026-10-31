@@ -20,6 +20,7 @@ import {
 import {GlassView} from 'expo-glass-effect';
 import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
 import {FrostedView} from '@/components/FrostedView';
+import {useFloatingPillStyle} from '@/hooks/useFloatingPillStyle'; // @ai
 import {useResponsive} from '@/hooks/useResponsive';
 // @ai-start
 import {useTranslation} from 'react-i18next';
@@ -79,25 +80,16 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
     }
   }, [playbackState, pause, play]);
 
+  const pillStyle = useFloatingPillStyle(); // @ai
   const containerStyle = useMemo(
     () => ({
+      ...pillStyle,
       position: 'absolute' as const,
       bottom: getFloatingPlayerBottomPosition(insets.bottom),
       left: FLOATING_UI_HORIZONTAL_MARGIN,
       right: FLOATING_UI_HORIZONTAL_MARGIN,
-      borderRadius: moderateScale(100),
-      overflow: 'hidden' as const,
-      borderWidth: USE_GLASS ? 0 : 1,
-      borderColor: USE_GLASS
-        ? undefined
-        : Color(theme.colors.text).alpha(0.1).toString(),
-      shadowColor: '#000',
-      shadowOffset: {width: 0, height: 2},
-      shadowOpacity: 0.08,
-      shadowRadius: 8,
-      elevation: 8,
     }),
-    [theme.colors.text, insets.bottom],
+    [pillStyle, insets.bottom],
   );
 
   if (!shouldShow) return null;
@@ -123,8 +115,8 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
         <View ref={anchorRef} style={styles.content}>
           <Pressable
             onPress={handlePress}
-            style={styles.body}
-            android_ripple={{color: 'rgba(0, 0, 0, 0.1)', borderless: false}}
+            // @ai: an opacity dip, not the Android ripple
+            style={({pressed}) => [styles.body, pressed && styles.pressed]}
             accessibilityRole="button"
             accessibilityLabel={`${getTrackDisplayTitle(currentTrack)}, ${getTrackArtistDisplay(currentTrack)}`}
             accessibilityHint={t('a11y.openPlayer')}>
@@ -184,6 +176,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: moderateScale(14, 0.2),
     paddingVertical: moderateScale(7, 0.2),
     gap: moderateScale(10, 0.2),
+  },
+  pressed: {
+    opacity: 0.6,
   },
   body: {
     // a11y — the expand-to-full-player hit target (artwork + track info). A row
