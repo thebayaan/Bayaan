@@ -19,6 +19,7 @@ import {useReciterStore} from '@/store/reciterStore';
 import {useFavoriteRecitersStore} from '@/services/player/store/favoriteRecitersStore';
 import {useSettings} from '@/hooks/useSettings';
 import {useBottomInset} from '@/hooks/useBottomInset';
+import {useKeyboardHeight} from '@/hooks/useKeyboardHeight';
 import {rankReciters} from '@/utils/search/catalog';
 import {pickRewayatId} from '@/utils/rewayatPreference';
 import {getReciterDisplayName} from '@/i18n/format';
@@ -72,6 +73,7 @@ export default function DefaultReciterScreen() {
   // Under a glass header the screen starts at the top of the window.
   const rawHeaderHeight = useHeaderHeight();
   const headerHeight = USE_GLASS ? rawHeaderHeight : 0;
+  const keyboardHeight = useKeyboardHeight();
 
   const defaultReciter = useReciterStore(state => state.defaultReciter);
   const setDefaultReciter = useReciterStore(state => state.setDefaultReciter);
@@ -85,6 +87,13 @@ export default function DefaultReciterScreen() {
 
   const [query, setQuery] = useState('');
   const [undo, setUndo] = useState<UndoState | null>(null);
+  // Read by Undo, so the restore never depends on which render's handler
+  // the toast's button holds.
+  const undoRef = useRef<UndoState | null>(null);
+  const showUndo = useCallback((next: UndoState | null) => {
+    undoRef.current = next;
+    setUndo(next);
+  }, []);
   const listRef = useRef<SectionList<Reciter[], ReciterSection>>(null);
   const searchY = useRef(0);
   const [searchFocused, setSearchFocused] = useState(false);
@@ -142,7 +151,7 @@ export default function DefaultReciterScreen() {
       const preferences = useSettings.getState().reciterPreferences;
       const previous = defaultReciter;
       setDefaultReciter(reciter);
-      setUndo({
+      showUndo({
         previous,
         preferences: {
           [previous.id]: preferences[previous.id],
@@ -153,25 +162,25 @@ export default function DefaultReciterScreen() {
         }),
       });
     },
-    [defaultReciter, preview, setDefaultReciter, t],
+    [defaultReciter, preview, setDefaultReciter, showUndo, t],
   );
 
   // Puts back the previous default and both reciters' recitation choices.
   const handleUndo = useCallback(() => {
-    if (undo) {
-      preview.stop();
-      setDefaultReciter(undo.previous);
-      useSettings.setState(state => {
-        const restored = {...state.reciterPreferences};
-        for (const [id, rewayatId] of Object.entries(undo.preferences)) {
-          if (rewayatId) restored[id] = rewayatId;
-          else delete restored[id];
-        }
-        return {reciterPreferences: restored};
-      });
-    }
-    setUndo(null);
-  }, [undo, preview, setDefaultReciter]);
+    const pending = undoRef.current;
+    showUndo(null);
+    if (!pending) return;
+    setDefaultReciter(pending.previous);
+    useSettings.setState(state => {
+      const restored = {...state.reciterPreferences};
+      for (const [id, rewayatId] of Object.entries(pending.preferences)) {
+        if (rewayatId) restored[id] = rewayatId;
+        else delete restored[id];
+      }
+      return {reciterPreferences: restored};
+    });
+    preview.stop();
+  }, [preview, setDefaultReciter, showUndo]);
 
   // Lift the search field to the top so it and its results clear the keyboard.
   const handleSearchFocus = useCallback(() => {
@@ -183,7 +192,7 @@ export default function DefaultReciterScreen() {
     });
   }, [headerHeight]);
 
-  const dismissUndo = useCallback(() => setUndo(null), []);
+  const dismissUndo = useCallback(() => showUndo(null), [showUndo]);
 
   const handleSelectRewayat = useCallback(
     (rewayatId: string) => {
@@ -329,7 +338,11 @@ export default function DefaultReciterScreen() {
         <UndoToast
           key={undo.message}
           message={undo.message}
-          top={headerHeight + moderateScale(8)}
+          // While searching, the top of the screen is the field and its
+          // first results, so the pill moves above the keyboard.
+          {...(keyboardHeight > 0
+            ? {bottom: keyboardHeight + moderateScale(8)}
+            : {top: headerHeight + moderateScale(8)})}
           onUndo={handleUndo}
           onDismiss={dismissUndo}
         />

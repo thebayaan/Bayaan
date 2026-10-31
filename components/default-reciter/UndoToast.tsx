@@ -19,18 +19,21 @@ const VISIBLE_MS = 4000;
 
 interface Props {
   message: string;
-  /** Distance from the top of the screen, just under the navigation bar. */
-  top: number;
+  /**
+   * Where the pill sits: under the navigation bar (`top`), or above the
+   * keyboard while it is open (`bottom`).
+   */
+  top?: number;
+  bottom?: number;
   onUndo: () => void;
   onDismiss: () => void;
 }
 
 /**
- * A confirmation pill with Undo that hides itself after a few seconds. It
- * sits under the navigation bar, clear of the keyboard and the mini player,
- * on an overlay above the list so its taps never reach the rows beneath.
+ * A confirmation pill with Undo that hides itself after a few seconds, on an
+ * overlay above the list so its taps never reach the rows beneath.
  */
-export function UndoToast({message, top, onUndo, onDismiss}: Props) {
+export function UndoToast({message, top, bottom, onUndo, onDismiss}: Props) {
   const {theme} = useTheme();
   const {t} = useTranslation('settings');
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -46,7 +49,7 @@ export function UndoToast({message, top, onUndo, onDismiss}: Props) {
       <Animated.View
         entering={FadeInUp.duration(220)}
         exiting={FadeOutUp.duration(180)}
-        style={[styles.toast, {top}]}
+        style={[styles.toast, {top, bottom}]}
         pointerEvents="auto"
         accessibilityLiveRegion="polite">
         <Feather
