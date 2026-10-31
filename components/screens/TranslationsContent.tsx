@@ -603,18 +603,20 @@ export default function TranslationsContent({
   const getItemType = useCallback((item: FlatItem) => item.type, []);
 
   const translationKeyExtractor = useCallback(
-    (item: FlatItem, _index: number) => {
+    (item: FlatItem, index: number) => {
+      // Two groups can share a title (a reader's own language first, then
+      // the same language again among the rest), so headers key by position.
       if (item.type === 'meta-header' || item.type === 'lang-header') {
-        return `trans-header-${item.title}`;
+        return `trans-header-${index}-${item.title}`;
       }
       return `trans-${item.id}`;
     },
     [],
   );
 
-  const tafseerKeyExtractor = useCallback((item: FlatItem, _index: number) => {
+  const tafseerKeyExtractor = useCallback((item: FlatItem, index: number) => {
     if (item.type === 'meta-header' || item.type === 'lang-header') {
-      return `tafseer-header-${item.title}`;
+      return `tafseer-header-${index}-${item.title}`;
     }
     return `tafseer-${item.id}`;
   }, []);
