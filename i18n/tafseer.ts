@@ -81,3 +81,18 @@ export function compareTafaseer(
     )
   );
 }
+
+/**
+ * The tafseer the list shows in its active card: the selected one, but only
+ * once it is downloaded. A selection that is not downloaded (removed, or a
+ * default that was never fetched) has no card, so it must stay in its
+ * language group instead of vanishing from it.
+ */
+export function shownActiveTafseerId(
+  selectedId: string | null,
+  downloadedIds: ReadonlySet<string>,
+): string | null {
+  return selectedId !== null && downloadedIds.has(selectedId)
+    ? selectedId
+    : null;
+}
