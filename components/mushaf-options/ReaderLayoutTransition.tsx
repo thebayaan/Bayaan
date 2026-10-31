@@ -1,6 +1,6 @@
 // @ai-generated
 import React, {useEffect, useRef} from 'react';
-import {StyleSheet, useWindowDimensions} from 'react-native';
+import {StyleSheet} from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useReducedMotion,
@@ -10,14 +10,16 @@ import Animated, {
 import {EASE_OUT, FADE_MS, ThemeCrossfade} from './motion';
 import {isSwipeLayout, type ReadingLayout} from './readingLayout';
 
-const SLIDE_MS = 550;
-const RISE_MS = 600;
+/** How far the new page starts from its place, in points. */
+export const ENTRANCE_OFFSET = 36;
+export const ENTRANCE_MS = 300;
 
 /**
  * The reader's page area. When the layout changes (from the Reading
- * sheet) the new page slides in: sideways for the swipe layouts, up for
- * the scrolling ones, or fades in under Reduce Motion. A theme change
- * cross-fades it. The first layout shows without motion.
+ * sheet) the new page fades in from a short way off its place: sideways
+ * for the swipe layouts, from below for the scrolling ones. Under Reduce
+ * Motion it only fades. A theme change cross-fades it. The first layout
+ * shows without motion.
  */
 export function ReaderLayoutTransition({
   layout,
@@ -29,7 +31,6 @@ export function ReaderLayoutTransition({
   background: string;
   children: React.ReactNode;
 }): React.JSX.Element {
-  const {width, height} = useWindowDimensions();
   const reduceMotion = useReducedMotion();
   const shown = useRef(layout);
   // 1 is the start of the entrance, 0 the page at rest.
@@ -42,19 +43,18 @@ export function ReaderLayoutTransition({
     shown.current = layout;
     const sideways = isSwipeLayout(layout);
     // The mushaf turns its pages toward the right in any app language, so
-    // the next page comes in from the left.
-    offsetX.value = reduceMotion || !sideways ? 0 : -1.1 * width;
-    offsetY.value = reduceMotion || sideways ? 0 : 0.6 * height;
+    // the next page comes from the left.
+    offsetX.value = reduceMotion || !sideways ? 0 : -ENTRANCE_OFFSET;
+    offsetY.value = reduceMotion || sideways ? 0 : ENTRANCE_OFFSET;
     entrance.value = 1;
     entrance.value = withTiming(0, {
-      duration: reduceMotion ? FADE_MS : sideways ? SLIDE_MS : RISE_MS,
+      duration: reduceMotion ? FADE_MS : ENTRANCE_MS,
       easing: EASE_OUT,
     });
-  }, [layout, reduceMotion, width, height, entrance, offsetX, offsetY]);
+  }, [layout, reduceMotion, entrance, offsetX, offsetY]);
 
   const animated = useAnimatedStyle(() => ({
-    // A sideways slide keeps the page opaque; rising and Reduce Motion fade.
-    opacity: offsetX.value !== 0 ? 1 : 1 - entrance.value,
+    opacity: 1 - entrance.value,
     transform: [
       {translateX: offsetX.value * entrance.value},
       {translateY: offsetY.value * entrance.value},
