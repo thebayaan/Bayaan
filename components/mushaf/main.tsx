@@ -97,6 +97,10 @@ import {ReadingSettingsPopover} from '@/components/popovers/ToolPopovers'; // @a
 
 const TOTAL_PAGES = 604;
 import {showSheet} from '@/components/sheets/sheetControl'; // @ai
+// @ai-start
+import {ReaderLayoutTransition} from '@/components/mushaf-options/ReaderLayoutTransition';
+import {readingLayoutOf} from '@/components/mushaf-options/readingLayout';
+// @ai-end
 const ANIMATION_DURATION = 300;
 
 // ============================================================================
@@ -1271,100 +1275,44 @@ export default function MushafViewer({
       )}
       {/* @ai-end */}
       {/* Content area: horizontal FlatList or vertical continuous view */}
-      {isVertical && viewMode === 'mushaf' ? (
-        <ContinuousMushafView
-          key={readerListKey('mushaf-scroll', metrics.screenWidth)} // @ai
-          ref={continuousListRef}
-          textColor={readingColors.text}
-          dividerColor={readingColors.textSecondary}
-          onTap={toggleImmersive}
-          initialPage={currentPage}
-          onCurrentPageChange={handleContinuousPageChange}
-          metrics={scrollMetrics} // @ai
-          scrollsToTop={scrollsToTop} // @ai
-        />
-      ) : isVertical && viewMode === 'list' ? (
-        <ContinuousListView
-          key={readerListKey('list-scroll', metrics.screenWidth)} // @ai
-          ref={continuousListRef}
-          textColor={readingColors.text}
-          labelColor={readingColors.textSecondary}
-          borderColor={edgeBorderColor}
-          onTap={toggleImmersive}
-          initialPage={currentPage}
-          onCurrentPageChange={handleContinuousPageChange}
-          width={readingPageSize?.width} // @ai
-          scrollsToTop={scrollsToTop} // @ai
-        />
-      ) : metrics.facingPages && viewMode === 'mushaf' ? (
-        <FlatList
-          key={readerListKey('spreads', metrics.screenWidth)} // @ai
-          ref={flatListRef}
-          data={spreads}
-          renderItem={({item}) => (
-            <DKSpreadView
-              pageNumber={item.right}
-              leftPageNumber={item.left}
-              textColor={readingColors.text}
-              labelColor={readingColors.textSecondary}
-              borderColor={edgeBorderColor}
-              cardColor={pageBg}
-              bgColor={edgeBg}
-              edgeBg={edgeBg}
-              isBookLayout={isBookLayout}
-              metrics={metrics}
-              onTap={toggleImmersive}
-            />
-          )}
-          keyExtractor={item => `spread-${item.right}`}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          initialScrollIndex={Math.min(
-            pageToSpreadIndex(currentPage),
-            SPREAD_COUNT - 1,
-          )}
-          getItemLayout={(_, index) => ({
-            length: metrics.screenWidth,
-            offset: metrics.screenWidth * index,
-            index,
-          })}
-          inverted={!isRTL}
-          style={appLayoutDirection}
-          onViewableItemsChanged={onViewableItemsChanged}
-          viewabilityConfig={viewabilityConfig}
-          windowSize={7}
-          maxToRenderPerBatch={3}
-          initialNumToRender={1}
-          decelerationRate="fast"
-        />
-      ) : (
-        <FlatList
-          key={readerListKey('pages', metrics.screenWidth)} // @ai
-          ref={flatListRef}
-          data={pages}
-          renderItem={({item}) => {
-            if (viewMode === 'list') {
-              return (
-                <ReadingPageView
-                  pageNumber={item}
-                  textColor={readingColors.text}
-                  surahLabel={getSurahNamesForPage(item)}
-                  juzLabel={getJuzLabelForPage(item)}
-                  pageLabel={localizeDigits(item)}
-                  labelColor={readingColors.textSecondary}
-                  borderColor={edgeBorderColor}
-                  cardColor={pageBg}
-                  bgColor={edgeBg}
-                  isBookLayout={isBookLayout}
-                  onTap={toggleImmersive}
-                  pageSize={readingPageSize} // @ai
-                />
-              );
-            }
-            return (
+      {/* @ai: slides the new layout in and cross-fades a theme change */}
+      <ReaderLayoutTransition
+        layout={readingLayoutOf(viewMode, scrollDirection, pageLayout)}
+        background={readingColors.background}>
+        {isVertical && viewMode === 'mushaf' ? (
+          <ContinuousMushafView
+            key={readerListKey('mushaf-scroll', metrics.screenWidth)} // @ai
+            ref={continuousListRef}
+            textColor={readingColors.text}
+            dividerColor={readingColors.textSecondary}
+            onTap={toggleImmersive}
+            initialPage={currentPage}
+            onCurrentPageChange={handleContinuousPageChange}
+            metrics={scrollMetrics} // @ai
+            scrollsToTop={scrollsToTop} // @ai
+          />
+        ) : isVertical && viewMode === 'list' ? (
+          <ContinuousListView
+            key={readerListKey('list-scroll', metrics.screenWidth)} // @ai
+            ref={continuousListRef}
+            textColor={readingColors.text}
+            labelColor={readingColors.textSecondary}
+            borderColor={edgeBorderColor}
+            onTap={toggleImmersive}
+            initialPage={currentPage}
+            onCurrentPageChange={handleContinuousPageChange}
+            width={readingPageSize?.width} // @ai
+            scrollsToTop={scrollsToTop} // @ai
+          />
+        ) : metrics.facingPages && viewMode === 'mushaf' ? (
+          <FlatList
+            key={readerListKey('spreads', metrics.screenWidth)} // @ai
+            ref={flatListRef}
+            data={spreads}
+            renderItem={({item}) => (
               <DKSpreadView
-                pageNumber={item}
+                pageNumber={item.right}
+                leftPageNumber={item.left}
                 textColor={readingColors.text}
                 labelColor={readingColors.textSecondary}
                 borderColor={edgeBorderColor}
@@ -1375,28 +1323,89 @@ export default function MushafViewer({
                 metrics={metrics}
                 onTap={toggleImmersive}
               />
-            );
-          }}
-          keyExtractor={item => item.toString()}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          initialScrollIndex={Math.min(currentPage - 1, TOTAL_PAGES - 1)}
-          getItemLayout={(_, index) => ({
-            length: metrics.screenWidth,
-            offset: metrics.screenWidth * index,
-            index,
-          })}
-          inverted={!isRTL}
-          style={appLayoutDirection}
-          onViewableItemsChanged={onViewableItemsChanged}
-          viewabilityConfig={viewabilityConfig}
-          windowSize={7}
-          maxToRenderPerBatch={3}
-          initialNumToRender={1}
-          decelerationRate="fast"
-        />
-      )}
+            )}
+            keyExtractor={item => `spread-${item.right}`}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            initialScrollIndex={Math.min(
+              pageToSpreadIndex(currentPage),
+              SPREAD_COUNT - 1,
+            )}
+            getItemLayout={(_, index) => ({
+              length: metrics.screenWidth,
+              offset: metrics.screenWidth * index,
+              index,
+            })}
+            inverted={!isRTL}
+            style={appLayoutDirection}
+            onViewableItemsChanged={onViewableItemsChanged}
+            viewabilityConfig={viewabilityConfig}
+            windowSize={7}
+            maxToRenderPerBatch={3}
+            initialNumToRender={1}
+            decelerationRate="fast"
+          />
+        ) : (
+          <FlatList
+            key={readerListKey('pages', metrics.screenWidth)} // @ai
+            ref={flatListRef}
+            data={pages}
+            renderItem={({item}) => {
+              if (viewMode === 'list') {
+                return (
+                  <ReadingPageView
+                    pageNumber={item}
+                    textColor={readingColors.text}
+                    surahLabel={getSurahNamesForPage(item)}
+                    juzLabel={getJuzLabelForPage(item)}
+                    pageLabel={localizeDigits(item)}
+                    labelColor={readingColors.textSecondary}
+                    borderColor={edgeBorderColor}
+                    cardColor={pageBg}
+                    bgColor={edgeBg}
+                    isBookLayout={isBookLayout}
+                    onTap={toggleImmersive}
+                    pageSize={readingPageSize} // @ai
+                  />
+                );
+              }
+              return (
+                <DKSpreadView
+                  pageNumber={item}
+                  textColor={readingColors.text}
+                  labelColor={readingColors.textSecondary}
+                  borderColor={edgeBorderColor}
+                  cardColor={pageBg}
+                  bgColor={edgeBg}
+                  edgeBg={edgeBg}
+                  isBookLayout={isBookLayout}
+                  metrics={metrics}
+                  onTap={toggleImmersive}
+                />
+              );
+            }}
+            keyExtractor={item => item.toString()}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            initialScrollIndex={Math.min(currentPage - 1, TOTAL_PAGES - 1)}
+            getItemLayout={(_, index) => ({
+              length: metrics.screenWidth,
+              offset: metrics.screenWidth * index,
+              index,
+            })}
+            inverted={!isRTL}
+            style={appLayoutDirection}
+            onViewableItemsChanged={onViewableItemsChanged}
+            viewabilityConfig={viewabilityConfig}
+            windowSize={7}
+            maxToRenderPerBatch={3}
+            initialNumToRender={1}
+            decelerationRate="fast"
+          />
+        )}
+      </ReaderLayoutTransition>
 
       {/* ================================================================ */}
       {/* Normal mode header — fades out when immersive                    */}
