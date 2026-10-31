@@ -35,6 +35,9 @@ interface MushafRangePickState {
   step: 'first' | 'last';
   draft: ListenDraft | null;
   consumer: ((picked: PickedVerses) => void) | null;
+  /** The last Custom range played this session, and its numbering. */
+  lastCustom: {range: VerseRange; numbering: string} | null;
+  setLastCustom: (range: VerseRange, numbering: string) => void;
   start: (page: number, draft: ListenDraft, range: VerseRange | null) => void;
   setRange: (range: VerseRange, step: 'first' | 'last') => void;
   setConsumer: (consumer: ((picked: PickedVerses) => void) | null) => void;
@@ -49,6 +52,8 @@ export const useMushafRangePickStore = create<MushafRangePickState>(set => ({
   step: 'first',
   draft: null,
   consumer: null,
+  lastCustom: null,
+  setLastCustom: (range, numbering) => set({lastCustom: {range, numbering}}),
   start: (page, draft, range) =>
     set({active: true, page, draft, range, step: 'first'}),
   setRange: (range, step) => set({range, step}),

@@ -14,6 +14,7 @@ import {
   TextInput,
   ScrollView as RNScrollView,
   FlatList as RNFlatList,
+  Keyboard,
   StyleSheet,
   type LayoutChangeEvent,
 } from 'react-native';
@@ -198,6 +199,7 @@ export function VersePicker({
     setSurah(surahIdOfKey(s.range.start));
     setScrollKey(s.range.start);
     setQuery('');
+    Keyboard.dismiss();
   };
 
   const renderCell = ({item, index}: {item: string; index: number}) => {

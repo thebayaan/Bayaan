@@ -579,11 +579,7 @@ export function FloatingAction({
           pressed && {opacity: 0.85},
           disabled && {opacity: 0.35},
         ]}>
-        {icon === 'play' && (
-          <View style={[styles.playDot, {backgroundColor: bg}]}>
-            <Ionicons name="play" size={ms(13)} color={c.text} />
-          </View>
-        )}
+        {icon === 'play' && <Ionicons name="play" size={ms(18)} color={bg} />}
         {icon === 'refresh' && (
           <Ionicons name="refresh" size={ms(18)} color={bg} />
         )}
@@ -791,14 +787,6 @@ const styles = StyleSheet.create({
     shadowRadius: 14,
     shadowOffset: {width: 0, height: 10},
     elevation: 6,
-  },
-  playDot: {
-    width: ms(30),
-    height: ms(30),
-    borderRadius: ms(15),
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingLeft: ms(2),
   },
   playLabel: {
     fontSize: ms(16),
