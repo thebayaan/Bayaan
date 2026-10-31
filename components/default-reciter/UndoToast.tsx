@@ -15,7 +15,7 @@ import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {moderateScale} from '@/utils/scale';
 
-const VISIBLE_MS = 4000;
+const VISIBLE_MS = 6000;
 
 interface Props {
   message: string;
