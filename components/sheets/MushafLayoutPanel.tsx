@@ -64,6 +64,7 @@ export function MushafLayoutPanel({
       <MushafSettingsContent
         showTitle={true}
         context={context}
+        surface="sheet"
         onOpenThemePicker={handleOpenThemePicker}
       />
     </ScrollComponent>
