@@ -187,9 +187,10 @@ function ActiveRangePickBar() {
     reopen();
   };
 
-  // Cancel keeps the reciter and repeats but not the picked range.
+  // Cancel goes back to the sheet as it was: its range, reciter, repeats.
   const handleCancel = () => {
-    useMushafRangePickStore.setState({range: null});
+    const {startRange} = useMushafRangePickStore.getState();
+    useMushafRangePickStore.setState({range: startRange});
     reopen();
   };
 

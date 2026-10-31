@@ -31,6 +31,8 @@ interface MushafRangePickState {
   /** The page the Listen sheet was opened for. */
   page: number;
   range: VerseRange | null;
+  /** The sheet's range when the pick started: Cancel goes back to it. */
+  startRange: VerseRange | null;
   /** The next pick sets the start ('first') or the end ('last'). */
   step: 'first' | 'last';
   draft: ListenDraft | null;
@@ -49,13 +51,14 @@ export const useMushafRangePickStore = create<MushafRangePickState>(set => ({
   active: false,
   page: 1,
   range: null,
+  startRange: null,
   step: 'first',
   draft: null,
   consumer: null,
   lastCustom: null,
   setLastCustom: (range, numbering) => set({lastCustom: {range, numbering}}),
   start: (page, draft, range) =>
-    set({active: true, page, draft, range, step: 'first'}),
+    set({active: true, page, draft, range, startRange: range, step: 'first'}),
   setRange: (range, step) => set({range, step}),
   setConsumer: consumer => set({consumer}),
   redo: () => set({range: null, step: 'first'}),
@@ -63,6 +66,7 @@ export const useMushafRangePickStore = create<MushafRangePickState>(set => ({
     set({
       active: false,
       range: null,
+      startRange: null,
       step: 'first',
       draft: null,
       consumer: null,
