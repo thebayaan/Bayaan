@@ -32,6 +32,12 @@ import {
   chooseMushafRewayah,
 } from '@/components/sheets/rewayahSelection';
 import {getRewayahShortLabel} from '@/utils/rewayahLabels';
+import {useMushafFontMgr} from '@/hooks/useMushafFontMgr';
+import {
+  qcfFontFamilyForPage,
+  qcfFontLoader,
+} from '@/services/mushaf/QCFFontLoader';
+import {BASMALA_TEXT} from '@/services/mushaf/QCFDataService';
 import {localizeDigits} from '@/i18n/format';
 import {flipX} from '@/utils/rtl';
 import {moderateScale} from '@/utils/scale';
@@ -224,17 +230,7 @@ export function MushafTextScreen({
                             `sheets:mushafOptions.mushafText.scripts.${script.key}`,
                           )}
                     </Text>
-                    {/* Each script draws the basmala in its own face.
-                        Mushaf 1440 has no Digital Khatt face of its own
-                        and shows Madani 1421's, as the reader's text
-                        surfaces do. */}
-                    <QuranText
-                      verseKey="1:1"
-                      rewayah="hafs"
-                      fontFamily={getDkFontFamily(script.value, 'hafs')}
-                      fontSize={moderateScale(19)}
-                      color={theme.colors.text}
-                    />
+                    <ScriptSample renderer={script.value} />
                   </View>
                   <Feather
                     name="check"
@@ -321,6 +317,47 @@ export function MushafTextScreen({
         </Text>
       </View>
     </ScrollComponent>
+  );
+}
+
+/**
+ * The basmala in a script's own face. Mushaf 1440 draws it with its
+ * page-1 QCF font when the reader has already downloaded and registered
+ * it (the same font manager the Mushaf 1440 pages use).
+ */
+function ScriptSample({
+  renderer,
+}: {
+  renderer: MushafRenderer;
+}): React.JSX.Element {
+  const {theme} = useTheme();
+  const fontMgr = useMushafFontMgr();
+  const fontSize = moderateScale(19);
+  if (renderer === 'qcf_v2') {
+    const family = qcfFontFamilyForPage(1, 'v2');
+    if (fontMgr && qcfFontLoader.isReady(1, fontMgr, 'v2')) {
+      return (
+        <QuranText
+          text={BASMALA_TEXT}
+          fontFamily={family}
+          fontSize={fontSize}
+          color={theme.colors.text}
+        />
+      );
+    }
+    // TODO: QCF page fonts are not bundled. They download from GitHub on
+    // first use of a page (~200 MB for all 604), so the sheet does not
+    // fetch page 1 just for this sample; until the reader has opened
+    // Mushaf 1440 it shows the Madani 1421 face, next to the Beta badge.
+  }
+  return (
+    <QuranText
+      verseKey="1:1"
+      rewayah="hafs"
+      fontFamily={getDkFontFamily(renderer, 'hafs')}
+      fontSize={fontSize}
+      color={theme.colors.text}
+    />
   );
 }
 

@@ -96,7 +96,26 @@ jest.mock('@/components/native/NativeSegmentedControl', () => {
     NativeSegmentedControl: (props: object) => <MockView {...props} />,
   };
 });
-jest.mock('../QuranText', () => ({QuranText: () => null}));
+jest.mock('../QuranText', () => {
+  const {View: MockView} = jest.requireActual('react-native');
+  return {
+    QuranText: (props: {fontFamily: string; text?: string}) => (
+      <MockView testID="quran-text" quranFont={props.fontFamily} />
+    ),
+  };
+});
+let mockQcfPageOneReady = false;
+jest.mock('@/hooks/useMushafFontMgr', () => ({
+  useMushafFontMgr: () => ({}),
+}));
+jest.mock('@/services/mushaf/QCFFontLoader', () => ({
+  qcfFontFamilyForPage: (page: number, variant: string) =>
+    `p${page}-${variant}`,
+  qcfFontLoader: {isReady: () => mockQcfPageOneReady},
+}));
+jest.mock('@/services/mushaf/QCFDataService', () => ({
+  BASMALA_TEXT: 'basmala',
+}));
 jest.mock('@/components/native/NativeMenu', () => {
   const {View: MockView} = jest.requireActual('react-native');
   return {
@@ -225,6 +244,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockThemeMode = 'light';
   mockReflections = false;
+  mockQcfPageOneReady = false;
   useMushafSettingsStore.setState(
     {
       ...initial,
@@ -597,6 +617,23 @@ describe('special cases', () => {
     expect(warsh.props.disabled).toBe(true);
     act(() => warsh.props.onPress());
     expect(chooseMushafRewayah).not.toHaveBeenCalled();
+  });
+
+  it('draws the Mushaf 1440 sample in its page-1 font once downloaded', () => {
+    const fonts = (r: TestRenderer.ReactTestRenderer) =>
+      r.root
+        .findAll(node => node.props.testID === 'quran-text')
+        .map(node => node.props.quranFont);
+    let r = render(<MushafOptionsContent />);
+    press(r, 'mushaf-options-mushaf-text');
+    // Not downloaded: the Madani 1421 face stands in.
+    expect(fonts(r)).not.toContain('p1-v2');
+    act(() => r.unmount());
+
+    mockQcfPageOneReady = true;
+    r = render(<MushafOptionsContent />);
+    press(r, 'mushaf-options-mushaf-text');
+    expect(fonts(r)).toContain('p1-v2');
   });
 
   it('keeps the Mushaf 1440 beta alert', async () => {

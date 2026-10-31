@@ -8,7 +8,6 @@ import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService
 import type {DKWordInfo} from '@/services/mushaf/DigitalKhattDataService';
 import type {IndexedTajweedData} from '@/utils/tajweedLoader';
 import type {
-  DkFontFamily,
   MushafArabicTextWeight,
   RewayahId,
 } from '@/store/mushafSettingsStore';
@@ -36,7 +35,8 @@ export function QuranText({
   verseKey?: string;
   words?: readonly DKWordInfo[];
   rewayah?: RewayahId;
-  fontFamily: DkFontFamily;
+  /** A Digital Khatt family (DkFontFamily), or a registered QCF page font. */
+  fontFamily: string;
   fontSize: number;
   color: string;
   weight?: MushafArabicTextWeight;
