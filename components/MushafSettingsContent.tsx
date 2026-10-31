@@ -594,6 +594,8 @@ interface MushafSettingsContentProps {
   showTitle?: boolean;
   context?: 'mushaf' | 'player';
   onOpenThemePicker?: () => void;
+  /** What the content sits on: a Settings page or a sheet. @ai */
+  surface?: 'page' | 'sheet';
 }
 
 // @ai-start
@@ -602,10 +604,14 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
   showTitle = true,
   context,
   onOpenThemePicker,
+  surface = 'page',
 }) => {
   const {theme, themeMode} = useTheme();
   const {t} = useTranslation('settings');
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const styles = useMemo(
+    () => createStyles(theme, surface === 'sheet'),
+    [theme, surface],
+  );
   const {indexedTajweedData, isLoading: isTajweedLoading} = useTajweedStore();
 
   const {
@@ -1703,16 +1709,19 @@ const UNAVAILABLE_REWAYAH_IDS: readonly RewayahId[] = ALL_REWAYAH_IDS.filter(
 );
 
 // @ai-start
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, onSheet: boolean) =>
   StyleSheet.create({
     container: {
       padding: moderateScale(16),
     },
     // @ai-start: the shared Settings card and header (SettingsList)
+    // A white card disappears on a light sheet; a sheet gets a faint tint.
     card: {
       backgroundColor: theme.isDarkMode
         ? Color('#ffffff').alpha(0.07).toString()
-        : '#ffffff',
+        : onSheet
+          ? Color(theme.colors.text).alpha(0.05).toString()
+          : '#ffffff',
       borderRadius: moderateScale(24),
       paddingHorizontal: moderateScale(18),
       overflow: 'hidden',
