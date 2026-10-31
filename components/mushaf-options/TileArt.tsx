@@ -152,6 +152,9 @@ function SwipeArt({colors, running}: ArtProps): React.JSX.Element {
 }
 
 const BOOK_PAGE_W = S(30);
+// Scaled here, on the JS thread: the leaf's animated style runs on the UI
+// thread, where calling a plain function (moderateScale) is fatal.
+const LEAF_PERSPECTIVE = S(200);
 
 /** Book: a leaf flips over the spine onto an identical page. */
 function BookArt({colors, running}: ArtProps): React.JSX.Element {
@@ -160,7 +163,10 @@ function BookArt({colors, running}: ArtProps): React.JSX.Element {
     const t = clock.value;
     const turn = t < 0.35 ? 0 : t < 0.8 ? flipEase((t - 0.35) / 0.45) : 1;
     return {
-      transform: [{perspective: S(200)}, {rotateY: `${turn * 180}deg`}],
+      transform: [
+        {perspective: LEAF_PERSPECTIVE},
+        {rotateY: `${turn * 180}deg`},
+      ],
     };
   });
   // Lines are centered so the leaf, drawn mirrored once it has turned,

@@ -31,24 +31,46 @@ jest.mock('@/hooks/useTheme', () => ({
     setThemeMode: mockSetThemeMode,
   }),
 }));
+// Animated styles and animation callbacks run on the UI thread, where a
+// plain JS function call is fatal in Release (the app closes). Each one
+// must be a worklet that captures only worklets (Reanimated Babel plugin
+// `__closure`); offenders fail the test that rendered them.
+const mockOffenders: string[] = [];
+function mockCheckWorklet(fn: unknown, where: string): void {
+  if (typeof fn !== 'function') return;
+  if (!('__closure' in fn)) {
+    mockOffenders.push(`${where}: not a worklet`);
+    return;
+  }
+  const closure: unknown = fn.__closure;
+  if (typeof closure !== 'object' || closure === null) return;
+  for (const [name, value] of Object.entries(closure)) {
+    if (typeof value === 'function' && !('__workletHash' in value)) {
+      mockOffenders.push(`${where}: captures non-worklet ${name}`);
+    }
+  }
+}
 jest.mock('react-native-reanimated', () => {
   const {View: MockView} = jest.requireActual('react-native');
   const identity = (value: unknown) => value;
   return {
     __esModule: true,
     default: {View: MockView},
-    Easing: {
-      bezier: () => identity,
-      bezierFn: () => identity,
-      linear: identity,
-    },
+    Easing: jest.requireActual('react-native-reanimated/lib/module/Easing')
+      .Easing,
     cancelAnimation: jest.fn(),
-    useAnimatedStyle: () => ({}),
+    useAnimatedStyle: (updater: unknown) => {
+      mockCheckWorklet(updater, 'animated style');
+      return {};
+    },
     useReducedMotion: () => false,
     useSharedValue: (value: number) => ({value}),
     withRepeat: identity,
     withSpring: identity,
-    withTiming: identity,
+    withTiming: (value: unknown, _config?: unknown, callback?: unknown) => {
+      mockCheckWorklet(callback, 'animation callback');
+      return value;
+    },
   };
 });
 jest.mock('react-native-worklets', () => ({
@@ -234,6 +256,8 @@ beforeEach(() => {
 afterEach(() => {
   act(() => renderer?.unmount());
   renderer = null;
+  expect(mockOffenders).toEqual([]);
+  mockOffenders.length = 0;
 });
 
 describe('settings written through the Reading sheet', () => {
