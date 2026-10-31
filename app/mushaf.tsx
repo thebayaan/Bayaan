@@ -369,7 +369,10 @@ export function MushafToolbar() {
           {t('common:actions.search')}
         </Stack.Toolbar.Button>
         <Stack.Toolbar.Spacer />
-        <Stack.Toolbar.Button icon="play.fill" onPress={handlePlay}>
+        <Stack.Toolbar.Button
+          icon="play.fill"
+          hidesSharedBackground // @ai: a plain icon, no glass circle
+          onPress={handlePlay}>
           {t('common:actions.play')}
         </Stack.Toolbar.Button>
         <Stack.Toolbar.Spacer />
