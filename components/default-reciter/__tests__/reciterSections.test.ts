@@ -53,6 +53,14 @@ describe('recitationLabels', () => {
     expect(labels[1]).toBe('Other · MURATTAL');
   });
 
+  it('numbers two recordings of the same rewayah and style', () => {
+    const labels = recitationLabels(
+      [rewayah('1', HAFS, 'murattal'), rewayah('2', `${HAFS} `, 'murattal ')],
+      style,
+    );
+    expect(labels).toEqual(['MURATTAL', 'MURATTAL 2']);
+  });
+
   it('strips the duplicate counter from styles', () => {
     expect(baseStyle('Murattal3')).toBe('murattal');
   });

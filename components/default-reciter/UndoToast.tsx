@@ -1,7 +1,13 @@
 // @ai-generated
 import React, {useEffect, useMemo} from 'react';
-import {Text, Pressable, StyleSheet, AccessibilityInfo} from 'react-native';
-import Animated, {FadeInDown, FadeOutDown} from 'react-native-reanimated';
+import {
+  View,
+  Text,
+  Pressable,
+  StyleSheet,
+  AccessibilityInfo,
+} from 'react-native';
+import Animated, {FadeInUp, FadeOutUp} from 'react-native-reanimated';
 import {Feather} from '@expo/vector-icons';
 import Color from 'color';
 import {useTranslation} from 'react-i18next';
@@ -13,13 +19,18 @@ const VISIBLE_MS = 4000;
 
 interface Props {
   message: string;
-  bottom: number;
+  /** Distance from the top of the screen, just under the navigation bar. */
+  top: number;
   onUndo: () => void;
   onDismiss: () => void;
 }
 
-/** A confirmation pill with Undo that hides itself after a few seconds. */
-export function UndoToast({message, bottom, onUndo, onDismiss}: Props) {
+/**
+ * A confirmation pill with Undo that hides itself after a few seconds. It
+ * sits under the navigation bar, clear of the keyboard and the mini player,
+ * on an overlay above the list so its taps never reach the rows beneath.
+ */
+export function UndoToast({message, top, onUndo, onDismiss}: Props) {
   const {theme} = useTheme();
   const {t} = useTranslation('settings');
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -31,31 +42,43 @@ export function UndoToast({message, bottom, onUndo, onDismiss}: Props) {
   }, [message, onDismiss]);
 
   return (
-    <Animated.View
-      entering={FadeInDown.duration(220)}
-      exiting={FadeOutDown.duration(180)}
-      style={[styles.toast, {bottom}]}
-      accessibilityLiveRegion="polite">
-      <Feather
-        name="check"
-        size={moderateScale(16)}
-        color={theme.colors.background}
-      />
-      <Text style={styles.message} numberOfLines={2}>
-        {message}
-      </Text>
-      <Pressable
-        onPress={onUndo}
-        accessibilityRole="button"
-        style={({pressed}) => [styles.undo, pressed && styles.pressed]}>
-        <Text style={styles.undoText}>{t('defaultReciter.undo')}</Text>
-      </Pressable>
-    </Animated.View>
+    <View style={styles.overlay} pointerEvents="box-none">
+      <Animated.View
+        entering={FadeInUp.duration(220)}
+        exiting={FadeOutUp.duration(180)}
+        style={[styles.toast, {top}]}
+        pointerEvents="auto"
+        accessibilityLiveRegion="polite">
+        <Feather
+          name="check"
+          size={moderateScale(16)}
+          color={theme.colors.background}
+        />
+        <Text style={styles.message} numberOfLines={2}>
+          {message}
+        </Text>
+        <Pressable
+          onPress={onUndo}
+          accessibilityRole="button"
+          style={({pressed}) => [styles.undo, pressed && styles.pressed]}>
+          <Text style={styles.undoText}>{t('defaultReciter.undo')}</Text>
+        </Pressable>
+      </Animated.View>
+    </View>
   );
 }
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
+    overlay: {
+      position: 'absolute',
+      top: 0,
+      bottom: 0,
+      start: 0,
+      end: 0,
+      zIndex: 10,
+      elevation: 10,
+    },
     toast: {
       position: 'absolute',
       start: moderateScale(16),

@@ -69,7 +69,11 @@ export function DefaultReciterHero({
         reciterName={reciter.name}
         style={styles.artwork}
       />
-      <Text style={styles.name} numberOfLines={2}>
+      <Text
+        style={styles.name}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.7}>
         {name}
       </Text>
       <Text style={styles.subtitle}>
@@ -111,37 +115,34 @@ export function DefaultReciterHero({
         </Text>
       </View>
 
-      {rewayat.length > 1 && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.chipsScroll}
-          contentContainerStyle={styles.chips}>
-          {rewayat.map((r, i) => {
-            const selected = i === selectedIndex;
-            return (
-              <Pressable
-                key={r.id}
-                onPress={() => onSelectRewayat(r.id)}
-                accessibilityRole="button"
-                accessibilityState={{selected}}
-                style={({pressed}) => [
-                  styles.chip,
-                  selected && styles.chipSelected,
-                  pressed && styles.pressed,
-                ]}>
-                <Text
-                  style={[
-                    styles.chipText,
-                    selected && styles.chipTextSelected,
-                  ]}>
-                  {labels[i]}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
-      )}
+      {/* Always one row tall, so picking a reciter never shifts the list. */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.chipsScroll}
+        contentContainerStyle={styles.chips}>
+        {rewayat.map((r, i) => {
+          const selected = i === selectedIndex;
+          return (
+            <Pressable
+              key={r.id}
+              onPress={() => onSelectRewayat(r.id)}
+              disabled={rewayat.length < 2}
+              accessibilityRole="button"
+              accessibilityState={{selected}}
+              style={({pressed}) => [
+                styles.chip,
+                selected && styles.chipSelected,
+                pressed && styles.pressed,
+              ]}>
+              <Text
+                style={[styles.chipText, selected && styles.chipTextSelected]}>
+                {labels[i]}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
     </View>
   );
 }
@@ -151,13 +152,15 @@ const createStyles = (theme: Theme, artworkSize: number) => {
   const tokens = settingsTokens(theme);
   const glowSize = artworkSize * 1.9;
   return StyleSheet.create({
+    // Clips the glow so it never runs up behind the navigation title.
     container: {
       alignItems: 'center',
       paddingTop: moderateScale(8),
+      overflow: 'hidden',
     },
     glow: {
       position: 'absolute',
-      top: -artworkSize * 0.3,
+      top: -artworkSize * 0.15,
       width: glowSize,
       height: glowSize,
       borderRadius: glowSize / 2,
@@ -235,6 +238,8 @@ const createStyles = (theme: Theme, artworkSize: number) => {
     },
     chipsScroll: {
       alignSelf: 'stretch',
+      flexGrow: 0,
+      minHeight: moderateScale(34),
       marginTop: moderateScale(12),
     },
     chips: {

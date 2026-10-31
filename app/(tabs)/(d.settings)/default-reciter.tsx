@@ -23,6 +23,8 @@ import {rankReciters} from '@/utils/search/catalog';
 import {pickRewayatId} from '@/utils/rewayatPreference';
 import {getReciterDisplayName} from '@/i18n/format';
 import {lightHaptics} from '@/utils/haptics';
+import {useHeaderHeight} from 'expo-router/react-navigation';
+import {USE_GLASS} from '@/hooks/useGlassProps';
 import {DefaultReciterHero} from '@/components/default-reciter/DefaultReciterHero';
 import {PlaybackModeSwitch} from '@/components/default-reciter/PlaybackModeSwitch';
 import {FavoritesShelf} from '@/components/default-reciter/FavoritesShelf';
@@ -60,6 +62,9 @@ export default function DefaultReciterScreen() {
   const expanded = width >= EXPANDED_MIN_WIDTH;
   const columns = expanded ? 2 : 1;
   const bottomInset = useBottomInset();
+  // Under a glass header the screen starts at the top of the window.
+  const rawHeaderHeight = useHeaderHeight();
+  const headerHeight = USE_GLASS ? rawHeaderHeight : 0;
 
   const defaultReciter = useReciterStore(state => state.defaultReciter);
   const setDefaultReciter = useReciterStore(state => state.setDefaultReciter);
@@ -277,7 +282,7 @@ export default function DefaultReciterScreen() {
         <UndoToast
           key={undo.message}
           message={undo.message}
-          bottom={bottomInset + moderateScale(12)}
+          top={headerHeight + moderateScale(8)}
           onUndo={handleUndo}
           onDismiss={dismissUndo}
         />
