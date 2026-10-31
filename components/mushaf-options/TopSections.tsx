@@ -380,6 +380,7 @@ function createThemeStyles(theme: Theme) {
       borderRadius: 2,
     },
     themeLabel: {
+      maxWidth: '100%',
       fontSize: theme.typography.captionSize,
       fontFamily: 'Manrope-Medium',
       color: textAlpha(theme, 0.55),
