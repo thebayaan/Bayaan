@@ -35,7 +35,11 @@ import {useNativeSheetKeyboardHeight} from '@/components/sheets/useNativeSheetKe
 // @ai-start
 export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
   const {theme} = useTheme();
-  const sheetBottomPadding = useSheetBottomPadding(moderateScale(40)); // @ai
+  // The scroll view's own padding already ends the content. @ai
+  const sheetBottomPadding = useSheetBottomPadding(
+    moderateScale(40),
+    moderateScale(16),
+  );
   useNativeSheetKeyboardHeight(); // @ai
   const styles = useMemo(() => createStyles(theme), [theme]);
   const {t} = useTranslation('sheets');
