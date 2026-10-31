@@ -120,6 +120,12 @@ export function VersePicker({
   );
   const [width, setWidth] = useState(0);
   const pillsRef = useRef<RNFlatList<number>>(null);
+  // The grid scrolls to this verse once its surah is shown and measured.
+  const listRef = useRef<React.ComponentRef<typeof FlatList>>(null);
+  const [headerHeight, setHeaderHeight] = useState(0);
+  const [scrollKey, setScrollKey] = useState<string | null>(() =>
+    target === 'start' ? range.start : range.end,
+  );
 
   const crosses = surahIdOfKey(range.start) !== surahIdOfKey(range.end);
   const count = countVerses(n, range);
@@ -142,6 +148,26 @@ export function VersePicker({
     [n, surah],
   );
 
+  const columns = Math.max(5, Math.floor((width || ms(340)) / CELL));
+  const cellWidth = width ? width / columns : CELL;
+
+  useEffect(() => {
+    if (!scrollKey || !headerHeight || !width) return;
+    if (surahIdOfKey(scrollKey) !== surah) return;
+    const index = Number(scrollKey.split(':')[1]) - 1;
+    const row = mode === 'numbers' ? Math.floor(index / columns) : index;
+    const rowHeight = mode === 'numbers' ? CELL + ms(6) : ms(56);
+    const offset = Math.max(0, headerHeight + (row - 1) * rowHeight);
+    setScrollKey(null);
+    // After the (re)mounted list has laid out its rows. Not cleared on
+    // re-run: clearing scrollKey re-runs this effect straight away.
+    setTimeout(
+      () => listRef.current?.scrollToOffset({offset, animated: true}),
+      80,
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scrollKey, headerHeight, width, surah, mode]);
+
   const tap = useCallback(
     (key: string) => {
       Haptics.selectionAsync();
@@ -154,24 +180,25 @@ export function VersePicker({
 
   const focus = (which: RangeTarget) => {
     onTargetChange(which);
-    setSurah(surahIdOfKey(which === 'start' ? range.start : range.end));
+    const key = which === 'start' ? range.start : range.end;
+    setSurah(surahIdOfKey(key));
+    setScrollKey(key);
   };
 
   const extend = (kind: RangeExtend) => {
     const next = extendRange(env, range, kind);
     onChange(next);
     setSurah(surahIdOfKey(next.end));
+    setScrollKey(next.end);
   };
 
   const applySuggestion = (s: RangeSuggestion) => {
     onChange(s.range);
     onTargetChange('start');
     setSurah(surahIdOfKey(s.range.start));
+    setScrollKey(s.range.start);
     setQuery('');
   };
-
-  const columns = Math.max(5, Math.floor((width || ms(340)) / CELL));
-  const cellWidth = width ? width / columns : CELL;
 
   const renderCell = ({item, index}: {item: string; index: number}) => {
     const col = index % columns;
@@ -308,7 +335,9 @@ export function VersePicker({
     }
   };
 
-  const header = (
+  // Pinned above the list: re-rendering the list never remounts the search
+  // field, so typing keeps the keyboard.
+  const pinned = (
     <View>
       <SheetHeader
         title={t('mushafPlayer.editRange')}
@@ -379,103 +408,104 @@ export function VersePicker({
             </View>
           )}
         </View>
-        {!query && (
-          <>
-            <RNScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.bleed}
-              contentContainerStyle={styles.chips}
-              keyboardShouldPersistTaps="handled">
-              {(
-                [
-                  ['plus5', t('mushafPlayer.extendPlus5')],
-                  ['page', t('mushafPlayer.extendPage')],
-                  ['surah', t('mushafPlayer.extendSurah')],
-                  ['juz', t('mushafPlayer.extendJuz')],
-                ] as const
-              ).map(([kind, label]) => (
-                <Pressable
-                  key={kind}
-                  onPress={() => extend(kind)}
-                  accessibilityRole="button"
-                  style={({pressed}) => [
-                    styles.chip,
-                    {borderColor: c.divider},
-                    pressed && {backgroundColor: c.cardPressed},
+      </View>
+    </View>
+  );
+
+  const listHeader = (
+    <View onLayout={e => setHeaderHeight(e.nativeEvent.layout.height)}>
+      <View style={styles.listBody}>
+        <RNScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.bleed}
+          contentContainerStyle={styles.chips}
+          keyboardShouldPersistTaps="handled">
+          {(
+            [
+              ['plus5', t('mushafPlayer.extendPlus5')],
+              ['page', t('mushafPlayer.extendPage')],
+              ['surah', t('mushafPlayer.extendSurah')],
+              ['juz', t('mushafPlayer.extendJuz')],
+            ] as const
+          ).map(([kind, label]) => (
+            <Pressable
+              key={kind}
+              onPress={() => extend(kind)}
+              accessibilityRole="button"
+              style={({pressed}) => [
+                styles.chip,
+                {borderColor: c.divider},
+                pressed && {backgroundColor: c.cardPressed},
+              ]}>
+              <Text style={[styles.chipText, {color: c.text}]}>{label}</Text>
+            </Pressable>
+          ))}
+        </RNScrollView>
+        <RNFlatList
+          ref={pillsRef}
+          horizontal
+          data={SURAHS.map(s => s.id)}
+          keyExtractor={id => String(id)}
+          showsHorizontalScrollIndicator={false}
+          style={styles.bleed}
+          contentContainerStyle={styles.chips}
+          initialNumToRender={SURAHS.length}
+          onScrollToIndexFailed={info =>
+            setTimeout(
+              () =>
+                pillsRef.current?.scrollToIndex({
+                  index: info.index,
+                  animated: false,
+                  viewPosition: 0.3,
+                }),
+              100,
+            )
+          }
+          keyboardShouldPersistTaps="handled"
+          renderItem={({item}) => {
+            const on = item === surah;
+            return (
+              <Pressable
+                onPress={() => setSurah(item)}
+                accessibilityRole="button"
+                accessibilityState={{selected: on}}
+                style={[
+                  styles.surahPill,
+                  {backgroundColor: on ? c.text : c.chip},
+                ]}>
+                <Text
+                  style={[
+                    styles.surahPillNumber,
+                    {color: on ? theme.colors.background : c.faint},
                   ]}>
-                  <Text style={[styles.chipText, {color: c.text}]}>
-                    {label}
-                  </Text>
-                </Pressable>
-              ))}
-            </RNScrollView>
-            <RNFlatList
-              ref={pillsRef}
-              horizontal
-              data={SURAHS.map(s => s.id)}
-              keyExtractor={id => String(id)}
-              showsHorizontalScrollIndicator={false}
-              style={styles.bleed}
-              contentContainerStyle={styles.chips}
-              initialNumToRender={SURAHS.length}
-              onScrollToIndexFailed={info =>
-                setTimeout(
-                  () =>
-                    pillsRef.current?.scrollToIndex({
-                      index: info.index,
-                      animated: false,
-                      viewPosition: 0.3,
-                    }),
-                  100,
-                )
-              }
-              keyboardShouldPersistTaps="handled"
-              renderItem={({item}) => {
-                const on = item === surah;
-                return (
-                  <Pressable
-                    onPress={() => setSurah(item)}
-                    accessibilityRole="button"
-                    accessibilityState={{selected: on}}
-                    style={[
-                      styles.surahPill,
-                      {backgroundColor: on ? c.text : c.chip},
-                    ]}>
-                    <Text
-                      style={[
-                        styles.surahPillNumber,
-                        {color: on ? theme.colors.background : c.faint},
-                      ]}>
-                      {localizeDigits(item)}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.chipText,
-                        {color: on ? theme.colors.background : c.text},
-                      ]}>
-                      {surahNameOf(item)}
-                    </Text>
-                  </Pressable>
-                );
-              }}
-            />
-            <View style={styles.listHeader}>
-              <Text style={[styles.caption, {color: c.secondary}]}>
-                {surahNameOf(surah)} ·{' '}
-                {t('mushafPlayer.verseCount', {
-                  count: verseCount(n, surah),
-                })}
-                {n.hafsFallback ? ` · ${t('mushafPlayer.hafsNumbers')}` : ''}
-              </Text>
-              <Text style={[styles.caption, {color: c.secondary}]}>
-                {target === 'start'
-                  ? t('mushafPlayer.tapFirst')
-                  : t('mushafPlayer.tapLast')}
-              </Text>
-            </View>
-          </>
-        )}
+                  {localizeDigits(item)}
+                </Text>
+                <Text
+                  style={[
+                    styles.chipText,
+                    {color: on ? theme.colors.background : c.text},
+                  ]}>
+                  {surahNameOf(item)}
+                </Text>
+              </Pressable>
+            );
+          }}
+        />
+        <View style={styles.listHeader}>
+          <Text style={[styles.caption, {color: c.secondary}]}>
+            {surahNameOf(surah)} ·{' '}
+            {t('mushafPlayer.verseCount', {
+              count: verseCount(n, surah),
+            })}
+            {n.hafsFallback ? ` · ${t('mushafPlayer.hafsNumbers')}` : ''}
+          </Text>
+          <Text style={[styles.caption, {color: c.secondary}]}>
+            {target === 'start'
+              ? t('mushafPlayer.tapFirst')
+              : t('mushafPlayer.tapLast')}
+          </Text>
+        </View>
       </View>
     </View>
   );
@@ -546,37 +576,46 @@ export function VersePicker({
 
   return (
     <View style={styles.fill}>
-      <FlatList
-        key={query ? 'search' : `${mode}-${columns}`}
-        data={query ? [] : keys}
-        numColumns={!query && mode === 'numbers' ? columns : 1}
-        keyExtractor={item => item}
-        renderItem={mode === 'numbers' ? renderCell : renderTextRow}
-        ListHeaderComponent={
-          <>
-            {header}
-            {!!query && suggestionsView}
-          </>
-        }
-        style={styles.fill}
-        contentContainerStyle={{paddingBottom: FOOTER_SPACE + bottomInset}}
-        columnWrapperStyle={
-          !query && mode === 'numbers' ? styles.gridRow : undefined
-        }
-        onLayout={(e: LayoutChangeEvent) =>
-          setWidth(e.nativeEvent.layout.width - 2 * ms(16))
-        }
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
-        initialNumToRender={60}
-        showsVerticalScrollIndicator={false}
-      />
-      <FloatingAction
-        label={t('mushafPlayer.useVerses', {count})}
-        icon={null}
-        bottomInset={bottomInset}
-        onPress={onDone}
-      />
+      {pinned}
+      {query ? (
+        <RNScrollView
+          style={styles.fill}
+          contentContainerStyle={{paddingBottom: bottomInset + ms(16)}}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}>
+          {suggestionsView}
+        </RNScrollView>
+      ) : (
+        <FlatList
+          ref={listRef}
+          key={`${mode}-${columns}`}
+          data={keys}
+          numColumns={mode === 'numbers' ? columns : 1}
+          keyExtractor={item => item}
+          renderItem={mode === 'numbers' ? renderCell : renderTextRow}
+          ListHeaderComponent={listHeader}
+          style={styles.fill}
+          contentContainerStyle={{paddingBottom: FOOTER_SPACE + bottomInset}}
+          columnWrapperStyle={mode === 'numbers' ? styles.gridRow : undefined}
+          onLayout={(e: LayoutChangeEvent) =>
+            setWidth(e.nativeEvent.layout.width - 2 * ms(16))
+          }
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          initialNumToRender={60}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
+      {/* While typing, a suggestion is the action; the footer would cover
+          the suggestions above the keyboard. */}
+      {!query && (
+        <FloatingAction
+          label={t('mushafPlayer.useVerses', {count})}
+          icon={null}
+          bottomInset={bottomInset}
+          onPress={onDone}
+        />
+      )}
     </View>
   );
 }
@@ -666,6 +705,7 @@ const styles = StyleSheet.create({
     gap: ms(6),
   },
   surahPillNumber: {fontSize: ms(12), fontFamily: 'Manrope-Bold'},
+  listBody: {paddingHorizontal: ms(16)},
   listHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
