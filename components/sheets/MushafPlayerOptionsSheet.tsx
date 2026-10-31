@@ -228,6 +228,11 @@ export const MushafPlayerOptionsSheet = (
   const handlePreset = useCallback(
     (next: RangePreset) => {
       if (next === 'custom') {
+        // Custom comes back to the last custom range played, not the page.
+        const last = useMushafRangePickStore.getState().lastCustom;
+        if (preset !== 'custom' && last && last.numbering === numberingId) {
+          setRange(last.range);
+        }
         setPreset('custom');
         setTarget('end');
         setView('verses');
@@ -238,7 +243,7 @@ export const MushafPlayerOptionsSheet = (
       setRange(r);
       setPreset(next);
     },
-    [env, currentPage, anchorKey],
+    [env, currentPage, anchorKey, preset, numberingId],
   );
 
   const handleRangeChange = useCallback(
@@ -354,6 +359,9 @@ export const MushafPlayerOptionsSheet = (
     // Verse units of the mushaf's rewayah, or Hafs verses as before.
     const selection = pickerSelection(numbering, range.start, range.end);
     if (!selection) return;
+    if (preset === 'custom') {
+      useMushafRangePickStore.getState().setLastCustom(range, numberingId);
+    }
 
     const store = useMushafPlayerStore.getState();
     store.stop();
@@ -379,6 +387,8 @@ export const MushafPlayerOptionsSheet = (
     rangeRepeat,
     currentPage,
     numbering,
+    preset,
+    numberingId,
   ]);
 
   const handlePickOnPage = useCallback(() => {
