@@ -193,17 +193,29 @@ export function ThemeSection(): React.JSX.Element {
           {t('mushafOptions.theme.header')}
         </Text>
         {nativeMenusAvailable ? (
-          <NativeMenu
-            title={t('mushafOptions.theme.modeMenuTitle')}
-            entries={modeEntries}
-            onSelect={id => {
-              const next = THEME_MODES.find(option => option === id);
-              if (next) chooseMode(next);
-            }}
-            accessibilityLabel={modeLabel}
-            testID="mushaf-options-theme-mode">
-            {chip}
-          </NativeMenu>
+          // The chip lays itself out and the menu covers it, as on the
+          // ••• buttons. Sized by its trigger instead, the menu's host
+          // could settle at zero width in the native sheet and hide the
+          // chip. The menu owns the touch and the VoiceOver element.
+          <View>
+            <View
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants">
+              {chip}
+            </View>
+            <NativeMenu
+              title={t('mushafOptions.theme.modeMenuTitle')}
+              entries={modeEntries}
+              onSelect={id => {
+                const next = THEME_MODES.find(option => option === id);
+                if (next) chooseMode(next);
+              }}
+              layout="overlay"
+              accessibilityLabel={modeLabel}
+              testID="mushaf-options-theme-mode">
+              <View />
+            </NativeMenu>
+          </View>
         ) : (
           // No native menus (web): the chip steps through the modes.
           <Pressable
