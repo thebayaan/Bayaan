@@ -31,10 +31,11 @@ jest.mock('@/hooks/useTheme', () => ({
     setThemeMode: mockSetThemeMode,
   }),
 }));
-// Animated styles and animation callbacks run on the UI thread, where a
-// plain JS function call is fatal in Release (the app closes). Each one
-// must be a worklet that captures only worklets (Reanimated Babel plugin
-// `__closure`); offenders fail the test that rendered them.
+// Animated styles run on the UI thread, where a plain JS function call is
+// fatal in Release (the app closes). Each must be a worklet capturing only
+// worklets (Reanimated Babel plugin `__closure`); offenders fail the test
+// that rendered them. Animation callbacks are left out: they may capture
+// a JS function to hand to runOnJS.
 const mockOffenders: string[] = [];
 function mockCheckWorklet(fn: unknown, where: string): void {
   if (typeof fn !== 'function') return;
@@ -67,10 +68,7 @@ jest.mock('react-native-reanimated', () => {
     useSharedValue: (value: number) => ({value}),
     withRepeat: identity,
     withSpring: identity,
-    withTiming: (value: unknown, _config?: unknown, callback?: unknown) => {
-      mockCheckWorklet(callback, 'animation callback');
-      return value;
-    },
+    withTiming: identity,
   };
 });
 jest.mock('react-native-worklets', () => ({
