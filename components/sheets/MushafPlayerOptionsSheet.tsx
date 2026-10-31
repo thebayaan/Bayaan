@@ -409,6 +409,8 @@ export const MushafPlayerOptionsSheet = (
 
   const mainView = (
     <View style={inNativeSheet ? styles.fill : undefined}>
+      {/* Pinned: the title and close stay put while the settings scroll. */}
+      <SheetHeader title={t('mushafPlayer.listenTitle')} onClose={close} />
       <ScrollView
         style={[styles.scrollView, inNativeSheet && styles.scrollViewFill]}
         contentContainerStyle={[
@@ -417,7 +419,6 @@ export const MushafPlayerOptionsSheet = (
         ]}
         showsVerticalScrollIndicator={false}
         bounces>
-        <SheetHeader title={t('mushafPlayer.listenTitle')} onClose={close} />
         <View style={styles.sections}>
           <ReciterHero
             name={reciterLabel}

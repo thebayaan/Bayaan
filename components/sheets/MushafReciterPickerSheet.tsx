@@ -87,10 +87,17 @@ export const MushafReciterPickerSheet = (
     [rewayahOf],
   );
 
-  const recentIds = useMemo(
-    () => recentRewayatIds.filter(id => rewayahOf.has(id)),
-    [recentRewayatIds, rewayahOf],
-  );
+  // Before anything was played from this sheet (installs that predate the
+  // list), the reciter in use counts as recent.
+  const storeRewayatId = useMushafPlayerStore(s => s.rewayatId);
+  const recentIds = useMemo(() => {
+    const ids = recentRewayatIds.length
+      ? recentRewayatIds
+      : [selectedRewayatId ?? storeRewayatId].filter(
+          (id): id is string => !!id,
+        );
+    return ids.filter(id => rewayahOf.has(id));
+  }, [recentRewayatIds, selectedRewayatId, storeRewayatId, rewayahOf]);
 
   const favoriteIds = useMemo(() => {
     const fav = new Set(favoriteReciters.map(r => r.id));

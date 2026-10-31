@@ -40,6 +40,7 @@ import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
 import {useTheme} from '@/hooks/useTheme';
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
+import {useMushafRangePickStore} from '@/store/mushafRangePickStore'; // @ai
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
 import {
   BOOKMARK_HIGHLIGHT_COLOR,
@@ -636,14 +637,29 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
     [handleDragStart, handleDragUpdate, handleDragEnd],
   );
 
+  // @ai-start: while the Listen sheet picks a range, a tap picks the verse
+  // under it, like a long-press.
+  const handleTapAt = useCallback(
+    (x: number, y: number) => {
+      if (useMushafRangePickStore.getState().active) {
+        handleDragStart(x, y);
+        handleDragEnd();
+        return;
+      }
+      onTap?.();
+    },
+    [onTap, handleDragStart, handleDragEnd],
+  );
+
   const tapGesture = useMemo(
     () =>
-      Gesture.Tap().onEnd(() => {
+      Gesture.Tap().onEnd(event => {
         'worklet';
-        if (onTap) runOnJS(onTap)();
+        runOnJS(handleTapAt)(event.x, event.y);
       }),
-    [onTap],
+    [handleTapAt],
   );
+  // @ai-end
 
   const composedGesture = useMemo(
     () => Gesture.Exclusive(longPressDragGesture, tapGesture),

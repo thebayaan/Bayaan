@@ -85,6 +85,7 @@ import {
   canvasBottomOverflow, // @ai
 } from '../constants';
 import {showVerseActions} from '@/components/sheets/showVerseActions'; // @ai
+import {useMushafRangePickStore} from '@/store/mushafRangePickStore'; // @ai
 
 interface QCFPageProps {
   metrics: MushafLayoutMetrics; // @ai
@@ -713,19 +714,6 @@ const QCFPage: React.FC<QCFPageProps> = ({
     if (renderEntries.length > 0) onReady?.();
   }, [renderEntries.length, error, onReady]);
 
-  const handleTap = useCallback(() => {
-    onTap?.();
-  }, [onTap]);
-
-  const tapGesture = useMemo(
-    () =>
-      Gesture.Tap().onEnd(() => {
-        'worklet';
-        runOnJS(handleTap)();
-      }),
-    [handleTap],
-  );
-
   const renderEntryByLine = useMemo(() => {
     const map = new Map<number, RenderEntry>();
     for (const entry of renderEntries) {
@@ -868,6 +856,30 @@ const QCFPage: React.FC<QCFPageProps> = ({
     dragStartVerseKeyRef.current = null;
     dragCurrentVerseKeyRef.current = null;
   }, []);
+
+  // @ai-start: while the Listen sheet picks a range, a tap picks the verse
+  // under it, like a long-press.
+  const handleTap = useCallback(
+    (x: number, y: number) => {
+      if (useMushafRangePickStore.getState().active) {
+        handleDragStart(x, y);
+        handleDragEnd();
+        return;
+      }
+      onTap?.();
+    },
+    [onTap, handleDragStart, handleDragEnd],
+  );
+
+  const tapGesture = useMemo(
+    () =>
+      Gesture.Tap().onEnd(event => {
+        'worklet';
+        runOnJS(handleTap)(event.x, event.y);
+      }),
+    [handleTap],
+  );
+  // @ai-end
 
   const longPressDragGesture = useMemo(
     () =>

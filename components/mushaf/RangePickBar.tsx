@@ -31,9 +31,15 @@ import {
 import {
   compareVerseKeys,
   countVerses,
+  isKeyInRange,
+  pageOfKey,
   rangeForHafsKeys,
+  type RangeEnv,
   type VerseRange,
 } from '@/utils/playbackRangeSelection';
+import {mushafVerseMapService} from '@/services/mushaf/MushafVerseMapService';
+import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
+import {useMushafNavigationStore} from '@/store/mushafNavigationStore';
 import {showSheet} from '@/components/sheets/sheetControl';
 import {rangeLabel} from '@/components/sheets/mushaf-player/rangeLabels';
 
@@ -50,6 +56,24 @@ function pickedRange(
     compareVerseKeys,
   );
   return rangeForHafsKeys(n, hafs);
+}
+
+/** Shows `range` as the page's verse selection, where it falls on `page`. */
+function highlightOnPage(
+  n: RangePickerNumbering,
+  range: VerseRange | null,
+  page: number | null,
+): void {
+  const selection = useMushafVerseSelectionStore.getState();
+  const keys =
+    range && page
+      ? mushafVerseMapService.getOrderedVerseKeysForPage(page).filter(key => {
+          const unit = rangeForHafsKeys(n, [key]);
+          return !!unit && isKeyInRange(unit.start, range);
+        })
+      : [];
+  if (keys.length > 0 && page) selection.selectVerseRange(keys, page);
+  else selection.clearSelection();
 }
 
 export function RangePickBar() {
@@ -76,17 +100,23 @@ function ActiveRangePickBar() {
     [mushafRewayah, units],
   );
 
-  // Long-presses on the page become the pick while this bar is up.
+  // Long-presses and taps on the page become the pick while this bar is up;
+  // the picked verses stay highlighted on the page.
   useEffect(() => {
     const store = useMushafRangePickStore;
     store.getState().setConsumer(picked => {
-      useMushafVerseSelectionStore.getState().clearSelection();
+      const page =
+        useMushafVerseSelectionStore.getState().selectedPageNumber ?? null;
       const next = pickedRange(numbering, picked);
-      if (!next) return;
+      if (!next) {
+        useMushafVerseSelectionStore.getState().clearSelection();
+        return;
+      }
       const state = store.getState();
       Haptics.selectionAsync().catch(() => undefined);
       if (state.step === 'first' || !state.range) {
         state.setRange(next, 'last');
+        highlightOnPage(numbering, next, page);
         return;
       }
       // The second pick sets the end; before the start, it becomes the start.
@@ -96,6 +126,7 @@ function ActiveRangePickBar() {
           ? {start: next.start, end}
           : {start, end: next.end};
       state.setRange(merged, 'last');
+      highlightOnPage(numbering, merged, page);
     });
     return () => {
       // Unmounting (pick ended or screen left): stop intercepting.
@@ -103,15 +134,46 @@ function ActiveRangePickBar() {
     };
   }, [numbering]);
 
-  // Leaving the mushaf mid-pick drops the pick.
+  // Open on the range being edited: turn to its first page, or show it on
+  // this one.
+  useEffect(() => {
+    const {range: current, page: shown} = useMushafRangePickStore.getState();
+    if (!current) return;
+    const env: RangeEnv = {
+      numbering,
+      hafsKeysOfPage: p => mushafVerseMapService.getOrderedVerseKeysForPage(p),
+      pageOfHafsKey: key => digitalKhattDataService.getPageForVerse(key),
+    };
+    const target = pageOfKey(env, current.start);
+    if (target && target !== shown) {
+      const hafsKey = numbering.units
+        ? numbering.units.unitByKey(current.start)?.hafsKeys[0]
+        : current.start;
+      if (hafsKey) {
+        useMushafNavigationStore.getState().navigateToVerse(hafsKey, target);
+      }
+    } else {
+      highlightOnPage(numbering, current, shown);
+    }
+    // Once, when the pick starts.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Leaving the mushaf mid-pick drops the pick and its highlight.
   useEffect(
     () => () => {
+      useMushafVerseSelectionStore.getState().clearSelection();
       if (useMushafRangePickStore.getState().active) {
         useMushafRangePickStore.getState().end();
       }
     },
     [],
   );
+
+  const handleRedo = () => {
+    useMushafRangePickStore.getState().redo();
+    useMushafVerseSelectionStore.getState().clearSelection();
+  };
 
   const reopen = () =>
     showSheet('mushaf-player-options', {
@@ -150,22 +212,23 @@ function ActiveRangePickBar() {
     <View pointerEvents="box-none" style={[styles.wrap, {bottom}]}>
       <View style={styles.bar} accessibilityLiveRegion="polite">
         <View style={styles.textBlock}>
-          <Text style={styles.title} numberOfLines={1}>
+          <Text style={styles.title} numberOfLines={2}>
             {title}
           </Text>
-          <Text style={styles.detail} numberOfLines={1}>
+          <Text style={styles.detail} numberOfLines={2}>
             {detail}
           </Text>
         </View>
-        {range ? (
-          <Pressable
-            onPress={() => useMushafRangePickStore.getState().redo()}
-            accessibilityRole="button"
-            hitSlop={8}
-            style={({pressed}) => [styles.ghost, pressed && styles.pressed]}>
-            <Text style={styles.ghostText}>{t('mushafPlayer.pickRedo')}</Text>
-          </Pressable>
-        ) : (
+        <View style={styles.actions}>
+          {range ? (
+            <Pressable
+              onPress={handleRedo}
+              accessibilityRole="button"
+              hitSlop={8}
+              style={({pressed}) => [styles.ghost, pressed && styles.pressed]}>
+              <Text style={styles.ghostText}>{t('mushafPlayer.pickRedo')}</Text>
+            </Pressable>
+          ) : null}
           <Pressable
             onPress={handleCancel}
             accessibilityRole="button"
@@ -173,19 +236,20 @@ function ActiveRangePickBar() {
             style={({pressed}) => [styles.ghost, pressed && styles.pressed]}>
             <Text style={styles.ghostText}>{t('mushafPlayer.pickCancel')}</Text>
           </Pressable>
-        )}
-        <Pressable
-          onPress={handleUse}
-          disabled={!range}
-          accessibilityRole="button"
-          accessibilityState={{disabled: !range}}
-          style={({pressed}) => [
-            styles.primary,
-            !range && styles.disabled,
-            pressed && styles.pressed,
-          ]}>
-          <Text style={styles.primaryText}>{t('mushafPlayer.pickUse')}</Text>
-        </Pressable>
+          <View style={styles.spacer} />
+          <Pressable
+            onPress={handleUse}
+            disabled={!range}
+            accessibilityRole="button"
+            accessibilityState={{disabled: !range}}
+            style={({pressed}) => [
+              styles.primary,
+              !range && styles.disabled,
+              pressed && styles.pressed,
+            ]}>
+            <Text style={styles.primaryText}>{t('mushafPlayer.pickUse')}</Text>
+          </Pressable>
+        </View>
       </View>
     </View>
   );
@@ -203,12 +267,10 @@ const createStyles = (theme: Theme) =>
     bar: {
       width: '100%',
       maxWidth: ms(520),
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: ms(8),
-      paddingVertical: ms(10),
-      paddingStart: ms(18),
-      paddingEnd: ms(10),
+      gap: ms(12),
+      paddingTop: ms(14),
+      paddingBottom: ms(10),
+      paddingHorizontal: ms(10),
       borderRadius: ms(28),
       backgroundColor: theme.colors.background,
       borderWidth: StyleSheet.hairlineWidth,
@@ -219,7 +281,9 @@ const createStyles = (theme: Theme) =>
       shadowOffset: {width: 0, height: 6},
       elevation: 8,
     },
-    textBlock: {flex: 1, minWidth: 0},
+    textBlock: {paddingHorizontal: ms(8)},
+    actions: {flexDirection: 'row', alignItems: 'center', gap: ms(8)},
+    spacer: {flex: 1},
     title: {
       fontFamily: 'Manrope-Bold',
       fontSize: ms(15),
