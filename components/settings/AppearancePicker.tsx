@@ -15,12 +15,16 @@ const MODES: ThemeMode[] = ['light', 'dark', 'system'];
 /** The app's own surfaces, drawn small: a page with a card on it. */
 const MOCK = {
   light: {
+    // Only the light page needs an outline, to stand off a white card; on
+    // the dark page the outline read as a light line around the tile.
+    outline: Color(lightColors.text).alpha(0.12).toString(),
     page: lightColors.background,
     card: '#ffffff',
     line: Color(lightColors.text).alpha(0.28).toString(),
     dot: lightColors.text,
   },
   dark: {
+    outline: 'transparent',
     page: darkColors.background,
     card: Color(darkColors.text).alpha(0.08).string(),
     line: Color(darkColors.text).alpha(0.38).toString(),
@@ -33,7 +37,11 @@ function Mock({mode, styles}: {mode: ThemeMode; styles: Styles}) {
   if (mode !== 'system') {
     const c = MOCK[mode];
     return (
-      <View style={[styles.mockPage, {backgroundColor: c.page}]}>
+      <View
+        style={[
+          styles.mockPage,
+          {backgroundColor: c.page, borderColor: c.outline},
+        ]}>
         <View style={[styles.mockCard, {backgroundColor: c.card}]}>
           <View style={[styles.lineLong, {backgroundColor: c.line}]} />
           <View style={[styles.lineShort, {backgroundColor: c.line}]} />
@@ -44,7 +52,11 @@ function Mock({mode, styles}: {mode: ThemeMode; styles: Styles}) {
   }
   // System: light above the diagonal, dark below it.
   return (
-    <View style={[styles.mockPage, {backgroundColor: MOCK.light.page}]}>
+    <View
+      style={[
+        styles.mockPage,
+        {backgroundColor: MOCK.light.page, borderColor: MOCK.light.outline},
+      ]}>
       <Svg
         style={StyleSheet.absoluteFill}
         viewBox="0 0 100 100"
@@ -158,7 +170,6 @@ function createStyles(theme: Theme) {
       overflow: 'hidden',
       padding: moderateScale(7),
       borderWidth: StyleSheet.hairlineWidth,
-      borderColor: Color(theme.colors.text).alpha(0.12).toString(),
     },
     mockCard: {
       flex: 1,
