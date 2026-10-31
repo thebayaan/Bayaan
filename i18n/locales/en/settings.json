@@ -197,10 +197,23 @@
     }
   },
   "defaultReciter": {
-    "changeHeader": "Change Default Reciter",
-    "searchPlaceholder": "Search reciters...",
-    "completeOnly": "Only reciters with complete Quran are shown",
-    "noResults": "No reciters found"
+    "searchPlaceholder": "Search reciters",
+    "noResults": "No reciters found",
+    "fullQuran": "{{recitation}} · Full Quran",
+    "playPreview": "Play a preview of {{name}}",
+    "pausePreview": "Pause preview",
+    "previewSurah": "Al-Fātiḥah",
+    "whenYouTap": "When you tap a surah",
+    "playDefault": "Play my default",
+    "askEachTime": "Ask each time",
+    "favorites": "Your favorites",
+    "all": "All reciters",
+    "fullQuranCount_one": "{{count}} with the full Quran",
+    "fullQuranCount_other": "{{count}} with the full Quran",
+    "recitationCount_one": "{{count}} recitation",
+    "recitationCount_other": "{{count}} recitations",
+    "nowDefault": "{{name}} is your default reciter",
+    "undo": "Undo"
   },
   "reciterChoice": {
     "subtitle": "Choose how you want to select reciters when playing Surahs",
