@@ -1,5 +1,6 @@
 import React, {useCallback, useRef, useState} from 'react'; // @ai
 import {
+  ScrollView as RNScrollView, // @ai
   View,
   useWindowDimensions,
   type LayoutChangeEvent, // @ai
@@ -86,18 +87,20 @@ export const MushafLayoutSheet = (props: SheetProps<'mushaf-layout'>) => {
         setResetKey(key => key + 1);
         setSnapIndex(0);
       }}>
-      {/* The full content area, measured; the panel inside it is cut to
-          the part of the sheet on screen. */}
-      <View
-        style={snaps ? styles.fill : undefined}
-        onLayout={snaps ? onContentLayout : undefined}>
+      {/* The full content area, measured; on a phone the panel inside it
+          is cut to the part of the sheet on screen. Both always flex: a
+          wrapper without it sizes to its content, and the panel (which
+          fills its parent) then collapses to nothing. A native sheet has
+          no react-native-actions-sheet around it, so it gets the plain
+          ScrollView. */}
+      <View style={styles.fill} onLayout={snaps ? onContentLayout : undefined}>
         <View
           style={bounded === undefined ? styles.fill : {height: bounded}}
           testID="mushaf-layout-content">
           <MushafLayoutPanel
             key={resetKey}
             context={props.payload?.context}
-            ScrollComponent={ScrollView}
+            ScrollComponent={inNativeSheet ? RNScrollView : ScrollView}
             onGrow={snaps ? grow : undefined}
             onShrink={snaps ? shrink : undefined}
             inLibrarySheet={!inNativeSheet}

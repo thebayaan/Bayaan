@@ -13,8 +13,11 @@ jest.mock('@/hooks/useTheme', () => ({
     theme: {colors: {text: '#111111', background: '#ffffff'}},
   }),
 }));
+// A stand-in distinct from React Native's ScrollView, to tell them apart.
 jest.mock('react-native-actions-sheet', () => ({
-  ScrollView: jest.requireActual('react-native').ScrollView,
+  ScrollView: function SheetScrollView() {
+    return null;
+  },
 }));
 jest.mock('@/components/sheets/AdaptiveActionSheet', () => {
   const {View: MockView} = jest.requireActual('react-native');
@@ -27,10 +30,17 @@ jest.mock('@/components/sheets/AdaptiveActionSheet', () => {
     ),
   };
 });
+const mockContentProps: {ScrollComponent?: unknown}[] = [];
 jest.mock('@/components/mushaf-options/MushafOptionsContent', () => ({
-  MushafOptionsContent: () => null,
+  MushafOptionsContent: (props: {ScrollComponent?: unknown}) => {
+    mockContentProps.push(props);
+    return null;
+  },
 }));
 
+import {ScrollView as RNScrollView, StyleSheet} from 'react-native';
+import {ScrollView as SheetScrollView} from 'react-native-actions-sheet';
+import {NativeSheetLevelContext} from '@/components/native/nativeSheetContext';
 import {
   MushafLayoutSheet,
   PHONE_SNAP_POINTS,
@@ -40,13 +50,23 @@ import {
 declare const global: {IS_REACT_ACT_ENVIRONMENT?: boolean};
 global.IS_REACT_ACT_ENVIRONMENT = true;
 
-function render(): TestRenderer.ReactTestRenderer {
+function render(native = false): TestRenderer.ReactTestRenderer {
+  const sheet = (
+    <MushafLayoutSheet
+      {...({sheetId: 'mushaf-layout'} as SheetProps<'mushaf-layout'>)}
+    />
+  );
   let renderer!: TestRenderer.ReactTestRenderer;
   act(() => {
     renderer = TestRenderer.create(
-      <MushafLayoutSheet
-        {...({sheetId: 'mushaf-layout'} as SheetProps<'mushaf-layout'>)}
-      />,
+      native ? (
+        <NativeSheetLevelContext.Provider
+          value={{id: 'mushaf-layout', key: 1, fit: false, fitted: false}}>
+          {sheet}
+        </NativeSheetLevelContext.Provider>
+      ) : (
+        sheet
+      ),
     );
   });
   return renderer;
@@ -59,6 +79,7 @@ const hosts = (r: TestRenderer.ReactTestRenderer, testID: string) =>
 
 beforeEach(() => {
   mockIsTablet = false;
+  mockContentProps.length = 0;
 });
 
 describe('visibleContentHeight', () => {
@@ -107,5 +128,29 @@ describe('MushafLayoutSheet on a phone', () => {
     const r = render();
     const [sheet] = hosts(r, 'sheet');
     expect(sheet.props.snapPoints).toBeUndefined();
+  });
+});
+
+describe('MushafLayoutSheet in a native sheet', () => {
+  it('fills the sheet: every wrapper flexes, so the content never collapses', () => {
+    const r = render(true);
+    const [sheet] = hosts(r, 'sheet');
+    expect(sheet.props.snapPoints).toBeUndefined();
+    const [content] = hosts(r, 'mushaf-layout-content');
+    expect(StyleSheet.flatten(content.props.style)).toEqual({flex: 1});
+    const outer = content.parent;
+    expect(outer && StyleSheet.flatten(outer.props.style)).toEqual({flex: 1});
+  });
+
+  it('scrolls with the plain ScrollView, not the library sheet one', () => {
+    render(true);
+    const last = mockContentProps[mockContentProps.length - 1];
+    expect(last.ScrollComponent).toBe(RNScrollView);
+  });
+
+  it("keeps the library sheet's ScrollView on its own sheet", () => {
+    render();
+    const last = mockContentProps[mockContentProps.length - 1];
+    expect(last.ScrollComponent).toBe(SheetScrollView);
   });
 });

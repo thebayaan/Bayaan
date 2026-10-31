@@ -101,7 +101,10 @@ function createStyles(theme: Theme) {
     mockPressed: {
       backgroundColor: text.alpha(0.06).toString(),
     },
+    // One line at its normal size; a long name truncates. The pop scales
+    // the ring only.
     label: {
+      maxWidth: '100%',
       fontSize: theme.typography.smallSize,
       fontFamily: 'Manrope-Medium',
       color: text.alpha(0.55).toString(),
