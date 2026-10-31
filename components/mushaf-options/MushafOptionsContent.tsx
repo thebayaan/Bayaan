@@ -41,6 +41,7 @@ import {
   ThemeCrossfade,
 } from './motion';
 import {
+  OptionsSurfaceContext,
   PAGE_INSET,
   SECTION_GAP,
   textAlpha,
@@ -49,7 +50,10 @@ import {
 import {toggleCard, type OptionsCard} from './readingLayout';
 import {useSheetGrowth} from './useSheetGrowth';
 
-export type MushafOptionsContext = 'mushaf' | 'player';
+export type MushafOptionsContext = 'mushaf' | 'player' | 'settings';
+
+/** Space under the last card on the Settings page. */
+const SETTINGS_BOTTOM_PADDING = moderateScale(40);
 
 /** Scrolled at most this far, the options count as at their top. */
 export const NEAR_TOP = moderateScale(48);
@@ -59,7 +63,9 @@ export const NEAR_TOP = moderateScale(48);
  * cards (one open at a time) and a row that pushes the Mushaf text screen.
  * Opening a card or the screen grows the sheet to its large height. From
  * the player, View and Layout are hidden and the sheet starts at Theme.
- * Fills its parent: the sheet, or the iPad popover.
+ * In Settings it is a full page under the screen's own title: no header,
+ * and white cards in light mode as in the Settings list.
+ * Fills its parent: the sheet, the iPad popover or the Settings screen.
  */
 export function MushafOptionsContent({
   context = 'mushaf',
@@ -88,6 +94,7 @@ export function MushafOptionsContent({
   const reduceMotion = useReducedMotion();
   const viewMode = useMushafSettingsStore(s => s.viewMode);
   const fromPlayer = context === 'player';
+  const inSettings = context === 'settings';
   // The player reads verse by verse, as the List view does.
   const listLike = fromPlayer || viewMode === 'list';
 
@@ -116,7 +123,13 @@ export function MushafOptionsContent({
     if (!listLike && openCard === 'verse') setOpenCard(null);
   }, [listLike, openCard]);
 
-  const bottomPadding = useSheetBottomPadding(moderateScale(18), SECTION_GAP);
+  const sheetBottomPadding = useSheetBottomPadding(
+    moderateScale(18),
+    SECTION_GAP,
+  );
+  const bottomPadding = inSettings
+    ? SETTINGS_BOTTOM_PADDING
+    : sheetBottomPadding;
   const toggle = useCallback(
     (card: OptionsCard) => () => setOpenCard(open => toggleCard(open, card)),
     [],
@@ -171,86 +184,93 @@ export function MushafOptionsContent({
   };
 
   return (
-    <View style={local.root}>
-      <View style={local.header}>
-        <Text style={styles.sheetTitle} accessibilityRole="header">
-          {t('mushafOptions.title')}
-        </Text>
-        <Pressable
-          onPress={close}
-          style={({pressed}) => [local.close, pressed && local.closePressed]}
-          accessibilityRole="button"
-          accessibilityLabel={t('mushafOptions.close')}
-          hitSlop={8}
-          testID="mushaf-options-close">
-          <Feather
-            name="x"
-            size={moderateScale(16)}
-            color={theme.colors.text}
-          />
-        </Pressable>
-      </View>
-      <View style={local.body} onLayout={onBodyLayout}>
-        <Animated.View
-          style={[StyleSheet.absoluteFill, mainStyle]}
-          pointerEvents={pushed ? 'none' : 'auto'}
-          accessibilityElementsHidden={pushed}
-          importantForAccessibility={pushed ? 'no-hide-descendants' : 'auto'}>
-          <LoopsActiveContext.Provider value={!pushed}>
-            <ScrollComponent
-              style={local.scroll}
-              showsVerticalScrollIndicator={false}
-              onScroll={onScroll}
-              scrollEventThrottle={32}
-              contentContainerStyle={[
-                local.content,
-                {paddingBottom: bottomPadding},
-              ]}>
-              <FallbackBanner />
-              {fromPlayer ? null : (
-                <>
-                  <ViewSection />
-                  <LayoutSection />
-                </>
-              )}
-              <ThemeSection />
-              <TextCard
-                open={openCard === 'text'}
-                onToggle={toggle('text')}
-                listLike={listLike}
+    <OptionsSurfaceContext.Provider value={inSettings ? 'page' : 'sheet'}>
+      <View style={local.root}>
+        {inSettings ? null : (
+          <View style={local.header}>
+            <Text style={styles.sheetTitle} accessibilityRole="header">
+              {t('mushafOptions.title')}
+            </Text>
+            <Pressable
+              onPress={close}
+              style={({pressed}) => [
+                local.close,
+                pressed && local.closePressed,
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel={t('mushafOptions.close')}
+              hitSlop={8}
+              testID="mushaf-options-close">
+              <Feather
+                name="x"
+                size={moderateScale(16)}
+                color={theme.colors.text}
               />
-              {listLike ? (
-                <UnderVerseCard
-                  open={openCard === 'verse'}
-                  onToggle={toggle('verse')}
+            </Pressable>
+          </View>
+        )}
+        <View style={local.body} onLayout={onBodyLayout}>
+          <Animated.View
+            style={[StyleSheet.absoluteFill, mainStyle]}
+            pointerEvents={pushed ? 'none' : 'auto'}
+            accessibilityElementsHidden={pushed}
+            importantForAccessibility={pushed ? 'no-hide-descendants' : 'auto'}>
+            <LoopsActiveContext.Provider value={!pushed}>
+              <ScrollComponent
+                style={local.scroll}
+                showsVerticalScrollIndicator={false}
+                onScroll={onScroll}
+                scrollEventThrottle={32}
+                contentContainerStyle={[
+                  local.content,
+                  {paddingBottom: bottomPadding},
+                ]}>
+                <FallbackBanner />
+                {fromPlayer ? null : (
+                  <>
+                    <ViewSection />
+                    <LayoutSection />
+                  </>
+                )}
+                <ThemeSection />
+                <TextCard
+                  open={openCard === 'text'}
+                  onToggle={toggle('text')}
+                  listLike={listLike}
                 />
-              ) : null}
-              <HighlightsCard
-                open={openCard === 'highlights'}
-                onToggle={toggle('highlights')}
-              />
-              <WordDetailsCard
-                open={openCard === 'words'}
-                onToggle={toggle('words')}
-              />
-              <MushafTextRow onPress={openScreen} />
-            </ScrollComponent>
-          </LoopsActiveContext.Provider>
-        </Animated.View>
-        {pushMounted ? (
-          <Animated.View style={[StyleSheet.absoluteFill, screenStyle]}>
-            <MushafTextScreen
-              onBack={closeScreen}
-              ScrollComponent={ScrollComponent}
-              bottomPadding={bottomPadding}
-            />
+                {listLike ? (
+                  <UnderVerseCard
+                    open={openCard === 'verse'}
+                    onToggle={toggle('verse')}
+                  />
+                ) : null}
+                <HighlightsCard
+                  open={openCard === 'highlights'}
+                  onToggle={toggle('highlights')}
+                />
+                <WordDetailsCard
+                  open={openCard === 'words'}
+                  onToggle={toggle('words')}
+                />
+                <MushafTextRow onPress={openScreen} />
+              </ScrollComponent>
+            </LoopsActiveContext.Provider>
           </Animated.View>
+          {pushMounted ? (
+            <Animated.View style={[StyleSheet.absoluteFill, screenStyle]}>
+              <MushafTextScreen
+                onBack={closeScreen}
+                ScrollComponent={ScrollComponent}
+                bottomPadding={bottomPadding}
+              />
+            </Animated.View>
+          ) : null}
+        </View>
+        {crossfadeBackground ? (
+          <ThemeCrossfade color={theme.colors.background} />
         ) : null}
       </View>
-      {crossfadeBackground ? (
-        <ThemeCrossfade color={theme.colors.background} />
-      ) : null}
-    </View>
+    </OptionsSurfaceContext.Provider>
   );
 }
 

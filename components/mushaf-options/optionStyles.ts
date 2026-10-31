@@ -1,5 +1,5 @@
 // @ai-generated
-import {useMemo} from 'react';
+import {createContext, useContext, useMemo} from 'react';
 import {StyleSheet} from 'react-native';
 import Color from 'color';
 import {useTheme} from '@/hooks/useTheme';
@@ -25,9 +25,17 @@ export const PAGE_INSET = moderateScale(16);
 
 export type OptionStyles = ReturnType<typeof createOptionStyles>;
 
+/**
+ * What the options sit on: a sheet, or a full page (Settings), where light
+ * cards are white as in the Settings list.
+ */
+export type OptionsSurface = 'sheet' | 'page';
+export const OptionsSurfaceContext = createContext<OptionsSurface>('sheet');
+
 export function useOptionStyles(): OptionStyles {
   const {theme} = useTheme();
-  return useMemo(() => createOptionStyles(theme), [theme]);
+  const surface = useContext(OptionsSurfaceContext);
+  return useMemo(() => createOptionStyles(theme, surface), [theme, surface]);
 }
 
 /** The text color at `alpha`, for tints, lines and muted type. */
@@ -35,7 +43,10 @@ export function textAlpha(theme: Theme, alpha: number): string {
   return Color(theme.colors.text).alpha(alpha).toString();
 }
 
-export function createOptionStyles(theme: Theme) {
+export function createOptionStyles(
+  theme: Theme,
+  surface: OptionsSurface = 'sheet',
+) {
   // The theme's sizes are already scaled to the screen.
   const {mediumSize, smallSize, subheadingSize} = theme.typography;
   const muted = textAlpha(theme, 0.55);
@@ -63,7 +74,9 @@ export function createOptionStyles(theme: Theme) {
     card: {
       backgroundColor: theme.isDarkMode
         ? Color('#ffffff').alpha(0.07).toString()
-        : textAlpha(theme, 0.05),
+        : surface === 'page'
+          ? '#ffffff'
+          : textAlpha(theme, 0.05),
       borderRadius: CARD_RADIUS,
       overflow: 'hidden',
     },
