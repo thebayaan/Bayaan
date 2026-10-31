@@ -234,3 +234,44 @@ describe('persist migration v18', () => {
     expect(state.mushafRenderer).toBe(REWAYAH_FALLBACK_RENDERER);
   });
 });
+
+describe('Tajweed around Mushaf 1440', () => {
+  it("turns Tajweed on for 1440 and puts the reader's choice back after", () => {
+    reset('dk_v2');
+    useMushafSettingsStore.setState({
+      showTajweed: false,
+      tajweedBeforeQcf: null,
+    });
+    const {setMushafRenderer} = useMushafSettingsStore.getState();
+
+    setMushafRenderer('qcf_v2');
+    expect(useMushafSettingsStore.getState().showTajweed).toBe(true);
+
+    setMushafRenderer('dk_v1');
+    expect(useMushafSettingsStore.getState().showTajweed).toBe(false);
+    expect(useMushafSettingsStore.getState().tajweedBeforeQcf).toBeNull();
+  });
+
+  it('keeps Tajweed on after 1440 for a reader who had it on', () => {
+    reset('dk_v2');
+    useMushafSettingsStore.setState({
+      showTajweed: true,
+      tajweedBeforeQcf: null,
+    });
+    const {setMushafRenderer} = useMushafSettingsStore.getState();
+
+    setMushafRenderer('qcf_v2');
+    setMushafRenderer('dk_v2');
+    expect(useMushafSettingsStore.getState().showTajweed).toBe(true);
+  });
+
+  it('leaves Tajweed alone when switching between other fonts', () => {
+    reset('dk_v1');
+    useMushafSettingsStore.setState({
+      showTajweed: false,
+      tajweedBeforeQcf: null,
+    });
+    useMushafSettingsStore.getState().setMushafRenderer('dk_v2');
+    expect(useMushafSettingsStore.getState().showTajweed).toBe(false);
+  });
+});
