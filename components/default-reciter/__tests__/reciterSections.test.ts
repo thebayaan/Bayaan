@@ -64,6 +64,15 @@ describe('recitationLabels', () => {
   it('strips the duplicate counter from styles', () => {
     expect(baseStyle('Murattal3')).toBe('murattal');
   });
+
+  it('numbers styles whose counter follows a space', () => {
+    const labels = recitationLabels(
+      [rewayah('1', HAFS, 'murattal 2'), rewayah('2', HAFS, 'murattal')],
+      style,
+    );
+    expect(labels).toEqual(['MURATTAL', 'MURATTAL 2']);
+    expect(baseStyle('Murattal 2 ')).toBe('murattal');
+  });
 });
 
 describe('buildReciterSections', () => {

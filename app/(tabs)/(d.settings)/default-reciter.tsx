@@ -1,5 +1,5 @@
 // @ai-generated
-import React, {useState, useCallback, useMemo} from 'react';
+import React, {useState, useCallback, useMemo, useRef} from 'react';
 import {
   View,
   Text,
@@ -53,12 +53,19 @@ const EXPANDED_MIN_WIDTH = 900;
 const HERO_COLUMN_WIDTH = 340;
 const KNOWN_STYLES = ['murattal', 'mojawwad', 'molim'] as const;
 
+interface UndoState {
+  previous: Reciter;
+  /** Recitation choices before the pick, by reciter id. */
+  preferences: Record<string, string | undefined>;
+  message: string;
+}
+
 export default function DefaultReciterScreen() {
   const {theme} = useTheme();
   const {t} = useTranslation('settings');
   const {t: tCommon} = useTranslation('common');
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const {width} = useWindowDimensions();
+  const {width, height} = useWindowDimensions();
   const expanded = width >= EXPANDED_MIN_WIDTH;
   const columns = expanded ? 2 : 1;
   const bottomInset = useBottomInset();
@@ -77,10 +84,10 @@ export default function DefaultReciterScreen() {
   const preview = useReciterPreview();
 
   const [query, setQuery] = useState('');
-  const [undo, setUndo] = useState<{
-    previousId: string;
-    message: string;
-  } | null>(null);
+  const [undo, setUndo] = useState<UndoState | null>(null);
+  const listRef = useRef<SectionList<Reciter[], ReciterSection>>(null);
+  const searchY = useRef(0);
+  const [searchFocused, setSearchFocused] = useState(false);
 
   // Only reciters with the full Quran can be the default.
   const complete = useMemo(
@@ -132,23 +139,49 @@ export default function DefaultReciterScreen() {
       if (reciter.id === defaultReciter.id) return;
       lightHaptics();
       preview.stop();
-      const previousId = defaultReciter.id;
+      const preferences = useSettings.getState().reciterPreferences;
+      const previous = defaultReciter;
       setDefaultReciter(reciter);
       setUndo({
-        previousId,
+        previous,
+        preferences: {
+          [previous.id]: preferences[previous.id],
+          [reciter.id]: preferences[reciter.id],
+        },
         message: t('defaultReciter.nowDefault', {
           name: getReciterDisplayName(reciter),
         }),
       });
     },
-    [defaultReciter.id, preview, setDefaultReciter, t],
+    [defaultReciter, preview, setDefaultReciter, t],
   );
 
+  // Puts back the previous default and both reciters' recitation choices.
   const handleUndo = useCallback(() => {
-    const previous = undo && RECITERS.find(r => r.id === undo.previousId);
-    if (previous) setDefaultReciter(previous);
+    if (undo) {
+      preview.stop();
+      setDefaultReciter(undo.previous);
+      useSettings.setState(state => {
+        const restored = {...state.reciterPreferences};
+        for (const [id, rewayatId] of Object.entries(undo.preferences)) {
+          if (rewayatId) restored[id] = rewayatId;
+          else delete restored[id];
+        }
+        return {reciterPreferences: restored};
+      });
+    }
     setUndo(null);
-  }, [undo, setDefaultReciter]);
+  }, [undo, preview, setDefaultReciter]);
+
+  // Lift the search field to the top so it and its results clear the keyboard.
+  const handleSearchFocus = useCallback(() => {
+    setSearchFocused(true);
+    requestAnimationFrame(() => {
+      listRef.current
+        ?.getScrollResponder()
+        ?.scrollTo({y: searchY.current - headerHeight, animated: true});
+    });
+  }, [headerHeight]);
 
   const dismissUndo = useCallback(() => setUndo(null), []);
 
@@ -205,24 +238,32 @@ export default function DefaultReciterScreen() {
           {t('defaultReciter.fullQuranCount', {count: complete.length})}
         </Text>
       </View>
-      <SearchInput
-        placeholder={t('defaultReciter.searchPlaceholder')}
-        value={query}
-        onChangeText={setQuery}
-        showCancelButton={false}
-        iconColor={theme.colors.text}
-        iconOpacity={0.5}
-        placeholderTextColor={Color(theme.colors.text).alpha(0.5).toString()}
-        textColor={theme.colors.text}
-        backgroundColor={Color(theme.colors.text).alpha(0.06).toString()}
-        borderColor="transparent"
-        containerStyle={styles.search}
-      />
+      <View
+        onLayout={e => {
+          searchY.current = e.nativeEvent.layout.y;
+        }}>
+        <SearchInput
+          onFocus={handleSearchFocus}
+          onBlur={() => setSearchFocused(false)}
+          placeholder={t('defaultReciter.searchPlaceholder')}
+          value={query}
+          onChangeText={setQuery}
+          showCancelButton={false}
+          iconColor={theme.colors.text}
+          iconOpacity={0.5}
+          placeholderTextColor={Color(theme.colors.text).alpha(0.5).toString()}
+          textColor={theme.colors.text}
+          backgroundColor={Color(theme.colors.text).alpha(0.06).toString()}
+          borderColor="transparent"
+          containerStyle={styles.search}
+        />
+      </View>
     </View>
   );
 
   const list = (
     <SectionList
+      ref={listRef}
       sections={sections}
       keyExtractor={(row, index) => row[0]?.id ?? String(index)}
       renderItem={({item, index, section}) => (
@@ -250,11 +291,17 @@ export default function DefaultReciterScreen() {
       stickySectionHeadersEnabled={false}
       keyboardDismissMode="on-drag"
       keyboardShouldPersistTaps="handled"
+      automaticallyAdjustKeyboardInsets
       contentInsetAdjustmentBehavior="automatic"
       showsVerticalScrollIndicator={false}
       contentContainerStyle={[
         styles.listContent,
-        {paddingBottom: bottomInset + moderateScale(80)},
+        // While searching, leave room to scroll the field to the top even
+        // when there are few results.
+        {
+          paddingBottom:
+            bottomInset + moderateScale(80) + (searchFocused ? height : 0),
+        },
       ]}
     />
   );
