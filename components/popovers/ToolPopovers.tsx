@@ -68,7 +68,11 @@ export function ReadingSettingsPopover({
       onDismiss={dismiss}
       contentWidth={READING_SETTINGS_WIDTH}
       contentHeight={Math.round(height * 0.7)}
-      content={open ? <MushafLayoutPanel context={context} /> : null}>
+      content={
+        open ? (
+          <MushafLayoutPanel context={context} onClose={dismiss} /> // @ai
+        ) : null
+      }>
       {children(show)}
     </NativePopover>
   );

@@ -26,6 +26,10 @@ export interface NativeSheetLevel {
   fit: boolean;
   /** Registered as fitted (its body measures), even while `fit` is off. */
   fitted: boolean;
+  // @ai-start
+  /** The detents it was presented with, restored after a fixed-detent spell. */
+  baseDetents: NativeSheetDetent[];
+  // @ai-end
   /** False while the level animates out. */
   presented: boolean;
 }
@@ -117,12 +121,30 @@ export function presentNativeSheet(
     finish(top.key);
     publish([
       ...levels.slice(0, -1),
-      {key, id, content, detents, fit, fitted: fit, presented: true},
+      {
+        key,
+        id,
+        content,
+        detents,
+        fit,
+        fitted: fit,
+        baseDetents: detents, // @ai
+        presented: true,
+      },
     ]);
   } else {
     publish([
       ...levels,
-      {key, id, content, detents, fit, fitted: fit, presented: true},
+      {
+        key,
+        id,
+        content,
+        detents,
+        fit,
+        fitted: fit,
+        baseDetents: detents, // @ai
+        presented: true,
+      },
     ]);
   }
   return promise;
@@ -166,15 +188,29 @@ export function fitNativeSheet(
 
 /**
  * Gives a fitted level fixed detents for a while (a full-screen view inside
- * a menu sheet), or `null` to size it to its content again.
+ * a menu sheet), or `null` to size it to its content again. A level with
+ * fixed detents (`mushaf-layout`) takes them for a while too, and `null`
+ * gives it back the detents it opened with. @ai
  */
 export function setNativeSheetDetents(
   key: number,
   detents: NativeSheetDetent[] | null,
 ): void {
+  // @ai-start
+  const level = levels.find(item => item.key === key);
+  if (!level) return;
+  if (!level.fitted) {
+    const next = detents ?? level.baseDetents;
+    if (sameDetents(level.detents, next)) return;
+    publish(
+      levels.map(item => (item.key === key ? {...item, detents: next} : item)),
+    );
+    return;
+  }
+  // @ai-end
   publish(
     levels.map(item =>
-      item.key !== key || !item.fitted
+      item.key !== key
         ? item
         : detents
           ? {...item, fit: false, detents}
