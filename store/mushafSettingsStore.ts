@@ -113,6 +113,9 @@ interface MushafSettingsState {
   showTranslation: boolean;
   showTransliteration: boolean;
   showTajweed: boolean;
+  // @ai: Tajweed as the reader had it before Mushaf 1440 turned it on, put
+  // back when they leave 1440. Null outside 1440.
+  tajweedBeforeQcf: boolean | null;
   showThemes: boolean;
 
   // RFC-018 — inline community reflections under each ayah. Opt-in,
@@ -221,6 +224,7 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
       showTranslation: defaultShowEnglishReadingAids, // @ai
       showTransliteration: false,
       showTajweed: false,
+      tajweedBeforeQcf: null, // @ai
       showThemes: false,
       showCommunityReflections: false,
       showWBW: false,
@@ -290,13 +294,25 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
           ) {
             return state;
           }
+          // Mushaf 1440 previews Tajweed, so it turns it on; leaving 1440
+          // puts back the reader's own choice.
+          const enteringQcf =
+            renderer === 'qcf_v2' && state.mushafRenderer !== 'qcf_v2';
+          const leavingQcf =
+            renderer !== 'qcf_v2' && state.mushafRenderer === 'qcf_v2';
           return {
             mushafRenderer: renderer,
             arabicFontFamily: 'Uthmani',
-            showTajweed:
-              renderer === 'qcf_v2' && state.mushafRenderer !== renderer
-                ? true
+            showTajweed: enteringQcf
+              ? true
+              : leavingQcf
+                ? (state.tajweedBeforeQcf ?? state.showTajweed)
                 : state.showTajweed,
+            tajweedBeforeQcf: enteringQcf
+              ? state.showTajweed
+              : leavingQcf
+                ? null
+                : state.tajweedBeforeQcf,
             showRewayahDiffs:
               renderer === 'qcf_v2' ? false : state.showRewayahDiffs,
             uthmaniFont: uthmaniFontForRenderer(renderer),
