@@ -39,6 +39,8 @@ jest.mock('@/components/SearchInput', () => {
   };
 });
 jest.mock('@/hooks/useBottomInset', () => ({useBottomInset: () => 0}));
+jest.mock('expo-router/react-navigation', () => ({useHeaderHeight: () => 0}));
+jest.mock('@/hooks/useGlassProps', () => ({USE_GLASS: false}));
 jest.mock('@/utils/haptics', () => ({lightHaptics: jest.fn()}));
 jest.mock('expo-router', () => ({useFocusEffect: () => undefined}));
 jest.mock('expo-audio', () => ({createAudioPlayer: jest.fn()}));
@@ -51,8 +53,8 @@ jest.mock('react-native-reanimated', () => {
   return {
     __esModule: true,
     default: {View},
-    FadeInDown: anim,
-    FadeOutDown: anim,
+    FadeInUp: anim,
+    FadeOutUp: anim,
   };
 });
 

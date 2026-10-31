@@ -17,7 +17,7 @@ export function hasCompleteQuran(reciter: Reciter): boolean {
 
 /** 'murattal2' -> 'murattal', so duplicate styles share one label. */
 export function baseStyle(style: string): string {
-  return style.toLowerCase().replace(/\d+$/, '');
+  return style.trim().toLowerCase().replace(/\d+$/, '');
 }
 
 /**
@@ -29,11 +29,18 @@ export function recitationLabels(
   rewayat: readonly Rewayat[],
   styleLabel: (style: string) => string,
 ): string[] {
-  const names = new Set(rewayat.map(r => r.name));
-  return rewayat.map(r => {
+  const names = new Set(rewayat.map(r => r.name.trim()));
+  const labels = rewayat.map(r => {
     const style = styleLabel(baseStyle(r.style));
     if (names.size === 1) return style;
-    return `${getDisplayLabelFromName(r.name)} · ${style}`;
+    return `${getDisplayLabelFromName(r.name.trim())} · ${style}`;
+  });
+  // Two recordings of the same rewayah and style: number the later ones.
+  const seen = new Map<string, number>();
+  return labels.map(label => {
+    const count = (seen.get(label) ?? 0) + 1;
+    seen.set(label, count);
+    return count === 1 ? label : `${label} ${count}`;
   });
 }
 
