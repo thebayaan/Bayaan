@@ -155,6 +155,21 @@ it('sets a new default from the list and can undo it', () => {
   expect(useReciterStore.getState().defaultReciter.id).toBe('mishary');
 });
 
+it('undo restores the previous default and recitation choices', () => {
+  useSettings.setState({reciterPreferences: {mishary: 'mishary-murattal'}});
+  const screen = render();
+  press(screen, 'Al-Minshawi');
+  press(screen, 'Mojawwad');
+  press(screen, 'Undo');
+  expect(useReciterStore.getState().defaultReciter.id).toBe('mishary');
+  expect(useSettings.getState().reciterPreferences).toEqual({
+    mishary: 'mishary-murattal',
+  });
+  // The screen follows the store: Al-Minshawi is back to a plain row.
+  expect(texts(screen, 'Al-Minshawi')).toHaveLength(1);
+  expect(texts(screen, 'Mojawwad')).toHaveLength(0);
+});
+
 it('switches between playing the default and asking each time', () => {
   const screen = render();
   press(screen, 'Ask each time');
