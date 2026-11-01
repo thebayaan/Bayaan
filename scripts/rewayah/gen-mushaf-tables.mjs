@@ -156,7 +156,9 @@ function main() {
   const existing = existsSync(outPath) ? readFileSync(outPath, 'utf8') : null;
   if (args.includes('--check')) {
     if (existing !== rendered) {
-      fail(`${OUT_FILE} is stale. Run: node scripts/rewayah/gen-mushaf-tables.mjs`);
+      fail(
+        `${OUT_FILE} is stale. Run: node scripts/rewayah/gen-mushaf-tables.mjs`,
+      );
     }
     console.log(`[gen-mushaf-tables] ${OUT_FILE} is up to date`);
     return;
