@@ -33,6 +33,7 @@
  *   again.
  */
 
+import {WordReadError} from './wordStore'; // @ai
 import {runAfterInteractions} from '@/utils/afterInteractions';
 import {
   digitalKhattDataService,
@@ -79,18 +80,13 @@ export interface VerseUnitsDataReader {
   readonly initialized: boolean;
   isRewayahReady(rewayah: RewayahId): boolean;
   getRewayahLoadState(rewayah: RewayahId): RewayahLoadState;
-  getWordInfo(wordId: number): DKWordInfo | undefined;
-  getWordText(wordId: number): string;
-  getVerseWords(verseKey: string, rewayah?: RewayahId): DKWordInfo[];
+  readWordSlots(rewayah: RewayahId): Iterable<VerseUnitSlot> | null;
 }
 
 /**
- * Every slot of `rewayah` in id order, read from the data service, or null
- * while its words are not in memory. Word ids and Hafs locations are the
- * same in every words DB (contract C1), so they come from the main cache
- * whatever rewayah it holds. A side-cache rewayah contributes its texts
- * through getVerseWords, which keeps each visible slot's Hafs word position
- * and omits blank slots (those stay '').
+ * Every slot of `rewayah` in id order, or null while its store is not open.
+ * The data service reads them outside its chunk cache, so a build evicts none
+ * of the reader's chunks. Blank slots have ''.
  *
  * The iterator yields ONE reused object (no allocation per slot); a caller
  * that keeps slots must copy them (buildRewayahVerseUnits does not keep any).
@@ -100,37 +96,7 @@ export function readRewayahSlots(
   rewayah: RewayahId,
 ): Iterable<VerseUnitSlot> | null {
   if (!dk.initialized || !dk.isRewayahReady(rewayah)) return null;
-  if (!dk.getWordInfo(1)) return null;
-  const active = rewayah === dk.rewayah;
-  // One reused object: the builder copies what it needs from each slot.
-  const slot: VerseUnitSlot = {id: 0, surah: 0, ayah: 0, word: 0, text: ''};
-  function* slots(): Generator<VerseUnitSlot> {
-    let verseKey = '';
-    let verseTexts = new Map<number, string>();
-    for (let id = 1; ; id++) {
-      const info = dk.getWordInfo(id);
-      if (!info) return;
-      if (info.verseKey !== verseKey) {
-        verseKey = info.verseKey;
-        const colon = verseKey.indexOf(':');
-        slot.surah = Number(verseKey.slice(0, colon));
-        slot.ayah = Number(verseKey.slice(colon + 1));
-        if (!active) {
-          verseTexts = new Map();
-          for (const w of dk.getVerseWords(verseKey, rewayah)) {
-            verseTexts.set(w.wordPositionInVerse, w.text);
-          }
-        }
-      }
-      slot.id = id;
-      slot.word = info.wordPositionInVerse;
-      slot.text = active
-        ? dk.getWordText(id)
-        : (verseTexts.get(info.wordPositionInVerse) ?? '');
-      yield slot;
-    }
-  }
-  return slots();
+  return dk.readWordSlots(rewayah);
 }
 
 /**
@@ -398,6 +364,14 @@ export class RewayahVerseUnitsService {
       this.cache.set(job.rewayah, {dataKey: job.dataKey, units, error: null});
       this.endBuild(job, units);
     } catch (error) {
+      // @ai-start
+      // The words could not be read now: the data service reports that through
+      // the load state, and a later build reads them again. Not a refusal.
+      if (error instanceof WordReadError) {
+        this.endBuild(job, null);
+        return;
+      }
+      // @ai-end
       console.error(
         `[RewayahVerseUnits] ${job.rewayah} verse units refused; its verse numbering stays off:`,
         error,

@@ -257,9 +257,20 @@ run('verse units end to end on every words DB (local only)', () => {
         isRewayahReady: (r: RewayahId) => r === dk.rewayah,
         getRewayahLoadState: (r: RewayahId) =>
           r === dk.rewayah ? 'ready' : 'idle',
-        getWordInfo: (id: number) => dk.getWordInfo(id),
-        getWordText: (id: number) => dk.getWordText(id),
-        getVerseWords: (key: string, r?: RewayahId) => dk.getVerseWords(key, r),
+        readWordSlots: function* () {
+          for (let id = 1; ; id++) {
+            const info = dk.getWordInfo(id);
+            if (!info) return;
+            const [surah, ayah] = info.verseKey.split(':').map(Number);
+            yield {
+              id,
+              surah,
+              ayah,
+              word: info.wordPositionInVerse,
+              text: dk.getWordText(id),
+            };
+          }
+        },
       },
       rewayahVerseMapService,
       (r: RewayahId) => `${r}@end-to-end#${dk.getCacheVersion()}`,

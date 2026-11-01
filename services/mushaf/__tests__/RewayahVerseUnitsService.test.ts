@@ -14,6 +14,7 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => ({
   getRewayahDataIdentityKey: (rewayah: string) => `${rewayah}@test`,
 }));
 
+import {WordReadError} from '../wordStore';
 import type {
   DKWordInfo,
   RewayahLoadState,
@@ -83,37 +84,17 @@ class FakeDataReader implements VerseUnitsDataReader {
   rewayah: RewayahId = 'hafs';
   initialized = true;
   readonly states = new Map<RewayahId, RewayahLoadState>();
-  private readonly verses = new Map<RewayahId, Map<string, DKWordInfo[]>>();
-  private infos: DKWordInfo[] = [];
-  private texts: string[] = [];
+  private readonly slots = new Map<RewayahId, VerseUnitSlot[]>();
 
-  /** Make `rewayah` the main cache (its slots give the ids / locations). */
+  /** Make `rewayah` the main cache. */
   setMain(rewayah: RewayahId, slots: VerseUnitSlot[]): void {
     this.rewayah = rewayah;
-    this.infos = [];
-    this.texts = [];
-    for (const s of slots) {
-      this.infos[s.id] = {
-        text: s.text,
-        verseKey: `${s.surah}:${s.ayah}`,
-        wordPositionInVerse: s.word,
-      };
-      this.texts[s.id] = s.text;
-    }
     this.setSide(rewayah, slots);
   }
 
-  /** Put `rewayah` in a side cache (verse lists with blank slots). */
+  /** Put `rewayah` in a side cache. */
   setSide(rewayah: RewayahId, slots: VerseUnitSlot[]): void {
-    const byVerse = new Map<string, DKWordInfo[]>();
-    for (const s of slots) {
-      const key = `${s.surah}:${s.ayah}`;
-      const info = {text: s.text, verseKey: key, wordPositionInVerse: s.word};
-      const list = byVerse.get(key);
-      if (list) list.push(info);
-      else byVerse.set(key, [info]);
-    }
-    this.verses.set(rewayah, byVerse);
+    this.slots.set(rewayah, slots);
     this.states.set(rewayah, 'ready');
   }
 
@@ -123,16 +104,20 @@ class FakeDataReader implements VerseUnitsDataReader {
   getRewayahLoadState(rewayah: RewayahId): RewayahLoadState {
     return this.states.get(rewayah) ?? 'idle';
   }
-  getWordInfo(wordId: number): DKWordInfo | undefined {
-    return this.infos[wordId];
-  }
-  getWordText(wordId: number): string {
-    return this.texts[wordId] ?? '';
-  }
-  getVerseWords(verseKey: string, rewayah?: RewayahId): DKWordInfo[] {
-    // Like the real service: blank slots are omitted.
-    const list = this.verses.get(rewayah ?? this.rewayah)?.get(verseKey) ?? [];
-    return list.filter(w => w.text !== '');
+  failNextSweep = false;
+
+  readWordSlots(rewayah: RewayahId): Iterable<VerseUnitSlot> | null {
+    if (!this.isRewayahReady(rewayah)) return null;
+    const slots = this.slots.get(rewayah);
+    if (!slots || slots.length === 0) return null;
+    if (this.failNextSweep) {
+      this.failNextSweep = false;
+      return (function* (): Generator<VerseUnitSlot> {
+        yield slots[0];
+        throw new WordReadError('dk_words');
+      })();
+    }
+    return slots;
   }
 }
 
@@ -474,8 +459,8 @@ describe('RewayahVerseUnitsService', () => {
 
   it('words in memory with no slot to read: refused, not built again and again', async () => {
     const {dk, service, scheduler} = setup();
-    // A main cache without word 1 (a row whose location could not be read).
-    dk.setMain('hafs', synthetic.slice(1));
+    // A store with no words to read.
+    dk.setMain('hafs', []);
     // Consumers ask again whenever a build ends without units (the hook's
     // effect, the pages' getShownVerseUnits).
     service.subscribe(() => {
@@ -487,6 +472,23 @@ describe('RewayahVerseUnitsService', () => {
     await expect(done).resolves.toBeNull();
     expect(service.getStatus('hafs')).toBe('error');
     expect(String(service.getError('hafs'))).toMatch(/no word slots/);
+  });
+
+  // A read that fails says nothing about the data: the data service reports it
+  // through the load state, and a later build reads the words again.
+  it('a word read that fails is no refusal, and a later build works', async () => {
+    const {dk, service, scheduler} = setup();
+    dk.setMain('hafs', synthetic);
+    dk.failNextSweep = true;
+    const failed = service.request('hafs');
+    scheduler.runAll();
+    await expect(failed).resolves.toBeNull();
+    expect(service.getError('hafs')).toBeNull();
+
+    const done = service.request('hafs');
+    scheduler.runAll();
+    await expect(done).resolves.not.toBeNull();
+    expect(service.getStatus('hafs')).toBe('ready');
   });
 
   it('clearCache() drops builds in progress', async () => {
