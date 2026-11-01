@@ -1,19 +1,18 @@
 // @ai-generated
 /**
  * lineFitStore (RFC-023 step 4): a fit stays for the next launch of the same
- * bundle. A new update id, build version or format starts empty and removes the
- * old store. A bad value is never stored and never served. Each launch() is a
- * fresh copy of the modules over the same native stores, as a relaunch is.
+ * bundle. A new update id, build version or format starts empty. A bad value is
+ * never stored and never served, and a failure in the store never reaches the
+ * caller. Each launch() is a fresh copy of the modules over the same native
+ * store, as a relaunch is.
  */
-type NativeStores = Map<string, Map<string, unknown>>;
-
 const mockNative = {
-  stores: new Map() as NativeStores,
-  configs: [] as {id: string; path?: string}[],
-  deleted: [] as string[],
+  data: new Map<string, unknown>(),
+  configs: [] as unknown[],
   failCreate: false,
-  failDelete: false,
+  failGet: false,
   failSet: false,
+  failClear: false,
 };
 const mockBundle: {updateId: string | null; version: unknown} = {
   updateId: null,
@@ -21,32 +20,27 @@ const mockBundle: {updateId: string | null; version: unknown} = {
 };
 
 jest.mock('react-native-mmkv', () => ({
-  createMMKV: (config: {id: string; path?: string}) => {
+  createMMKV: (config: unknown) => {
     if (mockNative.failCreate) throw new Error('no MMKV');
     mockNative.configs.push(config);
-    if (!mockNative.stores.has(config.id)) {
-      mockNative.stores.set(config.id, new Map());
-    }
-    const data = mockNative.stores.get(config.id) as Map<string, unknown>;
     return {
       get length() {
-        return data.size;
+        return mockNative.data.size;
       },
       getString: (key: string) => {
-        const value = data.get(key);
+        if (mockNative.failGet) throw new Error('read failed');
+        const value = mockNative.data.get(key);
         return typeof value === 'string' ? value : undefined;
       },
       set: (key: string, value: unknown) => {
         if (mockNative.failSet) throw new Error('disk full');
-        data.set(key, value);
+        mockNative.data.set(key, value);
       },
-      clearAll: () => data.clear(),
+      clearAll: () => {
+        if (mockNative.failClear) throw new Error('clear failed');
+        mockNative.data.clear();
+      },
     };
-  },
-  deleteMMKV: (id: string) => {
-    if (mockNative.failDelete) throw new Error('no delete');
-    mockNative.deleted.push(id);
-    return mockNative.stores.delete(id);
   },
 }));
 
@@ -78,7 +72,7 @@ type SpaceModule = typeof import('@/components/mushaf/skia/justifiedSpace');
 const UPDATE_A = 'aaaaaaaa-0000-4000-8000-000000000000';
 const UPDATE_B = 'bbbbbbbb-0000-4000-8000-000000000000';
 const KEY = 'DigitalKhattV2|23.4|360|1|240|300|3:jt=1,;|بِسْمِ ٱللَّهِ';
-const POINTER = 'mushaf-line-fits';
+const VERSION_KEY = '#version';
 
 const devFlag = globalThis as unknown as {__DEV__: boolean};
 const devAtStart = devFlag.__DEV__;
@@ -94,17 +88,34 @@ function launch(): {store: StoreModule; space: SpaceModule} {
   return loaded as {store: StoreModule; space: SpaceModule};
 }
 
+/** Opens the store, as the first getLineFit of a launch does. */
+function launchAndOpen(): {store: StoreModule; space: SpaceModule} {
+  const loaded = launch();
+  expect(loaded.store.readStoredLineFit('open')).toBeUndefined();
+  return loaded;
+}
+
 /** Ends the render: the waiting writes run. */
 function endRender(): void {
   jest.runOnlyPendingTimers();
 }
 
-function storeName(store: StoreModule, bundle = UPDATE_A): string {
-  return store.lineFitStoreName(store.LINE_FIT_FORMAT, bundle);
+function fitKeys(): string[] {
+  return [...mockNative.data.keys()].filter(key => key !== VERSION_KEY);
 }
 
-function nativeStore(name: string): Map<string, unknown> | undefined {
-  return mockNative.stores.get(name);
+function storeOneFit(): StoreModule {
+  const {store} = launch();
+  store.storeLineFit(KEY, {wordSize: 20, spaceExtra: 1});
+  endRender();
+  expect(fitKeys()).toHaveLength(1);
+  return store;
+}
+
+/** A store that an earlier launch left, with `fits` fits. */
+function seedStore(version: string, fits: number): void {
+  mockNative.data.set(VERSION_KEY, version);
+  for (let i = 0; i < fits; i++) mockNative.data.set(`k${i}`, '20,1');
 }
 
 beforeAll(() => {
@@ -119,18 +130,18 @@ afterAll(() => {
 beforeEach(() => {
   jest.clearAllTimers();
   devFlag.__DEV__ = false;
-  mockNative.stores.clear();
+  mockNative.data.clear();
   mockNative.configs.length = 0;
-  mockNative.deleted.length = 0;
   mockNative.failCreate = false;
-  mockNative.failDelete = false;
+  mockNative.failGet = false;
   mockNative.failSet = false;
+  mockNative.failClear = false;
   mockBundle.updateId = UPDATE_A;
   mockBundle.version = {semanticVersion: '2.3.0', buildNumber: 1900};
 });
 
-describe('a fit across launches', () => {
-  it('keeps the same fit for the same key after a relaunch', () => {
+describe('the same bundle', () => {
+  it('keeps a fit across a relaunch', () => {
     const fit = {wordSize: 21.873456, spaceExtra: 0.75};
     const first = launch().store;
     first.storeLineFit(KEY, fit);
@@ -170,99 +181,122 @@ describe('a fit across launches', () => {
   });
 
   it('setLineFit serves the fit at once and writes after the render', () => {
-    const {store, space} = launch();
+    const {space} = launch();
     space.setLineFit(KEY, {wordSize: 22.5, spaceExtra: 0});
     expect(space.getLineFit(KEY)).toEqual({wordSize: 22.5, spaceExtra: 0});
-    expect(nativeStore(storeName(store))?.size).toBe(0);
+    expect(fitKeys()).toHaveLength(0);
     endRender();
-    expect(nativeStore(storeName(store))?.size).toBe(1);
+    expect(fitKeys()).toHaveLength(1);
   });
 
-  it('keeps no key text in the store', () => {
-    const {store} = launch();
-    store.storeLineFit(KEY, {wordSize: 20, spaceExtra: 0});
-    endRender();
-    const keys = [...(nativeStore(storeName(store))?.keys() ?? [])];
-    expect(keys).toHaveLength(1);
-    expect(keys[0]).toMatch(/^[0-9a-z]{1,11}$/);
+  it('clears nothing at a relaunch', () => {
+    storeOneFit();
+    launchAndOpen();
+    expect(fitKeys()).toHaveLength(1);
+  });
+
+  it('opens one instance with no path', () => {
+    storeOneFit();
+    expect(mockNative.configs).toEqual([{id: 'mushaf-line-fits'}]);
   });
 });
 
-describe('a store from another bundle', () => {
-  function storeOneFit(): StoreModule {
-    const {store} = launch();
-    store.storeLineFit(KEY, {wordSize: 20, spaceExtra: 1});
-    endRender();
-    return store;
-  }
-
-  it('a new update id starts empty and removes the old store', () => {
-    const store = storeOneFit();
-    const oldName = storeName(store);
-    expect(nativeStore(oldName)?.size).toBe(1);
+describe('another bundle', () => {
+  it('a new update id starts empty', () => {
+    storeOneFit();
 
     mockBundle.updateId = UPDATE_B;
     const next = launch().store;
     expect(next.readStoredLineFit(KEY)).toBeUndefined();
-    expect(mockNative.deleted).toEqual([oldName]);
-    expect(nativeStore(oldName)).toBeUndefined();
-    expect(nativeStore(POINTER)?.get('store')).toBe(storeName(next, UPDATE_B));
+    expect(fitKeys()).toHaveLength(0);
+    expect(mockNative.data.get(VERSION_KEY)).toBe(
+      `${next.LINE_FIT_FORMAT}:${UPDATE_B}`,
+    );
   });
 
-  it('a new format starts empty and removes the old store', () => {
-    // A store that an earlier LINE_FIT_FORMAT left, for the same update id.
-    const {store} = launch();
-    const oldName = store.lineFitStoreName(store.LINE_FIT_FORMAT - 1, UPDATE_A);
-    expect(oldName).not.toBe(storeName(store));
-    mockNative.stores.set(POINTER, new Map([['store', oldName]]));
-    mockNative.stores.set(oldName, new Map([['hash', '20,1']]));
+  it('a new LINE_FIT_FORMAT starts empty', () => {
+    const store = storeOneFit();
+    // The same update id, written by an earlier format.
+    const current = `${store.LINE_FIT_FORMAT}:${UPDATE_A}`;
+    expect(mockNative.data.get(VERSION_KEY)).toBe(current);
+    mockNative.data.set(
+      VERSION_KEY,
+      `${store.LINE_FIT_FORMAT - 1}:${UPDATE_A}`,
+    );
 
-    expect(store.readStoredLineFit(KEY)).toBeUndefined();
-    expect(mockNative.deleted).toEqual([oldName]);
-    expect(nativeStore(oldName)).toBeUndefined();
-    expect(nativeStore(POINTER)?.get('store')).toBe(storeName(store));
+    const next = launch().store;
+    expect(next.readStoredLineFit(KEY)).toBeUndefined();
+    expect(fitKeys()).toHaveLength(0);
+    expect(mockNative.data.get(VERSION_KEY)).toBe(current);
   });
 
   it('with updates off, a new build version starts empty', () => {
     mockBundle.updateId = null;
     const store = storeOneFit();
-    const oldName = storeName(store, '2.3.0-1900');
-    expect(nativeStore(oldName)?.size).toBe(1);
+    expect(mockNative.data.get(VERSION_KEY)).toBe(
+      `${store.LINE_FIT_FORMAT}:2.3.0-1900`,
+    );
 
     mockBundle.version = {semanticVersion: '2.3.0', buildNumber: 1901};
     const next = launch().store;
     expect(next.readStoredLineFit(KEY)).toBeUndefined();
-    expect(mockNative.deleted).toEqual([oldName]);
-    expect(nativeStore(storeName(next, '2.3.0-1901'))).toBeDefined();
+    expect(fitKeys()).toHaveLength(0);
   });
 
-  it('deletes nothing when the bundle stays the same', () => {
+  it('a store with no version key starts empty', () => {
+    mockNative.data.set('a-fit', '20,1');
+    launchAndOpen();
+    expect(fitKeys()).toHaveLength(0);
+  });
+
+  it('if the app stops after the clear, the next launch clears again', () => {
     storeOneFit();
-    launch().store.readStoredLineFit(KEY);
-    expect(mockNative.deleted).toEqual([]);
-  });
 
-  it('a failed delete keeps the pointer, and the next launch tries again', () => {
-    const store = storeOneFit();
-    const oldName = storeName(store);
-
+    // The new bundle clears, then stops before it sets the version key.
     mockBundle.updateId = UPDATE_B;
-    mockNative.failDelete = true;
-    const failed = launch().store;
-    expect(failed.readStoredLineFit(KEY)).toBeUndefined();
-    expect(nativeStore(POINTER)?.get('store')).toBe(oldName);
-    expect(nativeStore(storeName(failed, UPDATE_B))).toBeUndefined();
+    mockNative.failSet = true;
+    expect(launch().store.readStoredLineFit(KEY)).toBeUndefined();
+    expect(mockNative.data.has(VERSION_KEY)).toBe(false);
 
-    mockNative.failDelete = false;
-    launch().store.readStoredLineFit(KEY);
-    expect(nativeStore(oldName)).toBeUndefined();
-    expect(mockNative.deleted).toEqual([oldName]);
+    mockNative.failSet = false;
+    mockNative.data.set('a-late-fit', '20,1');
+    const {store} = launchAndOpen();
+    expect(fitKeys()).toHaveLength(0);
+    expect(mockNative.data.get(VERSION_KEY)).toBe(
+      `${store.LINE_FIT_FORMAT}:${UPDATE_B}`,
+    );
+  });
+});
+
+describe('the version key', () => {
+  it('cannot be a fit: every fit key is a base36 hash', () => {
+    const {store} = launch();
+    for (let i = 0; i < 200; i++) {
+      store.storeLineFit(`${KEY}${i}`, {wordSize: 20, spaceExtra: 0});
+    }
+    store.storeLineFit(VERSION_KEY, {wordSize: 20, spaceExtra: 0});
+    endRender();
+    const keys = fitKeys();
+    expect(keys).toHaveLength(201);
+    for (const key of keys) expect(key).toMatch(/^[0-9a-z]{1,11}$/);
   });
 
-  it("opens every instance in MMKV's own directory, so a delete finds it", () => {
-    storeOneFit();
-    expect(mockNative.configs.length).toBeGreaterThan(0);
-    for (const config of mockNative.configs) expect(config.path).toBe('');
+  it('is not read as a fit', () => {
+    const {store} = launchAndOpen();
+    expect(mockNative.data.has(VERSION_KEY)).toBe(true);
+    expect(store.readStoredLineFit(VERSION_KEY)).toBeUndefined();
+  });
+
+  it('is not replaced by a fit stored under its name', () => {
+    const store = storeOneFit();
+    const version = mockNative.data.get(VERSION_KEY);
+    store.storeLineFit(VERSION_KEY, {wordSize: 21, spaceExtra: 0});
+    endRender();
+    expect(mockNative.data.get(VERSION_KEY)).toBe(version);
+    expect(store.readStoredLineFit(VERSION_KEY)).toEqual({
+      wordSize: 21,
+      spaceExtra: 0,
+    });
   });
 });
 
@@ -275,22 +309,20 @@ describe('a bad value', () => {
     ['a NaN spaceExtra', 20, Number.NaN],
     ['an infinite spaceExtra', 20, Number.NEGATIVE_INFINITY],
   ])('is never stored: %s', (_name, wordSize, spaceExtra) => {
-    const {store} = launch();
-    expect(store.readStoredLineFit(KEY)).toBeUndefined(); // opens the store
+    const {store} = launchAndOpen();
     store.storeLineFit(KEY, {wordSize, spaceExtra});
     endRender();
-    expect(nativeStore(storeName(store))?.size).toBe(0);
+    expect(fitKeys()).toHaveLength(0);
     expect(store.readStoredLineFit(KEY)).toBeUndefined();
   });
 
   it('stays in the session map only, as before', () => {
-    const {store, space} = launch();
-    expect(space.getLineFit(KEY)).toBeUndefined(); // opens the store
+    const {space} = launchAndOpen();
     const fit = {wordSize: 0, spaceExtra: 0};
     space.setLineFit(KEY, fit);
     endRender();
     expect(space.getLineFit(KEY)).toEqual(fit);
-    expect(nativeStore(storeName(store))?.size).toBe(0);
+    expect(fitKeys()).toHaveLength(0);
   });
 
   it.each([
@@ -307,68 +339,52 @@ describe('a bad value', () => {
     ['abc,def'],
     [''],
   ])('is never served: "%s"', bad => {
-    const {store} = launch();
-    store.storeLineFit(KEY, {wordSize: 20, spaceExtra: 1});
-    endRender();
-    const data = nativeStore(storeName(store)) as Map<string, unknown>;
-    const [hash] = [...data.keys()];
-    data.set(hash, bad);
+    storeOneFit();
+    mockNative.data.set(fitKeys()[0], bad);
     expect(launch().store.readStoredLineFit(KEY)).toBeUndefined();
     expect(launch().space.getLineFit(KEY)).toBeUndefined();
   });
 
   it('a new measure replaces a bad stored value', () => {
-    const {store} = launch();
-    store.storeLineFit(KEY, {wordSize: 20, spaceExtra: 1});
-    endRender();
-    const data = nativeStore(storeName(store)) as Map<string, unknown>;
-    data.set([...data.keys()][0], 'NaN,1');
+    storeOneFit();
+    mockNative.data.set(fitKeys()[0], 'NaN,1');
 
     const next = launch().store;
     next.storeLineFit(KEY, {wordSize: 21, spaceExtra: 0});
     endRender();
     expect(next.readStoredLineFit(KEY)).toEqual({wordSize: 21, spaceExtra: 0});
-    expect(data.size).toBe(1);
+    expect(fitKeys()).toHaveLength(1);
   });
 });
 
 describe('the limits of the store', () => {
   it('starts again at the launch after it passes the limit', () => {
     const {store} = launch();
-    const name = storeName(store);
-    const full = new Map<string, unknown>();
-    for (let i = 0; i <= store.LINE_FIT_STORE_LIMIT; i++) {
-      full.set(`k${i}`, '20,1');
-    }
-    mockNative.stores.set(POINTER, new Map([['store', name]]));
-    mockNative.stores.set(name, full);
+    const version = `${store.LINE_FIT_FORMAT}:${UPDATE_A}`;
+    seedStore(version, store.LINE_FIT_STORE_LIMIT);
 
-    store.readStoredLineFit(KEY);
-    expect(full.size).toBe(0);
+    expect(store.readStoredLineFit(KEY)).toBeUndefined();
+    expect(fitKeys()).toHaveLength(0);
+    expect(mockNative.data.get(VERSION_KEY)).toBe(version);
   });
 
-  it('keeps a store at the limit', () => {
+  it('keeps a store at the limit, with the version key as one entry', () => {
     const {store} = launch();
-    const name = storeName(store);
-    const full = new Map<string, unknown>();
-    for (let i = 0; i < store.LINE_FIT_STORE_LIMIT; i++) {
-      full.set(`k${i}`, '20,1');
-    }
-    mockNative.stores.set(POINTER, new Map([['store', name]]));
-    mockNative.stores.set(name, full);
+    const fits = store.LINE_FIT_STORE_LIMIT - 1;
+    seedStore(`${store.LINE_FIT_FORMAT}:${UPDATE_A}`, fits);
 
-    store.readStoredLineFit(KEY);
-    expect(full.size).toBe(store.LINE_FIT_STORE_LIMIT);
+    expect(store.readStoredLineFit(KEY)).toBeUndefined();
+    expect(fitKeys()).toHaveLength(fits);
   });
 
   it('writes once for each key of a render', () => {
-    const {store} = launch();
+    const {store} = launchAndOpen();
     store.storeLineFit(KEY, {wordSize: 20, spaceExtra: 0});
     store.storeLineFit(KEY, {wordSize: 21, spaceExtra: 0});
     store.storeLineFit(`${KEY}x`, {wordSize: 22, spaceExtra: 0});
     expect(jest.getTimerCount()).toBe(1);
     endRender();
-    expect(nativeStore(storeName(store))?.size).toBe(2);
+    expect(fitKeys()).toHaveLength(2);
     expect(store.readStoredLineFit(KEY)).toEqual({wordSize: 21, spaceExtra: 0});
   });
 });
@@ -380,7 +396,7 @@ describe('when there is no store', () => {
     store.storeLineFit(KEY, {wordSize: 20, spaceExtra: 1});
     expect(jest.getTimerCount()).toBe(0);
     expect(store.readStoredLineFit(KEY)).toBeUndefined();
-    expect(mockNative.stores.size).toBe(0);
+    expect(mockNative.configs).toHaveLength(0);
   });
 
   it.each([
@@ -394,23 +410,42 @@ describe('when there is no store', () => {
     store.storeLineFit(KEY, {wordSize: 20, spaceExtra: 1});
     expect(jest.getTimerCount()).toBe(0);
     expect(store.readStoredLineFit(KEY)).toBeUndefined();
-    expect(mockNative.stores.size).toBe(0);
+    expect(mockNative.configs).toHaveLength(0);
   });
+});
 
-  it('a native failure at the open only turns the store off', () => {
-    mockNative.failCreate = true;
+describe('a failure in the store never reaches the caller', () => {
+  it.each([
+    ['the open', 'failCreate'],
+    ['the version read', 'failGet'],
+    ['the clear', 'failClear'],
+    ['the version write', 'failSet'],
+  ] as const)('at %s, the store is off for this launch', (_name, flag) => {
+    // A store from another bundle, so that the open must clear it.
+    seedStore('0:another-bundle', 1);
+    mockNative[flag] = true;
     const {store, space} = launch();
+    const fit = {wordSize: 20, spaceExtra: 1};
     expect(store.readStoredLineFit(KEY)).toBeUndefined();
     expect(() => {
-      space.setLineFit(KEY, {wordSize: 20, spaceExtra: 1});
+      space.setLineFit(KEY, fit);
       endRender();
     }).not.toThrow();
-    expect(space.getLineFit(KEY)).toEqual({wordSize: 20, spaceExtra: 1});
+    expect(jest.getTimerCount()).toBe(0);
+    expect(space.getLineFit(KEY)).toEqual(fit);
   });
 
-  it('a native failure at a write loses the fits of that write only', () => {
-    const {store} = launch();
-    expect(store.readStoredLineFit(KEY)).toBeUndefined(); // opens the store
+  it('at a read, the line counts as not stored', () => {
+    storeOneFit();
+    const {store} = launchAndOpen();
+    mockNative.failGet = true;
+    expect(store.readStoredLineFit(KEY)).toBeUndefined();
+    mockNative.failGet = false;
+    expect(store.readStoredLineFit(KEY)).toEqual({wordSize: 20, spaceExtra: 1});
+  });
+
+  it('at a write, only the fits of that write are lost', () => {
+    const {store} = launchAndOpen();
     mockNative.failSet = true;
     store.storeLineFit(KEY, {wordSize: 20, spaceExtra: 1});
     expect(() => endRender()).not.toThrow();

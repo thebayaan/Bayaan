@@ -7,17 +7,16 @@
  * the first page after each launch builds every justified line twice. This
  * store keeps each fit for the next launch of the same bundle.
  *
- * Each bundle has its own MMKV instance. Its name holds LINE_FIT_FORMAT and the
- * update id (with updates off, the build version), so an OTA update that
- * changes the shaping or a font starts empty. MMKV cannot list its instances,
- * so a small pointer instance holds the name of the store in use. When that
- * name changes, the old store is deleted.
+ * One MMKV instance holds the fits of one bundle. A version key holds
+ * LINE_FIT_FORMAT and the update id (with updates off, the build version). When
+ * it differs, the store is cleared, so an OTA update that changes the shaping
+ * or a font starts empty.
  *
  * This is a cache only. After any failure here, the line is measured again.
  */
 import Constants from 'expo-constants';
 import * as Updates from 'expo-updates';
-import {createMMKV, deleteMMKV, type MMKV} from 'react-native-mmkv';
+import {createMMKV, type MMKV} from 'react-native-mmkv';
 
 /**
  * Change this when the fit pass (SkiaLine), JustificationService or a font
@@ -26,28 +25,20 @@ import {createMMKV, deleteMMKV, type MMKV} from 'react-native-mmkv';
 export const LINE_FIT_FORMAT = 1;
 
 /**
- * Fits kept: about three whole Mushafs of 9,046 lines, about 1.5 MB. A store
- * over this limit starts again at the next launch.
+ * Entries kept: about three whole Mushafs of 9,046 lines, about 1.5 MB. A store
+ * over this limit starts again at the next launch. The version key counts as
+ * one entry, and one entry in 30,000 does not matter.
  */
 export const LINE_FIT_STORE_LIMIT = 30000;
 
-/**
- * An empty path keeps an instance in MMKV's own directory on both platforms.
- * With no path, iOS puts it in the App Group directory that Info.plist names,
- * and deleteMMKV takes no path, so it does not look there.
- */
-const MMKV_OWN_DIRECTORY = '';
+const STORE_ID = 'mushaf-line-fits';
 
-const POINTER_ID = 'mushaf-line-fits';
-const POINTER_KEY = 'store';
+/** A fit's key is a base36 hash (hashKey), so no fit has this name. */
+const VERSION_KEY = '#version';
 
 export interface StoredLineFit {
   wordSize: number;
   spaceExtra: number;
-}
-
-export function lineFitStoreName(format: number, bundle: string): string {
-  return `${POINTER_ID}-${format}-${bundle}`;
 }
 
 /** The update id, or with updates off the build version; null without both. */
@@ -68,18 +59,17 @@ function openStore(): MMKV | null {
   if (__DEV__) return null;
   const bundle = currentBundle();
   if (!bundle) return null;
-  const name = lineFitStoreName(LINE_FIT_FORMAT, bundle);
-  const pointer = createMMKV({id: POINTER_ID, path: MMKV_OWN_DIRECTORY});
-  const last = pointer.getString(POINTER_KEY);
-  if (last !== name) {
-    // The pointer moves after the delete: if the delete fails or the app stops
-    // here, the next launch deletes the old store again. Never delete a store
-    // with an open handle: MMKV frees the instance under that handle.
-    if (last) deleteMMKV(last);
-    pointer.set(POINTER_KEY, name);
+  const version = `${LINE_FIT_FORMAT}:${bundle}`;
+  const kv = createMMKV({id: STORE_ID});
+  if (
+    kv.getString(VERSION_KEY) !== version ||
+    kv.length > LINE_FIT_STORE_LIMIT
+  ) {
+    // If the app stops between these two, the version key is gone, so the next
+    // launch clears again.
+    kv.clearAll();
+    kv.set(VERSION_KEY, version);
   }
-  const kv = createMMKV({id: name, path: MMKV_OWN_DIRECTORY});
-  if (kv.length > LINE_FIT_STORE_LIMIT) kv.clearAll();
   return kv;
 }
 
