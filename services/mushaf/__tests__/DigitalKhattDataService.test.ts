@@ -1123,7 +1123,7 @@ describe('chunk reads (WordStore)', () => {
       await service.ensureRewayahLoaded('warsh');
       const texts = Array.from(service.readWordSlots('warsh')!, s => s.text);
       expect(texts[0]).toBe('W1');
-      expect(service.readWordSlots('qaloon')).toBeNull();
+      expect(service.readWordSlots('qalun')).toBeNull();
     });
 
     it('a failed read throws WordReadError and fails the store', async () => {
