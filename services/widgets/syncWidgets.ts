@@ -18,6 +18,7 @@ import {usePlayerStore} from '@/services/player/store/playerStore';
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
 import {useReciterStore} from '@/store/reciterStore';
 import {useThemeStore} from '@/store/themeStore';
+import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService'; // @ai
 import {useAdhkarSessionStore} from '@/store/adhkarSessionStore'; // @ai
 import {getReciterByIdSync} from '@/services/dataService';
 import {getReciterArtwork} from '@/utils/artworkUtils';
@@ -245,6 +246,9 @@ export function startWidgetSync(): () => void {
     useRecentlyPlayedStore.subscribe(schedule),
     useReciterStore.subscribe(schedule),
     useThemeStore.subscribe(schedule),
+    // The Mushaf data loads after the splash, so the first snapshot can have no
+    // verse text, and no store changes when it is ready. @ai
+    digitalKhattDataService.subscribeCacheChanges(schedule),
     useAdhkarSessionStore.subscribe(schedule), // @ai
   ];
   const appState = AppState.addEventListener('change', state => {

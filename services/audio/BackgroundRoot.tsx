@@ -49,6 +49,11 @@ function startBackgroundWidgetSync(): () => void {
     require('@/services/widgets/syncConfiguredWidgets') as typeof import('@/services/widgets/syncConfiguredWidgets');
   const {startContentWidgetSync} =
     require('@/services/widgets/syncContentWidgets') as typeof import('@/services/widgets/syncContentWidgets');
+  // No splash here, so nothing else starts the Mushaf load that gives the
+  // widgets their verse text. The snapshot runs again when it is ready.
+  const {mushafPreloadService} =
+    require('@/services/mushaf/MushafPreloadService') as typeof import('@/services/mushaf/MushafPreloadService');
+  mushafPreloadService.startIfIdle();
   const stops = [
     startWidgetSync(),
     startConfiguredWidgetSync(),
