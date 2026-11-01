@@ -1,8 +1,8 @@
 // @ai-generated
 // RFC-023 step 2: the words are read when a page or a verse needs them, not
-// all at load. A load reads only a verse index (the first and last word id of
-// each of the 6,236 verses) after native integrity counts, and keeps the
-// connection open. A getter reads the WORD_CHUNK ids around a word with
+// all at load. A load takes a verse index (the first and last word id of each
+// of the 6,236 verses; mushafTables.ts) and native integrity counts, and keeps
+// the connection open. A getter reads the WORD_CHUNK ids around a word with
 // getFirstSync, so every getter stays synchronous.
 //
 // In every bundled words DB the ids run 1..n with no gaps, each verse is one
@@ -52,7 +52,7 @@ interface WordChunk {
   infos: (DKWordInfo | undefined)[];
 }
 
-interface VerseRangeRow {
+export interface VerseRangeRow {
   surah: number;
   ayah: number;
   first: number;
@@ -71,15 +71,14 @@ export class WordReadError extends Error {
   }
 }
 
-/** The verse index of a words table; throws on a damaged table. */
-export async function readVerseIndex(
+/**
+ * Throws on a damaged copy of a words table (cut short, NULL fields), so the
+ * copy is deleted, re-imported and read again inside the load.
+ */
+export async function checkWordsTable(
   db: SQLite.SQLiteDatabase,
-): Promise<VerseIndex> {
-  const rows = await db.getAllAsync<VerseRangeRow>(
-    'SELECT surah, ayah, MIN(id) AS first, MAX(id) AS last FROM words GROUP BY surah, ayah ORDER BY first;',
-  );
-  // A damaged copy (cut short, NULL fields) must fail here, inside the read,
-  // so the copy is deleted, re-imported and read again.
+  index: VerseIndex,
+): Promise<void> {
   const counts = await db.getFirstAsync<{
     n: number;
     ids: number;
@@ -89,17 +88,19 @@ export async function readVerseIndex(
     'SELECT COUNT(*) AS n, COUNT(id) AS ids, COUNT(text) AS texts, COUNT(location) AS locations FROM words;',
   );
   if (!counts || !counts.n) throw new Error('words table is empty');
+  const expected = index.last[index.last.length - 1];
   if (
-    counts.ids !== counts.n ||
-    counts.texts !== counts.n ||
-    counts.locations !== counts.n
+    counts.n !== expected ||
+    counts.ids !== expected ||
+    counts.texts !== expected ||
+    counts.locations !== expected
   ) {
     throw new Error('words table has a malformed row');
   }
-  return buildVerseIndex(rows);
 }
 
-function buildVerseIndex(rows: readonly VerseRangeRow[]): VerseIndex {
+/** The verse index of `rows`; throws on a malformed or out-of-order row. */
+export function buildVerseIndex(rows: readonly VerseRangeRow[]): VerseIndex {
   const n = rows.length;
   const index: VerseIndex = {
     keys: new Array<string>(n),

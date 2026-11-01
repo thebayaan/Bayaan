@@ -37,6 +37,25 @@ jest.mock('../DigitalKhattDataService', () => {
   return mocked;
 });
 
+jest.mock('@/services/mushaf/mushafTables', () =>
+  jest
+    .requireActual('@/services/mushaf/__fixtures__/wordStoreQueries')
+    .fakeMushafTables(
+      ['1:1:1', '1:1:2'],
+      [
+        {
+          page_number: 1,
+          line_number: 1,
+          line_type: 'ayah',
+          is_centered: 0,
+          first_word_id: 1,
+          last_word_id: 2,
+          surah_number: 1,
+        },
+      ],
+    ),
+);
+
 jest.mock('expo-sqlite', () => {
   // @ai the WordStore's queries (DigitalKhattDataService).
   const {withWordStoreQueries} = jest.requireActual(

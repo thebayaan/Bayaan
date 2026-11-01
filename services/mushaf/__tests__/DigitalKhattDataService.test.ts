@@ -12,7 +12,10 @@
  * tagged by its rewayah (H1.., W1.., Q1..), or "old-" text for copies an
  * older release left on the device.
  */
-import {REWAYAH_DATA_MANIFEST} from '../rewayahDataManifest';
+import {
+  LAYOUT_SOURCE_SHA256,
+  REWAYAH_DATA_MANIFEST,
+} from '../rewayahDataManifest';
 import {
   BASMALLAH_TEXT, // @ai
   contentAddressedDbName,
@@ -48,6 +51,15 @@ interface FakeSqliteState {
   // word whose text is empty (a real value in 7 of the 8 words DBs).
   chunkFaults: Map<string, 'throw' | 'short' | 'blank'>;
 }
+
+// The generated tables, for this file's few words (see mockPageRows).
+jest.mock('../mushafTables', () => ({
+  loadVerseIndex: () =>
+    jest
+      .requireActual('../wordStore')
+      .buildVerseIndex(mockVerseIndexRows(mockWordRows('dk_words', 'asset'))),
+  loadPageLineRows: () => mockPageRows(),
+}));
 
 jest.mock('expo-sqlite', () => {
   const state: FakeSqliteState = {
@@ -90,14 +102,23 @@ jest.mock('expo-sqlite', () => {
           const file = state.files.get(name);
           if (!file || file.state === 'empty') return null;
           // @ai-start
+          // The integrity counts are the read of a load: gates and read
+          // failures apply to them.
           if (sql.includes('COUNT(*)')) {
+            const held = state.gates.get(file.base);
+            if (held) await held;
+            const failures = state.readFailures.get(file.base) ?? 0;
+            if (failures > 0) {
+              state.readFailures.set(file.base, failures - 1);
+              throw new Error('database disk image is malformed');
+            }
             const n = wordsOf().length;
+            state.log.push(`read:${name}`);
             return {n, ids: n, texts: n, locations: n};
           }
           // @ai-end
           const table = /name='(\w+)'/.exec(sql)?.[1];
-          const has =
-            file.base === 'dk_layout' ? table === 'pages' : table === 'words';
+          const has = table === 'words';
           return has ? {name: table} : null;
         },
         async getAllAsync(sql: string) {
@@ -113,13 +134,8 @@ jest.mock('expo-sqlite', () => {
           if (file.state !== 'ok') throw new Error('no such table');
           state.log.push(`read:${name}`);
           // @ai-start
-          if (sql.includes('GROUP BY')) {
-            return mockVerseIndexRows(mockWordRows(file.base, file.version));
-          }
           // @ai-end
-          return sql.includes('FROM pages')
-            ? mockPageRows()
-            : mockWordRows(file.base, file.version);
+          return mockWordRows(file.base, file.version);
         },
         // @ai-start
         // The WordStore's chunk read: the texts in id order, joined by U+001F.
@@ -259,7 +275,7 @@ function mockWordRows(base: string, version: string) {
 }
 
 // @ai-start
-// What readVerseIndex's GROUP BY returns: the first and last id of each verse.
+// The verse rows of the generated tables: the first and last id of each verse.
 function mockVerseIndexRows(rows: {id: number; location: string}[]) {
   const verses = new Map<
     string,
@@ -348,12 +364,12 @@ const store = (
 
 type AssetFile = keyof typeof REWAYAH_DATA_MANIFEST;
 const sha8 = (file: AssetFile) => REWAYAH_DATA_MANIFEST[file].slice(0, 8);
+const LAYOUT_SHA8 = LAYOUT_SOURCE_SHA256.slice(0, 8);
 const copyName = (dbName: string, file: AssetFile) =>
   contentAddressedDbName(dbName, REWAYAH_DATA_MANIFEST[file]);
 
 const N = {
   hafs: copyName('dk_words.db', 'digital-khatt-v2.db'),
-  layout: copyName('dk_layout.db', 'digital-khatt-15-lines.db'),
   warsh: copyName('dk_words_warsh.db', 'dk_words_warsh.db'),
   qaloon: copyName('dk_words_qaloon.db', 'dk_words_qaloon.db'),
 };
@@ -493,7 +509,6 @@ describe('delivery to installed apps', () => {
     expect(service.initialized).toBe(true);
     expect(texts(service, '1:1')).toEqual(H);
     expect(count(`import:${N.hafs}`)).toBe(1);
-    expect(count(`import:${N.layout}`)).toBe(1);
     const touched = fake.log.filter(
       e => e.startsWith('open:') || e.startsWith('import:'),
     );
@@ -501,7 +516,7 @@ describe('delivery to installed apps', () => {
     expect(service.getDataIdentity()).toEqual({
       rewayah: 'hafs',
       wordsSha8: sha8('digital-khatt-v2.db'),
-      layoutSha8: sha8('digital-khatt-15-lines.db'),
+      layoutSha8: LAYOUT_SHA8,
     });
   });
 
@@ -524,7 +539,7 @@ describe('delivery to installed apps', () => {
 
     await flush();
     expect([...fake.files.keys()].sort()).toEqual(
-      [N.layout, N.warsh, 'playlists.db', 'wbw-en.db'].sort(),
+      [N.warsh, 'playlists.db', 'wbw-en.db'].sort(),
     );
   });
 
@@ -544,6 +559,21 @@ describe('delivery to installed apps', () => {
     release();
     await side;
     expect(texts(service, '1:1', 'warsh')).toEqual(W);
+  });
+
+  it('deletes every copy of a retired base', async () => {
+    seed('dk_layout.db', 'dk_layout', 'old');
+    seed('dk_layout.33333333.db', 'dk_layout', 'old');
+    seed('dk_layout.33333333.db-wal', 'dk_layout', 'old');
+    const service = await initialized();
+    await flush();
+    expect(
+      [...fake.files.keys()].filter(name => name.startsWith('dk_layout')),
+    ).toEqual([]);
+
+    seed('dk_layout.44444444.db', 'dk_layout', 'old');
+    await service.resetDatabases();
+    expect(fake.files.has('dk_layout.44444444.db')).toBe(false);
   });
 
   it('leaves a stale copy that something else holds open and keeps sweeping', async () => {
@@ -640,12 +670,10 @@ describe('switchRewayah', () => {
     // @ai-start
     // Warsh draws its own basmala lines: their data version is in the key.
     expect(service.getLayoutIdentityKey()).toBe(
-      `warsh@${sha8('dk_words_warsh.db')}.${sha8('digital-khatt-15-lines.db')}` +
+      `warsh@${sha8('dk_words_warsh.db')}.${LAYOUT_SHA8}` +
         `.${rewayahBasmalaService.getDataVersion('warsh')}`,
     );
     // @ai-end
-    // Shared layout DB: not read again.
-    expect(count(`read:${N.layout}`)).toBe(1);
     // Listener first (after the swap, version already bumped), then cache
     // subscribers; each exactly once.
     expect(events).toEqual([
@@ -1236,7 +1264,7 @@ describe('basmallah lines (contract C6)', () => {
 
   it('a rewayah with its own basmala has its data version in the layout identity; Hafs keeps its key', async () => {
     const service = await initialized();
-    const hafsKey = `hafs@${sha8('digital-khatt-v2.db')}.${sha8('digital-khatt-15-lines.db')}`;
+    const hafsKey = `hafs@${sha8('digital-khatt-v2.db')}.${LAYOUT_SHA8}`;
     expect(service.getLayoutIdentityKey()).toBe(hafsKey);
     expect(getRewayahDataIdentityKey('hafs')).toBe(hafsKey);
     expect(getRewayahDataIdentity('hafs')).not.toHaveProperty('basmalaVersion');
@@ -1247,7 +1275,7 @@ describe('basmallah lines (contract C6)', () => {
     expect(service.getDataIdentity()).toEqual({
       rewayah: 'al-susi',
       wordsSha8: sha8('dk_words_soosi.db'),
-      layoutSha8: sha8('digital-khatt-15-lines.db'),
+      layoutSha8: LAYOUT_SHA8,
       basmalaVersion: version,
     });
     // The identity the layout-cache pruning compares with is the same.

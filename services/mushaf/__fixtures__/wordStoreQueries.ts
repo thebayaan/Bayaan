@@ -7,10 +7,11 @@
  *
  *   return withWordStoreQueries({getFirstAsync, getAllAsync, closeAsync});
  *
- * The verse-index read (its GROUP BY) goes through the fake's own
- * getAllAsync, so read counts, gates and broken-file failures stay as they
- * were; its rows are kept, and the integrity counts and the synchronous id
- * range reads (getFirstSync) are answered from them. Not imported by app code.
+ * The integrity counts read the rows through the fake's own getAllAsync, so
+ * read counts, gates and broken-file failures stay as they were; the rows are
+ * kept, and the synchronous id range reads (getFirstSync) are answered from
+ * them. A test also needs fakeMushafTables() for the generated tables. Not
+ * imported by app code.
  */
 export interface FakeWordRow {
   id: number;
@@ -34,14 +35,15 @@ export function withWordStoreQueries<T extends FakeDb>(
     ...db,
     async getFirstAsync(sql: string, ...rest: unknown[]) {
       if (!sql.includes('COUNT(*)')) return db.getFirstAsync(sql, ...rest);
-      const n = rows.length;
-      return {n, ids: n, texts: n, locations: n};
-    },
-    async getAllAsync(sql: string, ...rest: unknown[]) {
-      const result = await db.getAllAsync(sql, ...rest);
-      if (!sql.includes('GROUP BY')) return result;
-      rows = result as FakeWordRow[];
-      return verseIndexRows(rows);
+      rows = (await db.getAllAsync(
+        'SELECT id, text, location FROM words;',
+      )) as FakeWordRow[];
+      return {
+        n: rows.length,
+        ids: rows.filter(row => row.id != null).length,
+        texts: rows.filter(row => row.text != null).length,
+        locations: rows.filter(row => row.location != null).length,
+      };
     },
     getAllSync(_sql: string, params: unknown[] = []) {
       const [from, to] = params.map(Number);
@@ -77,4 +79,28 @@ export function verseIndexRows(rows: readonly FakeWordRow[]) {
     }
   }
   return [...verses.values()].sort((a, b) => a.first - b.first);
+}
+
+/**
+ * A stand-in for mushafTables.ts, for a test whose fake DB holds a few words:
+ * `locations` are the words' locations in id order, `lines` the page lines.
+ *
+ *   jest.mock('@/services/mushaf/mushafTables', () =>
+ *     jest.requireActual('@/services/mushaf/__fixtures__/wordStoreQueries')
+ *       .fakeMushafTables(['1:1:1', '1:1:2'], [...]));
+ */
+export function fakeMushafTables(
+  locations: readonly string[],
+  lines: readonly unknown[],
+) {
+  const {buildVerseIndex} = jest.requireActual('../wordStore');
+  return {
+    loadVerseIndex: () =>
+      buildVerseIndex(
+        verseIndexRows(
+          locations.map((location, i) => ({id: i + 1, text: '', location})),
+        ),
+      ),
+    loadPageLineRows: () => lines,
+  };
 }

@@ -32,6 +32,34 @@ jest.mock('@react-native-async-storage/async-storage', () =>
 
 jest.mock('@/utils/toastUtils', () => ({showToast: jest.fn()}));
 
+jest.mock('@/services/mushaf/mushafTables', () =>
+  jest
+    .requireActual('@/services/mushaf/__fixtures__/wordStoreQueries')
+    .fakeMushafTables(
+      ['1:1:1', '1:1:2', '1:2:1', '1:2:2', '2:1:1', '2:1:2'],
+      [
+        {
+          page_number: 1,
+          line_number: 1,
+          line_type: 'ayah',
+          is_centered: 0,
+          first_word_id: 1,
+          last_word_id: 4,
+          surah_number: 1,
+        },
+        {
+          page_number: 2,
+          line_number: 1,
+          line_type: 'ayah',
+          is_centered: 0,
+          first_word_id: 5,
+          last_word_id: 6,
+          surah_number: 2,
+        },
+      ],
+    ),
+);
+
 jest.mock('expo-sqlite', () => {
   // @ai the WordStore's queries (DigitalKhattDataService).
   const {withWordStoreQueries} = jest.requireActual(

@@ -6,8 +6,8 @@
  *   BAYAAN_OVERLAY_DB_DIR=bundled npx jest DigitalKhattDataService.perPage.alldbs --watchAll=false
  *
  * The real DigitalKhattDataService loads each of the 8 bundled words DBs as a
- * WordStore: a verse index at load, the words in chunks when a getter needs
- * them. Every getter must give exactly what the old full build gave: all
+ * WordStore: the generated verse index at load, the words in chunks when a
+ * getter needs them. Every getter must give exactly what the old full build gave: all
  * 83,668 words read in one statement, grouped by verse, the surah start
  * pages from the first word of each ayah line, and the page of every verse
  * from its words. The reference below is that old build, run here directly
@@ -203,8 +203,9 @@ run('the words read on demand (local only)', () => {
       const readsBefore = fake().reads.filter(b => b === base).length;
       await dk.initialize();
       expect(dk.rewayah).toBe(rewayah);
-      // One asynchronous read of the words DB at load: the verse index.
-      expect(fake().reads.filter(b => b === base).length - readsBefore).toBe(1);
+      // No asynchronous read of the words DB at load: the verse index is
+      // generated, and the integrity counts need no rows.
+      expect(fake().reads.filter(b => b === base).length - readsBefore).toBe(0);
 
       for (const [id, text] of ref.texts) {
         expect(dk.getWordText(id)).toBe(text);

@@ -10,8 +10,6 @@
 // services/mushaf/__tests__/rewayahDataManifest.test.ts fails when stale.
 
 export const REWAYAH_DATA_MANIFEST: Readonly<Record<string, string>> = {
-  'digital-khatt-15-lines.db':
-    'bca39e611d305a6261e99c1b501a855f18861f9e58044825db0fd8d598e29728',
   'digital-khatt-v2.db':
     'd6f5ffbd13ed208d735a8cf569b8b889993f8f086e55f7354533ae4f784d3798',
   'dk_words_bazzi.db':
@@ -35,7 +33,6 @@ export const REWAYAH_DATA_MANIFEST: Readonly<Record<string, string>> = {
 // a copy that was cut short (a copy can still open after that, with its
 // last words silently altered).
 export const REWAYAH_DATA_MD5: Readonly<Record<string, string>> = {
-  'digital-khatt-15-lines.db': 'b52a3dd59f9cdf985b896a607c259953',
   'digital-khatt-v2.db': '53c536a769d8a05eebb1f5229d01f966',
   'dk_words_bazzi.db': '634ac32cd1e70a891c13f76d4f856290',
   'dk_words_doori.db': '891a18a77bd74f035ca257b8d2ee19c6',
@@ -45,3 +42,9 @@ export const REWAYAH_DATA_MD5: Readonly<Record<string, string>> = {
   'dk_words_soosi.db': '228b8865b110667fdaf5262232335fe0',
   'dk_words_warsh.db': 'b7ad41282b8b303c269d8d05e50610a0',
 };
+
+// sha256 of digital-khatt-15-lines.db. It is not bundled: the page lines are
+// generated from it (mushafTables.generated.ts). This names the layout in
+// the data identity keys, so saved layouts stay valid until it changes.
+export const LAYOUT_SOURCE_SHA256 =
+  'bca39e611d305a6261e99c1b501a855f18861f9e58044825db0fd8d598e29728';
