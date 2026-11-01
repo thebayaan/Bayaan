@@ -15,10 +15,17 @@ interface BundledRow {
 type Service = typeof import('../TafseerDbService').tafseerDbService;
 type MockModule = typeof import('@/test-utils/mockExpoSqlite');
 
+// @ai-start
+// Each isolated registry has its own sqlite mock with its own folder. afterEach
+// resets them, and a reset removes the folder.
+const isolatedMocks: MockModule[] = [];
+// @ai-end
+
 function freshService(): Service {
   let service: Service | undefined;
   jest.isolateModules(() => {
     service = require('../TafseerDbService').tafseerDbService;
+    isolatedMocks.push(require('@/test-utils/mockExpoSqlite')); // @ai
   });
   if (!service) throw new Error('service not loaded');
   return service;
@@ -30,8 +37,13 @@ beforeEach(async () => {
   await resetDatabases();
 });
 
-afterEach(() => {
+afterEach(async () => {
   jest.restoreAllMocks();
+  // @ai-start
+  for (const isolated of isolatedMocks.splice(0)) {
+    await isolated.resetDatabases();
+  }
+  // @ai-end
 });
 
 describe('TafseerDbService (characterization, develop behavior)', () => {
@@ -122,6 +134,7 @@ describe('TafseerDbService (characterization, develop behavior)', () => {
       mock = require('@/test-utils/mockExpoSqlite');
     });
     if (!svc || !mock) throw new Error('service not loaded');
+    isolatedMocks.push(mock); // @ai
     await svc.initialize();
     await svc.importBundledIbnKathir();
     await svc.importBundledIbnKathir();
