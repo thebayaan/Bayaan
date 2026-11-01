@@ -30,6 +30,7 @@ import {
 } from '@/services/mushaf/MushafVerseMapService';
 // @ai-end
 import {mushafSessionStore} from '@/services/mushaf/MushafSessionStore';
+import {endReaderRestore} from '@/services/mushaf/readerRestoreState'; // @ai
 import {
   formatPlaybackInfo, // @ai
   getPlaybackNotice, // @ai
@@ -174,6 +175,9 @@ export default function MushafScreen() {
     mushafSessionStore.setLastScreenWasMushaf(true);
     return () => {
       mushafSessionStore.setLastScreenWasMushaf(false);
+      // With no reader there is nothing to wait for: a return to Home renders
+      // it at once. @ai
+      endReaderRestore(); // @ai
       // Reset UI state in store when leaving mushaf
       useMushafPlayerStore.setState({
         isImmersive: false,

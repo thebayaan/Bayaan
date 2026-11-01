@@ -4,6 +4,7 @@ import React, {
   useRef,
   useEffect,
   useImperativeHandle,
+  useState, // @ai
   useSyncExternalStore,
   forwardRef,
 } from 'react';
@@ -17,6 +18,7 @@ import {
   type SkTypefaceFontProvider,
 } from '@shopify/react-native-skia';
 import {useMushafFontMgr} from '@/hooks/useMushafFontMgr';
+import {useFirstContent} from '@/hooks/useFirstContent'; // @ai
 import {Gesture, GestureDetector} from 'react-native-gesture-handler';
 import {runOnJS} from 'react-native-worklets';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -186,6 +188,7 @@ interface ContinuousMushafViewProps {
   metrics: MushafLayoutMetrics;
   /** Whether a tap on the status bar scrolls back to page 1. Default on. @ai */
   scrollsToTop?: boolean; // @ai
+  onFirstContent?: () => void; // @ai
 }
 
 // ── Per-page content with gestures + highlights ──────────
@@ -706,6 +709,7 @@ const ContinuousMushafView = forwardRef<
       onCurrentPageChange,
       metrics,
       scrollsToTop = true, // @ai
+      onFirstContent, // @ai
     },
     ref,
   ) => {
@@ -718,6 +722,14 @@ const ContinuousMushafView = forwardRef<
     // Subscribe to preloaded fontMgr; no useFonts fallback that races
     // at first-mount.
     const fontMgr = useMushafFontMgr();
+
+    // @ai-start
+    // FlashList raises onLoad once it has drawn the visible items. An item is
+    // empty while there is no fontMgr, so the first content needs both.
+    const [listDrawn, setListDrawn] = useState(false);
+    const handleListLoad = useCallback(() => setListDrawn(true), []);
+    useFirstContent(listDrawn && fontMgr !== null, onFirstContent);
+    // @ai-end
 
     // Surah header fonts (computed once from quranCommon typeface).
     // `fontMgr` dep mirrors the SkiaPage memo: when the preload completes
@@ -893,6 +905,7 @@ const ContinuousMushafView = forwardRef<
         scrollsToTop={scrollsToTop} // @ai
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={{itemVisiblePercentThreshold: 50}}
+        onLoad={handleListLoad} // @ai
       />
     );
   },

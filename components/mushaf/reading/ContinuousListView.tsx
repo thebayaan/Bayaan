@@ -3,6 +3,7 @@ import React, {
   useCallback,
   useEffect, // @ai
   useRef,
+  useState, // @ai
   useImperativeHandle,
   forwardRef,
 } from 'react';
@@ -41,6 +42,7 @@ import {
 } from '../constants';
 // @ai-start
 import {useRewayahVerseUnits} from '@/hooks/useRewayahVerseUnits';
+import {useFirstContent} from '@/hooks/useFirstContent';
 import {parseAnchorKey} from '@/services/mushaf/RewayahVerseUnits';
 import {shownVerseUnitsOf} from '@/services/mushaf/MushafVerseMapService';
 import {isVerseUnitRow} from '@/components/player/v2/PlayerContent/QuranView/verseUnitRows';
@@ -195,6 +197,7 @@ interface ContinuousListViewProps {
   width?: number;
   /** Whether a tap on the status bar scrolls back to the start. Default on. */
   scrollsToTop?: boolean;
+  onFirstContent?: () => void;
   // @ai-end
 }
 
@@ -214,12 +217,16 @@ const ContinuousListView = forwardRef<
       onCurrentPageChange,
       width,
       scrollsToTop = true,
+      onFirstContent,
     },
     ref,
   ) => {
     const {theme} = useTheme();
     const insets = useSafeAreaInsets();
     const flashListRef = useRef<FlashListRef<ContinuousListItem>>(null);
+    // FlashList raises onLoad once it has drawn the visible rows.
+    const [listDrawn, setListDrawn] = useState(false);
+    const handleListLoad = useCallback(() => setListDrawn(true), []);
 
     // Active ayah highlighting (same pattern as player QuranView): every
     // Hafs verse the reciter is reciting.
@@ -266,6 +273,14 @@ const ContinuousListView = forwardRef<
     useEffect(() => {
       unitListRef.current = unitList;
     }, [unitList]);
+    // The rows, or the message of a rewayah whose verse units failed. A spinner
+    // is no content: the restore deadline covers a long wait.
+    useFirstContent(
+      listDrawn ||
+        (unitsRewayah !== null &&
+          (verseUnitsStatus === 'error' || verseUnitsStatus === 'unavailable')),
+      onFirstContent,
+    );
     // @ai-end
 
     // Expose navigation methods to parent
@@ -556,6 +571,7 @@ const ContinuousListView = forwardRef<
         scrollsToTop={scrollsToTop}
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={{itemVisiblePercentThreshold: 50}}
+        onLoad={handleListLoad} // @ai
       />
     );
   },

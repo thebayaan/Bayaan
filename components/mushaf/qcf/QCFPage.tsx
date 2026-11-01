@@ -79,6 +79,7 @@ import {
 import {getAllahNameHighlightColorHex} from '@/constants/mushafAllahHighlight';
 import {useTheme} from '@/hooks/useTheme';
 import {useTranslation} from 'react-i18next'; // @ai
+import {useFirstContent} from '@/hooks/useFirstContent'; // @ai
 import SkiaSurahHeader from '../skia/SkiaSurahHeader';
 import {
   type MushafLayoutMetrics, // @ai
@@ -94,6 +95,7 @@ interface QCFPageProps {
   contentMarginLeft?: number;
   onReady?: () => void;
   onTap?: () => void;
+  onFirstContent?: () => void; // @ai
 }
 
 const lineParStyle = {
@@ -143,6 +145,7 @@ const QCFPage: React.FC<QCFPageProps> = ({
   contentMarginLeft,
   onReady,
   onTap,
+  onFirstContent, // @ai
 }) => {
   // @ai-start
   const {
@@ -712,6 +715,9 @@ const QCFPage: React.FC<QCFPageProps> = ({
     }
     if (renderEntries.length > 0) onReady?.();
   }, [renderEntries.length, error, onReady]);
+  // @ai — the same moment as onReady: the page's lines, or its error state with
+  // a retry when a page font cannot load (offline). Once, also after a retry.
+  useFirstContent(error !== null || renderEntries.length > 0, onFirstContent);
 
   const handleTap = useCallback(() => {
     onTap?.();

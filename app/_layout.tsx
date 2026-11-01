@@ -63,6 +63,16 @@ import {SheetManager} from 'react-native-actions-sheet';
 import {showToast} from '@/utils/toastUtils';
 import {mushafSessionStore} from '@/services/mushaf/MushafSessionStore';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService'; // @ai
+// @ai-start
+import {
+  beginReaderRestore,
+  getReaderRestoreState,
+  noteReaderPushed,
+  readerRestoreHoldsSplash,
+  shouldPushReader,
+  subscribeReaderRestore,
+} from '@/services/mushaf/readerRestoreState';
+// @ai-end
 import {USE_GLASS} from '@/hooks/useGlassProps';
 import Constants from 'expo-constants';
 import * as Sentry from '@sentry/react-native';
@@ -175,6 +185,10 @@ function RootLayout() {
   // Start reloads after the root has mounted, when native reload listeners are
   // ready, rather than as a side effect of importing translation resources.
   useEffect(bootstrapDirection, []);
+  // The restore state of this launch (services/mushaf/readerRestoreState.ts).
+  // No route renders before the boot ends, so the home route never reads it
+  // before this runs.
+  useEffect(beginReaderRestore, []);
   const [appIsReady, setAppIsReady] = useState(false);
   const [isPlayerReady, setIsPlayerReady] = useState(false);
   const [mushafRestoreHandled, setMushafRestoreHandled] = useState(false);
@@ -411,30 +425,39 @@ function RootLayout() {
     if (!appIsReady || !isPlayerReady || hasShareIntent) return;
 
     let cancelled = false;
+    // @ai-start
+    // The restore state lets the splash go at the reader's first content or at
+    // its deadline. A first content hides the splash here, not after a root
+    // render: on a slow phone the next pages' builds hold that render.
+    const stopWatchingRestore = subscribeReaderRestore(() => {
+      if (readerRestoreHoldsSplash()) return;
+      if (getReaderRestoreState() === 'shown') {
+        hideSplash().catch(() => undefined);
+      }
+      setMushafRestoreHandled(true);
+    });
+    // @ai-end
     // A launch from a deep link (widget tap, notification) already routed
     // to its target; pushing the mushaf on top would hide it.
     Linking.getInitialURL()
       .catch(() => null)
       .then(initialUrl => {
         if (cancelled) return;
-        const lastScreenWasMushaf = mushafSessionStore.getLastScreenWasMushaf();
-        const lastReadPage = mushafSessionStore.getLastReadPage();
-
-        if (!lastScreenWasMushaf || initialUrl) {
-          setMushafRestoreHandled(true);
-          return;
+        // @ai-start
+        if (shouldPushReader(initialUrl)) {
+          const lastReadPage = mushafSessionStore.getLastReadPage();
+          router.push({
+            pathname: '/mushaf',
+            params: lastReadPage ? {page: String(lastReadPage)} : undefined,
+          });
+          noteReaderPushed();
         }
-        router.push({
-          pathname: '/mushaf',
-          params: lastReadPage ? {page: String(lastReadPage)} : undefined,
-        });
-        // Let the navigation animation finish behind the splash before revealing
-        runAfterInteractions(() => {
-          setMushafRestoreHandled(true);
-        });
+        if (!readerRestoreHoldsSplash()) setMushafRestoreHandled(true);
+        // @ai-end
       });
     return () => {
       cancelled = true;
+      stopWatchingRestore(); // @ai
     };
   }, [appIsReady, isPlayerReady, hasShareIntent]);
 
