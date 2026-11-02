@@ -246,9 +246,22 @@ const BasmalaHeader: React.FC<BasmalaHeaderProps> = ({
     // Extra horizontal room so the basm glyph isn't clipped at canvas edges.
     // V2 font renders a wider basm glyph — scale padding with width for larger devices.
     const hPad = Math.max(moderateScale(16), width * 0.06);
+    // Why the basmala could go blank (it "just goes empty"): Skia hands a
+    // canvas's picture to its native view only once. If Fabric moves the
+    // native view to another parent, iOS builds a fresh draw view with no
+    // picture, and nothing redraws it until the canvas's own content
+    // changes. Toggling `hidden` (overflow: hidden) on a flattenable
+    // container did exactly that, e.g. playing on from al-Fatiha or
+    // at-Tawbah, and the basmala text was the same, so it stayed empty.
+    //  - collapsable={false}: the container is never flattened, so the
+    //    style toggle no longer re-parents the canvas;
+    //  - key: whenever the basmala is shown again, mount a fresh canvas,
+    //    which records and sends its picture on mount.
     return (
-      <View style={containerStyle}>
-        <Canvas style={{width: width + hPad * 2, height, direction: 'rtl'}}>
+      <View style={containerStyle} collapsable={false}>
+        <Canvas
+          key={visible ? 'shown' : 'hidden'}
+          style={{width: width + hPad * 2, height, direction: 'rtl'}}>
           {strokeParagraph && (
             <Paragraph
               paragraph={strokeParagraph}
