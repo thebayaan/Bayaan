@@ -17,7 +17,11 @@ import {GlassView} from 'expo-glass-effect';
 import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {useTheme} from '@/hooks/useTheme';
-import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
+import {
+  USE_GLASS,
+  useGlassColorScheme,
+  useGlassTint, // @ai
+} from '@/hooks/useGlassProps';
 import {FrostedView} from '@/components/FrostedView';
 import {
   measureMiniPlayerAnchor,
@@ -68,6 +72,7 @@ const BACKDROP_OPACITY = 0.5;
 export const PlayerSurface = () => {
   const {theme} = useTheme();
   const glassColorScheme = useGlassColorScheme();
+  const glassTint = useGlassTint(); // @ai
   const {width: screenWidth, height: screenHeight} = useWindowDimensions();
   const reducedMotion = useReducedMotion();
   const {setSheetMode, setImmersive} = usePlayerActions();
@@ -375,6 +380,7 @@ export const PlayerSurface = () => {
               style={StyleSheet.absoluteFill}
               glassEffectStyle="regular"
               colorScheme={glassColorScheme}
+              tintColor={glassTint} // @ai: the shared glass tint
             />
           </Animated.View>
         ) : (
