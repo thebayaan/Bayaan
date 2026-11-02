@@ -21,6 +21,7 @@ import {
   useWindowDimensions,
   type LayoutChangeEvent,
 } from 'react-native';
+import type {ViewInstance} from 'react-native'; // @ai
 import {useResponsive} from '@/hooks/useResponsive';
 import {FlatList} from 'react-native-gesture-handler';
 import Animated, {
@@ -665,6 +666,20 @@ export default function MushafViewer({
   const headerTitleWidth =
     windowWidth -
     2 * (HEADER_EDGE_INSET + HEADER_SIDE_WIDTH + HEADER_TITLE_GAP);
+  // How far the title pill is moved onto the screen's midline.
+  const [titleShift, setTitleShift] = useState(0);
+  const titleShiftRef = useRef(0);
+  const titlePillRef = useRef<ViewInstance>(null);
+  const centerTitlePill = useCallback(() => {
+    titlePillRef.current?.measureInWindow((x, _y, w) => {
+      // x includes the current shift; take it out to get where it lands.
+      const landed = x - titleShiftRef.current + w / 2;
+      const next = Math.round((windowWidth / 2 - landed) * 2) / 2;
+      if (Math.abs(next - titleShiftRef.current) < 0.5) return;
+      titleShiftRef.current = next;
+      setTitleShift(next);
+    });
+  }, [windowWidth]);
   // A paged, `inverted` FlatList preserves its pixel scroll offset when its
   // items resize, so the visible page drifts to a different index (old offset
   // ÷ new item width); `initialScrollIndex` is mount-only and never re-fires.
@@ -949,13 +964,17 @@ export default function MushafViewer({
       ...tintedRootBackOptions(HEADER_SIDE_WIDTH),
       headerSearchBarOptions: undefined,
       headerTitle: () => (
-        // @ai: iOS centers the title's box on the screen but keeps the box's
-        // first width; a wider pill would overflow it to the right. The pill
-        // centers in the box (overflowing evenly), so it sits on the screen's
-        // midline whatever the name's length, and its width is capped at the
-        // space between the side items: a long name truncates.
+        // @ai: the native title box and React's layout of it disagree on
+        // its width, so the pill lands off center (more for longer names).
+        // It measures where it lands and shifts onto the screen's midline;
+        // its width is capped at the space between the side items, so a
+        // long name truncates.
         <View
-          style={USE_GLASS ? {width: '100%', alignItems: 'center'} : undefined}>
+          ref={titlePillRef}
+          onLayout={USE_GLASS ? centerTitlePill : undefined}
+          style={
+            USE_GLASS ? {transform: [{translateX: titleShift}]} : undefined
+          }>
           <TitleWrapper
             {...titleWrapperProps}
             style={{
@@ -1027,6 +1046,8 @@ export default function MushafViewer({
     t,
     glassTint, // @ai
     headerTitleWidth, // @ai
+    titleShift, // @ai
+    centerTitlePill, // @ai
   ]);
 
   const onViewableItemsChanged = useCallback(
