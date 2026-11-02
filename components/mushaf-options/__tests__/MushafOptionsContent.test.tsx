@@ -116,10 +116,10 @@ jest.mock('@/services/mushaf/QCFFontLoader', () => ({
 jest.mock('@/services/mushaf/QCFDataService', () => ({
   qcfDataService: {
     getWordsForLine: (page: number, line: number) =>
-      page === 604 && line === 3
+      page === 531 && line === 7
         ? [
-            {code: 'a', location: '112:1:1'},
-            {code: 'b', location: '112:2:1'},
+            {code: 'a', location: '55:4:1'},
+            {code: 'b', location: '55:5:1'},
           ]
         : [],
   },
@@ -627,7 +627,7 @@ describe('special cases', () => {
     expect(chooseMushafRewayah).not.toHaveBeenCalled();
   });
 
-  it('draws the Mushaf 1440 sample in its page-604 font once downloaded', () => {
+  it('draws the Mushaf 1440 sample in its page-531 font once downloaded', () => {
     const fonts = (r: TestRenderer.ReactTestRenderer) =>
       r.root
         .findAll(node => node.props.testID === 'quran-text')
@@ -635,13 +635,13 @@ describe('special cases', () => {
     let r = render(<MushafOptionsContent />);
     press(r, 'mushaf-options-mushaf-text');
     // Not downloaded: the Madani 1421 face stands in.
-    expect(fonts(r)).not.toContain('p604-v2');
+    expect(fonts(r)).not.toContain('p531-v2');
     act(() => r.unmount());
 
     mockQcfSamplePageReady = true;
     r = render(<MushafOptionsContent />);
     press(r, 'mushaf-options-mushaf-text');
-    expect(fonts(r)).toContain('p604-v2');
+    expect(fonts(r)).toContain('p531-v2');
   });
 
   it('keeps the Mushaf 1440 beta alert', async () => {
