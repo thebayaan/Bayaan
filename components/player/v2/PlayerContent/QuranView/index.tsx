@@ -542,14 +542,16 @@ export const QuranView: React.FC<QuranViewProps> = ({
     }
   }, [currentSurah, initialScrollIndex, setIsLocked, hasRows]); // @ai
 
-  // Auto-scroll to active ayah (only when locked)
-  // @ai — the active row (a non-Hafs track: the band's first verse)
-  useEffect(() => {
-    if (!activeRowKey || !isLocked || !listRef.current) return;
-
-    const index = listData.findIndex(v => v.verse_key === activeRowKey);
-    if (index === -1) return;
-
+  // @ai-start
+  // Brings a verse row into view. The first verse goes to the top of the
+  // list instead, so the surah divider and basmala above it stay on screen
+  // rather than scrolling off as the recitation reaches verse 1.
+  const scrollToRow = useCallback((index: number) => {
+    if (!listRef.current) return;
+    if (index === 0) {
+      listRef.current.scrollToOffset({offset: 0, animated: true});
+      return;
+    }
     try {
       listRef.current.scrollToIndex({
         index,
@@ -558,9 +560,21 @@ export const QuranView: React.FC<QuranViewProps> = ({
         viewOffset: -headerHeightRef.current,
       });
     } catch {
-      // Index may be out of range during recycling — ignore
+      // Index may be out of range during recycling: ignore
     }
-  }, [activeRowKey, listData, isLocked]); // @ai
+  }, []);
+  // @ai-end
+
+  // Auto-scroll to active ayah (only when locked)
+  // @ai — the active row (a non-Hafs track: the band's first verse)
+  useEffect(() => {
+    if (!activeRowKey || !isLocked || !listRef.current) return;
+
+    const index = listData.findIndex(v => v.verse_key === activeRowKey);
+    if (index === -1) return;
+
+    scrollToRow(index);
+  }, [activeRowKey, listData, isLocked, scrollToRow]); // @ai
 
   // Render verse items — annotations handled inside VerseItem via per-key selectors
   const renderItem = useCallback(
@@ -724,14 +738,7 @@ export const QuranView: React.FC<QuranViewProps> = ({
             setIsLocked(true);
             // @ai — the active row (a non-Hafs track: the band's first verse)
             const index = listData.findIndex(v => v.verse_key === activeRowKey);
-            if (index !== -1 && listRef.current) {
-              listRef.current.scrollToIndex({
-                index,
-                animated: true,
-                viewPosition: 0.3,
-                viewOffset: -headerHeightRef.current,
-              });
-            }
+            if (index !== -1) scrollToRow(index);
           }}>
           <Ionicons name="locate-outline" size={20} color={theme.colors.text} />
         </Pressable>
