@@ -537,14 +537,6 @@ function RootLayout() {
                             ? 'slide_from_left'
                             : 'slide_from_right',
                           fullScreenGestureEnabled: false,
-                          // @ai: the toolbar floats over the page. With
-                          // Reduce Transparency on, iOS 26+ draws the
-                          // automatic edge effect as a solid bar.
-                          scrollEdgeEffects: {
-                            bottom: 'hidden',
-                            left: 'hidden',
-                            right: 'hidden',
-                          },
                         }}
                       />
                       {/* @ai-start */}
