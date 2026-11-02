@@ -320,9 +320,9 @@ export function MushafTextScreen({
   );
 }
 
-/** The sample verse: Al-Ikhlas 112:1, on the last mushaf page. */
-const SAMPLE_VERSE_KEY = '112:1';
-const SAMPLE_QCF_PAGE = 604;
+/** The sample verse: Ar-Rahman 55:4, with the word al-bayan. */
+const SAMPLE_VERSE_KEY = '55:4';
+const SAMPLE_QCF_PAGE = 531;
 const SAMPLE_QCF_LINES = 15;
 
 /** The sample verse's QCF glyphs (its words and end mark), in order. */
