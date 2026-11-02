@@ -3,8 +3,7 @@
  *
  * Reciter (hero), what to play (Page / Surah / Juz / Custom presets and the
  * range), repeat counters, speed and a floating Play button. "Custom" and
- * the range card open the verses page (mushaf-player/VersePicker), which can
- * also hand the choice to the page itself (store/mushafRangePickStore).
+ * the range card open the verses page (mushaf-player/VersePicker).
  */
 
 // @ai-start
@@ -98,21 +97,6 @@ export const MushafPlayerOptionsSheet = (
   const isWide = windowWidth >= TABLET_MIN_WIDTH;
 
   const currentPage = props.payload?.currentPage ?? 1;
-  // Back from "pick on the page": its range and the settings kept meanwhile.
-  const [returning] = useState(() => {
-    // An active pick means this open is its return (Use or Cancel), whether
-    // or not the payload has reached this first render.
-    const {active, range, draft} = useMushafRangePickStore.getState();
-    if (!active && !props.payload?.fromPick) return null;
-    return {range, draft};
-  });
-  // The pick is over once the sheet is back (not during render).
-  useEffect(() => {
-    if (useMushafRangePickStore.getState().active) {
-      useMushafRangePickStore.getState().end();
-    }
-  }, []);
-
   // Store
   const storeRewayatId = useMushafPlayerStore(s => s.rewayatId);
   const storeReciterName = useMushafPlayerStore(s => s.reciterName);
@@ -157,7 +141,6 @@ export const MushafPlayerOptionsSheet = (
   );
 
   const initialRange = (): VerseRange => {
-    if (returning?.range) return returning.range;
     const pending = pickerPendingStart(
       numbering,
       useMushafPlayerStore.getState(),
@@ -177,17 +160,13 @@ export const MushafPlayerOptionsSheet = (
     detectPreset(env, range, currentPage),
   );
   const [selectedRewayatId, setSelectedRewayatId] = useState<string | null>(
-    returning?.draft?.rewayatId ?? storeRewayatId,
+    storeRewayatId,
   );
   const [selectedReciterName, setSelectedReciterName] = useState<string | null>(
-    returning?.draft?.reciterName ?? storeReciterName,
+    storeReciterName,
   );
-  const [verseRepeat, setVerseRepeat] = useState(
-    returning?.draft?.verseRepeat ?? storeVerseRepeat,
-  );
-  const [rangeRepeat, setRangeRepeat] = useState(
-    returning?.draft?.rangeRepeat ?? storeRangeRepeat,
-  );
+  const [verseRepeat, setVerseRepeat] = useState(storeVerseRepeat);
+  const [rangeRepeat, setRangeRepeat] = useState(storeRangeRepeat);
   const [view, setView] = useState<'main' | 'verses'>('main');
   const [target, setTarget] = useState<RangeTarget>('end');
 
@@ -399,27 +378,6 @@ export const MushafPlayerOptionsSheet = (
     numberingId,
   ]);
 
-  const handlePickOnPage = useCallback(() => {
-    useMushafRangePickStore.getState().start(
-      currentPage,
-      {
-        rewayatId: selectedRewayatId,
-        reciterName: selectedReciterName,
-        verseRepeat,
-        rangeRepeat,
-      },
-      range,
-    );
-    hideSheet('mushaf-player-options');
-  }, [
-    currentPage,
-    selectedRewayatId,
-    selectedReciterName,
-    verseRepeat,
-    rangeRepeat,
-    range,
-  ]);
-
   // Native sheet: end the Play capsule where every sheet ends, at the home
   // indicator's inset and no further.
   const bottomInset = useSheetBottomPadding(insets.bottom + ms(12));
@@ -522,7 +480,6 @@ export const MushafPlayerOptionsSheet = (
         onTargetChange={setTarget}
         onBack={() => setView('main')}
         onDone={() => setView('main')}
-        onPickOnPage={handlePickOnPage}
         bottomInset={bottomInset}
       />
     </View>

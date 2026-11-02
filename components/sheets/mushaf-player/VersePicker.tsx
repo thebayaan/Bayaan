@@ -1,9 +1,9 @@
 // @ai-generated
 /**
- * The verses page of the Mushaf Listen sheet. Four ways to the same range:
+ * The verses page of the Mushaf Listen sheet. Three ways to the same range:
  * tap verse numbers (tap the first, then the last), read the opening of
- * each verse, type a reference ("2:255-257", "mulk 1-10", "juz 30"), or
- * pick on the page itself (onPickOnPage). Quick extends move the end.
+ * each verse, or type a reference ("2:255-257", "mulk 1-10", "juz 30").
+ * Quick extends move the end.
  */
 
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
@@ -63,7 +63,6 @@ interface VersePickerProps {
   onTargetChange: (target: RangeTarget) => void;
   onBack: () => void;
   onDone: () => void;
-  onPickOnPage: () => void;
   bottomInset: number;
 }
 
@@ -107,7 +106,6 @@ export function VersePicker({
   onTargetChange,
   onBack,
   onDone,
-  onPickOnPage,
   bottomInset,
 }: VersePickerProps) {
   const {theme} = useTheme();
@@ -343,20 +341,7 @@ export function VersePicker({
   // field, so typing keeps the keyboard.
   const pinned = (
     <View>
-      <SheetHeader
-        title={t('mushafPlayer.editRange')}
-        onBack={onBack}
-        trailing={
-          <Pressable
-            onPress={onPickOnPage}
-            accessibilityRole="button"
-            accessibilityLabel={t('mushafPlayer.pickOnPage')}
-            hitSlop={8}
-            style={[styles.iconButton, {backgroundColor: c.chip}]}>
-            <Ionicons name="hand-left-outline" size={ms(17)} color={c.text} />
-          </Pressable>
-        }
-      />
+      <SheetHeader title={t('mushafPlayer.editRange')} onBack={onBack} />
       <View style={styles.body}>
         <View style={styles.endpoints}>
           {endpoint('start')}
@@ -635,13 +620,6 @@ export function VersePicker({
 const styles = StyleSheet.create({
   fill: {flex: 1},
   body: {paddingHorizontal: ms(16), paddingTop: ms(10)},
-  iconButton: {
-    width: ms(36),
-    height: ms(36),
-    borderRadius: ms(18),
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   endpoints: {flexDirection: 'row', gap: ms(8)},
   endpoint: {
     flex: 1,
