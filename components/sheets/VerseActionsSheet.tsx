@@ -641,6 +641,9 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     }
     // Every Hafs verse the reciter verse recites (Warsh 2:1 = Hafs 2:1 + 2:2)
     useTimestampStore.getState().setCurrentAyah(target.tracking);
+    // Scrolling to pick the verse turned follow-along off; playing from it
+    // turns it back on, so the verse is highlighted and followed. @ai
+    useTimestampStore.getState().setIsLocked(true);
     // @ai-end
 
     hideCurrentSheet();
