@@ -28,6 +28,12 @@ import {SURAHS} from '@/data/surahData';
 import {localizeDigits} from '@/i18n/format';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import type {RangePickerNumbering} from '@/utils/playbackRangePicker';
+import SkiaVerseText from '@/components/player/v2/PlayerContent/QuranView/SkiaVerseText';
+import {useMushafFontMgr} from '@/hooks/useMushafFontMgr';
+import {
+  getDkFontFamily,
+  useMushafSettingsStore,
+} from '@/store/mushafSettingsStore';
 import {
   compareVerseKeys,
   countVerses,
@@ -79,6 +85,51 @@ function verseText(n: RangePickerNumbering, key: string): string {
     return unit ? n.units.unitText(unit) : '';
   }
   return digitalKhattDataService.tryGetVerseText(key, 'hafs') ?? '';
+}
+
+/**
+ * One line of a verse in the mushaf's DigitalKhatt font, cut with an
+ * ellipsis. DK text carries marks only that font draws, so a plain Text in
+ * another font shows stray dots; Text stands in until the fonts load.
+ */
+function VerseLine({
+  text,
+  rewayah,
+  color,
+}: {
+  text: string;
+  rewayah: RangePickerNumbering['rewayah'];
+  color: string;
+}): React.ReactElement {
+  const fontMgr = useMushafFontMgr();
+  const mushafRenderer = useMushafSettingsStore(s => s.mushafRenderer);
+  const [width, setWidth] = useState(0);
+  if (!fontMgr) {
+    return (
+      <Text style={[styles.verseText, {color}]} numberOfLines={1}>
+        {text}
+      </Text>
+    );
+  }
+  return (
+    <View
+      style={styles.verseLine}
+      onLayout={e => setWidth(e.nativeEvent.layout.width)}>
+      {width > 0 ? (
+        <SkiaVerseText
+          text={text}
+          fontMgr={fontMgr}
+          fontFamily={getDkFontFamily(mushafRenderer, rewayah)}
+          fontSize={ms(19)}
+          textColor={color}
+          showTajweed={false}
+          width={width}
+          indexedTajweedData={null}
+          maxLines={1}
+        />
+      ) : null}
+    </View>
+  );
 }
 
 /** The tap rule: first tap sets the start, the next one the end. */
@@ -272,9 +323,11 @@ export function VersePicker({
             {localizeDigits(item.split(':')[1])}
           </Text>
         </View>
-        <Text style={[styles.verseText, {color: c.text}]} numberOfLines={1}>
-          {verseText(n, item)}
-        </Text>
+        <VerseLine
+          text={verseText(n, item)}
+          rewayah={n.rewayah}
+          color={c.text}
+        />
       </Pressable>
     );
   };
@@ -742,6 +795,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Manrope-ExtraBold',
     fontVariant: ['tabular-nums'],
   },
+  verseLine: {flex: 1, direction: 'rtl'},
   verseText: {
     flex: 1,
     fontFamily: 'Uthmani',

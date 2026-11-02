@@ -47,15 +47,23 @@ const paragraphStyle: SkParagraphStyle = {
 // same style object as before, so existing callers are unchanged.
 export type SkiaVerseTextAlign = 'left' | 'right' | 'center';
 
-function paragraphStyleFor(align?: SkiaVerseTextAlign): SkParagraphStyle {
-  if (!align) return paragraphStyle;
-  const textAlign =
-    align === 'center'
+function paragraphStyleFor(
+  align?: SkiaVerseTextAlign,
+  maxLines?: number,
+): SkParagraphStyle {
+  if (!align && !maxLines) return paragraphStyle;
+  const textAlign = !align
+    ? undefined
+    : align === 'center'
       ? TextAlign.Center
       : align === 'left'
         ? TextAlign.Left
         : TextAlign.Right;
-  return {...paragraphStyle, textAlign};
+  return {
+    ...paragraphStyle,
+    ...(textAlign !== undefined && {textAlign}),
+    ...(maxLines && {maxLines, ellipsis: '\u2026'}),
+  };
 }
 // @ai-end
 
@@ -93,6 +101,8 @@ interface SkiaVerseTextProps {
   words?: readonly DKWordInfo[];
   /** Paragraph alignment; omitted keeps the RTL default (right edge). */
   textAlign?: SkiaVerseTextAlign;
+  /** Cut the verse after this many lines, ending in an ellipsis. */
+  maxLines?: number;
   // @ai-end
 }
 
@@ -113,6 +123,7 @@ const SkiaVerseText: React.FC<SkiaVerseTextProps> = ({
   renderPlaceholder, // @ai
   words: givenWords, // @ai
   textAlign, // @ai
+  maxLines, // @ai
 }) => {
   // When no explicit prop, follow the mushaf setting. This is the mushaf
   // list-mode / preview case; the player passes an explicit prop.
@@ -196,7 +207,7 @@ const SkiaVerseText: React.FC<SkiaVerseTextProps> = ({
 
     const buildParagraph = (withStroke: boolean) => {
       const builder = Skia.ParagraphBuilder.Make(
-        paragraphStyleFor(textAlign), // @ai
+        paragraphStyleFor(textAlign, maxLines), // @ai
         fontMgr,
       );
 
@@ -263,6 +274,7 @@ const SkiaVerseText: React.FC<SkiaVerseTextProps> = ({
     arabicTextWeight,
     allahNameHighlightColor,
     textAlign, // @ai
+    maxLines, // @ai
   ]);
 
   const {paragraph, strokeParagraph, height, yOffset} = built;
