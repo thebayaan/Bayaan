@@ -75,6 +75,10 @@ jest.mock('@/services/mushaf/RewayahVerseUnitsService', () => {
 });
 
 jest.mock('expo-sqlite', () => {
+  // @ai the WordStore's queries (DigitalKhattDataService).
+  const {withWordStoreQueries} = jest.requireActual(
+    '@/services/mushaf/__fixtures__/wordStoreQueries',
+  );
   const state: FakeSqlite = {files: new Set(), broken: new Set()};
   const baseOf = (name: string) =>
     name.replace(/\.db$/, '').replace(/\.[0-9a-f]{8}$/, '');
@@ -83,7 +87,7 @@ jest.mock('expo-sqlite', () => {
     defaultDatabaseDirectory: '/data/user/0/app.test/files/SQLite',
     async openDatabaseAsync(name: string) {
       const base = baseOf(name);
-      return {
+      return withWordStoreQueries({
         async getFirstAsync(sql: string) {
           if (!state.files.has(name)) return null;
           return {name: /name='(\w+)'/.exec(sql)?.[1]};
@@ -111,7 +115,7 @@ jest.mock('expo-sqlite', () => {
           ];
         },
         closeAsync: async () => undefined,
-      };
+      });
     },
     async importDatabaseFromAssetAsync(name: string) {
       state.files.add(name);

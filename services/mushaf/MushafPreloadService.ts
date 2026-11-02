@@ -94,6 +94,15 @@ class MushafPreloadService {
     return this._state;
   }
 
+  /**
+   * Starts the load if nothing started it yet. The boot starts it after the
+   * splash hides; a screen that needs it sooner starts it itself. A failed
+   * load waits for an explicit retry.
+   */
+  startIfIdle(): void {
+    if (this._state === 'idle') this.initialize().catch(() => undefined);
+  }
+
   get fontMgr(): SkTypefaceFontProvider | null {
     return this._fontMgr;
   }
@@ -165,13 +174,17 @@ class MushafPreloadService {
         );
       }
 
-      // DK data must be ready first; page lines are needed for layout computation
+      // @ai-start
+      // The fonts need no Mushaf data, so they load while the data loads
+      // (loadSkiaFonts handles its own errors).
+      const fonts = this.loadSkiaFonts();
+      // @ai-end
       await digitalKhattDataService.initialize();
 
       // Hafs (the service's starting rewayah) commits without a change event.
       this._loadDiffsFor(digitalKhattDataService.rewayah);
 
-      await this.loadSkiaFonts();
+      await fonts; // @ai
 
       // `loadSkiaFonts` swallows its own errors and leaves `_fontMgr` null on
       // failure. Treat a null fontMgr after the load completes as a failure

@@ -28,6 +28,7 @@ import {
   type DKLine,
 } from '../DigitalKhattDataService';
 import {rewayahBasmalaService} from '../RewayahBasmalaService'; // @ai
+import {WordReadError} from '../wordStore'; // @ai
 import {EXPECTED_BASMALA} from '../__fixtures__/basmalaTexts'; // @ai
 
 interface FakeFile {
@@ -43,6 +44,9 @@ interface FakeSqliteState {
   violations: string[];
   gates: Map<string, Promise<void>>;
   readFailures: Map<string, number>;
+  // @ai The next chunk read of a base throws, drops its last text, or holds a
+  // word whose text is empty (a real value in 7 of the 8 words DBs).
+  chunkFaults: Map<string, 'throw' | 'short' | 'blank'>;
 }
 
 jest.mock('expo-sqlite', () => {
@@ -53,6 +57,7 @@ jest.mock('expo-sqlite', () => {
     violations: [],
     gates: new Map(),
     readFailures: new Map(),
+    chunkFaults: new Map(), // @ai
   };
   const baseOf = (name: string) =>
     name.replace(/\.db$/, '').replace(/\.[0-9a-f]{8}$/, '');
@@ -71,10 +76,25 @@ jest.mock('expo-sqlite', () => {
       }
       state.open.set(name, openCount(name) + 1);
       let closed = false;
+      // @ai-start
+      // The words of an open copy (the WordStore's synchronous reads and its
+      // integrity counts).
+      const wordsOf = () => {
+        const file = state.files.get(name);
+        if (!file || file.state !== 'ok') throw new Error('no such table');
+        return mockWordRows(file.base, file.version);
+      };
+      // @ai-end
       return {
         async getFirstAsync(sql: string) {
           const file = state.files.get(name);
           if (!file || file.state === 'empty') return null;
+          // @ai-start
+          if (sql.includes('COUNT(*)')) {
+            const n = wordsOf().length;
+            return {n, ids: n, texts: n, locations: n};
+          }
+          // @ai-end
           const table = /name='(\w+)'/.exec(sql)?.[1];
           const has =
             file.base === 'dk_layout' ? table === 'pages' : table === 'words';
@@ -92,10 +112,34 @@ jest.mock('expo-sqlite', () => {
           }
           if (file.state !== 'ok') throw new Error('no such table');
           state.log.push(`read:${name}`);
+          // @ai-start
+          if (sql.includes('GROUP BY')) {
+            return mockVerseIndexRows(mockWordRows(file.base, file.version));
+          }
+          // @ai-end
           return sql.includes('FROM pages')
             ? mockPageRows()
             : mockWordRows(file.base, file.version);
         },
+        // @ai-start
+        // The WordStore's chunk read: the texts in id order, joined by U+001F.
+        getFirstSync(_sql: string, params: unknown[] = []) {
+          if (closed) throw new Error('database is closed');
+          state.log.push(`chunk:${name}`);
+          const base = state.files.get(name)?.base ?? '';
+          const fault = state.chunkFaults.get(base);
+          state.chunkFaults.delete(base);
+          if (fault === 'throw') throw new Error('disk I/O error');
+          const [from, to] = params.map(Number);
+          const inRange = wordsOf()
+            .filter(row => row.id >= from && row.id <= to)
+            .sort((a, b) => a.id - b.id)
+            .map(row => row.text);
+          if (fault === 'short') inRange.pop();
+          if (fault === 'blank') inRange[0] = '';
+          return {texts: inRange.length ? inRange.join('\u001f') : null};
+        },
+        // @ai-end
         async closeAsync() {
           if (closed) throw new Error('already closed');
           closed = true;
@@ -213,6 +257,28 @@ function mockWordRows(base: string, version: string) {
     location,
   }));
 }
+
+// @ai-start
+// What readVerseIndex's GROUP BY returns: the first and last id of each verse.
+function mockVerseIndexRows(rows: {id: number; location: string}[]) {
+  const verses = new Map<
+    string,
+    {surah: number; ayah: number; first: number; last: number}
+  >();
+  for (const row of rows) {
+    const [surah, ayah] = row.location.split(':').map(Number);
+    const key = `${surah}:${ayah}`;
+    const verse = verses.get(key);
+    if (verse) {
+      verse.first = Math.min(verse.first, row.id);
+      verse.last = Math.max(verse.last, row.id);
+    } else {
+      verses.set(key, {surah, ayah, first: row.id, last: row.id});
+    }
+  }
+  return [...verses.values()].sort((a, b) => a.first - b.first);
+}
+// @ai-end
 
 function line(
   page: number,
@@ -345,6 +411,7 @@ beforeEach(() => {
   fake.violations.length = 0;
   fake.gates.clear();
   fake.readFailures.clear();
+  fake.chunkFaults.clear(); // @ai
   store.rewayah = 'hafs';
   store.mushafRenderer = 'dk_v2';
   store.setRewayah.mockClear();
@@ -950,6 +1017,176 @@ describe('side cache', () => {
     expect(service.tryGetVerseWords('1:1', 'hafs')).toHaveLength(4);
   });
 });
+
+// @ai-start
+describe('chunk reads (WordStore)', () => {
+  it('gives each word its verse and position from the verse index', async () => {
+    const service = await initialized();
+    expect(service.getWordInfo(7)).toEqual({
+      text: 'H7',
+      verseKey: '1:2',
+      wordPositionInVerse: 3,
+    });
+    expect(service.getWordText(12)).toBe('H12');
+    expect(service.getWordInfo(13)).toBeUndefined();
+  });
+
+  describe.each(['throw', 'short'] as const)('a failed read (%s)', fault => {
+    it('gives no word on the next getter and reads no more', async () => {
+      const service = await initialized();
+      fake.chunkFaults.set('dk_words', fault);
+      expect(service.getWordText(1)).toBe('');
+      // No retry: the fault is spent, so a second read would give H2.
+      expect(service.getWordText(2)).toBe('');
+      expect(service.getWordInfo(1)).toBeUndefined();
+    });
+
+    it('makes the rewayah read error and deletes its copy', async () => {
+      const service = await initialized();
+      const listener = jest.fn();
+      service.subscribeCacheChanges(listener);
+      fake.chunkFaults.set('dk_words', fault);
+      service.getWordText(1);
+      expect(listener).not.toHaveBeenCalled(); // Not inside the render.
+      await flush();
+
+      expect(service.initialized).toBe(false);
+      expect(service.getRewayahLoadState('hafs')).toBe('error');
+      expect(service.getRewayahLoadError('hafs')).toBeInstanceOf(
+        RewayahLoadError,
+      );
+      expect(listener).toHaveBeenCalledTimes(1);
+      expect(fake.files.has(N.hafs)).toBe(false);
+      expect(fake.violations).toEqual([]);
+    });
+
+    it('a retry imports the copy again and reads', async () => {
+      const service = await initialized();
+      fake.chunkFaults.set('dk_words', fault);
+      service.getWordText(1);
+      await flush();
+      fake.log.length = 0;
+
+      await service.ensureRewayahLoaded('hafs', {retry: true});
+      expect(count(`import:${N.hafs}`)).toBe(1);
+      expect(service.initialized).toBe(true);
+      expect(service.getRewayahLoadState('hafs')).toBe('ready');
+      expect(service.getWordText(1)).toBe('H1');
+    });
+
+    it('files nothing under the real identity until the words load again', async () => {
+      const service = await initialized();
+      const identity = service.getLayoutIdentityKey();
+      expect(identity).not.toBeNull();
+      fake.chunkFaults.set('dk_words', fault);
+      service.getWordText(1);
+      // In the same turn: the caller saves its layout before the store drops.
+      expect(service.getLayoutIdentityKey()).toBeNull();
+      await flush();
+      expect(service.getLayoutIdentityKey()).toBeNull();
+
+      await service.ensureRewayahLoaded('hafs', {retry: true});
+      expect(service.getLayoutIdentityKey()).toBe(identity);
+    });
+
+    it('a retry clears the caches of the text, in the same rewayah too', async () => {
+      const service = await initialized();
+      const listener = jest.fn();
+      service.onRewayahChange(listener);
+      fake.chunkFaults.set('dk_words', fault);
+      service.getWordText(1);
+      await flush();
+      expect(listener).not.toHaveBeenCalled();
+
+      await service.ensureRewayahLoaded('hafs', {retry: true});
+      expect(listener).toHaveBeenCalledTimes(1);
+      expect(listener).toHaveBeenCalledWith('hafs');
+    });
+  });
+
+  it('a failed read of a side rewayah leaves the main rewayah as it is', async () => {
+    const service = await initialized();
+    await service.ensureRewayahLoaded('warsh');
+    fake.chunkFaults.set('dk_words_warsh', 'throw');
+    expect(service.getVerseWords('1:1', 'warsh')).toEqual([]);
+    await flush();
+
+    expect(service.getRewayahLoadState('warsh')).toBe('error');
+    expect(service.tryGetVerseWords('1:1', 'warsh')).toBeNull();
+    expect(service.initialized).toBe(true);
+    expect(service.getLayoutIdentityKey()).not.toBeNull();
+    expect(service.getWordText(1)).toBe('H1');
+    expect(fake.violations).toEqual([]);
+
+    await service.ensureRewayahLoaded('warsh', {retry: true});
+    expect(service.getRewayahLoadState('warsh')).toBe('ready');
+    expect(service.getVerseWords('1:1', 'warsh').map(w => w.text)).toEqual([
+      'W1',
+      'W2',
+      'W3',
+      'W4',
+    ]);
+  });
+
+  describe('the sweep (readWordSlots)', () => {
+    it('gives every word in id order, also a word with no text', async () => {
+      const service = await initialized();
+      fake.chunkFaults.set('dk_words', 'blank');
+      const slots = Array.from(service.readWordSlots('hafs')!, s => ({...s}));
+      expect(slots).toHaveLength(12);
+      expect(slots[0]).toEqual({id: 1, surah: 1, ayah: 1, word: 1, text: ''});
+      expect(slots[6]).toEqual({id: 7, surah: 1, ayah: 2, word: 3, text: 'H7'});
+    });
+
+    it('reads outside the chunk cache', async () => {
+      const service = await initialized();
+      expect(service.getWordText(1)).toBe('H1');
+      fake.log.length = 0;
+      Array.from(service.readWordSlots('hafs')!);
+      expect(count(`chunk:${N.hafs}`)).toBe(1);
+      expect(service.getWordText(2)).toBe('H2');
+      expect(count(`chunk:${N.hafs}`)).toBe(1); // The cached chunk, not a read.
+    });
+
+    it('reads a side rewayah without the main one', async () => {
+      const service = await initialized();
+      await service.ensureRewayahLoaded('warsh');
+      const texts = Array.from(service.readWordSlots('warsh')!, s => s.text);
+      expect(texts[0]).toBe('W1');
+      expect(service.readWordSlots('qalun')).toBeNull();
+    });
+
+    it('a failed read throws WordReadError and fails the store', async () => {
+      const service = await initialized();
+      fake.chunkFaults.set('dk_words', 'throw');
+      expect(() => Array.from(service.readWordSlots('hafs')!)).toThrow(
+        WordReadError,
+      );
+      await flush();
+      expect(service.getRewayahLoadState('hafs')).toBe('error');
+    });
+  });
+
+  it('a word whose text is empty is no failure', async () => {
+    const service = await initialized();
+    fake.chunkFaults.set('dk_words', 'blank');
+    expect(service.getWordText(1)).toBe('');
+    expect(service.getWordText(2)).toBe('H2');
+    await flush();
+    expect(service.getRewayahLoadState('hafs')).toBe('ready');
+  });
+
+  it('a reset in the same turn wins over the failed read', async () => {
+    const service = await initialized();
+    fake.chunkFaults.set('dk_words', 'throw');
+    service.getWordText(1);
+    await service.resetDatabases();
+    await flush();
+    expect(service.getRewayahLoadError('hafs')).toBeNull();
+    expect(fake.violations).toEqual([]);
+  });
+});
+// @ai-end
 
 describe('resetDatabases', () => {
   it('deletes every managed copy, empties the caches and notifies', async () => {
