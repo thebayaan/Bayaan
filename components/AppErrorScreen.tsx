@@ -1,6 +1,13 @@
 // @ai-generated
 import React from 'react';
-import {Appearance, Pressable, StyleSheet, Text, View} from 'react-native';
+import {
+  Appearance,
+  Pressable,
+  StatusBar,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import {ROOT_COLORS} from '@/constants/rootColors';
 import i18n from '@/i18n';
 
@@ -26,14 +33,12 @@ export function safeText(read: () => string, fallback: string): string {
 /**
  * The full-screen message for a failure at the root of the app. It uses no
  * theme, safe-area or icon provider, because one of them may be what failed.
- * The colors follow the system scheme, and the top padding keeps the text clear
- * of the status bar.
+ * The colors and the status bar follow the system scheme, and the top padding
+ * keeps the text clear of the status bar.
  */
 export default function AppErrorScreen({message, onRetry}: Props) {
-  const colors =
-    Appearance.getColorScheme() === 'dark'
-      ? ROOT_COLORS.dark
-      : ROOT_COLORS.light;
+  const isDark = Appearance.getColorScheme() === 'dark';
+  const colors = isDark ? ROOT_COLORS.dark : ROOT_COLORS.light;
   const retryLabel = safeText(
     () => i18n.t('common:actions.tryAgain'),
     'Try again',
@@ -43,6 +48,7 @@ export default function AppErrorScreen({message, onRetry}: Props) {
     <View
       style={[styles.container, {backgroundColor: colors.background}]}
       testID="app-error-screen">
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <Text style={[styles.title, {color: colors.text}]}>
         {safeText(() => i18n.t('common:status.error'), 'Something went wrong')}
       </Text>

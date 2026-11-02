@@ -1,6 +1,6 @@
 // @ai-generated
 import React from 'react';
-import {Appearance} from 'react-native';
+import {Appearance, StatusBar} from 'react-native';
 import TestRenderer, {act, ReactTestRenderer} from 'react-test-renderer';
 import {ROOT_COLORS} from '@/constants/rootColors';
 import AppErrorScreen, {safeText} from '../AppErrorScreen';
@@ -68,6 +68,9 @@ describe('AppErrorScreen', () => {
     const renderer = mount(<AppErrorScreen message="m" />);
 
     expect(background(renderer)).toBe(ROOT_COLORS[scheme].background);
+    expect(renderer.root.findByType(StatusBar).props.barStyle).toBe(
+      scheme === 'dark' ? 'light-content' : 'dark-content',
+    );
   });
 });
 
