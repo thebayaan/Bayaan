@@ -35,6 +35,9 @@ jest.mock('@/hooks/useGlassProps', () => ({
   },
 }));
 
+jest.mock('@/components/TintedHeader', () => ({
+  tintedBackOptions: {},
+}));
 jest.mock('@/components/TabBarScrim', () => ({
   withTabBarScrim: (Layout: unknown) => Layout,
 }));
