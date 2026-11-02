@@ -1,4 +1,5 @@
 import {Stack, useRouter, useSegments} from 'expo-router';
+import {tintedBackOptions} from '@/components/TintedHeader'; // @ai
 import {withTabBarScrim} from '@/components/TabBarScrim'; // @ai
 import {useTheme} from '@/hooks/useTheme';
 import {USE_GLASS} from '@/hooks/useGlassProps';
@@ -63,6 +64,7 @@ function SettingsLayout() {
           title,
           animation: 'none' as const,
           headerBackVisible: false,
+          unstable_headerLeftItems: () => [], // @ai: no tinted back either
           gestureEnabled: false,
         }
       : {title};
@@ -71,6 +73,7 @@ function SettingsLayout() {
     <Stack
       screenLayout={isTablet ? SCREEN_LAYOUT : undefined}
       screenOptions={{
+        ...tintedBackOptions, // @ai
         headerShown: true,
         freezeOnBlur: true,
         headerTintColor: theme.colors.text,

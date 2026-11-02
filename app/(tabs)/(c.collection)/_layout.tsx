@@ -1,4 +1,5 @@
 import React from 'react';
+import {tintedBackOptions} from '@/components/TintedHeader'; // @ai
 import {withTabBarScrim} from '@/components/TabBarScrim'; // @ai
 import {Stack} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
@@ -33,6 +34,7 @@ function CollectionLayout() {
     <Stack
       screenLayout={SCREEN_LAYOUT} // @ai
       screenOptions={{
+        ...tintedBackOptions, // @ai
         headerShown: false,
         freezeOnBlur: true,
       }}>

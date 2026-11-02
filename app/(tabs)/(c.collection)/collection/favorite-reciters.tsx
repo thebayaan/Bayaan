@@ -1,4 +1,5 @@
 import React, {useRef, useState, useCallback, useMemo} from 'react';
+import {tintedHeaderRight} from '@/components/TintedHeader'; // @ai
 import {
   View,
   Text,
@@ -71,7 +72,9 @@ export default function FavoriteRecitersScreen() {
     title: t('favoriteRecitersScreen.title'),
     scrollY,
     hasContent: favoriteReciters.length > 0,
-    headerRight: favoriteReciters.length > 0 ? renderHeaderRight : undefined,
+    ...tintedHeaderRight(
+      favoriteReciters.length > 0 ? renderHeaderRight : undefined,
+    ), // @ai
   });
 
   // @ai-start

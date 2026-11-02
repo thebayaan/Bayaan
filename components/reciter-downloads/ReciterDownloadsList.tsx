@@ -1,4 +1,5 @@
 import React, {useState, useEffect, useCallback, useRef, useMemo} from 'react';
+import {tintedHeaderRight} from '@/components/TintedHeader'; // @ai
 import {
   View,
   Text,
@@ -451,7 +452,9 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
     title: reciterDisplayName || t('common:terms.downloads'),
     scrollY,
     hasContent: downloadData.length > 0 && !loading,
-    headerRight: downloadData.length > 0 ? renderHeaderRight : undefined,
+    ...tintedHeaderRight(
+      downloadData.length > 0 ? renderHeaderRight : undefined,
+    ), // @ai
   });
 
   const ListHeaderComponent = useCallback(() => {

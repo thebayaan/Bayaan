@@ -6,6 +6,7 @@ import React, {
   useEffect,
   useLayoutEffect,
 } from 'react';
+import {tintedBackOptions, tintedHeaderRight} from '@/components/TintedHeader'; // @ai
 import {SurahOptionsScope} from '@/components/sheets/options/surahOptions'; // @ai
 import {
   View,
@@ -328,46 +329,53 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
       headerStyle: {backgroundColor: 'transparent'},
       headerShadowVisible: false,
       // Hide back button and search icon when SearchView is open (it has its own cancel)
-      headerBackVisible: !showSearch,
-      headerRight: showSearch
-        ? () => null
-        : () => (
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: moderateScale(20),
-                paddingHorizontal: moderateScale(6),
-              }}>
-              <Pressable
-                onPress={() => {
-                  const slug = reciter?.slug ?? currentReciterId;
-                  shareUrl(
-                    reciterShareUrl(slug),
-                    t('reciterProfile.shareMessage', {
-                      name: reciter
-                        ? getReciterDisplayName(reciter)
-                        : t('reciterProfile.thisReciter'),
-                      appName: branding.appName,
-                    }),
-                  );
-                }}
-                hitSlop={8}>
-                <Feather
-                  name="share"
-                  size={moderateScale(20)}
-                  color={theme.colors.text}
-                />
-              </Pressable>
-              <Pressable onPress={() => setShowSearch(true)} hitSlop={8}>
-                <Feather
-                  name="search"
-                  size={moderateScale(20)}
-                  color={theme.colors.text}
-                />
-              </Pressable>
-            </View>
-          ),
+      // @ai-start: tinted back; none while search is open
+      headerBackVisible: false,
+      unstable_headerLeftItems: showSearch
+        ? () => []
+        : tintedBackOptions.unstable_headerLeftItems,
+      // @ai-end
+      ...tintedHeaderRight(
+        showSearch
+          ? undefined
+          : () => (
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: moderateScale(20),
+                  paddingHorizontal: moderateScale(6),
+                }}>
+                <Pressable
+                  onPress={() => {
+                    const slug = reciter?.slug ?? currentReciterId;
+                    shareUrl(
+                      reciterShareUrl(slug),
+                      t('reciterProfile.shareMessage', {
+                        name: reciter
+                          ? getReciterDisplayName(reciter)
+                          : t('reciterProfile.thisReciter'),
+                        appName: branding.appName,
+                      }),
+                    );
+                  }}
+                  hitSlop={8}>
+                  <Feather
+                    name="share"
+                    size={moderateScale(20)}
+                    color={theme.colors.text}
+                  />
+                </Pressable>
+                <Pressable onPress={() => setShowSearch(true)} hitSlop={8}>
+                  <Feather
+                    name="search"
+                    size={moderateScale(20)}
+                    color={theme.colors.text}
+                  />
+                </Pressable>
+              </View>
+            ),
+      ),
     });
   }, [navigation, theme, showSearch, t]);
 

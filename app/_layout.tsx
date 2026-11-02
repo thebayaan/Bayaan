@@ -1,5 +1,6 @@
 // @ai-start
 import i18n from '@/i18n';
+import {tintedBackOptions} from '@/components/TintedHeader'; // @ai
 import {uiFontFiles} from '@/i18n/fonts';
 import {bootstrapDirection} from '@/i18n/language';
 import {appDirection, appLayoutDirection, isRTL} from '@/utils/rtl';
@@ -573,6 +574,7 @@ function RootLayout() {
                                     }),
                                 headerShadowVisible: false,
                                 headerBackButtonDisplayMode: 'minimal',
+                                ...tintedBackOptions, // @ai
                               }
                         }
                       />

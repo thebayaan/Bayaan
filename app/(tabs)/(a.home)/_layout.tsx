@@ -1,4 +1,5 @@
 import {Stack} from 'expo-router';
+import {tintedBackOptions} from '@/components/TintedHeader'; // @ai
 import {withTabBarScrim} from '@/components/TabBarScrim'; // @ai
 // @ai-start
 import {useTranslation} from 'react-i18next';
@@ -28,6 +29,7 @@ function HomeLayout() {
     <Stack
       screenLayout={SCREEN_LAYOUT} // @ai
       screenOptions={{
+        ...tintedBackOptions, // @ai
         headerShown: true,
         freezeOnBlur: true,
         headerTransparent: true,

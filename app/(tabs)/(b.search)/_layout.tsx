@@ -1,4 +1,5 @@
 import React from 'react';
+import {tintedBackOptions} from '@/components/TintedHeader'; // @ai
 import {withTabBarScrim} from '@/components/TabBarScrim'; // @ai
 import {View} from 'react-native';
 import {Stack} from 'expo-router';
@@ -34,6 +35,7 @@ function SearchLayout() {
     <Stack
       screenLayout={SCREEN_LAYOUT} // @ai
       screenOptions={{
+        ...tintedBackOptions, // @ai
         headerShown: false,
         freezeOnBlur: true,
       }}>

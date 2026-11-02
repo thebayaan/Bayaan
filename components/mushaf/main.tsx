@@ -1,4 +1,5 @@
 import React, {useState, useMemo, useRef, useCallback, useEffect} from 'react';
+import {tintedBackOptions, tintedHeaderRight} from '@/components/TintedHeader'; // @ai
 import {useKeepAwake} from 'expo-keep-awake';
 import {
   View,
@@ -917,6 +918,7 @@ export default function MushafViewer({
     navigation.setOptions({
       headerShown: true,
       headerBackVisible: true,
+      ...tintedBackOptions, // @ai
       headerSearchBarOptions: undefined,
       headerTitle: () => (
         <TitleWrapper
@@ -969,35 +971,8 @@ export default function MushafViewer({
         </TitleWrapper>
       ),
       headerLeft: undefined,
-      // @ai-start
-      // iOS draws its own untinted glass behind header buttons. On glass
-      // devices we hide that and wrap the buttons in our own glass, tinted
-      // like the title pill, so they follow the shared glass tint.
-      headerRight: USE_GLASS ? undefined : () => headerRightButtons,
-      unstable_headerRightItems: USE_GLASS
-        ? () => [
-            {
-              type: 'custom' as const,
-              hidesSharedBackground: true,
-              element: (
-                <GlassView
-                  glassEffectStyle="regular"
-                  colorScheme={glassColorScheme}
-                  tintColor={glassTint}
-                  isInteractive
-                  style={{
-                    borderRadius: 999,
-                    paddingHorizontal: moderateScale(10),
-                    paddingVertical: moderateScale(9),
-                    overflow: 'hidden' as const,
-                  }}>
-                  {headerRightButtons}
-                </GlassView>
-              ),
-            },
-          ]
-        : undefined,
-      // @ai-end
+      // @ai: back and actions in our tinted glass on glass devices
+      ...tintedHeaderRight(() => headerRightButtons),
     });
   }, [
     openReadingSettingsSheet,
