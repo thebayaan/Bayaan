@@ -3,6 +3,7 @@ import {Animated as RNAnimated} from 'react-native';
 import {useNavigation} from 'expo-router';
 import {useTheme} from './useTheme';
 import {USE_GLASS} from '@/hooks/useGlassProps';
+import {tintedHeaderRight} from '@/components/TintedHeader'; // @ai
 
 interface UseCollectionNativeHeaderOptions {
   title: string;
@@ -44,7 +45,8 @@ export function useCollectionNativeHeader({
             </RNAnimated.Text>
           )
         : title,
-      headerRight: headerRight ?? undefined,
+      // @ai: the actions sit in the tinted glass pill
+      ...tintedHeaderRight(headerRight),
     });
   }, [
     navigation,
