@@ -175,6 +175,11 @@ export class WordStore {
     private readonly onReadFailed: (store: WordStore, error: unknown) => void,
   ) {}
 
+  /** A read failed: every text from now on is ''. */
+  get hasFailed(): boolean {
+    return this.failed;
+  }
+
   get wordCount(): number {
     const n = this.index.keys.length;
     return n === 0 ? 0 : this.index.last[n - 1];

@@ -606,6 +606,7 @@ export class DigitalKhattDataService {
   // whole by swapMain(); never cleared or partially filled in place.
   // @ai: its words are a WordStore, read on demand.
   private words: WordStore | null = null;
+  private mainTextFailed = false; // @ai: see announceMainCommit
   private pageLines: Map<number, DKLine[]> = new Map();
   private surahStartPages: Record<number, number> = {};
   private pageToSurah: Record<number, number> = {};
@@ -695,8 +696,9 @@ export class DigitalKhattDataService {
 
   /**
    * Fires synchronously inside each commit that changes the active rewayah
-   * (including the first commit when it is not Hafs), after the maps are
-   * swapped and before cache subscribers are notified.
+   * (including the first commit when it is not Hafs), and inside the commit
+   * that reloads it after a failed read (@ai), after the maps are swapped and
+   * before cache subscribers are notified.
    */
   onRewayahChange(listener: RewayahChangeListener): () => void {
     this.rewayahListeners.add(listener);
@@ -725,8 +727,13 @@ export class DigitalKhattDataService {
    * `<rewayah>@<wordsSha8>.<layoutSha8>` (plus `.<basmalaVersion>` for a
    * rewayah with its own basmala lines), or null before the first load.
    * Changes exactly when the served text changes.
+   *
+   * @ai Also null from the moment a read of the main words fails and until
+   * they load again: a layout computed then has words missing, and a layout
+   * filed under the real identity would stay wrong after every later launch.
    */
   getLayoutIdentityKey(): string | null {
+    if (!this.words || this.words.hasFailed) return null; // @ai
     return this.activeIdentity ? dataIdentityKey(this.activeIdentity) : null;
   }
 
@@ -1216,7 +1223,13 @@ export class DigitalKhattDataService {
   private announceMainCommit(prevRewayah: RewayahId): void {
     this.cacheVersion += 1;
     const rewayah = this.currentRewayah;
-    if (prevRewayah !== rewayah) {
+    // @ai-start
+    // The line-text and layout caches filled during a failed read have words
+    // missing, and this commit serves the same rewayah again.
+    const textFailed = this.mainTextFailed;
+    this.mainTextFailed = false;
+    if (prevRewayah !== rewayah || textFailed) {
+      // @ai-end
       for (const listener of [...this.rewayahListeners]) {
         try {
           listener(rewayah);
@@ -1551,6 +1564,7 @@ export class DigitalKhattDataService {
     if (store === this.words) {
       rewayah = this.currentRewayah;
       this.words = null;
+      this.mainTextFailed = true;
       this._initialized = false;
       this._initializing = null; // initialize() must load it again.
     } else {

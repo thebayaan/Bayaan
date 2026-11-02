@@ -1101,6 +1101,35 @@ describe('chunk reads (WordStore)', () => {
       expect(service.getRewayahLoadState('hafs')).toBe('ready');
       expect(service.getWordText(1)).toBe('H1');
     });
+
+    it('files nothing under the real identity until the words load again', async () => {
+      const service = await initialized();
+      const identity = service.getLayoutIdentityKey();
+      expect(identity).not.toBeNull();
+      fake.chunkFaults.set('dk_words', fault);
+      service.getWordText(1);
+      // In the same turn: the caller saves its layout before the store drops.
+      expect(service.getLayoutIdentityKey()).toBeNull();
+      await flush();
+      expect(service.getLayoutIdentityKey()).toBeNull();
+
+      await service.ensureRewayahLoaded('hafs', {retry: true});
+      expect(service.getLayoutIdentityKey()).toBe(identity);
+    });
+
+    it('a retry clears the caches of the text, in the same rewayah too', async () => {
+      const service = await initialized();
+      const listener = jest.fn();
+      service.onRewayahChange(listener);
+      fake.chunkFaults.set('dk_words', fault);
+      service.getWordText(1);
+      await flush();
+      expect(listener).not.toHaveBeenCalled();
+
+      await service.ensureRewayahLoaded('hafs', {retry: true});
+      expect(listener).toHaveBeenCalledTimes(1);
+      expect(listener).toHaveBeenCalledWith('hafs');
+    });
   });
 
   it('a failed read of a side rewayah leaves the main rewayah as it is', async () => {
@@ -1113,6 +1142,7 @@ describe('chunk reads (WordStore)', () => {
     expect(service.getRewayahLoadState('warsh')).toBe('error');
     expect(service.tryGetVerseWords('1:1', 'warsh')).toBeNull();
     expect(service.initialized).toBe(true);
+    expect(service.getLayoutIdentityKey()).not.toBeNull();
     expect(service.getWordText(1)).toBe('H1');
     expect(fake.violations).toEqual([]);
 
