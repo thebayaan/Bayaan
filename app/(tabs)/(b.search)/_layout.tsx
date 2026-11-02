@@ -1,4 +1,5 @@
 import React from 'react';
+import {withTabBarScrim} from '@/components/TabBarScrim'; // @ai
 import {View} from 'react-native';
 import {Stack} from 'expo-router';
 // @ai-start
@@ -25,7 +26,7 @@ const SCREEN_LAYOUT = capScreensExcept([
 export const unstable_settings = {initialRouteName: 'index'};
 
 // @ai-start
-export default function SearchLayout() {
+function SearchLayout() {
   const {theme} = useTheme();
   const {t} = useTranslation('home');
 
@@ -150,3 +151,5 @@ export default function SearchLayout() {
   );
 }
 // @ai-end
+
+export default withTabBarScrim(SearchLayout); // @ai

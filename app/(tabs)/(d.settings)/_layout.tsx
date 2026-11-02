@@ -1,4 +1,5 @@
 import {Stack, useRouter, useSegments} from 'expo-router';
+import {withTabBarScrim} from '@/components/TabBarScrim'; // @ai
 import {useTheme} from '@/hooks/useTheme';
 import {USE_GLASS} from '@/hooks/useGlassProps';
 import branding from '@/config/branding';
@@ -28,7 +29,7 @@ export const unstable_settings = {initialRouteName: 'index'};
 // Every page sits in the 640pt settings column on iPad (ipad-standards §5.3).
 const SCREEN_LAYOUT = capScreensExcept([], SETTINGS_PAGE_MAX_WIDTH);
 
-export default function SettingsLayout() {
+function SettingsLayout() {
   const {theme} = useTheme();
   const {t} = useTranslation(['settings', 'common']);
   const {isTablet, width} = useResponsive();
@@ -170,3 +171,5 @@ const styles = StyleSheet.create({
   },
 });
 // @ai-end
+
+export default withTabBarScrim(SettingsLayout); // @ai

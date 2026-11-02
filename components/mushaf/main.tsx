@@ -871,6 +871,49 @@ export default function MushafViewer({
           tintColor: glassTint,
         }
       : {};
+    const headerRightButtons = // @ai
+      (
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: moderateScale(20),
+            paddingHorizontal: moderateScale(6),
+          }}>
+          <Pressable
+            onPress={handleSharePage}
+            hitSlop={8}
+            accessibilityRole="button" // @ai
+            accessibilityLabel={t('mushaf.sharePage')} // @ai
+          >
+            <Feather
+              name="share"
+              size={moderateScale(20)}
+              color={theme.colors.text}
+            />
+          </Pressable>
+          {/* @ai-start */}
+          {/* iPad: a popover anchored to the button. Elsewhere: the sheet. */}
+          <ReadingSettingsPopover
+            context="mushaf"
+            onFallbackPress={openReadingSettingsSheet}>
+            {onPress => (
+              <Pressable
+                onPress={onPress}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={t('mushaf.settings')}>
+                <Ionicons
+                  name="options-outline"
+                  size={moderateScale(22)}
+                  color={theme.colors.text}
+                />
+              </Pressable>
+            )}
+          </ReadingSettingsPopover>
+          {/* @ai-end */}
+        </View>
+      );
     navigation.setOptions({
       headerShown: true,
       headerBackVisible: true,
@@ -926,48 +969,35 @@ export default function MushafViewer({
         </TitleWrapper>
       ),
       headerLeft: undefined,
-      headerRight: () => (
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: moderateScale(20),
-            paddingHorizontal: moderateScale(6),
-          }}>
-          <Pressable
-            onPress={handleSharePage}
-            hitSlop={8}
-            accessibilityRole="button" // @ai
-            accessibilityLabel={t('mushaf.sharePage')} // @ai
-          >
-            <Feather
-              name="share"
-              size={moderateScale(20)}
-              color={theme.colors.text}
-            />
-          </Pressable>
-          {/* @ai-start */}
-          {/* iPad: a popover anchored to the button. Elsewhere: the sheet. */}
-          <ReadingSettingsPopover
-            context="mushaf"
-            onFallbackPress={openReadingSettingsSheet}>
-            {onPress => (
-              <Pressable
-                onPress={onPress}
-                hitSlop={8}
-                accessibilityRole="button"
-                accessibilityLabel={t('mushaf.settings')}>
-                <Ionicons
-                  name="options-outline"
-                  size={moderateScale(22)}
-                  color={theme.colors.text}
-                />
-              </Pressable>
-            )}
-          </ReadingSettingsPopover>
-          {/* @ai-end */}
-        </View>
-      ),
+      // @ai-start
+      // iOS draws its own untinted glass behind header buttons. On glass
+      // devices we hide that and wrap the buttons in our own glass, tinted
+      // like the title pill, so they follow the shared glass tint.
+      headerRight: USE_GLASS ? undefined : () => headerRightButtons,
+      unstable_headerRightItems: USE_GLASS
+        ? () => [
+            {
+              type: 'custom' as const,
+              hidesSharedBackground: true,
+              element: (
+                <GlassView
+                  glassEffectStyle="regular"
+                  colorScheme={glassColorScheme}
+                  tintColor={glassTint}
+                  isInteractive
+                  style={{
+                    borderRadius: 999,
+                    paddingHorizontal: moderateScale(10),
+                    paddingVertical: moderateScale(9),
+                    overflow: 'hidden' as const,
+                  }}>
+                  {headerRightButtons}
+                </GlassView>
+              ),
+            },
+          ]
+        : undefined,
+      // @ai-end
     });
   }, [
     openReadingSettingsSheet,
