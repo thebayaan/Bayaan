@@ -113,6 +113,10 @@ import {ReadingSettingsPopover} from '@/components/popovers/ToolPopovers'; // @a
 // known width; the back item takes the same width and the title centers.
 const HEADER_ACTION_SLOT = moderateScale(36);
 const HEADER_SIDE_WIDTH = 2 * HEADER_ACTION_SLOT + 2 * HEADER_PILL_PADDING;
+// iOS insets the bar's side items 20pt from the screen edges; the title
+// keeps this much clear of them.
+const HEADER_EDGE_INSET = 20;
+const HEADER_TITLE_GAP = moderateScale(6);
 const headerSlotStyle = {
   width: HEADER_ACTION_SLOT,
   height: HEADER_ITEM_SIZE,
@@ -657,6 +661,10 @@ export default function MushafViewer({
   const rawHeaderHeight = useHeaderHeight(); // @ai
   const {isTablet} = useResponsive();
   const {width: windowWidth, height: windowHeight} = useWindowDimensions();
+  // @ai: the header title's box, between the two side items
+  const headerTitleWidth =
+    windowWidth -
+    2 * (HEADER_EDGE_INSET + HEADER_SIDE_WIDTH + HEADER_TITLE_GAP);
   // A paged, `inverted` FlatList preserves its pixel scroll offset when its
   // items resize, so the visible page drifts to a different index (old offset
   // ÷ new item width); `initialScrollIndex` is mount-only and never re-fires.
@@ -941,54 +949,68 @@ export default function MushafViewer({
       ...tintedRootBackOptions(HEADER_SIDE_WIDTH),
       headerSearchBarOptions: undefined,
       headerTitle: () => (
-        <TitleWrapper
-          {...titleWrapperProps}
-          style={{
-            borderRadius: moderateScale(14),
-            paddingHorizontal: moderateScale(14),
-            paddingVertical: moderateScale(6),
-            overflow: 'hidden' as const,
-          }}>
-          <Pressable
-            onPress={() => setIsSearchMode(true)}
-            accessibilityRole="button"
-            accessibilityLabel={t('mushaf.searchSurahs')}
-            style={{alignItems: 'center'}}>
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: moderateScale(4),
-              }}>
+        // @ai: iOS centers the title's box on the screen. The box spans the
+        // space between the two equal side items, and the pill centers in
+        // it, so the pill is on the screen's midline whatever the name's
+        // length; a long name truncates rather than reaching the buttons.
+        <View
+          style={
+            USE_GLASS
+              ? {width: headerTitleWidth, alignItems: 'center'}
+              : undefined
+          }>
+          <TitleWrapper
+            {...titleWrapperProps}
+            style={{
+              borderRadius: moderateScale(14),
+              paddingHorizontal: moderateScale(14),
+              paddingVertical: moderateScale(6),
+              overflow: 'hidden' as const,
+              maxWidth: USE_GLASS ? headerTitleWidth : undefined, // @ai
+            }}>
+            <Pressable
+              onPress={() => setIsSearchMode(true)}
+              accessibilityRole="button"
+              accessibilityLabel={t('mushaf.searchSurahs')}
+              style={{alignItems: 'center'}}>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: moderateScale(4),
+                }}>
+                <Text
+                  style={{
+                    fontSize: moderateScale(16),
+                    fontFamily: 'Manrope-SemiBold',
+                    color: theme.colors.text,
+                    flexShrink: 1, // @ai: truncate a long name
+                  }}
+                  numberOfLines={1}>
+                  {getSurahDisplayName(SURAHS[currentSurahId - 1])}
+                </Text>
+                <Ionicons
+                  name="chevron-down"
+                  size={moderateScale(14)}
+                  color={theme.colors.textSecondary}
+                />
+              </View>
               <Text
                 style={{
-                  fontSize: moderateScale(16),
-                  fontFamily: 'Manrope-SemiBold',
-                  color: theme.colors.text,
+                  fontSize: moderateScale(12),
+                  fontFamily: 'Manrope-Regular',
+                  color: theme.colors.textSecondary,
                 }}
                 numberOfLines={1}>
-                {getSurahDisplayName(SURAHS[currentSurahId - 1])}
+                {t('mushaf.headerMeta', {
+                  page: currentPage,
+                  juz: getJuzForPage(currentPage),
+                  rewayah: getRewayahShortLabel(rewayah),
+                })}
               </Text>
-              <Ionicons
-                name="chevron-down"
-                size={moderateScale(14)}
-                color={theme.colors.textSecondary}
-              />
-            </View>
-            <Text
-              style={{
-                fontSize: moderateScale(12),
-                fontFamily: 'Manrope-Regular',
-                color: theme.colors.textSecondary,
-              }}>
-              {t('mushaf.headerMeta', {
-                page: currentPage,
-                juz: getJuzForPage(currentPage),
-                rewayah: getRewayahShortLabel(rewayah),
-              })}
-            </Text>
-          </Pressable>
-        </TitleWrapper>
+            </Pressable>
+          </TitleWrapper>
+        </View>
       ),
       headerLeft: undefined,
       // @ai: back and actions in our tinted glass on glass devices
@@ -1007,6 +1029,7 @@ export default function MushafViewer({
     navigation,
     t,
     glassTint, // @ai
+    headerTitleWidth, // @ai
   ]);
 
   const onViewableItemsChanged = useCallback(
