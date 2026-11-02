@@ -41,7 +41,10 @@ jest.mock('@/hooks/useTheme', () => ({
   useTheme: () => ({theme: {colors: {background: '#fff', text: '#111'}}}),
 }));
 
-jest.mock('@/hooks/useGlassProps', () => ({USE_GLASS: true}));
+jest.mock('@/hooks/useGlassProps', () => ({
+  USE_GLASS: true,
+  useGlassTint: () => 'rgba(0,0,0,0.3)',
+}));
 
 jest.mock('@/components/mushaf/main', () => ({
   __esModule: true,
