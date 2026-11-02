@@ -17,6 +17,7 @@ import Color from 'color';
 import {useTranslation} from 'react-i18next';
 import {getTrackDisplayTitle, getTrackArtistDisplay} from '@/i18n/format';
 import {appLayoutDirection} from '@/utils/rtl';
+import {USE_GLASS, useGlassTint} from '@/hooks/useGlassProps';
 // @ai-end
 
 const capsuleRadius = (height: number) => height / 2;
@@ -26,6 +27,7 @@ const ARTWORK_INSET = 5;
 // @ai-start
 function MiniPlayerInner() {
   const {theme} = useTheme();
+  const glassTint = useGlassTint(); // @ai
   const {t} = useTranslation(['player', 'common']);
   const {play, pause} = usePlayerActions();
   const playbackState = usePlayerStore(state => state.playback.state);
@@ -77,7 +79,15 @@ function MiniPlayerInner() {
     // swipe-up pan is recognized there.
     <GestureHandlerRootView style={styles.gestureRoot}>
       <GestureDetector gesture={openGesture}>
-        <View ref={anchorRef} style={[styles.row, appLayoutDirection]}>
+        <View
+          ref={anchorRef}
+          style={[
+            styles.row,
+            appLayoutDirection,
+            // @ai: iOS draws the accessory's glass; this wash over it
+            // follows the shared glass tint.
+            USE_GLASS && {backgroundColor: glassTint, borderRadius: 999},
+          ]}>
           <Pressable
             onPress={handlePress}
             style={styles.body}
