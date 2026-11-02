@@ -14,6 +14,7 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {SheetProps, ScrollView} from 'react-native-actions-sheet';
+import {useReciterStore} from '@/store/reciterStore';
 import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import {
   useMushafPlayerStore,
@@ -70,6 +71,21 @@ import {
 } from './mushaf-player/rangeLabels';
 
 const TABLET_MIN_WIDTH = 600;
+
+/**
+ * The reciter the sheet opens on when none was picked before: the app's
+ * default reciter, in its first recitation the mushaf can follow.
+ */
+function defaultListenReciter(
+  available: AvailableReciter[],
+): AvailableReciter | null {
+  const reciter = useReciterStore.getState().defaultReciter;
+  for (const rewayat of reciter.rewayat ?? []) {
+    const match = available.find(r => r.rewayatId === rewayat.id);
+    if (match) return match;
+  }
+  return null;
+}
 
 function useRangeEnv(
   numbering: ReturnType<typeof rangePickerNumbering>,
@@ -190,6 +206,15 @@ export const MushafPlayerOptionsSheet = (
       useMushafPlayerStore.getState().computeAvailableReciters();
     }
   }, [availableReciters.length]);
+
+  // Nothing picked before: start on the default reciter.
+  useEffect(() => {
+    if (selectedRewayatId) return;
+    const fallback = defaultListenReciter(availableReciters);
+    if (!fallback) return;
+    setSelectedRewayatId(fallback.rewayatId);
+    setSelectedReciterName(fallback.reciterName);
+  }, [availableReciters, selectedRewayatId]);
 
   const handleRateChange = useCallback((rate: number) => {
     useMushafPlayerStore.getState().setRate(rate);
