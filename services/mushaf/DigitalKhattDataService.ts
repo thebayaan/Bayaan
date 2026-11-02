@@ -729,8 +729,9 @@ export class DigitalKhattDataService {
    * Changes exactly when the served text changes.
    *
    * @ai Also null from the moment a read of the main words fails and until
-   * they load again: a layout computed then has words missing, and a layout
-   * filed under the real identity would stay wrong after every later launch.
+   * they load again, so the memos keyed by it compute again after the reload,
+   * and a layout with words missing is not filed. (A blank line gives an
+   * unusable layout, but a line that a chunk boundary cuts gives a usable one.)
    */
   getLayoutIdentityKey(): string | null {
     if (!this.words || this.words.hasFailed) return null; // @ai
