@@ -33,8 +33,8 @@ describe('expo-sqlite mock', () => {
 
   // @ai-start
   it('makes its folder under the temp root of the run', () => {
-    expect(path.dirname(databaseDir())).toBe(
-      process.env.BAYAAN_JEST_SQLITE_ROOT,
+    expect(path.basename(path.dirname(databaseDir()))).toMatch(
+      /^bayaan-jest-tmp-\d+-/,
     );
   });
 

@@ -3,7 +3,6 @@ const {spawnSync} = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const globalTeardown = require('../jestGlobalTeardown');
 const {makeRoot, removeStaleRoots} = require('../jestGlobalSetup');
 
 describe('the temp root of a Jest run', () => {
@@ -17,16 +16,14 @@ describe('the temp root of a Jest run', () => {
     fs.rmSync(tmpDir, {recursive: true, force: true});
   });
 
-  it('exists for this run, under the OS temp directory', () => {
-    const root = process.env.BAYAAN_JEST_SQLITE_ROOT;
-    expect(root).toBeTruthy();
-    expect(fs.statSync(root).isDirectory()).toBe(true);
-    expect(path.basename(root)).toMatch(/^bayaan-jest-sqlite-\d+-/);
+  it('is the temp directory of this worker', () => {
+    expect(path.basename(os.tmpdir())).toMatch(/^bayaan-jest-tmp-\d+-/);
+    expect(fs.statSync(os.tmpdir()).isDirectory()).toBe(true);
   });
 
   it('removes a root whose process is gone', () => {
     const {pid: gone} = spawnSync(process.execPath, ['--version']);
-    const stale = path.join(tmpDir, `bayaan-jest-sqlite-${gone}-abc`);
+    const stale = path.join(tmpDir, `bayaan-jest-tmp-${gone}-abc`);
     fs.mkdirSync(path.join(stale, 'expo-sqlite-1'), {recursive: true});
 
     removeStaleRoots(tmpDir);
@@ -51,16 +48,44 @@ describe('the temp root of a Jest run', () => {
     expect(fs.existsSync(other)).toBe(true);
   });
 
-  it('removes the root and all that it holds at teardown', async () => {
-    const root = makeRoot(tmpDir);
-    fs.mkdirSync(path.join(root, 'expo-sqlite-1'));
-    fs.writeFileSync(path.join(root, 'expo-sqlite-1', 'a.db'), 'a');
-    const saved = process.env.BAYAAN_JEST_SQLITE_ROOT;
-    process.env.BAYAAN_JEST_SQLITE_ROOT = root;
+  // A plain node process, because os.tmpdir() reads the real environment and a
+  // suite only has a copy. Two runs in one process, as in watch mode.
+  it('moves os.tmpdir() to the root and back, and removes the root', () => {
+    const script = `
+      const fs = require('fs');
+      const os = require('os');
+      const path = require('path');
+      const setup = require(${JSON.stringify(require.resolve('../jestGlobalSetup'))});
+      const teardown = require(${JSON.stringify(require.resolve('../jestGlobalTeardown'))});
+      (async () => {
+        for (let run = 0; run < 2; run++) {
+          await setup();
+          const root = os.tmpdir();
+          fs.mkdirSync(path.join(root, 'expo-sqlite-1'));
+          await teardown();
+          console.log(JSON.stringify({root, kept: fs.existsSync(root), after: os.tmpdir()}));
+        }
+      })();
+    `;
+    const {status, stdout, stderr} = spawnSync(
+      process.execPath,
+      ['-e', script],
+      {
+        encoding: 'utf8',
+        env: {...process.env, TMPDIR: tmpDir, TEMP: tmpDir, TMP: tmpDir},
+      },
+    );
 
-    await globalTeardown();
-    process.env.BAYAAN_JEST_SQLITE_ROOT = saved;
-
-    expect(fs.existsSync(root)).toBe(false);
+    expect(stderr).toBe('');
+    expect(status).toBe(0);
+    const runs = stdout.trim().split('\n').map(JSON.parse);
+    expect(runs).toHaveLength(2);
+    for (const run of runs) {
+      expect(path.dirname(run.root)).toBe(tmpDir);
+      expect(path.basename(run.root)).toMatch(/^bayaan-jest-tmp-\d+-/);
+      expect(run.kept).toBe(false);
+      expect(run.after).toBe(tmpDir);
+    }
+    expect(fs.readdirSync(tmpDir)).toEqual([]);
   });
 });

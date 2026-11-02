@@ -1,8 +1,10 @@
 // @ai-generated
 /**
- * Makes one temp root for the expo-sqlite mock, for one Jest run. The workers
- * inherit its path through the environment, so no suite tracks a folder, and
- * jestGlobalTeardown.js removes all of it, also after a failed or crashed test.
+ * Gives one Jest run its own temp directory. The temp variables point at a new
+ * root and the workers inherit them, so every os.tmpdir() call in a suite, in a
+ * mock or in the code under test lands in that root. No suite tracks a folder,
+ * and jestGlobalTeardown.js removes all of it, also after a failed or crashed
+ * test.
  *
  * A killed Jest process runs no teardown. The name of a root holds the pid of
  * its run, so the next run removes a root whose process is gone. It keeps the
@@ -12,7 +14,9 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const ROOT_PREFIX = 'bayaan-jest-sqlite-';
+const ROOT_PREFIX = 'bayaan-jest-tmp-';
+// os.tmpdir() reads TMPDIR on macOS and Linux, and TEMP or TMP on Windows.
+const TEMP_VARS = ['TMPDIR', 'TEMP', 'TMP'];
 
 function isRunning(pid) {
   try {
@@ -43,7 +47,14 @@ function makeRoot(tmpDir) {
 
 module.exports = async function globalSetup() {
   removeStaleRoots(os.tmpdir());
-  process.env.BAYAAN_JEST_SQLITE_ROOT = makeRoot(os.tmpdir());
+  const root = makeRoot(os.tmpdir());
+  // Jest shares this global with the teardown only. The teardown needs the old
+  // values, because watch mode runs this setup again in the same process.
+  global.__BAYAAN_JEST_TMP_RUN__ = {
+    root,
+    saved: TEMP_VARS.map(name => [name, process.env[name]]),
+  };
+  for (const name of TEMP_VARS) process.env[name] = root;
 };
 module.exports.removeStaleRoots = removeStaleRoots;
 module.exports.makeRoot = makeRoot;
