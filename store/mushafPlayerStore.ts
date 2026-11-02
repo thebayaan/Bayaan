@@ -220,6 +220,8 @@ export interface MushafPlayerStoreState {
   rate: number;
   verseRepeatCount: number;
   rangeRepeatCount: number;
+  /** Rewayat last played, newest first (@ai: the reciter screen's Recent). */
+  recentRewayatIds: string[];
 
   // Actions
   setPlaybackState: (state: PlaybackState) => void;
@@ -271,6 +273,7 @@ type StoreGet = () => MushafPlayerStoreState;
 // Incremented by every startPlayback / stop: async continuations of a
 // superseded playback request must not load audio or touch state.
 let playbackSession = 0;
+const RECENT_RECITERS_MAX = 8; // @ai
 // @ai-start
 // The playback session that loaded the surah audio MushafAudioService
 // holds. A start does not stop the surah playing, which plays on until the
@@ -996,6 +999,7 @@ export const useMushafPlayerStore = create<MushafPlayerStoreState>()(
         rate: 1.0,
         verseRepeatCount: 1,
         rangeRepeatCount: 1,
+        recentRewayatIds: [], // @ai
 
         setPlaybackState: (state: PlaybackState) => {
           set({playbackState: state});
@@ -1006,7 +1010,13 @@ export const useMushafPlayerStore = create<MushafPlayerStoreState>()(
         },
 
         setReciter: (rewayatId: string, reciterName: string) => {
-          set({rewayatId, reciterName});
+          // @ai-start
+          const recent = [
+            rewayatId,
+            ...get().recentRewayatIds.filter(id => id !== rewayatId),
+          ].slice(0, RECENT_RECITERS_MAX);
+          set({rewayatId, reciterName, recentRewayatIds: recent});
+          // @ai-end
         },
 
         setRate: (rate: number) => {
@@ -1234,6 +1244,7 @@ export const useMushafPlayerStore = create<MushafPlayerStoreState>()(
         rate: state.rate,
         verseRepeatCount: state.verseRepeatCount,
         rangeRepeatCount: state.rangeRepeatCount,
+        recentRewayatIds: state.recentRewayatIds, // @ai
       }),
     },
   ),
