@@ -872,7 +872,7 @@ export default function MushafViewer({
       ? {
           glassEffectStyle: 'regular' as const,
           colorScheme: glassColorScheme,
-          tintColor: isDarkMode ? 'rgba(0,0,0,0.5)' : glassTint,
+          tintColor: glassTint,
         }
       : {};
     navigation.setOptions({
@@ -985,6 +985,7 @@ export default function MushafViewer({
     isDarkMode,
     navigation,
     t,
+    glassTint, // @ai
   ]);
 
   const onViewableItemsChanged = useCallback(
