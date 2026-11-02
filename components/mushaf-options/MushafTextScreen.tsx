@@ -37,7 +37,7 @@ import {
   qcfFontFamilyForPage,
   qcfFontLoader,
 } from '@/services/mushaf/QCFFontLoader';
-import {BASMALA_TEXT} from '@/services/mushaf/QCFDataService';
+import {qcfDataService} from '@/services/mushaf/QCFDataService';
 import {localizeDigits} from '@/i18n/format';
 import {flipX} from '@/utils/rtl';
 import {moderateScale} from '@/utils/scale';
@@ -320,9 +320,25 @@ export function MushafTextScreen({
   );
 }
 
+/** The sample verse: Al-Ikhlas 112:1, on the last mushaf page. */
+const SAMPLE_VERSE_KEY = '112:1';
+const SAMPLE_QCF_PAGE = 604;
+const SAMPLE_QCF_LINES = 15;
+
+/** The sample verse's QCF glyphs (its words and end mark), in order. */
+function qcfSampleText(): string {
+  let text = '';
+  for (let line = 1; line <= SAMPLE_QCF_LINES; line++) {
+    for (const word of qcfDataService.getWordsForLine(SAMPLE_QCF_PAGE, line)) {
+      if (word.location.startsWith(`${SAMPLE_VERSE_KEY}:`)) text += word.code;
+    }
+  }
+  return text;
+}
+
 /**
- * The basmala in a script's own face. Mushaf 1440 draws it with its
- * page-1 QCF font when the reader has already downloaded and registered
+ * The sample verse in a script's own face. Mushaf 1440 draws it with its
+ * page's QCF font when the reader has already downloaded and registered
  * it (the same font manager the Mushaf 1440 pages use).
  */
 function ScriptSample({
@@ -334,11 +350,16 @@ function ScriptSample({
   const fontMgr = useMushafFontMgr();
   const fontSize = moderateScale(19);
   if (renderer === 'qcf_v2') {
-    const family = qcfFontFamilyForPage(1, 'v2');
-    if (fontMgr && qcfFontLoader.isReady(1, fontMgr, 'v2')) {
+    const family = qcfFontFamilyForPage(SAMPLE_QCF_PAGE, 'v2');
+    const text = qcfSampleText();
+    if (
+      text &&
+      fontMgr &&
+      qcfFontLoader.isReady(SAMPLE_QCF_PAGE, fontMgr, 'v2')
+    ) {
       return (
         <QuranText
-          text={BASMALA_TEXT}
+          text={text}
           fontFamily={family}
           fontSize={fontSize}
           color={theme.colors.text}
@@ -347,12 +368,12 @@ function ScriptSample({
     }
     // TODO: QCF page fonts are not bundled. They download from GitHub on
     // first use of a page (~200 MB for all 604), so the sheet does not
-    // fetch page 1 just for this sample; until the reader has opened
-    // Mushaf 1440 it shows the Madani 1421 face, next to the Beta badge.
+    // fetch the page just for this sample; until the reader has opened it
+    // in Mushaf 1440 it shows the Madani 1421 face, next to the Beta badge.
   }
   return (
     <QuranText
-      verseKey="1:1"
+      verseKey={SAMPLE_VERSE_KEY}
       rewayah="hafs"
       fontFamily={getDkFontFamily(renderer, 'hafs')}
       fontSize={fontSize}
