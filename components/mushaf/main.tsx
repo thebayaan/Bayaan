@@ -949,16 +949,13 @@ export default function MushafViewer({
       ...tintedRootBackOptions(HEADER_SIDE_WIDTH),
       headerSearchBarOptions: undefined,
       headerTitle: () => (
-        // @ai: iOS centers the title's box on the screen. The box spans the
-        // space between the two equal side items, and the pill centers in
-        // it, so the pill is on the screen's midline whatever the name's
-        // length; a long name truncates rather than reaching the buttons.
+        // @ai: iOS centers the title's box on the screen but keeps the box's
+        // first width; a wider pill would overflow it to the right. The pill
+        // centers in the box (overflowing evenly), so it sits on the screen's
+        // midline whatever the name's length, and its width is capped at the
+        // space between the side items: a long name truncates.
         <View
-          style={
-            USE_GLASS
-              ? {width: headerTitleWidth, alignItems: 'center'}
-              : undefined
-          }>
+          style={USE_GLASS ? {width: '100%', alignItems: 'center'} : undefined}>
           <TitleWrapper
             {...titleWrapperProps}
             style={{
