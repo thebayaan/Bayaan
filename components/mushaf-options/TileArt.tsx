@@ -255,7 +255,9 @@ function halfHeight(items: RiseItem[]): number {
 
 /**
  * List, Scroll and Continuous: content rises continuously. The column is
- * two identical halves and moves up by one half per loop.
+ * two identical halves and moves up by one half per loop. List and
+ * Continuous rise inside a page the size of the Mushaf tile's; Scroll's
+ * column is itself pages.
  */
 function RiseArt({
   kind,
@@ -266,8 +268,8 @@ function RiseArt({
     kind === 'scroll'
       ? SCROLL_HALF
       : kind === 'continuous'
-        ? CONTINUOUS_HALF
-        : LIST_HALF;
+      ? CONTINUOUS_HALF
+      : LIST_HALF;
   const shift = halfHeight(items);
   const clock = useLoopClock(RISE_MS, running);
   const column = useAnimatedStyle(() => ({
@@ -306,16 +308,27 @@ function RiseArt({
       />
     );
   };
-  return (
+  const rising = (
     <Animated.View
       style={[
         styles.rise,
-        kind === 'scroll' ? styles.riseCentered : styles.riseText,
+        kind === 'scroll' ? styles.riseCentered : styles.riseInPage,
         column,
       ]}>
       {items.map(renderItem)}
       {items.map((item, index) => renderItem(item, index + items.length))}
     </Animated.View>
+  );
+  if (kind === 'scroll') return rising;
+  return (
+    <View
+      style={[
+        styles.page,
+        styles.mushafPage,
+        {backgroundColor: colors.page, borderColor: colors.line},
+      ]}>
+      {rising}
+    </View>
   );
 }
 
@@ -454,9 +467,11 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: S(8),
   },
-  riseText: {
-    left: S(14),
-    right: S(14),
+  // Inside a Mushaf-sized page: the page's own text inset.
+  riseInPage: {
+    top: S(8),
+    left: S(6),
+    right: S(6),
   },
   riseCentered: {
     left: 0,
