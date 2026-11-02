@@ -1,4 +1,5 @@
 import React from 'react';
+import {withTabBarScrim} from '@/components/TabBarScrim'; // @ai
 import {Stack} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
 import {USE_GLASS} from '@/hooks/useGlassProps';
@@ -12,7 +13,7 @@ export const unstable_settings = {initialRouteName: 'index'};
 // lists it opens stay in the 720pt column (ipad-standards §5.3). @ai
 const SCREEN_LAYOUT = capScreensExcept(['index']); // @ai
 
-export default function CollectionLayout() {
+function CollectionLayout() {
   const {theme} = useTheme();
 
   const collectionScreenOptions = USE_GLASS
@@ -86,3 +87,5 @@ export default function CollectionLayout() {
     </Stack>
   );
 }
+
+export default withTabBarScrim(CollectionLayout); // @ai
