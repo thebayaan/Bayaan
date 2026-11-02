@@ -6,6 +6,7 @@ import React, {
   useLayoutEffect,
   useRef,
 } from 'react';
+import {tintedHeaderRight} from '@/components/TintedHeader'; // @ai
 import {
   View,
   SectionList,
@@ -567,7 +568,8 @@ const SuperCategoryListScreen: React.FC = () => {
           )}
         </View>
       ),
-      headerRight: () => (
+      ...tintedHeaderRight(() => (
+        // @ai
         <View
           style={{
             flexDirection: 'row',
@@ -592,7 +594,7 @@ const SuperCategoryListScreen: React.FC = () => {
             disabled={loading || allAdhkarForPlayAll.length === 0}
           />
         </View>
-      ),
+      )),
     });
   }, [
     navigation,

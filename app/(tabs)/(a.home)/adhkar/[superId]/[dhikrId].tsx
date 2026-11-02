@@ -6,6 +6,7 @@ import React, {
   useMemo,
   useLayoutEffect,
 } from 'react';
+import {tintedHeaderRight} from '@/components/TintedHeader'; // @ai
 import {
   View,
   Text,
@@ -300,7 +301,8 @@ const DhikrReaderScreen: React.FC = () => {
           )}
         </View>
       ),
-      headerRight: () => (
+      ...tintedHeaderRight(() => (
+        // @ai
         <Pressable
           onPress={handleShareDhikr}
           hitSlop={8}
@@ -314,7 +316,7 @@ const DhikrReaderScreen: React.FC = () => {
             color={theme.colors.text}
           />
         </Pressable>
-      ),
+      )),
     });
   }, [
     navigation,

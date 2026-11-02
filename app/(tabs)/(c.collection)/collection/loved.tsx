@@ -1,4 +1,5 @@
 import React, {useState, useEffect, useCallback, useRef, useMemo} from 'react';
+import {tintedHeaderRight} from '@/components/TintedHeader'; // @ai
 import {
   View,
   Text,
@@ -611,7 +612,7 @@ const LovedScreen = () => {
     title: t('collectionScreen.loved'),
     scrollY,
     hasContent: lovedData.length > 0 && !loading,
-    headerRight: lovedData.length > 0 ? renderHeaderRight : undefined,
+    ...tintedHeaderRight(lovedData.length > 0 ? renderHeaderRight : undefined), // @ai
   });
 
   // @ai-start

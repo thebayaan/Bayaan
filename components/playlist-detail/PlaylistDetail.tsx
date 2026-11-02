@@ -1,4 +1,5 @@
 import React, {useState, useEffect, useCallback, useRef, useMemo} from 'react';
+import {tintedHeaderRight} from '@/components/TintedHeader'; // @ai
 import {
   View,
   Text,
@@ -362,7 +363,7 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
     title: playlist?.name || t('common:terms.playlist'),
     scrollY,
     hasContent: !loading && playlistData.length > 0,
-    headerRight: !loading && playlist ? renderHeaderRight : undefined,
+    ...tintedHeaderRight(!loading && playlist ? renderHeaderRight : undefined), // @ai
   });
 
   // @ai-start

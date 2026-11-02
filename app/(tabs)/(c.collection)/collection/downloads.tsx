@@ -1,4 +1,5 @@
 import React, {useState, useEffect, useCallback, useRef, useMemo} from 'react';
+import {tintedHeaderRight} from '@/components/TintedHeader'; // @ai
 import {
   View,
   Text,
@@ -133,7 +134,7 @@ export default function DownloadsScreen() {
     title: t('common:terms.downloads'),
     scrollY,
     hasContent: downloads.length > 0,
-    headerRight: downloads.length > 0 ? renderHeaderRight : undefined,
+    ...tintedHeaderRight(downloads.length > 0 ? renderHeaderRight : undefined), // @ai
   });
 
   const styles = useMemo(
