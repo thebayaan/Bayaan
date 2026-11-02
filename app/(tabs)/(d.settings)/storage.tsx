@@ -1,7 +1,8 @@
 import React, {useState, useMemo} from 'react';
 import {View, Text, ScrollView, Pressable, Alert} from 'react-native';
+import {confirmDestructive} from '@/utils/confirmDestructive'; // @ai
 import {useTheme} from '@/hooks/useTheme';
-import {ScaledSheet, moderateScale} from 'react-native-size-matters';
+import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {Theme} from '@/utils/themeUtils';
 import Color from 'color';
 import {useStorageBreakdown} from '@/hooks/useStorageBreakdown';
@@ -41,6 +42,7 @@ interface ActionSectionProps {
   description: string;
   buttonLabel: string;
   onPress: () => void;
+  disabled?: boolean; // @ai
   theme: Theme;
   styles: ReturnType<typeof createStyles>;
 }
@@ -50,6 +52,7 @@ const ActionSection = ({
   description,
   buttonLabel,
   onPress,
+  disabled = false, // @ai
   theme,
   styles,
 }: ActionSectionProps) => (
@@ -63,8 +66,13 @@ const ActionSection = ({
         styles.actionButton,
         {backgroundColor: theme.colors.text},
         pressed && {opacity: 0.8},
+        disabled && {opacity: 0.4}, // @ai
       ]}
-      onPress={onPress}>
+      onPress={onPress}
+      // @ai: one clear at a time; a second tap mid-clear started another
+      disabled={disabled}
+      accessibilityRole="button"
+      accessibilityState={{disabled, busy: disabled}}>
       <Text style={styles.actionButtonText}>{buttonLabel}</Text>
     </Pressable>
   </View>
@@ -75,63 +83,56 @@ export default function StorageScreen() {
   const {theme} = useTheme();
   const {t} = useTranslation(['settings', 'common']);
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const [, setIsClearing] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
 
   const {free, downloads, cache, otherApps, loading, error, rawData, refresh} =
     useStorageBreakdown();
 
   const handleClearAllDownloads = () => {
-    Alert.alert(
-      t('storage.removeDownloadsTitle'),
-      t('storage.removeDownloadsConfirm'),
-      [
-        {text: t('common:actions.cancel'), style: 'cancel'},
-        {
-          text: t('common:actions.remove'),
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setIsClearing(true);
-              await useDownloadStore.getState().clearAllDownloads();
-              refresh();
-              Alert.alert(
-                t('storage.success'),
-                t('storage.removeDownloadsSuccess'),
-              );
-            } catch (downloadError) {
-              Alert.alert(
-                t('storage.error'),
-                t('storage.removeDownloadsError'),
-              );
-            } finally {
-              setIsClearing(false);
-            }
-          },
-        },
-      ],
-    );
+    if (isClearing) return;
+    confirmDestructive({
+      title: t('storage.removeDownloadsTitle'),
+      message: t('storage.removeDownloadsConfirm'),
+      confirmText: t('common:actions.remove'),
+      cancelText: t('common:actions.cancel'),
+      onConfirm: async () => {
+        try {
+          setIsClearing(true);
+          await useDownloadStore.getState().clearAllDownloads();
+          refresh();
+          Alert.alert(
+            t('storage.success'),
+            t('storage.removeDownloadsSuccess'),
+          );
+        } catch (downloadError) {
+          Alert.alert(t('storage.error'), t('storage.removeDownloadsError'));
+        } finally {
+          setIsClearing(false);
+        }
+      },
+    });
   };
 
   const handleClearCache = () => {
-    Alert.alert(t('storage.clearCacheTitle'), t('storage.clearCacheConfirm'), [
-      {text: t('common:actions.cancel'), style: 'cancel'},
-      {
-        text: t('common:actions.clear'),
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            setIsClearing(true);
-            await clearPlayerCache();
-            refresh();
-            Alert.alert(t('storage.success'), t('storage.clearCacheSuccess'));
-          } catch (cacheError) {
-            Alert.alert(t('storage.error'), t('storage.clearCacheError'));
-          } finally {
-            setIsClearing(false);
-          }
-        },
+    if (isClearing) return;
+    confirmDestructive({
+      title: t('storage.clearCacheTitle'),
+      message: t('storage.clearCacheConfirm'),
+      confirmText: t('common:actions.clear'),
+      cancelText: t('common:actions.cancel'),
+      onConfirm: async () => {
+        try {
+          setIsClearing(true);
+          await clearPlayerCache();
+          refresh();
+          Alert.alert(t('storage.success'), t('storage.clearCacheSuccess'));
+        } catch (cacheError) {
+          Alert.alert(t('storage.error'), t('storage.clearCacheError'));
+        } finally {
+          setIsClearing(false);
+        }
       },
-    ]);
+    });
   };
 
   const totalRaw = rawData.total || 1;
@@ -281,6 +282,7 @@ export default function StorageScreen() {
                 description={t('storage.removeDownloadsDescription')}
                 buttonLabel={t('common:actions.remove')}
                 onPress={handleClearAllDownloads}
+                disabled={isClearing}
                 theme={theme}
                 styles={styles}
                 key="downloads"
@@ -293,6 +295,7 @@ export default function StorageScreen() {
                 description={t('storage.clearCacheDescription')}
                 buttonLabel={t('common:actions.clear')}
                 onPress={handleClearCache}
+                disabled={isClearing}
                 theme={theme}
                 styles={styles}
                 key="cache"

@@ -8,7 +8,7 @@ import {
   LayoutChangeEvent,
 } from 'react-native';
 import {Link} from 'expo-router';
-import {moderateScale, scale} from 'react-native-size-matters';
+import {moderateScale, scale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {useWindowDimensions} from 'react-native';
 import Color from 'color';
@@ -21,6 +21,7 @@ import {GlassView} from 'expo-glass-effect';
 // @ai-start
 import {latinLetterSpacing} from '@/utils/rtl';
 import i18n from '@/i18n';
+import {computeGridLayout} from '@/utils/gridLayout';
 // @ai-end
 
 // CONFIGURABLE ROW HEIGHT MULTIPLIER - This is the 'x' variable you can adjust
@@ -28,6 +29,14 @@ const ROW_HEIGHT_UNIT = 80; // Base unit 'x' in points - adjust this value to ch
 
 // Gap between cards (must match marginBottom on tiles)
 const CARD_GAP = moderateScale(8);
+
+// @ai-start
+// iPad grid (mockup L6).
+const TABLET_GAP = moderateScale(12);
+const TABLET_MIN_TILE_WIDTH = moderateScale(180);
+const TABLET_TILE_ASPECT = 1.6;
+const TABLET_FEATURE_HEIGHT = moderateScale(96);
+// @ai-end
 
 interface BentoTile {
   id: string;
@@ -120,11 +129,29 @@ function createExplicitLayout(): ColumnLayout {
   return {leftColumn, rightColumn};
 }
 
+// @ai-start
+/**
+ * System playlists in reading order for the iPad grid: the phone's two
+ * columns interleaved row by row, so Morning Reflections and Evening
+ * Serenity still open the list side by side.
+ */
+export function interleaveColumns<
+  T extends Pick<BentoTile, 'column' | 'order'>,
+>(tiles: readonly T[]): T[] {
+  return [...tiles].sort(
+    (a, b) =>
+      a.order - b.order ||
+      (a.column === b.column ? 0 : a.column === 'left' ? -1 : 1),
+  );
+}
+// @ai-end
+
 // Tile presentation:
 //   - iOS 26 (USE_GLASS): Liquid Glass; GlassView with the "regular"
 //     effect. No colored chrome; the material itself carries the card.
 //   - Everywhere else: thin tinted hollow border fallback (no Liquid Glass
 //     on Android or pre-iOS-26, so we keep the colored outline we had).
+//   - The iPad grid adds a light tint of the tile's color to either. @ai
 const BORDER_WIDTH = 1.5;
 const OUTER_RADIUS = moderateScale(20);
 
@@ -132,9 +159,12 @@ const BentoTileComponent = React.memo(
   ({
     tile,
     dimensions,
+    grid = false, // @ai
   }: {
     tile: BentoTile;
     dimensions: {width: number; height: number};
+    /** iPad grid tile: tinted with its color, title at the top. @ai */
+    grid?: boolean;
   }) => {
     const {theme} = useTheme();
     const glassColorScheme = useGlassColorScheme();
@@ -143,8 +173,20 @@ const BentoTileComponent = React.memo(
       () => Color(tile.backgroundColor).alpha(0.55).toString(),
       [tile.backgroundColor],
     );
+    // @ai-start
+    // Grid tiles are all one size, so color (not height) tells them apart.
+    const tint = useMemo(
+      () =>
+        grid
+          ? Color(tile.backgroundColor)
+              .alpha(USE_GLASS ? 0.32 : 0.14)
+              .toString()
+          : undefined,
+      [grid, tile.backgroundColor],
+    );
+    // @ai-end
 
-    const isLargeCard = tile.heightMultiplier >= 2;
+    const isLargeCard = grid || tile.heightMultiplier >= 2; // @ai
     const titleSize = isLargeCard ? moderateScale(16) : moderateScale(14);
     const subtitleSize = moderateScale(12);
 
@@ -181,9 +223,26 @@ const BentoTileComponent = React.memo(
       () => ({
         width: dimensions.width,
         height: dimensions.height,
-        marginBottom: moderateScale(8),
+        marginBottom: grid ? 0 : moderateScale(8), // @ai
       }),
-      [dimensions.width, dimensions.height],
+      [dimensions.width, dimensions.height, grid],
+    );
+
+    // Non-glass fallback: keep the thin tinted hollow border so Android /
+    // pre-iOS-26 still get a recognizable card shape.
+    // @ai-start
+    // Computed before the glass branch returns so the hook order never
+    // changes.
+    // @ai-end
+    const fallbackStyle = useMemo(
+      () => ({
+        ...outerStyle,
+        borderRadius: OUTER_RADIUS,
+        borderWidth: BORDER_WIDTH,
+        borderColor,
+        backgroundColor: tint ?? ('transparent' as const), // @ai
+      }),
+      [outerStyle, borderColor, tint],
     );
 
     if (USE_GLASS) {
@@ -194,6 +253,7 @@ const BentoTileComponent = React.memo(
               <GlassView
                 style={tileInnerStyles.glassInner}
                 glassEffectStyle="regular"
+                tintColor={tint} // @ai
                 colorScheme={glassColorScheme}>
                 <View style={tileInnerStyles.contentWrapper}>
                   {contentBlock}
@@ -204,19 +264,6 @@ const BentoTileComponent = React.memo(
         </Link>
       );
     }
-
-    // Non-glass fallback: keep the thin tinted hollow border so Android /
-    // pre-iOS-26 still get a recognizable card shape.
-    const fallbackStyle = useMemo(
-      () => ({
-        ...outerStyle,
-        borderRadius: OUTER_RADIUS,
-        borderWidth: BORDER_WIDTH,
-        borderColor,
-        backgroundColor: 'transparent' as const,
-      }),
-      [outerStyle, borderColor],
-    );
 
     return (
       <Link href={tile.route as any} asChild>
@@ -360,6 +407,33 @@ export const ExploreView = React.memo(
     // wrapper itself always renders so onLayout can fire.
     const tilesReady = !isTablet || measuredWidth != null;
 
+    // iPad (mockup L6): the two Browse All tiles side by side, then the
+    // system playlists as a grid of 1.6:1 tiles that gains columns with the
+    // pane (3 on the mini, 4 on the 13"). The phone bento stays as it is.
+    const tabletGrid = useMemo(() => {
+      if (!isTablet) return null;
+      const {itemWidth} = computeGridLayout(width, {
+        minCardWidth: TABLET_MIN_TILE_WIDTH,
+        horizontalPadding,
+        gap: TABLET_GAP,
+        minColumns: 3,
+      });
+      return {
+        // Floored so rounding never wraps the last tile of a row.
+        tile: {
+          width: Math.floor(itemWidth),
+          height: Math.floor(itemWidth / TABLET_TILE_ASPECT),
+        },
+        feature: {
+          width: Math.floor((width - horizontalPadding * 2 - TABLET_GAP) / 2),
+          height: TABLET_FEATURE_HEIGHT,
+        },
+        playlists: interleaveColumns(
+          getAllSystemPlaylists().map(systemPlaylistToTile),
+        ),
+      };
+    }, [isTablet, width, horizontalPadding]);
+
     return (
       <View style={styles.content} onLayout={onContentLayout}>
         <ScrollView
@@ -381,11 +455,32 @@ export const ExploreView = React.memo(
                 },
           ]}
           showsVerticalScrollIndicator={false}>
-          {tilesReady && (
-            <View style={styles.masonryContainer}>
-              {renderColumn(layout.leftColumn, 'left')}
-              {renderColumn(layout.rightColumn, 'right')}
+          {tilesReady && tabletGrid ? (
+            <View style={styles.tabletGrid}>
+              {BROWSE_TILES.map(tile => (
+                <BentoTileComponent
+                  key={tile.id}
+                  tile={tile}
+                  dimensions={tabletGrid.feature}
+                  grid
+                />
+              ))}
+              {tabletGrid.playlists.map(tile => (
+                <BentoTileComponent
+                  key={tile.id}
+                  tile={tile}
+                  dimensions={tabletGrid.tile}
+                  grid
+                />
+              ))}
             </View>
+          ) : (
+            tilesReady && (
+              <View style={styles.masonryContainer}>
+                {renderColumn(layout.leftColumn, 'left')}
+                {renderColumn(layout.rightColumn, 'right')}
+              </View>
+            )
           )}
         </ScrollView>
       </View>
@@ -418,4 +513,11 @@ const createStyles = (theme: ReturnType<typeof useTheme>['theme']) =>
     column: {
       flex: 1,
     },
+    // @ai-start
+    tabletGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: TABLET_GAP,
+    },
+    // @ai-end
   });

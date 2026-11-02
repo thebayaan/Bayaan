@@ -12,7 +12,7 @@ import Animated, {
   withTiming,
   type SharedValue,
 } from 'react-native-reanimated';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 
 const BAR_DELAYS = [0, 180, 360];
 const STILL_SCALES = [0.5, 0.9, 0.65];

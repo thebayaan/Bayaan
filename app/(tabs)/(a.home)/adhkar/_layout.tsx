@@ -1,13 +1,34 @@
+import React from 'react'; // @ai
 import {Pressable} from 'react-native';
 import {Stack, useRouter} from 'expo-router';
 import {Ionicons} from '@expo/vector-icons';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 // @ai-start
 import {useTranslation} from 'react-i18next';
 // @ai-end
 import {useTheme} from '@/hooks/useTheme';
 import {USE_GLASS} from '@/hooks/useGlassProps';
 import {flipX} from '@/utils/rtl';
+import {capScreensExcept} from '@/components/layout/MaxWidthContainer'; // @ai
+import {DhikrListWidth} from '@/components/adhkar/DhikrCardRow'; // @ai
+
+// @ai-start
+// The category grid takes the whole pane on iPad and readers stay in the
+// 720pt column (ipad-standards §5.3). The dhikr lists take the pane only
+// when their cards pair up, so they size themselves.
+const DHIKR_LIST_ROUTES = ['[superId]/index', 'saved/index'];
+const capOthers = capScreensExcept(['index', ...DHIKR_LIST_ROUTES]);
+function screenLayout(props: {
+  route: {name: string};
+  children: React.ReactElement;
+}): React.ReactElement {
+  return DHIKR_LIST_ROUTES.includes(props.route.name) ? (
+    <DhikrListWidth>{props.children}</DhikrListWidth>
+  ) : (
+    capOthers(props)
+  );
+}
+// @ai-end
 
 // A deep link (widget, Live Activity, App Link) that opens a screen in this
 // stack lands on top of its first screen, so back always has a target.
@@ -21,6 +42,7 @@ export default function AdhkarLayout() {
 
   return (
     <Stack
+      screenLayout={screenLayout} // @ai
       screenOptions={{
         headerShown: true,
         freezeOnBlur: true,

@@ -30,7 +30,9 @@
     "copy": "Copy",
     "select": "Select",
     "apply": "Apply",
-    "tryAgain": "Try again"
+    "tryAgain": "Try again",
+    "hideSidebar": "Hide sidebar",
+    "showSidebar": "Show sidebar"
   },
   "tabs": {
     "home": "Home",
@@ -119,7 +121,10 @@
     "system": "System default",
     "systemDescription": "Follow the device language",
     "restartNote": "A new language applies after the app restarts.",
-    "iosNote": "Your selection applies to the app language and layout."
+    "iosNote": "iOS keeps Bayaan's language in Settings. When you change it there, the app reopens in the new language.",
+    "iosSettingsTitle": "Change language in Settings",
+    "iosSettingsMessage": "Tap Language in Bayaan's Settings and pick a language. The app reopens in it.",
+    "openSettings": "Open Settings"
   },
   "languageRestart": {
     "title": "Restart required",
@@ -127,5 +132,24 @@
     "confirmTitle": "Restart the app?",
     "confirmMessage": "The app will close and reopen in the new language.",
     "restart": "Restart"
+  },
+  "keyboard": {
+    "menus": {
+      "playback": "Playback",
+      "go": "Go",
+      "reader": "Mushaf"
+    },
+    "playPause": "Play/Pause",
+    "skipBack": "Back {{seconds}} Seconds",
+    "skipForward": "Forward {{seconds}} Seconds",
+    "previousTrack": "Previous Track",
+    "nextTrack": "Next Track",
+    "followAlong": "Follow Along",
+    "search": "Search",
+    "findSurahOrReciter": "Find a Surah or Reciter",
+    "close": "Close",
+    "nextPage": "Next Page",
+    "previousPage": "Previous Page",
+    "playPauseRecitation": "Play/Pause Recitation"
   }
 }

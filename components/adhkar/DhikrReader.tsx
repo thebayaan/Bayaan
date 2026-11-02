@@ -9,7 +9,7 @@ import {
   Platform,
   UIManager,
 } from 'react-native';
-import {ScaledSheet, moderateScale} from 'react-native-size-matters';
+import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {Feather} from '@expo/vector-icons';
 import Color from 'color';
 import {SheetManager} from 'react-native-actions-sheet';

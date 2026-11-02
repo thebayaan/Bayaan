@@ -1,6 +1,6 @@
 import React, {useMemo} from 'react';
 import {Pressable, Text, View, StyleSheet} from 'react-native';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import {RewayatInfo} from '@/data/rewayatCollections';
 import {useTheme} from '@/hooks/useTheme';
 import Color from 'color';

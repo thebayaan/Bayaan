@@ -1,7 +1,7 @@
 // Styles of the Quran recent card (RecentReciterCard), shared with the adhkar
 // card in Continue Listening (AdhkarSessionCard) so both render the same.
 import {StyleSheet} from 'react-native';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import Color from 'color';
 import {latinLetterSpacing} from '@/utils/rtl';
 

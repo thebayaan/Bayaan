@@ -40,3 +40,14 @@ it('ignores section header tokens when collecting visible rows', () => {
   expect(rows).toEqual([4, 5]);
   expect(jumpPillDirection(rows, 2)).toBe('up');
 });
+
+it('counts every card of a paired row as visible', () => {
+  const tokens = [
+    {index: null, item: undefined as {globalIndex: number}[] | undefined},
+    {index: 0, item: [{globalIndex: 4}, {globalIndex: 5}]},
+    {index: 1, item: [{globalIndex: 6}]},
+  ];
+  const rows = visibleRowIndices(tokens, v => v.item?.map(i => i.globalIndex));
+  expect(rows).toEqual([4, 5, 6]);
+  expect(jumpPillDirection(rows, 5)).toBeNull();
+});

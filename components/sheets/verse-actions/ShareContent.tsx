@@ -4,16 +4,12 @@ import {
   Text,
   Pressable,
   Share,
-  Switch,
   useWindowDimensions,
   ActivityIndicator,
   PixelRatio,
 } from 'react-native';
-import {
-  ScaledSheet,
-  moderateScale,
-  verticalScale,
-} from 'react-native-size-matters';
+import {NativeSwitch} from '@/components/native/NativeSwitch'; // @ai
+import {ScaledSheet, moderateScale, verticalScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {Feather} from '@expo/vector-icons';
@@ -379,13 +375,7 @@ export const ShareContent: React.FC<ShareContentProps> = ({
 
       <View style={styles.toggleRow}>
         <Text style={styles.toggleLabel}>{t('share.showBasmallah')}</Text>
-        <Switch
-          trackColor={{
-            false: Color(theme.colors.text).alpha(0.1).toString(),
-            true: Color(theme.colors.text).alpha(0.65).toString(),
-          }}
-          thumbColor="#FFFFFF"
-          ios_backgroundColor={Color(theme.colors.text).alpha(0.1).toString()}
+        <NativeSwitch
           onValueChange={() => setShowBasmallah(!showBasmallah)}
           value={showBasmallah}
           style={{transform: [{scaleX: 0.8}, {scaleY: 0.8}]}}
@@ -394,13 +384,7 @@ export const ShareContent: React.FC<ShareContentProps> = ({
 
       <View style={styles.toggleRow}>
         <Text style={styles.toggleLabel}>{t('share.showWatermark')}</Text>
-        <Switch
-          trackColor={{
-            false: Color(theme.colors.text).alpha(0.1).toString(),
-            true: Color(theme.colors.text).alpha(0.65).toString(),
-          }}
-          thumbColor="#FFFFFF"
-          ios_backgroundColor={Color(theme.colors.text).alpha(0.1).toString()}
+        <NativeSwitch
           onValueChange={() => setShowWatermark(!showWatermark)}
           value={showWatermark}
           style={{transform: [{scaleX: 0.8}, {scaleY: 0.8}]}}

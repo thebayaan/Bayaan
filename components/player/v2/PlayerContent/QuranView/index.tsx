@@ -109,6 +109,8 @@ interface QuranListHeaderProps {
   allahNameHighlightColor: string;
   /** Rewayah of the verses below (the playing track's rewayah). */
   rewayah: RewayahId;
+  /** The basmala is being recited (the intro before verse 1). @ai */
+  basmalaActive: boolean;
 }
 
 const QuranListHeader = React.memo<QuranListHeaderProps>(
@@ -126,6 +128,7 @@ const QuranListHeader = React.memo<QuranListHeaderProps>(
     showAllahNameHighlight,
     allahNameHighlightColor,
     rewayah,
+    basmalaActive, // @ai
   }) => (
     <>
       <SurahDivider
@@ -147,6 +150,7 @@ const QuranListHeader = React.memo<QuranListHeaderProps>(
         allahNameHighlightColor={allahNameHighlightColor}
         rewayah={rewayah}
         surahNumber={surahNumber} // @ai
+        isActive={basmalaActive} // @ai
       />
     </>
   ),
@@ -322,6 +326,13 @@ export const QuranView: React.FC<QuranViewProps> = ({
   const bandKeys = useMemo(() => parseVerseKeyListId(bandKeysId), [bandKeysId]);
   // @ai-end
   const isLocked = useTimestampStore(s => s.isLocked);
+  // @ai-start
+  // The intro before verse 1 (isti'adha / basmala): the basmala is lit as
+  // the verse being recited is, only while the list follows the recitation.
+  // Never for al-Fatihah (its basmala is verse 1) or at-Tawbah.
+  const basmalaActive =
+    useTimestampStore(s => s.basmalaIntroSurah === currentSurah) && isLocked;
+  // @ai-end
   // @ai-start
   // Follow-along is on, but this surah's verses cannot be followed (no
   // timing, a failed load, or an unknown verse numbering): say so, as the
@@ -672,6 +683,7 @@ export const QuranView: React.FC<QuranViewProps> = ({
               showAllahNameHighlight={showAllahNameHighlight}
               allahNameHighlightColor={allahNameHighlightColor}
               rewayah={trackRewayah}
+              basmalaActive={basmalaActive} // @ai
             />
             {/* @ai-start */}
             {verseTrackingUnavailable && (

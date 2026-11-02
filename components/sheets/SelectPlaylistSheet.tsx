@@ -7,15 +7,12 @@ import {
   Alert,
   Dimensions,
 } from 'react-native';
-import {ScaledSheet, moderateScale} from 'react-native-size-matters';
+import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {PlaylistIcon, HeartIcon} from '@/components/Icons';
-import ActionSheet, {
-  SheetProps,
-  SheetManager,
-  ScrollView,
-} from 'react-native-actions-sheet';
+import {SheetProps, SheetManager, ScrollView} from 'react-native-actions-sheet';
+import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import {usePlaylists} from '@/hooks/usePlaylists';
 import {useLoved} from '@/hooks/useLoved';
 import {PlaylistItem} from '@/components/PlaylistItem';

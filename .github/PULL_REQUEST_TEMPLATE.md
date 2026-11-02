@@ -18,6 +18,7 @@ Closes #
 
 - Tested on iOS
 - Tested on Android
+- UI change? Tested on iPad (portrait and landscape) and ran the [UI review checklist](../docs/design/ipad-review-checklist.md)
 
 ## Checklist
 

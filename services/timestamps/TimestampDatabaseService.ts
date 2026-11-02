@@ -6,7 +6,10 @@ import type {
 } from '@/types/timestamps';
 import {mapAyahTimestampRow} from '@/types/timestamps';
 
-const DB_NAME = 'timestamps_v3.db';
+// v4: the R2 timings for several reciters were regenerated (2026-10-27), and a
+// cached surah is never re-fetched, so devices start from an empty cache.
+const DB_NAME = 'timestamps_v4.db';
+const LEGACY_DB_NAMES = ['timestamps_v3.db'];
 
 class TimestampDatabaseService {
   private db: SQLite.SQLiteDatabase | null = null;
@@ -19,6 +22,10 @@ class TimestampDatabaseService {
     this.initPromise = (async () => {
       try {
         const db = await SQLite.openDatabaseAsync(DB_NAME);
+        // Best effort: the old cache only holds superseded timings.
+        for (const name of LEGACY_DB_NAMES) {
+          SQLite.deleteDatabaseAsync(name).catch(() => undefined);
+        }
 
         // Note on the cached_surahs.source column:
         // `source` is informational (no CHECK constraint at the SQLite

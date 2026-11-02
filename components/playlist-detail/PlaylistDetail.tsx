@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useCallback, useRef} from 'react';
+import React, {useState, useEffect, useCallback, useRef, useMemo} from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,12 @@ import {
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {TrackItem} from '@/components/TrackItem';
+import {SurahOptionsRow} from '@/components/sheets/options/surahOptions'; // @ai
+import {useNativeOptionsMenu} from '@/components/sheets/options/OptionsMenu'; // @ai
+import {
+  PlaylistOptionsMenu,
+  type PlaylistOptionsPayload,
+} from '@/components/sheets/options/playlistOptions'; // @ai
 import {usePlaylists} from '@/hooks/usePlaylists';
 import {getReciterById, getSurahById} from '@/services/dataService';
 import {Reciter} from '@/data/reciterData';
@@ -16,7 +22,7 @@ import {Surah} from '@/data/surahData';
 import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {createTrack, createUserUploadTrack} from '@/utils/track';
 import {useUploadsStore} from '@/store/uploadsStore';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import {Feather} from '@expo/vector-icons';
 import {PlaylistHeader} from './PlaylistHeader';
 import {SheetManager} from 'react-native-actions-sheet';
@@ -28,6 +34,7 @@ import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
 import {USE_GLASS} from '@/hooks/useGlassProps';
 // @ai-start
 import {useTranslation} from 'react-i18next';
+import {useLibraryListBottomPadding} from '@/hooks/useBottomInset'; // @ai
 // @ai-end
 
 interface PlaylistTrack {
@@ -53,8 +60,10 @@ interface PlaylistDetailProps {
 // @ai-start
 const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
   const {theme} = useTheme();
+  const listBottomPadding = useLibraryListBottomPadding(); // @ai
   const router = useRouter();
   const {t} = useTranslation(['collection', 'common']);
+  const nativeMenus = useNativeOptionsMenu(); // @ai
   const {
     getPlaylist,
     getPlaylistItems,
@@ -79,7 +88,6 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
     },
     listContentContainer: {
       flexGrow: 1,
-      paddingBottom: moderateScale(65),
     },
     emptyText: {
       fontSize: moderateScale(16),
@@ -266,11 +274,10 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
     [playlists],
   );
 
-  const handleOptionsPress = useCallback(() => {
-    if (!playlist) return;
-
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    shouldClearPlaylistRef.current = true;
+  // @ai-start
+  // Built at render so tablets can show it as a native menu.
+  const playlistOptions = useMemo<PlaylistOptionsPayload | null>(() => {
+    if (!playlist) return null;
 
     const handleEditForThisPlaylist = async () => {
       shouldClearPlaylistRef.current = false;
@@ -310,15 +317,13 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
       }
     };
 
-    SheetManager.show('playlist-context', {
-      payload: {
-        playlistId: playlist.id,
-        playlistName: playlist.name,
-        playlistColor: playlist.color,
-        onDelete: handleDeleteForThisPlaylist,
-        onEdit: handleEditForThisPlaylist,
-      },
-    });
+    return {
+      playlistId: playlist.id,
+      playlistName: playlist.name,
+      playlistColor: playlist.color,
+      onDelete: handleDeleteForThisPlaylist,
+      onEdit: handleEditForThisPlaylist,
+    };
   }, [
     playlist,
     deletePlaylist,
@@ -328,6 +333,15 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
     loadPlaylistData,
   ]);
 
+  const handleOptionsPress = useCallback(() => {
+    if (!playlistOptions) return;
+
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    shouldClearPlaylistRef.current = true;
+    SheetManager.show('playlist-context', {payload: playlistOptions});
+  }, [playlistOptions]);
+  // @ai-end
+
   const renderHeaderRight = useCallback(
     () => (
       <Pressable onPress={handleOptionsPress} hitSlop={8}>
@@ -336,9 +350,12 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
           size={moderateScale(20)}
           color={theme.colors.text}
         />
+        {nativeMenus && playlistOptions && (
+          <PlaylistOptionsMenu payload={playlistOptions} />
+        )}
       </Pressable>
     ),
-    [handleOptionsPress, theme.colors.text],
+    [handleOptionsPress, theme.colors.text, nativeMenus, playlistOptions],
   );
 
   useCollectionNativeHeader({
@@ -348,35 +365,44 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
     headerRight: !loading && playlist ? renderHeaderRight : undefined,
   });
 
-  const handleShowTrackOptions = useCallback(
-    async (track: PlaylistTrack, reciter: Reciter, surah: Surah) => {
-      let audioTrack;
-      if (track.userRecitationId) {
-        const upload = useUploadsStore
-          .getState()
-          .recitations.find(r => r.id === track.userRecitationId);
-        if (upload) audioTrack = createUserUploadTrack(upload);
-      }
-      if (!audioTrack) {
-        audioTrack = await createTrack(reciter, surah, track.rewayatId);
-      }
+  // @ai-start
+  // The options payload for a playlist track, shared by the sheet (phones)
+  // and the row's native menu (tablets). The queue track is built only when
+  // "Add to queue" is chosen.
+  const buildTrackOptions = useCallback(
+    (track: PlaylistTrack, reciter: Reciter, surah: Surah) => ({
+      surah,
+      reciterId: track.reciterId,
+      rewayatId: track.rewayatId,
+      onAddToQueue: async () => {
+        let audioTrack;
+        if (track.userRecitationId) {
+          const upload = useUploadsStore
+            .getState()
+            .recitations.find(r => r.id === track.userRecitationId);
+          if (upload) audioTrack = createUserUploadTrack(upload);
+        }
+        if (!audioTrack) {
+          audioTrack = await createTrack(reciter, surah, track.rewayatId);
+        }
+        if (audioTrack) {
+          await addToQueue([audioTrack]);
+        }
+      },
+      onRemoveFromPlaylist: () => handleRemoveFromPlaylist(track),
+    }),
+    [addToQueue, handleRemoveFromPlaylist],
+  );
 
+  const handleShowTrackOptions = useCallback(
+    (track: PlaylistTrack, reciter: Reciter, surah: Surah) => {
       SheetManager.show('surah-options', {
-        payload: {
-          surah,
-          reciterId: track.reciterId,
-          rewayatId: track.rewayatId,
-          onAddToQueue: async (s: Surah) => {
-            if (audioTrack) {
-              await addToQueue([audioTrack]);
-            }
-          },
-          onRemoveFromPlaylist: () => handleRemoveFromPlaylist(track),
-        },
+        payload: buildTrackOptions(track, reciter, surah),
       });
     },
-    [addToQueue],
+    [buildTrackOptions],
   );
+  // @ai-end
 
   const ListHeaderComponent = useCallback(() => {
     if (!playlist) return null;
@@ -388,6 +414,11 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
         onPlayPress={handlePlayAll}
         onShufflePress={handleShuffle}
         onOptionsPress={USE_GLASS ? undefined : handleOptionsPress}
+        optionsMenu={
+          nativeMenus && playlistOptions ? (
+            <PlaylistOptionsMenu payload={playlistOptions} />
+          ) : undefined
+        }
         theme={theme}
       />
     );
@@ -397,6 +428,8 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
     handlePlayAll,
     handleShuffle,
     handleOptionsPress,
+    nativeMenus,
+    playlistOptions,
     theme,
     t,
   ]);
@@ -409,16 +442,18 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
     }
 
     return (
-      <TrackItem
-        reciterId={track.reciterId}
-        surahId={track.surahId}
-        rewayatId={track.rewayatId}
-        userRecitationId={track.userRecitationId}
-        onPress={() => handleSurahPress(track, reciter, surah)}
-        onPlayPress={() => handleSurahPress(track, reciter, surah)}
-        onOptionsPress={() => handleShowTrackOptions(track, reciter, surah)}
-        onLongPress={() => handleShowTrackOptions(track, reciter, surah)}
-      />
+      <SurahOptionsRow payload={buildTrackOptions(track, reciter, surah)}>
+        <TrackItem
+          reciterId={track.reciterId}
+          surahId={track.surahId}
+          rewayatId={track.rewayatId}
+          userRecitationId={track.userRecitationId}
+          onPress={() => handleSurahPress(track, reciter, surah)}
+          onPlayPress={() => handleSurahPress(track, reciter, surah)}
+          onOptionsPress={() => handleShowTrackOptions(track, reciter, surah)}
+          onLongPress={() => handleShowTrackOptions(track, reciter, surah)}
+        />
+      </SurahOptionsRow>
     );
   };
 
@@ -437,7 +472,10 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
         renderItem={renderItem}
         keyExtractor={item => item.track.id}
         ListHeaderComponent={ListHeaderComponent}
-        contentContainerStyle={styles.listContentContainer}
+        contentContainerStyle={[
+          styles.listContentContainer,
+          {paddingBottom: listBottomPadding}, // @ai
+        ]}
         contentInsetAdjustmentBehavior="automatic"
         ListEmptyComponent={
           <Text style={styles.emptyText}>{t('playlistDetail.empty')}</Text>

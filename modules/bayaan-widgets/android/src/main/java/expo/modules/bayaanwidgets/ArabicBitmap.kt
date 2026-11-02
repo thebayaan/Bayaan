@@ -17,6 +17,7 @@ import android.text.TextUtils
 object ArabicBitmap {
   const val QURAN_FONT = "fonts/DigitalKhattFont.otf"
   const val DHIKR_FONT = "fonts/ScheherazadeNew-Regular.ttf"
+  const val SURAH_NAMES_FONT = "fonts/surah_names.ttf" // @ai
   private const val STEP_PX = 2f
   private val typefaces = HashMap<String, Typeface>()
 

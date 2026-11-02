@@ -12,24 +12,34 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {PlaylistItem} from '@/components/PlaylistItem';
 import {useRouter} from 'expo-router';
 import {Feather} from '@expo/vector-icons';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import {usePlaylists} from '@/hooks/usePlaylists';
 import {PlaylistIcon} from '@/components/Icons';
 import {CollectionStickyHeader} from '@/components/collection/CollectionStickyHeader';
 import {SheetManager} from 'react-native-actions-sheet';
+// @ai-start
+import {useNativeOptionsMenu} from '@/components/sheets/options/OptionsMenu';
+import {
+  PlaylistOptionsMenu,
+  type PlaylistOptionsPayload,
+} from '@/components/sheets/options/playlistOptions';
+// @ai-end
 import Color from 'color';
 import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
 // @ai-start
 import {flipX, latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
+import {useLibraryListBottomPadding} from '@/hooks/useBottomInset'; // @ai
 // @ai-end
 
 // @ai-start
 export default function PlaylistsScreen() {
   const {theme} = useTheme();
+  const listBottomPadding = useLibraryListBottomPadding(); // @ai
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const {t} = useTranslation(['collection', 'common']);
+  const nativeMenus = useNativeOptionsMenu(); // @ai
   const {playlists, createPlaylist, deletePlaylist, updatePlaylist} =
     usePlaylists();
 
@@ -126,7 +136,6 @@ export default function PlaylistsScreen() {
         },
         listContentContainer: {
           flexGrow: 1,
-          paddingBottom: moderateScale(65),
         },
         fixedBackButton: {
           position: 'absolute',
@@ -205,9 +214,16 @@ export default function PlaylistsScreen() {
     [router],
   );
 
-  const handlePlaylistOptions = useCallback(
-    (item: (typeof playlists)[0]) => {
-      const handleEdit = async () => {
+  // @ai-start
+  const buildPlaylistOptions = useCallback(
+    (item: (typeof playlists)[0]): PlaylistOptionsPayload => ({
+      playlistId: item.id,
+      playlistName: item.name,
+      playlistColor: item.color,
+      onDelete: async () => {
+        await deletePlaylist(item.id);
+      },
+      onEdit: async () => {
         const result = await SheetManager.show('create-playlist', {
           payload: {
             existingColors,
@@ -222,22 +238,20 @@ export default function PlaylistsScreen() {
             color: result.color,
           });
         }
-      };
-      const handleDelete = async () => {
-        await deletePlaylist(item.id);
-      };
-      SheetManager.show('playlist-context', {
-        payload: {
-          playlistId: item.id,
-          playlistName: item.name,
-          playlistColor: item.color,
-          onDelete: handleDelete,
-          onEdit: handleEdit,
-        },
-      });
-    },
+      },
+    }),
     [existingColors, updatePlaylist, deletePlaylist],
   );
+
+  const handlePlaylistOptions = useCallback(
+    (item: (typeof playlists)[0]) => {
+      SheetManager.show('playlist-context', {
+        payload: buildPlaylistOptions(item),
+      });
+    },
+    [buildPlaylistOptions],
+  );
+  // @ai-end
 
   const handleCreatePlaylist = useCallback(async () => {
     const result = await SheetManager.show('create-playlist', {
@@ -258,9 +272,19 @@ export default function PlaylistsScreen() {
         onPress={() => handlePlaylistPress(item.id)}
         onLongPress={() => handlePlaylistOptions(item)}
         onOptionsPress={() => handlePlaylistOptions(item)}
+        optionsMenu={
+          nativeMenus ? (
+            <PlaylistOptionsMenu payload={buildPlaylistOptions(item)} />
+          ) : undefined
+        }
       />
     ),
-    [handlePlaylistPress, handlePlaylistOptions],
+    [
+      handlePlaylistPress,
+      handlePlaylistOptions,
+      nativeMenus,
+      buildPlaylistOptions,
+    ],
   );
 
   if (playlists.length === 0) {
@@ -379,7 +403,10 @@ export default function PlaylistsScreen() {
         renderItem={renderItem}
         keyExtractor={item => item.id}
         ListHeaderComponent={ListHeaderComponent}
-        contentContainerStyle={styles.listContentContainer}
+        contentContainerStyle={[
+          styles.listContentContainer,
+          {paddingBottom: listBottomPadding}, // @ai
+        ]}
         onScroll={RNAnimated.event(
           [{nativeEvent: {contentOffset: {y: scrollY}}}],
           {useNativeDriver: true},

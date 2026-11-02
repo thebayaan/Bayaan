@@ -93,6 +93,13 @@ struct QuickSurahView: View {
 
   private var reciterName: String { entry.reciter?.name ?? entry.defaultReciter?.name ?? "Default reciter" }
   private var reciterFile: String? { entry.reciter?.artworkFile ?? entry.defaultReciter?.artworkFile }
+  // @ai-start
+  private var reciterId: String? { entry.reciter?.id ?? entry.defaultReciter?.id }
+
+  private func isPlaying(_ surah: StaticSurah) -> Bool {
+    PlayingNow.matches(PlayingNow.track(at: entry.date), surahId: surah.id, reciterId: reciterId)
+  }
+  // @ai-end
 
   var body: some View {
     Group {
@@ -103,7 +110,11 @@ struct QuickSurahView: View {
       }
     }
     .foregroundStyle(.white)
-    .containerBackground(for: .widget) { WidgetPalette.background }
+    // @ai-start
+    .containerBackground(for: .widget) {
+      if family == .systemSmall, let first = entry.surahs.first { SurahTint.deep(first.id) } else { WidgetPalette.ink }
+    }
+    // @ai-end
   }
 
   private func intent(_ surah: StaticSurah) -> PlayTrackIntent {
@@ -111,61 +122,71 @@ struct QuickSurahView: View {
   }
 
   private func small(_ surah: StaticSurah) -> some View {
-    Button(intent: intent(surah)) {
-      VStack(alignment: .leading, spacing: 3) {
-        HStack(alignment: .top) {
-          SurahCard(surah: surah, size: 56)
-          Spacer(minLength: 0)
-          BayaanLogo(size: 14)
-        }
+    PlayOrPauseButton(playing: isPlaying(surah), play: intent(surah), label: "Play \(surah.name)") { playing in // @ai
+      // @ai-start
+      // A cached card prints the surah name, so it is shown larger and not repeated.
+      let cardNamed = SurahCard.showsName(surah)
+      VStack(alignment: .leading, spacing: 2) {
+        SurahCard(surah: surah, size: cardNamed ? 92 : 64)
+      // @ai-end
         Spacer(minLength: 0)
-        Text(surah.name).font(.headline).lineLimit(1)
+        if !cardNamed {
+          Text(surah.name).font(.system(size: 16, weight: .heavy)).lineLimit(1) // @ai
+        }
         HStack(spacing: 6) {
           ReciterPhoto(file: reciterFile, name: reciterName)
             .frame(width: 18, height: 18).clipShape(Circle())
-          Text(reciterName).font(.caption).opacity(0.75).lineLimit(1)
+          FittingName(name: reciterName).font(.caption.weight(.medium)).foregroundStyle(WidgetPalette.secondary) // @ai
           Spacer(minLength: 0)
-          RoundGlyph(systemName: "play.fill")
+          PrimaryGlyph(systemName: playing ? "pause.fill" : "play.fill") // @ai
         }
       }
       .padding(14)
       .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
-    .buttonStyle(.plain)
-    .accessibilityLabel("Play \(surah.name)")
   }
 
   private var medium: some View {
-    VStack(alignment: .leading, spacing: 8) {
-      HStack {
-        Text(reciterName).font(.caption2.weight(.semibold)).opacity(0.6).lineLimit(1)
+    // @ai-start
+    VStack(alignment: .leading, spacing: 12) {
+      HStack(spacing: 8) {
+        ReciterPhoto(file: reciterFile, name: reciterName)
+          .frame(width: 22, height: 22).clipShape(Circle())
+        Text("with \(reciterName)").font(.caption.weight(.semibold)).foregroundStyle(WidgetPalette.secondary)
+          .lineLimit(1)
+    // @ai-end
         Spacer(minLength: 0)
-        BayaanLogo(size: 14)
       }
-      Grid(horizontalSpacing: 10, verticalSpacing: 8) {
-        GridRow { tile(0); tile(1) }
-        GridRow { tile(2); tile(3) }
+      // @ai-start
+      HStack(alignment: .top, spacing: 0) {
+        ForEach(0..<4, id: \.self) { tile($0).frame(maxWidth: .infinity) }
+      // @ai-end
       }
       Spacer(minLength: 0)
     }
-    .padding(12)
+    // @ai-start
+    .padding(.horizontal, 16)
+    .padding(.vertical, 14)
+    // @ai-end
   }
 
+  /// One tap per tile: the tile is the play button. // @ai
   @ViewBuilder private func tile(_ index: Int) -> some View {
     if index < entry.surahs.count {
       let surah = entry.surahs[index]
-      Button(intent: intent(surah)) {
-        HStack(spacing: 8) {
-          SurahCard(surah: surah, size: 38)
-          Text(surah.name).font(.caption.weight(.semibold)).lineLimit(1)
-          Spacer(minLength: 0)
+      PlayOrPauseButton(playing: isPlaying(surah), play: intent(surah), label: "Play \(surah.name)") { playing in // @ai
+        // @ai-start
+        VStack(spacing: 6) {
+          SurahCard(surah: surah, size: 72)
+            .overlay { if playing { PlayingTileOverlay(size: 72) } }
+          if !SurahCard.showsName(surah) {
+            Text(surah.name).font(.caption.weight(.bold)).lineLimit(1).minimumScaleFactor(0.8)
+          }
+        // @ai-end
         }
       }
-      .buttonStyle(.plain)
-      .frame(maxWidth: .infinity)
-      .accessibilityLabel("Play \(surah.name)")
     } else {
-      Color.clear.frame(height: 38)
+      Color.clear.frame(width: 72, height: 72) // @ai
     }
   }
 }

@@ -1,7 +1,6 @@
 import React from 'react';
 import {Animated, Pressable, View} from 'react-native';
-import {moderateScale} from 'react-native-size-matters';
-import {ScaledSheet} from 'react-native-size-matters';
+import {moderateScale, ScaledSheet} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Feather} from '@expo/vector-icons';
 import {useRouter} from 'expo-router';

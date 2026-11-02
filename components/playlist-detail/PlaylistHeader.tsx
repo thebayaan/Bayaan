@@ -1,7 +1,6 @@
 import React from 'react';
 import {View, Text, Pressable} from 'react-native';
-import {moderateScale} from 'react-native-size-matters';
-import {ScaledSheet} from 'react-native-size-matters';
+import {moderateScale, ScaledSheet} from '@/utils/scale';
 import {Feather} from '@expo/vector-icons';
 import {useSafeAreaInsets, EdgeInsets} from 'react-native-safe-area-context';
 import {useRouter} from 'expo-router';
@@ -19,6 +18,8 @@ interface PlaylistHeaderProps {
   onPlayPress: () => void;
   onShufflePress: () => void;
   onOptionsPress?: () => void;
+  /** A native menu laid over the ••• button on tablets. @ai */
+  optionsMenu?: React.ReactNode;
   theme: Theme;
 }
 
@@ -29,6 +30,7 @@ export const PlaylistHeader: React.FC<PlaylistHeaderProps> = ({
   onPlayPress,
   onShufflePress,
   onOptionsPress,
+  optionsMenu,
   theme,
 }) => {
   const insets = useSafeAreaInsets();
@@ -80,6 +82,7 @@ export const PlaylistHeader: React.FC<PlaylistHeaderProps> = ({
               size={moderateScale(20)}
               color={theme.colors.text}
             />
+            {optionsMenu}
           </Pressable>
         )}
         <Pressable

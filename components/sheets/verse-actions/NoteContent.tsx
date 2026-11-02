@@ -1,11 +1,7 @@
 import React, {useState, useMemo, useCallback} from 'react';
 import {View, TextInput, Pressable, Text} from 'react-native';
 import {ScrollView} from 'react-native-actions-sheet';
-import {
-  ScaledSheet,
-  moderateScale,
-  verticalScale,
-} from 'react-native-size-matters';
+import {ScaledSheet, moderateScale, verticalScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {Feather} from '@expo/vector-icons';

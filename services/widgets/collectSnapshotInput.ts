@@ -9,6 +9,8 @@ import {mushafVerseMapService} from '@/services/mushaf/MushafVerseMapService';
 import {getSurahOfTheDay} from '@/utils/quranPages';
 import {hasArtwork, localDayKey} from 'bayaan-widgets';
 import {useAdhkarStore} from '@/store/adhkarStore';
+import {useAdhkarSessionStore} from '@/store/adhkarSessionStore'; // @ai
+import type {WidgetAdhkarPlayback} from 'bayaan-widgets'; // @ai
 import {
   buildTasbeehEntries,
   createCountDayTracker,
@@ -34,6 +36,20 @@ function openingTextForPage(page: number): string {
     .slice(0, OPENING_WORDS)
     .join(' ');
 }
+
+// @ai-start
+// Lets the Adhkar widgets show pause while their list plays.
+function adhkarPlayback(): WidgetAdhkarPlayback | null {
+  const session = useAdhkarSessionStore.getState().session;
+  const dhikrId = session?.items[session.index]?.dhikrId;
+  if (!session || !dhikrId) return null;
+  return {
+    superId: session.listId,
+    dhikrId,
+    isPlaying: session.status !== 'paused',
+  };
+}
+// @ai-end
 
 function surahIdForPage(page: number): number | null {
   if (!digitalKhattDataService.initialized) return null;
@@ -76,5 +92,6 @@ export function collectSnapshotInput(now: Date): SnapshotInput {
       return hasArtwork(file) ? file : null;
     },
     surahOfTheDayId: getSurahOfTheDay(now).id,
+    adhkar: adhkarPlayback(), // @ai
   };
 }

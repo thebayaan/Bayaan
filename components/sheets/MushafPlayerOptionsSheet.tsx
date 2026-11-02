@@ -13,7 +13,7 @@ import {
   ScrollView as RNScrollView,
   StyleSheet,
 } from 'react-native';
-import {ScaledSheet, moderateScale as ms} from 'react-native-size-matters';
+import {ScaledSheet, moderateScale as ms} from '@/utils/scale';
 import {Ionicons} from '@expo/vector-icons';
 import Animated, {
   useSharedValue,
@@ -23,11 +23,8 @@ import Animated, {
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import ActionSheet, {
-  SheetProps,
-  SheetManager,
-  ScrollView,
-} from 'react-native-actions-sheet';
+import {SheetProps, SheetManager, ScrollView} from 'react-native-actions-sheet';
+import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import {
   useMushafPlayerStore,
   AvailableReciter,

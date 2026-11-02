@@ -7,12 +7,11 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import {moderateScale} from 'react-native-size-matters';
+import {confirmDestructive} from '@/utils/confirmDestructive'; // @ai
+import {moderateScale} from '@/utils/scale';
 import {Feather} from '@expo/vector-icons';
-import ActionSheet, {
-  SheetProps,
-  SheetManager,
-} from 'react-native-actions-sheet';
+import {SheetProps, SheetManager} from 'react-native-actions-sheet';
+import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import {useTheme} from '@/hooks/useTheme';
 import {usePlaylistsStore} from '@/store/playlistsStore';
 import {downloadSurah} from '@/services/downloadService';
@@ -126,26 +125,18 @@ export const PlaylistContextSheet = (props: SheetProps<'playlist-context'>) => {
   }, [onEdit, handleClose]);
 
   const handleDelete = useCallback(() => {
-    Alert.alert(
-      t('playlistContext.deleteTitle'),
-      t('playlistContext.deleteMessage', {name: playlistName}),
-      [
-        {
-          text: t('common:actions.cancel'),
-          style: 'cancel',
-        },
-        {
-          text: t('common:actions.delete'),
-          style: 'destructive',
-          onPress: () => {
-            if (onDelete) {
-              onDelete();
-            }
-            handleClose();
-          },
-        },
-      ],
-    );
+    confirmDestructive({
+      title: t('playlistContext.deleteTitle'),
+      message: t('playlistContext.deleteMessage', {name: playlistName}),
+      confirmText: t('common:actions.delete'),
+      cancelText: t('common:actions.cancel'),
+      onConfirm: () => {
+        if (onDelete) {
+          onDelete();
+        }
+        handleClose();
+      },
+    });
   }, [playlistName, onDelete, handleClose, t]);
 
   const handleDownloadPlaylist = useCallback(async () => {
@@ -368,6 +359,17 @@ export const PlaylistContextSheet = (props: SheetProps<'playlist-context'>) => {
     isDownloadingWithRewayat,
   ]);
 
+  // @ai-start
+  // "Download" in a tablet's native menu opens this sheet to show progress.
+  const startDownload = !!payload?.startDownload;
+  const startedRef = useRef(false);
+  useEffect(() => {
+    if (!startDownload || startedRef.current) return;
+    startedRef.current = true;
+    handleDownloadPlaylist();
+  }, [startDownload, handleDownloadPlaylist]);
+  // @ai-end
+
   if (!playlistId) {
     return null;
   }
@@ -405,6 +407,7 @@ export const PlaylistContextSheet = (props: SheetProps<'playlist-context'>) => {
   return (
     <ActionSheet
       id={props.sheetId}
+      tabletPresentation="menu"
       containerStyle={[
         styles.sheetContainer,
         {

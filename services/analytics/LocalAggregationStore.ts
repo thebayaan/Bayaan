@@ -90,6 +90,24 @@ export class LocalAggregationStore {
     this.saveDailyAggregate(agg);
   }
 
+  // @ai-start
+  /**
+   * Moves listening time from one reciter id to another on every saved day
+   * (reciter merges), adding it to any time the kept id already has.
+   */
+  remapReciterId(fromId: string, toId: string): void {
+    for (const key of this.mmkv.getAllKeys()) {
+      if (!key.startsWith(DAILY_PREFIX)) continue;
+      const agg = this.getDailyAggregate(key.slice(DAILY_PREFIX.length));
+      const ms = agg?.reciters[fromId];
+      if (!agg || ms === undefined) continue;
+      agg.reciters[toId] = (agg.reciters[toId] ?? 0) + ms;
+      delete agg.reciters[fromId];
+      this.saveDailyAggregate(agg);
+    }
+  }
+  // @ai-end
+
   incrementMeaningfulListens(date: string): void {
     const agg = this.getOrCreateAggregate(date);
     agg.meaningfulListens += 1;

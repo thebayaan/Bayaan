@@ -1,7 +1,6 @@
 import React from 'react';
 import {View, Text, Pressable} from 'react-native';
-import {moderateScale} from 'react-native-size-matters';
-import {ScaledSheet} from 'react-native-size-matters';
+import {moderateScale, ScaledSheet} from '@/utils/scale';
 import {useSafeAreaInsets, EdgeInsets} from 'react-native-safe-area-context';
 import {useRouter} from 'expo-router';
 import {Theme} from '@/utils/themeUtils';
@@ -24,6 +23,8 @@ interface ReciterDownloadsHeaderProps {
   onPlayPress: () => void;
   onShufflePress: () => void;
   onOptionsPress?: () => void;
+  /** A native menu laid over the ••• button on tablets. @ai */
+  optionsMenu?: React.ReactNode;
   theme: Theme;
 }
 // @ai-end
@@ -38,6 +39,7 @@ export const ReciterDownloadsHeader: React.FC<ReciterDownloadsHeaderProps> = ({
   onPlayPress,
   onShufflePress,
   onOptionsPress,
+  optionsMenu,
   theme,
 }) => {
   const insets = useSafeAreaInsets();
@@ -98,6 +100,7 @@ export const ReciterDownloadsHeader: React.FC<ReciterDownloadsHeaderProps> = ({
               size={moderateScale(20)}
               color={theme.colors.text}
             />
+            {optionsMenu}
           </Pressable>
         )}
         <Pressable

@@ -21,7 +21,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import {Feather, Ionicons} from '@expo/vector-icons';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import {SheetManager} from 'react-native-actions-sheet';
 import Color from 'color';
 import {useTheme} from '@/hooks/useTheme';

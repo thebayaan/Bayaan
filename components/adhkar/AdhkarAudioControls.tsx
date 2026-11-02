@@ -10,7 +10,7 @@ import React, {useMemo, useState, useCallback} from 'react';
 import {View, TouchableOpacity} from 'react-native';
 import {Feather, Ionicons} from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
-import {ScaledSheet, moderateScale} from 'react-native-size-matters';
+import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {useAdhkarProgress} from '@/hooks/useAdhkarProgress';
 import {useAdhkarSessionStore} from '@/store/adhkarSessionStore';

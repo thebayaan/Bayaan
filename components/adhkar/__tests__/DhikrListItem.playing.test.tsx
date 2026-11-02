@@ -118,3 +118,46 @@ it('bars grow from the baseline', () => {
   expect(origins).toHaveLength(3);
   expect(origins.every(o => o === 'bottom')).toBe(true);
 });
+
+// @ai-start
+it('fills a grid cell: no outer margins, stretched, footer at the bottom', () => {
+  let renderer: ReactTestRenderer | undefined;
+  act(() => {
+    renderer = TestRenderer.create(
+      <DhikrListItem dhikr={dhikr} index={0} fill />,
+    );
+  });
+  if (!renderer) throw new Error('not rendered');
+  const card = renderer.root.find(
+    n =>
+      (n.type as unknown) === 'View' && n.props.accessibilityRole === 'button',
+  );
+  expect(StyleSheet.flatten(card.props.style)).toMatchObject({
+    flex: 1,
+    marginHorizontal: 0,
+    marginVertical: 0,
+  });
+  // The footer is the strip with a top rule.
+  const [footer] = card.findAll(
+    n =>
+      (n.type as unknown) === 'View' &&
+      StyleSheet.flatten(n.props.style)?.borderTopWidth === 1,
+  );
+  expect(StyleSheet.flatten(footer.props.style).marginTop).toBe('auto');
+});
+
+it('keeps the phone card when it does not fill a cell', () => {
+  let renderer: ReactTestRenderer | undefined;
+  act(() => {
+    renderer = TestRenderer.create(<DhikrListItem dhikr={dhikr} index={0} />);
+  });
+  if (!renderer) throw new Error('not rendered');
+  const card = renderer.root.find(
+    n =>
+      (n.type as unknown) === 'View' && n.props.accessibilityRole === 'button',
+  );
+  const flat = StyleSheet.flatten(card.props.style);
+  expect(flat.flex).toBeUndefined();
+  expect(flat.marginHorizontal).toBeGreaterThan(0);
+});
+// @ai-end

@@ -11,7 +11,10 @@ const mockDirection = {
   swapLeftAndRightInRTL: jest.fn(),
 };
 
-jest.mock('react-native', () => ({I18nManager: mockDirection}));
+jest.mock('react-native', () => ({
+  I18nManager: mockDirection,
+  Platform: {OS: 'android'},
+}));
 jest.mock('react-native-mmkv', () => ({
   createMMKV: () => ({
     getString: (key: string) => mockStorage.get(key),

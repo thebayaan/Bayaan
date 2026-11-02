@@ -1,7 +1,7 @@
 import React from 'react';
 import {View, Text, Pressable, ViewStyle, StyleSheet} from 'react-native';
 import {Feather} from '@expo/vector-icons';
-import {ScaledSheet, moderateScale} from 'react-native-size-matters';
+import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';

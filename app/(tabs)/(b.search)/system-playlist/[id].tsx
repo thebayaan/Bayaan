@@ -7,7 +7,7 @@ import {useTranslation} from 'react-i18next';
 import SystemPlaylistDetail from '@/components/system-playlist/SystemPlaylistDetail';
 import {getSystemPlaylistById} from '@/utils/systemPlaylistHelpers';
 import {useTheme} from '@/hooks/useTheme';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 
 // @ai-start
 const SystemPlaylistScreen: React.FC = () => {

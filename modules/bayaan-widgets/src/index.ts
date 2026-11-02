@@ -57,6 +57,13 @@ export function takeQueuedCommands(): QueuedWidgetCommand[] {
   return parseQueuedCommands(NativeBayaanWidgets.takeQueuedCommands());
 }
 
+// @ai-start
+/** Releases widget taps (iOS intents, Android WidgetCommandActivity) waiting on commands queued up to `through`. */
+export function markCommandsHandled(through: number): void {
+  NativeBayaanWidgets?.markCommandsHandled?.(through);
+}
+// @ai-end
+
 export function takePendingTasbeeh(): PendingTasbeeh[] {
   if (!NativeBayaanWidgets) return [];
   return parsePendingTasbeeh(NativeBayaanWidgets.takePendingTasbeeh());

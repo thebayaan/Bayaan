@@ -2,12 +2,10 @@
 // 'home-card-options' (same styles); its one action ends the session.
 import React, {useCallback} from 'react';
 import {Pressable, Text, View} from 'react-native';
-import ActionSheet, {
-  SheetManager,
-  type SheetProps,
-} from 'react-native-actions-sheet';
+import {SheetManager, type SheetProps} from 'react-native-actions-sheet';
+import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import {Feather} from '@expo/vector-icons';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import {useTranslation} from 'react-i18next';
 import {useTheme} from '@/hooks/useTheme';
 import {useAdhkarSessionStore} from '@/store/adhkarSessionStore';
@@ -30,6 +28,7 @@ export function AdhkarSessionOptionsSheet(
   return (
     <ActionSheet
       id={sheetId}
+      tabletPresentation="menu" // @ai
       containerStyle={styles.sheetContainer}
       indicatorStyle={styles.indicator}
       gestureEnabled={true}>

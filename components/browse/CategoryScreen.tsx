@@ -3,7 +3,7 @@ import {View, Text, FlatList, StyleSheet} from 'react-native';
 import {useRouter} from 'expo-router';
 import {Category} from '@/data/categories';
 import {useTheme} from '@/hooks/useTheme';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import {Feather} from '@expo/vector-icons';
 import {TouchableOpacity} from 'react-native-gesture-handler';
 import Animated, {FadeInDown} from 'react-native-reanimated';

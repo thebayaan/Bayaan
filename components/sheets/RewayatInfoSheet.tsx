@@ -1,12 +1,9 @@
 import React, {useState} from 'react';
 import {View, Text, Pressable, Dimensions, StyleSheet} from 'react-native';
-import {ScaledSheet, moderateScale} from 'react-native-size-matters';
+import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
-import ActionSheet, {
-  SheetProps,
-  SheetManager,
-  ScrollView,
-} from 'react-native-actions-sheet';
+import {SheetProps, SheetManager, ScrollView} from 'react-native-actions-sheet';
+import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import {Theme} from '@/utils/themeUtils';
 import Color from 'color';
 import {RewayatIcon} from '@/components/Icons';

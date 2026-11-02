@@ -6,12 +6,11 @@ import {
   Pressable,
   ScrollView,
   useColorScheme,
-  Platform,
   ActivityIndicator,
   type ScrollViewProps,
 } from 'react-native';
-import {moderateScale, verticalScale} from 'react-native-size-matters';
-import SegmentedControl from '@react-native-segmented-control/segmented-control';
+import {moderateScale, verticalScale} from '@/utils/scale';
+import {NativeSegmentedControl} from '@/components/native/NativeSegmentedControl'; // @ai
 import {
   Canvas,
   Paragraph,
@@ -43,6 +42,7 @@ import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService
 import {rewayahBasmalaService} from '@/services/mushaf/RewayahBasmalaService'; // @ai
 import {latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
+import {useResponsive} from '@/hooks/useResponsive'; // @ai
 
 const PREVIEW_BA = '\u0628';
 
@@ -175,30 +175,22 @@ export const ReadingThemeContent: React.FC<ReadingThemeContentProps> = ({
   );
 
   // Segment changes the whole app's theme mode
+  // @ai-start
   const handleSegmentChange = useCallback(
-    (event: {nativeEvent: {selectedSegmentIndex: number}}) => {
-      autoPairAndSwitchMode(
-        SEGMENT_MODES[event.nativeEvent.selectedSegmentIndex],
-      );
+    (index: number) => {
+      autoPairAndSwitchMode(SEGMENT_MODES[index]);
     },
     [autoPairAndSwitchMode],
   );
-
-  // Android fallback for segment press
-  const handleSegmentPress = useCallback(
-    (seg: ThemeMode) => {
-      autoPairAndSwitchMode(seg);
-    },
-    [autoPairAndSwitchMode],
-  );
+  // @ai-end
 
   // Skia font setup for the preview
   const dkFontFamily =
     mushafRenderer === 'dk_indopak'
       ? 'DigitalKhattIndoPak'
       : mushafRenderer === 'dk_v1'
-      ? 'DigitalKhattV1'
-      : 'DigitalKhattV2';
+        ? 'DigitalKhattV1'
+        : 'DigitalKhattV2';
   const fontsReady =
     mushafPreloadService.initialized && digitalKhattDataService.initialized;
   const subscribedFontMgr = useMushafFontMgr();
@@ -227,20 +219,12 @@ export const ReadingThemeContent: React.FC<ReadingThemeContentProps> = ({
 
       {/* Segmented control: System | Light | Dark */}
       <Text style={styles.disclosureText}>{t('readingTheme.disclosure')}</Text>
-      {Platform.OS === 'ios' ? (
-        <SegmentedControl
-          values={segmentLabels}
-          selectedIndex={MODE_TO_INDEX[themeMode]}
-          onChange={handleSegmentChange}
-          style={styles.segmentedControl}
-        />
-      ) : (
-        <AndroidSegment
-          themeMode={themeMode}
-          onPress={handleSegmentPress}
-          theme={theme}
-        />
-      )}
+      <NativeSegmentedControl
+        values={segmentLabels}
+        selectedIndex={MODE_TO_INDEX[themeMode]}
+        onChange={handleSegmentChange}
+        style={styles.segmentedControl}
+      />
 
       {/* Color chips grid */}
       <View style={styles.chipGrid}>
@@ -256,6 +240,9 @@ export const ReadingThemeContent: React.FC<ReadingThemeContentProps> = ({
             <Pressable
               key={option.id}
               onPress={() => handleThemeSelect(option.id)}
+              accessibilityRole="radio" // @ai
+              accessibilityLabel={option.name} // @ai
+              accessibilityState={{checked: isSelected}} // @ai
               style={[
                 styles.colorChip,
                 {
@@ -289,67 +276,6 @@ export const ReadingThemeContent: React.FC<ReadingThemeContentProps> = ({
 };
 // @ai-end
 
-// --- Android Segment Fallback ---
-
-// @ai-start
-const AndroidSegment: React.FC<{
-  themeMode: ThemeMode;
-  onPress: (mode: ThemeMode) => void;
-  theme: Theme;
-}> = ({themeMode, onPress, theme}) => {
-  const {t} = useTranslation('settings');
-  const segBg = Color(theme.colors.text).alpha(0.06).toString();
-  const segActiveBg = Color(theme.colors.text).alpha(0.12).toString();
-  const segActiveText = theme.colors.text;
-  const segInactiveText = Color(theme.colors.text).alpha(0.4).toString();
-
-  return (
-    <View style={[androidStyles.segmentContainer, {backgroundColor: segBg}]}>
-      {SEGMENT_MODES.map(seg => {
-        const isActive = themeMode === seg;
-        return (
-          <Pressable
-            key={seg}
-            style={[
-              androidStyles.segmentButton,
-              isActive && {backgroundColor: segActiveBg},
-            ]}
-            onPress={() => onPress(seg)}>
-            <Text
-              style={[
-                androidStyles.segmentText,
-                {color: isActive ? segActiveText : segInactiveText},
-              ]}>
-              {t(`readingTheme.${seg}`)}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
-};
-// @ai-end
-
-const androidStyles = StyleSheet.create({
-  segmentContainer: {
-    flexDirection: 'row',
-    borderRadius: moderateScale(10),
-    padding: moderateScale(3),
-    gap: moderateScale(2),
-    marginBottom: moderateScale(16),
-  },
-  segmentButton: {
-    flex: 1,
-    paddingVertical: moderateScale(7),
-    borderRadius: moderateScale(8),
-    alignItems: 'center',
-  },
-  segmentText: {
-    fontSize: moderateScale(12),
-    fontFamily: 'Manrope-SemiBold',
-  },
-});
-
 // --- Miniature Preview ---
 
 interface MiniaturePreviewProps {
@@ -360,6 +286,7 @@ interface MiniaturePreviewProps {
 
 const MiniaturePreview: React.FC<MiniaturePreviewProps> = React.memo(
   ({readingTheme, fontMgr, dkFontFamily}) => {
+    const {isTablet} = useResponsive();
     const [containerWidth, setContainerWidth] = useState(0);
     const handleLayout = useCallback(
       (e: {nativeEvent: {layout: {width: number}}}) => {
@@ -375,6 +302,9 @@ const MiniaturePreview: React.FC<MiniaturePreviewProps> = React.memo(
         onLayout={handleLayout}
         style={[
           previewStyles.container,
+          // The preview grows with its width, so the wider iPad sheet
+          // needs more than the phone's fixed height to show it whole.
+          isTablet ? {minHeight: PREVIEW_HEIGHT} : {height: PREVIEW_HEIGHT},
           {backgroundColor: readingTheme.colors.background},
         ]}>
         {containerWidth > 0 && fontMgr && (
@@ -635,7 +565,6 @@ const PREVIEW_HEIGHT = moderateScale(240);
 
 const previewStyles = StyleSheet.create({
   container: {
-    height: PREVIEW_HEIGHT,
     borderRadius: moderateScale(14),
     paddingVertical: moderateScale(10),
     paddingHorizontal: moderateScale(12),

@@ -6,7 +6,7 @@ import {
   type ListRenderItemInfo,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
-import {moderateScale, verticalScale} from 'react-native-size-matters';
+import {moderateScale, verticalScale} from '@/utils/scale';
 import {CircularReciterCard} from './cards/CircularReciterCard';
 import {ReciterCard} from './cards/ReciterCard';
 import {useFavoriteReciters} from '@/hooks/useFavoriteReciters';

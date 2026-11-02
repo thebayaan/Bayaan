@@ -6,16 +6,9 @@ import React, {
   useLayoutEffect,
   useRef,
 } from 'react';
-import {
-  View,
-  Text,
-  FlatList,
-  Pressable,
-  StyleSheet,
-  ViewToken,
-} from 'react-native';
+import {View, Text, FlatList, Pressable, StyleSheet} from 'react-native';
 import {useRouter, useNavigation, useFocusEffect, Link} from 'expo-router';
-import {ScaledSheet, moderateScale} from 'react-native-size-matters';
+import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {Ionicons} from '@expo/vector-icons';
 // @ai-start
 import {useTranslation} from 'react-i18next';
@@ -29,6 +22,7 @@ import {
   AdhkarJumpPill,
   jumpPillDirection,
   visibleRowIndices,
+  type RowToken,
 } from '@/components/adhkar/AdhkarJumpPill';
 import {Dhikr, SavedDhikr} from '@/types/adhkar';
 import {adhkarService} from '@/services/adhkar/AdhkarService';
@@ -46,6 +40,12 @@ import {
 import {useBottomInset} from '@/hooks/useBottomInset';
 import {useHeaderHeight} from 'expo-router/react-navigation';
 import {USE_GLASS} from '@/hooks/useGlassProps';
+import {
+  DhikrCardRow,
+  chunkRows,
+  rowOf,
+  useDhikrColumns,
+} from '@/components/adhkar/DhikrCardRow'; // @ai
 
 // Space between the header and a card the jump pill scrolls to.
 const JUMP_GAP = 8;
@@ -60,6 +60,7 @@ const SavedAdhkarScreen: React.FC = () => {
   const headerHeight = useHeaderHeight();
   const bottomInset = useBottomInset();
   const {savedIds} = useAdhkar();
+  const {columns, spacing} = useDhikrColumns(); // @ai
 
   // Check if currently playing saved adhkar
   const playAllStatus = useAdhkarSessionStore(s =>
@@ -79,7 +80,7 @@ const SavedAdhkarScreen: React.FC = () => {
 
   const revealToken = useAdhkarSessionStore(s => s.revealToken);
   const [visibleIndices, setVisibleIndices] = useState<number[]>([]);
-  const flatListRef = useRef<FlatList<Dhikr>>(null);
+  const flatListRef = useRef<FlatList<Dhikr[]>>(null);
 
   const [adhkarList, setAdhkarList] = useState<Dhikr[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -110,6 +111,12 @@ const SavedAdhkarScreen: React.FC = () => {
     loadSavedAdhkar();
   }, [savedIds.size]); // Reload when saved count changes
 
+  // The list renders rows of cards: one per row, two on a wide iPad. @ai
+  const rows = useMemo(
+    () => chunkRows(adhkarList, columns),
+    [adhkarList, columns],
+  );
+
   // Where the session's dhikr sits in this screen's rows (session.index
   // counts the session's own items, which keep a row unsaved since).
   const sessionIndex = useMemo(() => {
@@ -127,12 +134,12 @@ const SavedAdhkarScreen: React.FC = () => {
   const scrollToPlaying = useCallback(() => {
     if (sessionIndex === null) return;
     flatListRef.current?.scrollToIndex({
-      index: sessionIndex,
+      index: rowOf(sessionIndex, columns),
       viewPosition: 0,
       viewOffset: scrollViewOffset,
       animated: true,
     });
-  }, [sessionIndex, scrollViewOffset]);
+  }, [sessionIndex, columns, scrollViewOffset]);
 
   // A surface asked to show the playing dhikr.
   const lastReveal = useRef(revealToken);
@@ -179,15 +186,17 @@ const SavedAdhkarScreen: React.FC = () => {
   // Rows changed (e.g. unsave): drop stale viewability until the list reports.
   useEffect(() => {
     setVisibleIndices([]);
-  }, [adhkarList]);
+  }, [rows]);
 
   const onViewableItemsChanged = useCallback(
-    ({viewableItems}: {viewableItems: ViewToken<Dhikr>[]}) => {
+    ({viewableItems}: {viewableItems: RowToken<Dhikr[]>[]}) => {
       setVisibleIndices(
-        visibleRowIndices(viewableItems, v => v.index ?? undefined),
+        visibleRowIndices(viewableItems, ({index, item}) =>
+          index == null ? undefined : item.map((_, k) => index * columns + k),
+        ),
       );
     },
-    [],
+    [columns],
   );
   const viewabilityConfig = useRef({
     itemVisiblePercentThreshold: 50,
@@ -281,9 +290,10 @@ const SavedAdhkarScreen: React.FC = () => {
     t,
   ]);
 
-  const renderItem = useCallback(
-    ({item, index}: {item: Dhikr; index: number}) => (
+  const renderCard = useCallback(
+    (item: Dhikr, index: number) => (
       <Link
+        key={item.id}
         href={{
           pathname: '/(tabs)/(a.home)/adhkar/saved/[dhikrId]',
           params: {
@@ -300,6 +310,7 @@ const SavedAdhkarScreen: React.FC = () => {
                 index={index}
                 isCurrent={item.id === currentDhikrId}
                 isPlaying={item.id === currentDhikrId && sessionPlaying}
+                fill={spacing !== null}
               />
             </Link.AppleZoom>
           ) : (
@@ -308,15 +319,30 @@ const SavedAdhkarScreen: React.FC = () => {
               index={index}
               isCurrent={item.id === currentDhikrId}
               isPlaying={item.id === currentDhikrId && sessionPlaying}
+              fill={spacing !== null}
             />
           )}
         </Pressable>
       </Link>
     ),
-    [currentDhikrId, sessionPlaying],
+    [currentDhikrId, sessionPlaying, spacing],
   );
 
-  const keyExtractor = useCallback((item: Dhikr) => item.id, []);
+  // @ai-start
+  const renderItem = useCallback(
+    ({item: row, index}: {item: Dhikr[]; index: number}) =>
+      spacing ? (
+        <DhikrCardRow spacing={spacing} columns={columns}>
+          {row.map((d, k) => renderCard(d, index * columns + k))}
+        </DhikrCardRow>
+      ) : (
+        renderCard(row[0], index)
+      ),
+    [spacing, columns, renderCard],
+  );
+
+  const keyExtractor = useCallback((row: Dhikr[]) => row[0].id, []);
+  // @ai-end
 
   if (isLoading) {
     return (
@@ -348,11 +374,12 @@ const SavedAdhkarScreen: React.FC = () => {
     <View style={styles.container}>
       <FlatList
         ref={flatListRef}
-        data={adhkarList}
+        data={rows}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
         contentContainerStyle={[
           styles.listContent,
+          spacing && styles.listContentPaired, // @ai
           {paddingBottom: bottomInset},
         ]}
         contentInset={USE_GLASS ? {top: headerHeight} : undefined}
@@ -411,6 +438,11 @@ const createStyles = (theme: Theme) =>
     listContent: {
       paddingTop: moderateScale(8),
     },
+    // @ai-start
+    listContentPaired: {
+      paddingTop: 12,
+    },
+    // @ai-end
   });
 
 export default SavedAdhkarScreen;

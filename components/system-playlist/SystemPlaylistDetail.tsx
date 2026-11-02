@@ -19,6 +19,7 @@ import {
 import {useTheme} from '@/hooks/useTheme';
 import {USE_GLASS} from '@/hooks/useGlassProps';
 import {TrackItem} from '@/components/TrackItem';
+import {SurahOptionsRow} from '@/components/sheets/options/surahOptions'; // @ai
 import {
   getReciterById,
   getSurahById,
@@ -28,7 +29,9 @@ import {Reciter} from '@/data/reciterData';
 import {Surah} from '@/data/surahData';
 import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {createTrack} from '@/utils/track';
-import {moderateScale} from 'react-native-size-matters';
+import {queueFromIndex} from '@/utils/queueFromIndex'; // @ai
+import {shuffleArray} from '@/utils/arrayUtils'; // @ai
+import {moderateScale} from '@/utils/scale';
 import {SystemPlaylistHeader} from './SystemPlaylistHeader';
 import {SystemPlaylist} from '@/data/systemPlaylists';
 // @ai-start
@@ -39,7 +42,7 @@ import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStor
 import {getFeaturedReciters} from '@/data/featuredReciters';
 import {SheetManager} from 'react-native-actions-sheet';
 import {useNavigation} from 'expo-router';
-import {useHeaderHeight} from 'expo-router/react-navigation';
+import {useGlassHeaderHeight} from '@/hooks/useGlassHeaderHeight'; // @ai
 import {CollectionStickyHeader} from '@/components/collection/CollectionStickyHeader';
 // @ai-start
 import {useTranslation} from 'react-i18next';
@@ -161,9 +164,9 @@ const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
   const {theme} = useTheme();
   const {t} = useTranslation(['collection', 'common']);
   const {updateQueue, addToQueue, play} = usePlayerActions();
-  const {startNewChain} = useRecentlyPlayedStore();
+  const startNewChain = useRecentlyPlayedStore(s => s.startNewChain);
   const navigation = useNavigation();
-  const iosHeaderHeight = isGlass ? useHeaderHeight() : 0;
+  const iosHeaderHeight = useGlassHeaderHeight(isGlass); // @ai
 
   const scrollY = useRef(new RNAnimated.Value(0)).current;
 
@@ -308,6 +311,7 @@ const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
       startIndex = 0,
     ): Promise<{
       tracks: Awaited<ReturnType<typeof createTrack>>[];
+      startIndex: number; // @ai
       reciter: Reciter;
       rewayatId: string;
     } | null> => {
@@ -330,19 +334,17 @@ const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
           );
         });
 
-        const allTracks = (await Promise.all(trackPromises)).filter(
-          (track): track is NonNullable<typeof track> => track !== null,
+        // @ai-start
+        const queue = queueFromIndex(
+          await Promise.all(trackPromises),
+          startIndex,
         );
-
-        if (allTracks.length === 0) return null;
-
-        const reorderedTracks = [
-          ...allTracks.slice(startIndex),
-          ...allTracks.slice(0, startIndex),
-        ];
+        if (queue.tracks.length === 0) return null;
+        // @ai-end
 
         return {
-          tracks: reorderedTracks,
+          tracks: queue.tracks,
+          startIndex: queue.startIndex, // @ai
           reciter: selectedReciter,
           rewayatId: selectedRewayatId,
         };
@@ -360,6 +362,7 @@ const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
       startIndex = 0,
     ): Promise<{
       tracks: Awaited<ReturnType<typeof createTrack>>[];
+      startIndex: number; // @ai
       reciter: Reciter;
       rewayatId?: string;
     } | null> => {
@@ -375,22 +378,20 @@ const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
           );
         });
 
-        const allTracks = (await Promise.all(trackPromises)).filter(
-          (track): track is NonNullable<typeof track> => track !== null,
+        // @ai-start
+        const queue = queueFromIndex(
+          await Promise.all(trackPromises),
+          startIndex,
         );
-
-        if (allTracks.length === 0) return null;
-
-        const reorderedTracks = [
-          ...allTracks.slice(startIndex),
-          ...allTracks.slice(0, startIndex),
-        ];
+        if (queue.tracks.length === 0) return null;
+        // @ai-end
 
         const firstItem = playlistData[startIndex] || playlistData[0];
         if (!firstItem?.reciter) return null;
 
         return {
-          tracks: reorderedTracks,
+          tracks: queue.tracks,
+          startIndex: queue.startIndex, // @ai
           reciter: firstItem.reciter,
           rewayatId: firstItem.track.rewayatId,
         };
@@ -408,6 +409,7 @@ const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
     try {
       let result: {
         tracks: Awaited<ReturnType<typeof createTrack>>[];
+        startIndex: number; // @ai
         reciter: Reciter;
         rewayatId?: string;
       } | null;
@@ -458,6 +460,7 @@ const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
     try {
       let result: {
         tracks: Awaited<ReturnType<typeof createTrack>>[];
+        startIndex: number; // @ai
         reciter: Reciter;
         rewayatId?: string;
       } | null;
@@ -471,7 +474,7 @@ const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
       if (!result || result.tracks.length === 0) return;
 
       // Shuffle the tracks
-      const shuffledTracks = [...result.tracks].sort(() => Math.random() - 0.5);
+      const shuffledTracks = shuffleArray(result.tracks); // @ai
 
       await updateQueue(shuffledTracks, 0);
       await play();
@@ -519,6 +522,7 @@ const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
       try {
         let result: {
           tracks: Awaited<ReturnType<typeof createTrack>>[];
+          startIndex: number; // @ai
           reciter: Reciter;
           rewayatId?: string;
         } | null;
@@ -532,7 +536,7 @@ const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
 
         if (!result || result.tracks.length === 0) return;
 
-        await updateQueue(result.tracks, 0);
+        await updateQueue(result.tracks, result.startIndex); // @ai
         await play();
 
         // Add the selected track to recent history
@@ -566,25 +570,33 @@ const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
     ],
   );
 
-  const handleShowTrackOptions = useCallback(
-    async (track: PlaylistTrack, reciter: Reciter, surah: Surah) => {
-      const audioTrack = await createTrack(reciter, surah, track.rewayatId);
-
-      SheetManager.show('surah-options', {
-        payload: {
-          surah,
-          reciterId: track.reciterId,
-          rewayatId: track.rewayatId,
-          onAddToQueue: async (s: Surah) => {
-            if (audioTrack) {
-              await addToQueue([audioTrack]);
-            }
-          },
-        },
-      });
-    },
+  // @ai-start
+  // Shared by the sheet (phones) and the row's native menu (tablets); the
+  // queue track is built only when "Add to queue" is chosen.
+  const buildTrackOptions = useCallback(
+    (track: PlaylistTrack, reciter: Reciter, surah: Surah) => ({
+      surah,
+      reciterId: track.reciterId,
+      rewayatId: track.rewayatId,
+      onAddToQueue: async () => {
+        const audioTrack = await createTrack(reciter, surah, track.rewayatId);
+        if (audioTrack) {
+          await addToQueue([audioTrack]);
+        }
+      },
+    }),
     [addToQueue],
   );
+
+  const handleShowTrackOptions = useCallback(
+    (track: PlaylistTrack, reciter: Reciter, surah: Surah) => {
+      SheetManager.show('surah-options', {
+        payload: buildTrackOptions(track, reciter, surah),
+      });
+    },
+    [buildTrackOptions],
+  );
+  // @ai-end
 
   const renderItem = useCallback(
     ({item, index}: {item: PlaylistDataItem; index: number}) => {
@@ -633,14 +645,18 @@ const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
 
       return (
         <View style={styles.trackItemWrapper}>
-          <TrackItem
-            reciterId={track.reciterId}
-            surahId={String(track.surahId)}
-            rewayatId={track.rewayatId}
-            onPress={() => handleSurahPress(track, index, reciter, surah)}
-            onPlayPress={() => handleSurahPress(track, index, reciter, surah)}
-            onOptionsPress={() => handleShowTrackOptions(track, reciter, surah)}
-          />
+          <SurahOptionsRow payload={buildTrackOptions(track, reciter, surah)}>
+            <TrackItem
+              reciterId={track.reciterId}
+              surahId={String(track.surahId)}
+              rewayatId={track.rewayatId}
+              onPress={() => handleSurahPress(track, index, reciter, surah)}
+              onPlayPress={() => handleSurahPress(track, index, reciter, surah)}
+              onOptionsPress={() =>
+                handleShowTrackOptions(track, reciter, surah)
+              }
+            />
+          </SurahOptionsRow>
         </View>
       );
     },
@@ -650,6 +666,7 @@ const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
       selectedReciter,
       handleSurahPress,
       handleShowTrackOptions,
+      buildTrackOptions,
       t,
     ],
   );
