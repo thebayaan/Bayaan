@@ -1,5 +1,12 @@
 import React, {useState, useMemo, useRef, useCallback, useEffect} from 'react';
-import {tintedBackOptions, tintedHeaderRight} from '@/components/TintedHeader'; // @ai
+// @ai-start
+import {
+  HEADER_ITEM_SIZE,
+  HEADER_PILL_PADDING,
+  tintedHeaderRight,
+  tintedRootBackOptions,
+} from '@/components/TintedHeader';
+// @ai-end
 import {useKeepAwake} from 'expo-keep-awake';
 import {
   View,
@@ -100,6 +107,18 @@ import {closeTopSheet} from '@/services/keyboard/keyActions';
 import {ReadingSettingsPopover} from '@/components/popovers/ToolPopovers'; // @ai
 // @ai-end
 
+// @ai-start
+// The header's two actions sit in fixed slots, so the action pill has a
+// known width; the back item takes the same width and the title centers.
+const HEADER_ACTION_SLOT = moderateScale(36);
+const HEADER_SIDE_WIDTH = 2 * HEADER_ACTION_SLOT + 2 * HEADER_PILL_PADDING;
+const headerSlotStyle = {
+  width: HEADER_ACTION_SLOT,
+  height: HEADER_ITEM_SIZE,
+  alignItems: 'center',
+  justifyContent: 'center',
+} as const;
+// @ai-end
 const TOTAL_PAGES = 604;
 import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 // @ai-start
@@ -882,11 +901,10 @@ export default function MushafViewer({
           style={{
             flexDirection: 'row',
             alignItems: 'center',
-            gap: moderateScale(20),
-            paddingHorizontal: moderateScale(6),
           }}>
           <Pressable
             onPress={handleSharePage}
+            style={headerSlotStyle} // @ai
             hitSlop={8}
             accessibilityRole="button" // @ai
             accessibilityLabel={t('mushaf.sharePage')} // @ai
@@ -906,6 +924,7 @@ export default function MushafViewer({
               <Pressable
                 onPress={onPress}
                 hitSlop={8}
+                style={headerSlotStyle} // @ai
                 accessibilityRole="button"
                 accessibilityLabel={t('mushaf.settings')}>
                 <Ionicons
@@ -922,7 +941,8 @@ export default function MushafViewer({
     navigation.setOptions({
       headerShown: true,
       headerBackVisible: true,
-      ...tintedBackOptions, // @ai
+      // @ai: may open first (restored, or from a link)
+      ...tintedRootBackOptions(HEADER_SIDE_WIDTH),
       headerSearchBarOptions: undefined,
       headerTitle: () => (
         <TitleWrapper
