@@ -724,11 +724,11 @@ const ContinuousMushafView = forwardRef<
     const fontMgr = useMushafFontMgr();
 
     // @ai-start
-    // FlashList raises onLoad once it has drawn the visible items. An item is
-    // empty while there is no fontMgr, so the first content needs both.
+    // FlashList raises onLoad once it has drawn the visible items. The list
+    // mounts after the fonts (below), so the items have their text by then.
     const [listDrawn, setListDrawn] = useState(false);
     const handleListLoad = useCallback(() => setListDrawn(true), []);
-    useFirstContent(listDrawn && fontMgr !== null, onFirstContent);
+    useFirstContent(listDrawn, onFirstContent);
     // @ai-end
 
     // Surah header fonts (computed once from quranCommon typeface).

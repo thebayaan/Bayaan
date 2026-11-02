@@ -1,8 +1,8 @@
 // @ai-generated
 /**
- * RFC-023 step 5: the vertical Mushaf reports its first content once. An item
- * draws nothing while there is no font manager, and the reader can open before
- * the fonts load. So the report needs both the list's first draw and the fonts.
+ * RFC-023 step 5: the vertical Mushaf reports its first content once, when the
+ * list has drawn. The reader can open before the fonts load, and the list mounts
+ * after them.
  */
 import React, {act} from 'react';
 import TestRenderer from 'react-test-renderer';
@@ -179,15 +179,17 @@ it('reports once, when the list has drawn its first pages', () => {
   expect(onFirstContent).toHaveBeenCalledTimes(1);
 });
 
-it('waits for the fonts: an item is empty without them', () => {
+it('waits for the fonts: there is no list without them', () => {
   mockState.fontMgr = null;
   render();
-  raiseListLoad();
-  expect(onFirstContent).not.toHaveBeenCalled();
+  expect(mockState.flashList).toBeNull();
 
   act(() => {
     mockState.fontMgr = {fake: 'fontMgr'};
     for (const listener of mockState.fontListeners) listener();
   });
+  expect(onFirstContent).not.toHaveBeenCalled();
+
+  raiseListLoad();
   expect(onFirstContent).toHaveBeenCalledTimes(1);
 });
