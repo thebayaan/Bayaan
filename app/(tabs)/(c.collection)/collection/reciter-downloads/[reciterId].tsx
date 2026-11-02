@@ -1,5 +1,4 @@
 import React from 'react';
-import {StatusBar} from 'react-native';
 import {useLocalSearchParams} from 'expo-router';
 import {ReciterDownloadsList} from '@/components/reciter-downloads/ReciterDownloadsList';
 
@@ -10,12 +9,10 @@ const ReciterDownloadsScreen = () => {
     return null;
   }
 
-  return (
-    <>
-      <StatusBar barStyle="light-content" />
-      <ReciterDownloadsList reciterId={reciterId} />
-    </>
-  );
+  // @ai: no StatusBar override. The list sits on the theme background, so
+  // the tabs layout's themed status bar applies; a forced light-content bar
+  // was white-on-white in light mode.
+  return <ReciterDownloadsList reciterId={reciterId} />;
 };
 
 export default ReciterDownloadsScreen;

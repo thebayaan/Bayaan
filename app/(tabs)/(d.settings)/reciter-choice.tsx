@@ -1,7 +1,8 @@
 import React, {useMemo} from 'react';
-import {View, Text, Pressable, Switch, ScrollView} from 'react-native';
+import {View, Text, Pressable, ScrollView} from 'react-native';
+import {NativeSwitch} from '@/components/native/NativeSwitch'; // @ai
 import {useTheme} from '@/hooks/useTheme';
-import {ScaledSheet, moderateScale} from 'react-native-size-matters';
+import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {Theme} from '@/utils/themeUtils';
 import {AntDesign, Feather} from '@expo/vector-icons';
 import Color from 'color';
@@ -22,14 +23,6 @@ export default function ReciterChoiceScreen() {
     defaultReciterSelection,
     setDefaultReciterSelection,
   } = useSettings();
-
-  const trackColor = useMemo(
-    () => ({
-      false: Color(theme.colors.text).alpha(0.1).toString(),
-      true: Color(theme.colors.text).alpha(0.65).toString(),
-    }),
-    [theme.colors.text],
-  );
 
   const options = [
     {
@@ -70,12 +63,9 @@ export default function ReciterChoiceScreen() {
                   {t('reciterChoice.askEveryTimeDescription')}
                 </Text>
               </View>
-              <Switch
+              <NativeSwitch
                 value={askEveryTime}
                 onValueChange={() => setAskEveryTime(!askEveryTime)}
-                trackColor={trackColor}
-                thumbColor="#FFFFFF"
-                ios_backgroundColor={trackColor.false}
                 style={styles.switchStyle}
               />
             </View>

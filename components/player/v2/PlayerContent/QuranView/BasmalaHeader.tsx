@@ -1,5 +1,6 @@
 import React, {useMemo} from 'react';
 import {View, Text, StyleSheet} from 'react-native';
+import Color from 'color'; // @ai
 import {moderateScale, verticalScale} from '@/utils/scale';
 import {
   Canvas,
@@ -170,6 +171,9 @@ interface BasmalaHeaderProps {
    *  (contract C6), in the surah's own spelling when its Word file has one
    *  (e.g. al-Susi 14 and 15); omitted, the rewayah's usual spelling. */
   surahNumber?: number;
+  /** The basmala is being recited (the audio's intro before verse 1): it is
+   *  highlighted as the active verse is (VerseItem's isActive band). */
+  isActive?: boolean;
   // @ai-end
 }
 
@@ -186,6 +190,7 @@ const BasmalaHeader: React.FC<BasmalaHeaderProps> = ({
   allahNameHighlightColor,
   rewayah,
   surahNumber, // @ai
+  isActive = false, // @ai
 }) => {
   const mushafRewayah = useMushafSettingsStore(s => s.rewayah);
   // @ai-start
@@ -207,9 +212,17 @@ const BasmalaHeader: React.FC<BasmalaHeaderProps> = ({
   const fontSize = moderateScale(BASMALA_FONT_SIZE);
 
   // @ai-start
+  // The follow-along band of an active verse (VerseItem: the text colour at
+  // 12%, rounded), so the basmala reads as the verse being recited.
+  const activeBg = useMemo(
+    () => Color(textColor).alpha(0.12).toString(),
+    [textColor],
+  );
   const containerStyle =
     visible && basmalaText
-      ? styles.container
+      ? isActive
+        ? [styles.container, styles.active, {backgroundColor: activeBg}]
+        : styles.container
       : [styles.container, styles.hidden];
   if (!basmalaText) return <View style={containerStyle} />;
   // @ai-end
@@ -359,6 +372,11 @@ const styles = StyleSheet.create({
     height: 0,
     overflow: 'hidden' as const,
   },
+  // @ai-start
+  active: {
+    borderRadius: moderateScale(8),
+  },
+  // @ai-end
   fallbackText: {
     textAlign: 'center',
   },

@@ -61,61 +61,65 @@ struct ReciterSpotlightView: View {
       }
     }
     .foregroundStyle(.white)
-    .containerBackground(for: .widget) { WidgetPalette.background }
+    .containerBackground(for: .widget) { Color(hex: 0x1E1838) } // @ai
   }
 
   private func small(_ r: WidgetSpotlightReciter) -> some View {
-    Button(intent: PlayReciterIntent(reciterId: r.id)) {
+    let playing = PlayingNow.track(at: entry.date)?.reciterId == r.id // @ai
+    return PlayOrPauseButton(playing: playing, play: PlayReciterIntent(reciterId: r.id), label: "Play \(r.name)") { playing in // @ai
       ZStack(alignment: .bottomLeading) {
         ReciterPhoto(file: r.artworkFile, name: r.name)
           .frame(maxWidth: .infinity, maxHeight: .infinity)
           .clipped()
-        LinearGradient(colors: [.clear, .black.opacity(0.7)], startPoint: .center, endPoint: .bottom)
+        LinearGradient(colors: [WidgetPalette.ink.opacity(0), WidgetPalette.ink.opacity(0.9)], startPoint: .center, endPoint: .bottom) // @ai
         VStack(alignment: .leading, spacing: 2) {
-          Text("Reciter of the Day").font(.caption2.weight(.semibold)).opacity(0.75)
+          Eyebrow(text: "Reciter of the Day") // @ai
           HStack(alignment: .bottom) {
-            Text(r.name).font(.headline).lineLimit(2)
+            Text(r.name).font(.headline).lineLimit(2).minimumScaleFactor(0.85) // @ai
             Spacer(minLength: 4)
-            RoundGlyph(systemName: "play.fill")
+            PrimaryGlyph(systemName: playing ? "pause.fill" : "play.fill") // @ai
           }
         }
         .padding(12)
       }
-      .overlay(alignment: .topTrailing) { BayaanLogo(size: 14).padding(12) }
     }
-    .buttonStyle(.plain)
-    .accessibilityLabel("Play \(r.name)")
   }
 
   private func medium(_ r: WidgetSpotlightReciter) -> some View {
-    HStack(spacing: 12) {
-      ZStack(alignment: .bottomLeading) {
-        ReciterPhoto(file: r.artworkFile, name: r.name)
-          .frame(width: 106, height: 106)
-          .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        RoundIntentButton(intent: PlayReciterIntent(reciterId: r.id), systemName: "play.fill", label: "Play \(r.name)")
-          .padding(8)
-      }
+    let now = PlayingNow.track(at: entry.date) // @ai
+    return HStack(spacing: 12) { // @ai
+      ReciterPhoto(file: r.artworkFile, name: r.name)
+        .frame(width: 106, height: 106)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
       VStack(alignment: .leading, spacing: 6) {
         HStack(alignment: .top) {
           VStack(alignment: .leading, spacing: 1) {
-            Text("Reciter of the Day").font(.caption2.weight(.semibold)).opacity(0.6)
-            Text(r.name).font(.subheadline.bold()).lineLimit(1)
+            // @ai-start
+            Eyebrow(text: "Reciter of the Day")
+            Text(r.name).font(.subheadline.weight(.heavy)).lineLimit(1)
+            // @ai-end
           }
           Spacer(minLength: 0)
-          BayaanLogo(size: 14)
+          // @ai-start
+          // Beside the name, clear of the photo's initials.
+          PlayOrPauseButton(playing: now?.reciterId == r.id, play: PlayReciterIntent(reciterId: r.id),
+                            label: "Play \(r.name)") { PrimaryGlyph(systemName: $0 ? "pause.fill" : "play.fill", size: 36) }
+          // @ai-end
         }
         ForEach(r.surahIds, id: \.self) { id in
           if let surah = StaticData.surah(id) {
-            Button(intent: PlayTrackIntent(surahId: id, reciterId: r.id, rewayatId: nil)) {
+            PlayOrPauseButton(playing: PlayingNow.matches(now, surahId: id, reciterId: r.id), // @ai
+                              play: PlayTrackIntent(surahId: id, reciterId: r.id, rewayatId: nil), label: "Play \(surah.name)") { playing in // @ai
               HStack(spacing: 8) {
-                SurahCard(surah: surah, size: 24)
-                Text(surah.name).font(.caption.weight(.semibold)).lineLimit(1)
+                // @ai-start
+                SurahCard(surah: surah, size: 26)
+                Text(surah.name).font(.caption.weight(.bold)).lineLimit(1)
+                  .foregroundStyle(playing ? WidgetPalette.accent : .white)
+                if playing { Image(systemName: "pause.fill").font(.system(size: 10, weight: .bold)).foregroundStyle(WidgetPalette.accent) }
+                // @ai-end
                 Spacer(minLength: 0)
               }
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Play \(surah.name)")
           }
         }
         Spacer(minLength: 0)

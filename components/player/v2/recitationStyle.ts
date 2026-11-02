@@ -27,3 +27,16 @@ export function getRecitationStyleLabel(style: string): string {
   const label = i18n.t(`common:styles.${base}`);
   return match[2] ? `${label} ${localizeDigits(match[2])}` : label;
 }
+
+// @ai-start
+/**
+ * The style label as a title ("Murattal"), for places that show it without
+ * a textTransform, matching the reciter profile's rewayah tabs.
+ */
+export function getRecitationStyleTitle(style: string): string {
+  const label = getRecitationStyleLabel(style);
+  return currentLanguage === SOURCE_LANGUAGE
+    ? label.charAt(0).toUpperCase() + label.slice(1).toLowerCase()
+    : label;
+}
+// @ai-end

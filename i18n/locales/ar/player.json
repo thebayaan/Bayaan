@@ -1,7 +1,26 @@
 {
   "queue": {
     "empty": "قائمة الانتظار فارغة",
-    "verseShort": "آية {{verse}}"
+    "verseShort": "آية {{verse}}",
+    "nowPlaying": "قيد التشغيل",
+    "upNext": "التالي",
+    "played": "تم تشغيلها",
+    "remove": "إزالة {{title}} من قائمة الانتظار",
+    "playNext": "تشغيل تاليًا",
+    "repeatAll": "تكرار الكل",
+    "repeatOne": "تكرار واحد",
+    "moveUp": "نقل لأعلى",
+    "moveDown": "نقل لأسفل",
+    "reorder": "إعادة ترتيب {{title}}",
+    "reorderHint": "اسحب لنقله في قائمة الانتظار",
+    "moreFor": "خيارات إضافية لـ {{title}}",
+    "clearUpNext": "مسح التالي",
+    "nothingNext": "لا يوجد شيء تالٍ"
+  },
+  "panes": {
+    "text": "النص",
+    "queue": "قائمة الانتظار",
+    "reciters": "القرّاء"
   },
   "uploads": {
     "recordingType": {
@@ -99,6 +118,26 @@
     }
   },
   "a11y": {
-    "openPlayer": "يفتح المشغّل الكامل"
+    "openPlayer": "يفتح المشغّل الكامل",
+    "nowPlaying": "{{title}}، {{artist}}",
+    "openReciter": "يفتح صفحة القارئ",
+    "skipBack": "رجوع {{seconds}} ثانية",
+    "skipForward": "تقديم {{seconds}} ثانية",
+    "previous": "السابق",
+    "next": "التالي",
+    "love": "إعجاب",
+    "displayOptions": "خيارات العرض",
+    "speed": "سرعة التشغيل",
+    "repeat": "التكرار",
+    "repeatOff": "إيقاف",
+    "repeatAll": "الكل",
+    "repeatOne": "واحد",
+    "sleepTimer": "مؤقت النوم",
+    "ambient": "أصوات محيطة",
+    "followAlong": "المتابعة مع التلاوة",
+    "queue": "قائمة التشغيل",
+    "moreOptions": "خيارات إضافية",
+    "closePlayer": "إغلاق المشغّل",
+    "openFullProfile": "فتح الصفحة الكاملة"
   }
 }

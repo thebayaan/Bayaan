@@ -1,22 +1,14 @@
 import React, {useCallback, useState, useMemo} from 'react';
-import {
-  View,
-  Text,
-  Pressable,
-  StyleSheet,
-  useWindowDimensions,
-  Dimensions,
-  Alert,
-} from 'react-native';
-import {ScaledSheet, moderateScale} from 'react-native-size-matters';
+import {View, Text, Pressable, StyleSheet, Dimensions} from 'react-native';
+import {confirmDestructive} from '@/utils/confirmDestructive'; // @ai
+import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {QueueIcon, HeartIcon, PlayIcon} from '@/components/Icons';
+import {SheetProps, SheetManager, ScrollView} from 'react-native-actions-sheet';
 import ActionSheet, {
-  SheetProps,
-  SheetManager,
-  ScrollView,
-} from 'react-native-actions-sheet';
+  useSheetWidth,
+} from '@/components/sheets/AdaptiveActionSheet';
 import {Feather} from '@expo/vector-icons';
 import {useLoved} from '@/hooks/useLoved';
 import Color from 'color';
@@ -58,10 +50,12 @@ export const DownloadOptionsSheet = (props: SheetProps<'download-options'>) => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
   const {t} = useTranslation(['sheets', 'common']);
-  const {width} = useWindowDimensions();
-  const [showSurahInfo, setShowSurahInfo] = useState(false);
-
+  // Size HTML from the sheet, which stops at 560pt on iPad. @ai
+  const width = useSheetWidth(); // @ai
   const payload = props.payload;
+  // A native menu's "Learn about this surah" opens the sheet on the info. @ai
+  const [showSurahInfo, setShowSurahInfo] = useState(!!payload?.showInfo);
+
   const download = payload?.download;
   const surah = payload?.surah;
   const reciterId = payload?.reciterId;
@@ -146,21 +140,16 @@ export const DownloadOptionsSheet = (props: SheetProps<'download-options'>) => {
 
   const handleRemoveDownload = useCallback(() => {
     if (!download) return;
-    Alert.alert(
-      t('downloadOptions.removeTitle'),
-      t('downloadOptions.removeMessage'),
-      [
-        {text: t('common:actions.cancel'), style: 'cancel'},
-        {
-          text: t('common:actions.remove'),
-          style: 'destructive',
-          onPress: () => {
-            handleClose();
-            onRemoveDownload?.();
-          },
-        },
-      ],
-    );
+    confirmDestructive({
+      title: t('downloadOptions.removeTitle'),
+      message: t('downloadOptions.removeMessage'),
+      confirmText: t('common:actions.remove'),
+      cancelText: t('common:actions.cancel'),
+      onConfirm: () => {
+        handleClose();
+        onRemoveDownload?.();
+      },
+    });
   }, [download, handleClose, onRemoveDownload, t]);
 
   const handleSheetChange = useCallback((index: number) => {
@@ -179,6 +168,7 @@ export const DownloadOptionsSheet = (props: SheetProps<'download-options'>) => {
   return (
     <ActionSheet
       id={props.sheetId}
+      tabletPresentation={showSurahInfo ? 'card' : 'menu'}
       containerStyle={[
         styles.sheetContainer,
         showSurahInfo && styles.sheetContainerExpanded,

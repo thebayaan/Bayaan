@@ -12,13 +12,12 @@ import {USE_GLASS} from '@/hooks/useGlassProps';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useRouter} from 'expo-router';
 import {useFocusEffect} from 'expo-router';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import {Feather} from '@expo/vector-icons';
 import {ListRenderItem} from 'react-native';
 import {getSurahById} from '@/services/dataService';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
-import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {BookmarkItem} from '@/components/collection/BookmarkItem';
 import {CollectionStickyHeader} from '@/components/collection/CollectionStickyHeader';
 import {SheetManager} from 'react-native-actions-sheet';
@@ -34,12 +33,15 @@ import i18n from '@/i18n';
 import {getSurahDisplayName} from '@/i18n/format';
 import {flipX} from '@/utils/rtl';
 // @ai-start
-import {restoreSavedRewayah} from '@/services/verse-annotations/restoreSavedRewayah';
+import {savedVerseOpenParams} from '@/services/verse-annotations/openSavedVerse';
 import {describeSavedVerseNow} from '@/hooks/useSavedVerseDescription';
+import {savedVerseSubtitle} from '@/services/verse-annotations/unitAnnotations';
+import {useNativeOptionsMenu} from '@/components/sheets/options/OptionsMenu';
 import {
-  savedVerseRouteParams,
-  savedVerseSubtitle,
-} from '@/services/verse-annotations/unitAnnotations';
+  CollectionOptionsMenu,
+  type CollectionOptionsPayload,
+} from '@/components/sheets/options/collectionOptions';
+import {useLibraryListBottomPadding} from '@/hooks/useBottomInset'; // @ai
 // @ai-end
 
 interface BookmarkData {
@@ -50,9 +52,11 @@ interface BookmarkData {
 // @ai-start
 const BookmarksScreen = () => {
   const {theme} = useTheme();
+  const listBottomPadding = useLibraryListBottomPadding(); // @ai
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const {t} = useTranslation(['collection', 'common']);
+  const nativeMenus = useNativeOptionsMenu(); // @ai
 
   const [bookmarks, setBookmarks] = useState<BookmarkData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -108,20 +112,9 @@ const BookmarksScreen = () => {
       if (openingRef.current) return;
       openingRef.current = true;
       try {
-        const verseKey = `${bookmark.surahNumber}:${bookmark.ayahNumber}`;
-        const surahStartPages = digitalKhattDataService.getSurahStartPages();
-        const fallbackPage = surahStartPages[bookmark.surahNumber] || 1;
-        // Restore the rewayah the bookmark was saved in so the opened verse
-        // matches what the user was reading at save time.
-        await restoreSavedRewayah(bookmark.rewayahId);
-        const page = digitalKhattDataService.getPageForVerse(verseKey);
-        // The page of the anchor's Hafs verse is the page the saved verse
-        // starts on. A bookmark saved in a non-Hafs rewayah also passes its
-        // anchor, so the mushaf selects exactly that rewayah verse (the two
-        // parts of a split Hafs verse are different bookmarks).
         router.push({
           pathname: '/mushaf',
-          params: savedVerseRouteParams(bookmark, page || fallbackPage),
+          params: await savedVerseOpenParams(bookmark),
         });
       } finally {
         openingRef.current = false;
@@ -131,30 +124,35 @@ const BookmarksScreen = () => {
   );
   // @ai-end
 
-  const handleOptionsPress = useCallback(
-    (item: BookmarkData) => {
-      SheetManager.show('collection-options', {
-        payload: {
-          title: item.surahName,
-          // @ai: the ayah in the numbering of the rewayah it was saved in
-          subtitle: savedVerseSubtitle(
-            describeSavedVerseNow(item.bookmark),
-            item.bookmark.ayahNumber,
-            number => t('common:labels.ayahNumber', {number}),
-          ),
-          options: [
-            {
-              label: t('bookmarksScreen.removeBookmark'),
-              icon: 'minus-circle',
-              destructive: true,
-              onPress: () => handleRemoveBookmark(item.bookmark),
-            },
-          ],
+  // @ai-start
+  const buildOptions = useCallback(
+    (item: BookmarkData): CollectionOptionsPayload => ({
+      title: item.surahName,
+      // @ai: the ayah in the numbering of the rewayah it was saved in
+      subtitle: savedVerseSubtitle(
+        describeSavedVerseNow(item.bookmark),
+        item.bookmark.ayahNumber,
+        number => t('common:labels.ayahNumber', {number}),
+      ),
+      options: [
+        {
+          label: t('bookmarksScreen.removeBookmark'),
+          icon: 'minus-circle',
+          destructive: true,
+          onPress: () => handleRemoveBookmark(item.bookmark),
         },
-      });
-    },
+      ],
+    }),
     [handleRemoveBookmark, t],
   );
+
+  const handleOptionsPress = useCallback(
+    (item: BookmarkData) => {
+      SheetManager.show('collection-options', {payload: buildOptions(item)});
+    },
+    [buildOptions],
+  );
+  // @ai-end
 
   const heroOuterBg = Color(theme.colors.textSecondary).alpha(0.1).toString();
   const heroInnerBg = Color(theme.colors.textSecondary).alpha(0.08).toString();
@@ -199,6 +197,14 @@ const BookmarksScreen = () => {
       rewayahId={item.bookmark.rewayahId}
       onPress={() => handleOpenBookmark(item.bookmark)} // @ai
       onOptionsPress={() => handleOptionsPress(item)}
+      optionsMenu={
+        nativeMenus ? (
+          <CollectionOptionsMenu
+            payload={buildOptions(item)}
+            layout="overlay"
+          />
+        ) : undefined
+      }
     />
   );
 
@@ -314,7 +320,10 @@ const BookmarksScreen = () => {
         renderItem={renderItem}
         keyExtractor={getItemKey}
         ListHeaderComponent={ListHeaderComponent}
-        contentContainerStyle={styles.listContentContainer}
+        contentContainerStyle={[
+          styles.listContentContainer,
+          {paddingBottom: listBottomPadding}, // @ai
+        ]}
         onScroll={RNAnimated.event(
           [{nativeEvent: {contentOffset: {y: scrollY}}}],
           {useNativeDriver: true},
@@ -373,7 +382,6 @@ const styles = StyleSheet.create({
   },
   listContentContainer: {
     flexGrow: 1,
-    paddingBottom: moderateScale(65),
   },
   fixedBackButton: {
     position: 'absolute',

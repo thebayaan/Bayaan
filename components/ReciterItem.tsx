@@ -1,6 +1,6 @@
 import React from 'react';
 import {View, Text, Pressable} from 'react-native';
-import {ScaledSheet, moderateScale} from 'react-native-size-matters';
+import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {MaterialIcons, Feather} from '@expo/vector-icons';
@@ -19,6 +19,8 @@ interface ReciterItemProps {
   isSelected?: boolean;
   secondaryText?: string;
   onOptionsPress?: (item: Reciter) => void;
+  /** A native menu laid over the ••• button on tablets. @ai */
+  optionsMenu?: React.ReactNode;
   onLongPress?: (item: Reciter) => void;
   showFollowAlong?: boolean;
 }
@@ -31,6 +33,7 @@ export const ReciterItem: React.FC<ReciterItemProps> = React.memo(
     isSelected,
     secondaryText,
     onOptionsPress,
+    optionsMenu,
     onLongPress,
     showFollowAlong,
   }) => {
@@ -93,6 +96,7 @@ export const ReciterItem: React.FC<ReciterItemProps> = React.memo(
               size={moderateScale(18)}
               color={theme.colors.text}
             />
+            {optionsMenu}
           </Pressable>
         )}
       </Pressable>

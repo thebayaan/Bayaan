@@ -12,7 +12,7 @@ import {useTheme} from '@/hooks/useTheme';
 import {USE_GLASS} from '@/hooks/useGlassProps';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useRouter} from 'expo-router';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import {Feather} from '@expo/vector-icons';
 import {MicrophoneIcon, PlayIcon, ShuffleIcon} from '@/components/Icons';
 import {SheetManager} from 'react-native-actions-sheet';
@@ -31,6 +31,9 @@ import Color from 'color';
 import type {UploadedRecitation, RecordingType} from '@/types/uploads';
 import {CollectionStickyHeader} from '@/components/collection/CollectionStickyHeader';
 import {pickAndImportAudioFiles} from '@/utils/importAudio';
+// @ai-start
+import {confirmRemoveAllUploads} from '@/utils/confirmRemoveAllUploads';
+// @ai-end
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {NowPlayingIndicator} from '@/components/NowPlayingIndicator';
 import {GradientText} from '@/components/GradientText';
@@ -45,6 +48,18 @@ import {
   getSurahDisplayName,
   localizeDigits,
 } from '@/i18n/format';
+import {useLibraryListBottomPadding} from '@/hooks/useBottomInset'; // @ai
+// @ai-start
+import {useNativeOptionsMenu} from '@/components/sheets/options/OptionsMenu';
+import {
+  CollectionOptionsMenu,
+  type CollectionOptionsPayload,
+} from '@/components/sheets/options/collectionOptions';
+import {
+  UploadOptionsMenu,
+  type UploadOptionsPayload,
+} from '@/components/sheets/options/uploadOptions';
+// @ai-end
 // @ai-end
 
 // @ai-start
@@ -135,11 +150,16 @@ interface UploadListItemProps {
   index: number;
   onPlay: (item: UploadedRecitation, index: number) => void;
   onShowOptions: (item: UploadedRecitation, index: number) => void;
+  /** Builds the ••• native menu on tablets. @ai */
+  renderOptionsMenu?: (
+    item: UploadedRecitation,
+    index: number,
+  ) => React.ReactNode;
 }
 
 // @ai-start
 const UploadListItem: React.FC<UploadListItemProps> = React.memo(
-  ({item, index, onPlay, onShowOptions}) => {
+  ({item, index, onPlay, onShowOptions, renderOptionsMenu}) => {
     const {theme} = useTheme();
     const styles = useMemo(() => createStyles(theme), [theme]);
 
@@ -266,6 +286,7 @@ const UploadListItem: React.FC<UploadListItemProps> = React.memo(
               color={theme.colors.text}
             />
           )}
+          {renderOptionsMenu?.(item, index)}
         </Pressable>
       </View>
     );
@@ -278,6 +299,7 @@ UploadListItem.displayName = 'UploadListItem';
 // @ai-start
 export default function UploadsScreen() {
   const {theme} = useTheme();
+  const listBottomPadding = useLibraryListBottomPadding(); // @ai
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const {t} = useTranslation(['collection', 'common']);
@@ -300,35 +322,42 @@ export default function UploadsScreen() {
     loadRecitations();
   }, [loadRecitations]);
 
+  // @ai-start
+  const optionsPayload = useMemo<CollectionOptionsPayload>(
+    () => ({
+      title: t('common:terms.uploads'),
+      subtitle: t('uploadsScreen.recitationsCount', {count: totalCount}),
+      options: [
+        {
+          label: t('uploadsScreen.removeAll'),
+          icon: 'trash-2',
+          destructive: true,
+          onPress: () => confirmRemoveAllUploads(deleteAllRecitations),
+        },
+      ],
+    }),
+    [totalCount, deleteAllRecitations, t],
+  );
+
   const handleOptionsMenu = useCallback(() => {
-    SheetManager.show('collection-options', {
-      payload: {
-        title: t('common:terms.uploads'),
-        subtitle: t('uploadsScreen.recitationsCount', {count: totalCount}),
-        options: [
-          {
-            label: t('uploadsScreen.removeAll'),
-            icon: 'trash-2',
-            destructive: true,
-            onPress: () => deleteAllRecitations(),
-          },
-        ],
-      },
-    });
-  }, [totalCount, deleteAllRecitations, t]);
+    SheetManager.show('collection-options', {payload: optionsPayload});
+  }, [optionsPayload]);
 
   const renderHeaderRight = useCallback(
     () => (
-      <Pressable onPress={handleOptionsMenu} hitSlop={8}>
-        <Feather
-          name="more-horizontal"
-          size={moderateScale(20)}
-          color={theme.colors.text}
-        />
-      </Pressable>
+      <CollectionOptionsMenu payload={optionsPayload}>
+        <Pressable onPress={handleOptionsMenu} hitSlop={8}>
+          <Feather
+            name="more-horizontal"
+            size={moderateScale(20)}
+            color={theme.colors.text}
+          />
+        </Pressable>
+      </CollectionOptionsMenu>
     ),
-    [handleOptionsMenu, theme.colors.text],
+    [optionsPayload, handleOptionsMenu, theme.colors.text],
   );
+  // @ai-end
 
   useCollectionNativeHeader({
     title: t('common:terms.uploads'),
@@ -397,22 +426,36 @@ export default function UploadsScreen() {
     [recitations, updateQueue, play],
   );
 
-  const handleShowOptions = useCallback(
-    (item: UploadedRecitation, index: number) => {
-      const track = createUserUploadTrack(item);
-      SheetManager.show('upload-options', {
-        payload: {
-          recitation: item,
-          reciterId: item.reciterId || '',
-          onPlay: () => handlePlayRecitation(item, index),
-          onAddToQueue: () => {
-            addToQueue([track]);
-          },
-        },
-      });
-    },
+  // @ai-start
+  const buildUploadOptions = useCallback(
+    (item: UploadedRecitation, index: number): UploadOptionsPayload => ({
+      recitation: item,
+      reciterId: item.reciterId || '',
+      onPlay: () => handlePlayRecitation(item, index),
+      onAddToQueue: () => {
+        addToQueue([createUserUploadTrack(item)]);
+      },
+    }),
     [handlePlayRecitation, addToQueue],
   );
+
+  const handleShowOptions = useCallback(
+    (item: UploadedRecitation, index: number) => {
+      SheetManager.show('upload-options', {
+        payload: buildUploadOptions(item, index),
+      });
+    },
+    [buildUploadOptions],
+  );
+
+  const nativeMenus = useNativeOptionsMenu();
+  const renderOptionsMenu = useCallback(
+    (item: UploadedRecitation, index: number) => (
+      <UploadOptionsMenu payload={buildUploadOptions(item, index)} />
+    ),
+    [buildUploadOptions],
+  );
+  // @ai-end
 
   const styles = useMemo(() => createStyles(theme), [theme]);
   const hasRecitations = recitations.length > 0;
@@ -424,9 +467,10 @@ export default function UploadsScreen() {
         index={index}
         onPlay={handlePlayRecitation}
         onShowOptions={handleShowOptions}
+        renderOptionsMenu={nativeMenus ? renderOptionsMenu : undefined}
       />
     ),
-    [handlePlayRecitation, handleShowOptions],
+    [handlePlayRecitation, handleShowOptions, nativeMenus, renderOptionsMenu],
   );
 
   const keyExtractor = useCallback((item: UploadedRecitation) => item.id, []);
@@ -537,6 +581,12 @@ export default function UploadsScreen() {
                 size={moderateScale(20)}
                 color={theme.colors.text}
               />
+              {hasRecitations && (
+                <CollectionOptionsMenu
+                  payload={optionsPayload}
+                  layout="overlay"
+                />
+              )}
             </Pressable>
           )}
           <Pressable
@@ -625,7 +675,10 @@ export default function UploadsScreen() {
         renderItem={renderItem}
         keyExtractor={keyExtractor}
         ListHeaderComponent={ListHeaderComponent}
-        contentContainerStyle={styles.listContentContainer}
+        contentContainerStyle={[
+          styles.listContentContainer,
+          {paddingBottom: listBottomPadding}, // @ai
+        ]}
         showsVerticalScrollIndicator={false}
         onScroll={RNAnimated.event(
           [{nativeEvent: {contentOffset: {y: scrollY}}}],
@@ -747,7 +800,6 @@ const createStyles = (theme: {colors: any; fonts: any}) =>
     },
     listContentContainer: {
       flexGrow: 1,
-      paddingBottom: moderateScale(65),
     },
     fixedBackButton: {
       position: 'absolute',

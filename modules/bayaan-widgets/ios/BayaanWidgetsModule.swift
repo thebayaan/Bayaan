@@ -94,6 +94,17 @@ public class BayaanWidgetsModule: Module {
     }
 
     Function("takeQueuedCommands") { () -> String in takeString("widgets.commandQueue") }
+    // @ai-start
+    // Lets a waiting AudioPlaybackIntent return (WidgetCommandQueue.waitUntilHandled).
+    // Only moves forward, so an older drain cannot release a newer tap early.
+    Function("markCommandsHandled") { (through: Double) in
+      guard let id = appGroupId(), let defaults = UserDefaults(suiteName: id) else { return }
+      withQueueLock {
+        let key = "widgets.commandsHandledThrough"
+        if through > defaults.double(forKey: key) { defaults.set(through, forKey: key) }
+      }
+    }
+    // @ai-end
     Function("takePendingTasbeeh") { () -> String in takeString("widgets.pendingTasbeeh") }
     Function("takePendingWidgetEvents") { () -> String in takeString("widgets.pendingEvents") }
 

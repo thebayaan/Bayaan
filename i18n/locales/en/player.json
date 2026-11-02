@@ -1,7 +1,26 @@
 {
   "queue": {
     "empty": "Queue is empty",
-    "verseShort": "v{{verse}}"
+    "verseShort": "v{{verse}}",
+    "nowPlaying": "Now Playing",
+    "upNext": "Up Next",
+    "played": "Played",
+    "remove": "Remove {{title}} from queue",
+    "playNext": "Play Next",
+    "repeatAll": "Repeat All",
+    "repeatOne": "Repeat One",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "reorder": "Reorder {{title}}",
+    "reorderHint": "Drag to move it in the queue",
+    "moreFor": "More options for {{title}}",
+    "clearUpNext": "Clear Up Next",
+    "nothingNext": "Nothing up next"
+  },
+  "panes": {
+    "text": "Text",
+    "queue": "Queue",
+    "reciters": "Reciters"
   },
   "uploads": {
     "recordingType": {
@@ -83,6 +102,26 @@
     }
   },
   "a11y": {
-    "openPlayer": "Opens the full player"
+    "openPlayer": "Opens the full player",
+    "nowPlaying": "{{title}}, {{artist}}",
+    "openReciter": "Opens the reciter's profile",
+    "skipBack": "Back {{seconds}} seconds",
+    "skipForward": "Forward {{seconds}} seconds",
+    "previous": "Previous",
+    "next": "Next",
+    "love": "Love",
+    "displayOptions": "Display options",
+    "speed": "Playback speed",
+    "repeat": "Repeat",
+    "repeatOff": "Off",
+    "repeatAll": "All",
+    "repeatOne": "One",
+    "sleepTimer": "Sleep timer",
+    "ambient": "Ambient sounds",
+    "followAlong": "Follow along",
+    "queue": "Queue",
+    "moreOptions": "More options",
+    "closePlayer": "Close player",
+    "openFullProfile": "Open full profile"
   }
 }

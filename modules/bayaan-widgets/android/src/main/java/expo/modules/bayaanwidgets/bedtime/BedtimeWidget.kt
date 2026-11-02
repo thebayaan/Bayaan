@@ -49,6 +49,20 @@ import expo.modules.bayaanwidgets.ui.commandAction
 import expo.modules.bayaanwidgets.ui.contentRoot
 import expo.modules.bayaanwidgets.ui.recordMissingArtwork
 import expo.modules.bayaanwidgets.ui.startBedtimeCommand
+import androidx.glance.ColorFilter
+import androidx.glance.Image
+import androidx.glance.ImageProvider
+import androidx.glance.appwidget.cornerRadius
+import androidx.glance.background
+import androidx.glance.layout.fillMaxSize
+import androidx.glance.layout.size
+import androidx.glance.unit.ColorProvider
+import expo.modules.bayaanwidgets.PlaybackState
+import expo.modules.bayaanwidgets.ui.Eyebrow
+import expo.modules.bayaanwidgets.ui.PrimaryButton
+import expo.modules.bayaanwidgets.ui.WidgetPalette
+import expo.modules.bayaanwidgets.ui.playOrPause
+import expo.modules.bayaanwidgets.ui.playingTrack
 
 class BedtimeWidget : GlanceAppWidget() {
   override val sizeMode = SizeMode.Responsive(setOf(WidgetSizes.SMALL, WidgetSizes.MEDIUM))
@@ -77,47 +91,58 @@ fun BedtimeContent(context: Context, configured: BedtimeConfig, inputs: WidgetIn
   val reciterName = catalog?.reciter(config.reciterId)?.name ?: snapshot?.defaultReciter?.name
   val sleepAt = content?.sleepTimerEndsAt?.takeIf { ContentLogic.sleepActive(it, System.currentTimeMillis()) }
   val detail = listOfNotNull("${config.minutes} min", config.ambient?.let { ContentConfigJson.ambientLabel(it) }).joinToString(" · ")
-  val action = commandAction(context, startBedtimeCommand(config),
-    "bedtime/${config.surahId}/${config.reciterId ?: "default"}/${config.minutes}/${config.ambient ?: "off"}")
+  // @ai-start
+  val playing = PlaybackState.matches(playingTrack(context, snapshot), config.surahId, config.reciterId)
+  val action = playOrPause(context, playing, commandAction(context, startBedtimeCommand(config),
+    "bedtime/${config.surahId}/${config.reciterId ?: "default"}/${config.minutes}/${config.ambient ?: "off"}"))
   val small = LocalSize.current.width < WidgetSizes.MEDIUM.width
-  val subtitle = sleepAt?.let { "Sleep at ${clockTime(context, it)}" } ?: if (small) "${surah?.name ?: ""} · $detail" else detail
-  val root = contentRoot().clickable(action)
+  val subtitle = sleepAt?.let { "Sleep at ${clockTime(context, it)}" } ?: detail
+  val moon = ColorProvider(WidgetPalette.MOON)
+  val root = GlanceModifier.fillMaxSize().background(ColorProvider(WidgetPalette.BEDTIME)).cornerRadius(20.dp).clickable(action)
+  // A 110 dp tall cell (dense launchers) drops the card and the reciter line.
+  val short = WidgetSizes.isShort(LocalSize.current)
   if (small) {
     Column(root.padding(12.dp)) {
-      Row(GlanceModifier.fillMaxWidth()) {
-        SurahCard(context, surah, 54)
+      Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Image(ImageProvider(R.drawable.widget_moon), contentDescription = null, colorFilter = ColorFilter.tint(moon),
+          modifier = GlanceModifier.size(16.dp))
+        Spacer(GlanceModifier.width(6.dp))
+        Eyebrow("Bedtime", moon)
         Spacer(GlanceModifier.defaultWeight())
-        Logo(12)
+        if (!short) SurahCard(context, surah, 36)
       }
       Spacer(GlanceModifier.defaultWeight())
-      Text("Bedtime", style = TextStyle(color = WidgetColors.WHITE, fontSize = 15.sp, fontWeight = FontWeight.Bold))
-      Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
+      Text(surah?.name ?: "", maxLines = 1, style = TextStyle(color = WidgetColors.WHITE, fontSize = 16.sp, fontWeight = FontWeight.Bold))
+      Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(subtitle, maxLines = 2, modifier = GlanceModifier.defaultWeight(),
           style = TextStyle(color = WidgetColors.SECONDARY, fontSize = 11.sp))
-        RoundButton(R.drawable.widget_moon, "Start bedtime", action)
+        Spacer(GlanceModifier.width(4.dp))
+        PrimaryButton(playing, "Start bedtime", action = null, sizeDp = 32, fill = moon, glyph = ColorProvider(WidgetPalette.BEDTIME))
       }
     }
     return
   }
-  Row(root.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-    SurahCard(context, surah, 96)
+  Row(root.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+    SurahCard(context, surah, if (short) 80 else 92)
     Spacer(GlanceModifier.width(12.dp))
     Column(GlanceModifier.defaultWeight()) {
-      Row(GlanceModifier.fillMaxWidth()) {
-        Text("Bedtime", modifier = GlanceModifier.defaultWeight(),
-          style = TextStyle(color = WidgetColors.TERTIARY, fontSize = 11.sp, fontWeight = FontWeight.Bold))
-        Logo(14)
+      Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Image(ImageProvider(R.drawable.widget_moon), contentDescription = null, colorFilter = ColorFilter.tint(moon),
+          modifier = GlanceModifier.size(13.dp))
+        Spacer(GlanceModifier.width(6.dp))
+        Eyebrow("Bedtime", moon)
       }
-      Text(surah?.name ?: "", maxLines = 1, style = TextStyle(color = WidgetColors.WHITE, fontSize = 15.sp, fontWeight = FontWeight.Bold))
-      if (reciterName != null) {
-        Text(reciterName, maxLines = 1, style = TextStyle(color = WidgetColors.SECONDARY, fontSize = 13.sp))
+      Text(surah?.name ?: "", maxLines = 1, style = TextStyle(color = WidgetColors.WHITE, fontSize = 17.sp, fontWeight = FontWeight.Bold))
+      if (reciterName != null && !short) {
+        Text(reciterName, maxLines = 1, style = TextStyle(color = WidgetColors.SECONDARY, fontSize = 12.sp))
       }
-      Spacer(GlanceModifier.height(6.dp))
-      Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
+      Spacer(GlanceModifier.height(4.dp))
+      Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(subtitle, maxLines = 1, modifier = GlanceModifier.defaultWeight(),
           style = TextStyle(color = WidgetColors.SECONDARY, fontSize = 12.sp))
-        RoundButton(R.drawable.widget_moon, "Start bedtime", action)
+        PrimaryButton(playing, "Start bedtime", action = null, sizeDp = if (short) 32 else 38, fill = moon, glyph = ColorProvider(WidgetPalette.BEDTIME))
       }
     }
   }
+  // @ai-end
 }

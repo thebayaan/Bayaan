@@ -1,6 +1,6 @@
 import React, {memo, useMemo} from 'react';
 import {View, Text, Pressable} from 'react-native';
-import {ScaledSheet, moderateScale} from 'react-native-size-matters';
+import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {Feather} from '@expo/vector-icons';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
@@ -23,6 +23,8 @@ interface BookmarkItemProps {
   rewayahId?: RewayahId;
   onPress: () => void;
   onOptionsPress: () => void;
+  /** A native menu laid over the ••• button on tablets. @ai */
+  optionsMenu?: React.ReactNode;
 }
 
 // @ai-start
@@ -35,6 +37,7 @@ export const BookmarkItem = memo<BookmarkItemProps>(
     rewayahId,
     onPress,
     onOptionsPress,
+    optionsMenu,
   }) => {
     const {theme} = useTheme();
     const styles = useMemo(() => createStyles(theme), [theme]);
@@ -90,6 +93,7 @@ export const BookmarkItem = memo<BookmarkItemProps>(
               size={moderateScale(18)}
               color={theme.colors.textSecondary}
             />
+            {optionsMenu}
           </Pressable>
         </View>
 

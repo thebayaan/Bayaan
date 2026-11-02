@@ -1,18 +1,17 @@
 import React from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
-import {ScaledSheet, moderateScale} from 'react-native-size-matters';
+import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import ActionSheet, {
-  SheetProps,
-  SheetManager,
-} from 'react-native-actions-sheet';
+import {SheetProps, SheetManager} from 'react-native-actions-sheet';
+import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import Color from 'color';
+import {SLEEP_TIMER_OPTIONS} from '@/constants/playback'; // @ai
 // @ai-start
 import {useTranslation} from 'react-i18next';
 // @ai-end
 
-const TIMER_OPTIONS = [5, 15, 30, 45, 60];
+const TIMER_OPTIONS = SLEEP_TIMER_OPTIONS; // @ai
 
 // @ai-start
 export const SleepTimerSheet = (props: SheetProps<'sleep-timer'>) => {
@@ -43,6 +42,7 @@ export const SleepTimerSheet = (props: SheetProps<'sleep-timer'>) => {
   return (
     <ActionSheet
       id={props.sheetId}
+      tabletPresentation="menu"
       containerStyle={styles.sheetContainer}
       indicatorStyle={styles.indicator}
       gestureEnabled={true}>

@@ -1,6 +1,6 @@
 import React from 'react';
 import {View, Text, Pressable} from 'react-native';
-import {ScaledSheet, moderateScale} from 'react-native-size-matters';
+import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {MaterialIcons, Feather} from '@expo/vector-icons';
@@ -18,6 +18,8 @@ interface PlaylistItemProps {
   onPress: () => void;
   onLongPress?: () => void;
   onOptionsPress?: () => void;
+  /** A native menu laid over the ••• button on tablets. @ai */
+  optionsMenu?: React.ReactNode;
   isSelected?: boolean;
 }
 
@@ -30,6 +32,7 @@ export const PlaylistItem: React.FC<PlaylistItemProps> = React.memo(
     onPress,
     onLongPress,
     onOptionsPress,
+    optionsMenu,
     isSelected,
   }) => {
     const {theme} = useTheme();
@@ -76,6 +79,7 @@ export const PlaylistItem: React.FC<PlaylistItemProps> = React.memo(
               size={moderateScale(18)}
               color={theme.colors.text}
             />
+            {optionsMenu}
           </Pressable>
         )}
         {isSelected && (

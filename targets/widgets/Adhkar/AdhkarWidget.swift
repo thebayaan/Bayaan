@@ -80,22 +80,45 @@ struct AdhkarView: View {
         ContentMessage(title: "Open \(AppBrand.name)")
       }
     }
-    .foregroundStyle(.white)
-    .containerBackground(for: .widget) { WidgetPalette.background }
+    // @ai-start
+    .foregroundStyle(style.primary)
+    .containerBackground(for: .widget) { style.background }
+  }
+
+  /// Time-of-day tint; the period of the shown data, else today's clock.
+  private var style: AdhkarStyle {
+    .forPeriod(entry.data?.period ?? (Calendar.current.component(.hour, from: entry.date) < 12 ? "morning" : "evening"))
+    // @ai-end
   }
 
   private func small(_ data: AdhkarPeriodData, _ dhikr: FeaturedDhikr) -> some View {
-    VStack(spacing: 6) {
-      HStack {
-        Text(data.title).font(.footnote.weight(.bold)).opacity(0.75).lineLimit(1)
+    // @ai-start
+    VStack(alignment: .leading, spacing: 6) {
+      HStack(spacing: 6) {
+        Image(systemName: style.symbol).font(.system(size: 13, weight: .bold)).foregroundStyle(style.accent)
+        // Drops "Adhkar" before cutting letters; the icon already says which.
+        ViewThatFits(in: .horizontal) {
+          Text(data.title).lineLimit(1).fixedSize(horizontal: true, vertical: false)
+          Text(data.title.split(separator: " ").first.map(String.init) ?? data.title).lineLimit(1)
+        }
+        .font(.footnote.weight(.heavy))
+    // @ai-end
+        // @ai-start
         Spacer(minLength: 0)
-        BayaanLogo(size: 12)
+        // Plays the period's adhkar audio from this dhikr, even with the app closed; pauses while it plays.
+        PlayOrPauseButton(playing: AdhkarPlaybackState.isPlaying(superId: data.superId, snapshot: SnapshotStore.load()),
+                          play: PlayAdhkarIntent(superId: data.superId, dhikrId: dhikr.id),
+                          pause: SetAdhkarPlaybackIntent(playing: false), label: "Listen") { playing in
+          Image(systemName: playing ? "pause.fill" : "play.fill").font(.system(size: 11, weight: .bold))
+            .foregroundStyle(style.onAccent)
+            .frame(width: 28, height: 28)
+            .background(style.accent, in: Circle())
+        }
+        // @ai-end
       }
-      Spacer(minLength: 0)
-      DhikrText(text: dhikr.arabic, size: 22, lines: 3).frame(maxWidth: .infinity)
-      Spacer(minLength: 0)
+      DhikrText(text: dhikr.arabic, size: 22, lines: 3).frame(maxWidth: .infinity, maxHeight: .infinity) // @ai
     }
-    .padding(12)
+    .padding(14) // @ai
   }
 }
 

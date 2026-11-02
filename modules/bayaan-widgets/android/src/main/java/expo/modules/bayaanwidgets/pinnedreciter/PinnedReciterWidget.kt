@@ -48,6 +48,14 @@ import expo.modules.bayaanwidgets.StaticData
 import expo.modules.bayaanwidgets.WidgetConfigJson
 import expo.modules.bayaanwidgets.WidgetInputs
 import expo.modules.bayaanwidgets.ui.Logo
+import expo.modules.bayaanwidgets.PlaybackState
+import expo.modules.bayaanwidgets.WidgetTrack
+import expo.modules.bayaanwidgets.ui.PrimaryButton
+import expo.modules.bayaanwidgets.ui.ReciterSurahRow
+import expo.modules.bayaanwidgets.ui.WidgetPalette
+import expo.modules.bayaanwidgets.ui.playOrPause
+import expo.modules.bayaanwidgets.ui.playingTrack
+import androidx.glance.unit.ColorProvider
 import expo.modules.bayaanwidgets.ui.ReciterPhoto
 import expo.modules.bayaanwidgets.ui.RoundButton
 import expo.modules.bayaanwidgets.ui.SurahCard
@@ -70,7 +78,8 @@ class PinnedReciterWidget : GlanceAppWidget() {
       val inputs = GlanceState.current(currentState(), stored)
       val state = remember(inputs) { resolve(inputs) }
       // A push after new artwork lands must redraw even when the state did not change.
-      key(inputs.pushedAt) { Content(context, appWidgetId, state) }
+      val playing = playingTrack(context, inputs.snapshotJson?.let { SnapshotModels.decode(it) }) // @ai
+      key(inputs.pushedAt) { Content(context, appWidgetId, state, playing) } // @ai
     }
   }
 
@@ -87,69 +96,66 @@ class PinnedReciterWidget : GlanceAppWidget() {
   }
 
   @Composable
-  private fun Content(context: Context, appWidgetId: Int, state: PinnedReciterState) {
-    val root = GlanceModifier.fillMaxSize().background(WidgetColors.BACKGROUND).cornerRadius(20.dp)
+  private fun Content(context: Context, appWidgetId: Int, state: PinnedReciterState, playing: WidgetTrack?) { // @ai
+    val root = GlanceModifier.fillMaxSize().background(ColorProvider(WidgetPalette.RECITER)).cornerRadius(20.dp) // @ai
     when (state) {
       is PinnedReciterState.Ready ->
-        if (LocalSize.current.width >= WidgetSizes.MEDIUM.width) Medium(context, state, root) else Small(context, state, root)
+        if (LocalSize.current.width >= WidgetSizes.MEDIUM.width) Medium(context, state, root, playing) else Small(context, state, root, playing) // @ai
       PinnedReciterState.Unavailable -> Message(context, appWidgetId, root, "Reciter unavailable", "Tap to choose another")
       PinnedReciterState.Unset -> Message(context, appWidgetId, root, "Choose a reciter", "Tap to pick one")
     }
   }
 
+  // @ai-start
   @Composable
-  private fun Small(context: Context, state: PinnedReciterState.Ready, root: GlanceModifier) {
-    val play = commandAction(context, playReciterCommand(state.id), "reciter/${state.id}")
+  private fun Small(context: Context, state: PinnedReciterState.Ready, root: GlanceModifier, playing: WidgetTrack?) {
+    val isPlaying = playing?.reciterId == state.id
+    val play = playOrPause(context, isPlaying, commandAction(context, playReciterCommand(state.id), "reciter/${state.id}"))
     val size = LocalSize.current
     Box(root.clickable(play)) {
       ReciterPhoto(context, state.artworkFile, state.name, size.width.value.toInt(), size.height.value.toInt(), 20)
       Image(
-        ImageProvider(R.drawable.widget_scrim), contentDescription = null,
+        ImageProvider(R.drawable.widget_scrim_ink), contentDescription = null,
         modifier = GlanceModifier.fillMaxSize(), contentScale = ContentScale.FillBounds,
       )
-      Column(GlanceModifier.fillMaxSize().padding(12.dp)) {
+      // The button sits top right, so the name gets the full width and breaks between words.
+      Column(GlanceModifier.fillMaxSize().padding(10.dp)) {
         Row(GlanceModifier.fillMaxWidth()) {
           Spacer(GlanceModifier.defaultWeight())
-          Logo(14)
+          PrimaryButton(isPlaying, "Play ${state.name}", action = null, sizeDp = 34)
         }
         Spacer(GlanceModifier.defaultWeight())
-        Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
-          Text(state.name, maxLines = 2, modifier = GlanceModifier.defaultWeight(),
-            style = TextStyle(color = WidgetColors.WHITE, fontSize = 15.sp, fontWeight = FontWeight.Bold))
-          RoundButton(android.R.drawable.ic_media_play, "Play ${state.name}", play)
-        }
+        Text(state.name, maxLines = 2, modifier = GlanceModifier.padding(horizontal = 2.dp),
+          style = TextStyle(color = WidgetColors.WHITE, fontSize = 14.sp, fontWeight = FontWeight.Bold))
       }
     }
   }
 
   @Composable
-  private fun Medium(context: Context, state: PinnedReciterState.Ready, root: GlanceModifier) {
-    val play = commandAction(context, playReciterCommand(state.id), "reciter/${state.id}")
+  private fun Medium(context: Context, state: PinnedReciterState.Ready, root: GlanceModifier, playing: WidgetTrack?) {
+    val isPlaying = playing?.reciterId == state.id
+    val play = playOrPause(context, isPlaying, commandAction(context, playReciterCommand(state.id), "reciter/${state.id}"))
     Row(root.padding(12.dp)) {
-      Box(GlanceModifier.width(86.dp).fillMaxHeight().clickable(play), contentAlignment = Alignment.BottomStart) {
-        ReciterPhoto(context, state.artworkFile, state.name, 86, 86, 14)
-        Box(GlanceModifier.padding(6.dp)) { RoundButton(android.R.drawable.ic_media_play, "Play ${state.name}", play) }
-      }
+      ReciterPhoto(context, state.artworkFile, state.name, 86, 86, 14)
       Spacer(GlanceModifier.width(12.dp))
       Column(GlanceModifier.defaultWeight().fillMaxHeight()) {
+        // The play button sits beside the name, clear of the photo's initials.
         Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-          Text(state.name, maxLines = 1, modifier = GlanceModifier.defaultWeight(),
+          Text(state.name, maxLines = 2, modifier = GlanceModifier.defaultWeight(),
             style = TextStyle(color = WidgetColors.WHITE, fontSize = 14.sp, fontWeight = FontWeight.Bold))
-          Logo(14)
+          PrimaryButton(isPlaying, "Play ${state.name}", play, sizeDp = 34)
         }
         state.rows.forEach { row ->
           val surah = StaticData.surah(context, row.surahId) ?: return@forEach
-          val action = commandAction(context, playTrackCommand(row.surahId, state.id, row.rewayatId, null),
-            "reciter/${state.id}/${row.surahId}/${row.rewayatId ?: "any"}")
-          Row(GlanceModifier.fillMaxWidth().padding(top = 6.dp).clickable(action), verticalAlignment = Alignment.CenterVertically) {
-            SurahCard(context, surah, 24)
-            Spacer(GlanceModifier.width(8.dp))
-            Text(surah.name, maxLines = 1, style = TextStyle(color = WidgetColors.WHITE, fontSize = 13.sp, fontWeight = FontWeight.Medium))
-          }
+          val rowPlaying = PlaybackState.matches(playing, row.surahId, state.id)
+          val action = playOrPause(context, rowPlaying, commandAction(context, playTrackCommand(row.surahId, state.id, row.rewayatId, null),
+            "reciter/${state.id}/${row.surahId}/${row.rewayatId ?: "any"}"))
+          ReciterSurahRow(context, surah, rowPlaying, action)
         }
       }
     }
   }
+  // @ai-end
 
   @Composable
   private fun Message(context: Context, appWidgetId: Int, root: GlanceModifier, title: String, detail: String) {

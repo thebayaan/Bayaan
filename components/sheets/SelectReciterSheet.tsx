@@ -1,14 +1,13 @@
 import React, {useCallback, useState} from 'react';
-import {View, Text, Pressable, Switch, StyleSheet} from 'react-native';
+import {View, Text, Pressable, StyleSheet} from 'react-native';
+import {NativeSwitch} from '@/components/native/NativeSwitch'; // @ai
 import {useTheme} from '@/hooks/useTheme';
-import {ScaledSheet, moderateScale} from 'react-native-size-matters';
+import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useReciterStore} from '@/store/reciterStore';
 import {Theme} from '@/utils/themeUtils';
 import {getSurahById} from '@/services/dataService';
-import ActionSheet, {
-  SheetProps,
-  SheetManager,
-} from 'react-native-actions-sheet';
+import {SheetProps, SheetManager} from 'react-native-actions-sheet';
+import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import {useSettings} from '@/hooks/useSettings';
 import {useReciterSelection} from '@/hooks/useReciterSelection';
 import Color from 'color';
@@ -172,14 +171,9 @@ export const SelectReciterSheet = (props: SheetProps<'select-reciter'>) => {
           <Text style={styles.askEveryTimeText}>
             {t('selectReciter.askEveryTime')}
           </Text>
-          <Switch
+          <NativeSwitch
             value={askEveryTime}
             onValueChange={handleAskEveryTimeToggle}
-            trackColor={{
-              false: Color(theme.colors.text).alpha(0.1).toString(),
-              true: Color(theme.colors.text).alpha(0.65).toString(),
-            }}
-            thumbColor="#FFFFFF"
           />
         </View>
       </View>

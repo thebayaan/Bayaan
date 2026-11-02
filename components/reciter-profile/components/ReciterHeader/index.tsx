@@ -1,7 +1,6 @@
 import React, {useMemo} from 'react';
 import {View, Text} from 'react-native';
-import {moderateScale} from 'react-native-size-matters';
-import {ScaledSheet} from 'react-native-size-matters';
+import {moderateScale, ScaledSheet} from '@/utils/scale';
 import {useTranslation} from 'react-i18next';
 import {Theme} from '@/utils/themeUtils';
 import {useTheme} from '@/hooks/useTheme';
@@ -14,7 +13,7 @@ import {Reciter} from '@/data/reciterData';
 import {getReciterDisplayName} from '@/i18n/format';
 // @ai-end
 
-function countUniqueSurahs(reciter: Reciter): number {
+export function countUniqueSurahs(reciter: Reciter): number {
   const ids = new Set<number>();
   for (const rewayah of reciter.rewayat) {
     for (const id of rewayah.surah_list) {

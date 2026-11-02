@@ -1,6 +1,6 @@
 import {create} from 'zustand';
-import {persist, createJSONStorage} from 'zustand/middleware';
-import {storage} from '@/utils/storage';
+import {persist} from 'zustand/middleware'; // @ai
+import {persistStorage} from '@/utils/storage'; // @ai
 
 type BrowseViewMode = 'card' | 'list';
 type BrowseSortOption = 'asc' | 'desc' | 'revelation';
@@ -70,7 +70,7 @@ export const useSettings = create<SettingsState>()(
     }),
     {
       name: 'settings-storage',
-      storage: createJSONStorage(() => storage),
+      storage: persistStorage(), // @ai
     },
   ),
 );

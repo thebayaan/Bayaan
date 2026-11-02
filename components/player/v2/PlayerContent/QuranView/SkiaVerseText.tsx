@@ -34,6 +34,7 @@ import {
   createTextStrokePaint,
   getArabicTextWeightStrokeWidth,
 } from '@/utils/skiaTextWeight';
+import {disposeAfterPendingDraws} from '@/utils/skiaDeferredDispose';
 import {computeVerseCharRuleMap, computeVerseDiffRanges} from './verseOverlays';
 
 const paragraphStyle: SkParagraphStyle = {
@@ -270,10 +271,13 @@ const SkiaVerseText: React.FC<SkiaVerseTextProps> = ({
   // previous paragraphs when the memo recomputes (and on unmount). The cleanup
   // runs with the prior `built` value, so the paragraph being rendered this
   // frame is never disposed early.
+  //
+  // The dispose is DEFERRED behind a worklets UI-queue barrier. A direct
+  // dispose frees a paragraph that a queued Skia draw still holds, and the UI
+  // thread then aborts the app. See `utils/skiaDeferredDispose.ts`.
   useEffect(() => {
     return () => {
-      built.paragraph?.dispose();
-      built.strokeParagraph?.dispose();
+      disposeAfterPendingDraws([built.paragraph, built.strokeParagraph]); // @ai
     };
   }, [built]);
 

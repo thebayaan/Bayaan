@@ -2,14 +2,14 @@
 
 import React from 'react';
 import {View} from 'react-native';
-import {Tabs} from 'expo-router';
+import {Tabs, type BottomTabBarProps} from 'expo-router/js-tabs';
 import {StatusBar} from 'expo-status-bar';
 import {useTheme} from '@/hooks/useTheme';
 import {NativeTabs} from 'expo-router/unstable-native-tabs';
 import {MiniPlayer} from '@/components/player/v2/MiniPlayer';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import BottomTabBar from '@/components/BottomTabBar';
-import {BottomTabBarProps} from 'expo-router/build/react-navigation/bottom-tabs';
+
 import {FloatingPlayer} from '@/components/player/v2/FloatingPlayer';
 import {TabletSidebar} from '@/components/tablet/TabletSidebar';
 import {useResponsive} from '@/hooks/useResponsive';
@@ -100,28 +100,9 @@ function IOSTabs() {
           </NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
 
-        {/*
-          `role="search"` only reaches react-native-screens as
-          `systemItem: 'search'`, the legacy UITabBarItem. The iOS 26 SDK gave
-          that item the detached search chrome for free; the iOS 27 SDK does
-          not, which is why the tab started rendering inline. The detached
-          placement now comes from UISearchTab, which react-native-screens
-          builds only when the native `role` prop is set, and iOS 27 keys the
-          detachment off `automaticallyActivatesSearch`. expo-router does not
-          forward either prop yet, so both go through `unstable_nativeProps`.
-          `automaticallyActivatesSearch` also needs a native header search bar,
-          which (b.search)/index.tsx already declares via <Stack.SearchBar>.
-          Needs react-native-screens >= 4.29.0 (4.26.x has no UISearchTab).
-        */}
         <NativeTabs.Trigger
           name="(b.search)"
           role="search"
-          unstable_nativeProps={{
-            ios: {
-              role: 'search',
-              automaticallyActivatesSearch: true,
-            },
-          }}
           contentStyle={{
             ...appLayoutDirection,
             backgroundColor: theme.colors.background,
@@ -175,7 +156,6 @@ function AndroidTabs() {
   return (
     <View style={{flex: 1}}>
       <Tabs
-        initialRouteName="(a.home)"
         screenOptions={{
           headerShown: false,
           lazy: true,
@@ -206,7 +186,7 @@ function AndroidTabs() {
 // @ai-end
 
 /**
- * Tablet shell: leading sidebar (rail in portrait, labeled in landscape)
+ * Tablet shell: leading sidebar (icon rail below 900pt wide, labelled from 900pt)
  * with the mini player docked in the sidebar footer. Replaces both the iOS
  * NativeTabs and the Android floating pill when `isTablet` is true.
  */
@@ -216,7 +196,6 @@ function TabletTabs() {
   return (
     <View style={[{flex: 1}, forceLTR]}>
       <Tabs
-        initialRouteName="(a.home)"
         screenOptions={{
           headerShown: false,
           lazy: true,
@@ -246,6 +225,12 @@ function TabletTabs() {
   );
 }
 // @ai-end
+
+// Expo Router 58 takes a navigator's initial route from the route node, not
+// from an `initialRouteName` prop on the layout.
+export const unstable_settings = {
+  initialRouteName: '(a.home)',
+};
 
 export default function TabsLayout() {
   const {isDarkMode} = useTheme();

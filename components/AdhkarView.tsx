@@ -1,15 +1,19 @@
-import React, {useMemo} from 'react';
+import React, {useCallback, useMemo, useState} from 'react'; // @ai
 import {
   View,
   Text,
   ScrollView,
   StyleSheet,
   useWindowDimensions,
+  type LayoutChangeEvent, // @ai
 } from 'react-native';
-import {moderateScale, scale} from 'react-native-size-matters';
+import {moderateScale, scale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {useAdhkar} from '@/hooks/useAdhkar';
-import {AdhkarBentoCard} from '@/components/adhkar/AdhkarBentoCard';
+import {
+  AdhkarBentoCard,
+  TABLET_LABEL_OVERHEAD,
+} from '@/components/adhkar/AdhkarBentoCard';
 import {SuperCategory} from '@/types/adhkar';
 import {useBottomInset} from '@/hooks/useBottomInset';
 import {LoadingIndicator} from '@/components/LoadingIndicator';
@@ -20,6 +24,8 @@ import {
 import {SavedAdhkarHero} from '@/components/hero/SavedAdhkarHero';
 // @ai-start
 import {useTranslation} from 'react-i18next';
+import {useResponsive} from '@/hooks/useResponsive';
+import {computeGridLayout, pageSpacing} from '@/utils/gridLayout';
 // @ai-end
 
 // Gap between cards
@@ -70,14 +76,19 @@ const CategoryGrid = React.memo(function CategoryGrid({
   columnWidth,
   cardHeight,
   onPress,
+  gap, // @ai
+  tablet = false, // @ai
 }: {
   categories: SuperCategory[];
   columnWidth: number;
   cardHeight: number;
   onPress: (category: SuperCategory) => void;
+  /** iPad: the gutter between cards and between rows. @ai */
+  gap?: number;
+  tablet?: boolean; // @ai
 }) {
   return (
-    <View style={styles.grid}>
+    <View style={[styles.grid, gap !== undefined && {gap}]}>
       {categories.map(category => (
         <AdhkarBentoCard
           key={category.id}
@@ -85,6 +96,7 @@ const CategoryGrid = React.memo(function CategoryGrid({
           onPress={() => onPress(category)}
           width={columnWidth}
           height={cardHeight}
+          tablet={tablet} // @ai
         />
       ))}
     </View>
@@ -92,6 +104,49 @@ const CategoryGrid = React.memo(function CategoryGrid({
 });
 
 // @ai-start
+// @ai-start
+/**
+ * Two-column tile size for a grid `width` wide (the measured container).
+ * Cards are 3:2, wider than tall.
+ */
+export function adhkarTileDimensions(width: number, gap: number) {
+  const horizontalPadding = scale(width < 375 ? 12 : 16);
+  const availableWidth = Math.max(0, width - horizontalPadding * 2);
+  const columnWidth = Math.max(0, (availableWidth - gap) / 2);
+  return {
+    columnWidth,
+    cardHeight: columnWidth * (2 / 3),
+    horizontalPadding,
+  };
+}
+
+/** Smallest card on the iPad grid (listening/04, Adhkar home). */
+const TABLET_MIN_CARD_WIDTH = 160;
+
+/**
+ * The iPad grid for a pane `paneWidth` wide in a window `windowWidth` wide:
+ * the window's page margin and gutter, columns from the pane, 3:2 images
+ * with two label lines under them, and the hero cards span the grid.
+ */
+export function adhkarTabletLayout(paneWidth: number, windowWidth: number) {
+  const {margin, gap} = pageSpacing(windowWidth);
+  const {numColumns, itemWidth} = computeGridLayout(paneWidth, {
+    minCardWidth: TABLET_MIN_CARD_WIDTH,
+    horizontalPadding: margin,
+    gap,
+    minColumns: 2,
+  });
+  return {
+    margin,
+    gap,
+    numColumns,
+    columnWidth: itemWidth,
+    cardHeight: itemWidth * (2 / 3) + TABLET_LABEL_OVERHEAD,
+    heroWidth: paneWidth - margin * 2,
+  };
+}
+// @ai-end
+
 export const AdhkarView: React.FC<AdhkarViewProps> = ({
   onCategoryPress,
   onSavedPress,
@@ -107,24 +162,29 @@ export const AdhkarView: React.FC<AdhkarViewProps> = ({
     superCategoriesLoaded,
     savedIds,
   } = useAdhkar();
-  const {width} = useWindowDimensions();
+  const {width: windowWidth} = useWindowDimensions();
+  const {isTablet} = useResponsive(); // @ai
   const hasAdhkarSession = useHasAdhkarSession();
+  // @ai-start
+  // Size the grid from the scroll view's own width, not the window: on iPad
+  // it sits in a capped column beside the sidebar, where window-sized cards
+  // no longer fit two per row. The window is only a first guess.
+  const [containerWidth, setContainerWidth] = useState<number | null>(null);
+  const handleLayout = useCallback((e: LayoutChangeEvent) => {
+    const next = e.nativeEvent.layout.width;
+    if (next > 0) setContainerWidth(prev => (prev === next ? prev : next));
+  }, []);
+  const width = containerWidth ?? windowWidth;
 
-  // Calculate column dimensions
-  const tileDimensions = useMemo(() => {
-    const horizontalPadding = scale(width < 375 ? 12 : 16);
-    const gap = CARD_GAP;
-    const availableWidth = width - horizontalPadding * 2;
-    const columnWidth = (availableWidth - gap) / 2;
-    // 3:2 aspect ratio — cards are wider than tall
-    const cardHeight = columnWidth * (2 / 3);
-
-    return {
-      columnWidth,
-      cardHeight,
-      horizontalPadding,
-    };
-  }, [width]);
+  const tileDimensions = useMemo(
+    () => adhkarTileDimensions(width, CARD_GAP),
+    [width],
+  );
+  const tablet = useMemo(
+    () => (isTablet ? adhkarTabletLayout(width, windowWidth) : null),
+    [isTablet, width, windowWidth],
+  );
+  // @ai-end
 
   // Interleave categories for row-major grid order
   const mainCategories = useMemo(
@@ -156,6 +216,55 @@ export const AdhkarView: React.FC<AdhkarViewProps> = ({
     );
   }
 
+  // @ai-start
+  if (tablet) {
+    const hasHero = hasAdhkarSession || savedIds.size > 0;
+    return (
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={{
+          paddingTop: headerHeight + 8,
+          paddingBottom: bottomInset + 24,
+          paddingHorizontal: tablet.margin,
+        }}
+        contentInsetAdjustmentBehavior="never"
+        onLayout={handleLayout}
+        showsVerticalScrollIndicator={false}>
+        {hasHero ? (
+          <View style={[styles.tabletHero, {width: tablet.heroWidth}]}>
+            {hasAdhkarSession && <AdhkarNowPlayingCard variant="row" />}
+            <SavedAdhkarHero
+              savedCount={savedIds.size}
+              width={tablet.heroWidth}
+            />
+          </View>
+        ) : null}
+        <CategoryGrid
+          categories={mainCategories}
+          columnWidth={tablet.columnWidth}
+          cardHeight={tablet.cardHeight}
+          onPress={onCategoryPress}
+          gap={tablet.gap}
+          tablet
+        />
+        <Text
+          style={[styles.tabletSectionTitle, {color: theme.colors.text}]}
+          accessibilityRole="header">
+          {t('adhkar.otherSection')}
+        </Text>
+        <CategoryGrid
+          categories={otherCategories}
+          columnWidth={tablet.columnWidth}
+          cardHeight={tablet.cardHeight}
+          onPress={onCategoryPress}
+          gap={tablet.gap}
+          tablet
+        />
+      </ScrollView>
+    );
+  }
+  // @ai-end
+
   return (
     <ScrollView
       style={styles.container}
@@ -167,6 +276,7 @@ export const AdhkarView: React.FC<AdhkarViewProps> = ({
         },
       ]}
       contentInsetAdjustmentBehavior="never"
+      onLayout={handleLayout} // @ai
       showsVerticalScrollIndicator={false}>
       {/* Saved Hero Section - only shows when there are saved adhkar */}
       {hasAdhkarSession && (
@@ -232,6 +342,19 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: CARD_GAP,
   },
+  // @ai-start
+  tabletHero: {
+    gap: 12,
+    marginBottom: 24,
+  },
+  tabletSectionTitle: {
+    fontSize: 22,
+    fontFamily: 'Manrope-Bold',
+    textAlign: 'left',
+    marginTop: 32,
+    marginBottom: 12,
+  },
+  // @ai-end
   errorText: {
     fontSize: moderateScale(14),
     fontFamily: 'Manrope-Medium',

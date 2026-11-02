@@ -6,11 +6,7 @@ import {
   ScrollView,
   ActivityIndicator,
 } from 'react-native';
-import {
-  ScaledSheet,
-  moderateScale,
-  verticalScale,
-} from 'react-native-size-matters';
+import {ScaledSheet, moderateScale, verticalScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import Color from 'color';
@@ -240,7 +236,7 @@ export const TafseerContent: React.FC<TafseerContentProps> = ({
               SheetManager.hideAll();
               usePlayerStore.getState().setSheetMode('hidden');
               setTimeout(() => {
-                router.push('/(tabs)/(a.home)/translations');
+                router.push('/translations'); // @ai
               }, 300);
             }}>
             <StackedVolumesIcon

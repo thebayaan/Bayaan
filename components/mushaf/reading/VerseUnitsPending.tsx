@@ -1,7 +1,7 @@
 // @ai-generated
 import React from 'react';
 import {ActivityIndicator, StyleSheet, Text, View} from 'react-native';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import type {RewayahVerseUnitsStatus} from '@/hooks/useRewayahVerseUnits';
 import {
   getShortLabel,

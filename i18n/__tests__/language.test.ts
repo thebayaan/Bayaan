@@ -5,6 +5,8 @@ const mockUpdatesReload = jest.fn();
 const mockDeviceLocales = jest.fn();
 const mockAlert = jest.fn();
 const mockDevReload = jest.fn();
+const mockSettingsSet = jest.fn();
+const mockPlatform = {OS: 'android'};
 const mockDirection = {
   isRTL: false,
   doLeftAndRightSwapInRTL: true,
@@ -15,6 +17,8 @@ const mockDirection = {
 
 jest.mock('react-native', () => ({
   I18nManager: mockDirection,
+  Platform: mockPlatform,
+  Settings: {set: mockSettingsSet},
   Alert: {alert: mockAlert},
   DevSettings: {reload: mockDevReload},
 }));
@@ -46,6 +50,7 @@ beforeEach(() => {
   jest.resetModules();
   jest.clearAllMocks();
   mockStorage.clear();
+  mockPlatform.OS = 'android';
   mockDirection.isRTL = false;
   mockDirection.doLeftAndRightSwapInRTL = true;
   mockDeviceLocales.mockReturnValue([{languageCode: 'en'}]);
@@ -186,4 +191,53 @@ it('keeps component direction and directional icons tied to the selected languag
   expect(ltr.appLayoutDirection).toEqual({direction: 'ltr'});
   expect(ltr.flipX).toBeUndefined();
   expect(ltr.latinLetterSpacing(2)).toBe(2);
+});
+
+describe('on iOS, where Settings owns the app language', () => {
+  beforeEach(() => {
+    mockPlatform.OS = 'ios';
+  });
+
+  it('follows the language iOS launched the app with', () => {
+    mockDeviceLocales.mockReturnValue([{languageCode: 'ar'}]);
+    const language = loadLanguage();
+    expect(language.languageFollowsSystemSettings).toBe(true);
+    expect(language.currentLanguage).toBe('ar');
+  });
+
+  // A forced flag would outlive a language change made in Settings and start
+  // the relaunched app in the old direction.
+  it.each([
+    ['ar', [{languageCode: 'ar'}]],
+    ['en', [{languageCode: 'en'}]],
+  ])(
+    'lets iOS pick the direction for %s instead of forcing it',
+    (_, locales) => {
+      mockDeviceLocales.mockReturnValue(locales);
+      loadLanguage().bootstrapDirection();
+      expect(mockDirection.allowRTL).toHaveBeenCalledWith(true);
+      expect(mockDirection.forceRTL).toHaveBeenCalledWith(false);
+      expect(mockDirection.forceRTL).not.toHaveBeenCalledWith(true);
+      expect(mockDirection.swapLeftAndRightInRTL).toHaveBeenCalledWith(true);
+      expectNoReload();
+    },
+  );
+
+  it('hands a language picked in the app to iOS Settings', () => {
+    mockStorage.set('language_preference', 'ar');
+    const language = loadLanguage();
+    language.bootstrapDirection();
+    // This session keeps the language it started with.
+    expect(language.currentLanguage).toBe('ar');
+    expect(mockSettingsSet).toHaveBeenCalledWith({AppleLanguages: ['ar']});
+    expect(mockStorage.has('language_preference')).toBe(false);
+    expectNoReload();
+  });
+
+  it('leaves iOS Settings alone when the app followed the system', () => {
+    mockStorage.set('language_preference', 'system');
+    loadLanguage().bootstrapDirection();
+    expect(mockSettingsSet).not.toHaveBeenCalled();
+    expect(mockStorage.get('language_preference')).toBe('system');
+  });
 });

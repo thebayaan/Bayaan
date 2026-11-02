@@ -1,10 +1,6 @@
 import React, {useState, useMemo, useCallback, useEffect} from 'react';
 import {View, Text, Pressable, ScrollView} from 'react-native';
-import {
-  ScaledSheet,
-  moderateScale,
-  verticalScale,
-} from 'react-native-size-matters';
+import {ScaledSheet, moderateScale, verticalScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import Color from 'color';

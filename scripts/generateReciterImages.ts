@@ -1,20 +1,12 @@
 const fs = require('fs');
 const path = require('path');
+import {reciterImageKey} from '../utils/reciterImageKey';
 
 const reciterImagesDir = path.join(__dirname, '..', 'assets', 'reciter-images');
 const outputFile = path.join(__dirname, '..', 'utils', 'reciterImages.ts');
 
 interface ImageMap {
   [key: string]: string;
-}
-
-function normalizeFileName(fileName: string): string {
-  return fileName
-    .toLowerCase()
-    .replace(/\s+/g, '-')
-    .replace(/[^a-z0-9-]/g, '')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '');
 }
 
 function generateReciterImagesFile(): void {
@@ -25,10 +17,11 @@ function generateReciterImagesFile(): void {
   images.forEach((image: string) => {
     const extension = path.extname(image).toLowerCase();
     if (supportedExtensions.includes(extension)) {
-      const normalizedName = normalizeFileName(path.parse(image).name);
+      const normalizedName = reciterImageKey(path.parse(image).name);
       try {
-        imageMap[normalizedName] =
-          `require('@/assets/reciter-images/${image}')`;
+        imageMap[
+          normalizedName
+        ] = `require('@/assets/reciter-images/${image}')`;
       } catch (error: unknown) {
         if (error instanceof Error) {
           console.error(`Error processing image ${image}: ${error.message}`);

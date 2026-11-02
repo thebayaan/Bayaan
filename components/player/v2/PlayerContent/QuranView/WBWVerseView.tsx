@@ -41,6 +41,7 @@ import {
   createTextStrokePaint,
   getArabicTextWeightStrokeWidth,
 } from '@/utils/skiaTextWeight';
+import {disposeAfterPendingDraws} from '@/utils/skiaDeferredDispose';
 // @ai-start
 import {useTranslation} from 'react-i18next';
 import {forceLTR} from '@/utils/rtl';
@@ -593,13 +594,21 @@ export const WBWVerseView = memo<WBWVerseViewProps>(
     // reclaim). Dispose the previous layout's paragraphs when the memo
     // recomputes (and on unmount). The cleanup runs with the prior
     // `computedLayout`, so the layout being rendered this frame is untouched.
+    //
+    // The dispose is DEFERRED behind a worklets UI-queue barrier. A direct
+    // dispose frees a paragraph that a queued Skia draw still holds, and the
+    // UI thread then aborts the app. See `utils/skiaDeferredDispose.ts`.
     useEffect(() => {
       return () => {
         if (!computedLayout) return;
-        for (const item of computedLayout.items) {
-          item.paragraph?.dispose();
-          item.strokeParagraph?.dispose();
-        }
+        // @ai-start
+        disposeAfterPendingDraws(
+          computedLayout.items.flatMap(item => [
+            item.paragraph,
+            item.strokeParagraph,
+          ]),
+        );
+        // @ai-end
       };
     }, [computedLayout]);
 

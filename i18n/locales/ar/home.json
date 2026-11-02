@@ -20,6 +20,7 @@
     "browseAll": "تصفّح الكل",
     "allSurahs": "جميع السور",
     "browseRecitersForSurah": "تصفّح القرّاء - {{surah}}",
+    "chooseReciterForSurah": "اختر قارئًا · {{surah}}",
     "allChip": "الكل",
     "rewayahSeparator": "عن",
     "searchReciters": "ابحث عن قارئ…",
@@ -31,6 +32,12 @@
     "recitersFound_many": "{{count}} قارئًا مطابقًا للفلاتر الحالية",
     "recitersFound_other": "{{count}} قارئ مطابق للفلاتر الحالية",
     "clearAll": "مسح الكل",
+    "reciterCount_zero": "لا يوجد قرّاء",
+    "reciterCount_one": "قارئ واحد",
+    "reciterCount_two": "قارئان",
+    "reciterCount_few": "{{count}} قرّاء",
+    "reciterCount_many": "{{count}} قارئًا",
+    "reciterCount_other": "{{count}} قارئ",
     "searchSurahs": "ابحث عن سورة…"
   },
   "search": {
@@ -38,7 +45,9 @@
     "recentSearches": "عمليات البحث الأخيرة",
     "noRecent": "لا توجد عمليات بحث حديثة",
     "noRecentHint": "سيظهر سجل البحث هنا",
-    "noResultsHint": "جرّب كلمات أخرى أو تحقّق من الإملاء"
+    "noResultsHint": "جرّب كلمات أخرى أو تحقّق من الإملاء",
+    "all": "الكل",
+    "topResult": "أفضل نتيجة"
   },
   "systemPlaylist": {
     "invalidId": "معرّف قائمة التشغيل غير صالح",
@@ -76,12 +85,12 @@
   "hero": {
     "surahOfTheDay": "سورة اليوم",
     "continueReading": "متابعة القراءة",
+    "continueListening": "متابعة الاستماع",
     "browseAllSurahs": "تصفّح جميع السور الـ{{total}}",
     "verses": "آيات",
     "number": "الرقم"
   },
   "randomHero": {
-    "finding": "جارٍ البحث عن تلاوات عشوائية من قرّاء مختلفين…",
     "findFailed": "تعذّر العثور على تلاوات عشوائية. يُرجى المحاولة مرة أخرى.",
     "playing": "تشغيل سورة {{surah}} بصوت {{reciter}}",
     "playFailed": "تعذّر تشغيل التلاوة العشوائية. يُرجى المحاولة مرة أخرى.",
@@ -141,7 +150,7 @@
     "a11yName": "سورة {{name}}",
     "a11yPlaying": "قيد التشغيل",
     "a11ySeparator": "، ",
-    "a11yPlayHint": "اضغط لتشغيل السورة",
+    "a11yPlayHint": "يشغّل السورة",
     "makkah": "مكية",
     "madinah": "مدنية",
     "moreOptions": "خيارات إضافية",
@@ -151,7 +160,13 @@
     "verses_two": "آيتان",
     "verses_few": "{{count}} آيات",
     "verses_many": "{{count}} آيةً",
-    "verses_other": "{{count}} آية"
+    "verses_other": "{{count}} آية",
+    "a11yReadHint": "يفتح السورة في المصحف",
+    "a11yPlayAction": "تشغيل",
+    "a11yMoreAction": "خيارات إضافية",
+    "columnSurah": "السورة",
+    "columnRevelation": "النزول",
+    "columnVerses": "الآيات"
   },
   "sort": {
     "asc": "تصاعدي",

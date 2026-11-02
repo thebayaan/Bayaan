@@ -11,6 +11,10 @@
  * - Supports seeking to specific ayahs
  * - Rate control (0.5x - 2.0x)
  *
+ * Before the first verse (the isti'adha / basmala recited before verse 1 of a
+ * surah whose basmala is drawn apart from its verses) it reports the intro
+ * instead of a verse (setOnIntroChange; isInBasmalaIntro). @ai
+ *
  * Every ayah number this service receives or reports is a TIMING ENTRY
  * number: the ayahNumber of the loaded timing set, in that set's own verse
  * numbering (a rewayah-numbered set counts the reciter's verses). Translation
@@ -22,12 +26,24 @@ import {createAudioPlayer, AudioPlayer} from 'expo-audio';
 
 type EventSubscription = {remove(): void};
 import type {AyahTimestamp} from '@/types/timestamps';
-import {binarySearchAyah} from '@/utils/timestampUtils';
+import {
+  binarySearchAyah,
+  isInBasmalaIntro, // @ai
+} from '@/utils/timestampUtils';
 import {audioCoordinator} from './AudioCoordinator';
 
 const AYAH_TRACKING_INTERVAL = 200; // ms
+// @ai-start
+/**
+ * Polls after seekToAyah() during which a position short of the seek target
+ * (the seek not landed yet) is not taken for the intro.
+ */
+const SEEK_SETTLE_TICKS = 10;
+// @ai-end
 
 type AyahChangeCallback = (surahNumber: number, ayahNumber: number) => void;
+/** The audio entered (true) or left (false) the surah's intro. @ai */
+type IntroChangeCallback = (surahNumber: number, inIntro: boolean) => void;
 /**
  * 'finished': the audio reached its end. 'skipped': seekToNextAyah() was
  * called on the last timing entry.
@@ -52,10 +68,19 @@ class MushafAudioService {
   // False while the loaded surah's verse numbering is unknown: previous /
   // next-ayah seeking is disabled instead of landing on unverified verses.
   private verseSeekingEnabled = true;
+  // @ai-start
+  // In the surah's intro (isInBasmalaIntro) at the last poll.
+  private inIntro = false;
+  // Target (ms) of the last seekToAyah() until the position reaches it, and
+  // the polls left to wait for it.
+  private pendingSeekMs: number | null = null;
+  private pendingSeekTicks = 0;
+  // @ai-end
 
   // Callbacks
   private onAyahChange: AyahChangeCallback | null = null;
   private onSurahEnd: SurahEndCallback | null = null;
+  private onIntroChange: IntroChangeCallback | null = null; // @ai
 
   private constructor() {}
 
@@ -79,6 +104,17 @@ class MushafAudioService {
   setOnSurahEnd(callback: SurahEndCallback): void {
     this.onSurahEnd = callback;
   }
+
+  // @ai-start
+  /**
+   * Called when the audio enters the intro before the surah's first verse
+   * (no verse is reported there) and when it leaves it, before the verse it
+   * reaches is reported.
+   */
+  setOnIntroChange(callback: IntroChangeCallback): void {
+    this.onIntroChange = callback;
+  }
+  // @ai-end
 
   // ========== LOADING ==========
 
@@ -105,6 +141,7 @@ class MushafAudioService {
       this.timestamps = timestamps;
       this.lastTrackedAyah = -1;
       this.verseSeekingEnabled = true;
+      this.resetIntro(); // @ai
 
       // Listen for track end
       this.statusSubscription = this.player.addListener(
@@ -189,6 +226,13 @@ class MushafAudioService {
       // expo-audio seekTo expects seconds
       this.player.seekTo(timestamp.timestampFrom / 1000);
       this.lastTrackedAyah = ayahNumber;
+      // @ai-start
+      // A verse is playing now: leave the intro, and do not take the old
+      // position for it while the seek lands.
+      this.pendingSeekMs = timestamp.timestampFrom;
+      this.pendingSeekTicks = SEEK_SETTLE_TICKS;
+      this.setIntro(false);
+      // @ai-end
 
       // Guard against re-entrancy: onAyahChange may call seekToAyah,
       // which would call onAyahChange again → infinite recursion.
@@ -297,6 +341,27 @@ class MushafAudioService {
       const positionMs = this.player.currentTime * 1000;
       const ayah = binarySearchAyah(this.timestamps, positionMs);
 
+      // @ai-start
+      // The intro before verse 1 (an ayah-0 pre-roll entry is still reported
+      // as before). Entering it, the first entry will be reported again when
+      // reached, and the next-ayah control goes to it.
+      if (this.pendingSeekMs !== null) {
+        if (
+          positionMs >= this.pendingSeekMs - 1 ||
+          --this.pendingSeekTicks <= 0
+        ) {
+          this.pendingSeekMs = null;
+        }
+      }
+      const inIntro =
+        this.pendingSeekMs === null &&
+        isInBasmalaIntro(this.timestamps, positionMs, this.currentSurah);
+      if (inIntro && !this.inIntro) {
+        this.lastTrackedAyah = this.timestamps[0].ayahNumber - 1;
+      }
+      this.setIntro(inIntro);
+      // @ai-end
+
       if (ayah && ayah.ayahNumber !== this.lastTrackedAyah) {
         this.lastTrackedAyah = ayah.ayahNumber;
         if (this.onAyahChange && !this._dispatchingAyahChange) {
@@ -317,6 +382,21 @@ class MushafAudioService {
       this.trackingInterval = null;
     }
   }
+
+  // @ai-start
+  private setIntro(inIntro: boolean): void {
+    if (inIntro === this.inIntro) return;
+    this.inIntro = inIntro;
+    this.onIntroChange?.(this.currentSurah, inIntro);
+  }
+
+  /** A new surah, or none: not in an intro (no callback). */
+  private resetIntro(): void {
+    this.inIntro = false;
+    this.pendingSeekMs = null;
+    this.pendingSeekTicks = 0;
+  }
+  // @ai-end
 
   // ========== SURAH END ==========
 
@@ -369,6 +449,7 @@ class MushafAudioService {
     this.timestamps = [];
     this.lastTrackedAyah = -1;
     this.verseSeekingEnabled = true;
+    this.resetIntro(); // @ai
     audioCoordinator.sourceDidStop('mushaf');
     if (__DEV__) console.log('[MushafAudio] Cleaned up');
   }
@@ -382,6 +463,7 @@ class MushafAudioService {
     this.timestamps = [];
     this.lastTrackedAyah = -1;
     this.verseSeekingEnabled = true;
+    this.resetIntro(); // @ai
     audioCoordinator.sourceDidStop('mushaf');
     if (__DEV__) console.log('[MushafAudio] Stopped');
   }

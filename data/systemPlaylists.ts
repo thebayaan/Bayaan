@@ -69,7 +69,7 @@ export function getSystemPlaylists(): SystemPlaylist[] {
     {
       id: 'quick-listen',
       title: i18n.t('content:systemPlaylists.quickListen.title'),
-      subtitle: i18n.t('content:systemPlaylists.quickListen.title'),
+      subtitle: i18n.t('content:systemPlaylists.quickListen.subtitle'), // @ai
       description: i18n.t('content:systemPlaylists.quickListen.description'),
       backgroundColor: '#8B5CF6', // Purple
       type: 'surah-only',
@@ -232,7 +232,7 @@ export function getSystemPlaylists(): SystemPlaylist[] {
     {
       id: 'juz-amma',
       title: i18n.t('content:systemPlaylists.juzAmma.title'),
-      subtitle: i18n.t('content:systemPlaylists.juzAmma.title'),
+      subtitle: i18n.t('content:systemPlaylists.juzAmma.subtitle'), // @ai
       description: i18n.t('content:systemPlaylists.juzAmma.description'),
       backgroundColor: '#F97316', // Orange
       type: 'surah-only',

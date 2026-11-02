@@ -48,4 +48,24 @@ class PlaybackStateTest {
     assertNull(PlaybackState.decodeOverride("nope"))
     assertNull(PlaybackState.decodeOverride(null))
   }
+
+  // @ai-start
+  private fun snapshot(playing: Boolean) = WidgetSnapshot(
+    1, gen, "dark", np(playing), emptyList(), emptyList(), null, emptyMap(), null, emptyMap(),
+  )
+
+  @Test fun playingTrackOnlyWhilePlaying() {
+    assertEquals(track, PlaybackState.playingTrack(snapshot(true), null, gen + 1_000))
+    assertNull(PlaybackState.playingTrack(snapshot(false), null, gen + 1_000))
+    assertNull(PlaybackState.playingTrack(snapshot(true), PlaybackOverride(false, gen + 500), gen + 1_000))
+  }
+
+  @Test fun matchesSurahAndOptionalReciter() {
+    assertTrue(PlaybackState.matches(track, 18, "r1"))
+    assertTrue(PlaybackState.matches(track, 18, null))
+    assertFalse(PlaybackState.matches(track, 18, "r2"))
+    assertFalse(PlaybackState.matches(track, 36, null))
+    assertFalse(PlaybackState.matches(null, 18, null))
+  }
+  // @ai-end
 }
