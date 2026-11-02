@@ -1,5 +1,4 @@
 import React, {useState, useCallback, useMemo, useEffect, useRef} from 'react';
-import {tintedHeaderRight} from '@/components/TintedHeader'; // @ai
 import {
   View,
   Text,
@@ -364,9 +363,7 @@ export default function UploadsScreen() {
     title: t('common:terms.uploads'),
     scrollY,
     hasContent: recitations.length > 0,
-    ...tintedHeaderRight(
-      recitations.length > 0 ? renderHeaderRight : undefined,
-    ), // @ai
+    headerRight: recitations.length > 0 ? renderHeaderRight : undefined,
   });
 
   const handleOrganize = useCallback((item: UploadedRecitation) => {
