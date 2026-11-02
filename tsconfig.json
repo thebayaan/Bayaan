@@ -22,20 +22,8 @@
   "include": [
     "**/*.ts",
     "**/*.tsx",
-    "**/*.json",
     "scripts/**/*",
     "types/**/*"
   ],
-  "exclude": [
-    "node_modules",
-    "scripts/rewayah/sources",
-    "build",
-    "ios/Pods",
-    "ios/build",
-    "android/build",
-    "android/app/build",
-    "android/.gradle",
-    "modules/*/android/build",
-    "modules/*/ios/build"
-  ],
+  "exclude": ["node_modules"],
 }
