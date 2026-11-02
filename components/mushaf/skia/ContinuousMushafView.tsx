@@ -889,6 +889,14 @@ const ContinuousMushafView = forwardRef<
 
     const keyExtractor = useCallback((item: number) => `page-${item}`, []);
 
+    // @ai-start
+    // An item with no fontMgr draws nothing and has no height, so a list mounted
+    // now would mount all 604 pages to fill the screen, then draw them all when
+    // the fonts arrive. The reader can open before them: they finish after the
+    // data.
+    if (!fontMgr) return null;
+    // @ai-end
+
     return (
       <FlashList
         ref={flashListRef}
