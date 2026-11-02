@@ -57,6 +57,15 @@ function IOSTabs() {
     return tracks.length > 0 && tracks[index] != null;
   });
 
+  // @ai-start
+  // EXPERIMENT: iOS gives no tint for the tab bar's glass, but it can be told
+  // to draw its dark glass. react-native-screens applies the selected tab's
+  // style to the tab bar, so every tab sets it.
+  const darkTabBarGlass = {
+    ios: {experimental_userInterfaceStyle: 'dark' as const},
+  };
+  // @ai-end
+
   // UIKit mirrors the tabs via its layout-direction trait. Keep the accessory's
   // Yoga coordinates stable and apply app direction to its content separately.
   return (
@@ -74,6 +83,7 @@ function IOSTabs() {
         )}
         <NativeTabs.Trigger
           name="(a.home)"
+          unstable_nativeProps={darkTabBarGlass}
           contentStyle={{
             ...appLayoutDirection,
             backgroundColor: theme.colors.background,
@@ -87,6 +97,7 @@ function IOSTabs() {
 
         <NativeTabs.Trigger
           name="(b.surahs)"
+          unstable_nativeProps={darkTabBarGlass}
           contentStyle={{
             ...appLayoutDirection,
             backgroundColor: theme.colors.background,
@@ -103,6 +114,7 @@ function IOSTabs() {
         <NativeTabs.Trigger
           name="(b.search)"
           role="search"
+          unstable_nativeProps={darkTabBarGlass}
           contentStyle={{
             ...appLayoutDirection,
             backgroundColor: theme.colors.background,
@@ -118,6 +130,7 @@ function IOSTabs() {
 
         <NativeTabs.Trigger
           name="(c.collection)"
+          unstable_nativeProps={darkTabBarGlass}
           contentStyle={{
             ...appLayoutDirection,
             backgroundColor: theme.colors.background,
@@ -133,6 +146,7 @@ function IOSTabs() {
 
         <NativeTabs.Trigger
           name="(d.settings)"
+          unstable_nativeProps={darkTabBarGlass}
           contentStyle={{
             ...appLayoutDirection,
             backgroundColor: theme.colors.background,
