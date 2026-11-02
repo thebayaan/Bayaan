@@ -390,7 +390,7 @@ export function MushafToolbar() {
         <Stack.Toolbar.Spacer />
         <Stack.Toolbar.Button
           {...buttonLook}
-          icon="ellipsis.circle"
+          icon="ellipsis"
           onPress={handleOptions}>
           {t('toolbar.options')}
         </Stack.Toolbar.Button>
@@ -430,7 +430,7 @@ export function MushafToolbar() {
       <Stack.Toolbar.Spacer />
       <Stack.Toolbar.Button
         {...buttonLook}
-        icon="ellipsis.circle"
+        icon="ellipsis"
         onPress={handleOptions}>
         {t('toolbar.options')}
       </Stack.Toolbar.Button>

@@ -2,7 +2,7 @@
 import React, {type ReactNode} from 'react';
 import {Pressable, StyleSheet, View} from 'react-native';
 import {GlassView} from 'expo-glass-effect';
-import {Ionicons} from '@expo/vector-icons';
+import {SymbolView} from 'expo-symbols';
 import {useRouter} from 'expo-router';
 import {useTranslation} from 'react-i18next';
 import type {NativeStackNavigationOptions} from 'expo-router/native-stack';
@@ -62,10 +62,13 @@ function TintedBackButton() {
         hitSlop={8}
         accessibilityRole="button"
         accessibilityLabel={t('actions.back')}>
-        <Ionicons
-          name={isRTL ? 'chevron-forward' : 'chevron-back'}
-          size={moderateScale(22)}
-          color={theme.colors.text}
+        {/* SF chevron.backward. The fixed-direction names keep it pointing
+            the right way whatever layout direction the bar reports. */}
+        <SymbolView
+          name={isRTL ? 'chevron.right' : 'chevron.left'}
+          size={moderateScale(20)}
+          tintColor={theme.colors.text}
+          weight="medium"
         />
       </Pressable>
     </GlassHeaderPill>
