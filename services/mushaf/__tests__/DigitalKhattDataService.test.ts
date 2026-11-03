@@ -47,6 +47,8 @@ interface FakeSqliteState {
   // @ai The next chunk read of a base throws, drops its last text, or holds a
   // word whose text is empty (a real value in 7 of the 8 words DBs).
   chunkFaults: Map<string, 'throw' | 'short' | 'blank'>;
+  // @ai The opens with no connection of their own.
+  sharedOpens: string[];
 }
 
 jest.mock('expo-sqlite', () => {
@@ -58,6 +60,7 @@ jest.mock('expo-sqlite', () => {
     gates: new Map(),
     readFailures: new Map(),
     chunkFaults: new Map(), // @ai
+    sharedOpens: [], // @ai
   };
   const baseOf = (name: string) =>
     name.replace(/\.db$/, '').replace(/\.[0-9a-f]{8}$/, '');
@@ -65,8 +68,12 @@ jest.mock('expo-sqlite', () => {
   return {
     __fake: state,
     defaultDatabaseDirectory: '/data/user/0/app.test/files/SQLite',
-    async openDatabaseAsync(name: string) {
+    async openDatabaseAsync(
+      name: string,
+      options?: {useNewConnection?: boolean},
+    ) {
       state.log.push(`open:${name}`);
+      if (!options?.useNewConnection) state.sharedOpens.push(name);
       if (!state.files.has(name)) {
         state.files.set(name, {
           base: baseOf(name),
@@ -556,6 +563,19 @@ describe('delivery to installed apps', () => {
     expect(fake.files.has('dk_layout.db')).toBe(false);
     fake.violations.length = 0; // that refusal is SQLite's, by design
     fake.open.delete('dk_words.db');
+  });
+
+  // @ai Android: with a shared connection, the garbage collection of the old
+  // store's JS object closes the native connection under the new store.
+  it('gives each open a connection of its own', async () => {
+    fake.sharedOpens.length = 0;
+    const service = await initialized();
+    seed(N.warsh, 'dk_words_warsh', 'asset');
+    await service.switchRewayah('warsh');
+    // Hafs loads again while its store is open in the side cache.
+    await service.switchRewayah('hafs');
+    expect(service.rewayah).toBe('hafs');
+    expect(fake.sharedOpens).toEqual([]);
   });
 
   it('re-imports once when the existing copy cannot be read', async () => {
