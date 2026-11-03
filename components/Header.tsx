@@ -1,6 +1,6 @@
 import React from 'react';
 import {View, Text, Pressable, ViewStyle, StyleSheet} from 'react-native';
-import {Feather} from '@expo/vector-icons';
+import {BackIcon} from '@/components/ActionIcons'; // @ai
 import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
@@ -46,8 +46,7 @@ export const Header: React.FC<HeaderProps> = ({
           <Pressable
             style={[styles.backButton, backButtonStyle]}
             onPress={onBack}>
-            <Feather
-              name="arrow-left"
+            <BackIcon
               size={moderateScale(24)}
               color={theme.colors.text}
               style={flipX}

@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import {ScaledSheet, moderateScale as ms} from '@/utils/scale';
 import {Ionicons} from '@expo/vector-icons';
+import {BackIcon} from '@/components/ActionIcons'; // @ai
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -423,12 +424,7 @@ export const MushafPlayerOptionsSheet = (
     return (
       <View>
         <Pressable style={styles.pickerBackRow} onPress={onBack}>
-          <Ionicons
-            name="chevron-back"
-            size={ms(16)}
-            color={theme.colors.text}
-            style={flipX}
-          />
+          <BackIcon size={ms(16)} color={theme.colors.text} style={flipX} />
           <Text style={styles.pickerBackText}>
             {getSurahDisplayName(SURAHS[surahId - 1])}
           </Text>
@@ -509,10 +505,10 @@ export const MushafPlayerOptionsSheet = (
                 {startPickStep === 'surahList'
                   ? renderSurahList(handleStartSurahPick)
                   : startPickSurah
-                    ? renderAyahGrid(startPickSurah, handleStartAyahPick, () =>
-                        setStartPickStep('surahList'),
-                      )
-                    : null}
+                  ? renderAyahGrid(startPickSurah, handleStartAyahPick, () =>
+                      setStartPickStep('surahList'),
+                    )
+                  : null}
               </AccordionScrollList>
             </View>
           )}
@@ -550,10 +546,10 @@ export const MushafPlayerOptionsSheet = (
                 {endPickStep === 'surahList'
                   ? renderSurahList(handleEndSurahPick)
                   : endPickSurah
-                    ? renderAyahGrid(endPickSurah, handleEndAyahPick, () =>
-                        setEndPickStep('surahList'),
-                      )
-                    : null}
+                  ? renderAyahGrid(endPickSurah, handleEndAyahPick, () =>
+                      setEndPickStep('surahList'),
+                    )
+                  : null}
               </AccordionScrollList>
             </View>
           )}

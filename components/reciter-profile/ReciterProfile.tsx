@@ -53,6 +53,7 @@ import {bulkDownloadSurahs} from '@/services/player/bulkDownloadSurahs';
 import {createSharedStyles} from './styles';
 import {useSettings} from '@/hooks/useSettings';
 import {Feather} from '@expo/vector-icons';
+import {SearchIcon, ShareIcon} from '@/components/ActionIcons'; // @ai
 import {HeartIcon} from '@/components/Icons';
 import Animated, {
   useSharedValue,
@@ -360,15 +361,13 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
                     );
                   }}
                   hitSlop={8}>
-                  <Feather
-                    name="share"
+                  <ShareIcon
                     size={moderateScale(20)}
                     color={theme.colors.text}
                   />
                 </Pressable>
                 <Pressable onPress={() => setShowSearch(true)} hitSlop={8}>
-                  <Feather
-                    name="search"
+                  <SearchIcon
                     size={moderateScale(20)}
                     color={theme.colors.text}
                   />

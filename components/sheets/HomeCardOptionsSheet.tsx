@@ -6,6 +6,7 @@ import {Theme} from '@/utils/themeUtils';
 import {SheetProps, SheetManager} from 'react-native-actions-sheet';
 import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import {Feather} from '@expo/vector-icons';
+import {ShareIcon} from '@/components/ActionIcons'; // @ai
 import Color from 'color';
 import {
   PlayIcon,
@@ -188,7 +189,7 @@ const HomeCardOptionsContent = ({
               pressed && styles.optionPressed,
             ]}
             onPress={handleShare}>
-            <Feather name="share" size={iconSize} color={iconColor} />
+            <ShareIcon size={iconSize} color={iconColor} />
             <Text style={styles.optionText}>{t('common:actions.share')}</Text>
           </Pressable>
         </View>

@@ -34,7 +34,7 @@ import type {NativeStackNavigationProp} from 'expo-router/native-stack'; // @ai
 import {useTheme} from '@/hooks/useTheme';
 import {useReadingThemeColors} from '@/hooks/useReadingThemeColors';
 import {Ionicons} from '@expo/vector-icons';
-import {SymbolView} from 'expo-symbols'; // @ai
+import {ShareIcon} from '@/components/ActionIcons'; // @ai
 import {mushafShareUrl, shareUrl} from '@/utils/shareUtils';
 import branding from '@/config/branding';
 import {SheetManager} from 'react-native-actions-sheet';
@@ -959,13 +959,7 @@ export default function MushafViewer({
             accessibilityRole="button" // @ai
             accessibilityLabel={t('mushaf.sharePage')} // @ai
           >
-            {/* @ai: SF square.and.arrow.up (this header is iOS-only) */}
-            <SymbolView
-              name="square.and.arrow.up"
-              size={moderateScale(20)}
-              tintColor={theme.colors.text}
-              weight="medium"
-            />
+            <ShareIcon size={moderateScale(20)} color={theme.colors.text} />
           </Pressable>
           {/* @ai-start */}
           {/* iPad: a popover anchored to the button. Elsewhere: the sheet. */}

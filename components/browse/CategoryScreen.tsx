@@ -5,6 +5,7 @@ import {Category} from '@/data/categories';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale} from '@/utils/scale';
 import {Feather} from '@expo/vector-icons';
+import {BackIcon} from '@/components/ActionIcons'; // @ai
 import {TouchableOpacity} from 'react-native-gesture-handler';
 import Animated, {FadeInDown} from 'react-native-reanimated';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -111,12 +112,7 @@ export function CategoryScreen({
           style={styles.backButton}
           activeOpacity={0.7}
           onPress={() => router.back()}>
-          <Feather
-            name="arrow-left"
-            size={24}
-            color={'#FFFFFF'}
-            style={flipX}
-          />
+          <BackIcon size={24} color={'#FFFFFF'} style={flipX} />
         </TouchableOpacity>
         <View style={styles.titleContainer}>
           <Feather

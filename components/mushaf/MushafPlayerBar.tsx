@@ -21,6 +21,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import {Feather, Ionicons} from '@expo/vector-icons';
+import {SearchIcon} from '@/components/ActionIcons'; // @ai
 import {moderateScale} from '@/utils/scale';
 import {SheetManager} from 'react-native-actions-sheet';
 import Color from 'color';
@@ -181,11 +182,7 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
           onPress={onSearch}
           accessibilityRole="button"
           accessibilityLabel={t('common:actions.search')}>
-          <Feather
-            name="search"
-            size={moderateScale(20)}
-            color={theme.colors.text}
-          />
+          <SearchIcon size={moderateScale(20)} color={theme.colors.text} />
         </Pressable>
 
         <View style={styles.controlsCenter}>

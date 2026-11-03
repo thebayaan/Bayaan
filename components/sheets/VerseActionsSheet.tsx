@@ -19,6 +19,7 @@ import {Theme} from '@/utils/themeUtils';
 import {SheetProps, SheetManager, ScrollView} from 'react-native-actions-sheet';
 import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import {Feather, MaterialCommunityIcons} from '@expo/vector-icons';
+import {BackIcon} from '@/components/ActionIcons'; // @ai
 import {useVerseSelectionStore} from '@/store/verseSelectionStore';
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
 import {qulDataService} from '@/services/mushaf/QulDataService';
@@ -771,8 +772,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                   pressed && {opacity: 0.6},
                 ]}
                 hitSlop={8}>
-                <Feather
-                  name="chevron-left"
+                <BackIcon
                   size={moderateScale(16)}
                   color={theme.colors.text}
                   style={flipX}

@@ -16,6 +16,7 @@ import {SheetProps, SheetManager, ScrollView} from 'react-native-actions-sheet';
 import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import Color from 'color';
 import {Feather} from '@expo/vector-icons';
+import {SearchIcon} from '@/components/ActionIcons'; // @ai
 import {useUploadsStore} from '@/store/uploadsStore';
 import {
   searchSurahs,
@@ -98,7 +99,7 @@ function formatDuration(seconds: number | null): string {
 // @ai-start
 function getSystemReciterName(id: string): string {
   const reciter = RECITERS.find(r => r.id === id);
-  return reciter ? getReciterDisplayName(reciter) : (getReciterName(id) ?? '');
+  return reciter ? getReciterDisplayName(reciter) : getReciterName(id) ?? '';
 }
 // @ai-end
 
@@ -600,8 +601,7 @@ export const OrganizeRecitationSheet = (
             ) : (
               <>
                 <View style={styles.searchInputContainer}>
-                  <Feather
-                    name="search"
+                  <SearchIcon
                     size={moderateScale(14)}
                     color={theme.colors.textSecondary}
                   />
@@ -778,8 +778,7 @@ export const OrganizeRecitationSheet = (
             ) : (
               <>
                 <View style={styles.searchInputContainer}>
-                  <Feather
-                    name="search"
+                  <SearchIcon
                     size={moderateScale(14)}
                     color={theme.colors.textSecondary}
                   />

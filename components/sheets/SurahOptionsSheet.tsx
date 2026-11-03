@@ -15,6 +15,7 @@ import ActionSheet, {
   useSheetWidth,
 } from '@/components/sheets/AdaptiveActionSheet';
 import {Feather, Ionicons} from '@expo/vector-icons';
+import {ShareIcon} from '@/components/ActionIcons'; // @ai
 import {getReciterName} from '@/services/dataService';
 import Color from 'color';
 import {CircularProgress} from '@/components/CircularProgress';
@@ -252,8 +253,8 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
                       percent: Math.round(downloadProgress * 100),
                     })
                   : isTrackDownloaded
-                    ? t('options.downloaded')
-                    : t('common:actions.download')}
+                  ? t('options.downloaded')
+                  : t('common:actions.download')}
               </Text>
             </Pressable>
 
@@ -314,8 +315,7 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
                     pressed && styles.optionPressed,
                   ]}
                   onPress={handleShare}>
-                  <Feather
-                    name="share"
+                  <ShareIcon
                     size={moderateScale(18)}
                     color={theme.colors.text}
                   />

@@ -14,7 +14,7 @@ import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import Color from 'color';
-import {Feather} from '@expo/vector-icons';
+import {BackIcon} from '@/components/ActionIcons'; // @ai
 import {useTranslation} from 'react-i18next';
 import {MushafSettingsContent} from '@/components/MushafSettingsContent';
 import {ReadingThemeContent} from '@/components/ReadingThemeContent';
@@ -74,8 +74,7 @@ export function MushafLayoutPanel({
         <Pressable
           onPress={handleBack}
           style={({pressed}) => [styles.backRow, pressed && {opacity: 0.6}]}>
-          <Feather
-            name="chevron-left"
+          <BackIcon
             size={moderateScale(20)}
             color={theme.colors.text}
             style={flipX}

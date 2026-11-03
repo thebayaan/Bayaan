@@ -13,6 +13,7 @@ import {useFavoriteReciters} from '@/hooks/useFavoriteReciters';
 import {useRouter} from 'expo-router';
 import {moderateScale} from '@/utils/scale';
 import {Feather} from '@expo/vector-icons';
+import {BackIcon, SearchIcon} from '@/components/ActionIcons'; // @ai
 import {ProfileIcon} from '@/components/Icons';
 import {CollectionStickyHeader} from '@/components/collection/CollectionStickyHeader';
 import {SearchInput} from '@/components/SearchInput';
@@ -57,11 +58,7 @@ export default function FavoriteRecitersScreen() {
           if (showSearch) setSearchQuery('');
         }}
         hitSlop={8}>
-        <Feather
-          name="search"
-          size={moderateScale(20)}
-          color={theme.colors.text}
-        />
+        <SearchIcon size={moderateScale(20)} color={theme.colors.text} />
       </Pressable>
     ),
     [showSearch, theme.colors.text],
@@ -317,8 +314,7 @@ export default function FavoriteRecitersScreen() {
               style={styles.emptyHeaderBack}
               onPress={() => router.back()}
               hitSlop={8}>
-              <Feather
-                name="arrow-left"
+              <BackIcon
                 size={moderateScale(22)}
                 color={theme.colors.text}
                 style={flipX}
@@ -435,8 +431,7 @@ export default function FavoriteRecitersScreen() {
             },
           ]}>
           <Pressable onPress={() => router.back()} hitSlop={8}>
-            <Feather
-              name="arrow-left"
+            <BackIcon
               size={moderateScale(24)}
               color={theme.colors.text}
               style={flipX}
@@ -463,11 +458,7 @@ export default function FavoriteRecitersScreen() {
               if (showSearch) setSearchQuery('');
             }}
             hitSlop={8}>
-            <Feather
-              name="search"
-              size={moderateScale(20)}
-              color={theme.colors.text}
-            />
+            <SearchIcon size={moderateScale(20)} color={theme.colors.text} />
           </Pressable>
         </RNAnimated.View>
       )}

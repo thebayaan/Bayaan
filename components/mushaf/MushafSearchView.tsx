@@ -21,6 +21,7 @@ import {moderateScale as ms} from '@/utils/scale';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useTheme} from '@/hooks/useTheme';
 import {Feather} from '@expo/vector-icons';
+import {SearchIcon} from '@/components/ActionIcons'; // @ai
 import Color from 'color';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {SearchInput} from '@/components/SearchInput';
@@ -351,8 +352,7 @@ const SearchResultRow: React.FC<{
   <Pressable
     style={({pressed}) => [styles.resultRow, {opacity: pressed ? 0.5 : 1}]}
     onPress={onPress}>
-    <Feather
-      name="search"
+    <SearchIcon
       size={ms(16)}
       color={Color(secondaryColor).alpha(0.3).toString()}
     />
@@ -938,14 +938,14 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
               option === 'asc'
                 ? 'arrow-up'
                 : option === 'desc'
-                  ? 'arrow-down'
-                  : 'calendar';
+                ? 'arrow-down'
+                : 'calendar';
             const label =
               option === 'asc'
                 ? t('search.sortAsc')
                 : option === 'desc'
-                  ? t('search.sortDesc')
-                  : t('search.sortRevelation');
+                ? t('search.sortDesc')
+                : t('search.sortRevelation');
             return (
               <Pressable
                 key={option}
@@ -1172,8 +1172,7 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
               </View>
             ) : (
               <View style={styles.emptyState}>
-                <Feather
-                  name="search"
+                <SearchIcon
                   size={ms(36)}
                   color={Color(theme.colors.textSecondary)
                     .alpha(0.12)
@@ -1218,8 +1217,7 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
             contentContainerStyle={styles.searchContent}
             ListEmptyComponent={
               <View style={styles.emptyState}>
-                <Feather
-                  name="search"
+                <SearchIcon
                   size={ms(36)}
                   color={Color(theme.colors.textSecondary)
                     .alpha(0.12)

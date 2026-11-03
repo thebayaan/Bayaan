@@ -14,6 +14,7 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useRouter} from 'expo-router';
 import {moderateScale} from '@/utils/scale';
 import {Feather} from '@expo/vector-icons';
+import {BackIcon} from '@/components/ActionIcons'; // @ai
 import {MicrophoneIcon, PlayIcon, ShuffleIcon} from '@/components/Icons';
 import {SheetManager} from 'react-native-actions-sheet';
 import {useUploadsStore, getCustomReciterName} from '@/store/uploadsStore';
@@ -484,8 +485,7 @@ export default function UploadsScreen() {
               style={styles.emptyHeaderBack}
               onPress={() => router.back()}
               hitSlop={8}>
-              <Feather
-                name="arrow-left"
+              <BackIcon
                 size={moderateScale(22)}
                 color={theme.colors.text}
                 style={flipX}
@@ -660,8 +660,7 @@ export default function UploadsScreen() {
             },
           ]}>
           <Pressable onPress={() => router.back()} hitSlop={8}>
-            <Feather
-              name="arrow-left"
+            <BackIcon
               size={moderateScale(24)}
               color={theme.colors.text}
               style={flipX}

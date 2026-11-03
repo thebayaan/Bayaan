@@ -9,6 +9,7 @@
 import React, {useMemo, useState, useCallback} from 'react';
 import {View, TouchableOpacity} from 'react-native';
 import {Feather, Ionicons} from '@expo/vector-icons';
+import {ShareIcon} from '@/components/ActionIcons'; // @ai
 import Slider from '@react-native-community/slider';
 import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
@@ -169,8 +170,7 @@ export const AdhkarAudioControls: React.FC<AdhkarAudioControlsProps> =
                   hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
                   accessibilityRole="button"
                   accessibilityLabel={t('adhkar.a11y.shareDhikr')}>
-                  <Feather
-                    name="share"
+                  <ShareIcon
                     size={moderateScale(18)}
                     color={theme.colors.textSecondary}
                   />
@@ -313,8 +313,7 @@ export const AdhkarAudioControls: React.FC<AdhkarAudioControlsProps> =
                 hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
                 accessibilityRole="button"
                 accessibilityLabel={t('adhkar.a11y.shareDhikr')}>
-                <Feather
-                  name="share"
+                <ShareIcon
                   size={moderateScale(18)}
                   color={theme.colors.textSecondary}
                 />

@@ -1,7 +1,7 @@
 import React from 'react';
 import {View, Text, Pressable} from 'react-native';
 import {moderateScale, ScaledSheet} from '@/utils/scale';
-import {Feather} from '@expo/vector-icons';
+import {BackIcon} from '@/components/ActionIcons'; // @ai
 import {useSafeAreaInsets, EdgeInsets} from 'react-native-safe-area-context';
 import {useRouter} from 'expo-router';
 import {Theme} from '@/utils/themeUtils';
@@ -92,8 +92,7 @@ export const SystemPlaylistHeader: React.FC<SystemPlaylistHeaderProps> = ({
             style={styles.backButton}
             onPress={() => router.back()}
             hitSlop={8}>
-            <Feather
-              name="arrow-left"
+            <BackIcon
               size={moderateScale(24)}
               color={theme.colors.text}
               style={flipX}

@@ -21,7 +21,7 @@ import {
   type CatalogSearchResult,
 } from '@/utils/search/catalog';
 // @ai-end
-import {Feather} from '@expo/vector-icons';
+import {SearchIcon} from '@/components/ActionIcons'; // @ai
 import {ReciterItem} from '@/components/ReciterItem';
 import {SurahItem} from '@/components/SurahItem';
 import {useTheme} from '@/hooks/useTheme';
@@ -541,8 +541,7 @@ export function SearchView({
               </View>
             ) : (
               <View style={styles.emptyState}>
-                <Feather
-                  name="search"
+                <SearchIcon
                   size={moderateScale(36)}
                   color={Color(theme.colors.textSecondary)
                     .alpha(0.12)
@@ -604,8 +603,7 @@ export function SearchView({
                 </View>
               ) : searchResults.length === 0 ? (
                 <View style={styles.emptyState}>
-                  <Feather
-                    name="search"
+                  <SearchIcon
                     size={moderateScale(36)}
                     color={Color(theme.colors.textSecondary)
                       .alpha(0.12)

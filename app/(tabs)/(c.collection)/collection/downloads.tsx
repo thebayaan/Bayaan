@@ -25,6 +25,7 @@ import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {createDownloadedTrack} from '@/utils/track';
 import {moderateScale} from '@/utils/scale';
 import {Feather} from '@expo/vector-icons';
+import {BackIcon} from '@/components/ActionIcons'; // @ai
 import {DownloadIcon, PlayIcon, ShuffleIcon} from '@/components/Icons';
 import {SheetManager} from 'react-native-actions-sheet';
 // @ai-start
@@ -550,8 +551,7 @@ export default function DownloadsScreen() {
               style={styles.emptyHeaderBack}
               onPress={() => router.back()}
               hitSlop={8}>
-              <Feather
-                name="arrow-left"
+              <BackIcon
                 size={moderateScale(22)}
                 color={theme.colors.text}
                 style={flipX}
@@ -718,8 +718,7 @@ export default function DownloadsScreen() {
             },
           ]}>
           <Pressable onPress={() => router.back()} hitSlop={8}>
-            <Feather
-              name="arrow-left"
+            <BackIcon
               size={moderateScale(24)}
               color={theme.colors.text}
               style={flipX}

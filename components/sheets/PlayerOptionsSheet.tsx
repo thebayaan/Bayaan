@@ -9,6 +9,7 @@ import ActionSheet, {
   useSheetWidth,
 } from '@/components/sheets/AdaptiveActionSheet';
 import {Feather, FontAwesome5, Ionicons} from '@expo/vector-icons';
+import {ShareIcon} from '@/components/ActionIcons'; // @ai
 import {getReciterName} from '@/services/dataService';
 import Color from 'color';
 import {CircularProgress} from '@/components/CircularProgress';
@@ -227,8 +228,8 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
                   percent: Math.round(downloadProgress * 100),
                 })
               : isTrackDownloaded
-                ? t('options.downloaded')
-                : t('common:actions.download')}
+              ? t('options.downloaded')
+              : t('common:actions.download')}
           </Text>
         </Pressable>
       ),
@@ -291,11 +292,7 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
             pressed && styles.optionPressed,
           ]}
           onPress={handleShare}>
-          <Feather
-            name="share"
-            size={moderateScale(18)}
-            color={theme.colors.text}
-          />
+          <ShareIcon size={moderateScale(18)} color={theme.colors.text} />
           <Text style={styles.optionText}>{t('common:actions.share')}</Text>
         </Pressable>
       ),
