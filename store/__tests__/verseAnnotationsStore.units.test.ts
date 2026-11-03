@@ -51,8 +51,6 @@ interface Harness {
   db: AdapterDatabase;
   /** A second connection: it sees committed rows only. */
   reader: AdapterDatabase;
-  /** The sqlite mock of this test's registry; its reset removes the folder. */
-  mock: MockModule;
 }
 
 let h: Harness;
@@ -83,7 +81,6 @@ beforeEach(async () => {
     settings: loaded.settings.useMushafSettingsStore,
     db: await loaded.mock.openDatabaseAsync(DB_FILE),
     reader: openAdapterDatabase(path.join(loaded.mock.databaseDir(), DB_FILE)),
-    mock: loaded.mock,
   };
   h.settings.setState({rewayah: 'hafs'});
 });
@@ -91,7 +88,6 @@ beforeEach(async () => {
 afterEach(async () => {
   await h.reader.closeAsync();
   await h.db.closeAsync();
-  await h.mock.resetDatabases();
 });
 
 const state = () => h.store.getState();

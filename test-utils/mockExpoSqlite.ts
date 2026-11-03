@@ -4,10 +4,11 @@ import path from 'path';
 import {openAdapterDatabase, type AdapterDatabase} from './sqliteAdapter';
 
 // @ai-start
-// The mock makes its folder on first use, and resetDatabases() removes it.
-// Before, each import and each reset left a folder in the temp directory
-// (about 1 GB for each full Jest run). A process 'exit' handler cannot do this
-// job: in a Jest test, `process` is a copy, and its 'exit' event never fires.
+// The mock makes its folder on first use, in os.tmpdir(). jestGlobalSetup.js
+// points that at a temp root for the Jest run and jestGlobalTeardown.js removes
+// the root, so a suite tracks nothing, and a failed or crashed test leaves
+// nothing. resetDatabases() removes the folder too, which keeps the disk use of
+// a long run low.
 let currentDir: string | null = null;
 // True only for a folder that this mock made. A folder that a caller gives to
 // useDatabaseDir() stays with the caller.
