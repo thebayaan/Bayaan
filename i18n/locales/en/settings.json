@@ -407,6 +407,21 @@
     },
     "communityReflections": "Community Reflections",
     "communityReflectionsHelper": "Show community reflections under each ayah in list view",
-    "indopakHafsOnly": "IndoPak shows Hafs only. Choosing another rewayah switches the font to {{font}}."
+    "indopakHafsOnly": "IndoPak shows Hafs only. Choosing another rewayah switches the font to {{font}}.",
+    "recitation": {
+      "historyLabel": "Recitation history",
+      "historyHelper": "Which ayat you recited, kept on this phone only. Audio is never saved.",
+      "historyConfirmTitle": "Clear recitation history?",
+      "historyConfirmMessage": "Deletes the ayat, peeks and pauses saved from your recitations on this phone.",
+      "modelLabel": "Recognition model",
+      "modelHelper": "Used by the mic in the mushaf bar to follow your recitation. Runs on your device; audio never leaves your phone. Hafs only.",
+      "modelDownloading": "Downloading {{percent}}%",
+      "modelDownloaded": "Downloaded, {{size}} MB",
+      "modelNotDownloaded": "Not downloaded, {{size}} MB",
+      "removeModel": "Remove recognition model",
+      "removeTitle": "Remove recognition model?",
+      "removeMessage": "Frees {{size}} MB. It downloads again the next time you tap the mic."
+    },
+    "recitationHeader": "Recitation"
   }
 }

@@ -189,7 +189,7 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
             style={styles.edgeButton}
             onPress={() => void stopRecitationTracking()}
             accessibilityRole="button"
-            accessibilityLabel="Stop following my recitation">
+            accessibilityLabel={t('recitation.stopFollowing')}>
             <Ionicons
               name="stop"
               size={moderateScale(20)}
@@ -197,8 +197,8 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
             />
           </Pressable>
           <View style={styles.controlsCenter}>
-            {hideText && renderPeekButton('Next ayah', 'ayah')}
-            {hideText && renderPeekButton('Next word', 'word')}
+            {hideText && renderPeekButton(t('recitation.nextAyah'), 'ayah')}
+            {hideText && renderPeekButton(t('recitation.nextWord'), 'word')}
             <RecitationMicButton
               currentPage={currentPage}
               style={[
@@ -215,7 +215,11 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
             style={styles.edgeButton}
             onPress={toggleHideText}
             accessibilityRole="button"
-            accessibilityLabel={hideText ? 'Show the text' : 'Hide the text'}
+            accessibilityLabel={
+              hideText
+                ? t('recitation.showTheText')
+                : t('recitation.hideTheText')
+            }
             accessibilityState={{selected: hideText}}>
             <Feather
               name={hideText ? 'eye-off' : 'eye'}

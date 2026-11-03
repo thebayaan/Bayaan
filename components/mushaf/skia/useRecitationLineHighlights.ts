@@ -3,11 +3,16 @@ import Color from 'color';
 import type {DKLine} from '@/services/mushaf/DigitalKhattDataService';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {mushafVerseMapService} from '@/services/mushaf/MushafVerseMapService';
-import {useRecitationTrackingStore} from '@/store/recitationTrackingStore';
+import {
+  isTakeActive,
+  useRecitationTrackingStore,
+} from '@/store/recitationTrackingStore';
 import {dkWordPosition, withRecitedWordRun} from './recitedWord';
 import type {LineHighlight, LineHighlightMap} from './verseHighlightLayers';
 
 const FIELD_SEPARATOR = '|';
+// Possible slips in memorisation mode.
+const FLAG_TINT = '#D9A21B';
 const KEY_SEPARATOR = ',';
 
 /**
@@ -32,7 +37,7 @@ export function useRecitationLineHighlights(
 
   // Value-comparable ids, '' when nothing of the take is on this page.
   const wordId = useRecitationTrackingStore(s =>
-    s.status === 'listening' &&
+    isTakeActive(s.status) &&
     s.verseKey &&
     s.wordIndex !== null &&
     pageKeys.has(s.verseKey)
@@ -40,15 +45,33 @@ export function useRecitationLineHighlights(
       : '',
   );
   const recitedId = useRecitationTrackingStore(s =>
-    s.status === 'listening'
+    isTakeActive(s.status)
       ? s.recitedVerseKeys
           .filter(k => k !== s.verseKey && pageKeys.has(k))
           .join(KEY_SEPARATOR)
       : '',
   );
 
+  // Memorisation: possible slips on this page, as kind|key|word|total.
+  const flagsId = useRecitationTrackingStore(s =>
+    isTakeActive(s.status)
+      ? s.flags
+          .filter(f => pageKeys.has(`${f.surah}:${f.ayah}`))
+          .map(f =>
+            [f.kind, `${f.surah}:${f.ayah}`, f.word, f.totalWords ?? 0].join(
+              FIELD_SEPARATOR,
+            ),
+          )
+          .join(KEY_SEPARATOR)
+      : '',
+  );
+
   const colors = useMemo(
     () => ({
+      // A soft amber, never red: these are possible slips, not verdicts.
+      flag: Color(FLAG_TINT)
+        .alpha(isDarkMode ? 0.3 : 0.24)
+        .toString(),
       recited: Color(textColor)
         .alpha(isDarkMode ? 0.05 : 0.06)
         .toString(),
@@ -60,7 +83,7 @@ export function useRecitationLineHighlights(
   );
 
   return useMemo(() => {
-    if (!wordId && !recitedId) return base;
+    if (!wordId && !recitedId && !flagsId) return base;
     let out = base;
 
     if (recitedId) {
@@ -86,6 +109,50 @@ export function useRecitationLineHighlights(
       }
     }
 
+    if (flagsId) {
+      for (const entry of flagsId.split(KEY_SEPARATOR)) {
+        const [kind, verseKey, word, total] = entry.split(FIELD_SEPARATOR);
+        const words = digitalKhattDataService.getVerseWords(verseKey);
+        if (kind === 'skippedAyah' || kind === 'similarAyah') {
+          // The whole ayah: its band on every line it spans.
+          const above = new Map(out);
+          for (const {
+            lineIndex,
+            segment,
+          } of mushafVerseMapService.getVerseSegmentsForPage(
+            pageNumber,
+            verseKey,
+          )) {
+            above.set(lineIndex, [
+              ...(above.get(lineIndex) ?? []),
+              {
+                start: segment.startCharIndex,
+                end: segment.endCharIndex,
+                color: colors.flag,
+              },
+            ]);
+          }
+          out = above;
+          continue;
+        }
+        const position = dkWordPosition(
+          words,
+          Number(word),
+          Number(total) || words.length,
+        );
+        if (position !== null) {
+          out = withRecitedWordRun(
+            out,
+            pageLines,
+            digitalKhattDataService,
+            verseKey,
+            position,
+            colors.flag,
+          );
+        }
+      }
+    }
+
     if (wordId) {
       const [verseKey, wordIndex, totalWords] = wordId.split(FIELD_SEPARATOR);
       const position = dkWordPosition(
@@ -105,5 +172,5 @@ export function useRecitationLineHighlights(
       }
     }
     return out;
-  }, [wordId, recitedId, base, pageNumber, pageLines, colors]);
+  }, [wordId, recitedId, flagsId, base, pageNumber, pageLines, colors]);
 }

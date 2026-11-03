@@ -72,6 +72,9 @@ import {
   recitationModelNeedsDownload,
   removeRecitationModel,
 } from '@/services/recitation/RecitationTrackingService';
+import {recitationLogDatabase} from '@/services/recitation/RecitationLogDatabase';
+import {RECITATION_DOWNLOAD_MB} from '@/constants/recitation';
+import {formatNumber} from '@/i18n/format';
 // @ai-start
 import {flipX, latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
@@ -561,9 +564,11 @@ const RecitationModelControl: React.FC<RecitationModelControlProps> = ({
   styles,
   theme,
 }) => {
+  const {t} = useTranslation(['settings', 'common']);
   const status = useRecitationTrackingStore(s => s.status);
   const progress = useRecitationTrackingStore(s => s.downloadProgress);
   const [downloaded, setDownloaded] = useState<boolean | null>(null);
+  const size = formatNumber(RECITATION_DOWNLOAD_MB);
 
   useEffect(() => {
     let cancelled = false;
@@ -577,12 +582,12 @@ const RecitationModelControl: React.FC<RecitationModelControlProps> = ({
 
   function confirmRemove(): void {
     Alert.alert(
-      'Remove recognition model?',
-      'Frees 75 MB. It downloads again the next time you tap the mic.',
+      t('mushafSettings.recitation.removeTitle'),
+      t('mushafSettings.recitation.removeMessage', {size}),
       [
-        {text: 'Cancel', style: 'cancel'},
+        {text: t('common:actions.cancel'), style: 'cancel'},
         {
-          text: 'Remove',
+          text: t('common:actions.remove'),
           style: 'destructive',
           onPress: () => {
             removeRecitationModel().then(() => setDownloaded(false));
@@ -594,15 +599,19 @@ const RecitationModelControl: React.FC<RecitationModelControlProps> = ({
 
   const modelLabel =
     status === 'downloading'
-      ? `Downloading ${Math.round(progress * 100)}%`
+      ? t('mushafSettings.recitation.modelDownloading', {
+          percent: localizeDigits(Math.round(progress * 100)),
+        })
       : downloaded
-        ? 'Downloaded, 75 MB'
-        : 'Not downloaded, 75 MB';
+        ? t('mushafSettings.recitation.modelDownloaded', {size})
+        : t('mushafSettings.recitation.modelNotDownloaded', {size});
 
   return (
     <View style={styles.card}>
       <View style={styles.optionRow}>
-        <Text style={styles.optionLabel}>Recognition model</Text>
+        <Text style={styles.optionLabel}>
+          {t('mushafSettings.recitation.modelLabel')}
+        </Text>
         <View style={styles.recitationModelState}>
           {status === 'downloading' && (
             <ActivityIndicator size="small" color={theme.colors.text} />
@@ -613,7 +622,7 @@ const RecitationModelControl: React.FC<RecitationModelControlProps> = ({
               onPress={confirmRemove}
               hitSlop={8}
               accessibilityRole="button"
-              accessibilityLabel="Remove recognition model">
+              accessibilityLabel={t('mushafSettings.recitation.removeModel')}>
               <Feather
                 name="minus-circle"
                 size={moderateScale(18)}
@@ -624,10 +633,58 @@ const RecitationModelControl: React.FC<RecitationModelControlProps> = ({
         </View>
       </View>
       <Text style={styles.helperText}>
-        Used by the mic in the mushaf bar to follow your recitation. Runs on
-        your device; audio never leaves your phone. Hafs only.
+        {t('mushafSettings.recitation.modelHelper')}
       </Text>
+      <RecitationHistoryRow styles={styles} />
     </View>
+  );
+};
+
+// The recitation log (services/recitation/RecitationLogDatabase) can be
+// cleared here; it never leaves the phone.
+const RecitationHistoryRow: React.FC<{
+  styles: ReturnType<typeof createStyles>;
+}> = ({styles}) => {
+  const {t} = useTranslation(['settings', 'common']);
+
+  function confirmClear(): void {
+    Alert.alert(
+      t('mushafSettings.recitation.historyConfirmTitle'),
+      t('mushafSettings.recitation.historyConfirmMessage'),
+      [
+        {text: t('common:actions.cancel'), style: 'cancel'},
+        {
+          text: t('common:actions.clear'),
+          style: 'destructive',
+          onPress: () => {
+            recitationLogDatabase.clearHistory().catch(error => {
+              console.warn('[recitation] could not clear the history', error);
+            });
+          },
+        },
+      ],
+    );
+  }
+
+  return (
+    <>
+      <View style={styles.optionRow}>
+        <Text style={styles.optionLabel}>
+          {t('mushafSettings.recitation.historyLabel')}
+        </Text>
+        <Pressable
+          onPress={confirmClear}
+          hitSlop={8}
+          accessibilityRole="button">
+          <Text style={styles.recitationModelLabel}>
+            {t('common:actions.clear')}
+          </Text>
+        </Pressable>
+      </View>
+      <Text style={styles.helperText}>
+        {t('mushafSettings.recitation.historyHelper')}
+      </Text>
+    </>
   );
 };
 
@@ -1271,7 +1328,9 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
 
       {context !== 'player' && (
         <>
-          <Text style={styles.sectionHeader}>RECITATION</Text>
+          <Text style={styles.sectionHeader}>
+            {t('mushafSettings.recitationHeader')}
+          </Text>
           <RecitationModelControl styles={styles} theme={theme} />
         </>
       )}

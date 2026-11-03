@@ -17,7 +17,10 @@ import {
   type MushafPlayerStoreState,
 } from '@/store/mushafPlayerStore';
 import {parseVerseKeyListId, verseKeyListId} from '@/utils/timestampNumbering';
-import {useRecitationTrackingStore} from '@/store/recitationTrackingStore';
+import {
+  isTakeActive,
+  useRecitationTrackingStore,
+} from '@/store/recitationTrackingStore';
 import type {RewayahId} from '@/services/rewayah/RewayahIdentity';
 import {NO_PLAYBACK_BAND, type PlaybackBand} from './verseHighlightLayers';
 
@@ -74,7 +77,7 @@ export function parsePlaybackBandId(id: string): PlaybackBand {
 export function usePlaybackBand(): PlaybackBand {
   const id = useMushafPlayerStore(selectPlaybackBandId);
   const recitedKey = useRecitationTrackingStore(s =>
-    s.status === 'listening' ? s.verseKey : null,
+    isTakeActive(s.status) ? s.verseKey : null,
   );
   return useMemo(
     () =>

@@ -118,19 +118,18 @@ class AudioCoordinator {
   }
 
   /**
-   * Quran audio must never play into the mic: playback stops the reader's
-   * recitation follow-along.
+   * Quran audio must never play into the mic: playback stops any recitation
+   * session (follow-along or identify).
    */
   private stopRecitation(): void {
-    // Lazy import to avoid circular dependency
+    // Lazy imports: the check is cheap, and the session runner (which loads
+    // the model and the mic) is only required when a session runs.
     const {
-      useRecitationTrackingStore,
-    } = require('@/store/recitationTrackingStore');
-    if (useRecitationTrackingStore.getState().status === 'off') return;
-    const {
-      stopRecitationTracking,
-    } = require('@/services/recitation/RecitationTrackingService');
-    void stopRecitationTracking('playback_started');
+      activeSessionPurpose,
+    } = require('@/services/recitation/activeSession');
+    if (activeSessionPurpose() === null) return;
+    const {stopSession} = require('@/services/recitation/sessionRunner');
+    void stopSession('playback_started');
   }
 
   /**

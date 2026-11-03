@@ -2,7 +2,11 @@ import * as FileSystem from 'expo-file-system/legacy';
 import {InferenceSession, Tensor} from 'onnxruntime-react-native';
 import {
   createZipformerSession,
+  DEFAULT_STRUCTURAL,
+  type CorrectionAction,
+  type ExpectedPassage,
   type OrtSessionLike,
+  type RecitationMode,
   type SearchHint,
   type TensorLike,
   type WorkerOutbound,
@@ -33,15 +37,31 @@ export interface RecitationStats {
 export interface RecitationEngine {
   /** Queues a chunk of 16 kHz mono PCM. Calls are serialized internally. */
   feed: (pcm: Float32Array) => void;
-  /** Flushes the tail of the current take. */
-  stop: () => Promise<void>;
+  /**
+   * Flushes the tail of the current take. Resolves with what the session
+   * emitted at the end: final_sequence, structural corrections and the raw
+   * transcript. Empty once the engine is disposed.
+   */
+  stop: () => Promise<WorkerOutbound[]>;
   /** Clears recognition state for a new take; keeps the model loaded. */
   reset: () => void;
   /** Biases ambiguous matches toward this ayah, e.g. the page on screen. */
   setHint: (hint: SearchHint | null) => void;
+  /** 'correction' turns on the word and ayah checks that tracking skips. */
+  setMode: (mode: RecitationMode) => void;
+  /** Correction mode: the passage the reader is about to recite. */
+  setExpected: (passage: ExpectedPassage | null) => void;
+  /** Turns the structural rules (skipped and look-alike ayahs) on or off. */
+  setStructural: (on: boolean) => void;
+  /** Answers an open correction; resolves with the messages it caused. */
+  correct: (action: CorrectionAction) => Promise<WorkerOutbound[]>;
   getStats: () => RecitationStats;
   dispose: () => Promise<void>;
 }
+
+const STRUCTURAL_OFF = {ayahOrder: false, similarVerse: false} as const;
+// Upper bound on flags drained around one stop().
+const MAX_DRAIN = 64;
 
 function isOrtTensor(value: unknown): value is Tensor {
   return value instanceof Tensor;
@@ -125,24 +145,40 @@ export async function createRecitationEngine(
   });
   stats.loadMs = performance.now() - loadStart;
 
-  // feed() must not be re-entered, so chunks go through one promise chain.
-  let queue: Promise<void> = Promise.resolve();
+  // The session must not be re-entered, so every call goes through one
+  // promise chain. A failed task resolves to its fallback and the chain goes
+  // on.
+  let queue: Promise<unknown> = Promise.resolve();
   let disposed = false;
 
-  function enqueue(task: () => Promise<void>): Promise<void> {
+  function deferOpenIssues(): WorkerOutbound[] {
+    const out: WorkerOutbound[] = [];
+    for (
+      let i = 0;
+      i < MAX_DRAIN && session.correction.state.phase !== 'idle';
+      i++
+    ) {
+      out.push(...session.correct('review_later'));
+    }
+    return out;
+  }
+
+  function enqueue<T>(task: () => Promise<T>, fallback: T): Promise<T> {
     stats.backlog += 1;
-    queue = queue
-      .then(async () => {
-        stats.backlog -= 1;
-        if (disposed) return;
-        await task();
-      })
-      .catch(error => {
+    const result = queue.then(async () => {
+      stats.backlog -= 1;
+      if (disposed) return fallback;
+      try {
+        return await task();
+      } catch (error) {
         stats.lastError =
           error instanceof Error ? error.message : String(error);
         console.warn('[recitation] engine task failed', error);
-      });
-    return queue;
+        return fallback;
+      }
+    });
+    queue = result;
+    return result;
   }
 
   return {
@@ -155,12 +191,18 @@ export async function createRecitationEngine(
         stats.maxFeedMs = Math.max(stats.maxFeedMs, elapsed);
         stats.audioSeconds += pcm.length / RECITATION_SAMPLE_RATE;
         stats.chunks += 1;
-      });
+      }, undefined);
     },
     stop() {
       return enqueue(async () => {
-        await session.stop();
-      });
+        // Tilawa skips the flush while a flag is open, and raises the
+        // structural flags one per correct() after it: defer them all so the
+        // take ends with its final_sequence and every flag.
+        const out = deferOpenIssues();
+        out.push(...(await session.stop()));
+        out.push(...deferOpenIssues());
+        return out;
+      }, [] as WorkerOutbound[]);
     },
     reset() {
       void enqueue(async () => {
@@ -171,12 +213,34 @@ export async function createRecitationEngine(
         stats.maxFeedMs = 0;
         stats.chunks = 0;
         stats.lastError = null;
-      });
+      }, undefined);
     },
     setHint(hint) {
       void enqueue(async () => {
         session.setHint(hint);
-      });
+      }, undefined);
+    },
+    setMode(mode) {
+      void enqueue(async () => {
+        session.setMode(mode);
+      }, undefined);
+    },
+    setExpected(passage) {
+      void enqueue(async () => {
+        session.setExpected(passage);
+      }, undefined);
+    },
+    setStructural(on) {
+      void enqueue(
+        () => session.setStructural(on ? DEFAULT_STRUCTURAL : STRUCTURAL_OFF),
+        undefined,
+      );
+    },
+    correct(action) {
+      return enqueue(
+        async () => session.correct(action),
+        [] as WorkerOutbound[],
+      );
     },
     getStats() {
       return {...stats};

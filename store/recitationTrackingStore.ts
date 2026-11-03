@@ -1,11 +1,25 @@
 import {create} from 'zustand';
 import type {RevealedThrough} from '@/services/recitation/reveal';
+import type {ShownFlag} from '@/services/recitation/flags';
+
+/** What a memorisation take left to check, shown in a sheet after it. */
+export interface RecitationSummary {
+  takeId: string;
+  startedAt: number;
+  endedAt: number;
+  /** Ayat recited, in order. */
+  ayat: readonly {surah: number; ayah: number}[];
+  /** Possible slips, without the ones the reader dismissed. */
+  flags: readonly ShownFlag[];
+}
 
 export type RecitationTrackingStatus =
   | 'off'
   | 'downloading'
   | 'loading'
   | 'listening'
+  // A call, Siri or another app has the audio; the take resumes after.
+  | 'paused'
   | 'error';
 
 export interface RecitationTrackingState {
@@ -27,6 +41,10 @@ export interface RecitationTrackingState {
   error: string | null;
   /** 'permission' when the reader has to allow the mic in Settings. */
   errorKind: 'permission' | 'other' | null;
+  /** Memorisation mode: possible slips so far this take. */
+  flags: readonly ShownFlag[];
+  /** Set when a memorisation take ends; the mushaf shows it, then clears. */
+  summary: RecitationSummary | null;
 }
 
 export const RECITATION_TRACKING_IDLE: RecitationTrackingState = {
@@ -40,12 +58,19 @@ export const RECITATION_TRACKING_IDLE: RecitationTrackingState = {
   totalWords: 0,
   error: null,
   errorKind: null,
+  flags: [],
+  summary: null,
 };
 
-/** Hafs key of the ayah the reader is reciting, or null when not listening. */
+/** A take is in progress: listening, or paused by an interruption. */
+export function isTakeActive(status: RecitationTrackingStatus): boolean {
+  return status === 'listening' || status === 'paused';
+}
+
+/** Hafs key of the ayah the reader is reciting, or null when no take runs. */
 export function useRecitedVerseKey(): string | null {
   return useRecitationTrackingStore(s =>
-    s.status === 'listening' ? s.verseKey : null,
+    isTakeActive(s.status) ? s.verseKey : null,
   );
 }
 

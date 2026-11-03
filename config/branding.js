@@ -33,6 +33,7 @@ module.exports = {
    */
   homeRowConfig: [
     {id: 'continue-listening', enabled: true},
+    {id: 'hifz', enabled: true},
     {id: 'new-to-quran', enabled: true},
     {id: 'favorites', enabled: true},
     {id: 'featured', enabled: true},

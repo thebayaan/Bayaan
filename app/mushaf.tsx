@@ -381,37 +381,39 @@ export function MushafToolbar() {
         <Stack.Toolbar.Button
           icon="stop.fill"
           onPress={() => void stopRecitationTracking()}>
-          Stop
+          {t('recitation.stop')}
         </Stack.Toolbar.Button>
         <Stack.Toolbar.Spacer />
         {hideText && (
           <Stack.Toolbar.Button
             icon="chevron.left.2"
-            accessibilityLabel="Next ayah"
+            accessibilityLabel={t('recitation.nextAyah')}
             onPress={() => peekOnPage('ayah', currentPage || 1)}>
-            Next ayah
+            {t('recitation.nextAyah')}
           </Stack.Toolbar.Button>
         )}
         {hideText && (
           <Stack.Toolbar.Button
             icon="chevron.left"
-            accessibilityLabel="Next word"
+            accessibilityLabel={t('recitation.nextWord')}
             onPress={() => peekOnPage('word', currentPage || 1)}>
-            Next word
+            {t('recitation.nextWord')}
           </Stack.Toolbar.Button>
         )}
         <Stack.Toolbar.Button
           icon="mic.fill"
           tintColor={LIVE_MIC_COLOR}
-          accessibilityLabel={`Listening. ${recitationText}`}
+          accessibilityLabel={t('recitation.listeningLabel', {
+            status: recitationText,
+          })}
           onPress={() => void stopRecitationTracking()}>
-          Listening
+          {t('recitation.listening')}
         </Stack.Toolbar.Button>
         <Stack.Toolbar.Spacer />
         <Stack.Toolbar.Button
           icon={hideText ? 'eye.slash' : 'eye'}
           onPress={toggleHideText}>
-          {hideText ? 'Show text' : 'Hide text'}
+          {hideText ? t('recitation.showText') : t('recitation.hideText')}
         </Stack.Toolbar.Button>
       </Stack.Toolbar>
     );
@@ -435,11 +437,13 @@ export function MushafToolbar() {
                 ? 'hourglass'
                 : mic.status === 'listening'
                   ? 'mic.fill'
-                  : 'mic'
+                  : mic.status === 'paused'
+                    ? 'mic.slash'
+                    : 'mic'
             }
             onPress={mic.toggle}
             disabled={mic.busy}>
-            Recite
+            {t('recitation.recite')}
           </Stack.Toolbar.Button>
         )}
         <Stack.Toolbar.Spacer />

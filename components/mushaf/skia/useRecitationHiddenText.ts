@@ -3,7 +3,10 @@ import type {DKLine} from '@/services/mushaf/DigitalKhattDataService';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {getLineWordSpans} from '@/services/mushaf/lineWordSpans';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
-import {useRecitationTrackingStore} from '@/store/recitationTrackingStore';
+import {
+  isTakeActive,
+  useRecitationTrackingStore,
+} from '@/store/recitationTrackingStore';
 import {isRevealed} from '@/services/recitation/reveal';
 
 type LineColorMap = Map<number, string> | null;
@@ -27,7 +30,7 @@ export function useRecitationHiddenText(
   const hideText = useMushafSettingsStore(s => s.recitationHideText);
   // Comparable id of the revealed point; null when not hiding.
   const revealedId = useRecitationTrackingStore(s => {
-    if (!hideText || s.status !== 'listening') return null;
+    if (!hideText || !isTakeActive(s.status)) return null;
     const t = s.revealedThrough;
     return t ? `${t.surah}:${t.ayah}:${t.position}` : '';
   });

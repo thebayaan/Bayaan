@@ -22,6 +22,7 @@ export interface BrandingCatalogConfig {
  */
 export type HomeRowId =
   | 'continue-listening'
+  | 'hifz'
   | 'new-to-quran'
   | 'favorites'
   | 'featured'

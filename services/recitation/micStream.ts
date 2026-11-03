@@ -7,7 +7,12 @@ const CHUNK_SAMPLES = 7680;
 
 export interface MicStream {
   stop: () => Promise<void>;
+  /** Brings the mic back after an interruption; throws if it cannot. */
+  resume: () => Promise<void>;
 }
+
+/** A call, Siri or another app took the audio session, or gave it back. */
+export type InterruptionPhase = 'began' | 'ended';
 
 /** Linear resample to 16 kHz for devices that ignore the requested rate. */
 function resampleTo16k(input: Float32Array, fromRate: number): Float32Array {
@@ -29,15 +34,7 @@ export async function requestMicPermission(): Promise<boolean> {
   return status === 'Granted';
 }
 
-/**
- * Streams mono 16 kHz PCM chunks from the microphone.
- * @param onChunk - Receives each chunk plus the device's actual sample rate
- * @param onInterrupted - A call, Siri or another app took the audio session
- */
-export async function startMicStream(
-  onChunk: (pcm: Float32Array, deviceRate: number) => void,
-  onInterrupted: () => void = () => undefined,
-): Promise<MicStream> {
+function configureRecordingSession(): void {
   AudioManager.setAudioSessionOptions({
     iosCategory: 'playAndRecord',
     // 'measurement' disables input gain, which left speech under Tilawa's
@@ -45,6 +42,19 @@ export async function startMicStream(
     iosMode: 'default',
     iosOptions: ['defaultToSpeaker', 'allowBluetoothHFP'],
   });
+}
+
+/**
+ * Streams mono 16 kHz PCM chunks from the microphone.
+ * @param onChunk - Receives each chunk plus the device's actual sample rate
+ * @param onInterruption - An interruption began (the recorder stops) or
+ *   ended (call resume() to listen again)
+ */
+export async function startMicStream(
+  onChunk: (pcm: Float32Array, deviceRate: number) => void,
+  onInterruption: (phase: InterruptionPhase) => void = () => undefined,
+): Promise<MicStream> {
+  configureRecordingSession();
   await AudioManager.setAudioSessionActivity(true);
 
   const recorder = new AudioRecorder();
@@ -68,20 +78,35 @@ export async function startMicStream(
     throw new Error(startResult.message);
   }
 
-  // The recorder pauses silently on an interruption. On Android this also
+  // The recorder stops silently on an interruption. On Android this also
   // takes audio focus, so other apps stop playing into the mic.
   AudioManager.observeAudioInterruptions(
     Platform.OS === 'android' ? 'gainTransientExclusive' : true,
   );
   const interruption = AudioManager.addSystemEventListener(
     'interruption',
-    event => {
-      if (event.type === 'began') onInterrupted();
-    },
+    event => onInterruption(event.type),
   );
 
+  // Set by stop(): a resume still waiting on the audio session must not
+  // reopen the mic after it.
+  let stopped = false;
+
   return {
+    async resume() {
+      configureRecordingSession();
+      await AudioManager.setAudioSessionActivity(true);
+      if (stopped) return;
+      // The interruption may have left the recorder stopped or half running;
+      // a stop then a start works from either.
+      await recorder.stop();
+      if (stopped) return;
+      const result = await recorder.start();
+      if (result.status === 'error') throw new Error(result.message);
+      if (stopped) await recorder.stop();
+    },
     async stop() {
+      stopped = true;
       interruption?.remove();
       AudioManager.observeAudioInterruptions(false);
       recorder.clearOnAudioReady();

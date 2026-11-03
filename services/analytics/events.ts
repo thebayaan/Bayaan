@@ -34,6 +34,9 @@ export const ANALYTICS_EVENTS = {
   RECITATION_TRACKING_STOPPED: 'recitation_tracking_stopped',
   RECITATION_MODEL_DOWNLOADED: 'recitation_model_downloaded',
   RECITATION_TRACKING_ERROR: 'recitation_tracking_error',
+  // Which ayah? (names the ayah being recited; audio is never sent)
+  RECITATION_IDENTIFY_STARTED: 'recitation_identify_started',
+  RECITATION_IDENTIFY_ENDED: 'recitation_identify_ended',
   // Lifecycle
   APP_OPENED: 'app_opened',
   APP_BACKGROUNDED: 'app_backgrounded',
@@ -155,7 +158,13 @@ export type RecitationStopReason =
   | 'playback_started'
   | 'interruption'
   | 'mic_silent'
-  | 'model_removed';
+  | 'model_removed'
+  // Another recitation session (e.g. Which ayah?) took the mic.
+  | 'superseded'
+  // Which ayah? heard nothing it could place in time.
+  | 'not_found'
+  // A practice take reached the end of what it asked for.
+  | 'completed';
 
 export interface RecitationTrackingStartedProps {
   /** Surah of the page on screen, passed to Tilawa as a search hint. */
@@ -192,6 +201,20 @@ export interface RecitationModelDownloadedProps {
 export interface RecitationTrackingErrorProps {
   stage: 'permission' | 'download' | 'model_load' | 'mic' | 'engine';
   error_message: string;
+}
+
+export interface RecitationIdentifyStartedProps {
+  /** The model was already in memory (no load wait). */
+  model_loaded: boolean;
+}
+
+export interface RecitationIdentifyEndedProps {
+  outcome: 'found' | 'not_found' | 'cancelled' | 'error';
+  /** From listening to the first ayah placed; null when none was. */
+  time_to_match_ms: number | null;
+  surah_id: number | null;
+  /** How long the mic listened. */
+  listened_ms: number;
 }
 
 export interface DownloadStartedProps {

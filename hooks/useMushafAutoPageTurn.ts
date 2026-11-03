@@ -9,7 +9,10 @@
 
 import {useEffect, useRef} from 'react';
 import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
-import {useRecitationTrackingStore} from '@/store/recitationTrackingStore';
+import {
+  isTakeActive,
+  useRecitationTrackingStore,
+} from '@/store/recitationTrackingStore';
 import {
   dkWordPosition,
   lastWordOnPage,
@@ -25,13 +28,13 @@ export function useMushafAutoPageTurn(
   const playbackState = useMushafPlayerStore(s => s.playbackState);
   const playerVerseKey = useMushafPlayerStore(s => s.currentVerseKey);
   const recitedVerseKey = useRecitationTrackingStore(s =>
-    s.status === 'listening' ? s.verseKey : null,
+    isTakeActive(s.status) ? s.verseKey : null,
   );
   const isFollowing = playbackState === 'playing' || recitedVerseKey !== null;
   const currentVerseKey = recitedVerseKey ?? playerVerseKey;
   // The word being recited, as a comparable id ('' when not listening).
   const recitedWord = useRecitationTrackingStore(s =>
-    s.status === 'listening' && s.verseKey && s.wordIndex !== null
+    isTakeActive(s.status) && s.verseKey && s.wordIndex !== null
       ? `${s.verseKey}|${s.wordIndex}|${s.totalWords}`
       : '',
   );

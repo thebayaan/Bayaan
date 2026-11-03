@@ -11,19 +11,24 @@ import {
 } from 'react-native';
 import {Ionicons} from '@expo/vector-icons';
 import Color from 'color';
+import {useTranslation} from 'react-i18next';
+import {getSurahDisplayName, localizeDigits} from '@/i18n/format';
 import {moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {showToast} from '@/utils/toastUtils';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {
+  isTakeActive,
   useRecitationTrackingStore,
   type RecitationTrackingStatus,
 } from '@/store/recitationTrackingStore';
 import {mushafVerseMapService} from '@/services/mushaf/MushafVerseMapService';
 import {
+  clearRecitationSummary,
   peekRecitation,
   recitationModelNeedsDownload,
   scheduleUnload,
+  setRecitationHidden,
   setRecitationHint,
   startRecitationTracking,
   stopRecitationTracking,
@@ -53,11 +58,25 @@ async function confirmIntro(): Promise<boolean> {
  * since header buttons remount whenever the header options change.
  */
 export function useRecitationFollowAlong(currentPage: number): void {
-  const listening = useRecitationTrackingStore(s => s.status === 'listening');
+  const listening = useRecitationTrackingStore(s => isTakeActive(s.status));
+  const hideText = useMushafSettingsStore(s => s.recitationHideText);
 
   useEffect(() => {
     if (listening) setRecitationHint(pageHint(currentPage));
   }, [listening, currentPage]);
+
+  // Hiding the text mid-take starts checking from here; showing it stops.
+  useEffect(() => {
+    if (listening) setRecitationHidden(hideText);
+  }, [listening, hideText]);
+
+  // A memorisation take ended: show what is worth checking.
+  const summary = useRecitationTrackingStore(s => s.summary);
+  useEffect(() => {
+    if (!summary) return;
+    clearRecitationSummary();
+    void SheetManager.show('recitation-summary', {payload: {summary}});
+  }, [summary]);
 
   useEffect(() => {
     return () => {
@@ -93,22 +112,26 @@ export function useRecitationMic(currentPage: number): RecitationMic {
   const progress = useRecitationTrackingStore(s => s.downloadProgress);
   const error = useRecitationTrackingStore(s => s.error);
   const errorKind = useRecitationTrackingStore(s => s.errorKind);
+  const {t} = useTranslation('reader');
 
   useEffect(() => {
     if (status !== 'error' || !error) return;
     if (errorKind === 'permission') {
-      Alert.alert('Microphone is off', error, [
-        {text: 'Not now', style: 'cancel'},
-        {text: 'Open Settings', onPress: () => void Linking.openSettings()},
+      Alert.alert(t('recitation.micOffTitle'), error, [
+        {text: t('recitation.notNow'), style: 'cancel'},
+        {
+          text: t('recitation.openSettings'),
+          onPress: () => void Linking.openSettings(),
+        },
       ]);
     } else {
-      showToast('Recitation stopped', error, 'error');
+      showToast(t('recitation.stoppedTitle'), error, 'error');
     }
     void stopRecitationTracking();
-  }, [status, error, errorKind]);
+  }, [status, error, errorKind, t]);
 
   const toggle = useCallback(async (): Promise<void> => {
-    if (status === 'listening') {
+    if (isTakeActive(status)) {
       await stopRecitationTracking();
       return;
     }
@@ -134,13 +157,17 @@ export function useRecitationMic(currentPage: number): RecitationMic {
  * Shared by the player bar and the iOS 26 toolbar.
  */
 export function useRecitationStatusText(): string | null {
+  const {t} = useTranslation('reader');
   return useRecitationTrackingStore(s => {
-    if (s.status === 'loading') return 'Getting ready…';
+    if (s.status === 'loading') return t('recitation.gettingReady');
+    if (s.status === 'paused') return t('recitation.paused');
     if (s.status !== 'listening') return null;
-    if (!s.locked || !s.verseKey) return 'Finding your place…';
-    const [surah, ayah] = s.verseKey.split(':').map(Number);
-    const name = SURAHS[surah - 1]?.name ?? '';
-    return `${name} ${surah}:${ayah}`;
+    if (!s.locked || !s.verseKey) return t('recitation.findingPlace');
+    const surah = SURAHS[Number(s.verseKey.split(':')[0]) - 1];
+    return t('recitation.barLabel', {
+      surah: surah ? getSurahDisplayName(surah) : '',
+      verseKey: localizeDigits(s.verseKey),
+    });
   });
 }
 
@@ -166,6 +193,7 @@ export function RecitationMicButton({
   style,
 }: RecitationMicButtonProps): React.JSX.Element | null {
   const {theme} = useTheme();
+  const {t} = useTranslation('reader');
   const {enabled, status, progress, busy, toggle} =
     useRecitationMic(currentPage);
 
@@ -182,7 +210,9 @@ export function RecitationMicButton({
       hitSlop={8}
       accessibilityRole="button"
       accessibilityLabel={
-        status === 'listening' ? 'Stop follow-along' : 'Follow my recitation'
+        isTakeActive(status)
+          ? t('recitation.stopFollowAlong')
+          : t('recitation.followMine')
       }>
       {busy ? (
         <View style={{flexDirection: 'row', alignItems: 'center', gap: 4}}>
@@ -194,13 +224,19 @@ export function RecitationMicButton({
                 fontFamily: 'Manrope-Medium',
                 color: theme.colors.textSecondary,
               }}>
-              {Math.round(progress * 100)}%
+              {localizeDigits(Math.round(progress * 100))}%
             </Text>
           )}
         </View>
       ) : (
         <Ionicons
-          name={live ? 'mic' : 'mic-outline'}
+          name={
+            live
+              ? 'mic'
+              : status === 'paused'
+                ? 'mic-off-outline'
+                : 'mic-outline'
+          }
           size={moderateScale(20)}
           color={live ? LIVE_MIC_COLOR : theme.colors.text}
         />

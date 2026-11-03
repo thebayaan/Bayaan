@@ -46,6 +46,7 @@ import {USE_GLASS} from '@/hooks/useGlassProps';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useAdhkarStore} from '@/store/adhkarStore';
 import {AdhkarBentoCard} from '@/components/adhkar/AdhkarBentoCard';
+import {HifzHomeCard} from '@/components/hifz/HifzHomeCard';
 import {
   AdhkarNowPlayingCard,
   useHasAdhkarSession,
@@ -67,6 +68,7 @@ import {computeShelfLayout} from '@/utils/gridLayout';
  */
 const DEFAULT_HOME_ROW_CONFIG: readonly HomeRow[] = [
   {id: 'continue-listening', enabled: true},
+  {id: 'hifz', enabled: true},
   {id: 'new-to-quran', enabled: true},
   {id: 'favorites', enabled: true},
   {id: 'featured', enabled: true},
@@ -801,6 +803,8 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
           theme={theme}
         />
       ) : null,
+
+    hifz: <HifzHomeCard />,
 
     memorization:
       memorizationReciters.length > 0 ? (

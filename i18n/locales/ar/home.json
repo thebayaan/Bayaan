@@ -47,7 +47,9 @@
     "noRecentHint": "سيظهر سجل البحث هنا",
     "noResultsHint": "جرّب كلمات أخرى أو تحقّق من الإملاء",
     "all": "الكل",
-    "topResult": "أفضل نتيجة"
+    "topResult": "أفضل نتيجة",
+    "reciteToSearch": "ابحث بالتلاوة",
+    "reciteToSearchHint": "اتلُ بضع كلمات ويجد بيان الآية."
   },
   "systemPlaylist": {
     "invalidId": "معرّف قائمة التشغيل غير صالح",

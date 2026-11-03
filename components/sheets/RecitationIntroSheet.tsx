@@ -1,38 +1,20 @@
 import React from 'react';
 import {View, Text, Pressable, StyleSheet} from 'react-native';
 import {ScaledSheet, moderateScale} from '@/utils/scale';
-import ActionSheet, {
-  SheetManager,
-  SheetProps,
-} from 'react-native-actions-sheet';
+import {SheetManager, SheetProps} from 'react-native-actions-sheet';
+import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import {Feather} from '@expo/vector-icons';
 import Color from 'color';
+import {useTranslation} from 'react-i18next';
+import {RECITATION_DOWNLOAD_MB} from '@/constants/recitation';
 import {useTheme} from '@/hooks/useTheme';
+import {formatNumber} from '@/i18n/format';
 import {Theme} from '@/utils/themeUtils';
 
 interface IntroPoint {
   icon: React.ComponentProps<typeof Feather>['name'];
   text: string;
 }
-
-const POINTS: readonly IntroPoint[] = [
-  {
-    icon: 'book-open',
-    text: 'Recite and the page follows you, ayah by ayah and word by word, turning pages as you go.',
-  },
-  {
-    icon: 'lock',
-    text: 'Recognition runs on your phone. Your voice is never uploaded, and it works offline.',
-  },
-  {
-    icon: 'download',
-    text: 'Needs the microphone and a one-time 75 MB download.',
-  },
-  {
-    icon: 'info',
-    text: 'Follows Hafs recitation. It finds your place; it does not check tajweed.',
-  },
-];
 
 /**
  * First tap on the mushaf mic: explains Follow my recitation before asking
@@ -43,6 +25,18 @@ export const RecitationIntroSheet = (
 ): React.JSX.Element => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
+  const {t} = useTranslation('sheets');
+  const points: readonly IntroPoint[] = [
+    {icon: 'book-open', text: t('recitationIntro.follows')},
+    {icon: 'lock', text: t('recitationIntro.private')},
+    {
+      icon: 'download',
+      text: t('recitationIntro.download', {
+        size: formatNumber(RECITATION_DOWNLOAD_MB),
+      }),
+    },
+    {icon: 'info', text: t('recitationIntro.hafs')},
+  ];
 
   function close(start: boolean): void {
     void SheetManager.hide(props.sheetId, {payload: start});
@@ -55,10 +49,10 @@ export const RecitationIntroSheet = (
       indicatorStyle={styles.indicator}
       gestureEnabled={true}>
       <View style={styles.headerContainer}>
-        <Text style={styles.headerTitle}>Follow my recitation</Text>
+        <Text style={styles.headerTitle}>{t('recitationIntro.title')}</Text>
       </View>
       <View style={styles.container}>
-        {POINTS.map(point => (
+        {points.map(point => (
           <View key={point.icon} style={styles.point}>
             <Feather
               name={point.icon}
@@ -77,14 +71,16 @@ export const RecitationIntroSheet = (
               styles.primaryButtonText,
               {color: theme.colors.background},
             ]}>
-            Allow microphone and download
+            {t('recitationIntro.start')}
           </Text>
         </Pressable>
         <Pressable
           style={styles.secondaryButton}
           onPress={() => close(false)}
           accessibilityRole="button">
-          <Text style={styles.secondaryButtonText}>Not now</Text>
+          <Text style={styles.secondaryButtonText}>
+            {t('recitationIntro.notNow')}
+          </Text>
         </Pressable>
       </View>
     </ActionSheet>

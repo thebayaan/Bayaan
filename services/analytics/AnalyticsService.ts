@@ -33,6 +33,8 @@ import {
   RecitationTrackingStoppedProps,
   RecitationModelDownloadedProps,
   RecitationTrackingErrorProps,
+  RecitationIdentifyStartedProps,
+  RecitationIdentifyEndedProps,
 } from './events';
 import {localAggregationStore} from './LocalAggregationStore';
 import {MeaningfulListenTracker} from './MeaningfulListenTracker';
@@ -371,6 +373,16 @@ class AnalyticsServiceImpl {
 
   trackRecitationTrackingError(props: RecitationTrackingErrorProps): void {
     this.capture(ANALYTICS_EVENTS.RECITATION_TRACKING_ERROR, {...props});
+  }
+
+  // --- Which ayah? ---
+
+  trackRecitationIdentifyStarted(props: RecitationIdentifyStartedProps): void {
+    this.capture(ANALYTICS_EVENTS.RECITATION_IDENTIFY_STARTED, {...props});
+  }
+
+  trackRecitationIdentifyEnded(props: RecitationIdentifyEndedProps): void {
+    this.capture(ANALYTICS_EVENTS.RECITATION_IDENTIFY_ENDED, {...props});
   }
 
   // --- Helpers ---
