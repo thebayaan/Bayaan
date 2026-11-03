@@ -23,6 +23,7 @@ import {
   type AppStateStatus,
 } from 'react-native';
 import {runAfterInteractions} from '@/utils/afterInteractions';
+import {hideSplash, whenSplashHidden} from '@/utils/splashHidden'; // @ai
 import {useTheme} from '@/hooks/useTheme';
 // @ai-start
 import {LocaleDirContext, ThemeProvider} from 'expo-router/react-navigation';
@@ -61,6 +62,17 @@ import {useUploadsStore} from '@/store/uploadsStore';
 import {SheetManager} from 'react-native-actions-sheet';
 import {showToast} from '@/utils/toastUtils';
 import {mushafSessionStore} from '@/services/mushaf/MushafSessionStore';
+import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService'; // @ai
+// @ai-start
+import {
+  beginReaderRestore,
+  getReaderRestoreState,
+  noteReaderPushed,
+  readerRestoreHoldsSplash,
+  shouldPushReader,
+  subscribeReaderRestore,
+} from '@/services/mushaf/readerRestoreState';
+// @ai-end
 import {USE_GLASS} from '@/hooks/useGlassProps';
 import Constants from 'expo-constants';
 import * as Sentry from '@sentry/react-native';
@@ -173,6 +185,10 @@ function RootLayout() {
   // Start reloads after the root has mounted, when native reload listeners are
   // ready, rather than as a side effect of importing translation resources.
   useEffect(bootstrapDirection, []);
+  // The restore state of this launch (services/mushaf/readerRestoreState.ts).
+  // No route renders before the boot ends, so the home route never reads it
+  // before this runs.
+  useEffect(beginReaderRestore, []);
   const [appIsReady, setAppIsReady] = useState(false);
   const [isPlayerReady, setIsPlayerReady] = useState(false);
   const [mushafRestoreHandled, setMushafRestoreHandled] = useState(false);
@@ -239,6 +255,14 @@ function RootLayout() {
     };
   }, [appIsReady]);
 
+  // @ai-start
+  // The Mushaf load does not hold the splash. A screen that needs it sooner (a
+  // restored reader, a link) starts it itself.
+  useEffect(() => {
+    whenSplashHidden().then(() => mushafPreloadService.startIfIdle());
+  }, []);
+  // @ai-end
+
   // Tajweed data — defer until after first frame + interactions complete
   useEffect(() => {
     runAfterInteractions(() => {
@@ -256,7 +280,7 @@ function RootLayout() {
         !hasShareIntent &&
         mushafRestoreHandled
       ) {
-        await SplashScreen.hideAsync();
+        await hideSplash();
       }
     } catch (e) {
       if (__DEV__) console.warn('Error hiding splash screen:', e);
@@ -342,7 +366,7 @@ function RootLayout() {
         const files = shareIntent.files;
         if (!files || files.length === 0) {
           resetShareIntent();
-          await SplashScreen.hideAsync();
+          await hideSplash();
           return;
         }
 
@@ -350,7 +374,7 @@ function RootLayout() {
 
         if (audioFiles.length === 0) {
           resetShareIntent();
-          await SplashScreen.hideAsync();
+          await hideSplash();
           return;
         }
 
@@ -363,7 +387,7 @@ function RootLayout() {
             file.fileName || i18n.t('app.sharedAudio'),
           );
           resetShareIntent();
-          await SplashScreen.hideAsync();
+          await hideSplash();
           showToast(i18n.t('app.fileImported'));
           SheetManager.show('organize-recitation', {
             payload: {recitation},
@@ -375,14 +399,14 @@ function RootLayout() {
           }));
           await importFiles(mapped);
           resetShareIntent();
-          await SplashScreen.hideAsync();
+          await hideSplash();
           showToast(i18n.t('app.filesImported', {count: audioFiles.length}));
           router.push('/collection/uploads');
         }
       } catch (error) {
         console.error('[ShareIntent] Import failed:', error);
         resetShareIntent();
-        await SplashScreen.hideAsync();
+        await hideSplash();
       }
     };
 
@@ -401,30 +425,39 @@ function RootLayout() {
     if (!appIsReady || !isPlayerReady || hasShareIntent) return;
 
     let cancelled = false;
+    // @ai-start
+    // The restore state lets the splash go at the reader's first content or at
+    // its deadline. A first content hides the splash here, not after a root
+    // render: on a slow phone the next pages' builds hold that render.
+    const stopWatchingRestore = subscribeReaderRestore(() => {
+      if (readerRestoreHoldsSplash()) return;
+      if (getReaderRestoreState() === 'shown') {
+        hideSplash().catch(() => undefined);
+      }
+      setMushafRestoreHandled(true);
+    });
+    // @ai-end
     // A launch from a deep link (widget tap, notification) already routed
     // to its target; pushing the mushaf on top would hide it.
     Linking.getInitialURL()
       .catch(() => null)
       .then(initialUrl => {
         if (cancelled) return;
-        const lastScreenWasMushaf = mushafSessionStore.getLastScreenWasMushaf();
-        const lastReadPage = mushafSessionStore.getLastReadPage();
-
-        if (!lastScreenWasMushaf || initialUrl) {
-          setMushafRestoreHandled(true);
-          return;
+        // @ai-start
+        if (shouldPushReader(initialUrl)) {
+          const lastReadPage = mushafSessionStore.getLastReadPage();
+          router.push({
+            pathname: '/mushaf',
+            params: lastReadPage ? {page: String(lastReadPage)} : undefined,
+          });
+          noteReaderPushed();
         }
-        router.push({
-          pathname: '/mushaf',
-          params: lastReadPage ? {page: String(lastReadPage)} : undefined,
-        });
-        // Let the navigation animation finish behind the splash before revealing
-        runAfterInteractions(() => {
-          setMushafRestoreHandled(true);
-        });
+        if (!readerRestoreHoldsSplash()) setMushafRestoreHandled(true);
+        // @ai-end
       });
     return () => {
       cancelled = true;
+      stopWatchingRestore(); // @ai
     };
   }, [appIsReady, isPlayerReady, hasShareIntent]);
 
@@ -439,7 +472,7 @@ function RootLayout() {
       !hasShareIntent &&
       mushafRestoreHandled
     ) {
-      SplashScreen.hideAsync().catch(() => {});
+      hideSplash().catch(() => {});
     }
   }, [
     appIsReady,
@@ -450,7 +483,7 @@ function RootLayout() {
   ]);
 
   if (fontError) {
-    SplashScreen.hideAsync();
+    hideSplash();
     return (
       <View style={{flex: 1, alignItems: 'center', justifyContent: 'center'}}>
         <Text>{i18n.t('app.fontError')}</Text>
@@ -459,7 +492,7 @@ function RootLayout() {
   }
 
   if (setupError) {
-    SplashScreen.hideAsync();
+    hideSplash();
     return (
       <View style={{flex: 1, alignItems: 'center', justifyContent: 'center'}}>
         <Text>{i18n.t('app.initError', {message: setupError.message})}</Text>

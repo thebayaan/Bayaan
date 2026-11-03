@@ -82,6 +82,8 @@ import {
 } from '@/services/mushaf/QCFFontLoader'; // @ai
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
 // @ai-start
+import {noteReaderFirstContent} from '@/services/mushaf/readerRestoreState';
+import {useFirstContent} from '@/hooks/useFirstContent';
 import {appLayoutDirection, isRTL} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
 import i18n from '@/i18n';
@@ -184,6 +186,7 @@ const DKPageView: React.FC<{
   isBookLayout: boolean;
   metrics: MushafLayoutMetrics;
   onTap?: () => void;
+  onFirstContent?: () => void;
 }> = ({
   pageNumber,
   textColor,
@@ -197,11 +200,15 @@ const DKPageView: React.FC<{
   isBookLayout,
   metrics,
   onTap,
+  onFirstContent,
 }) => {
   const [pageReady, setPageReady] = useState(false);
   const insets = useSafeAreaInsets();
   const mushafRenderer = useMushafSettingsStore(s => s.mushafRenderer);
   const isQCF = mushafRenderer === 'qcf_v2';
+  // A Skia page has opacity 0 until it is ready, so this reports after the
+  // commit that shows it. QCFPage reports for itself.
+  useFirstContent(pageReady && !isQCF, onFirstContent);
 
   const {isRightPage, contentMarginLeft} = useMemo(
     () => getPageEdgeLayout(pageNumber),
@@ -297,6 +304,7 @@ const DKPageView: React.FC<{
           contentMarginLeft={effectiveMarginLeft}
           onReady={() => setPageReady(true)}
           onTap={onTap}
+          onFirstContent={onFirstContent}
         />
       ) : (
         <SkiaPage
@@ -392,6 +400,7 @@ const DKSpreadView: React.FC<{
   isBookLayout: boolean;
   metrics: MushafLayoutMetrics;
   onTap?: () => void;
+  onFirstContent?: () => void;
 }> = ({
   pageNumber,
   leftPageNumber,
@@ -404,8 +413,16 @@ const DKSpreadView: React.FC<{
   isBookLayout,
   metrics,
   onTap,
+  onFirstContent,
 }) => {
   const spreadBg = isBookLayout ? edgeBg : cardColor;
+  // Two facing pages report once, when both have content: half a spread is not
+  // the page the user asked for. Each page reports once, so a count is enough.
+  const facingPagesReportedRef = useRef(0);
+  const handleFacingPageContent = useCallback(() => {
+    facingPagesReportedRef.current += 1;
+    if (facingPagesReportedRef.current === 2) onFirstContent?.();
+  }, [onFirstContent]);
 
   // Phone landscape: full-width scrollable page.
   if (metrics.scrollContainerHeight) {
@@ -432,6 +449,7 @@ const DKSpreadView: React.FC<{
           isBookLayout={isBookLayout}
           metrics={metrics}
           onTap={onTap}
+          onFirstContent={onFirstContent}
         />
       </ScrollView>
     );
@@ -456,6 +474,7 @@ const DKSpreadView: React.FC<{
         isBookLayout={isBookLayout}
         metrics={metrics}
         onTap={onTap}
+        onFirstContent={onFirstContent}
       />
     );
   }
@@ -489,6 +508,7 @@ const DKSpreadView: React.FC<{
           isBookLayout={isBookLayout}
           metrics={metrics}
           onTap={onTap}
+          onFirstContent={handleFacingPageContent}
         />
         <View style={{width: metrics.facingGap, height: '100%'}} />
         <DKPageView
@@ -504,6 +524,7 @@ const DKSpreadView: React.FC<{
           isBookLayout={isBookLayout}
           metrics={metrics}
           onTap={onTap}
+          onFirstContent={handleFacingPageContent}
         />
       </View>
     );
@@ -531,6 +552,7 @@ const DKSpreadView: React.FC<{
         isBookLayout={isBookLayout}
         metrics={metrics}
         onTap={onTap}
+        onFirstContent={onFirstContent}
       />
     </View>
   );
@@ -1282,6 +1304,7 @@ export default function MushafViewer({
           onCurrentPageChange={handleContinuousPageChange}
           metrics={scrollMetrics} // @ai
           scrollsToTop={scrollsToTop} // @ai
+          onFirstContent={noteReaderFirstContent} // @ai
         />
       ) : isVertical && viewMode === 'list' ? (
         <ContinuousListView
@@ -1295,6 +1318,7 @@ export default function MushafViewer({
           onCurrentPageChange={handleContinuousPageChange}
           width={readingPageSize?.width} // @ai
           scrollsToTop={scrollsToTop} // @ai
+          onFirstContent={noteReaderFirstContent} // @ai
         />
       ) : metrics.facingPages && viewMode === 'mushaf' ? (
         <FlatList
@@ -1314,6 +1338,7 @@ export default function MushafViewer({
               isBookLayout={isBookLayout}
               metrics={metrics}
               onTap={toggleImmersive}
+              onFirstContent={noteReaderFirstContent} // @ai
             />
           )}
           keyExtractor={item => `spread-${item.right}`}
@@ -1359,6 +1384,7 @@ export default function MushafViewer({
                   isBookLayout={isBookLayout}
                   onTap={toggleImmersive}
                   pageSize={readingPageSize} // @ai
+                  onFirstContent={noteReaderFirstContent} // @ai
                 />
               );
             }
@@ -1374,6 +1400,7 @@ export default function MushafViewer({
                 isBookLayout={isBookLayout}
                 metrics={metrics}
                 onTap={toggleImmersive}
+                onFirstContent={noteReaderFirstContent} // @ai
               />
             );
           }}

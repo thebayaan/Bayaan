@@ -4,6 +4,7 @@ import React, {
   useRef,
   useEffect,
   useImperativeHandle,
+  useState, // @ai
   useSyncExternalStore,
   forwardRef,
 } from 'react';
@@ -17,6 +18,7 @@ import {
   type SkTypefaceFontProvider,
 } from '@shopify/react-native-skia';
 import {useMushafFontMgr} from '@/hooks/useMushafFontMgr';
+import {useFirstContent} from '@/hooks/useFirstContent'; // @ai
 import {Gesture, GestureDetector} from 'react-native-gesture-handler';
 import {runOnJS} from 'react-native-worklets';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -186,6 +188,7 @@ interface ContinuousMushafViewProps {
   metrics: MushafLayoutMetrics;
   /** Whether a tap on the status bar scrolls back to page 1. Default on. @ai */
   scrollsToTop?: boolean; // @ai
+  onFirstContent?: () => void; // @ai
 }
 
 // ── Per-page content with gestures + highlights ──────────
@@ -706,6 +709,7 @@ const ContinuousMushafView = forwardRef<
       onCurrentPageChange,
       metrics,
       scrollsToTop = true, // @ai
+      onFirstContent, // @ai
     },
     ref,
   ) => {
@@ -718,6 +722,14 @@ const ContinuousMushafView = forwardRef<
     // Subscribe to preloaded fontMgr; no useFonts fallback that races
     // at first-mount.
     const fontMgr = useMushafFontMgr();
+
+    // @ai-start
+    // FlashList raises onLoad once it has drawn the visible items. The list
+    // mounts after the fonts (below), so the items have their text by then.
+    const [listDrawn, setListDrawn] = useState(false);
+    const handleListLoad = useCallback(() => setListDrawn(true), []);
+    useFirstContent(listDrawn, onFirstContent);
+    // @ai-end
 
     // Surah header fonts (computed once from quranCommon typeface).
     // `fontMgr` dep mirrors the SkiaPage memo: when the preload completes
@@ -877,6 +889,14 @@ const ContinuousMushafView = forwardRef<
 
     const keyExtractor = useCallback((item: number) => `page-${item}`, []);
 
+    // @ai-start
+    // An item with no fontMgr draws nothing and has no height, so a list mounted
+    // now would mount all 604 pages to fill the screen, then draw them all when
+    // the fonts arrive. The reader can open before them: they finish after the
+    // data.
+    if (!fontMgr) return null;
+    // @ai-end
+
     return (
       <FlashList
         ref={flashListRef}
@@ -893,6 +913,7 @@ const ContinuousMushafView = forwardRef<
         scrollsToTop={scrollsToTop} // @ai
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={{itemVisiblePercentThreshold: 50}}
+        onLoad={handleListLoad} // @ai
       />
     );
   },

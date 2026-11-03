@@ -53,6 +53,7 @@ import {
 import {useRewayahVerseUnits} from '@/hooks/useRewayahVerseUnits';
 import {shownVerseUnitsOf} from '@/services/mushaf/MushafVerseMapService';
 import {isVerseUnitRow} from '@/components/player/v2/PlayerContent/QuranView/verseUnitRows';
+import {useFirstContent} from '@/hooks/useFirstContent';
 import {playbackBandUnitKeys} from '../skia/verseHighlightLayers';
 import {usePlaybackBand} from '../skia/playbackBand';
 import {readingPageUnitItems, themeHafsKeyOfRow} from './mushafVerseUnitRows';
@@ -83,6 +84,7 @@ interface ReadingPageViewProps {
    * size.
    */
   pageSize?: {width: number; height: number};
+  onFirstContent?: () => void;
   // @ai-end
 }
 
@@ -100,6 +102,7 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
   isBookLayout,
   onTap,
   pageSize,
+  onFirstContent,
 }) => {
   const {theme} = useTheme();
   const insets = useSafeAreaInsets();
@@ -206,6 +209,18 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
         : getReadingPageItems(pageNumber),
     [pageNumber, unitsRewayah, pageUnits],
   );
+
+  // @ai-start
+  // The page's rows, or the message of a rewayah whose verse units failed. A
+  // spinner is no content: the restore deadline covers a long wait.
+  useFirstContent(
+    !unitsRewayah ||
+      pageUnits !== null ||
+      verseUnitsStatus === 'error' ||
+      verseUnitsStatus === 'unavailable',
+    onFirstContent,
+  );
+  // @ai-end
 
   const {isRightPage} = useMemo(
     () => getPageEdgeLayout(pageNumber),

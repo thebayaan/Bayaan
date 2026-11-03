@@ -96,6 +96,7 @@ const BookmarksScreen = () => {
 
   useFocusEffect(
     useCallback(() => {
+      openingRef.current = false; // @ai: ignores taps after one opened the reader
       loadBookmarks();
     }, [loadBookmarks]),
   );
@@ -108,17 +109,13 @@ const BookmarksScreen = () => {
 
   // @ai-start
   const handleOpenBookmark = useCallback(
-    async (bookmark: VerseBookmark) => {
+    (bookmark: VerseBookmark) => {
       if (openingRef.current) return;
       openingRef.current = true;
-      try {
-        router.push({
-          pathname: '/mushaf',
-          params: await savedVerseOpenParams(bookmark),
-        });
-      } finally {
-        openingRef.current = false;
-      }
+      router.push({
+        pathname: '/mushaf',
+        params: savedVerseOpenParams(bookmark),
+      });
     },
     [router],
   );

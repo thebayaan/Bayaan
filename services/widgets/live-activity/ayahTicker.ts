@@ -33,6 +33,8 @@ export interface AyahTickerDeps {
 
 export interface AyahTicker {
   onSnapshot: (snapshot: WidgetSnapshot) => void;
+  /** The verse text may have changed (the Mushaf data is ready). */
+  tick: () => void;
   stop: () => void;
 }
 
@@ -42,7 +44,7 @@ export function createAyahTicker(deps: AyahTickerDeps): AyahTicker {
   let trackKey: string | null = null;
   let timestamps: AyahTimestamp[] | null = null;
   let numbering: TimingNumbering | null = null;
-  let lastNumber: number | null = null;
+  let lastShown: string | null = null;
   let stopped = false;
 
   function clear(): void {
@@ -51,9 +53,10 @@ export function createAyahTicker(deps: AyahTickerDeps): AyahTicker {
   }
 
   function publish(next: NowPlayingAyah | null): void {
-    const number = next ? next.number : null;
-    if (number === lastNumber) return;
-    lastNumber = number;
+    // What is shown: the ayah number, and whether it has text yet.
+    const shown = next ? `${next.number}:${next.text ? 'text' : 'none'}` : null;
+    if (shown === lastShown) return;
+    lastShown = shown;
     deps.setAyah(next);
   }
 
@@ -131,6 +134,7 @@ export function createAyahTicker(deps: AyahTickerDeps): AyahTicker {
 
   return {
     onSnapshot,
+    tick,
     stop: () => {
       stopped = true;
       clear();
