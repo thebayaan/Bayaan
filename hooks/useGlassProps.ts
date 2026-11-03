@@ -2,7 +2,6 @@ import {Platform} from 'react-native';
 import {isLiquidGlassAvailable} from 'expo-glass-effect';
 import {useThemeStore} from '@/store/themeStore';
 import {useTheme} from '@/hooks/useTheme'; // @ai
-import {useGlassTintStore} from '@/store/glassTintStore'; // @ai
 
 /** Whether the current device supports liquid glass (iOS 26+). */
 export const USE_GLASS = Platform.OS === 'ios' && isLiquidGlassAvailable();
@@ -26,13 +25,17 @@ export function useGlassColorScheme(): 'auto' | 'light' | 'dark' {
 
 // @ai-start
 /**
- * `tintColor` for every GlassView we draw: a dark wash, since plain
- * `regular` glass reads lighter than other apps'. The alpha per theme lives
- * in store/glassTintStore.
+ * Dark wash laid over our own glass, as rgba alpha: plain `regular` glass
+ * reads lighter than other apps'. Dark themes take 0.20; light themes keep
+ * the plain glass.
  */
+export const GLASS_TINT_ALPHA = {dark: 0.2, light: 0};
+
+/** `tintColor` for every GlassView we draw. */
 export function useGlassTint(): string {
   const isDark = useTheme().theme.isDarkMode;
-  const alpha = useGlassTintStore(s => (isDark ? s.dark : s.light));
-  return `rgba(0,0,0,${alpha})`;
+  return `rgba(0,0,0,${
+    isDark ? GLASS_TINT_ALPHA.dark : GLASS_TINT_ALPHA.light
+  })`;
 }
 // @ai-end
