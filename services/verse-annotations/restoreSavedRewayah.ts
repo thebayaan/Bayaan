@@ -3,7 +3,10 @@
 // (restoreBookmarkRewayah) so that every way of opening a saved verse (the
 // Bookmarks list and the bookmark chips of the mushaf search) restores its
 // rewayah the same way before selecting the verse.
-import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
+import {
+  digitalKhattDataService,
+  isRewayahSwitchSuperseded,
+} from '@/services/mushaf/DigitalKhattDataService';
 import {hasTextData} from '@/services/rewayah/RewayahIdentity';
 import {
   REWAYAH_FALLBACK_RENDERER_LABEL,
@@ -56,6 +59,8 @@ export async function restoreSavedRewayah(
   try {
     await digitalKhattDataService.switchRewayah(savedRewayah);
   } catch (err) {
+    // @ai A newer open took over this switch, so nothing failed.
+    if (isRewayahSwitchSuperseded(err)) return;
     console.error('[Bookmarks] Failed to switch rewayah:', err);
     // Put the data service back on the store's rewayah if the failed switch
     // moved it (a no-op when the service rolled back by itself).
