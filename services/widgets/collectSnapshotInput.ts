@@ -22,19 +22,57 @@ import {
   SnapshotInput,
 } from './buildSnapshot';
 import {isWidgetEnabled} from './enabledWidgets';
+import {createMMKV, type MMKV} from 'react-native-mmkv'; // @ai
 
 const OPENING_WORDS = 6;
 const countsForToday = createCountDayTracker();
 
+// @ai-start
+// The Mushaf data loads after the splash, so a snapshot can come before it. The
+// last text of the page stays, so the widget keeps its line if the process ends
+// before the load. Opens lazily: a throw must not stop a snapshot.
+let openingStore: MMKV | null | undefined;
+function lastOpeningStore(): MMKV | null {
+  if (openingStore !== undefined) return openingStore;
+  try {
+    openingStore = createMMKV({id: 'widget-opening'});
+  } catch {
+    openingStore = null;
+  }
+  return openingStore;
+}
+
+function rememberOpening(page: number, text: string): void {
+  const store = lastOpeningStore();
+  if (!store) return;
+  if (store.getNumber('page') === page && store.getString('text') === text) {
+    return;
+  }
+  store.set('page', page);
+  store.set('text', text);
+}
+// @ai-end
+
 function openingTextForPage(page: number): string {
-  if (!digitalKhattDataService.initialized) return '';
+  // @ai-start
+  if (!digitalKhattDataService.initialized) {
+    const store = lastOpeningStore();
+    return store?.getNumber('page') === page
+      ? (store.getString('text') ?? '')
+      : '';
+  }
+  // @ai-end
   const firstKey = mushafVerseMapService.getOrderedVerseKeysForPage(page)[0];
   if (!firstKey) return '';
-  return digitalKhattDataService
+  // @ai-start
+  const text = digitalKhattDataService
     .getVerseText(firstKey)
     .split(' ')
     .slice(0, OPENING_WORDS)
     .join(' ');
+  if (text) rememberOpening(page, text);
+  return text;
+  // @ai-end
 }
 
 // @ai-start

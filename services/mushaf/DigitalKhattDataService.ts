@@ -1266,7 +1266,11 @@ export class DigitalKhattDataService {
   }
 
   private async openDb(name: string): Promise<SQLite.SQLiteDatabase> {
-    const db = await SQLite.openDatabaseAsync(name);
+    // @ai A connection of its own. A rewayah can load again while its store is
+    // open in the side cache. With the shared connection, the garbage
+    // collection of the old JS object closes the native connection (Android)
+    // under the new store.
+    const db = await SQLite.openDatabaseAsync(name, {useNewConnection: true});
     this.openDbCounts.set(name, (this.openDbCounts.get(name) ?? 0) + 1);
     return db;
   }
