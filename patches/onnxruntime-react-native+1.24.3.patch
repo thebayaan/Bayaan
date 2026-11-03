@@ -25,6 +25,40 @@ index 41b4359..96f1868 100644
    }
  }
  
+diff --git a/node_modules/onnxruntime-react-native/ios/OnnxruntimeModule.mm b/node_modules/onnxruntime-react-native/ios/OnnxruntimeModule.mm
+index 8155f92..c31cb00 100644
+--- a/node_modules/onnxruntime-react-native/ios/OnnxruntimeModule.mm
++++ b/node_modules/onnxruntime-react-native/ios/OnnxruntimeModule.mm
+@@ -10,6 +10,12 @@
+ #import <ReactCommon/RCTTurboModule.h>
+ #import <jsi/jsi.h>
+ 
++// React Native 0.88 removed RCTCxxBridge. The bridgeless RCTBridgeProxy (and
++// the old bridge) still answer -runtime, so ask for it by selector.
++@protocol OrtJSIRuntimeProvider <NSObject>
++- (void*)runtime;
++@end
++
+ @implementation OnnxruntimeModule
+ 
+ @synthesize bridge = _bridge;
+@@ -27,12 +33,13 @@ - (void)setBridge:(RCTBridge*)bridge {
+  */
+ RCT_EXPORT_BLOCKING_SYNCHRONOUS_METHOD(install) {
+   @try {
+-    RCTCxxBridge* cxxBridge = (RCTCxxBridge*)_bridge;
+-    if (cxxBridge == nil) {
++    id bridge = _bridge;
++    if (bridge == nil || ![bridge respondsToSelector:@selector(runtime)]) {
+       return @false;
+     }
+ 
+-    auto jsiRuntime = (facebook::jsi::Runtime*)cxxBridge.runtime;
++    auto jsiRuntime =
++        (facebook::jsi::Runtime*)[(id<OrtJSIRuntimeProvider>)bridge runtime];
+     if (jsiRuntime == nil) {
+       return @false;
+     }
 diff --git a/node_modules/onnxruntime-react-native/onnxruntime-react-native.podspec b/node_modules/onnxruntime-react-native/onnxruntime-react-native.podspec
 index 58bbbda..f9c08ca 100644
 --- a/node_modules/onnxruntime-react-native/onnxruntime-react-native.podspec
