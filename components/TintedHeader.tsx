@@ -16,8 +16,8 @@ import {moderateScale} from '@/utils/scale';
 import {flipX} from '@/utils/rtl';
 
 // iOS draws its own untinted glass behind header buttons. These helpers hide
-// that glass and draw ours instead, tinted with the shared glass tint (and
-// its dial), like the Mushaf title pill.
+// that glass and draw ours instead, tinted with the shared glass tint, like
+// the Mushaf title pill.
 
 /** Height of every tinted header item: the back button and the action pill. */
 export const HEADER_ITEM_SIZE = moderateScale(40);

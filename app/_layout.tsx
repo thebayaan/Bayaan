@@ -34,7 +34,6 @@ import {
   WhatsNewModalRef,
 } from '@/components/modals/WhatsNewOnboarding';
 import {DevMenu} from '@/components/DevMenu';
-import {GlassTintDial} from '@/components/GlassTintDial'; // @ai
 import {SheetProvider} from 'react-native-actions-sheet';
 import {recordTouch} from '@/utils/lastTouch'; // @ai
 import {useResponsive} from '@/hooks/useResponsive'; // @ai
@@ -587,7 +586,6 @@ function RootLayout() {
                     {keyCommandsSupported() && <AppKeyCommands />}
                     <WhatsNewModal ref={whatsNewModalRef} />
                     <DevMenu whatsNewModalRef={whatsNewModalRef} />
-                    <GlassTintDial /* @ai: temporary tint dial */ />
                   </SheetProvider>
                 </GestureHandlerRootView>
               </ExpoAudioProvider>
