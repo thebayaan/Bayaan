@@ -15,22 +15,10 @@ import ActionSheet, {
   useSheetWidth,
 } from '@/components/sheets/AdaptiveActionSheet';
 import {Feather, Ionicons} from '@expo/vector-icons';
-import {useLoved} from '@/hooks/useLoved';
-import {useReciterNavigation} from '@/hooks/useReciterNavigation';
-import {
-  useDownloadActions,
-  useDownloadProgress,
-  useIsDownloaded,
-  useIsDownloadedWithRewayat,
-  useIsDownloading,
-} from '@/services/player/store/downloadSelectors';
-import {downloadSurah} from '@/services/downloadService';
 import {getReciterName} from '@/services/dataService';
 import Color from 'color';
 import {CircularProgress} from '@/components/CircularProgress';
 import {getReciterByIdSync} from '@/services/dataService';
-import {recitationShareUrl, shareUrl} from '@/utils/shareUtils';
-import branding from '@/config/branding';
 import RenderHtml, {
   MixedStyleDeclaration,
   RenderHTMLProps,
@@ -38,6 +26,7 @@ import RenderHtml, {
 } from 'react-native-render-html';
 // @ai-start
 import {useTranslation} from 'react-i18next';
+import {useSurahOptions} from './options/surahOptions'; // @ai
 import {
   getReciterDisplayName,
   getSurahDisplayName,
@@ -76,56 +65,10 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
   const {t} = useTranslation(['sheets', 'common']);
   // Size HTML from the sheet, which stops at 560pt on iPad. @ai
   const width = useSheetWidth(); // @ai
-  const [showSurahInfo, setShowSurahInfo] = useState(false);
-
-  // Extract payload - these hooks only run when sheet is shown
   const payload = props.payload;
+  const [showSurahInfo, setShowSurahInfo] = useState(!!payload?.showInfo); // @ai
   const surah = payload?.surah;
-  const reciterId = payload?.reciterId;
-  const rewayatId = payload?.rewayatId;
-  const onAddToQueue = payload?.onAddToQueue;
-  const onRemoveFromPlaylist = payload?.onRemoveFromPlaylist;
-
-  const surahId = surah?.id?.toString() ?? '';
   const currentSurahInfo = surah ? surahInfo[surah.id] : null;
-
-  const downloadId = React.useMemo(
-    () =>
-      reciterId
-        ? rewayatId
-          ? `${reciterId}-${surahId}-${rewayatId}`
-          : `${reciterId}-${surahId}`
-        : '__none__',
-    [reciterId, surahId, rewayatId],
-  );
-
-  const {navigateToReciterProfile} = useReciterNavigation();
-
-  // These expensive hooks now only run when sheet is actually open
-  const {isLoved, isLovedWithRewayat, toggleLoved} = useLoved();
-  const downloadProgress = useDownloadProgress(downloadId);
-  const isTrackDownloadedBase = useIsDownloaded(
-    reciterId || '__none__',
-    surahId,
-  );
-  const isTrackDownloadedRewayat = useIsDownloadedWithRewayat(
-    reciterId || '__none__',
-    surahId,
-    rewayatId || '',
-  );
-  const isTrackDownloaded = rewayatId
-    ? isTrackDownloadedRewayat
-    : isTrackDownloadedBase;
-  const isCurrentlyDownloading = useIsDownloading(downloadId);
-  const {setDownloading, addDownload, clearDownloading, setDownloadProgress} =
-    useDownloadActions();
-
-  // Calculate loved state
-  const isLovedState = reciterId
-    ? rewayatId
-      ? isLovedWithRewayat(reciterId, surahId, rewayatId)
-      : isLoved(reciterId, surahId)
-    : false;
 
   const tagsStyles = useMemo(
     () => ({
@@ -161,116 +104,30 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
     SheetManager.hide('surah-options');
   }, []);
 
-  const handleAddToQueue = useCallback(() => {
-    handleClose();
-    if (onAddToQueue && surah) {
-      onAddToQueue(surah).catch(error => {
-        console.error('Error adding to queue:', error);
-      });
-    }
-  }, [onAddToQueue, surah, handleClose]);
+  // @ai-start
+  // Shared with the tablet menu (options/surahOptions.tsx).
+  const {
+    reciterId,
+    isLovedState,
+    isTrackDownloaded,
+    isCurrentlyDownloading,
+    downloadProgress,
+    handleAddToQueue,
+    handleToggleLove,
+    handleDownload,
+    handleGoToReciter,
+    handleRemoveFromPlaylist,
+    handleAddToPlaylist,
+    handleShare,
+  } = useSurahOptions(payload, handleClose);
+  const rewayatId = payload?.rewayatId;
+  const onAddToQueue = payload?.onAddToQueue;
+  const onRemoveFromPlaylist = payload?.onRemoveFromPlaylist;
+  // @ai-end
 
   const handleViewInfo = useCallback(() => {
     setShowSurahInfo(true);
   }, []);
-
-  const handleToggleLove = useCallback(() => {
-    if (!reciterId) return;
-    toggleLoved(reciterId, surahId, rewayatId || '');
-  }, [reciterId, surahId, toggleLoved, rewayatId]);
-
-  const handleDownload = useCallback(async () => {
-    if (!reciterId || !surah) return;
-
-    if (isTrackDownloaded) {
-      console.log('Track already downloaded');
-      return;
-    }
-
-    if (isCurrentlyDownloading) {
-      console.log('Track is already downloading');
-      return;
-    }
-
-    try {
-      setDownloading(downloadId);
-
-      const downloadResult = await downloadSurah(
-        surah.id,
-        reciterId,
-        rewayatId,
-        progress => {
-          setDownloadProgress(downloadId, progress);
-        },
-      );
-
-      addDownload({
-        reciterId,
-        surahId: surahId,
-        rewayatId: rewayatId || '',
-        filePath: downloadResult.filePath,
-        fileSize: downloadResult.fileSize,
-        downloadDate: Date.now(),
-        status: 'completed',
-      });
-
-      clearDownloading(downloadId);
-    } catch (error) {
-      console.error('Download failed:', error);
-      clearDownloading(downloadId);
-    }
-  }, [
-    reciterId,
-    surah,
-    surahId,
-    rewayatId,
-    isTrackDownloaded,
-    isCurrentlyDownloading,
-    setDownloading,
-    addDownload,
-    clearDownloading,
-    setDownloadProgress,
-    downloadId,
-  ]);
-
-  const handleGoToReciter = useCallback(() => {
-    handleClose();
-    if (reciterId) {
-      navigateToReciterProfile(reciterId);
-    }
-  }, [handleClose, reciterId, navigateToReciterProfile]);
-
-  const handleRemoveFromPlaylist = useCallback(() => {
-    handleClose();
-    onRemoveFromPlaylist?.();
-  }, [onRemoveFromPlaylist, handleClose]);
-
-  const handleAddToPlaylist = useCallback(() => {
-    if (!reciterId || !surah) return;
-    SheetManager.show('select-playlist', {
-      payload: {
-        surah,
-        reciterId,
-        rewayatId,
-      },
-    });
-  }, [reciterId, surah, rewayatId]);
-
-  const handleShare = useCallback(() => {
-    if (!reciterId || !rewayatId || !surah) return;
-    const reciter = getReciterByIdSync(reciterId);
-    if (!reciter?.slug) return;
-    const rewayat = reciter.rewayat.find(rw => rw.id === rewayatId);
-    if (!rewayat) return;
-    const url = recitationShareUrl(reciter.slug, surah.id, rewayat.id);
-    shareUrl(
-      url,
-      t('options.shareListenSurah', {
-        surah: getSurahDisplayName(surah),
-        appName: branding.appName,
-      }),
-    );
-  }, [reciterId, rewayatId, surah, t]);
 
   const handleSheetChange = useCallback((index: number) => {
     if (index === -1) {

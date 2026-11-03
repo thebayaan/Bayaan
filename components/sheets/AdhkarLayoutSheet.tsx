@@ -1,12 +1,6 @@
 import React, {useMemo} from 'react';
-import {
-  View,
-  Text,
-  Dimensions,
-  Switch,
-  Pressable,
-  StyleSheet,
-} from 'react-native';
+import {View, Text, Dimensions, Pressable, StyleSheet} from 'react-native';
+import {NativeSwitch} from '@/components/native/NativeSwitch'; // @ai
 import {ScaledSheet, moderateScale, verticalScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
@@ -148,11 +142,6 @@ export const AdhkarLayoutSheet = (props: SheetProps<'adhkar-layout'>) => {
     setTransliterationFontSize,
   } = useAdhkarSettingsStore();
 
-  const trackColor = {
-    false: Color(theme.colors.text).alpha(0.1).toString(),
-    true: Color(theme.colors.text).alpha(0.65).toString(),
-  };
-
   return (
     <ActionSheet
       id={props.sheetId}
@@ -193,10 +182,7 @@ export const AdhkarLayoutSheet = (props: SheetProps<'adhkar-layout'>) => {
                 <Text style={styles.optionLabel}>
                   {t('adhkarLayout.showTranslation')}
                 </Text>
-                <Switch
-                  trackColor={trackColor}
-                  thumbColor="#FFFFFF"
-                  ios_backgroundColor={trackColor.false}
+                <NativeSwitch
                   onValueChange={toggleTranslation}
                   value={showTranslation}
                   style={styles.switchStyle}
@@ -226,10 +212,7 @@ export const AdhkarLayoutSheet = (props: SheetProps<'adhkar-layout'>) => {
                 <Text style={styles.optionLabel}>
                   {t('adhkarLayout.showTransliteration')}
                 </Text>
-                <Switch
-                  trackColor={trackColor}
-                  thumbColor="#FFFFFF"
-                  ios_backgroundColor={trackColor.false}
+                <NativeSwitch
                   onValueChange={toggleTransliteration}
                   value={showTransliteration}
                   style={styles.switchStyle}

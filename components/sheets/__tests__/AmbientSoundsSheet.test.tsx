@@ -50,7 +50,9 @@ jest.mock('@/services/player/store/playerStore', () => ({
   usePlayerStore: {getState: () => ({playback: {state: 'playing'}})},
 }));
 jest.mock('react-native-svg', () => new Proxy({}, {get: () => () => null}));
-jest.mock('@react-native-community/slider', () => () => null);
+jest.mock('@/components/native/NativeSlider', () => ({
+  NativeSlider: () => null,
+}));
 
 import {AmbientSoundsSheet} from '../AmbientSoundsSheet';
 

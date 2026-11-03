@@ -17,7 +17,9 @@ jest.mock('@/hooks/usePlayerActions', () => ({
   usePlayerActions: () => ({updateQueue: mockUpdateQueue, play: mockPlay}),
 }));
 jest.mock('@/services/player/store/recentlyPlayedStore', () => ({
-  useRecentlyPlayedStore: () => ({startNewChain: jest.fn()}),
+  useRecentlyPlayedStore: (
+    select: (state: {startNewChain: jest.Mock}) => unknown,
+  ) => select({startNewChain: jest.fn()}),
 }));
 jest.mock('@/utils/track', () => ({
   createTracksForReciter: jest.fn(async () => [{id: 't'}]),

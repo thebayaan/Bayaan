@@ -28,6 +28,10 @@ import * as Haptics from 'expo-haptics';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {Link} from 'expo-router';
 import {USE_GLASS} from '@/hooks/useGlassProps';
+// @ai-start
+import {useSurahOptionsContext} from '@/components/sheets/options/SurahOptionsContext';
+import {useNativeOptionsMenu} from '@/components/sheets/options/OptionsMenu';
+// @ai-end
 
 import {NowPlayingIndicator} from '@/components/NowPlayingIndicator';
 import {GradientText} from '@/components/GradientText';
@@ -319,6 +323,14 @@ export const SurahCard: React.FC<SurahCardProps> = ({
       borderRadius: moderateScale(8),
       backgroundColor: Color(theme.colors.textSecondary).alpha(0.08).toString(),
     },
+    // @ai-start
+    optionsHitArea: {
+      top: -12,
+      bottom: -12,
+      left: -12,
+      right: -12,
+    },
+    // @ai-end
     nowPlayingContainer: {
       position: 'absolute',
       bottom: moderateScale(6),
@@ -329,6 +341,27 @@ export const SurahCard: React.FC<SurahCardProps> = ({
       justifyContent: 'center',
     },
   });
+
+  // @ai-start
+  // Tablets open the options as a native menu from the ••• button.
+  const options = useSurahOptionsContext();
+  const optionsPayload =
+    onOptionsPress && options && SURAHS[id - 1]
+      ? options.build(SURAHS[id - 1], {reciterId, rewayatId})
+      : null;
+  const tapMenu = useNativeOptionsMenu('tap') && !!optionsPayload;
+  const optionsMenu =
+    tapMenu && options ? (
+      <options.Menu
+        payload={optionsPayload}
+        layout="overlay"
+        // Reaches past the small button toward a 44pt target (§7.1).
+        style={styles.optionsHitArea}
+        accessibilityLabel={t('surahItem.moreOptions')}>
+        <View />
+      </options.Menu>
+    ) : null;
+  // @ai-end
 
   const handleOptionsPressWrapper = (e: GestureResponderEvent) => {
     e.stopPropagation();
@@ -419,25 +452,29 @@ export const SurahCard: React.FC<SurahCardProps> = ({
       {isCurrentTrack ? (
         <TouchableOpacity
           style={styles.nowPlayingContainer}
-          onPress={onOptionsPress ? handleOptionsPressWrapper : undefined}
+          onPress={
+            onOptionsPress && !tapMenu ? handleOptionsPressWrapper : undefined
+          }
           activeOpacity={0.7}>
           <NowPlayingIndicator
             isPlaying={isCurrentlyPlaying}
             barCount={3}
             surahId={id}
           />
+          {optionsMenu}
         </TouchableOpacity>
       ) : (
         onOptionsPress && (
           <TouchableOpacity
             style={styles.optionsButton}
-            onPress={handleOptionsPressWrapper}
+            onPress={tapMenu ? undefined : handleOptionsPressWrapper}
             activeOpacity={0.7}>
             <Feather
               name="more-horizontal"
               size={moderateScale(16)}
               color={theme.colors.textSecondary}
             />
+            {optionsMenu}
           </TouchableOpacity>
         )
       )}

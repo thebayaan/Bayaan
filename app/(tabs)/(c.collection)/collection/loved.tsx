@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useCallback, useRef} from 'react';
+import React, {useState, useEffect, useCallback, useRef, useMemo} from 'react';
 import {
   View,
   Text,
@@ -13,7 +13,15 @@ import {USE_GLASS} from '@/hooks/useGlassProps';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useRouter} from 'expo-router';
 import {TrackItem} from '@/components/TrackItem';
-import {getReciterById, getSurahById} from '@/services/dataService';
+import {
+  getReciterById,
+  getReciterByIdSync,
+  getSurahById,
+} from '@/services/dataService';
+// @ai-start
+import {SurahOptionsProvider} from '@/components/sheets/options/surahOptions';
+import type {SurahOptionsBuilder} from '@/components/sheets/options/SurahOptionsContext';
+// @ai-end
 import {moderateScale} from '@/utils/scale';
 import {Feather} from '@expo/vector-icons';
 import {ListRenderItem} from 'react-native';
@@ -46,6 +54,10 @@ import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
 import {useTranslation} from 'react-i18next';
 import {flipX} from '@/utils/rtl';
 import {useLibraryListBottomPadding} from '@/hooks/useBottomInset'; // @ai
+import {
+  CollectionOptionsMenu,
+  type CollectionOptionsPayload,
+} from '@/components/sheets/options/collectionOptions';
 // @ai-end
 
 interface LovedTrack {
@@ -71,7 +83,7 @@ const LovedScreen = () => {
   const {lovedTracks, toggleLoved, unloveAll} = useLoved();
   const {addToQueue, updateQueue, play, toggleShuffle} = usePlayerActions();
   const shuffleEnabled = usePlayerStore(state => state.settings.shuffle);
-  const {startNewChain} = useRecentlyPlayedStore();
+  const startNewChain = useRecentlyPlayedStore(s => s.startNewChain);
   const {
     isDownloaded,
     isDownloadedWithRewayat,
@@ -527,70 +539,73 @@ const LovedScreen = () => {
   const downloadState = useCollectionDownloadState(lovedData);
 
   // Handle options menu
+  // @ai-start
+  const optionsPayload = useMemo<CollectionOptionsPayload>(
+    () => ({
+      title: t('collectionScreen.loved'),
+      subtitle: t('common:counts.surahs', {count: lovedData.length}),
+      options: [
+        {
+          label: downloadState.allDownloaded
+            ? t('lovedScreen.allDownloaded')
+            : t('lovedScreen.downloadAll'),
+          icon: 'download',
+          onPress: handleBulkDownload,
+          disabled: downloadState.allDownloaded || downloadState.hasNoTracks,
+          customIcon:
+            downloadState.allDownloaded && !downloadState.hasNoTracks ? (
+              <CheckIcon color={theme.colors.text} size={moderateScale(20)} />
+            ) : undefined,
+        },
+        {
+          label: t('lovedScreen.unloveAll'),
+          icon: 'heart',
+          destructive: true,
+          customIcon: (
+            <HeartIcon color="#ff4444" size={moderateScale(20)} filled={true} />
+          ),
+          // @ai-start
+          onPress: () =>
+            confirmDestructive({
+              title: t('lovedScreen.unloveAllTitle'),
+              message: t('lovedScreen.unloveAllConfirm'),
+              confirmText: t('common:actions.remove'),
+              cancelText: t('common:actions.cancel'),
+              onConfirm: unloveAll,
+            }),
+          // @ai-end
+        },
+      ],
+    }),
+    [
+      lovedData.length,
+      downloadState,
+      handleBulkDownload,
+      unloveAll,
+      theme.colors.text,
+      t,
+    ],
+  );
+
   const handleOptionsMenu = useCallback(() => {
-    SheetManager.show('collection-options', {
-      payload: {
-        title: t('collectionScreen.loved'),
-        subtitle: t('common:counts.surahs', {count: lovedData.length}),
-        options: [
-          {
-            label: downloadState.allDownloaded
-              ? t('lovedScreen.allDownloaded')
-              : t('lovedScreen.downloadAll'),
-            icon: 'download',
-            onPress: handleBulkDownload,
-            disabled: downloadState.allDownloaded || downloadState.hasNoTracks,
-            customIcon:
-              downloadState.allDownloaded && !downloadState.hasNoTracks ? (
-                <CheckIcon color={theme.colors.text} size={moderateScale(20)} />
-              ) : undefined,
-          },
-          {
-            label: t('lovedScreen.unloveAll'),
-            icon: 'heart',
-            destructive: true,
-            customIcon: (
-              <HeartIcon
-                color="#ff4444"
-                size={moderateScale(20)}
-                filled={true}
-              />
-            ),
-            // @ai-start
-            onPress: () =>
-              confirmDestructive({
-                title: t('lovedScreen.unloveAllTitle'),
-                message: t('lovedScreen.unloveAllConfirm'),
-                confirmText: t('common:actions.remove'),
-                cancelText: t('common:actions.cancel'),
-                onConfirm: unloveAll,
-              }),
-            // @ai-end
-          },
-        ],
-      },
-    });
-  }, [
-    lovedData.length,
-    downloadState,
-    handleBulkDownload,
-    unloveAll,
-    theme.colors.text,
-    t,
-  ]);
+    SheetManager.show('collection-options', {payload: optionsPayload});
+  }, [optionsPayload]);
 
   const renderHeaderRight = useCallback(
     () => (
-      <Pressable onPress={handleOptionsMenu} hitSlop={8}>
-        <Feather
-          name="more-horizontal"
-          size={moderateScale(20)}
-          color={theme.colors.text}
-        />
-      </Pressable>
+      <CollectionOptionsMenu payload={optionsPayload}>
+        <Pressable onPress={handleOptionsMenu} hitSlop={8}>
+          <Feather
+            name="more-horizontal"
+            size={moderateScale(20)}
+            color={theme.colors.text}
+          />
+        </Pressable>
+      </CollectionOptionsMenu>
     ),
-    [handleOptionsMenu, theme.colors.text],
+    [optionsPayload, handleOptionsMenu, theme.colors.text],
   );
+  // @ai-end
 
   useCollectionNativeHeader({
     title: t('collectionScreen.loved'),
@@ -599,44 +614,61 @@ const LovedScreen = () => {
     headerRight: lovedData.length > 0 ? renderHeaderRight : undefined,
   });
 
-  // Handle show options for a track
-  const handleShowOptions = useCallback(
-    (track: LovedTrack, reciter: Reciter, surah: Surah) => {
-      SheetManager.show('surah-options', {
-        payload: {
-          surah,
-          reciterId: track.reciterId,
-          rewayatId: track.rewayatId,
-          onAddToQueue: async (s: Surah) => {
-            if (track.userRecitationId) {
-              const upload = useUploadsStore
-                .getState()
-                .recitations.find(r => r.id === track.userRecitationId);
-              if (upload) {
-                await addToQueue([createUserUploadTrack(upload)]);
-                return;
-              }
+  // @ai-start
+  // The options payload for a loved track, used by the sheet (phones) and by
+  // the native menu on each row (tablets).
+  const buildOptions = useCallback<SurahOptionsBuilder>(
+    (surah, row) => {
+      const reciterId = row?.reciterId;
+      const reciter = reciterId ? getReciterByIdSync(reciterId) : undefined;
+      if (!reciter) return null;
+      return {
+        surah,
+        reciterId,
+        rewayatId: row?.rewayatId,
+        onAddToQueue: async (s: Surah) => {
+          if (row?.userRecitationId) {
+            const upload = useUploadsStore
+              .getState()
+              .recitations.find(r => r.id === row.userRecitationId);
+            if (upload) {
+              await addToQueue([createUserUploadTrack(upload)]);
+              return;
             }
-            const rewayatId = track.rewayatId || reciter.rewayat[0]?.id;
-            const artwork = getReciterArtwork(reciter);
-            const queueTrack = {
-              id: `${reciter.id}:${s.id}`,
-              url: generateSmartAudioUrl(reciter, s.id.toString(), rewayatId),
-              title: s.name,
-              artist: reciter.name,
-              reciterId: reciter.id,
-              artwork,
-              surahId: s.id.toString(),
-              reciterName: reciter.name,
-              rewayatId,
-            };
-            await addToQueue([queueTrack]);
-          },
+          }
+          const rewayatId = row?.rewayatId || reciter.rewayat[0]?.id;
+          const artwork = getReciterArtwork(reciter);
+          const queueTrack = {
+            id: `${reciter.id}:${s.id}`,
+            url: generateSmartAudioUrl(reciter, s.id.toString(), rewayatId),
+            title: s.name,
+            artist: reciter.name,
+            reciterId: reciter.id,
+            artwork,
+            surahId: s.id.toString(),
+            reciterName: reciter.name,
+            rewayatId,
+          };
+          await addToQueue([queueTrack]);
         },
-      });
+      };
     },
     [addToQueue],
   );
+
+  // Handle show options for a track
+  const handleShowOptions = useCallback(
+    (track: LovedTrack, _reciter: Reciter, surah: Surah) => {
+      const payload = buildOptions(surah, {
+        reciterId: track.reciterId,
+        rewayatId: track.rewayatId,
+        userRecitationId: track.userRecitationId,
+      });
+      if (payload) SheetManager.show('surah-options', {payload});
+    },
+    [buildOptions],
+  );
+  // @ai-end
 
   const ListHeaderComponent = useCallback(() => {
     return (
@@ -646,6 +678,9 @@ const LovedScreen = () => {
         onPlayPress={handlePlayAll}
         onShufflePress={handleShuffle}
         onOptionsPress={USE_GLASS ? undefined : handleOptionsMenu}
+        optionsMenu={
+          <CollectionOptionsMenu payload={optionsPayload} layout="overlay" />
+        }
         theme={theme}
       />
     );
@@ -654,6 +689,7 @@ const LovedScreen = () => {
     handlePlayAll,
     handleShuffle,
     handleOptionsMenu,
+    optionsPayload,
     theme,
     t,
   ]);
@@ -783,23 +819,27 @@ const LovedScreen = () => {
         </RNAnimated.View>
       )}
 
-      <RNAnimated.FlatList
-        data={lovedData}
-        renderItem={renderItem}
-        keyExtractor={getItemKey}
-        ListHeaderComponent={ListHeaderComponent}
-        contentContainerStyle={[
-          styles.listContentContainer,
-          {paddingBottom: listBottomPadding}, // @ai
-        ]}
-        contentInsetAdjustmentBehavior="automatic"
-        onScroll={RNAnimated.event(
-          [{nativeEvent: {contentOffset: {y: scrollY}}}],
-          {useNativeDriver: true},
-        )}
-        scrollEventThrottle={16}
-        showsVerticalScrollIndicator={false}
-      />
+      {/* @ai-start */}
+      <SurahOptionsProvider build={buildOptions}>
+        <RNAnimated.FlatList
+          data={lovedData}
+          renderItem={renderItem}
+          keyExtractor={getItemKey}
+          ListHeaderComponent={ListHeaderComponent}
+          contentContainerStyle={[
+            styles.listContentContainer,
+            {paddingBottom: listBottomPadding}, // @ai
+          ]}
+          contentInsetAdjustmentBehavior="automatic"
+          onScroll={RNAnimated.event(
+            [{nativeEvent: {contentOffset: {y: scrollY}}}],
+            {useNativeDriver: true},
+          )}
+          scrollEventThrottle={16}
+          showsVerticalScrollIndicator={false}
+        />
+      </SurahOptionsProvider>
+      {/* @ai-end */}
       {!USE_GLASS && (
         <CollectionStickyHeader
           title={t('collectionScreen.loved')}

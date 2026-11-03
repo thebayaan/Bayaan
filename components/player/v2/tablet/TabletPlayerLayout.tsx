@@ -38,6 +38,8 @@ export interface TabletPlayerHandlers {
   onAmbientPress: () => void;
   onOptionsPress: () => void;
   onFollowAlongPress: () => void;
+  /** Native menu for the ••• buttons on tablets; they open the sheet without it. */
+  optionsMenu?: React.ReactNode; // @ai
 }
 
 /**
@@ -57,6 +59,7 @@ export function TabletPlayerLayout({
   onAmbientPress,
   onOptionsPress,
   onFollowAlongPress,
+  optionsMenu, // @ai
 }: TabletPlayerHandlers) {
   const {width, height} = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -119,6 +122,7 @@ export function TabletPlayerLayout({
           margin={margin}
           artSize={nowPlayingArtSize(columnWidth, margin, height)}
           onOptionsPress={onOptionsPress}
+          optionsMenu={optionsMenu} // @ai
           {...toolHandlers}
         />
         <View style={styles.pane}>
@@ -178,6 +182,7 @@ export function TabletPlayerLayout({
         ]}
         onLayout={handleCardLayout}
         onOptionsPress={onOptionsPress}
+        optionsMenu={optionsMenu} // @ai
         {...toolHandlers}
       />
     </View>

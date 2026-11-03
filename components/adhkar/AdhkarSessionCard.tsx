@@ -9,7 +9,7 @@ import {useNavigationContainerRef} from 'expo-router';
 import Color from 'color';
 import {LinearGradient} from 'expo-linear-gradient';
 import {GlassView} from 'expo-glass-effect';
-import {Slider} from '@miblanchard/react-native-slider';
+import {ProgressTrack} from '@/components/ProgressTrack'; // @ai
 import {SheetManager} from 'react-native-actions-sheet';
 import {useReducedMotion} from 'react-native-reanimated';
 import {useTranslation} from 'react-i18next';
@@ -24,6 +24,10 @@ import {useAdhkarSessionStore} from '@/store/adhkarSessionStore';
 import {openPlayingDhikr} from '@/services/adhkar/playback/openPlayingDhikr';
 import {forceLTR} from '@/utils/rtl';
 import type {AdhkarSession} from '@/services/adhkar/playback/types';
+// @ai-start
+import {useNativeOptionsMenu} from '@/components/sheets/options/OptionsMenu';
+import {AdhkarSessionOptionsMenu} from '@/components/sheets/options/adhkarSessionOptions';
+// @ai-end
 
 /** Progress through the list: the current row counts as reached. */
 export function sessionProgress(session: AdhkarSession): number {
@@ -68,6 +72,8 @@ export function AdhkarSessionCard({
     dispatch({type: 'toggle'});
   }, [dispatch]);
 
+  // On iPad the card is a context menu (long press or secondary click). @ai
+  const contextMenu = useNativeOptionsMenu('longPress');
   const handleLongPress = useCallback(() => {
     SheetManager.show('adhkar-session-options', {
       payload: {title: listTitle, subtitle: position},
@@ -76,7 +82,7 @@ export function AdhkarSessionCard({
 
   const CardWrapper = USE_GLASS ? GlassView : View;
 
-  return (
+  const card = (
     <CardWrapper
       testID="adhkar-session-card"
       style={[
@@ -121,7 +127,7 @@ export function AdhkarSessionCard({
         accessibilityLabel={`${listTitle}, ${position}`}
         accessibilityHint={t('adhkar.openPlaying')}
         onPress={handleOpen}
-        onLongPress={handleLongPress}
+        onLongPress={contextMenu ? undefined : handleLongPress}
         style={bodyStyle.body}>
         <View style={styles.imageContainer}>
           <AdhkarSessionArtwork
@@ -141,7 +147,7 @@ export function AdhkarSessionCard({
         accessibilityRole="button"
         accessibilityLabel={active ? t('adhkar.pause') : t('adhkar.play')}
         onPress={handleToggle}
-        onLongPress={handleLongPress}
+        onLongPress={contextMenu ? undefined : handleLongPress}
         style={({pressed}) => [
           styles.playbackZone,
           pressed && styles.playbackZonePressed,
@@ -176,27 +182,30 @@ export function AdhkarSessionCard({
               />
             )}
           </View>
-          <Slider
+          <ProgressTrack
             value={sessionProgress(session)}
-            disabled={true}
-            minimumTrackTintColor={Color(theme.colors.text)
-              .alpha(0.35)
-              .toString()}
-            maximumTrackTintColor={Color(theme.colors.text)
-              .alpha(0.08)
-              .toString()}
-            trackStyle={{
-              height: moderateScale(3),
-              borderRadius: moderateScale(2),
-            }}
-            thumbStyle={{height: 0, width: 0}}
-            containerStyle={styles.sliderContainer}
+            fillColor={Color(theme.colors.text).alpha(0.35).toString()}
+            trackColor={Color(theme.colors.text).alpha(0.08).toString()}
+            style={styles.sliderContainer}
+            testID="adhkar-session-progress"
           />
           <Text style={styles.timeRemaining}>{remaining}</Text>
         </View>
       </Pressable>
     </CardWrapper>
   );
+
+  // @ai-start
+  return contextMenu ? (
+    <AdhkarSessionOptionsMenu
+      title={listTitle}
+      style={width != null ? {width} : undefined}>
+      {card}
+    </AdhkarSessionOptionsMenu>
+  ) : (
+    card
+  );
+  // @ai-end
 }
 
 const bodyStyle = StyleSheet.create({

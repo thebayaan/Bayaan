@@ -19,12 +19,20 @@ jest.mock('@/hooks/useTheme', () => ({
   }),
 }));
 jest.mock('@/hooks/usePlayerActions', () => ({
-  usePlayerActions: () => ({setSheetMode: jest.fn()}),
+  usePlayerActions: () => ({
+    setSheetMode: jest.fn(),
+    setRate: jest.fn(),
+    updateSettings: jest.fn(),
+  }),
 }));
 const mockQueue = {tracks: [{rewayatId: 'hafs'}], currentIndex: 0};
 jest.mock('@/services/player/store/playerStore', () => ({
   usePlayerStore: (selector: (s: unknown) => unknown) =>
-    selector({queue: mockQueue}),
+    selector({
+      queue: mockQueue,
+      playback: {rate: 1},
+      settings: {sleepTimerEnd: null},
+    }),
 }));
 jest.mock('@/store/ambientStore', () => ({
   useAmbientStore: (selector: (s: unknown) => unknown) =>
@@ -46,6 +54,17 @@ jest.mock('@expo/vector-icons', () => ({
   MaterialCommunityIcons: () => null,
 }));
 jest.mock('@react-native-community/slider', () => () => null);
+// The tool buttons as on Android: they call their handlers (no popover).
+jest.mock('@/components/popovers/ToolPopovers', () => {
+  const fallback = ({
+    onFallbackPress,
+    children,
+  }: {
+    onFallbackPress: () => void;
+    children: (onPress: () => void) => unknown;
+  }) => children(onFallbackPress);
+  return {AmbientPopover: fallback, ReadingSettingsPopover: fallback};
+});
 
 import {
   PaneSwitcher,
@@ -101,6 +120,13 @@ const pressables = (r: TestRenderer.ReactTestRenderer) => {
   );
   return all.filter(n => !all.some(m => m !== n && isInside(m.parent, n)));
 };
+
+// Tool buttons in order, whether or not a native menu handles the press. @ai
+const toolButtons = (r: TestRenderer.ReactTestRenderer) =>
+  r.root.findAll(
+    n => typeof n.props.style === 'function' && !!n.props.accessibilityRole,
+    {deep: false},
+  );
 
 const textOf = (node: TestRenderer.ReactTestInstance) =>
   node.find(n => (n.type as unknown) === Text).props.children;
@@ -166,7 +192,7 @@ describe('useListeningTools', () => {
 
   it('fills the speed tool when the rate is not 1x', () => {
     const r = mount(<Tools t={transport({playbackRate: 1.5})} />);
-    const [speed, repeat] = pressables(r);
+    const [speed, repeat] = toolButtons(r);
     expect(textOf(speed)).toBe('1.5x');
     const fill = (p: TestRenderer.ReactTestInstance) =>
       StyleSheet.flatten(p.props.style({pressed: false})).backgroundColor;
@@ -177,9 +203,18 @@ describe('useListeningTools', () => {
   it('cycles repeat from its button', () => {
     const t = transport();
     const r = mount(<Tools t={t} />);
-    act(() => pressables(r)[1].props.onPress());
+    act(() => toolButtons(r)[1].props.onPress());
     expect(t.cycleRepeat).toHaveBeenCalled();
   });
+
+  // @ai-start
+  it('leaves speed and sleep timer to their native menus', () => {
+    const r = mount(<Tools t={transport()} />);
+    const [speed, , sleep] = toolButtons(r);
+    expect(speed.props.onPress).toBeUndefined();
+    expect(sleep.props.onPress).toBeUndefined();
+  });
+  // @ai-end
 });
 
 describe('ReadingTools', () => {

@@ -6,11 +6,12 @@ import {Theme} from '@/utils/themeUtils';
 import {SheetProps, SheetManager} from 'react-native-actions-sheet';
 import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import Color from 'color';
+import {PLAYBACK_SPEEDS} from '@/constants/playback'; // @ai
 // @ai-start
 import {useTranslation} from 'react-i18next';
 // @ai-end
 
-const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
+const SPEEDS = PLAYBACK_SPEEDS; // @ai
 
 // @ai-start
 export const PlaybackSpeedSheet = (props: SheetProps<'playback-speed'>) => {

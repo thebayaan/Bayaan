@@ -1,5 +1,5 @@
 // @ai-generated
-import {Alert} from 'react-native';
+import {confirmDestructive} from '@/utils/confirmDestructive'; // @ai
 import i18n from '@/i18n';
 
 /**
@@ -8,20 +8,15 @@ import i18n from '@/i18n';
  * tap from the options sheet.
  */
 export function confirmRemoveAllUploads(deleteAll: () => Promise<void>): void {
-  Alert.alert(
-    i18n.t('collection:uploadsScreen.removeAllTitle'),
-    i18n.t('collection:uploadsScreen.removeAllConfirm'),
-    [
-      {text: i18n.t('common:actions.cancel'), style: 'cancel'},
-      {
-        text: i18n.t('common:actions.remove'),
-        style: 'destructive',
-        onPress: () => {
-          deleteAll().catch(error => {
-            console.error('Error removing all uploads:', error);
-          });
-        },
-      },
-    ],
-  );
+  confirmDestructive({
+    title: i18n.t('collection:uploadsScreen.removeAllTitle'),
+    message: i18n.t('collection:uploadsScreen.removeAllConfirm'),
+    confirmText: i18n.t('common:actions.remove'),
+    cancelText: i18n.t('common:actions.cancel'),
+    onConfirm: () => {
+      deleteAll().catch(error => {
+        console.error('Error removing all uploads:', error);
+      });
+    },
+  });
 }

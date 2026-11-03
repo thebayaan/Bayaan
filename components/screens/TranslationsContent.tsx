@@ -13,6 +13,7 @@ import {
   Alert,
   StyleSheet,
 } from 'react-native';
+import {confirmDestructive} from '@/utils/confirmDestructive'; // @ai
 import {useTheme} from '@/hooks/useTheme';
 import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {Theme} from '@/utils/themeUtils';
@@ -321,23 +322,18 @@ export default function TranslationsContent({
 
   const handleDelete = useCallback(
     (meta: DownloadedTranslationMeta) => {
-      Alert.alert(
-        t('translations.deleteTranslationTitle'),
-        t('translations.deleteMessage', {name: meta.englishName}),
-        [
-          {text: t('common:actions.cancel'), style: 'cancel'},
-          {
-            text: t('common:actions.delete'),
-            style: 'destructive',
-            onPress: async () => {
-              if (selectedTranslationId === meta.identifier) {
-                setSelectedTranslationId('saheeh');
-              }
-              await deleteTranslation(meta.identifier);
-            },
-          },
-        ],
-      );
+      confirmDestructive({
+        title: t('translations.deleteTranslationTitle'),
+        message: t('translations.deleteMessage', {name: meta.englishName}),
+        confirmText: t('common:actions.delete'),
+        cancelText: t('common:actions.cancel'),
+        onConfirm: async () => {
+          if (selectedTranslationId === meta.identifier) {
+            setSelectedTranslationId('saheeh');
+          }
+          await deleteTranslation(meta.identifier);
+        },
+      });
     },
     [deleteTranslation, selectedTranslationId, setSelectedTranslationId, t],
   );
@@ -375,20 +371,17 @@ export default function TranslationsContent({
 
   const handleDeleteTafseer = useCallback(
     (meta: DownloadedTafseerMeta) => {
-      Alert.alert(
-        t('translations.deleteTafseerTitle'),
-        t('translations.deleteMessage', {name: getTafseerDisplayName(meta)}),
-        [
-          {text: t('common:actions.cancel'), style: 'cancel'},
-          {
-            text: t('common:actions.delete'),
-            style: 'destructive',
-            onPress: async () => {
-              await deleteTafseer(meta.identifier);
-            },
-          },
-        ],
-      );
+      confirmDestructive({
+        title: t('translations.deleteTafseerTitle'),
+        message: t('translations.deleteMessage', {
+          name: getTafseerDisplayName(meta),
+        }),
+        confirmText: t('common:actions.delete'),
+        cancelText: t('common:actions.cancel'),
+        onConfirm: async () => {
+          await deleteTafseer(meta.identifier);
+        },
+      });
     },
     [deleteTafseer, t],
   );

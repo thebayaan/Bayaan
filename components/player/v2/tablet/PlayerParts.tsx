@@ -10,6 +10,8 @@ import {
   type ViewStyle,
 } from 'react-native';
 import Slider from '@react-native-community/slider';
+import {nativeMenusAvailable} from '@/components/native/nativeMenus'; // @ai
+import {PlaybackSpeedMenu, SleepTimerMenu} from '../ListeningMenus'; // @ai
 import {Feather, Ionicons, MaterialCommunityIcons} from '@expo/vector-icons';
 import Color from 'color';
 import {useTranslation} from 'react-i18next';
@@ -38,6 +40,10 @@ import {
 import {localizeDigits} from '@/i18n/format';
 import {forceLTR} from '@/utils/rtl';
 import {SEEK_INTERVAL, type PlayerTransport} from './usePlayerTransport';
+import {
+  AmbientPopover,
+  ReadingSettingsPopover,
+} from '@/components/popovers/ToolPopovers'; // @ai
 
 /**
  * Building blocks of the iPad player (listening/02, "Shared building
@@ -112,12 +118,20 @@ export function CloseButton() {
   );
 }
 
-export function MoreButton({onPress}: {onPress: () => void}) {
+/** ••• for the track. With a native `menu` laid over it, the menu takes the press. */
+export function MoreButton({
+  onPress,
+  menu,
+}: {
+  onPress: () => void;
+  menu?: React.ReactNode; // @ai
+}) {
   const {theme} = useTheme();
   const a11y = usePlayerA11y();
   return (
-    <CircleButton onPress={onPress} {...a11y.moreOptions}>
+    <CircleButton onPress={menu ? undefined : onPress} {...a11y.moreOptions}>
       <Feather name="more-horizontal" size={20} color={theme.colors.text} />
+      {menu}
     </CircleButton>
   );
 }
@@ -385,19 +399,24 @@ export function useListeningTools(
   const ambientEnabled = useAmbientStore(s => s.isEnabled);
   const {playbackRate, repeatMode, isTimerActive} = transport;
 
+  // @ai-start
   const speed = (
-    <ToolButton
+    <PlaybackSpeedMenu
       key="speed"
-      selected={playbackRate !== 1}
-      onPress={onSpeedPress}
-      {...a11y.speed(playbackRate)}>
-      {color => (
-        <Text style={[styles.toolLabel, {color}]}>
-          {localizeDigits(`${playbackRate}x`)}
-        </Text>
-      )}
-    </ToolButton>
+      accessibilityLabel={a11y.speed(playbackRate).accessibilityLabel}>
+      <ToolButton
+        selected={playbackRate !== 1}
+        onPress={nativeMenusAvailable ? undefined : onSpeedPress}
+        {...a11y.speed(playbackRate)}>
+        {color => (
+          <Text style={[styles.toolLabel, {color}]}>
+            {localizeDigits(`${playbackRate}x`)}
+          </Text>
+        )}
+      </ToolButton>
+    </PlaybackSpeedMenu>
   );
+  // @ai-end
   const repeat = (
     <ToolButton
       key="repeat"
@@ -413,24 +432,37 @@ export function useListeningTools(
       }
     </ToolButton>
   );
+  // @ai-start
   const sleep = (
-    <ToolButton
+    <SleepTimerMenu
       key="sleep"
-      selected={isTimerActive}
-      onPress={onSleepTimerPress}
-      {...a11y.sleepTimer(isTimerActive)}>
-      {color => <TimerIcon size={20} color={color} filled={isTimerActive} />}
-    </ToolButton>
+      accessibilityLabel={a11y.sleepTimer(isTimerActive).accessibilityLabel}>
+      <ToolButton
+        selected={isTimerActive}
+        onPress={nativeMenusAvailable ? undefined : onSleepTimerPress}
+        {...a11y.sleepTimer(isTimerActive)}>
+        {color => <TimerIcon size={20} color={color} filled={isTimerActive} />}
+      </ToolButton>
+    </SleepTimerMenu>
   );
+  // @ai-end
+  // @ai-start
+  // iPad: a popover anchored to the button. Elsewhere: the sheet.
   const ambient = (
-    <ToolButton
-      key="ambient"
-      selected={ambientEnabled}
-      onPress={onAmbientPress}
-      {...a11y.ambient(ambientEnabled)}>
-      {color => <AmbientIcon size={20} color={color} filled={ambientEnabled} />}
-    </ToolButton>
+    <AmbientPopover key="ambient" onFallbackPress={onAmbientPress}>
+      {onPress => (
+        <ToolButton
+          selected={ambientEnabled}
+          onPress={onPress}
+          {...a11y.ambient(ambientEnabled)}>
+          {color => (
+            <AmbientIcon size={20} color={color} filled={ambientEnabled} />
+          )}
+        </ToolButton>
+      )}
+    </AmbientPopover>
   );
+  // @ai-end
   return {leading: [speed, repeat], trailing: [sleep, ambient]};
 }
 
@@ -460,11 +492,23 @@ export function ReadingTools({
         {...a11y.followAlong(active)}>
         {color => <Ionicons name="locate-outline" size={20} color={color} />}
       </ToolButton>
-      <ToolButton onPress={onMushafLayoutPress} {...a11y.displayOptions}>
-        {color => (
-          <MaterialCommunityIcons name="format-size" size={22} color={color} />
+      {/* @ai-start */}
+      <ReadingSettingsPopover
+        context="player"
+        onFallbackPress={onMushafLayoutPress}>
+        {onPress => (
+          <ToolButton onPress={onPress} {...a11y.displayOptions}>
+            {color => (
+              <MaterialCommunityIcons
+                name="format-size"
+                size={22}
+                color={color}
+              />
+            )}
+          </ToolButton>
         )}
-      </ToolButton>
+      </ReadingSettingsPopover>
+      {/* @ai-end */}
     </>
   );
 }

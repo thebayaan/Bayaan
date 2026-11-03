@@ -27,6 +27,7 @@ interface NowPlayingColumnProps extends ListeningToolHandlers {
   margin: number;
   artSize: number;
   onOptionsPress: () => void;
+  optionsMenu?: React.ReactNode; // @ai
 }
 
 /**
@@ -39,6 +40,7 @@ export function NowPlayingColumn({
   margin,
   artSize,
   onOptionsPress,
+  optionsMenu, // @ai
   ...toolHandlers
 }: NowPlayingColumnProps) {
   const {theme} = useTheme();
@@ -101,7 +103,7 @@ export function NowPlayingColumn({
             </View>
             <View style={styles.metaActions}>
               <LoveButton loved={meta.isLoved} onPress={meta.toggleLoved} />
-              <MoreButton onPress={onOptionsPress} />
+              <MoreButton onPress={onOptionsPress} menu={optionsMenu} />
             </View>
           </View>
           {meta.rewayahLabel ? (

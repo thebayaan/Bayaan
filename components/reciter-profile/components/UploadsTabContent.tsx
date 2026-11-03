@@ -30,6 +30,13 @@ import {getSurahDisplayName, localizeDigits} from '@/i18n/format';
 import {currentLanguage} from '@/i18n/language';
 import {SOURCE_LANGUAGE} from '@/i18n/languages';
 import {getRecitationStyleLabel} from '@/components/player/v2/recitationStyle';
+// @ai-start
+import {useNativeOptionsMenu} from '@/components/sheets/options/OptionsMenu';
+import {
+  UploadOptionsMenu,
+  type UploadOptionsPayload,
+} from '@/components/sheets/options/uploadOptions';
+// @ai-end
 // @ai-end
 
 interface UploadsTabContentProps {
@@ -113,11 +120,16 @@ interface ReciterUploadListItemProps {
   index: number;
   onPlay: (item: UploadedRecitation, index: number) => void;
   onShowOptions: (item: UploadedRecitation, index: number) => void;
+  /** Builds the ••• native menu on tablets. @ai */
+  renderOptionsMenu?: (
+    item: UploadedRecitation,
+    index: number,
+  ) => React.ReactNode;
 }
 
 // @ai-start
 const ReciterUploadListItem: React.FC<ReciterUploadListItemProps> = React.memo(
-  ({item, index, onPlay, onShowOptions}) => {
+  ({item, index, onPlay, onShowOptions, renderOptionsMenu}) => {
     const {theme} = useTheme();
     const styles = useMemo(() => createStyles(theme), [theme]);
 
@@ -222,6 +234,7 @@ const ReciterUploadListItem: React.FC<ReciterUploadListItemProps> = React.memo(
               color={theme.colors.text}
             />
           )}
+          {renderOptionsMenu?.(item, index)}
         </Pressable>
       </View>
     );
@@ -279,22 +292,36 @@ export const UploadsTabContent = React.forwardRef<
       [reciterId],
     );
 
-    const handleShowOptions = useCallback(
-      (item: UploadedRecitation, index: number) => {
-        const track = createUserUploadTrack(item);
-        SheetManager.show('upload-options', {
-          payload: {
-            recitation: item,
-            reciterId,
-            onPlay: () => handlePlay(item, index),
-            onAddToQueue: () => {
-              addToQueue([track]);
-            },
-          },
-        });
-      },
+    // @ai-start
+    const buildUploadOptions = useCallback(
+      (item: UploadedRecitation, index: number): UploadOptionsPayload => ({
+        recitation: item,
+        reciterId,
+        onPlay: () => handlePlay(item, index),
+        onAddToQueue: () => {
+          addToQueue([createUserUploadTrack(item)]);
+        },
+      }),
       [reciterId, handlePlay, addToQueue],
     );
+
+    const handleShowOptions = useCallback(
+      (item: UploadedRecitation, index: number) => {
+        SheetManager.show('upload-options', {
+          payload: buildUploadOptions(item, index),
+        });
+      },
+      [buildUploadOptions],
+    );
+
+    const nativeMenus = useNativeOptionsMenu();
+    const renderOptionsMenu = useCallback(
+      (item: UploadedRecitation, index: number) => (
+        <UploadOptionsMenu payload={buildUploadOptions(item, index)} />
+      ),
+      [buildUploadOptions],
+    );
+    // @ai-end
 
     const handleAddRecitation = useCallback(async () => {
       try {
@@ -359,9 +386,10 @@ export const UploadsTabContent = React.forwardRef<
           index={index}
           onPlay={handlePlay}
           onShowOptions={handleShowOptions}
+          renderOptionsMenu={nativeMenus ? renderOptionsMenu : undefined}
         />
       ),
-      [handlePlay, handleShowOptions],
+      [handlePlay, handleShowOptions, nativeMenus, renderOptionsMenu],
     );
 
     const addButton = useMemo(

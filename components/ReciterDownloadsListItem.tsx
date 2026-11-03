@@ -18,12 +18,21 @@ interface ReciterDownloadsListItemProps {
   onPress: () => void;
   onOptionsPress?: () => void;
   onLongPress?: () => void;
+  /** A native menu laid over the ••• button on tablets. @ai */
+  optionsMenu?: React.ReactNode;
 }
 
 // @ai-start
 export const ReciterDownloadsListItem: React.FC<ReciterDownloadsListItemProps> =
   React.memo(
-    ({reciterId, downloadCount, onPress, onOptionsPress, onLongPress}) => {
+    ({
+      reciterId,
+      downloadCount,
+      onPress,
+      onOptionsPress,
+      onLongPress,
+      optionsMenu,
+    }) => {
       const {theme} = useTheme();
       const {t} = useTranslation(['collection', 'common']);
       const styles = createStyles(theme);
@@ -83,6 +92,7 @@ export const ReciterDownloadsListItem: React.FC<ReciterDownloadsListItemProps> =
                 size={moderateScale(18)}
                 color={theme.colors.text}
               />
+              {optionsMenu}
             </Pressable>
           )}
         </Pressable>

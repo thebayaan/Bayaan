@@ -1,5 +1,6 @@
 import React, {useState, useMemo} from 'react';
 import {View, Text, ScrollView, Pressable, Alert} from 'react-native';
+import {confirmDestructive} from '@/utils/confirmDestructive'; // @ai
 import {useTheme} from '@/hooks/useTheme';
 import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {Theme} from '@/utils/themeUtils';
@@ -89,58 +90,49 @@ export default function StorageScreen() {
 
   const handleClearAllDownloads = () => {
     if (isClearing) return;
-    Alert.alert(
-      t('storage.removeDownloadsTitle'),
-      t('storage.removeDownloadsConfirm'),
-      [
-        {text: t('common:actions.cancel'), style: 'cancel'},
-        {
-          text: t('common:actions.remove'),
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setIsClearing(true);
-              await useDownloadStore.getState().clearAllDownloads();
-              refresh();
-              Alert.alert(
-                t('storage.success'),
-                t('storage.removeDownloadsSuccess'),
-              );
-            } catch (downloadError) {
-              Alert.alert(
-                t('storage.error'),
-                t('storage.removeDownloadsError'),
-              );
-            } finally {
-              setIsClearing(false);
-            }
-          },
-        },
-      ],
-    );
+    confirmDestructive({
+      title: t('storage.removeDownloadsTitle'),
+      message: t('storage.removeDownloadsConfirm'),
+      confirmText: t('common:actions.remove'),
+      cancelText: t('common:actions.cancel'),
+      onConfirm: async () => {
+        try {
+          setIsClearing(true);
+          await useDownloadStore.getState().clearAllDownloads();
+          refresh();
+          Alert.alert(
+            t('storage.success'),
+            t('storage.removeDownloadsSuccess'),
+          );
+        } catch (downloadError) {
+          Alert.alert(t('storage.error'), t('storage.removeDownloadsError'));
+        } finally {
+          setIsClearing(false);
+        }
+      },
+    });
   };
 
   const handleClearCache = () => {
     if (isClearing) return;
-    Alert.alert(t('storage.clearCacheTitle'), t('storage.clearCacheConfirm'), [
-      {text: t('common:actions.cancel'), style: 'cancel'},
-      {
-        text: t('common:actions.clear'),
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            setIsClearing(true);
-            await clearPlayerCache();
-            refresh();
-            Alert.alert(t('storage.success'), t('storage.clearCacheSuccess'));
-          } catch (cacheError) {
-            Alert.alert(t('storage.error'), t('storage.clearCacheError'));
-          } finally {
-            setIsClearing(false);
-          }
-        },
+    confirmDestructive({
+      title: t('storage.clearCacheTitle'),
+      message: t('storage.clearCacheConfirm'),
+      confirmText: t('common:actions.clear'),
+      cancelText: t('common:actions.cancel'),
+      onConfirm: async () => {
+        try {
+          setIsClearing(true);
+          await clearPlayerCache();
+          refresh();
+          Alert.alert(t('storage.success'), t('storage.clearCacheSuccess'));
+        } catch (cacheError) {
+          Alert.alert(t('storage.error'), t('storage.clearCacheError'));
+        } finally {
+          setIsClearing(false);
+        }
       },
-    ]);
+    });
   };
 
   const totalRaw = rawData.total || 1;

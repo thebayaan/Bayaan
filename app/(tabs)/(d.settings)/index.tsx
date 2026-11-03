@@ -1,5 +1,6 @@
 import React, {useMemo} from 'react';
-import {Text, Pressable, ScrollView, View, Switch} from 'react-native';
+import {Text, Pressable, ScrollView, View} from 'react-native';
+import {NativeSwitch} from '@/components/native/NativeSwitch'; // @ai
 import {useRouter} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
 import {ScaledSheet, moderateScale} from '@/utils/scale';
@@ -96,14 +97,6 @@ function PhoneSettingsScreen() {
 
   const iconColor = theme.colors.text;
   const chevronColor = theme.colors.textSecondary;
-
-  const trackColor = useMemo(
-    () => ({
-      false: Color(theme.colors.text).alpha(0.1).toString(),
-      true: Color(theme.colors.text).alpha(0.65).toString(),
-    }),
-    [theme.colors.text],
-  );
 
   const handleSettingPress = async (type: string) => {
     if (type === 'clearCache') {
@@ -217,12 +210,9 @@ function PhoneSettingsScreen() {
                   })}
                 </Text>
               </View>
-              <Switch
+              <NativeSwitch
                 value={analyticsEnabled}
                 onValueChange={handleAnalyticsToggle}
-                trackColor={trackColor}
-                thumbColor="#FFFFFF"
-                ios_backgroundColor={trackColor.false}
                 style={styles.switchStyle}
               />
             </View>,
@@ -250,12 +240,9 @@ function PhoneSettingsScreen() {
                     Show the floating developer tools button
                   </Text>
                 </View>
-                <Switch
+                <NativeSwitch
                   value={showFloatingDevMenu}
                   onValueChange={toggleFloatingDevMenu}
-                  trackColor={trackColor}
-                  thumbColor="#FFFFFF"
-                  ios_backgroundColor={trackColor.false}
                   style={styles.switchStyle}
                 />
               </View>,

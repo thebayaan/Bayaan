@@ -1,13 +1,7 @@
 // @ai-generated
 import React from 'react';
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  View,
-} from 'react-native';
+import {Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
+import {NativeSwitch} from '@/components/native/NativeSwitch'; // @ai
 import {useRouter} from 'expo-router';
 import {Feather} from '@expo/vector-icons';
 import Color from 'color';
@@ -163,10 +157,6 @@ export function TabletSettingsList({
   const analyticsNote = t('settings:index.analytics.description', {
     appName: branding.appName,
   });
-  const trackColor = {
-    false: Color(text).alpha(0.1).toString(),
-    true: Color(text).alpha(0.65).toString(),
-  };
 
   const iconFor = (item: {icon: string; iconType: string}) => {
     const Custom = item.iconType === 'custom' ? customIconMap[item.icon] : null;
@@ -234,12 +224,9 @@ export function TabletSettingsList({
           description={inSplit ? undefined : analyticsNote}
           icon={<Feather name="bar-chart-2" size={16} color={text} />}
           accessory={
-            <Switch
+            <NativeSwitch
               value={analyticsEnabled}
               onValueChange={setAnalyticsEnabled}
-              trackColor={trackColor}
-              thumbColor="#FFFFFF"
-              ios_backgroundColor={trackColor.false}
               accessibilityLabel={t('settings:index.analytics.title')}
             />
           }
@@ -263,12 +250,9 @@ export function TabletSettingsList({
               title="Floating Dev Menu"
               icon={<Feather name="tool" size={16} color={text} />}
               accessory={
-                <Switch
+                <NativeSwitch
                   value={showFloatingDevMenu}
                   onValueChange={toggleFloatingDevMenu}
-                  trackColor={trackColor}
-                  thumbColor="#FFFFFF"
-                  ios_backgroundColor={trackColor.false}
                 />
               }
             />

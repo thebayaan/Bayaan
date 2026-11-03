@@ -43,6 +43,10 @@ import {USE_GLASS} from '@/hooks/useGlassProps'; // @ai
 import {usePlayerActions} from '@/hooks/usePlayerActions'; // @ai
 import {createTracksForReciter} from '@/utils/track'; // @ai
 import {TabletSearchResults} from '@/components/search/TabletSearchResults'; // @ai
+// @ai-start
+import {SurahOptionsProvider} from '@/components/sheets/options/surahOptions';
+import type {SurahOptionsBuilder} from '@/components/sheets/options/SurahOptionsContext';
+// @ai-end
 import {analyticsService} from '@/services/analytics/AnalyticsService';
 // @ai-start
 import {latinLetterSpacing} from '@/utils/rtl';
@@ -368,30 +372,38 @@ export function SearchView({
   // The iPad results' options button. The menu acts on the default reciter
   // and the rewayah its play button uses, and names the reciter in its
   // header.
-  const handleSurahOptions = useCallback(
-    (result: SearchResult) => {
-      Keyboard.dismiss();
+  // @ai-start
+  const buildSurahOptions = useCallback<SurahOptionsBuilder>(
+    surah => {
       const rewayatId = defaultReciter?.rewayat[0]?.id;
-      SheetManager.show('surah-options', {
-        payload: {
-          surah: result.item as Surah,
-          reciterId: defaultReciter?.id,
-          rewayatId,
-          onAddToQueue: defaultReciter
-            ? async (surah: Surah) => {
-                const tracks = await createTracksForReciter(
-                  defaultReciter,
-                  [surah],
-                  rewayatId,
-                );
-                await addToQueue(tracks);
-              }
-            : undefined,
-        },
-      });
+      return {
+        surah,
+        reciterId: defaultReciter?.id,
+        rewayatId,
+        onAddToQueue: defaultReciter
+          ? async (s: Surah) => {
+              const tracks = await createTracksForReciter(
+                defaultReciter,
+                [s],
+                rewayatId,
+              );
+              await addToQueue(tracks);
+            }
+          : undefined,
+      };
     },
     [defaultReciter, addToQueue],
   );
+
+  const handleSurahOptions = useCallback(
+    (result: SearchResult) => {
+      Keyboard.dismiss();
+      const payload = buildSurahOptions(result.item as Surah);
+      if (payload) SheetManager.show('surah-options', {payload});
+    },
+    [buildSurahOptions],
+  );
+  // @ai-end
 
   const renderSearchResult = useCallback(
     ({item}: ListRenderItemInfo<SearchResult>) => {
@@ -562,14 +574,16 @@ export function SearchView({
             )}
           </ScrollView>
         ) : isTablet && !searching && searchResults.length > 0 ? (
-          <TabletSearchResults
-            results={searchResults}
-            onResultPress={handleResultPress}
-            onSurahPlay={handleSurahLongPress}
-            onSurahOptions={handleSurahOptions}
-            bottomPadding={Math.max(keyboardHeight, bottomInset)}
-            style={styles.tabletFullWidth}
-          />
+          <SurahOptionsProvider build={buildSurahOptions}>
+            <TabletSearchResults
+              results={searchResults}
+              onResultPress={handleResultPress}
+              onSurahPlay={handleSurahLongPress}
+              onSurahOptions={handleSurahOptions}
+              bottomPadding={Math.max(keyboardHeight, bottomInset)}
+              style={styles.tabletFullWidth}
+            />
+          </SurahOptionsProvider>
         ) : (
           <FlatList
             style={listStyle}

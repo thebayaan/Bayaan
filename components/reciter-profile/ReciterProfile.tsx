@@ -6,6 +6,7 @@ import React, {
   useEffect,
   useLayoutEffect,
 } from 'react';
+import {SurahOptionsScope} from '@/components/sheets/options/surahOptions'; // @ai
 import {
   View,
   Text,
@@ -430,7 +431,7 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
     };
   }, []);
   // @ai-end
-  const {startNewChain} = useRecentlyPlayedStore();
+  const startNewChain = useRecentlyPlayedStore(s => s.startNewChain); // @ai
   const {setReciterPreference} = useSettings(); // @ai
 
   // Retrieve persisted reciter profile settings
@@ -1323,34 +1324,42 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
                             getColorForSurah={getColorForSurah}
                           />
                         ) : (
-                          <MemoizedSurahList
-                            inline
-                            surahs={getSurahsForTab(tab.id)}
-                            onSurahPress={handleSurahPress}
+                          // @ai-start
+                          <SurahOptionsScope
                             reciterId={currentReciterId}
-                            isLoved={
-                              isLovedPerTab.get(tab.id) ??
-                              isLovedWithCurrentRewayat
-                            }
-                            isDownloaded={isDownloaded}
-                            onOptionsPress={(surah: Surah) =>
-                              SheetManager.show('surah-options', {
-                                payload: {
-                                  surah,
-                                  reciterId: currentReciterId,
-                                  rewayatId: tab.id,
-                                  onAddToQueue: handleAddToQueue,
-                                  hideGoToReciter: true,
-                                },
-                              })
-                            }
-                            viewMode={viewMode}
-                            sortOption={sortOption}
-                            getColorForSurah={getColorForSurah}
                             rewayatId={tab.id}
-                            tabletMargin={isTablet ? pageMargin : undefined}
-                            hideTableHeader={isTablet} // @ai
-                          />
+                            onAddToQueue={handleAddToQueue}
+                            hideGoToReciter>
+                            <MemoizedSurahList
+                              inline
+                              surahs={getSurahsForTab(tab.id)}
+                              onSurahPress={handleSurahPress}
+                              reciterId={currentReciterId}
+                              isLoved={
+                                isLovedPerTab.get(tab.id) ??
+                                isLovedWithCurrentRewayat
+                              }
+                              isDownloaded={isDownloaded}
+                              onOptionsPress={(surah: Surah) =>
+                                SheetManager.show('surah-options', {
+                                  payload: {
+                                    surah,
+                                    reciterId: currentReciterId,
+                                    rewayatId: tab.id,
+                                    onAddToQueue: handleAddToQueue,
+                                    hideGoToReciter: true,
+                                  },
+                                })
+                              }
+                              viewMode={viewMode}
+                              sortOption={sortOption}
+                              getColorForSurah={getColorForSurah}
+                              rewayatId={tab.id}
+                              tabletMargin={isTablet ? pageMargin : undefined}
+                              hideTableHeader={isTablet} // @ai
+                            />
+                          </SurahOptionsScope>
+                          // @ai-end
                         )
                       ) : null}
                     </View>
@@ -1429,36 +1438,44 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
       {/* Search overlay — mounted on top, preserves main content underneath */}
       {showSearch && (
         <View style={StyleSheet.absoluteFill} pointerEvents="auto">
-          <SearchView
-            surahs={filteredSurahs}
-            onSurahPress={handleSurahPress}
+          {/* @ai-start */}
+          <SurahOptionsScope
             reciterId={currentReciterId}
-            isLoved={isLovedWithCurrentRewayat}
-            onOptionsPress={(surah: Surah) =>
-              SheetManager.show('surah-options', {
-                payload: {
-                  surah,
-                  reciterId: currentReciterId,
-                  rewayatId: selectedRewayat?.id,
-                  onAddToQueue: handleAddToQueue,
-                  hideGoToReciter: true,
-                },
-              })
-            }
-            searchQuery={searchQuery}
-            onSearchChange={handleSearch}
-            onCloseSearch={() => {
-              setShowSearch(false);
-              setSearchQuery('');
-            }}
-            availableRewayat={rewayatList}
-            selectedRewayatId={selectedRewayatId}
-            onRewayatSelect={handleRewayatChange}
-            isDarkMode={theme.isDarkMode}
-            reciterName={getReciterDisplayName(reciter)}
-            viewMode={viewMode}
-            getColorForSurah={getColorForSurah}
-          />
+            rewayatId={selectedRewayat?.id}
+            onAddToQueue={handleAddToQueue}
+            hideGoToReciter>
+            <SearchView
+              surahs={filteredSurahs}
+              onSurahPress={handleSurahPress}
+              reciterId={currentReciterId}
+              isLoved={isLovedWithCurrentRewayat}
+              onOptionsPress={(surah: Surah) =>
+                SheetManager.show('surah-options', {
+                  payload: {
+                    surah,
+                    reciterId: currentReciterId,
+                    rewayatId: selectedRewayat?.id,
+                    onAddToQueue: handleAddToQueue,
+                    hideGoToReciter: true,
+                  },
+                })
+              }
+              searchQuery={searchQuery}
+              onSearchChange={handleSearch}
+              onCloseSearch={() => {
+                setShowSearch(false);
+                setSearchQuery('');
+              }}
+              availableRewayat={rewayatList}
+              selectedRewayatId={selectedRewayatId}
+              onRewayatSelect={handleRewayatChange}
+              isDarkMode={theme.isDarkMode}
+              reciterName={getReciterDisplayName(reciter)}
+              viewMode={viewMode}
+              getColorForSurah={getColorForSurah}
+            />
+          </SurahOptionsScope>
+          {/* @ai-end */}
         </View>
       )}
     </View>

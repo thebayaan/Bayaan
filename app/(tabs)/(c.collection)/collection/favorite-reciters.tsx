@@ -26,6 +26,11 @@ import {getDisplayLabelFromName} from '@/services/rewayah/RewayahIdentity';
 import {flipX, latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
 import {getReciterDisplayName} from '@/i18n/format';
+import {useNativeOptionsMenu} from '@/components/sheets/options/OptionsMenu';
+import {
+  CollectionOptionsMenu,
+  type CollectionOptionsPayload,
+} from '@/components/sheets/options/collectionOptions';
 import {rankReciters} from '@/utils/search/catalog'; // @ai
 import {useLibraryListBottomPadding} from '@/hooks/useBottomInset'; // @ai
 // @ai-end
@@ -38,6 +43,7 @@ export default function FavoriteRecitersScreen() {
   const {favoriteReciters, removeFavorite} = useFavoriteReciters();
   const router = useRouter();
   const {t} = useTranslation(['collection', 'common']);
+  const nativeMenus = useNativeOptionsMenu(); // @ai
 
   const scrollY = useRef(new RNAnimated.Value(0)).current;
   const [showSearch, setShowSearch] = useState(false);
@@ -250,25 +256,32 @@ export default function FavoriteRecitersScreen() {
     SheetManager.show('favorite-reciters');
   }, []);
 
+  // @ai-start
+  const buildReciterOptions = useCallback(
+    (reciter: Reciter): CollectionOptionsPayload => ({
+      title: getReciterDisplayName(reciter),
+      subtitle: getDisplayLabelFromName(reciter.rewayat[0]?.name),
+      options: [
+        {
+          label: t('favoriteRecitersScreen.removeFromFavorites'),
+          icon: 'user-minus',
+          destructive: true,
+          onPress: () => removeFavorite(reciter.id),
+        },
+      ],
+    }),
+    [removeFavorite, t],
+  );
+
   const handleReciterOptions = useCallback(
     (reciter: Reciter) => {
       SheetManager.show('collection-options', {
-        payload: {
-          title: getReciterDisplayName(reciter),
-          subtitle: getDisplayLabelFromName(reciter.rewayat[0]?.name),
-          options: [
-            {
-              label: t('favoriteRecitersScreen.removeFromFavorites'),
-              icon: 'user-minus',
-              destructive: true,
-              onPress: () => removeFavorite(reciter.id),
-            },
-          ],
-        },
+        payload: buildReciterOptions(reciter),
       });
     },
-    [removeFavorite, t],
+    [buildReciterOptions],
   );
+  // @ai-end
 
   const renderItem = useCallback(
     ({item}: {item: Reciter}) => (
@@ -277,9 +290,22 @@ export default function FavoriteRecitersScreen() {
         onPress={reciter => handleReciterPress(reciter.id)}
         onOptionsPress={handleReciterOptions}
         onLongPress={handleReciterOptions}
+        optionsMenu={
+          nativeMenus ? (
+            <CollectionOptionsMenu
+              payload={buildReciterOptions(item)}
+              layout="overlay"
+            />
+          ) : undefined
+        }
       />
     ),
-    [handleReciterPress, handleReciterOptions],
+    [
+      handleReciterPress,
+      handleReciterOptions,
+      nativeMenus,
+      buildReciterOptions,
+    ],
   );
 
   if (favoriteReciters.length === 0) {

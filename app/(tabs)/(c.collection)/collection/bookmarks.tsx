@@ -36,6 +36,11 @@ import {flipX} from '@/utils/rtl';
 import {savedVerseOpenParams} from '@/services/verse-annotations/openSavedVerse';
 import {describeSavedVerseNow} from '@/hooks/useSavedVerseDescription';
 import {savedVerseSubtitle} from '@/services/verse-annotations/unitAnnotations';
+import {useNativeOptionsMenu} from '@/components/sheets/options/OptionsMenu';
+import {
+  CollectionOptionsMenu,
+  type CollectionOptionsPayload,
+} from '@/components/sheets/options/collectionOptions';
 import {useLibraryListBottomPadding} from '@/hooks/useBottomInset'; // @ai
 // @ai-end
 
@@ -51,6 +56,7 @@ const BookmarksScreen = () => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const {t} = useTranslation(['collection', 'common']);
+  const nativeMenus = useNativeOptionsMenu(); // @ai
 
   const [bookmarks, setBookmarks] = useState<BookmarkData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -118,30 +124,35 @@ const BookmarksScreen = () => {
   );
   // @ai-end
 
-  const handleOptionsPress = useCallback(
-    (item: BookmarkData) => {
-      SheetManager.show('collection-options', {
-        payload: {
-          title: item.surahName,
-          // @ai: the ayah in the numbering of the rewayah it was saved in
-          subtitle: savedVerseSubtitle(
-            describeSavedVerseNow(item.bookmark),
-            item.bookmark.ayahNumber,
-            number => t('common:labels.ayahNumber', {number}),
-          ),
-          options: [
-            {
-              label: t('bookmarksScreen.removeBookmark'),
-              icon: 'minus-circle',
-              destructive: true,
-              onPress: () => handleRemoveBookmark(item.bookmark),
-            },
-          ],
+  // @ai-start
+  const buildOptions = useCallback(
+    (item: BookmarkData): CollectionOptionsPayload => ({
+      title: item.surahName,
+      // @ai: the ayah in the numbering of the rewayah it was saved in
+      subtitle: savedVerseSubtitle(
+        describeSavedVerseNow(item.bookmark),
+        item.bookmark.ayahNumber,
+        number => t('common:labels.ayahNumber', {number}),
+      ),
+      options: [
+        {
+          label: t('bookmarksScreen.removeBookmark'),
+          icon: 'minus-circle',
+          destructive: true,
+          onPress: () => handleRemoveBookmark(item.bookmark),
         },
-      });
-    },
+      ],
+    }),
     [handleRemoveBookmark, t],
   );
+
+  const handleOptionsPress = useCallback(
+    (item: BookmarkData) => {
+      SheetManager.show('collection-options', {payload: buildOptions(item)});
+    },
+    [buildOptions],
+  );
+  // @ai-end
 
   const heroOuterBg = Color(theme.colors.textSecondary).alpha(0.1).toString();
   const heroInnerBg = Color(theme.colors.textSecondary).alpha(0.08).toString();
@@ -186,6 +197,14 @@ const BookmarksScreen = () => {
       rewayahId={item.bookmark.rewayahId}
       onPress={() => handleOpenBookmark(item.bookmark)} // @ai
       onOptionsPress={() => handleOptionsPress(item)}
+      optionsMenu={
+        nativeMenus ? (
+          <CollectionOptionsMenu
+            payload={buildOptions(item)}
+            layout="overlay"
+          />
+        ) : undefined
+      }
     />
   );
 

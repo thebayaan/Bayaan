@@ -5,11 +5,11 @@ import {
   View,
   Text,
   StyleSheet,
-  Switch,
   Pressable,
   type StyleProp, // @ai
   type ViewStyle, // @ai
 } from 'react-native';
+import {NativeSwitch} from '@/components/native/NativeSwitch'; // @ai
 import {moderateScale, verticalScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
@@ -804,11 +804,6 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
     });
   }, [indexedTajweedData, verseKey, isTajweedLoading]);
 
-  const trackColor = {
-    false: Color(theme.colors.text).alpha(0.1).toString(),
-    true: Color(theme.colors.text).alpha(0.65).toString(),
-  };
-
   // @ai-start
   // Mushaf 1440 is Hafs only. chooseMushafRenderer (rewayahSelection.ts)
   // switches the data service to Hafs before the store pins it, overtaking a
@@ -1059,10 +1054,7 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
               <Text style={styles.optionLabel}>
                 {t('mushafSettings.wordByWord')}
               </Text>
-              <Switch
-                trackColor={trackColor}
-                thumbColor="#FFFFFF"
-                ios_backgroundColor={trackColor.false}
+              <NativeSwitch
                 onValueChange={toggleWBW}
                 value={showWBW}
                 style={styles.switchStyle}
@@ -1140,10 +1132,7 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
               <Text style={styles.optionLabel}>
                 {t('mushafSettings.transliteration')}
               </Text>
-              <Switch
-                trackColor={trackColor}
-                thumbColor="#FFFFFF"
-                ios_backgroundColor={trackColor.false}
+              <NativeSwitch
                 onValueChange={toggleTransliteration}
                 value={showTransliteration}
                 style={styles.switchStyle}
@@ -1170,10 +1159,7 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
               <Text style={styles.optionLabel}>
                 {t('mushafSettings.translation')}
               </Text>
-              <Switch
-                trackColor={trackColor}
-                thumbColor="#FFFFFF"
-                ios_backgroundColor={trackColor.false}
+              <NativeSwitch
                 onValueChange={toggleTranslation}
                 value={showTranslation}
                 style={styles.switchStyle}
@@ -1219,10 +1205,7 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
           <Text style={styles.optionLabel}>
             {t('mushafSettings.highlightAllah')}
           </Text>
-          <Switch
-            trackColor={trackColor}
-            thumbColor="#FFFFFF"
-            ios_backgroundColor={trackColor.false}
+          <NativeSwitch
             onValueChange={toggleAllahNameHighlight}
             value={showAllahNameHighlight}
             style={styles.switchStyle}
@@ -1250,10 +1233,7 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
           <Text style={styles.optionLabel}>
             {t('mushafSettings.thematicHighlighting')}
           </Text>
-          <Switch
-            trackColor={trackColor}
-            thumbColor="#FFFFFF"
-            ios_backgroundColor={trackColor.false}
+          <NativeSwitch
             onValueChange={toggleThemes}
             value={showThemes}
             style={styles.switchStyle}
@@ -1277,10 +1257,7 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
               <Text style={styles.optionLabel}>
                 {t('mushafSettings.communityReflections')}
               </Text>
-              <Switch
-                trackColor={trackColor}
-                thumbColor="#FFFFFF"
-                ios_backgroundColor={trackColor.false}
+              <NativeSwitch
                 onValueChange={toggleCommunityReflections}
                 value={showCommunityReflections}
                 style={styles.switchStyle}
@@ -1393,7 +1370,6 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
             rewayah={rewayah}
             showRewayahDiffs={showRewayahDiffs}
             toggleRewayahDiffs={toggleRewayahDiffs}
-            trackColor={trackColor}
             styles={styles}
             theme={theme}
           />
@@ -1712,7 +1688,6 @@ interface RewayahDiffCardProps {
   rewayah: RewayahWithDiffs;
   showRewayahDiffs: boolean;
   toggleRewayahDiffs: () => void;
-  trackColor: {false: string; true: string};
   styles: ReturnType<typeof createStyles>;
   theme: Theme;
 }
@@ -1722,7 +1697,6 @@ const RewayahDiffCard: React.FC<RewayahDiffCardProps> = ({
   rewayah,
   showRewayahDiffs,
   toggleRewayahDiffs,
-  trackColor,
   styles,
   theme,
 }) => {
@@ -1736,10 +1710,7 @@ const RewayahDiffCard: React.FC<RewayahDiffCardProps> = ({
         <Text style={styles.optionLabel}>
           {t('mushafSettings.showDifferences')}
         </Text>
-        <Switch
-          trackColor={trackColor}
-          thumbColor="#FFFFFF"
-          ios_backgroundColor={trackColor.false}
+        <NativeSwitch
           onValueChange={toggleRewayahDiffs}
           value={showRewayahDiffs}
           style={styles.switchStyle}

@@ -14,6 +14,13 @@ jest.mock('@/services/tafseer/TafseerApiService', () => ({
 
 type StoreModule = typeof import('../tafseerStore');
 type DbModule = typeof import('@/services/tafseer/TafseerDbService');
+// @ai-start
+type MockModule = typeof import('@/test-utils/mockExpoSqlite');
+
+// Each isolated registry has its own sqlite mock with its own folder. afterEach
+// resets them, and a reset removes the folder.
+const isolatedMocks: MockModule[] = [];
+// @ai-end
 
 interface Loaded {
   useTafseerStore: StoreModule['useTafseerStore'];
@@ -28,6 +35,7 @@ async function load(): Promise<Loaded> {
       tafseerDbService: require('@/services/tafseer/TafseerDbService')
         .tafseerDbService,
     };
+    isolatedMocks.push(require('@/test-utils/mockExpoSqlite')); // @ai
   });
   if (!loaded) throw new Error('modules not loaded');
   // The app initializes the DB at boot; the store itself never does.
@@ -68,9 +76,14 @@ beforeEach(async () => {
   jest.spyOn(console, 'log').mockImplementation(() => undefined);
 });
 
-afterEach(() => {
+afterEach(async () => {
   jest.restoreAllMocks();
   mockFetchFullTafseer.mockReset();
+  // @ai-start
+  for (const isolated of isolatedMocks.splice(0)) {
+    await isolated.resetDatabases();
+  }
+  // @ai-end
 });
 
 describe('tafseerStore (characterization, develop behavior)', () => {

@@ -1,5 +1,9 @@
 // @ai-generated
 import React, {useCallback, useMemo, useState} from 'react';
+// @ai-start
+import {useSurahOptionsContext} from '@/components/sheets/options/SurahOptionsContext';
+import {useNativeOptionsMenu} from '@/components/sheets/options/OptionsMenu';
+// @ai-end
 import {
   View,
   Text,
@@ -382,6 +386,7 @@ function SurahResultRow({
       />
       <MoreButton
         onPress={() => onOptions(result)}
+        surah={result.item as Surah}
         styles={styles}
         theme={theme}
       />
@@ -391,17 +396,25 @@ function SurahResultRow({
 
 function MoreButton({
   onPress,
+  surah,
   styles,
   theme,
 }: {
   onPress: () => void;
+  surah: Surah;
   styles: Styles;
   theme: Theme;
 }) {
   const {t} = useTranslation('home');
+  // @ai-start
+  // A native menu on the button where the screen provides surah options.
+  const options = useSurahOptionsContext();
+  const payload = options ? options.build(surah) : null;
+  const tapMenu = useNativeOptionsMenu('tap') && !!payload;
+  // @ai-end
   return (
     <Pressable
-      onPress={onPress}
+      onPress={tapMenu ? undefined : onPress}
       hitSlop={6}
       accessibilityRole="button"
       accessibilityLabel={t('surahItem.moreOptions')}
@@ -412,6 +425,16 @@ function MoreButton({
         size={moderateScale(18)}
         color={theme.colors.text}
       />
+      {/* @ai-start */}
+      {tapMenu && options && (
+        <options.Menu
+          payload={payload}
+          layout="overlay"
+          accessibilityLabel={t('surahItem.moreOptions')}>
+          <View />
+        </options.Menu>
+      )}
+      {/* @ai-end */}
     </Pressable>
   );
 }
@@ -525,6 +548,7 @@ function TopResultCard({
   const moreButton = isReciter ? null : (
     <MoreButton
       onPress={() => onOptions(result)}
+      surah={surah}
       styles={styles}
       theme={theme}
     />

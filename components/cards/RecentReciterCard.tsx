@@ -8,7 +8,7 @@ import Color from 'color';
 import {LinearGradient} from 'expo-linear-gradient';
 import {GlassView} from 'expo-glass-effect';
 import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
-import {Slider} from '@miblanchard/react-native-slider';
+import {ProgressTrack} from '@/components/ProgressTrack'; // @ai
 import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
 import {resumeRecent} from '@/services/player/utils/resumeRecent';
@@ -23,6 +23,13 @@ import {createStyles} from '@/components/cards/recentCardStyles';
 // @ai-start
 import {forceLTR} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
+// @ai-start
+import {useNativeOptionsMenu} from '@/components/sheets/options/OptionsMenu';
+import {
+  HomeCardOptionsMenu,
+  type HomeCardOptionsPayload,
+} from '@/components/sheets/options/homeCardOptions';
+// @ai-end
 // @ai-end
 
 interface RecentReciterCardProps {
@@ -226,35 +233,42 @@ export const RecentReciterCard = ({
   ]);
 
   // Long press options
+  // @ai-start
+  const optionsPayload = useMemo<HomeCardOptionsPayload>(
+    () => ({
+      reciterId,
+      reciterName,
+      surahId,
+      surahName,
+      rewayatId,
+      recentIndex: index,
+      variant: 'recent',
+      onContinuePlaying: handlePlayPress,
+    }),
+    [
+      reciterId,
+      reciterName,
+      surahId,
+      surahName,
+      rewayatId,
+      index,
+      handlePlayPress,
+    ],
+  );
+  // On iPad the card is a context menu (long press or secondary click).
+  const contextMenu = useNativeOptionsMenu('longPress');
   const handleLongPress = useCallback(() => {
-    SheetManager.show('home-card-options', {
-      payload: {
-        reciterId,
-        reciterName,
-        surahId,
-        surahName,
-        rewayatId,
-        recentIndex: index,
-        variant: 'recent',
-        onContinuePlaying: handlePlayPress,
-      },
-    });
-  }, [
-    reciterId,
-    reciterName,
-    surahId,
-    surahName,
-    rewayatId,
-    index,
-    handlePlayPress,
-  ]);
+    SheetManager.show('home-card-options', {payload: optionsPayload});
+  }, [optionsPayload]);
+  const onLongPress = contextMenu ? undefined : handleLongPress;
+  // @ai-end
 
   const styles = useMemo(() => createStyles(theme), [theme]);
   const glassColorScheme = useGlassColorScheme();
 
   const CardWrapper = USE_GLASS ? GlassView : View;
 
-  return (
+  const card = (
     <CardWrapper
       style={[
         styles.container,
@@ -293,7 +307,7 @@ export const RecentReciterCard = ({
       {/* Image box — matches playback zone spacing */}
       <View style={styles.imageContainer}>
         {isUserUpload ? (
-          <Pressable onPress={handlePlayPress} onLongPress={handleLongPress}>
+          <Pressable onPress={handlePlayPress} onLongPress={onLongPress}>
             <ReciterImage
               imageUrl={imageUrl}
               reciterName={reciterName}
@@ -308,7 +322,7 @@ export const RecentReciterCard = ({
               params: {id: reciterId},
             }}
             asChild>
-            <Pressable onLongPress={handleLongPress}>
+            <Pressable onLongPress={onLongPress}>
               {USE_GLASS ? (
                 <Link.AppleZoom>
                   <ReciterImage
@@ -339,7 +353,7 @@ export const RecentReciterCard = ({
       {/* Bottom zone: Playback controls — resumes audio */}
       <Pressable
         onPress={handlePlayPress}
-        onLongPress={handleLongPress}
+        onLongPress={onLongPress}
         style={({pressed}) => [
           styles.playbackZone,
           pressed && styles.playbackZonePressed,
@@ -368,26 +382,28 @@ export const RecentReciterCard = ({
               />
             )}
           </View>
-          <Slider
+          <ProgressTrack
             value={currentSliderProgress}
-            disabled={true}
-            minimumTrackTintColor={Color(theme.colors.text)
-              .alpha(0.35)
-              .toString()}
-            maximumTrackTintColor={Color(theme.colors.text)
-              .alpha(0.08)
-              .toString()}
-            trackStyle={{
-              height: moderateScale(3),
-              borderRadius: moderateScale(2),
-            }}
-            thumbStyle={{height: 0, width: 0}}
-            containerStyle={styles.sliderContainer}
+            fillColor={Color(theme.colors.text).alpha(0.35).toString()}
+            trackColor={Color(theme.colors.text).alpha(0.08).toString()}
+            style={styles.sliderContainer}
           />
           <Text style={styles.timeRemaining}>{timeRemaining}</Text>
         </View>
       </Pressable>
     </CardWrapper>
   );
+
+  // @ai-start
+  return contextMenu ? (
+    <HomeCardOptionsMenu
+      payload={optionsPayload}
+      style={width != null ? {width} : undefined}>
+      {card}
+    </HomeCardOptionsMenu>
+  ) : (
+    card
+  );
+  // @ai-end
 };
 // @ai-end

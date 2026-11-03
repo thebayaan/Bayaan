@@ -55,13 +55,14 @@ describe('confirmRemoveAllUploads', () => {
     expect(deleteAll).not.toHaveBeenCalled();
   });
 
-  it('deletes all uploads only after the destructive button is pressed', () => {
+  it('deletes all uploads only after the destructive button is pressed', async () => {
     const deleteAll = jest.fn(() => Promise.resolve());
 
     confirmRemoveAllUploads(deleteAll);
     const remove = lastButtons().find(b => b.style === 'destructive');
     expect(remove?.text).toBe('common:actions.remove');
     remove?.onPress?.();
+    await Promise.resolve();
 
     expect(deleteAll).toHaveBeenCalledTimes(1);
   });

@@ -38,6 +38,11 @@ import {
 import {latinLetterSpacing} from '@/utils/rtl';
 import type {Track} from '@/types/audio';
 import {useRowDisplay} from '../PlayerContent/QueueList';
+import {useNativeOptionsMenu} from '@/components/sheets/options/OptionsMenu';
+import {
+  CollectionOptionsMenu,
+  type CollectionOptionsPayload,
+} from '@/components/sheets/options/collectionOptions';
 
 const EMPTY_TRACKS: Track[] = [];
 
@@ -85,6 +90,8 @@ interface QueueRowProps {
   section: RowSection;
   onPress: (index: number) => void;
   onMore?: (track: Track, index: number) => void;
+  /** The row's ••• as a native menu (iPad and Android tablets). */
+  renderMenu?: (track: Track, index: number) => React.ReactNode;
   /** Starts a drag; only Up Next rows have a handle. */
   drag?: () => void;
   /**
@@ -107,6 +114,7 @@ const QueueRow = React.memo(function QueueRow({
   section,
   onPress,
   onMore,
+  renderMenu,
   drag,
   onHandleTouch,
   isDragging = false,
@@ -206,6 +214,7 @@ const QueueRow = React.memo(function QueueRow({
             size={18}
             color={colors.textSecondary}
           />
+          {renderMenu?.(track, index)}
         </Pressable>
       ) : null}
       {drag ? (
@@ -345,8 +354,8 @@ export function QueuePane({bottomInset}: {bottomInset: number}) {
     [moveInQueue],
   );
 
-  const openMenu = useCallback(
-    (track: Track, index: number) => {
+  const buildMenu = useCallback(
+    (track: Track, index: number): CollectionOptionsPayload => {
       const nextSlot = index > currentIndex ? currentIndex + 1 : currentIndex;
       const options = [
         {
@@ -379,13 +388,11 @@ export function QueuePane({bottomInset}: {bottomInset: number}) {
           onPress: () => removeFromQueue([index]),
         },
       ];
-      SheetManager.show('collection-options', {
-        payload: {
-          title: getTrackDisplayTitle(track),
-          subtitle: getTrackArtistDisplay(track),
-          options,
-        },
-      });
+      return {
+        title: getTrackDisplayTitle(track),
+        subtitle: getTrackArtistDisplay(track),
+        options,
+      };
     },
     [
       currentIndex,
@@ -396,6 +403,30 @@ export function QueuePane({bottomInset}: {bottomInset: number}) {
       removeFromQueue,
     ],
   );
+
+  const openMenu = useCallback(
+    (track: Track, index: number) => {
+      SheetManager.show('collection-options', {
+        payload: buildMenu(track, index),
+      });
+    },
+    [buildMenu],
+  );
+
+  const nativeMenus = useNativeOptionsMenu();
+  const renderMenu = useCallback(
+    (track: Track, index: number) => (
+      <CollectionOptionsMenu
+        payload={buildMenu(track, index)}
+        layout="overlay"
+        accessibilityLabel={t('queue.moreFor', {
+          title: getTrackDisplayTitle(track),
+        })}
+      />
+    ),
+    [buildMenu, t],
+  );
+  const rowMenu = nativeMenus ? renderMenu : undefined;
 
   const cycleRepeat = useCallback(() => {
     updateSettings({
@@ -437,6 +468,7 @@ export function QueuePane({bottomInset}: {bottomInset: number}) {
         section="upNext"
         onPress={playAt}
         onMore={openMenu}
+        renderMenu={rowMenu}
         drag={drag}
         onHandleTouch={setHandleTouched}
         isDragging={isActive}
@@ -445,7 +477,7 @@ export function QueuePane({bottomInset}: {bottomInset: number}) {
         canMoveDown={item.index < tracks.length - 1}
       />
     ),
-    [playAt, openMenu, move, currentIndex, tracks.length],
+    [playAt, openMenu, rowMenu, move, currentIndex, tracks.length],
   );
 
   const header = (
@@ -542,6 +574,7 @@ export function QueuePane({bottomInset}: {bottomInset: number}) {
                 section="played"
                 onPress={playAt}
                 onMore={openMenu}
+                renderMenu={rowMenu}
               />
             ))
           : null}

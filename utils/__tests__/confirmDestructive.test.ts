@@ -1,8 +1,11 @@
 // @ai-generated
-import {Alert} from 'react-native';
+import {Alert, Platform} from 'react-native';
 import enCollection from '../../i18n/locales/en/collection.json';
 import arCollection from '../../i18n/locales/ar/collection.json';
-import {confirmDestructive} from '../confirmDestructive';
+import {
+  confirmDestructive,
+  setConfirmationListener,
+} from '../confirmDestructive';
 
 type AlertButton = {
   text: string;
@@ -106,6 +109,28 @@ describe('confirmDestructive', () => {
       );
       expect(locale.lovedScreen.unloveAllTitle).toBeTruthy();
       expect(locale.lovedScreen.unloveAllConfirm).toBeTruthy();
+    }
+  });
+
+  it('hands the prompt to the iPad dialog host when one is listening', () => {
+    const os = jest.replaceProperty(Platform, 'OS', 'ios');
+    const pad = Object.getOwnPropertyDescriptor(Platform, 'isPad');
+    Object.defineProperty(Platform, 'isPad', {
+      configurable: true,
+      get: () => true,
+    });
+    const listener = jest.fn();
+    const unsubscribe = setConfirmationListener(listener);
+    try {
+      show(jest.fn());
+      expect(mockAlert).not.toHaveBeenCalled();
+      expect(listener).toHaveBeenCalledWith(
+        expect.objectContaining({title: 'Remove All Downloads?'}),
+      );
+    } finally {
+      unsubscribe();
+      os.restore();
+      if (pad) Object.defineProperty(Platform, 'isPad', pad);
     }
   });
 });

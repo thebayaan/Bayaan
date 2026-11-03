@@ -6,11 +6,12 @@ import {Theme} from '@/utils/themeUtils';
 import {SheetProps, SheetManager} from 'react-native-actions-sheet';
 import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import Color from 'color';
+import {SLEEP_TIMER_OPTIONS} from '@/constants/playback'; // @ai
 // @ai-start
 import {useTranslation} from 'react-i18next';
 // @ai-end
 
-const TIMER_OPTIONS = [5, 15, 30, 45, 60];
+const TIMER_OPTIONS = SLEEP_TIMER_OPTIONS; // @ai
 
 // @ai-start
 export const SleepTimerSheet = (props: SheetProps<'sleep-timer'>) => {

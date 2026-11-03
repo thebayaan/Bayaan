@@ -22,6 +22,10 @@ import {getDisplayLabelFromName} from '@/services/rewayah/RewayahIdentity';
 // @ai-start
 import {useTranslation} from 'react-i18next';
 import {currentLanguageConfig} from '@/i18n/language'; // @ai
+// @ai-start
+import {useSurahOptionsContext} from '@/components/sheets/options/SurahOptionsContext';
+import {useNativeOptionsMenu} from '@/components/sheets/options/OptionsMenu';
+// @ai-end
 import {
   getReciterDisplayName,
   getSurahDisplayName,
@@ -43,6 +47,11 @@ interface TrackItemProps {
   hidePlayButton?: boolean;
   onOptionsPress?: () => void;
   onLongPress?: () => void;
+  /**
+   * A native menu laid over the ••• button on tablets, for screens whose
+   * options aren't surah options (downloads, uploads). @ai
+   */
+  optionsMenu?: React.ReactNode;
 }
 
 // @ai-start
@@ -57,6 +66,7 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
     hidePlayButton,
     onOptionsPress,
     onLongPress,
+    optionsMenu,
   }) => {
     const {theme} = useTheme();
     // @ai-start
@@ -74,6 +84,7 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
         : null;
     // @ai-end
     const {t} = useTranslation(['collection', 'common']);
+    const {t: tHome} = useTranslation('home'); // @ai
 
     // Sync data loading — no async, no useState, no useEffect
     const reciter = useMemo(
@@ -84,7 +95,7 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
     const rewayat = useMemo(
       () =>
         rewayatId
-          ? reciter?.rewayat?.find(r => r.id === rewayatId) ?? null
+          ? (reciter?.rewayat?.find(r => r.id === rewayatId) ?? null)
           : null,
       [reciter, rewayatId],
     );
@@ -143,8 +154,25 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
       );
     }, [reciterId, surahId, rewayatId, userRecitationId, currentTrack]);
 
+    // @ai-start
+    const options = useSurahOptionsContext();
+    const tapMenuAvailable = useNativeOptionsMenu('tap');
+    const rowMenuAvailable = useNativeOptionsMenu('longPress');
+    // @ai-end
+
     const surah = getSurahById(parseInt(surahId, 10));
     if (!surah || !reciter) return null;
+
+    // @ai-start
+    // Screens that provide surah options get native menus on tablets: ••• on
+    // a tap, and the row on a long press or secondary click (iPad).
+    const optionsPayload =
+      onOptionsPress && options
+        ? options.build(surah, {reciterId, rewayatId, userRecitationId})
+        : null;
+    const tapMenu = tapMenuAvailable && !!optionsPayload;
+    const rowMenu = rowMenuAvailable && !!optionsPayload;
+    // @ai-end
 
     // The Arabic surah name is already shown as text in Arabic mode.
     const surahGlyph =
@@ -172,6 +200,65 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
       );
     };
 
+    const playZone = (
+      <Pressable
+        style={styles.playZone}
+        onPress={onPress}
+        onLongPress={rowMenu ? undefined : onLongPress}>
+        <View style={styles.imageContainer}>
+          <ReciterImage
+            reciterName={reciter?.name || ''}
+            imageUrl={reciter?.image_url || undefined}
+            style={styles.reciterImage}
+          />
+        </View>
+
+        <View style={styles.trackInfo}>
+          <View style={styles.surahNameRow}>
+            {isCurrentTrack ? (
+              <GradientText
+                style={[styles.surahName, {color: theme.colors.text}]}
+                surahId={surah.id}>
+                {surahTitle}
+              </GradientText>
+            ) : (
+              <Text style={[styles.surahName, {color: theme.colors.text}]}>
+                {surahTitle}
+              </Text>
+            )}
+            {surahGlyph && (
+              <Text
+                style={[styles.surahGlyphInline, {color: theme.colors.text}]}>
+                {surahGlyph}
+              </Text>
+            )}
+          </View>
+          <View style={styles.reciterInfoRow}>
+            {isCurrentlyDownloading ? (
+              <CircularProgress
+                progress={downloadProgress}
+                size={moderateScale(13)}
+                strokeWidth={moderateScale(1.5)}
+                color={theme.colors.textSecondary}
+              />
+            ) : isDownloadedState ? (
+              <Ionicons
+                name="arrow-down-circle"
+                size={moderateScale(13)}
+                color={theme.colors.textSecondary}
+                style={styles.downloadIcon}
+              />
+            ) : null}
+            <Text
+              style={[styles.reciterName, {color: theme.colors.textSecondary}]}>
+              {getReciterDisplayName(reciter)}
+            </Text>
+          </View>
+          {renderRewayatBadge()}
+        </View>
+      </Pressable>
+    );
+
     return (
       <View
         style={[
@@ -180,69 +267,24 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
           tabletInset, // @ai
         ]}>
         {/* Play zone */}
-        <Pressable
-          style={styles.playZone}
-          onPress={onPress}
-          onLongPress={onLongPress}>
-          <View style={styles.imageContainer}>
-            <ReciterImage
-              reciterName={reciter?.name || ''}
-              imageUrl={reciter?.image_url || undefined}
-              style={styles.reciterImage}
-            />
-          </View>
-
-          <View style={styles.trackInfo}>
-            <View style={styles.surahNameRow}>
-              {isCurrentTrack ? (
-                <GradientText
-                  style={[styles.surahName, {color: theme.colors.text}]}
-                  surahId={surah.id}>
-                  {surahTitle}
-                </GradientText>
-              ) : (
-                <Text style={[styles.surahName, {color: theme.colors.text}]}>
-                  {surahTitle}
-                </Text>
-              )}
-              {surahGlyph && (
-                <Text
-                  style={[styles.surahGlyphInline, {color: theme.colors.text}]}>
-                  {surahGlyph}
-                </Text>
-              )}
-            </View>
-            <View style={styles.reciterInfoRow}>
-              {isCurrentlyDownloading ? (
-                <CircularProgress
-                  progress={downloadProgress}
-                  size={moderateScale(13)}
-                  strokeWidth={moderateScale(1.5)}
-                  color={theme.colors.textSecondary}
-                />
-              ) : isDownloadedState ? (
-                <Ionicons
-                  name="arrow-down-circle"
-                  size={moderateScale(13)}
-                  color={theme.colors.textSecondary}
-                  style={styles.downloadIcon}
-                />
-              ) : null}
-              <Text
-                style={[
-                  styles.reciterName,
-                  {color: theme.colors.textSecondary},
-                ]}>
-                {getReciterDisplayName(reciter)}
-              </Text>
-            </View>
-            {renderRewayatBadge()}
-          </View>
-        </Pressable>
+        {/* @ai-start */}
+        {rowMenu && options ? (
+          <options.Menu
+            payload={optionsPayload}
+            trigger="longPress"
+            style={styles.playZoneHost}>
+            {playZone}
+          </options.Menu>
+        ) : (
+          playZone
+        )}
+        {/* @ai-end */}
 
         {/* Options zone */}
         {onOptionsPress && (
-          <Pressable style={styles.optionsZone} onPress={onOptionsPress}>
+          <Pressable
+            style={styles.optionsZone}
+            onPress={tapMenu ? undefined : onOptionsPress}>
             {isCurrentTrack ? (
               <NowPlayingIndicator
                 isPlaying={
@@ -260,6 +302,18 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
                 color={theme.colors.text}
               />
             )}
+            {/* @ai-start */}
+            {tapMenu && options ? (
+              <options.Menu
+                payload={optionsPayload}
+                layout="overlay"
+                accessibilityLabel={tHome('surahItem.moreOptions')}>
+                <View />
+              </options.Menu>
+            ) : (
+              optionsMenu
+            )}
+            {/* @ai-end */}
           </Pressable>
         )}
       </View>
@@ -325,6 +379,9 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(10),
     fontFamily: 'Manrope-Regular',
     textTransform: 'capitalize',
+  },
+  playZoneHost: {
+    flex: 1,
   },
   optionsZone: {
     width: '20%' as any,

@@ -1,4 +1,3 @@
-import React from 'react';
 import {SheetDefinition, registerSheet} from 'react-native-actions-sheet';
 import {Surah} from '@/data/surahData';
 import type {RewayatStyle} from '@/types/reciter';
@@ -37,6 +36,13 @@ import {WordDetailSheet} from './WordDetailSheet';
 import {HomeCardOptionsSheet} from './HomeCardOptionsSheet';
 import {AdhkarSessionOptionsSheet} from './AdhkarSessionOptionsSheet';
 import {installRewayahFallbackNotice} from './rewayahFallbackNotice'; // @ai
+import type {SurahOptionsPayload} from './options/surahOptions'; // @ai
+import type {PlayerOptionsPayload} from './options/playerOptions'; // @ai
+import type {DownloadOptionsPayload} from './options/downloadOptions'; // @ai
+import type {CollectionOptionsPayload} from './options/collectionOptions'; // @ai
+import type {UploadOptionsPayload} from './options/uploadOptions'; // @ai
+import type {PlaylistOptionsPayload} from './options/playlistOptions'; // @ai
+import type {HomeCardOptionsPayload} from './options/homeCardOptions'; // @ai
 
 // Register all sheets
 registerSheet('surah-options', SurahOptionsSheet);
@@ -84,14 +90,7 @@ installRewayahFallbackNotice();
 declare module 'react-native-actions-sheet' {
   interface Sheets {
     'surah-options': SheetDefinition<{
-      payload: {
-        surah: Surah;
-        reciterId?: string;
-        rewayatId?: string;
-        onAddToQueue?: (surah: Surah) => Promise<void>;
-        onRemoveFromPlaylist?: () => void;
-        hideGoToReciter?: boolean;
-      };
+      payload: SurahOptionsPayload; // @ai
     }>;
     'rewayat-info': SheetDefinition<{
       payload: {
@@ -116,13 +115,7 @@ declare module 'react-native-actions-sheet' {
       };
     }>;
     'playlist-context': SheetDefinition<{
-      payload: {
-        playlistId: string;
-        playlistName: string;
-        playlistColor?: string;
-        onDelete: () => void;
-        onEdit?: () => void;
-      };
+      payload: PlaylistOptionsPayload; // @ai
     }>;
     'create-playlist': SheetDefinition<{
       payload: {
@@ -139,14 +132,7 @@ declare module 'react-native-actions-sheet' {
         | undefined;
     }>;
     'player-options': SheetDefinition<{
-      payload: {
-        surah?: Surah;
-        reciterId?: string;
-        rewayatId?: string;
-        onGoToReciter?: () => void;
-        isUserUpload?: boolean;
-        userRecitationId?: string;
-      };
+      payload: PlayerOptionsPayload; // @ai
     }>;
     'playback-speed': SheetDefinition<{
       payload: {
@@ -180,39 +166,15 @@ declare module 'react-native-actions-sheet' {
       };
     }>;
     'download-options': SheetDefinition<{
-      payload: {
-        download: import('@/services/player/store/downloadStore').DownloadedSurah;
-        surah: Surah;
-        reciterId: string;
-        rewayatId: string;
-        onPlay: () => void;
-        onAddToQueue: () => void;
-        onRemoveDownload: () => void;
-      };
+      payload: DownloadOptionsPayload; // @ai
     }>;
     'upload-options': SheetDefinition<{
-      payload: {
-        recitation: UploadedRecitation;
-        reciterId: string;
-        onPlay: () => void;
-        onAddToQueue: () => void;
-      };
+      payload: UploadOptionsPayload; // @ai
     }>;
     'add-to-collection': SheetDefinition;
     'ambient-sounds': SheetDefinition;
     'collection-options': SheetDefinition<{
-      payload: {
-        title: string;
-        subtitle?: string;
-        options: Array<{
-          label: string;
-          icon: string;
-          onPress: () => void;
-          destructive?: boolean;
-          disabled?: boolean;
-          customIcon?: React.ReactNode;
-        }>;
-      };
+      payload: CollectionOptionsPayload; // @ai
     }>;
     'verse-actions': SheetDefinition<{
       payload: {
@@ -292,16 +254,7 @@ declare module 'react-native-actions-sheet' {
       };
     }>;
     'home-card-options': SheetDefinition<{
-      payload: {
-        reciterId: string;
-        reciterName: string;
-        surahId?: number;
-        surahName?: string;
-        rewayatId?: string;
-        recentIndex?: number;
-        variant: 'recent' | 'reciter';
-        onContinuePlaying?: () => void;
-      };
+      payload: HomeCardOptionsPayload; // @ai
     }>;
     'adhkar-session-options': SheetDefinition<{
       payload: {

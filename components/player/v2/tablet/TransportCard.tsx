@@ -37,6 +37,7 @@ interface TransportCardProps extends ListeningToolHandlers {
   width: number;
   style?: StyleProp<ViewStyle>;
   onOptionsPress: () => void;
+  optionsMenu?: React.ReactNode; // @ai
   onLayout?: (e: LayoutChangeEvent) => void;
 }
 
@@ -48,6 +49,7 @@ export function TransportCard({
   width,
   style,
   onOptionsPress,
+  optionsMenu, // @ai
   onLayout,
   ...toolHandlers
 }: TransportCardProps) {
@@ -102,7 +104,7 @@ export function TransportCard({
             </View>
           </Pressable>
           <LoveButton loved={meta.isLoved} onPress={meta.toggleLoved} />
-          <MoreButton onPress={onOptionsPress} />
+          <MoreButton onPress={onOptionsPress} menu={optionsMenu} />
         </View>
         <Scrubber transport={transport} />
         {wrapTools ? (

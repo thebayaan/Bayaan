@@ -27,6 +27,8 @@ import Color from 'color';
 // @ai-start
 import {localizeDigits} from '@/i18n/format';
 import {usePlayerA11y} from '@/hooks/usePlayerA11y'; // @ai
+import {nativeMenusAvailable} from '@/components/native/nativeMenus';
+import {PlaybackSpeedMenu, SleepTimerMenu} from '../../ListeningMenus';
 // @ai-end
 
 interface ControlButtonsProps {
@@ -119,23 +121,28 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
         </PillWrapper>
       )}
 
-      <Pressable
-        onPress={onSpeedPress}
-        {...a11y.speed(playbackRate)}
-        style={[
-          styles.button,
-          playbackRate !== 1 && {backgroundColor: activeBackgroundColor},
-        ]}>
-        <Text
+      {/* @ai-start */}
+      <PlaybackSpeedMenu
+        accessibilityLabel={a11y.speed(playbackRate).accessibilityLabel}>
+        <Pressable
+          onPress={nativeMenusAvailable ? undefined : onSpeedPress}
+          {...a11y.speed(playbackRate)}
           style={[
-            styles.speedButtonText,
-            {
-              color: playbackRate !== 1 ? activeIconColor : defaultIconColor,
-            },
+            styles.button,
+            playbackRate !== 1 && {backgroundColor: activeBackgroundColor},
           ]}>
-          {localizeDigits(`${playbackRate}x`)}
-        </Text>
-      </Pressable>
+          <Text
+            style={[
+              styles.speedButtonText,
+              {
+                color: playbackRate !== 1 ? activeIconColor : defaultIconColor,
+              },
+            ]}>
+            {localizeDigits(`${playbackRate}x`)}
+          </Text>
+        </Pressable>
+      </PlaybackSpeedMenu>
+      {/* @ai-end */}
 
       <Pressable
         onPress={handleRepeatPress}
@@ -160,19 +167,26 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
         )}
       </Pressable>
 
-      <Pressable
-        onPress={onSleepTimerPress}
-        {...a11y.sleepTimer(!!isTimerActive)}
-        style={[
-          styles.button,
-          isTimerActive && {backgroundColor: activeBackgroundColor},
-        ]}>
-        <TimerIcon
-          color={isTimerActive ? activeIconColor : defaultIconColor}
-          size={moderateScale(20)}
-          filled={!!isTimerActive}
-        />
-      </Pressable>
+      {/* @ai-start */}
+      <SleepTimerMenu
+        accessibilityLabel={
+          a11y.sleepTimer(!!isTimerActive).accessibilityLabel
+        }>
+        <Pressable
+          onPress={nativeMenusAvailable ? undefined : onSleepTimerPress}
+          {...a11y.sleepTimer(!!isTimerActive)}
+          style={[
+            styles.button,
+            isTimerActive && {backgroundColor: activeBackgroundColor},
+          ]}>
+          <TimerIcon
+            color={isTimerActive ? activeIconColor : defaultIconColor}
+            size={moderateScale(20)}
+            filled={!!isTimerActive}
+          />
+        </Pressable>
+      </SleepTimerMenu>
+      {/* @ai-end */}
 
       <Pressable
         onPress={onAmbientPress}

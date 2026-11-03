@@ -65,6 +65,7 @@ import {USE_GLASS} from '@/hooks/useGlassProps';
 import Constants from 'expo-constants';
 import * as Sentry from '@sentry/react-native';
 import {usePhoneOrientation} from '@/hooks/usePhoneOrientation'; // @ai
+import {ConfirmationDialogHost} from '@/components/native/ConfirmationDialogHost'; // @ai
 
 // Configure Reanimated logger
 configureReanimatedLogger({
@@ -500,6 +501,7 @@ function RootLayout() {
                   onTouchStart={recordTouch} // @ai
                   onLayout={onLayoutRootView}>
                   <NetworkStatusMonitor />
+                  <ConfirmationDialogHost /* @ai: iPad confirmations */ />
                   <SheetProvider>
                     <Stack
                       screenOptions={{
