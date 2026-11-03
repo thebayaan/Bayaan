@@ -29,7 +29,11 @@ import os from 'os';
 // @ai-end
 import path from 'path';
 
-import {REWAYAH_DATA_MANIFEST, REWAYAH_DATA_MD5} from '../rewayahDataManifest';
+import {
+  LAYOUT_SOURCE_SHA256,
+  REWAYAH_DATA_MANIFEST,
+  REWAYAH_DATA_MD5,
+} from '../rewayahDataManifest';
 import {
   getBundledDkDbAssetFiles,
   getCurrentDbNamesByBase,
@@ -69,9 +73,10 @@ describe('rewayahDataManifest (contract C4)', () => {
 
   it('covers exactly the DB assets DigitalKhattDataService requires', () => {
     const required = requiredDbAssets(SERVICE_SOURCE);
-    expect(required.length).toBeGreaterThanOrEqual(9);
+    expect(required.length).toBeGreaterThanOrEqual(8);
     expect(required).toContain('digital-khatt-v2.db');
-    expect(required).toContain('digital-khatt-15-lines.db');
+    // The source of the generated page lines: never bundled.
+    expect(required).not.toContain('digital-khatt-15-lines.db');
     expect(manifestFiles).toEqual(required);
     expect([...getBundledDkDbAssetFiles()].sort()).toEqual(required);
   });
@@ -112,7 +117,7 @@ describe('rewayahDataManifest (contract C4)', () => {
       const identity = getRewayahDataIdentity(rewayah);
       expect(identity).not.toBeNull();
       expect(identity?.wordsSha8).toMatch(/^[0-9a-f]{8}$/);
-      expect(identity?.layoutSha8).toMatch(/^[0-9a-f]{8}$/);
+      expect(identity?.layoutSha8).toBe(LAYOUT_SOURCE_SHA256.slice(0, 8));
     }
     // Throws if two assets would share an on-device base name.
     const names = getCurrentDbNamesByBase();
@@ -120,12 +125,7 @@ describe('rewayahDataManifest (contract C4)', () => {
     expect(names.get('dk_words')).toBe(
       `dk_words.${REWAYAH_DATA_MANIFEST['digital-khatt-v2.db'].slice(0, 8)}.db`,
     );
-    expect(names.get('dk_layout')).toBe(
-      `dk_layout.${REWAYAH_DATA_MANIFEST['digital-khatt-15-lines.db'].slice(
-        0,
-        8,
-      )}.db`,
-    );
+    expect(names.has('dk_layout')).toBe(false);
   });
 
   it('is byte-identical to what gen-manifest.mjs generates', () => {
@@ -176,6 +176,10 @@ describe('rewayahDataManifest (contract C4)', () => {
         "const DK = {'a.db': require('../../data/mushaf/digitalkhatt/a.db')};\n",
       );
       writeFileSync(path.join(assetDir, 'a.db'), 'first version');
+      writeFileSync(
+        path.join(assetDir, 'digital-khatt-15-lines.db'),
+        'the layout source',
+      );
       const run = (...args: string[]) =>
         spawnSync(process.execPath, [script, ...args], {
           cwd: root,
@@ -194,4 +198,10 @@ describe('rewayahDataManifest (contract C4)', () => {
     }
   });
   // @ai-end
+});
+
+describe('LAYOUT_SOURCE_SHA256', () => {
+  it('is the hash of the layout database the page lines come from', () => {
+    expect(LAYOUT_SOURCE_SHA256).toBe(sha256('digital-khatt-15-lines.db'));
+  });
 });

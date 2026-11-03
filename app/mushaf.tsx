@@ -2,6 +2,7 @@ import React, {
   useEffect,
   useMemo,
   useCallback,
+  useRef, // @ai
   useState, // @ai
   useSyncExternalStore, // @ai
 } from 'react';
@@ -17,6 +18,9 @@ import {usePhoneOrientation} from '@/hooks/usePhoneOrientation'; // @ai
 import {useTheme} from '@/hooks/useTheme';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService'; // @ai
+import {useMushafData} from '@/hooks/useMushafData'; // @ai
+import {isRewayahId, type RewayahId} from '@/services/rewayah/RewayahIdentity'; // @ai
+import {restoreSavedRewayah} from '@/services/verse-annotations/restoreSavedRewayah'; // @ai
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
 // @ai-start
 import {
@@ -54,19 +58,51 @@ export type MushafScreenParams = {
   // rewayah's verse holding that slot (verse-units contract 4.4) instead of
   // every verse holding Hafs `surah`:`ayah`. Never a rewayah verse number.
   anchor?: string;
+  // The rewayah a saved verse was saved in, sent with no page. The screen
+  // restores it when the data is ready, then opens the page of the verse.
+  rewayah?: string;
+  // '1' from the player's Repeat, sent with no page. The screen shows the
+  // player options when the page of the verse is known.
+  playerOptions?: string;
   // @ai-end
 };
 
 export default function MushafScreen() {
-  const {surah, page, ayah, anchor} =
+  const {surah, page, ayah, anchor, rewayah, playerOptions} =
     useLocalSearchParams<MushafScreenParams>(); // @ai
   const {theme} = useTheme();
   const {t} = useTranslation(['reader', 'common']); // @ai
 
-  // Safety net — DK data is initialized at AppInitializer priority 4-5,
-  // so in practice this is always true by the time MushafScreen mounts.
-  // Capture it as a value so the hooks below run unconditionally.
-  const dkReady = digitalKhattDataService.initialized;
+  // @ai-start
+  // The data loads after the splash, so this screen can open first. It starts
+  // the load if nothing did, and waits for it.
+  const {state: dataState, retry: retryLoad} = useMushafData();
+  const dkCacheVersion = useSyncExternalStore(
+    subscribeDkCache,
+    getDkCacheVersion,
+  );
+  useEffect(() => {
+    mushafPreloadService.startIfIdle();
+  }, []);
+  const dkReady = dataState === 'ready';
+  // A saved verse brings its rewayah. It is restored after the load, and the
+  // loading view stays until then: no page of another rewayah meanwhile.
+  const savedRewayah = isRewayahId(rewayah) ? rewayah : undefined;
+  const [restoringRewayah, setRestoringRewayah] = useState(() =>
+    needsRewayahRestore(savedRewayah),
+  );
+  useEffect(() => {
+    if (!restoringRewayah || !dkReady) return;
+    let cancelled = false;
+    restoreSavedRewayah(savedRewayah).finally(() => {
+      if (!cancelled) setRestoringRewayah(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [restoringRewayah, dkReady, savedRewayah]);
+  const contentReady = dkReady && !restoringRewayah;
+  // @ai-end
   const surahStartPages = dkReady
     ? digitalKhattDataService.getSurahStartPages()
     : {};
@@ -77,12 +113,23 @@ export default function MushafScreen() {
       const p = parseInt(page, 10);
       if (!isNaN(p) && p >= 1 && p <= 604) return p;
     }
+    // @ai-start
+    // A verse with no page: the page of the verse, in the restored rewayah.
+    if (contentReady && surah && ayah) {
+      const versePage = digitalKhattDataService.getPageForVerse(
+        `${parseInt(surah, 10)}:${parseInt(ayah, 10)}`,
+      );
+      if (versePage) return versePage;
+    }
+    // @ai-end
     if (surah) {
       const s = parseInt(surah, 10);
       if (!isNaN(s) && surahStartPages[s]) return surahStartPages[s];
     }
     return 1;
-  }, [page, surah, surahStartPages]);
+    // dkCacheVersion: the same verse has another page after a rewayah switch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, surah, ayah, surahStartPages, contentReady, dkCacheVersion]);
 
   // @ai-start
   // The surah the user asked for, when the page was resolved from it. A page
@@ -94,6 +141,21 @@ export default function MushafScreen() {
     const s = parseInt(surah, 10);
     return !isNaN(s) && surahStartPages[s] ? s : undefined;
   }, [page, surah, surahStartPages]);
+  // @ai-end
+
+  // @ai-start
+  // The options of the player's Repeat need the page, so they open here, once,
+  // when the page of the verse is known (VerseActionsSheet).
+  const playerOptionsShownRef = useRef(false);
+  useEffect(() => {
+    if (playerOptions !== '1' || !contentReady) return;
+    if (playerOptionsShownRef.current) return;
+    playerOptionsShownRef.current = true;
+    useMushafPlayerStore.setState({currentPage: pageNumber});
+    SheetManager.show('mushaf-player-options', {
+      payload: {currentPage: pageNumber},
+    });
+  }, [playerOptions, contentReady, pageNumber]);
   // @ai-end
 
   // Build initial verse key for highlight
@@ -141,23 +203,11 @@ export default function MushafScreen() {
   // @ai-end
 
   // @ai-start
-  // When the mushaf text cannot be loaded at all (e.g. no storage left to
-  // copy it to the device), say so and offer a retry instead of an endless
-  // spinner. The preload retries both the text and the fonts.
-  const preloadState = useSyncExternalStore(subscribePreload, getPreloadState);
-  const [retrying, setRetrying] = useState(false);
-  const retryLoad = useCallback(() => {
-    setRetrying(true);
-    mushafPreloadService
-      .initialize()
-      .catch(() => undefined)
-      .finally(() => setRetrying(false));
-  }, []);
-  // @ai-end
-
   // Set verse highlight on mount, auto-clear after 3s, clear on unmount
   useEffect(() => {
     // @ai-start
+    // Not before the page is known and on screen.
+    if (!contentReady) return;
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | null = null;
     const flash = () => {
@@ -200,11 +250,13 @@ export default function MushafScreen() {
       useMushafVerseSelectionStore.getState().clearSelection();
     };
     // @ai-end
-  }, [anchor, initialVerseKey, pageNumber]); // @ai: anchor
+  }, [anchor, initialVerseKey, pageNumber, contentReady]); // @ai: anchor, contentReady
 
-  if (!dkReady) {
+  if (!contentReady) {
     // @ai-start
-    if (preloadState === 'failed' && !retrying) {
+    // When the mushaf text cannot be loaded (e.g. no storage left to copy it
+    // to the device), say so and offer a retry, not an endless spinner.
+    if (dataState === 'failed') {
       return (
         <View
           style={[styles.loading, {backgroundColor: theme.colors.background}]}
@@ -258,9 +310,17 @@ export default function MushafScreen() {
 // ============================================================================
 
 // @ai-start
-const subscribePreload = (listener: () => void): (() => void) =>
-  mushafPreloadService.subscribe(listener);
-const getPreloadState = () => mushafPreloadService.state;
+const subscribeDkCache = (listener: () => void): (() => void) =>
+  digitalKhattDataService.subscribeCacheChanges(listener);
+const getDkCacheVersion = () => digitalKhattDataService.getCacheVersion();
+
+function needsRewayahRestore(saved: RewayahId | undefined): boolean {
+  if (!saved) return false;
+  return (
+    saved !== useMushafSettingsStore.getState().rewayah ||
+    saved !== digitalKhattDataService.rewayah
+  );
+}
 
 const surahNameOf = (surah: number): string =>
   surah >= 1 && surah <= 114 ? getSurahDisplayName(SURAHS[surah - 1]) : '';

@@ -46,7 +46,11 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => ({
     initialized: true,
     rewayah: 'warsh',
     getSurahStartPages: () => ({1: 1}),
+    getPageForVerse: () => undefined,
+    getRewayahLoadState: () => 'ready',
     switchRewayah: jest.fn(() => Promise.resolve()),
+    subscribeCacheChanges: () => () => undefined,
+    getCacheVersion: () => 0,
   },
 }));
 
@@ -55,6 +59,7 @@ jest.mock('@/services/mushaf/MushafPreloadService', () => ({
     state: 'ready',
     subscribe: () => () => undefined,
     initialize: () => Promise.resolve(),
+    startIfIdle: jest.fn(),
   },
 }));
 

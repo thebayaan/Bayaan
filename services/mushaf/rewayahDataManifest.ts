@@ -10,24 +10,22 @@
 // services/mushaf/__tests__/rewayahDataManifest.test.ts fails when stale.
 
 export const REWAYAH_DATA_MANIFEST: Readonly<Record<string, string>> = {
-  'digital-khatt-15-lines.db':
-    'bca39e611d305a6261e99c1b501a855f18861f9e58044825db0fd8d598e29728',
   'digital-khatt-v2.db':
-    '071c0f43e30819b8b6427194c2f4c97ff05340da3808092c590967913b0382a6',
+    'd6f5ffbd13ed208d735a8cf569b8b889993f8f086e55f7354533ae4f784d3798',
   'dk_words_bazzi.db':
-    'b74167b16291c8aca09da1b24ca7c7608b27d9d7f7f79b77a92dca38ca022265',
+    '4cd66022127aef9c059d0197548e65ef93c28e19021de4476f846cedcf138099',
   'dk_words_doori.db':
-    'fd1633d4ccf65051d68a14475cc6fd39685561efb31f6f51fa63a360413b95b6',
+    '2b6a35a3dc0c385a99b08901df399a2c7c50e5268c022f0a2ad352accb48d829',
   'dk_words_qaloon.db':
-    '53c3f531e0053e12ef0d80c753ce36dd8c46d39faee420dfbaf66496047f19c1',
+    'ecf5cf88a3379bb35b0e54bab91c20a1b4900715e03749d371fc455e3b6358e5',
   'dk_words_qumbul.db':
-    'b59463c3a1e79c93b99bf8494f9db0fd6d349cf9bed0364e8ba1304fc73a8fd2',
+    '25d64ef5f443f78d7187dc6c3bb5fcdc83bbd475d445e84606461c4eeed45f3c',
   'dk_words_shouba.db':
-    'ba68656a3ed41a24ad74139d8bddbfb676992a83fda0f54fb7fc1b5fedcce205',
+    '25f3c178e4b7018e2f3adde10442576a05cac816b5bcb2ee1a1dc667e1319a70',
   'dk_words_soosi.db':
-    '167b9270d4bd50f89178ca017c160c51661b1cf2854d313383ef12c3a7d9deb4',
+    'ece4016e2b5c3a5f21dc8f50b411641872761594d910e5a185dd627d517bed43',
   'dk_words_warsh.db':
-    'd284add198b3f80cebb18842a03ebc2f1db5600ecccfc5e0e96ebae5284e4a84',
+    'de226764cf3c2eaa708b8e409ab583e101b53cb1de079dafe15fd3bd8c30cc83',
 };
 
 // md5 of the same assets: the platform file API reports md5, so the app
@@ -35,13 +33,18 @@ export const REWAYAH_DATA_MANIFEST: Readonly<Record<string, string>> = {
 // a copy that was cut short (a copy can still open after that, with its
 // last words silently altered).
 export const REWAYAH_DATA_MD5: Readonly<Record<string, string>> = {
-  'digital-khatt-15-lines.db': 'b52a3dd59f9cdf985b896a607c259953',
-  'digital-khatt-v2.db': '9b4feda111e1daacf8e477feb9126ce2',
-  'dk_words_bazzi.db': '545bacc4c9e4aff83c5c2e7b36ea3f32',
-  'dk_words_doori.db': '91e04c3d80c84158c91cd36ff8a0148a',
-  'dk_words_qaloon.db': '6297bacbf75ceee82bd07487df44ac72',
-  'dk_words_qumbul.db': 'c8c6da2ad756b75610d8e5749cfb6aac',
-  'dk_words_shouba.db': '5ad571c83b4a3fc6300bbaded7f9d562',
-  'dk_words_soosi.db': '36d3487f77653c4df242234f841f1fb5',
-  'dk_words_warsh.db': '11b82f49208e2a9a77718efb9ec0f8a3',
+  'digital-khatt-v2.db': '53c536a769d8a05eebb1f5229d01f966',
+  'dk_words_bazzi.db': '634ac32cd1e70a891c13f76d4f856290',
+  'dk_words_doori.db': '891a18a77bd74f035ca257b8d2ee19c6',
+  'dk_words_qaloon.db': '9fb3d2ab3094ae0a947fc995348726d3',
+  'dk_words_qumbul.db': '1c0f4806a36c27044eba587f85e5db9f',
+  'dk_words_shouba.db': 'b4bbcba3cf3f9be8be94da09f0b9ec02',
+  'dk_words_soosi.db': '228b8865b110667fdaf5262232335fe0',
+  'dk_words_warsh.db': 'b7ad41282b8b303c269d8d05e50610a0',
 };
+
+// sha256 of digital-khatt-15-lines.db. It is not bundled: the page lines are
+// generated from it (mushafTables.generated.ts). This names the layout in
+// the data identity keys, so saved layouts stay valid until it changes.
+export const LAYOUT_SOURCE_SHA256 =
+  'bca39e611d305a6261e99c1b501a855f18861f9e58044825db0fd8d598e29728';

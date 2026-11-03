@@ -18,7 +18,30 @@ jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
 );
 
+jest.mock('@/services/mushaf/mushafTables', () =>
+  jest
+    .requireActual('@/services/mushaf/__fixtures__/wordStoreQueries')
+    .fakeMushafTables(
+      ['1:1:1', '1:1:2'],
+      [
+        {
+          page_number: 1,
+          line_number: 1,
+          line_type: 'ayah',
+          is_centered: 0,
+          first_word_id: 1,
+          last_word_id: 2,
+          surah_number: 1,
+        },
+      ],
+    ),
+);
+
 jest.mock('expo-sqlite', () => {
+  // @ai the WordStore's queries (DigitalKhattDataService).
+  const {withWordStoreQueries} = jest.requireActual(
+    '@/services/mushaf/__fixtures__/wordStoreQueries',
+  );
   const broken = new Set<string>();
   const files = new Set<string>();
   const baseOf = (name: string) =>
@@ -27,7 +50,7 @@ jest.mock('expo-sqlite', () => {
     __broken: broken,
     defaultDatabaseDirectory: '/data/user/0/app.test/files/SQLite',
     async openDatabaseAsync(name: string) {
-      return {
+      return withWordStoreQueries({
         async getFirstAsync(sql: string) {
           if (!files.has(name)) return null;
           return {name: /name='(\w+)'/.exec(sql)?.[1]};
@@ -57,7 +80,7 @@ jest.mock('expo-sqlite', () => {
           ];
         },
         closeAsync: async () => undefined,
-      };
+      });
     },
     async importDatabaseFromAssetAsync(name: string) {
       files.add(name);

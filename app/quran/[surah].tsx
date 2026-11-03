@@ -1,5 +1,5 @@
 // app/quran/[surah].tsx
-import React, {useSyncExternalStore} from 'react';
+import React, {useEffect, useSyncExternalStore} from 'react';
 import {ActivityIndicator, StyleSheet, View} from 'react-native';
 import {Redirect, useLocalSearchParams} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
@@ -27,6 +27,10 @@ export default function QuranSurahLink(): React.ReactElement {
   const {surah, ayah} = useLocalSearchParams<{surah: string; ayah?: string}>();
   const {theme} = useTheme();
   const preloadState = useSyncExternalStore(subscribePreload, getPreloadState);
+  // A cold link can arrive before the splash hides, and so before the load.
+  useEffect(() => {
+    mushafPreloadService.startIfIdle();
+  }, []);
   const resolution = resolveQuranLink(
     surah,
     ayah,

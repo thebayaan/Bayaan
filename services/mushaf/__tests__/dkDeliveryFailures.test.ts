@@ -51,7 +51,39 @@ jest.mock('@react-native-async-storage/async-storage', () =>
 
 jest.mock('@/utils/toastUtils', () => ({showToast: jest.fn()}));
 
+jest.mock('@/services/mushaf/mushafTables', () =>
+  jest
+    .requireActual('@/services/mushaf/__fixtures__/wordStoreQueries')
+    .fakeMushafTables(
+      ['1:1:1', '1:1:2', '1:2:1', '1:2:2', '2:1:1', '2:1:2'],
+      [
+        {
+          page_number: 1,
+          line_number: 1,
+          line_type: 'ayah',
+          is_centered: 0,
+          first_word_id: 1,
+          last_word_id: 4,
+          surah_number: 1,
+        },
+        {
+          page_number: 2,
+          line_number: 1,
+          line_type: 'ayah',
+          is_centered: 0,
+          first_word_id: 5,
+          last_word_id: 6,
+          surah_number: 2,
+        },
+      ],
+    ),
+);
+
 jest.mock('expo-sqlite', () => {
+  // @ai the WordStore's queries (DigitalKhattDataService).
+  const {withWordStoreQueries} = jest.requireActual(
+    '@/services/mushaf/__fixtures__/wordStoreQueries',
+  );
   const disk: FakeDisk = {
     files: new Map(),
     open: new Map(),
@@ -164,7 +196,7 @@ jest.mock('expo-sqlite', () => {
       }
       disk.open.set(name, openCount(name) + 1);
       let closed = false;
-      return {
+      return withWordStoreQueries({
         async getFirstAsync(sql: string) {
           const file = disk.files.get(name);
           if (!file || file.state === 'empty') return null;
@@ -189,7 +221,7 @@ jest.mock('expo-sqlite', () => {
           disk.open.set(name, openCount(name) - 1);
           if (openCount(name) <= 0) disk.open.delete(name);
         },
-      };
+      });
     },
     async importDatabaseFromAssetAsync(
       name: string,
@@ -379,9 +411,7 @@ describe('low storage', () => {
     expect(app.service.rewayah).toBe('hafs');
     expect(app.service.getVerseText('1:1')).toBe('H1 H2');
     expect(app.service.getPageLines(1)).toHaveLength(1);
-    expect([...disk.files.keys()].sort()).toEqual(
-      [current('dk_words'), current('dk_layout')].sort(),
-    );
+    expect([...disk.files.keys()].sort()).toEqual([current('dk_words')]);
     expect(disk.quota - bytesOnDisk()).toBeGreaterThan(2 * MiB);
   });
 
@@ -393,9 +423,7 @@ describe('low storage', () => {
 
     expect(app.initResult).toBe('ok');
     expect(app.service.getVerseText('1:2')).toBe('H3 H4');
-    expect([...disk.files.keys()].sort()).toEqual(
-      [current('dk_words'), current('dk_layout')].sort(),
-    );
+    expect([...disk.files.keys()].sort()).toEqual([current('dk_words')]);
   });
 
   it('shows the saved rewayah, not old text, after reclaiming its old copy', async () => {
@@ -427,7 +455,7 @@ describe('low storage', () => {
     // Nothing of the failed copy stays on the device.
     const wordsCopy = current('dk_words');
     expect(disk.files.has(wordsCopy)).toBe(false);
-    expect(bytesOnDisk()).toBeLessThanOrEqual(SIZE.dk_layout);
+    expect(bytesOnDisk()).toBe(0);
     // One delete + re-import, then the error.
     expect(disk.log.filter(e => e === `import:${wordsCopy}`)).toHaveLength(2);
     expect(useMushafSettingsStore.getState().rewayahFallbackFrom).toBeNull();
@@ -507,16 +535,6 @@ describe('damaged copies', () => {
     expect(app.service.tryGetVerseText('2:1', 'qalun')).toBe('Q5 Q6');
     expect(disk.files.get(qalun)?.state).toBe('ok');
   });
-
-  it('repairs a damaged layout copy', async () => {
-    const name = plantDamaged('dk_layout');
-
-    const app = await launchApp('hafs');
-
-    expect(app.initResult).toBe('ok');
-    expect(app.service.getPageLines(2)).toHaveLength(1);
-    expect(disk.files.get(name)?.state).toBe('ok');
-  });
 });
 
 describe('copies cut short that still read', () => {
@@ -562,16 +580,6 @@ describe('copies cut short that still read', () => {
     await app.service.ensureRewayahLoaded('qalun');
     expect(app.service.tryGetVerseText('2:1', 'qalun')).toBe('Q5 Q6');
     expect(disk.files.get(qalun)?.state).toBe('ok');
-  });
-
-  it('re-imports a cut-short layout copy', async () => {
-    const name = plantCut('dk_layout');
-
-    const app = await launchApp('hafs');
-
-    expect(app.initResult).toBe('ok');
-    expect(disk.log).toContain(`delete:${name}`);
-    expect(disk.files.get(name)?.state).toBe('ok');
   });
 
   it('checks each copy once per session', async () => {
