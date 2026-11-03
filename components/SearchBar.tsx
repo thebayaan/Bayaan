@@ -7,7 +7,8 @@ import {
   View,
   type TextInputInstance,
 } from 'react-native';
-import {Feather, AntDesign} from '@expo/vector-icons';
+import {AntDesign} from '@expo/vector-icons';
+import {SearchIcon} from '@/components/ActionIcons'; // @ai
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {ScaledSheet, moderateScale} from '@/utils/scale';
@@ -119,8 +120,7 @@ const SearchBar = forwardRef<SearchBarRef, SearchBarProps>(
               },
             ]}>
             <Pressable onPress={() => inputRef.current?.focus()}>
-              <Feather
-                name="search"
+              <SearchIcon
                 size={moderateScale(20)}
                 color={
                   isFocused ? theme.colors.text : theme.colors.textSecondary

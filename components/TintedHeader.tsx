@@ -2,7 +2,7 @@
 import React, {type ReactNode} from 'react';
 import {Pressable, StyleSheet, View} from 'react-native';
 import {GlassView} from 'expo-glass-effect';
-import {SymbolView} from 'expo-symbols';
+import {BackIcon} from '@/components/ActionIcons';
 import {useRouter} from 'expo-router';
 import {useTranslation} from 'react-i18next';
 import type {NativeStackNavigationOptions} from 'expo-router/native-stack';
@@ -13,7 +13,7 @@ import {
 } from '@/hooks/useGlassProps';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale} from '@/utils/scale';
-import {isRTL} from '@/utils/rtl';
+import {flipX} from '@/utils/rtl';
 
 // iOS draws its own untinted glass behind header buttons. These helpers hide
 // that glass and draw ours instead, tinted with the shared glass tint (and
@@ -62,13 +62,10 @@ function TintedBackButton() {
         hitSlop={8}
         accessibilityRole="button"
         accessibilityLabel={t('actions.back')}>
-        {/* SF chevron.backward. The fixed-direction names keep it pointing
-            the right way whatever layout direction the bar reports. */}
-        <SymbolView
-          name={isRTL ? 'chevron.right' : 'chevron.left'}
+        <BackIcon
           size={moderateScale(20)}
-          tintColor={theme.colors.text}
-          weight="medium"
+          color={theme.colors.text}
+          style={flipX}
         />
       </Pressable>
     </GlassHeaderPill>

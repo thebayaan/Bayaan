@@ -22,7 +22,7 @@ import {
   useFocusEffect,
   Link,
 } from 'expo-router';
-import {Ionicons, Feather} from '@expo/vector-icons';
+import {BackIcon, ShareIcon} from '@/components/ActionIcons'; // @ai
 import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {USE_GLASS} from '@/hooks/useGlassProps';
 import {useAdhkar} from '@/hooks/useAdhkar';
@@ -122,7 +122,7 @@ const SuperCategoryListScreen: React.FC = () => {
 
   const currentDhikrId = useAdhkarSessionStore(s =>
     s.session?.listId === superId
-      ? (s.session.items[s.session.index]?.dhikrId ?? null)
+      ? s.session.items[s.session.index]?.dhikrId ?? null
       : null,
   );
   const sessionPlaying = useAdhkarSessionStore(
@@ -535,8 +535,7 @@ const SuperCategoryListScreen: React.FC = () => {
           accessibilityRole="button"
           accessibilityLabel={t('common:actions.back')}
           style={{padding: moderateScale(4)}}>
-          <Ionicons
-            name="chevron-back"
+          <BackIcon
             size={moderateScale(24)}
             color={theme.colors.text}
             style={flipX}
@@ -582,11 +581,7 @@ const SuperCategoryListScreen: React.FC = () => {
             hitSlop={8}
             accessibilityRole="button"
             accessibilityLabel={t('common:actions.share')}>
-            <Feather
-              name="share"
-              size={moderateScale(20)}
-              color={theme.colors.text}
-            />
+            <ShareIcon size={moderateScale(20)} color={theme.colors.text} />
           </Pressable>
           <PlayAllButton
             onPress={handlePlayAll}

@@ -1,7 +1,7 @@
 import React from 'react'; // @ai
 import {Pressable} from 'react-native';
 import {Stack, useRouter} from 'expo-router';
-import {Ionicons} from '@expo/vector-icons';
+import {BackIcon} from '@/components/ActionIcons'; // @ai
 import {moderateScale} from '@/utils/scale';
 // @ai-start
 import {useTranslation} from 'react-i18next';
@@ -76,8 +76,7 @@ export default function AdhkarLayout() {
                 accessibilityRole="button"
                 accessibilityLabel={t('common:actions.back')}
                 style={{padding: moderateScale(4)}}>
-                <Ionicons
-                  name="chevron-back"
+                <BackIcon
                   size={moderateScale(24)}
                   color={theme.colors.text}
                   style={flipX}

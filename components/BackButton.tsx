@@ -1,6 +1,6 @@
 import React from 'react';
 import {Pressable, ViewStyle, StyleProp} from 'react-native';
-import {Feather} from '@expo/vector-icons';
+import {BackIcon} from '@/components/ActionIcons'; // @ai
 import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {useNavigation} from 'expo-router';
@@ -41,8 +41,7 @@ export const BackButton: React.FC<BackButtonProps> = ({
         {marginStart: isRTL ? insets.right : insets.left},
       ]}
       onPress={handlePress}>
-      <Feather
-        name="arrow-left"
+      <BackIcon
         color={theme.colors.text}
         size={moderateScale(iconSize)}
         style={flipX}

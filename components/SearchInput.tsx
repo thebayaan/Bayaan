@@ -13,6 +13,7 @@ import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {Feather} from '@expo/vector-icons';
+import {SearchIcon} from '@/components/ActionIcons'; // @ai
 import Color from 'color';
 // @ai-start
 import {useTranslation} from 'react-i18next';
@@ -92,8 +93,7 @@ export const SearchInput = forwardRef<TextInputInstance, SearchInputProps>(
             style,
           ]}>
           <View style={styles.searchIconContainer}>
-            <Feather
-              name="search"
+            <SearchIcon
               size={iconSize}
               color={iconColor}
               style={{opacity: iconOpacity}}

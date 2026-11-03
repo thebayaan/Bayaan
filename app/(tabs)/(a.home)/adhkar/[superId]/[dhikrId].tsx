@@ -21,7 +21,7 @@ import {
   useNavigation,
   useFocusEffect,
 } from 'expo-router';
-import {Feather} from '@expo/vector-icons';
+import {ShareIcon} from '@/components/ActionIcons'; // @ai
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useAdhkar} from '@/hooks/useAdhkar';
@@ -132,7 +132,7 @@ const DhikrReaderScreen: React.FC = () => {
     session?.listId === superId && session.mode === 'all';
   const sessionDhikrId =
     session?.listId === superId
-      ? (session.items[session.index]?.dhikrId ?? null)
+      ? session.items[session.index]?.dhikrId ?? null
       : null;
   // Where the session's dhikr sits in this screen's rows. session.index
   // counts the session's own items, which can drift from this list.
@@ -310,11 +310,7 @@ const DhikrReaderScreen: React.FC = () => {
             padding: moderateScale(4),
             paddingHorizontal: moderateScale(8),
           }}>
-          <Feather
-            name="share"
-            size={moderateScale(20)}
-            color={theme.colors.text}
-          />
+          <ShareIcon size={moderateScale(20)} color={theme.colors.text} />
         </Pressable>
       )),
     });

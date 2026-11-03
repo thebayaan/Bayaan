@@ -24,6 +24,7 @@ import type {SurahOptionsBuilder} from '@/components/sheets/options/SurahOptions
 // @ai-end
 import {moderateScale} from '@/utils/scale';
 import {Feather} from '@expo/vector-icons';
+import {BackIcon} from '@/components/ActionIcons'; // @ai
 import {ListRenderItem} from 'react-native';
 import {Reciter} from '@/data/reciterData';
 import {Surah} from '@/data/surahData';
@@ -731,8 +732,7 @@ const LovedScreen = () => {
               style={styles.emptyHeaderBack}
               onPress={() => router.back()}
               hitSlop={8}>
-              <Feather
-                name="arrow-left"
+              <BackIcon
                 size={moderateScale(22)}
                 color={theme.colors.text}
                 style={flipX}
@@ -760,8 +760,7 @@ const LovedScreen = () => {
               style={styles.emptyHeaderBack}
               onPress={() => router.back()}
               hitSlop={8}>
-              <Feather
-                name="arrow-left"
+              <BackIcon
                 size={moderateScale(22)}
                 color={theme.colors.text}
                 style={flipX}
@@ -809,8 +808,7 @@ const LovedScreen = () => {
             },
           ]}>
           <Pressable onPress={() => router.back()} hitSlop={8}>
-            <Feather
-              name="arrow-left"
+            <BackIcon
               size={moderateScale(24)}
               color={theme.colors.text}
               style={flipX}

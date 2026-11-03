@@ -10,7 +10,7 @@ import {moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useRouter} from 'expo-router';
-import {Feather} from '@expo/vector-icons';
+import {BackIcon} from '@/components/ActionIcons'; // @ai
 // @ai-start
 import {flipX} from '@/utils/rtl';
 // @ai-end
@@ -57,8 +57,7 @@ export const CollectionStickyHeader: React.FC<CollectionStickyHeaderProps> = ({
           style={styles.backButton}
           onPress={() => router.back()}
           hitSlop={8}>
-          <Feather
-            name="arrow-left"
+          <BackIcon
             size={moderateScale(22)}
             color={theme.colors.text}
             style={flipX}

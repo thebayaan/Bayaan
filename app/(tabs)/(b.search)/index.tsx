@@ -18,6 +18,7 @@ import {useTheme} from '@/hooks/useTheme';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {moderateScale} from '@/utils/scale';
 import {Feather} from '@expo/vector-icons';
+import {SearchIcon} from '@/components/ActionIcons'; // @ai
 import Color from 'color';
 import {USE_GLASS} from '@/hooks/useGlassProps';
 // @ai-start
@@ -121,8 +122,7 @@ export default function SearchScreen() {
                     .toString(),
                 },
               ]}>
-              <Feather
-                name="search"
+              <SearchIcon
                 size={moderateScale(18)}
                 color={Color(theme.colors.text).alpha(0.4).toString()}
               />
