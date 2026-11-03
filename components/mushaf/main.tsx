@@ -30,6 +30,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import {useRouter, useNavigation} from 'expo-router';
+import type {NativeStackNavigationProp} from 'expo-router/native-stack'; // @ai
 import {useTheme} from '@/hooks/useTheme';
 import {useReadingThemeColors} from '@/hooks/useReadingThemeColors';
 import {Ionicons} from '@expo/vector-icons';
@@ -656,6 +657,11 @@ export default function MushafViewer({
     : Color(theme.colors.border).lighten(0.3).toString();
   const router = useRouter();
   const navigation = useNavigation();
+  // @ai: the stack's own events (transitionEnd) for the title pill
+  const stackNavigation =
+    useNavigation<
+      NativeStackNavigationProp<Record<string, object | undefined>>
+    >();
   const flatListRef = useRef<FlatList>(null);
   const continuousListRef = useRef<ContinuousListViewHandle>(null);
   const insets = useSafeAreaInsets();
@@ -671,7 +677,12 @@ export default function MushafViewer({
   const [titleShift, setTitleShift] = useState(0);
   const titleShiftRef = useRef(0);
   const titlePillRef = useRef<ViewInstance>(null);
+  // Hidden until measured once the screen has settled: measured during the
+  // push, its window position includes the slide and the shift is wrong.
+  const [titleReady, setTitleReady] = useState(false);
+  const titleSettledRef = useRef(false);
   const centerTitlePill = useCallback(() => {
+    if (!titleSettledRef.current) return;
     titlePillRef.current?.measureInWindow((x, _y, w) => {
       // x includes the current shift; take it out to get where it lands.
       const landed = x - titleShiftRef.current + w / 2;
@@ -681,6 +692,25 @@ export default function MushafViewer({
       setTitleShift(next);
     });
   }, [windowWidth]);
+  useEffect(() => {
+    if (!USE_GLASS) return;
+    const settle = () => {
+      if (titleSettledRef.current) return;
+      titleSettledRef.current = true;
+      // A frame for the header's own layout, then measure and show.
+      requestAnimationFrame(() => {
+        centerTitlePill();
+        requestAnimationFrame(() => setTitleReady(true));
+      });
+    };
+    const unsubscribe = stackNavigation.addListener('transitionEnd', settle);
+    // Opened without a push transition (first screen): settle anyway.
+    const fallback = setTimeout(settle, 700);
+    return () => {
+      unsubscribe();
+      clearTimeout(fallback);
+    };
+  }, [stackNavigation, centerTitlePill]);
   // A paged, `inverted` FlatList preserves its pixel scroll offset when its
   // items resize, so the visible page drifts to a different index (old offset
   // ÷ new item width); `initialScrollIndex` is mount-only and never re-fires.
@@ -976,7 +1006,12 @@ export default function MushafViewer({
           ref={titlePillRef}
           onLayout={USE_GLASS ? centerTitlePill : undefined}
           style={
-            USE_GLASS ? {transform: [{translateX: titleShift}]} : undefined
+            USE_GLASS
+              ? {
+                  transform: [{translateX: titleShift}],
+                  opacity: titleReady ? 1 : 0,
+                }
+              : undefined
           }>
           <TitleWrapper
             {...titleWrapperProps}
@@ -1050,6 +1085,7 @@ export default function MushafViewer({
     glassTint, // @ai
     headerTitleWidth, // @ai
     titleShift, // @ai
+    titleReady, // @ai
     centerTitlePill, // @ai
   ]);
 
