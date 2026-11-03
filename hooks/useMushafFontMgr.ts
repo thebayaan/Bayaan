@@ -18,20 +18,18 @@
 //
 // Fallback path (Osman review HIGH): if the preload pipeline fails
 // (DK init reject, Skia font load reject, all typefaces returning null
-// even after the service's sequential retry), this hook falls through
-// to a per-component `useFonts(...)` covering the Mushaf-critical font
-// families. That fallback re-introduces the original parallel-typeface
-// race, but it is bounded to the catastrophic case where the service's
-// own retry already failed — every prior layer of recovery has been
-// exhausted. The alternative is a permanently-blank Mushaf, which is
-// the user-facing regression we must not ship.
+// even after the service's sequential retry), this hook gives every
+// caller one shared provider covering the Mushaf-critical font families.
+// The alternative is a permanently-blank Mushaf, which is the user-facing
+// regression we must not ship.
 //
-// Happy path: `loadError === false`, the per-component `useFonts` call
-// is still invoked (Rules of Hooks: it must run unconditionally) but its
-// result is discarded. The cost is identical to the pre-fix
-// `useFonts` cycle for that component — but the system as a whole
-// avoids the multi-component contention that caused the original Sentry
-// noise because the service's primary `fontMgr` is preferred.
+// @ai
+// Happy path: the hook loads no fonts. `useFonts` cannot do this: Rules of
+// Hooks make it run on every mount, and each run reads the font files
+// again and disposes nothing. SkiaPage mounts once per page, so those
+// discarded copies (8.8 MB per mount) were the main memory growth of the
+// reader. The shared load below runs only after the preload failed,
+// one font at a time, so it cannot bring back the parallel-typeface race.
 //
 // Migration plan: 14 additional components still read
 // `mushafPreloadService.fontMgr` directly at render time without
@@ -41,10 +39,8 @@
 // `chore: migrate remaining 14 fontMgr consumers to useMushafFontMgr hook`.
 
 import {useSyncExternalStore} from 'react';
-import {
-  useFonts,
-  type SkTypefaceFontProvider,
-} from '@shopify/react-native-skia';
+import {Image} from 'react-native';
+import {Skia, type SkTypefaceFontProvider} from '@shopify/react-native-skia';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
 
 // Mushaf-critical subset of `FONT_ASSETS` in `MushafPreloadService`. UI
@@ -52,48 +48,79 @@ import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
 // app-wide font loader, not the Mushaf preload service, so the fallback
 // path doesn't need to re-load them. Updating this list does NOT need to
 // mirror every `FONT_ASSETS` addition; only the Mushaf-rendering families.
-const FALLBACK_FONT_SOURCES = {
-  DigitalKhattV1: [require('@/data/mushaf/legacy/DigitalKhattQuranicV1.otf')],
-  DigitalKhattV2: [require('@/data/mushaf/digitalkhatt/DigitalKhattFont.otf')],
-  DigitalKhattIndoPak: [
-    require('@/data/mushaf/indopak/DigitalKhattIndoPak.otf'),
-  ],
-  QuranCommon: [require('@/data/mushaf/quran-common.ttf')],
-  SurahNameV4: [require('@/data/mushaf/surah-name-v4.ttf')],
-  SurahNameQCF: [require('@/data/mushaf/surah-name-qcf.ttf')],
+const FALLBACK_FONT_SOURCES: Record<string, number> = {
+  DigitalKhattV1: require('@/data/mushaf/legacy/DigitalKhattQuranicV1.otf'),
+  DigitalKhattV2: require('@/data/mushaf/digitalkhatt/DigitalKhattFont.otf'),
+  DigitalKhattIndoPak: require('@/data/mushaf/indopak/DigitalKhattIndoPak.otf'),
+  QuranCommon: require('@/data/mushaf/quran-common.ttf'),
+  SurahNameV4: require('@/data/mushaf/surah-name-v4.ttf'),
+  SurahNameQCF: require('@/data/mushaf/surah-name-qcf.ttf'),
 };
 
-export function useMushafFontMgr(): SkTypefaceFontProvider | null {
-  // Single subscription per hook instance (Osman review MEDIUM). The
-  // previous shape called `useSyncExternalStore` twice — once for
-  // `fontMgr`, once for `loadError` — so each `_notify()` scheduled two
-  // re-renders per subscribing component per state transition. Under
-  // Hermes legacy rendering with 13+ subscribers across the Mushaf tree
-  // that's a double cold-start render storm at the worst moment.
-  //
-  // Now: one subscription, snapshot is a primitive boolean `isReady`
-  // (`true` once preload terminated as 'ready' OR 'failed'). Primitive
-  // snapshot means default identity comparison correctly short-circuits
-  // unchanged renders without needing a custom comparator. `fontMgr` and
-  // `loadError` are then derived from the service's current state at
-  // render time — both flip together inside `_notify`, so reading them
-  // post-isReady-flip is consistent.
-  const isReady = useSyncExternalStore(
-    listener => mushafPreloadService.subscribe(listener),
-    () => mushafPreloadService.initialized,
-    () => mushafPreloadService.initialized,
-  );
-  const preloadFontMgr = isReady ? mushafPreloadService.fontMgr : null;
-  const loadError = isReady && mushafPreloadService.loadError;
+// @ai-start
+let fallbackFontMgr: SkTypefaceFontProvider | null = null;
+let fallbackLoading = false;
+const fallbackListeners = new Set<() => void>();
 
-  // Rules of Hooks: `useFonts` must be called unconditionally on every
-  // render. The result is only consumed when the preload truly has nothing
-  // to offer (failed AND `fontMgr === null`), so the happy path's behavior
-  // is unchanged.
-  const fallbackFontMgr = useFonts(FALLBACK_FONT_SOURCES);
-
-  if (loadError && !preloadFontMgr) {
-    return fallbackFontMgr;
+async function ensureFallbackFontMgr(): Promise<void> {
+  if (
+    fallbackFontMgr ||
+    fallbackLoading ||
+    !mushafPreloadService.loadError ||
+    mushafPreloadService.fontMgr
+  ) {
+    return;
   }
-  return preloadFontMgr;
+  fallbackLoading = true;
+  try {
+    const fontMgr = Skia.TypefaceFontProvider.Make();
+    for (const [family, asset] of Object.entries(FALLBACK_FONT_SOURCES)) {
+      const source = Image.resolveAssetSource(asset);
+      if (!source) {
+        throw new Error(`Unresolvable font asset ${family}`);
+      }
+      const data = await Skia.Data.fromURI(source.uri);
+      const typeface = Skia.Typeface.MakeFreeTypeFaceFromData(data);
+      if (!typeface) {
+        throw new Error(`Couldn't create typeface for ${family}`);
+      }
+      fontMgr.registerFont(typeface, family);
+    }
+    fallbackFontMgr = fontMgr;
+  } catch (error) {
+    // The next mount tries again: a failed read can be transient.
+    console.warn('[useMushafFontMgr] Fallback font load failed:', error);
+  } finally {
+    fallbackLoading = false;
+  }
+  if (fallbackFontMgr) {
+    for (const listener of fallbackListeners) listener();
+  }
 }
+
+function subscribe(listener: () => void): () => void {
+  const unsubscribe = mushafPreloadService.subscribe(() => {
+    ensureFallbackFontMgr();
+    listener();
+  });
+  fallbackListeners.add(listener);
+  // A component that mounts after the failure gets no notification.
+  ensureFallbackFontMgr();
+  return () => {
+    unsubscribe();
+    fallbackListeners.delete(listener);
+  };
+}
+
+function getFontMgr(): SkTypefaceFontProvider | null {
+  if (!mushafPreloadService.initialized) return null;
+  return mushafPreloadService.fontMgr ?? fallbackFontMgr;
+}
+
+// Single subscription per hook instance (Osman review MEDIUM): the snapshot
+// is the provider, so a notification that does not change it does not
+// re-render the caller.
+export function useMushafFontMgr(): SkTypefaceFontProvider | null {
+  return useSyncExternalStore(subscribe, getFontMgr, getFontMgr);
+}
+// @ai-end

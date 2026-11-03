@@ -292,14 +292,14 @@ class MushafPreloadService {
       // typeface landed. A zero-typeface provider is a non-null empty
       // object — assigning it would pass `_doInit`'s null-guard, flip
       // `_state` to 'ready' with `loadError === false`, and the hook's
-      // fallback (`useFonts`) would never fire. Result: every consumer
+      // fallback would never fire. Result: every consumer
       // gets the empty provider, every Mushaf surface renders blank, no
       // recovery. Leaving `_fontMgr` null on critical-typeface failure
-      // makes the null-guard fire so the hook's `useFonts` fallback
+      // makes the null-guard fire so the hook's shared fallback
       // activates per Osman review HIGH.
       if (anyCriticalFailed || registered.size === 0) {
         console.warn(
-          '[MushafPreload] Sequential fallback dropped critical typefaces; leaving _fontMgr null so useFonts fallback activates',
+          '[MushafPreload] Sequential fallback dropped critical typefaces; leaving _fontMgr null so the hook fallback activates',
         );
         return;
       }
