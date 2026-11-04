@@ -53,6 +53,9 @@ jest.mock(
 const mockLog = {
   recordTake: jest.fn(async (_take: unknown) => undefined),
   dismissedKeys: jest.fn(async () => new Set<string>()),
+  dismissWord: jest.fn(
+    async (_take: string, _s: number, _a: number, _w: number) => undefined,
+  ),
 };
 jest.mock('@/services/recitation/RecitationLogDatabase', () => ({
   recitationLogDatabase: mockLog,
@@ -342,7 +345,7 @@ describe('RecitationTrackingService take log', () => {
 });
 
 describe('RecitationTrackingService memorisation mode', () => {
-  it('hide mode switches to correction after the first lock, from the locked ayah', async () => {
+  it('hide mode switches to correction after the first lock, expecting the rest of the surah', async () => {
     mockSettings.recitationHideText = true;
     await service.startRecitationTracking(null);
     expect(mockEngine.setMode).toHaveBeenLastCalledWith('tracking');
@@ -351,7 +354,7 @@ describe('RecitationTrackingService memorisation mode', () => {
     expect(mockEngine.setExpected).toHaveBeenLastCalledWith({
       surah: 18,
       ayah: 3,
-      ayahEnd: 5,
+      ayahEnd: 110,
     });
     expect(mockEngine.setStructural).toHaveBeenLastCalledWith(true);
   });
@@ -364,20 +367,18 @@ describe('RecitationTrackingService memorisation mode', () => {
     expect(mockEngine.setExpected).toHaveBeenLastCalledWith({
       surah: 18,
       ayah: 3,
-      ayahEnd: 5,
+      ayahEnd: 110,
     });
   });
 
-  it('reaching the end of the passage moves it to the next page', async () => {
-    mockSettings.recitationHideText = true;
+  it('turning the page does not change the passage: no new lock mid-surah', async () => {
     await service.startRecitationTracking(null);
     engineControl.sendEvent?.(wordProgress(18, 3, 0, 9));
+    const calls = mockEngine.setExpected.mock.calls.length;
     engineControl.sendEvent?.(verseMatch(18, 5));
-    expect(mockEngine.setExpected).toHaveBeenLastCalledWith({
-      surah: 18,
-      ayah: 6,
-      ayahEnd: 7,
-    });
+    engineControl.sendEvent?.(wordProgress(18, 6, 0, 9));
+    engineControl.sendEvent?.(verseMatch(18, 6));
+    expect(mockEngine.setExpected.mock.calls.length).toBe(calls);
   });
 
   it('live flags reach the store, and dismissed and hidden kinds do not', async () => {
@@ -529,20 +530,26 @@ describe('RecitationTrackingService live mistakes', () => {
     expect(state().marks).toHaveLength(1);
   });
 
-  it('getting lost drops back to tracking near the last ayah, and the next lock checks from there', async () => {
-    await lockedTake();
-    engineControl.sendEvent?.(engineDebug('idle'));
-    expect(mockEngine.setMode).toHaveBeenLastCalledWith('tracking');
-    expect(mockEngine.setExpected).toHaveBeenLastCalledWith(null);
-    expect(mockEngine.setHint).toHaveBeenLastCalledWith({surah: 18, ayah: 3});
-    engineControl.sendEvent?.(wordProgress(18, 6, 0, 9));
-    expect(mockEngine.setMode).toHaveBeenLastCalledWith('correction');
-    expect(mockEngine.setExpected).toHaveBeenLastCalledWith({
-      surah: 18,
-      ayah: 6,
-      ayahEnd: 7,
-    });
-  });
+  it.each(['idle', 'lost', 'locateFailed', 'completed'])(
+    "'%s' drops back to tracking near the last ayah, and the next lock checks from there",
+    async event => {
+      await lockedTake();
+      engineControl.sendEvent?.(engineDebug(event));
+      expect(mockEngine.setMode).toHaveBeenLastCalledWith('tracking');
+      expect(mockEngine.setExpected).toHaveBeenLastCalledWith(null);
+      expect(mockEngine.setHint).toHaveBeenLastCalledWith({
+        surah: 18,
+        ayah: 3,
+      });
+      engineControl.sendEvent?.(wordProgress(18, 6, 0, 9));
+      expect(mockEngine.setMode).toHaveBeenLastCalledWith('correction');
+      expect(mockEngine.setExpected).toHaveBeenLastCalledWith({
+        surah: 18,
+        ayah: 6,
+        ayahEnd: 110,
+      });
+    },
+  );
 
   it('the take saves every judged word, keyed by its position in the ayah', async () => {
     await lockedTake();
@@ -608,5 +615,57 @@ describe('RecitationTrackingService live mistakes', () => {
     await listenFor(900);
     expect(state().marks).toEqual([]);
     expect(mockHaptics.notificationAsync).not.toHaveBeenCalled();
+  });
+
+  it('holding the take pauses it, and releasing it listens again', async () => {
+    await lockedTake();
+    expect(service.holdRecitationTracking()).toBe(true);
+    expect(state().status).toBe('paused');
+    service.releaseRecitationTracking();
+    expect(state().status).toBe('listening');
+  });
+
+  it('marks stay on the page after the take stops, until the next take', async () => {
+    await lockedTake();
+    engineControl.sendEvent?.(
+      wordVerdicts([{surah: 18, ayah: 3, word: 2, state: 'wrong'}]),
+    );
+    await listenFor(900);
+    await service.stopRecitationTracking();
+    await flush();
+    expect(state().status).toBe('off');
+    expect(state().marks).toHaveLength(1);
+    await service.startRecitationTracking(null);
+    expect(state().marks).toEqual([]);
+  });
+
+  it('"I read it correctly" during the take removes the mark and saves the word as dismissed', async () => {
+    await lockedTake();
+    engineControl.sendEvent?.(
+      wordVerdicts([{surah: 18, ayah: 3, word: 2, state: 'wrong'}]),
+    );
+    await listenFor(900);
+    await service.dismissRecitationMark({surah: 18, ayah: 3, word: 2});
+    expect(state().marks).toEqual([]);
+    await service.stopRecitationTracking();
+    await flush();
+    const take = mockLog.recordTake.mock.calls[0][0] as {words: unknown[]};
+    expect(take.words).toEqual([
+      expect.objectContaining({word: 3, result: 'dismissed', kind: 'wrong'}),
+    ]);
+  });
+
+  it('"I read it correctly" after the take updates the saved word', async () => {
+    await lockedTake();
+    engineControl.sendEvent?.(
+      wordVerdicts([{surah: 18, ayah: 3, word: 2, state: 'wrong'}]),
+    );
+    await listenFor(900);
+    await service.stopRecitationTracking();
+    await flush();
+    const take = mockLog.recordTake.mock.calls[0][0] as {id: string};
+    await service.dismissRecitationMark({surah: 18, ayah: 3, word: 2});
+    expect(state().marks).toEqual([]);
+    expect(mockLog.dismissWord).toHaveBeenCalledWith(take.id, 18, 3, 3);
   });
 });

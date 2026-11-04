@@ -131,6 +131,8 @@ interface ActiveSession {
   mic: MicStream | null;
   listening: boolean;
   paused: boolean;
+  /** Held by the reader (holdSession): the mic stays open, unheard. */
+  held: boolean;
   correction: boolean;
   autoDefer: boolean;
   lastChunkAt: number;
@@ -226,6 +228,31 @@ async function resume(session: ActiveSession): Promise<void> {
   session.handlers.onUpdate({status: 'resumed'});
 }
 
+/**
+ * Holds the listening session, e.g. while the reader looks at a mistake: the
+ * mic stays open (no audio-session churn, no watchdog) but nothing reaches
+ * the engine, so the take carries on where it was once released.
+ * @returns true when a listening session is now held
+ */
+export function holdSession(): boolean {
+  const session = active;
+  if (!session || !session.listening || session.paused) return false;
+  if (!session.held) {
+    session.held = true;
+    session.handlers.onUpdate({status: 'paused'});
+  }
+  return true;
+}
+
+/** Ends a hold: the session hears the mic again. */
+export function releaseSession(): void {
+  const session = active;
+  if (!session?.held) return;
+  session.held = false;
+  session.lastChunkAt = Date.now();
+  if (!session.paused) session.handlers.onUpdate({status: 'resumed'});
+}
+
 /** The model is free again unless another session has already started. */
 function releaseEngine(): void {
   if (active === null) markEngineBusy(false);
@@ -269,6 +296,7 @@ export async function startSession(
     mic: null,
     listening: false,
     paused: false,
+    held: false,
     correction: options.mode === 'correction',
     autoDefer: options.autoDefer ?? true,
     lastChunkAt: 0,
@@ -340,7 +368,7 @@ export async function startSession(
     const mic = await startMicStream(
       pcm => {
         session.lastChunkAt = Date.now();
-        engine.feed(pcm);
+        if (!session.held) engine.feed(pcm);
       },
       phase => onInterruption(session, phase),
     );

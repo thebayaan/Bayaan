@@ -300,6 +300,24 @@ export class RecitationLogDatabase {
     return rows.map(toWordResult);
   }
 
+  /** The reader said a marked word of a saved take was read correctly. */
+  async dismissWord(
+    takeId: string,
+    surah: number,
+    ayah: number,
+    word: number,
+  ): Promise<void> {
+    const db = await this.open();
+    await db.runAsync(
+      `UPDATE word_results SET result = 'dismissed'
+       WHERE take_id = ? AND surah = ? AND ayah = ? AND word = ?`,
+      takeId,
+      surah,
+      ayah,
+      word,
+    );
+  }
+
   /** Every judged word of one ayah, oldest first: its history word by word. */
   async wordResults(surah: number, ayah: number): Promise<WordResultRow[]> {
     const db = await this.open();

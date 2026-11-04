@@ -280,6 +280,45 @@ describe('sessionRunner', () => {
   });
 });
 
+describe('sessionRunner holds', () => {
+  it('a held session keeps the mic open but does not hear it', async () => {
+    const h = handlers();
+    await runner.startSession({purpose: 'follow', hint: null}, h);
+    expect(runner.holdSession()).toBe(true);
+    expect(h.onUpdate).toHaveBeenLastCalledWith({status: 'paused'});
+    micControl.chunk?.(new Float32Array(8), 16000);
+    expect(mockEngine.feed).not.toHaveBeenCalled();
+    expect(mockMic.stop).not.toHaveBeenCalled();
+  });
+
+  it('releasing the hold hears the mic again', async () => {
+    const h = handlers();
+    await runner.startSession({purpose: 'follow', hint: null}, h);
+    runner.holdSession();
+    runner.releaseSession();
+    expect(h.onUpdate).toHaveBeenLastCalledWith({status: 'resumed'});
+    const pcm = new Float32Array(8);
+    micControl.chunk?.(pcm, 16000);
+    expect(mockEngine.feed).toHaveBeenCalledWith(pcm);
+  });
+
+  it('a hold does not end the take, however long it lasts', async () => {
+    jest.useFakeTimers();
+    const h = handlers();
+    await runner.startSession({purpose: 'follow', hint: null}, h);
+    runner.holdSession();
+    for (let i = 0; i < 100; i++) {
+      micControl.chunk?.(new Float32Array(8), 16000);
+      await jest.advanceTimersByTimeAsync(1000);
+    }
+    expect(h.onFinish).not.toHaveBeenCalled();
+  });
+
+  it('with no session there is nothing to hold', () => {
+    expect(runner.holdSession()).toBe(false);
+  });
+});
+
 describe('sessionRunner interruptions', () => {
   it('an interruption pauses the session and the watchdog does not fire while paused', async () => {
     jest.useFakeTimers();

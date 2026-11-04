@@ -28,12 +28,16 @@ import {
   emptyMarkBook,
   nextConfirmAt,
   shownMarks,
+  markKey,
   type MarkBook,
+  type MarkKind,
   type VerdictChange,
 } from './wordMarks';
 import {
   activeSessionPurpose,
   configureSession,
+  holdSession,
+  releaseSession,
   setSessionHint,
   startSession,
   stopSession,
@@ -41,8 +45,6 @@ import {
   type SessionUpdate,
 } from './sessionRunner';
 import {shownFlags, toShownFlag} from './flags';
-import {passageOnPage} from './passage';
-import {mushafVerseMapService} from '@/services/mushaf/MushafVerseMapService';
 import {
   advanceRevealed,
   peekAyah,
@@ -76,8 +78,8 @@ let takeHint: SearchHint | null = null;
 let take: TakeBuilder | null = null;
 
 // Checking: at each lock the take switches to correction mode, expecting the
-// rest of that surah's part of the page, and moves the passage on page by
-// page. Hidden or not, the reader's words are judged as they recite.
+// rest of that surah. Hidden or not, the reader's words are judged as they
+// recite.
 interface Memorisation {
   hidden: boolean;
   /** "Check my recitation" was on when the take started. */
@@ -102,6 +104,10 @@ interface JudgedWord {
   at: number;
 }
 let judged = new Map<string, JudgedWord>();
+// Marks the reader dismissed this take ("I read it correctly"), by key.
+let dismissedMarks = new Map<string, MarkKind>();
+// The last finished take, for dismissals after it ends.
+let lastTakeId: string | null = null;
 
 // Takes that end in the mushaf get a summary; the others (left the mushaf,
 // app in the background, playback, another session) are only logged.
@@ -111,24 +117,16 @@ const SUMMARY_REASONS: ReadonlySet<RecitationStopReason> = new Set([
   'interruption',
 ]);
 
+/**
+ * The rest of the surah from where the tracker locked. Set once per lock:
+ * Tilawa's tracker follows the whole surah either way, but a new passage
+ * mid-take makes its next search snap to the passage's first ayah. Leaving
+ * the surah, or getting lost, goes back to tracking (dropToTracking) and the
+ * next lock sets a new passage.
+ */
 function passageFrom(from: {surah: number; ayah: number}): ExpectedPassage {
-  const page = digitalKhattDataService.getPageForVerse(
-    `${from.surah}:${from.ayah}`,
-  );
-  const keys = page
-    ? mushafVerseMapService.getOrderedVerseKeysForPage(page)
-    : [];
-  return passageOnPage(keys, from) ?? {...from, ayahEnd: from.ayah};
-}
-
-function ayahAfter(
-  passage: ExpectedPassage,
-): {surah: number; ayah: number} | null {
-  const end = passage.ayahEnd ?? passage.ayah;
-  if (end < (SURAHS[passage.surah - 1]?.verses_count ?? 0)) {
-    return {surah: passage.surah, ayah: end + 1};
-  }
-  return passage.surah < 114 ? {surah: passage.surah + 1, ayah: 1} : null;
+  const last = SURAHS[from.surah - 1]?.verses_count ?? from.ayah;
+  return {...from, ayahEnd: Math.max(from.ayah, last)};
 }
 
 function startCorrection(from: {surah: number; ayah: number}): void {
@@ -148,18 +146,6 @@ function stopCorrection(): void {
   memo.correction = false;
   memo.expected = null;
   configureSession({mode: 'tracking', expected: null, structural: false});
-}
-
-/** The reader passed the passage's last ayah: expect the next page's. */
-function advancePassage(matched: {surah: number; ayah: number}): void {
-  const expected = memo?.expected;
-  if (!memo?.correction || !expected) return;
-  const last = expected.ayahEnd ?? expected.ayah;
-  if (matched.surah !== expected.surah || matched.ayah !== last) return;
-  const next = ayahAfter(expected);
-  if (!next) return;
-  memo.expected = passageFrom(next);
-  configureSession({expected: memo.expected});
 }
 
 function skippedAyat(): Set<string> {
@@ -207,8 +193,12 @@ function buzz(): void {
   );
 }
 
-function noteVerdicts(changes: readonly VerdictChange[]): void {
+function noteVerdicts(all: readonly VerdictChange[]): void {
   const now = Date.now();
+  // A word the reader said they read correctly is not marked again.
+  const changes = all.filter(
+    c => !dismissedMarks.has(markKey(c.surah, c.ayah, c.word)),
+  );
   for (const change of changes) {
     if (change.state === 'pending') continue;
     judged.set(`${change.surah}:${change.ayah}:${change.word}`, {
@@ -248,18 +238,21 @@ function takeWords(): TakeWord[] {
     const mark = book.get(key);
     const marked =
       mark?.status === 'mistake' || mark?.status === 'corrected' ? mark : null;
+    const dismissedKind = dismissedMarks.get(key);
     out.push({
       surah,
       ayah,
       word: hafsWordPosition(surah, ayah, word, totalWords),
-      result: marked
-        ? marked.status === 'mistake'
-          ? 'mistake'
-          : 'corrected'
-        : state === 'ok'
-          ? 'correct'
-          : 'unclear',
-      kind: marked?.kind ?? null,
+      result: dismissedKind
+        ? 'dismissed'
+        : marked
+          ? marked.status === 'mistake'
+            ? 'mistake'
+            : 'corrected'
+          : state === 'ok'
+            ? 'correct'
+            : 'unclear',
+      kind: dismissedKind ?? marked?.kind ?? null,
       hidden: entry.hidden,
       at: entry.at,
     });
@@ -315,9 +308,11 @@ function setState(
 // the reader's place and following it.
 const LOCK_EVENTS = new Set(['located', 'relocated']);
 const UNLOCK_EVENTS = new Set(['lost', 'idle', 'locateFailed', 'completed']);
-// While checking, the engine cannot leave the expected passage; these mean
-// the reader went elsewhere (or paused), so it follows freely again.
-const FALLBACK_EVENTS = new Set(['idle', 'locateFailed']);
+// While checking, the engine cannot leave the expected passage, and a search
+// after losing the reader would snap to the passage's start; these mean the
+// reader paused, went elsewhere or finished the surah, so it follows freely
+// again until the next lock.
+const FALLBACK_EVENTS = new Set(['idle', 'lost', 'locateFailed', 'completed']);
 
 function handleEvent(msg: EngineMessage): void {
   const state = useRecitationTrackingStore.getState();
@@ -373,7 +368,6 @@ function handleEvent(msg: EngineMessage): void {
     if (!state.recitedVerseKeys.includes(key)) {
       setState({recitedVerseKeys: [...state.recitedVerseKeys, key]});
     }
-    advancePassage(msg);
     return;
   }
   if (msg.type !== 'debug') return;
@@ -434,6 +428,7 @@ function onUpdate(update: SessionUpdate): void {
       };
       book = emptyMarkBook();
       judged = new Map();
+      dismissedMarks = new Map();
       clearConfirmTimer();
       loadDismissed(memo);
       analyticsService.trackRecitationTrackingStarted({
@@ -448,11 +443,14 @@ function onUpdate(update: SessionUpdate): void {
     case 'resumed':
       setState({status: 'listening'});
       return;
-    case 'off':
+    case 'off': {
       clearConfirmTimer();
       if (update.listened) trackTakeStopped(update.reason, update.stats);
-      setState(RECITATION_TRACKING_IDLE);
+      // The take's marks stay on the page until the next take.
+      const {marks} = useRecitationTrackingStore.getState();
+      setState({...RECITATION_TRACKING_IDLE, marks});
       return;
+    }
     case 'error':
       analyticsService.trackRecitationTrackingError({
         stage: update.stage,
@@ -489,6 +487,7 @@ const handlers: SessionHandlers = {
         words: takeWords(),
       };
       saveTake(record);
+      lastTakeId = record.id;
       if (checked?.checked && SUMMARY_REASONS.has(reason)) {
         const flags = shownFlags(record.flags, checked.dismissed);
         const marks: RecitationSummaryMark[] = shownMarks(
@@ -599,6 +598,59 @@ export function setRecitationHint(hint: SearchHint | null): void {
 export function setRecitationHidden(hidden: boolean): void {
   if (!memo || activeSessionPurpose() !== 'follow') return;
   memo.hidden = hidden;
+}
+
+/**
+ * Holds the take while the reader looks at a mistake: the mic stays open but
+ * is not heard. Returns false when no take is listening.
+ */
+export function holdRecitationTracking(): boolean {
+  return activeSessionPurpose() === 'follow' && holdSession();
+}
+
+/** Ends holdRecitationTracking's hold. */
+export function releaseRecitationTracking(): void {
+  if (activeSessionPurpose() === 'follow') releaseSession();
+}
+
+/**
+ * "I read it correctly" on a marked word: the mark goes, and the word is
+ * saved as dismissed (during the take, with the take; after it, in the log).
+ * @param target - The word in Tilawa's 0-based index, as in the store marks
+ */
+export async function dismissRecitationMark(target: {
+  surah: number;
+  ayah: number;
+  word: number;
+}): Promise<void> {
+  const {marks, status} = useRecitationTrackingStore.getState();
+  const mark = marks.find(
+    m =>
+      m.surah === target.surah &&
+      m.ayah === target.ayah &&
+      m.word === target.word,
+  );
+  if (!mark) return;
+  setState({marks: marks.filter(m => m !== mark)});
+  const key = markKey(mark.surah, mark.ayah, mark.word);
+  if (isTakeActive(status)) {
+    dismissedMarks.set(key, mark.kind);
+    const next = new Map(book);
+    next.delete(key);
+    book = next;
+    return;
+  }
+  if (!lastTakeId) return;
+  try {
+    await recitationLogDatabase.dismissWord(
+      lastTakeId,
+      mark.surah,
+      mark.ayah,
+      hafsWordPosition(mark.surah, mark.ayah, mark.word, mark.totalWords),
+    );
+  } catch (error) {
+    console.warn('[recitation] could not save the dismissal', error);
+  }
 }
 
 /** The mushaf showed the summary sheet. */

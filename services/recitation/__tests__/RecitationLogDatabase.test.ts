@@ -302,6 +302,20 @@ describe('RecitationLogDatabase', () => {
       expect(await db.mistakes()).toEqual([]);
     });
 
+    it('a dismissed word leaves the mistakes list and is kept as dismissed', async () => {
+      await db.recordTake(
+        take({
+          id: 'a',
+          words: [word(2, 'mistake', 1200), word(3, 'mistake', 1300)],
+        }),
+      );
+      await db.dismissWord('a', 67, 1, 2);
+      expect((await db.mistakes()).map(m => m.word)).toEqual([3]);
+      expect(
+        (await db.wordResults(67, 1)).find(r => r.word === 2)?.result,
+      ).toBe('dismissed');
+    });
+
     it('clearHistory also removes word results', async () => {
       await db.recordTake(take({words: [word(2, 'mistake', 1200)]}));
       await db.clearHistory();

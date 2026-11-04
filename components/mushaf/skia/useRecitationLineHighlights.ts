@@ -68,18 +68,15 @@ export function useRecitationLineHighlights(
       : '',
   );
 
-  // Live word marks on this page, as key|word|total.
+  // Word marks on this page, as key|word|total. They stay after the take
+  // ends, until the next one.
   const marksId = useRecitationTrackingStore(s =>
-    isTakeActive(s.status)
-      ? s.marks
-          .filter(m => pageKeys.has(`${m.surah}:${m.ayah}`))
-          .map(m =>
-            [`${m.surah}:${m.ayah}`, m.word, m.totalWords].join(
-              FIELD_SEPARATOR,
-            ),
-          )
-          .join(KEY_SEPARATOR)
-      : '',
+    s.marks
+      .filter(m => pageKeys.has(`${m.surah}:${m.ayah}`))
+      .map(m =>
+        [`${m.surah}:${m.ayah}`, m.word, m.totalWords].join(FIELD_SEPARATOR),
+      )
+      .join(KEY_SEPARATOR),
   );
 
   const colors = useMemo(

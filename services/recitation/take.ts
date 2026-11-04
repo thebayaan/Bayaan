@@ -55,8 +55,11 @@ export interface TakeWord {
   surah: number;
   ayah: number;
   word: number;
-  /** 'unclear': the engine could not tell, or the mark never held. */
-  result: 'correct' | 'unclear' | 'mistake' | 'corrected';
+  /**
+   * 'unclear': the engine could not tell, or the mark never held.
+   * 'dismissed': marked, but the reader said they read it correctly.
+   */
+  result: 'correct' | 'unclear' | 'mistake' | 'corrected' | 'dismissed';
   /** For a mistake, or a corrected one: missed, or something else said. */
   kind: 'missed' | 'wrong' | null;
   /** The page text was hidden when the word was judged. */

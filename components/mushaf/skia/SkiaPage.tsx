@@ -67,6 +67,9 @@ import {usePlaybackBand} from './playbackBand';
 import {useRecitationLineHighlights} from './useRecitationLineHighlights';
 import {useRecitationHiddenText} from './useRecitationHiddenText';
 import {useRecitationMarkColors} from './useRecitationMarkColors';
+import {markAtChar} from './recitationTap';
+import {SheetManager} from 'react-native-actions-sheet';
+import {useRecitationTrackingStore} from '@/store/recitationTrackingStore';
 import {usePlaybackBasmalaSurah} from '@/store/mushafPlayerStore'; // @ai
 import {useVerseUnitDragSelect, type LineCharHit} from './verseUnitDragSelect';
 // @ai-end
@@ -639,13 +642,33 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
     [handleDragStart, handleDragUpdate, handleDragEnd],
   );
 
+  // A tap on a word marked while reciting opens it; any other tap is the
+  // page's own.
+  const handleTap = useCallback(
+    (x: number, y: number) => {
+      const {marks} = useRecitationTrackingStore.getState();
+      if (marks.length > 0) {
+        const hit = charAtPoint(x, y);
+        const line = hit ? pageLines[hit.lineIndex] : undefined;
+        const mark =
+          hit && line ? markAtChar(line, hit.charIndex, marks) : null;
+        if (mark) {
+          void SheetManager.show('recitation-mistake', {payload: {mark}});
+          return;
+        }
+      }
+      onTap?.();
+    },
+    [charAtPoint, pageLines, onTap],
+  );
+
   const tapGesture = useMemo(
     () =>
-      Gesture.Tap().onEnd(() => {
+      Gesture.Tap().onEnd(event => {
         'worklet';
-        if (onTap) runOnJS(onTap)();
+        runOnJS(handleTap)(event.x, event.y);
       }),
-    [onTap],
+    [handleTap],
   );
 
   const composedGesture = useMemo(

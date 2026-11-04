@@ -379,6 +379,11 @@
     "readCorrectly": "I read it correctly",
     "footnote": "These are possible slips the phone heard. It does not check tajweed or harakat; a teacher does."
   },
+  "recitationMistake": {
+    "listen": "Listen to this ayah",
+    "listenNote": "Listening ends this recitation. Tap the mic to start again.",
+    "continue": "Continue"
+  },
   "practice": {
     "title": "Practice",
     "reciteFromMemory": "Recite from memory",

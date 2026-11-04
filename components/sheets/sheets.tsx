@@ -35,6 +35,8 @@ import {RecitationIntroSheet} from './RecitationIntroSheet';
 import {WhichAyahSheet} from './WhichAyahSheet';
 import {RecitationSummarySheet} from './RecitationSummarySheet';
 import {RecitationPracticeSheet} from './RecitationPracticeSheet';
+import {RecitationMistakeSheet} from './RecitationMistakeSheet';
+import type {WordMark} from '@/services/recitation/wordMarks';
 import type {PracticeTarget} from '@/services/recitation/practice/types';
 import type {RecitationSummary} from '@/store/recitationTrackingStore';
 import {WordDetailSheet} from './WordDetailSheet';
@@ -84,6 +86,7 @@ registerSheet('recitation-intro', RecitationIntroSheet);
 registerSheet('which-ayah', WhichAyahSheet);
 registerSheet('recitation-summary', RecitationSummarySheet);
 registerSheet('recitation-practice', RecitationPracticeSheet);
+registerSheet('recitation-mistake', RecitationMistakeSheet);
 registerSheet('word-detail', WordDetailSheet);
 registerSheet('home-card-options', HomeCardOptionsSheet);
 registerSheet('adhkar-session-options', AdhkarSessionOptionsSheet);
@@ -261,6 +264,9 @@ declare module 'react-native-actions-sheet' {
     }>;
     'recitation-practice': SheetDefinition<{
       payload: {target: PracticeTarget};
+    }>;
+    'recitation-mistake': SheetDefinition<{
+      payload: {mark: WordMark};
     }>;
     'word-detail': SheetDefinition<{
       payload: {

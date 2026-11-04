@@ -2,10 +2,7 @@ import {useMemo, useRef} from 'react';
 import type {DKLine} from '@/services/mushaf/DigitalKhattDataService';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {getLineWordSpans} from '@/services/mushaf/lineWordSpans';
-import {
-  isTakeActive,
-  useRecitationTrackingStore,
-} from '@/store/recitationTrackingStore';
+import {useRecitationTrackingStore} from '@/store/recitationTrackingStore';
 import {dkWordPosition} from './recitedWord';
 
 type LineColorMap = Map<number, string> | null;
@@ -21,27 +18,24 @@ export function mistakeColor(isDarkMode: boolean): string {
 /**
  * Live mistakes on a Digital Khatt page: the letters of each word marked as
  * a mistake are drawn in the mistake colour, through SkiaLine's per-character
- * colours. Applied over `base` (hidden text, Allah-name colours), so a missed
- * word shows even while the text is hidden. Lines without a mistake keep
- * their map.
+ * colours, during the take and after it until the next one. Applied over
+ * `base` (hidden text, Allah-name colours), so a missed word shows even while
+ * the text is hidden. Lines without a mistake keep their map.
  */
 export function useRecitationMarkColors(
   pageLines: readonly DKLine[],
   base: readonly LineColorMap[] | null,
   isDarkMode: boolean,
 ): readonly LineColorMap[] | null {
-  // Comparable id of the mistakes; '' when there are none.
+  // Comparable id of the mistakes; '' when there are none. Marks stay after
+  // the take ends, until the next one.
   const mistakesId = useRecitationTrackingStore(s =>
-    isTakeActive(s.status)
-      ? s.marks
-          .filter(m => m.status === 'mistake')
-          .map(m =>
-            [`${m.surah}:${m.ayah}`, m.word, m.totalWords].join(
-              FIELD_SEPARATOR,
-            ),
-          )
-          .join(KEY_SEPARATOR)
-      : '',
+    s.marks
+      .filter(m => m.status === 'mistake')
+      .map(m =>
+        [`${m.surah}:${m.ayah}`, m.word, m.totalWords].join(FIELD_SEPARATOR),
+      )
+      .join(KEY_SEPARATOR),
   );
   const cache = useRef(new Map<number, {sig: string; map: LineColorMap}>());
   const cachedBase = useRef(base);
