@@ -36,6 +36,7 @@ for (let i = 2; i < process.argv.length; i += 2) {
   args[process.argv[i].replace(/^--/, '')] = process.argv[i + 1];
 }
 const flow = args.flow ?? 'app';
+
 const ayat = Number(args.ayat ?? 0);
 
 function loadTimings(file) {
@@ -203,12 +204,27 @@ function trackVerdicts() {
   for (const v of zs.verdicts()) {
     const id = `${v.surah}:${v.ayah}:${v.word}`;
     if (vstate.get(id) !== v.state) {
-      vchanges.push({
+      const change = {
         t: +audioT.toFixed(2),
         id,
         from: vstate.get(id) ?? null,
         to: v.state,
-      });
+      };
+      // The engine's scores behind a bad verdict, to tell noise from slips.
+      if (v.state === 'wrong' || v.state === 'skipped') {
+        const r = x => (typeof x === 'number' ? +x.toFixed(3) : null);
+        change.d = {
+          distance: r(v.distance),
+          heardRatio: r(v.heardRatio),
+          margin: r(v.margin),
+          gop: r(v.gop),
+          gopNone: r(v.gopNone),
+          gopTwice: r(v.gopTwice),
+          vowelErrors: v.vowelErrors ?? null,
+          slip: r(v.slip),
+        };
+      }
+      vchanges.push(change);
       vstate.set(id, v.state);
     }
   }
