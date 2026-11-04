@@ -80,6 +80,8 @@ let take: TakeBuilder | null = null;
 // page. Hidden or not, the reader's words are judged as they recite.
 interface Memorisation {
   hidden: boolean;
+  /** "Check my recitation" was on when the take started. */
+  check: boolean;
   correction: boolean;
   /** Correction mode was on at some point in the take. */
   checked: boolean;
@@ -322,7 +324,7 @@ function handleEvent(msg: EngineMessage): void {
   if (state.status !== 'listening') return;
   if (msg.type === 'word_verdicts') {
     // Verdicts from before a lock are the search's guesses.
-    if (state.locked) noteVerdicts(msg.changes);
+    if (state.locked && memo?.check) noteVerdicts(msg.changes);
     return;
   }
   if (msg.type === 'correction') {
@@ -332,7 +334,7 @@ function handleEvent(msg: EngineMessage): void {
     return;
   }
   if (msg.type === 'word_progress') {
-    if (memo && !memo.correction) {
+    if (memo?.check && !memo.correction) {
       startCorrection({surah: msg.surah, ayah: msg.ayah});
     }
     if (takeLockedAt === null) {
@@ -424,6 +426,7 @@ function onUpdate(update: SessionUpdate): void {
       });
       memo = {
         hidden: useMushafSettingsStore.getState().recitationHideText,
+        check: useMushafSettingsStore.getState().recitationCheckMistakes,
         correction: false,
         checked: false,
         expected: null,

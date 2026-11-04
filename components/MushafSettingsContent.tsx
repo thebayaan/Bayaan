@@ -786,6 +786,10 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
     toggleAllahNameHighlight,
     toggleThemes,
     toggleCommunityReflections,
+    recitationCheckMistakes,
+    recitationMistakeHaptics,
+    toggleRecitationCheckMistakes,
+    toggleRecitationMistakeHaptics,
     lightThemeId,
     darkThemeId,
     rewayah,
@@ -1331,6 +1335,33 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
           <Text style={styles.sectionHeader}>
             {t('mushafSettings.recitationHeader')}
           </Text>
+          <View style={styles.card}>
+            <View style={styles.optionRow}>
+              <Text style={styles.optionLabel}>
+                {t('mushafSettings.recitation.checkLabel')}
+              </Text>
+              <NativeSwitch
+                onValueChange={toggleRecitationCheckMistakes}
+                value={recitationCheckMistakes}
+                style={styles.switchStyle}
+              />
+            </View>
+            <Text style={styles.helperText}>
+              {t('mushafSettings.recitation.checkHelper')}
+            </Text>
+            {recitationCheckMistakes && (
+              <View style={styles.optionRow}>
+                <Text style={styles.optionLabel}>
+                  {t('mushafSettings.recitation.hapticsLabel')}
+                </Text>
+                <NativeSwitch
+                  onValueChange={toggleRecitationMistakeHaptics}
+                  value={recitationMistakeHaptics}
+                  style={styles.switchStyle}
+                />
+              </View>
+            )}
+          </View>
           <RecitationModelControl styles={styles} theme={theme} />
         </>
       )}

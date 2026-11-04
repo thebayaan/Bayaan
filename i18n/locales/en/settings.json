@@ -409,6 +409,9 @@
     "communityReflectionsHelper": "Show community reflections under each ayah in list view",
     "indopakHafsOnly": "IndoPak shows Hafs only. Choosing another rewayah switches the font to {{font}}.",
     "recitation": {
+      "checkLabel": "Check my recitation",
+      "checkHelper": "Marks a word in red when you may have missed it or said a different word. Tajweed and harakat are not checked.",
+      "hapticsLabel": "Vibrate on mistakes",
       "historyLabel": "Recitation history",
       "historyHelper": "Which ayat you recited, kept on this phone only. Audio is never saved.",
       "historyConfirmTitle": "Clear recitation history?",

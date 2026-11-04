@@ -70,6 +70,7 @@ jest.mock('@/services/mushaf/MushafVerseMapService', () => ({
 const mockSettings = {
   recitationHideText: false,
   recitationMistakeHaptics: true,
+  recitationCheckMistakes: true,
 };
 const mockHaptics = {
   notificationAsync: jest.fn(async (_type: string) => undefined),
@@ -98,6 +99,7 @@ beforeEach(() => {
   resetRecitationControls();
   mockSettings.recitationHideText = false;
   mockSettings.recitationMistakeHaptics = true;
+  mockSettings.recitationCheckMistakes = true;
   mockLog.dismissedKeys.mockResolvedValue(new Set());
   digitalKhattModule.digitalKhattDataService.getPageForVerse.mockImplementation(
     ((key: string) => (key === '18:6' || key === '18:7' ? 294 : 293)) as never,
@@ -594,5 +596,17 @@ describe('RecitationTrackingService live mistakes', () => {
     expect(state().summary?.marks).toEqual([
       {surah: 18, ayah: 3, word: 3, kind: 'wrong', status: 'mistake'},
     ]);
+  });
+
+  it('with checking off, the take only follows and marks nothing', async () => {
+    mockSettings.recitationCheckMistakes = false;
+    await lockedTake();
+    expect(mockEngine.setMode).not.toHaveBeenCalledWith('correction');
+    engineControl.sendEvent?.(
+      wordVerdicts([{surah: 18, ayah: 3, word: 2, state: 'wrong'}]),
+    );
+    await listenFor(900);
+    expect(state().marks).toEqual([]);
+    expect(mockHaptics.notificationAsync).not.toHaveBeenCalled();
   });
 });

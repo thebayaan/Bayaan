@@ -122,8 +122,9 @@ interface MushafSettingsState {
   // Memorisation: while following the reader's recitation, ghost the page
   // text and reveal words as they are recited.
   recitationHideText: boolean;
-  // While following the reader's recitation: a short vibration on each
-  // mistake as it is marked.
+  // While following the reader's recitation: mark missed and wrong words
+  // as they recite, and a short vibration on each one.
+  recitationCheckMistakes: boolean;
   recitationMistakeHaptics: boolean;
 
   // Word-by-word settings
@@ -186,6 +187,7 @@ interface MushafSettingsState {
   toggleThemes: () => void;
   toggleCommunityReflections: () => void;
   toggleRecitationHideText: () => void;
+  toggleRecitationCheckMistakes: () => void;
   toggleRecitationMistakeHaptics: () => void;
   toggleWBW: () => void;
   toggleWBWTranslation: () => void;
@@ -232,6 +234,7 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
       showThemes: false,
       showCommunityReflections: false,
       recitationHideText: false,
+      recitationCheckMistakes: true,
       recitationMistakeHaptics: true,
       showWBW: false,
       wbwShowTranslation: defaultShowEnglishReadingAids, // @ai
@@ -269,6 +272,10 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
         })),
       toggleRecitationHideText: () =>
         set(state => ({recitationHideText: !state.recitationHideText})),
+      toggleRecitationCheckMistakes: () =>
+        set(state => ({
+          recitationCheckMistakes: !state.recitationCheckMistakes,
+        })),
       toggleRecitationMistakeHaptics: () =>
         set(state => ({
           recitationMistakeHaptics: !state.recitationMistakeHaptics,
