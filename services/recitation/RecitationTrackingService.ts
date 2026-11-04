@@ -45,6 +45,7 @@ import {
   type SessionUpdate,
 } from './sessionRunner';
 import {shownFlags, toShownFlag} from './flags';
+import {debugTakeSave, debugTakeStart, trace} from './debugTake';
 import {
   advanceRevealed,
   peekAyah,
@@ -134,6 +135,9 @@ function startCorrection(from: {surah: number; ayah: number}): void {
   memo.expected = passageFrom(from);
   memo.correction = true;
   memo.checked = true;
+  trace(
+    `checking ${from.surah}:${from.ayah}-${memo.expected.ayahEnd ?? from.ayah}`,
+  );
   configureSession({
     mode: 'correction',
     expected: memo.expected,
@@ -179,6 +183,9 @@ function runConfirm(): void {
   const update = confirmDue(book, Date.now());
   book = update.book;
   if (update.confirmed.length > 0) {
+    for (const m of update.confirmed) {
+      trace(`MARK ${m.kind} ${m.surah}:${m.ayah} word ${m.word + 1}`);
+    }
     buzz();
     publishMarks();
   }
@@ -187,7 +194,9 @@ function runConfirm(): void {
 
 /** One short vibration for a newly marked mistake, if the reader wants it. */
 function buzz(): void {
-  if (!useMushafSettingsStore.getState().recitationMistakeHaptics) return;
+  const on = useMushafSettingsStore.getState().recitationMistakeHaptics;
+  trace(`vibrate ${on ? 'on' : 'off (setting)'}`);
+  if (!on) return;
   Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(
     () => undefined,
   );
@@ -200,6 +209,15 @@ function noteVerdicts(all: readonly VerdictChange[]): void {
     c => !dismissedMarks.has(markKey(c.surah, c.ayah, c.word)),
   );
   for (const change of changes) {
+    if (
+      change.state !== 'pending' &&
+      (change.state !== 'ok' ||
+        book.has(markKey(change.surah, change.ayah, change.word)))
+    ) {
+      trace(
+        `verdict ${change.surah}:${change.ayah} word ${change.word + 1}/${change.totalWords} ${change.state}`,
+      );
+    }
     if (change.state === 'pending') continue;
     judged.set(`${change.surah}:${change.ayah}:${change.word}`, {
       change,
@@ -208,6 +226,9 @@ function noteVerdicts(all: readonly VerdictChange[]): void {
     });
   }
   const update = applyVerdicts(book, changes, now);
+  for (const m of update.corrected) {
+    trace(`CORRECTED ${m.surah}:${m.ayah} word ${m.word + 1}`);
+  }
   if (update.book === book) return;
   book = update.book;
   publishMarks();
@@ -266,6 +287,7 @@ function takeWords(): TakeWord[] {
 function dropToTracking(): void {
   if (!memo?.correction) return;
   stopCorrection();
+  trace('following freely until the next lock');
   const {verseKey} = useRecitationTrackingStore.getState();
   if (!verseKey) return;
   const [surah, ayah] = verseKey.split(':').map(Number);
@@ -280,6 +302,9 @@ function noteFlag(issue: CorrectionIssue, totalWords: number): void {
     word: issue.word,
     source: issue.source ?? 'word',
   });
+  trace(
+    `flag ${issue.kind} ${issue.surah}:${issue.ayah} word ${issue.word + 1}`,
+  );
   if (!shown || memo?.dismissed.has(shown.key)) return;
   const {flags} = useRecitationTrackingStore.getState();
   if (flags.some(f => f.key === shown.key)) return;
@@ -320,6 +345,9 @@ function handleEvent(msg: EngineMessage): void {
   if (msg.type === 'word_verdicts') {
     // Verdicts from before a lock are the search's guesses.
     if (state.locked && memo?.check) noteVerdicts(msg.changes);
+    else if (!state.locked && msg.changes.some(c => c.state !== 'pending')) {
+      trace(`${msg.changes.length} verdicts ignored (not locked)`);
+    }
     return;
   }
   if (msg.type === 'correction') {
@@ -329,6 +357,14 @@ function handleEvent(msg: EngineMessage): void {
     return;
   }
   if (msg.type === 'word_progress') {
+    if (
+      state.verseKey !== `${msg.surah}:${msg.ayah}` ||
+      state.wordIndex !== msg.word_index
+    ) {
+      trace(
+        `at ${msg.surah}:${msg.ayah} word ${msg.word_index + 1}/${msg.total_words}`,
+      );
+    }
     if (memo?.check && !memo.correction) {
       startCorrection({surah: msg.surah, ayah: msg.ayah});
     }
@@ -365,12 +401,16 @@ function handleEvent(msg: EngineMessage): void {
   }
   if (msg.type === 'verse_match') {
     const key = `${msg.surah}:${msg.ayah}`;
+    trace(`ayah ${key} recited`);
     if (!state.recitedVerseKeys.includes(key)) {
       setState({recitedVerseKeys: [...state.recitedVerseKeys, key]});
     }
     return;
   }
   if (msg.type !== 'debug') return;
+  if (LOCK_EVENTS.has(msg.event) || UNLOCK_EVENTS.has(msg.event)) {
+    trace(`engine ${msg.event}`);
+  }
   if (LOCK_EVENTS.has(msg.event)) setState({locked: true});
   if (UNLOCK_EVENTS.has(msg.event)) setState({locked: false});
   if (FALLBACK_EVENTS.has(msg.event)) dropToTracking();
@@ -430,6 +470,10 @@ function onUpdate(update: SessionUpdate): void {
       judged = new Map();
       dismissedMarks = new Map();
       clearConfirmTimer();
+      debugTakeStart();
+      trace(
+        `take started (text ${memo.hidden ? 'hidden' : 'shown'}, checking ${memo.check ? 'on' : 'off'})`,
+      );
       loadDismissed(memo);
       analyticsService.trackRecitationTrackingStarted({
         hint_surah_id: takeHint?.surah ?? null,
@@ -481,6 +525,11 @@ const handlers: SessionHandlers = {
     take = null;
     memo = null;
     clearConfirmTimer();
+    trace(`take ended (${reason})`);
+    if (listened)
+      void debugTakeSave(
+        `take-${new Date().toISOString().replace(/[:.]/g, '-')}`,
+      );
     if (listened && finished) {
       const record: TakeRecord = {
         ...finishTake(finished, messages, reason, Date.now()),
@@ -632,6 +681,7 @@ export async function dismissRecitationMark(target: {
   );
   if (!mark) return;
   setState({marks: marks.filter(m => m !== mark)});
+  trace(`dismissed ${mark.surah}:${mark.ayah} word ${mark.word + 1}`);
   const key = markKey(mark.surah, mark.ayah, mark.word);
   if (isTakeActive(status)) {
     dismissedMarks.set(key, mark.kind);

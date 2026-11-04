@@ -9,6 +9,7 @@ import type {RecitationStopReason} from '@/services/analytics/events';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
 import {deleteRecitationAssets} from './recitationAssets';
+import {debugTakeAudio} from './debugTake';
 import type {
   EngineMessage,
   RecitationEngine,
@@ -368,7 +369,9 @@ export async function startSession(
     const mic = await startMicStream(
       pcm => {
         session.lastChunkAt = Date.now();
-        if (!session.held) engine.feed(pcm);
+        if (session.held) return;
+        engine.feed(pcm);
+        if (session.purpose === 'follow') debugTakeAudio(pcm);
       },
       phase => onInterruption(session, phase),
     );
