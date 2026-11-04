@@ -6,7 +6,7 @@ jest.mock(
 );
 import {closeOpenDatabases, resetDatabases} from '@/test-utils/mockExpoSqlite';
 import {RecitationLogDatabase} from '../RecitationLogDatabase';
-import type {TakeRecord} from '../take';
+import type {TakeRecord, TakeWord} from '../take';
 
 function take(overrides: Partial<TakeRecord>): TakeRecord {
   return {
@@ -194,5 +194,141 @@ describe('RecitationLogDatabase', () => {
     });
     await db.clearHistory();
     expect(await db.dismissedKeys()).toEqual(new Set());
+  });
+
+  describe('word results', () => {
+    function word(
+      w: number,
+      result: TakeWord['result'],
+      at: number,
+      extra: Partial<TakeWord> = {},
+    ): TakeWord {
+      const kind =
+        result === 'mistake' || result === 'corrected' ? 'wrong' : null;
+      return {
+        surah: 67,
+        ayah: 1,
+        word: w,
+        result,
+        kind,
+        hidden: false,
+        at,
+        ...extra,
+      };
+    }
+
+    it('every judged word of a take is saved, and mistakes are listed newest first', async () => {
+      await db.recordTake(
+        take({
+          id: 'a',
+          words: [
+            word(1, 'correct', 1100),
+            word(2, 'mistake', 1200, {kind: 'missed'}),
+            word(3, 'unclear', 1300),
+          ],
+        }),
+      );
+      await db.recordTake(
+        take({
+          id: 'b',
+          startedAt: 5000,
+          words: [word(4, 'mistake', 5100, {ayah: 2, hidden: true})],
+        }),
+      );
+      expect(await db.mistakes()).toEqual([
+        {
+          takeId: 'b',
+          surah: 67,
+          ayah: 2,
+          word: 4,
+          result: 'mistake',
+          kind: 'wrong',
+          hidden: true,
+          at: 5100,
+        },
+        {
+          takeId: 'a',
+          surah: 67,
+          ayah: 1,
+          word: 2,
+          result: 'mistake',
+          kind: 'missed',
+          hidden: false,
+          at: 1200,
+        },
+      ]);
+    });
+
+    it('mistakes can include the ones corrected during the take', async () => {
+      await db.recordTake(
+        take({
+          words: [word(2, 'mistake', 1200), word(3, 'corrected', 1300)],
+        }),
+      );
+      expect((await db.mistakes()).map(m => m.word)).toEqual([2]);
+      expect(
+        (await db.mistakes({includeCorrected: true})).map(m => m.word),
+      ).toEqual([3, 2]);
+    });
+
+    it("wordResults gives an ayah's word-by-word history across takes", async () => {
+      await db.recordTake(
+        take({
+          id: 'a',
+          words: [word(1, 'correct', 1100), word(2, 'mistake', 1200)],
+        }),
+      );
+      await db.recordTake(
+        take({id: 'b', startedAt: 5000, words: [word(2, 'correct', 5200)]}),
+      );
+      const rows = await db.wordResults(67, 1);
+      expect(rows.map(r => [r.takeId, r.word, r.result])).toEqual([
+        ['a', 1, 'correct'],
+        ['a', 2, 'mistake'],
+        ['b', 2, 'correct'],
+      ]);
+    });
+
+    it('saving a take again replaces its words', async () => {
+      await db.recordTake(take({words: [word(2, 'mistake', 1200)]}));
+      await db.recordTake(take({words: [word(2, 'corrected', 1300)]}));
+      expect(await db.mistakes()).toEqual([]);
+      expect(await db.wordResults(67, 1)).toHaveLength(1);
+    });
+
+    it('a take without word results still saves', async () => {
+      await db.recordTake(take({}));
+      expect(await db.recentTakes(5)).toHaveLength(1);
+      expect(await db.mistakes()).toEqual([]);
+    });
+
+    it('clearHistory also removes word results', async () => {
+      await db.recordTake(take({words: [word(2, 'mistake', 1200)]}));
+      await db.clearHistory();
+      expect(await db.mistakes()).toEqual([]);
+    });
+
+    it('an existing history from before word results keeps its takes', async () => {
+      const SQLite = jest.requireMock<{
+        openDatabaseAsync: (name: string) => Promise<{
+          execAsync: (sql: string) => Promise<void>;
+          closeAsync: () => Promise<void>;
+        }>;
+      }>('expo-sqlite');
+      // A version 2 history: the first database, then dismissals.
+      const old = new RecitationLogDatabase();
+      await old.recordTake(TAKE_A);
+      const raw = await SQLite.openDatabaseAsync('recitation-log.db');
+      await raw.execAsync(
+        'DROP TABLE IF EXISTS word_results; PRAGMA user_version = 2;',
+      );
+      await closeOpenDatabases();
+      db = new RecitationLogDatabase();
+      await db.recordTake(
+        take({id: 'new', startedAt: 9000, words: [word(2, 'mistake', 9100)]}),
+      );
+      expect((await db.recentTakes(5)).map(t => t.id)).toEqual(['new', 'a']);
+      expect(await db.mistakes()).toHaveLength(1);
+    });
   });
 });

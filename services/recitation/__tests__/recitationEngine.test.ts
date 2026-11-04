@@ -76,7 +76,13 @@ const mockSession = {
   setExpected: syncCall('setExpected', () => undefined),
   setStructural: asyncCall('setStructural', () => undefined),
   correct: syncCall('correct', () => DEFERRED),
+  verdicts: jest.fn((): unknown[] => []),
+  wordCount: jest.fn((_surah: number, _ayah: number) => 10),
 };
+
+function verdict(word: number, state: string) {
+  return {surah: 67, ayah: 12, word, wordIndex: word, state};
+}
 
 // @tilawa/core ships ESM-only exports that Jest cannot resolve, so the mock
 // is virtual.
@@ -122,6 +128,7 @@ beforeEach(() => {
   maxInFlight = 0;
   mockSession.correction.state.phase = 'idle';
   jest.clearAllMocks();
+  mockSession.verdicts.mockReturnValue([]);
 });
 
 describe('createRecitationEngine', () => {
@@ -220,5 +227,65 @@ describe('createRecitationEngine', () => {
       flagMessage(24),
       ...DEFERRED,
     ]);
+  });
+
+  it('after each chunk it reports the words whose verdict changed', async () => {
+    const events: unknown[] = [];
+    const engine = await createRecitationEngine(ASSETS, msg => {
+      events.push(msg);
+    });
+    // Feeds run later, in order: one verdict list per chunk.
+    mockSession.verdicts
+      .mockReturnValueOnce([verdict(0, 'ok'), verdict(1, 'pending')])
+      .mockReturnValueOnce([
+        verdict(0, 'ok'),
+        verdict(1, 'wrong'),
+        verdict(2, 'pending'),
+      ]);
+    engine.feed(pcm());
+    engine.feed(pcm());
+    await engine.stop();
+    expect(events).toEqual([
+      {
+        type: 'word_verdicts',
+        changes: [
+          {surah: 67, ayah: 12, word: 0, totalWords: 10, state: 'ok'},
+          {surah: 67, ayah: 12, word: 1, totalWords: 10, state: 'pending'},
+        ],
+      },
+      {
+        type: 'word_verdicts',
+        changes: [
+          {surah: 67, ayah: 12, word: 1, totalWords: 10, state: 'wrong'},
+          {surah: 67, ayah: 12, word: 2, totalWords: 10, state: 'pending'},
+        ],
+      },
+    ]);
+    expect(mockSession.wordCount).toHaveBeenCalledWith(67, 12);
+  });
+
+  it('a chunk that changes no verdict reports nothing', async () => {
+    const events: unknown[] = [];
+    const engine = await createRecitationEngine(ASSETS, msg => {
+      events.push(msg);
+    });
+    mockSession.verdicts.mockReturnValue([verdict(0, 'ok')]);
+    engine.feed(pcm());
+    engine.feed(pcm());
+    await engine.stop();
+    expect(events).toHaveLength(1);
+  });
+
+  it('reset forgets the verdicts, so a new take reports them again', async () => {
+    const events: unknown[] = [];
+    const engine = await createRecitationEngine(ASSETS, msg => {
+      events.push(msg);
+    });
+    mockSession.verdicts.mockReturnValue([verdict(0, 'ok')]);
+    engine.feed(pcm());
+    engine.reset();
+    engine.feed(pcm());
+    await engine.stop();
+    expect(events).toHaveLength(2);
   });
 });

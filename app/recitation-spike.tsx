@@ -10,7 +10,7 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {Redirect, router} from 'expo-router';
 import {moderateScale} from '@/utils/scale';
 import Color from 'color';
-import type {WorkerOutbound} from '@tilawa/core';
+import type {EngineMessage} from '@/services/recitation/recitationEngine';
 import {useTheme} from '@/hooks/useTheme';
 import {
   deleteRecitationAssets,
@@ -82,7 +82,7 @@ function RecitationSpikeScreen(): React.JSX.Element {
   const engineRef = useRef<RecitationEngine | null>(null);
   const micRef = useRef<MicStream | null>(null);
 
-  const handleEvent = useCallback((msg: WorkerOutbound) => {
+  const handleEvent = useCallback((msg: EngineMessage) => {
     setLastEvent(msg.type);
     if (msg.type === 'verse_match') {
       const key = `${msg.surah}:${msg.ayah}`;

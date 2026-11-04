@@ -1,14 +1,16 @@
 import * as SQLite from 'expo-sqlite';
 import type {SessionPurpose} from './activeSession';
 import type {ShownFlag} from './flags';
-import type {TakeRecord} from './take';
+import type {TakeRecord, TakeWord} from './take';
 
-// The reader's recitation history, on the phone only: one row per take and
-// one row per ayah a take touched (recited, flagged or peeked at). Events
-// only, never audio. Revision features read the per-ayah rows.
+// The reader's recitation history, on the phone only: one row per take, one
+// row per ayah a take touched (recited, flagged or peeked at), and one row
+// per word the engine judged (correct, unclear, a mistake, or a mistake
+// corrected in the take). Events only, never audio. Revision features read
+// the per-ayah rows; mistake history and weak-word features read the words.
 
 const DB_NAME = 'recitation-log.db';
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 
 export interface TakeSummary {
   id: string;
@@ -32,6 +34,42 @@ export interface AyahHistoryRow {
   flags: number;
   peeks: number;
   stalls: number;
+}
+
+/** One judged word of one take. `word` is its 1-based position (Hafs). */
+export interface WordResultRow {
+  takeId: string;
+  surah: number;
+  ayah: number;
+  word: number;
+  result: TakeWord['result'];
+  kind: TakeWord['kind'];
+  hidden: boolean;
+  at: number;
+}
+
+interface WordRow {
+  take_id: string;
+  surah: number;
+  ayah: number;
+  word: number;
+  result: TakeWord['result'];
+  kind: TakeWord['kind'];
+  hidden: number;
+  at: number;
+}
+
+function toWordResult(row: WordRow): WordResultRow {
+  return {
+    takeId: row.take_id,
+    surah: row.surah,
+    ayah: row.ayah,
+    word: row.word,
+    result: row.result,
+    kind: row.kind,
+    hidden: row.hidden === 1,
+    at: row.at,
+  };
 }
 
 interface TakeSummaryRow {
@@ -104,7 +142,28 @@ async function migrate(db: SQLite.SQLiteDatabase): Promise<void> {
       );
     `);
   }
+  if (version < 3) await createWordTable(db);
   await db.execAsync(`PRAGMA user_version = ${SCHEMA_VERSION};`);
+}
+
+async function createWordTable(db: SQLite.SQLiteDatabase): Promise<void> {
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS word_results (
+      take_id TEXT NOT NULL,
+      surah INTEGER NOT NULL,
+      ayah INTEGER NOT NULL,
+      word INTEGER NOT NULL,
+      result TEXT NOT NULL,
+      kind TEXT,
+      hidden INTEGER NOT NULL,
+      at INTEGER NOT NULL,
+      PRIMARY KEY (take_id, surah, ayah, word)
+    );
+    CREATE INDEX IF NOT EXISTS idx_word_results_word
+      ON word_results(surah, ayah, word, at);
+    CREATE INDEX IF NOT EXISTS idx_word_results_result
+      ON word_results(result, at);
+  `);
 }
 
 async function createTakeTables(db: SQLite.SQLiteDatabase): Promise<void> {
@@ -203,7 +262,54 @@ export class RecitationLogDatabase {
           take.startedAt,
         );
       }
+      await db.runAsync('DELETE FROM word_results WHERE take_id = ?', take.id);
+      for (const w of take.words ?? []) {
+        await db.runAsync(
+          `INSERT OR REPLACE INTO word_results (take_id, surah, ayah, word,
+             result, kind, hidden, at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          take.id,
+          w.surah,
+          w.ayah,
+          w.word,
+          w.result,
+          w.kind,
+          w.hidden ? 1 : 0,
+          w.at,
+        );
+      }
     });
+  }
+
+  /**
+   * Every mistake ever marked, newest first.
+   * @param options.includeCorrected - Also the ones fixed within the take
+   */
+  async mistakes(
+    options: {includeCorrected?: boolean; limit?: number} = {},
+  ): Promise<WordResultRow[]> {
+    const db = await this.open();
+    const results = options.includeCorrected
+      ? "('mistake', 'corrected')"
+      : "('mistake')";
+    const rows = await db.getAllAsync<WordRow>(
+      `SELECT * FROM word_results WHERE result IN ${results}
+       ORDER BY at DESC LIMIT ?`,
+      options.limit ?? -1,
+    );
+    return rows.map(toWordResult);
+  }
+
+  /** Every judged word of one ayah, oldest first: its history word by word. */
+  async wordResults(surah: number, ayah: number): Promise<WordResultRow[]> {
+    const db = await this.open();
+    const rows = await db.getAllAsync<WordRow>(
+      `SELECT * FROM word_results WHERE surah = ? AND ayah = ?
+       ORDER BY at, word`,
+      surah,
+      ayah,
+    );
+    return rows.map(toWordResult);
   }
 
   /** The latest takes, newest first. */
@@ -303,6 +409,7 @@ export class RecitationLogDatabase {
     const db = await this.open();
     await db.withTransactionAsync(async () => {
       await db.runAsync('DELETE FROM take_ayat');
+      await db.runAsync('DELETE FROM word_results');
       await db.runAsync('DELETE FROM takes');
       await db.runAsync('DELETE FROM dismissed_flags');
     });

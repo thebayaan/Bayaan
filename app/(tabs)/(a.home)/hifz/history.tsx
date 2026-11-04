@@ -14,14 +14,33 @@ import {DAY_MS} from '@/services/hifz/strength';
 import {recitationStreak, todaysAyat} from '@/services/hifz/streak';
 import {shownFlags} from '@/services/recitation/flags';
 import {recitationLogDatabase} from '@/services/recitation/RecitationLogDatabase';
-import type {TakeRecord} from '@/services/recitation/take';
+import type {TakeRecord, TakeWord} from '@/services/recitation/take';
 import {useHifzStore} from '@/store/hifzStore';
+import type {RecitationSummaryMark} from '@/store/recitationTrackingStore';
 import {moderateScale} from '@/utils/scale';
 
 /** Takes shown, and counted for the streak. */
 const HISTORY_DAYS = 90;
 
 /** Past takes, newest first, with a quiet streak and today's goal. */
+/** A saved take's marked words, as the summary sheet lists them. */
+function summaryMarks(words: readonly TakeWord[]): RecitationSummaryMark[] {
+  const marks: RecitationSummaryMark[] = [];
+  for (const w of words) {
+    if ((w.result !== 'mistake' && w.result !== 'corrected') || !w.kind) {
+      continue;
+    }
+    marks.push({
+      surah: w.surah,
+      ayah: w.ayah,
+      word: w.word,
+      kind: w.kind,
+      status: w.result,
+    });
+  }
+  return marks;
+}
+
 export default function HifzHistoryScreen(): React.JSX.Element {
   const {theme} = useHifzStyles();
   const {t} = useTranslation(['reader', 'sheets']);
@@ -147,6 +166,7 @@ export default function HifzHistoryScreen(): React.JSX.Element {
                     endedAt: item.endedAt,
                     ayat: item.ayat.map(({surah, ayah}) => ({surah, ayah})),
                     flags,
+                    marks: summaryMarks(item.words ?? []),
                   },
                 },
               })

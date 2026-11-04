@@ -72,6 +72,7 @@ const SUMMARY: RecitationSummary = {
       key: 'skippedWord:18:6:2',
     },
   ],
+  marks: [],
 };
 
 async function render(
@@ -158,5 +159,34 @@ describe('RecitationSummarySheet', () => {
         }),
       },
     });
+  });
+
+  it('lists the words marked while reciting, and the ones corrected', async () => {
+    const r = await render({
+      ...SUMMARY,
+      flags: [],
+      marks: [
+        {surah: 18, ayah: 3, word: 2, kind: 'missed', status: 'mistake'},
+        {surah: 18, ayah: 4, word: 5, kind: 'wrong', status: 'corrected'},
+      ],
+    });
+    const shown = texts(r);
+    expect(shown).not.toContain('Nothing to check this time.');
+    expect(shown).toContain('Al-Kahf · ayah 3 · word 2');
+    expect(shown).toContain('You may have missed this word.');
+    expect(shown).toContain('Al-Kahf · ayah 4 · word 5');
+    expect(shown).toContain('You went back and recited it correctly.');
+  });
+
+  it('Show on a marked word opens its ayah in the mushaf', async () => {
+    const r = await render({
+      ...SUMMARY,
+      flags: [],
+      marks: [{surah: 18, ayah: 3, word: 2, kind: 'wrong', status: 'mistake'}],
+    });
+    await act(async () => {
+      await buttons(r, 'Show')[0].props.onPress();
+    });
+    expect(mockNavigate).toHaveBeenCalledWith('18:3', 293);
   });
 });

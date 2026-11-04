@@ -1,5 +1,5 @@
 import {AppState, type NativeEventSubscription} from 'react-native';
-import type {WorkerOutbound} from '@tilawa/core';
+import type {EngineMessage} from './recitationEngine';
 import {analyticsService} from '@/services/analytics/AnalyticsService';
 import {
   ensureRecitationAssets,
@@ -16,7 +16,7 @@ import {
 // The model holds ~100 to 150 MB once loaded.
 
 let engine: RecitationEngine | null = null;
-let listener: ((msg: WorkerOutbound) => void) | null = null;
+let listener: ((msg: EngineMessage) => void) | null = null;
 let busy = false;
 let unloadTimer: ReturnType<typeof setTimeout> | null = null;
 let memoryWarningSub: NativeEventSubscription | null = null;
@@ -50,7 +50,7 @@ export async function recitationModelNeedsDownload(): Promise<boolean> {
 
 /** Engine events go to this listener; null drops them. */
 export function setEngineListener(
-  next: ((msg: WorkerOutbound) => void) | null,
+  next: ((msg: EngineMessage) => void) | null,
 ): void {
   listener = next;
 }

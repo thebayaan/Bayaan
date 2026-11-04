@@ -8,18 +8,20 @@ import {
   useRecitationTrackingStore,
 } from '@/store/recitationTrackingStore';
 import {dkWordPosition, withRecitedWordRun} from './recitedWord';
+import {mistakeColor} from './useRecitationMarkColors';
 import type {LineHighlight, LineHighlightMap} from './verseHighlightLayers';
 
 const FIELD_SEPARATOR = '|';
-// Possible slips in memorisation mode.
-const FLAG_TINT = '#D9A21B';
 const KEY_SEPARATOR = ',';
 
 /**
  * Adds recitation follow-along to a Digital Khatt page's line highlights:
- * a faint tint under ayat already recited this take, and the word being
- * recited over its ayah's band. Pages without the recited ayah keep `base`
- * and do not re-render as the reader moves through other pages.
+ * a faint tint under ayat already recited this take, the word being recited,
+ * a dotted underline under each word marked as a mistake (and kept once it
+ * is corrected), and a light band over a skipped or look-alike ayah. Pages
+ * without any of it keep `base` and do not re-render as the reader moves
+ * through other pages. Mistake letters are coloured by
+ * useRecitationMarkColors.
  */
 export function useRecitationLineHighlights(
   pageNumber: number,
@@ -66,11 +68,25 @@ export function useRecitationLineHighlights(
       : '',
   );
 
+  // Live word marks on this page, as key|word|total.
+  const marksId = useRecitationTrackingStore(s =>
+    isTakeActive(s.status)
+      ? s.marks
+          .filter(m => pageKeys.has(`${m.surah}:${m.ayah}`))
+          .map(m =>
+            [`${m.surah}:${m.ayah}`, m.word, m.totalWords].join(
+              FIELD_SEPARATOR,
+            ),
+          )
+          .join(KEY_SEPARATOR)
+      : '',
+  );
+
   const colors = useMemo(
     () => ({
-      // A soft amber, never red: these are possible slips, not verdicts.
-      flag: Color(FLAG_TINT)
-        .alpha(isDarkMode ? 0.3 : 0.24)
+      mistake: mistakeColor(isDarkMode),
+      ayahFlag: Color(mistakeColor(isDarkMode))
+        .alpha(isDarkMode ? 0.22 : 0.14)
         .toString(),
       recited: Color(textColor)
         .alpha(isDarkMode ? 0.05 : 0.06)
@@ -83,7 +99,7 @@ export function useRecitationLineHighlights(
   );
 
   return useMemo(() => {
-    if (!wordId && !recitedId && !flagsId) return base;
+    if (!wordId && !recitedId && !flagsId && !marksId) return base;
     let out = base;
 
     if (recitedId) {
@@ -128,7 +144,7 @@ export function useRecitationLineHighlights(
               {
                 start: segment.startCharIndex,
                 end: segment.endCharIndex,
-                color: colors.flag,
+                color: colors.ayahFlag,
               },
             ]);
           }
@@ -147,9 +163,31 @@ export function useRecitationLineHighlights(
             digitalKhattDataService,
             verseKey,
             position,
-            colors.flag,
+            colors.mistake,
+            'underline',
           );
         }
+      }
+    }
+
+    if (marksId) {
+      for (const entry of marksId.split(KEY_SEPARATOR)) {
+        const [verseKey, word, total] = entry.split(FIELD_SEPARATOR);
+        const position = dkWordPosition(
+          digitalKhattDataService.getVerseWords(verseKey),
+          Number(word),
+          Number(total),
+        );
+        if (position === null) continue;
+        out = withRecitedWordRun(
+          out,
+          pageLines,
+          digitalKhattDataService,
+          verseKey,
+          position,
+          colors.mistake,
+          'underline',
+        );
       }
     }
 
@@ -172,5 +210,14 @@ export function useRecitationLineHighlights(
       }
     }
     return out;
-  }, [wordId, recitedId, flagsId, base, pageNumber, pageLines, colors]);
+  }, [
+    wordId,
+    recitedId,
+    flagsId,
+    marksId,
+    base,
+    pageNumber,
+    pageLines,
+    colors,
+  ]);
 }

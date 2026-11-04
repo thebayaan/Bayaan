@@ -66,6 +66,7 @@ import {
 import {usePlaybackBand} from './playbackBand';
 import {useRecitationLineHighlights} from './useRecitationLineHighlights';
 import {useRecitationHiddenText} from './useRecitationHiddenText';
+import {useRecitationMarkColors} from './useRecitationMarkColors';
 import {usePlaybackBasmalaSurah} from '@/store/mushafPlayerStore'; // @ai
 import {useVerseUnitDragSelect, type LineCharHit} from './verseUnitDragSelect';
 // @ai-end
@@ -752,9 +753,11 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
   ]);
 
   // Memorisation: words not yet recited are ghosted while hiding is on.
-  const lineCharColors = useRecitationHiddenText(
+  // Live mistakes are drawn in the mistake colour, hidden or not.
+  const lineCharColors = useRecitationMarkColors(
     pageLines,
-    lineAllahNameColorMaps,
+    useRecitationHiddenText(pageLines, lineAllahNameColorMaps),
+    isDarkMode,
   );
 
   // Recitation follow-along: recited ayat and the word being recited.

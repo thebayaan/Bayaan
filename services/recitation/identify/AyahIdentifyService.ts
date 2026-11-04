@@ -1,4 +1,5 @@
 import type {WorkerOutbound} from '@tilawa/core';
+import type {EngineMessage} from '../recitationEngine';
 import {analyticsService} from '@/services/analytics/AnalyticsService';
 import type {RecitationStopReason} from '@/services/analytics/events';
 import {
@@ -174,8 +175,8 @@ function handlersFor(run: IdentifyRun): SessionHandlers {
     }
   }
 
-  function onEvent(msg: WorkerOutbound): void {
-    if (!owns()) return;
+  function onEvent(msg: EngineMessage): void {
+    if (!owns() || msg.type === 'word_verdicts') return;
     const ayah = placedAyah(msg);
     if (!ayah) return;
     if (!run.match) {

@@ -11,13 +11,17 @@ import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService
 import type {FlagKind, ShownFlag} from '@/services/recitation/flags';
 import {recitationLogDatabase} from '@/services/recitation/RecitationLogDatabase';
 import {useMushafNavigationStore} from '@/store/mushafNavigationStore';
-import type {RecitationSummary} from '@/store/recitationTrackingStore';
+import type {
+  RecitationSummary,
+  RecitationSummaryMark,
+} from '@/store/recitationTrackingStore';
 import {ScaledSheet, moderateScale} from '@/utils/scale';
 import type {Theme} from '@/utils/themeUtils';
 
-// After a memorisation take: the ayat recited and the possible slips worth
-// checking, each with Show, Retry and "I read it correctly". Wording is
-// always "may have"; tajweed and harakat are left to a teacher.
+// After a take: the ayat recited, the words marked while reciting (and the
+// ones corrected), and the possible slips worth checking, each with Show and
+// Retry. Wording is always "may have"; tajweed and harakat are left to a
+// teacher.
 
 const KIND_KEYS = {
   skippedAyah: 'recitationSummary.kinds.skippedAyah',
@@ -25,6 +29,18 @@ const KIND_KEYS = {
   similarAyah: 'recitationSummary.kinds.similarAyah',
   differentWord: 'recitationSummary.kinds.differentWord',
 } as const satisfies Record<FlagKind, string>;
+
+const MARK_KEYS = {
+  missed: 'recitationSummary.markKinds.missed',
+  wrong: 'recitationSummary.markKinds.wrong',
+  corrected: 'recitationSummary.markKinds.corrected',
+} as const;
+
+function markMessageKey(mark: RecitationSummaryMark) {
+  return mark.status === 'corrected'
+    ? MARK_KEYS.corrected
+    : MARK_KEYS[mark.kind];
+}
 
 function surahName(surah: number): string {
   const data = SURAHS[surah - 1];
@@ -68,14 +84,16 @@ export const RecitationSummarySheet = (
     }
   }
 
-  async function show(flag: ShownFlag): Promise<void> {
+  const marks = summary.marks ?? [];
+
+  async function show(flag: {surah: number; ayah: number}): Promise<void> {
     const key = `${flag.surah}:${flag.ayah}`;
     const page = digitalKhattDataService.getPageForVerse(key);
     await SheetManager.hide(props.sheetId);
     if (page) useMushafNavigationStore.getState().navigateToVerse(key, page);
   }
 
-  async function retry(flag: ShownFlag): Promise<void> {
+  async function retry(flag: {surah: number; ayah: number}): Promise<void> {
     await SheetManager.hide(props.sheetId);
     SheetManager.show('recitation-practice', {
       payload: {
@@ -110,9 +128,36 @@ export const RecitationSummarySheet = (
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.container}>
-        {flags.length === 0 ? (
+        {flags.length === 0 && marks.length === 0 ? (
           <Text style={styles.nothing}>{t('recitationSummary.nothing')}</Text>
-        ) : (
+        ) : null}
+        {marks.map(mark => (
+          <View
+            key={`${mark.surah}:${mark.ayah}:${mark.word}`}
+            style={styles.row}>
+            <Text style={styles.ref}>
+              {t('recitationSummary.wordRef', {
+                surah: surahName(mark.surah),
+                ayah: localizeDigits(mark.ayah),
+                word: localizeDigits(mark.word),
+              })}
+            </Text>
+            <Text style={styles.message}>{t(markMessageKey(mark))}</Text>
+            <View style={styles.actions}>
+              <Action
+                styles={styles}
+                label={t('recitationSummary.show')}
+                onPress={() => show(mark)}
+              />
+              <Action
+                styles={styles}
+                label={t('recitationSummary.retry')}
+                onPress={() => retry(mark)}
+              />
+            </View>
+          </View>
+        ))}
+        {flags.length === 0 ? null : (
           <>
             <Text style={styles.sectionHeader}>
               {t('recitationSummary.worthChecking')}

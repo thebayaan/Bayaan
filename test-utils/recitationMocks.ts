@@ -1,5 +1,6 @@
 import {AppState} from 'react-native';
 import type {WorkerOutbound} from '@tilawa/core';
+import type {EngineMessage} from '@/services/recitation/recitationEngine';
 
 /**
  * The edges of recitation recognition (engine, microphone, model files,
@@ -36,7 +37,7 @@ export const mockEngine = {
 
 export const engineControl: {
   /** Delivers an engine event, as the loaded session would. */
-  sendEvent: ((msg: WorkerOutbound) => void) | null;
+  sendEvent: ((msg: EngineMessage) => void) | null;
   /** When set, loading the model waits for it. */
   gate: Promise<void> | null;
 } = {sendEvent: null, gate: null};
@@ -44,7 +45,7 @@ export const engineControl: {
 export const recitationEngineModule = {
   RECITATION_SAMPLE_RATE: 16000,
   createRecitationEngine: jest.fn(
-    async (_assets: unknown, onEvent: (msg: WorkerOutbound) => void) => {
+    async (_assets: unknown, onEvent: (msg: EngineMessage) => void) => {
       if (engineControl.gate) await engineControl.gate;
       engineControl.sendEvent = onEvent;
       return mockEngine;
@@ -204,6 +205,27 @@ export function finalSequence(
   verses: {surah: number; ayah: number; confidence: number}[],
 ): WorkerOutbound {
   return {type: 'final_sequence', verses, confidence: 0.9};
+}
+
+/** Words whose verdict changed in a chunk, as the engine reports them. */
+export function wordVerdicts(
+  changes: {
+    surah: number;
+    ayah: number;
+    word: number;
+    totalWords?: number;
+    state: 'ok' | 'unsure' | 'wrong' | 'skipped' | 'pending';
+  }[],
+): EngineMessage {
+  return {
+    type: 'word_verdicts',
+    changes: changes.map(c => ({totalWords: 10, ...c})),
+  };
+}
+
+/** An engine debug event: 'located', 'lost', 'idle', 'locateFailed'... */
+export function engineDebug(event: string): WorkerOutbound {
+  return {type: 'debug', event, at: 0, data: {type: event}} as WorkerOutbound;
 }
 
 /** A live or structural flag, as the engine raises it in correction mode. */

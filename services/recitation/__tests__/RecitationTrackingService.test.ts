@@ -7,6 +7,7 @@ import {
   captureAppStateChange,
   correctionError,
   digitalKhattModule,
+  engineDebug,
   engineControl,
   finalSequence,
   flush,
@@ -17,6 +18,7 @@ import {
   resetRecitationControls,
   verseMatch,
   wordProgress,
+  wordVerdicts,
 } from '@/test-utils/recitationMocks';
 
 jest.mock(
@@ -65,7 +67,17 @@ jest.mock('@/services/mushaf/MushafVerseMapService', () => ({
     getOrderedVerseKeysForPage: (page: number) => mockPages[page] ?? [],
   },
 }));
-const mockSettings = {recitationHideText: false};
+const mockSettings = {
+  recitationHideText: false,
+  recitationMistakeHaptics: true,
+};
+const mockHaptics = {
+  notificationAsync: jest.fn(async (_type: string) => undefined),
+};
+jest.mock('expo-haptics', () => ({
+  notificationAsync: (type: string) => mockHaptics.notificationAsync(type),
+  NotificationFeedbackType: {Warning: 'warning'},
+}));
 jest.mock('@/store/mushafSettingsStore', () => ({
   useMushafSettingsStore: {getState: () => mockSettings},
 }));
@@ -85,6 +97,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   resetRecitationControls();
   mockSettings.recitationHideText = false;
+  mockSettings.recitationMistakeHaptics = true;
   mockLog.dismissedKeys.mockResolvedValue(new Set());
   digitalKhattModule.digitalKhattDataService.getPageForVerse.mockImplementation(
     ((key: string) => (key === '18:6' || key === '18:7' ? 294 : 293)) as never,
@@ -341,10 +354,16 @@ describe('RecitationTrackingService memorisation mode', () => {
     expect(mockEngine.setStructural).toHaveBeenLastCalledWith(true);
   });
 
-  it('plain follow-along stays in tracking mode', async () => {
+  it('plain follow-along also checks mistakes after the first lock', async () => {
     await service.startRecitationTracking(null);
+    expect(mockEngine.setMode).toHaveBeenLastCalledWith('tracking');
     engineControl.sendEvent?.(wordProgress(18, 3, 0, 9));
-    expect(mockEngine.setMode).not.toHaveBeenCalledWith('correction');
+    expect(mockEngine.setMode).toHaveBeenLastCalledWith('correction');
+    expect(mockEngine.setExpected).toHaveBeenLastCalledWith({
+      surah: 18,
+      ayah: 3,
+      ayahEnd: 5,
+    });
   });
 
   it('reaching the end of the passage moves it to the next page', async () => {
@@ -395,20 +414,185 @@ describe('RecitationTrackingService memorisation mode', () => {
     });
   });
 
-  it('a plain follow-along take has no summary', async () => {
+  it('a plain follow-along take ends with a summary too', async () => {
     await service.startRecitationTracking(null);
     engineControl.sendEvent?.(wordProgress(18, 3, 0, 9));
+    mockEngine.stop.mockResolvedValueOnce([
+      finalSequence([{surah: 18, ayah: 3, confidence: 0.9}]),
+    ]);
     await service.stopRecitationTracking();
     await flush();
-    expect(state().summary).toBeNull();
+    expect(state().summary).toMatchObject({ayat: [{surah: 18, ayah: 3}]});
   });
 
-  it('showing the text mid-take goes back to tracking', async () => {
+  it('showing the text mid-take keeps checking', async () => {
     mockSettings.recitationHideText = true;
     await service.startRecitationTracking(null);
     engineControl.sendEvent?.(wordProgress(18, 3, 0, 9));
     service.setRecitationHidden(false);
+    expect(mockEngine.setMode).toHaveBeenLastCalledWith('correction');
+  });
+});
+
+describe('RecitationTrackingService live mistakes', () => {
+  // Mic chunks keep the 3 s silence watchdog quiet while time moves.
+  async function listenFor(ms: number): Promise<void> {
+    for (let elapsed = 0; elapsed < ms; elapsed += 300) {
+      micControl.chunk?.(new Float32Array(16), 16000);
+      await jest.advanceTimersByTimeAsync(300);
+    }
+  }
+
+  async function lockedTake(): Promise<void> {
+    jest.useFakeTimers();
+    await service.startRecitationTracking(null);
+    engineControl.sendEvent?.(wordProgress(18, 3, 0, 9));
+  }
+
+  it('a wrong word that holds is marked a mistake, with a vibration', async () => {
+    await lockedTake();
+    engineControl.sendEvent?.(
+      wordVerdicts([{surah: 18, ayah: 3, word: 2, state: 'wrong'}]),
+    );
+    expect(state().marks).toEqual([]);
+    await listenFor(900);
+    expect(state().marks).toEqual([
+      expect.objectContaining({
+        surah: 18,
+        ayah: 3,
+        word: 2,
+        kind: 'wrong',
+        status: 'mistake',
+      }),
+    ]);
+    expect(mockHaptics.notificationAsync).toHaveBeenCalledTimes(1);
+  });
+
+  it('a verdict that flips back at once is never shown', async () => {
+    await lockedTake();
+    engineControl.sendEvent?.(
+      wordVerdicts([{surah: 18, ayah: 3, word: 2, state: 'wrong'}]),
+    );
+    await listenFor(300);
+    engineControl.sendEvent?.(
+      wordVerdicts([{surah: 18, ayah: 3, word: 2, state: 'pending'}]),
+    );
+    await listenFor(1500);
+    expect(state().marks).toEqual([]);
+    expect(mockHaptics.notificationAsync).not.toHaveBeenCalled();
+  });
+
+  it('verdicts before the tracker locks on are ignored', async () => {
+    jest.useFakeTimers();
+    await service.startRecitationTracking(null);
+    engineControl.sendEvent?.(
+      wordVerdicts([{surah: 18, ayah: 3, word: 2, state: 'wrong'}]),
+    );
+    await listenFor(1500);
+    expect(state().marks).toEqual([]);
+  });
+
+  it('a mistake recited again correctly becomes corrected', async () => {
+    await lockedTake();
+    engineControl.sendEvent?.(
+      wordVerdicts([{surah: 18, ayah: 3, word: 4, state: 'skipped'}]),
+    );
+    await listenFor(900);
+    engineControl.sendEvent?.(
+      wordVerdicts([{surah: 18, ayah: 3, word: 4, state: 'ok'}]),
+    );
+    expect(state().marks).toEqual([
+      expect.objectContaining({word: 4, kind: 'missed', status: 'corrected'}),
+    ]);
+  });
+
+  it('no vibration when mistake vibration is off', async () => {
+    mockSettings.recitationMistakeHaptics = false;
+    await lockedTake();
+    engineControl.sendEvent?.(
+      wordVerdicts([{surah: 18, ayah: 3, word: 2, state: 'wrong'}]),
+    );
+    await listenFor(900);
+    expect(state().marks).toHaveLength(1);
+    expect(mockHaptics.notificationAsync).not.toHaveBeenCalled();
+  });
+
+  it('marks are kept while the tracker searches again', async () => {
+    await lockedTake();
+    engineControl.sendEvent?.(
+      wordVerdicts([{surah: 18, ayah: 3, word: 2, state: 'wrong'}]),
+    );
+    await listenFor(900);
+    engineControl.sendEvent?.(engineDebug('lost'));
+    expect(state().marks).toHaveLength(1);
+  });
+
+  it('getting lost drops back to tracking near the last ayah, and the next lock checks from there', async () => {
+    await lockedTake();
+    engineControl.sendEvent?.(engineDebug('idle'));
     expect(mockEngine.setMode).toHaveBeenLastCalledWith('tracking');
     expect(mockEngine.setExpected).toHaveBeenLastCalledWith(null);
+    expect(mockEngine.setHint).toHaveBeenLastCalledWith({surah: 18, ayah: 3});
+    engineControl.sendEvent?.(wordProgress(18, 6, 0, 9));
+    expect(mockEngine.setMode).toHaveBeenLastCalledWith('correction');
+    expect(mockEngine.setExpected).toHaveBeenLastCalledWith({
+      surah: 18,
+      ayah: 6,
+      ayahEnd: 7,
+    });
+  });
+
+  it('the take saves every judged word, keyed by its position in the ayah', async () => {
+    await lockedTake();
+    engineControl.sendEvent?.(
+      wordVerdicts([
+        {surah: 18, ayah: 3, word: 0, state: 'ok'},
+        {surah: 18, ayah: 3, word: 2, state: 'wrong'},
+        {surah: 18, ayah: 3, word: 3, state: 'skipped'},
+        {surah: 18, ayah: 3, word: 5, state: 'unsure'},
+      ]),
+    );
+    await listenFor(900);
+    engineControl.sendEvent?.(
+      wordVerdicts([{surah: 18, ayah: 3, word: 3, state: 'ok'}]),
+    );
+    await service.stopRecitationTracking();
+    await flush();
+    const take = mockLog.recordTake.mock.calls[0][0] as {words: unknown[]};
+    expect(take.words).toEqual([
+      expect.objectContaining({surah: 18, ayah: 3, word: 1, result: 'correct'}),
+      expect.objectContaining({
+        surah: 18,
+        ayah: 3,
+        word: 3,
+        result: 'mistake',
+        kind: 'wrong',
+      }),
+      expect.objectContaining({
+        surah: 18,
+        ayah: 3,
+        word: 4,
+        result: 'corrected',
+        kind: 'missed',
+      }),
+      expect.objectContaining({surah: 18, ayah: 3, word: 6, result: 'unclear'}),
+    ]);
+  });
+
+  it('the summary lists the mistakes and corrected words', async () => {
+    await lockedTake();
+    engineControl.sendEvent?.(
+      wordVerdicts([{surah: 18, ayah: 3, word: 2, state: 'wrong'}]),
+    );
+    await listenFor(900);
+    mockEngine.stop.mockResolvedValueOnce([
+      finalSequence([{surah: 18, ayah: 3, confidence: 0.9}]),
+    ]);
+    await service.stopRecitationTracking();
+    await flush();
+    // Word 2 in the engine's 0-based index is the ayah's 3rd word.
+    expect(state().summary?.marks).toEqual([
+      {surah: 18, ayah: 3, word: 3, kind: 'wrong', status: 'mistake'},
+    ]);
   });
 });

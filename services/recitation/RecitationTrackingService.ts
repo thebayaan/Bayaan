@@ -1,13 +1,10 @@
-import type {
-  CorrectionIssue,
-  ExpectedPassage,
-  SearchHint,
-  WorkerOutbound,
-} from '@tilawa/core';
+import * as Haptics from 'expo-haptics';
+import type {CorrectionIssue, ExpectedPassage, SearchHint} from '@tilawa/core';
 import {
   isTakeActive,
   RECITATION_TRACKING_IDLE,
   useRecitationTrackingStore,
+  type RecitationSummaryMark,
 } from '@/store/recitationTrackingStore';
 import i18n from '@/i18n';
 import {analyticsService} from '@/services/analytics/AnalyticsService';
@@ -22,8 +19,18 @@ import {
   takePeek,
   type TakeBuilder,
   type TakeRecord,
+  type TakeWord,
 } from './take';
-import type {RecitationStats} from './recitationEngine';
+import type {EngineMessage, RecitationStats} from './recitationEngine';
+import {
+  applyVerdicts,
+  confirmDue,
+  emptyMarkBook,
+  nextConfirmAt,
+  shownMarks,
+  type MarkBook,
+  type VerdictChange,
+} from './wordMarks';
 import {
   activeSessionPurpose,
   configureSession,
@@ -68,9 +75,9 @@ let takeHint: SearchHint | null = null;
 // The current take, for the recitation log.
 let take: TakeBuilder | null = null;
 
-// Memorisation mode: with the text hidden, the take switches to correction
-// mode at its first lock, expecting the rest of that surah's part of the
-// page, and moves the passage on page by page.
+// Checking: at each lock the take switches to correction mode, expecting the
+// rest of that surah's part of the page, and moves the passage on page by
+// page. Hidden or not, the reader's words are judged as they recite.
 interface Memorisation {
   hidden: boolean;
   correction: boolean;
@@ -81,6 +88,18 @@ interface Memorisation {
   dismissed: ReadonlySet<string>;
 }
 let memo: Memorisation | null = null;
+
+// Live word marks for the current take (see wordMarks), and the timer that
+// confirms suspects.
+let book: MarkBook = emptyMarkBook();
+let confirmTimer: ReturnType<typeof setTimeout> | null = null;
+// Each judged word's last verdict, for the take's record.
+interface JudgedWord {
+  change: VerdictChange;
+  hidden: boolean;
+  at: number;
+}
+let judged = new Map<string, JudgedWord>();
 
 // Takes that end in the mushaf get a summary; the others (left the mushaf,
 // app in the background, playback, another session) are only logged.
@@ -141,6 +160,123 @@ function advancePassage(matched: {surah: number; ayah: number}): void {
   configureSession({expected: memo.expected});
 }
 
+function skippedAyat(): Set<string> {
+  return new Set(
+    useRecitationTrackingStore
+      .getState()
+      .flags.filter(f => f.kind === 'skippedAyah')
+      .map(f => `${f.surah}:${f.ayah}`),
+  );
+}
+
+function publishMarks(): void {
+  setState({marks: shownMarks(book, skippedAyat())});
+}
+
+function clearConfirmTimer(): void {
+  if (confirmTimer) clearTimeout(confirmTimer);
+  confirmTimer = null;
+}
+
+function scheduleConfirm(): void {
+  clearConfirmTimer();
+  const at = nextConfirmAt(book);
+  if (at === null) return;
+  confirmTimer = setTimeout(runConfirm, Math.max(0, at - Date.now()));
+}
+
+function runConfirm(): void {
+  confirmTimer = null;
+  if (!isTakeActive(useRecitationTrackingStore.getState().status)) return;
+  const update = confirmDue(book, Date.now());
+  book = update.book;
+  if (update.confirmed.length > 0) {
+    buzz();
+    publishMarks();
+  }
+  scheduleConfirm();
+}
+
+/** One short vibration for a newly marked mistake, if the reader wants it. */
+function buzz(): void {
+  if (!useMushafSettingsStore.getState().recitationMistakeHaptics) return;
+  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(
+    () => undefined,
+  );
+}
+
+function noteVerdicts(changes: readonly VerdictChange[]): void {
+  const now = Date.now();
+  for (const change of changes) {
+    if (change.state === 'pending') continue;
+    judged.set(`${change.surah}:${change.ayah}:${change.word}`, {
+      change,
+      hidden: memo?.hidden ?? false,
+      at: now,
+    });
+  }
+  const update = applyVerdicts(book, changes, now);
+  if (update.book === book) return;
+  book = update.book;
+  publishMarks();
+  scheduleConfirm();
+}
+
+/** The word's 1-based position in the ayah, as the mushaf numbers it. */
+function hafsWordPosition(
+  surah: number,
+  ayah: number,
+  word: number,
+  totalWords: number,
+): number {
+  return (
+    dkWordPosition(
+      digitalKhattDataService.getVerseWords(`${surah}:${ayah}`),
+      word,
+      totalWords,
+    ) ?? word + 1
+  );
+}
+
+/** Every judged word of the take, in reading order. */
+function takeWords(): TakeWord[] {
+  const out: TakeWord[] = [];
+  for (const [key, entry] of judged) {
+    const {surah, ayah, word, totalWords, state} = entry.change;
+    const mark = book.get(key);
+    const marked =
+      mark?.status === 'mistake' || mark?.status === 'corrected' ? mark : null;
+    out.push({
+      surah,
+      ayah,
+      word: hafsWordPosition(surah, ayah, word, totalWords),
+      result: marked
+        ? marked.status === 'mistake'
+          ? 'mistake'
+          : 'corrected'
+        : state === 'ok'
+          ? 'correct'
+          : 'unclear',
+      kind: marked?.kind ?? null,
+      hidden: entry.hidden,
+      at: entry.at,
+    });
+  }
+  return out.sort(
+    (a, b) => a.surah - b.surah || a.ayah - b.ayah || a.word - b.word,
+  );
+}
+
+/** Lost while checking: follow freely near the last ayah until a new lock. */
+function dropToTracking(): void {
+  if (!memo?.correction) return;
+  stopCorrection();
+  const {verseKey} = useRecitationTrackingStore.getState();
+  if (!verseKey) return;
+  const [surah, ayah] = verseKey.split(':').map(Number);
+  setSessionHint({surah, ayah});
+}
+
 function noteFlag(issue: CorrectionIssue, totalWords: number): void {
   const shown = toShownFlag({
     kind: issue.kind,
@@ -153,6 +289,8 @@ function noteFlag(issue: CorrectionIssue, totalWords: number): void {
   const {flags} = useRecitationTrackingStore.getState();
   if (flags.some(f => f.key === shown.key)) return;
   setState({flags: [...flags, {...shown, totalWords}]});
+  // A skipped ayah's own word marks give way to the ayah flag.
+  if (shown.kind === 'skippedAyah') publishMarks();
 }
 
 function newTakeId(): string {
@@ -175,10 +313,18 @@ function setState(
 // the reader's place and following it.
 const LOCK_EVENTS = new Set(['located', 'relocated']);
 const UNLOCK_EVENTS = new Set(['lost', 'idle', 'locateFailed', 'completed']);
+// While checking, the engine cannot leave the expected passage; these mean
+// the reader went elsewhere (or paused), so it follows freely again.
+const FALLBACK_EVENTS = new Set(['idle', 'locateFailed']);
 
-function handleEvent(msg: WorkerOutbound): void {
+function handleEvent(msg: EngineMessage): void {
   const state = useRecitationTrackingStore.getState();
   if (state.status !== 'listening') return;
+  if (msg.type === 'word_verdicts') {
+    // Verdicts from before a lock are the search's guesses.
+    if (state.locked) noteVerdicts(msg.changes);
+    return;
+  }
   if (msg.type === 'correction') {
     if (msg.state.phase === 'error' && msg.state.issue) {
       noteFlag(msg.state.issue, msg.totalWords);
@@ -186,10 +332,10 @@ function handleEvent(msg: WorkerOutbound): void {
     return;
   }
   if (msg.type === 'word_progress') {
+    if (memo && !memo.correction) {
+      startCorrection({surah: msg.surah, ayah: msg.ayah});
+    }
     if (takeLockedAt === null) {
-      if (memo?.hidden && !memo.correction) {
-        startCorrection({surah: msg.surah, ayah: msg.ayah});
-      }
       takeLockedAt = Date.now();
       analyticsService.trackRecitationTrackingLocked({
         time_to_lock_ms: takeLockedAt - takeStartedAt,
@@ -231,6 +377,7 @@ function handleEvent(msg: WorkerOutbound): void {
   if (msg.type !== 'debug') return;
   if (LOCK_EVENTS.has(msg.event)) setState({locked: true});
   if (UNLOCK_EVENTS.has(msg.event)) setState({locked: false});
+  if (FALLBACK_EVENTS.has(msg.event)) dropToTracking();
 }
 
 function trackTakeStopped(
@@ -282,6 +429,9 @@ function onUpdate(update: SessionUpdate): void {
         expected: null,
         dismissed: new Set(),
       };
+      book = emptyMarkBook();
+      judged = new Map();
+      clearConfirmTimer();
       loadDismissed(memo);
       analyticsService.trackRecitationTrackingStarted({
         hint_surah_id: takeHint?.surah ?? null,
@@ -296,6 +446,7 @@ function onUpdate(update: SessionUpdate): void {
       setState({status: 'listening'});
       return;
     case 'off':
+      clearConfirmTimer();
       if (update.listened) trackTakeStopped(update.reason, update.stats);
       setState(RECITATION_TRACKING_IDLE);
       return;
@@ -328,12 +479,30 @@ const handlers: SessionHandlers = {
     const checked = memo;
     take = null;
     memo = null;
+    clearConfirmTimer();
     if (listened && finished) {
-      const record = finishTake(finished, messages, reason, Date.now());
+      const record: TakeRecord = {
+        ...finishTake(finished, messages, reason, Date.now()),
+        words: takeWords(),
+      };
       saveTake(record);
       if (checked?.checked && SUMMARY_REASONS.has(reason)) {
         const flags = shownFlags(record.flags, checked.dismissed);
-        if (record.ayat.length > 0 || flags.length > 0) {
+        const marks: RecitationSummaryMark[] = shownMarks(
+          book,
+          new Set(
+            flags
+              .filter(f => f.kind === 'skippedAyah')
+              .map(f => `${f.surah}:${f.ayah}`),
+          ),
+        ).map(m => ({
+          surah: m.surah,
+          ayah: m.ayah,
+          word: hafsWordPosition(m.surah, m.ayah, m.word, m.totalWords),
+          kind: m.kind,
+          status: m.status === 'corrected' ? 'corrected' : 'mistake',
+        }));
+        if (record.ayat.length > 0 || flags.length > 0 || marks.length > 0) {
           setState({
             summary: {
               takeId: record.id,
@@ -341,6 +510,7 @@ const handlers: SessionHandlers = {
               endedAt: record.endedAt,
               ayat: record.ayat.map(({surah, ayah}) => ({surah, ayah})),
               flags,
+              marks,
             },
           });
         }
@@ -420,20 +590,12 @@ export function setRecitationHint(hint: SearchHint | null): void {
 }
 
 /**
- * The reader hid or showed the text mid-take: hidden checks recitation
- * from where the reader is, shown goes back to plain following.
+ * The reader hid or showed the text mid-take. Checking goes on either way;
+ * words judged from now on are recorded as hidden or not.
  */
 export function setRecitationHidden(hidden: boolean): void {
   if (!memo || activeSessionPurpose() !== 'follow') return;
   memo.hidden = hidden;
-  if (!hidden) {
-    stopCorrection();
-    return;
-  }
-  const {verseKey} = useRecitationTrackingStore.getState();
-  if (memo.correction || !verseKey) return;
-  const [surah, ayah] = verseKey.split(':').map(Number);
-  startCorrection({surah, ayah});
 }
 
 /** The mushaf showed the summary sheet. */

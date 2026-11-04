@@ -368,6 +368,12 @@
       "similarAyah": "This may have turned into a similar ayah.",
       "differentWord": "A word here may have been different."
     },
+    "wordRef": "{{surah}} · ayah {{ayah}} · word {{word}}",
+    "markKinds": {
+      "missed": "You may have missed this word.",
+      "wrong": "You may have said a different word here.",
+      "corrected": "You went back and recited it correctly."
+    },
     "show": "Show",
     "retry": "Retry",
     "readCorrectly": "I read it correctly",

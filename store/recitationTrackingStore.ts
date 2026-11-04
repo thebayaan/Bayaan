@@ -1,6 +1,18 @@
 import {create} from 'zustand';
 import type {RevealedThrough} from '@/services/recitation/reveal';
 import type {ShownFlag} from '@/services/recitation/flags';
+import type {MarkKind, WordMark} from '@/services/recitation/wordMarks';
+
+/** A word the take marked, as the summary and history show it. */
+export interface RecitationSummaryMark {
+  surah: number;
+  ayah: number;
+  /** 1-based position of the word in the ayah (Hafs). */
+  word: number;
+  kind: MarkKind;
+  /** 'corrected': recited again correctly in the same take. */
+  status: 'mistake' | 'corrected';
+}
 
 /** What a memorisation take left to check, shown in a sheet after it. */
 export interface RecitationSummary {
@@ -11,6 +23,8 @@ export interface RecitationSummary {
   ayat: readonly {surah: number; ayah: number}[];
   /** Possible slips, without the ones the reader dismissed. */
   flags: readonly ShownFlag[];
+  /** Words marked as mistakes, or corrected after one, in order. */
+  marks: readonly RecitationSummaryMark[];
 }
 
 export type RecitationTrackingStatus =
@@ -41,8 +55,10 @@ export interface RecitationTrackingState {
   error: string | null;
   /** 'permission' when the reader has to allow the mic in Settings. */
   errorKind: 'permission' | 'other' | null;
-  /** Memorisation mode: possible slips so far this take. */
+  /** Possible slips so far this take (skipped and look-alike ayat). */
   flags: readonly ShownFlag[];
+  /** Live word marks so far: mistakes, and mistakes since corrected. */
+  marks: readonly WordMark[];
   /** Set when a memorisation take ends; the mushaf shows it, then clears. */
   summary: RecitationSummary | null;
 }
@@ -59,6 +75,7 @@ export const RECITATION_TRACKING_IDLE: RecitationTrackingState = {
   error: null,
   errorKind: null,
   flags: [],
+  marks: [],
   summary: null,
 };
 

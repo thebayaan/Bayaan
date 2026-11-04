@@ -1,4 +1,4 @@
-import type {WorkerOutbound} from '@tilawa/core';
+import type {EngineMessage} from '../recitationEngine';
 import {
   PRACTICE_IDLE,
   usePracticeStore,
@@ -154,7 +154,7 @@ function handlersFor(run: PracticeRun): SessionHandlers {
     }
   }
 
-  function onEvent(msg: WorkerOutbound): void {
+  function onEvent(msg: EngineMessage): void {
     if (run.builder) run.builder = takeEvent(run.builder, msg, Date.now());
     const placed =
       msg.type === 'word_progress' || msg.type === 'verse_match'

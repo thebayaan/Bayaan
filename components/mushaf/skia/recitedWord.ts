@@ -59,6 +59,7 @@ export function withRecitedWordRun(
   verseKey: string,
   position: number,
   color: string,
+  style: 'band' | 'underline' = 'band',
 ): LineHighlightMap {
   for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
     const span = getLineWordSpans(lines[lineIndex], source).find(
@@ -69,7 +70,7 @@ export function withRecitedWordRun(
     const out: LineHighlightMap = new Map(base);
     out.set(lineIndex, [
       ...(base.get(lineIndex) ?? []),
-      {start: span.start, end: span.wordEnd, color},
+      {start: span.start, end: span.wordEnd, color, style},
     ]);
     return out;
   }

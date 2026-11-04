@@ -12,8 +12,18 @@ import {
   type WorkerOutbound,
 } from '@tilawa/core';
 import type {RecitationAssetPaths} from './recitationAssets';
+import type {VerdictChange, VerdictState} from './wordMarks';
 
 export const RECITATION_SAMPLE_RATE = 16000;
+
+/** Words whose verdict changed in the last chunk (Bayaan's own message). */
+export interface WordVerdictsMessage {
+  type: 'word_verdicts';
+  changes: VerdictChange[];
+}
+
+/** What the engine reports: Tilawa's messages plus word verdicts. */
+export type EngineMessage = WorkerOutbound | WordVerdictsMessage;
 
 export interface RecitationStats {
   /** Seconds of audio fed to the engine. */
@@ -92,7 +102,7 @@ function stripFileScheme(uri: string): string {
 
 export async function createRecitationEngine(
   assets: RecitationAssetPaths,
-  onEvent: (msg: WorkerOutbound) => void,
+  onEvent: (msg: EngineMessage) => void,
 ): Promise<RecitationEngine> {
   const stats: RecitationStats = {
     audioSeconds: 0,
@@ -151,6 +161,25 @@ export async function createRecitationEngine(
   let queue: Promise<unknown> = Promise.resolve();
   let disposed = false;
 
+  // Each word's last reported verdict, so a chunk reports only changes.
+  const verdictStates = new Map<string, VerdictState>();
+  function reportVerdicts(): void {
+    const changes: VerdictChange[] = [];
+    for (const v of session.verdicts()) {
+      const key = `${v.surah}:${v.ayah}:${v.word}`;
+      if (verdictStates.get(key) === v.state) continue;
+      verdictStates.set(key, v.state);
+      changes.push({
+        surah: v.surah,
+        ayah: v.ayah,
+        word: v.word,
+        totalWords: session.wordCount(v.surah, v.ayah),
+        state: v.state,
+      });
+    }
+    if (changes.length > 0) onEvent({type: 'word_verdicts', changes});
+  }
+
   function deferOpenIssues(): WorkerOutbound[] {
     const out: WorkerOutbound[] = [];
     for (
@@ -186,6 +215,7 @@ export async function createRecitationEngine(
       void enqueue(async () => {
         const start = performance.now();
         await session.feed(pcm);
+        reportVerdicts();
         const elapsed = performance.now() - start;
         stats.busyMs += elapsed;
         stats.maxFeedMs = Math.max(stats.maxFeedMs, elapsed);
@@ -207,6 +237,7 @@ export async function createRecitationEngine(
     reset() {
       void enqueue(async () => {
         session.reset();
+        verdictStates.clear();
         stats.audioSeconds = 0;
         stats.busyMs = 0;
         stats.ortMs = 0;

@@ -9,7 +9,11 @@ import type {RecitationStopReason} from '@/services/analytics/events';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
 import {deleteRecitationAssets} from './recitationAssets';
-import type {RecitationEngine, RecitationStats} from './recitationEngine';
+import type {
+  EngineMessage,
+  RecitationEngine,
+  RecitationStats,
+} from './recitationEngine';
 import {
   acquireEngine,
   EngineAcquireError,
@@ -81,7 +85,7 @@ export interface SessionFinish {
 export interface SessionHandlers {
   onUpdate: (update: SessionUpdate) => void;
   /** Live engine events, only while listening. */
-  onEvent: (msg: WorkerOutbound) => void;
+  onEvent: (msg: EngineMessage) => void;
   /** After the stop: the mic is closed and the engine flushed. */
   onFinish: (finish: SessionFinish) => void;
 }
