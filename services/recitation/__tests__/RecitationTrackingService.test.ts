@@ -470,7 +470,10 @@ describe('RecitationTrackingService live mistakes', () => {
   it('a wrong word that holds is marked a mistake, with a vibration', async () => {
     await lockedTake();
     engineControl.sendEvent?.(
-      wordVerdicts([{surah: 18, ayah: 3, word: 2, state: 'wrong'}]),
+      wordVerdicts([
+        {surah: 18, ayah: 3, word: 2, state: 'wrong'},
+        {surah: 18, ayah: 3, word: 3, state: 'ok'},
+      ]),
     );
     expect(state().marks).toEqual([]);
     await listenFor(900);
@@ -513,7 +516,10 @@ describe('RecitationTrackingService live mistakes', () => {
   it('a mistake recited again correctly becomes corrected', async () => {
     await lockedTake();
     engineControl.sendEvent?.(
-      wordVerdicts([{surah: 18, ayah: 3, word: 4, state: 'skipped'}]),
+      wordVerdicts([
+        {surah: 18, ayah: 3, word: 4, state: 'skipped'},
+        {surah: 18, ayah: 3, word: 5, state: 'ok'},
+      ]),
     );
     await listenFor(900);
     engineControl.sendEvent?.(
@@ -528,7 +534,10 @@ describe('RecitationTrackingService live mistakes', () => {
     mockSettings.recitationMistakeHaptics = false;
     await lockedTake();
     engineControl.sendEvent?.(
-      wordVerdicts([{surah: 18, ayah: 3, word: 2, state: 'wrong'}]),
+      wordVerdicts([
+        {surah: 18, ayah: 3, word: 2, state: 'wrong'},
+        {surah: 18, ayah: 3, word: 3, state: 'ok'},
+      ]),
     );
     await listenFor(900);
     expect(state().marks).toHaveLength(1);
@@ -538,7 +547,10 @@ describe('RecitationTrackingService live mistakes', () => {
   it('marks are kept while the tracker searches again', async () => {
     await lockedTake();
     engineControl.sendEvent?.(
-      wordVerdicts([{surah: 18, ayah: 3, word: 2, state: 'wrong'}]),
+      wordVerdicts([
+        {surah: 18, ayah: 3, word: 2, state: 'wrong'},
+        {surah: 18, ayah: 3, word: 3, state: 'ok'},
+      ]),
     );
     await listenFor(900);
     engineControl.sendEvent?.(engineDebug('lost'));
@@ -573,6 +585,7 @@ describe('RecitationTrackingService live mistakes', () => {
         {surah: 18, ayah: 3, word: 0, state: 'ok'},
         {surah: 18, ayah: 3, word: 2, state: 'wrong'},
         {surah: 18, ayah: 3, word: 3, state: 'skipped'},
+        {surah: 18, ayah: 3, word: 4, state: 'ok'},
         {surah: 18, ayah: 3, word: 5, state: 'unsure'},
       ]),
     );
@@ -599,6 +612,7 @@ describe('RecitationTrackingService live mistakes', () => {
         result: 'corrected',
         kind: 'missed',
       }),
+      expect.objectContaining({surah: 18, ayah: 3, word: 5, result: 'correct'}),
       expect.objectContaining({surah: 18, ayah: 3, word: 6, result: 'unclear'}),
     ]);
   });
@@ -606,7 +620,10 @@ describe('RecitationTrackingService live mistakes', () => {
   it('the summary lists the mistakes and corrected words', async () => {
     await lockedTake();
     engineControl.sendEvent?.(
-      wordVerdicts([{surah: 18, ayah: 3, word: 2, state: 'wrong'}]),
+      wordVerdicts([
+        {surah: 18, ayah: 3, word: 2, state: 'wrong'},
+        {surah: 18, ayah: 3, word: 3, state: 'ok'},
+      ]),
     );
     await listenFor(900);
     mockEngine.stop.mockResolvedValueOnce([
@@ -625,7 +642,10 @@ describe('RecitationTrackingService live mistakes', () => {
     await lockedTake();
     expect(mockEngine.setMode).not.toHaveBeenCalledWith('correction');
     engineControl.sendEvent?.(
-      wordVerdicts([{surah: 18, ayah: 3, word: 2, state: 'wrong'}]),
+      wordVerdicts([
+        {surah: 18, ayah: 3, word: 2, state: 'wrong'},
+        {surah: 18, ayah: 3, word: 3, state: 'ok'},
+      ]),
     );
     await listenFor(900);
     expect(state().marks).toEqual([]);
@@ -643,7 +663,10 @@ describe('RecitationTrackingService live mistakes', () => {
   it('marks stay on the page after the take stops, until the next take', async () => {
     await lockedTake();
     engineControl.sendEvent?.(
-      wordVerdicts([{surah: 18, ayah: 3, word: 2, state: 'wrong'}]),
+      wordVerdicts([
+        {surah: 18, ayah: 3, word: 2, state: 'wrong'},
+        {surah: 18, ayah: 3, word: 3, state: 'ok'},
+      ]),
     );
     await listenFor(900);
     await service.stopRecitationTracking();
@@ -657,7 +680,10 @@ describe('RecitationTrackingService live mistakes', () => {
   it('"I read it correctly" during the take removes the mark and saves the word as dismissed', async () => {
     await lockedTake();
     engineControl.sendEvent?.(
-      wordVerdicts([{surah: 18, ayah: 3, word: 2, state: 'wrong'}]),
+      wordVerdicts([
+        {surah: 18, ayah: 3, word: 2, state: 'wrong'},
+        {surah: 18, ayah: 3, word: 3, state: 'ok'},
+      ]),
     );
     await listenFor(900);
     await service.dismissRecitationMark({surah: 18, ayah: 3, word: 2});
@@ -667,13 +693,17 @@ describe('RecitationTrackingService live mistakes', () => {
     const take = mockLog.recordTake.mock.calls[0][0] as {words: unknown[]};
     expect(take.words).toEqual([
       expect.objectContaining({word: 3, result: 'dismissed', kind: 'wrong'}),
+      expect.objectContaining({word: 4, result: 'correct'}),
     ]);
   });
 
   it('"I read it correctly" after the take updates the saved word', async () => {
     await lockedTake();
     engineControl.sendEvent?.(
-      wordVerdicts([{surah: 18, ayah: 3, word: 2, state: 'wrong'}]),
+      wordVerdicts([
+        {surah: 18, ayah: 3, word: 2, state: 'wrong'},
+        {surah: 18, ayah: 3, word: 3, state: 'ok'},
+      ]),
     );
     await listenFor(900);
     await service.stopRecitationTracking();

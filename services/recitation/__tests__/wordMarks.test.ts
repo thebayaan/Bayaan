@@ -3,6 +3,8 @@ import {
   confirmDue,
   emptyMarkBook,
   MARK_CONFIRM_MS,
+  NEXT_OK_WINDOW_MS,
+  nextConfirmAt,
   shownMarks,
   type VerdictChange,
 } from '../wordMarks';
@@ -33,13 +35,25 @@ function run(steps: [number, VerdictChange[]][], until: number) {
   return {book: due.book, confirmed, corrected};
 }
 
+/** A bad verdict at 0 and the reader carrying on correctly at 200 ms. */
+function slip(
+  word: number,
+  state: 'wrong' | 'skipped',
+  ayah = 12,
+): [number, VerdictChange[]][] {
+  return [
+    [0, [change(word, state, {ayah})]],
+    [200, [change(word + 1, 'ok', {ayah})]],
+  ];
+}
+
 describe('word marks', () => {
   it('holds a suspect half a second: one 480 ms chunk of flicker never shows', () => {
     expect(MARK_CONFIRM_MS).toBe(500);
   });
 
-  it('a wrong word that stays wrong becomes a mistake after the confirm delay', () => {
-    const {book, confirmed} = run([[0, [change(2, 'wrong')]]], MARK_CONFIRM_MS);
+  it('a wrong word that stays wrong, with the next word heard correctly, becomes a mistake', () => {
+    const {book, confirmed} = run(slip(2, 'wrong'), MARK_CONFIRM_MS);
     expect(confirmed).toEqual(['12:2']);
     expect(shownMarks(book, new Set())).toEqual([
       expect.objectContaining({
@@ -53,7 +67,54 @@ describe('word marks', () => {
   });
 
   it('is not shown before the confirm delay', () => {
-    const {book} = run([[0, [change(2, 'wrong')]]], MARK_CONFIRM_MS - 1);
+    const {book} = run(slip(2, 'wrong'), MARK_CONFIRM_MS - 1);
+    expect(shownMarks(book, new Set())).toEqual([]);
+  });
+
+  it('is shown only once the reader carries on correctly: noise around a word is not a slip', () => {
+    const {book} = run(
+      [
+        [0, [change(2, 'wrong')]],
+        [300, [change(3, 'unsure')]],
+        [600, [change(4, 'wrong')]],
+      ],
+      2000,
+    );
+    expect(shownMarks(book, new Set())).toEqual([]);
+  });
+
+  it('a correct word two words on also counts', () => {
+    const {book} = run(
+      [
+        [0, [change(2, 'wrong')]],
+        [300, [change(3, 'unsure')]],
+        [700, [change(4, 'ok')]],
+      ],
+      800,
+    );
+    expect(shownMarks(book, new Set()).map(m => m.word)).toEqual([2]);
+  });
+
+  it("after an ayah's last word, the next ayah's first word counts", () => {
+    const {book} = run(
+      [
+        [0, [change(9, 'skipped')]],
+        [400, [change(0, 'ok', {ayah: 13})]],
+      ],
+      MARK_CONFIRM_MS,
+    );
+    expect(shownMarks(book, new Set()).map(m => m.word)).toEqual([9]);
+  });
+
+  it('a suspect not followed by a correct word in time is dropped', () => {
+    const {book, confirmed} = run(
+      [
+        [0, [change(2, 'wrong')]],
+        [NEXT_OK_WINDOW_MS + 100, [change(3, 'ok')]],
+      ],
+      NEXT_OK_WINDOW_MS + 1000,
+    );
+    expect(confirmed).toEqual([]);
     expect(shownMarks(book, new Set())).toEqual([]);
   });
 
@@ -61,6 +122,7 @@ describe('word marks', () => {
     const {book, confirmed} = run(
       [
         [0, [change(2, 'wrong')]],
+        [200, [change(3, 'ok')]],
         [480, [change(2, 'pending')]],
         [1500, [change(2, 'ok')]],
       ],
@@ -71,7 +133,7 @@ describe('word marks', () => {
   });
 
   it('a skipped word is a missed word', () => {
-    const {book} = run([[0, [change(4, 'skipped')]]], MARK_CONFIRM_MS);
+    const {book} = run(slip(4, 'skipped'), MARK_CONFIRM_MS);
     expect(shownMarks(book, new Set())[0]).toMatchObject({
       kind: 'missed',
       status: 'mistake',
@@ -80,7 +142,10 @@ describe('word marks', () => {
 
   it("'wrong' on an ayah's first or last word is not a mistake: that is mostly joining ayat", () => {
     const {book} = run(
-      [[0, [change(0, 'wrong'), change(9, 'wrong')]]],
+      [
+        [0, [change(0, 'wrong'), change(9, 'wrong')]],
+        [200, [change(1, 'ok'), change(0, 'ok', {ayah: 13})]],
+      ],
       MARK_CONFIRM_MS * 3,
     );
     expect(shownMarks(book, new Set())).toEqual([]);
@@ -88,7 +153,10 @@ describe('word marks', () => {
 
   it("an ayah's first or last word can still be missed", () => {
     const {book} = run(
-      [[0, [change(0, 'skipped'), change(9, 'skipped')]]],
+      [
+        [0, [change(0, 'skipped'), change(9, 'skipped')]],
+        [200, [change(1, 'ok'), change(0, 'ok', {ayah: 13})]],
+      ],
       MARK_CONFIRM_MS,
     );
     expect(shownMarks(book, new Set()).map(m => m.word)).toEqual([0, 9]);
@@ -97,7 +165,7 @@ describe('word marks', () => {
   it('a mistake recited again correctly becomes corrected', () => {
     const {book, corrected} = run(
       [
-        [0, [change(2, 'wrong')]],
+        ...slip(2, 'wrong'),
         [2000, [change(2, 'pending')]],
         [3000, [change(2, 'ok')]],
       ],
@@ -114,7 +182,7 @@ describe('word marks', () => {
   it('a mistake stays a mistake when it is only re-heard or unclear', () => {
     const {book} = run(
       [
-        [0, [change(2, 'skipped')]],
+        ...slip(2, 'skipped'),
         [2000, [change(2, 'pending')]],
         [2500, [change(2, 'unsure')]],
       ],
@@ -125,12 +193,14 @@ describe('word marks', () => {
     });
   });
 
-  it('a corrected word judged wrong again is a mistake again after the delay', () => {
+  it('a corrected word judged wrong again is a mistake again once the reader carries on', () => {
     const {book, confirmed} = run(
       [
-        [0, [change(2, 'wrong')]],
+        ...slip(2, 'wrong'),
         [2000, [change(2, 'ok')]],
         [5000, [change(2, 'wrong')]],
+        [5200, [change(3, 'pending')]],
+        [5300, [change(3, 'ok')]],
       ],
       5000 + MARK_CONFIRM_MS,
     );
@@ -139,9 +209,9 @@ describe('word marks', () => {
   });
 
   it('marks inside an ayah flagged as skipped are left to the ayah flag', () => {
-    const {book} = run([[0, [change(2, 'skipped')]]], MARK_CONFIRM_MS);
+    const {book} = run(slip(2, 'skipped'), MARK_CONFIRM_MS);
     expect(shownMarks(book, new Set(['67:12']))).toEqual([]);
-    expect(shownMarks(book, new Set(['67:13']))).toHaveLength(1);
+    expect(shownMarks(book, new Set(['67:14']))).toHaveLength(1);
   });
 
   it('shown marks are in recitation order', () => {
@@ -149,6 +219,7 @@ describe('word marks', () => {
       [
         [0, [change(5, 'skipped', {ayah: 13})]],
         [10, [change(3, 'skipped', {ayah: 12})]],
+        [200, [change(6, 'ok', {ayah: 13}), change(4, 'ok', {ayah: 12})]],
       ],
       2000,
     );
@@ -168,9 +239,19 @@ describe('word marks', () => {
             change(3, 'skipped', {ayah: 13}),
           ],
         ],
+        [200, [change(4, 'ok', {ayah: 13})]],
       ],
       MARK_CONFIRM_MS,
     );
     expect(shownMarks(book, new Set(['67:12'])).map(m => m.word)).toEqual([3]);
+  });
+
+  it('a suspect is due at the hold once the next word was heard, else when it would be dropped', () => {
+    const waiting = applyVerdicts(emptyMarkBook(), [change(2, 'wrong')], 0);
+    expect(nextConfirmAt(waiting.book)).toBe(NEXT_OK_WINDOW_MS);
+    const followed = applyVerdicts(waiting.book, [change(3, 'ok')], 200);
+    expect(nextConfirmAt(followed.book)).toBe(MARK_CONFIRM_MS);
+    const late = applyVerdicts(waiting.book, [change(3, 'ok')], 900);
+    expect(nextConfirmAt(late.book)).toBe(900);
   });
 });

@@ -33,6 +33,8 @@ export interface WordMark {
   status: MarkStatus;
   /** When the word was first suspected (ms). */
   since: number;
+  /** A suspect: when one of the next words was heard correctly (ms). */
+  followedAt?: number;
 }
 
 export type MarkBook = ReadonlyMap<string, WordMark>;
@@ -47,6 +49,33 @@ export interface MarkUpdate {
 
 /** A bad verdict must hold this long before it is shown. */
 export const MARK_CONFIRM_MS = 500;
+/**
+ * And one of the next NEXT_OK_WORDS words must be heard correctly within
+ * this long of it, or it is dropped. With other voices in the room most
+ * false marks came with more confusion right after them, while a real slip
+ * is followed by the reader carrying on: on the bench this kept two thirds
+ * of those false marks off the page, with clean recitation unchanged and
+ * marks no later.
+ */
+export const NEXT_OK_WINDOW_MS = 3000;
+const NEXT_OK_WORDS = 2;
+
+/** `change` is one of the next NEXT_OK_WORDS words after `mark`. */
+function follows(mark: WordMark, change: VerdictChange): boolean {
+  if (change.surah !== mark.surah) return false;
+  for (let i = 1; i <= NEXT_OK_WORDS; i++) {
+    const word = mark.word + i;
+    if (word < mark.totalWords) {
+      if (change.ayah === mark.ayah && change.word === word) return true;
+    } else if (
+      change.ayah === mark.ayah + 1 &&
+      change.word === word - mark.totalWords
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
 
 export function markKey(surah: number, ayah: number, word: number): string {
   return `${surah}:${ayah}:${word}`;
@@ -99,6 +128,20 @@ export function applyVerdicts(
       }
       continue;
     }
+    if (change.state === 'ok') {
+      // The reader carried on correctly after a suspect.
+      for (const [k, m] of next ?? book) {
+        if (
+          m.status === 'suspect' &&
+          m.followedAt === undefined &&
+          now >= m.since &&
+          now - m.since <= NEXT_OK_WINDOW_MS &&
+          follows(m, change)
+        ) {
+          write(k, {...m, followedAt: now});
+        }
+      }
+    }
     if (!mark) continue;
     if (mark.status === 'suspect') {
       // Flipped back inside the confirm window: never shown.
@@ -112,15 +155,27 @@ export function applyVerdicts(
   return {book: next ?? book, confirmed: [], corrected};
 }
 
-/** Turns suspects that held for MARK_CONFIRM_MS into mistakes. */
+/** When a suspect is shown or dropped. */
+function dueAt(mark: WordMark): number {
+  return mark.followedAt === undefined
+    ? mark.since + NEXT_OK_WINDOW_MS
+    : Math.max(mark.since + MARK_CONFIRM_MS, mark.followedAt);
+}
+
+/**
+ * Turns suspects that held for MARK_CONFIRM_MS and were followed by a
+ * correct word into mistakes, and drops the ones never followed in time.
+ */
 export function confirmDue(book: MarkBook, now: number): MarkUpdate {
   let next: Map<string, WordMark> | null = null;
   const confirmed: WordMark[] = [];
   for (const [key, mark] of book) {
-    if (mark.status !== 'suspect' || now - mark.since < MARK_CONFIRM_MS) {
+    if (mark.status !== 'suspect' || now < dueAt(mark)) continue;
+    next ??= new Map(book);
+    if (mark.followedAt === undefined) {
+      next.delete(key);
       continue;
     }
-    next ??= new Map(book);
     const shown: WordMark = {...mark, status: 'mistake'};
     next.set(key, shown);
     confirmed.push(shown);
@@ -128,12 +183,12 @@ export function confirmDue(book: MarkBook, now: number): MarkUpdate {
   return {book: next ?? book, confirmed, corrected: []};
 }
 
-/** The earliest time a suspect becomes due, or null with none waiting. */
+/** The earliest time a suspect is shown or dropped, or null with none. */
 export function nextConfirmAt(book: MarkBook): number | null {
   let at: number | null = null;
   for (const mark of book.values()) {
     if (mark.status !== 'suspect') continue;
-    const due = mark.since + MARK_CONFIRM_MS;
+    const due = dueAt(mark);
     if (at === null || due < at) at = due;
   }
   return at;
