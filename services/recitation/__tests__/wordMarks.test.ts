@@ -156,4 +156,21 @@ describe('word marks', () => {
       ['12:3', '13:5'],
     );
   });
+
+  it('the first words of the ayah after a skipped one are left alone: that is the jump, not a slip', () => {
+    const {book} = run(
+      [
+        [
+          0,
+          [
+            change(0, 'skipped', {ayah: 13}),
+            change(2, 'skipped', {ayah: 13}),
+            change(3, 'skipped', {ayah: 13}),
+          ],
+        ],
+      ],
+      MARK_CONFIRM_MS,
+    );
+    expect(shownMarks(book, new Set(['67:12'])).map(m => m.word)).toEqual([3]);
+  });
 });

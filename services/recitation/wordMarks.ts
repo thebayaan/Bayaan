@@ -139,9 +139,25 @@ export function nextConfirmAt(book: MarkBook): number | null {
   return at;
 }
 
+/** Words at the start of the ayah after a skipped one that are not shown. */
+const AFTER_SKIP_WORDS = 3;
+
+function leftToAyahFlag(
+  mark: WordMark,
+  skippedAyat: ReadonlySet<string>,
+): boolean {
+  if (skippedAyat.has(`${mark.surah}:${mark.ayah}`)) return true;
+  // The tracker lands in the next ayah a few words late after the jump.
+  return (
+    mark.word < AFTER_SKIP_WORDS &&
+    skippedAyat.has(`${mark.surah}:${mark.ayah - 1}`)
+  );
+}
+
 /**
  * Mistakes and corrected words to draw, in recitation order. Words inside an
- * ayah flagged as skipped are left to that flag.
+ * ayah flagged as skipped, and the first words of the ayah after it, are left
+ * to that flag.
  * @param skippedAyat - "surah:ayah" keys of ayat flagged as skipped
  */
 export function shownMarks(
@@ -149,8 +165,6 @@ export function shownMarks(
   skippedAyat: ReadonlySet<string>,
 ): WordMark[] {
   return [...book.values()]
-    .filter(
-      m => m.status !== 'suspect' && !skippedAyat.has(`${m.surah}:${m.ayah}`),
-    )
+    .filter(m => m.status !== 'suspect' && !leftToAyahFlag(m, skippedAyat))
     .sort((a, b) => a.surah - b.surah || a.ayah - b.ayah || a.word - b.word);
 }

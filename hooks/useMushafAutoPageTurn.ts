@@ -19,6 +19,7 @@ import {
 } from '@/components/mushaf/skia/recitedWord';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {mushafVerseMapService} from '@/services/mushaf/MushafVerseMapService';
+import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 
 export function useMushafAutoPageTurn(
   currentPage: number,
@@ -39,9 +40,13 @@ export function useMushafAutoPageTurn(
       : '',
   );
   const lastNavigatedPage = useRef<number>(currentPage);
+  const hideText = useMushafSettingsStore(s => s.recitationHideText);
 
   // Reciting the last word on the page turns it at once, without waiting for
-  // the next page's first ayah (paged mode only).
+  // the next page's first ayah, so the reader sees what comes next (paged
+  // mode only). With the text hidden the reader recites from memory: the
+  // page turns only on the next page's first word, so the next page (and a
+  // surah heading on it) is not given away.
   useEffect(() => {
     if (!recitedWord || navigateToVerse) return;
     const [verseKey, wordIndex, totalWords] = recitedWord.split('|');
@@ -56,10 +61,13 @@ export function useMushafAutoPageTurn(
       Number(wordIndex),
       Number(totalWords),
     );
-    if (position === null || position < last.position) return;
+    if (position === null) return;
+    if (hideText ? position <= last.position : position < last.position) {
+      return;
+    }
     lastNavigatedPage.current = page + 1;
     navigateToPage(page + 1);
-  }, [recitedWord, navigateToPage, navigateToVerse]);
+  }, [recitedWord, navigateToPage, navigateToVerse, hideText]);
 
   // Keep the ref in sync when the user manually scrolls
   useEffect(() => {
