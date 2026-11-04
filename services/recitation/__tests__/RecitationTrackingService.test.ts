@@ -345,7 +345,7 @@ describe('RecitationTrackingService take log', () => {
 });
 
 describe('RecitationTrackingService memorisation mode', () => {
-  it('hide mode switches to correction after the first lock, expecting the rest of the surah', async () => {
+  it('hide mode switches to correction after the first lock, expecting the next ten ayat', async () => {
     mockSettings.recitationHideText = true;
     await service.startRecitationTracking(null);
     expect(mockEngine.setMode).toHaveBeenLastCalledWith('tracking');
@@ -354,7 +354,7 @@ describe('RecitationTrackingService memorisation mode', () => {
     expect(mockEngine.setExpected).toHaveBeenLastCalledWith({
       surah: 18,
       ayah: 3,
-      ayahEnd: 110,
+      ayahEnd: 12,
     });
     expect(mockEngine.setStructural).toHaveBeenLastCalledWith(true);
   });
@@ -367,18 +367,33 @@ describe('RecitationTrackingService memorisation mode', () => {
     expect(mockEngine.setExpected).toHaveBeenLastCalledWith({
       surah: 18,
       ayah: 3,
-      ayahEnd: 110,
+      ayahEnd: 12,
     });
   });
 
-  it('turning the page does not change the passage: no new lock mid-surah', async () => {
+  it('the passage stays ten ayat long and slides forward as the reader nears its end', async () => {
     await service.startRecitationTracking(null);
     engineControl.sendEvent?.(wordProgress(18, 3, 0, 9));
     const calls = mockEngine.setExpected.mock.calls.length;
     engineControl.sendEvent?.(verseMatch(18, 5));
-    engineControl.sendEvent?.(wordProgress(18, 6, 0, 9));
-    engineControl.sendEvent?.(verseMatch(18, 6));
+    engineControl.sendEvent?.(verseMatch(18, 9));
     expect(mockEngine.setExpected.mock.calls.length).toBe(calls);
+    engineControl.sendEvent?.(verseMatch(18, 10));
+    expect(mockEngine.setExpected).toHaveBeenLastCalledWith({
+      surah: 18,
+      ayah: 9,
+      ayahEnd: 18,
+    });
+  });
+
+  it('the passage never runs past the end of the surah', async () => {
+    await service.startRecitationTracking(null);
+    engineControl.sendEvent?.(wordProgress(18, 105, 0, 9));
+    expect(mockEngine.setExpected).toHaveBeenLastCalledWith({
+      surah: 18,
+      ayah: 105,
+      ayahEnd: 110,
+    });
   });
 
   it('live flags reach the store, and dismissed and hidden kinds do not', async () => {
@@ -546,7 +561,7 @@ describe('RecitationTrackingService live mistakes', () => {
       expect(mockEngine.setExpected).toHaveBeenLastCalledWith({
         surah: 18,
         ayah: 6,
-        ayahEnd: 110,
+        ayahEnd: 15,
       });
     },
   );

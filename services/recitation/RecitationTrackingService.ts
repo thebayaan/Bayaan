@@ -118,16 +118,46 @@ const SUMMARY_REASONS: ReadonlySet<RecitationStopReason> = new Set([
   'interruption',
 ]);
 
-/**
- * The rest of the surah from where the tracker locked. Set once per lock:
- * Tilawa's tracker follows the whole surah either way, but a new passage
- * mid-take makes its next search snap to the passage's first ayah. Leaving
- * the surah, or getting lost, goes back to tracking (dropToTracking) and the
- * next lock sets a new passage.
- */
+// The expected passage: PASSAGE_AYAT ayat from where the tracker locked,
+// sliding forward as the reader nears its end. Tilawa's tracker follows the
+// whole surah either way; the passage bounds the structural check at stop,
+// whose time and memory grow steeply with it (Al-Baqarah 2:7-286 ran a
+// phone out of memory; ten ayat take a tenth of a second on a Mac). Getting
+// lost goes back to tracking (dropToTracking), so moving the passage never
+// makes a search snap to its first ayah.
+const PASSAGE_AYAT = 10;
+// Slide once a recited ayah is this close to the passage's end.
+const SLIDE_WITHIN = 3;
+
+function surahLength(surah: number, fallback: number): number {
+  return SURAHS[surah - 1]?.verses_count ?? fallback;
+}
+
 function passageFrom(from: {surah: number; ayah: number}): ExpectedPassage {
-  const last = SURAHS[from.surah - 1]?.verses_count ?? from.ayah;
-  return {...from, ayahEnd: Math.max(from.ayah, last)};
+  const last = surahLength(from.surah, from.ayah);
+  return {
+    ...from,
+    ayahEnd: Math.max(from.ayah, Math.min(last, from.ayah + PASSAGE_AYAT - 1)),
+  };
+}
+
+/** The reader nears the passage's end: start it an ayah back, ten long. */
+function slidePassage(matched: {surah: number; ayah: number}): void {
+  const expected = memo?.expected;
+  if (!memo?.correction || !expected || matched.surah !== expected.surah) {
+    return;
+  }
+  const end = expected.ayahEnd ?? expected.ayah;
+  if (end >= surahLength(expected.surah, end)) return;
+  if (matched.ayah <= end - SLIDE_WITHIN) return;
+  memo.expected = passageFrom({
+    surah: matched.surah,
+    ayah: Math.max(1, matched.ayah - 1),
+  });
+  configureSession({expected: memo.expected});
+  trace(
+    `checking ${memo.expected.surah}:${memo.expected.ayah}-${memo.expected.ayahEnd}`,
+  );
 }
 
 function startCorrection(from: {surah: number; ayah: number}): void {
@@ -402,6 +432,7 @@ function handleEvent(msg: EngineMessage): void {
   if (msg.type === 'verse_match') {
     const key = `${msg.surah}:${msg.ayah}`;
     trace(`ayah ${key} recited`);
+    slidePassage(msg);
     if (!state.recitedVerseKeys.includes(key)) {
       setState({recitedVerseKeys: [...state.recitedVerseKeys, key]});
     }

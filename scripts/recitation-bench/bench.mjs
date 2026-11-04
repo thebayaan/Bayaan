@@ -120,6 +120,11 @@ const zs = await tilawa.createZipformerSession({
 const STRUCT_ON = {ayahOrder: true, similarVerse: true};
 const STRUCT_OFF = {ayahOrder: false, similarVerse: false};
 let checking = flow === 'correction';
+// As PASSAGE_AYAT and SLIDE_WITHIN in RecitationTrackingService.
+const PASSAGE_AYAT = 10;
+const SLIDE_WITHIN = 3;
+let expectedSurah = 0;
+let expectedEnd = 0;
 let flowSeen = 0;
 let lastKey = null;
 if (flow === 'correction') {
@@ -140,9 +145,23 @@ async function appFlow() {
       if (!checking) {
         const [s, a] = e.key.split(':').map(Number);
         zs.setMode('correction');
-        zs.setExpected({surah: s, ayah: a, ayahEnd: Math.max(a, ayat)});
+        expectedSurah = s;
+        expectedEnd = Math.max(a, Math.min(ayat, a + PASSAGE_AYAT - 1));
+        zs.setExpected({surah: s, ayah: a, ayahEnd: expectedEnd});
         await zs.setStructural(STRUCT_ON);
         checking = true;
+      }
+    } else if (e.type === 'verse_match' && checking) {
+      // As slidePassage in RecitationTrackingService.
+      const [s, a] = e.key.split(':').map(Number);
+      if (
+        s === expectedSurah &&
+        expectedEnd < ayat &&
+        a > expectedEnd - SLIDE_WITHIN
+      ) {
+        const from = Math.max(1, a - 1);
+        expectedEnd = Math.max(from, Math.min(ayat, from + PASSAGE_AYAT - 1));
+        zs.setExpected({surah: s, ayah: from, ayahEnd: expectedEnd});
       }
     } else if (
       e.type === 'debug' &&
@@ -207,7 +226,9 @@ for (let off = 0; off < audio.length; off += CHUNK) {
   trackVerdicts();
 }
 drain();
+const stopStart = performance.now();
 await zs.stop();
+const stopMs = Math.round(performance.now() - stopStart);
 drain();
 trackVerdicts();
 
@@ -227,6 +248,7 @@ const summary = {
   flow,
   dwell: args.dwell ?? 'default',
   rtf: +(busy / 1000 / (audio.length / SR)).toFixed(3),
+  stopMs,
   firstLock: log.find(e => e.type === 'word_progress')?.t ?? null,
   verseMatches: log.filter(e => e.type === 'verse_match').map(e => e.key),
   lockChanges: log
