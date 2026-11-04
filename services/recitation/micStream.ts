@@ -41,6 +41,9 @@ function configureRecordingSession(): void {
     // silence gate on device.
     iosMode: 'default',
     iosOptions: ['defaultToSpeaker', 'allowBluetoothHFP'],
+    // iOS mutes haptics while an app records unless it opts in; the
+    // mistake vibration fires mid-take.
+    iosAllowHaptics: true,
   });
 }
 

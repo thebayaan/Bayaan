@@ -44,6 +44,16 @@ beforeEach(() => {
 });
 
 describe('startMicStream', () => {
+  it('lets haptics through while recording, so a marked mistake can vibrate', async () => {
+    await startMicStream(() => undefined);
+    expect(AudioManager.setAudioSessionOptions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        iosCategory: 'playAndRecord',
+        iosAllowHaptics: true,
+      }),
+    );
+  });
+
   it('reports an interruption when it begins and when it ends', async () => {
     const phases: string[] = [];
     await startMicStream(
