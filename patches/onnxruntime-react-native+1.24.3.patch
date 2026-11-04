@@ -26,15 +26,22 @@ index 41b4359..96f1868 100644
  }
  
 diff --git a/node_modules/onnxruntime-react-native/ios/OnnxruntimeModule.mm b/node_modules/onnxruntime-react-native/ios/OnnxruntimeModule.mm
-index 8155f92..c31cb00 100644
+index 8155f92..7e4fae8 100644
 --- a/node_modules/onnxruntime-react-native/ios/OnnxruntimeModule.mm
 +++ b/node_modules/onnxruntime-react-native/ios/OnnxruntimeModule.mm
-@@ -10,6 +10,12 @@
+@@ -5,11 +5,19 @@
+ #include "JsiMain.h"
+ 
+ #import <Foundation/Foundation.h>
++#import <objc/runtime.h>
+ #import <React/RCTBridge+Private.h>
+ #import <React/RCTUtils.h>
  #import <ReactCommon/RCTTurboModule.h>
  #import <jsi/jsi.h>
  
 +// React Native 0.88 removed RCTCxxBridge. The bridgeless RCTBridgeProxy (and
-+// the old bridge) still answer -runtime, so ask for it by selector.
++// the old bridge) still implement -runtime, so call it by selector. The proxy
++// is an NSProxy, so check its class rather than -respondsToSelector:.
 +@protocol OrtJSIRuntimeProvider <NSObject>
 +- (void*)runtime;
 +@end
@@ -42,14 +49,15 @@ index 8155f92..c31cb00 100644
  @implementation OnnxruntimeModule
  
  @synthesize bridge = _bridge;
-@@ -27,12 +33,13 @@ - (void)setBridge:(RCTBridge*)bridge {
+@@ -27,12 +35,14 @@ - (void)setBridge:(RCTBridge*)bridge {
   */
  RCT_EXPORT_BLOCKING_SYNCHRONOUS_METHOD(install) {
    @try {
 -    RCTCxxBridge* cxxBridge = (RCTCxxBridge*)_bridge;
 -    if (cxxBridge == nil) {
 +    id bridge = _bridge;
-+    if (bridge == nil || ![bridge respondsToSelector:@selector(runtime)]) {
++    if (bridge == nil ||
++        !class_respondsToSelector(object_getClass(bridge), @selector(runtime))) {
        return @false;
      }
  
