@@ -288,4 +288,14 @@ describe('createRecitationEngine', () => {
     await engine.stop();
     expect(events).toHaveLength(2);
   });
+
+  it('judges each word after two more sounds, not six, so marks land sooner', async () => {
+    await createRecitationEngine(ASSETS, () => undefined);
+    const {createZipformerSession} = jest.requireMock<{
+      createZipformerSession: jest.Mock;
+    }>('@tilawa/core');
+    expect(createZipformerSession).toHaveBeenCalledWith(
+      expect.objectContaining({config: {commitDwell: 2}}),
+    );
+  });
 });

@@ -34,6 +34,10 @@ function run(steps: [number, VerdictChange[]][], until: number) {
 }
 
 describe('word marks', () => {
+  it('holds a suspect half a second: one 480 ms chunk of flicker never shows', () => {
+    expect(MARK_CONFIRM_MS).toBe(500);
+  });
+
   it('a wrong word that stays wrong becomes a mistake after the confirm delay', () => {
     const {book, confirmed} = run([[0, [change(2, 'wrong')]]], MARK_CONFIRM_MS);
     expect(confirmed).toEqual(['12:2']);

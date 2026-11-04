@@ -1,9 +1,9 @@
 // Live mistake marks from the engine's per-word verdicts.
 //
-// The engine judges each word about 1.7 s after it is said (pending, then
+// The engine judges each word about 1.2 s after it is said (pending, then
 // ok, unsure, wrong or skipped). A wrong or skipped word is first a suspect;
 // it becomes a shown mistake only if it is still bad MARK_CONFIRM_MS later,
-// which drops the one-chunk flickers measured on real recitations. A mistake
+// which drops the one-chunk (480 ms) flickers measured on real recitations. A mistake
 // whose word is later recited correctly becomes corrected. On an ayah's first
 // or last word only a skip counts: "wrong" there is mostly the reciter
 // joining two ayat.
@@ -46,7 +46,7 @@ export interface MarkUpdate {
 }
 
 /** A bad verdict must hold this long before it is shown. */
-export const MARK_CONFIRM_MS = 900;
+export const MARK_CONFIRM_MS = 500;
 
 export function markKey(surah: number, ayah: number, word: number): string {
   return `${surah}:${ayah}:${word}`;

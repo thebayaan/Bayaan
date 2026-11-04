@@ -70,6 +70,10 @@ export interface RecitationEngine {
 }
 
 const STRUCTURAL_OFF = {ayahOrder: false, similarVerse: false} as const;
+// Heard sounds after a word before Tilawa judges it (its default is 6).
+// Measured on five reciters with planted mistakes: 2 cuts the median time
+// to a verdict from 1.8 s to 1.2 s with the same catches and false marks.
+const COMMIT_DWELL = 2;
 // Upper bound on flags drained around one stop().
 const MAX_DRAIN = 64;
 
@@ -152,6 +156,7 @@ export async function createRecitationEngine(
     enableFallback: false,
     // Engine state changes (located, lost, idle) arrive as debug events.
     debug: true,
+    config: {commitDwell: COMMIT_DWELL},
   });
   stats.loadMs = performance.now() - loadStart;
 
