@@ -89,6 +89,7 @@ import {TranslationContent} from './verse-actions/TranslationContent';
 import {TafseerContent} from './verse-actions/TafseerContent';
 import {ThemeContent} from './verse-actions/ThemeContent';
 import {WBWContent} from './verse-actions/WBWContent';
+import {IrabContent} from './verse-actions/IrabContent';
 // @ai-start
 import {useTranslation} from 'react-i18next';
 import i18n from '@/i18n';
@@ -109,6 +110,7 @@ type ActiveScreen =
   | 'tafseer'
   | 'theme'
   | 'wbw'
+  | 'irab'
   | 'community-reflections'
   | null;
 
@@ -123,6 +125,7 @@ const SCREEN_TITLE_KEYS = {
   tafseer: 'verseActions.tafseer',
   theme: 'verseActions.theme',
   wbw: 'verseActions.wordByWord',
+  irab: 'verseActions.irab',
   'community-reflections': 'verseActions.communityReflections',
 } as const;
 // @ai-end
@@ -457,6 +460,10 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     setActiveScreen('wbw');
   }, []);
 
+  const handleIrab = useCallback(() => {
+    setActiveScreen('irab');
+  }, []);
+
   // RFC-018 — open the community-reflections popup. Only reachable when a
   // fork wires branding.communityReflectionsProvider (the row is gated).
   const handleCommunityReflections = useCallback(() => {
@@ -740,6 +747,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     activeScreen === 'tafseer' ||
     activeScreen === 'theme' ||
     activeScreen === 'wbw' ||
+    activeScreen === 'irab' ||
     activeScreen === 'community-reflections';
 
   return (
@@ -849,6 +857,15 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                 )}
                 {activeScreen === 'wbw' && (
                   <WBWContent
+                    surahNumber={surahNumber}
+                    ayahNumber={ayahNumber}
+                    rewayah={resolvedRewayah}
+                    unitStart={unitStart}
+                    onBack={handleBack}
+                  />
+                )}
+                {activeScreen === 'irab' && (
+                  <IrabContent
                     surahNumber={surahNumber}
                     ayahNumber={ayahNumber}
                     rewayah={resolvedRewayah}
@@ -1099,6 +1116,22 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                     />
                     <Text style={styles.optionText}>
                       {t('verseActions.wordByWord')}
+                    </Text>
+                  </Pressable>
+                  <View style={styles.divider} />
+                  <Pressable
+                    style={({pressed}) => [
+                      styles.option,
+                      pressed && styles.optionPressed,
+                    ]}
+                    onPress={handleIrab}>
+                    <MaterialCommunityIcons
+                      name="file-tree-outline"
+                      size={moderateScale(18)}
+                      color={theme.colors.text}
+                    />
+                    <Text style={styles.optionText}>
+                      {t('verseActions.irab')}
                     </Text>
                   </Pressable>
                 </>
