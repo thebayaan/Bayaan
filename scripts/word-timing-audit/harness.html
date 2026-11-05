@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="ar">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face { font-family: Hafs; src: url(fonts/UthmanicHafs1Ver18.ttf); }
+  @font-face { font-family: DK; src: url(fonts/DigitalKhattFont.otf); }
+  :root { --bg:#0f1512; --ink:#efe9dc; --dim:#8c958f; --hi:#e8c77a; --sky:#7cc4e4; }
+  html,body { margin:0; background:var(--bg); color:var(--ink); font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; }
+  .wrap { padding:28px 40px; }
+  .meta { display:flex; justify-content:space-between; color:var(--dim); font-size:15px; }
+  .meta b { color:var(--ink); font-weight:600; }
+  .ayahs { margin-top:20px; direction:rtl; text-align:right; font-size:36px; line-height:1.95; min-height:300px; }
+  .ayahs.hafs { font-family: Hafs, serif; }
+  .ayahs.dk { font-family: DK, serif; }
+  .ayah { opacity:.42; transition:opacity .15s; }
+  .ayah.on { opacity:1; }
+  .w { padding:0 3px; border-radius:8px; }
+  .w.on { background:rgba(232,199,122,.22); color:var(--hi); box-shadow: inset 0 -3px 0 var(--hi); }
+  .num { color:var(--dim); font-size:24px; padding:0 6px; }
+  canvas { display:block; width:100%; height:150px; margin-top:12px; background:#151c18; border-radius:12px; }
+  .status { margin-top:10px; font: 14px ui-monospace, Menlo, monospace; color:var(--dim); display:flex; gap:22px; }
+  .ok { color:#8fd19e } .bad { color:#ef8a7a }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="meta"><div><b id="who"></b> · <span id="what"></span></div><div id="clock"></div></div>
+  <div id="ayahs" class="ayahs"></div>
+  <canvas id="strip" width="2400" height="300"></canvas>
+  <div class="status" id="status"></div>
+</div>
+<audio id="a" preload="auto"></audio>
+<script>
+const C = window.__CASE;
+const audio = document.getElementById('a');
+document.getElementById('who').textContent = C.title;
+document.getElementById('what').textContent = C.subtitle;
+const box = document.getElementById('ayahs');
+box.className = 'ayahs ' + (C.font || 'hafs');
+// flatten word timings
+const flat = []; // {s,e,ayah,idx,el}
+const ayahEls = {};
+for (const a of C.timing.ayahs) {
+  const span = document.createElement('span'); span.className = 'ayah'; span.dataset.ayah = a.ayah;
+  const toks = C.text[a.ayah] || [];
+  const n = Math.max(toks.length, a.words.length);
+  for (let i = 0; i < n; i++) {
+    const w = document.createElement('span'); w.className = 'w';
+    w.textContent = toks[i] ?? '□';
+    span.appendChild(w); span.appendChild(document.createTextNode(' '));
+    if (a.words[i]) flat.push({s:a.words[i][0], e:a.words[i][1], ayah:a.ayah, idx:i, el:w});
+  }
+  const num = document.createElement('span'); num.className='num'; num.textContent = '﴿' + a.ayah.toLocaleString('ar-EG') + '﴾';
+  span.appendChild(num); span.appendChild(document.createTextNode(' '));
+  ayahEls[a.ayah] = span;
+}
+// same lookup a player would use: last word whose start <= t
+function wordAt(t) {
+  let lo = 0, hi = flat.length - 1, ans = -1;
+  while (lo <= hi) { const m = (lo + hi) >> 1; if (flat[m].s <= t) { ans = m; lo = m + 1; } else hi = m - 1; }
+  if (ans >= 0 && t > flat[ans].e + 400) return {i: ans, between: true};
+  return {i: ans, between: false};
+}
+let shownAyah = null, active = -1;
+function showWindow(ayah) {
+  if (shownAyah === ayah) return; shownAyah = ayah;
+  box.innerHTML = '';
+  const nums = C.timing.ayahs.map(a => a.ayah); const k = nums.indexOf(ayah);
+  for (const n of nums.slice(Math.max(0,k-1), k+2)) box.appendChild(ayahEls[n]);
+}
+const env = C.env; const cv = document.getElementById('strip'); const g = cv.getContext('2d');
+function drawStrip(tms) {
+  const W = cv.width, H = cv.height, span = 8000, t0 = tms - span/2;
+  g.clearRect(0,0,W,H);
+  const x = t => (t - t0) / span * W;
+  // word boxes
+  for (let i = 0; i < flat.length; i++) { const f = flat[i]; if (f.e < t0 || f.s > t0+span) continue;
+    g.fillStyle = i === active ? 'rgba(232,199,122,.35)' : (i%2? 'rgba(124,196,228,.14)':'rgba(124,196,228,.24)');
+    g.fillRect(x(f.s), 18, Math.max(2, x(f.e)-x(f.s)), H-36);
+    g.fillStyle = '#8c958f'; g.font = '22px ui-monospace, monospace'; g.fillText(`${f.ayah}:${f.idx+1}`, x(f.s)+4, 40);
+  }
+  if (env) { // loudness
+    const lo = env.floor - 6, hi = env.loud + 6, y = d => H - 12 - (d - lo)/(hi-lo) * (H-40);
+    g.strokeStyle = '#efe9dc'; g.lineWidth = 2; g.beginPath(); let first = true;
+    for (let i = Math.floor(t0/env.hop); i < (t0+span)/env.hop; i++) { if (i<0||i>=env.db.length) continue;
+      const px = x(i*env.hop); const py = y(env.db[i]); first ? g.moveTo(px,py) : g.lineTo(px,py); first=false; }
+    g.stroke();
+    g.setLineDash([8,8]); g.strokeStyle = 'rgba(239,138,122,.7)'; g.beginPath(); g.moveTo(0,y(env.thr)); g.lineTo(W,y(env.thr)); g.stroke(); g.setLineDash([]);
+  }
+  g.fillStyle = '#e8c77a'; g.fillRect(W/2-2, 0, 4, H);
+}
+const log = [];
+function tick() {
+  const t = audio.currentTime * 1000;
+  const {i, between} = wordAt(t);
+  if (i !== active) { if (active >= 0) flat[active].el.classList.remove('on'); active = i; if (i >= 0) flat[i].el.classList.add('on'); }
+  if (i >= 0) { showWindow(flat[i].ayah); for (const n in ayahEls) ayahEls[n].classList.toggle('on', +n === flat[i].ayah); }
+  else showWindow(C.timing.ayahs[0].ayah);
+  drawStrip(t);
+  const mm = Math.floor(t/60000), ss = ((t%60000)/1000).toFixed(2).padStart(5,'0');
+  document.getElementById('clock').textContent = `${mm}:${ss}`;
+  const f = flat[i];
+  document.getElementById('status').innerHTML = f ? `<span>word ${f.ayah}:${f.idx+1}</span><span>${f.s}–${f.e} ms</span><span class="${between?'bad':'ok'}">${between?'between words':'inside word'}</span>` : 'before first word';
+  log.push([Math.round(t), i]);
+  requestAnimationFrame(tick);
+}
+window.__state = () => { const t = audio.currentTime*1000; const {i} = wordAt(t); const f = flat[i]; return {t: Math.round(t), shown: active, expect: i, word: f ? `${f.ayah}:${f.idx+1}` : null, paused: audio.paused, ready: audio.readyState}; };
+window.__seek = ms => new Promise(res => { const done = () => res(Math.round(audio.currentTime*1000)); audio.addEventListener('seeked', done, {once:true}); audio.currentTime = ms/1000; setTimeout(done, 8000); });
+window.__play = () => audio.play();
+window.__pause = () => audio.pause();
+window.__log = () => log.splice(0);
+audio.src = C.audio;
+requestAnimationFrame(tick);
+</script>
+</body>
+</html>

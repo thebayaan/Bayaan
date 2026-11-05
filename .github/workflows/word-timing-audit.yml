@@ -1,0 +1,100 @@
+name: Word Timing Audit
+
+# Audits the word-level timing files on the Bayaan CDN (timestamps-words/) and
+# plays a sample of recitations in headless Chromium with a word highlight.
+# Results go to the word-timing/<sha7> branch and a workflow artifact.
+
+on:
+  push:
+    branches: [claude/project-thread-b2vasr]
+    paths:
+      - 'scripts/word-timing-audit/**'
+      - '.github/workflows/word-timing-audit.yml'
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: Only the first N recitations (0 = all)
+        type: string
+        default: '0'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  BAYAAN_API_URL: https://api.thebayaan.com
+  BAYAAN_API_KEY: ${{ secrets.EXPO_PUBLIC_BAYAAN_API_KEY }}
+  LIMIT: ${{ inputs.limit || '0' }}
+  AUDIO_LIMIT: ${{ inputs.limit || '0' }}
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Tools
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg > /dev/null
+          pip install -q numpy
+
+      - name: Fetch the live catalog
+        run: |
+          mkdir -p out
+          python - <<'EOF'
+          import json, os, urllib.request
+          base, key = os.environ['BAYAAN_API_URL'], os.environ['BAYAAN_API_KEY']
+          out, page = [], 1
+          while True:
+              req = urllib.request.Request(f'{base}/v1/reciters?page={page}&limit=200', headers={'Authorization': f'Bearer {key}', 'User-Agent': 'bayaan-word-audit'})
+              j = json.load(urllib.request.urlopen(req, timeout=60))
+              out += j.get('data', [])
+              if page >= (j.get('meta') or {}).get('total_pages', 1): break
+              page += 1
+          json.dump(out, open('out/catalog.json', 'w'))
+          rw = [w for r in out for w in r.get('rewayat', [])]
+          print(len(out), 'reciters', len(rw), 'rewayat', sum(1 for w in rw if w.get('has_timestamps')), 'with has_timestamps')
+          print('rewayat keys:', sorted(rw[0].keys()) if rw else None)
+          EOF
+
+      - name: Audit timing files
+        run: python scripts/word-timing-audit/audit.py out | tail -80
+
+      - name: Check timings against the audio
+        run: python scripts/word-timing-audit/audio_check.py out
+
+      - name: Pick playback cases
+        run: python scripts/word-timing-audit/select_cases.py out
+
+      - name: Playback harness
+        run: |
+          cd scripts/word-timing-audit
+          npm init -y > /dev/null
+          npm i --no-save playwright@1.48.2 > /dev/null
+          npx playwright install --with-deps chromium > /dev/null
+          node harness.mjs ../../out
+
+      - name: Publish results branch
+        if: always()
+        run: |
+          sha=$(git rev-parse --short=7 HEAD)
+          mkdir -p /tmp/pub && cd /tmp/pub
+          cp -r $GITHUB_WORKSPACE/out/* . 2>/dev/null || true
+          rm -rf envelopes catalog.json
+          git init -q -b main && git config user.name github-actions && git config user.email github-actions@users.noreply.github.com
+          git add -A && git commit -qm "word timing audit $sha"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" HEAD:refs/heads/word-timing/$sha
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: word-timing-audit
+          path: out/
+          retention-days: 7
