@@ -100,9 +100,13 @@ def check(rid):
         res['onset_median_ms'] = int(np.median(o[:, 1]))
         res['onset_p90_abs_ms'] = int(np.percentile(np.abs(o[:, 1]), 90))
         res['onset_late_share'] = round(float((np.abs(o[:, 1]) > 300).mean()), 3)
-        if len(o) >= 6 and np.ptp(o[:, 0]) > 60000:
-            slope = np.polyfit(o[:, 0] / 60000, o[:, 1], 1)[0]
-            res['drift_ms_per_min'] = round(float(slope), 1)
+        # robust drift: median pairwise slope over ayah starts within 300 ms
+        # (a least-squares fit is pulled around by a few missed onsets)
+        q = o[np.abs(o[:, 1]) <= 300]
+        if len(q) >= 6 and np.ptp(q[:, 0]) > 60000:
+            sl = [(q[j, 1] - q[i, 1]) / ((q[j, 0] - q[i, 0]) / 60000) for i in range(len(q)) for j in range(i + 1, len(q)) if q[j, 0] - q[i, 0] > 20000]
+            if sl:
+                res['drift_ms_per_min'] = round(float(np.median(sl)), 1)
         res['offsets'] = [[int(a), int(b)] for a, b in offsets]
     # keep a 100 ms envelope for the harness strip
     step = 5
