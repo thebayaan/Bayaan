@@ -8,6 +8,7 @@
 import React from 'react';
 import {Platform, type StyleProp, type ViewStyle} from 'react-native';
 import {SymbolView} from 'expo-symbols';
+import Svg, {Circle, Path} from 'react-native-svg';
 import {Feather, Ionicons} from '@expo/vector-icons';
 
 interface ActionIconProps {
@@ -76,6 +77,7 @@ export function SearchIcon({
   return <Feather name="search" size={size} color={color} style={style} />;
 }
 
+/** iOS: two lines and two rings, from Lucide's settings-2 (ISC license). */
 export function ReaderOptionsIcon({
   size,
   color,
@@ -83,13 +85,21 @@ export function ReaderOptionsIcon({
 }: ActionIconProps): React.JSX.Element {
   if (Platform.OS === 'ios') {
     return (
-      <SymbolView
-        name="slider.horizontal.3"
-        size={size}
-        tintColor={color}
-        weight="medium"
-        style={style}
-      />
+      <Svg
+        width={size}
+        height={size}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke={color}
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        style={style}>
+        <Path d="M20 7h-9" />
+        <Path d="M14 17H5" />
+        <Circle cx={17} cy={17} r={3} />
+        <Circle cx={7} cy={7} r={3} />
+      </Svg>
     );
   }
   return (
