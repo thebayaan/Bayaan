@@ -30,7 +30,7 @@ function loadReviewUtils(branding: object): typeof import('../reviewUtils') {
   return mod;
 }
 
-const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
+const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
 
 beforeEach(() => openURL.mockClear());
 
