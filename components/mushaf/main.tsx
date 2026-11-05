@@ -34,7 +34,7 @@ import type {NativeStackNavigationProp} from 'expo-router/native-stack'; // @ai
 import {useTheme} from '@/hooks/useTheme';
 import {useReadingThemeColors} from '@/hooks/useReadingThemeColors';
 import {Ionicons} from '@expo/vector-icons';
-import {ShareIcon} from '@/components/ActionIcons'; // @ai
+import {ReaderOptionsIcon, ShareIcon} from '@/components/ActionIcons'; // @ai
 import {mushafShareUrl, shareUrl} from '@/utils/shareUtils';
 import branding from '@/config/branding';
 import {SheetManager} from 'react-native-actions-sheet';
@@ -973,9 +973,8 @@ export default function MushafViewer({
                 style={headerSlotStyle} // @ai
                 accessibilityRole="button"
                 accessibilityLabel={t('mushaf.settings')}>
-                <Ionicons
-                  name="options-outline"
-                  size={moderateScale(22)}
+                <ReaderOptionsIcon
+                  size={moderateScale(20)}
                   color={theme.colors.text}
                 />
               </Pressable>
@@ -1588,8 +1587,7 @@ export default function MushafViewer({
                         onPress={onPress}
                         accessibilityRole="button"
                         accessibilityLabel={t('mushaf.settings')}>
-                        <Ionicons
-                          name="options-outline"
+                        <ReaderOptionsIcon
                           size={moderateScale(22)}
                           color={theme.colors.text}
                         />

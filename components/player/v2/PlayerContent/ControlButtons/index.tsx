@@ -16,6 +16,7 @@ import {
 import {FrostedView} from '@/components/FrostedView';
 import {moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
+import {ReaderOptionsIcon} from '@/components/ActionIcons'; // @ai
 import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {
@@ -118,8 +119,7 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
             onPress={handleMushafLayoutPress}
             {...a11y.displayOptions}
             style={styles.glassButtonInner}>
-            <Ionicons
-              name="options-outline"
+            <ReaderOptionsIcon
               size={moderateScale(20)}
               color={defaultIconColor}
             />
