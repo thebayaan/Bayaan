@@ -210,8 +210,13 @@ function trackVerdicts() {
         from: vstate.get(id) ?? null,
         to: v.state,
       };
-      // The engine's scores behind a bad verdict, to tell noise from slips.
-      if (v.state === 'wrong' || v.state === 'skipped') {
+      // The engine's scores behind a bad verdict (to tell noise from slips),
+      // and behind any verdict that heard a vowel differ (tashkeel).
+      if (
+        v.state === 'wrong' ||
+        v.state === 'skipped' ||
+        (v.vowelErrors ?? 0) > 0
+      ) {
         const r = x => (typeof x === 'number' ? +x.toFixed(3) : null);
         change.d = {
           distance: r(v.distance),
@@ -221,6 +226,7 @@ function trackVerdicts() {
           gopNone: r(v.gopNone),
           gopTwice: r(v.gopTwice),
           vowelErrors: v.vowelErrors ?? null,
+          vowelMargin: r(v.vowelMargin),
           slip: r(v.slip),
         };
       }
