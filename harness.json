@@ -1,0 +1,938 @@
+[
+ {
+  "rid": "bb419980-eb6d-4c83-bf30-21303d417e9b",
+  "title": "Abdulbasit Abdulsamad",
+  "subtitle": "Hafs A'n Assem · murattal · surah 67",
+  "why": "well-known recitation",
+  "surah": 67,
+  "audio_metrics": {
+   "rid": "bb419980-eb6d-4c83-bf30-21303d417e9b",
+   "surah": 67,
+   "audio_ms": 494020,
+   "word_voiced": 0.924,
+   "pause_voiced": 0.001,
+   "onsets_found": 30,
+   "ayahs": 30,
+   "onset_median_ms": -40,
+   "onset_p90_abs_ms": 42,
+   "onset_late_share": 0,
+   "drift_ms_per_min": 2.1
+  },
+  "shots": [
+   {
+    "file": "00-bb419980-a1-start.jpg",
+    "ayah": 1,
+    "label": "start",
+    "state": {
+     "t": 11106,
+     "shown": 0,
+     "expect": 0,
+     "word": "1:1",
+     "paused": false,
+     "ready": 4
+    },
+    "seek_asked": 9880,
+    "seek_landed": 9880
+   },
+   {
+    "file": "00-bb419980-a1-later.jpg",
+    "ayah": 1,
+    "label": "later",
+    "state": {
+     "t": 13813,
+     "shown": 3,
+     "expect": 3,
+     "word": "1:4",
+     "paused": false,
+     "ready": 4
+    },
+    "seek_asked": 9880,
+    "seek_landed": 9880,
+    "window": {
+     "audio_ms": 4005,
+     "wall_ms": 4110,
+     "frames": 244,
+     "words_painted": 5,
+     "words_skipped": 0
+    }
+   },
+   {
+    "file": "00-bb419980-a16-start.jpg",
+    "ayah": 16,
+    "label": "start",
+    "state": {
+     "t": 244915,
+     "shown": 161,
+     "expect": 161,
+     "word": "16:1",
+     "paused": false,
+     "ready": 4
+    },
+    "seek_asked": 243680,
+    "seek_landed": 243680
+   },
+   {
+    "file": "00-bb419980-a16-later.jpg",
+    "ayah": 16,
+    "label": "later",
+    "state": {
+     "t": 247600,
+     "shown": 162,
+     "expect": 162,
+     "word": "16:2",
+     "paused": false,
+     "ready": 4
+    },
+    "seek_asked": 243680,
+    "seek_landed": 243680,
+    "window": {
+     "audio_ms": 3990,
+     "wall_ms": 4099,
+     "frames": 243,
+     "words_painted": 3,
+     "words_skipped": 0
+    }
+   },
+   {
+    "file": "00-bb419980-a28-start.jpg",
+    "ayah": 28,
+    "label": "start",
+    "state": {
+     "t": 440551,
+     "shown": 296,
+     "expect": 296,
+     "word": "28:2",
+     "paused": false,
+     "ready": 4
+    },
+    "seek_asked": 439320,
+    "seek_landed": 439320
+   },
+   {
+    "file": "00-bb419980-a28-later.jpg",
+    "ayah": 28,
+    "label": "later",
+    "state": {
+     "t": 443251,
+     "shown": 298,
+     "expect": 298,
+     "word": "28:4",
+     "paused": false,
+     "ready": 4
+    },
+    "seek_asked": 439320,
+    "seek_landed": 439320,
+    "window": {
+     "audio_ms": 4014,
+     "wall_ms": 4111,
+     "frames": 244,
+     "words_painted": 5,
+     "words_skipped": 0
+    }
+   }
+  ],
+  "errors": []
+ },
+ {
+  "rid": "efeccedb-81c6-4ba5-b49a-f69fc723c46b",
+  "title": "Mohammed Siddiq Al-Minshawi",
+  "subtitle": "Hafs A'n Assem · mojawwad · surah 67",
+  "why": "well-known recitation",
+  "surah": 67,
+  "audio_metrics": {
+   "rid": "efeccedb-81c6-4ba5-b49a-f69fc723c46b",
+   "surah": 67,
+   "audio_ms": 947520,
+   "word_voiced": 0.95,
+   "pause_voiced": 0.121,
+   "onsets_found": 29,
+   "ayahs": 30,
+   "onset_median_ms": 0,
+   "onset_p90_abs_ms": 43,
+   "onset_late_share": 0,
+   "drift_ms_per_min": 0.8
+  },
+  "shots": [
+   {
+    "file": "01-efeccedb-a1-start.jpg",
+    "ayah": 1,
+    "label": "start",
+    "state": {
+     "t": 10990,
+     "shown": 0,
+     "expect": 0,
+     "word": "1:1",
+     "paused": false,
+     "ready": 4
+    },
+    "seek_asked": 9760,
+    "seek_landed": 9760
+   },
+   {
+    "file": "01-efeccedb-a1-later.jpg",
+    "ayah": 1,
+    "label": "later",
+    "state": {
+     "t": 13707,
+     "shown": 1,
+     "expect": 1,
+     "word": "1:2",
+     "paused": false,
+     "ready": 4
+    },
+    "seek_asked": 9760,
+    "seek_landed": 9760,
+    "window": {
+     "audio_ms": 4021,
+     "wall_ms": 4115,
+     "frames": 244,
+     "words_painted": 3,
+     "words_skipped": 0
+    }
+   },
+   {
+    "file": "01-efeccedb-a16-start.jpg",
+    "ayah": 16,
+    "label": "start",
+    "state": {
+     "t": 401898,
+     "shown": 161,
+     "expect": 161,
+     "word": "16:1",
+     "paused": false,
+     "ready": 4
+    },
+    "seek_asked": 400680,
+    "seek_landed": 400680
+   },
+   {
+    "file": "01-efeccedb-a16-later.jpg",
+    "ayah": 16,
+    "label": "later",
+    "state": {
+     "t": 404582,
+     "shown": 162,
+     "expect": 162,
+     "word": "16:2",
+     "paused": false,
+     "ready": 4
+    },
+    "seek_asked": 400680,
+    "seek_landed": 400680,
+    "window": {
+     "audio_ms": 3989,
+     "wall_ms": 4090,
+     "frames": 243,
+     "words_painted": 3,
+     "words_skipped": 0
+    }
+   },
+   {
+    "file": "01-efeccedb-a28-start.jpg",
+    "ayah": 28,
+    "label": "start",
+    "state": {
+     "t": 817828,
+     "shown": 295,
+     "expect": 295,
+     "word": "28:1",
+     "paused": false,
+     "ready": 4
+    },
+    "seek_asked": 816600,
+    "seek_landed": 816600
+   },
+   {
+    "file": "01-efeccedb-a28-later.jpg",
+    "ayah": 28,
+    "label": "later",
+    "state": {
+     "t": 820520,
+     "shown": 297,
+     "expect": 297,
+     "word": "28:3",
+     "paused": false,
+     "ready": 4
+    },
+    "seek_asked": 816600,
+    "seek_landed": 816600,
+    "window": {
+     "audio_ms": 4004,
+     "wall_ms": 4100,
+     "frames": 243,
+     "words_painted": 4,
+     "words_skipped": 0
+    }
+   }
+  ],
+  "errors": []
+ },
+ {
+  "rid": "cb048f10-194e-41ae-aa1a-d0f42d3c6760",
+  "title": "Mahmoud Khalil Al-Hussary",
+  "subtitle": "Hafs A'n Assem · murattal 2 · surah 67",
+  "why": "well-known recitation",
+  "surah": 67,
+  "audio_metrics": {
+   "rid": "cb048f10-194e-41ae-aa1a-d0f42d3c6760",
+   "surah": 67,
+   "audio_ms": 420380,
+   "word_voiced": 0.937,
+   "pause_voiced": 0.008,
+   "onsets_found": 30,
+   "ayahs": 30,
+   "onset_median_ms": -10,
+   "onset_p90_abs_ms": 40,
+   "onset_late_share": 0,
+   "drift_ms_per_min": 0.2
+  },
+  "shots": [
+   {
+    "file": "02-cb048f10-a1-start.jpg",
+    "ayah": 1,
+    "label": "start",
+    "state": {
+     "t": 8143,
+     "shown": 0,
+     "expect": 0,
+     "word": "1:1",
+     "paused": false,
+     "ready": 4
+    },
+    "seek_asked": 6920,
+    "seek_landed": 6920
+   },
+   {
+    "file": "02-cb048f10-a1-later.jpg",
+    "ayah": 1,
+    "label": "later",
+    "state": {
+     "t": 10854,
+     "shown": 3,
+     "expect": 3,
+     "word": "1:4",
+     "paused": false,
+     "ready": 4
+    },
+    "seek_asked": 6920,
+    "seek_landed": 6920,
+    "window": {
+     "audio_ms": 4011,
+     "wall_ms": 4112,
+     "frames": 244,
+     "words_painted": 5,
+     "words_skipped": 0
+    }
+   },
+   {
+    "file": "02-cb048f10-a16-start.jpg",
+    "ayah": 16,
+    "label": "start",
+    "state": {
+     "t": 206072,
+     "shown": 161,
+     "expect": 161,
+     "word": "16:1",
+     "paused": false,
+     "ready": 4
+    },
+    "seek_asked": 204840,
+    "seek_landed": 204840
+   },
+   {
+    "file": "02-cb048f10-a16-later.jpg",
+    "ayah": 16,
+    "label": "later",
+    "state": {
+     "t": 208768,
+     "shown": 162,
+     "expect": 162,
+     "word": "16:2",
+     "paused": false,
+     "ready": 4
+    },
+    "seek_asked": 204840,
+    "seek_landed": 204840,
+    "window": {
+     "audio_ms": 4004,
+     "wall_ms": 4096,
+     "frames": 243,
+     "words_painted": 3,
+     "words_skipped": 0
+    }
+   },
+   {
+    "file": "02-cb048f10-a28-start.jpg",
+    "ayah": 28,
+    "label": "start",
+    "state": {
+     "t": 375305,
+     "shown": 296,
+     "expect": 296,
+     "word": "28:2",
+     "paused": false,
+     "ready": 4
+    },
+    "seek_asked": 374080,
+    "seek_landed": 374080
+   },
+   {
+    "file": "02-cb048f10-a28-later.jpg",
+    "ayah": 28,
+    "label": "later",
+    "state": {
+     "t": 378028,
+     "shown": 298,
+     "expect": 298,
+     "word": "28:4",
+     "paused": false,
+     "ready": 4
+    },
+    "seek_asked": 374080,
+    "seek_landed": 374080,
+    "window": {
+     "audio_ms": 4020,
+     "wall_ms": 4124,
+     "frames": 245,
+     "words_painted": 5,
+     "words_skipped": 0
+    }
+   }
+  ],
+  "errors": []
+ },
+ {
+  "rid": "7350079a-1da3-4adf-b22c-60b81a90a5a1",
+  "title": "Maher Al Meaqli",
+  "subtitle": "Hafs A'n Assem · murattal 2 · surah 3",
+  "why": "well-known recitation",
+  "surah": 3,
+  "audio_metrics": {
+   "rid": "7350079a-1da3-4adf-b22c-60b81a90a5a1",
+   "surah": 3,
+   "audio_ms": 2910840,
+   "word_voiced": 0.832,
+   "pause_voiced": 0.824,
+   "onsets_found": 135,
+   "ayahs": 200,
+   "onset_median_ms": -20,
+   "onset_p90_abs_ms": 576,
+   "onset_late_share": 0.133,
+   "drift_ms_per_min": 4.1
+  },
+  "shots": [
+   {
+    "file": "03-7350079a-a1-start.jpg",
+    "ayah": 1,
+    "label": "start",
+    "state": {
+     "t": 6506,
+     "shown": 0,
+     "expect": 0,
+     "word": "1:1",
+     "paused": false,
+     "ready": 4
+    },
+    "seek_asked": 5280,
+    "seek_landed": 5280
+   },
+   {
+    "file": "03-7350079a-a1-later.jpg",
+    "ayah": 1,
+    "label": "later",
+    "state": {
+     "t": 9205,
+     "shown": 0,
+     "expect": 0,
+     "word": "1:1",
+     "paused": false,
+     "ready": 4
+    },
+    "seek_asked": 5280,
+    "seek_landed": 5280,
+    "window": {
+     "audio_ms": 4001,
+     "wall_ms": 4093,
+     "frames": 243,
+     "words_painted": 2,
+     "words_skipped": 0
+    }
+   },
+   {
+    "file": "03-7350079a-a75-start.jpg",
+    "ayah": 75,
+    "label": "start",
+    "state": {
+     "t": 1343908,
+     "shown": 1240,
+     "expect": 1240,
+     "word": "75:2",
+     "paused": false,
+     "ready": 4
+    },
+    "seek_asked": 1342680,
+    "seek_landed": 1342680
+   },
+   {
+    "file": "03-7350079a-a75-later.jpg",
+    "ayah": 75,
+    "label": "later",
+    "state": {
+     "t": 1346625,
+     "shown": 1244,
+     "expect": 1244,
+     "word": "75:6",
+     "paused": false,
+     "ready": 4
+    },
+    "seek_asked": 1342680,
+    "seek_landed": 1342680,
+    "window": {
+     "audio_ms": 4020,
+     "wall_ms": 4116,
+     "frames": 245,
+     "words_painted": 7,
+     "words_skipped": 0
+    }
+   },
+   {
+    "file": "03-7350079a-a138-start.jpg",
+    "ayah": 138,
+    "label": "start",
+    "state": {
+     "t": 2652694,
+     "shown": 2282,
+     "expect": 2282,
+     "word": "138:2",
+     "paused": false,
+     "ready": 4
+    },
+    "seek_asked": 2651480,
+    "seek_landed": 2651480
+   },
+   {
+    "file": "03-7350079a-a138-later.jpg",
+    "ayah": 138,
+    "label": "later",
+    "state": {
+     "t": 2655381,
+     "shown": 2283,
+     "expect": 2283,
+     "word": "138:3",
+     "paused": false,
+     "ready": 4
+    },
+    "seek_asked": 2651480,
+    "seek_landed": 2651480,
+    "window": {
+     "audio_ms": 4004,
+     "wall_ms": 4109,
+     "frames": 244,
+     "words_painted": 4,
+     "words_skipped": 0
+    }
+   }
+  ],
+  "errors": []
+ },
+ {
+  "rid": "68f3f43c-3920-4865-81c3-9cb5dfed82d0",
+  "title": "Ahmad Deban",
+  "subtitle": "AlDorai A'n Al-Kisa'ai · murattal · surah 1",
+  "why": "weakest in audio check (50% of ayah starts off by >300 ms)",
+  "surah": 1,
+  "audio_metrics": {
+   "rid": "68f3f43c-3920-4865-81c3-9cb5dfed82d0",
+   "surah": 1,
+   "audio_ms": 32140,
+   "word_voiced": 0.858,
+   "pause_voiced": 0.522,
+   "onsets_found": 6,
+   "ayahs": 7,
+   "onset_median_ms": 50,
+   "onset_p90_abs_ms": 1110,
+   "onset_late_share": 0.5
+  },
+  "shots": [
+   {
+    "file": "04-68f3f43c-a1-start.jpg",
+    "ayah": 1,
+    "label": "start",
+    "state": {
+     "t": 1227,
+     "shown": 1,
+     "expect": 1,
+     "word": "1:2",
+     "paused": false,
+     "ready": 4
+    },
+    "seek_asked": 0,
+    "seek_landed": 0
+   },
+   {
+    "file": "04-68f3f43c-a1-later.jpg",
+    "ayah": 1,
+    "label": "later",
+    "state": {
+     "t": 3939,
+     "shown": 3,
+     "expect": 3,
+     "word": "1:4",
+     "paused": false,
+     "ready": 4
+    },
+    "seek_asked": 0,
+    "seek_landed": 0,
+    "window": {
+     "audio_ms": 4016,
+     "wall_ms": 4104,
+     "frames": 244,
+     "words_painted": 6,
+     "words_skipped": 0
+    }
+   },
+   {
+    "file": "04-68f3f43c-a4-start.jpg",
+    "ayah": 4,
+    "label": "start",
+    "state": {
+     "t": 9224,
+     "shown": 10,
+     "expect": 10,
+     "word": "4:1",
+     "paused": false,
+     "ready": 4
+    },
+    "seek_asked": 8000,
+    "seek_landed": 8000
+   },
+   {
+    "file": "04-68f3f43c-a4-later.jpg",
+    "ayah": 4,
+    "label": "later",
+    "state": {
+     "t": 11909,
+     "shown": 14,
+     "expect": 14,
+     "word": "5:2",
+     "paused": false,
+     "ready": 4
+    },
+    "seek_asked": 8000,
+    "seek_landed": 8000,
+    "window": {
+     "audio_ms": 3983,
+     "wall_ms": 4081,
+     "frames": 242,
+     "words_painted": 6,
+     "words_skipped": 0
+    }
+   },
+   {
+    "file": "04-68f3f43c-a7-start.jpg",
+    "ayah": 7,
+    "label": "start",
+    "state": {
+     "t": 18600,
+     "shown": 20,
+     "expect": 20,
+     "word": "7:1",
+     "paused": false,
+     "ready": 4
+    },
+    "seek_asked": 17360,
+    "seek_landed": 17360
+   },
+   {
+    "file": "04-68f3f43c-a7-later.jpg",
+    "ayah": 7,
+    "label": "later",
+    "state": {
+     "t": 21301,
+     "shown": 23,
+     "expect": 23,
+     "word": "7:4",
+     "paused": false,
+     "ready": 4
+    },
+    "seek_asked": 17360,
+    "seek_landed": 17360,
+    "window": {
+     "audio_ms": 4023,
+     "wall_ms": 4104,
+     "frames": 244,
+     "words_painted": 5,
+     "words_skipped": 0
+    }
+   }
+  ],
+  "errors": []
+ },
+ {
+  "rid": "e447f8d6-5df0-4950-8272-efbc08c6717a",
+  "title": "Khalid Al-Jileel",
+  "subtitle": "Hafs A'n Assem · murattal 2 · surah 67",
+  "why": "weakest in audio check (29% of ayah starts off by >300 ms)",
+  "surah": 67,
+  "audio_metrics": {
+   "rid": "e447f8d6-5df0-4950-8272-efbc08c6717a",
+   "surah": 67,
+   "audio_ms": 441200,
+   "word_voiced": 0.689,
+   "pause_voiced": 0.604,
+   "onsets_found": 27,
+   "ayahs": 30,
+   "onset_median_ms": -20,
+   "onset_p90_abs_ms": 988,
+   "onset_late_share": 0.296,
+   "drift_ms_per_min": 63.3
+  },
+  "shots": [
+   {
+    "file": "05-e447f8d6-a1-start.jpg",
+    "ayah": 1,
+    "label": "start",
+    "state": {
+     "t": 7423,
+     "shown": 0,
+     "expect": 0,
+     "word": "1:1",
+     "paused": false,
+     "ready": 4
+    },
+    "seek_asked": 6200,
+    "seek_landed": 6200
+   },
+   {
+    "file": "05-e447f8d6-a1-later.jpg",
+    "ayah": 1,
+    "label": "later",
+    "state": {
+     "t": 10120,
+     "shown": 4,
+     "expect": 4,
+     "word": "1:5",
+     "paused": false,
+     "ready": 4
+    },
+    "seek_asked": 6200,
+    "seek_landed": 6200,
+    "window": {
+     "audio_ms": 3997,
+     "wall_ms": 4093,
+     "frames": 243,
+     "words_painted": 6,
+     "words_skipped": 0
+    }
+   },
+   {
+    "file": "05-e447f8d6-a16-start.jpg",
+    "ayah": 16,
+    "label": "start",
+    "state": {
+     "t": 235310,
+     "shown": 161,
+     "expect": 161,
+     "word": "16:1",
+     "paused": false,
+     "ready": 4
+    },
+    "seek_asked": 234080,
+    "seek_landed": 234080
+   },
+   {
+    "file": "05-e447f8d6-a16-later.jpg",
+    "ayah": 16,
+    "label": "later",
+    "state": {
+     "t": 237993,
+     "shown": 164,
+     "expect": 164,
+     "word": "16:4",
+     "paused": false,
+     "ready": 4
+    },
+    "seek_asked": 234080,
+    "seek_landed": 234080,
+    "window": {
+     "audio_ms": 4003,
+     "wall_ms": 4088,
+     "frames": 243,
+     "words_painted": 5,
+     "words_skipped": 0
+    }
+   },
+   {
+    "file": "05-e447f8d6-a28-start.jpg",
+    "ayah": 28,
+    "label": "start",
+    "state": {
+     "t": 397994,
+     "shown": 296,
+     "expect": 296,
+     "word": "28:2",
+     "paused": false,
+     "ready": 4
+    },
+    "seek_asked": 396760,
+    "seek_landed": 396760
+   },
+   {
+    "file": "05-e447f8d6-a28-later.jpg",
+    "ayah": 28,
+    "label": "later",
+    "state": {
+     "t": 400710,
+     "shown": 299,
+     "expect": 299,
+     "word": "28:5",
+     "paused": false,
+     "ready": 4
+    },
+    "seek_asked": 396760,
+    "seek_landed": 396760,
+    "window": {
+     "audio_ms": 4024,
+     "wall_ms": 4119,
+     "frames": 244,
+     "words_painted": 6,
+     "words_skipped": 0
+    }
+   }
+  ],
+  "errors": []
+ },
+ {
+  "rid": "a540753f-9a52-4695-aad0-ff017db50a09",
+  "title": "Ahmad Deban",
+  "subtitle": "Ibn Jammaz A'n Abi Ja'far · murattal · surah 1",
+  "why": "weakest in audio check (28% of ayah starts off by >300 ms)",
+  "surah": 1,
+  "audio_metrics": {
+   "rid": "a540753f-9a52-4695-aad0-ff017db50a09",
+   "surah": 1,
+   "audio_ms": 38540,
+   "word_voiced": 0.859,
+   "pause_voiced": null,
+   "onsets_found": 7,
+   "ayahs": 7,
+   "onset_median_ms": -60,
+   "onset_p90_abs_ms": 1052,
+   "onset_late_share": 0.286
+  },
+  "shots": [
+   {
+    "file": "06-a540753f-a1-start.jpg",
+    "ayah": 1,
+    "label": "start",
+    "state": {
+     "t": 1232,
+     "shown": 1,
+     "expect": 1,
+     "word": "1:2",
+     "paused": false,
+     "ready": 4
+    },
+    "seek_asked": 0,
+    "seek_landed": 0
+   },
+   {
+    "file": "06-a540753f-a1-later.jpg",
+    "ayah": 1,
+    "label": "later",
+    "state": {
+     "t": 3931,
+     "shown": 3,
+     "expect": 3,
+     "word": "1:4",
+     "paused": false,
+     "ready": 4
+    },
+    "seek_asked": 0,
+    "seek_landed": 0,
+    "window": {
+     "audio_ms": 4008,
+     "wall_ms": 4106,
+     "frames": 243,
+     "words_painted": 5,
+     "words_skipped": 0
+    }
+   },
+   {
+    "file": "06-a540753f-a4-start.jpg",
+    "ayah": 4,
+    "label": "start",
+    "state": {
+     "t": 10951,
+     "shown": 11,
+     "expect": 11,
+     "word": "4:2",
+     "paused": false,
+     "ready": 4
+    },
+    "seek_asked": 9720,
+    "seek_landed": 9720
+   },
+   {
+    "file": "06-a540753f-a4-later.jpg",
+    "ayah": 4,
+    "label": "later",
+    "state": {
+     "t": 13641,
+     "shown": 12,
+     "expect": 12,
+     "word": "4:3",
+     "paused": false,
+     "ready": 4
+    },
+    "seek_asked": 9720,
+    "seek_landed": 9720,
+    "window": {
+     "audio_ms": 3991,
+     "wall_ms": 4078,
+     "frames": 242,
+     "words_painted": 4,
+     "words_skipped": 0
+    }
+   },
+   {
+    "file": "06-a540753f-a7-start.jpg",
+    "ayah": 7,
+    "label": "start",
+    "state": {
+     "t": 22546,
+     "shown": 20,
+     "expect": 20,
+     "word": "7:1",
+     "paused": false,
+     "ready": 4
+    },
+    "seek_asked": 21320,
+    "seek_landed": 21320
+   },
+   {
+    "file": "06-a540753f-a7-later.jpg",
+    "ayah": 7,
+    "label": "later",
+    "state": {
+     "t": 25249,
+     "shown": 23,
+     "expect": 23,
+     "word": "7:4",
+     "paused": false,
+     "ready": 4
+    },
+    "seek_asked": 21320,
+    "seek_landed": 21320,
+    "window": {
+     "audio_ms": 4030,
+     "wall_ms": 4121,
+     "frames": 245,
+     "words_painted": 5,
+     "words_skipped": 0
+    }
+   }
+  ],
+  "errors": []
+ }
+]
