@@ -85,7 +85,7 @@ Enforcement:
 
 ## Fork override instructions
 
-1. **Scheme.** Set `scheme` in `app.config.js`. Run prebuild (or mirror the plugin output in hand-maintained native trees: `BayaanURLScheme` in `ios/<App>/Info.plist`, `BAYAAN_URL_SCHEME = <scheme>;` in both `BayaanWidgetsExtension` build configurations, and `bayaan_widgets_url_scheme` in `android/app/src/main/res/values/bayaan_widgets.xml`).
+1. **Scheme.** Set `scheme` in `app.config.js`. Run prebuild (or mirror the plugin output in hand-maintained native trees: `BayaanURLScheme` in `ios/<App>/Info.plist`, `BAYAAN_URL_SCHEME = <scheme>;` in both `BayaanWidgetsExtension` build configurations, and `bayaan_widgets_url_scheme` in `android/app/src/main/res/values/bayaan_widgets.xml`). The Share Extension needs nothing extra after prebuild: `expo-share-intent` regenerates `ios/ShareExtension/ShareViewController.swift` from `scheme` (its `shareProtocol` and `<scheme>ShareKey`). A hand-maintained tree must edit those two constants.
 2. **Name.** Set `name` in `app.config.js`. Widgets, CarPlay and Android Auto pick it up from the display name and app label; the plugin regenerates `bayaan_widget_now_label`. For the four App Intent strings, add `Localizable.xcstrings` entries keyed by the English text.
 3. **Mark.** iOS: add `targets/widgets/Assets.xcassets/BrandMark.imageset` (single-color PDF or SVG). Android: add `android/app/src/main/res/drawable/bayaan_mark.xml`.
 4. **Widgets.** In `config/nativeWidgets.config.js` (plain CJS, keep it import-free), set `widgets: [...]` to the ids to ship; turning off `adhkar`, `sleepTimer` or `ambientAudioOverlay` in `config/featureFlags.ts` applies on top. Rebuild natively (prebuild runs the plugin).
@@ -114,4 +114,3 @@ Enforcement:
 ## Open questions
 
 - Should `widgets` also gate the car (e.g. hide the car entirely)? Today the car follows only `userUploads`.
-- The Share Extension (`expo-share-intent`) still hardcodes its own `bayaan` scheme; out of scope here.
