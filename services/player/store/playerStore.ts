@@ -114,7 +114,8 @@ export function currentPlayOpId(): number {
  * newer load started during the pause, the same as loadTrackAtIndex().
  */
 async function pauseForEmptyQueue(): Promise<boolean> {
-  const opId = ++playOpId;
+  invalidatePlayOps();
+  const opId = playOpId;
   try {
     await expoAudioService.pause();
   } catch (error) {
