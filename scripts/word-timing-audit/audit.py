@@ -84,18 +84,49 @@ if LIMIT:
     ids = ids[:LIMIT]
 
 
-def probe_duration(url):
+def load_versions():
+    src = open(os.path.join(ROOT, 'utils/audioFileUrl.ts')).read()
+    out = {}
+    for rid, val in re.findall(r"'([0-9a-f-]{36})':\s*(\d+|\{[^}]*\})", src):
+        out[rid] = int(val) if val.isdigit() else {int(a): int(b) for a, b in re.findall(r'(\d+)\s*:\s*(\d+)', val)}
+    return out
+VERSIONS = load_versions()
+
+
+def audio_url(rid, s):
+    meta = RW.get(rid) or {}
+    if not meta.get('server'):
+        return None
+    e = VERSIONS.get(rid)
+    v = e if isinstance(e, int) else (e or {}).get(s)
+    url = f"{meta['server'].rstrip('/')}/{s:03d}.mp3"
+    return f'{url}?v={v}' if v else url
+
+
+def probe_duration(url, full=False):
+    """Header estimate (fast) or a full decode (exact)."""
     try:
-        r = subprocess.run(['ffprobe', '-v', 'error', '-rw_timeout', '30000000', '-show_entries', 'format=duration', '-of', 'csv=p=0', url],
-                           capture_output=True, text=True, timeout=90)
-        return round(float(r.stdout.strip()) * 1000) if r.stdout.strip() else None
+        if not full:
+            r = subprocess.run(['ffprobe', '-v', 'error', '-rw_timeout', '30000000', '-user_agent', 'bayaan-word-audit',
+                                '-show_entries', 'format=duration', '-of', 'csv=p=0', url], capture_output=True, text=True, timeout=90)
+            return round(float(r.stdout.strip()) * 1000) if r.stdout.strip() else None
+        r = subprocess.run(['ffmpeg', '-v', 'error', '-rw_timeout', '30000000', '-user_agent', 'bayaan-word-audit', '-i', url,
+                            '-ac', '1', '-ar', '8000', '-f', 's16le', '-'], capture_output=True, timeout=600)
+        return round(len(r.stdout) / 2 / 8) if r.stdout else None
     except Exception:
         return None
 
 
+# quran.com word segmentation differs from data/quran.json in three ayahs,
+# where the bundled text joins two words.
+QURANCOM = {(15, 7): 8, (27, 20): 12, (36, 22): 8}
+
+
 def audit_file(rid, s):
-    row = {'rid': rid, 'surah': s, 'issues': {}}
-    def flag(k, detail=None):
+    row = {'rid': rid, 'surah': s, 'issues': {}, 'n': {}}
+    N = row['n']
+    def flag(k, detail=None, count=1):
+        N[k] = N.get(k, 0) + count
         row['issues'].setdefault(k, [])
         if detail is not None and len(row['issues'][k]) < 6:
             row['issues'][k].append(detail)
@@ -120,84 +151,103 @@ def audit_file(rid, s):
     elif exp_ayahs and len(ayahs) != exp_ayahs:
         flag('ayah_count', f'{len(ayahs)} vs {exp_ayahs}')
     words_total = exp_total = 0
-    word_mismatch = 0
-    lt200 = 0
     prev_end = None
-    first_from = last_to = last_word_end = None
+    last_to = last_word_end = None
     for a in ayahs:
-        n = a.get('ayah'); fr, to = a.get('from'), a.get('to'); ws = a.get('words')
-        if not isinstance(ws, list) or not isinstance(fr, (int, float)) or not isinstance(to, (int, float)):
-            flag('bad_ayah_shape', n); continue
-        if first_from is None:
-            first_from = fr
-        last_to = to
-        if to <= fr:
-            flag('ayah_nonpositive', n)
-        words_total += len(ws)
+        n = a.get('ayah'); fr, to = a.get('from'), a.get('to'); ws = a.get('words') or []
+        e = None
         if ref is not None:
-            e = ref.get((s, n))
+            e = QURANCOM.get((s, n), ref.get((s, n))) if numbering == 'hafs' else ref.get((s, n))
             if e is None:
                 flag('ayah_not_in_text', n)
             else:
                 exp_total += e
-                if e != len(ws):
-                    word_mismatch += 1
-                    flag('word_count', f'{s}:{n} {len(ws)} vs {e}')
+            if numbering == 'hafs' and (s, n) in QURANCOM and len(ws) == QURANCOM[(s, n)]:
+                flag('text_split_differs', f'{s}:{n}')
+        if fr is None or to is None:
+            flag('ayah_untimed', f'{s}:{n}'); continue
+        last_to = to
+        if to <= fr:
+            flag('ayah_zero_length', f'{s}:{n}')
         if not ws:
-            flag('ayah_no_words', n); continue
+            flag('ayah_no_words', f'{s}:{n}'); continue
+        words_total += len(ws)
+        if e is not None and e != len(ws):
+            flag('word_count', f'{s}:{n} {len(ws)} vs {e}')
         pe = None
+        durs = []
         for i, w in enumerate(ws):
             if not (isinstance(w, list) and len(w) >= 2 and all(isinstance(x, (int, float)) for x in w[:2])):
-                flag('bad_word_shape', f'{s}:{n}:{i+1}'); continue
+                flag('bad_word_shape', f'{s}:{n}:{i+1}'); durs.append(None); continue
             ws_, we = w[0], w[1]
             dur = we - ws_
+            durs.append(dur)
             if dur <= 0:
-                flag('word_nonpositive', f'{s}:{n}:{i+1}')
+                flag('word_zero_length', f'{s}:{n}:{i+1}')
             elif dur < 60:
-                flag('word_short', f'{s}:{n}:{i+1} {dur}ms')
+                flag('word_under_60ms', f'{s}:{n}:{i+1} {dur}ms')
             if 0 < dur < 200:
-                lt200 += 1
+                flag('word_under_200ms')
             if dur > 12000 and i < len(ws) - 1:
-                flag('word_long', f'{s}:{n}:{i+1} {dur/1000:.1f}s')
+                flag('word_over_12s', f'{s}:{n}:{i+1} {dur/1000:.1f}s')
             if pe is not None:
                 if ws_ < pe - 1:
                     flag('word_overlap', f'{s}:{n}:{i+1} {pe-ws_}ms')
                 elif ws_ - pe > 2500:
-                    flag('word_gap', f'{s}:{n}:{i} to {i+1} {(ws_-pe)/1000:.1f}s')
+                    flag('word_gap_over_2_5s', f'{s}:{n}:{i} to {i+1} {(ws_-pe)/1000:.1f}s')
             if ws_ < fr - 1 or we > to + 1:
                 flag('word_outside_ayah', f'{s}:{n}:{i+1}')
             pe = we
-        if prev_end is not None and ws[0][0] < prev_end - 1:
+        # evenly squeezed placeholder words: 3+ in a row with the same short length
+        run = 1
+        for i in range(1, len(durs)):
+            if durs[i] is not None and durs[i] == durs[i-1] and 0 < durs[i] <= 120:
+                run += 1
+                if run == 3:
+                    flag('words_squeezed', f'{s}:{n}', 3)
+                elif run > 3:
+                    N['words_squeezed'] += 1
+            else:
+                run = 1
+        if prev_end is not None and isinstance(ws[0], list) and ws[0][0] < prev_end - 1:
             flag('ayah_word_overlap', f'{s}:{n}')
-        prev_end = ws[-1][1]
-        last_word_end = ws[-1][1]
-    row.update(words=words_total, words_lt200=lt200, exp_words=exp_total, ayahs_word_mismatch=word_mismatch,
-               first_from=first_from, last_to=last_to, last_word_end=last_word_end)
+        if isinstance(ws[-1], list):
+            prev_end = ws[-1][1]; last_word_end = ws[-1][1]
+    row.update(words=words_total, exp_words=exp_total, last_to=last_to, last_word_end=last_word_end)
 
     # ayah-level file the app plays today
     st2, b2 = get(f'{CDN}/timestamps/{rid}/{s:03d}.json')
     if st2 == 200:
         try:
             at = {x['ayahNumber']: (x['timestampFrom'], x['timestampTo']) for x in json.loads(b2)}
-            diffs = []
+            dfrom, dto = [], []
             for a in ayahs:
-                if a.get('ayah') in at:
+                if a.get('ayah') in at and a.get('from') is not None and a.get('to') is not None:
                     f0, t0 = at[a['ayah']]
-                    diffs.append(max(abs(f0 - a['from']), abs(t0 - a['to'])))
-            missing = [a.get('ayah') for a in ayahs if a.get('ayah') not in at]
-            row['ayahfile_maxdiff'] = max(diffs) if diffs else None
-            if diffs and max(diffs) > 50:
-                flag('ayah_bounds_differ', f'max {max(diffs)}ms')
-            if missing or len(at) != len(ayahs):
+                    if a['ayah'] != ayahs[0].get('ayah'):
+                        dfrom.append(abs(f0 - a['from']))
+                    dto.append(abs(t0 - a['to']))
+            row['ayahfile_from_maxdiff'] = max(dfrom) if dfrom else None
+            row['ayahfile_to_maxdiff'] = max(dto) if dto else None
+            row['ayahfile_last_to'] = max(t for _, t in at.values()) if at else None
+            if (dfrom and max(dfrom) > 50) or (dto and max(dto) > 50):
+                flag('ayah_bounds_differ', f'from {max(dfrom) if dfrom else 0}ms, to {max(dto) if dto else 0}ms')
+            if len(at) != len(ayahs):
                 flag('ayah_sets_differ', f'{len(ayahs)} vs {len(at)}')
-        except Exception:
-            flag('ayahfile_bad')
+        except Exception as ex:
+            flag('ayahfile_bad', str(ex)[:80])
     else:
         flag('ayahfile_missing', st2)
 
-    meta = RW.get(rid)
-    if meta and meta.get('server') and os.environ.get('PROBE', '1') == '1':
-        dur = probe_duration(f"{meta['server'].rstrip('/')}/{s:03d}.mp3")
+    url = audio_url(rid, s)
+    row['audio_url'] = url
+    if url and os.environ.get('PROBE', '1') == '1':
+        dur = probe_duration(url)
+        if dur and last_to and (last_to > dur + 1500 or (last_word_end and dur - last_word_end > 30000)):
+            exact = probe_duration(url, full=True)
+            if exact:
+                row['audio_header_ms'] = dur
+                dur = exact
         row['audio_ms'] = dur
         if dur and last_to:
             if last_to > dur + 1500:
@@ -248,8 +298,7 @@ def main():
             'ayahfile_without_words': sorted(set(AYAHF.get(rid, [])) - set(WORDS[rid])),
             'numbering': sorted({r.get('numbering') for r in mine if r.get('numbering')}),
             'words': sum(r.get('words', 0) for r in mine), 'exp_words': sum(r.get('exp_words', 0) for r in mine),
-            'ayahs_word_mismatch': sum(r.get('ayahs_word_mismatch', 0) for r in mine),
-            'words_lt200': sum(r.get('words_lt200', 0) for r in mine),
+            'counts': {k: sum(r['n'].get(k, 0) for r in mine) for k in sorted({k for r in mine for k in r['n']})},
             'issue_files': {k: sum(1 for r in mine if k in r['issues']) for k in sorted({k for r in mine for k in r['issues']})},
         })
     in_catalog_with_audio = [rid for rid in RW if RW[rid]['surah_list']]
@@ -259,6 +308,7 @@ def main():
         'catalog_recitations': len(RW), 'catalog_recitations_without_words': sorted(set(in_catalog_with_audio) - set(WORDS)),
         'words_not_in_catalog': sorted(set(WORDS) - set(RW)),
         'numbering_counts': {n: sum(1 for r in rows if r.get('numbering') == n) for n in sorted({str(r.get('numbering')) for r in rows})},
+        'issue_totals': {k: sum(r['n'].get(k, 0) for r in rows) for k in sorted({k for r in rows for k in r['n']})},
         'issue_counts': {k: sum(1 for r in rows if k in r['issues']) for k in sorted({k for r in rows for k in r['issues']})},
         'words_total': sum(r.get('words', 0) for r in rows), 'exp_words_total': sum(r.get('exp_words', 0) for r in rows),
     }

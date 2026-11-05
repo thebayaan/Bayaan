@@ -44,7 +44,7 @@ def find(name_part, style_part=None, rewayah_part='hafs'):
 
 
 picks = []  # (rid, why)
-for name, style in [('Alafasy', None), ('Sudais', None), ('Abdulbasit', 'Mujawwad'), ('Minshawi', None), ('Hussary', None), ('Maher', None)]:
+for name, style in [('Alafasy', None), ('Sudais', None), ('Abdulbasit', 'Mujawwad'), ('Minshawi', None), ('Husary', None), ('Hussary', None), ('Maher', None)]:
     rid = find(name, style) or find(name)
     if rid and rid not in [p[0] for p in picks]:
         picks.append((rid, 'well-known recitation'))
@@ -61,7 +61,8 @@ for r in ranked[:3]:
 cases = []
 for rid, why in picks:
     a = audio[rid]; s = a['surah']; m = META[rid]
-    with urllib.request.urlopen(f'{CDN}/timestamps-words/{rid}/{s:03d}.json', timeout=60) as r:
+    req = urllib.request.Request(f'{CDN}/timestamps-words/{rid}/{s:03d}.json', headers={'User-Agent': 'bayaan-word-audit'})
+    with urllib.request.urlopen(req, timeout=60) as r:
         timing = json.load(r)
     text, font = text_for(timing.get('numbering'), s)
     env = json.load(open(os.path.join(OUT, 'envelopes', f'{rid}-{s:03d}.json')))
@@ -72,7 +73,7 @@ for rid, why in picks:
         ay = ayahs[min(len(ayahs) - 1, int(len(ayahs) * frac))]
         marks.append({'ayah': ay['ayah'], 'seek': max(0, ay['words'][0][0] - 600)})
     cases.append({'rid': rid, 'why': why, 'surah': s, 'title': f"{m.get('reciter')}", 'subtitle': f"{m.get('rewayah')} · {m.get('style') or ''} · surah {s}",
-                  'audio': f"{m['server'].rstrip('/')}/{s:03d}.mp3", 'timing': timing, 'text': {str(k): v for k, v in text.items()},
+                  'audio': next(f['audio_url'] for f in audit['files'] if f['rid'] == rid and f['surah'] == s), 'timing': timing, 'text': {str(k): v for k, v in text.items()},
                   'font': font, 'env': env, 'marks': marks, 'audio_metrics': {k: v for k, v in a.items() if k != 'offsets'}})
 json.dump(cases, open(os.path.join(OUT, 'cases.json'), 'w'), ensure_ascii=False)
 print('\n'.join(f"{c['title']} | {c['subtitle']} | {c['why']}" for c in cases))

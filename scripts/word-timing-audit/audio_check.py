@@ -33,7 +33,7 @@ def pick_surah(rid):
 
 
 def envelope(url):
-    p = subprocess.run(['ffmpeg', '-v', 'error', '-rw_timeout', '30000000', '-i', url, '-ac', '1', '-ar', '16000', '-f', 's16le', '-'],
+    p = subprocess.run(['ffmpeg', '-v', 'error', '-rw_timeout', '30000000', '-user_agent', 'bayaan-word-audit', '-i', url, '-ac', '1', '-ar', '16000', '-f', 's16le', '-'],
                        capture_output=True, timeout=600)
     x = np.frombuffer(p.stdout, dtype=np.int16).astype(np.float32) / 32768
     if len(x) < 16000:
@@ -49,9 +49,11 @@ def check(rid):
     if not s or not meta or not meta.get('server'):
         return None
     try:
-        with urllib.request.urlopen(f'{CDN}/timestamps-words/{rid}/{s:03d}.json', timeout=60) as r:
+        req = urllib.request.Request(f'{CDN}/timestamps-words/{rid}/{s:03d}.json', headers={'User-Agent': 'bayaan-word-audit'})
+        with urllib.request.urlopen(req, timeout=60) as r:
             d = json.load(r)
-        env = envelope(f"{meta['server'].rstrip('/')}/{s:03d}.mp3")
+        url = next((f['audio_url'] for f in audit['files'] if f['rid'] == rid and f['surah'] == s), None)
+        env = envelope(url)
     except Exception as e:
         return {'rid': rid, 'surah': s, 'error': str(e)[:200]}
     if env is None:
