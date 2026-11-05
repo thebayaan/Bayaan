@@ -64,10 +64,22 @@ jobs:
           print('rewayat keys:', sorted(rw[0].keys()) if rw else None)
           EOF
 
+      # reuse.txt names an earlier results branch: take its audit and audio
+      # results and only redo the playback cases and harness.
+      - name: Reuse earlier results
+        if: hashFiles('scripts/word-timing-audit/reuse.txt') != ''
+        run: |
+          b=$(cat scripts/word-timing-audit/reuse.txt)
+          git fetch -q origin "$b"
+          git show FETCH_HEAD:audit.json > out/audit.json
+          git show FETCH_HEAD:audio.json > out/audio.json
+
       - name: Audit timing files
+        if: hashFiles('scripts/word-timing-audit/reuse.txt') == ''
         run: python scripts/word-timing-audit/audit.py out | tail -80
 
       - name: Check timings against the audio
+        if: hashFiles('scripts/word-timing-audit/reuse.txt') == ''
         run: python scripts/word-timing-audit/audio_check.py out
 
       - name: Pick playback cases
@@ -88,6 +100,7 @@ jobs:
           mkdir -p /tmp/pub && cd /tmp/pub
           cp -r $GITHUB_WORKSPACE/out/* . 2>/dev/null || true
           rm -rf envelopes catalog.json
+          [ -f $GITHUB_WORKSPACE/scripts/word-timing-audit/reuse.txt ] && echo "reused $(cat $GITHUB_WORKSPACE/scripts/word-timing-audit/reuse.txt)" > REUSED
           git init -q -b main && git config user.name github-actions && git config user.email github-actions@users.noreply.github.com
           git add -A && git commit -qm "word timing audit $sha"
           git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" HEAD:refs/heads/word-timing/$sha

@@ -1,0 +1,7 @@
+[
+ {"rid":"021a596f-6bd8-4f98-9486-ca4d97d947d0","surah":89,"at":{"ayah":18,"word":-1,"offset":-1200},"label":"Untimed ayahs: 89:19 to 89:23 have no times"},
+ {"rid":"0212ec09-a777-4e3c-b0fa-1f5da50826c6","surah":79,"at":{"ayah":40,"word":1,"offset":-700},"label":"Squeezed words: five 56 ms words, then a zero-length ayah 41"},
+ {"rid":"007afad1-f54d-4e50-833e-9bb3b5ee95e4","surah":5,"at":{"ayah":117,"word":24,"offset":-900},"label":"One word holding 24.3 s"},
+ {"rid":"457d026c-d446-4e8e-9022-cbdf39c479fd","surah":15,"at":{"ayah":99,"word":-1,"offset":-1500},"label":"Audio runs 41 min past the last timed word"},
+ {"rid":"8a9cd70c-7135-467f-9357-e5eebe124453","surah":67,"at":{"ayah":29,"word":1,"offset":-600},"label":"Drift: ayah starts slip about 80 ms per minute"}
+]
