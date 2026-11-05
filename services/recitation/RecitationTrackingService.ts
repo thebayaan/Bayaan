@@ -25,6 +25,7 @@ import type {EngineMessage, RecitationStats} from './recitationEngine';
 import {
   applyVerdicts,
   confirmDue,
+  dropSuspects,
   emptyMarkBook,
   nextConfirmAt,
   shownMarks,
@@ -443,7 +444,13 @@ function handleEvent(msg: EngineMessage): void {
     trace(`engine ${msg.event}`);
   }
   if (LOCK_EVENTS.has(msg.event)) setState({locked: true});
-  if (UNLOCK_EVENTS.has(msg.event)) setState({locked: false});
+  if (UNLOCK_EVENTS.has(msg.event)) {
+    setState({locked: false});
+    // What the engine suspected just before losing the reader is not
+    // trustworthy; marks already shown stay.
+    book = dropSuspects(book);
+    scheduleConfirm();
+  }
   if (FALLBACK_EVENTS.has(msg.event)) dropToTracking();
 }
 

@@ -1,6 +1,7 @@
 import {
   applyVerdicts,
   confirmDue,
+  dropSuspects,
   emptyMarkBook,
   MARK_CONFIRM_MS,
   NEXT_OK_WINDOW_MS,
@@ -12,9 +13,19 @@ import {
 function change(
   word: number,
   state: VerdictChange['state'],
-  {surah = 67, ayah = 12, totalWords = 10} = {},
+  {
+    surah = 67,
+    ayah = 12,
+    totalWords = 10,
+    detail,
+  }: {
+    surah?: number;
+    ayah?: number;
+    totalWords?: number;
+    detail?: VerdictChange['detail'];
+  } = {},
 ): VerdictChange {
-  return {surah, ayah, word, totalWords, state};
+  return {surah, ayah, word, totalWords, state, ...(detail ? {detail} : {})};
 }
 
 function run(steps: [number, VerdictChange[]][], until: number) {
@@ -253,5 +264,116 @@ describe('word marks', () => {
     expect(nextConfirmAt(followed.book)).toBe(MARK_CONFIRM_MS);
     const late = applyVerdicts(waiting.book, [change(3, 'ok')], 900);
     expect(nextConfirmAt(late.book)).toBe(900);
+  });
+
+  describe('the engine scores behind a bad verdict', () => {
+    it('a skip whose expected word still fits the audio is not a mistake: the alignment slipped, not the reader', () => {
+      const {book} = run(
+        [
+          [0, [change(4, 'skipped', {detail: {gop: -1.2, heardRatio: 0.1}})]],
+          [200, [change(5, 'ok')]],
+        ],
+        MARK_CONFIRM_MS * 2,
+      );
+      expect(shownMarks(book, new Set())).toEqual([]);
+    });
+
+    it('a skip whose word does not fit the audio at all is a mistake', () => {
+      const {book} = run(
+        [
+          [0, [change(4, 'skipped', {detail: {gop: -13, heardRatio: 0}})]],
+          [200, [change(5, 'ok')]],
+        ],
+        MARK_CONFIRM_MS,
+      );
+      expect(shownMarks(book, new Set()).map(m => m.word)).toEqual([4]);
+    });
+
+    it('a wrong word that fits the audio well is not a mistake', () => {
+      const {book} = run(
+        [
+          [0, [change(4, 'wrong', {detail: {gop: -0.4, heardRatio: 0.6}})]],
+          [200, [change(5, 'ok')]],
+        ],
+        MARK_CONFIRM_MS * 2,
+      );
+      expect(shownMarks(book, new Set())).toEqual([]);
+    });
+
+    it("an ayah's first word judged skipped though part of it was heard is not a mistake", () => {
+      const {book} = run(
+        [
+          [0, [change(0, 'skipped', {detail: {heardRatio: 0.3}})]],
+          [200, [change(1, 'ok')]],
+        ],
+        MARK_CONFIRM_MS * 2,
+      );
+      expect(shownMarks(book, new Set())).toEqual([]);
+    });
+
+    it("an ayah's first word with nothing of it heard is still missed", () => {
+      const {book} = run(
+        [
+          [0, [change(0, 'skipped', {detail: {heardRatio: 0}})]],
+          [200, [change(1, 'ok')]],
+        ],
+        MARK_CONFIRM_MS,
+      );
+      expect(shownMarks(book, new Set()).map(m => m.word)).toEqual([0]);
+    });
+  });
+
+  describe('confusion is not a slip', () => {
+    it('a suspect with three other words around it gone bad is dropped', () => {
+      const {book, confirmed} = run(
+        [
+          [
+            0,
+            [
+              change(3, 'wrong'),
+              change(4, 'skipped'),
+              change(5, 'wrong'),
+              change(6, 'skipped'),
+            ],
+          ],
+          [200, [change(7, 'ok'), change(8, 'ok')]],
+        ],
+        MARK_CONFIRM_MS * 2,
+      );
+      expect(confirmed).toEqual([]);
+      expect(shownMarks(book, new Set())).toEqual([]);
+    });
+
+    it('two other bad words around it are not enough to drop it', () => {
+      // Word 4 has two bad words around it (2 and 6); each slip is followed
+      // by a correct word.
+      const {book} = run(
+        [
+          [
+            0,
+            [
+              change(2, 'wrong'),
+              change(3, 'ok'),
+              change(4, 'skipped'),
+              change(5, 'ok'),
+              change(6, 'wrong'),
+              change(7, 'ok'),
+            ],
+          ],
+        ],
+        MARK_CONFIRM_MS,
+      );
+      expect(shownMarks(book, new Set()).map(m => m.word)).toEqual([2, 4, 6]);
+    });
+
+    it('when the engine loses the reader, pending suspects go but shown mistakes stay', () => {
+      let {book} = run(slip(2, 'wrong'), MARK_CONFIRM_MS);
+      book = applyVerdicts(book, [change(6, 'wrong')], 600).book;
+      book = dropSuspects(book);
+      expect(shownMarks(book, new Set()).map(m => m.word)).toEqual([2]);
+      book = applyVerdicts(book, [change(7, 'ok')], 700).book;
+      book = confirmDue(book, 5000).book;
+      expect(shownMarks(book, new Set()).map(m => m.word)).toEqual([2]);
+    });
   });
 });

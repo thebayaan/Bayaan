@@ -713,4 +713,18 @@ describe('RecitationTrackingService live mistakes', () => {
     expect(state().marks).toEqual([]);
     expect(mockLog.dismissWord).toHaveBeenCalledWith(take.id, 18, 3, 3);
   });
+
+  it('when the engine loses the reader, a suspicion not yet shown is dropped', async () => {
+    await lockedTake();
+    engineControl.sendEvent?.(
+      wordVerdicts([{surah: 18, ayah: 3, word: 2, state: 'wrong'}]),
+    );
+    engineControl.sendEvent?.(engineDebug('lost'));
+    engineControl.sendEvent?.(wordProgress(18, 3, 4, 9));
+    engineControl.sendEvent?.(
+      wordVerdicts([{surah: 18, ayah: 3, word: 3, state: 'ok'}]),
+    );
+    await listenFor(900);
+    expect(state().marks).toEqual([]);
+  });
 });

@@ -10,6 +10,21 @@
 
 export type VerdictState = 'ok' | 'unsure' | 'wrong' | 'skipped' | 'pending';
 
+/** The engine's scores behind a bad verdict (Tilawa's WordVerdict). */
+export interface VerdictDetail {
+  /**
+   * Per-token log-likelihood ratio of the best path forced to the expected
+   * word against the free best path over the word's audio: about 0 when the
+   * expected word fits the audio, strongly negative when it does not.
+   * Correction mode, interior words with both neighbours heard.
+   */
+  gop?: number | null;
+  /** Share of the word's expected sounds that were heard. */
+  heardRatio?: number | null;
+  /** Normalised distance between the heard and expected sounds. */
+  distance?: number | null;
+}
+
 /** One word's new verdict, in Tilawa's word index (0-based). */
 export interface VerdictChange {
   surah: number;
@@ -18,11 +33,18 @@ export interface VerdictChange {
   /** Words in the ayah, in Tilawa's segmentation. */
   totalWords: number;
   state: VerdictState;
+  /** Present on wrong and skipped verdicts. */
+  detail?: VerdictDetail;
 }
 
 /** 'missed': the word was not heard. 'wrong': something else was heard. */
 export type MarkKind = 'missed' | 'wrong';
-export type MarkStatus = 'suspect' | 'mistake' | 'corrected';
+/**
+ * 'noted': a bad verdict that is not a slip on its own (an ayah-edge
+ * 'wrong', a word that fits the audio, a suspect that flipped back or was
+ * dropped). Never shown; it counts towards the confusion rule.
+ */
+export type MarkStatus = 'suspect' | 'mistake' | 'corrected' | 'noted';
 
 export interface WordMark {
   surah: number;
@@ -35,6 +57,8 @@ export interface WordMark {
   since: number;
   /** A suspect: when one of the next words was heard correctly (ms). */
   followedAt?: number;
+  /** When the word last went wrong or skipped (ms). */
+  lastBadAt?: number;
 }
 
 export type MarkBook = ReadonlyMap<string, WordMark>;
@@ -59,6 +83,24 @@ export const MARK_CONFIRM_MS = 500;
  */
 export const NEXT_OK_WINDOW_MS = 3000;
 const NEXT_OK_WORDS = 2;
+
+// The engine's scores, measured on 135 bench recitations (9 reciters, 5
+// surahs, 852 planted mistakes) and checked with each reciter held out:
+// together with the confusion rule and dropping suspects when the engine
+// loses the reader, these removed 59% of false marks for 5% of real catches.
+/** A skip whose expected word still fits the audio this well is the
+ *  alignment slipping, not the reader. */
+export const SKIP_FITS_GOP = -5;
+/** Same for a wrong word, which needs a closer fit to be let off. */
+export const WRONG_FITS_GOP = -1;
+/** An ayah's first word (no fit score there) judged skipped though more
+ *  than this share of it was heard. */
+export const FIRST_SKIP_HEARD = 0.1;
+/** A suspect with this many other words around it gone bad at the same
+ *  time is confusion (noise, the tracker slipping), not a slip. */
+export const CONFUSED_NEIGHBOURS = 3;
+const NEIGHBOUR_SPAN = 3;
+const NEIGHBOUR_WINDOW_MS = 2000;
 
 /** `change` is one of the next NEXT_OK_WORDS words after `mark`. */
 function follows(mark: WordMark, change: VerdictChange): boolean {
@@ -89,11 +131,34 @@ function isBoundary(change: VerdictChange): boolean {
   return change.word <= 0 || change.word >= change.totalWords - 1;
 }
 
-/** The kind a verdict marks, or null when it is not a mistake. */
-function badKind(change: VerdictChange): MarkKind | null {
-  if (change.state === 'skipped') return 'missed';
-  if (change.state === 'wrong' && !isBoundary(change)) return 'wrong';
+function isBad(change: VerdictChange): boolean {
+  return change.state === 'wrong' || change.state === 'skipped';
+}
+
+/** The kind a bad verdict is suspected as, or null when it is not a slip. */
+function suspectKind(change: VerdictChange): MarkKind | null {
+  const gop = change.detail?.gop;
+  if (change.state === 'skipped') {
+    if (typeof gop === 'number' && gop > SKIP_FITS_GOP) return null;
+    if (
+      change.word === 0 &&
+      typeof gop !== 'number' &&
+      (change.detail?.heardRatio ?? 0) > FIRST_SKIP_HEARD
+    ) {
+      return null;
+    }
+    return 'missed';
+  }
+  if (change.state === 'wrong') {
+    if (isBoundary(change)) return null;
+    if (typeof gop === 'number' && gop > WRONG_FITS_GOP) return null;
+    return 'wrong';
+  }
   return null;
+}
+
+function noted(mark: WordMark, now?: number): WordMark {
+  return {...mark, status: 'noted', lastBadAt: now ?? mark.lastBadAt};
 }
 
 export function applyVerdicts(
@@ -111,20 +176,29 @@ export function applyVerdicts(
   for (const change of changes) {
     const key = markKey(change.surah, change.ayah, change.word);
     const mark = (next ?? book).get(key);
-    const kind = badKind(change);
-    if (kind) {
-      if (!mark || mark.status === 'corrected') {
-        write(key, {
-          surah: change.surah,
-          ayah: change.ayah,
-          word: change.word,
-          totalWords: change.totalWords,
-          kind,
-          status: 'suspect',
-          since: now,
-        });
-      } else if (mark.status === 'suspect' && mark.kind !== kind) {
-        write(key, {...mark, kind});
+    if (isBad(change)) {
+      const kind = suspectKind(change);
+      const fresh = {
+        surah: change.surah,
+        ayah: change.ayah,
+        word: change.word,
+        totalWords: change.totalWords,
+        since: now,
+        lastBadAt: now,
+      };
+      if (
+        kind &&
+        (!mark || mark.status === 'corrected' || mark.status === 'noted')
+      ) {
+        write(key, {...fresh, kind, status: 'suspect'});
+      } else if (kind && mark?.status === 'suspect') {
+        write(key, {...mark, kind, lastBadAt: now});
+      } else if (mark) {
+        write(key, {...mark, lastBadAt: now});
+      } else {
+        const asKind: MarkKind =
+          change.state === 'skipped' ? 'missed' : 'wrong';
+        write(key, {...fresh, kind: asKind, status: 'noted'});
       }
       continue;
     }
@@ -145,7 +219,7 @@ export function applyVerdicts(
     if (!mark) continue;
     if (mark.status === 'suspect') {
       // Flipped back inside the confirm window: never shown.
-      write(key, null);
+      write(key, noted(mark));
     } else if (mark.status === 'mistake' && change.state === 'ok') {
       const fixed: WordMark = {...mark, status: 'corrected'};
       write(key, fixed);
@@ -162,9 +236,28 @@ function dueAt(mark: WordMark): number {
     : Math.max(mark.since + MARK_CONFIRM_MS, mark.followedAt);
 }
 
+/** Other words around `mark` that went bad from just before it until now. */
+function confused(book: MarkBook, mark: WordMark, now: number): boolean {
+  let around = 0;
+  for (const m of book.values()) {
+    if (
+      m.surah !== mark.surah ||
+      m.ayah !== mark.ayah ||
+      m.word === mark.word ||
+      Math.abs(m.word - mark.word) > NEIGHBOUR_SPAN
+    ) {
+      continue;
+    }
+    const t = m.lastBadAt ?? m.since;
+    if (t >= mark.since - NEIGHBOUR_WINDOW_MS && t <= now) around += 1;
+  }
+  return around >= CONFUSED_NEIGHBOURS;
+}
+
 /**
  * Turns suspects that held for MARK_CONFIRM_MS and were followed by a
- * correct word into mistakes, and drops the ones never followed in time.
+ * correct word into mistakes, and drops the ones never followed in time or
+ * caught up in confusion.
  */
 export function confirmDue(book: MarkBook, now: number): MarkUpdate {
   let next: Map<string, WordMark> | null = null;
@@ -172,8 +265,8 @@ export function confirmDue(book: MarkBook, now: number): MarkUpdate {
   for (const [key, mark] of book) {
     if (mark.status !== 'suspect' || now < dueAt(mark)) continue;
     next ??= new Map(book);
-    if (mark.followedAt === undefined) {
-      next.delete(key);
+    if (mark.followedAt === undefined || confused(book, mark, now)) {
+      next.set(key, noted(mark));
       continue;
     }
     const shown: WordMark = {...mark, status: 'mistake'};
@@ -181,6 +274,20 @@ export function confirmDue(book: MarkBook, now: number): MarkUpdate {
     confirmed.push(shown);
   }
   return {book: next ?? book, confirmed, corrected: []};
+}
+
+/**
+ * The engine lost the reader (or went idle): its pending suspicions are no
+ * longer trustworthy. Shown mistakes stay.
+ */
+export function dropSuspects(book: MarkBook): MarkBook {
+  let next: Map<string, WordMark> | null = null;
+  for (const [key, mark] of book) {
+    if (mark.status !== 'suspect') continue;
+    next ??= new Map(book);
+    next.set(key, noted(mark));
+  }
+  return next ?? book;
 }
 
 /** The earliest time a suspect is shown or dropped, or null with none. */
@@ -220,6 +327,10 @@ export function shownMarks(
   skippedAyat: ReadonlySet<string>,
 ): WordMark[] {
   return [...book.values()]
-    .filter(m => m.status !== 'suspect' && !leftToAyahFlag(m, skippedAyat))
+    .filter(
+      m =>
+        (m.status === 'mistake' || m.status === 'corrected') &&
+        !leftToAyahFlag(m, skippedAyat),
+    )
     .sort((a, b) => a.surah - b.surah || a.ayah - b.ayah || a.word - b.word);
 }

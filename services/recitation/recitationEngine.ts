@@ -174,13 +174,24 @@ export async function createRecitationEngine(
       const key = `${v.surah}:${v.ayah}:${v.word}`;
       if (verdictStates.get(key) === v.state) continue;
       verdictStates.set(key, v.state);
-      changes.push({
+      const change: VerdictChange = {
         surah: v.surah,
         ayah: v.ayah,
         word: v.word,
         totalWords: session.wordCount(v.surah, v.ayah),
         state: v.state,
-      });
+      };
+      // The scores behind a bad verdict, so the marks can tell the reader's
+      // slip from the alignment's (wordMarks).
+      if (v.state === 'wrong' || v.state === 'skipped') {
+        const num = (x: unknown) => (typeof x === 'number' ? x : null);
+        change.detail = {
+          gop: num(v.gop),
+          heardRatio: num(v.heardRatio),
+          distance: num(v.distance),
+        };
+      }
+      changes.push(change);
     }
     if (changes.length > 0) onEvent({type: 'word_verdicts', changes});
   }

@@ -256,7 +256,14 @@ describe('createRecitationEngine', () => {
       {
         type: 'word_verdicts',
         changes: [
-          {surah: 67, ayah: 12, word: 1, totalWords: 10, state: 'wrong'},
+          {
+            surah: 67,
+            ayah: 12,
+            word: 1,
+            totalWords: 10,
+            state: 'wrong',
+            detail: {gop: null, heardRatio: null, distance: null},
+          },
           {surah: 67, ayah: 12, word: 2, totalWords: 10, state: 'pending'},
         ],
       },
@@ -297,5 +304,43 @@ describe('createRecitationEngine', () => {
     expect(createZipformerSession).toHaveBeenCalledWith(
       expect.objectContaining({config: {commitDwell: 2}}),
     );
+  });
+
+  it("a wrong or skipped verdict carries the engine's scores behind it", async () => {
+    const events: unknown[] = [];
+    const engine = await createRecitationEngine(ASSETS, msg => {
+      events.push(msg);
+    });
+    mockSession.verdicts.mockReturnValueOnce([
+      {...verdict(0, 'ok'), gop: -0.2, heardRatio: 1, distance: 0},
+      {...verdict(1, 'skipped'), gop: -13.4, heardRatio: 0, distance: 1},
+      {...verdict(2, 'wrong'), heardRatio: 0.6, distance: 0.5},
+    ]);
+    engine.feed(pcm());
+    await engine.stop();
+    expect(events).toEqual([
+      {
+        type: 'word_verdicts',
+        changes: [
+          {surah: 67, ayah: 12, word: 0, totalWords: 10, state: 'ok'},
+          {
+            surah: 67,
+            ayah: 12,
+            word: 1,
+            totalWords: 10,
+            state: 'skipped',
+            detail: {gop: -13.4, heardRatio: 0, distance: 1},
+          },
+          {
+            surah: 67,
+            ayah: 12,
+            word: 2,
+            totalWords: 10,
+            state: 'wrong',
+            detail: {gop: null, heardRatio: 0.6, distance: 0.5},
+          },
+        ],
+      },
+    ]);
   });
 });
