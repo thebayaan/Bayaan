@@ -1,8 +1,8 @@
 // @ai-generated
 /**
- * The app's back, share and search glyphs, so each looks the same on every
- * screen: SF Symbols on iOS, the Mushaf's icons on Android. Back always
- * points left; callers keep flipping it for right-to-left (`flipX`).
+ * The app's back, share, search and reader options glyphs, so each looks the
+ * same on every screen: SF Symbols on iOS, the Mushaf's icons on Android. Back
+ * always points left; callers keep flipping it for right-to-left (`flipX`).
  */
 
 import React from 'react';
@@ -74,4 +74,25 @@ export function SearchIcon({
     );
   }
   return <Feather name="search" size={size} color={color} style={style} />;
+}
+
+export function ReaderOptionsIcon({
+  size,
+  color,
+  style,
+}: ActionIconProps): React.JSX.Element {
+  if (Platform.OS === 'ios') {
+    return (
+      <SymbolView
+        name="slider.horizontal.3"
+        size={size}
+        tintColor={color}
+        weight="medium"
+        style={style}
+      />
+    );
+  }
+  return (
+    <Ionicons name="options-outline" size={size} color={color} style={style} />
+  );
 }
