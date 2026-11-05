@@ -6,12 +6,23 @@
 // per-word verdict change.
 //
 //   node scripts/recitation-bench/bench.mjs --audio a.f32 [--timings qdc.json]
-//     [--flow app|correction|tracking] [--ayat N] [--dwell N] [--json out.json]
+//     [--flow app|correction|tracking] [--dwell N] [--json out.json]
+//   node scripts/recitation-bench/bench.mjs --list manifest.json --outdir dir
+//     [--dwell N] [--only correct|incorrect] [--limit N]
+//
+// TILAWA_DIST=<dir> loads another build of the engine (a patched copy), and
+// ENGINE_OPTS='<json>' adds session options (e.g. {"keepContextOnDefer":true}).
+// ORT_THREADS=n caps the threads one bench uses.
+// A manifest clip may carry `hint` ({surah, ayah}): the ayah on screen, which
+// the app passes at the start of a take.
 //
 // --flow app (default) copies RecitationTrackingService: start tracking; at
-// each lock switch to correction expecting the rest of the surah (--ayat);
-// on idle/lost/locateFailed/completed go back to tracking near the last ayah.
-// --flow correction expects ayat 1..N from the start; tracking never checks.
+// each lock switch to correction expecting ten ayat from the lock, sliding
+// forward as the reader nears the end; on idle/lost/locateFailed/completed go
+// back to tracking near the last ayah. --flow correction expects the whole
+// surah from the start (--surah). --list runs every clip of a dataset
+// manifest ([{id, audio, label, ...}]) in one process, the engine reset
+// between clips as between takes, and skips clips already done.
 import fs from 'node:fs';
 import path from 'node:path';
 import {createRequire} from 'node:module';
@@ -22,10 +33,28 @@ const OUT = path.join(HERE, '.out');
 const SR = 16000;
 const CHUNK = 7680; // 480 ms, as micStream
 
+// Hafs ayah counts, as the app's SURAHS data (surahLength).
+const AYAH_COUNTS = [
+  7, 286, 200, 176, 120, 165, 206, 75, 129, 109, 123, 111, 43, 52, 99, 128, 111,
+  110, 98, 135, 112, 78, 118, 64, 77, 227, 93, 88, 69, 60, 34, 30, 73, 54, 45,
+  83, 182, 88, 75, 85, 54, 53, 89, 59, 37, 35, 38, 29, 18, 45, 60, 49, 62, 55,
+  78, 96, 29, 22, 24, 13, 14, 11, 11, 18, 12, 12, 30, 52, 52, 44, 28, 28, 20,
+  56, 40, 31, 50, 40, 46, 42, 29, 19, 36, 25, 22, 17, 19, 26, 30, 20, 15, 21,
+  11, 8, 8, 19, 5, 8, 8, 11, 11, 8, 3, 9, 5, 4, 7, 3, 6, 3, 5, 4, 5, 6,
+];
+if (AYAH_COUNTS.reduce((a, b) => a + b, 0) !== 6236) {
+  throw new Error('ayah counts do not add up to 6236');
+}
+const surahLength = s => AYAH_COUNTS[s - 1] ?? 1;
+
 const require = createRequire(path.join(HERE, 'package.json'));
 const ort = require('onnxruntime-node');
 // The app's patch loads structural-index.json with Metro's require.
-const tilawaDir = path.join(ROOT, 'node_modules/@tilawa/core/dist');
+const tilawaDir =
+  process.env.TILAWA_DIST ?? path.join(ROOT, 'node_modules/@tilawa/core/dist');
+const engineOpts = process.env.ENGINE_OPTS
+  ? JSON.parse(process.env.ENGINE_OPTS)
+  : {};
 globalThis.require = createRequire(
   path.join(tilawaDir, 'recitation/session.js'),
 );
@@ -36,8 +65,6 @@ for (let i = 2; i < process.argv.length; i += 2) {
   args[process.argv[i].replace(/^--/, '')] = process.argv[i + 1];
 }
 const flow = args.flow ?? 'app';
-
-const ayat = Number(args.ayat ?? 0);
 
 function loadTimings(file) {
   if (!file) return null;
@@ -54,12 +81,15 @@ function loadTimings(file) {
   return map;
 }
 
-const audio = new Float32Array(fs.readFileSync(args.audio).buffer.slice(0));
-const timings = loadTimings(args.timings);
-
 const ortSession = await ort.InferenceSession.create(
   path.join(OUT, 'assets/zipformer_a0w_ep1_a05.int8.onnx'),
-  {executionProviders: ['cpu']},
+  {
+    executionProviders: ['cpu'],
+    // ORT_THREADS=n caps ORT's threads, to run several benches at once.
+    ...(process.env.ORT_THREADS
+      ? {intraOpNumThreads: Number(process.env.ORT_THREADS), interOpNumThreads: 1}
+      : {}),
+  },
 );
 const timed = {
   async run(feeds) {
@@ -86,8 +116,33 @@ const timed = {
   },
 };
 
+// Per-clip state, reset by runClip.
 let audioT = 0;
-const log = [];
+let log = [];
+let flags = [];
+let vchanges = [];
+const vstate = new Map();
+// Tracker health changes (engines that expose trackingHealth()).
+let health = [];
+let lastHealth = null;
+// RMS level of each 480 ms chunk, as the app's mic would measure it.
+let levels = [];
+// Changes after stop() never reach the app (recitationEngine.stop does not
+// report verdicts), so the replay skips them.
+let stopped = false;
+
+function trackHealth() {
+  const h = typeof zs.trackingHealth === 'function' ? zs.trackingHealth() : null;
+  const key = h ? `${h.lost}:${h.held}` : 'none';
+  if (key !== lastHealth) {
+    health.push({
+      t: +audioT.toFixed(2),
+      ...(h ? {lost: !!h.lost, held: !!h.held, rate: +(h.rate ?? 0).toFixed(3)} : {none: true}),
+    });
+    lastHealth = key;
+  }
+}
+
 function pick(msg) {
   switch (msg.type) {
     case 'word_progress':
@@ -99,8 +154,17 @@ function pick(msg) {
       };
     case 'verse_match':
       return {type: msg.type, key: `${msg.surah}:${msg.ayah}`};
-    case 'debug':
-      return {type: msg.type, event: msg.event};
+    case 'debug': {
+      // Where a lock landed (located/relocated carry the hit word).
+      const d = msg.data ?? {};
+      const at =
+        typeof d.surah === 'number'
+          ? {at: `${d.surah}:${d.ayah}:${d.word}`}
+          : d.to && typeof d.to.surah === 'number'
+            ? {at: `${d.to.surah}:${d.to.ayah}:${d.to.word}`}
+            : {};
+      return {type: msg.type, event: msg.event, ...at};
+    }
     default:
       return {type: msg.type};
   }
@@ -115,29 +179,27 @@ const zs = await tilawa.createZipformerSession({
   structural: flow === 'correction' ? undefined : false,
   enableFallback: false,
   debug: true,
-  config: args.dwell ? {commitDwell: Number(args.dwell)} : undefined,
+  ...engineOpts,
+  config:
+    args.dwell || engineOpts.config
+      ? {
+          ...(args.dwell ? {commitDwell: Number(args.dwell)} : {}),
+          ...(engineOpts.config ?? {}),
+        }
+      : undefined,
 });
 
 const STRUCT_ON = {ayahOrder: true, similarVerse: true};
 const STRUCT_OFF = {ayahOrder: false, similarVerse: false};
-let checking = flow === 'correction';
 // As PASSAGE_AYAT and SLIDE_WITHIN in RecitationTrackingService.
 const PASSAGE_AYAT = 10;
 const SLIDE_WITHIN = 3;
+let checking = false;
 let expectedSurah = 0;
 let expectedEnd = 0;
 let flowSeen = 0;
 let lastKey = null;
-if (flow === 'correction') {
-  zs.setMode('correction');
-  zs.setExpected({
-    surah: Number(args.surah ?? 0) || undefined,
-    ayah: 1,
-    ayahEnd: ayat,
-  });
-} else {
-  zs.setMode('tracking');
-}
+
 async function appFlow() {
   for (; flowSeen < log.length; flowSeen++) {
     const e = log[flowSeen];
@@ -147,7 +209,10 @@ async function appFlow() {
         const [s, a] = e.key.split(':').map(Number);
         zs.setMode('correction');
         expectedSurah = s;
-        expectedEnd = Math.max(a, Math.min(ayat, a + PASSAGE_AYAT - 1));
+        expectedEnd = Math.max(
+          a,
+          Math.min(surahLength(s), a + PASSAGE_AYAT - 1),
+        );
         zs.setExpected({surah: s, ayah: a, ayahEnd: expectedEnd});
         await zs.setStructural(STRUCT_ON);
         checking = true;
@@ -157,11 +222,14 @@ async function appFlow() {
       const [s, a] = e.key.split(':').map(Number);
       if (
         s === expectedSurah &&
-        expectedEnd < ayat &&
+        expectedEnd < surahLength(s) &&
         a > expectedEnd - SLIDE_WITHIN
       ) {
         const from = Math.max(1, a - 1);
-        expectedEnd = Math.max(from, Math.min(ayat, from + PASSAGE_AYAT - 1));
+        expectedEnd = Math.max(
+          from,
+          Math.min(surahLength(s), from + PASSAGE_AYAT - 1),
+        );
         zs.setExpected({surah: s, ayah: from, ayahEnd: expectedEnd});
       }
     } else if (
@@ -182,7 +250,6 @@ async function appFlow() {
 }
 
 // Open flags are deferred as the app does (review_later), and recorded.
-const flags = [];
 function drain() {
   for (let i = 0; i < 64 && zs.correction.state.phase !== 'idle'; i++) {
     const issue = zs.correction.state.issue;
@@ -198,8 +265,6 @@ function drain() {
 }
 
 // Every verdict change of every word, by audio time.
-const vstate = new Map();
-const vchanges = [];
 function trackVerdicts() {
   for (const v of zs.verdicts()) {
     const id = `${v.surah}:${v.ayah}:${v.word}`;
@@ -210,13 +275,9 @@ function trackVerdicts() {
         from: vstate.get(id) ?? null,
         to: v.state,
       };
-      // The engine's scores behind a bad verdict (to tell noise from slips),
-      // and behind any verdict that heard a vowel differ (tashkeel).
-      if (
-        v.state === 'wrong' ||
-        v.state === 'skipped' ||
-        (v.vowelErrors ?? 0) > 0
-      ) {
+      // The engine's scores behind every verdict (noise vs slips, letter
+      // and vowel recall); pending ones are provisional and left out.
+      if (v.state !== 'pending') {
         const r = x => (typeof x === 'number' ? +x.toFixed(3) : null);
         change.d = {
           distance: r(v.distance),
@@ -228,65 +289,154 @@ function trackVerdicts() {
           vowelErrors: v.vowelErrors ?? null,
           vowelMargin: r(v.vowelMargin),
           slip: r(v.slip),
+          ...(v.vowelDetails ? {vowels: v.vowelDetails} : {}),
         };
       }
+      if (stopped) change.stop = true;
       vchanges.push(change);
       vstate.set(id, v.state);
     }
   }
 }
 
-let busy = 0;
-for (let off = 0; off < audio.length; off += CHUNK) {
-  const chunk = audio.subarray(off, Math.min(off + CHUNK, audio.length));
-  audioT = (off + chunk.length) / SR;
-  const t = performance.now();
-  await zs.feed(chunk);
-  busy += performance.now() - t;
-  drain();
-  if (flow === 'app') await appFlow();
-  trackVerdicts();
-}
-drain();
-const stopStart = performance.now();
-await zs.stop();
-const stopMs = Math.round(performance.now() - stopStart);
-drain();
-trackVerdicts();
-
-const lags = [];
-const seen = new Set();
-if (timings) {
-  for (const e of log) {
-    if (e.type !== 'word_progress' || seen.has(`${e.key}:${e.w}`)) continue;
-    seen.add(`${e.key}:${e.w}`);
-    const ref = timings.get(e.key);
-    if (ref && ref.length === e.n && ref[e.w]) lags.push(e.t - ref[e.w].end);
+/** Runs one recitation through the engine, fresh as a new take. */
+async function runClip(audioPath, timingsPath, hint = null) {
+  const audio = new Float32Array(fs.readFileSync(audioPath).buffer.slice(0));
+  const timings = loadTimings(timingsPath);
+  zs.reset();
+  zs.setHint(hint);
+  zs.setExpected(null);
+  await zs.setStructural(STRUCT_OFF);
+  audioT = 0;
+  log = [];
+  flags = [];
+  vchanges = [];
+  vstate.clear();
+  health = [];
+  lastHealth = null;
+  levels = [];
+  stopped = false;
+  flowSeen = 0;
+  lastKey = null;
+  checking = flow === 'correction';
+  if (flow === 'correction') {
+    const s = Number(args.surah ?? 0) || 1;
+    zs.setMode('correction');
+    zs.setExpected({surah: s, ayah: 1, ayahEnd: surahLength(s)});
+    await zs.setStructural(STRUCT_ON);
+  } else {
+    zs.setMode('tracking');
   }
+
+  let busy = 0;
+  for (let off = 0; off < audio.length; off += CHUNK) {
+    const chunk = audio.subarray(off, Math.min(off + CHUNK, audio.length));
+    audioT = (off + chunk.length) / SR;
+    let energy = 0;
+    for (let i = 0; i < chunk.length; i++) energy += chunk[i] * chunk[i];
+    levels.push(+Math.sqrt(energy / Math.max(1, chunk.length)).toPrecision(3));
+    const t = performance.now();
+    await zs.feed(chunk);
+    busy += performance.now() - t;
+    drain();
+    if (flow === 'app') await appFlow();
+    trackVerdicts();
+    trackHealth();
+  }
+  drain();
+  // The last state of every word the app saw, with its scores.
+  const finalVerdicts = zs.verdicts().map(v => ({
+    id: `${v.surah}:${v.ayah}:${v.word}`,
+    state: v.state,
+    distance: typeof v.distance === 'number' ? +v.distance.toFixed(3) : null,
+    gop: typeof v.gop === 'number' ? +v.gop.toFixed(3) : null,
+    margin: typeof v.margin === 'number' ? +v.margin.toFixed(3) : null,
+    heardRatio:
+      typeof v.heardRatio === 'number' ? +v.heardRatio.toFixed(3) : null,
+    vowelErrors: v.vowelErrors ?? null,
+    vowelMargin:
+      typeof v.vowelMargin === 'number' ? +v.vowelMargin.toFixed(3) : null,
+    ...(v.vowelDetails ? {vowels: v.vowelDetails} : {}),
+  }));
+  stopped = true;
+  const stopStart = performance.now();
+  await zs.stop();
+  const stopMs = Math.round(performance.now() - stopStart);
+  drain();
+  trackVerdicts();
+
+  const lags = [];
+  const seen = new Set();
+  if (timings) {
+    for (const e of log) {
+      if (e.type !== 'word_progress' || seen.has(`${e.key}:${e.w}`)) continue;
+      seen.add(`${e.key}:${e.w}`);
+      const ref = timings.get(e.key);
+      if (ref && ref.length === e.n && ref[e.w]) lags.push(e.t - ref[e.w].end);
+    }
+  }
+  lags.sort((a, b) => a - b);
+  const summary = {
+    audio: path.basename(audioPath),
+    seconds: +(audio.length / SR).toFixed(2),
+    flow,
+    dwell: args.dwell ?? 'default',
+    rtf: +(busy / 1000 / (audio.length / SR)).toFixed(3),
+    stopMs,
+    firstLock: log.find(e => e.type === 'word_progress')?.t ?? null,
+    verseMatches: log.filter(e => e.type === 'verse_match').map(e => e.key),
+    lockChanges: log
+      .filter(
+        e =>
+          e.type === 'debug' &&
+          ['lost', 'relocated', 'locateFailed', 'idle', 'completed'].includes(
+            e.event,
+          ),
+      )
+      .map(e => `${e.t}s ${e.event}`),
+    followLagP50: lags.length
+      ? +lags[Math.floor(lags.length / 2)].toFixed(2)
+      : null,
+    flags,
+  };
+  return {summary, log, flags, vchanges, health, finalVerdicts, levels};
 }
-lags.sort((a, b) => a - b);
-const summary = {
-  audio: path.basename(args.audio),
-  flow,
-  dwell: args.dwell ?? 'default',
-  rtf: +(busy / 1000 / (audio.length / SR)).toFixed(3),
-  stopMs,
-  firstLock: log.find(e => e.type === 'word_progress')?.t ?? null,
-  verseMatches: log.filter(e => e.type === 'verse_match').map(e => e.key),
-  lockChanges: log
-    .filter(
-      e =>
-        e.type === 'debug' &&
-        ['lost', 'relocated', 'locateFailed', 'idle', 'completed'].includes(
-          e.event,
-        ),
-    )
-    .map(e => `${e.t}s ${e.event}`),
-  followLagP50: lags.length
-    ? +lags[Math.floor(lags.length / 2)].toFixed(2)
-    : null,
-  flags,
-};
-const result = {summary, log, flags, vchanges};
-if (args.json) fs.writeFileSync(args.json, JSON.stringify(result));
-console.log(JSON.stringify(summary));
+
+if (args.list) {
+  const manifest = JSON.parse(fs.readFileSync(args.list, 'utf8'));
+  const outdir = args.outdir;
+  fs.mkdirSync(outdir, {recursive: true});
+  let todo = manifest.filter(c => !args.only || c.label === args.only);
+  if (args.limit) todo = todo.slice(0, Number(args.limit));
+  let done = 0;
+  for (const clip of todo) {
+    const out = path.join(
+      outdir,
+      `${String(clip.id).replace(/[^\w.-]/g, '_')}.json`,
+    );
+    done += 1;
+    if (fs.existsSync(out)) continue;
+    try {
+      const result = await runClip(clip.audio, null, clip.hint ?? null);
+      result.clip = clip;
+      fs.writeFileSync(out, JSON.stringify(result));
+    } catch (error) {
+      console.error(`clip ${clip.id} failed: ${error.message}`);
+    }
+    if (done % 50 === 0) console.log(`${done}/${todo.length}`);
+  }
+  console.log(`done ${todo.length}`);
+} else {
+  const result = await runClip(
+    args.audio,
+    args.timings,
+    args.hint
+      ? {
+          surah: Number(args.hint.split(':')[0]),
+          ayah: Number(args.hint.split(':')[1]),
+        }
+      : null,
+  );
+  if (args.json) fs.writeFileSync(args.json, JSON.stringify(result));
+  console.log(JSON.stringify(result.summary));
+}

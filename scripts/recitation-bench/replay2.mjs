@@ -34,6 +34,7 @@ fs.writeFileSync(
 );
 const marks = await import(`${compiled}?${Date.now()}`);
 const UNLOCK = new Set(['lost', 'idle', 'locateFailed', 'completed']);
+const LOCK = new Set(['located', 'relocated']);
 
 /** The marks the app would show for a run, plus its skipped-ayah flags. */
 export function replayRun(run) {
@@ -57,9 +58,19 @@ export function replayRun(run) {
     const [s, a, w] = c.id.split(':').map(Number);
     totals.set(`${s}:${a}`, Math.max(totals.get(`${s}:${a}`) ?? 0, w + 1));
   }
+  // Where the engine found the reader, by chunk time (debug located /
+  // relocated carry the start word as 'at').
+  const lockAt = new Map();
+  for (const e of run.log) {
+    if (e.type === 'debug' && LOCK.has(e.event) && e.at) {
+      const [surah, ayah, word] = e.at.split(':').map(Number);
+      lockAt.set(e.t, {surah, ayah, word});
+    }
+  }
   const byTime = new Map();
   for (const c of run.vchanges) {
-    if (!locked(c.t)) continue;
+    // After stop() the app no longer hears verdicts.
+    if (c.stop || !locked(c.t)) continue;
     const [surah, ayah, word] = c.id.split(':').map(Number);
     const list = byTime.get(c.t) ?? [];
     list.push({
@@ -106,7 +117,14 @@ export function replayRun(run) {
     // The service drops pending suspects when the engine loses the reader
     // (rules without dropSuspects keep them).
     if (unlockAt.has(t) && marks.dropSuspects) book = marks.dropSuspects(book);
-    if (byTime.has(t)) note(marks.applyVerdicts(book, byTime.get(t), ms), ms);
+    if (byTime.has(t)) {
+      // The lock chunk's verdicts were judged from replayed audio (rules
+      // without dropLockArtifacts take them as they are).
+      const batch = marks.dropLockArtifacts
+        ? marks.dropLockArtifacts(byTime.get(t), lockAt.get(t) ?? null)
+        : byTime.get(t);
+      note(marks.applyVerdicts(book, batch, ms), ms);
+    }
   }
   // (corrected is updated by applyVerdicts' corrected list in note())
   for (

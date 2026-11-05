@@ -114,6 +114,30 @@ for (const dir of process.argv.slice(2)) {
           )
         );
       }).length;
+      // Said, then skipped: the cursor sat on this word and its first move
+      // off it was to the very next word.
+      const nextKey =
+        w + 1 < (totals.get(key) ?? 0) ? `${key}:${w + 1}` : `${s}:${a + 1}:0`;
+      let sat = false;
+      let departedTo = null;
+      for (const p of progress) {
+        if (p.t > since) break;
+        const pid = `${p.key}:${p.w}`;
+        if (pid === id) sat = true;
+        else if (sat && departedTo === null) departedTo = pid;
+      }
+      const lockT = lock ? lock.t : 0;
+      const wentPending = (chains.get(id) ?? []).some(
+        c => c.to === 'pending' && c.t >= lockT && c.t <= since,
+      );
+      const word0Bad = (chains.get(`${key}:0`) ?? []).some(
+        c =>
+          (c.to === 'wrong' || c.to === 'skipped') && c.t >= lockT && c.t <= at,
+      );
+      const TROUBLE = new Set(['lost', 'idle', 'locateFailed', 'relocated']);
+      const lastTrouble = [...run.log]
+        .reverse()
+        .find(e => e.type === 'debug' && TROUBLE.has(e.event) && e.t <= since);
       const fm = falseById.get(id);
       console.log(
         JSON.stringify({
@@ -144,6 +168,13 @@ for (const dir of process.argv.slice(2)) {
             neighbours,
             prevLastWrongNear,
             confirmDelay: +(at - since).toFixed(2),
+            fromState: first?.from ?? null,
+            saidThenSkipped: sat && departedTo === nextKey,
+            wentPending,
+            word0Bad,
+            sinceTrouble: lastTrouble
+              ? +(since - lastTrouble.t).toFixed(2)
+              : null,
             unlockBeforeConfirm,
             neighboursAtConfirm,
           },
