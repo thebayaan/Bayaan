@@ -38,6 +38,13 @@ export interface VerdictChange {
 }
 
 /** 'missed': the word was not heard. 'wrong': something else was heard. */
+/** A word of the Quran, as the engine numbers it (word 0-based). */
+export interface EngineWord {
+  surah: number;
+  ayah: number;
+  word: number;
+}
+
 export type MarkKind = 'missed' | 'wrong';
 /**
  * 'noted': a bad verdict that is not a slip on its own (an ayah-edge
@@ -133,6 +140,27 @@ function isBoundary(change: VerdictChange): boolean {
 
 function isBad(change: VerdictChange): boolean {
   return change.state === 'wrong' || change.state === 'skipped';
+}
+
+/**
+ * Drops the bad verdicts judged from the audio the engine replayed when it
+ * found the reader (`lock`, the word it locked onto): that word may have been
+ * heard only from its middle, and the words before it were not heard in this
+ * lock at all. Other verdicts pass through.
+ */
+export function dropLockArtifacts(
+  changes: readonly VerdictChange[],
+  lock: EngineWord | null,
+): VerdictChange[] {
+  if (!lock) return [...changes];
+  return changes.filter(c => {
+    if (!isBad(c)) return true;
+    const atOrBefore =
+      c.surah < lock.surah ||
+      (c.surah === lock.surah &&
+        (c.ayah < lock.ayah || (c.ayah === lock.ayah && c.word <= lock.word)));
+    return !atOrBefore;
+  });
 }
 
 /** The kind a bad verdict is suspected as, or null when it is not a slip. */

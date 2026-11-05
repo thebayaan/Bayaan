@@ -343,4 +343,78 @@ describe('createRecitationEngine', () => {
       },
     ]);
   });
+
+  it('verdicts from the chunk where the engine found the reader carry that word', async () => {
+    const {createZipformerSession} = jest.requireMock<{
+      createZipformerSession: jest.Mock;
+    }>('@tilawa/core');
+    let sessionEvent: (msg: WorkerOutbound) => void = () => undefined;
+    createZipformerSession.mockImplementationOnce(
+      async (opts: {onEvent: (msg: WorkerOutbound) => void}) => {
+        sessionEvent = opts.onEvent;
+        return mockSession;
+      },
+    );
+    const events: {type: string; lock?: unknown}[] = [];
+    const engine = await createRecitationEngine(ASSETS, msg => {
+      events.push(msg);
+    });
+    mockSession.feed.mockImplementationOnce(async () => {
+      sessionEvent({
+        type: 'debug',
+        event: 'located',
+        at: 0,
+        data: {type: 'located', surah: 67, ayah: 12, word: 3, replayed: 40},
+      });
+      return [];
+    });
+    mockSession.verdicts
+      .mockReturnValueOnce([verdict(3, 'wrong')])
+      .mockReturnValueOnce([verdict(3, 'wrong'), verdict(4, 'ok')]);
+    engine.feed(pcm());
+    engine.feed(pcm());
+    await engine.stop();
+    const batches = events.filter(e => e.type === 'word_verdicts');
+    expect(batches[0].lock).toEqual({surah: 67, ayah: 12, word: 3});
+    // The next chunk is judged from live audio.
+    expect(batches[1].lock).toBeUndefined();
+  });
+
+  it('a relocation tags its chunk with the word it moved to', async () => {
+    const {createZipformerSession} = jest.requireMock<{
+      createZipformerSession: jest.Mock;
+    }>('@tilawa/core');
+    let sessionEvent: (msg: WorkerOutbound) => void = () => undefined;
+    createZipformerSession.mockImplementationOnce(
+      async (opts: {onEvent: (msg: WorkerOutbound) => void}) => {
+        sessionEvent = opts.onEvent;
+        return mockSession;
+      },
+    );
+    const events: {type: string; lock?: unknown}[] = [];
+    const engine = await createRecitationEngine(ASSETS, msg => {
+      events.push(msg);
+    });
+    mockSession.feed.mockImplementationOnce(async () => {
+      sessionEvent({
+        type: 'debug',
+        event: 'relocated',
+        at: 0,
+        data: {
+          type: 'relocated',
+          from: {surah: 67, ayah: 10, word: 2},
+          to: {surah: 67, ayah: 12, word: 1},
+        },
+      });
+      return [];
+    });
+    mockSession.verdicts.mockReturnValueOnce([verdict(1, 'skipped')]);
+    engine.feed(pcm());
+    await engine.stop();
+    expect(events.find(e => e.type === 'word_verdicts')?.lock).toEqual({
+      surah: 67,
+      ayah: 12,
+      word: 1,
+    });
+  });
 });

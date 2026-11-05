@@ -714,6 +714,43 @@ describe('RecitationTrackingService live mistakes', () => {
     expect(mockLog.dismissWord).toHaveBeenCalledWith(take.id, 18, 3, 3);
   });
 
+  it('the word the engine locks onto is not marked from the audio it replays', async () => {
+    await lockedTake();
+    // The lock chunk: the engine found the reader at word 5, judged from
+    // buffered audio that may start in the middle of that word.
+    engineControl.sendEvent?.(
+      wordVerdicts(
+        [
+          {surah: 18, ayah: 3, word: 4, state: 'skipped'},
+          {surah: 18, ayah: 3, word: 5, state: 'wrong'},
+          {surah: 18, ayah: 3, word: 6, state: 'ok'},
+          {surah: 18, ayah: 3, word: 7, state: 'ok'},
+        ],
+        {surah: 18, ayah: 3, word: 5},
+      ),
+    );
+    await listenFor(900);
+    expect(state().marks).toEqual([]);
+  });
+
+  it('a slip after the lock word in the same chunk is still marked', async () => {
+    await lockedTake();
+    engineControl.sendEvent?.(
+      wordVerdicts(
+        [
+          {surah: 18, ayah: 3, word: 5, state: 'ok'},
+          {surah: 18, ayah: 3, word: 6, state: 'wrong'},
+          {surah: 18, ayah: 3, word: 7, state: 'ok'},
+        ],
+        {surah: 18, ayah: 3, word: 5},
+      ),
+    );
+    await listenFor(900);
+    expect(state().marks).toEqual([
+      expect.objectContaining({word: 6, status: 'mistake'}),
+    ]);
+  });
+
   it('when the engine loses the reader, a suspicion not yet shown is dropped', async () => {
     await lockedTake();
     engineControl.sendEvent?.(

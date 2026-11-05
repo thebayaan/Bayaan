@@ -1,6 +1,7 @@
 import {
   applyVerdicts,
   confirmDue,
+  dropLockArtifacts,
   dropSuspects,
   emptyMarkBook,
   MARK_CONFIRM_MS,
@@ -375,5 +376,37 @@ describe('word marks', () => {
       book = confirmDue(book, 5000).book;
       expect(shownMarks(book, new Set()).map(m => m.word)).toEqual([2]);
     });
+  });
+});
+
+describe('dropLockArtifacts', () => {
+  const lock = {surah: 67, ayah: 12, word: 3};
+
+  it('drops a bad verdict on the word the engine locked onto: it may have been heard from its middle', () => {
+    expect(dropLockArtifacts([change(3, 'wrong')], lock)).toEqual([]);
+    expect(dropLockArtifacts([change(3, 'skipped')], lock)).toEqual([]);
+  });
+
+  it('drops bad verdicts before that word: they were not heard in this lock', () => {
+    expect(
+      dropLockArtifacts(
+        [change(1, 'skipped'), change(2, 'wrong', {ayah: 11})],
+        lock,
+      ),
+    ).toEqual([]);
+  });
+
+  it('keeps bad verdicts after that word, and every other verdict', () => {
+    const later = [change(4, 'wrong'), change(0, 'wrong', {ayah: 13})];
+    const fine = [change(3, 'ok'), change(2, 'unsure'), change(3, 'pending')];
+    expect(dropLockArtifacts([...fine, ...later], lock)).toEqual([
+      ...fine,
+      ...later,
+    ]);
+  });
+
+  it('keeps everything when the engine did not lock in that chunk', () => {
+    const changes = [change(3, 'wrong'), change(1, 'skipped')];
+    expect(dropLockArtifacts(changes, null)).toEqual(changes);
   });
 });

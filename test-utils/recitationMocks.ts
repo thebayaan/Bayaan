@@ -216,10 +216,12 @@ export function wordVerdicts(
     totalWords?: number;
     state: 'ok' | 'unsure' | 'wrong' | 'skipped' | 'pending';
   }[],
+  lock?: {surah: number; ayah: number; word: number},
 ): EngineMessage {
   return {
     type: 'word_verdicts',
     changes: changes.map(c => ({totalWords: 10, ...c})),
+    ...(lock ? {lock} : {}),
   };
 }
 

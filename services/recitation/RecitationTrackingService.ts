@@ -25,6 +25,7 @@ import type {EngineMessage, RecitationStats} from './recitationEngine';
 import {
   applyVerdicts,
   confirmDue,
+  dropLockArtifacts,
   dropSuspects,
   emptyMarkBook,
   nextConfirmAt,
@@ -374,9 +375,11 @@ function handleEvent(msg: EngineMessage): void {
   const state = useRecitationTrackingStore.getState();
   if (state.status !== 'listening') return;
   if (msg.type === 'word_verdicts') {
-    // Verdicts from before a lock are the search's guesses.
-    if (state.locked && memo?.check) noteVerdicts(msg.changes);
-    else if (!state.locked && msg.changes.some(c => c.state !== 'pending')) {
+    // Verdicts from before a lock are the search's guesses, and the lock's
+    // own chunk is judged from replayed audio.
+    if (state.locked && memo?.check) {
+      noteVerdicts(dropLockArtifacts(msg.changes, msg.lock ?? null));
+    } else if (!state.locked && msg.changes.some(c => c.state !== 'pending')) {
       trace(`${msg.changes.length} verdicts ignored (not locked)`);
     }
     return;

@@ -12,7 +12,7 @@ import {
   type WorkerOutbound,
 } from '@tilawa/core';
 import type {RecitationAssetPaths} from './recitationAssets';
-import type {VerdictChange, VerdictState} from './wordMarks';
+import type {EngineWord, VerdictChange, VerdictState} from './wordMarks';
 
 export const RECITATION_SAMPLE_RATE = 16000;
 
@@ -20,6 +20,11 @@ export const RECITATION_SAMPLE_RATE = 16000;
 export interface WordVerdictsMessage {
   type: 'word_verdicts';
   changes: VerdictChange[];
+  /**
+   * Set when the engine found the reader in this chunk: these verdicts were
+   * judged from the audio it replayed from this word on.
+   */
+  lock?: EngineWord;
 }
 
 /** What the engine reports: Tilawa's messages plus word verdicts. */
@@ -100,6 +105,20 @@ function toOrtTensor(value: TensorLike): Tensor {
   return new Tensor('int32', data, dims);
 }
 
+/** The word a located / relocated debug event says the engine locked onto. */
+function lockedWord(msg: WorkerOutbound): EngineWord | null {
+  if (msg.type !== 'debug') return null;
+  if (msg.event !== 'located' && msg.event !== 'relocated') return null;
+  const at = msg.event === 'relocated' ? msg.data.to : msg.data;
+  if (!at || typeof at !== 'object') return null;
+  const {surah, ayah, word} = at as Record<string, unknown>;
+  return typeof surah === 'number' &&
+    typeof ayah === 'number' &&
+    typeof word === 'number'
+    ? {surah, ayah, word}
+    : null;
+}
+
 function stripFileScheme(uri: string): string {
   return uri.startsWith('file://') ? uri.slice('file://'.length) : uri;
 }
@@ -144,12 +163,19 @@ export async function createRecitationEngine(
     },
   };
 
+  // Where the engine found the reader during the chunk being fed, if it did.
+  let chunkLock: EngineWord | null = null;
+  const onSessionEvent = (msg: WorkerOutbound) => {
+    chunkLock = lockedWord(msg) ?? chunkLock;
+    onEvent(msg);
+  };
+
   const session = await createZipformerSession({
     session: timedSession,
     Tensor,
     corpus: async () =>
       JSON.parse(await FileSystem.readAsStringAsync(assets.corpusPath)),
-    onEvent,
+    onEvent: onSessionEvent,
     // The structural rules only serve correction mode; tracking skips them.
     structural: false,
     // Skips a whole-Quran search over the transcript at stop().
@@ -168,7 +194,7 @@ export async function createRecitationEngine(
 
   // Each word's last reported verdict, so a chunk reports only changes.
   const verdictStates = new Map<string, VerdictState>();
-  function reportVerdicts(): void {
+  function reportVerdicts(lock: EngineWord | null): void {
     const changes: VerdictChange[] = [];
     for (const v of session.verdicts()) {
       const key = `${v.surah}:${v.ayah}:${v.word}`;
@@ -193,7 +219,9 @@ export async function createRecitationEngine(
       }
       changes.push(change);
     }
-    if (changes.length > 0) onEvent({type: 'word_verdicts', changes});
+    if (changes.length > 0) {
+      onEvent({type: 'word_verdicts', changes, ...(lock ? {lock} : {})});
+    }
   }
 
   function deferOpenIssues(): WorkerOutbound[] {
@@ -230,8 +258,10 @@ export async function createRecitationEngine(
     feed(pcm) {
       void enqueue(async () => {
         const start = performance.now();
+        chunkLock = null;
         await session.feed(pcm);
-        reportVerdicts();
+        reportVerdicts(chunkLock);
+        chunkLock = null;
         const elapsed = performance.now() - start;
         stats.busyMs += elapsed;
         stats.maxFeedMs = Math.max(stats.maxFeedMs, elapsed);
