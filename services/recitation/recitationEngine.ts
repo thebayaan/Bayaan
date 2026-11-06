@@ -50,7 +50,11 @@ export interface RecitationStats {
 }
 
 export interface RecitationEngine {
-  /** Queues a chunk of 16 kHz mono PCM. Calls are serialized internally. */
+  /**
+   * Queues a chunk of 16 kHz mono PCM. Calls are serialized internally. A
+   * flag the chunk raises is deferred (review_later) before the next chunk,
+   * so listening goes on; the flag and its answer still reach onEvent.
+   */
   feed: (pcm: Float32Array) => void;
   /**
    * Flushes the tail of the current take. Resolves with what the session
@@ -79,7 +83,7 @@ const STRUCTURAL_OFF = {ayahOrder: false, similarVerse: false} as const;
 // Measured on five reciters with planted mistakes: 2 cuts the median time
 // to a verdict from 1.8 s to 1.2 s with the same catches and false marks.
 const COMMIT_DWELL = 2;
-// Upper bound on flags drained around one stop().
+// Upper bound on flags deferred after one chunk or around one stop().
 const MAX_DRAIN = 64;
 
 function isOrtTensor(value: unknown): value is Tensor {
@@ -182,7 +186,17 @@ export async function createRecitationEngine(
     enableFallback: false,
     // Engine state changes (located, lost, idle) arrive as debug events.
     debug: true,
-    config: {commitDwell: COMMIT_DWELL},
+    // A flag deferred at once keeps the decoder and the tracker (Bayaan's
+    // engine patch). Restarting them at the flagged word lost the reader soon
+    // after most flags; on the planted-mistake bench keeping them removed 40%
+    // of false marks and caught more mistakes.
+    keepContextOnDefer: true,
+    config: {
+      commitDwell: COMMIT_DWELL,
+      // A word split by the engine's 300-sound segment cut is judged from all
+      // its sounds, not the few after the cut (Bayaan's engine patch).
+      wholeWordAtCut: true,
+    },
   });
   stats.loadMs = performance.now() - loadStart;
 
@@ -260,6 +274,11 @@ export async function createRecitationEngine(
         const start = performance.now();
         chunkLock = null;
         await session.feed(pcm);
+        // Tilawa drops every chunk while a flag is open, so this chunk's flags
+        // are deferred now, before the next one, and then its verdicts are
+        // read. correct() hands its messages to onSessionEvent as feed() does,
+        // so the listener hears each flag and its answer.
+        if (session.correction.state.phase === 'error') deferOpenIssues();
         reportVerdicts(chunkLock);
         chunkLock = null;
         const elapsed = performance.now() - start;

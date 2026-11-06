@@ -95,15 +95,13 @@ export interface SessionOptions {
   purpose: SessionPurpose;
   /** Biases the first lock toward this ayah, e.g. the page on screen. */
   hint: SearchHint | null;
-  /** 'correction' adds the word and ayah checks. Default 'tracking'. */
+  /** 'correction' adds the word and ayah checks. Default 'tracking'. The
+   *  engine defers each live flag, so listening goes on. */
   mode?: RecitationMode;
   /** Correction mode: the passage the reader is about to recite. */
   expected?: ExpectedPassage | null;
   /** Correction mode: skipped-ayah and look-alike rules at the end. */
   structural?: boolean;
-  /** Correction mode: defer each live flag so listening goes on (Tilawa
-   *  stops listening while a flag is open). Default true. */
-  autoDefer?: boolean;
 }
 
 /** What configureSession can change on the running session. */
@@ -134,8 +132,6 @@ interface ActiveSession {
   paused: boolean;
   /** Held by the reader (holdSession): the mic stays open, unheard. */
   held: boolean;
-  correction: boolean;
-  autoDefer: boolean;
   lastChunkAt: number;
   appStateSub: NativeEventSubscription | null;
   watchdog: ReturnType<typeof setInterval> | null;
@@ -298,8 +294,6 @@ export async function startSession(
     listening: false,
     paused: false,
     held: false,
-    correction: options.mode === 'correction',
-    autoDefer: options.autoDefer ?? true,
     lastChunkAt: 0,
     appStateSub: null,
     watchdog: null,
@@ -308,14 +302,11 @@ export async function startSession(
   active = session;
   setActiveSessionPurpose(options.purpose);
   markEngineBusy(true);
+  // Live flags arrive here too; the engine has already deferred each one
+  // with the chunk that raised it (recitationEngine).
   setEngineListener(msg => {
     if (active !== session || !session.listening) return;
     handlers.onEvent(msg);
-    const openFlag = msg.type === 'correction' && msg.state.phase === 'error';
-    if (openFlag && session.correction && session.autoDefer) {
-      // Its deferral comes back through this listener as events too.
-      void session.engine?.correct('review_later');
-    }
   });
   // Only the background stops: 'inactive' (Control Center, the call screen,
   // Siri) passes, and an interruption pauses instead. Listening from the
@@ -455,13 +446,9 @@ export function setSessionHint(hint: SearchHint | null): void {
 
 /** Changes the running session's mode, passage or structural rules. */
 export function configureSession(patch: SessionCorrection): void {
-  const session = active;
-  const engine = session?.engine;
-  if (!session || !engine) return;
-  if (patch.mode !== undefined) {
-    engine.setMode(patch.mode);
-    session.correction = patch.mode === 'correction';
-  }
+  const engine = active?.engine;
+  if (!engine) return;
+  if (patch.mode !== undefined) engine.setMode(patch.mode);
   if (patch.expected !== undefined) engine.setExpected(patch.expected);
   if (patch.structural !== undefined) engine.setStructural(patch.structural);
 }

@@ -1,3 +1,29 @@
+diff --git a/node_modules/@tilawa/core/dist/recitation/config.d.ts b/node_modules/@tilawa/core/dist/recitation/config.d.ts
+index 5714e3c..d6fcdaa 100644
+--- a/node_modules/@tilawa/core/dist/recitation/config.d.ts
++++ b/node_modules/@tilawa/core/dist/recitation/config.d.ts
+@@ -46,6 +46,9 @@ export interface EngineConfig {
+     skipMaxHead: number;
+     /** Correction mode: see `VerdictTracer.anchorAyahEnd` (0 = off). */
+     anchorAyahEnd: number;
++    /** Verdicts: where the 300-char segment cut falls inside a word, align that
++     * word with all its heard chars rather than the last few. */
++    wholeWordAtCut: boolean;
+ }
+ export declare const DEFAULT_CONFIG: EngineConfig;
+ export declare const BUFFER_CAP = 1000;
+diff --git a/node_modules/@tilawa/core/dist/recitation/config.js b/node_modules/@tilawa/core/dist/recitation/config.js
+index de127c7..ff3c1e6 100644
+--- a/node_modules/@tilawa/core/dist/recitation/config.js
++++ b/node_modules/@tilawa/core/dist/recitation/config.js
+@@ -32,6 +32,7 @@ export const DEFAULT_CONFIG = {
+     skipMargin: 0.25,
+     skipMaxHead: 0.1,
+     anchorAyahEnd: 2,
++    wholeWordAtCut: false,
+ };
+ export const BUFFER_CAP = 1000;
+ export const SAMPLE_RATE = 16000;
 diff --git a/node_modules/@tilawa/core/dist/recitation/engine.js b/node_modules/@tilawa/core/dist/recitation/engine.js
 index 0a41219..54a4689 100644
 --- a/node_modules/@tilawa/core/dist/recitation/engine.js
@@ -142,8 +168,21 @@ index 0ad5c1d..b84dc13 100644
              frame[b] = Math.log(Math.max(energy, LOG_FLOOR));
          }
          return frame;
+diff --git a/node_modules/@tilawa/core/dist/recitation/index.d.ts b/node_modules/@tilawa/core/dist/recitation/index.d.ts
+index b369314..bd978da 100644
+--- a/node_modules/@tilawa/core/dist/recitation/index.d.ts
++++ b/node_modules/@tilawa/core/dist/recitation/index.d.ts
+@@ -17,7 +17,7 @@ export type { CtcToken, HeardChar, VerdictState, WordVerdict, EngineEvent, Engin
+ export { MIN_WORD_FRACTION, FALLBACK_MAX_DISTANCE, GAP_MAX_WORDS, ayahKey, ayahConfidence, ayahMeetsGate, snapshotTallies, accumulateSnapshot, mergeTallies, newlyEligibleAyahs, shouldRunFallback, fallbackConfidence, buildFinalSequence, bridgeGapAyahs, wordProgressFromCursor, } from "./emission.js";
+ export type { AyahTally, BridgedAyahTally, EmissionVerdict, EmissionFallback, EmissionCursor, WordCountFn, } from "./emission.js";
+ export { ZipformerSession, createZipformerSession, displayQuranFromRaw, DEFAULT_ZIPFORMER_IO, AYAH_HEARD_FRACTION, DEFAULT_STRUCTURAL, } from "./session.js";
+-export type { ZipformerSessionOptions, StructuralOptions, ModelSource, CorpusSource, QuranSource, } from "./session.js";
++export type { ZipformerSessionOptions, StructuralOptions, ModelSource, CorpusSource, QuranSource, TrackingHealth, } from "./session.js";
+ export { CorrectionController, possibleWordIssues, DEFAULT_CORRECTION_THRESHOLDS, AYAH_ISSUE_KINDS } from "./correction.js";
+ export type { RecitationMode, CorrectionAction, CorrectionIssue, CorrectionState, CorrectionThresholds, RecitationPosition } from "./correction.js";
+ export { A0W_SLIP_HEAD, EncoderFrames, ENCODER_DIM, SLIP_PAD, poolEncoderSpan, slipHeadFromJson, slipProbability, slipThreshold, wordSpansFromTrail, } from "./slipHead.js";
 diff --git a/node_modules/@tilawa/core/dist/recitation/session.d.ts b/node_modules/@tilawa/core/dist/recitation/session.d.ts
-index 24b499d..e53247e 100644
+index 24b499d..79fb904 100644
 --- a/node_modules/@tilawa/core/dist/recitation/session.d.ts
 +++ b/node_modules/@tilawa/core/dist/recitation/session.d.ts
 @@ -15,7 +15,7 @@ import { QuranDB } from "../quran-db.js";
@@ -155,7 +194,52 @@ index 24b499d..e53247e 100644
  import { type OrtLike, type OrtSessionLike, type ZipformerIo } from "./zipformerRunner.js";
  import { CorrectionController, type CorrectionAction, type RecitationMode } from "./correction.js";
  import { type SlipSensitivity } from "./slipHead.js";
-@@ -219,6 +219,8 @@ export declare class ZipformerSession {
+@@ -98,6 +98,19 @@ export interface ZipformerSessionOptions {
+     /** Structural correction rules (correction mode). Default
+      * {@link DEFAULT_STRUCTURAL}: both rules on, run at `stop()`. `false` turns them off. */
+     structural?: StructuralOptions | false;
++    /**
++     * Correction mode: a flag deferred or dismissed straight away (no practice
++     * run) keeps the decoder and the tracker, instead of restarting them at the
++     * flagged position without the audio heard so far. Default false.
++     */
++    keepContextOnDefer?: boolean;
++}
++/** See {@link ZipformerSession.trackingHealth}. */
++export interface TrackingHealth {
++    lost: boolean;
++    held: boolean;
++    /** Cost per heard char over the last `holdWindow` chars (0 before enough are heard). */
++    rate: number;
+ }
+ /**
+  * Structural correction rules over the free decode, validated with the a0w
+@@ -173,6 +186,12 @@ export declare class ZipformerSession {
+     private ayahIssuesRaised;
+     readonly correction: CorrectionController;
+     private practiceEngine;
++    /** A practice run was started for the open flag. */
++    private practiced;
++    private keepContextOnDefer;
++    /** Ayat flagged as skipped whose flag was answered with the tracker kept
++     * (keepContextOnDefer): see checkAyahGap. */
++    private keptSkips;
+     private expected;
+     private skipCandidate;
+     private stopping;
+@@ -208,6 +227,11 @@ export declare class ZipformerSession {
+     /** Latest per-word acoustic verdicts of the active tracker (main or practice
+      * engine). Empty before the recitation is located. Diagnostic use only. */
+     verdicts(): WordVerdict[];
++    /** How well the active tracker follows the audio: `lost`, or `held` while
++     * its cost rate over the last `holdWindow` chars is at or over `holdRate`
++     * (the engine then emits no cursor or verdict events and runs no rules,
++     * but {@link verdicts} still returns fresh verdicts). Null while searching. */
++    trackingHealth(): TrackingHealth | null;
+     /** Drop all state — new recitation, same model and corpus. */
+     reset(): WorkerOutbound[];
+     /** Push one chunk of mono 16 kHz float32 PCM. Any size; 480 ms works well. */
+@@ -219,6 +243,8 @@ export declare class ZipformerSession {
       * across {@link reset}; pass null to clear.
       */
      setExpected(passage: ExpectedPassage | null): void;
@@ -164,8 +248,19 @@ index 24b499d..e53247e 100644
      setMode(mode: RecitationMode): WorkerOutbound[];
      /**
       * Turn the slip head on or off. `"strict"` is the no-extra-false-flag
+@@ -239,6 +265,10 @@ export declare class ZipformerSession {
+     private resetDecoder;
+     wordCount: (surah: number, ayah: number) => number;
+     private dumpTallies;
++    /** Raising a flag: retain the tracker's coverage before correct() replaces
++     * it. With keepContextOnDefer, correct() dumps only when it does replace it,
++     * so a kept tracker's words are not counted twice. */
++    private dumpAtFlag;
+     private currentSnapshot;
+     private dispatch;
+     private feedSamples;
 diff --git a/node_modules/@tilawa/core/dist/recitation/session.js b/node_modules/@tilawa/core/dist/recitation/session.js
-index 3d7030c..78d4d75 100644
+index 3d7030c..1da2566 100644
 --- a/node_modules/@tilawa/core/dist/recitation/session.js
 +++ b/node_modules/@tilawa/core/dist/recitation/session.js
 @@ -80,8 +80,9 @@ const STRUCTURAL_BLOCK_SECONDS = 120;
@@ -180,7 +275,58 @@ index 3d7030c..78d4d75 100644
  }
  export class ZipformerSession {
      corpus;
-@@ -295,6 +296,12 @@ export class ZipformerSession {
+@@ -119,6 +120,12 @@ export class ZipformerSession {
+     ayahIssuesRaised = new Set();
+     correction = new CorrectionController();
+     practiceEngine = null;
++    /** A practice run was started for the open flag. */
++    practiced = false;
++    keepContextOnDefer = false;
++    /** Ayat flagged as skipped whose flag was answered with the tracker kept
++     * (keepContextOnDefer): see checkAyahGap. */
++    keptSkips = new Set();
+     expected = null;
+     skipCandidate = null;
+     stopping = false;
+@@ -143,6 +150,7 @@ export class ZipformerSession {
+         this.gapMaxWords = opts.gapMaxWords ?? GAP_MAX_WORDS;
+         this.onEvent = opts.onEvent ?? null;
+         this.debugEnabled = opts.debug ?? false;
++        this.keepContextOnDefer = opts.keepContextOnDefer ?? false;
+         this.slipMode = opts.slipHead === true || opts.slipHead === "strict" ? "strict"
+             : opts.slipHead === "high" ? "high" : false;
+         this.posteriors = new FramePosteriors(runner.io.vocabSize);
+@@ -260,16 +268,29 @@ export class ZipformerSession {
+         const engine = this.practiceEngine ?? this.engine;
+         return engine.tracer?.verdicts(false) ?? [];
+     }
++    /** How well the active tracker follows the audio: `lost`, or `held` while
++     * its cost rate over the last `holdWindow` chars is at or over `holdRate`
++     * (the engine then emits no cursor or verdict events and runs no rules,
++     * but {@link verdicts} still returns fresh verdicts). Null while searching. */
++    trackingHealth() {
++        const tracker = (this.practiceEngine ?? this.engine).tracker;
++        if (!tracker)
++            return null;
++        const rate = tracker.costRate(this.cfg.holdWindow);
++        return { lost: tracker.lost, held: rate !== null && rate >= this.cfg.holdRate, rate: rate ?? 0 };
++    }
+     /** Drop all state — new recitation, same model and corpus. */
+     reset() {
+         this.correction.reset();
+         this.practiceEngine = null;
++        this.practiced = false;
+         this.accumulated = new Map();
+         this.emitted = new Set();
+         this.transcriptParts = [];
+         this.lastCursor = null;
+         this.lastMatch = null;
+         this.ayahIssuesRaised = new Set();
++        this.keptSkips = new Set();
+         this.skipCandidate = null;
+         this.lastFallback = null;
+         this.st = ZipformerSession.freshStructural();
+@@ -295,6 +316,12 @@ export class ZipformerSession {
          this.expected = passage ? { ...passage } : null;
          this.engine.setExpected(this.expected);
      }
@@ -193,7 +339,39 @@ index 3d7030c..78d4d75 100644
      setMode(mode) {
          const out = this.correction.state.phase !== 'idle' ? this.correct('close') : [];
          this.correction.setMode(mode);
-@@ -437,6 +444,7 @@ export class ZipformerSession {
+@@ -316,10 +343,18 @@ export class ZipformerSession {
+             this.attachPosteriors(this.practiceEngine);
+     }
+     correct(action) {
++        const before = this.correction.state.phase;
+         if (!this.correction.act(action))
+             return [];
+         const state = this.correction.state;
+-        this.resetDecoder();
++        // A flag deferred or dismissed with no practice run: the reciter never
++        // stopped, so the decoder, the tracker and their audio context stay.
++        const keep = this.keepContextOnDefer && before === 'error' && state.phase === 'idle' && !this.practiced;
++        this.practiced = state.phase !== 'idle' && (this.practiced || state.phase === 'retrying');
++        if (keep && state.issue?.kind === "possible_skipped_ayah")
++            this.keptSkips.add(ayahKey(state.issue));
++        if (!keep)
++            this.resetDecoder();
+         if (state.phase === 'retrying') {
+             this.practiceEngine = new RecitationEngine(this.corpus, this.index, this.cfg);
+             this.practiceEngine.setStayOnSurah(true);
+@@ -328,8 +363,10 @@ export class ZipformerSession {
+         }
+         else {
+             this.practiceEngine = null;
+-            if (state.phase === 'idle' && state.resume) {
++            if (state.phase === 'idle' && state.resume && !keep) {
+                 // Keep verse history, but discard pre-practice acoustic context.
++                if (this.keepContextOnDefer)
++                    this.dumpTallies();
+                 this.engine = this.makeEngine();
+                 this.engine.track(state.resume.surah, state.resume.ayah, state.resume.word);
+                 this.lastCursor = { ...state.resume };
+@@ -437,6 +474,7 @@ export class ZipformerSession {
          engine.onBeforeRelocate = () => this.dumpTallies();
          this.attachPosteriors(engine);
          engine.setExpected(this.expected);
@@ -201,7 +379,21 @@ index 3d7030c..78d4d75 100644
          return engine;
      }
      /** GOP scoring costs a few CTC Viterbi passes per word; only correction mode reads it.
-@@ -555,7 +563,9 @@ export class ZipformerSession {
+@@ -468,6 +506,13 @@ export class ZipformerSession {
+         const snap = snapshotTallies(tracer.verdicts(true), this.wordCount);
+         accumulateSnapshot(this.accumulated, snap);
+     }
++    /** Raising a flag: retain the tracker's coverage before correct() replaces
++     * it. With keepContextOnDefer, correct() dumps only when it does replace it,
++     * so a kept tracker's words are not counted twice. */
++    dumpAtFlag() {
++        if (!this.keepContextOnDefer)
++            this.dumpTallies();
++    }
+     currentSnapshot() {
+         const tracer = this.engine.tracer;
+         if (!tracer)
+@@ -555,11 +600,13 @@ export class ZipformerSession {
              && (tracker.costRate(this.cfg.holdWindow) ?? 0) < this.cfg.holdRate) {
              const last = tracker.heard[tracker.heard.length - 1];
              const settled = !!last && this.decoder.framesDecoded - last.frame >= this.cfg.settleFrames;
@@ -212,8 +404,62 @@ index 3d7030c..78d4d75 100644
              out.push(...this.noteMessages());
              if (raised) {
                  // Retain main-session coverage before a practice exit replaces its tracker.
+-                this.dumpTallies();
++                this.dumpAtFlag();
+                 out.push(this.correctionMessage());
+             }
+             else
+@@ -711,7 +758,7 @@ export class ZipformerSession {
+                 continue;
+             if (ayahLevel)
+                 this.ayahIssuesRaised.add(key);
+-            this.dumpTallies();
++            this.dumpAtFlag();
+             return [this.correctionMessage()];
+         }
+         return [];
+@@ -812,7 +859,7 @@ export class ZipformerSession {
+         const notes = this.noteMessages();
+         if (!raised)
+             return [...notes, ...this.checkSkippedAyah(true, tracer.tracker)];
+-        this.dumpTallies();
++        this.dumpAtFlag();
+         return [...notes, this.correctionMessage()];
+     }
+     /**
+@@ -850,7 +897,7 @@ export class ZipformerSession {
+         if (!this.correction.raise(issue, cursor))
+             return [];
+         this.ayahIssuesRaised.add(key);
+-        this.dumpTallies();
++        this.dumpAtFlag();
+         return [this.correctionMessage()];
+     }
+     noteMessages() {
+@@ -883,6 +930,12 @@ export class ZipformerSession {
+      * cannot see (no clear neighbours inside the ayah).
+      */
+     checkAyahGap(t) {
++        // A tracker kept across a deferred skipped-ayah flag can still match
++        // that ayah, from the next ayah's audio bent onto its text. The reader
++        // is not there, so it does not count as the previous match: the next
++        // ayah's match would read as a second skip.
++        if (this.keptSkips.has(ayahKey(t)))
++            return [];
+         const prev = this.lastMatch;
+         this.lastMatch = { surah: t.surah, ayah: t.ayah };
+         if ((this.stopping && !this.expected) || this.correction.mode !== "correction" || !prev || !this.lastCursor)
+@@ -911,7 +964,7 @@ export class ZipformerSession {
+         if (!this.correction.raise(issue, this.lastCursor))
+             return [];
+         this.ayahIssuesRaised.add(key);
+-        this.dumpTallies();
++        this.dumpAtFlag();
+         return [this.correctionMessage()];
+     }
+     toVerseMatch(t) {
 diff --git a/node_modules/@tilawa/core/dist/recitation/verdicts.js b/node_modules/@tilawa/core/dist/recitation/verdicts.js
-index 96da26c..d8d5202 100644
+index 96da26c..4f9d7bd 100644
 --- a/node_modules/@tilawa/core/dist/recitation/verdicts.js
 +++ b/node_modules/@tilawa/core/dist/recitation/verdicts.js
 @@ -81,6 +81,13 @@ export class VerdictTracer {
@@ -240,3 +486,23 @@ index 96da26c..d8d5202 100644
          return out;
      }
      /** Ref cell just past the ayah holding `cell`, when `cell` lies within the
+@@ -264,9 +274,18 @@ export class VerdictTracer {
+                 ? 0
+                 : tWordStart(this.tracker, this.tracker.localWordOfPos[cell - 1]);
+             const firstOfRun = segStart === runStart;
+-            const contextFrom = firstOfRun && run === 0
++            let contextFrom = firstOfRun && run === 0
+                 ? segStart
+                 : Math.max(prevSegStart, segStart - CONTEXT_CHARS);
++            if (!firstOfRun && this.cfg.wholeWordAtCut) {
++                // A length cut inside a word: give the word all its heard chars.
++                const wordAt = (i) => (trail[i] <= 0 ? 0 : this.tracker.localWordOfPos[trail[i] - 1]);
++                const w0 = wordAt(segStart);
++                let i = segStart;
++                while (i > prevSegStart && wordAt(i - 1) === w0)
++                    i--;
++                contextFrom = Math.min(contextFrom, i);
++            }
+             segs.push({
+                 heardFrom: segStart,
+                 heardTo: to,

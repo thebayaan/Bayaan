@@ -386,6 +386,28 @@ describe('RecitationTrackingService memorisation mode', () => {
     });
   });
 
+  it('a verse_match for an ayah already flagged as skipped is ignored: not recited, and the passage does not slide', async () => {
+    await service.startRecitationTracking(null);
+    engineControl.sendEvent?.(wordProgress(18, 3, 0, 9));
+    engineControl.sendEvent?.(
+      correctionError(18, 10, 0, 'possible_skipped_ayah', 'ayah_order'),
+    );
+    expect(state().flags.map(f => f.key)).toEqual(['skippedAyah:18:10:0']);
+    const calls = mockEngine.setExpected.mock.calls.length;
+    // The tracker kept across the flag can still align the next ayah's audio
+    // onto the skipped one.
+    engineControl.sendEvent?.(verseMatch(18, 10));
+    expect(state().recitedVerseKeys).toEqual([]);
+    expect(mockEngine.setExpected.mock.calls.length).toBe(calls);
+    engineControl.sendEvent?.(verseMatch(18, 11));
+    expect(state().recitedVerseKeys).toEqual(['18:11']);
+    expect(mockEngine.setExpected).toHaveBeenLastCalledWith({
+      surah: 18,
+      ayah: 10,
+      ayahEnd: 19,
+    });
+  });
+
   it('the passage never runs past the end of the surah', async () => {
     await service.startRecitationTracking(null);
     engineControl.sendEvent?.(wordProgress(18, 105, 0, 9));
@@ -733,7 +755,7 @@ describe('RecitationTrackingService live mistakes', () => {
     expect(state().marks).toEqual([]);
   });
 
-  it('a slip after the lock word in the same chunk is still marked', async () => {
+  it('a slip after the lock word in the same chunk is not marked either: that chunk is all replayed audio', async () => {
     await lockedTake();
     engineControl.sendEvent?.(
       wordVerdicts(
@@ -746,9 +768,53 @@ describe('RecitationTrackingService live mistakes', () => {
       ),
     );
     await listenFor(900);
+    expect(state().marks).toEqual([]);
+  });
+
+  it('a slip in the chunk after the lock is marked', async () => {
+    await lockedTake();
+    engineControl.sendEvent?.(
+      wordVerdicts(
+        [
+          {surah: 18, ayah: 3, word: 4, state: 'ok'},
+          {surah: 18, ayah: 3, word: 5, state: 'ok'},
+        ],
+        {surah: 18, ayah: 3, word: 4},
+      ),
+    );
+    engineControl.sendEvent?.(
+      wordVerdicts([
+        {surah: 18, ayah: 3, word: 6, state: 'wrong'},
+        {surah: 18, ayah: 3, word: 7, state: 'ok'},
+      ]),
+    );
+    await listenFor(900);
     expect(state().marks).toEqual([
       expect.objectContaining({word: 6, status: 'mistake'}),
     ]);
+  });
+
+  it('a chunk that judges a long stretch across several ayat at once marks nothing in it: the tracker re-aligned', async () => {
+    await lockedTake();
+    const ok = (ayah: number, word: number) =>
+      ({surah: 18, ayah, word, state: 'ok'}) as const;
+    engineControl.sendEvent?.(
+      wordVerdicts([
+        ok(3, 5),
+        ok(3, 6),
+        ok(3, 7),
+        ok(3, 8),
+        ok(4, 0),
+        ok(4, 1),
+        {surah: 18, ayah: 4, word: 2, state: 'wrong'},
+        ok(4, 3),
+        ok(4, 4),
+        ok(4, 5),
+        ok(5, 0),
+      ]),
+    );
+    await listenFor(900);
+    expect(state().marks).toEqual([]);
   });
 
   it('when the engine loses the reader, a suspicion not yet shown is dropped', async () => {

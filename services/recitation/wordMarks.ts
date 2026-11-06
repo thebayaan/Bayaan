@@ -143,24 +143,47 @@ function isBad(change: VerdictChange): boolean {
 }
 
 /**
- * Drops the bad verdicts judged from the audio the engine replayed when it
- * found the reader (`lock`, the word it locked onto): that word may have been
- * heard only from its middle, and the words before it were not heard in this
- * lock at all. Other verdicts pass through.
+ * Drops the bad verdicts of the chunk where the engine found the reader
+ * (`lock`, the word it locked or relocated onto): the whole chunk was judged
+ * from the audio it replayed to find them. The lock word may have been heard
+ * only from its middle, and the words before it were not heard in this lock
+ * at all. The words after it go too: on the bench that cost no catch, and
+ * with babble 5 dB under the reader it kept 23 of 301 false marks off the
+ * page. Other verdicts pass through.
  */
 export function dropLockArtifacts(
   changes: readonly VerdictChange[],
   lock: EngineWord | null,
 ): VerdictChange[] {
   if (!lock) return [...changes];
-  return changes.filter(c => {
-    if (!isBad(c)) return true;
-    const atOrBefore =
-      c.surah < lock.surah ||
-      (c.surah === lock.surah &&
-        (c.ayah < lock.ayah || (c.ayah === lock.ayah && c.word <= lock.word)));
-    return !atOrBefore;
-  });
+  return changes.filter(c => !isBad(c));
+}
+
+/**
+ * One chunk that judges REALIGN_WORDS or more words across REALIGN_AYAT or
+ * more ayat is the tracker re-aligning a stretch it had left pending (mostly
+ * the repeated refrains of Ar-Rahman), not words just heard: a live 480 ms
+ * chunk judges one word, now and then two. On the planted-mistake bench,
+ * ignoring the bad verdicts of such chunks removed 22 of 138 false marks for
+ * 1 of 633 catches.
+ */
+export const REALIGN_WORDS = 11;
+export const REALIGN_AYAT = 3;
+
+/**
+ * Drops the bad verdicts of a chunk that judged REALIGN_WORDS or more words
+ * across REALIGN_AYAT or more ayat at once (pending words do not count).
+ * Other verdicts pass through.
+ */
+export function dropRealignment(
+  changes: readonly VerdictChange[],
+): VerdictChange[] {
+  const judged = changes.filter(c => c.state !== 'pending');
+  const ayat = new Set(judged.map(c => `${c.surah}:${c.ayah}`));
+  if (judged.length < REALIGN_WORDS || ayat.size < REALIGN_AYAT) {
+    return [...changes];
+  }
+  return changes.filter(c => !isBad(c));
 }
 
 /** The kind a bad verdict is suspected as, or null when it is not a slip. */

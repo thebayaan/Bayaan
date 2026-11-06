@@ -556,7 +556,7 @@ describe('sessionRunner correction sessions', () => {
     expect(mockEngine.setStructural).toHaveBeenLastCalledWith(false);
   });
 
-  it('a live flag is deferred so listening goes on', async () => {
+  it('a live flag reaches the handlers, and its deferral is left to the engine', async () => {
     const h = handlers();
     await runner.startSession(
       {purpose: 'follow', hint: null, mode: 'correction', structural: true},
@@ -565,12 +565,8 @@ describe('sessionRunner correction sessions', () => {
     const flag = correctionError(18, 22, 4, 'possible_omission');
     engineControl.sendEvent?.(flag);
     expect(h.onEvent).toHaveBeenCalledWith(flag);
-    expect(mockEngine.correct).toHaveBeenCalledWith('review_later');
-  });
-
-  it('a flag in a tracking session is not deferred', async () => {
-    await runner.startSession({purpose: 'follow', hint: null}, handlers());
-    engineControl.sendEvent?.(correctionError(18, 22, 4, 'possible_omission'));
+    // The engine defers it with the chunk that raised it; a second
+    // deferral queued here would only run after later chunks.
     expect(mockEngine.correct).not.toHaveBeenCalled();
   });
 
@@ -589,7 +585,9 @@ describe('sessionRunner correction sessions', () => {
       ayahEnd: 12,
     });
     expect(mockEngine.setStructural).toHaveBeenLastCalledWith(true);
-    engineControl.sendEvent?.(correctionError(18, 6, 2, 'possible_omission'));
-    expect(mockEngine.correct).toHaveBeenCalledWith('review_later');
+    const flag = correctionError(18, 6, 2, 'possible_omission');
+    engineControl.sendEvent?.(flag);
+    expect(h.onEvent).toHaveBeenCalledWith(flag);
+    expect(mockEngine.correct).not.toHaveBeenCalled();
   });
 });

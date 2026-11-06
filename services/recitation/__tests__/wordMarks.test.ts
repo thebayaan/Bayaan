@@ -2,11 +2,14 @@ import {
   applyVerdicts,
   confirmDue,
   dropLockArtifacts,
+  dropRealignment,
   dropSuspects,
   emptyMarkBook,
   MARK_CONFIRM_MS,
   NEXT_OK_WINDOW_MS,
   nextConfirmAt,
+  REALIGN_AYAT,
+  REALIGN_WORDS,
   shownMarks,
   type VerdictChange,
 } from '../wordMarks';
@@ -396,17 +399,80 @@ describe('dropLockArtifacts', () => {
     ).toEqual([]);
   });
 
-  it('keeps bad verdicts after that word, and every other verdict', () => {
-    const later = [change(4, 'wrong'), change(0, 'wrong', {ayah: 13})];
-    const fine = [change(3, 'ok'), change(2, 'unsure'), change(3, 'pending')];
-    expect(dropLockArtifacts([...fine, ...later], lock)).toEqual([
-      ...fine,
-      ...later,
-    ]);
+  it('drops bad verdicts after that word too: the whole chunk was judged from replayed audio', () => {
+    expect(
+      dropLockArtifacts(
+        [change(4, 'wrong'), change(0, 'skipped', {ayah: 13})],
+        lock,
+      ),
+    ).toEqual([]);
+  });
+
+  it('keeps every other verdict of that chunk', () => {
+    const fine = [
+      change(3, 'ok'),
+      change(2, 'unsure'),
+      change(3, 'pending'),
+      change(5, 'ok'),
+    ];
+    expect(dropLockArtifacts([change(4, 'wrong'), ...fine], lock)).toEqual(
+      fine,
+    );
   });
 
   it('keeps everything when the engine did not lock in that chunk', () => {
     const changes = [change(3, 'wrong'), change(1, 'skipped')];
     expect(dropLockArtifacts(changes, null)).toEqual(changes);
+  });
+});
+
+describe('dropRealignment', () => {
+  /** `count` words judged ok, spread in turn over `ayat` of surah 67. */
+  function judged(count: number, ayat: number[]): VerdictChange[] {
+    return Array.from({length: count}, (_, i) =>
+      change(i, 'ok', {ayah: ayat[i % ayat.length]}),
+    );
+  }
+
+  it('acts on 11 words judged at once across 3 ayat', () => {
+    expect(REALIGN_WORDS).toBe(11);
+    expect(REALIGN_AYAT).toBe(3);
+  });
+
+  it('drops the bad verdicts of a chunk that judges that many: the tracker re-aligned a stretch it had left pending', () => {
+    const bad = [change(1, 'wrong', {ayah: 13}), change(2, 'skipped')];
+    const fine = [...judged(9, [11, 12, 13]), change(4, 'pending')];
+    expect(dropRealignment([...bad, ...fine])).toEqual(fine);
+  });
+
+  it('counts an unsure word as judged, and keeps it', () => {
+    const fine = [...judged(9, [11, 12, 13]), change(0, 'unsure')];
+    expect(dropRealignment([...fine, change(1, 'wrong')])).toEqual(fine);
+  });
+
+  it('keeps a chunk of 10 judged words', () => {
+    const changes = [...judged(9, [11, 12, 13]), change(1, 'wrong')];
+    expect(dropRealignment(changes)).toEqual(changes);
+  });
+
+  it('keeps 11 judged words within 2 ayat', () => {
+    const changes = [...judged(10, [12, 13]), change(1, 'wrong')];
+    expect(dropRealignment(changes)).toEqual(changes);
+  });
+
+  it('pending verdicts count neither as judged words nor towards the ayat', () => {
+    const fewWords = [
+      ...judged(9, [11, 12, 13]),
+      change(1, 'wrong'),
+      change(5, 'pending'),
+      change(6, 'pending'),
+    ];
+    expect(dropRealignment(fewWords)).toEqual(fewWords);
+    const fewAyat = [
+      ...judged(10, [12, 13]),
+      change(1, 'wrong'),
+      change(0, 'pending', {ayah: 14}),
+    ];
+    expect(dropRealignment(fewAyat)).toEqual(fewAyat);
   });
 });

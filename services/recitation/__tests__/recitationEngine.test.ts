@@ -302,7 +302,31 @@ describe('createRecitationEngine', () => {
       createZipformerSession: jest.Mock;
     }>('@tilawa/core');
     expect(createZipformerSession).toHaveBeenCalledWith(
-      expect.objectContaining({config: {commitDwell: 2}}),
+      expect.objectContaining({
+        config: expect.objectContaining({commitDwell: 2}),
+      }),
+    );
+  });
+
+  it('judges a word cut by a 300-sound segment boundary from all of it', async () => {
+    await createRecitationEngine(ASSETS, () => undefined);
+    const {createZipformerSession} = jest.requireMock<{
+      createZipformerSession: jest.Mock;
+    }>('@tilawa/core');
+    expect(createZipformerSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        config: expect.objectContaining({wholeWordAtCut: true}),
+      }),
+    );
+  });
+
+  it('a deferred flag keeps the tracker and the audio it heard', async () => {
+    await createRecitationEngine(ASSETS, () => undefined);
+    const {createZipformerSession} = jest.requireMock<{
+      createZipformerSession: jest.Mock;
+    }>('@tilawa/core');
+    expect(createZipformerSession).toHaveBeenCalledWith(
+      expect.objectContaining({keepContextOnDefer: true}),
     );
   });
 
@@ -378,6 +402,107 @@ describe('createRecitationEngine', () => {
     expect(batches[0].lock).toEqual({surah: 67, ayah: 12, word: 3});
     // The next chunk is judged from live audio.
     expect(batches[1].lock).toBeUndefined();
+  });
+
+  describe('a flag raised while listening', () => {
+    // Tilawa's session hands everything it emits, correct()'s answers
+    // included, to the onEvent it was created with.
+    let sessionEvent: (msg: WorkerOutbound) => void = () => undefined;
+    const flag = flagMessage(5);
+
+    beforeEach(() => {
+      const {createZipformerSession} = jest.requireMock<{
+        createZipformerSession: jest.Mock;
+      }>('@tilawa/core');
+      createZipformerSession.mockImplementationOnce(
+        async (opts: {onEvent: (msg: WorkerOutbound) => void}) => {
+          sessionEvent = opts.onEvent;
+          return mockSession;
+        },
+      );
+      mockSession.feed.mockImplementationOnce(async () => {
+        mockSession.correction.state.phase = 'error';
+        sessionEvent(flag);
+        return [flag];
+      });
+    });
+
+    function deferClosesIt(): void {
+      mockSession.correct.mockImplementationOnce(() => {
+        mockSession.correction.state.phase = 'idle';
+        for (const msg of DEFERRED) sessionEvent(msg);
+        return DEFERRED;
+      });
+    }
+
+    it('is answered with review_later before the next chunk is fed', async () => {
+      deferClosesIt();
+      const engine = await createRecitationEngine(ASSETS, () => undefined);
+      engine.feed(pcm());
+      engine.feed(pcm());
+      await engine.stop();
+      expect(mockSession.correct).toHaveBeenCalledTimes(1);
+      expect(mockSession.correct).toHaveBeenCalledWith('review_later');
+      const [firstFeed, nextFeed] = mockSession.feed.mock.invocationCallOrder;
+      const [answer] = mockSession.correct.mock.invocationCallOrder;
+      expect(answer).toBeGreaterThan(firstFeed);
+      expect(answer).toBeLessThan(nextFeed);
+    });
+
+    it("is answered before that chunk's verdicts are read", async () => {
+      deferClosesIt();
+      const engine = await createRecitationEngine(ASSETS, () => undefined);
+      engine.feed(pcm());
+      await engine.stop();
+      expect(mockSession.correct.mock.invocationCallOrder[0]).toBeLessThan(
+        mockSession.verdicts.mock.invocationCallOrder[0],
+      );
+    });
+
+    it('reaches the listener, and so does its answer, once each', async () => {
+      deferClosesIt();
+      const events: unknown[] = [];
+      const engine = await createRecitationEngine(ASSETS, msg => {
+        events.push(msg);
+      });
+      engine.feed(pcm());
+      // Answered with its chunk, so the stop finds nothing left to defer.
+      await expect(engine.stop()).resolves.toEqual(FINAL);
+      expect(events).toEqual([flag, ...DEFERRED]);
+    });
+
+    it('a flag raised by deferring the first is deferred too', async () => {
+      const second = flagMessage(6);
+      mockSession.correct.mockImplementationOnce(() => {
+        // Deferring runs the structural rules, which raise the next flag.
+        for (const msg of [...DEFERRED, second]) sessionEvent(msg);
+        return [...DEFERRED, second];
+      });
+      deferClosesIt();
+      const events: unknown[] = [];
+      const engine = await createRecitationEngine(ASSETS, msg => {
+        events.push(msg);
+      });
+      engine.feed(pcm());
+      await expect(engine.stop()).resolves.toEqual(FINAL);
+      expect(mockSession.correct).toHaveBeenCalledTimes(2);
+      expect(events).toEqual([flag, ...DEFERRED, second, ...DEFERRED]);
+    });
+
+    it('gives up on a flag that never closes after 64 answers, and the next chunk is still fed', async () => {
+      let answersBeforeNextChunk = -1;
+      mockSession.feed.mockImplementationOnce(async () => {
+        answersBeforeNextChunk = mockSession.correct.mock.calls.length;
+        mockSession.correction.state.phase = 'idle';
+        return [];
+      });
+      const engine = await createRecitationEngine(ASSETS, () => undefined);
+      engine.feed(pcm());
+      engine.feed(pcm());
+      await engine.stop();
+      expect(answersBeforeNextChunk).toBe(64);
+      expect(mockSession.correct).toHaveBeenCalledTimes(64);
+    });
   });
 
   it('a relocation tags its chunk with the word it moved to', async () => {
