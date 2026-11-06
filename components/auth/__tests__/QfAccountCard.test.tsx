@@ -4,6 +4,15 @@ const mockSecureStore = new Map<string, string>();
 const mockUseLinkingURL = jest.fn();
 const mockReplace = jest.fn();
 
+// Icon fonts can't load in Jest (SDK 58's expo-font has no asset registry here).
+jest.mock(
+  '@expo/vector-icons',
+  () =>
+    new Proxy(
+      {},
+      {get: (_target, name) => (name === '__esModule' ? false : () => null)},
+    ),
+);
 jest.mock('expo-linking', () => ({
   useLinkingURL: () => mockUseLinkingURL(),
 }));

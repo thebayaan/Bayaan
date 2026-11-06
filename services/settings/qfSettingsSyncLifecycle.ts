@@ -1,4 +1,5 @@
 import {Alert} from 'react-native';
+import i18n from '@/i18n';
 import {bayaanAuthConfig} from '@/config/bayaanAuth';
 import {getBayaanSession} from '@/services/auth/bayaanSessionStorage';
 import {bayaanAuthService} from '@/services/auth/bayaanAuthService';
@@ -219,15 +220,15 @@ export class QfSettingsSyncLifecycle {
 function chooseFirstSyncConflict(): Promise<'local' | 'cloud'> {
   return new Promise(resolve => {
     Alert.alert(
-      'Settings found in your account',
-      'Use cloud settings, retaining device values where the cloud has none, or keep this device’s settings. Fields this app does not understand stay in the cloud.',
+      i18n.t('settings:qfAccount.settingsConflict.title'),
+      i18n.t('settings:qfAccount.settingsConflict.message'),
       [
         {
-          text: 'Use cloud settings',
+          text: i18n.t('settings:qfAccount.settingsConflict.useCloud'),
           onPress: () => resolve('cloud'),
         },
         {
-          text: 'Keep this device',
+          text: i18n.t('settings:qfAccount.settingsConflict.keepDevice'),
           onPress: () => resolve('local'),
         },
       ],

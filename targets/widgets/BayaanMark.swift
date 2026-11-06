@@ -1,5 +1,6 @@
 // targets/widgets/BayaanMark.swift
 import SwiftUI
+import UIKit
 
 /// The Bayaan starburst, drawn as strokes so it stays sharp at any size.
 /// Coordinates match bayaan_mark.xml on Android (600 x 500 viewport).
@@ -24,13 +25,32 @@ struct BayaanMark: Shape {
   }
 }
 
-/// Corner logo shown on every Continue Listening size.
+/// Corner logo shown on every Continue Listening size. A fork replaces the
+/// starburst by adding a `BrandMark` image set to targets/widgets/Assets.xcassets
+/// (a single-color PDF or SVG; it is drawn as a template in the foreground color), // @ai
+/// see RFC-021. Without one, the vector BayaanMark is drawn.
 struct BayaanLogo: View {
   var size: CGFloat = 16
+  private static let brandMark = UIImage(named: "BrandMark")
+
   var body: some View {
-    BayaanMark()
-      .fill(.white.opacity(0.9))
+    mark
       .frame(width: size * 1.2, height: size)
       .accessibilityHidden(true)
+  }
+
+  @ViewBuilder private var mark: some View {
+    if let image = Self.brandMark {
+      Image(uiImage: image)
+        .renderingMode(.template)
+        .resizable()
+        .scaledToFit()
+        .opacity(0.9) // @ai
+    } else {
+      // @ai-start
+      // Follows the widget's foreground, so it works on paper and ink alike.
+      BayaanMark().fill(.foreground).opacity(0.9)
+      // @ai-end
+    }
   }
 }

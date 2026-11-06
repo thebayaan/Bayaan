@@ -2,7 +2,7 @@ import {create} from 'zustand';
 import {persist} from 'zustand/middleware';
 import {Reciter, RECITERS} from '@/data/reciterData';
 import {Surah, SURAHS} from '@/data/surahData';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import {persistStorage} from '@/utils/storage'; // @ai
 import {usePlayerStore} from '@/services/player/store/playerStore';
 
 export interface RecentlyPlayedTrack {
@@ -304,18 +304,7 @@ export const useRecentlyPlayedStore = create<RecentlyPlayedState>()(
     }),
     {
       name: 'player-recently-played-storage',
-      storage: {
-        getItem: async name => {
-          const value = await AsyncStorage.getItem(name);
-          return value ? JSON.parse(value) : null;
-        },
-        setItem: async (name, value) => {
-          await AsyncStorage.setItem(name, JSON.stringify(value));
-        },
-        removeItem: async name => {
-          await AsyncStorage.removeItem(name);
-        },
-      },
+      storage: persistStorage(), // @ai
       partialize: state =>
         ({
           recentTracks: state.recentTracks,

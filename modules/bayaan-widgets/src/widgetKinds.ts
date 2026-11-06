@@ -35,6 +35,20 @@ function nowPlayingKey(s: WidgetSnapshot): unknown {
   };
 }
 
+// @ai-start
+// What a play button needs to show play or pause: the playing surah and
+// reciter, and whether it plays. Position and duration never matter here.
+export function playingKey(s: WidgetSnapshot): unknown {
+  const np = s.nowPlaying;
+  if (!np) return null;
+  return {
+    surahId: np.track.surahId,
+    reciterId: np.track.reciterId,
+    isPlaying: np.isPlaying,
+  };
+}
+// @ai-end
+
 function safeRate(rate: number): number {
   return rate > 0 && Number.isFinite(rate) ? rate : 1;
 }
@@ -69,12 +83,13 @@ function sliceFor(kind: WidgetKind, s: WidgetSnapshot): unknown {
   switch (kind) {
     case 'ContinueListening':
       return [nowPlayingKey(s), s.upNext, s.recent, s.defaultReciter];
+    // These show a play button that turns into pause while their item plays. // @ai
     case 'QuickSurah':
-      return s.defaultReciter;
+      return [s.defaultReciter, playingKey(s)]; // @ai
     case 'PinnedReciter':
-      return [s.reciterRecents, s.defaultReciter];
+      return [s.reciterRecents, s.defaultReciter, playingKey(s)]; // @ai
     case 'AyahOfTheDay':
-      return null;
+      return playingKey(s); // @ai
     case 'ContinueReading':
       return s.lastRead;
     case 'Tasbeeh':

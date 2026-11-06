@@ -13,23 +13,32 @@
  *   console.log(versionInfo.semanticVersion); // e.g., "1.0.3"
  */
 
-const {execSync} = require('child_process');
+const {execFileSync} = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
+// @ai-start
+// The repository that holds this script. Git runs with `-C REPO_ROOT`, so the
+// result does not depend on process.cwd(): a build started from a shell in
+// another checkout still reads this checkout's tags and commit count.
+const REPO_ROOT = path.join(__dirname, '..');
+
 /**
- * Safely executes a Git command and returns the result
+ * Safely executes a Git command in REPO_ROOT and returns the result
  * Returns fallback value if command fails
  */
-function safeExec(command, fallback = '') {
+function safeGit(args, fallback = '') {
   try {
-    return execSync(command, {stdio: ['pipe', 'pipe', 'ignore']})
+    return execFileSync('git', ['-C', REPO_ROOT, ...args], {
+      stdio: ['pipe', 'pipe', 'ignore'],
+    })
       .toString()
       .trim();
   } catch (error) {
     return fallback;
   }
 }
+// @ai-end
 
 /**
  * Extract the current semantic version from Git tags
@@ -37,16 +46,28 @@ function safeExec(command, fallback = '') {
  */
 function getSemanticVersion() {
   // Try to get the latest tag that looks like a version
-  let tag = safeExec(
-    'git describe --tags --abbrev=0 --match "v[0-9]*.[0-9]*.[0-9]*" --match "[0-9]*.[0-9]*.[0-9]*" 2>/dev/null',
-  );
+  // @ai-start
+  let tag = safeGit([
+    'describe',
+    '--tags',
+    '--abbrev=0',
+    '--match',
+    'v[0-9]*.[0-9]*.[0-9]*',
+    '--match',
+    '[0-9]*.[0-9]*.[0-9]*',
+    // The globs also match a prerelease or test tag such as
+    // `v2.3.0-1809-test`; never take the marketing version from one.
+    '--exclude',
+    '*-*',
+  ]);
+  // @ai-end
 
   // If no version tags found, check existing version as fallback
   if (!tag) {
     // Try to read from package.json as fallback
     try {
       const packageJson = JSON.parse(
-        fs.readFileSync(path.join(__dirname, '..', 'package.json')),
+        fs.readFileSync(path.join(REPO_ROOT, 'package.json')),
       );
       tag = packageJson.version || '1.0.0';
     } catch (e) {
@@ -70,7 +91,7 @@ function getBuildNumber() {
   }
 
   // Try to get total commit count
-  const commitCount = safeExec('git rev-list --count HEAD', '1');
+  const commitCount = safeGit(['rev-list', '--count', 'HEAD'], '1'); // @ai
 
   // Ensure it's a positive integer
   const count = parseInt(commitCount, 10);
@@ -90,14 +111,14 @@ function getVersionCode() {
  * Get the current Git branch name
  */
 function getCurrentBranch() {
-  return safeExec('git rev-parse --abbrev-ref HEAD', 'unknown');
+  return safeGit(['rev-parse', '--abbrev-ref', 'HEAD'], 'unknown'); // @ai
 }
 
 /**
  * Get the current commit hash (short version)
  */
 function getGitHash() {
-  return safeExec('git rev-parse --short HEAD', 'unknown');
+  return safeGit(['rev-parse', '--short', 'HEAD'], 'unknown'); // @ai
 }
 
 /**

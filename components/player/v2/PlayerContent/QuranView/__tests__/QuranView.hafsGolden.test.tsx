@@ -96,8 +96,10 @@ jest.mock('@shopify/flash-list', () => {
   return {FlashList};
 });
 
-jest.mock('@gorhom/bottom-sheet', () => ({
-  useBottomSheetScrollableCreator: () => undefined,
+// The RTL scroll boundary has its own behavior tests; keep this golden
+// focused on the list data and follow-along props, as before.
+jest.mock('@/hooks/usePlayerScrollable', () => ({
+  usePlayerScrollable: () => undefined,
 }));
 
 jest.mock('@expo/vector-icons', () => ({Ionicons: () => null}));

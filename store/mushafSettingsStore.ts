@@ -1,7 +1,8 @@
 import {create} from 'zustand';
-import {persist, createJSONStorage} from 'zustand/middleware';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import {persist} from 'zustand/middleware';
+import {persistStorage} from '@/utils/storage'; // @ai
 import {getReadingThemeById} from '@/constants/readingThemes';
+import {defaultShowEnglishReadingAids} from '@/i18n/language'; // @ai
 import {
   migratePersistedId,
   type RewayahId,
@@ -217,13 +218,13 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
   persist(
     set => ({
       // Default values
-      showTranslation: true,
+      showTranslation: defaultShowEnglishReadingAids, // @ai
       showTransliteration: false,
       showTajweed: false,
       showThemes: false,
       showCommunityReflections: false,
       showWBW: false,
-      wbwShowTranslation: true,
+      wbwShowTranslation: defaultShowEnglishReadingAids, // @ai
       wbwShowTransliteration: false,
       arabicFontSize: getActualFontSize(5), // Default: middle of scale
       translationFontSize: getActualFontSize(3),
@@ -250,12 +251,7 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
         set(state => ({showTranslation: !state.showTranslation})),
       toggleTransliteration: () =>
         set(state => ({showTransliteration: !state.showTransliteration})),
-      toggleTajweed: () =>
-        set(state =>
-          state.mushafRenderer === 'qcf_v2'
-            ? state
-            : {showTajweed: !state.showTajweed},
-        ),
+      toggleTajweed: () => set(state => ({showTajweed: !state.showTajweed})), // @ai
       toggleThemes: () => set(state => ({showThemes: !state.showThemes})),
       toggleCommunityReflections: () =>
         set(state => ({
@@ -297,7 +293,10 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
           return {
             mushafRenderer: renderer,
             arabicFontFamily: 'Uthmani',
-            showTajweed: renderer === 'qcf_v2' ? false : state.showTajweed,
+            showTajweed:
+              renderer === 'qcf_v2' && state.mushafRenderer !== renderer
+                ? true
+                : state.showTajweed,
             showRewayahDiffs:
               renderer === 'qcf_v2' ? false : state.showRewayahDiffs,
             uthmaniFont: uthmaniFontForRenderer(renderer),
@@ -400,8 +399,8 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
     }),
     {
       name: 'mushaf-settings',
-      storage: createJSONStorage(() => AsyncStorage),
-      version: 18, // @ai
+      storage: persistStorage(), // @ai
+      version: 19, // @ai
       // @ai-start
       // A startup fallback lasts one session: persist the reader's saved
       // rewayah rather than the Hafs shown in its place, and never the
@@ -452,7 +451,7 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
         }
         if (version < 8) {
           state.showWBW = false;
-          state.wbwShowTranslation = true;
+          state.wbwShowTranslation = defaultShowEnglishReadingAids; // @ai
           state.wbwShowTransliteration = false;
         }
         if (version < 9) {
@@ -512,6 +511,11 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
           // the font.
           state.mushafRenderer = REWAYAH_FALLBACK_RENDERER;
           state.uthmaniFont = uthmaniFontForRenderer(REWAYAH_FALLBACK_RENDERER);
+        }
+        // @ai-end
+        // @ai-start
+        if (version < 19 && state.mushafRenderer === 'qcf_v2') {
+          state.showTajweed = true;
         }
         // @ai-end
         return state as unknown as MushafSettingsState;

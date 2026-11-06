@@ -14,7 +14,6 @@ components/reciter-profile/
 │   │   └── index.tsx
 │   ├── StickyHeader/     # Blur + gradient header
 │   │   └── index.tsx
-│   ├── SearchHeader/     # Search functionality
 │   │   └── index.tsx
 │   ├── SurahList/        # Surah listing
 │   │   └── index.tsx

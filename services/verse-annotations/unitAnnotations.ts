@@ -383,12 +383,13 @@ export function savedVerseLabel(
 export function savedVerseSubtitle(
   description: SavedVerseDescription,
   hafsAyah: number,
+  ayahLabel: (ayah: number) => string = ayah => `Ayah ${ayah}`,
 ): string | undefined {
   switch (description.kind) {
     case 'hafs':
-      return `Ayah ${hafsAyah}`;
+      return ayahLabel(hafsAyah);
     case 'units':
-      return `Ayah ${description.units[0].ayah}`;
+      return ayahLabel(description.units[0].ayah);
     case 'unnumbered':
       return description.hafsLabel || undefined;
     default:

@@ -5,7 +5,10 @@
  * Required because React Native's bundler needs static require() calls
  * for local assets - dynamic requires are not supported.
  *
- * Contains mappings for all 406 dhikr audio files (267 adhkar + 40 Quranic duas + 99 Names of Allah).
+ * Contains a mapping for every audio file a dhikr row or a list override
+ * references: 406 row files (267 adhkar + 40 Quranic duas + 99 Names of
+ * Allah) and 19 evening-list files (super_category_audio_overrides and the six
+ * evening rows).
  */
 
 /**
@@ -111,6 +114,27 @@ const audioAssets: Record<string, number> = {
   'adhkar_96.mp3': require('@/assets/audio/adhkar/adhkar_96.mp3'),
   'adhkar_97.mp3': require('@/assets/audio/adhkar/adhkar_97.mp3'),
   'adhkar_98.mp3': require('@/assets/audio/adhkar/adhkar_98.mp3'),
+  // Evening list: Alafasy's evening session (rows shared with morning are
+  // overridden per list; see super_category_audio_overrides).
+  'adhkar_evening_75.mp3': require('@/assets/audio/adhkar/adhkar_evening_75.mp3'),
+  'adhkar_evening_76.mp3': require('@/assets/audio/adhkar/adhkar_evening_76.mp3'),
+  'adhkar_evening_77.mp3': require('@/assets/audio/adhkar/adhkar_evening_77.mp3'),
+  'adhkar_evening_78.mp3': require('@/assets/audio/adhkar/adhkar_evening_78.mp3'),
+  'adhkar_evening_79.mp3': require('@/assets/audio/adhkar/adhkar_evening_79.mp3'),
+  'adhkar_evening_80.mp3': require('@/assets/audio/adhkar/adhkar_evening_80.mp3'),
+  'adhkar_evening_81.mp3': require('@/assets/audio/adhkar/adhkar_evening_81.mp3'),
+  'adhkar_evening_82.mp3': require('@/assets/audio/adhkar/adhkar_evening_82.mp3'),
+  'adhkar_evening_83.mp3': require('@/assets/audio/adhkar/adhkar_evening_83.mp3'),
+  'adhkar_evening_84.mp3': require('@/assets/audio/adhkar/adhkar_evening_84.mp3'),
+  'adhkar_evening_85.mp3': require('@/assets/audio/adhkar/adhkar_evening_85.mp3'),
+  'adhkar_evening_86.mp3': require('@/assets/audio/adhkar/adhkar_evening_86.mp3'),
+  'adhkar_evening_87.mp3': require('@/assets/audio/adhkar/adhkar_evening_87.mp3'),
+  'adhkar_evening_88.mp3': require('@/assets/audio/adhkar/adhkar_evening_88.mp3'),
+  'adhkar_evening_89.mp3': require('@/assets/audio/adhkar/adhkar_evening_89.mp3'),
+  'adhkar_evening_90.mp3': require('@/assets/audio/adhkar/adhkar_evening_90.mp3'),
+  'adhkar_evening_91.mp3': require('@/assets/audio/adhkar/adhkar_evening_91.mp3'),
+  'adhkar_evening_92.mp3': require('@/assets/audio/adhkar/adhkar_evening_92.mp3'),
+  'adhkar_evening_98.mp3': require('@/assets/audio/adhkar/adhkar_evening_98.mp3'),
   'adhkar_99.mp3': require('@/assets/audio/adhkar/adhkar_99.mp3'),
   'adhkar_100.mp3': require('@/assets/audio/adhkar/adhkar_100.mp3'),
   'adhkar_101.mp3': require('@/assets/audio/adhkar/adhkar_101.mp3'),

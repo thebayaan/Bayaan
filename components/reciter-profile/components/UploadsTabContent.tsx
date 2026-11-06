@@ -4,10 +4,11 @@ import {
   Text,
   Pressable,
   Animated,
+  type FlatList,
   NativeSyntheticEvent,
   NativeScrollEvent,
 } from 'react-native';
-import {ScaledSheet, moderateScale} from 'react-native-size-matters';
+import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {Feather} from '@expo/vector-icons';
 import Color from 'color';
 import {useTheme} from '@/hooks/useTheme';
@@ -22,6 +23,21 @@ import type {UploadedRecitation, RecordingType} from '@/types/uploads';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {NowPlayingIndicator} from '@/components/NowPlayingIndicator';
 import {GradientText} from '@/components/GradientText';
+// @ai-start
+import i18n from '@/i18n';
+import {useTranslation} from 'react-i18next';
+import {getSurahDisplayName, localizeDigits} from '@/i18n/format';
+import {currentLanguage} from '@/i18n/language';
+import {SOURCE_LANGUAGE} from '@/i18n/languages';
+import {getRecitationStyleLabel} from '@/components/player/v2/recitationStyle';
+// @ai-start
+import {useNativeOptionsMenu} from '@/components/sheets/options/OptionsMenu';
+import {
+  UploadOptionsMenu,
+  type UploadOptionsPayload,
+} from '@/components/sheets/options/uploadOptions';
+// @ai-end
+// @ai-end
 
 interface UploadsTabContentProps {
   reciterId: string;
@@ -38,61 +54,82 @@ function stripExtension(filename: string): string {
   return filename.replace(/\.[^/.]+$/, '');
 }
 
+// @ai-start
 function getDisplayTitle(item: UploadedRecitation): string {
   if (item.type === 'surah' && item.surahNumber) {
     const surah = getSurahById(item.surahNumber);
-    if (surah) return surah.name;
+    if (surah) return getSurahDisplayName(surah);
   }
   if (item.type === 'other' && item.title) {
     return item.title;
   }
   return stripExtension(item.originalFilename);
 }
+// @ai-end
 
+// @ai-start
 function getDisplaySubtitle(item: UploadedRecitation): string {
   const parts: string[] = [];
 
   if (item.type === null) {
-    parts.push('Untagged');
+    parts.push(i18n.t('player:uploads.untagged'));
   } else if (item.type === 'surah') {
     if (item.rewayah) {
       parts.push(item.rewayah);
     }
     if (item.style) {
-      parts.push(item.style.charAt(0).toUpperCase() + item.style.slice(1));
+      parts.push(
+        currentLanguage === SOURCE_LANGUAGE
+          ? item.style.charAt(0).toUpperCase() + item.style.slice(1)
+          : getRecitationStyleLabel(item.style),
+      );
     }
   }
 
   if (item.duration !== null) {
     const mins = Math.floor(item.duration / 60);
     const secs = Math.floor(item.duration % 60);
-    parts.push(`${mins}:${secs.toString().padStart(2, '0')}`);
+    parts.push(localizeDigits(`${mins}:${secs.toString().padStart(2, '0')}`));
   }
 
   return parts.join(' · ');
 }
+// @ai-end
 
+// @ai-start
 function getVerseRangeLabel(item: UploadedRecitation): string | null {
   if (item.startVerse == null) return null;
-  if (item.endVerse != null) return `${item.startVerse}-${item.endVerse}`;
-  return `v${item.startVerse}`;
+  if (item.endVerse != null)
+    return localizeDigits(`${item.startVerse}-${item.endVerse}`);
+  return i18n.t('player:queue.verseShort', {verse: item.startVerse});
 }
+// @ai-end
 
+// @ai-start
 function getRecordingTypeLabel(recordingType: RecordingType): string | null {
-  if (recordingType === 'salah') return 'Salah';
-  if (recordingType === 'studio') return 'Studio';
+  if (recordingType === 'salah')
+    return i18n.t('player:uploads.recordingType.salah');
+  if (recordingType === 'studio')
+    return i18n.t('player:uploads.recordingType.studio');
   return null;
 }
+// @ai-end
 
 interface ReciterUploadListItemProps {
   item: UploadedRecitation;
   index: number;
   onPlay: (item: UploadedRecitation, index: number) => void;
   onShowOptions: (item: UploadedRecitation, index: number) => void;
+  /** Builds the ••• native menu on tablets. @ai */
+  renderOptionsMenu?: (
+    item: UploadedRecitation,
+    index: number,
+  ) => React.ReactNode;
 }
 
+// @ai-start
 const ReciterUploadListItem: React.FC<ReciterUploadListItemProps> = React.memo(
-  ({item, index, onPlay, onShowOptions}) => {
+  ({item, index, onPlay, onShowOptions, renderOptionsMenu}) => {
     const {theme} = useTheme();
     const styles = useMemo(() => createStyles(theme), [theme]);
 
@@ -118,7 +155,10 @@ const ReciterUploadListItem: React.FC<ReciterUploadListItemProps> = React.memo(
     const displayTitle = useMemo(() => {
       if (item.type === 'surah' && item.surahNumber) {
         const surah = getSurahById(item.surahNumber);
-        if (surah) return `${item.surahNumber}. ${surah.name}`;
+        if (surah)
+          return `${localizeDigits(item.surahNumber)}. ${getSurahDisplayName(
+            surah,
+          )}`;
       }
       return getDisplayTitle(item);
     }, [item]);
@@ -194,16 +234,19 @@ const ReciterUploadListItem: React.FC<ReciterUploadListItemProps> = React.memo(
               color={theme.colors.text}
             />
           )}
+          {renderOptionsMenu?.(item, index)}
         </Pressable>
       </View>
     );
   },
 );
+// @ai-end
 
 ReciterUploadListItem.displayName = 'ReciterUploadListItem';
 
+// @ai-start
 export const UploadsTabContent = React.forwardRef<
-  Animated.FlatList,
+  FlatList<UploadedRecitation>,
   UploadsTabContentProps
 >(
   (
@@ -220,6 +263,7 @@ export const UploadsTabContent = React.forwardRef<
     ref,
   ) => {
     const {theme} = useTheme();
+    const {t} = useTranslation('player');
     const styles = useMemo(() => createStyles(theme), [theme]);
     const {updateQueue, addToQueue, play} = usePlayerActions();
     const {importFile, getByReciter} = useUploadsStore();
@@ -248,22 +292,36 @@ export const UploadsTabContent = React.forwardRef<
       [reciterId],
     );
 
-    const handleShowOptions = useCallback(
-      (item: UploadedRecitation, index: number) => {
-        const track = createUserUploadTrack(item);
-        SheetManager.show('upload-options', {
-          payload: {
-            recitation: item,
-            reciterId,
-            onPlay: () => handlePlay(item, index),
-            onAddToQueue: () => {
-              addToQueue([track]);
-            },
-          },
-        });
-      },
+    // @ai-start
+    const buildUploadOptions = useCallback(
+      (item: UploadedRecitation, index: number): UploadOptionsPayload => ({
+        recitation: item,
+        reciterId,
+        onPlay: () => handlePlay(item, index),
+        onAddToQueue: () => {
+          addToQueue([createUserUploadTrack(item)]);
+        },
+      }),
       [reciterId, handlePlay, addToQueue],
     );
+
+    const handleShowOptions = useCallback(
+      (item: UploadedRecitation, index: number) => {
+        SheetManager.show('upload-options', {
+          payload: buildUploadOptions(item, index),
+        });
+      },
+      [buildUploadOptions],
+    );
+
+    const nativeMenus = useNativeOptionsMenu();
+    const renderOptionsMenu = useCallback(
+      (item: UploadedRecitation, index: number) => (
+        <UploadOptionsMenu payload={buildUploadOptions(item, index)} />
+      ),
+      [buildUploadOptions],
+    );
+    // @ai-end
 
     const handleAddRecitation = useCallback(async () => {
       try {
@@ -328,9 +386,10 @@ export const UploadsTabContent = React.forwardRef<
           index={index}
           onPlay={handlePlay}
           onShowOptions={handleShowOptions}
+          renderOptionsMenu={nativeMenus ? renderOptionsMenu : undefined}
         />
       ),
-      [handlePlay, handleShowOptions],
+      [handlePlay, handleShowOptions, nativeMenus, renderOptionsMenu],
     );
 
     const addButton = useMemo(
@@ -341,10 +400,10 @@ export const UploadsTabContent = React.forwardRef<
             size={moderateScale(16)}
             color={theme.colors.textSecondary}
           />
-          <Text style={styles.addButtonText}>Add Recitation</Text>
+          <Text style={styles.addButtonText}>{t('uploads.addRecitation')}</Text>
         </Pressable>
       ),
-      [handleAddRecitation, theme.colors.textSecondary, styles],
+      [handleAddRecitation, theme.colors.textSecondary, styles, t],
     );
 
     const emptyState = useMemo(
@@ -355,10 +414,8 @@ export const UploadsTabContent = React.forwardRef<
             size={moderateScale(40)}
             color={theme.colors.textSecondary}
           />
-          <Text style={styles.emptyTitle}>No uploads yet</Text>
-          <Text style={styles.emptySubtitle}>
-            Upload recitations to see them here
-          </Text>
+          <Text style={styles.emptyTitle}>{t('uploads.emptyTitle')}</Text>
+          <Text style={styles.emptySubtitle}>{t('uploads.emptySubtitle')}</Text>
           <Pressable
             style={styles.emptyAddButton}
             onPress={handleAddRecitation}>
@@ -367,11 +424,13 @@ export const UploadsTabContent = React.forwardRef<
               size={moderateScale(16)}
               color={theme.colors.textSecondary}
             />
-            <Text style={styles.addButtonText}>Add Recitation</Text>
+            <Text style={styles.addButtonText}>
+              {t('uploads.addRecitation')}
+            </Text>
           </Pressable>
         </View>
       ),
-      [handleAddRecitation, theme.colors.textSecondary, styles],
+      [handleAddRecitation, theme.colors.textSecondary, styles, t],
     );
 
     // Inline rendering mode: no FlatList, items rendered directly in parent ScrollView
@@ -411,8 +470,8 @@ export const UploadsTabContent = React.forwardRef<
       return (
         <Animated.FlatList
           ref={ref}
-          data={[]}
-          renderItem={null}
+          data={[] as UploadedRecitation[]}
+          renderItem={() => null}
           ListHeaderComponent={ListHeaderComponent}
           ListEmptyComponent={emptyState}
           onScroll={onScroll}
@@ -470,6 +529,7 @@ export const UploadsTabContent = React.forwardRef<
     );
   },
 );
+// @ai-end
 
 UploadsTabContent.displayName = 'UploadsTabContent';
 

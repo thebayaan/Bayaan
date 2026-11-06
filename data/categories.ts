@@ -1,3 +1,7 @@
+// @ai-start
+import i18n from '@/i18n';
+// @ai-end
+
 export interface Surah {
   id: number;
   name: string;
@@ -27,11 +31,16 @@ export interface BrowseCategory {
   featured?: boolean;
 }
 
+// @ai-start
 export const FEATURED_COLLECTIONS: Category[] = [
   {
     id: 'juz-amma',
-    title: 'Juz Amma',
-    description: 'The last 37 surahs of the Quran',
+    get title() {
+      return i18n.t('content:categories.juzAmma.title');
+    },
+    get description() {
+      return i18n.t('content:categories.juzAmma.description');
+    },
     surahs: Array.from({length: 37}, (_, i) => ({
       id: 78 + i,
       name: `Surah ${78 + i}`,
@@ -39,8 +48,12 @@ export const FEATURED_COLLECTIONS: Category[] = [
   },
   {
     id: 'seven-long',
-    title: 'The Seven Long Surahs',
-    description: "Al-Sab' Al-Tiwal",
+    get title() {
+      return i18n.t('content:categories.sevenLong.title');
+    },
+    get description() {
+      return i18n.t('content:categories.sevenLong.description');
+    },
     surahs: [
       {id: 2, name: 'Al-Baqarah'},
       {id: 3, name: 'Al-Imran'},
@@ -53,8 +66,12 @@ export const FEATURED_COLLECTIONS: Category[] = [
   },
   {
     id: 'heart-of-quran',
-    title: 'Heart of the Quran',
-    description: 'Most impactful surahs',
+    get title() {
+      return i18n.t('content:categories.heartOfQuran.title');
+    },
+    get description() {
+      return i18n.t('content:categories.heartOfQuran.description');
+    },
     surahs: [
       {id: 36, name: 'Yasin'},
       {id: 55, name: 'Al-Rahman'},
@@ -65,8 +82,12 @@ export const FEATURED_COLLECTIONS: Category[] = [
   },
   {
     id: 'daily-adhkar',
-    title: 'Daily Adhkar',
-    description: 'Surahs commonly recited daily',
+    get title() {
+      return i18n.t('content:categories.dailyAdhkar.title');
+    },
+    get description() {
+      return i18n.t('content:categories.dailyAdhkar.description');
+    },
     surahs: [
       {id: 112, name: 'Al-Ikhlas'},
       {id: 113, name: 'Al-Falaq'},
@@ -75,11 +96,15 @@ export const FEATURED_COLLECTIONS: Category[] = [
     ],
   },
 ];
+// @ai-end
 
+// @ai-start
 export const THEMATIC_COLLECTIONS: Category[] = [
   {
     id: 'prophets',
-    title: 'Stories of the Prophets',
+    get title() {
+      return i18n.t('content:categories.prophets.title');
+    },
     surahs: [
       {id: 12, name: 'Yusuf'},
       {id: 19, name: 'Maryam'},
@@ -91,7 +116,9 @@ export const THEMATIC_COLLECTIONS: Category[] = [
   },
   {
     id: 'mercy',
-    title: 'Mercy and Forgiveness',
+    get title() {
+      return i18n.t('content:categories.mercy.title');
+    },
     surahs: [
       {id: 55, name: 'Al-Rahman'},
       {id: 40, name: 'Al-Ghafir'},
@@ -101,7 +128,9 @@ export const THEMATIC_COLLECTIONS: Category[] = [
   },
   {
     id: 'faith',
-    title: 'Faith and Belief',
+    get title() {
+      return i18n.t('content:categories.faith.title');
+    },
     surahs: [
       {id: 112, name: 'Al-Ikhlas'},
       {id: 109, name: 'Al-Kafirun'},
@@ -110,12 +139,18 @@ export const THEMATIC_COLLECTIONS: Category[] = [
     ],
   },
 ];
+// @ai-end
 
+// @ai-start
 export const LENGTH_BASED_COLLECTIONS: Category[] = [
   {
     id: 'short',
-    title: 'Short Surahs',
-    description: 'Less than 20 verses',
+    get title() {
+      return i18n.t('content:categories.short.title');
+    },
+    get description() {
+      return i18n.t('content:categories.short.description');
+    },
     surahs: [
       {id: 108, name: 'Al-Kawthar', verses: 3},
       {id: 112, name: 'Al-Ikhlas', verses: 4},
@@ -125,8 +160,12 @@ export const LENGTH_BASED_COLLECTIONS: Category[] = [
   },
   {
     id: 'medium',
-    title: 'Medium Surahs',
-    description: '20-100 verses',
+    get title() {
+      return i18n.t('content:categories.medium.title');
+    },
+    get description() {
+      return i18n.t('content:categories.medium.description');
+    },
     surahs: [
       {id: 36, name: 'Yasin', verses: 83},
       {id: 55, name: 'Al-Rahman', verses: 78},
@@ -135,8 +174,12 @@ export const LENGTH_BASED_COLLECTIONS: Category[] = [
   },
   {
     id: 'long',
-    title: 'Long Surahs',
-    description: 'More than 100 verses',
+    get title() {
+      return i18n.t('content:categories.long.title');
+    },
+    get description() {
+      return i18n.t('content:categories.long.description');
+    },
     surahs: [
       {id: 2, name: 'Al-Baqarah', verses: 286},
       {id: 3, name: 'Al-Imran', verses: 200},
@@ -144,11 +187,15 @@ export const LENGTH_BASED_COLLECTIONS: Category[] = [
     ],
   },
 ];
+// @ai-end
 
+// @ai-start
 export const PERIOD_BASED_COLLECTIONS: Category[] = [
   {
     id: 'meccan',
-    title: 'Notable Meccan Surahs',
+    get title() {
+      return i18n.t('content:categories.meccan.title');
+    },
     surahs: [
       {id: 96, name: 'Al-Alaq', period: 'meccan'},
       {id: 74, name: 'Al-Muddaththir', period: 'meccan'},
@@ -158,7 +205,9 @@ export const PERIOD_BASED_COLLECTIONS: Category[] = [
   },
   {
     id: 'medinan',
-    title: 'Notable Medinan Surahs',
+    get title() {
+      return i18n.t('content:categories.medinan.title');
+    },
     surahs: [
       {id: 2, name: 'Al-Baqarah', period: 'medinan'},
       {id: 8, name: 'Al-Anfal', period: 'medinan'},
@@ -167,11 +216,15 @@ export const PERIOD_BASED_COLLECTIONS: Category[] = [
     ],
   },
 ];
+// @ai-end
 
+// @ai-start
 export const SPECIAL_COLLECTIONS: Category[] = [
   {
     id: 'most-recited',
-    title: 'Most Recited',
+    get title() {
+      return i18n.t('content:categories.mostRecited.title');
+    },
     surahs: [
       {id: 1, name: 'Al-Fatiha'},
       {id: 2, name: 'Al-Baqarah'},
@@ -182,7 +235,9 @@ export const SPECIAL_COLLECTIONS: Category[] = [
   },
   {
     id: 'most-loved',
-    title: 'Most Loved by Community',
+    get title() {
+      return i18n.t('content:categories.mostLoved.title');
+    },
     surahs: [
       {id: 55, name: 'Al-Rahman'},
       {id: 36, name: 'Yasin'},
@@ -192,11 +247,15 @@ export const SPECIAL_COLLECTIONS: Category[] = [
     ],
   },
 ];
+// @ai-end
 
+// @ai-start
 export const BROWSE_CATEGORIES: BrowseCategory[] = [
   {
     id: 'juz-amma',
-    title: 'Juz Amma',
+    get title() {
+      return i18n.t('content:categories.browse.juzAmma');
+    },
     backgroundColor: '#1E40AF',
     icon: {name: 'book-open', type: 'feather'},
     route: '/juz-amma',
@@ -204,7 +263,9 @@ export const BROWSE_CATEGORIES: BrowseCategory[] = [
   },
   {
     id: 'daily-adhkar',
-    title: 'Daily Adhkar',
+    get title() {
+      return i18n.t('content:categories.browse.dailyAdhkar');
+    },
     backgroundColor: '#059669',
     icon: {name: 'sun', type: 'feather'},
     route: '/daily-adhkar',
@@ -212,14 +273,18 @@ export const BROWSE_CATEGORIES: BrowseCategory[] = [
   },
   {
     id: 'prophets',
-    title: 'Stories of Prophets',
+    get title() {
+      return i18n.t('content:categories.browse.prophets');
+    },
     backgroundColor: '#7C3AED',
     icon: {name: 'book', type: 'feather'},
     route: '/stories',
   },
   {
     id: 'heart-of-quran',
-    title: 'Heart of Quran',
+    get title() {
+      return i18n.t('content:categories.browse.heartOfQuran');
+    },
     backgroundColor: '#DC2626',
     icon: {name: 'heart', type: 'feather'},
     route: '/heart-of-quran',
@@ -227,30 +292,39 @@ export const BROWSE_CATEGORIES: BrowseCategory[] = [
   },
   {
     id: 'most-recited',
-    title: 'Most Recited',
+    get title() {
+      return i18n.t('content:categories.browse.mostRecited');
+    },
     backgroundColor: '#2563EB',
     icon: {name: 'trending-up', type: 'feather'},
     route: '/most-recited',
   },
   {
     id: 'short',
-    title: 'Short Surahs',
+    get title() {
+      return i18n.t('content:categories.browse.short');
+    },
     backgroundColor: '#EA580C',
     icon: {name: 'clock', type: 'feather'},
     route: '/short-surahs',
   },
   {
     id: 'meccan',
-    title: 'Meccan Surahs',
+    get title() {
+      return i18n.t('content:categories.browse.meccan');
+    },
     backgroundColor: '#0D9488',
     icon: {name: 'map', type: 'feather'},
     route: '/meccan',
   },
   {
     id: 'medinan',
-    title: 'Medinan Surahs',
+    get title() {
+      return i18n.t('content:categories.browse.medinan');
+    },
     backgroundColor: '#7C3AED',
     icon: {name: 'home', type: 'feather'},
     route: '/medinan',
   },
 ];
+// @ai-end

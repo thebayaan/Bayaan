@@ -1,14 +1,13 @@
 import {Reciter} from '@/data/reciterData';
 import {useDownloadStore} from '@/services/player/store/downloadStore';
 import {resolveFilePath} from '@/services/downloadService';
+import {audioFileUrl} from '@/utils/audioFileUrl';
 
 export function generateAudioUrl(
   reciter: Reciter,
   surahId: string,
   rewayatId?: string,
 ): string {
-  const paddedSurahId = surahId.padStart(3, '0');
-
   // Get the rewayat - either specified or default to first one
   const rewayat = rewayatId
     ? reciter.rewayat.find(r => r.id === rewayatId)
@@ -18,7 +17,7 @@ export function generateAudioUrl(
     throw new Error('No rewayat found for reciter');
   }
 
-  return `${rewayat.server}/${paddedSurahId}.mp3`;
+  return audioFileUrl(rewayat, surahId);
 }
 
 /**

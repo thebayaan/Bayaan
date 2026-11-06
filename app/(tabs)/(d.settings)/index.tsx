@@ -1,8 +1,9 @@
 import React, {useMemo} from 'react';
-import {Text, Pressable, ScrollView, View, Linking, Switch} from 'react-native';
+import {Text, Pressable, ScrollView, View} from 'react-native';
+import {NativeSwitch} from '@/components/native/NativeSwitch'; // @ai
 import {useRouter} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
-import {ScaledSheet, moderateScale} from 'react-native-size-matters';
+import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {Theme} from '@/utils/themeUtils';
 import {Feather, MaterialIcons} from '@expo/vector-icons';
 import {clearPlayerCache} from '@/services/player/utils/storage';
@@ -11,180 +12,26 @@ import {useBottomInset} from '@/hooks/useBottomInset';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
 import {GlassView} from 'expo-glass-effect';
-import {openAppStoreForReview, markAsRated} from '@/utils/reviewUtils';
-import {
-  QuranIcon,
-  DualPagesIcon,
-  PersonAudioIcon,
-  SelectionListIcon,
-  DatabaseIcon,
-  ThreeStarsReviewIcon,
-  LightbulbIcon,
-  ChatBubbleIcon,
-  GiftBoxIcon,
-  InfoRoundedIcon,
-  MedalIcon,
-  DocCheckIcon,
-  ShieldLockIcon,
-} from '@/components/Icons';
 import {useDevSettingsStore} from '@/store/devSettingsStore';
 import {useAnalyticsConsentStore} from '@/store/analyticsConsentStore';
 import {ThemePicker} from '@/components/settings/ThemePicker';
 import branding from '@/config/branding';
+// @ai-start
+import {flipX, latinLetterSpacing} from '@/utils/rtl';
+import {useTranslation} from 'react-i18next';
+import {useResponsive} from '@/hooks/useResponsive';
+import {
+  SETTINGS_SPLIT_MIN_WIDTH,
+  customIconMap,
+  getSettingsSections,
+  isExternalLink,
+  openSettingsItem,
+  settingsHref,
+} from '@/components/settings/settingsItems';
+import {TabletSettingsHome} from '@/components/settings/TabletSettingsList';
+import MushafSettingsScreen from './mushaf-settings';
+// @ai-end
 import {QfAccountCard} from '@/components/auth/QfAccountCard';
-
-const isExternalLink = (type: string): boolean => {
-  return [
-    'support',
-    'featureRequest',
-    'terms',
-    'privacy',
-    'rateApp',
-    'github',
-  ].includes(type);
-};
-
-const settingsItems = [
-  {
-    section: 'Quran',
-    items: [
-      {
-        title: 'Mushaf Settings',
-        type: 'mushafSettings',
-        description: 'Customize Quran display options',
-        icon: 'quran',
-        iconType: 'custom',
-      },
-      {
-        title: 'Translations & Tafaseer',
-        type: 'translations',
-        description: 'Manage Quran translations and commentary',
-        icon: 'dualPages',
-        iconType: 'custom',
-      },
-    ],
-  },
-  {
-    section: 'Audio & Playback',
-    items: [
-      {
-        title: 'Default Reciter',
-        type: 'defaultReciter',
-        description: 'Choose your preferred reciter',
-        icon: 'personAudio',
-        iconType: 'custom',
-      },
-      {
-        title: 'Reciter Choice',
-        type: 'reciterChoice',
-        description: 'Customize reciter selection',
-        icon: 'selectionList',
-        iconType: 'custom',
-      },
-    ],
-  },
-  {
-    section: 'App & Data',
-    items: [
-      {
-        title: 'Storage',
-        type: 'storage',
-        description: 'View and manage storage usage',
-        icon: 'database',
-        iconType: 'custom',
-      },
-    ],
-  },
-  {
-    section: 'Feedback',
-    items: [
-      {
-        title: 'Write a Review',
-        type: 'rateApp',
-        description: 'Share your experience with others',
-        icon: 'star',
-        iconType: 'custom',
-      },
-      {
-        title: 'Feature Requests',
-        type: 'featureRequest',
-        description: 'Suggest improvements and new features',
-        icon: 'lightbulb',
-        iconType: 'custom',
-      },
-      {
-        title: 'Help & Support',
-        type: 'support',
-        description: `Get assistance with using ${branding.appName}`,
-        icon: 'chatBubble',
-        iconType: 'custom',
-      },
-    ],
-  },
-  {
-    section: `About ${branding.appName}`,
-    items: [
-      {
-        title: "What's New",
-        type: 'whatsNew',
-        description: "See what's new in this version",
-        icon: 'giftBox',
-        iconType: 'custom',
-      },
-      {
-        title: `About ${branding.appName}`,
-        type: 'about',
-        description: 'Learn more about our mission',
-        icon: 'infoRounded',
-        iconType: 'custom',
-      },
-      {
-        title: 'Credits',
-        type: 'credits',
-        description: 'View contributors and acknowledgments',
-        icon: 'medal',
-        iconType: 'custom',
-      },
-      {
-        title: 'Contribute on GitHub',
-        type: 'github',
-        description: `${branding.appName} is now open source. Star, report issues, or submit a PR`,
-        icon: 'github',
-        iconType: 'feather',
-      },
-      {
-        title: 'Terms of Service',
-        type: 'terms',
-        description: 'Read our terms of service',
-        icon: 'docCheck',
-        iconType: 'custom',
-      },
-      {
-        title: 'Privacy Policy',
-        type: 'privacy',
-        description: 'View our privacy policy',
-        icon: 'shieldLock',
-        iconType: 'custom',
-      },
-    ],
-  },
-];
-
-const customIconMap: Record<string, React.FC<{size: number; color: string}>> = {
-  quran: QuranIcon,
-  dualPages: DualPagesIcon,
-  personAudio: PersonAudioIcon,
-  selectionList: SelectionListIcon,
-  database: DatabaseIcon,
-  star: ThreeStarsReviewIcon,
-  lightbulb: LightbulbIcon,
-  chatBubble: ChatBubbleIcon,
-  giftBox: GiftBoxIcon,
-  infoRounded: InfoRoundedIcon,
-  medal: MedalIcon,
-  docCheck: DocCheckIcon,
-  shieldLock: ShieldLockIcon,
-};
 
 const renderIcon = (
   item: {icon: string; iconType: string},
@@ -214,7 +61,24 @@ const renderIcon = (
   );
 };
 
+// @ai-start
+/**
+ * On iPad, wide windows show the list beside the page, so this first screen
+ * of the stack is the default page there; narrower ones show the iPad list.
+ */
 export default function SettingsScreen() {
+  const {isTablet, width} = useResponsive();
+  if (!isTablet) {
+    return <PhoneSettingsScreen />;
+  }
+  return width >= SETTINGS_SPLIT_MIN_WIDTH ? (
+    <MushafSettingsScreen />
+  ) : (
+    <TabletSettingsHome />
+  );
+}
+
+function PhoneSettingsScreen() {
   const router = useRouter();
   const {theme} = useTheme();
   const bottomInset = useBottomInset();
@@ -222,6 +86,8 @@ export default function SettingsScreen() {
   const styles = useMemo(() => createStyles(theme), [theme]);
   const glassColorScheme = useGlassColorScheme();
   const {showFloatingDevMenu, toggleFloatingDevMenu} = useDevSettingsStore();
+  const {t} = useTranslation(['settings', 'common']);
+  const settingsSections = useMemo(() => getSettingsSections(t), [t]);
   const {analyticsEnabled, setAnalyticsEnabled} = useAnalyticsConsentStore();
 
   const handleAnalyticsToggle = (value: boolean): void => {
@@ -233,65 +99,14 @@ export default function SettingsScreen() {
   const iconColor = theme.colors.text;
   const chevronColor = theme.colors.textSecondary;
 
-  const trackColor = useMemo(
-    () => ({
-      false: Color(theme.colors.text).alpha(0.1).toString(),
-      true: Color(theme.colors.text).alpha(0.65).toString(),
-    }),
-    [theme.colors.text],
-  );
-
   const handleSettingPress = async (type: string) => {
-    switch (type) {
-      case 'mushafSettings':
-        router.push('/(d.settings)/mushaf-settings');
-        break;
-      case 'translations':
-        router.push('/(d.settings)/translations');
-        break;
-      case 'defaultReciter':
-        router.push('/(d.settings)/default-reciter');
-        break;
-      case 'reciterChoice':
-        router.push('/(d.settings)/reciter-choice');
-        break;
-      case 'storage':
-        router.push('/(d.settings)/storage');
-        break;
-      case 'clearCache':
-        await clearPlayerCache();
-        break;
-      case 'rateApp':
-        await markAsRated();
-        await openAppStoreForReview();
-        break;
-      case 'whatsNew':
-        router.push('/(d.settings)/whats-new');
-        break;
-      case 'support':
-        await Linking.openURL(branding.supportUrl);
-        break;
-      case 'featureRequest':
-        await Linking.openURL(branding.supportUrl);
-        break;
-      case 'terms':
-        await Linking.openURL(branding.termsUrl);
-        break;
-      case 'privacy':
-        await Linking.openURL(branding.privacyUrl);
-        break;
-      case 'about':
-        router.push('/(d.settings)/about');
-        break;
-      case 'credits':
-        router.push('/(d.settings)/credits');
-        break;
-      case 'github':
-        await Linking.openURL('https://github.com/thebayaan/Bayaan');
-        break;
-      default:
-        break;
+    if (type === 'clearCache') {
+      await clearPlayerCache();
+      return;
     }
+    await openSettingsItem(type, routeName =>
+      router.push(settingsHref(routeName)),
+    );
   };
 
   // iOS 26+ NativeTabs: automatic content insets handle top/bottom; manual
@@ -324,18 +139,22 @@ export default function SettingsScreen() {
         showsVerticalScrollIndicator={false}>
         {/* Appearance */}
         <View style={styles.section}>
-          <Text style={styles.sectionHeader}>APPEARANCE</Text>
+          <Text style={styles.sectionHeader}>
+            {t('settings:index.appearance')}
+          </Text>
           <ThemePicker />
         </View>
 
         {/* Account */}
         <View style={styles.section}>
-          <Text style={styles.sectionHeader}>ACCOUNT</Text>
+          <Text style={styles.sectionHeader}>
+            {t('settings:index.account')}
+          </Text>
           <QfAccountCard />
         </View>
 
         {/* Settings Sections */}
-        {settingsItems.map(section => (
+        {settingsSections.map(section => (
           <View key={section.section} style={styles.section}>
             <Text style={styles.sectionHeader}>
               {section.section.toUpperCase()}
@@ -367,6 +186,7 @@ export default function SettingsScreen() {
                       }
                       size={moderateScale(16)}
                       color={chevronColor}
+                      style={isExternalLink(item.type) ? undefined : flipX}
                     />
                   </Pressable>
                 </React.Fragment>
@@ -377,7 +197,9 @@ export default function SettingsScreen() {
 
         {/* Privacy Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionHeader}>PRIVACY</Text>
+          <Text style={styles.sectionHeader}>
+            {t('settings:index.analytics.section')}
+          </Text>
           {renderCard(
             <View style={styles.settingsRow}>
               <View style={styles.settingsItemIcon}>
@@ -389,19 +211,17 @@ export default function SettingsScreen() {
               </View>
               <View style={styles.settingsTextContainer}>
                 <Text style={styles.settingsTitle}>
-                  Share anonymous usage data
+                  {t('settings:index.analytics.title')}
                 </Text>
                 <Text style={styles.settingsDescription}>
-                  Help improve {branding.appName} with anonymous, non-personal
-                  analytics. Your name and account are never shared.
+                  {t('settings:index.analytics.description', {
+                    appName: branding.appName,
+                  })}
                 </Text>
               </View>
-              <Switch
+              <NativeSwitch
                 value={analyticsEnabled}
                 onValueChange={handleAnalyticsToggle}
-                trackColor={trackColor}
-                thumbColor="#FFFFFF"
-                ios_backgroundColor={trackColor.false}
                 style={styles.switchStyle}
               />
             </View>,
@@ -410,6 +230,8 @@ export default function SettingsScreen() {
 
         {/* Developer Section */}
         {__DEV__ && (
+          // Dev-only tools stay in English. // @ai
+          // i18next-instrument-ignore
           <View style={styles.section}>
             <Text style={styles.sectionHeader}>DEVELOPER</Text>
             {renderCard(
@@ -427,12 +249,9 @@ export default function SettingsScreen() {
                     Show the floating developer tools button
                   </Text>
                 </View>
-                <Switch
+                <NativeSwitch
                   value={showFloatingDevMenu}
                   onValueChange={toggleFloatingDevMenu}
-                  trackColor={trackColor}
-                  thumbColor="#FFFFFF"
-                  ios_backgroundColor={trackColor.false}
                   style={styles.switchStyle}
                 />
               </View>,
@@ -443,7 +262,9 @@ export default function SettingsScreen() {
     </View>
   );
 }
+// @ai-end
 
+// @ai-start
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({
     container: {
@@ -457,10 +278,11 @@ const createStyles = (theme: Theme) =>
       marginBottom: moderateScale(14),
     },
     sectionHeader: {
+      textAlign: 'left',
       fontSize: moderateScale(10.5),
       fontFamily: 'Manrope-SemiBold',
       color: theme.colors.textSecondary,
-      letterSpacing: 1.2,
+      letterSpacing: latinLetterSpacing(1.2),
       textTransform: 'uppercase',
       marginBottom: moderateScale(6),
       marginLeft: moderateScale(2),
@@ -506,11 +328,13 @@ const createStyles = (theme: Theme) =>
       marginRight: moderateScale(10),
     },
     settingsTitle: {
+      textAlign: 'left',
       fontSize: moderateScale(13.5),
       fontFamily: 'Manrope-Medium',
       color: theme.colors.text,
     },
     settingsDescription: {
+      textAlign: 'left',
       fontSize: moderateScale(11),
       fontFamily: 'Manrope-Regular',
       color: theme.colors.textSecondary,
@@ -522,3 +346,4 @@ const createStyles = (theme: Theme) =>
       transform: [{scaleX: 0.8}, {scaleY: 0.8}],
     },
   });
+// @ai-end

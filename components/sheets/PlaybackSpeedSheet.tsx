@@ -1,19 +1,23 @@
 import React from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
-import {ScaledSheet, moderateScale} from 'react-native-size-matters';
+import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import ActionSheet, {
-  SheetProps,
-  SheetManager,
-} from 'react-native-actions-sheet';
+import {SheetProps, SheetManager} from 'react-native-actions-sheet';
+import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import Color from 'color';
+import {PLAYBACK_SPEEDS} from '@/constants/playback'; // @ai
+// @ai-start
+import {useTranslation} from 'react-i18next';
+// @ai-end
 
-const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
+const SPEEDS = PLAYBACK_SPEEDS; // @ai
 
+// @ai-start
 export const PlaybackSpeedSheet = (props: SheetProps<'playback-speed'>) => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
+  const {t} = useTranslation('sheets');
 
   const payload = props.payload;
   const currentSpeed = payload?.currentSpeed ?? 1;
@@ -29,11 +33,12 @@ export const PlaybackSpeedSheet = (props: SheetProps<'playback-speed'>) => {
   return (
     <ActionSheet
       id={props.sheetId}
+      tabletPresentation="menu"
       containerStyle={styles.sheetContainer}
       indicatorStyle={styles.indicator}
       gestureEnabled={true}>
       <View style={styles.headerContainer}>
-        <Text style={styles.headerTitle}>Playback Speed</Text>
+        <Text style={styles.headerTitle}>{t('playbackSpeed.title')}</Text>
       </View>
       <View style={styles.container}>
         <View style={styles.speedContainer}>
@@ -51,7 +56,7 @@ export const PlaybackSpeedSheet = (props: SheetProps<'playback-speed'>) => {
                   styles.speedText,
                   currentSpeed === speed && styles.selectedSpeedText,
                 ]}>
-                {speed}x
+                {t('playbackSpeed.speed', {speed})}
               </Text>
             </Pressable>
           ))}
@@ -60,6 +65,7 @@ export const PlaybackSpeedSheet = (props: SheetProps<'playback-speed'>) => {
     </ActionSheet>
   );
 };
+// @ai-end
 
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({

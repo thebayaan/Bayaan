@@ -1,24 +1,28 @@
 import React, {useCallback, useState} from 'react';
-import {View, Text, Pressable, Switch, StyleSheet} from 'react-native';
+import {View, Text, Pressable, StyleSheet} from 'react-native';
+import {NativeSwitch} from '@/components/native/NativeSwitch'; // @ai
 import {useTheme} from '@/hooks/useTheme';
-import {ScaledSheet, moderateScale} from 'react-native-size-matters';
+import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useReciterStore} from '@/store/reciterStore';
 import {Theme} from '@/utils/themeUtils';
 import {getSurahById} from '@/services/dataService';
-import ActionSheet, {
-  SheetProps,
-  SheetManager,
-} from 'react-native-actions-sheet';
+import {SheetProps, SheetManager} from 'react-native-actions-sheet';
+import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import {useSettings} from '@/hooks/useSettings';
 import {useReciterSelection} from '@/hooks/useReciterSelection';
 import Color from 'color';
 import {useRouter} from 'expo-router';
 import {Ionicons} from '@expo/vector-icons';
 import {DiscoverIcon} from '@/components/Icons';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+// @ai-end
 
+// @ai-start
 export const SelectReciterSheet = (props: SheetProps<'select-reciter'>) => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
+  const {t} = useTranslation('sheets');
   const defaultReciter = useReciterStore(state => state.defaultReciter);
   const [, setSurahName] = useState<string>('');
   const {playWithReciter, playWithRandomReciter} = useReciterSelection();
@@ -110,7 +114,7 @@ export const SelectReciterSheet = (props: SheetProps<'select-reciter'>) => {
       gestureEnabled={true}>
       <View style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Select Reciter</Text>
+          <Text style={styles.headerTitle}>{t('selectReciter.title')}</Text>
         </View>
 
         <View style={styles.optionsGrid}>
@@ -127,7 +131,9 @@ export const SelectReciterSheet = (props: SheetProps<'select-reciter'>) => {
               size={moderateScale(20)}
               color={theme.colors.text}
             />
-            <Text style={styles.optionText}>Use Default Reciter</Text>
+            <Text style={styles.optionText}>
+              {t('selectReciter.useDefault')}
+            </Text>
           </Pressable>
 
           <Pressable
@@ -139,7 +145,7 @@ export const SelectReciterSheet = (props: SheetProps<'select-reciter'>) => {
               handleReciterSelection(handleUseRandomReciter, 'randomReciter')
             }>
             <DiscoverIcon size={moderateScale(20)} color={theme.colors.text} />
-            <Text style={styles.optionText}>Random Reciter</Text>
+            <Text style={styles.optionText}>{t('selectReciter.random')}</Text>
           </Pressable>
 
           <Pressable
@@ -155,26 +161,26 @@ export const SelectReciterSheet = (props: SheetProps<'select-reciter'>) => {
               size={moderateScale(20)}
               color={theme.colors.text}
             />
-            <Text style={styles.optionText}>Browse All Reciters</Text>
+            <Text style={styles.optionText}>
+              {t('selectReciter.browseAll')}
+            </Text>
           </Pressable>
         </View>
 
         <View style={styles.askEveryTimeContainer}>
-          <Text style={styles.askEveryTimeText}>Ask every time</Text>
-          <Switch
+          <Text style={styles.askEveryTimeText}>
+            {t('selectReciter.askEveryTime')}
+          </Text>
+          <NativeSwitch
             value={askEveryTime}
             onValueChange={handleAskEveryTimeToggle}
-            trackColor={{
-              false: Color(theme.colors.text).alpha(0.1).toString(),
-              true: Color(theme.colors.text).alpha(0.65).toString(),
-            }}
-            thumbColor="#FFFFFF"
           />
         </View>
       </View>
     </ActionSheet>
   );
 };
+// @ai-end
 
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({

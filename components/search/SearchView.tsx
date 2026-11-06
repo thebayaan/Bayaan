@@ -15,22 +15,43 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {getAllReciters, getAllSurahs} from '@/services/dataService';
 import {Surah} from '@/data/surahData';
 import {Reciter} from '@/data/reciterData';
-import Fuse from 'fuse.js';
+// @ai-start
+import {
+  createCatalogSearch,
+  type CatalogSearchResult,
+} from '@/utils/search/catalog';
+// @ai-end
 import {Feather} from '@expo/vector-icons';
 import {ReciterItem} from '@/components/ReciterItem';
 import {SurahItem} from '@/components/SurahItem';
 import {useTheme} from '@/hooks/useTheme';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import {LoadingIndicator} from '@/components/LoadingIndicator';
 import {useSettings} from '@/hooks/useSettings';
 import {useReciterStore} from '@/store/reciterStore';
+import {useReciterSelection} from '@/hooks/useReciterSelection'; // @ai
+import {resolveSurahPlaybackAction} from '@/utils/surahPlaybackChoice'; // @ai
 import {StyleSheet} from 'react-native';
 import Color from 'color';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {SheetManager} from 'react-native-actions-sheet';
 import {ExploreView} from '@/components/search/ExploreView';
 import {useBottomInset} from '@/hooks/useBottomInset';
+import {useResponsive} from '@/hooks/useResponsive'; // @ai
+import {useHeaderHeight} from 'expo-router/react-navigation'; // @ai
+import {USE_GLASS} from '@/hooks/useGlassProps'; // @ai
+import {usePlayerActions} from '@/hooks/usePlayerActions'; // @ai
+import {createTracksForReciter} from '@/utils/track'; // @ai
+import {TabletSearchResults} from '@/components/search/TabletSearchResults'; // @ai
+// @ai-start
+import {SurahOptionsProvider} from '@/components/sheets/options/surahOptions';
+import type {SurahOptionsBuilder} from '@/components/sheets/options/SurahOptionsContext';
+// @ai-end
 import {analyticsService} from '@/services/analytics/AnalyticsService';
+// @ai-start
+import {latinLetterSpacing} from '@/utils/rtl';
+import {useTranslation} from 'react-i18next';
+// @ai-end
 
 const RECENT_SEARCHES_KEY = 'recentSearches';
 const MAX_RECENT_SEARCHES = 10;
@@ -42,11 +63,9 @@ interface RecentSearchItem {
   timestamp: number;
 }
 
-interface SearchResult {
-  type: 'surah' | 'reciter';
-  item: Surah | Reciter;
-  score: number;
-}
+// @ai-start
+type SearchResult = CatalogSearchResult;
+// @ai-end
 
 interface SearchViewProps {
   onClose: () => void;
@@ -59,6 +78,7 @@ interface SearchViewProps {
   skipTopInset?: boolean;
 }
 
+// @ai-start
 export function SearchView({
   onClose,
   visible,
@@ -73,18 +93,33 @@ export function SearchView({
   const [searching, setSearching] = useState(false);
   const [recentSearches, setRecentSearches] = useState<RecentSearchItem[]>([]);
   const router = useRouter();
-  const [reciterFuse, setReciterFuse] = useState<Fuse<Reciter> | null>(null);
-  const [surahFuse, setSurahFuse] = useState<Fuse<Surah> | null>(null);
+  const [catalogSearch, setCatalogSearch] = useState<ReturnType<
+    typeof createCatalogSearch
+  > | null>(null);
 
   // Fade animation — both views always mounted
   const browseOpacity = useRef(new RNAnimated.Value(1)).current;
   const searchOpacity = useRef(new RNAnimated.Value(0)).current;
 
   const {theme} = useTheme();
+  const {t} = useTranslation(['home', 'common']);
   const {askEveryTime, defaultReciterSelection} = useSettings();
   const defaultReciter = useReciterStore(state => state.defaultReciter);
+  const {playWithReciter, playWithRandomReciter} = useReciterSelection();
+  const {addToQueue} = usePlayerActions();
   const insets = useSafeAreaInsets();
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  // Explore and the results fill the iPad pane, but recent searches and the
+  // loading and empty states stay in the 720pt reading column
+  // (ipad-standards §5.3).
+  const {isTablet} = useResponsive();
+  const listStyle = isTablet
+    ? [styles.flexFill, styles.tabletColumn]
+    : styles.flexFill;
+  // On iPad the native search field floats in the navigation bar, so results
+  // start below the whole bar instead of just the status bar.
+  const headerHeight = useHeaderHeight();
+  const topInset = isTablet && USE_GLASS ? headerHeight : insets.top;
 
   useEffect(() => {
     const showEvent =
@@ -167,43 +202,7 @@ export function SearchView({
           getAllSurahs(),
         ]);
 
-        setReciterFuse(
-          new Fuse(reciterData, {
-            keys: [
-              {name: 'name', weight: 2},
-              {name: 'translated_name', weight: 1.5},
-              {name: 'arabic_name', weight: 2},
-              {name: 'description', weight: 0.7},
-              {name: 'style', weight: 0.5},
-            ],
-            threshold: 0.4,
-            distance: 200,
-            minMatchCharLength: 2,
-            useExtendedSearch: true,
-            ignoreLocation: true,
-            findAllMatches: true,
-            includeScore: true,
-          }),
-        );
-
-        setSurahFuse(
-          new Fuse(surahData, {
-            keys: [
-              {name: 'name', weight: 2},
-              {name: 'name_arabic', weight: 2},
-              {name: 'translated_name_english', weight: 1.5},
-              {name: 'id', weight: 1},
-              {name: 'revelation_type', weight: 0.5},
-            ],
-            threshold: 0.4,
-            distance: 200,
-            minMatchCharLength: 2,
-            useExtendedSearch: true,
-            ignoreLocation: true,
-            findAllMatches: true,
-            includeScore: true,
-          }),
-        );
+        setCatalogSearch(createCatalogSearch(reciterData, surahData)); // @ai
 
         const storedSearches = await AsyncStorage.getItem(RECENT_SEARCHES_KEY);
         if (storedSearches) {
@@ -230,7 +229,7 @@ export function SearchView({
   }, [visible, isSearchMode]);
 
   const performSearch = useCallback(() => {
-    if (!reciterFuse || !surahFuse || !debouncedQuery.trim()) {
+    if (!catalogSearch || !debouncedQuery.trim()) {
       setSearchResults([]);
       setSearching(false);
       return;
@@ -239,21 +238,7 @@ export function SearchView({
     setSearching(true);
 
     try {
-      const surahResults = surahFuse.search(debouncedQuery).map(result => ({
-        type: 'surah' as const,
-        item: result.item,
-        score: result.score || 1,
-      }));
-
-      const reciterResults = reciterFuse.search(debouncedQuery).map(result => ({
-        type: 'reciter' as const,
-        item: result.item,
-        score: result.score || 1,
-      }));
-
-      const combinedResults = [...surahResults, ...reciterResults].sort(
-        (a, b) => a.score - b.score,
-      );
+      const combinedResults = catalogSearch.search(debouncedQuery);
 
       setSearchResults(combinedResults);
 
@@ -270,7 +255,7 @@ export function SearchView({
     }
 
     setSearching(false);
-  }, [debouncedQuery, reciterFuse, surahFuse]);
+  }, [debouncedQuery, catalogSearch]);
 
   useEffect(() => {
     performSearch();
@@ -335,43 +320,43 @@ export function SearchView({
       await addToRecentSearches(result);
 
       const surah = result.item as Surah;
-      if (askEveryTime) {
-        SheetManager.show('select-reciter', {
-          payload: {surahId: surah.id.toString(), source: 'search'},
-        });
-        return;
-      }
+      // @ai-start
+      const surahId = surah.id.toString();
+      const action = resolveSurahPlaybackAction({
+        askEveryTime,
+        defaultReciterSelection,
+        hasDefaultReciter: !!defaultReciter,
+      });
 
-      switch (defaultReciterSelection) {
+      switch (action) {
         case 'browseAll':
+        case 'browseFavorites':
           router.push({
             pathname: '/(tabs)/(b.search)/reciter/browse',
-            params: {view: 'all', surahId: surah.id},
+            params: {
+              view: action === 'browseAll' ? 'all' : 'favorites',
+              surahId: surah.id,
+            },
           });
           break;
-        case 'searchFavorites':
-          router.push({
-            pathname: '/(tabs)/(b.search)/reciter/browse',
-            params: {view: 'favorites', surahId: surah.id},
-          });
-          break;
-        case 'useDefault':
+        case 'playDefault':
           if (defaultReciter) {
-            router.push({
-              pathname: '/player',
-              params: {reciterImageUrl: defaultReciter.image_url},
-            });
-          } else {
-            SheetManager.show('select-reciter', {
-              payload: {surahId: surah.id.toString(), source: 'search'},
+            playWithReciter(defaultReciter, surahId).catch(error => {
+              console.error('Error playing with default reciter:', error);
             });
           }
           break;
+        case 'playRandom':
+          playWithRandomReciter(surahId).catch(error => {
+            console.error('Error playing with random reciter:', error);
+          });
+          break;
         default:
           SheetManager.show('select-reciter', {
-            payload: {surahId: surah.id.toString(), source: 'search'},
+            payload: {surahId, source: 'search'},
           });
       }
+      // @ai-end
     },
     [
       router,
@@ -379,14 +364,53 @@ export function SearchView({
       askEveryTime,
       defaultReciterSelection,
       defaultReciter,
+      playWithReciter,
+      playWithRandomReciter,
     ],
   );
+
+  // The iPad results' options button. The menu acts on the default reciter
+  // and the rewayah its play button uses, and names the reciter in its
+  // header.
+  // @ai-start
+  const buildSurahOptions = useCallback<SurahOptionsBuilder>(
+    surah => {
+      const rewayatId = defaultReciter?.rewayat[0]?.id;
+      return {
+        surah,
+        reciterId: defaultReciter?.id,
+        rewayatId,
+        onAddToQueue: defaultReciter
+          ? async (s: Surah) => {
+              const tracks = await createTracksForReciter(
+                defaultReciter,
+                [s],
+                rewayatId,
+              );
+              await addToQueue(tracks);
+            }
+          : undefined,
+      };
+    },
+    [defaultReciter, addToQueue],
+  );
+
+  const handleSurahOptions = useCallback(
+    (result: SearchResult) => {
+      Keyboard.dismiss();
+      const payload = buildSurahOptions(result.item as Surah);
+      if (payload) SheetManager.show('surah-options', {payload});
+    },
+    [buildSurahOptions],
+  );
+  // @ai-end
 
   const renderSearchResult = useCallback(
     ({item}: ListRenderItemInfo<SearchResult>) => {
       if (item.type === 'surah') {
         return (
           <SurahItem
+            pressAction="read" // @ai
             item={item.item as Surah}
             onPress={() => handleResultPress(item)}
             onLongPress={() => handleSurahLongPress(item)}
@@ -416,7 +440,11 @@ export function SearchView({
 
       if (recentItem.type === 'surah') {
         return (
-          <SurahItem item={recentItem.item as Surah} onPress={handlePress} />
+          <SurahItem
+            pressAction="read" // @ai
+            item={recentItem.item as Surah}
+            onPress={handlePress}
+          />
         );
       } else {
         return (
@@ -451,16 +479,17 @@ export function SearchView({
         style={[
           styles.modeContainer,
           styles.modeOverlay,
+          isTablet && styles.tabletOverlay,
           {
             opacity: searchOpacity,
             backgroundColor: theme.colors.background,
-            paddingTop: skipTopInset ? 0 : insets.top,
+            paddingTop: skipTopInset ? 0 : topInset,
           },
         ]}
         pointerEvents={isSearchMode ? 'auto' : 'none'}>
         {query.length === 0 ? (
           <ScrollView
-            style={styles.flexFill}
+            style={listStyle}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={[
               styles.scrollContent,
@@ -479,7 +508,7 @@ export function SearchView({
                           .toString(),
                       },
                     ]}>
-                    Recent searches
+                    {t('search.recentSearches')}
                   </Text>
                   <Pressable onPress={clearRecentSearches}>
                     <Text
@@ -491,7 +520,7 @@ export function SearchView({
                             .toString(),
                         },
                       ]}>
-                      Clear
+                      {t('common:actions.clear')}
                     </Text>
                   </Pressable>
                 </View>
@@ -528,7 +557,7 @@ export function SearchView({
                         .toString(),
                     },
                   ]}>
-                  No recent searches
+                  {t('search.noRecent')}
                 </Text>
                 <Text
                   style={[
@@ -539,14 +568,25 @@ export function SearchView({
                         .toString(),
                     },
                   ]}>
-                  Your search history will appear here
+                  {t('search.noRecentHint')}
                 </Text>
               </View>
             )}
           </ScrollView>
+        ) : isTablet && !searching && searchResults.length > 0 ? (
+          <SurahOptionsProvider build={buildSurahOptions}>
+            <TabletSearchResults
+              results={searchResults}
+              onResultPress={handleResultPress}
+              onSurahPlay={handleSurahLongPress}
+              onSurahOptions={handleSurahOptions}
+              bottomPadding={Math.max(keyboardHeight, bottomInset)}
+              style={styles.tabletFullWidth}
+            />
+          </SurahOptionsProvider>
         ) : (
           <FlatList
-            style={styles.flexFill}
+            style={listStyle}
             data={searchResults}
             renderItem={renderSearchResult}
             keyExtractor={(item, index) => `${item.type}-${index}`}
@@ -580,7 +620,7 @@ export function SearchView({
                           .toString(),
                       },
                     ]}>
-                    No results found
+                    {t('common:status.noResults')}
                   </Text>
                   <Text
                     style={[
@@ -591,10 +631,10 @@ export function SearchView({
                           .toString(),
                       },
                     ]}>
-                    Try different keywords or check the spelling
+                    {t('search.noResultsHint')}
                   </Text>
                 </View>
-              ) : null
+              ) : undefined
             }
             ListFooterComponent={<View style={styles.footer} />}
           />
@@ -603,7 +643,9 @@ export function SearchView({
     </View>
   );
 }
+// @ai-end
 
+// @ai-start
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -618,6 +660,16 @@ const styles = StyleSheet.create({
   flexFill: {
     flex: 1,
   },
+  tabletOverlay: {
+    alignItems: 'center',
+  },
+  tabletColumn: {
+    width: '100%',
+    maxWidth: 720,
+  },
+  tabletFullWidth: {
+    alignSelf: 'stretch',
+  },
   scrollContent: {},
   sectionHeader: {
     flexDirection: 'row',
@@ -629,7 +681,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: moderateScale(10.5),
     fontFamily: 'Manrope-SemiBold',
-    letterSpacing: 1.0,
+    letterSpacing: latinLetterSpacing(1.0),
     textTransform: 'uppercase',
   },
   clearButton: {
@@ -662,3 +714,4 @@ const styles = StyleSheet.create({
     fontFamily: 'Manrope-Medium',
   },
 });
+// @ai-end

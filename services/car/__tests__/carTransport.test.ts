@@ -5,6 +5,7 @@ import type {RepeatMode} from '@/services/player/types/state';
 import {BayaanCar} from '@/modules/bayaan-car';
 
 let mockTransportListener: ((transport: CarTransport) => void) | null = null;
+let mockConnectionListener: ((connected: boolean) => void) | null = null;
 
 jest.mock('@/modules/bayaan-car', () => ({
   BayaanCar: {
@@ -16,11 +17,25 @@ jest.mock('@/modules/bayaan-car', () => ({
       mockTransportListener = fn;
       return jest.fn();
     },
-    addConnectionListener: () => jest.fn(),
+    addConnectionListener: (fn: (connected: boolean) => void) => {
+      mockConnectionListener = fn;
+      return jest.fn();
+    },
   },
 }));
+const mockSetCarMode = jest.fn((_enabled: boolean): void => undefined);
+const mockIsAdhkarHeld = jest.fn((): boolean => false);
+const mockHasAdhkarTrackControls = jest.fn((): boolean => false);
 jest.mock('@/services/audio/LockScreenService', () => ({
-  lockScreenService: {setCarMode: jest.fn()},
+  lockScreenService: {
+    setCarMode: (enabled: boolean) => mockSetCarMode(enabled),
+    isAdhkarHeld: () => mockIsAdhkarHeld(),
+    hasAdhkarTrackControls: () => mockHasAdhkarTrackControls(),
+  },
+}));
+const mockSkipAdhkarTrack = jest.fn((_direction: string): void => undefined);
+jest.mock('@/services/adhkar/playback/trackControls', () => ({
+  skipAdhkarTrack: (direction: string) => mockSkipAdhkarTrack(direction),
 }));
 jest.mock('@/services/audio/ExpoAudioService', () => ({
   expoAudioService: {waitForPlayer: () => Promise.resolve()},
@@ -109,6 +124,7 @@ jest.mock('@/services/player/store/playerStore', () => ({
   },
 }));
 
+import {Platform} from 'react-native';
 import {startCarPlaybackBridge} from '../CarPlaybackBridge';
 
 async function send(transport: CarTransport): Promise<void> {
@@ -123,6 +139,8 @@ describe('car transports', () => {
     mockQueue.currentIndex = 0;
     mockSettings.repeatMode = 'none';
     jest.clearAllMocks();
+    mockIsAdhkarHeld.mockReturnValue(false);
+    mockHasAdhkarTrackControls.mockReturnValue(false);
   });
 
   async function withBridge(run: () => Promise<void>): Promise<void> {
@@ -147,6 +165,57 @@ describe('car transports', () => {
       await send({kind: 'previous'});
       expect(mockSkipToPrevious).toHaveBeenCalledTimes(1);
       expect(mockSkipToNext).not.toHaveBeenCalled();
+    });
+  });
+
+  it('pushes now playing after car mode on a connection change', async () => {
+    await withBridge(async () => {
+      const setNowPlaying = jest.mocked(BayaanCar.setNowPlaying);
+      const order: string[] = [];
+      mockSetCarMode.mockImplementationOnce(() => order.push('carMode'));
+      setNowPlaying.mockImplementationOnce(() => order.push('nowPlaying'));
+      mockConnectionListener?.(true);
+      expect(order).toEqual(['carMode', 'nowPlaying']);
+    });
+  });
+
+  describe('while the adhkar session holds the lock screen', () => {
+    const originalOS = Platform.OS;
+    beforeEach(() => mockIsAdhkarHeld.mockReturnValue(true));
+    afterEach(() => {
+      Platform.OS = originalOS;
+    });
+
+    it('next and previous move the adhkar session, not the queue', async () => {
+      await withBridge(async () => {
+        await send({kind: 'next'});
+        await send({kind: 'previous'});
+        expect(mockSkipAdhkarTrack.mock.calls).toEqual([
+          ['next'],
+          ['previous'],
+        ]);
+        expect(mockSkipToNext).not.toHaveBeenCalled();
+        expect(mockSkipToPrevious).not.toHaveBeenCalled();
+      });
+    });
+
+    it('on iOS, leaves a press the adhkar entry already got alone', async () => {
+      Platform.OS = 'ios';
+      mockHasAdhkarTrackControls.mockReturnValue(true);
+      await withBridge(async () => {
+        await send({kind: 'next'});
+        expect(mockSkipAdhkarTrack).not.toHaveBeenCalled();
+        expect(mockSkipToNext).not.toHaveBeenCalled();
+      });
+    });
+
+    it('on Android, moves the session even with the entry track controls on', async () => {
+      Platform.OS = 'android';
+      mockHasAdhkarTrackControls.mockReturnValue(true);
+      await withBridge(async () => {
+        await send({kind: 'next'});
+        expect(mockSkipAdhkarTrack).toHaveBeenCalledWith('next');
+      });
     });
   });
 

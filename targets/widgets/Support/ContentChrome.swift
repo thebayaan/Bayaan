@@ -3,7 +3,7 @@ import AppIntents
 import SwiftUI
 import WidgetKit
 
-/// Shelf title row: optional leading control, title and detail, Bayaan mark.
+/// Shelf title row: optional leading control, title and detail. // @ai
 struct ShelfHeader<Leading: View>: View {
   let title: String
   var detail: String? = nil
@@ -13,11 +13,12 @@ struct ShelfHeader<Leading: View>: View {
     HStack(spacing: 8) {
       leading()
       VStack(alignment: .leading, spacing: 1) {
-        Text(title).font(.subheadline.weight(.bold)).lineLimit(1)
-        if let detail { Text(detail).font(.caption2).opacity(0.6).lineLimit(1) }
+        // @ai-start
+        Text(title).font(.subheadline.weight(.heavy)).lineLimit(1)
+        if let detail { Text(detail).font(.caption2.weight(.medium)).foregroundStyle(WidgetPalette.secondary).lineLimit(1) }
+        // @ai-end
       }
       Spacer(minLength: 0)
-      BayaanLogo(size: 14)
     }
   }
 }
@@ -34,18 +35,23 @@ struct SurahTileButton<I: AppIntent>: View {
   let size: CGFloat
   let intent: I
   var caption: String? = nil
+  var playing: Bool = false // @ai
 
   var body: some View {
-    Button(intent: intent) {
+    // @ai-start
+    // While this tile's track plays, a tap pauses it and a pause badge shows.
+    PlayOrPauseButton(playing: playing, play: intent, label: StaticData.surah(surahId)?.name ?? "") { playing in
+    // @ai-end
       VStack(spacing: 3) {
         SurahCard(surah: StaticData.surah(surahId), size: size)
-        if let caption {
-          Text(caption).font(.caption2.weight(.medium)).opacity(0.75).lineLimit(1).frame(width: size)
+          // @ai-start
+          .overlay { if playing { PlayingTileOverlay(size: size) } }
+          // @ai-end
+        if let caption, !(caption == StaticData.surah(surahId)?.name && SurahCard.showsName(StaticData.surah(surahId))) { // @ai
+          Text(caption).font(.caption2.weight(.semibold)).foregroundStyle(WidgetPalette.secondary).lineLimit(1).frame(width: size) // @ai
         }
       }
     }
-    .buttonStyle(.plain)
-    .accessibilityLabel(StaticData.surah(surahId)?.name ?? "")
   }
 }
 
@@ -59,7 +65,7 @@ struct ContentMessage: View {
       BayaanLogo(size: 18)
       Text(title).font(.caption.weight(.bold)).multilineTextAlignment(.center)
       if let detail {
-        Text(detail).font(.caption2).opacity(0.6).multilineTextAlignment(.center)
+        Text(detail).font(.caption2).foregroundStyle(WidgetPalette.secondary).multilineTextAlignment(.center) // @ai
       }
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)

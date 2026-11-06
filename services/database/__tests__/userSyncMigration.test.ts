@@ -37,7 +37,19 @@ const sqlitePromise = (async () => {
   const ModuleFactory = require(path.join(waSqliteDir, 'wa-sqlite.js'));
   const SQLite = require(path.join(waSqliteDir, 'sqlite-api.js'));
   const wasmBinary = fs.readFileSync(path.join(waSqliteDir, 'wa-sqlite.wasm'));
-  const module = await ModuleFactory({wasmBinary});
+  // SDK 58's wa-sqlite build ignores a wasmBinary option, so hand it the
+  // compiled module directly.
+  const module = await ModuleFactory({
+    instantiateWasm: (
+      imports: WebAssembly.Imports,
+      done: (instance: WebAssembly.Instance) => void,
+    ) => {
+      WebAssembly.instantiate(wasmBinary, imports).then(result =>
+        done(result.instance),
+      );
+      return {};
+    },
+  });
   return {sqlite3: SQLite.Factory(module), SQLite};
 })();
 
@@ -643,12 +655,18 @@ describe('userSyncV1 annotation migration', () => {
         await createLegacyAnnotationTables(
           db,
           `,
-          qf_note_id TEXT COLLATE NOCASE ${uniqueKind === 'inline' ? 'UNIQUE' : ''},
+          qf_note_id TEXT COLLATE NOCASE ${
+            uniqueKind === 'inline' ? 'UNIQUE' : ''
+          },
           qf_post_id TEXT CHECK (qf_post_id IS NULL OR length(qf_post_id) > 0),
           fork_created INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
           fork_label TEXT REFERENCES fork_labels(id),
           "fork,details" TEXT DEFAULT ('x,y(' || 'z)')
-          ${uniqueKind === 'table' ? ', CONSTRAINT fork_note_unique UNIQUE(qf_note_id)' : ''}
+          ${
+            uniqueKind === 'table'
+              ? ', CONSTRAINT fork_note_unique UNIQUE(qf_note_id)'
+              : ''
+          }
         `,
         );
         if (uniqueKind === 'index') {
@@ -709,7 +727,11 @@ describe('userSyncV1 annotation migration', () => {
           db,
           `,
         fork_a TEXT DEFAULT 'literal--/*kept*/' -- trailing comment with , )
-        , ${kind === 'check' ? "CHECK(fork_a <> '')" : "fork_b TEXT DEFAULT 'second--value'"}
+        , ${
+          kind === 'check'
+            ? "CHECK(fork_a <> '')"
+            : "fork_b TEXT DEFAULT 'second--value'"
+        }
         /* a block comment with , ) */
       `,
         );

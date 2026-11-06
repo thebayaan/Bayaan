@@ -25,7 +25,11 @@ const mockVerseItems: VerseItemProps[] = [];
 const mockTrack = {rewayah: 'hafs'};
 const mockHeaderFonts: string[] = [];
 // @ai-start
-const mockHeaderProps: {rewayah?: string; surahNumber?: number}[] = [];
+const mockHeaderProps: {
+  rewayah?: string;
+  surahNumber?: number;
+  isActive?: boolean;
+}[] = [];
 // @ai-end
 
 jest.mock('../VerseItem', () => ({
@@ -41,6 +45,7 @@ jest.mock('../BasmalaHeader', () => ({
     dkFontFamily: string;
     rewayah?: string; // @ai
     surahNumber?: number; // @ai
+    isActive?: boolean; // @ai
   }) => {
     mockHeaderFonts.push(props.dkFontFamily);
     mockHeaderProps.push(props); // @ai
@@ -241,7 +246,11 @@ beforeEach(() => {
     mushafRenderer: 'dk_v2',
     rewayah: 'hafs',
   });
-  useTimestampStore.setState({currentAyah: null, isLocked: true});
+  useTimestampStore.setState({
+    currentAyah: null,
+    isLocked: true,
+    basmalaIntroSurah: null, // @ai
+  });
 });
 
 afterEach(() => {
@@ -331,6 +340,60 @@ describe('player verse list follow-along', () => {
 });
 
 // @ai-start
+describe('the intro before verse 1', () => {
+  const basmalaLit = () =>
+    mockHeaderProps[mockHeaderProps.length - 1]?.isActive ?? false;
+
+  function intro(surah: number | null, isLocked = true) {
+    act(() => {
+      useTimestampStore.setState({basmalaIntroSurah: surah, isLocked});
+    });
+  }
+
+  it('lights the basmala, and no verse, while it is recited', () => {
+    render();
+    expect(basmalaLit()).toBe(false);
+    intro(2);
+    expect(basmalaLit()).toBe(true);
+    expect(active()).toEqual([]);
+    // verse 1 starts: the verse, not the basmala
+    act(() => {
+      useTimestampStore.setState({
+        basmalaIntroSurah: null,
+        currentAyah: {
+          surahNumber: 2,
+          ayahNumber: 1,
+          verseKey: '2:1',
+          timestampFrom: 0,
+          timestampTo: 1000,
+          verseKeys: ['2:1'],
+        } as never,
+      });
+    });
+    expect(basmalaLit()).toBe(false);
+    expect(active()).toEqual(['2:1']);
+  });
+
+  it("another surah's intro, or the list scrolled away: not lit", () => {
+    render();
+    intro(3);
+    expect(basmalaLit()).toBe(false);
+    intro(2, false);
+    expect(basmalaLit()).toBe(false);
+  });
+
+  it('a rewayah track lights its own basmala too', () => {
+    mockTrack.rewayah = 'warsh';
+    render();
+    intro(2);
+    expect(mockHeaderProps[mockHeaderProps.length - 1]).toMatchObject({
+      rewayah: 'warsh',
+      isActive: true,
+    });
+    expect(active()).toEqual([]);
+  });
+});
+
 describe('a surah whose verses cannot be followed', () => {
   const says = () =>
     JSON.stringify(renderer?.toJSON() ?? null).includes(

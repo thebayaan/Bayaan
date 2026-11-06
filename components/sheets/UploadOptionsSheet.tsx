@@ -1,26 +1,24 @@
 import React, {useCallback, useState, useMemo} from 'react';
-import {
-  View,
-  Text,
-  Pressable,
-  StyleSheet,
-  Alert,
-  useWindowDimensions,
-  Dimensions,
-} from 'react-native';
-import {ScaledSheet, moderateScale} from 'react-native-size-matters';
+import {View, Text, Pressable, StyleSheet, Dimensions} from 'react-native';
+import {confirmDestructive} from '@/utils/confirmDestructive'; // @ai
+import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {QueueIcon, HeartIcon, PlayIcon, ProfileIcon} from '@/components/Icons';
+import {SheetProps, SheetManager, ScrollView} from 'react-native-actions-sheet';
 import ActionSheet, {
-  SheetProps,
-  SheetManager,
-  ScrollView,
-} from 'react-native-actions-sheet';
+  useSheetWidth,
+} from '@/components/sheets/AdaptiveActionSheet';
 import {Feather} from '@expo/vector-icons';
 import Color from 'color';
 import {useUploadsStore, getCustomReciterName} from '@/store/uploadsStore';
-import {getSurahById, getReciterName} from '@/services/dataService';
+// @ai-start
+import {
+  getSurahById,
+  getReciterName,
+  getReciterByIdSync,
+} from '@/services/dataService';
+// @ai-end
 import {useLoved} from '@/hooks/useLoved';
 import {useReciterNavigation} from '@/hooks/useReciterNavigation';
 import type {UploadedRecitation} from '@/types/uploads';
@@ -29,6 +27,17 @@ import RenderHtml, {
   RenderHTMLProps,
   defaultSystemFonts,
 } from 'react-native-render-html';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+import i18n from '@/i18n';
+import {
+  getReciterDisplayName,
+  getSurahDisplayName,
+  getSurahMeaning,
+  localizeDigits,
+} from '@/i18n/format';
+import {getUploadDisplayTitle} from './options/uploadOptions';
+// @ai-end
 
 const surahInfo = require('@/data/surahInfo.json');
 
@@ -53,26 +62,17 @@ const renderHtmlDefaultProps: Partial<RenderHTMLProps> = {
   },
 };
 
-function stripExtension(filename: string): string {
-  return filename.replace(/\.[^/.]+$/, '');
-}
+const getDisplayTitle = getUploadDisplayTitle; // @ai
 
-function getDisplayTitle(item: UploadedRecitation): string {
-  if (item.type === 'surah' && item.surahNumber) {
-    const surah = getSurahById(item.surahNumber);
-    if (surah) return surah.name;
-  }
-  if (item.type === 'other' && item.title) {
-    return item.title;
-  }
-  return stripExtension(item.originalFilename);
-}
-
+// @ai-start
 function getDisplaySubtitle(item: UploadedRecitation): string {
   const parts: string[] = [];
 
   if (item.reciterId) {
-    const name = getReciterName(item.reciterId);
+    const reciter = getReciterByIdSync(item.reciterId);
+    const name = reciter
+      ? getReciterDisplayName(reciter)
+      : getReciterName(item.reciterId);
     if (name) parts.push(name);
   } else if (item.customReciterId) {
     const name = getCustomReciterName(item.customReciterId);
@@ -80,41 +80,55 @@ function getDisplaySubtitle(item: UploadedRecitation): string {
   }
 
   if (item.type === null) {
-    parts.push('Untagged');
+    parts.push(i18n.t('sheets:uploads.untagged'));
   } else if (item.type === 'other' && item.category) {
-    const label =
+    const fallback =
       item.category.charAt(0).toUpperCase() + item.category.slice(1);
-    parts.push(label);
+    parts.push(
+      i18n.t(`sheets:uploads.categories.${item.category}`, {
+        defaultValue: fallback,
+      }),
+    );
   }
 
   if (item.startVerse != null) {
     if (item.endVerse != null) {
-      parts.push(`Verses ${item.startVerse}-${item.endVerse}`);
+      parts.push(
+        i18n.t('sheets:uploads.versesRange', {
+          from: item.startVerse,
+          to: item.endVerse,
+        }),
+      );
     } else {
-      parts.push(`Verse ${item.startVerse}`);
+      parts.push(i18n.t('sheets:uploads.verse', {verse: item.startVerse}));
     }
   }
 
   if (item.recordingType === 'salah') {
-    parts.push('Salah');
+    parts.push(i18n.t('sheets:uploads.salah'));
   } else if (item.recordingType === 'studio') {
-    parts.push('Studio');
+    parts.push(i18n.t('sheets:uploads.studio'));
   }
 
   if (item.duration !== null) {
     const mins = Math.floor(item.duration / 60);
     const secs = Math.floor(item.duration % 60);
-    parts.push(`${mins}:${secs.toString().padStart(2, '0')}`);
+    parts.push(localizeDigits(`${mins}:${secs.toString().padStart(2, '0')}`));
   }
 
   return parts.join(' \u00B7 ');
 }
+// @ai-end
 
+// @ai-start
 export const UploadOptionsSheet = (props: SheetProps<'upload-options'>) => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
-  const {width} = useWindowDimensions();
-  const [showSurahInfo, setShowSurahInfo] = useState(false);
+  const {t} = useTranslation(['sheets', 'common']);
+  // Size HTML from the sheet, which stops at 560pt on iPad. @ai
+  const width = useSheetWidth(); // @ai
+  // A native menu's "Learn about this surah" opens the sheet on the info. @ai
+  const [showSurahInfo, setShowSurahInfo] = useState(!!props.payload?.showInfo);
 
   const {deleteRecitation} = useUploadsStore();
   const {isLovedWithRewayat, toggleLoved} = useLoved();
@@ -223,22 +237,17 @@ export const UploadOptionsSheet = (props: SheetProps<'upload-options'>) => {
   const handleDelete = useCallback(() => {
     if (!recitation) return;
     const title = getDisplayTitle(recitation);
-    Alert.alert(
-      'Delete Recitation',
-      `Are you sure you want to delete "${title}"?`,
-      [
-        {text: 'Cancel', style: 'cancel'},
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => {
-            handleClose();
-            deleteRecitation(recitation.id);
-          },
-        },
-      ],
-    );
-  }, [recitation, handleClose, deleteRecitation]);
+    confirmDestructive({
+      title: t('uploads.deleteTitle'),
+      message: t('uploads.deleteMessage', {title}),
+      confirmText: t('common:actions.delete'),
+      cancelText: t('common:actions.cancel'),
+      onConfirm: () => {
+        handleClose();
+        deleteRecitation(recitation.id);
+      },
+    });
+  }, [recitation, handleClose, deleteRecitation, t]);
 
   const handleSheetChange = useCallback((index: number) => {
     if (index === -1) {
@@ -263,7 +272,7 @@ export const UploadOptionsSheet = (props: SheetProps<'upload-options'>) => {
         style={({pressed}) => [styles.option, pressed && styles.optionPressed]}
         onPress={handlePlay}>
         <PlayIcon color={theme.colors.text} size={moderateScale(18)} />
-        <Text style={styles.optionText}>Play Now</Text>
+        <Text style={styles.optionText}>{t('options.playNow')}</Text>
       </Pressable>
     ),
   });
@@ -279,7 +288,7 @@ export const UploadOptionsSheet = (props: SheetProps<'upload-options'>) => {
           size={moderateScale(18)}
           color={theme.colors.text}
         />
-        <Text style={styles.optionText}>Edit Details</Text>
+        <Text style={styles.optionText}>{t('options.editDetails')}</Text>
       </Pressable>
     ),
   });
@@ -297,7 +306,7 @@ export const UploadOptionsSheet = (props: SheetProps<'upload-options'>) => {
             filled={true}
           />
         </View>
-        <Text style={styles.optionText}>Add to Queue</Text>
+        <Text style={styles.optionText}>{t('options.addToQueue')}</Text>
       </Pressable>
     ),
   });
@@ -318,7 +327,9 @@ export const UploadOptionsSheet = (props: SheetProps<'upload-options'>) => {
             filled={isLovedState}
           />
           <Text style={styles.optionText}>
-            {isLovedState ? 'Remove from Loved' : 'Add to Loved'}
+            {isLovedState
+              ? t('options.removeFromLoved')
+              : t('options.addToLoved')}
           </Text>
         </Pressable>
       ),
@@ -338,7 +349,7 @@ export const UploadOptionsSheet = (props: SheetProps<'upload-options'>) => {
             size={moderateScale(18)}
             color={theme.colors.text}
           />
-          <Text style={styles.optionText}>Add to Collection</Text>
+          <Text style={styles.optionText}>{t('options.addToCollection')}</Text>
         </Pressable>
       ),
     });
@@ -359,7 +370,7 @@ export const UploadOptionsSheet = (props: SheetProps<'upload-options'>) => {
             size={moderateScale(18)}
             filled={false}
           />
-          <Text style={styles.optionText}>Go to Reciter</Text>
+          <Text style={styles.optionText}>{t('options.goToReciter')}</Text>
         </Pressable>
       ),
     });
@@ -380,7 +391,7 @@ export const UploadOptionsSheet = (props: SheetProps<'upload-options'>) => {
             size={moderateScale(18)}
             color={theme.colors.text}
           />
-          <Text style={styles.optionText}>Learn About Surah</Text>
+          <Text style={styles.optionText}>{t('options.learnAboutSurah')}</Text>
         </Pressable>
       ),
     });
@@ -389,6 +400,7 @@ export const UploadOptionsSheet = (props: SheetProps<'upload-options'>) => {
   return (
     <ActionSheet
       id={props.sheetId}
+      tabletPresentation={showSurahInfo ? 'card' : 'menu'}
       containerStyle={[
         styles.sheetContainer,
         showSurahInfo && styles.sheetContainerExpanded,
@@ -399,7 +411,11 @@ export const UploadOptionsSheet = (props: SheetProps<'upload-options'>) => {
       {showSurahInfo ? (
         <>
           <View style={styles.headerContainer}>
-            <Text style={styles.headerTitle}>About {surah?.name}</Text>
+            <Text style={styles.headerTitle}>
+              {t('options.aboutSurah', {
+                surah: surah ? getSurahDisplayName(surah) : '',
+              })}
+            </Text>
           </View>
           <ScrollView
             style={styles.scrollView}
@@ -407,10 +423,14 @@ export const UploadOptionsSheet = (props: SheetProps<'upload-options'>) => {
             bounces={true}>
             <View style={styles.infoContent}>
               <View style={styles.surahInfoHeader}>
-                <Text style={styles.surahInfoName}>{surah?.name}</Text>
-                <Text style={styles.surahInfoTranslation}>
-                  {surah?.translated_name_english}
+                <Text style={styles.surahInfoName}>
+                  {surah ? getSurahDisplayName(surah) : ''}
                 </Text>
+                {surah && getSurahMeaning(surah) ? (
+                  <Text style={styles.surahInfoTranslation}>
+                    {getSurahMeaning(surah)}
+                  </Text>
+                ) : null}
               </View>
               {currentSurahInfo && (
                 <RenderHtml
@@ -457,7 +477,9 @@ export const UploadOptionsSheet = (props: SheetProps<'upload-options'>) => {
                 size={moderateScale(18)}
                 color="#ff4444"
               />
-              <Text style={styles.optionTextDestructive}>Delete</Text>
+              <Text style={styles.optionTextDestructive}>
+                {t('common:actions.delete')}
+              </Text>
             </Pressable>
           </View>
         </View>
@@ -465,6 +487,7 @@ export const UploadOptionsSheet = (props: SheetProps<'upload-options'>) => {
     </ActionSheet>
   );
 };
+// @ai-end
 
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({

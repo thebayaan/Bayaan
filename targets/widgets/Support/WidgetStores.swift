@@ -62,3 +62,36 @@ enum PendingTasbeehStore {
     }
   }
 }
+
+/// The Adhkar widget's session. One record: resolve() resets it when the period or day changes.
+enum AdhkarSessionStore {
+  private static let key = "widgets.adhkarSession"
+
+  static func read() -> AdhkarSession? {
+    guard let s = BayaanAppGroup.defaults?.string(forKey: key), let d = s.data(using: .utf8) else { return nil }
+    return try? JSONDecoder().decode(AdhkarSession.self, from: d)
+  }
+
+  static func write(_ session: AdhkarSession) {
+    guard let d = try? JSONEncoder().encode(session), let s = String(data: d, encoding: .utf8) else { return }
+    BayaanAppGroup.defaults?.set(s, forKey: key)
+  }
+}
+
+/// Analytics events raised in the extension; the app drains them (takePendingWidgetEvents).
+enum PendingWidgetEventStore {
+  static let key = "widgets.pendingEvents"
+
+  /// `completedAtMs` (epoch ms) dates the event, so the app credits the day it happened.
+  static func add(name: String, props: [String: Any], completedAtMs: Double) {
+    WidgetQueueLock.withLock {
+      let defaults = BayaanAppGroup.defaults
+      var list = (defaults?.string(forKey: key)?.data(using: .utf8))
+        .flatMap { try? JSONSerialization.jsonObject(with: $0) as? [[String: Any]] } ?? []
+      list.append(["name": name, "props": props, "completedAtMs": completedAtMs])
+      if let d = try? JSONSerialization.data(withJSONObject: list), let s = String(data: d, encoding: .utf8) {
+        defaults?.set(s, forKey: key)
+      }
+    }
+  }
+}

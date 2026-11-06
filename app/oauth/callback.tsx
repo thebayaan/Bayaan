@@ -2,6 +2,7 @@ import React, {useEffect, useRef} from 'react';
 import {Text, View} from 'react-native';
 import * as Linking from 'expo-linking';
 import {useRouter} from 'expo-router';
+import {useTranslation} from 'react-i18next';
 import {
   BayaanAuthError,
   bayaanAuthService,
@@ -21,6 +22,7 @@ function reportCallbackFailure(code: string, attempt: number): void {
 
 export default function OAuthCallbackScreen() {
   const router = useRouter();
+  const {t} = useTranslation('settings');
   const currentUrl = Linking.useLinkingURL();
   const callbackHandled = useRef(false);
 
@@ -78,7 +80,7 @@ export default function OAuthCallbackScreen() {
 
   return (
     <View style={{flex: 1, alignItems: 'center', justifyContent: 'center'}}>
-      <Text>Completing sign-in…</Text>
+      <Text>{t('qfAccount.completingSignIn')}</Text>
     </View>
   );
 }

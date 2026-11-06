@@ -9,6 +9,7 @@ import type {
   SuperCategory,
   SuperCategorySection,
 } from '../../types/adhkar';
+import {ADHKAR_DATA_VERSION} from './adhkarDataVersion';
 
 // Database row types (snake_case)
 interface CategoryRow {
@@ -64,6 +65,8 @@ interface SuperCategoryRow {
   sort_order: number;
   section: string;
   category_ids: string; // JSON array stored as string
+  dhikr_ids: string | null; // JSON array of dhikr ids, or NULL (version 6)
+  audio_overrides: string | null; // JSON {dhikrId: audioFile}, or NULL (version 6)
 }
 
 /** Escape a value for direct SQL interpolation (single-quoted string or NULL). */
@@ -72,13 +75,39 @@ function esc(value: string | null | undefined): string {
   return `'${value.replace(/'/g, "''")}'`;
 }
 
-// Data version - increment when seed data changes to trigger re-seed
-// Version 1: Initial adhkar data (267 items)
-// Version 2: Added Quranic Duas (40 items, total 307)
-// Version 3: Fixed audio file naming (dua_X.mp3 -> adhkar_X.mp3)
-// Version 4: Added 99 Names of Allah (99 items, total 406)
-// Version 5: Balanced "Other" section bento grid (left=14, right=14)
-const DATA_VERSION = 5;
+/** Parse super_categories.dhikr_ids (JSON array of ids) or return null. */
+function parseDhikrIds(value: string | null): string[] | null {
+  if (value === null) return null;
+  const parsed: unknown = JSON.parse(value);
+  if (!Array.isArray(parsed)) return null;
+  const items: unknown[] = parsed;
+  const ids: string[] = [];
+  for (const item of items) {
+    if (typeof item !== 'string') return null;
+    ids.push(item);
+  }
+  return ids;
+}
+
+/** Parse super_categories.audio_overrides (JSON object of file names) or return null. */
+function parseAudioOverrides(
+  value: string | null,
+): Record<string, string> | null {
+  if (value === null) return null;
+  const parsed: unknown = JSON.parse(value);
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    return null;
+  }
+  const overrides: Record<string, string> = {};
+  for (const [dhikrId, file] of Object.entries(parsed)) {
+    if (typeof file !== 'string') return null;
+    overrides[dhikrId] = file;
+  }
+  return overrides;
+}
+
+// History and bump rules: services/database/adhkarDataVersion.ts
+const DATA_VERSION = ADHKAR_DATA_VERSION;
 
 class AdhkarDatabaseService {
   private db: SQLite.SQLiteDatabase | null = null;
@@ -165,7 +194,9 @@ class AdhkarDatabaseService {
       );
     `);
 
-    // Create tasbeeh counts table (daily reset via last_updated)
+    // Create tasbeeh counts table (daily reset via last_updated). dhikr_id
+    // holds the count key: the plain dhikr id, or `<superId>:<dhikrId>` for a
+    // list with its own count (services/adhkar/dhikrCountKey.ts).
     await this.db.execAsync(`
       CREATE TABLE IF NOT EXISTS dhikr_counts (
         dhikr_id TEXT PRIMARY KEY,
@@ -185,9 +216,28 @@ class AdhkarDatabaseService {
         column TEXT DEFAULT 'left',
         sort_order INTEGER DEFAULT 0,
         section TEXT DEFAULT 'main',
-        category_ids TEXT NOT NULL
+        category_ids TEXT NOT NULL,
+        dhikr_ids TEXT,
+        audio_overrides TEXT
       );
     `);
+
+    // Data version 6 added dhikr_ids. CREATE TABLE IF NOT EXISTS does not add
+    // columns to a table an older release created, so add it explicitly.
+    const superColumns = await this.db.getAllAsync<{name: string}>(
+      'PRAGMA table_info(super_categories)',
+    );
+    if (!superColumns.some(column => column.name === 'dhikr_ids')) {
+      await this.db.execAsync(
+        'ALTER TABLE super_categories ADD COLUMN dhikr_ids TEXT;',
+      );
+    }
+    // Data version 6 also added audio_overrides (per-list audio files).
+    if (!superColumns.some(column => column.name === 'audio_overrides')) {
+      await this.db.execAsync(
+        'ALTER TABLE super_categories ADD COLUMN audio_overrides TEXT;',
+      );
+    }
 
     // Create meta table for version tracking
     await this.db.execAsync(`
@@ -238,11 +288,6 @@ class AdhkarDatabaseService {
 
     const currentVersion = await this.getDataVersion();
     return currentVersion < DATA_VERSION;
-  }
-
-  // Update data version to current after successful seeding
-  async updateDataVersion(): Promise<void> {
-    await this.setDataVersion(DATA_VERSION);
   }
 
   // Get all categories with their tags
@@ -358,6 +403,36 @@ class AdhkarDatabaseService {
       audioFile: dhikr.audio_file,
       sortOrder: dhikr.sort_order,
     }));
+  }
+
+  // Get adhkar by id, in the order of `ids` (unknown ids are skipped)
+  async getAdhkarByIds(ids: readonly string[]): Promise<Dhikr[]> {
+    if (!this.db) throw new Error('Database not initialized');
+    if (ids.length === 0) return [];
+
+    const placeholders = ids.map(() => '?').join(', ');
+    const rows = await this.db.getAllAsync<DhikrRow>(
+      `SELECT * FROM adhkar WHERE id IN (${placeholders})`,
+      [...ids],
+    );
+    const byId = new Map(rows.map(row => [row.id, row]));
+    const result: Dhikr[] = [];
+    for (const id of ids) {
+      const dhikr = byId.get(id);
+      if (!dhikr) continue;
+      result.push({
+        id: dhikr.id,
+        categoryId: dhikr.category_id,
+        arabic: dhikr.arabic,
+        translation: dhikr.translation,
+        transliteration: dhikr.transliteration,
+        instruction: dhikr.instruction,
+        repeatCount: dhikr.repeat_count,
+        audioFile: dhikr.audio_file,
+        sortOrder: dhikr.sort_order,
+      });
+    }
+    return result;
   }
 
   // Get a single dhikr by ID
@@ -478,6 +553,25 @@ class AdhkarDatabaseService {
     });
   }
 
+  // All tasbeeh counts updated today, keyed by count key (plain dhikr id, or
+  // `<superId>:<dhikrId>` for the morning and evening lists). Rows from an
+  // earlier day count as zero; getDhikrCount resets them on the next tap.
+  async getTodayDhikrCounts(): Promise<DhikrCount[]> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    const rows = await this.db.getAllAsync<CountRow>(
+      `SELECT dhikr_id, count, last_updated FROM dhikr_counts WHERE count > 0`,
+    );
+    const today = new Date().toDateString();
+    return rows
+      .filter(row => new Date(row.last_updated).toDateString() === today)
+      .map(row => ({
+        dhikrId: row.dhikr_id,
+        count: row.count,
+        lastUpdated: row.last_updated,
+      }));
+  }
+
   // Get all super categories
   async getAllSuperCategories(): Promise<SuperCategory[]> {
     if (!this.db) throw new Error('Database not initialized');
@@ -496,6 +590,8 @@ class AdhkarDatabaseService {
       sortOrder: row.sort_order,
       section: row.section as SuperCategorySection,
       categoryIds: JSON.parse(row.category_ids),
+      dhikrIds: parseDhikrIds(row.dhikr_ids),
+      audioOverrides: parseAudioOverrides(row.audio_overrides),
     }));
   }
 
@@ -520,6 +616,8 @@ class AdhkarDatabaseService {
       sortOrder: row.sort_order,
       section: row.section as SuperCategorySection,
       categoryIds: JSON.parse(row.category_ids),
+      dhikrIds: parseDhikrIds(row.dhikr_ids),
+      audioOverrides: parseAudioOverrides(row.audio_overrides),
     }));
   }
 
@@ -544,6 +642,8 @@ class AdhkarDatabaseService {
       sortOrder: row.sort_order,
       section: row.section as SuperCategorySection,
       categoryIds: JSON.parse(row.category_ids),
+      dhikrIds: parseDhikrIds(row.dhikr_ids),
+      audioOverrides: parseAudioOverrides(row.audio_overrides),
     };
   }
 
@@ -569,12 +669,64 @@ class AdhkarDatabaseService {
     return (result?.count ?? 0) > 0;
   }
 
-  // Seed database from JSON data (batch inserts for performance)
+  // Seed database from JSON data in one transaction (a failure keeps the
+  // previous content)
   async seedDatabase(data: AdhkarSeedData): Promise<void> {
     if (!this.db) throw new Error('Database not initialized');
 
     const db = this.db;
+    await db.withTransactionAsync(() => this.writeSeedData(db, data));
+  }
 
+  // Seed super categories in one transaction
+  async seedSuperCategories(
+    dhikrIdsBySuperId: Readonly<Record<string, readonly string[]>> = {},
+    audioOverridesBySuperId: Readonly<
+      Record<string, Readonly<Record<string, string>>>
+    > = {},
+  ): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    const db = this.db;
+    await db.withTransactionAsync(() =>
+      this.writeSuperCategories(db, dhikrIdsBySuperId, audioOverridesBySuperId),
+    );
+  }
+
+  // Replace all bundled content (adhkar, categories, tags, super categories)
+  // and record the data version in one transaction. If anything fails or the
+  // app dies midway, SQLite rolls it all back: the previous content and
+  // version stay, so the reseed runs again on the next launch. User tables
+  // (dhikr_favorites, dhikr_counts) are never touched.
+  // Non-exclusive transaction: nothing else may use this connection until it
+  // resolves; AdhkarService.initialize guarantees this (every call awaits it).
+  async reseed(
+    data: AdhkarSeedData,
+    dhikrIdsBySuperId: Readonly<Record<string, readonly string[]>>,
+    audioOverridesBySuperId: Readonly<
+      Record<string, Readonly<Record<string, string>>>
+    > = {},
+  ): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    const db = this.db;
+    await db.withTransactionAsync(async () => {
+      await this.writeSeedData(db, data);
+      await this.writeSuperCategories(
+        db,
+        dhikrIdsBySuperId,
+        audioOverridesBySuperId,
+      );
+      await this.setDataVersion(DATA_VERSION);
+    });
+  }
+
+  // Delete and reinsert adhkar, categories and tags (batch inserts for
+  // performance). Runs inside the caller's transaction.
+  private async writeSeedData(
+    db: SQLite.SQLiteDatabase,
+    data: AdhkarSeedData,
+  ): Promise<void> {
     // Clear existing data
     await db.execAsync(`
       DELETE FROM category_tags;
@@ -651,12 +803,15 @@ class AdhkarDatabaseService {
     }
   }
 
-  // Seed super categories
-  async seedSuperCategories(): Promise<void> {
-    if (!this.db) throw new Error('Database not initialized');
-
-    const db = this.db;
-
+  // Delete and reinsert super categories. Runs inside the caller's
+  // transaction.
+  private async writeSuperCategories(
+    db: SQLite.SQLiteDatabase,
+    dhikrIdsBySuperId: Readonly<Record<string, readonly string[]>>,
+    audioOverridesBySuperId: Readonly<
+      Record<string, Readonly<Record<string, string>>>
+    >,
+  ): Promise<void> {
     // Define all super categories (Main)
     // Bento layout pattern - Left: 1, 2, 3, 1... (last=1) | Right: 1, 3, 1, 2... (last=2)
     const mainAdhkar = [
@@ -871,7 +1026,7 @@ class AdhkarDatabaseService {
         column: 'right',
         sort_order: 2,
         section: 'other',
-        category_ids: ['10', '11', '97', '98'],
+        category_ids: ['10', '11', '97', '98', '132'],
       },
       {
         id: 'istikharah',
@@ -1040,19 +1195,22 @@ class AdhkarDatabaseService {
 
     // Clear and batch insert all super categories
     const superValues = allSuperCategories
-      .map(
-        cat =>
-          `(${esc(cat.id)}, ${esc(cat.title)}, ${esc(cat.arabic_title)}, ${esc(
-            cat.color,
-          )}, ${cat.height_multiplier}, ${esc(cat.column)}, ${
-            cat.sort_order
-          }, ${esc(cat.section)}, ${esc(JSON.stringify(cat.category_ids))})`,
-      )
+      .map(cat => {
+        const dhikrIds = dhikrIdsBySuperId[cat.id];
+        const audioOverrides = audioOverridesBySuperId[cat.id];
+        return `(${esc(cat.id)}, ${esc(cat.title)}, ${esc(
+          cat.arabic_title,
+        )}, ${esc(cat.color)}, ${cat.height_multiplier}, ${esc(cat.column)}, ${
+          cat.sort_order
+        }, ${esc(cat.section)}, ${esc(JSON.stringify(cat.category_ids))}, ${
+          dhikrIds ? esc(JSON.stringify(dhikrIds)) : 'NULL'
+        }, ${audioOverrides ? esc(JSON.stringify(audioOverrides)) : 'NULL'})`;
+      })
       .join(',\n');
 
     await db.execAsync(`
       DELETE FROM super_categories;
-      INSERT INTO super_categories (id, title, arabic_title, color, height_multiplier, column, sort_order, section, category_ids)
+      INSERT INTO super_categories (id, title, arabic_title, color, height_multiplier, column, sort_order, section, category_ids, dhikr_ids, audio_overrides)
       VALUES ${superValues};
     `);
   }
