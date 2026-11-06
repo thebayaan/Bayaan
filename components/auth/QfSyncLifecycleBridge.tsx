@@ -3,6 +3,7 @@ import {AppState} from 'react-native';
 import {useBayaanAuthStore} from '@/store/bayaanAuthStore';
 import {useNetworkStore} from '@/store/networkStore';
 import {useQfSyncStore} from '@/store/qfSyncStore';
+import {qfActivityDayTracker} from '@/services/sync/qfActivityDayTracker';
 import {qfSyncLifecycle} from '@/services/sync/qfSyncLifecycle';
 import {qfSettingsSyncLifecycle} from '@/services/settings/qfSettingsSyncLifecycle';
 import {GuestDataMergeSheet} from './GuestDataMergeSheet';
@@ -35,6 +36,10 @@ export function QfSyncLifecycleBridge() {
     qfSyncLifecycle.updateContext(context);
     qfSettingsSyncLifecycle.updateContext(context);
   }, [accountId, appState, authStatus, online]);
+
+  useEffect(() => {
+    qfActivityDayTracker.setAppActive(appState === 'active');
+  }, [appState]);
 
   useEffect(() => {
     if (syncRequestId > 0) {
