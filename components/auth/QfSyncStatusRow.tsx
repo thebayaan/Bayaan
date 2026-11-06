@@ -1,4 +1,4 @@
-import React, {useMemo} from 'react';
+import React from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -11,47 +11,40 @@ import {moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {useQfSyncStore, type QfSyncStatus} from '@/store/qfSyncStore';
 import {qfSyncLifecycle} from '@/services/sync/qfSyncLifecycle';
-import i18n from '@/i18n';
 import {useTranslation} from 'react-i18next';
 
-function statusText(
-  status: QfSyncStatus,
-  lastSuccessAt: number | null,
-): string {
-  const key = 'settings:qfAccount.status';
-  if (status === 'disabled') return i18n.t(`${key}.disabled`);
-  if (status === 'syncing') return i18n.t(`${key}.syncing`);
-  if (status === 'offline') return i18n.t(`${key}.offline`);
-  if (status === 'auth_expired') return i18n.t(`${key}.authExpired`);
-  if (status === 'conflict') return i18n.t(`${key}.conflict`);
-  if (status === 'retry') return i18n.t(`${key}.retry`);
-  if (lastSuccessAt) {
-    const time = new Date(lastSuccessAt).toLocaleTimeString(i18n.language, {
-      hour: 'numeric',
-      minute: '2-digit',
-    });
-    return i18n.t(`${key}.lastSynced`, {time});
-  }
-  return i18n.t(`${key}.ready`);
-}
+// Fixed copy per status. Idle shows the last sync time instead; signed out
+// renders nothing.
+const STATUS_KEYS = {
+  signed_out: null,
+  idle: null,
+  disabled: 'qfAccount.status.disabled',
+  syncing: 'qfAccount.status.syncing',
+  offline: 'qfAccount.status.offline',
+  auth_expired: 'qfAccount.status.authExpired',
+  conflict: 'qfAccount.status.conflict',
+  retry: 'qfAccount.status.retry',
+} as const satisfies Record<QfSyncStatus, string | null>;
 
 export function QfSyncStatusRow() {
   const {theme} = useTheme();
-  const {
-    t,
-    i18n: {language},
-  } = useTranslation('common');
+  const {t, i18n} = useTranslation(['settings', 'common']);
   const status = useQfSyncStore(state => state.status);
   const lastSuccessAt = useQfSyncStore(state => state.lastSuccessAt);
-  const label = useMemo(
-    () => statusText(status, lastSuccessAt),
-    // The text depends on the app language too.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [lastSuccessAt, status, language],
-  );
 
   if (status === 'signed_out') return null;
   const canRetry = status === 'retry' || status === 'conflict';
+  const fixedKey = STATUS_KEYS[status];
+  const label = fixedKey
+    ? t(fixedKey)
+    : lastSuccessAt
+      ? t('qfAccount.status.lastSynced', {
+          time: new Date(lastSuccessAt).toLocaleTimeString(i18n.language, {
+            hour: 'numeric',
+            minute: '2-digit',
+          }),
+        })
+      : t('qfAccount.status.ready');
 
   return (
     <View style={styles.row}>
@@ -73,7 +66,7 @@ export function QfSyncStatusRow() {
           hitSlop={8}
           onPress={() => qfSyncLifecycle.retryNow()}>
           <Text style={[styles.retry, {color: theme.colors.text}]}>
-            {t('actions.retry')}
+            {t('common:actions.retry')}
           </Text>
         </Pressable>
       ) : null}
