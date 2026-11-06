@@ -9,11 +9,13 @@ import {
   readArtworkRequests,
   reloadWidgets,
   takePendingTasbeeh,
+  takePendingWidgetEvents,
   writeCatalog,
   WidgetArtworkRequests,
   WidgetKind,
 } from 'bayaan-widgets';
 import {RECITERS} from '@/data/reciterData';
+import {analyticsService} from '@/services/analytics/AnalyticsService';
 import {useAdhkarStore} from '@/store/adhkarStore';
 import {useReciterStore} from '@/store/reciterStore';
 import {getReciterByIdSync} from '@/services/dataService';
@@ -25,6 +27,7 @@ import {
 } from './buildSnapshot';
 import {buildCatalog, TASBEEH_ADHKAR} from './buildCatalog';
 import {ARTWORK_KINDS, flushWidgetSnapshot} from './syncWidgets';
+import {enabledKinds, isWidgetEnabled} from './enabledWidgets';
 
 // Quick Surah defaults, Pinned Reciter's popular rows, Continue Reading's empty state.
 export const ALWAYS_CACHED_SURAHS: readonly number[] = [1, 18, 36, 56, 67];
@@ -90,17 +93,20 @@ export async function ensureConfiguredArtwork(): Promise<boolean> {
       artworkInFlight.delete(url);
     }
   }
-  if (added) reloadWidgets(ARTWORK_KINDS);
+  if (added) reloadWidgets(enabledKinds(ARTWORK_KINDS));
   return added;
 }
 
 export function syncCatalog(): void {
   try {
-    const catalog = buildCatalog(RECITERS, TASBEEH_ADHKAR);
+    const catalog = buildCatalog(
+      RECITERS,
+      isWidgetEnabled('Tasbeeh') ? TASBEEH_ADHKAR : [],
+    );
     const json = JSON.stringify(catalog);
     if (json === lastCatalogJson) return;
     writeCatalog(catalog);
-    reloadWidgets(CATALOG_KINDS);
+    reloadWidgets(enabledKinds(CATALOG_KINDS));
     lastCatalogJson = json;
   } catch (error) {
     console.error('[WidgetSync] Failed to write the widget catalog:', error);
@@ -145,6 +151,25 @@ export async function consumeTasbeehIncrements(
   if (applied) flushWidgetSnapshot();
 }
 
+// Sends analytics events raised by widget actions (adhkar session completed).
+// Taking the events clears the native queue, so they stay queued until
+// analytics can capture them; startConfiguredWidgetSync retries on readiness.
+export function consumeWidgetEvents(): void {
+  if (!analyticsService.isReadyToCapture()) return;
+  try {
+    for (const event of takePendingWidgetEvents()) {
+      if (event.name === 'adhkar_session_completed') {
+        analyticsService.trackAdhkarSessionCompleted(
+          event.props,
+          new Date(event.completedAtMs),
+        );
+      }
+    }
+  } catch (error) {
+    console.error('[WidgetSync] Failed to send widget events:', error);
+  }
+}
+
 function refresh(): void {
   // Ayah of the Day depends only on the date; a push is cheap and repairs a
   // stale ayah (and, on Android, a lost midnight alarm).
@@ -153,6 +178,7 @@ function refresh(): void {
   consumeTasbeehIncrements().catch(error => {
     console.error('[WidgetSync] Tasbeeh sync failed:', error);
   });
+  consumeWidgetEvents();
   ensureConfiguredArtwork().catch(error => {
     console.error('[WidgetSync] Configured artwork sync failed:', error);
   });
@@ -163,6 +189,7 @@ export function startConfiguredWidgetSync(): () => void {
   if (!isWidgetsAvailable()) return () => undefined;
   refresh();
   const unsubs = [
+    analyticsService.onReadyToCapture(consumeWidgetEvents),
     // RECITERS is filled in place; the default reciter refresh follows a load.
     useReciterStore.subscribe(() => syncCatalog()),
     useAdhkarStore.subscribe((state, prev) => {

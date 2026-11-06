@@ -46,11 +46,11 @@ object CarBrowseTree {
     return items.subList(from.toInt(), to.toInt())
   }
 
-  fun root(): MediaItem = browsable("root", "Bayaan", null, null)
+  fun root(): MediaItem = browsable("root", CarBrand.name, null, null)
 
   fun children(parentId: String): List<MediaItem> {
     if (parentId == "root") return tabs.map { (id, title) -> browsable(id, title, null, gridStyle(id != "tab:surahs")) }
-    val s = CarBridge.snapshot ?: return listOf(message("Open Bayaan on your phone to get started"))
+    val s = CarBridge.snapshot ?: return listOf(message(CarBrand.unavailableMessage()))
     return when {
       parentId == "tab:home" -> home(s).orIfEmpty()
       parentId == "tab:library" -> s.library.map { item(it, null) }.orIfEmpty()

@@ -3,6 +3,7 @@ package expo.modules.bayaanwidgets.pinnedreciter
 import android.app.Activity
 import android.os.Bundle
 import android.widget.Toast
+import expo.modules.bayaanwidgets.AppBrand
 import expo.modules.bayaanwidgets.CatalogModels
 import expo.modules.bayaanwidgets.PinnedReciterConfig
 import expo.modules.bayaanwidgets.WidgetConfigJson
@@ -19,7 +20,7 @@ class PinnedReciterConfigActivity : Activity() {
     val reciters = WidgetStorage.readCatalogJson(this)?.let { CatalogModels.decode(it) }?.reciters.orEmpty()
     if (reciters.isEmpty()) {
       // Fresh install: the app has not written the catalog yet. Keep the default reciter.
-      Toast.makeText(this, "Open Bayaan once to load reciters", Toast.LENGTH_LONG).show()
+      Toast.makeText(this, "Open ${AppBrand.name(this)} once to load reciters", Toast.LENGTH_LONG).show()
       save(PinnedReciterConfig(null))
       return
     }

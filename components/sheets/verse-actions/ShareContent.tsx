@@ -4,16 +4,12 @@ import {
   Text,
   Pressable,
   Share,
-  Switch,
   useWindowDimensions,
   ActivityIndicator,
   PixelRatio,
 } from 'react-native';
-import {
-  ScaledSheet,
-  moderateScale,
-  verticalScale,
-} from 'react-native-size-matters';
+import {NativeSwitch} from '@/components/native/NativeSwitch'; // @ai
+import {ScaledSheet, moderateScale, verticalScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {Feather} from '@expo/vector-icons';
@@ -61,11 +57,18 @@ import {
 } from '@/components/share/useVerseSelection';
 // @ai-end
 import type {RewayahId} from '@/store/mushafSettingsStore';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+import {getSurahDisplayName} from '@/i18n/format';
+// @ai-end
 
+// @ai-start
 const surahData = require('@/data/surahData.json') as Array<{
   id: number;
   name: string;
+  name_arabic: string;
 }>;
+// @ai-end
 
 const NO_KEYS: readonly string[] = []; // @ai
 
@@ -88,6 +91,7 @@ interface ShareContentProps {
   onDone: () => void;
 }
 
+// @ai-start
 export const ShareContent: React.FC<ShareContentProps> = ({
   verseKey,
   surahNumber,
@@ -99,6 +103,7 @@ export const ShareContent: React.FC<ShareContentProps> = ({
 }) => {
   const {theme, isDarkMode} = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const {t} = useTranslation(['sheets', 'common']); // @ai
   const {width: screenWidth} = useWindowDimensions();
   const captureCanvasRef = useCanvasRef();
 
@@ -170,7 +175,7 @@ export const ShareContent: React.FC<ShareContentProps> = ({
   const shareRefs = useCallback(
     (ready: ReadyVerseSelection) => {
       const surah = surahData.find(s => s.id === ready.surahNumber);
-      const surahName = surah?.name ?? '';
+      const surahName = surah ? getSurahDisplayName(surah) : '';
       return {
         translation: joinTranslationParts(
           selectionTranslationParts(ready),
@@ -224,15 +229,15 @@ export const ShareContent: React.FC<ShareContentProps> = ({
       // @ai-end
       if (result.status !== 'ready') {
         showToast(
-          `Couldn't load the ${rewayahLabel} text`,
-          'Nothing was shared. Please try again.',
+          t('selectionFailure.loadFailed', {rewayah: rewayahLabel}), // @ai
+          t('selectionFailure.nothingDoneRetry.shared'), // @ai
           'error',
         );
         return;
       }
       if (hasNoOwnText(result.texts)) {
         showToast(
-          'Nothing to share',
+          t('selectionFailure.nothingToShare'), // @ai
           noOwnTextMessage(result.rewayah),
           'error',
         );
@@ -320,7 +325,7 @@ export const ShareContent: React.FC<ShareContentProps> = ({
                   color={theme.colors.textSecondary}
                 />
                 <Text style={styles.previewPlaceholderText}>
-                  Loading the {rewayahLabel} text
+                  {t('verseActions.loadingText', {rewayah: rewayahLabel})}
                 </Text>
               </>
             ) : verseTexts.status === 'ready' ? (
@@ -330,7 +335,7 @@ export const ShareContent: React.FC<ShareContentProps> = ({
             ) : (
               <>
                 <Text style={styles.previewPlaceholderText}>
-                  Couldn&apos;t load the {rewayahLabel} text.
+                  {t('verseActions.loadFailed', {rewayah: rewayahLabel})}
                 </Text>
                 <Pressable
                   onPress={verseTexts.retry}
@@ -340,7 +345,9 @@ export const ShareContent: React.FC<ShareContentProps> = ({
                     styles.retryButton,
                     pressed && {opacity: 0.7},
                   ]}>
-                  <Text style={styles.retryButtonText}>Try Again</Text>
+                  <Text style={styles.retryButtonText}>
+                    {t('common:actions.tryAgain')}
+                  </Text>
                 </Pressable>
               </>
             )}
@@ -371,14 +378,8 @@ export const ShareContent: React.FC<ShareContentProps> = ({
       {/* @ai-end */}
 
       <View style={styles.toggleRow}>
-        <Text style={styles.toggleLabel}>Show Basmallah</Text>
-        <Switch
-          trackColor={{
-            false: Color(theme.colors.text).alpha(0.1).toString(),
-            true: Color(theme.colors.text).alpha(0.65).toString(),
-          }}
-          thumbColor="#FFFFFF"
-          ios_backgroundColor={Color(theme.colors.text).alpha(0.1).toString()}
+        <Text style={styles.toggleLabel}>{t('share.showBasmallah')}</Text>
+        <NativeSwitch
           onValueChange={() => setShowBasmallah(!showBasmallah)}
           value={showBasmallah}
           style={{transform: [{scaleX: 0.8}, {scaleY: 0.8}]}}
@@ -386,14 +387,8 @@ export const ShareContent: React.FC<ShareContentProps> = ({
       </View>
 
       <View style={styles.toggleRow}>
-        <Text style={styles.toggleLabel}>Show Watermark</Text>
-        <Switch
-          trackColor={{
-            false: Color(theme.colors.text).alpha(0.1).toString(),
-            true: Color(theme.colors.text).alpha(0.65).toString(),
-          }}
-          thumbColor="#FFFFFF"
-          ios_backgroundColor={Color(theme.colors.text).alpha(0.1).toString()}
+        <Text style={styles.toggleLabel}>{t('share.showWatermark')}</Text>
+        <NativeSwitch
           onValueChange={() => setShowWatermark(!showWatermark)}
           value={showWatermark}
           style={{transform: [{scaleX: 0.8}, {scaleY: 0.8}]}}
@@ -418,7 +413,7 @@ export const ShareContent: React.FC<ShareContentProps> = ({
               color={theme.colors.text}
             />
           )}
-          <Text style={styles.primaryButtonText}>Share as Image</Text>
+          <Text style={styles.primaryButtonText}>{t('share.asImage')}</Text>
         </Pressable>
 
         <Pressable
@@ -440,7 +435,7 @@ export const ShareContent: React.FC<ShareContentProps> = ({
             />
           )}
           {/* @ai-end */}
-          <Text style={styles.secondaryButtonText}>Share as Text</Text>
+          <Text style={styles.secondaryButtonText}>{t('share.asText')}</Text>
         </Pressable>
 
         <Pressable
@@ -454,12 +449,13 @@ export const ShareContent: React.FC<ShareContentProps> = ({
             size={moderateScale(16)}
             color={theme.colors.text}
           />
-          <Text style={styles.secondaryButtonText}>Share Link</Text>
+          <Text style={styles.secondaryButtonText}>{t('share.link')}</Text>
         </Pressable>
       </View>
     </ScrollView>
   );
 };
+// @ai-end
 
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({

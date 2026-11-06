@@ -29,6 +29,7 @@ import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStor
 import {useFavoriteRecitersStore} from '@/services/player/store/favoriteRecitersStore';
 import {qfSyncDatabaseService} from '@/services/sync/qfSyncDatabaseService';
 import {startCarIntegration} from '@/services/car';
+import {applyReciterMergesToSavedData} from '@/services/reciterMergeMigration'; // @ai
 import * as Font from 'expo-font';
 
 interface ServiceInitializer {
@@ -241,7 +242,9 @@ appInitializer.registerService({
 
 /**
  * Playlists Data (Priority 3)
- * Loads playlist data from database into Zustand store
+ * Moves saved data off merged reciters first (see utils/reciterMerges), so
+ * playlists load with the kept reciter ids, then loads playlist data from
+ * database into Zustand store
  * Non-critical - can be loaded later if fails
  */
 appInitializer.registerService({
@@ -249,6 +252,13 @@ appInitializer.registerService({
   priority: 3,
   critical: false,
   initialize: async () => {
+    // @ai-start
+    try {
+      await applyReciterMergesToSavedData();
+    } catch (error) {
+      console.warn('[AppInitializer] Reciter merge migration failed:', error);
+    }
+    // @ai-end
     await usePlaylistsStore.getState().loadPlaylists();
   },
 });

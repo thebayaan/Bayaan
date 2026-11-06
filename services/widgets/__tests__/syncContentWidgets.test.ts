@@ -242,9 +242,9 @@ it('registers runContentCommand with the command handler on import', () => {
   expect(setContentCommandRunner).toHaveBeenCalledWith(runContentCommand);
 });
 
-it('reloads the date-only widgets on launch and on every foreground', async () => {
+it('reloads the date-only widget on launch and on every foreground', async () => {
   const stop = startContentWidgetSync();
-  const dateKinds = ['Adhkar', 'HijriDate', 'Occasion'];
+  const dateKinds = ['Adhkar'];
   expect(mockReload).toHaveBeenCalledWith(dateKinds);
   mockReload.mockClear();
   mockAppStateHandlers[0]('background');

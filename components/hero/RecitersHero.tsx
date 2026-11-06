@@ -2,7 +2,7 @@ import React from 'react';
 import {View, StyleSheet} from 'react-native';
 import {BrowseAllHero} from '@/components/hero/BrowseAllHero';
 import {HeroSection} from './HeroSection';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 
 /**
  * The main hero component for the RecitersView.

@@ -1,13 +1,15 @@
 import React from 'react';
 import {View, Text, Pressable} from 'react-native';
-import {moderateScale} from 'react-native-size-matters';
-import {ScaledSheet} from 'react-native-size-matters';
+import {moderateScale, ScaledSheet} from '@/utils/scale';
 import {useSafeAreaInsets, EdgeInsets} from 'react-native-safe-area-context';
 import {Theme} from '@/utils/themeUtils';
 import {PlayIcon, ShuffleIcon, HeartIcon} from '@/components/Icons';
 import {Feather} from '@expo/vector-icons';
 import Color from 'color';
 import {USE_GLASS} from '@/hooks/useGlassProps';
+// @ai-start
+import {forceLTR, latinLetterSpacing} from '@/utils/rtl';
+// @ai-end
 
 interface LovedHeaderProps {
   title: string;
@@ -15,15 +17,19 @@ interface LovedHeaderProps {
   onPlayPress: () => void;
   onShufflePress: () => void;
   onOptionsPress?: () => void;
+  /** A native menu laid over the ••• button on tablets. @ai */
+  optionsMenu?: React.ReactNode;
   theme: Theme;
 }
 
+// @ai-start
 export const LovedHeader: React.FC<LovedHeaderProps> = ({
   title,
   subtitle,
   onPlayPress,
   onShufflePress,
   onOptionsPress,
+  optionsMenu,
   theme,
 }) => {
   const insets = useSafeAreaInsets();
@@ -54,7 +60,7 @@ export const LovedHeader: React.FC<LovedHeaderProps> = ({
       </View>
 
       {/* Action Buttons */}
-      <View style={styles.actionButtons}>
+      <View style={[styles.actionButtons, forceLTR]}>
         {!USE_GLASS && onOptionsPress && (
           <Pressable style={styles.circleButton} onPress={onOptionsPress}>
             <Feather
@@ -62,6 +68,7 @@ export const LovedHeader: React.FC<LovedHeaderProps> = ({
               size={moderateScale(20)}
               color={theme.colors.text}
             />
+            {optionsMenu}
           </Pressable>
         )}
         <Pressable
@@ -81,7 +88,9 @@ export const LovedHeader: React.FC<LovedHeaderProps> = ({
     </View>
   );
 };
+// @ai-end
 
+// @ai-start
 const createStyles = (theme: Theme, insets: EdgeInsets) =>
   ScaledSheet.create({
     headerContainer: {
@@ -125,7 +134,7 @@ const createStyles = (theme: Theme, insets: EdgeInsets) =>
       color: theme.colors.text,
       textAlign: 'center',
       marginBottom: moderateScale(8),
-      letterSpacing: -0.3,
+      letterSpacing: latinLetterSpacing(-0.3),
     },
     subtitle: {
       fontSize: moderateScale(12),
@@ -161,3 +170,4 @@ const createStyles = (theme: Theme, insets: EdgeInsets) =>
       paddingLeft: moderateScale(4),
     },
   });
+// @ai-end

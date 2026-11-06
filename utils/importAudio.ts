@@ -1,4 +1,7 @@
 import {Alert} from 'react-native';
+// @ai-start
+import i18n from '@/i18n';
+// @ai-end
 import type {UploadedRecitation} from '@/types/uploads';
 
 interface ImportCallbacks {
@@ -16,6 +19,7 @@ interface ImportCallbacks {
  * Opens the document picker for audio files and imports the selected files.
  * Returns the imported recitations, or an empty array if cancelled.
  */
+// @ai-start
 export async function pickAndImportAudioFiles(
   callbacks: ImportCallbacks,
 ): Promise<UploadedRecitation[]> {
@@ -35,20 +39,25 @@ export async function pickAndImportAudioFiles(
 
   if (files.length === 1) {
     const recitation = await callbacks.importFile(files[0].uri, files[0].name);
-    Alert.alert('File Imported', recitation.originalFilename, [
-      {text: 'Done'},
-      ...(callbacks.onOrganize
-        ? [
-            {
-              text: 'Edit Details',
-              onPress: () => callbacks.onOrganize!(recitation),
-            },
-          ]
-        : []),
-    ]);
+    Alert.alert(
+      i18n.t('content:importAudio.fileImported'),
+      recitation.originalFilename,
+      [
+        {text: i18n.t('common:actions.done')},
+        ...(callbacks.onOrganize
+          ? [
+              {
+                text: i18n.t('content:importAudio.editDetails'),
+                onPress: () => callbacks.onOrganize!(recitation),
+              },
+            ]
+          : []),
+      ],
+    );
     return [recitation];
   }
 
   const recitations = await callbacks.importFiles(files);
   return recitations;
 }
+// @ai-end

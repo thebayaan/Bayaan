@@ -52,10 +52,14 @@ export class LocalAggregationStore {
   }
 
   getToday(): string {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
+    return this.dayKey(new Date());
+  }
+
+  /** The local calendar day of `date`, in the same format as getToday(). */
+  dayKey(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   }
 
@@ -85,6 +89,24 @@ export class LocalAggregationStore {
     agg.reciters[reciterId] = (agg.reciters[reciterId] ?? 0) + ms;
     this.saveDailyAggregate(agg);
   }
+
+  // @ai-start
+  /**
+   * Moves listening time from one reciter id to another on every saved day
+   * (reciter merges), adding it to any time the kept id already has.
+   */
+  remapReciterId(fromId: string, toId: string): void {
+    for (const key of this.mmkv.getAllKeys()) {
+      if (!key.startsWith(DAILY_PREFIX)) continue;
+      const agg = this.getDailyAggregate(key.slice(DAILY_PREFIX.length));
+      const ms = agg?.reciters[fromId];
+      if (!agg || ms === undefined) continue;
+      agg.reciters[toId] = (agg.reciters[toId] ?? 0) + ms;
+      delete agg.reciters[fromId];
+      this.saveDailyAggregate(agg);
+    }
+  }
+  // @ai-end
 
   incrementMeaningfulListens(date: string): void {
     const agg = this.getOrCreateAggregate(date);

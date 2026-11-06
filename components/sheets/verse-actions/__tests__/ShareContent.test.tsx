@@ -205,9 +205,10 @@ async function press(label: string) {
 beforeEach(() => {
   mockTranslations.clear();
   (shareUrl as jest.Mock).mockClear();
-  shareSpy = jest
-    .spyOn(Share, 'share')
-    .mockImplementation(async () => ({action: 'sharedAction'}));
+  shareSpy = jest.spyOn(Share, 'share').mockImplementation(async () => ({
+    action: 'sharedAction',
+    activityType: undefined,
+  }));
   useMushafSettingsStore.setState({rewayah: 'hafs', mushafRenderer: 'dk_v2'});
 });
 

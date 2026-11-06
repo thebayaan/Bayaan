@@ -1,14 +1,24 @@
 import React, {useLayoutEffect} from 'react';
 import {useRouter, useLocalSearchParams, useNavigation} from 'expo-router';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+// @ai-end
 import {useTheme} from '@/hooks/useTheme';
 import {USE_GLASS} from '@/hooks/useGlassProps';
 import BrowseReciters from '@/components/browse/BrowseReciters';
+import {useResponsive} from '@/hooks/useResponsive'; // @ai
 import {SURAHS} from '@/data/surahData';
+// @ai-start
+import {getSurahDisplayName} from '@/i18n/format';
+// @ai-end
 
+// @ai-start
 export default function BrowseScreen() {
   const router = useRouter();
   const navigation = useNavigation();
   const {theme} = useTheme();
+  const {t} = useTranslation('home');
+  const {isTablet} = useResponsive(); // @ai
   const {surahId, teacher, student, rewayatName, hasPhoto} =
     useLocalSearchParams<{
       surahId: string;
@@ -24,12 +34,18 @@ export default function BrowseScreen() {
     router.back();
   };
 
-  // Get title based on context
+  // Get title based on context. On iPad a tap on a card plays the surah,
+  // so the title says so: "Choose a reciter · Ya-Sin". @ai
+  const surahTitleKey = isTablet
+    ? 'browse.chooseReciterForSurah'
+    : 'browse.browseRecitersForSurah';
   const title = rewayatName
     ? rewayatName
     : surahId
-      ? `Browse Reciters - ${SURAHS[parseInt(surahId, 10) - 1].name}`
-      : 'Browse All';
+      ? t(surahTitleKey, {
+          surah: getSurahDisplayName(SURAHS[parseInt(surahId, 10) - 1]),
+        })
+      : t('browse.browseAll');
 
   // Set native header title on iOS
   useLayoutEffect(() => {
@@ -50,3 +66,4 @@ export default function BrowseScreen() {
     />
   );
 }
+// @ai-end

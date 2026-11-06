@@ -21,7 +21,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import {Feather, Ionicons} from '@expo/vector-icons';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import {SheetManager} from 'react-native-actions-sheet';
 import Color from 'color';
 import {useTheme} from '@/hooks/useTheme';
@@ -33,11 +33,16 @@ import {
 import {mushafAudioService} from '@/services/audio/MushafAudioService';
 import {SURAHS} from '@/data/surahData';
 import {PlayIcon, PauseIcon} from '@/components/Icons';
+// @ai-start
+import {playbackNoticeText, playbackErrorText} from '@/i18n/playback';
+import {useTranslation} from 'react-i18next';
+import {getSurahDisplayName, localizeDigits} from '@/i18n/format';
+import {forceLTR} from '@/utils/rtl';
 import {showToast} from '@/utils/toastUtils'; // @ai
 
 // @ai-start
 const surahNameOf = (surah: number): string =>
-  surah >= 1 && surah <= 114 ? SURAHS[surah - 1].name : '';
+  surah >= 1 && surah <= 114 ? getSurahDisplayName(SURAHS[surah - 1]) : '';
 // @ai-end
 
 interface MushafPlayerBarProps {
@@ -45,11 +50,13 @@ interface MushafPlayerBarProps {
   onSearch?: () => void;
 }
 
+// @ai-start
 export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
   currentPage,
   onSearch,
 }) => {
   const {theme} = useTheme();
+  const {t} = useTranslation(['reader', 'common']);
 
   const playbackState = useMushafPlayerStore(s => s.playbackState);
   const currentSurah = useMushafPlayerStore(s => s.currentSurah);
@@ -63,7 +70,7 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
 
   const surahName =
     currentSurah >= 1 && currentSurah <= 114
-      ? SURAHS[currentSurah - 1].name
+      ? getSurahDisplayName(SURAHS[currentSurah - 1])
       : '';
 
   // @ai-start
@@ -73,7 +80,12 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
   useEffect(
     () =>
       useMushafPlayerStore.subscribe((state, prev) => {
-        const notice = getPlayerBarNotice(prev, state, surahNameOf);
+        const notice = getPlayerBarNotice(
+          prev,
+          state,
+          surahNameOf,
+          playbackNoticeText(),
+        );
         if (notice) showToast(notice.title, notice.message, notice.preset);
       }),
     [],
@@ -142,7 +154,7 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
             {color: Color(theme.colors.text).alpha(0.7).toString()},
           ]}
           numberOfLines={1}>
-          {timestampError}
+          {playbackErrorText(timestampError)}
         </Text>
         <Pressable
           style={[
@@ -151,9 +163,9 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
           ]}
           onPress={handleChangeReciter}
           accessibilityRole="button"
-          accessibilityLabel="Change reciter">
+          accessibilityLabel={t('playerBar.changeReciter')}>
           <Text style={[styles.changeReciterText, {color: theme.colors.text}]}>
-            Change Reciter
+            {t('playerBar.changeReciterButton')}
           </Text>
         </Pressable>
       </View>
@@ -168,7 +180,7 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
           style={styles.edgeButton}
           onPress={onSearch}
           accessibilityRole="button"
-          accessibilityLabel="Search">
+          accessibilityLabel={t('common:actions.search')}>
           <Feather
             name="search"
             size={moderateScale(20)}
@@ -184,7 +196,7 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
             ]}
             onPress={handlePlayPress}
             accessibilityRole="button"
-            accessibilityLabel="Play">
+            accessibilityLabel={t('common:actions.play')}>
             <PlayIcon color={theme.colors.text} size={moderateScale(16)} />
           </Pressable>
         </View>
@@ -193,7 +205,7 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
           style={styles.edgeButton}
           onPress={handleOptions}
           accessibilityRole="button"
-          accessibilityLabel="Playback options">
+          accessibilityLabel={t('playerBar.playbackOptions')}>
           <Ionicons
             name="ellipsis-horizontal"
             size={moderateScale(20)}
@@ -206,10 +218,16 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
 
   // ── Active state (playing / paused / loading) ───────────────────────
   // Same text as the iOS 26 toolbar (formatPlaybackInfo).
-  const infoText = formatPlaybackInfo(surahName, {
-    currentVerseLabel,
-    numberingMode,
-  }); // @ai
+  const infoText = localizeDigits(
+    formatPlaybackInfo(
+      surahName,
+      {
+        currentVerseLabel,
+        numberingMode,
+      },
+      t('playback.trackingUnavailable'),
+    ),
+  ); // @ai
   const verseNavDisabled = verseTrackingUnavailable;
   const chevronColor = verseNavDisabled
     ? Color(theme.colors.text).alpha(0.3).toString()
@@ -223,7 +241,7 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
           style={styles.edgeButton}
           onPress={handleStop}
           accessibilityRole="button"
-          accessibilityLabel="Stop">
+          accessibilityLabel={t('toolbar.stop')}>
           <Ionicons
             name="stop"
             size={moderateScale(20)}
@@ -231,13 +249,13 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
           />
         </Pressable>
 
-        <View style={styles.controlsCenter}>
+        <View style={[styles.controlsCenter, forceLTR]}>
           <Pressable
             style={styles.chevronButton}
             onPress={handlePrevAyah}
             disabled={verseNavDisabled}
             accessibilityRole="button"
-            accessibilityLabel="Previous ayah"
+            accessibilityLabel={t('playerBar.previousAyah')}
             accessibilityState={{disabled: verseNavDisabled}}>
             <Feather
               name="chevrons-left"
@@ -251,7 +269,9 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
             onPress={handlePlayPause}
             disabled={isLoading}
             accessibilityRole="button"
-            accessibilityLabel={isPlaying ? 'Pause' : 'Play'}>
+            accessibilityLabel={
+              isPlaying ? t('common:actions.pause') : t('common:actions.play')
+            }>
             {isLoading ? (
               <ActivityIndicator size="small" color={theme.colors.text} />
             ) : isPlaying ? (
@@ -268,7 +288,7 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
             onPress={handleNextAyah}
             disabled={verseNavDisabled}
             accessibilityRole="button"
-            accessibilityLabel="Next ayah"
+            accessibilityLabel={t('playerBar.nextAyah')}
             accessibilityState={{disabled: verseNavDisabled}}>
             <Feather
               name="chevrons-right"
@@ -282,7 +302,7 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
           style={styles.edgeButton}
           onPress={handleOptions}
           accessibilityRole="button"
-          accessibilityLabel="Playback options">
+          accessibilityLabel={t('playerBar.playbackOptions')}>
           <Ionicons
             name="ellipsis-horizontal"
             size={moderateScale(20)}
@@ -300,6 +320,7 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
     </View>
   );
 };
+// @ai-end
 
 const styles = StyleSheet.create({
   errorContainer: {

@@ -17,12 +17,18 @@ interface FakeParagraph {
 }
 
 const mockDrawn: string[] = [];
+// Canvases mounted (a fresh Skia canvas records and sends its picture).
+const mockCanvasMounts = {count: 0};
 
 jest.mock('@shopify/react-native-skia', () => {
   const ReactActual = jest.requireActual('react');
   return {
-    Canvas: ({children}: {children: React.ReactNode}) =>
-      ReactActual.createElement(ReactActual.Fragment, null, children),
+    Canvas: ({children}: {children: React.ReactNode}) => {
+      ReactActual.useEffect(() => {
+        mockCanvasMounts.count += 1;
+      }, []);
+      return ReactActual.createElement(ReactActual.Fragment, null, children);
+    },
     Paragraph: ({paragraph}: {paragraph: FakeParagraph}) => {
       mockDrawn.push(paragraph.text);
       return null;
@@ -65,6 +71,8 @@ jest.mock('@/services/mushaf/DigitalKhattVerseTajweedService', () => ({
   getBasmalaTajweedMap: () => mockTajweed(),
 }));
 
+import {StyleSheet} from 'react-native'; // @ai
+import Color from 'color'; // @ai
 import BasmalaHeader from '../BasmalaHeader';
 import {BASMALLAH_TEXT} from '@/services/mushaf/RewayahBasmalaService';
 import {EXPECTED_BASMALA} from '@/services/mushaf/__fixtures__/basmalaTexts';
@@ -167,4 +175,91 @@ describe('BasmalaHeader', () => {
     expect(draw({rewayah: 'hisham', surahNumber: 2})).toBe('');
     expect(draw({rewayah: 'hisham', surahNumber: 2, fontMgr: null})).toBe('');
   });
+
+  it('shown again (e.g. after al-Fatiha), the basmala gets a fresh canvas', () => {
+    // A blank basmala: Fabric re-parented the canvas when the hidden
+    // style toggled, and nothing redrew it. The container must not be
+    // flattened, and showing the basmala again mounts a new canvas.
+    const render = (visible: boolean) => (
+      <BasmalaHeader
+        visible={visible}
+        width={320}
+        textColor="#111111"
+        showTajweed={false}
+        fontMgr={FONT_MGR}
+        dkFontFamily="DigitalKhattV2"
+        indexedTajweedData={TAJWEED}
+        rewayah="hafs"
+        surahNumber={2}
+      />
+    );
+    mockCanvasMounts.count = 0;
+    let out: TestRenderer.ReactTestRenderer | null = null;
+    act(() => {
+      out = TestRenderer.create(render(false));
+    });
+    const root = out!.toJSON() as TestRenderer.ReactTestRendererJSON;
+    expect(root.props.collapsable).toBe(false);
+    expect(mockCanvasMounts.count).toBe(1);
+    act(() => out!.update(render(true)));
+    expect(mockCanvasMounts.count).toBe(2);
+    // Re-rendering while shown keeps the same canvas.
+    act(() => out!.update(render(true)));
+    expect(mockCanvasMounts.count).toBe(2);
+    act(() => out!.unmount());
+  });
 });
+
+// @ai-start
+describe('BasmalaHeader follow-along', () => {
+  /** The header's outer container style, flattened. */
+  function containerStyle(props: {
+    isActive?: boolean;
+    fontMgr?: SkTypefaceFontProvider | null;
+    rewayah?: RewayahId;
+  }): Record<string, unknown> {
+    let out: TestRenderer.ReactTestRenderer | null = null;
+    act(() => {
+      out = TestRenderer.create(
+        <BasmalaHeader
+          visible
+          width={320}
+          textColor="#111111"
+          showTajweed={false}
+          fontMgr={props.fontMgr === undefined ? FONT_MGR : props.fontMgr}
+          dkFontFamily="DigitalKhattV2"
+          indexedTajweedData={TAJWEED}
+          rewayah={props.rewayah}
+          surahNumber={2}
+          isActive={props.isActive}
+        />,
+      );
+    });
+    const json = out!.toJSON() as TestRenderer.ReactTestRendererJSON;
+    const style = StyleSheet.flatten(json.props.style) as Record<
+      string,
+      unknown
+    >;
+    act(() => out!.unmount());
+    return style ?? {};
+  }
+
+  it('while the basmala is recited it takes the active verse band', () => {
+    const lit = containerStyle({isActive: true});
+    // VerseItem's active band: the text colour at 12%, rounded
+    expect(lit.backgroundColor).toBe(Color('#111111').alpha(0.12).toString());
+    expect(lit.borderRadius).toBeGreaterThan(0);
+    expect(containerStyle({isActive: true, fontMgr: null})).toMatchObject({
+      backgroundColor: lit.backgroundColor,
+    });
+  });
+
+  it('otherwise, and with no basmala drawn, no band', () => {
+    expect(containerStyle({}).backgroundColor).toBeUndefined();
+    expect(containerStyle({isActive: false}).backgroundColor).toBeUndefined();
+    expect(
+      containerStyle({isActive: true, rewayah: 'hisham'}).backgroundColor,
+    ).toBeUndefined();
+  });
+});
+// @ai-end

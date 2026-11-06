@@ -1,10 +1,5 @@
-import React, {useEffect, useSyncExternalStore} from 'react';
-import {bootApp} from '@/services/appBoot';
-import {
-  ExpoAudioProvider,
-  isPhoneProviderMounted,
-  subscribePhoneProvider,
-} from '@/services/audio/ExpoAudioProvider';
+import React from 'react';
+import {BackgroundRoot, keepAliveTask} from '@/services/audio/BackgroundRoot';
 
 /** AppRegistry name of the headless root BayaanLibraryService starts. */
 export const CAR_ROOT_COMPONENT = 'BayaanCarRoot';
@@ -16,28 +11,14 @@ export const CAR_ROOT_COMPONENT = 'BayaanCarRoot';
  */
 export const CAR_KEEP_ALIVE_TASK = 'BayaanCarKeepAlive';
 
-export function carKeepAliveTask(): Promise<void> {
-  return new Promise<void>(() => undefined);
-}
+export const carKeepAliveTask = keepAliveTask; // @ai
 
 /**
  * Headless root that Android Auto starts when the phone app is not open. It
  * boots the app services (which start the car integration) and owns the
  * player until the phone layout mounts its own provider, then steps aside.
- * Renders no UI.
+ * Renders no UI. The shared logic lives in BackgroundRoot. // @ai
  */
 export function CarRoot(): React.JSX.Element | null {
-  const phoneMounted = useSyncExternalStore(
-    subscribePhoneProvider,
-    isPhoneProviderMounted,
-  );
-
-  useEffect(() => {
-    bootApp().catch((error: unknown) => {
-      if (__DEV__) console.warn('[CarRoot] boot failed', error);
-    });
-  }, []);
-
-  if (phoneMounted) return null;
-  return <ExpoAudioProvider owner="car">{null}</ExpoAudioProvider>;
+  return <BackgroundRoot id="car" />; // @ai
 }

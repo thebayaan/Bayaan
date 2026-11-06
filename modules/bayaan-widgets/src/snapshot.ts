@@ -42,6 +42,15 @@ export interface WidgetTasbeehEntry {
   day: string; // YYYY-MM-DD local
 }
 
+// @ai-start
+// The adhkar player is separate from the main one, so it is never nowPlaying.
+export interface WidgetAdhkarPlayback {
+  superId: string; // the session's listId ('saved' for the Saved list)
+  dhikrId: string;
+  isPlaying: boolean;
+}
+// @ai-end
+
 export interface WidgetSnapshot {
   version: typeof WIDGET_SNAPSHOT_VERSION;
   generatedAt: number;
@@ -53,6 +62,8 @@ export interface WidgetSnapshot {
   reciterRecents: Record<string, WidgetTrack[]>;
   lastRead: WidgetLastRead | null;
   tasbeeh: Record<string, WidgetTasbeehEntry>;
+  // Optional: older snapshots and fixtures have none. // @ai
+  adhkar?: WidgetAdhkarPlayback | null; // @ai
 }
 
 export function isWidgetTrack(value: unknown): value is WidgetTrack {
@@ -112,6 +123,17 @@ function isTasbeehEntry(value: unknown): value is WidgetTasbeehEntry {
   );
 }
 
+// @ai-start
+function isAdhkarPlayback(value: unknown): value is WidgetAdhkarPlayback {
+  return (
+    isRecord(value) &&
+    typeof value.superId === 'string' &&
+    typeof value.dhikrId === 'string' &&
+    typeof value.isPlaying === 'boolean'
+  );
+}
+// @ai-end
+
 export function isWidgetSnapshot(value: unknown): value is WidgetSnapshot {
   if (!isRecord(value)) return false;
   if (value.version !== WIDGET_SNAPSHOT_VERSION) return false;
@@ -132,5 +154,7 @@ export function isWidgetSnapshot(value: unknown): value is WidgetSnapshot {
   if (!Object.values(value.reciterRecents).every(isTrackList)) return false;
   if (value.lastRead !== null && !isLastRead(value.lastRead)) return false;
   if (!isRecord(value.tasbeeh)) return false;
+  // Absent in snapshots written before adhkar playback was shared. // @ai
+  if (value.adhkar != null && !isAdhkarPlayback(value.adhkar)) return false; // @ai
   return Object.values(value.tasbeeh).every(isTasbeehEntry);
 }

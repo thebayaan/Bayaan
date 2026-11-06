@@ -2,7 +2,7 @@ import React, {useCallback} from 'react';
 import {View, StyleSheet, ScrollView} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {MushafSettingsContent} from '@/components/MushafSettingsContent';
-import {verticalScale} from 'react-native-size-matters';
+import {verticalScale} from '@/utils/scale';
 import {useRouter} from 'expo-router';
 
 export default function MushafSettingsScreen() {

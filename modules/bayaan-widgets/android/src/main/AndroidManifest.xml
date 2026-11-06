@@ -10,6 +10,7 @@
       android:theme="@android:style/Theme.Translucent.NoTitleBar" />
     <receiver
       android:name="expo.modules.bayaanwidgets.continuelistening.ContinueListeningReceiver"
+      android:enabled="@bool/bayaan_widget_enabled_continue_listening"
       android:exported="true"
       android:label="@string/bayaan_widget_continue_listening_label">
       <intent-filter>
@@ -21,6 +22,7 @@
     </receiver>
     <receiver
       android:name="expo.modules.bayaanwidgets.quicksurah.QuickSurahReceiver"
+      android:enabled="@bool/bayaan_widget_enabled_quick_surah"
       android:exported="true"
       android:label="@string/bayaan_widget_quick_surah_label">
       <intent-filter>
@@ -32,6 +34,7 @@
     </receiver>
     <activity
       android:name="expo.modules.bayaanwidgets.quicksurah.QuickSurahConfigActivity"
+      android:enabled="@bool/bayaan_widget_enabled_quick_surah"
       android:exported="true"
       android:excludeFromRecents="true"
       android:taskAffinity=""
@@ -42,6 +45,7 @@
     </activity>
     <receiver
       android:name="expo.modules.bayaanwidgets.pinnedreciter.PinnedReciterReceiver"
+      android:enabled="@bool/bayaan_widget_enabled_pinned_reciter"
       android:exported="true"
       android:label="@string/bayaan_widget_pinned_reciter_label">
       <intent-filter>
@@ -53,6 +57,7 @@
     </receiver>
     <activity
       android:name="expo.modules.bayaanwidgets.pinnedreciter.PinnedReciterConfigActivity"
+      android:enabled="@bool/bayaan_widget_enabled_pinned_reciter"
       android:exported="true"
       android:excludeFromRecents="true"
       android:taskAffinity=""
@@ -63,6 +68,7 @@
     </activity>
     <receiver
       android:name="expo.modules.bayaanwidgets.ayahoftheday.AyahOfTheDayReceiver"
+      android:enabled="@bool/bayaan_widget_enabled_ayah_of_the_day"
       android:exported="true"
       android:label="@string/bayaan_widget_ayah_label">
       <intent-filter>
@@ -92,6 +98,7 @@
     </receiver>
     <receiver
       android:name="expo.modules.bayaanwidgets.continuereading.ContinueReadingReceiver"
+      android:enabled="@bool/bayaan_widget_enabled_continue_reading"
       android:exported="true"
       android:label="@string/bayaan_widget_continue_reading_label">
       <intent-filter>
@@ -103,6 +110,7 @@
     </receiver>
     <receiver
       android:name="expo.modules.bayaanwidgets.tasbeeh.TasbeehReceiver"
+      android:enabled="@bool/bayaan_widget_enabled_tasbeeh"
       android:exported="true"
       android:label="@string/bayaan_widget_tasbeeh_label">
       <intent-filter>
@@ -114,6 +122,7 @@
     </receiver>
     <activity
       android:name="expo.modules.bayaanwidgets.tasbeeh.TasbeehConfigActivity"
+      android:enabled="@bool/bayaan_widget_enabled_tasbeeh"
       android:exported="true"
       android:excludeFromRecents="true"
       android:taskAffinity=""
@@ -124,6 +133,7 @@
     </activity>
     <receiver
       android:name="expo.modules.bayaanwidgets.recentlyplayed.RecentlyPlayedReceiver"
+      android:enabled="@bool/bayaan_widget_enabled_recently_played"
       android:exported="true"
       android:label="@string/bayaan_widget_recently_played_label">
       <intent-filter>
@@ -135,6 +145,7 @@
     </receiver>
     <receiver
       android:name="expo.modules.bayaanwidgets.libraryshelf.LibraryShelfReceiver"
+      android:enabled="@bool/bayaan_widget_enabled_library_shelf"
       android:exported="true"
       android:label="@string/bayaan_widget_library_shelf_label">
       <intent-filter>
@@ -146,6 +157,7 @@
     </receiver>
     <activity
       android:name="expo.modules.bayaanwidgets.libraryshelf.LibraryShelfConfigActivity"
+      android:enabled="@bool/bayaan_widget_enabled_library_shelf"
       android:exported="true"
       android:excludeFromRecents="true"
       android:taskAffinity=""
@@ -156,6 +168,7 @@
     </activity>
     <receiver
       android:name="expo.modules.bayaanwidgets.bedtime.BedtimeReceiver"
+      android:enabled="@bool/bayaan_widget_enabled_bedtime"
       android:exported="true"
       android:label="@string/bayaan_widget_bedtime_label">
       <intent-filter>
@@ -167,6 +180,7 @@
     </receiver>
     <activity
       android:name="expo.modules.bayaanwidgets.bedtime.BedtimeConfigActivity"
+      android:enabled="@bool/bayaan_widget_enabled_bedtime"
       android:exported="true"
       android:excludeFromRecents="true"
       android:taskAffinity=""
@@ -177,6 +191,7 @@
     </activity>
     <receiver
       android:name="expo.modules.bayaanwidgets.spotlight.ReciterSpotlightReceiver"
+      android:enabled="@bool/bayaan_widget_enabled_reciter_spotlight"
       android:exported="true"
       android:label="@string/bayaan_widget_spotlight_label">
       <intent-filter>
@@ -188,6 +203,7 @@
     </receiver>
     <receiver
       android:name="expo.modules.bayaanwidgets.adhkar.AdhkarReceiver"
+      android:enabled="@bool/bayaan_widget_enabled_adhkar"
       android:exported="true"
       android:label="@string/bayaan_widget_adhkar_label">
       <intent-filter>
@@ -198,29 +214,8 @@
         android:resource="@xml/adhkar_info" />
     </receiver>
     <receiver
-      android:name="expo.modules.bayaanwidgets.hijri.HijriDateReceiver"
-      android:exported="true"
-      android:label="@string/bayaan_widget_hijri_label">
-      <intent-filter>
-        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-      </intent-filter>
-      <meta-data
-        android:name="android.appwidget.provider"
-        android:resource="@xml/hijri_date_info" />
-    </receiver>
-    <receiver
-      android:name="expo.modules.bayaanwidgets.hijri.OccasionReceiver"
-      android:exported="true"
-      android:label="@string/bayaan_widget_occasion_label">
-      <intent-filter>
-        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-      </intent-filter>
-      <meta-data
-        android:name="android.appwidget.provider"
-        android:resource="@xml/occasion_info" />
-    </receiver>
-    <receiver
       android:name="expo.modules.bayaanwidgets.bayaannow.BayaanNowReceiver"
+      android:enabled="@bool/bayaan_widget_enabled_bayaan_now"
       android:exported="true"
       android:label="@string/bayaan_widget_now_label">
       <intent-filter>

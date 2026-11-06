@@ -24,6 +24,8 @@ import {
 import type {RewayahWithDiffs} from '@/services/rewayah/RewayahIdentity';
 
 export interface LegendEntry {
+  key: 'wordVariant' | 'silah';
+  descriptionKey: 'wordVariant' | 'silah' | 'silahDifference';
   color: string;
   isBackground?: boolean;
   label: string;
@@ -31,6 +33,7 @@ export interface LegendEntry {
 }
 
 export interface RewayahLegend {
+  summaryKey: 'words' | 'wordsAndSilah';
   summary: string;
   entries: LegendEntry[];
 }
@@ -102,6 +105,8 @@ export function buildRewayahLegend(
   const entries: LegendEntry[] = [];
   if (categories.wordVariants) {
     entries.push({
+      key: 'wordVariant',
+      descriptionKey: 'wordVariant',
       color: REWAYAH_DIFF_BACKGROUND,
       isBackground: true,
       label: 'Word variant',
@@ -110,6 +115,10 @@ export function buildRewayahLegend(
   }
   if (categories.silah) {
     entries.push({
+      key: 'silah',
+      descriptionKey: categories.silahDiffersFromHafs
+        ? 'silahDifference'
+        : 'silah',
       color: tajweedColors.silah,
       label: 'Silah',
       description: categories.silahDiffersFromHafs
@@ -121,6 +130,7 @@ export function buildRewayahLegend(
     ? 'Tints words that read differently from Hafs and colors silah marks.'
     : 'Tints words that read differently from Hafs.';
   return {
+    summaryKey: categories.silah ? 'wordsAndSilah' : 'words',
     summary: `${highlighted} Pronunciation rules such as tashil, imalah and taqlil are not highlighted.`,
     entries,
   };

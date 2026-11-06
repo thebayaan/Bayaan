@@ -6,11 +6,13 @@ import UIKit
 /// album-artist (reciter) pushes, and the next/previous remote commands for
 /// the lifetime of one CarPlay connection.
 ///
-/// expo-audio never touches `nextTrackCommand`, `previousTrackCommand` or
-/// `changePlaybackRateCommand`; it only toggles play, pause, position and skip
-/// forward/backward. So our registrations are not undone by its metadata
-/// updates, and with the skip commands disabled (JS car mode) CarPlay shows
-/// next/previous instead.
+/// expo-audio never touches `changePlaybackRateCommand`, and touches
+/// `nextTrackCommand` / `previousTrackCommand` only for a player that opted in
+/// to track controls (our patch, adhkar only). JS turns those off on iOS in car
+/// mode, which disables both commands, so `updateButtons` enables them again.
+/// Otherwise expo-audio only toggles play, pause, position and skip
+/// forward/backward, and with the skip commands disabled (JS car mode)
+/// CarPlay shows next/previous instead.
 ///
 /// The rate button's label comes from `MPRemoteCommandCenter`: CarPlay reads
 /// it through an enabled `changePlaybackRateCommand` with supported rates.
@@ -110,6 +112,8 @@ final class CarNowPlayingController: NSObject, CPNowPlayingTemplateObserver {
     // Any lock screen activation that slipped in before JS car mode must not
     // leave the 10s skip buttons in place of next/previous.
     disableSkipCommands()
+    // The adhkar entry letting go of its track controls disables these.
+    enableTrackCommands()
     if let np, np.rate > 0, np.rate != rateShown {
       rateShown = np.rate
       var info = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
@@ -134,6 +138,11 @@ final class CarNowPlayingController: NSObject, CPNowPlayingTemplateObserver {
       CarBridge.shared.send(transport: ["kind": "toggleLove"])
     }
     CPNowPlayingTemplate.shared.updateNowPlayingButtons([rate, repeatButton, love])
+  }
+
+  private func enableTrackCommands() {
+    if !commands.nextTrackCommand.isEnabled { commands.nextTrackCommand.isEnabled = true }
+    if !commands.previousTrackCommand.isEnabled { commands.previousTrackCommand.isEnabled = true }
   }
 
   /// JS car mode keeps these off on every lock screen activation; this covers

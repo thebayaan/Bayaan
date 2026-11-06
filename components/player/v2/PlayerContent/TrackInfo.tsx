@@ -5,7 +5,7 @@ import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
 import {FrostedView} from '@/components/FrostedView';
 import {SymbolView} from 'expo-symbols';
 import {Pressable} from 'react-native-gesture-handler';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {useReciterNavigation} from '@/hooks/useReciterNavigation';
@@ -16,14 +16,23 @@ import {useLoved} from '@/hooks/useLoved';
 import {HeartIcon, MicrophoneIcon} from '@/components/Icons';
 import {getShortLabel} from '@/services/rewayah/RewayahIdentity';
 import {useCurrentTrackResolvedRewayah} from '@/hooks/useCurrentTrackRewayah';
+// @ai-start
+import {getRecitationStyleLabel} from '@/components/player/v2/recitationStyle';
+// @ai-end
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
 } from 'react-native-reanimated';
+// @ai-start
+import {getTrackDisplayTitle, getTrackArtistDisplay} from '@/i18n/format';
+import {usePlayerA11y} from '@/hooks/usePlayerA11y'; // @ai
+// @ai-end
 
+// @ai-start
 export const TrackInfo = () => {
   const {theme} = useTheme();
+  const a11y = usePlayerA11y(); // @ai
   const glassColorScheme = useGlassColorScheme();
   const queue = usePlayerStore(s => s.queue);
   const {navigateToReciterProfile} = useReciterNavigation();
@@ -95,7 +104,11 @@ export const TrackInfo = () => {
       <View style={styles.trackContainer}>
         <Pressable
           style={styles.trackInfoTouchable}
-          onPress={handleReciterPress}>
+          onPress={handleReciterPress}
+          {...a11y.nowPlaying(
+            currentTrack ? getTrackDisplayTitle(currentTrack) : '',
+            currentTrack ? getTrackArtistDisplay(currentTrack) : '',
+          )}>
           <View style={styles.imageContainer}>
             {isUploadWithoutArtwork ? (
               <View
@@ -122,12 +135,12 @@ export const TrackInfo = () => {
             <Text
               style={[styles.surahName, {color: theme.colors.text}]}
               numberOfLines={1}>
-              {currentTrack?.title || ''}
+              {currentTrack ? getTrackDisplayTitle(currentTrack) : ''}
             </Text>
             <Text
               style={[styles.reciterName, {color: theme.colors.text}]}
               numberOfLines={1}>
-              {currentTrack?.artist || ''}
+              {currentTrack ? getTrackArtistDisplay(currentTrack) : ''}
             </Text>
             {resolvedRewayah && (rewayat || currentTrack?.rewayahName) && (
               <Text
@@ -136,7 +149,9 @@ export const TrackInfo = () => {
                   {color: theme.colors.textSecondary},
                 ]}>
                 {`${getShortLabel(resolvedRewayah.id)}${
-                  rewayat?.style ? ` • ${rewayat.style}` : ''
+                  rewayat?.style
+                    ? ` • ${getRecitationStyleLabel(rewayat.style)}`
+                    : ''
                 }`}
               </Text>
             )}
@@ -154,7 +169,8 @@ export const TrackInfo = () => {
                 styles.loveButtonInner,
                 {opacity: pressed ? 0.7 : 1},
               ]}
-              onPress={handleToggleLoved}>
+              onPress={handleToggleLoved}
+              {...a11y.love(isLoved)}>
               <SymbolView
                 name={isLoved ? 'heart.fill' : 'heart'}
                 size={moderateScale(22)}
@@ -170,7 +186,8 @@ export const TrackInfo = () => {
                 styles.loveButtonInner,
                 {opacity: pressed ? 0.7 : 1},
               ]}
-              onPress={handleToggleLoved}>
+              onPress={handleToggleLoved}
+              {...a11y.love(isLoved)}>
               <Animated.View style={loveAnimatedStyle}>
                 <HeartIcon
                   size={moderateScale(22)}
@@ -185,6 +202,7 @@ export const TrackInfo = () => {
     </View>
   );
 };
+// @ai-end
 
 const styles = StyleSheet.create({
   container: {

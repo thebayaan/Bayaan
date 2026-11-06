@@ -7,6 +7,8 @@ import {useDownloadStore} from '@/services/player/store/downloadStore';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {restoreSession} from '@/services/player/utils/restoreSession';
 import {startContentSyncAfterInit} from '@/services/startContentSync';
+import {PERSISTED_STORES} from '@/services/persistedStores'; // @ai
+import {initForegroundRehydration} from '@/services/rehydrateOnForeground'; // @ai
 
 // Cold-start budget: if the boot blows past this, fire a one-shot
 // 'slow-cold-start' Sentry message naming the phase it stalled in. The boot
@@ -24,6 +26,9 @@ let bootPromise: Promise<void> | null = null;
  */
 export function bootApp(): Promise<void> {
   if (!bootPromise) {
+    // Retries a failed store read on each foreground. Started here, once per
+    // JS runtime, so the headless Android roots get it too. // @ai
+    initForegroundRehydration(PERSISTED_STORES); // @ai
     bootPromise = runBoot().catch((error: unknown) => {
       bootPromise = null;
       throw error;

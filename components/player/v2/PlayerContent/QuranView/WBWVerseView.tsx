@@ -41,6 +41,11 @@ import {
   createTextStrokePaint,
   getArabicTextWeightStrokeWidth,
 } from '@/utils/skiaTextWeight';
+import {disposeAfterPendingDraws} from '@/utils/skiaDeferredDispose';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+import {forceLTR} from '@/utils/rtl';
+// @ai-end
 
 // --- Constants ---
 
@@ -330,6 +335,7 @@ function computeRTLLayout(
 
 // --- Main component ---
 
+// @ai-start
 export const WBWVerseView = memo<WBWVerseViewProps>(
   ({
     verseKey,
@@ -352,6 +358,7 @@ export const WBWVerseView = memo<WBWVerseViewProps>(
     wordRange, // @ai
     hafsNotice: hafsNoticeText, // @ai
   }) => {
+    const {t} = useTranslation('player');
     const {theme} = useTheme();
     const [containerWidth, setContainerWidth] = useState(0);
     const activeRewayah = useMushafSettingsStore(s => s.rewayah);
@@ -587,13 +594,21 @@ export const WBWVerseView = memo<WBWVerseViewProps>(
     // reclaim). Dispose the previous layout's paragraphs when the memo
     // recomputes (and on unmount). The cleanup runs with the prior
     // `computedLayout`, so the layout being rendered this frame is untouched.
+    //
+    // The dispose is DEFERRED behind a worklets UI-queue barrier. A direct
+    // dispose frees a paragraph that a queued Skia draw still holds, and the
+    // UI thread then aborts the app. See `utils/skiaDeferredDispose.ts`.
     useEffect(() => {
       return () => {
         if (!computedLayout) return;
-        for (const item of computedLayout.items) {
-          item.paragraph?.dispose();
-          item.strokeParagraph?.dispose();
-        }
+        // @ai-start
+        disposeAfterPendingDraws(
+          computedLayout.items.flatMap(item => [
+            item.paragraph,
+            item.strokeParagraph,
+          ]),
+        );
+        // @ai-end
       };
     }, [computedLayout]);
 
@@ -707,7 +722,7 @@ export const WBWVerseView = memo<WBWVerseViewProps>(
           styles.hafsNotice,
           {color: Color(textColor).alpha(0.5).toString()},
         ]}>
-        {hafsNoticeText ?? 'Word-by-word shown in Hafs' /* @ai */}
+        {hafsNoticeText ?? t('verse.wbwHafsNotice') /* @ai */}
       </Text>
     ) : null;
 
@@ -722,6 +737,7 @@ export const WBWVerseView = memo<WBWVerseViewProps>(
             onLongPress={handleWordPress}
             style={[
               styles.singleCanvasContainer,
+              forceLTR,
               {height: computedLayout.totalHeight + PADDING_VERTICAL * 2},
             ]}>
             {/* Word highlight boxes (rendered before Canvas so text sits on top) */}
@@ -821,7 +837,9 @@ export const WBWVerseView = memo<WBWVerseViewProps>(
     // Fallback: flex-wrap with RN Text (no Skia canvases)
     // Used when: fontMgr not ready, or containerWidth not measured yet
     return (
-      <View onLayout={handleLayout} style={styles.fallbackContainer}>
+      <View
+        onLayout={handleLayout}
+        style={[styles.fallbackContainer, forceLTR]}>
         {hafsNotice}
         {matchedWords.map(({dkWord, wbwWord}) => (
           <Pressable
@@ -891,6 +909,7 @@ export const WBWVerseView = memo<WBWVerseViewProps>(
     );
   },
 );
+// @ai-end
 
 WBWVerseView.displayName = 'WBWVerseView';
 

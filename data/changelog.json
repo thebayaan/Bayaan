@@ -1,5 +1,122 @@
 [
   {
+    "version": "2.3",
+    "releaseDate": "2026-10-18",
+    "title": "Wherever You Are",
+    "highlights": [
+      {
+        "title": "Widgets & Siri",
+        "description": "Twelve Home Screen widgets on iPhone and Android, from Continue Listening and Ayah of the Day to Tasbeeh and an interactive adhkar session. iPhone adds Lock Screen widgets, Control Center controls and Siri",
+        "icon": "grid-outline"
+      },
+      {
+        "title": "CarPlay & Android Auto",
+        "description": "Browse and play your reciters, surahs, playlists and downloads from your car’s screen, or just ask with your voice",
+        "icon": "car-outline"
+      },
+      {
+        "title": "Now in Arabic",
+        "description": "The app is available in Arabic with a right-to-left layout. It follows your device language, or pick one in Settings › Language",
+        "icon": "language-outline"
+      },
+      {
+        "title": "Adhkar, Anywhere",
+        "description": "Play All keeps going across the app and on your Lock Screen, with a Live Activity on iPhone. Morning, Evening and Quranic duas are now recited by Mishary Rashid Alafasy",
+        "icon": "flower-outline"
+      },
+      {
+        "title": "Mushaf 1440",
+        "description": "A new beta mushaf with the look of the printed Madinah mushaf and a preview of tajweed coloring, plus text thickness, Allah’s name highlighting and two new reading themes",
+        "icon": "book-outline"
+      },
+      {
+        "title": "Redesigned for iPad",
+        "description": "A sidebar replaces the tab bar, the player opens as a split view, and landscape shows two facing mushaf pages like a printed mushaf",
+        "icon": "tablet-landscape-outline"
+      },
+      {
+        "title": "Smarter Search",
+        "description": "Every search bar puts the best match first, forgives typos, ignores diacritics, and understands surah numbers and nicknames like “tabarak”",
+        "icon": "search-outline"
+      }
+    ],
+    "fullChangelog": {
+      "features": [
+        "Twelve Home Screen widgets on iPhone and Android: Continue Listening, Continue Reading, Quick Surah, Pinned Reciter, Ayah of the Day, Tasbeeh, Recently Played, Library, Bedtime, Reciter of the Day, Morning & Evening Adhkar and Bayaan Now",
+        "The Morning & Evening Adhkar widget walks you through a session and counts each dhikr without opening the app",
+        "iPhone Lock Screen widgets for Now Listening, Verse of the Day, Tasbeeh and Continue Reading",
+        "Play or Pause and Play Surah controls for Control Center, the Lock Screen and the Action Button (iOS 18)",
+        "Ask Siri to play a surah, pause or resume",
+        "CarPlay and Android Auto: browse Home, Library, Reciters and Surahs, see the current ayah and Up Next on Now Playing, and make voice requests",
+        "Arabic interface with a right-to-left layout, Arabic-Indic digits and Arabic surah, reciter and adhkar names. Choose System default, English or العربية in Settings › Language",
+        "Adhkar Play All now plays app-wide, across tabs and with the screen locked, with a mini player on the Adhkar screen and a Continue Listening card on Home",
+        "Adhkar on the Lock Screen and in Control Center with next and previous, plus a Live Activity on iPhone that shows where you are in the list",
+        "Morning, Evening and all 40 Quranic duas are now recited by Mishary Rashid Alafasy, along with 23 more Hisn al-Muslim screens",
+        "Mushaf 1440 (beta) in Mushaf Settings › Font, with a preview of tajweed coloring and two-page spreads on iPad",
+        "Text Thickness: Normal, Medium or Bold Arabic text in the mushaf, player, word-by-word and share images",
+        "Divine Names: highlight Allah and Rabb in gold, emerald, blue or rose",
+        "Two new reading themes: Sand and Dark Amber",
+        "iPad redesign: sidebar navigation, a split-view player, readable page widths, and two facing mushaf pages in landscape",
+        "The mushaf now rotates to landscape on iPhone, filling the width and keeping your place",
+        "One ranked search behind every search bar: best match first, typo-tolerant, diacritic-insensitive, and aware of surah numbers and nicknames",
+        "Redesigned reciter profile header with Play all, Shuffle, Favorite and Download buttons",
+        "Download all of a reciter’s surahs in one tap, with progress and cancel",
+        "New reciter picker for mushaf playback and Favorite Reciters, with one row per rewayah",
+        "A Share anonymous usage data switch in Settings › Privacy to turn off analytics"
+      ],
+      "improvements": [
+        "Non-Hafs rewayat use their own verse numbers and opening basmala in titles, bookmarks, notes, search and the player",
+        "Show Differences tints whole words that read differently from Hafs, plus silah marks, with a matching color legend",
+        "Clear messages instead of silent fallbacks, like “Showing in Hafs” and “Verse tracking unavailable”, and a Try again option when a rewayah or the mushaf can’t load",
+        "Bookmarked verses stay tinted on Madani and IndoPak pages, with your own highlights on top",
+        "The Follow Along badge now shows on Home and Browse reciter cards",
+        "Evening adhkar has its own evening wording and recordings",
+        "Cleaner adhkar text: no more (( )) markers, Quran passages in Digital Khatt, transliterations from published sources, and 99 Names meanings with Quran references",
+        "Copying or sharing a dhikr gives clean text with only the reading aids you have turned on",
+        "Adhkar audio volume is more even",
+        "The mini player’s play/pause is its own button for VoiceOver and TalkBack",
+        "Translations & Tafaseer tells you when a download is already in progress",
+        "Lower memory use in the mushaf during long reading sessions"
+      ],
+      "fixes": [
+        "Rewayat text rebuilt from the official King Fahd Complex sources, fixing missing or repeated words, verse numbers, highlights and Hafs text showing under another rewayah",
+        "Mushaf lines reach both margins, marks under the last line are no longer cut off, and highlights draw as one clean band",
+        "Surahs that start partway down a page, like Al-Ikhlas, show their own name in the header",
+        "The page-by-page mushaf shows whether a verse is bookmarked and no longer saves the same bookmark twice",
+        "Mushaf playback settings: start and end verses can’t end up reversed, your speed no longer resets to 1x, and the lists scroll without closing the sheet",
+        "Tapping several surahs quickly no longer plays the wrong one or plays twice",
+        "Slower Android phones no longer freeze when playback starts",
+        "Screens with a sheet no longer stop responding to taps on slower Android phones",
+        "Reciter profiles no longer get stuck on loading placeholders on some Android screens",
+        "Continue Listening shows seconds for short surahs instead of “0m”",
+        "Reciter photos from the catalog show instead of a generic icon",
+        "The last row in Browse All is no longer hidden behind the mini player",
+        "Collection options that open another sheet, like Edit Note, no longer flash open and close",
+        "Using verse actions in the player no longer closes the player",
+        "Switching away from the Dark theme no longer leaves the app stuck in dark mode",
+        "Adhkar Play All no longer stalls on very short clips, and it follows your swipes",
+        "Adhkar text fixes: repeat counts, translations, missing text and a typo in eight translations",
+        "Favorite Reciters search keeps the keyboard up, and its search button works on Android",
+        "Links from shares and widgets open with a working Back button and no duplicate tab bar",
+        "The Reading Theme and Adhkar screens no longer start underneath the header",
+        "What’s New shows the right release date in every time zone"
+      ],
+      "technical": [
+        "Minimum iOS is now 16.4. Widgets, Lock Screen widgets, the Live Activity and Siri phrases need iOS 17 or later",
+        "Expo SDK 57, React Native 0.86 and the React Compiler",
+        "Follow-along ayah timings served from Bayaan’s own CDN",
+        "Rewayah databases ship as checksummed copies that repair themselves and switch atomically",
+        "Mushaf memory: Skia paragraphs are disposed and the page-layout cache is bounded",
+        "The notes table is no longer rebuilt on every launch",
+        "Language registry with CI checks for every shipped language; Android restarts the process to apply a new language",
+        "Scene-based iOS app lifecycle and a headless start for car launches",
+        "Android no longer declares unused photo and video permissions",
+        "Sentry release tags and start-up breadcrumbs; reciter name on playback analytics events",
+        "What’s New release pages can be marked update-only so they stay out of the first-launch tour"
+      ]
+    }
+  },
+  {
     "version": "2.2",
     "releaseDate": "2026-04-22",
     "title": "A More Personal Mushaf",

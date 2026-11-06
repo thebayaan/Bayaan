@@ -1,3 +1,4 @@
+import i18n from '@/i18n';
 import {showToast} from '@/utils/toastUtils';
 import type {WithdrawalNotice} from '@/types/content';
 import {isContentNotOffered} from './contentApi';
@@ -9,24 +10,24 @@ export interface AlertCopy {
 
 export function showWithdrawalNotice(notice: WithdrawalNotice): void {
   showToast(
-    'Content removed',
-    `${notice.name} is no longer available.`,
+    i18n.t('content:sync.removedTitle'),
+    i18n.t('content:sync.removed', {name: notice.name}),
     'none',
   );
 }
 
 // Translations with no Quran Foundation edition, removed once on upgrade.
 export function removedTranslationsMessage(names: readonly string[]): string {
-  const list = names.join(', ');
-  return names.length === 1
-    ? `${list} is no longer available.`
-    : `${list} are no longer available.`;
+  return i18n.t('content:sync.translationsRemoved', {
+    count: names.length,
+    list: names.join(', '),
+  });
 }
 
 export function showRemovedTranslationsNotice(names: readonly string[]): void {
   if (names.length === 0) return;
   showToast(
-    names.length === 1 ? 'Translation removed' : 'Translations removed',
+    i18n.t('content:sync.translationsRemovedTitle', {count: names.length}),
     removedTranslationsMessage(names),
     'none',
   );
@@ -36,29 +37,25 @@ export function showRemovedTranslationsNotice(names: readonly string[]): void {
 export function tafseerDownloadFailure(error: unknown): AlertCopy {
   if (isContentNotOffered(error)) {
     return {
-      title: 'Not available',
-      message:
-        'This tafseer is no longer offered. It may have been withdrawn by its publisher.',
+      title: i18n.t('home:translations.tafseerNotOfferedTitle'),
+      message: i18n.t('home:translations.tafseerNotOffered'),
     };
   }
   return {
-    title: 'Download Failed',
-    message:
-      'Unable to download this tafseer. Please check your internet connection and try again.',
+    title: i18n.t('home:translations.downloadFailedTitle'),
+    message: i18n.t('home:translations.tafseerDownloadFailed'),
   };
 }
 
 export function translationDownloadFailure(error: unknown): AlertCopy {
   if (isContentNotOffered(error)) {
     return {
-      title: 'Not available',
-      message:
-        'This translation is no longer offered. It may have been withdrawn by its publisher.',
+      title: i18n.t('home:translations.tafseerNotOfferedTitle'),
+      message: i18n.t('home:translations.translationNotOffered'),
     };
   }
   return {
-    title: 'Download Failed',
-    message:
-      'Unable to download this translation. Please check your internet connection and try again.',
+    title: i18n.t('home:translations.downloadFailedTitle'),
+    message: i18n.t('home:translations.translationDownloadFailed'),
   };
 }

@@ -1,6 +1,6 @@
 import {create} from 'zustand';
-import {persist, createJSONStorage} from 'zustand/middleware';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import {persist} from 'zustand/middleware';
+import {persistStorage} from '@/utils/storage'; // @ai
 import {analyticsService} from '@/services/analytics/AnalyticsService';
 
 const STORAGE_KEY = 'loved-tracks-store';
@@ -189,7 +189,7 @@ export const useLovedStore = create<LovedTracksState>()(
     }),
     {
       name: STORAGE_KEY,
-      storage: createJSONStorage(() => AsyncStorage),
+      storage: persistStorage(), // @ai
       partialize: state => ({
         tracks: state.tracks,
         lastSynced: state.lastSynced,

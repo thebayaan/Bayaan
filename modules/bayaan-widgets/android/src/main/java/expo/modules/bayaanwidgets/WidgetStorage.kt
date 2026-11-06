@@ -14,6 +14,9 @@ object WidgetStorage {
   private const val KEY_CATALOG = "catalog"
   private const val KEY_CONTENT = "content"
   private const val KEY_ARTWORK_REQUESTS = "artworkRequests"
+  private const val KEY_ADHKAR_SESSION = "adhkarSession"
+  private const val KEY_PENDING_EVENTS = "pendingEvents"
+  private const val KEY_HANDLED_THROUGH = "commandsHandledThrough" // @ai
   private fun configKey(appWidgetId: Int) = "config.$appWidgetId"
 
   @Volatile var onCommandQueued: (() -> Unit)? = null
@@ -35,13 +38,29 @@ object WidgetStorage {
   fun readPlaybackOverrideJson(context: Context): String? =
     prefs(context).getString(KEY_PLAYBACK_OVERRIDE, null)
 
+  /** Returns the command's enqueuedAt (epoch ms), for [isHandled]. */ // @ai
   @Synchronized
-  fun enqueueCommand(context: Context, command: JSONObject) {
+  fun enqueueCommand(context: Context, command: JSONObject): Long {
+    val enqueuedAt = System.currentTimeMillis() // @ai
     val queue = JSONArray(prefs(context).getString(KEY_QUEUE, "[]"))
-    queue.put(JSONObject().put("command", command).put("enqueuedAt", System.currentTimeMillis()))
+    queue.put(JSONObject().put("command", command).put("enqueuedAt", enqueuedAt)) // @ai
     prefs(context).edit().putString(KEY_QUEUE, queue.toString()).commit()
     onCommandQueued?.invoke()
+    return enqueuedAt // @ai
   }
+
+  // @ai-start
+  /** JS has taken and handled every command enqueued up to [through]. Only moves forward. */
+  @Synchronized
+  fun markCommandsHandled(context: Context, through: Long) {
+    if (through > prefs(context).getLong(KEY_HANDLED_THROUGH, 0L)) {
+      prefs(context).edit().putLong(KEY_HANDLED_THROUGH, through).commit()
+    }
+  }
+
+  fun isHandled(context: Context, enqueuedAt: Long): Boolean =
+    prefs(context).getLong(KEY_HANDLED_THROUGH, 0L) >= enqueuedAt
+  // @ai-end
 
   @Synchronized
   fun take(context: Context, key: String): String {
@@ -68,6 +87,27 @@ object WidgetStorage {
   fun addPendingTasbeeh(context: Context, dhikrId: String, day: String, reset: Boolean) {
     val next = TasbeehLogic.append(TasbeehLogic.parse(readPendingTasbeehJson(context)), dhikrId, day, reset)
     prefs(context).edit().putString(KEY_TASBEEH, TasbeehLogic.encode(next)).commit()
+  }
+
+  fun readAdhkarSessionJson(context: Context): String? = prefs(context).getString(KEY_ADHKAR_SESSION, null)
+
+  fun writeAdhkarSession(context: Context, json: String) {
+    prefs(context).edit().putString(KEY_ADHKAR_SESSION, json).commit()
+  }
+
+  /** Analytics events from widget taps, sent by the app; same lock as takePendingEvents. */
+  @Synchronized
+  fun addPendingEvent(context: Context, event: JSONObject) {
+    val list = try { JSONArray(prefs(context).getString(KEY_PENDING_EVENTS, null) ?: "[]") } catch (e: Exception) { JSONArray() }
+    list.put(event)
+    prefs(context).edit().putString(KEY_PENDING_EVENTS, list.toString()).commit()
+  }
+
+  @Synchronized
+  fun takePendingEvents(context: Context): String {
+    val value = prefs(context).getString(KEY_PENDING_EVENTS, "[]") ?: "[]"
+    prefs(context).edit().remove(KEY_PENDING_EVENTS).commit()
+    return value
   }
 
   fun writeConfig(context: Context, appWidgetId: Int, json: String) =

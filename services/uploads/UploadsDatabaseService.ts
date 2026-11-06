@@ -298,6 +298,18 @@ class UploadsDatabaseService {
     );
   }
 
+  // @ai-start
+  /** Moves uploads tagged with one reciter id to another (reciter merges). */
+  async remapReciterId(fromId: string, toId: string): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    await this.db.runAsync(
+      `UPDATE uploaded_recitations SET reciter_id = ? WHERE reciter_id = ?`,
+      [toId, fromId],
+    );
+  }
+  // @ai-end
+
   async deleteRecitation(id: string): Promise<void> {
     if (!this.db) throw new Error('Database not initialized');
 
