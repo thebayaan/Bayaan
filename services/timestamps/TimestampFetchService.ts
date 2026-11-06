@@ -1,7 +1,7 @@
 import branding from '@/config/branding';
 import {RECITERS, type Rewayat} from '@/data/reciterData';
 import {timestampDatabaseService} from './TimestampDatabaseService';
-import type {AyahTimestamp} from '@/types/timestamps';
+import type {AyahTimestamp, TimestampLoadResult} from '@/types/timestamps';
 
 // RFC-015 — fork-supplied timestamp CDN base. Absent from `branding.js`
 // → fallback to Bayaan's production CDN (byte-equivalent to the
@@ -17,6 +17,13 @@ import type {AyahTimestamp} from '@/types/timestamps';
 // the contract regardless of the fork-side value.
 const TIMESTAMP_DATA_VERSION = 2;
 
+// @ai-start
+/** A stalled request counts as a lost connection after this long. */
+const FETCH_TIMEOUT_MS = 10_000;
+/** Pause before the one retry of a request that may succeed a moment later. */
+const RETRY_DELAY_MS = 500;
+// @ai-end
+
 const R2_BASE = (
   branding.timestampCdnBase ?? 'https://cdn.thebayaan.com/timestamps'
 ).replace(/\/+$/, '');
@@ -27,8 +34,6 @@ const R2_BASE = (
 // (snake-cased fields from a raw mp3quran upload, an old shape
 // without `durationMs`, etc.) would land `undefined` in the SQLite
 // `duration_ms` column and corrupt the ayah-highlight offsets.
-// Cheap first-element probe is enough to catch the obvious cases
-// without pulling in a runtime validator.
 function isAyahTimestampShape(x: unknown): x is AyahTimestamp {
   if (typeof x !== 'object' || x === null) return false;
   const o = x as Record<string, unknown>;
@@ -40,6 +45,78 @@ function isAyahTimestampShape(x: unknown): x is AyahTimestamp {
     typeof o.durationMs === 'number'
   );
 }
+
+// @ai-start
+function isTimingList(x: unknown): x is AyahTimestamp[] {
+  return Array.isArray(x) && x.length > 0 && x.every(isAyahTimestampShape);
+}
+
+type TimingFileOutcome =
+  | {kind: 'body'; body: unknown}
+  | {kind: 'missing'}
+  | {kind: 'bad-data'}
+  | {kind: 'failed'; reason: 'offline' | 'server'; retryable: boolean};
+
+async function requestTimingFile(url: string): Promise<TimingFileOutcome> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  try {
+    const res = await fetch(url, {signal: controller.signal});
+    if (res.status === 404 || res.status === 410) return {kind: 'missing'};
+    if (!res.ok) {
+      console.warn(`[TimestampFetch] R2 ${res.status} for ${url}`);
+      return {
+        kind: 'failed',
+        reason: 'server',
+        retryable: res.status >= 500 || res.status === 429,
+      };
+    }
+    try {
+      return {kind: 'body', body: (await res.json()) as unknown};
+    } catch (error) {
+      // The connection dropped mid-body, or the file is not JSON.
+      if (controller.signal.aborted || !(error instanceof SyntaxError)) {
+        return {kind: 'failed', reason: 'offline', retryable: true};
+      }
+      return {kind: 'bad-data'};
+    }
+  } catch (error) {
+    console.warn(`[TimestampFetch] Failed to fetch ${url}:`, error);
+    return {kind: 'failed', reason: 'offline', retryable: true};
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function fetchTimingFile(url: string): Promise<TimingFileOutcome> {
+  const first = await requestTimingFile(url);
+  if (first.kind !== 'failed' || !first.retryable) return first;
+  await new Promise<void>(resolve => setTimeout(resolve, RETRY_DELAY_MS));
+  return requestTimingFile(url);
+}
+
+/** Cache the timings; a failed write must not cost the caller the data. */
+async function cacheTimings(
+  rewayatId: string,
+  surahNumber: number,
+  timestamps: AyahTimestamp[],
+  source: 'local' | 'r2',
+): Promise<void> {
+  try {
+    await timestampDatabaseService.writeTimestamps(
+      rewayatId,
+      surahNumber,
+      timestamps,
+      source,
+    );
+  } catch (error) {
+    console.warn(
+      `[TimestampFetch] Failed to cache ${rewayatId} surah ${surahNumber}:`,
+      error,
+    );
+  }
+}
+// @ai-end
 
 class TimestampFetchService {
   /**
@@ -115,7 +192,7 @@ class TimestampFetchService {
   async fetchAndCache(
     rewayatId: string,
     surahNumber: number,
-  ): Promise<AyahTimestamp[] | null> {
+  ): Promise<TimestampLoadResult> {
     // RFC-019 — a fork-supplied bundled (`'local'`) dataset wins over R2
     // (Open question 3), but ONLY when the coverage allow-list claims this
     // surah AND the provider returns a well-shaped array. Writing source
@@ -130,27 +207,17 @@ class TimestampFetchService {
     if (localList.includes(surahNumber)) {
       const local =
         branding.timestampLocalProvider?.(rewayatId, surahNumber) ?? null;
-      // Same first-element shape probe the R2 path runs (added in the RFC-015
-      // review): fork-authored bundles are an untrusted-shape source too. A
-      // malformed entry (snake_cased fields, a missing `durationMs`, an old
-      // shape) would otherwise land `undefined` in the SQLite `duration_ms`
-      // column and produce NaN highlight offsets.
-      if (
-        Array.isArray(local) &&
-        local.length > 0 &&
-        isAyahTimestampShape(local[0])
-      ) {
+      // Same shape check the R2 path runs: fork-authored bundles are an
+      // untrusted-shape source too. A malformed entry (snake_cased fields, a
+      // missing `durationMs`, an old shape) would otherwise land `undefined`
+      // in the SQLite `duration_ms` column and produce NaN highlight offsets.
+      if (isTimingList(local)) {
         // NOTE (fork authors): a `'local'`-sourced surah is immutable once
         // cached — `isSurahCached` keys on (rewayat, surah) and ignores
         // `source`, so a subsequently shipped/updated bundle won't be picked up
         // until the timestamp cache is reset.
-        await timestampDatabaseService.writeTimestamps(
-          rewayatId,
-          surahNumber,
-          local,
-          'local',
-        );
-        return local;
+        await cacheTimings(rewayatId, surahNumber, local, 'local');
+        return {status: 'ok', timestamps: local};
       }
       // Coverage claimed but data missing/malformed → fall through to the R2
       // path rather than caching garbage.
@@ -164,7 +231,7 @@ class TimestampFetchService {
       !localList.includes(surahNumber) &&
       !this.r2HasSurah(this.findRewayat(rewayatId), surahNumber)
     ) {
-      return null;
+      return {status: 'not-covered'};
     }
 
     const padded = String(surahNumber).padStart(3, '0');
@@ -172,39 +239,32 @@ class TimestampFetchService {
     // new URL to get past HTTP caches. Bump with every regeneration.
     const url = `${R2_BASE}/${rewayatId}/${padded}.json?v=${TIMESTAMP_DATA_VERSION}`;
 
-    try {
-      const res = await fetch(url);
-      if (!res.ok) {
+    // @ai-start
+    const outcome = await fetchTimingFile(url);
+    switch (outcome.kind) {
+      case 'missing':
+        // The catalog claims this surah, the CDN has no such file: no retry
+        // will help, this reciter has no timing for it.
         console.warn(
-          `[TimestampFetch] R2 ${res.status} for ${rewayatId} surah ${surahNumber}`,
+          `[TimestampFetch] Catalog claims ${rewayatId} surah ${surahNumber}; no file`,
         );
-        return null;
-      }
-      const raw = (await res.json()) as unknown;
-      if (!Array.isArray(raw) || raw.length === 0) return null;
-      if (!isAyahTimestampShape(raw[0])) {
-        console.warn(
-          `[TimestampFetch] Unexpected JSON shape for ${rewayatId} surah ${surahNumber}; skipping`,
-        );
-        return null;
-      }
-      const data = raw as AyahTimestamp[];
-
-      await timestampDatabaseService.writeTimestamps(
-        rewayatId,
-        surahNumber,
-        data,
-        'r2',
-      );
-
-      return data;
-    } catch (error) {
-      console.warn(
-        `[TimestampFetch] Failed to fetch ${rewayatId} surah ${surahNumber}:`,
-        error,
-      );
-      return null;
+        return {status: 'not-covered'};
+      case 'failed':
+        return {status: 'failed', reason: outcome.reason};
+      case 'bad-data':
+        return {status: 'failed', reason: 'bad-data'};
+      case 'body':
+        break;
     }
+    if (!isTimingList(outcome.body)) {
+      console.warn(
+        `[TimestampFetch] Unexpected JSON shape for ${rewayatId} surah ${surahNumber}; skipping`,
+      );
+      return {status: 'failed', reason: 'bad-data'};
+    }
+    await cacheTimings(rewayatId, surahNumber, outcome.body, 'r2');
+    return {status: 'ok', timestamps: outcome.body};
+    // @ai-end
   }
 
   private findRewayat(rewayatId: string): Rewayat | undefined {

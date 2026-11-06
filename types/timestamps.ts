@@ -42,3 +42,15 @@ export function mapAyahTimestampRow(row: AyahTimestampRow): AyahTimestamp {
 // --- API Response Types ---
 
 export type TimestampSource = 'r2' | 'local';
+
+/** Why a surah's timings could not be loaded although they may exist. @ai */
+export type TimestampLoadFailure = 'offline' | 'server' | 'bad-data';
+
+/**
+ * Outcome of loading a surah's timings. `not-covered` is final for this
+ * reciter and surah; `failed` may succeed later. @ai
+ */
+export type TimestampLoadResult =
+  | {status: 'ok'; timestamps: AyahTimestamp[]}
+  | {status: 'not-covered'}
+  | {status: 'failed'; reason: TimestampLoadFailure};
