@@ -45,7 +45,8 @@ function SurahsScreen() {
         case 'browseAll':
         case 'browseFavorites':
           router.push({
-            pathname: '/(tabs)/(a.home)/reciter/browse',
+            // This tab's own browser, so back returns here. @ai
+            pathname: '/(tabs)/(b.surahs)/reciter/browse',
             params: {
               view: action === 'browseAll' ? 'all' : 'favorites',
               surahId: surah.id,
@@ -66,7 +67,7 @@ function SurahsScreen() {
           break;
         default:
           SheetManager.show('select-reciter', {
-            payload: {surahId, source: 'home'},
+            payload: {surahId},
           });
       }
       // @ai-end
