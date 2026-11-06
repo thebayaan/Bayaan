@@ -1,6 +1,7 @@
 import {create} from 'zustand';
 import {persist} from 'zustand/middleware';
 import {persistStorage} from '@/utils/storage'; // @ai
+import {currentTranslationSelection} from '@/services/translation/translationRemap';
 import {getReadingThemeById} from '@/constants/readingThemes';
 import {defaultShowEnglishReadingAids} from '@/i18n/language'; // @ai
 import {
@@ -400,7 +401,7 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
     {
       name: 'mushaf-settings',
       storage: persistStorage(), // @ai
-      version: 19, // @ai
+      version: 20, // @ai
       // @ai-start
       // A startup fallback lasts one session: persist the reader's saved
       // rewayah rather than the Hafs shown in its place, and never the
@@ -444,8 +445,7 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
           delete state.lastReadPage;
         }
         if (version < 6) {
-          // The retired bundled Saheeh: the translations migration (content
-          // sync) moves it to QF 20, or to Clear Quran without the engine.
+          // The retired bundled Saheeh; version 20 below moves it on.
           state.selectedTranslationId = 'saheeh';
         }
         if (version < 7) {
@@ -520,6 +520,16 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
           state.showTajweed = true;
         }
         // @ai-end
+        if (version < 20 && typeof state.selectedTranslationId === 'string') {
+          // Translations moved to QF ids and the bundled Saheeh retired (spec
+          // 4.7): "saheeh" becomes QF 20 (the engine installs it) and an
+          // AlQuranCloud id its QF id, or Clear Quran for a fork. Runs at
+          // hydration, before content sync; a lost write keeps version 19,
+          // so it runs again.
+          state.selectedTranslationId = currentTranslationSelection(
+            state.selectedTranslationId,
+          );
+        }
         return state as unknown as MushafSettingsState;
       },
     },

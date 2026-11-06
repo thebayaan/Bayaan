@@ -2,21 +2,14 @@ const mockToast = jest.fn();
 jest.mock('burnt', () => ({toast: (...args: unknown[]) => mockToast(...args)}));
 
 import type {DownloadedTranslationMeta} from '@/types/translation';
-import type {EngineDeps} from '../contentEngine';
 import {
   removedTranslationsMessage,
   showRemovedTranslationsNotice,
   translationDownloadFailure,
 } from '../contentNotices';
+import {createMemoryContentRegistry, emptyRow} from '../contentRegistry';
 import {
-  createMemoryContentRegistry,
-  emptyRow,
-  type ContentRegistry,
-} from '../contentRegistry';
-import {
-  maybeAutoInstallTranslation,
   migrateLegacyTranslations,
-  SAHEEH_KEY,
   type TranslationMigrationDeps,
 } from '../translationMigration';
 
@@ -36,9 +29,8 @@ function meta(
 }
 
 // translations.db as identifiers; rename and delete act on it.
-function setup(downloaded: string[], selected = 'clear-quran') {
+function setup(downloaded: string[]) {
   const rows = new Map(downloaded.map(id => [id, meta(id, `Name ${id}`)]));
-  const settings = {selectedTranslationId: selected};
   const registry = createMemoryContentRegistry();
   const db = {
     getDownloadedTranslations: jest.fn(async () => [...rows.values()]),
@@ -57,19 +49,11 @@ function setup(downloaded: string[], selected = 'clear-quran') {
   const deps: TranslationMigrationDeps = {
     registry,
     db,
-    settings: {
-      getState: () => ({
-        selectedTranslationId: settings.selectedTranslationId,
-        setSelectedTranslationId: (id: string) => {
-          settings.selectedTranslationId = id;
-        },
-      }),
-    },
     notifyRemoved,
     reload,
     now: 5000,
   };
-  return {deps, rows, settings, registry, db, notifyRemoved, reload};
+  return {deps, rows, registry, db, notifyRemoved, reload};
 }
 
 describe('migrateLegacyTranslations', () => {
@@ -147,119 +131,6 @@ describe('migrateLegacyTranslations', () => {
       legacy: true,
       version: 0,
     });
-  });
-
-  it.each([
-    ['en.pickthall', '19'],
-    ['en.asad', 'clear-quran'],
-    ['clear-quran', 'clear-quran'],
-    ['20', '20'],
-  ])('remaps the selection %s to %s', async (selected, expected) => {
-    const s = setup([], selected);
-    await migrateLegacyTranslations(s.deps);
-    expect(s.settings.selectedTranslationId).toBe(expected);
-    expect((await s.registry.getState()).translationAutoInstallKey).toBeNull();
-  });
-
-  it('moves a saheeh selection to 20 and queues its install', async () => {
-    const s = setup([], 'saheeh');
-    await migrateLegacyTranslations(s.deps);
-    expect(s.settings.selectedTranslationId).toBe('20');
-    expect((await s.registry.getState()).translationAutoInstallKey).toBe(
-      SAHEEH_KEY,
-    );
-  });
-});
-
-describe('maybeAutoInstallTranslation', () => {
-  function engine(registry: ContentRegistry, now = 1000) {
-    const installer = {
-      kind: 'translation' as const,
-      supportsSchemaVersion: () => true,
-      install: jest.fn().mockResolvedValue(undefined),
-      remove: jest.fn().mockResolvedValue(undefined),
-      onWithdrawn: jest.fn().mockResolvedValue(undefined),
-    };
-    const api = {
-      fetchManifest: jest.fn(),
-      getDownloadTicket: jest.fn(async () => ({
-        url: 'u',
-        version: 2,
-        sha256: 's',
-        bytes: 1,
-        expires_at: 'x',
-      })),
-      fetchText: jest.fn(async () =>
-        JSON.stringify({
-          envelope: 1,
-          key: SAHEEH_KEY,
-          version: 2,
-          source: 'qf',
-          fetched_at: 'x',
-          snapshot: {
-            resource_group: 'translations',
-            resource_id: 20,
-            schema_version: 1,
-            records: [],
-          },
-        }),
-      ),
-    };
-    const deps: EngineDeps = {
-      api,
-      registry,
-      installers: {translation: installer},
-      isOnWifi: jest.fn().mockResolvedValue(false),
-      sha256: async () => 's',
-      now: () => now,
-      notify: jest.fn(),
-      track: jest.fn(),
-    };
-    return {deps, installer, api};
-  }
-
-  it('does nothing when no install is queued', async () => {
-    const registry = createMemoryContentRegistry();
-    const {deps, api} = engine(registry);
-    expect(await maybeAutoInstallTranslation(deps)).toBe(false);
-    expect(api.getDownloadTicket).not.toHaveBeenCalled();
-  });
-
-  it('installs the queued key over any network, then clears it', async () => {
-    const registry = createMemoryContentRegistry();
-    await registry.setState({translationAutoInstallKey: SAHEEH_KEY});
-    const {deps, installer} = engine(registry);
-    expect(await maybeAutoInstallTranslation(deps)).toBe(true);
-    expect(installer.install).toHaveBeenCalledTimes(1);
-    expect(deps.isOnWifi).not.toHaveBeenCalled();
-    expect((await registry.getState()).translationAutoInstallKey).toBeNull();
-    expect((await registry.get(SAHEEH_KEY))?.version).toBe(2);
-  });
-
-  it('a user removal settles it for good', async () => {
-    const registry = createMemoryContentRegistry();
-    await registry.setState({translationAutoInstallKey: SAHEEH_KEY});
-    await registry.upsert({
-      ...emptyRow(SAHEEH_KEY, 'translation'),
-      user_removed: true,
-    });
-    const {deps, api} = engine(registry);
-    expect(await maybeAutoInstallTranslation(deps)).toBe(false);
-    expect(api.getDownloadTicket).not.toHaveBeenCalled();
-    expect((await registry.getState()).translationAutoInstallKey).toBeNull();
-  });
-
-  it('waits out the backoff after a failure, keeping the key queued', async () => {
-    const registry = createMemoryContentRegistry();
-    await registry.setState({translationAutoInstallKey: SAHEEH_KEY});
-    const {deps, api} = engine(registry);
-    api.getDownloadTicket.mockRejectedValueOnce(new Error('offline'));
-    expect(await maybeAutoInstallTranslation(deps)).toBe(false);
-    expect((await registry.getState()).translationAutoInstallKey).toBe(
-      SAHEEH_KEY,
-    );
-    expect(await maybeAutoInstallTranslation(deps)).toBe(false);
-    expect(api.getDownloadTicket).toHaveBeenCalledTimes(1);
   });
 });
 

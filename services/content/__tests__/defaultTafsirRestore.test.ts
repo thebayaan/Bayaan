@@ -176,7 +176,10 @@ async function start(): Promise<Loaded> {
   mockStore.loadDownloadedMeta = async () => {
     mockStore.downloadedMeta = await loaded.tafseer.getDownloadedTafaseer();
   };
-  await loaded.sync.initContentSync();
+  await loaded.sync.initContentSync({
+    selectedTranslationId: () => 'clear-quran',
+    reloadTranslations: async () => undefined,
+  });
   return loaded;
 }
 

@@ -11,8 +11,7 @@ import {
   isRewayahSwitchSuperseded,
 } from '@/services/mushaf/DigitalKhattDataService';
 import {usePlayerStore} from '@/services/player/store/playerStore';
-import {isEngineManagingTranslations} from '@/services/content/contentSync';
-import {remapLegacyTranslationId} from '@/services/translation/translationRemap';
+import {currentTranslationSelection} from '@/services/translation/translationRemap';
 import {useAdhkarSettingsStore} from '@/store/adhkarSettingsStore';
 import {useAmbientStore} from '@/store/ambientStore';
 import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
@@ -87,12 +86,6 @@ function safeStringMap(value: unknown): Record<string, string> | undefined {
   return result;
 }
 
-// The same remap as the translations migration (spec 4.7), for selections
-// that come from or go to the cloud.
-function remapTranslationSelection(id: string): string {
-  return remapLegacyTranslationId(id, isEngineManagingTranslations());
-}
-
 export function captureSettingsDocuments(): SettingsDocuments {
   const theme = useThemeStore.getState();
   const mushaf = useMushafSettingsStore.getState();
@@ -128,11 +121,9 @@ export function captureSettingsDocuments(): SettingsDocuments {
       darkThemeId: mushaf.darkThemeId,
       rewayah: mushaf.rewayah,
       showRewayahDiffs: mushaf.showRewayahDiffs,
-      // Never uploads an AlQuranCloud id or "saheeh", even before the
-      // translations migration ran on this device.
-      selectedTranslationId: remapTranslationSelection(
-        mushaf.selectedTranslationId,
-      ),
+      // Already a current id: the store's persist migration remapped any
+      // saved before the switch, and incoming ones are remapped below.
+      selectedTranslationId: mushaf.selectedTranslationId,
     },
     audio: {
       defaultReciterId: reciter.defaultReciter.id || null,
@@ -321,7 +312,7 @@ export function sanitizeRemoteDocument(
     ) {
       // A device that has not migrated may still send an AlQuranCloud id or
       // "saheeh": project it to the id this device uses.
-      result.selectedTranslationId = remapTranslationSelection(
+      result.selectedTranslationId = currentTranslationSelection(
         value.selectedTranslationId,
       );
     }

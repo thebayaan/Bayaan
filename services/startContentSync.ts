@@ -1,4 +1,17 @@
-import {initContentSync} from '@/services/content/contentSync';
+import {
+  initContentSync,
+  type ContentSyncHost,
+} from '@/services/content/contentSync';
+import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import {useTranslationStore} from '@/store/translationStore';
+
+// The app state content sync reads, wired here so contentSync itself does
+// not import the stores.
+const host: ContentSyncHost = {
+  selectedTranslationId: () =>
+    useMushafSettingsStore.getState().selectedTranslationId,
+  reloadTranslations: () => useTranslationStore.getState().loadDownloadedMeta(),
+};
 
 /**
  * Starts content sync once app initialization (including the tafseer DB) has
@@ -9,7 +22,7 @@ export function startContentSyncAfterInit(
 ): Promise<void> {
   return initPromise.then(
     () =>
-      initContentSync().catch((error: unknown) => {
+      initContentSync(host).catch((error: unknown) => {
         console.warn('[ContentSync] init failed', error);
       }),
     (error: unknown) => {

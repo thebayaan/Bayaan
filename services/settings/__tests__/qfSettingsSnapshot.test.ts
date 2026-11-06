@@ -2,14 +2,17 @@ jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
 );
 // tafseerStore imports contentSync, whose analytics and notices need native modules.
-// mockEngineTranslations: Bayaan's QF translations (true) or a fork's own
-// provider (false, its ids are kept).
-let mockEngineTranslations = false;
 jest.mock('@/services/content/contentSync', () => ({
   getOfferedTafsirIds: async () => null,
   installContent: jest.fn(),
   removeContent: jest.fn(),
   isEngineManagingTafsir: () => false,
+  isEngineManagingTranslations: () => false,
+}));
+// mockEngineTranslations: Bayaan's QF translations (true) or a fork's own
+// provider (false, its ids are kept).
+let mockEngineTranslations = false;
+jest.mock('@/services/content/contentScope', () => ({
   isEngineManagingTranslations: () => mockEngineTranslations,
 }));
 
@@ -198,16 +201,24 @@ describe('QF settings snapshot mapping', () => {
       );
     });
 
-    test('never uploads an old id, even before this device migrated', () => {
+    test('never uploads an old id: the persist migration remapped it first', async () => {
       mockEngineTranslations = true;
-      useMushafSettingsStore.getState().setSelectedTranslationId('saheeh');
-      expect(captureSettingsDocuments().mushaf.selectedTranslationId).toBe(
-        '20',
-      );
-      useMushafSettingsStore.getState().setSelectedTranslationId('en.itani');
-      expect(captureSettingsDocuments().mushaf.selectedTranslationId).toBe(
-        'clear-quran',
-      );
+      const migrate = useMushafSettingsStore.persist.getOptions().migrate;
+      if (!migrate) throw new Error('mushaf settings migration is missing');
+      for (const [saved, uploaded] of [
+        ['saheeh', '20'],
+        ['en.itani', 'clear-quran'],
+      ]) {
+        const state = (await migrate({selectedTranslationId: saved}, 19)) as {
+          selectedTranslationId: string;
+        };
+        useMushafSettingsStore
+          .getState()
+          .setSelectedTranslationId(state.selectedTranslationId);
+        expect(captureSettingsDocuments().mushaf.selectedTranslationId).toBe(
+          uploaded,
+        );
+      }
     });
   });
 });

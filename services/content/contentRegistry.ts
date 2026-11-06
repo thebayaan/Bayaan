@@ -14,9 +14,6 @@ export interface ContentState {
   manifestKinds: string | null;
   // Set once the AlQuranCloud translations have moved to QF ids (spec 4.7).
   translationsMigratedAt: number | null;
-  // A translation key to install once on the next cycle (the retired bundled
-  // Saheeh moves to qf:translations:20); null when nothing is pending.
-  translationAutoInstallKey: string | null;
 }
 
 export interface ContentRegistry {
@@ -41,7 +38,6 @@ const EMPTY_STATE: ContentState = {
   manifest: null,
   manifestKinds: null,
   translationsMigratedAt: null,
-  translationAutoInstallKey: null,
 };
 
 export function emptyRow(key: string, kind: ContentKind): LocalContentRow {
@@ -84,8 +80,7 @@ CREATE TABLE IF NOT EXISTS content_state (
   auto_install_done INTEGER NOT NULL DEFAULT 0,
   manifest_json TEXT,
   manifest_kinds TEXT,
-  translations_migrated_at INTEGER,
-  translation_auto_install TEXT
+  translations_migrated_at INTEGER
 );
 INSERT OR IGNORE INTO content_state (id) VALUES (1);
 `;
@@ -113,7 +108,6 @@ interface RawState {
   manifest_json: string | null;
   manifest_kinds?: string | null;
   translations_migrated_at?: number | null;
-  translation_auto_install?: string | null;
 }
 
 interface RawColumn {
@@ -125,7 +119,6 @@ const ADDED_STATE_COLUMNS: ReadonlyArray<[string, string]> = [
   ['manifest_json', 'TEXT'],
   ['manifest_kinds', 'TEXT'],
   ['translations_migrated_at', 'INTEGER'],
-  ['translation_auto_install', 'TEXT'],
 ];
 
 async function ensureStateColumns(opened: Db): Promise<void> {
@@ -252,7 +245,6 @@ export function createSqliteContentRegistry(
         manifest: parseManifest(raw.manifest_json),
         manifestKinds: raw.manifest_kinds ?? null,
         translationsMigratedAt: raw.translations_migrated_at ?? null,
-        translationAutoInstallKey: raw.translation_auto_install ?? null,
       };
     },
     async setState(patch) {
@@ -260,7 +252,7 @@ export function createSqliteContentRegistry(
       await (
         await db()
       ).runAsync(
-        'UPDATE content_state SET manifest_etag = ?, last_checked_at = ?, migrated_at = ?, auto_install_done = ?, manifest_json = ?, manifest_kinds = ?, translations_migrated_at = ?, translation_auto_install = ? WHERE id = 1',
+        'UPDATE content_state SET manifest_etag = ?, last_checked_at = ?, migrated_at = ?, auto_install_done = ?, manifest_json = ?, manifest_kinds = ?, translations_migrated_at = ? WHERE id = 1',
         [
           next.manifestEtag,
           next.lastCheckedAt,
@@ -269,7 +261,6 @@ export function createSqliteContentRegistry(
           next.manifest ? JSON.stringify(next.manifest) : null,
           next.manifestKinds,
           next.translationsMigratedAt,
-          next.translationAutoInstallKey,
         ],
       );
     },

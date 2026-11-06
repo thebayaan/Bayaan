@@ -56,7 +56,7 @@ describe('content sync import cycle', () => {
 });
 
 // The translation store installs through contentSync, whose translation
-// installer and migration read the store back: the same cycle shape.
+// installer reads the store back: the same cycle shape.
 describe('translation import cycle', () => {
   type TranslationStoreModule = typeof import('@/store/translationStore');
   type TranslationInstallerModule =

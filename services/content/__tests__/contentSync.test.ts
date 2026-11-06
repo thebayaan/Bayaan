@@ -99,21 +99,6 @@ jest.mock('@/services/translation/TranslationDbService', () => ({
       mockState.translationDb.deleteTranslation(...args),
   },
 }));
-jest.mock('@/store/mushafSettingsStore', () => ({
-  useMushafSettingsStore: {
-    getState: () => ({
-      selectedTranslationId: mockState.selectedTranslationId,
-      setSelectedTranslationId: (id: string) => {
-        mockState.selectedTranslationId = id;
-      },
-    }),
-  },
-}));
-jest.mock('@/store/translationStore', () => ({
-  useTranslationStore: {
-    getState: () => ({loadDownloadedMeta: async () => undefined}),
-  },
-}));
 jest.mock('../tafsirInstaller', () => ({
   createTafsirInstaller: () => mockState.installer,
 }));
@@ -128,6 +113,12 @@ jest.mock('../contentApi', () => ({
   ...jest.requireActual('../contentApi'),
   createContentApi: () => mockState.api,
 }));
+
+// The app state the engine reads, from mockState.
+const host = {
+  selectedTranslationId: () => mockState.selectedTranslationId,
+  reloadTranslations: async () => undefined,
+};
 
 const KEY = 'qf:tafsirs:169';
 const DAY = 86_400_000;
@@ -270,7 +261,7 @@ describe('isEngineManagingTafsir gate', () => {
     mockState.branding.tafsirProvider = 'fork';
     const sync = load();
     expect(sync.isEngineManagingTafsir()).toBe(false);
-    await sync.initContentSync();
+    await sync.initContentSync(host);
     expect(mockState.events).toEqual([]);
     expect(mockState.listeners).toHaveLength(0);
   });
@@ -279,7 +270,7 @@ describe('isEngineManagingTafsir gate', () => {
     mockState.branding = {};
     const sync = load();
     expect(sync.isEngineManagingTafsir()).toBe(false);
-    await sync.initContentSync();
+    await sync.initContentSync(host);
     expect(mockState.events).toEqual([]);
     expect(mockState.listeners).toHaveLength(0);
   });
@@ -288,17 +279,17 @@ describe('isEngineManagingTafsir gate', () => {
 describe('initContentSync', () => {
   it('migrates, checks, then auto-installs, exactly once', async () => {
     const sync = load();
-    await sync.initContentSync();
+    await sync.initContentSync(host);
     expect(mockState.events).toEqual(['migrate', 'check', `ticket:${KEY}`]);
     expect((await mockState.registry.getState()).autoInstallDone).toBe(true);
-    await sync.initContentSync();
+    await sync.initContentSync(host);
     expect(mockState.events).toHaveLength(3);
     expect(mockState.listeners).toHaveLength(1);
   });
 
   it('ignores a concurrent second init', async () => {
     const sync = load();
-    await Promise.all([sync.initContentSync(), sync.initContentSync()]);
+    await Promise.all([sync.initContentSync(host), sync.initContentSync(host)]);
     expect(mockState.api.fetchManifest).toHaveBeenCalledTimes(1);
     expect(mockState.listeners).toHaveLength(1);
   });
@@ -312,7 +303,7 @@ describe('initContentSync', () => {
       mockState.registry = createMemoryContentRegistry();
       mockState.api.fetchManifest.mockResolvedValueOnce(result);
       const sync = load();
-      await sync.initContentSync();
+      await sync.initContentSync(host);
       sync.teardownContentSync();
     }
     expect(mockState.api.getDownloadTicket).not.toHaveBeenCalled();
@@ -321,7 +312,7 @@ describe('initContentSync', () => {
   it('retries a failed migration every cycle and auto-installs only after it succeeds', async () => {
     mockState.downloaded.mockRejectedValueOnce(new Error('db_closed'));
     const sync = load();
-    await sync.initContentSync();
+    await sync.initContentSync(host);
     expect(mockState.api.fetchManifest).toHaveBeenCalledTimes(1);
     expect(mockState.api.getDownloadTicket).not.toHaveBeenCalled();
     expect(mockState.track).toHaveBeenCalledWith('failed', {
@@ -348,7 +339,7 @@ describe('initContentSync', () => {
       return get(key);
     };
     const sync = load();
-    await sync.initContentSync();
+    await sync.initContentSync(host);
     expect(mockState.track).toHaveBeenCalledWith('failed', {
       key: 'sync',
       version: 0,
@@ -364,7 +355,7 @@ describe('initContentSync', () => {
   it('a throwing check is reported and the auto-install still runs', async () => {
     mockState.api.fetchManifest.mockRejectedValueOnce(new Error('boom'));
     const sync = load();
-    await sync.initContentSync();
+    await sync.initContentSync(host);
     expect(mockState.track).toHaveBeenCalledWith('failed', {
       key: 'sync',
       version: 0,
@@ -380,7 +371,7 @@ describe('initContentSync', () => {
       return ok([entry(KEY)]);
     });
     const sync = load();
-    const init = sync.initContentSync();
+    const init = sync.initContentSync(host);
     await settle();
     sync.teardownContentSync();
     g.open();
@@ -392,7 +383,7 @@ describe('initContentSync', () => {
 describe('foreground cycles', () => {
   it('runs one cycle on active, none on other states, and no fetch within 24h', async () => {
     const sync = load();
-    await sync.initContentSync();
+    await sync.initContentSync(host);
     mockState.now += DAY;
     foreground('background');
     foreground('inactive');
@@ -423,7 +414,7 @@ describe('foreground cycles', () => {
       throw new Error('not_ready');
     });
     const sync = load();
-    const init = sync.initContentSync();
+    const init = sync.initContentSync(host);
     await settle();
     expect(gates).toHaveLength(1);
     gates[0].open();
@@ -447,7 +438,7 @@ describe('foreground cycles', () => {
       reason: 'down',
     });
     const sync = load();
-    await sync.initContentSync();
+    await sync.initContentSync(host);
     foreground();
     await settle();
     mockState.now += HOUR - 1;
@@ -462,7 +453,7 @@ describe('foreground cycles', () => {
 
   it('teardown removes the listener', async () => {
     const sync = load();
-    await sync.initContentSync();
+    await sync.initContentSync(host);
     sync.teardownContentSync();
     expect(mockState.listeners).toHaveLength(0);
   });
@@ -476,7 +467,7 @@ describe('user actions', () => {
       return {url: KEY, version: 3, sha256: 's', bytes: 1, expires_at: 'x'};
     });
     const sync = load();
-    const init = sync.initContentSync();
+    const init = sync.initContentSync(host);
     await settle();
     expect(mockState.api.getDownloadTicket).toHaveBeenCalledTimes(1);
     const removal = sync.removeContent(KEY);
@@ -499,7 +490,7 @@ describe('user actions', () => {
 
   it('installContent rethrows and the queue keeps going', async () => {
     const sync = load();
-    await sync.initContentSync();
+    await sync.initContentSync(host);
     mockState.api.getDownloadTicket.mockRejectedValueOnce(new Error('offline'));
     await expect(sync.installContent('qf:tafsirs:16')).rejects.toThrow(
       'offline',
@@ -513,7 +504,7 @@ describe('user actions', () => {
     await expect(sync.installContent(KEY)).rejects.toThrow(
       'content_sync_unavailable',
     );
-    await sync.initContentSync();
+    await sync.initContentSync(host);
     await expect(sync.installContent('qf:wbw:1')).rejects.toThrow(
       'unsupported_content_key',
     );
@@ -554,7 +545,7 @@ describe('getOfferedTafsirIds', () => {
     );
     const sync = load();
     expect(await sync.getOfferedTafsirIds()).toBeNull();
-    await sync.initContentSync();
+    await sync.initContentSync(host);
     expect(await sync.getOfferedTafsirIds()).toEqual(new Set(['169']));
     sync.teardownContentSync();
     expect(await sync.getOfferedTafsirIds()).toEqual(new Set(['169']));
@@ -566,7 +557,7 @@ describe('translations', () => {
 
   it('requests the manifest for both kinds, or tafsir only when a fork keeps its provider', async () => {
     const sync = load();
-    await sync.initContentSync();
+    await sync.initContentSync(host);
     expect(mockState.api.fetchManifest.mock.calls[0][0]).toEqual([
       'tafsir',
       'translation',
@@ -578,23 +569,23 @@ describe('translations', () => {
     mockState.api.fetchManifest.mockClear();
     const forked = load();
     expect(forked.isEngineManagingTranslations()).toBe(false);
-    await forked.initContentSync();
+    await forked.initContentSync(host);
     expect(mockState.api.fetchManifest.mock.calls[0][0]).toEqual(['tafsir']);
   });
 
-  it('never auto-installs a translation the manifest offers', async () => {
+  it('never auto-installs an offered translation the reader did not select', async () => {
     mockState.api.fetchManifest.mockResolvedValue(
       ok([entry(KEY), entry(TRANSLATION_KEY)]),
     );
     const sync = load();
-    await sync.initContentSync();
+    await sync.initContentSync(host);
     expect(mockState.translationInstaller.install).not.toHaveBeenCalled();
     expect(await mockState.registry.get(TRANSLATION_KEY)).toBeNull();
   });
 
   it('installContent installs a translation key with the translation installer', async () => {
     const sync = load();
-    await sync.initContentSync();
+    await sync.initContentSync(host);
     await sync.installContent(TRANSLATION_KEY);
     expect(mockState.translationInstaller.install).toHaveBeenCalledWith(
       TRANSLATION_KEY,
@@ -610,7 +601,7 @@ describe('translations', () => {
   it('installContent rejects a translation key when a fork keeps its provider', async () => {
     mockState.branding.translationProvider = 'fork';
     const sync = load();
-    await sync.initContentSync();
+    await sync.initContentSync(host);
     await expect(sync.installContent(TRANSLATION_KEY)).rejects.toThrow(
       'unsupported_content_key',
     );
@@ -647,7 +638,7 @@ describe('translations', () => {
       ]),
     );
     const sync = load();
-    await sync.initContentSync();
+    await sync.initContentSync(host);
     expect(await sync.getOfferedContent('translation')).toEqual([
       {key: TRANSLATION_KEY, id: '20', meta, bytes: 1000},
     ]);
@@ -669,20 +660,23 @@ describe('translations migration (spec 4.7)', () => {
 
   it('renames a matched edition before the check, which then replaces it', async () => {
     mockState.translations = [meta('en.pickthall', 'Pickthall')];
-    mockState.selectedTranslationId = 'en.pickthall';
+    // The settings persist migration already moved the selection.
+    mockState.selectedTranslationId = '19';
     mockState.api.fetchManifest.mockResolvedValue(
       ok([entry(KEY), entry('qf:translations:19')]),
     );
     const sync = load();
-    await sync.initContentSync();
+    await sync.initContentSync(host);
     expect(mockState.translationDb.renameTranslation).toHaveBeenCalledWith(
       'en.pickthall',
       '19',
     );
-    expect(mockState.selectedTranslationId).toBe('19');
-    expect(mockState.api.getDownloadTicket).toHaveBeenCalledWith(
-      'qf:translations:19',
-    );
+    // Replaced once by the check; the legacy copy settles the selection.
+    expect(
+      mockState.api.getDownloadTicket.mock.calls.filter(
+        ([key]) => key === 'qf:translations:19',
+      ),
+    ).toHaveLength(1);
     expect(await mockState.registry.get('qf:translations:19')).toMatchObject({
       legacy: false,
       version: 3,
@@ -696,7 +690,7 @@ describe('translations migration (spec 4.7)', () => {
   it('runs once: a later cycle leaves the translations alone', async () => {
     mockState.translations = [meta('en.itani', 'Itani')];
     const sync = load();
-    await sync.initContentSync();
+    await sync.initContentSync(host);
     expect(mockState.removedNotice).toHaveBeenCalledWith(['Itani']);
     expect(
       (await mockState.registry.getState()).translationsMigratedAt,
@@ -708,49 +702,11 @@ describe('translations migration (spec 4.7)', () => {
     expect(mockState.removedNotice).toHaveBeenCalledTimes(1);
   });
 
-  it('a Saheeh selection gets QF 20 installed once, in the same cycle', async () => {
-    mockState.selectedTranslationId = 'saheeh';
-    mockState.api.fetchManifest.mockResolvedValue(
-      ok([entry(KEY), entry('qf:translations:20')]),
-    );
-    const sync = load();
-    await sync.initContentSync();
-    expect(mockState.selectedTranslationId).toBe('20');
-    expect(mockState.translationInstaller.install).toHaveBeenCalledWith(
-      'qf:translations:20',
-      expect.anything(),
-      undefined,
-    );
-    expect(
-      (await mockState.registry.getState()).translationAutoInstallKey,
-    ).toBeNull();
-
-    mockState.now += DAY;
-    foreground();
-    await settle();
-    expect(mockState.translationInstaller.install).toHaveBeenCalledTimes(1);
-  });
-
-  it('does not auto-install QF 20 while the manifest withdraws it', async () => {
-    mockState.selectedTranslationId = 'saheeh';
-    mockState.api.fetchManifest.mockResolvedValue(
-      ok([entry(KEY), entry('qf:translations:20', 'withdrawn')]),
-    );
-    const sync = load();
-    await sync.initContentSync();
-    expect(mockState.translationInstaller.install).not.toHaveBeenCalled();
-    expect(
-      (await mockState.registry.getState()).translationAutoInstallKey,
-    ).toBe('qf:translations:20');
-  });
-
-  it('a fork keeping its provider migrates nothing; only saheeh moves to Clear Quran', async () => {
+  it('a fork keeping its provider migrates nothing', async () => {
     mockState.branding.translationProvider = 'fork';
     mockState.translations = [meta('en.pickthall', 'Pickthall')];
-    mockState.selectedTranslationId = 'saheeh';
     const sync = load();
-    await sync.initContentSync();
-    expect(mockState.selectedTranslationId).toBe('clear-quran');
+    await sync.initContentSync(host);
     expect(mockState.translationDb.renameTranslation).not.toHaveBeenCalled();
     expect(mockState.translationDb.deleteTranslation).not.toHaveBeenCalled();
     expect(
@@ -778,10 +734,110 @@ describe('translations migration (spec 4.7)', () => {
   });
 });
 
+describe('the selected translation installs once', () => {
+  const SAHEEH = 'qf:translations:20';
+
+  function offering(...resources: Manifest['resources']): void {
+    mockState.api.fetchManifest.mockResolvedValue(
+      ok([entry(KEY), ...resources]),
+    );
+  }
+
+  async function cycleAgain(): Promise<void> {
+    mockState.now += DAY;
+    foreground();
+    await settle();
+  }
+
+  it('the saheeh upgrade path ends with QF 20 installed, and no reinstall', async () => {
+    // "saheeh" was remapped to "20" by the settings persist migration.
+    mockState.selectedTranslationId = '20';
+    offering(entry(SAHEEH));
+    const sync = load();
+    await sync.initContentSync(host);
+    expect(mockState.translationInstaller.install).toHaveBeenCalledWith(
+      SAHEEH,
+      expect.anything(),
+      undefined,
+    );
+    expect(await mockState.registry.get(SAHEEH)).toMatchObject({
+      version: 3,
+      legacy: false,
+    });
+    await cycleAgain();
+    expect(mockState.translationInstaller.install).toHaveBeenCalledTimes(1);
+  });
+
+  it('installs a selected QF id from another device that has no copy here', async () => {
+    mockState.selectedTranslationId = '131';
+    offering(entry('qf:translations:131'));
+    await load().initContentSync(host);
+    expect(await mockState.registry.get('qf:translations:131')).toMatchObject({
+      version: 3,
+    });
+  });
+
+  it.each([
+    ['withdrawn', () => offering(entry(SAHEEH, 'withdrawn'))],
+    ['absent', () => offering()],
+    [
+      'paused',
+      () =>
+        mockState.api.fetchManifest.mockResolvedValue(
+          ok([entry(KEY), entry(SAHEEH)], true),
+        ),
+    ],
+  ])('does not install while the manifest lists it %s', async (_, arrange) => {
+    mockState.selectedTranslationId = '20';
+    arrange();
+    await load().initContentSync(host);
+    expect(mockState.translationInstaller.install).not.toHaveBeenCalled();
+    expect(await mockState.registry.get(SAHEEH)).toBeNull();
+  });
+
+  it('never reinstalls an edition the user removed', async () => {
+    mockState.selectedTranslationId = '20';
+    offering(entry(SAHEEH));
+    const sync = load();
+    await sync.removeContent(SAHEEH);
+    await sync.initContentSync(host);
+    await cycleAgain();
+    expect(mockState.translationInstaller.install).not.toHaveBeenCalled();
+    expect((await mockState.registry.get(SAHEEH))?.user_removed).toBe(true);
+  });
+
+  it('retries a failed install after its backoff, not before', async () => {
+    mockState.selectedTranslationId = '20';
+    offering(entry(SAHEEH));
+    mockState.api.getDownloadTicket.mockRejectedValueOnce(new Error('offline'));
+    const sync = load();
+    await sync.initContentSync(host);
+    expect(mockState.translationInstaller.install).not.toHaveBeenCalled();
+    // A foreground within the backoff does not try again.
+    mockState.now += HOUR / 2;
+    foreground();
+    await settle();
+    const tickets = () =>
+      mockState.api.getDownloadTicket.mock.calls.filter(
+        ([key]) => key === SAHEEH,
+      ).length;
+    expect(tickets()).toBe(1);
+    await cycleAgain();
+    expect(mockState.translationInstaller.install).toHaveBeenCalledTimes(1);
+    expect((await mockState.registry.get(SAHEEH))?.version).toBe(3);
+  });
+
+  it('installs nothing for the bundled edition', async () => {
+    offering(entry(SAHEEH));
+    await load().initContentSync(host);
+    expect(mockState.translationInstaller.install).not.toHaveBeenCalled();
+  });
+});
+
 describe('a refused download ticket', () => {
   it('reaches the caller as not offered, distinct from a network failure', async () => {
     const sync = load();
-    await sync.initContentSync();
+    await sync.initContentSync(host);
     mockState.api.getDownloadTicket.mockRejectedValueOnce(
       new Error('download_ticket_404'),
     );
@@ -805,7 +861,7 @@ describe('installs in flight', () => {
       return {url: KEY, version: 3, sha256: 's', bytes: 1, expires_at: 'x'};
     });
     const sync = load();
-    const init = sync.initContentSync();
+    const init = sync.initContentSync(host);
     await settle();
     const user = sync.installContent(KEY);
     await settle();
@@ -818,7 +874,7 @@ describe('installs in flight', () => {
   it('a user install after a failed auto-install downloads and reports errors', async () => {
     mockState.api.getDownloadTicket.mockRejectedValueOnce(new Error('offline'));
     const sync = load();
-    await sync.initContentSync();
+    await sync.initContentSync(host);
     await expect(sync.installContent(KEY)).resolves.toBeUndefined();
     expect(mockState.api.getDownloadTicket).toHaveBeenCalledTimes(2);
   });
@@ -827,7 +883,7 @@ describe('installs in flight', () => {
 describe('unmanaged downloads', () => {
   it('adopts saved rows whose registry write was lost, then purges them on withdrawal', async () => {
     const sync = load();
-    await sync.initContentSync();
+    await sync.initContentSync(host);
     expect((await mockState.registry.getState()).migratedAt).not.toBeNull();
 
     // tafaseer.db has tafsir 16, but the registry write never happened.

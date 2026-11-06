@@ -28,7 +28,6 @@ describe('memory registry', () => {
       manifest: null,
       manifestKinds: null,
       translationsMigratedAt: null,
-      translationAutoInstallKey: null,
     });
     await registry.setState({lastCheckedAt: 5});
     expect((await registry.getState()).lastCheckedAt).toBe(5);
@@ -121,7 +120,6 @@ describe('sqlite registry (stubbed db)', () => {
       manifest: null,
       manifestKinds: null,
       translationsMigratedAt: null,
-      translationAutoInstallKey: null,
     });
 
     await registry.upsert(rows[0]);
@@ -170,14 +168,12 @@ describe('sqlite registry (real SQLite)', () => {
       manifest: null,
       manifestKinds: null,
       translationsMigratedAt: null,
-      translationAutoInstallKey: null,
     });
     await registry.setState({manifestEtag: '"e"', autoInstallDone: true});
     await registry.setState({lastCheckedAt: 9});
     await registry.setState({
       manifestKinds: 'tafsir,translation',
       translationsMigratedAt: 11,
-      translationAutoInstallKey: 'qf:translations:20',
     });
     expect(await registry.getState()).toEqual({
       manifestEtag: '"e"',
@@ -187,7 +183,6 @@ describe('sqlite registry (real SQLite)', () => {
       manifest: null,
       manifestKinds: 'tafsir,translation',
       translationsMigratedAt: 11,
-      translationAutoInstallKey: 'qf:translations:20',
     });
   });
 
@@ -227,7 +222,6 @@ describe('sqlite registry (real SQLite)', () => {
       migratedAt: 7,
       manifestKinds: null,
       translationsMigratedAt: null,
-      translationAutoInstallKey: null,
     });
     await registry.setState({
       manifestKinds: 'tafsir',

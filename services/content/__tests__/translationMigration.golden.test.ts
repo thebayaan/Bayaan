@@ -62,21 +62,12 @@ async function digestsFromDisk(dir: string): Promise<Record<string, string>> {
 describe('translations migration on the v2.3.0 golden translations.db', () => {
   let s: Loaded;
   let registry: ReturnType<RegistryModule['createSqliteContentRegistry']>;
-  const settings = {selectedTranslationId: 'en.pickthall'};
   const notifyRemoved = jest.fn();
 
   function deps(now: number) {
     return {
       registry,
       db: s.db,
-      settings: {
-        getState: () => ({
-          selectedTranslationId: settings.selectedTranslationId,
-          setSelectedTranslationId: (id: string) => {
-            settings.selectedTranslationId = id;
-          },
-        }),
-      },
       notifyRemoved,
       reload: async () => undefined,
       now,
@@ -146,7 +137,6 @@ describe('translations migration on the v2.3.0 golden translations.db', () => {
     });
     expect(notifyRemoved).toHaveBeenCalledTimes(1);
     expect(notifyRemoved).toHaveBeenCalledWith(['Synthetic Translation']);
-    expect(settings.selectedTranslationId).toBe('19');
     expect((await registry.getState()).translationsMigratedAt).toBe(1000);
   });
 
