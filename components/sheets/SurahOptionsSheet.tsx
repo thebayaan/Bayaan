@@ -1,13 +1,6 @@
 import React, {useCallback, useState, useMemo} from 'react';
-import {
-  View,
-  Text,
-  Pressable,
-  StyleSheet,
-  useWindowDimensions,
-  Dimensions,
-} from 'react-native';
-import {ScaledSheet, moderateScale} from 'react-native-size-matters';
+import {View, Text, Pressable, StyleSheet, Dimensions} from 'react-native';
+import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {
@@ -17,33 +10,29 @@ import {
   ProfileIcon,
   LearnAboutIcon,
 } from '@/components/Icons';
+import {SheetProps, SheetManager, ScrollView} from 'react-native-actions-sheet';
 import ActionSheet, {
-  SheetProps,
-  SheetManager,
-  ScrollView,
-} from 'react-native-actions-sheet';
+  useSheetWidth,
+} from '@/components/sheets/AdaptiveActionSheet';
 import {Feather, Ionicons} from '@expo/vector-icons';
-import {useLoved} from '@/hooks/useLoved';
-import {useReciterNavigation} from '@/hooks/useReciterNavigation';
-import {
-  useDownloadActions,
-  useDownloadProgress,
-  useIsDownloaded,
-  useIsDownloadedWithRewayat,
-  useIsDownloading,
-} from '@/services/player/store/downloadSelectors';
-import {downloadSurah} from '@/services/downloadService';
 import {getReciterName} from '@/services/dataService';
 import Color from 'color';
 import {CircularProgress} from '@/components/CircularProgress';
 import {getReciterByIdSync} from '@/services/dataService';
-import {recitationShareUrl, shareUrl} from '@/utils/shareUtils';
-import branding from '@/config/branding';
 import RenderHtml, {
   MixedStyleDeclaration,
   RenderHTMLProps,
   defaultSystemFonts,
 } from 'react-native-render-html';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+import {useSurahOptions} from './options/surahOptions'; // @ai
+import {
+  getReciterDisplayName,
+  getSurahDisplayName,
+  getSurahMeaning,
+} from '@/i18n/format';
+// @ai-end
 
 // Import surah info data
 const surahInfo = require('@/data/surahInfo.json');
@@ -69,60 +58,17 @@ const renderHtmlDefaultProps: Partial<RenderHTMLProps> = {
   },
 };
 
+// @ai-start
 export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
-  const {width} = useWindowDimensions();
-  const [showSurahInfo, setShowSurahInfo] = useState(false);
-
-  // Extract payload - these hooks only run when sheet is shown
+  const {t} = useTranslation(['sheets', 'common']);
+  // Size HTML from the sheet, which stops at 560pt on iPad. @ai
+  const width = useSheetWidth(); // @ai
   const payload = props.payload;
+  const [showSurahInfo, setShowSurahInfo] = useState(!!payload?.showInfo); // @ai
   const surah = payload?.surah;
-  const reciterId = payload?.reciterId;
-  const rewayatId = payload?.rewayatId;
-  const onAddToQueue = payload?.onAddToQueue;
-  const onRemoveFromPlaylist = payload?.onRemoveFromPlaylist;
-
-  const surahId = surah?.id?.toString() ?? '';
   const currentSurahInfo = surah ? surahInfo[surah.id] : null;
-
-  const downloadId = React.useMemo(
-    () =>
-      reciterId
-        ? rewayatId
-          ? `${reciterId}-${surahId}-${rewayatId}`
-          : `${reciterId}-${surahId}`
-        : '__none__',
-    [reciterId, surahId, rewayatId],
-  );
-
-  const {navigateToReciterProfile} = useReciterNavigation();
-
-  // These expensive hooks now only run when sheet is actually open
-  const {isLoved, isLovedWithRewayat, toggleLoved} = useLoved();
-  const downloadProgress = useDownloadProgress(downloadId);
-  const isTrackDownloadedBase = useIsDownloaded(
-    reciterId || '__none__',
-    surahId,
-  );
-  const isTrackDownloadedRewayat = useIsDownloadedWithRewayat(
-    reciterId || '__none__',
-    surahId,
-    rewayatId || '',
-  );
-  const isTrackDownloaded = rewayatId
-    ? isTrackDownloadedRewayat
-    : isTrackDownloadedBase;
-  const isCurrentlyDownloading = useIsDownloading(downloadId);
-  const {setDownloading, addDownload, clearDownloading, setDownloadProgress} =
-    useDownloadActions();
-
-  // Calculate loved state
-  const isLovedState = reciterId
-    ? rewayatId
-      ? isLovedWithRewayat(reciterId, surahId, rewayatId)
-      : isLoved(reciterId, surahId)
-    : false;
 
   const tagsStyles = useMemo(
     () => ({
@@ -158,110 +104,30 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
     SheetManager.hide('surah-options');
   }, []);
 
-  const handleAddToQueue = useCallback(() => {
-    handleClose();
-    if (onAddToQueue && surah) {
-      onAddToQueue(surah).catch(error => {
-        console.error('Error adding to queue:', error);
-      });
-    }
-  }, [onAddToQueue, surah, handleClose]);
+  // @ai-start
+  // Shared with the tablet menu (options/surahOptions.tsx).
+  const {
+    reciterId,
+    isLovedState,
+    isTrackDownloaded,
+    isCurrentlyDownloading,
+    downloadProgress,
+    handleAddToQueue,
+    handleToggleLove,
+    handleDownload,
+    handleGoToReciter,
+    handleRemoveFromPlaylist,
+    handleAddToPlaylist,
+    handleShare,
+  } = useSurahOptions(payload, handleClose);
+  const rewayatId = payload?.rewayatId;
+  const onAddToQueue = payload?.onAddToQueue;
+  const onRemoveFromPlaylist = payload?.onRemoveFromPlaylist;
+  // @ai-end
 
   const handleViewInfo = useCallback(() => {
     setShowSurahInfo(true);
   }, []);
-
-  const handleToggleLove = useCallback(() => {
-    if (!reciterId) return;
-    toggleLoved(reciterId, surahId, rewayatId || '');
-  }, [reciterId, surahId, toggleLoved, rewayatId]);
-
-  const handleDownload = useCallback(async () => {
-    if (!reciterId || !surah) return;
-
-    if (isTrackDownloaded) {
-      console.log('Track already downloaded');
-      return;
-    }
-
-    if (isCurrentlyDownloading) {
-      console.log('Track is already downloading');
-      return;
-    }
-
-    try {
-      setDownloading(downloadId);
-
-      const downloadResult = await downloadSurah(
-        surah.id,
-        reciterId,
-        rewayatId,
-        progress => {
-          setDownloadProgress(downloadId, progress);
-        },
-      );
-
-      addDownload({
-        reciterId,
-        surahId: surahId,
-        rewayatId: rewayatId || '',
-        filePath: downloadResult.filePath,
-        fileSize: downloadResult.fileSize,
-        downloadDate: Date.now(),
-        status: 'completed',
-      });
-
-      clearDownloading(downloadId);
-    } catch (error) {
-      console.error('Download failed:', error);
-      clearDownloading(downloadId);
-    }
-  }, [
-    reciterId,
-    surah,
-    surahId,
-    rewayatId,
-    isTrackDownloaded,
-    isCurrentlyDownloading,
-    setDownloading,
-    addDownload,
-    clearDownloading,
-    setDownloadProgress,
-    downloadId,
-  ]);
-
-  const handleGoToReciter = useCallback(() => {
-    handleClose();
-    if (reciterId) {
-      navigateToReciterProfile(reciterId);
-    }
-  }, [handleClose, reciterId, navigateToReciterProfile]);
-
-  const handleRemoveFromPlaylist = useCallback(() => {
-    handleClose();
-    onRemoveFromPlaylist?.();
-  }, [onRemoveFromPlaylist, handleClose]);
-
-  const handleAddToPlaylist = useCallback(() => {
-    if (!reciterId || !surah) return;
-    SheetManager.show('select-playlist', {
-      payload: {
-        surah,
-        reciterId,
-        rewayatId,
-      },
-    });
-  }, [reciterId, surah, rewayatId]);
-
-  const handleShare = useCallback(() => {
-    if (!reciterId || !rewayatId || !surah) return;
-    const reciter = getReciterByIdSync(reciterId);
-    if (!reciter?.slug) return;
-    const rewayat = reciter.rewayat.find(rw => rw.id === rewayatId);
-    if (!rewayat) return;
-    const url = recitationShareUrl(reciter.slug, surah.id, rewayat.id);
-    shareUrl(url, `Listen to ${surah.name} on ${branding.appName}`);
-  }, [reciterId, rewayatId, surah]);
 
   const handleSheetChange = useCallback((index: number) => {
     if (index === -1) {
@@ -273,9 +139,15 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
     return null;
   }
 
+  const headerReciter = reciterId ? getReciterByIdSync(reciterId) : undefined;
+  const reciterDisplayName = headerReciter
+    ? getReciterDisplayName(headerReciter)
+    : reciterId && getReciterName(reciterId);
+
   return (
     <ActionSheet
       id={props.sheetId}
+      tabletPresentation={showSurahInfo ? 'card' : 'menu'}
       containerStyle={[
         styles.sheetContainer,
         showSurahInfo && styles.sheetContainerExpanded,
@@ -286,7 +158,9 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
       {showSurahInfo ? (
         <>
           <View style={styles.headerContainer}>
-            <Text style={styles.headerTitle}>About {surah.name}</Text>
+            <Text style={styles.headerTitle}>
+              {t('options.aboutSurah', {surah: getSurahDisplayName(surah)})}
+            </Text>
           </View>
           <ScrollView
             style={styles.scrollView}
@@ -294,10 +168,14 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
             bounces={true}>
             <View style={styles.infoContent}>
               <View style={styles.surahInfoHeader}>
-                <Text style={styles.surahInfoName}>{surah.name}</Text>
-                <Text style={styles.surahInfoTranslation}>
-                  {surah.translated_name_english}
+                <Text style={styles.surahInfoName}>
+                  {getSurahDisplayName(surah)}
                 </Text>
+                {getSurahMeaning(surah) ? (
+                  <Text style={styles.surahInfoTranslation}>
+                    {getSurahMeaning(surah)}
+                  </Text>
+                ) : null}
               </View>
               {currentSurahInfo && (
                 <RenderHtml
@@ -313,10 +191,9 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
       ) : (
         <View style={styles.container}>
           <View style={styles.header}>
-            <Text style={styles.surahName}>{surah.name}</Text>
+            <Text style={styles.surahName}>{getSurahDisplayName(surah)}</Text>
             <Text style={styles.surahTranslation}>
-              {(reciterId && getReciterName(reciterId)) ||
-                surah.translated_name_english}
+              {reciterDisplayName || getSurahMeaning(surah)}
             </Text>
           </View>
 
@@ -338,7 +215,9 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
                   styles.optionText,
                   !reciterId && styles.optionTextDisabled,
                 ]}>
-                {isLovedState ? 'Remove from Loved' : 'Add to Loved'}
+                {isLovedState
+                  ? t('options.removeFromLoved')
+                  : t('options.addToLoved')}
               </Text>
             </Pressable>
 
@@ -369,10 +248,12 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
               )}
               <Text style={[styles.optionText]}>
                 {isCurrentlyDownloading
-                  ? `Downloading ${Math.round(downloadProgress * 100)}%`
+                  ? t('options.downloading', {
+                      percent: Math.round(downloadProgress * 100),
+                    })
                   : isTrackDownloaded
-                    ? 'Downloaded'
-                    : 'Download'}
+                    ? t('options.downloaded')
+                    : t('common:actions.download')}
               </Text>
             </Pressable>
 
@@ -397,7 +278,7 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
                   styles.optionText,
                   !onAddToQueue && styles.optionTextDisabled,
                 ]}>
-                Add to Queue
+                {t('options.addToQueue')}
               </Text>
             </Pressable>
 
@@ -420,7 +301,7 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
                   styles.optionText,
                   !reciterId && styles.optionTextDisabled,
                 ]}>
-                Add to Collection
+                {t('options.addToCollection')}
               </Text>
             </Pressable>
 
@@ -438,7 +319,9 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
                     size={moderateScale(18)}
                     color={theme.colors.text}
                   />
-                  <Text style={styles.optionText}>Share</Text>
+                  <Text style={styles.optionText}>
+                    {t('common:actions.share')}
+                  </Text>
                 </Pressable>
               </>
             )}
@@ -457,7 +340,9 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
                     size={moderateScale(18)}
                     filled={false}
                   />
-                  <Text style={styles.optionText}>Go to Reciter</Text>
+                  <Text style={styles.optionText}>
+                    {t('options.goToReciter')}
+                  </Text>
                 </Pressable>
               </>
             )}
@@ -474,7 +359,9 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
                 size={moderateScale(18)}
                 color={theme.colors.text}
               />
-              <Text style={styles.optionText}>Learn About Surah</Text>
+              <Text style={styles.optionText}>
+                {t('options.learnAboutSurah')}
+              </Text>
             </Pressable>
           </View>
 
@@ -492,7 +379,7 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
                   color="#ff4444"
                 />
                 <Text style={styles.optionTextDestructive}>
-                  Remove from Playlist
+                  {t('options.removeFromPlaylist')}
                 </Text>
               </Pressable>
             </View>
@@ -502,6 +389,7 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
     </ActionSheet>
   );
 };
+// @ai-end
 
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({

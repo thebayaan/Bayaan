@@ -1,22 +1,12 @@
 import React, {useCallback} from 'react';
 import {View, Text, Pressable, StyleSheet} from 'react-native';
-import {ScaledSheet, moderateScale} from 'react-native-size-matters';
+import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import ActionSheet, {
-  SheetProps,
-  SheetManager,
-} from 'react-native-actions-sheet';
+import {SheetProps, SheetManager} from 'react-native-actions-sheet';
+import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import {Feather} from '@expo/vector-icons';
 import Color from 'color';
-import {useRouter} from 'expo-router';
-import {useFavoriteReciters} from '@/hooks/useFavoriteReciters';
-import {useLoved} from '@/hooks/useLoved';
-import {usePlayerActions} from '@/hooks/usePlayerActions';
-import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
-import {getReciterById, getSurahById} from '@/services/dataService';
-import {generateSmartAudioUrl} from '@/utils/audioUtils';
-import {getReciterArtwork} from '@/utils/artworkUtils';
 import {
   PlayIcon,
   QueueIcon,
@@ -24,161 +14,62 @@ import {
   HeartIcon,
   StarIcon,
 } from '@/components/Icons';
+// @ai-start
+import {useTranslation} from 'react-i18next';
 import {
-  recitationShareUrl,
-  reciterShareUrl,
-  shareUrl,
-} from '@/utils/shareUtils';
-import branding from '@/config/branding';
+  useHomeCardOptions,
+  type HomeCardOptionsPayload,
+} from './options/homeCardOptions';
+// @ai-end
 
+// @ai-start
+// The sheet can render before its payload arrives. Return early here, in a
+// component without hooks, so the content below always calls the same hooks.
 export const HomeCardOptionsSheet = (
   props: SheetProps<'home-card-options'>,
 ) => {
+  if (!props.payload) return null;
+  return (
+    <HomeCardOptionsContent sheetId={props.sheetId} payload={props.payload} />
+  );
+};
+
+const HomeCardOptionsContent = ({
+  sheetId,
+  payload,
+}: {
+  sheetId: string;
+  payload: HomeCardOptionsPayload;
+}) => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
-  const router = useRouter();
-  const {isFavoriteReciter, toggleFavorite} = useFavoriteReciters();
-  const {isLovedWithRewayat, toggleLoved} = useLoved();
-  const {addToQueue} = usePlayerActions();
-
-  const payload = props.payload;
-  if (!payload) return null;
-
-  const {
-    reciterId,
-    reciterName,
-    surahId,
-    surahName,
-    rewayatId,
-    recentIndex,
-    variant,
-  } = payload;
-
-  const isFavorite = isFavoriteReciter(reciterId);
-  const isLoved =
-    surahId !== undefined && rewayatId
-      ? isLovedWithRewayat(reciterId, surahId, rewayatId)
-      : false;
-
+  const {t} = useTranslation(['sheets', 'common']);
   const handleClose = useCallback(() => {
     SheetManager.hide('home-card-options');
   }, []);
-
-  const handleGoToReciter = useCallback(() => {
-    handleClose();
-    setTimeout(() => {
-      router.push({
-        pathname: '/(tabs)/(a.home)/reciter/[id]',
-        params: {id: reciterId},
-      });
-    }, 300);
-  }, [handleClose, router, reciterId]);
-
-  const handleToggleFavorite = useCallback(async () => {
-    const reciter = await getReciterById(reciterId);
-    if (reciter) toggleFavorite(reciter);
-    handleClose();
-  }, [reciterId, toggleFavorite, handleClose]);
-
-  const handleToggleLoved = useCallback(() => {
-    if (surahId !== undefined && rewayatId) {
-      toggleLoved(reciterId, surahId, rewayatId);
-    }
-    handleClose();
-  }, [reciterId, surahId, rewayatId, toggleLoved, handleClose]);
-
-  const handleAddToQueue = useCallback(async () => {
-    if (surahId === undefined) return;
-    const reciter = await getReciterById(reciterId);
-    const surah = getSurahById(surahId);
-    if (!reciter || !surah) return;
-
-    const rewayatToUseId = rewayatId || reciter.rewayat[0]?.id;
-    if (!rewayatToUseId) return;
-
-    const artwork = getReciterArtwork(reciter);
-    const track = {
-      id: `${reciter.id}:${surah.id}`,
-      url: generateSmartAudioUrl(reciter, surah.id.toString(), rewayatToUseId),
-      title: surah.name,
-      artist: reciter.name,
-      reciterId: reciter.id,
-      artwork,
-      surahId: surah.id.toString(),
-      reciterName: reciter.name,
-      rewayatId: rewayatToUseId,
-    };
-
-    addToQueue([track]);
-    handleClose();
-  }, [reciterId, surahId, rewayatId, addToQueue, handleClose]);
-
-  const handleAddToPlaylist = useCallback(() => {
-    if (surahId === undefined) return;
-    const surah = getSurahById(surahId);
-    if (!surah) return;
-    handleClose();
-    setTimeout(() => {
-      SheetManager.show('select-playlist', {
-        payload: {surah, reciterId, rewayatId},
-      });
-    }, 300);
-  }, [reciterId, surahId, rewayatId, handleClose]);
-
-  const handleShare = useCallback(async () => {
-    const reciter = await getReciterById(reciterId);
-    const slug = reciter?.slug ?? String(reciterId);
-    const displayName = reciter?.name ?? reciterName;
-    // iOS refuses to present the native share sheet while another sheet is
-    // still animating out. Mirror handleGoToReciter / handleAddToPlaylist's
-    // 300ms hand-off so the action sheet closes first.
-    handleClose();
-    setTimeout(() => {
-      if (variant === 'recent' && surahId !== undefined) {
-        const url = recitationShareUrl(slug, surahId, rewayatId);
-        const surahLabel = surahName ?? `surah ${surahId}`;
-        shareUrl(
-          url,
-          `Listen to ${displayName} reciting ${surahLabel} on ${branding.appName}`,
-        );
-        return;
-      }
-      shareUrl(
-        reciterShareUrl(slug),
-        `Listen to ${displayName} on ${branding.appName}`,
-      );
-    }, 300);
-  }, [
-    reciterId,
-    reciterName,
-    surahId,
-    surahName,
-    rewayatId,
+  const {
     variant,
-    handleClose,
-  ]);
-
-  const handleRemoveFromRecents = useCallback(() => {
-    if (recentIndex !== undefined) {
-      useRecentlyPlayedStore.getState().removeTrack(recentIndex);
-    }
-    handleClose();
-  }, [recentIndex, handleClose]);
-
-  const handleContinuePlaying = useCallback(() => {
-    handleClose();
-    payload.onContinuePlaying?.();
-  }, [handleClose, payload]);
+    title,
+    subtitle,
+    isFavorite,
+    isLoved,
+    handleContinuePlaying,
+    handleAddToQueue,
+    handleGoToReciter,
+    handleToggleFavorite,
+    handleToggleLoved,
+    handleAddToPlaylist,
+    handleShare,
+    handleRemoveFromRecents,
+  } = useHomeCardOptions(payload, handleClose);
 
   const iconSize = moderateScale(18);
   const iconColor = theme.colors.text;
 
-  const title = variant === 'recent' ? (surahName ?? reciterName) : reciterName;
-  const subtitle = variant === 'recent' ? reciterName : undefined;
-
   return (
     <ActionSheet
-      id={props.sheetId}
+      id={sheetId}
+      tabletPresentation="menu"
       containerStyle={styles.sheetContainer}
       indicatorStyle={styles.indicator}
       gestureEnabled={true}>
@@ -198,7 +89,9 @@ export const HomeCardOptionsSheet = (
                 ]}
                 onPress={handleContinuePlaying}>
                 <PlayIcon color={iconColor} size={iconSize} />
-                <Text style={styles.optionText}>Continue playing</Text>
+                <Text style={styles.optionText}>
+                  {t('homeCardOptions.continuePlaying')}
+                </Text>
               </Pressable>
 
               <View style={styles.divider} />
@@ -212,7 +105,9 @@ export const HomeCardOptionsSheet = (
                 <View style={styles.rotatedIcon}>
                   <QueueIcon color={iconColor} size={iconSize} filled={true} />
                 </View>
-                <Text style={styles.optionText}>Add to queue</Text>
+                <Text style={styles.optionText}>
+                  {t('homeCardOptions.addToQueue')}
+                </Text>
               </Pressable>
 
               <View style={styles.divider} />
@@ -226,7 +121,9 @@ export const HomeCardOptionsSheet = (
             ]}
             onPress={handleGoToReciter}>
             <ProfileIcon color={iconColor} size={iconSize} filled={false} />
-            <Text style={styles.optionText}>Go to reciter</Text>
+            <Text style={styles.optionText}>
+              {t('homeCardOptions.goToReciter')}
+            </Text>
           </Pressable>
 
           <View style={styles.divider} />
@@ -240,8 +137,8 @@ export const HomeCardOptionsSheet = (
             <StarIcon color={iconColor} size={iconSize} filled={isFavorite} />
             <Text style={styles.optionText}>
               {isFavorite
-                ? 'Remove reciter from favorites'
-                : 'Add reciter to favorites'}
+                ? t('homeCardOptions.removeReciterFromFavorites')
+                : t('homeCardOptions.addReciterToFavorites')}
             </Text>
           </Pressable>
 
@@ -261,7 +158,9 @@ export const HomeCardOptionsSheet = (
                   filled={isLoved}
                 />
                 <Text style={styles.optionText}>
-                  {isLoved ? 'Remove from loved' : 'Add to loved'}
+                  {isLoved
+                    ? t('homeCardOptions.removeFromLoved')
+                    : t('homeCardOptions.addToLoved')}
                 </Text>
               </Pressable>
 
@@ -274,7 +173,9 @@ export const HomeCardOptionsSheet = (
                 ]}
                 onPress={handleAddToPlaylist}>
                 <Feather name="plus-circle" size={iconSize} color={iconColor} />
-                <Text style={styles.optionText}>Add to collection</Text>
+                <Text style={styles.optionText}>
+                  {t('homeCardOptions.addToCollection')}
+                </Text>
               </Pressable>
             </>
           )}
@@ -288,7 +189,7 @@ export const HomeCardOptionsSheet = (
             ]}
             onPress={handleShare}>
             <Feather name="share" size={iconSize} color={iconColor} />
-            <Text style={styles.optionText}>Share</Text>
+            <Text style={styles.optionText}>{t('common:actions.share')}</Text>
           </Pressable>
         </View>
 
@@ -302,7 +203,7 @@ export const HomeCardOptionsSheet = (
               onPress={handleRemoveFromRecents}>
               <Feather name="minus-circle" size={iconSize} color="#ff4444" />
               <Text style={styles.optionTextDestructive}>
-                Remove from recents
+                {t('homeCardOptions.removeFromRecents')}
               </Text>
             </Pressable>
           </View>
@@ -311,8 +212,10 @@ export const HomeCardOptionsSheet = (
     </ActionSheet>
   );
 };
+// @ai-end
 
-const createStyles = (theme: Theme) =>
+// Exported so AdhkarSessionOptionsSheet shares this sheet's look.
+export const createStyles = (theme: Theme) =>
   ScaledSheet.create({
     sheetContainer: {
       backgroundColor: theme.colors.background,

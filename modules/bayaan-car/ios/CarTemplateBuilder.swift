@@ -25,7 +25,7 @@ final class CarTemplateBuilder {
   /// item's icon (the magnifier).
   private let searchTemplate = CPListTemplate(title: nil, sections: [])
 
-  private static let emptyCopy = "Open Bayaan on your phone to get started"
+  private static var emptyCopy: String { "Open \(CarBrand.name) on your phone to get started" }
   private static let nothingYet = "Nothing here yet"
   /// Recent plays under the Siri cell on the Search tab.
   private static let searchRecentCount = 6
@@ -466,14 +466,11 @@ final class CarTemplateBuilder {
   private func reciterHeader(
     _ reciter: CarReciter, _ rewayah: CarRewayah, template: CPListTemplate
   ) -> CPListTemplateDetailsHeader {
-    // Before iOS 27 no API reports the thumbnail size, so the card element
-    // size is an approximation.
-    let size: CGFloat
-    if #available(iOS 27.0, *) {
-      size = CPThumbnailImage.maximumImageSize(forAspectRatio: 1).width
-    } else {
-      size = CPListImageRowItemCardElement.maximumImageSize.width
-    }
+    // @ai-start
+    // The card-element size is available in the supported Xcode 26 SDK.
+    // CPThumbnailImage.maximumImageSize requires the iOS 27 SDK to compile.
+    let size = CPListImageRowItemCardElement.maximumImageSize.width
+    // @ai-end
     let thumbnail = CPThumbnailImage(image: peek(reciter.artwork, size: size))
     let header = CPListTemplateDetailsHeader(
       thumbnail: thumbnail, title: reciter.name, subtitle: rewayah.name, actionButtons: [])

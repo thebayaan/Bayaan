@@ -20,7 +20,9 @@ import {VerseItem} from './VerseItem';
 import BasmalaHeader from './BasmalaHeader';
 import SurahDivider, {computeDividerTotalHeight} from './SurahDivider';
 import {FlashList, type FlashListRef} from '@shopify/flash-list';
-import {useBottomSheetScrollableCreator} from '@gorhom/bottom-sheet';
+// @ai-start
+import {usePlayerScrollable} from '@/hooks/usePlayerScrollable';
+// @ai-end
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
 import {
   getDkFontFamily, // @ai
@@ -61,6 +63,7 @@ import {
   type RewayahVerseUnitsStatus,
 } from '@/hooks/useRewayahVerseUnits';
 import {getShortLabel} from '@/services/rewayah/RewayahIdentity';
+import {useTranslation} from 'react-i18next';
 import {
   buildVerseUnitRows,
   isVerseUnitRow,
@@ -106,6 +109,8 @@ interface QuranListHeaderProps {
   allahNameHighlightColor: string;
   /** Rewayah of the verses below (the playing track's rewayah). */
   rewayah: RewayahId;
+  /** The basmala is being recited (the intro before verse 1). @ai */
+  basmalaActive: boolean;
 }
 
 const QuranListHeader = React.memo<QuranListHeaderProps>(
@@ -123,6 +128,7 @@ const QuranListHeader = React.memo<QuranListHeaderProps>(
     showAllahNameHighlight,
     allahNameHighlightColor,
     rewayah,
+    basmalaActive, // @ai
   }) => (
     <>
       <SurahDivider
@@ -144,6 +150,7 @@ const QuranListHeader = React.memo<QuranListHeaderProps>(
         allahNameHighlightColor={allahNameHighlightColor}
         rewayah={rewayah}
         surahNumber={surahNumber} // @ai
+        isActive={basmalaActive} // @ai
       />
     </>
   ),
@@ -171,6 +178,7 @@ function VerseUnitsPendingView({
   textColor: string;
   onRetry: () => void;
 }) {
+  const {t} = useTranslation(['reader', 'common']); // @ai
   const label = getShortLabel(rewayah);
   return (
     <View style={styles.pending} testID="verse-units-pending">
@@ -178,18 +186,20 @@ function VerseUnitsPendingView({
         <ActivityIndicator
           size="small"
           color={color}
-          accessibilityLabel={`Loading the ${label} verses`}
+          accessibilityLabel={t('reader:verseUnits.loading', {rewayah: label})}
         />
       ) : (
         <>
           <Text style={[styles.pendingText, {color}]}>
-            {`Couldn't load the ${label} verses.`}
+            {t('reader:verseUnits.loadFailed', {rewayah: label})}
           </Text>
           {status === 'error' && (
             <Pressable
               onPress={onRetry}
               accessibilityRole="button"
-              accessibilityLabel={`Try loading the ${label} verses again`}
+              accessibilityLabel={t('reader:verseUnits.retryLabel', {
+                rewayah: label,
+              })}
               hitSlop={8}
               testID="verse-units-retry"
               style={({pressed}) => [
@@ -198,7 +208,7 @@ function VerseUnitsPendingView({
                 pressed && styles.retryButtonPressed,
               ]}>
               <Text style={[styles.retryButtonText, {color: textColor}]}>
-                Try Again
+                {t('common:actions.tryAgain')}
               </Text>
             </Pressable>
           )}
@@ -223,6 +233,7 @@ interface QuranViewProps {
   parentContentWidth?: number;
 }
 
+// @ai-start
 export const QuranView: React.FC<QuranViewProps> = ({
   currentSurah,
   onVersePress,
@@ -259,7 +270,7 @@ export const QuranView: React.FC<QuranViewProps> = ({
   // satisfy rules-of-hooks; the factory is discarded when behavior is
   // 'native'. See docs/rfcs/014-player-scroll-strategy-seam.md.
   const scrollBehavior = branding.playerMushafScrollBehavior ?? 'gorhom';
-  const gorhomScrollComponent = useBottomSheetScrollableCreator();
+  const gorhomScrollComponent = usePlayerScrollable();
   const renderScrollComponent =
     scrollBehavior === 'gorhom' ? gorhomScrollComponent : undefined;
   if (__DEV__ && scrollBehavior === 'native') {
@@ -315,6 +326,13 @@ export const QuranView: React.FC<QuranViewProps> = ({
   const bandKeys = useMemo(() => parseVerseKeyListId(bandKeysId), [bandKeysId]);
   // @ai-end
   const isLocked = useTimestampStore(s => s.isLocked);
+  // @ai-start
+  // The intro before verse 1 (isti'adha / basmala): the basmala is lit as
+  // the verse being recited is, only while the list follows the recitation.
+  // Never for al-Fatihah (its basmala is verse 1) or at-Tawbah.
+  const basmalaActive =
+    useTimestampStore(s => s.basmalaIntroSurah === currentSurah) && isLocked;
+  // @ai-end
   // @ai-start
   // Follow-along is on, but this surah's verses cannot be followed (no
   // timing, a failed load, or an unknown verse numbering): say so, as the
@@ -665,6 +683,7 @@ export const QuranView: React.FC<QuranViewProps> = ({
               showAllahNameHighlight={showAllahNameHighlight}
               allahNameHighlightColor={allahNameHighlightColor}
               rewayah={trackRewayah}
+              basmalaActive={basmalaActive} // @ai
             />
             {/* @ai-start */}
             {verseTrackingUnavailable && (
@@ -720,6 +739,7 @@ export const QuranView: React.FC<QuranViewProps> = ({
     </View>
   );
 };
+// @ai-end
 
 const styles = StyleSheet.create({
   container: {

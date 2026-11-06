@@ -618,6 +618,18 @@ describe('buildCarSnapshot', () => {
     ).toBe('https://cdn.fork.example/surah/');
   });
 
+  it('drops the Uploads row and list when uploads are off', () => {
+    const on = buildCarSnapshot(input());
+    expect(on.library.map(i => i.id)).toContain('lib:uploads');
+    expect(on.lists.uploads).toBeDefined();
+    const off = buildCarSnapshot(input({uploadsEnabled: false}));
+    expect(off.library.map(i => i.id)).not.toContain('lib:uploads');
+    expect(off.lists.uploads).toBeUndefined();
+    expect(off.library.map(i => i.id)).toEqual(
+      on.library.map(i => i.id).filter(id => id !== 'lib:uploads'),
+    );
+  });
+
   it('accepts only https surah artwork bases', () => {
     expect(normalizeSurahArtworkBase(undefined)).toBe(
       DEFAULT_SURAH_ARTWORK_BASE,

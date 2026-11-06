@@ -43,6 +43,15 @@ enum WidgetTheme: String, Codable {
   case light, dark, system
 }
 
+// @ai-start
+/// The adhkar session's player, which is separate from nowPlaying.
+struct WidgetAdhkarPlayback: Codable, Hashable {
+  let superId: String
+  let dhikrId: String
+  let isPlaying: Bool
+}
+// @ai-end
+
 struct WidgetSnapshot: Codable {
   static let supportedVersion = 1
   let version: Int
@@ -55,6 +64,8 @@ struct WidgetSnapshot: Codable {
   let reciterRecents: [String: [WidgetTrack]]
   let lastRead: WidgetLastRead?
   let tasbeeh: [String: WidgetTasbeehEntry]
+  // nil when no adhkar session exists, or in snapshots from older app builds. // @ai
+  let adhkar: WidgetAdhkarPlayback? // @ai
 
   static func decode(_ data: Data) -> WidgetSnapshot? {
     guard let s = try? JSONDecoder().decode(WidgetSnapshot.self, from: data),

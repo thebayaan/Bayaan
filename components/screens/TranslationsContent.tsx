@@ -13,14 +13,16 @@ import {
   Alert,
   StyleSheet,
 } from 'react-native';
+import {confirmDestructive} from '@/utils/confirmDestructive'; // @ai
 import {useTheme} from '@/hooks/useTheme';
-import {ScaledSheet, moderateScale} from 'react-native-size-matters';
+import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {Theme} from '@/utils/themeUtils';
 import Color from 'color';
 import {Feather} from '@expo/vector-icons';
 import {FlashList, type ListRenderItemInfo} from '@shopify/flash-list';
 import {useHeaderHeight} from 'expo-router/react-navigation';
 import {USE_GLASS} from '@/hooks/useGlassProps';
+import {layerVisibilityProps} from '@/utils/layerVisibility'; // @ai
 import {useNavigation} from 'expo-router';
 import TabSelector from '@/components/TabSelector';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
@@ -42,63 +44,144 @@ import {lightHaptics} from '@/utils/haptics';
 import {useBottomInset} from '@/hooks/useBottomInset';
 import {AVAILABLE_TRANSLATIONS} from '@/data/availableTranslations';
 import {AVAILABLE_TAFASEER} from '@/data/availableTafaseer';
+// @ai-start
+import {latinLetterSpacing} from '@/utils/rtl';
+import {useTranslation} from 'react-i18next';
+import i18n from '@/i18n';
+import {localizeDigits} from '@/i18n/format';
+import {currentLanguage, currentLanguageConfig} from '@/i18n/language';
+import {SOURCE_LANGUAGE} from '@/i18n/languages';
+import {
+  compareTafaseer,
+  getTafseerDisplayName,
+  isPreferredTafseerLanguage,
+} from '@/i18n/tafseer';
+// @ai-end
 
 type ActiveTab = 'Translations' | 'Tafaseer';
 const TAB_OPTIONS: ActiveTab[] = ['Translations', 'Tafaseer'];
 
-// Shared so the translation and tafseer download handlers stay in sync.
+// @ai-start
+const LANGUAGE_CODES = [
+  'en',
+  'ar',
+  'fr',
+  'de',
+  'es',
+  'pt',
+  'ru',
+  'tr',
+  'ur',
+  'id',
+  'ms',
+  'bn',
+  'hi',
+  'fa',
+  'zh',
+  'ja',
+  'ko',
+  'it',
+  'nl',
+  'pl',
+  'sv',
+  'th',
+  'vi',
+  'ha',
+  'so',
+  'sw',
+  'am',
+  'az',
+  'bs',
+  'cs',
+  'dv',
+  'ku',
+  'ml',
+  'no',
+  'ro',
+  'sq',
+  'ta',
+  'tt',
+  'ug',
+  'uz',
+] as const;
+// @ai-end
 const showDownloadInProgressAlert = () =>
   Alert.alert(
-    'Download In Progress',
-    'Please wait until the current download completes before starting another.',
+    i18n.t('home:translations.downloadInProgress'),
+    i18n.t('home:translations.waitForDownload'),
   );
 
-const LANGUAGE_NAMES: Record<string, string> = {
-  en: 'English',
-  ar: 'Arabic',
-  fr: 'French',
-  de: 'German',
-  es: 'Spanish',
-  pt: 'Portuguese',
-  ru: 'Russian',
-  tr: 'Turkish',
-  ur: 'Urdu',
-  id: 'Indonesian',
-  ms: 'Malay',
-  bn: 'Bengali',
-  hi: 'Hindi',
-  fa: 'Persian',
-  zh: 'Chinese',
-  ja: 'Japanese',
-  ko: 'Korean',
-  it: 'Italian',
-  nl: 'Dutch',
-  pl: 'Polish',
-  sv: 'Swedish',
-  th: 'Thai',
-  vi: 'Vietnamese',
-  ha: 'Hausa',
-  so: 'Somali',
-  sw: 'Swahili',
-  am: 'Amharic',
-  az: 'Azerbaijani',
-  bs: 'Bosnian',
-  cs: 'Czech',
-  dv: 'Dhivehi',
-  ku: 'Kurdish',
-  ml: 'Malayalam',
-  no: 'Norwegian',
-  ro: 'Romanian',
-  sq: 'Albanian',
-  ta: 'Tamil',
-  tt: 'Tatar',
-  ug: 'Uyghur',
-  uz: 'Uzbek',
-};
+// @ai-start
+type LanguageCode = (typeof LANGUAGE_CODES)[number];
+// @ai-end
 
-function getLanguageDisplayName(code: string): string {
-  return LANGUAGE_NAMES[code] ?? code.charAt(0).toUpperCase() + code.slice(1);
+// @ai-start
+const ENGLISH_LANGUAGE_NAMES: Record<string, LanguageCode> = {
+  English: 'en',
+  Arabic: 'ar',
+  French: 'fr',
+  German: 'de',
+  Spanish: 'es',
+  Portuguese: 'pt',
+  Russian: 'ru',
+  Turkish: 'tr',
+  Urdu: 'ur',
+  Indonesian: 'id',
+  Malay: 'ms',
+  Bengali: 'bn',
+  Hindi: 'hi',
+  Persian: 'fa',
+  Chinese: 'zh',
+  Japanese: 'ja',
+  Korean: 'ko',
+  Italian: 'it',
+  Dutch: 'nl',
+  Polish: 'pl',
+  Swedish: 'sv',
+  Thai: 'th',
+  Vietnamese: 'vi',
+  Hausa: 'ha',
+  Somali: 'so',
+  Swahili: 'sw',
+  Amharic: 'am',
+  Azerbaijani: 'az',
+  Bosnian: 'bs',
+  Czech: 'cs',
+  Dhivehi: 'dv',
+  Kurdish: 'ku',
+  Malayalam: 'ml',
+  Norwegian: 'no',
+  Romanian: 'ro',
+  Albanian: 'sq',
+  Tamil: 'ta',
+  Tatar: 'tt',
+  Uyghur: 'ug',
+  Uzbek: 'uz',
+};
+// @ai-end
+
+// @ai-start
+function isLanguageCode(code: string): code is LanguageCode {
+  return (LANGUAGE_CODES as readonly string[]).includes(code);
 }
+// @ai-end
+
+// @ai-start
+function getLanguageDisplayName(code: string): string {
+  if (isLanguageCode(code)) {
+    return i18n.t(`home:languages.${code}`);
+  }
+  return code.charAt(0).toUpperCase() + code.slice(1);
+}
+// @ai-end
+
+/** Tafseer editions store the English language name rather than a code. */
+// @ai-start
+function getTafseerLanguageDisplayName(name: string): string {
+  const code = ENGLISH_LANGUAGE_NAMES[name];
+  return code ? i18n.t(`home:languages.${code}`) : name;
+}
+// @ai-end
 
 function normalizeTafseerLanguage(lang: string): string {
   return lang;
@@ -132,15 +215,29 @@ interface RowItem {
 
 type FlatItem = MetaHeaderItem | LangHeaderItem | RowItem;
 
-export default function TranslationsContent() {
+// @ai-start
+interface TranslationsContentProps {
+  /**
+   * Shown in a card (iPad) rather than a page: the tab selector and a close
+   * button go in a header row of its own instead of the navigation header.
+   */
+  onClose?: () => void;
+}
+
+export default function TranslationsContent({
+  onClose,
+}: TranslationsContentProps = {}) {
   const {theme} = useTheme();
+  const {t} = useTranslation(['home', 'common']);
   const navigation = useNavigation();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const rawHeaderHeight = useHeaderHeight();
-  const headerHeight = USE_GLASS ? rawHeaderHeight : 0;
+  const headerHeight = USE_GLASS && !onClose ? rawHeaderHeight : 0;
   const bottomInset = useBottomInset();
 
-  const [activeTab, setActiveTab] = useState<ActiveTab>('Translations');
+  const [activeTab, setActiveTab] = useState<ActiveTab>(
+    currentLanguageConfig.understandsArabic ? 'Tafaseer' : 'Translations',
+  );
 
   // --- Translation state ---
   const selectedTranslationId = useMushafSettingsStore(
@@ -219,35 +316,30 @@ export default function TranslationsContent() {
         await downloadTranslation(editionId);
       } catch {
         Alert.alert(
-          'Download Failed',
-          'Unable to download this translation. Please check your internet connection and try again.',
+          t('translations.downloadFailedTitle'),
+          t('translations.translationDownloadFailed'),
         );
       }
     },
-    [downloadTranslation, downloadingId],
+    [downloadTranslation, downloadingId, t],
   );
 
   const handleDelete = useCallback(
     (meta: DownloadedTranslationMeta) => {
-      Alert.alert(
-        'Delete Translation',
-        `Remove "${meta.englishName}"? You can download it again later.`,
-        [
-          {text: 'Cancel', style: 'cancel'},
-          {
-            text: 'Delete',
-            style: 'destructive',
-            onPress: async () => {
-              if (selectedTranslationId === meta.identifier) {
-                setSelectedTranslationId('saheeh');
-              }
-              await deleteTranslation(meta.identifier);
-            },
-          },
-        ],
-      );
+      confirmDestructive({
+        title: t('translations.deleteTranslationTitle'),
+        message: t('translations.deleteMessage', {name: meta.englishName}),
+        confirmText: t('common:actions.delete'),
+        cancelText: t('common:actions.cancel'),
+        onConfirm: async () => {
+          if (selectedTranslationId === meta.identifier) {
+            setSelectedTranslationId('saheeh');
+          }
+          await deleteTranslation(meta.identifier);
+        },
+      });
     },
-    [deleteTranslation, selectedTranslationId, setSelectedTranslationId],
+    [deleteTranslation, selectedTranslationId, setSelectedTranslationId, t],
   );
 
   // --- Tafseer handlers ---
@@ -276,27 +368,24 @@ export default function TranslationsContent() {
         Alert.alert(title, message);
       }
     },
-    [downloadTafseer, tafseerDownloadingId],
+    [downloadTafseer, tafseerDownloadingId, t],
   );
 
   const handleDeleteTafseer = useCallback(
     (meta: DownloadedTafseerMeta) => {
-      Alert.alert(
-        'Delete Tafseer',
-        `Remove "${meta.englishName}"? You can download it again later.`,
-        [
-          {text: 'Cancel', style: 'cancel'},
-          {
-            text: 'Delete',
-            style: 'destructive',
-            onPress: async () => {
-              await deleteTafseer(meta.identifier);
-            },
-          },
-        ],
-      );
+      confirmDestructive({
+        title: t('translations.deleteTafseerTitle'),
+        message: t('translations.deleteMessage', {
+          name: getTafseerDisplayName(meta),
+        }),
+        confirmText: t('common:actions.delete'),
+        cancelText: t('common:actions.cancel'),
+        onConfirm: async () => {
+          await deleteTafseer(meta.identifier);
+        },
+      });
     },
-    [deleteTafseer],
+    [deleteTafseer, t],
   );
 
   // --- Flattened data for FlashList ---
@@ -358,7 +447,7 @@ export default function TranslationsContent() {
       .sort((a, b) => a.englishName.localeCompare(b.englishName));
 
     if (availableRows.length > 0) {
-      items.push({type: 'meta-header', title: 'AVAILABLE'});
+      items.push({type: 'meta-header', title: t('translations.available')});
       availableRows.forEach((row, idx) => {
         row.isFirstInGroup = idx === 0;
         row.isLastInGroup = idx === availableRows.length - 1;
@@ -396,7 +485,7 @@ export default function TranslationsContent() {
     }
 
     return items;
-  }, [selectedTranslationId, downloadedMeta, downloadedIds]);
+  }, [selectedTranslationId, downloadedMeta, downloadedIds, t]);
 
   const tafseerData = useMemo((): FlatItem[] => {
     const items: FlatItem[] = [];
@@ -435,13 +524,44 @@ export default function TranslationsContent() {
       });
     }
 
+    // Put matching-language editions before other downloads for non-English
+    // readers. The explicitly selected edition remains in the active card.
+    const preferredRows =
+      currentLanguage !== SOURCE_LANGUAGE
+        ? allRows
+            .filter(
+              row =>
+                row.id !== selectedTafseerId &&
+                isPreferredTafseerLanguage(row.language),
+            )
+            .sort(compareTafaseer)
+        : [];
+    const preferredIds = new Set(preferredRows.map(row => row.id));
+    if (preferredRows.length > 0) {
+      items.push({
+        type: 'lang-header',
+        title: getLanguageDisplayName(currentLanguage),
+        count: preferredRows.length,
+      });
+      preferredRows.forEach((row, idx) => {
+        row.isFirstInGroup = idx === 0;
+        row.isLastInGroup = idx === preferredRows.length - 1;
+      });
+      items.push(...preferredRows);
+    }
+
     // Available section — downloaded items (excluding active)
     const availableRows = allRows
-      .filter(r => r.isDownloaded && r.id !== selectedTafseerId)
-      .sort((a, b) => a.englishName.localeCompare(b.englishName));
+      .filter(
+        r =>
+          r.isDownloaded &&
+          r.id !== selectedTafseerId &&
+          !preferredIds.has(r.id),
+      )
+      .sort(compareTafaseer);
 
     if (availableRows.length > 0) {
-      items.push({type: 'meta-header', title: 'AVAILABLE'});
+      items.push({type: 'meta-header', title: t('translations.available')});
       availableRows.forEach((row, idx) => {
         row.isFirstInGroup = idx === 0;
         row.isLastInGroup = idx === availableRows.length - 1;
@@ -450,23 +570,32 @@ export default function TranslationsContent() {
     }
 
     // Language groups — only non-downloaded items
-    const browseRows = allRows.filter(r => !r.isDownloaded);
+    const browseRows = allRows.filter(
+      r => !r.isDownloaded && !preferredIds.has(r.id),
+    );
     const byLang: Record<string, RowItem[]> = {};
     for (const row of browseRows) {
       (byLang[row.language] ??= []).push(row);
     }
 
     const sortedLangs = Object.keys(byLang).sort((a, b) => {
-      if (a === 'English') return -1;
-      if (b === 'English') return 1;
-      return a.localeCompare(b);
+      return (
+        Number(isPreferredTafseerLanguage(b)) -
+          Number(isPreferredTafseerLanguage(a)) ||
+        getTafseerLanguageDisplayName(a).localeCompare(
+          getTafseerLanguageDisplayName(b),
+          currentLanguage,
+        )
+      );
     });
 
     for (const lang of sortedLangs) {
-      const rows = byLang[lang].sort((a, b) =>
-        a.englishName.localeCompare(b.englishName),
-      );
-      items.push({type: 'lang-header', title: lang, count: rows.length});
+      const rows = byLang[lang].sort(compareTafaseer);
+      items.push({
+        type: 'lang-header',
+        title: getTafseerLanguageDisplayName(lang),
+        count: rows.length,
+      });
       rows.forEach((row, idx) => {
         row.isFirstInGroup = idx === 0;
         row.isLastInGroup = idx === rows.length - 1;
@@ -480,6 +609,7 @@ export default function TranslationsContent() {
     tafseerDownloaded,
     tafseerDownloadedIds,
     offeredTafsirIds,
+    t,
   ]);
 
   const getItemType = useCallback((item: FlatItem) => item.type, []);
@@ -504,7 +634,7 @@ export default function TranslationsContent() {
   const translationListHeader = useMemo(() => {
     const activeName = getTranslationName(selectedTranslationId);
     const activeLang = isBundledTranslation(selectedTranslationId)
-      ? 'English'
+      ? getLanguageDisplayName('en')
       : getLanguageDisplayName(
           AVAILABLE_TRANSLATIONS.find(
             e => e.identifier === selectedTranslationId,
@@ -516,7 +646,9 @@ export default function TranslationsContent() {
     return (
       <>
         <View style={styles.metaHeaderContainer}>
-          <Text style={styles.metaHeader}>ACTIVE TRANSLATION</Text>
+          <Text style={styles.metaHeader}>
+            {t('translations.activeTranslation')}
+          </Text>
         </View>
         <View style={styles.activeCard}>
           <View style={styles.activeCardText}>
@@ -526,12 +658,14 @@ export default function TranslationsContent() {
             <Text style={styles.activeCardLanguage}>{activeLang}</Text>
           </View>
           <View style={styles.activeBadge}>
-            <Text style={styles.activeBadgeText}>Active</Text>
+            <Text style={styles.activeBadgeText}>
+              {t('translations.active')}
+            </Text>
           </View>
         </View>
       </>
     );
-  }, [selectedTranslationId, downloadedMeta, styles]);
+  }, [selectedTranslationId, downloadedMeta, styles, t]);
 
   const tafseerListHeader = useMemo(() => {
     if (!selectedTafseerId) return null;
@@ -542,24 +676,30 @@ export default function TranslationsContent() {
     return (
       <>
         <View style={styles.metaHeaderContainer}>
-          <Text style={styles.metaHeader}>ACTIVE TAFSEER</Text>
+          <Text style={styles.metaHeader}>
+            {t('translations.activeTafseer')}
+          </Text>
         </View>
         <View style={styles.activeCard}>
           <View style={styles.activeCardText}>
             <Text style={styles.activeCardName} numberOfLines={1}>
-              {activeMeta.englishName}
+              {getTafseerDisplayName(activeMeta)}
             </Text>
             <Text style={styles.activeCardLanguage}>
-              {normalizeTafseerLanguage(activeMeta.language)}
+              {getTafseerLanguageDisplayName(
+                normalizeTafseerLanguage(activeMeta.language),
+              )}
             </Text>
           </View>
           <View style={styles.activeBadge}>
-            <Text style={styles.activeBadgeText}>Active</Text>
+            <Text style={styles.activeBadgeText}>
+              {t('translations.active')}
+            </Text>
           </View>
         </View>
       </>
     );
-  }, [selectedTafseerId, tafseerDownloaded, styles]);
+  }, [selectedTafseerId, tafseerDownloaded, styles, t]);
 
   // --- Render ---
   const renderHeaderItem = useCallback(
@@ -575,7 +715,7 @@ export default function TranslationsContent() {
         return (
           <View style={styles.langHeaderContainer}>
             <Text style={styles.langHeader}>{item.title}</Text>
-            <Text style={styles.langCount}>{item.count}</Text>
+            <Text style={styles.langCount}>{localizeDigits(item.count)}</Text>
           </View>
         );
       }
@@ -646,7 +786,7 @@ export default function TranslationsContent() {
             <View style={styles.progressContainer}>
               <ActivityIndicator size="small" color={theme.colors.text} />
               <Text style={styles.progressText}>
-                {Math.round(downloadProgress * 100)}%
+                {localizeDigits(`${Math.round(downloadProgress * 100)}%`)}
               </Text>
             </View>
           ) : isReady ? (
@@ -715,13 +855,17 @@ export default function TranslationsContent() {
             <Text
               style={[styles.rowName, isActive && styles.rowNameActive]}
               numberOfLines={1}>
-              {item.englishName}
+              {getTafseerDisplayName(item)}
             </Text>
-            {item.name !== item.englishName && (
+            {currentLanguage !== SOURCE_LANGUAGE ? (
+              <Text style={styles.rowNativeName} numberOfLines={1}>
+                {getTafseerLanguageDisplayName(item.language)}
+              </Text>
+            ) : item.name !== item.englishName ? (
               <Text style={styles.rowNativeName} numberOfLines={1}>
                 {item.name}
               </Text>
-            )}
+            ) : null}
           </View>
           {isDownloading ? (
             <View style={styles.progressContainer}>
@@ -729,7 +873,9 @@ export default function TranslationsContent() {
               {/* Engine downloads report no byte progress: spinner only. */}
               {tafseerDownloadProgress > 0 && (
                 <Text style={styles.progressText}>
-                  {Math.round(tafseerDownloadProgress * 100)}%
+                  {localizeDigits(
+                    `${Math.round(tafseerDownloadProgress * 100)}%`,
+                  )}
                 </Text>
               )}
             </View>
@@ -776,44 +922,80 @@ export default function TranslationsContent() {
     [activeTab],
   );
 
+  const renderTabSelector = useCallback(
+    () => (
+      <TabSelector
+        options={TAB_OPTIONS}
+        selectedOption={activeTab}
+        onSelect={handleTabChange}
+        getLabel={tab =>
+          tab === 'Translations'
+            ? t('common:terms.translations')
+            : t('common:terms.tafaseer')
+        }
+        width={moderateScale(220)}
+      />
+    ),
+    [activeTab, handleTabChange, t],
+  );
+
   // Place TabSelector in the navigation header — works in any Stack navigator
   useLayoutEffect(() => {
+    if (onClose) {
+      return;
+    }
     navigation.setOptions({
       headerTitleAlign: 'left',
       headerTintColor: theme.colors.text,
       headerBackButtonDisplayMode: 'minimal',
-      headerTitle: () => (
-        <TabSelector
-          options={TAB_OPTIONS}
-          selectedOption={activeTab}
-          onSelect={handleTabChange}
-          width={moderateScale(220)}
-        />
-      ),
+      headerTitle: renderTabSelector,
     });
-  }, [navigation, activeTab, handleTabChange, theme.colors.text]);
+  }, [navigation, renderTabSelector, theme.colors.text, onClose]);
 
   const translationEmptyComponent = useMemo(
-    () => <Text style={styles.emptyText}>No translations found</Text>,
-    [styles],
+    () => (
+      <Text style={styles.emptyText}>{t('translations.noTranslations')}</Text>
+    ),
+    [styles, t],
   );
 
   const tafseerEmptyComponent = useMemo(
-    () => <Text style={styles.emptyText}>No tafaseer found</Text>,
-    [styles],
+    () => <Text style={styles.emptyText}>{t('translations.noTafaseer')}</Text>,
+    [styles, t],
   );
 
   return (
     <View style={styles.container}>
+      {onClose ? (
+        <View style={styles.cardHeader}>
+          {renderTabSelector()}
+          <Pressable
+            onPress={onClose}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={t('common:actions.close')}
+            style={({pressed}) => [
+              styles.cardClose,
+              pressed && styles.cardClosePressed,
+            ]}>
+            <Feather
+              name="x"
+              size={moderateScale(20)}
+              color={theme.colors.text}
+            />
+          </Pressable>
+        </View>
+      ) : null}
       <View style={[styles.content, {paddingTop: headerHeight}]}>
         {/* Layered FlashLists — both stay mounted, toggle visibility */}
+        {/* The hidden one also leaves the accessibility tree. @ai */}
         <View style={{flex: 1}}>
           <View
             style={[
               StyleSheet.absoluteFill,
               {opacity: activeTab === 'Translations' ? 1 : 0},
             ]}
-            pointerEvents={activeTab === 'Translations' ? 'auto' : 'none'}>
+            {...layerVisibilityProps(activeTab === 'Translations')}>
             <FlashList
               data={translationData}
               renderItem={renderTranslationItem}
@@ -832,7 +1014,7 @@ export default function TranslationsContent() {
               StyleSheet.absoluteFill,
               {opacity: activeTab === 'Tafaseer' ? 1 : 0},
             ]}
-            pointerEvents={activeTab === 'Tafaseer' ? 'auto' : 'none'}>
+            {...layerVisibilityProps(activeTab === 'Tafaseer')}>
             <FlashList
               data={tafseerData}
               renderItem={renderTafseerItem}
@@ -851,7 +1033,9 @@ export default function TranslationsContent() {
     </View>
   );
 }
+// @ai-end
 
+// @ai-start
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({
     container: {
@@ -861,7 +1045,27 @@ const createStyles = (theme: Theme) =>
     content: {
       flex: 1,
     },
+    cardHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: moderateScale(16),
+      paddingVertical: moderateScale(12),
+    },
+    cardClose: {
+      width: moderateScale(32),
+      height: moderateScale(32),
+      borderRadius: moderateScale(16),
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
+    },
+    cardClosePressed: {
+      opacity: 0.6,
+    },
 
+    // Fabric mirrors logical left alignment in RTL. Explicitly use the
+    // leading edge for catalogue text rather than native 'natural' alignment.
     // Section headers — meta (ACTIVE TRANSLATION)
     metaHeaderContainer: {
       paddingHorizontal: moderateScale(18),
@@ -869,10 +1073,11 @@ const createStyles = (theme: Theme) =>
       paddingBottom: moderateScale(6),
     },
     metaHeader: {
+      textAlign: 'left',
       fontSize: moderateScale(10.5),
       fontFamily: 'Manrope-SemiBold',
       color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
-      letterSpacing: 1.2,
+      letterSpacing: latinLetterSpacing(1.2),
       textTransform: 'uppercase',
     },
 
@@ -889,7 +1094,7 @@ const createStyles = (theme: Theme) =>
       fontSize: moderateScale(10.5),
       fontFamily: 'Manrope-SemiBold',
       color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
-      letterSpacing: 1.2,
+      letterSpacing: latinLetterSpacing(1.2),
       textTransform: 'uppercase',
     },
     langCount: {
@@ -913,11 +1118,13 @@ const createStyles = (theme: Theme) =>
       flex: 1,
     },
     activeCardName: {
+      textAlign: 'left',
       fontSize: moderateScale(15),
       fontFamily: 'Manrope-SemiBold',
       color: Color(theme.colors.text).alpha(0.85).toString(),
     },
     activeCardLanguage: {
+      textAlign: 'left',
       fontSize: moderateScale(11.5),
       fontFamily: 'Manrope-Regular',
       color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
@@ -933,7 +1140,7 @@ const createStyles = (theme: Theme) =>
       fontSize: moderateScale(10.5),
       fontFamily: 'Manrope-SemiBold',
       color: Color(theme.colors.text).alpha(0.55).toString(),
-      letterSpacing: 0.3,
+      letterSpacing: latinLetterSpacing(0.3),
     },
 
     // Card grouping
@@ -992,6 +1199,7 @@ const createStyles = (theme: Theme) =>
       marginRight: moderateScale(10),
     },
     rowName: {
+      textAlign: 'left',
       fontSize: moderateScale(13.5),
       fontFamily: 'Manrope-Medium',
       color: Color(theme.colors.text).alpha(0.85).toString(),
@@ -1001,6 +1209,7 @@ const createStyles = (theme: Theme) =>
       color: theme.colors.text,
     },
     rowNativeName: {
+      textAlign: 'left',
       fontSize: moderateScale(11.5),
       fontFamily: 'Manrope-Regular',
       color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
@@ -1036,3 +1245,4 @@ const createStyles = (theme: Theme) =>
       paddingVertical: moderateScale(20),
     },
   });
+// @ai-end

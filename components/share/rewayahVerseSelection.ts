@@ -30,6 +30,7 @@
  * has no words DB it is 'error' / 'unavailable', and the sheets show no
  * verse number at all rather than a guessed one.
  */
+import i18n from '@/i18n'; // @ai
 import {
   formatUnitRangeLabel,
   hafsKeysOfUnits,
@@ -556,21 +557,23 @@ export async function resolveSelectionTexts(
 
 /**
  * Why nothing could be done with a selection that is not ready, as a toast
- * (title, message). `action` completes "Nothing was ...".
+ * (title, message), translated in the `sheets:selectionFailure` keys.
  */
 export function selectionFailureMessage(
   selection: PendingVerseSelection,
   action: 'copied' | 'shared' | 'saved' | 'played',
 ): {title: string; message: string} {
-  const label = getShortLabel(selection.rewayah);
+  const rewayah = getShortLabel(selection.rewayah);
+  // @ai-start
   if (selection.status === 'invalid') {
     return {
-      title: `Not a numbered verse in ${label}`,
-      message: `Nothing was ${action}.`,
+      title: i18n.t('sheets:selectionFailure.unnumbered', {rewayah}),
+      message: i18n.t(`sheets:selectionFailure.nothingDone.${action}`),
     };
   }
   return {
-    title: `Couldn't load the ${label} text`,
-    message: `Nothing was ${action}. Please try again.`,
+    title: i18n.t('sheets:selectionFailure.loadFailed', {rewayah}),
+    message: i18n.t(`sheets:selectionFailure.nothingDoneRetry.${action}`),
   };
+  // @ai-end
 }

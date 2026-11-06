@@ -1,22 +1,14 @@
 import React, {useCallback, useState, useMemo} from 'react';
-import {
-  View,
-  Text,
-  Pressable,
-  StyleSheet,
-  useWindowDimensions,
-  Dimensions,
-  Alert,
-} from 'react-native';
-import {ScaledSheet, moderateScale} from 'react-native-size-matters';
+import {View, Text, Pressable, StyleSheet, Dimensions} from 'react-native';
+import {confirmDestructive} from '@/utils/confirmDestructive'; // @ai
+import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {QueueIcon, HeartIcon, PlayIcon} from '@/components/Icons';
+import {SheetProps, SheetManager, ScrollView} from 'react-native-actions-sheet';
 import ActionSheet, {
-  SheetProps,
-  SheetManager,
-  ScrollView,
-} from 'react-native-actions-sheet';
+  useSheetWidth,
+} from '@/components/sheets/AdaptiveActionSheet';
 import {Feather} from '@expo/vector-icons';
 import {useLoved} from '@/hooks/useLoved';
 import Color from 'color';
@@ -25,6 +17,10 @@ import RenderHtml, {
   RenderHTMLProps,
   defaultSystemFonts,
 } from 'react-native-render-html';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+import {getSurahDisplayName, getSurahMeaning} from '@/i18n/format';
+// @ai-end
 
 const surahInfo = require('@/data/surahInfo.json');
 
@@ -49,13 +45,17 @@ const renderHtmlDefaultProps: Partial<RenderHTMLProps> = {
   },
 };
 
+// @ai-start
 export const DownloadOptionsSheet = (props: SheetProps<'download-options'>) => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
-  const {width} = useWindowDimensions();
-  const [showSurahInfo, setShowSurahInfo] = useState(false);
-
+  const {t} = useTranslation(['sheets', 'common']);
+  // Size HTML from the sheet, which stops at 560pt on iPad. @ai
+  const width = useSheetWidth(); // @ai
   const payload = props.payload;
+  // A native menu's "Learn about this surah" opens the sheet on the info. @ai
+  const [showSurahInfo, setShowSurahInfo] = useState(!!payload?.showInfo);
+
   const download = payload?.download;
   const surah = payload?.surah;
   const reciterId = payload?.reciterId;
@@ -140,22 +140,17 @@ export const DownloadOptionsSheet = (props: SheetProps<'download-options'>) => {
 
   const handleRemoveDownload = useCallback(() => {
     if (!download) return;
-    Alert.alert(
-      'Remove Download',
-      `Are you sure you want to remove this download?`,
-      [
-        {text: 'Cancel', style: 'cancel'},
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: () => {
-            handleClose();
-            onRemoveDownload?.();
-          },
-        },
-      ],
-    );
-  }, [download, handleClose, onRemoveDownload]);
+    confirmDestructive({
+      title: t('downloadOptions.removeTitle'),
+      message: t('downloadOptions.removeMessage'),
+      confirmText: t('common:actions.remove'),
+      cancelText: t('common:actions.cancel'),
+      onConfirm: () => {
+        handleClose();
+        onRemoveDownload?.();
+      },
+    });
+  }, [download, handleClose, onRemoveDownload, t]);
 
   const handleSheetChange = useCallback((index: number) => {
     if (index === -1) {
@@ -167,9 +162,13 @@ export const DownloadOptionsSheet = (props: SheetProps<'download-options'>) => {
     return null;
   }
 
+  const surahName = getSurahDisplayName(surah);
+  const surahMeaning = getSurahMeaning(surah);
+
   return (
     <ActionSheet
       id={props.sheetId}
+      tabletPresentation={showSurahInfo ? 'card' : 'menu'}
       containerStyle={[
         styles.sheetContainer,
         showSurahInfo && styles.sheetContainerExpanded,
@@ -180,7 +179,9 @@ export const DownloadOptionsSheet = (props: SheetProps<'download-options'>) => {
       {showSurahInfo ? (
         <>
           <View style={styles.headerContainer}>
-            <Text style={styles.headerTitle}>About {surah.name}</Text>
+            <Text style={styles.headerTitle}>
+              {t('options.aboutSurah', {surah: surahName})}
+            </Text>
           </View>
           <ScrollView
             style={styles.scrollView}
@@ -188,10 +189,12 @@ export const DownloadOptionsSheet = (props: SheetProps<'download-options'>) => {
             bounces={true}>
             <View style={styles.infoContent}>
               <View style={styles.surahInfoHeader}>
-                <Text style={styles.surahInfoName}>{surah.name}</Text>
-                <Text style={styles.surahInfoTranslation}>
-                  {surah.translated_name_english}
-                </Text>
+                <Text style={styles.surahInfoName}>{surahName}</Text>
+                {surahMeaning ? (
+                  <Text style={styles.surahInfoTranslation}>
+                    {surahMeaning}
+                  </Text>
+                ) : null}
               </View>
               {currentSurahInfo && (
                 <RenderHtml
@@ -207,10 +210,10 @@ export const DownloadOptionsSheet = (props: SheetProps<'download-options'>) => {
       ) : (
         <View style={styles.container}>
           <View style={styles.header}>
-            <Text style={styles.surahName}>{surah.name}</Text>
-            <Text style={styles.surahTranslation}>
-              {surah.translated_name_english}
-            </Text>
+            <Text style={styles.surahName}>{surahName}</Text>
+            {surahMeaning ? (
+              <Text style={styles.surahTranslation}>{surahMeaning}</Text>
+            ) : null}
           </View>
 
           <View style={styles.card}>
@@ -221,7 +224,7 @@ export const DownloadOptionsSheet = (props: SheetProps<'download-options'>) => {
               ]}
               onPress={handlePlay}>
               <PlayIcon color={theme.colors.text} size={moderateScale(18)} />
-              <Text style={styles.optionText}>Play Now</Text>
+              <Text style={styles.optionText}>{t('options.playNow')}</Text>
             </Pressable>
 
             <View style={styles.divider} />
@@ -243,7 +246,9 @@ export const DownloadOptionsSheet = (props: SheetProps<'download-options'>) => {
                   styles.optionText,
                   !reciterId && styles.optionTextDisabled,
                 ]}>
-                {isLovedState ? 'Remove from Loved' : 'Add to Loved'}
+                {isLovedState
+                  ? t('options.removeFromLoved')
+                  : t('options.addToLoved')}
               </Text>
             </Pressable>
 
@@ -262,7 +267,7 @@ export const DownloadOptionsSheet = (props: SheetProps<'download-options'>) => {
                   filled={true}
                 />
               </View>
-              <Text style={styles.optionText}>Add to Queue</Text>
+              <Text style={styles.optionText}>{t('options.addToQueue')}</Text>
             </Pressable>
 
             <View style={styles.divider} />
@@ -284,7 +289,7 @@ export const DownloadOptionsSheet = (props: SheetProps<'download-options'>) => {
                   styles.optionText,
                   !reciterId && styles.optionTextDisabled,
                 ]}>
-                Add to Collection
+                {t('options.addToCollection')}
               </Text>
             </Pressable>
 
@@ -301,7 +306,9 @@ export const DownloadOptionsSheet = (props: SheetProps<'download-options'>) => {
                 size={moderateScale(18)}
                 color={theme.colors.text}
               />
-              <Text style={styles.optionText}>Learn About Surah</Text>
+              <Text style={styles.optionText}>
+                {t('options.learnAboutSurah')}
+              </Text>
             </Pressable>
           </View>
 
@@ -317,7 +324,9 @@ export const DownloadOptionsSheet = (props: SheetProps<'download-options'>) => {
                 size={moderateScale(18)}
                 color="#ff4444"
               />
-              <Text style={styles.optionTextDestructive}>Remove Download</Text>
+              <Text style={styles.optionTextDestructive}>
+                {t('downloadOptions.removeTitle')}
+              </Text>
             </Pressable>
           </View>
         </View>
@@ -325,6 +334,7 @@ export const DownloadOptionsSheet = (props: SheetProps<'download-options'>) => {
     </ActionSheet>
   );
 };
+// @ai-end
 
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({

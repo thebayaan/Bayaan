@@ -439,7 +439,7 @@ describe('surfaces showing two rewayat other than the mushaf’s', () => {
     expect(reads('dk_words_warsh')).toBe(1);
     expect(reads('dk_words_bazzi')).toBe(1);
     expect(texts(renderer)).toEqual([
-      'BOOKMARKS',
+      'Bookmarks',
       'Al-Fatihah 1:7 · Warsh',
       'Al-Fatihah 1:7 · Al-Bazzi',
     ]);

@@ -11,7 +11,10 @@ export default function ReadingThemeScreen() {
   return (
     <View
       style={[styles.container, {backgroundColor: theme.colors.background}]}>
-      <ReadingThemeContent onBack={() => router.back()} />
+      <ReadingThemeContent
+        onBack={() => router.back()}
+        contentInsetAdjustmentBehavior="automatic"
+      />
     </View>
   );
 }

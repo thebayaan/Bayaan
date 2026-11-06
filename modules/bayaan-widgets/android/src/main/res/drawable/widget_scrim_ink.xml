@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- @ai: bottom fade into ink, for titles over full-bleed art -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+  <gradient android:angle="90" android:startColor="#EB0B1E26" android:centerColor="#660B1E26" android:endColor="#000B1E26" />
+</shape>

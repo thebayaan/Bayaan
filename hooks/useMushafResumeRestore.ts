@@ -1,9 +1,10 @@
 import {useEffect, useRef} from 'react';
-import {InteractionManager, Linking} from 'react-native';
+import {Linking} from 'react-native';
 import {useRouter} from 'expo-router';
 import {useBayaanAuthStore} from '@/store/bayaanAuthStore';
 import {useQfSyncStore} from '@/store/qfSyncStore';
 import {mushafSessionStore} from '@/services/mushaf/MushafSessionStore';
+import {runAfterInteractions} from '@/utils/afterInteractions';
 
 export function useMushafResumeRestore(ready: boolean, onHandled: () => void) {
   const router = useRouter();
@@ -41,7 +42,7 @@ export function useMushafResumeRestore(ready: boolean, onHandled: () => void) {
           pathname: '/mushaf',
           params: page ? {page: String(page)} : undefined,
         });
-        InteractionManager.runAfterInteractions(onHandled);
+        runAfterInteractions(onHandled);
       });
   }, [ready, status, accountId, activeAccountId, router, onHandled]);
 }

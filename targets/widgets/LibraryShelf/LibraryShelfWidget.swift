@@ -75,13 +75,13 @@ struct LibraryShelfView: View {
         }
       case let .playlist(p):
         let header = ShelfHeader(title: p.name, detail: ContentText.surahCount(p.itemCount)) {
-          RoundIntentButton(intent: PlayPlaylistIntent(playlistId: p.id, itemId: nil), systemName: "play.fill", label: "Play \(p.name)")
+          PrimaryIntentButton(intent: PlayPlaylistIntent(playlistId: p.id, itemId: nil), systemName: "play.fill", label: "Play \(p.name)", size: 36) // @ai
         }
         if p.items.isEmpty {
           VStack(alignment: .leading, spacing: 10) {
             header
             Spacer(minLength: 0)
-            Text("Open the playlist in Bayaan").font(.caption).opacity(0.6)
+            Text("Open the playlist in \(AppBrand.name)").font(.caption).foregroundStyle(WidgetPalette.secondary) // @ai
             Spacer(minLength: 0)
           }
           .padding(14)
@@ -91,7 +91,7 @@ struct LibraryShelfView: View {
       case .playlistUnavailable:
         ContentMessage(title: "Playlist unavailable", detail: "Edit the widget to choose another")
       case .noContent:
-        ContentMessage(title: "Open Bayaan", detail: "to load your library")
+        ContentMessage(title: "Open \(AppBrand.name)", detail: "to load your library")
       }
     }
     .foregroundStyle(.white)
@@ -101,16 +101,17 @@ struct LibraryShelfView: View {
 
   private var url: URL? {
     switch entry.state {
-    case .downloads: return URL(string: "bayaan://collection/downloads")
-    case .playlist, .playlistUnavailable: return URL(string: "bayaan://collection/playlists")
+    case .downloads: return AppLinks.url("collection/downloads")
+    case .playlist, .playlistUnavailable: return AppLinks.url("collection/playlists")
     case .noContent: return nil
     }
   }
 
   private func shelf<H: View, I: AppIntent>(_ header: H, items: [WidgetShelfItem],
                                              intent: @escaping (WidgetShelfItem) -> I) -> some View {
-    let shown = Array(items.prefix(isLarge ? 8 : 4))
+    let shown = Array(items.prefix(isLarge ? 12 : 4)) // @ai
     let rows = (shown.count + 3) / 4
+    let now = PlayingNow.track(at: entry.date) // @ai
     return VStack(alignment: .leading, spacing: 10) {
       header
       ForEach(0..<rows, id: \.self) { row in
@@ -118,8 +119,10 @@ struct LibraryShelfView: View {
           ForEach(0..<4, id: \.self) { col in
             let i = row * 4 + col
             if i < shown.count {
-              SurahTileButton(surahId: shown[i].surahId, size: isLarge ? 62 : 58, intent: intent(shown[i]),
-                              caption: isLarge ? shown[i].surahName : nil)
+              SurahTileButton(surahId: shown[i].surahId, size: isLarge ? 74 : 64, intent: intent(shown[i]), // @ai
+                              caption: isLarge ? shown[i].surahName : nil,
+                              playing: PlayingNow.matches(now, surahId: shown[i].surahId, // @ai
+                                                          reciterId: shown[i].reciterId)) // @ai
                 .frame(maxWidth: .infinity)
             } else {
               Color.clear.frame(maxWidth: .infinity, maxHeight: 1)

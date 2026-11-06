@@ -17,7 +17,10 @@ import type {RewayahId} from '@/store/mushafSettingsStore';
 // the old text, and a settings-store/data mismatch can no longer file a
 // layout under the wrong rewayah. The bump also purges layouts that v9 races
 // saved under the wrong rewayah or with non-finite spacing.
-const SCHEMA_VERSION = 10;
+// @ai-start
+// v11: the 600:9 width (84%) moved to 600:10, the line the layout centres.
+const SCHEMA_VERSION = 11;
+// @ai-end
 const SCHEMA_VERSION_KEY = 'dk_schema_version';
 const KEY_PREFIX = 'dk';
 

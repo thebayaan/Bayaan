@@ -26,4 +26,23 @@ object RingBitmap {
     }
     return bmp
   }
+
+  // @ai-start
+  /** A ring of `beads` dots, the first `filled` in `color`, like a misbaha. */
+  fun beads(sizePx: Int, beads: Int, filled: Int, color: Int, trackColor: Int): Bitmap {
+    val bmp = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bmp)
+    val dot = sizePx * 0.028f
+    val radius = sizePx / 2f - dot * 1.2f
+    val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+    for (i in 0 until beads) {
+      val angle = Math.toRadians(-90.0 + i * 360.0 / beads)
+      paint.color = if (i < filled) color else trackColor
+      canvas.drawCircle(
+        sizePx / 2f + (radius * Math.cos(angle)).toFloat(), sizePx / 2f + (radius * Math.sin(angle)).toFloat(), dot, paint,
+      )
+    }
+    return bmp
+  }
+  // @ai-end
 }

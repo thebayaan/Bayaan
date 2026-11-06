@@ -1,6 +1,6 @@
 import React, {useCallback, useMemo} from 'react';
 import {View, Text, Pressable, StyleSheet} from 'react-native';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {ReciterImage} from '@/components/ReciterImage';
 import {PlayIcon} from '@/components/Icons';
@@ -8,7 +8,7 @@ import Color from 'color';
 import {LinearGradient} from 'expo-linear-gradient';
 import {GlassView} from 'expo-glass-effect';
 import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
-import {Slider} from '@miblanchard/react-native-slider';
+import {ProgressTrack} from '@/components/ProgressTrack'; // @ai
 import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
 import {resumeRecent} from '@/services/player/utils/resumeRecent';
@@ -19,6 +19,18 @@ import {useRouter, Link} from 'expo-router';
 import {SheetManager} from 'react-native-actions-sheet';
 import {useUploadsStore} from '@/store/uploadsStore';
 import {createUserUploadTrack} from '@/utils/track';
+import {createStyles} from '@/components/cards/recentCardStyles';
+// @ai-start
+import {forceLTR} from '@/utils/rtl';
+import {useTranslation} from 'react-i18next';
+// @ai-start
+import {useNativeOptionsMenu} from '@/components/sheets/options/OptionsMenu';
+import {
+  HomeCardOptionsMenu,
+  type HomeCardOptionsPayload,
+} from '@/components/sheets/options/homeCardOptions';
+// @ai-end
+// @ai-end
 
 interface RecentReciterCardProps {
   imageUrl?: string;
@@ -34,8 +46,11 @@ interface RecentReciterCardProps {
   index: number;
   isUserUpload?: boolean;
   userRecitationId?: string;
+  /** Card width. Defaults to RECENT_CARD_WIDTH; iPad shelves pass their own. */
+  width?: number; // @ai
 }
 
+// @ai-start
 export const RecentReciterCard = ({
   imageUrl,
   reciterName,
@@ -49,8 +64,10 @@ export const RecentReciterCard = ({
   index,
   isUserUpload,
   userRecitationId,
+  width,
 }: RecentReciterCardProps) => {
   const {theme} = useTheme();
+  const {t} = useTranslation('home');
   const {updateQueue} = usePlayerActions();
   const router = useRouter();
   // Single consolidated subscription with shallow equality
@@ -130,21 +147,23 @@ export const RecentReciterCard = ({
       remainingSeconds = effectiveDuration * (1 - progress);
     }
 
-    if (remainingSeconds <= 0) return '0s';
+    if (remainingSeconds <= 0) return t('duration.seconds', {value: 0});
 
     // Under a minute → show seconds so short surahs (Al-Fatihah / An-Nas
     // / Al-Falaq / Al-Ikhlas) don't all collapse to "0m" near the end.
     if (remainingSeconds < 60) {
-      return `${Math.max(1, Math.ceil(remainingSeconds))}s`;
+      return t('duration.seconds', {
+        value: Math.max(1, Math.ceil(remainingSeconds)),
+      });
     }
 
     const totalMinutes = Math.round(remainingSeconds / 60);
     if (totalMinutes >= 60) {
       const hours = Math.round(totalMinutes / 60);
-      return `${hours}h`;
+      return t('duration.hours', {value: hours});
     }
-    return `${totalMinutes}m`;
-  }, [isCurrentlyPlaying, storeDuration, storePosition, duration, progress]);
+    return t('duration.minutes', {value: totalMinutes});
+  }, [isCurrentlyPlaying, storeDuration, storePosition, duration, progress, t]);
 
   // Calculate current progress value for the slider
   const currentSliderProgress =
@@ -214,37 +233,48 @@ export const RecentReciterCard = ({
   ]);
 
   // Long press options
+  // @ai-start
+  const optionsPayload = useMemo<HomeCardOptionsPayload>(
+    () => ({
+      reciterId,
+      reciterName,
+      surahId,
+      surahName,
+      rewayatId,
+      recentIndex: index,
+      variant: 'recent',
+      onContinuePlaying: handlePlayPress,
+    }),
+    [
+      reciterId,
+      reciterName,
+      surahId,
+      surahName,
+      rewayatId,
+      index,
+      handlePlayPress,
+    ],
+  );
+  // On iPad the card is a context menu (long press or secondary click).
+  const contextMenu = useNativeOptionsMenu('longPress');
   const handleLongPress = useCallback(() => {
-    SheetManager.show('home-card-options', {
-      payload: {
-        reciterId,
-        reciterName,
-        surahId,
-        surahName,
-        rewayatId,
-        recentIndex: index,
-        variant: 'recent',
-        onContinuePlaying: handlePlayPress,
-      },
-    });
-  }, [
-    reciterId,
-    reciterName,
-    surahId,
-    surahName,
-    rewayatId,
-    index,
-    handlePlayPress,
-  ]);
+    SheetManager.show('home-card-options', {payload: optionsPayload});
+  }, [optionsPayload]);
+  const onLongPress = contextMenu ? undefined : handleLongPress;
+  // @ai-end
 
   const styles = useMemo(() => createStyles(theme), [theme]);
   const glassColorScheme = useGlassColorScheme();
 
   const CardWrapper = USE_GLASS ? GlassView : View;
 
-  return (
+  const card = (
     <CardWrapper
-      style={[styles.container, USE_GLASS && styles.glassContainer]}
+      style={[
+        styles.container,
+        USE_GLASS && styles.glassContainer,
+        width != null && {width},
+      ]}
       {...(USE_GLASS
         ? {glassEffectStyle: 'regular', colorScheme: glassColorScheme}
         : {})}>
@@ -277,7 +307,7 @@ export const RecentReciterCard = ({
       {/* Image box — matches playback zone spacing */}
       <View style={styles.imageContainer}>
         {isUserUpload ? (
-          <Pressable onPress={handlePlayPress} onLongPress={handleLongPress}>
+          <Pressable onPress={handlePlayPress} onLongPress={onLongPress}>
             <ReciterImage
               imageUrl={imageUrl}
               reciterName={reciterName}
@@ -292,7 +322,7 @@ export const RecentReciterCard = ({
               params: {id: reciterId},
             }}
             asChild>
-            <Pressable onLongPress={handleLongPress}>
+            <Pressable onLongPress={onLongPress}>
               {USE_GLASS ? (
                 <Link.AppleZoom>
                   <ReciterImage
@@ -323,7 +353,7 @@ export const RecentReciterCard = ({
       {/* Bottom zone: Playback controls — resumes audio */}
       <Pressable
         onPress={handlePlayPress}
-        onLongPress={handleLongPress}
+        onLongPress={onLongPress}
         style={({pressed}) => [
           styles.playbackZone,
           pressed && styles.playbackZonePressed,
@@ -333,7 +363,7 @@ export const RecentReciterCard = ({
             {surahName}
           </Text>
         </View>
-        <View style={styles.progressRow}>
+        <View style={[styles.progressRow, forceLTR]}>
           <View style={styles.playButtonContainer}>
             {isCurrentlyPlaying &&
             (playbackStatus === 'playing' || playbackStatus === 'buffering') ? (
@@ -352,110 +382,28 @@ export const RecentReciterCard = ({
               />
             )}
           </View>
-          <Slider
+          <ProgressTrack
             value={currentSliderProgress}
-            disabled={true}
-            minimumTrackTintColor={Color(theme.colors.text)
-              .alpha(0.35)
-              .toString()}
-            maximumTrackTintColor={Color(theme.colors.text)
-              .alpha(0.08)
-              .toString()}
-            trackStyle={{
-              height: moderateScale(3),
-              borderRadius: moderateScale(2),
-            }}
-            thumbStyle={{height: 0, width: 0}}
-            containerStyle={styles.sliderContainer}
+            fillColor={Color(theme.colors.text).alpha(0.35).toString()}
+            trackColor={Color(theme.colors.text).alpha(0.08).toString()}
+            style={styles.sliderContainer}
           />
           <Text style={styles.timeRemaining}>{timeRemaining}</Text>
         </View>
       </Pressable>
     </CardWrapper>
   );
-};
 
-function createStyles(theme: {
-  colors: {
-    border: string;
-    card: string;
-    shadow: string;
-    text: string;
-    textSecondary: string;
-    background: string;
-  };
-}) {
-  return StyleSheet.create({
-    container: {
-      width: moderateScale(120),
-      borderRadius: moderateScale(14),
-      overflow: 'hidden',
-      borderWidth: 1,
-      borderColor: Color(theme.colors.text).alpha(0.06).toString(),
-      padding: moderateScale(6),
-      gap: moderateScale(4),
-    },
-    glassContainer: {
-      borderWidth: 0,
-    },
-    imageContainer: {
-      aspectRatio: 1,
-      borderRadius: moderateScale(8),
-      overflow: 'hidden',
-      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
-    },
-    image: {
-      width: '100%',
-      height: '100%',
-    },
-    reciterName: {
-      fontSize: moderateScale(11.5),
-      fontFamily: 'Manrope-SemiBold',
-      color: theme.colors.text,
-      letterSpacing: -0.3,
-    },
-    // Bottom zone: surah + playback controls
-    playbackZone: {
-      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
-      borderRadius: moderateScale(8),
-      paddingHorizontal: moderateScale(6),
-      paddingVertical: moderateScale(5),
-      gap: moderateScale(4),
-    },
-    playbackZonePressed: {
-      backgroundColor: Color(theme.colors.text).alpha(0.1).toString(),
-    },
-    playbackRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-    },
-    surahName: {
-      fontSize: moderateScale(9.5),
-      fontFamily: 'Manrope-Medium',
-      color: Color(theme.colors.text).alpha(0.7).toString(),
-      letterSpacing: -0.2,
-    },
-    progressRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: moderateScale(4),
-    },
-    playButtonContainer: {
-      width: moderateScale(12),
-      height: moderateScale(12),
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    sliderContainer: {
-      height: moderateScale(4),
-      flex: 1,
-    },
-    timeRemaining: {
-      fontSize: moderateScale(7.5),
-      fontFamily: 'Manrope-Bold',
-      color: Color(theme.colors.text).alpha(0.5).toString(),
-      minWidth: moderateScale(12),
-      textAlign: 'right',
-    },
-  });
-}
+  // @ai-start
+  return contextMenu ? (
+    <HomeCardOptionsMenu
+      payload={optionsPayload}
+      style={width != null ? {width} : undefined}>
+      {card}
+    </HomeCardOptionsMenu>
+  ) : (
+    card
+  );
+  // @ai-end
+};
+// @ai-end

@@ -1,7 +1,7 @@
 import React from 'react';
 import {View} from 'react-native';
 import Svg, {Circle} from 'react-native-svg';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 
 interface CircularProgressProps {
   progress: number; // 0 to 1

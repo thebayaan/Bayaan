@@ -1,44 +1,33 @@
 import React, {useCallback, useState, useMemo} from 'react';
-import {
-  View,
-  Text,
-  Pressable,
-  StyleSheet,
-  useWindowDimensions,
-  Dimensions,
-} from 'react-native';
-import {ScaledSheet, moderateScale} from 'react-native-size-matters';
+import {View, Text, Pressable, StyleSheet, Dimensions} from 'react-native';
+import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {CheckIcon, ProfileIcon, HeartIcon} from '@/components/Icons';
+import {SheetProps, SheetManager, ScrollView} from 'react-native-actions-sheet';
 import ActionSheet, {
-  SheetProps,
-  SheetManager,
-  ScrollView,
-} from 'react-native-actions-sheet';
+  useSheetWidth,
+} from '@/components/sheets/AdaptiveActionSheet';
 import {Feather, FontAwesome5, Ionicons} from '@expo/vector-icons';
-import {useLoved} from '@/hooks/useLoved';
-import {
-  useDownloadActions,
-  useDownloadProgress,
-  useIsDownloaded,
-  useIsDownloadedWithRewayat,
-  useIsDownloading,
-} from '@/services/player/store/downloadSelectors';
-import {downloadSurah} from '@/services/downloadService';
 import {getReciterName} from '@/services/dataService';
 import Color from 'color';
 import {CircularProgress} from '@/components/CircularProgress';
-import {usePlayerStore} from '@/services/player/store/playerStore';
 import {getReciterByIdSync} from '@/services/dataService';
-import {recitationShareUrl, shareUrl} from '@/utils/shareUtils';
-import branding from '@/config/branding';
 import RenderHtml, {
   MixedStyleDeclaration,
   RenderHTMLProps,
   defaultSystemFonts,
 } from 'react-native-render-html';
 import {useUploadsStore} from '@/store/uploadsStore';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+import {usePlayerOptions} from './options/playerOptions'; // @ai
+import {
+  getReciterDisplayName,
+  getSurahDisplayName,
+  getSurahMeaning,
+} from '@/i18n/format';
+// @ai-end
 
 // Import surah info data
 const surahInfo = require('@/data/surahInfo.json');
@@ -64,11 +53,14 @@ const renderHtmlDefaultProps: Partial<RenderHTMLProps> = {
   },
 };
 
+// @ai-start
 export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
-  const {width} = useWindowDimensions();
-  const [showSurahInfo, setShowSurahInfo] = useState(false);
+  const {t} = useTranslation(['sheets', 'common']);
+  // Size HTML from the sheet, which stops at 560pt on iPad. @ai
+  const width = useSheetWidth(); // @ai
+  const [showSurahInfo, setShowSurahInfo] = useState(!!props.payload?.showInfo); // @ai
 
   // Extract payload
   const payload = props.payload;
@@ -79,7 +71,6 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
   const isUserUpload = payload?.isUserUpload ?? false;
   const userRecitationId = payload?.userRecitationId;
 
-  const surahId = surah?.id?.toString() ?? '';
   const currentSurahInfo = surah ? surahInfo[surah.id] : null;
 
   // Get recitation data for upload header
@@ -89,49 +80,17 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
 
   const uploadHeaderTitle = useMemo(() => {
     if (!isUserUpload) return '';
-    if (surah) return surah.name;
+    if (surah) return getSurahDisplayName(surah);
     if (recitation?.title) return recitation.title;
     if (recitation?.originalFilename) return recitation.originalFilename;
-    return 'Uploaded Audio';
-  }, [isUserUpload, surah, recitation]);
+    return t('uploads.uploadedAudio');
+  }, [isUserUpload, surah, recitation, t]);
 
   const uploadHeaderSubtitle = useMemo(() => {
     if (!isUserUpload) return '';
-    if (surah) return surah.translated_name_english;
-    return 'Upload';
-  }, [isUserUpload, surah]);
-
-  const downloadId = React.useMemo(
-    () =>
-      rewayatId
-        ? `${reciterId}-${surahId}-${rewayatId}`
-        : `${reciterId}-${surahId}`,
-    [reciterId, surahId, rewayatId],
-  );
-
-  // Hooks for download and loved state
-  const {isLoved, isLovedWithRewayat, toggleLoved} = useLoved();
-  const downloadProgress = useDownloadProgress(downloadId);
-  const isTrackDownloadedBase = useIsDownloaded(reciterId, surahId);
-  const isTrackDownloadedRewayat = useIsDownloadedWithRewayat(
-    reciterId,
-    surahId,
-    rewayatId || '',
-  );
-  const isTrackDownloaded = rewayatId
-    ? isTrackDownloadedRewayat
-    : isTrackDownloadedBase;
-  const isCurrentlyDownloading = useIsDownloading(downloadId);
-  const {setDownloading, addDownload, clearDownloading, setDownloadProgress} =
-    useDownloadActions();
-
-  // Calculate loved state — only meaningful when reciterId + surahId exist
-  const canLove = !!reciterId && !!surahId;
-  const isLovedState = canLove
-    ? rewayatId
-      ? isLovedWithRewayat(reciterId, surahId, rewayatId)
-      : isLoved(reciterId, surahId)
-    : false;
+    if (surah) return getSurahMeaning(surah) ?? '';
+    return t('uploads.upload');
+  }, [isUserUpload, surah, t]);
 
   const tagsStyles = useMemo(
     () => ({
@@ -171,112 +130,22 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
     setShowSurahInfo(true);
   }, []);
 
-  const handleToggleLove = useCallback(() => {
-    if (!reciterId) return;
-    toggleLoved(reciterId, surahId, rewayatId || '');
-  }, [reciterId, surahId, toggleLoved, rewayatId]);
-
-  const handleDownload = useCallback(async () => {
-    if (!reciterId || !surah) return;
-
-    if (isTrackDownloaded) {
-      console.log('Track already downloaded');
-      return;
-    }
-
-    if (isCurrentlyDownloading) {
-      console.log('Track is already downloading');
-      return;
-    }
-
-    try {
-      setDownloading(downloadId);
-
-      const downloadResult = await downloadSurah(
-        surah.id,
-        reciterId,
-        rewayatId,
-        progress => {
-          setDownloadProgress(downloadId, progress);
-        },
-      );
-
-      addDownload({
-        reciterId,
-        surahId: surahId,
-        rewayatId: rewayatId || '',
-        filePath: downloadResult.filePath,
-        fileSize: downloadResult.fileSize,
-        downloadDate: Date.now(),
-        status: 'completed',
-      });
-
-      clearDownloading(downloadId);
-    } catch (error) {
-      console.error('Download failed:', error);
-      clearDownloading(downloadId);
-    }
-  }, [
-    reciterId,
-    surah,
-    surahId,
-    rewayatId,
+  // @ai-start
+  // Shared with the tablet menu (options/playerOptions.tsx).
+  const {
+    canLove,
+    isLovedState,
     isTrackDownloaded,
     isCurrentlyDownloading,
-    setDownloading,
-    addDownload,
-    clearDownloading,
-    setDownloadProgress,
-    downloadId,
-  ]);
-
-  const handleAddToPlaylist = useCallback(() => {
-    if (!reciterId || !surah) return;
-    SheetManager.show('select-playlist', {
-      payload: {
-        surah,
-        reciterId,
-        rewayatId,
-      },
-    });
-  }, [reciterId, surah, rewayatId]);
-
-  const handleGoToReciter = useCallback(() => {
-    handleClose();
-    if (onGoToReciter) {
-      onGoToReciter();
-    }
-  }, [handleClose, onGoToReciter]);
-
-  const handleEditDetails = useCallback(() => {
-    if (!userRecitationId) return;
-    const rec = useUploadsStore.getState().getRecitationById(userRecitationId);
-    if (!rec) return;
-    handleClose();
-    setTimeout(() => {
-      SheetManager.show('organize-recitation', {
-        payload: {recitation: rec},
-      });
-    }, 300);
-  }, [userRecitationId, handleClose]);
-
-  const handleShare = useCallback(() => {
-    if (!reciterId || !rewayatId || !surah) return;
-    const reciter = getReciterByIdSync(reciterId);
-    if (!reciter?.slug) return;
-    const rewayat = reciter.rewayat.find(rw => rw.id === rewayatId);
-    if (!rewayat) return;
-    const surahNum = surah.id;
-    const position = usePlayerStore.getState().playback.position;
-    const timestampSec = position > 0 ? Math.floor(position) : undefined;
-    const url = recitationShareUrl(
-      reciter.slug,
-      surahNum,
-      rewayat.id,
-      timestampSec,
-    );
-    shareUrl(url, `Listen to Surah ${surahNum} on ${branding.appName}`);
-  }, [reciterId, rewayatId, surah]);
+    downloadProgress,
+    handleToggleLove,
+    handleDownload,
+    handleAddToPlaylist,
+    handleGoToReciter,
+    handleEditDetails,
+    handleShare,
+  } = usePlayerOptions(payload, handleClose);
+  // @ai-end
 
   const handleSheetChange = useCallback((index: number) => {
     if (index === -1) {
@@ -288,6 +157,11 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
   if (!surah && !isUserUpload) {
     return null;
   }
+
+  const headerReciter = reciterId ? getReciterByIdSync(reciterId) : undefined;
+  const reciterDisplayName = headerReciter
+    ? getReciterDisplayName(headerReciter)
+    : reciterId && getReciterName(reciterId);
 
   // Determine which options to show
   const showEditDetails = isUserUpload;
@@ -315,7 +189,7 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
             size={moderateScale(16)}
             color={theme.colors.text}
           />
-          <Text style={styles.optionText}>Edit Details</Text>
+          <Text style={styles.optionText}>{t('options.editDetails')}</Text>
         </Pressable>
       ),
     });
@@ -349,10 +223,12 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
           )}
           <Text style={styles.optionText}>
             {isCurrentlyDownloading
-              ? `Downloading ${Math.round(downloadProgress * 100)}%`
+              ? t('options.downloading', {
+                  percent: Math.round(downloadProgress * 100),
+                })
               : isTrackDownloaded
-                ? 'Downloaded'
-                : 'Download'}
+                ? t('options.downloaded')
+                : t('common:actions.download')}
           </Text>
         </Pressable>
       ),
@@ -374,7 +250,7 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
             size={moderateScale(18)}
             color={theme.colors.text}
           />
-          <Text style={styles.optionText}>Add to Collection</Text>
+          <Text style={styles.optionText}>{t('options.addToCollection')}</Text>
         </Pressable>
       ),
     });
@@ -396,7 +272,9 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
             filled={isLovedState}
           />
           <Text style={styles.optionText}>
-            {isLovedState ? 'Remove from Loved' : 'Add to Loved'}
+            {isLovedState
+              ? t('options.removeFromLoved')
+              : t('options.addToLoved')}
           </Text>
         </Pressable>
       ),
@@ -418,7 +296,7 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
             size={moderateScale(18)}
             color={theme.colors.text}
           />
-          <Text style={styles.optionText}>Share</Text>
+          <Text style={styles.optionText}>{t('common:actions.share')}</Text>
         </Pressable>
       ),
     });
@@ -439,7 +317,7 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
             size={moderateScale(18)}
             filled={false}
           />
-          <Text style={styles.optionText}>Go to Reciter</Text>
+          <Text style={styles.optionText}>{t('options.goToReciter')}</Text>
         </Pressable>
       ),
     });
@@ -460,7 +338,7 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
             size={moderateScale(18)}
             color={theme.colors.text}
           />
-          <Text style={styles.optionText}>Learn About Surah</Text>
+          <Text style={styles.optionText}>{t('options.learnAboutSurah')}</Text>
         </Pressable>
       ),
     });
@@ -469,6 +347,7 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
   return (
     <ActionSheet
       id={props.sheetId}
+      tabletPresentation={showSurahInfo ? 'card' : 'menu'}
       containerStyle={[
         styles.sheetContainer,
         showSurahInfo && styles.sheetContainerExpanded,
@@ -479,7 +358,9 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
       {showSurahInfo ? (
         <>
           <View style={styles.headerContainer}>
-            <Text style={styles.headerTitle}>About {surah!.name}</Text>
+            <Text style={styles.headerTitle}>
+              {t('options.aboutSurah', {surah: getSurahDisplayName(surah!)})}
+            </Text>
           </View>
           <ScrollView
             style={styles.scrollView}
@@ -487,10 +368,14 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
             bounces={true}>
             <View style={styles.infoContent}>
               <View style={styles.surahInfoHeader}>
-                <Text style={styles.surahInfoName}>{surah!.name}</Text>
-                <Text style={styles.surahInfoTranslation}>
-                  {surah!.translated_name_english}
+                <Text style={styles.surahInfoName}>
+                  {getSurahDisplayName(surah!)}
                 </Text>
+                {getSurahMeaning(surah!) ? (
+                  <Text style={styles.surahInfoTranslation}>
+                    {getSurahMeaning(surah!)}
+                  </Text>
+                ) : null}
               </View>
               {currentSurahInfo && (
                 <RenderHtml
@@ -507,13 +392,12 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
         <View style={styles.container}>
           <View style={styles.header}>
             <Text style={styles.surahName} numberOfLines={1}>
-              {isUserUpload ? uploadHeaderTitle : surah!.name}
+              {isUserUpload ? uploadHeaderTitle : getSurahDisplayName(surah!)}
             </Text>
             <Text style={styles.surahTranslation} numberOfLines={1}>
               {isUserUpload
                 ? uploadHeaderSubtitle
-                : (reciterId && getReciterName(reciterId)) ||
-                  surah!.translated_name_english}
+                : reciterDisplayName || getSurahMeaning(surah!)}
             </Text>
           </View>
 
@@ -530,6 +414,7 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
     </ActionSheet>
   );
 };
+// @ai-end
 
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({

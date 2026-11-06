@@ -42,7 +42,7 @@ Object.values(versesBySurah).forEach(arr =>
 );
 
 // Track which translation is currently indexed
-let currentTranslationId: string = 'saheeh';
+let currentTranslationId = 'saheeh';
 
 // Pre-build enhanced verse arrays with translations at module scope
 export const enhancedVersesBySurah: Record<number, EnhancedVerse[]> = {};

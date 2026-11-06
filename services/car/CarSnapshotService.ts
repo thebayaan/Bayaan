@@ -1,12 +1,12 @@
 import {AppState, Image} from 'react-native';
 import branding from '@/config/branding';
+import {isFeatureEnabled} from '@/config/featureFlags';
 import {BayaanCar} from '@/modules/bayaan-car';
 import {RECITERS, Reciter} from '@/data/reciterData';
 import {SURAHS} from '@/data/surahData';
 import {getSystemPlaylists} from '@/data/systemPlaylists';
 import {SURAH_TO_JUZ} from '@/data/juzData';
-import {reciterImages} from '@/utils/reciterImages';
-import {formatReciterName} from '@/utils/artworkUtils';
+import {getLocalReciterImage} from '@/utils/reciterImageLookup'; // @ai
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
 import {localAggregationStore} from '@/services/analytics/LocalAggregationStore';
 import {useLovedStore} from '@/services/player/store/lovedStore';
@@ -62,7 +62,7 @@ export function resolveReciterArtwork(reciter: Reciter): CarArtwork {
       url: reciter.image_url.replace(/^http:\/\//, 'https://'),
     };
   }
-  const asset = reciterImages[formatReciterName(reciter.name)];
+  const asset = getLocalReciterImage(reciter.name); // @ai
   if (asset !== undefined) {
     const resolved = Image.resolveAssetSource(asset);
     if (resolved?.uri) return {kind: 'asset', uri: resolved.uri};
@@ -131,6 +131,7 @@ export async function writeCarSnapshotNow(): Promise<void> {
     surahToJuz: SURAH_TO_JUZ,
     resolveReciterArtwork,
     surahArtworkBase: branding.surahArtworkCdnBase,
+    uploadsEnabled: isFeatureEnabled('userUploads'),
   });
   // An older concurrent write must not overwrite a newer one.
   if (seq < committedSeq) return;

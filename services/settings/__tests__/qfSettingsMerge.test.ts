@@ -9,7 +9,9 @@ describe('settings field intent', () => {
       list: ['other-device'],
       unknown: {nested: true},
     };
-    expect(applySettingsChanges(remote, settingsChanges(baseline, local))).toEqual({
+    expect(
+      applySettingsChanges(remote, settingsChanges(baseline, local)),
+    ).toEqual({
       map: {hafs: 'new', future: 'unknown'},
       list: ['one', 'two'],
       unknown: {nested: true},
@@ -19,11 +21,17 @@ describe('settings field intent', () => {
 
   test('recognizes a local reversion and ignores object key order', () => {
     expect(settingsChanges({showWBW: false}, {showWBW: false})).toEqual([]);
-    expect(settingsChanges({map: {a: 1, b: 2}}, {map: {b: 2, a: 1}})).toEqual([]);
+    expect(settingsChanges({map: {a: 1, b: 2}}, {map: {b: 2, a: 1}})).toEqual(
+      [],
+    );
   });
 
   test('never traverses prototypes when applying persisted changes', () => {
-    expect(applySettingsChanges({}, [{path: ['__proto__', 'polluted'], value: true}])).toEqual({});
+    expect(
+      applySettingsChanges({}, [
+        {path: ['__proto__', 'polluted'], value: true},
+      ]),
+    ).toEqual({});
     expect({}).not.toHaveProperty('polluted');
   });
 });

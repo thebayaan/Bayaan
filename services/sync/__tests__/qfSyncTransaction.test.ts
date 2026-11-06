@@ -18,8 +18,19 @@ const sqlitePromise = (async () => {
     'web',
     'wa-sqlite',
   );
+  const wasmBinary = fs.readFileSync(path.join(directory, 'wa-sqlite.wasm'));
+  // SDK 58's wa-sqlite build ignores a wasmBinary option, so hand it the
+  // compiled module directly.
   const module = await require(path.join(directory, 'wa-sqlite.js'))({
-    wasmBinary: fs.readFileSync(path.join(directory, 'wa-sqlite.wasm')),
+    instantiateWasm: (
+      imports: WebAssembly.Imports,
+      done: (instance: WebAssembly.Instance) => void,
+    ) => {
+      WebAssembly.instantiate(wasmBinary, imports).then(result =>
+        done(result.instance),
+      );
+      return {};
+    },
   });
   const SQLite = require(path.join(directory, 'sqlite-api.js'));
   return {sqlite3: SQLite.Factory(module), SQLite};

@@ -62,6 +62,7 @@ class BayaanLibraryService : MediaLibraryService() {
 
   override fun onCreate() {
     super.onCreate()
+    CarBrand.init(applicationContext)
     CarBridge.init(applicationContext)
     val p = CarForwardingPlayer(mainLooper)
     player = p
@@ -107,12 +108,12 @@ class BayaanLibraryService : MediaLibraryService() {
   private fun satisfyForegroundStart() {
     val manager = getSystemService(NotificationManager::class.java)
     val builder = if (Build.VERSION.SDK_INT >= 26) {
-      manager.createNotificationChannel(NotificationChannel(FGS_CHANNEL, "Bayaan car", NotificationManager.IMPORTANCE_MIN))
+      manager.createNotificationChannel(NotificationChannel(FGS_CHANNEL, "${CarBrand.name} car", NotificationManager.IMPORTANCE_MIN))
       Notification.Builder(this, FGS_CHANNEL)
     } else {
       @Suppress("DEPRECATION") Notification.Builder(this)
     }
-    val notification = builder.setSmallIcon(applicationInfo.icon).setContentTitle("Bayaan").build()
+    val notification = builder.setSmallIcon(applicationInfo.icon).setContentTitle(CarBrand.name).build()
     if (Build.VERSION.SDK_INT >= 29) {
       startForeground(FGS_NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
     } else {

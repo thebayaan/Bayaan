@@ -1,24 +1,27 @@
 import React, {useCallback, useMemo} from 'react';
 import {View, Text, Pressable, StyleSheet} from 'react-native';
-import {ScaledSheet, moderateScale} from 'react-native-size-matters';
+import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import ActionSheet, {
-  SheetProps,
-  SheetManager,
-} from 'react-native-actions-sheet';
+import {SheetProps, SheetManager} from 'react-native-actions-sheet';
+import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import {Feather} from '@expo/vector-icons';
 import {PlaylistIcon} from '@/components/Icons';
 import Color from 'color';
 import {useUploadsStore} from '@/store/uploadsStore';
 import {usePlaylists} from '@/hooks/usePlaylists';
 import {pickAndImportAudioFiles} from '@/utils/importAudio';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+// @ai-end
 
+// @ai-start
 export const AddToCollectionSheet = (
   props: SheetProps<'add-to-collection'>,
 ) => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
+  const {t} = useTranslation('sheets');
   const {importFile, importFiles} = useUploadsStore();
   const {playlists, createPlaylist} = usePlaylists();
 
@@ -74,12 +77,13 @@ export const AddToCollectionSheet = (
   return (
     <ActionSheet
       id={props.sheetId}
+      tabletPresentation="menu" // @ai
       containerStyle={styles.sheetContainer}
       indicatorStyle={styles.indicator}
       gestureEnabled={true}>
       <View style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.title}>Add to Collection</Text>
+          <Text style={styles.title}>{t('addToCollection.title')}</Text>
         </View>
 
         <View style={styles.card}>
@@ -94,7 +98,9 @@ export const AddToCollectionSheet = (
               size={moderateScale(18)}
               color={theme.colors.text}
             />
-            <Text style={styles.optionText}>Upload Recitation</Text>
+            <Text style={styles.optionText}>
+              {t('addToCollection.uploadRecitation')}
+            </Text>
           </Pressable>
 
           <View style={styles.divider} />
@@ -106,7 +112,9 @@ export const AddToCollectionSheet = (
             ]}
             onPress={handleNewPlaylist}>
             <PlaylistIcon color={theme.colors.text} size={moderateScale(18)} />
-            <Text style={styles.optionText}>Create New Playlist</Text>
+            <Text style={styles.optionText}>
+              {t('addToCollection.createPlaylist')}
+            </Text>
           </Pressable>
 
           <View style={styles.divider} />
@@ -122,13 +130,16 @@ export const AddToCollectionSheet = (
               size={moderateScale(18)}
               color={theme.colors.text}
             />
-            <Text style={styles.optionText}>Add Favorite Reciter</Text>
+            <Text style={styles.optionText}>
+              {t('addToCollection.addFavoriteReciter')}
+            </Text>
           </Pressable>
         </View>
       </View>
     </ActionSheet>
   );
 };
+// @ai-end
 
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({

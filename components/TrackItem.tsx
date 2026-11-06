@@ -1,7 +1,8 @@
 import React, {useMemo} from 'react';
 import {View, Text, Pressable, StyleSheet} from 'react-native';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
+import {useResponsive} from '@/hooks/useResponsive'; // @ai
 import {ReciterImage} from '@/components/ReciterImage';
 import {getSurahById, getReciterByIdSync} from '@/services/dataService';
 import {surahGlyphMap} from '@/utils/surahGlyphMap';
@@ -18,6 +19,23 @@ import {CircularProgress} from '@/components/CircularProgress';
 import {Feather, Ionicons} from '@expo/vector-icons';
 import {GradientText} from '@/components/GradientText';
 import {getDisplayLabelFromName} from '@/services/rewayah/RewayahIdentity';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+import {currentLanguageConfig} from '@/i18n/language'; // @ai
+// @ai-start
+import {useSurahOptionsContext} from '@/components/sheets/options/SurahOptionsContext';
+import {useNativeOptionsMenu} from '@/components/sheets/options/OptionsMenu';
+// @ai-end
+import {
+  getReciterDisplayName,
+  getSurahDisplayName,
+  localizeDigits,
+} from '@/i18n/format';
+// @ai-end
+
+// @ai-start
+const KNOWN_STYLES = ['murattal', 'mojawwad', 'molim'] as const;
+// @ai-end
 
 interface TrackItemProps {
   reciterId: string;
@@ -29,8 +47,14 @@ interface TrackItemProps {
   hidePlayButton?: boolean;
   onOptionsPress?: () => void;
   onLongPress?: () => void;
+  /**
+   * A native menu laid over the ••• button on tablets, for screens whose
+   * options aren't surah options (downloads, uploads). @ai
+   */
+  optionsMenu?: React.ReactNode;
 }
 
+// @ai-start
 export const TrackItem: React.FC<TrackItemProps> = React.memo(
   ({
     reciterId,
@@ -42,8 +66,25 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
     hidePlayButton,
     onOptionsPress,
     onLongPress,
+    optionsMenu,
   }) => {
     const {theme} = useTheme();
+    // @ai-start
+    // On iPad (not in a compact window) inset the row by the page margin
+    // (ipad-standards §5.2) so it never touches the pane edge when the
+    // capped column is as wide as the pane (11" portrait).
+    const {isTablet, width: windowWidth} = useResponsive();
+    const tabletInset =
+      isTablet && windowWidth >= 600
+        ? {
+            marginHorizontal: windowWidth >= 900 ? 32 : 24,
+            borderRadius: 12,
+            overflow: 'hidden' as const,
+          }
+        : null;
+    // @ai-end
+    const {t} = useTranslation(['collection', 'common']);
+    const {t: tHome} = useTranslation('home'); // @ai
 
     // Sync data loading — no async, no useState, no useEffect
     const reciter = useMemo(
@@ -113,10 +154,40 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
       );
     }, [reciterId, surahId, rewayatId, userRecitationId, currentTrack]);
 
+    // @ai-start
+    const options = useSurahOptionsContext();
+    const tapMenuAvailable = useNativeOptionsMenu('tap');
+    const rowMenuAvailable = useNativeOptionsMenu('longPress');
+    // @ai-end
+
     const surah = getSurahById(parseInt(surahId, 10));
     if (!surah || !reciter) return null;
 
-    const surahGlyph = surahGlyphMap[surah.id];
+    // @ai-start
+    // Screens that provide surah options get native menus on tablets: ••• on
+    // a tap, and the row on a long press or secondary click (iPad).
+    const optionsPayload =
+      onOptionsPress && options
+        ? options.build(surah, {reciterId, rewayatId, userRecitationId})
+        : null;
+    const tapMenu = tapMenuAvailable && !!optionsPayload;
+    const rowMenu = rowMenuAvailable && !!optionsPayload;
+    // @ai-end
+
+    // The Arabic surah name is already shown as text in Arabic mode.
+    const surahGlyph =
+      currentLanguageConfig.bilingualContent === 'ar' // @ai
+        ? undefined
+        : surahGlyphMap[surah.id];
+    const surahTitle = `${localizeDigits(surah.id)}. ${getSurahDisplayName(
+      surah,
+    )}`;
+    const knownStyle = KNOWN_STYLES.find(
+      s => s === rewayat?.style?.toLowerCase(),
+    );
+    const styleLabel = knownStyle
+      ? t(`common:styles.${knownStyle}`)
+      : rewayat?.style;
 
     // Create a compact badge for the rewayat if available
     const renderRewayatBadge = () => {
@@ -124,77 +195,96 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
       return (
         <Text style={[styles.rewayatText, {color: theme.colors.textSecondary}]}>
           {getDisplayLabelFromName(rewayat.name)}
-          {rewayat.style ? ` \u2022 ${rewayat.style}` : ''}
+          {styleLabel ? ` \u2022 ${styleLabel}` : ''}
         </Text>
       );
     };
 
-    return (
-      <View style={[styles.trackItem, {backgroundColor: theme.colors.card}]}>
-        {/* Play zone */}
-        <Pressable
-          style={styles.playZone}
-          onPress={onPress}
-          onLongPress={onLongPress}>
-          <View style={styles.imageContainer}>
-            <ReciterImage
-              reciterName={reciter?.name || ''}
-              imageUrl={reciter?.image_url || undefined}
-              style={styles.reciterImage}
-            />
-          </View>
+    const playZone = (
+      <Pressable
+        style={styles.playZone}
+        onPress={onPress}
+        onLongPress={rowMenu ? undefined : onLongPress}>
+        <View style={styles.imageContainer}>
+          <ReciterImage
+            reciterName={reciter?.name || ''}
+            imageUrl={reciter?.image_url || undefined}
+            style={styles.reciterImage}
+          />
+        </View>
 
-          <View style={styles.trackInfo}>
-            <View style={styles.surahNameRow}>
-              {isCurrentTrack ? (
-                <GradientText
-                  style={[styles.surahName, {color: theme.colors.text}]}
-                  surahId={surah.id}>
-                  {surah.id + '. ' + surah.name}
-                </GradientText>
-              ) : (
-                <Text style={[styles.surahName, {color: theme.colors.text}]}>
-                  {surah.id + '. ' + surah.name}
-                </Text>
-              )}
-              {surahGlyph && (
-                <Text
-                  style={[styles.surahGlyphInline, {color: theme.colors.text}]}>
-                  {surahGlyph}
-                </Text>
-              )}
-            </View>
-            <View style={styles.reciterInfoRow}>
-              {isCurrentlyDownloading ? (
-                <CircularProgress
-                  progress={downloadProgress}
-                  size={moderateScale(13)}
-                  strokeWidth={moderateScale(1.5)}
-                  color={theme.colors.textSecondary}
-                />
-              ) : isDownloadedState ? (
-                <Ionicons
-                  name="arrow-down-circle"
-                  size={moderateScale(13)}
-                  color={theme.colors.textSecondary}
-                  style={styles.downloadIcon}
-                />
-              ) : null}
-              <Text
-                style={[
-                  styles.reciterName,
-                  {color: theme.colors.textSecondary},
-                ]}>
-                {reciter.name}
+        <View style={styles.trackInfo}>
+          <View style={styles.surahNameRow}>
+            {isCurrentTrack ? (
+              <GradientText
+                style={[styles.surahName, {color: theme.colors.text}]}
+                surahId={surah.id}>
+                {surahTitle}
+              </GradientText>
+            ) : (
+              <Text style={[styles.surahName, {color: theme.colors.text}]}>
+                {surahTitle}
               </Text>
-            </View>
-            {renderRewayatBadge()}
+            )}
+            {surahGlyph && (
+              <Text
+                style={[styles.surahGlyphInline, {color: theme.colors.text}]}>
+                {surahGlyph}
+              </Text>
+            )}
           </View>
-        </Pressable>
+          <View style={styles.reciterInfoRow}>
+            {isCurrentlyDownloading ? (
+              <CircularProgress
+                progress={downloadProgress}
+                size={moderateScale(13)}
+                strokeWidth={moderateScale(1.5)}
+                color={theme.colors.textSecondary}
+              />
+            ) : isDownloadedState ? (
+              <Ionicons
+                name="arrow-down-circle"
+                size={moderateScale(13)}
+                color={theme.colors.textSecondary}
+                style={styles.downloadIcon}
+              />
+            ) : null}
+            <Text
+              style={[styles.reciterName, {color: theme.colors.textSecondary}]}>
+              {getReciterDisplayName(reciter)}
+            </Text>
+          </View>
+          {renderRewayatBadge()}
+        </View>
+      </Pressable>
+    );
+
+    return (
+      <View
+        style={[
+          styles.trackItem,
+          {backgroundColor: theme.colors.card},
+          tabletInset, // @ai
+        ]}>
+        {/* Play zone */}
+        {/* @ai-start */}
+        {rowMenu && options ? (
+          <options.Menu
+            payload={optionsPayload}
+            trigger="longPress"
+            style={styles.playZoneHost}>
+            {playZone}
+          </options.Menu>
+        ) : (
+          playZone
+        )}
+        {/* @ai-end */}
 
         {/* Options zone */}
         {onOptionsPress && (
-          <Pressable style={styles.optionsZone} onPress={onOptionsPress}>
+          <Pressable
+            style={styles.optionsZone}
+            onPress={tapMenu ? undefined : onOptionsPress}>
             {isCurrentTrack ? (
               <NowPlayingIndicator
                 isPlaying={
@@ -212,15 +302,29 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
                 color={theme.colors.text}
               />
             )}
+            {/* @ai-start */}
+            {tapMenu && options ? (
+              <options.Menu
+                payload={optionsPayload}
+                layout="overlay"
+                accessibilityLabel={tHome('surahItem.moreOptions')}>
+                <View />
+              </options.Menu>
+            ) : (
+              optionsMenu
+            )}
+            {/* @ai-end */}
           </Pressable>
         )}
       </View>
     );
   },
 );
+// @ai-end
 
 TrackItem.displayName = 'TrackItem';
 
+// @ai-start
 const styles = StyleSheet.create({
   trackItem: {
     flexDirection: 'row',
@@ -234,7 +338,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: moderateScale(18),
   },
   imageContainer: {
-    marginRight: moderateScale(12),
+    marginEnd: moderateScale(12),
   },
   reciterImage: {
     width: moderateScale(50),
@@ -256,7 +360,7 @@ const styles = StyleSheet.create({
   surahGlyphInline: {
     fontSize: moderateScale(16),
     fontFamily: 'SurahNames',
-    marginLeft: moderateScale(6),
+    marginStart: moderateScale(6),
   },
   reciterInfoRow: {
     flexDirection: 'row',
@@ -276,6 +380,9 @@ const styles = StyleSheet.create({
     fontFamily: 'Manrope-Regular',
     textTransform: 'capitalize',
   },
+  playZoneHost: {
+    flex: 1,
+  },
   optionsZone: {
     width: '20%' as any,
     minWidth: moderateScale(50),
@@ -283,7 +390,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: moderateScale(8),
-    paddingRight: moderateScale(12),
+    paddingEnd: moderateScale(12),
     alignSelf: 'stretch' as const,
   },
 });
+// @ai-end

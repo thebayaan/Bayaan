@@ -31,6 +31,7 @@ import {surahArtworkFileName, surahArtworkUrl} from './buildSnapshot';
 import {addSnapshotListener} from './syncWidgets';
 import {setContentCommandRunner} from './handleWidgetCommand';
 import {runContentCommand} from './contentCommands';
+import {enabledKinds, isWidgetEnabled} from './enabledWidgets';
 
 setContentCommandRunner(runContentCommand);
 
@@ -140,7 +141,7 @@ async function loadPlaylists(): Promise<PlaylistWithItems[]> {
 }
 
 async function flushOnce(reloadPlaylists: boolean): Promise<void> {
-  if (reloadPlaylists) {
+  if (reloadPlaylists && isWidgetEnabled('LibraryShelf')) {
     try {
       cachedPlaylists = await loadPlaylists();
     } catch (error) {
@@ -154,7 +155,7 @@ async function flushOnce(reloadPlaylists: boolean): Promise<void> {
     now: Date.now(),
     downloads: useDownloadStore.getState().downloads,
     playlists: cachedPlaylists,
-    spotlight: spotlightReciters(),
+    spotlight: isWidgetEnabled('ReciterSpotlight') ? spotlightReciters() : [],
     sleepTimerEnd: usePlayerStore.getState().settings.sleepTimerEnd,
     surahName: id => getSurahById(id)?.name ?? null,
     reciterName: id => getReciterByIdSync(id)?.name ?? null,
@@ -162,11 +163,11 @@ async function flushOnce(reloadPlaylists: boolean): Promise<void> {
   const kinds = changedContentKindsForContent(lastContent, next);
   if (kinds.length > 0) {
     writeContent(next);
-    reloadWidgets(kinds);
+    reloadWidgets(enabledKinds(kinds));
     lastContent = next;
   }
   if (lastContent && (await cacheContentArtwork(lastContent))) {
-    reloadWidgets(ARTWORK_KINDS);
+    reloadWidgets(enabledKinds(ARTWORK_KINDS));
   }
 }
 
@@ -219,20 +220,20 @@ function schedule(reloadPlaylists = false): void {
   }, DEBOUNCE_MS);
 }
 
-// Adhkar, Hijri Date and Occasion depend only on the date, so nothing else
-// reloads them. Reloading on launch and foreground refreshes them and lets
+// Adhkar depends only on the date, so nothing else reloads it. Reloading on
+// launch and foreground refreshes it and lets
 // Android re-arm its context alarm after a force stop.
-const DATE_KINDS: ContentWidgetKind[] = ['Adhkar', 'HijriDate', 'Occasion'];
+const DATE_KINDS: ContentWidgetKind[] = ['Adhkar'];
 
 // Started by the root layout next to startWidgetSync.
 export function startContentWidgetSync(): () => void {
   if (!isWidgetsAvailable()) return () => undefined;
-  reloadWidgets(DATE_KINDS);
+  reloadWidgets(enabledKinds(DATE_KINDS));
   runFlush(true);
   const unsubs = [
     addSnapshotListener((prev, next) => {
       const kinds = changedContentKindsForSnapshot(prev, next);
-      if (kinds.length > 0) reloadWidgets(kinds);
+      reloadWidgets(enabledKinds(kinds));
     }),
     useDownloadStore.subscribe((state, prev) => {
       if (state.downloads === prev.downloads) return;
@@ -254,7 +255,7 @@ export function startContentWidgetSync(): () => void {
   ];
   const appState = AppState.addEventListener('change', state => {
     if (state !== 'active') return;
-    reloadWidgets(DATE_KINDS);
+    reloadWidgets(enabledKinds(DATE_KINDS));
     runFlush(true);
   });
   return () => {
