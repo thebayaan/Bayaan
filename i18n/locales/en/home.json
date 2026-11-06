@@ -177,7 +177,8 @@
     "backendUnreachable": "Backend unreachable"
   },
   "errorBoundary": {
-    "message": "Sorry.. there was an error"
+    "message": "{{appName}} hit an unexpected error on this screen. Your downloads and saved items are safe.",
+    "repeat": "{{appName}} keeps hitting errors. Please close the app fully and open it again."
   },
   "input": {
     "characterCount": "{{current}}/{{max}} characters"

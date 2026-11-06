@@ -49,6 +49,8 @@
   },
   "jest": {
     "preset": "jest-expo",
+    "globalSetup": "<rootDir>/test-utils/jestGlobalSetup.js",
+    "globalTeardown": "<rootDir>/test-utils/jestGlobalTeardown.js",
     "setupFilesAfterEnv": [
       "<rootDir>/test-utils/setupI18n.ts"
     ]

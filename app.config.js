@@ -192,7 +192,17 @@ module.exports = {
         {supportedLocales: {ios: ['en', 'ar']}},
       ],
       '@bacons/apple-targets',
-      ['expo-audio', {enableBackgroundPlayback: true}],
+      // Playback only here: the mic belongs to react-native-audio-api, for
+      // recitation. No microphonePermission: false would remove the iOS usage
+      // string in infoPlist above, which recitation needs. recordAudioAndroid:
+      // false leaves out RECORD_AUDIO while recitation is hidden on Android.
+      [
+        'expo-audio',
+        {
+          enableBackgroundPlayback: true,
+          recordAudioAndroid: false,
+        },
+      ],
       'expo-sqlite',
       'expo-asset',
       'expo-font',
@@ -205,7 +215,9 @@ module.exports = {
         {
           iosBackgroundMode: false,
           androidForegroundService: false,
-          androidPermissions: ['android.permission.RECORD_AUDIO'],
+          // RECORD_AUDIO comes back with recitation on Android, after a device
+          // pass (services/recitation/recitationAvailability.ts).
+          androidPermissions: [],
           disableFFmpeg: true,
         },
       ],
