@@ -669,6 +669,18 @@ export default function MushafViewer({
     setContainerSize(null);
   }, [windowWidth, windowHeight]);
 
+  // @ai-start
+  // The glass header floats over the page, and useHeaderHeight() reads 0
+  // while the chrome is hidden. Keep the height the header last had, so the
+  // page keeps its place each time the chrome toggles.
+  const [floatingHeaderHeight, setFloatingHeaderHeight] = useState(0);
+  useEffect(() => {
+    if (USE_GLASS && rawHeaderHeight > 0) {
+      setFloatingHeaderHeight(rawHeaderHeight);
+    }
+  }, [rawHeaderHeight]);
+  // @ai-end
+
   // Live mushaf layout metrics — tracks rotation / iPad / safe area.
   // On non-glass devices the `MushafPlayerBar` renders as a fixed-height
   // absolute bar; account for it so the page never sits underneath.
@@ -691,6 +703,7 @@ export default function MushafViewer({
     // @ai-end
     toolbarHeight: USE_GLASS ? 0 : 60,
     headerHeight: USE_GLASS ? 0 : 60,
+    floatingHeaderHeight, // @ai
     containerWidth: isTablet ? containerSize?.width : undefined,
     containerHeight: isTablet ? containerSize?.height : undefined,
   });

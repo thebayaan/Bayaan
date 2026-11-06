@@ -490,6 +490,52 @@ describe('getPageLabelOffsets — labels stay on the page', () => {
     }
   });
 
+  it('glass phone landscape: the surah / juz labels clear the floating header', () => {
+    // iPhone 17 Pro in landscape on the iOS 26 simulator: useHeaderHeight()
+    // read 78, and the safe-area insets were 0 / 20 and 62 / 62.
+    const glass = {
+      width: 874,
+      height: 402,
+      isTablet: false,
+      headerHeight: 0,
+      toolbarHeight: 0,
+      ...ios(62, 62),
+      insets: {top: 0, bottom: 20, left: 62, right: 62},
+    };
+    const m = getMushafLayout({...glass, floatingHeaderHeight: 78});
+    for (const isBookLayout of [true, false]) {
+      const {labelTop} = getPageLabelOffsets(m, {isBookLayout, insetTop: 0});
+      expect(labelTop).toBe(78 + 13);
+    }
+    expect(m.paddingTop).toBe(minLabelGutter(78)); // 121
+
+    // With no floating header, only the safe area counts.
+    const bare = getMushafLayout(glass);
+    expect(bare.paddingTop).toBe(minLabelGutter(0)); // 43
+    // The text size follows contentWidth, so no glyph changes size.
+    expect(m.contentWidth).toBe(bare.contentWidth);
+    expect(m.baseLineHeight).toBe(bare.baseLineHeight);
+    expect(m.paddingBottom).toBe(bare.paddingBottom);
+  });
+
+  it('only phone landscape reads floatingHeaderHeight', () => {
+    for (const opts of [
+      ...shapes(H, W, false),
+      ...shapes(1366, 1024, true),
+      ...shapes(1024, 1366, true),
+    ]) {
+      expect(getMushafLayout({...opts, floatingHeaderHeight: 116})).toEqual(
+        getMushafLayout(opts),
+      );
+    }
+    // Non-glass: main.tsx passes 0, and the 60pt header already sets the
+    // gutter.
+    const nonGlass = {...baseOpts, headerHeight: 60, toolbarHeight: 60};
+    expect(
+      getMushafLayout({...nonGlass, floatingHeaderHeight: 0}).paddingTop,
+    ).toBe(72);
+  });
+
   it('leaves the non-glass gutters untouched — they already clear the floor', () => {
     const nonGlass = {
       width: W,
