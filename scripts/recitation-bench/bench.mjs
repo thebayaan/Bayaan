@@ -11,7 +11,9 @@
 //     [--dwell N] [--only correct|incorrect] [--limit N]
 //
 // TILAWA_DIST=<dir> loads another build of the engine (a patched copy), and
-// ENGINE_OPTS='<json>' adds session options (e.g. {"keepContextOnDefer":true}).
+// ENGINE_OPTS='<json>' adds or overrides session options. As in the app,
+// keepContextOnDefer and config.wholeWordAtCut are on unless ENGINE_OPTS turns
+// them off (e.g. {"keepContextOnDefer":false,"config":{"wholeWordAtCut":false}}).
 // ORT_THREADS=n caps the threads one bench uses.
 // A manifest clip may carry `hint` ({surah, ayah}): the ayah on screen, which
 // the app passes at the start of a take.
@@ -87,7 +89,10 @@ const ortSession = await ort.InferenceSession.create(
     executionProviders: ['cpu'],
     // ORT_THREADS=n caps ORT's threads, to run several benches at once.
     ...(process.env.ORT_THREADS
-      ? {intraOpNumThreads: Number(process.env.ORT_THREADS), interOpNumThreads: 1}
+      ? {
+          intraOpNumThreads: Number(process.env.ORT_THREADS),
+          interOpNumThreads: 1,
+        }
       : {}),
   },
 );
@@ -132,12 +137,15 @@ let levels = [];
 let stopped = false;
 
 function trackHealth() {
-  const h = typeof zs.trackingHealth === 'function' ? zs.trackingHealth() : null;
+  const h =
+    typeof zs.trackingHealth === 'function' ? zs.trackingHealth() : null;
   const key = h ? `${h.lost}:${h.held}` : 'none';
   if (key !== lastHealth) {
     health.push({
       t: +audioT.toFixed(2),
-      ...(h ? {lost: !!h.lost, held: !!h.held, rate: +(h.rate ?? 0).toFixed(3)} : {none: true}),
+      ...(h
+        ? {lost: !!h.lost, held: !!h.held, rate: +(h.rate ?? 0).toFixed(3)}
+        : {none: true}),
     });
     lastHealth = key;
   }
@@ -154,6 +162,15 @@ function pick(msg) {
       };
     case 'verse_match':
       return {type: msg.type, key: `${msg.surah}:${msg.ayah}`};
+    case 'correction': {
+      // Flags in the order the app hears them (its skipped-ayah rule).
+      const issue = msg.state?.issue;
+      return {
+        type: msg.type,
+        phase: msg.state?.phase,
+        ...(issue ? {kind: issue.kind, key: `${issue.surah}:${issue.ayah}`} : {}),
+      };
+    }
     case 'debug': {
       // Where a lock landed (located/relocated carry the hit word).
       const d = msg.data ?? {};
@@ -179,14 +196,15 @@ const zs = await tilawa.createZipformerSession({
   structural: flow === 'correction' ? undefined : false,
   enableFallback: false,
   debug: true,
+  // The app's engine options (recitationEngine.ts).
+  keepContextOnDefer: true,
   ...engineOpts,
-  config:
-    args.dwell || engineOpts.config
-      ? {
-          ...(args.dwell ? {commitDwell: Number(args.dwell)} : {}),
-          ...(engineOpts.config ?? {}),
-        }
-      : undefined,
+  config: {
+    wholeWordAtCut: true,
+    // The app's commitDwell (recitationEngine.ts COMMIT_DWELL).
+    commitDwell: Number(args.dwell ?? 2),
+    ...(engineOpts.config ?? {}),
+  },
 });
 
 const STRUCT_ON = {ayahOrder: true, similarVerse: true};
@@ -199,6 +217,8 @@ let expectedSurah = 0;
 let expectedEnd = 0;
 let flowSeen = 0;
 let lastKey = null;
+// Ayat the take flagged as skipped (the service ignores their matches).
+const skippedKeys = new Set();
 
 async function appFlow() {
   for (; flowSeen < log.length; flowSeen++) {
@@ -217,7 +237,15 @@ async function appFlow() {
         await zs.setStructural(STRUCT_ON);
         checking = true;
       }
+    } else if (
+      e.type === 'correction' &&
+      e.phase === 'error' &&
+      e.kind === 'possible_skipped_ayah'
+    ) {
+      skippedKeys.add(e.key);
     } else if (e.type === 'verse_match' && checking) {
+      // As the service: a match on an ayah flagged as skipped is ignored.
+      if (skippedKeys.has(e.key)) continue;
       // As slidePassage in RecitationTrackingService.
       const [s, a] = e.key.split(':').map(Number);
       if (
@@ -318,6 +346,7 @@ async function runClip(audioPath, timingsPath, hint = null) {
   stopped = false;
   flowSeen = 0;
   lastKey = null;
+  skippedKeys.clear();
   checking = flow === 'correction';
   if (flow === 'correction') {
     const s = Number(args.surah ?? 0) || 1;
@@ -380,7 +409,7 @@ async function runClip(audioPath, timingsPath, hint = null) {
     audio: path.basename(audioPath),
     seconds: +(audio.length / SR).toFixed(2),
     flow,
-    dwell: args.dwell ?? 'default',
+    dwell: Number(args.dwell ?? 2),
     rtf: +(busy / 1000 / (audio.length / SR)).toFixed(3),
     stopMs,
     firstLock: log.find(e => e.type === 'word_progress')?.t ?? null,

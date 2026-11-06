@@ -4,16 +4,19 @@
 #
 #   scripts/recitation-bench/build_noise_corpus.sh <kind> <snr dB> [jobs]
 #
-# kind: babble | pink | hum (noise.sh). Writes .out/corpus/noise_<kind><snr>/.
-# Uses 9 reciters x surahs 67 78, clean and seed 1. Audio is deleted after
-# each run. Honours TILAWA_DIST / ENGINE_OPTS / ORT_THREADS like bench.mjs.
+# kind: babble | pink | hum (noise.sh). Writes .out/corpus/noise_<kind><snr>/,
+# or .out/corpus/$NAME/ when NAME is set (e.g. to keep an engine variant's
+# runs apart). Uses 9 reciters x surahs 67 78, clean and seed 1. Audio is
+# deleted after each run. Honours TILAWA_DIST / ENGINE_OPTS / ORT_THREADS like
+# bench.mjs.
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 OUT="$HERE/.out"
 KIND=$1
 SNR=$2
 JOBS=${3:-3}
-DEST="$OUT/corpus/noise_${KIND}${SNR}"
+NAME=${NAME:-noise_${KIND}${SNR}}
+DEST="$OUT/corpus/$NAME"
 mkdir -p "$DEST"
 one() {
   local RID=$1 SURAH=$2 VAR=$3

@@ -27,10 +27,21 @@ node bench.mjs --list manifest.json --outdir dir     # every clip of a set
 - `--hint s:a` (or a clip's `hint`) is the ayah on screen, which the app passes
   at the start of a take.
 - `TILAWA_DIST=<dir>` loads another build of the engine (a patched copy), and
-  `ENGINE_OPTS='<json>'` adds session options.
+  `ENGINE_OPTS='<json>'` adds or overrides session options.
+- As in the app, the engine judges a word after two more sounds
+  (`commitDwell` 2; `--dwell N` changes it), keeps its tracker across a
+  deferred flag (`keepContextOnDefer: true`) and judges a word split by a
+  segment cut from all its sounds (`config.wholeWordAtCut: true`). The app
+  flow also ignores a match on an ayah already flagged as skipped. `ENGINE_OPTS` can turn either
+  off, e.g. `{"keepContextOnDefer":false,"config":{"wholeWordAtCut":false}}`
+  for the engine as it was before.
 - `ORT_THREADS=1` runs single-threaded: about five times less CPU per run, so
   several benches can run at once.
 - Verdict changes after `stop()` are tagged `stop`; the app never hears them.
+- `gap_rule_check.mjs` checks the patched engine without the model: one
+  skipped ayah raises one flag, though the tracker kept across the flag still
+  matches that ayah from the next one's audio (`TILAWA_DIST` checks another
+  build).
 
 ## Test sets
 
@@ -44,7 +55,8 @@ node bench.mjs --list manifest.json --outdir dir     # every clip of a set
   deleted after each run.
 - `build_noise_corpus.sh <babble|pink|hum> <snr dB>`: the same planted
   recitations (two surahs, clean and one seed) with noise mixed in
-  (`noise.sh`).
+  (`noise.sh`), in `corpus/noise_<kind><snr>`, or `corpus/$NAME` when `NAME`
+  is set.
 - `midstart.py`: a clean recitation cut to start mid-surah, at a chosen ayah
   and word, as when a reader opens a page and starts there. Every mark on it is
   false.

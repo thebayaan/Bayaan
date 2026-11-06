@@ -118,11 +118,15 @@ export function replayRun(run) {
     // (rules without dropSuspects keep them).
     if (unlockAt.has(t) && marks.dropSuspects) book = marks.dropSuspects(book);
     if (byTime.has(t)) {
-      // The lock chunk's verdicts were judged from replayed audio (rules
-      // without dropLockArtifacts take them as they are).
-      const batch = marks.dropLockArtifacts
-        ? marks.dropLockArtifacts(byTime.get(t), lockAt.get(t) ?? null)
-        : byTime.get(t);
+      // As the service, in its order: the lock chunk's verdicts were judged
+      // from replayed audio, and a chunk judging a long stretch across ayat
+      // is the tracker re-aligning (rules without dropLockArtifacts or
+      // dropRealignment take them as they are).
+      let batch = byTime.get(t);
+      if (marks.dropLockArtifacts) {
+        batch = marks.dropLockArtifacts(batch, lockAt.get(t) ?? null);
+      }
+      if (marks.dropRealignment) batch = marks.dropRealignment(batch);
       note(marks.applyVerdicts(book, batch, ms), ms);
     }
   }
