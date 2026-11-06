@@ -13,7 +13,7 @@ jest.mock('@/services/content/contentSync', () => ({
 import {resetDatabases} from '@/test-utils/mockExpoSqlite';
 import type {ContentEnvelope} from '@/types/content';
 import {showWithdrawalNotice, tafseerDownloadFailure} from '../contentNotices';
-import {createTafsirInstaller, tafsirIdFromKey} from '../tafsirInstaller';
+import {createTafsirInstaller} from '../tafsirInstaller';
 
 function makeStore(selected: string | null, installed: string[] = []) {
   const state = {
@@ -65,10 +65,6 @@ const envelope = makeEnvelope([
 ]);
 
 describe('tafsir installer', () => {
-  it('maps keys to tafsir ids', () => {
-    expect(tafsirIdFromKey('qf:tafsirs:169')).toBe('169');
-  });
-
   it('installs parsed rows under the bare id and keeps the existing name', async () => {
     const db = makeDb([{identifier: '169', name: 'Ibn Kathir (Abridged)'}]);
     const store = makeStore('169');

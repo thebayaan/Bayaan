@@ -37,10 +37,7 @@ import {
   type UnitRowWord,
 } from './VerseUnitRowContent';
 // @ai-end
-import {
-  isBundledTranslation,
-  getBundledFootnotes,
-} from '@/utils/translationLookup';
+import {getFootnoteText} from '@/utils/translationLookup';
 // @ai-start
 import {useTranslation} from 'react-i18next';
 import {localizeDigits} from '@/i18n/format';
@@ -285,7 +282,7 @@ export const VerseItem = memo<VerseItemProps>(
       [textColor],
     );
 
-    // Handle footnote press - uses module-scope cached data or translationLookup
+    // Handle footnote press: the footnote body comes from translationLookup.
     // @ai — `footnoteVerseKey`: the Hafs verse whose translation holds the
     // footnote (a verse row passes each of its Hafs verses' own).
     const toggleFootnote = useCallback(
@@ -300,26 +297,16 @@ export const VerseItem = memo<VerseItemProps>(
           return;
         }
 
-        // For bundled translations, use translationLookup; for remote, no footnotes
-        const effectiveId = translationId ?? 'saheeh';
-        const footnotes = isBundledTranslation(effectiveId)
-          ? getBundledFootnotes(footnoteVerseKey, effectiveId) // @ai
-          : undefined;
-
-        if (footnotes) {
-          const footnoteContent = footnotes[footnoteId];
-          setActiveFootnote({
-            id: footnoteId,
-            number: footnoteNumber,
-            content: footnoteContent ?? t('verse.footnoteContentUnavailable'),
-          });
-        } else {
-          setActiveFootnote({
-            id: footnoteId,
-            number: footnoteNumber,
-            content: t('verse.footnoteDataUnavailable'),
-          });
-        }
+        setActiveFootnote({
+          id: footnoteId,
+          number: footnoteNumber,
+          content:
+            getFootnoteText(
+              translationId ?? 'saheeh',
+              footnoteVerseKey,
+              footnoteId,
+            ) ?? t('verse.footnoteDataUnavailable'),
+        });
       },
       [activeFootnote, translationId, t], // @ai
     );

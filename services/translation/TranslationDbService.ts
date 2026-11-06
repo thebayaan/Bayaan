@@ -6,6 +6,17 @@ interface TranslationRow {
   text: string;
 }
 
+interface FootnoteRow {
+  footnote_id: string;
+  text: string;
+}
+
+// A QF footnote body (HTML) keyed by its id in the verse markers.
+export interface TranslationFootnote {
+  id: string;
+  text: string;
+}
+
 interface MetadataRow {
   identifier: string;
   name: string;
@@ -14,6 +25,25 @@ interface MetadataRow {
   direction: string;
   downloaded_at: number;
   verse_count: number;
+}
+
+// Inserts rows in batches of 500, one multi-row INSERT per batch.
+async function insertBatched(
+  db: SQLite.SQLiteDatabase,
+  target: string,
+  rows: Array<Array<string | number>>,
+): Promise<void> {
+  const BATCH_SIZE = 500;
+  for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+    const batch = rows.slice(i, i + BATCH_SIZE);
+    const placeholders = batch
+      .map(row => `(${row.map(() => '?').join(', ')})`)
+      .join(', ');
+    await db.runAsync(
+      `INSERT INTO ${target} VALUES ${placeholders}`,
+      batch.flat(),
+    );
+  }
 }
 
 class TranslationDbService {
@@ -66,6 +96,13 @@ class TranslationDbService {
 
       CREATE INDEX IF NOT EXISTS idx_translations_surah
         ON translations (identifier, surah_number);
+
+      CREATE TABLE IF NOT EXISTS translation_footnotes (
+        identifier TEXT NOT NULL,
+        footnote_id TEXT NOT NULL,
+        text TEXT NOT NULL,
+        PRIMARY KEY (identifier, footnote_id)
+      );
     `);
   }
 
@@ -89,6 +126,7 @@ class TranslationDbService {
       ayahNumber: number;
       text: string;
     }>,
+    footnotes: TranslationFootnote[] = [],
   ): Promise<void> {
     const db = await this.ensureReady();
 
@@ -98,30 +136,30 @@ class TranslationDbService {
         identifier,
       ]);
       await db.runAsync(
+        'DELETE FROM translation_footnotes WHERE identifier = ?',
+        [identifier],
+      );
+      await db.runAsync(
         'DELETE FROM translation_metadata WHERE identifier = ?',
         [identifier],
       );
 
-      // Insert verses in batches of 500
-      const BATCH_SIZE = 500;
-      for (let i = 0; i < verses.length; i += BATCH_SIZE) {
-        const batch = verses.slice(i, i + BATCH_SIZE);
-        const placeholders = batch.map(() => '(?, ?, ?, ?, ?)').join(', ');
-        const values: (string | number)[] = [];
-        for (const v of batch) {
-          values.push(
-            identifier,
-            v.verseKey,
-            v.surahNumber,
-            v.ayahNumber,
-            v.text,
-          );
-        }
-        await db.runAsync(
-          `INSERT INTO translations (identifier, verse_key, surah_number, ayah_number, text) VALUES ${placeholders}`,
-          values,
-        );
-      }
+      await insertBatched(
+        db,
+        'translations (identifier, verse_key, surah_number, ayah_number, text)',
+        verses.map(v => [
+          identifier,
+          v.verseKey,
+          v.surahNumber,
+          v.ayahNumber,
+          v.text,
+        ]),
+      );
+      await insertBatched(
+        db,
+        'translation_footnotes (identifier, footnote_id, text)',
+        footnotes.map(f => [identifier, f.id, f.text]),
+      );
 
       // Save metadata
       await db.runAsync(
@@ -170,12 +208,31 @@ class TranslationDbService {
     return row?.text ?? null;
   }
 
+  // Footnote bodies of one edition, keyed by footnote id.
+  async getFootnotes(identifier: string): Promise<Record<string, string>> {
+    const db = await this.ensureReady();
+    const rows = (await db.getAllAsync(
+      'SELECT footnote_id, text FROM translation_footnotes WHERE identifier = ?',
+      [identifier],
+    )) as FootnoteRow[];
+
+    const result: Record<string, string> = {};
+    for (const row of rows) {
+      result[row.footnote_id] = row.text;
+    }
+    return result;
+  }
+
   async deleteTranslation(identifier: string): Promise<void> {
     const db = await this.ensureReady();
     await db.withTransactionAsync(async () => {
       await db.runAsync('DELETE FROM translations WHERE identifier = ?', [
         identifier,
       ]);
+      await db.runAsync(
+        'DELETE FROM translation_footnotes WHERE identifier = ?',
+        [identifier],
+      );
       await db.runAsync(
         'DELETE FROM translation_metadata WHERE identifier = ?',
         [identifier],

@@ -101,9 +101,10 @@ jest.mock('react-native-actions-sheet', () => ({
 jest.mock('@/utils/haptics', () => ({mediumHaptics: jest.fn()}));
 
 jest.mock('@/utils/translationLookup', () => ({
-  isBundledTranslation: (id: string) => id === 'saheeh',
-  getBundledFootnotes: (verseKey: string) =>
-    verseKey === '2:1' ? {'9001': 'FOOTNOTE-OF-2:1'} : undefined,
+  getFootnoteText: (translationId: string, verseKey: string, id: string) =>
+    translationId === 'saheeh' && verseKey === '2:1' && id === '9001'
+      ? 'FOOTNOTE-OF-2:1'
+      : undefined,
 }));
 
 jest.mock('@/store/tajweedStore', () => {

@@ -20,7 +20,7 @@ import Animated, {
   useAnimatedStyle,
   withTiming,
 } from 'react-native-reanimated';
-import {useRouter, useNavigation} from 'expo-router';
+import {useRouter, useNavigation, useIsFocused} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
 import {useReadingThemeColors} from '@/hooks/useReadingThemeColors';
 import {Ionicons, Feather} from '@expo/vector-icons';
@@ -52,6 +52,7 @@ import {SURAHS} from '@/data/surahData';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {getRewayahShortLabel} from '@/utils/rewayahLabels';
 import {mushafSessionStore} from '@/services/mushaf/MushafSessionStore';
+import {qfActivityDayTracker} from '@/services/sync/qfActivityDayTracker';
 import {useMushafNavigationStore} from '@/store/mushafNavigationStore';
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
 import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
@@ -120,6 +121,10 @@ function pageToSpreadIndex(page: number): number {
 
 function spreadPrimaryPage(spread: Spread): number {
   return spread.right;
+}
+
+function spreadPages(spread: Spread): number[] {
+  return spread.left === null ? [spread.right] : [spread.right, spread.left];
 }
 
 // @ai-start
@@ -810,10 +815,18 @@ export default function MushafViewer({
     [pageToSurah],
   );
 
+  // Reading under another screen pushed over the reader isn't credited.
+  const readerFocused = useIsFocused();
+  useEffect(() => {
+    qfActivityDayTracker.setReaderFocused(readerFocused);
+  }, [readerFocused]);
+
   // Track initial page + start page_read timer on mount
   useEffect(() => {
     trackPageChange(initialPage);
+    qfActivityDayTracker.showPages([initialPage]);
     return () => {
+      qfActivityDayTracker.stop();
       // Session ended on unmount
       if (pageReadTimerRef.current) {
         clearTimeout(pageReadTimerRef.current);
@@ -985,14 +998,21 @@ export default function MushafViewer({
       if (first == null) return;
       // Page number depends on data shape: `number` for single-page data,
       // `Spread` object for facing-pages data.
-      const page: number =
-        typeof first === 'number'
-          ? first
-          : spreadPageToKeep(first as Spread, currentPageRef.current); // @ai
+      let page: number;
+      let shownPages: number[];
+      if (typeof first === 'number') {
+        page = first;
+        shownPages = [first];
+      } else {
+        const spread = first as Spread;
+        page = spreadPageToKeep(spread, currentPageRef.current); // @ai
+        shownPages = spreadPages(spread);
+      }
       setCurrentPage(page);
       useMushafPlayerStore.setState({currentPage: page});
       mushafSessionStore.setLastReadPage(page);
       trackPageChange(page);
+      qfActivityDayTracker.showPages(shownPages);
       const surahId = digitalKhattDataService.initialized
         ? digitalKhattDataService.getPageToSurah()[page]
         : undefined;
@@ -1205,6 +1225,7 @@ export default function MushafViewer({
         setCurrentPage(page);
         useMushafPlayerStore.setState({currentPage: page});
         trackPageChange(page);
+        qfActivityDayTracker.showPages([page]);
         const surahId = pageToSurah[page];
         if (surahId) {
           useMushafSettingsStore.getState().updateActiveChain(surahId, page);
