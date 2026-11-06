@@ -6,6 +6,7 @@ import {useQfSyncStore} from '@/store/qfSyncStore';
 import {qfActivityDayTracker} from '@/services/sync/qfActivityDayTracker';
 import {qfSyncLifecycle} from '@/services/sync/qfSyncLifecycle';
 import {qfSettingsSyncLifecycle} from '@/services/settings/qfSettingsSyncLifecycle';
+import {watchLibraryEdits} from '@/services/library/qfLibraryAdapters';
 import {GuestDataMergeSheet} from './GuestDataMergeSheet';
 
 /**
@@ -36,6 +37,16 @@ export function QfSyncLifecycleBridge() {
     qfSyncLifecycle.updateContext(context);
     qfSettingsSyncLifecycle.updateContext(context);
   }, [accountId, appState, authStatus, online]);
+
+  useEffect(
+    () =>
+      watchLibraryEdits(() => {
+        if (useBayaanAuthStore.getState().status === 'authenticated') {
+          qfSyncLifecycle.requestSync();
+        }
+      }),
+    [],
+  );
 
   useEffect(() => {
     qfActivityDayTracker.setAppActive(appState === 'active');

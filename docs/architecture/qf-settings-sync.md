@@ -128,12 +128,17 @@ unchanged prior-account settings are not silently copied into a new account.
 
 ## Explicit exclusions
 
+The full list of what syncs and what stays on the device, across settings,
+library and annotations, is [sync-registry.md](sync-registry.md).
+
+
 Do not add downloads, queues, playback position, recent reading/search/play
 history, sleep timers, onboarding counters, developer controls, analytics
 identifiers or consent, cache metadata, derived theme objects, transient UI
 state, or runtime errors. Analytics consent stays device-local so a new
 device's default cannot override an opt-out made elsewhere. The deprecated
 primary/accent color and the unreleased community-reflections toggle are also
-excluded. Bookmark/note/reading progress and content collections use
-other ownership/synchronization contracts and do not belong in settings App
-State.
+excluded. Bookmark/note/reading progress and library collections (favourites, loved
+tracks, playlists, saved adhkar) use other ownership/synchronization contracts
+and do not belong in settings App State. The one exception is the list of
+installed translation and tafsir editions, which lives in `settings/content`.

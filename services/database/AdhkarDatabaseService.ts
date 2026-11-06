@@ -492,6 +492,38 @@ class AdhkarDatabaseService {
     return isSaved;
   }
 
+  /**
+   * Replace every saved dhikr at once (account sync), only if the saved set
+   * still matches `expected` (dhikrId to createdAt). Returns false otherwise.
+   */
+  async replaceSaved(
+    expected: Record<string, number>,
+    next: SavedDhikr[],
+  ): Promise<boolean> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    const db = this.db;
+    let replaced = false;
+    await db.withTransactionAsync(async () => {
+      const current = (await db.getAllAsync(
+        `SELECT dhikr_id, created_at FROM dhikr_favorites`,
+      )) as SavedRow[];
+      const unchanged =
+        current.length === Object.keys(expected).length &&
+        current.every(row => expected[row.dhikr_id] === row.created_at);
+      if (!unchanged) return;
+      await db.runAsync(`DELETE FROM dhikr_favorites`);
+      for (const saved of next) {
+        await db.runAsync(
+          `INSERT INTO dhikr_favorites (dhikr_id, created_at) VALUES (?, ?)`,
+          [saved.dhikrId, saved.createdAt],
+        );
+      }
+      replaced = true;
+    });
+    return replaced;
+  }
+
   // Get all saved dhikr IDs
   async getSaved(): Promise<SavedDhikr[]> {
     if (!this.db) throw new Error('Database not initialized');

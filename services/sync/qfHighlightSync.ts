@@ -3,7 +3,6 @@ import {
   BayaanSettingsApiError,
   type RemoteHighlightsDocument,
 } from '@/services/settings/bayaanSettingsApiClient';
-import {BayaanSyncApiError} from './bayaanSyncApiClient';
 import {
   decodeHighlightDocument,
   encodeHighlightDocument,
@@ -15,6 +14,7 @@ import type {
   QfHighlightSyncSnapshot,
   QfSyncedHighlights,
 } from './qfSyncDatabaseService';
+import {appStateLifecycleError, isAppStateConflict} from './appStateErrors';
 
 export interface QfHighlightSyncApi {
   listHighlights(sessionToken: string): Promise<RemoteHighlightsDocument[]>;
@@ -67,25 +67,9 @@ interface RemoteSurah {
 const EMPTY: QfHighlightEntries = {};
 
 /**
- * Remote failures the annotation lifecycle already knows how to retry, or a
- * revoked session, are rethrown as sync errors. App State being off for the
- * client (403, or the BFF reporting it disabled) is not an error for the
- * rest of sync, so it reports `unavailable` instead.
+ * App State being off for the client (403, or the BFF reporting it disabled)
+ * is not an error for the rest of sync, so it reports `unavailable` instead.
  */
-function lifecycleError(error: BayaanSettingsApiError): BayaanSyncApiError {
-  if (error.status === 401) {
-    return new BayaanSyncApiError('session_revoked', 401);
-  }
-  if (error.status === 429) {
-    return new BayaanSyncApiError('rate_limited', 429, error.retryAfterMs);
-  }
-  return new BayaanSyncApiError(
-    'service_unavailable',
-    error.status,
-    error.retryAfterMs,
-  );
-}
-
 function isUnavailable(error: BayaanSettingsApiError): boolean {
   return (
     error.status === 403 ||
@@ -93,14 +77,6 @@ function isUnavailable(error: BayaanSettingsApiError): boolean {
     (error.status >= 400 &&
       error.status < 500 &&
       ![401, 408, 409, 412, 428, 429].includes(error.status))
-  );
-}
-
-/** QF's document changed since it was listed; the next round merges it. */
-function isConflict(error: unknown): boolean {
-  return (
-    error instanceof BayaanSettingsApiError &&
-    [409, 412, 428].includes(error.status)
   );
 }
 
@@ -182,7 +158,7 @@ export async function syncQfHighlights(
   } catch (error) {
     if (!(error instanceof BayaanSettingsApiError)) throw error;
     if (isUnavailable(error)) return {...result, unavailable: true};
-    throw lifecycleError(error);
+    throw appStateLifecycleError(error);
   }
 }
 
@@ -242,7 +218,7 @@ async function syncSurah(
     });
   } catch (error) {
     // Another device wrote first; the next round merges its document.
-    if (isConflict(error)) return {changedLocal, rerun: true};
+    if (isAppStateConflict(error)) return {changedLocal, rerun: true};
     throw error;
   }
   if (!input.isCurrent()) return {changedLocal, rerun: false};

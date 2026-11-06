@@ -14,6 +14,7 @@ import {useBayaanAuthStore} from '@/store/bayaanAuthStore';
 import type {Theme} from '@/utils/themeUtils';
 import {QfSyncStatusRow} from './QfSyncStatusRow';
 import {qfSyncLifecycle} from '@/services/sync/qfSyncLifecycle';
+import {purgeAccountLibrary} from '@/services/library/qfAccountLibrary';
 import {qfSettingsSyncLifecycle} from '@/services/settings/qfSettingsSyncLifecycle';
 import {qfSyncDatabaseService} from '@/services/sync/qfSyncDatabaseService';
 import {qfActivityDayTracker} from '@/services/sync/qfActivityDayTracker';
@@ -108,6 +109,11 @@ export function QfAccountCard() {
       }
     } catch (error) {
       console.error('[QfAccountCard] Account data purge failed:', error);
+    }
+    try {
+      if (accountId) await purgeAccountLibrary(accountId);
+    } catch (error) {
+      console.error('[QfAccountCard] Library purge failed:', error);
     } finally {
       setSignedOut(attempt);
     }

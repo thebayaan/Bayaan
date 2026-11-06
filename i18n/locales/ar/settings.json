@@ -417,7 +417,7 @@
     "signedInAs": "تم تسجيل الدخول باسم {{email}}",
     "signIn": "تسجيل الدخول",
     "signOut": "تسجيل الخروج",
-    "signInPrompt": "سجّل الدخول لمزامنة العلامات المرجعية والملاحظات الخاصة وتقدّم القراءة.",
+    "signInPrompt": "سجّل الدخول لمزامنة العلامات والملاحظات والتظليلات والمفضلة وقوائم التشغيل والإعدادات بين أجهزتك.",
     "signInFailed": "تعذّر تسجيل الدخول. يُرجى المحاولة مرة أخرى.",
     "completingSignIn": "جارٍ إكمال تسجيل الدخول…",
     "unsyncedTitle": "تغييرات غير متزامنة",
@@ -454,6 +454,26 @@
       "message": "استخدم إعدادات السحابة مع الاحتفاظ بقيم الجهاز حيث لا توجد قيم في السحابة، أو احتفظ بإعدادات هذا الجهاز. تبقى في السحابة الحقول التي لا يفهمها هذا التطبيق.",
       "useCloud": "استخدام إعدادات السحابة",
       "keepDevice": "الاحتفاظ بإعدادات هذا الجهاز"
+    },
+    "contentOffer": {
+      "title": "تنزيل من أجهزتك الأخرى؟",
+      "messageBoth": "لديك {{translations}} و{{tafsirs}} على أجهزتك الأخرى. هل تريد تنزيلها هنا أيضًا؟",
+      "messageTranslations": "لديك {{translations}} على أجهزتك الأخرى. هل تريد تنزيلها هنا أيضًا؟",
+      "messageTafsirs": "لديك {{tafsirs}} على أجهزتك الأخرى. هل تريد تنزيلها هنا أيضًا؟",
+      "translations_zero": "لا ترجمات",
+      "translations_one": "ترجمة واحدة",
+      "translations_two": "ترجمتان",
+      "translations_few": "{{count}} ترجمات",
+      "translations_many": "{{count}} ترجمة",
+      "translations_other": "{{count}} ترجمة",
+      "tafsirs_zero": "لا تفاسير",
+      "tafsirs_one": "تفسير واحد",
+      "tafsirs_two": "تفسيران",
+      "tafsirs_few": "{{count}} تفاسير",
+      "tafsirs_many": "{{count}} تفسيرًا",
+      "tafsirs_other": "{{count}} تفسير",
+      "notNow": "ليس الآن",
+      "download": "تنزيل"
     }
   }
 }

@@ -27,6 +27,7 @@ Closes #
 - Branch targets `develop` (not `main`)
 - No `console.log` debug statements left in
 - AI assistance used? If yes, all AI-generated blocks are marked with `// @ai`
+- Adds or changes a setting, a user list, or other data the user keeps? Updated sync or migration and [docs/architecture/sync-registry.md](../docs/architecture/sync-registry.md)
 
 ## Screenshots / recordings
 

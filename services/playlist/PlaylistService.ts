@@ -2,6 +2,7 @@ import {
   databaseService,
   UserPlaylist,
   PlaylistItem,
+  type SyncedPlaylist,
 } from '@/services/database/DatabaseService';
 
 // Re-export types for convenience
@@ -125,6 +126,15 @@ class PlaylistService {
       updatedAt: Date.now(),
     });
     return await databaseService.getPlaylist(id);
+  }
+
+  // Replace a playlist from account sync (see DatabaseService)
+  async replacePlaylistFromSync(
+    id: string,
+    next: SyncedPlaylist | null,
+  ): Promise<void> {
+    await this.initialize();
+    await databaseService.replacePlaylistFromSync(id, next);
   }
 
   // Reorder playlist items

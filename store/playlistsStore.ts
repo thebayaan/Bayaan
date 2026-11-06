@@ -1,3 +1,4 @@
+import {markLibraryEdited} from '@/services/library/libraryEdits';
 import {create} from 'zustand';
 import {
   playlistService,
@@ -78,6 +79,7 @@ export const usePlaylistsStore = create<PlaylistsState>((set, get) => ({
         color,
         description,
       );
+      markLibraryEdited();
       // Small delay to ensure transaction is fully committed
       await new Promise(resolve => setTimeout(resolve, 50));
       // Refresh the list to get updated item counts
@@ -100,6 +102,7 @@ export const usePlaylistsStore = create<PlaylistsState>((set, get) => ({
     try {
       set({error: null});
       const updatedPlaylist = await playlistService.updatePlaylist(id, updates);
+      markLibraryEdited();
       if (updatedPlaylist) {
         // Immediately update the playlist in the store for instant UI feedback
         set(state => ({
@@ -130,6 +133,7 @@ export const usePlaylistsStore = create<PlaylistsState>((set, get) => ({
     try {
       set({error: null});
       await playlistService.deletePlaylist(playlistId);
+      markLibraryEdited();
       // Small delay to ensure transaction is fully committed
       await new Promise(resolve => setTimeout(resolve, 50));
       // Refresh the list to remove deleted playlist
@@ -185,6 +189,7 @@ export const usePlaylistsStore = create<PlaylistsState>((set, get) => ({
         rewayatId,
         userRecitationId,
       );
+      markLibraryEdited();
       // Refresh to update item counts
       await get().loadPlaylists();
       const playlist = get().playlists.find(p => p.id === playlistId);
@@ -205,6 +210,7 @@ export const usePlaylistsStore = create<PlaylistsState>((set, get) => ({
     try {
       set({error: null});
       await playlistService.removeFromPlaylist(itemId);
+      markLibraryEdited();
       // Refresh to update item counts
       await get().loadPlaylists();
       analyticsService.trackPlaylistModified({
@@ -226,6 +232,7 @@ export const usePlaylistsStore = create<PlaylistsState>((set, get) => ({
     try {
       set({error: null});
       await playlistService.reorderPlaylistItems(playlistId, itemIds);
+      markLibraryEdited();
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : 'Failed to reorder playlist items';
