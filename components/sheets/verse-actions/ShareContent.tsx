@@ -27,8 +27,7 @@ import {
 } from '@/store/mushafSettingsStore';
 import {ScrollView} from 'react-native-actions-sheet';
 import {SheetManager} from 'react-native-actions-sheet';
-import {getTranslationTextRaw} from '@/utils/translationLookup';
-import {translationPlainText} from '@/utils/translationText';
+import {getTranslationPlainText} from '@/utils/translationLookup';
 import {
   anchorShareUrl, // @ai
   verseShareUrl,
@@ -179,10 +178,7 @@ export const ShareContent: React.FC<ShareContentProps> = ({
       return {
         translation: joinTranslationParts(
           selectionTranslationParts(ready),
-          hafsKey =>
-            translationPlainText(
-              getTranslationTextRaw(hafsKey, selectedTranslationId),
-            ),
+          hafsKey => getTranslationPlainText(hafsKey, selectedTranslationId),
         ),
         verseRefText: `${surahName} ${ready.label}`,
         linkRefText: `${surahName} ${ready.linkLabel}`,

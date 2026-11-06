@@ -75,9 +75,8 @@ import {localizeDigits} from '@/i18n/format';
 
 import {
   getRenderedTranslationName,
-  getTranslationTextRaw,
+  getTranslationPlainText,
 } from '@/utils/translationLookup';
-import {translationPlainText} from '@/utils/translationText';
 
 // --- Pre-cache Translation/Transliteration Data --- //
 interface TransliterationData {
@@ -687,14 +686,12 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
       ? subscribedFontMgr
       : null;
 
-  // The selected edition's 1:1 as plain text; the bundled Clear Quran until a
+  // The shown edition's 1:1 as plain text; the bundled Clear Quran until a
   // downloaded edition is loaded.
   const actualTranslationText = useMemo(
     () =>
-      translationPlainText(
-        getTranslationTextRaw(verseKey, selectedTranslationId) ||
-          getTranslationTextRaw(verseKey, 'clear-quran'),
-      ) || t('mushafSettings.translationError'),
+      getTranslationPlainText(verseKey, selectedTranslationId) ||
+      t('mushafSettings.translationError'),
     [selectedTranslationId, t],
   );
 

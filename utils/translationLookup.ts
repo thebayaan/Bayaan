@@ -2,8 +2,13 @@ import {
   BUNDLED_TRANSLATIONS,
   type BundledTranslationId,
 } from '@/types/translation';
+import {DEFAULT_TRANSLATION_ID} from '@/services/translation/translationRemap';
 import {tafseerHtmlToPlainText} from '@/utils/tafseerHtmlParser';
-import {stripFootnoteMarkers, stripHtml} from '@/utils/translationText';
+import {
+  stripFootnoteMarkers,
+  stripHtml,
+  translationPlainText,
+} from '@/utils/translationText';
 
 export {
   stripFootnoteMarkers,
@@ -77,17 +82,14 @@ export function getTranslationName(translationId: string): string {
 }
 
 /**
- * The name of the edition a verse view actually shows. A selection that is
- * not installed yet (for example QF 20 replacing bundled Saheeh) renders the
- * bundled fallback, so it is labelled as that instead of by its raw id.
+ * The name of the edition a verse view actually shows: the selection's when
+ * its text is loaded, otherwise the bundled fallback's
+ * (getEffectiveTranslationId).
  */
-export function getRenderedTranslationName(translationId: string): string {
-  if (
-    translationId in BUNDLED_TRANSLATIONS ||
-    translationId in remoteNameRegistry
-  )
-    return getTranslationName(translationId);
-  return BUNDLED_TRANSLATIONS['clear-quran'].name;
+export function getRenderedTranslationName(
+  selectedTranslationId: string | undefined,
+): string {
+  return getTranslationName(getEffectiveTranslationId(selectedTranslationId));
 }
 
 export function isBundledTranslation(id: string): id is BundledTranslationId {
@@ -129,8 +131,55 @@ export function clearActiveRemoteTranslationCache(): void {
 }
 
 /**
- * Universal translation lookup — works for both bundled and remote translations.
- * For remote translations, uses the in-memory cache populated by enhancedVerseData.
+ * The edition whose text is on screen for a selection: the selection itself
+ * when it is bundled or its downloaded text is loaded (enhancedVerseData
+ * fills the cache), otherwise the bundled fallback. A selection that is not
+ * installed yet (QF 20 replacing the retired bundled Saheeh), or whose
+ * download failed to load, renders the fallback; every label and text lookup
+ * resolves through here so they always name and show the same edition.
+ */
+export function getEffectiveTranslationId(
+  selectedTranslationId: string | undefined,
+): string {
+  if (selectedTranslationId === undefined) return DEFAULT_TRANSLATION_ID;
+  if (isBundledTranslation(selectedTranslationId)) return selectedTranslationId;
+  if (activeRemoteTranslationCache?.id === selectedTranslationId)
+    return selectedTranslationId;
+  return DEFAULT_TRANSLATION_ID;
+}
+
+/**
+ * The text shown for a verse, as markup (QF inline HTML, footnote markers
+ * kept for a download; the bundled edition's markers are stripped), read
+ * from the effective edition of the selection.
+ */
+export function getTranslationMarkup(
+  verseKey: string,
+  selectedTranslationId: string | undefined,
+): string {
+  return getTranslationTextRaw(
+    verseKey,
+    getEffectiveTranslationId(selectedTranslationId),
+  );
+}
+
+/**
+ * The text shown for a verse as plain text (copy, share, previews), read
+ * from the effective edition of the selection.
+ */
+export function getTranslationPlainText(
+  verseKey: string,
+  selectedTranslationId: string | undefined,
+): string {
+  return translationPlainText(
+    getTranslationMarkup(verseKey, selectedTranslationId),
+  );
+}
+
+/**
+ * The text of exactly this edition: '' when a remote edition is not the one
+ * loaded. Displays use getTranslationPlainText / getTranslationMarkup, which
+ * fall back to the edition actually shown.
  */
 export function getTranslationText(
   verseKey: string,
@@ -149,7 +198,7 @@ export function getTranslationText(
 }
 
 /**
- * Universal raw translation lookup (no HTML stripping for bundled).
+ * Exact-edition lookup as getTranslationText, without HTML stripping.
  */
 export function getTranslationTextRaw(
   verseKey: string,

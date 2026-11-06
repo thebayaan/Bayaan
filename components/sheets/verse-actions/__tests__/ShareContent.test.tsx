@@ -78,8 +78,11 @@ jest.mock('@/utils/shareUtils', () => ({
 // Translations per verse key for the selected translation ('' = none).
 const mockTranslations = new Map<string, string>();
 jest.mock('@/utils/translationLookup', () => ({
-  getTranslationTextRaw: (verseKey: string) =>
-    mockTranslations.get(verseKey) ?? '',
+  // The real plain-text conversion: shared text never carries markup.
+  getTranslationPlainText: (verseKey: string) =>
+    jest
+      .requireActual('@/utils/translationText')
+      .translationPlainText(mockTranslations.get(verseKey) ?? ''),
 }));
 
 // Hafs is the active mushaf rewayah; Warsh words sit in a side cache. Both

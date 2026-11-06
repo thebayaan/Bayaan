@@ -108,7 +108,7 @@ jest.mock('@/utils/toastUtils', () => ({showToast: jest.fn()}));
 jest.mock('expo-clipboard', () => ({setStringAsync: jest.fn()}));
 jest.mock('expo-router', () => ({router: {push: jest.fn()}}));
 jest.mock('@/utils/translationLookup', () => ({
-  getTranslationTextRaw: (verseKey: string) => `T(${verseKey})`,
+  getTranslationPlainText: (verseKey: string) => `T(${verseKey})`,
 }));
 jest.mock('@/utils/timestampUtils', () => ({getPlayFromHereTarget: jest.fn()}));
 // The real annotations store over a mocked database service.

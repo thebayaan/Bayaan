@@ -20,6 +20,7 @@ import type {SkTypefaceFontProvider} from '@shopify/react-native-skia';
 import FormattedTextRenderer from '@/components/utils/FormattedText';
 import {AyahCommunityReflections} from '@/components/mushaf/AyahCommunityReflections';
 import type {IndexedTajweedData} from '@/utils/tajweedLoader';
+import {getRenderedTranslationName} from '@/utils/translationLookup';
 import type {MushafArabicTextWeight} from '@/store/mushafSettingsStore';
 import {WBWVerseView} from './WBWVerseView';
 import {
@@ -128,7 +129,7 @@ export const UnitRowTranslations = memo<UnitRowTranslationsProps>(
           ))}
         {hasTranslation ? (
           <Text style={translationSourceStyle}>
-            {translationName ?? 'The Clear Quran'}
+            {translationName ?? getRenderedTranslationName(undefined)}
           </Text>
         ) : null}
       </View>

@@ -106,6 +106,8 @@ jest.mock('@/utils/haptics', () => ({mediumHaptics: jest.fn()}));
 // and its label explicitly, so the golden output is unchanged.
 jest.mock('@/utils/translationLookup', () => ({
   isBundledTranslation: (id: string) => id === 'clear-quran',
+  getEffectiveTranslationId: (id?: string) => id ?? 'clear-quran',
+  getRenderedTranslationName: () => 'The Clear Quran',
   getRemoteFootnote: (translationId: string, footnoteId: string) =>
     translationId === '20' && footnoteId === '9001'
       ? 'FOOTNOTE-OF-2:1'

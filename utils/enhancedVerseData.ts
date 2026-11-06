@@ -7,6 +7,7 @@ import {
 } from '@/utils/translationLookup';
 import type {BundledTranslationId} from '@/types/translation';
 import {translationDbService} from '@/services/translation/TranslationDbService';
+import {DEFAULT_TRANSLATION_ID} from '@/services/translation/translationRemap';
 
 // Import data with type safety - loaded once at module scope
 const quranData = require('@/data/quran.json') as QuranData;
@@ -38,7 +39,7 @@ Object.values(versesBySurah).forEach(arr =>
 
 // The bundled edition: the default, and the fallback when a download is
 // missing or unreadable.
-const FALLBACK_TRANSLATION_ID: BundledTranslationId = 'clear-quran';
+const FALLBACK_TRANSLATION_ID: BundledTranslationId = DEFAULT_TRANSLATION_ID;
 
 // Track which translation is currently indexed, and the download revision
 // it was read at (an update of the same edition rebuilds too)

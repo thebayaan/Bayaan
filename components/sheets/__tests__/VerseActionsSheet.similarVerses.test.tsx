@@ -94,7 +94,7 @@ jest.mock('@/utils/toastUtils', () => ({showToast: jest.fn()}));
 jest.mock('expo-clipboard', () => ({setStringAsync: jest.fn()}));
 jest.mock('expo-router', () => ({router: {push: jest.fn()}}));
 jest.mock('@/utils/translationLookup', () => ({
-  getTranslationTextRaw: () => '',
+  getTranslationPlainText: () => '',
 }));
 jest.mock('@/utils/timestampUtils', () => ({getPlayFromHereTarget: jest.fn()}));
 jest.mock('@/services/verse-annotations/VerseAnnotationService', () => ({

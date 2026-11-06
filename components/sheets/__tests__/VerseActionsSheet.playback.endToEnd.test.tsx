@@ -114,7 +114,7 @@ jest.mock('expo-router', () => ({
   router: {push: (route: unknown) => mockRoutes.push(route)},
 }));
 jest.mock('@/utils/translationLookup', () => ({
-  getTranslationTextRaw: (verseKey: string) => `T(${verseKey})`,
+  getTranslationPlainText: (verseKey: string) => `T(${verseKey})`,
 }));
 jest.mock('@/services/verse-annotations/VerseAnnotationService', () => {
   const service: Record<string, unknown> = {

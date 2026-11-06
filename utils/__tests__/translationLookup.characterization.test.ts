@@ -244,17 +244,59 @@ describe('rebuildEnhancedVerses (characterization, develop behavior)', () => {
   });
 });
 
-describe('getRenderedTranslationName', () => {
-  it('labels a selection that is not installed as the edition shown', () => {
-    const lookup: typeof import('../translationLookup') = jest.requireActual(
-      '../translationLookup',
-    );
-    const clearQuran = lookup.getTranslationName('clear-quran');
-    expect(lookup.getRenderedTranslationName('20')).toBe(clearQuran);
+describe('effective translation (the edition on screen)', () => {
+  const lookup: typeof import('../translationLookup') = jest.requireActual(
+    '../translationLookup',
+  );
+  const clearQuranName = lookup.getTranslationName('clear-quran');
+
+  afterEach(() => lookup.clearActiveRemoteTranslationCache());
+
+  it('falls back to Clear Quran, text and label, while the selection is not installed', () => {
+    // The picker registers every offered edition's name, installed or not.
     lookup.registerRemoteTranslationName('20', 'Saheeh International');
+    expect(lookup.getEffectiveTranslationId('20')).toBe('clear-quran');
+    expect(lookup.getRenderedTranslationName('20')).toBe(clearQuranName);
+    expect(lookup.getTranslationPlainText('1:1', '20')).toBe(
+      lookup.getTranslationPlainText('1:1', 'clear-quran'),
+    );
+    expect(lookup.getTranslationPlainText('1:1', '20')).not.toBe('');
+    expect(lookup.getTranslationMarkup('2:255', '20')).toBe(
+      lookup.getBundledTranslationRaw('2:255', 'clear-quran'),
+    );
+  });
+
+  it('falls back while another download is the one loaded', () => {
+    lookup.setActiveRemoteTranslationCache('19', {'1:1': 'other'});
+    expect(lookup.getEffectiveTranslationId('20')).toBe('clear-quran');
+    expect(lookup.getTranslationPlainText('1:1', '20')).not.toBe('other');
+  });
+
+  it('shows the selection once its text is loaded', () => {
+    lookup.registerRemoteTranslationName('20', 'Saheeh International');
+    lookup.setActiveRemoteTranslationCache('20', {
+      '1:1':
+        'In the name of Allah,<sup foot_note=9>1</sup> the <i>Merciful</i> &quot;One&quot;',
+    });
+    expect(lookup.getEffectiveTranslationId('20')).toBe('20');
     expect(lookup.getRenderedTranslationName('20')).toBe(
       'Saheeh International',
     );
-    expect(lookup.getRenderedTranslationName('clear-quran')).toBe(clearQuran);
+    expect(lookup.getTranslationMarkup('1:1', '20')).toContain(
+      '<sup foot_note=9>1</sup>',
+    );
+    expect(lookup.getTranslationPlainText('1:1', '20')).toBe(
+      'In the name of Allah, the Merciful "One"',
+    );
+  });
+
+  it('keeps a bundled selection and treats no selection as the default', () => {
+    expect(lookup.getEffectiveTranslationId('clear-quran')).toBe('clear-quran');
+    expect(lookup.getEffectiveTranslationId(undefined)).toBe('clear-quran');
+    expect(lookup.getRenderedTranslationName(undefined)).toBe(clearQuranName);
+    // Bundled plain text is the stripped bundled text, trimmed.
+    expect(lookup.getTranslationPlainText('2:255', 'clear-quran')).toBe(
+      lookup.getBundledTranslation('2:255', 'clear-quran').trim(),
+    );
   });
 });

@@ -56,6 +56,8 @@ jest.mock('@/utils/haptics', () => ({mediumHaptics: jest.fn()}));
 jest.mock('@/utils/translationLookup', () => ({
   isBundledTranslation: () => true,
   getBundledFootnotes: () => undefined,
+  getEffectiveTranslationId: (id?: string) => id ?? 'clear-quran',
+  getRenderedTranslationName: () => 'The Clear Quran',
 }));
 
 jest.mock('@/store/tajweedStore', () => {

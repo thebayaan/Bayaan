@@ -49,4 +49,14 @@ describe('decodeHtmlEntities', () => {
   it('leaves unknown entities as they are', () => {
     expect(decodeHtmlEntities('&unknown; &lt;')).toBe('&unknown; <');
   });
+
+  it('keeps a numeric entity past U+10FFFF as written instead of throwing', () => {
+    expect(decodeHtmlEntities('a &#x110000; b &#1114112; c')).toBe(
+      'a &#x110000; b &#1114112; c',
+    );
+    expect(decodeHtmlEntities('&#99999999999999999999;')).toBe(
+      '&#99999999999999999999;',
+    );
+    expect(decodeHtmlEntities('&#x10FFFF;&#65;')).toBe('\u{10FFFF}A');
+  });
 });

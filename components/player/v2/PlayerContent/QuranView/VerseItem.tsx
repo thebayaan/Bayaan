@@ -38,8 +38,10 @@ import {
 } from './VerseUnitRowContent';
 // @ai-end
 import {
-  isBundledTranslation,
+  getEffectiveTranslationId,
   getRemoteFootnote,
+  getRenderedTranslationName,
+  isBundledTranslation,
 } from '@/utils/translationLookup';
 // @ai-start
 import {useTranslation} from 'react-i18next';
@@ -288,7 +290,7 @@ export const VerseItem = memo<VerseItemProps>(
           return;
         }
 
-        const effectiveId = translationId ?? 'clear-quran';
+        const effectiveId = getEffectiveTranslationId(translationId);
         const content = isBundledTranslation(effectiveId)
           ? undefined
           : getRemoteFootnote(effectiveId, footnoteId);
@@ -734,7 +736,7 @@ export const VerseItem = memo<VerseItemProps>(
             {/* Display Translation Source */}
             {verse.translation && (
               <Text style={translationSourceStyle}>
-                {translationName ?? 'The Clear Quran'}
+                {translationName ?? getRenderedTranslationName(translationId)}
               </Text>
             )}
           </View>

@@ -28,15 +28,24 @@ export function stripHtml(text: string): string {
   return text.replace(ANY_TAG, '');
 }
 
+// A numeric entity's character; one past U+10FFFF (String.fromCodePoint
+// would throw) stays as written.
+function codePointText(codePoint: number, entity: string): string {
+  return codePoint <= 0x10ffff ? String.fromCodePoint(codePoint) : entity;
+}
+
 export function decodeHtmlEntities(text: string): string {
   return text.replace(
     /&(#\d+|#x[0-9a-f]+|[a-z]+);/gi,
     (entity: string, name: string) => {
       const lower = name.toLowerCase();
-      if (lower.startsWith('#x'))
-        return String.fromCodePoint(parseInt(lower.slice(2), 16));
       if (lower.startsWith('#'))
-        return String.fromCodePoint(parseInt(lower.slice(1), 10));
+        return codePointText(
+          lower.startsWith('#x')
+            ? parseInt(lower.slice(2), 16)
+            : parseInt(lower.slice(1), 10),
+          entity,
+        );
       return NAMED_ENTITIES[lower] ?? entity;
     },
   );

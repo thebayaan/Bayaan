@@ -92,6 +92,8 @@ const mockFootnoteLookups: string[] = [];
 // '20' stands for a downloaded QF edition; every other id is bundled.
 jest.mock('@/utils/translationLookup', () => ({
   isBundledTranslation: (id: string) => id !== '20',
+  getEffectiveTranslationId: (id?: string) => id ?? 'clear-quran',
+  getRenderedTranslationName: () => 'The Clear Quran',
   getRemoteFootnote: (translationId: string, footnoteId: string) => {
     mockFootnoteLookups.push(translationId);
     return footnoteId === '77' ? `DB-FOOTNOTE-${translationId}` : undefined;

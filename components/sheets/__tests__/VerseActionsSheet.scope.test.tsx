@@ -56,7 +56,7 @@ jest.mock('@/components/Icons', () => ({
 jest.mock('@/utils/haptics', () => ({lightHaptics: jest.fn()}));
 jest.mock('burnt', () => ({toast: jest.fn()}));
 jest.mock('@/utils/translationLookup', () => ({
-  getTranslationTextRaw: () => '',
+  getTranslationPlainText: () => '',
 }));
 jest.mock('expo-clipboard', () => ({setStringAsync: jest.fn()}));
 jest.mock('expo-router', () => ({router: {push: jest.fn()}}));
