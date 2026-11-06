@@ -4,6 +4,7 @@ import {
   retryIsDue,
   type EngineDeps,
 } from './contentEngine';
+import {keyFor} from './contentKeys';
 import {emptyRow, type ContentRegistry} from './contentRegistry';
 import {reportInstall} from './installActivity';
 
@@ -22,7 +23,7 @@ export async function adoptUnmanagedContent(
 ): Promise<number> {
   let adopted = 0;
   for (const item of downloaded) {
-    const key = `qf:tafsirs:${item.identifier}`;
+    const key = keyFor('tafsir', item.identifier);
     if (await registry.get(key)) continue;
     await registry.upsert({
       ...emptyRow(key, 'tafsir'),
