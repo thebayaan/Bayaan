@@ -105,7 +105,7 @@ Code: `services/sync/qfHighlightSync.ts`. BFF: `src/routes/v1/qfSettings.ts`.
 | `dhikr_counts` | Daily tasbeeh counts |
 | `uploaded_recitations`, `custom_reciters` | Point at audio files on this device |
 | `adhkar`, `adhkar_categories`, `adhkar_tags`, `category_tags`, `super_categories`, `adhkar_meta` | Bundled adhkar content |
-| `translations`, `tafaseer`, `translation_metadata`, `tafseer_metadata`, `schema_version` | Downloaded text and its metadata. Only the list of editions syncs (see above). |
+| `translations`, `translation_footnotes`, `tafaseer`, `translation_metadata`, `tafseer_metadata`, `schema_version` | Downloaded text and its metadata. Only the list of editions syncs (see above). |
 | `ayah_timestamps`, `cached_surahs` | Audio timing cache |
 | `content_local`, `content_state` | Installed content packs and the state of the content manifest check |
 | `schema_migrations` | Database bookkeeping |
