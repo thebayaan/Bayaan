@@ -197,6 +197,7 @@ export const MyComponent: React.FC<MyComponentProps> = ({ title, onPress }) => {
 - Name variables/functions camelCase, components PascalCase, directories lowercase-with-hyphens
 - Import size helpers from `@/utils/scale`, not `react-native-size-matters` (which inflates the UI about 2× on iPad), and choose layouts from the window width class. See [docs/design/ipad-standards.md](docs/design/ipad-standards.md)
 - Put all UI text through `t()` and add it to every shipped language; never branch on a language code. See [docs/i18n/README.md](docs/i18n/README.md)
+- Adding or changing a setting, a user list or other data the user keeps always needs a cross-device sync or migration update in the same PR. Classify every new persisted store or SQLite table as synced or device-only in [docs/architecture/sync-registry.md](docs/architecture/sync-registry.md); a test fails until you do
 
 ### Scripts: common pitfalls
 
@@ -295,6 +296,7 @@ Keep machine-local Claude state ignored: `.claude/settings.local.json`, `schedul
 | Audio React bridge      | `services/audio/ExpoAudioProvider.tsx`            |
 | Player state            | `services/player/store/playerStore.ts`            |
 | Download state          | `services/player/store/downloadStore.ts`          |
+| What syncs across devices | `docs/architecture/sync-registry.md`            |
 | Mushaf rendering        | `services/mushaf/` + `components/mushaf/`         |
 | Tab screens             | `app/(tabs)/`                                     |
 | Settings screens        | `app/(tabs)/(d.settings)/`                        |
