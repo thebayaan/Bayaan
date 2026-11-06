@@ -90,14 +90,12 @@ export default branding;
 
 This RFC only adds the file. The call-site migrations each fit in a single-line goodwill PR; no RFC needed for those.
 
-#### Addendum: optional store-listing and repository keys
+#### Addendum: store-listing and repository keys
 
-Two more identity values are optional keys on `Branding`. They use the "field absent + `??` fallback at the call site" default (the RFC-015 pattern). Bayaan ships both unset, so `config/branding.js` does not change and Bayaan's behaviour is byte-identical.
+Two more identity values are keys on `Branding`. Bayaan sets both in `config/branding.js`, next to `supportUrl`, so Bayaan's behaviour does not change. Unlike `supportUrl` and `termsUrl`, both keys are optional: a call site skips its link when the key is absent, as the RFC-018 rows do. There is no fallback to Bayaan's values. A fork that leaves a key out gets no link, not a link to Bayaan's listing or source; for an AGPL fork, which must link its own source, a missing link is the safer failure.
 
-- **`appStoreId?: string`** — the Apple App Store numeric id. Call site: `utils/reviewUtils.ts`, which builds the iOS "Write a Review" URL with `branding.appStoreId ?? '6648769980'`. Android already reads `bundleId.android`.
-- **`githubUrl?: string`** — the source-code repository URL. Call site: Settings → "Contribute on GitHub" in `app/(tabs)/(d.settings)/index.tsx`, which opens `branding.githubUrl ?? 'https://github.com/thebayaan/Bayaan'`.
-
-Unlike `supportUrl` and `termsUrl`, these keys are optional. A fork that sets neither key keeps Bayaan's listing and repository link.
+- **`appStoreId?: string`** — the Apple App Store numeric id. Call site: `utils/reviewUtils.ts` builds the iOS "Write a Review" URL from it. When it is absent, `canOpenAppStoreForReview()` is false on iOS, `openAppStoreForReview()` opens nothing, and `getSettingsSections()` in `components/settings/settingsItems.ts` leaves out the "Write a Review" row on iOS. Android builds its link from `bundleId.android` and keeps the row.
+- **`githubUrl?: string`** — the source-code repository URL. Call site: `components/settings/settingsItems.ts`. `getSettingsSections()` lists the "Contribute on GitHub" row only when the key is set, and `openSettingsItem()` (the `github` case) opens it.
 
 ### 2. `config/featureFlags.ts` — feature gating
 
