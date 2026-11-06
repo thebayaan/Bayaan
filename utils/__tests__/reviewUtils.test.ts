@@ -1,9 +1,9 @@
 // @ai-generated
-// `branding.appStoreId` seam for the iOS "Write a Review" link.
-// The jest-expo preset runs as iOS, so the iOS branch is the one under test.
+// `branding.appStoreId` seam for the "Write a Review" link.
+// The jest-expo preset runs as iOS; the Android case replaces `Platform.OS`.
 // `APP_STORE_ID` is resolved at module load, so each case loads
 // `reviewUtils` in isolation with its own branding mock.
-import {Linking} from 'react-native';
+import {Linking, Platform} from 'react-native';
 
 jest.mock('@react-native-async-storage/async-storage', () => ({
   __esModule: true,
@@ -34,8 +34,11 @@ const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
 
 beforeEach(() => openURL.mockClear());
 
-it('uses the Bayaan App Store id when branding.appStoreId is absent', async () => {
-  await loadReviewUtils(baseBranding).openAppStoreForReview();
+it("opens Bayaan's review page with Bayaan's branding", async () => {
+  const bayaan = jest.requireActual('../../config/branding');
+  const reviewUtils = loadReviewUtils(bayaan);
+  expect(reviewUtils.canOpenAppStoreForReview()).toBe(true);
+  await reviewUtils.openAppStoreForReview();
   expect(openURL).toHaveBeenCalledWith(
     'https://apps.apple.com/app/id6648769980?action=write-review',
   );
@@ -49,4 +52,25 @@ it('uses branding.appStoreId when a fork sets it', async () => {
   expect(openURL).toHaveBeenCalledWith(
     'https://apps.apple.com/app/id123?action=write-review',
   );
+});
+
+it('opens no App Store page on iOS when branding.appStoreId is absent', async () => {
+  const reviewUtils = loadReviewUtils(baseBranding);
+  expect(reviewUtils.canOpenAppStoreForReview()).toBe(false);
+  await reviewUtils.openAppStoreForReview();
+  expect(openURL).not.toHaveBeenCalled();
+});
+
+it('keeps the Play Store link on Android when branding.appStoreId is absent', async () => {
+  const os = jest.replaceProperty(Platform, 'OS', 'android');
+  try {
+    const reviewUtils = loadReviewUtils(baseBranding);
+    expect(reviewUtils.canOpenAppStoreForReview()).toBe(true);
+    await reviewUtils.openAppStoreForReview();
+    expect(openURL).toHaveBeenCalledWith(
+      'market://details?id=com.bayaan.app&showAllReviews=true',
+    );
+  } finally {
+    os.restore();
+  }
 });

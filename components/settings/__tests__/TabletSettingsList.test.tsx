@@ -34,6 +34,7 @@ jest.mock('react-native-safe-area-context', () => ({
 }));
 jest.mock('expo-router', () => ({useRouter: () => ({push: jest.fn()})}));
 jest.mock('@/utils/reviewUtils', () => ({
+  canOpenAppStoreForReview: () => true,
   markAsRated: jest.fn(),
   openAppStoreForReview: jest.fn(),
 }));

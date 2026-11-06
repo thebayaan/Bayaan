@@ -352,20 +352,21 @@ export interface Branding {
   // @ai-start
   /**
    * Apple App Store numeric id (the `id…` segment of the App Store URL).
-   * Drives the "Write a Review" link in `utils/reviewUtils.ts`. Android
-   * already reads `bundleId.android`.
+   * Drives the iOS "Write a Review" link in `utils/reviewUtils.ts`. Android
+   * reads `bundleId.android`.
    *
-   * Field absent → consumer applies `?? '6648769980'` (Bayaan's listing) at
-   * the call site → byte-equivalent to today's behavior. Bayaan ships this
-   * unset.
+   * Field absent → no iOS review link: `openAppStoreForReview()` opens
+   * nothing and Settings hides the "Write a Review" row on iOS. Android keeps
+   * its row. Bayaan sets its own listing in `config/branding.js`.
    */
   appStoreId?: string;
   /**
    * Source-code repository URL opened by Settings → "Contribute on GitHub".
+   * An AGPL fork sets its own public source here.
    *
-   * Field absent → consumer applies
-   * `?? 'https://github.com/thebayaan/Bayaan'` at the call site →
-   * byte-equivalent to today's behavior. Bayaan ships this unset.
+   * Field absent → Settings hides the "Contribute on GitHub" row; it never
+   * falls back to Bayaan's repository. Bayaan sets its own repository in
+   * `config/branding.js`.
    */
   githubUrl?: string;
   // @ai-end

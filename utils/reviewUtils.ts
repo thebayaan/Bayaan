@@ -3,17 +3,31 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import branding from '@/config/branding';
 
 // App Store IDs
-// @ai: forks set `branding.appStoreId`; absent = Bayaan's listing.
-const APP_STORE_ID = branding.appStoreId ?? '6648769980'; // iOS App Store ID
+// @ai: absent `branding.appStoreId` = no iOS review link, not Bayaan's.
+const APP_STORE_ID = branding.appStoreId; // iOS App Store ID
 const PLAY_STORE_ID = branding.bundleId.android; // Android package name
 
 // Storage key for tracking if user has rated the app
 const RATED_KEY = `@${branding.appSlug}:hasRated`;
 
+// @ai-start
+/**
+ * False only on iOS when `branding.appStoreId` is absent: with no id, the
+ * only App Store page we could open belongs to another app. Android builds
+ * its link from the app's own package name.
+ */
+export function canOpenAppStoreForReview(): boolean {
+  return Platform.OS !== 'ios' || !!APP_STORE_ID;
+}
+// @ai-end
+
 /**
  * Opens the appropriate app store for the user to write a review
  */
 export async function openAppStoreForReview(): Promise<void> {
+  if (!canOpenAppStoreForReview()) {
+    return; // @ai
+  }
   try {
     if (Platform.OS === 'ios') {
       // For iOS - direct to write review page
