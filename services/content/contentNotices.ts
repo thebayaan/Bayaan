@@ -37,7 +37,7 @@ export function showRemovedTranslationsNotice(names: readonly string[]): void {
 export function tafseerDownloadFailure(error: unknown): AlertCopy {
   if (isContentNotOffered(error)) {
     return {
-      title: i18n.t('home:translations.tafseerNotOfferedTitle'),
+      title: i18n.t('home:translations.notOfferedTitle'),
       message: i18n.t('home:translations.tafseerNotOffered'),
     };
   }
@@ -50,7 +50,7 @@ export function tafseerDownloadFailure(error: unknown): AlertCopy {
 export function translationDownloadFailure(error: unknown): AlertCopy {
   if (isContentNotOffered(error)) {
     return {
-      title: i18n.t('home:translations.tafseerNotOfferedTitle'),
+      title: i18n.t('home:translations.notOfferedTitle'),
       message: i18n.t('home:translations.translationNotOffered'),
     };
   }
