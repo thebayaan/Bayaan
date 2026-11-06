@@ -112,6 +112,7 @@ export function currentPlayOpId(): number {
  * player, so nothing could stop the audio): end the in-flight loads, then
  * pause. A pause failure must not block the write. Returns false when a
  * newer load started during the pause, the same as loadTrackAtIndex().
+ * LockScreenService relies on every such write to pause first.
  */
 async function pauseForEmptyQueue(): Promise<boolean> {
   const opId = ++playOpId;
