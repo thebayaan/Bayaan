@@ -3,7 +3,7 @@
  * identity of the text they were computed from (DigitalKhattDataService's
  * `<rewayah>@<wordsSha8>.<layoutSha8>`), never read or written before the data
  * service has loaded, validated before they are persisted or served, and
- * pruned when a data update retires their identity. Schema v10 drops every
+ * pruned when a data update retires their identity. Schema v10+ drops every
  * v9 entry.
  */
 type MockGlobals = typeof globalThis & {
@@ -210,16 +210,16 @@ describe('MushafLayoutCacheService', () => {
     expect(store().has(key)).toBe(false);
   });
 
-  it('clears every v9 entry on the schema bump', () => {
+  it('clears every pre-v11 entry on the schema bump', () => {
     store().set('dk_schema_version', 9);
     store().set('dk:DigitalKhattV2:warsh:5', serialize(layout()));
     store().set('dk:DigitalKhattV2:hafs:1', serialize(layout()));
     loadModule();
-    expect([...store().entries()]).toEqual([['dk_schema_version', 10]]);
+    expect([...store().entries()]).toEqual([['dk_schema_version', 11]]);
   });
 
   it('prunes layouts whose data identity this build no longer ships', () => {
-    store().set('dk_schema_version', 10);
+    store().set('dk_schema_version', 11);
     const keep = `dk:F:${ID_A}:5`;
     store().set(keep, serialize(layout()));
     store().set(`dk:F:${ID_B}:5`, 'x'); // older Warsh data version

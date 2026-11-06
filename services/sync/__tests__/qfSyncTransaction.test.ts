@@ -7,23 +7,7 @@ import type {
 
 // Reuse Expo's shipped SQLite WASM so this runs on the repository's Node 20 CI,
 // as well as local Node, without a native-module install or Node 22-only API.
-const sqlitePromise = (async () => {
-  const fs = require('fs');
-  const path = require('path');
-  global.TextDecoder = require('util').TextDecoder;
-  const directory = path.join(
-    process.cwd(),
-    'node_modules',
-    'expo-sqlite',
-    'web',
-    'wa-sqlite',
-  );
-  const module = await require(path.join(directory, 'wa-sqlite.js'))({
-    wasmBinary: fs.readFileSync(path.join(directory, 'wa-sqlite.wasm')),
-  });
-  const SQLite = require(path.join(directory, 'sqlite-api.js'));
-  return {sqlite3: SQLite.Factory(module), SQLite};
-})();
+const sqlitePromise = loadWaSqlite();
 let mockPlatform = 'ios';
 const mockRoots = new Map<string, RealSqliteDatabase>();
 const mockOpenDatabaseAsync = jest.fn(async (path: string, options = {}) => {
@@ -73,6 +57,7 @@ import {QfSyncLifecycle} from '@/services/sync/qfSyncLifecycle';
 import {useQfSyncStore} from '@/store/qfSyncStore';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
 import * as resourceMapper from '@/services/sync/qfSyncResourceMapper';
+import {loadWaSqlite} from '@/test-utils/waSqlite';
 
 /** Real SQLite file, distinct native handles, async boundaries controlled below. */
 class RealSqliteDatabase implements QfSyncTransactionDatabase {

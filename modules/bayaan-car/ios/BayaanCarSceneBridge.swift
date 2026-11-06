@@ -17,7 +17,26 @@ import UIKit
   ) {
     self.start = start
     self.onWindow = onWindow
+    observeWidgetCommands()
   }
+
+  // @ai-start
+  /// Posted by WidgetCommandQueue.enqueue (targets/widgets/_shared). A widget,
+  /// Live Activity or Control Center play button runs an AudioPlaybackIntent,
+  /// which iOS may run in an app it launched in the background with no scene,
+  /// so nothing else would boot React to drain the queue and play.
+  private static let widgetCommandQueued = Notification.Name("BayaanWidgetCommandQueued")
+  private var widgetObserver: NSObjectProtocol?
+
+  private func observeWidgetCommands() {
+    guard widgetObserver == nil else { return }
+    widgetObserver = NotificationCenter.default.addObserver(
+      forName: Self.widgetCommandQueued, object: nil, queue: .main
+    ) { [weak self] _ in
+      self?.ensureStarted()
+    }
+  }
+  // @ai-end
 
   @discardableResult
   public func ensureStarted(

@@ -4,10 +4,18 @@ import {useTheme} from '@/hooks/useTheme';
 import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {expandPlayerSheet} from '@/services/player/sheetRef';
+import {useMiniPlayerAnchor} from '@/components/player/v2/useMiniPlayerAnchor';
 import {PlayIcon, PauseIcon} from '@/components/Icons';
 import {LoadingIndicator} from '@/components/LoadingIndicator';
 import {ReciterImage} from '@/components/ReciterImage';
 import Color from 'color';
+// @ai-start
+import {getTrackDisplayTitle, getTrackArtistDisplay} from '@/i18n/format';
+import {usePlayerA11y} from '@/hooks/usePlayerA11y'; // @ai
+// @ai-end
+
+// Both dock variants (compact and expanded) use a 14 pt card radius.
+const dockRadius = () => 14;
 
 interface TabletDockedPlayerProps {
   /** When true, shows artwork + title + subtitle + play. When false, artwork-only compact mode. */
@@ -20,9 +28,11 @@ interface TabletDockedPlayerProps {
  * Phones never mount this component — they use `FloatingPlayer` (Android)
  * or `MiniPlayer` inside `NativeTabs.BottomAccessory` (iOS).
  */
+// @ai-start
 export const TabletDockedPlayer: React.FC<TabletDockedPlayerProps> = React.memo(
   function TabletDockedPlayer({expanded}) {
     const {theme} = useTheme();
+    const a11y = usePlayerA11y(); // @ai
     const {play, pause} = usePlayerActions();
     const playbackState = usePlayerStore(state => state.playback.state);
     const queueTracks = usePlayerStore(state => state.queue.tracks);
@@ -43,10 +53,11 @@ export const TabletDockedPlayer: React.FC<TabletDockedPlayerProps> = React.memo(
       if (currentTrack?.id) {
         prevTrackIdRef.current = currentTrack.id;
       }
-      return (
-        (trackLoading && isTrackChanging) || playbackState === 'buffering'
-      );
+      return (trackLoading && isTrackChanging) || playbackState === 'buffering';
     }, [trackLoading, playbackState, currentTrack?.id]);
+
+    // No swipe up: it doesn't fit a sidebar.
+    const {anchorRef} = useMiniPlayerAnchor({radius: dockRadius});
 
     const handlePress = useCallback(() => {
       expandPlayerSheet();
@@ -62,6 +73,28 @@ export const TabletDockedPlayer: React.FC<TabletDockedPlayerProps> = React.memo(
 
     if (stateRestoring || !currentTrack) return null;
 
+    // @ai-start
+    // VoiceOver treats the whole dock as one element (the play button is
+    // nested inside it), so expose play/pause as an action on the dock too.
+    const isPlaying = playbackState === 'playing';
+    const playPauseA11y = a11y.playPause(isPlaying);
+    const dockA11y = {
+      ...a11y.openPlayer(
+        getTrackDisplayTitle(currentTrack),
+        getTrackArtistDisplay(currentTrack),
+      ),
+      accessibilityActions: [
+        {
+          name: 'togglePlayback',
+          label: playPauseA11y.accessibilityLabel ?? '',
+        },
+      ],
+      onAccessibilityAction: (e: {nativeEvent: {actionName: string}}) => {
+        if (e.nativeEvent.actionName === 'togglePlayback') handlePlayPause();
+      },
+    };
+    // @ai-end
+
     const bg = Color(theme.colors.text).alpha(0.04).toString();
     const border = Color(theme.colors.text).alpha(0.08).toString();
     const textColor = Color(theme.colors.text).alpha(0.95).toString();
@@ -72,7 +105,9 @@ export const TabletDockedPlayer: React.FC<TabletDockedPlayerProps> = React.memo(
     if (!expanded) {
       return (
         <Pressable
+          ref={anchorRef}
           onPress={handlePress}
+          {...dockA11y} // @ai
           style={[styles.compact, {backgroundColor: bg, borderColor: border}]}>
           <ReciterImage
             reciterName={currentTrack.reciterName}
@@ -80,6 +115,7 @@ export const TabletDockedPlayer: React.FC<TabletDockedPlayerProps> = React.memo(
           />
           <Pressable
             onPress={handlePlayPause}
+            {...playPauseA11y} // @ai
             hitSlop={8}
             style={styles.compactPlay}>
             {isLoadingNewTrack ? (
@@ -96,7 +132,9 @@ export const TabletDockedPlayer: React.FC<TabletDockedPlayerProps> = React.memo(
 
     return (
       <Pressable
+        ref={anchorRef}
         onPress={handlePress}
+        {...dockA11y} // @ai
         style={[styles.expanded, {backgroundColor: bg, borderColor: border}]}>
         <ReciterImage
           reciterName={currentTrack.reciterName}
@@ -104,16 +142,17 @@ export const TabletDockedPlayer: React.FC<TabletDockedPlayerProps> = React.memo(
         />
         <View style={styles.trackInfo}>
           <Text style={[styles.title, {color: textColor}]} numberOfLines={1}>
-            {currentTrack.title}
+            {getTrackDisplayTitle(currentTrack)}
           </Text>
           <Text
             style={[styles.subtitle, {color: subtitleColor}]}
             numberOfLines={1}>
-            {currentTrack.artist}
+            {getTrackArtistDisplay(currentTrack)}
           </Text>
         </View>
         <Pressable
           onPress={handlePlayPause}
+          {...playPauseA11y} // @ai
           hitSlop={8}
           style={styles.playButton}>
           {isLoadingNewTrack ? (
@@ -128,6 +167,7 @@ export const TabletDockedPlayer: React.FC<TabletDockedPlayerProps> = React.memo(
     );
   },
 );
+// @ai-end
 
 const styles = StyleSheet.create({
   compact: {

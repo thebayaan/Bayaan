@@ -1,21 +1,5 @@
-const sqlitePromise = (async () => {
-  const fs = require('fs');
-  const path = require('path');
-  const {TextDecoder} = require('util');
-  global.TextDecoder = TextDecoder;
-  const waSqliteDir = path.join(
-    process.cwd(),
-    'node_modules',
-    'expo-sqlite',
-    'web',
-    'wa-sqlite',
-  );
-  const ModuleFactory = require(path.join(waSqliteDir, 'wa-sqlite.js'));
-  const SQLite = require(path.join(waSqliteDir, 'sqlite-api.js'));
-  const wasmBinary = fs.readFileSync(path.join(waSqliteDir, 'wa-sqlite.wasm'));
-  const module = await ModuleFactory({wasmBinary});
-  return {sqlite3: SQLite.Factory(module), SQLite};
-})();
+import {loadWaSqlite} from '@/test-utils/waSqlite';
+const sqlitePromise = loadWaSqlite();
 
 type TestDatabase = {
   execAsync(source: string): Promise<void>;

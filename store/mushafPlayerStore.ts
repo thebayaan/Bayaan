@@ -32,8 +32,8 @@
 
 import {useCallback, useMemo} from 'react'; // @ai
 import {create} from 'zustand';
-import {createJSONStorage, persist} from 'zustand/middleware';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import {persist} from 'zustand/middleware';
+import {persistStorage} from '@/utils/storage'; // @ai
 import type {AyahTimestamp} from '@/types/timestamps';
 import {RECITERS} from '@/data/reciterData';
 import {timestampService} from '@/services/timestamps/TimestampService';
@@ -78,8 +78,10 @@ type PlaybackState = 'idle' | 'loading' | 'playing' | 'paused';
 
 export interface AvailableReciter {
   rewayatId: string;
+  reciterId: string; // @ai
   reciterName: string;
   imageUrl: string | null;
+  rewayahName: string; // @ai
   style: string;
 }
 
@@ -160,6 +162,14 @@ export interface MushafPlayerStoreState {
   currentUnitKeys: readonly string[];
   /** The rewayah currentUnitKeys are numbered in (null when none). */
   currentUnitRewayah: RewayahId | null;
+  /**
+   * Surah whose basmala is being recited: the audio is in the intro before
+   * its first verse (MushafAudioService's intro; isInBasmalaIntro), so the
+   * follow-along highlights its basmala line / header instead of a verse.
+   * Null otherwise, also for al-Fatihah and at-Tawbah and for a surah
+   * without verse tracking. Read it with usePlaybackBasmalaSurah().
+   */
+  basmalaIntroSurah: number | null;
   // @ai-end
   /** Numbering of the loaded surah ('disabled' = no follow-along / seeking). */
   numberingMode: TimingNumberingMode | null;
@@ -641,6 +651,7 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
     mushafAudioService.stop();
     set({
       ...CLEARED_VERSE,
+      basmalaIntroSurah: null, // @ai
       playbackState: 'idle',
       _versePlayCount: 1,
       _rangePlayCount: 1,
@@ -665,6 +676,7 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
     mushafAudioService.setRate(get().rate);
     set({
       ...CLEARED_VERSE,
+      basmalaIntroSurah: null, // @ai
       currentSurah: surah,
       timestamps,
       _numbering: numbering,
@@ -843,6 +855,25 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
     }
   };
 
+  // @ai-start
+  /**
+   * The audio entered or left the intro before the surah's first verse:
+   * there its basmala is highlighted and no verse (scrubbing back from a
+   * verse clears it). Nothing is highlighted without verse tracking.
+   */
+  const handleIntroChange = (surah: number, inIntro: boolean) => {
+    const state = get();
+    if (state.playbackState === 'idle') return;
+    if (audioSession !== playbackSession) return;
+    if (!inIntro) {
+      if (state.basmalaIntroSurah !== null) set({basmalaIntroSurah: null});
+      return;
+    }
+    if (state._numbering?.mode === 'disabled') return;
+    set({...CLEARED_VERSE, currentSurah: surah, basmalaIntroSurah: surah});
+  };
+  // @ai-end
+
   const handleSurahEnd = (reason: SurahEndReason) => {
     const state = get();
 
@@ -913,6 +944,7 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
   const registerCallbacks = () => {
     mushafAudioService.setOnAyahChange(handleEntryChange);
     mushafAudioService.setOnSurahEnd(handleSurahEnd);
+    mushafAudioService.setOnIntroChange(handleIntroChange); // @ai
   };
 
   return {
@@ -939,6 +971,7 @@ export const useMushafPlayerStore = create<MushafPlayerStoreState>()(
         currentVerseLabel: null,
         currentUnitKeys: NO_KEYS, // @ai
         currentUnitRewayah: null, // @ai
+        basmalaIntroSurah: null, // @ai
         numberingMode: null,
         currentPage: null,
         timestamps: null,
@@ -1149,6 +1182,7 @@ export const useMushafPlayerStore = create<MushafPlayerStoreState>()(
           mushafAudioService.stop();
           set({
             ...CLEARED_VERSE,
+            basmalaIntroSurah: null, // @ai
             playbackState: 'idle',
             currentSurah: 0,
             numberingMode: null,
@@ -1173,8 +1207,10 @@ export const useMushafPlayerStore = create<MushafPlayerStoreState>()(
                 if (timestampFetchService.hasSource(rewayat.id)) {
                   available.push({
                     rewayatId: rewayat.id,
+                    reciterId: reciter.id, // @ai
                     reciterName: reciter.name,
                     imageUrl: reciter.image_url,
+                    rewayahName: rewayat.name, // @ai
                     style: rewayat.style,
                   });
                 }
@@ -1193,7 +1229,7 @@ export const useMushafPlayerStore = create<MushafPlayerStoreState>()(
     },
     {
       name: STORAGE_KEY,
-      storage: createJSONStorage(() => AsyncStorage),
+      storage: persistStorage(), // @ai
       partialize: state => ({
         rewayatId: state.rewayatId,
         reciterName: state.reciterName,
@@ -1260,6 +1296,27 @@ export function selectPlaybackVerseKeys(
 ): readonly string[] {
   return s.playbackState === 'idle' ? NO_KEYS : s.currentVerseKeys;
 }
+
+// @ai-start
+/**
+ * Surah whose basmala the mushaf player is reciting (the intro before its
+ * first verse), or null (also when idle). Use with
+ * `useMushafPlayerStore(selectPlaybackBasmalaSurah)`.
+ */
+export function selectPlaybackBasmalaSurah(
+  s: Pick<MushafPlayerStoreState, 'playbackState' | 'basmalaIntroSurah'>,
+): number | null {
+  return s.playbackState === 'idle' ? null : s.basmalaIntroSurah;
+}
+
+/**
+ * Surah whose basmala the mushaf player is reciting, or null: what every
+ * follow-along highlight paints on that surah's basmala line / header.
+ */
+export function usePlaybackBasmalaSurah(): number | null {
+  return useMushafPlayerStore(selectPlaybackBasmalaSurah);
+}
+// @ai-end
 
 /** True while `verseKey` (Hafs) is being recited by the mushaf player. */
 export function isVerseKeyPlaying(
@@ -1348,12 +1405,20 @@ export function usePlaybackUnitKeys(rewayah?: RewayahId): readonly string[] {
 export function formatPlaybackInfo(
   surahName: string,
   s: Pick<MushafPlayerStoreState, 'currentVerseLabel' | 'numberingMode'>,
+  trackingLabel = VERSE_TRACKING_UNAVAILABLE_LABEL,
 ): string {
   if (s.numberingMode === 'disabled') {
-    return `${surahName} · ${VERSE_TRACKING_UNAVAILABLE_LABEL}`;
+    return `${surahName} · ${trackingLabel}`;
   }
   if (s.currentVerseLabel) return `${surahName} ${s.currentVerseLabel}`;
   return surahName;
+}
+
+export interface PlaybackNoticeText {
+  trackingUnavailable: string;
+  playbackUnavailable: string;
+  untrackedSurah: (name: string, fromBeginning: boolean) => string;
+  error: (message: string) => string;
 }
 
 export interface PlaybackNotice {
@@ -1378,6 +1443,7 @@ function untrackedSurahNotice(
   prev: NoticeState,
   next: NoticeState,
   surahName: (surah: number) => string,
+  text?: PlaybackNoticeText,
 ): PlaybackNotice | null {
   const newlySkipped =
     !!next.ignoredStartVerseKey &&
@@ -1394,10 +1460,12 @@ function untrackedSurahNotice(
   const name = surahName(next.currentSurah);
   const subject = name ? `${name} plays` : 'This surah plays';
   return {
-    title: VERSE_TRACKING_UNAVAILABLE_LABEL,
-    message: next.ignoredStartVerseKey
-      ? `${subject} from the beginning without verse tracking for this reciter.`
-      : `${subject} without verse highlighting for this reciter.`,
+    title: text?.trackingUnavailable ?? VERSE_TRACKING_UNAVAILABLE_LABEL,
+    message: text
+      ? text.untrackedSurah(name, !!next.ignoredStartVerseKey)
+      : next.ignoredStartVerseKey
+        ? `${subject} from the beginning without verse tracking for this reciter.`
+        : `${subject} without verse highlighting for this reciter.`,
     preset: 'none',
   };
 }
@@ -1414,15 +1482,16 @@ export function getPlaybackNotice(
   prev: NoticeState,
   next: NoticeState,
   surahName: (surah: number) => string,
+  text?: PlaybackNoticeText,
 ): PlaybackNotice | null {
   if (next.timestampError && next.timestampError !== prev.timestampError) {
     return {
-      title: 'Playback unavailable',
-      message: next.timestampError,
+      title: text?.playbackUnavailable ?? 'Playback unavailable',
+      message: text?.error(next.timestampError) ?? next.timestampError,
       preset: 'error',
     };
   }
-  return untrackedSurahNotice(prev, next, surahName);
+  return untrackedSurahNotice(prev, next, surahName, text);
 }
 
 /**
@@ -1434,8 +1503,9 @@ export function getPlayerBarNotice(
   prev: NoticeState,
   next: NoticeState,
   surahName: (surah: number) => string,
+  text?: PlaybackNoticeText,
 ): PlaybackNotice | null {
   if (!next.ignoredStartVerseKey) return null;
-  return untrackedSurahNotice(prev, next, surahName);
+  return untrackedSurahNotice(prev, next, surahName, text);
 }
 // @ai-end

@@ -131,7 +131,9 @@ function title(): string {
     .find(n =>
       ([] as unknown[])
         .concat(n.props.children)
-        .some(c => c === 'Edit Note' || c === 'Note'),
+        .some(
+          c => typeof c === 'string' && /^(Edit Note|Note)( for |$)/.test(c),
+        ),
     );
   if (!node) throw new Error('no title');
   return ([] as unknown[]).concat(node.props.children).join('');

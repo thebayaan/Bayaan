@@ -1,12 +1,16 @@
 import React, {useEffect, useState} from 'react';
 import {View, Text, Pressable} from 'react-native';
-import {ScaledSheet, moderateScale} from 'react-native-size-matters';
+import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {Reciter} from '@/data/reciterData';
 import {ReciterImage} from '@/components/ReciterImage';
 import {getReciterById} from '@/services/dataService';
 import {Feather} from '@expo/vector-icons';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+import {getReciterDisplayName} from '@/i18n/format';
+// @ai-end
 
 interface ReciterDownloadsListItemProps {
   reciterId: string;
@@ -14,12 +18,23 @@ interface ReciterDownloadsListItemProps {
   onPress: () => void;
   onOptionsPress?: () => void;
   onLongPress?: () => void;
+  /** A native menu laid over the ••• button on tablets. @ai */
+  optionsMenu?: React.ReactNode;
 }
 
+// @ai-start
 export const ReciterDownloadsListItem: React.FC<ReciterDownloadsListItemProps> =
   React.memo(
-    ({reciterId, downloadCount, onPress, onOptionsPress, onLongPress}) => {
+    ({
+      reciterId,
+      downloadCount,
+      onPress,
+      onOptionsPress,
+      onLongPress,
+      optionsMenu,
+    }) => {
       const {theme} = useTheme();
+      const {t} = useTranslation(['collection', 'common']);
       const styles = createStyles(theme);
       const [reciter, setReciter] = useState<Reciter | null>(null);
 
@@ -58,10 +73,13 @@ export const ReciterDownloadsListItem: React.FC<ReciterDownloadsListItemProps> =
             />
           </View>
           <View style={styles.reciterInfo}>
-            <Text style={styles.reciterName}>{reciter.name}</Text>
+            <Text style={styles.reciterName}>
+              {getReciterDisplayName(reciter)}
+            </Text>
             <Text style={styles.reciterSubtitle} numberOfLines={1}>
-              Downloaded • {downloadCount}{' '}
-              {downloadCount === 1 ? 'surah' : 'surahs'}
+              {t('reciterDownloadsItem.subtitle', {
+                surahs: t('common:counts.surahs', {count: downloadCount}),
+              })}
             </Text>
           </View>
           {onOptionsPress && (
@@ -74,12 +92,14 @@ export const ReciterDownloadsListItem: React.FC<ReciterDownloadsListItemProps> =
                 size={moderateScale(18)}
                 color={theme.colors.text}
               />
+              {optionsMenu}
             </Pressable>
           )}
         </Pressable>
       );
     },
   );
+// @ai-end
 
 ReciterDownloadsListItem.displayName = 'ReciterDownloadsListItem';
 

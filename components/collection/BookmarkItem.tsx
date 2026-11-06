@@ -1,6 +1,6 @@
 import React, {memo, useMemo} from 'react';
 import {View, Text, Pressable} from 'react-native';
-import {ScaledSheet, moderateScale} from 'react-native-size-matters';
+import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {Feather} from '@expo/vector-icons';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
@@ -9,6 +9,7 @@ import Color from 'color';
 import {getRewayahShortLabel} from '@/utils/rewayahLabels';
 import type {RewayahId} from '@/store/mushafSettingsStore';
 // @ai-start
+import {localizeDigits} from '@/i18n/format';
 import {CollectionVersePreview} from './CollectionVersePreview';
 import {useSavedVerseDescription} from '@/hooks/useSavedVerseDescription';
 import {savedVerseLabel} from '@/services/verse-annotations/unitAnnotations';
@@ -22,8 +23,11 @@ interface BookmarkItemProps {
   rewayahId?: RewayahId;
   onPress: () => void;
   onOptionsPress: () => void;
+  /** A native menu laid over the ••• button on tablets. @ai */
+  optionsMenu?: React.ReactNode;
 }
 
+// @ai-start
 export const BookmarkItem = memo<BookmarkItemProps>(
   ({
     surahName,
@@ -33,6 +37,7 @@ export const BookmarkItem = memo<BookmarkItemProps>(
     rewayahId,
     onPress,
     onOptionsPress,
+    optionsMenu,
   }) => {
     const {theme} = useTheme();
     const styles = useMemo(() => createStyles(theme), [theme]);
@@ -61,7 +66,9 @@ export const BookmarkItem = memo<BookmarkItemProps>(
           {/* @ai-start */}
           {verseLabel ? (
             <View style={styles.versePill}>
-              <Text style={styles.versePillText}>{verseLabel}</Text>
+              <Text style={styles.versePillText}>
+                {localizeDigits(verseLabel)}
+              </Text>
             </View>
           ) : null}
           {/* @ai-end */}
@@ -86,6 +93,7 @@ export const BookmarkItem = memo<BookmarkItemProps>(
               size={moderateScale(18)}
               color={theme.colors.textSecondary}
             />
+            {optionsMenu}
           </Pressable>
         </View>
 
@@ -103,6 +111,7 @@ export const BookmarkItem = memo<BookmarkItemProps>(
     );
   },
 );
+// @ai-end
 
 BookmarkItem.displayName = 'BookmarkItem';
 

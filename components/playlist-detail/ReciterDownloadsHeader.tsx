@@ -1,7 +1,6 @@
 import React from 'react';
 import {View, Text, Pressable} from 'react-native';
-import {moderateScale} from 'react-native-size-matters';
-import {ScaledSheet} from 'react-native-size-matters';
+import {moderateScale, ScaledSheet} from '@/utils/scale';
 import {useSafeAreaInsets, EdgeInsets} from 'react-native-safe-area-context';
 import {useRouter} from 'expo-router';
 import {Theme} from '@/utils/themeUtils';
@@ -10,26 +9,37 @@ import {PlayIcon, ShuffleIcon} from '@/components/Icons';
 import {ReciterImage} from '@/components/ReciterImage';
 import Color from 'color';
 import {USE_GLASS} from '@/hooks/useGlassProps';
+// @ai-start
+import {flipX, forceLTR, latinLetterSpacing} from '@/utils/rtl';
+// @ai-end
 
+// @ai-start
 interface ReciterDownloadsHeaderProps {
   reciterId: string;
   reciterName: string;
+  reciterDisplayName?: string;
   reciterImageUrl?: string;
   subtitle: string;
   onPlayPress: () => void;
   onShufflePress: () => void;
   onOptionsPress?: () => void;
+  /** A native menu laid over the ••• button on tablets. @ai */
+  optionsMenu?: React.ReactNode;
   theme: Theme;
 }
+// @ai-end
 
+// @ai-start
 export const ReciterDownloadsHeader: React.FC<ReciterDownloadsHeaderProps> = ({
   reciterId,
   reciterName,
+  reciterDisplayName,
   reciterImageUrl,
   subtitle,
   onPlayPress,
   onShufflePress,
   onOptionsPress,
+  optionsMenu,
   theme,
 }) => {
   const insets = useSafeAreaInsets();
@@ -53,6 +63,7 @@ export const ReciterDownloadsHeader: React.FC<ReciterDownloadsHeaderProps> = ({
               name="arrow-left"
               size={moderateScale(24)}
               color={theme.colors.text}
+              style={flipX}
             />
           </Pressable>
         )}
@@ -72,14 +83,16 @@ export const ReciterDownloadsHeader: React.FC<ReciterDownloadsHeaderProps> = ({
 
           {/* Title and Subtitle - Title tappable to navigate to reciter profile */}
           <Pressable onPress={handleReciterPress}>
-            <Text style={styles.title}>{reciterName}</Text>
+            <Text style={styles.title}>
+              {reciterDisplayName ?? reciterName}
+            </Text>
           </Pressable>
           <Text style={styles.subtitle}>{subtitle}</Text>
         </View>
       </View>
 
       {/* Action Buttons */}
-      <View style={styles.actionButtons}>
+      <View style={[styles.actionButtons, forceLTR]}>
         {!USE_GLASS && onOptionsPress && (
           <Pressable style={styles.circleButton} onPress={onOptionsPress}>
             <Feather
@@ -87,6 +100,7 @@ export const ReciterDownloadsHeader: React.FC<ReciterDownloadsHeaderProps> = ({
               size={moderateScale(20)}
               color={theme.colors.text}
             />
+            {optionsMenu}
           </Pressable>
         )}
         <Pressable
@@ -106,7 +120,9 @@ export const ReciterDownloadsHeader: React.FC<ReciterDownloadsHeaderProps> = ({
     </View>
   );
 };
+// @ai-end
 
+// @ai-start
 const createStyles = (theme: Theme, insets: EdgeInsets) =>
   ScaledSheet.create({
     headerContainer: {
@@ -150,7 +166,7 @@ const createStyles = (theme: Theme, insets: EdgeInsets) =>
       color: theme.colors.text,
       textAlign: 'center',
       marginBottom: moderateScale(8),
-      letterSpacing: -0.3,
+      letterSpacing: latinLetterSpacing(-0.3),
     },
     subtitle: {
       fontSize: moderateScale(12),
@@ -186,3 +202,4 @@ const createStyles = (theme: Theme, insets: EdgeInsets) =>
       paddingLeft: moderateScale(4),
     },
   });
+// @ai-end

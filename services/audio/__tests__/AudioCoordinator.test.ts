@@ -191,3 +191,56 @@ describe('AudioCoordinator — Group B characterization', () => {
     expect(c.getActiveSource()).toBe('main');
   });
 });
+
+describe('AudioCoordinator - adhkar', () => {
+  beforeEach(() => {
+    mockMainPause.mockClear();
+    mockMushafServiceGetIsPlaying.mockReturnValue(false);
+    (usePlayerStore.getState as jest.Mock).mockReturnValue({
+      playback: {state: 'playing'},
+      pause: mockMainPause,
+    });
+  });
+
+  it('adhkarWillPlay() pauses a playing main player and takes the active source', () => {
+    const c = freshCoordinator();
+    c.adhkarWillPlay();
+    expect(mockMainPause).toHaveBeenCalledTimes(1);
+    expect(c.getActiveSource()).toBe('adhkar');
+  });
+
+  it('mainWillPlay() after adhkarWillPlay() pauses the adhkar session', () => {
+    const {useAdhkarSessionStore} = require('@/store/adhkarSessionStore');
+    useAdhkarSessionStore.getState().dispatch({
+      type: 'pressPlayAll',
+      source: {
+        listId: 'morning-adhkar',
+        listTitle: 'Morning',
+        items: [
+          {dhikrId: 'a', audioFile: 'a.mp3', playable: true, preview: 'a'},
+        ],
+      },
+    });
+    const token = useAdhkarSessionStore.getState().session.trackToken;
+    useAdhkarSessionStore.getState().dispatch({type: 'playStarted', token});
+    expect(useAdhkarSessionStore.getState().session.status).toBe('playing');
+
+    const c = freshCoordinator();
+    c.adhkarWillPlay();
+    c.mainWillPlay();
+    expect(useAdhkarSessionStore.getState().session.status).toBe('paused');
+    expect(c.getActiveSource()).toBe('main');
+  });
+
+  it('notifies subscribers after the active source changes', () => {
+    const c = freshCoordinator();
+    const seen: string[] = [];
+    const unsubscribe = c.subscribe(() => seen.push(c.getActiveSource()));
+    c.mainWillPlay();
+    c.mainWillPlay(); // no change, no call
+    c.sourceDidStop('main');
+    unsubscribe();
+    c.mushafWillPlay();
+    expect(seen).toEqual(['main', 'none']);
+  });
+});

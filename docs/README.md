@@ -17,6 +17,17 @@ New to the project? Start here:
 
 ---
 
+## Design
+
+| Document | Description |
+|----------|-------------|
+| [design/README.md](design/README.md) | Design docs hub: start here before any UI work |
+| [design/design-system.md](design/design-system.md) | The design system as built: themes, color tokens, typography, spacing, scaling, components |
+| [design/ipad-standards.md](design/ipad-standards.md) | **Standard** for iPad and large tablets: width classes, type ramp, layout, sheets, orientation, multitasking, accessibility |
+| [design/ipad-review-checklist.md](design/ipad-review-checklist.md) | Checklist for every PR that touches UI |
+
+---
+
 ## Architecture
 
 | Document | Description |
@@ -89,6 +100,7 @@ Deep documentation of the Uthmani Mushaf rendering system:
 | [android-performance-enhancements.md](development/android-performance-enhancements.md) | Android performance audit and improvements |
 | [performance-postmortem.md](development/performance-postmortem.md) | **[ARCHIVED]** Playback performance postmortem (TrackPlayer era) |
 | [whats-new-implementation.md](development/whats-new-implementation.md) | What's New feature implementation notes |
+| [i18n/README.md](i18n/README.md) | Translations and RTL: language registry, rules, adding strings and languages, glossary |
 
 ---
 

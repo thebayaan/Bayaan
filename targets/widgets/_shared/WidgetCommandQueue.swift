@@ -44,22 +44,54 @@ enum WidgetCommandQueue {
   static let key = "widgets.commandQueue"
   static let notification = Notification.Name("BayaanWidgetCommandQueued")
 
-  static func enqueue(_ command: [String: Any]) {
-    guard let defaults = BayaanAppGroup.defaults else { return }
+  // @ai-start
+  /// Written by the app (BayaanWidgetsModule.markCommandsHandled): the newest
+  /// `enqueuedAt` that JS has taken and finished handling.
+  static let handledKey = "widgets.commandsHandledThrough"
+  /// Time for a cold background launch to boot React, restore the session and
+  /// start audio. Measured in seconds; the intent gives up after this.
+  static let handleTimeout: TimeInterval = 10
+  // @ai-end
+
+  /// Returns the command's `enqueuedAt` (epoch ms), for `waitUntilHandled`. // @ai
+  @discardableResult // @ai
+  static func enqueue(_ command: [String: Any]) -> Double {
+    let enqueuedAt = Date().timeIntervalSince1970 * 1000 // @ai
+    guard let defaults = BayaanAppGroup.defaults else { return enqueuedAt } // @ai
     WidgetQueueLock.withLock {
       var queue: [[String: Any]] = []
       if let raw = defaults.string(forKey: key)?.data(using: .utf8),
          let parsed = try? JSONSerialization.jsonObject(with: raw) as? [[String: Any]] {
         queue = parsed
       }
-      queue.append(["command": command, "enqueuedAt": Date().timeIntervalSince1970 * 1000])
+      queue.append(["command": command, "enqueuedAt": enqueuedAt]) // @ai
       if let data = try? JSONSerialization.data(withJSONObject: queue),
          let json = String(data: data, encoding: .utf8) {
         defaults.set(json, forKey: key)
       }
     }
+    // In the app process this also boots React when the app was launched in
+    // the background for the intent (BayaanCarSceneBridge observes it). // @ai
     NotificationCenter.default.post(name: notification, object: nil)
+    return enqueuedAt // @ai
   }
+
+  // @ai-start
+  /// Keeps an AudioPlaybackIntent's perform() running until JS has handled the
+  /// command. iOS can suspend an app it launched in the background as soon as
+  /// perform() returns, which is before React has booted and started audio.
+  /// Once audio plays, the audio background mode keeps the app alive.
+  static func waitUntilHandled(enqueuedAt: Double, timeout: TimeInterval = handleTimeout) async {
+    // Only the app process runs JS; the widget extension has nothing to wait for.
+    guard !(Bundle.main.bundleIdentifier ?? "").hasSuffix(BayaanAppGroup.extensionSuffix),
+          let defaults = BayaanAppGroup.defaults else { return }
+    let deadline = Date().addingTimeInterval(timeout)
+    while Date() < deadline {
+      if defaults.double(forKey: handledKey) >= enqueuedAt { return }
+      try? await Task.sleep(nanoseconds: 100_000_000)
+    }
+  }
+  // @ai-end
 }
 
 /// Written on a widget tap so widgets render the expected state before the

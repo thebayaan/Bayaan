@@ -61,11 +61,16 @@ export function pickerVerseCount(
 }
 
 /** "Al-Baqarah 2:255"; "Al-Fatihah 1:7 (Hafs)" for Hafs fallback keys. */
-export function pickerVerseLabel(n: RangePickerNumbering, key: string): string {
+export function pickerVerseLabel(
+  n: RangePickerNumbering,
+  key: string,
+  surahName: (surah: (typeof SURAHS)[number]) => string = surah => surah.name,
+  hafsLabel = 'Hafs',
+): string {
   const [s] = key.split(':').map(Number);
   if (!(s >= 1 && s <= 114)) return key;
-  const label = `${SURAHS[s - 1].name} ${key}`;
-  return n.hafsFallback ? `${label} (Hafs)` : label;
+  const label = `${surahName(SURAHS[s - 1])} ${key}`;
+  return n.hafsFallback ? `${label} (${hafsLabel})` : label;
 }
 
 /**

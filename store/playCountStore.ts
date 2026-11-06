@@ -1,7 +1,6 @@
 import {create} from 'zustand';
 import {persist} from 'zustand/middleware';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import {createJSONStorage} from 'zustand/middleware';
+import {persistStorage} from '@/utils/storage'; // @ai
 
 interface PlayCount {
   surahId: number;
@@ -52,7 +51,7 @@ export const usePlayCountStore = create<PlayCountState>()(
     }),
     {
       name: 'play-count-storage',
-      storage: createJSONStorage(() => AsyncStorage),
+      storage: persistStorage(), // @ai
     },
   ),
 );

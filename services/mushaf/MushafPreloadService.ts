@@ -13,6 +13,7 @@ import {
 } from '@/store/mushafSettingsStore';
 import {migratePersistedId} from '@/services/rewayah/RewayahIdentity';
 
+// @ai-start
 const FONT_ASSETS: Record<string, number> = {
   DigitalKhattV1: require('@/data/mushaf/legacy/DigitalKhattQuranicV1.otf'),
   DigitalKhattV2: require('@/data/mushaf/digitalkhatt/DigitalKhattFont.otf'),
@@ -22,7 +23,17 @@ const FONT_ASSETS: Record<string, number> = {
   SurahNameQCF: require('@/data/mushaf/surah-name-qcf.ttf'),
   ManropeSemiBold: require('@/assets/fonts/Manrope-SemiBold.ttf'),
   ManropeRegular: require('@/assets/fonts/Manrope-Regular.ttf'),
+  PlexSansArabicSemiBold: require('@/assets/fonts/IBMPlexSansArabic-SemiBold.ttf'),
 };
+// @ai-end
+
+function assetUri(asset: number): string {
+  const source = Image.resolveAssetSource(asset);
+  if (!source) {
+    throw new Error(`Unresolvable font asset ${asset}`);
+  }
+  return source.uri;
+}
 
 /**
  * Preloads everything the Mushaf screen needs at app startup (AppInitializer
@@ -196,7 +207,7 @@ class MushafPreloadService {
       let anyFailed = false;
 
       for (const [family, asset] of Object.entries(FONT_ASSETS)) {
-        const uri = Image.resolveAssetSource(asset).uri;
+        const uri = assetUri(asset);
         const data = await Skia.Data.fromURI(uri);
         const typeface = Skia.Typeface.MakeFreeTypeFaceFromData(data);
         if (!typeface) {
@@ -254,7 +265,7 @@ class MushafPreloadService {
 
       for (const [family, asset] of Object.entries(FONT_ASSETS)) {
         try {
-          const uri = Image.resolveAssetSource(asset).uri;
+          const uri = assetUri(asset);
           const data = await Skia.Data.fromURI(uri);
           const typeface = Skia.Typeface.MakeFreeTypeFaceFromData(data);
           if (!typeface) {

@@ -6,6 +6,9 @@ import {
 import {Track} from '@/types/audio';
 import {createTrack} from '@/utils/track';
 import {getReciterById, getSurahById} from '@/services/dataService';
+// @ai-start
+import i18n from '@/i18n';
+// @ai-end
 
 /**
  * Get a system playlist by ID
@@ -132,15 +135,19 @@ export function getSystemPlaylistEstimatedDuration(
  * @param seconds - Duration in seconds
  * @returns Formatted string like "1h 23m" or "45m" or "3m"
  */
+// @ai-start
 export function formatDuration(seconds: number): string {
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
 
   if (hours > 0) {
-    return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
+    return minutes > 0
+      ? i18n.t('content:duration.hoursMinutes', {hours, minutes})
+      : i18n.t('content:duration.hours', {hours});
   }
-  return `${minutes}m`;
+  return i18n.t('content:duration.minutes', {minutes});
 }
+// @ai-end
 
 /**
  * Check if a system playlist can be played immediately (fully-curated)
@@ -148,6 +155,7 @@ export function formatDuration(seconds: number): string {
  * @param playlist - System playlist object
  * @returns Object with playability status and message
  */
+// @ai-start
 export function checkPlaylistPlayability(playlist: SystemPlaylist): {
   canPlayImmediately: boolean;
   requiresReciterSelection: boolean;
@@ -157,16 +165,17 @@ export function checkPlaylistPlayability(playlist: SystemPlaylist): {
     return {
       canPlayImmediately: true,
       requiresReciterSelection: false,
-      message: 'Ready to play',
+      message: i18n.t('content:systemPlaylists.readyToPlay'),
     };
   }
 
   return {
     canPlayImmediately: false,
     requiresReciterSelection: true,
-    message: 'Select reciters to play',
+    message: i18n.t('content:systemPlaylists.selectReciters'),
   };
 }
+// @ai-end
 
 /**
  * Get unique reciter IDs from a system playlist

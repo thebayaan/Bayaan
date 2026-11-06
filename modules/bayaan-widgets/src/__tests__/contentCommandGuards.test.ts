@@ -28,6 +28,23 @@ describe('Phase 3 command guards', () => {
     );
   });
 
+  // @ai-start
+  it('accepts playAdhkar with or without a dhikr', () => {
+    expect(
+      isWidgetCommand({type: 'playAdhkar', superId: 'morning', dhikrId: 'd1'}),
+    ).toBe(true);
+    expect(
+      isWidgetCommand({type: 'playAdhkar', superId: 'morning', dhikrId: null}),
+    ).toBe(true);
+    expect(
+      isWidgetCommand({type: 'playAdhkar', superId: '', dhikrId: null}),
+    ).toBe(false);
+    expect(isWidgetCommand({type: 'playAdhkar', superId: 'morning'})).toBe(
+      false,
+    );
+  });
+  // @ai-end
+
   it('accepts startBedtime with valid values only', () => {
     const ok = {
       type: 'startBedtime',

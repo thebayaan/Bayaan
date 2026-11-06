@@ -20,6 +20,8 @@ android {
 }
 
 dependencies {
+  // ReactHost for the headless widget root (version pinned by the RN Gradle plugin). // @ai
+  implementation "com.facebook.react:react-android" // @ai
   implementation 'androidx.glance:glance-appwidget:1.1.1'
   implementation 'androidx.glance:glance-material3:1.1.1'
   implementation 'androidx.media3:media3-session:1.9.0'

@@ -1,4 +1,4 @@
-import React, {useMemo, useEffect, useRef, useCallback} from 'react';
+import React, {useMemo, useEffect, useRef, useCallback, useState} from 'react';
 import {
   View,
   Text,
@@ -6,9 +6,10 @@ import {
   StyleSheet,
   FlatList,
   Pressable,
+  type LayoutChangeEvent,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
-import {moderateScale, verticalScale} from 'react-native-size-matters';
+import {moderateScale, verticalScale} from '@/utils/scale';
 import {Reciter, RECITERS} from '@/data/reciterData';
 import {BrowseReciterCard} from './browse/BrowseReciterCard';
 import {CircularReciterCard} from './cards/CircularReciterCard';
@@ -45,8 +46,18 @@ import {USE_GLASS} from '@/hooks/useGlassProps';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useAdhkarStore} from '@/store/adhkarStore';
 import {AdhkarBentoCard} from '@/components/adhkar/AdhkarBentoCard';
+import {
+  AdhkarNowPlayingCard,
+  useHasAdhkarSession,
+} from '@/components/adhkar/AdhkarNowPlayingCard';
 import {SuperCategory} from '@/types/adhkar';
 import branding, {type HomeRow, type HomeRowId} from '@/config/branding';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+import {getReciterDisplayName, getSurahDisplayName} from '@/i18n/format';
+import {useResponsive} from '@/hooks/useResponsive';
+import {computeShelfLayout} from '@/utils/gridLayout';
+// @ai-end
 
 /**
  * Fallback row order used when `branding.homeRowConfig` is undefined.
@@ -75,6 +86,56 @@ interface RecitersViewProps {
 
 type SectionItem = Reciter | RecentlyPlayedTrack | RewayatInfo | UserPlaylist;
 
+// @ai-start
+/**
+ * iPad shelf sizes, from the pane width: whole cards plus a peek of the
+ * next (ipad-standards §5.3). Undefined on phones, which keep the fixed
+ * card sizes below.
+ */
+interface ShelfSizes {
+  cardWidth: number;
+  avatarWidth: number;
+}
+
+const SHELF_PADDING = moderateScale(16);
+const TABLET_SHELF_GAP = moderateScale(12);
+const TABLET_SHELF_PEEK = 0.3;
+const TABLET_MIN_CARD_WIDTH = 150;
+const TABLET_MIN_AVATAR_WIDTH = 96;
+
+function getShelfSizes(paneWidth: number): ShelfSizes {
+  const shelf = {
+    leadingPadding: SHELF_PADDING,
+    gap: TABLET_SHELF_GAP,
+    peek: TABLET_SHELF_PEEK,
+    minColumns: 2,
+  };
+  return {
+    cardWidth: computeShelfLayout(paneWidth, {
+      ...shelf,
+      minCardWidth: TABLET_MIN_CARD_WIDTH,
+    }).itemWidth,
+    avatarWidth: computeShelfLayout(paneWidth, {
+      ...shelf,
+      minCardWidth: TABLET_MIN_AVATAR_WIDTH,
+    }).itemWidth,
+  };
+}
+
+/** A card's phone size, or the shelf width at the same aspect ratio on iPad. */
+function cardSize(
+  shelf: ShelfSizes | undefined,
+  phoneWidth: number,
+  phoneHeight: number,
+): {width: number; height: number} {
+  if (!shelf) return {width: phoneWidth, height: phoneHeight};
+  return {
+    width: shelf.cardWidth,
+    height: (shelf.cardWidth * phoneHeight) / phoneWidth,
+  };
+}
+// @ai-end
+
 // Memoize the FlatList component
 const MemoizedFlatList = React.memo(
   ({
@@ -83,6 +144,8 @@ const MemoizedFlatList = React.memo(
     onReciterPress,
     onRewayatPress,
     onPlaylistPress,
+    showAdhkarTile,
+    shelf, // @ai
   }: {
     data: SectionItem[];
     variant:
@@ -95,6 +158,8 @@ const MemoizedFlatList = React.memo(
     onReciterPress: (reciter: Reciter) => void;
     onRewayatPress?: (rewayat: RewayatInfo) => void;
     onPlaylistPress?: (playlist: UserPlaylist) => void;
+    showAdhkarTile?: boolean;
+    shelf?: ShelfSizes; // @ai
     theme: Theme;
   }) => (
     <FlatList
@@ -107,6 +172,7 @@ const MemoizedFlatList = React.memo(
           onReciterPress={onReciterPress}
           onRewayatPress={onRewayatPress}
           onPlaylistPress={onPlaylistPress}
+          shelf={shelf} // @ai
         />
       )}
       keyExtractor={item =>
@@ -122,38 +188,31 @@ const MemoizedFlatList = React.memo(
       }
       horizontal
       showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.sectionContent}
+      contentContainerStyle={[
+        styles.sectionContent,
+        shelf && styles.tabletSectionContent, // @ai
+      ]}
+      ListHeaderComponent={
+        showAdhkarTile ? (
+          <View style={{flex: 1}}>
+            <AdhkarNowPlayingCard
+              variant="tile"
+              width={shelf?.cardWidth} // @ai
+            />
+          </View>
+        ) : undefined
+      }
       removeClippedSubviews={true}
       maxToRenderPerBatch={5}
       windowSize={3}
       initialNumToRender={5}
-      getItemLayout={(_, index) => ({
-        length:
-          variant === 'circular'
-            ? 80
-            : variant === 'recent'
-              ? 200
-              : variant === 'featured'
-                ? 140
-                : variant === 'rewayat'
-                  ? 130
-                  : variant === 'playlist'
-                    ? 120
-                    : 140,
-        offset:
-          (variant === 'circular'
-            ? 80
-            : variant === 'recent'
-              ? 200
-              : variant === 'featured'
-                ? 140
-                : variant === 'rewayat'
-                  ? 130
-                  : variant === 'playlist'
-                    ? 120
-                    : 140) * index,
-        index,
-      })}
+      // @ai-start
+      // No getItemLayout: card widths differ per variant, scale with the
+      // device and include the gap and content padding, so any fixed length
+      // mis-predicts offsets and, with removeClippedSubviews, can leave
+      // cards blank while scrolling. These shelves are short, so measuring
+      // is cheap.
+      // @ai-end
     />
   ),
   (prevProps, nextProps) =>
@@ -162,11 +221,14 @@ const MemoizedFlatList = React.memo(
     prevProps.onReciterPress === nextProps.onReciterPress &&
     prevProps.onRewayatPress === nextProps.onRewayatPress &&
     prevProps.onPlaylistPress === nextProps.onPlaylistPress &&
+    prevProps.showAdhkarTile === nextProps.showAdhkarTile &&
+    prevProps.shelf === nextProps.shelf && // @ai
     prevProps.theme === nextProps.theme,
 );
 
 MemoizedFlatList.displayName = 'MemoizedFlatList';
 
+// @ai-start
 const RenderSectionItem = React.memo(
   ({
     item,
@@ -175,6 +237,7 @@ const RenderSectionItem = React.memo(
     onReciterPress,
     onRewayatPress,
     onPlaylistPress,
+    shelf,
   }: {
     item: SectionItem;
     variant:
@@ -188,8 +251,10 @@ const RenderSectionItem = React.memo(
     onReciterPress: (reciter: Reciter) => void;
     onRewayatPress?: (rewayat: RewayatInfo) => void;
     onPlaylistPress?: (playlist: UserPlaylist) => void;
+    shelf?: ShelfSizes;
   }) => {
     const {theme} = useTheme();
+    const {t} = useTranslation(['home', 'common']);
 
     // Derive reciter ID for follow-along badge
     const reciterId =
@@ -209,8 +274,8 @@ const RenderSectionItem = React.memo(
                 ? (item.reciter?.image_url ?? undefined)
                 : undefined
             }
-            reciterName={item.uploadArtist || 'My Recitations'}
-            surahName={item.uploadTitle || 'Upload'}
+            reciterName={item.uploadArtist || t('home.myRecitations')}
+            surahName={item.uploadTitle || t('home.upload')}
             trackId={`upload:${item.userRecitationId}`}
             reciterId={item.reciter?.id || '__uploads__'}
             surahId={item.surah?.id || 0}
@@ -219,6 +284,7 @@ const RenderSectionItem = React.memo(
             index={index}
             isUserUpload
             userRecitationId={item.userRecitationId}
+            width={shelf?.cardWidth}
           />
         );
       }
@@ -230,8 +296,8 @@ const RenderSectionItem = React.memo(
       return (
         <RecentReciterCard
           imageUrl={item.reciter.image_url ?? undefined}
-          reciterName={item.reciter.name}
-          surahName={item.surah.name}
+          reciterName={getReciterDisplayName(item.reciter)}
+          surahName={getSurahDisplayName(item.surah)}
           trackId={`${item.reciter.id}:${item.surah.id}`}
           reciterId={item.reciter.id}
           surahId={item.surah.id}
@@ -239,6 +305,7 @@ const RenderSectionItem = React.memo(
           progress={item.progress}
           rewayatId={item.rewayatId}
           index={index}
+          width={shelf?.cardWidth}
         />
       );
     }
@@ -248,9 +315,11 @@ const RenderSectionItem = React.memo(
       return (
         <CircularReciterCard
           imageUrl={reciter.image_url ?? undefined}
-          name={reciter.name}
+          name={getReciterDisplayName(reciter)}
           onPress={() => onReciterPress(reciter)}
           showFollowAlong={showFollowAlong}
+          // The card adds 6pt around the photo.
+          width={shelf ? shelf.avatarWidth - moderateScale(6) : undefined}
         />
       );
     }
@@ -261,8 +330,7 @@ const RenderSectionItem = React.memo(
         <BrowseReciterCard
           reciter={reciter}
           onPress={() => onReciterPress(reciter)}
-          width={moderateScale(140)}
-          height={moderateScale(160)}
+          {...cardSize(shelf, moderateScale(140), moderateScale(160))}
           theme={theme}
           showFollowAlong={showFollowAlong}
         />
@@ -275,8 +343,7 @@ const RenderSectionItem = React.memo(
         <RewayatCard
           rewayat={rewayat}
           onPress={() => onRewayatPress?.(rewayat)}
-          width={moderateScale(130)}
-          height={moderateScale(110)}
+          {...cardSize(shelf, moderateScale(130), moderateScale(110))}
         />
       );
     }
@@ -290,8 +357,7 @@ const RenderSectionItem = React.memo(
           color={playlist.color}
           playlistId={playlist.id}
           onPress={() => onPlaylistPress?.(playlist)}
-          width={moderateScale(110)}
-          height={moderateScale(110)}
+          {...cardSize(shelf, moderateScale(110), moderateScale(110))}
         />
       );
     }
@@ -301,18 +367,19 @@ const RenderSectionItem = React.memo(
       <BrowseReciterCard
         reciter={reciter}
         onPress={() => onReciterPress(reciter)}
-        width={moderateScale(120)}
-        height={moderateScale(140)}
+        {...cardSize(shelf, moderateScale(120), moderateScale(140))}
         theme={theme}
         showFollowAlong={showFollowAlong}
       />
     );
   },
 );
+// @ai-end
 
 RenderSectionItem.displayName = 'RenderSectionItem';
 
 // Memoize the section component
+// @ai-start
 const Section = React.memo(
   ({
     title,
@@ -322,6 +389,8 @@ const Section = React.memo(
     onRewayatPress,
     onPlaylistPress,
     onClear,
+    showAdhkarTile,
+    shelf,
     theme,
   }: {
     title: string;
@@ -337,9 +406,12 @@ const Section = React.memo(
     onRewayatPress?: (rewayat: RewayatInfo) => void;
     onPlaylistPress?: (playlist: UserPlaylist) => void;
     onClear?: () => void;
+    showAdhkarTile?: boolean;
+    shelf?: ShelfSizes;
     theme: Theme;
   }) => {
-    if (!data.length) return null;
+    const {t} = useTranslation(['home', 'common']);
+    if (!data.length && !showAdhkarTile) return null;
 
     return (
       <View style={styles.section}>
@@ -347,7 +419,7 @@ const Section = React.memo(
           <Text style={[styles.sectionTitle, {color: theme.colors.text}]}>
             {title}
           </Text>
-          {onClear && (
+          {onClear && data.length > 0 && (
             <Pressable onPress={onClear} hitSlop={8}>
               <Text
                 style={[
@@ -358,7 +430,7 @@ const Section = React.memo(
                       .toString(),
                   },
                 ]}>
-                Clear
+                {t('common:actions.clear')}
               </Text>
             </Pressable>
           )}
@@ -369,6 +441,8 @@ const Section = React.memo(
           onReciterPress={onReciterPress}
           onRewayatPress={onRewayatPress}
           onPlaylistPress={onPlaylistPress}
+          showAdhkarTile={showAdhkarTile}
+          shelf={shelf}
           theme={theme}
         />
       </View>
@@ -381,8 +455,11 @@ const Section = React.memo(
     prevProps.onRewayatPress === nextProps.onRewayatPress &&
     prevProps.onPlaylistPress === nextProps.onPlaylistPress &&
     prevProps.onClear === nextProps.onClear &&
+    prevProps.showAdhkarTile === nextProps.showAdhkarTile &&
+    prevProps.shelf === nextProps.shelf &&
     prevProps.theme === nextProps.theme,
 );
+// @ai-end
 
 Section.displayName = 'Section';
 
@@ -404,17 +481,42 @@ function seededShuffle<T>(array: T[], seed: number): T[] {
   return shuffled;
 }
 
+// @ai-start
 function RecitersView({onReciterPress}: RecitersViewProps) {
   const {theme} = useTheme();
+  const {t} = useTranslation(['home', 'common']);
   const bottomInset = useBottomInset();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const {recentTracks} = useRecentlyPlayedStore();
+  const recentTracks = useRecentlyPlayedStore(s => s.recentTracks);
+  const showAdhkarTile = useHasAdhkarSession();
   const {favoriteReciters} = useFavoriteReciters();
   const {lovedTracks} = useLoved();
   const downloads = useDownloadStore(state => state.downloads);
   const {playlists} = usePlaylists();
   const {incrementRecitersViewOpenCount, shouldShowNewToQuran} = useSettings();
+
+  // Size iPad shelves from the pane beside the sidebar. The window width is
+  // only a first guess until onLayout reports.
+  const {isTablet, width: windowWidth} = useResponsive();
+  const [paneWidth, setPaneWidth] = useState<number | null>(null);
+  const handleLayout = useCallback((e: LayoutChangeEvent) => {
+    const next = e.nativeEvent.layout.width;
+    setPaneWidth(prev => (prev === next ? prev : next));
+  }, []);
+  const shelf = useMemo(
+    () => (isTablet ? getShelfSizes(paneWidth ?? windowWidth) : undefined),
+    [isTablet, paneWidth, windowWidth],
+  );
+  const renderAdhkarItem = useCallback(
+    ({item}: {item: SuperCategory}) => (
+      <AdhkarBentoCard
+        category={item}
+        {...cardSize(shelf, moderateScale(140), moderateScale(100))}
+      />
+    ),
+    [shelf],
+  );
 
   // Generate a session seed once when the component first mounts
   // This persists across re-renders but changes on app restart
@@ -565,13 +667,15 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
    */
   const rowNodes: Record<HomeRowId, React.ReactNode> = {
     'continue-listening':
-      validRecentTracks.length > 0 ? (
+      validRecentTracks.length > 0 || showAdhkarTile ? (
         <Section
-          title="Continue Listening"
+          title={t('home.continueListening')}
           data={validRecentTracks}
           variant="recent"
           onReciterPress={onReciterPress}
           onClear={handleClearRecentTracks}
+          showAdhkarTile={showAdhkarTile}
+          shelf={shelf}
           theme={theme}
         />
       ) : null,
@@ -579,10 +683,11 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
     'new-to-quran':
       showNewToQuran && beginnerFriendlyReciters.length > 0 ? (
         <Section
-          title="New to Quran? Start Here"
+          title={t('home.newToQuran')}
           data={beginnerFriendlyReciters}
           variant="default"
           onReciterPress={onReciterPress}
+          shelf={shelf}
           theme={theme}
         />
       ) : null,
@@ -590,10 +695,11 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
     favorites:
       favoriteRecitersSection.length > 0 ? (
         <Section
-          title="Your Favorites"
+          title={t('home.yourFavorites')}
           data={favoriteRecitersSection}
           variant="circular"
           onReciterPress={onReciterPress}
+          shelf={shelf}
           theme={theme}
         />
       ) : null,
@@ -601,10 +707,11 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
     featured:
       featuredReciters.length > 0 ? (
         <Section
-          title="Featured Reciters"
+          title={t('home.featuredReciters')}
           data={featuredReciters}
           variant="default"
           onReciterPress={onReciterPress}
+          shelf={shelf}
           theme={theme}
         />
       ) : null,
@@ -614,7 +721,7 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, {color: theme.colors.text}]}>
-              Adhkar
+              {t('common:terms.adhkar')}
             </Text>
             <Pressable
               onPress={() => router.push('/(tabs)/(a.home)/adhkar')}
@@ -628,7 +735,7 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
                       .toString(),
                   },
                 ]}>
-                See More
+                {t('home.seeMore')}
               </Text>
             </Pressable>
           </View>
@@ -638,7 +745,10 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
             keyExtractor={adhkarKeyExtractor}
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.sectionContent}
+            contentContainerStyle={[
+              styles.sectionContent,
+              shelf && styles.tabletSectionContent,
+            ]}
           />
         </View>
       ) : null,
@@ -646,10 +756,11 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
     'follow-along':
       followAlongReciters.length > 0 ? (
         <Section
-          title="Follow Along"
+          title={t('home.followAlong')}
           data={followAlongReciters}
           variant="default"
           onReciterPress={onReciterPress}
+          shelf={shelf}
           theme={theme}
         />
       ) : null,
@@ -657,11 +768,12 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
     playlists:
       playlists.length > 0 ? (
         <Section
-          title="Your Playlists"
+          title={t('home.yourPlaylists')}
           data={seededShuffle(playlists, sessionSeed + 8).slice(0, 10)}
           variant="playlist"
           onReciterPress={onReciterPress}
           onPlaylistPress={handlePlaylistPress}
+          shelf={shelf}
           theme={theme}
         />
       ) : null,
@@ -669,10 +781,11 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
     exclusives:
       bayaanOriginalsReciters.length > 0 ? (
         <Section
-          title="Exclusives"
+          title={t('home.exclusives')}
           data={bayaanOriginalsReciters}
           variant="featured"
           onReciterPress={onReciterPress}
+          shelf={shelf}
           theme={theme}
         />
       ) : null,
@@ -680,10 +793,11 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
     tajweed:
       tajweedReciters.length > 0 ? (
         <Section
-          title="Best for Tajweed"
+          title={t('home.bestForTajweed')}
           data={tajweedReciters}
           variant="default"
           onReciterPress={onReciterPress}
+          shelf={shelf}
           theme={theme}
         />
       ) : null,
@@ -691,10 +805,11 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
     memorization:
       memorizationReciters.length > 0 ? (
         <Section
-          title="Best for Memorization"
+          title={t('home.bestForMemorization')}
           data={memorizationReciters}
           variant="default"
           onReciterPress={onReciterPress}
+          shelf={shelf}
           theme={theme}
         />
       ) : null,
@@ -702,11 +817,12 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
     rewayat:
       rewayatTypes.length > 0 ? (
         <Section
-          title="Explore by Rewayah"
+          title={t('home.exploreByRewayah')}
           data={rewayatTypes}
           variant="rewayat"
           onReciterPress={onReciterPress}
           onRewayatPress={handleRewayatPress}
+          shelf={shelf}
           theme={theme}
         />
       ) : null,
@@ -714,10 +830,11 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
     collection:
       collectionReciters.length > 0 ? (
         <Section
-          title="From your Collection"
+          title={t('home.fromYourCollection')}
           data={collectionReciters}
           variant="default"
           onReciterPress={onReciterPress}
+          shelf={shelf}
           theme={theme}
         />
       ) : null,
@@ -740,7 +857,8 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
       }
       contentInsetAdjustmentBehavior={USE_GLASS ? 'automatic' : 'never'}
       showsVerticalScrollIndicator={false}
-      removeClippedSubviews={true}>
+      removeClippedSubviews={true}
+      onLayout={isTablet ? handleLayout : undefined}>
       {/* RFC-008 — Listen-tab top region. Default is the unified
        * `RecitersHero`; forks may substitute their own via
        * `branding.listenTabTopComponent`. */}
@@ -756,17 +874,10 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
     </ScrollView>
   );
 }
+// @ai-end
 
-// Module-level helpers to keep the renderItem/keyExtractor references
-// stable across renders (avoids react/no-unstable-nested-components).
-const renderAdhkarItem = ({item}: {item: SuperCategory}) => (
-  <AdhkarBentoCard
-    category={item}
-    width={moderateScale(140)}
-    height={moderateScale(100)}
-  />
-);
-
+// Module-level helper to keep the keyExtractor reference stable across
+// renders.
 const adhkarKeyExtractor = (item: SuperCategory) => item.id;
 
 const styles = StyleSheet.create({
@@ -796,9 +907,14 @@ const styles = StyleSheet.create({
     fontFamily: 'Manrope-Medium',
   },
   sectionContent: {
-    paddingHorizontal: moderateScale(16),
+    paddingHorizontal: SHELF_PADDING, // @ai
     gap: moderateScale(8),
   },
+  // @ai-start
+  tabletSectionContent: {
+    gap: TABLET_SHELF_GAP,
+  },
+  // @ai-end
 });
 
 export default React.memo(RecitersView, (prevProps, nextProps) => {

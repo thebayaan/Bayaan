@@ -1,7 +1,6 @@
 import React, {useMemo, useCallback} from 'react';
 import {View, StyleSheet, useWindowDimensions} from 'react-native';
-import {moderateScale} from 'react-native-size-matters';
-import {moderateScale as moderateScaleCapped} from '@/utils/scale';
+import {moderateScale} from '@/utils/scale';
 import {LegendList, type LegendListRenderItemProps} from '@legendapp/list';
 import {Theme} from '@/utils/themeUtils';
 import {PlaylistCard} from '@/components/cards/PlaylistCard';
@@ -93,7 +92,7 @@ function createStyles(_theme: Theme, bottomInset = 0) {
     },
     gridContainer: {
       paddingHorizontal: moderateScale(16),
-      paddingBottom: Math.max(moderateScaleCapped(80), bottomInset),
+      paddingBottom: Math.max(moderateScale(80), bottomInset),
       paddingTop: moderateScale(8),
     },
     row: {

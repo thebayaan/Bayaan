@@ -1,14 +1,21 @@
 import React, {useMemo} from 'react';
-import {View, Text, Pressable, Switch, ScrollView} from 'react-native';
+import {View, Text, Pressable, ScrollView} from 'react-native';
+import {NativeSwitch} from '@/components/native/NativeSwitch'; // @ai
 import {useTheme} from '@/hooks/useTheme';
-import {ScaledSheet, moderateScale} from 'react-native-size-matters';
+import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {Theme} from '@/utils/themeUtils';
 import {AntDesign, Feather} from '@expo/vector-icons';
 import Color from 'color';
 import {useSettings} from '@/hooks/useSettings';
+// @ai-start
+import {latinLetterSpacing} from '@/utils/rtl';
+import {useTranslation} from 'react-i18next';
+// @ai-end
 
+// @ai-start
 export default function ReciterChoiceScreen() {
   const {theme} = useTheme();
+  const {t} = useTranslation('settings');
   const styles = useMemo(() => createStyles(theme), [theme]);
   const {
     askEveryTime,
@@ -17,26 +24,18 @@ export default function ReciterChoiceScreen() {
     setDefaultReciterSelection,
   } = useSettings();
 
-  const trackColor = useMemo(
-    () => ({
-      false: Color(theme.colors.text).alpha(0.1).toString(),
-      true: Color(theme.colors.text).alpha(0.65).toString(),
-    }),
-    [theme.colors.text],
-  );
-
   const options = [
     {
-      label: 'Browse All Reciters',
+      label: t('reciterChoice.browseAll'),
       action: 'browseAll',
-      description: 'Search through our complete collection of reciters',
+      description: t('reciterChoice.browseAllDescription'),
       icon: 'search1',
       iconType: 'antdesign',
     },
     {
-      label: 'Use Default Reciter',
+      label: t('reciterChoice.useDefault'),
       action: 'useDefault',
-      description: 'Always use your selected default reciter',
+      description: t('reciterChoice.useDefaultDescription'),
       icon: 'user',
       iconType: 'feather',
     },
@@ -48,26 +47,25 @@ export default function ReciterChoiceScreen() {
         contentContainerStyle={styles.scrollContent}
         contentInsetAdjustmentBehavior="automatic"
         showsVerticalScrollIndicator={false}>
-        <Text style={styles.subtitle}>
-          Choose how you want to select reciters when playing Surahs
-        </Text>
+        <Text style={styles.subtitle}>{t('reciterChoice.subtitle')}</Text>
 
         <View style={styles.section}>
-          <Text style={styles.sectionHeader}>SELECTION PREFERENCE</Text>
+          <Text style={styles.sectionHeader}>
+            {t('reciterChoice.preferenceHeader')}
+          </Text>
           <View style={styles.card}>
             <View style={styles.settingRow}>
               <View style={styles.settingInfo}>
-                <Text style={styles.settingTitle}>Ask Every Time</Text>
+                <Text style={styles.settingTitle}>
+                  {t('reciterChoice.askEveryTime')}
+                </Text>
                 <Text style={styles.settingDescription}>
-                  Choose a reciter each time you play
+                  {t('reciterChoice.askEveryTimeDescription')}
                 </Text>
               </View>
-              <Switch
+              <NativeSwitch
                 value={askEveryTime}
                 onValueChange={() => setAskEveryTime(!askEveryTime)}
-                trackColor={trackColor}
-                thumbColor="#FFFFFF"
-                ios_backgroundColor={trackColor.false}
                 style={styles.switchStyle}
               />
             </View>
@@ -76,7 +74,9 @@ export default function ReciterChoiceScreen() {
 
         {!askEveryTime && (
           <View style={styles.section}>
-            <Text style={styles.sectionHeader}>DEFAULT SELECTION METHOD</Text>
+            <Text style={styles.sectionHeader}>
+              {t('reciterChoice.methodHeader')}
+            </Text>
             <View style={styles.optionsContainer}>
               {options.map(option => {
                 const isSelected = defaultReciterSelection === option.action;
@@ -151,7 +151,9 @@ export default function ReciterChoiceScreen() {
     </View>
   );
 }
+// @ai-end
 
+// @ai-start
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({
     container: {
@@ -176,7 +178,7 @@ const createStyles = (theme: Theme) =>
       fontSize: moderateScale(10.5),
       fontFamily: 'Manrope-SemiBold',
       color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
-      letterSpacing: 1.2,
+      letterSpacing: latinLetterSpacing(1.2),
       textTransform: 'uppercase',
       marginBottom: moderateScale(6),
       marginLeft: moderateScale(2),
@@ -249,3 +251,4 @@ const createStyles = (theme: Theme) =>
       lineHeight: moderateScale(17),
     },
   });
+// @ai-end

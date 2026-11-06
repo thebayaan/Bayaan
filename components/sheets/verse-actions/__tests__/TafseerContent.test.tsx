@@ -1,3 +1,12 @@
+// Icon fonts can't load in Jest (SDK 58's expo-font has no asset registry here).
+jest.mock(
+  '@expo/vector-icons',
+  () =>
+    new Proxy(
+      {},
+      {get: (_target, name) => (name === '__esModule' ? false : () => null)},
+    ),
+);
 jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
 );

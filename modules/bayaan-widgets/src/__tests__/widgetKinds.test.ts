@@ -59,7 +59,13 @@ describe('changedWidgetKinds', () => {
     const prev = base();
     const next = base();
     if (next.nowPlaying) next.nowPlaying.isPlaying = false;
-    expect(changedWidgetKinds(prev, next)).toEqual(['ContinueListening']);
+    // Their play buttons turn back into play. // @ai
+    expect(changedWidgetKinds(prev, next)).toEqual([
+      'ContinueListening',
+      'QuickSurah',
+      'PinnedReciter',
+      'AyahOfTheDay',
+    ]);
   });
 
   it('reloads Continue Reading only when last read changes', () => {

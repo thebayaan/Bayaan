@@ -1,4 +1,4 @@
-import React, {useState, useRef} from 'react';
+import React, {useState, useRef, useCallback, useEffect} from 'react'; // @ai
 import {
   View,
   Text,
@@ -6,22 +6,71 @@ import {
   Pressable,
   StyleSheet,
   Keyboard,
+  type TextInputInstance,
 } from 'react-native';
-import {Stack} from 'expo-router';
+import {Stack, useFocusEffect, useIsFocused} from 'expo-router'; // @ai
+import type {SearchBarCommands} from 'react-native-screens'; // @ai
+// @ai-start
+import {useTranslation} from 'react-i18next';
+// @ai-end
 import {SearchView} from '@/components/search/SearchView';
 import {useTheme} from '@/hooks/useTheme';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import {Feather} from '@expo/vector-icons';
 import Color from 'color';
 import {USE_GLASS} from '@/hooks/useGlassProps';
+// @ai-start
+import {
+  subscribeSearchFocus,
+  takeSearchFocusRequest,
+} from '@/services/keyboard/searchFocus';
+// @ai-end
 
+// @ai-start
 export default function SearchScreen() {
   const {theme} = useTheme();
+  const {t} = useTranslation(['home', 'common']);
   const insets = useSafeAreaInsets();
   const [query, setQuery] = useState('');
   const [isSearchActive, setIsSearchActive] = useState(false);
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<TextInputInstance>(null);
+
+  // iOS 27 only renders the search tab as the detached trailing pill while
+  // `automaticallyActivatesSearch` is set on it (see app/(tabs)/_layout.tsx).
+  // That same flag makes UIKit focus a native search bar the instant the tab
+  // is selected, dropping the user straight into the keyboard instead of this
+  // browse screen. UIKit performs that check once, at selection, and never
+  // re-checks, so mounting the search bar from the screen's focus effect
+  // leaves nothing for it to activate: the tab keeps its detached placement
+  // and the keyboard stays down until the user taps the field. Mounting in
+  // the effect rather than behind a timer keeps the bar part of the tab
+  // transition, so it animates in with the screen instead of popping in.
+  const [searchBarMounted, setSearchBarMounted] = useState(false);
+  useFocusEffect(
+    useCallback(() => {
+      setSearchBarMounted(true);
+      return () => setSearchBarMounted(false);
+    }, []),
+  );
+
+  // ⌘F (iPad keyboard) opens this tab and puts the cursor in the field, once
+  // the tab is on screen and, on iOS 26, its search bar is mounted.
+  const searchBarRef = useRef<SearchBarCommands>(null);
+  const isFocused = useIsFocused();
+  const canFocusField = isFocused && (!USE_GLASS || searchBarMounted);
+  useEffect(() => {
+    if (!canFocusField) return;
+    const focusIfAsked = () => {
+      if (!takeSearchFocusRequest()) return;
+      requestAnimationFrame(() => {
+        if (USE_GLASS) searchBarRef.current?.focus();
+        else inputRef.current?.focus();
+      });
+    };
+    focusIfAsked();
+    return subscribeSearchFocus(focusIfAsked);
+  }, [canFocusField]);
 
   const handleCancel = () => {
     setQuery('');
@@ -33,10 +82,11 @@ export default function SearchScreen() {
   return (
     <View
       style={[styles.container, {backgroundColor: theme.colors.background}]}>
-      {USE_GLASS && (
+      {USE_GLASS && searchBarMounted && (
         <Stack.SearchBar
+          ref={searchBarRef}
           placement="automatic"
-          placeholder="Search surahs or reciters"
+          placeholder={t('search.placeholder')}
           onChangeText={e => setQuery(e.nativeEvent.text)}
           onFocus={() => setIsSearchActive(true)}
           onCancelButtonPress={() => {
@@ -79,7 +129,7 @@ export default function SearchScreen() {
               <TextInput
                 ref={inputRef}
                 style={[styles.androidSearchInput, {color: theme.colors.text}]}
-                placeholder="Search surahs or reciters"
+                placeholder={t('search.placeholder')}
                 placeholderTextColor={Color(theme.colors.text)
                   .alpha(0.35)
                   .toString()}
@@ -105,7 +155,7 @@ export default function SearchScreen() {
             {isSearchActive && (
               <Pressable onPress={handleCancel} hitSlop={4}>
                 <Text style={[styles.cancelText, {color: theme.colors.text}]}>
-                  Cancel
+                  {t('common:actions.cancel')}
                 </Text>
               </Pressable>
             )}
@@ -125,6 +175,7 @@ export default function SearchScreen() {
     </View>
   );
 }
+// @ai-end
 
 const styles = StyleSheet.create({
   container: {

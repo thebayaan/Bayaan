@@ -12,7 +12,7 @@ import Svg, {
   RadialGradient,
   Stop,
 } from 'react-native-svg';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 
 const S = moderateScale(26);
 

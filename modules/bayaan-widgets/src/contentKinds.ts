@@ -2,15 +2,13 @@
 // widgetKinds.ts so the Phase 1 lists and tests stay as they are.
 import type {WidgetSnapshot} from './snapshot';
 import type {WidgetContent} from './content';
-import {changedWidgetKinds} from './widgetKinds';
+import {changedWidgetKinds, playingKey} from './widgetKinds';
 
 export type ContentWidgetKind =
   | 'RecentlyPlayed'
   | 'LibraryShelf'
   | 'Bedtime'
   | 'Adhkar'
-  | 'HijriDate'
-  | 'Occasion'
   | 'ReciterSpotlight'
   | 'BayaanNow';
 
@@ -19,8 +17,6 @@ export const ALL_CONTENT_WIDGET_KINDS: readonly ContentWidgetKind[] = [
   'LibraryShelf',
   'Bedtime',
   'Adhkar',
-  'HijriDate',
-  'Occasion',
   'ReciterSpotlight',
   'BayaanNow',
 ];
@@ -29,7 +25,7 @@ function same(a: unknown, b: unknown): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
-// Adhkar, HijriDate and Occasion depend only on the date: never reloaded here.
+// Adhkar depends on the date (reloaded elsewhere) and on adhkar playback.
 export function changedContentKindsForSnapshot(
   prev: WidgetSnapshot | null,
   next: WidgetSnapshot,
@@ -37,15 +33,24 @@ export function changedContentKindsForSnapshot(
   if (!prev) return ['RecentlyPlayed', 'Bedtime', 'BayaanNow'];
   const recentChanged = !same(prev.recent, next.recent);
   const reciterChanged = !same(prev.defaultReciter, next.defaultReciter);
+  // @ai-start
+  // Their play buttons show pause while their surah or reciter plays.
+  const playingChanged = !same(playingKey(prev), playingKey(next));
+  const adhkarChanged = !same(prev.adhkar ?? null, next.adhkar ?? null);
   const kinds: ContentWidgetKind[] = [];
-  if (recentChanged || reciterChanged) kinds.push('RecentlyPlayed');
-  if (reciterChanged) kinds.push('Bedtime');
+  if (recentChanged || reciterChanged || playingChanged)
+    kinds.push('RecentlyPlayed');
+  if (reciterChanged || playingChanged) kinds.push('Bedtime');
+  if (playingChanged) kinds.push('LibraryShelf', 'ReciterSpotlight');
+  if (adhkarChanged) kinds.push('Adhkar');
   if (
     recentChanged ||
+    adhkarChanged ||
     changedWidgetKinds(prev, next).includes('ContinueListening')
   ) {
     kinds.push('BayaanNow');
   }
+  // @ai-end
   return kinds;
 }
 

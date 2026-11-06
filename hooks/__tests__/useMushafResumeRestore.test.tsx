@@ -1,3 +1,9 @@
+jest.mock('@/utils/afterInteractions', () => ({
+  runAfterInteractions: (task: () => void) => {
+    task();
+    return {cancel: jest.fn()};
+  },
+}));
 jest.mock('expo-router', () => ({useRouter: () => ({push: mockPush})}));
 jest.mock('@/services/mushaf/MushafSessionStore', () => ({
   mushafSessionStore: {
@@ -14,7 +20,7 @@ jest.mock('@/services/mushaf/MushafSessionStore', () => ({
 
 import React from 'react';
 import renderer, {act} from 'react-test-renderer';
-import {InteractionManager, Linking} from 'react-native';
+import {Linking} from 'react-native';
 import {useMushafResumeRestore} from '../useMushafResumeRestore';
 import {useBayaanAuthStore} from '@/store/bayaanAuthStore';
 import {useQfSyncStore} from '@/store/qfSyncStore';
@@ -34,12 +40,6 @@ beforeEach(() => {
   onHandled.mockReset();
   useBayaanAuthStore.getState().resetForTesting();
   useQfSyncStore.getState().resetForTesting();
-  jest
-    .spyOn(InteractionManager, 'runAfterInteractions')
-    .mockImplementation(callback => {
-      if (typeof callback === 'function') callback();
-      return {then: jest.fn(), done: jest.fn(), cancel: jest.fn()};
-    });
 });
 
 test('waits for cold-start auth and then account scope, and resumes only once', async () => {
@@ -81,7 +81,7 @@ test('resumes the guest page only after signed-out restoration settles', async (
 
 test('annotation request effect never invokes settings sync', () => {
   const source = require('fs').readFileSync(
-    `${process.cwd()}/app/_layout.tsx`,
+    `${process.cwd()}/components/auth/QfSyncLifecycleBridge.tsx`,
     'utf8',
   );
   const effect = source.slice(

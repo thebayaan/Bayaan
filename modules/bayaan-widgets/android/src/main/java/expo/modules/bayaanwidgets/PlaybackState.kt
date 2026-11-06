@@ -45,4 +45,16 @@ object PlaybackState {
     val ended = playing && remaining <= 0.0
     return EffectivePlayback(playing && !ended, remaining)
   }
+
+  // @ai-start
+  /** The track playing right now, after the override and end checks; null when paused or stopped. */
+  fun playingTrack(snapshot: WidgetSnapshot?, override: PlaybackOverride?, nowMs: Long): WidgetTrack? {
+    val np = snapshot?.nowPlaying ?: return null
+    return if (effective(np, snapshot.generatedAt, override, nowMs).isPlaying) np.track else null
+  }
+
+  /** A null reciterId matches any reciter (the widget plays the default one). */
+  fun matches(track: WidgetTrack?, surahId: Int, reciterId: String?): Boolean =
+    track != null && track.surahId == surahId && (reciterId == null || track.reciterId == reciterId)
+  // @ai-end
 }

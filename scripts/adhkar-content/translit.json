@@ -1,0 +1,2189 @@
+{
+  "75": {
+    "transliteration": "Allahu la ilaha illa huwa alhayyu alqayyoomu la takhuthuhu sinatun wala nawmun lahu ma fee alssamawati wama fee alardi man tha allathee yashfaAAu AAindahu illa biithnihi yaAAlamu ma bayna aydeehim wama khalfahum wala yuheetoona bishayin min AAilmihi illa bima shaa wasiAAa kursiyyuhu alssamawati waalarda wala yaooduhu hifthuhuma wahuwa alAAaliyyu alAAatheemu",
+    "instruction": "UNCHANGED",
+    "source": "tanzil-en-translit",
+    "sourceUrl": "https://tanzil.net/trans/en.transliteration",
+    "match": "differs"
+  },
+  "76": {
+    "transliteration": "Bismi Allahi alrrahmani alrraheemi Qul huwa Allahu ahadun Allahu alssamadu Lam yalid walam yooladu Walam yakun lahu kufuwan ahadun Bismi Allahi alrrahmani alrraheemi Qul aAAoothu birabbi alfalaqi Min sharri ma khalaqa Wamin sharri ghasiqin itha waqaba Wamin sharri alnnaffathati fee alAAuqadi Wamin sharri hasidin itha hasada Bismi Allahi alrrahmani alrraheemi Qul aAAoothu birabbi alnnasi Maliki alnnasi Ilahi alnnasi Min sharri alwaswasi alkhannasi Allathee yuwaswisu fee sudoori alnnasi Mina aljinnati wa alnnasm",
+    "instruction": "UNCHANGED",
+    "source": "tanzil-en-translit",
+    "sourceUrl": "https://tanzil.net/trans/en.transliteration",
+    "match": "exact"
+  },
+  "77": {
+    "transliteration": "Asbahna wa-asbahal-mulku lillah walhamdu lillah la ilaha illal-lah, wahdahu la shareeka lah, lahul-mulku walahul-hamd, wahuwa AAala kulli shayin qadeer, rabbi as-aluka khayra ma fee hathihil-laylah, wakhayra ma baAAdaha, wa-aAAoothu bika min sharri hathihil-laylah, washarri ma baAAdaha, rabbi aAAoothu bika minal-kasal, wasoo-il kibar, rabbi aAAoothu bika min AAathabin fin-nar, waAAathabin fil-qabr.",
+    "instruction": "UNCHANGED",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/27.json",
+    "match": "differs"
+  },
+  "78": {
+    "transliteration": "Allahumma bika asbahna wabika amsayna, wabika nahya ,wabika namootu wa-ilaykan-nushoor.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/27.json",
+    "match": "exact"
+  },
+  "79": {
+    "transliteration": "Allahumma anta rabbee la ilaha illa ant, khalaqtanee wa-ana AAabduk, wa-ana AAala AAahdika wawaAAdika mas-tataAAt, aAAoothu bika min sharri ma sanaAAt, aboo-o laka biniAAmatika AAalay, wa-aboo-o bithanbee, faghfir lee fa-innahu la yaghfiruth-thunooba illa ant.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/27.json",
+    "match": "exact"
+  },
+  "80": {
+    "transliteration": "Allahumma innee asbahtu oshhiduk, wa-oshhidu hamalata AAarshik, wamala-ikatak, wajameeAAa khalqik, annaka antal-lahu la ilaha illa ant, wahdaka la shareeka lak, wa-anna Muhammadan AAabduka warasooluk .",
+    "instruction": "four times in the morning & evening",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/27.json",
+    "match": "exact"
+  },
+  "81": {
+    "transliteration": "Allahumma ma asbaha bee min niAAmatin, aw bi-ahadin min khalqik, faminka wahdaka la shareeka lak, falakal-hamdu walakash-shukr.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/27.json",
+    "match": "exact"
+  },
+  "82": {
+    "transliteration": "Allahumma AAafinee fee badanee, allahumma AAafinee fee samAAee, allahumma AAafinee fee basaree, la ilaha illa ant. Allahumma innee aAAoothu bika minal-kufr, walfaqr, wa-aAAoothu bika min AAathabil-qabr, la ilaha illa ant",
+    "instruction": "three times",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/27.json",
+    "match": "exact"
+  },
+  "83": {
+    "transliteration": "Hasbiyal-lahu la ilaha illa huwa, AAalayhi tawakkalt, wahuwa rabbul-AAarshil-AAatheem",
+    "instruction": "Recite seven times in Arabic.",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/27.json",
+    "match": "exact"
+  },
+  "84": {
+    "transliteration": "Allahumma innee as-alukal-AAafwa walAAafiyah, fid-dunya wal-akhirah, allahumma innee as-alukal-AAafwa walAAafiyah fee deenee, wadunyaya wa-ahlee, wamalee, allahummas-tur AAawratee, wa-amin rawAAatee, allahummah-fathnee min bayni yaday, wamin khalfee, waAAan yameenee, waAAan shimalee, wamin fawqee, wa-aAAoothu biAAathamatika an oghtala min tahtee.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/27.json",
+    "match": "exact"
+  },
+  "85": {
+    "transliteration": "Allahumma AAalimal-ghaybi washshahadah, fatiras-samawati wal-ard, rabba kulli shayin wamaleekah, ashhadu an la ilaha illa ant, aAAoothu bika min sharri nafsee wamin sharrish-shaytani washirkih, waan aqtarifa AAala nafsee soo-an aw ajurrahu ila muslim.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/27.json",
+    "match": "exact"
+  },
+  "86": {
+    "transliteration": "Bismil-lahil-lathee la yadurru maAAas-mihi shay-on fil-ardi wala fis-sama-i wahuwas-sameeAAul-AAaleem.",
+    "instruction": "three times",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/27.json",
+    "match": "exact"
+  },
+  "87": {
+    "transliteration": "Radeetu billahi rabban wabil-islami deenan wabiMuhammadin nabiyya.",
+    "instruction": "three times",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/27.json",
+    "match": "differs"
+  },
+  "88": {
+    "transliteration": "Ya hayyu ya qayyoom, birahmatika astagheeth, aslih lee sha/nee kullah, wala takilnee ila nafsee tarfata AAayn.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/27.json",
+    "match": "exact"
+  },
+  "89": {
+    "transliteration": "Asbahna wa-asbahal-mulku lillahi rabbil-AAalameen, allahumma innee as-aluka khayra hathal-yawm, fat-hahu, wanasrahu, wanoorahu, wabarakatahu, wahudahu, wa-aAAoothu bika min sharri ma feehi, washarri ma baAAdah.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/27.json",
+    "match": "exact"
+  },
+  "90": {
+    "transliteration": "Asbahna AAala fitratil-islam, waAAala kalimatil-ikhlas, waAAala deeni nabiyyina Muhammad waAAala millati abeena Ibraheem, haneefan musliman wama kana minal-mushrikeen.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/27.json",
+    "match": "differs"
+  },
+  "91": {
+    "transliteration": "Subhanal-lahi wabihamdih.",
+    "instruction": "one hundred times",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/27.json",
+    "match": "exact"
+  },
+  "92": {
+    "transliteration": "La ilaha illal-lah, wahdahu la shareeka lah, lahul-mulku walahul-hamd, wahuwa AAala kulli shay-in qadeer.",
+    "instruction": "ten times or once if lazy",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/27.json",
+    "match": "exact"
+  },
+  "93": {
+    "transliteration": "La ilaha illal-lah, wahdahu la shareeka lah, lahul-mulku walahul-hamd, wahuwa AAala kulli shay-in qadeer.",
+    "instruction": "one hundred times every day",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/27.json",
+    "match": "exact"
+  },
+  "94": {
+    "transliteration": "Subhanal-lahi wabihamdih, AAadada khalqihi warida nafsih, wazinata AAarshih, wamidada kalimatih.",
+    "instruction": "three times",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/27.json",
+    "match": "exact"
+  },
+  "95": {
+    "transliteration": "Allahumma innee as-aluka AAilman nafiAAan, warizqan tayyiban, waAAamalan mutaqabbalan.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/27.json",
+    "match": "exact"
+  },
+  "96": {
+    "transliteration": "Astaghfirullaaha wa 'atoobu 'ilayhi",
+    "instruction": "one hundred times a day",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/27.json",
+    "match": "exact"
+  },
+  "97": {
+    "transliteration": "aAAoothu bikalimatil-lahit-tammati min sharri ma khalaq.",
+    "instruction": "three times in the evening",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/27.json",
+    "match": "exact"
+  },
+  "98": {
+    "transliteration": "Allaahumma salli wa sallim 'alaa Nabiyyinaa Muhammadin",
+    "instruction": "ten times",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/27.json",
+    "match": "exact"
+  },
+  "evening-77": {
+    "transliteration": "amsayna wa amsal-mulku lillahi wal-hamdu lillahi, la ilaha illa allah wahdahu la sharika lahu, lahu al-mulku wa lahu al-hamdu wa huwa 'ala kulli shay'in qadir. rabbi as'aluka khayra ma fi hadhihil-laylah wa khayra ma ba'daha, wa a'udhu bika min sharri ma fi hadhihil-laylah wa sharri ma ba'daha. rabbi a'udhu bika mina al-kasali wa su'il-kibar. rabbi a'udhu bika min 'adhabin fin-nar wa 'adhabin fil-qabr",
+    "instruction": "UNCHANGED",
+    "source": "fitrahive-dua-dhikr",
+    "sourceUrl": "https://github.com/fitrahive/dua-dhikr/blob/main/data/dua-dhikr/evening-dhikr/en.json",
+    "match": "exact"
+  },
+  "evening-78": {
+    "transliteration": "Allahumma bika amsayna, wabika asbahna, wabika nahya wabika namootu wa-ilaykal-maseer.",
+    "instruction": "UNCHANGED",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/27.json",
+    "match": "exact"
+  },
+  "evening-80": {
+    "transliteration": null,
+    "instruction": "UNCHANGED",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/27.json",
+    "match": "missing"
+  },
+  "evening-81": {
+    "transliteration": null,
+    "instruction": "UNCHANGED",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/27.json",
+    "match": "missing"
+  },
+  "evening-89": {
+    "transliteration": "Amsayna wa-amsal-mulku lillahi rabbil-AAalameen, allahumma innee as-aluka khayra hathihil-laylah, fat-haha, wanasraha, wanooraha, wabarakataha, wahudaha, wa-aAAoothu bika min sharri ma feeha washarri ma baAAdaha.",
+    "instruction": "UNCHANGED",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/27.json",
+    "match": "exact"
+  },
+  "evening-90": {
+    "transliteration": "amsayna 'ala fitratil-islam wa 'ala kalimatil-ikhlas, wa 'ala dini nabiyyina muhammadin sallallahu 'alayhi wa sallam, wa 'ala millati abina ibrahima hanifan musliman wa ma kana minal-mushrikin",
+    "instruction": "UNCHANGED",
+    "source": "fitrahive-dua-dhikr",
+    "sourceUrl": "https://github.com/fitrahive/dua-dhikr/blob/main/data/dua-dhikr/evening-dhikr/en.json",
+    "match": "exact"
+  },
+  "99": {
+    "transliteration": "Bismi Allahi alrrahmani alrraheemi Qul huwa Allahu ahadun Allahu alssamadu Lam yalid walam yooladu Walam yakun lahu kufuwan ahadun Bismi Allahi alrrahmani alrraheemi Qul aAAoothu birabbi alfalaqi Min sharri ma khalaqa Wamin sharri ghasiqin itha waqaba Wamin sharri alnnaffathati fee alAAuqadi Wamin sharri hasidin itha hasada Bismi Allahi alrrahmani alrraheemi Qul aAAoothu birabbi alnnasi Maliki alnnasi Ilahi alnnasi Min sharri alwaswasi alkhannasi Allathee yuwaswisu fee sudoori alnnasi Mina aljinnati wa alnnasm",
+    "instruction": "UNCHANGED",
+    "source": "tanzil-en-translit",
+    "sourceUrl": "https://tanzil.net/trans/en.transliteration",
+    "match": "differs"
+  },
+  "100": {
+    "transliteration": "Allahu la ilaha illa huwa alhayyu alqayyoomu la takhuthuhu sinatun wala nawmun lahu ma fee alssamawati wama fee alardi man tha allathee yashfaAAu AAindahu illa biithnihi yaAAlamu ma bayna aydeehim wama khalfahum wala yuheetoona bishayin min AAilmihi illa bima shaa wasiAAa kursiyyuhu alssamawati waalarda wala yaooduhu hifthuhuma wahuwa alAAaliyyu alAAatheemu",
+    "instruction": "UNCHANGED",
+    "source": "tanzil-en-translit",
+    "sourceUrl": "https://tanzil.net/trans/en.transliteration",
+    "match": "exact"
+  },
+  "101": {
+    "transliteration": "Amana alrrasoolu bima onzila ilayhi min rabbihi waalmuminoona kullun amana biAllahi wamalaikatihi wakutubihi warusulihi la nufarriqu bayna ahadin min rusulihi waqaloo samiAAna waataAAna ghufranaka rabbana wailayka almaseeru La yukallifu Allahu nafsan illa wusAAaha laha ma kasabat waAAalayha ma iktasabat rabbana la tuakhithna in naseena aw akhtana rabbana wala tahmil AAalayna isran kama hamaltahu AAala allatheena min qablina rabbana wala tuhammilna ma la taqata lana bihi waoAAfu AAanna waighfir lana wairhamna anta mawlana faonsurna AAala alqawmi alkafireena",
+    "instruction": "UNCHANGED",
+    "source": "tanzil-en-translit",
+    "sourceUrl": "https://tanzil.net/trans/en.transliteration",
+    "match": "exact"
+  },
+  "102": {
+    "transliteration": "Bismika rabbee wadaAAtu janbee wabika arfaAAuh, fa-in amsakta nafsee farhamha, wa-in arsaltaha fahfathha bima tahfathu bihi AAibadakas-saliheen.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/28.json",
+    "match": "exact"
+  },
+  "103": {
+    "transliteration": "Allahumma innaka khalaqta nafsee wa-anta tawaffaha, laka mamatuha wamahyaha in ahyaytaha fahfathha, wa-in amattaha faghfir laha. Allahumma innee as-alukal-AAafiyah.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/28.json",
+    "match": "exact"
+  },
+  "104": {
+    "transliteration": "Allahumma qinee AAathabaka yawma tabAAathu AAibadak.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/28.json",
+    "match": "exact"
+  },
+  "105": {
+    "transliteration": "Bismikal-lahumma amootu wa-ahya.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/28.json",
+    "match": "exact"
+  },
+  "106": {
+    "transliteration": "Subhanal-lah. (thirty-three times) Alhamdu lillah. (thirty-three times) Allahu akbar. (thirty-four times)",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/28.json",
+    "match": "exact"
+  },
+  "107": {
+    "transliteration": "Allahumma rabbas-samawatis-sabAA, warabbal-AAarshil-AAatheem, rabbana warabba kulli shay/, faliqal-habbi wannawa, wamunazzilat-tawra, wal-injeel, walfurqan, aAAoothu bika min sharri kulli shayin anta akhithun binasiyatih. Allahumma antal-awwal, falaysa qablaka shay/, wa-antal-akhir, falaysa baAAdaka shay/, wa-antath-thahir falaysa fawqaka shay/, waantal-batin, falaysa doonaka shay/, iqdi AAannad-dayna wa-aghnina minal-faqr.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/28.json",
+    "match": "exact"
+  },
+  "108": {
+    "transliteration": "Alhamdu lillahil-lathee atAAamana wasaqana, wakafana, wa-awana, fakam mimman la kafiya lahu wala mu'wee.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/28.json",
+    "match": "exact"
+  },
+  "109": {
+    "transliteration": "Allahumma AAalimal-ghaybi washshahadah, fatiras-samawati wal-ard, rabba kulli shayin wamaleekah, ashhadu an la ilaha illa ant, aAAoothu bika min sharri nafsee wamin sharrish-shaytani washirkih, wa-an aqtarifa AAala nafsee soo-an aw ajurrahu ila muslim.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/28.json",
+    "match": "exact"
+  },
+  "110": {
+    "transliteration": null,
+    "instruction": "UNCHANGED",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/28.json",
+    "match": "missing"
+  },
+  "111": {
+    "transliteration": "Allahumma aslamtu nafsee ilayk, wafawwadtu amree ilayk, wawajjahtu wajhee ilayk, wa-alja/tu thahree ilayk, raghbatan warahbatan ilayk, la maljaa wala manja minka illa ilayk, amantu bikitabikal-lathee anzalt, wabinabiyyikal-lathee arsalt.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/28.json",
+    "match": "exact"
+  },
+  "1": {
+    "transliteration": "Alhamdu lillahil-lathee ahyana baAAda ma amatana wa-ilayhin-nushoor.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/1.json",
+    "match": "exact"
+  },
+  "2": {
+    "transliteration": "La ilaha illal-lahu wahdahu la shareeka lah, lahul-mulku walahul-hamd, wahuwa AAala kulli shay-in qadeer, subhanal-lah, walhamdu lillah, wala ilaha illal-lah wallahu akbar, wala hawla wala quwwata illa billahil-AAaliyyil AAatheem. Rabbigh-fir lee",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/1.json",
+    "match": "exact"
+  },
+  "3": {
+    "transliteration": "Alhamdu lillahil-lathee AAafanee fee jasadee waradda AAalayya roohee wa-athina lee bithikrih.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/1.json",
+    "match": "exact"
+  },
+  "4": {
+    "transliteration": "Inna fee khalqi alssamawati waalardi waikhtilafi allayli waalnnahari laayatin liolee alalbabi Allatheena yathkuroona Allaha qiyaman waquAAoodan waAAala junoobihim wayatafakkaroona fee khalqi alssamawati waalardi rabbana ma khalaqta hatha batilan subhanaka faqina AAathaba alnnari Rabbana innaka man tudkhili alnnara faqad akhzaytahu wama lilththalimeena min ansarin Rabbana innana samiAAna munadiyan yunadee lileemani an aminoo birabbikum faamanna rabbana faighfir lana thunoobana wakaffir AAanna sayyiatina watawaffana maAAa alabrari Rabbana waatina ma waAAadtana AAala rusulika wala tukhzina yawma alqiyamati innaka la tukhlifu almeeAAada Faistajaba lahum rabbuhum annee la odeeAAu AAamala AAamilin minkum min thakarin aw ontha baAAdukum min baAAdin faallatheena hajaroo waokhrijoo min diyarihim waoothoo fee sabeelee waqataloo waqutiloo laokaffiranna AAanhum sayyiatihim walaodkhilannahum jannatin tajree min tahtiha alanharu thawaban min AAindi Allahi waAllahu AAindahu husnu alththawabi La yaghurrannaka taqallubu allatheena kafaroo fee albiladi MataAAun qaleelun thumma mawahum jahannamu wabisa almihadu Lakini allatheena ittaqaw rabbahum lahum jannatun tajree min tahtiha alanharu khalideena feeha nuzulan min AAindi Allahi wama AAinda Allahi khayrun lilabrari Wainna min ahli alkitabi laman yuminu biAllahi wama onzila ilaykum wama onzila ilayhim khashiAAeena lillahi la yashtaroona biayati Allahi thamanan qaleelan olaika lahum ajruhum AAinda rabbihim inna Allaha sareeAAu alhisabi Ya ayyuha allatheena amanoo isbiroo wasabiroo warabitoo waittaqoo Allaha laAAallakum tuflihoona",
+    "instruction": "UNCHANGED",
+    "source": "tanzil-en-translit",
+    "sourceUrl": "https://tanzil.net/trans/en.transliteration",
+    "match": "exact"
+  },
+  "10": {
+    "transliteration": "(Bismil-lah) allahumma innee aAAoothu bika minal-khubthi wal-khaba-ith.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/6.json",
+    "match": "exact"
+  },
+  "11": {
+    "transliteration": "Ghufranak.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/7.json",
+    "match": "exact"
+  },
+  "12": {
+    "transliteration": "Bismil-lah.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/8.json",
+    "match": "exact"
+  },
+  "13": {
+    "transliteration": "Ashhadu an la ilaha illal-lahu wahdahu la shareeka lah, wa-ashhadu anna Muhammadan AAabduhu warasooluh.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/9.json",
+    "match": "exact"
+  },
+  "14": {
+    "transliteration": "Allahummaj-AAalnee minat-tawwabeena wajAAalnee minal-mutatahhireen.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/9.json",
+    "match": "exact"
+  },
+  "15": {
+    "transliteration": "Subhanakal-lahumma wabihamdika ashhadu an la ilaha illa anta astaghfiruka wa-atoobu ilayk.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/9.json",
+    "match": "exact"
+  },
+  "16": {
+    "transliteration": "Bismil-lah, tawakkaltu AAalal-lah, wala hawla wala quwwata illa billah.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/10.json",
+    "match": "exact"
+  },
+  "17": {
+    "transliteration": "Allahumma innee aAAoothu bika an adilla aw odal, aw azilla aw ozall, aw athlima aw othlam, aw ajhala aw yujhala AAalay.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/10.json",
+    "match": "exact"
+  },
+  "18": {
+    "transliteration": "Bismil-lahi walajna, wabismil-lahi kharajna, waAAala rabbina tawakkalna.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/11.json",
+    "match": "exact"
+  },
+  "19": {
+    "transliteration": "Allaahummaj 'al fee qalbee nooran, wa fee lisaanee nooran, wa fee sam'ee nooran, wa fee basaree nooran, wa min fawqee nooran, wa min tahtee nooran, wa 'an yameenee nooran, wa 'an shimaalee nooran, wa min 'amaamee nooran, wa min khalfee nooran. Wa j'al fee nafsee nooran, wa 'a'dhim lee nooran, wa 'a'dhim lee nooran. Waj'al lee nooran, waj'alnee nooran. Allaahumma a'tineje nooran, waj'al fee 'asabee nooran, wa fee lahmee nooran, wa fee damee nooran, wa fee sha'ree nooran, wa fee basharee nooran.[Allaahummaj'al lee nooran fee qabree, wa nooran fee 'idhaamee.][Wa zidnee nooran, wa zidnee nooran, wa zidnee nooran.][Wa hab lee nooran 'alaa noor.]",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/12.json",
+    "match": "exact"
+  },
+  "20": {
+    "transliteration": "aAAoothu billahil-AAatheem wabiwajhihil-kareem wasultanihil-qadeem minash-shaytanir-rajeem, [bismil-lah, wassalatu] [wassalamu AAala rasoolil-lah] , allahumma iftah lee abwaba rahmatik.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/13.json",
+    "match": "exact"
+  },
+  "21": {
+    "transliteration": "Bismil-lah wassalatu wassalamu AAala rasoolil-lah, allahumma innee as-aluka min fadlik, allahumma iAAsimnee minash-shaytanir-rajeem.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/14.json",
+    "match": "exact"
+  },
+  "22": {
+    "transliteration": null,
+    "instruction": "UNCHANGED",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/15.json",
+    "match": "missing"
+  },
+  "23": {
+    "transliteration": "Wa-ana ashhadu an la ilaha illal-lahu wahdahu la shareeka lah, wa-anna Muhammadan AAabduhu warasooluh, radeetu billahi rabban wabimuhammadin rasoolan wabil-islami deena.",
+    "instruction": "Immediately following the declaration of faith called by the mu-aththin, one says",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/15.json",
+    "match": "differs"
+  },
+  "24": {
+    "transliteration": null,
+    "instruction": "UNCHANGED",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/15.json",
+    "match": "missing"
+  },
+  "25": {
+    "transliteration": "Allahumma rabba hathihid-daAAwatit-tammah, wassalatil-qa-imah ati Muhammadan alwaseelata wal-fadeelah, wabAAath-hu maqaman mahmoodan allathee waAAadtah, innaka la tukhliful-meeAAad.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/15.json",
+    "match": "exact"
+  },
+  "26": {
+    "transliteration": null,
+    "instruction": "UNCHANGED",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/15.json",
+    "match": "missing"
+  },
+  "5": {
+    "transliteration": "Alhamdu lillahil-lathee kasanee hatha (aththawb) warazaqaneehi min ghayri hawlin minnee wala quwwah.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/2.json",
+    "match": "exact"
+  },
+  "6": {
+    "transliteration": "Allahumma lakal-hamdu anta kasawtaneeh, as-aluka min khayrihi wakhayri ma suniAAa lah, wa-aAAoothu bika min sharrihi washarri ma suniAAa lah.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/3.json",
+    "match": "exact"
+  },
+  "7": {
+    "transliteration": "Tublee wayukhliful-lahu taAAala.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/4.json",
+    "match": "exact"
+  },
+  "8": {
+    "transliteration": "Ilbas jadeedan waAAish hameedan wamut shaheedan.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/4.json",
+    "match": "exact"
+  },
+  "9": {
+    "transliteration": "Bismil-lah.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/5.json",
+    "match": "exact"
+  },
+  "27": {
+    "transliteration": "Allahumma baAAid baynee wabayna khatayaya kama baAAadta baynal-mashriqi walmaghrib, allahumma naqqinee min khatayaya kama yunaqqath-thawbul-abyadu minad-danas, allahummagh-silnee min khatayaya biththalji walma/i walbarad.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/16.json",
+    "match": "exact"
+  },
+  "28": {
+    "transliteration": "Subhanakal-lahumma wabihamdika watabarakas-muka wataAAala jadduka wala ilaha ghayruk.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/16.json",
+    "match": "exact"
+  },
+  "29": {
+    "transliteration": "Wajjahtu wajhiya lillathee fataras-samawati wal-arda haneefan wama ana minal-mushrikeen, inna salatee wanusukee wamahyaya wamamatee lillahi rabbil-AAalameen, la shareeka lahu wabithalika omirtu wa-ana minal-muslimeen. Allahumma antal-maliku la ilaha illa ant. anta rabbee wa-ana AAabduk, thalamtu nafsee waAAtaraftu bithanbee faghfir lee thunoobee jameeAAan innahu la yaghfiruth-thunooba illa ant.wahdinee li-ahsanil-akhlaqi la yahdee li-ahsaniha illa ant, wasrif AAannee sayyi-aha la yasrifu AAannee sayyi-aha illa ant, labbayka wasaAAdayk,walkhayru kulluhu biyadayk, washsharru laysa ilayk, ana bika wa-ilayk, tabarakta wataAAalayt, astaghfiruka wa-atoobu ilayk.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/16.json",
+    "match": "exact"
+  },
+  "30": {
+    "transliteration": "Allahumma rabba jibra-eel, wameeka-eel, wa-israfeel fatiras-samawati walard, AAalimal-ghaybi washshahadah, anta tahkumu bayna AAibadika feema kanoo feehi yakhtalifoon. ihdinee limakh-tulifa feehi minal-haqqi bi-ithnik, innaka tahdee man tasha-o ila siratin mustaqeem.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/16.json",
+    "match": "exact"
+  },
+  "31": {
+    "transliteration": "(Allahu akbaru kabeera, Allahu akbaru kabeera, Allahu akbaru kabeera, walhamdu lillahi katheera, walhamdu lillahi katheera, walhamdu lillahi katheera, wasubhanal-lahi bukratan wa-aseela.)(aAAoothu billahi minash-shaytani min nafkhihi wanafthihi wahamzih.)",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/16.json",
+    "match": "exact"
+  },
+  "32": {
+    "transliteration": "Allahumma lakal-hamd anta noorus-samawati wal-ardi waman feehin, walakal-hamd, anta qayyimus-samawati walardi waman feehin, [walakal-hamd, anta rabbus-samawati walardi waman feehin], [walakal-hamd, laka mulkus-samawati walardi waman feehin] [walakal-hamd, anta malikus-samawati walard] [walakal-hamd] [antal-haq, wawaAAdukal-haq, waqawlukal-haq, waliqa-okal-haq, waljannatu haq wannaru haq, wannabiyyoona haq, wa Muhammadun haq, wassaAAatu haq] [allahumma laka aslamt, waAAalayka tawakkalt, wabika amant, wa-ilayka anabt, wabika khasamt, wa-ilayka hakamt, faghfir lee ma qaddamt, wama akhkhart, wama asrart, wama aAAlant] [antal-muqaddim, wa-antal-mu-akhkhir, la ilaha illa ant] [anta ilahee la ilaha illa ant .",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/16.json",
+    "match": "differs"
+  },
+  "33": {
+    "transliteration": "Subhana rabbiyal-AAatheem",
+    "instruction": "three times",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/17.json",
+    "match": "exact"
+  },
+  "34": {
+    "transliteration": "Subhanakal-lahumma rabbana wabihamdik, allahummagh-fir lee",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/17.json",
+    "match": "exact"
+  },
+  "35": {
+    "transliteration": "Subboohun quddoos, rabbul-mala-ikati warrooh.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/17.json",
+    "match": "exact"
+  },
+  "36": {
+    "transliteration": "Allahumma laka rakaAAt, wabika amant, walaka aslamt, khashaAAa laka samAAee, wabasaree, wamukhkhee, waAAathmee, waAAasabee, wamas-taqalla bihi qadamee.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/17.json",
+    "match": "exact"
+  },
+  "37": {
+    "transliteration": "Subhana thil-jabaroot, walmalakoot, walkibriya/, walAAathamah.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/17.json",
+    "match": "exact"
+  },
+  "38": {
+    "transliteration": "SamiAAal-lahu liman hamidah",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/18.json",
+    "match": "exact"
+  },
+  "39": {
+    "transliteration": "Rabbana walakal-hamdu hamdan katheeran tayyiban mubarakan feeh.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/18.json",
+    "match": "exact"
+  },
+  "40": {
+    "transliteration": "Mil-as-samawati wamil-al-ard, wama baynahuma, wamil/a ma shi/ta min shay-in baAAd, ahlath-thana-i walmajd, ahaqqu ma qalal-AAabd, wakulluna laka AAabd. Allahumma la maniAAa lima aAAtayt, wala muAAtiya lima manaAAt, wala yanfaAAu thal-jaddi minkal-jad.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/18.json",
+    "match": "exact"
+  },
+  "41": {
+    "transliteration": "Subhana rabbiyal-aAAla.",
+    "instruction": "three times",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/19.json",
+    "match": "exact"
+  },
+  "42": {
+    "transliteration": "Subhanakal-lahumma rabbana wabihamdik, allahummagh- fir lee.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/19.json",
+    "match": "exact"
+  },
+  "43": {
+    "transliteration": "Subbohoon quddos, rabbul-mala-ikati warrooh.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/19.json",
+    "match": "exact"
+  },
+  "44": {
+    "transliteration": "Allahumma laka sajadt, wabika amant, walaka aslamt, sajada wajhee lillathee khalaqahu wasawwarahu washaqqa samAAahu wabasarahu, tabarakal-lahu ahsanul-khaliqeen.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/19.json",
+    "match": "exact"
+  },
+  "45": {
+    "transliteration": "Subhana thil-jabaroot, walmalakoot, walkibriya/, walAAathamah.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/19.json",
+    "match": "exact"
+  },
+  "46": {
+    "transliteration": "Allahummagh-fir lee thanbee kullah, diqqahu wajillah, wa-awwalahu wa-akhirah, wa- AAalaniyyatahu wa-sirrah.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/19.json",
+    "match": "exact"
+  },
+  "47": {
+    "transliteration": "Allahumma innee aAAoothu biridaka min sakhatik, wa-bimuAAafatika min AAuqoobatik, wa-aAAoothu bika mink, la ohsee thana-an AAalayk, anta kama athnayta AAala nafsik.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/19.json",
+    "match": "exact"
+  },
+  "48": {
+    "transliteration": "Rabbigh-fir lee, rabbigh-fir lee.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/20.json",
+    "match": "exact"
+  },
+  "49": {
+    "transliteration": "Allahummagh-fir lee, warhamnee, wahdinee, wajburnee, waAAafinee, warzuqnee warfaAAnee.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/20.json",
+    "match": "exact"
+  },
+  "50": {
+    "transliteration": "Sajada wajhee lillathee khalaqahu washaqqa samAAahu wabasarahu bihawlihi waquwwatih { tabaraka Allahu ahsanu alkhaliqeen}.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/21.json",
+    "match": "exact"
+  },
+  "51": {
+    "transliteration": "Allahummak-tub lee biha AAindaka ajra, wadaAA AAannee biha wizra, wajAAalha lee AAindaka thukhra, wataqabbalha minnee kama taqabbaltaha min AAabdika Dawood.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/21.json",
+    "match": "exact"
+  },
+  "52": {
+    "transliteration": "Attahiyyatu lillahi wassalawatu wattayyibat, assalamu AAalayka ayyuhan-nabiyyu warahmatul-lahi wabarakatuh, assalamu AAalayna waAAala AAibadil-lahis-saliheen. Ash-hadu an la ilaha illal-lah, wa-ashhadu anna Muhammadan AAabduhu warasooluh.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/22.json",
+    "match": "exact"
+  },
+  "53": {
+    "transliteration": "Allahumma salli AAala Muhammad, wa-AAala ali Muhammad, kama sallayta AAala Ibraheema wa-AAala ali Ibraheem, innaka Hameedun Majeed, allahumma barik AAala Muhammad, wa-AAala ali Muhammad, kama barakta AAala Ibraheema wa-AAala ali Ibraheem, innaka Hameedun Majeed.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/23.json",
+    "match": "exact"
+  },
+  "54": {
+    "transliteration": "Allahumma salli AAala Muhammad wa-AAala azwajihi wathurriyyatihi kama sallayta AAala ali Ibraheem, wabarik AAala Muhammad, wa-AAala azwajihi wathurriyyatih, kama barakta AAala ali Ibraheem. innaka Hameedun Majeed.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/23.json",
+    "match": "exact"
+  },
+  "55": {
+    "transliteration": "Allahumma innee aAAoothu bika min AAathabil-qabr, wamin AAathabi jahannam, wamin fitnatil-mahya walmamat, wamin shari fitnatil-maseehid-dajjal.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/24.json",
+    "match": "exact"
+  },
+  "56": {
+    "transliteration": "Allahumma innee aAAoothu bika min AAathabil-qabr, wa-aAAoothu bika min fitnatil-maseehid-dajjal, wa-aAAoothu bika min fitnatil-mahya walmamat. Allahumma innee aAAoothu bika minal-ma/thami walmaghram.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/24.json",
+    "match": "exact"
+  },
+  "57": {
+    "transliteration": "Allahumma innee thalamtu nafsee thulman katheeran wala yaghfiruth-thunooba illa ant, faghfir lee maghfiratan min AAindik warhamnee, innaka antal-Ghafoorur-Raheem.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/24.json",
+    "match": "exact"
+  },
+  "58": {
+    "transliteration": "Allahummagh-fir lee ma qaddamtu, wama akhkhart, wama asrartu wama aAAlant, wama asraftt, wama anta aAAlamu bihi minnee, antal-muqaddimu wa-antal-mu-akhkhiru la ilaha illa ant.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/24.json",
+    "match": "exact"
+  },
+  "59": {
+    "transliteration": "Allahumma aAAinnee AAala thikrik, washukrik, wahusni AAibadatik.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/24.json",
+    "match": "exact"
+  },
+  "60": {
+    "transliteration": "Allahumma innee aAAoothu bika minal-bukhl, wa-aAAoothu bika minal-jubn, wa-aAAoothu bika min an oradda ila arthalil- AAumur, wa-aAAoothu bika min fitnatid-dunya waAAathabil-qabr.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/24.json",
+    "match": "exact"
+  },
+  "61": {
+    "transliteration": "Allahumma innee as-alukal-jannah, wa-aAAoothu bika minan-nar.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/24.json",
+    "match": "exact"
+  },
+  "62": {
+    "transliteration": "Allahumma biAAilmikal-ghayb, waqudratika AAalal-khalq, ahyinee ma AAalimtal-hayata khayran lee watawaffanee itha AAalimtal-wafata khayran lee, allahumma innee as-aluka khashyataka fil-ghaybi washshahadah, wa-as-aluka kalimatal-haqqi fir-rida walghadab, wa-as-alukal-qasda fil-ghina walfaqr, wa-as-aluka naAAeeman la yanfad, wa-as-aluka qurrata AAaynin la tanqatiAA, wa-as-alukar-rida baAAdal-qada/, wa-as-aluka bardal-AAayshi baAAdal-mawt, wa-as-aluka laththatan-nathari ila wajhik, washshawqa ila liqa-ik fee ghayri darraa mudirrah, wala fitnatin mudillah, allahumma zayyinna bizeenatil-eeman wajAAalna hudatan muhtadeen.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/24.json",
+    "match": "exact"
+  },
+  "63": {
+    "transliteration": "Allahumma innee as-aluka ya Allah bi-annakal-wahidul-ahadus-samad, allathee lam yalid walam yoolad, walam yakun lahu kufuwan ahad, an taghfira lee thunoobee innaka antal-Ghafoorur-Raheem.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/24.json",
+    "match": "exact"
+  },
+  "64": {
+    "transliteration": "Allahumma innee as-aluka bianna lakal-hamd, la ilaha illa ant wahdaka la shareeka lak, almannan, ya badeeAAas-samawati wal-ard, ya thal-jalali wal-ikram, ya hayyu ya qayyoom, innee as-alukal-jannah, wa-aAAoothu bika minan-nar.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/24.json",
+    "match": "exact"
+  },
+  "65": {
+    "transliteration": "Allahumma inne as-aluka biannee ashhadu annaka antal-lah, la ilaha illa ant, al-ahadus-samad, allathee lam yalid walam yoolad walam yakun lahu kufuwan ahad.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/24.json",
+    "match": "exact"
+  },
+  "66": {
+    "transliteration": "Astaghfirul-lah (three times) Allahumma antas-salam waminkas-salam, tabarakta ya thal-jalali wal-ikram.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/25.json",
+    "match": "exact"
+  },
+  "67": {
+    "transliteration": "La ilaha illal-lahu wahdahu la shareeka lah, lahul-mulku walahul-hamd, wahuwa AAala kulli shayin qadeer, allahumma la maniAAa lima aAAtayt, wala muAAtiya lima manaAAt, wala yanfaAAu thal-jaddi minkal-jad.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/25.json",
+    "match": "exact"
+  },
+  "68": {
+    "transliteration": "La ilaha illal-lah, wahdahu la shareeka lah, lahul-mulku walahul-hamd, wahuwa AAala kulli shayin qadeer. la hawla wala quwwata illa billah, la ilaha illal-lah, wala naAAbudu illa iyyah, lahun-niAAmatu walahul-fadl walahuth-thana-ol- hasan, la ilaha illal-lah mukhliseena lahud-deen walaw karihal-kafiroon.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/25.json",
+    "match": "exact"
+  },
+  "69": {
+    "transliteration": "Subhanal-lah walhamdu lillah, wallahu akbar (thirty-three times). La ilaha illal-lahu wahdahu la shareeka lah, lahul-mulku walahul-hamd, wahuwa AAala kulli shayin qadeer.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/25.json",
+    "match": "exact"
+  },
+  "70": {
+    "transliteration": "Bismi Allahi alrrahmani alrraheemi Qul huwa Allahu ahadun Allahu alssamadu Lam yalid walam yooladu Walam yakun lahu kufuwan ahadun Bismi Allahi alrrahmani alrraheemi Qul aAAoothu birabbi alfalaqi Min sharri ma khalaqa Wamin sharri ghasiqin itha waqaba Wamin sharri alnnaffathati fee alAAuqadi Wamin sharri hasidin itha hasada Bismi Allahi alrrahmani alrraheemi Qul aAAoothu birabbi alnnasi Maliki alnnasi Ilahi alnnasi Min sharri alwaswasi alkhannasi Allathee yuwaswisu fee sudoori alnnasi Mina aljinnati wa alnnasm",
+    "instruction": "UNCHANGED",
+    "source": "tanzil-en-translit",
+    "sourceUrl": "https://tanzil.net/trans/en.transliteration",
+    "match": "exact"
+  },
+  "71": {
+    "transliteration": "Allahu la ilaha illa huwa alhayyu alqayyoomu la takhuthuhu sinatun wala nawmun lahu ma fee alssamawati wama fee alardi man tha allathee yashfaAAu AAindahu illa biithnihi yaAAlamu ma bayna aydeehim wama khalfahum wala yuheetoona bishayin min AAilmihi illa bima shaa wasiAAa kursiyyuhu alssamawati waalarda wala yaooduhu hifthuhuma wahuwa alAAaliyyu alAAatheemu",
+    "instruction": "UNCHANGED",
+    "source": "tanzil-en-translit",
+    "sourceUrl": "https://tanzil.net/trans/en.transliteration",
+    "match": "exact"
+  },
+  "72": {
+    "transliteration": "La ilaha illal-lahu wahdahu la shareeka lah, lahul-mulku walahul-hamd, yuhyee wayumeet, wahuwa AAala kulli shayin qadeer.",
+    "instruction": "ten times after the maghrib & fajr prayers",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/25.json",
+    "match": "exact"
+  },
+  "73": {
+    "transliteration": "Allahumma innee as-aluka AAilman nafiAAan, warizqan tayyiban, waAAamalan mutaqabbalan.",
+    "instruction": "after salam from fajr prayer",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/25.json",
+    "match": "exact"
+  },
+  "74": {
+    "transliteration": "Allahumma innee astakheeruka biAAilmik, wa-astaqdiruka biqudratik, wa-as-aluka min fadlikal-AAatheem, fa-innaka taqdiru wala aqdir, wataAAlamu wala aAAlam ,wa-anta AAallamul ghuyoob, allahumma in kunta taAAlamu anna hathal-amr (say your need) khayrun lee fee deenee wamaAAashee waAAaqibati amree faqdurhu lee, wayassirhu lee, thumma barik lee feeh, wa-in kunta taAAlamu anna hathal-amr sharrun lee fee deenee wamaAAashee waAAaqibati amree fasrifhu AAannee wasrifnee AAanh, waqdur liyal-khayra haythu kan, thumma ardinee bih.",
+    "instruction": "let him pray two supererogatory units (two rakAAah nafilah) of prayer and after which he should supplicate",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/26.json",
+    "match": "differs"
+  },
+  "112": {
+    "transliteration": "La ilaha illal-lahul-wahidul-qahhar, rabbus-samawati wama baynahuma, alAAazeezul-ghaffar.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/29.json",
+    "match": "exact"
+  },
+  "113": {
+    "transliteration": "aAAoothu bikalimatil-lahit-tammat min ghadabih,waAAiqabih, washarri AAibadih, wamin hamazatish-shayateen, wa-an yahduroon.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/30.json",
+    "match": "exact"
+  },
+  "114": {
+    "transliteration": null,
+    "instruction": "UNCHANGED",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/31.json",
+    "match": "missing"
+  },
+  "115": {
+    "transliteration": null,
+    "instruction": "UNCHANGED",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/31.json",
+    "match": "missing"
+  },
+  "116": {
+    "transliteration": "Allahummah-dinee feeman hadayt, waAAafinee feeman AAafayt, watawallanee feeman tawallayt, wabarik lee feema aAAtayt, waqinee sharra ma qadayt, fa-innaka taqdee wala yuqda AAalayk, innahu la yathillu man walayt, [wala yaAAizzu man AAadayt], tabarakta rabbana wataAAalayt.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/32.json",
+    "match": "exact"
+  },
+  "117": {
+    "transliteration": "Allahumma innee aAAoothu biridaka min sakhatik, wabimuAAafatika min AAuqoobatik, wa-aAAoothu bika mink, la ohsee thana-an AAalayk, anta kama athnayta AAala nafsik.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/32.json",
+    "match": "exact"
+  },
+  "118": {
+    "transliteration": "Allahumma iyyaka naAAbud, walaka nusallee wanasjud, wa-ilayka nasAAa wanahfid, narjoo rahmatak, wanakhsha AAathabak, inna AAathabaka bilkafireena mulhaq. Allahumma inna nastaAAeenuk, wanastaghfiruk, wanuthnee AAalaykal- khayr, wala nakfuruk, wanu/minu bik, wanakhdaAAu lak wanakhlaAAu man yakfuruk.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/32.json",
+    "match": "exact"
+  },
+  "119": {
+    "transliteration": "Subhanal-malikil-quddoos. Rabbil-mala-ikati warrooh.",
+    "instruction": "three times. on the third time he would raise his voice, elongate it and add",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/33.json",
+    "match": "differs"
+  },
+  "120": {
+    "transliteration": "Allahumma innee AAabduk, ibnu AAabdik, ibnu amatik, nasiyatee biyadik, madin fiyya hukmuk, AAadlun fiyya qada-ok, as-aluka bikulli ismin huwa lak, sammayta bihi nafsak, aw anzaltahu fee kitabik, aw AAallamtahu ahadan min khalqik awis-ta/tharta bihi fee AAilmil-ghaybi AAindak, an tajAAalal-Qurana rabeeAAa qalbee, wanoora sadree, wajalaa huznee wathahaba hammee.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/34.json",
+    "match": "exact"
+  },
+  "121": {
+    "transliteration": "Allahumma innee aAAoothu bika minal-hammi walhuzn, walAAajzi walkasali walbukhli waljubn, wadalAAid-dayni waghalabatir-rijal.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/34.json",
+    "match": "exact"
+  },
+  "122": {
+    "transliteration": "La ilaha illal-lahul-AAatheemul-haleem, la ilaha illal-lahu rabbul-AAarshil-AAatheem, la ilaha illal-lahu rabbus-samawati warabbul-ardi warabbul-AAarshil-kareem.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/35.json",
+    "match": "exact"
+  },
+  "123": {
+    "transliteration": "Allahumma rahmataka arjoo fala takilnee ila nafsee tarfata AAayn, wa-aslih lee sha/nee kullah, la ilaha illa ant.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/35.json",
+    "match": "exact"
+  },
+  "124": {
+    "transliteration": "La ilaha illa anta subhanaka innee kuntu minath-thalimeen.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/35.json",
+    "match": "exact"
+  },
+  "125": {
+    "transliteration": null,
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/35.json",
+    "match": "missing"
+  },
+  "126": {
+    "transliteration": "Allahumma inna najAAaluka fee nuhoorihim wanaAAoothu bika min shuroorihim.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/36.json",
+    "match": "exact"
+  },
+  "127": {
+    "transliteration": "Allahumma anta AAadudee, wa-anta naseeree, bika ajoolu wabika asoolu wabika oqatil",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/36.json",
+    "match": "exact"
+  },
+  "128": {
+    "transliteration": "Hasbunal-lahu waniAAmal-wakeel.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/36.json",
+    "match": "exact"
+  },
+  "129": {
+    "transliteration": "Allaahumma rabbas-samaawaatis-sab'i, wa Rabbal-'Arshil-'Adheem, Kun lee jaaran min (here you mention the person's name) wa 'ahzabihi min khalaa'iqika, 'an yafruta 'alayya 'ahadun minhum 'aw yatghaa,'Azza jaaruka, wa jalla thanaa'uka, wa laa 'ilaaha 'illaa 'Anta.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/37.json",
+    "match": "exact"
+  },
+  "130": {
+    "transliteration": "Allaahu Akbar, Allaahu 'a'azzu min khalqihi jamee'an, Allaahu 'a'azzu mimmaa 'akhaafu wa 'ahdharu, 'a'oothu billaahil-lathee laa ilaaha illaa huwa, almumsikis-samaawaatis-sab'i 'an yaqa'na 'alaal-'ardhi 'illaa bi'ithnihi, min sharri 'abdika (name of the person) wa junoodihi wa 'atbaa'ihi wa ashyaa'ihi minal-jinni wal'insi, Allaahumma kun lee jaaran min sharrihim, Jalla thanaa'uka wa 'azza aaruka, wa tabaarakasmuka, wa laa ilaaha ghayruka.",
+    "instruction": "Recite three times in Arabic",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/37.json",
+    "match": "exact"
+  },
+  "131": {
+    "transliteration": "Allahumma munzilal-kitab, sareeAAal-hisab, ihzimil-ahzab, allahummah-zimhum wazalzilhum.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/38.json",
+    "match": "exact"
+  },
+  "132": {
+    "transliteration": "Allahummak-fineehim bima shi/.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/39.json",
+    "match": "exact"
+  },
+  "133": {
+    "transliteration": null,
+    "instruction": "(Say:) I seek refuge in Allah. (Then you should desist from doing what you are in doubt about.)",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/40.json",
+    "match": "missing"
+  },
+  "134": {
+    "transliteration": "Amantu billahi warusulih.",
+    "instruction": "He should say",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/40.json",
+    "match": "differs"
+  },
+  "135": {
+    "transliteration": "Huwa al-awwalu, waal-akhiru, waalththahiru waalbatinu wahuwa bikulli shayin AAaleem",
+    "instruction": "He should also recite the following verse",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/40.json",
+    "match": "differs"
+  },
+  "136": {
+    "transliteration": "Allahummak-finee bihalalika AAan haramik, wa-aghninee bifadlika AAamman siwak.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/41.json",
+    "match": "exact"
+  },
+  "137": {
+    "transliteration": "Allahumma innee aAAoothu bika minal-hammi walhuzn, walAAajzi walkasal, walbukhl, waljubn, wadalAAid-dayni waghalabatir-rijal",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/41.json",
+    "match": "exact"
+  },
+  "138": {
+    "transliteration": null,
+    "instruction": "UNCHANGED",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/42.json",
+    "match": "missing"
+  },
+  "139": {
+    "transliteration": "Allahumma la sahla illa ma jaAAaltahu sahla, wa-anta tajAAalul- hazana in shi'ta sahla.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/43.json",
+    "match": "exact"
+  },
+  "140": {
+    "transliteration": null,
+    "instruction": "UNCHANGED",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/44.json",
+    "match": "missing"
+  },
+  "141": {
+    "transliteration": null,
+    "instruction": "UNCHANGED",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/45.json",
+    "match": "missing"
+  },
+  "142": {
+    "transliteration": null,
+    "instruction": "UNCHANGED",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/45.json",
+    "match": "missing"
+  },
+  "143": {
+    "transliteration": null,
+    "instruction": "UNCHANGED",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/45.json",
+    "match": "missing"
+  },
+  "144": {
+    "transliteration": "Qaddaral-lah, wama shaa faAAal.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/46.json",
+    "match": "exact"
+  },
+  "145": {
+    "transliteration": "Baarakallaahu laka fil-mawhoobi laka, wa shakartal-waahiba, wa balagha 'ashuddahu, wa ruzigta birrahu. ... Baarakallahu laka wa baaraka 'alayka, wa jazaakallaahu khayran, wa razaqakallaahu mithlahu, wa 'ajzala thawaabaka.",
+    "instruction": "The reply of the person being congratulated is to say",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/47.json",
+    "match": "differs"
+  },
+  "146": {
+    "transliteration": "OAAeethukuma bikalimatil-lahit-tammah, min kulli shaytanin wahammah, wamin kulli AAaynin lammah.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/48.json",
+    "match": "differs"
+  },
+  "147": {
+    "transliteration": "La ba'sa tahoorun in shaal-lah.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/49.json",
+    "match": "exact"
+  },
+  "148": {
+    "transliteration": "Asalul-lahal-AAatheem rabbal-AAarshil-AAatheem an yashfeek",
+    "instruction": "7times",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/49.json",
+    "match": "exact"
+  },
+  "149": {
+    "transliteration": null,
+    "instruction": "UNCHANGED",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/50.json",
+    "match": "missing"
+  },
+  "150": {
+    "transliteration": "Allahummagh-fir lee, warhamnee wa-alhiqnee birrafeeqil-aAAla.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/51.json",
+    "match": "exact"
+  },
+  "151": {
+    "transliteration": "La ilaha illal-lah, inna lilmawti lasakarat.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/51.json",
+    "match": "differs"
+  },
+  "152": {
+    "transliteration": "La ilaha illal-lah, wallahu akbar, la ilaha illal-lahu wahdah, la shareeka lah, la ilaha illal-lahu lahul-mulku walahul-hamd, la ilaha illal-lah, wala hawla wala quwwata illa billah.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/51.json",
+    "match": "exact"
+  },
+  "153": {
+    "transliteration": "La ilaha illal-lah.",
+    "instruction": "i.e. those around the sick should instruct and encourage him to say the shahadah.",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/52.json",
+    "match": "differs"
+  },
+  "154": {
+    "transliteration": "Inna lillahi wa-inna ilayhi rajiAAoon, allahumma/- jurnee fee museebatee wakhluf lee khayran minha.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/53.json",
+    "match": "exact"
+  },
+  "155": {
+    "transliteration": "Allahummagh-fir li-name the dead- warfaAA darajatahu fil-mahdiyyeen, wakhlufhu fee AAaqibihi fil-ghabireen, waghfir lana walahu ya rabbal-AAalameen wafsah lahu fee qabrih, wanawwir lahu feeh.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/54.json",
+    "match": "exact"
+  },
+  "156": {
+    "transliteration": "Allahummagh-fir lahu warhamh, waAAafihi, waAAfu AAanh, wa-akrim nuzulah, wawassiAA mudkhalah, waghsilhu bilma-i waththalji walbarad, wanaqqihi minal-khataya kama naqqaytath-thawbal-abyada minad-danas, wa-abdilhu daran khayran min darih, wa-ahlan khayran min ahlih wazawjan khayran min zawjih, wa-adkhilhul-jannah, wa-aAAithhu min AAathabil-qabr, waAAathabin-nar",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/55.json",
+    "match": "exact"
+  },
+  "157": {
+    "transliteration": "Allahummagh-fir lihayyina wamayyitina washahidina, wagha-ibina, wasagheerina wakabeerina, wathakarina wa-onthana. Allahumma man ahyaytahu minna fa-ahyihi AAalal-islam, waman tawaffaytahu minna fatawaffahu AAalal-eeman, allahumma la tahrimna ajrah, wala tudillana baAAdah.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/55.json",
+    "match": "exact"
+  },
+  "158": {
+    "transliteration": "Allahumma inna -name the dead- fee thimmatik, wahabli jiwarik, faqihi min fitnatil-qabr waAAathabin-nar, wa-anta ahlul-wafa/, walhaq, faghfir lahu warhamh, innaka antal-ghafoorur-raheem.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/55.json",
+    "match": "exact"
+  },
+  "159": {
+    "transliteration": "Allahumma AAabduka wabnu amatik, ihtaja ila rahmatik, wa-anta ghaniyyun AAan AAathabih, in kana muhsinan fazid fee hasanatih, wa-in kana museean fatajawaz AAanh.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/55.json",
+    "match": "exact"
+  },
+  "160": {
+    "transliteration": "(Allaahumma 'a'ith-hu min 'athaabil-qabri.) [or say:](Allahummaj-AAalhu faratan, wathukhran liwalidayh, washafeeAAan mujaban. Allahumma thaqqil bihi mawazeenahuma wa-aAAthim bihi ojoorahuma, wa-alhiqhu bisalihil-mu'mineen, wajAAalhu fee kafalati Ibraheem, waqihi birahmatika AAathabal-jaheem, wa 'abdilhu daaran khayran min daarihi, wa 'ahlan khayran min 'ahlihi, Allaahum-maghfir li'aslaafinaa, wa afraatinaa wa man sabaqanaa bil'eemaan)",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/56.json",
+    "match": "exact"
+  },
+  "161": {
+    "transliteration": "Allahummaj-AAalhu lana farata, wasalafan wa-ajra.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/56.json",
+    "match": "exact"
+  },
+  "162": {
+    "transliteration": "Inna lillahi ma akhath, walahu ma aAAta, wakullu shayin AAindahu bi-ajalin musamma…faltasbir waltahtasib.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/57.json",
+    "match": "exact"
+  },
+  "163": {
+    "transliteration": "Bismil-lahi waAAala sunnati rasoolil-lah.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/58.json",
+    "match": "exact"
+  },
+  "164": {
+    "transliteration": "Allaahum-maghfir lahu Allaahumma thabbithu",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/59.json",
+    "match": "exact"
+  },
+  "165": {
+    "transliteration": "Assalamu AAalaykum ahlad-diyari minal-mu/mineena walmuslimeen, wa-inna in shaal-lahu bikum lahiqoon, nas-alul-laha lana walakumul-AAafiyah.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/60.json",
+    "match": "exact"
+  },
+  "166": {
+    "transliteration": "Allahumma innee as-aluka khayraha wa-aAAoothu bika min sharriha.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/61.json",
+    "match": "exact"
+  },
+  "167": {
+    "transliteration": "Allahumma innee as-aluka khayraha wakhayra ma feeha, wakhayra ma orsilat bih, wa-aAAoothu bika min sharriha, washarri ma feeha washarri ma orsilat bih.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/61.json",
+    "match": "exact"
+  },
+  "168": {
+    "transliteration": "Subhanal-lathee yusabbihur-raAAdu bihamdih, walmala-ikatu min kheefatih.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/62.json",
+    "match": "exact"
+  },
+  "169": {
+    "transliteration": "Allahummas-qina ghaythan mugheethan maree-an mureeAAan, nafiAAan, ghayra dar, AAajilan ghayra ajil.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/63.json",
+    "match": "exact"
+  },
+  "170": {
+    "transliteration": "Allahumma aghithna, allahumma aghithna, allahumma aghithna.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/63.json",
+    "match": "exact"
+  },
+  "171": {
+    "transliteration": "Allahummas-qi AAibadak, wabaha-imak, wanshur rahmatak, wa-ahyi baladakal-mayyit.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/63.json",
+    "match": "exact"
+  },
+  "172": {
+    "transliteration": "Allahumma sayyiban nafiAAa.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/64.json",
+    "match": "exact"
+  },
+  "173": {
+    "transliteration": "Mutirna bifadlil-lahi warahmatih.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/65.json",
+    "match": "exact"
+  },
+  "174": {
+    "transliteration": "Allahumma hawalayna wala AAalayna, allahumma AAalal-akami waththirab, wabutoonil-awdiyah, wamanabitish-shajar.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/66.json",
+    "match": "exact"
+  },
+  "175": {
+    "transliteration": "Allahu akbar, allahumma ahillahu AAalayna bil-amni wal-eeman, wassalamati wal-islam, wattawfeeiqi lima tuhibbu watarda, rabbuna warabbukal-lah.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/67.json",
+    "match": "exact"
+  },
+  "176": {
+    "transliteration": "Thahabath-thama-o wabtallatil-AAurooq, wathabatal-ajru in shaal-lah.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/68.json",
+    "match": "exact"
+  },
+  "177": {
+    "transliteration": "Allahumma inne as-aluka birahmatikal-latee wasiAAat kulla shay, an taghfira lee.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/68.json",
+    "match": "exact"
+  },
+  "178": {
+    "transliteration": "Bismil-lah. ... Bismil-lahi fee awwalihi wa-akhirih.",
+    "instruction": "When you are about to eat, you should say ... and if you forget to say it before starting, then you should say (when you remember)",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/69.json",
+    "match": "differs"
+  },
+  "179": {
+    "transliteration": "Allahumma barik lana feehi wa-atAAimna khayran minh. ... Allahumma barik lana feehi wazidna minh.",
+    "instruction": "Whomever Allah feeds, should say ... and whomever Allah gives milk to drink should say",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/69.json",
+    "match": "differs"
+  },
+  "180": {
+    "transliteration": "Alhamdu lillahil-lathee atAAamanee hatha warazaqaneehi min ghayri hawlin minnee wala quwwah.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/70.json",
+    "match": "exact"
+  },
+  "181": {
+    "transliteration": "Alhamdu lillahi hamdan katheeran tayyiban mubarakan feeh, ghayra makfiyyin wala muwaddaAAin, wala mustaghnan AAanhu rabbuna.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/70.json",
+    "match": "exact"
+  },
+  "182": {
+    "transliteration": "Allahumma barik lahum feema razaqtahum, waghfir lahum warhamhum.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/71.json",
+    "match": "exact"
+  },
+  "183": {
+    "transliteration": "Allahumma atAAim man atAAamanee wasqi man saqanee.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/72.json",
+    "match": "exact"
+  },
+  "184": {
+    "transliteration": "Aftara AAindakumus-sa-imoon, wa-akala taAAamakumul-abrar, wasallat AAalaykumul-mala-ikah.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/73.json",
+    "match": "exact"
+  },
+  "185": {
+    "transliteration": null,
+    "instruction": "UNCHANGED",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/74.json",
+    "match": "missing"
+  },
+  "186": {
+    "transliteration": "Innee sa-im, innee sa-im.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/75.json",
+    "match": "exact"
+  },
+  "187": {
+    "transliteration": "Allahumma barik lana fee thamarina, wabarik lana fee madeenatina, wabarik lana fee saAAina wabarik lana fee muddina.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/76.json",
+    "match": "exact"
+  },
+  "188": {
+    "transliteration": "Alhamdu lillah. ... Yarhamukal-lah. ... Yahdeekumul-lahu wayuslihu balakum.",
+    "instruction": "When one of you sneezes he should say ... and his brother or companion should say to him ... and he (i.e. the one who sneezed) replies back to him",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/77.json",
+    "match": "differs"
+  },
+  "189": {
+    "transliteration": "Yahdeekum wayuslihu balakum.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/78.json",
+    "match": "exact"
+  },
+  "190": {
+    "transliteration": "Barakal-lahu lak, wabaraka AAalayk, wajamaAAa baynakuma fee khayr.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/79.json",
+    "match": "exact"
+  },
+  "191": {
+    "transliteration": "Allahumma innee as-aluka khayraha wakhayra ma jabaltaha AAalayh, wa-aAAoothu bika min sharriha washarri ma jabaltaha AAalayh.",
+    "instruction": "when you marry a woman or buy a maidservant, you should say ... and if you buy a camel, then you should take hold of it’s hump and say likewise.",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/80.json",
+    "match": "differs"
+  },
+  "192": {
+    "transliteration": "Bismil-lah, allahumma jannibnash-shaytan, wajannibish-shaytana ma razaqtana.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/81.json",
+    "match": "exact"
+  },
+  "193": {
+    "transliteration": "aAAoothu billahi minash-shaytanir-rajeem.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/82.json",
+    "match": "exact"
+  },
+  "194": {
+    "transliteration": "Alhamdu lillahil-lathee AAafanee mimmab-talaka bih, wafaddalanee AAala katheerin mimman khalaqa tafdeela.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/83.json",
+    "match": "exact"
+  },
+  "195": {
+    "transliteration": "Rabbigh-fir lee watub AAalay, innaka antat-tawwabul-ghafoor.",
+    "instruction": "would say one hundred times at any one sitting before getting up",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/84.json",
+    "match": "differs"
+  },
+  "196": {
+    "transliteration": "Subhanakal-lahumma wabihamdik, ashhadu an la ilaha illa ant, astaghfiruka wa-atoobu ilayk.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/85.json",
+    "match": "exact"
+  },
+  "197": {
+    "transliteration": "Walaka",
+    "instruction": null,
+    "source": "sunnah-com-hisn",
+    "sourceUrl": "https://sunnah.com/hisn:197"
+  },
+  "198": {
+    "transliteration": "Jazakal-lahu khayran.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/87.json",
+    "match": "exact"
+  },
+  "199": {
+    "transliteration": null,
+    "instruction": "UNCHANGED",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/88.json",
+    "match": "missing"
+  },
+  "200": {
+    "transliteration": "Ahabbakal-lathee ahbabtanee lah.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/89.json",
+    "match": "exact"
+  },
+  "201": {
+    "transliteration": "Barakal-lahu laka fee ahlika wamalik.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/90.json",
+    "match": "exact"
+  },
+  "202": {
+    "transliteration": "Barakal-lahu laka fee ahlika wamalik, innama jaza-os-salafil-hamdu wal-ada'.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/91.json",
+    "match": "exact"
+  },
+  "203": {
+    "transliteration": "Allahumma innee aAAoothu bika an oshrika bika wa-ana aAAlam, wa-astaghfiruka lima la aAAlam.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/92.json",
+    "match": "exact"
+  },
+  "204": {
+    "transliteration": "Wafīka bārakallāh.",
+    "instruction": null,
+    "source": "sunnah-com-hisn",
+    "sourceUrl": "https://sunnah.com/hisn:204"
+  },
+  "205": {
+    "transliteration": "Allahumma la tayra illa tayruk, wala khayra illa khayruk, wala ilaha ghayruk.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/94.json",
+    "match": "exact"
+  },
+  "206": {
+    "transliteration": "Bismil-lah, walhamdu lillah, subhanal-lathee sakhkhara lana hatha wama kunna lahu muqrineen, wainna ila rabbina lamunqaliboon, alhamdu lillah, alhamdu lillah, alhamdu lillah, Allahu akbar, Allahu akbar, Allahu akbar, subhanakal-lahumma innee thalamtu nafsee faghfir lee fainnahu la yaghfiruth-thunooba illa ant.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/95.json",
+    "match": "exact"
+  },
+  "207": {
+    "transliteration": "Allahu akbar, Allahu akbar, Allahu akbar, subhanal-lathee sakhkhara lana hatha wama kunna lahu muqrineen, wa-inna ila rabbina lamunqaliboon, allahumma inna nas-aluka fee safarina hatha albirra wattaqwa, waminal-AAamali ma tarda, allahumma hawwin AAalayna safarana hatha, watwi AAanna buAAdah, allahumma antas-sahibu fis-safar, walkhaleefatu fil-ahl, allahumma innee aAAoothu bika min waAAtha-is-safar, waka-abatil-manthar, wasoo-il-munqalabi fil-mali wal-ahl. ... Ayiboona, ta-iboona, AAabidoona, lirabbina hamidoon.",
+    "instruction": "upon returning the same supplication is recited with the following addition",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/96.json",
+    "match": "differs"
+  },
+  "208": {
+    "transliteration": "Allahumma rabbas-samawatis-sabAAi wama athlaln, warabbal-aradeenas-sabAAi wama aqlaln, warabbash-shayateeni wama adlaln, warabbar-riyahi wama tharayn, as-aluka khayra hathihil-qaryah, wakhayra ahlilha wakhayra ma feeha, wa-aAAoothu bika min sharriha washarri ahliha, washarri ma feeha.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/97.json",
+    "match": "exact"
+  },
+  "209": {
+    "transliteration": "La ilaha illal-lah, wahdahu la shareeka lah, lahul-mulku walahul-hamd, yuhyee wayumeetu wahuwa hayyun la yamoot, biyadihil-khayru wahuwa AAala kulli shayin qadeer.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/98.json",
+    "match": "exact"
+  },
+  "210": {
+    "transliteration": "Bismil-lah.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/99.json",
+    "match": "exact"
+  },
+  "211": {
+    "transliteration": "AstawdiAAukumul-lah, allathee la tadeeAAu wada-iAAuh.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/100.json",
+    "match": "exact"
+  },
+  "212": {
+    "transliteration": "AstawdiAAul-laha deenak, wa-amanatak, wakhawateema AAamalik.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/101.json",
+    "match": "exact"
+  },
+  "213": {
+    "transliteration": "Zawwadakal-lahut-taqwa, waghafara thanbak, wayassara lakal-khayra haythuma kunt.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/101.json",
+    "match": "exact"
+  },
+  "214": {
+    "transliteration": null,
+    "instruction": "UNCHANGED",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/102.json",
+    "match": "missing"
+  },
+  "215": {
+    "transliteration": "SamiAAa samiAAun bihamdil-lahi wahusni bala-ihi AAalayna. Rabbana sahibna wa-afdil AAalayna AAa-ithan billahi minan-nar.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/103.json",
+    "match": "exact"
+  },
+  "216": {
+    "transliteration": "aAAoothu bikalimatil-lahit-tammati min sharri ma khalaq.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/104.json",
+    "match": "exact"
+  },
+  "217": {
+    "transliteration": "Allahu akbar, Allahu akbar, Allahu akbar. La ilaha illal-lahu wahdahu la shareeka lah, lahul-mulku walahul-hamd, wahuwa AAala kulli shay-in qadeer, ayiboona ta-iboon, AAabidoon, lirabbina hamidoon, sadaqal-lahu waAAdah, wanasara AAabdah, wahazamal-ahzaba wahdah.",
+    "instruction": "on return from a battle or from performing the pilgrimage would say at every high point",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/105.json",
+    "match": "differs"
+  },
+  "218": {
+    "transliteration": "Alhamdu lillaahil-lathee bini'matihi tatimmuus-saalihaat ... Alhamdulillaahi 'alaa kulli haal",
+    "instruction": "When something happened that pleased him, the Prophet used to say ... And if something happened that displeased him, he used to say",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/106.json",
+    "match": "differs"
+  },
+  "219": {
+    "transliteration": null,
+    "instruction": "UNCHANGED",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/107.json",
+    "match": "missing"
+  },
+  "220": {
+    "transliteration": null,
+    "instruction": "UNCHANGED",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/107.json",
+    "match": "missing"
+  },
+  "221": {
+    "transliteration": null,
+    "instruction": "UNCHANGED",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/107.json",
+    "match": "missing"
+  },
+  "222": {
+    "transliteration": null,
+    "instruction": "UNCHANGED",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/107.json",
+    "match": "missing"
+  },
+  "223": {
+    "transliteration": null,
+    "instruction": "UNCHANGED",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/107.json",
+    "match": "missing"
+  },
+  "224": {
+    "transliteration": null,
+    "instruction": "UNCHANGED",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/108.json",
+    "match": "missing"
+  },
+  "225": {
+    "transliteration": null,
+    "instruction": "UNCHANGED",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/108.json",
+    "match": "missing"
+  },
+  "226": {
+    "transliteration": null,
+    "instruction": "UNCHANGED",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/108.json",
+    "match": "missing"
+  },
+  "227": {
+    "transliteration": null,
+    "instruction": "UNCHANGED",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/109.json",
+    "match": "missing"
+  },
+  "228": {
+    "transliteration": null,
+    "instruction": "UNCHANGED",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/110.json",
+    "match": "missing"
+  },
+  "229": {
+    "transliteration": null,
+    "instruction": "UNCHANGED",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/111.json",
+    "match": "missing"
+  },
+  "230": {
+    "transliteration": "Allahumma fa-ayyuma mu/minin sababtuhu fajAAal thalika lahu qurbatan ilayka yawmal-qiyamah.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/112.json",
+    "match": "exact"
+  },
+  "231": {
+    "transliteration": null,
+    "instruction": "UNCHANGED",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/113.json",
+    "match": "missing"
+  },
+  "232": {
+    "transliteration": "Allaahumma laa tu'aakhithnee bimaa yaqooloona, waghfir lee maa laa ya'lamoona [waj'alnee khayram-mimmaa yadhunnoon]",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/114.json",
+    "match": "exact"
+  },
+  "233": {
+    "transliteration": "Labbaykal-lahumma labbayk, labbayka la shareeka laka labbayk, innal-hamda wanniAAmata laka walmulk, la shareeka lak.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/115.json",
+    "match": "exact"
+  },
+  "234": {
+    "transliteration": "Allahu akbar",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/116.json",
+    "match": "differs"
+  },
+  "235": {
+    "transliteration": "Rabbana atina fee alddunya hasanatan wafee al-akhirati hasanatan waqina AAathaba alnnar",
+    "instruction": "The Prophet PBUH used to say between the Yemeni corner and the black stone",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/117.json",
+    "match": "exact"
+  },
+  "236": {
+    "transliteration": "Innas-safa wa-almarwata min shaAAa-iri Allah ... Abda-o bima badaal-lahu bih. ... Allahu akbar, Allahu akbar, Allahu akbar. ... La ilaha illal-lahu wahdahu la shareeka lah, lahul-mulku walahul-hamd, wahuwa AAala kulli shayin qadeer, la ilaha illal-lahu wahdah, anjaza waAAdah, wanasara AAabdah, wahazamal -ahzaba wahdah.",
+    "instruction": "and then he would say the following three times making a supplication (one should make a personal supplication) after each time ... he would repeat this action at Marwah.",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/118.json",
+    "match": "differs"
+  },
+  "237": {
+    "transliteration": "La ilaha illal-lahu wahdahu la shareeka lah, lahul-mulku walahul-hamd, wahuwa AAala kulli shayin qadeer.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/119.json",
+    "match": "differs"
+  },
+  "238": {
+    "transliteration": null,
+    "instruction": "UNCHANGED",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/120.json",
+    "match": "missing"
+  },
+  "239": {
+    "transliteration": null,
+    "instruction": "UNCHANGED",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/121.json",
+    "match": "missing"
+  },
+  "240": {
+    "transliteration": "Subhanal-lah!.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/122.json",
+    "match": "exact"
+  },
+  "241": {
+    "transliteration": "Allahu akbar.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/122.json",
+    "match": "exact"
+  },
+  "242": {
+    "transliteration": null,
+    "instruction": "UNCHANGED",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/123.json",
+    "match": "missing"
+  },
+  "243": {
+    "transliteration": "Bismil-lah (three times) ... aAAoothu billahi waqudratih min sharri ma ajidu wa-ohathir.",
+    "instruction": "Place your hand at the site of the pain and say ... the supplicate seven times",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/124.json",
+    "match": "differs"
+  },
+  "244": {
+    "transliteration": null,
+    "instruction": "UNCHANGED",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/125.json",
+    "match": "missing"
+  },
+  "245": {
+    "transliteration": "La ilaha illal-lah.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/126.json",
+    "match": "exact"
+  },
+  "246": {
+    "transliteration": "Bismil-lah wallahu akbar, allahumma minka walak, allahumma taqabbal minnee.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/127.json",
+    "match": "exact"
+  },
+  "247": {
+    "transliteration": "aAAoothu bikalimatil-lahit-tammat, allatee la yujawizuhunna barrun wala fajir min sharri ma khalaq, wabaraa watharaa, wamin sharri ma yanzilu minas-sama/, wamin sharri ma yaAAruju feeha, wamin sharri ma tharaa fil-ard, wamin sharri ma yakhruju minha, wamin sharri fitnanil-layli wannahar, wamin sharri kulli tariqin illa tariqan yatruqu bikhayrin ya Rahman.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/128.json",
+    "match": "exact"
+  },
+  "248": {
+    "transliteration": null,
+    "instruction": "UNCHANGED",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/129.json",
+    "match": "missing"
+  },
+  "249": {
+    "transliteration": null,
+    "instruction": "UNCHANGED",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/129.json",
+    "match": "missing"
+  },
+  "250": {
+    "transliteration": "Astaghfirullāha ‘l-'Aẓīm alladhi lā ilāha illā huwa ‘l-ḥayyul-Qayyūm wa atūbu ilayh.",
+    "instruction": null,
+    "source": "sunnah-com-hisn",
+    "sourceUrl": "https://sunnah.com/hisn:250"
+  },
+  "251": {
+    "transliteration": null,
+    "instruction": "UNCHANGED",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/129.json",
+    "match": "missing"
+  },
+  "252": {
+    "transliteration": null,
+    "instruction": "UNCHANGED",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/129.json",
+    "match": "missing"
+  },
+  "253": {
+    "transliteration": null,
+    "instruction": "UNCHANGED",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/129.json",
+    "match": "missing"
+  },
+  "254": {
+    "transliteration": "Subhanal-lahi wabihamdih.",
+    "instruction": "a hundred times during the day",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/130.json",
+    "match": "differs"
+  },
+  "255": {
+    "transliteration": "La ilaha illal-lahu wahdahu la shareeka lah, lahul-mulku walahul-hamd, wahuwa AAala kulli shayin qadeer.",
+    "instruction": "UNCHANGED",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/130.json",
+    "match": "differs"
+  },
+  "256": {
+    "transliteration": "Subhanal-lahi wabihamdih, wasubhanal-lahil-AAatheem.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/130.json",
+    "match": "differs"
+  },
+  "257": {
+    "transliteration": "Subhanal-lah, walhamdu lillah, la ilaha illal-lah wallahu akbar.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/130.json",
+    "match": "differs"
+  },
+  "258": {
+    "transliteration": "Subhanal-lah.",
+    "instruction": "one hundred times",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/130.json",
+    "match": "differs"
+  },
+  "259": {
+    "transliteration": "Subhanal-lahil-AAatheemi wabihamdih.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/130.json",
+    "match": "differs"
+  },
+  "260": {
+    "transliteration": "La hawla wala quwwata illa billah.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/130.json",
+    "match": "differs"
+  },
+  "261": {
+    "transliteration": "Subhanal-lah, walhamdu lillah, wala ilaha illal-lah, wallahu akbar.",
+    "instruction": "it does not matter which of them you start with.",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/130.json",
+    "match": "differs"
+  },
+  "262": {
+    "transliteration": "La ilaha illal-lah, wahdahu la shareeka lah, Allahu akbaru kabeera, walhamdu lillahi katheera, subhanal-lahi rabbil-AAalameen, la hawla wala quwwata illa billahil-AAazeezil-hakeem. ... Allahummagh-fir lee, warhamnee, wahdinee, warzuqnee.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/130.json",
+    "match": "differs"
+  },
+  "263": {
+    "transliteration": "Allahummagh-fir lee, warhamnee, wahdinee, waAAafinee warzuqnee.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/130.json",
+    "match": "differs"
+  },
+  "264": {
+    "transliteration": "Alhamdu lillah ... La ilaha illal-lah.",
+    "instruction": null,
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/130.json",
+    "match": "differs"
+  },
+  "265": {
+    "transliteration": "Subḥānallāh. Walḥamdu lillāh. Wa lā ilāha illallāh Wallāhu Akbar Wa lā ḥawla wa lā quwwata illā billāh.",
+    "instruction": null,
+    "source": "sunnah-com-hisn",
+    "sourceUrl": "https://sunnah.com/hisn:265"
+  },
+  "266": {
+    "transliteration": null,
+    "instruction": "UNCHANGED",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/131.json",
+    "match": "missing"
+  },
+  "267": {
+    "transliteration": null,
+    "instruction": "UNCHANGED",
+    "source": "hisnmuslim-en",
+    "sourceUrl": "http://www.hisnmuslim.com/api/en/132.json",
+    "match": "missing"
+  },
+  "quranic-1": {
+    "transliteration": "rabbana taqabbal minna innaka anta alssameeAAu alAAaleemu",
+    "instruction": "UNCHANGED",
+    "source": "tanzil-en-translit",
+    "sourceUrl": "https://tanzil.net/trans/en.transliteration",
+    "match": "exact"
+  },
+  "quranic-2": {
+    "transliteration": "Rabbana waijAAalna muslimayni laka wamin thurriyyatina ommatan muslimatan laka waarina manasikana watub AAalayna innaka anta alttawwabu alrraheemu",
+    "instruction": "UNCHANGED",
+    "source": "tanzil-en-translit",
+    "sourceUrl": "https://tanzil.net/trans/en.transliteration",
+    "match": "exact"
+  },
+  "quranic-3": {
+    "transliteration": "rabbana atina fee alddunya hasanatan wafee alakhirati hasanatan waqina AAathaba alnnari",
+    "instruction": "UNCHANGED",
+    "source": "tanzil-en-translit",
+    "sourceUrl": "https://tanzil.net/trans/en.transliteration",
+    "match": "exact"
+  },
+  "quranic-4": {
+    "transliteration": "rabbana afrigh AAalayna sabran wathabbit aqdamana waonsurna AAala alqawmi alkafireena",
+    "instruction": "UNCHANGED",
+    "source": "tanzil-en-translit",
+    "sourceUrl": "https://tanzil.net/trans/en.transliteration",
+    "match": "exact"
+  },
+  "quranic-5": {
+    "transliteration": "samiAAna waataAAna ghufranaka rabbana wailayka almaseeru",
+    "instruction": "UNCHANGED",
+    "source": "tanzil-en-translit",
+    "sourceUrl": "https://tanzil.net/trans/en.transliteration",
+    "match": "exact"
+  },
+  "quranic-6": {
+    "transliteration": "rabbana la tuakhithna in naseena aw akhtana",
+    "instruction": "UNCHANGED",
+    "source": "tanzil-en-translit",
+    "sourceUrl": "https://tanzil.net/trans/en.transliteration",
+    "match": "exact"
+  },
+  "quranic-7": {
+    "transliteration": "rabbana wala tahmil AAalayna isran kama hamaltahu AAala allatheena min qablina",
+    "instruction": "UNCHANGED",
+    "source": "tanzil-en-translit",
+    "sourceUrl": "https://tanzil.net/trans/en.transliteration",
+    "match": "exact"
+  },
+  "quranic-8": {
+    "transliteration": "rabbana wala tuhammilna ma la taqata lana bihi waoAAfu AAanna waighfir lana wairhamna anta mawlana faonsurna AAala alqawmi alkafireena",
+    "instruction": "UNCHANGED",
+    "source": "tanzil-en-translit",
+    "sourceUrl": "https://tanzil.net/trans/en.transliteration",
+    "match": "exact"
+  },
+  "quranic-9": {
+    "transliteration": "Rabbana la tuzigh quloobana baAAda ith hadaytana wahab lana min ladunka rahmatan innaka anta alwahhabu",
+    "instruction": "UNCHANGED",
+    "source": "tanzil-en-translit",
+    "sourceUrl": "https://tanzil.net/trans/en.transliteration",
+    "match": "exact"
+  },
+  "quranic-10": {
+    "transliteration": "Rabbana innaka jamiAAu alnnasi liyawmin la rayba feehi inna Allaha la yukhlifu almeeAAada",
+    "instruction": "UNCHANGED",
+    "source": "tanzil-en-translit",
+    "sourceUrl": "https://tanzil.net/trans/en.transliteration",
+    "match": "exact"
+  },
+  "quranic-11": {
+    "transliteration": "rabbana innana amanna faighfir lana thunoobana waqina AAathaba alnnari",
+    "instruction": "UNCHANGED",
+    "source": "tanzil-en-translit",
+    "sourceUrl": "https://tanzil.net/trans/en.transliteration",
+    "match": "exact"
+  },
+  "quranic-12": {
+    "transliteration": "Rabbana amanna bima anzalta waittabaAAna alrrasoola faoktubna maAAa alshshahideena",
+    "instruction": "UNCHANGED",
+    "source": "tanzil-en-translit",
+    "sourceUrl": "https://tanzil.net/trans/en.transliteration",
+    "match": "exact"
+  },
+  "quranic-13": {
+    "transliteration": "rabbana ighfir lana thunoobana waisrafana fee amrina wathabbit aqdamana waonsurna AAala alqawmi alkafireena",
+    "instruction": "UNCHANGED",
+    "source": "tanzil-en-translit",
+    "sourceUrl": "https://tanzil.net/trans/en.transliteration",
+    "match": "exact"
+  },
+  "quranic-14": {
+    "transliteration": "rabbana ma khalaqta hatha batilan subhanaka faqina AAathaba alnnari",
+    "instruction": "UNCHANGED",
+    "source": "tanzil-en-translit",
+    "sourceUrl": "https://tanzil.net/trans/en.transliteration",
+    "match": "exact"
+  },
+  "quranic-15": {
+    "transliteration": "Rabbana innaka man tudkhili alnnara faqad akhzaytahu wama lilththalimeena min ansarin",
+    "instruction": "UNCHANGED",
+    "source": "tanzil-en-translit",
+    "sourceUrl": "https://tanzil.net/trans/en.transliteration",
+    "match": "exact"
+  },
+  "quranic-16": {
+    "transliteration": "Rabbana innana samiAAna munadiyan yunadee lileemani an aminoo birabbikum faamanna rabbana faighfir lana thunoobana wakaffir AAanna sayyiatina watawaffana maAAa alabrari",
+    "instruction": "UNCHANGED",
+    "source": "tanzil-en-translit",
+    "sourceUrl": "https://tanzil.net/trans/en.transliteration",
+    "match": "exact"
+  },
+  "quranic-17": {
+    "transliteration": "Rabbana waatina ma waAAadtana AAala rusulika wala tukhzina yawma alqiyamati innaka la tukhlifu almeeAAada",
+    "instruction": "UNCHANGED",
+    "source": "tanzil-en-translit",
+    "sourceUrl": "https://tanzil.net/trans/en.transliteration",
+    "match": "exact"
+  },
+  "quranic-18": {
+    "transliteration": "rabbana amanna faoktubna maAAa alshshahideena",
+    "instruction": "UNCHANGED",
+    "source": "tanzil-en-translit",
+    "sourceUrl": "https://tanzil.net/trans/en.transliteration",
+    "match": "exact"
+  },
+  "quranic-19": {
+    "transliteration": "allahumma rabbana anzil AAalayna maidatan mina alssamai takoonu lana AAeedan liawwalina waakhirina waayatan minka waorzuqna waanta khayru alrraziqeena",
+    "instruction": "UNCHANGED",
+    "source": "tanzil-en-translit",
+    "sourceUrl": "https://tanzil.net/trans/en.transliteration",
+    "match": "exact"
+  },
+  "quranic-20": {
+    "transliteration": "rabbana thalamna anfusana wain lam taghfir lana watarhamna lanakoonanna mina alkhasireena",
+    "instruction": "UNCHANGED",
+    "source": "tanzil-en-translit",
+    "sourceUrl": "https://tanzil.net/trans/en.transliteration",
+    "match": "exact"
+  },
+  "quranic-21": {
+    "transliteration": "rabbana la tajAAalna maAAa alqawmi alththalimeena",
+    "instruction": "UNCHANGED",
+    "source": "tanzil-en-translit",
+    "sourceUrl": "https://tanzil.net/trans/en.transliteration",
+    "match": "exact"
+  },
+  "quranic-22": {
+    "transliteration": "rabbana iftah baynana wabayna qawmina bialhaqqi waanta khayru alfatiheena",
+    "instruction": "UNCHANGED",
+    "source": "tanzil-en-translit",
+    "sourceUrl": "https://tanzil.net/trans/en.transliteration",
+    "match": "exact"
+  },
+  "quranic-23": {
+    "transliteration": "rabbana afrigh AAalayna sabran watawaffana muslimeena",
+    "instruction": "UNCHANGED",
+    "source": "tanzil-en-translit",
+    "sourceUrl": "https://tanzil.net/trans/en.transliteration",
+    "match": "exact"
+  },
+  "quranic-24": {
+    "transliteration": "rabbana la tajAAalna fitnatan lilqawmi alththalimeena Wanajjina birahmatika mina alqawmi alkafireena",
+    "instruction": "UNCHANGED",
+    "source": "tanzil-en-translit",
+    "sourceUrl": "https://tanzil.net/trans/en.transliteration",
+    "match": "exact"
+  },
+  "quranic-25": {
+    "transliteration": "Rabbana innaka taAAlamu ma nukhfee wama nuAAlinu wama yakhfa AAala Allahi min shayin fee alardi wala fee alssamai",
+    "instruction": "UNCHANGED",
+    "source": "tanzil-en-translit",
+    "sourceUrl": "https://tanzil.net/trans/en.transliteration",
+    "match": "exact"
+  },
+  "quranic-26": {
+    "transliteration": "Rabbi ijAAalnee muqeema alssalati wamin thurriyyatee rabbana wtaqabbal duAAai",
+    "instruction": "UNCHANGED",
+    "source": "tanzil-en-translit",
+    "sourceUrl": "https://tanzil.net/trans/en.transliteration",
+    "match": "exact"
+  },
+  "quranic-27": {
+    "transliteration": "Rabbana ighfir lee waliwalidayya walilmumineena yawma yaqoomu alhisabu",
+    "instruction": "UNCHANGED",
+    "source": "tanzil-en-translit",
+    "sourceUrl": "https://tanzil.net/trans/en.transliteration",
+    "match": "exact"
+  },
+  "quranic-28": {
+    "transliteration": "rabbana atina min ladunka rahmatan wahayyi lana min amrina rashadan",
+    "instruction": "UNCHANGED",
+    "source": "tanzil-en-translit",
+    "sourceUrl": "https://tanzil.net/trans/en.transliteration",
+    "match": "exact"
+  },
+  "quranic-29": {
+    "transliteration": "rabbana amanna faighfir lana wairhamna waanta khayru alrrahimeena",
+    "instruction": "UNCHANGED",
+    "source": "tanzil-en-translit",
+    "sourceUrl": "https://tanzil.net/trans/en.transliteration",
+    "match": "exact"
+  },
+  "quranic-30": {
+    "transliteration": "rabbi ighfir wairham waanta khayru alrrahimeena",
+    "instruction": "UNCHANGED",
+    "source": "tanzil-en-translit",
+    "sourceUrl": "https://tanzil.net/trans/en.transliteration",
+    "match": "exact"
+  },
+  "quranic-31": {
+    "transliteration": "rabbana isrif AAanna AAathaba jahannama inna AAathabaha kana gharaman Innaha saat mustaqarran wamuqaman",
+    "instruction": "UNCHANGED",
+    "source": "tanzil-en-translit",
+    "sourceUrl": "https://tanzil.net/trans/en.transliteration",
+    "match": "exact"
+  },
+  "quranic-32": {
+    "transliteration": "rabbana hab lana min azwajina wathurriyyatina qurrata aAAyunin waijAAalna lilmuttaqeena imaman",
+    "instruction": "UNCHANGED",
+    "source": "tanzil-en-translit",
+    "sourceUrl": "https://tanzil.net/trans/en.transliteration",
+    "match": "exact"
+  },
+  "quranic-33": {
+    "transliteration": "alhamdu lillahi allathee athhaba AAanna alhazana inna rabbana laghafoorun shakoorun",
+    "instruction": "UNCHANGED",
+    "source": "tanzil-en-translit",
+    "sourceUrl": "https://tanzil.net/trans/en.transliteration",
+    "match": "exact"
+  },
+  "quranic-34": {
+    "transliteration": "rabbana wasiAAta kulla shayin rahmatan waAAilman faighfir lillatheena taboo waittabaAAoo sabeelaka waqihim AAathaba aljaheemi",
+    "instruction": "UNCHANGED",
+    "source": "tanzil-en-translit",
+    "sourceUrl": "https://tanzil.net/trans/en.transliteration",
+    "match": "exact"
+  },
+  "quranic-35": {
+    "transliteration": "Rabbana waadkhilhum jannati AAadnin allatee waAAadtahum waman salaha min abaihim waazwajihim wathurriyyatihim innaka anta alAAazeezu alhakeemu Waqihimu alssayyiati waman taqi alssayyiati yawmaithin faqad rahimtahu wathalika huwa alfawzu alAAatheemu",
+    "instruction": "UNCHANGED",
+    "source": "tanzil-en-translit",
+    "sourceUrl": "https://tanzil.net/trans/en.transliteration",
+    "match": "exact"
+  },
+  "quranic-36": {
+    "transliteration": "rabbana ighfir lana waliikhwanina allatheena sabaqoona bialeemani wala tajAAal fee quloobina ghillan lillatheena amanoo rabbana innaka raoofun raheemun",
+    "instruction": "UNCHANGED",
+    "source": "tanzil-en-translit",
+    "sourceUrl": "https://tanzil.net/trans/en.transliteration",
+    "match": "exact"
+  },
+  "quranic-37": {
+    "transliteration": "rabbana AAalayka tawakkalna wailayka anabna wailayka almaseeru",
+    "instruction": "UNCHANGED",
+    "source": "tanzil-en-translit",
+    "sourceUrl": "https://tanzil.net/trans/en.transliteration",
+    "match": "exact"
+  },
+  "quranic-38": {
+    "transliteration": "Rabbana la tajAAalna fitnatan lillatheena kafaroo waighfir lana rabbana innaka anta alAAazeezu alhakeemu",
+    "instruction": "UNCHANGED",
+    "source": "tanzil-en-translit",
+    "sourceUrl": "https://tanzil.net/trans/en.transliteration",
+    "match": "exact"
+  },
+  "quranic-39": {
+    "transliteration": "rabbana atmim lana noorana waighfir lana innaka AAala kulli shayin qadeerun",
+    "instruction": "UNCHANGED",
+    "source": "tanzil-en-translit",
+    "sourceUrl": "https://tanzil.net/trans/en.transliteration",
+    "match": "exact"
+  },
+  "quranic-40": {
+    "transliteration": "rabbi ibni lee AAindaka baytan fee aljannati wanajjinee min firAAawna waAAamalihi wanajjinee mina alqawmi alththalimeena",
+    "instruction": "UNCHANGED",
+    "source": "tanzil-en-translit",
+    "sourceUrl": "https://tanzil.net/trans/en.transliteration",
+    "match": "exact"
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "5": {
+    "before": "Alhamdu lillahil-lathee kasanee hatha (aththawb) warazaqaneehi min ghayri hawlin minnee wala quwwah.",
+    "after": "Alhamdu lillahil-lathee kasanee hatha [aththawb] warazaqaneehi min ghayri hawlin minnee wala quwwah."
+  },
+  "10": {
+    "before": "(Bismil-lah) allahumma innee aAAoothu bika minal-khubthi wal-khaba-ith.",
+    "after": "Bismil-lah allahumma innee aAAoothu bika minal-khubthi wal-khaba-ith."
+  },
+  "31": {
+    "before": "(Allahu akbaru kabeera, Allahu akbaru kabeera, Allahu akbaru kabeera, walhamdu lillahi katheera, walhamdu lillahi katheera, walhamdu lillahi katheera, wasubhanal-lahi bukratan wa-aseela.)(aAAoothu billahi minash-shaytani min nafkhihi wanafthihi wahamzih.)",
+    "after": "Allahu akbaru kabeera, Allahu akbaru kabeera, Allahu akbaru kabeera, walhamdu lillahi katheera, walhamdu lillahi katheera, walhamdu lillahi katheera, wasubhanal-lahi bukratan wa-aseela. aAAoothu billahi minash-shaytani min nafkhihi wanafthihi wahamzih."
+  },
+  "50": {
+    "before": "Sajada wajhee lillathee khalaqahu washaqqa samAAahu wabasarahu bihawlihi waquwwatih { tabaraka Allahu ahsanu alkhaliqeen}.",
+    "after": "Sajada wajhee lillathee khalaqahu washaqqa samAAahu wabasarahu bihawlihi waquwwatih tabaraka Allahu ahsanu alkhaliqeen."
+  },
+  "66": {
+    "before": "Astaghfirul-lah (three times) Allahumma antas-salam waminkas-salam, tabarakta ya thal-jalali wal-ikram.",
+    "after": "((Astaghfirul-lah)) (three times) ((Allahumma antas-salam waminkas-salam, tabarakta ya thal-jalali wal-ikram.))"
+  },
+  "69": {
+    "before": "Subhanal-lah walhamdu lillah, wallahu akbar (thirty-three times). La ilaha illal-lahu wahdahu la shareeka lah, lahul-mulku walahul-hamd, wahuwa AAala kulli shayin qadeer.",
+    "after": "((Subhanal-lah walhamdu lillah, wallahu akbar)) (thirty-three times). ((La ilaha illal-lahu wahdahu la shareeka lah, lahul-mulku walahul-hamd, wahuwa AAala kulli shayin qadeer.))"
+  },
+  "106": {
+    "before": "Subhanal-lah. (thirty-three times) Alhamdu lillah. (thirty-three times) Allahu akbar. (thirty-four times)",
+    "after": "((Subhanal-lah.)) (thirty-three times) ((Alhamdu lillah.)) (thirty-three times) ((Allahu akbar.)) (thirty-four times)"
+  },
+  "243": {
+    "before": "Bismil-lah (three times) ... aAAoothu billahi waqudratih min sharri ma ajidu wa-ohathir.",
+    "after": "((Bismil-lah)) (three times) ... ((aAAoothu billahi waqudratih min sharri ma ajidu wa-ohathir.))"
+  },
+  "74": {
+    "before": "Allahumma innee astakheeruka biAAilmik, wa-astaqdiruka biqudratik, wa-as-aluka min fadlikal-AAatheem, fa-innaka taqdiru wala aqdir, wataAAlamu wala aAAlam ,wa-anta AAallamul ghuyoob, allahumma in kunta taAAlamu anna hathal-amr (say your need) khayrun lee fee deenee wamaAAashee waAAaqibati amree faqdurhu lee, wayassirhu lee, thumma barik lee feeh, wa-in kunta taAAlamu anna hathal-amr sharrun lee fee deenee wamaAAashee waAAaqibati amree fasrifhu AAannee wasrifnee AAanh, waqdur liyal-khayra haythu kan, thumma ardinee bih.",
+    "after": "((Allahumma innee astakheeruka biAAilmik, wa-astaqdiruka biqudratik, wa-as-aluka min fadlikal-AAatheem, fa-innaka taqdiru wala aqdir, wataAAlamu wala aAAlam ,wa-anta AAallamul ghuyoob, allahumma in kunta taAAlamu anna hathal-amr)) (say your need) ((khayrun lee fee deenee wamaAAashee waAAaqibati amree faqdurhu lee, wayassirhu lee, thumma barik lee feeh, wa-in kunta taAAlamu anna hathal-amr sharrun lee fee deenee wamaAAashee waAAaqibati amree fasrifhu AAannee wasrifnee AAanh, waqdur liyal-khayra haythu kan, thumma ardinee bih.))"
+  },
+  "129": {
+    "before": "Allaahumma rabbas-samaawaatis-sab'i, wa Rabbal-'Arshil-'Adheem, Kun lee jaaran min (here you mention the person's name) wa 'ahzabihi min khalaa'iqika, 'an yafruta 'alayya 'ahadun minhum 'aw yatghaa,'Azza jaaruka, wa jalla thanaa'uka, wa laa 'ilaaha 'illaa 'Anta.",
+    "after": "((Allaahumma rabbas-samaawaatis-sab'i, wa Rabbal-'Arshil-'Adheem, Kun lee jaaran min)) (here you mention the person's name) ((wa 'ahzabihi min khalaa'iqika, 'an yafruta 'alayya 'ahadun minhum 'aw yatghaa,'Azza jaaruka, wa jalla thanaa'uka, wa laa 'ilaaha 'illaa 'Anta.))"
+  },
+  "130": {
+    "before": "Allaahu Akbar, Allaahu 'a'azzu min khalqihi jamee'an, Allaahu 'a'azzu mimmaa 'akhaafu wa 'ahdharu, 'a'oothu billaahil-lathee laa ilaaha illaa huwa, almumsikis-samaawaatis-sab'i 'an yaqa'na 'alaal-'ardhi 'illaa bi'ithnihi, min sharri 'abdika (name of the person) wa junoodihi wa 'atbaa'ihi wa ashyaa'ihi minal-jinni wal'insi, Allaahumma kun lee jaaran min sharrihim, Jalla thanaa'uka wa 'azza aaruka, wa tabaarakasmuka, wa laa ilaaha ghayruka.",
+    "after": "((Allaahu Akbar, Allaahu 'a'azzu min khalqihi jamee'an, Allaahu 'a'azzu mimmaa 'akhaafu wa 'ahdharu, 'a'oothu billaahil-lathee laa ilaaha illaa huwa, almumsikis-samaawaatis-sab'i 'an yaqa'na 'alaal-'ardhi 'illaa bi'ithnihi, min sharri 'abdika)) (name of the person) ((wa junoodihi wa 'atbaa'ihi wa ashyaa'ihi minal-jinni wal'insi, Allaahumma kun lee jaaran min sharrihim, Jalla thanaa'uka wa 'azza aaruka, wa tabaarakasmuka, wa laa ilaaha ghayruka.))"
+  },
+  "160": {
+    "before": "(Allaahumma 'a'ith-hu min 'athaabil-qabri.) [or say:](Allahummaj-AAalhu faratan, wathukhran liwalidayh, washafeeAAan mujaban. Allahumma thaqqil bihi mawazeenahuma wa-aAAthim bihi ojoorahuma, wa-alhiqhu bisalihil-mu'mineen, wajAAalhu fee kafalati Ibraheem, waqihi birahmatika AAathabal-jaheem, wa 'abdilhu daaran khayran min daarihi, wa 'ahlan khayran min 'ahlihi, Allaahum-maghfir li'aslaafinaa, wa afraatinaa wa man sabaqanaa bil'eemaan)",
+    "after": "((Allaahumma 'a'ith-hu min 'athaabil-qabri.)) or say: ((Allahummaj-AAalhu faratan, wathukhran liwalidayh, washafeeAAan mujaban. Allahumma thaqqil bihi mawazeenahuma wa-aAAthim bihi ojoorahuma, wa-alhiqhu bisalihil-mu'mineen, wajAAalhu fee kafalati Ibraheem, waqihi birahmatika AAathabal-jaheem, wa 'abdilhu daaran khayran min daarihi, wa 'ahlan khayran min 'ahlihi, Allaahum-maghfir li'aslaafinaa, wa afraatinaa wa man sabaqanaa bil'eemaan))"
+  }
+}
