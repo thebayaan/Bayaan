@@ -119,6 +119,7 @@ jest.mock('@/utils/playbackVerseUnits', () => ({
 import {
   useMushafPlayerStore,
   isVerseKeyPlaying,
+  selectPlaybackBasmalaSurah, // @ai
   selectPlaybackVerseKeys,
   VERSE_TIMING_UNAVAILABLE_ERROR,
   // @ai-start
@@ -1137,6 +1138,91 @@ describe('a set-level vote that gets no answer', () => {
       playbackState: 'playing',
       numberingMode: 'disabled',
     });
+  });
+});
+// @ai-end
+
+// @ai-start
+describe('the intro before verse 1 (basmala highlight)', () => {
+  const basmala = () => selectPlaybackBasmalaSurah(st());
+
+  it('playback starts at verse 1: no basmala, no flash while the seek lands', async () => {
+    await play('hafs-clean', 2);
+    const v1 = entry('hafs-clean', 2, 1).timestampFrom;
+    expect(player().seeks).toEqual([v1 / 1000]);
+    expect(basmala()).toBeNull();
+    // the native position still reports the start for a tick
+    at(0);
+    expect(basmala()).toBeNull();
+    expect(st().currentVerseKey).toBe('2:1');
+    at(v1 + 50);
+    expect(basmala()).toBeNull();
+    expect(st().currentVerseKey).toBe('2:1');
+  });
+
+  it('a seek that has not landed is not taken for the intro', async () => {
+    await play('hafs-clean', 2, '2:5');
+    at(100); // still the old position
+    expect(basmala()).toBeNull();
+    expect(st().currentVerseKey).toBe('2:5');
+  });
+
+  it('back in the intro (lock-screen scrub): the basmala, then verse 1 again', async () => {
+    await play('hafs-clean', 2, '2:5');
+    const t = T('hafs-clean', 2);
+    at(t[5].timestampFrom + 50);
+    expect(st().currentVerseKey).toBe('2:6');
+    at(t[0].timestampFrom - 1000);
+    expect(basmala()).toBe(2);
+    expect(st().currentVerseKey).toBeNull();
+    expect(st().currentVerseKeys).toEqual([]);
+    expect(selectPlaybackVerseKeys(st())).toEqual([]);
+    at(t[0].timestampFrom + 50);
+    expect(basmala()).toBeNull();
+    expect(st().currentVerseKey).toBe('2:1');
+  });
+
+  it('next ayah from the intro goes to verse 1', async () => {
+    await play('hafs-clean', 2, '2:5');
+    at(entry('hafs-clean', 2, 5).timestampFrom + 50); // the seek landed
+    at(100);
+    expect(basmala()).toBe(2);
+    mushafAudioService.seekToNextAyah();
+    expect(basmala()).toBeNull();
+    expect(st().currentVerseKey).toBe('2:1');
+  });
+
+  it('an ayah-0 pre-roll entry: the basmala while it plays', async () => {
+    await play('hafs-preroll', 604, '112:1');
+    const v1 = entry('hafs-preroll', 112, 1).timestampFrom;
+    at(v1 + 50); // the seek landed
+    expect(st().currentVerseKey).toBe('112:1');
+    at(50); // scrubbed back into the pre-roll
+    expect(basmala()).toBe(112);
+    expect(st().currentVerseKey).toBe('112:0'); // as before: no such verse
+    at(v1 + 50);
+    expect(basmala()).toBeNull();
+    expect(st().currentVerseKey).toBe('112:1');
+  });
+
+  it('al-Fatihah and a surah without verse tracking: never', async () => {
+    await play('hafs-clean', 1);
+    at(0);
+    expect(basmala()).toBeNull();
+    reset();
+    await play('doori-269', 562, '67:5');
+    at(0);
+    expect(basmala()).toBeNull();
+  });
+
+  it('stop clears it', async () => {
+    await play('hafs-clean', 2, '2:5');
+    at(entry('hafs-clean', 2, 5).timestampFrom + 50);
+    at(100);
+    expect(st().basmalaIntroSurah).toBe(2);
+    st().stop();
+    expect(st().basmalaIntroSurah).toBeNull();
+    expect(basmala()).toBeNull();
   });
 });
 // @ai-end

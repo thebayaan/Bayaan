@@ -12,81 +12,154 @@ import {useTheme} from '@/hooks/useTheme';
 import {USE_GLASS} from '@/hooks/useGlassProps';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useRouter} from 'expo-router';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import {Feather} from '@expo/vector-icons';
 import {MicrophoneIcon, PlayIcon, ShuffleIcon} from '@/components/Icons';
 import {SheetManager} from 'react-native-actions-sheet';
 import {useUploadsStore, getCustomReciterName} from '@/store/uploadsStore';
 import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {createUserUploadTrack, addUploadToRecentlyPlayed} from '@/utils/track';
-import {getSurahById, getReciterName} from '@/services/dataService';
+// @ai-start
+import {
+  getSurahById,
+  getReciterName,
+  getReciterByIdSync,
+} from '@/services/dataService';
+// @ai-end
 import {shuffleArray} from '@/utils/arrayUtils';
 import Color from 'color';
 import type {UploadedRecitation, RecordingType} from '@/types/uploads';
 import {CollectionStickyHeader} from '@/components/collection/CollectionStickyHeader';
 import {pickAndImportAudioFiles} from '@/utils/importAudio';
+// @ai-start
+import {confirmRemoveAllUploads} from '@/utils/confirmRemoveAllUploads';
+// @ai-end
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {NowPlayingIndicator} from '@/components/NowPlayingIndicator';
 import {GradientText} from '@/components/GradientText';
 import {ReciterImage} from '@/components/ReciterImage';
 import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
+// @ai-start
+import {flipX, forceLTR, latinLetterSpacing} from '@/utils/rtl';
+import {useTranslation} from 'react-i18next';
+import i18n from '@/i18n';
+import {
+  getReciterDisplayName,
+  getSurahDisplayName,
+  localizeDigits,
+} from '@/i18n/format';
+import {useLibraryListBottomPadding} from '@/hooks/useBottomInset'; // @ai
+// @ai-start
+import {useNativeOptionsMenu} from '@/components/sheets/options/OptionsMenu';
+import {
+  CollectionOptionsMenu,
+  type CollectionOptionsPayload,
+} from '@/components/sheets/options/collectionOptions';
+import {
+  UploadOptionsMenu,
+  type UploadOptionsPayload,
+} from '@/components/sheets/options/uploadOptions';
+// @ai-end
+// @ai-end
+
+// @ai-start
+const KNOWN_STYLES = ['murattal', 'mojawwad', 'molim'] as const;
+// @ai-end
 
 function stripExtension(filename: string): string {
   return filename.replace(/\.[^/.]+$/, '');
 }
 
+// @ai-start
 function getDisplayTitle(item: UploadedRecitation): string {
   if (item.type === 'surah' && item.surahNumber) {
     const surah = getSurahById(item.surahNumber);
-    if (surah) return surah.name;
+    if (surah) return getSurahDisplayName(surah);
   }
   if (item.type === 'other' && item.title) {
     return item.title;
   }
   return stripExtension(item.originalFilename);
 }
+// @ai-end
 
+// @ai-start
 function getDisplaySubtitle(item: UploadedRecitation): string {
   const parts: string[] = [];
 
   if (item.reciterId) {
-    const name = getReciterName(item.reciterId);
-    if (name) parts.push(name);
+    const reciter = getReciterByIdSync(item.reciterId);
+    if (reciter) parts.push(getReciterDisplayName(reciter));
   } else if (item.customReciterId) {
     const name = getCustomReciterName(item.customReciterId);
     if (name) parts.push(name);
   }
 
   if (item.type === null) {
-    parts.push('Untagged');
+    parts.push(i18n.t('collection:uploadsScreen.untagged'));
   }
 
   return parts.length > 0
     ? parts.join(' \u00B7 ')
     : stripExtension(item.originalFilename);
 }
+// @ai-end
 
+// @ai-start
 function getVerseRangeLabel(item: UploadedRecitation): string | null {
   if (item.startVerse == null) return null;
-  if (item.endVerse != null) return `${item.startVerse}-${item.endVerse}`;
-  return `v${item.startVerse}`;
+  if (item.endVerse != null) {
+    return localizeDigits(`${item.startVerse}-${item.endVerse}`);
+  }
+  return i18n.t('collection:uploadsScreen.verseShort', {
+    verse: item.startVerse,
+  });
 }
+// @ai-end
 
+// @ai-start
 function getRecordingTypeLabel(recordingType: RecordingType): string | null {
-  if (recordingType === 'salah') return 'Salah';
-  if (recordingType === 'studio') return 'Studio';
+  if (recordingType === 'salah') {
+    return i18n.t('collection:uploadsScreen.recordingType.salah');
+  }
+  if (recordingType === 'studio') {
+    return i18n.t('collection:uploadsScreen.recordingType.studio');
+  }
   return null;
 }
+// @ai-end
+
+// @ai-start
+function getCategoryLabel(
+  category: NonNullable<UploadedRecitation['category']>,
+): string {
+  return i18n.t(`collection:uploadsScreen.category.${category}`);
+}
+// @ai-end
+
+// @ai-start
+function getStyleLabel(style: string): string {
+  const known = KNOWN_STYLES.find(s => s === style.toLowerCase());
+  if (known) return i18n.t(`common:styles.${known}`);
+  return style.charAt(0).toUpperCase() + style.slice(1);
+}
+// @ai-end
 
 interface UploadListItemProps {
   item: UploadedRecitation;
   index: number;
   onPlay: (item: UploadedRecitation, index: number) => void;
   onShowOptions: (item: UploadedRecitation, index: number) => void;
+  /** Builds the ••• native menu on tablets. @ai */
+  renderOptionsMenu?: (
+    item: UploadedRecitation,
+    index: number,
+  ) => React.ReactNode;
 }
 
+// @ai-start
 const UploadListItem: React.FC<UploadListItemProps> = React.memo(
-  ({item, index, onPlay, onShowOptions}) => {
+  ({item, index, onPlay, onShowOptions, renderOptionsMenu}) => {
     const {theme} = useTheme();
     const styles = useMemo(() => createStyles(theme), [theme]);
 
@@ -119,7 +192,11 @@ const UploadListItem: React.FC<UploadListItemProps> = React.memo(
     const displayTitle = useMemo(() => {
       if (item.type === 'surah' && item.surahNumber) {
         const surah = getSurahById(item.surahNumber);
-        if (surah) return `${item.surahNumber}. ${surah.name}`;
+        if (surah) {
+          return `${localizeDigits(item.surahNumber)}. ${getSurahDisplayName(
+            surah,
+          )}`;
+        }
       }
       return getDisplayTitle(item);
     }, [item]);
@@ -175,8 +252,7 @@ const UploadListItem: React.FC<UploadListItemProps> = React.memo(
               {item.type === 'other' && item.category && (
                 <View style={styles.tag}>
                   <Text style={styles.tagText}>
-                    {item.category.charAt(0).toUpperCase() +
-                      item.category.slice(1)}
+                    {getCategoryLabel(item.category)}
                   </Text>
                 </View>
               )}
@@ -189,11 +265,7 @@ const UploadListItem: React.FC<UploadListItemProps> = React.memo(
             {item.type === 'surah' && item.rewayah && (
               <Text style={styles.itemTertiaryText}>
                 {item.rewayah}
-                {item.style
-                  ? ` \u00B7 ${
-                      item.style.charAt(0).toUpperCase() + item.style.slice(1)
-                    }`
-                  : ''}
+                {item.style ? ` \u00B7 ${getStyleLabel(item.style)}` : ''}
               </Text>
             )}
           </View>
@@ -214,18 +286,23 @@ const UploadListItem: React.FC<UploadListItemProps> = React.memo(
               color={theme.colors.text}
             />
           )}
+          {renderOptionsMenu?.(item, index)}
         </Pressable>
       </View>
     );
   },
 );
+// @ai-end
 
 UploadListItem.displayName = 'UploadListItem';
 
+// @ai-start
 export default function UploadsScreen() {
   const {theme} = useTheme();
+  const listBottomPadding = useLibraryListBottomPadding(); // @ai
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const {t} = useTranslation(['collection', 'common']);
   const {
     recitations,
     totalCount,
@@ -245,38 +322,45 @@ export default function UploadsScreen() {
     loadRecitations();
   }, [loadRecitations]);
 
+  // @ai-start
+  const optionsPayload = useMemo<CollectionOptionsPayload>(
+    () => ({
+      title: t('common:terms.uploads'),
+      subtitle: t('uploadsScreen.recitationsCount', {count: totalCount}),
+      options: [
+        {
+          label: t('uploadsScreen.removeAll'),
+          icon: 'trash-2',
+          destructive: true,
+          onPress: () => confirmRemoveAllUploads(deleteAllRecitations),
+        },
+      ],
+    }),
+    [totalCount, deleteAllRecitations, t],
+  );
+
   const handleOptionsMenu = useCallback(() => {
-    SheetManager.show('collection-options', {
-      payload: {
-        title: 'Uploads',
-        subtitle: `${totalCount} recitation${totalCount !== 1 ? 's' : ''}`,
-        options: [
-          {
-            label: 'Remove All Uploads',
-            icon: 'trash-2',
-            destructive: true,
-            onPress: () => deleteAllRecitations(),
-          },
-        ],
-      },
-    });
-  }, [totalCount, deleteAllRecitations]);
+    SheetManager.show('collection-options', {payload: optionsPayload});
+  }, [optionsPayload]);
 
   const renderHeaderRight = useCallback(
     () => (
-      <Pressable onPress={handleOptionsMenu} hitSlop={8}>
-        <Feather
-          name="more-horizontal"
-          size={moderateScale(20)}
-          color={theme.colors.text}
-        />
-      </Pressable>
+      <CollectionOptionsMenu payload={optionsPayload}>
+        <Pressable onPress={handleOptionsMenu} hitSlop={8}>
+          <Feather
+            name="more-horizontal"
+            size={moderateScale(20)}
+            color={theme.colors.text}
+          />
+        </Pressable>
+      </CollectionOptionsMenu>
     ),
-    [handleOptionsMenu, theme.colors.text],
+    [optionsPayload, handleOptionsMenu, theme.colors.text],
   );
+  // @ai-end
 
   useCollectionNativeHeader({
-    title: 'Uploads',
+    title: t('common:terms.uploads'),
     scrollY,
     hasContent: recitations.length > 0,
     headerRight: recitations.length > 0 ? renderHeaderRight : undefined,
@@ -342,22 +426,36 @@ export default function UploadsScreen() {
     [recitations, updateQueue, play],
   );
 
-  const handleShowOptions = useCallback(
-    (item: UploadedRecitation, index: number) => {
-      const track = createUserUploadTrack(item);
-      SheetManager.show('upload-options', {
-        payload: {
-          recitation: item,
-          reciterId: item.reciterId || '',
-          onPlay: () => handlePlayRecitation(item, index),
-          onAddToQueue: () => {
-            addToQueue([track]);
-          },
-        },
-      });
-    },
+  // @ai-start
+  const buildUploadOptions = useCallback(
+    (item: UploadedRecitation, index: number): UploadOptionsPayload => ({
+      recitation: item,
+      reciterId: item.reciterId || '',
+      onPlay: () => handlePlayRecitation(item, index),
+      onAddToQueue: () => {
+        addToQueue([createUserUploadTrack(item)]);
+      },
+    }),
     [handlePlayRecitation, addToQueue],
   );
+
+  const handleShowOptions = useCallback(
+    (item: UploadedRecitation, index: number) => {
+      SheetManager.show('upload-options', {
+        payload: buildUploadOptions(item, index),
+      });
+    },
+    [buildUploadOptions],
+  );
+
+  const nativeMenus = useNativeOptionsMenu();
+  const renderOptionsMenu = useCallback(
+    (item: UploadedRecitation, index: number) => (
+      <UploadOptionsMenu payload={buildUploadOptions(item, index)} />
+    ),
+    [buildUploadOptions],
+  );
+  // @ai-end
 
   const styles = useMemo(() => createStyles(theme), [theme]);
   const hasRecitations = recitations.length > 0;
@@ -369,9 +467,10 @@ export default function UploadsScreen() {
         index={index}
         onPlay={handlePlayRecitation}
         onShowOptions={handleShowOptions}
+        renderOptionsMenu={nativeMenus ? renderOptionsMenu : undefined}
       />
     ),
-    [handlePlayRecitation, handleShowOptions],
+    [handlePlayRecitation, handleShowOptions, nativeMenus, renderOptionsMenu],
   );
 
   const keyExtractor = useCallback((item: UploadedRecitation) => item.id, []);
@@ -389,9 +488,12 @@ export default function UploadsScreen() {
                 name="arrow-left"
                 size={moderateScale(22)}
                 color={theme.colors.text}
+                style={flipX}
               />
             </Pressable>
-            <Text style={styles.emptyHeaderTitle}>Uploads</Text>
+            <Text style={styles.emptyHeaderTitle}>
+              {t('common:terms.uploads')}
+            </Text>
             <View style={styles.emptyHeaderBack} />
           </View>
         )}
@@ -402,9 +504,11 @@ export default function UploadsScreen() {
               size={moderateScale(48)}
             />
           </View>
-          <Text style={styles.emptyTitle}>No uploads yet</Text>
+          <Text style={styles.emptyTitle}>
+            {t('collectionScreen.empty.uploads')}
+          </Text>
           <Text style={styles.emptySubtitle}>
-            Upload recitations to see them here
+            {t('uploadsScreen.emptySubtitle')}
           </Text>
           <Pressable
             style={styles.emptyActionBar}
@@ -423,7 +527,9 @@ export default function UploadsScreen() {
               />
             )}
             <Text style={styles.emptyActionText}>
-              {isImporting ? 'Opening...' : 'Add Recitation'}
+              {isImporting
+                ? t('uploadsScreen.opening')
+                : t('uploadsScreen.addRecitation')}
             </Text>
           </Pressable>
         </View>
@@ -453,15 +559,15 @@ export default function UploadsScreen() {
                 />
               </View>
             </View>
-            <Text style={styles.title}>Uploads</Text>
+            <Text style={styles.title}>{t('common:terms.uploads')}</Text>
             <Text style={styles.subtitle}>
-              {totalCount} recitation{totalCount !== 1 ? 's' : ''}
+              {t('uploadsScreen.recitationsCount', {count: totalCount})}
             </Text>
           </View>
         </View>
 
         {/* Action Buttons */}
-        <View style={styles.actionButtons}>
+        <View style={[styles.actionButtons, forceLTR]}>
           {!USE_GLASS && (
             <Pressable
               style={[
@@ -475,6 +581,12 @@ export default function UploadsScreen() {
                 size={moderateScale(20)}
                 color={theme.colors.text}
               />
+              {hasRecitations && (
+                <CollectionOptionsMenu
+                  payload={optionsPayload}
+                  layout="overlay"
+                />
+              )}
             </Pressable>
           )}
           <Pressable
@@ -521,7 +633,9 @@ export default function UploadsScreen() {
             />
           )}
           <Text style={styles.uploadBarText}>
-            {isImporting ? 'Opening...' : 'Add Recitation'}
+            {isImporting
+              ? t('uploadsScreen.opening')
+              : t('uploadsScreen.addRecitation')}
           </Text>
         </Pressable>
       </View>
@@ -550,6 +664,7 @@ export default function UploadsScreen() {
               name="arrow-left"
               size={moderateScale(24)}
               color={theme.colors.text}
+              style={flipX}
             />
           </Pressable>
         </RNAnimated.View>
@@ -560,7 +675,10 @@ export default function UploadsScreen() {
         renderItem={renderItem}
         keyExtractor={keyExtractor}
         ListHeaderComponent={ListHeaderComponent}
-        contentContainerStyle={styles.listContentContainer}
+        contentContainerStyle={[
+          styles.listContentContainer,
+          {paddingBottom: listBottomPadding}, // @ai
+        ]}
         showsVerticalScrollIndicator={false}
         onScroll={RNAnimated.event(
           [{nativeEvent: {contentOffset: {y: scrollY}}}],
@@ -570,12 +688,17 @@ export default function UploadsScreen() {
         contentInsetAdjustmentBehavior="automatic"
       />
       {!USE_GLASS && (
-        <CollectionStickyHeader title="Uploads" scrollY={scrollY} />
+        <CollectionStickyHeader
+          title={t('common:terms.uploads')}
+          scrollY={scrollY}
+        />
       )}
     </View>
   );
 }
+// @ai-end
 
+// @ai-start
 const createStyles = (theme: {colors: any; fonts: any}) =>
   StyleSheet.create({
     container: {
@@ -620,7 +743,7 @@ const createStyles = (theme: {colors: any; fonts: any}) =>
       color: theme.colors.text,
       textAlign: 'center',
       marginBottom: moderateScale(8),
-      letterSpacing: -0.3,
+      letterSpacing: latinLetterSpacing(-0.3),
     },
     subtitle: {
       fontSize: moderateScale(12),
@@ -677,7 +800,6 @@ const createStyles = (theme: {colors: any; fonts: any}) =>
     },
     listContentContainer: {
       flexGrow: 1,
-      paddingBottom: moderateScale(65),
     },
     fixedBackButton: {
       position: 'absolute',
@@ -823,3 +945,4 @@ const createStyles = (theme: {colors: any; fonts: any}) =>
       color: theme.colors.textSecondary,
     },
   });
+// @ai-end

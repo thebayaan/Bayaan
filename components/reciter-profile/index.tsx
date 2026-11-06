@@ -3,7 +3,6 @@ export {default as ReciterProfile} from './ReciterProfile';
 // Component exports
 export {ActionButtons} from './components/ActionButtons';
 export {ReciterHeader} from './components/ReciterHeader';
-export {SearchHeader} from './components/SearchHeader';
 export {StickyHeader} from './components/StickyHeader';
 export {NavigationButtons} from './components/NavigationButtons';
 export {SurahList} from './components/SurahList';
@@ -13,7 +12,6 @@ export type {
   ReciterProfileProps,
   ReciterHeaderProps,
   StickyHeaderProps,
-  SearchHeaderProps,
   SurahListProps,
   AnimationState,
   ActionButtonsProps,

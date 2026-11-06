@@ -10,6 +10,7 @@ import {
   addWidgetCommandListener,
   takeQueuedCommands,
   selectFreshCommands,
+  markCommandsHandled,
   WidgetKind,
   WidgetSnapshot,
 } from 'bayaan-widgets';
@@ -17,6 +18,7 @@ import {usePlayerStore} from '@/services/player/store/playerStore';
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
 import {useReciterStore} from '@/store/reciterStore';
 import {useThemeStore} from '@/store/themeStore';
+import {useAdhkarSessionStore} from '@/store/adhkarSessionStore'; // @ai
 import {getReciterByIdSync} from '@/services/dataService';
 import {getReciterArtwork} from '@/utils/artworkUtils';
 import {
@@ -29,6 +31,7 @@ import {
 import {collectSnapshotInput} from './collectSnapshotInput';
 import {handleWidgetCommand} from './handleWidgetCommand';
 import {noteSnapshotForLiveActivity} from './live-activity/syncLiveActivity';
+import {enabledKinds} from './enabledWidgets';
 
 const DEBOUNCE_MS = 1000;
 const ARTWORK_RETRY_MS = 10 * 60 * 1000;
@@ -144,9 +147,12 @@ export function flushWidgetSnapshot(forceContinueListening = false): void {
       forceContinueListening && !changed.includes('ContinueListening')
         ? [...changed, 'ContinueListening' as const]
         : changed;
-    if (kinds.length === 0) return;
+    // Adhkar playback has no WidgetKind; the content sync reloads its widgets. // @ai
+    const adhkarChanged = // @ai
+      JSON.stringify(prev?.adhkar ?? null) !== JSON.stringify(next.adhkar); // @ai
+    if (kinds.length === 0 && !adhkarChanged) return; // @ai
     writeSnapshot(next);
-    reloadWidgets(kinds);
+    reloadWidgets(enabledKinds(kinds));
     lastSnapshot = next;
     notifySnapshotListeners(prev, next);
     noteSnapshotForLiveActivity(next);
@@ -156,7 +162,7 @@ export function flushWidgetSnapshot(forceContinueListening = false): void {
       .then(added => {
         if (!added) return;
         flushWidgetSnapshot();
-        reloadWidgets(ARTWORK_KINDS);
+        reloadWidgets(enabledKinds(ARTWORK_KINDS));
       })
       .catch(error => {
         console.error('[WidgetSync] Artwork sync failed:', error);
@@ -191,13 +197,17 @@ export async function drainWidgetCommands(): Promise<void> {
   }
   draining = true;
   let handled = 0;
+  let takenThrough = 0; // @ai
   try {
     do {
       redrainRequested = false;
-      for (const command of selectFreshCommands(
-        takeQueuedCommands(),
-        Date.now(),
-      )) {
+      // @ai-start
+      const taken = takeQueuedCommands();
+      for (const q of taken) {
+        takenThrough = Math.max(takenThrough, q.enqueuedAt);
+      }
+      for (const command of selectFreshCommands(taken, Date.now())) {
+        // @ai-end
         handled += 1;
         try {
           await handleWidgetCommand(command);
@@ -208,6 +218,10 @@ export async function drainWidgetCommands(): Promise<void> {
     } while (redrainRequested);
   } finally {
     draining = false;
+    // @ai-start
+    // Stale commands count too: their intents are waiting all the same.
+    if (takenThrough > 0) markCommandsHandled(takenThrough);
+    // @ai-end
   }
   if (handled > 0) flushWidgetSnapshot(true);
 }
@@ -231,6 +245,7 @@ export function startWidgetSync(): () => void {
     useRecentlyPlayedStore.subscribe(schedule),
     useReciterStore.subscribe(schedule),
     useThemeStore.subscribe(schedule),
+    useAdhkarSessionStore.subscribe(schedule), // @ai
   ];
   const appState = AppState.addEventListener('change', state => {
     if (state === 'background') flushWidgetSnapshot();

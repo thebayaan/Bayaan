@@ -12,14 +12,17 @@ jest.mock('expo-crypto', () => ({
   randomUUID: () => 'test-device-id',
 }));
 
+const mockIncrementAdhkarSessions = jest.fn();
 jest.mock('../LocalAggregationStore', () => ({
   localAggregationStore: {
     getToday: () => '2026-04-16',
+    dayKey: (date: Date) => date.toISOString().slice(0, 10),
     addListeningTime: jest.fn(),
     addPagesRead: jest.fn(),
     addPagesOpened: jest.fn(),
     incrementMeaningfulListens: jest.fn(),
-    incrementAdhkarSessions: jest.fn(),
+    incrementAdhkarSessions: (date: string) =>
+      mockIncrementAdhkarSessions(date),
     addTasbeehCount: jest.fn(),
     markSurahCompleted: jest.fn(),
   },
@@ -243,6 +246,98 @@ describe('AnalyticsService', () => {
       analyticsService.identifyUser('user-123');
 
       expect(posthog.identify).toHaveBeenCalledWith('user-123');
+    });
+  });
+
+  describe('capture readiness (queued widget events)', () => {
+    it('is ready only once consent has hydrated and PostHog is attached', async () => {
+      const {analyticsService} = await loadService(undefined);
+      expect(analyticsService.isReadyToCapture()).toBe(false);
+
+      const listener = jest.fn();
+      analyticsService.onReadyToCapture(listener);
+      analyticsService.setPostHogInstance(
+        makeFakePostHog() as unknown as Parameters<
+          typeof analyticsService.setPostHogInstance
+        >[0],
+      );
+
+      expect(analyticsService.isReadyToCapture()).toBe(true);
+      expect(listener).toHaveBeenCalledTimes(1);
+    });
+
+    it('is ready without PostHog when the user has opted out', async () => {
+      const {analyticsService, consentStore} = await loadService(undefined);
+      consentStore.getState().setAnalyticsEnabled(false);
+
+      expect(analyticsService.isReadyToCapture()).toBe(true);
+    });
+
+    it('is ready without PostHog when analytics is disabled', async () => {
+      const {analyticsService} = await loadService('false');
+
+      expect(analyticsService.isReadyToCapture()).toBe(true);
+    });
+
+    it('stops calling a listener after unsubscribe', async () => {
+      const {analyticsService} = await loadService(undefined);
+      const listener = jest.fn();
+      analyticsService.onReadyToCapture(listener)();
+      analyticsService.setPostHogInstance(
+        makeFakePostHog() as unknown as Parameters<
+          typeof analyticsService.setPostHogInstance
+        >[0],
+      );
+
+      expect(listener).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('trackAdhkarSessionCompleted', () => {
+    const props = {
+      category: 'morning-adhkar',
+      duration_ms: 1000,
+      dhikr_count: 24,
+    };
+
+    it('dates a queued completion by when it happened', async () => {
+      const {analyticsService} = await loadService(undefined);
+      const posthog = makeFakePostHog();
+      analyticsService.setPostHogInstance(
+        posthog as unknown as Parameters<
+          typeof analyticsService.setPostHogInstance
+        >[0],
+      );
+      mockIncrementAdhkarSessions.mockClear();
+      const completedAt = new Date(Date.UTC(2026, 3, 14, 12));
+
+      analyticsService.trackAdhkarSessionCompleted(props, completedAt);
+
+      expect(posthog.capture).toHaveBeenCalledWith(
+        'adhkar_session_completed',
+        props,
+        {timestamp: completedAt},
+      );
+      expect(mockIncrementAdhkarSessions).toHaveBeenCalledWith('2026-04-14');
+    });
+
+    it('uses today and the default timestamp without a completion date', async () => {
+      const {analyticsService} = await loadService(undefined);
+      const posthog = makeFakePostHog();
+      analyticsService.setPostHogInstance(
+        posthog as unknown as Parameters<
+          typeof analyticsService.setPostHogInstance
+        >[0],
+      );
+      mockIncrementAdhkarSessions.mockClear();
+
+      analyticsService.trackAdhkarSessionCompleted(props);
+
+      expect(posthog.capture).toHaveBeenCalledWith(
+        'adhkar_session_completed',
+        props,
+      );
+      expect(mockIncrementAdhkarSessions).toHaveBeenCalledWith('2026-04-16');
     });
   });
 

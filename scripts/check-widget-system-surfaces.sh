@@ -14,8 +14,13 @@ cmp "$root/modules/bayaan-widgets/ios/NowPlayingActivityState.swift" \
     "$root/targets/widgets/LiveActivity/NowPlayingActivityState.swift"
 cmp "$root/modules/bayaan-widgets/ios/NowPlayingAttributes.swift" \
     "$root/targets/widgets/LiveActivity/NowPlayingAttributes.swift"
+cmp "$root/modules/bayaan-widgets/ios/AdhkarSessionActivityState.swift" \
+    "$root/targets/widgets/LiveActivity/AdhkarSessionActivityState.swift"
+cmp "$root/modules/bayaan-widgets/ios/AdhkarSessionAttributes.swift" \
+    "$root/targets/widgets/LiveActivity/AdhkarSessionAttributes.swift"
 
 cat "$root/targets/widgets/LiveActivity/NowPlayingActivityState.swift" \
+    "$root/targets/widgets/LiveActivity/AdhkarSessionActivityState.swift" \
     "$root/targets/widgets/_shared/WidgetSnapshot.swift" \
     "$root/targets/widgets/_shared/SurahCatalog.swift" \
     "$root/targets/widgets/_shared/SurahSynonyms.swift" \
@@ -33,6 +38,11 @@ precondition(states[0].wallEnd.timeIntervalSince1970 == 1_791_462_479.5, "wallEn
 precondition(states[1].wallStart.timeIntervalSince1970 == 1_791_460_200, "wallStart rate 1.5")
 precondition(states[1].wallEnd.timeIntervalSince1970 == 1_791_461_400, "wallEnd rate 1.5")
 precondition(states[1].fraction == 0.5 && states[1].remainingWallSec == 600, "paused fraction")
+// Adhkar session Live Activity content state (same vectors as adhkarActivity.test.ts)
+let adhkar = try! JSONDecoder().decode([AdhkarSessionActivityState].self, from: load("\(dir)/adhkarActivity.states.json"))
+precondition(adhkar.count == 2 && adhkar[0].isPlaying && !adhkar[1].isPlaying, "adhkar state decode")
+precondition(adhkar[0].positionLabel == "4 of 23" && adhkar[0].shortPositionLabel == "4/23", "adhkar position labels")
+precondition(adhkar[1].listTitle == "أذكار المساء" && adhkar[1].preview.hasPrefix("أَمْسَيْنَا"), "adhkar Arabic decode")
 // Surah catalog and Siri synonyms
 precondition(SurahCatalog.all.count == 114 && SurahCatalog.surah(18)?.name == "Al-Kahf", "surah catalog")
 precondition(SurahCatalog.surah(0) == nil && SurahCatalog.surah(115) == nil, "surah catalog bounds")

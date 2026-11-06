@@ -13,7 +13,7 @@ import {
   Text, // @ai
 } from 'react-native';
 import {Stack, useLocalSearchParams} from 'expo-router';
-import * as ScreenOrientation from 'expo-screen-orientation';
+import {usePhoneOrientation} from '@/hooks/usePhoneOrientation'; // @ai
 import {useTheme} from '@/hooks/useTheme';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService'; // @ai
@@ -38,6 +38,11 @@ import {SheetManager} from 'react-native-actions-sheet';
 import {SURAHS} from '@/data/surahData';
 import MushafViewer from '@/components/mushaf/main';
 import {USE_GLASS} from '@/hooks/useGlassProps';
+// @ai-start
+import {playbackNoticeText} from '@/i18n/playback';
+import {useTranslation} from 'react-i18next';
+import {getSurahDisplayName, localizeDigits} from '@/i18n/format';
+// @ai-end
 
 export type MushafScreenParams = {
   surah?: string;
@@ -56,6 +61,7 @@ export default function MushafScreen() {
   const {surah, page, ayah, anchor} =
     useLocalSearchParams<MushafScreenParams>(); // @ai
   const {theme} = useTheme();
+  const {t} = useTranslation(['reader', 'common']); // @ai
 
   // Safety net — DK data is initialized at AppInitializer priority 4-5,
   // so in practice this is always true by the time MushafScreen mounts.
@@ -96,15 +102,10 @@ export default function MushafScreen() {
     return undefined;
   }, [surah, ayah]);
 
-  // Allow landscape while the mushaf screen is open; re-lock portrait on exit.
-  useEffect(() => {
-    ScreenOrientation.unlockAsync();
-    return () => {
-      ScreenOrientation.lockAsync(
-        ScreenOrientation.OrientationLock.PORTRAIT_UP,
-      );
-    };
-  }, []);
+  // Phones may turn to landscape while the mushaf screen is open and go back
+  // to portrait on exit. iPads aren't locked, so leaving the reader in
+  // landscape keeps the app in landscape. @ai
+  usePhoneOrientation('free'); // @ai
 
   // Track mushaf screen for session restore (MMKV — sync writes survive force-kill)
   useEffect(() => {
@@ -209,10 +210,10 @@ export default function MushafScreen() {
           style={[styles.loading, {backgroundColor: theme.colors.background}]}
           accessibilityRole="alert">
           <Text style={[styles.errorTitle, {color: theme.colors.text}]}>
-            Couldn&apos;t load the mushaf
+            {t('reader:mushaf.loadFailedTitle')}
           </Text>
           <Text style={[styles.errorBody, {color: theme.colors.text}]}>
-            Check that your device has some free storage, then try again.
+            {t('reader:mushaf.loadFailedBody')}
           </Text>
           <Pressable
             onPress={retryLoad}
@@ -224,7 +225,7 @@ export default function MushafScreen() {
               pressed && styles.retryButtonPressed,
             ]}>
             <Text style={[styles.retryText, {color: theme.colors.text}]}>
-              Try again
+              {t('common:actions.tryAgain')}
             </Text>
           </Pressable>
         </View>
@@ -262,7 +263,7 @@ const subscribePreload = (listener: () => void): (() => void) =>
 const getPreloadState = () => mushafPreloadService.state;
 
 const surahNameOf = (surah: number): string =>
-  surah >= 1 && surah <= 114 ? SURAHS[surah - 1].name : '';
+  surah >= 1 && surah <= 114 ? getSurahDisplayName(SURAHS[surah - 1]) : '';
 // @ai-end
 
 // On iOS 26 this toolbar replaces MushafPlayerBar, so it carries what the bar
@@ -270,6 +271,7 @@ const surahNameOf = (surah: number): string =>
 // tracking unavailable" (with prev / next disabled), and, as one-off notices,
 // refused playback requests.
 export function MushafToolbar() {
+  const {t} = useTranslation(['reader', 'common']);
   const playbackState = useMushafPlayerStore(s => s.playbackState);
   const currentPage = useMushafPlayerStore(s => s.currentPage);
   const currentSurah = useMushafPlayerStore(s => s.currentSurah);
@@ -288,7 +290,13 @@ export function MushafToolbar() {
   const surahName = surahNameOf(currentSurah);
   const verseLabel =
     !isIdle && surahName
-      ? formatPlaybackInfo(surahName, {currentVerseLabel, numberingMode})
+      ? localizeDigits(
+          formatPlaybackInfo(
+            surahName,
+            {currentVerseLabel, numberingMode},
+            t('playback.trackingUnavailable'),
+          ),
+        )
       : '';
   const verseNavDisabled = numberingMode === 'disabled';
 
@@ -297,7 +305,12 @@ export function MushafToolbar() {
   useEffect(
     () =>
       useMushafPlayerStore.subscribe((state, prev) => {
-        const notice = getPlaybackNotice(prev, state, surahNameOf);
+        const notice = getPlaybackNotice(
+          prev,
+          state,
+          surahNameOf,
+          playbackNoticeText(),
+        );
         if (notice) showToast(notice.title, notice.message, notice.preset);
       }),
     [],
@@ -353,15 +366,15 @@ export function MushafToolbar() {
     return (
       <Stack.Toolbar>
         <Stack.Toolbar.Button icon="magnifyingglass" onPress={handleSearch}>
-          Search
+          {t('common:actions.search')}
         </Stack.Toolbar.Button>
         <Stack.Toolbar.Spacer />
         <Stack.Toolbar.Button icon="play.fill" onPress={handlePlay}>
-          Play
+          {t('common:actions.play')}
         </Stack.Toolbar.Button>
         <Stack.Toolbar.Spacer />
         <Stack.Toolbar.Button icon="ellipsis.circle" onPress={handleOptions}>
-          Options
+          {t('toolbar.options')}
         </Stack.Toolbar.Button>
       </Stack.Toolbar>
     );
@@ -371,7 +384,7 @@ export function MushafToolbar() {
   return (
     <Stack.Toolbar>
       <Stack.Toolbar.Button icon="stop.fill" onPress={handleStop}>
-        Stop
+        {t('toolbar.stop')}
       </Stack.Toolbar.Button>
       <Stack.Toolbar.Spacer />
       <Stack.Toolbar.Button
@@ -392,11 +405,12 @@ export function MushafToolbar() {
       />
       <Stack.Toolbar.Spacer />
       <Stack.Toolbar.Button icon="ellipsis.circle" onPress={handleOptions}>
-        Options
+        {t('toolbar.options')}
       </Stack.Toolbar.Button>
     </Stack.Toolbar>
   );
 }
+// @ai-end
 
 const styles = StyleSheet.create({
   container: {

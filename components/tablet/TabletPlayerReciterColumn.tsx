@@ -1,4 +1,5 @@
 import React, {useCallback, useEffect, useMemo, useState} from 'react';
+import {SurahOptionsScope} from '@/components/sheets/options/surahOptions'; // @ai
 import {
   View,
   Text,
@@ -27,6 +28,19 @@ import {SheetManager} from 'react-native-actions-sheet';
 import {SurahList} from '@/components/reciter-profile/components/SurahList';
 import {ReciterImage} from '@/components/ReciterImage';
 import {Feather} from '@expo/vector-icons';
+// @ai-start
+import {getReciterDisplayName, getSurahDisplayName} from '@/i18n/format';
+import {getRecitationStyleTitle} from '@/components/player/v2/recitationStyle';
+import {getDisplayLabelFromName} from '@/services/rewayah/RewayahIdentity'; // @ai
+import {usePlayerA11y} from '@/hooks/usePlayerA11y'; // @ai
+// @ai-end
+
+// @ai-start
+/** "Hafs · Murattal", as the reciter profile labels its rewayah tabs. */
+function rewayatLabel(r: Rewayat): string {
+  return `${getDisplayLabelFromName(r.name)} · ${getRecitationStyleTitle(r.style)}`;
+}
+// @ai-end
 
 function sortRewayat(rewayat: Rewayat[]): Rewayat[] {
   return [...rewayat].sort((a, b) => {
@@ -63,15 +77,25 @@ type SortOption = 'asc' | 'desc' | 'revelation';
  * Right column beside the full player on iPad: reciter identity + rewayah chips + surah list.
  * Mirrors reciter profile playback behavior; opens full profile via header action.
  */
+// @ai-start
 export const TabletPlayerReciterColumn: React.FC<{
   reciterId: string;
   initialRewayatId?: string;
-}> = ({reciterId, initialRewayatId}) => {
+  /**
+   * Rendered as a pane under the player's own top bar: no status-bar inset
+   * and no background of its own.
+   */
+  embedded?: boolean;
+  /** Space kept clear below the list (defaults to the safe area). */
+  bottomInset?: number;
+}> = ({reciterId, initialRewayatId, embedded = false, bottomInset}) => {
   const {theme} = useTheme();
+  const a11y = usePlayerA11y(); // @ai
   const insets = useSafeAreaInsets();
+  const topInset = embedded ? 0 : insets.top;
   const {updateQueue} = usePlayerActions();
   const {navigateToReciterProfile} = useReciterNavigation();
-  const {startNewChain} = useRecentlyPlayedStore();
+  const startNewChain = useRecentlyPlayedStore(s => s.startNewChain);
   const {isLovedWithRewayat} = useLoved();
   const {isDownloaded} = useDownloadQueries();
 
@@ -173,7 +197,7 @@ export const TabletPlayerReciterColumn: React.FC<{
             s.id.toString(),
             selectedRewayat.id,
           ),
-          title: s.name,
+          title: getSurahDisplayName(s),
           artist: reciter.name,
           reciterId: reciter.id,
           artwork,
@@ -214,16 +238,19 @@ export const TabletPlayerReciterColumn: React.FC<{
 
   if (!reciter) {
     return (
-      <View style={[styles.centered, {paddingTop: insets.top}]}>
+      <View style={[styles.centered, {paddingTop: topInset}]}>
         <ActivityIndicator color={theme.colors.textSecondary} />
       </View>
     );
   }
 
   return (
-    <View style={[styles.root, {backgroundColor: theme.colors.background}]}>
-      <View
-        style={[styles.header, {paddingTop: insets.top + moderateScale(8)}]}>
+    <View
+      style={[
+        styles.root,
+        !embedded && {backgroundColor: theme.colors.background},
+      ]}>
+      <View style={[styles.header, {paddingTop: topInset + moderateScale(8)}]}>
         <View style={styles.headerMain}>
           <ReciterImage
             reciterName={reciter.name}
@@ -234,18 +261,17 @@ export const TabletPlayerReciterColumn: React.FC<{
             <Text
               style={[styles.reciterName, {color: theme.colors.text}]}
               numberOfLines={2}>
-              {reciter.name}
+              {getReciterDisplayName(reciter)}
             </Text>
             <Text
               style={[styles.sub, {color: theme.colors.textSecondary}]}
               numberOfLines={1}>
-              {selectedRewayat
-                ? `${selectedRewayat.name} · ${selectedRewayat.style}`
-                : ''}
+              {selectedRewayat ? rewayatLabel(selectedRewayat) : ''}
             </Text>
           </View>
           <Pressable
             onPress={handleOpenFullProfile}
+            {...a11y.openFullProfile}
             style={({pressed}) => [styles.openFull, pressed && {opacity: 0.6}]}
             hitSlop={12}>
             <Feather
@@ -267,6 +293,8 @@ export const TabletPlayerReciterColumn: React.FC<{
                 <Pressable
                   key={r.id}
                   onPress={() => setSelectedRewayatId(r.id)}
+                  accessibilityRole="button" // @ai
+                  accessibilityState={{selected: active}} // @ai
                   style={[
                     styles.chip,
                     {
@@ -281,7 +309,7 @@ export const TabletPlayerReciterColumn: React.FC<{
                   <Text
                     style={[styles.chipText, {color: theme.colors.text}]}
                     numberOfLines={1}>
-                    {r.name} · {r.style}
+                    {rewayatLabel(r)}
                   </Text>
                 </Pressable>
               );
@@ -293,25 +321,33 @@ export const TabletPlayerReciterColumn: React.FC<{
       <View style={[styles.listDivider, {borderTopColor: divider}]} />
 
       <View style={styles.listFill}>
-        <SurahList
-          surahs={filteredSurahs}
-          onSurahPress={handleSurahPress}
+        {/* @ai-start */}
+        <SurahOptionsScope
           reciterId={reciterId}
-          isLoved={isLoved}
-          isDownloaded={isDownloaded}
-          onOptionsPress={onOptionsPress}
-          viewMode={viewMode}
-          getColorForSurah={getColorForSurah}
-          sortOption={sortOption}
           rewayatId={selectedRewayat?.id}
-          contentContainerStyle={{
-            paddingBottom: insets.bottom + moderateScale(12),
-          }}
-        />
+          hideGoToReciter>
+          <SurahList
+            surahs={filteredSurahs}
+            onSurahPress={handleSurahPress}
+            reciterId={reciterId}
+            isLoved={isLoved}
+            isDownloaded={isDownloaded}
+            onOptionsPress={onOptionsPress}
+            viewMode={viewMode}
+            getColorForSurah={getColorForSurah}
+            sortOption={sortOption}
+            rewayatId={selectedRewayat?.id}
+            contentContainerStyle={{
+              paddingBottom: (bottomInset ?? insets.bottom) + moderateScale(12),
+            }}
+          />
+        </SurahOptionsScope>
+        {/* @ai-end */}
       </View>
     </View>
   );
 };
+// @ai-end
 
 const styles = StyleSheet.create({
   root: {

@@ -25,6 +25,12 @@ import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStor
 import {useAmbientStore} from '@/store/ambientStore';
 import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
 import {mushafAudioService} from './MushafAudioService';
+import {startAdhkarPlaybackEngine} from '@/services/adhkar/playback/adhkarPlaybackEngine';
+import {startAdhkarActivitySync} from '@/services/widgets/live-activity/syncAdhkarActivity';
+import {
+  startSessionSaving,
+  restoreSavedSession,
+} from '@/services/adhkar/playback/sessionPersistence';
 
 // Throttle interval for progress updates — wider on Android to reduce re-renders
 const PROGRESS_UPDATE_INTERVAL = Platform.OS === 'android' ? 2000 : 1000;
@@ -44,6 +50,9 @@ interface ExpoAudioProviderProps {
 let sharedPlayer: AudioPlayer | null = null;
 let mountedProviders = 0;
 let lockScreenSyncing = false;
+let stopAdhkarEngine: (() => void) | null = null;
+let stopAdhkarActivity: (() => void) | null = null;
+let stopAdhkarSaving: (() => void) | null = null;
 let phoneProviderMounted = false;
 const phoneProviderListeners = new Set<() => void>();
 
@@ -175,6 +184,10 @@ export function ExpoAudioProvider({
         if (!lockScreenSyncing) {
           lockScreenSyncing = true;
           await lockScreenService.startSync();
+          stopAdhkarEngine = startAdhkarPlaybackEngine();
+          stopAdhkarActivity = startAdhkarActivitySync();
+          stopAdhkarSaving = startSessionSaving();
+          restoreSavedSession().catch(() => {});
         }
 
         markPlayerReadyForWidgets();
@@ -198,6 +211,12 @@ export function ExpoAudioProvider({
         if (mountedProviders > 0 || !lockScreenSyncing) return;
         lockScreenSyncing = false;
         lockScreenService.stopSync();
+        stopAdhkarEngine?.();
+        stopAdhkarEngine = null;
+        stopAdhkarActivity?.();
+        stopAdhkarActivity = null;
+        stopAdhkarSaving?.();
+        stopAdhkarSaving = null;
       }, 0);
       if (__DEV__) console.log('[ExpoAudioProvider] Unmounting, cleaning up');
     };

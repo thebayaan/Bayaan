@@ -23,14 +23,34 @@ import {Reciter} from '@/data/reciterData';
 import {Surah} from '@/data/surahData';
 import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {createDownloadedTrack} from '@/utils/track';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import {Feather} from '@expo/vector-icons';
 import {DownloadIcon, PlayIcon, ShuffleIcon} from '@/components/Icons';
 import {SheetManager} from 'react-native-actions-sheet';
+// @ai-start
+import {confirmDestructive} from '@/utils/confirmDestructive';
+// @ai-end
 import {CollectionStickyHeader} from '@/components/collection/CollectionStickyHeader';
 import {shuffleArray} from '@/utils/arrayUtils';
 import Color from 'color';
 import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
+// @ai-start
+import {flipX, forceLTR, latinLetterSpacing} from '@/utils/rtl';
+import {useTranslation} from 'react-i18next';
+import {getReciterDisplayName} from '@/i18n/format';
+import {useLibraryListBottomPadding} from '@/hooks/useBottomInset'; // @ai
+// @ai-start
+import {useNativeOptionsMenu} from '@/components/sheets/options/OptionsMenu';
+import {
+  CollectionOptionsMenu,
+  type CollectionOptionsPayload,
+} from '@/components/sheets/options/collectionOptions';
+import {
+  DownloadOptionsMenu,
+  type DownloadOptionsPayload,
+} from '@/components/sheets/options/downloadOptions';
+// @ai-end
+// @ai-end
 
 interface DownloadDataItem {
   download: DownloadedSurah;
@@ -45,10 +65,13 @@ interface GroupedItem {
   downloadCount?: number;
 }
 
+// @ai-start
 export default function DownloadsScreen() {
   const {theme} = useTheme();
+  const listBottomPadding = useLibraryListBottomPadding(); // @ai
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const {t} = useTranslation(['collection', 'common']);
   const downloads = useDownloads();
   const {removeDownload, clearAllDownloads} = useDownloadActions();
   const {updateQueue, addToQueue, play} = usePlayerActions();
@@ -56,41 +79,58 @@ export default function DownloadsScreen() {
   const scrollY = useRef(new RNAnimated.Value(0)).current;
 
   const [downloadData, setDownloadData] = useState<DownloadDataItem[]>([]);
+  const nativeMenus = useNativeOptionsMenu(); // @ai
+
+  // @ai-start
+  const optionsPayload = useMemo<CollectionOptionsPayload>(
+    () => ({
+      title: t('common:terms.downloads'),
+      subtitle: t('downloadsScreen.surahsDownloaded', {
+        count: downloads.length,
+      }),
+      options: [
+        {
+          label: t('downloadsScreen.removeAll'),
+          icon: 'trash-2',
+          destructive: true,
+          // @ai-start
+          onPress: () =>
+            confirmDestructive({
+              title: t('downloadsScreen.removeAllTitle'),
+              message: t('downloadsScreen.removeAllConfirm'),
+              confirmText: t('common:actions.remove'),
+              cancelText: t('common:actions.cancel'),
+              onConfirm: clearAllDownloads,
+            }),
+          // @ai-end
+        },
+      ],
+    }),
+    [downloads.length, clearAllDownloads, t],
+  );
 
   const handleOptionsMenu = useCallback(() => {
-    SheetManager.show('collection-options', {
-      payload: {
-        title: 'Downloads',
-        subtitle: `${downloads.length} ${
-          downloads.length === 1 ? 'surah' : 'surahs'
-        } downloaded`,
-        options: [
-          {
-            label: 'Remove All Downloads',
-            icon: 'trash-2',
-            destructive: true,
-            onPress: () => clearAllDownloads(),
-          },
-        ],
-      },
-    });
-  }, [downloads.length, clearAllDownloads]);
+    SheetManager.show('collection-options', {payload: optionsPayload});
+  }, [optionsPayload]);
 
   const renderHeaderRight = useCallback(
     () => (
-      <Pressable onPress={handleOptionsMenu} hitSlop={8}>
-        <Feather
-          name="more-horizontal"
-          size={moderateScale(20)}
-          color={theme.colors.text}
-        />
-      </Pressable>
+      <CollectionOptionsMenu payload={optionsPayload}>
+        <Pressable onPress={handleOptionsMenu} hitSlop={8}>
+          <Feather
+            name="more-horizontal"
+            size={moderateScale(20)}
+            color={theme.colors.text}
+          />
+        </Pressable>
+      </CollectionOptionsMenu>
     ),
-    [handleOptionsMenu, theme.colors.text],
+    [optionsPayload, handleOptionsMenu, theme.colors.text],
   );
+  // @ai-end
 
   useCollectionNativeHeader({
-    title: 'Downloads',
+    title: t('common:terms.downloads'),
     scrollY,
     hasContent: downloads.length > 0,
     headerRight: downloads.length > 0 ? renderHeaderRight : undefined,
@@ -148,7 +188,7 @@ export default function DownloadsScreen() {
           color: theme.colors.text,
           textAlign: 'center',
           marginBottom: moderateScale(8),
-          letterSpacing: -0.3,
+          letterSpacing: latinLetterSpacing(-0.3),
         },
         subtitle: {
           fontSize: moderateScale(12),
@@ -190,7 +230,6 @@ export default function DownloadsScreen() {
         },
         listContentContainer: {
           flexGrow: 1,
-          paddingBottom: moderateScale(65),
         },
         fixedBackButton: {
           position: 'absolute',
@@ -331,88 +370,120 @@ export default function DownloadsScreen() {
     [removeDownload],
   );
 
+  // @ai-start
+  const buildDownloadOptions = useCallback(
+    (
+      download: DownloadedSurah,
+      reciter: Reciter,
+      surah: Surah,
+    ): DownloadOptionsPayload => ({
+      download,
+      surah,
+      reciterId: download.reciterId,
+      rewayatId: download.rewayatId,
+      onPlay: () => handleSurahPress(download, reciter, surah),
+      onAddToQueue: () => {
+        addToQueue([
+          createDownloadedTrack(
+            reciter,
+            surah,
+            download.filePath,
+            download.rewayatId,
+          ),
+        ]);
+      },
+      onRemoveDownload: () => handleRemoveDownload(download),
+    }),
+    [handleSurahPress, addToQueue, handleRemoveDownload],
+  );
+
   const handleShowOptions = useCallback(
     (download: DownloadedSurah, reciter: Reciter, surah: Surah) => {
-      const track = createDownloadedTrack(
-        reciter,
-        surah,
-        download.filePath,
-        download.rewayatId,
-      );
-
       SheetManager.show('download-options', {
-        payload: {
-          download,
-          surah,
-          reciterId: download.reciterId,
-          rewayatId: download.rewayatId,
-          onPlay: () => handleSurahPress(download, reciter, surah),
-          onAddToQueue: () => {
-            addToQueue([track]);
-          },
-          onRemoveDownload: () => handleRemoveDownload(download),
-        },
+        payload: buildDownloadOptions(download, reciter, surah),
       });
     },
-    [handleSurahPress, addToQueue, handleRemoveDownload],
+    [buildDownloadOptions],
+  );
+  // @ai-end
+
+  const buildReciterGroupOptions = useCallback(
+    (reciterId: string): CollectionOptionsPayload => {
+      const reciterDownloads = downloadData.filter(
+        item => item.download.reciterId === reciterId,
+      );
+      const firstReciter = reciterDownloads[0]?.reciter;
+      const reciterName = firstReciter
+        ? getReciterDisplayName(firstReciter)
+        : t('common:terms.reciter');
+
+      return {
+        title: reciterName,
+        subtitle: t('downloadsScreen.surahsDownloaded', {
+          count: reciterDownloads.length,
+        }),
+        options: [
+          {
+            label: t('downloadsScreen.playAll'),
+            icon: 'play',
+            customIcon: (
+              <PlayIcon color={theme.colors.text} size={moderateScale(20)} />
+            ),
+            onPress: async () => {
+              const tracks = reciterDownloads
+                .filter(item => item.reciter && item.surah)
+                .map(item =>
+                  createDownloadedTrack(
+                    item.reciter!,
+                    item.surah!,
+                    item.download.filePath,
+                    item.download.rewayatId,
+                  ),
+                );
+              if (tracks.length > 0) {
+                await updateQueue(tracks, 0);
+                await play();
+              }
+            },
+          },
+          {
+            label: t('downloadsScreen.removeAll'),
+            icon: 'trash-2',
+            destructive: true,
+            // @ai-start
+            onPress: () =>
+              confirmDestructive({
+                title: t('downloadsScreen.removeAllTitle'),
+                message: t('downloadsScreen.removeReciterConfirm', {
+                  reciter: reciterName,
+                }),
+                confirmText: t('common:actions.remove'),
+                cancelText: t('common:actions.cancel'),
+                onConfirm: async () => {
+                  for (const item of reciterDownloads) {
+                    await removeDownload(
+                      item.download.reciterId,
+                      item.download.surahId,
+                      item.download.rewayatId || undefined,
+                    );
+                  }
+                },
+              }),
+            // @ai-end
+          },
+        ],
+      };
+    },
+    [downloadData, updateQueue, play, removeDownload, theme.colors.text, t],
   );
 
   const handleReciterGroupOptions = useCallback(
     (reciterId: string) => {
-      const reciterDownloads = downloadData.filter(
-        item => item.download.reciterId === reciterId,
-      );
-      const reciterName = reciterDownloads[0]?.reciter?.name || 'Reciter';
-
       SheetManager.show('collection-options', {
-        payload: {
-          title: reciterName,
-          subtitle: `${reciterDownloads.length} ${
-            reciterDownloads.length === 1 ? 'surah' : 'surahs'
-          } downloaded`,
-          options: [
-            {
-              label: 'Play All',
-              icon: 'play',
-              customIcon: (
-                <PlayIcon color={theme.colors.text} size={moderateScale(20)} />
-              ),
-              onPress: async () => {
-                const tracks = reciterDownloads
-                  .filter(item => item.reciter && item.surah)
-                  .map(item =>
-                    createDownloadedTrack(
-                      item.reciter!,
-                      item.surah!,
-                      item.download.filePath,
-                      item.download.rewayatId,
-                    ),
-                  );
-                if (tracks.length > 0) {
-                  await updateQueue(tracks, 0);
-                  await play();
-                }
-              },
-            },
-            {
-              label: 'Remove All Downloads',
-              icon: 'trash-2',
-              destructive: true,
-              onPress: async () => {
-                for (const item of reciterDownloads) {
-                  await removeDownload(
-                    item.download.reciterId,
-                    item.download.surahId,
-                    item.download.rewayatId || undefined,
-                  );
-                }
-              },
-            },
-          ],
-        },
+        payload: buildReciterGroupOptions(reciterId),
       });
     },
-    [downloadData, updateQueue, play, removeDownload, theme.colors.text],
+    [buildReciterGroupOptions],
   );
 
   const handlePlayAll = useCallback(async () => {
@@ -483,9 +554,12 @@ export default function DownloadsScreen() {
                 name="arrow-left"
                 size={moderateScale(22)}
                 color={theme.colors.text}
+                style={flipX}
               />
             </Pressable>
-            <Text style={styles.emptyHeaderTitle}>Downloads</Text>
+            <Text style={styles.emptyHeaderTitle}>
+              {t('common:terms.downloads')}
+            </Text>
             <View style={styles.emptyHeaderBack} />
           </View>
         )}
@@ -497,9 +571,11 @@ export default function DownloadsScreen() {
               filled={true}
             />
           </View>
-          <Text style={styles.emptyTitle}>No downloads yet</Text>
+          <Text style={styles.emptyTitle}>
+            {t('collectionScreen.empty.downloads')}
+          </Text>
           <Text style={styles.emptySubtitle}>
-            Download surahs to see them here
+            {t('downloadsScreen.emptySubtitle')}
           </Text>
         </View>
       </View>
@@ -520,15 +596,14 @@ export default function DownloadsScreen() {
                 />
               </View>
             </View>
-            <Text style={styles.title}>Downloads</Text>
+            <Text style={styles.title}>{t('common:terms.downloads')}</Text>
             <Text style={styles.subtitle}>
-              {downloads.length} {downloads.length === 1 ? 'surah' : 'surahs'}{' '}
-              downloaded
+              {t('downloadsScreen.surahsDownloaded', {count: downloads.length})}
             </Text>
           </View>
         </View>
 
-        <View style={styles.actionButtons}>
+        <View style={[styles.actionButtons, forceLTR]}>
           {!USE_GLASS && (
             <Pressable
               style={[
@@ -542,6 +617,12 @@ export default function DownloadsScreen() {
                 size={moderateScale(20)}
                 color={theme.colors.text}
               />
+              {hasDownloads && (
+                <CollectionOptionsMenu
+                  payload={optionsPayload}
+                  layout="overlay"
+                />
+              )}
             </Pressable>
           )}
           <Pressable
@@ -584,6 +665,14 @@ export default function DownloadsScreen() {
           }
           onOptionsPress={() => handleReciterGroupOptions(item.reciterId)}
           onLongPress={() => handleReciterGroupOptions(item.reciterId)}
+          optionsMenu={
+            nativeMenus ? (
+              <CollectionOptionsMenu
+                payload={buildReciterGroupOptions(item.reciterId)}
+                layout="overlay"
+              />
+            ) : undefined
+          }
         />
       );
     }
@@ -603,6 +692,13 @@ export default function DownloadsScreen() {
         onPlayPress={() => handleSurahPress(download, reciter, surah)}
         onOptionsPress={() => handleShowOptions(download, reciter, surah)}
         onLongPress={() => handleShowOptions(download, reciter, surah)}
+        optionsMenu={
+          nativeMenus ? (
+            <DownloadOptionsMenu
+              payload={buildDownloadOptions(download, reciter, surah)}
+            />
+          ) : undefined
+        }
       />
     );
   };
@@ -626,6 +722,7 @@ export default function DownloadsScreen() {
               name="arrow-left"
               size={moderateScale(24)}
               color={theme.colors.text}
+              style={flipX}
             />
           </Pressable>
         </RNAnimated.View>
@@ -640,7 +737,10 @@ export default function DownloadsScreen() {
             : `single-${item.reciterId}-${item.downloadData!.download.surahId}`
         }
         ListHeaderComponent={ListHeaderComponent}
-        contentContainerStyle={styles.listContentContainer}
+        contentContainerStyle={[
+          styles.listContentContainer,
+          {paddingBottom: listBottomPadding}, // @ai
+        ]}
         onScroll={RNAnimated.event(
           [{nativeEvent: {contentOffset: {y: scrollY}}}],
           {useNativeDriver: true},
@@ -650,8 +750,12 @@ export default function DownloadsScreen() {
         contentInsetAdjustmentBehavior="automatic"
       />
       {!USE_GLASS && (
-        <CollectionStickyHeader title="Downloads" scrollY={scrollY} />
+        <CollectionStickyHeader
+          title={t('common:terms.downloads')}
+          scrollY={scrollY}
+        />
       )}
     </View>
   );
 }
+// @ai-end

@@ -2,6 +2,7 @@ import type {QueuedWidgetCommand, WidgetCommand} from 'bayaan-widgets';
 
 const mockTakeQueuedCommands = jest.fn<QueuedWidgetCommand[], []>();
 const mockHandleWidgetCommand = jest.fn<Promise<void>, [WidgetCommand]>();
+const mockMarkCommandsHandled = jest.fn<void, [number]>(); // @ai
 
 const mockCachedFiles = new Set<string>();
 const mockWriteSnapshot = jest.fn();
@@ -33,6 +34,7 @@ jest.mock('bayaan-widgets', () => ({
   hasArtwork: (f: string) => mockCachedFiles.has(f),
   addWidgetCommandListener: jest.fn(() => ({remove: mockCommandRemove})),
   takeQueuedCommands: () => mockTakeQueuedCommands(),
+  markCommandsHandled: (through: number) => mockMarkCommandsHandled(through), // @ai
   selectFreshCommands: (queued: QueuedWidgetCommand[]) =>
     queued.map(q => q.command),
 }));
@@ -124,6 +126,7 @@ describe('drainWidgetCommands', () => {
     mockTakeQueuedCommands.mockReturnValue([]);
     mockHandleWidgetCommand.mockReset();
     mockHandleWidgetCommand.mockResolvedValue(undefined);
+    mockMarkCommandsHandled.mockReset(); // @ai
     mockWriteSnapshot.mockReset();
     mockReloadWidgets.mockReset();
     mockChangedKinds.mockReset();
@@ -221,6 +224,36 @@ describe('drainWidgetCommands', () => {
     expect(mockHandleWidgetCommand).toHaveBeenLastCalledWith(toggle);
     expect(console.error).toHaveBeenCalled();
   });
+
+  // @ai-start
+  it('marks commands handled through the newest taken, after handling', async () => {
+    const sync = loadModule();
+    sync.markSessionRestoredForWidgets();
+    sync.markPlayerReadyForWidgets();
+    await flush();
+    mockHandleWidgetCommand.mockImplementation(async () => {
+      expect(mockMarkCommandsHandled).not.toHaveBeenCalled();
+    });
+    mockTakeQueuedCommands
+      .mockReturnValueOnce([
+        {command: toggle, enqueuedAt: 300},
+        {command: playReciter, enqueuedAt: 100},
+      ])
+      .mockReturnValue([]);
+    await sync.drainWidgetCommands();
+    expect(mockMarkCommandsHandled).toHaveBeenCalledTimes(1);
+    expect(mockMarkCommandsHandled).toHaveBeenCalledWith(300);
+  });
+
+  it('does not mark anything when the queue was empty', async () => {
+    const sync = loadModule();
+    sync.markSessionRestoredForWidgets();
+    sync.markPlayerReadyForWidgets();
+    await flush();
+    await sync.drainWidgetCommands();
+    expect(mockMarkCommandsHandled).not.toHaveBeenCalled();
+  });
+  // @ai-end
 
   it('never runs two drains concurrently and re-drains without dropping commands', async () => {
     const sync = loadModule();

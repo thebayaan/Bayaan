@@ -1,5 +1,5 @@
 import {useMemo} from 'react';
-import {Dimensions, useWindowDimensions} from 'react-native';
+import {Dimensions, useWindowDimensions, type ScaledSize} from 'react-native';
 import type {EdgeInsets} from 'react-native-safe-area-context';
 import {getIsTablet} from '@/utils/responsive';
 
@@ -10,7 +10,7 @@ import {getIsTablet} from '@/utils/responsive';
 let _liveWidth = Dimensions.get('window').width;
 let _liveHeight = Dimensions.get('window').height;
 
-Dimensions.addEventListener('change', ({window}) => {
+Dimensions.addEventListener('change', ({window}: {window: ScaledSize}) => {
   _liveWidth = window.width;
   _liveHeight = window.height;
 });
@@ -143,8 +143,8 @@ const IPAD_MAX_PAGE_WIDTH_LANDSCAPE = 640;
  *   2. On tablet we cap `pageWidth` so `SkiaPage`'s font size (which scales
  *      linearly with `contentWidth`) never grows past ~38pt. Without the cap,
  *      iPad Pro 13" landscape renders 70pt+ text and lines overlap.
- *   3. (Deferred) A `facingPages` flag is exposed on the metrics type for
- *      future two-page spreads; currently always `false`.
+ *   3. iPad landscape lays out two facing pages (`facingPages`). Views that
+ *      show one page at a time there take `singlePageLayout(metrics)`.
  */
 export function getMushafLayout(
   opts: MushafLayoutOpts = {},
@@ -305,6 +305,52 @@ export function getMushafLayout(
     facingPages: false,
   };
 }
+
+// @ai-start
+/**
+ * The same layout with one page centred in the item. The vertical scroll
+ * shows one page per row even where the pager shows a spread (iPad
+ * landscape), so it can't use the spread's offset, which put its page in
+ * the left half of the screen. The page keeps the spread's width, so the
+ * text is the same size in both.
+ */
+export function singlePageLayout(
+  metrics: MushafLayoutMetrics,
+): MushafLayoutMetrics {
+  if (!metrics.facingPages) return metrics;
+  return {
+    ...metrics,
+    pageOffsetX: Math.max((metrics.screenWidth - metrics.pageWidth) / 2, 0),
+    facingGap: 0,
+    facingPages: false,
+  };
+}
+
+/**
+ * Key for a reader list. A list keeps its pixel offset when its items change
+ * size, which leaves a pager between two pages after a rotation, a Stage
+ * Manager resize or a switch between single pages and spreads. Keying the
+ * list on what it shows and how wide it is remounts it at the current page
+ * instead. Height is left out, so the keyboard never remounts the reader.
+ */
+export function readerListKey(kind: string, width: number): string {
+  return `${kind}-${Math.round(width)}`;
+}
+
+/** The widest a line of reading text gets on iPad (reading standards §2). */
+export const READING_COLUMN_MAX_WIDTH = 680;
+
+/**
+ * Side padding that keeps reading text in a centred column no wider than
+ * `READING_COLUMN_MAX_WIDTH`, and never less than `minPadding`.
+ */
+export function readingColumnPadding(
+  width: number,
+  minPadding: number,
+): number {
+  return Math.max(minPadding, (width - READING_COLUMN_MAX_WIDTH) / 2);
+}
+// @ai-end
 
 /**
  * React hook that returns live mushaf metrics. Re-renders on rotation /
@@ -491,6 +537,21 @@ export function getHizbForPage(page: number): number {
  * (phone-portrait snapshot). iPad / rotation-aware callers should pass the
  * values returned by `useMushafLayout()` instead.
  */
+// @ai-start
+/**
+ * Room (pt) a mushaf page canvas keeps below its last line. A DigitalKhatt
+ * line box is taller than the line pitch, and marks below the last line (an
+ * open tanween, a small low meem, a deep tail) reach past the content height:
+ * up to about 4.4 pt on an iPhone 17 Pro and 11.2 pt on an iPhone SE-class
+ * screen (every page's last ayah line, measured on CanvasKit). The canvas
+ * extends this far below the content. It is transparent and the lines keep
+ * their positions, so the only change is that those marks are no longer cut.
+ */
+export function canvasBottomOverflow(fontSize: number): number {
+  return Math.ceil(fontSize);
+}
+// @ai-end
+
 export function calculateLineYPositions(
   lines: {line_type: string}[],
   pageNumber: number,

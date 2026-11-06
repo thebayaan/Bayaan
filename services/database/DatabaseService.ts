@@ -153,6 +153,18 @@ class DatabaseService {
     });
   }
 
+  // @ai-start
+  /** Moves playlist items from one reciter id to another (reciter merges). */
+  async remapReciterId(fromId: string, toId: string): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    await this.db.runAsync(
+      `UPDATE playlist_items SET reciter_id = ? WHERE reciter_id = ?`,
+      [toId, fromId],
+    );
+  }
+  // @ai-end
+
   async getAllPlaylists(): Promise<UserPlaylist[]> {
     if (!this.db) throw new Error('Database not initialized');
 

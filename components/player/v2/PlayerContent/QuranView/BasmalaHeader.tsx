@@ -1,5 +1,6 @@
 import React, {useMemo} from 'react';
 import {View, Text, StyleSheet} from 'react-native';
+import Color from 'color'; // @ai
 import {moderateScale, verticalScale} from '@/utils/scale';
 import {
   Canvas,
@@ -170,6 +171,9 @@ interface BasmalaHeaderProps {
    *  (contract C6), in the surah's own spelling when its Word file has one
    *  (e.g. al-Susi 14 and 15); omitted, the rewayah's usual spelling. */
   surahNumber?: number;
+  /** The basmala is being recited (the audio's intro before verse 1): it is
+   *  highlighted as the active verse is (VerseItem's isActive band). */
+  isActive?: boolean;
   // @ai-end
 }
 
@@ -186,6 +190,7 @@ const BasmalaHeader: React.FC<BasmalaHeaderProps> = ({
   allahNameHighlightColor,
   rewayah,
   surahNumber, // @ai
+  isActive = false, // @ai
 }) => {
   const mushafRewayah = useMushafSettingsStore(s => s.rewayah);
   // @ai-start
@@ -207,9 +212,17 @@ const BasmalaHeader: React.FC<BasmalaHeaderProps> = ({
   const fontSize = moderateScale(BASMALA_FONT_SIZE);
 
   // @ai-start
+  // The follow-along band of an active verse (VerseItem: the text colour at
+  // 12%, rounded), so the basmala reads as the verse being recited.
+  const activeBg = useMemo(
+    () => Color(textColor).alpha(0.12).toString(),
+    [textColor],
+  );
   const containerStyle =
     visible && basmalaText
-      ? styles.container
+      ? isActive
+        ? [styles.container, styles.active, {backgroundColor: activeBg}]
+        : styles.container
       : [styles.container, styles.hidden];
   if (!basmalaText) return <View style={containerStyle} />;
   // @ai-end
@@ -233,9 +246,25 @@ const BasmalaHeader: React.FC<BasmalaHeaderProps> = ({
     // Extra horizontal room so the basm glyph isn't clipped at canvas edges.
     // V2 font renders a wider basm glyph — scale padding with width for larger devices.
     const hPad = Math.max(moderateScale(16), width * 0.06);
+    // @ai-start
+    // Why the basmala could go blank (it "just goes empty"): Skia hands a
+    // canvas's picture to its native view only once. If Fabric moves the
+    // native view to another parent, iOS builds a fresh draw view with no
+    // picture, and nothing redraws it until the canvas's own content
+    // changes. The container's style toggles (hidden: overflow; active:
+    // background colour) switch it between flattened and not, and each
+    // switch re-parented the canvas, e.g. when verse 1 starts after the
+    // basmala was recited, or when playing on from al-Fatiha / at-Tawbah.
+    //  - collapsable={false}: the container is never flattened, so those
+    //    style toggles no longer re-parent the canvas;
+    //  - key: whenever the basmala is shown again, mount a fresh canvas,
+    //    which records and sends its picture on mount.
+    // @ai-end
     return (
-      <View style={containerStyle}>
-        <Canvas style={{width: width + hPad * 2, height, direction: 'rtl'}}>
+      <View style={containerStyle} collapsable={false /* @ai */}>
+        <Canvas
+          key={visible ? 'shown' : 'hidden' /* @ai */}
+          style={{width: width + hPad * 2, height, direction: 'rtl'}}>
           {strokeParagraph && (
             <Paragraph
               paragraph={strokeParagraph}
@@ -359,6 +388,11 @@ const styles = StyleSheet.create({
     height: 0,
     overflow: 'hidden' as const,
   },
+  // @ai-start
+  active: {
+    borderRadius: moderateScale(8),
+  },
+  // @ai-end
   fallbackText: {
     textAlign: 'center',
   },

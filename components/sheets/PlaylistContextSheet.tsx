@@ -7,12 +7,11 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import {moderateScale} from 'react-native-size-matters';
+import {confirmDestructive} from '@/utils/confirmDestructive'; // @ai
+import {moderateScale} from '@/utils/scale';
 import {Feather} from '@expo/vector-icons';
-import ActionSheet, {
-  SheetProps,
-  SheetManager,
-} from 'react-native-actions-sheet';
+import {SheetProps, SheetManager} from 'react-native-actions-sheet';
+import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import {useTheme} from '@/hooks/useTheme';
 import {usePlaylistsStore} from '@/store/playlistsStore';
 import {downloadSurah} from '@/services/downloadService';
@@ -21,9 +20,14 @@ import {CheckIcon} from '@/components/Icons';
 import {Ionicons} from '@expo/vector-icons';
 import {useCollectionDownloadState} from '@/hooks/useCollectionDownloadState';
 import Color from 'color';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+// @ai-end
 
+// @ai-start
 export const PlaylistContextSheet = (props: SheetProps<'playlist-context'>) => {
   const {theme} = useTheme();
+  const {t} = useTranslation(['sheets', 'common']);
   const payload = props.payload;
   const playlistId = payload?.playlistId ?? '';
   const playlistName = payload?.playlistName ?? '';
@@ -121,27 +125,19 @@ export const PlaylistContextSheet = (props: SheetProps<'playlist-context'>) => {
   }, [onEdit, handleClose]);
 
   const handleDelete = useCallback(() => {
-    Alert.alert(
-      'Delete Playlist',
-      `Are you sure you want to delete "${playlistName}"? This action cannot be undone.`,
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => {
-            if (onDelete) {
-              onDelete();
-            }
-            handleClose();
-          },
-        },
-      ],
-    );
-  }, [playlistName, onDelete, handleClose]);
+    confirmDestructive({
+      title: t('playlistContext.deleteTitle'),
+      message: t('playlistContext.deleteMessage', {name: playlistName}),
+      confirmText: t('common:actions.delete'),
+      cancelText: t('common:actions.cancel'),
+      onConfirm: () => {
+        if (onDelete) {
+          onDelete();
+        }
+        handleClose();
+      },
+    });
+  }, [playlistName, onDelete, handleClose, t]);
 
   const handleDownloadPlaylist = useCallback(async () => {
     if (isDownloadingPlaylist || !playlistId) return;
@@ -163,7 +159,10 @@ export const PlaylistContextSheet = (props: SheetProps<'playlist-context'>) => {
       if (playlistItems.length === 0) {
         setPlaylistDownloadProgress(playlistId, null);
         if (isMountedRef.current) {
-          Alert.alert('Empty Playlist', 'This playlist is empty.');
+          Alert.alert(
+            t('playlistContext.emptyTitle'),
+            t('playlistContext.emptyMessage'),
+          );
         }
         return;
       }
@@ -183,8 +182,8 @@ export const PlaylistContextSheet = (props: SheetProps<'playlist-context'>) => {
         setPlaylistDownloadProgress(playlistId, null);
         if (isMountedRef.current) {
           Alert.alert(
-            'Already Downloaded',
-            'All items in this playlist are already downloaded.',
+            t('playlistContext.alreadyDownloadedTitle'),
+            t('playlistContext.alreadyDownloadedMessage'),
           );
         }
         return;
@@ -317,10 +316,11 @@ export const PlaylistContextSheet = (props: SheetProps<'playlist-context'>) => {
               percentage: 0,
             });
             Alert.alert(
-              'Download Complete',
-              `Successfully downloaded ${itemsToDownload.length} item${
-                itemsToDownload.length === 1 ? '' : 's'
-              } from "${playlistName}".`,
+              t('playlistContext.completeTitle'),
+              t('playlistContext.completeMessage', {
+                count: itemsToDownload.length,
+                name: playlistName,
+              }),
             );
           }
         }, 500);
@@ -337,12 +337,13 @@ export const PlaylistContextSheet = (props: SheetProps<'playlist-context'>) => {
           percentage: 0,
         });
         Alert.alert(
-          'Download Failed',
-          'An error occurred while downloading the playlist. Please try again.',
+          t('playlistContext.failedTitle'),
+          t('playlistContext.failedMessage'),
         );
       }
     }
   }, [
+    t,
     playlistId,
     playlistName,
     isDownloadingPlaylist,
@@ -358,20 +359,33 @@ export const PlaylistContextSheet = (props: SheetProps<'playlist-context'>) => {
     isDownloadingWithRewayat,
   ]);
 
+  // @ai-start
+  // "Download" in a tablet's native menu opens this sheet to show progress.
+  const startDownload = !!payload?.startDownload;
+  const startedRef = useRef(false);
+  useEffect(() => {
+    if (!startDownload || startedRef.current) return;
+    startedRef.current = true;
+    handleDownloadPlaylist();
+  }, [startDownload, handleDownloadPlaylist]);
+  // @ai-end
+
   if (!playlistId) {
     return null;
   }
 
   const options = [
     {
-      label: 'Edit Playlist',
+      label: t('playlistContext.edit'),
       icon: 'edit-2',
       onPress: handleEdit,
       destructive: false,
       disabled: false,
     },
     {
-      label: downloadState.allDownloaded ? 'Downloaded' : 'Download Playlist',
+      label: downloadState.allDownloaded
+        ? t('options.downloaded')
+        : t('playlistContext.download'),
       icon: 'download',
       onPress: handleDownloadPlaylist,
       destructive: false,
@@ -382,7 +396,7 @@ export const PlaylistContextSheet = (props: SheetProps<'playlist-context'>) => {
       isDownloadOption: true,
     },
     {
-      label: 'Delete Playlist',
+      label: t('playlistContext.delete'),
       icon: 'minus-circle',
       onPress: handleDelete,
       destructive: true,
@@ -393,6 +407,7 @@ export const PlaylistContextSheet = (props: SheetProps<'playlist-context'>) => {
   return (
     <ActionSheet
       id={props.sheetId}
+      tabletPresentation="menu"
       containerStyle={[
         styles.sheetContainer,
         {
@@ -425,11 +440,11 @@ export const PlaylistContextSheet = (props: SheetProps<'playlist-context'>) => {
             ]}>
             <View style={styles.progressHeader}>
               <Text style={[styles.progressText, {color: theme.colors.text}]}>
-                Downloading playlist...
+                {t('playlistContext.downloadingPlaylist')}
               </Text>
               <Text
                 style={[styles.progressPercentage, {color: theme.colors.text}]}>
-                {Math.round(downloadProgress.percentage)}%
+                {t('percent', {value: Math.round(downloadProgress.percentage)})}
               </Text>
             </View>
             <View
@@ -456,7 +471,10 @@ export const PlaylistContextSheet = (props: SheetProps<'playlist-context'>) => {
                 styles.progressSubtext,
                 {color: theme.colors.textSecondary},
               ]}>
-              {downloadProgress.current} of {downloadProgress.total} items
+              {t('playlistContext.itemsProgress', {
+                count: downloadProgress.total,
+                current: downloadProgress.current,
+              })}
             </Text>
           </View>
         )}
@@ -556,6 +574,7 @@ export const PlaylistContextSheet = (props: SheetProps<'playlist-context'>) => {
     </ActionSheet>
   );
 };
+// @ai-end
 
 const styles = StyleSheet.create({
   sheetContainer: {

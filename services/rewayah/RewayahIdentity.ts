@@ -8,6 +8,11 @@
 // All other rewayah-aware code imports from here. Do not define a RewayahId
 // literal, a resolver, or a migration mapping anywhere else.
 
+// Bare i18next singleton (initialised by '@/i18n' at app start): keeps this
+// module free of native deps for Jest suites that load it through stores.
+// @ai-start
+import i18n from 'i18next';
+// @ai-end
 import {resolveRewayatName, type RewayatEntry} from '@/data/rewayat';
 
 // ── Canonical slug union ─────────────────────────────────────────────────────
@@ -162,98 +167,33 @@ export function hasDiffData(id: RewayahId): id is RewayahWithDiffs {
 
 // ── Display labels ───────────────────────────────────────────────────────────
 
-const SHORT_LABELS: Readonly<Record<RewayahId, string>> = {
-  hafs: 'Hafs',
-  shubah: "Shu'bah",
-  'al-bazzi': 'Al-Bazzi',
-  qunbul: 'Qunbul',
-  warsh: 'Warsh',
-  qalun: 'Qalun',
-  'al-duri-abi-amr': 'Al-Duri (Abu Amr)',
-  'al-susi': 'Al-Susi',
-  hisham: 'Hisham',
-  'ibn-dhakwan': 'Ibn Dhakwan',
-  'khalaf-an-hamzah': 'Khalaf (Hamzah)',
-  khallad: 'Khallad',
-  'al-duri-al-kisai': "Al-Duri (al-Kisa'i)",
-  'abu-al-harith': 'Abu al-Harith',
-  'ibn-jammaz': 'Ibn Jammaz',
-  'ibn-wardan': 'Ibn Wardan',
-  rawh: 'Rawh',
-  ruwais: 'Ruwais',
-  idris: 'Idris',
-  ishaq: 'Ishaq',
-};
+// Labels live in the `content` namespace (`rewayah.short|long|description.<id>`)
+// so they follow the app language.
 
+// @ai-start
 export function getShortLabel(id: RewayahId): string {
-  return SHORT_LABELS[id];
+  return i18n.t(`content:rewayah.short.${id}`);
 }
+// @ai-end
 
 // Long labels — the "Student 'an Teacher" form used in the mushaf
-// settings picker. Kept as ASCII (matches the rest of the app's rewayah
-// copy). Used where the picker UI needs to disambiguate transmitters.
-const LONG_LABELS: Readonly<Record<RewayahId, string>> = {
-  hafs: "Hafs 'an Asim",
-  shubah: "Shu'bah 'an Asim",
-  'al-bazzi': "Al-Bazzi 'an Ibn Kathir",
-  qunbul: "Qunbul 'an Ibn Kathir",
-  warsh: "Warsh 'an Nafi'",
-  qalun: "Qalun 'an Nafi'",
-  'al-duri-abi-amr': "Al-Duri 'an Abu Amr",
-  'al-susi': "Al-Susi 'an Abu Amr",
-  hisham: "Hisham 'an Ibn Amir",
-  'ibn-dhakwan': "Ibn Dhakwan 'an Ibn Amir",
-  'khalaf-an-hamzah': "Khalaf 'an Hamzah",
-  khallad: "Khallad 'an Hamzah",
-  'al-duri-al-kisai': "Al-Duri 'an al-Kisa'i",
-  'abu-al-harith': "Abu al-Harith 'an al-Kisa'i",
-  'ibn-jammaz': "Ibn Jammaz 'an Abu Ja'far",
-  'ibn-wardan': "Ibn Wardan 'an Abu Ja'far",
-  rawh: "Rawh 'an Ya'qub",
-  ruwais: "Ruways 'an Ya'qub",
-  idris: "Idris 'an Khalaf al-Bazzar",
-  ishaq: "Ishaq 'an Khalaf al-Bazzar",
-};
-
+// settings picker. Used where the picker UI needs to disambiguate
+// transmitters.
+// @ai-start
 export function getLongLabel(id: RewayahId): string {
-  return LONG_LABELS[id];
+  return i18n.t(`content:rewayah.long.${id}`);
 }
+// @ai-end
 
-// One-line descriptions for the picker. The first 8 are the copy that
+// One-line descriptions for the picker: the first 8 are the copy that
 // used to live inline in MushafSettingsContent.REWAYAH_OPTIONS; the
 // remaining 12 are short geographic / historical context for the
 // taxonomy-only entries.
-const DESCRIPTIONS: Readonly<Record<RewayahId, string>> = {
-  hafs: 'The standard reading, used by most of the Muslim world',
-  shubah: 'The second Kufan transmission from Asim',
-  'al-bazzi':
-    'Meccan transmission from Ibn Kathir, read throughout Mecca and Yemen',
-  qunbul: 'The second Meccan transmission from Ibn Kathir',
-  warsh: "Medinan transmission from Nafi' — dominant across North Africa",
-  qalun:
-    "The second Medinan transmission from Nafi' — read in Libya and parts of Tunisia",
-  'al-duri-abi-amr':
-    'Basran transmission from Abu Amr — common in Sudan and parts of West Africa',
-  'al-susi': 'The second Basran transmission from Abu Amr',
-  hisham: 'Damascene transmission from Ibn Amir',
-  'ibn-dhakwan': 'The second Damascene transmission from Ibn Amir',
-  'khalaf-an-hamzah': 'Kufan transmission from Hamzah',
-  khallad: 'The second Kufan transmission from Hamzah',
-  'al-duri-al-kisai':
-    "Kufan transmission from al-Kisa'i (distinct from Al-Duri 'an Abu Amr)",
-  'abu-al-harith': "The second Kufan transmission from al-Kisa'i",
-  'ibn-jammaz': "Medinan transmission from Abu Ja'far (10th Qira'ah)",
-  'ibn-wardan':
-    "The second Medinan transmission from Abu Ja'far (10th Qira'ah)",
-  rawh: "Basran transmission from Ya'qub (10th Qira'ah)",
-  ruwais: "The second Basran transmission from Ya'qub (10th Qira'ah)",
-  idris: "Transmission from Khalaf al-Bazzar (10th Qira'ah)",
-  ishaq: "The second transmission from Khalaf al-Bazzar (10th Qira'ah)",
-};
-
+// @ai-start
 export function getDescription(id: RewayahId): string {
-  return DESCRIPTIONS[id];
+  return i18n.t(`content:rewayah.description.${id}`);
 }
+// @ai-end
 
 // Convenience for display sites that hold an API `rewayat` record: maps
 // the record's free-form `name` through the canonical resolver and

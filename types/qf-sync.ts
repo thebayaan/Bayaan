@@ -16,9 +16,7 @@ export interface QfSyncMutation<RecordShape = Record<string, unknown>> {
   record: RecordShape;
 }
 
-export interface QfSyncMutationRequest<
-  RecordShape = Record<string, unknown>,
-> {
+export interface QfSyncMutationRequest<RecordShape = Record<string, unknown>> {
   lastMutationAt: string;
   mutations: QfSyncMutation<RecordShape>[];
 }

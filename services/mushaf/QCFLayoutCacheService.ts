@@ -1,6 +1,7 @@
+// @ai-start
 import {createMMKV, type MMKV} from 'react-native-mmkv';
 
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 
 export interface QCFPageLayoutMetrics {
   fontSize: number;
@@ -10,8 +11,12 @@ export interface QCFPageLayoutMetrics {
   }>;
 }
 
-function mmkvKey(fontFamily: string, pageNumber: number): string {
-  return `qcf:${fontFamily}:${pageNumber}`;
+function mmkvKey(
+  fontFamily: string,
+  pageNumber: number,
+  contentWidth: number,
+): string {
+  return `qcf:${fontFamily}:${pageNumber}:${contentWidth}`;
 }
 
 class QCFLayoutCacheService {
@@ -31,8 +36,9 @@ class QCFLayoutCacheService {
   getPageLayout(
     pageNumber: number,
     fontFamily: string,
+    contentWidth: number,
   ): QCFPageLayoutMetrics | undefined {
-    const key = mmkvKey(fontFamily, pageNumber);
+    const key = mmkvKey(fontFamily, pageNumber, contentWidth);
     const memHit = this.memCache.get(key);
     if (memHit) return memHit;
 
@@ -59,9 +65,10 @@ class QCFLayoutCacheService {
   setPageLayout(
     pageNumber: number,
     fontFamily: string,
+    contentWidth: number,
     data: QCFPageLayoutMetrics,
   ): void {
-    const key = mmkvKey(fontFamily, pageNumber);
+    const key = mmkvKey(fontFamily, pageNumber, contentWidth);
     this.memCache.set(key, data);
     this.mmkv.set(key, JSON.stringify(data));
   }
@@ -74,3 +81,4 @@ class QCFLayoutCacheService {
 }
 
 export const qcfLayoutCacheService = new QCFLayoutCacheService();
+// @ai-end

@@ -1,8 +1,11 @@
 /**
  * Bayaan app identity config.
  *
- * CJS (not ESM) — app.config.js calls require() before Expo CLI transpiles.
- * Forks override by replacing this file; the shape is typed in branding.d.ts.
+ * CJS (not ESM), so a fork's app.config.js can require() it before Expo CLI
+ * transpiles (Bayaan's app.config.js does not). Config plugins must not load
+ * it: forks may supply runtime values (components, providers) that Node
+ * cannot run. Forks override by replacing this file; the shape is typed in
+ * branding.d.ts.
  *
  * See docs/rfcs/007-app-layer-multi-tenancy.md for the design rationale.
  */

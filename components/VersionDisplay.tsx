@@ -6,6 +6,9 @@ import {
   getBuildTypeLabel,
 } from '@/utils/appVersion';
 import {useTheme} from '@/hooks/useTheme';
+// @ai-start
+import {useTranslation} from 'react-i18next';
+// @ai-end
 
 interface VersionDisplayProps {
   showBuildNumber?: boolean;
@@ -13,12 +16,14 @@ interface VersionDisplayProps {
   style?: StyleProp<TextStyle>;
 }
 
+// @ai-start
 export const VersionDisplay: React.FC<VersionDisplayProps> = ({
   showBuildNumber = false,
   showBuildType = false,
   style,
 }) => {
   const {theme} = useTheme();
+  const {t} = useTranslation('settings');
 
   const versionText = showBuildNumber
     ? getFullVersionString()
@@ -29,11 +34,16 @@ export const VersionDisplay: React.FC<VersionDisplayProps> = ({
   return (
     <Text
       style={[styles.versionText, {color: theme.colors.textSecondary}, style]}>
-      Version {versionText}
-      {buildTypeLabel ? ` - ${buildTypeLabel}` : ''}
+      {buildTypeLabel
+        ? t('version.withBuildType', {
+            version: versionText,
+            buildType: buildTypeLabel,
+          })
+        : t('version.label', {version: versionText})}
     </Text>
   );
 };
+// @ai-end
 
 const styles = StyleSheet.create({
   versionText: {

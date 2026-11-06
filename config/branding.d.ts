@@ -251,12 +251,11 @@ export interface Branding {
    * RFC-014 — strategy for wiring the player Mushaf FlashList's scroll
    * handling.
    *
-   * `'gorhom'` — `useBottomSheetScrollableCreator()` is called and its
-   *   result is passed as `renderScrollComponent` on FlashList. The
-   *   swipe-down-to-dismiss gesture on the player sheet is active.
-   *   Imperative `scrollToIndex` / `scrollToOffset` calls issued before
-   *   the sheet's animation has settled into EXTENDED/FILL_PARENT are
-   *   intercepted by the gorhom wrapper and silently no-op.
+   * `'gorhom'`: the player's dismiss-aware scroll component (see
+   *   `usePlayerScrollable`) is passed as `renderScrollComponent` on
+   *   FlashList, so a downward drag at the top of the list dismisses the
+   *   player. The name predates the move off the gorhom sheet and is kept
+   *   so existing branding configs keep working.
    *
    * `'native'` — gorhom wrapper skipped; imperative scroll calls reach
    *   the native scroll node immediately, regardless of the sheet's
@@ -295,13 +294,14 @@ export interface Branding {
    */
   timestampCdnBase?: string;
   /**
-   * Base URL for the surah cards CarPlay and Android Auto show, laid out as
-   * `{base}{surahId}.png` (dark) and `{base}{surahId}-light.png` (light).
-   * Follows the RFC-015 pattern.
+   * Base URL for the surah cards CarPlay, Android Auto and the native widgets
+   * show, laid out as `{base}{surahId}.png` (dark) and
+   * `{base}{surahId}-light.png` (light; car only). Follows the RFC-015
+   * pattern; RFC-021 extended it to the widgets.
    *
-   * Field absent → `'https://cdn.thebayaan.com/assets/og-images/surah/'`.
+   * Field absent → `'https://cdn.thebayaan.com/assets/car/surah/'`.
    * Must be https; a trailing slash is optional. A non-https value falls
-   * back to the default.
+   * back to the default (see utils/surahArtworkBase.ts).
    */
   surahArtworkCdnBase?: string;
   /**

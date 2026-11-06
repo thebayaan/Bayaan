@@ -1,20 +1,24 @@
 import React from 'react';
-import {View, Text} from 'react-native';
-import {ScaledSheet, moderateScale} from 'react-native-size-matters';
+import {View, Text, StyleProp, ViewStyle} from 'react-native';
+import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
+// @ai-start
+import {latinLetterSpacing} from '@/utils/rtl';
+// @ai-end
 
 interface CategorySectionHeaderProps {
   title: string;
+  style?: StyleProp<ViewStyle>; // @ai
 }
 
 export const CategorySectionHeader: React.FC<CategorySectionHeaderProps> =
-  React.memo(({title}) => {
+  React.memo(({title, style}) => {
     const {theme} = useTheme();
     const styles = createStyles(theme);
 
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, style]}>
         <Text style={styles.title}>{title}</Text>
       </View>
     );
@@ -22,6 +26,7 @@ export const CategorySectionHeader: React.FC<CategorySectionHeaderProps> =
 
 CategorySectionHeader.displayName = 'CategorySectionHeader';
 
+// @ai-start
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({
     container: {
@@ -35,6 +40,7 @@ const createStyles = (theme: Theme) =>
       fontFamily: theme.fonts.semiBold,
       color: theme.colors.textSecondary,
       textTransform: 'uppercase',
-      letterSpacing: 0.5,
+      letterSpacing: latinLetterSpacing(0.5),
     },
   });
+// @ai-end

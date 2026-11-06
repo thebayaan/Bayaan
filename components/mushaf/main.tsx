@@ -6,7 +6,7 @@ import {
   Text,
   Pressable,
   ScrollView,
-  ViewToken,
+  type ListViewToken,
   StatusBar,
   BackHandler,
   Platform,
@@ -32,12 +32,18 @@ import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
 import {FrostedView} from '@/components/FrostedView';
 import {BackButton} from '@/components/BackButton';
 import MushafSearchView from './MushafSearchView';
-import {moderateScale} from 'react-native-size-matters';
+// @ai-start
+import {TabletDialog} from '@/components/layout/TabletDialog';
+import {SHEET_MAX_HEIGHT} from '@/components/sheets/AdaptiveActionSheet';
+// @ai-end
+import {moderateScale} from '@/utils/scale';
 import Color from 'color';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {
   getJuzForPage,
   getPageEdgeLayout,
+  readerListKey, // @ai
+  singlePageLayout, // @ai
   useMushafLayout,
   type MushafLayoutMetrics,
 } from './constants';
@@ -70,10 +76,25 @@ import PageEdgeDecoration, {
   EDGE_HORIZONTAL_INSET,
 } from './PageEdgeDecoration';
 import {analyticsService} from '@/services/analytics/AnalyticsService';
-import {qcfFontLoader} from '@/services/mushaf/QCFFontLoader';
+import {
+  qcfFontLoader,
+  getQCFFontVariant,
+} from '@/services/mushaf/QCFFontLoader'; // @ai
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
+// @ai-start
+import {appLayoutDirection, isRTL} from '@/utils/rtl';
+import {useTranslation} from 'react-i18next';
+import i18n from '@/i18n';
+import {getSurahDisplayName, localizeDigits} from '@/i18n/format';
+// @ai-end
 import {useHeaderHeight} from 'expo-router/react-navigation'; // @ai
 import {RewayahFallbackBanner} from '@/components/MushafSettingsContent'; // @ai
+// @ai-start
+import {ReaderKeyCommands} from '@/components/keyboard/ReaderKeyCommands';
+import {keyCommandsSupported} from '@/services/keyboard/keyCommands';
+import {closeTopSheet} from '@/services/keyboard/keyActions';
+import {ReadingSettingsPopover} from '@/components/popovers/ToolPopovers'; // @ai
+// @ai-end
 
 const TOTAL_PAGES = 604;
 const ANIMATION_DURATION = 300;
@@ -101,10 +122,20 @@ function spreadPrimaryPage(spread: Spread): number {
   return spread.right;
 }
 
+// @ai-start
+/** The page a visible spread stands for: the current page if the spread
+ *  holds it, otherwise the spread's first page. */
+function spreadPageToKeep(spread: Spread, current: number): number {
+  if (current === spread.right || current === spread.left) return current;
+  return spreadPrimaryPage(spread);
+}
+// @ai-end
+
 // ============================================================================
 // Helpers
 // ============================================================================
 
+// @ai-start
 function getSurahNamesForPage(pageNumber: number): string {
   const lines = digitalKhattDataService.getPageLines(pageNumber);
   const seen = new Set<number>();
@@ -113,7 +144,7 @@ function getSurahNamesForPage(pageNumber: number): string {
     const num = line.surah_number;
     if (num >= 1 && num <= 114 && !seen.has(num)) {
       seen.add(num);
-      names.push(SURAHS[num - 1].name);
+      names.push(getSurahDisplayName(SURAHS[num - 1]));
     }
   }
   if (names.length > 0) return names.join(' \u00B7 ');
@@ -122,13 +153,24 @@ function getSurahNamesForPage(pageNumber: number): string {
   // so pages without a header need the pageToSurah mapping.
   const pageToSurah = digitalKhattDataService.getPageToSurah();
   const surahId = pageToSurah[pageNumber];
-  if (surahId >= 1 && surahId <= 114) return SURAHS[surahId - 1].name;
+  if (surahId >= 1 && surahId <= 114)
+    return getSurahDisplayName(SURAHS[surahId - 1]);
   return '';
 }
+// @ai-end
+
+// @ai-start
+function getJuzLabelForPage(pageNumber: number): string {
+  return i18n.t('common:labels.juzNumber', {
+    number: getJuzForPage(pageNumber),
+  });
+}
+// @ai-end
 
 // ============================================================================
 // Digital Khatt PageView (Skia-based with DK V1/V2 fonts)
 // ============================================================================
+// @ai-start
 const DKPageView: React.FC<{
   pageNumber: number;
   textColor: string;
@@ -201,6 +243,8 @@ const DKPageView: React.FC<{
     <View
       style={{
         width: metrics.pageWidth,
+        // Page geometry and the Quran canvas use physical book coordinates.
+        direction: 'ltr',
         height: metrics.screenHeight,
         backgroundColor: isBookLayout ? bgColor : cardColor,
         // QCF fonts load async — keep page visible so the background color
@@ -246,6 +290,7 @@ const DKPageView: React.FC<{
       )}
       {isQCF ? (
         <QCFPage
+          metrics={metrics} // @ai
           pageNumber={pageNumber}
           textColor={textColor}
           dividerColor={labelColor}
@@ -322,6 +367,7 @@ const DKPageView: React.FC<{
     </View>
   );
 };
+// @ai-end
 
 // ============================================================================
 // DKSpreadView: FlatList item that hosts either a single centered page
@@ -331,6 +377,7 @@ const DKPageView: React.FC<{
 //   [ even-page | gap | odd-page ]
 // so RTL reading order (right → left) matches a physical mushaf.
 // ============================================================================
+// @ai-start
 const DKSpreadView: React.FC<{
   /** Primary page (odd / right side in facing mode). */
   pageNumber: number;
@@ -376,8 +423,8 @@ const DKSpreadView: React.FC<{
           pageNumber={pageNumber}
           textColor={textColor}
           surahLabel={getSurahNamesForPage(pageNumber)}
-          juzLabel={`Juz ${getJuzForPage(pageNumber)}`}
-          pageLabel={String(pageNumber)}
+          juzLabel={getJuzLabelForPage(pageNumber)}
+          pageLabel={localizeDigits(pageNumber)}
           labelColor={labelColor}
           borderColor={borderColor}
           cardColor={cardColor}
@@ -400,8 +447,8 @@ const DKSpreadView: React.FC<{
         pageNumber={pageNumber}
         textColor={textColor}
         surahLabel={getSurahNamesForPage(pageNumber)}
-        juzLabel={`Juz ${getJuzForPage(pageNumber)}`}
-        pageLabel={String(pageNumber)}
+        juzLabel={getJuzLabelForPage(pageNumber)}
+        pageLabel={localizeDigits(pageNumber)}
         labelColor={labelColor}
         borderColor={borderColor}
         cardColor={cardColor}
@@ -425,6 +472,7 @@ const DKSpreadView: React.FC<{
           height: metrics.screenHeight,
           backgroundColor: spreadBg,
           flexDirection: 'row',
+          direction: 'ltr',
           justifyContent: 'center',
           alignItems: 'center',
         }}>
@@ -432,8 +480,8 @@ const DKSpreadView: React.FC<{
           pageNumber={leftPageNumber}
           textColor={textColor}
           surahLabel={getSurahNamesForPage(leftPageNumber)}
-          juzLabel={`Juz ${getJuzForPage(leftPageNumber)}`}
-          pageLabel={String(leftPageNumber)}
+          juzLabel={getJuzLabelForPage(leftPageNumber)}
+          pageLabel={localizeDigits(leftPageNumber)}
           labelColor={labelColor}
           borderColor={borderColor}
           cardColor={cardColor}
@@ -447,8 +495,8 @@ const DKSpreadView: React.FC<{
           pageNumber={pageNumber}
           textColor={textColor}
           surahLabel={getSurahNamesForPage(pageNumber)}
-          juzLabel={`Juz ${getJuzForPage(pageNumber)}`}
-          pageLabel={String(pageNumber)}
+          juzLabel={getJuzLabelForPage(pageNumber)}
+          pageLabel={localizeDigits(pageNumber)}
           labelColor={labelColor}
           borderColor={borderColor}
           cardColor={cardColor}
@@ -474,8 +522,8 @@ const DKSpreadView: React.FC<{
         pageNumber={pageNumber}
         textColor={textColor}
         surahLabel={getSurahNamesForPage(pageNumber)}
-        juzLabel={`Juz ${getJuzForPage(pageNumber)}`}
-        pageLabel={String(pageNumber)}
+        juzLabel={getJuzLabelForPage(pageNumber)}
+        pageLabel={localizeDigits(pageNumber)}
         labelColor={labelColor}
         borderColor={borderColor}
         cardColor={cardColor}
@@ -487,6 +535,7 @@ const DKSpreadView: React.FC<{
     </View>
   );
 };
+// @ai-end
 
 // ============================================================================
 // MushafViewer (main exported component)
@@ -506,7 +555,16 @@ export default function MushafViewer({
   initialSurahId,
 }: MushafViewerProps) {
   useKeepAwake();
+  const {t} = useTranslation(['reader', 'common']);
   const [currentPage, setCurrentPage] = useState(initialPage);
+  // @ai-start
+  // Read by the viewability handler, which must not change identity. A spread
+  // shows two pages, so keep whichever one the reader was already on instead
+  // of snapping to the spread's first page (page 2 would become page 1 after
+  // a round trip to landscape).
+  const currentPageRef = useRef(initialPage);
+  currentPageRef.current = currentPage;
+  // @ai-end
   // @ai-start
   // Twelve pages open one surah and start another (591 has At-Tariq and
   // Al-A'la; 601-604 start three apiece). `pageToSurah` can only name one
@@ -575,13 +633,12 @@ export default function MushafViewer({
   const {isTablet} = useResponsive();
   const {width: windowWidth, height: windowHeight} = useWindowDimensions();
   // A paged, `inverted` FlatList preserves its pixel scroll offset when its
-  // items resize on rotation, so the visible page drifts to a different index
-  // (old offset ÷ new item width); `initialScrollIndex` is mount-only and never
-  // re-fires. Remount the list on an orientation flip via this key so it starts
-  // fresh at `initialScrollIndex = currentPage` and never inherits the stale
-  // offset. Keyed on orientation (not raw dimensions) so the on-screen keyboard
-  // shrinking the height never remounts the reader.
-  const orientationKey = windowWidth > windowHeight ? 'landscape' : 'portrait';
+  // items resize, so the visible page drifts to a different index (old offset
+  // ÷ new item width); `initialScrollIndex` is mount-only and never re-fires.
+  // Each reader list is keyed with `readerListKey` (what it shows + its item
+  // width, never the height), so it remounts at `initialScrollIndex =
+  // currentPage` on rotation, on a Stage Manager resize and on a switch
+  // between pages and spreads, and the keyboard never remounts it. // @ai
 
   // Measured size of the FlatList container. Using `useWindowDimensions()`
   // alone overestimates the available space on iPad because the stack
@@ -620,6 +677,24 @@ export default function MushafViewer({
     containerWidth: isTablet ? containerSize?.width : undefined,
     containerHeight: isTablet ? containerSize?.height : undefined,
   });
+  // @ai-start
+  // The vertical mushaf shows one page per row, also where the pager shows
+  // spreads.
+  const scrollMetrics = useMemo(() => singlePageLayout(metrics), [metrics]);
+  // iPad: the list and translation views take the measured pane, not the
+  // launch-time screen size. Phones keep their layout.
+  const readingPageSize = useMemo(
+    () =>
+      isTablet
+        ? {width: metrics.screenWidth, height: metrics.screenHeight}
+        : undefined,
+    [isTablet, metrics.screenWidth, metrics.screenHeight],
+  );
+  // A tap on the status bar scrolls a vertical reader back to page 1. On
+  // iPad the toolbar sits close enough to the status bar (the mini in
+  // landscape) that tapping its buttons did that too, so iPads turn it off.
+  const scrollsToTop = !isTablet;
+  // @ai-end
 
   // Reanimated overlay animation (same pattern as PlayerContent)
   const overlayOpacity = useSharedValue(1);
@@ -756,9 +831,18 @@ export default function MushafViewer({
     const url = mushafShareUrl(currentPage, isDarkMode ? 'dark' : 'light');
     shareUrl(
       url,
-      `Check out page ${currentPage} of the Quran on ${branding.appName}`,
+      t('mushaf.shareMessage', {
+        page: currentPage,
+        appName: branding.appName,
+      }),
     );
-  }, [currentPage, isDarkMode]);
+  }, [currentPage, isDarkMode, t]);
+
+  // @ai-start
+  const openReadingSettingsSheet = useCallback(() => {
+    SheetManager.show('mushaf-layout', {payload: {context: 'mushaf'}});
+  }, []);
+  // @ai-end
 
   // iOS 26: configure Stack navigator header based on current mode
   useEffect(() => {
@@ -798,7 +882,7 @@ export default function MushafViewer({
           <Pressable
             onPress={() => setIsSearchMode(true)}
             accessibilityRole="button"
-            accessibilityLabel="Search surahs"
+            accessibilityLabel={t('mushaf.searchSurahs')}
             style={{alignItems: 'center'}}>
             <View
               style={{
@@ -813,7 +897,7 @@ export default function MushafViewer({
                   color: theme.colors.text,
                 }}
                 numberOfLines={1}>
-                {SURAHS[currentSurahId - 1].name}
+                {getSurahDisplayName(SURAHS[currentSurahId - 1])}
               </Text>
               <Ionicons
                 name="chevron-down"
@@ -827,8 +911,11 @@ export default function MushafViewer({
                 fontFamily: 'Manrope-Regular',
                 color: theme.colors.textSecondary,
               }}>
-              Page {currentPage} · Juz {getJuzForPage(currentPage)} ·{' '}
-              {getRewayahShortLabel(rewayah)}
+              {t('mushaf.headerMeta', {
+                page: currentPage,
+                juz: getJuzForPage(currentPage),
+                rewayah: getRewayahShortLabel(rewayah),
+              })}
             </Text>
           </Pressable>
         </TitleWrapper>
@@ -842,30 +929,43 @@ export default function MushafViewer({
             gap: moderateScale(20),
             paddingHorizontal: moderateScale(6),
           }}>
-          <Pressable onPress={handleSharePage} hitSlop={8}>
+          <Pressable
+            onPress={handleSharePage}
+            hitSlop={8}
+            accessibilityRole="button" // @ai
+            accessibilityLabel={t('mushaf.sharePage')} // @ai
+          >
             <Feather
               name="share"
               size={moderateScale(20)}
               color={theme.colors.text}
             />
           </Pressable>
-          <Pressable
-            onPress={() =>
-              SheetManager.show('mushaf-layout', {
-                payload: {context: 'mushaf'},
-              })
-            }
-            hitSlop={8}>
-            <Ionicons
-              name="options-outline"
-              size={moderateScale(22)}
-              color={theme.colors.text}
-            />
-          </Pressable>
+          {/* @ai-start */}
+          {/* iPad: a popover anchored to the button. Elsewhere: the sheet. */}
+          <ReadingSettingsPopover
+            context="mushaf"
+            onFallbackPress={openReadingSettingsSheet}>
+            {onPress => (
+              <Pressable
+                onPress={onPress}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={t('mushaf.settings')}>
+                <Ionicons
+                  name="options-outline"
+                  size={moderateScale(22)}
+                  color={theme.colors.text}
+                />
+              </Pressable>
+            )}
+          </ReadingSettingsPopover>
+          {/* @ai-end */}
         </View>
       ),
     });
   }, [
+    openReadingSettingsSheet,
     isImmersive,
     isSearchMode,
     currentPage,
@@ -875,17 +975,20 @@ export default function MushafViewer({
     theme,
     isDarkMode,
     navigation,
+    t,
   ]);
 
   const onViewableItemsChanged = useCallback(
-    ({viewableItems}: {viewableItems: ViewToken[]}) => {
+    ({viewableItems}: {viewableItems: ListViewToken[]}) => {
       if (viewableItems.length === 0) return;
       const first = viewableItems[0].item;
       if (first == null) return;
       // Page number depends on data shape: `number` for single-page data,
       // `Spread` object for facing-pages data.
       const page: number =
-        typeof first === 'number' ? first : spreadPrimaryPage(first as Spread);
+        typeof first === 'number'
+          ? first
+          : spreadPageToKeep(first as Spread, currentPageRef.current); // @ai
       setCurrentPage(page);
       useMushafPlayerStore.setState({currentPage: page});
       mushafSessionStore.setLastReadPage(page);
@@ -909,10 +1012,11 @@ export default function MushafViewer({
 
   // Convert a logical page number to the current FlatList's item index
   // (spread index when facing-pages is active, page index otherwise).
+  // The List view pages singly even where the Mushaf shows spreads. @ai
+  const showsSpreads = metrics.facingPages && viewMode === 'mushaf'; // @ai
   const pageToFlatListIndex = useCallback(
-    (page: number) =>
-      metrics.facingPages ? pageToSpreadIndex(page) : page - 1,
-    [metrics.facingPages],
+    (page: number) => (showsSpreads ? pageToSpreadIndex(page) : page - 1), // @ai
+    [showsSpreads], // @ai
   );
 
   const navigateToPage = useCallback(
@@ -921,7 +1025,14 @@ export default function MushafViewer({
       // Preload QCF page font immediately, overlapping with the scroll/animation
       if (mushafRenderer === 'qcf_v2') {
         const fm = mushafPreloadService.fontMgr;
-        if (fm) qcfFontLoader.ensure(targetPage, fm).catch(() => undefined); // @ai
+        // @ai-start
+        const variant = getQCFFontVariant(
+          useMushafSettingsStore.getState().showTajweed,
+          Color(readingColors.text).isLight(),
+        );
+        if (fm)
+          qcfFontLoader.ensure(targetPage, fm, variant).catch(() => undefined);
+        // @ai-end
       }
       // Explicit navigation = start a new chain (preserves old position)
       const surahId = digitalKhattDataService.initialized
@@ -939,7 +1050,7 @@ export default function MushafViewer({
         });
       }
     },
-    [isVertical, mushafRenderer, pageToFlatListIndex],
+    [isVertical, mushafRenderer, pageToFlatListIndex, readingColors.text], // @ai
   );
 
   const navigateToPageAnimated = useCallback(
@@ -1124,6 +1235,16 @@ export default function MushafViewer({
     return () => sub.remove();
   }, [isSearchMode]);
 
+  // @ai-start
+  // Esc on an iPad keyboard (reading standards §6): the topmost overlay,
+  // then search, then immersive mode.
+  const handleEscapeKey = useCallback(() => {
+    if (closeTopSheet()) return;
+    if (isSearchMode) setIsSearchMode(false);
+    else if (isImmersive) toggleImmersive();
+  }, [isSearchMode, isImmersive, setIsSearchMode, toggleImmersive]);
+  // @ai-end
+
   return (
     <View
       onLayout={onContainerLayout}
@@ -1137,21 +1258,34 @@ export default function MushafViewer({
               : readingColors.card,
         },
       ]}>
+      {/* @ai-start */}
+      {keyCommandsSupported() && (
+        <ReaderKeyCommands
+          currentPage={currentPage}
+          pageStep={!isVertical && showsSpreads ? 2 : 1}
+          canTurnPage={!isSearchMode}
+          turnTo={navigateToPageAnimated}
+          openSearch={openSearchWithFocus}
+          onEscape={handleEscapeKey}
+        />
+      )}
+      {/* @ai-end */}
       {/* Content area: horizontal FlatList or vertical continuous view */}
       {isVertical && viewMode === 'mushaf' ? (
         <ContinuousMushafView
-          key={orientationKey}
+          key={readerListKey('mushaf-scroll', metrics.screenWidth)} // @ai
           ref={continuousListRef}
           textColor={readingColors.text}
           dividerColor={readingColors.textSecondary}
           onTap={toggleImmersive}
           initialPage={currentPage}
           onCurrentPageChange={handleContinuousPageChange}
-          metrics={metrics}
+          metrics={scrollMetrics} // @ai
+          scrollsToTop={scrollsToTop} // @ai
         />
       ) : isVertical && viewMode === 'list' ? (
         <ContinuousListView
-          key={orientationKey}
+          key={readerListKey('list-scroll', metrics.screenWidth)} // @ai
           ref={continuousListRef}
           textColor={readingColors.text}
           labelColor={readingColors.textSecondary}
@@ -1159,10 +1293,12 @@ export default function MushafViewer({
           onTap={toggleImmersive}
           initialPage={currentPage}
           onCurrentPageChange={handleContinuousPageChange}
+          width={readingPageSize?.width} // @ai
+          scrollsToTop={scrollsToTop} // @ai
         />
       ) : metrics.facingPages && viewMode === 'mushaf' ? (
         <FlatList
-          key={orientationKey}
+          key={readerListKey('spreads', metrics.screenWidth)} // @ai
           ref={flatListRef}
           data={spreads}
           renderItem={({item}) => (
@@ -1193,7 +1329,8 @@ export default function MushafViewer({
             offset: metrics.screenWidth * index,
             index,
           })}
-          inverted
+          inverted={!isRTL}
+          style={appLayoutDirection}
           onViewableItemsChanged={onViewableItemsChanged}
           viewabilityConfig={viewabilityConfig}
           windowSize={7}
@@ -1203,7 +1340,7 @@ export default function MushafViewer({
         />
       ) : (
         <FlatList
-          key={orientationKey}
+          key={readerListKey('pages', metrics.screenWidth)} // @ai
           ref={flatListRef}
           data={pages}
           renderItem={({item}) => {
@@ -1213,14 +1350,15 @@ export default function MushafViewer({
                   pageNumber={item}
                   textColor={readingColors.text}
                   surahLabel={getSurahNamesForPage(item)}
-                  juzLabel={`Juz ${getJuzForPage(item)}`}
-                  pageLabel={String(item)}
+                  juzLabel={getJuzLabelForPage(item)}
+                  pageLabel={localizeDigits(item)}
                   labelColor={readingColors.textSecondary}
                   borderColor={edgeBorderColor}
                   cardColor={pageBg}
                   bgColor={edgeBg}
                   isBookLayout={isBookLayout}
                   onTap={toggleImmersive}
+                  pageSize={readingPageSize} // @ai
                 />
               );
             }
@@ -1249,7 +1387,8 @@ export default function MushafViewer({
             offset: metrics.screenWidth * index,
             index,
           })}
-          inverted
+          inverted={!isRTL}
+          style={appLayoutDirection}
           onViewableItemsChanged={onViewableItemsChanged}
           viewabilityConfig={viewabilityConfig}
           windowSize={7}
@@ -1293,7 +1432,7 @@ export default function MushafViewer({
                   style={styles.headerCenter}
                   onPress={openSearchMode}
                   accessibilityRole="button"
-                  accessibilityLabel="Search surahs">
+                  accessibilityLabel={t('mushaf.searchSurahs')}>
                   <View
                     style={[
                       styles.headerBox,
@@ -1310,7 +1449,7 @@ export default function MushafViewer({
                           {color: theme.colors.text},
                         ]}
                         numberOfLines={1}>
-                        {SURAHS[currentSurahId - 1].name}
+                        {getSurahDisplayName(SURAHS[currentSurahId - 1])}
                       </Text>
                       <Ionicons
                         name="chevron-down"
@@ -1323,29 +1462,36 @@ export default function MushafViewer({
                         styles.headerMeta,
                         {color: theme.colors.textSecondary},
                       ]}>
-                      Page {currentPage} · Juz {getJuzForPage(currentPage)} ·{' '}
-                      {getRewayahShortLabel(rewayah)}
+                      {t('mushaf.headerMeta', {
+                        page: currentPage,
+                        juz: getJuzForPage(currentPage),
+                        rewayah: getRewayahShortLabel(rewayah),
+                      })}
                     </Text>
                   </View>
                 </Pressable>
 
                 {/* Right: settings */}
                 <View style={[styles.headerSide, {alignItems: 'flex-end'}]}>
-                  <Pressable
-                    style={styles.headerIcon}
-                    onPress={() =>
-                      SheetManager.show('mushaf-layout', {
-                        payload: {context: 'mushaf'},
-                      })
-                    }
-                    accessibilityRole="button"
-                    accessibilityLabel="Mushaf settings">
-                    <Ionicons
-                      name="options-outline"
-                      size={moderateScale(22)}
-                      color={theme.colors.text}
-                    />
-                  </Pressable>
+                  {/* @ai-start */}
+                  <ReadingSettingsPopover
+                    context="mushaf"
+                    onFallbackPress={openReadingSettingsSheet}>
+                    {onPress => (
+                      <Pressable
+                        style={styles.headerIcon}
+                        onPress={onPress}
+                        accessibilityRole="button"
+                        accessibilityLabel={t('mushaf.settings')}>
+                        <Ionicons
+                          name="options-outline"
+                          size={moderateScale(22)}
+                          color={theme.colors.text}
+                        />
+                      </Pressable>
+                    )}
+                  </ReadingSettingsPopover>
+                  {/* @ai-end */}
                 </View>
               </View>
               {/* @ai — Hafs is standing in for a rewayah that failed to load */}
@@ -1407,7 +1553,29 @@ export default function MushafViewer({
       {/* ================================================================ */}
       {/* Search mode overlay                                               */}
       {/* ================================================================ */}
-      {isSearchMode && (
+      {/* @ai-start */}
+      {/* iPad: a centered card over the dimmed page, not a full screen */}
+      {isSearchMode && isTablet && (
+        <View style={styles.searchCardLayer}>
+          <TabletDialog
+            onClose={() => setIsSearchMode(false)}
+            height={SHEET_MAX_HEIGHT}>
+            <MushafSearchView
+              onNavigateToPage={navigateToPage}
+              onResumeChain={resumeChain}
+              onNavigateToSurah={navigateToSurah}
+              onNavigateToVerse={navigateToVerse}
+              onClose={() => setIsSearchMode(false)}
+              surahStartPages={surahStartPages}
+              pageToSurah={pageToSurah}
+              autoFocusSearch={autoFocusSearch}
+              inCard={true}
+            />
+          </TabletDialog>
+        </View>
+      )}
+      {/* @ai-end */}
+      {isSearchMode && !isTablet /* @ai */ && (
         <MushafSearchView
           onNavigateToPage={navigateToPage}
           onResumeChain={resumeChain}
@@ -1422,11 +1590,18 @@ export default function MushafViewer({
     </View>
   );
 }
+// @ai-end
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  // @ai-start
+  searchCardLayer: {
+    ...StyleSheet.absoluteFill,
+    zIndex: 20,
+  },
+  // @ai-end
   page: {
     // width and height are provided inline per-page so pages stay in sync
     // with live window dimensions (rotation / iPad split-view aware).

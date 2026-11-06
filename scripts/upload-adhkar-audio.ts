@@ -5,8 +5,8 @@
  * web and other clients can stream the same files the mobile app bundles locally.
  *
  * CDN URLs:
- *   https://cdn.thebayaan.com/adkhar/adhkar_1.mp3
- *   https://cdn.thebayaan.com/adkhar/adhkar_2.mp3
+ *   https://cdn.thebayaan.com/adhkar/adhkar_1.mp3
+ *   https://cdn.thebayaan.com/adhkar/adhkar_2.mp3
  *
  * Usage:
  *   npx tsx scripts/upload-adhkar-audio.ts [--dry-run] [--verify-only]
@@ -77,7 +77,7 @@ const VERIFY_ONLY = process.argv.includes('--verify-only');
 const R2_BUCKET = 'bayaan-audio';
 const CDN_BASE = 'https://cdn.thebayaan.com';
 // Isolated prefix — does not touch existing assets/audio/adhkar/ or quran/ paths
-const R2_KEY_PREFIX = 'adkhar';
+const R2_KEY_PREFIX = 'adhkar';
 const AUDIO_DIR = path.join(ROOT, 'assets', 'audio', 'adhkar');
 const CACHE_CONTROL = 'public, max-age=31536000, immutable';
 

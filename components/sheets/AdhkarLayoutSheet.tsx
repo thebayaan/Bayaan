@@ -1,20 +1,11 @@
 import React, {useMemo} from 'react';
-import {
-  View,
-  Text,
-  Dimensions,
-  Switch,
-  Pressable,
-  StyleSheet,
-} from 'react-native';
-import {
-  ScaledSheet,
-  moderateScale,
-  verticalScale,
-} from 'react-native-size-matters';
+import {View, Text, Dimensions, Pressable, StyleSheet} from 'react-native';
+import {NativeSwitch} from '@/components/native/NativeSwitch'; // @ai
+import {ScaledSheet, moderateScale, verticalScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import ActionSheet, {SheetProps, ScrollView} from 'react-native-actions-sheet';
+import {SheetProps, ScrollView} from 'react-native-actions-sheet';
+import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import Color from 'color';
 import {Feather} from '@expo/vector-icons';
 import {
@@ -24,6 +15,11 @@ import {
   DISPLAY_MIN,
   DISPLAY_MAX,
 } from '@/store/adhkarSettingsStore';
+// @ai-start
+import {isRTL, latinLetterSpacing} from '@/utils/rtl';
+import {useTranslation} from 'react-i18next';
+import {localizeDigits} from '@/i18n/format';
+// @ai-end
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 
@@ -39,6 +35,7 @@ interface FontSizeControlProps {
   isArabic?: boolean;
 }
 
+// @ai-start
 const FontSizeControl: React.FC<FontSizeControlProps> = ({
   label,
   currentActualSize,
@@ -88,7 +85,9 @@ const FontSizeControl: React.FC<FontSizeControlProps> = ({
               }
             />
           </Pressable>
-          <Text style={styles.fontSizeValue}>{currentDisplayValue}</Text>
+          <Text style={styles.fontSizeValue}>
+            {localizeDigits(currentDisplayValue)}
+          </Text>
           <Pressable
             onPress={handleIncrement}
             hitSlop={10}
@@ -122,10 +121,13 @@ const FontSizeControl: React.FC<FontSizeControlProps> = ({
     </View>
   );
 };
+// @ai-end
 
+// @ai-start
 export const AdhkarLayoutSheet = (props: SheetProps<'adhkar-layout'>) => {
   const {theme} = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const {t} = useTranslation(['sheets', 'common']);
 
   const {
     showTranslation,
@@ -140,11 +142,6 @@ export const AdhkarLayoutSheet = (props: SheetProps<'adhkar-layout'>) => {
     setTransliterationFontSize,
   } = useAdhkarSettingsStore();
 
-  const trackColor = {
-    false: Color(theme.colors.text).alpha(0.1).toString(),
-    true: Color(theme.colors.text).alpha(0.65).toString(),
-  };
-
   return (
     <ActionSheet
       id={props.sheetId}
@@ -156,13 +153,15 @@ export const AdhkarLayoutSheet = (props: SheetProps<'adhkar-layout'>) => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}>
         <View style={styles.container}>
-          <Text style={styles.title}>Adhkar Layout</Text>
+          <Text style={styles.title}>{t('adhkarLayout.title')}</Text>
 
           {/* Arabic Text Section */}
-          <Text style={styles.sectionHeader}>Arabic Text</Text>
+          <Text style={styles.sectionHeader}>
+            {t('adhkarLayout.arabicText')}
+          </Text>
           <View style={styles.card}>
             <FontSizeControl
-              label="Font Size"
+              label={t('adhkarLayout.fontSize')}
               currentActualSize={arabicFontSize}
               onChange={setArabicFontSize}
               theme={theme}
@@ -173,69 +172,75 @@ export const AdhkarLayoutSheet = (props: SheetProps<'adhkar-layout'>) => {
             />
           </View>
 
-          {/* Translation Section */}
-          <Text style={styles.sectionHeader}>Translation</Text>
-          <View style={styles.card}>
-            <View style={styles.optionRow}>
-              <Text style={styles.optionLabel}>Show Translation</Text>
-              <Switch
-                trackColor={trackColor}
-                thumbColor="#FFFFFF"
-                ios_backgroundColor={trackColor.false}
-                onValueChange={toggleTranslation}
-                value={showTranslation}
-                style={styles.switchStyle}
-              />
-            </View>
-            {showTranslation ? (
-              <>
-                <View style={styles.divider} />
-                <FontSizeControl
-                  label="Font Size"
-                  currentActualSize={translationFontSize}
-                  onChange={setTranslationFontSize}
-                  theme={theme}
-                  styles={styles}
-                  sampleText="In the name of Allah, the Most Gracious, the Most Merciful"
+          <>
+            {/* Translation Section */}
+            <Text style={styles.sectionHeader}>
+              {t('common:terms.translation')}
+            </Text>
+            <View style={styles.card}>
+              <View style={styles.optionRow}>
+                <Text style={styles.optionLabel}>
+                  {t('adhkarLayout.showTranslation')}
+                </Text>
+                <NativeSwitch
+                  onValueChange={toggleTranslation}
+                  value={showTranslation}
+                  style={styles.switchStyle}
                 />
-              </>
-            ) : null}
-          </View>
+              </View>
+              {showTranslation ? (
+                <>
+                  <View style={styles.divider} />
+                  <FontSizeControl
+                    label={t('adhkarLayout.fontSize')}
+                    currentActualSize={translationFontSize}
+                    onChange={setTranslationFontSize}
+                    theme={theme}
+                    styles={styles}
+                    sampleText="In the name of Allah, the Most Gracious, the Most Merciful"
+                  />
+                </>
+              ) : null}
+            </View>
 
-          {/* Transliteration Section */}
-          <Text style={styles.sectionHeader}>Transliteration</Text>
-          <View style={styles.card}>
-            <View style={styles.optionRow}>
-              <Text style={styles.optionLabel}>Show Transliteration</Text>
-              <Switch
-                trackColor={trackColor}
-                thumbColor="#FFFFFF"
-                ios_backgroundColor={trackColor.false}
-                onValueChange={toggleTransliteration}
-                value={showTransliteration}
-                style={styles.switchStyle}
-              />
-            </View>
-            {showTransliteration ? (
-              <>
-                <View style={styles.divider} />
-                <FontSizeControl
-                  label="Font Size"
-                  currentActualSize={transliterationFontSize}
-                  onChange={setTransliterationFontSize}
-                  theme={theme}
-                  styles={styles}
-                  sampleText="Bismillahir Rahmanir Raheem"
+            {/* Transliteration Section */}
+            <Text style={styles.sectionHeader}>
+              {t('copy.transliteration')}
+            </Text>
+            <View style={styles.card}>
+              <View style={styles.optionRow}>
+                <Text style={styles.optionLabel}>
+                  {t('adhkarLayout.showTransliteration')}
+                </Text>
+                <NativeSwitch
+                  onValueChange={toggleTransliteration}
+                  value={showTransliteration}
+                  style={styles.switchStyle}
                 />
-              </>
-            ) : null}
-          </View>
+              </View>
+              {showTransliteration ? (
+                <>
+                  <View style={styles.divider} />
+                  <FontSizeControl
+                    label={t('adhkarLayout.fontSize')}
+                    currentActualSize={transliterationFontSize}
+                    onChange={setTransliterationFontSize}
+                    theme={theme}
+                    styles={styles}
+                    sampleText="Bismillahir Rahmanir Raheem"
+                  />
+                </>
+              ) : null}
+            </View>
+          </>
         </View>
       </ScrollView>
     </ActionSheet>
   );
 };
+// @ai-end
 
+// @ai-start
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({
     sheetContainer: {
@@ -276,7 +281,7 @@ const createStyles = (theme: Theme) =>
       color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
       marginBottom: verticalScale(8),
       marginLeft: moderateScale(4),
-      letterSpacing: 1.2,
+      letterSpacing: latinLetterSpacing(1.2),
       textTransform: 'uppercase',
     },
     card: {
@@ -335,10 +340,11 @@ const createStyles = (theme: Theme) =>
     },
     sampleTextBase: {},
     arabicSampleTextContainer: {
-      alignItems: 'flex-end',
+      alignItems: isRTL ? 'flex-start' : 'flex-end',
     },
     arabicSampleText: {
-      textAlign: 'right',
+      textAlign: isRTL ? 'left' : 'right',
       writingDirection: 'rtl',
     },
   });
+// @ai-end
