@@ -27,18 +27,18 @@ import Color from 'color';
 import {useTheme} from '@/hooks/useTheme';
 import {
   formatPlaybackInfo, // @ai
-  getPlayerBarNotice, // @ai
+  isRetryablePlaybackError, // @ai
   useMushafPlayerStore,
 } from '@/store/mushafPlayerStore';
 import {mushafAudioService} from '@/services/audio/MushafAudioService';
 import {SURAHS} from '@/data/surahData';
 import {PlayIcon, PauseIcon} from '@/components/Icons';
 // @ai-start
-import {playbackNoticeText, playbackErrorText} from '@/i18n/playback';
+import {playbackErrorText} from '@/i18n/playback';
 import {useTranslation} from 'react-i18next';
 import {getSurahDisplayName, localizeDigits} from '@/i18n/format';
 import {forceLTR} from '@/utils/rtl';
-import {showToast} from '@/utils/toastUtils'; // @ai
+import {usePlaybackRetryOnReconnect} from '@/hooks/usePlaybackRetryOnReconnect'; // @ai
 
 // @ai-start
 const surahNameOf = (surah: number): string =>
@@ -65,6 +65,7 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
   const numberingMode = useMushafPlayerStore(s => s.numberingMode); // @ai
   const verseTrackingUnavailable = numberingMode === 'disabled'; // @ai
   const timestampError = useMushafPlayerStore(s => s.timestampError);
+  const timestampErrorSurah = useMushafPlayerStore(s => s.timestampErrorSurah); // @ai
   const isIdle = playbackState === 'idle';
   const isLoading = playbackState === 'loading';
   const isPlaying = playbackState === 'playing';
@@ -74,24 +75,7 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
       ? getSurahDisplayName(SURAHS[currentSurah - 1])
       : '';
 
-  // @ai-start
-  // Refusals and "Verse tracking unavailable" are shown inline below; a
-  // requested start verse that was skipped (the surah plays from its
-  // beginning without verse tracking) needs a notice.
-  useEffect(
-    () =>
-      useMushafPlayerStore.subscribe((state, prev) => {
-        const notice = getPlayerBarNotice(
-          prev,
-          state,
-          surahNameOf,
-          playbackNoticeText(),
-        );
-        if (notice) showToast(notice.title, notice.message, notice.preset);
-      }),
-    [],
-  );
-  // @ai-end
+  usePlaybackRetryOnReconnect(); // @ai
 
   const handlePlayPress = useCallback(() => {
     const store = useMushafPlayerStore.getState();
@@ -138,6 +122,12 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
     });
   }, [currentPage]);
 
+  // @ai-start
+  const handleRetry = useCallback(() => {
+    useMushafPlayerStore.getState().retryPlayback();
+  }, []);
+  // @ai-end
+
   const handleChangeReciter = useCallback(() => {
     useMushafPlayerStore.setState({timestampError: null, currentPage});
     showSheet('mushaf-player-options', {
@@ -145,70 +135,94 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
     });
   }, [currentPage]);
 
-  // ── Error state: show message + change reciter button ────
-  if (isIdle && timestampError) {
-    return (
-      <View style={styles.errorContainer}>
-        <Text
-          style={[
-            styles.errorText,
-            {color: Color(theme.colors.text).alpha(0.7).toString()},
-          ]}
-          numberOfLines={1}>
-          {playbackErrorText(timestampError)}
-        </Text>
-        <Pressable
-          style={[
-            styles.changeReciterButton,
-            {backgroundColor: Color(theme.colors.text).alpha(0.08).toString()},
-          ]}
-          onPress={handleChangeReciter}
-          accessibilityRole="button"
-          accessibilityLabel={t('playerBar.changeReciter')}>
-          <Text style={[styles.changeReciterText, {color: theme.colors.text}]}>
-            {t('playerBar.changeReciterButton')}
-          </Text>
-        </Pressable>
-      </View>
-    );
-  }
-
   // ── Idle state: [Search] — spacer — [Play] — spacer — [Options] ────
   if (isIdle) {
     return (
-      <View style={styles.idleRow}>
-        <Pressable
-          style={styles.edgeButton}
-          onPress={onSearch}
-          accessibilityRole="button"
-          accessibilityLabel={t('common:actions.search')}>
-          <SearchIcon size={moderateScale(20)} color={theme.colors.text} />
-        </Pressable>
-
-        <View style={styles.controlsCenter}>
+      <View>
+        {/* @ai: a refusal sits above the controls, it never replaces them */}
+        {timestampError ? (
+          <View style={styles.errorContainer}>
+            <Text
+              style={[
+                styles.errorText,
+                {color: Color(theme.colors.text).alpha(0.7).toString()},
+              ]}
+              accessibilityLiveRegion="polite"
+              numberOfLines={2}>
+              {playbackErrorText(
+                timestampError,
+                timestampErrorSurah
+                  ? getSurahDisplayName(SURAHS[timestampErrorSurah - 1])
+                  : '',
+              )}
+            </Text>
+            <Pressable
+              style={[
+                styles.changeReciterButton,
+                {
+                  backgroundColor: Color(theme.colors.text)
+                    .alpha(0.08)
+                    .toString(),
+                },
+              ]}
+              onPress={
+                isRetryablePlaybackError(timestampError)
+                  ? handleRetry
+                  : handleChangeReciter
+              }
+              accessibilityRole="button"
+              accessibilityLabel={
+                isRetryablePlaybackError(timestampError)
+                  ? t('playback.tryAgain')
+                  : t('playerBar.changeReciter')
+              }>
+              <Text
+                style={[styles.changeReciterText, {color: theme.colors.text}]}>
+                {isRetryablePlaybackError(timestampError)
+                  ? t('playback.tryAgain')
+                  : t('playerBar.changeReciterButton')}
+              </Text>
+            </Pressable>
+          </View>
+        ) : null}
+        <View style={styles.idleRow}>
           <Pressable
-            style={[
-              styles.playButtonRect,
-              {backgroundColor: Color(theme.colors.text).alpha(0.1).toString()},
-            ]}
-            onPress={handlePlayPress}
+            style={styles.edgeButton}
+            onPress={onSearch}
             accessibilityRole="button"
-            accessibilityLabel={t('common:actions.play')}>
-            <PlayIcon color={theme.colors.text} size={moderateScale(16)} />
+            accessibilityLabel={t('common:actions.search')}>
+            <SearchIcon size={moderateScale(20)} color={theme.colors.text} />
+          </Pressable>
+
+          <View style={styles.controlsCenter}>
+            <Pressable
+              style={[
+                styles.playButtonRect,
+                {
+                  backgroundColor: Color(theme.colors.text)
+                    .alpha(0.1)
+                    .toString(),
+                },
+              ]}
+              onPress={handlePlayPress}
+              accessibilityRole="button"
+              accessibilityLabel={t('common:actions.play')}>
+              <PlayIcon color={theme.colors.text} size={moderateScale(16)} />
+            </Pressable>
+          </View>
+
+          <Pressable
+            style={styles.edgeButton}
+            onPress={handleOptions}
+            accessibilityRole="button"
+            accessibilityLabel={t('playerBar.playbackOptions')}>
+            <Ionicons
+              name="ellipsis-horizontal"
+              size={moderateScale(20)}
+              color={theme.colors.text}
+            />
           </Pressable>
         </View>
-
-        <Pressable
-          style={styles.edgeButton}
-          onPress={handleOptions}
-          accessibilityRole="button"
-          accessibilityLabel={t('playerBar.playbackOptions')}>
-          <Ionicons
-            name="ellipsis-horizontal"
-            size={moderateScale(20)}
-            color={theme.colors.text}
-          />
-        </Pressable>
       </View>
     );
   }
@@ -323,7 +337,7 @@ const styles = StyleSheet.create({
   errorContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: moderateScale(52),
+    minHeight: moderateScale(52),
     paddingHorizontal: moderateScale(12),
     gap: moderateScale(10),
   },

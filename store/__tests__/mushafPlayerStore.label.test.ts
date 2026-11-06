@@ -69,6 +69,10 @@ jest.mock('@/data/reciterData', () => ({
 
 jest.mock('@/services/timestamps/TimestampService', () => ({
   timestampService: {
+    async loadForSurah(this: LoadViaGet, set: string, surah: number) {
+      const timestamps = await this.getTimestampsForSurah(set, surah);
+      return timestamps ? {status: 'ok', timestamps} : {status: 'not-covered'};
+    },
     getTimestampsForSurah: jest.fn(async (set: string, surah: number) =>
       jest
         .requireActual('@/services/timestamps/__fixtures__/timingFixtures')
@@ -196,12 +200,14 @@ describe('a rewayah switch mid-playback re-labels the verse being recited', () =
     expect(formatPlaybackInfo('Al-Fatihah', st())).toBe('Al-Fatihah');
   });
 
-  it('nothing to re-label while idle or without verse tracking', async () => {
+  it('nothing to re-label while idle', async () => {
     showMushaf('warsh');
     expect(st().currentVerseLabel).toBeNull();
-    await play('doori-269', '67:5');
-    expect(st().numberingMode).toBe('disabled');
     showMushaf('hafs');
     expect(st().currentVerseLabel).toBeNull();
   });
 });
+
+interface LoadViaGet {
+  getTimestampsForSurah: (set: string, surah: number) => Promise<unknown>;
+}

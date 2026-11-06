@@ -263,6 +263,10 @@ jest.mock('@/data/reciterData', () => {
 });
 jest.mock('@/services/timestamps/TimestampService', () => ({
   timestampService: {
+    async loadForSurah(this: LoadViaGet, set: string, surah: number) {
+      const timestamps = await this.getTimestampsForSurah(set, surah);
+      return timestamps ? {status: 'ok', timestamps} : {status: 'not-covered'};
+    },
     getTimestampsForSurah: async (set: string, surah: number) => {
       if (set === 'own-doori') {
         const {rewayahVerseMapService} = jest.requireActual(
@@ -382,3 +386,7 @@ describe.each(CASES)(
     });
   },
 );
+
+interface LoadViaGet {
+  getTimestampsForSurah: (set: string, surah: number) => Promise<unknown>;
+}

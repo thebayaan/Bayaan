@@ -51,6 +51,7 @@ import {resolveMushafAudioUrl} from '@/utils/mushafAudioUtils';
 import {
   parseVerseKeyListId, // @ai
   VERSE_TRACKING_UNAVAILABLE_LABEL, // @ai
+  SET_NUMBERING_UNKNOWN_REASON, // @ai
   verseKeyListId, // @ai
   type TimingNumbering,
   type TimingNumberingMode,
@@ -116,6 +117,38 @@ export const VERSE_TIMING_UNAVAILABLE_ERROR =
  */
 export const RANGE_UNPLAYABLE_ERROR =
   'This selection has no verses to play for this reciter. Try a different reciter or range.';
+
+/** Verse timings that should exist could not be loaded: worth trying again. */
+export const TIMINGS_LOAD_FAILED_ERROR =
+  "Verse timings couldn't load. Check your connection.";
+
+/** The surah's audio could not be loaded: worth trying again. */
+export const AUDIO_LOAD_FAILED_ERROR =
+  "The recitation couldn't load. Check your connection.";
+
+/** The saved reciter is no longer in the catalog. */
+export const RECITER_REMOVED_ERROR =
+  'This reciter is no longer available. Choose another reciter.';
+
+/** Anything else that stopped a start. */
+export const PLAYBACK_START_FAILED_ERROR =
+  "Playback couldn't start. Try again.";
+
+/** Refusals that trying again can fix, as opposed to choosing another reciter. */
+export function isRetryablePlaybackError(error: string | null): boolean {
+  return (
+    error === TIMINGS_LOAD_FAILED_ERROR ||
+    error === AUDIO_LOAD_FAILED_ERROR ||
+    error === PLAYBACK_START_FAILED_ERROR
+  );
+}
+
+/** Refusals that a returning connection can fix by itself. */
+export function isConnectionPlaybackError(error: string | null): boolean {
+  return (
+    error === TIMINGS_LOAD_FAILED_ERROR || error === AUDIO_LOAD_FAILED_ERROR
+  );
+}
 
 /** Shown in place of a verse number while the surah has no verse tracking. */
 export {VERSE_TRACKING_UNAVAILABLE_LABEL};
@@ -195,14 +228,12 @@ export interface MushafPlayerStoreState {
   availableReciters: AvailableReciter[];
   pendingStartVerseKey: string | null;
   // @ai-start
-  /**
-   * The verse playback was asked to start at when the surah has no verse
-   * tracking: it plays from its beginning instead, and the notice says so.
-   * Null otherwise.
-   */
-  ignoredStartVerseKey: string | null;
   // @ai-end
   timestampError: string | null;
+  /** The surah `timestampError` is about, when it is about one. @ai */
+  timestampErrorSurah: number | null;
+  /** Where to pick up when a refused start is tried again. @ai */
+  retryStart: {page: number; startAt: AudioUnitTarget | string} | null;
   _versePlayCount: number;
   _rangePlayCount: number;
   /** Current timing entry ayah (timing-set numbering), 0 when none. */
@@ -259,9 +290,17 @@ export interface MushafPlayerStoreState {
     page: number,
     startAt?: string | AudioUnitInput,
   ) => Promise<void>;
+  /** Try a refused start again, if one is still waiting. @ai */
+  retryPlayback: () => void;
   stop: () => void;
   computeAvailableReciters: () => Promise<void>;
 }
+
+// @ai-start
+type PreparedSurah =
+  | {status: 'ready'; timestamps: AyahTimestamp[]; numbering: TimingNumbering}
+  | {status: 'refused'; error: string};
+// @ai-end
 
 type StoreSet = (
   partial:
@@ -666,10 +705,12 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
     surah: number,
     timestamps: AyahTimestamp[],
     numbering: TimingNumbering,
-    startHafsAyah: number | null = null, // @ai
-  ) => {
+  ): boolean => {
     const audioUrl = resolveMushafAudioUrl(rewayatId, surah);
-    mushafAudioService.loadSurah(surah, audioUrl, timestamps);
+    // @ai: the player could not be created, so there is nothing to play.
+    if (mushafAudioService.loadSurah(surah, audioUrl, timestamps) === false) {
+      return false;
+    }
     // @ai-start
     // Its verse boundaries and end are this playback's from now on (both
     // callers load only for the current session).
@@ -684,39 +725,56 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
       timestamps,
       _numbering: numbering,
       numberingMode: numbering.mode,
-      // @ai-start
-      // Without verse tracking the surah plays from its beginning: a later
-      // start verse that was asked for is skipped (set with numberingMode so
-      // the notice for this surah can say so).
-      ignoredStartVerseKey:
-        numbering.mode === 'disabled' &&
-        startHafsAyah !== null &&
-        startHafsAyah > 1
-          ? `${surah}:${startHafsAyah}`
-          : null,
-      // @ai-end
     });
+    return true; // @ai
   };
 
+  // @ai-start
+  /**
+   * The surah's timings and numbering, or why the mushaf can't follow it: it
+   * only plays what it can highlight.
+   */
   const prepareSurah = async (
     rewayatId: string,
     surah: number,
-  ): Promise<{
-    timestamps: AyahTimestamp[];
-    numbering: TimingNumbering;
-  } | null> => {
-    const timestamps = await timestampService.getTimestampsForSurah(
-      rewayatId,
-      surah,
-    );
-    if (!timestamps) return null;
+  ): Promise<PreparedSurah> => {
+    const loaded = await timestampService.loadForSurah(rewayatId, surah);
+    if (loaded.status === 'not-covered') {
+      return {status: 'refused', error: TIMESTAMPS_UNAVAILABLE_ERROR};
+    }
+    if (loaded.status === 'failed') {
+      console.warn(
+        `[MushafPlayerStore] Timings failed for rewayat=${rewayatId} surah=${surah}: ${loaded.reason}`,
+      );
+      return {status: 'refused', error: TIMINGS_LOAD_FAILED_ERROR};
+    }
     const numbering = await timingNumberingService.resolve(
       rewayatId,
       surah,
-      timestamps,
+      loaded.timestamps,
     );
-    return {timestamps, numbering};
+    if (numbering.mode === 'disabled') {
+      console.warn(
+        `[MushafPlayerStore] Verse numbering unavailable for rewayat=${rewayatId} surah=${surah}: ${numbering.reason}`,
+      );
+      return {
+        status: 'refused',
+        error:
+          numbering.reason === SET_NUMBERING_UNKNOWN_REASON
+            ? TIMINGS_LOAD_FAILED_ERROR
+            : VERSE_TIMING_UNAVAILABLE_ERROR,
+      };
+    }
+    return {status: 'ready', timestamps: loaded.timestamps, numbering};
   };
+
+  /** What a thrown start means: the catalog lost the reciter, or anything else. */
+  const startFailure = (rewayatId: string): string =>
+    RECITERS.length > 0 &&
+    !RECITERS.some(r => r.rewayat.some(rw => rw.id === rewayatId))
+      ? RECITER_REMOVED_ERROR
+      : PLAYBACK_START_FAILED_ERROR;
+  // @ai-end
 
   /**
    * Load `surah` and play it from Hafs verse `hafsAyah` (null: from its first
@@ -737,30 +795,38 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
       mushafAudioService.pause();
       const prepared = await prepareSurah(rewayatId, surah);
       if (session !== playbackSession) return;
-      if (!prepared) {
+      // @ai-start
+      const stopWith = (error: string) => {
         finishPlayback();
+        set({
+          timestampError: error,
+          timestampErrorSurah: surah,
+          retryStart: {
+            page: get().currentPage ?? 1,
+            startAt: unit ?? `${surah}:${hafsAyah ?? 1}`,
+          },
+        });
+      };
+      if (prepared.status === 'refused') {
+        stopWith(prepared.error);
         return;
       }
       const {timestamps, numbering} = prepared;
-      loadSurahAudio(
-        rewayatId,
-        surah,
-        timestamps,
-        numbering,
-        unit && unit.ayah === 1 ? 1 : hafsAyah,
-      ); // @ai
-      if (numbering.mode !== 'disabled') {
-        let start: number | null = 1; // first timing entry
-        if (hafsAyah !== null) {
-          const startEntry = startEntryAt(numbering, {
-            surah,
-            ayah: hafsAyah,
-            unit,
-          }); // @ai
-          start = startEntry ? startEntry.ayahNumber : null;
-        }
-        if (start !== null) jumpToEntry(surah, start);
+      if (!loadSurahAudio(rewayatId, surah, timestamps, numbering)) {
+        stopWith(AUDIO_LOAD_FAILED_ERROR);
+        return;
       }
+      // @ai-end
+      let start: number | null = 1; // first timing entry
+      if (hafsAyah !== null) {
+        const startEntry = startEntryAt(numbering, {
+          surah,
+          ayah: hafsAyah,
+          unit,
+        }); // @ai
+        start = startEntry ? startEntry.ayahNumber : null;
+      }
+      if (start !== null) jumpToEntry(surah, start);
       // @ai-start
       if (get().playbackState === 'idle') {
         // The range ended at its first entry: nothing to play.
@@ -772,7 +838,18 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
       set({playbackState: 'playing'});
     } catch (error) {
       console.error('[MushafPlayerStore] Failed to load surah:', error);
-      if (session === playbackSession) finishPlayback();
+      if (session === playbackSession) {
+        finishPlayback();
+        // @ai: never a silent stop
+        set({
+          timestampError: startFailure(rewayatId),
+          timestampErrorSurah: surah,
+          retryStart: {
+            page: get().currentPage ?? 1,
+            startAt: unit ?? `${surah}:${hafsAyah ?? 1}`,
+          },
+        });
+      }
     }
   };
 
@@ -954,6 +1031,7 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
     jumpToEntry,
     loadSurahAudio,
     prepareSurah,
+    startFailure, // @ai
     registerCallbacks,
   };
 }
@@ -984,8 +1062,9 @@ export const useMushafPlayerStore = create<MushafPlayerStoreState>()(
         pendingStartUnit: null, // @ai
         availableReciters: [],
         pendingStartVerseKey: null,
-        ignoredStartVerseKey: null, // @ai
         timestampError: null,
+        timestampErrorSurah: null, // @ai
+        retryStart: null, // @ai
         _versePlayCount: 1,
         _rangePlayCount: 1,
         _entryAyah: 0,
@@ -1081,7 +1160,6 @@ export const useMushafPlayerStore = create<MushafPlayerStoreState>()(
             playbackState: 'loading',
             currentPage: page,
             pendingStartVerseKey: null,
-            ignoredStartVerseKey: null, // @ai
             timestampError: null,
             _versePlayCount: 1,
             _rangePlayCount: 1,
@@ -1117,54 +1195,48 @@ export const useMushafPlayerStore = create<MushafPlayerStoreState>()(
             } = target.point;
             // @ai-end
 
-            const prepared = await engine.prepareSurah(rewayatId, surahNumber);
-            if (session !== playbackSession) return;
-            if (!prepared) {
-              console.warn(
-                `[MushafPlayerStore] No timestamps for rewayat=${rewayatId} surah=${surahNumber}`,
-              );
+            // @ai-start
+            // Trying again later starts here, whatever chose this start.
+            set({
+              retryStart: {
+                page,
+                startAt: startUnit ?? `${surahNumber}:${ayahNumber}`,
+              },
+            });
+            const refuse = (error: string) =>
               set({
                 playbackState: 'idle',
-                timestampError: TIMESTAMPS_UNAVAILABLE_ERROR,
+                timestampError: error,
+                timestampErrorSurah: surahNumber,
               });
+            const prepared = await engine.prepareSurah(rewayatId, surahNumber);
+            if (session !== playbackSession) return;
+            if (prepared.status === 'refused') {
+              refuse(prepared.error);
               return;
             }
             const {timestamps, numbering} = prepared;
 
-            if (numbering.mode === 'disabled') {
-              console.warn(
-                `[MushafPlayerStore] Verse numbering unavailable for rewayat=${rewayatId} surah=${surahNumber}: ${numbering.reason}`,
-              );
-              const {verseRepeatCount, rangeRepeatCount} = get();
-              if (verseRepeatCount !== 1 || rangeRepeatCount !== 1) {
-                // A repeat cannot be honoured without verse boundaries.
-                set({
-                  playbackState: 'idle',
-                  timestampError: VERSE_TIMING_UNAVAILABLE_ERROR,
-                });
-                return;
-              }
-              // Plain playback: the surah plays from its beginning without
-              // follow-along (no verse is highlighted rather than a wrong one).
-            }
-
             engine.registerCallbacks();
-            engine.loadSurahAudio(
-              rewayatId,
-              surahNumber,
-              timestamps,
-              numbering,
-              startUnit && startUnit.ayah === 1 ? 1 : ayahNumber, // @ai
-            );
-
-            if (numbering.mode !== 'disabled') {
-              const start = startEntryAt(numbering, {
-                surah: surahNumber,
-                ayah: ayahNumber,
-                unit: startUnit,
-              }); // @ai
-              if (start) engine.jumpToEntry(surahNumber, start.ayahNumber);
+            if (
+              !engine.loadSurahAudio(
+                rewayatId,
+                surahNumber,
+                timestamps,
+                numbering,
+              )
+            ) {
+              refuse(AUDIO_LOAD_FAILED_ERROR);
+              return;
             }
+            // @ai-end
+
+            const start = startEntryAt(numbering, {
+              surah: surahNumber,
+              ayah: ayahNumber,
+              unit: startUnit,
+            }); // @ai
+            if (start) engine.jumpToEntry(surahNumber, start.ayahNumber);
             // @ai-start
             if (get().playbackState === 'idle') {
               // The range ended at its first entry (it resolved to no verse
@@ -1181,7 +1253,14 @@ export const useMushafPlayerStore = create<MushafPlayerStoreState>()(
               '[MushafPlayerStore] Failed to start playback:',
               error,
             );
-            if (session === playbackSession) set({playbackState: 'idle'});
+            // @ai: never a silent stop
+            if (session === playbackSession) {
+              set({
+                playbackState: 'idle',
+                timestampError: engine.startFailure(rewayatId),
+                timestampErrorSurah: null,
+              });
+            }
           }
         },
 
@@ -1200,12 +1279,19 @@ export const useMushafPlayerStore = create<MushafPlayerStoreState>()(
             rangeUnits: null, // @ai
             rangeStart: null,
             rangeEnd: null,
-            ignoredStartVerseKey: null, // @ai
             timestampError: null,
             _versePlayCount: 1,
             _rangePlayCount: 1,
           });
         },
+
+        // @ai-start
+        retryPlayback: () => {
+          const {retryStart, timestampError, startPlayback} = get();
+          if (!retryStart || !timestampError) return;
+          startPlayback(retryStart.page, retryStart.startAt);
+        },
+        // @ai-end
 
         computeAvailableReciters: async () => {
           try {
@@ -1424,10 +1510,8 @@ export function formatPlaybackInfo(
 }
 
 export interface PlaybackNoticeText {
-  trackingUnavailable: string;
   playbackUnavailable: string;
-  untrackedSurah: (name: string, fromBeginning: boolean) => string;
-  error: (message: string) => string;
+  error: (message: string, surahName: string) => string;
 }
 
 export interface PlaybackNotice {
@@ -1436,55 +1520,12 @@ export interface PlaybackNotice {
   preset: 'error' | 'none';
 }
 
-type NoticeState = Pick<
-  MushafPlayerStoreState,
-  'playbackState' | 'timestampError' | 'numberingMode' | 'currentSurah'
-> &
-  Partial<Pick<MushafPlayerStoreState, 'ignoredStartVerseKey'>>;
+type NoticeState = Pick<MushafPlayerStoreState, 'timestampError'> &
+  Partial<Pick<MushafPlayerStoreState, 'timestampErrorSurah'>>;
 
 /**
- * Notice for entering a surah that plays without verse tracking, or null.
- * When playback was asked to start at a later verse it says the surah plays
- * from its beginning instead, also when that surah was already playing
- * untracked (a new start request in it skips a verse again).
- */
-function untrackedSurahNotice(
-  prev: NoticeState,
-  next: NoticeState,
-  surahName: (surah: number) => string,
-  text?: PlaybackNoticeText,
-): PlaybackNotice | null {
-  const newlySkipped =
-    !!next.ignoredStartVerseKey &&
-    next.ignoredStartVerseKey !== prev.ignoredStartVerseKey;
-  if (
-    next.playbackState === 'idle' ||
-    next.numberingMode !== 'disabled' ||
-    (prev.numberingMode === 'disabled' &&
-      prev.currentSurah === next.currentSurah &&
-      !newlySkipped)
-  ) {
-    return null;
-  }
-  const name = surahName(next.currentSurah);
-  const subject = name ? `${name} plays` : 'This surah plays';
-  return {
-    title: text?.trackingUnavailable ?? VERSE_TRACKING_UNAVAILABLE_LABEL,
-    message: text
-      ? text.untrackedSurah(name, !!next.ignoredStartVerseKey)
-      : next.ignoredStartVerseKey
-        ? `${subject} from the beginning without verse tracking for this reciter.`
-        : `${subject} without verse highlighting for this reciter.`,
-    preset: 'none',
-  };
-}
-
-/**
- * Messages the player bar shows inline, as a one-off notice for surfaces
- * that have no room for them (the iOS 26 toolbar): a refused or impossible
- * playback request, and a surah that plays without verse tracking (from its
- * beginning, when a later start verse was asked for; the bar shows that part
- * as a notice too, see getPlayerBarNotice). Null when the transition from
+ * The refusal the player bar shows inline, as a one-off notice for surfaces
+ * that have no room for it (the iOS 26 toolbar). Null when the transition from
  * `prev` to `next` shows nothing new.
  */
 export function getPlaybackNotice(
@@ -1493,28 +1534,17 @@ export function getPlaybackNotice(
   surahName: (surah: number) => string,
   text?: PlaybackNoticeText,
 ): PlaybackNotice | null {
-  if (next.timestampError && next.timestampError !== prev.timestampError) {
-    return {
-      title: text?.playbackUnavailable ?? 'Playback unavailable',
-      message: text?.error(next.timestampError) ?? next.timestampError,
-      preset: 'error',
-    };
+  if (!next.timestampError || next.timestampError === prev.timestampError) {
+    return null;
   }
-  return untrackedSurahNotice(prev, next, surahName, text);
+  const name = next.timestampErrorSurah
+    ? surahName(next.timestampErrorSurah)
+    : '';
+  return {
+    title: text?.playbackUnavailable ?? 'Playback unavailable',
+    message: text?.error(next.timestampError, name) ?? next.timestampError,
+    preset: 'error',
+  };
 }
 
-/**
- * The notices the player bar shows as toasts: it shows refusals and
- * "Verse tracking unavailable" inline, but not that a requested start verse
- * was skipped because the surah plays from its beginning.
- */
-export function getPlayerBarNotice(
-  prev: NoticeState,
-  next: NoticeState,
-  surahName: (surah: number) => string,
-  text?: PlaybackNoticeText,
-): PlaybackNotice | null {
-  if (!next.ignoredStartVerseKey) return null;
-  return untrackedSurahNotice(prev, next, surahName, text);
-}
 // @ai-end

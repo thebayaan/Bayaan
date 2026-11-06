@@ -98,6 +98,10 @@ jest.mock('@/data/reciterData', () => ({
 
 jest.mock('@/services/timestamps/TimestampService', () => ({
   timestampService: {
+    async loadForSurah(this: LoadViaGet, set: string, surah: number) {
+      const timestamps = await this.getTimestampsForSurah(set, surah);
+      return timestamps ? {status: 'ok', timestamps} : {status: 'not-covered'};
+    },
     getTimestampsForSurah: jest.fn(async (set: string, surah: number) =>
       jest
         .requireActual('@/services/timestamps/__fixtures__/timingFixtures')
@@ -901,3 +905,7 @@ describe('where playback starts', () => {
     expect(st().playbackState).toBe('idle');
   });
 });
+
+interface LoadViaGet {
+  getTimestampsForSurah: (set: string, surah: number) => Promise<unknown>;
+}

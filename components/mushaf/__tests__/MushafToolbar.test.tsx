@@ -14,6 +14,7 @@ import React, {act} from 'react';
 import TestRenderer from 'react-test-renderer';
 
 const mockShowToast = jest.fn();
+const mockShowSheet = jest.fn();
 
 jest.mock('expo-router', () => {
   const ReactActual = jest.requireActual('react');
@@ -81,6 +82,10 @@ jest.mock('react-native-actions-sheet', () => ({
 jest.mock('@/utils/toastUtils', () => ({
   showToast: (...args: unknown[]) => mockShowToast(...args),
 }));
+jest.mock('@/components/sheets/sheetControl', () => ({
+  showSheet: (...args: unknown[]) => mockShowSheet(...args),
+  hideSheet: jest.fn(),
+}));
 
 // mushafPlayerStore's playback dependencies (not exercised here)
 jest.mock('expo-audio', () => ({createAudioPlayer: jest.fn()}));
@@ -133,6 +138,7 @@ function setPlayer(state: object) {
 
 beforeEach(() => {
   mockShowToast.mockClear();
+  mockShowSheet.mockClear();
   useMushafPlayerStore.setState({
     playbackState: 'idle',
     currentSurah: 0,
@@ -221,28 +227,11 @@ describe('verse label', () => {
 });
 
 describe('notices', () => {
-  it('a refused playback request is surfaced', () => {
+  it('a refused playback request opens the notice sheet, once', () => {
     setPlayer({timestampError: VERSE_TIMING_UNAVAILABLE_ERROR});
-    expect(mockShowToast).toHaveBeenCalledWith(
-      'Playback unavailable',
-      VERSE_TIMING_UNAVAILABLE_ERROR,
-      'error',
-    );
-  });
-
-  it('a surah without verse tracking is surfaced once', () => {
-    setPlayer({
-      playbackState: 'loading',
-      currentSurah: 67,
-      numberingMode: 'disabled',
-    });
-    setPlayer({playbackState: 'playing'});
-    expect(mockShowToast).toHaveBeenCalledTimes(1);
-    expect(mockShowToast).toHaveBeenCalledWith(
-      'Verse tracking unavailable',
-      'Al-Mulk plays without verse highlighting for this reciter.',
-      'none',
-    );
+    setPlayer({playbackState: 'idle'});
+    expect(mockShowSheet).toHaveBeenCalledTimes(1);
+    expect(mockShowSheet).toHaveBeenCalledWith('mushaf-playback-notice');
   });
 
   it('normal Hafs playback shows nothing', () => {
@@ -256,6 +245,6 @@ describe('notices', () => {
       currentVerseKey: '2:1',
       currentVerseLabel: '2:1',
     });
-    expect(mockShowToast).not.toHaveBeenCalled();
+    expect(mockShowSheet).not.toHaveBeenCalled();
   });
 });

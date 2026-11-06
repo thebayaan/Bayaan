@@ -5,6 +5,7 @@ import React, {
   useState, // @ai
   useSyncExternalStore, // @ai
 } from 'react';
+import {usePlaybackRetryOnReconnect} from '@/hooks/usePlaybackRetryOnReconnect'; // @ai
 import {
   View,
   ActivityIndicator,
@@ -32,13 +33,11 @@ import {
   useMushafPlayerStore,
 } from '@/store/mushafPlayerStore';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore'; // @ai
-import {showToast} from '@/utils/toastUtils'; // @ai
 import {mushafAudioService} from '@/services/audio/MushafAudioService';
 import {SURAHS} from '@/data/surahData';
 import MushafViewer from '@/components/mushaf/main';
 import {USE_GLASS, useGlassTint} from '@/hooks/useGlassProps';
 // @ai-start
-import {playbackNoticeText} from '@/i18n/playback';
 import {useTranslation} from 'react-i18next';
 import {getSurahDisplayName, localizeDigits} from '@/i18n/format';
 import {showSheet} from '@/components/sheets/sheetControl'; // @ai
@@ -309,18 +308,15 @@ export function MushafToolbar() {
       : '';
   const verseNavDisabled = numberingMode === 'disabled';
 
-  // The player bar shows refusals and the tracking notice inline; this
-  // toolbar has no room for text, so they surface as toasts.
+  // The player bar shows refusals inline; this toolbar has no room for text,
+  // so they open a small sheet with what can be done about them.
+  usePlaybackRetryOnReconnect();
   useEffect(
     () =>
       useMushafPlayerStore.subscribe((state, prev) => {
-        const notice = getPlaybackNotice(
-          prev,
-          state,
-          surahNameOf,
-          playbackNoticeText(),
-        );
-        if (notice) showToast(notice.title, notice.message, notice.preset);
+        if (getPlaybackNotice(prev, state, surahNameOf)) {
+          showSheet('mushaf-playback-notice');
+        }
       }),
     [],
   );

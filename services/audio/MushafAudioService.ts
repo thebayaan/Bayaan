@@ -119,13 +119,14 @@ class MushafAudioService {
   // ========== LOADING ==========
 
   /**
-   * Load a surah for playback. Releases any previous player.
+   * Load a surah for playback. Releases any previous player. False when the
+   * player could not be created (@ai).
    */
   loadSurah(
     surahNumber: number,
     audioUrl: string,
     timestamps: AyahTimestamp[],
-  ): void {
+  ): boolean {
     // Release previous player
     this.releasePlayer();
 
@@ -157,10 +158,12 @@ class MushafAudioService {
         console.log(
           `[MushafAudio] Loaded surah ${surahNumber} with ${timestamps.length} timestamps`,
         );
+      return true; // @ai
     } catch (error) {
       console.error('[MushafAudio] Failed to load surah:', error);
       this.currentSurah = 0;
       this.timestamps = [];
+      return false; // @ai
     }
   }
 

@@ -30,6 +30,7 @@ import {registerNativeSheet} from './sheetControl'; // @ai
 import {VerseNoteSheet} from './VerseNoteSheet';
 import {MushafPlayerOptionsSheet} from './MushafPlayerOptionsSheet';
 import {MushafReciterPickerSheet} from './MushafReciterPickerSheet'; // @ai
+import {MushafPlaybackNoticeSheet} from './MushafPlaybackNoticeSheet'; // @ai
 import {MushafRepeatOptionsSheet} from './MushafRepeatOptionsSheet';
 import {FollowAlongSheet} from './FollowAlongSheet';
 import {WordDetailSheet} from './WordDetailSheet';
@@ -75,6 +76,7 @@ registerSheet('mushaf-player-options', MushafPlayerOptionsSheet);
 registerSheet('mushaf-reciter-picker', MushafReciterPickerSheet); // @ai
 registerSheet('mushaf-repeat-options', MushafRepeatOptionsSheet);
 registerSheet('follow-along', FollowAlongSheet);
+registerSheet('mushaf-playback-notice', MushafPlaybackNoticeSheet); // @ai
 registerSheet('word-detail', WordDetailSheet);
 
 // @ai-start
@@ -91,6 +93,9 @@ registerNativeSheet('mushaf-repeat-options', MushafRepeatOptionsSheet, {
 });
 registerNativeSheet('mushaf-reciter-picker', MushafReciterPickerSheet);
 registerNativeSheet('follow-along', FollowAlongSheet);
+registerNativeSheet('mushaf-playback-notice', MushafPlaybackNoticeSheet, {
+  detents: 'fit',
+}); // @ai
 registerNativeSheet('ambient-sounds', AmbientSoundsSheet, {
   detents: 'fit',
 });
@@ -302,6 +307,7 @@ declare module 'react-native-actions-sheet' {
       };
     }>;
     'follow-along': SheetDefinition;
+    'mushaf-playback-notice': SheetDefinition; // @ai
     'word-detail': SheetDefinition<{
       payload: {
         verseKey: string;

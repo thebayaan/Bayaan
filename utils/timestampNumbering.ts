@@ -122,6 +122,13 @@ export interface SurahNumberingDecision {
  *    previous verse would be highlighted, labelled and repeated in its place.
  *    @ai
  */
+/**
+ * The numbering can't be decided because the set-level vote got no answer
+ * (offline): unlike the other reasons, this can change by trying again. @ai
+ */
+export const SET_NUMBERING_UNKNOWN_REASON =
+  'equal counts with different boundaries; set numbering unknown';
+
 export function decideSurahNumbering(
   input: SurahNumberingInput,
   verseMap: RewayahVerseMapService,
@@ -193,7 +200,7 @@ export function decideSurahNumbering(
       return decide(
         'disabled',
         setClass === 'unknown'
-          ? 'equal counts with different boundaries; set numbering unknown'
+          ? SET_NUMBERING_UNKNOWN_REASON
           : 'equal counts with different boundaries; set numbering not resolved',
         setClass === null,
       );
@@ -590,7 +597,7 @@ function withUnitMethods(
     mode === 'riwayah' && base.reciterRewayah === rewayah;
   // The unit's own entry when the entries are its rewayah's verses.
   const ownEntry = (unit: AudioUnitTarget): AyahTimestamp | null =>
-    numbersVersesOf(unit.rewayah) ? (byAyah.get(unit.ayah) ?? null) : null;
+    numbersVersesOf(unit.rewayah) ? byAyah.get(unit.ayah) ?? null : null;
   const usable = (unit: AudioUnitTarget): boolean =>
     mode !== 'disabled' && unit.surah === surah;
 

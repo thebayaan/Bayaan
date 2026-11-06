@@ -1,12 +1,12 @@
 // @ai-generated
 /**
  * The mushaf player bar (components/mushaf/MushafPlayerBar.tsx, the
- * non-glass counterpart of the iOS 26 toolbar) shows refusals and "Verse
- * tracking unavailable" inline. When a surah without verse tracking was
- * asked to start at a later verse, it plays from its beginning, and the bar
- * must say so too (the toolbar does it through getPlaybackNotice).
+ * non-glass counterpart of the iOS 26 toolbar) shows refusals inline, above
+ * controls that stay, with the one thing to do about them.
  */
 
+import {Text} from 'react-native';
+import {useNetworkStore} from '@/store/networkStore';
 import React, {act} from 'react';
 import TestRenderer from 'react-test-renderer';
 
@@ -51,7 +51,8 @@ jest.mock('@/services/mushaf/MushafVerseMapService', () => ({
 import {MushafPlayerBar} from '@/components/mushaf/MushafPlayerBar';
 import {
   useMushafPlayerStore,
-  VERSE_TIMING_UNAVAILABLE_ERROR,
+  TIMESTAMPS_UNAVAILABLE_ERROR,
+  TIMINGS_LOAD_FAILED_ERROR,
 } from '../mushafPlayerStore';
 
 declare const global: {IS_REACT_ACT_ENVIRONMENT?: boolean};
@@ -74,7 +75,6 @@ beforeEach(() => {
     currentVerseKeys: [],
     currentVerseLabel: null,
     numberingMode: null,
-    ignoredStartVerseKey: null,
     timestampError: null,
   });
   act(() => {
@@ -87,47 +87,64 @@ afterEach(() => {
   renderer = null;
 });
 
-it('a skipped start verse: says the surah plays from the beginning, once', () => {
+function textNodes(): TestRenderer.ReactTestInstance[] {
+  return renderer!.root.findAll(node => node.type === Text);
+}
+
+function texts(): string[] {
+  return textNodes().map(node => [node.props.children].flat().join(''));
+}
+
+function labels(): string[] {
+  return renderer!.root
+    .findAll(node => typeof node.props.accessibilityLabel === 'string')
+    .map(node => node.props.accessibilityLabel as string);
+}
+
+it('a refusal shows above the controls, which stay, in two lines', () => {
   setPlayer({
-    playbackState: 'loading',
-    currentSurah: 67,
-    numberingMode: 'disabled',
-    ignoredStartVerseKey: '67:5',
+    timestampError: TIMESTAMPS_UNAVAILABLE_ERROR,
+    timestampErrorSurah: 2,
   });
-  setPlayer({playbackState: 'playing'});
-  expect(mockShowToast).toHaveBeenCalledTimes(1);
-  expect(mockShowToast).toHaveBeenCalledWith(
-    'Verse tracking unavailable',
-    'Al-Mulk plays from the beginning without verse tracking for this reciter.',
-    'none',
+  expect(texts()).toContain(
+    "This reciter doesn't follow along in Al-Baqarah. Choose another reciter.",
   );
-});
-
-it('what the bar shows inline is not repeated as a notice', () => {
-  setPlayer({
-    playbackState: 'loading',
-    currentSurah: 67,
-    numberingMode: 'disabled',
-  });
-  setPlayer({playbackState: 'playing'});
-  setPlayer({
-    playbackState: 'idle',
-    timestampError: VERSE_TIMING_UNAVAILABLE_ERROR,
-  });
+  const message = textNodes().find(node =>
+    String(node.props.children).includes('follow along'),
+  );
+  expect(message?.props.numberOfLines).toBe(2);
+  expect(labels()).toEqual(
+    expect.arrayContaining(['Change reciter', 'Search', 'Play']),
+  );
   expect(mockShowToast).not.toHaveBeenCalled();
 });
 
-it('Hafs playback shows nothing new', () => {
-  setPlayer({
-    playbackState: 'loading',
-    currentSurah: 2,
-    numberingMode: 'hafs',
-  });
-  setPlayer({
-    playbackState: 'playing',
-    currentVerseKey: '2:5',
-    currentVerseKeys: ['2:5'],
-    currentVerseLabel: '2:5',
-  });
-  expect(mockShowToast).not.toHaveBeenCalled();
+it('a connection problem offers Try again and retries', () => {
+  const retry = jest.fn();
+  useMushafPlayerStore.setState({retryPlayback: retry});
+  setPlayer({timestampError: TIMINGS_LOAD_FAILED_ERROR});
+  expect(texts()).toContain(
+    "Verse timings couldn't load. Check your connection.",
+  );
+  const button = renderer!.root.find(
+    node =>
+      node.props.accessibilityLabel === 'Try again' && !!node.props.onPress,
+  );
+  act(() => button.props.onPress());
+  expect(retry).toHaveBeenCalledTimes(1);
+});
+
+it('a returning connection retries a connection refusal only', () => {
+  const retry = jest.fn();
+  useMushafPlayerStore.setState({retryPlayback: retry});
+  setPlayer({timestampError: TIMINGS_LOAD_FAILED_ERROR});
+  act(() => useNetworkStore.setState({isOnline: false}));
+  act(() => useNetworkStore.setState({isOnline: true}));
+  expect(retry).toHaveBeenCalledTimes(1);
+
+  retry.mockClear();
+  setPlayer({timestampError: TIMESTAMPS_UNAVAILABLE_ERROR});
+  act(() => useNetworkStore.setState({isOnline: false}));
+  act(() => useNetworkStore.setState({isOnline: true}));
+  expect(retry).not.toHaveBeenCalled();
 });

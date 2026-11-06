@@ -43,12 +43,15 @@
   "playback": {
     "trackingUnavailable": "Verse tracking unavailable",
     "unavailable": "Playback unavailable",
-    "surah": "This surah",
-    "fromBeginning": "{{surah}} plays from the beginning without verse tracking for this reciter.",
-    "untracked": "{{surah}} plays without verse highlighting for this reciter.",
-    "timestampsUnavailable": "Timestamps unavailable for this reciter on this surah. Try a different reciter.",
-    "verseTimingUnavailable": "Verse-by-verse playback isn't available for this reciter on this surah. Try a different reciter.",
-    "rangeUnplayable": "This selection has no verses to play for this reciter. Try a different reciter or range."
+    "surah": "this surah",
+    "timestampsUnavailable": "This reciter doesn't follow along in {{surah}}. Choose another reciter.",
+    "verseTimingUnavailable": "This reciter's verses can't be matched to the mushaf in {{surah}}. Choose another reciter.",
+    "rangeUnplayable": "This selection has no verses to play for this reciter. Try a different reciter or range.",
+    "timingsLoadFailed": "Verse timings couldn't load. Check your connection.",
+    "audioLoadFailed": "The recitation couldn't load. Check your connection.",
+    "reciterRemoved": "This reciter is no longer available. Choose another reciter.",
+    "startFailed": "Playback couldn't start. Try again.",
+    "tryAgain": "Try again"
   },
   "verseUnits": {
     "loading": "Loading the {{rewayah}} verses",
