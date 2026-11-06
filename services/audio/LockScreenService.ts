@@ -354,6 +354,24 @@ class LockScreenService {
 
   private subscribeToStore(): void {
     this.storeUnsubscribe = usePlayerStore.subscribe(state => {
+      const {queue} = state;
+      const currentTrack = queue.tracks[queue.currentIndex];
+
+      // @ai The queue has no current track any more, for example after
+      // playerStore.cleanup() (Settings -> Clear cache), which pauses the
+      // main player before it resets the queue. Clear the main player's lock
+      // screen and notification controls once. Without this, a remote Play
+      // there resumed the old source while the app showed no player. This
+      // comes before the Mushaf and adhkar returns: clearLockScreenControls()
+      // is a native no-op unless the main player holds the entry. A track
+      // change cannot get here: every queue write sets the tracks and the
+      // index together.
+      if (!currentTrack && this.lastTrackId !== null) {
+        this.clearPlayer(expoAudioService.getPlayer());
+        this.lastTrackId = null;
+        return;
+      }
+
       if (this.isMushafActive) return;
       // A held adhkar entry blocks main track changes only until the main
       // player actually plays; then the entry is dropped and main takes over.
@@ -368,26 +386,10 @@ class LockScreenService {
         this.dropAdhkarEntry();
       }
 
-      const {queue} = state;
-      const currentTrack = queue.tracks[queue.currentIndex];
-
       // Update when track changes
       if (currentTrack && currentTrack.id !== this.lastTrackId) {
         this.lastTrackId = currentTrack.id;
         this.activateMainPlayer(currentTrack);
-      }
-
-      // @ai The queue has no current track any more, for example after
-      // playerStore.cleanup() (Settings -> Clear cache), which pauses the
-      // main player before it resets the queue. Clear the main player's lock
-      // screen and notification controls once. Without this, a remote Play
-      // there resumed the old source while the app showed no player. A
-      // track change cannot get here: every queue write sets the tracks and
-      // the index together. The Mushaf player is not touched (see the
-      // isMushafActive return above).
-      if (!currentTrack && this.lastTrackId !== null) {
-        this.clearPlayer(expoAudioService.getPlayer());
-        this.lastTrackId = null;
       }
     });
   }
@@ -440,17 +442,8 @@ class LockScreenService {
         // Clear mushaf lock screen and restore main player, unless adhkar
         // holds the lock screen.
         this.clearPlayer(mushafAudioService.getPlayer());
-        const hadMainTrack = this.lastTrackId !== null; // @ai
         this.lastTrackId = null;
-        if (!this.adhkarPlayer) {
-          this.syncCurrentState();
-          // @ai The main queue lost its current track while the Mushaf played
-          // (the main-store subscription skips that time). Clear the main
-          // player's controls now, as the subscription does.
-          if (hadMainTrack && this.lastTrackId === null) {
-            this.clearPlayer(expoAudioService.getPlayer());
-          }
-        }
+        if (!this.adhkarPlayer) this.syncCurrentState();
 
         if (__DEV__) console.log('[LockScreenService] Mushaf override cleared');
       }

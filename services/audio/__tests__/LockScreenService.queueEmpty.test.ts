@@ -170,17 +170,17 @@ describe('LockScreenService: the main queue has no current track', () => {
     expect(mockMainPlayer.clearLockScreenControls).not.toHaveBeenCalled();
   });
 
-  it('while the Mushaf plays, cleanup() clears neither player; the main controls clear when the Mushaf goes idle', async () => {
+  it('while the Mushaf plays, cleanup() clears the main controls at once and not the Mushaf controls', async () => {
     await usePlayerStore.getState().updateQueue([makeTrack('a')], 0);
     await flush();
     setMushaf({playbackState: 'playing'});
 
     await usePlayerStore.getState().cleanup();
-    expect(mockMainPlayer.clearLockScreenControls).not.toHaveBeenCalled();
+    expect(mockMainPlayer.clearLockScreenControls).toHaveBeenCalledTimes(1);
     expect(mockMushafPlayer.clearLockScreenControls).not.toHaveBeenCalled();
 
-    // The Mushaf stops. Its own controls clear (existing behaviour), and the
-    // main player has no track to show, so its controls clear too.
+    // The Mushaf stops. Its own controls clear (existing behaviour). The main
+    // player has no track to show, so nothing shows or clears its controls.
     setMushaf({playbackState: 'idle'});
     expect(mockMushafPlayer.clearLockScreenControls).toHaveBeenCalledTimes(1);
     expect(mockMainPlayer.clearLockScreenControls).toHaveBeenCalledTimes(1);
