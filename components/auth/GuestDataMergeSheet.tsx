@@ -12,11 +12,13 @@ import {moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {qfSyncLifecycle} from '@/services/sync/qfSyncLifecycle';
 import {useQfSyncStore} from '@/store/qfSyncStore';
-import {formatCount} from '@/utils/pluralize';
+import {useTranslation} from 'react-i18next';
+import branding from '@/config/branding';
 
 export function GuestDataMergeSheet() {
   const {theme} = useTheme();
   const insets = useSafeAreaInsets();
+  const {t} = useTranslation(['settings', 'collection']);
   const prompt = useQfSyncStore(state => state.guestMergePrompt);
   const decide = useCallback((decision: 'merge' | 'keep_separate') => {
     qfSyncLifecycle.resolveGuestDecision(decision).catch(() => undefined);
@@ -47,20 +49,28 @@ export function GuestDataMergeSheet() {
             ]}
           />
           <Text style={[styles.title, {color: theme.colors.text}]}>
-            Keep your data together?
+            {t('qfAccount.merge.title')}
           </Text>
           <Text
             style={[styles.description, {color: theme.colors.textSecondary}]}>
-            We found {prompt.totalCount}{' '}
-            {prompt.totalCount === 1 ? 'item' : 'items'} saved while using
-            Bayaan as a guest. You can copy them into this account or keep the
-            two sets separate.
+            {t('qfAccount.merge.description', {
+              items: t('collection:collectionScreen.itemsCount', {
+                count: prompt.totalCount,
+              }),
+              appName: branding.appName,
+            })}
           </Text>
           <View style={styles.counts}>
             <Text style={[styles.count, {color: theme.colors.textSecondary}]}>
-              {formatCount(prompt.bookmarkCount, 'bookmark')} ·{' '}
-              {formatCount(prompt.noteCount, 'note')} ·{' '}
-              {formatCount(prompt.highlightCount, 'highlight')}
+              {[
+                t('collection:bookmarksScreen.count', {
+                  count: prompt.bookmarkCount,
+                }),
+                t('collection:notesScreen.count', {count: prompt.noteCount}),
+                t('qfAccount.merge.highlights', {
+                  count: prompt.highlightCount,
+                }),
+              ].join(' · ')}
             </Text>
           </View>
           <Pressable
@@ -76,7 +86,7 @@ export function GuestDataMergeSheet() {
                   styles.primaryButtonText,
                   {color: theme.colors.background},
                 ]}>
-                Merge guest data
+                {t('qfAccount.merge.merge')}
               </Text>
             )}
           </Pressable>
@@ -87,7 +97,7 @@ export function GuestDataMergeSheet() {
             onPress={() => decide('keep_separate')}>
             <Text
               style={[styles.secondaryButtonText, {color: theme.colors.text}]}>
-              Keep separate
+              {t('qfAccount.merge.keepSeparate')}
             </Text>
           </Pressable>
         </View>

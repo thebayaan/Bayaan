@@ -3,6 +3,8 @@ import {ActivityIndicator, Alert, Pressable, Text, View} from 'react-native';
 import {ScaledSheet, moderateScale} from '@/utils/scale';
 import Color from 'color';
 import {useTheme} from '@/hooks/useTheme';
+import {useTranslation} from 'react-i18next';
+import i18n from '@/i18n';
 import {bayaanAuthConfig} from '@/config/bayaanAuth';
 import {
   BayaanAuthError,
@@ -22,13 +24,19 @@ const SIGN_OUT_FLUSH_MS = 5_000;
 function confirmUnsyncedSignOut(count: number): Promise<boolean> {
   return new Promise(resolve => {
     Alert.alert(
-      'Unsynced changes',
-      `${count} ${
-        count === 1 ? "change hasn't" : "changes haven't"
-      } synced to Quran.com yet and will be lost if you sign out now.`,
+      i18n.t('settings:qfAccount.unsyncedTitle'),
+      i18n.t('settings:qfAccount.unsyncedMessage', {count}),
       [
-        {text: 'Cancel', style: 'cancel', onPress: () => resolve(false)},
-        {text: 'Sign out', style: 'destructive', onPress: () => resolve(true)},
+        {
+          text: i18n.t('common:actions.cancel'),
+          style: 'cancel',
+          onPress: () => resolve(false),
+        },
+        {
+          text: i18n.t('settings:qfAccount.signOut'),
+          style: 'destructive',
+          onPress: () => resolve(true),
+        },
       ],
       {cancelable: true, onDismiss: () => resolve(false)},
     );
@@ -37,6 +45,7 @@ function confirmUnsyncedSignOut(count: number): Promise<boolean> {
 
 export function QfAccountCard() {
   const {theme} = useTheme();
+  const {t} = useTranslation('settings');
   const styles = createStyles(theme);
   const {status, profile, errorCode, setSigningIn, setSignedOut, setError} =
     useBayaanAuthStore();
@@ -99,8 +108,8 @@ export function QfAccountCard() {
   if (!bayaanAuthConfig.qfSyncEnabled) {
     return (
       <View style={styles.card}>
-        <Text style={styles.title}>Quran.Foundation account</Text>
-        <Text style={styles.description}>Account sync is not enabled yet.</Text>
+        <Text style={styles.title}>{t('qfAccount.title')}</Text>
+        <Text style={styles.description}>{t('qfAccount.notEnabled')}</Text>
         <QfSyncStatusRow />
       </View>
     );
@@ -108,27 +117,25 @@ export function QfAccountCard() {
 
   return (
     <View style={styles.card}>
-      <Text style={styles.title}>Quran.Foundation account</Text>
+      <Text style={styles.title}>{t('qfAccount.title')}</Text>
       {status === 'authenticated' && profile ? (
         <>
           <Text style={styles.description}>
-            Signed in{profile.email ? ` as ${profile.email}` : ''}
+            {profile.email
+              ? t('qfAccount.signedInAs', {email: profile.email})
+              : t('qfAccount.signedIn')}
           </Text>
           <QfSyncStatusRow />
           <Pressable style={styles.button} onPress={signOut}>
-            <Text style={styles.buttonText}>Sign out</Text>
+            <Text style={styles.buttonText}>{t('qfAccount.signOut')}</Text>
           </Pressable>
         </>
       ) : (
         <>
-          <Text style={styles.description}>
-            Sign in to sync bookmarks, private notes, and reading progress.
-          </Text>
+          <Text style={styles.description}>{t('qfAccount.signInPrompt')}</Text>
           <QfSyncStatusRow />
           {status === 'error' && errorCode ? (
-            <Text style={styles.error}>
-              Could not sign in. Please try again.
-            </Text>
+            <Text style={styles.error}>{t('qfAccount.signInFailed')}</Text>
           ) : null}
           <Pressable
             style={styles.button}
@@ -137,7 +144,7 @@ export function QfAccountCard() {
             {status === 'signing_in' ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
-              <Text style={styles.buttonText}>Sign in</Text>
+              <Text style={styles.buttonText}>{t('qfAccount.signIn')}</Text>
             )}
           </Pressable>
         </>

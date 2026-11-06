@@ -409,5 +409,43 @@
     "communityReflections": "Community Reflections",
     "communityReflectionsHelper": "Show community reflections under each ayah in list view",
     "indopakHafsOnly": "IndoPak shows Hafs only. Choosing another rewayah switches the font to {{font}}."
+  },
+  "qfAccount": {
+    "title": "Quran.Foundation account",
+    "notEnabled": "Account sync is not enabled yet.",
+    "signedIn": "Signed in",
+    "signedInAs": "Signed in as {{email}}",
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "signInPrompt": "Sign in to sync bookmarks, private notes, and reading progress.",
+    "signInFailed": "Could not sign in. Please try again.",
+    "completingSignIn": "Completing sign-in…",
+    "unsyncedTitle": "Unsynced changes",
+    "unsyncedMessage_one": "{{count}} change hasn't synced to Quran.com yet and will be lost if you sign out now.",
+    "unsyncedMessage_other": "{{count}} changes haven't synced to Quran.com yet and will be lost if you sign out now.",
+    "status": {
+      "disabled": "Account sync is turned off",
+      "syncing": "Syncing",
+      "offline": "Offline — changes will sync later",
+      "authExpired": "Session expired — sign in again",
+      "conflict": "Some changes need another sync",
+      "retry": "Sync paused — retry available",
+      "lastSynced": "Last synced {{time}}",
+      "ready": "Ready to sync"
+    },
+    "merge": {
+      "title": "Keep your data together?",
+      "description": "We found {{items}} saved while using {{appName}} as a guest. You can copy them into this account or keep the two sets separate.",
+      "highlights_one": "{{count}} highlight",
+      "highlights_other": "{{count}} highlights",
+      "merge": "Merge guest data",
+      "keepSeparate": "Keep separate"
+    },
+    "settingsConflict": {
+      "title": "Settings found in your account",
+      "message": "Use cloud settings, retaining device values where the cloud has none, or keep this device’s settings. Fields this app does not understand stay in the cloud.",
+      "useCloud": "Use cloud settings",
+      "keepDevice": "Keep this device"
+    }
   }
 }
