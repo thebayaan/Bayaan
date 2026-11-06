@@ -88,6 +88,9 @@ interface WBWVerseViewProps {
   allahNameHighlightColor?: string;
   onTap?: () => void;
   onLongPress?: () => void;
+  /** Select a word with a plain tap instead of a long press (the i'rab
+   *  view, where tapping a word is the whole interaction). */
+  selectOnTap?: boolean;
   /** Context rewayah (player track or mushaf setting). Word-by-word data
    *  is Hafs-only, so the Arabic here is always rendered in Hafs — this
    *  prop only drives the "Showing Hafs" disclosure label. */
@@ -354,6 +357,7 @@ export const WBWVerseView = memo<WBWVerseViewProps>(
     allahNameHighlightColor,
     onTap,
     onLongPress,
+    selectOnTap = false,
     rewayah: rewayahProp,
     wordRange, // @ai
     hafsNotice: hafsNoticeText, // @ai
@@ -733,8 +737,8 @@ export const WBWVerseView = memo<WBWVerseViewProps>(
           {hafsNotice}
           <Pressable
             onLayout={handleLayout}
-            onPress={onTap}
-            onLongPress={handleWordPress}
+            onPress={selectOnTap ? handleWordPress : onTap}
+            onLongPress={selectOnTap ? undefined : handleWordPress}
             style={[
               styles.singleCanvasContainer,
               forceLTR,
@@ -851,11 +855,22 @@ export const WBWVerseView = memo<WBWVerseViewProps>(
                 borderRadius: HIGHLIGHT_RADIUS,
               },
             ]}
-            onPress={onTap}
-            onLongPress={() => {
-              mediumHaptics();
-              onWordPress(wbwWord.position);
-            }}>
+            onPress={
+              selectOnTap
+                ? () => {
+                    mediumHaptics();
+                    onWordPress(wbwWord.position);
+                  }
+                : onTap
+            }
+            onLongPress={
+              selectOnTap
+                ? undefined
+                : () => {
+                    mediumHaptics();
+                    onWordPress(wbwWord.position);
+                  }
+            }>
             <Text
               style={[
                 styles.fallbackArabicText,
