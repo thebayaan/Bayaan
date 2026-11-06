@@ -5,6 +5,7 @@ import {
   localDateOf,
   mergeVerseKeys,
   parseBatches,
+  sealBatch,
   type QfActivityBatch,
 } from '../qfActivityDays';
 
@@ -16,6 +17,7 @@ function batch(extra: Partial<QfActivityBatch> = {}): QfActivityBatch {
     seconds: 30,
     ranges: ['1:1-1:7'],
     sealed: false,
+    attempts: 0,
     ...extra,
   };
 }
@@ -53,7 +55,7 @@ describe('addReading', () => {
   });
 
   it('starts a new batch once the open one was sent', () => {
-    const sealed = batch({sealed: true});
+    const sealed = batch({sealed: {}});
     expect(addReading([sealed], reading)).toEqual([
       sealed,
       batch({id: 'batch-2', seconds: 20, ranges: ['1:7-1:7', '2:1-2:2']}),
@@ -97,5 +99,25 @@ describe('dates and storage', () => {
     ).toEqual([batch()]);
     expect(parseBatches('not json')).toEqual([]);
     expect(parseBatches(undefined)).toEqual([]);
+  });
+});
+
+describe('sealBatch', () => {
+  // 2026-10-12 23:30 in Los Angeles, already 2026-10-13 in UTC.
+  const lateEvening = Date.parse('2026-10-13T06:30:00Z');
+
+  it('sends no date for reading still on its own day in its timezone', () => {
+    expect(sealBatch(batch(), lateEvening).sealed).toEqual({});
+  });
+
+  it('dates reading from an earlier day', () => {
+    expect(sealBatch(batch(), lateEvening + 60 * 60_000).sealed).toEqual({
+      date: '2026-10-12',
+    });
+  });
+
+  it('keeps what an already sealed batch sends', () => {
+    const sealed = batch({sealed: {}});
+    expect(sealBatch(sealed, lateEvening + 48 * 60 * 60_000)).toEqual(sealed);
   });
 });

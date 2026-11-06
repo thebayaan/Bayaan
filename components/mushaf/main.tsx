@@ -8,7 +8,6 @@ import {
   ScrollView,
   type ListViewToken,
   StatusBar,
-  AppState,
   BackHandler,
   Platform,
   useWindowDimensions,
@@ -21,7 +20,7 @@ import Animated, {
   useAnimatedStyle,
   withTiming,
 } from 'react-native-reanimated';
-import {useRouter, useNavigation} from 'expo-router';
+import {useRouter, useNavigation, useIsFocused} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
 import {useReadingThemeColors} from '@/hooks/useReadingThemeColors';
 import {Ionicons, Feather} from '@expo/vector-icons';
@@ -816,15 +815,17 @@ export default function MushafViewer({
     [pageToSurah],
   );
 
+  // Reading under another screen pushed over the reader isn't credited.
+  const readerFocused = useIsFocused();
+  useEffect(() => {
+    qfActivityDayTracker.setReaderFocused(readerFocused);
+  }, [readerFocused]);
+
   // Track initial page + start page_read timer on mount
   useEffect(() => {
     trackPageChange(initialPage);
     qfActivityDayTracker.showPages([initialPage]);
-    const appStateSubscription = AppState.addEventListener('change', state =>
-      qfActivityDayTracker.setAppActive(state === 'active'),
-    );
     return () => {
-      appStateSubscription.remove();
       qfActivityDayTracker.stop();
       // Session ended on unmount
       if (pageReadTimerRef.current) {
@@ -997,17 +998,21 @@ export default function MushafViewer({
       if (first == null) return;
       // Page number depends on data shape: `number` for single-page data,
       // `Spread` object for facing-pages data.
-      const page: number =
-        typeof first === 'number'
-          ? first
-          : spreadPageToKeep(first as Spread, currentPageRef.current); // @ai
+      let page: number;
+      let shownPages: number[];
+      if (typeof first === 'number') {
+        page = first;
+        shownPages = [first];
+      } else {
+        const spread = first as Spread;
+        page = spreadPageToKeep(spread, currentPageRef.current); // @ai
+        shownPages = spreadPages(spread);
+      }
       setCurrentPage(page);
       useMushafPlayerStore.setState({currentPage: page});
       mushafSessionStore.setLastReadPage(page);
       trackPageChange(page);
-      qfActivityDayTracker.showPages(
-        typeof first === 'number' ? [first] : spreadPages(first as Spread),
-      );
+      qfActivityDayTracker.showPages(shownPages);
       const surahId = digitalKhattDataService.initialized
         ? digitalKhattDataService.getPageToSurah()[page]
         : undefined;

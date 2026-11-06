@@ -21,6 +21,7 @@ import {parseBatches} from '../qfActivityDays';
 import {
   createQfActivityDayTracker,
   FLUSH_INTERVAL_MS,
+  MAX_SEND_ATTEMPTS,
   type QfActivityDayTrackerDeps,
 } from '../qfActivityDayTracker';
 
@@ -34,10 +35,11 @@ function setup(
   options: {
     post?: QfActivityDayTrackerDeps['api']['postActivityDay'];
     accountId?: string | null;
+    start?: number;
   } = {},
 ) {
   const stored = new Map<string, string>();
-  let clock = new Date(2026, 9, 12, 9).getTime();
+  let clock = options.start ?? Date.parse('2026-10-12T16:00:00Z');
   let id = 0;
   let accountId = options.accountId === undefined ? 'acct' : options.accountId;
   const posted: Parameters<
@@ -118,12 +120,16 @@ describe('qfActivityDayTracker', () => {
     ]);
   });
 
-  it('dates only reading left over from an earlier day', async () => {
+  it('dates only reading first sent on a later day', async () => {
     let fail = true;
-    const sent: {date?: string; seconds: number}[] = [];
+    const sent: {id: string; date?: string; seconds: number}[] = [];
     const {tracker, advance} = setup({
       post: async (_token, input) => {
-        sent.push({date: input.date, seconds: input.seconds});
+        sent.push({
+          id: input.idempotencyKey,
+          date: input.date,
+          seconds: input.seconds,
+        });
         if (fail) throw new BayaanSettingsApiError(503, 'unavailable');
       },
     });
@@ -132,13 +138,24 @@ describe('qfActivityDayTracker', () => {
     tracker.stop();
     await tracker.flush();
     // Today's reading goes undated, so QF counts it as tracked reading.
-    expect(sent).toEqual([{date: undefined, seconds: 10}]);
+    expect(sent).toEqual([{id: 'batch-1', date: undefined, seconds: 10}]);
+
+    // More reading today, held back while the failed send backs off.
+    tracker.showPages([2]);
+    advance(5_000);
+    tracker.stop();
+    await tracker.flush();
+    expect(sent).toHaveLength(1);
 
     fail = false;
     advance(24 * 60 * 60_000);
     await tracker.flush();
-    // Retried the next day, it keeps the day it was read.
-    expect(sent[1]).toEqual({date: '2026-10-12', seconds: 10});
+    // The retry resends its first body; the batch first sent the next day
+    // keeps the day it was read.
+    expect(sent.slice(1)).toEqual([
+      {id: 'batch-1', date: undefined, seconds: 10},
+      {id: 'batch-2', date: '2026-10-12', seconds: 5},
+    ]);
   });
 
   it('merges several pages into one batch', async () => {
@@ -218,7 +235,7 @@ describe('qfActivityDayTracker', () => {
     tracker.stop();
     await tracker.flush();
     expect(queued()).toEqual([
-      expect.objectContaining({id: 'batch-1', sealed: true}),
+      expect.objectContaining({id: 'batch-1', sealed: {}, attempts: 1}),
     ]);
 
     // Reading after a failed send goes to a new batch, not the retried one.
@@ -283,5 +300,134 @@ describe('qfActivityDayTracker', () => {
     setAccount(null);
     expect(queued()).toEqual([]);
     expect(post).toHaveBeenCalledTimes(1);
+  });
+
+  it('retries a batch with the same body after midnight', async () => {
+    let fail = true;
+    const sent: Parameters<
+      QfActivityDayTrackerDeps['api']['postActivityDay']
+    >[1][] = [];
+    const {tracker, advance} = setup({
+      // 23:58 in Los Angeles.
+      start: Date.parse('2026-10-13T06:58:00Z'),
+      post: async (_token, input) => {
+        sent.push(input);
+        if (fail) throw new BayaanSettingsApiError(503, 'unavailable');
+      },
+    });
+    tracker.showPages([1]);
+    advance(10_000);
+    tracker.stop();
+    await tracker.flush();
+
+    fail = false;
+    advance(10 * 60_000);
+    await tracker.flush();
+    expect(sent).toHaveLength(2);
+    expect(sent[1]).toEqual(sent[0]);
+    expect(sent[0].date).toBeUndefined();
+  });
+
+  it('drops a batch QF answers with a conflict', async () => {
+    const {tracker, queued, advance} = setup({
+      post: async () => {
+        throw new BayaanSettingsApiError(409, 'QF_SETTINGS_CONFLICT');
+      },
+    });
+    const warn = jest
+      .spyOn(console, 'warn')
+      .mockImplementation(() => undefined);
+    tracker.showPages([1]);
+    advance(10_000);
+    tracker.stop();
+    await tracker.flush();
+    expect(queued()).toEqual([]);
+    warn.mockRestore();
+  });
+
+  it('gives up on a batch that keeps failing so later batches can go', async () => {
+    const {tracker, post, queued, advance} = setup({
+      post: async () => {
+        throw new BayaanSettingsApiError(503, 'unavailable');
+      },
+    });
+    const warn = jest
+      .spyOn(console, 'warn')
+      .mockImplementation(() => undefined);
+    tracker.showPages([1]);
+    advance(10_000);
+    tracker.stop();
+    for (let attempt = 0; attempt < MAX_SEND_ATTEMPTS; attempt++) {
+      await tracker.flush();
+      advance(20 * 60_000);
+    }
+    expect(post).toHaveBeenCalledTimes(MAX_SEND_ATTEMPTS);
+    expect(queued()).toEqual([]);
+    warn.mockRestore();
+  });
+
+  it('does not count time while another screen covers the reader', async () => {
+    const {tracker, posted, advance} = setup();
+    tracker.showPages([1]);
+    advance(5_000);
+    tracker.setReaderFocused(false);
+    advance(300_000);
+    tracker.setReaderFocused(true);
+    advance(5_000);
+    tracker.stop();
+    await tracker.flush();
+    expect(posted.reduce((sum, sent) => sum + sent.seconds, 0)).toBe(10);
+  });
+
+  it('keeps timing when the same pages are reported again', async () => {
+    const {tracker, posted, advance} = setup();
+    tracker.showPages([1]);
+    advance(2_000);
+    tracker.showPages([1]);
+    advance(2_000);
+    tracker.stop();
+    await tracker.flush();
+    expect(posted).toEqual([expect.objectContaining({seconds: 4})]);
+  });
+
+  it('keeps time read while page data was still loading', async () => {
+    let loaded = false;
+    const {tracker, posted, advance} = setup();
+    const verses = PAGE_VERSES[1];
+    PAGE_VERSES[1] = [];
+    try {
+      tracker.showPages([1]);
+      advance(FLUSH_INTERVAL_MS);
+      PAGE_VERSES[1] = verses;
+      loaded = true;
+      advance(5_000);
+      tracker.stop();
+      await tracker.flush();
+    } finally {
+      if (!loaded) PAGE_VERSES[1] = verses;
+    }
+    expect(posted.reduce((sum, sent) => sum + sent.seconds, 0)).toBe(35);
+  });
+
+  it('does not carry a retry delay over to the next account', async () => {
+    let fail = true;
+    const {tracker, post, advance, setAccount} = setup({
+      post: async () => {
+        if (fail) throw new BayaanSettingsApiError(503, 'unavailable');
+      },
+    });
+    tracker.showPages([1]);
+    advance(10_000);
+    tracker.stop();
+    await tracker.flush();
+    tracker.clearAccount('acct');
+
+    fail = false;
+    setAccount('other');
+    tracker.showPages([1]);
+    advance(10_000);
+    tracker.stop();
+    await tracker.flush();
+    expect(post).toHaveBeenCalledTimes(2);
   });
 });

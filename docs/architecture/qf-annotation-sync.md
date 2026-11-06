@@ -57,18 +57,26 @@ without failing sync.
 Mushaf reading counts toward the user's Quran.com streaks through QF activity
 days (`POST /v1/activity-days`, `type: QURAN`, behind the optional
 `activity_day` scope). `qfActivityDayTracker` times the pages on screen (both
-pages of a facing spread) while the app is active, ignoring a page shown for
-less than 3 seconds and anything past 10 minutes on one page. Reading is
-queued in MMKV per account as batches of the device's local date, timezone,
-seconds and merged verse ranges (Hafs keys, one surah per range), sent through
-the BFF with `mushafId` 4 every 30 seconds, when the app leaves the foreground
-and when the reader closes. Today's batches go without a `date`, since QF counts dated seconds as manually added time and dates undated ones by `x-timezone`; only a batch left over from an earlier day keeps its date. QF adds each POST's seconds and unions its ranges. A batch is sealed before its first send, so a retry
-resends it unchanged with the same `Idempotency-Key` while later reading starts
-a new batch. Server errors back off (up to 15 minutes); a refused batch is
-dropped; a 403 pauses sending until the next launch or sign-in and keeps the
-queue. Batches older than six days expire. Sign-out sends what it can within
-the existing wait, then clears the account's queue. The resume location stays
-on `READING_SESSION`.
+pages of a facing spread) while the app is active and the reader is the focused
+screen, ignoring a page shown for less than 3 seconds and anything past 10
+minutes on one page. The app-active state comes from `QfSyncLifecycleBridge`,
+like the other QF lifecycles. Reading is queued in MMKV per account as batches
+of the date in the device timezone, the timezone, seconds and merged verse
+ranges (Hafs keys, one surah per range), sent through the BFF with `mushafId`
+4 every 30 seconds, when the app leaves the foreground and when the reader
+closes. QF adds each POST's seconds and unions its ranges.
+
+A batch is sealed before its first send, and sealing fixes its body: a batch
+still on its own day goes without a `date` (QF counts dated seconds as manually
+added time and dates undated ones by `x-timezone`), while one first sent on a
+later day keeps its date. A retry resends that body unchanged with the same
+`Idempotency-Key`, even after midnight, and later reading starts a new batch.
+Server errors back off (up to 15 minutes) and a batch is dropped after 8 failed
+sends, so one bad batch can't hold up the queue. A refused batch (400, 404,
+409, 413 or 422) is dropped; a 403 pauses sending until the next launch or
+sign-in and keeps the queue. Batches older than six days expire. Sign-out sends
+what it can within the existing wait, then clears the account's queue and its
+retry delay. The resume location stays on `READING_SESSION`.
 
 ## Guest decisions cover rows, not an account's lifetime
 

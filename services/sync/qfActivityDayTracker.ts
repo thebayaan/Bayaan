@@ -12,8 +12,9 @@ import type {BayaanOpaqueSession} from '@/types/bayaan-auth';
 import {
   addReading,
   isExpiredBatch,
-  localDateOf,
+  dateInTimezone,
   parseBatches,
+  sealBatch,
   type QfActivityBatch,
 } from './qfActivityDays';
 
@@ -23,6 +24,8 @@ export const MIN_PAGE_MS = 3_000;
 export const MAX_PAGE_MS = 10 * 60_000;
 export const FLUSH_INTERVAL_MS = 30_000;
 const MAX_BACKOFF_MS = 15 * 60_000;
+/** A batch that keeps failing is dropped so it can't hold up the queue. */
+export const MAX_SEND_ATTEMPTS = 8;
 
 export interface QfActivityStorage {
   getString(key: string): string | undefined;
@@ -56,6 +59,8 @@ export interface QfActivityDayTracker {
   /** The pages now on screen (two in facing-pages mode). */
   showPages(pages: readonly number[]): void;
   setAppActive(active: boolean): void;
+  /** Whether the reader is the focused screen, not covered by another. */
+  setReaderFocused(focused: boolean): void;
   /** The reader closed: credit the open page and send what is queued. */
   stop(): void;
   flush(): Promise<void>;
@@ -77,7 +82,7 @@ function storageKey(accountId: string): string {
 
 /** Statuses QF or the BFF will refuse again for the same batch. */
 function isRejected(error: BayaanSettingsApiError): boolean {
-  return [400, 404, 413, 422].includes(error.status);
+  return [400, 404, 409, 413, 422].includes(error.status);
 }
 
 function isUnavailable(error: BayaanSettingsApiError): boolean {
@@ -87,7 +92,7 @@ function isUnavailable(error: BayaanSettingsApiError): boolean {
 /**
  * Credits mushaf reading to the signed-in user's QF activity days, which
  * drive Quran.com streaks. Time a page is on screen while the app is active
- * is queued per account as dated batches of seconds and verse ranges, then
+ * and the reader is focused is queued per account as dated batches of seconds and verse ranges, then
  * sent every 30 seconds, when the app leaves the foreground and when the
  * reader closes. Batches survive restarts and are retried with their key.
  */
@@ -96,12 +101,17 @@ export function createQfActivityDayTracker(
 ): QfActivityDayTracker {
   let open: OpenPage | null = null;
   let appActive = true;
+  let readerFocused = true;
   let timer: ReturnType<typeof setInterval> | null = null;
   let inFlight: Promise<void> | null = null;
   let flushAgain = false;
   let failures = 0;
   let nextAttemptAt = 0;
   const unavailable = new Set<string>();
+
+  function counting(): boolean {
+    return appActive && readerFocused;
+  }
 
   function readBatches(accountId: string): QfActivityBatch[] {
     return parseBatches(deps.storage.getString(storageKey(accountId)));
@@ -130,7 +140,7 @@ export function createQfActivityDayTracker(
       MAX_PAGE_MS,
       open.activeMs + Math.max(0, now - open.activeSince),
     );
-    open.activeSince = appActive ? now : null;
+    open.activeSince = counting() ? now : null;
   }
 
   /** Moves the open page's uncredited reading into its account's queue. */
@@ -141,15 +151,17 @@ export function createQfActivityDayTracker(
     if (open.activeMs < MIN_PAGE_MS) return;
     const seconds =
       Math.floor(open.activeMs / 1000) - Math.floor(open.creditedMs / 1000);
-    open.creditedMs = open.activeMs;
     if (seconds < 1) return;
+    // Pages whose data is still loading stay uncredited until it loads.
     const verseKeys = verseKeysFor(open.pages);
     if (verseKeys.length === 0) return;
+    open.creditedMs = open.activeMs;
+    const timezone = deps.getTimezone();
     writeBatches(
       open.accountId,
       addReading(readBatches(open.accountId), {
-        date: localDateOf(now),
-        timezone: deps.getTimezone(),
+        date: dateInTimezone(now, timezone),
+        timezone,
         seconds,
         verseKeys,
         newId: deps.newId,
@@ -178,7 +190,7 @@ export function createQfActivityDayTracker(
     // flight must start a new batch, never change one that is being sent.
     const live = readBatches(accountId)
       .filter(batch => !isExpiredBatch(batch, now))
-      .map(batch => ({...batch, sealed: true}));
+      .map(batch => sealBatch(batch, now));
     writeBatches(accountId, live);
     if (live.length === 0) return;
     const session = await deps.getSession();
@@ -188,10 +200,7 @@ export function createQfActivityDayTracker(
       try {
         await deps.api.postActivityDay(session.token, {
           idempotencyKey: batch.id,
-          // QF counts dated seconds as manually added time, so today's
-          // reading goes undated and QF dates it by the timezone; only a
-          // batch left from an earlier day keeps its date.
-          ...(batch.date === localDateOf(deps.now()) ? {} : {date: batch.date}),
+          ...batch.sealed,
           timezone: batch.timezone,
           seconds: batch.seconds,
           ranges: batch.ranges,
@@ -212,6 +221,7 @@ export function createQfActivityDayTracker(
               error.retryAfterMs ?? 0,
               Math.min(MAX_BACKOFF_MS, FLUSH_INTERVAL_MS * 2 ** failures),
             );
+          recordFailedAttempt(accountId, batch.id);
           return;
         }
         console.warn('[QfActivityDays] A reading batch was rejected');
@@ -223,6 +233,37 @@ export function createQfActivityDayTracker(
         readBatches(accountId).filter(queued => queued.id !== batch.id),
       );
     }
+  }
+
+  function recordFailedAttempt(accountId: string, batchId: string): void {
+    const batches: QfActivityBatch[] = [];
+    for (const queued of readBatches(accountId)) {
+      if (queued.id !== batchId) {
+        batches.push(queued);
+      } else if (queued.attempts + 1 < MAX_SEND_ATTEMPTS) {
+        batches.push({...queued, attempts: queued.attempts + 1});
+      } else {
+        console.warn('[QfActivityDays] Gave up on a reading batch');
+      }
+    }
+    writeBatches(accountId, batches);
+  }
+
+  /** Starts or stops counting when the app or reader focus changes. */
+  function updateCounting(change: () => void): void {
+    const wasCounting = counting();
+    change();
+    if (wasCounting === counting()) return;
+    if (!counting()) {
+      checkpoint();
+      if (open) open.activeSince = null;
+      stopTimer();
+      flush().catch(() => undefined);
+      return;
+    }
+    if (!open) return;
+    open.activeSince = deps.now();
+    startTimer();
   }
 
   function flush(): Promise<void> {
@@ -251,8 +292,17 @@ export function createQfActivityDayTracker(
 
   return {
     showPages(pages) {
-      checkpoint();
       const accountId = deps.getActiveAccountId();
+      if (
+        open &&
+        open.accountId === accountId &&
+        open.pages.length === pages.length &&
+        open.pages.every((page, index) => page === pages[index])
+      ) {
+        // The same pages reported again: keep timing them.
+        return;
+      }
+      checkpoint();
       if (!accountId || pages.length === 0) {
         open = null;
         stopTimer();
@@ -261,27 +311,23 @@ export function createQfActivityDayTracker(
       open = {
         accountId,
         pages: [...pages],
-        activeSince: appActive ? deps.now() : null,
+        activeSince: counting() ? deps.now() : null,
         activeMs: 0,
         creditedMs: 0,
       };
-      if (appActive) startTimer();
+      if (counting()) startTimer();
     },
 
     setAppActive(active) {
-      if (active === appActive) return;
-      if (!active) {
-        checkpoint();
-        appActive = false;
-        if (open) open.activeSince = null;
-        stopTimer();
-        flush().catch(() => undefined);
-        return;
-      }
-      appActive = true;
-      if (!open) return;
-      open.activeSince = deps.now();
-      startTimer();
+      updateCounting(() => {
+        appActive = active;
+      });
+    },
+
+    setReaderFocused(focused) {
+      updateCounting(() => {
+        readerFocused = focused;
+      });
     },
 
     stop() {
@@ -299,6 +345,8 @@ export function createQfActivityDayTracker(
         stopTimer();
       }
       unavailable.delete(accountId);
+      failures = 0;
+      nextAttemptAt = 0;
       deps.storage.remove(storageKey(accountId));
     },
   };

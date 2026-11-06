@@ -1,18 +1,30 @@
 import surahData from '@/data/surahData.json';
 
 /**
+ * What a sealed batch sends besides its seconds and ranges, fixed when it is
+ * sealed so every retry under the same idempotency key sends the same body.
+ * `date` is present only for reading from an earlier day: QF counts dated
+ * seconds as manually added time, so today's reading goes undated.
+ */
+export interface QfSealedSend {
+  date?: string;
+}
+
+/**
  * One batch of Quran reading for QF activity days. A batch is sent with its
  * own idempotency key; once a send was attempted it is sealed, so reading
  * after that starts a new batch instead of changing what a retry resends.
  */
 export interface QfActivityBatch {
   id: string;
-  /** The device's local calendar date, YYYY-MM-DD. */
+  /** The calendar date the reading happened on, YYYY-MM-DD. */
   date: string;
   timezone: string;
   seconds: number;
   ranges: string[];
-  sealed: boolean;
+  sealed: false | QfSealedSend;
+  /** Sends that failed in a way worth retrying. */
+  attempts: number;
 }
 
 /** The backend accepts a week; stay a day inside it for timezones ahead. */
@@ -85,6 +97,31 @@ export function localDateOf(time: number): string {
   return `${date.getFullYear()}-${month}-${day}`;
 }
 
+/** The calendar date at `time` in `timezone`, YYYY-MM-DD. */
+export function dateInTimezone(time: number, timezone: string): string {
+  try {
+    // en-CA formats dates as YYYY-MM-DD.
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(time);
+  } catch {
+    return localDateOf(time);
+  }
+}
+
+/** Seals a batch, fixing the date it sends: none if it is still today. */
+export function sealBatch(
+  batch: QfActivityBatch,
+  now: number,
+): QfActivityBatch & {sealed: QfSealedSend} {
+  if (batch.sealed) return {...batch, sealed: batch.sealed};
+  const today = dateInTimezone(now, batch.timezone);
+  return {...batch, sealed: batch.date === today ? {} : {date: batch.date}};
+}
+
 export function isExpiredBatch(batch: QfActivityBatch, now: number): boolean {
   const today = Date.parse(`${localDateOf(now)}T00:00:00Z`);
   return (
@@ -140,8 +177,15 @@ export function addReading(
       seconds: Math.min(MAX_BATCH_SECONDS, reading.seconds),
       ranges: ranges.slice(0, MAX_BATCH_RANGES),
       sealed: false,
+      attempts: 0,
     },
   ];
+}
+
+function isSealedSend(value: unknown): value is QfSealedSend {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const send: Partial<Record<keyof QfSealedSend, unknown>> = value;
+  return send.date === undefined || typeof send.date === 'string';
 }
 
 function isActivityBatch(value: unknown): value is QfActivityBatch {
@@ -154,7 +198,8 @@ function isActivityBatch(value: unknown): value is QfActivityBatch {
     typeof batch.seconds === 'number' &&
     Array.isArray(batch.ranges) &&
     batch.ranges.every(range => typeof range === 'string') &&
-    typeof batch.sealed === 'boolean'
+    typeof batch.attempts === 'number' &&
+    (batch.sealed === false || isSealedSend(batch.sealed))
   );
 }
 
