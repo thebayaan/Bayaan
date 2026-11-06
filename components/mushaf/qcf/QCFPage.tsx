@@ -237,8 +237,15 @@ const QCFPage: React.FC<QCFPageProps> = ({
         pageNumber,
         CONTENT_HEIGHT,
         baseLineHeight,
+        metrics.centerShortPages,
       ),
-    [pageLines, pageNumber, CONTENT_HEIGHT, baseLineHeight],
+    [
+      pageLines,
+      pageNumber,
+      CONTENT_HEIGHT,
+      baseLineHeight,
+      metrics.centerShortPages,
+    ],
     // @ai-end
   );
 
