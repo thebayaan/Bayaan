@@ -46,6 +46,25 @@ async function fetchOffered(): Promise<OfferedEdition[] | null> {
   return null;
 }
 
+// The reader labels verses with getTranslationName, so every edition the
+// store learns of is named there; these two are the only registrations.
+async function readDownloadedMeta(): Promise<DownloadedTranslationMeta[]> {
+  const meta = await translationDbService.getDownloadedTranslations();
+  for (const item of meta) {
+    registerRemoteTranslationName(item.identifier, item.englishName);
+  }
+  return meta;
+}
+
+function registerOfferedNames(
+  offered: OfferedEdition[] | null,
+): OfferedEdition[] | null {
+  for (const edition of offered ?? []) {
+    registerRemoteTranslationName(edition.id, edition.name);
+  }
+  return offered;
+}
+
 export const useTranslationStore = create<TranslationStoreState>()(
   (set, get) => ({
     downloadedMeta: [],
@@ -82,7 +101,7 @@ export const useTranslationStore = create<TranslationStoreState>()(
         }
 
         // Refresh downloaded metadata
-        const meta = await translationDbService.getDownloadedTranslations();
+        const meta = await readDownloadedMeta();
         set({downloadedMeta: meta, downloadingId: null, downloadProgress: 0});
       } catch (error) {
         console.warn('[TranslationStore] Download failed:', editionId, error);
@@ -99,8 +118,7 @@ export const useTranslationStore = create<TranslationStoreState>()(
         } else {
           await translationDbService.deleteTranslation(editionId);
         }
-        const meta = await translationDbService.getDownloadedTranslations();
-        set({downloadedMeta: meta});
+        set({downloadedMeta: await readDownloadedMeta()});
       } catch (error) {
         console.warn('[TranslationStore] Delete failed:', editionId, error);
       }
@@ -108,12 +126,7 @@ export const useTranslationStore = create<TranslationStoreState>()(
 
     loadDownloadedMeta: async () => {
       try {
-        const meta = await translationDbService.getDownloadedTranslations();
-        // The reader labels verses with getTranslationName.
-        for (const item of meta) {
-          registerRemoteTranslationName(item.identifier, item.englishName);
-        }
-        set({downloadedMeta: meta});
+        set({downloadedMeta: await readDownloadedMeta()});
       } catch (error) {
         console.warn(
           '[TranslationStore] Failed to load downloaded meta:',
@@ -124,7 +137,7 @@ export const useTranslationStore = create<TranslationStoreState>()(
 
     loadOfferedTranslations: async () => {
       try {
-        set({offeredTranslations: await fetchOffered()});
+        set({offeredTranslations: registerOfferedNames(await fetchOffered())});
       } catch (error) {
         console.warn(
           '[TranslationStore] Failed to load offered translations:',

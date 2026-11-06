@@ -46,7 +46,16 @@ export interface PickerLanguageGroup {
   rows: PickerRow[];
 }
 
+// The edition the reader shows for the selection, for the active card.
+export interface ActiveEdition {
+  id: string;
+  name: string;
+  // The language named in the UI language; '' when unknown.
+  language: string;
+}
+
 export interface TranslationPicker {
+  active: ActiveEdition;
   // Bundled and downloaded editions, the active one excluded, by title.
   installed: PickerRow[];
   // Editions to download by language: the UI language first, then by
@@ -167,18 +176,59 @@ function byTitle(a: PickerRow, b: PickerRow): number {
   return a.title.localeCompare(b.title);
 }
 
+// A selection that is bundled or downloaded is what the reader shows (a
+// download renders once its text loads); otherwise the reader renders
+// renderedId, the bundled fallback (QF 20 remapped from Saheeh but not
+// installed yet). The name comes from the installed copy, then the catalog.
+function activeEdition(
+  all: readonly Candidate[],
+  offered: readonly OfferedEdition[] | null,
+  selectedId: string,
+  renderedId: string,
+  uiLanguage: AppLanguage,
+): ActiveEdition {
+  const installed = all.find(
+    edition => edition.id === selectedId && edition.isDownloaded,
+  );
+  const id = installed ? selectedId : renderedId;
+  const known =
+    installed ??
+    all.find(edition => edition.id === id) ??
+    offered?.find(edition => edition.id === id);
+  if (!known) return {id, name: id, language: ''};
+  return {
+    id,
+    name: known.name,
+    language:
+      known.language === UNKNOWN_LANGUAGE
+        ? ''
+        : getEnglishLanguageDisplayName(known.language, uiLanguage),
+  };
+}
+
 export function buildTranslationPicker(input: {
   downloaded: readonly DownloadedTranslationMeta[];
   offered: readonly OfferedEdition[] | null;
   selectedId: string;
+  // The edition the reader renders for the selection
+  // (getEffectiveTranslationId).
+  renderedId: string;
   query: string;
   // The UI language, which names and orders the language groups.
   uiLanguage: AppLanguage;
   formatSize: (bytes: number) => string;
 }): TranslationPicker {
-  const {downloaded, offered, selectedId, query, uiLanguage, formatSize} =
-    input;
-  const visible = candidates(downloaded, offered).filter(edition =>
+  const {
+    downloaded,
+    offered,
+    selectedId,
+    renderedId,
+    query,
+    uiLanguage,
+    formatSize,
+  } = input;
+  const all = candidates(downloaded, offered);
+  const visible = all.filter(edition =>
     matchesTranslationQuery(edition, query),
   );
   const installed = visible
@@ -199,5 +249,10 @@ export function buildTranslationPicker(input: {
       title: getEnglishLanguageDisplayName(language, uiLanguage),
       rows: rows.sort(byTitle),
     }));
-  return {installed, groups, needsCatalog: offered === null};
+  return {
+    active: activeEdition(all, offered, selectedId, renderedId, uiLanguage),
+    installed,
+    groups,
+    needsCatalog: offered === null,
+  };
 }

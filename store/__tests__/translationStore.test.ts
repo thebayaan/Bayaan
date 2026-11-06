@@ -34,6 +34,7 @@ jest.mock('@/services/translation/TranslationDbService', () => ({
   },
 }));
 
+import {getTranslationName} from '@/utils/translationLookup';
 import {useTranslationStore} from '../translationStore';
 
 function downloaded(
@@ -101,6 +102,24 @@ describe('store actions', () => {
     expect(mockDb.deleteTranslation).not.toHaveBeenCalled();
   });
 
+  it('registers downloaded and offered names for the reader labels', async () => {
+    mockOffered.mockResolvedValueOnce([
+      {
+        key: 'qf:translations:45',
+        id: '45',
+        meta: {name: 'Kuliev', language: 'russian'},
+        bytes: 5,
+      },
+    ]);
+    await useTranslationStore.getState().loadOfferedTranslations();
+    expect(getTranslationName('45')).toBe('Kuliev');
+    mockDb.getDownloadedTranslations.mockResolvedValue([
+      downloaded('97', 'Maududi'),
+    ]);
+    await useTranslationStore.getState().loadDownloadedMeta();
+    expect(getTranslationName('97')).toBe('Maududi');
+  });
+
   it('rethrows a failed install and clears the indicator', async () => {
     mockInstall.mockRejectedValueOnce(new Error('download_ticket_404'));
     jest.spyOn(console, 'warn').mockImplementation(() => undefined);
@@ -141,6 +160,28 @@ describe('store actions', () => {
     await useTranslationStore.getState().deleteTranslation('en.custom');
     expect(mockDb.deleteTranslation).toHaveBeenCalledWith('en.custom');
     expect(mockRemove).not.toHaveBeenCalled();
+  });
+
+  it('names a fork provider download for the reader', async () => {
+    mockEngine = false;
+    const edition: RemoteTranslationEdition = {
+      identifier: 'en.fork',
+      language: 'en',
+      name: 'Fork Edition',
+      englishName: 'Fork Edition',
+      format: 'text',
+      type: 'translation',
+      direction: 'ltr',
+    };
+    mockProvider = {
+      fetchAvailableEditions: jest.fn(async () => []),
+      fetchFullTranslation: jest.fn(async () => ({edition, verses: []})),
+    };
+    mockDb.getDownloadedTranslations.mockResolvedValue([
+      downloaded('en.fork', 'Fork Edition'),
+    ]);
+    await useTranslationStore.getState().downloadTranslation('en.fork');
+    expect(getTranslationName('en.fork')).toBe('Fork Edition');
   });
 
   it('offers nothing without the engine or a fork provider', async () => {

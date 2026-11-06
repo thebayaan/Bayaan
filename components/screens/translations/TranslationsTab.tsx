@@ -14,17 +14,10 @@ import {
   type PickerRow,
 } from '@/store/translationPicker';
 import {translationDownloadFailure} from '@/services/content/contentNotices';
-import {contentLanguageName} from '@/services/content/contentLanguage';
 import {DEFAULT_TRANSLATION_ID} from '@/services/translation/translationRemap';
 import {formatBytes} from '@/services/storageService';
-import {
-  getTranslationName,
-  isBundledTranslation,
-  registerRemoteTranslationName,
-} from '@/utils/translationLookup';
-import {BUNDLED_TRANSLATIONS} from '@/types/translation';
+import {getEffectiveTranslationId} from '@/utils/translationLookup';
 import {currentLanguage} from '@/i18n/language';
-import {getEnglishLanguageDisplayName} from '@/i18n/languageNames';
 import {
   ActiveCard,
   CatalogRow,
@@ -76,15 +69,6 @@ export function TranslationsTab() {
     loadDownloadedMeta();
     loadOfferedTranslations();
   }, [loadDownloadedMeta, loadOfferedTranslations]);
-
-  useEffect(() => {
-    for (const meta of downloadedMeta) {
-      registerRemoteTranslationName(meta.identifier, meta.englishName);
-    }
-    for (const edition of offeredTranslations ?? []) {
-      registerRemoteTranslationName(edition.id, edition.name);
-    }
-  }, [downloadedMeta, offeredTranslations]);
 
   const handleSelect = useCallback(
     (id: string) => {
@@ -142,17 +126,23 @@ export function TranslationsTab() {
     ],
   );
 
+  const picker = useMemo(
+    () =>
+      buildTranslationPicker({
+        downloaded: downloadedMeta,
+        offered: offeredTranslations,
+        selectedId: selectedTranslationId,
+        renderedId: getEffectiveTranslationId(selectedTranslationId),
+        query,
+        uiLanguage: currentLanguage,
+        formatSize: formatBytes,
+      }),
+    [selectedTranslationId, downloadedMeta, offeredTranslations, query],
+  );
+
   // Installed editions first, then the catalog grouped by language; before
   // any catalog is known, a short row says how to see more.
   const data = useMemo((): FlatItem[] => {
-    const picker = buildTranslationPicker({
-      downloaded: downloadedMeta,
-      offered: offeredTranslations,
-      selectedId: selectedTranslationId,
-      query,
-      uiLanguage: currentLanguage,
-      formatSize: formatBytes,
-    });
     const items: FlatItem[] = [];
     if (picker.installed.length > 0) {
       items.push({type: 'meta-header', title: t('translations.available')});
@@ -168,24 +158,16 @@ export function TranslationsTab() {
     }
     if (picker.needsCatalog) items.push({type: 'connect'});
     return items;
-  }, [selectedTranslationId, downloadedMeta, offeredTranslations, query, t]);
+  }, [picker, t]);
 
+  const {active} = picker;
   const header = useMemo(() => {
-    const activeLanguage = isBundledTranslation(selectedTranslationId)
-      ? BUNDLED_TRANSLATIONS[selectedTranslationId].language
-      : (offeredTranslations?.find(e => e.id === selectedTranslationId)
-          ?.language ??
-        contentLanguageName(
-          downloadedMeta.find(m => m.identifier === selectedTranslationId)
-            ?.language,
-        ) ??
-        '');
     return (
       <>
         <ActiveCard
           label={t('translations.activeTranslation')}
-          name={getTranslationName(selectedTranslationId)}
-          language={getEnglishLanguageDisplayName(activeLanguage)}
+          name={active.name}
+          language={active.language}
         />
         <SearchInput
           placeholder={t('translations.searchTranslations')}
@@ -204,15 +186,7 @@ export function TranslationsTab() {
         />
       </>
     );
-  }, [
-    selectedTranslationId,
-    downloadedMeta,
-    offeredTranslations,
-    query,
-    styles,
-    theme.colors.text,
-    t,
-  ]);
+  }, [active, query, styles, theme.colors.text, t]);
 
   const renderRow = useCallback(
     (item: RowItem) => (

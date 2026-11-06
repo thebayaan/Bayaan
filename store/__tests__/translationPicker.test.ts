@@ -89,6 +89,7 @@ function picker(
     downloaded: [],
     offered: OFFERED,
     selectedId: 'clear-quran',
+    renderedId: 'clear-quran',
     query: '',
     uiLanguage: 'en',
     formatSize: bytes => `${bytes / 1_000_000} MB`,
@@ -256,5 +257,51 @@ describe('buildTranslationPicker', () => {
     expect(
       matchesTranslationQuery({name: 'A', author: null, language: 'B'}, ' '),
     ).toBe(true);
+  });
+
+  describe('the active edition', () => {
+    it('names the bundled fallback the reader shows for an offline Saheeh upgrade', () => {
+      // "saheeh" was remapped to "20"; no manifest yet and 20 not downloaded,
+      // so the reader renders Clear Quran.
+      const result = picker({
+        offered: null,
+        selectedId: '20',
+        renderedId: 'clear-quran',
+      });
+      expect(result.active).toEqual({
+        id: 'clear-quran',
+        name: 'The Clear Quran',
+        language: 'English',
+      });
+    });
+
+    it('names a downloaded selection from the catalog, in the UI language', () => {
+      const result = picker({
+        downloaded: [downloaded('97', 'Maududi (old)', 'urdu')],
+        selectedId: '97',
+        // Its text has not loaded yet; it renders once it does.
+        renderedId: 'clear-quran',
+        uiLanguage: 'ar',
+      });
+      expect(result.active).toEqual({
+        id: '97',
+        name: 'Tafheem-ul-Quran',
+        language: 'الأردية',
+      });
+    });
+
+    it('names a downloaded selection the catalog does not list from its copy', () => {
+      const result = picker({
+        downloaded: [downloaded('131', 'Dr. Mustafa', 'xx')],
+        offered: null,
+        selectedId: '131',
+        renderedId: '131',
+      });
+      expect(result.active).toEqual({
+        id: '131',
+        name: 'Dr. Mustafa',
+        language: '',
+      });
+    });
   });
 });
