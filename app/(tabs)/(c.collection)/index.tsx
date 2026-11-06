@@ -1,8 +1,7 @@
 import React, {useCallback, useState} from 'react';
-import {View, ScrollView, Text, Pressable} from 'react-native';
+import {View, ScrollView} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {useRouter} from 'expo-router';
 import {moderateScale, ScaledSheet} from '@/utils/scale';
 import {Feather} from '@expo/vector-icons';
 import {useFavoriteReciters} from '@/hooks/useFavoriteReciters';
@@ -27,12 +26,13 @@ import {useBottomInset} from '@/hooks/useBottomInset';
 import {USE_GLASS} from '@/hooks/useGlassProps';
 // @ai-start
 import {useTranslation} from 'react-i18next';
-import {flipX} from '@/utils/rtl';
 import {useResponsive} from '@/hooks/useResponsive';
 import {
   TabletCollectionHome,
   type CollectionCategory,
 } from '@/components/collection/TabletCollectionHome';
+import {CollectionBento} from '@/components/collection/CollectionBento';
+import type {VerseBookmark, VerseNote} from '@/types/verse-annotations';
 // @ai-end
 
 type CategoryItem = CollectionCategory;
@@ -43,7 +43,6 @@ export default function CollectionScreen() {
   const styles = createStyles(theme);
   const insets = useSafeAreaInsets();
   const bottomInset = useBottomInset();
-  const router = useRouter();
   const {t} = useTranslation(['collection', 'common']);
   const {isTablet} = useResponsive();
   const {lovedTracks} = useLoved();
@@ -54,16 +53,36 @@ export default function CollectionScreen() {
 
   const [bookmarkCount, setBookmarkCount] = useState(0);
   const [noteCount, setNoteCount] = useState(0);
+  const [latestBookmark, setLatestBookmark] = useState<VerseBookmark | null>(
+    null,
+  );
+  const [latestNote, setLatestNote] = useState<VerseNote | null>(null);
 
   useFocusEffect(
     useCallback(() => {
       verseAnnotationService
         .getAllBookmarks()
-        .then(b => setBookmarkCount(b.length))
+        .then(b => {
+          setBookmarkCount(b.length);
+          setLatestBookmark(
+            b.reduce<VerseBookmark | null>(
+              (a, x) => (!a || x.createdAt > a.createdAt ? x : a),
+              null,
+            ),
+          );
+        })
         .catch(() => {});
       verseAnnotationService
         .getAllNotes()
-        .then(n => setNoteCount(n.length))
+        .then(n => {
+          setNoteCount(n.length);
+          setLatestNote(
+            n.reduce<VerseNote | null>(
+              (a, x) => (!a || x.updatedAt > a.updatedAt ? x : a),
+              null,
+            ),
+          );
+        })
         .catch(() => {});
     }, []),
   );
@@ -169,62 +188,18 @@ export default function CollectionScreen() {
             ? moderateScale(16)
             : insets.top + moderateScale(16),
         }}>
-        {/* Add to Collection Bar */}
-        <Pressable style={styles.addBar} onPress={handleAddPress}>
-          <Feather
-            name="plus"
-            size={moderateScale(16)}
-            color={theme.colors.textSecondary}
-          />
-          <Text
-            style={[styles.addBarText, {color: theme.colors.textSecondary}]}>
-            {t('collectionScreen.addToCollection')}
-          </Text>
-        </Pressable>
-
-        {/* Category List */}
-        <View style={styles.categoryList}>
-          {categories.map(category => (
-            <Pressable
-              key={category.id}
-              style={styles.categoryRow}
-              onPress={() => router.push(category.route as never)}>
-              <View
-                style={[
-                  styles.categoryIcon,
-                  {
-                    backgroundColor: Color(category.color)
-                      .alpha(0.15)
-                      .toString(),
-                  },
-                ]}>
-                {category.icon}
-              </View>
-              <View style={styles.categoryInfo}>
-                <Text
-                  style={[styles.categoryLabel, {color: theme.colors.text}]}>
-                  {category.label}
-                </Text>
-                <Text
-                  style={[
-                    styles.categorySubtitle,
-                    {color: theme.colors.textSecondary},
-                  ]}
-                  numberOfLines={1}>
-                  {category.count > 0
-                    ? t('collectionScreen.itemsCount', {count: category.count})
-                    : category.emptyText}
-                </Text>
-              </View>
-              <Feather
-                name="chevron-right"
-                size={moderateScale(18)}
-                color={theme.colors.textSecondary}
-                style={flipX}
-              />
-            </Pressable>
-          ))}
-        </View>
+        <CollectionBento
+          lovedTracks={lovedTracks}
+          latestBookmark={latestBookmark}
+          bookmarkCount={bookmarkCount}
+          latestNote={latestNote}
+          noteCount={noteCount}
+          downloads={downloads}
+          playlistNames={playlists.map(p => p.name)}
+          favoriteReciters={favoriteReciters}
+          uploadsCount={uploadsTotalCount}
+          onAdd={handleAddPress}
+        />
 
         <View style={{height: bottomInset}} />
       </ScrollView>

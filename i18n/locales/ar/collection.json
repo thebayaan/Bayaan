@@ -17,6 +17,9 @@
       "bookmarks": "لا توجد علامات مرجعية بعد",
       "notes": "لا توجد ملاحظات بعد",
       "uploads": "لا توجد ملفات مستوردة بعد"
+    },
+    "bento": {
+      "lastLoved": "الأخيرة: {{surah}} · {{reciter}}"
     }
   },
   "bookmarksScreen": {
