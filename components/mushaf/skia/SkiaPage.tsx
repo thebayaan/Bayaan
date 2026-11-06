@@ -149,7 +149,7 @@ interface SkiaPageProps {
   baseLineHeight?: number;
   paddingHorizontal?: number;
   paddingTop?: number;
-  /** @ai False in phone landscape; see `calculateLineYPositions`. */
+  /** @ai `centerShortPages` of the layout metrics from `getMushafLayout`. */
   centerShortPages?: boolean;
 }
 

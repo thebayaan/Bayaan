@@ -4,14 +4,17 @@
 //
 // UIKit reports landscape horizontal insets on both sides (59/59 on a
 // Dynamic Island phone, 44/44 on a notch phone). Android reports its
-// navigation bar through the same fields, so the insets count on iOS only.
+// navigation bar through the same fields, so main.tsx passes them as
+// `sideInsets` on iOS only.
 
-import {Platform} from 'react-native';
 import {
   calculateLineYPositions,
   getMushafLayout,
   getPageLabelOffsets,
-  TABLET_MIN_PADDING_BOTTOM,
+  minLabelGutter,
+  PAGE_NUMBER_LABEL_OFFSET,
+  singlePageLayout,
+  SURAH_JUZ_LABEL_OFFSET,
 } from '../constants';
 
 // iPhone 15 Pro, landscape.
@@ -42,9 +45,19 @@ const insets = (left: number, right: number) => ({
   right,
 });
 
+// What main.tsx passes: on iOS the side insets are the cutout, and on
+// Android it passes none.
+const ios = (left: number, right: number) => ({
+  insets: insets(left, right),
+  sideInsets: {left, right},
+});
+const android = (left: number, right: number) => ({
+  insets: insets(left, right),
+});
+
 describe('getMushafLayout — phone landscape display cutout', () => {
   it('insets the page by the Dynamic Island on both sides (iPhone 15 Pro)', () => {
-    const m = getMushafLayout({...baseOpts, insets: insets(ISLAND, ISLAND)});
+    const m = getMushafLayout({...baseOpts, ...ios(ISLAND, ISLAND)});
 
     // The pager item must stay one full window wide or `getItemLayout` in
     // main.tsx stops snapping.
@@ -63,7 +76,7 @@ describe('getMushafLayout — phone landscape display cutout', () => {
       ...baseOpts,
       width: NOTCH_W,
       height: NOTCH_H,
-      insets: insets(NOTCH, NOTCH),
+      ...ios(NOTCH, NOTCH),
     });
 
     expect(m.screenWidth).toBe(NOTCH_W);
@@ -81,7 +94,7 @@ describe('getMushafLayout — phone landscape display cutout', () => {
       const m = getMushafLayout({
         ...baseOpts,
         width: w,
-        insets: insets(l, r),
+        ...ios(l, r),
       });
 
       // Nothing is drawn left of the left inset...
@@ -96,7 +109,7 @@ describe('getMushafLayout — phone landscape display cutout', () => {
       [W, ISLAND],
       [NOTCH_W, NOTCH],
     ]) {
-      const m = getMushafLayout({...baseOpts, width: w, insets: insets(i, i)});
+      const m = getMushafLayout({...baseOpts, width: w, ...ios(i, i)});
       expect(m.pageOffsetX).toBe((m.screenWidth - m.pageWidth) / 2);
     }
   });
@@ -107,7 +120,7 @@ describe('getMushafLayout — phone landscape display cutout', () => {
     const before = getMushafLayout({...baseOpts, insets: insets(0, 0)});
     const after = getMushafLayout({
       ...baseOpts,
-      insets: insets(ISLAND, ISLAND),
+      ...ios(ISLAND, ISLAND),
     });
 
     expect(before.contentWidth).toBe(844);
@@ -123,7 +136,7 @@ describe('getMushafLayout — phone landscape display cutout', () => {
 
   it('handles a one-sided inset (not observed on iOS)', () => {
     const before = getMushafLayout({...baseOpts, insets: insets(0, 0)});
-    const m = getMushafLayout({...baseOpts, insets: insets(ISLAND, 0)});
+    const m = getMushafLayout({...baseOpts, ...ios(ISLAND, 0)});
 
     expect(m.pageOffsetX).toBe(ISLAND);
     expect(m.pageWidth).toBe(W - ISLAND); // 793
@@ -135,21 +148,11 @@ describe('getMushafLayout — phone landscape display cutout', () => {
   });
 });
 
-describe('getMushafLayout — Android is never shrunk (regression guard)', () => {
-  const original = Platform.OS;
-  afterEach(() => {
-    Platform.OS = original;
-  });
-
-  it('ignores Android navigation-bar insets entirely', () => {
+describe('getMushafLayout — only sideInsets move the page', () => {
+  it('never reads insets.left / insets.right (Android: no side insets)', () => {
     // Edge to edge, a landscape inset on Android is the navigation bar, not a
-    // cutout.
-    Platform.OS = 'android';
-
-    const withNavBar = getMushafLayout({
-      ...baseOpts,
-      insets: insets(NAV_BAR, 0),
-    });
+    // cutout, and main.tsx passes no side insets there.
+    const withNavBar = getMushafLayout({...baseOpts, ...android(NAV_BAR, 0)});
     const withNothing = getMushafLayout({...baseOpts, insets: insets(0, 0)});
 
     expect(withNavBar).toEqual(withNothing);
@@ -157,11 +160,10 @@ describe('getMushafLayout — Android is never shrunk (regression guard)', () =>
     expect(withNavBar.pageOffsetX).toBe(0);
   });
 
-  it('still applies the same insets on iOS', () => {
-    Platform.OS = 'ios';
-
-    const m = getMushafLayout({...baseOpts, insets: insets(NAV_BAR, NAV_BAR)});
+  it('applies the side insets it is given', () => {
+    const m = getMushafLayout({...baseOpts, ...ios(NAV_BAR, NAV_BAR)});
     expect(m.pageOffsetX).toBe(NAV_BAR);
+    expect(m.pageWidth).toBe(W - NAV_BAR * 2);
   });
 });
 
@@ -194,9 +196,9 @@ describe('getMushafLayout — no movement where there is no cutout', () => {
   it('phone portrait ignores horizontal insets entirely', () => {
     const portrait = {...baseOpts, width: H, height: W};
 
-    expect(
-      getMushafLayout({...portrait, insets: insets(ISLAND, ISLAND)}),
-    ).toEqual(getMushafLayout({...portrait, insets: insets(0, 0)}));
+    expect(getMushafLayout({...portrait, ...ios(ISLAND, ISLAND)})).toEqual(
+      getMushafLayout({...portrait, insets: insets(0, 0)}),
+    );
   });
 
   it('both iPad branches ignore horizontal insets entirely', () => {
@@ -210,9 +212,95 @@ describe('getMushafLayout — no movement where there is no cutout', () => {
     const tabletPortrait = {...tabletLandscape, width: 1024, height: 1366};
 
     for (const opts of [tabletLandscape, tabletPortrait]) {
-      expect(
-        getMushafLayout({...opts, insets: insets(ISLAND, ISLAND)}),
-      ).toEqual(getMushafLayout({...opts, insets: insets(0, 0)}));
+      expect(getMushafLayout({...opts, ...ios(ISLAND, ISLAND)})).toEqual(
+        getMushafLayout({...opts, insets: insets(0, 0)}),
+      );
+    }
+  });
+});
+
+// The layout decides two things that the renderers and DKPageView read:
+// whether pages 1-2 are centred, and whether the book edge is drawn on both
+// sides.
+describe('getMushafLayout — the layout decisions', () => {
+  const phonePortrait = {...baseOpts, width: H, height: W};
+  const tabletLandscape = {
+    width: 1366,
+    height: 1024,
+    isTablet: true,
+    headerHeight: 0,
+    toolbarHeight: 0,
+    insets: insets(0, 0),
+  };
+  const tabletPortrait = {...tabletLandscape, width: 1024, height: 1366};
+  // A narrow Split View pane: the page is not capped, so it fills the item.
+  const tabletPane = {...tabletLandscape, width: 507, height: 1366};
+
+  it('phone portrait: pages 1-2 centred, one-sided book edge', () => {
+    const m = getMushafLayout({...phonePortrait, insets: insets(0, 0)});
+    expect(m.centerShortPages).toBe(true);
+    expect(m.symmetricEdges).toBe(false);
+  });
+
+  it('phone landscape: pages 1-2 at the top, one-sided book edge', () => {
+    for (const chrome of [0, 60]) {
+      for (const side of [0, NOTCH, ISLAND]) {
+        const m = getMushafLayout({
+          ...baseOpts,
+          headerHeight: chrome,
+          toolbarHeight: chrome,
+          ...ios(side, side),
+        });
+        expect(m.centerShortPages).toBe(false);
+        // The cutout makes the page narrower than the item, and the page
+        // still keeps the book-edge look.
+        expect(m.symmetricEdges).toBe(false);
+      }
+    }
+  });
+
+  it('iPad portrait: pages 1-2 centred, book edge on both sides', () => {
+    const m = getMushafLayout(tabletPortrait);
+    expect(m.pageWidth).toBeLessThan(m.screenWidth);
+    expect(m.centerShortPages).toBe(true);
+    expect(m.symmetricEdges).toBe(true);
+  });
+
+  it('iPad Split View pane: the page fills the item, one-sided edge', () => {
+    const m = getMushafLayout(tabletPane);
+    expect(m.pageWidth).toBe(m.screenWidth);
+    expect(m.centerShortPages).toBe(true);
+    expect(m.symmetricEdges).toBe(false);
+  });
+
+  it('iPad landscape: a spread keeps the one-sided edge on each page', () => {
+    const m = getMushafLayout(tabletLandscape);
+    expect(m.facingPages).toBe(true);
+    expect(m.centerShortPages).toBe(true);
+    expect(m.symmetricEdges).toBe(false);
+
+    // One page of the spread, centred in the item (the vertical reader).
+    const single = singlePageLayout(m);
+    expect(single.centerShortPages).toBe(true);
+    expect(single.symmetricEdges).toBe(true);
+  });
+
+  it('outside phone landscape, symmetricEdges is the rule develop used', () => {
+    // develop: !facingPages && pageWidth < screenWidth.
+    for (const opts of [
+      {...phonePortrait, insets: insets(0, 0)},
+      tabletPortrait,
+      tabletPane,
+      tabletLandscape,
+    ]) {
+      for (const m of [
+        getMushafLayout(opts),
+        singlePageLayout(getMushafLayout(opts)),
+      ]) {
+        expect(m.symmetricEdges).toBe(
+          !m.facingPages && m.pageWidth < m.screenWidth,
+        );
+      }
     }
   });
 });
@@ -246,14 +334,15 @@ describe('calculateLineYPositions — pages 1-2 in a short scroll viewport', () 
     }
   });
 
-  it('starts at the top when centering is turned off', () => {
+  it('starts at the top with the phone-landscape layout decision', () => {
+    expect(m.centerShortPages).toBe(false);
     for (const page of [1, 2]) {
       const ys = calculateLineYPositions(
         lines,
         page,
         m.contentHeight,
         m.baseLineHeight,
-        false,
+        m.centerShortPages,
       );
       expect(ys[0]).toBe(0);
       expect(ys[1]).toBeCloseTo(m.baseLineHeight);
@@ -295,6 +384,7 @@ describe('getPageLabelOffsets — labels stay on the page', () => {
             headerHeight: chrome,
             toolbarHeight: chrome,
             insets: {top, bottom, left: ISLAND, right: ISLAND},
+            sideInsets: {left: ISLAND, right: ISLAND},
           });
         }
       }
@@ -350,26 +440,64 @@ describe('getPageLabelOffsets — labels stay on the page', () => {
         expect(m.paddingTop).toBe(developTop(chrome, top));
 
         const before = developBottom(chrome, bottom);
-        if (before >= TABLET_MIN_PADDING_BOTTOM) {
+        if (before >= minLabelGutter()) {
           // Face ID iPads and every non-glass iPad: unchanged.
           expect(m.paddingBottom).toBe(before);
         } else {
           // Only a glass iPad with a small bottom inset moves, to the floor.
           expect(chrome).toBe(0);
-          expect(m.paddingBottom).toBe(TABLET_MIN_PADDING_BOTTOM);
+          expect(m.paddingBottom).toBe(minLabelGutter());
         }
       }
     }
   });
 
-  it('leaves the non-glass gutters untouched — they already clear the band', () => {
+  it('one rule for both floors: minLabelGutter of the band to keep clear', () => {
+    // An offset reaches the outer edge of its label, and the 12pt label line
+    // (about 16pt) grows back toward the text. So a gutter as deep as the
+    // offset keeps the label on the page, and the line needs no room.
+    expect(SURAH_JUZ_LABEL_OFFSET).toBeGreaterThan(16);
+    expect(PAGE_NUMBER_LABEL_OFFSET).toBeGreaterThan(16);
+    expect(minLabelGutter()).toBe(PAGE_NUMBER_LABEL_OFFSET + 8); // 43
+    expect(minLabelGutter(21)).toBe(21 + 43);
+
+    // Phone landscape keeps both labels 8pt or more clear of the safe area.
+    for (const opts of shapes(W, H, false)) {
+      const m = getMushafLayout(opts);
+      const {labelTop, pageNumberBottom} = getPageLabelOffsets(m, {
+        isBookLayout: false,
+        insetTop: opts.insets.top,
+      });
+      expect(m.paddingTop).toBeGreaterThanOrEqual(
+        minLabelGutter(opts.insets.top),
+      );
+      expect(m.paddingBottom).toBeGreaterThanOrEqual(
+        minLabelGutter(opts.insets.bottom),
+      );
+      expect(labelTop).toBeGreaterThanOrEqual(opts.insets.top + 8);
+      expect(pageNumberBottom).toBeGreaterThanOrEqual(opts.insets.bottom + 8);
+    }
+
+    // An iPad keeps the page number on the page, 8pt or more from its edge.
+    for (const opts of shapes(1024, 1366, true)) {
+      const m = getMushafLayout(opts);
+      expect(m.paddingBottom).toBeGreaterThanOrEqual(minLabelGutter());
+      const {pageNumberBottom} = getPageLabelOffsets(m, {
+        isBookLayout: false,
+        insetTop: opts.insets.top,
+      });
+      expect(pageNumberBottom).toBeGreaterThanOrEqual(8);
+    }
+  });
+
+  it('leaves the non-glass gutters untouched — they already clear the floor', () => {
     const nonGlass = {
       width: W,
       height: H,
       isTablet: false,
       headerHeight: 60,
       toolbarHeight: 60,
-      insets: insets(ISLAND, ISLAND),
+      ...ios(ISLAND, ISLAND),
     };
     const m = getMushafLayout(nonGlass);
 
@@ -385,7 +513,7 @@ describe('getPageLabelOffsets — labels stay on the page', () => {
       isTablet: false,
       headerHeight: 0,
       toolbarHeight: 0,
-      insets: insets(ISLAND, ISLAND),
+      ...ios(ISLAND, ISLAND),
     };
     const nonGlass = {...glass, headerHeight: 60, toolbarHeight: 60};
     const m = getMushafLayout(glass);

@@ -215,14 +215,8 @@ const DKPageView: React.FC<{
   // with all four corners rounded instead. `facingPages` is still the source
   // of truth: once we add the real two-page spread, that path will use the
   // asymmetric decoration on each half of the spread.
-  // @ai Phone landscape (the only layout with scrollContainerHeight) keeps
-  // the book-edge look, although its page is narrower than the screen by the
-  // cutout insets.
-  const useSymmetricEdges =
-    isBookLayout &&
-    !metrics.facingPages &&
-    !metrics.scrollContainerHeight &&
-    metrics.pageWidth < metrics.screenWidth;
+  // @ai getMushafLayout marks those layouts with `symmetricEdges`.
+  const useSymmetricEdges = isBookLayout && metrics.symmetricEdges; // @ai
 
   // In fullscreen mode, use symmetric padding; in book mode the content sits
   // against the spine. When we force symmetric edges on tablet single-page
@@ -319,7 +313,7 @@ const DKPageView: React.FC<{
           baseLineHeight={metrics.baseLineHeight}
           paddingHorizontal={metrics.paddingHorizontal}
           paddingTop={metrics.paddingTop}
-          centerShortPages={!metrics.scrollContainerHeight} // @ai
+          centerShortPages={metrics.centerShortPages} // @ai
         />
       )}
       {isBookLayout && (
@@ -684,6 +678,17 @@ export default function MushafViewer({
   // Tablet path: always use measured dims (falls back to window on first frame).
   const metrics = useMushafLayout({
     insets,
+    // @ai-start
+    // The side insets the page keeps clear of. The header and toolbar below
+    // pad by them on both platforms; the page does so on iOS only, where
+    // they are the cutout (the sensor housing, 59/59 on a Dynamic Island
+    // phone in landscape). On Android they carry the navigation bar of the
+    // edge-to-edge app, and the page may sit under it.
+    sideInsets:
+      Platform.OS === 'ios'
+        ? {left: insets.left, right: insets.right}
+        : undefined,
+    // @ai-end
     toolbarHeight: USE_GLASS ? 0 : 60,
     headerHeight: USE_GLASS ? 0 : 60,
     containerWidth: isTablet ? containerSize?.width : undefined,

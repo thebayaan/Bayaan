@@ -1,10 +1,5 @@
 import {useMemo} from 'react';
-import {
-  Dimensions,
-  Platform,
-  useWindowDimensions,
-  type ScaledSize,
-} from 'react-native';
+import {Dimensions, useWindowDimensions, type ScaledSize} from 'react-native';
 import type {EdgeInsets} from 'react-native-safe-area-context';
 import {getIsTablet} from '@/utils/responsive';
 
@@ -41,25 +36,26 @@ export const PAGE_PADDING_BOTTOM = IS_COMPACT_DEVICE ? 70 : 100;
 
 // @ai-start
 /**
- * Where the per-page labels sit, measured inward from the page edge. The
- * surah / juz labels sit `SURAH_JUZ_LABEL_OFFSET` up from the top gutter
- * edge, the fullscreen page number `PAGE_NUMBER_LABEL_OFFSET` down from the
- * bottom one. A gutter smaller than the offset puts the label off screen.
+ * Where the per-page labels sit. The surah / juz labels sit
+ * `SURAH_JUZ_LABEL_OFFSET` above the top of the text, and the fullscreen page
+ * number `PAGE_NUMBER_LABEL_OFFSET` below its bottom. Each offset reaches the
+ * outer edge of the label, and the label line grows back toward the text. A
+ * gutter smaller than the offset puts the label off the page.
  */
 export const SURAH_JUZ_LABEL_OFFSET = 30;
 export const PAGE_NUMBER_LABEL_OFFSET = 35;
 
-/**
- * Smallest gutter (pt) that keeps a 12pt label on the page: the larger label
- * offset (35), the label line (~15) and 2pt of slack.
- */
-export const PAGE_LABEL_BAND = 52;
+/** Space between a label and the band at the page edge it keeps clear of. */
+const PAGE_LABEL_MARGIN = 8;
 
 /**
- * Smallest iPad bottom gutter that keeps the fullscreen page number on
- * screen: the label offset plus the 8pt edge margin the tablet gutter keeps.
+ * The smallest gutter that keeps both labels clear of a band `edge` deep at
+ * the page edge: the band, the larger label offset and an 8pt margin. The
+ * label line needs no room of its own (see the offsets above).
  */
-export const TABLET_MIN_PADDING_BOTTOM = PAGE_NUMBER_LABEL_OFFSET + 8;
+export function minLabelGutter(edge = 0): number {
+  return edge + PAGE_NUMBER_LABEL_OFFSET + PAGE_LABEL_MARGIN;
+}
 
 /**
  * Label positions, measured inward from the page edge. The book-layout page
@@ -135,6 +131,21 @@ export interface MushafLayoutMetrics {
    * Only used for phone landscape mode.
    */
   scrollContainerHeight?: number;
+  // @ai-start
+  /**
+   * Whether pages 1-2 centre their short block in `contentHeight` (see
+   * `calculateLineYPositions`). False in phone landscape, where the page
+   * scrolls and a centred block would start below the fold.
+   */
+  centerShortPages: boolean;
+  /**
+   * Whether the book-edge decoration is drawn on both sides of the page, with
+   * four rounded corners: one page narrower than the item, with no facing
+   * page (iPad portrait, and one page of an iPad spread). False for spreads,
+   * full-width pages and phone landscape, which keep the one-sided edge.
+   */
+  symmetricEdges: boolean;
+  // @ai-end
 }
 
 export interface MushafLayoutOpts {
@@ -150,7 +161,16 @@ export interface MushafLayoutOpts {
    */
   containerWidth?: number;
   containerHeight?: number;
+  /** Safe-area insets. Only `top` and `bottom` are read. */ // @ai
   insets?: EdgeInsets | null;
+  // @ai-start
+  /**
+   * The left and right insets the page keeps clear of. Only phone landscape
+   * reads them. The caller decides which insets count: main.tsx passes the
+   * iOS cutout (the sensor housing) and nothing on Android.
+   */
+  sideInsets?: {left: number; right: number};
+  // @ai-end
   /** Height of the custom bottom player/toolbar, if any (phone only). */
   toolbarHeight?: number;
   /** Height of the native stack header, if one is shown (phone only). */
@@ -200,13 +220,8 @@ export function getMushafLayout(
   const insetTop = opts.insets?.top ?? 0;
   const insetBottom = opts.insets?.bottom ?? 0;
   // @ai-start
-  // Horizontal safe-area insets count on iOS only. In landscape a notched or
-  // Dynamic Island iPhone reports its sensor housing there, on both sides
-  // (for example 59/59). On Android the same fields carry the navigation bar
-  // of the edge-to-edge app, and the page may sit under it.
-  const insetsAreCutout = Platform.OS === 'ios';
-  const insetLeft = insetsAreCutout ? (opts.insets?.left ?? 0) : 0;
-  const insetRight = insetsAreCutout ? (opts.insets?.right ?? 0) : 0;
+  const insetLeft = opts.sideInsets?.left ?? 0;
+  const insetRight = opts.sideInsets?.right ?? 0;
   // @ai-end
   const headerHeight = opts.headerHeight ?? 0;
   const toolbarHeight = opts.toolbarHeight ?? 0;
@@ -228,10 +243,12 @@ export function getMushafLayout(
   // @ai With glass chrome (headerHeight = toolbarHeight = 0) an iPad with no
   // home indicator got a 32pt bottom gutter, and the fullscreen page number
   // sat at 32 - 35 = -3. Floor only that gutter; every other iPad already
-  // clears the floor, and the top label never goes negative.
+  // clears the floor, and the top label never goes negative. The floor keeps
+  // the label on the page only: an iPad gutter takes its height from the
+  // text, so it does not grow to clear the home indicator as well.
   const tabletPaddingBottom = Math.max(
     toolbarHeight + Math.max(insetBottom, 8) + 24,
-    TABLET_MIN_PADDING_BOTTOM,
+    minLabelGutter(),
   );
 
   const paddingTop = isTablet ? tabletPaddingTop : basePaddingTop;
@@ -265,6 +282,8 @@ export function getMushafLayout(
         paddingTop,
         paddingBottom,
         facingPages: false,
+        centerShortPages: true, // @ai
+        symmetricEdges: false, // @ai
       };
     }
 
@@ -286,17 +305,17 @@ export function getMushafLayout(
     const headerH = opts.headerHeight ?? 60;
     const toolbarH = opts.toolbarHeight ?? 60;
     // @ai-start
-    // Keep both gutters at least PAGE_LABEL_BAND deep, or the labels land at a
-    // negative offset. With glass chrome (0 heights) an iPhone 15 had a 29pt
-    // bottom gutter and the page number at -6. The page scrolls and the
-    // glyphs follow contentWidth, so a deeper gutter costs nothing.
+    // Keep the labels clear of the safe area, or they land at a negative
+    // offset: with glass chrome (0 heights) an iPhone 15 had a 29pt bottom
+    // gutter and the page number at -6. The page scrolls and the glyphs
+    // follow contentWidth, so a deeper gutter costs no text size.
     const landscapePaddingTop = Math.max(
       headerH + insetTop + 12,
-      insetTop + PAGE_LABEL_BAND,
+      minLabelGutter(insetTop),
     );
     const landscapePaddingBottom = Math.max(
       toolbarH + insetBottom + 8,
-      insetBottom + PAGE_LABEL_BAND,
+      minLabelGutter(insetBottom),
     );
     // @ai-end
 
@@ -327,6 +346,8 @@ export function getMushafLayout(
       paddingBottom: landscapePaddingBottom,
       facingPages: false,
       scrollContainerHeight: height,
+      centerShortPages: false, // @ai
+      symmetricEdges: false, // @ai
     };
   }
 
@@ -363,6 +384,8 @@ export function getMushafLayout(
       paddingTop,
       paddingBottom,
       facingPages: true,
+      centerShortPages: true, // @ai
+      symmetricEdges: false, // @ai
     };
   }
 
@@ -385,6 +408,8 @@ export function getMushafLayout(
     paddingTop,
     paddingBottom,
     facingPages: false,
+    centerShortPages: true, // @ai
+    symmetricEdges: pageWidth < width, // @ai
   };
 }
 
@@ -405,6 +430,7 @@ export function singlePageLayout(
     pageOffsetX: Math.max((metrics.screenWidth - metrics.pageWidth) / 2, 0),
     facingGap: 0,
     facingPages: false,
+    symmetricEdges: metrics.pageWidth < metrics.screenWidth, // @ai
   };
 }
 
@@ -458,6 +484,8 @@ export function useMushafLayout(
       opts.insets?.bottom,
       opts.insets?.left,
       opts.insets?.right,
+      opts.sideInsets?.left, // @ai
+      opts.sideInsets?.right, // @ai
       opts.toolbarHeight,
       opts.headerHeight,
       opts.isTablet,
@@ -619,9 +647,10 @@ export function getHizbForPage(page: number): number {
  * (phone-portrait snapshot). iPad / rotation-aware callers should pass the
  * values returned by `useMushafLayout()` instead.
  *
- * @ai Pass `centerShortPages = false` when the page renders inside a scroll
- * viewport shorter than the page (phone landscape). The centred block would
- * start below the fold there, and the page would look blank.
+ * @ai Pass `metrics.centerShortPages` from `getMushafLayout`. It is false
+ * where the page scrolls inside a shorter viewport (phone landscape): the
+ * centred block would start below the fold there, and the page would look
+ * blank.
  */
 // @ai-start
 /**
