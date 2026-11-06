@@ -2,9 +2,18 @@
 import {currentLanguage, type AppLanguage} from './language';
 import {SOURCE_LANGUAGE, getLanguageConfig} from './languages';
 import {resources} from './resources';
+import {
+  getEnglishLanguageDisplayName,
+  isPreferredLanguage,
+} from './languageNames';
+
+// Older names, kept for callers outside the translations picker.
+export {
+  getEnglishLanguageDisplayName as getTafseerLanguageDisplayName,
+  isPreferredLanguage as isPreferredTafseerLanguage,
+};
 
 interface HomeTables {
-  languages?: Record<string, string>;
   tafseerNames?: Record<string, string>;
 }
 
@@ -25,23 +34,6 @@ interface NamedTafseer {
   englishName: string;
 }
 
-export function getTafseerLanguageDisplayName(
-  editionLanguage: string,
-  language: AppLanguage = currentLanguage,
-): string {
-  const codes: Record<string, string> = {
-    arabic: 'ar',
-    english: 'en',
-    bengali: 'bn',
-    urdu: 'ur',
-    russian: 'ru',
-    kurdish: 'ku',
-  };
-  const normalized = editionLanguage.trim().toLowerCase();
-  const names = homeTable(language, 'languages');
-  return names[codes[normalized] ?? normalized] ?? editionLanguage;
-}
-
 /** Localize catalogue titles without changing the language of their text. */
 export function getTafseerDisplayName(
   edition: NamedTafseer,
@@ -56,25 +48,14 @@ export function getTafseerDisplayName(
   );
 }
 
-export function isPreferredTafseerLanguage(
-  editionLanguage: string,
-  language: AppLanguage = currentLanguage,
-): boolean {
-  const normalized = editionLanguage.trim().toLowerCase();
-  return (
-    normalized === language ||
-    normalized === getLanguageConfig(language).englishName.toLowerCase()
-  );
-}
-
 /** Sort a copy at call sites so persisted selections and metadata stay intact. */
 export function compareTafaseer(
   a: NamedTafseer & {language: string},
   b: NamedTafseer & {language: string},
 ): number {
   return (
-    Number(isPreferredTafseerLanguage(b.language)) -
-      Number(isPreferredTafseerLanguage(a.language)) ||
+    Number(isPreferredLanguage(b.language)) -
+      Number(isPreferredLanguage(a.language)) ||
     getTafseerDisplayName(a).localeCompare(
       getTafseerDisplayName(b),
       currentLanguage,
