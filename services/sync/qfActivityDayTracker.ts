@@ -92,9 +92,10 @@ function isUnavailable(error: BayaanSettingsApiError): boolean {
 /**
  * Credits mushaf reading to the signed-in user's QF activity days, which
  * drive Quran.com streaks. Time a page is on screen while the app is active
- * and the reader is focused is queued per account as dated batches of seconds and verse ranges, then
- * sent every 30 seconds, when the app leaves the foreground and when the
- * reader closes. Batches survive restarts and are retried with their key.
+ * and the reader is focused is queued per account as dated batches of
+ * seconds and verse ranges, then sent every 30 seconds, when the app leaves
+ * the foreground and when the reader closes. Batches survive restarts and
+ * are retried with their key.
  */
 export function createQfActivityDayTracker(
   deps: QfActivityDayTrackerDeps,
@@ -221,7 +222,11 @@ export function createQfActivityDayTracker(
               error.retryAfterMs ?? 0,
               Math.min(MAX_BACKOFF_MS, FLUSH_INTERVAL_MS * 2 ** failures),
             );
-          recordFailedAttempt(accountId, batch.id);
+          // Only a server's answer counts against the batch: reading done
+          // offline waits for a connection, bounded by batch expiry.
+          if (error.status >= 500 || error.status === 429) {
+            recordFailedAttempt(accountId, batch.id);
+          }
           return;
         }
         console.warn('[QfActivityDays] A reading batch was rejected');

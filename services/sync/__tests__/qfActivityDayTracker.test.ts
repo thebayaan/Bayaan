@@ -430,4 +430,23 @@ describe('qfActivityDayTracker', () => {
     await tracker.flush();
     expect(post).toHaveBeenCalledTimes(2);
   });
+
+  it('keeps reading queued however long the device is offline', async () => {
+    const {tracker, post, queued, advance} = setup({
+      post: async () => {
+        throw new BayaanSettingsApiError(0, 'network_error');
+      },
+    });
+    tracker.showPages([1]);
+    advance(10_000);
+    tracker.stop();
+    for (let attempt = 0; attempt < MAX_SEND_ATTEMPTS + 4; attempt++) {
+      await tracker.flush();
+      advance(20 * 60_000);
+    }
+    expect(post).toHaveBeenCalledTimes(MAX_SEND_ATTEMPTS + 4);
+    expect(queued()).toEqual([
+      expect.objectContaining({id: 'batch-1', attempts: 0}),
+    ]);
+  });
 });

@@ -71,8 +71,9 @@ still on its own day goes without a `date` (QF counts dated seconds as manually
 added time and dates undated ones by `x-timezone`), while one first sent on a
 later day keeps its date. A retry resends that body unchanged with the same
 `Idempotency-Key`, even after midnight, and later reading starts a new batch.
-Server errors back off (up to 15 minutes) and a batch is dropped after 8 failed
-sends, so one bad batch can't hold up the queue. A refused batch (400, 404,
+Failed sends back off (up to 15 minutes). A batch is dropped after 8 server
+errors (5xx or 429), so one bad batch can't hold up the queue; network errors
+don't count, so reading done offline waits for a connection. A refused batch (400, 404,
 409, 413 or 422) is dropped; a 403 pauses sending until the next launch or
 sign-in and keeps the queue. Batches older than six days expire. Sign-out sends
 what it can within the existing wait, then clears the account's queue and its

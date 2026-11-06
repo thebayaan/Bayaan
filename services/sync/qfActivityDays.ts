@@ -100,13 +100,16 @@ export function localDateOf(time: number): string {
 /** The calendar date at `time` in `timezone`, YYYY-MM-DD. */
 export function dateInTimezone(time: number, timezone: string): string {
   try {
-    // en-CA formats dates as YYYY-MM-DD.
-    return new Intl.DateTimeFormat('en-CA', {
+    const parts = new Intl.DateTimeFormat('en-US', {
       timeZone: timezone,
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
-    }).format(time);
+    }).formatToParts(time);
+    const part = (type: string) =>
+      parts.find(candidate => candidate.type === type)?.value;
+    const date = `${part('year')}-${part('month')}-${part('day')}`;
+    return /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : localDateOf(time);
   } catch {
     return localDateOf(time);
   }
