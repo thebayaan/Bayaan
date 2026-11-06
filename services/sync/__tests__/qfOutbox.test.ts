@@ -1,39 +1,11 @@
 import type {QfSyncSqliteExecutor} from '@/services/sync/qfSyncTransaction';
+import {loadWaSqlite} from '@/test-utils/waSqlite';
 
 // Real SQLite/WASM transactions can exceed Jest's 5 s default under suite load.
 // Keep the longer budget local to this file; failures must still settle.
 jest.setTimeout(15_000);
 
-const sqlitePromise = (async () => {
-  const fs = require('fs');
-  const path = require('path');
-  const {TextDecoder} = require('util');
-  global.TextDecoder = TextDecoder;
-  const waSqliteDir = path.join(
-    process.cwd(),
-    'node_modules',
-    'expo-sqlite',
-    'web',
-    'wa-sqlite',
-  );
-  const ModuleFactory = require(path.join(waSqliteDir, 'wa-sqlite.js'));
-  const SQLite = require(path.join(waSqliteDir, 'sqlite-api.js'));
-  const wasmBinary = fs.readFileSync(path.join(waSqliteDir, 'wa-sqlite.wasm'));
-  // SDK 58's wa-sqlite build ignores a wasmBinary option, so hand it the
-  // compiled module directly.
-  const module = await ModuleFactory({
-    instantiateWasm: (
-      imports: WebAssembly.Imports,
-      done: (instance: WebAssembly.Instance) => void,
-    ) => {
-      WebAssembly.instantiate(wasmBinary, imports).then(result =>
-        done(result.instance),
-      );
-      return {};
-    },
-  });
-  return {sqlite3: SQLite.Factory(module), SQLite};
-})();
+const sqlitePromise = loadWaSqlite();
 
 type TestDatabase = {
   execAsync(source: string): Promise<void>;

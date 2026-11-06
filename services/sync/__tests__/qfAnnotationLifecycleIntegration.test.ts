@@ -4,36 +4,7 @@ jest.mock('@react-native-async-storage/async-storage', () =>
 
 jest.setTimeout(20_000);
 
-const sqlitePromise = (async () => {
-  const fs = require('fs');
-  const path = require('path');
-  const {TextDecoder} = require('util');
-  global.TextDecoder = TextDecoder;
-  const waSqliteDir = path.join(
-    process.cwd(),
-    'node_modules',
-    'expo-sqlite',
-    'web',
-    'wa-sqlite',
-  );
-  const ModuleFactory = require(path.join(waSqliteDir, 'wa-sqlite.js'));
-  const SQLite = require(path.join(waSqliteDir, 'sqlite-api.js'));
-  const wasmBinary = fs.readFileSync(path.join(waSqliteDir, 'wa-sqlite.wasm'));
-  // SDK 58's wa-sqlite build ignores a wasmBinary option, so hand it the
-  // compiled module directly.
-  const module = await ModuleFactory({
-    instantiateWasm: (
-      imports: WebAssembly.Imports,
-      done: (instance: WebAssembly.Instance) => void,
-    ) => {
-      WebAssembly.instantiate(wasmBinary, imports).then(result =>
-        done(result.instance),
-      );
-      return {};
-    },
-  });
-  return {sqlite3: SQLite.Factory(module), SQLite};
-})();
+const sqlitePromise = loadWaSqlite();
 
 type TestDatabase = {
   execAsync(source: string): Promise<void>;
@@ -149,6 +120,7 @@ const mockOpenDatabaseAsync = jest.fn(
 
 import type {ReactTestRenderer} from 'react-test-renderer';
 import type {QfSyncLifecycleContext} from '@/services/sync/qfSyncLifecycle';
+import {loadWaSqlite} from '@/test-utils/waSqlite';
 
 let React: typeof import('react');
 let renderer: typeof import('react-test-renderer');

@@ -24,13 +24,6 @@ interface ContinueReadingHeroProps {
 
 const SECTION_HEIGHT = moderateScale(150);
 
-function readLastPageForRevision(
-  _scopeRevision: number,
-  _dataRevision: number,
-): number | null {
-  return mushafSessionStore.getLastReadPage();
-}
-
 /**
  * Hero section for the Surahs tab.
  * Shows "Continue Reading" with the last-read surah if the user has history,
@@ -46,17 +39,18 @@ export function ContinueReadingHero({
   const showListening = useRecentlyPlayedStore(
     state => isTablet && findResumableIndex(state.recentTracks) >= 0,
   );
-  const scopeRevision = useQfSyncStore(state => state.scopeRevision);
-  const dataRevision = useQfSyncStore(state => state.dataRevision);
-  // MMKV reads aren't reactive, so revision changes read the active scope
-  // during render and focus changes force a fresh render after leaving Mushaf.
+  // MMKV reads aren't reactive, so the last-read page is read during render.
+  // These subscriptions re-render when the account scope or its synced data
+  // changes, and a focus change re-renders after leaving the Mushaf.
+  useQfSyncStore(state => state.scopeRevision);
+  useQfSyncStore(state => state.dataRevision);
   const [, setFocusRevision] = useState(0);
   useFocusEffect(
     useCallback(() => {
       setFocusRevision(revision => revision + 1);
     }, []),
   );
-  const lastReadPage = readLastPageForRevision(scopeRevision, dataRevision);
+  const lastReadPage = mushafSessionStore.getLastReadPage();
 
   const surahOfTheDay = useMemo(() => getSurahOfTheDay(new Date()), []);
 
