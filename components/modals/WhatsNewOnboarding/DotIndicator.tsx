@@ -56,15 +56,7 @@ interface DotProps {
 
 const DOT_SIZE_INACTIVE = moderateScale(8);
 const DOT_SIZE_ACTIVE = moderateScale(20);
-const DOT_PADDING_VERTICAL = moderateScale(16);
 const DOT_GAP = moderateScale(6);
-
-/**
- * @ai Laid-out height of the indicator row, so the modal can reserve it. The
- * dots only shrink, so the full-size height is the upper bound.
- */
-export const DOT_INDICATOR_HEIGHT =
-  DOT_SIZE_INACTIVE + DOT_PADDING_VERTICAL * 2;
 
 function Dot({index, scrollX, pageWidth, color, fit}: DotProps) {
   const inactiveSize = DOT_SIZE_INACTIVE * fit;
@@ -115,6 +107,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: DOT_PADDING_VERTICAL,
+    paddingVertical: moderateScale(16),
   },
 });

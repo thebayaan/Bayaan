@@ -32,31 +32,13 @@ import {
 } from '@/utils/versionUtils';
 import {getOnboardingPages, OnboardingPage} from '@/data/onboardingPages';
 import OnboardingPageComponent from './OnboardingPage';
-import DotIndicator, {DOT_INDICATOR_HEIGHT} from './DotIndicator';
+import DotIndicator from './DotIndicator';
 // @ai-start
 import {useTranslation} from 'react-i18next';
 import {appLayoutDirection, isRTL} from '@/utils/rtl';
 // @ai-end
 
-// @ai-start
-// Card chrome. The styles below and the height budget in the component both
-// read these constants, so the budget cannot drift from the real layout.
-const CARD_PADDING_TOP = moderateScale(20);
-const CARD_PADDING_BOTTOM = moderateScale(24);
-const PAGES_MARGIN_TOP = moderateScale(24);
-const PAGES_MIN_HEIGHT = moderateScale(280);
-const BUTTON_PADDING_VERTICAL = moderateScale(10);
-const BUTTON_FONT_SIZE = moderateScale(16);
-// Estimate: assumes a line height of about 1.4x the font size (not measured).
-const BUTTON_HEIGHT = BUTTON_PADDING_VERTICAL * 2 + BUTTON_FONT_SIZE * 1.4;
-// Everything in the card except the pager.
-const CARD_CHROME_HEIGHT =
-  CARD_PADDING_TOP +
-  PAGES_MARGIN_TOP +
-  DOT_INDICATOR_HEIGHT +
-  BUTTON_HEIGHT +
-  CARD_PADDING_BOTTOM;
-// @ai-end
+const PAGES_MIN_HEIGHT = moderateScale(280); // @ai
 
 export interface WhatsNewModalRef {
   show: () => void;
@@ -71,6 +53,8 @@ export const WhatsNewModal = forwardRef<WhatsNewModalRef>((_, ref) => {
   const [pages, setPages] = useState<OnboardingPage[]>(getOnboardingPages());
   const flatListRef = useRef<FlatList<OnboardingPage>>(null);
   const scrollX = useSharedValue(0);
+  // @ai The visible page, for the re-anchor below. onViewableItemsChanged sets it.
+  const currentPageRef = useRef(0);
 
   // @ai-start
   // Live window size: a module-scope Dimensions value goes stale after a
@@ -83,13 +67,21 @@ export const WhatsNewModal = forwardRef<WhatsNewModalRef>((_, ref) => {
     moderateScale(420),
   );
   const pageWidth = modalWidth - moderateScale(64); // account for modal padding
+  const modalMaxHeight = windowHeight * 0.72; // @ai
+
   // @ai-start
-  const modalMaxHeight = windowHeight * 0.72;
-  // The pager is the only row that can shrink. Its floor is capped at the
-  // space the card can spare, so the dots and the button stay in the card.
-  const pagesMinHeight = Math.max(
-    0,
-    Math.min(PAGES_MIN_HEIGHT, modalMaxHeight - CARD_CHROME_HEIGHT),
+  // A scroll view does not take the height of its content, so each page
+  // reports it. The pager is as tall as the tallest page (at least the
+  // floor); when the card is full, flexbox shrinks it and a page scrolls.
+  const [pageHeights, setPageHeights] = useState<Record<string, number>>({});
+  const onPageContentHeight = useCallback((id: string, height: number) => {
+    setPageHeights(prev =>
+      prev[id] === height ? prev : {...prev, [id]: height},
+    );
+  }, []);
+  const pagesHeight = Math.max(
+    PAGES_MIN_HEIGHT,
+    ...pages.map(page => pageHeights[page.id] ?? 0),
   );
   // @ai-end
 
@@ -99,6 +91,7 @@ export const WhatsNewModal = forwardRef<WhatsNewModalRef>((_, ref) => {
     show: () => {
       setPages(getOnboardingPages());
       setCurrentPage(0);
+      currentPageRef.current = 0; // @ai
       scrollX.value = 0;
       flatListRef.current?.scrollToOffset({offset: 0, animated: false});
       setVisible(true);
@@ -132,18 +125,14 @@ export const WhatsNewModal = forwardRef<WhatsNewModalRef>((_, ref) => {
   // Re-anchor on resize: a paged horizontal list keeps its pixel offset while
   // the item width changes, so the visible page would drift. scrollToIndex,
   // not scrollToOffset: in RTL a raw offset counts from the last page.
-  const currentPageRef = useRef(0);
-  useEffect(() => {
-    currentPageRef.current = currentPage;
-  }, [currentPage]);
+  // show() resets the ref, so a new set of pages starts on page one.
   useEffect(() => {
     const index = currentPageRef.current;
     if (pages.length > 0) {
       flatListRef.current?.scrollToIndex({index, animated: false});
     }
     scrollX.value = index * pageWidth;
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- re-anchor only on resize
-  }, [pageWidth, scrollX]);
+  }, [pageWidth, pages.length, scrollX]);
   // @ai-end
 
   function handleClose() {
@@ -163,6 +152,7 @@ export const WhatsNewModal = forwardRef<WhatsNewModalRef>((_, ref) => {
   const onViewableItemsChanged = useRef(
     ({viewableItems}: {viewableItems: ListViewToken[]}) => {
       if (viewableItems.length > 0 && viewableItems[0].index != null) {
+        currentPageRef.current = viewableItems[0].index; // @ai
         setCurrentPage(viewableItems[0].index);
       }
     },
@@ -199,9 +189,10 @@ export const WhatsNewModal = forwardRef<WhatsNewModalRef>((_, ref) => {
         page={item}
         width={pageWidth}
         isIntroPage={item.id === 'welcome'}
+        onContentHeight={onPageContentHeight} // @ai
       />
     ),
-    [pageWidth],
+    [pageWidth, onPageContentHeight],
   );
 
   const keyExtractor = useCallback((item: OnboardingPage) => item.id, []);
@@ -237,12 +228,12 @@ export const WhatsNewModal = forwardRef<WhatsNewModalRef>((_, ref) => {
           </Pressable>
 
           {/* Pages: the only row that can shrink */}
-          <View style={[styles.pagesContainer, {minHeight: pagesMinHeight}]}>
+          <View style={styles.pagesContainer}>
             {/* Runs in the app's direction: the list's index math follows
                 the native direction, so forcing LTR here breaks Next in RTL. */}
             <Animated.FlatList
               ref={flatListRef as any}
-              style={appLayoutDirection}
+              style={[appLayoutDirection, {height: pagesHeight}]} // @ai
               data={pages}
               renderItem={renderItem}
               keyExtractor={keyExtractor}
@@ -257,6 +248,8 @@ export const WhatsNewModal = forwardRef<WhatsNewModalRef>((_, ref) => {
               viewabilityConfig={viewabilityConfig}
               getItemLayout={getItemLayout}
               bounces={false}
+              // @ai Render every page at once, so the tallest one is known.
+              initialNumToRender={pages.length}
             />
           </View>
 
@@ -274,10 +267,7 @@ export const WhatsNewModal = forwardRef<WhatsNewModalRef>((_, ref) => {
               pressed && styles.buttonPressed,
             ]}
             onPress={handleNext}
-            accessibilityRole="button"
-            accessibilityLabel={
-              isLastPage ? t('onboarding.getStarted') : t('common:actions.next')
-            }>
+            accessibilityRole="button">
             <Text
               style={[styles.buttonText, {color: theme.colors.textSecondary}]}>
               {isLastPage
@@ -306,8 +296,8 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     borderRadius: moderateScale(24),
-    paddingTop: CARD_PADDING_TOP,
-    paddingBottom: CARD_PADDING_BOTTOM,
+    paddingTop: moderateScale(20),
+    paddingBottom: moderateScale(24),
     paddingHorizontal: moderateScale(32),
     shadowColor: '#000',
     shadowOffset: {width: 0, height: 8},
@@ -327,21 +317,25 @@ const styles = StyleSheet.create({
     fontFamily: 'Manrope-SemiBold',
   },
   pagesContainer: {
-    marginTop: PAGES_MARGIN_TOP,
-    // @ai The only row that can shrink; its minHeight floor is set inline.
+    marginTop: moderateScale(24),
+    // @ai-start
+    // The only row that can shrink: when the card reaches its maxHeight,
+    // flexbox gives the pager the room that the dots and the button leave.
+    // A page that is taller scrolls (OnboardingPage).
     flexShrink: 1,
     overflow: 'hidden',
+    // @ai-end
     justifyContent: 'center',
   },
   button: {
-    paddingVertical: BUTTON_PADDING_VERTICAL,
+    paddingVertical: moderateScale(10),
     alignItems: 'center',
   },
   buttonPressed: {
     opacity: 0.8,
   },
   buttonText: {
-    fontSize: BUTTON_FONT_SIZE,
+    fontSize: moderateScale(16),
     fontFamily: 'Manrope-SemiBold',
   },
 });
