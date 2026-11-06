@@ -4,13 +4,6 @@ import type {
 } from '@/types/translation';
 import type {AppLanguage} from '@/i18n/languages';
 
-// translationInstaller (for language names) imports the store and its
-// services; keep them inert.
-jest.mock('@/services/content/contentSync', () => ({}));
-jest.mock('@/services/translation/TranslationApiService', () => ({}));
-jest.mock('@/services/translation/TranslationDbService', () => ({
-  translationDbService: {},
-}));
 jest.mock('@/i18n/language', () => ({currentLanguage: 'en'}));
 
 import {
