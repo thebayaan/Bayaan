@@ -263,6 +263,15 @@ class AdhkarService {
     return await adhkarDatabaseService.getSaved();
   }
 
+  // Replace all saved adhkar from account sync (see AdhkarDatabaseService)
+  async replaceSaved(
+    expected: Record<string, number>,
+    next: SavedDhikr[],
+  ): Promise<boolean> {
+    await this.initialize();
+    return await adhkarDatabaseService.replaceSaved(expected, next);
+  }
+
   // Check if a dhikr is saved
   async isSaved(dhikrId: string): Promise<boolean> {
     await this.initialize();

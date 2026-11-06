@@ -351,6 +351,82 @@ class DatabaseService {
     });
   }
 
+  /**
+   * Replace a playlist from account sync in one transaction: its details and
+   * its synced items, in play order. Items from the user's own uploads only
+   * exist on this device, so they are kept after the synced ones. `null`
+   * deletes the playlist.
+   */
+  async replacePlaylistFromSync(
+    id: string,
+    next: {
+      name: string;
+      color: string;
+      description: string | null;
+      createdAt: number;
+      items: {surahId: string; reciterId: string; rewayatId: string}[];
+    } | null,
+  ): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    const db = this.db;
+    await db.withTransactionAsync(async () => {
+      if (next === null) {
+        await db.runAsync(`DELETE FROM playlist_items WHERE playlist_id = ?`, [
+          id,
+        ]);
+        await db.runAsync(`DELETE FROM user_playlists WHERE id = ?`, [id]);
+        return;
+      }
+      const now = Date.now();
+      await db.runAsync(
+        `INSERT INTO user_playlists (id, name, description, color, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?)
+         ON CONFLICT(id) DO UPDATE SET
+           name = excluded.name,
+           description = excluded.description,
+           color = excluded.color,
+           created_at = excluded.created_at,
+           updated_at = excluded.updated_at`,
+        [id, next.name, next.description, next.color, next.createdAt, now],
+      );
+      const uploads = (await db.getAllAsync(
+        `SELECT * FROM playlist_items
+         WHERE playlist_id = ? AND user_recitation_id IS NOT NULL
+         ORDER BY order_index DESC`,
+        [id],
+      )) as PlaylistItemRow[];
+      await db.runAsync(
+        `DELETE FROM playlist_items
+         WHERE playlist_id = ? AND user_recitation_id IS NULL`,
+        [id],
+      );
+      // Items list in descending order_index, so the first gets the highest.
+      const total = next.items.length + uploads.length;
+      for (const [index, item] of next.items.entries()) {
+        await db.runAsync(
+          `INSERT INTO playlist_items (id, playlist_id, surah_id, reciter_id, rewayat_id, order_index, added_at, user_recitation_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?, NULL)`,
+          [
+            `item_${now}_${index}`,
+            id,
+            item.surahId,
+            item.reciterId,
+            item.rewayatId || null,
+            total - 1 - index,
+            now,
+          ],
+        );
+      }
+      for (const [index, upload] of uploads.entries()) {
+        await db.runAsync(
+          `UPDATE playlist_items SET order_index = ? WHERE id = ?`,
+          [uploads.length - 1 - index, upload.id],
+        );
+      }
+    });
+  }
+
   // Get next order index for a playlist
   async getNextOrderIndex(playlistId: string): Promise<number> {
     if (!this.db) throw new Error('Database not initialized');

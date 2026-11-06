@@ -5,14 +5,22 @@ import {
   type LovedTrack,
 } from '@/services/player/store/lovedStore';
 import {
+  decodePlaylistEntries,
   isLibraryId,
   lovedDocumentKey,
+  playlistEntries,
+  type PlaylistDocument,
   lovedDocumentSurah,
   lovedEntryKey,
   splitLovedEntryKey,
 } from './qfLibraryDocuments';
 import {sameEntries, type LibraryEntries} from './qfLibraryMerge';
 import type {QfLibraryLocalAdapter} from './qfLibrarySync';
+import {onLibraryEdited} from './libraryEdits';
+import {playlistService} from '@/services/playlist/PlaylistService';
+import {usePlaylistsStore} from '@/store/playlistsStore';
+import {adhkarService} from '@/services/adhkar/AdhkarService';
+import {useAdhkarStore} from '@/store/adhkarStore';
 
 interface PersistedStore {
   persist?: {
@@ -52,8 +60,9 @@ function applyRemote(apply: () => void) {
 const EDIT_DEBOUNCE_MS = 1_500;
 
 /**
- * Calls `onEdit` (debounced) when the user changes favourite reciters or
- * loved tracks, so a signed-in device syncs them soon after.
+ * Calls `onEdit` (debounced) when the user changes favourite reciters, loved
+ * tracks, playlists or saved adhkar, so a signed-in device syncs them soon
+ * after.
  */
 export function watchLibraryEdits(onEdit: () => void): () => void {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -63,6 +72,7 @@ export function watchLibraryEdits(onEdit: () => void): () => void {
     timer = setTimeout(onEdit, EDIT_DEBOUNCE_MS);
   };
   const unsubscribers = [
+    onLibraryEdited(edited),
     useFavoriteRecitersStore.subscribe((state, previous) => {
       if (state.favoriteReciters !== previous.favoriteReciters) edited();
     }),
@@ -224,4 +234,162 @@ function applyLoved(surah: number, next: LibraryEntries) {
   });
   const merged = [...kept, ...synced].sort((a, b) => b.timestamp - a.timestamp);
   useLovedStore.setState({tracks: merged});
+}
+
+// --------------------------------------------------------------- playlists
+
+const PLAYLIST_KEY = /^[A-Za-z0-9_-]{1,64}$/;
+
+/**
+ * One playlist as synced. Items from the user's own uploads only exist on
+ * this device, so they are left out (and kept locally when applying).
+ */
+async function readPlaylist(id: string): Promise<LibraryEntries | null> {
+  const playlist = await playlistService.getPlaylist(id);
+  if (!playlist) return null;
+  return playlistEntriesFor(
+    playlist,
+    await playlistService.getPlaylistItems(id),
+  );
+}
+
+function playlistEntriesFor(
+  playlist: {
+    name: string;
+    color: string;
+    description?: string;
+    createdAt: number;
+  },
+  items: {
+    surahId: string;
+    reciterId: string;
+    rewayatId?: string;
+    userRecitationId?: string;
+  }[],
+): LibraryEntries | null {
+  const document: PlaylistDocument = {
+    name: playlist.name,
+    color: playlist.color,
+    description: playlist.description ? playlist.description : null,
+    createdAt: playlist.createdAt,
+    items: items.flatMap(item => {
+      const surah = Number(item.surahId);
+      if (
+        item.userRecitationId ||
+        !Number.isInteger(surah) ||
+        surah < 1 ||
+        surah > 114 ||
+        !isLibraryId(item.reciterId) ||
+        (item.rewayatId && !isLibraryId(item.rewayatId))
+      ) {
+        return [];
+      }
+      return [
+        [surah, item.reciterId, item.rewayatId ?? ''] as [
+          number,
+          string,
+          string,
+        ],
+      ];
+    }),
+  };
+  // A playlist this version can't express (e.g. an over-long name) stays local.
+  return decodePlaylistEntries(playlistEntries(document))
+    ? playlistEntries(document)
+    : null;
+}
+
+export function createPlaylistsAdapter(): QfLibraryLocalAdapter {
+  return {
+    collection: 'playlists',
+    deletable: true,
+    async readLocal() {
+      const documents = new Map<string, LibraryEntries>();
+      for (const playlist of await playlistService.getAllPlaylists()) {
+        if (!PLAYLIST_KEY.test(playlist.id)) continue;
+        const entries = playlistEntriesFor(
+          playlist,
+          await playlistService.getPlaylistItems(playlist.id),
+        );
+        if (entries) documents.set(playlist.id, entries);
+      }
+      return documents;
+    },
+    async applyLocal(key, expected, next) {
+      const current = await readPlaylist(key);
+      const unchanged =
+        current === null || expected === null
+          ? current === expected
+          : sameEntries(current, expected);
+      if (!unchanged) return false;
+      const playlist = next ? decodePlaylistEntries(next) : null;
+      if (next && !playlist) return false;
+      await playlistService.replacePlaylistFromSync(
+        key,
+        playlist
+          ? {
+              name: playlist.name,
+              color: playlist.color,
+              description: playlist.description,
+              createdAt: playlist.createdAt,
+              items: playlist.items.map(([surah, reciterId, rewayatId]) => ({
+                surahId: String(surah),
+                reciterId,
+                rewayatId,
+              })),
+            }
+          : null,
+      );
+      await usePlaylistsStore.getState().loadPlaylists();
+      return true;
+    },
+  };
+}
+
+// ------------------------------------------------------------ saved adhkar
+
+async function readSavedAdhkar(): Promise<Record<string, number>> {
+  const saved: Record<string, number> = {};
+  for (const item of await adhkarService.getSaved()) {
+    saved[item.dhikrId] = item.createdAt;
+  }
+  return saved;
+}
+
+function savedEntries(saved: Record<string, number>): Record<string, string> {
+  const entries: Record<string, string> = {};
+  for (const [id, createdAt] of Object.entries(saved)) {
+    if (isLibraryId(id) && Number.isSafeInteger(createdAt) && createdAt >= 0) {
+      entries[id] = String(createdAt);
+    }
+  }
+  return entries;
+}
+
+export function createAdhkarAdapter(): QfLibraryLocalAdapter {
+  return {
+    collection: 'adhkar',
+    deletable: false,
+    async readLocal() {
+      return new Map([['saved', savedEntries(await readSavedAdhkar())]]);
+    },
+    async applyLocal(key, expected, next) {
+      if (key !== 'saved') return false;
+      const current = await readSavedAdhkar();
+      if (!sameOrAbsent(savedEntries(current), expected)) return false;
+      // Saved adhkar the sync can't represent stay as they are.
+      const unsyncable = Object.entries(current).filter(
+        ([id]) => !(id in savedEntries({[id]: current[id]})),
+      );
+      const replaced = await adhkarService.replaceSaved(current, [
+        ...Object.entries(next ?? {}).map(([dhikrId, time]) => ({
+          dhikrId,
+          createdAt: Number(time),
+        })),
+        ...unsyncable.map(([dhikrId, createdAt]) => ({dhikrId, createdAt})),
+      ]);
+      if (replaced) await useAdhkarStore.getState().loadSaved();
+      return replaced;
+    },
+  };
 }

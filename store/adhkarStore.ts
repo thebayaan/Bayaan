@@ -1,3 +1,4 @@
+import {markLibraryEdited} from '@/services/library/libraryEdits';
 import {create} from 'zustand';
 import {
   adhkarService,
@@ -239,6 +240,7 @@ export const useAdhkarStore = create<AdhkarState>((set, get) => ({
       set({error: null});
 
       const isSaved = await adhkarService.toggleSaved(dhikrId);
+      markLibraryEdited();
 
       // Update savedIds Set immutably
       const currentSavedIds = get().savedIds;

@@ -127,6 +127,14 @@ class PlaylistService {
     return await databaseService.getPlaylist(id);
   }
 
+  // Replace a playlist from account sync (see DatabaseService)
+  async replacePlaylistFromSync(
+    ...args: Parameters<typeof databaseService.replacePlaylistFromSync>
+  ): Promise<void> {
+    await this.initialize();
+    await databaseService.replacePlaylistFromSync(...args);
+  }
+
   // Reorder playlist items
   async reorderPlaylistItems(
     playlistId: string,

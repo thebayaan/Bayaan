@@ -829,7 +829,11 @@ export function getLibraryAdapters(): QfLibraryLocalAdapter[] {
   if (!libraryAdapters) {
     const adapters =
       require('@/services/library/qfLibraryAdapters') as typeof import('@/services/library/qfLibraryAdapters');
-    libraryAdapters = [adapters.createLibraryAdapter()];
+    libraryAdapters = [
+      adapters.createLibraryAdapter(),
+      adapters.createPlaylistsAdapter(),
+      adapters.createAdhkarAdapter(),
+    ];
   }
   return libraryAdapters;
 }
