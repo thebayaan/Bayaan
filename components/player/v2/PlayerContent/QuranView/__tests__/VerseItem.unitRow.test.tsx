@@ -91,13 +91,18 @@ jest.mock('@/utils/haptics', () => ({mediumHaptics: () => mockHaptics()}));
 const mockFootnoteLookups: string[] = [];
 // '20' stands for a downloaded QF edition; every other id is bundled.
 jest.mock('@/utils/translationLookup', () => ({
-  isBundledTranslation: (id: string) => id !== '20',
-  getBundledFootnotes: (verseKey: string) => {
+  getFootnoteText: (
+    translationId: string,
+    verseKey: string,
+    footnoteId: string,
+  ) => {
+    if (translationId === '20')
+      return footnoteId === '77' ? `DB-FOOTNOTE-${translationId}` : undefined;
     mockFootnoteLookups.push(verseKey);
-    return {'77': `FOOTNOTE-OF-${verseKey}`};
+    return ({'77': `FOOTNOTE-OF-${verseKey}`} as Record<string, string>)[
+      footnoteId
+    ];
   },
-  getRemoteFootnote: (translationId: string, footnoteId: string) =>
-    footnoteId === '77' ? `DB-FOOTNOTE-${translationId}` : undefined,
 }));
 
 jest.mock('@/store/tajweedStore', () => {

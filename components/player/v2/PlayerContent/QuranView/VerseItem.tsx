@@ -37,11 +37,7 @@ import {
   type UnitRowWord,
 } from './VerseUnitRowContent';
 // @ai-end
-import {
-  isBundledTranslation,
-  getBundledFootnotes,
-  getRemoteFootnote,
-} from '@/utils/translationLookup';
+import {getFootnoteText} from '@/utils/translationLookup';
 // @ai-start
 import {useTranslation} from 'react-i18next';
 import {localizeDigits} from '@/i18n/format';
@@ -286,7 +282,7 @@ export const VerseItem = memo<VerseItemProps>(
       [textColor],
     );
 
-    // Handle footnote press - uses module-scope cached data or translationLookup
+    // Handle footnote press: the footnote body comes from translationLookup.
     // @ai — `footnoteVerseKey`: the Hafs verse whose translation holds the
     // footnote (a verse row passes each of its Hafs verses' own).
     const toggleFootnote = useCallback(
@@ -301,35 +297,16 @@ export const VerseItem = memo<VerseItemProps>(
           return;
         }
 
-        // Bundled footnotes come per verse; a downloaded edition's come from
-        // translation_footnotes, cached with its verses (enhancedVerseData).
-        const effectiveId = translationId ?? 'saheeh';
-        if (!isBundledTranslation(effectiveId)) {
-          setActiveFootnote({
-            id: footnoteId,
-            number: footnoteNumber,
-            content:
-              getRemoteFootnote(effectiveId, footnoteId) ??
-              'Footnote data not available',
-          });
-          return;
-        }
-        const footnotes = getBundledFootnotes(footnoteVerseKey, effectiveId); // @ai
-
-        if (footnotes) {
-          const footnoteContent = footnotes[footnoteId];
-          setActiveFootnote({
-            id: footnoteId,
-            number: footnoteNumber,
-            content: footnoteContent ?? t('verse.footnoteContentUnavailable'),
-          });
-        } else {
-          setActiveFootnote({
-            id: footnoteId,
-            number: footnoteNumber,
-            content: t('verse.footnoteDataUnavailable'),
-          });
-        }
+        setActiveFootnote({
+          id: footnoteId,
+          number: footnoteNumber,
+          content:
+            getFootnoteText(
+              translationId ?? 'saheeh',
+              footnoteVerseKey,
+              footnoteId,
+            ) ?? t('verse.footnoteDataUnavailable'),
+        });
       },
       [activeFootnote, translationId, t], // @ai
     );

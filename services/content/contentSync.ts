@@ -14,6 +14,7 @@ import type {
   ContentMeta,
   Manifest,
 } from '@/types/content';
+import {idFromKey, kindForKey} from './contentKeys';
 import {createContentApi, resolveContentApiBase} from './contentApi';
 import {
   installResource,
@@ -37,11 +38,9 @@ import {createTranslationInstaller} from './translationInstaller';
 
 // After a failed manifest check, further checks in this session wait this long.
 export const FAILED_CHECK_THROTTLE_MS = 3_600_000;
-const TAFSIR_KEY_PREFIX = 'qf:tafsirs:';
-const TRANSLATION_KEY_PREFIX = 'qf:translations:';
 
-// A translation the last cached manifest offers for install.
-export interface OfferedTranslation {
+// An entry the last cached manifest offers for install.
+export interface OfferedContent {
   key: string;
   id: string;
   meta: ContentMeta | undefined;
@@ -54,34 +53,38 @@ let running: Promise<void> = Promise.resolve();
 let checkBlockedUntil = 0;
 let fallbackRegistry: ContentRegistry | null = null;
 
-// The single gate for every caller: when false (a fork with its own
-// tafsirProvider, or no API base URL), the engine owns nothing and
-// initContentSync, installContent and removeContent must not be called.
+const INSTALLER_FACTORIES: Record<ContentKind, () => ContentInstaller> = {
+  tafsir: createTafsirInstaller,
+  translation: createTranslationInstaller,
+};
+
+/**
+ * The single gate for every caller: the kinds this engine owns. Empty without
+ * an API base URL, or when a fork keeps its own tafsirProvider: the cycle is
+ * anchored on tafsir (adoption, first-launch install), so the engine only runs
+ * while it owns tafsir. Translations ride along unless a fork keeps its own
+ * translationProvider (RFC-009).
+ */
+export function managedKinds(): ContentKind[] {
+  if (branding.tafsirProvider || resolveContentApiBase() === null) return [];
+  return branding.translationProvider ? ['tafsir'] : ['tafsir', 'translation'];
+}
+
+// When false, initContentSync, installContent and removeContent must not be called.
 export function isEngineManagingTafsir(): boolean {
-  return !branding.tafsirProvider && resolveContentApiBase() !== null;
+  return managedKinds().includes('tafsir');
 }
 
-// Translations ride on the same engine unless a fork keeps its own provider
-// (RFC-009). Only meaningful while isEngineManagingTafsir() is true.
 export function isEngineManagingTranslations(): boolean {
-  return !branding.translationProvider && resolveContentApiBase() !== null;
-}
-
-function kindForKey(key: string): ContentKind | null {
-  if (key.startsWith(TAFSIR_KEY_PREFIX)) return 'tafsir';
-  if (key.startsWith(TRANSLATION_KEY_PREFIX)) return 'translation';
-  return null;
+  return managedKinds().includes('translation');
 }
 
 // The manifest is requested for every kind with an installer, so translation
 // entries are cached; nothing installs a translation without installContent.
 function buildInstallers(): Partial<Record<ContentKind, ContentInstaller>> {
-  return isEngineManagingTranslations()
-    ? {
-        tafsir: createTafsirInstaller(),
-        translation: createTranslationInstaller(),
-      }
-    : {tafsir: createTafsirInstaller()};
+  return Object.fromEntries(
+    managedKinds().map(kind => [kind, INSTALLER_FACTORIES[kind]()]),
+  );
 }
 
 export function isOnWifi(state: {type: string}): boolean {
@@ -231,14 +234,10 @@ async function exclusive(task: () => Promise<void>): Promise<void> {
 
 export async function installContent(key: string): Promise<void> {
   const kind = kindForKey(key);
-  if (
-    kind === null ||
-    (kind === 'translation' && !isEngineManagingTranslations())
-  ) {
-    throw new Error('unsupported_content_key');
-  }
   const active = deps;
   if (!active) throw new Error('content_sync_unavailable');
+  if (kind === null || !active.installers[kind])
+    throw new Error('unsupported_content_key');
   const requestedAt = active.now();
   await exclusive(async () => {
     // Joins an install of the same key that finished while this request
@@ -256,48 +255,30 @@ export async function installContent(key: string): Promise<void> {
   });
 }
 
-// The tafsir ids the last cached manifest offers for install. Null when the
-// engine is off or no manifest has loaded yet: the full static catalog shows.
-export async function getOfferedTafsirIds(): Promise<ReadonlySet<string> | null> {
-  if (!isEngineManagingTafsir()) return null;
+// The active entries of one kind in the last cached manifest. Null when the
+// engine does not manage that kind or no manifest has loaded yet.
+export async function getOfferedContent(
+  kind: ContentKind,
+): Promise<OfferedContent[] | null> {
+  if (!managedKinds().includes(kind)) return null;
   fallbackRegistry ??= createSqliteContentRegistry();
   const registry = deps?.registry ?? fallbackRegistry;
   const {manifest} = await registry.getState();
   if (!manifest) return null;
-  const ids = new Set<string>();
-  for (const entry of manifest.resources) {
-    if (entry.status !== 'active' || !entry.key.startsWith(TAFSIR_KEY_PREFIX))
-      continue;
-    ids.add(entry.key.slice(TAFSIR_KEY_PREFIX.length));
-  }
-  return ids;
-}
-
-// The active translations in the last cached manifest. Null when the engine
-// does not manage translations or no manifest has loaded yet.
-export async function getOfferedTranslations(): Promise<
-  OfferedTranslation[] | null
-> {
-  if (!isEngineManagingTafsir() || !isEngineManagingTranslations()) return null;
-  fallbackRegistry ??= createSqliteContentRegistry();
-  const registry = deps?.registry ?? fallbackRegistry;
-  const {manifest} = await registry.getState();
-  if (!manifest) return null;
-  const offered: OfferedTranslation[] = [];
-  for (const entry of manifest.resources) {
-    if (
-      entry.status !== 'active' ||
-      !entry.key.startsWith(TRANSLATION_KEY_PREFIX)
-    )
-      continue;
-    offered.push({
+  return manifest.resources
+    .filter(entry => entry.status === 'active' && entry.kind === kind)
+    .map(entry => ({
       key: entry.key,
-      id: entry.key.slice(TRANSLATION_KEY_PREFIX.length),
+      id: idFromKey(entry.key),
       meta: entry.meta,
       bytes: entry.bytes,
-    });
-  }
-  return offered;
+    }));
+}
+
+// The tafsir ids on offer; null shows the full static catalog.
+export async function getOfferedTafsirIds(): Promise<ReadonlySet<string> | null> {
+  const offered = await getOfferedContent('tafsir');
+  return offered && new Set(offered.map(entry => entry.id));
 }
 
 // Before init (or after teardown) there are no engine deps, but the removal

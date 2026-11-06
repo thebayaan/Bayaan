@@ -1,6 +1,7 @@
 import React, {act} from 'react';
 import TestRenderer from 'react-test-renderer';
-import FormattedTextRenderer, {footnoteIdFromTag} from '../FormattedText';
+import FormattedTextRenderer from '../FormattedText';
+import {footnoteIdFromTag} from '@/utils/translationText';
 
 function render(text: string, onFootnotePress: jest.Mock) {
   let renderer: TestRenderer.ReactTestRenderer | undefined;

@@ -586,16 +586,16 @@ describe('translations', () => {
     });
   });
 
-  it('getOfferedTranslations is null without a manifest or when a fork keeps its provider', async () => {
-    expect(await load().getOfferedTranslations()).toBeNull();
+  it('getOfferedContent(translation) is null without a manifest or when a fork keeps its provider', async () => {
+    expect(await load().getOfferedContent('translation')).toBeNull();
     const cached = ok([entry(TRANSLATION_KEY)]);
     if (cached.status !== 'ok') throw new Error('unreachable');
     await mockState.registry.setState({manifest: cached.manifest});
     mockState.branding.translationProvider = 'fork';
-    expect(await load().getOfferedTranslations()).toBeNull();
+    expect(await load().getOfferedContent('translation')).toBeNull();
   });
 
-  it('getOfferedTranslations lists the active translations with meta and bytes', async () => {
+  it('getOfferedContent(translation) lists the active translations with meta and bytes', async () => {
     const meta = {name: 'Saheeh International', language: 'english'};
     mockState.api.fetchManifest.mockResolvedValue(
       ok([
@@ -606,7 +606,7 @@ describe('translations', () => {
     );
     const sync = load();
     await sync.initContentSync();
-    expect(await sync.getOfferedTranslations()).toEqual([
+    expect(await sync.getOfferedContent('translation')).toEqual([
       {key: TRANSLATION_KEY, id: '20', meta, bytes: 1000},
     ]);
   });

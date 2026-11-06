@@ -5,11 +5,7 @@ jest.mock(
 
 import {SURAHS} from '@/data/surahData';
 import type {ContentEnvelope} from '@/types/content';
-import {
-  createTranslationInstaller,
-  translationIdFromKey,
-  translationLanguageName,
-} from '../translationInstaller';
+import {createTranslationInstaller} from '../translationInstaller';
 
 const KEY = 'qf:translations:20';
 
@@ -80,22 +76,6 @@ function makeSettings(selected: string) {
 }
 
 describe('translation installer', () => {
-  it('maps keys to bare QF ids', () => {
-    expect(translationIdFromKey(KEY)).toBe('20');
-  });
-
-  it('maps QF language names to display names and keeps unknown ones raw', () => {
-    expect(translationLanguageName('english')).toBe('English');
-    expect(translationLanguageName('urdu')).toBe('Urdu');
-    expect(translationLanguageName('azeri')).toBe('Azerbaijani');
-    expect(translationLanguageName('divehi')).toBe('Dhivehi');
-    expect(translationLanguageName('en')).toBe('English');
-    expect(translationLanguageName('English')).toBe('English');
-    expect(translationLanguageName('klingon')).toBe('klingon');
-    expect(translationLanguageName('')).toBeUndefined();
-    expect(translationLanguageName(undefined)).toBeUndefined();
-  });
-
   it('saves verses, footnotes and metadata from the manifest meta in one call', async () => {
     const db = makeDb();
     const store = makeStore();
@@ -216,7 +196,6 @@ describe('translation installer', () => {
     });
     await installer.onWithdrawn(KEY);
     expect(settings.state.selectedTranslationId).toBe('clear-quran');
-    expect(store.state.loadDownloadedMeta).toHaveBeenCalled();
     await installer.onWithdrawn(KEY);
     expect(settings.state.setSelectedTranslationId).toHaveBeenCalledTimes(1);
   });

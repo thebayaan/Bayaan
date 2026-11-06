@@ -2,7 +2,8 @@ import {
   BUNDLED_TRANSLATIONS,
   type BundledTranslationId,
 } from '@/types/translation';
-import {tafseerHtmlToPlainText} from '@/utils/tafseerHtmlParser';
+import {htmlToPlainText} from '@/utils/tafseerHtmlParser';
+import {stripFootnoteMarkers, stripHtml} from '@/utils/translationText';
 
 interface SaheehEntry {
   t: string;
@@ -35,17 +36,6 @@ const quranData = require('@/data/quran.json') as QuranData;
 const verseKeyToGlobalId: Record<string, number> = {};
 for (const verse of Object.values(quranData)) {
   verseKeyToGlobalId[verse.verse_key] = verse.id;
-}
-
-function stripHtml(text: string): string {
-  return text.replace(/<[^>]*>/g, '');
-}
-
-// Clear Quran's markers have no bodies to show, so the marker and its digit go.
-const FOOTNOTE_MARKER = /<sup\s+foot_note=[^>]*>[\s\S]*?<\/sup>/g;
-
-export function stripFootnoteMarkers(text: string): string {
-  return text.replace(FOOTNOTE_MARKER, '');
 }
 
 export function getBundledTranslation(
@@ -138,7 +128,21 @@ export function getRemoteFootnote(
 ): string | undefined {
   if (activeRemoteTranslationCache?.id !== translationId) return undefined;
   const html = activeRemoteTranslationCache.footnotes[footnoteId];
-  return html === undefined ? undefined : tafseerHtmlToPlainText(html);
+  return html === undefined ? undefined : htmlToPlainText(html);
+}
+
+/**
+ * A footnote's body as plain text, from the bundled per-verse footnotes or
+ * the downloaded edition's cache; undefined when it is not available.
+ */
+export function getFootnoteText(
+  translationId: string,
+  verseKey: string,
+  footnoteId: string,
+): string | undefined {
+  return isBundledTranslation(translationId)
+    ? getBundledFootnotes(verseKey, translationId)?.[footnoteId]
+    : getRemoteFootnote(translationId, footnoteId);
 }
 
 export function clearActiveRemoteTranslationCache(): void {

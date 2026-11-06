@@ -1,16 +1,11 @@
 import React, {memo} from 'react';
 import {Text, StyleSheet, TextStyle, StyleProp, Platform} from 'react-native';
+import {footnoteIdFromTag} from '@/utils/translationText';
 
 interface FormattedTextProps {
   text: string;
   baseStyle: StyleProp<TextStyle>;
   onFootnotePress?: (footnoteId: string, footnoteNumber: string) => void;
-}
-
-// Bundled Saheeh quotes the id (foot_note="226402"); QF does not (foot_note=254011).
-export function footnoteIdFromTag(tag: string): string {
-  const match = tag.match(/foot_note=(?:"([^"]+)"|(\d+))/);
-  return match ? (match[1] ?? match[2]) : '';
 }
 
 const FormattedTextRenderer = memo(function FormattedTextRenderer({
