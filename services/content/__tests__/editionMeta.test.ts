@@ -9,6 +9,8 @@ describe('contentLanguageName', () => {
     expect(contentLanguageName('divehi')).toBe('Dhivehi');
     expect(contentLanguageName('en')).toBe('English');
     expect(contentLanguageName('ku')).toBe('Kurdish');
+    expect(contentLanguageName('tg')).toBe('Tajik');
+    expect(contentLanguageName('farsi')).toBe('Persian');
     expect(contentLanguageName('English')).toBe('English');
     expect(contentLanguageName(' bosnian ')).toBe('Bosnian');
     expect(contentLanguageName('xx')).toBeUndefined();
