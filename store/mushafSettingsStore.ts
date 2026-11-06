@@ -119,6 +119,13 @@ interface MushafSettingsState {
   // default off. The toggle row only renders when a fork supplies
   // `branding.communityReflectionsProvider`; inert for Bayaan.
   showCommunityReflections: boolean;
+  // Memorisation: while following the reader's recitation, ghost the page
+  // text and reveal words as they are recited.
+  recitationHideText: boolean;
+  // While following the reader's recitation: mark missed and wrong words
+  // as they recite, and a short vibration on each one.
+  recitationCheckMistakes: boolean;
+  recitationMistakeHaptics: boolean;
 
   // Word-by-word settings
   showWBW: boolean;
@@ -179,6 +186,9 @@ interface MushafSettingsState {
   toggleTajweed: () => void;
   toggleThemes: () => void;
   toggleCommunityReflections: () => void;
+  toggleRecitationHideText: () => void;
+  toggleRecitationCheckMistakes: () => void;
+  toggleRecitationMistakeHaptics: () => void;
   toggleWBW: () => void;
   toggleWBWTranslation: () => void;
   toggleWBWTransliteration: () => void;
@@ -223,6 +233,9 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
       showTajweed: false,
       showThemes: false,
       showCommunityReflections: false,
+      recitationHideText: false,
+      recitationCheckMistakes: true,
+      recitationMistakeHaptics: true,
       showWBW: false,
       wbwShowTranslation: defaultShowEnglishReadingAids, // @ai
       wbwShowTransliteration: false,
@@ -256,6 +269,16 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
       toggleCommunityReflections: () =>
         set(state => ({
           showCommunityReflections: !state.showCommunityReflections,
+        })),
+      toggleRecitationHideText: () =>
+        set(state => ({recitationHideText: !state.recitationHideText})),
+      toggleRecitationCheckMistakes: () =>
+        set(state => ({
+          recitationCheckMistakes: !state.recitationCheckMistakes,
+        })),
+      toggleRecitationMistakeHaptics: () =>
+        set(state => ({
+          recitationMistakeHaptics: !state.recitationMistakeHaptics,
         })),
       toggleWBW: () => set(state => ({showWBW: !state.showWBW})),
       toggleWBWTranslation: () =>
@@ -400,7 +423,7 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
     {
       name: 'mushaf-settings',
       storage: persistStorage(), // @ai
-      version: 19, // @ai
+      version: 20, // @ai
       // @ai-start
       // A startup fallback lasts one session: persist the reader's saved
       // rewayah rather than the Hafs shown in its place, and never the
@@ -518,6 +541,12 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
           state.showTajweed = true;
         }
         // @ai-end
+        if (version < 20) {
+          // Recitation follow-along: the mic is always on (the old toggle
+          // is dropped) and hide text starts off.
+          delete state.showRecitationTracking;
+          state.recitationHideText = false;
+        }
         return state as unknown as MushafSettingsState;
       },
     },

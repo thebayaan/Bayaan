@@ -71,6 +71,12 @@ import {usePlaybackBasmalaSurah} from '@/store/mushafPlayerStore'; // @ai
 import {useVerseUnitDragSelect, type LineCharHit} from './verseUnitDragSelect';
 // @ai-end
 import {type MushafLayoutMetrics, canvasBottomOverflow} from '../constants'; // @ai
+import {useRecitationLineHighlights} from './useRecitationLineHighlights';
+import {useRecitationHiddenText} from './useRecitationHiddenText';
+import {useRecitationMarkColors} from './useRecitationMarkColors';
+import {SheetManager} from 'react-native-actions-sheet';
+import {markAtChar} from './recitationTap';
+import {useRecitationTrackingStore} from '@/store/recitationTrackingStore';
 
 // Rendering constants are now derived from live `metrics` (see
 // `useRenderConstants` below). On phones the old frozen values are
@@ -507,13 +513,33 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
       [handleDragStart, handleDragUpdate, handleDragEnd],
     );
 
+    // A tap on a word marked while reciting opens it; any other tap is the
+    // page's own.
+    const handleTap = useCallback(
+      (x: number, y: number) => {
+        const {marks} = useRecitationTrackingStore.getState();
+        if (marks.length > 0) {
+          const hit = charAtPoint(x, y);
+          const line = hit ? pageLines[hit.lineIndex] : undefined;
+          const mark =
+            hit && line ? markAtChar(line, hit.charIndex, marks) : null;
+          if (mark) {
+            void SheetManager.show('recitation-mistake', {payload: {mark}});
+            return;
+          }
+        }
+        onTap?.();
+      },
+      [charAtPoint, pageLines, onTap],
+    );
+
     const tapGesture = useMemo(
       () =>
-        Gesture.Tap().onEnd(() => {
+        Gesture.Tap().onEnd(event => {
           'worklet';
-          if (onTap) runOnJS(onTap)();
+          runOnJS(handleTap)(event.x, event.y);
         }),
-      [onTap],
+      [handleTap],
     );
 
     const composedGesture = useMemo(
@@ -605,6 +631,23 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
       verseUnitsVersion, // @ai
     ]);
 
+    // Memorisation: words not yet recited are ghosted while hiding is on.
+    // Live mistakes are drawn in the mistake colour, hidden or not.
+    const lineCharColors = useRecitationMarkColors(
+      pageLines,
+      useRecitationHiddenText(pageLines, lineAllahNameColorMaps),
+      isDarkMode,
+    );
+
+    // Recitation follow-along: recited ayat and the word being recited.
+    const lineHighlights = useRecitationLineHighlights(
+      pageNumber,
+      pageLines,
+      lineBackgroundHighlightsMap,
+      textColor,
+      isDarkMode,
+    );
+
     // ── Render ─────────────────────────────────────────────
     const content = (
       <View
@@ -667,16 +710,14 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
                 margin={lineMargin}
                 yPos={yPos}
                 textColor={textColor}
-                charToColor={lineAllahNameColorMaps?.[lineIndex] ?? undefined}
+                charToColor={lineCharColors?.[lineIndex] ?? undefined}
                 charToRule={lineCharRuleMaps?.[lineIndex] ?? undefined}
                 fontFamily={fontFamily}
                 arabicTextWeight={arabicTextWeight}
                 textIdentity={textIdentity} // @ai
                 lineHeight={baseLineHeight}
                 onParagraphReady={handleParagraphReady}
-                backgroundHighlights={lineBackgroundHighlightsMap.get(
-                  lineIndex,
-                )}
+                backgroundHighlights={lineHighlights.get(lineIndex)}
               />
             );
           })}

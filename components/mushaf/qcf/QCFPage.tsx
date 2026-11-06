@@ -85,6 +85,7 @@ import {
   calculateLineYPositions,
   canvasBottomOverflow, // @ai
 } from '../constants';
+import {useRecitedVerseKey} from '@/store/recitationTrackingStore';
 
 interface QCFPageProps {
   metrics: MushafLayoutMetrics; // @ai
@@ -187,10 +188,18 @@ const QCFPage: React.FC<QCFPageProps> = ({
   );
   // @ai — every Hafs verse the reciter is reciting (a rewayah recitation's
   // verse can cover several Hafs verses); empty when idle.
-  const playbackVerseKeys = usePlaybackVerseKeys();
+  const playerVerseKeys = usePlaybackVerseKeys();
+  // While the reader's own recitation is followed, that ayah takes the
+  // player's place (QCF is Hafs only).
+  const recitedVerseKey = useRecitedVerseKey();
+  const playbackVerseKeys = useMemo(
+    () => (recitedVerseKey ? [recitedVerseKey] : playerVerseKeys),
+    [recitedVerseKey, playerVerseKeys],
+  );
   // @ai — the surah whose basmala is being recited (the intro before its
   // first verse): its basmallah line is painted as a recited verse is.
-  const basmalaSurah = usePlaybackBasmalaSurah();
+  const playerBasmalaSurah = usePlaybackBasmalaSurah();
+  const basmalaSurah = recitedVerseKey ? null : playerBasmalaSurah;
 
   const surahHeaderFonts = useMemo(() => {
     const qcTypeface = mushafPreloadService.quranCommonTypeface;

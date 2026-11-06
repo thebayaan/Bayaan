@@ -48,6 +48,7 @@ import {playbackBandUnitKeys} from '../skia/verseHighlightLayers';
 import {usePlaybackBand} from '../skia/playbackBand';
 import {buildUnitListModel, type UnitListModel} from './mushafVerseUnitRows';
 import {VerseUnitsPending} from './VerseUnitsPending';
+import {useRecitedVerseKey} from '@/store/recitationTrackingStore';
 
 const NO_KEYS: readonly string[] = Object.freeze([]);
 
@@ -223,9 +224,16 @@ const ContinuousListView = forwardRef<
 
     // Active ayah highlighting (same pattern as player QuranView): every
     // Hafs verse the reciter is reciting.
-    const playbackVerseKeys = usePlaybackVerseKeys(); // @ai
+    // While the reader's own recitation is followed (Hafs only), that ayah
+    // takes the player's place.
+    const recitedVerseKey = useRecitedVerseKey();
+    const playerVerseKeys = usePlaybackVerseKeys(); // @ai
+    const playbackVerseKeys = useMemo(
+      () => (recitedVerseKey ? [recitedVerseKey] : playerVerseKeys),
+      [recitedVerseKey, playerVerseKeys],
+    );
     const playbackState = useMushafPlayerStore(s => s.playbackState);
-    const isPlaying = playbackState === 'playing';
+    const isPlaying = playbackState === 'playing' || recitedVerseKey !== null;
     // @ai — the surah whose basmala is being recited (the intro before its
     // first verse): its header's basmala is lit as a recited verse is.
     const basmalaSurah = usePlaybackBasmalaSurah();

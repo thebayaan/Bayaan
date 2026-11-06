@@ -38,6 +38,13 @@ import {SheetManager} from 'react-native-actions-sheet';
 import {SURAHS} from '@/data/surahData';
 import MushafViewer from '@/components/mushaf/main';
 import {USE_GLASS} from '@/hooks/useGlassProps';
+import {
+  peekOnPage,
+  LIVE_MIC_COLOR,
+  useRecitationMic,
+  useRecitationStatusText,
+} from '@/components/mushaf/RecitationMicButton';
+import {stopRecitationTracking} from '@/services/recitation/RecitationTrackingService';
 // @ai-start
 import {playbackNoticeText} from '@/i18n/playback';
 import {useTranslation} from 'react-i18next';
@@ -274,6 +281,12 @@ export function MushafToolbar() {
   const {t} = useTranslation(['reader', 'common']);
   const playbackState = useMushafPlayerStore(s => s.playbackState);
   const currentPage = useMushafPlayerStore(s => s.currentPage);
+  const mic = useRecitationMic(currentPage || 1);
+  const recitationText = useRecitationStatusText();
+  const hideText = useMushafSettingsStore(s => s.recitationHideText);
+  const toggleHideText = useMushafSettingsStore(
+    s => s.toggleRecitationHideText,
+  );
   const currentSurah = useMushafPlayerStore(s => s.currentSurah);
   // @ai-start
   const currentVerseLabel = useMushafPlayerStore(s => s.currentVerseLabel);
@@ -361,6 +374,51 @@ export function MushafToolbar() {
   // Hide toolbar in immersive or search mode
   if (isImmersive || isSearchMode) return null;
 
+  if (recitationText !== null) {
+    // Reciting: [Stop], peek icons when hiding, the live mic, then [eye].
+    return (
+      <Stack.Toolbar>
+        <Stack.Toolbar.Button
+          icon="stop.fill"
+          onPress={() => void stopRecitationTracking()}>
+          {t('recitation.stop')}
+        </Stack.Toolbar.Button>
+        <Stack.Toolbar.Spacer />
+        {hideText && (
+          <Stack.Toolbar.Button
+            icon="chevron.left.2"
+            accessibilityLabel={t('recitation.nextAyah')}
+            onPress={() => peekOnPage('ayah', currentPage || 1)}>
+            {t('recitation.nextAyah')}
+          </Stack.Toolbar.Button>
+        )}
+        {hideText && (
+          <Stack.Toolbar.Button
+            icon="chevron.left"
+            accessibilityLabel={t('recitation.nextWord')}
+            onPress={() => peekOnPage('word', currentPage || 1)}>
+            {t('recitation.nextWord')}
+          </Stack.Toolbar.Button>
+        )}
+        <Stack.Toolbar.Button
+          icon="mic.fill"
+          tintColor={LIVE_MIC_COLOR}
+          accessibilityLabel={t('recitation.listeningLabel', {
+            status: recitationText,
+          })}
+          onPress={() => void stopRecitationTracking()}>
+          {t('recitation.listening')}
+        </Stack.Toolbar.Button>
+        <Stack.Toolbar.Spacer />
+        <Stack.Toolbar.Button
+          icon={hideText ? 'eye.slash' : 'eye'}
+          onPress={toggleHideText}>
+          {hideText ? t('recitation.showText') : t('recitation.hideText')}
+        </Stack.Toolbar.Button>
+      </Stack.Toolbar>
+    );
+  }
+
   if (isIdle) {
     // Idle: [Search] — spacer — [Play] — spacer — [Options]
     return (
@@ -372,6 +430,22 @@ export function MushafToolbar() {
         <Stack.Toolbar.Button icon="play.fill" onPress={handlePlay}>
           {t('common:actions.play')}
         </Stack.Toolbar.Button>
+        {mic.enabled && (
+          <Stack.Toolbar.Button
+            icon={
+              mic.busy
+                ? 'hourglass'
+                : mic.status === 'listening'
+                  ? 'mic.fill'
+                  : mic.status === 'paused'
+                    ? 'mic.slash'
+                    : 'mic'
+            }
+            onPress={mic.toggle}
+            disabled={mic.busy}>
+            {t('recitation.recite')}
+          </Stack.Toolbar.Button>
+        )}
         <Stack.Toolbar.Spacer />
         <Stack.Toolbar.Button icon="ellipsis.circle" onPress={handleOptions}>
           {t('toolbar.options')}

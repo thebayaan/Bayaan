@@ -16,6 +16,22 @@ const mockPreload = {
   initialize: jest.fn(() => Promise.resolve()),
 };
 
+// Recitation follow-along pulls in native audio and ONNX modules.
+jest.mock('@/services/recitation/RecitationTrackingService', () => ({
+  stopRecitationTracking: jest.fn(),
+}));
+jest.mock('@/components/mushaf/RecitationMicButton', () => ({
+  RecitationMicButton: () => null,
+  useRecitationFollowAlong: jest.fn(),
+  useRecitationStatusText: () => null,
+  useRecitationMic: () => ({
+    enabled: false,
+    status: 'off',
+    progress: 0,
+    busy: false,
+    toggle: jest.fn(),
+  }),
+}));
 jest.mock('expo-router', () => ({
   Stack: {Toolbar: () => null},
   useLocalSearchParams: () => ({}),

@@ -21,6 +21,7 @@ import type {PersistedStore} from '@/services/rehydrateOnForeground';
 import {useAdhkarSettingsStore} from '@/store/adhkarSettingsStore';
 import {useAmbientStore} from '@/store/ambientStore';
 import {useAnalyticsConsentStore} from '@/store/analyticsConsentStore';
+import {useHifzStore} from '@/store/hifzStore';
 import {useDevSettingsStore} from '@/store/devSettingsStore';
 import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
@@ -38,6 +39,7 @@ export const PERSISTED_STORES: readonly PersistedStore[] = [
   useAdhkarSettingsStore,
   useAmbientStore,
   useAnalyticsConsentStore,
+  useHifzStore,
   useDevSettingsStore,
   useMushafPlayerStore,
   useMushafSettingsStore,

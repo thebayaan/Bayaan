@@ -64,6 +64,7 @@ import {
 import type {RewayahId} from '@/services/rewayah/RewayahIdentity'; // @ai
 import {useMushafAutoPageTurn} from '@/hooks/useMushafAutoPageTurn';
 import {MushafPlayerBar} from './MushafPlayerBar';
+import {useRecitationFollowAlong} from './RecitationMicButton';
 import SkiaPage from './skia/SkiaPage';
 import QCFPage from './qcf/QCFPage';
 import ReadingPageView from './reading/ReadingPageView';
@@ -742,6 +743,8 @@ export default function MushafViewer({
   const surahStartPages = digitalKhattDataService.initialized
     ? digitalKhattDataService.getSurahStartPages()
     : {};
+
+  useRecitationFollowAlong(currentPage);
 
   const currentSurahId =
     askedSurah && askedSurah.page === currentPage
