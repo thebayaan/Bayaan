@@ -1,3 +1,4 @@
+// @ai-generated
 import {Alert} from 'react-native';
 import i18n from '@/i18n';
 import {useTranslationStore} from '@/store/translationStore';

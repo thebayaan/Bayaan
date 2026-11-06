@@ -1,3 +1,4 @@
+// @ai-generated
 jest.mock(
   'expo-sqlite',
   () => require('@/test-utils/mockExpoSqlite').expoSqliteModule,

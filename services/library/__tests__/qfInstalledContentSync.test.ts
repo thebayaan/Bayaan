@@ -1,3 +1,4 @@
+// @ai-generated
 import {BayaanSettingsApiError} from '@/services/settings/bayaanSettingsApiClient';
 import {
   syncInstalledContent,

@@ -1,3 +1,4 @@
+// @ai-generated
 import type {LibraryCollection} from '@/services/settings/bayaanSettingsApiClient';
 import type {LibraryEntries} from './qfLibraryMerge';
 

@@ -1,3 +1,4 @@
+// @ai-generated
 /**
  * A tiny signal for library edits that don't go through a Zustand store the
  * sync can watch (playlists and saved adhkar live in SQLite). Stores call

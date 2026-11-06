@@ -1,3 +1,4 @@
+// @ai-generated
 /**
  * Library documents are compared and merged as flat entry maps: item key to
  * an encoded item value. A missing key is an absent item.

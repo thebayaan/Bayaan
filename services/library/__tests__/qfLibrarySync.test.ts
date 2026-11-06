@@ -1,3 +1,4 @@
+// @ai-generated
 import {BayaanSettingsApiError} from '@/services/settings/bayaanSettingsApiClient';
 import type {LibraryCollection} from '@/services/settings/bayaanSettingsApiClient';
 import {libraryCodec} from '@/services/library/qfLibraryDocuments';

@@ -1,3 +1,4 @@
+// @ai-generated
 import {
   mergeDocument,
   mergeEntries,
