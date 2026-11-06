@@ -190,28 +190,11 @@ export function getTranslationPlainText(
 }
 
 /**
- * The text of exactly this edition: '' when a remote edition is not the one
- * loaded. Displays use getTranslationPlainText / getTranslationMarkup, which
+ * The markup of exactly this edition: the bundled text with its footnote
+ * markers stripped, or the downloaded edition's text as stored (inline HTML
+ * and footnote markers kept); '' when a remote edition is not the one
+ * loaded. Displays use getTranslationMarkup / getTranslationPlainText, which
  * fall back to the edition actually shown.
- */
-export function getTranslationText(
-  verseKey: string,
-  translationId: string,
-): string {
-  if (isBundledTranslation(translationId)) {
-    return getBundledTranslation(verseKey, translationId);
-  }
-  if (
-    activeRemoteTranslationCache &&
-    activeRemoteTranslationCache.id === translationId
-  ) {
-    return activeRemoteTranslationCache.data[verseKey] ?? '';
-  }
-  return '';
-}
-
-/**
- * Exact-edition lookup as getTranslationText, without HTML stripping.
  */
 export function getTranslationTextRaw(
   verseKey: string,

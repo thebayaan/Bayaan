@@ -2,7 +2,7 @@ import {
   getBundledTranslation,
   getBundledTranslationRaw,
   getRemoteFootnote,
-  getTranslationText,
+  getTranslationTextRaw,
   isBundledTranslation,
   setActiveRemoteTranslationCache,
   clearActiveRemoteTranslationCache,
@@ -48,7 +48,7 @@ describe('translationLookup (characterization, develop behavior)', () => {
   it('bundles Clear Quran only; "saheeh" is no longer bundled', () => {
     expect(isBundledTranslation('clear-quran')).toBe(true);
     expect(isBundledTranslation('saheeh')).toBe(false);
-    expect(getTranslationText('1:1', 'saheeh')).toBe('');
+    expect(getTranslationTextRaw('1:1', 'saheeh')).toBe('');
   });
 
   it('returns Clear Quran text with HTML stripped', () => {
@@ -83,14 +83,14 @@ describe('translationLookup (characterization, develop behavior)', () => {
     expect(getBundledTranslation('999:1', 'clear-quran')).toBe('');
   });
 
-  it('getTranslationText returns empty for remote ids unless the active cache matches', () => {
-    expect(getTranslationText('1:1', 'remote.x')).toBe('');
+  it('getTranslationTextRaw returns empty for remote ids unless the active cache matches', () => {
+    expect(getTranslationTextRaw('1:1', 'remote.x')).toBe('');
     setActiveRemoteTranslationCache('remote.x', {'1:1': 'hello'});
-    expect(getTranslationText('1:1', 'remote.x')).toBe('hello');
-    expect(getTranslationText('1:2', 'remote.x')).toBe('');
-    expect(getTranslationText('1:1', 'remote.y')).toBe('');
+    expect(getTranslationTextRaw('1:1', 'remote.x')).toBe('hello');
+    expect(getTranslationTextRaw('1:2', 'remote.x')).toBe('');
+    expect(getTranslationTextRaw('1:1', 'remote.y')).toBe('');
     clearActiveRemoteTranslationCache();
-    expect(getTranslationText('1:1', 'remote.x')).toBe('');
+    expect(getTranslationTextRaw('1:1', 'remote.x')).toBe('');
   });
 
   it('getRemoteFootnote reads the active edition footnotes as plain text', () => {
@@ -111,7 +111,7 @@ describe('translationLookup (characterization, develop behavior)', () => {
 interface Isolated {
   rebuildEnhancedVerses: typeof import('../enhancedVerseData').rebuildEnhancedVerses;
   enhancedVersesBySurah: typeof import('../enhancedVerseData').enhancedVersesBySurah;
-  getTranslationText: typeof import('../translationLookup').getTranslationText;
+  getTranslationTextRaw: typeof import('../translationLookup').getTranslationTextRaw;
   getBundledTranslation: typeof import('../translationLookup').getBundledTranslation;
   getRemoteFootnote: typeof import('../translationLookup').getRemoteFootnote;
 }
@@ -124,7 +124,7 @@ function loadIsolated(): Isolated {
     loaded = {
       rebuildEnhancedVerses: enhanced.rebuildEnhancedVerses,
       enhancedVersesBySurah: enhanced.enhancedVersesBySurah,
-      getTranslationText: lookup.getTranslationText,
+      getTranslationTextRaw: lookup.getTranslationTextRaw,
       getBundledTranslation: lookup.getBundledTranslation,
       getRemoteFootnote: lookup.getRemoteFootnote,
     };
@@ -155,7 +155,7 @@ describe('rebuildEnhancedVerses (characterization, develop behavior)', () => {
     expect(await m.rebuildEnhancedVerses('remote.ok')).toBe(true);
     expect(m.enhancedVersesBySurah[1][0].translation).toBe('remote text');
     expect(m.enhancedVersesBySurah[1][1].translation).toBe('');
-    expect(m.getTranslationText('1:1', 'remote.ok')).toBe('remote text');
+    expect(m.getTranslationTextRaw('1:1', 'remote.ok')).toBe('remote text');
     expect(warnSpy).not.toHaveBeenCalled();
   });
 
@@ -169,7 +169,9 @@ describe('rebuildEnhancedVerses (characterization, develop behavior)', () => {
 
     mockGetFootnotes.mockRejectedValue(new Error('db'));
     expect(await m.rebuildEnhancedVerses('21')).toBe(true);
-    expect(m.getTranslationText('1:1', '21')).toBe('a<sup foot_note=7>1</sup>');
+    expect(m.getTranslationTextRaw('1:1', '21')).toBe(
+      'a<sup foot_note=7>1</sup>',
+    );
     expect(m.getRemoteFootnote('21', '7')).toBeUndefined();
     expect(warnSpy).not.toHaveBeenCalled();
   });
@@ -194,7 +196,7 @@ describe('rebuildEnhancedVerses (characterization, develop behavior)', () => {
     expect(await m.rebuildEnhancedVerses('unknown.remote')).toBe(true);
     expect(m.enhancedVersesBySurah[1][0].translation).toBe(clear);
     expect(warnSpy).toHaveBeenCalled();
-    expect(m.getTranslationText('1:1', 'unknown.remote')).toBe('');
+    expect(m.getTranslationTextRaw('1:1', 'unknown.remote')).toBe('');
   });
 
   it('falls back to Clear Quran when the remote load throws', async () => {
@@ -207,7 +209,7 @@ describe('rebuildEnhancedVerses (characterization, develop behavior)', () => {
     expect(await m.rebuildEnhancedVerses('another.remote')).toBe(true);
     expect(m.enhancedVersesBySurah[1][0].translation).toBe(clear);
     expect(warnSpy).toHaveBeenCalled();
-    expect(m.getTranslationText('1:1', 'another.remote')).toBe('');
+    expect(m.getTranslationTextRaw('1:1', 'another.remote')).toBe('');
   });
 
   // Content sync replaces an edition's rows in place (a legacy copy, the
@@ -228,7 +230,7 @@ describe('rebuildEnhancedVerses (characterization, develop behavior)', () => {
       {identifier: '19', downloadedAt: 200},
     ]);
     expect(await m.rebuildEnhancedVerses('19', 200)).toBe(true);
-    expect(m.getTranslationText('1:1', '19')).toBe('new');
+    expect(m.getTranslationTextRaw('1:1', '19')).toBe('new');
   });
 
   it('reads a selected edition once it lands after a fallback', async () => {
