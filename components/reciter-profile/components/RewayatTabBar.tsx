@@ -6,9 +6,13 @@ import {
   StyleSheet,
   LayoutChangeEvent,
   Animated as RNAnimated,
+  type ScrollViewInstance,
 } from 'react-native';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import {Theme} from '@/utils/themeUtils';
+// @ai-start
+import {forceLTR} from '@/utils/rtl';
+// @ai-end
 
 interface Tab {
   id: string;
@@ -24,6 +28,7 @@ interface RewayatTabBarProps {
   screenWidth: number;
 }
 
+// @ai-start
 export const RewayatTabBar: React.FC<RewayatTabBarProps> = ({
   tabs,
   activeTabId,
@@ -33,7 +38,7 @@ export const RewayatTabBar: React.FC<RewayatTabBarProps> = ({
   screenWidth,
 }) => {
   const styles = createStyles(theme);
-  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollViewRef = useRef<ScrollViewInstance>(null);
 
   const [tabLayouts, setTabLayouts] = useState<
     Map<string, {x: number; width: number}>
@@ -143,7 +148,7 @@ export const RewayatTabBar: React.FC<RewayatTabBarProps> = ({
   }, [activeTabId, tabLayouts, screenWidth]);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, forceLTR]}>
       <ScrollView
         ref={scrollViewRef}
         horizontal
@@ -194,6 +199,7 @@ export const RewayatTabBar: React.FC<RewayatTabBarProps> = ({
     </View>
   );
 };
+// @ai-end
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({

@@ -147,11 +147,10 @@ describe('syncLiveActivity', () => {
     jest.restoreAllMocks();
   });
 
-  it('does nothing off iOS, when unsupported, or when the mode is off', async () => {
+  it('does nothing off iOS or when unsupported', async () => {
     for (const setup of [
       () => (mockPlatformOS = 'android'),
       () => (mockSupported = false),
-      () => (mockMode = 'off'),
     ]) {
       setup();
       const sync = loadModule();
@@ -160,9 +159,20 @@ describe('syncLiveActivity', () => {
       await sync.reconcileLiveActivity();
       mockPlatformOS = 'ios';
       mockSupported = true;
-      mockMode = 'surah';
     }
     expect(mockLog).toEqual([]);
+  });
+
+  it('with the mode off, ends a surviving activity and starts nothing', async () => {
+    mockMode = 'off';
+    mockSurvivor = survivorFor({});
+    const sync = loadModule();
+    sync.startLiveActivitySync();
+    await Promise.resolve();
+    sync.noteSnapshotForLiveActivity(nowPlayingSnapshot({}));
+    await sync.reconcileLiveActivity();
+    expect(mockLog).toEqual(['end']);
+    expect(mockStart).not.toHaveBeenCalled();
   });
 
   it('starts without ending anything when no activity survived', async () => {

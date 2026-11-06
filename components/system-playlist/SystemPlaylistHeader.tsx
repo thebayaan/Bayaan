@@ -1,7 +1,6 @@
 import React from 'react';
 import {View, Text, Pressable} from 'react-native';
-import {moderateScale} from 'react-native-size-matters';
-import {ScaledSheet} from 'react-native-size-matters';
+import {moderateScale, ScaledSheet} from '@/utils/scale';
 import {Feather} from '@expo/vector-icons';
 import {useSafeAreaInsets, EdgeInsets} from 'react-native-safe-area-context';
 import {useRouter} from 'expo-router';
@@ -15,6 +14,10 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import branding from '@/config/branding';
+// @ai-start
+import {flipX, forceLTR, latinLetterSpacing} from '@/utils/rtl';
+import {useTranslation} from 'react-i18next';
+// @ai-end
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 const isGlass = USE_GLASS;
@@ -30,6 +33,7 @@ interface SystemPlaylistHeaderProps {
   theme: Theme;
 }
 
+// @ai-start
 export const SystemPlaylistHeader: React.FC<SystemPlaylistHeaderProps> = ({
   title,
   description,
@@ -42,6 +46,7 @@ export const SystemPlaylistHeader: React.FC<SystemPlaylistHeaderProps> = ({
 }) => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const {t} = useTranslation(['collection', 'common']);
   const styles = createStyles(theme, insets);
 
   const shuffleScale = useSharedValue(1);
@@ -72,7 +77,7 @@ export const SystemPlaylistHeader: React.FC<SystemPlaylistHeaderProps> = ({
   };
 
   const subtitleText = [
-    `${itemCount} ${itemCount === 1 ? 'surah' : 'surahs'}`,
+    t('common:counts.surahs', {count: itemCount}),
     estimatedDuration,
   ]
     .filter(Boolean)
@@ -91,6 +96,7 @@ export const SystemPlaylistHeader: React.FC<SystemPlaylistHeaderProps> = ({
               name="arrow-left"
               size={moderateScale(24)}
               color={theme.colors.text}
+              style={flipX}
             />
           </Pressable>
         )}
@@ -99,7 +105,9 @@ export const SystemPlaylistHeader: React.FC<SystemPlaylistHeaderProps> = ({
         <View style={styles.contentContainer}>
           {/* System Playlist Badge */}
           <View style={styles.badge}>
-            <Text style={styles.badgeText}>{`${branding.appName} Curated`}</Text>
+            <Text style={styles.badgeText}>
+              {t('systemPlaylist.curatedBadge', {appName: branding.appName})}
+            </Text>
           </View>
 
           {/* Title and Description */}
@@ -138,7 +146,7 @@ export const SystemPlaylistHeader: React.FC<SystemPlaylistHeaderProps> = ({
               onPress={onPlayPress}
               onPressIn={() => handlePressIn('play')}
               onPressOut={() => handlePressOut('play')}>
-              <View style={styles.playIconContainer}>
+              <View style={[styles.playIconContainer, forceLTR]}>
                 <PlayIcon
                   color={theme.colors.background}
                   size={moderateScale(16)}
@@ -151,7 +159,9 @@ export const SystemPlaylistHeader: React.FC<SystemPlaylistHeaderProps> = ({
     </View>
   );
 };
+// @ai-end
 
+// @ai-start
 const createStyles = (theme: Theme, insets: EdgeInsets) =>
   ScaledSheet.create({
     headerContainer: {
@@ -195,7 +205,7 @@ const createStyles = (theme: Theme, insets: EdgeInsets) =>
       fontSize: moderateScale(11),
       fontFamily: theme.fonts.semiBold,
       color: theme.colors.textSecondary,
-      letterSpacing: 0.3,
+      letterSpacing: latinLetterSpacing(0.3),
       textTransform: 'uppercase',
     },
     title: {
@@ -204,7 +214,7 @@ const createStyles = (theme: Theme, insets: EdgeInsets) =>
       color: theme.colors.text,
       textAlign: 'center',
       marginBottom: moderateScale(8),
-      letterSpacing: -0.5,
+      letterSpacing: latinLetterSpacing(-0.5),
     },
     description: {
       fontSize: moderateScale(14),
@@ -257,3 +267,4 @@ const createStyles = (theme: Theme, insets: EdgeInsets) =>
       paddingLeft: moderateScale(4),
     },
   });
+// @ai-end

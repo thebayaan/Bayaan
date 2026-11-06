@@ -4,6 +4,7 @@ import {useSettings} from '@/hooks/useSettings';
 import {useReciterStore} from '@/store/reciterStore';
 import {SheetManager} from 'react-native-actions-sheet';
 import {useReciterSelection} from '@/hooks/useReciterSelection';
+import {resolveSurahPlaybackAction} from '@/utils/surahPlaybackChoice'; // @ai
 import {Surah} from '@/data/surahData';
 import SurahsView from '@/components/SurahsView';
 
@@ -32,49 +33,43 @@ function SurahsScreen() {
   // Long-press -> audio playback flow
   const handleSurahLongPress = useCallback(
     (surah: Surah) => {
-      if (askEveryTime) {
-        SheetManager.show('select-reciter', {
-          payload: {surahId: surah.id.toString(), source: 'home'},
-        });
-        return;
-      }
+      // @ai-start
+      const surahId = surah.id.toString();
+      const action = resolveSurahPlaybackAction({
+        askEveryTime,
+        defaultReciterSelection,
+        hasDefaultReciter: !!defaultReciter,
+      });
 
-      switch (defaultReciterSelection) {
+      switch (action) {
         case 'browseAll':
+        case 'browseFavorites':
           router.push({
             pathname: '/(tabs)/(a.home)/reciter/browse',
-            params: {view: 'all', surahId: surah.id},
+            params: {
+              view: action === 'browseAll' ? 'all' : 'favorites',
+              surahId: surah.id,
+            },
           });
           break;
-        case 'searchFavorites':
-          router.push({
-            pathname: '/(tabs)/(a.home)/reciter/browse',
-            params: {view: 'favorites', surahId: surah.id},
-          });
-          break;
-        case 'useDefault':
+        case 'playDefault':
           if (defaultReciter) {
-            playWithReciter(defaultReciter, surah.id.toString()).catch(
-              error => {
-                console.error('Error playing with default reciter:', error);
-              },
-            );
-          } else {
-            SheetManager.show('select-reciter', {
-              payload: {surahId: surah.id.toString(), source: 'home'},
+            playWithReciter(defaultReciter, surahId).catch(error => {
+              console.error('Error playing with default reciter:', error);
             });
           }
           break;
-        case 'randomReciter':
-          playWithRandomReciter(surah.id.toString()).catch(error => {
+        case 'playRandom':
+          playWithRandomReciter(surahId).catch(error => {
             console.error('Error playing with random reciter:', error);
           });
           break;
         default:
           SheetManager.show('select-reciter', {
-            payload: {surahId: surah.id.toString(), source: 'home'},
+            payload: {surahId, source: 'home'},
           });
       }
+      // @ai-end
     },
     [
       router,

@@ -8,6 +8,7 @@ import expo.modules.bayaanwidgets.CatalogModels
 import expo.modules.bayaanwidgets.ContentConfigJson
 import expo.modules.bayaanwidgets.StaticData
 import expo.modules.bayaanwidgets.WidgetCatalog
+import expo.modules.bayaanwidgets.WidgetFeatures
 import expo.modules.bayaanwidgets.WidgetStorage
 import expo.modules.bayaanwidgets.ui.ConfigPicker
 
@@ -28,10 +29,10 @@ class BedtimeConfigActivity : Activity() {
   private fun showMenu() {
     val surah = StaticData.surah(this, config.surahId)?.let { "${it.id}. ${it.name}" } ?: "${config.surahId}"
     val reciter = catalog?.reciter(config.reciterId)?.name ?: "Default reciter"
+    // The ambient row is last, so dropping it (RFC-021) keeps the indices below.
     val rows = listOf(
       "Surah: $surah", "Reciter: $reciter", "Sleep timer: ${config.minutes} min",
-      "Ambient: ${ContentConfigJson.ambientLabel(config.ambient)}",
-    )
+    ) + if (WidgetFeatures.ambient(this)) listOf("Ambient: ${ContentConfigJson.ambientLabel(config.ambient)}") else emptyList()
     ConfigPicker.menu(this, "Bedtime", rows,
       onPick = { index ->
         when (index) {

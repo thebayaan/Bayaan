@@ -2470,7 +2470,11 @@ export class QfSyncDatabaseService {
     for (;;) {
       const rows = (await db.getAllAsync(
         `SELECT * FROM qf_sync_outbox WHERE owner_scope = ? AND delivery_state = 'PENDING'
-        ${cursor ? 'AND (created_at > ? OR (created_at = ? AND local_operation_id > ?))' : ''}
+        ${
+          cursor
+            ? 'AND (created_at > ? OR (created_at = ? AND local_operation_id > ?))'
+            : ''
+        }
         ORDER BY created_at, local_operation_id LIMIT 100`,
         cursor
           ? [ownerScope, cursor.createdAt, cursor.createdAt, cursor.id]

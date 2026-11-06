@@ -9,6 +9,7 @@ import type {
   SuperCategorySection,
 } from '@/types/adhkar';
 import adhkarSeedData from '@/data/adhkar.json';
+const seedData: AdhkarSeedData = adhkarSeedData;
 
 // Re-export types for convenience
 export type {
@@ -19,6 +20,48 @@ export type {
   SuperCategory,
   SuperCategorySection,
 };
+
+interface SuperCategoryGroup {
+  categoryId: string;
+  categoryTitle: string;
+  adhkar: Dhikr[];
+}
+
+// Keeps list order; starts a new group whenever the category changes.
+function groupConsecutiveByCategory(
+  adhkar: Dhikr[],
+  categories: AdhkarCategory[],
+): SuperCategoryGroup[] {
+  const groups: SuperCategoryGroup[] = [];
+  for (const dhikr of adhkar) {
+    const last = groups[groups.length - 1];
+    if (last && last.categoryId === dhikr.categoryId) {
+      last.adhkar.push(dhikr);
+      continue;
+    }
+    const category = categories.find(c => c.id === dhikr.categoryId);
+    if (!category) continue;
+    groups.push({
+      categoryId: category.id,
+      categoryTitle: category.title,
+      adhkar: [dhikr],
+    });
+  }
+  return groups;
+}
+
+// A list can play its own recording of a shared dhikr (evening session).
+function applyAudioOverrides(
+  adhkar: Dhikr[],
+  overrides: Readonly<Record<string, string>> | null,
+): Dhikr[] {
+  if (!overrides) return adhkar;
+  return adhkar.map(dhikr =>
+    Object.hasOwn(overrides, dhikr.id)
+      ? {...dhikr, audioFile: overrides[dhikr.id]}
+      : dhikr,
+  );
+}
 
 class AdhkarService {
   private initPromise: Promise<void> | null = null;
@@ -35,27 +78,33 @@ class AdhkarService {
       try {
         await adhkarDatabaseService.initialize();
 
-        // Check if we need to re-seed due to data version change
+        // Fresh install or data version change: replace all content and
+        // store the new version in one transaction, so a failed or
+        // interrupted reseed leaves the old data and retries next launch
         const needsReseed = await adhkarDatabaseService.needsReseed();
-
-        // Seed database if empty or version changed
-        const isSeeded = await adhkarDatabaseService.isDatabaseSeeded();
-        if (!isSeeded || needsReseed) {
-          await adhkarDatabaseService.seedDatabase(
-            adhkarSeedData as AdhkarSeedData,
+        if (needsReseed) {
+          await adhkarDatabaseService.reseed(
+            seedData,
+            seedData.super_category_dhikr_ids ?? {},
+            seedData.super_category_audio_overrides ?? {},
           );
+          return;
         }
 
-        // Seed super categories if empty or version changed
+        // Seed database if empty
+        const isSeeded = await adhkarDatabaseService.isDatabaseSeeded();
+        if (!isSeeded) {
+          await adhkarDatabaseService.seedDatabase(seedData);
+        }
+
+        // Seed super categories if empty
         const areSuperCategoriesSeeded =
           await adhkarDatabaseService.areSuperCategoriesSeeded();
-        if (!areSuperCategoriesSeeded || needsReseed) {
-          await adhkarDatabaseService.seedSuperCategories();
-        }
-
-        // Update data version after successful seeding
-        if (needsReseed) {
-          await adhkarDatabaseService.updateDataVersion();
+        if (!areSuperCategoriesSeeded) {
+          await adhkarDatabaseService.seedSuperCategories(
+            seedData.super_category_dhikr_ids ?? {},
+            seedData.super_category_audio_overrides ?? {},
+          );
         }
       } catch (error) {
         console.error('Failed to initialize adhkar service:', error);
@@ -188,6 +237,20 @@ class AdhkarService {
     // Get all categories
     const allCategories = await adhkarDatabaseService.getAllCategories();
 
+    // Explicit ordered list (morning and evening): follow it exactly
+    if (superCategory.dhikrIds) {
+      const listed = await adhkarDatabaseService.getAdhkarByIds(
+        superCategory.dhikrIds,
+      );
+      return {
+        superCategory,
+        categoryGroups: groupConsecutiveByCategory(
+          applyAudioOverrides(listed, superCategory.audioOverrides),
+          allCategories,
+        ),
+      };
+    }
+
     // Get adhkar for all category IDs in this super category
     const adhkar = await adhkarDatabaseService.getAdhkarByCategoryIds(
       superCategory.categoryIds,
@@ -273,55 +336,45 @@ class AdhkarService {
   // ============================================
   // Tasbeeh Counts (with daily reset)
   // ============================================
+  // countKey is the plain dhikr id, or `<superId>:<dhikrId>` inside the
+  // morning and evening lists (see dhikrCountKey).
 
-  // Get the current count for a dhikr (resets daily)
-  async getDhikrCount(dhikrId: string): Promise<number> {
+  // Get the current count for a count key (resets daily)
+  async getDhikrCount(countKey: string): Promise<number> {
     await this.initialize();
-    const countData = await adhkarDatabaseService.getDhikrCount(dhikrId);
+    const countData = await adhkarDatabaseService.getDhikrCount(countKey);
     return countData?.count ?? 0;
   }
 
-  // Increment the count for a dhikr and return the new count
-  async incrementDhikrCount(dhikrId: string): Promise<number> {
+  // Increment the count for a count key and return the new count
+  async incrementDhikrCount(countKey: string): Promise<number> {
     await this.initialize();
 
     // Get current count (this handles daily reset)
-    const currentCount = await this.getDhikrCount(dhikrId);
+    const currentCount = await this.getDhikrCount(countKey);
     const newCount = currentCount + 1;
 
     // Update the count
-    await adhkarDatabaseService.updateDhikrCount(dhikrId, newCount);
+    await adhkarDatabaseService.updateDhikrCount(countKey, newCount);
 
     return newCount;
   }
 
-  // Reset the count for a dhikr to zero
-  async resetDhikrCount(dhikrId: string): Promise<void> {
+  // Reset the count for a count key to zero
+  async resetDhikrCount(countKey: string): Promise<void> {
     await this.initialize();
-    await adhkarDatabaseService.updateDhikrCount(dhikrId, 0);
+    await adhkarDatabaseService.updateDhikrCount(countKey, 0);
   }
 
-  // Get all counts at once (for store initialization)
+  // Get all of today's counts at once (for store initialization), keyed by
+  // count key. Reads every row, so per-list keys survive a reseed.
   async getAllCounts(): Promise<Record<string, number>> {
     await this.initialize();
 
-    // Get all adhkar to know which IDs to check
-    const allCategories = await adhkarDatabaseService.getAllCategories();
     const counts: Record<string, number> = {};
-
-    // Get adhkar for each category and their counts
-    for (const category of allCategories) {
-      const adhkar = await adhkarDatabaseService.getAdhkarInCategory(
-        category.id,
-      );
-      for (const dhikr of adhkar) {
-        const count = await this.getDhikrCount(dhikr.id);
-        if (count > 0) {
-          counts[dhikr.id] = count;
-        }
-      }
+    for (const row of await adhkarDatabaseService.getTodayDhikrCounts()) {
+      counts[row.dhikrId] = row.count;
     }
-
     return counts;
   }
 }

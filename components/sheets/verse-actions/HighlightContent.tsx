@@ -1,10 +1,6 @@
 import React, {useMemo, useCallback} from 'react';
 import {View, Text, Pressable} from 'react-native';
-import {
-  ScaledSheet,
-  moderateScale,
-  verticalScale,
-} from 'react-native-size-matters';
+import {ScaledSheet, moderateScale, verticalScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {Feather} from '@expo/vector-icons';
@@ -12,6 +8,8 @@ import Color from 'color';
 import {HIGHLIGHT_COLORS, HighlightColor} from '@/types/verse-annotations';
 import SkiaVersePreview from '@/components/share/SkiaVersePreview';
 // @ai-start
+import {latinLetterSpacing} from '@/utils/rtl';
+import {useTranslation} from 'react-i18next';
 import {
   selectionPreviewProps,
   type ReadyVerseSelection,
@@ -41,6 +39,7 @@ interface HighlightContentProps {
   isScopeCurrent: () => boolean;
 }
 
+// @ai-start
 export const HighlightContent: React.FC<HighlightContentProps> = ({
   selection, // @ai
   onDone,
@@ -48,6 +47,7 @@ export const HighlightContent: React.FC<HighlightContentProps> = ({
 }) => {
   const {theme} = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const {t} = useTranslation('sheets');
 
   // @ai-start
   const {rewayah} = selection;
@@ -90,7 +90,7 @@ export const HighlightContent: React.FC<HighlightContentProps> = ({
         />
       </View>
 
-      <Text style={styles.sectionLabel}>CHOOSE COLOR</Text>
+      <Text style={styles.sectionLabel}>{t('highlight.chooseColor')}</Text>
       <View style={styles.card}>
         <View style={styles.colorsGrid}>
           {COLORS.map(([name, hex]) => {
@@ -121,13 +121,15 @@ export const HighlightContent: React.FC<HighlightContentProps> = ({
           ]}
           onPress={handleRemove}>
           <Feather name="x-circle" size={moderateScale(16)} color="#ff4444" />
-          <Text style={styles.removeButtonText}>Remove Highlight</Text>
+          <Text style={styles.removeButtonText}>{t('highlight.remove')}</Text>
         </Pressable>
       ) : null}
     </View>
   );
 };
+// @ai-end
 
+// @ai-start
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({
     previewCard: {
@@ -142,7 +144,7 @@ const createStyles = (theme: Theme) =>
       fontSize: moderateScale(10),
       fontFamily: 'Manrope-SemiBold',
       color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
-      letterSpacing: 1.2,
+      letterSpacing: latinLetterSpacing(1.2),
       marginBottom: moderateScale(4),
       marginLeft: moderateScale(2),
     },
@@ -188,3 +190,4 @@ const createStyles = (theme: Theme) =>
       color: '#ff4444',
     },
   });
+// @ai-end

@@ -25,9 +25,14 @@
  * unitKeyedVerseLayers() maps the stores' values (stored rows, the playback
  * band, the selection) to those keys; for Hafs a unit is its Hafs verse and
  * the mapping is the identity.
+ *
+ * The basmala (@ai): while the reciter is in the intro before a surah's
+ * first verse, that surah's basmallah line is painted by the playback layer
+ * (basmalaPlaybackLines), as a verse being recited is.
  */
 
 // @ai-start
+import type {DKLine} from '@/services/mushaf/DigitalKhattDataService';
 import type {ShownVerseUnits} from '@/services/mushaf/MushafVerseMapService';
 import {parseUnitKey} from '@/services/mushaf/RewayahVerseUnits';
 import type {RewayahId} from '@/services/rewayah/RewayahIdentity';
@@ -41,6 +46,15 @@ export interface LineHighlight {
 }
 
 export type LineHighlightMap = Map<number, LineHighlight[]>;
+
+// @ai-start
+/** A basmallah line of the page lit by the playback layer. */
+export interface BasmalaPlaybackLine {
+  lineIndex: number;
+  /** Length of the text the line draws (the whole line is lit). */
+  length: number;
+}
+// @ai-end
 
 export interface VerseLineSegment {
   lineIndex: number;
@@ -67,6 +81,8 @@ export interface PageHighlightLayersInput {
   highlightColors: Readonly<Record<string, string>>;
   /** Hafs verse keys being recited, in reading order (empty when idle). */
   playbackVerseKeys: readonly string[];
+  /** Basmallah lines being recited (basmalaPlaybackLines). @ai */
+  playbackBasmalaLines?: readonly BasmalaPlaybackLine[];
   playbackColor: string;
   /** Selected verse keys when the selection is on this page, else null. */
   selectedVerseKeys: readonly string[] | null;
@@ -89,6 +105,7 @@ export function computePageHighlightLayers(
     persistentHighlights,
     highlightColors,
     playbackVerseKeys,
+    playbackBasmalaLines = [], // @ai
     playbackColor,
     selectedVerseKeys,
     selectionColor,
@@ -96,7 +113,8 @@ export function computePageHighlightLayers(
 
   const hasAnnotations = Object.keys(persistentHighlights).length > 0;
   const hasBookmarks = bookmarkedVerseKeys.size > 0;
-  const hasPlayback = playbackVerseKeys.length > 0;
+  const hasPlayback =
+    playbackVerseKeys.length > 0 || playbackBasmalaLines.length > 0; // @ai
   const hasRewayahDiffs = diffHighlights.size > 0;
   const selectedSet = selectedVerseKeys ? new Set(selectedVerseKeys) : null;
   const playbackSet = new Set(playbackVerseKeys);
@@ -205,6 +223,15 @@ export function computePageHighlightLayers(
   for (const [lineIndex, runs] of playbackRuns) {
     lineArray(lineIndex).push(...runs);
   }
+  // @ai — the basmala being recited (the intro before verse 1)
+  for (const {lineIndex, length} of playbackBasmalaLines) {
+    if (length <= 0) continue;
+    lineArray(lineIndex).push({
+      start: 0,
+      end: length - 1,
+      color: playbackColor,
+    });
+  }
 
   // Layer 3: selection (highest)
   if (selectedVerseKeys) {
@@ -215,6 +242,31 @@ export function computePageHighlightLayers(
 }
 
 // @ai-start
+/**
+ * The basmallah lines of a page that open `surah` (the surah whose basmala
+ * is being recited; null: none), each with the length of the text it
+ * draws. `basmalaSurahOf` names the surah a basmallah line opens
+ * (DigitalKhattDataService.getBasmalaSurah); a line drawing no text is
+ * skipped.
+ */
+export function basmalaPlaybackLines(
+  lines: readonly DKLine[],
+  surah: number | null,
+  basmalaSurahOf: (line: DKLine) => number | null,
+  lineLength: (lineIndex: number) => number,
+): BasmalaPlaybackLine[] {
+  if (surah === null) return [];
+  const lit: BasmalaPlaybackLine[] = [];
+  lines.forEach((line, lineIndex) => {
+    if (line.line_type !== 'basmallah' || basmalaSurahOf(line) !== surah) {
+      return;
+    }
+    const length = lineLength(lineIndex);
+    if (length > 0) lit.push({lineIndex, length});
+  });
+  return lit;
+}
+
 // ── Verse units: store values -> unit keys of the shown text ──────────────
 
 /** What the player is reciting, as the follow-along band needs it. */
@@ -459,6 +511,8 @@ export interface UnitPageHighlightInput {
     themeIndexOfHafsVerse: (hafsKey: string) => number | undefined;
   } | null;
   sources: PageVerseLayerSources;
+  /** Basmallah lines being recited (basmalaPlaybackLines). @ai */
+  playbackBasmalaLines?: readonly BasmalaPlaybackLine[];
   bookmarkColor: string;
   highlightColors: Readonly<Record<string, string>>;
   playbackColor: string;
@@ -495,6 +549,7 @@ export function computeUnitPageHighlightLayers(
     persistentHighlights: unitLayers.persistentHighlights,
     highlightColors: input.highlightColors,
     playbackVerseKeys: unitLayers.playbackVerseKeys,
+    playbackBasmalaLines: input.playbackBasmalaLines, // @ai
     playbackColor: input.playbackColor,
     selectedVerseKeys: unitLayers.selectedVerseKeys,
     selectionColor: input.selectionColor,

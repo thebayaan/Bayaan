@@ -10,9 +10,11 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import {useTheme} from '@/hooks/useTheme';
+import {usePlayerA11y} from '@/hooks/usePlayerA11y'; // @ai
 export const LoveButton = () => {
   const queue = usePlayerStore(s => s.queue);
   const {theme} = useTheme();
+  const a11y = usePlayerA11y(); // @ai
 
   const {isTrackLoved, toggleTrackLoved} = useLoved();
   const currentTrack = queue?.tracks?.[queue?.currentIndex ?? -1];
@@ -36,7 +38,10 @@ export const LoveButton = () => {
   }));
 
   return (
-    <Pressable style={styles.button} onPress={handleToggleLoved}>
+    <Pressable
+      style={styles.button}
+      onPress={handleToggleLoved}
+      {...a11y.love(isLoved)}>
       <Animated.View style={animatedStyle}>
         <HeartIcon
           size={moderateScale(32)}

@@ -7,7 +7,7 @@ import {
   View,
 } from 'react-native';
 import {Feather} from '@expo/vector-icons';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {useQfSyncStore, type QfSyncStatus} from '@/store/qfSyncStore';
 import {qfSyncLifecycle} from '@/services/sync/qfSyncLifecycle';

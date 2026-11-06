@@ -1,0 +1,22 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'expo.modules.bayaanrestart'
+version = '1.0.0'
+
+android {
+  namespace "expo.modules.bayaanrestart"
+  defaultConfig {
+    versionCode 1
+    versionName "1.0.0"
+  }
+}
+
+dependencies {
+  // I18nUtil (version pinned by the RN Gradle plugin).
+  implementation "com.facebook.react:react-android"
+  // Relaunches the app from a short-lived helper process.
+  implementation "com.jakewharton:process-phoenix:3.0.0"
+}

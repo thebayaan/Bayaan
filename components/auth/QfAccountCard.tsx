@@ -1,6 +1,6 @@
 import React, {useCallback} from 'react';
 import {ActivityIndicator, Alert, Pressable, Text, View} from 'react-native';
-import {ScaledSheet, moderateScale} from 'react-native-size-matters';
+import {ScaledSheet, moderateScale} from '@/utils/scale';
 import Color from 'color';
 import {useTheme} from '@/hooks/useTheme';
 import {bayaanAuthConfig} from '@/config/bayaanAuth';
@@ -23,7 +23,9 @@ function confirmUnsyncedSignOut(count: number): Promise<boolean> {
   return new Promise(resolve => {
     Alert.alert(
       'Unsynced changes',
-      `${count} ${count === 1 ? "change hasn't" : "changes haven't"} synced to Quran.com yet and will be lost if you sign out now.`,
+      `${count} ${
+        count === 1 ? "change hasn't" : "changes haven't"
+      } synced to Quran.com yet and will be lost if you sign out now.`,
       [
         {text: 'Cancel', style: 'cancel', onPress: () => resolve(false)},
         {text: 'Sign out', style: 'destructive', onPress: () => resolve(true)},

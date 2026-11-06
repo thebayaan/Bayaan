@@ -1,19 +1,23 @@
 import React from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
-import {ScaledSheet, moderateScale} from 'react-native-size-matters';
+import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import ActionSheet, {
-  SheetProps,
-  SheetManager,
-} from 'react-native-actions-sheet';
+import {SheetProps, SheetManager} from 'react-native-actions-sheet';
+import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import Color from 'color';
+import {SLEEP_TIMER_OPTIONS} from '@/constants/playback'; // @ai
+// @ai-start
+import {useTranslation} from 'react-i18next';
+// @ai-end
 
-const TIMER_OPTIONS = [5, 15, 30, 45, 60];
+const TIMER_OPTIONS = SLEEP_TIMER_OPTIONS; // @ai
 
+// @ai-start
 export const SleepTimerSheet = (props: SheetProps<'sleep-timer'>) => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
+  const {t} = useTranslation('sheets');
 
   const payload = props.payload;
   const sleepTimer = payload?.sleepTimer ?? 0;
@@ -38,21 +42,23 @@ export const SleepTimerSheet = (props: SheetProps<'sleep-timer'>) => {
   return (
     <ActionSheet
       id={props.sheetId}
+      tabletPresentation="menu"
       containerStyle={styles.sheetContainer}
       indicatorStyle={styles.indicator}
       gestureEnabled={true}>
       <View style={styles.headerContainer}>
-        <Text style={styles.headerTitle}>Sleep Timer</Text>
+        <Text style={styles.headerTitle}>{t('sleepTimer.title')}</Text>
       </View>
       <View style={styles.container}>
         {remainingTime !== null && remainingTime > 0 && (
           <Text style={styles.remainingTime}>
             {remainingTime < 1
-              ? `${Math.round(remainingTime * 60)} seconds`
-              : `${Math.round(remainingTime)} ${
-                  remainingTime === 1 ? 'minute' : 'minutes'
-                }`}{' '}
-            remaining
+              ? t('sleepTimer.secondsRemaining', {
+                  count: Math.round(remainingTime * 60),
+                })
+              : t('sleepTimer.minutesRemaining', {
+                  count: Math.round(remainingTime),
+                })}
           </Text>
         )}
         <View style={styles.optionsContainer}>
@@ -79,7 +85,7 @@ export const SleepTimerSheet = (props: SheetProps<'sleep-timer'>) => {
                     styles.timerText,
                     isSelected && styles.selectedTimerText,
                   ]}>
-                  {minutes} min
+                  {t('sleepTimer.minutesOption', {count: minutes})}
                 </Text>
               </Pressable>
             );
@@ -92,13 +98,14 @@ export const SleepTimerSheet = (props: SheetProps<'sleep-timer'>) => {
               pressed && styles.optionPressed,
             ]}
             onPress={handleTurnOff}>
-            <Text style={styles.turnOffText}>Turn Off Timer</Text>
+            <Text style={styles.turnOffText}>{t('sleepTimer.turnOff')}</Text>
           </Pressable>
         )}
       </View>
     </ActionSheet>
   );
 };
+// @ai-end
 
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({

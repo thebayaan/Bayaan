@@ -19,6 +19,7 @@ import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {getQCFSurahNameChar} from '@/constants/surahNameGlyphs';
 import {useResponsive} from '@/hooks/useResponsive';
+import {usePlayerA11y} from '@/hooks/usePlayerA11y'; // @ai
 
 const fallbackSurahNames: Record<number, string> = {};
 (
@@ -33,6 +34,7 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({onOptionsPress}) => {
   const {theme} = useTheme();
+  const a11y = usePlayerA11y(); // @ai
   const {isTablet} = useResponsive();
   const glassColorScheme = useGlassColorScheme();
   const {setSheetMode} = usePlayerActions();
@@ -157,7 +159,10 @@ export const Header: React.FC<HeaderProps> = ({onOptionsPress}) => {
       <PillWrapper
         style={[styles.closeButton, pillStyle, {left: edgeInset}]}
         {...pillProps}>
-        <Pressable style={styles.glassButtonInner} onPress={handleClose}>
+        <Pressable
+          style={styles.glassButtonInner}
+          onPress={handleClose}
+          {...a11y.closePlayer}>
           {USE_GLASS ? (
             <SymbolView
               name="xmark"
@@ -180,7 +185,10 @@ export const Header: React.FC<HeaderProps> = ({onOptionsPress}) => {
       <PillWrapper
         style={[styles.optionsButton, pillStyle, {right: edgeInset}]}
         {...pillProps}>
-        <Pressable style={styles.glassButtonInner} onPress={onOptionsPress}>
+        <Pressable
+          style={styles.glassButtonInner}
+          onPress={onOptionsPress}
+          {...a11y.moreOptions}>
           {USE_GLASS ? (
             <SymbolView
               name="ellipsis"

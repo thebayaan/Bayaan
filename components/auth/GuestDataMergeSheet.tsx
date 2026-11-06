@@ -8,7 +8,7 @@ import {
   View,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {qfSyncLifecycle} from '@/services/sync/qfSyncLifecycle';
 import {useQfSyncStore} from '@/store/qfSyncStore';

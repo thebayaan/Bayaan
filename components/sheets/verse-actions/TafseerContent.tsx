@@ -6,11 +6,7 @@ import {
   ScrollView,
   ActivityIndicator,
 } from 'react-native';
-import {
-  ScaledSheet,
-  moderateScale,
-  verticalScale,
-} from 'react-native-size-matters';
+import {ScaledSheet, moderateScale, verticalScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import Color from 'color';
@@ -29,6 +25,14 @@ import {
 } from '@/services/tafseer/TafseerDbService';
 import {TafseerHtmlRenderer} from './TafseerHtmlRenderer';
 // @ai-start
+import {flipX, latinLetterSpacing} from '@/utils/rtl';
+import {useTranslation} from 'react-i18next';
+import {localizeDigits} from '@/i18n/format';
+import {
+  compareTafaseer,
+  getTafseerDisplayName,
+  getTafseerLanguageDisplayName,
+} from '@/i18n/tafseer';
 import {
   distinctTafseerResults,
   hafsPagerPage,
@@ -82,6 +86,7 @@ interface TafseerContentProps {
   onBack: () => void;
 }
 
+// @ai-start
 export const TafseerContent: React.FC<TafseerContentProps> = ({
   surahNumber,
   ayahNumber,
@@ -91,7 +96,12 @@ export const TafseerContent: React.FC<TafseerContentProps> = ({
 }) => {
   const {theme} = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const {t} = useTranslation(['sheets', 'common']);
   const downloadedMeta = useTafseerStore(s => s.downloadedMeta);
+  const sortedTafaseer = useMemo(
+    () => [...downloadedMeta].sort(compareTafaseer),
+    [downloadedMeta],
+  );
   const selectedTafseerId = useTafseerStore(s => s.selectedTafseerId);
   const setSelectedTafseerId = useTafseerStore(s => s.setSelectedTafseerId);
 
@@ -203,7 +213,9 @@ export const TafseerContent: React.FC<TafseerContentProps> = ({
         bounces={true}>
         {/* Verse badge */}
         <View style={styles.verseBadge}>
-          <Text style={styles.verseBadgeText}>{page.label}</Text>
+          <Text style={styles.verseBadgeText}>
+            {localizeDigits(page.label)}
+          </Text>
         </View>
 
         {/* Arabic text */}
@@ -226,16 +238,18 @@ export const TafseerContent: React.FC<TafseerContentProps> = ({
               SheetManager.hideAll();
               usePlayerStore.getState().setSheetMode('hidden');
               setTimeout(() => {
-                router.push('/(tabs)/(a.home)/translations');
+                router.push('/translations'); // @ai
               }, 300);
             }}>
             <StackedVolumesIcon
               size={moderateScale(32)}
               color={Color(theme.colors.text).alpha(0.2).toString()}
             />
-            <Text style={styles.emptyStateTitle}>No Tafaseer Downloaded</Text>
+            <Text style={styles.emptyStateTitle}>
+              {t('tafseerContent.emptyTitle')}
+            </Text>
             <Text style={styles.emptyStateText}>
-              Tap here to download a tafseer and view commentary.
+              {t('tafseerContent.emptyMessage')}
             </Text>
           </Pressable>
         ) : (
@@ -246,7 +260,9 @@ export const TafseerContent: React.FC<TafseerContentProps> = ({
                 style={styles.selectorButton}
                 onPress={() => setShowSelector(!showSelector)}>
                 <Text style={styles.selectorButtonText} numberOfLines={1}>
-                  {activeTafseer?.englishName ?? 'Select Tafseer'}
+                  {activeTafseer
+                    ? getTafseerDisplayName(activeTafseer)
+                    : t('tafseerContent.select')}
                 </Text>
                 <Feather
                   name={showSelector ? 'chevron-up' : 'chevron-down'}
@@ -259,7 +275,7 @@ export const TafseerContent: React.FC<TafseerContentProps> = ({
             {/* Selector dropdown */}
             {showSelector && (
               <View style={styles.selectorDropdown}>
-                {downloadedMeta.map(meta => {
+                {sortedTafaseer.map(meta => {
                   const isActive = meta.identifier === selectedTafseerId;
                   return (
                     <Pressable
@@ -276,15 +292,13 @@ export const TafseerContent: React.FC<TafseerContentProps> = ({
                             isActive && styles.selectorOptionNameActive,
                           ]}
                           numberOfLines={1}>
-                          {meta.englishName}
+                          {getTafseerDisplayName(meta)}
                         </Text>
-                        {meta.name !== meta.englishName && (
-                          <Text
-                            style={styles.selectorOptionNative}
-                            numberOfLines={1}>
-                            {meta.name}
-                          </Text>
-                        )}
+                        <Text
+                          style={styles.selectorOptionNative}
+                          numberOfLines={1}>
+                          {getTafseerLanguageDisplayName(meta.language)}
+                        </Text>
                       </View>
                       {isActive && (
                         <Feather
@@ -302,7 +316,7 @@ export const TafseerContent: React.FC<TafseerContentProps> = ({
             {/* Tafseer label */}
             {activeTafseer && downloadedMeta.length === 1 && (
               <Text style={styles.tafseerLabel}>
-                {activeTafseer.englishName.toUpperCase()}
+                {getTafseerDisplayName(activeTafseer).toUpperCase()}
               </Text>
             )}
 
@@ -344,7 +358,7 @@ export const TafseerContent: React.FC<TafseerContentProps> = ({
             ) : (
               // @ai-end
               <Text style={styles.noTafseer}>
-                Tafseer not available for this verse
+                {t('tafseerContent.notAvailable')}
               </Text>
             )}
           </>
@@ -369,17 +383,18 @@ export const TafseerContent: React.FC<TafseerContentProps> = ({
                 ? Color(theme.colors.text).alpha(0.2).toString()
                 : theme.colors.text
             }
+            style={flipX}
           />
           <Text
             style={[
               styles.navButtonText,
               isFirst && styles.navButtonTextDisabled,
             ]}>
-            Prev
+            {t('translationContent.prev')}
           </Text>
         </Pressable>
 
-        <Text style={styles.footerCounter}>{page.label}</Text>
+        <Text style={styles.footerCounter}>{localizeDigits(page.label)}</Text>
 
         <Pressable
           onPress={goToNext}
@@ -394,7 +409,7 @@ export const TafseerContent: React.FC<TafseerContentProps> = ({
               styles.navButtonText,
               isLast && styles.navButtonTextDisabled,
             ]}>
-            Next
+            {t('common:actions.next')}
           </Text>
           <Feather
             name="chevron-right"
@@ -404,15 +419,18 @@ export const TafseerContent: React.FC<TafseerContentProps> = ({
                 ? Color(theme.colors.text).alpha(0.2).toString()
                 : theme.colors.text
             }
+            style={flipX}
           />
         </Pressable>
       </View>
     </View>
   );
 };
+// @ai-end
 
 // ─── Styles ───────────────────────────────────────────────────────────────
 
+// @ai-start
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({
     container: {
@@ -438,7 +456,7 @@ const createStyles = (theme: Theme) =>
       fontSize: moderateScale(11.5),
       fontFamily: 'Manrope-SemiBold',
       color: Color(theme.colors.textSecondary).alpha(0.7).toString(),
-      letterSpacing: 0.3,
+      letterSpacing: latinLetterSpacing(0.3),
     },
     divider: {
       height: 1,
@@ -526,7 +544,7 @@ const createStyles = (theme: Theme) =>
       fontSize: moderateScale(10.5),
       fontFamily: 'Manrope-SemiBold',
       color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
-      letterSpacing: 1.2,
+      letterSpacing: latinLetterSpacing(1.2),
       textTransform: 'uppercase',
       marginBottom: verticalScale(6),
     },
@@ -534,7 +552,7 @@ const createStyles = (theme: Theme) =>
       fontSize: moderateScale(10.5),
       fontFamily: 'Manrope-SemiBold',
       color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
-      letterSpacing: 1.2,
+      letterSpacing: latinLetterSpacing(1.2),
       marginBottom: verticalScale(8),
     },
     noTafseer: {
@@ -591,6 +609,7 @@ const createStyles = (theme: Theme) =>
       fontSize: moderateScale(12.5),
       fontFamily: 'Manrope-SemiBold',
       color: Color(theme.colors.textSecondary).alpha(0.6).toString(),
-      letterSpacing: 0.3,
+      letterSpacing: latinLetterSpacing(0.3),
     },
   });
+// @ai-end

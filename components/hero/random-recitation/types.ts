@@ -1,3 +1,7 @@
+// @ai-start
+import i18n from '@/i18n';
+// @ai-end
+
 // 5 design families for icon-based cards
 export type DesignFamily = 'arabesque' | 'bloom' | 'aurora' | 'mosaic' | 'mesh';
 
@@ -77,14 +81,58 @@ export const ALL_VARIANTS: CardVariant[] = [
 ];
 
 // All 6 copy variants
+// @ai-start
 export const COPY_VARIANTS: CopyVariant[] = [
-  {label: 'Shuffle & Listen', subtitle: 'Let the Quran surprise you'},
-  {label: 'Discover', subtitle: 'Hear something new'},
-  {label: 'Explore', subtitle: 'Discover a new voice'},
-  {label: 'Random Recitation', subtitle: 'Surprise me'},
-  {label: 'Shuffle & Listen', subtitle: 'Explore the unexpected'},
-  {label: 'Random Mix', subtitle: 'A recitation chosen just for this moment'},
+  {
+    get label() {
+      return i18n.t('home:randomHero.shuffleListen');
+    },
+    get subtitle() {
+      return i18n.t('home:randomHero.letQuranSurprise');
+    },
+  },
+  {
+    get label() {
+      return i18n.t('home:randomHero.discover');
+    },
+    get subtitle() {
+      return i18n.t('home:randomHero.hearSomethingNew');
+    },
+  },
+  {
+    get label() {
+      return i18n.t('home:randomHero.explore');
+    },
+    get subtitle() {
+      return i18n.t('home:randomHero.discoverNewVoice');
+    },
+  },
+  {
+    get label() {
+      return i18n.t('home:randomHero.randomRecitation');
+    },
+    get subtitle() {
+      return i18n.t('home:randomHero.surpriseMe');
+    },
+  },
+  {
+    get label() {
+      return i18n.t('home:randomHero.shuffleListen');
+    },
+    get subtitle() {
+      return i18n.t('home:randomHero.exploreUnexpected');
+    },
+  },
+  {
+    get label() {
+      return i18n.t('home:randomHero.randomMix');
+    },
+    get subtitle() {
+      return i18n.t('home:randomHero.chosenForMoment');
+    },
+  },
 ];
+// @ai-end
 
 // Deterministic pick based on seed
 export function pickVariant(seed: number): {

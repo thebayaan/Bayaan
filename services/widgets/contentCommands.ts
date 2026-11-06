@@ -13,6 +13,7 @@ import {getReciterByIdSync, getSurahById} from '@/services/dataService';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {useReciterStore} from '@/store/reciterStore';
 import {useAmbientStore} from '@/store/ambientStore';
+import {widgetFeatures} from './enabledWidgets';
 
 export type PlayPlaylistCommand = Extract<
   WidgetCommand,
@@ -110,7 +111,11 @@ export function defaultContentDeps(
     playSurahFromStart,
     setSleepTimer: minutes => usePlayerStore.getState().setSleepTimer(minutes),
     // setSound stops any current ambient, enables ambient and fades the new sound in.
-    startAmbient: sound => useAmbientStore.getState().setSound(sound),
+    startAmbient: sound => {
+      // A fork without ambient audio (RFC-021) ignores a stale widget's sound.
+      if (!widgetFeatures.ambient) return;
+      useAmbientStore.getState().setSound(sound);
+    },
   };
 }
 

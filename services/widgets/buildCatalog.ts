@@ -15,6 +15,9 @@ export {tasbeehDisplayText, tasbeehTranslation} from './dhikrText';
 // سُبْحَانَ اللَّهِ وَبِحَمْدِهِ (100 times); the seed has no plain SubhanAllah with a count.
 export const DEFAULT_TASBEEH_DHIKR_ID = '91';
 const MAX_DHIKR_CHARS = 180;
+// Rows whose repeat count belongs to an instruction rather than a dhikr to
+// recite (114: "spit on your left three times" after a bad dream).
+const NOT_RECITED_IDS: ReadonlySet<string> = new Set(['114']);
 
 export interface SeedDhikr {
   id: string;
@@ -54,7 +57,7 @@ export function seedAdhkar(seed: unknown): SeedDhikr[] {
 export function tasbeehAdhkar(seed: SeedDhikr[]): WidgetCatalogDhikr[] {
   const out: WidgetCatalogDhikr[] = [];
   for (const d of seed) {
-    if (d.repeat_count <= 1) continue;
+    if (d.repeat_count <= 1 || NOT_RECITED_IDS.has(d.id)) continue;
     const arabic = tasbeehDisplayText(d.arabic);
     if (!arabic || arabic.length > MAX_DHIKR_CHARS) continue;
     out.push({

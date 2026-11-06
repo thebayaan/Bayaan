@@ -19,7 +19,7 @@ object CarRequestGate {
   /** The headless car root is cold-booting JS (bundle load, catalogue, session restore). */
   const val HEADLESS_BOOT_GRACE_MS = 20_000L
 
-  const val UNAVAILABLE_MESSAGE = "Open Bayaan on your phone to get started"
+  val UNAVAILABLE_MESSAGE: String get() = CarBrand.unavailableMessage()
 
   fun graceMs(jsRuntimePresent: Boolean, headlessBooting: Boolean = false): Long = when {
     headlessBooting -> HEADLESS_BOOT_GRACE_MS

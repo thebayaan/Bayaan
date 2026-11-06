@@ -12,9 +12,11 @@ import {Dimensions, Platform} from 'react-native';
  * below the tablet breakpoint.
  */
 
-// iPad mini shortest side is 744pt. Use 700 to cover any future edge cases
-// while staying safely above the largest phones (e.g. iPhone Pro Max ~430pt).
-export const TABLET_BREAKPOINT = 700;
+// Start of the medium width class. Every iPhone is at most 440pt on its short
+// side and the folded iPhone Duo is 466pt, so they stay phones. The unfolded
+// iPhone Duo (669pt, measured) and iPad mini (744pt) are tablets. Matches Android's
+// sw600dp tablet line.
+export const TABLET_BREAKPOINT = 600; // @ai
 
 // Guideline "phone width" used for size scaling. On tablet we clamp the
 // effective width to this value so UI never inflates past a large phone.

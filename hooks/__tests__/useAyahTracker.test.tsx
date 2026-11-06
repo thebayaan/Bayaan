@@ -637,3 +637,82 @@ describe('useAyahTracker', () => {
   });
   // @ai-end
 });
+
+// @ai-start
+describe("the intro before verse 1 (isti'adha / basmala)", () => {
+  const intro = () => useTimestampStore.getState().basmalaIntroSurah;
+
+  it('publishes the surah whose basmala is recited, then verse 1 takes over', async () => {
+    await startTrack('hafs-clean', 2);
+    const t = loadTimings('hafs-clean', 2)!;
+    await tickAt(0);
+    expect(intro()).toBe(2);
+    expect(current()).toBeNull();
+    await tickAt(t[0].timestampFrom - 1);
+    expect(intro()).toBe(2);
+    await tickAt(t[0].timestampFrom);
+    expect(intro()).toBeNull();
+    expect(current()?.verseKey).toBe('2:1');
+    // seeking back into the intro: the basmala again, no verse
+    await tickAt(t[5].timestampFrom + 50);
+    await tickAt(100);
+    expect(intro()).toBe(2);
+    expect(current()).toBeNull();
+  });
+
+  it('Warsh (rewayah-numbered): the same intro', async () => {
+    await startTrack('warsh-14', 2);
+    const t = loadTimings('warsh-14', 2)!;
+    await tickAt(t[0].timestampFrom / 2);
+    expect(intro()).toBe(2);
+    await tickAt(t[0].timestampFrom + 50);
+    expect(intro()).toBeNull();
+    expect(getTrackedVerseKeys(current())).toEqual(['2:1', '2:2']);
+  });
+
+  it('al-Fatihah: never (its basmala is verse 1)', async () => {
+    await startTrack('hafs-clean', 1);
+    const t = loadTimings('hafs-clean', 1)!;
+    expect(t[0].timestampFrom).toBeGreaterThan(0);
+    await tickAt(0);
+    expect(intro()).toBeNull();
+    await tickAt(t[0].timestampFrom + 50);
+    expect(intro()).toBeNull();
+    expect(current()?.verseKey).toBe('1:1');
+  });
+
+  it('a surah whose verses cannot be followed: never', async () => {
+    await startTrack('doori-269', 67);
+    await tickAt(0);
+    expect(intro()).toBeNull();
+  });
+
+  it('"Play from here" during the intro: the tapped verse, not the basmala', async () => {
+    await startTrack('hafs-clean', 2);
+    const t = loadTimings('hafs-clean', 2)!;
+    await tickAt(100);
+    expect(intro()).toBe(2);
+    const target = getPlayFromHereTarget(timings(), '2:3');
+    if (target.status !== 'ready') throw new Error(target.status);
+    await act(async () => {
+      useTimestampStore.getState().setCurrentAyah(target.tracking);
+    });
+    await tickAt(300); // the seek has not landed yet
+    expect(intro()).toBeNull();
+    expect(current()?.verseKey).toBe('2:3');
+    await tickAt(t[2].timestampFrom + 50);
+    expect(intro()).toBeNull();
+    expect(current()?.verseKey).toBe('2:3');
+  });
+
+  it('a new surah clears it', async () => {
+    await startTrack('hafs-clean', 2);
+    await tickAt(0);
+    expect(intro()).toBe(2);
+    await act(async () => {
+      useTimestampStore.getState().clearCurrentTimestamps();
+    });
+    expect(intro()).toBeNull();
+  });
+});
+// @ai-end

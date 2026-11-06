@@ -12,13 +12,12 @@ import {USE_GLASS} from '@/hooks/useGlassProps';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useRouter} from 'expo-router';
 import {useFocusEffect} from 'expo-router';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import {Feather} from '@expo/vector-icons';
 import {ListRenderItem} from 'react-native';
 import {getSurahById} from '@/services/dataService';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
-import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {BookmarkItem} from '@/components/collection/BookmarkItem';
 import {CollectionStickyHeader} from '@/components/collection/CollectionStickyHeader';
 import {SheetManager} from 'react-native-actions-sheet';
@@ -26,13 +25,24 @@ import Color from 'color';
 import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
 import type {VerseBookmark} from '@/types/verse-annotations';
 import {useQfSyncStore} from '@/store/qfSyncStore';
+import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import {getRewayahShortLabel} from '@/utils/rewayahLabels';
+import {showToast} from '@/utils/toastUtils';
 // @ai-start
-import {restoreSavedRewayah} from '@/services/verse-annotations/restoreSavedRewayah';
+import {useTranslation} from 'react-i18next';
+import i18n from '@/i18n';
+import {getSurahDisplayName} from '@/i18n/format';
+import {flipX} from '@/utils/rtl';
+// @ai-start
+import {savedVerseOpenParams} from '@/services/verse-annotations/openSavedVerse';
 import {describeSavedVerseNow} from '@/hooks/useSavedVerseDescription';
+import {savedVerseSubtitle} from '@/services/verse-annotations/unitAnnotations';
+import {useNativeOptionsMenu} from '@/components/sheets/options/OptionsMenu';
 import {
-  savedVerseRouteParams,
-  savedVerseSubtitle,
-} from '@/services/verse-annotations/unitAnnotations';
+  CollectionOptionsMenu,
+  type CollectionOptionsPayload,
+} from '@/components/sheets/options/collectionOptions';
+import {useLibraryListBottomPadding} from '@/hooks/useBottomInset'; // @ai
 // @ai-end
 
 interface BookmarkData {
@@ -40,10 +50,14 @@ interface BookmarkData {
   surahName: string;
 }
 
+// @ai-start
 const BookmarksScreen = () => {
   const {theme} = useTheme();
+  const listBottomPadding = useLibraryListBottomPadding(); // @ai
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const {t} = useTranslation(['collection', 'common']);
+  const nativeMenus = useNativeOptionsMenu(); // @ai
 
   const [bookmarks, setBookmarks] = useState<BookmarkData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,7 +72,7 @@ const BookmarksScreen = () => {
   const openingRef = useRef(false); // @ai
 
   useCollectionNativeHeader({
-    title: 'Bookmarks',
+    title: t('common:terms.bookmarks'),
     scrollY,
     hasContent: bookmarks.length > 0 && !loading,
   });
@@ -74,7 +88,11 @@ const BookmarksScreen = () => {
         const surah = getSurahById(bookmark.surahNumber);
         return {
           bookmark,
-          surahName: surah?.name ?? `Surah ${bookmark.surahNumber}`,
+          surahName: surah
+            ? getSurahDisplayName(surah)
+            : i18n.t('common:labels.surahNumber', {
+                number: bookmark.surahNumber,
+              }),
         };
       });
       if (
@@ -125,20 +143,9 @@ const BookmarksScreen = () => {
       if (openingRef.current) return;
       openingRef.current = true;
       try {
-        const verseKey = `${bookmark.surahNumber}:${bookmark.ayahNumber}`;
-        const surahStartPages = digitalKhattDataService.getSurahStartPages();
-        const fallbackPage = surahStartPages[bookmark.surahNumber] || 1;
-        // Restore the rewayah the bookmark was saved in so the opened verse
-        // matches what the user was reading at save time.
-        await restoreSavedRewayah(bookmark.rewayahId);
-        const page = digitalKhattDataService.getPageForVerse(verseKey);
-        // The page of the anchor's Hafs verse is the page the saved verse
-        // starts on. A bookmark saved in a non-Hafs rewayah also passes its
-        // anchor, so the mushaf selects exactly that rewayah verse (the two
-        // parts of a split Hafs verse are different bookmarks).
         router.push({
           pathname: '/mushaf',
-          params: savedVerseRouteParams(bookmark, page || fallbackPage),
+          params: await savedVerseOpenParams(bookmark),
         });
       } finally {
         openingRef.current = false;
@@ -148,29 +155,35 @@ const BookmarksScreen = () => {
   );
   // @ai-end
 
+  // @ai-start
+  const buildOptions = useCallback(
+    (item: BookmarkData): CollectionOptionsPayload => ({
+      title: item.surahName,
+      // @ai: the ayah in the numbering of the rewayah it was saved in
+      subtitle: savedVerseSubtitle(
+        describeSavedVerseNow(item.bookmark),
+        item.bookmark.ayahNumber,
+        number => t('common:labels.ayahNumber', {number}),
+      ),
+      options: [
+        {
+          label: t('bookmarksScreen.removeBookmark'),
+          icon: 'minus-circle',
+          destructive: true,
+          onPress: () => handleRemoveBookmark(item.bookmark),
+        },
+      ],
+    }),
+    [handleRemoveBookmark, t],
+  );
+
   const handleOptionsPress = useCallback(
     (item: BookmarkData) => {
-      SheetManager.show('collection-options', {
-        payload: {
-          title: item.surahName,
-          // @ai: the ayah in the numbering of the rewayah it was saved in
-          subtitle: savedVerseSubtitle(
-            describeSavedVerseNow(item.bookmark),
-            item.bookmark.ayahNumber,
-          ),
-          options: [
-            {
-              label: 'Remove Bookmark',
-              icon: 'minus-circle',
-              destructive: true,
-              onPress: () => handleRemoveBookmark(item.bookmark),
-            },
-          ],
-        },
-      });
+      SheetManager.show('collection-options', {payload: buildOptions(item)});
     },
-    [handleRemoveBookmark],
+    [buildOptions],
   );
+  // @ai-end
 
   const heroOuterBg = Color(theme.colors.textSecondary).alpha(0.1).toString();
   const heroInnerBg = Color(theme.colors.textSecondary).alpha(0.08).toString();
@@ -192,20 +205,19 @@ const BookmarksScreen = () => {
             </View>
           </View>
           <Text style={[styles.headerTitle, {color: theme.colors.text}]}>
-            Bookmarks
+            {t('common:terms.bookmarks')}
           </Text>
           <Text
             style={[
               styles.headerSubtitle,
               {color: theme.colors.textSecondary},
             ]}>
-            {bookmarks.length}{' '}
-            {bookmarks.length === 1 ? 'bookmark' : 'bookmarks'}
+            {t('bookmarksScreen.count', {count: bookmarks.length})}
           </Text>
         </View>
       </View>
     );
-  }, [bookmarks.length, insets.top, theme, heroOuterBg, heroInnerBg]);
+  }, [bookmarks.length, insets.top, theme, heroOuterBg, heroInnerBg, t]);
 
   const renderItem: ListRenderItem<BookmarkData> = ({item}) => (
     <BookmarkItem
@@ -216,6 +228,14 @@ const BookmarksScreen = () => {
       rewayahId={item.bookmark.rewayahId}
       onPress={() => handleOpenBookmark(item.bookmark)} // @ai
       onOptionsPress={() => handleOptionsPress(item)}
+      optionsMenu={
+        nativeMenus ? (
+          <CollectionOptionsMenu
+            payload={buildOptions(item)}
+            layout="overlay"
+          />
+        ) : undefined
+      }
     />
   );
 
@@ -235,10 +255,11 @@ const BookmarksScreen = () => {
                 name="arrow-left"
                 size={moderateScale(22)}
                 color={theme.colors.text}
+                style={flipX}
               />
             </Pressable>
             <Text style={[styles.emptyHeaderTitle, {color: theme.colors.text}]}>
-              Bookmarks
+              {t('common:terms.bookmarks')}
             </Text>
             <View style={styles.emptyHeaderBack} />
           </View>
@@ -246,7 +267,7 @@ const BookmarksScreen = () => {
         <View style={styles.emptyContent}>
           <Text
             style={[styles.loadingText, {color: theme.colors.textSecondary}]}>
-            Loading...
+            {t('common:status.loading')}
           </Text>
         </View>
       </View>
@@ -267,10 +288,11 @@ const BookmarksScreen = () => {
                 name="arrow-left"
                 size={moderateScale(22)}
                 color={theme.colors.text}
+                style={flipX}
               />
             </Pressable>
             <Text style={[styles.emptyHeaderTitle, {color: theme.colors.text}]}>
-              Bookmarks
+              {t('common:terms.bookmarks')}
             </Text>
             <View style={styles.emptyHeaderBack} />
           </View>
@@ -284,11 +306,11 @@ const BookmarksScreen = () => {
             />
           </View>
           <Text style={[styles.emptyTitle, {color: theme.colors.text}]}>
-            No bookmarks yet
+            {t('collectionScreen.empty.bookmarks')}
           </Text>
           <Text
             style={[styles.emptySubtitle, {color: theme.colors.textSecondary}]}>
-            Bookmark verses to see them here
+            {t('bookmarksScreen.emptySubtitle')}
           </Text>
         </View>
       </View>
@@ -318,6 +340,7 @@ const BookmarksScreen = () => {
               name="arrow-left"
               size={moderateScale(24)}
               color={theme.colors.text}
+              style={flipX}
             />
           </Pressable>
         </RNAnimated.View>
@@ -328,7 +351,10 @@ const BookmarksScreen = () => {
         renderItem={renderItem}
         keyExtractor={getItemKey}
         ListHeaderComponent={ListHeaderComponent}
-        contentContainerStyle={styles.listContentContainer}
+        contentContainerStyle={[
+          styles.listContentContainer,
+          {paddingBottom: listBottomPadding}, // @ai
+        ]}
         onScroll={RNAnimated.event(
           [{nativeEvent: {contentOffset: {y: scrollY}}}],
           {useNativeDriver: true},
@@ -338,11 +364,15 @@ const BookmarksScreen = () => {
         contentInsetAdjustmentBehavior="automatic"
       />
       {!USE_GLASS && (
-        <CollectionStickyHeader title="Bookmarks" scrollY={scrollY} />
+        <CollectionStickyHeader
+          title={t('common:terms.bookmarks')}
+          scrollY={scrollY}
+        />
       )}
     </View>
   );
 };
+// @ai-end
 
 export default BookmarksScreen;
 
@@ -383,7 +413,6 @@ const styles = StyleSheet.create({
   },
   listContentContainer: {
     flexGrow: 1,
-    paddingBottom: moderateScale(65),
   },
   fixedBackButton: {
     position: 'absolute',

@@ -1,4 +1,4 @@
-import {ScaledSheet} from 'react-native-size-matters';
+import {ScaledSheet} from '@/utils/scale';
 import {createTheme} from './theme';
 
 const defaultTheme = createTheme('light', 'Green');

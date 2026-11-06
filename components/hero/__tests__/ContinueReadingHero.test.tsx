@@ -10,8 +10,19 @@ jest.mock('expo-router', () => ({
   useFocusEffect: (callback: () => void) =>
     require('react').useEffect(callback, [callback]),
 }));
-jest.mock('react-native-size-matters', () => ({
+jest.mock('@/utils/scale', () => ({
   moderateScale: (n: number) => n,
+}));
+jest.mock('@/hooks/useResponsive', () => ({
+  useResponsive: () => ({isTablet: false}),
+}));
+jest.mock('@/services/player/store/recentlyPlayedStore', () => ({
+  useRecentlyPlayedStore: (selector: (state: {recentTracks: []}) => unknown) =>
+    selector({recentTracks: []}),
+}));
+jest.mock('../ContinueListeningHero', () => ({
+  ContinueListeningHero: () => null,
+  findResumableIndex: () => -1,
 }));
 jest.mock('../HeroSection', () => ({
   HeroSection: ({mainHero}: {mainHero: React.ReactNode}) => mainHero,

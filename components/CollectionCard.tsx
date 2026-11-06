@@ -1,7 +1,7 @@
 import React from 'react';
 import {View, Text, StyleSheet} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import type {Theme} from '@/utils/themeUtils';
 
 interface CollectionCardProps {

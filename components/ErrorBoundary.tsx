@@ -1,38 +1,68 @@
-import React, {Component, ErrorInfo, ReactNode} from 'react';
-import {View, Text} from 'react-native';
+// @ai-start
+import React, {ReactNode, useCallback, useState} from 'react';
+import * as Sentry from '@sentry/react-native';
+import AppErrorScreen, {safeText} from '@/components/AppErrorScreen';
+import branding from '@/config/branding';
+import i18n from '@/i18n';
 
 interface Props {
   children: ReactNode;
 }
 
-interface State {
-  hasError: boolean;
+// Two retries, then stop offering one. The budget lasts for the session: a throw
+// in a child's effect comes after the commit, so nothing can show that a retry
+// worked. After two failed retries, a restart is the right advice for any later
+// crash too.
+const MAX_RETRIES = 2;
+
+function flushReport() {
+  // The user's next action on this screen is often a force quit. Flush so the
+  // report does not race the kill. This runs a few times per process at most.
+  Sentry.flush().catch(() => undefined);
 }
 
-class ErrorBoundary extends Component<Props, State> {
-  public state: State = {
-    hasError: false,
-  };
+function ErrorBoundary({children}: Props) {
+  const [retries, setRetries] = useState(0);
 
-  public static getDerivedStateFromError(_: Error): State {
-    return {hasError: true};
-  }
+  const renderFallback = useCallback(
+    (fallback: {resetError: () => void}) =>
+      retries < MAX_RETRIES ? (
+        <AppErrorScreen
+          message={safeText(
+            () =>
+              i18n.t('home:errorBoundary.message', {
+                appName: branding.appName,
+              }),
+            'The app hit an unexpected error on this screen.',
+          )}
+          onRetry={() => {
+            setRetries(count => count + 1);
+            fallback.resetError();
+          }}
+        />
+      ) : (
+        <AppErrorScreen
+          message={safeText(
+            () =>
+              i18n.t('home:errorBoundary.repeat', {
+                appName: branding.appName,
+              }),
+            'The app keeps hitting errors. Close it fully and open it again.',
+          )}
+        />
+      ),
+    [retries],
+  );
 
-  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('Uncaught error:', error, errorInfo);
-  }
-
-  public render() {
-    if (this.state.hasError) {
-      return (
-        <View>
-          <Text>Sorry.. there was an error</Text>
-        </View>
-      );
-    }
-
-    return this.props.children;
-  }
+  return (
+    <Sentry.ErrorBoundary
+      fallback={renderFallback}
+      beforeCapture={scope => scope.setTag('scope', 'error-boundary')}
+      onError={flushReport}>
+      {children}
+    </Sentry.ErrorBoundary>
+  );
 }
+// @ai-end
 
 export default ErrorBoundary;

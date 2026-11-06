@@ -76,7 +76,8 @@ public class BayaanWidgetsModule: Module {
         to: dir.appendingPathComponent("snapshot.json"), options: .atomic)
     }
 
-    // ListeningAccessory and the play/pause control read the same snapshot slice as ContinueListening.
+    // ListeningAccessory and the play/pause control read the same snapshot slice as ContinueListening;
+    // VerseOfTheDayAccessory shares AyahOfTheDay's provider.
     Function("reloadWidgets") { (kinds: [String]) in
       for kind in kinds {
         WidgetCenter.shared.reloadTimelines(ofKind: kind)
@@ -86,11 +87,26 @@ public class BayaanWidgetsModule: Module {
             ControlCenter.shared.reloadControls(ofKind: "PlaybackControl")
           }
         }
+        if kind == "AyahOfTheDay" {
+          WidgetCenter.shared.reloadTimelines(ofKind: "VerseOfTheDayAccessory")
+        }
       }
     }
 
     Function("takeQueuedCommands") { () -> String in takeString("widgets.commandQueue") }
+    // @ai-start
+    // Lets a waiting AudioPlaybackIntent return (WidgetCommandQueue.waitUntilHandled).
+    // Only moves forward, so an older drain cannot release a newer tap early.
+    Function("markCommandsHandled") { (through: Double) in
+      guard let id = appGroupId(), let defaults = UserDefaults(suiteName: id) else { return }
+      withQueueLock {
+        let key = "widgets.commandsHandledThrough"
+        if through > defaults.double(forKey: key) { defaults.set(through, forKey: key) }
+      }
+    }
+    // @ai-end
     Function("takePendingTasbeeh") { () -> String in takeString("widgets.pendingTasbeeh") }
+    Function("takePendingWidgetEvents") { () -> String in takeString("widgets.pendingEvents") }
 
     Function("isLiveActivitySupported") { () -> Bool in NowPlayingActivityBridge.isSupported }
 
@@ -108,6 +124,18 @@ public class BayaanWidgetsModule: Module {
 
     AsyncFunction("endNowPlayingActivities") { () async in
       await NowPlayingActivityBridge.endAll()
+    }
+
+    AsyncFunction("startAdhkarSessionActivity") { (json: String, staleAtMs: Double) async -> String in
+      await AdhkarSessionActivityBridge.start(json, staleAtMs: staleAtMs)
+    }
+
+    AsyncFunction("updateAdhkarSessionActivity") { (json: String, staleAtMs: Double) async -> Bool in
+      await AdhkarSessionActivityBridge.update(json, staleAtMs: staleAtMs)
+    }
+
+    AsyncFunction("endAdhkarSessionActivities") { (dismissAtMs: Double?) async in
+      await AdhkarSessionActivityBridge.endAll(dismissAtMs: dismissAtMs)
     }
 
     Function("writeCatalog") { (json: String) in

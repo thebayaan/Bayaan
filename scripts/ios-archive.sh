@@ -148,15 +148,31 @@ fi
 echo -e "${GREEN}✅ Archive created at $ARCHIVE_PATH${NC}"
 
 # Export
+#
+# -allowProvisioningUpdates lets Xcode refresh the App Store distribution
+# profiles itself. Without it the export fails outright whenever a capability
+# or an extension target has been added since the profiles were last issued,
+# even though nothing is actually missing from the developer account:
+#
+#   error: exportArchive Provisioning profile "iOS Team Store Provisioning
+#          Profile: com.bayaan.app" doesn't include the Siri capability.
+#   error: exportArchive No profiles for 'com.bayaan.app.widget' were found
+#
+# Both of those came from App Shortcuts and the widgets extension landing on
+# develop; SIRIKIT was already enabled on com.bayaan.app and the widget bundle
+# id was already registered. Only the cached profiles were stale. The flag
+# keeps the script working as further targets are added.
 echo -e "\n${YELLOW}📤 Exporting IPA...${NC}"
 xcodebuild -exportArchive \
     -archivePath "$ARCHIVE_PATH" \
     -exportPath "$EXPORT_PATH" \
     -exportOptionsPlist "$EXPORT_OPTIONS" \
+    -allowProvisioningUpdates \
     | xcpretty || xcodebuild -exportArchive \
     -archivePath "$ARCHIVE_PATH" \
     -exportPath "$EXPORT_PATH" \
-    -exportOptionsPlist "$EXPORT_OPTIONS"
+    -exportOptionsPlist "$EXPORT_OPTIONS" \
+    -allowProvisioningUpdates
 
 if [ ! -f "$IPA_PATH" ]; then
     echo -e "${RED}❌ Export failed (expected $IPA_PATH)${NC}"

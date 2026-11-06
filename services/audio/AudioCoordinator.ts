@@ -7,11 +7,12 @@
 
 import {usePlayerStore} from '@/services/player/store/playerStore';
 
-type AudioSource = 'main' | 'mushaf' | 'none';
+type AudioSource = 'main' | 'mushaf' | 'adhkar' | 'none';
 
 class AudioCoordinator {
   private static instance: AudioCoordinator;
   private activeSource: AudioSource = 'none';
+  private listeners = new Set<() => void>();
 
   private constructor() {}
 
@@ -26,11 +27,26 @@ class AudioCoordinator {
     return this.activeSource;
   }
 
+  /** Called after every change of the active source. Returns an unsubscribe function. */
+  subscribe(listener: () => void): () => void {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
+
+  private setActiveSource(next: AudioSource): void {
+    if (this.activeSource === next) return;
+    this.activeSource = next;
+    this.listeners.forEach(listener => listener());
+  }
+
   /**
    * Called before mushaf player starts playing.
    * Pauses the main player if it's currently playing.
    */
   mushafWillPlay(): void {
+    this.pauseAdhkarIfActive();
     if (this.activeSource === 'main') {
       const store = usePlayerStore.getState();
       if (
@@ -42,7 +58,7 @@ class AudioCoordinator {
           console.log('[AudioCoordinator] Paused main player for mushaf');
       }
     }
-    this.activeSource = 'mushaf';
+    this.setActiveSource('mushaf');
   }
 
   /**
@@ -50,6 +66,7 @@ class AudioCoordinator {
    * Pauses the mushaf player if it's currently playing.
    */
   mainWillPlay(): void {
+    this.pauseAdhkarIfActive();
     if (this.activeSource === 'mushaf') {
       // Lazy import to avoid circular dependency
       const {mushafAudioService} = require('./MushafAudioService');
@@ -66,7 +83,36 @@ class AudioCoordinator {
         mushafState.setPlaybackState('paused');
       }
     }
-    this.activeSource = 'main';
+    this.setActiveSource('main');
+  }
+
+  /**
+   * Called before the adhkar player plays. Pauses the main and mushaf players.
+   */
+  adhkarWillPlay(): void {
+    const store = usePlayerStore.getState();
+    if (
+      store.playback.state === 'playing' ||
+      store.playback.state === 'buffering'
+    ) {
+      store.pause();
+    }
+    const {mushafAudioService} = require('./MushafAudioService');
+    if (mushafAudioService.getIsPlaying()) {
+      mushafAudioService.pause();
+      const {useMushafPlayerStore} = require('@/store/mushafPlayerStore');
+      useMushafPlayerStore.getState().setPlaybackState('paused');
+    }
+    this.setActiveSource('adhkar');
+  }
+
+  private pauseAdhkarIfActive(): void {
+    if (this.activeSource !== 'adhkar') return;
+    // The caller sets the new source right after; the engine reads this to
+    // know another source took over.
+    this.setActiveSource('none');
+    const {useAdhkarSessionStore} = require('@/store/adhkarSessionStore');
+    useAdhkarSessionStore.getState().dispatch({type: 'otherAudioStarted'});
   }
 
   /**
@@ -74,7 +120,7 @@ class AudioCoordinator {
    */
   sourceDidStop(source: AudioSource): void {
     if (this.activeSource === source) {
-      this.activeSource = 'none';
+      this.setActiveSource('none');
     }
   }
 }
