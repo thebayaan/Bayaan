@@ -5,7 +5,6 @@ import {
   type LibraryCollection,
   type RemoteLibraryDocument,
 } from '@/services/settings/bayaanSettingsApiClient';
-import {BayaanSyncApiError} from '@/services/sync/bayaanSyncApiClient';
 import {fitsDocumentLimit, libraryCodec} from './qfLibraryDocuments';
 import {
   EMPTY_ENTRIES,
@@ -18,6 +17,10 @@ import type {
   QfLibrarySyncStorage,
   SyncedLibraryDocument,
 } from './qfLibrarySyncStorage';
+import {
+  appStateLifecycleError,
+  isAppStateConflict,
+} from '@/services/sync/appStateErrors';
 
 export interface QfLibrarySyncApi {
   getAppStateCollections(sessionToken: string): Promise<string[]>;
@@ -87,33 +90,12 @@ interface RemoteDocument {
   entries: LibraryEntries;
 }
 
-function lifecycleError(error: BayaanSettingsApiError): BayaanSyncApiError {
-  if (error.status === 401) {
-    return new BayaanSyncApiError('session_revoked', 401);
-  }
-  if (error.status === 429) {
-    return new BayaanSyncApiError('rate_limited', 429, error.retryAfterMs);
-  }
-  return new BayaanSyncApiError(
-    'service_unavailable',
-    error.status,
-    error.retryAfterMs,
-  );
-}
-
 /** QF hasn't enabled the collection for this client, or App State is off. */
 function isUnavailable(error: BayaanSettingsApiError): boolean {
   return (
     error.status === 403 ||
     error.status === 404 ||
     error.code === 'QF_SETTINGS_DISABLED'
-  );
-}
-
-function isConflict(error: unknown): boolean {
-  return (
-    error instanceof BayaanSettingsApiError &&
-    [409, 412, 428].includes(error.status)
   );
 }
 
@@ -156,7 +138,7 @@ export async function syncQfLibrary(
     enabled = await deps.api.getAppStateCollections(input.sessionToken);
   } catch (error) {
     if (!(error instanceof BayaanSettingsApiError)) throw error;
-    if (!isUnavailable(error)) throw lifecycleError(error);
+    if (!isUnavailable(error)) throw appStateLifecycleError(error);
     enabled = [];
   }
   for (const adapter of deps.adapters) {
@@ -175,7 +157,7 @@ export async function syncQfLibrary(
         result.unavailable.push(adapter.collection);
         continue;
       }
-      throw lifecycleError(error);
+      throw appStateLifecycleError(error);
     }
   }
   return result;
@@ -286,7 +268,7 @@ async function syncDocument(
           etag: remote.etag,
         });
       } catch (error) {
-        if (isConflict(error)) return true;
+        if (isAppStateConflict(error)) return true;
         throw error;
       }
       if (!input.isCurrent()) return false;
@@ -327,7 +309,7 @@ async function syncDocument(
     });
   } catch (error) {
     // Another device wrote first; the next round merges its document.
-    if (isConflict(error)) return true;
+    if (isAppStateConflict(error)) return true;
     throw error;
   }
   if (!input.isCurrent()) return false;

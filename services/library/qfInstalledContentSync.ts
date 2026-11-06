@@ -3,10 +3,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Crypto from 'expo-crypto';
 import {
   BayaanSettingsApiError,
+  type AppStateSettingsKey,
   type RemoteSettingsDocument,
-  type SettingsDocumentKey,
 } from '@/services/settings/bayaanSettingsApiClient';
-import {BayaanSyncApiError} from '@/services/sync/bayaanSyncApiClient';
+import {isLibraryId} from './qfLibraryDocuments';
+import {appStateLifecycleError} from '@/services/sync/appStateErrors';
 
 /**
  * The `settings/content` App State document lists the translation and tafsir
@@ -23,18 +24,17 @@ export interface InstalledContent {
 }
 
 const MAX_EDITIONS = 100;
-const EDITION_ID = /^[A-Za-z0-9_.:-]{1,128}$/;
-const CONTENT_KEY = 'content' as SettingsDocumentKey;
+const CONTENT_KEY = 'content';
 
 export interface QfInstalledContentApi {
   getDocument(
     sessionToken: string,
-    key: SettingsDocumentKey,
-  ): Promise<RemoteSettingsDocument | null>;
+    key: typeof CONTENT_KEY,
+  ): Promise<RemoteSettingsDocument<typeof CONTENT_KEY> | null>;
   putDocument(
     sessionToken: string,
     input: {
-      key: SettingsDocumentKey;
+      key: AppStateSettingsKey;
       body: string;
       idempotencyKey: string;
       etag?: string;
@@ -61,12 +61,7 @@ export interface QfInstalledContentResult {
 
 function editionList(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
-  return value
-    .filter(
-      (item): item is string =>
-        typeof item === 'string' && EDITION_ID.test(item),
-    )
-    .slice(0, MAX_EDITIONS);
+  return value.filter(isLibraryId).slice(0, MAX_EDITIONS);
 }
 
 function union(left: string[], right: string[]): string[] {
@@ -84,19 +79,6 @@ function isUnavailable(error: BayaanSettingsApiError): boolean {
     error.status === 403 ||
     error.status === 400 ||
     error.code === 'QF_SETTINGS_DISABLED'
-  );
-}
-
-function lifecycleError(error: BayaanSettingsApiError): BayaanSyncApiError {
-  if (error.status === 401)
-    return new BayaanSyncApiError('session_revoked', 401);
-  if (error.status === 429) {
-    return new BayaanSyncApiError('rate_limited', 429, error.retryAfterMs);
-  }
-  return new BayaanSyncApiError(
-    'service_unavailable',
-    error.status,
-    error.retryAfterMs,
   );
 }
 
@@ -166,7 +148,7 @@ export async function syncInstalledContent(
   } catch (error) {
     if (!(error instanceof BayaanSettingsApiError)) throw error;
     if (isUnavailable(error)) return {rerun: false, unavailable: true};
-    throw lifecycleError(error);
+    throw appStateLifecycleError(error);
   }
 }
 

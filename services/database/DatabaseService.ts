@@ -47,6 +47,15 @@ interface MaxOrderRow {
   max_order: number | null;
 }
 
+/** A playlist as account sync writes it (see replacePlaylistFromSync). */
+export interface SyncedPlaylist {
+  name: string;
+  color: string;
+  description: string | null;
+  createdAt: number;
+  items: {surahId: string; reciterId: string; rewayatId: string}[];
+}
+
 class DatabaseService {
   private db: SQLite.SQLiteDatabase | null = null;
   private initPromise: Promise<void> | null = null;
@@ -371,13 +380,7 @@ class DatabaseService {
    */
   async replacePlaylistFromSync(
     id: string,
-    next: {
-      name: string;
-      color: string;
-      description: string | null;
-      createdAt: number;
-      items: {surahId: string; reciterId: string; rewayatId: string}[];
-    } | null,
+    next: SyncedPlaylist | null,
   ): Promise<void> {
     if (!this.db) throw new Error('Database not initialized');
 

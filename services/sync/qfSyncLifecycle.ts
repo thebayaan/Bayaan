@@ -19,16 +19,8 @@ import {
 } from './qfSyncDatabaseService';
 import {qfReadingSessionService} from './qfReadingSessionService';
 import {syncQfHighlights, type QfHighlightSyncResult} from './qfHighlightSync';
-import {
-  syncQfLibrary,
-  type QfLibraryLocalAdapter,
-  type QfLibrarySyncResult,
-} from '@/services/library/qfLibrarySync';
-import {qfLibrarySyncStorage} from '@/services/library/qfLibrarySyncStorage';
-import {
-  offeredContentStorage,
-  syncInstalledContent,
-} from '@/services/library/qfInstalledContentSync';
+import type {QfLibrarySyncResult} from '@/services/library/qfLibrarySync';
+import {syncAccountLibrary} from '@/services/library/qfAccountLibrary';
 import {BayaanSettingsApiClient} from '@/services/settings/bayaanSettingsApiClient';
 import {mushafSyncedReadingService} from '@/services/mushaf/MushafSyncedReadingService';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
@@ -822,25 +814,7 @@ export class QfSyncLifecycle {
 }
 
 const transport = new BayaanSyncApiClient({apiUrl: bayaanAuthConfig.apiUrl});
-const highlightsApi = new BayaanSettingsApiClient(bayaanAuthConfig.apiUrl);
-let libraryAdapters: QfLibraryLocalAdapter[] | undefined;
-
-/**
- * The library adapters reach into the player and catalog stores, so they load
- * on first use rather than with this module.
- */
-export function getLibraryAdapters(): QfLibraryLocalAdapter[] {
-  if (!libraryAdapters) {
-    const adapters =
-      require('@/services/library/qfLibraryAdapters') as typeof import('@/services/library/qfLibraryAdapters');
-    libraryAdapters = [
-      adapters.createLibraryAdapter(),
-      adapters.createPlaylistsAdapter(),
-      adapters.createAdhkarAdapter(),
-    ];
-  }
-  return libraryAdapters;
-}
+const appStateApi = new BayaanSettingsApiClient(bayaanAuthConfig.apiUrl);
 const coordinator = new QfSyncCoordinator({
   transport,
   store: new SqliteQfSyncPullStore(verseAnnotationDatabase),
@@ -871,28 +845,6 @@ export const qfSyncLifecycle = new QfSyncLifecycle({
       expectedLocalIntentRevision,
     ),
   syncHighlights: input =>
-    syncQfHighlights({api: highlightsApi, store: qfSyncDatabaseService}, input),
-  syncLibrary: async input => {
-    const library = await syncQfLibrary(
-      {
-        api: highlightsApi,
-        storage: qfLibrarySyncStorage,
-        adapters: getLibraryAdapters(),
-      },
-      input,
-    );
-    if (!input.isCurrent()) return library;
-    const adapters =
-      require('@/services/library/qfInstalledContentAdapters') as typeof import('@/services/library/qfInstalledContentAdapters');
-    const content = await syncInstalledContent(
-      {
-        api: highlightsApi,
-        readInstalled: adapters.readInstalledContent,
-        offerDownloads: adapters.offerContentDownloads,
-        offered: offeredContentStorage,
-      },
-      input,
-    );
-    return {...library, rerun: library.rerun || content.rerun};
-  },
+    syncQfHighlights({api: appStateApi, store: qfSyncDatabaseService}, input),
+  syncLibrary: input => syncAccountLibrary(appStateApi, input),
 });

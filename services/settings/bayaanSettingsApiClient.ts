@@ -20,14 +20,22 @@ export type SettingsDocumentKey =
   | 'adhkar'
   | 'browsing';
 
+/**
+ * Every document of the `settings` collection. `content` lists installed
+ * editions and is synced by qfInstalledContentSync, not the settings sync.
+ */
+export type AppStateSettingsKey = SettingsDocumentKey | 'content';
+
 export interface PreferenceMutation {
   group: string;
   key: string;
   value: unknown;
 }
 
-export interface RemoteSettingsDocument {
-  key: SettingsDocumentKey;
+export interface RemoteSettingsDocument<
+  K extends AppStateSettingsKey = SettingsDocumentKey,
+> {
+  key: K;
   value: Record<string, unknown>;
   etag: string;
   // Newer schemas can be projected for display, never downgraded on write.
@@ -195,10 +203,10 @@ export class BayaanSettingsApiClient {
     }
   }
 
-  async getDocument(
+  async getDocument<K extends AppStateSettingsKey>(
     sessionToken: string,
-    key: SettingsDocumentKey,
-  ): Promise<RemoteSettingsDocument | null> {
+    key: K,
+  ): Promise<RemoteSettingsDocument<K> | null> {
     const {response, body} = await this.request(
       `/v1/qf/settings/app-state/documents/${key}`,
       sessionToken,
@@ -238,7 +246,7 @@ export class BayaanSettingsApiClient {
   async putDocument(
     sessionToken: string,
     input: {
-      key: SettingsDocumentKey;
+      key: AppStateSettingsKey;
       body: string;
       idempotencyKey: string;
       etag?: string;
