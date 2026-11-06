@@ -5,13 +5,14 @@ import {Feather} from '@expo/vector-icons';
 import Color from 'color';
 import {useTranslation} from 'react-i18next';
 import {useTheme} from '@/hooks/useTheme';
+import {RECITATION_AVAILABLE} from '@/services/recitation/recitationAvailability';
 import {moderateScale} from '@/utils/scale';
 
 /**
  * "Recite to search": for readers who cannot type Arabic. Opens Which ayah?,
  * which listens and names the ayah.
  */
-export function ReciteToSearchRow(): React.JSX.Element {
+export function ReciteToSearchRow(): React.JSX.Element | null {
   const {theme} = useTheme();
   const {t} = useTranslation('home');
   const subtle = Color(theme.colors.text).alpha(0.06).toString();
@@ -20,6 +21,8 @@ export function ReciteToSearchRow(): React.JSX.Element {
     Keyboard.dismiss();
     SheetManager.show('which-ayah');
   }
+
+  if (!RECITATION_AVAILABLE) return null;
 
   return (
     <Pressable

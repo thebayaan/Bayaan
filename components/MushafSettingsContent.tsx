@@ -68,6 +68,7 @@ import {
   type RewayahId,
 } from '@/store/mushafSettingsStore';
 import {useRecitationTrackingStore} from '@/store/recitationTrackingStore';
+import {RECITATION_AVAILABLE} from '@/services/recitation/recitationAvailability';
 import {
   recitationModelNeedsDownload,
   removeRecitationModel,
@@ -1330,7 +1331,7 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
           </View>
         )}
 
-      {context !== 'player' && (
+      {RECITATION_AVAILABLE && context !== 'player' && (
         <>
           <Text style={styles.sectionHeader}>
             {t('mushafSettings.recitationHeader')}

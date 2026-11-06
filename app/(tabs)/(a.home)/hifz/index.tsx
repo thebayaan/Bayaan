@@ -17,6 +17,7 @@ import {openForRecitation} from '@/services/hifz/openForRecitation';
 import {todayPlan} from '@/services/hifz/plan';
 import {loadPageStates, PLAN_DATA} from '@/services/hifz/progressLoader';
 import type {PageState} from '@/services/hifz/strength';
+import {RECITATION_AVAILABLE} from '@/services/recitation/recitationAvailability';
 import {useHifzStore} from '@/store/hifzStore';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {moderateScale} from '@/utils/scale';
@@ -177,18 +178,22 @@ export default function HifzScreen(): React.JSX.Element {
         </>
       )}
       <View>
-        <LinkRow
-          label={t('hifz.quizzes')}
-          onPress={() => router.push(`${HIFZ}/quiz`)}
-        />
+        {RECITATION_AVAILABLE && (
+          <LinkRow
+            label={t('hifz.quizzes')}
+            onPress={() => router.push(`${HIFZ}/quiz`)}
+          />
+        )}
         <LinkRow
           label={t('hifz.mutashabihat')}
           onPress={() => router.push(`${HIFZ}/mutashabihat`)}
         />
-        <LinkRow
-          label={t('hifz.history')}
-          onPress={() => router.push(`${HIFZ}/history`)}
-        />
+        {RECITATION_AVAILABLE && (
+          <LinkRow
+            label={t('hifz.history')}
+            onPress={() => router.push(`${HIFZ}/history`)}
+          />
+        )}
         <LinkRow
           label={t('hifz.heatmap')}
           onPress={() => router.push(`${HIFZ}/heatmap`)}

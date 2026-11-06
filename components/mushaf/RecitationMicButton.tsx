@@ -33,6 +33,7 @@ import {
   startRecitationTracking,
   stopRecitationTracking,
 } from '@/services/recitation/RecitationTrackingService';
+import {RECITATION_AVAILABLE} from '@/services/recitation/recitationAvailability';
 import type {SearchHint} from '@tilawa/core';
 import {SURAHS} from '@/data/surahData';
 import {SheetManager} from 'react-native-actions-sheet';
@@ -107,7 +108,9 @@ export interface RecitationMic {
 export function useRecitationMic(currentPage: number): RecitationMic {
   // Tilawa recognises Hafs recitation and reports Hafs words, so the mic
   // only shows over Hafs text.
-  const enabled = useMushafSettingsStore(s => s.rewayah === 'hafs');
+  const enabled = useMushafSettingsStore(
+    s => RECITATION_AVAILABLE && s.rewayah === 'hafs',
+  );
   const status = useRecitationTrackingStore(s => s.status);
   const progress = useRecitationTrackingStore(s => s.downloadProgress);
   const error = useRecitationTrackingStore(s => s.error);
