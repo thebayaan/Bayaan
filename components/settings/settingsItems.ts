@@ -3,7 +3,11 @@ import {Linking} from 'react-native';
 import type {Href} from 'expo-router';
 import type {TFunction} from 'i18next';
 import branding from '@/config/branding';
-import {openAppStoreForReview, markAsRated} from '@/utils/reviewUtils';
+import {
+  canOpenAppStoreForReview,
+  openAppStoreForReview,
+  markAsRated,
+} from '@/utils/reviewUtils'; // @ai
 import {
   QuranIcon,
   DualPagesIcon,
@@ -97,13 +101,18 @@ export const getSettingsSections = (t: TFunction<['settings', 'common']>) => {
     {
       section: t('settings:index.sections.feedback'),
       items: [
-        {
-          title: t('settings:index.items.rateApp.title'),
-          type: 'rateApp',
-          description: t('settings:index.items.rateApp.description'),
-          icon: 'star',
-          iconType: 'custom',
-        },
+        // No row on iOS without `branding.appStoreId` (reviewUtils).
+        ...(canOpenAppStoreForReview()
+          ? [
+              {
+                title: t('settings:index.items.rateApp.title'),
+                type: 'rateApp',
+                description: t('settings:index.items.rateApp.description'),
+                icon: 'star',
+                iconType: 'custom',
+              },
+            ]
+          : []),
         {
           title: t('settings:index.items.featureRequest.title'),
           type: 'featureRequest',
@@ -144,13 +153,20 @@ export const getSettingsSections = (t: TFunction<['settings', 'common']>) => {
           icon: 'medal',
           iconType: 'custom',
         },
-        {
-          title: t('settings:index.items.github.title'),
-          type: 'github',
-          description: t('settings:index.items.github.description', {appName}),
-          icon: 'github',
-          iconType: 'feather',
-        },
+        // A fork without `branding.githubUrl` gets no row, not Bayaan's repo.
+        ...(branding.githubUrl
+          ? [
+              {
+                title: t('settings:index.items.github.title'),
+                type: 'github',
+                description: t('settings:index.items.github.description', {
+                  appName,
+                }),
+                icon: 'github',
+                iconType: 'feather',
+              },
+            ]
+          : []),
         {
           title: t('settings:index.items.terms.title'),
           type: 'terms',
@@ -236,7 +252,10 @@ export async function openSettingsItem(
       await Linking.openURL(branding.privacyUrl);
       break;
     case 'github':
-      await Linking.openURL('https://github.com/thebayaan/Bayaan');
+      // @ai: absent `branding.githubUrl` hides the row; never Bayaan's repo.
+      if (branding.githubUrl) {
+        await Linking.openURL(branding.githubUrl);
+      }
       break;
     default:
       break;
