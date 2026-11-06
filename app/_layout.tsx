@@ -56,6 +56,7 @@ import {useBayaanAuthStore} from '@/store/bayaanAuthStore';
 import {useNetworkStore} from '@/store/networkStore';
 import {useQfSyncStore} from '@/store/qfSyncStore';
 import {qfSyncLifecycle} from '@/services/sync/qfSyncLifecycle';
+import {watchLibraryEdits} from '@/services/library/qfLibraryAdapters';
 import {qfSettingsSyncLifecycle} from '@/services/settings/qfSettingsSyncLifecycle';
 import {GuestDataMergeSheet} from '@/components/auth/GuestDataMergeSheet';
 
@@ -191,6 +192,16 @@ function QfSyncLifecycleBridge() {
     qfSyncLifecycle.updateContext(context);
     qfSettingsSyncLifecycle.updateContext(context);
   }, [accountId, appState, authStatus, online]);
+
+  useEffect(
+    () =>
+      watchLibraryEdits(() => {
+        if (useBayaanAuthStore.getState().status === 'authenticated') {
+          qfSyncLifecycle.requestSync();
+        }
+      }),
+    [],
+  );
 
   useEffect(() => {
     if (syncRequestId > 0) {

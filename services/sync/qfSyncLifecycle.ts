@@ -19,6 +19,12 @@ import {
 } from './qfSyncDatabaseService';
 import {qfReadingSessionService} from './qfReadingSessionService';
 import {syncQfHighlights, type QfHighlightSyncResult} from './qfHighlightSync';
+import {
+  syncQfLibrary,
+  type QfLibraryLocalAdapter,
+  type QfLibrarySyncResult,
+} from '@/services/library/qfLibrarySync';
+import {qfLibrarySyncStorage} from '@/services/library/qfLibrarySyncStorage';
 import {BayaanSettingsApiClient} from '@/services/settings/bayaanSettingsApiClient';
 import {mushafSyncedReadingService} from '@/services/mushaf/MushafSyncedReadingService';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
@@ -111,6 +117,11 @@ interface QfSyncLifecycleOptions {
     sessionToken: string;
     isCurrent: () => boolean;
   }) => Promise<QfHighlightSyncResult>;
+  syncLibrary?: (input: {
+    accountId: string;
+    sessionToken: string;
+    isCurrent: () => boolean;
+  }) => Promise<QfLibrarySyncResult>;
   now?: () => number;
   random?: () => number;
   setTimer?: (
@@ -495,6 +506,12 @@ export class QfSyncLifecycle {
         if (!this.isCurrent(epoch, accountId)) return;
       }
 
+      const library = await this.options.syncLibrary?.({
+        ...input,
+        isCurrent: () => this.isCurrent(epoch, accountId),
+      });
+      if (!this.isCurrent(epoch, accountId)) return;
+
       const persisted = await this.options.database.getSyncStatus(accountId);
       if (!this.isCurrent(epoch, accountId)) return;
       this.remoteFailureCount = 0;
@@ -541,8 +558,8 @@ export class QfSyncLifecycle {
         } else {
           this.scheduleRetry(epoch, accountId, retryDelayMs);
         }
-      } else if (highlights?.rerun) {
-        // A highlights document changed under this round; settle it shortly
+      } else if (highlights?.rerun || library?.rerun) {
+        // A highlights or library document changed under this round; settle it shortly
         // rather than immediately, so a busy document cannot spin.
         this.scheduleRetry(epoch, accountId, DEFAULT_RETRY_MS);
       }
@@ -802,6 +819,20 @@ export class QfSyncLifecycle {
 
 const transport = new BayaanSyncApiClient({apiUrl: bayaanAuthConfig.apiUrl});
 const highlightsApi = new BayaanSettingsApiClient(bayaanAuthConfig.apiUrl);
+let libraryAdapters: QfLibraryLocalAdapter[] | undefined;
+
+/**
+ * The library adapters reach into the player and catalog stores, so they load
+ * on first use rather than with this module.
+ */
+export function getLibraryAdapters(): QfLibraryLocalAdapter[] {
+  if (!libraryAdapters) {
+    const adapters =
+      require('@/services/library/qfLibraryAdapters') as typeof import('@/services/library/qfLibraryAdapters');
+    libraryAdapters = [adapters.createLibraryAdapter()];
+  }
+  return libraryAdapters;
+}
 const coordinator = new QfSyncCoordinator({
   transport,
   store: new SqliteQfSyncPullStore(verseAnnotationDatabase),
@@ -833,4 +864,13 @@ export const qfSyncLifecycle = new QfSyncLifecycle({
     ),
   syncHighlights: input =>
     syncQfHighlights({api: highlightsApi, store: qfSyncDatabaseService}, input),
+  syncLibrary: input =>
+    syncQfLibrary(
+      {
+        api: highlightsApi,
+        storage: qfLibrarySyncStorage,
+        adapters: getLibraryAdapters(),
+      },
+      input,
+    ),
 });

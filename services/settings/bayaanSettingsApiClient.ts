@@ -8,6 +8,10 @@ const TIMEOUT_MS = 8_000;
 const MAX_RESPONSE_BYTES = 256 * 1024;
 // Every highlights document in one listing: up to 114 surahs.
 const MAX_HIGHLIGHTS_RESPONSE_BYTES = 1024 * 1024;
+// Every document of one library collection: up to 115 (library) or 100
+// (playlists) documents of at most 16 KB.
+const MAX_LIBRARY_RESPONSE_BYTES = 2 * 1024 * 1024;
+const LIBRARY_KEY = /^[A-Za-z0-9_-]{1,64}$/;
 
 export type SettingsDocumentKey =
   | 'appearance'
@@ -29,6 +33,17 @@ export interface RemoteSettingsDocument {
   // Newer schemas can be projected for display, never downgraded on write.
   schemaVersion?: number;
   readOnly?: boolean;
+}
+
+/** Bayaan's library App State collections (see qfLibraryDocuments.ts). */
+export type LibraryCollection = 'library' | 'playlists' | 'adhkar';
+
+/** A listed library document; read-only ones carry no value. */
+export interface RemoteLibraryDocument {
+  key: string;
+  etag: string;
+  value?: unknown;
+  readOnly: boolean;
 }
 
 /** A listed highlights document; read-only ones carry no value. */
@@ -332,5 +347,133 @@ export class BayaanSettingsApiClient {
       );
     }
     return etag;
+  }
+
+  /** App State collections QF has enabled for this client. */
+  async getAppStateCollections(sessionToken: string): Promise<string[]> {
+    const {response, body} = await this.request(
+      '/v1/qf/settings/app-state/config',
+      sessionToken,
+    );
+    this.assertOk(response, body);
+    const data =
+      isObject(body) && body.success === true && isObject(body.data)
+        ? body.data
+        : null;
+    if (!data || !Array.isArray(data.collections)) {
+      throw new BayaanSettingsApiError(
+        response.status,
+        'invalid_configuration_response',
+      );
+    }
+    return data.collections.flatMap(item =>
+      isObject(item) && typeof item.name === 'string' ? [item.name] : [],
+    );
+  }
+
+  async listLibrary(
+    sessionToken: string,
+    collection: LibraryCollection,
+  ): Promise<RemoteLibraryDocument[]> {
+    const {response, body} = await this.request(
+      `/v1/qf/settings/app-state/collections/${collection}`,
+      sessionToken,
+      {},
+      MAX_LIBRARY_RESPONSE_BYTES,
+    );
+    this.assertOk(response, body);
+    const items =
+      isObject(body) &&
+      body.success === true &&
+      isObject(body.data) &&
+      Array.isArray(body.data.items)
+        ? body.data.items
+        : null;
+    if (!items) {
+      throw new BayaanSettingsApiError(
+        response.status,
+        'invalid_library_response',
+      );
+    }
+    return items.map(item => {
+      if (
+        !isObject(item) ||
+        typeof item.key !== 'string' ||
+        !LIBRARY_KEY.test(item.key) ||
+        typeof item.etag !== 'string' ||
+        !item.etag
+      ) {
+        throw new BayaanSettingsApiError(
+          response.status,
+          'invalid_library_response',
+        );
+      }
+      return {
+        key: item.key,
+        etag: item.etag,
+        value: item.value,
+        readOnly: item.readOnly === true,
+      };
+    });
+  }
+
+  async putLibrary(
+    sessionToken: string,
+    input: {
+      collection: LibraryCollection;
+      key: string;
+      value: unknown;
+      idempotencyKey: string;
+      etag?: string;
+    },
+  ): Promise<string> {
+    const headers = new Headers({
+      'Content-Type': 'application/json',
+      'Idempotency-Key': input.idempotencyKey,
+    });
+    if (input.etag) headers.set('If-Match', input.etag);
+    else headers.set('If-None-Match', '*');
+    const {response, body} = await this.request(
+      `/v1/qf/settings/app-state/collections/${input.collection}/${encodeURIComponent(input.key)}`,
+      sessionToken,
+      {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({schemaVersion: 1, value: input.value}),
+      },
+    );
+    this.assertOk(response, body);
+    const etag = response.headers.get('etag');
+    if (!etag) {
+      throw new BayaanSettingsApiError(
+        response.status,
+        'missing_document_etag',
+      );
+    }
+    return etag;
+  }
+
+  /** Deletes a document; one already gone counts as deleted. */
+  async deleteLibrary(
+    sessionToken: string,
+    input: {
+      collection: LibraryCollection;
+      key: string;
+      idempotencyKey: string;
+      etag: string;
+    },
+  ): Promise<void> {
+    const {response, body} = await this.request(
+      `/v1/qf/settings/app-state/collections/${input.collection}/${encodeURIComponent(input.key)}`,
+      sessionToken,
+      {
+        method: 'DELETE',
+        headers: {
+          'Idempotency-Key': input.idempotencyKey,
+          'If-Match': input.etag,
+        },
+      },
+    );
+    this.assertOk(response, body);
   }
 }
