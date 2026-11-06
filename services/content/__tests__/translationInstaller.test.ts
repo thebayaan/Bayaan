@@ -2,14 +2,6 @@ jest.mock(
   'expo-sqlite',
   () => require('@/test-utils/mockExpoSqlite').expoSqliteModule,
 );
-// translationStore imports contentSync (the picker installs through it);
-// keep this suite on the installer alone.
-jest.mock('@/services/content/contentSync', () => ({
-  installContent: jest.fn(),
-  removeContent: jest.fn(),
-  getOfferedContent: jest.fn(),
-  isEngineManagingTranslations: () => false,
-}));
 
 import {SURAHS} from '@/data/surahData';
 import type {ContentEnvelope} from '@/types/content';
@@ -68,30 +60,23 @@ function makeDb(
   };
 }
 
-function makeStore() {
-  const state = {loadDownloadedMeta: jest.fn().mockResolvedValue(undefined)};
-  return {getState: () => state, state};
-}
-
-function makeSettings(selected: string) {
-  const state = {
-    selectedTranslationId: selected,
+function makeHost(selected: string) {
+  const host = {
+    selected,
+    selectedTranslationId: () => host.selected,
     setSelectedTranslationId: jest.fn((id: string) => {
-      state.selectedTranslationId = id;
+      host.selected = id;
     }),
+    reloadTranslations: jest.fn().mockResolvedValue(undefined),
   };
-  return {getState: () => state, state};
+  return host;
 }
 
 describe('translation installer', () => {
   it('saves verses, footnotes and metadata from the manifest meta in one call', async () => {
     const db = makeDb();
-    const store = makeStore();
-    const installer = createTranslationInstaller({
-      db,
-      store,
-      settings: makeSettings('saheeh'),
-    });
+    const host = makeHost('saheeh');
+    const installer = createTranslationInstaller({db, host});
     const outcome = await installer.install(KEY, envelope, {
       name: 'Saheeh International',
       author: 'Saheeh International',
@@ -111,7 +96,7 @@ describe('translation installer', () => {
     expect(verses).toHaveLength(6236);
     expect(verses[0].text).toBe('In the name<sup foot_note=254011>1</sup>');
     expect(footnotes).toEqual([{id: '254011', text: '<p>Note</p>'}]);
-    expect(store.state.loadDownloadedMeta).toHaveBeenCalled();
+    expect(host.reloadTranslations).toHaveBeenCalled();
     expect(outcome).toEqual({name: 'Saheeh International'});
   });
 
@@ -127,8 +112,7 @@ describe('translation installer', () => {
     ]);
     const installer = createTranslationInstaller({
       db,
-      store: makeStore(),
-      settings: makeSettings('97'),
+      host: makeHost('97'),
     });
     await installer.install('qf:translations:97', envelope, undefined);
     expect(db.saveTranslation.mock.calls[0].slice(0, 5)).toEqual([
@@ -144,8 +128,7 @@ describe('translation installer', () => {
     const db = makeDb();
     const installer = createTranslationInstaller({
       db,
-      store: makeStore(),
-      settings: makeSettings('saheeh'),
+      host: makeHost('saheeh'),
     });
     await installer.install('qf:translations:999', envelope, undefined);
     expect(db.saveTranslation.mock.calls[0].slice(0, 5)).toEqual([
@@ -161,8 +144,7 @@ describe('translation installer', () => {
     const db = makeDb();
     const installer = createTranslationInstaller({
       db,
-      store: makeStore(),
-      settings: makeSettings('20'),
+      host: makeHost('20'),
     });
     await expect(
       installer.install(KEY, makeEnvelope(fullRecords().slice(1)), undefined),
@@ -171,51 +153,43 @@ describe('translation installer', () => {
   });
 
   it('does not change the selection on install', async () => {
-    const settings = makeSettings('saheeh');
+    const host = makeHost('saheeh');
     const installer = createTranslationInstaller({
       db: makeDb(),
-      store: makeStore(),
-      settings,
+      host,
     });
     await installer.install(KEY, envelope, undefined);
-    expect(settings.state.setSelectedTranslationId).not.toHaveBeenCalled();
+    expect(host.setSelectedTranslationId).not.toHaveBeenCalled();
   });
 
-  it('removes the rows and reloads the store', async () => {
+  it('removes the rows and reloads the translations list', async () => {
     const db = makeDb();
-    const store = makeStore();
-    const installer = createTranslationInstaller({
-      db,
-      store,
-      settings: makeSettings('saheeh'),
-    });
+    const host = makeHost('saheeh');
+    const installer = createTranslationInstaller({db, host});
     await installer.remove(KEY);
     expect(db.deleteTranslation).toHaveBeenCalledWith('20');
-    expect(store.state.loadDownloadedMeta).toHaveBeenCalled();
+    expect(host.reloadTranslations).toHaveBeenCalled();
   });
 
   it('moves a withdrawn selected edition to Clear Quran, once', async () => {
-    const settings = makeSettings('20');
-    const store = makeStore();
+    const host = makeHost('20');
     const installer = createTranslationInstaller({
       db: makeDb(),
-      store,
-      settings,
+      host,
     });
     await installer.onWithdrawn(KEY);
-    expect(settings.state.selectedTranslationId).toBe('clear-quran');
+    expect(host.selected).toBe('clear-quran');
     await installer.onWithdrawn(KEY);
-    expect(settings.state.setSelectedTranslationId).toHaveBeenCalledTimes(1);
+    expect(host.setSelectedTranslationId).toHaveBeenCalledTimes(1);
   });
 
   it('leaves another selection alone when an edition is withdrawn', async () => {
-    const settings = makeSettings('saheeh');
+    const host = makeHost('saheeh');
     const installer = createTranslationInstaller({
       db: makeDb(),
-      store: makeStore(),
-      settings,
+      host,
     });
     await installer.onWithdrawn(KEY);
-    expect(settings.state.setSelectedTranslationId).not.toHaveBeenCalled();
+    expect(host.setSelectedTranslationId).not.toHaveBeenCalled();
   });
 });

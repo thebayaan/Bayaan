@@ -178,6 +178,7 @@ async function start(): Promise<Loaded> {
   };
   await loaded.sync.initContentSync({
     selectedTranslationId: () => 'clear-quran',
+    setSelectedTranslationId: () => undefined,
     reloadTranslations: async () => undefined,
   });
   return loaded;

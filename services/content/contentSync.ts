@@ -39,7 +39,10 @@ import {
   migrateLegacyContent,
 } from './legacyMigration';
 import {createTafsirInstaller} from './tafsirInstaller';
-import {createTranslationInstaller} from './translationInstaller';
+import {
+  createTranslationInstaller,
+  type TranslationHost,
+} from './translationInstaller';
 import {migrateLegacyTranslations} from './translationMigration';
 
 export {
@@ -51,14 +54,10 @@ export {
 // After a failed manifest check, further checks in this session wait this long.
 export const FAILED_CHECK_THROTTLE_MS = 3_600_000;
 
-// What the engine reads from the app, supplied by the caller so this module
-// does not import the settings or translation stores.
-export interface ContentSyncHost {
-  // The reader's translation selection, read once per cycle.
-  selectedTranslationId: () => string;
-  // Refreshes the downloaded translations list after the migration.
-  reloadTranslations: () => Promise<void>;
-}
+// What the engine reads from and changes in the app, supplied by the caller
+// (services/startContentSync) so neither this module nor its installers
+// import the settings or translation stores.
+export type ContentSyncHost = TranslationHost;
 
 // An entry the last cached manifest offers for install.
 export interface OfferedContent {
@@ -73,18 +72,26 @@ let subscription: NativeEventSubscription | null = null;
 let running: Promise<void> = Promise.resolve();
 let checkBlockedUntil = 0;
 let fallbackRegistry: ContentRegistry | null = null;
+// The host from the last initContentSync call; kept across teardown so a
+// removal without deps can still build the translation installer.
+let knownHost: ContentSyncHost | null = null;
 
-const INSTALLER_FACTORIES: Record<ContentKind, () => ContentInstaller> = {
-  tafsir: createTafsirInstaller,
-  translation: createTranslationInstaller,
+const INSTALLER_FACTORIES: Record<
+  ContentKind,
+  (host: ContentSyncHost) => ContentInstaller
+> = {
+  tafsir: () => createTafsirInstaller(),
+  translation: host => createTranslationInstaller({host}),
 };
 
 // The manifest is requested for every kind with an installer, so translation
 // entries are cached; a translation installs only through installContent or
 // as the reader's selection (installSelection).
-function buildInstallers(): Partial<Record<ContentKind, ContentInstaller>> {
+function buildInstallers(
+  host: ContentSyncHost,
+): Partial<Record<ContentKind, ContentInstaller>> {
   return Object.fromEntries(
-    managedKinds().map(kind => [kind, INSTALLER_FACTORIES[kind]()]),
+    managedKinds().map(kind => [kind, INSTALLER_FACTORIES[kind](host)]),
   );
 }
 
@@ -92,11 +99,11 @@ export function isOnWifi(state: {type: string}): boolean {
   return state.type === 'wifi' || state.type === 'ethernet';
 }
 
-function buildDeps(base: string): EngineDeps {
+function buildDeps(base: string, host: ContentSyncHost): EngineDeps {
   return {
     api: createContentApi(base, process.env.EXPO_PUBLIC_BAYAAN_API_KEY ?? ''),
     registry: createSqliteContentRegistry(),
-    installers: buildInstallers(),
+    installers: buildInstallers(host),
     isOnWifi: async () => isOnWifi(await NetInfo.fetch()),
     sha256: text =>
       Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, text),
@@ -219,9 +226,10 @@ async function cycle(active: EngineDeps, host: ContentSyncHost): Promise<void> {
 }
 
 export async function initContentSync(host: ContentSyncHost): Promise<void> {
+  knownHost = host;
   const base = resolveContentApiBase();
   if (deps || !base || !isEngineManagingTafsir()) return;
-  const active = buildDeps(base);
+  const active = buildDeps(base, host);
   deps = active;
   await serialize(() => cycle(active, host));
   // Torn down (or replaced) while the first cycle ran: do not subscribe.
@@ -314,17 +322,21 @@ export async function getOfferedTafsirIds(): Promise<ReadonlySet<string> | null>
   return offered && new Set(offered.map(entry => entry.id));
 }
 
-// Before init (or after teardown) there are no engine deps, but the removal
-// must still stick: record the user_removed marker and delete the rows.
+// After teardown there are no engine deps, but the removal must still stick:
+// record the user_removed marker and delete the rows. The installers need the
+// host, so a removal before initContentSync was ever called is refused (boot
+// calls it before the splash hides, so no screen can get there first).
 export async function removeContent(key: string): Promise<void> {
   const active = deps;
   if (active) {
     await exclusive(() => removeResource(active, key));
     return;
   }
+  const host = knownHost;
+  if (!host) throw new Error('content_sync_unavailable');
   fallbackRegistry ??= createSqliteContentRegistry();
   const registry = fallbackRegistry;
   await exclusive(() =>
-    removeResource({registry, installers: buildInstallers()}, key),
+    removeResource({registry, installers: buildInstallers(host)}, key),
   );
 }

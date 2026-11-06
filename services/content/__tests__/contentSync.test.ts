@@ -117,6 +117,9 @@ jest.mock('../contentApi', () => ({
 // The app state the engine reads, from mockState.
 const host = {
   selectedTranslationId: () => mockState.selectedTranslationId,
+  setSelectedTranslationId: (id: string) => {
+    mockState.selectedTranslationId = id;
+  },
   reloadTranslations: async () => undefined,
 };
 
@@ -512,6 +515,8 @@ describe('user actions', () => {
 
   it('removeContent without deps records the marker and deletes the rows', async () => {
     const sync = load();
+    await sync.initContentSync(host);
+    sync.teardownContentSync();
     await sync.removeContent('qf:tafsirs:16');
     expect(mockState.installer.remove).toHaveBeenCalledWith('qf:tafsirs:16');
     expect(await mockState.registry.get('qf:tafsirs:16')).toMatchObject({
@@ -598,6 +603,15 @@ describe('translations', () => {
     });
   });
 
+  it('removeContent before initContentSync is refused: the installers need the host', async () => {
+    const sync = load();
+    await expect(sync.removeContent('qf:tafsirs:16')).rejects.toThrow(
+      'content_sync_unavailable',
+    );
+    expect(mockState.installer.remove).not.toHaveBeenCalled();
+    expect(await mockState.registry.get('qf:tafsirs:16')).toBeNull();
+  });
+
   it('installContent rejects a translation key when a fork keeps its provider', async () => {
     mockState.branding.translationProvider = 'fork';
     const sync = load();
@@ -609,6 +623,8 @@ describe('translations', () => {
 
   it('removeContent without deps removes a translation with its installer', async () => {
     const sync = load();
+    await sync.initContentSync(host);
+    sync.teardownContentSync();
     await sync.removeContent(TRANSLATION_KEY);
     expect(mockState.translationInstaller.remove).toHaveBeenCalledWith(
       TRANSLATION_KEY,
@@ -796,11 +812,11 @@ describe('the selected translation installs once', () => {
   });
 
   it('never reinstalls an edition the user removed', async () => {
-    mockState.selectedTranslationId = '20';
     offering(entry(SAHEEH));
     const sync = load();
-    await sync.removeContent(SAHEEH);
     await sync.initContentSync(host);
+    await sync.removeContent(SAHEEH);
+    mockState.selectedTranslationId = '20';
     await cycleAgain();
     expect(mockState.translationInstaller.install).not.toHaveBeenCalled();
     expect((await mockState.registry.get(SAHEEH))?.user_removed).toBe(true);

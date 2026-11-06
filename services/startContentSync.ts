@@ -10,6 +10,8 @@ import {useTranslationStore} from '@/store/translationStore';
 const host: ContentSyncHost = {
   selectedTranslationId: () =>
     useMushafSettingsStore.getState().selectedTranslationId,
+  setSelectedTranslationId: id =>
+    useMushafSettingsStore.getState().setSelectedTranslationId(id),
   reloadTranslations: () => useTranslationStore.getState().loadDownloadedMeta(),
 };
 
