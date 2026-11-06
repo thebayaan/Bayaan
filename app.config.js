@@ -49,8 +49,6 @@ module.exports = {
       infoPlist: {
         BayaanAppGroup: `group.${IOS_BUNDLE_ID}`,
         NSSupportsLiveActivities: true,
-        NSMicrophoneUsageDescription:
-          'This app uses the microphone to play audio.',
         NSAppleMusicUsageDescription:
           'This app uses Apple Music to play audio.',
         UILaunchStoryboardName: 'SplashScreen',
@@ -192,7 +190,17 @@ module.exports = {
         {supportedLocales: {ios: ['en', 'ar']}},
       ],
       '@bacons/apple-targets',
-      ['expo-audio', {enableBackgroundPlayback: true}],
+      // Playback only: nothing records audio. microphonePermission: false
+      // removes NSMicrophoneUsageDescription (the plugin adds a default one
+      // otherwise); recordAudioAndroid: false leaves out RECORD_AUDIO.
+      [
+        'expo-audio',
+        {
+          enableBackgroundPlayback: true,
+          microphonePermission: false,
+          recordAudioAndroid: false,
+        },
+      ],
       'expo-sqlite',
       'expo-asset',
       'expo-font',
