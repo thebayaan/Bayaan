@@ -15,7 +15,7 @@
     "noTafaseer": "No tafaseer found",
     "downloadInProgress": "Download In Progress",
     "waitForDownload": "Please wait until the current download completes before starting another.",
-    "tafseerNotOfferedTitle": "Not available",
+    "notOfferedTitle": "Not available",
     "searchTranslations": "Search translations...",
     "connectForMore": "Connect to see more translations",
     "translationNotOffered": "This translation is no longer offered. It may have been withdrawn by its publisher.",
