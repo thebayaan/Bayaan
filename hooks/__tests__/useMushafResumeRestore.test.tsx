@@ -81,7 +81,7 @@ test('resumes the guest page only after signed-out restoration settles', async (
 
 test('annotation request effect never invokes settings sync', () => {
   const source = require('fs').readFileSync(
-    `${process.cwd()}/app/_layout.tsx`,
+    `${process.cwd()}/components/auth/QfSyncLifecycleBridge.tsx`,
     'utf8',
   );
   const effect = source.slice(
