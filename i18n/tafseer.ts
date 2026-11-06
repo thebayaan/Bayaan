@@ -2,16 +2,7 @@
 import {currentLanguage, type AppLanguage} from './language';
 import {SOURCE_LANGUAGE, getLanguageConfig} from './languages';
 import {resources} from './resources';
-import {
-  getEnglishLanguageDisplayName,
-  isPreferredLanguage,
-} from './languageNames';
-
-// Older names, kept for callers outside the translations picker.
-export {
-  getEnglishLanguageDisplayName as getTafseerLanguageDisplayName,
-  isPreferredLanguage as isPreferredTafseerLanguage,
-};
+import {isPreferredLanguage} from './languageNames';
 
 interface HomeTables {
   tafseerNames?: Record<string, string>;
