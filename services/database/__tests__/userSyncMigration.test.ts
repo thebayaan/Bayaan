@@ -7,6 +7,7 @@ import {
   USER_SYNC_V2_VERSION,
   migrateUserSyncV2,
 } from '../migrations/userSyncV2';
+import {loadWaSqlite} from '@/test-utils/waSqlite';
 
 type TestDb = {
   execAsync(source: string): Promise<void>;
@@ -22,36 +23,7 @@ type TestDb = {
   closeAsync(): Promise<void>;
 };
 
-const sqlitePromise = (async () => {
-  const fs = require('fs');
-  const path = require('path');
-  const {TextDecoder} = require('util');
-  global.TextDecoder = TextDecoder;
-  const waSqliteDir = path.join(
-    process.cwd(),
-    'node_modules',
-    'expo-sqlite',
-    'web',
-    'wa-sqlite',
-  );
-  const ModuleFactory = require(path.join(waSqliteDir, 'wa-sqlite.js'));
-  const SQLite = require(path.join(waSqliteDir, 'sqlite-api.js'));
-  const wasmBinary = fs.readFileSync(path.join(waSqliteDir, 'wa-sqlite.wasm'));
-  // SDK 58's wa-sqlite build ignores a wasmBinary option, so hand it the
-  // compiled module directly.
-  const module = await ModuleFactory({
-    instantiateWasm: (
-      imports: WebAssembly.Imports,
-      done: (instance: WebAssembly.Instance) => void,
-    ) => {
-      WebAssembly.instantiate(wasmBinary, imports).then(result =>
-        done(result.instance),
-      );
-      return {};
-    },
-  });
-  return {sqlite3: SQLite.Factory(module), SQLite};
-})();
+const sqlitePromise = loadWaSqlite();
 
 class ExpoSqliteWasmDatabase implements TestDb {
   private readonly dbPromise: Promise<number>;
