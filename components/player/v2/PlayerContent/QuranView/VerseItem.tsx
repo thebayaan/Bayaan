@@ -273,15 +273,11 @@ export const VerseItem = memo<VerseItemProps>(
     );
 
     // Handle footnote press: the footnote body of the edition actually shown
-    // (the bundled Clear Quran has none; its markers are stripped).
-    // @ai — `footnoteVerseKey`: the Hafs verse whose translation holds the
-    // footnote (a verse row passes each of its Hafs verses' own).
+    // (the bundled Clear Quran has none; its markers are stripped). Footnote
+    // ids are unique within an edition, so a verse row's Hafs verses share
+    // this handler. @ai
     const toggleFootnote = useCallback(
-      (
-        _footnoteVerseKey: string,
-        footnoteId: string,
-        footnoteNumber: string,
-      ) => {
+      (footnoteId: string, footnoteNumber: string) => {
         // If tapping the same footnote again, close it
         if (activeFootnote && activeFootnote.id === footnoteId) {
           setActiveFootnote(null);
@@ -300,12 +296,9 @@ export const VerseItem = memo<VerseItemProps>(
       },
       [activeFootnote, translationId, t], // @ai
     );
-    // A Hafs verse row: the footnotes of its own verse. @ai
-    const handleFootnotePress = useCallback(
-      (footnoteId: string, footnoteNumber: string) =>
-        toggleFootnote(verseKey, footnoteId, footnoteNumber),
-      [toggleFootnote, verseKey],
-    );
+
+    const translationSourceName =
+      translationName ?? getRenderedTranslationName(translationId);
 
     // Close the footnote display
     const closeFootnote = useCallback(() => {
@@ -728,13 +721,13 @@ export const VerseItem = memo<VerseItemProps>(
             <FormattedTextRenderer
               text={verse.translation}
               baseStyle={translationStyle}
-              onFootnotePress={handleFootnotePress}
+              onFootnotePress={toggleFootnote}
             />
 
             {/* Display Translation Source */}
             {verse.translation && (
               <Text style={translationSourceStyle}>
-                {translationName ?? getRenderedTranslationName(translationId)}
+                {translationSourceName}
               </Text>
             )}
           </View>
@@ -752,7 +745,7 @@ export const VerseItem = memo<VerseItemProps>(
             transliterationStyle={transliterationStyle}
             translationSourceStyle={translationSourceStyle}
             noteStyle={unitNoteStyle}
-            translationName={translationName}
+            translationName={translationSourceName}
             onFootnotePress={toggleFootnote}
           />
         ) : null}

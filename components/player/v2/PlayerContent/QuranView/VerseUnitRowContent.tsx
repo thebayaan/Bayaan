@@ -20,7 +20,6 @@ import type {SkTypefaceFontProvider} from '@shopify/react-native-skia';
 import FormattedTextRenderer from '@/components/utils/FormattedText';
 import {AyahCommunityReflections} from '@/components/mushaf/AyahCommunityReflections';
 import type {IndexedTajweedData} from '@/utils/tajweedLoader';
-import {getRenderedTranslationName} from '@/utils/translationLookup';
 import type {MushafArabicTextWeight} from '@/store/mushafSettingsStore';
 import {WBWVerseView} from './WBWVerseView';
 import {
@@ -31,32 +30,22 @@ import {
 
 // ── Translations and notes ─────────────────────────────────────────────────
 
+type FootnotePress = (footnoteId: string, footnoteNumber: string) => void;
+
 interface PartTranslationProps {
   part: VerseRowPart;
   baseStyle: StyleProp<TextStyle>;
-  onFootnotePress: (
-    hafsKey: string,
-    footnoteId: string,
-    footnoteNumber: string,
-  ) => void;
+  onFootnotePress: FootnotePress;
 }
 
 const PartTranslation = memo<PartTranslationProps>(
-  ({part, baseStyle, onFootnotePress}) => {
-    const hafsKey = part.hafsKey;
-    const handleFootnote = useCallback(
-      (footnoteId: string, footnoteNumber: string) =>
-        onFootnotePress(hafsKey, footnoteId, footnoteNumber),
-      [onFootnotePress, hafsKey],
-    );
-    return (
-      <FormattedTextRenderer
-        text={part.translation}
-        baseStyle={baseStyle}
-        onFootnotePress={handleFootnote}
-      />
-    );
-  },
+  ({part, baseStyle, onFootnotePress}) => (
+    <FormattedTextRenderer
+      text={part.translation}
+      baseStyle={baseStyle}
+      onFootnotePress={onFootnotePress}
+    />
+  ),
 );
 PartTranslation.displayName = 'PartTranslation';
 
@@ -71,12 +60,10 @@ interface UnitRowTranslationsProps {
   translationSourceStyle: StyleProp<TextStyle>;
   /** Style of the shared-translation notes. */
   noteStyle: StyleProp<TextStyle>;
-  translationName?: string;
-  onFootnotePress: (
-    hafsKey: string,
-    footnoteId: string,
-    footnoteNumber: string,
-  ) => void;
+  /** The edition shown, named by the caller from the same selection as the
+   *  text (getRenderedTranslationName). */
+  translationName: string;
+  onFootnotePress: FootnotePress;
 }
 
 export const UnitRowTranslations = memo<UnitRowTranslationsProps>(
@@ -128,9 +115,7 @@ export const UnitRowTranslations = memo<UnitRowTranslationsProps>(
             </React.Fragment>
           ))}
         {hasTranslation ? (
-          <Text style={translationSourceStyle}>
-            {translationName ?? getRenderedTranslationName(undefined)}
-          </Text>
+          <Text style={translationSourceStyle}>{translationName}</Text>
         ) : null}
       </View>
     );
