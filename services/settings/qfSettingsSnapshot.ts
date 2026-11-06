@@ -11,7 +11,7 @@ import {
   isRewayahSwitchSuperseded,
 } from '@/services/mushaf/DigitalKhattDataService';
 import {usePlayerStore} from '@/services/player/store/playerStore';
-import {isEngineInstallingTranslations} from '@/services/content/contentSync';
+import {isEngineManagingTranslations} from '@/services/content/contentSync';
 import {remapLegacyTranslationId} from '@/services/translation/translationRemap';
 import {useAdhkarSettingsStore} from '@/store/adhkarSettingsStore';
 import {useAmbientStore} from '@/store/ambientStore';
@@ -90,7 +90,7 @@ function safeStringMap(value: unknown): Record<string, string> | undefined {
 // The same remap as the translations migration (spec 4.7), for selections
 // that come from or go to the cloud.
 function remapTranslationSelection(id: string): string {
-  return remapLegacyTranslationId(id, isEngineInstallingTranslations());
+  return remapLegacyTranslationId(id, isEngineManagingTranslations());
 }
 
 export function captureSettingsDocuments(): SettingsDocuments {

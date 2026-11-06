@@ -1,33 +1,13 @@
-import {SURAHS} from '@/data/surahData';
 import type {TranslationFootnote} from '@/services/translation/TranslationDbService';
 import type {QfSnapshot} from '@/types/content';
 import type {TranslationVerse} from '@/types/translation';
+import {isRecord, parseVerseKey} from './qfSnapshot';
 
 export const VERSE_COUNT = 6236;
-const VERSE_KEY = /^(\d{1,3}):(\d{1,3})$/;
-// Ayah counts by surah: with uniqueness and the total, every key is a real verse.
-const AYAH_COUNTS = new Map(
-  SURAHS.map(surah => [surah.id, surah.verses_count]),
-);
 
 export interface ParsedTranslation {
   verses: TranslationVerse[];
   footnotes: TranslationFootnote[];
-}
-
-function parseVerseKey(value: unknown): {surah: number; ayah: number} | null {
-  if (typeof value !== 'string') return null;
-  const match = VERSE_KEY.exec(value);
-  if (!match) return null;
-  const surah = Number(match[1]);
-  const ayah = Number(match[2]);
-  const ayahCount = AYAH_COUNTS.get(surah);
-  if (ayahCount === undefined || ayah < 1 || ayah > ayahCount) return null;
-  return {surah, ayah};
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 // QF footnote ids are numbers; the verse markers carry them as text.

@@ -134,8 +134,10 @@ export async function rebuildEnhancedVerses(
 
   // Remote translation — load all verses from SQLite into memory
   try {
-    const translationMap =
-      await translationDbService.getAllVerses(translationId);
+    const [translationMap, footnotes] = await Promise.all([
+      translationDbService.getAllVerses(translationId),
+      loadFootnotes(translationId),
+    ]);
     if (Object.keys(translationMap).length === 0) {
       console.warn(
         `[enhancedVerseData] No verses found for ${translationId}, falling back to ${FALLBACK_TRANSLATION_ID}`,
@@ -144,7 +146,6 @@ export async function rebuildEnhancedVerses(
       buildBundledEnhancedVerses(FALLBACK_TRANSLATION_ID);
       return true;
     }
-    const footnotes = await loadFootnotes(translationId);
     currentRevision = await loadRevision(translationId);
     buildEnhancedVersesFromMap(translationId, translationMap);
     // Populate the sync cache so sheets can look up verses without async

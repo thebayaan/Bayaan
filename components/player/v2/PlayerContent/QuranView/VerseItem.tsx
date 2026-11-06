@@ -39,9 +39,8 @@ import {
 // @ai-end
 import {
   getEffectiveTranslationId,
-  getRemoteFootnote,
+  getFootnoteText,
   getRenderedTranslationName,
-  isBundledTranslation,
 } from '@/utils/translationLookup';
 // @ai-start
 import {useTranslation} from 'react-i18next';
@@ -273,9 +272,8 @@ export const VerseItem = memo<VerseItemProps>(
       [textColor],
     );
 
-    // Handle footnote press: a downloaded edition's footnotes come from
-    // translation_footnotes, cached with its verses (enhancedVerseData). The
-    // bundled Clear Quran has no footnote bodies (its markers are stripped).
+    // Handle footnote press: the footnote body of the edition actually shown
+    // (the bundled Clear Quran has none; its markers are stripped).
     // @ai — `footnoteVerseKey`: the Hafs verse whose translation holds the
     // footnote (a verse row passes each of its Hafs verses' own).
     const toggleFootnote = useCallback(
@@ -290,14 +288,14 @@ export const VerseItem = memo<VerseItemProps>(
           return;
         }
 
-        const effectiveId = getEffectiveTranslationId(translationId);
-        const content = isBundledTranslation(effectiveId)
-          ? undefined
-          : getRemoteFootnote(effectiveId, footnoteId);
         setActiveFootnote({
           id: footnoteId,
           number: footnoteNumber,
-          content: content ?? t('verse.footnoteDataUnavailable'),
+          content:
+            getFootnoteText(
+              getEffectiveTranslationId(translationId),
+              footnoteId,
+            ) ?? t('verse.footnoteDataUnavailable'),
         });
       },
       [activeFootnote, translationId, t], // @ai

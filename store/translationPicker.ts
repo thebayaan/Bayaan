@@ -5,8 +5,8 @@ import type {
   RemoteTranslationEdition,
 } from '@/types/translation';
 import {BUNDLED_TRANSLATIONS} from '@/types/translation';
-import type {OfferedTranslation} from '@/services/content/contentSync';
-import {translationLanguageName} from '@/services/content/translationInstaller';
+import type {OfferedContent} from '@/services/content/contentSync';
+import {contentLanguageName} from '@/services/content/contentLanguage';
 import type {AppLanguage} from '@/i18n/languages';
 import {
   compareLanguageGroups,
@@ -63,12 +63,12 @@ interface Candidate extends OfferedEdition {
 }
 
 function languageOf(language: string | undefined): string {
-  return translationLanguageName(language) ?? UNKNOWN_LANGUAGE;
+  return contentLanguageName(language) ?? UNKNOWN_LANGUAGE;
 }
 
 // The cached manifest's active translations as picker editions.
 export function offeredFromManifest(
-  entries: readonly OfferedTranslation[],
+  entries: readonly OfferedContent[],
 ): OfferedEdition[] {
   return entries.map(entry => ({
     id: entry.id,

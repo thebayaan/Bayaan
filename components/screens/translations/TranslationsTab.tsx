@@ -14,7 +14,7 @@ import {
   type PickerRow,
 } from '@/store/translationPicker';
 import {translationDownloadFailure} from '@/services/content/contentNotices';
-import {translationLanguageName} from '@/services/content/translationInstaller';
+import {contentLanguageName} from '@/services/content/contentLanguage';
 import {DEFAULT_TRANSLATION_ID} from '@/services/translation/translationRemap';
 import {formatBytes} from '@/services/storageService';
 import {
@@ -175,7 +175,7 @@ export function TranslationsTab() {
       ? BUNDLED_TRANSLATIONS[selectedTranslationId].language
       : (offeredTranslations?.find(e => e.id === selectedTranslationId)
           ?.language ??
-        translationLanguageName(
+        contentLanguageName(
           downloadedMeta.find(m => m.identifier === selectedTranslationId)
             ?.language,
         ) ??

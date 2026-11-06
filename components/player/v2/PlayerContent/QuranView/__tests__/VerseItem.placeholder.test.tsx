@@ -59,10 +59,9 @@ jest.mock('react-native-actions-sheet', () => ({
 jest.mock('@/utils/haptics', () => ({mediumHaptics: jest.fn()}));
 
 jest.mock('@/utils/translationLookup', () => ({
-  isBundledTranslation: () => true,
-  getBundledFootnotes: () => undefined,
   getEffectiveTranslationId: (id?: string) => id ?? 'clear-quran',
   getRenderedTranslationName: () => 'The Clear Quran',
+  getFootnoteText: () => undefined,
 }));
 
 jest.mock('@/store/tajweedStore', () => {

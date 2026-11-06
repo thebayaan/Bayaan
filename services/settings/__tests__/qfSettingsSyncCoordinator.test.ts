@@ -7,7 +7,7 @@ jest.mock('@/services/content/contentSync', () => ({
   installContent: jest.fn(),
   removeContent: jest.fn(),
   isEngineManagingTafsir: () => false,
-  isEngineInstallingTranslations: () => false,
+  isEngineManagingTranslations: () => false,
 }));
 
 jest.mock('expo-crypto', () => {

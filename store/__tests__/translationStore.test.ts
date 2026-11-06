@@ -17,8 +17,8 @@ const mockDb = {
   deleteTranslation: jest.fn(async (..._args: unknown[]) => undefined),
 };
 jest.mock('@/services/content/contentSync', () => ({
-  isEngineInstallingTranslations: () => mockEngine,
-  getOfferedTranslations: () => mockOffered(),
+  isEngineManagingTranslations: () => mockEngine,
+  getOfferedContent: () => mockOffered(),
   installContent: (key: string) => mockInstall(key),
   removeContent: (key: string) => mockRemove(key),
 }));

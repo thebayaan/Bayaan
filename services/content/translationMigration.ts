@@ -5,12 +5,12 @@ import {
 } from '@/services/translation/translationRemap';
 import type {DownloadedTranslationMeta} from '@/types/translation';
 import {installResource, retryIsDue, type EngineDeps} from './contentEngine';
+import {keyFor} from './contentKeys';
 import {emptyRow, type ContentRegistry} from './contentRegistry';
 import {reportInstall} from './installActivity';
 
-export const TRANSLATION_KEY_PREFIX = 'qf:translations:';
 // Where the retired bundled Saheeh International lives on QF.
-export const SAHEEH_KEY = `${TRANSLATION_KEY_PREFIX}20`;
+export const SAHEEH_KEY = keyFor('translation', '20');
 
 const QF_TRANSLATION_ID = /^\d+$/;
 
@@ -42,7 +42,7 @@ async function adoptAsLegacy(
   id: string,
   name: string,
 ): Promise<void> {
-  const key = `${TRANSLATION_KEY_PREFIX}${id}`;
+  const key = keyFor('translation', id);
   if (await registry.get(key)) return;
   await registry.upsert({
     ...emptyRow(key, 'translation'),

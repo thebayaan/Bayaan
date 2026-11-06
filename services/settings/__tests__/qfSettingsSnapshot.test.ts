@@ -10,7 +10,7 @@ jest.mock('@/services/content/contentSync', () => ({
   installContent: jest.fn(),
   removeContent: jest.fn(),
   isEngineManagingTafsir: () => false,
-  isEngineInstallingTranslations: () => mockEngineTranslations,
+  isEngineManagingTranslations: () => mockEngineTranslations,
 }));
 
 jest.mock('@/services/player/store/playerStore', () => {

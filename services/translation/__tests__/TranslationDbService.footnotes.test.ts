@@ -52,8 +52,9 @@ describe('TranslationDbService footnotes', () => {
       '1': '<p>one</p>',
       '2': 'two',
     });
-    expect(await svc.getFootnote('20', '2')).toBe('two');
-    expect(await svc.getFootnote('20', '3')).toBeNull();
+    const footnotes = await svc.getFootnotes('20');
+    expect(footnotes['2']).toBe('two');
+    expect(footnotes['3']).toBeUndefined();
     expect(await svc.getFootnotes('en.x')).toEqual({});
   });
 

@@ -27,6 +27,25 @@ interface MetadataRow {
   verse_count: number;
 }
 
+// Inserts rows in batches of 500, one multi-row INSERT per batch.
+async function insertBatched(
+  db: SQLite.SQLiteDatabase,
+  target: string,
+  rows: Array<Array<string | number>>,
+): Promise<void> {
+  const BATCH_SIZE = 500;
+  for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+    const batch = rows.slice(i, i + BATCH_SIZE);
+    const placeholders = batch
+      .map(row => `(${row.map(() => '?').join(', ')})`)
+      .join(', ');
+    await db.runAsync(
+      `INSERT INTO ${target} VALUES ${placeholders}`,
+      batch.flat(),
+    );
+  }
+}
+
 class TranslationDbService {
   private db: SQLite.SQLiteDatabase | null = null;
   private initPromise: Promise<void> | null = null;
@@ -125,37 +144,22 @@ class TranslationDbService {
         [identifier],
       );
 
-      // Insert verses in batches of 500
-      const BATCH_SIZE = 500;
-      for (let i = 0; i < verses.length; i += BATCH_SIZE) {
-        const batch = verses.slice(i, i + BATCH_SIZE);
-        const placeholders = batch.map(() => '(?, ?, ?, ?, ?)').join(', ');
-        const values: (string | number)[] = [];
-        for (const v of batch) {
-          values.push(
-            identifier,
-            v.verseKey,
-            v.surahNumber,
-            v.ayahNumber,
-            v.text,
-          );
-        }
-        await db.runAsync(
-          `INSERT INTO translations (identifier, verse_key, surah_number, ayah_number, text) VALUES ${placeholders}`,
-          values,
-        );
-      }
-
-      for (let i = 0; i < footnotes.length; i += BATCH_SIZE) {
-        const batch = footnotes.slice(i, i + BATCH_SIZE);
-        const placeholders = batch.map(() => '(?, ?, ?)').join(', ');
-        const values: string[] = [];
-        for (const f of batch) values.push(identifier, f.id, f.text);
-        await db.runAsync(
-          `INSERT INTO translation_footnotes (identifier, footnote_id, text) VALUES ${placeholders}`,
-          values,
-        );
-      }
+      await insertBatched(
+        db,
+        'translations (identifier, verse_key, surah_number, ayah_number, text)',
+        verses.map(v => [
+          identifier,
+          v.verseKey,
+          v.surahNumber,
+          v.ayahNumber,
+          v.text,
+        ]),
+      );
+      await insertBatched(
+        db,
+        'translation_footnotes (identifier, footnote_id, text)',
+        footnotes.map(f => [identifier, f.id, f.text]),
+      );
 
       // Save metadata
       await db.runAsync(
@@ -217,18 +221,6 @@ class TranslationDbService {
       result[row.footnote_id] = row.text;
     }
     return result;
-  }
-
-  async getFootnote(
-    identifier: string,
-    footnoteId: string,
-  ): Promise<string | null> {
-    const db = await this.ensureReady();
-    const row = (await db.getFirstAsync(
-      'SELECT text FROM translation_footnotes WHERE identifier = ? AND footnote_id = ?',
-      [identifier, footnoteId],
-    )) as {text: string} | null;
-    return row?.text ?? null;
   }
 
   async deleteTranslation(identifier: string): Promise<void> {

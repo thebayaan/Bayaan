@@ -19,6 +19,8 @@ const NAMED_ENTITIES: Record<string, string> = {
   nbsp: ' ',
   quot: '"',
 };
+// Bundled Saheeh quotes the id (foot_note="226402"); QF does not (foot_note=254011).
+const FOOTNOTE_ID = /foot_note=(?:"([^"]+)"|(\d+))/;
 
 export function stripFootnoteMarkers(text: string): string {
   return text.replace(FOOTNOTE_MARKER, '');
@@ -73,4 +75,10 @@ export function formattedTranslationMarkup(text: string): string {
   return text
     .replace(UNRENDERED_TAG, '')
     .replace(STYLE_TAG_WITH_ATTRIBUTES, '<$1>');
+}
+
+/** The footnote id in a marker's opening tag; '' when it carries none. */
+export function footnoteIdFromTag(tag: string): string {
+  const match = FOOTNOTE_ID.exec(tag);
+  return match ? (match[1] ?? match[2]) : '';
 }

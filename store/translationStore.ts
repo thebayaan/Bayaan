@@ -3,19 +3,18 @@ import type {DownloadedTranslationMeta} from '@/types/translation';
 import {getForkTranslationProvider} from '@/services/translation/TranslationApiService';
 import {translationDbService} from '@/services/translation/TranslationDbService';
 import {
-  getOfferedTranslations,
+  getOfferedContent,
   installContent,
-  isEngineInstallingTranslations,
+  isEngineManagingTranslations,
   removeContent,
 } from '@/services/content/contentSync';
+import {keyFor} from '@/services/content/contentKeys';
 import {registerRemoteTranslationName} from '@/utils/translationLookup';
 import {
   offeredFromManifest,
   offeredFromProvider,
   type OfferedEdition,
 } from './translationPicker';
-
-const TRANSLATION_KEY_PREFIX = 'qf:translations:';
 
 interface TranslationStoreState {
   // Metadata for downloaded translations (synced from SQLite)
@@ -36,8 +35,8 @@ interface TranslationStoreState {
 // The catalog: the cached manifest when the engine installs translations, a
 // fork provider's list when one is set (RFC-009), otherwise none.
 async function fetchOffered(): Promise<OfferedEdition[] | null> {
-  if (isEngineInstallingTranslations()) {
-    const entries = await getOfferedTranslations();
+  if (isEngineManagingTranslations()) {
+    const entries = await getOfferedContent('translation');
     return entries ? offeredFromManifest(entries) : null;
   }
   const provider = getForkTranslationProvider();
@@ -62,9 +61,9 @@ export const useTranslationStore = create<TranslationStoreState>()(
 
       try {
         const provider = getForkTranslationProvider();
-        if (isEngineInstallingTranslations()) {
+        if (isEngineManagingTranslations()) {
           // The installer saves the rows and reloads the metadata.
-          await installContent(`${TRANSLATION_KEY_PREFIX}${editionId}`);
+          await installContent(keyFor('translation', editionId));
         } else if (provider) {
           const {edition, verses} = await provider.fetchFullTranslation(
             editionId,
@@ -94,9 +93,9 @@ export const useTranslationStore = create<TranslationStoreState>()(
 
     deleteTranslation: async (editionId: string) => {
       try {
-        if (isEngineInstallingTranslations()) {
+        if (isEngineManagingTranslations()) {
           // Records user_removed so the engine never reinstalls it.
-          await removeContent(`${TRANSLATION_KEY_PREFIX}${editionId}`);
+          await removeContent(keyFor('translation', editionId));
         } else {
           await translationDbService.deleteTranslation(editionId);
         }

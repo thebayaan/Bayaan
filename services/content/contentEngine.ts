@@ -1,4 +1,5 @@
 import type {ContentApi} from './contentApi';
+import {kindForKey} from './contentKeys';
 import {emptyRow, type ContentRegistry} from './contentRegistry';
 import type {
   ContentEnvelope,
@@ -153,9 +154,7 @@ export async function removeResource(
   key: string,
 ): Promise<void> {
   const row = await deps.registry.get(key);
-  const kind: ContentKind =
-    row?.kind ??
-    (key.startsWith('qf:translations:') ? 'translation' : 'tafsir');
+  const kind: ContentKind = row?.kind ?? kindForKey(key) ?? 'tafsir';
   await deps.installers[kind]?.remove(key);
   await deps.registry.upsert({
     ...(row ?? emptyRow(key, kind)),

@@ -3,7 +3,7 @@ import {
   type BundledTranslationId,
 } from '@/types/translation';
 import {DEFAULT_TRANSLATION_ID} from '@/services/translation/translationRemap';
-import {tafseerHtmlToPlainText} from '@/utils/tafseerHtmlParser';
+import {htmlToPlainText} from '@/utils/tafseerHtmlParser';
 import {
   stripFootnoteMarkers,
   stripHtml,
@@ -123,7 +123,20 @@ export function getRemoteFootnote(
 ): string | undefined {
   if (activeRemoteTranslationCache?.id !== translationId) return undefined;
   const html = activeRemoteTranslationCache.footnotes[footnoteId];
-  return html === undefined ? undefined : tafseerHtmlToPlainText(html);
+  return html === undefined ? undefined : htmlToPlainText(html);
+}
+
+/**
+ * A footnote's body as plain text, from the downloaded edition's cache;
+ * undefined when it is not available. The bundled Clear Quran has none.
+ */
+export function getFootnoteText(
+  translationId: string,
+  footnoteId: string,
+): string | undefined {
+  return isBundledTranslation(translationId)
+    ? undefined
+    : getRemoteFootnote(translationId, footnoteId);
 }
 
 export function clearActiveRemoteTranslationCache(): void {

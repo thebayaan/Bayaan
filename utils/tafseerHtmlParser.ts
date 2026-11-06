@@ -141,7 +141,7 @@ export function parseTafseerHtml(html: string): TafseerNode[] {
 
 // The same parse as the tafsir renderer, flattened: one block per paragraph
 // or heading, separated by a blank line.
-export function tafseerHtmlToPlainText(html: string): string {
+export function htmlToPlainText(html: string): string {
   return parseTafseerHtml(html)
     .map(node =>
       node.type === 'heading'

@@ -4,10 +4,10 @@ import {
   getRemoteFootnote,
   getTranslationText,
   isBundledTranslation,
-  stripFootnoteMarkers,
   setActiveRemoteTranslationCache,
   clearActiveRemoteTranslationCache,
 } from '../translationLookup';
+import {stripFootnoteMarkers} from '../translationText';
 import crypto from 'crypto';
 
 function sha256(text: string): string {

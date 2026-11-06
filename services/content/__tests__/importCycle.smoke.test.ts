@@ -70,9 +70,8 @@ describe('translation import cycle', () => {
     expect(
       typeof store.useTranslationStore.getState().downloadTranslation,
     ).toBe('function');
-    expect(typeof sync.getOfferedTranslations).toBe('function');
+    expect(typeof sync.getOfferedContent).toBe('function');
     expect(installer.createTranslationInstaller().kind).toBe('translation');
-    expect(installer.translationLanguageName('english')).toBe('English');
   }
 
   it('loads the store first, then contentSync', () => {
