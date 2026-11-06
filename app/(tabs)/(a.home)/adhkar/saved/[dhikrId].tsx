@@ -225,9 +225,15 @@ const SavedDhikrReaderScreen: React.FC = () => {
   // Set native header with title + position subtitle
   useLayoutEffect(() => {
     navigation.setOptions({
+      // VoiceOver reads the native title, which fell back to the route
+      // name ("saved/[dhikrId]"). The custom view below still draws it. @ai
+      title: t('adhkar.saved'),
       headerTitleAlign: 'center',
       headerTitle: () => (
-        <View style={{alignItems: 'center'}}>
+        <View
+          accessible // @ai
+          accessibilityRole="header" // @ai
+          style={{alignItems: 'center'}}>
           <Text
             style={{
               fontSize: moderateScale(16),
