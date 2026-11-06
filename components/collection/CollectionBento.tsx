@@ -50,6 +50,70 @@ function formatSize(bytes: number): string {
   return `${Math.max(1, Math.round(bytes / (1024 * 1024)))} MB`;
 }
 
+function Label({
+  color,
+  icon,
+  text,
+  count,
+}: {
+  color: string;
+  icon: React.ComponentProps<typeof Feather>['name'];
+  text: string;
+  count?: number;
+}): React.ReactElement {
+  const {theme} = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+  const ink = theme.isDarkMode
+    ? Color(color).lighten(0.25).hex()
+    : Color(color).darken(0.3).hex();
+
+  return (
+    <View style={styles.labelRow}>
+      <Feather name={icon} size={moderateScale(13)} color={ink} />
+      <Text style={[styles.label, {color: ink}]} numberOfLines={1}>
+        {text}
+      </Text>
+      {count !== undefined && count > 0 ? (
+        <Text style={styles.cornerCount}>{localizeDigits(String(count))}</Text>
+      ) : null}
+    </View>
+  );
+}
+
+function Tile({
+  color,
+  onPress,
+  style,
+  children,
+  a11y,
+}: {
+  color: string;
+  onPress: () => void;
+  style?: ViewStyle;
+  children: React.ReactNode;
+  a11y: string;
+}): React.ReactElement {
+  const {theme} = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+  const tint = Color(color)
+    .alpha(theme.isDarkMode ? 0.16 : 0.12)
+    .string();
+
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={a11y}
+      style={({pressed}) => [
+        styles.tile,
+        {backgroundColor: tint, opacity: pressed ? 0.7 : 1},
+        style,
+      ]}>
+      {children}
+    </Pressable>
+  );
+}
+
 /**
  * The Collection tab on phones as a bento grid: each category is a tile
  * sized to what it holds, and each tile previews its contents (the newest
@@ -72,14 +136,6 @@ export function CollectionBento({
   const styles = useMemo(() => createStyles(theme), [theme]);
   const router = useRouter();
   const {t} = useTranslation(['collection', 'common']);
-  const dark = theme.isDarkMode;
-
-  const tint = (c: string) =>
-    Color(c)
-      .alpha(dark ? 0.16 : 0.12)
-      .string();
-  const ink = (c: string) =>
-    dark ? Color(c).lighten(0.25).hex() : Color(c).darken(0.3).hex();
 
   const go = (route: string) => () => router.push(route as never);
 
@@ -118,54 +174,6 @@ export function CollectionBento({
   const noteSurah = latestNote
     ? getSurahById(latestNote.surahNumber)
     : undefined;
-
-  const Label = ({
-    color,
-    icon,
-    text,
-    count,
-  }: {
-    color: string;
-    icon: React.ComponentProps<typeof Feather>['name'];
-    text: string;
-    count?: number;
-  }) => (
-    <View style={styles.labelRow}>
-      <Feather name={icon} size={moderateScale(13)} color={ink(color)} />
-      <Text style={[styles.label, {color: ink(color)}]} numberOfLines={1}>
-        {text}
-      </Text>
-      {count !== undefined && count > 0 ? (
-        <Text style={styles.cornerCount}>{localizeDigits(String(count))}</Text>
-      ) : null}
-    </View>
-  );
-
-  const Tile = ({
-    color,
-    onPress,
-    style,
-    children,
-    a11y,
-  }: {
-    color: string;
-    onPress: () => void;
-    style?: ViewStyle;
-    children: React.ReactNode;
-    a11y: string;
-  }) => (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={a11y}
-      style={({pressed}) => [
-        styles.tile,
-        {backgroundColor: tint(color), opacity: pressed ? 0.7 : 1},
-        style,
-      ]}>
-      {children}
-    </Pressable>
-  );
 
   return (
     <View style={styles.root}>
