@@ -8,7 +8,13 @@ import * as Crypto from 'expo-crypto';
 import branding from '@/config/branding';
 import {analyticsService} from '@/services/analytics/AnalyticsService';
 import {tafseerDbService} from '@/services/tafseer/TafseerDbService';
-import type {Manifest} from '@/types/content';
+import type {
+  ContentInstaller,
+  ContentKind,
+  ContentMeta,
+  Manifest,
+} from '@/types/content';
+import {idFromKey, kindForKey} from './contentKeys';
 import {createContentApi, resolveContentApiBase} from './contentApi';
 import {
   installResource,
@@ -28,10 +34,18 @@ import {
   migrateLegacyContent,
 } from './legacyMigration';
 import {createTafsirInstaller} from './tafsirInstaller';
+import {createTranslationInstaller} from './translationInstaller';
 
 // After a failed manifest check, further checks in this session wait this long.
 export const FAILED_CHECK_THROTTLE_MS = 3_600_000;
-const TAFSIR_KEY_PREFIX = 'qf:tafsirs:';
+
+// An entry the last cached manifest offers for install.
+export interface OfferedContent {
+  key: string;
+  id: string;
+  meta: ContentMeta | undefined;
+  bytes: number | undefined;
+}
 
 let deps: EngineDeps | null = null;
 let subscription: NativeEventSubscription | null = null;
@@ -39,11 +53,38 @@ let running: Promise<void> = Promise.resolve();
 let checkBlockedUntil = 0;
 let fallbackRegistry: ContentRegistry | null = null;
 
-// The single gate for every caller: when false (a fork with its own
-// tafsirProvider, or no API base URL), the engine owns nothing and
-// initContentSync, installContent and removeContent must not be called.
+const INSTALLER_FACTORIES: Record<ContentKind, () => ContentInstaller> = {
+  tafsir: createTafsirInstaller,
+  translation: createTranslationInstaller,
+};
+
+/**
+ * The single gate for every caller: the kinds this engine owns. Empty without
+ * an API base URL, or when a fork keeps its own tafsirProvider: the cycle is
+ * anchored on tafsir (adoption, first-launch install), so the engine only runs
+ * while it owns tafsir. Translations ride along unless a fork keeps its own
+ * translationProvider (RFC-009).
+ */
+export function managedKinds(): ContentKind[] {
+  if (branding.tafsirProvider || resolveContentApiBase() === null) return [];
+  return branding.translationProvider ? ['tafsir'] : ['tafsir', 'translation'];
+}
+
+// When false, initContentSync, installContent and removeContent must not be called.
 export function isEngineManagingTafsir(): boolean {
-  return !branding.tafsirProvider && resolveContentApiBase() !== null;
+  return managedKinds().includes('tafsir');
+}
+
+export function isEngineManagingTranslations(): boolean {
+  return managedKinds().includes('translation');
+}
+
+// The manifest is requested for every kind with an installer, so translation
+// entries are cached; nothing installs a translation without installContent.
+function buildInstallers(): Partial<Record<ContentKind, ContentInstaller>> {
+  return Object.fromEntries(
+    managedKinds().map(kind => [kind, INSTALLER_FACTORIES[kind]()]),
+  );
 }
 
 export function isOnWifi(state: {type: string}): boolean {
@@ -54,7 +95,7 @@ function buildDeps(base: string): EngineDeps {
   return {
     api: createContentApi(base, process.env.EXPO_PUBLIC_BAYAAN_API_KEY ?? ''),
     registry: createSqliteContentRegistry(),
-    installers: {tafsir: createTafsirInstaller()},
+    installers: buildInstallers(),
     isOnWifi: async () => isOnWifi(await NetInfo.fetch()),
     sha256: text =>
       Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, text),
@@ -192,11 +233,11 @@ async function exclusive(task: () => Promise<void>): Promise<void> {
 }
 
 export async function installContent(key: string): Promise<void> {
-  if (!key.startsWith(TAFSIR_KEY_PREFIX)) {
-    throw new Error('unsupported_content_key');
-  }
+  const kind = kindForKey(key);
   const active = deps;
   if (!active) throw new Error('content_sync_unavailable');
+  if (kind === null || !active.installers[kind])
+    throw new Error('unsupported_content_key');
   const requestedAt = active.now();
   await exclusive(async () => {
     // Joins an install of the same key that finished while this request
@@ -210,25 +251,34 @@ export async function installContent(key: string): Promise<void> {
       row.installed_at >= requestedAt
     )
       return;
-    await installResource(active, key, 'tafsir', 'user');
+    await installResource(active, key, kind, 'user');
   });
 }
 
-// The tafsir ids the last cached manifest offers for install. Null when the
-// engine is off or no manifest has loaded yet: the full static catalog shows.
-export async function getOfferedTafsirIds(): Promise<ReadonlySet<string> | null> {
-  if (!isEngineManagingTafsir()) return null;
+// The active entries of one kind in the last cached manifest. Null when the
+// engine does not manage that kind or no manifest has loaded yet.
+export async function getOfferedContent(
+  kind: ContentKind,
+): Promise<OfferedContent[] | null> {
+  if (!managedKinds().includes(kind)) return null;
   fallbackRegistry ??= createSqliteContentRegistry();
   const registry = deps?.registry ?? fallbackRegistry;
   const {manifest} = await registry.getState();
   if (!manifest) return null;
-  const ids = new Set<string>();
-  for (const entry of manifest.resources) {
-    if (entry.status !== 'active' || !entry.key.startsWith(TAFSIR_KEY_PREFIX))
-      continue;
-    ids.add(entry.key.slice(TAFSIR_KEY_PREFIX.length));
-  }
-  return ids;
+  return manifest.resources
+    .filter(entry => entry.status === 'active' && entry.kind === kind)
+    .map(entry => ({
+      key: entry.key,
+      id: idFromKey(entry.key),
+      meta: entry.meta,
+      bytes: entry.bytes,
+    }));
+}
+
+// The tafsir ids on offer; null shows the full static catalog.
+export async function getOfferedTafsirIds(): Promise<ReadonlySet<string> | null> {
+  const offered = await getOfferedContent('tafsir');
+  return offered && new Set(offered.map(entry => entry.id));
 }
 
 // Before init (or after teardown) there are no engine deps, but the removal
@@ -242,9 +292,6 @@ export async function removeContent(key: string): Promise<void> {
   fallbackRegistry ??= createSqliteContentRegistry();
   const registry = fallbackRegistry;
   await exclusive(() =>
-    removeResource(
-      {registry, installers: {tafsir: createTafsirInstaller()}},
-      key,
-    ),
+    removeResource({registry, installers: buildInstallers()}, key),
   );
 }

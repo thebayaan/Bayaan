@@ -1,4 +1,5 @@
 import type {ContentApi} from './contentApi';
+import {keyFor, kindForKey} from './contentKeys';
 import {emptyRow, type ContentRegistry} from './contentRegistry';
 import type {
   ContentEnvelope,
@@ -17,7 +18,7 @@ export const WIFI_THRESHOLD_BYTES = 5_000_000;
 export const BACKOFF_MS = [3_600_000, 21_600_000, 86_400_000];
 const KINDS: ContentKind[] = ['tafsir', 'translation'];
 // The tafsir installed once on first launch (Ibn Kathir, abridged).
-export const AUTO_INSTALL_KEY = 'qf:tafsirs:169';
+export const AUTO_INSTALL_KEY = keyFor('tafsir', '169');
 
 export interface EngineDeps {
   api: ContentApi;
@@ -153,9 +154,8 @@ export async function removeResource(
   key: string,
 ): Promise<void> {
   const row = await deps.registry.get(key);
-  const kind: ContentKind =
-    row?.kind ??
-    (key.startsWith('qf:translations:') ? 'translation' : 'tafsir');
+  const kind = row?.kind ?? kindForKey(key);
+  if (kind === null) throw new Error('unsupported_content_key');
   await deps.installers[kind]?.remove(key);
   await deps.registry.upsert({
     ...(row ?? emptyRow(key, kind)),

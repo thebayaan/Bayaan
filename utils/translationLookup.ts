@@ -2,6 +2,8 @@ import {
   BUNDLED_TRANSLATIONS,
   type BundledTranslationId,
 } from '@/types/translation';
+import {htmlToPlainText} from '@/utils/tafseerHtmlParser';
+import {stripFootnoteMarkers, stripHtml} from '@/utils/translationText';
 
 interface SaheehEntry {
   t: string;
@@ -36,10 +38,6 @@ for (const verse of Object.values(quranData)) {
   verseKeyToGlobalId[verse.verse_key] = verse.id;
 }
 
-function stripHtml(text: string): string {
-  return text.replace(/<[^>]*>/g, '');
-}
-
 export function getBundledTranslation(
   verseKey: string,
   translationId: BundledTranslationId,
@@ -50,7 +48,7 @@ export function getBundledTranslation(
   const globalId = verseKeyToGlobalId[verseKey];
   if (globalId == null) return '';
   const entry = clearQuranData.translations[globalId - 1];
-  return entry ? stripHtml(entry.text) : '';
+  return entry ? stripHtml(stripFootnoteMarkers(entry.text)) : '';
 }
 
 export function getBundledTranslationRaw(
@@ -62,7 +60,8 @@ export function getBundledTranslationRaw(
   }
   const globalId = verseKeyToGlobalId[verseKey];
   if (globalId == null) return '';
-  return clearQuranData.translations[globalId - 1]?.text ?? '';
+  const text = clearQuranData.translations[globalId - 1]?.text;
+  return text ? stripFootnoteMarkers(text) : '';
 }
 
 export function getBundledFootnotes(
@@ -108,13 +107,42 @@ export function isBundledTranslation(id: string): id is BundledTranslationId {
 let activeRemoteTranslationCache: {
   id: string;
   data: Record<string, string>;
+  footnotes: Record<string, string>;
 } | null = null;
 
 export function setActiveRemoteTranslationCache(
   id: string,
   data: Record<string, string>,
+  footnotes: Record<string, string> = {},
 ): void {
-  activeRemoteTranslationCache = {id, data};
+  activeRemoteTranslationCache = {id, data, footnotes};
+}
+
+/**
+ * A downloaded edition's footnote as plain text with paragraph breaks, or
+ * undefined when the active cache holds another edition or no such footnote.
+ */
+export function getRemoteFootnote(
+  translationId: string,
+  footnoteId: string,
+): string | undefined {
+  if (activeRemoteTranslationCache?.id !== translationId) return undefined;
+  const html = activeRemoteTranslationCache.footnotes[footnoteId];
+  return html === undefined ? undefined : htmlToPlainText(html);
+}
+
+/**
+ * A footnote's body as plain text, from the bundled per-verse footnotes or
+ * the downloaded edition's cache; undefined when it is not available.
+ */
+export function getFootnoteText(
+  translationId: string,
+  verseKey: string,
+  footnoteId: string,
+): string | undefined {
+  return isBundledTranslation(translationId)
+    ? getBundledFootnotes(verseKey, translationId)?.[footnoteId]
+    : getRemoteFootnote(translationId, footnoteId);
 }
 
 export function clearActiveRemoteTranslationCache(): void {

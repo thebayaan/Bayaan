@@ -1,5 +1,6 @@
 import React, {memo} from 'react';
 import {Text, StyleSheet, TextStyle, StyleProp, Platform} from 'react-native';
+import {footnoteIdFromTag} from '@/utils/translationText';
 
 interface FormattedTextProps {
   text: string;
@@ -56,8 +57,7 @@ const FormattedTextRenderer = memo(function FormattedTextRenderer({
         },
       ]);
 
-      const match = part.match(/foot_note="([^"]+)"/);
-      footnoteId = match ? match[1] : '';
+      footnoteId = footnoteIdFromTag(part);
 
       return; // Skip adding this part
     }

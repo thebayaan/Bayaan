@@ -1,8 +1,6 @@
 import type {QfSnapshot} from '@/types/content';
 import type {TafseerVerse} from '@/types/tafseer';
-
-const VERSE_KEY = /^(\d{1,3}):(\d{1,3})$/;
-const SURAH_COUNT = 114;
+import {parseVerseKey} from './qfSnapshot';
 
 interface Row {
   verseKey: string;
@@ -19,16 +17,6 @@ interface Entry {
   index: number;
   row: Row | null;
   breaksGroup: boolean;
-}
-
-function parseVerseKey(value: unknown): {surah: number; ayah: number} | null {
-  if (typeof value !== 'string') return null;
-  const match = VERSE_KEY.exec(value);
-  if (!match) return null;
-  const surah = Number(match[1]);
-  const ayah = Number(match[2]);
-  if (surah < 1 || surah > SURAH_COUNT || ayah < 1) return null;
-  return {surah, ayah};
 }
 
 function toEntry(record: Record<string, unknown>, index: number): Entry | null {
