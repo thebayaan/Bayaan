@@ -284,6 +284,7 @@ async function loadManifest(
     await deps.registry.setState({
       manifestEtag: result.etag,
       manifest: result.manifest,
+      manifestKinds: kindsSignature(kinds),
       lastCheckedAt: deps.now(),
     });
     return {status: 'ok', manifest: result.manifest};
@@ -294,20 +295,33 @@ async function loadManifest(
   return {status: 'not_modified', manifest: cached};
 }
 
+// How the requested kinds are recorded next to the cached manifest.
+export function kindsSignature(kinds: readonly ContentKind[]): string {
+  return [...kinds].sort().join(',');
+}
+
 export async function runContentCheck(
   deps: EngineDeps,
   opts: {force?: boolean; onManifest?: (manifest: Manifest) => void} = {},
 ): Promise<CheckOutcome> {
   const state = await deps.registry.getState();
-  if (!opts.force && !checkIsDue(state.lastCheckedAt, deps.now()))
+  const kinds = KINDS.filter(kind => deps.installers[kind]);
+  // A manifest cached for other kinds (a build before translations requested
+  // tafsir only) lacks entries for the new ones and would purge their rows:
+  // refetch now, without the ETag that names the old body.
+  const kindsChanged = state.manifestKinds !== kindsSignature(kinds);
+  if (
+    !opts.force &&
+    !kindsChanged &&
+    !checkIsDue(state.lastCheckedAt, deps.now())
+  )
     return 'skipped_recent';
 
-  const kinds = KINDS.filter(kind => deps.installers[kind]);
   const source = await loadManifest(
     deps,
     kinds,
-    state.manifestEtag,
-    state.manifest,
+    kindsChanged ? null : state.manifestEtag,
+    kindsChanged ? null : state.manifest,
   );
   if (source.status === 'error') return 'error';
   const manifest = source.manifest;

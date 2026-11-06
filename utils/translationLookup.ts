@@ -2,13 +2,18 @@ import {
   BUNDLED_TRANSLATIONS,
   type BundledTranslationId,
 } from '@/types/translation';
+import {DEFAULT_TRANSLATION_ID} from '@/services/translation/translationRemap';
 import {htmlToPlainText} from '@/utils/tafseerHtmlParser';
-import {stripFootnoteMarkers, stripHtml} from '@/utils/translationText';
+import {
+  stripFootnoteMarkers,
+  stripHtml,
+  translationPlainText,
+} from '@/utils/translationText';
 
-interface SaheehEntry {
-  t: string;
-  f?: Record<string, string>;
-}
+export {
+  stripFootnoteMarkers,
+  translationPlainText,
+} from '@/utils/translationText';
 
 interface ClearQuranEntry {
   resource_id: number;
@@ -19,12 +24,7 @@ interface ClearQuranData {
   translations: ClearQuranEntry[];
 }
 
-// Module-scope data (require() is cached by Metro — zero cost after first load)
-const saheehData =
-  require('@/data/SaheehInternational.translation-with-footnote-tags.json') as Record<
-    string,
-    SaheehEntry
-  >;
+// Module-scope data (require() is cached by Metro, zero cost after first load)
 const clearQuranData =
   require('@/data/clear-quran-translation.json') as ClearQuranData;
 
@@ -38,13 +38,11 @@ for (const verse of Object.values(quranData)) {
   verseKeyToGlobalId[verse.verse_key] = verse.id;
 }
 
+// Clear Quran's markers have no bodies to show, so the marker and its digit go.
 export function getBundledTranslation(
   verseKey: string,
-  translationId: BundledTranslationId,
+  _translationId: BundledTranslationId,
 ): string {
-  if (translationId === 'saheeh') {
-    return saheehData[verseKey]?.t ?? '';
-  }
   const globalId = verseKeyToGlobalId[verseKey];
   if (globalId == null) return '';
   const entry = clearQuranData.translations[globalId - 1];
@@ -53,26 +51,12 @@ export function getBundledTranslation(
 
 export function getBundledTranslationRaw(
   verseKey: string,
-  translationId: BundledTranslationId,
+  _translationId: BundledTranslationId,
 ): string {
-  if (translationId === 'saheeh') {
-    return saheehData[verseKey]?.t ?? '';
-  }
   const globalId = verseKeyToGlobalId[verseKey];
   if (globalId == null) return '';
   const text = clearQuranData.translations[globalId - 1]?.text;
   return text ? stripFootnoteMarkers(text) : '';
-}
-
-export function getBundledFootnotes(
-  verseKey: string,
-  translationId: BundledTranslationId,
-): Record<string, string> | undefined {
-  if (translationId === 'saheeh') {
-    return saheehData[verseKey]?.f;
-  }
-  // Clear Quran doesn't have structured footnotes in our data
-  return undefined;
 }
 
 // Module-scope name registry for remote translations.
@@ -95,6 +79,17 @@ export function getTranslationName(translationId: string): string {
   }
   // Fallback: format the identifier nicely (e.g., "en.pickthall" → "en.pickthall")
   return translationId;
+}
+
+/**
+ * The name of the edition a verse view actually shows: the selection's when
+ * its text is loaded, otherwise the bundled fallback's
+ * (getEffectiveTranslationId).
+ */
+export function getRenderedTranslationName(
+  selectedTranslationId: string | undefined,
+): string {
+  return getTranslationName(getEffectiveTranslationId(selectedTranslationId));
 }
 
 export function isBundledTranslation(id: string): id is BundledTranslationId {
@@ -132,16 +127,15 @@ export function getRemoteFootnote(
 }
 
 /**
- * A footnote's body as plain text, from the bundled per-verse footnotes or
- * the downloaded edition's cache; undefined when it is not available.
+ * A footnote's body as plain text, from the downloaded edition's cache;
+ * undefined when it is not available. The bundled Clear Quran has none.
  */
 export function getFootnoteText(
   translationId: string,
-  verseKey: string,
   footnoteId: string,
 ): string | undefined {
   return isBundledTranslation(translationId)
-    ? getBundledFootnotes(verseKey, translationId)?.[footnoteId]
+    ? undefined
     : getRemoteFootnote(translationId, footnoteId);
 }
 
@@ -150,27 +144,57 @@ export function clearActiveRemoteTranslationCache(): void {
 }
 
 /**
- * Universal translation lookup — works for both bundled and remote translations.
- * For remote translations, uses the in-memory cache populated by enhancedVerseData.
+ * The edition whose text is on screen for a selection: the selection itself
+ * when it is bundled or its downloaded text is loaded (enhancedVerseData
+ * fills the cache), otherwise the bundled fallback. A selection that is not
+ * installed yet (QF 20 replacing the retired bundled Saheeh), or whose
+ * download failed to load, renders the fallback; every label and text lookup
+ * resolves through here so they always name and show the same edition.
  */
-export function getTranslationText(
-  verseKey: string,
-  translationId: string,
+export function getEffectiveTranslationId(
+  selectedTranslationId: string | undefined,
 ): string {
-  if (isBundledTranslation(translationId)) {
-    return getBundledTranslation(verseKey, translationId);
-  }
-  if (
-    activeRemoteTranslationCache &&
-    activeRemoteTranslationCache.id === translationId
-  ) {
-    return activeRemoteTranslationCache.data[verseKey] ?? '';
-  }
-  return '';
+  if (selectedTranslationId === undefined) return DEFAULT_TRANSLATION_ID;
+  if (isBundledTranslation(selectedTranslationId)) return selectedTranslationId;
+  if (activeRemoteTranslationCache?.id === selectedTranslationId)
+    return selectedTranslationId;
+  return DEFAULT_TRANSLATION_ID;
 }
 
 /**
- * Universal raw translation lookup (no HTML stripping for bundled).
+ * The text shown for a verse, as markup (QF inline HTML, footnote markers
+ * kept for a download; the bundled edition's markers are stripped), read
+ * from the effective edition of the selection.
+ */
+export function getTranslationMarkup(
+  verseKey: string,
+  selectedTranslationId: string | undefined,
+): string {
+  return getTranslationTextRaw(
+    verseKey,
+    getEffectiveTranslationId(selectedTranslationId),
+  );
+}
+
+/**
+ * The text shown for a verse as plain text (copy, share, previews), read
+ * from the effective edition of the selection.
+ */
+export function getTranslationPlainText(
+  verseKey: string,
+  selectedTranslationId: string | undefined,
+): string {
+  return translationPlainText(
+    getTranslationMarkup(verseKey, selectedTranslationId),
+  );
+}
+
+/**
+ * The markup of exactly this edition: the bundled text with its footnote
+ * markers stripped, or the downloaded edition's text as stored (inline HTML
+ * and footnote markers kept); '' when a remote edition is not the one
+ * loaded. Displays use getTranslationMarkup / getTranslationPlainText, which
+ * fall back to the edition actually shown.
  */
 export function getTranslationTextRaw(
   verseKey: string,

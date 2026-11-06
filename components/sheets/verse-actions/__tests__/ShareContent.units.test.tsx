@@ -72,7 +72,7 @@ jest.mock('@/utils/shareUtils', () => ({
   shareUrl: jest.fn(async () => undefined),
 }));
 jest.mock('@/utils/translationLookup', () => ({
-  getTranslationTextRaw: (verseKey: string) => `T(${verseKey})`,
+  getTranslationPlainText: (verseKey: string) => `T(${verseKey})`,
 }));
 jest.mock('@/services/mushaf/DigitalKhattDataService', () => ({
   digitalKhattDataService: {

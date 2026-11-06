@@ -150,6 +150,7 @@ jest.mock('@/services/mushaf/ThemeDataService', () => ({
 jest.mock('@/utils/translationLookup', () => ({
   ...jest.requireActual('@/utils/translationLookup'),
   getTranslationName: () => 'Translation',
+  getRenderedTranslationName: () => 'Translation',
 }));
 jest.mock('@/store/verseAnnotationsStore', () => {
   const {create} = jest.requireActual('zustand');

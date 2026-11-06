@@ -7,6 +7,13 @@ jest.mock('@/services/content/contentSync', () => ({
   installContent: jest.fn(),
   removeContent: jest.fn(),
   isEngineManagingTafsir: () => false,
+  isEngineManagingTranslations: () => false,
+}));
+// mockEngineTranslations: Bayaan's QF translations (true) or a fork's own
+// provider (false, its ids are kept).
+let mockEngineTranslations = false;
+jest.mock('@/services/content/contentScope', () => ({
+  isEngineManagingTranslations: () => mockEngineTranslations,
 }));
 
 jest.mock('@/services/player/store/playerStore', () => {
@@ -21,9 +28,10 @@ jest.mock('@/services/player/store/playerStore', () => {
   };
 });
 
+let mockDownloaded: {identifier: string}[] = [{identifier: 'ur.dummy'}];
 jest.mock('@/store/translationStore', () => ({
   useTranslationStore: {
-    getState: () => ({downloadedMeta: [{identifier: 'ur.dummy'}]}),
+    getState: () => ({downloadedMeta: mockDownloaded}),
   },
 }));
 
@@ -78,6 +86,7 @@ import {
   applySettingsDocuments,
   capturePreferenceMutations,
   captureSettingsDocuments,
+  sanitizeRemoteDocument,
 } from '../qfSettingsSnapshot';
 
 describe('QF settings snapshot mapping', () => {
@@ -152,5 +161,64 @@ describe('QF settings snapshot mapping', () => {
     expect(useMushafSettingsStore.getState().selectedTranslationId).toBe(
       'clear-quran',
     );
+  });
+
+  describe('translation ids from before QF translations (spec 4.7)', () => {
+    afterEach(() => {
+      mockEngineTranslations = false;
+      mockDownloaded = [{identifier: 'ur.dummy'}];
+    });
+
+    test('remote AlQuranCloud ids and saheeh map to the ids this device uses', () => {
+      mockEngineTranslations = true;
+      const project = (id: string) =>
+        sanitizeRemoteDocument('mushaf', {selectedTranslationId: id})
+          .selectedTranslationId;
+      expect(project('en.pickthall')).toBe('19');
+      expect(project('saheeh')).toBe('20');
+      expect(project('en.asad')).toBe('clear-quran');
+      expect(project('20')).toBe('20');
+      expect(project('clear-quran')).toBe('clear-quran');
+    });
+
+    test('a fork keeps its provider ids; only saheeh moves to Clear Quran', () => {
+      const project = (id: string) =>
+        sanitizeRemoteDocument('mushaf', {selectedTranslationId: id})
+          .selectedTranslationId;
+      expect(project('en.pickthall')).toBe('en.pickthall');
+      expect(project('saheeh')).toBe('clear-quran');
+    });
+
+    test('applies a remote AlQuranCloud id as its downloaded QF edition', async () => {
+      mockEngineTranslations = true;
+      mockDownloaded = [{identifier: '19'}];
+      useMushafSettingsStore.getState().setSelectedTranslationId('clear-quran');
+      await applySettingsDocuments({
+        mushaf: {selectedTranslationId: 'en.pickthall'},
+      });
+      expect(useMushafSettingsStore.getState().selectedTranslationId).toBe(
+        '19',
+      );
+    });
+
+    test('never uploads an old id: the persist migration remapped it first', async () => {
+      mockEngineTranslations = true;
+      const migrate = useMushafSettingsStore.persist.getOptions().migrate;
+      if (!migrate) throw new Error('mushaf settings migration is missing');
+      for (const [saved, uploaded] of [
+        ['saheeh', '20'],
+        ['en.itani', 'clear-quran'],
+      ]) {
+        const state = (await migrate({selectedTranslationId: saved}, 19)) as {
+          selectedTranslationId: string;
+        };
+        useMushafSettingsStore
+          .getState()
+          .setSelectedTranslationId(state.selectedTranslationId);
+        expect(captureSettingsDocuments().mushaf.selectedTranslationId).toBe(
+          uploaded,
+        );
+      }
+    });
   });
 });

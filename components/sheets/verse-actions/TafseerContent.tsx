@@ -28,11 +28,8 @@ import {TafseerHtmlRenderer} from './TafseerHtmlRenderer';
 import {flipX, latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
 import {localizeDigits} from '@/i18n/format';
-import {
-  compareTafaseer,
-  getTafseerDisplayName,
-  getTafseerLanguageDisplayName,
-} from '@/i18n/tafseer';
+import {compareTafaseer, getTafseerDisplayName} from '@/i18n/tafseer';
+import {getEnglishLanguageDisplayName} from '@/i18n/languageNames';
 import {
   distinctTafseerResults,
   hafsPagerPage,
@@ -297,7 +294,7 @@ export const TafseerContent: React.FC<TafseerContentProps> = ({
                         <Text
                           style={styles.selectorOptionNative}
                           numberOfLines={1}>
-                          {getTafseerLanguageDisplayName(meta.language)}
+                          {getEnglishLanguageDisplayName(meta.language)}
                         </Text>
                       </View>
                       {isActive && (

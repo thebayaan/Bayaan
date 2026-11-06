@@ -610,6 +610,10 @@
   },
   "sync": {
     "removedTitle": "Content removed",
-    "removed": "{{name}} is no longer available."
+    "removed": "{{name}} is no longer available.",
+    "translationsRemovedTitle_one": "Translation removed",
+    "translationsRemovedTitle_other": "Translations removed",
+    "translationsRemoved_one": "{{list}} is no longer available.",
+    "translationsRemoved_other": "{{list}} are no longer available."
   }
 }

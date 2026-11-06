@@ -10,11 +10,13 @@ import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {useTranslationStore} from '@/store/translationStore';
 import SkiaVersePreview from '@/components/share/SkiaVersePreview';
 import {
-  getTranslationText,
+  getEffectiveTranslationId,
+  getTranslationPlainText,
   getTranslationName,
   isBundledTranslation,
 } from '@/utils/translationLookup';
 import {translationDbService} from '@/services/translation/TranslationDbService';
+import {translationPlainText} from '@/utils/translationText';
 import {
   BUNDLED_TRANSLATIONS,
   type BundledTranslationId,
@@ -60,10 +62,6 @@ const TOTAL_VERSES = allVerses.length; // 6236
 const verseKeyToIndex: Record<string, number> = {};
 for (let i = 0; i < allVerses.length; i++) {
   verseKeyToIndex[allVerses[i].verseKey] = i;
-}
-
-function stripHtml(text: string): string {
-  return text.replace(/<[^>]*>/g, '');
 }
 
 const bundledIds = Object.keys(BUNDLED_TRANSLATIONS) as BundledTranslationId[];
@@ -170,44 +168,48 @@ export const TranslationContent: React.FC<TranslationContentProps> = ({
   }, [page.key, downloadedIdentifiers]);
 
   // @ai-start
-  const bundledText = useCallback(
+  // The shown edition's text (getEffectiveTranslationId): a bundled edition,
+  // or the loaded download.
+  const shownText = useCallback(
     (id: string) =>
       joinPartTexts(
-        page.hafsKeys.map(hafsKey =>
-          stripHtml(getTranslationText(hafsKey, id)),
-        ),
+        page.hafsKeys.map(hafsKey => getTranslationPlainText(hafsKey, id)),
       ),
     [page],
   );
   // @ai-end
 
-  const activeTranslationName = getTranslationName(selectedTranslationId);
-  const activeTranslationText = isBundledTranslation(selectedTranslationId)
-    ? bundledText(selectedTranslationId) // @ai
-    : stripHtml(downloadedTexts[selectedTranslationId] ?? '');
+  // The edition on screen: the selection once its text is loaded, the
+  // bundled fallback until then.
+  const activeTranslationId = getEffectiveTranslationId(selectedTranslationId);
+  const activeTranslationName = getTranslationName(activeTranslationId);
+  const activeTranslationText = shownText(activeTranslationId);
 
   // Track translation viewed when the selected translation changes
   useEffect(() => {
+    // QF ids carry no language ("20"): read it from the download.
     const language = isBundledTranslation(selectedTranslationId)
       ? BUNDLED_TRANSLATIONS[selectedTranslationId].language
-      : selectedTranslationId.split('.')[0] || 'unknown';
+      : (downloadedMeta.find(m => m.identifier === selectedTranslationId)
+          ?.language ?? 'unknown');
     analyticsService.trackTranslationViewed({
       translation_id: selectedTranslationId,
       language,
     });
+    // Tracked once per selection, not again when the downloads reload.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedTranslationId]);
 
-  // All other translation IDs (bundled + downloaded, excluding active)
+  // All other translation IDs (bundled + downloaded), excluding the selection
+  // and the edition shown for it
   const otherTranslationIds = useMemo(() => {
     const ids: string[] = [];
-    for (const id of bundledIds) {
-      if (id !== selectedTranslationId) ids.push(id);
-    }
-    for (const id of downloadedIdentifiers) {
-      if (id !== selectedTranslationId) ids.push(id);
+    for (const id of [...bundledIds, ...downloadedIdentifiers]) {
+      if (id !== selectedTranslationId && id !== activeTranslationId)
+        ids.push(id);
     }
     return ids;
-  }, [selectedTranslationId, downloadedIdentifiers]);
+  }, [selectedTranslationId, activeTranslationId, downloadedIdentifiers]);
 
   const isFirst = currentIndex === 0;
   const isLast = currentIndex === total - 1; // @ai
@@ -279,8 +281,8 @@ export const TranslationContent: React.FC<TranslationContentProps> = ({
         {otherTranslationIds.map(id => {
           const name = getTranslationName(id);
           const text = isBundledTranslation(id)
-            ? bundledText(id) // @ai
-            : stripHtml(downloadedTexts[id] ?? '');
+            ? shownText(id) // @ai
+            : translationPlainText(downloadedTexts[id] ?? '');
           return (
             <React.Fragment key={id}>
               <View style={styles.divider} />

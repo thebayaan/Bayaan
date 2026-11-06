@@ -204,7 +204,8 @@ describe('runContentCheck', () => {
 
   it('passes the stored ETag and only the managed kinds', async () => {
     const {deps, registry, api} = setup({status: 'not_modified'});
-    await registry.setState({manifestEtag: '"prev"'});
+    // The ETag is sent only for the kinds it was stored for.
+    await registry.setState({manifestEtag: '"prev"', manifestKinds: 'tafsir'});
     await runContentCheck(deps);
     expect(api.fetchManifest).toHaveBeenCalledWith(['tafsir'], '"prev"');
   });
@@ -904,7 +905,7 @@ describe('runContentCheck on 304 with a cached manifest', () => {
 
   it('refetches once without If-None-Match when no manifest is cached', async () => {
     const {deps, registry, installer, api} = setup(manifest([active(2)]));
-    await registry.setState({manifestEtag: '"stale"'});
+    await registry.setState({manifestEtag: '"stale"', manifestKinds: 'tafsir'});
     await registry.upsert({...emptyRow(KEY, 'tafsir'), version: 1});
     api.fetchManifest.mockResolvedValueOnce(NOT_MODIFIED);
     expect(await runContentCheck(deps)).toBe('applied');
@@ -997,5 +998,90 @@ describe('metadata and names', () => {
       version: 1,
       reason: 'unsupported_schema',
     });
+  });
+});
+
+// A build before translations cached a tafsir-only manifest and checks once
+// a day: a new set of kinds must refetch now, without the old ETag.
+describe('manifest kinds', () => {
+  const TRANSLATION_KEY = 'qf:translations:19';
+
+  function withTranslations(result: ManifestResult) {
+    const s = setup(result);
+    const translation: jest.Mocked<ContentInstaller> = {
+      kind: 'translation',
+      supportsSchemaVersion: jest.fn((v: number) => v === 1),
+      install: jest.fn().mockResolvedValue(undefined),
+      remove: jest.fn().mockResolvedValue(undefined),
+      onWithdrawn: jest.fn().mockResolvedValue(undefined),
+    };
+    s.deps.installers = {...s.deps.installers, translation};
+    return {...s, translation};
+  }
+
+  it('records the kinds a 200 manifest was requested for', async () => {
+    const {deps, registry} = withTranslations(manifest([active(2)]));
+    await runContentCheck(deps);
+    expect((await registry.getState()).manifestKinds).toBe(
+      'tafsir,translation',
+    );
+  });
+
+  it('refetches a recent manifest cached for other kinds, without its ETag', async () => {
+    const {deps, registry, api, translation} = withTranslations(
+      manifest([active(2)]),
+    );
+    await registry.setState({
+      lastCheckedAt: deps.now(),
+      manifestEtag: '"tafsir-only"',
+      manifestKinds: 'tafsir',
+      manifest: {format: 1, generated_at: 'x', paused: false, resources: []},
+    });
+    // The legacy row the translations migration registered: absent from the
+    // stale manifest, it must not be purged on its say-so.
+    await registry.upsert({
+      ...emptyRow(TRANSLATION_KEY, 'translation'),
+      legacy: true,
+    });
+    expect(await runContentCheck(deps)).toBe('applied');
+    expect(api.fetchManifest).toHaveBeenCalledWith(
+      ['tafsir', 'translation'],
+      null,
+    );
+    expect((await registry.getState()).manifestKinds).toBe(
+      'tafsir,translation',
+    );
+    // The fresh manifest lacks the key too, so now it is purged (silently).
+    expect(translation.remove).toHaveBeenCalledWith(TRANSLATION_KEY);
+    expect(deps.notify).not.toHaveBeenCalled();
+  });
+
+  it('a failed refetch for new kinds leaves every row alone', async () => {
+    const {deps, registry, translation} = withTranslations({
+      status: 'error',
+      reason: 'http_500',
+    });
+    await registry.setState({
+      lastCheckedAt: deps.now(),
+      manifestKinds: 'tafsir',
+      manifest: {format: 1, generated_at: 'x', paused: false, resources: []},
+    });
+    await registry.upsert({
+      ...emptyRow(TRANSLATION_KEY, 'translation'),
+      legacy: true,
+    });
+    expect(await runContentCheck(deps)).toBe('error');
+    expect(translation.remove).not.toHaveBeenCalled();
+    expect(await registry.get(TRANSLATION_KEY)).not.toBeNull();
+  });
+
+  it('stays skipped within the day when the kinds match', async () => {
+    const {deps, registry, api} = withTranslations(manifest([active(2)]));
+    await registry.setState({
+      lastCheckedAt: deps.now(),
+      manifestKinds: 'tafsir,translation',
+    });
+    expect(await runContentCheck(deps)).toBe('skipped_recent');
+    expect(api.fetchManifest).not.toHaveBeenCalled();
   });
 });

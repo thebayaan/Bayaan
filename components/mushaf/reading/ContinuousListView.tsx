@@ -33,7 +33,7 @@ import {
 } from '@/store/mushafPlayerStore';
 import SurahDivider from '@/components/player/v2/PlayerContent/QuranView/SurahDivider';
 import BasmalaHeader from '@/components/player/v2/PlayerContent/QuranView/BasmalaHeader';
-import {getTranslationName} from '@/utils/translationLookup';
+import {getRenderedTranslationName} from '@/utils/translationLookup';
 import {getAllahNameHighlightColorHex} from '@/constants/mushafAllahHighlight';
 import {
   SCREEN_WIDTH,
@@ -342,7 +342,7 @@ const ContinuousListView = forwardRef<
     const selectedTranslationId = useMushafSettingsStore(
       s => s.selectedTranslationId,
     );
-    const translationName = getTranslationName(selectedTranslationId);
+    const translationName = getRenderedTranslationName(selectedTranslationId);
     const allahNameHighlightColor = useMemo(
       () =>
         getAllahNameHighlightColorHex(

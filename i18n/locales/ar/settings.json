@@ -286,7 +286,7 @@
     "transliteration": "النطق اللاتيني",
     "arabicFontSize": "حجم الخط العربي",
     "fontSize": "حجم الخط",
-    "translationSource": "المستخدمة: ترجمة صحيح إنترناشونال مع الحواشي",
+    "translationSource": "المستخدمة: {{name}}",
     "textThicknessHeader": "سماكة الخط",
     "divineNamesHeader": "لفظ الجلالة",
     "highlightAllah": "تمييز لفظ الجلالة والرب",

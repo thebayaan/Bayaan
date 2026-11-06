@@ -15,7 +15,10 @@
     "noTafaseer": "لم يتم العثور على تفاسير",
     "downloadInProgress": "جارٍ التنزيل",
     "waitForDownload": "يرجى الانتظار حتى يكتمل التنزيل الحالي قبل بدء تنزيل آخر.",
-    "tafseerNotOfferedTitle": "غير متاح",
+    "notOfferedTitle": "غير متاح",
+    "searchTranslations": "ابحث في الترجمات...",
+    "connectForMore": "اتصل بالإنترنت لرؤية المزيد من الترجمات",
+    "translationNotOffered": "لم تعد هذه الترجمة متاحة. ربما سحبها ناشرها.",
     "tafseerNotOffered": "لم يعد هذا التفسير متاحًا. ربما سحبه ناشره."
   },
   "browse": {

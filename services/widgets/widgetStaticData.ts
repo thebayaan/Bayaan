@@ -3,6 +3,7 @@
 // Imported by scripts/generate-widget-data.ts, so no '@/' imports here.
 import {surahArtworkFileName} from './artworkNames';
 import {tasbeehDisplayText, tasbeehTranslation} from './dhikrText';
+import {translationPlainText} from '../../utils/translationText';
 
 export interface StaticSurah {
   id: number;
@@ -18,7 +19,7 @@ export interface StaticAyah {
   ayah: number;
   surahName: string;
   arabic: string; // Digital Khatt words joined by spaces, ending with the ayah marker
-  translation: string; // Saheeh International, footnotes removed
+  translation: string; // The Clear Quran, footnotes removed
 }
 
 export interface SurahSource {
@@ -37,9 +38,7 @@ export interface AyahSources {
 export const MAX_AYAH_WORDS = 20;
 
 export function cleanTranslation(raw: string): string {
-  return raw
-    .replace(/<sup[^>]*>.*?<\/sup>/g, '')
-    .replace(/<[^>]+>/g, '')
+  return translationPlainText(raw)
     .replace(/\s+/g, ' ')
     .replace(/\s+([,.;:!?])/g, '$1')
     .trim();

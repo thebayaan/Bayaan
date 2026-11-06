@@ -1,17 +1,19 @@
 import branding from '@/config/branding';
-import {alQuranCloudTranslationProvider} from './AlQuranCloudTranslationProvider';
+import type {TranslationProvider} from '@/types/TranslationProvider';
 
 /**
- * RFC-009 — translation source resolver.
+ * RFC-009: the fork seam for translations.
  *
- * `translationApiService` resolves to the fork-supplied
- * `branding.translationProvider` when set, otherwise to Bayaan's default
- * alQuran.cloud-backed `alQuranCloudTranslationProvider`. The exported
- * name and shape are unchanged, so consumers (`store/translationStore.ts`)
- * are untouched.
+ * Bayaan installs translations through content sync (Quran Foundation, see
+ * services/content/translationInstaller.ts). A fork that sets
+ * `branding.translationProvider` keeps its own source: the picker lists the
+ * provider's editions and downloads them through it. Null when no fork
+ * provider is set. Read at call time, so importing this module never
+ * touches branding.
  */
-export const translationApiService =
-  branding.translationProvider ?? alQuranCloudTranslationProvider;
+export function getForkTranslationProvider(): TranslationProvider | null {
+  return branding.translationProvider ?? null;
+}
 
 // `TranslationVerse` moved to `types/translation.ts` (RFC-009). Re-exported
 // here so any importer of the previous location keeps compiling.

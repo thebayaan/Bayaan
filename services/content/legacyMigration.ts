@@ -1,12 +1,7 @@
-import {
-  AUTO_INSTALL_KEY,
-  installResource,
-  retryIsDue,
-  type EngineDeps,
-} from './contentEngine';
+import {installOnce} from './autoInstall';
+import {AUTO_INSTALL_KEY, type EngineDeps} from './contentEngine';
 import {keyFor} from './contentKeys';
 import {emptyRow, type ContentRegistry} from './contentRegistry';
-import {reportInstall} from './installActivity';
 
 export {AUTO_INSTALL_KEY};
 
@@ -49,24 +44,13 @@ export async function migrateLegacyContent(
   return migrated;
 }
 
+// The first-launch tafsir: installOnce, recorded in autoInstallDone once
+// settled. Only a catalog purge reopens it (purge clears autoInstallDone).
 export async function maybeAutoInstall(deps: EngineDeps): Promise<boolean> {
   const state = await deps.registry.getState();
   if (state.autoInstallDone) return false;
-  const row = await deps.registry.get(AUTO_INSTALL_KEY);
-  if (row && (row.user_removed || row.legacy || row.version > 0)) {
-    // The first-launch install is settled: a legacy copy is replaced by the
-    // check, an install exists, or the user removed it. A user removal is
-    // final; only a catalog purge reopens it (purge clears autoInstallDone).
+  const outcome = await installOnce(deps, AUTO_INSTALL_KEY, 'tafsir');
+  if (outcome !== 'pending')
     await deps.registry.setState({autoInstallDone: true});
-    return false;
-  }
-  // A failed attempt left a placeholder with a backoff; wait it out.
-  if (row && !retryIsDue(row.next_retry_at, deps.now())) return false;
-  await reportInstall(AUTO_INSTALL_KEY, () =>
-    installResource(deps, AUTO_INSTALL_KEY, 'tafsir', 'auto'),
-  );
-  const installed = await deps.registry.get(AUTO_INSTALL_KEY);
-  if (!installed || installed.version === 0) return false;
-  await deps.registry.setState({autoInstallDone: true});
-  return true;
+  return outcome === 'installed';
 }

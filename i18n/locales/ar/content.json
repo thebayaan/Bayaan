@@ -610,6 +610,18 @@
   },
   "sync": {
     "removedTitle": "أُزيل المحتوى",
-    "removed": "لم يعد {{name}} متاحًا."
+    "removed": "لم يعد {{name}} متاحًا.",
+    "translationsRemovedTitle_zero": "أُزيلت الترجمات",
+    "translationsRemovedTitle_one": "أُزيلت الترجمة",
+    "translationsRemovedTitle_two": "أُزيلت الترجمات",
+    "translationsRemovedTitle_few": "أُزيلت الترجمات",
+    "translationsRemovedTitle_many": "أُزيلت الترجمات",
+    "translationsRemovedTitle_other": "أُزيلت الترجمات",
+    "translationsRemoved_zero": "لم تعد هذه الترجمات متاحة: {{list}}.",
+    "translationsRemoved_one": "لم تعد {{list}} متاحة.",
+    "translationsRemoved_two": "لم تعد هذه الترجمات متاحة: {{list}}.",
+    "translationsRemoved_few": "لم تعد هذه الترجمات متاحة: {{list}}.",
+    "translationsRemoved_many": "لم تعد هذه الترجمات متاحة: {{list}}.",
+    "translationsRemoved_other": "لم تعد هذه الترجمات متاحة: {{list}}."
   }
 }

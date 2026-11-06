@@ -5,15 +5,16 @@ import {
 } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import * as Crypto from 'expo-crypto';
-import branding from '@/config/branding';
 import {analyticsService} from '@/services/analytics/AnalyticsService';
 import {tafseerDbService} from '@/services/tafseer/TafseerDbService';
+import {translationDbService} from '@/services/translation/TranslationDbService';
 import type {
   ContentInstaller,
   ContentKind,
   ContentMeta,
   Manifest,
 } from '@/types/content';
+import {installSelectedTranslation, manifestOffers} from './autoInstall';
 import {idFromKey, kindForKey} from './contentKeys';
 import {createContentApi, resolveContentApiBase} from './contentApi';
 import {
@@ -22,11 +23,15 @@ import {
   runContentCheck,
   type EngineDeps,
 } from './contentEngine';
-import {showWithdrawalNotice} from './contentNotices';
+import {
+  showRemovedTranslationsNotice,
+  showWithdrawalNotice,
+} from './contentNotices';
 import {
   createSqliteContentRegistry,
   type ContentRegistry,
 } from './contentRegistry';
+import {isEngineManagingTafsir, managedKinds} from './contentScope';
 import {
   AUTO_INSTALL_KEY,
   adoptUnmanagedContent,
@@ -34,10 +39,25 @@ import {
   migrateLegacyContent,
 } from './legacyMigration';
 import {createTafsirInstaller} from './tafsirInstaller';
-import {createTranslationInstaller} from './translationInstaller';
+import {
+  createTranslationInstaller,
+  type TranslationHost,
+} from './translationInstaller';
+import {migrateLegacyTranslations} from './translationMigration';
+
+export {
+  isEngineManagingTafsir,
+  isEngineManagingTranslations,
+  managedKinds,
+} from './contentScope';
 
 // After a failed manifest check, further checks in this session wait this long.
 export const FAILED_CHECK_THROTTLE_MS = 3_600_000;
+
+// What the engine reads from and changes in the app, supplied by the caller
+// (services/startContentSync) so neither this module nor its installers
+// import the settings or translation stores.
+export type ContentSyncHost = TranslationHost;
 
 // An entry the last cached manifest offers for install.
 export interface OfferedContent {
@@ -52,38 +72,26 @@ let subscription: NativeEventSubscription | null = null;
 let running: Promise<void> = Promise.resolve();
 let checkBlockedUntil = 0;
 let fallbackRegistry: ContentRegistry | null = null;
+// The host from the last initContentSync call; kept across teardown so a
+// removal without deps can still build the translation installer.
+let knownHost: ContentSyncHost | null = null;
 
-const INSTALLER_FACTORIES: Record<ContentKind, () => ContentInstaller> = {
-  tafsir: createTafsirInstaller,
-  translation: createTranslationInstaller,
+const INSTALLER_FACTORIES: Record<
+  ContentKind,
+  (host: ContentSyncHost) => ContentInstaller
+> = {
+  tafsir: () => createTafsirInstaller(),
+  translation: host => createTranslationInstaller({host}),
 };
 
-/**
- * The single gate for every caller: the kinds this engine owns. Empty without
- * an API base URL, or when a fork keeps its own tafsirProvider: the cycle is
- * anchored on tafsir (adoption, first-launch install), so the engine only runs
- * while it owns tafsir. Translations ride along unless a fork keeps its own
- * translationProvider (RFC-009).
- */
-export function managedKinds(): ContentKind[] {
-  if (branding.tafsirProvider || resolveContentApiBase() === null) return [];
-  return branding.translationProvider ? ['tafsir'] : ['tafsir', 'translation'];
-}
-
-// When false, initContentSync, installContent and removeContent must not be called.
-export function isEngineManagingTafsir(): boolean {
-  return managedKinds().includes('tafsir');
-}
-
-export function isEngineManagingTranslations(): boolean {
-  return managedKinds().includes('translation');
-}
-
 // The manifest is requested for every kind with an installer, so translation
-// entries are cached; nothing installs a translation without installContent.
-function buildInstallers(): Partial<Record<ContentKind, ContentInstaller>> {
+// entries are cached; a translation installs only through installContent or
+// as the reader's selection (installSelection).
+function buildInstallers(
+  host: ContentSyncHost,
+): Partial<Record<ContentKind, ContentInstaller>> {
   return Object.fromEntries(
-    managedKinds().map(kind => [kind, INSTALLER_FACTORIES[kind]()]),
+    managedKinds().map(kind => [kind, INSTALLER_FACTORIES[kind](host)]),
   );
 }
 
@@ -91,11 +99,11 @@ export function isOnWifi(state: {type: string}): boolean {
   return state.type === 'wifi' || state.type === 'ethernet';
 }
 
-function buildDeps(base: string): EngineDeps {
+function buildDeps(base: string, host: ContentSyncHost): EngineDeps {
   return {
     api: createContentApi(base, process.env.EXPO_PUBLIC_BAYAAN_API_KEY ?? ''),
     registry: createSqliteContentRegistry(),
-    installers: buildInstallers(),
+    installers: buildInstallers(host),
     isOnWifi: async () => isOnWifi(await NetInfo.fetch()),
     sha256: text =>
       Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, text),
@@ -151,21 +159,48 @@ async function adoptLocalContent(active: EngineDeps): Promise<boolean> {
   return true;
 }
 
+// The AlQuranCloud translations move to QF ids once (spec 4.7), before the
+// check, so the check replaces the renamed copies.
+async function migrateTranslations(
+  active: EngineDeps,
+  host: ContentSyncHost,
+): Promise<boolean> {
+  if (!active.installers.translation) return false;
+  return migrateLegacyTranslations({
+    registry: active.registry,
+    db: translationDbService,
+    notifyRemoved: showRemovedTranslationsNotice,
+    reload: host.reloadTranslations,
+    now: active.now(),
+  });
+}
+
 async function isMigrated(active: EngineDeps): Promise<boolean> {
   return (await active.registry.getState()).migratedAt !== null;
 }
 
-function manifestAllowsAutoInstall(manifest: Manifest): boolean {
-  // A paused manifest is the kill switch: nothing new installs.
-  if (manifest.paused) return false;
-  const entry = manifest.resources.find(item => item.key === AUTO_INSTALL_KEY);
-  return entry !== undefined && entry.status !== 'withdrawn';
+// After the migration, so a downloaded AlQuranCloud copy is renamed rather
+// than downloaded again. Uses the last stored manifest: this cycle's, or the
+// cached one when the check was skipped or returned 304.
+async function installSelection(
+  active: EngineDeps,
+  host: ContentSyncHost,
+): Promise<void> {
+  const {manifest, translationsMigratedAt} = await active.registry.getState();
+  if (translationsMigratedAt === null) return;
+  await installSelectedTranslation(
+    active,
+    host.selectedTranslationId(),
+    manifest,
+  );
 }
 
-// Order: adoption (the migration is retried every cycle until it succeeds), then the check,
-// then the first-launch install. Each step is isolated from the others.
-async function cycle(active: EngineDeps): Promise<void> {
+// Order: adoption and the translations migration (each retried every cycle
+// until it succeeds), then the check, then the selected translation and the
+// first-launch tafsir installs. Each step is isolated from the others.
+async function cycle(active: EngineDeps, host: ContentSyncHost): Promise<void> {
   const adopted = await attempt(active, () => adoptLocalContent(active));
+  await attempt(active, () => migrateTranslations(active, host));
   // A failed adoption after the first migration must not block the install.
   const migrated =
     adopted === true || (await attempt(active, () => isMigrated(active)));
@@ -182,19 +217,21 @@ async function cycle(active: EngineDeps): Promise<void> {
       checkBlockedUntil = active.now() + FAILED_CHECK_THROTTLE_MS;
     }
   }
+  await attempt(active, () => installSelection(active, host));
   if (migrated !== true) return;
   // Without a manifest this cycle (skipped, 304 or failed) the install may
   // proceed: the backend refuses tickets for withdrawn keys.
-  if (seen.manifest && !manifestAllowsAutoInstall(seen.manifest)) return;
+  if (seen.manifest && !manifestOffers(seen.manifest, AUTO_INSTALL_KEY)) return;
   await attempt(active, () => maybeAutoInstall(active));
 }
 
-export async function initContentSync(): Promise<void> {
+export async function initContentSync(host: ContentSyncHost): Promise<void> {
+  knownHost = host;
   const base = resolveContentApiBase();
   if (deps || !base || !isEngineManagingTafsir()) return;
-  const active = buildDeps(base);
+  const active = buildDeps(base, host);
   deps = active;
-  await serialize(() => cycle(active));
+  await serialize(() => cycle(active, host));
   // Torn down (or replaced) while the first cycle ran: do not subscribe.
   if (deps !== active) return;
   subscription = AppState.addEventListener(
@@ -202,7 +239,7 @@ export async function initContentSync(): Promise<void> {
     (status: AppStateStatus) => {
       // serialize never rejects, so the returned promise can be dropped.
       if (status === 'active' && deps === active)
-        serialize(() => cycle(active));
+        serialize(() => cycle(active, host));
     },
   );
 }
@@ -263,8 +300,12 @@ export async function getOfferedContent(
   if (!managedKinds().includes(kind)) return null;
   fallbackRegistry ??= createSqliteContentRegistry();
   const registry = deps?.registry ?? fallbackRegistry;
-  const {manifest} = await registry.getState();
-  if (!manifest) return null;
+  const {manifest, manifestKinds} = await registry.getState();
+  // A manifest cached before this kind was requested has no entries for it:
+  // treat it as no manifest until the next check refetches. Caches from
+  // before kinds were recorded were fetched for tafsir only.
+  const cachedKinds = manifestKinds?.split(',') ?? ['tafsir'];
+  if (!manifest || !cachedKinds.includes(kind)) return null;
   return manifest.resources
     .filter(entry => entry.status === 'active' && entry.kind === kind)
     .map(entry => ({
@@ -281,17 +322,21 @@ export async function getOfferedTafsirIds(): Promise<ReadonlySet<string> | null>
   return offered && new Set(offered.map(entry => entry.id));
 }
 
-// Before init (or after teardown) there are no engine deps, but the removal
-// must still stick: record the user_removed marker and delete the rows.
+// After teardown there are no engine deps, but the removal must still stick:
+// record the user_removed marker and delete the rows. The installers need the
+// host, so a removal before initContentSync was ever called is refused (boot
+// calls it before the splash hides, so no screen can get there first).
 export async function removeContent(key: string): Promise<void> {
   const active = deps;
   if (active) {
     await exclusive(() => removeResource(active, key));
     return;
   }
+  const host = knownHost;
+  if (!host) throw new Error('content_sync_unavailable');
   fallbackRegistry ??= createSqliteContentRegistry();
   const registry = fallbackRegistry;
   await exclusive(() =>
-    removeResource({registry, installers: buildInstallers()}, key),
+    removeResource({registry, installers: buildInstallers(host)}, key),
   );
 }

@@ -286,7 +286,7 @@
     "transliteration": "Transliteration",
     "arabicFontSize": "Arabic Font Size",
     "fontSize": "Font Size",
-    "translationSource": "Using: Saheeh International Translation with footnotes",
+    "translationSource": "Using: {{name}}",
     "textThicknessHeader": "Text Thickness",
     "divineNamesHeader": "Divine Names",
     "highlightAllah": "Highlight Allah / Rabb",

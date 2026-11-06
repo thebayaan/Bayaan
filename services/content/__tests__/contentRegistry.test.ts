@@ -26,6 +26,8 @@ describe('memory registry', () => {
       migratedAt: null,
       autoInstallDone: false,
       manifest: null,
+      manifestKinds: null,
+      translationsMigratedAt: null,
     });
     await registry.setState({lastCheckedAt: 5});
     expect((await registry.getState()).lastCheckedAt).toBe(5);
@@ -116,6 +118,8 @@ describe('sqlite registry (stubbed db)', () => {
       migratedAt: null,
       autoInstallDone: true,
       manifest: null,
+      manifestKinds: null,
+      translationsMigratedAt: null,
     });
 
     await registry.upsert(rows[0]);
@@ -162,15 +166,23 @@ describe('sqlite registry (real SQLite)', () => {
       migratedAt: null,
       autoInstallDone: false,
       manifest: null,
+      manifestKinds: null,
+      translationsMigratedAt: null,
     });
     await registry.setState({manifestEtag: '"e"', autoInstallDone: true});
     await registry.setState({lastCheckedAt: 9});
+    await registry.setState({
+      manifestKinds: 'tafsir,translation',
+      translationsMigratedAt: 11,
+    });
     expect(await registry.getState()).toEqual({
       manifestEtag: '"e"',
       lastCheckedAt: 9,
       migratedAt: null,
       autoInstallDone: true,
       manifest: null,
+      manifestKinds: 'tafsir,translation',
+      translationsMigratedAt: 11,
     });
   });
 
@@ -186,6 +198,40 @@ describe('sqlite registry (real SQLite)', () => {
     expect((await registry.getState()).manifest).toEqual(manifest);
     await registry.setState({manifest: null});
     expect((await registry.getState()).manifest).toBeNull();
+  });
+
+  it('adds the translation columns to a content.db from before them', async () => {
+    const SQLite: typeof import('expo-sqlite') = require('expo-sqlite');
+    const old = await SQLite.openDatabaseAsync('content.db');
+    await old.execAsync(`
+      CREATE TABLE content_state (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        manifest_etag TEXT,
+        last_checked_at INTEGER,
+        migrated_at INTEGER,
+        auto_install_done INTEGER NOT NULL DEFAULT 0,
+        manifest_json TEXT
+      );
+      INSERT INTO content_state (id, manifest_etag, migrated_at) VALUES (1, '"old"', 7);
+    `);
+    await closeOpenDatabases();
+
+    const registry = createSqliteContentRegistry();
+    expect(await registry.getState()).toMatchObject({
+      manifestEtag: '"old"',
+      migratedAt: 7,
+      manifestKinds: null,
+      translationsMigratedAt: null,
+    });
+    await registry.setState({
+      manifestKinds: 'tafsir',
+      translationsMigratedAt: 3,
+    });
+    await closeOpenDatabases();
+    expect(await createSqliteContentRegistry().getState()).toMatchObject({
+      manifestKinds: 'tafsir',
+      translationsMigratedAt: 3,
+    });
   });
 
   it('adds manifest_json to a content.db created before the column existed', async () => {

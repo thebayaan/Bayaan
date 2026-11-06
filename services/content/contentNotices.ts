@@ -16,16 +16,46 @@ export function showWithdrawalNotice(notice: WithdrawalNotice): void {
   );
 }
 
+// Translations with no Quran Foundation edition, removed once on upgrade.
+export function removedTranslationsMessage(names: readonly string[]): string {
+  return i18n.t('content:sync.translationsRemoved', {
+    count: names.length,
+    list: names.join(', '),
+  });
+}
+
+export function showRemovedTranslationsNotice(names: readonly string[]): void {
+  if (names.length === 0) return;
+  showToast(
+    i18n.t('content:sync.translationsRemovedTitle', {count: names.length}),
+    removedTranslationsMessage(names),
+    'none',
+  );
+}
+
 // A refused ticket (withdrawn or unknown key) is not a connectivity problem.
 export function tafseerDownloadFailure(error: unknown): AlertCopy {
   if (isContentNotOffered(error)) {
     return {
-      title: i18n.t('home:translations.tafseerNotOfferedTitle'),
+      title: i18n.t('home:translations.notOfferedTitle'),
       message: i18n.t('home:translations.tafseerNotOffered'),
     };
   }
   return {
     title: i18n.t('home:translations.downloadFailedTitle'),
     message: i18n.t('home:translations.tafseerDownloadFailed'),
+  };
+}
+
+export function translationDownloadFailure(error: unknown): AlertCopy {
+  if (isContentNotOffered(error)) {
+    return {
+      title: i18n.t('home:translations.notOfferedTitle'),
+      message: i18n.t('home:translations.translationNotOffered'),
+    };
+  }
+  return {
+    title: i18n.t('home:translations.downloadFailedTitle'),
+    message: i18n.t('home:translations.translationDownloadFailed'),
   };
 }

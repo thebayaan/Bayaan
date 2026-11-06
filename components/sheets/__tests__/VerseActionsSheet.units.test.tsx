@@ -108,7 +108,7 @@ jest.mock('@/utils/toastUtils', () => ({showToast: jest.fn()}));
 jest.mock('expo-clipboard', () => ({setStringAsync: jest.fn()}));
 jest.mock('expo-router', () => ({router: {push: jest.fn()}}));
 jest.mock('@/utils/translationLookup', () => ({
-  getTranslationTextRaw: (verseKey: string) => `T(${verseKey})`,
+  getTranslationPlainText: (verseKey: string) => `T(${verseKey})`,
 }));
 jest.mock('@/utils/timestampUtils', () => ({getPlayFromHereTarget: jest.fn()}));
 // The real annotations store over a mocked database service.
@@ -409,6 +409,20 @@ describe('Hafs (unchanged)', () => {
     await press('Copy');
     expect(Clipboard.setStringAsync).toHaveBeenCalledWith(
       'HAFS-2:286 ۝ HAFS-3:1 ۝\n\nT(2:286)\nT(3:1)\n\nQuran 2:286 - 3:1',
+    );
+  });
+
+  // The player passes the translation it shows: QF markup, footnote markers
+  // included. The copied text is plain.
+  it('copies the caller translation as plain text', async () => {
+    await openSheet({
+      ...payload,
+      translation:
+        'Allah<sup foot_note=254011>1</sup>, the <i class="s">Ever-Living</i> &amp; Sustainer',
+    });
+    await press('Copy');
+    expect(Clipboard.setStringAsync).toHaveBeenCalledWith(
+      'HAFS-2:255 ۝\n\nAllah, the Ever-Living & Sustainer\n\nQuran 2:255',
     );
   });
 

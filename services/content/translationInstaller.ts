@@ -1,6 +1,5 @@
 import {translationDbService} from '@/services/translation/TranslationDbService';
-import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
-import {useTranslationStore} from '@/store/translationStore';
+import {DEFAULT_TRANSLATION_ID} from '@/services/translation/translationRemap';
 import type {ContentInstaller, ContentMeta} from '@/types/content';
 import {idFromKey} from './contentKeys';
 import {resolveEditionMeta} from './editionMeta';
@@ -11,30 +10,23 @@ type TranslationDb = Pick<
   'saveTranslation' | 'deleteTranslation' | 'getDownloadedTranslations'
 >;
 
-type SettingsStore = {
-  getState(): {
-    selectedTranslationId: string;
-    setSelectedTranslationId: (id: string) => void;
-  };
-};
+// The app state a translation install touches, supplied by the caller so
+// this module does not import the settings or translation stores.
+export interface TranslationHost {
+  // The reader's translation selection.
+  selectedTranslationId: () => string;
+  // Moves the reader's selection (a withdrawn edition falls back).
+  setSelectedTranslationId: (id: string) => void;
+  // Refreshes the downloaded translations list.
+  reloadTranslations: () => Promise<void>;
+}
 
-type MetaStore = {
-  getState(): {loadDownloadedMeta: () => Promise<void>};
-};
-
-// Where the selection goes when its edition is withdrawn: always bundled.
-export const WITHDRAWN_TRANSLATION_FALLBACK = 'clear-quran';
-
-export function createTranslationInstaller(
-  deps: {
-    db?: TranslationDb;
-    store?: MetaStore;
-    settings?: SettingsStore;
-  } = {},
-): ContentInstaller {
+export function createTranslationInstaller(deps: {
+  host: TranslationHost;
+  db?: TranslationDb;
+}): ContentInstaller {
+  const {host} = deps;
   const db = deps.db ?? translationDbService;
-  const store = deps.store ?? useTranslationStore;
-  const settings = deps.settings ?? useMushafSettingsStore;
   return {
     kind: 'translation',
     supportsSchemaVersion: version => version === 1,
@@ -60,19 +52,19 @@ export function createTranslationInstaller(
         verses,
         footnotes,
       );
-      await store.getState().loadDownloadedMeta();
+      await host.reloadTranslations();
       return {name};
     },
     async remove(key) {
       await db.deleteTranslation(idFromKey(key));
-      await store.getState().loadDownloadedMeta();
+      await host.reloadTranslations();
     },
     async onWithdrawn(key) {
-      const state = settings.getState();
       // Idempotent: once the selection has moved off this id, nothing is left
       // to do. The engine already removed the rows (and reloaded the meta).
-      if (state.selectedTranslationId !== idFromKey(key)) return;
-      state.setSelectedTranslationId(WITHDRAWN_TRANSLATION_FALLBACK);
+      if (host.selectedTranslationId() !== idFromKey(key)) return;
+      // The selection falls back to the bundled edition.
+      host.setSelectedTranslationId(DEFAULT_TRANSLATION_ID);
     },
   };
 }

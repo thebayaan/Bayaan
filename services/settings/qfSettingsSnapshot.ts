@@ -11,6 +11,7 @@ import {
   isRewayahSwitchSuperseded,
 } from '@/services/mushaf/DigitalKhattDataService';
 import {usePlayerStore} from '@/services/player/store/playerStore';
+import {currentTranslationSelection} from '@/services/translation/translationRemap';
 import {useAdhkarSettingsStore} from '@/store/adhkarSettingsStore';
 import {useAmbientStore} from '@/store/ambientStore';
 import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
@@ -120,6 +121,8 @@ export function captureSettingsDocuments(): SettingsDocuments {
       darkThemeId: mushaf.darkThemeId,
       rewayah: mushaf.rewayah,
       showRewayahDiffs: mushaf.showRewayahDiffs,
+      // Already a current id: the store's persist migration remapped any
+      // saved before the switch, and incoming ones are remapped below.
       selectedTranslationId: mushaf.selectedTranslationId,
     },
     audio: {
@@ -307,7 +310,11 @@ export function sanitizeRemoteDocument(
       value.selectedTranslationId.length > 0 &&
       value.selectedTranslationId.length <= 255
     ) {
-      result.selectedTranslationId = value.selectedTranslationId;
+      // A device that has not migrated may still send an AlQuranCloud id or
+      // "saheeh": project it to the id this device uses.
+      result.selectedTranslationId = currentTranslationSelection(
+        value.selectedTranslationId,
+      );
     }
   } else if (key === 'audio') {
     if (optionalString(value.defaultReciterId, 128))
