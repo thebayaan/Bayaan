@@ -417,7 +417,7 @@
     "signedInAs": "Signed in as {{email}}",
     "signIn": "Sign in",
     "signOut": "Sign out",
-    "signInPrompt": "Sign in to sync bookmarks, private notes, and reading progress.",
+    "signInPrompt": "Sign in to sync bookmarks, notes, highlights, favourites, playlists and settings across your devices.",
     "signInFailed": "Could not sign in. Please try again.",
     "completingSignIn": "Completing sign-in…",
     "unsyncedTitle": "Unsynced changes",
@@ -446,6 +446,18 @@
       "message": "Use cloud settings, retaining device values where the cloud has none, or keep this device’s settings. Fields this app does not understand stay in the cloud.",
       "useCloud": "Use cloud settings",
       "keepDevice": "Keep this device"
+    },
+    "contentOffer": {
+      "title": "Download from your other devices?",
+      "messageBoth": "You have {{translations}} and {{tafsirs}} on your other devices. Download them here too?",
+      "messageTranslations": "You have {{translations}} on your other devices. Download them here too?",
+      "messageTafsirs": "You have {{tafsirs}} on your other devices. Download them here too?",
+      "translations_one": "{{count}} translation",
+      "translations_other": "{{count}} translations",
+      "tafsirs_one": "{{count}} tafsir",
+      "tafsirs_other": "{{count}} tafsirs",
+      "notNow": "Not now",
+      "download": "Download"
     }
   }
 }

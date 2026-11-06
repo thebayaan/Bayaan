@@ -25,6 +25,10 @@ import {
   type QfLibrarySyncResult,
 } from '@/services/library/qfLibrarySync';
 import {qfLibrarySyncStorage} from '@/services/library/qfLibrarySyncStorage';
+import {
+  offeredContentStorage,
+  syncInstalledContent,
+} from '@/services/library/qfInstalledContentSync';
 import {BayaanSettingsApiClient} from '@/services/settings/bayaanSettingsApiClient';
 import {mushafSyncedReadingService} from '@/services/mushaf/MushafSyncedReadingService';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
@@ -868,13 +872,27 @@ export const qfSyncLifecycle = new QfSyncLifecycle({
     ),
   syncHighlights: input =>
     syncQfHighlights({api: highlightsApi, store: qfSyncDatabaseService}, input),
-  syncLibrary: input =>
-    syncQfLibrary(
+  syncLibrary: async input => {
+    const library = await syncQfLibrary(
       {
         api: highlightsApi,
         storage: qfLibrarySyncStorage,
         adapters: getLibraryAdapters(),
       },
       input,
-    ),
+    );
+    if (!input.isCurrent()) return library;
+    const adapters =
+      require('@/services/library/qfInstalledContentAdapters') as typeof import('@/services/library/qfInstalledContentAdapters');
+    const content = await syncInstalledContent(
+      {
+        api: highlightsApi,
+        readInstalled: adapters.readInstalledContent,
+        offerDownloads: adapters.offerContentDownloads,
+        offered: offeredContentStorage,
+      },
+      input,
+    );
+    return {...library, rerun: library.rerun || content.rerun};
+  },
 });
