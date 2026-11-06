@@ -82,7 +82,6 @@ function picker(
     downloaded: [],
     offered: OFFERED,
     selectedId: 'clear-quran',
-    renderedId: 'clear-quran',
     query: '',
     uiLanguage: 'en',
     formatSize: bytes => `${bytes / 1_000_000} MB`,
@@ -231,7 +230,9 @@ describe('buildTranslationPicker', () => {
     expect(ids('saheeh')).toEqual(['20']);
     expect(ids('maududi')).toEqual(['97']);
     expect(ids('  FRENCH ')).toEqual(['31']);
-    expect(ids('khattab')).toEqual(['clear-quran']);
+    // Clear Quran is what the reader shows meanwhile: it is the active card,
+    // not a row.
+    expect(ids('khattab')).toEqual([]);
     expect(ids('nothing like this')).toEqual([]);
   });
 
@@ -259,21 +260,20 @@ describe('buildTranslationPicker', () => {
       const result = picker({
         offered: null,
         selectedId: '20',
-        renderedId: 'clear-quran',
       });
       expect(result.active).toEqual({
         id: 'clear-quran',
         name: 'The Clear Quran',
         language: 'English',
       });
+      // The card's edition is not listed again as an installed row.
+      expect(result.installed.map(row => row.id)).not.toContain('clear-quran');
     });
 
     it('names a downloaded selection from the catalog, in the UI language', () => {
       const result = picker({
         downloaded: [downloaded('97', 'Maududi (old)', 'urdu')],
         selectedId: '97',
-        // Its text has not loaded yet; it renders once it does.
-        renderedId: 'clear-quran',
         uiLanguage: 'ar',
       });
       expect(result.active).toEqual({
@@ -288,7 +288,6 @@ describe('buildTranslationPicker', () => {
         downloaded: [downloaded('131', 'Dr. Mustafa', 'xx')],
         offered: null,
         selectedId: '131',
-        renderedId: '131',
       });
       expect(result.active).toEqual({
         id: '131',

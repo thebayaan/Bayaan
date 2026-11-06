@@ -5,6 +5,7 @@ import type {
   RemoteTranslationEdition,
 } from '@/types/translation';
 import {BUNDLED_TRANSLATIONS} from '@/types/translation';
+import {DEFAULT_TRANSLATION_ID} from '@/services/translation/translationRemap';
 import type {OfferedContent} from '@/services/content/contentSync';
 import {contentLanguageName} from '@/services/content/contentLanguage';
 import type {AppLanguage} from '@/i18n/languages';
@@ -177,24 +178,20 @@ function byTitle(a: PickerRow, b: PickerRow): number {
 }
 
 // A selection that is bundled or downloaded is what the reader shows (a
-// download renders once its text loads); otherwise the reader renders
-// renderedId, the bundled fallback (QF 20 remapped from Saheeh but not
-// installed yet). The name comes from the installed copy, then the catalog.
+// download renders once its text loads); otherwise the reader shows the
+// bundled fallback (QF 20 remapped from Saheeh but not installed yet). The
+// name comes from the installed copy, which carries the catalog name when
+// the catalog lists it.
 function activeEdition(
   all: readonly Candidate[],
-  offered: readonly OfferedEdition[] | null,
   selectedId: string,
-  renderedId: string,
   uiLanguage: AppLanguage,
 ): ActiveEdition {
   const installed = all.find(
     edition => edition.id === selectedId && edition.isDownloaded,
   );
-  const id = installed ? selectedId : renderedId;
-  const known =
-    installed ??
-    all.find(edition => edition.id === id) ??
-    offered?.find(edition => edition.id === id);
+  const id = installed ? selectedId : DEFAULT_TRANSLATION_ID;
+  const known = installed ?? all.find(edition => edition.id === id);
   if (!known) return {id, name: id, language: ''};
   return {
     id,
@@ -210,29 +207,21 @@ export function buildTranslationPicker(input: {
   downloaded: readonly DownloadedTranslationMeta[];
   offered: readonly OfferedEdition[] | null;
   selectedId: string;
-  // The edition the reader renders for the selection
-  // (getEffectiveTranslationId).
-  renderedId: string;
   query: string;
   // The UI language, which names and orders the language groups.
   uiLanguage: AppLanguage;
   formatSize: (bytes: number) => string;
 }): TranslationPicker {
-  const {
-    downloaded,
-    offered,
-    selectedId,
-    renderedId,
-    query,
-    uiLanguage,
-    formatSize,
-  } = input;
+  const {downloaded, offered, selectedId, query, uiLanguage, formatSize} =
+    input;
   const all = candidates(downloaded, offered);
+  // One definition of active for the card, the installed list and the rows.
+  const active = activeEdition(all, selectedId, uiLanguage);
   const visible = all.filter(edition =>
     matchesTranslationQuery(edition, query),
   );
   const installed = visible
-    .filter(edition => edition.isDownloaded && edition.id !== selectedId)
+    .filter(edition => edition.isDownloaded && edition.id !== active.id)
     .map(edition => toRow(edition, formatSize))
     .sort(byTitle);
   const byLanguage = new Map<string, PickerRow[]>();
@@ -250,7 +239,7 @@ export function buildTranslationPicker(input: {
       rows: rows.sort(byTitle),
     }));
   return {
-    active: activeEdition(all, offered, selectedId, renderedId, uiLanguage),
+    active,
     installed,
     groups,
     needsCatalog: offered === null,

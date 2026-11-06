@@ -16,7 +16,6 @@ import {
 import {translationDownloadFailure} from '@/services/content/contentNotices';
 import {DEFAULT_TRANSLATION_ID} from '@/services/translation/translationRemap';
 import {formatBytes} from '@/services/storageService';
-import {getEffectiveTranslationId} from '@/utils/translationLookup';
 import {currentLanguage} from '@/i18n/language';
 import {
   ActiveCard,
@@ -132,7 +131,6 @@ export function TranslationsTab() {
         downloaded: downloadedMeta,
         offered: offeredTranslations,
         selectedId: selectedTranslationId,
-        renderedId: getEffectiveTranslationId(selectedTranslationId),
         query,
         uiLanguage: currentLanguage,
         formatSize: formatBytes,
@@ -192,7 +190,7 @@ export function TranslationsTab() {
     (item: RowItem) => (
       <CatalogRow
         item={item}
-        isActive={item.id === selectedTranslationId}
+        isActive={item.id === active.id}
         isDownloading={item.id === downloadingId}
         progress={downloadProgress}
         onSelect={handleSelect}
@@ -201,7 +199,7 @@ export function TranslationsTab() {
       />
     ),
     [
-      selectedTranslationId,
+      active.id,
       downloadingId,
       downloadProgress,
       handleSelect,
