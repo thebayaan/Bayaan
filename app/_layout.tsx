@@ -66,13 +66,7 @@ import {USE_GLASS} from '@/hooks/useGlassProps';
 import Constants from 'expo-constants';
 import * as Sentry from '@sentry/react-native';
 import {BayaanAuthProvider} from '@/providers/BayaanAuthProvider';
-import {useBayaanAuthStore} from '@/store/bayaanAuthStore';
-import {useNetworkStore} from '@/store/networkStore';
-import {useQfSyncStore} from '@/store/qfSyncStore';
-import {qfActivityDayTracker} from '@/services/sync/qfActivityDayTracker';
-import {qfSyncLifecycle} from '@/services/sync/qfSyncLifecycle';
-import {qfSettingsSyncLifecycle} from '@/services/settings/qfSettingsSyncLifecycle';
-import {GuestDataMergeSheet} from '@/components/auth/GuestDataMergeSheet';
+import {QfSyncLifecycleBridge} from '@/components/auth/QfSyncLifecycleBridge';
 
 import {usePhoneOrientation} from '@/hooks/usePhoneOrientation'; // @ai
 import {ConfirmationDialogHost} from '@/components/native/ConfirmationDialogHost'; // @ai
@@ -180,55 +174,6 @@ function AnalyticsConnector(): null {
   }, []);
 
   return null;
-}
-
-function QfSyncLifecycleBridge() {
-  const authStatus = useBayaanAuthStore(state => state.status);
-  const accountId = useBayaanAuthStore(
-    state => state.profile?.accountId ?? null,
-  );
-  const online = useNetworkStore(state => state.isOnline);
-  const syncRequestId = useQfSyncStore(state => state.syncRequestId);
-  const [appState, setAppState] = useState(AppState.currentState);
-
-  useEffect(() => {
-    const subscription = AppState.addEventListener('change', setAppState);
-    return () => subscription.remove();
-  }, []);
-
-  useEffect(() => {
-    const context = {
-      authStatus,
-      accountId,
-      online,
-      appActive: appState === 'active',
-    };
-    qfSyncLifecycle.updateContext(context);
-    qfSettingsSyncLifecycle.updateContext(context);
-  }, [accountId, appState, authStatus, online]);
-
-  useEffect(() => {
-    qfActivityDayTracker.setAppActive(appState === 'active');
-  }, [appState]);
-
-  useEffect(() => {
-    if (syncRequestId > 0) {
-      // Settings changes are captured by their own store subscriptions.
-      qfSyncLifecycle.requestSync();
-    }
-  }, [syncRequestId]);
-
-  useEffect(
-    () => () => {
-      Promise.allSettled([
-        qfSyncLifecycle.stop(),
-        qfSettingsSyncLifecycle.stop(),
-      ]).catch(() => undefined);
-    },
-    [],
-  );
-
-  return <GuestDataMergeSheet />;
 }
 
 // @ai-start
