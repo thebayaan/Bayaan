@@ -178,4 +178,36 @@ describe('clearPlayerCache() while audio plays', () => {
     expect(mockedAudio.play).not.toHaveBeenCalled();
     expect(usePlayerStore.getState().queue.tracks).toHaveLength(0);
   });
+
+  it('ends a load that starts during the pause: it does not play over the empty queue', async () => {
+    await usePlayerStore.getState().updateQueue([makeTrack('a')], 0);
+    await flush();
+    mockedAudio.play.mockClear();
+    const pause = deferred();
+    mockedAudio.pause.mockImplementation(() => pause.promise);
+
+    const clearPromise = clearPlayerCache();
+    await flush();
+    expect(mockedAudio.pause).toHaveBeenCalledTimes(1);
+
+    // A new play starts while the pause is still in flight.
+    const load = deferred();
+    mockedAudio.loadTrack.mockImplementation(() => load.promise);
+    const updatePromise = usePlayerStore
+      .getState()
+      .updateQueue([makeTrack('e')], 0);
+    await flush();
+
+    // The pause ends and cleanup() resets the store. Then the load completes.
+    pause.resolve();
+    await clearPromise;
+    load.resolve();
+    await updatePromise;
+    await flush();
+
+    expect(mockedAudio.play).not.toHaveBeenCalled();
+    const state = usePlayerStore.getState();
+    expect(state.queue.tracks).toHaveLength(0);
+    expect(state.loading.trackLoading).toBe(false);
+  });
 });

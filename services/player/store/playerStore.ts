@@ -83,7 +83,7 @@ export interface PlayerStoreState extends Omit<UnifiedPlayerState, 'ui'> {
 }
 
 // Monotonic id for the in-flight play operation. Every loadTrackAtIndex()
-// claims a fresh id at entry; cleanup() bumps it via invalidatePlayOps().
+// claims a fresh id at entry; cleanup() bumps it via pauseForEmptyQueue().
 // Without this, two overlapping loads both run to completion: a second tap (a
 // rapid skip, or re-queueing while the first load is still awaiting the
 // network) starts its own load, then the OLDER one's play() lands after the
@@ -114,8 +114,7 @@ export function currentPlayOpId(): number {
  * newer load started during the pause, the same as loadTrackAtIndex().
  */
 async function pauseForEmptyQueue(): Promise<boolean> {
-  invalidatePlayOps();
-  const opId = playOpId;
+  const opId = ++playOpId;
   try {
     await expoAudioService.pause();
   } catch (error) {
@@ -899,11 +898,8 @@ export const usePlayerStore = create<PlayerStoreState>()(
 
       // Cleanup method
       cleanup: async () => {
-        // In-flight loads must not play()/write state into a cleaned service.
-        // @ai Then pause the native player before the reset. Settings ->
-        // Clear cache calls this while audio can play, and the reset empties
-        // the queue (see pauseForEmptyQueue).
-        await pauseForEmptyQueue();
+        // @ai Pause first: no load may play() or write state after the reset.
+        if (!(await pauseForEmptyQueue())) invalidatePlayOps();
         const state = get();
         if (
           typeof state.settings.sleepTimerInterval === 'object' &&
