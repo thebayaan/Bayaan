@@ -26,6 +26,7 @@
 import type {SkStrutStyle} from '@shopify/react-native-skia';
 import type {JustResultByLine} from '@/services/mushaf/JustificationService';
 import {FONTSIZE, SPACEWIDTH} from '@/services/mushaf/QuranTextService';
+import {readStoredLineFit, storeLineFit} from '@/services/mushaf/lineFitStore';
 
 /** Narrowest spacing drawn (font units at FONTSIZE): a font size must stay
  *  positive, so an overshoot never takes a space to or below zero. */
@@ -99,10 +100,11 @@ export function fitWordSize(
 
 /**
  * A line's fit pass result: the words' font size and the px added to every
- * space. Cached per line for the session (by everything that sets the drawn
- * width: the line text, its justification, font, size and line width), so a
- * line is measured and rebuilt at most once; later builds of it (a colour,
- * tajweed or highlight change, a page revisit) build once with the fit.
+ * space. Cached per line for the session and across launches (by everything
+ * that sets the drawn width: the line text, its justification, font, size and
+ * line width; services/mushaf/lineFitStore.ts), so a line is measured and
+ * rebuilt at most once; later builds of it (a colour, tajweed or highlight
+ * change, a page revisit, the next launch) build once with the fit.
  */
 export interface LineFit {
   wordSize: number;
@@ -113,25 +115,27 @@ export interface LineFit {
 const LINE_FIT_LIMIT = 2000;
 const lineFits = new Map<string, LineFit>();
 
-/** Cached fit of the line `key` names (see lineFitKey), most recent first. */
+/** Cached fit of the line `key` names (see lineFitKey), most recent first; else
+ *  the fit an earlier launch stored. */
 export function getLineFit(key: string): LineFit | undefined {
   const fit = lineFits.get(key);
   if (fit) {
     lineFits.delete(key);
     lineFits.set(key, fit);
   }
-  return fit;
+  return fit ?? readStoredLineFit(key);
 }
 
 export function setLineFit(key: string, fit: LineFit): void {
   lineFits.set(key, fit);
+  storeLineFit(key, fit);
   if (lineFits.size > LINE_FIT_LIMIT) {
     const oldest = lineFits.keys().next().value;
     if (oldest !== undefined) lineFits.delete(oldest);
   }
 }
 
-/** Drops every cached fit (tests). */
+/** Drops every fit of the session (tests). The store keeps its fits. */
 export function clearLineFits(): void {
   lineFits.clear();
 }

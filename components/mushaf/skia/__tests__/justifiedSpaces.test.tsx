@@ -107,6 +107,18 @@ jest.mock('@/utils/skiaTextWeight', () => ({
   createTextStrokePaint: () => undefined,
 }));
 
+// The fits that an earlier launch kept (services/mushaf/lineFitStore.ts).
+const mockStoredFits = new Map<
+  string,
+  {wordSize: number; spaceExtra: number}
+>();
+jest.mock('@/services/mushaf/lineFitStore', () => ({
+  readStoredLineFit: (key: string) => mockStoredFits.get(key),
+  storeLineFit: (key: string, fit: {wordSize: number; spaceExtra: number}) => {
+    mockStoredFits.set(key, fit);
+  },
+}));
+
 // One line of four tokens (the third a verse marker): two simple spaces, then
 // an aya space. 11 letters: 110 px in the mock.
 const LINE = 'ابت جحخ ۝١ دذر';
@@ -199,6 +211,7 @@ const spaceSizes = (b: MockBuilt) =>
 
 beforeEach(() => {
   clearLineFits();
+  mockStoredFits.clear();
   mockSkia.built = [];
   mockSkia.shapingLoss = 0;
   mockSkia.rectsForRange = () => [];
@@ -507,6 +520,22 @@ describe('SkiaLine justified spaces', () => {
     });
     expect(mockSkia.built).toHaveLength(3);
     expect(mockSkia.built[2].width).toBeCloseTo(122);
+  });
+
+  it('builds a line once on the launch after it was fitted', () => {
+    mockSkia.shapingLoss = 4;
+    renderLine(WIDENED);
+    expect(mockSkia.built).toHaveLength(2); // measured, then fitted
+    const fitted = mockSkia.built[1];
+    expect(mockStoredFits.size).toBe(1);
+
+    // The next launch: the session map is empty, the stored fit stays.
+    clearLineFits();
+    mockSkia.built = [];
+    renderLine(WIDENED);
+    expect(mockSkia.built).toHaveLength(1);
+    expect(mockSkia.built[0].width).toBeCloseTo(122);
+    expect(spaceSizes(mockSkia.built[0])).toEqual(spaceSizes(fitted));
   });
 
   it('fits again when the width the line fills changes', () => {
