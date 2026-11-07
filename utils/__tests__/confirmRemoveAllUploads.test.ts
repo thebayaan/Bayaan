@@ -1,5 +1,5 @@
 // @ai-generated
-import {Alert} from 'react-native';
+import {Alert, Platform} from 'react-native';
 import enCollection from '../../i18n/locales/en/collection.json';
 import arCollection from '../../i18n/locales/ar/collection.json';
 
@@ -27,8 +27,14 @@ function lastButtons(): AlertButton[] {
 }
 
 describe('confirmRemoveAllUploads', () => {
+  // The alert is the Android and web prompt (iOS uses native dialogs).
+  let os: ReturnType<typeof jest.replaceProperty>;
   beforeEach(() => {
     mockAlert.mockClear();
+    os = jest.replaceProperty(Platform, 'OS', 'android');
+  });
+  afterEach(() => {
+    os.restore();
   });
 
   it('asks for confirmation instead of deleting immediately', () => {

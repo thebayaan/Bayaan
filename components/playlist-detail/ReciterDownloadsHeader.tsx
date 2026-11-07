@@ -94,7 +94,9 @@ export const ReciterDownloadsHeader: React.FC<ReciterDownloadsHeaderProps> = ({
       {/* Action Buttons */}
       <View style={[styles.actionButtons, forceLTR]}>
         {!USE_GLASS && onOptionsPress && (
-          <Pressable style={styles.circleButton} onPress={onOptionsPress}>
+          <Pressable
+            style={styles.circleButton}
+            onPress={optionsMenu ? undefined : onOptionsPress}>
             <Feather
               name="more-horizontal"
               size={moderateScale(20)}

@@ -5,7 +5,7 @@
  * The screen lives in app/, so its test lives here.
  */
 import React from 'react';
-import {Alert, AlertButton} from 'react-native';
+import {ActionSheetIOS} from 'react-native';
 import TestRenderer, {act} from 'react-test-renderer';
 
 let resolveClear: (() => void) | undefined;
@@ -71,7 +71,14 @@ function actionButtons(tree: TestRenderer.ReactTestRenderer) {
 }
 
 it('disables both actions while a clear is running', async () => {
-  const alertSpy = jest.spyOn(Alert, 'alert');
+  // On iPhone the confirmation is an action sheet; option 0 is the
+  // destructive confirm.
+  let choose: ((index: number) => void) | undefined;
+  const sheetSpy = jest
+    .spyOn(ActionSheetIOS, 'showActionSheetWithOptions')
+    .mockImplementation((_options, callback) => {
+      choose = callback;
+    });
   let tree!: TestRenderer.ReactTestRenderer;
   act(() => {
     tree = TestRenderer.create(<StorageScreen />);
@@ -79,12 +86,10 @@ it('disables both actions while a clear is running', async () => {
   expect(actionButtons(tree)).toHaveLength(2);
   const [removeDownloads] = actionButtons(tree);
   act(() => removeDownloads.props.onPress());
-  expect(alertSpy).toHaveBeenCalledTimes(1);
+  expect(sheetSpy).toHaveBeenCalledTimes(1);
 
-  const buttons = alertSpy.mock.calls[0][2] as AlertButton[];
-  const confirm = buttons.find(b => b.style === 'destructive')!;
   await act(async () => {
-    confirm.onPress?.();
+    choose?.(0);
   });
 
   expect(mockClearAllDownloads).toHaveBeenCalledTimes(1);
@@ -98,5 +103,5 @@ it('disables both actions while a clear is running', async () => {
   for (const button of actionButtons(tree)) {
     expect(button.props.disabled).toBe(false);
   }
-  alertSpy.mockRestore();
+  sheetSpy.mockRestore();
 });
