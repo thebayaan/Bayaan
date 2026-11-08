@@ -462,7 +462,12 @@ class ExpoAudioService {
    * Clean up resources
    */
   cleanup(): void {
-    this.player = null;
+    // @ai Keep the injected player. It is the runtime's single player that
+    // ExpoAudioProvider owns, and the provider injects it only on mount. A
+    // null here made every later loadTrack() throw 'Player not set' until the
+    // provider mounted again, in practice until a restart (Settings -> Clear
+    // cache calls playerStore.cleanup()). It also left LockScreenService no
+    // player to clear the lock-screen controls on.
     this.currentUrl = null;
     this.playbackState = 'idle';
     this.lastError = null;
@@ -476,6 +481,8 @@ class ExpoAudioService {
   reset(): void {
     this.cleanup();
     this.isInitialized = false;
+    // @ai Test isolation only: drop the player (cleanup() keeps it).
+    this.player = null;
   }
 }
 
