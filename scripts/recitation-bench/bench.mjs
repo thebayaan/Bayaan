@@ -14,9 +14,33 @@
 // ENGINE_OPTS='<json>' adds or overrides session options. As in the app,
 // keepContextOnDefer and config.wholeWordAtCut are on unless ENGINE_OPTS turns
 // them off (e.g. {"keepContextOnDefer":false,"config":{"wholeWordAtCut":false}}).
+// The app also passes `junction`, `config.gapReport` and `config.cutAtJump`, from
+// services/recitation/followerConstants.npl.json. Here they stay off unless
+// ENGINE_OPTS passes them, so runs stay comparable with the saved baselines.
 // ORT_THREADS=n caps the threads one bench uses.
 // A manifest clip may carry `hint` ({surah, ayah}): the ayah on screen, which
-// the app passes at the start of a take.
+// the app passes at the start of a take. It may also carry:
+//   parts: [{audio, key}]   recordings fed one after another as one take, in
+//                           the given order, untouched; the result's `partsAt`
+//                           says when each ran (instead of `audio`);
+//   expected: {surah, ayah, ayahEnd?, word?}
+//                           start the take in the app's correction state with
+//                           this passage (natural/README.md), not in tracking.
+//                           ayahEnd defaults to the app's ten-ayah passage;
+//                           `word` locks on that word of the ayah instead of
+//                           the first (a recording that starts mid-ayah);
+//   flush: true             harness-only end-of-input flush, see endFlush();
+//   trackAt: {t, surah, ayah, word?, ayahEnd?}
+//                           the model hears the recording from its start, but the
+//                           tracker starts only when audio time t (seconds) is
+//                           decoded, on that word, in the app's correction state,
+//                           with the sounds heard since t: as a lock on that word
+//                           (natural/junction/README.md).
+// On one recording: --expected 7:61[-67] and --flush 1.
+// BENCH_PROBE=<module> adds an observer of each run: its createProbe({zs})
+// returns {start(id), setTime(t), afterChunk(), finish()}, and what finish()
+// returns lands in the run's `probe`, with what an optional afterStop(tracer)
+// returns once the decoder has flushed. Off by default.
 //
 // --flow app (default) copies RecitationTrackingService: start tracking; at
 // each lock switch to correction expecting ten ayat from the lock, sliding
@@ -67,6 +91,7 @@ for (let i = 2; i < process.argv.length; i += 2) {
   args[process.argv[i].replace(/^--/, '')] = process.argv[i + 1];
 }
 const flow = args.flow ?? 'app';
+const flushArg = args.flush !== undefined && args.flush !== '0';
 
 function loadTimings(file) {
   if (!file) return null;
@@ -127,6 +152,7 @@ let log = [];
 let flags = [];
 let vchanges = [];
 const vstate = new Map();
+const vjunction = new Map();
 // Tracker health changes (engines that expose trackingHealth()).
 let health = [];
 let lastHealth = null;
@@ -135,6 +161,8 @@ let levels = [];
 // Changes after stop() never reach the app (recitationEngine.stop does not
 // report verdicts), so the replay skips them.
 let stopped = false;
+// Each word's last verdict before stop(), for the end-of-input flush.
+const liveState = new Map();
 
 function trackHealth() {
   const h =
@@ -168,7 +196,14 @@ function pick(msg) {
       return {
         type: msg.type,
         phase: msg.state?.phase,
-        ...(issue ? {kind: issue.kind, key: `${issue.surah}:${issue.ayah}`} : {}),
+        ...(issue
+          ? {
+              kind: issue.kind,
+              key: `${issue.surah}:${issue.ayah}`,
+              word: issue.word,
+              source: issue.source ?? 'word',
+            }
+          : {}),
       };
     }
     case 'debug': {
@@ -180,7 +215,12 @@ function pick(msg) {
           : d.to && typeof d.to.surah === 'number'
             ? {at: `${d.to.surah}:${d.to.ayah}:${d.to.word}`}
             : {};
-      return {type: msg.type, event: msg.event, ...at};
+      return {
+        type: msg.type,
+        event: msg.event,
+        ...at,
+        ...(d.reason ? {reason: d.reason} : {}),
+      };
     }
     default:
       return {type: msg.type};
@@ -192,7 +232,13 @@ const zs = await tilawa.createZipformerSession({
   corpus: JSON.parse(
     fs.readFileSync(path.join(OUT, 'assets/zipformer_quran.json'), 'utf8'),
   ),
-  onEvent: msg => log.push({t: +audioT.toFixed(2), ...pick(msg)}),
+  onEvent: msg =>
+    log.push({
+      t: +audioT.toFixed(2),
+      ...pick(msg),
+      // Stop-time events: the app has stopped listening by then.
+      ...(stopped ? {stop: true} : {}),
+    }),
   structural: flow === 'correction' ? undefined : false,
   enableFallback: false,
   debug: true,
@@ -206,6 +252,10 @@ const zs = await tilawa.createZipformerSession({
     ...(engineOpts.config ?? {}),
   },
 });
+
+const probe = process.env.BENCH_PROBE
+  ? (await import(path.resolve(process.env.BENCH_PROBE))).createProbe({zs})
+  : null;
 
 const STRUCT_ON = {ayahOrder: true, similarVerse: true};
 const STRUCT_OFF = {ayahOrder: false, similarVerse: false};
@@ -287,6 +337,8 @@ function drain() {
         kind: issue.kind,
         key: `${issue.surah}:${issue.ayah}`,
         word: issue.word,
+        source: issue.source ?? 'word',
+        ...(stopped ? {stop: true} : {}),
       });
     zs.correct('review_later');
   }
@@ -296,7 +348,8 @@ function drain() {
 function trackVerdicts() {
   for (const v of zs.verdicts()) {
     const id = `${v.surah}:${v.ayah}:${v.word}`;
-    if (vstate.get(id) !== v.state) {
+    // A patched engine's junction check can add its result without a new state.
+    if (vstate.get(id) !== v.state || vjunction.get(id) !== v.junctionMissing) {
       const change = {
         t: +audioT.toFixed(2),
         id,
@@ -318,20 +371,156 @@ function trackVerdicts() {
           vowelMargin: r(v.vowelMargin),
           slip: r(v.slip),
           ...(v.vowelDetails ? {vowels: v.vowelDetails} : {}),
+          ...(v.junctionMissing !== undefined
+            ? {junction: r(v.junction), junctionMissing: v.junctionMissing}
+            : {}),
         };
       }
       if (stopped) change.stop = true;
+      else liveState.set(id, v.state);
       vchanges.push(change);
       vstate.set(id, v.state);
+      vjunction.set(id, v.junctionMissing);
     }
   }
 }
 
+/**
+ * Harness-only end-of-input flush, so a clip's last word can be judged. The
+ * app never does this: it reads verdicts unsettled, where the word the cursor
+ * is on stays pending until sounds of a later word arrive, and it stops
+ * listening at stop(). After the engine's own stop() (its 2 s tail and decoder
+ * flush) this asks the tracker that followed the clip for settled verdicts: no
+ * dwell, cursor word judged, last stretch aligned through the ayah's end.
+ * Returned apart from vchanges, each verdict tagged `flush`, so nothing here
+ * can pass for what the app heard. `newly` marks words the live verdicts left
+ * pending or never reported.
+ */
+function endFlush(tracer) {
+  if (!tracer) return {tailSec: 2, tracker: false, verdicts: [], words: []};
+  const r = x => (typeof x === 'number' ? +x.toFixed(3) : null);
+  const verdicts = tracer.verdicts(true).map(v => {
+    const id = `${v.surah}:${v.ayah}:${v.word}`;
+    const live = liveState.get(id) ?? null;
+    return {
+      flush: true,
+      id,
+      state: v.state,
+      live,
+      newly: live === null || live === 'pending',
+      d: {
+        distance: r(v.distance),
+        heardRatio: r(v.heardRatio),
+        margin: r(v.margin),
+        gop: r(v.gop),
+        gopNone: r(v.gopNone),
+        gopTwice: r(v.gopTwice),
+        vowelErrors: v.vowelErrors ?? null,
+        vowelMargin: r(v.vowelMargin),
+      },
+    };
+  });
+  return {
+    tailSec: 2,
+    tracker: true,
+    verdicts,
+    words: heardWords(tracer),
+    transcript: tracer.tracker.heard.map(h => h.ch).join(''),
+  };
+}
+
+/**
+ * What the tracker heard on each word at the end of the take, by the settled
+ * alignment the verdicts use: the phonemes and their decoder frames (25 a
+ * second). Reads the tracer without changing it.
+ */
+function heardWords(tracer) {
+  const t = tracer.tracker;
+  const segs = tracer.segment(t.trail);
+  if (tracer.anchorAyahEnd > 0 && segs.length) {
+    const last = segs[segs.length - 1];
+    const end = tracer.ayahEndCell(last.refTo);
+    if (end > last.refTo) last.refTo = end;
+  }
+  const spans = new Map();
+  for (const seg of segs) {
+    for (const [w, sp] of tracer.alignSegment(seg)) spans.set(w, sp);
+  }
+  const c = t.corpus;
+  return [...spans.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([w, sp]) => {
+      const g = t.firstWord + w;
+      return {
+        id: `${c.wordSurah[g]}:${c.wordAyah[g]}:${c.wordInAyah[g]}`,
+        heard: t.heard
+          .slice(sp.from, sp.to)
+          .map(h => h.ch)
+          .join(''),
+        from: t.heard[sp.from]?.frame ?? null,
+        to: t.heard[sp.to - 1]?.frame ?? null,
+        run: sp.run,
+      };
+    });
+}
+
+/** One recording, or several played in order as one take. */
+function loadAudio(audioPath, parts) {
+  const read = file => new Float32Array(fs.readFileSync(file).buffer.slice(0));
+  if (!parts) return {audio: read(audioPath), partsAt: null};
+  const pieces = parts.map(p => read(p.audio));
+  const audio = new Float32Array(pieces.reduce((n, x) => n + x.length, 0));
+  const partsAt = [];
+  let at = 0;
+  pieces.forEach((piece, i) => {
+    audio.set(piece, at);
+    partsAt.push({
+      key: parts[i].key ?? null,
+      start: +(at / SR).toFixed(3),
+      end: +((at + piece.length) / SR).toFixed(3),
+    });
+    at += piece.length;
+  });
+  return {audio, partsAt};
+}
+
+const TRACK_AT_HISTORY = 120; // cfg.lostWindow: the window the lost rate looks over
+/** A clip's `trackAt`: the app's correction state, locked on a word now. */
+async function trackFrom({t, surah: s, ayah: a, word = 0, ayahEnd}) {
+  delete zs.engine.feedSearching;
+  expectedSurah = s;
+  expectedEnd =
+    ayahEnd ?? Math.max(a, Math.min(surahLength(s), a + PASSAGE_AYAT - 1));
+  checking = true;
+  zs.setMode('correction');
+  zs.setExpected({surah: s, ayah: a, ayahEnd: expectedEnd});
+  await zs.setStructural(STRUCT_ON);
+  const from = Math.floor(t * 25) - 1;
+  const replay = zs.engine.buffer.filter(c => c.frame >= from);
+  const events = zs.engine.lock(
+    zs.corpus.wordIndex(s, a, word),
+    replay,
+    'located',
+  );
+  // In the app the reader has been followed up to here, so the tracker's cost rate
+  // has this much clean history behind it, not the few sounds since this lock.
+  const tracker = zs.engine.tracker;
+  tracker.costRate = (window = zs.cfg.lostWindow) => {
+    const n = tracker.costs.length;
+    if (!n) return 0;
+    const w = Math.min(window, n + TRACK_AT_HISTORY);
+    const before = n - w > 0 ? tracker.costs[n - w - 1] : 0;
+    return (tracker.costs[n - 1] - before) / w;
+  };
+  zs.dispatch(events.flatMap(ev => zs.handle(ev)));
+}
+
 /** Runs one recitation through the engine, fresh as a new take. */
-async function runClip(audioPath, timingsPath, hint = null) {
-  const audio = new Float32Array(fs.readFileSync(audioPath).buffer.slice(0));
+async function runClip(audioPath, timingsPath, hint = null, opts = {}) {
+  const {audio, partsAt} = loadAudio(audioPath, opts.parts);
   const timings = loadTimings(timingsPath);
   zs.reset();
+  probe?.start(opts.id ?? audioPath ?? 'parts');
   zs.setHint(hint);
   zs.setExpected(null);
   await zs.setStructural(STRUCT_OFF);
@@ -340,6 +529,8 @@ async function runClip(audioPath, timingsPath, hint = null) {
   flags = [];
   vchanges = [];
   vstate.clear();
+  vjunction.clear();
+  liveState.clear();
   health = [];
   lastHealth = null;
   levels = [];
@@ -348,7 +539,20 @@ async function runClip(audioPath, timingsPath, hint = null) {
   lastKey = null;
   skippedKeys.clear();
   checking = flow === 'correction';
-  if (flow === 'correction') {
+  if (opts.expected) {
+    // The app's correction state with a chosen passage, as startCorrection
+    // leaves it after a lock, then the app flow from there on.
+    const {surah: s, ayah: a} = opts.expected;
+    expectedSurah = s;
+    expectedEnd =
+      opts.expected.ayahEnd ??
+      Math.max(a, Math.min(surahLength(s), a + PASSAGE_AYAT - 1));
+    checking = true;
+    zs.setMode('correction');
+    zs.setExpected({surah: s, ayah: a, ayahEnd: expectedEnd});
+    await zs.setStructural(STRUCT_ON);
+    if (opts.expected.word) zs.engine.track(s, a, opts.expected.word);
+  } else if (flow === 'correction') {
     const s = Number(args.surah ?? 0) || 1;
     zs.setMode('correction');
     zs.setExpected({surah: s, ayah: 1, ayahEnd: surahLength(s)});
@@ -357,10 +561,21 @@ async function runClip(audioPath, timingsPath, hint = null) {
     zs.setMode('tracking');
   }
 
+  let waiting = opts.trackAt ?? null;
+  if (waiting) {
+    // Until then the model hears the recording and the tracker waits.
+    checking = false;
+    zs.setMode('tracking');
+    zs.engine.feedSearching = () => [];
+  }
+
   let busy = 0;
+  // The tracker that followed the take: completed and idle drop it mid-stop.
+  let lastTracer = null;
   for (let off = 0; off < audio.length; off += CHUNK) {
     const chunk = audio.subarray(off, Math.min(off + CHUNK, audio.length));
     audioT = (off + chunk.length) / SR;
+    probe?.setTime(audioT);
     let energy = 0;
     for (let i = 0; i < chunk.length; i++) energy += chunk[i] * chunk[i];
     levels.push(+Math.sqrt(energy / Math.max(1, chunk.length)).toPrecision(3));
@@ -368,9 +583,15 @@ async function runClip(audioPath, timingsPath, hint = null) {
     await zs.feed(chunk);
     busy += performance.now() - t;
     drain();
-    if (flow === 'app') await appFlow();
+    if (waiting && zs.decoder.framesDecoded >= (waiting.t + 0.32) * 25) {
+      await trackFrom(waiting);
+      waiting = null;
+    }
+    if (flow === 'app' || opts.expected) await appFlow();
     trackVerdicts();
     trackHealth();
+    probe?.afterChunk();
+    lastTracer = zs.engine.tracer ?? lastTracer;
   }
   drain();
   // The last state of every word the app saw, with its scores.
@@ -387,12 +608,29 @@ async function runClip(audioPath, timingsPath, hint = null) {
       typeof v.vowelMargin === 'number' ? +v.vowelMargin.toFixed(3) : null,
     ...(v.vowelDetails ? {vowels: v.vowelDetails} : {}),
   }));
+  // The tracker at the end of the audio. An engine that just finished the
+  // surah dropped it inside this take's last chunks; one that was searching
+  // has none, and the flush then judges nothing.
+  const tracerAtEnd =
+    zs.engine.tracer ??
+    (log.findLast(
+      e =>
+        e.type === 'debug' &&
+        ['located', 'relocated', 'idle', 'locateFailed', 'completed'].includes(
+          e.event,
+        ),
+    )?.event === 'completed'
+      ? lastTracer
+      : null);
+  const probeResult = probe?.finish();
   stopped = true;
   const stopStart = performance.now();
   await zs.stop();
   const stopMs = Math.round(performance.now() - stopStart);
   drain();
   trackVerdicts();
+  const flush = opts.flush ? endFlush(tracerAtEnd) : undefined;
+  const probeAfterStop = probe?.afterStop?.(tracerAtEnd);
 
   const lags = [];
   const seen = new Set();
@@ -406,7 +644,7 @@ async function runClip(audioPath, timingsPath, hint = null) {
   }
   lags.sort((a, b) => a - b);
   const summary = {
-    audio: path.basename(audioPath),
+    audio: audioPath ? path.basename(audioPath) : 'parts',
     seconds: +(audio.length / SR).toFixed(2),
     flow,
     dwell: Number(args.dwell ?? 2),
@@ -428,7 +666,18 @@ async function runClip(audioPath, timingsPath, hint = null) {
       : null,
     flags,
   };
-  return {summary, log, flags, vchanges, health, finalVerdicts, levels};
+  return {
+    summary,
+    log,
+    flags,
+    vchanges,
+    health,
+    finalVerdicts,
+    levels,
+    ...(partsAt ? {partsAt} : {}),
+    ...(flush ? {flush} : {}),
+    ...(probeResult ? {probe: {...probeResult, ...probeAfterStop}} : {}),
+  };
 }
 
 if (args.list) {
@@ -446,9 +695,18 @@ if (args.list) {
     done += 1;
     if (fs.existsSync(out)) continue;
     try {
-      const result = await runClip(clip.audio, null, clip.hint ?? null);
+      const result = await runClip(clip.audio, null, clip.hint ?? null, {
+        parts: clip.parts,
+        expected: clip.expected,
+        flush: clip.flush ?? flushArg,
+        id: clip.id,
+        trackAt: clip.trackAt,
+      });
       result.clip = clip;
-      fs.writeFileSync(out, JSON.stringify(result));
+      // Written whole or not at all: a killed run must not leave a file that
+      // looks finished.
+      fs.writeFileSync(`${out}.tmp`, JSON.stringify(result));
+      fs.renameSync(`${out}.tmp`, out);
     } catch (error) {
       console.error(`clip ${clip.id} failed: ${error.message}`);
     }
@@ -465,6 +723,22 @@ if (args.list) {
           ayah: Number(args.hint.split(':')[1]),
         }
       : null,
+    {
+      flush: flushArg,
+      ...(args.expected
+        ? (() => {
+            const [s, range] = args.expected.split(':');
+            const [a, end] = range.split('-').map(Number);
+            return {
+              expected: {
+                surah: Number(s),
+                ayah: a,
+                ...(end ? {ayahEnd: end} : {}),
+              },
+            };
+          })()
+        : {}),
+    },
   );
   if (args.json) fs.writeFileSync(args.json, JSON.stringify(result));
   console.log(JSON.stringify(result.summary));

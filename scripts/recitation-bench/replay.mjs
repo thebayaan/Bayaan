@@ -7,6 +7,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {createRequire} from 'node:module';
+import {standaloneMarks} from './standaloneMarks.mjs';
 
 const HERE = path.dirname(new URL(import.meta.url).pathname);
 const ROOT = path.resolve(HERE, '../..');
@@ -22,7 +23,7 @@ const out = path.join(HERE, '.out/wordMarks.mjs');
 fs.mkdirSync(path.dirname(out), {recursive: true});
 fs.writeFileSync(
   out,
-  ts.transpileModule(src, {
+  ts.transpileModule(standaloneMarks(src), {
     compilerOptions: {
       module: ts.ModuleKind.ESNext,
       target: ts.ScriptTarget.ES2020,

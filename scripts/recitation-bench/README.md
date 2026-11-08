@@ -35,6 +35,9 @@ node bench.mjs --list manifest.json --outdir dir     # every clip of a set
   flow also ignores a match on an ayah already flagged as skipped. `ENGINE_OPTS` can turn either
   off, e.g. `{"keepContextOnDefer":false,"config":{"wholeWordAtCut":false}}`
   for the engine as it was before.
+- A manifest clip may carry `expected` (start in the app's correction state on a
+  chosen passage), `parts` (recordings fed in order) and `flush` (the harness's
+  end-of-input flush, kept apart and tagged): see `natural/README.md`.
 - `ORT_THREADS=1` runs single-threaded: about five times less CPU per run, so
   several benches can run at once.
 - Verdict changes after `stop()` are tagged `stop`; the app never hears them.
@@ -73,6 +76,18 @@ node bench.mjs --list manifest.json --outdir dir     # every clip of a set
   skipped-ayah flags.
 - `candidates.mjs <dir>...`: one line per shown mark with its context, for
   trying rule changes on the whole set at once.
+
+## Natural benchmark
+
+`natural/` scores the marks on unedited recordings and the official text:
+mutashabihat, correct-recitation pools and recitation phenomena. New baselines go
+there. See `natural/README.md`.
+
+## Engine patch and mark rules
+
+`stack/` holds the checks behind the engine patch and the mark rules for the
+junction check, the second judge's answer and the added-word mark. See
+`stack/README.md`.
 
 ## Limits
 

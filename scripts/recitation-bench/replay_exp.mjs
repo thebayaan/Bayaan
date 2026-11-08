@@ -37,6 +37,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import {createRequire} from 'node:module';
+import {standaloneMarks} from './standaloneMarks.mjs';
 
 const HERE = path.dirname(new URL(import.meta.url).pathname);
 const ROOT = path.resolve(HERE, '../..');
@@ -54,7 +55,7 @@ fs.mkdirSync(path.dirname(compiled), {recursive: true});
 if (!fs.existsSync(compiled)) {
   fs.writeFileSync(
     compiled,
-    ts.transpileModule(src, {
+    ts.transpileModule(standaloneMarks(src), {
       compilerOptions: {
         module: ts.ModuleKind.ESNext,
         target: ts.ScriptTarget.ES2020,
