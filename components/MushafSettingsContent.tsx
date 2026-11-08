@@ -70,7 +70,7 @@ import {
 import {useRecitationTrackingStore} from '@/store/recitationTrackingStore';
 import {RECITATION_AVAILABLE} from '@/services/recitation/recitationAvailability';
 import {
-  recitationModelNeedsDownload,
+  recitationModelOnPhone,
   removeRecitationModel,
 } from '@/services/recitation/RecitationTrackingService';
 import {recitationLogDatabase} from '@/services/recitation/RecitationLogDatabase';
@@ -569,12 +569,15 @@ const RecitationModelControl: React.FC<RecitationModelControlProps> = ({
   const status = useRecitationTrackingStore(s => s.status);
   const progress = useRecitationTrackingStore(s => s.downloadProgress);
   const [downloaded, setDownloaded] = useState<boolean | null>(null);
-  const size = formatNumber(RECITATION_DOWNLOAD_MB);
+  const [sizeMb, setSizeMb] = useState(RECITATION_DOWNLOAD_MB);
+  const size = formatNumber(sizeMb);
 
   useEffect(() => {
     let cancelled = false;
-    recitationModelNeedsDownload().then(needs => {
-      if (!cancelled) setDownloaded(!needs);
+    recitationModelOnPhone().then(onPhone => {
+      if (cancelled) return;
+      setDownloaded(onPhone.downloaded);
+      setSizeMb(onPhone.sizeMb);
     });
     return () => {
       cancelled = true;
@@ -591,7 +594,10 @@ const RecitationModelControl: React.FC<RecitationModelControlProps> = ({
           text: t('common:actions.remove'),
           style: 'destructive',
           onPress: () => {
-            removeRecitationModel().then(() => setDownloaded(false));
+            removeRecitationModel().then(() => {
+              setDownloaded(false);
+              setSizeMb(RECITATION_DOWNLOAD_MB);
+            });
           },
         },
       ],

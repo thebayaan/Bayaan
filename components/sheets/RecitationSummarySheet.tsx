@@ -17,6 +17,7 @@ import type {
 } from '@/store/recitationTrackingStore';
 import {ScaledSheet, moderateScale} from '@/utils/scale';
 import type {Theme} from '@/utils/themeUtils';
+import {recitationMarkRef} from './recitationMarkRef';
 
 // After a take: the ayat recited, the words marked while reciting (and the
 // ones corrected), and the possible slips worth checking, each with Show and
@@ -33,6 +34,7 @@ const KIND_KEYS = {
 const MARK_KEYS = {
   missed: 'recitationSummary.markKinds.missed',
   wrong: 'recitationSummary.markKinds.wrong',
+  added: 'recitationSummary.markKinds.added',
   corrected: 'recitationSummary.markKinds.corrected',
 } as const;
 
@@ -131,65 +133,69 @@ export const RecitationSummarySheet = (
         {flags.length === 0 && marks.length === 0 ? (
           <Text style={styles.nothing}>{t('recitationSummary.nothing')}</Text>
         ) : null}
-        {marks.map(mark => (
-          <View
-            key={`${mark.surah}:${mark.ayah}:${mark.word}`}
-            style={styles.row}>
-            <Text style={styles.ref}>
-              {t('recitationSummary.wordRef', {
-                surah: surahName(mark.surah),
-                ayah: localizeDigits(mark.ayah),
-                word: localizeDigits(mark.word),
-              })}
-            </Text>
-            <Text style={styles.message}>{t(markMessageKey(mark))}</Text>
-            <View style={styles.actions}>
-              <Action
-                styles={styles}
-                label={t('recitationSummary.show')}
-                onPress={() => show(mark)}
-              />
-              <Action
-                styles={styles}
-                label={t('recitationSummary.retry')}
-                onPress={() => retry(mark)}
-              />
+        {marks.map(mark => {
+          const ref = recitationMarkRef(mark, mark.word);
+          const where = t(ref.key, ref.values);
+          return (
+            <View
+              key={`${mark.surah}:${mark.ayah}:${mark.word}:${mark.kind}`}
+              style={styles.row}>
+              <Text style={styles.ref}>{where}</Text>
+              <Text style={styles.message}>{t(markMessageKey(mark))}</Text>
+              <View style={styles.actions}>
+                <Action
+                  styles={styles}
+                  label={t('recitationSummary.show')}
+                  where={where}
+                  onPress={() => show(mark)}
+                />
+                <Action
+                  styles={styles}
+                  label={t('recitationSummary.retry')}
+                  where={where}
+                  onPress={() => retry(mark)}
+                />
+              </View>
             </View>
-          </View>
-        ))}
+          );
+        })}
         {flags.length === 0 ? null : (
           <>
             <Text style={styles.sectionHeader}>
               {t('recitationSummary.worthChecking')}
             </Text>
-            {flags.map(flag => (
-              <View key={flag.key} style={styles.row}>
-                <Text style={styles.ref}>
-                  {t('recitationSummary.flagRef', {
-                    surah: surahName(flag.surah),
-                    ayah: localizeDigits(flag.ayah),
-                  })}
-                </Text>
-                <Text style={styles.message}>{t(KIND_KEYS[flag.kind])}</Text>
-                <View style={styles.actions}>
-                  <Action
-                    styles={styles}
-                    label={t('recitationSummary.show')}
-                    onPress={() => show(flag)}
-                  />
-                  <Action
-                    styles={styles}
-                    label={t('recitationSummary.retry')}
-                    onPress={() => retry(flag)}
-                  />
-                  <Action
-                    styles={styles}
-                    label={t('recitationSummary.readCorrectly')}
-                    onPress={() => readCorrectly(flag)}
-                  />
+            {flags.map(flag => {
+              const where = t('recitationSummary.flagRef', {
+                surah: surahName(flag.surah),
+                ayah: localizeDigits(flag.ayah),
+              });
+              return (
+                <View key={flag.key} style={styles.row}>
+                  <Text style={styles.ref}>{where}</Text>
+                  <Text style={styles.message}>{t(KIND_KEYS[flag.kind])}</Text>
+                  <View style={styles.actions}>
+                    <Action
+                      styles={styles}
+                      label={t('recitationSummary.show')}
+                      where={where}
+                      onPress={() => show(flag)}
+                    />
+                    <Action
+                      styles={styles}
+                      label={t('recitationSummary.retry')}
+                      where={where}
+                      onPress={() => retry(flag)}
+                    />
+                    <Action
+                      styles={styles}
+                      label={t('recitationSummary.readCorrectly')}
+                      where={where}
+                      onPress={() => readCorrectly(flag)}
+                    />
+                  </View>
                 </View>
-              </View>
-            ))}
+              );
+            })}
           </>
         )}
         <Text style={styles.footnote}>{t('recitationSummary.footnote')}</Text>
@@ -211,17 +217,21 @@ type Styles = ReturnType<typeof createStyles>;
 function Action({
   styles,
   label,
+  where,
   onPress,
 }: {
   styles: Styles;
   label: string;
+  /** Which word or ayah, as every row has the same buttons. */
+  where: string;
   onPress: () => Promise<void>;
 }): React.JSX.Element {
   return (
     <Pressable
       style={styles.action}
       onPress={onPress}
-      accessibilityRole="button">
+      accessibilityRole="button"
+      accessibilityLabel={`${label}, ${where}`}>
       <Text style={styles.actionText}>{label}</Text>
     </Pressable>
   );

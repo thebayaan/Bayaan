@@ -21,32 +21,66 @@ import {
   type TakeRecord,
   type TakeWord,
 } from './take';
-import type {EngineMessage, RecitationStats} from './recitationEngine';
+import type {
+  EngineMessage,
+  RecitationEngine,
+  RecitationStats,
+} from './recitationEngine';
 import {
+  addedKey,
+  applyJudgeAnswer,
   applyVerdicts,
+  cancelCheck,
   confirmDue,
   dropLockArtifacts,
   dropRealignment,
   dropSuspects,
   emptyMarkBook,
+  endJudgeWaits,
+  finishChecks,
+  holdForJudge,
+  isFilteredChunk,
+  judgeAnswerMatters,
+  judgeAnswerStillDue,
   nextConfirmAt,
+  rememberVerdicts,
   shownMarks,
+  skipsSecondLook,
+  startChecks,
   markKey,
+  wordMarkKey,
+  type JudgeAnswer,
+  type JudgedVerdict,
   type MarkBook,
   type MarkKind,
+  type SeenVerdict,
   type VerdictChange,
+  type WordMark,
 } from './wordMarks';
 import {
   activeSessionPurpose,
   configureSession,
   holdSession,
   releaseSession,
+  sessionEngine,
   setSessionHint,
   startSession,
   stopSession,
   type SessionHandlers,
   type SessionUpdate,
 } from './sessionRunner';
+import {
+  checkWord,
+  endCheckTake,
+  prepareSecondLook,
+  startCheckTake,
+  wakeCheck,
+  type CheckAnswer,
+  type CheckHost,
+  type JudgeWake,
+} from './secondLook/checkWord';
+import {CANCEL_MAY_CANCEL, SECOND_LOOK_ENABLED} from './secondLook/config';
+import {wakesSecondJudge} from './secondJudge/wake';
 import {shownFlags, toShownFlag} from './flags';
 import {debugTakeSave, debugTakeStart, trace} from './debugTake';
 import {
@@ -66,6 +100,7 @@ import {SURAHS} from '@/data/surahData';
 
 export {
   recitationModelNeedsDownload,
+  recitationModelOnPhone,
   scheduleUnload,
   unloadRecitationModel,
 } from './engineHost';
@@ -101,6 +136,9 @@ let memo: Memorisation | null = null;
 // confirms suspects.
 let book: MarkBook = emptyMarkBook();
 let confirmTimer: ReturnType<typeof setTimeout> | null = null;
+// Numbers each second look, across takes, so an answer can only ever settle the
+// marks it was asked about.
+let lastCheckId = 0;
 // Each judged word's last verdict, for the take's record.
 interface JudgedWord {
   change: VerdictChange;
@@ -110,6 +148,8 @@ interface JudgedWord {
 let judged = new Map<string, JudgedWord>();
 // Marks the reader dismissed this take ("I read it correctly"), by key.
 let dismissedMarks = new Map<string, MarkKind>();
+// The added ones among them, for the take's record.
+let dismissedAdded: WordMark[] = [];
 // The last finished take, for dismissals after it ends.
 let lastTakeId: string | null = null;
 
@@ -125,9 +165,11 @@ const SUMMARY_REASONS: ReadonlySet<RecitationStopReason> = new Set([
 // sliding forward as the reader nears its end. Tilawa's tracker follows the
 // whole surah either way; the passage bounds the structural check at stop,
 // whose time and memory grow steeply with it (Al-Baqarah 2:7-286 ran a
-// phone out of memory; ten ayat take a tenth of a second on a Mac). Getting
-// lost goes back to tracking (dropToTracking), so moving the passage never
-// makes a search snap to its first ayah.
+// phone out of memory). With ten ayat the check runs in slices at stop, so the JS
+// thread stays free: in Hermes on a Mac, about 1.4 s of work at 2:215 with a voice
+// behind, no piece over 50 ms. No phone has been timed. Getting lost goes back to
+// tracking (dropToTracking), so moving the passage never makes a search snap to its
+// first ayah.
 const PASSAGE_AYAT = 10;
 // Slide once a recited ayah is this close to the passage's end.
 const SLIDE_WITHIN = 3;
@@ -215,14 +257,99 @@ function runConfirm(): void {
   if (!isTakeActive(useRecitationTrackingStore.getState().status)) return;
   const update = confirmDue(book, Date.now());
   book = update.book;
-  if (update.confirmed.length > 0) {
-    for (const m of update.confirmed) {
-      trace(`MARK ${m.kind} ${m.surah}:${m.ayah} word ${m.word + 1}`);
-    }
-    buzz();
-    publishMarks();
-  }
+  const toCheck = SECOND_LOOK_ENABLED
+    ? update.confirmed.filter(mark => !skipsSecondLook(mark))
+    : [];
+  const atOnce = update.confirmed.filter(mark => !toCheck.includes(mark));
+  // Held back before anything is published, so they cannot reach the page early.
+  const checkId = ++lastCheckId;
+  book = startChecks(book, toCheck, checkId);
+  const toShow = [...atOnce, ...askSecondLook(toCheck, checkId)];
+  if (toShow.length > 0) showMarks(toShow);
   scheduleConfirm();
+}
+
+function traceMarks(marks: readonly WordMark[]): void {
+  for (const m of marks) {
+    trace(`MARK ${m.kind} ${m.surah}:${m.ayah} word ${m.word + 1}`);
+  }
+}
+
+function showMarks(marks: readonly WordMark[]): void {
+  traceMarks(marks);
+  buzz();
+  publishMarks();
+}
+
+function traceCheck(mark: WordMark, answer: CheckAnswer, counted: boolean) {
+  const word = `check ${mark.surah}:${mark.ayah} word ${mark.word + 1} ${mark.kind}`;
+  if (answer.outcome === 'failed') {
+    trace(`${word}: failed open (${answer.reason}), waited ${answer.ms} ms`);
+    return;
+  }
+  const result = !counted
+    ? 'too late to count'
+    : answer.outcome === 'kept'
+      ? 'shows'
+      : 'cancelled';
+  const score =
+    answer.score === null ? '' : `, ${answer.score.toFixed(2)} a letter`;
+  const gap = answer.gap === null ? '' : `, gap ${answer.gap.toFixed(2)}`;
+  trace(
+    `${word}: ${result} (${answer.why})${score}${gap}, waited ${answer.ms} ms`,
+  );
+}
+
+/**
+ * Marks held back as 'checking' wait until the second look has answered for all of
+ * them: then those that stay show together, with one vibration, as marks confirmed
+ * together always have. A check that fails leaves its mark to show.
+ * @returns The marks to show if all answered in this tick, for the caller to show
+ *   with its own. Otherwise they show when the last answer comes.
+ */
+function askSecondLook(
+  marks: readonly WordMark[],
+  checkId: number,
+): WordMark[] {
+  let waiting = marks.length;
+  let asking = true;
+  let inThisTick: WordMark[] = [];
+  const answered = (mark: WordMark, answer: CheckAnswer) => {
+    const key = markKey(mark.surah, mark.ayah, mark.word);
+    const current = book.get(key);
+    traceCheck(
+      mark,
+      answer,
+      current?.status === 'checking' && current.checkId === checkId,
+    );
+    if (answer.outcome === 'cancelled') {
+      book = cancelCheck(book, mark, checkId);
+    }
+    waiting -= 1;
+    if (waiting > 0) return;
+    const update = finishChecks(book, checkId);
+    book = update.book;
+    if (asking) inThisTick = update.confirmed;
+    else if (update.confirmed.length > 0) showMarks(update.confirmed);
+  };
+  for (const mark of marks) {
+    const answer = checkWord(mark, mark.lastBadAudio);
+    if ('then' in answer) {
+      void answer.then(
+        result => answered(mark, result),
+        error =>
+          answered(mark, {
+            outcome: 'failed',
+            reason: String(error),
+            ms: 0,
+          }),
+      );
+    } else {
+      answered(mark, answer);
+    }
+  }
+  asking = false;
+  return inThisTick;
 }
 
 /** One short vibration for a newly marked mistake, if the reader wants it. */
@@ -235,13 +362,134 @@ function buzz(): void {
   );
 }
 
-function noteVerdicts(all: readonly VerdictChange[]): void {
+// The seam the second judge plugs into. The judge hears each word that wakes it
+// through its port, reads what it needs from secondJudgeEngine(), and later answers
+// with answerSecondJudge(). Nothing here waits: until an answer comes the follower
+// and the other marks go on, and a suspect waits for at most JUDGE_WAIT_MS.
+
+export type {JudgeWake};
+
+export interface SecondJudgePort {
+  /** Must return at once. Called in the engine's own event, after the filters. */
+  wake: (wake: JudgeWake) => void;
+}
+
+let judgePort: SecondJudgePort | null = SECOND_LOOK_ENABLED
+  ? {wake: wakeCheck}
+  : null;
+let lastWakeId = 0;
+// Wakes not answered yet. Losing the reader or ending the take forgets them.
+let judgeWaiting = new Map<number, JudgedVerdict>();
+let seenVerdicts: SeenVerdict[] = [];
+
+/** Attaches the second judge, or with null takes it away. */
+export function setSecondJudgePort(port: SecondJudgePort | null): void {
+  judgePort = port;
+}
+
+/** The running take's engine, for its log-mel frames and word places. */
+export function secondJudgeEngine(): RecitationEngine | null {
+  return activeSessionPurpose() === 'follow' ? sessionEngine() : null;
+}
+
+/** False once a wake no longer matters: no model need run for it. */
+export function secondJudgeWants(wakeId: number): boolean {
+  const verdict = judgeWaiting.get(wakeId);
+  return !!verdict && judgeAnswerMatters(book, verdict, seenVerdicts);
+}
+
+/**
+ * The judge's answer to a wake. One that no longer matters does nothing.
+ * @param note - How the answer came, in numbers, for the trace
+ */
+export function answerSecondJudge(
+  wakeId: number,
+  answer: JudgeAnswer,
+  note = '',
+): void {
+  const verdict = judgeWaiting.get(wakeId);
+  if (!verdict) return;
+  judgeWaiting.delete(wakeId);
+  const key = markKey(verdict.surah, verdict.ayah, verdict.word);
+  if (dismissedMarks.has(key)) return;
+  const before = book.get(key)?.status ?? 'none';
+  book = applyJudgeAnswer(book, verdict, answer, seenVerdicts);
+  trace(
+    `judge ${verdict.surah}:${verdict.ayah} word ${verdict.word + 1} ${verdict.state} at ${(verdict.audioTime ?? 0).toFixed(2)} s: ${answer}${note}, mark ${before} to ${book.get(key)?.status ?? 'none'}`,
+  );
+  // A corrected word is on the page, and a new suspect takes its place in the book.
+  if (before === 'corrected') publishMarks();
+  scheduleConfirm();
+}
+
+const checkHost: CheckHost = {
+  engine: secondJudgeEngine,
+  wants: secondJudgeWants,
+  answer: answerSecondJudge,
+  markOf: word => book.get(markKey(word.surah, word.ayah, word.word)),
+};
+
+function forgetJudgeWakes(): void {
+  judgeWaiting = new Map();
+  seenVerdicts = [];
+}
+
+/**
+ * What the engine suspected just before losing the reader is not trustworthy, and
+ * nor is what the judge may yet say about it. Marks already shown stay, and so does
+ * a word that would have shown by now but for the judge's time.
+ */
+function dropWhatTheReaderLeftBehind(now: number): void {
+  book = dropSuspects(book, now);
+  judgeWaiting = new Map(
+    [...judgeWaiting].filter(
+      ([, verdict]) =>
+        book.get(markKey(verdict.surah, verdict.ayah, verdict.word))?.status ===
+          'suspect' || judgeAnswerStillDue(verdict, seenVerdicts, now),
+    ),
+  );
+}
+
+function wakeSecondJudge(
+  port: SecondJudgePort,
+  changes: readonly VerdictChange[],
+  now: number,
+  audioTime: number,
+): void {
+  for (const change of changes) {
+    if (!wakesSecondJudge(change)) continue;
+    const wake: JudgeWake = {
+      id: ++lastWakeId,
+      surah: change.surah,
+      ayah: change.ayah,
+      word: change.word,
+      totalWords: change.totalWords,
+      state: change.state,
+      at: now,
+      audioTime,
+    };
+    judgeWaiting.set(wake.id, wake);
+    book = holdForJudge(book, wake, now);
+    port.wake(wake);
+  }
+}
+
+function noteVerdicts(
+  all: readonly VerdictChange[],
+  audioTime: number,
+  mayWakeJudge: boolean,
+): void {
   const now = Date.now();
   // A word the reader said they read correctly is not marked again.
-  const changes = all.filter(
-    c => !dismissedMarks.has(markKey(c.surah, c.ayah, c.word)),
-  );
+  const changes = all
+    .filter(c => !dismissedMarks.has(markKey(c.surah, c.ayah, c.word)))
+    .map(c =>
+      c.addedBefore && dismissedMarks.has(addedKey(c))
+        ? {...c, addedBefore: undefined}
+        : c,
+    );
   for (const change of changes) {
+    if (change.repeat) continue;
     if (
       change.state !== 'pending' &&
       (change.state !== 'ok' ||
@@ -258,13 +506,19 @@ function noteVerdicts(all: readonly VerdictChange[]): void {
       at: now,
     });
   }
-  const update = applyVerdicts(book, changes, now);
+  const update = applyVerdicts(book, changes, now, audioTime);
   for (const m of update.corrected) {
     trace(`CORRECTED ${m.surah}:${m.ayah} word ${m.word + 1}`);
   }
-  if (update.book === book) return;
+  const before = book;
   book = update.book;
-  publishMarks();
+  if (judgePort) {
+    seenVerdicts = rememberVerdicts(seenVerdicts, changes, now);
+    if (mayWakeJudge) wakeSecondJudge(judgePort, changes, now, audioTime);
+  }
+  if (book === before) return;
+  if (update.confirmed.length > 0) showMarks(update.confirmed);
+  else publishMarks();
   scheduleConfirm();
 }
 
@@ -309,6 +563,21 @@ function takeWords(): TakeWord[] {
       kind: dismissedKind ?? marked?.kind ?? null,
       hidden: entry.hidden,
       at: entry.at,
+    });
+  }
+  const added = [...book.values()].filter(
+    m => m.kind === 'added' && m.status === 'mistake',
+  );
+  for (const mark of [...added, ...dismissedAdded]) {
+    const {surah, ayah, word, totalWords} = mark;
+    out.push({
+      surah,
+      ayah,
+      word: hafsWordPosition(surah, ayah, word, totalWords),
+      result: dismissedAdded.includes(mark) ? 'dismissed' : 'mistake',
+      kind: 'added',
+      hidden: judged.get(markKey(surah, ayah, word))?.hidden ?? false,
+      at: mark.since,
     });
   }
   return out.sort(
@@ -380,8 +649,11 @@ function handleEvent(msg: EngineMessage): void {
     // chunk is judged from replayed audio, and a chunk judging a long stretch
     // across ayat at once is the tracker re-aligning, not the reader.
     if (state.locked && memo?.check) {
+      const lock = msg.lock ?? null;
       noteVerdicts(
-        dropRealignment(dropLockArtifacts(msg.changes, msg.lock ?? null)),
+        dropRealignment(dropLockArtifacts(msg.changes, lock)),
+        msg.audioTime,
+        !isFilteredChunk(msg.changes, lock),
       );
     } else if (!state.locked && msg.changes.some(c => c.state !== 'pending')) {
       trace(`${msg.changes.length} verdicts ignored (not locked)`);
@@ -460,9 +732,7 @@ function handleEvent(msg: EngineMessage): void {
   if (LOCK_EVENTS.has(msg.event)) setState({locked: true});
   if (UNLOCK_EVENTS.has(msg.event)) {
     setState({locked: false});
-    // What the engine suspected just before losing the reader is not
-    // trustworthy; marks already shown stay.
-    book = dropSuspects(book);
+    dropWhatTheReaderLeftBehind(Date.now());
     scheduleConfirm();
   }
   if (FALLBACK_EVENTS.has(msg.event)) dropToTracking();
@@ -521,12 +791,22 @@ function onUpdate(update: SessionUpdate): void {
       book = emptyMarkBook();
       judged = new Map();
       dismissedMarks = new Map();
+      dismissedAdded = [];
+      forgetJudgeWakes();
       clearConfirmTimer();
       debugTakeStart();
       trace(
         `take started (text ${memo.hidden ? 'hidden' : 'shown'}, checking ${memo.check ? 'on' : 'off'})`,
       );
       loadDismissed(memo);
+      if (SECOND_LOOK_ENABLED && memo.check) {
+        prepareSecondLook();
+        startCheckTake(
+          checkHost,
+          useMushafSettingsStore.getState().recitationCancelMayCancel ??
+            CANCEL_MAY_CANCEL,
+        );
+      }
       analyticsService.trackRecitationTrackingStarted({
         hint_surah_id: takeHint?.surah ?? null,
         model_loaded: update.modelWasLoaded,
@@ -541,6 +821,19 @@ function onUpdate(update: SessionUpdate): void {
       return;
     case 'off': {
       clearConfirmTimer();
+      forgetJudgeWakes();
+      // What is due by its own rules shows, as no answer can come now. So does a
+      // mark still waiting for its second look: a check that gets no answer must
+      // not hide it. The reader has stopped, so no vibration.
+      const due = confirmDue(endJudgeWaits(book), Date.now());
+      const unanswered = finishChecks(due.book);
+      book = unanswered.book;
+      const lastMarks = [...due.confirmed, ...unanswered.confirmed];
+      if (lastMarks.length > 0) {
+        traceMarks(lastMarks);
+        publishMarks();
+      }
+      endCheckTake(update.stats);
       if (update.listened) trackTakeStopped(update.reason, update.stats);
       // The take's marks stay on the page until the next take.
       const {marks} = useRecitationTrackingStore.getState();
@@ -723,20 +1016,28 @@ export async function dismissRecitationMark(target: {
   surah: number;
   ayah: number;
   word: number;
+  kind?: MarkKind;
 }): Promise<void> {
   const {marks, status} = useRecitationTrackingStore.getState();
-  const mark = marks.find(
-    m =>
-      m.surah === target.surah &&
-      m.ayah === target.ayah &&
-      m.word === target.word,
+  const added = target.kind === 'added';
+  const inBook = book.get(
+    added ? addedKey(target) : markKey(target.surah, target.ayah, target.word),
   );
+  const mark =
+    marks.find(
+      m =>
+        m.surah === target.surah &&
+        m.ayah === target.ayah &&
+        m.word === target.word &&
+        (m.kind === 'added') === added,
+    ) ?? (inBook?.status === 'checking' ? inBook : undefined);
   if (!mark) return;
   setState({marks: marks.filter(m => m !== mark)});
   trace(`dismissed ${mark.surah}:${mark.ayah} word ${mark.word + 1}`);
-  const key = markKey(mark.surah, mark.ayah, mark.word);
+  const key = wordMarkKey(mark);
   if (isTakeActive(status)) {
     dismissedMarks.set(key, mark.kind);
+    if (added) dismissedAdded.push(mark);
     const next = new Map(book);
     next.delete(key);
     book = next;
@@ -749,6 +1050,7 @@ export async function dismissRecitationMark(target: {
       mark.surah,
       mark.ayah,
       hafsWordPosition(mark.surah, mark.ayah, mark.word, mark.totalWords),
+      ...(added ? (['added'] as const) : []),
     );
   } catch (error) {
     console.warn('[recitation] could not save the dismissal', error);

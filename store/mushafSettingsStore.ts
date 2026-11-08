@@ -7,6 +7,7 @@ import {
   migratePersistedId,
   type RewayahId,
 } from '@/services/rewayah/RewayahIdentity';
+import type {CancelMayCancel} from '@/services/recitation/secondLook/config';
 
 // Re-exported for backward compat with existing imports across the app.
 // RewayahIdentity is the canonical source; do not redefine the union here.
@@ -126,6 +127,11 @@ interface MushafSettingsState {
   // as they recite, and a short vibration on each one.
   recitationCheckMistakes: boolean;
   recitationMistakeHaptics: boolean;
+  /**
+   * What the cancel step may cancel, chosen on the hidden spike screen. Null until
+   * then: secondLook/config.ts says.
+   */
+  recitationCancelMayCancel: CancelMayCancel | null;
 
   // Word-by-word settings
   showWBW: boolean;
@@ -189,6 +195,7 @@ interface MushafSettingsState {
   toggleRecitationHideText: () => void;
   toggleRecitationCheckMistakes: () => void;
   toggleRecitationMistakeHaptics: () => void;
+  setRecitationCancelMayCancel: (choice: CancelMayCancel) => void;
   toggleWBW: () => void;
   toggleWBWTranslation: () => void;
   toggleWBWTransliteration: () => void;
@@ -236,6 +243,7 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
       recitationHideText: false,
       recitationCheckMistakes: true,
       recitationMistakeHaptics: true,
+      recitationCancelMayCancel: null,
       showWBW: false,
       wbwShowTranslation: defaultShowEnglishReadingAids, // @ai
       wbwShowTransliteration: false,
@@ -280,6 +288,8 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
         set(state => ({
           recitationMistakeHaptics: !state.recitationMistakeHaptics,
         })),
+      setRecitationCancelMayCancel: (choice: CancelMayCancel) =>
+        set({recitationCancelMayCancel: choice}),
       toggleWBW: () => set(state => ({showWBW: !state.showWBW})),
       toggleWBWTranslation: () =>
         set(state => ({wbwShowTranslation: !state.wbwShowTranslation})),

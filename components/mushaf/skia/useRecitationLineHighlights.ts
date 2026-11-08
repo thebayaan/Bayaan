@@ -18,7 +18,8 @@ const KEY_SEPARATOR = ',';
  * Adds recitation follow-along to a Digital Khatt page's line highlights:
  * a faint tint under ayat already recited this take, the word being recited,
  * a dotted underline under each word marked as a mistake (and kept once it
- * is corrected), and a light band over a skipped or look-alike ayah. Pages
+ * is corrected), a small caret in the gap before the word an added mark stands
+ * on, and a light band over a skipped or look-alike ayah. Pages
  * without any of it keep `base` and do not re-render as the reader moves
  * through other pages. Mistake letters are coloured by
  * useRecitationMarkColors.
@@ -68,13 +69,15 @@ export function useRecitationLineHighlights(
       : '',
   );
 
-  // Word marks on this page, as key|word|total. They stay after the take
+  // Word marks on this page, as key|word|total|kind. They stay after the take
   // ends, until the next one.
   const marksId = useRecitationTrackingStore(s =>
     s.marks
       .filter(m => pageKeys.has(`${m.surah}:${m.ayah}`))
       .map(m =>
-        [`${m.surah}:${m.ayah}`, m.word, m.totalWords].join(FIELD_SEPARATOR),
+        [`${m.surah}:${m.ayah}`, m.word, m.totalWords, m.kind].join(
+          FIELD_SEPARATOR,
+        ),
       )
       .join(KEY_SEPARATOR),
   );
@@ -169,7 +172,7 @@ export function useRecitationLineHighlights(
 
     if (marksId) {
       for (const entry of marksId.split(KEY_SEPARATOR)) {
-        const [verseKey, word, total] = entry.split(FIELD_SEPARATOR);
+        const [verseKey, word, total, kind] = entry.split(FIELD_SEPARATOR);
         const position = dkWordPosition(
           digitalKhattDataService.getVerseWords(verseKey),
           Number(word),
@@ -183,7 +186,7 @@ export function useRecitationLineHighlights(
           verseKey,
           position,
           colors.mistake,
-          'underline',
+          kind === 'added' ? 'caret' : 'underline',
         );
       }
     }

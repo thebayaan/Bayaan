@@ -6,7 +6,7 @@ import {
   getLineWordSpans,
   type WordSlotSource,
 } from '@/services/mushaf/lineWordSpans';
-import type {LineHighlightMap} from './verseHighlightLayers';
+import type {LineHighlight, LineHighlightMap} from './verseHighlightLayers';
 
 const AYAH_MARKER = '۝';
 
@@ -59,7 +59,7 @@ export function withRecitedWordRun(
   verseKey: string,
   position: number,
   color: string,
-  style: 'band' | 'underline' = 'band',
+  style: LineHighlight['style'] = 'band',
 ): LineHighlightMap {
   for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
     const span = getLineWordSpans(lines[lineIndex], source).find(

@@ -10,6 +10,7 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {Redirect, router} from 'expo-router';
 import {moderateScale} from '@/utils/scale';
 import Color from 'color';
+import {RECITATION_DOWNLOAD_MB} from '@/constants/recitation';
 import type {EngineMessage} from '@/services/recitation/recitationEngine';
 import {useTheme} from '@/hooks/useTheme';
 import {
@@ -28,6 +29,11 @@ import {
   startMicStream,
   type MicStream,
 } from '@/services/recitation/micStream';
+import {
+  CANCEL_MAY_CANCEL,
+  type CancelMayCancel,
+} from '@/services/recitation/secondLook/config';
+import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 
 // Phase 0 spike for offline recitation tracking (Tilawa). Hidden screen,
 // reachable from the dev menu or bayaan://recitation-spike. Not user-facing.
@@ -76,6 +82,10 @@ function RecitationSpikeScreen(): React.JSX.Element {
   const [word, setWord] = useState<WordState | null>(null);
   const [transcript, setTranscript] = useState('');
   const [stats, setStats] = useState<RecitationStats | null>(null);
+  const cancelChoice = useMushafSettingsStore(s => s.recitationCancelMayCancel);
+  const setCancelChoice = useMushafSettingsStore(
+    s => s.setRecitationCancelMayCancel,
+  );
   const [deviceRate, setDeviceRate] = useState<number | null>(null);
   const [inputRms, setInputRms] = useState(0);
   const [lastEvent, setLastEvent] = useState('-');
@@ -226,6 +236,32 @@ function RecitationSpikeScreen(): React.JSX.Element {
     );
   }
 
+  function renderCancelChoice(
+    label: string,
+    choice: CancelMayCancel,
+  ): React.JSX.Element {
+    const on = (cancelChoice ?? CANCEL_MAY_CANCEL) === choice;
+    return (
+      <TouchableOpacity
+        style={[
+          styles.button,
+          {backgroundColor: on ? theme.colors.text : card},
+        ]}
+        accessibilityRole="button"
+        accessibilityState={{selected: on}}
+        accessibilityLabel={`Cancel step: ${label}`}
+        onPress={() => setCancelChoice(choice)}>
+        <Text
+          style={[
+            styles.buttonText,
+            {color: on ? theme.colors.background : theme.colors.text},
+          ]}>
+          {label}
+        </Text>
+      </TouchableOpacity>
+    );
+  }
+
   function renderStat(label: string, value: string): React.JSX.Element {
     return (
       <View style={styles.statRow} key={label}>
@@ -253,8 +289,17 @@ function RecitationSpikeScreen(): React.JSX.Element {
       <Text style={[styles.subtitle, {color: muted}]}>Phase: {phase}</Text>
       {renderButton('Close', handleClose)}
 
+      <Text style={[styles.body, {color: theme.colors.text}]}>
+        The cancel step may cancel, from the next take in the mushaf:
+      </Text>
+      {renderCancelChoice('all marks', 'all')}
+      {renderCancelChoice('skipped marks only', 'skipped')}
+
       {phase === 'needs-download' &&
-        renderButton('Download model (~75 MB)', handleDownload)}
+        renderButton(
+          `Download model (~${RECITATION_DOWNLOAD_MB} MB)`,
+          handleDownload,
+        )}
       {phase === 'downloading' && (
         <Text style={[styles.body, {color: theme.colors.text}]}>
           Downloading… {Math.round(progress * 100)}%

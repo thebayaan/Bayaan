@@ -65,6 +65,30 @@ and are licensed under the **Quran-Lab NPL-1.2**, whose full text is in
 powers: follow-along is and will stay free, with no paywall or ads. Any copy of
 the model Bayaan hosts itself must be served with that licence file.
 
+`services/recitation/followerConstants.npl.json` holds the numbers that were tuned
+on this model's output (the word marks and the checks behind them). It is a Derivative
+of the model too, so that one file is under the **Quran-Lab NPL-1.2**, not the app's
+licence. In the app, numbers tuned on the model's output go in that file and nowhere
+else. The app's tests (`__tests__` folders and their fixtures) and the bench under
+`scripts/recitation-bench` and `scripts/second-look` use copies of them for their own
+checks and replays, and those numbers stay under the same licence wherever they appear
+there.
+
+For now that file is built into the app's JavaScript, with no licence file beside it.
+That is a known gap: before a public release it must be delivered with the model and
+its licence file, as the model is.
+
+## Recitation second look model (quran-asr-small)
+
+Before follow-along marks a word as a mistake, it checks the word with
+**quran-asr-small** on the device
+(https://huggingface.co/Abdou/quran-asr-small). The model
+(`model.int8.onnx`, revision `004f898639f3127a74eac1b898a2cb3ef0b5268d`) is not
+bundled: the app downloads it with the others. It is MIT licensed; the full text
+is in `licenses/quran-asr-small-MIT.txt`. Its card says the training data keeps its
+own terms: 36 EveryAyah Hafs reciters, 3 Warsh reciters, `tarteel-ai/tlog` (CC-BY-4.0)
+and `IqraEval/Iqra_train` (now under non-commercial terms).
+
 ## Adhkar content & audio
 
 The Arabic adhkar text and English translations in `data/adhkar.json` are

@@ -1,6 +1,7 @@
 import {AppState} from 'react-native';
 import type {WorkerOutbound} from '@tilawa/core';
 import type {EngineMessage} from '@/services/recitation/recitationEngine';
+import type {VerdictChange} from '@/services/recitation/wordMarks';
 
 /**
  * The edges of recitation recognition (engine, microphone, model files,
@@ -22,6 +23,22 @@ export const mockEngine = {
   setExpected: jest.fn(),
   setStructural: jest.fn(),
   correct: jest.fn(async (): Promise<WorkerOutbound[]> => []),
+  readMelFrames: jest.fn((from: number, _to: number) => ({
+    first: from,
+    frames: 0,
+    data: new Float32Array(0),
+  })),
+  wordFrames: jest.fn(
+    (_word: {
+      surah: number;
+      ayah: number;
+      word: number;
+    }): {from: number; to: number} | null => null,
+  ),
+  ayahEnteredAt: jest.fn(
+    (_surah: number, _ayah: number): number | null => null,
+  ),
+  wordCount: jest.fn((_surah: number, _ayah: number): number => 10),
   getStats: jest.fn(() => ({
     audioSeconds: 10,
     busyMs: 2000,
@@ -87,6 +104,8 @@ export const recitationAssetsModule = {
   })),
   ensureRecitationAssets: jest.fn(),
   deleteRecitationAssets: jest.fn(async () => undefined),
+  secondLookModelPath: jest.fn(async (): Promise<string | null> => null),
+  ensureSecondLookModel: jest.fn(async () => undefined),
 };
 
 export const mockAnalytics = {
@@ -209,18 +228,14 @@ export function finalSequence(
 
 /** Words whose verdict changed in a chunk, as the engine reports them. */
 export function wordVerdicts(
-  changes: {
-    surah: number;
-    ayah: number;
-    word: number;
-    totalWords?: number;
-    state: 'ok' | 'unsure' | 'wrong' | 'skipped' | 'pending';
-  }[],
+  changes: (Omit<VerdictChange, 'totalWords'> & {totalWords?: number})[],
   lock?: {surah: number; ayah: number; word: number},
+  audioTime = 1,
 ): EngineMessage {
   return {
     type: 'word_verdicts',
     changes: changes.map(c => ({totalWords: 10, ...c})),
+    audioTime,
     ...(lock ? {lock} : {}),
   };
 }

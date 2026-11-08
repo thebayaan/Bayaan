@@ -178,6 +178,43 @@ describe('RecitationSummarySheet', () => {
     expect(shown).toContain('You went back and recited it correctly.');
   });
 
+  it('lists an added mark in its own words, beside a red one on the same word', async () => {
+    const r = await render({
+      ...SUMMARY,
+      flags: [],
+      marks: [
+        {surah: 18, ayah: 3, word: 2, kind: 'wrong', status: 'mistake'},
+        {surah: 18, ayah: 3, word: 2, kind: 'added', status: 'mistake'},
+      ],
+    });
+    expect(texts(r)).toContain('An extra word may have been heard here.');
+    expect(texts(r)).toContain('You may have said a different word here.');
+    expect(texts(r)).toContain('Al-Kahf · ayah 3 · word 2');
+    expect(texts(r)).toContain('Al-Kahf · ayah 3 · before word 2');
+  });
+
+  it("a row's buttons say which word or ayah they are for", async () => {
+    const r = await render({
+      ...SUMMARY,
+      flags: SUMMARY.flags.slice(0, 1),
+      marks: [
+        {surah: 18, ayah: 3, word: 2, kind: 'wrong', status: 'mistake'},
+        {surah: 18, ayah: 4, word: 5, kind: 'added', status: 'mistake'},
+      ],
+    });
+    const labels = (label: string) =>
+      buttons(r, label).map(b => b.props.accessibilityLabel);
+    expect(labels('Show')).toEqual([
+      'Show, Al-Kahf · ayah 3 · word 2',
+      'Show, Al-Kahf · ayah 4 · before word 5',
+      'Show, Al-Kahf · ayah 5',
+    ]);
+    expect(labels('Retry')[0]).toBe('Retry, Al-Kahf · ayah 3 · word 2');
+    expect(labels('I read it correctly')).toEqual([
+      'I read it correctly, Al-Kahf · ayah 5',
+    ]);
+  });
+
   it('Show on a marked word opens its ayah in the mushaf', async () => {
     const r = await render({
       ...SUMMARY,

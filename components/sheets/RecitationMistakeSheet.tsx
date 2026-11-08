@@ -8,10 +8,8 @@ import ActionSheet, {
 } from '@/components/sheets/AdaptiveActionSheet';
 import SkiaVerseText from '@/components/player/v2/PlayerContent/QuranView/SkiaVerseText';
 import {dkWordPosition} from '@/components/mushaf/skia/recitedWord';
-import {SURAHS} from '@/data/surahData';
 import {useMushafFontMgr} from '@/hooks/useMushafFontMgr';
 import {useTheme} from '@/hooks/useTheme';
-import {getSurahDisplayName, localizeDigits} from '@/i18n/format';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {
   dismissRecitationMark,
@@ -26,6 +24,7 @@ import {
 import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
 import {ScaledSheet, moderateScale} from '@/utils/scale';
 import type {Theme} from '@/utils/themeUtils';
+import {recitationMarkRef} from './recitationMarkRef';
 
 // A word marked while reciting, tapped on the page: what may have happened,
 // the word as it is written, and its ayah. The recitation is held while the
@@ -34,15 +33,11 @@ import type {Theme} from '@/utils/themeUtils';
 const MESSAGE_KEYS = {
   missed: 'recitationSummary.markKinds.missed',
   wrong: 'recitationSummary.markKinds.wrong',
+  added: 'recitationSummary.markKinds.added',
   corrected: 'recitationSummary.markKinds.corrected',
 } as const;
 
 const SHEET_PADDING = 20;
-
-function surahName(surah: number): string {
-  const data = SURAHS[surah - 1];
-  return data ? getSurahDisplayName(data) : localizeDigits(surah);
-}
 
 /** Plays one ayah with the mushaf reciter (ends any recitation take). */
 async function playAyah(surah: number, ayah: number): Promise<void> {
@@ -94,6 +89,7 @@ export const RecitationMistakeSheet = (
     mark.status === 'corrected'
       ? t(MESSAGE_KEYS.corrected)
       : t(MESSAGE_KEYS[mark.kind]);
+  const where = recitationMarkRef(mark, position);
 
   async function listen(): Promise<void> {
     if (!mark) return;
@@ -116,13 +112,7 @@ export const RecitationMistakeSheet = (
       gestureEnabled={true}>
       <View style={styles.headerContainer}>
         <Text style={styles.headerTitle}>{message}</Text>
-        <Text style={styles.ref}>
-          {t('recitationSummary.wordRef', {
-            surah: surahName(mark.surah),
-            ayah: localizeDigits(mark.ayah),
-            word: localizeDigits(position),
-          })}
-        </Text>
+        <Text style={styles.ref}>{t(where.key, where.values)}</Text>
       </View>
       <View style={styles.container}>
         <MarkedText
@@ -171,8 +161,13 @@ export const RecitationMistakeSheet = (
 
 type Styles = ReturnType<typeof createStyles>;
 
-/** The word as it is written (Hafs, mushaf font), then its whole ayah. */
+/**
+ * The word as it is written (Hafs, mushaf font), then its whole ayah. An added
+ * mark's word was read correctly, so that one shows the ayah alone; what was heard
+ * is never shown, as it is not Quran text.
+ */
 function MarkedText({
+  mark,
   verseKey,
   position,
   styles,
@@ -189,9 +184,12 @@ function MarkedText({
   const fontMgr = useMushafFontMgr();
   const width = useSheetWidth() - moderateScale(SHEET_PADDING) * 2;
   if (!fontMgr || width <= 0) return null;
-  const word = digitalKhattDataService
-    .getVerseWords(verseKey)
-    .find(w => w.wordPositionInVerse === position);
+  const word =
+    mark.kind === 'added'
+      ? null
+      : digitalKhattDataService
+          .getVerseWords(verseKey)
+          .find(w => w.wordPositionInVerse === position);
   const fontFamily = getDkFontFamily(mushafRenderer, 'hafs');
   return (
     <View style={styles.textBlock}>
@@ -211,19 +209,27 @@ function MarkedText({
           textAlign="center"
         />
       )}
-      <SkiaVerseText
-        verseKey={verseKey}
-        rewayah="hafs"
-        fontMgr={fontMgr}
-        fontFamily={fontFamily}
-        fontSize={moderateScale(19)}
-        textColor={theme.colors.textSecondary}
-        showTajweed={false}
-        width={width}
-        indexedTajweedData={null}
-        arabicTextWeight={arabicTextWeight}
-        textAlign="center"
-      />
+      {/* Drawn on a canvas, so a screen reader needs the text said for it. */}
+      <View
+        accessible
+        accessibilityLabel={digitalKhattDataService.getVerseText(
+          verseKey,
+          'hafs',
+        )}>
+        <SkiaVerseText
+          verseKey={verseKey}
+          rewayah="hafs"
+          fontMgr={fontMgr}
+          fontFamily={fontFamily}
+          fontSize={moderateScale(19)}
+          textColor={theme.colors.textSecondary}
+          showTajweed={false}
+          width={width}
+          indexedTajweedData={null}
+          arabicTextWeight={arabicTextWeight}
+          textAlign="center"
+        />
+      </View>
     </View>
   );
 }

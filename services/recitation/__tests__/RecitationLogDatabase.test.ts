@@ -322,6 +322,148 @@ describe('RecitationLogDatabase', () => {
       expect(await db.mistakes()).toEqual([]);
     });
 
+    describe('added marks', () => {
+      const added = (position: number, at: number): TakeWord => ({
+        ...word(position, 'mistake', at),
+        kind: 'added',
+      });
+
+      it('sit beside the word they stand before, and read back', async () => {
+        await db.recordTake(
+          take({
+            id: 'a',
+            words: [
+              {...word(2, 'mistake', 1100), kind: 'wrong'},
+              added(2, 1200),
+              added(3, 1300),
+              word(3, 'correct', 1300),
+            ],
+          }),
+        );
+        expect((await db.mistakes()).map(m => [m.word, m.kind])).toEqual([
+          [3, 'added'],
+          [2, 'added'],
+          [2, 'wrong'],
+        ]);
+        expect(await db.wordResults(67, 1)).toHaveLength(4);
+      });
+
+      it('a dismissal touches only the row it names', async () => {
+        await db.recordTake(
+          take({
+            id: 'a',
+            words: [
+              {...word(2, 'mistake', 1100), kind: 'wrong'},
+              added(2, 1200),
+            ],
+          }),
+        );
+        await db.dismissWord('a', 67, 1, 2, 'added');
+        expect((await db.mistakes()).map(m => m.kind)).toEqual(['wrong']);
+        await db.dismissWord('a', 67, 1, 2);
+        expect(await db.mistakes()).toEqual([]);
+      });
+
+      it('a dismissal reaches the saved take, which history reads', async () => {
+        await db.recordTake(
+          take({
+            id: 'a',
+            words: [
+              {...word(2, 'mistake', 1100), kind: 'wrong'},
+              added(2, 1200),
+              {...word(3, 'mistake', 1300), kind: 'missed'},
+            ],
+          }),
+        );
+        await db.dismissWord('a', 67, 1, 2, 'added');
+        const results = async () =>
+          (await db.getTake('a'))?.words?.map(w => [w.word, w.kind, w.result]);
+        expect(await results()).toEqual([
+          [2, 'wrong', 'mistake'],
+          [2, 'added', 'dismissed'],
+          [3, 'missed', 'mistake'],
+        ]);
+        await db.dismissWord('a', 67, 1, 2);
+        expect(await results()).toEqual([
+          [2, 'wrong', 'dismissed'],
+          [2, 'added', 'dismissed'],
+          [3, 'missed', 'mistake'],
+        ]);
+        const [seen] = await db.takesSince(0);
+        expect(seen.words?.filter(w => w.result === 'mistake')).toHaveLength(1);
+      });
+
+      it('saved again, a take replaces its rows', async () => {
+        const record = take({id: 'a', words: [added(2, 1200)]});
+        await db.recordTake(record);
+        await db.recordTake(record);
+        expect(await db.mistakes()).toHaveLength(1);
+      });
+
+      it('a history from before them keeps its takes and word rows', async () => {
+        const SQLite = jest.requireMock<{
+          openDatabaseAsync: (name: string) => Promise<{
+            execAsync: (sql: string) => Promise<void>;
+          }>;
+        }>('expo-sqlite');
+        const old = new RecitationLogDatabase();
+        await old.recordTake(TAKE_A);
+        const raw = await SQLite.openDatabaseAsync('recitation-log.db');
+        // The word table as version 3 made it, with rows in it.
+        await raw.execAsync(`
+          DROP TABLE word_results;
+          CREATE TABLE word_results (
+            take_id TEXT NOT NULL,
+            surah INTEGER NOT NULL,
+            ayah INTEGER NOT NULL,
+            word INTEGER NOT NULL,
+            result TEXT NOT NULL,
+            kind TEXT,
+            hidden INTEGER NOT NULL,
+            at INTEGER NOT NULL,
+            PRIMARY KEY (take_id, surah, ayah, word)
+          );
+          CREATE INDEX idx_word_results_word
+            ON word_results(surah, ayah, word, at);
+          CREATE INDEX idx_word_results_result ON word_results(result, at);
+          INSERT INTO word_results VALUES
+            ('a', 67, 1, 2, 'mistake', 'wrong', 1, 1500),
+            ('a', 67, 1, 3, 'correct', NULL, 1, 1600);
+          PRAGMA user_version = 3;
+        `);
+        await closeOpenDatabases();
+        db = new RecitationLogDatabase();
+        expect(await db.wordResults(67, 1)).toEqual([
+          {
+            takeId: 'a',
+            surah: 67,
+            ayah: 1,
+            word: 2,
+            result: 'mistake',
+            kind: 'wrong',
+            hidden: true,
+            at: 1500,
+          },
+          {
+            takeId: 'a',
+            surah: 67,
+            ayah: 1,
+            word: 3,
+            result: 'correct',
+            kind: null,
+            hidden: true,
+            at: 1600,
+          },
+        ]);
+        expect((await db.getTake('a'))?.id).toBe('a');
+        await db.recordTake(take({id: 'new', words: [added(2, 9000)]}));
+        expect((await db.mistakes()).map(m => m.kind)).toEqual([
+          'added',
+          'wrong',
+        ]);
+      });
+    });
+
     it('an existing history from before word results keeps its takes', async () => {
       const SQLite = jest.requireMock<{
         openDatabaseAsync: (name: string) => Promise<{

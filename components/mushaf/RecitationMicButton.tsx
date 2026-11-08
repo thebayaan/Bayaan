@@ -37,6 +37,7 @@ import {RECITATION_AVAILABLE} from '@/services/recitation/recitationAvailability
 import type {SearchHint} from '@tilawa/core';
 import {SURAHS} from '@/data/surahData';
 import {SheetManager} from 'react-native-actions-sheet';
+import {useRecitationMarkAnnouncements} from './useRecitationMarkAnnouncements';
 
 const LEAVE_MUSHAF_UNLOAD_MS = 60 * 1000;
 
@@ -61,6 +62,7 @@ async function confirmIntro(): Promise<boolean> {
 export function useRecitationFollowAlong(currentPage: number): void {
   const listening = useRecitationTrackingStore(s => isTakeActive(s.status));
   const hideText = useMushafSettingsStore(s => s.recitationHideText);
+  useRecitationMarkAnnouncements();
 
   useEffect(() => {
     if (listening) setRecitationHint(pageHint(currentPage));

@@ -34,6 +34,8 @@ import {
   setActiveSessionPurpose,
   type SessionPurpose,
 } from './activeSession';
+import {recentAudio} from './secondLook/audioRing';
+import {SECOND_LOOK_ENABLED} from './secondLook/config';
 
 // The one listening session: microphone permission, pausing Bayaan's own
 // audio, the mic stream, the watchdog, leaving the app, and the flush at the
@@ -351,6 +353,7 @@ export async function startSession(
     }
     stage = 'mic';
     engine.reset();
+    recentAudio.reset();
     // Every session sets all of these: the engine keeps them across takes.
     engine.setMode(options.mode ?? 'tracking');
     engine.setExpected(options.expected ?? null);
@@ -362,7 +365,10 @@ export async function startSession(
         session.lastChunkAt = Date.now();
         if (session.held) return;
         engine.feed(pcm);
-        if (session.purpose === 'follow') debugTakeAudio(pcm);
+        if (session.purpose === 'follow') {
+          debugTakeAudio(pcm);
+          if (SECOND_LOOK_ENABLED) recentAudio.push(pcm);
+        }
       },
       phase => onInterruption(session, phase),
     );
@@ -427,6 +433,8 @@ async function finish(
   let messages: WorkerOutbound[] = [];
   try {
     if (session.mic) await session.mic.stop();
+    // The mic is closed, so this take's audio can go.
+    recentAudio.reset();
     if (session.engine) messages = await session.engine.stop();
   } finally {
     releaseEngine();
@@ -437,6 +445,11 @@ async function finish(
     reason,
     listened: session.listening,
   });
+}
+
+/** The running session's engine, or null when none runs. */
+export function sessionEngine(): RecitationEngine | null {
+  return active?.engine ?? null;
 }
 
 /** Re-points the search bias, e.g. when the reader turns the page by hand. */

@@ -50,4 +50,32 @@ describe('markAtChar', () => {
   it('no marks, nothing to find', () => {
     expect(markAtChar(LINE, 8, [])).toBeNull();
   });
+
+  describe('an added mark', () => {
+    // Before Tilawa's index 2 (the 3rd word, 6 to 11); the gap before it is 5.
+    const added: WordMark = {...mark(2), kind: 'added'};
+
+    it('a tap on the gap before its word finds it', () => {
+      expect(markAtChar(LINE, 5, [added])).toEqual(added);
+    });
+
+    it('so does a tap on the first letter of its word', () => {
+      expect(markAtChar(LINE, 6, [added])).toEqual(added);
+    });
+
+    it('so does a tap anywhere on its word: the gap alone is too small to hit', () => {
+      expect(markAtChar(LINE, 8, [added])).toEqual(added);
+      expect(markAtChar(LINE, 11, [added])).toEqual(added);
+    });
+
+    it('a tap on the word before does not', () => {
+      expect(markAtChar(LINE, 3, [added])).toBeNull();
+    });
+
+    it('a red mark on the same word comes first on its letters', () => {
+      expect(markAtChar(LINE, 6, [added, mark(2)])).toEqual(mark(2));
+      expect(markAtChar(LINE, 8, [added, mark(2)])).toEqual(mark(2));
+      expect(markAtChar(LINE, 5, [added, mark(2)])).toEqual(added);
+    });
+  });
 });

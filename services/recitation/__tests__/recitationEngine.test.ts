@@ -78,6 +78,7 @@ const mockSession = {
   correct: syncCall('correct', () => DEFERRED),
   verdicts: jest.fn((): unknown[] => []),
   wordCount: jest.fn((_surah: number, _ayah: number) => 10),
+  corpus: {wordCount: 0, wordPhonemes: () => ''},
 };
 
 function verdict(word: number, state: string) {
@@ -91,6 +92,7 @@ jest.mock(
   () => ({
     createZipformerSession: jest.fn(async () => mockSession),
     DEFAULT_STRUCTURAL: {ayahOrder: true, similarVerse: true},
+    costTable: jest.fn(),
   }),
   {virtual: true},
 );
@@ -113,7 +115,7 @@ jest.mock('expo-file-system/legacy', () => ({
   readAsStringAsync: jest.fn(async () => '{}'),
 }));
 
-import {createRecitationEngine} from '../recitationEngine';
+import {createRecitationEngine, type EngineMessage} from '../recitationEngine';
 
 const {DEFAULT_STRUCTURAL: MOCK_DEFAULT_STRUCTURAL} = jest.requireMock<{
   DEFAULT_STRUCTURAL: object;
@@ -248,13 +250,22 @@ describe('createRecitationEngine', () => {
     expect(events).toEqual([
       {
         type: 'word_verdicts',
+        audioTime: 0.48,
         changes: [
-          {surah: 67, ayah: 12, word: 0, totalWords: 10, state: 'ok'},
+          {
+            surah: 67,
+            ayah: 12,
+            word: 0,
+            totalWords: 10,
+            state: 'ok',
+            detail: {gop: null, heardRatio: null, distance: null},
+          },
           {surah: 67, ayah: 12, word: 1, totalWords: 10, state: 'pending'},
         ],
       },
       {
         type: 'word_verdicts',
+        audioTime: 0.96,
         changes: [
           {
             surah: 67,
@@ -269,6 +280,103 @@ describe('createRecitationEngine', () => {
       },
     ]);
     expect(mockSession.wordCount).toHaveBeenCalledWith(67, 12);
+  });
+
+  describe('audio time', () => {
+    /** Each chunk changes one verdict, so each chunk reports. */
+    function verdictPerChunk(chunks: number): void {
+      for (let i = 0; i < chunks; i++) {
+        mockSession.verdicts.mockReturnValueOnce([verdict(i, 'wrong')]);
+      }
+    }
+
+    async function timesOf(
+      feed: (
+        engine: Awaited<ReturnType<typeof createRecitationEngine>>,
+      ) => void,
+    ): Promise<number[]> {
+      const times: number[] = [];
+      const engine = await createRecitationEngine(ASSETS, msg => {
+        if (msg.type === 'word_verdicts') times.push(msg.audioTime);
+      });
+      feed(engine);
+      await engine.stop();
+      return times;
+    }
+
+    it('is the end of the chunk that gave the verdict, in seconds of fed audio', async () => {
+      verdictPerChunk(3);
+      const times = await timesOf(engine => {
+        engine.feed(new Float32Array(7680));
+        engine.feed(new Float32Array(4000));
+        engine.feed(new Float32Array(7680));
+      });
+      expect(times).toEqual([0.48, 0.73, 1.21]);
+    });
+
+    it('counts chunks that report nothing', async () => {
+      mockSession.verdicts
+        .mockReturnValueOnce([])
+        .mockReturnValueOnce([])
+        .mockReturnValueOnce([verdict(0, 'wrong')]);
+      const times = await timesOf(engine => {
+        engine.feed(pcm());
+        engine.feed(pcm());
+        engine.feed(pcm());
+      });
+      expect(times).toEqual([1.44]);
+    });
+
+    it('starts again at the reset, in queue order', async () => {
+      verdictPerChunk(2);
+      const times = await timesOf(engine => {
+        engine.feed(pcm());
+        engine.reset();
+        engine.feed(pcm());
+      });
+      expect(times).toEqual([0.48, 0.48]);
+    });
+
+    it('still counts a chunk whose feed failed: the audio ring has it', async () => {
+      const warn = jest
+        .spyOn(console, 'warn')
+        .mockImplementation(() => undefined);
+      mockSession.feed.mockRejectedValueOnce(new Error('boom'));
+      mockSession.verdicts.mockReturnValueOnce([verdict(0, 'wrong')]);
+      const times = await timesOf(engine => {
+        engine.feed(pcm());
+        engine.feed(pcm());
+      });
+      expect(times).toEqual([0.96]);
+      warn.mockRestore();
+    });
+
+    it('sits beside the lock', async () => {
+      const {createZipformerSession} = jest.requireMock<{
+        createZipformerSession: jest.Mock;
+      }>('@tilawa/core');
+      const events: EngineMessage[] = [];
+      const engine = await createRecitationEngine(ASSETS, msg => {
+        events.push(msg);
+      });
+      const {onEvent} = createZipformerSession.mock.lastCall[0];
+      mockSession.feed.mockImplementationOnce(async () => {
+        onEvent({
+          type: 'debug',
+          event: 'located',
+          at: 0,
+          data: {surah: 67, ayah: 12, word: 1},
+        });
+        return [];
+      });
+      mockSession.verdicts.mockReturnValueOnce([verdict(1, 'skipped')]);
+      engine.feed(pcm());
+      await engine.stop();
+      expect(events.find(e => e.type === 'word_verdicts')).toMatchObject({
+        audioTime: 0.48,
+        lock: {surah: 67, ayah: 12, word: 1},
+      });
+    });
   });
 
   it('a chunk that changes no verdict reports nothing', async () => {
@@ -330,7 +438,7 @@ describe('createRecitationEngine', () => {
     );
   });
 
-  it("a wrong or skipped verdict carries the engine's scores behind it", async () => {
+  it("a judged verdict carries the engine's scores behind it", async () => {
     const events: unknown[] = [];
     const engine = await createRecitationEngine(ASSETS, msg => {
       events.push(msg);
@@ -345,8 +453,16 @@ describe('createRecitationEngine', () => {
     expect(events).toEqual([
       {
         type: 'word_verdicts',
+        audioTime: 0.48,
         changes: [
-          {surah: 67, ayah: 12, word: 0, totalWords: 10, state: 'ok'},
+          {
+            surah: 67,
+            ayah: 12,
+            word: 0,
+            totalWords: 10,
+            state: 'ok',
+            detail: {gop: -0.2, heardRatio: 1, distance: 0},
+          },
           {
             surah: 67,
             ayah: 12,

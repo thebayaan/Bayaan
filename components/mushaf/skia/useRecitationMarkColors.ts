@@ -20,7 +20,8 @@ export function mistakeColor(isDarkMode: boolean): string {
  * a mistake are drawn in the mistake colour, through SkiaLine's per-character
  * colours, during the take and after it until the next one. Applied over
  * `base` (hidden text, Allah-name colours), so a missed word shows even while
- * the text is hidden. Lines without a mistake keep their map.
+ * the text is hidden. Lines without a mistake keep their map. An added mark
+ * colours no letters: both words around it were read correctly.
  */
 export function useRecitationMarkColors(
   pageLines: readonly DKLine[],
@@ -31,7 +32,7 @@ export function useRecitationMarkColors(
   // the take ends, until the next one.
   const mistakesId = useRecitationTrackingStore(s =>
     s.marks
-      .filter(m => m.status === 'mistake')
+      .filter(m => m.status === 'mistake' && m.kind !== 'added')
       .map(m =>
         [`${m.surah}:${m.ayah}`, m.word, m.totalWords].join(FIELD_SEPARATOR),
       )

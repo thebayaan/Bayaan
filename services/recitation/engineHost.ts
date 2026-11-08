@@ -1,15 +1,21 @@
 import {AppState, type NativeEventSubscription} from 'react-native';
 import type {EngineMessage} from './recitationEngine';
+import {
+  RECITATION_DOWNLOAD_MB,
+  RECITATION_FOLLOWER_MB,
+} from '@/constants/recitation';
 import {analyticsService} from '@/services/analytics/AnalyticsService';
 import {
   ensureRecitationAssets,
   getRecitationAssets,
+  secondLookModelPath,
   type RecitationAssetPaths,
 } from './recitationAssets';
 import {
   createRecitationEngine,
   type RecitationEngine,
 } from './recitationEngine';
+import {unloadSecondLook} from './secondLook/checkWord';
 
 // Owns the Tilawa model: downloads it once, loads it on first use, keeps it
 // between sessions and drops it after a while idle or on a memory warning.
@@ -43,9 +49,31 @@ function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-/** Whether the ~75 MB model still has to be downloaded before use. */
+/**
+ * Whether the models (~111 MB) still have to be downloaded before use. Only the
+ * follower's count: nothing waits for the second look's.
+ */
 export async function recitationModelNeedsDownload(): Promise<boolean> {
   return (await getRecitationAssets()) === null;
+}
+
+/**
+ * Whether the model is on the phone, and the size to state for it: what is there, as
+ * the second look's model may not have arrived, or the whole download if nothing is.
+ */
+export async function recitationModelOnPhone(): Promise<{
+  downloaded: boolean;
+  sizeMb: number;
+}> {
+  const [needed, second] = await Promise.all([
+    recitationModelNeedsDownload(),
+    secondLookModelPath(),
+  ]);
+  if (needed) return {downloaded: false, sizeMb: RECITATION_DOWNLOAD_MB};
+  return {
+    downloaded: true,
+    sizeMb: second ? RECITATION_DOWNLOAD_MB : RECITATION_FOLLOWER_MB,
+  };
 }
 
 /** Engine events go to this listener; null drops them. */
@@ -117,6 +145,9 @@ async function loadEngine(): Promise<RecitationEngine> {
   }
   engine = created;
   memoryWarningSub ??= AppState.addEventListener('memoryWarning', () => {
+    // The second look is optional, so it goes even during a take: marks then
+    // show unchecked.
+    void unloadSecondLook();
     if (!busy) void unloadRecitationModel();
   });
   return created;
@@ -166,5 +197,6 @@ export async function unloadRecitationModel(): Promise<void> {
   engine = null;
   memoryWarningSub?.remove();
   memoryWarningSub = null;
+  await unloadSecondLook();
   if (loaded) await loaded.dispose();
 }

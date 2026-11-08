@@ -49,6 +49,7 @@ type Host = typeof import('../engineHost');
 
 let runner: Runner;
 let host: Host;
+let ring: (typeof import('../secondLook/audioRing'))['recentAudio'];
 let appState: {fire: (next: string) => void};
 
 function handlers(): jest.Mocked<SessionHandlers> {
@@ -68,6 +69,7 @@ beforeEach(() => {
   jest.isolateModules(() => {
     runner = require('../sessionRunner');
     host = require('../engineHost');
+    ring = require('../secondLook/audioRing').recentAudio;
   });
 });
 
@@ -277,6 +279,59 @@ describe('sessionRunner', () => {
     await runner.stopSession('user');
     await host.unloadRecitationModel();
     expect(mockEngine.dispose).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('sessionRunner and the audio ring', () => {
+  const samples = (value: number, length = 16000) =>
+    new Float32Array(length).fill(value);
+
+  it('a follow session keeps what it feeds the engine, on the same clock', async () => {
+    await runner.startSession({purpose: 'follow', hint: null}, handlers());
+    micControl.chunk?.(samples(0.25), 16000);
+    micControl.chunk?.(samples(0.5), 16000);
+    expect(mockEngine.feed).toHaveBeenCalledTimes(2);
+    expect(ring.slice(0, 2).length).toBe(32000);
+    expect(ring.slice(0, 1)[0]).toBe(0.25);
+    expect(ring.slice(1, 2)[0]).toBe(0.5);
+  });
+
+  it.each(['identify', 'practice'] as const)(
+    'a %s session keeps nothing',
+    async purpose => {
+      await runner.startSession({purpose, hint: null}, handlers());
+      micControl.chunk?.(samples(0.25), 16000);
+      expect(mockEngine.feed).toHaveBeenCalledTimes(1);
+      expect(ring.slice(0, 1).length).toBe(0);
+    },
+  );
+
+  it('audio held back from the engine is not kept either', async () => {
+    await runner.startSession({purpose: 'follow', hint: null}, handlers());
+    micControl.chunk?.(samples(0.25), 16000);
+    runner.holdSession();
+    micControl.chunk?.(samples(0.5), 16000);
+    runner.releaseSession();
+    micControl.chunk?.(samples(0.75), 16000);
+    expect(mockEngine.feed).toHaveBeenCalledTimes(2);
+    expect(ring.slice(0, 3).length).toBe(32000);
+    expect(ring.slice(1, 2)[0]).toBe(0.75);
+  });
+
+  it('each take starts its clock again', async () => {
+    await runner.startSession({purpose: 'follow', hint: null}, handlers());
+    micControl.chunk?.(samples(0.25), 16000);
+    await runner.startSession({purpose: 'follow', hint: null}, handlers());
+    expect(ring.slice(0, 1).length).toBe(0);
+    micControl.chunk?.(samples(0.5), 16000);
+    expect(ring.slice(0, 1)[0]).toBe(0.5);
+  });
+
+  it('the audio goes when the take ends', async () => {
+    await runner.startSession({purpose: 'follow', hint: null}, handlers());
+    micControl.chunk?.(samples(0.25), 16000);
+    await runner.stopSession('user');
+    expect(ring.slice(0, 1).length).toBe(0);
   });
 });
 

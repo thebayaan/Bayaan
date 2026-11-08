@@ -6,11 +6,12 @@ import type {TakeRecord, TakeWord} from './take';
 // The reader's recitation history, on the phone only: one row per take, one
 // row per ayah a take touched (recited, flagged or peeked at), and one row
 // per word the engine judged (correct, unclear, a mistake, or a mistake
-// corrected in the take). Events only, never audio. Revision features read
-// the per-ayah rows; mistake history and weak-word features read the words.
+// corrected in the take), with a second row beside a word when an extra word was
+// heard just before it. Events only, never audio. Revision features read the
+// per-ayah rows; mistake history and weak-word features read the words.
 
 const DB_NAME = 'recitation-log.db';
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 
 export interface TakeSummary {
   id: string;
@@ -143,7 +144,27 @@ async function migrate(db: SQLite.SQLiteDatabase): Promise<void> {
     `);
   }
   if (version < 3) await createWordTable(db);
+  else if (version < 4) await rebuildWordTable(db);
   await db.execAsync(`PRAGMA user_version = ${SCHEMA_VERSION};`);
+}
+
+/** One word can now hold two rows: its own, and an added mark's. */
+async function rebuildWordTable(db: SQLite.SQLiteDatabase): Promise<void> {
+  await db.withTransactionAsync(async () => {
+    await db.execAsync(`
+      ALTER TABLE word_results RENAME TO word_results_v3;
+      DROP INDEX IF EXISTS idx_word_results_word;
+      DROP INDEX IF EXISTS idx_word_results_result;
+    `);
+    await createWordTable(db);
+    await db.execAsync(`
+      INSERT INTO word_results
+        (take_id, surah, ayah, word, result, kind, hidden, at)
+      SELECT take_id, surah, ayah, word, result, kind, hidden, at
+      FROM word_results_v3;
+      DROP TABLE word_results_v3;
+    `);
+  });
 }
 
 async function createWordTable(db: SQLite.SQLiteDatabase): Promise<void> {
@@ -157,7 +178,8 @@ async function createWordTable(db: SQLite.SQLiteDatabase): Promise<void> {
       kind TEXT,
       hidden INTEGER NOT NULL,
       at INTEGER NOT NULL,
-      PRIMARY KEY (take_id, surah, ayah, word)
+      added INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (take_id, surah, ayah, word, added)
     );
     CREATE INDEX IF NOT EXISTS idx_word_results_word
       ON word_results(surah, ayah, word, at);
@@ -266,8 +288,8 @@ export class RecitationLogDatabase {
       for (const w of take.words ?? []) {
         await db.runAsync(
           `INSERT OR REPLACE INTO word_results (take_id, surah, ayah, word,
-             result, kind, hidden, at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+             result, kind, hidden, at, added)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           take.id,
           w.surah,
           w.ayah,
@@ -276,6 +298,7 @@ export class RecitationLogDatabase {
           w.kind,
           w.hidden ? 1 : 0,
           w.at,
+          w.kind === 'added' ? 1 : 0,
         );
       }
     });
@@ -300,22 +323,52 @@ export class RecitationLogDatabase {
     return rows.map(toWordResult);
   }
 
-  /** The reader said a marked word of a saved take was read correctly. */
+  /**
+   * The reader said a marked word of a saved take was read correctly. The take's own
+   * record says so too, as the history screen reads its marks from there.
+   * @param kind - 'added' for the added mark before the word, not its own row
+   */
   async dismissWord(
     takeId: string,
     surah: number,
     ayah: number,
     word: number,
+    kind?: 'added',
   ): Promise<void> {
     const db = await this.open();
-    await db.runAsync(
-      `UPDATE word_results SET result = 'dismissed'
-       WHERE take_id = ? AND surah = ? AND ayah = ? AND word = ?`,
-      takeId,
-      surah,
-      ayah,
-      word,
-    );
+    const added = kind === 'added';
+    await db.withTransactionAsync(async () => {
+      await db.runAsync(
+        `UPDATE word_results SET result = 'dismissed'
+         WHERE take_id = ? AND surah = ? AND ayah = ? AND word = ? AND added = ?`,
+        takeId,
+        surah,
+        ayah,
+        word,
+        added ? 1 : 0,
+      );
+      const row = await db.getFirstAsync<{payload: string}>(
+        'SELECT payload FROM takes WHERE id = ?',
+        takeId,
+      );
+      if (!row) return;
+      const take = JSON.parse(row.payload) as TakeRecord;
+      for (const w of take.words ?? []) {
+        if (
+          w.surah === surah &&
+          w.ayah === ayah &&
+          w.word === word &&
+          (w.kind === 'added') === added
+        ) {
+          w.result = 'dismissed';
+        }
+      }
+      await db.runAsync(
+        'UPDATE takes SET payload = ? WHERE id = ?',
+        JSON.stringify(take),
+        takeId,
+      );
+    });
   }
 
   /** Every judged word of one ayah, oldest first: its history word by word. */

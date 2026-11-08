@@ -1,18 +1,34 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import {InferenceSession, Tensor} from 'onnxruntime-react-native';
 import {
+  costTable,
   createZipformerSession,
   DEFAULT_STRUCTURAL,
   type CorrectionAction,
   type ExpectedPassage,
+  type MelFrameSpan,
   type OrtSessionLike,
   type RecitationMode,
   type SearchHint,
   type TensorLike,
+  type WordVerdict,
   type WorkerOutbound,
 } from '@tilawa/core';
+import {
+  atThreeDecimals,
+  buildVocab,
+  rejectReason,
+  soundCount,
+  type WordVocab,
+} from './addedWord';
+import followerConstants from './followerConstants.npl.json';
 import type {RecitationAssetPaths} from './recitationAssets';
-import type {EngineWord, VerdictChange, VerdictState} from './wordMarks';
+import type {
+  AddedBefore,
+  EngineWord,
+  VerdictChange,
+  VerdictState,
+} from './wordMarks';
 
 export const RECITATION_SAMPLE_RATE = 16000;
 
@@ -20,6 +36,8 @@ export const RECITATION_SAMPLE_RATE = 16000;
 export interface WordVerdictsMessage {
   type: 'word_verdicts';
   changes: VerdictChange[];
+  /** Seconds of audio fed since the reset, at the end of this chunk. */
+  audioTime: number;
   /**
    * Set when the engine found the reader in this chunk: these verdicts were
    * judged from the audio it replayed from this word on.
@@ -74,6 +92,23 @@ export interface RecitationEngine {
   setStructural: (on: boolean) => void;
   /** Answers an open correction; resolves with the messages it caused. */
   correct: (action: CorrectionAction) => Promise<WorkerOutbound[]>;
+  /**
+   * The stream's log-mel frames [from, to), 100 a second from 0 at the reset, on one
+   * clock whatever the engine restarted on the way, clipped to the last 10 s or so. A
+   * copy, read at once, off the queue: the follower never waits for it. The recipe is
+   * the second model's.
+   */
+  readMelFrames: (from: number, to: number) => MelFrameSpan;
+  /**
+   * Where the trackers have put a word, as known after the last chunk: its first
+   * and last decoder frames, 25 a second from 0 at the reset, on the same one clock.
+   * Null when none has heard it. Read at once, off the queue.
+   */
+  wordFrames: (word: EngineWord) => {from: number; to: number} | null;
+  /** Seconds of audio when the cursor first entered an ayah this take, or null. */
+  ayahEnteredAt: (surah: number, ayah: number) => number | null;
+  /** Words in an ayah, in the engine's numbering. */
+  wordCount: (surah: number, ayah: number) => number;
   getStats: () => RecitationStats;
   dispose: () => Promise<void>;
 }
@@ -82,7 +117,7 @@ const STRUCTURAL_OFF = {ayahOrder: false, similarVerse: false} as const;
 // Heard sounds after a word before Tilawa judges it (its default is 6).
 // Measured on five reciters with planted mistakes: 2 cuts the median time
 // to a verdict from 1.8 s to 1.2 s with the same catches and false marks.
-const COMMIT_DWELL = 2;
+const COMMIT_DWELL = followerConstants.engine.commitDwell;
 // Upper bound on flags deferred after one chunk or around one stop().
 const MAX_DRAIN = 64;
 
@@ -169,8 +204,18 @@ export async function createRecitationEngine(
 
   // Where the engine found the reader during the chunk being fed, if it did.
   let chunkLock: EngineWord | null = null;
+  // Samples fed since the reset, counting a chunk that failed: the second look's
+  // audio ring holds every chunk and must keep the same clock.
+  let fedSamples = 0;
+  const ayahEntered = new Map<string, number>();
   const onSessionEvent = (msg: WorkerOutbound) => {
     chunkLock = lockedWord(msg) ?? chunkLock;
+    if (msg.type === 'word_progress') {
+      const key = `${msg.surah}:${msg.ayah}`;
+      if (!ayahEntered.has(key)) {
+        ayahEntered.set(key, fedSamples / RECITATION_SAMPLE_RATE);
+      }
+    }
     onEvent(msg);
   };
 
@@ -191,11 +236,18 @@ export async function createRecitationEngine(
     // after most flags; on the planted-mistake bench keeping them removed 40%
     // of false marks and caught more mistakes.
     keepContextOnDefer: true,
+    // Did the reader leave out an ayah's last word (Bayaan's engine patch)?
+    junction: followerConstants.junction,
     config: {
       commitDwell: COMMIT_DWELL,
       // A word split by the engine's 300-sound segment cut is judged from all
       // its sounds, not the few after the cut (Bayaan's engine patch).
       wholeWordAtCut: true,
+      // Extra sounds between two words, for the added-word mark (same patch).
+      gapReport: followerConstants.gapReport,
+      // A long jump forward does not make one alignment across all the text jumped
+      // over, which cost seconds a chunk on a long surah (same patch).
+      cutAtJump: followerConstants.engine.cutAtJump,
     },
   });
   stats.loadMs = performance.now() - loadStart;
@@ -208,11 +260,81 @@ export async function createRecitationEngine(
 
   // Each word's last reported verdict, so a chunk reports only changes.
   const verdictStates = new Map<string, VerdictState>();
+  // Each skipped word's last reported junction result, for the same reason.
+  const junctionResults = new Map<string, boolean>();
+  // The runs of extra sounds this tracker has shown, and whether the rule passed
+  // each; a run first seen in the chunk where it locked never passes.
+  const gapsSeen = new Map<string, boolean>();
+  // The right words whose added mark has been reported this take.
+  const addedReported = new Set<string>();
+  // A lock in tracking mode: correction mode starts with the next chunk, so the
+  // runs the lock replayed are first seen there, and count as the lock's.
+  let mode: RecitationMode = 'tracking';
+  let lockEcho = false;
+  // Built in small steps after the load; until then no run can pass.
+  let vocab: WordVocab | null = null;
+  void buildVocab(session.corpus).then(built => {
+    vocab = built;
+  });
+
+  /** The news that this word has an extra word before it, if there is any. */
+  function addedBeforeOf(
+    v: WordVerdict,
+    key: string,
+    locking: boolean,
+  ): AddedBefore | null {
+    const gap = v.gap;
+    if (!gap) return null;
+    const seenKey = `${v.wordIndex}:${gap.from}:${gap.to}:${atThreeDecimals(gap.fitL)}:${atThreeDecimals(gap.fitR)}`;
+    let passes = gapsSeen.get(seenKey);
+    if (passes === undefined) {
+      if (!locking && !vocab) return null;
+      passes =
+        !locking &&
+        rejectReason(gap, v.wordIndex, {
+          corpus: session.corpus,
+          table: costTable(),
+          vocab,
+        }) === null;
+      gapsSeen.set(seenKey, passes);
+    }
+    if (!passes || addedReported.has(key)) return null;
+    addedReported.add(key);
+    const {wordSurah, wordAyah, wordInAyah} = session.corpus;
+    return {
+      sounds: soundCount(gap.chars),
+      noGap: gap.noGap,
+      left: {
+        surah: wordSurah[gap.leftWord],
+        ayah: wordAyah[gap.leftWord],
+        word: wordInAyah[gap.leftWord],
+      },
+    };
+  }
+
+  /**
+   * Whether the junction result is news: only on a skipped verdict, where unsaid
+   * makes a mark and said can drop one. On any other verdict said is nothing.
+   */
+  function junctionNews(v: WordVerdict, key: string): boolean {
+    if (v.junctionMissing === undefined) junctionResults.delete(key);
+    if (v.state !== 'skipped' || v.junctionMissing === undefined) return false;
+    if (junctionResults.get(key) === v.junctionMissing) return false;
+    junctionResults.set(key, v.junctionMissing);
+    return true;
+  }
+
   function reportVerdicts(lock: EngineWord | null): void {
+    if (lock) gapsSeen.clear();
+    const locking = lock !== null || lockEcho;
+    lockEcho = lock !== null && mode === 'tracking';
     const changes: VerdictChange[] = [];
     for (const v of session.verdicts()) {
       const key = `${v.surah}:${v.ayah}:${v.word}`;
-      if (verdictStates.get(key) === v.state) continue;
+      const repeat = verdictStates.get(key) === v.state;
+      const news = junctionNews(v, key);
+      const addedBefore = addedBeforeOf(v, key, locking);
+      if (repeat && !news && !addedBefore) continue;
       verdictStates.set(key, v.state);
       const change: VerdictChange = {
         surah: v.surah,
@@ -221,20 +343,30 @@ export async function createRecitationEngine(
         totalWords: session.wordCount(v.surah, v.ayah),
         state: v.state,
       };
-      // The scores behind a bad verdict, so the marks can tell the reader's
-      // slip from the alignment's (wordMarks).
-      if (v.state === 'wrong' || v.state === 'skipped') {
+      if (repeat) change.repeat = true;
+      if (addedBefore) change.addedBefore = addedBefore;
+      // The scores behind a verdict, so the marks can tell the reader's slip from
+      // the alignment's (wordMarks), and the second judge knows when to wake.
+      if (v.state !== 'pending') {
         const num = (x: unknown) => (typeof x === 'number' ? x : null);
         change.detail = {
           gop: num(v.gop),
           heardRatio: num(v.heardRatio),
           distance: num(v.distance),
         };
+        if (v.state === 'skipped' && v.junctionMissing !== undefined) {
+          change.detail.junctionMissing = v.junctionMissing;
+        }
       }
       changes.push(change);
     }
     if (changes.length > 0) {
-      onEvent({type: 'word_verdicts', changes, ...(lock ? {lock} : {})});
+      onEvent({
+        type: 'word_verdicts',
+        changes,
+        audioTime: fedSamples / RECITATION_SAMPLE_RATE,
+        ...(lock ? {lock} : {}),
+      });
     }
   }
 
@@ -273,6 +405,7 @@ export async function createRecitationEngine(
       void enqueue(async () => {
         const start = performance.now();
         chunkLock = null;
+        fedSamples += pcm.length;
         await session.feed(pcm);
         // Tilawa drops every chunk while a flag is open, so this chunk's flags
         // are deferred now, before the next one, and then its verdicts are
@@ -303,6 +436,12 @@ export async function createRecitationEngine(
       void enqueue(async () => {
         session.reset();
         verdictStates.clear();
+        junctionResults.clear();
+        gapsSeen.clear();
+        addedReported.clear();
+        ayahEntered.clear();
+        lockEcho = false;
+        fedSamples = 0;
         stats.audioSeconds = 0;
         stats.busyMs = 0;
         stats.ortMs = 0;
@@ -316,9 +455,10 @@ export async function createRecitationEngine(
         session.setHint(hint);
       }, undefined);
     },
-    setMode(mode) {
+    setMode(next) {
       void enqueue(async () => {
-        session.setMode(mode);
+        session.setMode(next);
+        mode = next;
       }, undefined);
     },
     setExpected(passage) {
@@ -337,6 +477,18 @@ export async function createRecitationEngine(
         async () => session.correct(action),
         [] as WorkerOutbound[],
       );
+    },
+    readMelFrames(from, to) {
+      return session.readMelFrames(from, to);
+    },
+    wordFrames(word) {
+      return session.wordFrames(word.surah, word.ayah, word.word);
+    },
+    ayahEnteredAt(surah, ayah) {
+      return ayahEntered.get(`${surah}:${ayah}`) ?? null;
+    },
+    wordCount(surah, ayah) {
+      return session.wordCount(surah, ayah);
     },
     getStats() {
       return {...stats};

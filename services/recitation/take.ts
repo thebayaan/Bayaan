@@ -60,8 +60,12 @@ export interface TakeWord {
    * 'dismissed': marked, but the reader said they read it correctly.
    */
   result: 'correct' | 'unclear' | 'mistake' | 'corrected' | 'dismissed';
-  /** For a mistake, or a corrected one: missed, or something else said. */
-  kind: 'missed' | 'wrong' | null;
+  /**
+   * For a mistake, or a corrected one: missed, or something else said. 'added':
+   * extra sounds were heard just before this word; this row stands beside the
+   * word's own.
+   */
+  kind: 'missed' | 'wrong' | 'added' | null;
   /** The page text was hidden when the word was judged. */
   hidden: boolean;
   /** When the word was last judged (ms). */

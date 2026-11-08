@@ -20,7 +20,10 @@ jest.mock(
   '@/components/player/v2/PlayerContent/QuranView/SkiaVerseText',
   () => ({__esModule: true, default: () => null}),
 );
-jest.mock('@/hooks/useMushafFontMgr', () => ({useMushafFontMgr: () => null}));
+let mockFontMgr: object | null = null;
+jest.mock('@/hooks/useMushafFontMgr', () => ({
+  useMushafFontMgr: () => mockFontMgr,
+}));
 jest.mock('@/hooks/useTheme', () => ({
   useTheme: () => ({
     theme: {
@@ -42,6 +45,7 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => ({
         wordPositionInVerse: p,
         text: 'w',
       })),
+    getVerseText: (key: string, rewayah: string) => `text of ${key} ${rewayah}`,
     getPageForVerse: () => 563,
   },
 }));
@@ -116,6 +120,7 @@ function button(r: TestRenderer.ReactTestRenderer, label: string) {
 beforeEach(() => {
   jest.clearAllMocks();
   mockPlayer.rewayatId = 'r1';
+  mockFontMgr = null;
 });
 
 describe('RecitationMistakeSheet', () => {
@@ -124,6 +129,34 @@ describe('RecitationMistakeSheet', () => {
     expect(texts(r)).toContain('You may have missed this word.');
     // The engine's word 2 is the ayah's 3rd word.
     expect(texts(r)).toContain('Al-Mulk · ayah 12 · word 3');
+  });
+
+  describe('an added mark', () => {
+    const ADDED: WordMark = {...MARK, kind: 'added'};
+
+    it('says an extra word may have been heard, before which word', async () => {
+      const r = await render(ADDED);
+      expect(texts(r)).toContain('An extra word may have been heard here.');
+      expect(texts(r)).toContain('Al-Mulk · ayah 12 · before word 3');
+      expect(texts(r)).not.toContain('Al-Mulk · ayah 12 · word 3');
+    });
+
+    it('can be dismissed, by its own kind', async () => {
+      const r = await render(ADDED);
+      await act(async () => {
+        await button(r, 'I read it correctly').props.onPress();
+      });
+      expect(mockService.dismiss).toHaveBeenCalledWith(ADDED);
+    });
+  });
+
+  it('a screen reader can read the ayah, drawn on a canvas, from the official text', async () => {
+    mockFontMgr = {};
+    const r = await render(MARK);
+    expect(
+      r.root.findAll(n => n.props.accessibilityLabel === 'text of 67:12 hafs')
+        .length,
+    ).toBeGreaterThan(0);
   });
 
   it('holds the recitation while open and lets it go when closed', async () => {

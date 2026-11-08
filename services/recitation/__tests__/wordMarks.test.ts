@@ -1,17 +1,23 @@
 import {
   applyVerdicts,
+  cancelCheck,
   confirmDue,
   dropLockArtifacts,
   dropRealignment,
   dropSuspects,
   emptyMarkBook,
+  finishChecks,
   MARK_CONFIRM_MS,
+  markKey,
   NEXT_OK_WINDOW_MS,
   nextConfirmAt,
   REALIGN_AYAT,
   REALIGN_WORDS,
   shownMarks,
+  startChecks,
+  type MarkBook,
   type VerdictChange,
+  type WordMark,
 } from '../wordMarks';
 
 function change(
@@ -474,5 +480,230 @@ describe('dropRealignment', () => {
       change(0, 'pending', {ayah: 14}),
     ];
     expect(dropRealignment(fewAyat)).toEqual(fewAyat);
+  });
+});
+
+describe('marks and audio time', () => {
+  const at = (book: MarkBook, word: number) => book.get(markKey(67, 12, word));
+
+  it('a suspect keeps the audio time of its verdict', () => {
+    const {book} = applyVerdicts(
+      emptyMarkBook(),
+      [change(3, 'wrong')],
+      1000,
+      12.48,
+    );
+    expect(at(book, 3)).toMatchObject({status: 'suspect', lastBadAudio: 12.48});
+  });
+
+  it('a later bad verdict moves it, and an ok verdict does not', () => {
+    let {book} = applyVerdicts(
+      emptyMarkBook(),
+      [change(3, 'wrong')],
+      1000,
+      12.48,
+    );
+    ({book} = applyVerdicts(book, [change(4, 'ok')], 1100, 12.96));
+    expect(at(book, 3)?.lastBadAudio).toBe(12.48);
+    ({book} = applyVerdicts(book, [change(3, 'skipped')], 1200, 13.44));
+    expect(at(book, 3)).toMatchObject({kind: 'missed', lastBadAudio: 13.44});
+  });
+
+  it('a bad verdict the rules let off still moves it', () => {
+    let {book} = applyVerdicts(
+      emptyMarkBook(),
+      [change(3, 'skipped')],
+      1000,
+      12.48,
+    );
+    ({book} = applyVerdicts(
+      book,
+      [change(3, 'wrong', {detail: {gop: -0.2}})],
+      1200,
+      12.96,
+    ));
+    expect(at(book, 3)).toMatchObject({status: 'suspect', lastBadAudio: 12.96});
+  });
+
+  it('a mark the rules note keeps it too', () => {
+    const {book} = applyVerdicts(
+      emptyMarkBook(),
+      [change(0, 'wrong')],
+      1000,
+      12.48,
+    );
+    expect(at(book, 0)).toMatchObject({status: 'noted', lastBadAudio: 12.48});
+  });
+
+  it('a suspect that becomes a mistake keeps it', () => {
+    let {book} = applyVerdicts(
+      emptyMarkBook(),
+      [change(3, 'wrong'), change(4, 'ok')],
+      1000,
+      12.48,
+    );
+    const due = confirmDue(book, 1000 + MARK_CONFIRM_MS);
+    book = due.book;
+    expect(due.confirmed[0].lastBadAudio).toBe(12.48);
+    ({book} = applyVerdicts(book, [change(3, 'skipped')], 2000, 14.4));
+    expect(at(book, 3)).toMatchObject({status: 'mistake', lastBadAudio: 14.4});
+  });
+
+  it('with no audio time, as the bench replays call it, marks have none', () => {
+    const {book} = applyVerdicts(emptyMarkBook(), [change(3, 'wrong')], 1000);
+    expect(at(book, 3)?.lastBadAudio).toBeUndefined();
+  });
+});
+
+describe('marks under a second look', () => {
+  /** A wrong word at 0, followed by a correct one, and due: about to show. */
+  function dueMark(word = 3): {book: MarkBook; confirmed: WordMark[]} {
+    const {book} = applyVerdicts(
+      emptyMarkBook(),
+      [change(word, 'wrong'), change(word + 1, 'ok')],
+      0,
+      12.48,
+    );
+    return confirmDue(book, MARK_CONFIRM_MS);
+  }
+
+  function checking(word = 3, id = 7): MarkBook {
+    const {book, confirmed} = dueMark(word);
+    return startChecks(book, confirmed, id);
+  }
+
+  const statusOf = (book: MarkBook, word = 3) =>
+    book.get(markKey(67, 12, word))?.status;
+  const NO_SKIPS = new Set<string>();
+
+  it('a mark being checked is not shown', () => {
+    const book = checking();
+    expect(statusOf(book)).toBe('checking');
+    expect(shownMarks(book, NO_SKIPS)).toEqual([]);
+  });
+
+  it('a mark being checked is not confirmed again, or waited for', () => {
+    const book = checking();
+    const due = confirmDue(book, 60000);
+    expect(due.book).toBe(book);
+    expect(due.confirmed).toEqual([]);
+    expect(nextConfirmAt(book)).toBeNull();
+  });
+
+  it('losing the reader leaves a check to finish, as it leaves a shown mistake', () => {
+    const book = checking();
+    expect(dropSuspects(book)).toBe(book);
+  });
+
+  it('a mark that stays is shown as a mistake, with nothing left of the check', () => {
+    const update = finishChecks(checking(), 7);
+    expect(statusOf(update.book)).toBe('mistake');
+    expect(update.confirmed).toEqual([
+      expect.objectContaining({word: 3, status: 'mistake', kind: 'wrong'}),
+    ]);
+    expect(update.confirmed[0].checkId).toBeUndefined();
+    expect(shownMarks(update.book, NO_SKIPS)).toHaveLength(1);
+  });
+
+  it('a cancelled mark is noted like a dropped suspect, and counts towards confusion', () => {
+    const before = checking();
+    const book = cancelCheck(before, change(3, 'wrong'), 7);
+    const mark = book.get(markKey(67, 12, 3));
+    expect(mark?.status).toBe('noted');
+    expect(mark?.lastBadAt).toBe(0);
+    expect(shownMarks(book, NO_SKIPS)).toEqual([]);
+    expect(finishChecks(book, 7).confirmed).toEqual([]);
+  });
+
+  it('a cancelled mark that goes bad again is a fresh suspect', () => {
+    const cancelled = cancelCheck(checking(), change(3, 'wrong'), 7);
+    const {book} = applyVerdicts(cancelled, [change(3, 'skipped')], 2000, 14.4);
+    expect(book.get(markKey(67, 12, 3))).toMatchObject({
+      status: 'suspect',
+      since: 2000,
+      lastBadAudio: 14.4,
+    });
+  });
+
+  it('an answer settles only its own check', () => {
+    const book = checking(3, 7);
+    expect(cancelCheck(book, change(3, 'wrong'), 8)).toBe(book);
+    const update = finishChecks(book, 8);
+    expect(update.book).toBe(book);
+    expect(update.confirmed).toEqual([]);
+  });
+
+  it('an answer for a word gone from the book changes nothing', () => {
+    const book = checking();
+    expect(cancelCheck(book, change(5, 'wrong'), 7)).toBe(book);
+  });
+
+  it('several marks of one check settle together', () => {
+    const first = dueMark(3);
+    const both = applyVerdicts(
+      first.book,
+      [change(6, 'wrong'), change(7, 'ok')],
+      0,
+      12.48,
+    );
+    const due = confirmDue(both.book, MARK_CONFIRM_MS);
+    const marks = [...first.confirmed, ...due.confirmed];
+    const book = startChecks(due.book, marks, 7);
+    const update = finishChecks(cancelCheck(book, change(3, 'wrong'), 7), 7);
+    expect(update.confirmed.map(m => m.word)).toEqual([6]);
+    expect(statusOf(update.book, 3)).toBe('noted');
+    expect(statusOf(update.book, 6)).toBe('mistake');
+  });
+
+  it('with no id every mark still being checked is shown: the take is over', () => {
+    const first = dueMark(3);
+    const late = applyVerdicts(
+      first.book,
+      [change(6, 'wrong'), change(7, 'ok')],
+      0,
+      12.48,
+    );
+    const due = confirmDue(late.book, MARK_CONFIRM_MS);
+    let book = startChecks(due.book, first.confirmed, 7);
+    book = startChecks(book, due.confirmed, 8);
+    const update = finishChecks(book);
+    expect(update.confirmed.map(m => m.word).sort()).toEqual([3, 6]);
+    expect(finishChecks(update.book).confirmed).toEqual([]);
+  });
+
+  it('an ok verdict during a check drops the mark, as it does a suspect', () => {
+    const update = applyVerdicts(checking(), [change(3, 'ok')], 700);
+    expect(statusOf(update.book)).toBe('noted');
+    expect(update.corrected).toEqual([]);
+    expect(finishChecks(update.book, 7).confirmed).toEqual([]);
+  });
+
+  it.each(['unsure', 'pending'] as const)(
+    '%s during a check leaves it running: it would not have touched a shown mistake',
+    state => {
+      const update = applyVerdicts(checking(), [change(3, state)], 700);
+      expect(statusOf(update.book)).toBe('checking');
+    },
+  );
+
+  it('a bad verdict during a check only moves its times', () => {
+    const {book} = applyVerdicts(
+      checking(),
+      [change(3, 'skipped')],
+      700,
+      13.44,
+    );
+    expect(book.get(markKey(67, 12, 3))).toMatchObject({
+      status: 'checking',
+      kind: 'wrong',
+      since: 0,
+      lastBadAt: 700,
+      lastBadAudio: 13.44,
+    });
+  });
+
+  it('a word followed during a check is not counted as followed', () => {
+    const {book} = applyVerdicts(checking(), [change(4, 'ok')], 700);
+    expect(book.get(markKey(67, 12, 3))?.followedAt).toBe(0);
   });
 });
