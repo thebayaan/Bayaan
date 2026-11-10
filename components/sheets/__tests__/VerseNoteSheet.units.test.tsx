@@ -226,7 +226,7 @@ describe('a saved note', () => {
   });
 
   it('Warsh: a note on several verses is named by all its anchors', async () => {
-    // The Notes list sends only verse_key; the note's verse_keys name both
+    // The payload has only verse_key; the stored note's verse_keys name both
     // parts of Hafs 1:7 (Warsh 1:6 and 1:7).
     mockNotes.set('n5', {
       content: 'a note',
