@@ -406,6 +406,7 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
   );
   const scrollTargetRef = useRef<string | null>(null);
   const activeTabRef = useRef(initialRewayatId ?? '');
+  const pagerContentWidthRef = useRef(0); // @ai: last width after the reveal
 
   const [collapsibleHeight, setCollapsibleHeight] = useState(0);
   const [stickyHeight, setStickyHeight] = useState(0);
@@ -1012,7 +1013,25 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
 
   const handlePagerContentSizeChange = useCallback(
     (contentWidth: number) => {
-      if (pagerScrolledRef.current) return;
+      // @ai-start
+      // After the reveal, go back to the active page each time the pages get
+      // a new width. The width effect below can scroll before the pages have
+      // that width, and Android clamps the offset to the old content: a
+      // window resize across 1280pt left the pager part-way between pages.
+      if (pagerScrolledRef.current) {
+        if (contentWidth === pagerContentWidthRef.current) return;
+        pagerContentWidthRef.current = contentWidth;
+        const index = tabs.findIndex(tab => tab.id === activeTabRef.current);
+        if (index < 0) return;
+        // A scroll in this frame can still reach the view before its new
+        // layout, so wait one frame.
+        const x = index * pageWidth;
+        requestAnimationFrame(() =>
+          horizontalRef.current?.scrollTo({x, y: 0, animated: false}),
+        );
+        return;
+      }
+      // @ai-end
       const targetX = initialTabIndex * pageWidth;
       // @ai-start
       const initialPageReady = hasPagerReachedInitialPage(
@@ -1023,6 +1042,7 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
       );
       if (initialPageReady) {
         pagerScrolledRef.current = true;
+        pagerContentWidthRef.current = contentWidth; // @ai
         // Set scrollX so the tab bar indicator lands on the correct tab immediately
         scrollX.setValue(targetX);
         horizontalRef.current?.scrollTo({
@@ -1037,7 +1057,7 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
       }
       // @ai-end
     },
-    [pageWidth, pagerOpacity, initialTabIndex, scrollX],
+    [pageWidth, pagerOpacity, initialTabIndex, scrollX, tabs],
   );
 
   // @ai-start
