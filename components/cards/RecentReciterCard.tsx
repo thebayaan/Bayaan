@@ -68,7 +68,7 @@ export const RecentReciterCard = ({
 }: RecentReciterCardProps) => {
   const {theme} = useTheme();
   const {t} = useTranslation('home');
-  const {updateQueue} = usePlayerActions();
+  const {updateQueue, play, pause} = usePlayerActions();
   const router = useRouter();
   // Single consolidated subscription with shallow equality
   const {playbackStatus, currentIndex, tracks, storePosition, storeDuration} =
@@ -171,66 +171,77 @@ export const RecentReciterCard = ({
       ? storePosition / storeDuration
       : progress;
 
-  // Resume playback
-  const handlePlayPress = useCallback(async () => {
-    try {
-      // Handle upload tracks
-      if (isUserUpload && userRecitationId) {
-        const recitation = useUploadsStore
-          .getState()
-          .recitations.find(r => r.id === userRecitationId);
-        if (!recitation) {
-          console.error('Could not find uploaded recitation');
+  // Resume playback. A tap on the card may pause; the menu's "Continue
+  // playing" never does.
+  const resume = useCallback(
+    async (pauseIfPlaying: boolean) => {
+      try {
+        // Already in the player: the card plays and pauses it, like the mini
+        // player and the iPad hero. Resuming it again reloaded the stream (an
+        // audible gap) and replaced the queue it was playing from, a playlist
+        // say, with this reciter's whole list.
+        if (isCurrentlyPlaying) {
+          const audible =
+            playbackStatus === 'playing' || playbackStatus === 'buffering';
+          if (!audible) await play();
+          else if (pauseIfPlaying) await pause();
           return;
         }
-        const uploadTrack = createUserUploadTrack(recitation);
-        const startPosition =
-          isCurrentlyPlaying && storePosition >= 0
-            ? storePosition
-            : progress * duration;
-        await updateQueue([uploadTrack], 0, startPosition);
-        useRecentlyPlayedStore.getState().resumeChain(index);
-        return;
-      }
 
-      const startPosition =
-        isCurrentlyPlaying && storePosition >= 0
-          ? storePosition
-          : progress * duration;
+        const startPosition = progress * duration;
 
-      if (__DEV__)
-        console.log('[RecentReciterCard] Resume debug:', {
-          isCurrentlyPlaying,
-          storePosition,
-          progress,
-          duration,
+        // Handle upload tracks
+        if (isUserUpload && userRecitationId) {
+          const recitation = useUploadsStore
+            .getState()
+            .recitations.find(r => r.id === userRecitationId);
+          if (!recitation) {
+            console.error('Could not find uploaded recitation');
+            return;
+          }
+          const uploadTrack = createUserUploadTrack(recitation);
+          await updateQueue([uploadTrack], 0, startPosition);
+          useRecentlyPlayedStore.getState().resumeChain(index);
+          return;
+        }
+
+        if (__DEV__)
+          console.log('[RecentReciterCard] Resume debug:', {
+            progress,
+            duration,
+            startPosition,
+          });
+
+        await resumeRecent({
+          reciterId,
+          surahId,
+          rewayatId,
           startPosition,
+          recentIndex: index,
+          updateQueue,
         });
-
-      await resumeRecent({
-        reciterId,
-        surahId,
-        rewayatId,
-        startPosition,
-        recentIndex: index,
-        updateQueue,
-      });
-    } catch (error) {
-      console.error('Error playing surah:', error);
-    }
-  }, [
-    reciterId,
-    surahId,
-    isCurrentlyPlaying,
-    storePosition,
-    progress,
-    duration,
-    updateQueue,
-    index,
-    rewayatId,
-    isUserUpload,
-    userRecitationId,
-  ]);
+      } catch (error) {
+        console.error('Error playing surah:', error);
+      }
+    },
+    [
+      reciterId,
+      surahId,
+      isCurrentlyPlaying,
+      playbackStatus,
+      progress,
+      duration,
+      updateQueue,
+      play,
+      pause,
+      index,
+      rewayatId,
+      isUserUpload,
+      userRecitationId,
+    ],
+  );
+  const handlePlayPress = useCallback(() => resume(true), [resume]);
+  const handleContinuePlaying = useCallback(() => resume(false), [resume]);
 
   // Long press options
   // @ai-start
@@ -243,7 +254,7 @@ export const RecentReciterCard = ({
       rewayatId,
       recentIndex: index,
       variant: 'recent',
-      onContinuePlaying: handlePlayPress,
+      onContinuePlaying: handleContinuePlaying,
     }),
     [
       reciterId,
@@ -252,7 +263,7 @@ export const RecentReciterCard = ({
       surahName,
       rewayatId,
       index,
-      handlePlayPress,
+      handleContinuePlaying,
     ],
   );
   // On iPad the card is a context menu (long press or secondary click).
