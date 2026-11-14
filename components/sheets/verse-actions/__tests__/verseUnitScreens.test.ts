@@ -31,7 +31,15 @@ import {
   tafseerBadge,
   unitPagerPage,
   wbwParts,
+  selectionWordParts, // @ai
 } from '../verseUnitScreens';
+// @ai-start
+import {
+  selectVerses,
+  unitSelection,
+  type ReadyVerseSelection,
+} from '@/components/share/rewayahVerseSelection';
+// @ai-end
 
 type FixtureDb = 'hafs' | 'warsh' | 'bazzi';
 const fixture =
@@ -205,3 +213,92 @@ describe('similar verses', () => {
     expect(similarVerseRef('2:255', true)).toBe('Hafs 2:255');
   });
 });
+
+// @ai-start
+describe('Word Study parts', () => {
+  const hafsSelection = (keys: string[]): ReadyVerseSelection => {
+    const [surahNumber, ayahNumber] = keys[0].split(':').map(Number);
+    const selection = selectVerses(
+      {
+        rewayah: 'hafs',
+        verseKey: keys[0],
+        surahNumber,
+        ayahNumber,
+        verseKeys: keys,
+      },
+      null,
+      'ready',
+    );
+    if (selection.status !== 'ready') throw new Error('not ready');
+    return selection;
+  };
+  const rewayahSelection = (model: RewayahVerseUnits, keys: string[]) =>
+    unitSelection(
+      model,
+      keys.map(key => unit(model, key)),
+    );
+
+  it('Hafs: one part per selected verse, captioned when there are several', () => {
+    expect(selectionWordParts(hafsSelection(['2:255']))).toEqual([
+      {verseKey: '2:255', caption: 'none'},
+    ]);
+    expect(selectionWordParts(hafsSelection(['1:6', '1:7']))).toEqual([
+      {verseKey: '1:6', caption: 'verse'},
+      {verseKey: '1:7', caption: 'verse'},
+    ]);
+  });
+
+  it('a split Hafs verse gives each rewayah verse its own slots (Warsh 1:6, 1:7)', () => {
+    expect(selectionWordParts(rewayahSelection(warsh, ['1:6']))).toEqual([
+      {verseKey: '1:7', caption: 'hafsVerse', wordRange: {first: 1, last: 4}},
+    ]);
+    expect(selectionWordParts(rewayahSelection(warsh, ['1:7']))).toEqual([
+      {verseKey: '1:7', caption: 'hafsVerse', wordRange: {first: 5, last: 10}},
+    ]);
+    // Both parts selected: the whole Hafs verse.
+    expect(selectionWordParts(rewayahSelection(warsh, ['1:6', '1:7']))).toEqual(
+      [{verseKey: '1:7', caption: 'hafsVerse'}],
+    );
+  });
+
+  it('a rewayah verse holding whole Hafs verses (Warsh 103:1, Warsh 1:5)', () => {
+    expect(selectionWordParts(rewayahSelection(warsh, ['103:1']))).toEqual([
+      {verseKey: '103:1', caption: 'hafsVerse'},
+      {verseKey: '103:2', caption: 'hafsVerse'},
+    ]);
+    // Warsh 1:5 is Hafs 1:6: captioned, since the numbers differ.
+    expect(selectionWordParts(rewayahSelection(warsh, ['1:5']))).toEqual([
+      {verseKey: '1:6', caption: 'hafsVerse'},
+    ]);
+  });
+
+  it('a rewayah verse made of parts of two Hafs verses (Bazzi 71:24)', () => {
+    expect(selectionWordParts(rewayahSelection(bazzi, ['71:24']))).toEqual([
+      {
+        verseKey: '71:23',
+        caption: 'hafsVerse',
+        wordRange: {first: 10, last: 14},
+      },
+      {verseKey: '71:24', caption: 'hafsVerse', wordRange: {first: 1, last: 3}},
+    ]);
+  });
+
+  it('one verse that is the Hafs verse of the same number has no caption', () => {
+    expect(selectionWordParts(rewayahSelection(warsh, ['112:1']))).toEqual([
+      {verseKey: '112:1', caption: 'none'},
+    ]);
+    for (const u of hafs.units) {
+      expect(selectionWordParts(unitSelection(hafs, [u]))).toEqual([
+        {verseKey: u.key, caption: 'none'},
+      ]);
+    }
+    // Several such verses are still another rewayah's: Hafs references.
+    expect(
+      selectionWordParts(rewayahSelection(warsh, ['112:1', '112:2'])),
+    ).toEqual([
+      {verseKey: '112:1', caption: 'hafsVerse'},
+      {verseKey: '112:2', caption: 'hafsVerse'},
+    ]);
+  });
+});
+// @ai-end
