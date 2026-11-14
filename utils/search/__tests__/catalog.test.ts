@@ -131,6 +131,14 @@ describe('createCatalogSearch (Home)', () => {
     expect(search.search(query)[0]?.item.id).toBe(ALAFASI);
   });
 
+  it('lists no reciters for a bare surah word', () => {
+    for (const query of ['sura', 'surah', 'سورة']) {
+      expect(search.search(query).filter(r => r.type === 'reciter')).toEqual(
+        [],
+      );
+    }
+  });
+
   it('keeps the one-missing-word fallback away from real matches', () => {
     // A surah matched, so no reciter named Muhammad is added.
     expect(search.search('surah muhammad').map(r => r.type)).toEqual(['surah']);

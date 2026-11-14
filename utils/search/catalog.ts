@@ -218,7 +218,15 @@ export function createCatalogSearch(
     search(query: string): CatalogSearchResult[] {
       const surahHits = surahSearch.search(query);
       // A bare number is a surah reference; reciters never match digits.
-      if (/^\d+$/.test(toSearchKey(query))) {
+      // @ai-start
+      // A bare surah word is too: "sura" otherwise typo-matches the style
+      // "murattal" and lists every reciter while "surah ..." is being typed.
+      const key = toSearchKey(query);
+      if (
+        /^\d+$/.test(key) ||
+        (key !== '' && tokenize(key).every(token => SURAH_WORDS.has(token)))
+      ) {
+        // @ai-end
         return surahHits.map(hit => ({type: 'surah' as const, ...hit}));
       }
       // @ai-start
