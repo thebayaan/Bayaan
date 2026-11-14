@@ -229,3 +229,52 @@ it('does not move a single-dhikr session', () => {
   comeToRest();
   expect(session()).toMatchObject({index: 0, mode: 'single'});
 });
+
+// @ai-start
+describe('a width change (rotation, Split View)', () => {
+  function resize(width: number): void {
+    const measured = screen.root.find(
+      node =>
+        typeof node.type === 'string' &&
+        typeof node.props.onLayout === 'function',
+    );
+    act(() => {
+      measured.props.onLayout({nativeEvent: {layout: {width}}});
+    });
+  }
+
+  it('remounts the pager on the dhikr that was shown', () => {
+    beginDrag();
+    show(1);
+    liftFinger(PAGE);
+    const before = pager();
+    expect(before.props.initialScrollIndex).toBe(0);
+    resize(820);
+    // A fresh list, opened on the same dhikr. Scrolling the old list to the
+    // new offset landed elsewhere in Arabic.
+    expect(pager()).not.toBe(before);
+    expect(pager().props.initialScrollIndex).toBe(1);
+    expect(session()?.index).toBe(1);
+  });
+
+  it('does not move Play All when the new list reports its page', async () => {
+    // Play All is on the third dhikr while the reader opened on the first.
+    act(() => screen.unmount());
+    const playing = session();
+    useAdhkarSessionStore.setState({
+      session: playing && {...playing, index: 2},
+    });
+    await act(async () => {
+      screen = create(<DhikrReaderScreen />);
+    });
+    resize(PAGE);
+    show(0);
+    const before = session();
+    resize(820);
+    // The fresh list reports the page it opened on: not a swipe.
+    show(0);
+    expect(session()).toBe(before);
+    expect(session()?.index).toBe(2);
+  });
+});
+// @ai-end

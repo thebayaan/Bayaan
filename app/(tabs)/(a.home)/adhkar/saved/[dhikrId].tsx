@@ -29,6 +29,7 @@ import {Theme} from '@/utils/themeUtils';
 import {DhikrReader} from '@/components/adhkar/DhikrReader';
 import {resolveViewableChange} from '@/components/adhkar/playAllScrollGuard';
 import {useSwipeSettle} from '@/components/adhkar/swipeSettle'; // @ai
+import {usePagerWidthAnchor} from '@/components/adhkar/pagerWidthAnchor'; // @ai
 import {LoadingIndicator} from '@/components/LoadingIndicator';
 import {Dhikr, SavedDhikr} from '@/types/adhkar';
 import {adhkarService} from '@/services/adhkar/AdhkarService';
@@ -343,20 +344,18 @@ const SavedDhikrReaderScreen: React.FC = () => {
   }, []);
 
   // Keep the current page in place if the width changes later (rotation,
-  // Split View).
-  const currentIndexRef = useRef(currentIndex);
-  currentIndexRef.current = currentIndex;
-  const lastPageWidth = useRef<number | null>(null);
-  useEffect(() => {
-    if (pageWidth === null) return;
-    const previous = lastPageWidth.current;
-    lastPageWidth.current = pageWidth;
-    if (previous === null || previous === pageWidth) return;
-    flatListRef.current?.scrollToOffset({
-      offset: currentIndexRef.current * pageWidth,
-      animated: false,
-    });
-  }, [pageWidth]);
+  // Split View): the pager remounts on the current dhikr. Scrolling the old
+  // list to the new offset landed on another dhikr in Arabic (see
+  // pagerWidthAnchor). The new list's first report is where it opened, and
+  // any auto-scroll in flight has already landed there.
+  const {pagerKey, startIndex} = usePagerWidthAnchor(
+    pageWidth,
+    currentIndex,
+    () => {
+      sawFirstViewable.current = false;
+      playAllScrollTarget.current = null;
+    },
+  );
 
   // The finger lifted: the swipe settles here, or after the snap.
   const handleScrollEndDrag = useCallback(
@@ -428,6 +427,7 @@ const SavedDhikrReaderScreen: React.FC = () => {
           {/* @ai: render once the pager width is known */}
           {pageWidth !== null && (
             <FlatList
+              key={pagerKey} // @ai
               ref={flatListRef}
               style={appLayoutDirection}
               data={adhkarList}
@@ -436,7 +436,7 @@ const SavedDhikrReaderScreen: React.FC = () => {
               horizontal
               pagingEnabled
               showsHorizontalScrollIndicator={false}
-              initialScrollIndex={initialIndex}
+              initialScrollIndex={startIndex ?? initialIndex} // @ai
               getItemLayout={getItemLayout}
               onViewableItemsChanged={onViewableItemsChanged}
               onScrollBeginDrag={handleScrollBeginDrag}
