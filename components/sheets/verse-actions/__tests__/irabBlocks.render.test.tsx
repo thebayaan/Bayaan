@@ -119,7 +119,7 @@ function render(
   return {renderer, onRef, canOpen};
 }
 
-/** Host Text nodes that open a reference, by their text. */
+/** The Text elements that open a reference, by their text. */
 function tappable(renderer: TestRenderer.ReactTestRenderer): string[] {
   return renderer.root
     .findAll(
