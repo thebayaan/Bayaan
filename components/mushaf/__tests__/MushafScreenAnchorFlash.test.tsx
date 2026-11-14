@@ -47,7 +47,6 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => ({
     rewayah: 'warsh',
     getSurahStartPages: () => ({1: 1}),
     getPageForVerse: () => undefined,
-    getRewayahLoadState: () => 'ready',
     switchRewayah: jest.fn(() => Promise.resolve()),
     subscribeCacheChanges: () => () => undefined,
     getCacheVersion: () => 0,

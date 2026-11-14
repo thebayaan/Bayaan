@@ -1,6 +1,6 @@
 // @ai-generated
 // The Mushaf data loads after the splash (RFC-023 step 1), so a screen that
-// reads it waits for one state, with one retry that knows which load to redo.
+// reads it waits for one state, with one retry.
 import {useCallback, useState, useSyncExternalStore} from 'react';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
@@ -8,12 +8,8 @@ import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
 export type MushafDataState = 'ready' | 'loading' | 'failed';
 
 function readMushafDataState(): MushafDataState {
-  const dk = digitalKhattDataService;
-  if (dk.initialized) return 'ready';
-  const failed =
-    mushafPreloadService.state === 'failed' ||
-    dk.getRewayahLoadState(dk.rewayah) === 'error';
-  return failed ? 'failed' : 'loading';
+  if (digitalKhattDataService.initialized) return 'ready';
+  return mushafPreloadService.state === 'failed' ? 'failed' : 'loading';
 }
 
 function subscribeMushafData(listener: () => void): () => void {
@@ -25,16 +21,6 @@ function subscribeMushafData(listener: () => void): () => void {
   };
 }
 
-// A failed preload redoes the data and the fonts. Else the preload finished,
-// and only the data of the active rewayah needs its load again.
-function retryMushafLoad(): Promise<void> {
-  if (mushafPreloadService.state === 'failed') {
-    return mushafPreloadService.initialize();
-  }
-  const dk = digitalKhattDataService;
-  return dk.ensureRewayahLoaded(dk.rewayah, {retry: true});
-}
-
 export function useMushafData(): {
   state: MushafDataState;
   retry: () => void;
@@ -43,7 +29,9 @@ export function useMushafData(): {
   const [retrying, setRetrying] = useState(false);
   const retry = useCallback(() => {
     setRetrying(true);
-    retryMushafLoad()
+    // The preload redoes the data and the fonts.
+    mushafPreloadService
+      .initialize()
       .catch(() => undefined)
       .finally(() => setRetrying(false));
   }, []);
