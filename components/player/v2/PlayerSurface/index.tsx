@@ -1,6 +1,6 @@
 // @ai-generated
 import React, {useCallback, useEffect, useMemo, useRef} from 'react';
-import {Platform, StyleSheet, useWindowDimensions} from 'react-native';
+import {Platform, StyleSheet, useWindowDimensions, View} from 'react-native';
 import Animated, {
   cancelAnimation,
   Extrapolation,
@@ -19,6 +19,7 @@ import {usePlayerStore} from '@/services/player/store/playerStore';
 import {useTheme} from '@/hooks/useTheme';
 import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
 import {FrostedView} from '@/components/FrostedView';
+import {appLayoutDirection, forceLTR} from '@/utils/rtl';
 import {
   measureMiniPlayerAnchor,
   registerPlayerSheetController,
@@ -361,38 +362,53 @@ export const PlayerSurface = () => {
         pointerEvents="none"
         style={[styles.backdrop, backdropStyle]}
       />
-      {/* Closed, the surface stays mounted off-screen: keep screen readers
-          out of it, and out of the app behind it while it's open. */}
-      <Animated.View
-        pointerEvents={isOpen ? 'auto' : 'none'}
-        accessibilityElementsHidden={!isOpen}
-        importantForAccessibility={isOpen ? 'auto' : 'no-hide-descendants'}
+      {/* The frame is placed with physical coordinates: a left edge, and a
+          translateX measured from the left of the window. In a right-to-left
+          app `left` means the start edge, so under the app's direction the
+          frame sat against the right edge while its transform still counted
+          from the left, and the card grew from a spot to the right of the
+          mini player. This layer is always left-to-right; the content takes
+          the app's direction back. It takes no touches itself, and carries
+          the modal flag, which only hides the siblings of the view it is
+          set on. */}
+      <View
+        pointerEvents="box-none"
+        collapsable={false}
         accessibilityViewIsModal={isOpen}
-        style={[styles.frame, frameStyle]}>
-        {USE_GLASS ? (
-          <Animated.View style={[StyleSheet.absoluteFill, glassStyle]}>
-            <GlassView
-              style={StyleSheet.absoluteFill}
-              glassEffectStyle="regular"
-              colorScheme={glassColorScheme}
-            />
-          </Animated.View>
-        ) : (
-          <Animated.View style={[StyleSheet.absoluteFill, glassStyle]}>
-            <FrostedView style={StyleSheet.absoluteFill} />
-          </Animated.View>
-        )}
+        style={[styles.frameLayer, forceLTR]}>
+        {/* Closed, the surface stays mounted off-screen: keep screen readers
+            out of it, and out of the app behind it while it's open. */}
         <Animated.View
-          style={[
-            StyleSheet.absoluteFill,
-            {backgroundColor: theme.colors.background},
-            backgroundStyle,
-          ]}
-        />
-        <Animated.View style={[styles.content, contentStyle]}>
-          <PlayerBody />
+          pointerEvents={isOpen ? 'auto' : 'none'}
+          accessibilityElementsHidden={!isOpen}
+          importantForAccessibility={isOpen ? 'auto' : 'no-hide-descendants'}
+          style={[styles.frame, frameStyle]}>
+          {USE_GLASS ? (
+            <Animated.View style={[StyleSheet.absoluteFill, glassStyle]}>
+              <GlassView
+                style={StyleSheet.absoluteFill}
+                glassEffectStyle="regular"
+                colorScheme={glassColorScheme}
+              />
+            </Animated.View>
+          ) : (
+            <Animated.View style={[StyleSheet.absoluteFill, glassStyle]}>
+              <FrostedView style={StyleSheet.absoluteFill} />
+            </Animated.View>
+          )}
+          <Animated.View
+            style={[
+              StyleSheet.absoluteFill,
+              {backgroundColor: theme.colors.background},
+              backgroundStyle,
+            ]}
+          />
+          <Animated.View
+            style={[styles.content, appLayoutDirection, contentStyle]}>
+            <PlayerBody />
+          </Animated.View>
         </Animated.View>
-      </Animated.View>
+      </View>
     </PlayerDismissProvider>
   );
 };
@@ -411,6 +427,15 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     backgroundColor: '#000',
+    zIndex: 2000,
+    elevation: 20,
+  },
+  frameLayer: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
     zIndex: 2000,
     elevation: 20,
   },
