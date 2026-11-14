@@ -216,3 +216,26 @@ it('no anchor, units built: the Hafs verse at once, as before', () => {
   open({page: '1', surah: '1', ayah: '7'});
   expect(selection()).toEqual({rewayah: 'hafs', keys: ['1:7']});
 });
+
+// The 3 s timer used to clear whatever was selected when it fired: a verse
+// long-pressed during the flash lost its highlight under the open sheet,
+// and on iOS releasing a drag-select after that moment opened nothing.
+it("a long-press made during the flash keeps the reader's selection", () => {
+  open({page: '1', surah: '1', ayah: '7'});
+  act(() => jest.advanceTimersByTime(1000));
+  act(() => {
+    useMushafVerseSelectionStore.getState().selectVerse('1:5', 1);
+  });
+  act(() => jest.advanceTimersByTime(5000));
+  expect(selection()).toEqual({rewayah: 'hafs', keys: ['1:5']});
+});
+
+it('leaving the reader still clears the selection', () => {
+  open({page: '1', surah: '1', ayah: '7'});
+  act(() => {
+    useMushafVerseSelectionStore.getState().selectVerse('1:5', 1);
+  });
+  act(() => renderer?.unmount());
+  renderer = null;
+  expect(selection()).toEqual({rewayah: null, keys: []});
+});

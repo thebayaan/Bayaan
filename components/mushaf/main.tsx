@@ -53,7 +53,13 @@ import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {getRewayahShortLabel} from '@/utils/rewayahLabels';
 import {mushafSessionStore} from '@/services/mushaf/MushafSessionStore';
 import {useMushafNavigationStore} from '@/store/mushafNavigationStore';
-import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
+// @ai-start
+import {
+  SELECTION_FLASH_MS,
+  flashedSelectionClearer,
+  useMushafVerseSelectionStore,
+} from '@/store/mushafVerseSelectionStore';
+// @ai-end
 import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
 import {
@@ -1113,6 +1119,26 @@ export default function MushafViewer({
     [isVertical, surahStartPages, navigateToPage],
   );
 
+  // @ai-start
+  // Ends the flash of the verse just selected by a jump. One timer: a newer
+  // jump replaces the older one's instead of adding to it (they stacked, and
+  // each cleared whatever was selected when it fired).
+  const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const flashSelection = useCallback(() => {
+    if (flashTimerRef.current !== null) clearTimeout(flashTimerRef.current);
+    flashTimerRef.current = setTimeout(
+      flashedSelectionClearer(),
+      SELECTION_FLASH_MS,
+    );
+  }, []);
+  useEffect(
+    () => () => {
+      if (flashTimerRef.current !== null) clearTimeout(flashTimerRef.current);
+    },
+    [],
+  );
+  // @ai-end
+
   // Subscribe to external navigation requests (e.g. from Similar Verses)
   const navRequestId = useMushafNavigationStore(s => s.requestId);
   useEffect(() => {
@@ -1125,17 +1151,15 @@ export default function MushafViewer({
         useMushafVerseSelectionStore
           .getState()
           .selectVerse(targetVerseKey, targetPage);
+        // Only when a verse was selected here. This effect also re-runs
+        // with nothing to do (on mount, and whenever the pager's navigate
+        // function changes with the theme, font or rotation); it armed a
+        // timer each time, which then cleared the reader's own selection.
+        flashSelection(); // @ai
       }
       clear();
     }
-
-    // Auto-clear the temporary highlight after 2 seconds
-    const timer = setTimeout(() => {
-      useMushafVerseSelectionStore.getState().clearSelection();
-    }, 3000);
-
-    return () => clearTimeout(timer);
-  }, [navRequestId, navigateToPage]);
+  }, [navRequestId, navigateToPage, flashSelection]); // @ai
 
   // @ai-start
   // A selection of rewayah verse units is numbered in that rewayah: drop it
@@ -1182,13 +1206,12 @@ export default function MushafViewer({
       else if (target.unit) {
         selection.selectUnits(target.rewayah, [target.unit], page);
       }
+      // A key that names no verse here selected nothing: there is no flash
+      // to end, and what the reader had selected stays theirs.
+      if (target.hafsKey || target.unit) flashSelection();
       // @ai-end
-      const timer = setTimeout(() => {
-        useMushafVerseSelectionStore.getState().clearSelection();
-      }, 3000);
-      return () => clearTimeout(timer);
     },
-    [isVertical, navigateToPage],
+    [isVertical, navigateToPage, flashSelection], // @ai
   );
 
   const resumeChain = useCallback(

@@ -17,7 +17,13 @@ import {usePhoneOrientation} from '@/hooks/usePhoneOrientation'; // @ai
 import {useTheme} from '@/hooks/useTheme';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService'; // @ai
-import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
+// @ai-start
+import {
+  SELECTION_FLASH_MS,
+  flashedSelectionClearer,
+  useMushafVerseSelectionStore,
+} from '@/store/mushafVerseSelectionStore';
+// @ai-end
 // @ai-start
 import {
   mushafVerseMapService,
@@ -182,9 +188,9 @@ export default function MushafScreen() {
       } else if (initialVerseKey) {
         selection.selectVerse(initialVerseKey, pageNumber);
       }
-      timer = setTimeout(() => {
-        useMushafVerseSelectionStore.getState().clearSelection();
-      }, 3000);
+      // Ends only this flash: a verse the reader long-pressed meanwhile
+      // keeps its highlight.
+      timer = setTimeout(flashedSelectionClearer(), SELECTION_FLASH_MS);
     };
     // Verse units are built after interactions, never here: right after a
     // rewayah switch (a bookmark saved in another rewayah) they may still
