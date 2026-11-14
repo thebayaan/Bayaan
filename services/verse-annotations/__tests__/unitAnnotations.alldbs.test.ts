@@ -118,7 +118,7 @@ run('annotations, search and links on every words DB (local only)', () => {
           unitForRouteAnchor(anchor.verseKey, units) === unit,
           () => `${k}: route anchor ${anchor.verseKey}`,
         );
-        const params = savedVerseRouteParams(row, 1);
+        const params = savedVerseRouteParams(row);
         check(
           isHafs ? !('anchor' in params) : params.anchor === anchor.verseKey,
           () => `${k}: route params ${JSON.stringify(params)}`,
