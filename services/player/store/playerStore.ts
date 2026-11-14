@@ -940,6 +940,20 @@ export const usePlayerStore = create<PlayerStoreState>()(
       }),
       onRehydrateStorage: () => state => {
         if (!state) return;
+        // @ai-start
+        // The native player starts each launch at 1x. Hand it the restored
+        // rate, or the controls show (say) 2x while the audio plays at 1x.
+        const restoredRate = state.playback?.rate;
+        if (
+          typeof restoredRate === 'number' &&
+          Number.isFinite(restoredRate) &&
+          restoredRate > 0
+        ) {
+          expoAudioService.setRate(restoredRate);
+        } else if (state.playback) {
+          state.playback = {...state.playback, rate: 1};
+        }
+        // @ai-end
         const tracks = state.queue?.tracks ?? [];
         const hasStaleUrls = tracks.some(
           t => t.url.includes('mp3quran.net') || t.url.includes('supabase.co'),

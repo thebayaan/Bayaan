@@ -33,6 +33,13 @@ class ExpoAudioService {
   private stateListeners: Set<StateListener> = new Set();
   private playbackState: PlaybackState = 'idle';
   private lastError: Error | null = null;
+  // @ai-start
+  // The rate the user chose. The native player starts every app launch at
+  // 1x, and the player store restores the chosen rate before or after the
+  // player is injected, so the rate is kept here and pushed to the player
+  // whenever one is available.
+  private desiredRate = 1;
+  // @ai-end
 
   private constructor() {
     // Private constructor for singleton
@@ -90,6 +97,7 @@ class ExpoAudioService {
    */
   setPlayer(player: AudioPlayer): void {
     this.player = player;
+    this.applyDesiredRate(); // @ai
     const waiters = this.playerWaiters;
     this.playerWaiters = [];
     waiters.forEach(resolve => resolve());
@@ -153,6 +161,7 @@ class ExpoAudioService {
 
       // Wait for the player to be fully loaded (with timeout)
       await this.waitForLoaded(5000);
+      this.applyDesiredRate(); // @ai
 
       this.currentUrl = url;
       this.playbackState = 'ready';
@@ -229,6 +238,7 @@ class ExpoAudioService {
     }
 
     try {
+      this.applyDesiredRate(); // @ai
       await this.player.play();
       this.playbackState = 'playing';
       this.notifyListeners();
@@ -322,18 +332,44 @@ class ExpoAudioService {
    * Also enables pitch correction so audio doesn't sound distorted
    */
   setRate(rate: number): void {
+    // @ai-start
+    // Clamp to valid range (expo-audio supports 0.1 to 2.0). A rate that is
+    // not a number (a damaged persisted value) falls back to 1x.
+    const clampedRate = Number.isFinite(rate)
+      ? Math.max(0.5, Math.min(2.0, rate))
+      : 1;
+    // Remember it even with no player yet: setPlayer() applies it.
+    this.desiredRate = clampedRate;
+    // @ai-end
+
     if (!this.player) {
       if (__DEV__)
         console.warn('[ExpoAudioService] Cannot set rate: no player');
       return;
     }
 
-    // Clamp to valid range (expo-audio supports 0.1 to 2.0)
-    const clampedRate = Math.max(0.5, Math.min(2.0, rate));
     // Use setPlaybackRate method with 'high' pitch correction quality
     this.player.setPlaybackRate(clampedRate, 'high');
     if (__DEV__) console.log('[ExpoAudioService] Rate set to:', clampedRate);
   }
+
+  // @ai-start
+  /**
+   * Push the chosen rate to the native player when the two differ. The
+   * native rate is 1x on a fresh player (every app launch), so without this
+   * the UI shows the restored rate while the audio plays at 1x.
+   */
+  private applyDesiredRate(): void {
+    if (!this.player) return;
+    try {
+      if (Math.abs(this.player.playbackRate - this.desiredRate) < 0.001) return;
+      this.player.setPlaybackRate(this.desiredRate, 'high');
+    } catch (error) {
+      // A rate that cannot be applied must not stop a load or a play.
+      if (__DEV__) console.warn('[ExpoAudioService] Rate sync failed:', error);
+    }
+  }
+  // @ai-end
 
   /**
    * Set volume (0.0 to 1.0)
@@ -472,6 +508,9 @@ class ExpoAudioService {
     this.playbackState = 'idle';
     this.lastError = null;
     this.stateListeners.clear();
+    // @ai The store goes back to 1x on cleanup; the kept player must follow.
+    this.desiredRate = 1;
+    this.applyDesiredRate(); // @ai
     if (__DEV__) console.log('[ExpoAudioService] Cleaned up');
   }
 
