@@ -176,7 +176,7 @@ jest.mock('expo-sqlite', () => {
             .filter(row => row.id >= from && row.id <= to)
             .sort((a, b) => a.id - b.id)
             .map(row => row.text);
-          return {texts: inRange.length ? inRange.join('\^_') : null};
+          return {texts: inRange.length ? inRange.join('\u001f') : null};
         },
         async closeAsync() {
           if (closed) throw new Error('already closed');
