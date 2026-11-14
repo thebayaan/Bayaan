@@ -1888,6 +1888,35 @@ export class DigitalKhattDataService {
     }
     return this.verseToPage.get(verseKey);
   }
+
+  // @ai-start
+  /**
+   * The page of one Hafs slot ('S:A' word `position`; every rewayah keeps
+   * Hafs slots). The slot itself is looked up, from the verse's first page
+   * on and at most 3 pages, so a layout where a verse runs onto the next
+   * page still gets the right one; undefined before the data has loaded or
+   * when the slot is not there.
+   */
+  getPageForWord(verseKey: string, position: number): number | undefined {
+    const first = this.getPageForVerse(verseKey);
+    if (first === undefined) return undefined;
+    for (let page = first; page < first + 3; page++) {
+      for (const line of this.getPageLines(page)) {
+        if (line.line_type !== 'ayah') continue;
+        for (let wid = line.first_word_id; wid <= line.last_word_id; wid++) {
+          const info = this.wordInfoById.get(wid);
+          if (
+            info?.verseKey === verseKey &&
+            info.wordPositionInVerse === position
+          ) {
+            return page;
+          }
+        }
+      }
+    }
+    return undefined;
+  }
+  // @ai-end
 }
 
 export const digitalKhattDataService = new DigitalKhattDataService();

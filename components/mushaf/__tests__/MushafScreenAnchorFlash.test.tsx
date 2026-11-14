@@ -122,6 +122,7 @@ jest.mock('@/services/mushaf/MushafVerseMapService', () => ({
 
 import MushafScreen from '@/app/mushaf';
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
+import {useMushafWordFlashStore} from '@/store/mushafWordFlashStore'; // @ai
 
 declare const global: {IS_REACT_ACT_ENVIRONMENT?: boolean};
 global.IS_REACT_ACT_ENVIRONMENT = true;
@@ -216,3 +217,25 @@ it('no anchor, units built: the Hafs verse at once, as before', () => {
   open({page: '1', surah: '1', ayah: '7'});
   expect(selection()).toEqual({rewayah: 'hafs', keys: ['1:7']});
 });
+
+// @ai-start
+// A Quran search hit opens with `words`: its matched slots flash with the
+// verse (3 s), and leaving the screen ends the flash.
+it('flashes the words a search matched, and clears them on unmount', () => {
+  open({page: '1', surah: '1', ayah: '7', anchor: '1:7:3', words: '3,4'});
+  expect(selection()).toEqual({rewayah: 'warsh', keys: ['1:7']});
+  expect(useMushafWordFlashStore.getState().flash).toMatchObject({
+    verseKey: '1:7',
+    positions: [3, 4],
+  });
+  act(() => renderer?.unmount());
+  renderer = null;
+  expect(useMushafWordFlashStore.getState().flash).toBeNull();
+});
+
+it('flashes no words without a valid words param', () => {
+  open({page: '1', surah: '1', ayah: '7', words: 'x,0'});
+  expect(selection()).toEqual({rewayah: 'hafs', keys: ['1:7']});
+  expect(useMushafWordFlashStore.getState().flash).toBeNull();
+});
+// @ai-end
