@@ -59,6 +59,7 @@ import {VerseUnitsPending} from './VerseUnitsPending';
 import {useRecitedVerseKey} from '@/store/recitationTrackingStore';
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
 import {selectedRowKeys} from './selectedRowKeys';
+import {appLayoutDirection} from '@/utils/rtl';
 
 const NO_KEYS: readonly string[] = Object.freeze([]);
 // @ai-end
@@ -523,6 +524,11 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
       style={{
         width: pageWidth,
         height: pageHeight,
+        // @ai — the page card, its edges and rounded corners are drawn in
+        // physical book coordinates (as DKPageView): inherited RTL swapped
+        // them to the wrong side in Arabic. The text re-takes the app's
+        // direction in the scroll content below.
+        direction: 'ltr',
         backgroundColor: isBookLayout ? bgColor : cardColor,
       }}>
       {isBookLayout ? (
@@ -559,6 +565,7 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
               ref={scrollViewRef}
               style={styles.scrollView}
               contentContainerStyle={{
+                ...appLayoutDirection, // @ai — the text: see the root
                 paddingHorizontal: bookContentPadding,
                 paddingTop: PAGE_PADDING_TOP - METADATA_OFFSET - insets.top,
                 paddingBottom: PAGE_PADDING_BOTTOM - insets.top,
@@ -581,6 +588,7 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
           ref={scrollViewRef}
           style={styles.scrollView}
           contentContainerStyle={{
+            ...appLayoutDirection, // @ai — the text: see the root
             paddingTop: PAGE_PADDING_TOP - METADATA_OFFSET,
             paddingBottom: PAGE_PADDING_BOTTOM,
             paddingHorizontal: contentHorizontalPadding,
