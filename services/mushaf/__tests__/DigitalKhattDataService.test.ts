@@ -28,6 +28,7 @@ import {
   type DKLine,
 } from '../DigitalKhattDataService';
 import {rewayahBasmalaService} from '../RewayahBasmalaService'; // @ai
+import {RewayahVerseUnitsService} from '../RewayahVerseUnitsService'; // @ai
 import {WordReadError} from '../wordStore'; // @ai
 import {EXPECTED_BASMALA} from '../__fixtures__/basmalaTexts'; // @ai
 
@@ -1206,6 +1207,30 @@ describe('chunk reads (WordStore)', () => {
       'W3',
       'W4',
     ]);
+  });
+
+  // @ai Each store has its own verse index: a side rewayah's verse units do
+  // not need the main one.
+  it("a failed read of the main rewayah leaves a side rewayah's verse units as they are", async () => {
+    const service = await initialized();
+    await service.ensureRewayahLoaded('warsh');
+    // A scheduler that never runs a chunk: a build that starts stays
+    // 'loading'.
+    const units = new RewayahVerseUnitsService(service, undefined, undefined, {
+      scheduler: {
+        afterInteractions: () => undefined,
+        nextChunk: () => undefined,
+      },
+    });
+    fake.chunkFaults.set('dk_words', 'throw');
+    service.getWordText(1);
+    await flush();
+    expect(service.getRewayahLoadState('hafs')).toBe('error');
+    expect(service.getRewayahLoadState('warsh')).toBe('ready');
+
+    expect(units.getStatus('warsh')).toBe('idle');
+    units.request('warsh');
+    expect(units.getStatus('warsh')).toBe('loading');
   });
 
   describe('the sweep (readWordSlots)', () => {

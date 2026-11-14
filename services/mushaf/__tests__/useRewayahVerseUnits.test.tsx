@@ -24,8 +24,6 @@ import type {RewayahId} from '@/services/rewayah/RewayahIdentity';
 interface FakeState {
   /** True while a probe renders: nothing may load or build then. */
   rendering: boolean;
-  /** Whether startup loaded the main cache (the data service's). */
-  initialized: boolean;
   version: number;
   load: Map<string, string>;
   ensure: jest.Mock;
@@ -47,7 +45,6 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => {
   const unitsListeners = new Set<() => void>();
   const state: FakeState = {
     rendering: false,
-    initialized: true,
     version: 0,
     load: new Map(),
     ensure: jest.fn(() => Promise.resolve()),
@@ -75,9 +72,6 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => {
     digitalKhattDataService: {
       // The main cache serves Hafs (before startup: the Hafs placeholder).
       rewayah: 'hafs',
-      get initialized() {
-        return state.initialized;
-      },
       subscribeCacheChanges: (listener: () => void) => {
         listeners.add(listener);
         return () => listeners.delete(listener);
@@ -120,10 +114,6 @@ jest.mock('@/services/mushaf/RewayahVerseUnitsService', () => {
         if (load !== 'ready') return load;
         if (state.units.has(r)) return 'ready';
         if (state.refused.has(r)) return 'error';
-        // Units are read with the main cache: as startup goes without it.
-        if (!state.initialized) {
-          return state.load.get('hafs') === 'error' ? 'error' : 'loading';
-        }
         return state.requested.includes(r) ? 'loading' : 'idle';
       },
       request: (r: string) => {
@@ -188,7 +178,6 @@ let now = 0;
 let dateSpy: jest.SpyInstance;
 
 beforeEach(() => {
-  fake.initialized = true;
   fake.version = 0;
   fake.load.clear();
   fake.ensure.mockClear();
@@ -299,27 +288,14 @@ it('retry() tries again at once, whatever failed', () => {
   expect(warsh.last()).toMatchObject({units, status: 'ready'});
 });
 
-it('startup failed with the words in memory: tries startup again', () => {
-  // Startup could not load the main cache (Hafs); a Warsh side copy is in
-  // memory, but its units are read with the main cache's word ids.
-  fake.initialized = false;
+// @ai Each rewayah's store has its own verse index (RFC-023 step 2).
+it('the main rewayah failed: a side rewayah in memory builds its units', () => {
   fake.load.set('hafs', 'error');
   fake.load.set('warsh', 'ready');
   const warsh = render('warsh');
-  expect(warsh.last()).toMatchObject({units: null, status: 'error'});
-  // Tried again when it mounts, and by retry(): the main cache.
-  expect(fake.ensure.mock.calls).toEqual([['hafs', {retry: true}]]);
-  fake.ensure.mockClear();
-  act(() => warsh.last().retry());
-  expect(fake.ensure.mock.calls).toEqual([['hafs', {retry: true}]]);
-  expect(fake.retried).toEqual([]);
-  expect(fake.requested).toEqual([]);
-  // Startup loads it: the units are requested.
-  fake.initialized = true;
-  fake.load.set('hafs', 'ready');
-  act(() => fake.bump());
-  expect(fake.requested).toEqual(['warsh']);
   expect(warsh.last()).toMatchObject({units: null, status: 'loading'});
+  expect(fake.requested).toEqual(['warsh']);
+  expect(fake.ensure).not.toHaveBeenCalled();
 });
 
 it('is unavailable without a bundled words DB or a rewayah', () => {

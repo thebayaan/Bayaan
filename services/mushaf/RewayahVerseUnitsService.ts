@@ -38,7 +38,6 @@ import {runAfterInteractions} from '@/utils/afterInteractions';
 import {
   digitalKhattDataService,
   getRewayahDataIdentityKey,
-  type DKWordInfo,
   type RewayahLoadState,
 } from './DigitalKhattDataService';
 import {rewayahVerseMapService} from './RewayahVerseMapService';
@@ -58,13 +57,12 @@ const TOTAL_SURAHS = 114;
 /**
  * - 'ready': peek() returns the units;
  * - 'loading': the rewayah's words are loading, or its units are being
- *   built (request()), or wait for startup to load the main cache;
+ *   built (request());
  * - 'idle': not asked for: its words are not in memory (ensureRewayahLoaded;
  *   the hook does it), or they are and its units were not requested yet
  *   (request(); the hook does it);
  * - 'error': the words failed to load, or the units were refused (malformed
- *   data or a verse-map mismatch), or startup failed to load the main cache:
- *   show no rewayah verse numbers;
+ *   data or a verse-map mismatch): show no rewayah verse numbers;
  * - 'unavailable': no words DB is bundled for this rewayah.
  */
 export type VerseUnitsStatus =
@@ -77,26 +75,15 @@ export type VerseUnitsStatus =
 /** The DigitalKhattDataService read API the units need (fakes in tests). */
 export interface VerseUnitsDataReader {
   readonly rewayah: RewayahId;
-  readonly initialized: boolean;
   isRewayahReady(rewayah: RewayahId): boolean;
   getRewayahLoadState(rewayah: RewayahId): RewayahLoadState;
+  /**
+   * @ai Every slot of `rewayah` in id order, read from its own store outside
+   * the chunk cache (a build evicts none of the reader's chunks), or null
+   * while that store is not open. Blank slots have ''. ONE reused object:
+   * buildRewayahVerseUnits keeps none.
+   */
   readWordSlots(rewayah: RewayahId): Iterable<VerseUnitSlot> | null;
-}
-
-/**
- * Every slot of `rewayah` in id order, or null while its store is not open.
- * The data service reads them outside its chunk cache, so a build evicts none
- * of the reader's chunks. Blank slots have ''.
- *
- * The iterator yields ONE reused object (no allocation per slot); a caller
- * that keeps slots must copy them (buildRewayahVerseUnits does not keep any).
- */
-export function readRewayahSlots(
-  dk: VerseUnitsDataReader,
-  rewayah: RewayahId,
-): Iterable<VerseUnitSlot> | null {
-  if (!dk.initialized || !dk.isRewayahReady(rewayah)) return null;
-  return dk.readWordSlots(rewayah);
 }
 
 /**
@@ -222,14 +209,6 @@ export class RewayahVerseUnitsService {
     if (entry) return entry.units ? 'ready' : 'error';
     // Words in memory without a data identity: a broken build, never labels.
     if (this.dataKey(rewayah) === null) return 'error';
-    // A side copy's slots take their word ids and Hafs locations from the
-    // main cache: until startup loads it the units wait for it, and they
-    // fail with it (an error to retry, not an endless 'loading').
-    if (!this.dk.initialized) {
-      return this.dk.getRewayahLoadState(this.dk.rewayah) === 'error'
-        ? 'error'
-        : 'loading';
-    }
     return this.builds.has(rewayah) ? 'loading' : 'idle';
   }
 
@@ -250,7 +229,7 @@ export class RewayahVerseUnitsService {
     const pending = this.builds.get(rewayah);
     if (pending) return pending.done;
     const dataKey = this.dataKey(rewayah);
-    if (!dataKey || !this.dk.initialized || !this.dk.isRewayahReady(rewayah)) {
+    if (!dataKey || !this.dk.isRewayahReady(rewayah)) {
       return Promise.resolve(null);
     }
     const job = createJob(rewayah, dataKey);
@@ -385,7 +364,6 @@ export class RewayahVerseUnitsService {
   // the same cache (main or side). A build never reads across a change.
   private sameWords(job: BuildJob): boolean {
     return (
-      this.dk.initialized &&
       this.dk.isRewayahReady(job.rewayah) &&
       (this.dk.rewayah === job.rewayah) === job.active &&
       this.dataKey(job.rewayah) === job.dataKey
@@ -396,17 +374,11 @@ export class RewayahVerseUnitsService {
   // false when they are no longer in memory.
   private startJob(job: BuildJob): boolean {
     const dataKey = this.dataKey(job.rewayah);
-    if (
-      !dataKey ||
-      !this.dk.initialized ||
-      !this.dk.isRewayahReady(job.rewayah)
-    ) {
-      return false;
-    }
+    if (!dataKey || !this.dk.isRewayahReady(job.rewayah)) return false;
     // Words in memory without a first slot are refused ('no word slots'),
     // not requested again on every build that ends.
     const slots: Iterable<VerseUnitSlot> =
-      readRewayahSlots(this.dk, job.rewayah) ?? [];
+      this.dk.readWordSlots(job.rewayah) ?? [];
     job.dataKey = dataKey;
     job.active = this.dk.rewayah === job.rewayah;
     job.phase = {
