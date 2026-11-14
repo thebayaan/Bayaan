@@ -21,7 +21,7 @@
 import {ARABIC_MARKS, foldArabicLetters, foldHamzaCarriers} from './normalize';
 
 /** Bump when a spelling rule changes: the search index must be rebuilt. */
-export const QURAN_TEXT_NORMALIZER_VERSION = 1;
+export const QURAN_TEXT_NORMALIZER_VERSION = 2;
 
 /** Queries are cut to this many words, and this many letters (not marks). */
 export const QURAN_QUERY_MAX_TOKENS = 24;
@@ -78,6 +78,10 @@ const FINAL_WAW_HAMZA = /\u{0624}(\p{M}*)\u{0627}\u{06DF}(\p{M}*)$/u;
 const FINAL_HAMZA_ALIF =
   /(\u{0621}\u{064E}|\u{064E}\u{0654}|\u{0654}\u{064E})\u{0627}(\p{M}*)$/u;
 const FINAL_HAMZA_WAW = /((?:\u{0621}|\u{0654})\p{M}*\u{0648})(\p{M}*)$/u;
+// A final hamza drawn on a seat after a long alif or waw (وَإِيتَآئِ, تَبُوٓأَ):
+// everyday spelling puts it on the line (إيتاء, تبوء).
+const FINAL_SEATED_HAMZA_AFTER_MADD =
+  /([\u{0627}\u{0648}])[\u{0623}\u{0626}](\p{M}*)$/u; // @ai
 const SAAL_IMPERATIVE =
   /^([\u{0641}\u{0648}]\p{M}*)(\u{0633}\u{0652}\u{0640})/u;
 const HAMZA = /[\u{0621}-\u{0626}]|[\u{0654}-\u{0655}]/u;
@@ -142,6 +146,7 @@ function imlaeiAlternates(base: string): string[] {
   push(base.replace(FINAL_HAMZA_ALIF, '$1\u{0649}$2'));
   push(base.replace(FINAL_HAMZA_WAW, '$1\u{0627}$2'));
   push(base.replace(SAAL_IMPERATIVE, '$1\u{0627}$2'));
+  push(base.replace(FINAL_SEATED_HAMZA_AFTER_MADD, '$1\u{0621}$2')); // @ai
   return out;
 }
 
@@ -550,7 +555,10 @@ function rawLetters(token: string): string {
 function joinsNextWord(word: string): boolean {
   const letters = rawLetters(word);
   if (letters === 'إل') return true;
-  return (letters === 'يا' || letters === 'ها') && !HAMZA.test(word);
+  // A vocative typed with its conjunction (ويا قوم) is one Uthmani word too
+  // (وَيَٰقَوْمِ). @ai
+  const bare = letters.replace(/^\u{0648}(?=\u{064A}\u{0627}$)/u, ''); // @ai
+  return (bare === 'يا' || bare === 'ها') && !HAMZA.test(word);
 }
 
 /**
