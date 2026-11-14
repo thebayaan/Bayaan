@@ -49,6 +49,14 @@ export interface SearchIndexOptions<T> {
   fields: readonly SearchField<T>[];
   boost?: (item: T) => number;
   keyboardFallback?: boolean;
+  // @ai-start
+  /**
+   * Words people put in front of a name ("sheikh", "qari", "الشيخ") that the
+   * catalogue rarely carries. A query is also scored without them, slightly
+   * lower, so a name that does carry the word still ranks first.
+   */
+  fillerWords?: ReadonlySet<string>;
+  // @ai-end
 }
 
 export interface SearchHit<T> {
@@ -259,18 +267,38 @@ export function createSearchIndex<T>(
     ),
   }));
 
+  // @ai-start
+  function scoreEntry(entry: PreparedItem<T>, query: PreparedQuery): number {
+    let score = 0;
+    for (const field of entry.fields) {
+      score = Math.max(score, scoreWholeField(field, query) * field.weight);
+    }
+    const tokenScores = query.tokens.map((token, i) =>
+      scoreToken(entry.fields, token, i === query.tokens.length - 1),
+    );
+    return Math.max(score, Math.min(...tokenScores));
+  }
+
+  function withoutFillers(query: PreparedQuery): PreparedQuery | null {
+    const fillers = options.fillerWords;
+    if (!fillers) return null;
+    const kept = query.tokens.filter(token => !fillers.has(token));
+    if (kept.length === 0 || kept.length === query.tokens.length) return null;
+    return prepareQuery(kept.join(' '));
+  }
+
   function run(query: PreparedQuery, limit: number): SearchHit<T>[] {
     if (!query.key) return [];
+    const bare = withoutFillers(query);
     const hits: (SearchHit<T> & {index: number})[] = [];
     for (const entry of prepared) {
-      let score = 0;
-      for (const field of entry.fields) {
-        score = Math.max(score, scoreWholeField(field, query) * field.weight);
+      let score = scoreEntry(entry, query);
+      if (bare) {
+        // Two points under the full query: "sheikh sudais" finds Alsudaes,
+        // and "Shaik Abu Bakr Al Shatri" still outranks a bare "Shatri".
+        score = Math.max(score, scoreEntry(entry, bare) - 2);
       }
-      const tokenScores = query.tokens.map((token, i) =>
-        scoreToken(entry.fields, token, i === query.tokens.length - 1),
-      );
-      score = Math.max(score, Math.min(...tokenScores));
+      // @ai-end
       if (score > 0) {
         hits.push({
           item: entry.item,

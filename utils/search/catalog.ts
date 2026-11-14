@@ -45,6 +45,30 @@ function stripSurahWords(key: string): string {
 }
 // @ai-end
 const FEATURED = new Set(FEATURED_RECITER_NAMES);
+// @ai-start
+// Titles and "son of" typed before or inside a reciter's name ("sheikh
+// sudais", "qari abdul basit", "الشيخ ماهر"). Keys: "القارئ" is "القاري".
+const RECITER_FILLER_WORDS: ReadonlySet<string> = new Set([
+  'sheikh',
+  'shaikh',
+  'shaykh',
+  'sheik',
+  'shaik',
+  'shiekh',
+  'qari',
+  'qaari',
+  'imam',
+  'bin',
+  'ibn',
+  'الشيخ',
+  'شيخ',
+  'القاري',
+  'قاري',
+  'الامام',
+  'امام',
+  'بن',
+]);
+// @ai-end
 
 export function createSurahSearch(
   surahs: readonly Surah[],
@@ -99,6 +123,7 @@ export function createReciterSearch(
       {get: reciter => reciter.rewayat.map(r => r.style), weight: 0.4},
     ],
     boost: reciter => (FEATURED.has(reciter.name) ? 1 : 0),
+    fillerWords: RECITER_FILLER_WORDS, // @ai
   });
 }
 

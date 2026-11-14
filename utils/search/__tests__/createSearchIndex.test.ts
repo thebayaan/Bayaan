@@ -92,4 +92,22 @@ describe('createSearchIndex', () => {
     });
     expect(boosted.search('hafs').map(hit => hit.item.id)).toEqual([2, 1]);
   });
+
+  // @ai-start
+  it('scores a query again without filler words, slightly lower', () => {
+    const titled = createSearchIndex(
+      [...things, {id: 7, name: 'Shaik Saud', tags: []}],
+      {
+        fields: [{get: t => t.name, weight: 1}],
+        fillerWords: new Set(['sheikh', 'shaik']),
+      },
+    );
+    const hits = titled.search('shaik saud');
+    // The name that carries the title outranks the one that does not.
+    expect(hits.map(hit => hit.item.id).slice(0, 2)).toEqual([7, 4]);
+    expect(titled.search('sheikh shuraim')[0]?.item.id).toBe(4);
+    // A filler alone is searched as typed.
+    expect(titled.search('sheikh').map(hit => hit.item.id)).toEqual([]);
+  });
+  // @ai-end
 });
