@@ -39,7 +39,6 @@ import {RecitationMistakeSheet} from './RecitationMistakeSheet';
 import type {WordMark} from '@/services/recitation/wordMarks';
 import type {PracticeTarget} from '@/services/recitation/practice/types';
 import type {RecitationSummary} from '@/store/recitationTrackingStore';
-import {WordDetailSheet} from './WordDetailSheet';
 import {HomeCardOptionsSheet} from './HomeCardOptionsSheet';
 import {AdhkarSessionOptionsSheet} from './AdhkarSessionOptionsSheet';
 import {installRewayahFallbackNotice} from './rewayahFallbackNotice'; // @ai
@@ -87,7 +86,10 @@ registerSheet('which-ayah', WhichAyahSheet);
 registerSheet('recitation-summary', RecitationSummarySheet);
 registerSheet('recitation-practice', RecitationPracticeSheet);
 registerSheet('recitation-mistake', RecitationMistakeSheet);
-registerSheet('word-detail', WordDetailSheet);
+// @ai-start
+// The word sheet ('word-detail') was retired: a word long-press opens
+// 'verse-actions' on Word Study at that word.
+// @ai-end
 registerSheet('home-card-options', HomeCardOptionsSheet);
 registerSheet('adhkar-session-options', AdhkarSessionOptionsSheet);
 
@@ -275,12 +277,6 @@ declare module 'react-native-actions-sheet' {
     }>;
     'recitation-mistake': SheetDefinition<{
       payload: {mark: WordMark};
-    }>;
-    'word-detail': SheetDefinition<{
-      payload: {
-        verseKey: string;
-        position: number;
-      };
     }>;
     'home-card-options': SheetDefinition<{
       payload: HomeCardOptionsPayload; // @ai

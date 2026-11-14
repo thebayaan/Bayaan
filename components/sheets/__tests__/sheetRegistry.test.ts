@@ -85,6 +85,8 @@ const VERSE_SHEETS_NOTHING_OPENS = [
   'verse-share',
   'verse-highlight',
   'similar-verses',
+  // Retired for Word Study: a word long-press opens 'verse-actions' there. @ai
+  'word-detail',
 ];
 
 describe('sheet registry', () => {
