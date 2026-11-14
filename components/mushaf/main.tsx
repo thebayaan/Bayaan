@@ -115,6 +115,13 @@ interface Spread {
 
 const SPREAD_COUNT = Math.ceil(TOTAL_PAGES / 2);
 
+// @ai-start
+/** A page the pager can scroll to. `scrollToIndex` throws for any other. */
+function isMushafPage(page: number): boolean {
+  return Number.isInteger(page) && page >= 1 && page <= TOTAL_PAGES;
+}
+// @ai-end
+
 function pageToSpreadIndex(page: number): number {
   return Math.floor((page - 1) / 2);
 }
@@ -1024,6 +1031,10 @@ export default function MushafViewer({
 
   const navigateToPage = useCallback(
     (targetPage: number) => {
+      // A page past either end (reciting the last word of page 604 asked for
+      // 605) made `scrollToIndex` throw and took the whole app to its error
+      // screen. There is nowhere to go, so stay put.
+      if (!isMushafPage(targetPage)) return; // @ai
       setIsSearchMode(false);
       // Preload QCF page font immediately, overlapping with the scroll/animation
       if (mushafRenderer === 'qcf_v2') {
@@ -1058,6 +1069,7 @@ export default function MushafViewer({
 
   const navigateToPageAnimated = useCallback(
     (targetPage: number) => {
+      if (!isMushafPage(targetPage)) return; // @ai
       if (isVertical) {
         continuousListRef.current?.scrollToPage(targetPage, true);
       } else {
@@ -1176,6 +1188,7 @@ export default function MushafViewer({
 
   const resumeChain = useCallback(
     (index: number, page: number) => {
+      if (!isMushafPage(page)) return; // @ai
       setIsSearchMode(false);
       useMushafSettingsStore.getState().resumeChain(index);
       if (isVertical) {
