@@ -68,6 +68,14 @@ function isMark(ch: string): boolean {
 }
 
 /**
+ * ٱلَّ (alif wasla, lam, shadda and fatha in either order) before يْل, ـٰ,
+ * ذَا or ذَيْ: the words whose standard spelling has two lams (الليل،
+ * اللاتي، اللائي، اللذان، اللذين). Only the ٱل is matched; the replacement
+ * adds the second ل.
+ */
+const ASSIMILATED_LAM = /ٱل(?=(?:َّ|َّ)(?:يْل|ـٰ|ذَا|ذَيْ))/g;
+
+/**
  * Restores the long vowels and small letters the mushaf writes small, so an
  * Uthmani word reads like its standard spelling:
  *  - ٰ directly on و (no vowel of its own) turns the و into ا (ٱلصَّلَوٰةَ →
@@ -75,11 +83,14 @@ function isMark(ch: string): boolean {
  *    word-final ى it is dropped (عَلَىٰ); anywhere else, also on tatweel, it is
  *    an ا (مَـٰلِكِ → مالك);
  *  - the small letters ۥ ۦ ۧ ۨ become و ي ي ن (إِبْرَٰهِـۧمَ → إبراهيم), except
- *    on ه, where they mark the lengthened pronoun (إِنَّهُۥ) and are dropped.
+ *    on ه, where they mark the lengthened pronoun (إِنَّهُۥ) and are dropped;
+ *  - the article's ل, merged into the next ل in ٱلَّيْل, ٱلَّـٰتِى, ٱلَّـٰٓـِٔى,
+ *    ٱلَّذَانِ and ٱلَّذَيْنِ, is written again (الليل). ٱلَّذِى, ٱلَّذِينَ and
+ *    ٱلَّتِى keep one ل, as the standard spelling does.
  * Everything else is kept; the matching keys strip it.
  */
 export function plene(uthmani: string): string {
-  const chars = [...uthmani];
+  const chars = [...uthmani.replace(ASSIMILATED_LAM, 'ٱلل')];
   const out: string[] = [];
   // Index in `out` of the last base letter or tatweel, and whether a vowel
   // followed it.
@@ -183,9 +194,63 @@ export function plainKey(text: string): string {
   return searchKey(text).replace(/ /g, '');
 }
 
-/** Tier-2 key: a tier-1 key with every ا removed (ٱلْكِتَـٰبُ = الكتاب). */
+/** A key with every ا removed (ٱلْكِتَـٰبُ = الكتاب in tier-1 letters). */
 export function alifFreeKey(key: string): string {
   return key.replace(/ا/g, '');
+}
+
+/**
+ * Tier-2 key: letters only, spaces removed, every hamza one ء whatever its
+ * seat (أ إ ؤ ئ ء, or ٔ on a letter or a tatweel), and every plain alif
+ * removed. So ٱلْكِتَـٰبُ = الكتاب and شَيْـًٔا = شيئا, but أثمر is not ثمر:
+ * a hamza is a letter, an alif of length is not. ى is ي and ة is ه. In
+ * the mushaf آ is a long alif with a madd sign, in the standard spelling a
+ * hamza and an alif.
+ */
+export function hamzaKey(text: string, script: Script = 'imlaei'): string {
+  let out = '';
+  // The last base letter and whether only marks followed it.
+  let seat = '';
+  for (const ch of text) {
+    if (ch === HAMZA_ABOVE || ch === HAMZA_BELOW) {
+      // On a seat (decomposed أ ؤ ئ): the seat becomes the hamza.
+      if ((seat === 'و' || seat === 'ي' || seat === 'ى') && out) {
+        out = out.slice(0, -1);
+      }
+      out += 'ء';
+      seat = '';
+      continue;
+    }
+    if (isMark(ch) || !isArabicLetter(ch)) {
+      if (ch === TATWEEL || /\s/.test(ch)) seat = '';
+      continue;
+    }
+    seat = ch;
+    switch (ch) {
+      case 'أ':
+      case 'إ':
+      case 'ؤ':
+      case 'ئ':
+      case 'ء':
+        out += 'ء';
+        break;
+      case 'آ':
+        if (script === 'imlaei') out += 'ء';
+        break;
+      case 'ا':
+      case 'ٱ':
+        break;
+      case 'ى':
+        out += 'ي';
+        break;
+      case 'ة':
+        out += 'ه';
+        break;
+      default:
+        out += ch;
+    }
+  }
+  return out;
 }
 
 /**
