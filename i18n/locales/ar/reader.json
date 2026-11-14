@@ -23,11 +23,11 @@
     "nextAyah": "الآية التالية"
   },
   "search": {
-    "placeholder": "ابحث عن سورة أو صفحة أو جزء…",
+    "placeholder": "ابحث عن سورة أو آية أو صفحة أو جزء…",
     "recentReads": "قراءات حديثة",
     "recentSearches": "عمليات البحث الأخيرة",
     "emptyTitle": "ابحث في المصحف",
-    "emptySubtitle": "اعثر على السور والآيات والصفحات والأجزاء",
+    "emptySubtitle": "ابحث عن كلمات القرآن والسور والصفحات والأجزاء",
     "sortAsc": "تصاعدي",
     "sortDesc": "تنازلي",
     "sortRevelation": "النزول",
