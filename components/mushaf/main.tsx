@@ -800,6 +800,10 @@ export default function MushafViewer({
       }),
     [],
   );
+  // @ai — the report of the first content goes only to the item that shows
+  // the page the viewer opens on.
+  const firstContentOf = (...shownPages: (number | null)[]) =>
+    shownPages.includes(initialPage) ? onFirstContent : undefined;
 
   // DK data is pre-initialized by MushafPreloadService (AppInitializer priority 5)
   // before this tab mounts, so the synchronous check is safe.
@@ -1388,7 +1392,7 @@ export default function MushafViewer({
               isBookLayout={isBookLayout}
               metrics={metrics}
               onTap={toggleImmersive}
-              onFirstContent={onFirstContent} // @ai
+              onFirstContent={firstContentOf(item.right, item.left)} // @ai
             />
           )}
           keyExtractor={item => `spread-${item.right}`}
@@ -1434,7 +1438,7 @@ export default function MushafViewer({
                   isBookLayout={isBookLayout}
                   onTap={toggleImmersive}
                   pageSize={readingPageSize} // @ai
-                  onFirstContent={onFirstContent} // @ai
+                  onFirstContent={firstContentOf(item)} // @ai
                 />
               );
             }
@@ -1450,7 +1454,7 @@ export default function MushafViewer({
                 isBookLayout={isBookLayout}
                 metrics={metrics}
                 onTap={toggleImmersive}
-                onFirstContent={onFirstContent} // @ai
+                onFirstContent={firstContentOf(item)} // @ai
               />
             );
           }}

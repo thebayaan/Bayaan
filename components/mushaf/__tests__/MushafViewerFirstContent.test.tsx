@@ -1,10 +1,14 @@
 // @ai-generated
 /**
- * RFC-023 step 5: every reader layout reports its first content to the restore
- * state, once. The renderers are stand-ins here (each has its own test). This
- * checks what the viewer does: which layout mounts which surface, and that a
- * page and a spread report once. The horizontal reading view must report too:
- * without it, a restore in the list mode waits for the whole deadline.
+ * RFC-023 step 5: every reader layout reports its first content once, through
+ * the viewer's onFirstContent. The renderers are stand-ins here (each has its
+ * own test). This checks what the viewer does: which layout mounts which
+ * surface, that only the page the viewer opens on reports, and that a page and
+ * a spread report once. The horizontal reading view must report too: without
+ * it, a restore in the list mode waits for the whole deadline.
+ *
+ * F3 comes from the review of the step 5 PR: every page in the pager window
+ * reported.
  */
 import React, {act} from 'react';
 import {View} from 'react-native';
@@ -32,10 +36,6 @@ const mockLayout = {
 };
 const mockListItems = {count: 1};
 
-jest.mock('@/services/mushaf/readerRestoreState', () => ({
-  noteReaderFirstContent: () => mockReport(),
-}));
-
 function mockSurface(record: (props: MockSurfaceProps) => void) {
   return {
     __esModule: true,
@@ -61,8 +61,12 @@ jest.mock('../skia/ContinuousMushafView', () =>
 jest.mock('../reading/ContinuousListView', () =>
   mockSurface(props => mockSurfaces.continuousList.push(props)),
 );
+jest.mock('../RecitationMicButton', () => ({
+  useRecitationFollowAlong: () => undefined,
+}));
 
-// Renders the first items only, as the pager does at its first commit.
+// Renders the first items only, as the pager does at its first commit,
+// starting at initialScrollIndex as React Native does.
 jest.mock('react-native-gesture-handler', () => {
   const ReactActual = jest.requireActual<typeof import('react')>('react');
   return {
@@ -70,6 +74,7 @@ jest.mock('react-native-gesture-handler', () => {
       (
         props: {
           data: unknown[];
+          initialScrollIndex?: number;
           renderItem: (info: {item: unknown; index: number}) => React.ReactNode;
         },
         _ref: unknown,
@@ -78,7 +83,10 @@ jest.mock('react-native-gesture-handler', () => {
           ReactActual.Fragment,
           null,
           props.data
-            .slice(0, mockListItems.count)
+            .slice(
+              props.initialScrollIndex ?? 0,
+              (props.initialScrollIndex ?? 0) + mockListItems.count,
+            )
             .map((item, index) =>
               ReactActual.createElement(
                 ReactActual.Fragment,
@@ -228,6 +236,7 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => ({
     getPageLines: () => [],
     getPageToSurah: () => ({}),
     getSurahStartPages: () => ({}),
+    subscribeCacheChanges: () => () => undefined,
   },
 }));
 jest.mock('@/services/mushaf/MushafSessionStore', () => ({
@@ -303,7 +312,9 @@ let errorSpy: jest.SpyInstance;
 
 function renderViewer(): void {
   act(() => {
-    renderer = TestRenderer.create(<MushafViewer pageNumber={3} />);
+    renderer = TestRenderer.create(
+      <MushafViewer pageNumber={3} onFirstContent={mockReport} />,
+    );
   });
 }
 
@@ -348,7 +359,7 @@ afterEach(() => {
 describe('a Mushaf page (DKPageView)', () => {
   it('reports once, in the commit that shows it', () => {
     renderViewer();
-    const page = mockSurfaces.skiaPages[0];
+    const page = latest(mockSurfaces.skiaPages, 3);
     expect(mockReport).not.toHaveBeenCalled();
     expect(pageOpacities()).toContain(0);
 
@@ -361,24 +372,33 @@ describe('a Mushaf page (DKPageView)', () => {
     expect(mockReport).toHaveBeenCalledTimes(1);
   });
 
+  it('F3: only the page the viewer opens on (3) reports, not its neighbour (4)', () => {
+    mockListItems.count = 2;
+    renderViewer();
+    act(() => latest(mockSurfaces.skiaPages, 4).onReady?.());
+    expect(mockReport).not.toHaveBeenCalled();
+    act(() => latest(mockSurfaces.skiaPages, 3).onReady?.());
+    expect(mockReport).toHaveBeenCalledTimes(1);
+  });
+
   it('reports the same way in the phone landscape scroll view', () => {
     mockLayout.scrollContainerHeight = 300;
     renderViewer();
-    act(() => mockSurfaces.skiaPages[0].onReady?.());
+    act(() => latest(mockSurfaces.skiaPages, 3).onReady?.());
     expect(mockReport).toHaveBeenCalledTimes(1);
   });
 
   it('reports the same way on a centred iPad page', () => {
     mockLayout.pageWidth = 300;
     renderViewer();
-    act(() => mockSurfaces.skiaPages[0].onReady?.());
+    act(() => latest(mockSurfaces.skiaPages, 3).onReady?.());
     expect(mockReport).toHaveBeenCalledTimes(1);
   });
 
   it('hands the report to QCFPage in Mushaf 1440', () => {
     useMushafSettingsStore.setState({mushafRenderer: 'qcf_v2'});
     renderViewer();
-    const page = mockSurfaces.qcfPages[0];
+    const page = latest(mockSurfaces.qcfPages, 3);
     // QCFPage's own test covers when it reports.
     act(() => page.onReady?.());
     expect(mockReport).not.toHaveBeenCalled();
@@ -396,8 +416,8 @@ describe('a spread of facing pages (DKSpreadView)', () => {
 
   it('reports once, when both pages have content', () => {
     renderViewer();
-    const left = latest(mockSurfaces.skiaPages, 2);
-    const right = latest(mockSurfaces.skiaPages, 1);
+    const left = latest(mockSurfaces.skiaPages, 4);
+    const right = latest(mockSurfaces.skiaPages, 3);
 
     act(() => right.onReady?.());
     expect(mockReport).not.toHaveBeenCalled();
@@ -414,18 +434,32 @@ describe('a spread of facing pages (DKSpreadView)', () => {
   it('reports once in Mushaf 1440 too', () => {
     useMushafSettingsStore.setState({mushafRenderer: 'qcf_v2'});
     renderViewer();
-    act(() => latest(mockSurfaces.qcfPages, 1).onFirstContent?.());
+    act(() => latest(mockSurfaces.qcfPages, 3).onFirstContent?.());
     expect(mockReport).not.toHaveBeenCalled();
-    act(() => latest(mockSurfaces.qcfPages, 2).onFirstContent?.());
+    act(() => latest(mockSurfaces.qcfPages, 4).onFirstContent?.());
     expect(mockReport).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not report from the spread after the one it opens on', () => {
+    useMushafSettingsStore.setState({mushafRenderer: 'qcf_v2'});
+    mockListItems.count = 2;
+    renderViewer();
+    act(() => {
+      latest(mockSurfaces.qcfPages, 5).onFirstContent?.();
+      latest(mockSurfaces.qcfPages, 6).onFirstContent?.();
+    });
+    expect(mockReport).not.toHaveBeenCalled();
   });
 });
 
 describe('the reading views', () => {
-  it('passes the report to the horizontal reading view', () => {
+  it('passes the report to the horizontal reading view of the page', () => {
     useMushafSettingsStore.setState({viewMode: 'list'});
+    mockListItems.count = 2;
     renderViewer();
-    act(() => mockSurfaces.readingPages[0].onFirstContent?.());
+    expect(latest(mockSurfaces.readingPages, 3).onFirstContent).toBeDefined();
+    expect(latest(mockSurfaces.readingPages, 4).onFirstContent).toBeUndefined();
+    act(() => latest(mockSurfaces.readingPages, 3).onFirstContent?.());
     expect(mockReport).toHaveBeenCalledTimes(1);
   });
 
@@ -433,8 +467,7 @@ describe('the reading views', () => {
     mockLayout.facingPages = true;
     useMushafSettingsStore.setState({viewMode: 'list'});
     renderViewer();
-    expect(mockSurfaces.readingPages.length).toBeGreaterThan(0);
-    act(() => mockSurfaces.readingPages[0].onFirstContent?.());
+    act(() => latest(mockSurfaces.readingPages, 3).onFirstContent?.());
     expect(mockReport).toHaveBeenCalledTimes(1);
   });
 
