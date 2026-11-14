@@ -76,6 +76,11 @@ import {useRecitationHiddenText} from './useRecitationHiddenText';
 import {useRecitationMarkColors} from './useRecitationMarkColors';
 import {SheetManager} from 'react-native-actions-sheet';
 import {markAtChar} from './recitationTap';
+// @ai-start
+import QCFPage, {type QCFPageFrame} from '../qcf/QCFPage';
+import {useDrawsQCF} from '../qcf/useDrawsQCF';
+import {qcfDataService} from '@/services/mushaf/QCFDataService';
+// @ai-end
 import {useRecitationTrackingStore} from '@/store/recitationTrackingStore';
 
 // Rendering constants are now derived from live `metrics` (see
@@ -734,6 +739,44 @@ MushafPageContent.displayName = 'MushafPageContent';
 
 // ── Main component ───────────────────────────────────────
 
+// @ai-start
+// A Mushaf 1440 page in the vertical scroll: the same text block as the
+// DigitalKhatt page it replaces (its lines stacked from the top).
+const ContinuousQCFPage: React.FC<{
+  pageNumber: number;
+  textColor: string;
+  dividerColor: string;
+  onTap?: () => void;
+  render: RenderConstants;
+}> = React.memo(({pageNumber, textColor, dividerColor, onTap, render}) => {
+  const {screenWidth, contentWidth, canvasMarginX, baseLineHeight} = render;
+  const lineCount = qcfDataService.getPage(pageNumber).lines.length;
+  const frame = useMemo<QCFPageFrame>(
+    () => ({
+      width: screenWidth,
+      height: lineCount * baseLineHeight,
+      contentLeft: canvasMarginX,
+      contentTop: 0,
+      contentWidth,
+      contentHeight: lineCount * baseLineHeight,
+      lineHeight: baseLineHeight,
+      centerOpeningPages: false,
+    }),
+    [screenWidth, lineCount, baseLineHeight, canvasMarginX, contentWidth],
+  );
+  return (
+    <QCFPage
+      pageNumber={pageNumber}
+      textColor={textColor}
+      dividerColor={dividerColor}
+      frame={frame}
+      onTap={onTap}
+    />
+  );
+});
+ContinuousQCFPage.displayName = 'ContinuousQCFPage';
+// @ai-end
+
 const ContinuousMushafView = forwardRef<
   ContinuousMushafViewHandle,
   ContinuousMushafViewProps
@@ -780,6 +823,7 @@ const ContinuousMushafView = forwardRef<
     }, [lineWidth, fontMgr]);
 
     // Settings subscriptions
+    const drawsQCF = useDrawsQCF(); // @ai — Mushaf 1440's glyphs (Hafs)
     const showTajweed = useMushafSettingsStore(s => s.showTajweed);
     const mushafRenderer = useMushafSettingsStore(s => s.mushafRenderer);
     const arabicTextWeight = useMushafSettingsStore(s => s.arabicTextWeight);
@@ -875,6 +919,19 @@ const ContinuousMushafView = forwardRef<
     const renderItem = useCallback(
       ({item}: {item: number}) => {
         if (!fontMgr) return null;
+        // @ai-start
+        if (drawsQCF) {
+          return (
+            <ContinuousQCFPage
+              pageNumber={item}
+              textColor={textColor}
+              dividerColor={dividerColor}
+              onTap={onTap}
+              render={render}
+            />
+          );
+        }
+        // @ai-end
         return (
           <MushafPageContent
             pageNumber={item}
@@ -899,6 +956,7 @@ const ContinuousMushafView = forwardRef<
       },
       [
         fontMgr,
+        drawsQCF, // @ai
         textColor,
         dividerColor,
         showTajweed,
@@ -923,7 +981,7 @@ const ContinuousMushafView = forwardRef<
         ref={flashListRef}
         data={pages}
         renderItem={renderItem}
-        extraData={`${showTajweed}-${arabicTextWeight}-${showAllahNameHighlight}-${allahNameHighlightColor}-${rewayah}-${showRewayahDiffs}-${textIdentity}`} // @ai
+        extraData={`${drawsQCF}-${showTajweed}-${arabicTextWeight}-${showAllahNameHighlight}-${allahNameHighlightColor}-${rewayah}-${showRewayahDiffs}-${textIdentity}`} // @ai
         keyExtractor={keyExtractor}
         initialScrollIndex={initialPage - 1}
         contentContainerStyle={{
