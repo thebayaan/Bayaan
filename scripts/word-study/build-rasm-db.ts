@@ -217,7 +217,7 @@ export function build(
   const meta: Record<string, string> = {
     source_id: String(lock.id),
     input_sha256: hash,
-    input_url: lock.url,
+    input_url: lock.downloadUrl,
     version: lock.version,
     notice,
     app_words: String(

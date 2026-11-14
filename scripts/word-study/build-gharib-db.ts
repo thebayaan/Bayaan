@@ -116,7 +116,7 @@ export function build(
     }
     used.add(entry);
     meta[`input_${entry.file}_sha256`] = hash;
-    meta[`input_${entry.file}_url`] = entry.url;
+    meta[`input_${entry.file}_url`] = entry.downloadUrl;
     entry.books.forEach((b, index) => bookOf.set(b.id, {input: entry, index}));
     entries.push(...readInput(file, data, entry));
   }
@@ -193,7 +193,7 @@ export function build(
     meta[`source_${id}_version`] = input.version;
     meta[`source_${id}_entries`] = String(all.length);
     meta[`source_${id}_placed`] = String(onWords);
-    const credit = `${book.viaEn}, ${input.url}, version ${input.version}`;
+    const credit = `${book.viaEn}, ${book.url}, version ${input.version}`;
     meta[`source_${id}_credit`] = credit;
     sources.push(sourceRow('gharib', id, book.ord, book, input.version));
   }
