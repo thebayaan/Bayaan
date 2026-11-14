@@ -80,6 +80,17 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
   const [playlistData, setPlaylistData] = useState<PlaylistDataItem[]>([]);
   const [loading, setLoading] = useState(true);
   const shouldClearPlaylistRef = useRef(true);
+  // @ai-start
+  // The shared store's copy of this playlist. Its count, name and timestamp
+  // change when the playlist is edited from anywhere (another tab, the
+  // player's "Add to collection"), which is the cue to reload this screen.
+  const storePlaylist = playlists.find(p => p.id === id);
+  // Only the newest load may write its result: reloads can overlap.
+  const loadSeqRef = useRef(0);
+  // Set while this screen deletes its own playlist and goes back, so the
+  // "no longer exists" view does not flash during the back animation.
+  const leavingRef = useRef(false);
+  // @ai-end
 
   const styles = StyleSheet.create({
     container: {
@@ -95,19 +106,58 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
       textAlign: 'center',
       marginTop: moderateScale(32),
     },
+    // @ai-start
+    notFound: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: moderateScale(32),
+    },
+    notFoundText: {
+      fontSize: moderateScale(16),
+      fontFamily: theme.fonts.regular,
+      color: theme.colors.text,
+      textAlign: 'center',
+      marginBottom: moderateScale(20),
+    },
+    notFoundButton: {
+      paddingVertical: moderateScale(10),
+      paddingHorizontal: moderateScale(24),
+      borderRadius: moderateScale(12),
+      backgroundColor: theme.colors.card,
+    },
+    notFoundButtonText: {
+      fontSize: moderateScale(15),
+      fontFamily: theme.fonts.semiBold,
+      color: theme.colors.text,
+    },
+    // @ai-end
   });
 
+  // @ai-start
+  // Reload when the playlist changes in the shared store, not only on mount:
+  // a surah added from another tab used to leave this screen saying "empty"
+  // until it was closed and reopened.
   useEffect(() => {
     loadPlaylistData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+  }, [
+    id,
+    storePlaylist?.itemCount,
+    storePlaylist?.updatedAt,
+    storePlaylist?.name,
+  ]);
+  // @ai-end
 
   const loadPlaylistData = useCallback(async () => {
+    // @ai-start
+    if (leavingRef.current) return;
+    const seq = ++loadSeqRef.current;
+    // @ai-end
     try {
-      setLoading(true);
-
+      // @ai `loading` starts true and is not raised again: a reload keeps the
+      // list on screen (and its scroll position) instead of blanking it.
       const playlistInfo = await getPlaylist(id);
-      setPlaylist(playlistInfo);
 
       const playlistItems = await getPlaylistItems(id);
 
@@ -134,11 +184,15 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
         }),
       );
 
+      // @ai-start
+      if (seq !== loadSeqRef.current || leavingRef.current) return;
+      setPlaylist(playlistInfo);
+      // @ai-end
       setPlaylistData(enrichedData);
     } catch (error) {
       console.error('Failed to load playlist:', error);
     } finally {
-      setLoading(false);
+      if (seq === loadSeqRef.current) setLoading(false); // @ai
     }
   }, [id, getPlaylist, getPlaylistItems]);
 
@@ -309,10 +363,12 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
     };
 
     const handleDeleteForThisPlaylist = async () => {
+      leavingRef.current = true; // @ai
       try {
         await deletePlaylist(playlist.id);
         router.back();
       } catch (error: unknown) {
+        leavingRef.current = false; // @ai
         console.error('Failed to delete playlist:', error);
       }
     };
@@ -457,13 +513,38 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
     );
   };
 
-  if (loading || !playlist) {
+  if (loading) {
     return (
       <View style={styles.container}>
         <Text style={styles.emptyText}>{t('common:status.loading')}</Text>
       </View>
     );
   }
+
+  // @ai-start
+  // The playlist was deleted from another screen (or the link is stale).
+  // This used to sit on "Loading…" forever, with no back button on devices
+  // without the native header.
+  if (!playlist) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.notFound}>
+          <Text style={styles.notFoundText}>
+            {t('playlistDetail.notFound')}
+          </Text>
+          <Pressable
+            style={styles.notFoundButton}
+            onPress={() => router.back()}
+            accessibilityRole="button">
+            <Text style={styles.notFoundButtonText}>
+              {t('common:actions.back')}
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
+  // @ai-end
 
   return (
     <View style={styles.container}>

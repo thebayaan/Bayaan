@@ -117,7 +117,8 @@
     "typeInPlaylist": "In Playlist"
   },
   "playlistDetail": {
-    "empty": "No surahs in this playlist"
+    "empty": "No surahs in this playlist",
+    "notFound": "This playlist no longer exists"
   },
   "reciterDownloads": {
     "empty": "No downloads for this reciter"
