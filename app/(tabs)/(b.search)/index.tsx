@@ -50,13 +50,46 @@ export default function SearchScreen() {
   useFocusEffect(
     useCallback(() => {
       setSearchBarMounted(true);
-      return () => setSearchBarMounted(false);
+      return () => {
+        setSearchBarMounted(false);
+        // The bar is thrown away together with its focus, and its blur event
+        // can arrive after the handlers below are gone. Left set, switching
+        // tab with the cursor in the field came back to an empty, unfocused
+        // bar over the recent searches, with Explore out of reach until
+        // Cancel. The bar that comes back is never focused.
+        if (USE_GLASS) setIsSearchActive(false);
+      };
     }, []),
   );
 
+  const searchBarRef = useRef<SearchBarCommands>(null);
+
+  // The bar mounted on the next focus is a new native field and starts
+  // empty, while `query` and the results under it are still here. Opening a
+  // result and coming back (or switching tab and returning) showed an empty
+  // field over the old results. Put the text back into the new bar; setText
+  // does not fire onChangeText. The bar's handle only exists one commit after
+  // `searchBarMounted` flips, hence the frame. If it is still missing then,
+  // drop the query instead, so the list never shows results for text the
+  // field does not have.
+  const queryRef = useRef(query);
+  useEffect(() => {
+    queryRef.current = query;
+  }, [query]);
+  useEffect(() => {
+    if (!USE_GLASS || !searchBarMounted) return;
+    const text = queryRef.current;
+    if (text.length === 0) return;
+    const frame = requestAnimationFrame(() => {
+      const bar = searchBarRef.current;
+      if (bar) bar.setText(text);
+      else setQuery('');
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [searchBarMounted]);
+
   // ⌘F (iPad keyboard) opens this tab and puts the cursor in the field, once
   // the tab is on screen and, on iOS 26, its search bar is mounted.
-  const searchBarRef = useRef<SearchBarCommands>(null);
   const isFocused = useIsFocused();
   const canFocusField = isFocused && (!USE_GLASS || searchBarMounted);
   useEffect(() => {
