@@ -12,6 +12,13 @@ import {skipAdhkarTrack, type TrackDirection} from './trackControls';
 import type {AdhkarSession} from './types';
 
 const PLAY_CONFIRM_MS = 1500;
+// @ai-start
+// A "playing" update this soon after the engine paused the player left the
+// player before the pause reached it. Taken for a resume from the lock
+// screen, it started the adhkar again (and, since a starting clip ends a
+// listening session, closed the microphone that had just paused it).
+const STALE_PLAYING_MS = 400;
+// @ai-end
 // @ai: how often a clip that is still starting is looked at again (iOS)
 const STARTING_RECHECK_MS = 250;
 
@@ -179,6 +186,8 @@ export function startAdhkarPlaybackEngine(
   let subscription: {remove(): void} | null = null;
   let trackSubscription: {remove(): void} | null = null;
   let confirmTimer: ReturnType<typeof setTimeout> | null = null;
+  // @ai When the engine last paused the player itself (see STALE_PLAYING_MS).
+  let pausedAt = 0;
   let startingTimer: ReturnType<typeof setTimeout> | null = null; // @ai
   let retried = false;
   let lockScreenToken: number | null = null;
@@ -329,7 +338,13 @@ export function startAdhkarPlaybackEngine(
   function onStatus(status: PlayerStatus): void {
     const s = store.getState().session;
     if (!s) return;
-    if (status.playing && s.status === 'paused' && otherSourceOwnsPlayback()) {
+    // @ai-start
+    if (
+      status.playing &&
+      s.status === 'paused' &&
+      (otherSourceOwnsPlayback() || Date.now() - pausedAt < STALE_PLAYING_MS)
+    ) {
+      // @ai-end
       activePlayer?.pause();
       return;
     }
@@ -431,6 +446,7 @@ export function startAdhkarPlaybackEngine(
     }
     if (prev && prev.status !== 'paused' && activePlayer) {
       savePosition();
+      pausedAt = Date.now(); // @ai
       activePlayer.pause();
       // Keep the lock screen entry for a plain pause. Clear it only when
       // another source took over.

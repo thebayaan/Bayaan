@@ -341,6 +341,17 @@ export async function startSession(
   const current = () => run === generation;
   let stage: SessionErrorStage = 'model_load';
   try {
+    // @ai-start
+    // Bayaan's own audio stops first, before the permission prompt and the
+    // model load, which can take a while. Left playing until the mic opened,
+    // an adhkar list reached its next clip in that time, and a clip that
+    // starts ends any listening session: the mic never opened and the adhkar
+    // played on. (A surah moving on to the next one did the same.)
+    if (pauseQuranAudio()) {
+      await new Promise(resolve => setTimeout(resolve, AFTER_PAUSE_MS));
+      if (!current()) return false;
+    }
+    // @ai-end
     if (!(await requestMicPermission())) {
       if (!current()) return false;
       release(session);

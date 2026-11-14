@@ -272,8 +272,30 @@ describe('sessionRunner', () => {
   it("pauses Bayaan's own audio before opening the mic", async () => {
     playerControl.playing = true;
     await runner.startSession({purpose: 'identify', hint: null}, handlers());
-    expect(mockPlayerPause).toHaveBeenCalledTimes(1);
+    // @ai Asked at the start and again before the mic opens (the mock keeps
+    // reporting 'playing'; a real player is paused by the first).
+    expect(mockPlayerPause).toHaveBeenCalled();
   });
+
+  // @ai-start
+  // The permission prompt and the model load can take a while. Audio left
+  // playing through them reached its next clip or surah, and a starting
+  // track ends any listening session: the mic never opened.
+  it('pauses it before the permission prompt and the model load', async () => {
+    playerControl.playing = true;
+    const order: string[] = [];
+    mockPlayerPause.mockImplementation(() => void order.push('pause'));
+    mockRecitation.micStreamModule.requestMicPermission.mockImplementationOnce(
+      async () => {
+        order.push('permission');
+        return true;
+      },
+    );
+    await runner.startSession({purpose: 'follow', hint: null}, handlers());
+    mockPlayerPause.mockReset();
+    expect(order.slice(0, 2)).toEqual(['pause', 'permission']);
+  });
+  // @ai-end
 
   // @ai-start
   it.each(['buffering', 'loading'])(
@@ -281,7 +303,7 @@ describe('sessionRunner', () => {
     async state => {
       playerControl.state = state;
       await runner.startSession({purpose: 'identify', hint: null}, handlers());
-      expect(mockPlayerPause).toHaveBeenCalledTimes(1);
+      expect(mockPlayerPause).toHaveBeenCalled();
     },
   );
 

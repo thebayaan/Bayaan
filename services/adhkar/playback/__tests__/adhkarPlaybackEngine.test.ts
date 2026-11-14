@@ -178,9 +178,30 @@ it('follows a remote pause and resume without re-playing', () => {
   player.emit({playing: false});
   expect(useAdhkarSessionStore.getState().session?.status).toBe('paused');
   expect(player.play).toHaveBeenCalledTimes(1);
+  jest.advanceTimersByTime(1000); // @ai a press on the lock screen, later
   player.emit({playing: true});
   expect(useAdhkarSessionStore.getState().session?.status).toBe('playing');
 });
+
+// @ai-start
+// The player is paused a moment after it is asked to be, and an update that
+// left it before that still says "playing". Taken for a press on the lock
+// screen, it started the adhkar again right after a pause (and closed a
+// microphone session that had paused it).
+it('ignores a playing update that was already on its way when it paused', () => {
+  dispatch({type: 'pressPlayAll', source: src});
+  player.emit({playing: true});
+  dispatch({type: 'otherAudioStarted'}); // the microphone asks for quiet
+  expect(player.pause).toHaveBeenCalledTimes(1);
+  coordinator.adhkarWillPlay.mockClear();
+
+  player.emit({playing: true});
+
+  expect(coordinator.adhkarWillPlay).not.toHaveBeenCalled();
+  expect(useAdhkarSessionStore.getState().session?.status).toBe('paused');
+  expect(player.pause).toHaveBeenCalledTimes(2);
+});
+// @ai-end
 
 it('saves the player position into the session on pause', () => {
   dispatch({type: 'pressPlayAll', source: src});
@@ -303,6 +324,7 @@ describe('a playing update that lands after another source took over', () => {
   it('is a remote resume again once adhkar owns playback', () => {
     takenOver();
     coordinator.getActiveSource.mockReturnValue('adhkar');
+    jest.advanceTimersByTime(1000); // @ai not the tail of the takeover's pause
     player.emit({playing: true});
     expect(coordinator.adhkarWillPlay).toHaveBeenCalled();
     expect(useAdhkarSessionStore.getState().session?.status).toBe('playing');
@@ -413,6 +435,7 @@ describe('swiping while paused', () => {
     pausedOnB();
     player.pause.mockClear();
     coordinator.adhkarWillPlay.mockClear();
+    jest.advanceTimersByTime(1000); // @ai well after the pause
     // Lock screen play resumes the clip still loaded in the native player.
     player.emit({playing: true});
     expect(player.pause).toHaveBeenCalledTimes(1);
