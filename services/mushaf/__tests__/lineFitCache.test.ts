@@ -160,15 +160,16 @@ describe('the open', () => {
 
   it('a build from another commit with the same commit count starts empty', () => {
     mockBundle.updateId = null; // updates off
-    mockBundle.version = {semanticVersion: '2.3.0', buildNumber: '1900'};
+    const build = {semanticVersion: '2.3.0', buildNumber: '1900'};
+    mockBundle.version = build;
     launch().setLineFit(KEY, {wordSize: 20, spaceExtra: 1}, true);
     expect(fitKeys()).toHaveLength(0); // no git hash: no store
 
-    mockBundle.version = {...mockBundle.version, gitHash: 'aaaa111'};
+    mockBundle.version = {...build, gitHash: 'aaaa111'};
     launch().setLineFit(KEY, {wordSize: 20, spaceExtra: 1}, true);
     expect(launch().getLineFit(KEY)).toEqual({wordSize: 20, spaceExtra: 1});
 
-    mockBundle.version = {...mockBundle.version, gitHash: 'bbbb222'};
+    mockBundle.version = {...build, gitHash: 'bbbb222'};
     expect(launch().getLineFit(KEY)).toBeUndefined();
   });
 
