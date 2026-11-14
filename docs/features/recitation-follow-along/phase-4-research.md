@@ -19,6 +19,10 @@ Date: 2026-10-15.
 
 ## QCF word highlight (1 to 1.5 days)
 
+> Superseded: Mushaf 1440 now draws word by word and takes the shared
+> recitation overlays through a word map ([mushaf-1440.md](../mushaf-1440.md)).
+> The notes below describe the beta renderer.
+
 QCFPage draws one Skia paragraph per line in the page's QCF v2 font; words come
 from `data/mushaf/qcf/qcf-pages.json` with `{c, l: "s:a:w", t, f}` per word
 (`QCFDataService.ts:6-11,64`). `buildQCFLineRenderModel` (`QCFLineService.ts:30`)

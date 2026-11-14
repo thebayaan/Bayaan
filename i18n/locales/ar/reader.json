@@ -8,8 +8,7 @@
     "shareMessage": "اطّلع على الصفحة {{page}} من القرآن الكريم على {{appName}}",
     "loadFailedTitle": "تعذّر تحميل المصحف",
     "loadFailedBody": "تأكّد من توفّر مساحة تخزين كافية على جهازك، ثم حاول مجددًا.",
-    "pageLoadFailed": "تعذّر تحميل هذه الصفحة.",
-    "turnOffTajweed": "إيقاف تلوين التجويد"
+    "pageLoadFailed": "تعذّر تحميل هذه الصفحة."
   },
   "toolbar": {
     "options": "خيارات",

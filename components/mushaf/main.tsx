@@ -66,7 +66,9 @@ import {useMushafAutoPageTurn} from '@/hooks/useMushafAutoPageTurn';
 import {MushafPlayerBar} from './MushafPlayerBar';
 import {useRecitationFollowAlong} from './RecitationMicButton';
 import SkiaPage from './skia/SkiaPage';
-import QCFPage from './qcf/QCFPage';
+import QCFPage, {type QCFPageFrame} from './qcf/QCFPage';
+import {useDrawsQCF} from './qcf/useDrawsQCF'; // @ai
+import {qcfDataService} from '@/services/mushaf/QCFDataService'; // @ai
 import ReadingPageView from './reading/ReadingPageView';
 import ContinuousListView, {
   type ContinuousListViewHandle,
@@ -137,12 +139,22 @@ function spreadPageToKeep(spread: Spread, current: number): number {
 // ============================================================================
 
 // @ai-start
-function getSurahNamesForPage(pageNumber: number): string {
-  const lines = digitalKhattDataService.getPageLines(pageNumber);
+function getSurahNamesForPage(pageNumber: number, mushaf1440 = false): string {
+  // The surahs whose title is on the page. Mushaf 1440's print places some
+  // titles on another page than the DigitalKhatt layout does (a title that
+  // ended a 1421H page opens the next 1441H page).
+  const titleSurahs = mushaf1440
+    ? qcfDataService
+        .getPage(pageNumber)
+        .lines.map(line =>
+          line.kind === 'surah_name' ? (line.surahNumber ?? 0) : 0,
+        )
+    : digitalKhattDataService
+        .getPageLines(pageNumber)
+        .map(line => line.surah_number);
   const seen = new Set<number>();
   const names: string[] = [];
-  for (const line of lines) {
-    const num = line.surah_number;
+  for (const num of titleSurahs) {
     if (num >= 1 && num <= 114 && !seen.has(num)) {
       seen.add(num);
       names.push(getSurahDisplayName(SURAHS[num - 1]));
@@ -201,8 +213,12 @@ const DKPageView: React.FC<{
 }) => {
   const [pageReady, setPageReady] = useState(false);
   const insets = useSafeAreaInsets();
-  const mushafRenderer = useMushafSettingsStore(s => s.mushafRenderer);
-  const isQCF = mushafRenderer === 'qcf_v2';
+  // @ai — Mushaf 1440's glyphs (Hafs); another rewayah draws with the
+  // Madani font on the same page.
+  const isQCF = useDrawsQCF();
+  const shownSurahLabel = isQCF
+    ? getSurahNamesForPage(pageNumber, true)
+    : surahLabel;
 
   const {isRightPage, contentMarginLeft} = useMemo(
     () => getPageEdgeLayout(pageNumber),
@@ -234,6 +250,30 @@ const DKPageView: React.FC<{
     isBookLayout && !useSymmetricEdges
       ? contentMarginLeft + 8
       : metrics.paddingHorizontal + 8;
+
+  // @ai — where Mushaf 1440 draws: the same text block as SkiaPage.
+  const qcfContentLeft = effectiveMarginLeft ?? metrics.paddingHorizontal;
+  const qcfFrame = useMemo<QCFPageFrame>(
+    () => ({
+      width: metrics.pageWidth,
+      height: metrics.screenHeight,
+      contentLeft: qcfContentLeft,
+      contentTop: metrics.paddingTop,
+      contentWidth: metrics.contentWidth,
+      contentHeight: metrics.contentHeight,
+      lineHeight: metrics.baseLineHeight,
+      centerOpeningPages: true,
+    }),
+    [
+      metrics.pageWidth,
+      metrics.screenHeight,
+      qcfContentLeft,
+      metrics.paddingTop,
+      metrics.contentWidth,
+      metrics.contentHeight,
+      metrics.baseLineHeight,
+    ],
+  );
 
   // Center page number vertically between content bottom and bottom border
   const pageNumberBottom = isBookLayout
@@ -291,11 +331,10 @@ const DKPageView: React.FC<{
       )}
       {isQCF ? (
         <QCFPage
-          metrics={metrics} // @ai
           pageNumber={pageNumber}
           textColor={textColor}
           dividerColor={labelColor}
-          contentMarginLeft={effectiveMarginLeft}
+          frame={qcfFrame} // @ai
           onReady={() => setPageReady(true)}
           onTap={onTap}
         />
@@ -335,7 +374,7 @@ const DKPageView: React.FC<{
           },
         ]}
         numberOfLines={1}>
-        {surahLabel}
+        {shownSurahLabel}
       </Text>
       {/* Juz number — top right */}
       <Text
@@ -1026,17 +1065,20 @@ export default function MushafViewer({
     (targetPage: number) => {
       setIsSearchMode(false);
       // Preload QCF page font immediately, overlapping with the scroll/animation
-      if (mushafRenderer === 'qcf_v2') {
-        const fm = mushafPreloadService.fontMgr;
-        // @ai-start
+      // @ai-start
+      // (Mushaf 1440 draws its glyphs for Hafs only.)
+      if (
+        mushafRenderer === 'qcf_v2' &&
+        digitalKhattDataService.initialized &&
+        digitalKhattDataService.rewayah === 'hafs'
+      ) {
         const variant = getQCFFontVariant(
           useMushafSettingsStore.getState().showTajweed,
           Color(readingColors.text).isLight(),
         );
-        if (fm)
-          qcfFontLoader.ensure(targetPage, fm, variant).catch(() => undefined);
-        // @ai-end
+        qcfFontLoader.ensure(targetPage, variant).catch(() => undefined);
       }
+      // @ai-end
       // Explicit navigation = start a new chain (preserves old position)
       const surahId = digitalKhattDataService.initialized
         ? digitalKhattDataService.getPageToSurah()[targetPage]

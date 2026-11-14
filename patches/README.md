@@ -63,6 +63,13 @@ before regenerating the patch.
 `@tilawa+core+0.4.0.patch` changes the package's `dist` only. What each change is
 for is said beside it in the code. Beyond the earlier speed and flag fixes it adds:
 
+- `recitation/search.js`, the page hint and ties: the open page's ayah no longer wins a
+  tie between equally good places until 90 heard chars still fit all of them, so an
+  opening shared by many ayat waits for the words that tell them apart, as it does with
+  no hint. Until then the search marks its result `tentative`, and the engine sends a
+  `tentative` event (surah, ayah, word, totalWords) for the place it would have picked.
+  The app shows that place only if it is on the open page, with no verdicts. With no
+  hint nothing changes.
 - `recitation/junction.js`: did the reader say an ayah's last word? Runs in
   correction mode when the session is given `junction`.
 - `gapReport` in the engine config: extra sounds heard between two words, reported

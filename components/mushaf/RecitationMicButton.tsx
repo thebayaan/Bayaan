@@ -42,10 +42,14 @@ import {useRecitationMarkAnnouncements} from './useRecitationMarkAnnouncements';
 const LEAVE_MUSHAF_UNLOAD_MS = 60 * 1000;
 
 function pageHint(page: number): SearchHint | null {
-  const first = mushafVerseMapService.getOrderedVerseKeysForPage(page)[0];
+  const first = pageVerseKeys(page)[0];
   if (!first) return null;
   const [surah, ayah] = first.split(':').map(Number);
   return {surah, ayah};
+}
+
+function pageVerseKeys(page: number): readonly string[] {
+  return mushafVerseMapService.getOrderedVerseKeysForPage(page);
 }
 
 /** First run: explain the feature before the mic prompt and the download. */
@@ -65,7 +69,9 @@ export function useRecitationFollowAlong(currentPage: number): void {
   useRecitationMarkAnnouncements();
 
   useEffect(() => {
-    if (listening) setRecitationHint(pageHint(currentPage));
+    if (listening) {
+      setRecitationHint(pageHint(currentPage), pageVerseKeys(currentPage));
+    }
   }, [listening, currentPage]);
 
   // Hiding the text mid-take starts checking from here; showing it stops.
@@ -144,7 +150,10 @@ export function useRecitationMic(currentPage: number): RecitationMic {
     if ((await recitationModelNeedsDownload()) && !(await confirmIntro())) {
       return;
     }
-    await startRecitationTracking(pageHint(currentPage));
+    await startRecitationTracking(
+      pageHint(currentPage),
+      pageVerseKeys(currentPage),
+    );
   }, [status, currentPage]);
 
   return {

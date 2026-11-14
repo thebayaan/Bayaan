@@ -308,11 +308,93 @@ describe('the model', () => {
     expect(again.run).toHaveBeenCalledTimes(1);
   });
 
+  it('corrupted output fails open, as a failed run does: no score', async () => {
+    const model = await ready(
+      fakeModel(async () => {
+        const out = saying(AYAH);
+        const logp = out.logp.slice();
+        logp.fill(-4e5, 31 * 2, 31 * 3);
+        logp[31 * 2] = 0;
+        return {logp, frames: out.frames};
+      }),
+    );
+    check.startCheckTake(host);
+    check.wakeCheck(wake());
+    await settled();
+    expect(model.run).toHaveBeenCalledTimes(1);
+    expect(answers).toEqual([{id: 1, answer: 'neither'}]);
+    expect(check.checkWord(WORD, 6)).toMatchObject({
+      outcome: 'failed',
+      reason: 'corrupted model output, row 2',
+    });
+  });
+
   it('one wake, one run, and the judge answers', async () => {
     const model = await ready();
     check.startCheckTake(host);
     check.wakeCheck(wake());
     await settled();
+    expect(model.run).toHaveBeenCalledTimes(1);
+    expect(answers).toEqual([{id: 1, answer: 'fits'}]);
+  });
+});
+
+describe('sharing the model with the live check', () => {
+  it('lends the loaded model, and nothing before it is loaded', async () => {
+    expect(check.secondLookModel()).toBeNull();
+    const model = await ready();
+    expect(check.secondLookModel()).toBe(model);
+  });
+
+  it('is busy only while a look runs or waits', async () => {
+    let finish: (out: ModelOutput) => void = () => undefined;
+    await ready(
+      fakeModel(
+        () =>
+          new Promise(resolve => {
+            finish = resolve;
+          }),
+      ),
+    );
+    expect(check.secondLookBusy()).toBe(false);
+    check.startCheckTake(host);
+    check.wakeCheck(wake());
+    expect(check.secondLookBusy()).toBe(false);
+    await settled();
+    expect(check.secondLookBusy()).toBe(true);
+    finish(saying(AYAH));
+    await settled(0);
+    expect(check.secondLookBusy()).toBe(false);
+  });
+
+  it('is busy while a live run is on the model, from any take', async () => {
+    await ready();
+    let finish: () => void = () => undefined;
+    check.holdSecondLookModel(
+      new Promise<void>(resolve => {
+        finish = resolve;
+      }),
+    );
+    expect(check.secondLookBusy()).toBe(true);
+    finish();
+    await settled(0);
+    expect(check.secondLookBusy()).toBe(false);
+  });
+
+  it('a look waits for a live run to end, whatever its outcome', async () => {
+    const model = await ready();
+    let fail: (error: Error) => void = () => undefined;
+    check.holdSecondLookModel(
+      new Promise((_resolve, reject) => {
+        fail = reject;
+      }),
+    );
+    check.startCheckTake(host);
+    check.wakeCheck(wake());
+    await settled();
+    expect(model.run).not.toHaveBeenCalled();
+    fail(new Error('live run failed'));
+    await settled(0);
     expect(model.run).toHaveBeenCalledTimes(1);
     expect(answers).toEqual([{id: 1, answer: 'fits'}]);
   });
