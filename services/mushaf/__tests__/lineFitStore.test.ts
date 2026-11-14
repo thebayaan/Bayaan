@@ -137,7 +137,11 @@ beforeEach(() => {
   mockNative.failSet = false;
   mockNative.failClear = false;
   mockBundle.updateId = UPDATE_A;
-  mockBundle.version = {semanticVersion: '2.3.0', buildNumber: 1900};
+  mockBundle.version = {
+    semanticVersion: '2.3.0',
+    buildNumber: 1900,
+    gitHash: 'aaaa111',
+  };
 });
 
 describe('the same bundle', () => {
@@ -234,10 +238,14 @@ describe('another bundle', () => {
     mockBundle.updateId = null;
     const store = storeOneFit();
     expect(mockNative.data.get(VERSION_KEY)).toBe(
-      `${store.LINE_FIT_FORMAT}:2.3.0-1900`,
+      `${store.LINE_FIT_FORMAT}:2.3.0-1900-aaaa111`,
     );
 
-    mockBundle.version = {semanticVersion: '2.3.0', buildNumber: 1901};
+    mockBundle.version = {
+      semanticVersion: '2.3.0',
+      buildNumber: 1901,
+      gitHash: 'bbbb222',
+    };
     const next = launch().store;
     expect(next.readStoredLineFit(KEY)).toBeUndefined();
     expect(fitKeys()).toHaveLength(0);
@@ -403,6 +411,7 @@ describe('when there is no store', () => {
     ['no version', undefined],
     ['no build number', {semanticVersion: '2.3.0'}],
     ['no semantic version', {buildNumber: 1900}],
+    ['no git hash', {semanticVersion: '2.3.0', buildNumber: 1900}],
   ])('no update id and %s opens nothing', (_name, version) => {
     mockBundle.updateId = null;
     mockBundle.version = version;

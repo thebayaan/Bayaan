@@ -42,11 +42,17 @@ export interface StoredLineFit {
   spaceExtra: number;
 }
 
-/** The update id, or with updates off the build version; null without both. */
+/**
+ * The update id. With updates off, the build version and its commit, since the
+ * build number is a commit count and two branches can share it. Null without
+ * both.
+ */
 function currentBundle(): string | null {
   if (Updates.updateId) return Updates.updateId;
-  const version = readVersionInfo();
-  return version ? `${version.semanticVersion}-${version.buildNumber}` : null;
+  const v = readVersionInfo();
+  return v?.gitHash
+    ? `${v.semanticVersion}-${v.buildNumber}-${v.gitHash}`
+    : null;
 }
 
 function openStore(): MMKV | null {
