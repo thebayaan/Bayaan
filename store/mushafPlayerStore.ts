@@ -987,10 +987,29 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
   };
   // @ai-end
 
+  // @ai-start
+  /**
+   * The audio was paused or started from outside the app's own buttons
+   * (headphones unplugged, a call, another app, the lock screen): the bar
+   * follows it instead of showing Pause over silence. Only between
+   * 'playing' and 'paused': a surah that is loading keeps its spinner.
+   */
+  const handlePlayingChange = (playing: boolean) => {
+    if (audioSession !== playbackSession) return;
+    const {playbackState} = get();
+    if (playing && playbackState === 'paused') {
+      set({playbackState: 'playing'});
+    } else if (!playing && playbackState === 'playing') {
+      set({playbackState: 'paused'});
+    }
+  };
+  // @ai-end
+
   const registerCallbacks = () => {
     mushafAudioService.setOnAyahChange(handleEntryChange);
     mushafAudioService.setOnSurahEnd(handleSurahEnd);
     mushafAudioService.setOnIntroChange(handleIntroChange); // @ai
+    mushafAudioService.setOnPlayingChange(handlePlayingChange); // @ai
   };
 
   return {
