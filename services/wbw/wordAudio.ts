@@ -27,5 +27,6 @@ export function wordAudioUrl(verseKey: string, position: number): string {
   const surah = Number(match[1]);
   const ayah = Number(match[2]);
   if (surah < 1 || surah > SURAH_COUNT || ayah < 1) return '';
-  return `https://audio.qurancdn.com/wbw/${pad(surah)}_${pad(ayah)}_${pad(position)}.mp3`;
+  const file = `${pad(surah)}_${pad(ayah)}_${pad(position)}.mp3`;
+  return `https://audio.qurancdn.com/wbw/${file}`;
 }
