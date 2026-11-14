@@ -8,12 +8,42 @@ import {mapAyahTimestampRow} from '@/types/timestamps';
 
 // v4: the R2 timings for several reciters were regenerated (2026-10-27), and a
 // cached surah is never re-fetched, so devices start from an empty cache.
-const DB_NAME = 'timestamps_v4.db';
-const LEGACY_DB_NAMES = ['timestamps_v3.db'];
+// @ai-start
+// v5: surahs saved while another save was open could be left with only their
+// last verses (see writeQueue below) and were then counted as cached for
+// good, so those caches are dropped too.
+const DB_NAME = 'timestamps_v5.db';
+const LEGACY_DB_NAMES = ['timestamps_v3.db', 'timestamps_v4.db'];
+// @ai-end
 
 class TimestampDatabaseService {
   private db: SQLite.SQLiteDatabase | null = null;
   private initPromise: Promise<void> | null = null;
+  // @ai-start
+  // Tail of the writes. withTransactionAsync is not exclusive: there is one
+  // connection, so a second transaction started while one is open fails at
+  // BEGIN, and its ROLLBACK then undoes the first one's work so far. The
+  // first one's remaining INSERTs were then saved on their own: a surah was
+  // left with only its last verses, for good. It happened on the first play
+  // of a Warsh or Qalun reciter, which downloads five short surahs at once
+  // to tell how the reciter's verses are numbered. Every write therefore
+  // starts once the one before it is done, as in DatabaseService.
+  private writeQueue: Promise<unknown> = Promise.resolve();
+
+  private serializeWrite<T>(write: () => Promise<T>): Promise<T> {
+    const result = this.writeQueue.then(write, write);
+    this.writeQueue = result.catch(() => undefined);
+    return result;
+  }
+
+  /** A transaction that waits its turn behind the writes issued before it. */
+  private writeTransaction(
+    db: SQLite.SQLiteDatabase,
+    task: () => Promise<void>,
+  ): Promise<void> {
+    return this.serializeWrite(() => db.withTransactionAsync(task));
+  }
+  // @ai-end
 
   async initialize(): Promise<void> {
     if (this.db) return;
@@ -75,13 +105,22 @@ class TimestampDatabaseService {
   ): Promise<AyahTimestamp[]> {
     if (!this.db) throw new Error('Timestamps database not initialized');
 
+    // @ai-start
+    // Only a surah with its cached_surahs row: that row is written last, so
+    // verses without it are a save that did not finish (or is still going
+    // on), not the whole surah.
     const rows = (await this.db.getAllAsync(
       `SELECT rewayat_id, surah_number, ayah_number, timestamp_from, timestamp_to, duration_ms
        FROM ayah_timestamps
        WHERE rewayat_id = ? AND surah_number = ?
+         AND EXISTS (
+           SELECT 1 FROM cached_surahs
+           WHERE rewayat_id = ? AND surah_number = ?
+         )
        ORDER BY ayah_number`,
-      [rewayatId, surahNumber],
+      [rewayatId, surahNumber, rewayatId, surahNumber],
     )) as AyahTimestampRow[];
+    // @ai-end
 
     return rows.map(mapAyahTimestampRow);
   }
@@ -108,7 +147,17 @@ class TimestampDatabaseService {
   ): Promise<void> {
     if (!this.db) throw new Error('Timestamps database not initialized');
 
-    await this.db.withTransactionAsync(async () => {
+    // @ai-start
+    // One save at a time (see writeQueue).
+    await this.writeTransaction(this.db, async () => {
+      // Not cached until the last statement below: a read between two of
+      // these statements finds no surah rather than part of one.
+      await this.db!.runAsync(
+        `DELETE FROM cached_surahs WHERE rewayat_id = ? AND surah_number = ?`,
+        [rewayatId, surahNumber],
+      );
+      // @ai-end
+
       // Delete any existing data for this surah (in case of re-fetch)
       await this.db!.runAsync(
         `DELETE FROM ayah_timestamps WHERE rewayat_id = ? AND surah_number = ?`,

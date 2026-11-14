@@ -1,7 +1,7 @@
 import branding from '@/config/branding';
 import {RECITERS, type Rewayat} from '@/data/reciterData';
 import {timestampDatabaseService} from './TimestampDatabaseService';
-import type {AyahTimestamp} from '@/types/timestamps';
+import type {AyahTimestamp, TimestampSource} from '@/types/timestamps'; // @ai
 
 // RFC-015 — fork-supplied timestamp CDN base. Absent from `branding.js`
 // → fallback to Bayaan's production CDN (byte-equivalent to the
@@ -144,12 +144,7 @@ class TimestampFetchService {
         // cached — `isSurahCached` keys on (rewayat, surah) and ignores
         // `source`, so a subsequently shipped/updated bundle won't be picked up
         // until the timestamp cache is reset.
-        await timestampDatabaseService.writeTimestamps(
-          rewayatId,
-          surahNumber,
-          local,
-          'local',
-        );
+        await this.saveToCache(rewayatId, surahNumber, local, 'local'); // @ai
         return local;
       }
       // Coverage claimed but data missing/malformed → fall through to the R2
@@ -190,12 +185,7 @@ class TimestampFetchService {
       }
       const data = raw as AyahTimestamp[];
 
-      await timestampDatabaseService.writeTimestamps(
-        rewayatId,
-        surahNumber,
-        data,
-        'r2',
-      );
+      await this.saveToCache(rewayatId, surahNumber, data, 'r2'); // @ai
 
       return data;
     } catch (error) {
@@ -206,6 +196,35 @@ class TimestampFetchService {
       return null;
     }
   }
+
+  // @ai-start
+  /**
+   * Keeps the timings for next time. A save that fails is only a cache that
+   * was not written: the timings in hand are still returned and played.
+   * They used to be thrown away with it, so the surah had no verse tracking
+   * although its timings had been downloaded.
+   */
+  private async saveToCache(
+    rewayatId: string,
+    surahNumber: number,
+    timestamps: AyahTimestamp[],
+    source: TimestampSource,
+  ): Promise<void> {
+    try {
+      await timestampDatabaseService.writeTimestamps(
+        rewayatId,
+        surahNumber,
+        timestamps,
+        source,
+      );
+    } catch (error) {
+      console.warn(
+        `[TimestampFetch] Could not cache ${rewayatId} surah ${surahNumber}:`,
+        error,
+      );
+    }
+  }
+  // @ai-end
 
   private findRewayat(rewayatId: string): Rewayat | undefined {
     for (const reciter of RECITERS) {

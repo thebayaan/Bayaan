@@ -4,6 +4,12 @@ import type {AyahTimestamp} from '@/types/timestamps';
 
 class TimestampService {
   private cache = new Map<string, AyahTimestamp[]>();
+  // @ai-start
+  // Loads going on, by key. A surah asked for again before its first load
+  // settled (the player and the numbering check ask for the same ones) waits
+  // for that load instead of downloading and saving it a second time.
+  private inFlight = new Map<string, Promise<AyahTimestamp[] | null>>();
+  // @ai-end
 
   async initialize(): Promise<void> {
     await timestampDatabaseService.initialize();
@@ -32,6 +38,25 @@ class TimestampService {
     const cached = this.cache.get(key);
     if (cached) return cached;
 
+    // @ai-start
+    const pending = this.inFlight.get(key);
+    if (pending) return pending;
+
+    const load = this.loadTimestamps(key, rewayatId, surahNumber).finally(
+      () => {
+        if (this.inFlight.get(key) === load) this.inFlight.delete(key);
+      },
+    );
+    this.inFlight.set(key, load);
+    return load;
+  }
+
+  private async loadTimestamps(
+    key: string,
+    rewayatId: string,
+    surahNumber: number,
+  ): Promise<AyahTimestamp[] | null> {
+    // @ai-end
     try {
       // 2. SQLite cache
       const dbTimestamps = await timestampDatabaseService.getTimestampsForSurah(
