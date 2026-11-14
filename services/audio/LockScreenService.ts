@@ -30,6 +30,40 @@ import {
 } from '@/services/adhkar/playback/trackControls';
 import branding from '@/config/branding';
 import i18n from '@/i18n';
+// @ai-start
+import {Asset} from 'expo-asset';
+import {getLocalReciterImage} from '@/utils/reciterImageLookup';
+
+/**
+ * An artwork url that the native now-playing layers can load.
+ *
+ * A track's `artwork` is not always one. A reciter whose photo ships with
+ * the app has an asset reference there, which in an Android release build is
+ * a bare drawable name; with no photo it is a `data:` url; an untagged
+ * upload has ''. expo-audio on Android reads the field as a java.net.URL,
+ * which rejects all three, and that rejects the whole call: the lock screen
+ * and notification controls (and the playback service behind them) were
+ * never set up for those tracks.
+ */
+const LOADABLE_ARTWORK = /^(https?|file):\/\//i;
+
+/** Bundled reciter photos, as file urls, by reciter name. */
+const bundledArtwork = new Map<string, string>();
+
+/** Copies a reciter's bundled photo to a file the native layers can load. */
+async function loadBundledArtwork(reciterName: string): Promise<string | null> {
+  const cached = bundledArtwork.get(reciterName);
+  if (cached) return cached;
+  const assetId = getLocalReciterImage(reciterName);
+  if (assetId === undefined) return null;
+  const asset = Asset.fromModule(assetId);
+  await asset.downloadAsync();
+  const uri = asset.localUri ?? asset.uri;
+  if (!uri || !LOADABLE_ARTWORK.test(uri)) return null;
+  bundledArtwork.set(reciterName, uri);
+  return uri;
+}
+// @ai-end
 
 // @ai-start
 function surahNameOf(surah: number): string | null {
@@ -130,6 +164,9 @@ class LockScreenService {
   private lastTrackId: string | null = null;
   private isMushafActive = false;
   private lastMushafTitle: string | null = null; // @ai
+  // @ai The Mushaf player that holds the lock screen entry. A new one is
+  // made for every surah.
+  private lastMushafPlayer: AudioPlayer | null = null;
   private carMode = false;
   private carAyahLabel: string | null = null;
   private adhkarPlayer: AudioPlayer | null = null;
@@ -186,6 +223,7 @@ class LockScreenService {
     this.lastTrackId = null;
     this.isMushafActive = false;
     this.lastMushafTitle = null; // @ai
+    this.lastMushafPlayer = null; // @ai
 
     if (__DEV__) console.log('[LockScreenService] Sync stopped');
   }
@@ -276,38 +314,84 @@ class LockScreenService {
     title: string;
     artist: string;
     artwork?: string;
+    reciterName?: string; // @ai
   }): AudioMetadata {
     const label = this.carMode ? this.carAyahLabel : null;
+    // @ai-start
+    // Only an artwork url that the native side can load (see
+    // LOADABLE_ARTWORK): the track's own, or the bundled photo once it has
+    // been copied to a file.
+    const artworkUrl =
+      track.artwork && LOADABLE_ARTWORK.test(track.artwork)
+        ? track.artwork
+        : track.reciterName
+          ? bundledArtwork.get(track.reciterName)
+          : undefined;
+    // @ai-end
     return {
       title: track.title,
       artist: label ? `${track.artist} · ${label}` : track.artist,
-      artworkUrl: track.artwork,
+      ...(artworkUrl ? {artworkUrl} : {}), // @ai
     };
   }
 
   private activateMainPlayer(track: {
+    id?: string; // @ai
     title: string;
     artist: string;
     artwork?: string;
+    reciterName?: string; // @ai
     duration?: number;
   }): void {
     const player = expoAudioService.getPlayer();
     if (!player) return;
 
     const metadata = this.mainMetadata(track);
+    const options = {
+      showSeekForward: !this.carMode,
+      showSeekBackward: !this.carMode,
+    };
 
     try {
-      player.setActiveForLockScreen(true, metadata, {
-        showSeekForward: !this.carMode,
-        showSeekBackward: !this.carMode,
-      });
+      player.setActiveForLockScreen(true, metadata, options);
     } catch (error) {
-      if (__DEV__)
-        console.warn(
-          '[LockScreenService] Failed to activate main player:',
-          error,
+      // @ai-start
+      // The controls matter more than the picture: try once without it.
+      console.warn('[LockScreenService] Failed to activate main player:', error);
+      try {
+        player.setActiveForLockScreen(
+          true,
+          {title: metadata.title, artist: metadata.artist},
+          options,
         );
+      } catch (retryError) {
+        console.warn(
+          '[LockScreenService] Failed to activate main player without artwork:',
+          retryError,
+        );
+      }
+      // @ai-end
     }
+
+    // @ai-start
+    // A bundled photo is not a url yet. Copy it to a file and add it, if this
+    // track still holds the lock screen by then.
+    if (!metadata.artworkUrl && track.reciterName) {
+      const {reciterName} = track;
+      loadBundledArtwork(reciterName)
+        .then(uri => {
+          if (!uri || this.isMushafActive || this.adhkarPlayer) return;
+          const {queue} = usePlayerStore.getState();
+          const current = queue.tracks[queue.currentIndex];
+          if (!current || current.reciterName !== reciterName) return;
+          if (track.id !== undefined && current.id !== track.id) return;
+          expoAudioService
+            .getPlayer()
+            ?.updateLockScreenMetadata(this.mainMetadata(current));
+        })
+        .catch(() => undefined);
+    }
+    // @ai-end
   }
 
   private activateMushafPlayer(title: string, artist: string): void {
@@ -316,6 +400,7 @@ class LockScreenService {
 
     // Deactivate main player first
     this.clearPlayer(expoAudioService.getPlayer());
+    this.lastTrackId = null; // @ai The main entry is gone until it plays again.
 
     const metadata: AudioMetadata = {
       title,
@@ -372,7 +457,26 @@ class LockScreenService {
         return;
       }
 
-      if (this.isMushafActive) return;
+      // @ai-start
+      // The Mushaf keeps the lock screen only until the main player actually
+      // plays, like the adhkar entry below. Its override was only dropped
+      // when verse audio went idle (Stop), but starting a surah leaves it
+      // paused, so after any use of verse audio the lock screen stopped
+      // following the main player: it showed an old surah for the rest of
+      // the session.
+      if (this.isMushafActive) {
+        if (
+          state.playback?.state !== 'playing' ||
+          audioCoordinator.getActiveSource() !== 'main'
+        )
+          return;
+        this.isMushafActive = false;
+        this.lastMushafTitle = null;
+        this.lastMushafPlayer = null;
+        this.clearPlayer(mushafAudioService.getPlayer());
+        this.lastTrackId = null;
+      }
+      // @ai-end
       // A held adhkar entry blocks main track changes only until the main
       // player actually plays; then the entry is dropped and main takes over.
       // The coordinator decides who plays: right after adhkarWillPlay paused
@@ -418,6 +522,28 @@ class LockScreenService {
       // even when it has no verse tracking (it must not keep the previous
       // surah's title).
       const title = this.isMushafActive ? mushafLockScreenTitle(state) : null;
+      // Verse audio that is playing takes the lock screen. Before this the
+      // Mushaf player only ever had its metadata updated, which does nothing
+      // on a player that does not hold the entry: the lock screen kept
+      // showing the main player's last surah, its play button started that
+      // surah, and its pause button did nothing to the verse audio. A new
+      // player is made for every surah, so each one claims the entry.
+      const mushafPlayer = mushafAudioService.getPlayer();
+      if (
+        this.isMushafActive &&
+        playbackState === 'playing' &&
+        mushafPlayer &&
+        mushafPlayer !== this.lastMushafPlayer
+      ) {
+        this.lastMushafPlayer = mushafPlayer;
+        this.activateMushafPlayer(
+          title ??
+            this.lastMushafTitle ??
+            surahNameOf(state.currentSurah) ??
+            'Quran',
+          reciterName || 'Quran',
+        );
+      }
       if (title && title !== this.lastMushafTitle) {
         this.lastMushafTitle = title;
         try {
@@ -438,6 +564,7 @@ class LockScreenService {
       if (this.isMushafActive && playbackState === 'idle') {
         this.isMushafActive = false;
         this.lastMushafTitle = null; // @ai
+        this.lastMushafPlayer = null; // @ai
 
         // Clear mushaf lock screen and restore main player, unless adhkar
         // holds the lock screen.
@@ -475,6 +602,7 @@ class LockScreenService {
         // override would otherwise outlive it and restore main on a later stop.
         this.isMushafActive = false;
         this.lastMushafTitle = null; // @ai
+        this.lastMushafPlayer = null; // @ai
         this.clearPlayer(expoAudioService.getPlayer());
         this.clearPlayer(mushafAudioService.getPlayer());
         player.setActiveForLockScreen(true, metadata, {
