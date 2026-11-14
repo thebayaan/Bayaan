@@ -456,12 +456,17 @@ const DKSpreadView: React.FC<{
 }) => {
   const spreadBg = isBookLayout ? edgeBg : cardColor;
   // Two facing pages report once, when both have content: half a spread is not
-  // the page the user asked for. Each page reports once, so a count is enough.
-  const facingPagesReportedRef = useRef(0);
-  const handleFacingPageContent = useCallback(() => {
-    facingPagesReportedRef.current += 1;
-    if (facingPagesReportedRef.current === 2) onFirstContent?.();
-  }, [onFirstContent]);
+  // the page the user asked for. A page can report again (a remount of
+  // QCFPage), so this counts pages, not reports.
+  const pagesWithContentRef = useRef(new Set<number>());
+  const facingPageContent = (page: number) =>
+    onFirstContent &&
+    (() => {
+      const pages = pagesWithContentRef.current;
+      if (pages.has(page)) return;
+      pages.add(page);
+      if (pages.size === 2) onFirstContent();
+    });
 
   // Phone landscape: full-width scrollable page.
   if (metrics.scrollContainerHeight) {
@@ -547,7 +552,7 @@ const DKSpreadView: React.FC<{
           isBookLayout={isBookLayout}
           metrics={metrics}
           onTap={onTap}
-          onFirstContent={handleFacingPageContent}
+          onFirstContent={facingPageContent(leftPageNumber)}
         />
         <View style={{width: metrics.facingGap, height: '100%'}} />
         <DKPageView
@@ -563,7 +568,7 @@ const DKSpreadView: React.FC<{
           isBookLayout={isBookLayout}
           metrics={metrics}
           onTap={onTap}
-          onFirstContent={handleFacingPageContent}
+          onFirstContent={facingPageContent(pageNumber)}
         />
       </View>
     );

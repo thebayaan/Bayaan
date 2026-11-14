@@ -7,8 +7,8 @@
  * a spread report once. The horizontal reading view must report too: without
  * it, a restore in the list mode waits for the whole deadline.
  *
- * F3 comes from the review of the step 5 PR: every page in the pager window
- * reported.
+ * F3 and F4 come from the review of the step 5 PR: every page in the pager
+ * window reported, and a spread counted reports, not pages.
  */
 import React, {act} from 'react';
 import {View} from 'react-native';
@@ -438,6 +438,18 @@ describe('a spread of facing pages (DKSpreadView)', () => {
     expect(mockReport).not.toHaveBeenCalled();
     act(() => latest(mockSurfaces.qcfPages, 4).onFirstContent?.());
     expect(mockReport).toHaveBeenCalledTimes(1);
+  });
+
+  it('F4: does not report while one facing page has no content', () => {
+    useMushafSettingsStore.setState({mushafRenderer: 'qcf_v2'});
+    renderViewer();
+    const right = latest(mockSurfaces.qcfPages, 3);
+    // The right page reports twice (a remount); the left page never reports.
+    act(() => {
+      right.onFirstContent?.();
+      right.onFirstContent?.();
+    });
+    expect(mockReport).not.toHaveBeenCalled();
   });
 
   it('does not report from the spread after the one it opens on', () => {
