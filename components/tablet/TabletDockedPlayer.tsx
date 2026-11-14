@@ -12,6 +12,7 @@ import Color from 'color';
 // @ai-start
 import {getTrackDisplayTitle, getTrackArtistDisplay} from '@/i18n/format';
 import {usePlayerA11y} from '@/hooks/usePlayerA11y'; // @ai
+import {isActivelyPlaying} from '@/services/player/utils/isActivelyPlaying';
 // @ai-end
 
 // Both dock variants (compact and expanded) use a 14 pt card radius.
@@ -53,6 +54,8 @@ export const TabletDockedPlayer: React.FC<TabletDockedPlayerProps> = React.memo(
     // rewayah) showed a play button and no spinner.
     const isLoadingTrack = playbackState === 'loading';
     const showSpinner = isLoadingTrack || playbackState === 'buffering';
+    // A stalled stream ('buffering') still counts as playing: a tap pauses.
+    const isPlaying = isActivelyPlaying(playbackState);
 
     // No swipe up: it doesn't fit a sidebar.
     const {anchorRef} = useMiniPlayerAnchor({radius: dockRadius});
@@ -66,19 +69,18 @@ export const TabletDockedPlayer: React.FC<TabletDockedPlayerProps> = React.memo(
       // marked the track as playing, and unlocked the full player's controls,
       // before there was any audio.
       if (isLoadingTrack) return;
-      if (playbackState === 'playing') {
+      if (isPlaying) {
         await pause();
       } else {
         await play();
       }
-    }, [isLoadingTrack, playbackState, pause, play]);
+    }, [isLoadingTrack, isPlaying, pause, play]);
 
     if (stateRestoring || !currentTrack) return null;
 
     // @ai-start
     // VoiceOver treats the whole dock as one element (the play button is
     // nested inside it), so expose play/pause as an action on the dock too.
-    const isPlaying = playbackState === 'playing';
     const playPauseA11y = a11y.playPause(isPlaying, isLoadingTrack);
     const dockA11y = {
       ...a11y.openPlayer(
@@ -122,7 +124,7 @@ export const TabletDockedPlayer: React.FC<TabletDockedPlayerProps> = React.memo(
             style={styles.compactPlay}>
             {showSpinner ? (
               <LoadingIndicator color={theme.colors.text} />
-            ) : playbackState === 'playing' ? (
+            ) : isPlaying ? (
               <PauseIcon color={theme.colors.text} size={16} />
             ) : (
               <PlayIcon color={theme.colors.text} size={16} />
@@ -159,7 +161,7 @@ export const TabletDockedPlayer: React.FC<TabletDockedPlayerProps> = React.memo(
           style={styles.playButton}>
           {showSpinner ? (
             <LoadingIndicator color={theme.colors.text} />
-          ) : playbackState === 'playing' ? (
+          ) : isPlaying ? (
             <PauseIcon color={theme.colors.text} size={20} />
           ) : (
             <PlayIcon color={theme.colors.text} size={20} />

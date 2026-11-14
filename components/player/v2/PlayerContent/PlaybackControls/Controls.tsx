@@ -16,6 +16,7 @@ import {
 import {localizeDigits} from '@/i18n/format';
 import {forceLTR} from '@/utils/rtl';
 import {usePlayerA11y} from '@/hooks/usePlayerA11y'; // @ai
+import {isActivelyPlaying} from '@/services/player/utils/isActivelyPlaying';
 // @ai-end
 
 const SEEK_INTERVAL = 15; // seconds
@@ -31,9 +32,10 @@ export const Controls = () => {
   const tracksLength = usePlayerStore(s => s.queue.tracks.length);
   const trackLoading = usePlayerStore(s => s.loading.trackLoading);
 
-  // Optimistic state for play/pause
-  const [optimisticIsPlaying, setOptimisticIsPlaying] = useState(
-    () => playbackState === 'playing',
+  // Optimistic state for play/pause. A stalled stream ('buffering') still
+  // counts as playing, so the button shows Pause and the first tap pauses.
+  const [optimisticIsPlaying, setOptimisticIsPlaying] = useState(() =>
+    isActivelyPlaying(playbackState),
   );
 
   const handlePlayPause = useCallback(async () => {
@@ -59,7 +61,7 @@ export const Controls = () => {
 
   // Update optimistic state when actual state changes
   React.useEffect(() => {
-    setOptimisticIsPlaying(playbackState === 'playing');
+    setOptimisticIsPlaying(isActivelyPlaying(playbackState));
   }, [playbackState]);
 
   const handlePrevious = useCallback(async () => {

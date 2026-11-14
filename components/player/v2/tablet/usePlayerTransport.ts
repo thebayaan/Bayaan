@@ -3,6 +3,7 @@ import {useCallback, useEffect, useState} from 'react';
 import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {useProgress} from '@/services/player/store/progressStore';
+import {isActivelyPlaying} from '@/services/player/utils/isActivelyPlaying';
 
 export const SEEK_INTERVAL = 15;
 
@@ -25,9 +26,13 @@ export function usePlayerTransport() {
   const currentTrack = queue?.tracks?.[queue?.currentIndex ?? -1];
   const isLastTrack = queue.currentIndex === queue.tracks.length - 1;
 
-  const [isPlaying, setIsPlaying] = useState(() => playbackState === 'playing');
+  // A stalled stream ('buffering') still counts as playing, so the button
+  // shows Pause and the first tap pauses.
+  const [isPlaying, setIsPlaying] = useState(() =>
+    isActivelyPlaying(playbackState),
+  );
   useEffect(() => {
-    setIsPlaying(playbackState === 'playing');
+    setIsPlaying(isActivelyPlaying(playbackState));
   }, [playbackState]);
 
   const togglePlay = useCallback(async () => {

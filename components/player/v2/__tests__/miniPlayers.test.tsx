@@ -160,6 +160,18 @@ describe.each(players)('%s play button', (_name, element) => {
     expect(shows(r, LoadingIndicator)).toBe(false);
   });
 
+  // On iOS a stalled stream reports 'buffering' and carries on by itself.
+  // The button used to read as Play there, and the first tap called play().
+  it('pauses on a tap while the stream is stalled', async () => {
+    const r = mount(element());
+    setPlayer('buffering');
+    expect(shows(r, LoadingIndicator)).toBe(true);
+    expect(playButton(r).props.accessibilityLabel).toBe('Pause');
+    await tap(r);
+    expect(mockPause).toHaveBeenCalledTimes(1);
+    expect(mockPlay).not.toHaveBeenCalled();
+  });
+
   it('ignores a tap while the track loads', async () => {
     const r = mount(element());
     setPlayer('loading', true);

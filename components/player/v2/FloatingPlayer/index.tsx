@@ -24,6 +24,7 @@ import {useResponsive} from '@/hooks/useResponsive';
 // @ai-start
 import {useTranslation} from 'react-i18next';
 import {getTrackDisplayTitle, getTrackArtistDisplay} from '@/i18n/format';
+import {isActivelyPlaying} from '@/services/player/utils/isActivelyPlaying';
 // @ai-end
 
 const capsuleRadius = (height: number) => height / 2;
@@ -55,6 +56,8 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
   // showed a play button and no spinner.
   const isLoadingTrack = playbackState === 'loading';
   const showSpinner = isLoadingTrack || playbackState === 'buffering';
+  // A stalled stream ('buffering') still counts as playing: a tap pauses.
+  const isPlaying = isActivelyPlaying(playbackState);
 
   // iPad uses TabletDockedPlayer inside the sidebar instead of this pill.
   const shouldShow =
@@ -74,12 +77,12 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
     // marked the track as playing, and unlocked the full player's controls,
     // before there was any audio.
     if (isLoadingTrack) return;
-    if (playbackState === 'playing') {
+    if (isPlaying) {
       await pause();
     } else {
       await play();
     }
-  }, [isLoadingTrack, playbackState, pause, play]);
+  }, [isLoadingTrack, isPlaying, pause, play]);
 
   const containerStyle = useMemo(
     () => ({
@@ -154,13 +157,11 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
             accessibilityRole="button"
             accessibilityState={{disabled: isLoadingTrack}}
             accessibilityLabel={t(
-              playbackState === 'playing'
-                ? 'common:actions.pause'
-                : 'common:actions.play',
+              isPlaying ? 'common:actions.pause' : 'common:actions.play',
             )}>
             {showSpinner ? (
               <LoadingIndicator color={theme.colors.text} />
-            ) : playbackState === 'playing' ? (
+            ) : isPlaying ? (
               <PauseIcon
                 color={theme.colors.text}
                 size={moderateScale(20, 0.2)}

@@ -41,13 +41,19 @@ const mockAmbient = {
   setVolume: jest.fn(),
 };
 jest.mock('@/store/ambientStore', () => ({
-  useAmbientStore: (selector: (s: unknown) => unknown) => selector(mockAmbient),
+  useAmbientStore: Object.assign(
+    (selector: (s: unknown) => unknown) => selector(mockAmbient),
+    {getState: () => mockAmbient},
+  ),
 }));
 jest.mock('@/services/audio/AmbientAudioService', () => ({
   ambientAudioService: {stop: jest.fn()},
 }));
+let mockPlaybackState = 'playing';
 jest.mock('@/services/player/store/playerStore', () => ({
-  usePlayerStore: {getState: () => ({playback: {state: 'playing'}})},
+  usePlayerStore: {
+    getState: () => ({playback: {state: mockPlaybackState}}),
+  },
 }));
 jest.mock('react-native-svg', () => new Proxy({}, {get: () => () => null}));
 jest.mock('@/components/native/NativeSlider', () => ({
@@ -55,6 +61,8 @@ jest.mock('@/components/native/NativeSlider', () => ({
 }));
 
 import {AmbientSoundsSheet} from '../AmbientSoundsSheet';
+import {stopAmbientSampling} from '../AmbientSoundsPanel';
+import {ambientAudioService} from '@/services/audio/AmbientAudioService';
 
 function render() {
   let renderer!: TestRenderer.ReactTestRenderer;
@@ -83,7 +91,26 @@ const label = (tile: TestRenderer.ReactTestInstance) =>
 
 beforeEach(() => {
   mockIsTablet = true;
+  mockPlaybackState = 'playing';
   jest.clearAllMocks();
+});
+
+describe('stopAmbientSampling (the sounds close)', () => {
+  it('keeps the sound while the recitation plays, loads or is stalled', () => {
+    for (const state of ['playing', 'buffering', 'loading']) {
+      mockPlaybackState = state;
+      stopAmbientSampling();
+    }
+    expect(ambientAudioService.stop).not.toHaveBeenCalled();
+    expect(mockAmbient.setEnabled).not.toHaveBeenCalled();
+  });
+
+  it('stops a sound that was only sampled', () => {
+    mockPlaybackState = 'paused';
+    stopAmbientSampling();
+    expect(ambientAudioService.stop).toHaveBeenCalledTimes(1);
+    expect(mockAmbient.setEnabled).toHaveBeenCalledWith(false);
+  });
 });
 
 describe('AmbientSoundsSheet', () => {
