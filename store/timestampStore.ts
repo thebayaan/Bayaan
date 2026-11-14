@@ -1,6 +1,8 @@
 import {create} from 'zustand';
 import {persist} from 'zustand/middleware'; // @ai
 import {persistStorage} from '@/utils/storage'; // @ai
+import {AppState} from 'react-native'; // @ai
+import {useNetworkStore} from '@/store/networkStore'; // @ai
 import type {AyahTimestamp, AyahTrackingState} from '@/types/timestamps';
 import {timestampService} from '@/services/timestamps/TimestampService';
 import {timestampFetchService} from '@/services/timestamps/TimestampFetchService'; // @ai
@@ -246,6 +248,34 @@ useFollowAlongChoice.subscribe(({followAlongEnabled}, previous) => {
   if (followAlongEnabled === previous.followAlongEnabled) return;
   if (useTimestampStore.getState().followAlongEnabled !== followAlongEnabled) {
     useTimestampStore.setState({followAlongEnabled});
+  }
+});
+// @ai-end
+
+// @ai-start
+// The current track's timings failed to load (no connection): they were only
+// tried again on "Play from here" or a track change, so a long surah stayed
+// "Verse tracking unavailable" long after a brief drop. Try again when the
+// connection comes back and when the app returns to the foreground
+// (retryTimestamps does nothing unless the last load failed).
+function retryFailedTimestamps(): void {
+  useTimestampStore
+    .getState()
+    .retryTimestamps()
+    .catch(error => {
+      console.warn('[Timestamps] Retrying the verse timing failed:', error);
+    });
+}
+
+useNetworkStore.subscribe(({isOnline}, previous) => {
+  if (isOnline && !previous.isOnline) retryFailedTimestamps();
+});
+
+// Not while known to be offline: it would only fail again, hiding the
+// notice for the moment it takes.
+AppState.addEventListener('change', state => {
+  if (state === 'active' && useNetworkStore.getState().isOnline) {
+    retryFailedTimestamps();
   }
 });
 // @ai-end
