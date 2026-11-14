@@ -113,6 +113,9 @@ const IDLE_UNLOAD_MS = 5 * 60 * 1000;
 let takeStartedAt = 0;
 let takeLockedAt: number | null = null;
 let takeHint: SearchHint | null = null;
+// The ayat on the open page: the engine's guess at the reader's place shows
+// before the lock only when it is one of them.
+let takePage: ReadonlySet<string> = new Set();
 // The current take, for the recitation log.
 let take: TakeBuilder | null = null;
 
@@ -726,6 +729,10 @@ function handleEvent(msg: EngineMessage): void {
     return;
   }
   if (msg.type !== 'debug') return;
+  if (msg.event === 'tentative') {
+    showTentative(msg.data, state.locked);
+    return;
+  }
   if (LOCK_EVENTS.has(msg.event) || UNLOCK_EVENTS.has(msg.event)) {
     trace(`engine ${msg.event}`);
   }
@@ -736,6 +743,29 @@ function handleEvent(msg: EngineMessage): void {
     scheduleConfirm();
   }
   if (FALLBACK_EVENTS.has(msg.event)) dropToTracking();
+}
+
+/**
+ * Before the lock, several ayat can fit what was heard equally well (a shared
+ * opening). The engine then names the open page's one as tentative: the cursor
+ * shows there at once, with no verdicts, no reveal and no lock. The lock moves
+ * it if the words turn out to belong elsewhere.
+ */
+function showTentative(data: Record<string, unknown>, locked: boolean): void {
+  if (locked) return;
+  const {surah, ayah, word, totalWords} = data;
+  if (
+    typeof surah !== 'number' ||
+    typeof ayah !== 'number' ||
+    typeof word !== 'number' ||
+    typeof totalWords !== 'number'
+  ) {
+    return;
+  }
+  const key = `${surah}:${ayah}`;
+  if (!takePage.has(key)) return;
+  trace(`probably at ${key} word ${word + 1}/${totalWords}`);
+  setState({verseKey: key, wordIndex: word, totalWords});
 }
 
 function trackTakeStopped(
@@ -920,13 +950,17 @@ const handlers: SessionHandlers = {
 /**
  * Starts listening, downloading and loading the model first if needed.
  * @param hint - The ayah on screen, so the first lock favours this page
+ * @param pageVerseKeys - Every ayah on the open page ("surah:ayah"), where the
+ *   reader's place may show before the lock
  */
 export async function startRecitationTracking(
   hint: SearchHint | null,
+  pageVerseKeys: readonly string[] = [],
 ): Promise<void> {
   const {status} = useRecitationTrackingStore.getState();
   if (status !== 'off' && status !== 'error') return;
   takeHint = hint;
+  takePage = new Set(pageVerseKeys);
   setState({...RECITATION_TRACKING_IDLE, status: 'loading'});
   await startSession({purpose: 'follow', hint}, handlers);
 }
@@ -980,9 +1014,17 @@ export function peekRecitation(kind: 'word' | 'ayah', start: AyahRef): void {
   }
 }
 
-/** Re-points the search bias, e.g. when the reader turns the page by hand. */
-export function setRecitationHint(hint: SearchHint | null): void {
-  if (activeSessionPurpose() === 'follow') setSessionHint(hint);
+/**
+ * Re-points the search bias, e.g. when the reader turns the page by hand.
+ * @param pageVerseKeys - Every ayah on the page now open
+ */
+export function setRecitationHint(
+  hint: SearchHint | null,
+  pageVerseKeys: readonly string[] = [],
+): void {
+  if (activeSessionPurpose() !== 'follow') return;
+  takePage = new Set(pageVerseKeys);
+  setSessionHint(hint);
 }
 
 /**

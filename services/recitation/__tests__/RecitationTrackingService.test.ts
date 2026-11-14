@@ -16,6 +16,7 @@ import {
   mockEngine,
   mockMic,
   resetRecitationControls,
+  tentative,
   verseMatch,
   wordProgress,
   wordVerdicts,
@@ -175,6 +176,54 @@ describe('RecitationTrackingService', () => {
     expect(mockAnalytics.trackRecitationTrackingLocked).toHaveBeenCalledWith(
       expect.objectContaining({surah_id: 36, ayah: 4, page_hint_matched: true}),
     );
+  });
+
+  it('a tentative place on the open page shows the cursor without locking', async () => {
+    await service.startRecitationTracking({surah: 2, ayah: 102}, [
+      '2:102',
+      '2:103',
+      '2:104',
+    ]);
+    engineControl.sendEvent?.(tentative(2, 104, 2, 12));
+    expect(state()).toMatchObject({
+      locked: false,
+      verseKey: '2:104',
+      wordIndex: 2,
+      totalWords: 12,
+    });
+    expect(mockAnalytics.trackRecitationTrackingLocked).not.toHaveBeenCalled();
+  });
+
+  it('a tentative place off the open page is not shown', async () => {
+    await service.startRecitationTracking({surah: 2, ayah: 102}, [
+      '2:102',
+      '2:103',
+    ]);
+    engineControl.sendEvent?.(tentative(2, 104, 2, 12));
+    expect(state()).toMatchObject({locked: false, verseKey: null});
+  });
+
+  it('the lock moves the cursor off a wrong tentative place, which then stops showing', async () => {
+    await service.startRecitationTracking({surah: 2, ayah: 102}, [
+      '2:102',
+      '2:103',
+      '2:104',
+    ]);
+    engineControl.sendEvent?.(tentative(2, 104, 2, 12));
+    engineControl.sendEvent?.(wordProgress(49, 12, 4, 30));
+    engineControl.sendEvent?.(tentative(2, 104, 3, 12));
+    expect(state()).toMatchObject({
+      locked: true,
+      verseKey: '49:12',
+      wordIndex: 4,
+    });
+  });
+
+  it('turning the page changes which ayat may show a tentative place', async () => {
+    await service.startRecitationTracking({surah: 2, ayah: 102}, ['2:102']);
+    service.setRecitationHint({surah: 2, ayah: 104}, ['2:104', '2:105']);
+    engineControl.sendEvent?.(tentative(2, 104, 0, 12));
+    expect(state()).toMatchObject({locked: false, verseKey: '2:104'});
   });
 
   it('verse_match adds the key to recitedVerseKeys once', async () => {
