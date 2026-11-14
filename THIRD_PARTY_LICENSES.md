@@ -89,6 +89,27 @@ is in `licenses/quran-asr-small-MIT.txt`. Its card says the training data keeps 
 own terms: 36 EveryAyah Hafs reciters, 3 Warsh reciters, `tarteel-ai/tlog` (CC-BY-4.0)
 and `IqraEval/Iqra_train` (now under non-commercial terms).
 
+## Quran i'rab (grammatical analysis)
+
+`assets/data/irab-v1.db` is built by `scripts/irab/build-irab-db.ts` from:
+
+- **The Quranic Treebank** — https://github.com/NoorBayan/Quranic
+  (commit `e791af79`), MIT License, Copyright (c) 2025 NoorBayan. Word-level
+  syntax (i'rab relations) for the whole Quran.
+- **Quranic Arabic Corpus** v0.4 — https://corpus.quran.com, Dr. Kais Dukes,
+  University of Leeds, GNU General Public License. The morphology (part of
+  speech, case, mood, root, lemma) inside the Quranic Treebank comes from it.
+- **MASAQ: Morphologically-Analyzed and Syntactically-Annotated Quran
+  Dataset** v5 — https://data.mendeley.com/datasets/9yvrzxktmr/5, Majdi
+  Sawalha et al., University of Jordan, CC BY 4.0. Used to cross-check every
+  word; where it reads a word differently its reading is shown as «وجه آخر»,
+  and the build drops case signs it does not confirm. Changes were made:
+  roles and cases are mapped to Arabic grammar terms.
+- **Quranpedia** data dumps — https://quranpedia.net/dumps (version
+  2026-08-10): the classical i'rab books *al-Tibyan fi I'rab al-Qur'an* of
+  al-Ukbari (d. 616 AH) and *I'rab al-Qur'an* of al-Nahhas (d. 338 AH),
+  converted to plain text.
+
 ## Adhkar content & audio
 
 The Arabic adhkar text and English translations in `data/adhkar.json` are

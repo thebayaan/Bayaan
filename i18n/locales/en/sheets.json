@@ -188,7 +188,8 @@
     "communityReflections": "Community Reflections",
     "unnumbered": "Not a numbered verse in {{rewayah}}.",
     "loadFailed": "Couldn't load the {{rewayah}} text.",
-    "loadingText": "Loading the {{rewayah}} text"
+    "loadingText": "Loading the {{rewayah}} text",
+    "irab": "I'rab"
   },
   "mushafPlayer": {
     "title": "Playback Settings",
@@ -399,5 +400,26 @@
       "nothing": "Bayaan didn't hear the ayah."
     },
     "flagLine": "{{ref}}: {{message}}"
+  },
+  "irab": {
+    "tabWords": "Word analysis",
+    "tabBooks": "Classical books",
+    "tapWord": "Tap a word to see its i'rab",
+    "showAll": "Whole verse",
+    "showWord": "One word",
+    "wordOf": "Word {{n}} of {{total}}",
+    "wordN": "word {{n}}",
+    "hafsVerse": "Hafs {{verse}}",
+    "implied": "Implied",
+    "agreed": "Confirmed by two independent analyses",
+    "loadFailed": "Couldn't load the i'rab.",
+    "sources": "Word i'rab generated from The Quranic Treebank (built on the Quranic Arabic Corpus, University of Leeds) and cross-checked word by word against MASAQ (University of Jordan). Where the two read a word differently, the other reading is shown as «وجه آخر». Morphology (root, pattern, verb form, number and gender) is from the same corpus; occurrence counts are over the whole Quran. Shown for the Hafs text.",
+    "booksNote": "Each passage is the page of the book that discusses this verse, so it can also cover the verses around it.",
+    "noBooks": "These books have no passage for this verse.",
+    "passageRef": "Vol. {{part}}, p. {{page}}",
+    "readMore": "Read more",
+    "readLess": "Show less",
+    "booksSources": "Text from Quranpedia (quranpedia.net).",
+    "morphology": "Morphology (ṣarf)"
   }
 }
