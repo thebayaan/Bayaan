@@ -1,16 +1,12 @@
 import {useCallback} from 'react';
-import {usePathname} from 'expo-router';
+import {useRouter, usePathname, useSegments} from 'expo-router';
 import {reciterProfilePathname} from '@/hooks/useTabReciterPath'; // @ai
 import {usePlayerStore} from '@/services/player/store/playerStore';
-// @ai-start
-import {
-  currentTabGroup,
-  openFromTabs,
-} from '@/services/navigation/openFromTabs';
-// @ai-end
 
 export const useReciterNavigation = () => {
+  const router = useRouter();
   const pathname = usePathname();
+  const segments = useSegments(); // @ai
   const setSheetMode = usePlayerStore(state => state.setSheetMode);
 
   const navigateToReciterProfile = useCallback(
@@ -24,19 +20,14 @@ export const useReciterNavigation = () => {
 
       // Navigate after a short delay to allow the sheet to close
       setTimeout(() => {
-        // @ai-start
-        // Open it in the tab the user is on: the one under the Mushaf when
-        // the player or a sheet is over it. openFromTabs closes the Mushaf
-        // first; pushed from it, the profile would land in a second copy of
-        // the tabs with no way back.
-        openFromTabs({
-          pathname: reciterProfilePathname(['(tabs)', currentTabGroup() ?? '']),
+        router.push({
+          // Stay in the tab the user is on. @ai
+          pathname: reciterProfilePathname(segments),
           params: {id: reciterId},
         });
-        // @ai-end
       }, 300); // Delay for bottom sheet animation
     },
-    [pathname, setSheetMode],
+    [router, pathname, segments, setSheetMode],
   );
 
   return {navigateToReciterProfile};

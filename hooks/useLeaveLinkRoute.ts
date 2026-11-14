@@ -1,22 +1,6 @@
 import {useEffect, useRef} from 'react';
 import {useNavigation} from 'expo-router';
 
-type RouteNavigation = {
-  canGoBack(): boolean;
-  goBack(): void;
-  dispatch(action: {type: 'REPLACE'; payload: {name: '(tabs)'}}): void;
-};
-
-/**
- * Step a root route off the root stack, back to the screen underneath. The
- * tabs sit under every root route (initialRouteName), so this is the normal
- * path; the replace only covers a stack that lacks them. @ai
- */
-export function leaveLinkRoute(navigation: RouteNavigation): void {
-  if (navigation.canGoBack()) navigation.goBack();
-  else navigation.dispatch({type: 'REPLACE', payload: {name: '(tabs)'}});
-}
-
 /**
  * For a root route that only handles a link (bayaan://player, an unknown
  * path): step off the root stack and show the screen underneath, then call
@@ -37,7 +21,10 @@ export function useLeaveLinkRoute(onLeft?: () => void): void {
     const frame = requestAnimationFrame(() => {
       if (left.current) return;
       left.current = true;
-      leaveLinkRoute(navigation);
+      // The tabs sit under every root route (initialRouteName), so this is
+      // the normal path. The replace only covers a stack that lacks them.
+      if (navigation.canGoBack()) navigation.goBack();
+      else navigation.dispatch({type: 'REPLACE', payload: {name: '(tabs)'}});
       onLeft?.();
     });
     return () => cancelAnimationFrame(frame);
