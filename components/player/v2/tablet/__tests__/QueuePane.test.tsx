@@ -347,4 +347,17 @@ describe('QueuePane', () => {
     expect(mockActions.updateQueue).toHaveBeenCalledWith(mockQueue.tracks, 3);
     expect(mockActions.play).toHaveBeenCalled();
   });
+
+  // A tap on it used to load the track again: a long surah went back to 0:00.
+  it('leaves the playing track alone when its row is tapped', () => {
+    const r = render();
+    const rows = r.root.findAll(
+      n => n.props.accessibilityLabel === 'Surah b, Reciter',
+    );
+    expect(rows.length).toBeGreaterThan(0);
+    for (const row of rows) {
+      expect(row.props.onPress).toBeUndefined();
+      expect(row.props.accessibilityRole).toBeUndefined();
+    }
+  });
 });

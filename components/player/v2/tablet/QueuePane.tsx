@@ -157,9 +157,12 @@ const QueueRow = React.memo(function QueueRow({
           styles.rowBody,
           pressed && !isCurrent && {opacity: 0.6},
         ]}
-        onPress={() => onPress(index)}
+        // The row of the track that is playing does nothing on a tap, as its
+        // missing pressed state suggests. It used to load the track again,
+        // which sent a 40-minute surah back to 0:00.
+        onPress={isCurrent ? undefined : () => onPress(index)}
         onLongPress={onMore ? () => onMore(track, index) : undefined}
-        accessibilityRole="button"
+        accessibilityRole={isCurrent ? undefined : 'button'}
         accessibilityLabel={`${display.title}, ${display.subtitle}`}
         accessibilityActions={actions}
         onAccessibilityAction={handleAction}>
