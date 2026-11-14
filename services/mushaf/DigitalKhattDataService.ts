@@ -16,19 +16,17 @@ import {
   type VerseIndex,
   type WordSlot,
 } from './wordStore'; // @ai
-import {loadPageLineRows, loadVerseIndex} from './mushafTables'; // @ai
+import {loadVerseIndex} from './mushafTables'; // @ai
+import {buildMushafLayout, type MushafLayout} from './mushafLayout'; // @ai
 import {RETIRED_DB_BASES} from './retiredDbBases'; // @ai
 import {WordStores} from './wordStores'; // @ai
 import {joinSlotTexts, layoutLineSlots, visibleWords} from './lineWordSpans';
 // @ai-start
-import {
-  basmalaLineSurahs,
-  layoutLineKey,
-  rewayahBasmalaService,
-} from './RewayahBasmalaService';
+import {layoutLineKey, rewayahBasmalaService} from './RewayahBasmalaService';
 // @ai-end
 
-const TOTAL_PAGES = 604;
+// @ai: what the surah getters give before the data is loaded.
+const NO_PAGES: Record<number, number> = Object.freeze({});
 
 // Every Digital Khatt SQLite asset the app bundles, keyed by file basename.
 // Keep each key equal to its file name: it indexes the generated content
@@ -447,21 +445,9 @@ export type RewayahLoadState =
 
 // ── Row → cache builders ────────────────────────────────────────────────────
 
-interface LayoutData {
-  pageLines: Map<number, DKLine[]>;
-  surahStartPages: Record<number, number>;
-  pageToSurah: Record<number, number>;
-  // @ai-start
-  // Surah each basmallah line opens, keyed by layoutLineKey(page, line).
-  basmalaSurahs: Map<string, number>;
-  // @ai-end
-}
-
 interface MainSnapshot {
   rewayah: RewayahId;
   words: WordStore; // @ai: read on demand (WordStore)
-  // null: the active layout is reused (same layout DB copy).
-  layout: LayoutData | null;
   identity: DKDataIdentity;
 }
 
@@ -470,64 +456,6 @@ interface MainWaiter {
   target: RewayahId | null;
   resolve: () => void;
   reject: (error: unknown) => void;
-}
-
-function buildLayoutData(
-  rows: readonly DKLine[],
-  surahOfWord: (wordId: number) => number | undefined, // @ai: WordStore
-): LayoutData {
-  const pageLines = new Map<number, DKLine[]>();
-  const surahStartPages: Record<number, number> = {};
-  const pageToSurah: Record<number, number> = {};
-
-  for (const row of rows) {
-    const existing = pageLines.get(row.page_number);
-    if (existing) existing.push(row);
-    else pageLines.set(row.page_number, [row]);
-  }
-
-  // Build surah mappings by identifying the first Ayah of each surah.
-  // This solves the "header at bottom of previous page" issue by anchoring the
-  // surah to the page where its actual verse content begins.
-  for (const row of rows) {
-    if (row.line_type !== 'ayah') continue;
-    const surahId = surahOfWord(row.first_word_id); // @ai
-    if (surahId && !surahStartPages[surahId]) {
-      surahStartPages[surahId] = row.page_number;
-    }
-  }
-
-  // Fallback: If any surahs are missing ayahs in the DB (unlikely),
-  // use the surah_name lines as a secondary source.
-  for (const row of rows) {
-    if (row.line_type !== 'surah_name') continue;
-    if (row.surah_number && !surahStartPages[row.surah_number]) {
-      surahStartPages[row.surah_number] = row.page_number;
-    }
-  }
-
-  // Fill pageToSurah for all pages
-  const surahIds = Object.keys(surahStartPages)
-    .map(Number)
-    .sort((a, b) => surahStartPages[a] - surahStartPages[b]);
-  for (let i = 0; i < surahIds.length; i++) {
-    const surahId = surahIds[i];
-    const startPage = surahStartPages[surahId];
-    const endPage =
-      i < surahIds.length - 1
-        ? surahStartPages[surahIds[i + 1]] - 1
-        : TOTAL_PAGES;
-    for (let page = startPage; page <= endPage; page++) {
-      if (!pageToSurah[page]) pageToSurah[page] = surahId;
-    }
-  }
-
-  // @ai-start
-  // Rows arrive sorted by page and line (readLayoutRows), as
-  // basmalaLineSurahs requires.
-  const basmalaSurahs = basmalaLineSurahs(rows);
-  return {pageLines, surahStartPages, pageToSurah, basmalaSurahs};
-  // @ai-end
 }
 
 async function hasWordsTable(db: SQLite.SQLiteDatabase): Promise<boolean> {
@@ -550,37 +478,6 @@ async function checkedVerseIndex(
   await checkWordsTable(db, index);
   return index;
 }
-
-/** Verse key → the page of its first word (getPageForVerse). */
-function buildVerseToPage(
-  pageLines: ReadonlyMap<number, DKLine[]>,
-  index: VerseIndex,
-): Map<string, number> {
-  const lines: DKLine[] = [];
-  for (const pageRows of pageLines.values()) {
-    for (const line of pageRows) {
-      if (line.line_type === 'ayah') lines.push(line);
-    }
-  }
-  lines.sort((a, b) => a.first_word_id - b.first_word_id);
-  const verseToPage = new Map<string, number>();
-  for (let i = 0; i < index.keys.length; i++) {
-    const wordId = index.first[i];
-    let lo = 0;
-    let hi = lines.length - 1;
-    while (lo <= hi) {
-      const mid = (lo + hi) >> 1;
-      const line = lines[mid];
-      if (wordId < line.first_word_id) hi = mid - 1;
-      else if (wordId > line.last_word_id) lo = mid + 1;
-      else {
-        verseToPage.set(index.keys[i], line.page_number);
-        break;
-      }
-    }
-  }
-  return verseToPage;
-}
 // @ai-end
 
 // Background work (worker loop, stale-copy sweeps) handles its own errors;
@@ -600,11 +497,8 @@ export class DigitalKhattDataService {
   // @ai: its words are a WordStore, read on demand.
   private words: WordStore | null = null;
   private mainTextFailed = false; // @ai: see announceMainCommit
-  private pageLines: Map<number, DKLine[]> = new Map();
-  private surahStartPages: Record<number, number> = {};
-  private pageToSurah: Record<number, number> = {};
-  private basmalaSurahs: Map<string, number> = new Map(); // @ai
-  private verseToPage: Map<string, number> | null = null;
+  // @ai: the layout is fixed build-time data, built on first use (layout).
+  private layoutMemo: MushafLayout | null = null;
   private currentRewayah: RewayahId = 'hafs';
   private rewayahListeners: Set<RewayahChangeListener> = new Set();
   // Monotonic version for reactive consumers (useRewayahWords via
@@ -842,11 +736,6 @@ export class DigitalKhattDataService {
     this._initialized = false;
     this._initializing = null;
     this.words = null; // @ai
-    this.pageLines = new Map();
-    this.surahStartPages = {};
-    this.pageToSurah = {};
-    this.basmalaSurahs = new Map(); // @ai
-    this.verseToPage = null;
     this.activeIdentity = null;
     this.sideLoading.clear();
     this.loadErrors.clear();
@@ -1047,22 +936,13 @@ export class DigitalKhattDataService {
     // checked inside the read (a copy that fails the checks is deleted,
     // re-imported and read again like any unreadable copy).
     const words = await this.stores.load(target);
-    // The one layout, generated at build time, on the first load.
-    const layout =
-      this.pageLines.size > 0
-        ? null
-        : buildLayoutData(loadPageLineRows(), wordId =>
-            words.surahOfWord(wordId),
-          );
     console.log(
-      `[DigitalKhattDataService] Loaded ${target}: ${words.wordCount} words, ${words.index.keys.length} verses` +
-        (layout ? `, layout for ${layout.pageLines.size} pages` : ''),
+      `[DigitalKhattDataService] Loaded ${target}: ${words.wordCount} words, ${words.index.keys.length} verses`,
     );
     // @ai-end
     return {
       rewayah: target,
       words,
-      layout,
       identity: makeDataIdentity(
         target,
         wordsSpec.sha8,
@@ -1076,13 +956,6 @@ export class DigitalKhattDataService {
   // follow in the same synchronous block.
   private swapMain(next: MainSnapshot): void {
     this.words = next.words; // @ai
-    if (next.layout) {
-      this.pageLines = next.layout.pageLines;
-      this.surahStartPages = next.layout.surahStartPages;
-      this.pageToSurah = next.layout.pageToSurah;
-      this.basmalaSurahs = next.layout.basmalaSurahs; // @ai
-    }
-    this.verseToPage = null;
     this.currentRewayah = next.rewayah;
     this.activeIdentity = next.identity;
     this._initialized = true;
@@ -1473,8 +1346,17 @@ export class DigitalKhattDataService {
   }
   // @ai-end
 
+  // @ai-start
+  /** The layout once the data is loaded (mushafLayout.ts), else null. */
+  private get layout(): MushafLayout | null {
+    if (!this._initialized) return null;
+    if (!this.layoutMemo) this.layoutMemo = buildMushafLayout();
+    return this.layoutMemo;
+  }
+  // @ai-end
+
   getPageLines(pageNum: number): DKLine[] {
-    return this.pageLines.get(pageNum) || [];
+    return this.layout?.pageLines.get(pageNum) || []; // @ai
   }
 
   getWordText(wordId: number): string {
@@ -1512,7 +1394,7 @@ export class DigitalKhattDataService {
   getBasmalaSurah(line: DKLine): number | null {
     if (line.line_type !== 'basmallah') return null;
     return (
-      this.basmalaSurahs.get(
+      this.layout?.basmalaSurahs.get(
         layoutLineKey(line.page_number, line.line_number),
       ) ?? null
     );
@@ -1524,11 +1406,11 @@ export class DigitalKhattDataService {
   }
 
   getSurahStartPages(): Record<number, number> {
-    return this.surahStartPages;
+    return this.layout?.surahStartPages ?? NO_PAGES; // @ai
   }
 
   getPageToSurah(): Record<number, number> {
-    return this.pageToSurah;
+    return this.layout?.pageToSurah ?? NO_PAGES; // @ai
   }
 
   /**
@@ -1706,19 +1588,8 @@ export class DigitalKhattDataService {
   }
 
   getPageForVerse(verseKey: string): number | undefined {
-    if (!this.verseToPage) {
-      // Never cache a map built from an empty cache (before the first load);
-      // commits replace the maps atomically, so a built map is never partial.
-      // @ai-start
-      // From the verse index and the layout: no word is read.
-      const words = this.words;
-      if (!this._initialized || !words || this.pageLines.size === 0) {
-        return undefined;
-      }
-      this.verseToPage = buildVerseToPage(this.pageLines, words.index);
-      // @ai-end
-    }
-    return this.verseToPage.get(verseKey);
+    // @ai: from the verse index and the layout: no word is read.
+    return this.layout?.verseToPage.get(verseKey);
   }
 }
 

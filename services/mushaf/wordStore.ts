@@ -146,7 +146,7 @@ export function buildVerseIndex(rows: readonly VerseRangeRow[]): VerseIndex {
 }
 
 /** The index of the verse that holds `wordId`, or -1. */
-function verseIndexOfWord(index: VerseIndex, wordId: number): number {
+export function verseIndexOfWord(index: VerseIndex, wordId: number): number {
   let lo = 0;
   let hi = index.keys.length - 1;
   while (lo <= hi) {
@@ -243,12 +243,6 @@ export class WordStore {
       if (oldest !== undefined) this.verseSlots.delete(oldest);
     }
     return slots;
-  }
-
-  /** The surah of the verse that holds `wordId`. */
-  surahOfWord(wordId: number): number | undefined {
-    const i = verseIndexOfWord(this.index, wordId);
-    return i < 0 ? undefined : this.index.surah[i];
   }
 
   /**
