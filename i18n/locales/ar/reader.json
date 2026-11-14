@@ -54,7 +54,18 @@
   "verseUnits": {
     "loading": "جارٍ تحميل آيات رواية {{rewayah}}",
     "loadFailed": "تعذّر تحميل آيات رواية {{rewayah}}.",
-    "retryLabel": "أعد محاولة تحميل آيات رواية {{rewayah}}"
+    "retryLabel": "أعد محاولة تحميل آيات رواية {{rewayah}}",
+    "preparing": "جارٍ تجهيز الآيات",
+    "tryAgainShortly": "حاول مرة أخرى بعد قليل."
+  },
+  "savedRewayah": {
+    "unavailable": "نص رواية {{rewayah}} غير متاح",
+    "openingInstead": "سيُفتح برواية {{rewayah}}.",
+    "switchFailed": "تعذّر الفتح برواية {{rewayah}}",
+    "showingInstead": "يُعرض برواية {{rewayah}} بدلًا منها.",
+    "opening": "يُفتح برواية {{rewayah}}",
+    "fontChanged": "الخط الهندي الباكستاني يعرض رواية حفص فقط، لذا أصبح الخط {{font}}.",
+    "openingIn": "يُفتح برواية"
   },
   "recitation": {
     "recite": "تلاوة",

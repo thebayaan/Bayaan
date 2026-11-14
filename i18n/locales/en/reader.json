@@ -54,7 +54,18 @@
   "verseUnits": {
     "loading": "Loading the {{rewayah}} verses",
     "loadFailed": "Couldn't load the {{rewayah}} verses.",
-    "retryLabel": "Try loading the {{rewayah}} verses again"
+    "retryLabel": "Try loading the {{rewayah}} verses again",
+    "preparing": "Preparing verses",
+    "tryAgainShortly": "Try again in a moment."
+  },
+  "savedRewayah": {
+    "unavailable": "{{rewayah}} text is not available",
+    "openingInstead": "Opening in {{rewayah}}.",
+    "switchFailed": "Couldn't open in {{rewayah}}",
+    "showingInstead": "Showing {{rewayah}} instead.",
+    "opening": "Opening in {{rewayah}}",
+    "fontChanged": "IndoPak shows Hafs only, so the font is now {{font}}.",
+    "openingIn": "Opening in"
   },
   "recitation": {
     "recite": "Recite",
