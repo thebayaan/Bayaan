@@ -209,11 +209,13 @@ export const RecentReciterCard = ({
           }
           const uploadTrack = createUserUploadTrack(recitation);
           await updateQueue([uploadTrack], 0, startPosition);
+          // @ai-start
           // The entry's place in the full recents list. The card's place on
           // Home is not it when the list holds an entry Home leaves out.
           useRecentlyPlayedStore
             .getState()
             .resumeChain(findRecentIndex({reciterId, userRecitationId}));
+          // @ai-end
           return;
         }
 
@@ -229,7 +231,7 @@ export const RecentReciterCard = ({
           surahId,
           rewayatId,
           startPosition,
-          recentIndex: findRecentIndex({reciterId, surahId, rewayatId}),
+          recentIndex: findRecentIndex({reciterId, surahId, rewayatId}), // @ai
           updateQueue,
         });
       } catch (error) {
@@ -263,7 +265,7 @@ export const RecentReciterCard = ({
       surahId,
       surahName,
       rewayatId,
-      userRecitationId: isUserUpload ? userRecitationId : undefined,
+      userRecitationId: isUserUpload ? userRecitationId : undefined, // @ai
       variant: 'recent',
       onContinuePlaying: handleContinuePlaying,
     }),
