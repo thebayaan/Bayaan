@@ -276,6 +276,17 @@ function RootLayout() {
     mushafRestoreHandled,
   ]);
 
+  // @ai-start
+  // "Try again" on the setup error screen. bootApp() starts over after a
+  // failure, so running the effect below once more is a full retry.
+  const [bootAttempt, setBootAttempt] = useState(0);
+  const retryBoot = useCallback(() => {
+    setSetupError(null);
+    usePlayerStore.getState().setError('system', null);
+    setBootAttempt(attempt => attempt + 1);
+  }, []);
+  // @ai-end
+
   // Initialize app with expo-audio
   useEffect(() => {
     if (initializationRef.current) {
@@ -311,7 +322,7 @@ function RootLayout() {
     }
 
     prepare();
-  }, []);
+  }, [bootAttempt]); // @ai
 
   // Set native root view background + configure Android navigation bar to match theme
   useEffect(() => {
@@ -467,6 +478,7 @@ function RootLayout() {
     return (
       <AppErrorScreen
         message={i18n.t('app.initError', {message: setupError.message})}
+        onRetry={retryBoot}
       />
     );
     // @ai-end
