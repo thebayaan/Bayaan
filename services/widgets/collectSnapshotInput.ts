@@ -13,7 +13,7 @@ import {useAdhkarSessionStore} from '@/store/adhkarSessionStore'; // @ai
 import type {WidgetAdhkarPlayback} from 'bayaan-widgets'; // @ai
 import {
   buildTasbeehEntries,
-  createCountDayTracker,
+  countsOfToday, // @ai
   TASBEEH_ADHKAR,
 } from './buildCatalog';
 import {
@@ -24,7 +24,6 @@ import {
 import {isWidgetEnabled} from './enabledWidgets';
 
 const OPENING_WORDS = 6;
-const countsForToday = createCountDayTracker();
 
 function openingTextForPage(page: number): string {
   if (!digitalKhattDataService.initialized) return '';
@@ -59,6 +58,7 @@ function surahIdForPage(page: number): number | null {
 export function collectSnapshotInput(now: Date): SnapshotInput {
   const player = usePlayerStore.getState();
   const reciter = useReciterStore.getState().defaultReciter;
+  const adhkar = useAdhkarStore.getState(); // @ai
   return {
     now: now.getTime(),
     theme: useThemeStore.getState().themeMode,
@@ -76,10 +76,14 @@ export function collectSnapshotInput(now: Date): SnapshotInput {
     tasbeeh: isWidgetEnabled('Tasbeeh')
       ? buildTasbeehEntries(
           TASBEEH_ADHKAR,
-          countsForToday(
-            useAdhkarStore.getState().dhikrCounts,
-            localDayKey(now),
+          // @ai-start
+          // The store's day is a Date#toDateString, like the database's.
+          countsOfToday(
+            adhkar.dhikrCounts,
+            adhkar.dhikrCountsDay,
+            now.toDateString(),
           ),
+          // @ai-end
           localDayKey(now),
         )
       : {},
