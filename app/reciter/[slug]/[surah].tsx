@@ -1,6 +1,6 @@
 import React, {useEffect} from 'react';
 import {View, ActivityIndicator} from 'react-native';
-import {useLocalSearchParams, useNavigation} from 'expo-router';
+import {useLocalSearchParams, useRouter} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
 import {useReciterStore} from '@/store/reciterStore';
 import {getReciterBySlug} from '@/services/dataService';
@@ -11,8 +11,6 @@ import {usePlayerStore} from '@/services/player/store/playerStore';
 // @ai-start
 import i18n from '@/i18n';
 import {getSurahDisplayName} from '@/i18n/format';
-import {leaveLinkRoute} from '@/hooks/useLeaveLinkRoute';
-import {openFromTabs} from '@/services/navigation/openFromTabs';
 // @ai-end
 
 // @ai-start
@@ -23,10 +21,7 @@ export default function RecitationDeepLinkReceiver(): React.ReactElement {
     rewayah?: string;
     t?: string;
   }>();
-  // This route sits on the root stack above the tabs. Leaving it (rather
-  // than replacing it with a tab route) avoids stacking a second copy of
-  // the tabs with nothing to go back to.
-  const navigation = useNavigation();
+  const router = useRouter();
   const {theme} = useTheme();
   const isInitialized = useReciterStore(s => s.isInitialized);
 
@@ -35,7 +30,7 @@ export default function RecitationDeepLinkReceiver(): React.ReactElement {
 
     const reciter = getReciterBySlug(slug);
     if (!reciter) {
-      leaveLinkRoute(navigation);
+      router.replace('/');
       return;
     }
 
@@ -43,13 +38,13 @@ export default function RecitationDeepLinkReceiver(): React.ReactElement {
       (rewayah && reciter.rewayat.find(r => r.id === rewayah)) ||
       reciter.rewayat[0];
     if (!rw) {
-      leaveLinkRoute(navigation);
+      router.replace('/');
       return;
     }
 
     const surahNum = parseInt(surah, 10);
     if (Number.isNaN(surahNum)) {
-      leaveLinkRoute(navigation);
+      router.replace('/');
       return;
     }
 
@@ -81,15 +76,17 @@ export default function RecitationDeepLinkReceiver(): React.ReactElement {
         }
       }
 
-      leaveLinkRoute(navigation);
-      openFromTabs({
-        pathname: '/(tabs)/(a.home)/reciter/[id]',
-        params: {id: reciter.id},
-      });
+      router.replace('/(tabs)/(a.home)');
+      setTimeout(() => {
+        router.push({
+          pathname: '/(tabs)/(a.home)/reciter/[id]',
+          params: {id: reciter.id},
+        });
+      }, 100);
     };
 
     startPlaybackAndNavigate();
-  }, [isInitialized, slug, surah, rewayah, t, navigation]);
+  }, [isInitialized, slug, surah, rewayah, t, router]);
 
   return (
     <View

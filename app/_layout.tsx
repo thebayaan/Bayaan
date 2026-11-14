@@ -5,7 +5,7 @@ import {bootstrapDirection} from '@/i18n/language';
 import {appDirection, appLayoutDirection, isRTL} from '@/utils/rtl';
 // @ai-end
 import React, {useEffect, useState, useRef, useCallback, useMemo} from 'react';
-import {Stack, useNavigationContainerRef, useRouter} from 'expo-router';
+import {Stack, useRouter} from 'expo-router';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import {useFonts} from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
@@ -30,13 +30,6 @@ import {useTheme} from '@/hooks/useTheme';
 import {LocaleDirContext, ThemeProvider} from 'expo-router/react-navigation';
 // @ai-end
 import {PlayerHost} from '@/components/player/v2/PlayerHost';
-// @ai-start
-import {
-  openFromTabs,
-  registerNavigationContainer,
-  type NavContainer,
-} from '@/services/navigation/openFromTabs';
-// @ai-end
 import {
   WhatsNewModal,
   WhatsNewModalRef,
@@ -191,15 +184,6 @@ function RootLayout() {
   const [mushafRestoreHandled, setMushafRestoreHandled] = useState(false);
   const [setupError, setSetupError] = useState<Error | null>(null);
   const router = useRouter();
-  // @ai-start
-  // Lets sheets, the player and link handlers leave the Mushaf (or another
-  // root screen) before opening a tab route. Declared before the effects
-  // below that navigate.
-  const navigationContainer = useNavigationContainerRef();
-  useEffect(() => {
-    registerNavigationContainer(navigationContainer as NavContainer);
-  }, [navigationContainer]);
-  // @ai-end
   const initializationRef = useRef(false);
   const whatsNewModalRef = useRef<WhatsNewModalRef>(null);
   const {theme, isDarkMode} = useTheme();
@@ -399,9 +383,7 @@ function RootLayout() {
           resetShareIntent();
           await SplashScreen.hideAsync();
           showToast(i18n.t('app.filesImported', {count: audioFiles.length}));
-          // The Mushaf may be open: pushed over it, Uploads would land in a
-          // second copy of the tabs with no way back. @ai
-          openFromTabs('/collection/uploads');
+          router.push('/collection/uploads');
         }
       } catch (error) {
         console.error('[ShareIntent] Import failed:', error);
