@@ -537,9 +537,16 @@ function RootLayout() {
                           headerTitle: '',
                           headerTitleAlign: 'center',
                           headerBackButtonDisplayMode: 'minimal',
-                          animation: isRTL
-                            ? 'slide_from_left'
-                            : 'slide_from_right',
+                          // @ai-start
+                          // iOS mirrors the push by itself in a right-to-left
+                          // app, so asking for slide_from_left there mirrored
+                          // it twice: the Mushaf came in from the right, as in
+                          // English. Android has no mirrored variant.
+                          animation:
+                            isRTL && Platform.OS === 'android'
+                              ? 'slide_from_left'
+                              : 'slide_from_right',
+                          // @ai-end
                           fullScreenGestureEnabled: false,
                         }}
                       />
