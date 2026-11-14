@@ -51,6 +51,15 @@ function adhkarPlayback(): WidgetAdhkarPlayback | null {
 // @ai-end
 
 function surahIdForPage(page: number): number | null {
+  // @ai-start
+  // The surah the reader named on the last-read page, as "Continue reading"
+  // does. The page map alone names the last surah to start on the page,
+  // which is another one on the pages that start two or three.
+  if (page === mushafSessionStore.getLastReadPage()) {
+    const named = mushafSessionStore.getLastReadSurahId();
+    if (named) return named;
+  }
+  // @ai-end
   if (!digitalKhattDataService.initialized) return null;
   return digitalKhattDataService.getPageToSurah()[page] ?? null;
 }

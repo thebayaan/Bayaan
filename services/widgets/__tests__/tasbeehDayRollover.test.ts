@@ -83,7 +83,10 @@ jest.mock('@/store/adhkarSessionStore', () => ({
   useAdhkarSessionStore: {getState: () => ({session: null})},
 }));
 jest.mock('@/services/mushaf/MushafSessionStore', () => ({
-  mushafSessionStore: {getLastReadPage: () => null},
+  mushafSessionStore: {
+    getLastReadPage: () => null,
+    getLastReadSurahId: () => null, // @ai
+  },
 }));
 jest.mock('@/services/mushaf/DigitalKhattDataService', () => ({
   digitalKhattDataService: {initialized: false},
