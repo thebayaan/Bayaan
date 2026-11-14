@@ -95,10 +95,10 @@ export interface WordStudyContentProps {
    */
   initialWord?: WordRef;
   /**
-   * Root search (the root as the data writes it, and the lemma); absent,
-   * the root is plain text. The sheet's back row leaves the screen.
+   * Root search (the root as the data writes it, the lemma, and the word
+   * shown, so Back can return to it); absent, the root is plain text.
    */
-  onRootPress?: (root: string, lemma: string | null) => void;
+  onRootPress?: (root: string, lemma: string | null, word: WordRef) => void; // @ai
 }
 
 type Tab = 'words' | 'books';
@@ -479,7 +479,16 @@ export const WordStudyContent: React.FC<WordStudyContentProps> = ({
                   wordTextOf={wordTextOf}
                   canOpen={canOpen}
                   onRef={onRef}
-                  onRootPress={onRootPress}
+                  // @ai-start
+                  onRootPress={
+                    onRootPress &&
+                    ((root, lemma) =>
+                      onRootPress(root, lemma, {
+                        verseKey: current.verseKey,
+                        position: current.position,
+                      }))
+                  }
+                  // @ai-end
                   expanded={expanded}
                   onToggle={onToggle}
                   fontMgr={fontMgr}

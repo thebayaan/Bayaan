@@ -91,6 +91,11 @@ import {ThemeContent} from './verse-actions/ThemeContent';
 import {WBWContent} from './verse-actions/WBWContent';
 // @ai-start
 import {WordStudyContent} from './verse-actions/WordStudyContent';
+// @ai-start
+import {RootResults} from '@/components/search/quran/RootResults';
+import {quranHitLinkParams} from '@/utils/quranLink';
+import {matchedPositions, type QuranVerseHit} from '@/utils/search/quranSearch';
+// @ai-end
 import type {WordRef} from './verse-actions/wordStudy';
 // @ai-end
 // @ai-start
@@ -114,6 +119,7 @@ type ActiveScreen =
   | 'theme'
   | 'wbw'
   | 'words' // @ai: Word Study (was the I'rab screen)
+  | 'root' // @ai: root search from Word Study
   | 'community-reflections'
   | null;
 
@@ -129,6 +135,7 @@ const SCREEN_TITLE_KEYS = {
   theme: 'verseActions.theme',
   wbw: 'verseActions.wordByWord',
   words: 'verseActions.wordStudy',
+  root: 'verseActions.rootSearch',
   'community-reflections': 'verseActions.communityReflections',
 } as const;
 // @ai-end
@@ -218,6 +225,11 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
   const [wordTarget, setWordTarget] = useState<WordRef | undefined>(
     props.payload?.word,
   );
+  // The root (and lemma) the root screen shows.
+  const [rootTarget, setRootTarget] = useState<{
+    root: string;
+    lemma: string | null;
+  } | null>(null);
   // @ai-end
 
   const setActiveScreen = useCallback((screen: ActiveScreen) => {
@@ -743,14 +755,45 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     });
   }, [readySelection, requireSelection, props.sheetId]); // @ai
 
+  // @ai-start
+  // Root search from Word Study: the root's ayahs in the sheet. Back returns
+  // to the word whose root was pressed.
+  const handleRootPress = useCallback(
+    (root: string, lemma: string | null, word: WordRef) => {
+      setWordTarget(word);
+      setRootTarget({root, lemma});
+      setActiveScreen('root');
+    },
+    [setActiveScreen],
+  );
+
+  // An ayah of the root opens in the Mushaf on its matched words, as the
+  // Search tab does.
+  const handleRootVersePress = useCallback(
+    async (hit: QuranVerseHit) => {
+      await SheetManager.hide(props.sheetId);
+      router.push({
+        pathname: '/mushaf',
+        params: quranHitLinkParams(
+          hit.verseKey,
+          matchedPositions(hit),
+          (key, position) =>
+            digitalKhattDataService.getPageForWord(key, position),
+        ),
+      });
+    },
+    [props.sheetId],
+  );
+  // @ai-end
+
   useEffect(() => {
     if (Platform.OS !== 'android' || !activeScreen) return;
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      setActiveScreen(null);
+      setActiveScreen(activeScreen === 'root' ? 'words' : null); // @ai
       return true;
     });
     return () => sub.remove();
-  }, [activeScreen]);
+  }, [activeScreen, setActiveScreen]);
 
   const handleOnClose = useCallback(() => {
     setActiveScreen(null);
@@ -763,8 +806,8 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
   }, [hideCurrentSheet]);
 
   const handleBack = useCallback(() => {
-    setActiveScreen(null);
-  }, []);
+    setActiveScreen(activeScreen === 'root' ? 'words' : null); // @ai
+  }, [activeScreen, setActiveScreen]);
 
   if (!payload) return null;
 
@@ -775,6 +818,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     activeScreen === 'theme' ||
     activeScreen === 'wbw' ||
     activeScreen === 'words' || // @ai
+    activeScreen === 'root' || // @ai
     activeScreen === 'community-reflections';
 
   return (
@@ -894,12 +938,20 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                 )}
                 {/* @ai-start */}
                 {/* The selected verses' words, in the sheet's rewayah
-                    (another rewayah steps through its Hafs words). Root
-                    search is not wired yet: the root stays plain text. */}
+                    (another rewayah steps through its Hafs words). A root
+                    opens root search below. */}
                 {activeScreen === 'words' && readySelection && (
                   <WordStudyContent
                     selection={readySelection}
                     initialWord={wordTarget}
+                    onRootPress={handleRootPress}
+                  />
+                )}
+                {activeScreen === 'root' && rootTarget && (
+                  <RootResults
+                    root={rootTarget.root}
+                    initialLemma={rootTarget.lemma ?? undefined}
+                    onVersePress={handleRootVersePress}
                   />
                 )}
                 {/* @ai-end */}

@@ -53,6 +53,9 @@ jest.mock('../verse-actions/WordStudyContent', () => ({
   WordStudyContent: (props: Record<string, unknown>) =>
     mockRecord('words', props),
 }));
+jest.mock('@/components/search/quran/RootResults', () => ({
+  RootResults: (props: Record<string, unknown>) => mockRecord('root', props),
+}));
 // @ai-end
 jest.mock('../verse-actions/CommunityReflectionsContent', () => ({
   CommunityReflectionsContent: (props: Record<string, unknown>) =>
@@ -190,6 +193,7 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => ({
     getVerseText: (key: string, r?: string) =>
       r === 'hafs' || r === undefined ? `HAFS-${key} ۝` : '',
     getPageForVerse: () => 3,
+    getPageForWord: () => 7, // @ai
     subscribeCacheChanges: () => () => undefined,
     getCacheVersion: () => 0,
     retainRewayah: () => () => undefined,
@@ -520,6 +524,62 @@ describe('Hafs (unchanged)', () => {
     // The row opens it again on the first word.
     await press('Word Study');
     expect(last('words')).toMatchObject({initialWord: undefined});
+  });
+
+  it('a root opens root search; Back returns to the same word', async () => {
+    await openSheet(payload);
+    await press('Word Study');
+    const onRootPress = last('words').onRootPress as (
+      root: string,
+      lemma: string | null,
+      word: unknown,
+    ) => void;
+    expect(onRootPress).toEqual(expect.any(Function));
+    await act(async () =>
+      onRootPress('ء ل ه', 'ٱللَّه', {verseKey: '2:255', position: 1}),
+    );
+    expect(last('root')).toMatchObject({
+      root: 'ء ل ه',
+      initialLemma: 'ٱللَّه',
+    });
+    expect(texts()).toContain('Root search');
+    await press('Root search');
+    expect(last('words')).toMatchObject({
+      initialWord: {verseKey: '2:255', position: 1},
+    });
+    expect(texts()).toContain('Word Study');
+  });
+
+  it('an ayah of the root opens the Mushaf on its words', async () => {
+    await openSheet(payload);
+    await press('Word Study');
+    const onRootPress = last('words').onRootPress as (
+      root: string,
+      lemma: string | null,
+      word: unknown,
+    ) => void;
+    await act(async () =>
+      onRootPress('ر ح م', null, {verseKey: '1:1', position: 3}),
+    );
+    const onVersePress = last('root').onVersePress as (hit: unknown) => void;
+    await act(async () =>
+      onVersePress({
+        verseIndex: 0,
+        verseKey: '1:3',
+        matches: [{position: 1, length: 1}],
+        score: 1,
+      }),
+    );
+    expect(router.push).toHaveBeenLastCalledWith({
+      pathname: '/mushaf',
+      params: expect.objectContaining({
+        surah: '1',
+        ayah: '3',
+        anchor: '1:3:1',
+        words: '1',
+        page: '7',
+      }),
+    });
   });
 
   it('a long-press in Word by Word studies that word', async () => {

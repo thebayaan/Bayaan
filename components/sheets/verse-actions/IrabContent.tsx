@@ -283,7 +283,7 @@ export const createIrabStyles = (theme: Theme) => {
     partCaption: {
       fontSize: moderateScale(11),
       fontFamily: 'Manrope-SemiBold',
-      color: Color(theme.colors.textSecondary).alpha(0.6).toString(),
+      color: secondary, // @ai: ipad-standards §12 (was 0.6)
       letterSpacing: latinLetterSpacing(0.3),
       marginTop: verticalScale(6),
       marginBottom: verticalScale(6),
@@ -408,9 +408,9 @@ export const createIrabStyles = (theme: Theme) => {
     },
     sources: {
       fontFamily: 'Manrope-Regular',
-      fontSize: moderateScale(10.5),
+      fontSize: moderateScale(11), // @ai: the caption size of the type ramp
       lineHeight: moderateScale(15),
-      color: Color(theme.colors.textSecondary).alpha(0.55).toString(),
+      color: secondary, // @ai: ipad-standards §12 (was 0.55)
       marginTop: verticalScale(16),
       paddingHorizontal: moderateScale(4),
     },
