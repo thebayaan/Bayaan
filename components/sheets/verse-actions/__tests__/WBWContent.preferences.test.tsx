@@ -120,6 +120,49 @@ describe('a long-press on a word', () => {
     expect(grid().props.selectedWordPosition).toBeNull();
   });
 
+  it("in another rewayah, studies only the verse's own words", async () => {
+    // Warsh 1:6 holds Hafs 1:7 words 1-4; the grid draws all of Hafs 1:7.
+    const fixture =
+      require('@/services/mushaf/__fixtures__/verseUnitsFixture.json') as {
+        ids: number[];
+        locations: string[];
+        texts: Record<'warsh', string[]>;
+      };
+    const {buildRewayahVerseUnits} =
+      require('@/services/mushaf/RewayahVerseUnits') as typeof import('@/services/mushaf/RewayahVerseUnits');
+    const model = buildRewayahVerseUnits(
+      'warsh',
+      fixture.ids.map((id, i) => {
+        const [surah, ayah, word] = fixture.locations[i].split(':').map(Number);
+        return {id, surah, ayah, word, text: fixture.texts.warsh[i]};
+      }),
+      'warsh@test',
+    );
+    const unit = model.unitByKey('1:6');
+    if (!unit) throw new Error('no Warsh 1:6 in the fixture');
+    const onOpenWord = jest.fn();
+    await act(async () => {
+      renderer = TestRenderer.create(
+        <WBWContent
+          surahNumber={1}
+          ayahNumber={7}
+          rewayah="warsh"
+          unitStart={{model, unit}}
+          onOpenWord={onOpenWord}
+          onBack={() => undefined}
+        />,
+      );
+    });
+    // A word of Warsh 1:6 opens Word Study.
+    act(() => grid().props.onWordPress(2));
+    expect(onOpenWord).toHaveBeenCalledWith({verseKey: '1:7', position: 2});
+    // A word of Warsh 1:7 (Hafs 1:7 word 6) is only lifted.
+    onOpenWord.mockClear();
+    act(() => grid().props.onWordPress(6));
+    expect(onOpenWord).not.toHaveBeenCalled();
+    expect(grid().props.selectedWordPosition).toBe(6);
+  });
+
   it('lifts the word, and lets it go, without it', async () => {
     await act(async () => {
       renderer = TestRenderer.create(

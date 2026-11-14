@@ -88,11 +88,16 @@ function verseWordTexts(
   return texts;
 }
 
-async function loadParts(parts: readonly WordStudyPart[]): Promise<Loaded> {
+async function loadParts(
+  parts: readonly WordStudyPart[],
+  retry: boolean, // @ai: Try again reloads instead of rethrowing the old error
+): Promise<Loaded> {
   // getVerseWords returns [] until the word-by-word database is open.
   await wbwDataService.initialize();
   if (!digitalKhattDataService.isRewayahReady('hafs')) {
-    await digitalKhattDataService.ensureRewayahLoaded('hafs');
+    await (retry
+      ? digitalKhattDataService.ensureRewayahLoaded('hafs', {retry: true})
+      : digitalKhattDataService.ensureRewayahLoaded('hafs'));
   }
   // Read the Hafs words now, while they are certainly in memory.
   const dkWords = parts.map(part =>
@@ -147,7 +152,7 @@ export function useWordStudyData(
 
   useEffect(() => {
     let cancelled = false;
-    loadParts(partsRef.current).then(
+    loadParts(partsRef.current, attempt > 0).then(
       loaded => {
         if (!cancelled) setResult({signature, attempt, loaded});
       },

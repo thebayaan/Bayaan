@@ -571,7 +571,9 @@ export const CompactWordCard: React.FC<CompactWordCardProps> = ({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={t('wordView.studyWord', {word: text})}
+      // The card's own text (the word and its i'rab) is its label; the hint
+      // says what a press does. @ai
+      accessibilityHint={t('wordView.studyWord', {word: text})}
       onPress={() => onStudy(word)}
       {...hoverProps}
       style={({pressed}) => [

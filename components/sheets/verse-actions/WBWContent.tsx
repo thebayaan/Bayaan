@@ -23,7 +23,14 @@ import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
 import {useMushafFontMgr} from '@/hooks/useMushafFontMgr';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {useTajweedStore} from '@/store/tajweedStore';
-import {wbwParts, type UnitStart} from './verseUnitScreens'; // @ai
+import {
+  selectionWordParts,
+  wbwParts,
+  type UnitStart,
+  type WordStudyPart,
+} from './verseUnitScreens'; // @ai
+import {unitSelection} from '@/components/share/rewayahVerseSelection'; // @ai
+import {dkPositionsForWbwWord} from '@/services/mushaf/wordReadingsFormat'; // @ai
 import type {WordRef} from './wordStudy'; // @ai
 
 interface WBWContentProps {
@@ -113,22 +120,47 @@ export const WBWContent: React.FC<WBWContentProps> = ({
     position: number;
   } | null>(null);
 
+  // Another rewayah's verse holds only some words of a Hafs verse, while
+  // the grid draws the whole Hafs verse: only the verse's own words open
+  // Word Study (its selection is cut to them); the others are lifted.
+  const studyRanges = useMemo(() => {
+    if (!unitStart) return null;
+    const studyParts = selectionWordParts(
+      unitSelection(unitStart.model, [unitStart.unit]),
+    );
+    return new Map<string, WordStudyPart['wordRange']>(
+      studyParts.map(p => [p.verseKey, p.wordRange]),
+    );
+  }, [unitStart]);
+
   const wordPressHandlers = useMemo(
     () =>
       new Map(
-        parts.map(part => [
-          part.verseKey,
-          (position: number) =>
-            onOpenWord
-              ? onOpenWord({verseKey: part.verseKey, position})
-              : setSelectedWord(prev =>
-                  prev?.verseKey === part.verseKey && prev.position === position
-                    ? null
-                    : {verseKey: part.verseKey, position},
-                ),
-        ]),
+        parts.map(part => {
+          const inStudy = (position: number) => {
+            if (!studyRanges) return true;
+            if (!studyRanges.has(part.verseKey)) return false;
+            const range = studyRanges.get(part.verseKey);
+            if (!range) return true;
+            return dkPositionsForWbwWord(part.verseKey, position).some(
+              p => p >= range.first && p <= range.last,
+            );
+          };
+          return [
+            part.verseKey,
+            (position: number) =>
+              onOpenWord && inStudy(position)
+                ? onOpenWord({verseKey: part.verseKey, position})
+                : setSelectedWord(prev =>
+                    prev?.verseKey === part.verseKey &&
+                    prev.position === position
+                      ? null
+                      : {verseKey: part.verseKey, position},
+                  ),
+          ] as const;
+        }),
       ),
-    [parts, onOpenWord],
+    [parts, onOpenWord, studyRanges],
   );
   // @ai-end
 
