@@ -479,6 +479,16 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     setWordTarget(undefined);
     setActiveScreen('words');
   }, [setActiveScreen]);
+
+  // A long-press in the Word by Word screen studies that word (Word Study
+  // opens on the selection's first word when it is not one of its words).
+  const handleOpenWord = useCallback(
+    (word: WordRef) => {
+      setWordTarget(word);
+      setActiveScreen('words');
+    },
+    [setActiveScreen],
+  );
   // @ai-end
 
   // RFC-018 — open the community-reflections popup. Only reachable when a
@@ -878,6 +888,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                     ayahNumber={ayahNumber}
                     rewayah={resolvedRewayah}
                     unitStart={unitStart}
+                    onOpenWord={handleOpenWord} // @ai
                     onBack={handleBack}
                   />
                 )}
