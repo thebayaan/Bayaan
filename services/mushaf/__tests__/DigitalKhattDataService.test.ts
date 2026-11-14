@@ -19,12 +19,16 @@ import {
   dataIdentityKey, // @ai
   dbBaseName,
   DigitalKhattDataService,
+  getAuxDbIdentity, // @ai
+  getBundledAssetSha256, // @ai
+  getCurrentDbNamesByBase, // @ai
   getRewayahDataIdentity, // @ai
   getRewayahDataIdentityKey, // @ai
   isRewayahSwitchSuperseded,
   RewayahLoadError,
   RewayahSwitchSupersededError,
   selectStaleDbFiles,
+  type DkAuxDbId, // @ai
   type DKLine,
 } from '../DigitalKhattDataService';
 import {rewayahBasmalaService} from '../RewayahBasmalaService'; // @ai
@@ -76,8 +80,13 @@ jest.mock('expo-sqlite', () => {
           const file = state.files.get(name);
           if (!file || file.state === 'empty') return null;
           const table = /name='(\w+)'/.exec(sql)?.[1];
-          const has =
-            file.base === 'dk_layout' ? table === 'pages' : table === 'words';
+          // @ai-start
+          const tableOf: Record<string, string> = {
+            dk_layout: 'pages',
+            dk_readings: 'slots',
+          };
+          const has = table === (tableOf[file.base] ?? 'words');
+          // @ai-end
           return has ? {name: table} : null;
         },
         async getAllAsync(sql: string) {
@@ -92,6 +101,7 @@ jest.mock('expo-sqlite', () => {
           }
           if (file.state !== 'ok') throw new Error('no such table');
           state.log.push(`read:${name}`);
+          if (sql.includes('FROM slots')) return mockSlotRows(file.version); // @ai
           return sql.includes('FROM pages')
             ? mockPageRows()
             : mockWordRows(file.base, file.version);
@@ -213,6 +223,13 @@ function mockWordRows(base: string, version: string) {
     location,
   }));
 }
+
+// @ai-start
+// Rows of the readings index (dk_readings): `data` says which copy was read.
+function mockSlotRows(version: string) {
+  return [{position: 1, word_id: 1, data: `${version}-row`}];
+}
+// @ai-end
 
 function line(
   page: number,
@@ -573,8 +590,9 @@ describe('switchRewayah', () => {
     // @ai-start
     // Warsh draws its own basmala lines: their data version is in the key.
     expect(service.getLayoutIdentityKey()).toBe(
-      `warsh@${sha8('dk_words_warsh.db')}.${sha8('digital-khatt-15-lines.db')}` +
-        `.${rewayahBasmalaService.getDataVersion('warsh')}`,
+      `warsh@${sha8('dk_words_warsh.db')}.${sha8(
+        'digital-khatt-15-lines.db',
+      )}` + `.${rewayahBasmalaService.getDataVersion('warsh')}`,
     );
     // @ai-end
     // Shared layout DB: not read again.
@@ -971,6 +989,153 @@ describe('resetDatabases', () => {
 });
 
 // @ai-start
+describe('auxiliary DBs (readAuxDb)', () => {
+  const READINGS = copyName('dk_readings.db', 'dk_readings.db');
+  type ReadDb = Parameters<
+    Parameters<DigitalKhattDataService['readAuxDb']>[1]
+  >[0];
+  const readSlots = (db: ReadDb) =>
+    db.getAllAsync<{data: string}>(
+      'SELECT position, word_id, data FROM slots;',
+    );
+
+  it('imports the content-addressed copy on first use, reads it and closes it', async () => {
+    const service = new DigitalKhattDataService();
+    expect(READINGS).toBe(`dk_readings.${sha8('dk_readings.db')}.db`);
+    expect(getAuxDbIdentity('readings')).toBe(sha8('dk_readings.db'));
+    expect(getBundledAssetSha256('dk_readings.db')).toBe(
+      REWAYAH_DATA_MANIFEST['dk_readings.db'],
+    );
+    expect(getBundledAssetSha256('not-bundled.db')).toBeNull();
+    expect(getCurrentDbNamesByBase().get('dk_readings')).toBe(READINGS);
+
+    const rows = await service.readAuxDb('readings', readSlots);
+    expect(rows.map(r => r.data)).toEqual(['asset-row']);
+    expect(count(`import:${READINGS}`)).toBe(1);
+    expect(fake.open.has(READINGS)).toBe(false);
+
+    // Later reads use the same copy: no second import.
+    await service.readAuxDb('readings', readSlots);
+    expect(count(`import:${READINGS}`)).toBe(1);
+    expect(count(`read:${READINGS}`)).toBe(2);
+  });
+
+  it('shares one import between concurrent reads (per-file lock)', async () => {
+    const service = new DigitalKhattDataService();
+    const [a, b] = await Promise.all([
+      service.readAuxDb('readings', readSlots),
+      service.readAuxDb('readings', readSlots),
+    ]);
+    expect(a).toEqual(b);
+    expect(count(`import:${READINGS}`)).toBe(1);
+  });
+
+  it('deletes and re-imports an unreadable copy once, then rejects while it stays unreadable', async () => {
+    const service = new DigitalKhattDataService();
+    seed(READINGS, 'dk_readings', 'asset');
+    fake.readFailures.set('dk_readings', 1);
+    const rows = await service.readAuxDb('readings', readSlots);
+    expect(rows.map(r => r.data)).toEqual(['asset-row']);
+    expect(count(`delete:${READINGS}`)).toBeGreaterThanOrEqual(1);
+    expect(count(`import:${READINGS}`)).toBe(1);
+
+    fake.readFailures.set('dk_readings', Infinity);
+    await expect(service.readAuxDb('readings', readSlots)).rejects.toThrow(
+      /unreadable after re-import/,
+    );
+    expect(count(`import:${READINGS}`)).toBe(2); // one more re-import, no loop
+    fake.readFailures.delete('dk_readings');
+    await expect(service.readAuxDb('readings', readSlots)).resolves.toEqual([
+      {position: 1, word_id: 1, data: 'asset-row'},
+    ]);
+  });
+
+  it('rejects an unknown auxiliary DB', async () => {
+    const service = new DigitalKhattDataService();
+    await expect(
+      service.readAuxDb('nope' as DkAuxDbId, readSlots),
+    ).rejects.toThrow(/Unknown auxiliary DB/);
+  });
+
+  it('sweeps old readings copies and their sidecars, never the copy being read', async () => {
+    seed('dk_readings.db', 'dk_readings', 'old'); // an unversioned copy
+    seed('dk_readings.0badc0de.db', 'dk_readings', 'old'); // another version
+    seed('dk_readings.0badc0de.db-journal', 'dk_readings', 'old');
+    seed('dk_words_warsh.db', 'dk_words_warsh', 'old');
+    seed('wbw-en.db', 'wbw-en', 'old');
+    const service = new DigitalKhattDataService();
+    const release = gate('dk_readings');
+    const reading = service.readAuxDb('readings', readSlots);
+    await flush();
+    expect(fake.open.get(READINGS)).toBe(1);
+
+    await service.initialize(); // commits Hafs and sweeps every base
+    await flush();
+    expect(fake.files.has(READINGS)).toBe(true); // open: never deleted
+    expect(fake.files.has('dk_readings.db')).toBe(false);
+    expect(fake.files.has('dk_readings.0badc0de.db')).toBe(false);
+    expect(fake.files.has('dk_readings.0badc0de.db-journal')).toBe(false);
+    expect(fake.files.has('dk_words_warsh.db')).toBe(false);
+    expect(fake.files.has('wbw-en.db')).toBe(true); // not a DK base
+
+    release();
+    expect((await reading).map(r => r.data)).toEqual(['asset-row']);
+  });
+
+  it('leaves a stale readings copy that something else holds open', async () => {
+    seed('dk_readings.0badc0de.db', 'dk_readings', 'old');
+    fake.open.set('dk_readings.0badc0de.db', 1);
+    const service = new DigitalKhattDataService();
+    await service.readAuxDb('readings', readSlots);
+    await flush();
+    expect(fake.files.has('dk_readings.0badc0de.db')).toBe(true); // SQLite refused
+    expect(fake.files.has(READINGS)).toBe(true);
+    fake.violations.length = 0; // that refusal is SQLite's, by design
+    fake.open.delete('dk_readings.0badc0de.db');
+  });
+
+  it('never touches the cache version, the main cache or the side caches', async () => {
+    const service = await initialized();
+    await service.ensureRewayahLoaded('warsh');
+    const version = service.getCacheVersion();
+    const identity = service.getDataIdentity();
+    const cacheListener = jest.fn();
+    const rewayahListener = jest.fn();
+    service.subscribeCacheChanges(cacheListener);
+    service.onRewayahChange(rewayahListener);
+
+    await service.readAuxDb('readings', readSlots);
+    fake.readFailures.set('dk_readings', Infinity);
+    await expect(service.readAuxDb('readings', readSlots)).rejects.toThrow();
+    fake.readFailures.delete('dk_readings');
+    await flush();
+
+    expect(service.getCacheVersion()).toBe(version);
+    expect(cacheListener).not.toHaveBeenCalled();
+    expect(rewayahListener).not.toHaveBeenCalled();
+    expect(service.rewayah).toBe('hafs');
+    expect(service.getDataIdentity()).toEqual(identity);
+    expect(texts(service, '1:1')).toEqual(H);
+    expect(texts(service, '1:1', 'warsh')).toEqual(W);
+    expect(service.getRewayahLoadState('warsh')).toBe('ready');
+  });
+
+  it('resetDatabases deletes the readings copies too', async () => {
+    seed('dk_readings.db', 'dk_readings', 'old');
+    const service = await initialized();
+    await service.readAuxDb('readings', readSlots);
+    expect(fake.files.has(READINGS)).toBe(true);
+    await service.resetDatabases();
+    expect(
+      [...fake.files.keys()].filter(f => f.startsWith('dk_readings')),
+    ).toEqual([]);
+    // The next read imports a fresh copy.
+    await expect(service.readAuxDb('readings', readSlots)).resolves.toEqual([
+      {position: 1, word_id: 1, data: 'asset-row'},
+    ]);
+  });
+});
+
 describe('basmallah lines (contract C6)', () => {
   const SUSI_14 = EXPECTED_BASMALA['al-susi']!.bySurah[14].dk;
   const SUSI = EXPECTED_BASMALA['al-susi']!.dk;
@@ -1029,7 +1194,9 @@ describe('basmallah lines (contract C6)', () => {
 
   it('a rewayah with its own basmala has its data version in the layout identity; Hafs keeps its key', async () => {
     const service = await initialized();
-    const hafsKey = `hafs@${sha8('digital-khatt-v2.db')}.${sha8('digital-khatt-15-lines.db')}`;
+    const hafsKey = `hafs@${sha8('digital-khatt-v2.db')}.${sha8(
+      'digital-khatt-15-lines.db',
+    )}`;
     expect(service.getLayoutIdentityKey()).toBe(hafsKey);
     expect(getRewayahDataIdentityKey('hafs')).toBe(hafsKey);
     expect(getRewayahDataIdentity('hafs')).not.toHaveProperty('basmalaVersion');
