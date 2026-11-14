@@ -23,8 +23,12 @@ const HAMZA_ABOVE = 'ٔ';
 const HAMZA_BELOW = 'ٕ';
 /** ۟ and ۠: the letter is written but not read. */
 const ZAID_SIGNS = new Set(['۟', '۠']);
-/** ۜ above and ۣ below ص: read as س. */
-const SEEN_SIGNS = new Set(['ۜ', 'ۣ']);
+/**
+ * ۜ above ص: read as س (يَبْصُۜطُ; the standard spelling writes س). The small
+ * seen below ص (ٱلْمُصَۣيْطِرُونَ) keeps ص as the main reading and the
+ * standard spelling keeps ص, so it is not a badal sign.
+ */
+const SEEN_SIGNS = new Set(['ۜ']);
 /** The mushaf's small letters: ۥ waw, ۦ ya, ۧ high ya, ۨ high nun. */
 const SMALL_LETTERS: Readonly<Record<string, string>> = {
   ۥ: 'و',
@@ -186,10 +190,11 @@ export function alifFreeKey(key: string): string {
 
 /**
  * The loosest skeleton: no ا و ي ى, no hamza or seat, each word's final
- * ة/ت/ه folded together, doubled letters merged, spaces removed. The mushaf's
- * own reading signs count: ص with a small seen is س, and the small ۨ is ن.
- * Used to pair the mushaf's words with a standard text and for tier-4
- * gharib placement.
+ * ة/ت/ه folded together, ن before ل or م dropped (it merges into them when
+ * the words are written joined: أَن لَّا = أَلَّا, عَن مَّا = عَمَّا), doubled
+ * letters merged, spaces removed. The mushaf's own reading signs count: ص
+ * with a small seen is س, and the small ۨ is ن. Used to pair the mushaf's
+ * words with a standard text and for tier-4 gharib placement.
  */
 export function looseKey(text: string): string {
   const chars = [...text];
@@ -204,7 +209,10 @@ export function looseKey(text: string): string {
     .split(' ')
     .filter(Boolean)
     .map(w => w.replace(/[تة]$/, 'ه').replace(/[اويى]/g, ''));
-  return words.join('').replace(/(.)\1+/g, '$1');
+  return words
+    .join('')
+    .replace(/ن(?=[لم])/g, '')
+    .replace(/(.)\1+/g, '$1');
 }
 
 /** A small seen sits on the letter at `i` (before the next base letter). */
@@ -289,6 +297,8 @@ export interface RasmGapItem {
   letter: string;
   start: number;
   end: number;
+  /** Index of the written word (space-separated) holding the sign. */
+  word: number;
 }
 
 export interface RasmWord {
@@ -331,9 +341,10 @@ export function rasmLetters(
   let onTatweel = false;
   let onHamza: RasmGapItem | null = null;
   let vowelSince = false;
-  const gapItem = (item: RasmGapItem) => {
-    gaps[letters.length].push(item);
-    return item;
+  const gapItem = (item: Omit<RasmGapItem, 'word'>): RasmGapItem => {
+    const full = {...item, word};
+    gaps[letters.length].push(full);
+    return full;
   };
   const attach = (i: number) => {
     if (onLetter) onLetter.end = i + 1;
