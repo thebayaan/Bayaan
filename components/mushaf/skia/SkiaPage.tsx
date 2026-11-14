@@ -557,7 +557,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
       }
       return -1;
     },
-    [lineYPositions],
+    [lineYPositions, CONTENT_HEIGHT], // @ai
   );
 
   // @ai — the line and character under a touch point (this renderer's
@@ -595,7 +595,21 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
 
       return {lineIndex, charIndex};
     },
-    [pageLines, lineYPositions, findLineAtY, contentMarginLeft],
+    // @ai-start
+    // The page box is part of the hit test: without these, a resize that
+    // leaves the lines alone (iPad split view, a changed top padding) kept
+    // testing touches against the old box and picked the wrong verse.
+    [
+      pageLines,
+      lineYPositions,
+      findLineAtY,
+      contentMarginLeft,
+      CONTENT_WIDTH,
+      CONTENT_HEIGHT,
+      PAGE_PADDING_HORIZONTAL,
+      PAGE_PADDING_TOP,
+    ],
+    // @ai-end
   );
 
   // @ai-start
