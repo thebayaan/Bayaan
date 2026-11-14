@@ -1,7 +1,8 @@
 // app/(tabs)/_layout.tsx
 
 import React from 'react';
-import {View} from 'react-native';
+import {StyleSheet, View} from 'react-native'; // @ai
+import {useSegments} from 'expo-router'; // @ai
 import {Tabs, type BottomTabBarProps} from 'expo-router/js-tabs';
 import {StatusBar} from 'expo-status-bar';
 import {useTheme} from '@/hooks/useTheme';
@@ -57,12 +58,30 @@ function IOSTabs() {
     return tracks.length > 0 && tracks[index] != null;
   });
 
+  // @ai-start
+  // Arabic, Search tab: the mini player in the native bottom accessory lost
+  // most of its content. Nothing in the app's layout differs between the
+  // tabs or the two directions there. UIKit mis-frames the accessory in
+  // right-to-left when the tab bar shows no separate search button, which is
+  // what selecting the Search tab does (it turns into the search field);
+  // react-native-screens records this as a UIKit bug in its tabs RTL work
+  // (software-mansion/react-native-screens#3613). Until that is fixed, the
+  // native accessory is hidden in that one state and the app's own floating
+  // mini player (the one Android uses) is shown instead.
+  const segments = useSegments();
+  const onSearchTab = (segments as string[]).includes('(b.search)');
+  const accessoryUnusable = isRTL && onSearchTab;
+  // @ai-end
+
   // UIKit mirrors the tabs via its layout-direction trait. Keep the accessory's
   // Yoga coordinates stable and apply app direction to its content separately.
   return (
     <View style={[{flex: 1}, forceLTR]}>
       <NativeTabs
-        unstable_nativeProps={{direction: appDirection}}
+        unstable_nativeProps={{
+          direction: appDirection,
+          ios: {bottomAccessoryHidden: accessoryUnusable}, // @ai
+        }}
         tintColor={theme.colors.text}
         minimizeBehavior="onScrollDown"
         blurEffect="none"
@@ -145,6 +164,18 @@ function IOSTabs() {
           </NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
       </NativeTabs>
+      {/* @ai-start */}
+      {/* Stands in for the hidden accessory (see accessoryUnusable). The
+          wrapper restores the app direction that the LTR parent removes, and
+          lets touches outside the pill through to the tabs. */}
+      {accessoryUnusable && (
+        <View
+          pointerEvents="box-none"
+          style={[StyleSheet.absoluteFill, appLayoutDirection]}>
+          <FloatingPlayer />
+        </View>
+      )}
+      {/* @ai-end */}
     </View>
   );
 }
