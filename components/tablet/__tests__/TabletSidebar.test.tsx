@@ -22,8 +22,11 @@ import {
 } from '@/services/keyboard/keyCommands';
 import {takeSearchFocusRequest} from '@/services/keyboard/searchFocus';
 import {BayaanKeyboard} from '@/modules/bayaan-keyboard';
+import {usePlayerStore} from '@/services/player/store/playerStore';
 
 let mockWidth = 1032;
+/** The action sheets that are open. */
+let mockSheets: {id: string; context: string}[] = [];
 
 jest.mock('@/hooks/useResponsive', () => ({
   useResponsive: () => ({width: mockWidth}),
@@ -43,9 +46,17 @@ jest.mock('react-native-safe-area-context', () => ({
   ...jest.requireActual('react-native-safe-area-context'),
   useSafeAreaInsets: () => ({top: 0, bottom: 0, left: 0, right: 0}),
 }));
-jest.mock('@/services/player/store/playerStore', () => ({
-  usePlayerStore: (select: (s: unknown) => unknown) =>
-    select({queue: {tracks: [], currentIndex: 0}}),
+jest.mock('@/services/player/store/playerStore', () => {
+  const {create} = jest.requireActual('zustand');
+  return {
+    usePlayerStore: create(() => ({
+      queue: {tracks: [], currentIndex: 0},
+      sheetMode: 'hidden',
+    })),
+  };
+});
+jest.mock('react-native-actions-sheet', () => ({
+  getSheetStack: () => mockSheets,
 }));
 jest.mock('@/components/tablet/TabletDockedPlayer', () => ({
   TabletDockedPlayer: () => null,
@@ -212,7 +223,9 @@ function selected(r: ReactTestRenderer): string[] {
 beforeEach(() => {
   jest.useFakeTimers();
   mockWidth = 1032;
+  mockSheets = [];
   useTabletSidebarStore.setState({collapsed: false});
+  usePlayerStore.setState({sheetMode: 'hidden'});
 });
 
 afterEach(() => {
@@ -524,6 +537,44 @@ describe('keyboard', () => {
 
   it('opens Search with its field focused on ⌘F', () => {
     renderApp();
+    key('cmd-f');
+    expect(onShow()).toEqual(['(b.search)', 'index']);
+    expect(takeSearchFocusRequest()).toBe(true);
+  });
+
+  it('gives the keys up while the full player covers the tabs', () => {
+    renderApp();
+    const listed = () =>
+      (BayaanKeyboard.setCommands as jest.Mock).mock.calls
+        .at(-1)[1]
+        .map((c: {id: string}) => c.id);
+    expect(listed()).toContain('cmd-f');
+
+    act(() => usePlayerStore.setState({sheetMode: 'full'}));
+    expect(listed()).toEqual([]);
+    key('cmd-2');
+    expect(onShow()).toEqual(['(a.home)', 'index']);
+    // ⌘F used to put the cursor in the search field under the player.
+    key('cmd-f');
+    expect(onShow()).toEqual(['(a.home)', 'index']);
+    expect(takeSearchFocusRequest()).toBe(false);
+
+    act(() => usePlayerStore.setState({sheetMode: 'hidden'}));
+    expect(listed()).toContain('cmd-f');
+    key('cmd-2');
+    expect(onShow()).toEqual(['(b.surahs)', 'index']);
+  });
+
+  it('ignores the keys while a sheet is open', () => {
+    renderApp();
+    mockSheets = [{id: 'surah-options', context: 'global'}];
+    key('cmd-2');
+    key('cmd-5');
+    key('cmd-f');
+    expect(onShow()).toEqual(['(a.home)', 'index']);
+    expect(takeSearchFocusRequest()).toBe(false);
+
+    mockSheets = [];
     key('cmd-f');
     expect(onShow()).toEqual(['(b.search)', 'index']);
     expect(takeSearchFocusRequest()).toBe(true);
