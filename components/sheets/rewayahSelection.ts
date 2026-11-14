@@ -10,6 +10,7 @@
  * store's `rewayah` is what every label shows, so after a failure it is
  * re-aligned with the text the service actually serves.
  */
+import i18n from 'i18next';
 import {
   digitalKhattDataService,
   isRewayahSwitchSuperseded,
@@ -105,17 +106,27 @@ export function announceRewayahSelection(
 ): void {
   switch (outcome.kind) {
     case 'switched':
-      showToast('Now reading', getShortLabel(outcome.rewayah));
+      showToast(
+        i18n.t('settings:mushafSettings.rewayahNotice.nowReading'),
+        getShortLabel(outcome.rewayah),
+      );
       return;
     case 'kept-hafs':
-      showToast('Now reading', getShortLabel('hafs'));
+      showToast(
+        i18n.t('settings:mushafSettings.rewayahNotice.nowReading'),
+        getShortLabel('hafs'),
+      );
       return;
     case 'failed':
       showToast(
-        `Couldn't load ${getShortLabel(outcome.requested)}`,
+        i18n.t('settings:mushafSettings.fallback.title', {
+          rewayah: getShortLabel(outcome.requested),
+        }),
         outcome.showing
-          ? `Still showing ${getShortLabel(outcome.showing)}.`
-          : 'Please try again.',
+          ? i18n.t('settings:mushafSettings.rewayahNotice.stillShowing', {
+              rewayah: getShortLabel(outcome.showing),
+            })
+          : i18n.t('settings:mushafSettings.rewayahNotice.tryAgain'),
         'error',
       );
       return;
@@ -205,7 +216,13 @@ export function announceRendererSelection(
   outcome: RendererSelectionOutcome,
 ): void {
   if (outcome.kind === 'failed') {
-    showToast("Couldn't switch to Mushaf 1440", 'Please try again.', 'error');
+    showToast(
+      i18n.t('settings:mushafSettings.rewayahNotice.fontFailed', {
+        font: i18n.t('settings:mushafSettings.fonts.qcfV2.label'),
+      }),
+      i18n.t('settings:mushafSettings.rewayahNotice.tryAgain'),
+      'error',
+    );
   }
 }
 

@@ -409,6 +409,13 @@
       "keepLabel": "Keep reading Hafs",
       "keep": "Keep Hafs"
     },
+    "rewayahNotice": {
+      "nowReading": "Now reading",
+      "stillShowing": "Still showing {{rewayah}}.",
+      "showingInstead": "Showing {{rewayah}} instead.",
+      "tryAgain": "Please try again.",
+      "fontFailed": "Couldn't switch to {{font}}"
+    },
     "communityReflections": "Community Reflections",
     "communityReflectionsHelper": "Show community reflections under each ayah in list view",
     "indopakHafsOnly": "IndoPak shows Hafs only. Choosing another rewayah switches the font to {{font}}.",

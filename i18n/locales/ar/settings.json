@@ -409,6 +409,13 @@
       "keepLabel": "متابعة القراءة برواية حفص",
       "keep": "اعتماد حفص"
     },
+    "rewayahNotice": {
+      "nowReading": "الرواية الحالية",
+      "stillShowing": "ما زالت رواية {{rewayah}} معروضة.",
+      "showingInstead": "تُعرض رواية {{rewayah}} بدلًا منها.",
+      "tryAgain": "يُرجى المحاولة مرة أخرى.",
+      "fontFailed": "تعذّر التبديل إلى {{font}}"
+    },
     "communityReflections": "تدبّرات المجتمع",
     "communityReflectionsHelper": "يعرض تدبّرات المجتمع أسفل كل آية في عرض القائمة",
     "indopakHafsOnly": "الخط الهندي الباكستاني يعرض رواية حفص فقط. اختيار رواية أخرى يغيّر الخط إلى {{font}}.",
