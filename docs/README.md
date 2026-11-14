@@ -130,6 +130,7 @@ Deep documentation of the Uthmani Mushaf rendering system:
 | [native-tabs-inset-issues.md](research/native-tabs-inset-issues.md) | NativeTabs safe area issues (SDK 55) |
 | [native-tabs-quick-fixes.md](research/native-tabs-quick-fixes.md) | NativeTabs quick fix workarounds |
 | [download-systems-analysis.md](download-systems-analysis.md) | Download codepath consolidation analysis |
+| [surah-app-feature-gaps.md](research/surah-app-feature-gaps.md) | Surah app vs Bayaan: every Surah feature checked against `develop`, study content first |
 
 ---
 
