@@ -2,6 +2,7 @@
 import {damerauLevenshtein, maxEditsFor} from './fuzzy';
 import {
   ARTICLES,
+  foldLongVowels, // @ai
   latinSkeleton,
   stripArabicArticle,
   stripLatinArticle,
@@ -46,6 +47,7 @@ interface PreparedField {
   key: string;
   compact: string;
   tokens: string[];
+  foldedTokens: string[]; // @ai
   tokenSkeletons: string[];
   skeletonSuffixes: string[];
   // Raw text from the same token boundary as skeletonSuffixes, used to
@@ -88,6 +90,7 @@ function prepareField(text: string, weight: number): PreparedField {
     key,
     compact: baseTokens.join(''),
     tokens,
+    foldedTokens: tokens.map(foldLongVowels), // @ai
     tokenSkeletons: tokens.map(token =>
       ARTICLES.has(token) ? '' : latinSkeleton(token),
     ),
@@ -161,6 +164,12 @@ function scoreToken(
   // "ال" / "al" prefixes neither inflate the budget nor pass the letter gate.
   const bare = stripArabicArticle(latinBare);
   const maxEdits = maxEditsFor(bare.length);
+  // @ai-start
+  // Only a typed doubled vowel ("noor", "feel") is folded, and then compared
+  // with folded names a step below a literal match.
+  const folded = foldLongVowels(token);
+  const isFolded = folded !== token;
+  // @ai-end
   let best = 0;
   for (const field of fields) {
     for (let t = 0; t < field.tokens.length; t++) {
@@ -181,6 +190,16 @@ function scoreToken(
         );
         tier = skeletonTier(distance, latinBare.length / 2);
       }
+      // @ai-start
+      if (isFolded) {
+        const foldedField = field.foldedTokens[t];
+        if (foldedField === folded) {
+          tier = Math.max(tier, TIER.exact - 5);
+        } else if (folded.length >= 3 && foldedField.startsWith(folded)) {
+          tier = Math.max(tier, TIER.wordPrefix - 5);
+        }
+      }
+      // @ai-end
       if (tier === 0 && maxEdits > 0) {
         const fieldBare = stripArabicArticle(stripLatinArticle(fieldToken));
         // Typos rarely hit both leading letters; this skips most DL work.

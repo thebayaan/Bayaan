@@ -79,6 +79,16 @@ describe('golden surah queries (top result)', () => {
     ['النبأ', 78],
     ['الضحي', 93],
     ['ikhlas', 112],
+    // @ai-start
+    // Doubled vowels typed for a single long one.
+    ['noor', 24],
+    ['feel', 105],
+    ['toor', 52],
+    ['teen', 95],
+    ['room', 30],
+    ['hadeed', 57],
+    ['ibraheem', 14],
+    // @ai-end
   ])('%s', (query, id) => {
     expect(surahs.search(query)[0]?.item.id).toBe(id);
   });
