@@ -122,6 +122,22 @@ describe('createCatalogSearch (Home)', () => {
   });
 
   // @ai-start
+  it.each([
+    'mishary rashid alafasy',
+    'mishary bin rashid alafasy',
+    'مشاري راشد العفاسي',
+    'mishary rashid',
+  ])('allows one word the catalogue lacks when nothing matched: %s', query => {
+    expect(search.search(query)[0]?.item.id).toBe(ALAFASI);
+  });
+
+  it('keeps the one-missing-word fallback away from real matches', () => {
+    // A surah matched, so no reciter named Muhammad is added.
+    expect(search.search('surah muhammad').map(r => r.type)).toEqual(['surah']);
+    // A loose consonant match alone is not a result.
+    expect(search.search('ayat kursi')).toEqual([]);
+  });
+
   it('ranks Ya-Sin first for its Arabic spelling ياسين', () => {
     for (const query of ['ياسين', 'سورة ياسين']) {
       expect(search.search(query)[0]?.item).toBe(SURAHS[35]);
@@ -220,6 +236,14 @@ describe('review fixes', () => {
     RECITERS.splice(0, RECITERS.length, ...reciters);
     expect(rankReciters(query)[0]?.id).toBe(id);
   });
+
+  // @ai-start
+  it('reciter lists also allow one missing word when nothing matched', () => {
+    expect(rankReciters('mishary rashid alafasy', reciters)[0]?.id).toBe(
+      ALAFASI,
+    );
+  });
+  // @ai-end
 
   it('does not fuzz Arabic names on the shared article', () => {
     RECITERS.splice(0, RECITERS.length, ...reciters);

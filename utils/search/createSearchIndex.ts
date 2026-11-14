@@ -64,8 +64,23 @@ export interface SearchHit<T> {
   score: number;
 }
 
+// @ai-start
+export interface SearchOptions {
+  /**
+   * Last resort for a query that found nothing: let one word match nothing
+   * ("mishary rashid alafasy" when the catalogue has no "rashid"). The other
+   * words must match without typos and the score is halved.
+   */
+  allowOneMissingWord?: boolean;
+}
+// @ai-end
+
 export interface SearchIndex<T> {
-  search(query: string, limit?: number): SearchHit<T>[];
+  search(
+    query: string,
+    limit?: number,
+    searchOptions?: SearchOptions, // @ai
+  ): SearchHit<T>[];
 }
 
 interface PreparedField {
@@ -188,6 +203,7 @@ function scoreToken(
   fields: readonly PreparedField[],
   token: string,
   isLast: boolean,
+  allowTypos = true, // @ai
 ): number {
   const tokenSkeleton = latinSkeleton(token);
   const latinBare = stripLatinArticle(token);
@@ -236,7 +252,9 @@ function scoreToken(
         }
       }
       // @ai-end
-      if (tier === 0 && maxEdits > 0) {
+      // @ai-start
+      if (tier === 0 && allowTypos && maxEdits > 0) {
+        // @ai-end
         const fieldBare = stripArabicArticle(stripLatinArticle(fieldToken));
         // Typos rarely hit both leading letters; this skips most DL work.
         if (bare[0] === fieldBare[0] || bare[1] === fieldBare[1]) {
@@ -285,6 +303,27 @@ export function createSearchIndex<T>(
     return Math.max(score, Math.min(...tokenScores));
   }
 
+  function scoreWithOneMissing(
+    entry: PreparedItem<T>,
+    query: PreparedQuery,
+  ): number {
+    if (query.tokens.length < 2) return 0;
+    const scores = query.tokens.map((token, i) =>
+      scoreToken(entry.fields, token, i === query.tokens.length - 1, false),
+    );
+    const matched = query.tokens.filter((_, i) => scores[i] > 0);
+    if (matched.length !== query.tokens.length - 1) return 0;
+    // "al x" must not list every reciter with an article.
+    if (matched.join('').length < 3) return 0;
+    // One real word must match closely: a loose consonant match alone
+    // ("kursi" in "Alquraishi") is a guess, not a result.
+    const anchored = query.tokens.some(
+      (token, i) => !ARTICLES.has(token) && scores[i] >= TIER.skeleton - 2,
+    );
+    if (!anchored) return 0;
+    return Math.min(...scores.filter(score => score > 0)) / 2;
+  }
+
   function withoutFillers(query: PreparedQuery): PreparedQuery | null {
     const fillers = options.fillerWords;
     if (!fillers) return null;
@@ -293,16 +332,21 @@ export function createSearchIndex<T>(
     return prepareQuery(kept.join(' '));
   }
 
-  function run(query: PreparedQuery, limit: number): SearchHit<T>[] {
+  function run(
+    query: PreparedQuery,
+    limit: number,
+    oneMissing = false,
+  ): SearchHit<T>[] {
     if (!query.key) return [];
     const bare = withoutFillers(query);
+    const scoreOf = oneMissing ? scoreWithOneMissing : scoreEntry;
     const hits: (SearchHit<T> & {index: number})[] = [];
     for (const entry of prepared) {
-      let score = scoreEntry(entry, query);
+      let score = scoreOf(entry, query);
       if (bare) {
         // Two points under the full query: "sheikh sudais" finds Alsudaes,
         // and "Shaik Abu Bakr Al Shatri" still outranks a bare "Shatri".
-        score = Math.max(score, scoreEntry(entry, bare) - 2);
+        score = Math.max(score, scoreOf(entry, bare) - 2);
       }
       // @ai-end
       if (score > 0) {
@@ -321,7 +365,13 @@ export function createSearchIndex<T>(
     search(
       query: string,
       limit: number = Number.POSITIVE_INFINITY,
+      searchOptions?: SearchOptions, // @ai
     ): SearchHit<T>[] {
+      // @ai-start
+      if (searchOptions?.allowOneMissingWord) {
+        return run(prepareQuery(query), limit, true);
+      }
+      // @ai-end
       const hits = run(prepareQuery(query), limit);
       if (hits.length > 0 || options.keyboardFallback === false) return hits;
       const swapped = swapKeyboardLayout(query);

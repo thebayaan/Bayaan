@@ -190,7 +190,15 @@ export function rankReciters(
 ): readonly Reciter[] {
   if (!query.trim()) return within ?? RECITERS;
   const index = within ? getSubsetIndex(within) : getReciterIndex();
-  return index.search(query).map(hit => hit.item);
+  // @ai-start
+  const hits = index.search(query);
+  // Same last resort as Home search: one word the catalogue lacks.
+  const found =
+    hits.length > 0
+      ? hits
+      : index.search(query, undefined, {allowOneMissingWord: true});
+  return found.map(hit => hit.item);
+  // @ai-end
 }
 
 export interface CatalogSearchResult {
@@ -213,12 +221,21 @@ export function createCatalogSearch(
       if (/^\d+$/.test(toSearchKey(query))) {
         return surahHits.map(hit => ({type: 'surah' as const, ...hit}));
       }
+      // @ai-start
+      const reciterHits = reciterSearch.search(query);
+      if (surahHits.length === 0 && reciterHits.length === 0) {
+        // Only when nothing matched: a word the catalogue lacks ("mishary
+        // rashid alafasy"). Never alongside surah hits, or "surah muhammad"
+        // would also list every reciter named Muhammad.
+        return reciterSearch
+          .search(query, undefined, {allowOneMissingWord: true})
+          .map(hit => ({type: 'reciter' as const, ...hit}));
+      }
       return [
         ...surahHits.map(hit => ({type: 'surah' as const, ...hit})),
-        ...reciterSearch
-          .search(query)
-          .map(hit => ({type: 'reciter' as const, ...hit})),
+        ...reciterHits.map(hit => ({type: 'reciter' as const, ...hit})),
       ].sort((a, b) => b.score - a.score);
+      // @ai-end
     },
   };
 }
