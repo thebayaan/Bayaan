@@ -23,6 +23,23 @@ export const TIER = {
 
 export const MAX_QUERY_LENGTH = 100;
 
+// @ai-start
+// One Arabic article, spelled the way it sounds before the next letter:
+// "al nur" is "An-Nur", "al rum" is "Ar-Rum".
+const DEFINITE_ARTICLES: ReadonlySet<string> = new Set([
+  'al',
+  'el',
+  'an',
+  'ar',
+  'as',
+  'ash',
+  'at',
+  'ad',
+  'az',
+  'ul',
+]);
+// @ai-end
+
 export interface SearchField<T> {
   get: (item: T) => string | readonly string[];
   weight: number;
@@ -169,6 +186,7 @@ function scoreToken(
   // with folded names a step below a literal match.
   const folded = foldLongVowels(token);
   const isFolded = folded !== token;
+  const isArticle = DEFINITE_ARTICLES.has(token);
   // @ai-end
   let best = 0;
   for (const field of fields) {
@@ -177,6 +195,10 @@ function scoreToken(
       let tier = 0;
       if (fieldToken === token) {
         tier = TIER.exact;
+        // @ai-start
+      } else if (isArticle && DEFINITE_ARTICLES.has(fieldToken)) {
+        tier = TIER.exact - 5;
+        // @ai-end
       } else if (fieldToken.startsWith(token)) {
         tier = TIER.wordPrefix;
       } else if (

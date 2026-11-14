@@ -1,5 +1,5 @@
 // @ai-generated
-import {SURAHS} from '@/data/surahData';
+import {SURAHS, type Surah} from '@/data/surahData'; // @ai
 import {RECITERS, markRecitersUpdated, type Reciter} from '@/data/reciterData';
 import reciterData from '@/data/reciters-fallback.json';
 import {createCatalogSearch, rankReciters, rankSurahs} from '../catalog';
@@ -120,6 +120,21 @@ describe('createCatalogSearch (Home)', () => {
       expect(search.search(query)[0]?.item).toBe(SURAHS[35]);
     }
   });
+
+  // @ai-start
+  it.each([
+    ['al nur', 24],
+    ['al nas', 114],
+    ['al tin', 95],
+    ['al rum', 30],
+    ['al tur', 52],
+    ['surah al noor', 24],
+  ])('reads "al" as the sounded article: %s', (query, id) => {
+    const top = search.search(query)[0];
+    expect(top?.type).toBe('surah');
+    expect((top?.item as Surah | undefined)?.id).toBe(id);
+  });
+  // @ai-end
 });
 
 // Final-review fixes (2026-10-12).
