@@ -5,20 +5,27 @@ jest.mock('@react-native-async-storage/async-storage', () =>
 
 import {useMushafSettingsStore as store} from '../mushafSettingsStore';
 
-describe('Mushaf 1440 tajweed preview', () => {
-  it('enables the preview when selecting 1440 and keeps Hafs selected', () => {
-    store.setState({
-      mushafRenderer: 'dk_v1',
-      showTajweed: false,
-      rewayah: 'hafs',
-    });
-    store.getState().setMushafRenderer('qcf_v2');
-    expect(store.getState()).toMatchObject({
-      showTajweed: true,
-      rewayah: 'hafs',
-    });
+describe('Mushaf 1440 tajweed', () => {
+  it('keeps the reader’s tajweed choice and rewayah when selecting 1440', () => {
+    for (const showTajweed of [false, true]) {
+      store.setState({
+        mushafRenderer: 'dk_v1',
+        showTajweed,
+        rewayah: 'hafs',
+      });
+      store.getState().setMushafRenderer('qcf_v2');
+      expect(store.getState()).toMatchObject({
+        mushafRenderer: 'qcf_v2',
+        showTajweed,
+        rewayah: 'hafs',
+      });
+    }
+    // Another rewayah can be read under Mushaf 1440 (in the Madani font).
     store.getState().setRewayah('warsh');
-    expect(store.getState().rewayah).toBe('hafs');
+    expect(store.getState()).toMatchObject({
+      mushafRenderer: 'qcf_v2',
+      rewayah: 'warsh',
+    });
   });
 
   it('can switch tajweed off and on without changing the renderer', () => {

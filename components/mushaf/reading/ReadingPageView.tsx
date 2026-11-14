@@ -153,10 +153,10 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
   const mushafRewayah = useMushafSettingsStore(s => s.rewayah);
   const dkFontFamily = getDkFontFamily(mushafRenderer, mushafRewayah);
   // @ai-end
+  // Mushaf 1440 keeps its Hafs text on the QPC path; another rewayah's
+  // text is drawn from its DigitalKhatt words (as on the mushaf pages). @ai
   const isDK =
-    (mushafRenderer === 'dk_v1' ||
-      mushafRenderer === 'dk_v2' ||
-      mushafRenderer === 'dk_indopak') &&
+    (mushafRenderer !== 'qcf_v2' || mushafRewayah !== 'hafs') &&
     mushafPreloadService.initialized &&
     digitalKhattDataService.initialized;
   const subscribedFontMgr = useMushafFontMgr();

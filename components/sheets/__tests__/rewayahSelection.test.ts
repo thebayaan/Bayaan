@@ -180,17 +180,28 @@ describe('selectMushafRewayah', () => {
     expect(dk.rewayah).toBe('warsh');
   });
 
-  it('refuses Mushaf 1440 and rewayat without bundled text', async () => {
-    useMushafSettingsStore.setState({mushafRenderer: 'qcf_v2'});
-    await expect(selectMushafRewayah('warsh')).resolves.toEqual({
-      kind: 'unchanged',
-    });
+  it('refuses rewayat without bundled text', async () => {
     useMushafSettingsStore.setState({mushafRenderer: 'dk_v2'});
     await expect(selectMushafRewayah('hisham')).resolves.toEqual({
       kind: 'unchanged',
     });
     expect(service.switchRewayah).not.toHaveBeenCalled();
   });
+
+  // @ai-start
+  it('switches the rewayah under Mushaf 1440 too, keeping the font', async () => {
+    useMushafSettingsStore.setState({mushafRenderer: 'qcf_v2'});
+    await expect(selectMushafRewayah('warsh')).resolves.toEqual({
+      kind: 'switched',
+      rewayah: 'warsh',
+    });
+    expect(service.switchRewayah).toHaveBeenCalledWith('warsh');
+    expect(useMushafSettingsStore.getState()).toMatchObject({
+      rewayah: 'warsh',
+      mushafRenderer: 'qcf_v2',
+    });
+  });
+  // @ai-end
 
   it('reports that nothing is shown when the data service never loaded', async () => {
     dk.initialized = false;

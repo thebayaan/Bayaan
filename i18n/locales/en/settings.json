@@ -298,12 +298,8 @@
     "thematicHelper": "Alternating highlights by thematic passage",
     "fontHeader": "Font",
     "tajweedColoring": "Tajweed Coloring",
-    "tajweedPreview": "Preview colored tajweed",
     "tajweedDescription": "Highlight rules with colors",
     "rewayahHeader": "Rewayah",
-    "rewayahDisabled": "Rewayah switching is disabled in Mushaf 1440 beta.",
-    "qcfBetaTitle": "Mushaf 1440 Beta",
-    "qcfBetaMessage": "Mushaf 1440 is {{appName}}’s most modern mushaf pipeline, but it is still in beta. Tajweed coloring is available as a preview. Rewayah switching is still disabled.",
     "nowReading": "Now reading",
     "currentlyReading": "Currently reading",
     "rewayahExpandLabel": "Rewayah: {{name}}. Expand to change.",
@@ -327,7 +323,7 @@
       },
       "qcfV2": {
         "label": "Mushaf 1440",
-        "description": "Modern Madinah printed pipeline"
+        "description": "The 1441H Madinah print, glyph for glyph"
       }
     },
     "weights": {
@@ -412,6 +408,7 @@
     "communityReflections": "Community Reflections",
     "communityReflectionsHelper": "Show community reflections under each ayah in list view",
     "indopakHafsOnly": "IndoPak shows Hafs only. Choosing another rewayah switches the font to {{font}}.",
+    "qcfOtherRewayat": "Mushaf 1440’s printed glyphs are Hafs. Other rewayat are shown in {{font}}.",
     "recitation": {
       "checkLabel": "Check my recitation",
       "checkHelper": "Marks a word in red when you may have missed it or said a different word. Tajweed and harakat are not checked.",

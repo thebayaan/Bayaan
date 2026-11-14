@@ -75,7 +75,7 @@ describe('startRewayahFallback', () => {
   });
   // @ai-end
 
-  it('never records Hafs, or anything under Mushaf 1440', () => {
+  it('never records Hafs', () => {
     useMushafSettingsStore.setState({
       mushafRenderer: 'dk_v1',
       rewayah: 'hafs',
@@ -83,11 +83,25 @@ describe('startRewayahFallback', () => {
     });
     useMushafSettingsStore.getState().startRewayahFallback('hafs');
     expect(useMushafSettingsStore.getState().rewayahFallbackFrom).toBeNull();
-
-    useMushafSettingsStore.setState({mushafRenderer: 'qcf_v2'});
-    useMushafSettingsStore.getState().startRewayahFallback('warsh');
-    expect(useMushafSettingsStore.getState().rewayahFallbackFrom).toBeNull();
   });
+
+  // @ai-start
+  it('records a fallback under Mushaf 1440 like under any font', () => {
+    // Mushaf 1440 no longer pins Hafs: a saved Warsh that failed to load
+    // falls back to Hafs (drawn with its glyphs) and is offered again.
+    useMushafSettingsStore.setState({
+      mushafRenderer: 'qcf_v2',
+      rewayah: 'warsh',
+      rewayahFallbackFrom: null,
+    });
+    useMushafSettingsStore.getState().startRewayahFallback('warsh');
+    expect(useMushafSettingsStore.getState()).toMatchObject({
+      rewayah: 'hafs',
+      rewayahFallbackFrom: 'warsh',
+      mushafRenderer: 'qcf_v2',
+    });
+  });
+  // @ai-end
 });
 
 describe('ending a fallback', () => {
@@ -113,27 +127,30 @@ describe('ending a fallback', () => {
   });
 
   it('ends when the reader picks a font that cannot draw the saved rewayah', async () => {
-    for (const renderer of ['dk_indopak', 'qcf_v2'] as const) {
-      fellBackFrom('warsh');
-      useMushafSettingsStore.getState().setMushafRenderer(renderer);
-      const state = useMushafSettingsStore.getState();
-      expect(state.mushafRenderer).toBe(renderer);
-      expect(state.rewayah).toBe('hafs');
-      expect(state.rewayahFallbackFrom).toBeNull();
-      // Never a persisted IndoPak or Mushaf 1440 + Warsh pair.
-      const saved = await persisted();
-      expect(saved.rewayah).toBe('hafs');
-      expect(saved.mushafRenderer).toBe(renderer);
-    }
+    fellBackFrom('warsh');
+    useMushafSettingsStore.getState().setMushafRenderer('dk_indopak');
+    const state = useMushafSettingsStore.getState();
+    expect(state.mushafRenderer).toBe('dk_indopak');
+    expect(state.rewayah).toBe('hafs');
+    expect(state.rewayahFallbackFrom).toBeNull();
+    // Never a persisted IndoPak + Warsh pair.
+    const saved = await persisted();
+    expect(saved.rewayah).toBe('hafs');
+    expect(saved.mushafRenderer).toBe('dk_indopak');
   });
 
-  it('survives a switch between the Madani fonts, which draw every rewayah', async () => {
-    fellBackFrom('qalun', 'dk_v2');
-    useMushafSettingsStore.getState().setMushafRenderer('dk_v1');
-    expect(useMushafSettingsStore.getState().rewayahFallbackFrom).toBe('qalun');
-    const saved = await persisted();
-    expect(saved.rewayah).toBe('qalun');
-    expect(saved.mushafRenderer).toBe('dk_v1');
+  it('survives a switch between fonts that draw every rewayah', async () => {
+    // @ai — Mushaf 1440 draws another rewayah in the Madani font.
+    for (const renderer of ['dk_v1', 'qcf_v2'] as const) {
+      fellBackFrom('qalun', 'dk_v2');
+      useMushafSettingsStore.getState().setMushafRenderer(renderer);
+      expect(useMushafSettingsStore.getState().rewayahFallbackFrom).toBe(
+        'qalun',
+      );
+      const saved = await persisted();
+      expect(saved.rewayah).toBe('qalun');
+      expect(saved.mushafRenderer).toBe(renderer);
+    }
   });
 });
 
