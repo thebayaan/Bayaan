@@ -84,6 +84,8 @@ import {analyticsService} from '@/services/analytics/AnalyticsService';
 import {getDisplayLabelFromName} from '@/services/rewayah/RewayahIdentity';
 // @ai-start
 import {useTranslation} from 'react-i18next';
+import i18n from '@/i18n';
+import {showToast} from '@/utils/toastUtils';
 import {getReciterDisplayName, getSurahDisplayName} from '@/i18n/format';
 import {currentLanguage} from '@/i18n/language';
 import {SOURCE_LANGUAGE} from '@/i18n/languages';
@@ -448,21 +450,35 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
   // @ai-start
   const {setDownloading, clearDownloading, addDownload, setDownloadProgress} =
     useDownloadActions();
-  const [isDownloadingAll, setIsDownloadingAll] = useState(false);
-  const [downloadAllProgress, setDownloadAllProgress] = useState(0);
-  const downloadAllCancelledRef = useRef(false);
+  // "Download all" batches in flight, by rewayah, with how far each has got
+  // (0–1). One flag for the whole screen made another rewayah's button show
+  // this batch's progress, and a tap there cancelled it instead of starting
+  // that rewayah's own.
+  const [downloadAllProgressById, setDownloadAllProgressById] = useState<
+    Record<string, number>
+  >({});
   // Tracks mount state so a long batch's deferred setState/Alert never fire
-  // after the screen is gone; the in-flight ref also closes the same-frame
+  // after the screen is gone; the batches ref also closes the same-frame
   // double-tap window that React state alone leaves open.
   const isMountedRef = useRef(true);
-  const downloadAllInFlightRef = useRef(false);
+  const downloadAllBatchesRef = useRef(new Map<string, {cancelled: boolean}>());
 
   useEffect(() => {
     isMountedRef.current = true;
+    const batches = downloadAllBatchesRef.current;
     return () => {
       isMountedRef.current = false;
-      // Signal any in-flight batch to stop when the user leaves the screen.
-      downloadAllCancelledRef.current = true;
+      if (batches.size === 0) return;
+      // Signal any in-flight batch to stop when the user leaves the screen,
+      // and say so: it used to stop after the current surah without a word.
+      batches.forEach(batch => {
+        batch.cancelled = true;
+      });
+      showToast(
+        i18n.t('player:reciterProfile.downloadAll.stoppedOnLeave'),
+        i18n.t('player:reciterProfile.downloadAll.stoppedOnLeaveHint'),
+        'none',
+      );
     };
   }, []);
   // @ai-end
@@ -722,15 +738,24 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
     selectedRewayat?.id,
   );
 
+  // The selected rewayah's own batch, if it has one running.
+  const selectedBatchProgress = selectedRewayat
+    ? downloadAllProgressById[selectedRewayat.id]
+    : undefined;
+  const isDownloadingAll = selectedBatchProgress !== undefined;
+  const downloadAllProgress = selectedBatchProgress ?? 0;
+
   const handleDownloadAll = useCallback(async () => {
     if (!reciter || !selectedRewayat) return;
+    const rewayatId = selectedRewayat.id;
 
-    // A tap while a batch is in flight requests cancellation. Read the ref
-    // (not `isDownloadingAll` state) so a rapid second tap in the same frame
-    // is caught before the setIsDownloadingAll(true) re-render lands, which
-    // otherwise lets two concurrent batches start.
-    if (downloadAllInFlightRef.current) {
-      downloadAllCancelledRef.current = true;
+    // A tap while this rewayah's batch is in flight requests cancellation.
+    // Read the ref (not state) so a rapid second tap in the same frame is
+    // caught before the re-render lands, which otherwise lets two batches
+    // for the same rewayah start.
+    const running = downloadAllBatchesRef.current.get(rewayatId);
+    if (running) {
+      running.cancelled = true;
       return;
     }
 
@@ -738,22 +763,21 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
 
     if (allDownloaded) {
       Alert.alert(
-        'Already Downloaded',
-        'Every surah shown is already downloaded for this rewayah.',
+        t('reciterProfile.downloadAll.alreadyTitle'),
+        t('reciterProfile.downloadAll.alreadyMessage'),
       );
       return;
     }
 
-    downloadAllInFlightRef.current = true;
-    downloadAllCancelledRef.current = false;
-    setIsDownloadingAll(true);
-    setDownloadAllProgress(0);
+    const batch = {cancelled: false};
+    downloadAllBatchesRef.current.set(rewayatId, batch);
+    setDownloadAllProgressById(prev => ({...prev, [rewayatId]: 0}));
 
     try {
       const items = filteredSurahs.map(s => ({
         surahId: s.id,
         reciterId: reciter.id,
-        rewayatId: selectedRewayat.id,
+        rewayatId,
       }));
 
       const summary = await bulkDownloadSurahs(
@@ -773,44 +797,59 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
           onProgress: (completed, total) => {
             // Skip progress writes once the screen is gone.
             if (!isMountedRef.current) return;
-            setDownloadAllProgress(total > 0 ? completed / total : 1);
+            setDownloadAllProgressById(prev => ({
+              ...prev,
+              [rewayatId]: total > 0 ? completed / total : 1,
+            }));
           },
-          isCancelled: () =>
-            downloadAllCancelledRef.current || !isMountedRef.current,
+          isCancelled: () => batch.cancelled || !isMountedRef.current,
         },
       );
 
       // Don't surface result alerts on an unrelated screen if the user
-      // navigated away from the reciter profile mid-batch.
+      // navigated away from the reciter profile mid-batch (the unmount
+      // effect has told them it stopped).
       if (!isMountedRef.current) return;
 
       if (summary.cancelled) {
         Alert.alert(
-          'Download Stopped',
-          `Downloaded ${summary.downloaded} surah(s) before stopping.`,
+          t('reciterProfile.downloadAll.stoppedTitle'),
+          t('reciterProfile.downloadAll.stoppedMessage', {
+            count: summary.downloaded,
+          }),
         );
       } else if (summary.failed > 0) {
         Alert.alert(
-          'Download Finished',
-          `${summary.downloaded} downloaded, ${summary.failed} failed. Tap again to retry the rest.`,
+          t('reciterProfile.downloadAll.finishedTitle'),
+          t('reciterProfile.downloadAll.finishedMessage', {
+            downloaded: summary.downloaded,
+            failed: summary.failed,
+          }),
         );
       } else if (summary.downloaded > 0) {
         Alert.alert(
-          'Download Complete',
-          `All surahs for ${reciter.name} are now available offline.`,
+          t('reciterProfile.downloadAll.completeTitle'),
+          t('reciterProfile.downloadAll.completeMessage', {
+            reciter: getReciterDisplayName(reciter),
+          }),
         );
       }
     } catch (error) {
       console.error('Error downloading all surahs:', error);
       if (isMountedRef.current) {
-        Alert.alert('Download Error', 'Some downloads may have failed.');
+        Alert.alert(
+          t('reciterProfile.downloadAll.errorTitle'),
+          t('reciterProfile.downloadAll.errorMessage'),
+        );
       }
     } finally {
-      downloadAllInFlightRef.current = false;
-      downloadAllCancelledRef.current = false;
+      downloadAllBatchesRef.current.delete(rewayatId);
       if (isMountedRef.current) {
-        setIsDownloadingAll(false);
-        setDownloadAllProgress(0);
+        setDownloadAllProgressById(prev => {
+          const next = {...prev};
+          delete next[rewayatId];
+          return next;
+        });
       }
     }
   }, [
@@ -826,6 +865,7 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
     clearDownloading,
     addDownload,
     setDownloadProgress,
+    t,
   ]);
   // @ai-end
 

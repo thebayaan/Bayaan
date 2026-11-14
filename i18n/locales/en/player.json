@@ -64,7 +64,22 @@
     "surahCount_one": "{{count}} surah",
     "surahCount_other": "{{count}} surahs",
     "rewayatCount_one": "{{count}} rewayah",
-    "rewayatCount_other": "{{count}} rewayat"
+    "rewayatCount_other": "{{count}} rewayat",
+    "downloadAll": {
+      "alreadyTitle": "Already Downloaded",
+      "alreadyMessage": "Every surah shown is already downloaded for this rewayah.",
+      "stoppedTitle": "Download Stopped",
+      "stoppedMessage_one": "Downloaded {{count}} surah before stopping.",
+      "stoppedMessage_other": "Downloaded {{count}} surahs before stopping.",
+      "finishedTitle": "Download Finished",
+      "finishedMessage": "{{downloaded}} downloaded, {{failed}} failed. Tap again to retry the rest.",
+      "completeTitle": "Download Complete",
+      "completeMessage": "All surahs for {{reciter}} are now available offline.",
+      "errorTitle": "Download Error",
+      "errorMessage": "Some downloads may have failed.",
+      "stoppedOnLeave": "Download all stopped",
+      "stoppedOnLeaveHint": "Open the reciter again to carry on."
+    }
   },
   "adhkar": {
     "otherSection": "Other",
