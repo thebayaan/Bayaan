@@ -2,7 +2,8 @@
  * Mushaf Player Store
  *
  * Zustand store for mushaf ayah-by-ayah audio player state.
- * Persists reciter preference, playback rate, and repeat counts across sessions.
+ * Persists reciter preference, playback rate, and the repeat counts chosen in
+ * the play options across sessions. @ai
  *
  * Verse numbering: a timing set may be numbered by the reciter's rewayah
  * (e.g. Warsh 2:4 is Hafs 2:5, Warsh 2:1 is Hafs 2:1 + 2:2). Everything the UI
@@ -261,6 +262,25 @@ export interface MushafPlayerStoreState {
   rewayatId: string | null;
   reciterName: string | null;
   rate: number;
+  // @ai-start
+  /**
+   * The repeat counts last chosen in the play options sheet, which opens on
+   * them again (1: once, 0: loop). Written only by that sheet
+   * (saveRepeatCounts). The playback's own counts below used to be what was
+   * saved, so a one-off Repeat left "Loop" chosen in the sheet for every
+   * later Play, also after a restart, and a plain Play wiped a saved "each
+   * verse 3x".
+   */
+  savedVerseRepeatCount: number;
+  savedRangeRepeatCount: number;
+
+  /**
+   * How often the playback being started or playing repeats each verse and
+   * its range (1: once, 0: loop). They belong to that playback and are not
+   * saved: every start sets them, a verse's one-off Play or Repeat as well
+   * as the play options.
+   */
+  // @ai-end
   verseRepeatCount: number;
   rangeRepeatCount: number;
 
@@ -272,6 +292,16 @@ export interface MushafPlayerStoreState {
   setRate: (rate: number) => void;
   setVerseRepeatCount: (count: number) => void;
   setRangeRepeatCount: (count: number) => void;
+  // @ai-start
+  /**
+   * Remember the repeat counts chosen in the play options sheet for the
+   * next time it opens. Does not change the playback's own counts.
+   */
+  saveRepeatCounts: (
+    verseRepeatCount: number,
+    rangeRepeatCount: number,
+  ) => void;
+  // @ai-end
   /** Range endpoints are Hafs verses. */
   setRange: (start: RangeEndpoint, end: RangeEndpoint) => void;
   // @ai-start
@@ -1072,6 +1102,46 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
   };
 }
 
+// @ai-start
+/** What is saved across launches. */
+type SavedPreferences = Pick<
+  MushafPlayerStoreState,
+  | 'rewayatId'
+  | 'reciterName'
+  | 'rate'
+  | 'savedVerseRepeatCount'
+  | 'savedRangeRepeatCount'
+>;
+
+/**
+ * Saved state from before the play options' repeat choice was kept apart
+ * from the playback's own counts. The two counts it holds were written
+ * together by whatever played last. "Range: Loop" with each verse once or
+ * looping is what a verse's one-off Repeat wrote, so that pair may be its
+ * leftover and starts over at once / once; any other pair was chosen in the
+ * play options and is kept as the saved choice. The old counts are dropped
+ * either way: they must not come back as the counts of the next playback.
+ */
+function migrateSavedRepeatCounts(persisted: unknown): unknown {
+  if (typeof persisted !== 'object' || persisted === null) return persisted;
+  const {verseRepeatCount, rangeRepeatCount, ...kept} = persisted as Record<
+    string,
+    unknown
+  >;
+  const isCount = (value: unknown): value is number =>
+    typeof value === 'number' && Number.isInteger(value) && value >= 0;
+  const chosenInOptions =
+    isCount(verseRepeatCount) &&
+    isCount(rangeRepeatCount) &&
+    !(rangeRepeatCount === 0 && verseRepeatCount <= 1);
+  return {
+    ...kept,
+    savedVerseRepeatCount: chosenInOptions ? verseRepeatCount : 1,
+    savedRangeRepeatCount: chosenInOptions ? rangeRepeatCount : 1,
+  };
+}
+// @ai-end
+
 export const useMushafPlayerStore = create<MushafPlayerStoreState>()(
   persist(
     (set, get) => {
@@ -1111,6 +1181,9 @@ export const useMushafPlayerStore = create<MushafPlayerStoreState>()(
         rewayatId: null,
         reciterName: null,
         rate: 1.0,
+        savedVerseRepeatCount: 1, // @ai
+        savedRangeRepeatCount: 1, // @ai
+        // The playback's own repeat counts (not persisted). @ai
         verseRepeatCount: 1,
         rangeRepeatCount: 1,
 
@@ -1139,6 +1212,18 @@ export const useMushafPlayerStore = create<MushafPlayerStoreState>()(
         setRangeRepeatCount: (count: number) => {
           set({rangeRepeatCount: count});
         },
+
+        // @ai-start
+        saveRepeatCounts: (
+          verseRepeatCount: number,
+          rangeRepeatCount: number,
+        ) => {
+          set({
+            savedVerseRepeatCount: verseRepeatCount,
+            savedRangeRepeatCount: rangeRepeatCount,
+          });
+        },
+        // @ai-end
 
         setRange: (start: RangeEndpoint, end: RangeEndpoint) => {
           set({rangeStart: start, rangeEnd: end, rangeUnits: null}); // @ai
@@ -1353,13 +1438,22 @@ export const useMushafPlayerStore = create<MushafPlayerStoreState>()(
     {
       name: STORAGE_KEY,
       storage: persistStorage(), // @ai
-      partialize: state => ({
+      // @ai-start
+      // v0 saved verseRepeatCount / rangeRepeatCount, the playback's own
+      // counts; v1 saves the play options' choice instead.
+      version: 1,
+      migrate: (persisted, version) =>
+        (version === 0
+          ? migrateSavedRepeatCounts(persisted)
+          : persisted) as SavedPreferences,
+      partialize: (state): SavedPreferences => ({
         rewayatId: state.rewayatId,
         reciterName: state.reciterName,
         rate: state.rate,
-        verseRepeatCount: state.verseRepeatCount,
-        rangeRepeatCount: state.rangeRepeatCount,
+        savedVerseRepeatCount: state.savedVerseRepeatCount,
+        savedRangeRepeatCount: state.savedRangeRepeatCount,
       }),
+      // @ai-end
     },
   ),
 );

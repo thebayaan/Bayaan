@@ -146,8 +146,13 @@ export const MushafPlayerOptionsSheet = (
   const storeRewayatId = useMushafPlayerStore(s => s.rewayatId);
   const storeReciterName = useMushafPlayerStore(s => s.reciterName);
   const storeRate = useMushafPlayerStore(s => s.rate);
-  const storeVerseRepeat = useMushafPlayerStore(s => s.verseRepeatCount);
-  const storeRangeRepeat = useMushafPlayerStore(s => s.rangeRepeatCount);
+  // @ai-start
+  // The counts last chosen here, not those of the playback going on: a
+  // verse's one-off Repeat used to leave "Loop" selected for every later
+  // Play.
+  const storeVerseRepeat = useMushafPlayerStore(s => s.savedVerseRepeatCount);
+  const storeRangeRepeat = useMushafPlayerStore(s => s.savedRangeRepeatCount);
+  // @ai-end
   const availableReciters = useMushafPlayerStore(s => s.availableReciters);
 
   // Compute defaults for this page, falling back to store range if available
@@ -384,6 +389,8 @@ export const MushafPlayerOptionsSheet = (
     // commit it here (and committing a stale local copy was the bug).
     store.setVerseRepeatCount(verseRepeat);
     store.setRangeRepeatCount(rangeRepeat);
+    // ...and they are what the sheet opens on next time. @ai
+    store.saveRepeatCounts(verseRepeat, rangeRepeat); // @ai
 
     store.startPlayback(
       currentPage,
