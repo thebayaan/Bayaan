@@ -63,6 +63,16 @@ describe('checkWordsTable', () => {
   ])('rejects a table with %s', async (_name, rows) => {
     await expect(checkWordsTable(fakeDb(rows), index)).rejects.toThrow();
   });
+
+  // The table's own count is not enough: the shipped index says how many
+  // words the copy must hold.
+  it('rejects a table one row short whose rows are all well formed', async () => {
+    const oneRowShort = OK.slice(0, -1);
+    expect(oneRowShort).toHaveLength(index.last[index.last.length - 1] - 1);
+    await expect(checkWordsTable(fakeDb(oneRowShort), index)).rejects.toThrow(
+      'words table has a malformed row',
+    );
+  });
 });
 
 describe('buildVerseIndex', () => {
