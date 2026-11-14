@@ -218,11 +218,19 @@ export function createUserUploadTrack(recitation: UploadedRecitation): Track {
  * Placeholder Reciter used for uploads that aren't tagged to a system reciter.
  * Uses the first system reciter as a shell — the card will show uploadArtist/uploadTitle instead.
  */
-const UPLOAD_PLACEHOLDER_RECITER: Reciter = {
-  ...RECITERS[0],
-  id: '__uploads__',
-  name: 'My Recitations',
-};
+// @ai-start
+// Built when it is needed, not when this module loads: the catalogue is still
+// empty at that point, which left the placeholder with an id and a name only.
+// Card code reads `rewayat` and the other reciter fields.
+function uploadPlaceholderReciter(): Reciter {
+  return {
+    ...RECITERS[0],
+    id: '__uploads__',
+    name: 'My Recitations',
+    rewayat: RECITERS[0]?.rewayat ?? [],
+  };
+}
+// @ai-end
 
 const UPLOAD_PLACEHOLDER_SURAH: Surah = {
   ...SURAHS[0],
@@ -239,8 +247,8 @@ export function addUploadToRecentlyPlayed(
 ): void {
   const reciter = recitation.reciterId
     ? RECITERS.find(r => r.id === recitation.reciterId) ||
-      UPLOAD_PLACEHOLDER_RECITER
-    : UPLOAD_PLACEHOLDER_RECITER;
+      uploadPlaceholderReciter() // @ai
+    : uploadPlaceholderReciter(); // @ai
 
   const surah = recitation.surahNumber
     ? getSurahById(recitation.surahNumber) || UPLOAD_PLACEHOLDER_SURAH
