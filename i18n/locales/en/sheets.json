@@ -104,9 +104,6 @@
     "nameLabel": "Playlist Name",
     "namePlaceholder": "e.g., Morning Recitations"
   },
-  "wordDetail": {
-    "context": "Verse {{ref}} · Word {{position}} of {{total}}"
-  },
   "favoriteReciters": {
     "title": "Favorite Reciters",
     "selected_one": "{{count}} selected",

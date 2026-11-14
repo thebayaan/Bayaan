@@ -116,9 +116,6 @@
     "nameLabel": "اسم قائمة التشغيل",
     "namePlaceholder": "مثال: تلاوات الصباح"
   },
-  "wordDetail": {
-    "context": "الآية {{ref}} · الكلمة {{position}} من {{total}}"
-  },
   "favoriteReciters": {
     "title": "القرّاء المفضّلون",
     "selected_zero": "لم يُحدَّد أحد",
