@@ -222,7 +222,13 @@ export const WordHeaderText: React.FC<WordHeaderTextProps> = ({
       accessibilityRole="header"
       accessibilityLabel={text}
       accessibilityLanguage="ar"
-      style={{minHeight: lineHeight, justifyContent: 'center'}}>
+      // Stretch to the card's width: the header centres its children, and
+      // a box with no content would otherwise measure 0 and draw nothing. @ai
+      style={{
+        alignSelf: 'stretch',
+        minHeight: lineHeight,
+        justifyContent: 'center',
+      }}>
       {built ? (
         <Canvas
           pointerEvents="none"

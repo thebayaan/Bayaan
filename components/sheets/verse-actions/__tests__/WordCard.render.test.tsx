@@ -513,7 +513,14 @@ describe('CompactWordCard', () => {
     );
     // Morphology stays in one-word mode.
     expect(texts(root)).not.toContain('ء ل ه');
-    const card = pressable(root, 'Study ٱللَّهُ');
+    // The card is read by its own text; 'Study ٱللَّهُ' is its hint.
+    const card = root.find(
+      n =>
+        n.props.accessibilityRole === 'button' &&
+        n.props.accessibilityHint === 'Study ٱللَّهُ' &&
+        typeof n.props.onPress === 'function',
+    );
+    expect(card.props.accessibilityLabel).toBeUndefined();
     act(() => card.props.onPress());
     expect(onStudy).toHaveBeenCalledWith(word);
     const quran = root
