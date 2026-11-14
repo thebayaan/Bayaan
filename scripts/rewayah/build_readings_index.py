@@ -122,8 +122,8 @@ NAMES = {
 }
 WHOLE_WORD = {rid: ("major" if rid in N.CLOSE else "mukhtalif") for rid in N.REWAYAT}
 SIBLING = {a: b for pair in HL.SIBLING_PAIRS for a, b in (pair, pair[::-1])}
-SILAH_MARKS = frozenset("ۥۦ")
-SILAH_CARRIERS = frozenset("ُِ")
+SILAH_MARKS = frozenset("\u06E5\u06E6")
+SILAH_CARRIERS = frozenset("\u064F\u0650")
 SCHEMA = (
     "CREATE TABLE info (key TEXT PRIMARY KEY, value TEXT NOT NULL) WITHOUT ROWID",
     "CREATE TABLE slots (\n"

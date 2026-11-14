@@ -61,7 +61,7 @@ WORDS = [
     # no rows: the two DK slots of the word-by-word بَعْدَ مَا
     ("2:181", [3]), ("2:181", [4]),
 ]
-MARKER = re.compile(r"^۝([٠-٩]+)$")
+MARKER = re.compile(r"^\u06DD([\u0660-\u0669]+)$")
 
 
 def marker_number(token: str) -> int | None:
