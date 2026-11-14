@@ -67,8 +67,16 @@ describe('looseKey', () => {
     expect(looseKey('رَحْمَتَ')).toBe(looseKey('رحمة'));
   });
 
-  it('keeps ص without the small seen', () => {
+  it('drops a ن that merges into a following ل or م', () => {
+    expect(looseKey('أَن لَّآ')).toBe(looseKey('أَلَّا'));
+    expect(looseKey('وَأَلَّوِ')).toBe(looseKey('وَأَن لَّوِ'));
+    expect(looseKey('عَن مَّا')).toBe(looseKey('عَمَّا'));
+  });
+
+  it('keeps ص without the small seen above', () => {
     expect(looseKey('بِمُصَيْطِرٍ')).not.toBe(looseKey('بمسيطر'));
+    // The small seen below (52:37) keeps the ص reading, as Tanzil writes it.
+    expect(looseKey('ٱلْمُصَۣيْطِرُونَ')).toBe(looseKey('الْمُصَيْطِرُونَ'));
   });
 });
 
@@ -125,7 +133,7 @@ describe('rasmLetters', () => {
     expect(bases('تَسْـَٔلُوا۟')).toBe('تسلوا');
     // ت َ س ْ ـ َ ٔ: the hamza mark (index 6) sits on the tatweel.
     expect(tasaloo.gaps[2]).toEqual([
-      {kind: 'hamza', letter: 'ء', start: 6, end: 7},
+      {kind: 'hamza', letter: 'ء', start: 6, end: 7, word: 0},
     ]);
     // ٔ after a ٰ on ر (2:72): the ٰ is the omitted alif, the hamza has no seat.
     const addara = rasmLetters('فَٱدَّٰرَْٰٔتُمْ');
@@ -164,6 +172,9 @@ describe('rasmLetters', () => {
     expect(rasmLetters('عِوَجَاۜ').letters.every(l => l.hint === null)).toBe(
       true,
     );
+    expect(
+      rasmLetters('ٱلْمُصَۣيْطِرُونَ').letters.every(l => l.hint === null),
+    ).toBe(true);
   });
 
   it('gives offsets of each letter with its marks', () => {
@@ -178,7 +189,7 @@ describe('rasmLetters', () => {
     const mushaf = rasmLetters('مَـٰلِكِ');
     expect(mushaf.letters[0].end).toBe(2);
     expect(mushaf.gaps[1]).toEqual([
-      {kind: 'small', letter: 'ا', start: 3, end: 4},
+      {kind: 'small', letter: 'ا', start: 3, end: 4, word: 0},
     ]);
   });
 
