@@ -74,7 +74,7 @@ export function getWidthClass(width: number): WidthClass {
 **Built:**
 
 - `TABLET_BREAKPOINT` is **600**, the start of `medium` and Android's `sw600dp` line (#448, was 700). Every iPhone and the folded Duo stay phones; the unfolded Duo and every iPad are tablets. "Phones stay pixel-identical" means every window whose short side is under 600pt.
-- `widthClass` is **not** in `useResponsive()` yet. The tablet screens use the same lines through local constants instead: `pageSpacing(windowWidth)` in `utils/gridLayout.ts` for margins and gutters, and a 900pt constant per component for the `expanded` layouts (`SIDEBAR_MIN_WINDOW`, `PLAYER_EXPANDED_MIN_WIDTH`, `TWO_COLUMN_MIN_WIDTH`, `DHIKR_PAIRS_MIN_WIDTH`, `EXPANDED_MIN_WIDTH` in the browse and reciter screens, and an inline `>= 900` in `TrackItem`, `ReciterProfile` and `TabletCollectionHome`). **SHOULD** replace these with `getWidthClass()` when it lands, and **MUST NOT** add a new breakpoint value other than 600, 900 and 1280.
+- `widthClass` is **not** in `useResponsive()` yet. The tablet screens use the same lines through local constants instead: `pageSpacing(windowWidth)` in `utils/gridLayout.ts` for margins and gutters, and a 900pt constant per component for the `expanded` layouts (`SIDEBAR_MIN_WINDOW`, `PLAYER_EXPANDED_MIN_WIDTH`, `TWO_COLUMN_MIN_WIDTH`, `DHIKR_PAIRS_MIN_WIDTH`, `EXPANDED_MIN_WIDTH` in the browse and reciter screens, `HERO_COLUMN_MIN_WINDOW` (1280) for the pinned reciter hero, and an inline `>= 900` in `TrackItem`, `ReciterProfile` and `TabletCollectionHome`). **SHOULD** replace these with `getWidthClass()` when it lands, and **MUST NOT** add a new breakpoint value other than 600, 900 and 1280.
 - Grids and shelves take their columns from the measured pane through `computeGridLayout()` and `computeShelfLayout()` in `utils/gridLayout.ts` (#428, #429). Use them rather than writing new column math.
 
 ---
@@ -373,6 +373,8 @@ Benchmarks: Apple Music and Spotify on iPad. The listening audit, wireframes per
 - **MUST** keep primary actions visible without scrolling.
 
 **Built (#436):** the reciter page spans the pane. Its hero puts the round photo (240pt from 900pt, 200pt below) beside the name, with Play all, Shuffle, and round Favorite and Download buttons. Once the list is at least 720pt wide, surah rows become a table with Revelation and Verses columns under a pinned header; card mode adds columns to fit. Adhkar lists and Saved show two cards per row from 900pt, with the cards in a row sharing their height (#443).
+
+**Built (pinned hero):** from 1280pt the reciter hero is a fixed leading column, 448pt wide with the page margins, with the photo above the name. Only the rewayah tabs and the surahs scroll beside it; the tab bar still pins when the list scrolls. The rule and the column width are in `components/reciter-profile/utils/heroColumn.ts` (`HERO_COLUMN_MIN_WINDOW`).
 
 ### 10.3 Mini player
 

@@ -93,6 +93,13 @@ import {getRecitationStyleLabel} from '@/components/player/v2/recitationStyle';
 import {rankSurahs} from '@/utils/search/catalog'; // @ai
 // @ai-end
 import {hasPagerReachedInitialPage} from './utils/pagerLayout'; // @ai
+// @ai-start
+import {
+  HERO_COLUMN_WIDTH,
+  heroColumnTop,
+  usesHeroColumn,
+} from './utils/heroColumn';
+// @ai-end
 import {TabletReciterHero} from './components/TabletReciterHero'; // @ai
 import {useResponsive} from '@/hooks/useResponsive'; // @ai
 
@@ -231,6 +238,9 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
   // the page margin for the window's width class (ipad-standards §5.2).
   const {isTablet} = useResponsive();
   const pageMargin = windowWidth >= 900 ? 32 : 24;
+  // From the `large` class (1280pt) the hero is a fixed leading column and
+  // only the tab bar and the surahs scroll beside it (ipad-standards §10.2).
+  const heroColumn = usesHeroColumn(isTablet, windowWidth); // @ai
   // @ai-start
   // The pager pages must match the pager's own width, not the window: on
   // iPad the profile sits beside the sidebar inside a capped column, so
@@ -396,6 +406,7 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
   );
   const scrollTargetRef = useRef<string | null>(null);
   const activeTabRef = useRef(initialRewayatId ?? '');
+  const pagerContentWidthRef = useRef(0); // @ai: last width after the reveal
 
   const [collapsibleHeight, setCollapsibleHeight] = useState(0);
   const [stickyHeight, setStickyHeight] = useState(0);
@@ -403,6 +414,14 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
 
   // iOS: offset below transparent native header; Android: below custom sticky title
   const stickyPinOffset = isGlass ? headerHeight : stickyTitleHeight;
+  // @ai-start
+  const heroColumnTopInset = heroColumnTop({
+    isGlass,
+    headerHeight,
+    safeAreaTop: insets.top,
+    stickyPinOffset,
+  });
+  // @ai-end
   const {isLovedWithRewayat} = useLoved();
   const {
     isDownloaded,
@@ -994,7 +1013,25 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
 
   const handlePagerContentSizeChange = useCallback(
     (contentWidth: number) => {
-      if (pagerScrolledRef.current) return;
+      // @ai-start
+      // After the reveal, go back to the active page each time the pages get
+      // a new width. The width effect below can scroll before the pages have
+      // that width, and Android clamps the offset to the old content: a
+      // window resize across 1280pt left the pager part-way between pages.
+      if (pagerScrolledRef.current) {
+        if (contentWidth === pagerContentWidthRef.current) return;
+        pagerContentWidthRef.current = contentWidth;
+        const index = tabs.findIndex(tab => tab.id === activeTabRef.current);
+        if (index < 0) return;
+        // A scroll in this frame can still reach the view before its new
+        // layout, so wait one frame.
+        const x = index * pageWidth;
+        requestAnimationFrame(() =>
+          horizontalRef.current?.scrollTo({x, y: 0, animated: false}),
+        );
+        return;
+      }
+      // @ai-end
       const targetX = initialTabIndex * pageWidth;
       // @ai-start
       const initialPageReady = hasPagerReachedInitialPage(
@@ -1005,6 +1042,7 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
       );
       if (initialPageReady) {
         pagerScrolledRef.current = true;
+        pagerContentWidthRef.current = contentWidth; // @ai
         // Set scrollX so the tab bar indicator lands on the correct tab immediately
         scrollX.setValue(targetX);
         horizontalRef.current?.scrollTo({
@@ -1019,7 +1057,7 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
       }
       // @ai-end
     },
-    [pageWidth, pagerOpacity, initialTabIndex, scrollX],
+    [pageWidth, pagerOpacity, initialTabIndex, scrollX, tabs],
   );
 
   // @ai-start
@@ -1080,13 +1118,45 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
     <View style={styles.container}>
       <StatusBar style={theme.isDarkMode ? 'light' : 'dark'} />
       {/* Main content — always mounted to preserve pager scroll position */}
-      <View style={{flex: 1}} pointerEvents={showSearch ? 'none' : 'auto'}>
+      <View
+        style={[{flex: 1}, heroColumn && {flexDirection: 'row'}]} // @ai
+        pointerEvents={showSearch ? 'none' : 'auto'}>
         <>
+          {/* @ai-start */}
+          {/* Large windows: the hero is a leading column outside the scroll
+           * view. It scrolls on its own only when it is taller than the
+           * window (a short window or a large text size). */}
+          {heroColumn && (
+            <ScrollView
+              style={{width: HERO_COLUMN_WIDTH, flexGrow: 0, flexShrink: 0}}
+              showsVerticalScrollIndicator={false}
+              alwaysBounceVertical={false}>
+              <TabletReciterHero
+                reciter={reciter}
+                layout="column"
+                paddingTop={heroColumnTopInset}
+                margin={pageMargin}
+                onFavoritePress={handleToggleFavorite}
+                onShufflePress={handleShuffleAll}
+                onPlayPress={handlePlayAll}
+                isFavoriteReciter={isFavoriteReciter(reciter.id)}
+                onDownloadAllPress={handleDownloadAll}
+                isDownloadingAll={isDownloadingAll}
+                downloadAllProgress={downloadAllProgress}
+                allDownloaded={allDownloaded}
+              />
+            </ScrollView>
+          )}
+          {/* @ai-end */}
           {/* Single outer scroll: header collapses, tab bar sticks, content scrolls */}
           <RNAnimated.ScrollView
             ref={outerScrollRef}
+            style={heroColumn ? {flex: 1} : undefined} // @ai
             stickyHeaderIndices={[1]}
-            contentInsetAdjustmentBehavior={isGlass ? 'automatic' : 'never'}
+            // @ai: the column layout pads for the native header itself
+            contentInsetAdjustmentBehavior={
+              isGlass && !heroColumn ? 'automatic' : 'never'
+            }
             onScroll={RNAnimated.event(
               [{nativeEvent: {contentOffset: {y: scrollY}}}],
               {
@@ -1125,7 +1195,11 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
               onLayout={e => setCollapsibleHeight(e.nativeEvent.layout.height)}
               style={{marginBottom: -stickyPinOffset, zIndex: 11}}
               pointerEvents="box-none">
-              {isTablet ? (
+              {/* @ai: with the hero in its column, only its top inset stays
+               * here, so the tab bar starts level with the photo. */}
+              {heroColumn ? (
+                <View style={{height: heroColumnTopInset}} />
+              ) : isTablet ? (
                 <TabletReciterHero
                   reciter={reciter}
                   paddingTop={showSearch ? 16 : isGlass ? 8 : insets.top + 56}
