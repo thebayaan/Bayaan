@@ -444,6 +444,22 @@ describe('Hafs (unchanged)', () => {
     );
   });
 
+  // @ai-start
+  // The player shows Saheeh with tappable footnotes, so the text it passes
+  // carries their markers. Pasted, they read `<sup foot_note="…">1</sup>`.
+  it('copies a translation without its footnote markers', async () => {
+    await openSheet({
+      ...payload,
+      translation:
+        'the Ever-Living,<sup foot_note="226497">1</sup> the Self-Sustaining.<sup foot_note="226498">2</sup> Neither',
+    });
+    await press('Copy');
+    expect(Clipboard.setStringAsync).toHaveBeenCalledWith(
+      'HAFS-2:255 ۝\n\nthe Ever-Living, the Self-Sustaining. Neither\n\nQuran 2:255',
+    );
+  });
+  // @ai-end
+
   it('a player Repeat routes to the Hafs verse without an anchor', async () => {
     await openSheet({...payload, source: 'player'});
     await press('Repeat');

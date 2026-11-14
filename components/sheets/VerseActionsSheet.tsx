@@ -47,6 +47,7 @@ import {
 } from '@/store/timestampStore';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {getTranslationTextRaw} from '@/utils/translationLookup';
+import {stripTranslationMarkup} from '@/utils/translationMarkup'; // @ai
 import * as Clipboard from 'expo-clipboard';
 import {getRewayahShortLabel} from '@/utils/rewayahLabels';
 // @ai-start
@@ -278,12 +279,14 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
         parts.length === 1 && parts[0].hafsKey === verseKey
           ? payload?.translation
           : undefined;
-      return joinTranslationParts(
-        parts,
-        hafsKey =>
+      // Plain text: the stored text carries footnote markers, which pasted
+      // as `<sup foot_note="…">1</sup>` in the middle of the verse.
+      return joinTranslationParts(parts, hafsKey =>
+        stripTranslationMarkup(
           callerTranslation ||
-          getTranslationTextRaw(hafsKey, selectedTranslationId) ||
-          '',
+            getTranslationTextRaw(hafsKey, selectedTranslationId) ||
+            '',
+        ),
       );
     },
     [verseKey, payload?.translation, selectedTranslationId],

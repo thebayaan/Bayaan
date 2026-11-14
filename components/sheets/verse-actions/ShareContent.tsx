@@ -28,6 +28,7 @@ import {
 import {ScrollView} from 'react-native-actions-sheet';
 import {SheetManager} from 'react-native-actions-sheet';
 import {getTranslationTextRaw} from '@/utils/translationLookup';
+import {stripTranslationMarkup} from '@/utils/translationMarkup'; // @ai
 import {
   anchorShareUrl, // @ai
   verseShareUrl,
@@ -176,9 +177,13 @@ export const ShareContent: React.FC<ShareContentProps> = ({
       const surah = surahData.find(s => s.id === ready.surahNumber);
       const surahName = surah ? getSurahDisplayName(surah) : '';
       return {
+        // Plain text, without the stored footnote markers.
         translation: joinTranslationParts(
           selectionTranslationParts(ready),
-          hafsKey => getTranslationTextRaw(hafsKey, selectedTranslationId),
+          hafsKey =>
+            stripTranslationMarkup(
+              getTranslationTextRaw(hafsKey, selectedTranslationId),
+            ),
         ),
         verseRefText: `${surahName} ${ready.label}`,
         linkRefText: `${surahName} ${ready.linkLabel}`,

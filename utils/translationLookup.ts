@@ -2,6 +2,7 @@ import {
   BUNDLED_TRANSLATIONS,
   type BundledTranslationId,
 } from '@/types/translation';
+import {stripTranslationMarkup} from '@/utils/translationMarkup'; // @ai
 
 interface SaheehEntry {
   t: string;
@@ -36,10 +37,6 @@ for (const verse of Object.values(quranData)) {
   verseKeyToGlobalId[verse.verse_key] = verse.id;
 }
 
-function stripHtml(text: string): string {
-  return text.replace(/<[^>]*>/g, '');
-}
-
 export function getBundledTranslation(
   verseKey: string,
   translationId: BundledTranslationId,
@@ -50,7 +47,9 @@ export function getBundledTranslation(
   const globalId = verseKeyToGlobalId[verseKey];
   if (globalId == null) return '';
   const entry = clearQuranData.translations[globalId - 1];
-  return entry ? stripHtml(entry.text) : '';
+  // Clear Quran has no footnote texts to open, so its footnote markers go,
+  // number included: the rows showed "Alif-Lãm-Mĩm.1". @ai
+  return entry ? stripTranslationMarkup(entry.text) : ''; // @ai
 }
 
 export function getBundledTranslationRaw(

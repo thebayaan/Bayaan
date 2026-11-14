@@ -307,6 +307,22 @@ describe('Share as Text', () => {
     },
   );
 
+  // @ai-start
+  // The stored translations mark footnotes inline. Shared as they are, the
+  // message read `…the Ever-Living,<sup foot_note="226497">1</sup> the…`.
+  it('shares the translation without its footnote markers', async () => {
+    mockTranslations.set(
+      '2:255',
+      'the Ever-Living,<sup foot_note="226497">1</sup> the Self-Sustaining.<sup foot_note=76482>2</sup>',
+    );
+    open(['2:255'], 'hafs');
+    await press('Share as Text');
+    expect(sharedMessage()).toBe(
+      'HAFS-255a HAFS-255b ۝٢٥٥\n\nthe Ever-Living, the Self-Sustaining.\n\n-- Quran Al-Baqarah 2:255',
+    );
+  });
+  // @ai-end
+
   it('uses the same layout for a rewayah, labelled with it', async () => {
     open(['2:255'], 'warsh');
     await press('Share as Text');
