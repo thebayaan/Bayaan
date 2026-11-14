@@ -295,8 +295,15 @@ async function loadTrackAtIndex(
       // Superseded during the seek await — same contract as above.
       return 'superseded';
     }
-    // @ai A pause landed while this was loading: leave it loaded and paused.
-    if (pausesAtStart !== pauseEpoch) return 'loaded';
+    // @ai-start
+    // A pause landed while this was loading: leave it loaded and paused.
+    // Pause again, because on iOS the player resumes by itself when a source
+    // that replaced a playing one becomes ready, whatever was asked since.
+    if (pausesAtStart !== pauseEpoch) {
+      await expoAudioService.pause();
+      return 'loaded';
+    }
+    // @ai-end
     await expoAudioService.play();
     if (__DEV__ && startPosition > 0)
       console.log('[PlayerStore] POST-PLAY state:', {

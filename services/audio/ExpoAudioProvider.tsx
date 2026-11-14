@@ -575,6 +575,15 @@ export function ExpoAudioProvider({
         // End of queue, no repeat
         if (__DEV__) console.log('[ExpoAudioProvider] End of queue reached');
         updatePlaybackState({state: 'ended'});
+        // @ai-start
+        // Leave the last track rewound and paused. Play from the lock
+        // screen, headphones or the car goes straight to the native player,
+        // not through the store, and a native play on a track that sits at
+        // its end does nothing. The pause comes first: Android would
+        // otherwise start playing again as soon as the seek left the end.
+        await expoAudioService.pause();
+        await expoAudioService.seekTo(0);
+        // @ai-end
       }
     } catch (error) {
       console.error('[ExpoAudioProvider] Error handling track end:', error);
