@@ -110,6 +110,7 @@ import {ReaderKeyCommands} from '@/components/keyboard/ReaderKeyCommands';
 import {keyCommandsSupported} from '@/services/keyboard/keyCommands';
 import {closeTopSheet} from '@/services/keyboard/keyActions';
 import {ReadingSettingsPopover} from '@/components/popovers/ToolPopovers'; // @ai
+import {sameSpread, spreadPageToShow} from './spreadPage'; // @ai
 // @ai-end
 
 const TOTAL_PAGES = 604;
@@ -140,19 +141,6 @@ function isMushafPage(page: number): boolean {
 function pageToSpreadIndex(page: number): number {
   return Math.floor((page - 1) / 2);
 }
-
-function spreadPrimaryPage(spread: Spread): number {
-  return spread.right;
-}
-
-// @ai-start
-/** The page a visible spread stands for: the current page if the spread
- *  holds it, otherwise the spread's first page. */
-function spreadPageToKeep(spread: Spread, current: number): number {
-  if (current === spread.right || current === spread.left) return current;
-  return spreadPrimaryPage(spread);
-}
-// @ai-end
 
 // ============================================================================
 // Helpers
@@ -1060,17 +1048,16 @@ export default function MushafViewer({
     t,
   ]);
 
-  const onViewableItemsChanged = useCallback(
-    ({viewableItems}: {viewableItems: ListViewToken[]}) => {
-      if (viewableItems.length === 0) return;
-      const first = viewableItems[0].item;
-      if (first == null) return;
-      // Page number depends on data shape: `number` for single-page data,
-      // `Spread` object for facing-pages data.
-      const page: number =
-        typeof first === 'number'
-          ? first
-          : spreadPageToKeep(first as Spread, currentPageRef.current); // @ai
+  // @ai-start
+  // The page a jump in the paged pager asked for, until the spread holding
+  // it comes into view. Without it a jump to an even page took the facing
+  // odd page as current (see spreadPageToShow).
+  const jumpTargetRef = useRef<number | null>(null);
+  // @ai-end
+
+  // The page now shown in the paged pager becomes the current page. @ai
+  const showPage = useCallback(
+    (page: number) => {
       setCurrentPage(page);
       useMushafPlayerStore.setState({currentPage: page});
       trackPageChange(page);
@@ -1083,6 +1070,30 @@ export default function MushafViewer({
     },
     [trackPageChange],
   );
+
+  // @ai-start
+  const onViewableItemsChanged = useCallback(
+    ({viewableItems}: {viewableItems: ListViewToken[]}) => {
+      if (viewableItems.length === 0) return;
+      const first = viewableItems[0].item;
+      if (first == null) return;
+      // Page number depends on data shape: `number` for single-page data,
+      // `Spread` object for facing-pages data.
+      if (typeof first === 'number') {
+        jumpTargetRef.current = null;
+        showPage(first);
+        return;
+      }
+      const spread = first as Spread;
+      const jumpTarget = jumpTargetRef.current;
+      if (jumpTarget === spread.right || jumpTarget === spread.left) {
+        jumpTargetRef.current = null;
+      }
+      showPage(spreadPageToShow(spread, currentPageRef.current, jumpTarget));
+    },
+    [showPage],
+  );
+  // @ai-end
 
   // @ai-start
   // Starts a new Recent reads chain at `page`, leaving the place being read
@@ -1123,6 +1134,28 @@ export default function MushafViewer({
     [showsSpreads], // @ai
   );
 
+  // @ai-start
+  // A jump in the paged pager. With spreads, the spread that comes into view
+  // must stand for the page asked for, not its facing page. A jump to the
+  // other page of the spread already shown scrolls nowhere and the list
+  // reports nothing, so that page is made current here.
+  const jumpPagerTo = useCallback(
+    (page: number) => {
+      if (showsSpreads && sameSpread(page, currentPageRef.current)) {
+        jumpTargetRef.current = null;
+        if (page !== currentPageRef.current) showPage(page);
+        return;
+      }
+      jumpTargetRef.current = showsSpreads ? page : null;
+      flatListRef.current?.scrollToIndex({
+        index: pageToFlatListIndex(page),
+        animated: false,
+      });
+    },
+    [showsSpreads, showPage, pageToFlatListIndex],
+  );
+  // @ai-end
+
   const navigateToPage = useCallback(
     (targetPage: number) => {
       // A page past either end (reciting the last word of page 604 asked for
@@ -1155,13 +1188,10 @@ export default function MushafViewer({
       if (isVertical) {
         continuousListRef.current?.scrollToPage(targetPage);
       } else {
-        flatListRef.current?.scrollToIndex({
-          index: pageToFlatListIndex(targetPage),
-          animated: false,
-        });
+        jumpPagerTo(targetPage); // @ai
       }
     },
-    [isVertical, mushafRenderer, pageToFlatListIndex, readingColors.text], // @ai
+    [isVertical, mushafRenderer, jumpPagerTo, readingColors.text], // @ai
   );
 
   const navigateToPageAnimated = useCallback(
@@ -1316,13 +1346,10 @@ export default function MushafViewer({
       if (isVertical) {
         continuousListRef.current?.scrollToPage(page);
       } else {
-        flatListRef.current?.scrollToIndex({
-          index: pageToFlatListIndex(page),
-          animated: false,
-        });
+        jumpPagerTo(page); // @ai
       }
     },
-    [isVertical, pageToFlatListIndex],
+    [isVertical, jumpPagerTo], // @ai
   );
 
   const openSearchMode = useCallback(() => setIsSearchMode(true, false), []);
