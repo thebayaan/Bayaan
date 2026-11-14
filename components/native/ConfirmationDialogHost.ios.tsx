@@ -18,7 +18,7 @@ import {useNativeTheme} from './useNativeTheme';
  * iPad: shows `confirmDestructive` prompts as a SwiftUI confirmation dialog.
  * A regular-width window presents it as a popover, so the host moves to the
  * touch that asked for it and the arrow points at that button. Mounted once
- * at the root; renders nothing on iPhone.
+ * at the root; renders nothing on iPhone, which uses an action sheet.
  */
 export function ConfirmationDialogHost() {
   const [pending, setPending] = useState<PendingConfirmation | null>(null);
