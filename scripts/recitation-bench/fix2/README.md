@@ -292,7 +292,7 @@ held-out pool was run once after the check was frozen.
 | validation, clean (surahs 18, 36, 50) | 24 | 0 of 15,524 | 0.00 | 89.5% |
 | dev with speech at 10 dB (`run_dev_noise.sh`) | 15 | 1 of 2,356 | 0.42 | 73.3% |
 | held-out pool, quiet | 60 | 12 of 25,114 | 0.48 | 89.3% |
-| held-out pool, speech at 10 dB | 60 | still running | still running |  |
+| held-out pool, speech at 10 dB | 60 | 50 of 20,343 | 2.46 | 72.3% |
 
 Planted mistakes (28 files, seed 1, surahs 67, 78, 89), a mark on the word or a
 neighbour, from `score_planted.mjs` and `union_planted.mjs`:
@@ -306,6 +306,10 @@ neighbour, from `score_planted.mjs` and `union_planted.mjs`:
 
 Live false marks on those files: 0. Follower false marks: 17. Time from the word to
 the live mark: median 2.49 s, 90th percentile 3.82 s.
+
+The 15-nat bar was set on 15 noisy dev recitations by 5 voices. On the held-out voices
+it did not hold with background speech (2.46 against 0.42), so that set was too small
+to set a bar for noise.
 
 How the bar and the options were chosen (same files, replayed from the cache):
 

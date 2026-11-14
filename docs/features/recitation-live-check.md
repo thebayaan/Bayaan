@@ -127,7 +127,7 @@ dev and spliced recitation replays identically with it. Bench hash of the measur
 | Same reciters, surahs 18 36 50 | options accepted or dropped on | 24 recitations | 0 of 15,524 | 0.00 | 90% |
 | 5 of those reciters with background speech at 10 dB | bar tuned on | 15 recitations | 1 of 2,356 | 0.42 | 73% |
 | **8 other reciters, quiet** | held out, run once | 60 recitations, 9.8 h | **12 of 25,114** | **0.48** | 89% |
-| **The same with background speech at 10 dB** | held out, run once | 60 recitations | still running | still running |  |
+| **The same with background speech at 10 dB** | held out, run once | 60 recitations | **50 of 20,343** | **2.46** | 72% |
 | Twin-ayah recordings against their own text, 6 voices | 2 voices dev, 4 not | 714 clips | 0 of 3,725 | 0.00 | 91% |
 | Al-Ikhlas by ordinary speakers, dev half, clips labelled correct | not tuned on | 344 clips, 170 speakers | 0 of 1,108 | 0.00 | 88% |
 
@@ -143,8 +143,11 @@ twelve are, from the model's reading at each place (nothing was tuned on them):
 - 7 of the 12 are `missed`, and all 7 were settled on a single run by a very wide gap.
   Requiring two runs always, and holding a `missed` verdict back when the word that
   follows it could also be an earlier word of the ayah, are the two changes these
-  point to. Neither can be decided on the set it was seen on. At the first bar of 6 nats the background-speech row above was 17 of 2,332
-(7.3 per 1,000): one slow, soft reciter took most of them.
+  point to. Neither can be decided on the set it was seen on. With background speech the held-out voices run from 0.65 to 8.1 per 1,000, and the
+worst voice also has the fewest words judged (39%). The dev row for the same
+condition, 0.42, is the set the bar was tuned on, and it did not carry over: 15
+recitations by 5 voices were too few to set a bar for noise. At the first bar of 6
+nats that dev row was 17 of 2,332 (7.3 per 1,000).
 
 **Catches.** Mistakes spliced into the audio of 28 studio recitations (10 reciters,
 surahs 67 78 89): a word replaced by another from the same recording, a word cut out.
@@ -173,7 +176,7 @@ on a 2.1 GHz Xeon thread.
 | Gate | Result | |
 | --- | --- | --- |
 | At most 1.0 false marks per 1,000 on held-out voices, quiet | 0.48 | met |
-| The same with speech at 10 dB | still running | open |
+| The same with speech at 10 dB | 2.46 | **not met** |
 | At most 1.0 per 1,000 on correct phone-learner clips (Al-Ikhlas) | 0 of 1,108 on the dev half; the 95% upper bound is 2.7 | met on the count, not proven at this size |
 | At most 0.5 per 1,000 on the pool's test cell | not run: 0 of 26,763 on the dev and validation recitations | open |
 | At most 5 of 958 junction controls marked | not run | open |
@@ -183,10 +186,12 @@ on a 2.1 GHz Xeon thread.
 | Skipped words, 70% | 75% | met |
 | Median 1.5 s, 90th percentile 2.5 s | 2.5 s and 3.8 s | not met |
 
-The check adds no false marks on clean audio at the size measured, which was the
-blocker. It does not catch enough on its own, and on studio audio the follower's own
-marks already catch more than it does: its worth is on phone audio, where the
-follower's suspicion fails, and that is exactly what could not be measured here.
+On quiet audio the check stays inside the false-mark gate on voices it was not tuned
+on. With another voice talking in the room it does not, so by the release rule it
+cannot ship as it is. It does not catch enough on its own either, and on studio audio
+the follower's own marks already catch more than it does: its worth is on phone
+audio, where the follower's suspicion fails, and that is exactly what could not be
+measured here.
 
 ## What is not measured, and what limits it
 
@@ -220,5 +225,9 @@ follower's suspicion fails, and that is exactly what could not be measured here.
 3. Try "two runs always", holding back a `missed` verdict when the reader may have
    gone back to a word with the same letters, and the loose ends above, then measure
    on a fresh held-out set (the present one has now been looked at).
-4. The catch and speed gates need a checker trained for streaming and for noise: that
-   is the Modal training round, which has not been started and needs the owner's OK.
+4. Noise: the 50 marks on the noisy held-out set are the data for a way to know when
+   not to judge (nothing tried here told noisy windows from clean ones), or for
+   training.
+5. The catch, speed and noise gates all point at the model: a checker trained for
+   streaming and for noise. That is the Modal training round, which has not been
+   started and needs the owner's OK.
