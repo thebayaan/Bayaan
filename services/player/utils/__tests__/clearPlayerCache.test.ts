@@ -123,7 +123,7 @@ describe('clearPlayerCache() while audio plays', () => {
     );
     expect(mockedAudio.play).toHaveBeenCalledTimes(1);
     const state = usePlayerStore.getState();
-    expect(state.playback.state).toBe('ready');
+    expect(state.playback.state).toBe('playing');
     expect(state.queue.tracks[0]?.id).toBe('b');
   });
 

@@ -50,6 +50,7 @@ import {
 import {preloadTajweedData} from '@/utils/tajweedLoader';
 import {bootApp} from '@/services/appBoot';
 import {NetworkStatusMonitor} from '@/components/NetworkStatusMonitor';
+import {PlaybackFailureNotice} from '@/components/PlaybackFailureNotice'; // @ai
 import {useNetworkMonitor} from '@/hooks/useNetworkMonitor';
 import {PostHogProvider, usePostHog} from 'posthog-react-native';
 import {startWidgetSync} from '@/services/widgets/syncWidgets';
@@ -505,6 +506,7 @@ function RootLayout() {
                   onTouchStart={recordTouch} // @ai
                   onLayout={onLayoutRootView}>
                   <NetworkStatusMonitor />
+                  <PlaybackFailureNotice />
                   <ConfirmationDialogHost /* @ai: iPad confirmations */ />
                   <SheetProvider>
                     <Stack

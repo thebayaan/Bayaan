@@ -17,6 +17,10 @@ import {computeQueueRemoval} from './queueRemoval'; // @ai
 import {expoAudioService} from '@/services/audio/ExpoAudioService';
 import {audioCoordinator} from '@/services/audio/AudioCoordinator';
 import {analyticsService} from '@/services/analytics/AnalyticsService';
+// @ai-start
+import {pendingRestoreLoad} from '../utils/restoreLoad';
+import {reportPlaybackFailed} from '../utils/playbackFailure';
+// @ai-end
 
 const STORAGE_KEY = 'player-store';
 
@@ -81,6 +85,10 @@ export interface PlayerStoreState extends Omit<UnifiedPlayerState, 'ui'> {
   // Cleanup
   cleanup: () => Promise<void>;
 }
+
+// @ai A track this close to its end counts as finished when play is pressed:
+// the native players do not start again from there (ExoPlayer stays ended).
+const END_OF_TRACK_SECONDS = 0.5;
 
 // Monotonic id for the in-flight play operation. Every loadTrackAtIndex()
 // claims a fresh id at entry; cleanup() bumps it via pauseForEmptyQueue().
@@ -158,7 +166,16 @@ async function loadTrackAtIndex(
       autoPlay,
     });
 
-  await expoAudioService.loadTrack(track.url);
+  // @ai-start
+  try {
+    await expoAudioService.loadTrack(track.url);
+  } catch (error) {
+    // A superseded load that failed is not the user's problem any more: the
+    // newer action owns the state, so do not surface the failure.
+    if (opId !== playOpId) return false;
+    throw error;
+  }
+  // @ai-end
   if (opId !== playOpId) {
     // cleanup() or a newer load landed while we awaited the network — do NOT
     // seek or play; the superseding action's state is authoritative.
@@ -193,6 +210,31 @@ async function loadTrackAtIndex(
   }
   return true;
 }
+
+// @ai-start
+/**
+ * The loading flags and playback state after a load or play that failed.
+ * 'loading' must not stay behind: ExpoAudioProvider ignores the native
+ * player's status while the store says loading, so the controls would never
+ * settle again.
+ */
+function failedLoadState(
+  state: PlayerStoreState,
+): Pick<PlayerStoreState, 'loading' | 'playback'> {
+  return {
+    loading: {
+      ...state.loading,
+      queueLoading: false,
+      stateRestoring: false,
+      trackLoading: false,
+    },
+    playback:
+      state.playback.state === 'loading'
+        ? {...state.playback, state: 'paused', buffering: false}
+        : state.playback,
+  };
+}
+// @ai-end
 
 export const usePlayerStore = create<PlayerStoreState>()(
   persist(
@@ -234,6 +276,77 @@ export const usePlayerStore = create<PlayerStoreState>()(
           }));
 
           audioCoordinator.mainWillPlay();
+
+          // @ai-start
+          // Let the launch restore finish its load and seek, so this play
+          // neither starts at 0:00 under it nor reloads what it is loading.
+          await pendingRestoreLoad();
+
+          // The native play() below only resumes a source that is loaded and
+          // not at its end. On anything else it is silent while the controls
+          // show playing, so work out what should be heard and load it.
+          const {tracks, currentIndex} = get().queue;
+          const track = tracks[currentIndex];
+          if (track?.url) {
+            const {playback, settings} = get();
+            const ready = expoAudioService.isSourceReady(track.url);
+            // Where the track stands: the player knows once it holds the
+            // source; before that, the saved position does.
+            const position = ready
+              ? expoAudioService.getCurrentTime()
+              : playback.position;
+            const duration = ready
+              ? expoAudioService.getDuration()
+              : playback.duration;
+            const finished =
+              playback.state === 'ended' ||
+              (duration > 0 && position >= duration - END_OF_TRACK_SECONDS);
+
+            if (finished || !ready) {
+              // A finished track goes on to what follows it, as it would
+              // have by itself; after the last one the queue starts again.
+              // An unfinished one that is not loaded (the launch restore
+              // could not load it, a load failed, the stream broke) is
+              // loaded where it was left.
+              let index = currentIndex;
+              if (finished && settings.repeatMode !== 'track') {
+                index = currentIndex < tracks.length - 1 ? currentIndex + 1 : 0;
+              }
+              const startPosition = finished ? 0 : Math.max(0, position);
+
+              if (ready && index === currentIndex) {
+                await expoAudioService.seekTo(0);
+                await expoAudioService.play();
+              } else {
+                set(state => ({
+                  queue: {...state.queue, currentIndex: index},
+                  playback: {
+                    ...state.playback,
+                    state: 'loading' as StorePlaybackState,
+                    position: startPosition,
+                  },
+                }));
+                const stillCurrent = await loadTrackAtIndex(
+                  tracks,
+                  index,
+                  startPosition,
+                  true,
+                );
+                if (!stillCurrent) return; // superseded by a newer action
+              }
+              set(state => ({
+                playback: {
+                  ...state.playback,
+                  state: 'playing' as StorePlaybackState,
+                  position: startPosition,
+                },
+                loading: {...state.loading, trackLoading: false},
+              }));
+              return;
+            }
+          }
+          // @ai-end
+
           await expoAudioService.play();
 
           set(state => ({
@@ -248,9 +361,10 @@ export const usePlayerStore = create<PlayerStoreState>()(
           if (error instanceof Error) {
             set(state => ({
               error: {...state.error, playback: error},
-              loading: {...state.loading, trackLoading: false},
+              ...failedLoadState(state), // @ai
             }));
           }
+          reportPlaybackFailed(); // @ai
         }
       },
 
@@ -306,15 +420,16 @@ export const usePlayerStore = create<PlayerStoreState>()(
             if (repeatMode === 'queue') {
               nextIndex = 0; // Loop back to start
             } else {
-              // End of queue, stay on last track
+              // @ai-start
+              // End of queue: there is no next track, so stay on the last
+              // one as it is. This is a user "next" (a track that finishes
+              // by itself is handled in ExpoAudioProvider). It used to mark
+              // the queue as ended while the last track kept playing or sat
+              // paused mid-way, which showed a play button over audible
+              // audio and made the next play() restart the queue.
               if (__DEV__) console.log('[PlayerStore] End of queue reached');
-              set(state => ({
-                playback: {
-                  ...state.playback,
-                  state: 'ended' as StorePlaybackState,
-                },
-              }));
               return;
+              // @ai-end
             }
           }
 
@@ -352,9 +467,10 @@ export const usePlayerStore = create<PlayerStoreState>()(
           if (error instanceof Error) {
             set(state => ({
               error: {...state.error, playback: error},
-              loading: {...state.loading, trackLoading: false},
+              ...failedLoadState(state), // @ai
             }));
           }
+          reportPlaybackFailed(); // @ai
         }
       },
 
@@ -445,9 +561,10 @@ export const usePlayerStore = create<PlayerStoreState>()(
           if (error instanceof Error) {
             set(state => ({
               error: {...state.error, playback: error},
-              loading: {...state.loading, trackLoading: false},
+              ...failedLoadState(state), // @ai
             }));
           }
+          reportPlaybackFailed(); // @ai
         }
       },
 
@@ -555,6 +672,14 @@ export const usePlayerStore = create<PlayerStoreState>()(
             if (!stillCurrent) return;
           }
 
+          // @ai The load above also started playback, so say so. 'ready'
+          // here showed a play button over audible audio until the next
+          // native status update.
+          const played =
+            tracks.length > 0 &&
+            currentIndex >= 0 &&
+            currentIndex < tracks.length &&
+            !!tracks[currentIndex]?.url; // @ai
           set(state => ({
             loading: {
               ...state.loading,
@@ -564,7 +689,7 @@ export const usePlayerStore = create<PlayerStoreState>()(
             },
             playback: {
               ...state.playback,
-              state: 'ready' as StorePlaybackState,
+              state: (played ? 'playing' : 'ready') as StorePlaybackState, // @ai
               position: startPosition,
               duration: expoAudioService.getDuration() || 0,
               buffering: false,
@@ -577,14 +702,10 @@ export const usePlayerStore = create<PlayerStoreState>()(
           if (error instanceof Error) {
             set(state => ({
               error: {...state.error, queue: error},
-              loading: {
-                ...state.loading,
-                queueLoading: false,
-                stateRestoring: false,
-                trackLoading: false,
-              },
+              ...failedLoadState(state), // @ai
             }));
           }
+          reportPlaybackFailed(); // @ai
         }
       },
 
@@ -677,11 +798,7 @@ export const usePlayerStore = create<PlayerStoreState>()(
             set(state => ({
               error: {...state.error, queue: error},
               // @ai A failed reload must not leave the controls disabled.
-              loading: {
-                ...state.loading,
-                queueLoading: false,
-                trackLoading: false,
-              },
+              ...failedLoadState(state),
             }));
           }
         }

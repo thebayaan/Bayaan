@@ -401,6 +401,6 @@ describe('removeFromQueue() that leaves no current track', () => {
     expect(mockedAudio.play).toHaveBeenCalledTimes(1);
     const state = usePlayerStore.getState();
     expect(state.queue.tracks.map(t => t.id)).toEqual(['x']);
-    expect(state.playback.state).toBe('ready');
+    expect(state.playback.state).toBe('playing');
   });
 });
