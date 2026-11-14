@@ -151,6 +151,73 @@ export function carriedProgress(
   };
 }
 
+// @ai-start
+/** The same recitation: the same upload, or reciter, rewayah and surah. */
+function sameRecitation(a: Track, b: Track): boolean {
+  if (a.isUserUpload || b.isUserUpload) {
+    return (
+      a.isUserUpload === true &&
+      b.isUserUpload === true &&
+      !!a.userRecitationId &&
+      a.userRecitationId === b.userRecitationId
+    );
+  }
+  return (
+    a.reciterId === b.reciterId &&
+    a.surahId === b.surahId &&
+    (a.rewayatId || null) === (b.rewayatId || null)
+  );
+}
+
+export interface LivePlayback {
+  /** The player's current track. */
+  current: Track | undefined;
+  /** The player's position in it, in seconds. */
+  position: number;
+  /** The recent cards as they are now. */
+  recentTracks: RecentlyPlayedTrack[];
+}
+
+/**
+ * Where a resume really starts, in seconds.
+ *
+ * The plan's position comes from the snapshot the car is showing, which is
+ * only rebuilt when a recent card's progress moves by a tenth of the surah.
+ * Resuming from it jumped back by up to a tenth of the surah: several
+ * minutes, on a long one. The player's own position wins when it already
+ * holds this recitation (the rule the phone's recent cards and the widget
+ * use), then the recent card as it is now, and the plan only when neither
+ * knows it.
+ */
+export function liveResumePosition(
+  first: Track,
+  planPosition: number,
+  live: LivePlayback,
+): number {
+  if (
+    live.current &&
+    sameRecitation(live.current, first) &&
+    Number.isFinite(live.position) &&
+    live.position >= 0
+  ) {
+    return live.position;
+  }
+  const recent = live.recentTracks.find(t =>
+    first.isUserUpload
+      ? t.isUserUpload === true &&
+        !!first.userRecitationId &&
+        t.userRecitationId === first.userRecitationId
+      : !t.isUserUpload &&
+        t.reciter.id === first.reciterId &&
+        String(t.surah.id) === first.surahId &&
+        (t.rewayatId || null) === (first.rewayatId || null),
+  );
+  return recent && recent.duration > 0
+    ? recent.progress * recent.duration
+    : planPosition;
+}
+// @ai-end
+
 async function specToTrack(
   spec: CarPlanTrack,
   uploads: UploadedRecitation[],
@@ -205,6 +272,22 @@ export async function executeCarRequest(
   const firstUpload = first?.isUserUpload
     ? uploads.find(u => u.id === first.userRecitationId)
     : undefined;
+  // @ai-start
+  // A resume (the Resume card, a Jump back in row) starts where the
+  // listener really is, not where the snapshot last saw them.
+  const resumes =
+    request.kind === 'resume' ||
+    (request.kind === 'surah' && request.startAt !== undefined);
+  let startPosition = plan.startPosition;
+  if (resumes && first) {
+    const {queue, playback} = usePlayerStore.getState();
+    startPosition = liveResumePosition(first, plan.startPosition, {
+      current: queue.tracks[queue.currentIndex],
+      position: playback.position,
+      recentTracks: useRecentlyPlayedStore.getState().recentTracks,
+    });
+  }
+  // @ai-end
   if (
     plan.chain === 'new' &&
     !first?.isUserUpload &&
@@ -216,7 +299,7 @@ export async function executeCarRequest(
       ctx.recentTracks,
       reciter.id,
       surah.id,
-      plan.startPosition,
+      startPosition, // @ai
     );
     useRecentlyPlayedStore
       .getState()
@@ -236,7 +319,7 @@ export async function executeCarRequest(
   // not overwrite it or swap the audio under it.
   markCarReplacedQueue();
   const player = usePlayerStore.getState();
-  await player.updateQueue(ordered, startIndex, plan.startPosition);
+  await player.updateQueue(ordered, startIndex, startPosition); // @ai
   await player.play();
   // The phone's Uploads screen records the upload after it starts playing.
   if (plan.chain === 'new' && firstUpload) {
