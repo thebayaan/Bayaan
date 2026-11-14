@@ -54,7 +54,11 @@ export function skipTrack(direction: 1 | -1): void {
   if (!player) return;
   if (direction === -1) {
     player.skipToPrevious();
-  } else if (player.queue.currentIndex < player.queue.tracks.length - 1) {
+  } else if (
+    player.queue.currentIndex < player.queue.tracks.length - 1 ||
+    // @ai Repeat All goes round to the first track, as the next button does.
+    player.settings.repeatMode === 'queue'
+  ) {
     player.skipToNext();
   }
 }
