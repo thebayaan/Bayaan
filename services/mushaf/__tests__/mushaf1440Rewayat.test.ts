@@ -1,11 +1,12 @@
 // @ai-generated
 /**
- * Mushaf 1440 (qcf_v2) draws Hafs only, so the settings store pins the
- * rewayah to Hafs there. The DigitalKhatt data service must never serve
- * another rewayah while that pin holds: after a later switch back to a
- * DigitalKhatt font the mushaf would draw that rewayah's text and verse
- * numbers under a "Hafs" header (and the switch could even announce
- * "Now reading Warsh").
+ * Mushaf 1440 (qcf_v2) takes every rewayah: its printed glyphs are Hafs, and
+ * another rewayah's text is drawn on the same pages with the Madani
+ * DigitalKhatt font. So choosing Mushaf 1440 never moves the reader to Hafs,
+ * a rewayah switch under it commits like under any font, and the store and
+ * the DigitalKhatt data service always name the same rewayah (a "Hafs"
+ * header over another rewayah's text, or the reverse, would be wrong on
+ * every font). IndoPak alone draws Hafs only.
  *
  * Real settings store, real data service, real selection flow
  * (components/sheets/rewayahSelection.ts); only expo-sqlite is faked, with
@@ -240,88 +241,54 @@ afterEach(async () => {
 });
 
 describe('a rewayah switch still loading when Mushaf 1440 is chosen', () => {
-  it('never lands under the Hafs label, even when the store is pinned directly', async () => {
+  it('lands as chosen, under Mushaf 1440', async () => {
     const app = launch();
     await app.service.initialize();
     const release = gate(app.fake, 'dk_words_warsh');
 
-    // The reader taps Warsh; its words are still loading...
+    // The reader taps Warsh; its words are still loading when they pick
+    // Mushaf 1440.
     const pick = app.selection.chooseMushafRewayah('warsh');
     await flush();
     expect(app.service.pendingRewayah).toBe('warsh');
-    expect(app.store.getState().rewayah).toBe('hafs');
-
-    // ...when Mushaf 1440 pins the store to Hafs (what the font row did
-    // before: the store still named Hafs, so it only set the renderer).
-    app.store.getState().setMushafRenderer('qcf_v2');
-    release();
-    const outcome = await pick;
-    await flush();
-
-    expect(outcome).toEqual({kind: 'superseded'});
-    expect(nowReadingToasts(app)).toEqual([]);
-    expect(app.service.rewayah).toBe('hafs');
-    expect(app.service.isSwitching).toBe(false);
-    expect(app.store.getState()).toMatchObject({
-      rewayah: 'hafs',
-      mushafRenderer: 'qcf_v2',
-    });
-
-    // Back to a DigitalKhatt font: Hafs text under the Hafs label.
-    app.store.getState().setMushafRenderer('dk_v2');
-    expect(app.store.getState().rewayah).toBe('hafs');
-    expect(app.service.rewayah).toBe('hafs');
-    expect(app.service.getVerseText('1:2')).toBe(expected('hafs', '1:2'));
-    expect(app.service.getLineText(app.service.getPageLines(1)[0])).toBe(
-      'H1 H2 H3 H4',
+    await expect(app.selection.selectMushafRenderer('qcf_v2')).resolves.toEqual(
+      {kind: 'switched', renderer: 'qcf_v2'},
     );
-    expect(app.service.getLayoutIdentityKey()).toMatch(/^hafs@/);
-  });
-
-  it('is superseded at once when Mushaf 1440 is chosen from the font list', async () => {
-    const app = launch();
-    await app.service.initialize();
-    const release = gate(app.fake, 'dk_words_warsh');
-    const pick = app.selection.chooseMushafRewayah('warsh');
-    await flush();
-
-    const font = await app.selection.selectMushafRenderer('qcf_v2');
-    expect(font).toEqual({kind: 'switched', renderer: 'qcf_v2'});
-    // The Warsh tap is overtaken before its load even finishes.
-    expect(await pick).toEqual({kind: 'superseded'});
-    expect(app.service.pendingRewayah).toBeNull();
-
     release();
+
+    await expect(pick).resolves.toEqual({kind: 'switched', rewayah: 'warsh'});
     await flush();
-    expect(nowReadingToasts(app)).toEqual([]);
-    expect(app.service.rewayah).toBe('hafs');
+    expect(nowReadingToasts(app)).toHaveLength(1);
+    expect(app.service.rewayah).toBe('warsh');
+    expect(app.service.isSwitching).toBe(false);
+    expect(app.service.getVerseText('1:2')).toBe(expected('warsh', '1:2'));
     expect(app.store.getState()).toMatchObject({
-      rewayah: 'hafs',
+      rewayah: 'warsh',
       mushafRenderer: 'qcf_v2',
     });
   });
 });
 
-describe('while Mushaf 1440 pins Hafs', () => {
-  it('refuses a switch to another rewayah instead of committing it', async () => {
+describe('under Mushaf 1440', () => {
+  it('switches to another rewayah like any font', async () => {
     const app = launch({mushafRenderer: 'qcf_v2'});
     await app.service.initialize();
     const listener = jest.fn();
     app.service.onRewayahChange(listener);
 
-    const outcome = await app.service
-      .switchRewayah('warsh')
-      .then(() => 'committed')
-      .catch((error: unknown) => error);
+    await app.service.switchRewayah('warsh');
     await flush();
 
-    expect(app.serviceModule.isRewayahSwitchSuperseded(outcome)).toBe(true);
-    expect(app.service.rewayah).toBe('hafs');
-    expect(app.service.getVerseText('1:1')).toBe(expected('hafs', '1:1'));
-    expect(listener).not.toHaveBeenCalled();
+    expect(app.service.rewayah).toBe('warsh');
+    expect(app.service.getVerseText('1:1')).toBe(expected('warsh', '1:1'));
+    expect(listener).toHaveBeenCalledTimes(1);
+    expect(app.store.getState()).toMatchObject({
+      rewayah: 'warsh',
+      mushafRenderer: 'qcf_v2',
+    });
   });
 
-  it('is never pinned from the store while another rewayah is shown', async () => {
+  it('is chosen while another rewayah is shown, which stays', async () => {
     const app = launch({rewayah: 'warsh'});
     await app.service.initialize();
 
@@ -330,78 +297,83 @@ describe('while Mushaf 1440 pins Hafs', () => {
 
     expect(app.store.getState()).toMatchObject({
       rewayah: 'warsh',
-      mushafRenderer: 'dk_v2',
+      mushafRenderer: 'qcf_v2',
     });
     expect(app.service.rewayah).toBe('warsh');
   });
 
-  it('brings the data service back to Hafs whichever path pinned the store', async () => {
+  it('never moves the data service on its own', async () => {
     const app = launch({rewayah: 'warsh'});
     await app.service.initialize();
-    expect(app.service.rewayah).toBe('warsh');
+    const switchSpy = jest.spyOn(app.service, 'switchRewayah');
 
     // e.g. settings written as a whole (rehydrated) rather than by a tap.
-    app.store.setState({mushafRenderer: 'qcf_v2', rewayah: 'hafs'});
+    app.store.setState({mushafRenderer: 'qcf_v2'});
     await flush();
 
-    expect(app.service.rewayah).toBe('hafs');
-    expect(app.service.getVerseText('1:1')).toBe(expected('hafs', '1:1'));
-    expect(app.store.getState().rewayah).toBe('hafs');
+    expect(switchSpy).not.toHaveBeenCalled();
+    expect(app.service.rewayah).toBe('warsh');
+    expect(app.service.getVerseText('1:1')).toBe(expected('warsh', '1:1'));
+  });
+
+  it('starts on a saved non-Hafs rewayah', async () => {
+    const app = launch({rewayah: 'qalun', mushafRenderer: 'qcf_v2'});
+    await app.service.initialize();
+
+    expect(app.service.rewayah).toBe('qalun');
+    expect(app.store.getState()).toMatchObject({
+      rewayah: 'qalun',
+      mushafRenderer: 'qcf_v2',
+      rewayahFallbackFrom: null,
+    });
   });
 });
 
 describe('choosing a font (selectMushafRenderer)', () => {
-  it('moves a non-Hafs reader to Hafs before Mushaf 1440 is shown', async () => {
+  it('keeps a non-Hafs reader’s rewayah when Mushaf 1440 is chosen', async () => {
     const app = launch({rewayah: 'warsh'});
     await app.service.initialize();
+    const switchSpy = jest.spyOn(app.service, 'switchRewayah');
 
-    await expect(app.selection.selectMushafRenderer('qcf_v2')).resolves.toEqual(
+    await expect(app.selection.chooseMushafRenderer('qcf_v2')).resolves.toEqual(
       {kind: 'switched', renderer: 'qcf_v2'},
     );
-    expect(app.service.rewayah).toBe('hafs');
+
+    expect(switchSpy).not.toHaveBeenCalled();
+    expect(app.showToast).not.toHaveBeenCalled();
+    expect(app.service.rewayah).toBe('warsh');
     expect(app.store.getState()).toMatchObject({
-      rewayah: 'hafs',
+      rewayah: 'warsh',
       mushafRenderer: 'qcf_v2',
     });
   });
 
-  it('keeps the font and the rewayah when Hafs cannot be loaded for Mushaf 1440', async () => {
-    const app = launch({rewayah: 'warsh'});
+  it('refuses IndoPak for a non-Hafs reader, keeping font and rewayah', async () => {
+    const app = launch({rewayah: 'warsh', mushafRenderer: 'qcf_v2'});
     await app.service.initialize();
-    app.fake.broken.add('dk_words');
 
-    const outcome = await app.selection.chooseMushafRenderer('qcf_v2');
+    await expect(
+      app.selection.selectMushafRenderer('dk_indopak'),
+    ).resolves.toEqual({kind: 'unchanged'});
 
-    expect(outcome).toEqual({kind: 'failed'});
-    expect(app.showToast).toHaveBeenCalledWith(
-      "Couldn't switch to Mushaf 1440",
-      'Please try again.',
-      'error',
-    );
-    expect(app.service.rewayah).toBe('warsh');
     expect(app.store.getState()).toMatchObject({
       rewayah: 'warsh',
-      mushafRenderer: 'dk_v2',
+      mushafRenderer: 'qcf_v2',
     });
   });
 
-  it('lets the latest font tap win over a Mushaf 1440 tap still loading Hafs', async () => {
+  it('applies font taps in order', async () => {
     const app = launch({rewayah: 'warsh'});
     await app.service.initialize();
-    const release = gate(app.fake, 'dk_words');
 
-    const toQcf = app.selection.selectMushafRenderer('qcf_v2');
-    await flush();
-    await expect(app.selection.selectMushafRenderer('dk_v1')).resolves.toEqual({
-      kind: 'switched',
-      renderer: 'dk_v1',
+    await app.selection.selectMushafRenderer('qcf_v2');
+    await app.selection.selectMushafRenderer('dk_v1');
+
+    expect(app.store.getState()).toMatchObject({
+      rewayah: 'warsh',
+      mushafRenderer: 'dk_v1',
     });
-    release();
-
-    await expect(toQcf).resolves.toEqual({kind: 'superseded'});
-    await flush();
-    expect(app.store.getState().mushafRenderer).toBe('dk_v1');
-    expect(app.store.getState().rewayah).toBe(app.service.rewayah);
+    expect(app.service.rewayah).toBe('warsh');
   });
 
   it('leaves a Hafs reader exactly as before (no data-service switch)', async () => {
@@ -423,8 +395,8 @@ describe('choosing a font (selectMushafRenderer)', () => {
 // Port of the verifiers' switch stress: random rapid rewayah taps, font
 // taps (the real font-row flow) and side loads, with random read latency.
 // Invariants, checked at every cache notification, store change and step:
-//  I1 initialized and not under Mushaf 1440: the store names the rewayah the
-//     main cache serves;
+//  I1 initialized: the store names the rewayah the main cache serves (under
+//     every font, Mushaf 1440 included);
 //  I2 every main-cache read is the served rewayah's own text;
 //  I3 tryGetVerseText(vk, r) is null or r's own text, never another's;
 //  I4 once everything settles, store and service agree and nothing loads;
@@ -455,7 +427,7 @@ describe.each([
       if (!service.initialized) return;
       const served = service.rewayah;
       const settings = store.getState();
-      if (settings.mushafRenderer !== 'qcf_v2' && settings.rewayah !== served) {
+      if (settings.rewayah !== served) {
         violations.add(
           `I1 ${where}: store=${settings.rewayah} served=${served}`,
         );

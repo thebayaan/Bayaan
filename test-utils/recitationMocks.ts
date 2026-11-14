@@ -195,6 +195,21 @@ export function wordProgress(
   };
 }
 
+/** The engine's guess at the reader's place while ayat still tie (debug event). */
+export function tentative(
+  surah: number,
+  ayah: number,
+  word: number,
+  totalWords: number,
+): WorkerOutbound {
+  return {
+    type: 'debug',
+    event: 'tentative',
+    at: 0,
+    data: {type: 'tentative', surah, ayah, word, totalWords},
+  };
+}
+
 export function verseMatch(
   surah: number,
   ayah: number,

@@ -94,10 +94,59 @@ index de127c7..f59d83d 100644
  export const BUFFER_CAP = 1000;
  export const SAMPLE_RATE = 16000;
 diff --git a/node_modules/@tilawa/core/dist/recitation/engine.js b/node_modules/@tilawa/core/dist/recitation/engine.js
-index 0a41219..54a4689 100644
+index 0a41219..a4d492a 100644
 --- a/node_modules/@tilawa/core/dist/recitation/engine.js
 +++ b/node_modules/@tilawa/core/dist/recitation/engine.js
-@@ -476,8 +476,9 @@ export class RecitationEngine {
+@@ -28,6 +28,7 @@ export class RecitationEngine {
+     struggles = 0;
+     relocateCandidate = null;
+     lastCursorWord = -1;
++    lastTentativeWord = -1;
+     lastStates = new Map();
+     prevSettled = false;
+     lastStruggleChars = 0;
+@@ -111,6 +112,7 @@ export class RecitationEngine {
+         this.struggles = 0;
+         this.relocateCandidate = null;
+         this.lastCursorWord = -1;
++        this.lastTentativeWord = -1;
+         this.lastStates.clear();
+         this.prevSettled = false;
+         this.lastStruggleChars = 0;
+@@ -168,6 +170,7 @@ export class RecitationEngine {
+         this.struggles = 0;
+         this.relocateCandidate = null;
+         this.lastCursorWord = -1;
++        this.lastTentativeWord = -1;
+         this.lastStates.clear();
+         this.prevSettled = false;
+         this.lastRelocateFrame = this.framesDecoded;
+@@ -224,6 +227,24 @@ export class RecitationEngine {
+                     return this.lock(back.wordIndex, this.buffer.slice(back.from), "located");
+                 return this.lock(hit.wordIndex, this.buffer.slice(at), "located");
+             }
++            // The page's place ties with others the words have not separated yet:
++            // say where the reader probably is, for display only (Bayaan's patch).
++            if (!win && result.tentative && result.hits[0]) {
++                const h = result.hits[0];
++                const idx = this.corpus.wordAt(Math.max(h.refOffset, h.refEnd - 1));
++                if (idx !== this.lastTentativeWord) {
++                    this.lastTentativeWord = idx;
++                    const surah = this.corpus.wordSurah[idx];
++                    const ayah = this.corpus.wordAyah[idx];
++                    events.push({
++                        type: "tentative",
++                        surah,
++                        ayah,
++                        word: this.corpus.wordInAyah[idx],
++                        totalWords: this.corpus.ayahWordCount(surah, ayah),
++                    });
++                }
++            }
+         }
+         if (!this.locateFailedEmitted &&
+             this.framesDecoded - this.searchStartFrame >= this.cfg.locateFailedFrames) {
+@@ -476,8 +497,9 @@ export class RecitationEngine {
          }
          if (changes.length)
              events.push({ type: "verdicts", changes });
@@ -645,6 +694,66 @@ index 0000000..8210e10
 +        return { first, frames, data };
 +    }
 +}
+diff --git a/node_modules/@tilawa/core/dist/recitation/search.js b/node_modules/@tilawa/core/dist/recitation/search.js
+index 4e66502..088438c 100644
+--- a/node_modules/@tilawa/core/dist/recitation/search.js
++++ b/node_modules/@tilawa/core/dist/recitation/search.js
+@@ -13,6 +13,11 @@ const CANDIDATE_WINDOWS = 24;
+ const VERIFY_MARGIN_BEFORE = 16;
+ const VERIFY_MARGIN_AFTER = 32;
+ const MIN_ALIGNED = 20;
++// A page hint may pick between equally good places only once this many heard
++// chars still fit all of them, i.e. the words themselves cannot tell them apart.
++// Before that a tie waits for more words, as it does with no hint (Bayaan's
++// engine patch: an opening shared by many ayat locked the page's ayah at once).
++const HINT_TIE_MIN_ALIGNED = 90;
+ const SURAH_GAP = 8;
+ const SHORT_QUERY = 100;
+ const PREAMBLE_MAX_DISTANCE = 0.3;
+@@ -181,6 +186,9 @@ export class QuranIndex {
+             }
+         }
+         result.decisive = this.isDecisive(result.hits, rest.length, bonus, hint);
++        // Not decisive only because the hint may not settle the tie yet: the
++        // engine can show this place as tentative, with no verdicts.
++        result.tentative = !result.decisive && this.hintHoldsTie(result.hits, rest.length, bonus, hint);
+         for (let i = 0; i < result.hits.length; i++) {
+             const h = result.hits[i];
+             if (collapsed.has(i))
+@@ -287,12 +295,21 @@ export class QuranIndex {
+             return false;
+         if (aligned < MIN_ALIGNED)
+             return false;
+-        const rival = this.rival(hits, hint);
++        const rival = this.rival(hits, hint, aligned);
+         if (!rival)
+             return true;
+         return rival.distance - best.distance >= this.cfg.searchDecisiveMargin;
+     }
+-    rival(hits, hint) {
++    /** The hint's place ties with others and only the tie gate keeps it from locking. */
++    hintHoldsTie(hits, queryLength, alignedBonus, hint) {
++        const best = hits[0];
++        if (!hint || !best || best.surah !== hint.surah)
++            return false;
++        if (queryLength - best.queryStart + alignedBonus < MIN_ALIGNED)
++            return false;
++        return this.isDecisive(hits, queryLength, alignedBonus + HINT_TIE_MIN_ALIGNED, hint);
++    }
++    rival(hits, hint, aligned = Infinity) {
+         const best = hits[0];
+         if (!best)
+             return undefined;
+@@ -300,6 +317,9 @@ export class QuranIndex {
+             const cap = best.distance + this.cfg.searchDecisiveMargin;
+             const near = hits.filter((h) => h.distance <= cap);
+             if (near.some((h) => h.surah === hint.surah)) {
++                // A tie the words have not had the chance to break stays a tie.
++                if (near.length > 1 && aligned < HINT_TIE_MIN_ALIGNED)
++                    return near.find((h) => h !== best);
+                 return hits.find((h) => h !== best && h.distance > cap);
+             }
+         }
 diff --git a/node_modules/@tilawa/core/dist/recitation/session.d.ts b/node_modules/@tilawa/core/dist/recitation/session.d.ts
 index 24b499d..dd9975c 100644
 --- a/node_modules/@tilawa/core/dist/recitation/session.d.ts

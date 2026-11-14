@@ -11,7 +11,7 @@ the mushaf bottom bar; user-facing name "Follow my recitation".
 | 3 | 37:130 word override | done |
 | 4 | State: `debug: true` engine events give searching / following / lost; bar and iOS 26 toolbar show Stop plus "Finding your place…" or "Ya-Sin 36:4", Play hidden while listening | done |
 | 5 | Engine quick wins: `enableFallback: false`, verdict memo + observe guard + Set cleanup patch (identical output on 4 surahs; jitless 10 to 42% faster) | done |
-| 6 | Recited ayat tint (under all layers, DK pages and vertical mushaf); band in QCF and reading views; word tint in ContinuousMushafView; Hafs-only gate | done (recited tint not in QCF or list views yet) |
+| 6 | Recited ayat tint (under all layers, DK pages and vertical mushaf); band in QCF and reading views; word tint in ContinuousMushafView; Hafs-only gate | done (recited tint not in list views yet; Mushaf 1440 draws every recitation layer since its stable renderer, see [mushaf-1440.md](../mushaf-1440.md)) |
 | 7 | Unload: 1 min after leaving the mushaf, 5 min after a take, at once on memory warning | done |
 | 8 | First run: intro sheet (on device, audio stays on the phone, 75 MB, Hafs, no tajweed claims); mic permission is asked before the download; progress in the bar and settings | done (What's New entry left for release time, it is keyed to the version) |
 | 9 | Analytics: started, locked (time to lock, hint matched), stopped (duration, ayat, reason, rtf, max feed, load), model download outcome, errors by stage | done |
