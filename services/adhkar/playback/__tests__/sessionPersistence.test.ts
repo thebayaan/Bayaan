@@ -101,6 +101,31 @@ it('restores as paused at the saved dhikr', async () => {
   });
 });
 
+// @ai-start
+it('keeps the clip length with the position across a restart', async () => {
+  jest.spyOn(Date, 'now').mockReturnValue(at(11));
+  await saveSession({...live, positionSec: 30, durationSec: 40});
+  expect(await loadSavedSession()).toMatchObject({
+    positionSec: 30,
+    durationSec: 40,
+  });
+  await restoreSavedSession(async () => items);
+  expect(useAdhkarSessionStore.getState().session).toMatchObject({
+    status: 'paused',
+    positionSec: 30,
+    durationSec: 40,
+  });
+});
+
+it('rejects a saved session whose clip length is not a number', async () => {
+  await AsyncStorage.setItem(
+    'adhkar-session-v1',
+    JSON.stringify({...saved(), durationSec: 'long'}),
+  );
+  expect(await loadSavedSession()).toBeNull();
+});
+// @ai-end
+
 it('drops a saved session whose dhikr no longer exists', async () => {
   jest.spyOn(Date, 'now').mockReturnValue(at(11));
   await saveSession(live);

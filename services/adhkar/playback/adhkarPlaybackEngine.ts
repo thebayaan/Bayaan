@@ -115,18 +115,43 @@ export function resetAdhkarEngineForTests(): void {
   pendingSeek = null;
 }
 
+// @ai-start
+// False while the player still holds the previous clip (the reader was swiped
+// while paused) or holds nothing yet (a restored session). The player's time
+// and length then belong to another dhikr, or to none.
+function isSessionClipLoaded(session: AdhkarSession | null): boolean {
+  return !!activePlayer && !!session && loadedToken === session.trackToken;
+}
+
 export function getAdhkarPlaybackPosition(): {
   currentTime: number;
   duration: number;
 } {
-  if (!activePlayer) return {currentTime: 0, duration: 0};
+  const session = useAdhkarSessionStore.getState().session;
+  if (activePlayer && isSessionClipLoaded(session)) {
+    return {
+      currentTime: activePlayer.currentTime,
+      duration: activePlayer.duration,
+    };
+  }
+  // Where Play will start. Reading the player here showed the previous
+  // dhikr's progress on a dhikr that had not played, and an empty bar for a
+  // restored session that resumes mid-clip.
   return {
-    currentTime: activePlayer.currentTime,
-    duration: activePlayer.duration,
+    currentTime: session?.positionSec ?? 0,
+    duration: session?.durationSec ?? 0,
   };
 }
 
 export function seekAdhkarPlayback(seconds: number): void {
+  const {session, dispatch} = useAdhkarSessionStore.getState();
+  if (!isSessionClipLoaded(session)) {
+    // Seeking the player would move the previous clip and the drag would be
+    // lost. Keep it as the session's position: load() starts from it.
+    if (session) dispatch({type: 'positionSaved', positionSec: seconds});
+    return;
+  }
+  // @ai-end
   pendingSeek = null;
   try {
     activePlayer?.seekTo(seconds);
@@ -217,9 +242,17 @@ export function startAdhkarPlaybackEngine(
     // would land on a dhikr that was swiped to while paused.
     if (!activePlayer || loadedToken !== store.getState().session?.trackToken)
       return;
-    store
-      .getState()
-      .dispatch({type: 'positionSaved', positionSec: activePlayer.currentTime});
+    // @ai-start
+    // The clip's length goes with it, when the player knows it: a position
+    // alone cannot be drawn on the progress bar after a restart.
+    const duration = activePlayer.duration;
+    store.getState().dispatch({
+      type: 'positionSaved',
+      positionSec: activePlayer.currentTime,
+      durationSec:
+        Number.isFinite(duration) && duration > 0 ? duration : undefined,
+    });
+    // @ai-end
   }
 
   function applyPendingSeek(status: PlayerStatus, token: number): void {

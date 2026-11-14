@@ -219,7 +219,10 @@ export const AdhkarAudioControls: React.FC<AdhkarAudioControlsProps> =
             <Slider
               style={styles.slider}
               value={isCurrent ? progress : 0}
-              disabled={!isCurrent}
+              // Also off while the clip's length is unknown (a dhikr swiped
+              // to while paused, before its first Play): a drag could not be
+              // turned into a time and would be silently dropped.
+              disabled={!isCurrent || !(duration > 0)}
               onSlidingStart={handleSliderStart}
               onSlidingComplete={handleSlidingComplete}
               minimumValue={0}

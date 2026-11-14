@@ -432,6 +432,41 @@ describe('rules 7 and 8, player events', () => {
       ),
     ).toMatchObject({positionSec: 12, lastActiveAt: 5});
   });
+  // @ai-start
+  it('positionSaved keeps the clip length it is given', () => {
+    const paused = reduceSession(
+      session({status: 'paused'}),
+      {type: 'positionSaved', positionSec: 12, durationSec: 40},
+      NOW,
+    );
+    expect(paused).toMatchObject({positionSec: 12, durationSec: 40});
+    // A later position without a length (a seek before the clip is loaded
+    // again) is still a position in the same clip.
+    expect(
+      reduceSession(paused, {type: 'positionSaved', positionSec: 20}, NOW),
+    ).toMatchObject({positionSec: 20, durationSec: 40});
+  });
+  it('another dhikr starts without the previous clip length', () => {
+    const before = session({
+      status: 'paused',
+      positionSec: 12,
+      durationSec: 40,
+    });
+    const swiped = reduceSession(
+      before,
+      {type: 'swipedTo', listId: 'morning-adhkar', dhikrId: 'b'},
+      NOW,
+    );
+    expect(swiped).toMatchObject({index: 1, positionSec: 0});
+    expect(swiped?.durationSec).toBeUndefined();
+    const advanced = reduceSession(
+      {...before, status: 'playing'},
+      {type: 'trackEnded', token: before.trackToken},
+      NOW,
+    );
+    expect(advanced?.durationSec).toBeUndefined();
+  });
+  // @ai-end
   it('restored replaces the state', () => {
     const restored = session({status: 'paused', index: 3});
     expect(

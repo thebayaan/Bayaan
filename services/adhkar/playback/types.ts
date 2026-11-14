@@ -27,6 +27,12 @@ export interface AdhkarSession extends SessionSource {
   error: boolean;
   trackToken: number;
   positionSec: number;
+  // @ai-start
+  // Length of the current clip, saved together with positionSec so the
+  // progress bar can show a paused or restored position before the clip is
+  // loaded again. Absent until the clip has been paused once.
+  durationSec?: number;
+  // @ai-end
   lastActiveAt: number;
 }
 
@@ -52,7 +58,7 @@ export type SessionEvent =
   | {type: 'playerPaused'}
   | {type: 'playerResumed'}
   | {type: 'otherAudioStarted'}
-  | {type: 'positionSaved'; positionSec: number}
+  | {type: 'positionSaved'; positionSec: number; durationSec?: number} // @ai
   | {type: 'restored'; session: AdhkarSession};
 
 export interface SavedSession {
@@ -62,5 +68,6 @@ export interface SavedSession {
   loop: boolean;
   dhikrId: string;
   positionSec: number;
+  durationSec?: number; // @ai
   lastActiveAt: number;
 }

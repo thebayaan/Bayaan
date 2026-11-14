@@ -35,10 +35,14 @@ jest.mock('@/utils/adhkarAudio', () => ({
   hasAudio: (f: string | null) => f !== null,
   getAudioSource: () => 1,
 }));
+// @ai-start
+let mockPosition = {currentTime: 0, duration: 10};
+const mockSeek = jest.fn();
 jest.mock('@/services/adhkar/playback/adhkarPlaybackEngine', () => ({
-  getAdhkarPlaybackPosition: () => ({currentTime: 0, duration: 10}),
-  seekAdhkarPlayback: jest.fn(),
+  getAdhkarPlaybackPosition: () => mockPosition,
+  seekAdhkarPlayback: (seconds: number) => mockSeek(seconds),
 }));
+// @ai-end
 
 const src: SessionSource = {
   listId: 'morning-adhkar',
@@ -80,9 +84,13 @@ afterEach(() => {
   mounted = undefined;
 });
 
-beforeEach(() =>
-  useAdhkarSessionStore.setState({session: null, revealToken: 0}),
-);
+beforeEach(() => {
+  useAdhkarSessionStore.setState({session: null, revealToken: 0});
+  // @ai-start
+  mockPosition = {currentTime: 0, duration: 10};
+  mockSeek.mockClear();
+  // @ai-end
+});
 
 it('plays this card even while another list plays all', () => {
   useAdhkarSessionStore.getState().dispatch({
@@ -127,6 +135,50 @@ it('reserves the same progress row height on current and other cards', () => {
 });
 
 // @ai-start
+describe('progress bar of the session dhikr', () => {
+  function slider(renderer: ReactTestRenderer) {
+    return renderer.root.find(
+      node =>
+        node.props.maximumValue === 1 &&
+        typeof node.props.onSlidingComplete === 'function' &&
+        typeof node.type !== 'string',
+    );
+  }
+  function pausedOn(dhikrIndex: number): void {
+    const {dispatch} = useAdhkarSessionStore.getState();
+    dispatch({type: 'pressCard', source: src, index: dhikrIndex});
+    dispatch({type: 'toggle'});
+  }
+
+  it('shows the reported position and seeks within the clip length', () => {
+    mockPosition = {currentTime: 30, duration: 40};
+    pausedOn(0);
+    const bar = slider(renderCard('a'));
+    expect(bar.props.value).toBeCloseTo(0.75);
+    expect(bar.props.disabled).toBe(false);
+    act(() => {
+      bar.props.onSlidingComplete(0.25);
+    });
+    expect(mockSeek).toHaveBeenCalledWith(10);
+  });
+
+  it('cannot be dragged while the clip length is unknown', () => {
+    mockPosition = {currentTime: 0, duration: 0};
+    pausedOn(0);
+    const bar = slider(renderCard('a'));
+    expect(bar.props.value).toBe(0);
+    expect(bar.props.disabled).toBe(true);
+  });
+
+  it('stays off on a card that is not the session dhikr', () => {
+    mockPosition = {currentTime: 30, duration: 40};
+    pausedOn(0);
+    const bar = slider(renderCard('b'));
+    expect(bar.props.value).toBe(0);
+    expect(bar.props.disabled).toBe(true);
+  });
+});
+
 describe('Repeat before the dhikr plays', () => {
   function Card({dhikrId}: {dhikrId: string}): React.JSX.Element {
     return (

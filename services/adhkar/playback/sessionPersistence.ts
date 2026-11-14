@@ -22,6 +22,7 @@ export function toSavedSession(session: AdhkarSession): SavedSession | null {
     loop: session.loop,
     dhikrId: item.dhikrId,
     positionSec: session.positionSec,
+    durationSec: session.durationSec, // @ai
     lastActiveAt: session.lastActiveAt,
   };
 }
@@ -43,6 +44,8 @@ function isSavedSession(value: unknown): value is SavedSession {
     typeof v.loop === 'boolean' &&
     typeof v.dhikrId === 'string' &&
     typeof v.positionSec === 'number' &&
+    // @ai: absent in sessions saved before the clip length was kept
+    (v.durationSec === undefined || typeof v.durationSec === 'number') &&
     typeof v.lastActiveAt === 'number'
   );
 }
@@ -132,6 +135,7 @@ async function restoreNow(
       error: false,
       trackToken: 1,
       positionSec: saved.positionSec,
+      durationSec: saved.durationSec, // @ai
       lastActiveAt: saved.lastActiveAt,
     },
   });

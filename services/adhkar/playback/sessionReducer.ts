@@ -74,6 +74,7 @@ function moveTo(
     error: false,
     trackToken: session.trackToken + 1,
     positionSec: 0,
+    durationSec: undefined, // @ai: the previous clip's length
     lastActiveAt: now,
   };
 }
@@ -219,7 +220,13 @@ export function reduceSession(
       return {...state, status: 'paused', lastActiveAt: now};
     case 'positionSaved':
       if (!state) return state;
-      return {...state, positionSec: event.positionSec};
+      // @ai-start
+      return {
+        ...state,
+        positionSec: event.positionSec,
+        durationSec: event.durationSec ?? state.durationSec,
+      };
+    // @ai-end
     case 'restored':
       return event.session;
   }

@@ -2,6 +2,8 @@ import {AppState} from 'react-native';
 import {
   startAdhkarPlaybackEngine,
   resetAdhkarEngineForTests,
+  getAdhkarPlaybackPosition, // @ai
+  seekAdhkarPlayback, // @ai
 } from '@/services/adhkar/playback/adhkarPlaybackEngine';
 import {useAdhkarSessionStore} from '@/store/adhkarSessionStore';
 import type {SessionSource} from '@/services/adhkar/playback/types';
@@ -456,6 +458,119 @@ describe('restored position', () => {
     expect(player.seekTo).toHaveBeenCalledTimes(1);
   });
 });
+
+// @ai-start
+describe('position shown and seeked while the clip is not the loaded one', () => {
+  function pausedOnAThenSwipedToB(): void {
+    dispatch({type: 'pressPlayAll', source: src});
+    player.emit({playing: true});
+    player.currentTime = 12;
+    player.duration = 40;
+    dispatch({type: 'toggle'});
+    dispatch({type: 'swipedTo', listId: src.listId, dhikrId: 'b'});
+  }
+
+  function restoreAt(positionSec: number, durationSec?: number): void {
+    dispatch({
+      type: 'restored',
+      session: {
+        ...src,
+        index: 1,
+        mode: 'all',
+        loop: false,
+        status: 'paused',
+        error: false,
+        trackToken: 1,
+        positionSec,
+        durationSec,
+        lastActiveAt: 0,
+      },
+    });
+  }
+
+  it('reports the player while its clip is the session dhikr', () => {
+    dispatch({type: 'pressPlayAll', source: src});
+    player.emit({playing: true});
+    player.currentTime = 12;
+    player.duration = 40;
+    expect(getAdhkarPlaybackPosition()).toEqual({
+      currentTime: 12,
+      duration: 40,
+    });
+    dispatch({type: 'toggle'});
+    expect(getAdhkarPlaybackPosition()).toEqual({
+      currentTime: 12,
+      duration: 40,
+    });
+    // The pause keeps the length with the position.
+    expect(useAdhkarSessionStore.getState().session).toMatchObject({
+      positionSec: 12,
+      durationSec: 40,
+    });
+  });
+
+  it('does not show the previous clip on a dhikr swiped to while paused', () => {
+    pausedOnAThenSwipedToB();
+    // The player still holds clip a at 12 s of 40 s.
+    expect(getAdhkarPlaybackPosition()).toEqual({currentTime: 0, duration: 0});
+  });
+
+  it('keeps a seek made before the swiped-to dhikr is loaded', () => {
+    pausedOnAThenSwipedToB();
+    player.seekTo.mockClear();
+    seekAdhkarPlayback(5);
+    // Not a seek of clip a, which is still the loaded one.
+    expect(player.seekTo).not.toHaveBeenCalled();
+    expect(useAdhkarSessionStore.getState().session?.positionSec).toBe(5);
+    dispatch({type: 'toggle'});
+    expect(player.replace).toHaveBeenCalledTimes(2);
+    expect(player.seekTo).toHaveBeenCalledWith(5);
+  });
+
+  it('shows where a restored session will resume before Play', () => {
+    restoreAt(30, 40);
+    expect(player.replace).not.toHaveBeenCalled();
+    expect(getAdhkarPlaybackPosition()).toEqual({
+      currentTime: 30,
+      duration: 40,
+    });
+  });
+
+  it('shows the position alone when the restored length is unknown', () => {
+    restoreAt(30);
+    expect(getAdhkarPlaybackPosition()).toEqual({currentTime: 30, duration: 0});
+  });
+
+  it('a seek on a restored session moves where Play starts', () => {
+    restoreAt(30, 40);
+    seekAdhkarPlayback(10);
+    expect(player.seekTo).not.toHaveBeenCalled();
+    expect(getAdhkarPlaybackPosition()).toEqual({
+      currentTime: 10,
+      duration: 40,
+    });
+    dispatch({type: 'toggle'});
+    expect(player.replace).toHaveBeenCalledTimes(1);
+    expect(player.seekTo).toHaveBeenCalledWith(10);
+  });
+
+  it('seeks the player once the session dhikr is the loaded clip', () => {
+    dispatch({type: 'pressPlayAll', source: src});
+    player.emit({playing: true});
+    seekAdhkarPlayback(3);
+    expect(player.seekTo).toHaveBeenCalledWith(3);
+    expect(useAdhkarSessionStore.getState().session?.positionSec).toBe(0);
+  });
+
+  it('reports nothing without a session', () => {
+    dispatch({type: 'pressPlayAll', source: src});
+    player.emit({playing: true});
+    player.currentTime = 12;
+    dispatch({type: 'stop'});
+    expect(getAdhkarPlaybackPosition()).toEqual({currentTime: 0, duration: 0});
+  });
+});
+// @ai-end
 
 describe('lock screen next / previous', () => {
   it('moves the session to the next and previous dhikr', () => {
