@@ -12,11 +12,19 @@ jest.mock('expo-file-system/legacy', () => ({
   deleteAsync: jest.fn(),
 }));
 jest.mock('react-native-device-info', () => ({}));
+let mockDownloads: Array<{filePath: string; fileSize: number}> = [];
 jest.mock('../player/store/downloadStore', () => ({
-  useDownloadStore: {getState: () => ({downloads: []})},
+  useDownloadStore: {getState: () => ({downloads: mockDownloads})},
+}));
+jest.mock('../downloadService', () => ({
+  resolveFilePath: (name: string) => `file:///docs/${name}`,
 }));
 
-import {clearCacheDirectory, getCacheStorage} from '../storageService';
+import {
+  clearCacheDirectory,
+  getCacheStorage,
+  getDownloadsStorage,
+} from '../storageService';
 
 const fs = FileSystem as unknown as {
   readDirectoryAsync: jest.Mock;
@@ -125,5 +133,23 @@ describe('getCacheStorage', () => {
       images: {children: {'a.jpg': {size: 20}}},
     };
     await expect(getCacheStorage()).resolves.toBe(20);
+  });
+});
+
+describe('getDownloadsStorage', () => {
+  it('reads the file for downloads that were recorded with size 0', async () => {
+    mockDownloads = [
+      {filePath: 'a.mp3', fileSize: 300},
+      {filePath: 'b.mp3', fileSize: 0},
+      {filePath: 'gone.mp3', fileSize: 0},
+    ];
+    fs.getInfoAsync.mockImplementation(async (uri: string) =>
+      uri === 'file:///docs/b.mp3'
+        ? {exists: true, isDirectory: false, size: 700}
+        : {exists: false, isDirectory: false},
+    );
+    await expect(getDownloadsStorage()).resolves.toBe(1000);
+    // The recorded size is trusted when there is one.
+    expect(fs.getInfoAsync).not.toHaveBeenCalledWith('file:///docs/a.mp3');
   });
 });

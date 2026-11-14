@@ -47,7 +47,7 @@ export function useStorageBreakdown() {
         const deviceStorage = await getDeviceStorage();
 
         // Get downloads storage
-        const downloadsSize = getDownloadsStorage();
+        const downloadsSize = await getDownloadsStorage();
         console.log('[Storage] Downloads size:', downloadsSize, 'bytes');
 
         // Get cache storage

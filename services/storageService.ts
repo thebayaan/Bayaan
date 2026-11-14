@@ -5,16 +5,33 @@ import i18n from '@/i18n';
 import {decimalSeparator} from '@/i18n/format';
 // @ai-end
 import {useDownloadStore} from './player/store/downloadStore';
+import {resolveFilePath} from './downloadService'; // @ai
 
-export function getDownloadsStorage(): number {
+// @ai-start
+export async function getDownloadsStorage(): Promise<number> {
   const downloads = useDownloadStore.getState().downloads;
   console.log('[StorageService] Total downloads:', downloads.length);
-  const totalSize = downloads.reduce((total, download) => {
-    return total + (download.fileSize || 0);
-  }, 0);
+  // Downloads saved by earlier Android builds were recorded with size 0 (the
+  // length header was looked up under the wrong case), which showed as
+  // "Downloads: 0 bytes". For those, read the size from the file.
+  const sizes = await Promise.all(
+    downloads.map(async download => {
+      if (download.fileSize) return download.fileSize;
+      try {
+        const info = await FileSystem.getInfoAsync(
+          resolveFilePath(download.filePath),
+        );
+        return info.exists ? info.size || 0 : 0;
+      } catch {
+        return 0;
+      }
+    }),
+  );
+  const totalSize = sizes.reduce((total, size) => total + size, 0);
   console.log('[StorageService] Total downloads size:', totalSize, 'bytes');
   return totalSize;
 }
+// @ai-end
 
 // @ai-start
 // Folders in the cache directory that are in use while the app runs, so
