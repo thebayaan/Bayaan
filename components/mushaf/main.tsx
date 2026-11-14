@@ -1139,28 +1139,6 @@ export default function MushafViewer({
   );
   // @ai-end
 
-  // Subscribe to external navigation requests (e.g. from Similar Verses)
-  const navRequestId = useMushafNavigationStore(s => s.requestId);
-  useEffect(() => {
-    if (navRequestId === 0) return;
-    const {targetPage, targetVerseKey, clear} =
-      useMushafNavigationStore.getState();
-    if (targetPage) {
-      navigateToPage(targetPage);
-      if (targetVerseKey) {
-        useMushafVerseSelectionStore
-          .getState()
-          .selectVerse(targetVerseKey, targetPage);
-        // Only when a verse was selected here. This effect also re-runs
-        // with nothing to do (on mount, and whenever the pager's navigate
-        // function changes with the theme, font or rotation); it armed a
-        // timer each time, which then cleared the reader's own selection.
-        flashSelection(); // @ai
-      }
-      clear();
-    }
-  }, [navRequestId, navigateToPage, flashSelection]); // @ai
-
   // @ai-start
   // A selection of rewayah verse units is numbered in that rewayah: drop it
   // when the shown text switches to another rewayah (verse-units contract
@@ -1213,6 +1191,32 @@ export default function MushafViewer({
     },
     [isVertical, navigateToPage, flashSelection], // @ai
   );
+
+  // @ai-start
+  // Navigation requests from outside the viewer (a result tapped in the
+  // verse sheet's Similar Verses). The sheet asks only while a reader is
+  // open (isReaderOpen), which this reports.
+  useEffect(() => useMushafNavigationStore.getState().readerOpened(), []);
+  const navRequestId = useMushafNavigationStore(s => s.requestId);
+  // A request made before this reader opened is not for it. One used to be
+  // left behind when a result was tapped from the audio player, and was
+  // then replayed here: a jump to a stale page, with a bogus Recent reads
+  // chip. The effect also re-runs with nothing new whenever the navigate
+  // functions change (theme, font, rotation); the same id is skipped.
+  const handledNavRequestIdRef = useRef(navRequestId);
+  useEffect(() => {
+    if (navRequestId === handledNavRequestIdRef.current) return;
+    handledNavRequestIdRef.current = navRequestId;
+    const {targetPage, targetVerseKey, clear} =
+      useMushafNavigationStore.getState();
+    if (!targetPage) return;
+    clear();
+    // To the verse itself: the vertical views scroll to its row instead of
+    // the top of its page, and it is selected and flashed as any jump is.
+    if (targetVerseKey) navigateToVerse(targetVerseKey, targetPage);
+    else navigateToPage(targetPage);
+  }, [navRequestId, navigateToPage, navigateToVerse]);
+  // @ai-end
 
   const resumeChain = useCallback(
     (index: number, page: number) => {

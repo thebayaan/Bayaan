@@ -41,6 +41,12 @@ import {
 import Color from 'color';
 import {router} from 'expo-router';
 import {usePlayerStore} from '@/services/player/store/playerStore';
+// @ai-start
+import {
+  isReaderOpen,
+  useMushafNavigationStore,
+} from '@/store/mushafNavigationStore';
+// @ai-end
 import {
   resolvePlayFromHere, // @ai
   useTimestampStore,
@@ -745,6 +751,36 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     hideCurrentSheet();
   }, [hideCurrentSheet]);
 
+  // @ai-start
+  // A result tapped in Similar Verses / Shared Phrases opens that verse in
+  // the mushaf.
+  const handleOpenVerseInReader = useCallback(
+    async (targetVerseKey: string, page: number) => {
+      // Close first and wait for it. Closing clears the mushaf selection
+      // (handleOnClose), about 200 ms later: asked for before that, the
+      // reader jumped to the page but the verse it had just lit went dark.
+      await SheetManager.hide(props.sheetId);
+      if (isReaderOpen()) {
+        useMushafNavigationStore
+          .getState()
+          .navigateToVerse(targetVerseKey, page);
+        return;
+      }
+      // No reader is open: the sheet was opened from the audio player. The
+      // request went to a store only the reader reads, so the tap did
+      // nothing, and the request replayed the next time the reader opened.
+      // Open the reader at the verse instead, as the other ways into it do.
+      const [surah, ayah] = targetVerseKey.split(':');
+      usePlayerStore.getState().setSheetMode('hidden');
+      router.push({
+        pathname: '/mushaf',
+        params: {page: String(page), surah, ayah},
+      });
+    },
+    [props.sheetId],
+  );
+  // @ai-end
+
   const handleBack = useCallback(() => {
     setActiveScreen(null);
   }, []);
@@ -931,6 +967,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                     rewayah={resolvedRewayah} // @ai
                     onDone={handleDismiss}
                     hafsReferences={resolvedRewayah !== 'hafs'}
+                    onOpenVerse={handleOpenVerseInReader}
                   />
                 )}
               </>
