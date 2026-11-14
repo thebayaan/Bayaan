@@ -1370,3 +1370,42 @@ describe('the intro before verse 1 (basmala highlight)', () => {
   });
 });
 // @ai-end
+
+// @ai-start
+describe('Next on the last verse of a surah', () => {
+  /** Hold back `set`'s timings of `surah`; the returned function sends them. */
+  function holdTimings(set: string, surah: number): () => void {
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>(resolve => {
+      release = resolve;
+    });
+    getTimestampsForSurah.mockImplementation(async (s: string, n: number) => {
+      if (s === set && n === surah) await gate;
+      return fixtureTimings(s, n);
+    });
+    return () => release();
+  }
+
+  it('tapped again while the next surah loads, starts it once', async () => {
+    await play('hafs-clean', 1, '1:7');
+    const players = mockPlayers.length;
+    const sendTimings = holdTimings('hafs-clean', 2);
+    st().nextVerse();
+    expect(st().playbackState).toBe('loading');
+    st().nextVerse();
+    st().nextVerse();
+    sendTimings();
+    await flush();
+    expect(st()).toMatchObject({
+      playbackState: 'playing',
+      currentSurah: 2,
+      currentVerseKey: '2:1',
+    });
+    // one player for al-Baqarah, not one per tap
+    expect(mockPlayers.length).toBe(players + 1);
+    expect(player().seeks).toEqual([
+      entry('hafs-clean', 2, 1).timestampFrom / 1000,
+    ]);
+  });
+});
+// @ai-end

@@ -1044,6 +1044,12 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
    * playing keeps its place and its count.
    */
   const skipVerse = (forward: boolean) => {
+    // @ai-start
+    // While a surah loads, the service still holds the previous surah's
+    // paused player on its last verse: a second Next there ended that surah
+    // again and started the next one a second time (heard more than once).
+    if (get().playbackState === 'loading') return;
+    // @ai-end
     const {_entryAyah, _versePlayCount} = get();
     set({_entryAyah: 0, _versePlayCount: 1});
     const moved = forward
