@@ -84,9 +84,25 @@ class TimestampDatabaseService {
             surah_number INTEGER NOT NULL,
             source TEXT NOT NULL,
             fetched_at INTEGER NOT NULL,
+            data_version INTEGER NOT NULL DEFAULT 0, -- @ai
             PRIMARY KEY (rewayat_id, surah_number)
           );
         `);
+
+        // @ai-start
+        // data_version (the timings' TIMESTAMP_DATA_VERSION when saved) came
+        // after this file: CREATE TABLE IF NOT EXISTS does not add it to a
+        // table made before. Rows saved before it read as version 0, so they
+        // are fetched again when online (see TimestampService).
+        const columns = await db.getAllAsync<{name: string}>(
+          'PRAGMA table_info(cached_surahs)',
+        );
+        if (!columns.some(column => column.name === 'data_version')) {
+          await db.execAsync(
+            'ALTER TABLE cached_surahs ADD COLUMN data_version INTEGER NOT NULL DEFAULT 0;',
+          );
+        }
+        // @ai-end
 
         this.db = db;
       } catch (error) {
@@ -139,11 +155,31 @@ class TimestampDatabaseService {
     return result !== null;
   }
 
+  // @ai-start
+  /**
+   * The data version the cached surah was saved with (0 when saved before
+   * versions were kept), or null when it is not cached.
+   */
+  async getCachedDataVersion(
+    rewayatId: string,
+    surahNumber: number,
+  ): Promise<number | null> {
+    if (!this.db) throw new Error('Timestamps database not initialized');
+
+    const row = await this.db.getFirstAsync<{data_version: number}>(
+      `SELECT data_version FROM cached_surahs WHERE rewayat_id = ? AND surah_number = ?`,
+      [rewayatId, surahNumber],
+    );
+    return row ? row.data_version : null;
+  }
+  // @ai-end
+
   async writeTimestamps(
     rewayatId: string,
     surahNumber: number,
     timestamps: AyahTimestamp[],
     source: TimestampSource,
+    dataVersion: number, // @ai
   ): Promise<void> {
     if (!this.db) throw new Error('Timestamps database not initialized');
 
@@ -181,11 +217,13 @@ class TimestampDatabaseService {
       }
 
       // Mark surah as cached
+      // @ai-start
       await this.db!.runAsync(
-        `INSERT OR REPLACE INTO cached_surahs (rewayat_id, surah_number, source, fetched_at)
-         VALUES (?, ?, ?, ?)`,
-        [rewayatId, surahNumber, source, Date.now()],
+        `INSERT OR REPLACE INTO cached_surahs (rewayat_id, surah_number, source, fetched_at, data_version)
+         VALUES (?, ?, ?, ?, ?)`,
+        [rewayatId, surahNumber, source, Date.now(), dataVersion],
       );
+      // @ai-end
     });
   }
 

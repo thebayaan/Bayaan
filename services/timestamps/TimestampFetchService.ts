@@ -15,7 +15,9 @@ import type {AyahTimestamp, TimestampSource} from '@/types/timestamps'; // @ai
 // every lookup against R2 / most CDNs that don't normalize doubled
 // slashes. Strip a trailing slash defensively so the runtime matches
 // the contract regardless of the fork-side value.
-const TIMESTAMP_DATA_VERSION = 2;
+// @ai Also saved with each cached surah: a surah cached at another version is
+// fetched again (see TimestampService), so a bump reaches every device.
+export const TIMESTAMP_DATA_VERSION = 2;
 
 const R2_BASE = (
   branding.timestampCdnBase ?? 'https://cdn.thebayaan.com/timestamps'
@@ -216,6 +218,7 @@ class TimestampFetchService {
         surahNumber,
         timestamps,
         source,
+        TIMESTAMP_DATA_VERSION,
       );
     } catch (error) {
       console.warn(

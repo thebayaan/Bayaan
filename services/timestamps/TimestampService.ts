@@ -1,5 +1,8 @@
 import {timestampDatabaseService} from './TimestampDatabaseService';
-import {timestampFetchService} from './TimestampFetchService';
+import {
+  TIMESTAMP_DATA_VERSION, // @ai
+  timestampFetchService,
+} from './TimestampFetchService';
 import type {AyahTimestamp} from '@/types/timestamps';
 
 class TimestampService {
@@ -64,7 +67,20 @@ class TimestampService {
         surahNumber,
       );
 
-      if (dbTimestamps.length > 0) {
+      // @ai-start
+      // Timings cached before TIMESTAMP_DATA_VERSION was bumped (they were
+      // regenerated) are fetched again; they are only used while the new
+      // ones cannot be fetched (offline), and not kept in memory so a later
+      // load tries again.
+      const stale =
+        dbTimestamps.length > 0 &&
+        (await timestampDatabaseService.getCachedDataVersion(
+          rewayatId,
+          surahNumber,
+        )) !== TIMESTAMP_DATA_VERSION;
+      // @ai-end
+
+      if (dbTimestamps.length > 0 && !stale) {
         this.cache.set(key, dbTimestamps);
         return dbTimestamps;
       }
@@ -80,7 +96,7 @@ class TimestampService {
         return fetched;
       }
 
-      return null;
+      return stale ? dbTimestamps : null; // @ai
     } catch {
       return null;
     }

@@ -27,6 +27,7 @@ jest.mock('@/data/reciterData', () => ({
 
 import type {SqlParams} from '@/test-utils/sqliteAdapter';
 import type {AyahTimestamp} from '@/types/timestamps';
+import {TIMESTAMP_DATA_VERSION as VERSION} from '../TimestampFetchService';
 
 type MockModule = typeof import('@/test-utils/mockExpoSqlite');
 type DatabaseService =
@@ -135,7 +136,13 @@ describe('the verse timings cache', () => {
   it('saves every surah in full when five are written at once', async () => {
     await Promise.all(
       SAMPLE.map(([surah, count]) =>
-        database.writeTimestamps(REWAYAT, surah, timings(surah, count), 'r2'),
+        database.writeTimestamps(
+          REWAYAT,
+          surah,
+          timings(surah, count),
+          'r2',
+          VERSION,
+        ),
       ),
     );
 
@@ -155,10 +162,23 @@ describe('the verse timings cache', () => {
       107,
       timings(107, 7),
       'r2',
+      VERSION,
     );
     // The same verse twice: the insert fails and its transaction rolls back.
-    const failing = database.writeTimestamps(REWAYAT, 106, duplicated, 'r2');
-    const after = database.writeTimestamps(REWAYAT, 99, timings(99, 8), 'r2');
+    const failing = database.writeTimestamps(
+      REWAYAT,
+      106,
+      duplicated,
+      'r2',
+      VERSION,
+    );
+    const after = database.writeTimestamps(
+      REWAYAT,
+      99,
+      timings(99, 8),
+      'r2',
+      VERSION,
+    );
 
     await expect(failing).rejects.toThrow();
     await Promise.all([before, after]);
@@ -195,7 +215,7 @@ describe('the verse timings cache', () => {
   });
 
   it('is not cached while its save is still going on', async () => {
-    await database.writeTimestamps(REWAYAT, 96, timings(96, 19), 'r2');
+    await database.writeTimestamps(REWAYAT, 96, timings(96, 19), 'r2', VERSION);
 
     // Saved again (regenerated timings): a read between two statements of
     // the save must not get the half-written surah.
@@ -213,7 +233,7 @@ describe('the verse timings cache', () => {
       return result;
     };
 
-    await database.writeTimestamps(REWAYAT, 96, timings(96, 19), 'r2');
+    await database.writeTimestamps(REWAYAT, 96, timings(96, 19), 'r2', VERSION);
 
     expect(seenMidSave).toEqual([0]);
     expect(ayahs(await database.getTimestampsForSurah(REWAYAT, 96))).toEqual(
@@ -287,5 +307,100 @@ describe('the verse timings cache', () => {
     expect(ayahs(await service.getTimestampsForSurah(REWAYAT, 99))).toEqual(
       upTo(8),
     );
+  });
+
+  it('fetches a surah again once the timings were regenerated', async () => {
+    // Saved from the timings before the last TIMESTAMP_DATA_VERSION bump.
+    await database.writeTimestamps(REWAYAT, 107, timings(107, 3), 'r2', 1);
+    serveSample();
+
+    expect(ayahs(await service.getTimestampsForSurah(REWAYAT, 107))).toEqual(
+      upTo(7),
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(ayahs(await database.getTimestampsForSurah(REWAYAT, 107))).toEqual(
+      upTo(7),
+    );
+    expect(await database.getCachedDataVersion(REWAYAT, 107)).toBe(VERSION);
+  });
+
+  it('keeps the older timings while the new ones cannot be fetched', async () => {
+    await database.writeTimestamps(REWAYAT, 107, timings(107, 3), 'r2', 1);
+    fetchMock.mockRejectedValue(new Error('Network request failed'));
+
+    // Offline: the old timings rather than no verse tracking at all.
+    expect(ayahs(await service.getTimestampsForSurah(REWAYAT, 107))).toEqual(
+      upTo(3),
+    );
+
+    // Back online: the next load gets the new ones.
+    serveSample();
+    expect(ayahs(await service.getTimestampsForSurah(REWAYAT, 107))).toEqual(
+      upTo(7),
+    );
+  });
+
+  it('does not fetch a surah saved at the current version again', async () => {
+    await database.writeTimestamps(
+      REWAYAT,
+      107,
+      timings(107, 7),
+      'r2',
+      VERSION,
+    );
+
+    expect(ayahs(await service.getTimestampsForSurah(REWAYAT, 107))).toEqual(
+      upTo(7),
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('upgrades a cache saved before data versions were kept', async () => {
+    // The cache as the app wrote it before: no data_version column.
+    await database.close();
+    await mock.resetDatabases();
+    const old = await mock.openDatabaseAsync(DB_FILE);
+    await old.execAsync(`
+      CREATE TABLE ayah_timestamps (
+        rewayat_id TEXT NOT NULL,
+        surah_number INTEGER NOT NULL,
+        ayah_number INTEGER NOT NULL,
+        timestamp_from INTEGER NOT NULL,
+        timestamp_to INTEGER NOT NULL,
+        duration_ms INTEGER NOT NULL,
+        PRIMARY KEY (rewayat_id, surah_number, ayah_number)
+      );
+      CREATE TABLE cached_surahs (
+        rewayat_id TEXT NOT NULL,
+        surah_number INTEGER NOT NULL,
+        source TEXT NOT NULL,
+        fetched_at INTEGER NOT NULL,
+        PRIMARY KEY (rewayat_id, surah_number)
+      );
+    `);
+    for (const t of timings(107, 3)) {
+      await old.runAsync(
+        `INSERT INTO ayah_timestamps (rewayat_id, surah_number, ayah_number, timestamp_from, timestamp_to, duration_ms)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [REWAYAT, 107, t.ayahNumber, t.timestampFrom, t.timestampTo, 1000],
+      );
+    }
+    await old.runAsync(
+      `INSERT INTO cached_surahs (rewayat_id, surah_number, source, fetched_at)
+       VALUES (?, ?, ?, ?)`,
+      [REWAYAT, 107, 'r2', 0],
+    );
+    await old.closeAsync();
+
+    const removeFiles = await reopenApp();
+    expect(await database.getCachedDataVersion(REWAYAT, 107)).toBe(0);
+    serveSample();
+    const reloaded = await service.getTimestampsForSurah(REWAYAT, 107);
+    const version = await database.getCachedDataVersion(REWAYAT, 107);
+    await database.close();
+    await removeFiles();
+
+    expect(ayahs(reloaded)).toEqual(upTo(7));
+    expect(version).toBe(VERSION);
   });
 });
