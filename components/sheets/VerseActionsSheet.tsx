@@ -89,7 +89,10 @@ import {TranslationContent} from './verse-actions/TranslationContent';
 import {TafseerContent} from './verse-actions/TafseerContent';
 import {ThemeContent} from './verse-actions/ThemeContent';
 import {WBWContent} from './verse-actions/WBWContent';
-import {IrabContent} from './verse-actions/IrabContent';
+// @ai-start
+import {WordStudyContent} from './verse-actions/WordStudyContent';
+import type {WordRef} from './verse-actions/wordStudy';
+// @ai-end
 // @ai-start
 import {useTranslation} from 'react-i18next';
 import i18n from '@/i18n';
@@ -110,7 +113,7 @@ type ActiveScreen =
   | 'tafseer'
   | 'theme'
   | 'wbw'
-  | 'irab'
+  | 'words' // @ai: Word Study (was the I'rab screen)
   | 'community-reflections'
   | null;
 
@@ -125,7 +128,7 @@ const SCREEN_TITLE_KEYS = {
   tafseer: 'verseActions.tafseer',
   theme: 'verseActions.theme',
   wbw: 'verseActions.wordByWord',
-  irab: 'verseActions.irab',
+  words: 'verseActions.wordStudy',
   'community-reflections': 'verseActions.communityReflections',
 } as const;
 // @ai-end
@@ -205,7 +208,17 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
   const {height: windowHeight} = useWindowDimensions(); // @ai
   const styles = createStyles(theme);
   const {t} = useTranslation(['sheets', 'common']);
-  const [activeScreen, setActiveScreenRaw] = useState<ActiveScreen>(null);
+  // @ai-start
+  // A word long-press opens the sheet on Word Study at that word. The sheet
+  // unmounts when hidden, so this runs on every show.
+  const [activeScreen, setActiveScreenRaw] = useState<ActiveScreen>(
+    props.payload?.initialScreen === 'words' ? 'words' : null,
+  );
+  // The word Word Study opens on (Hafs verse + word-by-word position).
+  const [wordTarget, setWordTarget] = useState<WordRef | undefined>(
+    props.payload?.word,
+  );
+  // @ai-end
 
   const setActiveScreen = useCallback((screen: ActiveScreen) => {
     LayoutAnimation.configureNext(
@@ -460,9 +473,23 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     setActiveScreen('wbw');
   }, []);
 
-  const handleIrab = useCallback(() => {
-    setActiveScreen('irab');
-  }, []);
+  // @ai-start
+  // The row opens Word Study on the selection's first word.
+  const handleWordStudy = useCallback(() => {
+    setWordTarget(undefined);
+    setActiveScreen('words');
+  }, [setActiveScreen]);
+
+  // A long-press in the Word by Word screen studies that word (Word Study
+  // opens on the selection's first word when it is not one of its words).
+  const handleOpenWord = useCallback(
+    (word: WordRef) => {
+      setWordTarget(word);
+      setActiveScreen('words');
+    },
+    [setActiveScreen],
+  );
+  // @ai-end
 
   // RFC-018 — open the community-reflections popup. Only reachable when a
   // fork wires branding.communityReflectionsProvider (the row is gated).
@@ -747,7 +774,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     activeScreen === 'tafseer' ||
     activeScreen === 'theme' ||
     activeScreen === 'wbw' ||
-    activeScreen === 'irab' ||
+    activeScreen === 'words' || // @ai
     activeScreen === 'community-reflections';
 
   return (
@@ -861,18 +888,21 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                     ayahNumber={ayahNumber}
                     rewayah={resolvedRewayah}
                     unitStart={unitStart}
+                    onOpenWord={handleOpenWord} // @ai
                     onBack={handleBack}
                   />
                 )}
-                {activeScreen === 'irab' && (
-                  <IrabContent
-                    surahNumber={surahNumber}
-                    ayahNumber={ayahNumber}
-                    rewayah={resolvedRewayah}
-                    unitStart={unitStart}
-                    onBack={handleBack}
+                {/* @ai-start */}
+                {/* The selected verses' words, in the sheet's rewayah
+                    (another rewayah steps through its Hafs words). Root
+                    search is not wired yet: the root stays plain text. */}
+                {activeScreen === 'words' && readySelection && (
+                  <WordStudyContent
+                    selection={readySelection}
+                    initialWord={wordTarget}
                   />
                 )}
+                {/* @ai-end */}
                 {activeScreen === 'community-reflections' && readySelection && (
                   // Reflections are per Hafs verse: the one holding the
                   // verse's first word; the badge is the verse's own label.
@@ -1118,24 +1148,29 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                       {t('verseActions.wordByWord')}
                     </Text>
                   </Pressable>
-                  <View style={styles.divider} />
-                  <Pressable
-                    style={({pressed}) => [
-                      styles.option,
-                      pressed && styles.optionPressed,
-                    ]}
-                    onPress={handleIrab}>
-                    <MaterialCommunityIcons
-                      name="file-tree-outline"
-                      size={moderateScale(18)}
-                      color={theme.colors.text}
-                    />
-                    <Text style={styles.optionText}>
-                      {t('verseActions.irab')}
-                    </Text>
-                  </Pressable>
                 </>
               ) : null}
+              {/* @ai-start */}
+              {/* Word Study (was I'rab): one verse or several. After Word by
+                  Word for one verse; second, after Translation, for a range. */}
+              <View style={styles.divider} />
+              <Pressable
+                accessibilityRole="button"
+                style={({pressed}) => [
+                  styles.option,
+                  pressed && styles.optionPressed,
+                ]}
+                onPress={handleWordStudy}>
+                <MaterialCommunityIcons
+                  name="file-tree-outline"
+                  size={moderateScale(18)}
+                  color={theme.colors.text}
+                />
+                <Text style={styles.optionText}>
+                  {t('verseActions.wordStudy')}
+                </Text>
+              </Pressable>
+              {/* @ai-end */}
               {/* RFC-018 — Community Reflections row. Gated on a fork wiring
                   branding.communityReflectionsProvider (so Bayaan never shows
                   it) and single-ayah selection. Same predicate as the inline

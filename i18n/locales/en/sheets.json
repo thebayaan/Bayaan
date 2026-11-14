@@ -104,9 +104,6 @@
     "nameLabel": "Playlist Name",
     "namePlaceholder": "e.g., Morning Recitations"
   },
-  "wordDetail": {
-    "context": "Verse {{ref}} · Word {{position}} of {{total}}"
-  },
   "favoriteReciters": {
     "title": "Favorite Reciters",
     "selected_one": "{{count}} selected",
@@ -216,7 +213,8 @@
     "unnumbered": "Not a numbered verse in {{rewayah}}.",
     "loadFailed": "Couldn't load the {{rewayah}} text.",
     "loadingText": "Loading the {{rewayah}} text",
-    "irab": "I'rab"
+    "irab": "I'rab",
+    "wordStudy": "Word Study"
   },
   "mushafPlayer": {
     "title": "Playback Settings",
@@ -429,9 +427,7 @@
     "flagLine": "{{ref}}: {{message}}"
   },
   "irab": {
-    "tabWords": "Word analysis",
-    "tabBooks": "Classical books",
-    "tapWord": "Tap a word to see its i'rab",
+    "tabBooks": "I'rab books",
     "showAll": "Whole verse",
     "showWord": "One word",
     "wordOf": "Word {{n}} of {{total}}",
@@ -475,6 +471,28 @@
         "fasl": "Written apart in the mushaf; the standard spelling joins the words."
       },
       "sources": "Standard spelling from {{source}}. The differences come from comparing it letter by letter with the mushaf's spelling; only those that the mushaf's own signs, a known spelling rule or a review confirm are shown. Shown for the Hafs text."
+    }
+  },
+  "wordView": {
+    "tabWords": "Words",
+    "tapWord": "Tap a word to study it",
+    "previous": "Previous",
+    "next": "Next",
+    "previousWord": "Previous word",
+    "nextWord": "Next word",
+    "announce": "{{word}}, word {{n}} of {{total}}",
+    "gridLabel": "Words of {{verse}}",
+    "gridHint": "Use Previous and Next to move between words",
+    "loadFailed": "Couldn't load the words.",
+    "noWords": "Word data isn't available for this verse.",
+    "wordRef": "{{verse}} · word {{n}}",
+    "hafsNote": "Meanings, audio, i'rab, morphology and rasm are for Hafs.",
+    "hafsNoteReadings": "Meanings, audio, i'rab, morphology and rasm are for Hafs. Readings shows how {{rewayah}} reads it.",
+    "playWord": "Play the word",
+    "audioFailed": "Couldn't play",
+    "studyWord": "Study {{word}}",
+    "morphology": {
+      "searchRoot": "Search the root {{root}}"
     }
   }
 }
