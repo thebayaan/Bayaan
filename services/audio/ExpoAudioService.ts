@@ -27,6 +27,10 @@ type StateListener = (state: ExpoAudioServiceState) => void;
 // @ai How long loadTrack() waits for the provider to hand over the player.
 const PLAYER_WAIT_MS = 3000;
 
+// @ai How long after a held source became ready a play by the player itself
+// is still taken for its own resume and paused again (see holdUrl).
+const HOLD_SETTLE_MS = 1000;
+
 class ExpoAudioService {
   private static instance: ExpoAudioService;
   private player: AudioPlayer | null = null;
@@ -46,6 +50,17 @@ class ExpoAudioService {
   // error for it). play() on such a source is silent, so callers reload.
   private sourceFailed = false;
   private statusSubscription: {remove: () => void} | null = null;
+  // Whether the app last asked the player to play (true) or to pause.
+  // Android's status cannot say it while the player buffers after a seek.
+  private playRequested = false;
+  // The source that pause() was asked for before it had loaded. On iOS a
+  // source that replaces a playing one starts by itself when it becomes
+  // ready, whatever was asked in between, so a pause during a slow load was
+  // forgotten: the surah started seconds later, over a paused player. The
+  // pause is repeated when this source reports ready or playing.
+  private holdUrl: string | null = null;
+  // When the held source first reported ready (ms), or null before that.
+  private holdReadyAt: number | null = null;
   // @ai-end
 
   private constructor() {
@@ -172,6 +187,8 @@ class ExpoAudioService {
 
       // @ai-start
       // From here the player holds this source, loaded or not.
+      // A pause held for another source does not carry over to this one.
+      if (this.holdUrl !== url) this.clearHold();
       this.currentUrl = url;
       this.sourceFailed = false;
       this.lastError = null;
@@ -311,12 +328,51 @@ class ExpoAudioService {
     this.statusSubscription = player.addListener(
       'playbackStatusUpdate',
       status => {
+        this.keepHeld(status);
         const error = (status as {error?: unknown}).error;
         if (typeof error !== 'string' || error.length === 0) return;
         this.sourceFailed = true;
         this.lastError = new Error(error);
       },
     );
+  }
+
+  private clearHold(): void {
+    this.holdUrl = null;
+    this.holdReadyAt = null;
+  }
+
+  /**
+   * Repeats a pause that was asked for before the source had loaded (see
+   * holdUrl). The player's own resume comes with the source becoming ready,
+   * in no fixed order with the status that reports it, so a play is paused
+   * again for a short while after that. Then the hold ends: from there a
+   * play is somebody's request (the lock screen, headphones).
+   */
+  private keepHeld(status: {isLoaded?: boolean; playing?: boolean}): void {
+    if (this.holdUrl === null) return;
+    if (this.holdUrl !== this.currentUrl) {
+      this.clearHold();
+      return;
+    }
+    const now = Date.now();
+    if (status.isLoaded && this.holdReadyAt === null) this.holdReadyAt = now;
+    if (this.holdReadyAt !== null && now - this.holdReadyAt > HOLD_SETTLE_MS) {
+      this.clearHold();
+      return;
+    }
+    if (status.playing) {
+      try {
+        this.player?.pause();
+      } catch {
+        // The player may be gone; nothing to hold then.
+      }
+    }
+  }
+
+  /** True when the app last asked the player to play, false after a pause. */
+  wantsToPlay(): boolean {
+    return this.playRequested;
   }
   // @ai-end
 
@@ -333,6 +389,8 @@ class ExpoAudioService {
 
     try {
       this.applyDesiredRate(); // @ai
+      this.playRequested = true; // @ai
+      this.clearHold(); // @ai
       await this.player.play();
       this.playbackState = 'playing';
       this.notifyListeners();
@@ -357,6 +415,14 @@ class ExpoAudioService {
     }
 
     try {
+      // @ai-start
+      this.playRequested = false;
+      // Not loaded yet: the pause has to be repeated once it is (holdUrl).
+      if (this.currentUrl !== null && !this.player.isLoaded) {
+        this.holdUrl = this.currentUrl;
+        this.holdReadyAt = null;
+      }
+      // @ai-end
       await this.player.pause();
       this.playbackState = 'paused';
       this.notifyListeners();
@@ -600,6 +666,8 @@ class ExpoAudioService {
     // player to clear the lock-screen controls on.
     this.currentUrl = null;
     this.sourceFailed = false; // @ai
+    this.playRequested = false; // @ai
+    this.clearHold(); // @ai
     this.playbackState = 'idle';
     this.lastError = null;
     this.stateListeners.clear();

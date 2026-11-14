@@ -58,13 +58,18 @@ interface PlayIntent {
  * that showed a spinner on a paused player and made the first tap call play
  * when the user meant pause. iOS says "waiting to play" in
  * `timeControlStatus`; on Android `playing` holds the intent while the
- * player buffers.
+ * player buffers, but only once it has played: a play asked for while it
+ * buffers after a seek (a surah resumed at its saved position) reads as not
+ * playing, so what the app last asked for counts too. Without it the
+ * controls fell back to paused for a moment on a slow connection.
  */
 function isWaitingToPlay(status: PlayIntent): boolean {
   if (Platform.OS === 'ios') {
     return status.timeControlStatus === 'waitingToPlayAtSpecifiedRate';
   }
-  return status.isBuffering && status.playing;
+  return (
+    status.isBuffering && (status.playing || expoAudioService.wantsToPlay())
+  );
 }
 // @ai-end
 
@@ -163,6 +168,12 @@ export function ExpoAudioProvider({
       if (!currentTrack) return;
 
       const progress = Math.max(0, Math.min(1, position / duration));
+      // @ai-start
+      // A queue that finished leaves its last track rewound to 0:00. That
+      // is not "nothing heard": leaving the app then wrote 0% over the 100%
+      // saved when the surah ended.
+      if (store.playback.state === 'ended' && progress < 1) return;
+      // @ai-end
       const now = Date.now();
       const progressDelta = Math.abs(progress - lastPersistedProgress.current);
       const elapsed = now - lastPersistedAt.current;
@@ -439,18 +450,29 @@ export function ExpoAudioProvider({
   // above returns early on an unloaded player, so the controls kept showing
   // playing (or buffering) over silence. Settle them, and tell the user.
   // While the store is loading, the load itself fails and reports.
-  const statusError = (status as {error?: string | null}).error ?? null;
-  useEffect(() => {
-    if (!statusError) return;
+  //
+  // Called from the direct listener below, not from React state: on Android
+  // the status that carries the error is followed at once by others without
+  // it, React keeps only the last one, and the error was never seen. The
+  // controls then showed 'buffering' for good.
+  const handleSourceError = useCallback((message: string) => {
     const store = usePlayerStore.getState();
     if (store.loading.trackLoading || store.playback.state === 'loading') {
       return;
     }
     if (store.queue.tracks[store.queue.currentIndex] === undefined) return;
+    // Only a player that was playing, or trying to, has something to tell
+    // the user. A paused one whose source fails (the track restored at
+    // launch while offline, a track just added to an empty queue) is
+    // retried by the next play, which reports its own failure.
+    const wantedToPlay =
+      store.playback.state === 'playing' ||
+      store.playback.state === 'buffering';
+    if (!wantedToPlay) return;
     store.updatePlaybackState({state: 'paused', buffering: false});
-    store.setError('playback', new Error(statusError));
+    store.setError('playback', new Error(message));
     reportPlaybackFailed();
-  }, [statusError]);
+  }, []);
 
   // The store marks itself as playing as soon as it has asked the player to
   // play. The player can decline without an error (another app holds the
@@ -521,8 +543,10 @@ export function ExpoAudioProvider({
       const {currentIndex, tracks} = store.queue;
 
       // @ai-start
-      // The sleep timer may have run out during this track.
-      checkSleepTimer();
+      // The sleep timer may have run out with this track. Then nothing
+      // follows it: the pause the timer just asked for must not be followed
+      // by the next surah.
+      const advance = !checkSleepTimer();
       // Record that this track was heard to its end, while it is still the
       // store's current track.
       const endedAt = latestStatusRef.current.duration;
@@ -560,7 +584,14 @@ export function ExpoAudioProvider({
         accumulatedListenMsRef.current = 0;
       }
 
-      if (repeatMode === 'track') {
+      // @ai-start
+      if (!advance) {
+        // The sleep timer ended with this track. Nothing follows it; the
+        // next play goes on to the next surah, as after any finished track.
+        if (__DEV__)
+          console.log('[ExpoAudioProvider] Sleep timer ended with the track');
+        // @ai-end
+      } else if (repeatMode === 'track') {
         // Repeat current track
         if (__DEV__)
           console.log('[ExpoAudioProvider] Repeat mode: track - restarting');
@@ -596,8 +627,8 @@ export function ExpoAudioProvider({
   }, [skipToNext, updatePlaybackState, persistCurrentProgress]);
 
   // @ai-start
-  // Listen to the player directly for the end of a track and for the sleep
-  // timer.
+  // Listen to the player directly for the end of a track, for a source that
+  // fails, and for the sleep timer.
   //
   // The end used to be read from React state (`status.didJustFinish`). That
   // flag is true on a single status event, and React keeps only the latest
@@ -610,11 +641,15 @@ export function ExpoAudioProvider({
   // Android stops the JS timers that the timer otherwise runs on.
   useEffect(() => {
     const subscription = player.addListener('playbackStatusUpdate', event => {
-      checkSleepTimer();
+      const error = (event as {error?: string | null}).error;
+      if (typeof error === 'string' && error) handleSourceError(error);
+      // The end of a track checks the timer itself: it has to know whether
+      // the timer ran out with the track.
       if (event.didJustFinish) handleTrackEnd();
+      else checkSleepTimer();
     });
     return () => subscription.remove();
-  }, [player, handleTrackEnd]);
+  }, [player, handleTrackEnd, handleSourceError]);
   // @ai-end
 
   // ========== AMBIENT SOUND SYNC ==========
