@@ -33,6 +33,7 @@ import {
 } from '@/store/mushafPlayerStore';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore'; // @ai
 import {showToast} from '@/utils/toastUtils'; // @ai
+import {isRTL} from '@/utils/rtl'; // @ai
 import {mushafAudioService} from '@/services/audio/MushafAudioService';
 import {SheetManager} from 'react-native-actions-sheet';
 import {SURAHS} from '@/data/surahData';
@@ -454,6 +455,28 @@ export function MushafToolbar() {
     );
   }
 
+  // @ai-start
+  // The toolbar lays its items out from the leading edge, so in a
+  // right-to-left app it reverses them, while the transport symbols do not
+  // flip. Declared in reading order, Arabic showed ⏭ ▶ ⏮. Transport stays
+  // left to right (docs/i18n/README.md, rule 8), so the two outer buttons are
+  // declared the other way round there.
+  const previousButton = (
+    <Stack.Toolbar.Button
+      icon="backward.end.fill"
+      onPress={handlePrev}
+      disabled={verseNavDisabled}
+    />
+  );
+  const nextButton = (
+    <Stack.Toolbar.Button
+      icon="forward.end.fill"
+      onPress={handleNext}
+      disabled={verseNavDisabled}
+    />
+  );
+  // @ai-end
+
   // Active: [Stop] — spacer — [Prev] [Play/Pause] [Next] — spacer — [Options]
   return (
     <Stack.Toolbar>
@@ -461,22 +484,14 @@ export function MushafToolbar() {
         {t('toolbar.stop')}
       </Stack.Toolbar.Button>
       <Stack.Toolbar.Spacer />
-      <Stack.Toolbar.Button
-        icon="backward.end.fill"
-        onPress={handlePrev}
-        disabled={verseNavDisabled} // @ai
-      />
+      {isRTL ? nextButton : previousButton /* @ai */}
       <Stack.Toolbar.Button
         icon={isPlaying ? 'pause.fill' : 'play.fill'}
         onPress={handlePlayPause}
         disabled={isLoading}>
         {verseLabel}
       </Stack.Toolbar.Button>
-      <Stack.Toolbar.Button
-        icon="forward.end.fill"
-        onPress={handleNext}
-        disabled={verseNavDisabled} // @ai
-      />
+      {isRTL ? previousButton : nextButton /* @ai */}
       <Stack.Toolbar.Spacer />
       <Stack.Toolbar.Button icon="ellipsis.circle" onPress={handleOptions}>
         {t('toolbar.options')}
