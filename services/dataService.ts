@@ -51,10 +51,14 @@ const RECITER_SERVERS_KEY = 'bayaan_reciter_servers';
 const DATA_VERSION = '4'; // Increment: bust cache for R2 CDN URL migration
 
 // @ai-start
-// Time limit for one background refresh, all pages together. Android sets no
+// Time limits for one catalogue download, all pages together. Android sets no
 // network timeout of its own, so without a limit a connection that never
-// answers never fails either. Nothing waits for a refresh, but only one runs
-// at a time, so one that never ended would block every later refresh.
+// answers never fails either.
+// First launch: the splash is waiting, so give up quickly and show the bundled
+// list.
+const FIRST_LOAD_TIMEOUT_MS = 8000;
+// Background refresh: nothing waits for it, but only one runs at a time, so
+// one that never ended would block every later refresh.
 const REFRESH_TIMEOUT_MS = 30000;
 // @ai-end
 
@@ -112,7 +116,7 @@ function abortAfter(ms: number): {signal: AbortSignal; cancel: () => void} {
 }
 
 async function fetchAllRecitersFromApi(
-  signal?: AbortSignal,
+  signal: AbortSignal,
 ): Promise<Reciter[]> {
   const PAGE_SIZE = 200;
   let page = 1;
@@ -248,9 +252,17 @@ async function loadReciters(): Promise<Reciter[]> /* @ai */ {
   }
 
   // First launch — fetch from API (blocking)
+  // @ai-start
+  // True when the download below ran out of time. That is a slow connection,
+  // not a dead one, so once the stale or bundled list is showing the download
+  // is finished in the background. Without that, a slow connection would wait
+  // out the limit on every launch and never get a cached catalogue.
+  let timedOut = false;
+  // @ai-end
   if (canFetchFromApi) {
+    const deadline = abortAfter(FIRST_LOAD_TIMEOUT_MS); // @ai
     try {
-      const apiReciters = await fetchAllRecitersFromApi();
+      const apiReciters = await fetchAllRecitersFromApi(deadline.signal); // @ai
       if (apiReciters.length > 0) {
         await setStoredData(RECITERS_KEY, apiReciters);
         const reciters = populateReciters(apiReciters); // @ai
@@ -259,6 +271,7 @@ async function loadReciters(): Promise<Reciter[]> /* @ai */ {
       }
     } catch (err) {
       console.warn('[dataService] API fetch failed on first load:', err);
+      timedOut = deadline.signal.aborted; // @ai
       // Try stale cache before giving up
       const stale = await getStoredData<Reciter[]>(RECITERS_KEY, {
         allowStale: true,
@@ -266,9 +279,12 @@ async function loadReciters(): Promise<Reciter[]> /* @ai */ {
       if (stale && stale.data.length > 0) {
         const reciters = populateReciters(stale.data); // @ai
         setDisrupted(true, {reason: 'unreachable', stale: true});
+        if (timedOut) refreshRecitersInBackground().catch(() => undefined); // @ai
         return reciters; // @ai
       }
       setDisrupted(true, {reason: 'unreachable', stale: false});
+    } finally {
+      deadline.cancel(); // @ai
     }
   }
 
@@ -276,7 +292,11 @@ async function loadReciters(): Promise<Reciter[]> /* @ai */ {
   const fallback = fallbackReciters as Reciter[];
   if (fallback.length > 0) {
     console.log('[dataService] Using bundled fallback data');
-    return populateReciters(fallback); // @ai
+    // @ai-start
+    const reciters = populateReciters(fallback);
+    if (timedOut) refreshRecitersInBackground().catch(() => undefined);
+    return reciters;
+    // @ai-end
   }
 
   return [];

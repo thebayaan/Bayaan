@@ -499,3 +499,80 @@ describe('the killswitch', () => {
     expect(killswitchChecks()).toBe(1);
   });
 });
+
+describe('first launch on a bad connection', () => {
+  it('stops waiting for an API that never answers and shows the bundled list', async () => {
+    jest.useFakeTimers();
+    const {service, RECITERS, health} = launch();
+    let answer!: () => void;
+    apiHandler.mockImplementationOnce(neverAnswers).mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          answer = () => resolve(serves(FIRST)(undefined));
+        }),
+    );
+
+    let loaded: Reciter[] | undefined;
+    const loading = service.getAllReciters().then(reciters => {
+      loaded = reciters;
+    });
+
+    // Still waiting just before the limit.
+    await jest.advanceTimersByTimeAsync(7_900);
+    expect(loaded).toBeUndefined();
+
+    await jest.advanceTimersByTimeAsync(200);
+    await loading;
+    expect(names(loaded ?? [])).toEqual(['Bundled Reciter']);
+    expect(health.getState().isDisrupted).toBe(true);
+    expect(health.getState().usingStaleCache).toBe(false);
+    expect(mockSetItem).not.toHaveBeenCalled();
+
+    // Lookups work from the bundled list and start nothing new.
+    const before = workDone();
+    expect((await service.getReciterById('bundled'))?.name).toBe(
+      'Bundled Reciter',
+    );
+    expect(workDone()).toEqual(before);
+
+    // The download carries on in the background: when the slow connection
+    // delivers, the catalogue is swapped in and cached for the next launch.
+    expect(downloads()).toBe(2);
+    answer();
+    await jest.advanceTimersByTimeAsync(0);
+    expect(names(RECITERS)).toEqual(['One', 'Two']);
+    expect(mockStorage.has(CACHE_KEY)).toBe(true);
+    expect(health.getState().isDisrupted).toBe(false);
+  });
+
+  it('ends up where a refused connection does', async () => {
+    const {service, health} = launch();
+    apiHandler.mockImplementation(refusesConnection);
+
+    expect(names(await service.getAllReciters())).toEqual(['Bundled Reciter']);
+    await settle();
+
+    expect(health.getState().isDisrupted).toBe(true);
+    expect(health.getState().usingStaleCache).toBe(false);
+    expect(mockSetItem).not.toHaveBeenCalled();
+    // Refused outright, so there is no slow download to finish.
+    expect(downloads()).toBe(1);
+  });
+
+  it('shows an outdated cache rather than the bundled list', async () => {
+    jest.useFakeTimers();
+    // A cache written by an older version of the app.
+    mockStorage.set(CACHE_KEY, JSON.stringify({version: 'old', data: FIRST}));
+    const {service, health} = launch();
+    apiHandler.mockImplementation(neverAnswers);
+
+    const loading = service.getAllReciters();
+    await jest.advanceTimersByTimeAsync(8_000);
+
+    expect(names(await loading)).toEqual(['One', 'Two']);
+    expect(health.getState().isDisrupted).toBe(true);
+    expect(health.getState().usingStaleCache).toBe(true);
+    // The slow download is picked up again in the background here too.
+    expect(downloads()).toBe(2);
+  });
+});
