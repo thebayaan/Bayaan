@@ -19,7 +19,8 @@
  *
  * Navigation over the Quran text follows the text in both app languages:
  * the bar's Next is on the physical left, as the reader's arrow keys
- * (ipad-standards §7.3), and the chips run from the right.
+ * (ipad-standards §7.3), and the chips run from the right. The arrow keys
+ * step words on iPad.
  */
 import React, {
   useCallback,
@@ -51,10 +52,15 @@ import {WBWVerseView} from '@/components/player/v2/PlayerContent/QuranView/WBWVe
 import type {ReadyVerseSelection} from '@/components/share/rewayahVerseSelection';
 import {getAllahNameHighlightColorHex} from '@/constants/mushafAllahHighlight';
 import {useHover} from '@/hooks/useHover';
+import {useKeyCommands} from '@/hooks/useKeyCommands';
 import {useMushafFontMgr} from '@/hooks/useMushafFontMgr';
 import {useResponsive} from '@/hooks/useResponsive';
 import {useTheme} from '@/hooks/useTheme';
 import {localizeDigits} from '@/i18n/format';
+import {
+  keyCommandsSupported,
+  type KeyBinding,
+} from '@/services/keyboard/keyCommands';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
 import {wordReadingsService} from '@/services/mushaf/WordReadingsService';
@@ -286,8 +292,29 @@ export const WordStudyContent: React.FC<WordStudyContentProps> = ({
     if (next === 'books') setBooksOpened(true);
   }, []);
 
+  // --- Arrow keys on iPad: ← is the next word, as in the reader ---
   const stepping =
     tab === 'words' && !showAll && ready !== null && sequence.length > 0;
+  const keyBindings = useMemo<KeyBinding[]>(
+    () => [
+      {
+        key: 'left',
+        title: t('wordView.nextWord'),
+        menu: 'reader',
+        enabled: canNext,
+        run: () => step(1),
+      },
+      {
+        key: 'right',
+        title: t('wordView.previousWord'),
+        menu: 'reader',
+        enabled: canPrevious,
+        run: () => step(-1),
+      },
+    ],
+    [t, canNext, canPrevious, step],
+  );
+  useKeyCommands(keyBindings, keyCommandsSupported() && stepping);
 
   // --- The grid's Quran text settings (as the Word by Word screen) ---
   const mushafRenderer = useMushafSettingsStore(s => s.mushafRenderer);
