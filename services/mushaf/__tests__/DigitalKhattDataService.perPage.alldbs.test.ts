@@ -214,6 +214,12 @@ run('the words read on demand (local only)', () => {
       expect(dk.rewayah).toBe(rewayah);
       // One asynchronous read of the words DB at load: the verse index.
       expect(fake().reads.filter(b => b === base).length - readsBefore).toBe(1);
+      // The continuous views look a verse's page up here: it reads no word.
+      const chunkReads = fake().chunkReads.length;
+      for (const [verseKey, page] of ref.verseToPage) {
+        expect(dk.getPageForVerse(verseKey)).toBe(page);
+      }
+      expect(fake().chunkReads.length).toBe(chunkReads);
 
       for (const [id, text] of ref.texts) {
         expect(dk.getWordText(id)).toBe(text);
@@ -225,9 +231,6 @@ run('the words read on demand (local only)', () => {
         expect(dk.getVerseWords(verseKey)).toEqual(visibleWords(slots));
         expect(dk.getVerseText(verseKey)).toBe(
           joinSlotTexts(visibleWords(slots)),
-        );
-        expect(dk.getPageForVerse(verseKey)).toBe(
-          ref.verseToPage.get(verseKey),
         );
       }
       expect(dk.getVerseWords('115:1')).toEqual([]);

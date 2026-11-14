@@ -27,6 +27,8 @@ export interface BundledDkSqliteFake {
   readonly broken: Set<string>;
   /** Bases read, in order. */
   readonly reads: string[];
+  /** @ai Bases of the WordStore's chunk reads, in order. */
+  readonly chunkReads: string[];
 }
 
 interface SqliteDb {
@@ -72,6 +74,7 @@ export function bundledDkSqliteModule() {
     files: new Set(),
     broken: new Set(),
     reads: [],
+    chunkReads: [], // @ai
   };
   const baseOf = (name: string) =>
     name.replace(/\.db$/, '').replace(/\.[0-9a-f]{8}$/, '');
@@ -114,6 +117,7 @@ export function bundledDkSqliteModule() {
           return query(sql, params);
         },
         getFirstSync(sql: string, params: unknown[] = []) {
+          if (sql.includes('group_concat')) fake.chunkReads.push(base);
           return query(sql, params)[0] ?? null;
         },
         closeAsync: async () => undefined,
