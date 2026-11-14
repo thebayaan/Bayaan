@@ -19,6 +19,10 @@ jest.mock('@/services/player/store/playerStore', () => {
   const {create} = jest.requireActual('zustand');
   return {usePlayerStore: create(() => ({}))};
 });
+const mockSeekBy = jest.fn().mockResolvedValue(undefined);
+jest.mock('../../seekBy', () => ({
+  seekBy: (seconds: number) => mockSeekBy(seconds),
+}));
 const mockProgress = {
   position: 0,
   duration: 0,
@@ -109,5 +113,33 @@ describe('play / pause', () => {
     });
     expect(mockActions.pause).toHaveBeenCalledTimes(1);
     expect(mockActions.play).not.toHaveBeenCalled();
+  });
+});
+
+describe('back and forward 15 seconds', () => {
+  // seekBy() works from the player's own clock (see seekBy.test.ts); the
+  // buttons no longer add 15 to the progress shown, which can be stale.
+  it('jumps relative to where the audio is', async () => {
+    mockProgress.position = 100;
+    const transport = mountTransport();
+    await act(async () => {
+      await transport().seekForward();
+    });
+    expect(mockSeekBy).toHaveBeenLastCalledWith(15);
+    await act(async () => {
+      await transport().seekBack();
+    });
+    expect(mockSeekBy).toHaveBeenLastCalledWith(-15);
+    expect(mockActions.seekTo).not.toHaveBeenCalled();
+  });
+
+  it('does nothing while a track loads', async () => {
+    setPlayer({state: 'loading', trackLoading: true});
+    const transport = mountTransport();
+    await act(async () => {
+      await transport().seekForward();
+      await transport().seekBack();
+    });
+    expect(mockSeekBy).not.toHaveBeenCalled();
   });
 });

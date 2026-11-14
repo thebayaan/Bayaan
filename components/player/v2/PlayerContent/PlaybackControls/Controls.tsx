@@ -17,6 +17,7 @@ import {localizeDigits} from '@/i18n/format';
 import {forceLTR} from '@/utils/rtl';
 import {usePlayerA11y} from '@/hooks/usePlayerA11y'; // @ai
 import {isActivelyPlaying} from '@/services/player/utils/isActivelyPlaying';
+import {seekBy} from '@/components/player/v2/seekBy';
 // @ai-end
 
 const SEEK_INTERVAL = 15; // seconds
@@ -25,9 +26,8 @@ const SEEK_INTERVAL = 15; // seconds
 export const Controls = () => {
   const {theme} = useTheme();
   const a11y = usePlayerA11y(); // @ai
-  const {play, pause, skipToNext, skipToPrevious, seekTo} = usePlayerActions();
+  const {play, pause, skipToNext, skipToPrevious} = usePlayerActions();
   const playbackState = usePlayerStore(s => s.playback.state);
-  const playbackPosition = usePlayerStore(s => s.playback.position);
   const currentIndex = usePlayerStore(s => s.queue.currentIndex);
   const tracksLength = usePlayerStore(s => s.queue.tracks.length);
   const trackLoading = usePlayerStore(s => s.loading.trackLoading);
@@ -74,15 +74,17 @@ export const Controls = () => {
     await skipToNext();
   }, [trackLoading, currentIndex, tracksLength, skipToNext]);
 
+  // seekBy() jumps from where the audio really is; the store's position can
+  // be two seconds old.
   const handleSeekBackward = useCallback(async () => {
     if (trackLoading) return;
-    await seekTo(Math.max(0, playbackPosition - SEEK_INTERVAL));
-  }, [trackLoading, playbackPosition, seekTo]);
+    await seekBy(-SEEK_INTERVAL);
+  }, [trackLoading]);
 
   const handleSeekForward = useCallback(async () => {
     if (trackLoading) return;
-    await seekTo(playbackPosition + SEEK_INTERVAL);
-  }, [trackLoading, playbackPosition, seekTo]);
+    await seekBy(SEEK_INTERVAL);
+  }, [trackLoading]);
 
   const isLastTrack = currentIndex === tracksLength - 1;
 

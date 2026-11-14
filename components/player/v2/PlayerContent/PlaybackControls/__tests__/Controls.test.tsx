@@ -23,6 +23,10 @@ jest.mock('@/services/player/store/playerStore', () => {
   const {create} = jest.requireActual('zustand');
   return {usePlayerStore: create(() => ({}))};
 });
+const mockSeekBy = jest.fn().mockResolvedValue(undefined);
+jest.mock('@/components/player/v2/seekBy', () => ({
+  seekBy: (seconds: number) => mockSeekBy(seconds),
+}));
 jest.mock('@/components/Icons', () => ({
   PlayIcon: () => null,
   PauseIcon: () => null,
@@ -123,5 +127,27 @@ describe('play / pause', () => {
     await press(r, 'Pause');
     expect(mockActions.pause).toHaveBeenCalledTimes(1);
     expect(mockActions.play).not.toHaveBeenCalled();
+  });
+});
+
+describe('back and forward 15 seconds', () => {
+  // seekBy() works from the player's own clock (see seekBy.test.ts); the
+  // buttons no longer add 15 to the position the store last saved.
+  it('jumps relative to where the audio is', async () => {
+    setPlayer({state: 'playing', position: 100});
+    const r = mount();
+    await press(r, 'Forward 15 seconds');
+    expect(mockSeekBy).toHaveBeenLastCalledWith(15);
+    await press(r, 'Back 15 seconds');
+    expect(mockSeekBy).toHaveBeenLastCalledWith(-15);
+    expect(mockActions.seekTo).not.toHaveBeenCalled();
+  });
+
+  it('does nothing while a track loads', async () => {
+    setPlayer({state: 'loading', trackLoading: true});
+    const r = mount();
+    await press(r, 'Forward 15 seconds');
+    await press(r, 'Back 15 seconds');
+    expect(mockSeekBy).not.toHaveBeenCalled();
   });
 });

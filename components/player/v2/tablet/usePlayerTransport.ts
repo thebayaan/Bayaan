@@ -4,6 +4,7 @@ import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {useProgress} from '@/services/player/store/progressStore';
 import {isActivelyPlaying} from '@/services/player/utils/isActivelyPlaying';
+import {seekBy} from '../seekBy';
 
 export const SEEK_INTERVAL = 15;
 
@@ -56,14 +57,16 @@ export function usePlayerTransport() {
     if (trackLoading || isLastTrack) return;
     await skipToNext();
   }, [trackLoading, isLastTrack, skipToNext]);
+  // seekBy() jumps from where the audio really is; the progress shown here
+  // can be two seconds old.
   const seekBack = useCallback(async () => {
     if (trackLoading) return;
-    await seekTo(Math.max(0, progress.position - SEEK_INTERVAL));
-  }, [trackLoading, progress.position, seekTo]);
+    await seekBy(-SEEK_INTERVAL);
+  }, [trackLoading]);
   const seekForward = useCallback(async () => {
     if (trackLoading) return;
-    await seekTo(progress.position + SEEK_INTERVAL);
-  }, [trackLoading, progress.position, seekTo]);
+    await seekBy(SEEK_INTERVAL);
+  }, [trackLoading]);
 
   const [isSeeking, setIsSeeking] = useState(false);
   const [seekValue, setSeekValue] = useState(0);

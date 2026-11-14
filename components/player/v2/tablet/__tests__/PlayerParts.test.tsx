@@ -25,6 +25,8 @@ jest.mock('@/hooks/usePlayerActions', () => ({
     updateSettings: jest.fn(),
   }),
 }));
+// @ai The seek buttons reach the native player through this; not needed here.
+jest.mock('../../seekBy', () => ({seekBy: jest.fn()}));
 const mockQueue = {tracks: [{rewayatId: 'hafs'}], currentIndex: 0};
 jest.mock('@/services/player/store/playerStore', () => ({
   usePlayerStore: (selector: (s: unknown) => unknown) =>
