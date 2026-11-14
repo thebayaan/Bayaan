@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @ai-generated
 // Builds data/mushaf/qcf/qcf-pages.json: the page and line layout of Mushaf
 // 1440 (the KFGQPC 1441H Madinah print), word by word, with each word's
 // glyph code in the QCF V4 page fonts.
