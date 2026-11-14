@@ -167,8 +167,8 @@ const KINDS: Readonly<Record<string, ReadingGroupKind>> = {
 };
 const KIND_ORDER = 'hdo';
 const DETAIL_KEYS = new Set(['x', 's', 'v', 'w', 'q']);
-const SILAH_MARKS = new Set(['ۥ', 'ۦ']);
-const SILAH_CARRIERS = new Set(['ُ', 'ِ']);
+const SILAH_MARKS = new Set(['\u06E5', '\u06E6']);
+const SILAH_CARRIERS = new Set(['\u064F', '\u0650']);
 
 function isSilahChar(text: string, i: number): boolean {
   const c = text[i];
