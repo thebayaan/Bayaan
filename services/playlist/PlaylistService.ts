@@ -28,7 +28,15 @@ class PlaylistService {
     }
 
     // Start initialization
-    this.initPromise = databaseService.initialize();
+    // @ai-start
+    // Forget a failed open, so the next call tries again. Kept, the failure
+    // was handed to every later call and collections stayed broken until
+    // the app was restarted.
+    this.initPromise = databaseService.initialize().catch(error => {
+      this.initPromise = null;
+      throw error;
+    });
+    // @ai-end
     return this.initPromise;
   }
 
