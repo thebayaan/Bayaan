@@ -211,15 +211,46 @@ class ExpoAudioService {
     }
   }
 
+  // @ai-start
   /**
-   * Wait for the player to be loaded with a timeout.
+   * Wait until the new source has loaded or failed, or the timeout passes.
+   *
+   * The player's own status events decide this where they exist. The poll
+   * below is only a fallback: it runs on JS timers, and React Native on
+   * Android stops delivering timers while the app is in the background.
+   * With the poll alone, a load started with the screen off never returned,
+   * so playback stopped advancing after the next surah until the app was
+   * opened again. Status events keep arriving in the background.
+   */
+  private async waitForLoaded(timeoutMs = 5000): Promise<void> {
+    const player = this.player;
+    let stopListening = (): void => undefined;
+    const signalled = new Promise<void>(resolve => {
+      if (!player || typeof player.addListener !== 'function') return;
+      const subscription = player.addListener('playbackStatusUpdate', () => {
+        // The event is only a wake-up; the player's live state decides, so
+        // a late status of the previous source cannot end the wait.
+        if (player.isLoaded || this.sourceFailed) resolve();
+      });
+      stopListening = () => subscription.remove();
+    });
+    try {
+      await Promise.race([this.pollUntilLoaded(timeoutMs), signalled]);
+    } finally {
+      stopListening();
+    }
+  }
+  // @ai-end
+
+  /**
+   * Poll for the player to be loaded, with a timeout.
    * Two-phase approach: first wait for isLoaded to become false
    * (indicating replace() has started processing the new source),
    * then wait for it to become true (new source fully loaded).
    * This prevents a race where isLoaded is still true from the
    * previous track and we return before the new track is ready.
    */
-  private async waitForLoaded(timeoutMs = 5000): Promise<void> {
+  private async pollUntilLoaded(timeoutMs: number): Promise<void> {
     const startTime = Date.now();
     const pollInterval = 50;
 
