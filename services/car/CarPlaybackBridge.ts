@@ -369,9 +369,12 @@ async function handleTransport(transport: CarTransport): Promise<void> {
   switch (transport.kind) {
     case 'next':
       if (adhkarTookTrackTransport('next')) return;
+      // @ai Verse audio from the Mushaf holds Now Playing: move by verse.
+      if (lockScreenService.skipMushafVerseIfHeld(true)) return; // @ai
       return player.skipToNext();
     case 'previous':
       if (adhkarTookTrackTransport('previous')) return;
+      if (lockScreenService.skipMushafVerseIfHeld(false)) return; // @ai
       return player.skipToPrevious();
     case 'play':
       return player.play();

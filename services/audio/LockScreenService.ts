@@ -297,6 +297,22 @@ class LockScreenService {
     return this.adhkarPlayer !== null;
   }
 
+  // @ai-start
+  /**
+   * Next / previous from the car while verse audio from the Mushaf holds the
+   * entry: moves by verse there and returns true. They used to skip in the
+   * surah queue underneath, which started another recitation over the one
+   * the car was showing. False when the Mushaf does not hold the entry.
+   */
+  skipMushafVerseIfHeld(forward: boolean): boolean {
+    if (this.lastMushafPlayer === null) return false;
+    const mushaf = useMushafPlayerStore.getState();
+    if (forward) mushaf.nextVerse();
+    else mushaf.previousVerse();
+    return true;
+  }
+  // @ai-end
+
   /** True while the adhkar entry shows its own next / previous. */
   hasAdhkarTrackControls(): boolean {
     return this.adhkarTrackControls !== null;

@@ -607,6 +607,17 @@ class MushafAudioService {
       } catch {
         // ignore
       }
+      // @ai-start
+      // Give the lock screen back before the player goes. On iOS a removed
+      // player that still held the entry stayed on the lock screen after
+      // Stop, and its play button started that surah again with nothing in
+      // the app able to stop it. A no-op when it does not hold the entry.
+      try {
+        this.player.clearLockScreenControls();
+      } catch {
+        // ignore
+      }
+      // @ai-end
       try {
         this.player.remove();
       } catch (error) {

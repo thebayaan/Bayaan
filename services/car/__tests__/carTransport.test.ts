@@ -26,11 +26,17 @@ jest.mock('@/modules/bayaan-car', () => ({
 const mockSetCarMode = jest.fn((_enabled: boolean): void => undefined);
 const mockIsAdhkarHeld = jest.fn((): boolean => false);
 const mockHasAdhkarTrackControls = jest.fn((): boolean => false);
+// @ai True when verse audio from the Mushaf took the press.
+const mockSkipMushafVerseIfHeld = jest.fn(
+  (_forward: boolean): boolean => false,
+);
 jest.mock('@/services/audio/LockScreenService', () => ({
   lockScreenService: {
     setCarMode: (enabled: boolean) => mockSetCarMode(enabled),
     isAdhkarHeld: () => mockIsAdhkarHeld(),
     hasAdhkarTrackControls: () => mockHasAdhkarTrackControls(),
+    skipMushafVerseIfHeld: (forward: boolean) =>
+      mockSkipMushafVerseIfHeld(forward), // @ai
   },
 }));
 const mockSkipAdhkarTrack = jest.fn((_direction: string): void => undefined);
@@ -218,6 +224,23 @@ describe('car transports', () => {
       });
     });
   });
+
+  // @ai-start
+  describe('while verse audio from the Mushaf holds Now Playing', () => {
+    beforeEach(() => mockSkipMushafVerseIfHeld.mockReturnValue(true));
+    afterEach(() => mockSkipMushafVerseIfHeld.mockReturnValue(false));
+
+    it('next and previous move by verse there, not in the surah queue', async () => {
+      await withBridge(async () => {
+        await send({kind: 'next'});
+        await send({kind: 'previous'});
+        expect(mockSkipMushafVerseIfHeld.mock.calls).toEqual([[true], [false]]);
+        expect(mockSkipToNext).not.toHaveBeenCalled();
+        expect(mockSkipToPrevious).not.toHaveBeenCalled();
+      });
+    });
+  });
+  // @ai-end
 
   it('play resumes playback without pausing', async () => {
     await withBridge(async () => {

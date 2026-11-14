@@ -275,3 +275,33 @@ describe('main player artwork', () => {
     warn.mockRestore();
   });
 });
+
+// @ai-start
+describe('next / previous from the car while verse audio holds the entry', () => {
+  it('move by verse in the Mushaf, and say so', () => {
+    const nextVerse = jest.fn();
+    const previousVerse = jest.fn();
+    setMushaf({
+      playbackState: 'playing',
+      currentSurah: 2,
+      numberingMode: 'hafs',
+      currentVerseKey: '2:5',
+      currentVerseLabel: '2:5',
+      nextVerse,
+      previousVerse,
+    });
+
+    expect(lockScreenService.skipMushafVerseIfHeld(true)).toBe(true);
+    expect(lockScreenService.skipMushafVerseIfHeld(false)).toBe(true);
+    expect(nextVerse).toHaveBeenCalledTimes(1);
+    expect(previousVerse).toHaveBeenCalledTimes(1);
+  });
+
+  it('are left to the surah queue when the Mushaf does not hold it', () => {
+    const nextVerse = jest.fn();
+    setMushaf({nextVerse, previousVerse: jest.fn()});
+    expect(lockScreenService.skipMushafVerseIfHeld(true)).toBe(false);
+    expect(nextVerse).not.toHaveBeenCalled();
+  });
+});
+// @ai-end
