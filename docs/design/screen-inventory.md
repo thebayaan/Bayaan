@@ -170,11 +170,26 @@ opened with `SheetManager.show('<id>')`.
 | `mushaf-player-options` | `MushafPlayerOptionsSheet` | Mushaf | Reading |
 | `mushaf-reciter-picker` | `MushafReciterPickerSheet` | Mushaf | Reading |
 | `mushaf-repeat-options` | `MushafRepeatOptionsSheet` | Mushaf | Reading |
-| `verse-actions` | `VerseActionsSheet` (`verse-actions/*`) | Mushaf, player Quran view | Reading |
+| `verse-actions` | `VerseActionsSheet` (`verse-actions/*`) | Mushaf, player Quran view; a word long-press in a word-by-word grid (opens on Word Study) | Reading |
 | `verse-note` | `VerseNoteSheet` | Verse actions | Reading |
-| `word-detail` | `WordDetailSheet` | Mushaf word tap | Reading |
 | `adhkar-layout` | `AdhkarLayoutSheet` | Dhikr reader | Reading |
 | `adhkar-copy-options` | `AdhkarCopyOptionsSheet` | Dhikr reader | Reading |
+
+`verse-actions` opens sub-screens in place of its action list (translation,
+tafseer, theme, word by word, Word Study, highlight, note, share, similar
+verses, community reflections), each with a back row titled after it.
+**Word Study** (`verse-actions/WordStudyContent.tsx`, the `words` screen)
+replaced the I'rab screen and the word sheet (`word-detail`,
+`WordDetailSheet`). It steps through every word of the selected verses,
+across verses, with a fixed Previous / Next bar in the Quran's direction (and
+← / → on iPad), verse chips for several verses, and a whole-verse list. Its
+word card (`verse-actions/WordCard.tsx`) shows the word, its transliteration,
+meaning, Play and reference, then the Readings (`WordReadingsSection`), I'rab,
+Morphology, Arabic meaning (`word-study/GharibSection`) and Rasm
+(`word-study/RasmSection`) sections; its I'rab books tab shows the classical
+books. It opens from the Explore card's Word Study row, from a word
+long-press in a list or player word-by-word grid (payload `initialScreen:
+'words'` with the `word`), and from a long-press in the Word by Word screen.
 
 `components/browse/FilterModal.tsx` is a modal outside the sheet registry.
 `components/BottomSheetModal.tsx`, `components/modals/WhatsNewModal.tsx` and
