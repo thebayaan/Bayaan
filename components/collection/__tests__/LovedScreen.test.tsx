@@ -6,9 +6,12 @@
  *   could not reach the surahs above it.
  * - Unloving a surah blanked the whole screen to "Loading…" and threw the
  *   list back to the top.
+ * - "Download all" saved surahs loved without a rewayah under a key playback
+ *   never looks up, downloaded the catalogue recording for uploads, and
+ *   always said "Download Complete".
  */
 import React from 'react';
-import {Animated, Text} from 'react-native';
+import {Alert, Animated, Text} from 'react-native';
 import TestRenderer, {act} from 'react-test-renderer';
 
 interface Loved {
@@ -23,6 +26,12 @@ let mockLovedTracks: Loved[] = [];
 let mockUploads: Array<{id: string}> = [];
 const mockUpdateQueue = jest.fn();
 const mockStartNewChain = jest.fn();
+const mockShowSheet = jest.fn();
+const mockDownloadState = jest.fn();
+const mockDownloadSurah = jest.fn();
+const mockAddDownload = jest.fn();
+/** `${reciterId}:${surahId}:${rewayatId}` of what is already downloaded. */
+let mockDownloaded = new Set<string>();
 
 jest.mock('@/hooks/useTheme', () => ({
   useTheme: () => ({
@@ -40,10 +49,10 @@ jest.mock('@/hooks/useCollectionNativeHeader', () => ({
   useCollectionNativeHeader: () => undefined,
 }));
 jest.mock('@/hooks/useCollectionDownloadState', () => ({
-  useCollectionDownloadState: () => ({
-    allDownloaded: false,
-    hasNoTracks: false,
-  }),
+  useCollectionDownloadState: (items: unknown) => {
+    mockDownloadState(items);
+    return {allDownloaded: false, hasNoTracks: false};
+  },
 }));
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({top: 0, bottom: 0, left: 0, right: 0}),
@@ -80,10 +89,27 @@ jest.mock('@/services/player/store/playerStore', () => ({
   usePlayerStore: () => false,
 }));
 jest.mock('@/services/player/store/downloadSelectors', () => ({
-  useDownloadQueries: () => ({}),
-  useDownloadActions: () => ({}),
+  useDownloadQueries: () => ({
+    isDownloaded: (reciterId: string, surahId: string) =>
+      mockDownloaded.has(`${reciterId}:${surahId}:`),
+    isDownloadedWithRewayat: (
+      reciterId: string,
+      surahId: string,
+      rewayatId: string,
+    ) => mockDownloaded.has(`${reciterId}:${surahId}:${rewayatId}`),
+    isDownloading: () => false,
+    isDownloadingWithRewayat: () => false,
+  }),
+  useDownloadActions: () => ({
+    setDownloading: jest.fn(),
+    clearDownloading: jest.fn(),
+    setDownloadProgress: jest.fn(),
+    addDownload: (download: unknown) => mockAddDownload(download),
+  }),
 }));
-jest.mock('@/services/downloadService', () => ({downloadSurah: jest.fn()}));
+jest.mock('@/services/downloadService', () => ({
+  downloadSurah: (...args: unknown[]) => mockDownloadSurah(...args),
+}));
 jest.mock('@/store/uploadsStore', () => ({
   useUploadsStore: {getState: () => ({recitations: mockUploads})},
 }));
@@ -123,11 +149,14 @@ jest.mock('@/components/sheets/options/collectionOptions', () => ({
     children ?? null,
 }));
 jest.mock('react-native-actions-sheet', () => ({
-  SheetManager: {show: jest.fn()},
+  SheetManager: {
+    show: (id: string, options: unknown) => mockShowSheet(id, options),
+  },
 }));
 
 import LovedScreen from '@/app/(tabs)/(c.collection)/collection/loved';
 import {TrackItem} from '@/components/TrackItem';
+import {LovedHeader} from '@/components/playlist-detail/LovedHeader';
 
 const loved = (surahId: string, over: Partial<Loved> = {}): Loved => ({
   reciterId: 'r1',
@@ -169,6 +198,13 @@ jest.setTimeout(30000);
 beforeEach(() => {
   jest.clearAllMocks();
   mockUploads = [];
+  mockDownloaded = new Set();
+  mockDownloadSurah.mockImplementation(
+    async (surahId: number, reciterId: string, rewayatId?: string) => ({
+      filePath: `${surahId}_${reciterId}_${rewayatId}.mp3`,
+      fileSize: 1,
+    }),
+  );
 });
 
 afterEach(() => {
@@ -284,4 +320,155 @@ it('unloving a surah keeps the list mounted', () => {
   expect(texts(tree)).not.toContain('Loading…');
   // A remount is what threw the scroll position back to the top.
   expect(listOf(tree)).toBe(list);
+});
+
+describe('"Download all"', () => {
+  let alert: jest.SpyInstance;
+
+  beforeEach(() => {
+    alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    alert.mockRestore();
+  });
+
+  /** Opens the screen's ••• menu and chooses "Download All". */
+  async function downloadAll(tree: TestRenderer.ReactTestRenderer) {
+    const header = tree.root.find(
+      node => (node.type as unknown) === LovedHeader,
+    );
+    act(() => {
+      header.props.onOptionsPress();
+    });
+    const payload = mockShowSheet.mock.calls[0][1].payload as {
+      options: Array<{label: string; onPress: () => Promise<void>}>;
+    };
+    const option = payload.options.find(o => o.label === 'Download All');
+    if (!option) throw new Error('no Download All option');
+    await act(async () => {
+      await option.onPress();
+    });
+  }
+
+  const downloadedSurahs = () =>
+    mockDownloadSurah.mock.calls.map(([surahId, reciterId, rewayatId]) => [
+      surahId,
+      reciterId,
+      rewayatId,
+    ]);
+
+  it('saves a surah loved without a rewayah under the rewayah it plays in', async () => {
+    mockLovedTracks = [loved('2', {rewayatId: ''})];
+    const tree = render();
+    // The row, its badge and its download all use the reciter's first one.
+    expect(rows(tree)[0].props.rewayatId).toBe('r1-default');
+
+    await downloadAll(tree);
+
+    expect(downloadedSurahs()).toEqual([[2, 'r1', 'r1-default']]);
+    expect(mockAddDownload).toHaveBeenCalledWith(
+      expect.objectContaining({
+        reciterId: 'r1',
+        surahId: '2',
+        rewayatId: 'r1-default',
+      }),
+    );
+    // Playing it looks the file up under the same rewayah.
+    await act(async () => {
+      await rows(tree)[0].props.onPress();
+    });
+    expect(mockUpdateQueue.mock.calls[0][0][0]).toMatchObject({
+      rewayatId: 'r1-default',
+      url: 'https://audio.test/r1/r1-default/2.mp3',
+    });
+  });
+
+  it('does not download anything for an upload', async () => {
+    mockUploads = [{id: 'u1'}];
+    mockLovedTracks = [
+      loved('1'),
+      loved('2', {rewayatId: '', userRecitationId: 'u1'}),
+    ];
+    const tree = render();
+
+    await downloadAll(tree);
+
+    // It used to fetch the catalogue recording of surah 2.
+    expect(downloadedSurahs()).toEqual([[1, 'r1', 'rw1']]);
+    // The "All downloaded" state is worked out without uploads too.
+    const counted = mockDownloadState.mock.calls.pop()?.[0] as Array<{
+      track: {surahId: string};
+    }>;
+    expect(counted.map(item => item.track.surahId)).toEqual(['1']);
+  });
+
+  it('says so when every surah failed', async () => {
+    mockDownloadSurah.mockRejectedValue(new Error('offline'));
+    const error = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+    mockLovedTracks = [loved('1'), loved('2')];
+    const tree = render();
+
+    await downloadAll(tree);
+    error.mockRestore();
+
+    // It used to say "Download Complete".
+    expect(alert).toHaveBeenCalledTimes(1);
+    expect(alert).toHaveBeenCalledWith(
+      'Download Error',
+      'None of the surahs could be downloaded. Check your connection and try again.',
+    );
+    expect(mockAddDownload).not.toHaveBeenCalled();
+  });
+
+  it('counts what downloaded and what failed', async () => {
+    mockDownloadSurah
+      .mockResolvedValueOnce({filePath: 'a.mp3', fileSize: 1})
+      .mockRejectedValueOnce(new Error('timeout'))
+      .mockResolvedValueOnce({filePath: 'c.mp3', fileSize: 1});
+    const error = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+    mockLovedTracks = [loved('1'), loved('2'), loved('3')];
+    const tree = render();
+
+    await downloadAll(tree);
+    error.mockRestore();
+
+    expect(alert).toHaveBeenCalledWith(
+      'Download Finished',
+      'Downloaded: 2. Failed: 1. Choose Download All again to retry the rest.',
+    );
+  });
+
+  it('says complete when everything downloaded', async () => {
+    mockDownloaded = new Set(['r1:1:rw1']);
+    mockLovedTracks = [loved('1'), loved('2')];
+    const tree = render();
+
+    await downloadAll(tree);
+
+    // Surah 1 was already there and is not fetched again.
+    expect(downloadedSurahs()).toEqual([[2, 'r1', 'rw1']]);
+    expect(alert).toHaveBeenCalledWith(
+      'Download Complete',
+      'All loved surahs have been downloaded.',
+    );
+  });
+
+  it('says already downloaded when there is nothing left to fetch', async () => {
+    mockDownloaded = new Set(['r1:1:rw1', 'r1:2:r1-default']);
+    mockLovedTracks = [loved('1'), loved('2', {rewayatId: ''})];
+    const tree = render();
+
+    await downloadAll(tree);
+
+    expect(mockDownloadSurah).not.toHaveBeenCalled();
+    expect(alert).toHaveBeenCalledWith(
+      'Already Downloaded',
+      'All loved surahs are already downloaded.',
+    );
+  });
 });

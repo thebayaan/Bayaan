@@ -1,4 +1,4 @@
-import React, {useState, useCallback, useRef, useMemo} from 'react'; // @ai
+import React, {useCallback, useRef, useMemo} from 'react'; // @ai
 import {
   View,
   Text,
@@ -39,6 +39,7 @@ import {
   useDownloadQueries,
 } from '@/services/player/store/downloadSelectors';
 import {downloadSurah} from '@/services/downloadService';
+import {bulkDownloadSurahs} from '@/services/player/bulkDownloadSurahs'; // @ai
 import {useCollectionDownloadState} from '@/hooks/useCollectionDownloadState';
 import {CollectionStickyHeader} from '@/components/collection/CollectionStickyHeader';
 import {SheetManager} from 'react-native-actions-sheet';
@@ -58,6 +59,8 @@ import {
 // @ai-end
 
 interface LovedTrack {
+  /** The saved entry's own identity; unique in the list. @ai */
+  key: string; // @ai
   reciterId: string;
   surahId: string;
   rewayatId?: string;
@@ -97,22 +100,47 @@ const LovedScreen = () => {
   // catalogue in memory (it is loaded before any screen shows). This used to
   // be an async reload behind a "Loading…" view on every change, so unloving
   // one surah blanked the whole screen and threw the list back to the top.
+  //
+  // A surah loved before rewayat were saved has none, and it plays in the
+  // reciter's first rewayah. The row takes that rewayah here, once, so that
+  // playing it, downloading it and its downloaded badge all mean the same
+  // file. "Download all" used to save such a surah under an empty rewayah
+  // that playback never looks up: the row showed as downloaded and then
+  // failed to play offline. An upload keeps no rewayah; it is its own file.
   const lovedData = useMemo<LovedTrackData[]>(
     () =>
-      lovedTracks.map(track => ({
-        track: {
-          reciterId: track.reciterId,
-          surahId: track.surahId,
-          rewayatId: track.rewayatId,
-          userRecitationId: track.userRecitationId,
-        },
-        reciter: getReciterByIdSync(track.reciterId) ?? null,
-        surah: getSurahById(parseInt(track.surahId, 10)) ?? null,
-      })),
+      lovedTracks.map(track => {
+        const reciter = getReciterByIdSync(track.reciterId) ?? null;
+        return {
+          track: {
+            // Built from what is saved, not from the rewayah the row takes
+            // below: an old entry and a newer one for the reciter's first
+            // rewayah would otherwise share a key.
+            key: `${track.reciterId}:${track.surahId}:${
+              track.rewayatId || ''
+            }:${track.userRecitationId || ''}`,
+            reciterId: track.reciterId,
+            surahId: track.surahId,
+            rewayatId: track.userRecitationId
+              ? track.rewayatId
+              : track.rewayatId || reciter?.rewayat[0]?.id,
+            userRecitationId: track.userRecitationId,
+          },
+          reciter,
+          surah: getSurahById(parseInt(track.surahId, 10)) ?? null,
+        };
+      }),
     [lovedTracks],
   );
+  // What "Download all" is about. Uploads are files on the device already;
+  // downloading one fetched the catalogue recording of its surah instead.
+  const downloadableLoved = useMemo(
+    () => lovedData.filter(item => !item.track.userRecitationId),
+    [lovedData],
+  );
+  // A second tap while a batch runs must not start another one.
+  const bulkDownloadInFlightRef = useRef(false);
   // @ai-end
-  const [isDownloadingBulk, setIsDownloadingBulk] = useState(false);
 
   // Scroll tracking for sticky header
   const scrollY = useRef(new RNAnimated.Value(0)).current;
@@ -190,15 +218,11 @@ const LovedScreen = () => {
           return;
         }
 
+        // @ai The row that was tapped, by its own identity. Matching on
+        // reciter, surah and rewayah could pick another row of the same
+        // recitation (an upload, or an entry saved without a rewayah).
         const selectedIndex = lovedData.findIndex(
-          item =>
-            item.reciter?.id === reciter.id &&
-            item.surah?.id === surah.id &&
-            (item.track.rewayatId || '') === (track.rewayatId || '') &&
-            // @ai An upload and the catalogue recording of the same surah
-            // are different rows.
-            (item.track.userRecitationId || '') ===
-              (track.userRecitationId || ''),
+          item => item.track.key === track.key,
         );
 
         if (selectedIndex === -1) {
@@ -371,113 +395,65 @@ const LovedScreen = () => {
   }, [lovedData, startNewChain, updateQueue, shuffleEnabled, toggleShuffle]);
 
   // Handle bulk download
+  // @ai-start
   const handleBulkDownload = useCallback(async () => {
-    if (isDownloadingBulk) return;
-    if (lovedData.length === 0) return;
+    if (bulkDownloadInFlightRef.current) return;
 
-    setIsDownloadingBulk(true);
+    const items = downloadableLoved.flatMap(item =>
+      item.reciter && item.surah
+        ? [
+            {
+              surahId: item.surah.id,
+              reciterId: item.track.reciterId,
+              rewayatId: item.track.rewayatId,
+            },
+          ]
+        : [],
+    );
+    if (items.length === 0) return;
 
+    bulkDownloadInFlightRef.current = true;
     try {
-      // Filter out items that are already downloaded
-      const itemsToDownload = lovedData.filter(item => {
-        if (!item.reciter || !item.surah) return false;
-        if (item.track.rewayatId) {
-          return !isDownloadedWithRewayat(
-            item.track.reciterId,
-            item.track.surahId,
-            item.track.rewayatId,
-          );
-        }
-        return !isDownloaded(item.track.reciterId, item.track.surahId);
+      // The same batch the reciter profile uses: it skips what is already
+      // downloaded or downloading, and counts what failed.
+      const summary = await bulkDownloadSurahs(items, {
+        downloadSurah,
+        isDownloaded,
+        isDownloadedWithRewayat,
+        isDownloading,
+        isDownloadingWithRewayat,
+        setDownloading,
+        clearDownloading,
+        addDownload,
+        setDownloadProgress,
       });
 
-      if (itemsToDownload.length === 0) {
+      // This used to say "Download Complete" whatever happened, also when
+      // the device was offline and every surah had failed.
+      if (summary.failed > 0 && summary.downloaded > 0) {
+        Alert.alert(
+          t('lovedScreen.downloadPartialTitle'),
+          t('lovedScreen.downloadPartialMessage', {
+            downloaded: summary.downloaded,
+            failed: summary.failed,
+          }),
+        );
+      } else if (summary.failed > 0) {
+        Alert.alert(
+          t('lovedScreen.downloadErrorTitle'),
+          t('lovedScreen.downloadFailedMessage'),
+        );
+      } else if (summary.downloaded > 0) {
+        Alert.alert(
+          t('lovedScreen.downloadCompleteTitle'),
+          t('lovedScreen.downloadCompleteMessage'),
+        );
+      } else if (summary.skipped === summary.total) {
         Alert.alert(
           t('lovedScreen.alreadyDownloadedTitle'),
           t('lovedScreen.alreadyDownloadedMessage'),
         );
-        setIsDownloadingBulk(false);
-        return;
       }
-
-      // Throttle progress updates to prevent AsyncStorage overload
-      const progressUpdateThrottle = 300; // Only update every 300ms
-      const lastProgressUpdateRef = {current: 0};
-
-      // Download items sequentially with delays to prevent AsyncStorage overload
-      for (let index = 0; index < itemsToDownload.length; index++) {
-        const item = itemsToDownload[index];
-        if (!item.reciter || !item.surah) continue;
-
-        const surahId = parseInt(item.track.surahId, 10);
-        // Generate download ID with rewayatId if provided for proper tracking
-        const downloadId = item.track.rewayatId
-          ? `${item.track.reciterId}-${surahId}-${item.track.rewayatId}`
-          : `${item.track.reciterId}-${surahId}`;
-
-        // Skip if already downloading - use rewayat-aware check if rewayatId is provided
-        const isCurrentlyDownloading = item.track.rewayatId
-          ? isDownloadingWithRewayat(
-              item.track.reciterId,
-              item.track.surahId,
-              item.track.rewayatId,
-            )
-          : isDownloading(item.track.reciterId, item.track.surahId);
-
-        if (isCurrentlyDownloading) {
-          continue;
-        }
-
-        try {
-          setDownloading(downloadId);
-
-          // Download with throttled progress tracking
-          const downloadResult = await downloadSurah(
-            surahId,
-            item.track.reciterId,
-            item.track.rewayatId,
-            progress => {
-              // Throttle progress updates to prevent AsyncStorage queue overflow
-              const now = Date.now();
-              if (
-                now - lastProgressUpdateRef.current <
-                progressUpdateThrottle
-              ) {
-                return;
-              }
-              lastProgressUpdateRef.current = now;
-              setDownloadProgress(downloadId, progress);
-            },
-          );
-
-          // Add to downloads
-          addDownload({
-            reciterId: item.track.reciterId,
-            surahId: item.track.surahId,
-            rewayatId: item.track.rewayatId || '',
-            filePath: downloadResult.filePath,
-            fileSize: downloadResult.fileSize,
-            downloadDate: Date.now(),
-            status: 'completed',
-          });
-
-          clearDownloading(downloadId);
-
-          // Small delay between downloads to let AsyncStorage catch up
-          // Only add delay if not the last item
-          if (index < itemsToDownload.length - 1) {
-            await new Promise(resolve => setTimeout(resolve, 100));
-          }
-        } catch (error) {
-          console.error('Error downloading surah:', error);
-          clearDownloading(downloadId);
-        }
-      }
-
-      Alert.alert(
-        t('lovedScreen.downloadCompleteTitle'),
-        t('lovedScreen.downloadCompleteMessage'),
-      );
     } catch (error) {
       console.error('Error in bulk download:', error);
       Alert.alert(
@@ -485,11 +461,10 @@ const LovedScreen = () => {
         t('lovedScreen.downloadErrorMessage'),
       );
     } finally {
-      setIsDownloadingBulk(false);
+      bulkDownloadInFlightRef.current = false;
     }
   }, [
-    isDownloadingBulk,
-    lovedData,
+    downloadableLoved,
     isDownloaded,
     isDownloadedWithRewayat,
     isDownloadingWithRewayat,
@@ -500,9 +475,10 @@ const LovedScreen = () => {
     setDownloadProgress,
     t,
   ]);
+  // @ai-end
 
   // Calculate download state for all loved tracks using custom hook
-  const downloadState = useCollectionDownloadState(lovedData);
+  const downloadState = useCollectionDownloadState(downloadableLoved); // @ai
 
   // Handle options menu
   // @ai-start
@@ -683,12 +659,7 @@ const LovedScreen = () => {
     );
   };
 
-  // @ai The upload id keeps an upload's key apart from the catalogue row of
-  // the same reciter and surah saved without a rewayah.
-  const getItemKey = (item: LovedTrackData) =>
-    `${item.track.reciterId}:${item.track.surahId}:${
-      item.track.rewayatId || ''
-    }:${item.track.userRecitationId || ''}`;
+  const getItemKey = (item: LovedTrackData) => item.track.key; // @ai
 
   if (lovedData.length === 0) {
     return (
