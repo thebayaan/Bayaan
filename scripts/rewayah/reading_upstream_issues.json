@@ -1,0 +1,33 @@
+{
+  "__doc": "Suspected KFGQPC misprints in the official riwayah texts (scripts/rewayah/sources/SOURCES.md, Known upstream issues). The words DBs keep the official text and the highlight maps tint it as written. In the per-word readings index (build_readings_index.py) each listed member is read with its sibling narrator: it is placed in the sibling's group and its stored text is never shown as a reading of its own (row detail q). The app shows no note (decision: docs/plans/2026-11-14-word-study/README.md, Readings). Gate G7: every entry must still match the stored, tinted text exactly (code point for code point: the DB text is decomposed, alef + hamza above rather than U+0623) and name the rewayah's sibling, so a corrected source makes its entry fail until it is removed. A qualified reader signs these off with the review list (reading_review.md). Entries use file ids; location is the Hafs word slot.",
+  "issues": [
+    {
+      "rid": "qumbul",
+      "location": "4:136:14",
+      "text": "أُنزَلَ",
+      "sibling": "bazzi",
+      "note": "Qunbul 4:135 (Makki): fatha on the zay in both official Qunbul artifacts; Ibn Kathir reads the passive أُنزِلَ, as the official al-Bazzi text writes it."
+    },
+    {
+      "rid": "qaloon",
+      "location": "17:62:1",
+      "text": "قَال۟",
+      "sibling": "warsh",
+      "note": "Qalun 17:62: a sukun on the lam in both official Qalun JSONs; every reading, Warsh included, has قَالَ."
+    },
+    {
+      "rid": "warsh",
+      "location": "43:58:10",
+      "text": "جَدَلاَ",
+      "sibling": "qaloon",
+      "note": "Warsh 43:58: no iqlab meem, so no tanween as written, in every official Warsh artifact; Nafi' reads jadalan, as the Qalun texts write it (جَدَلاَۢ)."
+    },
+    {
+      "rid": "doori",
+      "location": "43:78:2",
+      "text": "جِّئْنَٰكُم",
+      "sibling": "soosi",
+      "note": "al-Duri 43:78: a sukun on the dal of لَقَدْ (read clearly) before the doubled jim it merges into; Abu 'Amr merges the dal into the jim, as al-Susi's text writes it (لَقَد جِّينَٰكُم)."
+    }
+  ]
+}

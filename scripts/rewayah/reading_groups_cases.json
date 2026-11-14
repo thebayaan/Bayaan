@@ -1,0 +1,107 @@
+{
+  "__doc": "Reviewed groupings of the per-word readings index (build_readings_index.py, gate G6). Each span is keyed by its first Hafs word slot (s:a:w) and lists its groups in display order, as file ids: Hafs's group first, then the groups that read the word differently from Hafs, then the rewayat that do not read it. 'groups' holds one entry per rule: add an entry when a review settles a reading, and never edit one to make a build pass. 'toConfirm' pins what the build produces today for the open questions a qualified reader must answer (reading_review.md lists them); a decision moves a span into 'groups', or changes highlights.py or reading_upstream_issues.json together with the expected result here.",
+  "groups": [
+    {
+      "rule": "A general rule of one rewayah does not split a reading: al-Susi's idgham kabir (1:4:1 مَّلِكِ after ٱلرَّحِيم) and his ibdal of a vowelless hamza (2:67:7 يَامُرْكُمْ), Ibn Kathir's silah of the meem al-jam' (2:85:18 تَفْدُوهُمُۥ with Abu 'Amr's تَفْدُوهُمْ).",
+      "spans": {
+        "1:4:1": [["hafs", "shouba"], ["bazzi", "qumbul", "warsh", "qaloon", "doori", "soosi"]],
+        "2:67:7": [["hafs", "shouba", "bazzi", "qumbul", "warsh", "qaloon"], ["doori", "soosi"]],
+        "2:85:18": [["hafs", "shouba", "warsh", "qaloon"], ["bazzi", "qumbul", "doori", "soosi"]]
+      }
+    },
+    {
+      "rule": "The same reading of several readers is one group, whatever encoding their texts use (2:9:6 يُخَٰدِعُونَ of Ibn Kathir, Nafi' and Abu 'Amr).",
+      "spans": {
+        "2:9:6": [["hafs", "shouba"], ["bazzi", "qumbul", "warsh", "qaloon", "doori", "soosi"]]
+      }
+    },
+    {
+      "rule": "Distinct readings stay apart, one group each (12:12:4 one per reader; 10:35:22, 3:66:1 and 18:77:22 as the readers differ).",
+      "spans": {
+        "12:12:4": [["hafs", "shouba"], ["bazzi", "qumbul"], ["warsh", "qaloon"], ["doori", "soosi"]],
+        "10:35:22": [["hafs"], ["shouba"], ["bazzi", "qumbul", "warsh"], ["qaloon", "doori", "soosi"]],
+        "3:66:1": [["hafs", "shouba", "bazzi"], ["qumbul"], ["warsh"], ["qaloon", "doori", "soosi"]],
+        "18:77:22": [["hafs"], ["shouba", "warsh", "qaloon"], ["bazzi", "qumbul"], ["doori", "soosi"]]
+      }
+    },
+    {
+      "rule": "A word written over two Hafs slots (P3) is one span: written as one word without a reading difference (15:7 لَّوْمَا), read differently (40:26 وَأَن; 27:20 مَالِى, Nafi' and Abu 'Amr with the ya sakin, whatever their texts' encoding), al-Bazzi's one word and Qunbul's two read alike (75:1).",
+      "spans": {
+        "15:7:1": [["hafs", "shouba", "bazzi", "qumbul", "warsh", "qaloon", "doori", "soosi"]],
+        "27:20:4": [["hafs", "shouba", "bazzi", "qumbul"], ["warsh", "qaloon", "doori", "soosi"]],
+        "40:26:13": [["hafs", "shouba"], ["bazzi", "qumbul", "warsh", "qaloon", "doori", "soosi"]],
+        "75:1:1": [["hafs", "shouba", "warsh", "qaloon", "doori", "soosi"], ["bazzi", "qumbul"]]
+      }
+    },
+    {
+      "rule": "A Hafs-only word (P2) is not read: Nafi' 57:24 omits هُوَ.",
+      "spans": {
+        "57:24:10": [["hafs", "shouba", "bazzi", "qumbul", "doori", "soosi"], ["warsh", "qaloon"]]
+      }
+    },
+    {
+      "rule": "A suspected KFGQPC misprint is read with its sibling narrator and never shown as a reading of its own (docs/plans/2026-11-14-word-study/README.md; reading_upstream_issues.json).",
+      "spans": {
+        "4:136:14": [["hafs", "shouba", "warsh", "qaloon"], ["bazzi", "qumbul", "doori", "soosi"]],
+        "17:62:1": [["hafs", "shouba", "bazzi", "qumbul", "warsh", "qaloon", "doori", "soosi"]],
+        "43:58:10": [["hafs", "shouba", "bazzi", "qumbul", "warsh", "qaloon", "doori", "soosi"]],
+        "43:78:2": [["hafs", "shouba", "bazzi", "qumbul", "warsh", "qaloon", "doori", "soosi"]]
+      }
+    },
+    {
+      "rule": "al-Bazzi's own doubled ta' (هِيَ تَّلَقَّفُ, مَآ تَّنَزَّلُ) is a reading of his: it is never excused as an idgham on the reference side of a comparison (highlights._own_initial_doubling), so it stays apart from the readings without it.",
+      "spans": {
+        "7:117:9": [["hafs"], ["shouba", "qumbul", "warsh", "qaloon", "doori", "soosi"], ["bazzi"]],
+        "15:8:2": [["hafs"], ["shouba"], ["bazzi"], ["qumbul", "warsh", "qaloon", "doori", "soosi"]],
+        "20:69:5": [["hafs"], ["shouba", "qumbul", "warsh", "qaloon", "doori", "soosi"], ["bazzi"]],
+        "26:45:6": [["hafs"], ["shouba", "qumbul", "warsh", "qaloon", "doori", "soosi"], ["bazzi"]]
+      }
+    },
+    {
+      "rule": "A narrator reads with the other narrator of his reader when they store the same words or the reviewed sibling rule says they read alike: al-Susi's وَهْو, its final vowel merged into the next word by his idgham kabir, is al-Duri's وَهْوَ.",
+      "spans": {
+        "6:127:6": [["hafs", "shouba", "bazzi", "qumbul", "warsh"], ["qaloon", "doori", "soosi"]],
+        "16:63:12": [["hafs", "shouba", "bazzi", "qumbul", "warsh"], ["qaloon", "doori", "soosi"]],
+        "42:22:6": [["hafs", "shouba", "bazzi", "qumbul", "warsh"], ["qaloon", "doori", "soosi"]],
+        "69:16:3": [["hafs", "shouba", "bazzi", "qumbul", "warsh"], ["qaloon", "doori", "soosi"]]
+      }
+    }
+  ],
+  "toConfirm": [
+    {
+      "question": "al-la'i (33:4, 58:2, 65:4 twice): Warsh's اُ۬لٜى۟ is grouped with al-Bazzi and Abu 'Amr (al-lay, the ya without hamza) and Qunbul with Qalun (the hamza without ya). Is that how these narrators read it?",
+      "spans": {
+        "33:4:12": [["hafs", "shouba"], ["bazzi", "warsh", "doori", "soosi"], ["qumbul", "qaloon"]],
+        "58:2:12": [["hafs", "shouba"], ["bazzi", "warsh", "doori", "soosi"], ["qumbul", "qaloon"]],
+        "65:4:1": [["hafs", "shouba"], ["bazzi", "warsh", "doori", "soosi"], ["qumbul", "qaloon"]],
+        "65:4:12": [["hafs", "shouba"], ["bazzi", "warsh", "doori", "soosi"], ["qumbul", "qaloon"]]
+      }
+    },
+    {
+      "question": "A silah never separates two rewayat that differ from Hafs: a ha' al-kinaya read with kasra and silah joins one read with a sukun, and the member's own text shows the silah in colour (24:52:7 Shu'bah and Abu 'Amr وَيَتَّقِهْ with Ibn Kathir and Warsh وَيَتَّقِهِۦ, Qalun's kasra without silah apart; 7:111:2 Ibn Kathir أَرْجِـْٔهُۥ with Abu 'Amr أَرْجِـْٔهُ). At the Hafs line the highlight decision applies instead (docs/features/rewayat.md, decisions to confirm), so 3:75:8 keeps Shu'bah's يُؤَدِّهْ apart from Hafs's يُؤَدِّهِۦٓ. Confirm, or split these readings.",
+      "spans": {
+        "24:52:7": [["hafs"], ["shouba", "bazzi", "qumbul", "warsh", "doori", "soosi"], ["qaloon"]],
+        "7:111:2": [["hafs", "shouba", "warsh"], ["bazzi", "qumbul", "doori", "soosi"], ["qaloon"]],
+        "3:75:8": [["hafs", "bazzi", "qumbul", "warsh"], ["shouba", "doori", "soosi"], ["qaloon"]]
+      }
+    },
+    {
+      "question": "Two narrators of one reader shown as two readings because a general rule of one of them is not modelled inside a word: Warsh's naql in 7:98:1 أَوَاَمِنَ (Qalun أَو۟أَمِنَ), al-Susi's ibdal in 20:94:7 بِرَاسِيَ (al-Duri بِرَأْسِيَ). The split is the safe side (an extra reading, never a wrong merge). Confirm, or merge them through a reviewed rule.",
+      "spans": {
+        "7:98:1": [["hafs", "shouba", "doori", "soosi"], ["bazzi", "qumbul", "qaloon"], ["warsh"]],
+        "20:94:7": [["hafs", "shouba", "bazzi", "qumbul"], ["warsh", "qaloon", "doori"], ["soosi"]]
+      }
+    },
+    {
+      "question": "Qunbul writes Ibn Kathir's stop-only ya at 6 of 10 places (scripts/rewayah/sources/SOURCES.md, Known upstream issues), so his text there is shown as a reading of its own, apart from al-Bazzi. Keep it, or list these with the suspected misprints in reading_upstream_issues.json?",
+      "spans": {
+        "13:7:15": [["hafs", "shouba", "bazzi", "warsh", "qaloon", "doori", "soosi"], ["qumbul"]],
+        "13:11:35": [["hafs", "shouba", "bazzi", "warsh", "qaloon", "doori", "soosi"], ["qumbul"]],
+        "13:33:39": [["hafs", "shouba", "bazzi", "warsh", "qaloon", "doori", "soosi"], ["qumbul"]],
+        "13:34:14": [["hafs", "shouba", "bazzi", "warsh", "qaloon", "doori", "soosi"], ["qumbul"]],
+        "13:37:20": [["hafs", "shouba", "bazzi", "warsh", "qaloon", "doori", "soosi"], ["qumbul"]],
+        "16:96:7": [["hafs", "shouba", "bazzi", "warsh", "qaloon", "doori", "soosi"], ["qumbul"]]
+      }
+    }
+  ]
+}

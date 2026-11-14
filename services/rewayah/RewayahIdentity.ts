@@ -211,6 +211,110 @@ export function getDisplayLabelFromName(
   return canonical ? getShortLabel(canonical) : dbName;
 }
 
+// @ai-start
+// ── Readers (qurra') and narrators ───────────────────────────────────────────
+
+/** The 10 readers whose readings the 20 rewayat transmit: the keys of their
+ *  names in `content:rewayat.people`. */
+export type QariId =
+  | 'nafi'
+  | 'ibnKathir'
+  | 'abuAmr'
+  | 'ibnAmir'
+  | 'asim'
+  | 'hamzah'
+  | 'kisai'
+  | 'abuJafar'
+  | 'yaqub'
+  | 'khalafAlBazzar';
+
+// The `teacher` of each rewayah's REWAYAT_REGISTRY entry (data/rewayat.ts).
+const QARI_OF: Readonly<Record<RewayahId, QariId>> = {
+  hafs: 'asim',
+  shubah: 'asim',
+  'al-bazzi': 'ibnKathir',
+  qunbul: 'ibnKathir',
+  warsh: 'nafi',
+  qalun: 'nafi',
+  'al-duri-abi-amr': 'abuAmr',
+  'al-susi': 'abuAmr',
+  hisham: 'ibnAmir',
+  'ibn-dhakwan': 'ibnAmir',
+  'khalaf-an-hamzah': 'hamzah',
+  khallad: 'hamzah',
+  'al-duri-al-kisai': 'kisai',
+  'abu-al-harith': 'kisai',
+  'ibn-jammaz': 'abuJafar',
+  'ibn-wardan': 'abuJafar',
+  rawh: 'yaqub',
+  ruwais: 'yaqub',
+  idris: 'khalafAlBazzar',
+  ishaq: 'khalafAlBazzar',
+};
+
+// The narrator's own name (a `content:rewayat.people` key, the registry
+// `student`). Al-Duri narrates from Abu Amr and from al-Kisa'i: one name.
+type NarratorKey =
+  | 'hafs'
+  | 'shubah'
+  | 'bazzi'
+  | 'qunbul'
+  | 'warsh'
+  | 'qalun'
+  | 'duri'
+  | 'susi'
+  | 'hisham'
+  | 'ibnDhakwan'
+  | 'khalaf'
+  | 'khallad'
+  | 'abuAlHarith'
+  | 'ibnJammaz'
+  | 'ibnWardan'
+  | 'rawh'
+  | 'ruwais'
+  | 'idris'
+  | 'ishaq';
+
+const NARRATOR_KEY: Readonly<Record<RewayahId, NarratorKey>> = {
+  hafs: 'hafs',
+  shubah: 'shubah',
+  'al-bazzi': 'bazzi',
+  qunbul: 'qunbul',
+  warsh: 'warsh',
+  qalun: 'qalun',
+  'al-duri-abi-amr': 'duri',
+  'al-susi': 'susi',
+  hisham: 'hisham',
+  'ibn-dhakwan': 'ibnDhakwan',
+  'khalaf-an-hamzah': 'khalaf',
+  khallad: 'khallad',
+  'al-duri-al-kisai': 'duri',
+  'abu-al-harith': 'abuAlHarith',
+  'ibn-jammaz': 'ibnJammaz',
+  'ibn-wardan': 'ibnWardan',
+  rawh: 'rawh',
+  ruwais: 'ruwais',
+  idris: 'idris',
+  ishaq: 'ishaq',
+};
+
+/** The reader whose reading `id` transmits (total over all 20 slugs). */
+export function getQari(id: RewayahId): QariId {
+  return QARI_OF[id];
+}
+
+/** The reader's name in the app language ("Asim", "عاصم"). */
+export function getQariLabel(qari: QariId): string {
+  return i18n.t(`content:rewayat.people.${qari}`);
+}
+
+/** The narrator's name alone ("Al-Duri", where the short label is
+ *  "Al-Duri (Abu Amr)"), for lists grouped under their reader. */
+export function getNarratorLabel(id: RewayahId): string {
+  return i18n.t(`content:rewayat.people.${NARRATOR_KEY[id]}`);
+}
+// @ai-end
+
 // ── Persisted-id migration ───────────────────────────────────────────────────
 
 // One-shot rename from the pre-canonical slugs (shipped only in TestFlight) to

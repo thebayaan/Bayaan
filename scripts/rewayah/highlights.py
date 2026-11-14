@@ -1265,3 +1265,135 @@ def classify(hafs: str, target: str, rid: str, ctx: Context = Context()) -> list
         # where the ha merges into the next word: 'فِيه هُّدࣰى')
         cats.append(("word", []))
     return cats
+
+
+# @ai-start
+# ---------------------------------------------------------------------------
+# Cross-rewayah comparison (the per-word readings index)
+# ---------------------------------------------------------------------------
+#
+# classify() compares a rewayah's stored words with the DK Hafs words: that
+# reviewed decision is the line between the rewayat that read a word as Hafs
+# does and those that read it differently. build_readings_index.py also needs
+# to know which of the differing rewayat read the word like each other.
+# reads_alike() answers with the same rules (_word_differs, reads_like_sibling),
+# but applies a rewayah's rules to another rewayah's text only when that text
+# is written in an encoding the rules can read (READABLE). A doubt therefore
+# splits two rewayat into two readings; it never merges them.
+
+# The spelling convention of each stored text (normalize.py CLOSE / ABU_AMR /
+# NAFI): KFGQPC Hafs-style; Maghribi wasl alef with Hafs-style sukun and waqf
+# signs; Maghribi, where U+06DF is also the sukun.
+ENCODING = {
+    "shouba": "hafs",
+    "bazzi": "hafs",
+    "qumbul": "hafs",
+    "doori": "abuamr",
+    "soosi": "abuamr",
+    "warsh": "nafi",
+    "qaloon": "nafi",
+}
+# The encodings each rule set can read. Every rule set reads the DK Hafs text
+# (classify() compares with it); the far rules also read the Maghribi wasl
+# alef; only the Nafi' rules read U+06DF as a sukun.
+READABLE = {
+    "hafs": frozenset({"hafs"}),
+    "abuamr": frozenset({"hafs", "abuamr"}),
+    "nafi": frozenset({"hafs", "abuamr", "nafi"}),
+}
+# Why two rewayat read a span alike (alike_basis):
+#   same     the same stored words
+#   sibling  reads_like_sibling(): Warsh / Qalun, al-Susi / al-Duri
+#   both     each reads like the other under the other's rules
+#   across   one reads like the other under rules that can read only one of
+#            the two encodings (the other direction cannot be checked)
+#   oneway   both directions can be checked and only one holds: a general
+#            rule of one rewayah excused the difference (the review list)
+ALIKE_BASES = ("same", "sibling", "both", "across", "oneway")
+
+
+@dataclass(frozen=True)
+class Side:
+    """One rewayah's words in a span of Hafs slots: `text` the stored words of
+    the span (non-blank slot texts joined by a space, inline verse markers
+    removed); `prev` / `next` the rewayah's last word before and first word
+    after the span; `basmala_next` the first word of the next surah's basmala
+    line when the span ends a surah followed by one. The conventions are those
+    of Context (build_sibling_rewayah.py: verse markers and blank slots
+    skipped, verse and surah ends crossed, '' before 1:1 and after 114:6)."""
+
+    rid: str
+    text: str
+    prev: str = ""
+    next: str = ""
+    basmala_next: str = ""
+
+
+def _side_context(ref: Side, target: Side, surah_start: bool) -> Context:
+    """Context for _word_differs(ref.text, target.text, target.rid): the
+    reference stands where classify() has the Hafs words. Two rules read the
+    word before the Hafs side with the Hafs rules (a word ending in a voweled
+    hamza before the second of two hamzas; Warsh's naql after a vowelless
+    consonant): they get the reference's previous word only when the Hafs
+    rules can read its encoding, otherwise none, so they excuse nothing."""
+    hafs_prev = ref.prev if ENCODING[ref.rid] in READABLE["hafs"] else ""
+    return Context(ref.next, target.next, target.basmala_next, hafs_prev, target.prev, surah_start)
+
+
+def _own_initial_doubling(side: Side) -> bool:
+    """`side` doubles the first letter of one of its words where the word
+    read before it does not merge into it (_merges_into): a doubling of its
+    own reading, al-Bazzi's ta' ('هِيَ تَّلَقَّفُ', 'مَآ تَّنَزَّلُ').
+    _word_differs excuses a doubled first letter on the Hafs side as usul,
+    which holds for DK Hafs (there it is always an idgham with the word
+    before), so such a side is never taken as the reference."""
+    words = side.text.split(" ")
+    for k, word in enumerate(words):
+        lead = _lead_unit(word, side.rid)
+        if lead is None or not lead.shadda:
+            continue
+        if not _merges_into(side.prev if k == 0 else words[k - 1], lead, side.rid):
+            return True
+    return False
+
+
+def alike_basis(a: Side, b: Side, surah_start: bool = False) -> str | None:
+    """Why the stored words `a` and `b` (two rewayat, the same span) read
+    alike (one of ALIKE_BASES), or None when they may not.
+
+    Same stored words; or reads_like_sibling() (Warsh / Qalun, al-Susi /
+    al-Duri); or, for (x, y) in ((a, b), (b, a)) where y's rules can read x's
+    encoding (READABLE), x's words read under y's rules as y's words
+    (_word_differs(x.text, y.text, y.rid) is false, with x's words around it
+    where classify() has the Hafs words), unless x doubles a first letter as
+    its own reading (_own_initial_doubling). `surah_start`: the span is the
+    first content slot of its surah. A blank side reads like nothing else."""
+    if a.text == b.text:
+        return "same"
+    if not a.text or not b.text:
+        return None
+    for x, y in ((a, b), (b, a)):
+        if SIBLING_BASE.get(y.rid) == x.rid and reads_like_sibling(
+            x.text, y.text, y.rid, _side_context(x, y, surah_start)
+        ):
+            return "sibling"
+    held: list[bool] = []
+    for x, y in ((a, b), (b, a)):
+        if ENCODING[x.rid] in READABLE[ENCODING[y.rid]]:
+            held.append(
+                not _own_initial_doubling(x)
+                and not _word_differs(x.text, y.text, y.rid, _side_context(x, y, surah_start))
+            )
+    if not any(held):
+        return None
+    if len(held) == 1:
+        return "across"
+    return "both" if all(held) else "oneway"
+
+
+def reads_alike(a: Side, b: Side, surah_start: bool = False) -> bool:
+    """The stored words `a` and `b` of two rewayat in the same span read alike
+    (see alike_basis). A doubt splits: never true unless a reviewed rule of
+    one of the two, applied to a text it can read, says so."""
+    return alike_basis(a, b, surah_start) is not None
+# @ai-end
