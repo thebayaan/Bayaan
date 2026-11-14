@@ -36,6 +36,119 @@ export function extractFilename(filePath: string): string {
   return filePath;
 }
 
+// @ai-start
+/**
+ * A response header's value. iOS reports "Content-Length"; Android passes the
+ * name through as the server sent it, which is lowercase over HTTP/2.
+ */
+function headerValue(
+  headers: Record<string, string> | undefined,
+  name: string,
+): string | undefined {
+  if (!headers) return undefined;
+  const wanted = name.toLowerCase();
+  const key = Object.keys(headers).find(k => k.toLowerCase() === wanted);
+  return key === undefined ? undefined : headers[key];
+}
+
+/**
+ * How many bytes the server said the file has, or null when it did not say.
+ * A body compressed in transit is also null: the header then counts the
+ * compressed bytes, and the file on disk is larger.
+ */
+function expectedBytes(
+  headers: Record<string, string> | undefined,
+): number | null {
+  const encoding = headerValue(headers, 'content-encoding');
+  if (encoding && encoding.trim().toLowerCase() !== 'identity') return null;
+  const length = Number(headerValue(headers, 'content-length'));
+  return Number.isFinite(length) && length > 0 ? length : null;
+}
+
+/**
+ * Downloads to `<file>.part` and only renames it to the real name once the
+ * whole file has arrived.
+ *
+ * Before this the download was written straight to the real name. Android
+ * left the partial file there when the connection dropped or the app was
+ * killed, and the next tap on Download found "the file", marked the surah
+ * downloaded, and it cut off part-way on every play. On both platforms a
+ * 404/403/5xx error page was saved as the .mp3 and marked downloaded.
+ * @returns The size of the file on disk, in bytes
+ */
+async function transferToFile(
+  remoteUrl: string,
+  localPath: string,
+  onProgress?: (progress: number) => void,
+): Promise<number> {
+  const partPath = `${localPath}.part`;
+  // A killed app or an earlier failure can leave a partial file behind.
+  await FileSystem.deleteAsync(partPath, {idempotent: true});
+
+  try {
+    // Use downloadResumable for progress tracking
+    const downloadResumable = FileSystem.createDownloadResumable(
+      remoteUrl,
+      partPath,
+      {},
+      onProgress
+        ? downloadProgress => {
+            const progress =
+              downloadProgress.totalBytesWritten /
+              downloadProgress.totalBytesExpectedToWrite;
+            onProgress(progress);
+          }
+        : undefined,
+    );
+
+    const result = await downloadResumable.downloadAsync();
+
+    if (!result) {
+      throw new Error('Download failed: no result returned');
+    }
+    if (result.status < 200 || result.status >= 300) {
+      throw new Error(`Download failed: HTTP ${result.status}`);
+    }
+
+    const info = await FileSystem.getInfoAsync(partPath);
+    const size = info.exists ? info.size : 0;
+    const expected = expectedBytes(result.headers);
+    if (size <= 0 || (expected !== null && size !== expected)) {
+      throw new Error(
+        `Download incomplete: ${size} of ${expected ?? 'unknown'} bytes`,
+      );
+    }
+
+    await FileSystem.moveAsync({from: partPath, to: localPath});
+    return size;
+  } catch (error) {
+    await FileSystem.deleteAsync(partPath, {idempotent: true}).catch(
+      () => undefined,
+    );
+    throw error;
+  }
+}
+
+// Transfers under way, by destination. Two callers asking for the same file
+// share one transfer: a second one would delete the first one's partial file
+// from under it.
+const transfers = new Map<string, Promise<number>>();
+
+function downloadToFile(
+  remoteUrl: string,
+  localPath: string,
+  onProgress?: (progress: number) => void,
+): Promise<number> {
+  const running = transfers.get(localPath);
+  if (running) return running;
+  const transfer = transferToFile(remoteUrl, localPath, onProgress).finally(
+    () => transfers.delete(localPath),
+  );
+  transfers.set(localPath, transfer);
+  return transfer;
+}
+// @ai-end
+
 /**
  * Downloads a Surah MP3 for offline playback
  * @param surahId - The Surah number (1-114)
@@ -75,43 +188,19 @@ export async function downloadSurah(
       : `${padded}_${sanitizedReciterId}.mp3`;
     const localPath = `${FileSystem.documentDirectory}${fileName}`;
 
-    // Check if file already exists
-    const fileInfo = await FileSystem.getInfoAsync(localPath);
-    if (fileInfo.exists) {
-      console.log('File already exists:', localPath);
-      // Return only the filename (relative path) for storage
-      return {
-        filePath: fileName,
-        fileSize: fileInfo.size || 0,
-      };
-    }
-
     console.log(`Downloading Surah ${surahId}...`);
 
-    // Use downloadResumable for progress tracking
-    const downloadResumable = FileSystem.createDownloadResumable(
-      remoteUrl,
-      localPath,
-      {},
-      onProgress
-        ? downloadProgress => {
-            const progress =
-              downloadProgress.totalBytesWritten /
-              downloadProgress.totalBytesExpectedToWrite;
-            onProgress(progress);
-          }
-        : undefined,
-    );
-
-    const result = await downloadResumable.downloadAsync();
-
-    if (!result) {
-      throw new Error('Download failed: no result returned');
-    }
-
-    const fileSize = result.headers['Content-Length']
-      ? parseInt(result.headers['Content-Length'], 10)
-      : 0;
+    // @ai-start
+    // A file already at this name is not trusted. Callers only get here when
+    // the surah has no download record, and a file without a record is what
+    // an interrupted Android download left behind. It is downloaded again
+    // and replaced only once the new copy is complete.
+    //
+    // The size comes from the file itself: the Content-Length lookup missed
+    // on Android (lowercase header name) and recorded 0, which made
+    // Settings > Storage show "Downloads: 0 bytes".
+    const fileSize = await downloadToFile(remoteUrl, localPath, onProgress);
+    // @ai-end
 
     console.log('Download complete:', localPath, `Size: ${fileSize} bytes`);
 
