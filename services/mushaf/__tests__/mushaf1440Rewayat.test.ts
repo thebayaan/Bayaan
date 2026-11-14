@@ -99,11 +99,9 @@ jest.mock('expo-sqlite', () => {
           const base = state.files.get(name);
           if (!base) return null;
           const table = /name='(\w+)'/.exec(sql)?.[1];
-          return table === (base === 'dk_layout' ? 'pages' : 'words')
-            ? {name: table}
-            : null;
+          return table === 'words' ? {name: table} : null;
         },
-        async getAllAsync(sql: string) {
+        async getAllAsync() {
           const base = state.files.get(name);
           if (!base) throw new Error('no such table');
           const held = state.gates.get(base);
@@ -114,28 +112,6 @@ jest.mock('expo-sqlite', () => {
           }
           if (state.broken.has(base)) {
             throw new Error('database disk image is malformed');
-          }
-          if (sql.includes('FROM pages')) {
-            return [
-              {
-                page_number: 1,
-                line_number: 1,
-                line_type: 'ayah',
-                is_centered: 0,
-                first_word_id: 1,
-                last_word_id: 4,
-                surah_number: 1,
-              },
-              {
-                page_number: 2,
-                line_number: 1,
-                line_type: 'ayah',
-                is_centered: 0,
-                first_word_id: 5,
-                last_word_id: 6,
-                surah_number: 2,
-              },
-            ];
           }
           return LOCATIONS.map((location, i) => ({
             id: i + 1,

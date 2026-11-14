@@ -145,41 +145,6 @@ jest.mock('expo-sqlite', () => {
     return rows;
   }
 
-  function pageRows(file: FakeFile) {
-    const rows: Record<string, unknown>[] = [
-      {
-        page_number: 1,
-        line_number: 1,
-        line_type: 'ayah',
-        is_centered: 0,
-        first_word_id: 1,
-        last_word_id: 4,
-        surah_number: 1,
-      },
-      {
-        page_number: 2,
-        line_number: 1,
-        line_type: 'ayah',
-        is_centered: 0,
-        first_word_id: 5,
-        last_word_id: 6,
-        surah_number: 2,
-      },
-    ];
-    if (file.state === 'damaged') {
-      rows[1] = {
-        page_number: null,
-        line_number: null,
-        line_type: null,
-        is_centered: null,
-        first_word_id: null,
-        last_word_id: null,
-        surah_number: null,
-      };
-    }
-    return rows;
-  }
-
   return {
     __disk: disk,
     __size: SIZE,
@@ -202,18 +167,16 @@ jest.mock('expo-sqlite', () => {
           if (!file || file.state === 'empty') return null;
           if (file.state === 'partial') throw malformed();
           const table = /name='(\w+)'/.exec(sql)?.[1];
-          return table === (file.base === 'dk_layout' ? 'pages' : 'words')
-            ? {name: table}
-            : null;
+          return table === 'words' ? {name: table} : null;
         },
-        async getAllAsync(sql: string) {
+        async getAllAsync() {
           const file = disk.files.get(name);
           if (!file || file.state === 'empty') {
             throw new Error('no such table');
           }
           if (file.state === 'partial') throw malformed();
           disk.log.push(`read:${name}`);
-          return sql.includes('FROM pages') ? pageRows(file) : wordRows(file);
+          return wordRows(file);
         },
         async closeAsync() {
           if (closed) throw new Error('already closed');

@@ -90,24 +90,11 @@ jest.mock('expo-sqlite', () => {
           if (!state.files.has(name)) return null;
           return {name: /name='(\w+)'/.exec(sql)?.[1]};
         },
-        async getAllAsync(sql: string) {
+        async getAllAsync() {
           if (state.broken.has(base)) {
             throw new Error('database disk image is malformed');
           }
           state.reads.push(base);
-          if (sql.includes('FROM pages')) {
-            return [
-              {
-                page_number: 1,
-                line_number: 1,
-                line_type: 'ayah',
-                is_centered: 0,
-                first_word_id: 1,
-                last_word_id: 2,
-                surah_number: 1,
-              },
-            ];
-          }
           const tag = TAG[base] ?? '?';
           return [
             {id: 1, text: `${tag}1`, location: '1:1:1'},

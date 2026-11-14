@@ -125,7 +125,7 @@ jest.mock('expo-sqlite', () => {
           if (!state.files.has(name)) return null;
           return {name: /name='(\w+)'/.exec(sql)?.[1]};
         },
-        async getAllAsync(sql: string) {
+        async getAllAsync() {
           state.reads.push(base);
           // A load loop (what these tests guard against) reads the same DB
           // over and over and starves the test's timers: from the fourth
@@ -133,19 +133,6 @@ jest.mock('expo-sqlite', () => {
           // counts show it.
           if (state.reads.filter(b => b === base).length > 3) {
             return new Promise(() => undefined);
-          }
-          if (sql.includes('FROM pages')) {
-            return [
-              {
-                page_number: 1,
-                line_number: 1,
-                line_type: 'ayah',
-                is_centered: 0,
-                first_word_id: 1,
-                last_word_id: 2,
-                surah_number: 1,
-              },
-            ];
           }
           return [
             {id: 1, text: `${base}-1`, location: '1:1:1'},
