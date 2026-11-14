@@ -57,7 +57,11 @@ import {
 } from './mushafSearchVerses';
 // @ai-end
 // @ai-start
-import {isQuranQuery, useQuranSearch} from '@/hooks/useQuranSearch';
+import {
+  isQuranQuery,
+  prefetchQuranSearch,
+  useQuranSearch,
+} from '@/hooks/useQuranSearch';
 import {
   QURAN_PAGE_SIZE,
   quranResultRows,
@@ -704,6 +708,10 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
 
   // The Quran text search (the Hafs text), after typing pauses. Commands
   // above stay instant; a page, juz or verse number is not a Quran query.
+  // Its index opens when search mode starts, before the first query.
+  useEffect(() => {
+    if (isSearchMode) prefetchQuranSearch();
+  }, [isSearchMode]);
   const [quranQuery, setQuranQuery] = useState('');
   useEffect(() => {
     const timer = setTimeout(
