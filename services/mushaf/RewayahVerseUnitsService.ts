@@ -14,9 +14,10 @@
  *     after interactions, in chunks of about BUILD_CHUNK_MS that yield to
  *     the event loop in between. However it is chunked, the result is
  *     exactly that of buildRewayahVerseUnits + crossCheckVerseUnits in one
- *     go. Words that change under a build (a mushaf switch moves them
- *     between the main and a side cache, an eviction drops them) start it
- *     over, so no build mixes two reads of the data service.
+ *     go. Words that change under a build (an eviction drops them, a new
+ *     copy has another identity) start it over, so no build mixes two reads
+ *     of the data service. A mushaf switch changes nothing: the rewayah has
+ *     one store, shown or not (@ai).
  *   - When a build ends (units accepted or refused), getVersion() changes
  *     and subscribers are called (useSyncExternalStore), so hooks and the
  *     mushaf pages render the units.
@@ -74,7 +75,6 @@ export type VerseUnitsStatus =
 
 /** The DigitalKhattDataService read API the units need (fakes in tests). */
 export interface VerseUnitsDataReader {
-  readonly rewayah: RewayahId;
   isRewayahReady(rewayah: RewayahId): boolean;
   getRewayahLoadState(rewayah: RewayahId): RewayahLoadState;
   /**
@@ -150,9 +150,8 @@ interface BuildJob {
   /** Settles with the units, or null when refused or not buildable. */
   readonly done: Promise<RewayahVerseUnits | null>;
   readonly settle: (units: RewayahVerseUnits | null) => void;
-  /** Identity of the words being read, and whether from the main cache. */
+  /** Identity of the words being read. */
   dataKey: string;
-  active: boolean;
   phase: BuildPhase;
 }
 
@@ -166,7 +165,6 @@ function createJob(rewayah: RewayahId, dataKey: string): BuildJob {
     done,
     settle,
     dataKey,
-    active: false,
     phase: {kind: 'start'},
   };
 }
@@ -360,12 +358,11 @@ export class RewayahVerseUnitsService {
     }
   }
 
-  // The words a build reads are still those it started on: same data, in
-  // the same cache (main or side). A build never reads across a change.
+  // The words a build reads are still those it started on: same data. A
+  // build never reads across a change.
   private sameWords(job: BuildJob): boolean {
     return (
       this.dk.isRewayahReady(job.rewayah) &&
-      (this.dk.rewayah === job.rewayah) === job.active &&
       this.dataKey(job.rewayah) === job.dataKey
     );
   }
@@ -380,7 +377,6 @@ export class RewayahVerseUnitsService {
     const slots: Iterable<VerseUnitSlot> =
       this.dk.readWordSlots(job.rewayah) ?? [];
     job.dataKey = dataKey;
-    job.active = this.dk.rewayah === job.rewayah;
     job.phase = {
       kind: 'slots',
       slots: slots[Symbol.iterator](),
