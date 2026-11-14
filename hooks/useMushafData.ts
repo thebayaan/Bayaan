@@ -7,9 +7,15 @@ import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
 
 export type MushafDataState = 'ready' | 'loading' | 'failed';
 
+// Ready means the data and the fonts: a page that mounts before the fonts
+// draws without them. The preload ends after both, also when only the fonts
+// failed (useMushafFontMgr then loads its fallback).
 function readMushafDataState(): MushafDataState {
-  if (digitalKhattDataService.initialized) return 'ready';
-  return mushafPreloadService.state === 'failed' ? 'failed' : 'loading';
+  const preload = mushafPreloadService;
+  if (preload.initialized && digitalKhattDataService.initialized) {
+    return 'ready';
+  }
+  return preload.state === 'failed' ? 'failed' : 'loading';
 }
 
 function subscribeMushafData(listener: () => void): () => void {

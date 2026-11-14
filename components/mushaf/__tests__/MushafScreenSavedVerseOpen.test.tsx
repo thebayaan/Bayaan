@@ -96,7 +96,13 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => ({
 
 jest.mock('@/services/mushaf/MushafPreloadService', () => ({
   mushafPreloadService: {
-    state: 'loading',
+    // The preload ends with the data load: the reader waits for both.
+    get initialized() {
+      return mockDk.initialized;
+    },
+    get state() {
+      return mockDk.initialized ? 'ready' : 'loading';
+    },
     subscribe: () => () => undefined,
     initialize: () => Promise.resolve(),
     startIfIdle: jest.fn(),

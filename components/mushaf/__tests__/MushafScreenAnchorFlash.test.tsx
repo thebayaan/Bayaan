@@ -55,6 +55,7 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => ({
 
 jest.mock('@/services/mushaf/MushafPreloadService', () => ({
   mushafPreloadService: {
+    initialized: true,
     state: 'ready',
     subscribe: () => () => undefined,
     initialize: () => Promise.resolve(),

@@ -207,7 +207,9 @@ const QCFPage: React.FC<QCFPageProps> = ({
       dividerFont: Skia.Font(qcTypeface, scaledSize),
       nameFontSize: scaledSize * 0.4,
     };
-  }, [CONTENT_WIDTH]); // @ai
+    // @ai fontMgr: rebuild once the preload finishes after this page mounted.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [CONTENT_WIDTH, fontMgr]); // @ai
   // @ai-start
   const [loadedFont, setLoadedFont] = useState<{
     family: string;
