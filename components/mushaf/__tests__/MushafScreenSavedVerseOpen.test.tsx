@@ -89,6 +89,7 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => ({
       return mockDk.rewayah;
     },
     getSurahStartPages: () => ({1: 1, 2: 2}),
+    getRewayahLoadState: () => 'loading',
     getPageForVerse: (key: string) => mockVersePages[mockDk.rewayah]?.[key],
     switchRewayah: jest.fn(
       (next: string) =>

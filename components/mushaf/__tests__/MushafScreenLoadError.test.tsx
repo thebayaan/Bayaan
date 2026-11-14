@@ -55,7 +55,12 @@ jest.mock('@/components/mushaf/main', () => ({
   default: () => null,
 }));
 
-const mockDk = {initialized: false};
+const mockDk = {
+  initialized: false,
+  loadState: 'loading',
+  ensureRewayahLoaded: jest.fn(() => Promise.resolve()),
+  listeners: new Set<() => void>(),
+};
 
 jest.mock('@/services/mushaf/DigitalKhattDataService', () => ({
   digitalKhattDataService: {
@@ -64,8 +69,17 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => ({
     },
     rewayah: 'hafs',
     getSurahStartPages: () => ({}),
+    getPageForVerse: () => undefined,
+    getRewayahLoadState: () => mockDk.loadState,
+    ensureRewayahLoaded: (...args: unknown[]) =>
+      mockDk.ensureRewayahLoaded(...(args as [])),
     switchRewayah: jest.fn(() => Promise.resolve()),
-    subscribeCacheChanges: () => () => undefined,
+    subscribeCacheChanges: (listener: () => void) => {
+      mockDk.listeners.add(listener);
+      return () => {
+        mockDk.listeners.delete(listener);
+      };
+    },
   },
 }));
 
@@ -149,6 +163,9 @@ beforeEach(() => {
   mockPreload.initialize.mockClear();
   mockPreload.startIfIdle.mockClear();
   mockDk.initialized = false;
+  mockDk.loadState = 'loading';
+  mockDk.ensureRewayahLoaded.mockClear();
+  mockDk.listeners.clear();
   // react-test-renderer prints a deprecation notice under React 19.
   errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
 });
@@ -208,6 +225,34 @@ it('shows the error once a load in progress fails', () => {
     mockPreload.listeners.forEach(listener => listener());
   });
   expect(texts()[0]).toBe("Couldn't load the mushaf");
+});
+
+// One data state, with one retry that knows which load to redo. A failed read
+// of the active rewayah drops its data after the preload finished: the preload
+// stays 'ready', and its initialize() would do nothing.
+it('the rewayah failed after the preload: the retry goes to the data', async () => {
+  mockPreload.state = 'ready';
+  mockDk.initialized = true;
+  render();
+  expect(texts()).not.toContain("Couldn't load the mushaf");
+
+  act(() => {
+    mockDk.initialized = false;
+    mockDk.loadState = 'error';
+    mockDk.listeners.forEach(listener => listener());
+  });
+  expect(texts()[0]).toBe("Couldn't load the mushaf");
+
+  const retry = root().find(
+    node => node.props.accessibilityRole === 'button' && !!node.props.onPress,
+  );
+  await act(async () => {
+    retry.props.onPress();
+  });
+  expect(mockDk.ensureRewayahLoaded).toHaveBeenCalledWith('hafs', {
+    retry: true,
+  });
+  expect(mockPreload.initialize).not.toHaveBeenCalled();
 });
 
 it('starts the load when the screen opens first', () => {
