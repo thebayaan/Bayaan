@@ -1,0 +1,14 @@
+{
+  "scripts/recitation-bench/judge/fbank.mjs": "4589f116cdc97739b81047e3c69c8e16f7be24b2190cc466bf06661745c4bc96",
+  "scripts/recitation-bench/judge/ctc.mjs": "f06094257dcb43f400e00417e6637a41594c2c58b393680a9dfb46da17e37609",
+  "scripts/recitation-bench/judge/judge.mjs": "832a13c0a83ca982191ae6741711f58b8baf3cf0608e6df23245462d354273a3",
+  "scripts/recitation-bench/judge/policy.mjs": "c58254cdbd242fea4f2ea309b805e7926f2b6f67ec40358d10119e9a3ea29416",
+  "scripts/recitation-bench/judge/model.mjs": "fbf39c4a57d550ea481809e9521526608f9cad94dc87244a7566a264ed7d2824",
+  "scripts/recitation-bench/judge/judge_constants.json": "13c0705d73caa41a9e5e10682202a4dd5b1766f5a8ea4c1d5f4a65dfc8242140",
+  "scripts/recitation-bench/judge/engine_constants.npl.json": "d07b31e0a28fbff52f665c2d85555b9b7668733ba7e764559a2c851aaee5552f",
+  "scripts/second-look/rule.mjs": "c17fc0a90021bf92cdd42a03d7f14f88297805d5cad048cda296df7d442710d2",
+  "scripts/second-look/cancel.mjs": "aec7a96ff5cf0559270fef779a9daf2ee3b3aa915ccab88e047349ddcebf4b18",
+  "scripts/second-look/chain.mjs": "2d656975503b4644cb831650e4dc92e692e1d7eb45d9807785d13b8a72539312",
+  "scripts/second-look/lib.mjs": "5400628c717f733bf33f5f31cb6757813e9bbc0a239c77e0985645ed158a082c",
+  "scripts/second-look/cancel_constants.npl.json": "af4e6f52594bec4764a85b85c53c5ad2446f0309255f40c9694616038b961a11"
+}

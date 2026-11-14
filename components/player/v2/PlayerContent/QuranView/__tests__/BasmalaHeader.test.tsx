@@ -17,12 +17,18 @@ interface FakeParagraph {
 }
 
 const mockDrawn: string[] = [];
+// Canvases mounted (a fresh Skia canvas records and sends its picture).
+const mockCanvasMounts = {count: 0};
 
 jest.mock('@shopify/react-native-skia', () => {
   const ReactActual = jest.requireActual('react');
   return {
-    Canvas: ({children}: {children: React.ReactNode}) =>
-      ReactActual.createElement(ReactActual.Fragment, null, children),
+    Canvas: ({children}: {children: React.ReactNode}) => {
+      ReactActual.useEffect(() => {
+        mockCanvasMounts.count += 1;
+      }, []);
+      return ReactActual.createElement(ReactActual.Fragment, null, children);
+    },
     Paragraph: ({paragraph}: {paragraph: FakeParagraph}) => {
       mockDrawn.push(paragraph.text);
       return null;
@@ -168,6 +174,39 @@ describe('BasmalaHeader', () => {
   it('a rewayah without basmala data draws nothing rather than Hafs', () => {
     expect(draw({rewayah: 'hisham', surahNumber: 2})).toBe('');
     expect(draw({rewayah: 'hisham', surahNumber: 2, fontMgr: null})).toBe('');
+  });
+
+  it('shown again (e.g. after al-Fatiha), the basmala gets a fresh canvas', () => {
+    // A blank basmala: Fabric re-parented the canvas when the hidden
+    // style toggled, and nothing redrew it. The container must not be
+    // flattened, and showing the basmala again mounts a new canvas.
+    const render = (visible: boolean) => (
+      <BasmalaHeader
+        visible={visible}
+        width={320}
+        textColor="#111111"
+        showTajweed={false}
+        fontMgr={FONT_MGR}
+        dkFontFamily="DigitalKhattV2"
+        indexedTajweedData={TAJWEED}
+        rewayah="hafs"
+        surahNumber={2}
+      />
+    );
+    mockCanvasMounts.count = 0;
+    let out: TestRenderer.ReactTestRenderer | null = null;
+    act(() => {
+      out = TestRenderer.create(render(false));
+    });
+    const root = out!.toJSON() as TestRenderer.ReactTestRendererJSON;
+    expect(root.props.collapsable).toBe(false);
+    expect(mockCanvasMounts.count).toBe(1);
+    act(() => out!.update(render(true)));
+    expect(mockCanvasMounts.count).toBe(2);
+    // Re-rendering while shown keeps the same canvas.
+    act(() => out!.update(render(true)));
+    expect(mockCanvasMounts.count).toBe(2);
+    act(() => out!.unmount());
   });
 });
 

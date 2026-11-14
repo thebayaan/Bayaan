@@ -12,11 +12,13 @@ import * as SplashScreen from 'expo-splash-screen';
 import * as SystemUI from 'expo-system-ui';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import ErrorBoundary from '@/components/ErrorBoundary';
+// @ai-start
+import AppErrorScreen from '@/components/AppErrorScreen';
+import {ROOT_COLORS} from '@/constants/rootColors';
+// @ai-end
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 import {
   AppState,
-  View,
-  Text,
   Platform,
   Appearance,
   Linking,
@@ -97,9 +99,13 @@ SplashScreen.preventAutoHideAsync().catch(() => {
 
 // Set native root view background immediately (before any component renders)
 // This prevents the white flash between splash screen and first frame
+// @ai-start
 SystemUI.setBackgroundColorAsync(
-  Appearance.getColorScheme() === 'dark' ? '#07121a' : '#f4f3ec',
+  Appearance.getColorScheme() === 'dark'
+    ? ROOT_COLORS.dark.background
+    : ROOT_COLORS.light.background,
 );
+// @ai-end
 
 const analyticsEnabled = process.env.EXPO_PUBLIC_ANALYTICS_ENABLED !== 'false';
 
@@ -484,20 +490,18 @@ function RootLayout() {
 
   if (fontError) {
     hideSplash();
-    return (
-      <View style={{flex: 1, alignItems: 'center', justifyContent: 'center'}}>
-        <Text>{i18n.t('app.fontError')}</Text>
-      </View>
-    );
+    return <AppErrorScreen message={i18n.t('app.fontError')} />; // @ai
   }
 
   if (setupError) {
     hideSplash();
+    // @ai-start
     return (
-      <View style={{flex: 1, alignItems: 'center', justifyContent: 'center'}}>
-        <Text>{i18n.t('app.initError', {message: setupError.message})}</Text>
-      </View>
+      <AppErrorScreen
+        message={i18n.t('app.initError', {message: setupError.message})}
+      />
     );
+    // @ai-end
   }
 
   if (!fontsLoaded || !isPlayerReady || !appIsReady) {

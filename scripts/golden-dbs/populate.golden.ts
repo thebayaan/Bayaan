@@ -327,7 +327,11 @@ describe('golden database generation', () => {
     }
     // Close every handle (checkpoints WAL), then copy the files out.
     if (sqliteForCopy) await sqliteForCopy.closeOpenDatabases();
-    await resetDatabases();
+    // @ai-start
+    // resetDatabases() removes the folder, so it runs after the copy, at the
+    // end of the test.
+    await closeOpenDatabases();
+    // @ai-end
 
     const out = process.env.GOLDEN_OUT;
     if (!out) throw new Error('GOLDEN_OUT not set');
@@ -368,6 +372,7 @@ describe('golden database generation', () => {
         2,
       ) + '\n',
     );
+    await resetDatabases(); // @ai
   });
 });
 

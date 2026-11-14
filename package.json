@@ -49,8 +49,18 @@
   },
   "jest": {
     "preset": "jest-expo",
+    "globalSetup": "<rootDir>/test-utils/jestGlobalSetup.js",
+    "globalTeardown": "<rootDir>/test-utils/jestGlobalTeardown.js",
     "setupFilesAfterEnv": [
       "<rootDir>/test-utils/setupI18n.ts"
+    ],
+    "modulePathIgnorePatterns": [
+      "<rootDir>/scripts/recitation-bench/.out"
+    ],
+    "transformIgnorePatterns": [
+      "/node_modules/(?!(.pnpm|react-native|@react-native|@react-native-community|expo|@expo|@expo-google-fonts|react-navigation|@react-navigation|@sentry/react-native|native-base|standard-navigation|@tilawa))",
+      "/node_modules/react-native-reanimated/plugin/",
+      "/node_modules/@react-native/babel-preset/"
     ]
   },
   "dependencies": {
@@ -72,6 +82,7 @@
     "@shopify/flash-list": "2.3.2",
     "@shopify/react-native-skia": "2.14.0",
     "@supabase/supabase-js": "^2.91.0",
+    "@tilawa/core": "^0.4.0",
     "bayaan-widgets": "file:./modules/bayaan-widgets",
     "burnt": "^0.13.0",
     "colorthief": "^2.4.0",
@@ -114,12 +125,14 @@
     "i18next": "^24.2.3",
     "intl-pluralrules": "^2.0.1",
     "moti": "^0.29.0",
+    "onnxruntime-react-native": "^1.24.3",
     "posthog-react-native": "^4.41.1",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-i18next": "^15.0.1",
     "react-native": "0.88.1",
     "react-native-actions-sheet": "^10.1.1",
+    "react-native-audio-api": "^0.13.6",
     "react-native-device-info": "^14.1.1",
     "react-native-draggable-flatlist": "^4.0.3",
     "react-native-gesture-handler": "~3.3.0",

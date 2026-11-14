@@ -349,6 +349,27 @@ export interface Branding {
    * See docs/rfcs/019-timestamp-local-provider.md.
    */
   timestampLocalSurahList?: (rewayatId: string) => number[] | null;
+  // @ai-start
+  /**
+   * Apple App Store numeric id (the `id…` segment of the App Store URL).
+   * Drives the iOS "Write a Review" link in `utils/reviewUtils.ts`. Android
+   * reads `bundleId.android`.
+   *
+   * Field absent → no iOS review link: `openAppStoreForReview()` opens
+   * nothing and Settings hides the "Write a Review" row on iOS. Android keeps
+   * its row. Bayaan sets its own listing in `config/branding.js`.
+   */
+  appStoreId?: string;
+  /**
+   * Source-code repository URL opened by Settings → "Contribute on GitHub".
+   * An AGPL fork sets its own public source here.
+   *
+   * Field absent → Settings hides the "Contribute on GitHub" row; it never
+   * falls back to Bayaan's repository. Bayaan sets its own repository in
+   * `config/branding.js`.
+   */
+  githubUrl?: string;
+  // @ai-end
 }
 
 declare const branding: Branding;

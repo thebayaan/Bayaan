@@ -121,6 +121,7 @@ jest.mock('react-native-worklets', () => ({runOnJS: (fn: unknown) => fn}));
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({top: 0, bottom: 0, left: 0, right: 0}),
 }));
+jest.mock('react-native-actions-sheet', () => ({SheetManager: {}}));
 jest.mock('../SkiaLine', () => ({__esModule: true, default: () => null}));
 jest.mock('../SkiaSurahHeader', () => ({
   __esModule: true,
