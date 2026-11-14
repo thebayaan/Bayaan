@@ -573,4 +573,36 @@ describe('no timings to play', () => {
     });
     expect(isRetryablePlaybackError(st().timestampError)).toBe(false);
   });
+
+  // @ai-start
+  /** Play al-Ikhlas's last verse to its end: the next surah is al-Falaq. */
+  async function playIntoAlFalaq() {
+    st().setReciter('hafs-clean', 'Test Reciter');
+    await st().startPlayback(604, '112:4');
+    at(entry('hafs-clean', 112, 4).timestampFrom + 50);
+    jest.advanceTimersByTime(2000);
+    expect(st().playbackState).toBe('playing');
+    player().emit({didJustFinish: true});
+    await flush();
+  }
+
+  it('the next surah could not be fetched: said so, with Play to try again', async () => {
+    // only al-Falaq's timings fail (the fixtures have none for it)
+    await playIntoAlFalaq();
+    expect(getTimestampsForSurah).toHaveBeenLastCalledWith('hafs-clean', 113);
+    expect(st()).toMatchObject({
+      playbackState: 'idle',
+      timestampError: TIMESTAMPS_LOAD_FAILED_ERROR,
+    });
+  });
+
+  it('the reciter has none for the next surah: said so instead of a silent stop', async () => {
+    mockCatalogue.covered = false;
+    await playIntoAlFalaq();
+    expect(st()).toMatchObject({
+      playbackState: 'idle',
+      timestampError: TIMESTAMPS_UNAVAILABLE_ERROR,
+    });
+  });
+  // @ai-end
 });

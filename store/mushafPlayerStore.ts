@@ -830,6 +830,11 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
       if (session !== playbackSession) return;
       if (!prepared) {
         finishPlayback();
+        // @ai-start
+        // Say why it stopped (no timings for this surah, or no connection)
+        // instead of going quiet at the end of the surah before.
+        set({timestampError: timingsErrorFor(rewayatId, surah)});
+        // @ai-end
         return;
       }
       const {timestamps, numbering} = prepared;
