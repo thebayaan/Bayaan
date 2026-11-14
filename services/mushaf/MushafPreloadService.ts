@@ -4,7 +4,12 @@ import {
   type SkTypeface,
 } from '@shopify/react-native-skia';
 import {Image} from 'react-native';
-import {digitalKhattDataService} from './DigitalKhattDataService';
+// @ai-start
+import {
+  digitalKhattDataService,
+  isRewayahSwitchSuperseded,
+} from './DigitalKhattDataService';
+// @ai-end
 import {quranTextService} from './QuranTextService';
 import {rewayahDiffService} from './RewayahDiffService';
 import {
@@ -25,6 +30,12 @@ const FONT_ASSETS: Record<string, number> = {
   ManropeRegular: require('@/assets/fonts/Manrope-Regular.ttf'),
   PlexSansArabicSemiBold: require('@/assets/fonts/IBMPlexSansArabic-SemiBold.ttf'),
 };
+// @ai-end
+
+// @ai-start
+// How long the preload waits for the saved mushaf settings before it goes on
+// with the defaults. The player store's wait (restoreSession) uses the same.
+const SETTINGS_HYDRATION_TIMEOUT_MS = 3000;
 // @ai-end
 
 function assetUri(asset: number): string {
@@ -59,6 +70,12 @@ class MushafPreloadService {
   // Registered once (a retried init must not stack listeners).
   private _rewayahSubscription: (() => void) | null = null;
   private _diffRewayah: RewayahId | null = null;
+  // @ai-start
+  // True from the moment the preload stopped waiting for the saved settings
+  // until they arrive. A retried init then neither waits again nor adds a
+  // second listener for the late arrival.
+  private _settingsOverdue = false;
+  // @ai-end
   // `useSyncExternalStore` subscribers so mushaf components can read
   // fontMgr synchronously without needing a useFonts fallback that races
   // at first-mount.
@@ -135,7 +152,7 @@ class MushafPreloadService {
       // Wait for Zustand persist hydration so DK service reads the user's
       // saved rewayah rather than the default (otherwise a reloaded app with
       // Shu'bah persisted would briefly init against Hafs and never catch up).
-      await waitForSettingsHydration();
+      await this._waitForSettings(); // @ai
 
       // Defensive normalization at the earliest hydration-complete point.
       // If a stale pre-canonical slug ("qaloon", "shouba", etc.) slipped
@@ -194,6 +211,82 @@ class MushafPreloadService {
       console.log(`[MushafPreload] Initialization ${this._state}`);
     }
   }
+
+  // @ai-start
+  /**
+   * Resolves once the saved mushaf settings are in the store, or after
+   * SETTINGS_HYDRATION_TIMEOUT_MS without them.
+   *
+   * zustand never reports the end of a hydration whose storage read failed (a
+   * locked device, a full disk). Waiting for that alone left this preload
+   * pending for good, and the app behind its splash screen with it. After the
+   * timeout the preload goes on with the default rewayah; when the settings
+   * do arrive (a slow read, or the retry on the next foreground),
+   * _showSavedRewayah() loads the saved one in its place.
+   */
+  private _waitForSettings(): Promise<void> {
+    const persist = useMushafSettingsStore.persist;
+    if (persist.hasHydrated() || this._settingsOverdue) {
+      return Promise.resolve();
+    }
+    return new Promise<void>(resolve => {
+      const timer = setTimeout(() => {
+        this._settingsOverdue = true;
+        console.warn(
+          `[MushafPreload] Settings not hydrated after ${SETTINGS_HYDRATION_TIMEOUT_MS}ms; continuing with defaults`,
+        );
+        resolve();
+      }, SETTINGS_HYDRATION_TIMEOUT_MS);
+      const unsub = persist.onFinishHydration(() => {
+        unsub();
+        clearTimeout(timer);
+        if (this._settingsOverdue) {
+          this._settingsOverdue = false;
+          this._showSavedRewayah();
+        } else {
+          resolve();
+        }
+      });
+    });
+  }
+
+  /**
+   * The saved settings arrived after the preload stopped waiting and loaded
+   * the default rewayah. The store, which every label reads, now names the
+   * saved rewayah, so load its text as well; otherwise the mushaf would show
+   * Hafs under another rewayah's name until the next launch.
+   */
+  private _showSavedRewayah(): void {
+    const settings = useMushafSettingsStore.getState();
+    const saved = migratePersistedId(settings.rewayah as unknown as string);
+    if (saved !== settings.rewayah) settings.setRewayah(saved);
+    // Nothing loaded and nothing loading: the next load starts from the
+    // store by itself.
+    if (
+      !digitalKhattDataService.initialized &&
+      digitalKhattDataService.pendingRewayah === null
+    ) {
+      return;
+    }
+    // Also right while the first load is still running: the newer request
+    // wins, so the default text is never committed over the saved choice.
+    digitalKhattDataService.switchRewayah(saved).catch(error => {
+      if (isRewayahSwitchSuperseded(error)) return;
+      console.warn('[MushafPreload] Could not load the saved rewayah:', error);
+      // Still starting up: the data service's own startup fallback decides
+      // what is shown and records it.
+      if (!digitalKhattDataService.initialized) return;
+      // Make the store name the text on screen again. Hafs standing in for
+      // the saved rewayah is the startup fallback: it keeps the saved one
+      // persisted for the next launch and tells the reader.
+      const now = useMushafSettingsStore.getState();
+      const served = digitalKhattDataService.rewayah;
+      if (now.rewayah === served) return;
+      if (served === 'hafs') now.startRewayahFallback(now.rewayah);
+      else now.setRewayah(served);
+    });
+  }
+  // @ai-end
 
   private _loadDiffsFor(rewayah: RewayahId): void {
     if (this._diffRewayah === rewayah) return;
@@ -311,14 +404,3 @@ class MushafPreloadService {
 }
 
 export const mushafPreloadService = new MushafPreloadService();
-
-function waitForSettingsHydration(): Promise<void> {
-  const persist = useMushafSettingsStore.persist;
-  if (persist.hasHydrated()) return Promise.resolve();
-  return new Promise<void>(resolve => {
-    const unsub = persist.onFinishHydration(() => {
-      unsub();
-      resolve();
-    });
-  });
-}
