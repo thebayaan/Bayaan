@@ -10,6 +10,7 @@
  * clears it. Until then, and in a dev bundle, only the map is used. The store
  * is a cache only: after any failure in it, the line is measured again.
  */
+import * as Sentry from '@sentry/react-native';
 import * as Updates from 'expo-updates';
 import type {MMKV} from 'react-native-mmkv';
 import {readVersionInfo} from '@/utils/appVersion';
@@ -75,8 +76,15 @@ export function openLineFitCache(): void {
       version: `${LINE_FIT_FORMAT}:${bundle}`,
       maxKeys: STORE_LIMIT,
     }).mmkv;
-  } catch {
-    store = null;
+  } catch (error) {
+    // The open runs once a session, so this reports once a session, as
+    // utils/storage.ts does. A store that cannot open (a full disk) fails at
+    // each launch, and one report a launch is enough to see it.
+    console.warn('[LineFitCache] The store did not open:', error);
+    Sentry.captureMessage('line-fit-store-open-failed', {
+      level: 'warning',
+      extra: {error: String(error)},
+    });
   }
 }
 

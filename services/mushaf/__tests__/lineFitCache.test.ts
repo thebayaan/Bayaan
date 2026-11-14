@@ -44,6 +44,10 @@ jest.mock('react-native-mmkv', () => ({
     };
   },
 }));
+const mockCaptureMessage = jest.fn();
+jest.mock('@sentry/react-native', () => ({
+  captureMessage: (...args: unknown[]) => mockCaptureMessage(...args),
+}));
 jest.mock('expo-updates', () => ({
   __esModule: true,
   get updateId() {
@@ -82,6 +86,10 @@ const count = (call: string) => mockNative.calls.filter(c => c === call).length;
 
 afterAll(() => {
   devFlag.__DEV__ = devAtStart;
+});
+
+afterEach(() => {
+  jest.restoreAllMocks();
 });
 
 beforeEach(() => {
@@ -211,11 +219,19 @@ describe('a bad value', () => {
 });
 
 describe('a failure in the store never reaches the caller', () => {
-  it('at the open, the session map still serves', () => {
+  it('at the open, the session map still serves, and it reports once', () => {
+    jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    mockCaptureMessage.mockClear();
     mockNative.failOpen = true;
     const cache = launch();
+    cache.openLineFitCache(); // a retried preload
     cache.setLineFit(KEY, {wordSize: 20, spaceExtra: 1}, true);
     expect(cache.getLineFit(KEY)).toEqual({wordSize: 20, spaceExtra: 1});
+    expect(mockCaptureMessage).toHaveBeenCalledTimes(1);
+    expect(mockCaptureMessage).toHaveBeenCalledWith(
+      'line-fit-store-open-failed',
+      expect.objectContaining({level: 'warning'}),
+    );
   });
 
   it('one failing write does not drop the later writes of the same render', () => {
