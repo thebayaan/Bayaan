@@ -247,6 +247,25 @@ describe('tapping a surah', () => {
     expect(queuedIds()).toEqual(['r1:1', 'upload-u1']);
     expect(mockUpdateQueue.mock.calls[0][1]).toBe(1);
   });
+
+  it('tells an upload from the catalogue row of the same reciter and surah', async () => {
+    // Both saved without a rewayah: an old catalogue entry, and an upload.
+    mockUploads = [{id: 'u1'}];
+    mockLovedTracks = [
+      loved('2', {rewayatId: ''}),
+      loved('2', {rewayatId: '', userRecitationId: 'u1'}),
+    ];
+    const tree = render();
+    expect(rows(tree)).toHaveLength(2);
+
+    await act(async () => {
+      await rows(tree)[1].props.onPress();
+    });
+
+    // It used to match the first row and start the catalogue recording.
+    expect(mockUpdateQueue.mock.calls[0][1]).toBe(1);
+    expect(queuedIds()).toEqual(['r1:2', 'upload-u1']);
+  });
 });
 
 it('unloving a surah keeps the list mounted', () => {

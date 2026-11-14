@@ -374,6 +374,31 @@ class DatabaseService {
     });
   }
 
+  // @ai-start
+  /**
+   * Removes deleted uploads from every playlist. Returns how many items
+   * went, so the caller only refreshes when something changed.
+   */
+  async removeItemsForUploads(
+    userRecitationIds: readonly string[],
+  ): Promise<number> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    const db = this.db;
+    let removed = 0;
+    await this.writeTransaction(db, async () => {
+      for (const userRecitationId of userRecitationIds) {
+        const result = await db.runAsync(
+          `DELETE FROM playlist_items WHERE user_recitation_id = ?`,
+          [userRecitationId],
+        );
+        removed += result.changes;
+      }
+    });
+    return removed;
+  }
+  // @ai-end
+
   async reorderPlaylistItems(
     playlistId: string,
     itemIds: string[],

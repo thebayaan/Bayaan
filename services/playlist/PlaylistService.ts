@@ -108,12 +108,19 @@ class PlaylistService {
 
     // Check if item already exists (read operation - OK to be outside transaction)
     const existingItems = await databaseService.getPlaylistItems(playlistId);
+    // @ai-start
+    // An upload is its own item. Without its id in the comparison, an
+    // upload could not be added next to the catalogue recording of the same
+    // surah, and a second upload of the same surah could not be added at all.
     const existingItem = existingItems.find(
       item =>
         item.surahId === surahId &&
         item.reciterId === reciterId &&
-        item.rewayatId === rewayatId,
+        (item.rewayatId || undefined) === (rewayatId || undefined) &&
+        (item.userRecitationId || undefined) ===
+          (userRecitationId || undefined),
     );
+    // @ai-end
 
     if (existingItem) return; // Don't add duplicates
 
@@ -145,6 +152,15 @@ class PlaylistService {
     await this.initialize();
     await databaseService.removePlaylistItem(itemId);
   }
+
+  // @ai-start
+  /** Removes deleted uploads from every playlist; returns the item count. */
+  async removeUploads(userRecitationIds: readonly string[]): Promise<number> {
+    if (userRecitationIds.length === 0) return 0;
+    await this.initialize();
+    return await databaseService.removeItemsForUploads(userRecitationIds);
+  }
+  // @ai-end
 
   // Delete playlist
   async deletePlaylist(playlistId: string): Promise<void> {

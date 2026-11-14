@@ -194,7 +194,11 @@ const LovedScreen = () => {
           item =>
             item.reciter?.id === reciter.id &&
             item.surah?.id === surah.id &&
-            (item.track.rewayatId || '') === (track.rewayatId || ''),
+            (item.track.rewayatId || '') === (track.rewayatId || '') &&
+            // @ai An upload and the catalogue recording of the same surah
+            // are different rows.
+            (item.track.userRecitationId || '') ===
+              (track.userRecitationId || ''),
         );
 
         if (selectedIndex === -1) {
@@ -679,10 +683,12 @@ const LovedScreen = () => {
     );
   };
 
+  // @ai The upload id keeps an upload's key apart from the catalogue row of
+  // the same reciter and surah saved without a rewayah.
   const getItemKey = (item: LovedTrackData) =>
     `${item.track.reciterId}:${item.track.surahId}:${
       item.track.rewayatId || ''
-    }`;
+    }:${item.track.userRecitationId || ''}`;
 
   if (lovedData.length === 0) {
     return (

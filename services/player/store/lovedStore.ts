@@ -14,6 +14,35 @@ export interface LovedTrack {
   userRecitationId?: string;
 }
 
+// @ai-start
+/**
+ * Does a saved entry stand for the recitation being asked about?
+ *
+ * An upload is asked about by its own id and is only ever itself, whatever
+ * reciter and surah it is tagged with. A catalogue recitation matches the
+ * entry saved for its rewayah, or an "old format" entry saved without one.
+ * Uploads are saved without a rewayah too, so that old-format rule has to
+ * skip them: it made an upload and the catalogue recording of the same
+ * reciter and surah share one heart, and unloving one removed the other.
+ *
+ * Asked with no rewayah and no upload id (rows that know neither), any entry
+ * saved without a rewayah still matches, as before.
+ */
+function isSameLovedRecitation(
+  saved: LovedTrack,
+  reciterId: string,
+  surahId: string,
+  rewayatId: string,
+  userRecitationId?: string,
+): boolean {
+  if (userRecitationId) return saved.userRecitationId === userRecitationId;
+  if (saved.reciterId !== reciterId || saved.surahId !== surahId) return false;
+  if (!rewayatId) return !saved.rewayatId;
+  if (saved.userRecitationId) return false;
+  return saved.rewayatId === rewayatId || !saved.rewayatId;
+}
+// @ai-end
+
 interface LovedTracksState {
   // State
   tracks: LovedTrack[];
@@ -34,9 +63,12 @@ interface LovedTracksState {
     reciterId: string,
     surahId: string,
     rewayatId: string,
+    userRecitationId?: string, // @ai
   ) => boolean;
   getLovedTracks: () => LovedTrack[];
   clearLoved: () => void;
+  /** Drops the entries of uploads that no longer exist. @ai */
+  removeUploads: (userRecitationIds: readonly string[]) => void; // @ai
 
   // Future sync methods
   sync: () => Promise<void>;
@@ -62,15 +94,17 @@ export const useLovedStore = create<LovedTracksState>()(
         userRecitationId?: string,
       ) => {
         // Determine current loved state before toggling
-        const isCurrentlyLoved = get().tracks.some(
-          t =>
-            (t.reciterId === reciterId &&
-              t.surahId === surahId &&
-              t.rewayatId === rewayatId) ||
-            (t.reciterId === reciterId &&
-              t.surahId === surahId &&
-              !t.rewayatId),
+        // @ai-start
+        const isCurrentlyLoved = get().tracks.some(t =>
+          isSameLovedRecitation(
+            t,
+            reciterId,
+            surahId,
+            rewayatId,
+            userRecitationId,
+          ),
         );
+        // @ai-end
 
         analyticsService.trackFavoriteToggled({
           surah_id: parseInt(surahId ?? '0', 10),
@@ -81,15 +115,17 @@ export const useLovedStore = create<LovedTracksState>()(
         set(state => {
           // Check if a track exists with either the new format (with rewayatId)
           // or the old format (without rewayatId)
-          const existingTrack = state.tracks.find(
-            t =>
-              (t.reciterId === reciterId &&
-                t.surahId === surahId &&
-                t.rewayatId === rewayatId) ||
-              (t.reciterId === reciterId &&
-                t.surahId === surahId &&
-                !t.rewayatId),
+          // @ai-start
+          const existingTrack = state.tracks.find(t =>
+            isSameLovedRecitation(
+              t,
+              reciterId,
+              surahId,
+              rewayatId,
+              userRecitationId,
+            ),
           );
+          // @ai-end
 
           let newTracks: LovedTrack[];
           if (existingTrack) {
@@ -124,30 +160,23 @@ export const useLovedStore = create<LovedTracksState>()(
         reciterId: string,
         surahId: string,
         rewayatId: string,
+        userRecitationId?: string, // @ai
       ) => {
         const {tracks} = get();
 
-        // Check for exact match with rewayatId
-        const hasExactMatch = tracks.some(
-          track =>
-            track.reciterId === reciterId &&
-            track.surahId === surahId &&
-            track.rewayatId === rewayatId,
+        // @ai-start
+        // The entry for this rewayah, or an old-format entry saved without
+        // one; an upload only by its own id (see isSameLovedRecitation).
+        return tracks.some(track =>
+          isSameLovedRecitation(
+            track,
+            reciterId,
+            surahId,
+            rewayatId,
+            userRecitationId,
+          ),
         );
-
-        if (hasExactMatch) {
-          return true;
-        }
-
-        // If no exact match, check for old format without rewayatId
-        const hasOldFormatMatch = tracks.some(
-          track =>
-            track.reciterId === reciterId &&
-            track.surahId === surahId &&
-            !track.rewayatId,
-        );
-
-        return hasOldFormatMatch;
+        // @ai-end
       },
 
       getLovedTracks: () => {
@@ -158,6 +187,18 @@ export const useLovedStore = create<LovedTracksState>()(
       clearLoved: () => {
         set({tracks: []});
       },
+
+      // @ai-start
+      removeUploads: (userRecitationIds: readonly string[]) => {
+        const gone = new Set(userRecitationIds);
+        set(state => {
+          const tracks = state.tracks.filter(
+            t => !t.userRecitationId || !gone.has(t.userRecitationId),
+          );
+          return tracks.length === state.tracks.length ? state : {tracks};
+        });
+      },
+      // @ai-end
 
       // Future sync methods (placeholders for now)
       sync: async () => {
