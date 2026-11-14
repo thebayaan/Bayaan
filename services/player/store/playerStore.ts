@@ -86,9 +86,52 @@ export interface PlayerStoreState extends Omit<UnifiedPlayerState, 'ui'> {
   cleanup: () => Promise<void>;
 }
 
-// @ai A track this close to its end counts as finished when play is pressed:
+// @ai-start
+// A track this close to its end counts as finished when play is pressed:
 // the native players do not start again from there (ExoPlayer stays ended).
 const END_OF_TRACK_SECONDS = 0.5;
+
+// Bumped by pause(). A load that was started with autoplay checks it before
+// it plays, so a pause that lands while a track is still loading (the pause
+// button, the sleep timer, another audio source taking over) is not undone
+// when the load finishes.
+let pauseEpoch = 0;
+
+/**
+ * What loadTrackAtIndex() did: 'superseded' (a newer action owns the state,
+ * write nothing), 'played' (loaded and playing), or 'loaded' (loaded and
+ * left paused: autoplay was off, or a pause landed during the load).
+ */
+type LoadOutcome = 'superseded' | 'played' | 'loaded';
+
+/** The playback state that a finished load leaves. */
+function stateAfterLoad(outcome: LoadOutcome): StorePlaybackState {
+  return outcome === 'played' ? 'playing' : 'paused';
+}
+
+type TrackUrlResolver = (track: Track) => string;
+let trackUrlResolver: TrackUrlResolver = track => track.url;
+
+/**
+ * Sets how a queue track's url is chosen at the moment it is loaded.
+ * A queue is built once, but what a track should play from changes: a surah
+ * downloaded since then should play from its file (and work offline), and
+ * one whose download was removed has to stream again. Injected, because the
+ * resolver needs modules that import this store. See utils/trackUrl.ts.
+ */
+export function setTrackUrlResolver(resolver: TrackUrlResolver): void {
+  trackUrlResolver = resolver;
+}
+
+// The url last handed to the player, and the track it was for. play() uses
+// it to tell whether the player still holds the current track.
+let loadedSource: {trackId: string; url: string} | null = null;
+
+/** The url that the player holds, or would be given, for `track`. */
+function sourceUrlFor(track: Track): string {
+  return loadedSource?.trackId === track.id ? loadedSource.url : track.url;
+}
+// @ai-end
 
 // Monotonic id for the in-flight play operation. Every loadTrackAtIndex()
 // claims a fresh id at entry; cleanup() bumps it via pauseForEmptyQueue().
@@ -135,52 +178,66 @@ async function pauseForEmptyQueue(): Promise<boolean> {
 /**
  * Helper to load and optionally play a track from the queue.
  *
- * Returns `false` when the operation was superseded mid-flight (a cleanup() or
- * a newer load won the race) — the caller MUST skip its trailing state write in
- * that case so the superseding action's state stands.
+ * Returns 'superseded' when the operation was overtaken mid-flight (a
+ * cleanup() or a newer load won the race) — the caller MUST skip its trailing
+ * state write in that case so the superseding action's state stands.
  */
 async function loadTrackAtIndex(
   tracks: Track[],
   index: number,
   startPosition = 0,
   autoPlay = false,
-): Promise<boolean> {
+): Promise<LoadOutcome> {
   const track = tracks[index];
   if (!track?.url) {
     if (__DEV__) console.warn('[PlayerStore] No track at index:', index);
     // Not superseded — nothing was loaded, but the caller's op is still the
     // current one, so let it finalize its loading flags as before.
-    return true;
+    return 'loaded';
   }
 
   // Claim the op: any older load still awaiting the network is now stale
   // (last legitimate operation wins — matches the optimistic-set ordering).
   const opId = ++playOpId;
+  const pausesAtStart = pauseEpoch; // @ai
+  // @ai The url is chosen now, not when the queue was built.
+  const url = trackUrlResolver(track);
+  loadedSource = {trackId: track.id, url}; // @ai
 
   if (__DEV__)
     console.log('[PlayerStore] Loading track:', {
       index,
       title: track.title,
-      url: track.url.substring(0, 50) + '...',
+      url: url.substring(0, 50) + '...',
       startPosition,
       autoPlay,
     });
 
   // @ai-start
   try {
-    await expoAudioService.loadTrack(track.url);
+    await expoAudioService.loadTrack(url);
   } catch (error) {
     // A superseded load that failed is not the user's problem any more: the
     // newer action owns the state, so do not surface the failure.
-    if (opId !== playOpId) return false;
+    if (opId !== playOpId) return 'superseded';
     throw error;
   }
   // @ai-end
   if (opId !== playOpId) {
     // cleanup() or a newer load landed while we awaited the network — do NOT
     // seek or play; the superseding action's state is authoritative.
-    return false;
+    return 'superseded';
   }
+
+  // @ai-start
+  // A start position at the very end of the track (a recent card for a surah
+  // that was heard to its end) would finish at once and move on to the next
+  // surah. The user asked for this one, so start it from the beginning.
+  const duration = expoAudioService.getDuration();
+  if (duration > 0 && startPosition >= duration - END_OF_TRACK_SECONDS) {
+    startPosition = 0;
+  }
+  // @ai-end
 
   if (startPosition > 0) {
     if (__DEV__)
@@ -200,15 +257,18 @@ async function loadTrackAtIndex(
   if (autoPlay) {
     if (opId !== playOpId) {
       // Superseded during the seek await — same contract as above.
-      return false;
+      return 'superseded';
     }
+    // @ai A pause landed while this was loading: leave it loaded and paused.
+    if (pausesAtStart !== pauseEpoch) return 'loaded';
     await expoAudioService.play();
     if (__DEV__ && startPosition > 0)
       console.log('[PlayerStore] POST-PLAY state:', {
         currentTime: expoAudioService.getCurrentTime(),
       });
+    return 'played'; // @ai
   }
-  return true;
+  return 'loaded';
 }
 
 // @ai-start
@@ -289,7 +349,7 @@ export const usePlayerStore = create<PlayerStoreState>()(
           const track = tracks[currentIndex];
           if (track?.url) {
             const {playback, settings} = get();
-            const ready = expoAudioService.isSourceReady(track.url);
+            const ready = expoAudioService.isSourceReady(sourceUrlFor(track));
             // Where the track stands: the player knows once it holds the
             // source; before that, the saved position does.
             const position = ready
@@ -314,6 +374,7 @@ export const usePlayerStore = create<PlayerStoreState>()(
               }
               const startPosition = finished ? 0 : Math.max(0, position);
 
+              let outcome: LoadOutcome = 'played';
               if (ready && index === currentIndex) {
                 await expoAudioService.seekTo(0);
                 await expoAudioService.play();
@@ -326,18 +387,18 @@ export const usePlayerStore = create<PlayerStoreState>()(
                     position: startPosition,
                   },
                 }));
-                const stillCurrent = await loadTrackAtIndex(
+                outcome = await loadTrackAtIndex(
                   tracks,
                   index,
                   startPosition,
                   true,
                 );
-                if (!stillCurrent) return; // superseded by a newer action
+                if (outcome === 'superseded') return; // a newer action won
               }
               set(state => ({
                 playback: {
                   ...state.playback,
-                  state: 'playing' as StorePlaybackState,
+                  state: stateAfterLoad(outcome),
                   position: startPosition,
                 },
                 loading: {...state.loading, trackLoading: false},
@@ -370,6 +431,7 @@ export const usePlayerStore = create<PlayerStoreState>()(
 
       pause: async () => {
         try {
+          pauseEpoch++; // @ai A load that is still in flight must not play.
           set(state => ({
             loading: {...state.loading, trackLoading: true},
           }));
@@ -446,18 +508,13 @@ export const usePlayerStore = create<PlayerStoreState>()(
 
           // Load and play the next track
           audioCoordinator.mainWillPlay();
-          const stillCurrent = await loadTrackAtIndex(
-            tracks,
-            nextIndex,
-            0,
-            true,
-          );
-          if (!stillCurrent) return; // superseded by cleanup()/a newer load
+          const outcome = await loadTrackAtIndex(tracks, nextIndex, 0, true); // @ai
+          if (outcome === 'superseded') return; // cleanup()/a newer load won
 
           set(state => ({
             playback: {
               ...state.playback,
-              state: 'playing' as StorePlaybackState,
+              state: stateAfterLoad(outcome), // @ai
               position: 0,
             },
             loading: {...state.loading, trackLoading: false},
@@ -540,18 +597,13 @@ export const usePlayerStore = create<PlayerStoreState>()(
 
           // Load and play the previous track
           audioCoordinator.mainWillPlay();
-          const stillCurrent = await loadTrackAtIndex(
-            tracks,
-            prevIndex,
-            0,
-            true,
-          );
-          if (!stillCurrent) return; // superseded by cleanup()/a newer load
+          const outcome = await loadTrackAtIndex(tracks, prevIndex, 0, true); // @ai
+          if (outcome === 'superseded') return; // cleanup()/a newer load won
 
           set(state => ({
             playback: {
               ...state.playback,
-              state: 'playing' as StorePlaybackState,
+              state: stateAfterLoad(outcome), // @ai
               position: 0,
             },
             loading: {...state.loading, trackLoading: false},
@@ -653,13 +705,14 @@ export const usePlayerStore = create<PlayerStoreState>()(
           }));
 
           // Load the track at the specified index and auto-play
+          let outcome: LoadOutcome | null = null; // @ai
           if (
             tracks.length > 0 &&
             currentIndex >= 0 &&
             currentIndex < tracks.length
           ) {
             audioCoordinator.mainWillPlay();
-            const stillCurrent = await loadTrackAtIndex(
+            outcome = await loadTrackAtIndex(
               tracks,
               currentIndex,
               startPosition,
@@ -669,17 +722,12 @@ export const usePlayerStore = create<PlayerStoreState>()(
             // network — keep ITS state; writing 'ready' here would report the
             // superseded track as the ready one (or resurrect a playing state
             // over a queue that has already moved on).
-            if (!stillCurrent) return;
+            if (outcome === 'superseded') return;
           }
 
           // @ai The load above also started playback, so say so. 'ready'
           // here showed a play button over audible audio until the next
           // native status update.
-          const played =
-            tracks.length > 0 &&
-            currentIndex >= 0 &&
-            currentIndex < tracks.length &&
-            !!tracks[currentIndex]?.url; // @ai
           set(state => ({
             loading: {
               ...state.loading,
@@ -689,7 +737,7 @@ export const usePlayerStore = create<PlayerStoreState>()(
             },
             playback: {
               ...state.playback,
-              state: (played ? 'playing' : 'ready') as StorePlaybackState, // @ai
+              state: outcome === null ? 'ready' : stateAfterLoad(outcome), // @ai
               position: startPosition,
               duration: expoAudioService.getDuration() || 0,
               buffering: false,
@@ -716,14 +764,37 @@ export const usePlayerStore = create<PlayerStoreState>()(
           }));
 
           // Just add to our state - expo-audio handles single track playback
-          set(state => ({
-            queue: {
-              ...state.queue,
-              tracks: [...state.queue.tracks, ...tracks],
-              total: state.queue.tracks.length + tracks.length,
-            },
-            loading: {...state.loading, queueLoading: false},
-          }));
+          // @ai-start
+          // With nothing in the player (first use, or after its queue was
+          // cleared) there is no current track, so no player was shown and
+          // the added tracks could not be reached. Make the first one
+          // current and leave it paused: play() loads it.
+          set(state => {
+            const hadCurrent =
+              state.queue.tracks[state.queue.currentIndex] !== undefined;
+            return {
+              queue: {
+                ...state.queue,
+                tracks: [...state.queue.tracks, ...tracks],
+                total: state.queue.tracks.length + tracks.length,
+                currentIndex:
+                  hadCurrent || tracks.length === 0
+                    ? state.queue.currentIndex
+                    : state.queue.tracks.length,
+              },
+              loading: {...state.loading, queueLoading: false},
+              playback:
+                hadCurrent || tracks.length === 0
+                  ? state.playback
+                  : {
+                      ...state.playback,
+                      state: 'paused' as StorePlaybackState,
+                      position: 0,
+                      duration: 0,
+                    },
+            };
+          });
+          // @ai-end
 
           if (__DEV__)
             console.log(
@@ -760,10 +831,21 @@ export const usePlayerStore = create<PlayerStoreState>()(
           switch (outcome) {
             case 'currentUnchanged':
               break;
-            case 'newCurrent':
-              stillCurrent = await loadTrackAtIndex(tracks, index, 0, autoPlay);
-              settled = autoPlay ? 'playing' : 'ready';
+            // @ai-start
+            case 'newCurrent': {
+              const outcome = await loadTrackAtIndex(
+                tracks,
+                index,
+                0,
+                autoPlay,
+              );
+              stillCurrent = outcome !== 'superseded';
+              // 'ready' when it was not playing before; paused when a pause
+              // landed during the reload.
+              settled = autoPlay ? stateAfterLoad(outcome) : 'ready';
               break;
+            }
+            // @ai-end
             case 'emptied':
               stillCurrent = await pauseForEmptyQueue();
               settled = 'paused';
@@ -921,52 +1003,13 @@ export const usePlayerStore = create<PlayerStoreState>()(
         const milliseconds = Math.round(minutes * 60 * 1000);
         const sleepTimerEnd = Date.now() + milliseconds;
 
-        // Create an interval that checks if the timer has expired
-        const interval = setInterval(async () => {
-          const currentState = get();
-          const endTime = currentState.settings.sleepTimerEnd;
-
-          if (!endTime) {
-            clearInterval(interval);
-            return;
-          }
-
-          const now = Date.now();
-          if (now >= endTime) {
-            if (__DEV__)
-              console.log(
-                '[PlayerStore] Sleep timer expired, pausing playback',
-              );
-            clearInterval(interval);
-
-            // Pause playback
-            try {
-              await get().pause();
-            } catch (error) {
-              console.error(
-                '[PlayerStore] Error pausing on sleep timer:',
-                error,
-              );
-            }
-
-            // Clear timer state
-            set(prevState => ({
-              settings: {
-                ...prevState.settings,
-                sleepTimer: 0,
-                sleepTimerEnd: null,
-                sleepTimerInterval: null,
-              },
-            }));
-          }
-        }, 1000);
-
         set(currentState => ({
           settings: {
             ...currentState.settings,
             sleepTimer: minutes,
             sleepTimerEnd: sleepTimerEnd,
-            sleepTimerInterval: interval,
+            // @ai The expiry itself lives in checkSleepTimer(), below.
+            sleepTimerInterval: startSleepTimerTicker(),
           },
         }));
       },
@@ -1026,6 +1069,7 @@ export const usePlayerStore = create<PlayerStoreState>()(
           clearInterval(state.settings.sleepTimerInterval as NodeJS.Timeout);
         }
         expoAudioService.cleanup();
+        loadedSource = null; // @ai
         set(createDefaultUnifiedPlayerState());
       },
     }),
@@ -1071,6 +1115,29 @@ export const usePlayerStore = create<PlayerStoreState>()(
           state.playback = {...state.playback, rate: 1};
         }
         // @ai-end
+        // @ai-start
+        // A sleep timer that was running when the app was closed. Its end
+        // time is saved but its ticker is not, so the controls showed it
+        // counting down after a relaunch and then nothing happened at zero.
+        // Start the ticker again while it still has time left; clear it
+        // when it ran out while the app was closed.
+        const sleepTimerEnd = state.settings?.sleepTimerEnd;
+        if (sleepTimerEnd) {
+          if (sleepTimerEnd > Date.now()) {
+            state.settings = {
+              ...state.settings,
+              sleepTimerInterval: startSleepTimerTicker(),
+            };
+          } else {
+            state.settings = {
+              ...state.settings,
+              sleepTimer: 0,
+              sleepTimerEnd: null,
+              sleepTimerInterval: null,
+            };
+          }
+        }
+        // @ai-end
         const tracks = state.queue?.tracks ?? [];
         const hasStaleUrls = tracks.some(
           t => t.url.includes('mp3quran.net') || t.url.includes('supabase.co'),
@@ -1086,6 +1153,61 @@ export const usePlayerStore = create<PlayerStoreState>()(
 
 // Export singleton instance for use in service worker
 export const playerStore = usePlayerStore;
+
+// @ai-start
+/**
+ * Ends the sleep timer when its time has come: stops the Quran audio (the
+ * main player, and verse audio in the Mushaf) and clears the timer.
+ *
+ * It is called from two places. A 1 s ticker covers the app in the
+ * foreground and everything on iOS. ExpoAudioProvider also calls it on each
+ * native status update, because React Native on Android stops JS timers
+ * while the app is in the background: with the screen off the ticker alone
+ * never fired, and the audio played on until the app was opened again.
+ */
+export function checkSleepTimer(now: number = Date.now()): void {
+  const {settings, playback} = usePlayerStore.getState();
+  const end = settings.sleepTimerEnd;
+  if (!end || now < end) return;
+
+  if (__DEV__) console.log('[PlayerStore] Sleep timer expired');
+  // Clear it first, so a second caller in the same moment finds no timer.
+  if (settings.sleepTimerInterval) clearInterval(settings.sleepTimerInterval);
+  usePlayerStore.setState(state => ({
+    settings: {
+      ...state.settings,
+      sleepTimer: 0,
+      sleepTimerEnd: null,
+      sleepTimerInterval: null,
+    },
+  }));
+
+  // pause() also holds back a track that is still loading (see pauseEpoch),
+  // so a timer that ends between two surahs is not undone by the next one.
+  if (['playing', 'buffering', 'loading'].includes(playback.state)) {
+    usePlayerStore
+      .getState()
+      .pause()
+      .catch(error => {
+        console.error('[PlayerStore] Error pausing on sleep timer:', error);
+      });
+  }
+  // The timer is set in the main player, but it means "stop the recitation".
+  audioCoordinator.pauseMushaf?.();
+}
+
+/** Starts the 1 s ticker that checks the sleep timer; stops by itself. */
+function startSleepTimerTicker(): ReturnType<typeof setInterval> {
+  const ticker = setInterval(() => {
+    if (!usePlayerStore.getState().settings.sleepTimerEnd) {
+      clearInterval(ticker);
+      return;
+    }
+    checkSleepTimer();
+  }, 1000);
+  return ticker;
+}
+// @ai-end
 
 export const updateQueue = async (tracks: Track[], targetIndex: number) => {
   const store = usePlayerStore.getState();
@@ -1104,13 +1226,8 @@ export const updateQueue = async (tracks: Track[], targetIndex: number) => {
 
     // Load the target track
     if (tracks.length > 0 && targetIndex >= 0 && targetIndex < tracks.length) {
-      const stillCurrent = await loadTrackAtIndex(
-        tracks,
-        targetIndex,
-        0,
-        false,
-      );
-      if (!stillCurrent) return; // superseded — its owner manages the flags
+      const outcome = await loadTrackAtIndex(tracks, targetIndex, 0, false); // @ai
+      if (outcome === 'superseded') return; // its owner manages the flags
     }
 
     store.updateLoadingState({

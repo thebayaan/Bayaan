@@ -185,3 +185,56 @@ describe('ExpoAudioService: a source that fails', () => {
     expect(service.isSourceReady(URL_A)).toBe(true);
   });
 });
+
+describe('ExpoAudioService: waiting for a load without JS timers', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('a status event ends the wait while timers are frozen', async () => {
+    // React Native on Android stops JS timers in the background. The load
+    // wait used to be a timer poll, so with the screen off it never ended
+    // and playback stopped advancing. No timer is advanced in this test.
+    const {service, player} = makeService();
+    player.replace.mockImplementationOnce(async () => {
+      player.isLoaded = false;
+    });
+
+    let loaded = false;
+    const loading = service.loadTrack(URL_A).then(() => {
+      loaded = true;
+    });
+    // Let loadTrack reach its wait (replace() is awaited first).
+    for (let i = 0; i < 5; i++) await Promise.resolve();
+    expect(loaded).toBe(false);
+
+    player.isLoaded = true;
+    player.emit({});
+    await loading;
+
+    expect(loaded).toBe(true);
+    expect(service.isSourceReady(URL_A)).toBe(true);
+  });
+
+  it('a status event of a source that is not loaded yet does not end it', async () => {
+    const {service, player} = makeService();
+    player.replace.mockImplementationOnce(async () => {
+      player.isLoaded = false;
+    });
+
+    let loaded = false;
+    void service.loadTrack(URL_A).then(() => {
+      loaded = true;
+    });
+    for (let i = 0; i < 5; i++) await Promise.resolve();
+
+    player.emit({});
+    for (let i = 0; i < 5; i++) await Promise.resolve();
+
+    expect(loaded).toBe(false);
+  });
+});

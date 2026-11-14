@@ -20,7 +20,10 @@ import {lockScreenService} from './LockScreenService';
 import {ambientAudioService} from './AmbientAudioService';
 import {audioCoordinator} from './AudioCoordinator';
 import {analyticsService} from '@/services/analytics/AnalyticsService';
-import {usePlayerStore} from '@/services/player/store/playerStore';
+import {
+  usePlayerStore,
+  checkSleepTimer, // @ai
+} from '@/services/player/store/playerStore';
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
 import {useAmbientStore} from '@/store/ambientStore';
 import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
@@ -36,6 +39,33 @@ import {reportPlaybackFailed} from '@/services/player/utils/playbackFailure';
 
 // How long after the store says playing the player is checked to agree.
 const PLAYING_CONFIRM_MS = 1500;
+// A track-end handler that has not returned after this long is taken as
+// stuck, so one hung load cannot swallow every later track end.
+const TRACK_END_STUCK_MS = 20000;
+
+/** The slice of a player status that says whether it is trying to play. */
+interface PlayIntent {
+  playing: boolean;
+  isBuffering: boolean;
+  timeControlStatus?: string;
+}
+
+/**
+ * True while the player wants to play but is waiting for data.
+ *
+ * `isBuffering` alone does not say that. On iOS it is also true for a paused
+ * player whose buffer is empty (a restored track before its first play), and
+ * that showed a spinner on a paused player and made the first tap call play
+ * when the user meant pause. iOS says "waiting to play" in
+ * `timeControlStatus`; on Android `playing` holds the intent while the
+ * player buffers.
+ */
+function isWaitingToPlay(status: PlayIntent): boolean {
+  if (Platform.OS === 'ios') {
+    return status.timeControlStatus === 'waitingToPlayAtSpecifiedRate';
+  }
+  return status.isBuffering && status.playing;
+}
 // @ai-end
 
 // Throttle interval for progress updates — wider on Android to reduce re-renders
@@ -109,6 +139,7 @@ export function ExpoAudioProvider({
     duration: 0,
   });
   const isHandlingTrackEnd = useRef(false);
+  const trackEndStartedAt = useRef(0); // @ai
   const wasPlaying = useRef(false);
 
   // Analytics refs
@@ -230,19 +261,34 @@ export function ExpoAudioProvider({
 
   // Merged progress + playback state effect (throttled)
   useEffect(() => {
-    if (!status.isLoaded) return;
+    // @ai-start
+    // Android reports a stream that stalls mid-way as not loaded (its
+    // "loaded" means ready to play right now), so returning on that alone
+    // hid every stall there: the controls stayed on playing over silence.
+    const waiting = isWaitingToPlay(status);
+    if (!status.isLoaded && !(Platform.OS === 'android' && waiting)) return;
 
     const now = Date.now();
+    // Only playback is throttled. A paused player reports rarely (after a
+    // load, after a seek), and dropping one of those left the store on the
+    // 0:00 of a fresh load instead of the position it was then moved to.
     const shouldUpdateProgress =
+      !status.playing ||
       now - lastProgressUpdate.current >= PROGRESS_UPDATE_INTERVAL;
+    // While the store is loading a track, this status is the outgoing
+    // source's (its end, typically) and the store already holds where the
+    // new track will start.
+    const storeIsLoading =
+      usePlayerStore.getState().playback.state === 'loading';
+    // @ai-end
 
     // Throttled position/duration update
-    if (shouldUpdateProgress) {
+    if (shouldUpdateProgress && status.isLoaded && !storeIsLoading) {
       lastProgressUpdate.current = now;
       updatePlaybackState({
         position: status.currentTime,
         duration: status.duration,
-        buffering: status.isBuffering,
+        buffering: waiting, // @ai
       });
 
       if (status.playing) {
@@ -301,8 +347,8 @@ export function ExpoAudioProvider({
 
     // Playback state mapping (always check, not throttled)
     let state: 'playing' | 'paused' | 'buffering' | 'ready' = 'ready';
-    if (status.isBuffering) {
-      state = 'buffering';
+    if (waiting) {
+      state = 'buffering'; // @ai wants to play, waiting for data
     } else if (status.playing) {
       state = 'playing';
     } else {
@@ -310,7 +356,11 @@ export function ExpoAudioProvider({
     }
 
     const currentState = usePlayerStore.getState().playback.state;
-    if (currentState !== state && currentState !== 'loading') {
+    // @ai 'ended' (the queue finished) stands until playback really starts
+    // again: the player's own end status reads as paused, and writing that
+    // lost the fact that the queue had ended.
+    const keepsEnded = currentState === 'ended' && state !== 'playing';
+    if (currentState !== state && currentState !== 'loading' && !keepsEnded) {
       // When main player starts playing, coordinate with mushaf player
       if (state === 'playing' && currentState !== 'playing') {
         audioCoordinator.mainWillPlay();
@@ -377,6 +427,7 @@ export function ExpoAudioProvider({
     status.isLoaded,
     status.isBuffering,
     status.playing,
+    status.timeControlStatus, // @ai
     updatePlaybackState,
     persistCurrentProgress,
   ]);
@@ -413,7 +464,8 @@ export function ExpoAudioProvider({
       const store = usePlayerStore.getState();
       if (store.playback.state !== 'playing') return;
       if (store.loading.trackLoading) return;
-      if (player.playing || player.isBuffering) return;
+      const live = player.currentStatus;
+      if (live.playing || isWaitingToPlay(live)) return;
       store.updatePlaybackState({state: 'paused'});
     }, PLAYING_CONFIRM_MS);
     return () => clearTimeout(timer);
@@ -446,17 +498,36 @@ export function ExpoAudioProvider({
 
   // Handle track end (didJustFinish)
   const handleTrackEnd = useCallback(async () => {
-    if (isHandlingTrackEnd.current) {
+    // @ai-start
+    // One end is handled at a time. The time limit is there so that a
+    // handler which never returns (a load that hangs) cannot swallow every
+    // later track end, as it once did on Android with the screen off.
+    if (
+      isHandlingTrackEnd.current &&
+      Date.now() - trackEndStartedAt.current < TRACK_END_STUCK_MS
+    ) {
       return;
     }
 
     isHandlingTrackEnd.current = true;
+    const startedAt = Date.now();
+    trackEndStartedAt.current = startedAt;
+    // @ai-end
     if (__DEV__) console.log('[ExpoAudioProvider] Track ended');
 
     try {
       const store = usePlayerStore.getState();
       const {repeatMode} = store.settings;
       const {currentIndex, tracks} = store.queue;
+
+      // @ai-start
+      // The sleep timer may have run out during this track.
+      checkSleepTimer();
+      // Record that this track was heard to its end, while it is still the
+      // store's current track.
+      const endedAt = latestStatusRef.current.duration;
+      if (endedAt > 0) persistCurrentProgress(endedAt, endedAt, true);
+      // @ai-end
 
       // Analytics: track completion
       const completedTrack = tracks[currentIndex];
@@ -508,17 +579,34 @@ export function ExpoAudioProvider({
     } catch (error) {
       console.error('[ExpoAudioProvider] Error handling track end:', error);
     } finally {
-      isHandlingTrackEnd.current = false;
+      // @ai Only the handler that still holds the latch releases it.
+      if (trackEndStartedAt.current === startedAt) {
+        isHandlingTrackEnd.current = false;
+      }
     }
-  }, [skipToNext, updatePlaybackState]);
+  }, [skipToNext, updatePlaybackState, persistCurrentProgress]);
 
-  // Monitor for track end via didJustFinish
+  // @ai-start
+  // Listen to the player directly for the end of a track and for the sleep
+  // timer.
+  //
+  // The end used to be read from React state (`status.didJustFinish`). That
+  // flag is true on a single status event, and React keeps only the latest
+  // event: when another status arrived before the render, the end was never
+  // seen and the next surah did not start. A direct listener sees every
+  // event, and does not wait for a render.
+  //
+  // The sleep timer is checked here as well because these events keep
+  // arriving while the app is in the background, where React Native on
+  // Android stops the JS timers that the timer otherwise runs on.
   useEffect(() => {
-    // expo-audio sets didJustFinish to true when track completes
-    if (status.didJustFinish) {
-      handleTrackEnd();
-    }
-  }, [status.didJustFinish, handleTrackEnd]);
+    const subscription = player.addListener('playbackStatusUpdate', event => {
+      checkSleepTimer();
+      if (event.didJustFinish) handleTrackEnd();
+    });
+    return () => subscription.remove();
+  }, [player, handleTrackEnd]);
+  // @ai-end
 
   // ========== AMBIENT SOUND SYNC ==========
   // Sync ambient playback with the active audio source (main or mushaf).
@@ -532,10 +620,17 @@ export function ExpoAudioProvider({
   useEffect(() => {
     // Determine if any Quran audio source is currently playing
     const activeSource = audioCoordinator.getActiveSource();
+    // @ai-start
+    // "Playing" here includes loading the next track and waiting for data.
+    // On the raw playing flag the ambient sound cut out at every change of
+    // surah and came back a moment later.
     const isAudioPlaying =
       activeSource === 'mushaf'
-        ? mushafPlaybackState === 'playing'
-        : status.playing;
+        ? mushafPlaybackState === 'playing' || mushafPlaybackState === 'loading'
+        : storePlaybackState === 'playing' ||
+          storePlaybackState === 'buffering' ||
+          (storePlaybackState === 'loading' && prevAudioPlaying.current);
+    // @ai-end
     const wasAudioPlaying = prevAudioPlaying.current;
     prevAudioPlaying.current = isAudioPlaying;
 
@@ -563,7 +658,7 @@ export function ExpoAudioProvider({
           console.log('[ExpoAudioProvider] Ambient paused with audio');
       }
     }
-  }, [status.playing, mushafPlaybackState]);
+  }, [storePlaybackState, mushafPlaybackState]); // @ai
 
   // Handle queue end — fade out ambient when queue is done
   useEffect(() => {
