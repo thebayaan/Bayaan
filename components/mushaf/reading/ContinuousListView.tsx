@@ -38,6 +38,7 @@ import {getTranslationName} from '@/utils/translationLookup';
 import {getAllahNameHighlightColorHex} from '@/constants/mushafAllahHighlight';
 import {
   SCREEN_WIDTH,
+  VERTICAL_READER_VIEWABILITY, // @ai
   readingColumnPadding, // @ai
 } from '../constants';
 // @ai-start
@@ -581,7 +582,7 @@ const ContinuousListView = forwardRef<
         showsVerticalScrollIndicator={false}
         scrollsToTop={scrollsToTop}
         onViewableItemsChanged={onViewableItemsChanged}
-        viewabilityConfig={{itemVisiblePercentThreshold: 50}}
+        viewabilityConfig={VERTICAL_READER_VIEWABILITY}
       />
     );
   },

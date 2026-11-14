@@ -350,6 +350,22 @@ export function readingColumnPadding(
 ): number {
   return Math.max(minPadding, (width - READING_COLUMN_MAX_WIDTH) / 2);
 }
+
+/**
+ * When a row of a vertical reader (a mushaf page, or a verse in the list)
+ * counts as the one on screen: it is wholly visible, or it covers at least
+ * half of the screen.
+ *
+ * Not "half of the row is visible" (`itemVisiblePercentThreshold`). In phone
+ * landscape a mushaf page is about three screens tall, so half of it never
+ * fits and no page was ever reported: the header, Continue reading and Play
+ * stayed on the page the reader had rotated on. A wholly visible row counts
+ * whatever its size (FlashList's ViewabilityHelper), so short rows are
+ * reported as before.
+ */
+export const VERTICAL_READER_VIEWABILITY = {
+  viewAreaCoveragePercentThreshold: 50,
+} as const;
 // @ai-end
 
 /**

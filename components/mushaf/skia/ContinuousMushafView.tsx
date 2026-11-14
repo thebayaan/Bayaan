@@ -70,7 +70,13 @@ import {usePlaybackBand} from './playbackBand';
 import {usePlaybackBasmalaSurah} from '@/store/mushafPlayerStore'; // @ai
 import {useVerseUnitDragSelect, type LineCharHit} from './verseUnitDragSelect';
 // @ai-end
-import {type MushafLayoutMetrics, canvasBottomOverflow} from '../constants'; // @ai
+// @ai-start
+import {
+  type MushafLayoutMetrics,
+  VERTICAL_READER_VIEWABILITY,
+  canvasBottomOverflow,
+} from '../constants';
+// @ai-end
 import {useRecitationLineHighlights} from './useRecitationLineHighlights';
 import {useRecitationHiddenText} from './useRecitationHiddenText';
 import {useRecitationMarkColors} from './useRecitationMarkColors';
@@ -933,7 +939,7 @@ const ContinuousMushafView = forwardRef<
         showsVerticalScrollIndicator={false}
         scrollsToTop={scrollsToTop} // @ai
         onViewableItemsChanged={onViewableItemsChanged}
-        viewabilityConfig={{itemVisiblePercentThreshold: 50}}
+        viewabilityConfig={VERTICAL_READER_VIEWABILITY} // @ai
       />
     );
   },
