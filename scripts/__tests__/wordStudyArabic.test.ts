@@ -243,6 +243,6 @@ describe('rasmLetters', () => {
     expect(rasmLetters('بَعْدَ مَا').words).toBe(2);
     expect(rasmLetters('۞ إِنَّ').words).toBe(1);
     expect(rasmLetters('رَيْبَ ۛ').words).toBe(1);
-    expect(rasmLetters('ٱلْعَظِيمِ ۩‏').words).toBe(1);
+    expect(rasmLetters('ٱلْعَظِيمِ ۩\u200f').words).toBe(1);
   });
 });

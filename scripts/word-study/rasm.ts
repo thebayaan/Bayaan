@@ -46,7 +46,7 @@ export interface TanzilText {
 const BASMALA_KEY = looseKey('بسم الله الرحمن الرحيم');
 
 /** Pause, sajdah and hizb signs that Tanzil can add as tokens of their own. */
-const PAUSE_SIGNS = /[ۖ-ۜ۞۩]/g;
+const PAUSE_SIGNS = /[\u06D6-\u06DC\u06DE\u06E9]/g;
 
 /**
  * Reads a Tanzil text download, "sura|aya|text" lines plus a # copyright
@@ -578,7 +578,7 @@ function edit(m: Item | null, s: Item | null): Edit {
         mushaf: musLetter(m),
         basis: m.zaid ? 'sign' : 'unconfirmed',
         mark: null,
-        why: m.zaid ? 'sign' : 'no ۟',
+        why: m.zaid ? 'sign' : 'no zaid sign',
       },
     };
   }
