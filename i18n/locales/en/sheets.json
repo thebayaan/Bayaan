@@ -476,5 +476,16 @@
       },
       "sources": "Standard spelling from {{source}}. The differences come from comparing it letter by letter with the mushaf's spelling; only those that the mushaf's own signs, a known spelling rule or a review confirm are shown. Shown for the Hafs text."
     }
+  },
+  "wordView": {
+    "wordRef": "{{verse}} · word {{n}}",
+    "hafsNote": "Meanings, audio, i'rab, morphology and rasm are for Hafs.",
+    "hafsNoteReadings": "Meanings, audio, i'rab, morphology and rasm are for Hafs. Readings shows how {{rewayah}} reads it.",
+    "playWord": "Play the word",
+    "audioFailed": "Couldn't play",
+    "studyWord": "Study {{word}}",
+    "morphology": {
+      "searchRoot": "Search the root {{root}}"
+    }
   }
 }
