@@ -85,7 +85,6 @@ import {
 } from '@/services/mushaf/QCFFontLoader'; // @ai
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
 // @ai-start
-import {noteReaderFirstContent} from '@/services/mushaf/readerRestoreState';
 import {useFirstContent} from '@/hooks/useFirstContent';
 import {appLayoutDirection, isRTL} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
@@ -607,6 +606,11 @@ interface MushafViewerProps {
   /** Surah the viewer was opened for, when `pageNumber` was derived from it. */
   initialSurahId?: number; // @ai
   initialVerseKey?: string;
+  /**
+   * Called once, when the page that the viewer opens on has content (RFC-023
+   * step 5). Only that page reports: the list mounts it first.
+   */
+  onFirstContent?: () => void; // @ai
 }
 
 /** A surah the reader was explicitly sent to, pinned to the page it starts on. */
@@ -615,6 +619,7 @@ type AskedSurah = {surahId: number; page: number}; // @ai
 export default function MushafViewer({
   pageNumber: initialPage,
   initialSurahId,
+  onFirstContent, // @ai
 }: MushafViewerProps) {
   useKeepAwake();
   const {t} = useTranslation(['reader', 'common']);
@@ -1349,7 +1354,7 @@ export default function MushafViewer({
           onCurrentPageChange={handleContinuousPageChange}
           metrics={scrollMetrics} // @ai
           scrollsToTop={scrollsToTop} // @ai
-          onFirstContent={noteReaderFirstContent} // @ai
+          onFirstContent={onFirstContent} // @ai
         />
       ) : isVertical && viewMode === 'list' ? (
         <ContinuousListView
@@ -1363,7 +1368,7 @@ export default function MushafViewer({
           onCurrentPageChange={handleContinuousPageChange}
           width={readingPageSize?.width} // @ai
           scrollsToTop={scrollsToTop} // @ai
-          onFirstContent={noteReaderFirstContent} // @ai
+          onFirstContent={onFirstContent} // @ai
         />
       ) : metrics.facingPages && viewMode === 'mushaf' ? (
         <FlatList
@@ -1383,7 +1388,7 @@ export default function MushafViewer({
               isBookLayout={isBookLayout}
               metrics={metrics}
               onTap={toggleImmersive}
-              onFirstContent={noteReaderFirstContent} // @ai
+              onFirstContent={onFirstContent} // @ai
             />
           )}
           keyExtractor={item => `spread-${item.right}`}
@@ -1429,7 +1434,7 @@ export default function MushafViewer({
                   isBookLayout={isBookLayout}
                   onTap={toggleImmersive}
                   pageSize={readingPageSize} // @ai
-                  onFirstContent={noteReaderFirstContent} // @ai
+                  onFirstContent={onFirstContent} // @ai
                 />
               );
             }
@@ -1445,7 +1450,7 @@ export default function MushafViewer({
                 isBookLayout={isBookLayout}
                 metrics={metrics}
                 onTap={toggleImmersive}
-                onFirstContent={noteReaderFirstContent} // @ai
+                onFirstContent={onFirstContent} // @ai
               />
             );
           }}

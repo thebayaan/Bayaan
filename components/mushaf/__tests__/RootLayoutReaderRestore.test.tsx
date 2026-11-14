@@ -1,9 +1,15 @@
 // @ai-generated
 /**
- * RFC-023 step 5: the root layout (app/_layout.tsx) with the restore state. It
- * pushes the reader once, hides the splash at the reader's first content, and
- * keeps today's conditions: a deep link does not restore, and a share intent
- * holds the push until it ends. Lives outside app/ because every file there is
+ * RFC-023 step 5: the root layout (app/_layout.tsx) with its restore state. It
+ * pushes the reader once, hides the splash once (at the reader's first content
+ * or at the deadline), and keeps today's conditions: a deep link does not
+ * restore, and a share intent holds the push until it ends. The timing rules
+ * themselves are in services/mushaf/__tests__/readerRestoreState.test.ts.
+ *
+ * The cases F1a, F1b, F2 and F2b come from the review of the step 5 PR: before
+ * the state moved into the layout, the splash was hidden twice, and the safety
+ * limit started at the launch, so a slow boot or a long share import ended the
+ * restore before the push. Lives outside app/ because every file there is
  * bundled as a route.
  */
 import React, {act} from 'react';
@@ -33,8 +39,20 @@ jest.mock('@/services/mushaf/MushafSessionStore', () => ({
     getLastReadPage: () => mockSession.lastReadPage,
   },
 }));
+// The routes read the restore of the launch from two contexts. This stand-in
+// for the Stack reads them, as the home route and the reader do.
+const mockRoutes = {
+  homeHeld: false,
+  report: (() => undefined) as (event: 'content' | 'closed') => void,
+};
 jest.mock('expo-router', () => {
+  const {useContext} = jest.requireActual<typeof import('react')>('react');
+  const restore = jest.requireActual<
+    typeof import('@/services/mushaf/readerRestoreState')
+  >('@/services/mushaf/readerRestoreState');
   function Stack() {
+    mockRoutes.homeHeld = useContext(restore.HomeHeldContext);
+    mockRoutes.report = useContext(restore.ReaderRestoreContext);
     return null;
   }
   Stack.Screen = function Screen() {
@@ -46,8 +64,13 @@ jest.mock('expo-share-intent', () => ({useShareIntent: () => mockShare}));
 jest.mock('expo-font', () => ({
   useFonts: () => [mockFonts.loaded, null],
 }));
+// A controllable boot: ms 0 ends at once, otherwise after ms of fake time.
+const mockBoot = {ms: 0};
 jest.mock('@/services/appBoot', () => ({
-  bootApp: () => Promise.resolve(),
+  bootApp: () =>
+    mockBoot.ms === 0
+      ? Promise.resolve()
+      : new Promise<void>(resolve => setTimeout(resolve, mockBoot.ms)),
 }));
 
 // The rest of the root's imports: what the launch does not exercise here.
@@ -191,9 +214,6 @@ import {
   HOME_AFTER_SHOWN_MS,
   RESTORE_SAFETY_LIMIT_MS,
   SPLASH_DEADLINE_MS,
-  getReaderRestoreState,
-  noteReaderFirstContent,
-  readerRestoreHoldsHome,
 } from '@/services/mushaf/readerRestoreState';
 
 declare const global: {IS_REACT_ACT_ENVIRONMENT?: boolean};
@@ -203,6 +223,11 @@ let renderer: TestRenderer.ReactTestRenderer | null = null;
 let linkingSpy: jest.SpyInstance;
 let errorSpy: jest.SpyInstance;
 let logSpy: jest.SpyInstance;
+
+/** The reader's report, as app/mushaf.tsx sends it. */
+function noteReaderFirstContent(): void {
+  mockRoutes.report('content');
+}
 
 /** Lets the boot and the read of the initial URL end. */
 async function settle(): Promise<void> {
@@ -220,6 +245,13 @@ async function launch(): Promise<void> {
   await settle();
 }
 
+async function advance(ms: number): Promise<void> {
+  await act(async () => {
+    jest.advanceTimersByTime(ms);
+  });
+  await settle();
+}
+
 /** The app was killed with the reader open. */
 function lastScreenWasReader(page: number | null = 42): void {
   mockSession.lastScreenWasMushaf = true;
@@ -228,6 +260,7 @@ function lastScreenWasReader(page: number | null = 42): void {
 
 beforeEach(() => {
   jest.useFakeTimers();
+  mockBoot.ms = 0;
   mockRouter.push.mockClear();
   mockSplash.hideAsync.mockClear();
   mockSession.lastScreenWasMushaf = false;
@@ -235,6 +268,7 @@ beforeEach(() => {
   mockShare.hasShareIntent = false;
   mockShare.shareIntent.files = [];
   mockFonts.loaded = true;
+  mockRoutes.homeHeld = false;
   linkingSpy = jest.spyOn(Linking, 'getInitialURL').mockResolvedValue(null);
   // react-test-renderer prints a deprecation notice under React 19.
   errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
@@ -252,12 +286,11 @@ afterEach(() => {
 });
 
 describe('a launch with no restore', () => {
-  it('never waits and pushes nothing', async () => {
+  it('never waits, pushes nothing, and hides the splash once', async () => {
     await launch();
-    expect(getReaderRestoreState()).toBe('none');
     expect(mockRouter.push).not.toHaveBeenCalled();
-    expect(mockSplash.hideAsync).toHaveBeenCalled();
-    expect(readerRestoreHoldsHome()).toBe(false);
+    expect(mockRoutes.homeHeld).toBe(false);
+    expect(mockSplash.hideAsync).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -267,9 +300,8 @@ describe('a launch from a deep link', () => {
     linkingSpy.mockResolvedValue('bayaan://quran/2/255');
     await launch();
     expect(mockRouter.push).not.toHaveBeenCalled();
-    expect(getReaderRestoreState()).toBe('ended');
-    expect(mockSplash.hideAsync).toHaveBeenCalled();
-    expect(readerRestoreHoldsHome()).toBe(false);
+    expect(mockRoutes.homeHeld).toBe(false);
+    expect(mockSplash.hideAsync).toHaveBeenCalledTimes(1);
   });
 
   it('restores when the read of the initial URL fails, as it did before', async () => {
@@ -289,7 +321,7 @@ describe('a launch that restores the reader', () => {
       pathname: '/mushaf',
       params: {page: '42'},
     });
-    expect(getReaderRestoreState()).toBe('waitingForContent');
+    expect(mockRoutes.homeHeld).toBe(true);
   });
 
   it('pushes with no page when none was saved', async () => {
@@ -301,85 +333,75 @@ describe('a launch that restores the reader', () => {
     });
   });
 
-  it('keeps the splash until the first content, then hides it at once', async () => {
+  it('F1a: keeps the splash until the first content, then hides it once', async () => {
     lastScreenWasReader();
     await launch();
     expect(mockSplash.hideAsync).not.toHaveBeenCalled();
-
-    act(() => {
-      noteReaderFirstContent();
-      // At the report, before any render of the root.
-      expect(mockSplash.hideAsync).toHaveBeenCalled();
-    });
+    act(() => noteReaderFirstContent());
+    expect(mockSplash.hideAsync).toHaveBeenCalledTimes(1);
+    await advance(HOME_AFTER_SHOWN_MS);
+    expect(mockSplash.hideAsync).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps the splash through the interactions: no idle wait hides it', async () => {
+  it('F1b: hides the splash once at the deadline, not again at a later content', async () => {
     lastScreenWasReader();
     await launch();
-    await act(async () => {
-      jest.advanceTimersByTime(SPLASH_DEADLINE_MS - 1);
-    });
+    await advance(SPLASH_DEADLINE_MS - 1);
     expect(mockSplash.hideAsync).not.toHaveBeenCalled();
-  });
-
-  it('hides the splash at the deadline for a surface that never reports', async () => {
-    lastScreenWasReader();
-    await launch();
-    await act(async () => {
-      jest.advanceTimersByTime(SPLASH_DEADLINE_MS);
-    });
-    expect(mockSplash.hideAsync).toHaveBeenCalled();
-    expect(getReaderRestoreState()).toBe('waitingForContent');
-    expect(readerRestoreHoldsHome()).toBe(true);
+    await advance(1);
+    expect(mockSplash.hideAsync).toHaveBeenCalledTimes(1);
+    act(() => noteReaderFirstContent());
+    await advance(HOME_AFTER_SHOWN_MS);
+    expect(mockSplash.hideAsync).toHaveBeenCalledTimes(1);
   });
 
   it('frees the home route 1 s after the first content', async () => {
     lastScreenWasReader();
     await launch();
     act(() => noteReaderFirstContent());
-    expect(readerRestoreHoldsHome()).toBe(true);
-    await act(async () => {
-      jest.advanceTimersByTime(HOME_AFTER_SHOWN_MS);
-    });
-    expect(readerRestoreHoldsHome()).toBe(false);
+    expect(mockRoutes.homeHeld).toBe(true);
+    await advance(HOME_AFTER_SHOWN_MS);
+    expect(mockRoutes.homeHeld).toBe(false);
   });
 
-  it('hides the splash at the safety limit when the initial URL never comes', async () => {
+  it('frees the home route at once when the reader closes', async () => {
     lastScreenWasReader();
-    linkingSpy.mockReturnValue(new Promise(() => undefined));
     await launch();
-    expect(mockSplash.hideAsync).not.toHaveBeenCalled();
-    await act(async () => {
-      jest.advanceTimersByTime(RESTORE_SAFETY_LIMIT_MS);
+    act(() => mockRoutes.report('closed'));
+    expect(mockRoutes.homeHeld).toBe(false);
+  });
+
+  it('F2: a boot slower than the safety limit still restores the reader', async () => {
+    lastScreenWasReader(42);
+    mockBoot.ms = RESTORE_SAFETY_LIMIT_MS + 1000;
+    act(() => {
+      renderer = TestRenderer.create(<RootLayout />);
     });
-    expect(mockSplash.hideAsync).toHaveBeenCalled();
-    expect(mockRouter.push).not.toHaveBeenCalled();
+    await advance(mockBoot.ms);
+    expect(mockRouter.push).toHaveBeenCalledTimes(1);
   });
 
   it('does not hide the splash before the fonts load', async () => {
     lastScreenWasReader();
     mockFonts.loaded = false;
     await launch();
-    await act(async () => {
-      jest.advanceTimersByTime(SPLASH_DEADLINE_MS);
-    });
+    await advance(SPLASH_DEADLINE_MS);
     expect(mockSplash.hideAsync).not.toHaveBeenCalled();
   });
 });
 
 describe('a launch with a share intent', () => {
-  it('holds the push until the share ends, as it did before', async () => {
+  it('F2b: holds the push until the share ends, also past the safety limit', async () => {
     lastScreenWasReader();
     mockShare.hasShareIntent = true;
     await launch();
+    await advance(RESTORE_SAFETY_LIMIT_MS);
     expect(mockRouter.push).not.toHaveBeenCalled();
-    expect(getReaderRestoreState()).toBe('pushing');
 
     mockShare.hasShareIntent = false;
     act(() => renderer?.update(<RootLayout />));
     await settle();
     expect(mockRouter.push).toHaveBeenCalledTimes(1);
-    expect(getReaderRestoreState()).toBe('waitingForContent');
   });
 
   it('does not push a second reader when a share arrives after the push', async () => {
@@ -393,7 +415,7 @@ describe('a launch with a share intent', () => {
     ];
     act(() => renderer?.update(<RootLayout />));
     await settle();
-    // The share's own flow hides the splash, so the first content does not.
+    // The import has not ended, so the share holds the splash.
     act(() => noteReaderFirstContent());
     expect(mockSplash.hideAsync).not.toHaveBeenCalled();
 
@@ -401,6 +423,6 @@ describe('a launch with a share intent', () => {
     act(() => renderer?.update(<RootLayout />));
     await settle();
     expect(mockRouter.push).toHaveBeenCalledTimes(1);
-    expect(mockSplash.hideAsync).toHaveBeenCalled();
+    expect(mockSplash.hideAsync).toHaveBeenCalledTimes(1);
   });
 });

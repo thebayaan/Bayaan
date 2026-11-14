@@ -1,18 +1,13 @@
 import React, {
   useCallback,
+  useContext, // @ai
   useLayoutEffect,
-  useSyncExternalStore, // @ai
 } from 'react';
 import {View} from 'react-native'; // @ai
 import {useRouter, useNavigation} from 'expo-router';
 import RecitersView from '@/components/RecitersView';
 import {Reciter} from '@/data/reciterData';
-// @ai-start
-import {
-  readerRestoreHoldsHome,
-  subscribeReaderRestore,
-} from '@/services/mushaf/readerRestoreState';
-// @ai-end
+import {HomeHeldContext} from '@/services/mushaf/readerRestoreState'; // @ai
 
 function HomeScreen() {
   const router = useRouter();
@@ -20,11 +15,8 @@ function HomeScreen() {
   // @ai-start
   // Under a reader that this launch restores, nobody sees this route, and its
   // work competes with the reader's first page. So it stays empty until the
-  // restore state lets it render.
-  const waitingForReader = useSyncExternalStore(
-    subscribeReaderRestore,
-    readerRestoreHoldsHome,
-  );
+  // restore of the root layout lets it render.
+  const waitingForReader = useContext(HomeHeldContext);
   // @ai-end
 
   useLayoutEffect(() => {
