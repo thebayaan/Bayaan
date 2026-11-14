@@ -70,7 +70,9 @@
     "useDefault": "القارئ الافتراضي",
     "random": "قارئ عشوائي",
     "browseAll": "تصفّح جميع القرّاء",
-    "askEveryTime": "السؤال في كل مرة"
+    "askEveryTime": "السؤال في كل مرة",
+    "surahUnavailable": "لا توجد تلاوة لسورة {{surah}} بصوت {{reciter}}",
+    "surahUnavailableHint": "اختر لها قارئًا آخر."
   },
   "copy": {
     "optionsTitle": "خيارات النسخ",

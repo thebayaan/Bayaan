@@ -58,7 +58,9 @@
     "useDefault": "Use Default Reciter",
     "random": "Random Reciter",
     "browseAll": "Browse All Reciters",
-    "askEveryTime": "Ask every time"
+    "askEveryTime": "Ask every time",
+    "surahUnavailable": "{{reciter}} has not recorded {{surah}}",
+    "surahUnavailableHint": "Choose another reciter for it."
   },
   "copy": {
     "optionsTitle": "Copy Options",
