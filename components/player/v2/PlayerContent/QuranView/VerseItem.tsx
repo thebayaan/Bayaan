@@ -120,6 +120,12 @@ interface VerseItemProps {
    * actions. Omitted: a Hafs verse row, exactly as before.
    */
   unitRow?: VerseUnitRow;
+  /**
+   * Shown as selected whatever the verse selection store holds: the mushaf's
+   * list modes pass the verse the reader was taken to (a search result, a
+   * bookmark, a link), which the mushaf's own selection store holds.
+   */
+  selected?: boolean;
   // @ai-end
 }
 
@@ -159,6 +165,7 @@ export const VerseItem = memo<VerseItemProps>(
     wbwShowTransliteration,
     rewayah,
     unitRow, // @ai
+    selected, // @ai
   }) => {
     const {theme} = useTheme();
     const {t} = useTranslation(['player', 'common']);
@@ -199,7 +206,7 @@ export const VerseItem = memo<VerseItemProps>(
     // A selected key means something only in its numbering: a Hafs verse row
     // matches a Hafs selection, a rewayah verse row one of its own rewayah.
     const selectionRewayah = unitRow ? unitRow.rewayah : 'hafs';
-    const isSelected = useVerseSelectionStore(
+    const isSelectedHere = useVerseSelectionStore(
       useCallback(
         s =>
           s.selectedVerseKey === verseKey &&
@@ -207,6 +214,7 @@ export const VerseItem = memo<VerseItemProps>(
         [verseKey, selectionRewayah],
       ),
     );
+    const isSelected = isSelectedHere || !!selected;
     // @ai-end
     const selectVerse = useVerseSelectionStore(s => s.selectVerse);
 

@@ -50,6 +50,8 @@ import {usePlaybackBand} from '../skia/playbackBand';
 import {buildUnitListModel, type UnitListModel} from './mushafVerseUnitRows';
 import {VerseUnitsPending} from './VerseUnitsPending';
 import {useRecitedVerseKey} from '@/store/recitationTrackingStore';
+import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
+import {selectedRowKeys} from './selectedRowKeys';
 
 const NO_KEYS: readonly string[] = Object.freeze([]);
 
@@ -285,6 +287,25 @@ const ContinuousListView = forwardRef<
           : NO_KEYS,
       [unitList, playbackBand],
     );
+    // The verse a jump took the reader to (a search result, a bookmark, a
+    // link) is selected in the mushaf's selection store; the rows only read
+    // the verse list's own store, so the list scrolled to it with nothing
+    // lit. Its rows are lit as on the mushaf pages.
+    const selectedVerseKeys = useMushafVerseSelectionStore(
+      s => s.selectedVerseKeys,
+    );
+    const selectedRewayah = useMushafVerseSelectionStore(
+      s => s.selectedRewayah,
+    );
+    const selectedKeys = useMemo(
+      () =>
+        selectedRowKeys(
+          unitList ? shownVerseUnitsOf(unitList.units) : null,
+          selectedRewayah,
+          selectedVerseKeys,
+        ),
+      [unitList, selectedRewayah, selectedVerseKeys],
+    );
     // For the stable viewability callback below.
     const unitListRef = useRef(unitList);
     useEffect(() => {
@@ -502,6 +523,9 @@ const ContinuousListView = forwardRef<
             wbwShowTransliteration={wbwShowTransliteration}
             // @ai — the row is this rewayah verse (label, text, actions)
             unitRow={isVerseUnitRow(item.verse) ? item.verse : undefined}
+            // @ai — the verse a jump took the reader to; unset otherwise, so
+            // the row's props stay exactly as before (readingViews.hafsGolden)
+            selected={selectedKeys.includes(item.verse.verse_key) || undefined}
           />
         );
       },
@@ -524,6 +548,7 @@ const ContinuousListView = forwardRef<
         playbackVerseKeys, // @ai
         basmalaSurah, // @ai
         bandKeys, // @ai
+        selectedKeys, // @ai
         isPlaying,
         translationName,
         selectedTranslationId,
@@ -567,7 +592,7 @@ const ContinuousListView = forwardRef<
         ref={flashListRef}
         data={unitList ? unitList.items : items} // @ai
         renderItem={renderItem}
-        extraData={`${(unitList ? bandKeys : playbackVerseKeys).join(',')}-${arabicTextWeight}-${showAllahNameHighlight}-${allahNameHighlightColor}-${versesVersion}`} // @ai
+        extraData={`${(unitList ? bandKeys : playbackVerseKeys).join(',')}-${selectedKeys.join(',')}-${arabicTextWeight}-${showAllahNameHighlight}-${allahNameHighlightColor}-${versesVersion}`} // @ai
         getItemType={getItemType}
         keyExtractor={keyExtractor}
         initialScrollIndex={initialScrollIndex}

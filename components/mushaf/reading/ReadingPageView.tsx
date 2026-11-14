@@ -57,6 +57,8 @@ import {usePlaybackBand} from '../skia/playbackBand';
 import {readingPageUnitItems, themeHafsKeyOfRow} from './mushafVerseUnitRows';
 import {VerseUnitsPending} from './VerseUnitsPending';
 import {useRecitedVerseKey} from '@/store/recitationTrackingStore';
+import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
+import {selectedRowKeys} from './selectedRowKeys';
 
 const NO_KEYS: readonly string[] = Object.freeze([]);
 // @ai-end
@@ -278,6 +280,72 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
     }
   }, [isPlaying, activeRowKey]);
 
+  // @ai-start
+  // The verse a jump took the reader to (a search result, a bookmark, a
+  // link, a similar verse) is selected in the mushaf's selection store, for
+  // the page it is on. The rows here only read the verse list's own store,
+  // so the page opened at its top with nothing lit and the verse often
+  // below the fold. Its rows are lit as on the mushaf pages, and the page
+  // scrolls to the first of them.
+  const selectedVerseKeys = useMushafVerseSelectionStore(
+    s => s.selectedVerseKeys,
+  );
+  const selectedRewayah = useMushafVerseSelectionStore(s => s.selectedRewayah);
+  const selectedPageNumber = useMushafVerseSelectionStore(
+    s => s.selectedPageNumber,
+  );
+  const selectedKeys = useMemo(
+    () =>
+      selectedPageNumber === pageNumber && (!unitsRewayah || pageUnits)
+        ? selectedRowKeys(
+            pageUnits ? shownVerseUnitsOf(pageUnits) : null,
+            selectedRewayah,
+            selectedVerseKeys,
+          )
+        : NO_KEYS,
+    [
+      selectedPageNumber,
+      pageNumber,
+      unitsRewayah,
+      pageUnits,
+      selectedRewayah,
+      selectedVerseKeys,
+    ],
+  );
+
+  // Where the content's first row sits on screen at scroll 0: just below
+  // the header panel. A row scrolled to its own y would sit under the panel.
+  // (The book card starts insets.top down, its content as much higher.)
+  const firstRowInset = PAGE_PADDING_TOP - (isBookLayout ? insets.top : 0);
+  const firstRowInsetRef = useRef(firstRowInset);
+  useEffect(() => {
+    firstRowInsetRef.current = firstRowInset;
+  }, [firstRowInset]);
+  const scrollToRowAt = useCallback((y: number, animated: boolean) => {
+    scrollViewRef.current?.scrollTo({
+      y: Math.max(0, y - firstRowInsetRef.current),
+      animated,
+    });
+  }, []);
+
+  // The row being scrolled to. The page is usually mounted only as the
+  // pager reaches it, and a row's y moves while the rows above it measure
+  // (the verse text is drawn once its width is known): the row scrolls
+  // again from its own onLayout until the reader drags the page.
+  const jumpRowKey = selectedKeys[0] ?? null;
+  const jumpRowKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    jumpRowKeyRef.current = jumpRowKey;
+    if (!jumpRowKey) return;
+    // A page already laid out (a jump within the page being read).
+    const y = verseOffsetsRef.current.get(jumpRowKey);
+    if (y != null) scrollToRowAt(y, true);
+  }, [jumpRowKey, scrollToRowAt]);
+  const handleScrollBeginDrag = useCallback(() => {
+    jumpRowKeyRef.current = null;
+  }, []);
+  // @ai-end
+
   // Tap on verse → toggle immersive mode (matches DKPageView tap behavior)
   const handleVersePress = useCallback(() => {
     onTap?.();
@@ -339,6 +407,10 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
               item.verse.verse_key,
               e.nativeEvent.layout.y,
             );
+            // @ai — the row a jump is scrolling to: follow its new place
+            if (jumpRowKeyRef.current === item.verse.verse_key) {
+              scrollToRowAt(e.nativeEvent.layout.y, false); // @ai
+            }
           }}
           style={
             themeBg ? {backgroundColor: themeBg, borderRadius: 6} : undefined
@@ -372,6 +444,9 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
             wbwShowTranslation={wbwShowTranslation}
             wbwShowTransliteration={wbwShowTransliteration}
             unitRow={unitRow} // @ai — the row is this rewayah verse
+            // @ai — the verse a jump took the reader to; unset otherwise, so
+            // the row's props stay exactly as before (readingViews.hafsGolden)
+            selected={selectedKeys.includes(item.verse.verse_key) || undefined}
           />
         </View>
       );
@@ -395,6 +470,8 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
       playbackVerseKeys, // @ai
       basmalaSurah, // @ai
       bandKeys, // @ai
+      selectedKeys, // @ai
+      scrollToRowAt, // @ai
       isPlaying,
       translationName,
       selectedTranslationId,
@@ -486,6 +563,7 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
                 paddingTop: PAGE_PADDING_TOP - METADATA_OFFSET - insets.top,
                 paddingBottom: PAGE_PADDING_BOTTOM - insets.top,
               }}
+              onScrollBeginDrag={handleScrollBeginDrag} // @ai
               showsVerticalScrollIndicator={false}
               nestedScrollEnabled>
               {scrollContent}
@@ -507,6 +585,7 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
             paddingBottom: PAGE_PADDING_BOTTOM,
             paddingHorizontal: contentHorizontalPadding,
           }}
+          onScrollBeginDrag={handleScrollBeginDrag} // @ai
           showsVerticalScrollIndicator={false}
           nestedScrollEnabled>
           {scrollContent}
