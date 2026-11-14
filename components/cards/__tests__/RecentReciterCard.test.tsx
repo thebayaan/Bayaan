@@ -41,7 +41,13 @@ jest.mock('@/utils/track', () => ({
     id: `upload:${recitation.id}`,
   }),
 }));
-jest.mock('@/components/ReciterImage', () => ({ReciterImage: () => null}));
+const mockImage: {names: string[]} = {names: []};
+jest.mock('@/components/ReciterImage', () => ({
+  ReciterImage: ({reciterName}: {reciterName: string}) => {
+    mockImage.names.push(reciterName);
+    return null;
+  },
+}));
 const mockSheet = {show: jest.fn()};
 jest.mock('react-native-actions-sheet', () => ({
   SheetManager: {show: (...args: unknown[]) => mockSheet.show(...args)},
@@ -141,6 +147,7 @@ const inPlayer = (state: string, track: object = {}) => ({
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockImage.names = [];
   mockUploads.recitations = [];
   mockPlayer = {
     queue: {currentIndex: -1, tracks: []},
@@ -217,4 +224,21 @@ it('loads an upload that is not in the player', async () => {
 
   expect(mockUpdateQueue).toHaveBeenCalledWith([{id: 'upload:u1'}], 0, 60);
   expect(mockResumeChain).toHaveBeenCalledWith(2);
+});
+
+// The bundled photos are keyed by the catalogue (Latin) name; keyed by the
+// Arabic name the card shows, the photo was lost.
+it('looks the photo up by the catalogue name while showing the localised one', () => {
+  const renderer = render({
+    reciterName: 'مشاري العفاسي',
+    imageName: 'Mishari Alafasi',
+  });
+
+  expect(mockImage.names).toEqual(['Mishari Alafasi']);
+  expect(JSON.stringify(renderer.toJSON())).toContain('مشاري العفاسي');
+});
+
+it('uses the shown name for the photo when no other is given', () => {
+  render();
+  expect(mockImage.names).toEqual(['Reciter']);
 });

@@ -27,6 +27,10 @@ import {
 export interface ReciterPickerItem {
   id: string;
   name: string;
+  // The reciter's catalogue name, which the bundled photos are keyed by.
+  // `name` is what is shown and may be localised; an Arabic name finds no
+  // photo. Falls back to `name`.
+  imageName?: string;
   imageUrl: string | null;
   subtitle: string;
   // Extra strings matched by search besides the name (e.g. English and Arabic
@@ -91,7 +95,7 @@ export function ReciterPickerSheet({
           <View style={styles.reciterImageContainer}>
             <ReciterImage
               imageUrl={item.imageUrl || undefined}
-              reciterName={item.name}
+              reciterName={item.imageName ?? item.name}
               style={styles.reciterImage}
               profileIconSize={moderateScale(20)}
             />

@@ -27,6 +27,7 @@ export const FavoriteRecitersSheet = (
       RECITERS.map(reciter => ({
         id: reciter.id,
         name: getReciterDisplayName(reciter),
+        imageName: reciter.name,
         imageUrl: reciter.image_url,
         subtitle:
           reciter.rewayat.length > 1

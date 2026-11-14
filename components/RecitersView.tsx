@@ -297,6 +297,9 @@ const RenderSectionItem = React.memo(
         <RecentReciterCard
           imageUrl={item.reciter.image_url ?? undefined}
           reciterName={getReciterDisplayName(item.reciter)}
+          // The bundled photos are keyed by the catalogue name. Keyed by
+          // the shown name, they were lost in Arabic.
+          imageName={item.reciter.name}
           surahName={getSurahDisplayName(item.surah)}
           trackId={`${item.reciter.id}:${item.surah.id}`}
           reciterId={item.reciter.id}
@@ -316,6 +319,7 @@ const RenderSectionItem = React.memo(
         <CircularReciterCard
           imageUrl={reciter.image_url ?? undefined}
           name={getReciterDisplayName(reciter)}
+          imageName={reciter.name}
           onPress={() => onReciterPress(reciter)}
           showFollowAlong={showFollowAlong}
           // The card adds 6pt around the photo.

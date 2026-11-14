@@ -35,6 +35,14 @@ import {
 interface RecentReciterCardProps {
   imageUrl?: string;
   reciterName: string;
+  // @ai-start
+  /**
+   * The reciter's catalogue name, which the bundled photos are keyed by.
+   * `reciterName` is what is shown and may be localised; an Arabic name
+   * finds no photo. Falls back to `reciterName`.
+   */
+  imageName?: string;
+  // @ai-end
   surahName: string;
   trackId: string;
   reciterId: string;
@@ -54,6 +62,7 @@ interface RecentReciterCardProps {
 export const RecentReciterCard = ({
   imageUrl,
   reciterName,
+  imageName = reciterName,
   surahName,
   reciterId,
   surahId,
@@ -321,7 +330,7 @@ export const RecentReciterCard = ({
           <Pressable onPress={handlePlayPress} onLongPress={onLongPress}>
             <ReciterImage
               imageUrl={imageUrl}
-              reciterName={reciterName}
+              reciterName={imageName}
               style={styles.image}
               profileIconSize={moderateScale(40)}
             />
@@ -338,7 +347,7 @@ export const RecentReciterCard = ({
                 <Link.AppleZoom>
                   <ReciterImage
                     imageUrl={imageUrl}
-                    reciterName={reciterName}
+                    reciterName={imageName}
                     style={styles.image}
                     profileIconSize={moderateScale(40)}
                   />
@@ -346,7 +355,7 @@ export const RecentReciterCard = ({
               ) : (
                 <ReciterImage
                   imageUrl={imageUrl}
-                  reciterName={reciterName}
+                  reciterName={imageName}
                   style={styles.image}
                   profileIconSize={moderateScale(40)}
                 />
