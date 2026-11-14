@@ -218,6 +218,8 @@
     "completeMessage_other": "Successfully downloaded {{count}} items from \"{{name}}\".",
     "failedTitle": "Download Failed",
     "failedMessage": "An error occurred while downloading the playlist. Please try again.",
+    "partialTitle": "Download Incomplete",
+    "partialMessage": "Downloaded {{downloaded}} of {{total}} from \"{{name}}\". Try again to download the rest.",
     "downloadingPlaylist": "Downloading playlist...",
     "itemsProgress_one": "{{current}} of {{count}} item",
     "itemsProgress_other": "{{current}} of {{count}} items"

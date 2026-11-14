@@ -246,6 +246,8 @@
     "completeMessage_other": "تم تنزيل {{count}} عنصر من «{{name}}» بنجاح.",
     "failedTitle": "فشل التنزيل",
     "failedMessage": "حدث خطأ أثناء تنزيل قائمة التشغيل. يرجى المحاولة مرة أخرى.",
+    "partialTitle": "لم يكتمل التنزيل",
+    "partialMessage": "تم تنزيل {{downloaded}} من أصل {{total}} من «{{name}}». حاول مرة أخرى لتنزيل البقية.",
     "downloadingPlaylist": "جارٍ تنزيل قائمة التشغيل...",
     "itemsProgress_zero": "{{current}} من {{count}} عنصر",
     "itemsProgress_one": "{{current}} من عنصر واحد",

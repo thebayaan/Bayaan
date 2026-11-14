@@ -1,5 +1,5 @@
 import {useMemo} from 'react';
-import {useDownloadQueries} from '@/services/player/store/downloadSelectors';
+import {useDownloads} from '@/services/player/store/downloadSelectors'; // @ai
 
 interface CollectionItem {
   reciter: {id: string} | null;
@@ -8,6 +8,7 @@ interface CollectionItem {
     reciterId: string;
     surahId: string;
     rewayatId?: string;
+    userRecitationId?: string; // @ai
   };
 }
 
@@ -28,7 +29,13 @@ interface DownloadState {
 export function useCollectionDownloadState(
   items: CollectionItem[],
 ): DownloadState {
-  const {isDownloaded, isDownloadedWithRewayat} = useDownloadQueries();
+  // @ai-start
+  // Read the downloads themselves. This used to call the store's
+  // isDownloaded functions, whose references never change, so the result
+  // was computed once: the menu still said "Download all" after a batch
+  // finished, and stayed on "All downloaded" (disabled) after removals.
+  const downloads = useDownloads();
+  // @ai-end
 
   return useMemo(() => {
     // Empty collection
@@ -41,6 +48,21 @@ export function useCollectionDownloadState(
       };
     }
 
+    // @ai-start
+    // Same rule as the store's isDownloaded / isDownloadedWithRewayat: a
+    // completed record for this reciter, surah and rewayah ('' for none).
+    const key = (reciterId: string, surahId: string, rewayatId?: string) =>
+      `${reciterId}|${surahId}|${rewayatId || ''}`;
+    const completed = new Set<string>();
+    downloads.forEach(download => {
+      if (download.status === 'completed') {
+        completed.add(
+          key(download.reciterId, download.surahId, download.rewayatId),
+        );
+      }
+    });
+    // @ai-end
+
     // Count valid tracks and downloaded tracks
     let validTrackCount = 0;
     let downloadedCount = 0;
@@ -48,17 +70,20 @@ export function useCollectionDownloadState(
     items.forEach(item => {
       // Skip invalid items
       if (!item.reciter || !item.surah) return;
+      // @ai-start
+      // The user's own uploads are already on the device and cannot be
+      // downloaded; counting them kept "All downloaded" out of reach.
+      if (item.track.userRecitationId) return;
+      // @ai-end
 
       validTrackCount++;
 
+      // @ai-start
       // Check if downloaded (with or without rewayatId)
-      const isTrackDownloaded = item.track.rewayatId
-        ? isDownloadedWithRewayat(
-            item.track.reciterId,
-            item.track.surahId,
-            item.track.rewayatId,
-          )
-        : isDownloaded(item.track.reciterId, item.track.surahId);
+      const isTrackDownloaded = completed.has(
+        key(item.track.reciterId, item.track.surahId, item.track.rewayatId),
+      );
+      // @ai-end
 
       if (isTrackDownloaded) {
         downloadedCount++;
@@ -75,5 +100,5 @@ export function useCollectionDownloadState(
       totalTracks: validTrackCount,
       downloadedCount,
     };
-  }, [items, isDownloaded, isDownloadedWithRewayat]);
+  }, [items, downloads]); // @ai
 }
