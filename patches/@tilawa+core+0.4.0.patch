@@ -1,0 +1,2395 @@
+diff --git a/node_modules/@tilawa/core/dist/recitation/alignment.js b/node_modules/@tilawa/core/dist/recitation/alignment.js
+index 92fac1f..0da8afa 100644
+--- a/node_modules/@tilawa/core/dist/recitation/alignment.js
++++ b/node_modules/@tilawa/core/dist/recitation/alignment.js
+@@ -46,31 +46,34 @@ export function alignGlobal(heard, ref, from, to, table) {
+     }
+     const cols = m + 1;
+     // Float32 store: alignment.json global pairs; compare after write.
+-    const C = new Float32Array((n + 1) * cols);
++    // Two rows of costs are enough: the way back reads T alone.
++    let prev = new Float32Array(cols);
++    let cur = new Float32Array(cols);
+     const T = new Uint8Array((n + 1) * cols);
+     for (let j = 0; j <= m; j++)
+-        C[j] = j;
+-    for (let i = 1; i <= n; i++)
+-        C[i * cols] = i;
++        prev[j] = j;
+     for (let i = 1; i <= n; i++) {
+         const ha = heard[i - 1];
+         const row = i * cols;
+-        const prev = (i - 1) * cols;
++        cur[0] = i;
+         for (let j = 1; j <= m; j++) {
+-            C[row + j] = C[prev + j - 1] + table.cost(ha, ref[from + j - 1]);
++            cur[j] = prev[j - 1] + table.cost(ha, ref[from + j - 1]);
+             let tr = 0;
+-            const up = C[prev + j] + INSERT_DELETE_COST;
+-            const left = C[row + j - 1] + INSERT_DELETE_COST;
+-            if (up < C[row + j]) {
+-                C[row + j] = up;
++            const up = prev[j] + INSERT_DELETE_COST;
++            const left = cur[j - 1] + INSERT_DELETE_COST;
++            if (up < cur[j]) {
++                cur[j] = up;
+                 tr = 1;
+             }
+-            if (left < C[row + j]) {
+-                C[row + j] = left;
++            if (left < cur[j]) {
++                cur[j] = left;
+                 tr = 2;
+             }
+             T[row + j] = tr;
+         }
++        const done = prev;
++        prev = cur;
++        cur = done;
+     }
+     let i = n;
+     let j = m;
+diff --git a/node_modules/@tilawa/core/dist/recitation/config.d.ts b/node_modules/@tilawa/core/dist/recitation/config.d.ts
+index 5714e3c..ccb1285 100644
+--- a/node_modules/@tilawa/core/dist/recitation/config.d.ts
++++ b/node_modules/@tilawa/core/dist/recitation/config.d.ts
+@@ -46,6 +46,25 @@ export interface EngineConfig {
+     skipMaxHead: number;
+     /** Correction mode: see `VerdictTracer.anchorAyahEnd` (0 = off). */
+     anchorAyahEnd: number;
++    /** Verdicts: where the 300-char segment cut falls inside a word, align that
++     * word with all its heard chars rather than the last few. */
++    wholeWordAtCut: boolean;
++    /** Correction mode: report extra heard sounds between two words as `gap` on the
++     * right word's verdict. Null: off. */
++    gapReport: GapReportOptions | null;
++    /** Verdicts: start a new stretch of alignment at a forward jump of more than this
++     * many places in the text. Null: off. It changes verdicts near such a jump. From the
++     * caller's NPL-1.2 constants file. */
++    cutAtJump: number | null;
++}
++/** Tuned on this model's output: they come from the caller's NPL-1.2 constants file. */
++export interface GapReportOptions {
++    /** What one sound of the run costs in the split. */
++    runCost: number;
++    /** Heard sounds past the word after the right word that the split may read. */
++    lookAhead: number;
++    /** Longest stretch of heard sounds to split. */
++    maxRegion: number;
+ }
+ export declare const DEFAULT_CONFIG: EngineConfig;
+ export declare const BUFFER_CAP = 1000;
+diff --git a/node_modules/@tilawa/core/dist/recitation/config.js b/node_modules/@tilawa/core/dist/recitation/config.js
+index de127c7..f59d83d 100644
+--- a/node_modules/@tilawa/core/dist/recitation/config.js
++++ b/node_modules/@tilawa/core/dist/recitation/config.js
+@@ -32,6 +32,9 @@ export const DEFAULT_CONFIG = {
+     skipMargin: 0.25,
+     skipMaxHead: 0.1,
+     anchorAyahEnd: 2,
++    wholeWordAtCut: false,
++    gapReport: null,
++    cutAtJump: null,
+ };
+ export const BUFFER_CAP = 1000;
+ export const SAMPLE_RATE = 16000;
+diff --git a/node_modules/@tilawa/core/dist/recitation/engine.js b/node_modules/@tilawa/core/dist/recitation/engine.js
+index 0a41219..a4d492a 100644
+--- a/node_modules/@tilawa/core/dist/recitation/engine.js
++++ b/node_modules/@tilawa/core/dist/recitation/engine.js
+@@ -28,6 +28,7 @@ export class RecitationEngine {
+     struggles = 0;
+     relocateCandidate = null;
+     lastCursorWord = -1;
++    lastTentativeWord = -1;
+     lastStates = new Map();
+     prevSettled = false;
+     lastStruggleChars = 0;
+@@ -111,6 +112,7 @@ export class RecitationEngine {
+         this.struggles = 0;
+         this.relocateCandidate = null;
+         this.lastCursorWord = -1;
++        this.lastTentativeWord = -1;
+         this.lastStates.clear();
+         this.prevSettled = false;
+         this.lastStruggleChars = 0;
+@@ -168,6 +170,7 @@ export class RecitationEngine {
+         this.struggles = 0;
+         this.relocateCandidate = null;
+         this.lastCursorWord = -1;
++        this.lastTentativeWord = -1;
+         this.lastStates.clear();
+         this.prevSettled = false;
+         this.lastRelocateFrame = this.framesDecoded;
+@@ -224,6 +227,24 @@ export class RecitationEngine {
+                     return this.lock(back.wordIndex, this.buffer.slice(back.from), "located");
+                 return this.lock(hit.wordIndex, this.buffer.slice(at), "located");
+             }
++            // The page's place ties with others the words have not separated yet:
++            // say where the reader probably is, for display only (Bayaan's patch).
++            if (!win && result.tentative && result.hits[0]) {
++                const h = result.hits[0];
++                const idx = this.corpus.wordAt(Math.max(h.refOffset, h.refEnd - 1));
++                if (idx !== this.lastTentativeWord) {
++                    this.lastTentativeWord = idx;
++                    const surah = this.corpus.wordSurah[idx];
++                    const ayah = this.corpus.wordAyah[idx];
++                    events.push({
++                        type: "tentative",
++                        surah,
++                        ayah,
++                        word: this.corpus.wordInAyah[idx],
++                        totalWords: this.corpus.ayahWordCount(surah, ayah),
++                    });
++                }
++            }
+         }
+         if (!this.locateFailedEmitted &&
+             this.framesDecoded - this.searchStartFrame >= this.cfg.locateFailedFrames) {
+@@ -476,8 +497,9 @@ export class RecitationEngine {
+         }
+         if (changes.length)
+             events.push({ type: "verdicts", changes });
++        const live = new Set(vs.map((v) => v.wordIndex));
+         for (const key of this.lastStates.keys()) {
+-            if (!vs.some((v) => v.wordIndex === key))
++            if (!live.has(key))
+                 this.lastStates.delete(key);
+         }
+         this.prevSettled = settled;
+diff --git a/node_modules/@tilawa/core/dist/recitation/fbank.js b/node_modules/@tilawa/core/dist/recitation/fbank.js
+index 0ad5c1d..b84dc13 100644
+--- a/node_modules/@tilawa/core/dist/recitation/fbank.js
++++ b/node_modules/@tilawa/core/dist/recitation/fbank.js
+@@ -50,6 +50,68 @@ function buildMelFilters() {
+     return filters;
+ }
+ const MEL = buildMelFilters();
++// Bayaan patch: the window is real, so the 512-point FFT runs as a 256-point
++// complex FFT over even/odd samples plus one split pass, with twiddles and
++// bit reversal precomputed. Log-mel output is bit-identical to the upstream
++// complex FFT on 325 s of speech (float32), at ~2.3x less interpreter time.
++const HALF = FFT_SIZE / 2;
++const BITREV_HALF = new Int32Array(HALF);
++for (let i = 1, j = 0; i < HALF; i++) {
++    let bit = HALF >> 1;
++    for (; j & bit; bit >>= 1)
++        j ^= bit;
++    j ^= bit;
++    BITREV_HALF[i] = j;
++}
++const STAGE_RE = [];
++const STAGE_IM = [];
++for (let len = 2; len <= HALF; len <<= 1) {
++    const half = len >> 1;
++    const tr = new Float64Array(half);
++    const ti = new Float64Array(half);
++    for (let j = 0; j < half; j++) {
++        tr[j] = Math.cos((-2 * Math.PI * j) / len);
++        ti[j] = Math.sin((-2 * Math.PI * j) / len);
++    }
++    STAGE_RE.push(tr);
++    STAGE_IM.push(ti);
++}
++const SPLIT_RE = new Float64Array(HALF);
++const SPLIT_IM = new Float64Array(HALF);
++for (let k = 0; k < HALF; k++) {
++    SPLIT_RE[k] = Math.cos((2 * Math.PI * k) / FFT_SIZE);
++    SPLIT_IM[k] = -Math.sin((2 * Math.PI * k) / FFT_SIZE);
++}
++let MAX_BIN = 0;
++for (const filt of MEL)
++    MAX_BIN = Math.max(MAX_BIN, filt.firstBin + filt.weights.length);
++const POWER = new Float64Array(HALF);
++/** In-place radix-2 FFT of size HALF; input already in bit-reversed order. */
++function fftHalf(re, im) {
++    for (let len = 2, s = 0; len <= HALF; len <<= 1, s++) {
++        const half = len >> 1;
++        const tr = STAGE_RE[s];
++        const ti = STAGE_IM[s];
++        for (let i = 0; i < HALF; i += len) {
++            for (let j = 0; j < half; j++) {
++                const a = i + j;
++                const b = a + half;
++                const wRe = tr[j];
++                const wIm = ti[j];
++                const br = re[b];
++                const bi = im[b];
++                const vr = br * wRe - bi * wIm;
++                const vi = br * wIm + bi * wRe;
++                const ur = re[a];
++                const ui = im[a];
++                re[a] = ur + vr;
++                im[a] = ui + vi;
++                re[b] = ur - vr;
++                im[b] = ui - vi;
++            }
++        }
++    }
++}
+ function fft512(re, im) {
+     const n = FFT_SIZE;
+     for (let i = 1, j = 0; i < n; i++) {
+@@ -186,23 +248,42 @@ export class KaldiFbank {
+         for (let i = FRAME_LENGTH - 1; i >= 1; i--)
+             win[i] -= PREEMPH * win[i - 1];
+         win[0] -= PREEMPH * win[0];
+-        const re = this.fftRe;
+-        const im = this.fftIm;
+-        re.fill(0);
+-        im.fill(0);
+-        for (let i = 0; i < FRAME_LENGTH; i++)
+-            re[i] = win[i] * POVEY[i];
+-        fft512(re, im);
++        const zr = this.fftRe;
++        const zi = this.fftIm;
++        zr.fill(0);
++        zi.fill(0);
++        // z[n] = x[2n] + i x[2n+1], written straight to bit-reversed slots.
++        for (let i = 0; i < FRAME_LENGTH; i += 2) {
++            const p = BITREV_HALF[i >> 1];
++            zr[p] = win[i] * POVEY[i];
++            zi[p] = win[i + 1] * POVEY[i + 1];
++        }
++        fftHalf(zr, zi);
++        // Split Z into the spectrum of x: X[k] = E[k] + W^k O[k].
++        for (let k = 0; k < MAX_BIN; k++) {
++            const m = (HALF - k) & (HALF - 1);
++            const ar = zr[k];
++            const ai = zi[k];
++            const br = zr[m];
++            const bi = -zi[m];
++            const er = (ar + br) * 0.5;
++            const ei = (ai + bi) * 0.5;
++            const or = (ai - bi) * 0.5;
++            const oi = -(ar - br) * 0.5;
++            const wr = SPLIT_RE[k];
++            const wi = SPLIT_IM[k];
++            const xr = er + wr * or - wi * oi;
++            const xi = ei + wr * oi + wi * or;
++            POWER[k] = xr * xr + xi * xi;
++        }
+         const frame = new Float32Array(FBANK_BINS);
+         for (let b = 0; b < FBANK_BINS; b++) {
+             const filt = MEL[b];
++            const first = filt.firstBin;
++            const weights = filt.weights;
+             let energy = 0;
+-            for (let i = 0; i < filt.weights.length; i++) {
+-                const k = filt.firstBin + i;
+-                const rr = re[k];
+-                const ii = im[k];
+-                energy += (rr * rr + ii * ii) * filt.weights[i];
+-            }
++            for (let i = 0; i < weights.length; i++)
++                energy += POWER[first + i] * weights[i];
+             frame[b] = Math.log(Math.max(energy, LOG_FLOOR));
+         }
+         return frame;
+diff --git a/node_modules/@tilawa/core/dist/recitation/index.d.ts b/node_modules/@tilawa/core/dist/recitation/index.d.ts
+index b369314..a191167 100644
+--- a/node_modules/@tilawa/core/dist/recitation/index.d.ts
++++ b/node_modules/@tilawa/core/dist/recitation/index.d.ts
+@@ -1,5 +1,7 @@
+ export { DEFAULT_CONFIG, BUFFER_CAP, FBANK_BINS, CTC_HZ } from "./config.js";
+-export type { EngineConfig } from "./config.js";
++export type { EngineConfig, GapReportOptions } from "./config.js";
++export type { JunctionOptions } from "./junction.js";
++export type { MelFrameSpan } from "./melFrames.js";
+ export { KaldiFbank } from "./fbank.js";
+ export { ZipformerRunner, defaultExecutionProviders, prepareOrtWasm, } from "./zipformerRunner.js";
+ export type { ZipformerIo, ZipformerIoInput, OrtLike, OrtSessionLike, OrtWasmEnv, TensorLike, } from "./zipformerRunner.js";
+@@ -13,11 +15,11 @@ export { Tracker } from "./tracker.js";
+ export { VerdictTracer, pausalPhonemes } from "./verdicts.js";
+ export { RecitationEngine } from "./engine.js";
+ export { wholeAyahFallback } from "./fallback.js";
+-export type { CtcToken, HeardChar, VerdictState, WordVerdict, EngineEvent, EngineState, SearchHit, SearchResult, SearchHint, ExpectedPassage, FallbackHit, StripResult, } from "./types.js";
++export type { CtcToken, HeardChar, VerdictState, WordVerdict, WordGap, EngineEvent, EngineState, SearchHit, SearchResult, SearchHint, ExpectedPassage, FallbackHit, StripResult, } from "./types.js";
+ export { MIN_WORD_FRACTION, FALLBACK_MAX_DISTANCE, GAP_MAX_WORDS, ayahKey, ayahConfidence, ayahMeetsGate, snapshotTallies, accumulateSnapshot, mergeTallies, newlyEligibleAyahs, shouldRunFallback, fallbackConfidence, buildFinalSequence, bridgeGapAyahs, wordProgressFromCursor, } from "./emission.js";
+ export type { AyahTally, BridgedAyahTally, EmissionVerdict, EmissionFallback, EmissionCursor, WordCountFn, } from "./emission.js";
+ export { ZipformerSession, createZipformerSession, displayQuranFromRaw, DEFAULT_ZIPFORMER_IO, AYAH_HEARD_FRACTION, DEFAULT_STRUCTURAL, } from "./session.js";
+-export type { ZipformerSessionOptions, StructuralOptions, ModelSource, CorpusSource, QuranSource, } from "./session.js";
++export type { ZipformerSessionOptions, StructuralOptions, ModelSource, CorpusSource, QuranSource, TrackingHealth, } from "./session.js";
+ export { CorrectionController, possibleWordIssues, DEFAULT_CORRECTION_THRESHOLDS, AYAH_ISSUE_KINDS } from "./correction.js";
+ export type { RecitationMode, CorrectionAction, CorrectionIssue, CorrectionState, CorrectionThresholds, RecitationPosition } from "./correction.js";
+ export { A0W_SLIP_HEAD, EncoderFrames, ENCODER_DIM, SLIP_PAD, poolEncoderSpan, slipHeadFromJson, slipProbability, slipThreshold, wordSpansFromTrail, } from "./slipHead.js";
+diff --git a/node_modules/@tilawa/core/dist/recitation/junction.d.ts b/node_modules/@tilawa/core/dist/recitation/junction.d.ts
+new file mode 100644
+index 0000000..221b7a3
+--- /dev/null
++++ b/node_modules/@tilawa/core/dist/recitation/junction.d.ts
+@@ -0,0 +1,33 @@
++import type { QuranCorpus } from "./corpus.js";
++import type { FramePosteriors } from "./posteriors.js";
++import type { WordVerdict } from "./types.js";
++import type { VerdictTracer } from "./verdicts.js";
++/** Tuned on this model's output: they come from the caller's NPL-1.2 constants file. */
++export interface JunctionOptions {
++    /** Per token of the last word: h1 - h0 under this says the word was left out. */
++    llrMissing: number;
++    /** Early path: h0 must fit at least this well (nats against the free decode). */
++    fitNext: number;
++    /** Late path: h0 must fit at least this well. */
++    fitLate: number;
++    /** Frames searched before the word before. */
++    lookBackFrames: number;
++    /** How many of the next word's tokens the hypotheses must reach. */
++    anchorTokens: number;
++    /** Frames after the cursor enters the next ayah before the late decision. */
++    waitFrames: number;
++    /** How far back the word before may be, in words. */
++    lookBackWords: number;
++}
++export declare class JunctionCheck {
++    private readonly corpus;
++    private readonly opts;
++    private tracker;
++    private done;
++    private crossed;
++    private tokens;
++    constructor(corpus: QuranCorpus, opts: JunctionOptions);
++    apply(tracer: VerdictTracer, post: FramePosteriors, framesDecoded: number, verdicts: WordVerdict[]): WordVerdict[];
++    private settle;
++    private test;
++}
+diff --git a/node_modules/@tilawa/core/dist/recitation/junction.js b/node_modules/@tilawa/core/dist/recitation/junction.js
+new file mode 100644
+index 0000000..1bdd10e
+--- /dev/null
++++ b/node_modules/@tilawa/core/dist/recitation/junction.js
+@@ -0,0 +1,260 @@
++// Bayaan patch. Junction check: did the reader say an ayah's last word?
++//
++// While the cursor is on an ayah's last two words, and until one chunk after it
++// enters the next ayah, find the best CTC fit of two hypotheses in the audio decoded
++// so far, from a little before the word before the last word:
++//
++//   word before + last word + next word's first sounds     (h1)
++//   word before + next word's first sounds                 (h0)
++//
++// Each may start and stop at any frame: audio outside the fit costs nothing. The
++// difference per token of the last word is llr. The last word is unsaid when:
++//
++// - early: h0 fits (fitNext or better) and llr is under llrMissing. The tracker has
++//   not crossed yet: it bends the next word's sounds onto the missing word for a
++//   second or two. While the last word is being said h0 does not fit, since the next
++//   word's sounds are not there. Off when the two words open alike.
++// - late: the cursor is one chunk into the next ayah, or past its first word, the last
++//   word's verdict is settled and not 'ok', llr is under llrMissing and h0 fits at
++//   least loosely (fitLate): a reader who went back to an earlier word is in neither
++//   hypothesis.
++//
++// It reads the frames the session already keeps in correction mode, the spans
++// verdicts() just computed and the engine's own tokenizer; no other model runs. The
++// hypotheses exist only inside this computation and are never shown. The numbers in
++// `JunctionOptions` were tuned on this model's output, so the caller passes them from
++// its NPL-1.2 constants file.
++import { encodePhonemes } from "./posteriors.js";
++import { BLANK_ID } from "./tokens.js";
++import { pausalPhonemes } from "./verdicts.js";
++const MADD = /(ۦ{3,}|ۥ{3,}|ا{3,})/gu;
++/** An ayah-end long madd read at two counts, as many reciters do. */
++function shortMadd(ph) {
++    return ph.replace(MADD, (m) => m.slice(0, 2));
++}
++/**
++ * Best fit of `ids` anywhere in frames [from, to): the path may start and stop at
++ * any frame, and frames outside it cost nothing. Against the free decode: <= 0,
++ * about 0 when the hypothesis is there. The tracker's idea of where the word before
++ * starts can be late when two nearby words sound alike, so the start is not forced
++ * on it.
++ */
++function forcedLocal(post, ids, from, to) {
++    const L = ids.length;
++    const S = 2 * L + 1;
++    if (to <= from)
++        return L === 0 ? 0 : -Infinity;
++    const ext = new Int32Array(S);
++    for (let s = 0; s < S; s++)
++        ext[s] = s % 2 === 1 ? ids[(s - 1) >> 1] : BLANK_ID;
++    let prev = new Float64Array(S).fill(-Infinity);
++    let next = new Float64Array(S);
++    let best = -Infinity;
++    for (let t = from; t < to; t++) {
++        const top = post.bestLogp(t);
++        for (let s = 0; s < S; s++) {
++            let m = prev[s];
++            if (s >= 1 && prev[s - 1] > m)
++                m = prev[s - 1];
++            if (s >= 2 && ext[s] !== BLANK_ID && ext[s] !== ext[s - 2] && prev[s - 2] > m)
++                m = prev[s - 2];
++            // A path may start here, on the first blank or the first token.
++            if (s <= 1 && m < 0)
++                m = 0;
++            next[s] = m === -Infinity ? -Infinity : m + post.logp(t, ext[s]) - top;
++        }
++        [prev, next] = [next, prev];
++        const v = L === 0 ? prev[0] : Math.max(prev[S - 1], prev[S - 2]);
++        if (v > best)
++            best = v;
++    }
++    return best;
++}
++/** Readings that tokenize alike need only one alignment. */
++function distinct(list) {
++    return [...new Map(list.map((ids) => [ids.join(","), ids])).values()];
++}
++function bestLocal(post, list, from, to) {
++    let best = -Infinity;
++    for (const ids of list) {
++        const v = forcedLocal(post, ids, from, to);
++        if (v > best)
++            best = v;
++    }
++    return best;
++}
++/** Readings of words g0..g1-1: the last of them may be read at a stop. */
++function beforeForms(corpus, g0, g1) {
++    let stem = "";
++    for (let g = g0; g < g1 - 1; g++)
++        stem += corpus.wordPhonemes(g);
++    const last = corpus.wordPhonemes(g1 - 1);
++    const atEnd = corpus.wordInAyah[g1 - 1]
++        === corpus.ayahWordCount(corpus.wordSurah[g1 - 1], corpus.wordAyah[g1 - 1]) - 1;
++    const pausal = pausalPhonemes(last, corpus.plain[g1 - 1], atEnd);
++    const forms = pausal ? [stem + last, stem + pausal] : [stem + last];
++    // A reader who stops there holds a madd before the last letter, as at an ayah's end.
++    const held = (pausal ?? last).match(/^(.*?)(ۥۥ|ۦۦ|اا)(.)$/su);
++    if (held)
++        forms.push(stem + held[1] + held[2] + held[2] + held[3]);
++    return forms;
++}
++/** Both hypotheses, every way the words can be read: the word before as written, at
++ * a stop or with a held madd; the last word as written or with a short madd; the next
++ * word as written or with a short madd, tokenized joined or apart. */
++function hypotheses(corpus, gBefore, L, anchor) {
++    const expected = corpus.wordPhonemes(L);
++    const forms = [expected, shortMadd(expected)].filter((x, i, a) => a.indexOf(x) === i);
++    const before = beforeForms(corpus, gBefore, L);
++    const next = corpus.wordPhonemes(L + 1);
++    const nextForms = [next, shortMadd(next)].filter((x, i, a) => a.indexOf(x) === i);
++    const cut = (head) => {
++        const out = [];
++        for (const tail of nextForms) {
++            const h = encodePhonemes(head);
++            const joined = encodePhonemes(head + tail);
++            const t = encodePhonemes(tail);
++            if (h && t)
++                out.push([...h, ...t.slice(0, anchor)]);
++            if (h && joined)
++                out.push(joined.slice(0, h.length + anchor));
++        }
++        return out;
++    };
++    const withLast = [];
++    const without = [];
++    for (const b of before) {
++        without.push(...cut(b));
++        for (const l of forms)
++            withLast.push(...cut(b + l));
++    }
++    return { withLast: distinct(withLast), without: distinct(without), nL: encodePhonemes(expected)?.length ?? 1 };
++}
++/** While the last word is being said, sounds it shares with the next word's opening
++ * pass for the next word, so the early path cannot tell and stays off. */
++function opensAlike(corpus, L, anchor) {
++    const a = encodePhonemes(corpus.wordPhonemes(L));
++    const b = encodePhonemes(corpus.wordPhonemes(L + 1));
++    if (!a || !b)
++        return false;
++    const n = Math.min(anchor, a.length, b.length);
++    for (let i = 0; i < n; i++) {
++        if (a[i] !== b[i])
++            return false;
++    }
++    return true;
++}
++/**
++ * One decision per join of the tracker. `apply` adds it to the verdicts the session
++ * reports: a last word the check finds unsaid reads 'skipped' with
++ * `junctionMissing: true`, unless it was since heard 'ok'; one it finds said carries
++ * `junctionMissing: false` and nothing else changes.
++ */
++export class JunctionCheck {
++    corpus;
++    opts;
++    tracker = null;
++    done = new Map();
++    crossed = new Map();
++    /** Hypotheses of the joins still undecided. */
++    tokens = new Map();
++    constructor(corpus, opts) {
++        this.corpus = corpus;
++        this.opts = opts;
++    }
++    apply(tracer, post, framesDecoded, verdicts) {
++        const t = tracer.tracker;
++        if (t !== this.tracker) {
++            this.tracker = t;
++            this.done = new Map();
++            this.crossed = new Map();
++            this.tokens = new Map();
++        }
++        const c = this.corpus;
++        const cw = t.cursorWordIndex;
++        const s = c.wordSurah[cw];
++        const a = c.wordAyah[cw];
++        const first = c.ayahFirstWord(s, a);
++        const end = first + c.ayahWordCount(s, a) - 1;
++        const candidates = [];
++        if (a > 1)
++            candidates.push(first - 1);
++        if (cw >= end - 1)
++            candidates.push(end);
++        const byWord = new Map(verdicts.map((v) => [v.wordIndex, v]));
++        for (const L of candidates) {
++            if (this.done.has(L) || L + 1 >= t.endWord || L <= t.firstWord)
++                continue;
++            if (cw >= L + 1 && !this.crossed.has(L))
++                this.crossed.set(L, framesDecoded);
++            const state = byWord.get(L)?.state ?? null;
++            const settled = state !== null && state !== "pending";
++            const due = this.crossed.has(L)
++                && (cw >= L + 2 || framesDecoded >= this.crossed.get(L) + this.opts.waitFrames);
++            if (due && state === "ok") {
++                this.settle(L, null);
++                continue;
++            }
++            const result = this.test(t, tracer.recentSpans, post, framesDecoded, L, due && settled);
++            if (result?.decided || (due && settled))
++                this.settle(L, result?.decided ? result : null);
++        }
++        for (const [L, result] of this.done) {
++            if (!result)
++                continue;
++            let v = byWord.get(L);
++            if (!v && result.missing) {
++                v = tracer.makeVerdict(L, "skipped", 1, 0, 0);
++                verdicts.push(v);
++                byWord.set(L, v);
++            }
++            if (!v)
++                continue;
++            v.junction = result.llr;
++            v.junctionMissing = result.missing;
++            if (result.missing && v.state !== "ok")
++                v.state = "skipped";
++        }
++        return verdicts;
++    }
++    settle(L, result) {
++        this.done.set(L, result);
++        for (const key of this.tokens.keys()) {
++            if (key.endsWith(`:${L}`))
++                this.tokens.delete(key);
++        }
++    }
++    /** `final`: decide now either way. Otherwise only an early 'unsaid' decides. */
++    test(t, spans, post, end, L, final) {
++        const { lookBackWords, lookBackFrames, anchorTokens, fitNext, fitLate, llrMissing } = this.opts;
++        const heardOn = (g) => {
++            const sp = spans.get(g - t.firstWord);
++            return sp && sp.to > sp.from ? sp : null;
++        };
++        let g0 = L - 1;
++        while (g0 >= t.firstWord && g0 >= L - lookBackWords && !heardOn(g0))
++            g0--;
++        const sp = g0 >= t.firstWord && g0 >= L - lookBackWords ? heardOn(g0) : null;
++        if (!sp)
++            return null;
++        const from = Math.max(0, t.heard[sp.from].frame - 1);
++        if (!post.has(from, end) || end <= from)
++            return null;
++        if (!final && opensAlike(this.corpus, L, anchorTokens))
++            return null;
++        const key = `${g0}:${L}`;
++        let hyp = this.tokens.get(key);
++        if (!hyp) {
++            hyp = hypotheses(this.corpus, g0, L, anchorTokens);
++            this.tokens.set(key, hyp);
++        }
++        const start = Math.max(post.firstFrame, from - lookBackFrames);
++        const s0 = bestLocal(post, hyp.without, start, end);
++        if (!final && s0 < fitNext)
++            return null;
++        const s1 = bestLocal(post, hyp.withLast, start, end);
++        const llr = (s1 - s0) / hyp.nL;
++        const missing = llr < llrMissing && (!final || s0 >= fitLate);
++        return missing || final ? { decided: true, llr, missing } : null;
++    }
++}
+diff --git a/node_modules/@tilawa/core/dist/recitation/melFrames.d.ts b/node_modules/@tilawa/core/dist/recitation/melFrames.d.ts
+new file mode 100644
+index 0000000..3942871
+--- /dev/null
++++ b/node_modules/@tilawa/core/dist/recitation/melFrames.d.ts
+@@ -0,0 +1,16 @@
++/** Frames read from the ring: `first` is the first frame's number, after clipping. */
++export interface MelFrameSpan {
++    first: number;
++    frames: number;
++    /** Row by row, [frames, 80]. */
++    data: Float32Array;
++}
++export declare class MelFrames {
++    private readonly data;
++    private start;
++    private end;
++    push(frame: Float32Array): void;
++    clear(): void;
++    moveTo(frame: number): void;
++    read(from: number, to: number): MelFrameSpan;
++}
+diff --git a/node_modules/@tilawa/core/dist/recitation/melFrames.js b/node_modules/@tilawa/core/dist/recitation/melFrames.js
+new file mode 100644
+index 0000000..8210e10
+--- /dev/null
++++ b/node_modules/@tilawa/core/dist/recitation/melFrames.js
+@@ -0,0 +1,48 @@
++// Bayaan patch. The stream's recent log-mel frames, so a second model can read them
++// instead of running its own FFT on the JS thread.
++import { FBANK_BINS } from "./config.js";
++/** About 10 s: 100 frames a second. */
++const HELD = 1000;
++/** Ring of log-mel frames, indexed by frame of the stream since the last reset. */
++export class MelFrames {
++    data = new Float32Array(FBANK_BINS * HELD);
++    start = 0;
++    end = 0;
++    push(frame) {
++        this.data.set(frame, (this.end % HELD) * FBANK_BINS);
++        this.end++;
++        if (this.end - this.start > HELD)
++            this.start = this.end - HELD;
++    }
++    clear() {
++        this.start = 0;
++        this.end = 0;
++    }
++    /** The features started again and their next frame is this one of the stream. The
++     * frame or two that spanned the restart repeat the last one, so that frames before
++     * and after it stay on one clock. */
++    moveTo(frame) {
++        if (this.end === this.start) {
++            this.start = frame;
++            this.end = frame;
++            return;
++        }
++        const slot = (this.end - 1) % HELD;
++        const last = this.data.slice(slot * FBANK_BINS, (slot + 1) * FBANK_BINS);
++        while (this.end < frame)
++            this.push(last);
++    }
++    /** A copy of frames [from, to) row by row, clipped to what is still held. */
++    read(from, to) {
++        const first = Math.max(from, this.start);
++        const frames = Math.max(0, Math.min(to, this.end) - first);
++        const data = new Float32Array(frames * FBANK_BINS);
++        const slot = first % HELD;
++        const untilWrap = Math.min(frames, HELD - slot);
++        data.set(this.data.subarray(slot * FBANK_BINS, (slot + untilWrap) * FBANK_BINS));
++        if (frames > untilWrap) {
++            data.set(this.data.subarray(0, (frames - untilWrap) * FBANK_BINS), untilWrap * FBANK_BINS);
++        }
++        return { first, frames, data };
++    }
++}
+diff --git a/node_modules/@tilawa/core/dist/recitation/search.js b/node_modules/@tilawa/core/dist/recitation/search.js
+index 4e66502..088438c 100644
+--- a/node_modules/@tilawa/core/dist/recitation/search.js
++++ b/node_modules/@tilawa/core/dist/recitation/search.js
+@@ -13,6 +13,11 @@ const CANDIDATE_WINDOWS = 24;
+ const VERIFY_MARGIN_BEFORE = 16;
+ const VERIFY_MARGIN_AFTER = 32;
+ const MIN_ALIGNED = 20;
++// A page hint may pick between equally good places only once this many heard
++// chars still fit all of them, i.e. the words themselves cannot tell them apart.
++// Before that a tie waits for more words, as it does with no hint (Bayaan's
++// engine patch: an opening shared by many ayat locked the page's ayah at once).
++const HINT_TIE_MIN_ALIGNED = 90;
+ const SURAH_GAP = 8;
+ const SHORT_QUERY = 100;
+ const PREAMBLE_MAX_DISTANCE = 0.3;
+@@ -181,6 +186,9 @@ export class QuranIndex {
+             }
+         }
+         result.decisive = this.isDecisive(result.hits, rest.length, bonus, hint);
++        // Not decisive only because the hint may not settle the tie yet: the
++        // engine can show this place as tentative, with no verdicts.
++        result.tentative = !result.decisive && this.hintHoldsTie(result.hits, rest.length, bonus, hint);
+         for (let i = 0; i < result.hits.length; i++) {
+             const h = result.hits[i];
+             if (collapsed.has(i))
+@@ -287,12 +295,21 @@ export class QuranIndex {
+             return false;
+         if (aligned < MIN_ALIGNED)
+             return false;
+-        const rival = this.rival(hits, hint);
++        const rival = this.rival(hits, hint, aligned);
+         if (!rival)
+             return true;
+         return rival.distance - best.distance >= this.cfg.searchDecisiveMargin;
+     }
+-    rival(hits, hint) {
++    /** The hint's place ties with others and only the tie gate keeps it from locking. */
++    hintHoldsTie(hits, queryLength, alignedBonus, hint) {
++        const best = hits[0];
++        if (!hint || !best || best.surah !== hint.surah)
++            return false;
++        if (queryLength - best.queryStart + alignedBonus < MIN_ALIGNED)
++            return false;
++        return this.isDecisive(hits, queryLength, alignedBonus + HINT_TIE_MIN_ALIGNED, hint);
++    }
++    rival(hits, hint, aligned = Infinity) {
+         const best = hits[0];
+         if (!best)
+             return undefined;
+@@ -300,6 +317,9 @@ export class QuranIndex {
+             const cap = best.distance + this.cfg.searchDecisiveMargin;
+             const near = hits.filter((h) => h.distance <= cap);
+             if (near.some((h) => h.surah === hint.surah)) {
++                // A tie the words have not had the chance to break stays a tie.
++                if (near.length > 1 && aligned < HINT_TIE_MIN_ALIGNED)
++                    return near.find((h) => h !== best);
+                 return hits.find((h) => h !== best && h.distance > cap);
+             }
+         }
+diff --git a/node_modules/@tilawa/core/dist/recitation/session.d.ts b/node_modules/@tilawa/core/dist/recitation/session.d.ts
+index 24b499d..dd9975c 100644
+--- a/node_modules/@tilawa/core/dist/recitation/session.d.ts
++++ b/node_modules/@tilawa/core/dist/recitation/session.d.ts
+@@ -15,9 +15,12 @@ import { QuranDB } from "../quran-db.js";
+ import type { WorkerOutbound } from "../types.js";
+ import { type AyahTally, type BridgedAyahTally } from "./emission.js";
+ import { type EngineConfig } from "./config.js";
+-import type { ExpectedPassage, FallbackHit, WordVerdict } from "./types.js";
++import type { ExpectedPassage, FallbackHit, SearchHint, WordVerdict } from "./types.js";
+ import { type OrtLike, type OrtSessionLike, type ZipformerIo } from "./zipformerRunner.js";
+ import { CorrectionController, type CorrectionAction, type RecitationMode } from "./correction.js";
++import type { QuranCorpus } from "./corpus.js";
++import { type JunctionOptions } from "./junction.js";
++import { type MelFrameSpan } from "./melFrames.js";
+ import { type SlipSensitivity } from "./slipHead.js";
+ import { type StructuralIndexJson } from "./structural.js";
+ /** Mean heard ratio over an unmatched ayah's words at or above which the gap
+@@ -98,6 +101,21 @@ export interface ZipformerSessionOptions {
+     /** Structural correction rules (correction mode). Default
+      * {@link DEFAULT_STRUCTURAL}: both rules on, run at `stop()`. `false` turns them off. */
+     structural?: StructuralOptions | false;
++    /**
++     * Correction mode: a flag deferred or dismissed straight away (no practice
++     * run) keeps the decoder and the tracker, instead of restarting them at the
++     * flagged position without the audio heard so far. Default false.
++     */
++    keepContextOnDefer?: boolean;
++    /** Correction mode: the junction check on ayahs' last words. Off when left out. */
++    junction?: JunctionOptions;
++}
++/** See {@link ZipformerSession.trackingHealth}. */
++export interface TrackingHealth {
++    lost: boolean;
++    held: boolean;
++    /** Cost per heard char over the last `holdWindow` chars (0 before enough are heard). */
++    rate: number;
+ }
+ /**
+  * Structural correction rules over the free decode, validated with the a0w
+@@ -138,7 +156,7 @@ export interface StructuralOptions {
+ /** Both structural rules, run once over the take at `stop()`. */
+ export declare const DEFAULT_STRUCTURAL: Readonly<StructuralOptions>;
+ export declare class ZipformerSession {
+-    private readonly corpus;
++    readonly corpus: QuranCorpus;
+     private readonly index;
+     private readonly table;
+     private readonly ayahIds;
+@@ -173,6 +191,17 @@ export declare class ZipformerSession {
+     private ayahIssuesRaised;
+     readonly correction: CorrectionController;
+     private practiceEngine;
++    /** A practice run was started for the open flag. */
++    private practiced;
++    private keepContextOnDefer;
++    /** Ayat flagged as skipped whose flag was answered with the tracker kept
++     * (keepContextOnDefer): see checkAyahGap. */
++    private keptSkips;
++    private junction;
++    private melFrames;
++    private samplesFed;
++    private decoderFrameBase;
++    private spanTracers;
+     private expected;
+     private skipCandidate;
+     private stopping;
+@@ -208,6 +237,22 @@ export declare class ZipformerSession {
+     /** Latest per-word acoustic verdicts of the active tracker (main or practice
+      * engine). Empty before the recitation is located. Diagnostic use only. */
+     verdicts(): WordVerdict[];
++    /** Where the trackers have put a word, as known at the last {@link verdicts}: its
++     * first and last decoder frames (25 a second of the stream, from 0 at the last
++     * reset, whatever the decoder restarted on the way), from the newest tracker that
++     * heard it. Null when none did, or there is no such word. */
++    wordFrames(surah: number, ayah: number, word: number): {
++        from: number;
++        to: number;
++    } | null;
++    /** Log-mel frames [from, to) of the stream (100 a second, from 0 at the last reset,
++     * whatever the decoder restarted on the way), clipped to the last 10 s or so. */
++    readMelFrames(from: number, to: number): MelFrameSpan;
++    /** How well the active tracker follows the audio: `lost`, or `held` while
++     * its cost rate over the last `holdWindow` chars is at or over `holdRate`
++     * (the engine then emits no cursor or verdict events and runs no rules,
++     * but {@link verdicts} still returns fresh verdicts). Null while searching. */
++    trackingHealth(): TrackingHealth | null;
+     /** Drop all state — new recitation, same model and corpus. */
+     reset(): WorkerOutbound[];
+     /** Push one chunk of mono 16 kHz float32 PCM. Any size; 480 ms works well. */
+@@ -219,6 +264,8 @@ export declare class ZipformerSession {
+      * across {@link reset}; pass null to clear.
+      */
+     setExpected(passage: ExpectedPassage | null): void;
++    /** Tracking mode: bias near-tie searches toward this ayah. Kept across reset. */
++    setHint(hint: SearchHint | null): void;
+     setMode(mode: RecitationMode): WorkerOutbound[];
+     /**
+      * Turn the slip head on or off. `"strict"` is the no-extra-false-flag
+@@ -239,6 +286,10 @@ export declare class ZipformerSession {
+     private resetDecoder;
+     wordCount: (surah: number, ayah: number) => number;
+     private dumpTallies;
++    /** Raising a flag: retain the tracker's coverage before correct() replaces
++     * it. With keepContextOnDefer, correct() dumps only when it does replace it,
++     * so a kept tracker's words are not counted twice. */
++    private dumpAtFlag;
+     private currentSnapshot;
+     private dispatch;
+     private feedSamples;
+@@ -250,8 +301,12 @@ export declare class ZipformerSession {
+      * audio), then raise the next queued flag if the controller is idle.
+      */
+     private structuralTick;
++    /** {@link structuralTick} at the end of audio, with the rules run in slices. */
++    private structuralTickFinal;
+     private structuralVerses;
+     private structuralEvaluate;
++    /** {@link structuralEvaluate} in steps. */
++    private structuralSteps;
+     private raiseStructural;
+     private handle;
+     /** Correction mode: last word-level check before the main tracker is dropped. */
+diff --git a/node_modules/@tilawa/core/dist/recitation/session.js b/node_modules/@tilawa/core/dist/recitation/session.js
+index 3d7030c..c900c8e 100644
+--- a/node_modules/@tilawa/core/dist/recitation/session.js
++++ b/node_modules/@tilawa/core/dist/recitation/session.js
+@@ -26,9 +26,11 @@ import { normalizedDistance } from "./alignment.js";
+ import { ZipformerRunner, } from "./zipformerRunner.js";
+ import DEFAULT_IO from "./zipformer-io.json" with { type: "json" };
+ import { CorrectionController } from "./correction.js";
++import { JunctionCheck } from "./junction.js";
++import { MelFrames } from "./melFrames.js";
+ import { FramePosteriors } from "./posteriors.js";
+ import { A0W_SLIP_HEAD, EncoderFrames, slipThreshold } from "./slipHead.js";
+-import { AYAH_ORDER_PARAMS, AYAH_ORDER_RULE, AYAH_ORDER_RULE_GUARDED, SIMILAR_VERSE_RULE, StructuralRules, ayahOrderFlags, similarVerseEligible, similarVersePick, } from "./structural.js";
++import { AYAH_ORDER_PARAMS, AYAH_ORDER_RULE, AYAH_ORDER_RULE_GUARDED, SIMILAR_VERSE_RULE, StructuralRules, ayahOrderFlags, runSteps, runStepsAsync, similarVerseEligible, similarVersePick, } from "./structural.js";
+ const TAIL_SECONDS = 2.0;
+ /** Mean heard ratio over an unmatched ayah's words at or above which the gap
+  * counts as heard-but-unfollowed (`unclear_ayah`) rather than skipped. */
+@@ -75,13 +77,19 @@ function surroundingVerses(db, surah, ayah) {
+ }
+ /** Both structural rules, run once over the take at `stop()`. */
+ export const DEFAULT_STRUCTURAL = { ayahOrder: true, similarVerse: true, timing: "stop" };
++/** Lets other work run between slices of the structural rules at the end of audio. */
++const yieldToOthers = () => new Promise((resolve) => setTimeout(resolve, 0));
+ /** Audio after which the structural rules start a new block (bounds their cost). */
+ const STRUCTURAL_BLOCK_SECONDS = 120;
+ const STRUCTURAL_ERROR_KINDS = new Set(["possible_omission", "possible_substitution", "possible_vowel",
+     "possible_skipped_ayah", "unclear_ayah"]);
++/** Samples per log-mel frame, and per decoder frame. */
++const MEL_SHIFT = 160;
++const DECODER_SHIFT = 640;
+ async function loadStructuralIndex() {
+-    const mod = await import("./structural-index.json", { with: { type: "json" } });
+-    return mod.default;
++    // Metro rejects import() with an options argument; a plain require() of
++    // the JSON is equivalent once bundled.
++    return require("./structural-index.json");
+ }
+ export class ZipformerSession {
+     corpus;
+@@ -119,6 +127,20 @@ export class ZipformerSession {
+     ayahIssuesRaised = new Set();
+     correction = new CorrectionController();
+     practiceEngine = null;
++    /** A practice run was started for the open flag. */
++    practiced = false;
++    keepContextOnDefer = false;
++    /** Ayat flagged as skipped whose flag was answered with the tracker kept
++     * (keepContextOnDefer): see checkAyahGap. */
++    keptSkips = new Set();
++    junction = null;
++    melFrames = new MelFrames();
++    /** Samples fed since the last reset: the clock of the log-mel frames and word places. */
++    samplesFed = 0;
++    /** Where the decoder's frame 0 sits on that clock, in decoder frames. */
++    decoderFrameBase = 0;
++    /** The newest trackers that gave verdicts, newest first: see wordFrames. */
++    spanTracers = [];
+     expected = null;
+     skipCandidate = null;
+     stopping = false;
+@@ -143,6 +165,7 @@ export class ZipformerSession {
+         this.gapMaxWords = opts.gapMaxWords ?? GAP_MAX_WORDS;
+         this.onEvent = opts.onEvent ?? null;
+         this.debugEnabled = opts.debug ?? false;
++        this.keepContextOnDefer = opts.keepContextOnDefer ?? false;
+         this.slipMode = opts.slipHead === true || opts.slipHead === "strict" ? "strict"
+             : opts.slipHead === "high" ? "high" : false;
+         this.posteriors = new FramePosteriors(runner.io.vocabSize);
+@@ -160,6 +183,7 @@ export class ZipformerSession {
+             }
+         }
+         this.engine = this.makeEngine();
++        this.junction = opts.junction ? new JunctionCheck(this.corpus, opts.junction) : null;
+     }
+     static async create(opts) {
+         const io = opts.io ? await resolveSource(opts.io) : DEFAULT_ZIPFORMER_IO;
+@@ -258,27 +282,78 @@ export class ZipformerSession {
+      * engine). Empty before the recitation is located. Diagnostic use only. */
+     verdicts() {
+         const engine = this.practiceEngine ?? this.engine;
+-        return engine.tracer?.verdicts(false) ?? [];
++        const tracer = engine.tracer;
++        if (!tracer)
++            return [];
++        if (this.spanTracers[0] !== tracer)
++            this.spanTracers = [tracer, ...this.spanTracers].slice(0, 3);
++        const out = tracer.verdicts(false, true);
++        if (this.junction && !this.practiceEngine && this.correction.mode === "correction") {
++            return this.junction.apply(tracer, this.posteriors, this.decoder.framesDecoded, out);
++        }
++        return out;
++    }
++    /** Where the trackers have put a word, as known at the last {@link verdicts}: its
++     * first and last decoder frames (25 a second of the stream, from 0 at the last
++     * reset, whatever the decoder restarted on the way), from the newest tracker that
++     * heard it. Null when none did, or there is no such word. */
++    wordFrames(surah, ayah, word) {
++        const c = this.corpus;
++        if (!c.hasAyah(surah, ayah) || word < 0 || word >= c.ayahWordCount(surah, ayah))
++            return null;
++        const g = c.wordIndex(surah, ayah, word);
++        for (const tracer of this.spanTracers) {
++            const sp = tracer.lastSpans.get(g - tracer.tracker.firstWord);
++            if (sp && sp.to > sp.from) {
++                const heard = tracer.tracker.heard;
++                return {
++                    from: heard[sp.from].frame + this.decoderFrameBase,
++                    to: heard[sp.to - 1].frame + this.decoderFrameBase,
++                };
++            }
++        }
++        return null;
++    }
++    /** Log-mel frames [from, to) of the stream (100 a second, from 0 at the last reset,
++     * whatever the decoder restarted on the way), clipped to the last 10 s or so. */
++    readMelFrames(from, to) {
++        return this.melFrames.read(from, to);
++    }
++    /** How well the active tracker follows the audio: `lost`, or `held` while
++     * its cost rate over the last `holdWindow` chars is at or over `holdRate`
++     * (the engine then emits no cursor or verdict events and runs no rules,
++     * but {@link verdicts} still returns fresh verdicts). Null while searching. */
++    trackingHealth() {
++        const tracker = (this.practiceEngine ?? this.engine).tracker;
++        if (!tracker)
++            return null;
++        const rate = tracker.costRate(this.cfg.holdWindow);
++        return { lost: tracker.lost, held: rate !== null && rate >= this.cfg.holdRate, rate: rate ?? 0 };
+     }
+     /** Drop all state — new recitation, same model and corpus. */
+     reset() {
+         this.correction.reset();
+         this.practiceEngine = null;
++        this.practiced = false;
+         this.accumulated = new Map();
+         this.emitted = new Set();
+         this.transcriptParts = [];
+         this.lastCursor = null;
+         this.lastMatch = null;
+         this.ayahIssuesRaised = new Set();
++        this.keptSkips = new Set();
+         this.skipCandidate = null;
+         this.lastFallback = null;
+         this.st = ZipformerSession.freshStructural();
++        this.samplesFed = 0;
++        this.melFrames.clear();
+         this.resetDecoder();
+         this.engine = this.makeEngine();
+         return [];
+     }
+     /** Push one chunk of mono 16 kHz float32 PCM. Any size; 480 ms works well. */
+     async feed(samples) {
++        this.samplesFed += samples.length;
+         if (this.structuralRules)
+             this.st.samples += samples.length;
+         if (this.correction.state.phase === "error" || this.correction.state.phase === "corrected")
+@@ -295,6 +370,12 @@ export class ZipformerSession {
+         this.expected = passage ? { ...passage } : null;
+         this.engine.setExpected(this.expected);
+     }
++    /** Tracking mode: bias near-tie searches toward this ayah (e.g. the page
++     * on screen). Kept across {@link reset}; pass null to clear. */
++    setHint(hint) {
++        this.hint = hint ? { ...hint } : null;
++        this.engine.setHint(this.hint);
++    }
+     setMode(mode) {
+         const out = this.correction.state.phase !== 'idle' ? this.correct('close') : [];
+         this.correction.setMode(mode);
+@@ -316,10 +397,18 @@ export class ZipformerSession {
+             this.attachPosteriors(this.practiceEngine);
+     }
+     correct(action) {
++        const before = this.correction.state.phase;
+         if (!this.correction.act(action))
+             return [];
+         const state = this.correction.state;
+-        this.resetDecoder();
++        // A flag deferred or dismissed with no practice run: the reciter never
++        // stopped, so the decoder, the tracker and their audio context stay.
++        const keep = this.keepContextOnDefer && before === 'error' && state.phase === 'idle' && !this.practiced;
++        this.practiced = state.phase !== 'idle' && (this.practiced || state.phase === 'retrying');
++        if (keep && state.issue?.kind === "possible_skipped_ayah")
++            this.keptSkips.add(ayahKey(state.issue));
++        if (!keep)
++            this.resetDecoder();
+         if (state.phase === 'retrying') {
+             this.practiceEngine = new RecitationEngine(this.corpus, this.index, this.cfg);
+             this.practiceEngine.setStayOnSurah(true);
+@@ -328,8 +417,10 @@ export class ZipformerSession {
+         }
+         else {
+             this.practiceEngine = null;
+-            if (state.phase === 'idle' && state.resume) {
++            if (state.phase === 'idle' && state.resume && !keep) {
+                 // Keep verse history, but discard pre-practice acoustic context.
++                if (this.keepContextOnDefer)
++                    this.dumpTallies();
+                 this.engine = this.makeEngine();
+                 this.engine.track(state.resume.surah, state.resume.ayah, state.resume.word);
+                 this.lastCursor = { ...state.resume };
+@@ -415,7 +506,7 @@ export class ZipformerSession {
+         }
+         if (this.structuralRules) {
+             this.st.final = true;
+-            out.push(...this.structuralTick(true));
++            out.push(...(await this.structuralTickFinal()));
+         }
+         const seq = buildFinalSequence([...this.accumulated.values()], fallback, this.minWordFraction);
+         out.push({
+@@ -437,6 +528,7 @@ export class ZipformerSession {
+         engine.onBeforeRelocate = () => this.dumpTallies();
+         this.attachPosteriors(engine);
+         engine.setExpected(this.expected);
++        engine.setHint(this.hint ?? null);
+         return engine;
+     }
+     /** GOP scoring costs a few CTC Viterbi passes per word; only correction mode reads it.
+@@ -459,6 +551,11 @@ export class ZipformerSession {
+         this.posteriors.clear(0);
+         this.encoderFrames.clear(0);
+         this.slipLive = true;
++        // The features and the decoder start from 0 again, on the audio to come. Their
++        // readers keep to one clock for the whole take.
++        this.melFrames.moveTo(Math.round(this.samplesFed / MEL_SHIFT));
++        this.decoderFrameBase = this.samplesFed / DECODER_SHIFT;
++        this.spanTracers = [];
+     }
+     wordCount = (surah, ayah) => this.corpus.ayahWordCount(surah, ayah);
+     dumpTallies() {
+@@ -468,6 +565,13 @@ export class ZipformerSession {
+         const snap = snapshotTallies(tracer.verdicts(true), this.wordCount);
+         accumulateSnapshot(this.accumulated, snap);
+     }
++    /** Raising a flag: retain the tracker's coverage before correct() replaces
++     * it. With keepContextOnDefer, correct() dumps only when it does replace it,
++     * so a kept tracker's words are not counted twice. */
++    dumpAtFlag() {
++        if (!this.keepContextOnDefer)
++            this.dumpTallies();
++    }
+     currentSnapshot() {
+         const tracer = this.engine.tracer;
+         if (!tracer)
+@@ -493,6 +597,8 @@ export class ZipformerSession {
+     async runFrames(frames) {
+         if (!frames.length)
+             return [];
++        for (const frame of frames)
++            this.melFrames.push(frame);
+         const { logProbs, frames: out, encoder, encoderFrames } = await this.runner.accept(frames);
+         if (out === 0)
+             return [];
+@@ -555,11 +661,13 @@ export class ZipformerSession {
+             && (tracker.costRate(this.cfg.holdWindow) ?? 0) < this.cfg.holdRate) {
+             const last = tracker.heard[tracker.heard.length - 1];
+             const settled = !!last && this.decoder.framesDecoded - last.frame >= this.cfg.settleFrames;
+-            const raised = this.correction.observe(this.engine.tracer.verdicts(settled), this.lastCursor, this.decoder.framesDecoded);
++            // observe() ignores its input outside correction mode; skip the verdicts.
++            const raised = this.correction.mode === "correction"
++                && this.correction.observe(this.engine.tracer.verdicts(settled), this.lastCursor, this.decoder.framesDecoded);
+             out.push(...this.noteMessages());
+             if (raised) {
+                 // Retain main-session coverage before a practice exit replaces its tracker.
+-                this.dumpTallies();
++                this.dumpAtFlag();
+                 out.push(this.correctionMessage());
+             }
+             else
+@@ -603,6 +711,14 @@ export class ZipformerSession {
+         }
+         return this.raiseStructural();
+     }
++    /** {@link structuralTick} at the end of audio, with the rules run in slices. */
++    async structuralTickFinal() {
++        if (this.correction.mode !== "correction")
++            return [];
++        if (this.st.tokens.length)
++            await runStepsAsync(this.structuralSteps(), yieldToOthers);
++        return this.raiseStructural();
++    }
+     structuralVerses() {
+         const st = this.st;
+         let tallies;
+@@ -628,6 +744,10 @@ export class ZipformerSession {
+         return out;
+     }
+     structuralEvaluate() {
++        runSteps(this.structuralSteps());
++    }
++    /** {@link structuralEvaluate} in steps. */
++    *structuralSteps() {
+         const rules = this.structuralRules;
+         const st = this.st;
+         st.evalAt = st.tokens.length;
+@@ -640,7 +760,7 @@ export class ZipformerSession {
+             || st.pending.some((p) => sameAyah(p, f));
+         if (this.aoRule) {
+             const win = rules.ayahOrderWindow(expected, verses[0] ?? null);
+-            const found = ayahOrderFlags(rules.ayahOrderCandidate(tokens, win), this.aoRule);
++            const found = ayahOrderFlags(yield* rules.ayahOrderSteps(tokens, win), this.aoRule);
+             const last = st.aoLast;
+             st.aoLast = new Set(found.map((f) => ayahKey(f)));
+             for (const f of found) {
+@@ -665,7 +785,8 @@ export class ZipformerSession {
+             else
+                 passage.push(...verses);
+             const durationS = st.samples / SAMPLE_RATE - st.blockT0;
+-            const cands = rules.similarVerseCandidates(tokens, passage, !!expected, durationS, (c) => similarVerseEligible(c));
++            // Timing only what the pick can choose: the same picks, a fraction of the work.
++            const cands = yield* rules.similarVerseSteps(tokens, passage, !!expected, durationS, (c) => similarVerseEligible(c), SIMILAR_VERSE_RULE);
+             const skips = [...st.skips, ...st.issues.filter((i) => i.kind === "possible_skipped_ayah")];
+             // Pause timing: a slot is judged once the recitation has reached a later ayah.
+             const reached = (t) => st.final || (expected
+@@ -711,7 +832,7 @@ export class ZipformerSession {
+                 continue;
+             if (ayahLevel)
+                 this.ayahIssuesRaised.add(key);
+-            this.dumpTallies();
++            this.dumpAtFlag();
+             return [this.correctionMessage()];
+         }
+         return [];
+@@ -812,7 +933,7 @@ export class ZipformerSession {
+         const notes = this.noteMessages();
+         if (!raised)
+             return [...notes, ...this.checkSkippedAyah(true, tracer.tracker)];
+-        this.dumpTallies();
++        this.dumpAtFlag();
+         return [...notes, this.correctionMessage()];
+     }
+     /**
+@@ -850,7 +971,7 @@ export class ZipformerSession {
+         if (!this.correction.raise(issue, cursor))
+             return [];
+         this.ayahIssuesRaised.add(key);
+-        this.dumpTallies();
++        this.dumpAtFlag();
+         return [this.correctionMessage()];
+     }
+     noteMessages() {
+@@ -883,6 +1004,12 @@ export class ZipformerSession {
+      * cannot see (no clear neighbours inside the ayah).
+      */
+     checkAyahGap(t) {
++        // A tracker kept across a deferred skipped-ayah flag can still match
++        // that ayah, from the next ayah's audio bent onto its text. The reader
++        // is not there, so it does not count as the previous match: the next
++        // ayah's match would read as a second skip.
++        if (this.keptSkips.has(ayahKey(t)))
++            return [];
+         const prev = this.lastMatch;
+         this.lastMatch = { surah: t.surah, ayah: t.ayah };
+         if ((this.stopping && !this.expected) || this.correction.mode !== "correction" || !prev || !this.lastCursor)
+@@ -911,7 +1038,7 @@ export class ZipformerSession {
+         if (!this.correction.raise(issue, this.lastCursor))
+             return [];
+         this.ayahIssuesRaised.add(key);
+-        this.dumpTallies();
++        this.dumpAtFlag();
+         return [this.correctionMessage()];
+     }
+     toVerseMatch(t) {
+diff --git a/node_modules/@tilawa/core/dist/recitation/structural.d.ts b/node_modules/@tilawa/core/dist/recitation/structural.d.ts
+index d24ad06..a940773 100644
+--- a/node_modules/@tilawa/core/dist/recitation/structural.d.ts
++++ b/node_modules/@tilawa/core/dist/recitation/structural.d.ts
+@@ -133,10 +133,19 @@ interface Look {
+     m: [number, number];
+     regions: Array<[number, number, number, number, number]>;
+ }
++/** Runs a step generator to its end at once and returns its value. */
++export declare function runSteps<T>(steps: Generator<void, T, void>): T;
++/**
++ * Runs a step generator to its end, awaiting `pause()` whenever `sliceMs` have passed
++ * since the last pause, so a long check does not hold the thread in one piece.
++ */
++export declare function runStepsAsync<T>(steps: Generator<void, T, void>, pause: () => Promise<void>, sliceMs?: number): Promise<T>;
+ /** Python's `round(x, nd)`: round half to even on the exact binary value. */
+ export declare function pyRound(x: number, nd: number): number;
+ /** C[i * nw + e]: edit cost of the whole query against words i..e of `ref`. */
+ export declare function spanCosts(q: Uint8Array, ref: Uint8Array, ws: Int32Array, maxRatio?: number, slack?: number): Float64Array;
++/** {@link spanCosts} in steps. */
++export declare function spanCostSteps(q: Uint8Array, ref: Uint8Array, ws: Int32Array, maxRatio?: number, slack?: number): Generator<void, Float64Array, void>;
+ /** Plain edit cost of `q` against `r`. */
+ export declare function globalCost(q: Uint8Array, r: Uint8Array): number;
+ export interface Segment {
+@@ -170,8 +179,16 @@ export declare class StructuralRules {
+     } | null, firstVerse: Ayah | null, p?: AyahOrderParams): Ayah[];
+     /** `ayah_order.detect_take`: candidate jumps with their evidence; thresholds are applied by {@link ayahOrderFlags}. */
+     ayahOrderCandidate(tokens: readonly TimedToken[], win: readonly Ayah[], p?: AyahOrderParams): AyahOrderCandidate | null;
++    /** {@link ayahOrderCandidate} in steps. */
++    ayahOrderSteps(tokens: readonly TimedToken[], win: readonly Ayah[], p?: AyahOrderParams): Generator<void, AyahOrderCandidate | null, void>;
+     /** `similar_verse.detect_take` restricted to the look-alike and drop families. */
+-    similarVerseCandidates(tokens: readonly TimedToken[], passageIn: readonly Ayah[], known: boolean, durationS: number, timesFor?: (c: SimilarVerseCandidate) => boolean): SimilarVerseCandidate[];
++    /**
++     * With `fitRule`, only what {@link similarVersePick} can choose under that rule is timed;
++     * the picks are the same and the other candidates keep null timing.
++     */
++    similarVerseCandidates(tokens: readonly TimedToken[], passageIn: readonly Ayah[], known: boolean, durationS: number, timesFor?: (c: SimilarVerseCandidate) => boolean, fitRule?: SimilarVerseRule): SimilarVerseCandidate[];
++    /** {@link similarVerseCandidates} in steps. */
++    similarVerseSteps(tokens: readonly TimedToken[], passageIn: readonly Ayah[], known: boolean, durationS: number, timesFor?: (c: SimilarVerseCandidate) => boolean, fitRule?: SimilarVerseRule): Generator<void, SimilarVerseCandidate[], void>;
+     /** E with one region swapped for look-alike M's wording (merged runs and single ops). */
+     private variantsFor;
+     /** Skip ahead: E with one or two consecutive interior words missing. */
+diff --git a/node_modules/@tilawa/core/dist/recitation/structural.js b/node_modules/@tilawa/core/dist/recitation/structural.js
+index df64e95..6006e34 100644
+--- a/node_modules/@tilawa/core/dist/recitation/structural.js
++++ b/node_modules/@tilawa/core/dist/recitation/structural.js
+@@ -20,6 +20,30 @@ const REPLACE = 0;
+ const INSERT = 2;
+ const SKIP = 0.5;
+ const COST = costTable().matrix;
++/** Runs a step generator to its end at once and returns its value. */
++export function runSteps(steps) {
++    for (;;) {
++        const r = steps.next();
++        if (r.done)
++            return r.value;
++    }
++}
++/**
++ * Runs a step generator to its end, awaiting `pause()` whenever `sliceMs` have passed
++ * since the last pause, so a long check does not hold the thread in one piece.
++ */
++export async function runStepsAsync(steps, pause, sliceMs = 12) {
++    let since = Date.now();
++    for (;;) {
++        const r = steps.next();
++        if (r.done)
++            return r.value;
++        if (Date.now() - since >= sliceMs) {
++            await pause();
++            since = Date.now();
++        }
++    }
++}
+ /** Python's `round(x, nd)`: round half to even on the exact binary value. */
+ export function pyRound(x, nd) {
+     if (!Number.isFinite(x))
+@@ -38,43 +62,82 @@ export function pyRound(x, nd) {
+ const encode = (text) => costTable().encode(text);
+ /** C[i * nw + e]: edit cost of the whole query against words i..e of `ref`. */
+ export function spanCosts(q, ref, ws, maxRatio = 2.0, slack = 12.0) {
++    return runSteps(spanCostSteps(q, ref, ws, maxRatio, slack));
++}
++/** {@link spanCosts} in steps: a step every 16 start words. */
++export function* spanCostSteps(q, ref, ws, maxRatio = 2.0, slack = 12.0) {
+     const nw = ws.length - 1;
+-    const n = q.length;
+     const out = new Float64Array(nw * nw).fill(Infinity);
+-    const prev = new Float64Array(ref.length + 1);
+-    const cur = new Float64Array(ref.length + 1);
+-    const lim = Math.trunc(n * maxRatio + slack);
++    const bufA = new Float64Array(ref.length + 1);
++    const bufB = new Float64Array(ref.length + 1);
++    const lim = Math.trunc(q.length * maxRatio + slack);
++    // The same sums as COST[q[a] * TABLE_SIZE + ref[k]], read from one row per query char.
++    const rows = refCostRows(q, ref);
+     for (let i = 0; i < nw; i++) {
+-        const r0 = ws[i];
+-        const m = Math.min(ref.length - r0, lim);
+-        if (m <= 0)
+-            continue;
+-        for (let j = 0; j <= m; j++)
+-            prev[j] = j;
+-        for (let a = 1; a <= n; a++) {
+-            cur[0] = a;
+-            const row = q[a - 1] * TABLE_SIZE;
+-            for (let j = 1; j <= m; j++) {
+-                let c = prev[j - 1] + COST[row + ref[r0 + j - 1]];
+-                const u = prev[j] + 1;
+-                if (u < c)
+-                    c = u;
+-                const lf = cur[j - 1] + 1;
+-                if (lf < c)
+-                    c = lf;
+-                cur[j] = c;
+-            }
+-            for (let j = 0; j <= m; j++)
+-                prev[j] = cur[j];
++        if ((i & 15) === 15)
++            yield;
++        spanFrom(i, q, ref, ws, lim, rows, bufA, bufB, out);
++    }
++    return out;
++}
++/** One start word of {@link spanCosts}: the whole query against ref from word i on. */
++function spanFrom(i, q, ref, ws, lim, rows, bufA, bufB, out) {
++    const nw = ws.length - 1;
++    const n = q.length;
++    const r0 = ws[i];
++    const m = Math.min(ref.length - r0, lim);
++    if (m <= 0)
++        return;
++    let prev = bufA;
++    let cur = bufB;
++    for (let j = 0; j <= m; j++)
++        prev[j] = j;
++    for (let a = 1; a <= n; a++) {
++        const row = rows[a - 1];
++        let diag = prev[0];
++        let left = a;
++        cur[0] = a;
++        let k = r0;
++        for (let j = 1; j <= m; j++) {
++            const up = prev[j];
++            let c = diag + row[k++];
++            const u = up + 1;
++            if (u < c)
++                c = u;
++            const lf = left + 1;
++            if (lf < c)
++                c = lf;
++            cur[j] = c;
++            left = c;
++            diag = up;
+         }
+-        for (let e = i; e < nw; e++) {
+-            const L = ws[e + 1] - r0;
+-            if (L > m)
+-                break;
+-            out[i * nw + e] = prev[L];
++        const done = prev;
++        prev = cur;
++        cur = done;
++    }
++    for (let e = i; e < nw; e++) {
++        const L = ws[e + 1] - r0;
++        if (L > m)
++            break;
++        out[i * nw + e] = prev[L];
++    }
++}
++/** For each char of `q`, its COST against every char of `ref` (one row per distinct char). */
++function refCostRows(q, ref) {
++    const bySym = new Map();
++    const rows = new Array(q.length);
++    for (let a = 0; a < q.length; a++) {
++        let row = bySym.get(q[a]);
++        if (!row) {
++            row = new Float64Array(ref.length);
++            const base = q[a] * TABLE_SIZE;
++            for (let k = 0; k < ref.length; k++)
++                row[k] = COST[base + ref[k]];
++            bySym.set(q[a], row);
+         }
++        rows[a] = row;
+     }
+-    return out;
++    return rows;
+ }
+ /** Plain edit cost of `q` against `r`. */
+ export function globalCost(q, r) {
+@@ -132,9 +195,24 @@ export function segmentTokens(tokens, gap, minChars) {
+     }
+     return out;
+ }
+-/** DP over segments; state = last word read (nw = nothing yet). */
+-function chain(inp, free) {
+-    const { costs, pre, segLen, wordsAyah, wlenCum, ayahFirst, ayahLast, p } = inp;
++/** DP over segments; state = last word read (nw = nothing yet). In steps: one a segment. */
++function* chainSteps(inp, free) {
++    const nw = inp.wordsAyah.length;
++    const { T, skipped } = chainMoves(inp, free);
++    let cur = new Float64Array(nw + 1).fill(Infinity);
++    cur[nw] = 0;
++    const back = [];
++    const A = new Float64Array(nw);
++    const Aarg = new Int32Array(nw);
++    for (let k = 0; k < inp.costs.length; k++) {
++        yield;
++        cur = chainSegment(inp, T, k, cur, A, Aarg, back);
++    }
++    return chainEnd(inp, cur, back, skipped);
++}
++/** The chain's move costs between words, and the ayat each free jump skips. */
++function chainMoves(inp, free) {
++    const { wordsAyah, wlenCum, ayahFirst, ayahLast, p } = inp;
+     const nw = wordsAyah.length;
+     const T = new Float64Array((nw + 1) * nw).fill(Infinity);
+     for (let i = 0; i < nw; i++)
+@@ -163,56 +241,59 @@ function chain(inp, free) {
+             }
+         }
+     }
+-    let cur = new Float64Array(nw + 1).fill(Infinity);
+-    cur[nw] = 0;
+-    const back = [];
+-    const A = new Float64Array(nw);
+-    const Aarg = new Int32Array(nw);
+-    for (let k = 0; k < costs.length; k++) {
+-        const C = costs[k];
+-        for (let i = 0; i < nw; i++) {
+-            let best = cur[0] + T[i];
+-            let arg = 0;
+-            for (let s = 1; s <= nw; s++) {
+-                const v = cur[s] + T[s * nw + i];
+-                if (v < best) {
+-                    best = v;
+-                    arg = s;
+-                }
+-            }
+-            A[i] = best;
+-            Aarg[i] = arg;
+-        }
+-        const next = new Float64Array(nw + 1).fill(Infinity);
+-        const bp = new Array(nw + 1).fill(null);
+-        for (let e = 0; e < nw; e++) {
+-            let best = A[0] + C[e];
+-            let bi = 0;
+-            for (let i = 1; i < nw; i++) {
+-                const v = A[i] + C[i * nw + e];
+-                if (v < best) {
+-                    best = v;
+-                    bi = i;
+-                }
++    return { T, skipped };
++}
++/** One segment of the chain: the next state costs, with their back pointers pushed on `back`. */
++function chainSegment(inp, T, k, cur, A, Aarg, back) {
++    const { costs, pre, segLen, wordsAyah, p } = inp;
++    const nw = wordsAyah.length;
++    const C = costs[k];
++    for (let i = 0; i < nw; i++) {
++        let best = cur[0] + T[i];
++        let arg = 0;
++        for (let s = 1; s <= nw; s++) {
++            const v = cur[s] + T[s * nw + i];
++            if (v < best) {
++                best = v;
++                arg = s;
+             }
+-            next[e] = best;
+-            if (Number.isFinite(best))
+-                bp[e] = { k: "m", i: bi, s: Aarg[bi] };
+-        }
+-        const g = p.garbage * segLen[k];
+-        for (let s = 0; s <= nw; s++) {
+-            if (cur[s] + g < next[s]) {
+-                next[s] = cur[s] + g;
+-                bp[s] = { k: "g", s };
++        }
++        A[i] = best;
++        Aarg[i] = arg;
++    }
++    const next = new Float64Array(nw + 1).fill(Infinity);
++    const bp = new Array(nw + 1).fill(null);
++    for (let e = 0; e < nw; e++) {
++        let best = A[0] + C[e];
++        let bi = 0;
++        for (let i = 1; i < nw; i++) {
++            const v = A[i] + C[i * nw + e];
++            if (v < best) {
++                best = v;
++                bi = i;
+             }
+         }
+-        if (cur[nw] + pre[k] < next[nw]) {
+-            next[nw] = cur[nw] + pre[k];
+-            bp[nw] = { k: "p", s: nw };
++        next[e] = best;
++        if (Number.isFinite(best))
++            bp[e] = { k: "m", i: bi, s: Aarg[bi] };
++    }
++    const g = p.garbage * segLen[k];
++    for (let s = 0; s <= nw; s++) {
++        if (cur[s] + g < next[s]) {
++            next[s] = cur[s] + g;
++            bp[s] = { k: "g", s };
+         }
+-        back.push(bp);
+-        cur = next;
+     }
++    if (cur[nw] + pre[k] < next[nw]) {
++        next[nw] = cur[nw] + pre[k];
++        bp[nw] = { k: "p", s: nw };
++    }
++    back.push(bp);
++    return next;
++}
++/** The chain's best end and the path back to it. */
++function chainEnd(inp, cur, back, skipped) {
++    const nw = inp.wordsAyah.length;
+     let end = 0;
+     for (let s = 1; s <= nw; s++)
+         if (cur[s] < cur[end])
+@@ -220,7 +301,7 @@ function chain(inp, free) {
+     const best = cur[end];
+     const path = [];
+     let s = end;
+-    for (let k = costs.length - 1; k >= 0; k--) {
++    for (let k = inp.costs.length - 1; k >= 0; k--) {
+         const b = back[k][s];
+         if (!b)
+             return { best, path: [], skipped };
+@@ -298,6 +379,10 @@ export class StructuralRules {
+     }
+     /** `ayah_order.detect_take`: candidate jumps with their evidence; thresholds are applied by {@link ayahOrderFlags}. */
+     ayahOrderCandidate(tokens, win, p = AYAH_ORDER_PARAMS) {
++        return runSteps(this.ayahOrderSteps(tokens, win, p));
++    }
++    /** {@link ayahOrderCandidate} in steps. */
++    *ayahOrderSteps(tokens, win, p = AYAH_ORDER_PARAMS) {
+         if (win.length < 3 || tokens.length < 4)
+             return null;
+         const segs = segmentTokens(tokens, p.gap, p.minChars);
+@@ -333,7 +418,7 @@ export class StructuralRules {
+                 let best = Infinity;
+                 for (const ph of PREAMBLES)
+                     best = Math.min(best, globalCost(q, encode(ph)));
+-                hit = { costs: spanCosts(q, ref, ws), pre: best, len: q.length };
++                hit = { costs: yield* spanCostSteps(q, ref, ws), pre: best, len: q.length };
+                 if (this.segCache.size > 4096)
+                     this.segCache.clear();
+                 this.segCache.set(key, hit);
+@@ -343,8 +428,8 @@ export class StructuralRules {
+             segLen.push(hit.len);
+         }
+         const inp = { costs, pre, segLen, wordsAyah, wlenCum, ayahFirst, ayahLast, p };
+-        const cIn = chain(inp, false).best;
+-        const { best: cFree, path, skipped } = chain(inp, true);
++        const cIn = (yield* chainSteps(inp, false)).best;
++        const { best: cFree, path, skipped } = yield* chainSteps(inp, true);
+         const out = { margin: pyRound(cIn - cFree, 3), jumps: [], segs: segs.length };
+         if (!path.length || !Number.isFinite(cFree))
+             return out;
+@@ -390,7 +475,11 @@ export class StructuralRules {
+         return out;
+     }
+     /** `similar_verse.detect_take` restricted to the look-alike and drop families. */
+-    similarVerseCandidates(tokens, passageIn, known, durationS, timesFor) {
++    similarVerseCandidates(tokens, passageIn, known, durationS, timesFor, fitRule) {
++        return runSteps(this.similarVerseSteps(tokens, passageIn, known, durationS, timesFor, fitRule));
++    }
++    /** {@link similarVerseCandidates} in steps. */
++    *similarVerseSteps(tokens, passageIn, known, durationS, timesFor, fitRule) {
+         const passage = passageIn.filter(([s, a]) => this.has(s, a));
+         const chars = [];
+         const times = [];
+@@ -403,6 +492,7 @@ export class StructuralRules {
+             return [];
+         const q = encode(chars.join(""));
+         const n = q.length;
++        const colOf = costColumns(q);
+         const slotWords = passage.map(([s, a]) => this.ph(s, a));
+         const slotChars = slotWords.map((ws) => ws.join(""));
+         const ref = encode(slotChars.join(""));
+@@ -414,7 +504,9 @@ export class StructuralRules {
+         let col = forwardInit(n);
+         fwdAt.set(0, col);
+         for (let j = 0; j < ref.length; j++) {
+-            col = forwardStep(col, q, ref[j]);
++            if ((j & 63) === 63)
++                yield;
++            col = forwardStep(col, colOf(ref[j]));
+             if (slotStart.includes(j + 1))
+                 fwdAt.set(j + 1, col);
+         }
+@@ -428,13 +520,16 @@ export class StructuralRules {
+         let bcol = backwardInit(n);
+         bwdAt.set(ref.length, bcol);
+         for (let j = ref.length - 1; j >= 0; j--) {
+-            bcol = backwardStep(bcol, q, ref[j], ref.length - j);
++            if ((j & 63) === 63)
++                yield;
++            bcol = backwardStep(bcol, colOf(ref[j]), ref.length - j);
+             if (slotStart.includes(j))
+                 bwdAt.set(j, bcol);
+         }
+         const out = [];
+         const meta = [];
+-        passage.forEach(([ks, ka], t) => {
++        for (let t = 0; t < passage.length; t++) {
++            const [ks, ka] = passage[t];
+             const k = `${ks}:${ka}`;
+             const F = fwdAt.get(slotStart[t]);
+             const B = bwdAt.get(slotStart[t + 1]);
+@@ -452,7 +547,7 @@ export class StructuralRules {
+                 let c = F;
+                 for (const w of ws) {
+                     for (const id of encode(w))
+-                        c = forwardStep(c, q, id);
++                        c = forwardStep(c, colOf(id));
+                     f.push(c);
+                 }
+                 const b = new Array(ws.length + 1);
+@@ -462,7 +557,7 @@ export class StructuralRules {
+                 for (let wi = ws.length - 1; wi >= 0; wi--) {
+                     const ids = encode(ws[wi]);
+                     for (let x = ids.length - 1; x >= 0; x--)
+-                        bc = backwardStep(bc, q, ids[x], ++after);
++                        bc = backwardStep(bc, colOf(ids[x]), ++after);
+                     b[wi] = bc;
+                 }
+                 hit = { f, b };
+@@ -505,7 +600,7 @@ export class StructuralRules {
+                     let c = f[v.i1];
+                     for (const w of v.mid)
+                         for (const id of encode(w))
+-                            c = forwardStep(c, q, id);
++                            c = forwardStep(c, colOf(id));
+                     const cv = combine(c, b[v.i2]);
+                     out.push({
+                         slot: t, surah: e[0], ayah: e[1], word: v.word, kind: v.kind, family: v.family, span: v.span,
+@@ -514,14 +609,31 @@ export class StructuralRules {
+                     });
+                     meta.push({ words: v.words, end: v.end });
+                 }
++                yield;
+             }
+-        });
++        }
+         const dur = durationS + 2.0;
++        // With `fitRule`, only what `similarVersePick` can choose is timed: in each slot, by
++        // falling margin, until a candidate's fit passes, and a fit whose lower bound already
++        // fails is never aligned. The picks are the same; the other candidates keep null timing.
++        const timed = [];
+         out.forEach((c, x) => {
+             if (!(c.margin > 0 && c.marginAll > 0))
+                 return;
+             if (timesFor && !timesFor(c))
+                 return;
++            timed.push(x);
++        });
++        const marginOf = (c) => (c.known ? c.margin : c.marginAll);
++        if (fitRule)
++            timed.sort((x, y) => out[x].slot - out[y].slot || marginOf(out[y]) - marginOf(out[x]) || x - y);
++        const passedSlots = new Set();
++        let buffer = null;
++        for (const x of timed) {
++            yield;
++            const c = out[x];
++            if (fitRule && passedSlots.has(c.slot))
++                continue;
+             const { words: vw, end } = meta[x];
+             const words = [];
+             slotWords.forEach((sw, t) => words.push(...(t === c.slot ? vw : sw)));
+@@ -532,26 +644,39 @@ export class StructuralRules {
+             for (let t = 0; t < c.slot; t++)
+                 w0 += slotWords[t].length;
+             const wi = w0 + end;
+-            const { last, rc } = alignPath(q, encode(words.join("")));
++            const r = encode(words.join(""));
++            const lo = starts[Math.max(w0, w0 + c.word - 1)];
++            const hi = starts[Math.min(w0 + vw.length, wi + 1)];
++            const a0 = starts[w0];
++            const a1 = starts[w0 + vw.length];
++            // The path's cost over a span is at least the span's best fit anywhere in the take.
++            if (fitRule && (cannotFit(r, lo, hi, colOf, n, fitRule.loc)
++                || cannotFit(r, a0, a1, colOf, n, fitRule.ayahFit)))
++                continue;
++            // Every reference char before the slot is the passage's own: D[., a0] is its forward
++            // column. Should the word after the change end before the slot, read it all.
++            const j0 = wi < words.length && starts[wi + 1] - 1 < a0 ? 0 : a0;
++            const need = (n + 1) * (r.length - j0 + 1);
++            if (!buffer || buffer.length < need)
++                buffer = new Float64Array(need);
++            const { last, rc } = yield* alignPathFromSteps(q, r, j0, fwdAt.get(j0 === a0 ? slotStart[c.slot] : 0), buffer);
+             if (wi < words.length) {
+                 const qi = last[starts[wi + 1] - 1];
+                 c.at = qi >= 0 ? pyRound(times[qi], 2) : pyRound(dur, 2);
+             }
+             else
+                 c.at = pyRound(dur, 2);
+-            const lo = starts[Math.max(w0, w0 + c.word - 1)];
+-            const hi = starts[Math.min(w0 + vw.length, wi + 1)];
+             let sum = 0;
+             for (let j = lo; j < hi; j++)
+                 sum += rc[j];
+             c.loc = pyRound(sum / Math.max(1, hi - lo), 3);
+-            const a0 = starts[w0];
+-            const a1 = starts[w0 + vw.length];
+             sum = 0;
+             for (let j = a0; j < a1; j++)
+                 sum += rc[j];
+             c.ayahD = pyRound(sum / Math.max(1, a1 - a0), 3);
+-        });
++            if (fitRule && c.loc <= fitRule.loc && c.ayahD <= fitRule.ayahFit)
++                passedSlots.add(c.slot);
++        }
+         return out;
+     }
+     /** E with one region swapped for look-alike M's wording (merged runs and single ops). */
+@@ -669,20 +794,39 @@ function forwardInit(n) {
+         col[i] = i * SKIP;
+     return col;
+ }
+-/** D[., j] from D[., j − 1] for reference char `r` (query prefix skippable). */
+-function forwardStep(col, q, r) {
+-    const n = q.length;
++/** COST[q[i] * TABLE_SIZE + r] for every query char i, per reference char r, read once. */
++function costColumns(q) {
++    const cols = new Array(TABLE_SIZE);
++    return (r) => {
++        let col = cols[r];
++        if (!col) {
++            col = new Float64Array(q.length);
++            for (let i = 0; i < q.length; i++)
++                col[i] = COST[q[i] * TABLE_SIZE + r];
++            cols[r] = col;
++        }
++        return col;
++    };
++}
++/** D[., j] from D[., j − 1] for a reference char whose costs against the query are `cc` (query prefix skippable). */
++function forwardStep(col, cc) {
++    const n = cc.length;
+     const next = new Float64Array(n + 1);
+-    next[0] = col[0] + 1;
++    let up = col[0] + 1;
++    next[0] = up;
++    let diag = col[0];
+     for (let i = 1; i <= n; i++) {
+-        let c = col[i - 1] + COST[q[i - 1] * TABLE_SIZE + r];
+-        const u = next[i - 1] + 1;
++        const left = col[i];
++        let c = diag + cc[i - 1];
++        const u = up + 1;
+         if (u < c)
+             c = u;
+-        const lf = col[i] + 1;
++        const lf = left + 1;
+         if (lf < c)
+             c = lf;
+         next[i] = c;
++        up = c;
++        diag = left;
+     }
+     return next;
+ }
+@@ -693,22 +837,154 @@ function backwardInit(n) {
+     return col;
+ }
+ /** E[., j] from E[., j + 1] (query suffix skippable once the reference is consumed). */
+-function backwardStep(col, q, r, refLeft) {
+-    const n = q.length;
++function backwardStep(col, cc, refLeft) {
++    const n = cc.length;
+     const next = new Float64Array(n + 1);
+     next[n] = refLeft;
++    let up = refLeft;
++    let diag = col[n];
+     for (let i = n - 1; i >= 0; i--) {
+-        let c = col[i + 1] + COST[q[i] * TABLE_SIZE + r];
+-        const u = next[i + 1] + 1;
++        const left = col[i];
++        let c = diag + cc[i];
++        const u = up + 1;
+         if (u < c)
+             c = u;
+-        const lf = col[i] + 1;
++        const lf = left + 1;
+         if (lf < c)
+             c = lf;
+         next[i] = c;
++        up = c;
++        diag = left;
+     }
+     return next;
+ }
++/**
++ * Whether r[lo..hi) fits no stretch of the query well enough: its best fit anywhere (free
++ * start and end) costs more per char than `limit`, after the same rounding as the path's.
++ * The path aligns the span to some stretch with the same steps, so its cost is never lower.
++ */
++function cannotFit(r, lo, hi, colOf, n, limit) {
++    if (hi <= lo)
++        return false;
++    let col = new Float64Array(n + 1);
++    for (let j = lo; j < hi; j++)
++        col = forwardStep(col, colOf(r[j]));
++    let best = Infinity;
++    for (let i = 0; i <= n; i++)
++        if (col[i] < best)
++            best = col[i];
++    return pyRound((best - 1e-9) / (hi - lo), 3) > limit;
++}
++/**
++ * `alignPath` read from reference char `j0` on. `from` is D[., j0], the forward column there,
++ * which is the same for every reference that shares r[0..j0). Entries before `j0` stay
++ * unset (-1 and 0). `buffer` holds the cut matrix, at least (q.length + 1) * (r.length - j0 + 1).
++ */
++function* alignPathFromSteps(q, r, j0, from, buffer) {
++    const n = q.length;
++    const W = r.length - j0 + 1;
++    const D = buffer;
++    for (let i = 0; i <= n; i++)
++        D[i * W] = from[i];
++    for (let jj = 1; jj < W; jj++)
++        D[jj] = j0 + jj;
++    const rowOf = refCostRow(r, j0, W);
++    for (let i = 1; i <= n; i += 64) {
++        if (i > 1)
++            yield;
++        alignRows(q, D, W, rowOf, i, Math.min(n, i + 63));
++    }
++    return alignTrace(q, r, j0, D, W, rowOf);
++}
++/** COST of query char `sym` against r[j0 + jj - 1] at jj, one row per distinct char, kept. */
++function refCostRow(r, j0, W) {
++    const rows = new Map();
++    return (sym) => {
++        let row = rows.get(sym);
++        if (!row) {
++            row = new Float64Array(W);
++            const base = sym * TABLE_SIZE;
++            for (let jj = 1; jj < W; jj++)
++                row[jj] = COST[base + r[j0 + jj - 1]];
++            rows.set(sym, row);
++        }
++        return row;
++    };
++}
++/** Rows i0..i1 of the cut alignment matrix, as alignPath fills them. */
++function alignRows(q, D, W, rowOf, i0, i1) {
++    for (let i = i0; i <= i1; i++) {
++        const prev = (i - 1) * W;
++        const cur = i * W;
++        const row = rowOf(q[i - 1]);
++        let diag = D[prev];
++        let left = D[cur];
++        for (let jj = 1; jj < W; jj++) {
++            const up = D[prev + jj];
++            let c = diag + row[jj];
++            const u = up + 1;
++            if (u < c)
++                c = u;
++            const lf = left + 1;
++            if (lf < c)
++                c = lf;
++            D[cur + jj] = c;
++            left = c;
++            diag = up;
++        }
++    }
++}
++/** alignPath's way back through the cut matrix, to reference char j0. */
++function alignTrace(q, r, j0, D, W, rowOf) {
++    const n = q.length;
++    const m = r.length;
++    let bi = 0;
++    let bc = D[W - 1] + n * SKIP;
++    for (let i = 1; i <= n; i++) {
++        const v = D[i * W + W - 1] + (n - i) * SKIP;
++        if (v < bc) {
++            bc = v;
++            bi = i;
++        }
++    }
++    const last = new Int32Array(m).fill(-1);
++    const rc = new Float64Array(m);
++    let i = bi;
++    let j = m;
++    while (j > j0) {
++        const jj = j - j0;
++        // The step alignPath stores, taken again from D with the same comparisons.
++        let t = 2;
++        if (i > 0) {
++            const p = (i - 1) * W + jj;
++            let c = D[p - 1] + rowOf(q[i - 1])[jj];
++            t = 0;
++            const u = D[p] + 1;
++            if (u < c) {
++                c = u;
++                t = 1;
++            }
++            if (D[i * W + jj - 1] + 1 < c)
++                t = 2;
++        }
++        if (t === 0) {
++            last[j - 1] = i - 1;
++            rc[j - 1] += COST[q[i - 1] * TABLE_SIZE + r[j - 1]];
++            i--;
++            j--;
++        }
++        else if (t === 1) {
++            rc[j - 1] += 1;
++            i--;
++        }
++        else {
++            last[j - 1] = i > 0 ? i - 1 : -1;
++            rc[j - 1] += 1;
++            j--;
++        }
++    }
++    return { last, rc };
++}
+ function combine(f, b) {
+     let best = Infinity;
+     for (let i = 0; i < f.length; i++) {
+diff --git a/node_modules/@tilawa/core/dist/recitation/types.d.ts b/node_modules/@tilawa/core/dist/recitation/types.d.ts
+index 581bd03..66f8e92 100644
+--- a/node_modules/@tilawa/core/dist/recitation/types.d.ts
++++ b/node_modules/@tilawa/core/dist/recitation/types.d.ts
+@@ -42,6 +42,31 @@ export interface WordVerdict {
+     /** Correction mode, slip head on: P(this word is a slip) from the encoder-frame
+      * logistic. Unset when the head is off or the model has no encoder frames. */
+     slip?: number;
++    /** Junction check, an ayah's last word once decided: h1 - h0 per token of the word. */
++    junction?: number;
++    /** Junction check: true when the word was left out, false when it was said. */
++    junctionMissing?: boolean;
++    /** Correction mode with `gapReport`, on the right word: extra sounds heard between
++     * it and the word before. Never shown: the sounds are not Quran text. */
++    gap?: WordGap;
++}
++/** See {@link WordVerdict.gap}. */
++export interface WordGap {
++    /** Where the run sits among the tracker's heard sounds: [from, to). */
++    from: number;
++    to: number;
++    /** The run's sounds. Only for the added-word rule; never shown, logged or stored. */
++    chars: string;
++    /** The sound before the run. */
++    prev: string;
++    /** Edit cost per sound of the left word once the run is taken out. */
++    fitL: number;
++    /** The same for the right word. */
++    fitR: number;
++    /** The left word's number in the corpus. */
++    leftWord: number;
++    /** Per token, the two words forced together with no run against the free decode. */
++    noGap: number;
+ }
+ /** The passage the reciter is expected to read (correction mode), inclusive. */
+ export interface ExpectedPassage {
+diff --git a/node_modules/@tilawa/core/dist/recitation/verdicts.d.ts b/node_modules/@tilawa/core/dist/recitation/verdicts.d.ts
+index d6cb43f..258ae98 100644
+--- a/node_modules/@tilawa/core/dist/recitation/verdicts.d.ts
++++ b/node_modules/@tilawa/core/dist/recitation/verdicts.d.ts
+@@ -14,6 +14,22 @@ export declare class VerdictTracer {
+     private gopCache;
+     private idsCache;
+     private pairCache;
++    private gapCache;
++    private gapRevision;
++    private openKey;
++    private openGot;
++    /** Each word's span in the last verdicts() call, by word number in the surah. */
++    lastSpans: Map<number, {
++        from: number;
++        to: number;
++        run: number;
++    }>;
++    /** The same from its last few segments only: what was heard just now. */
++    recentSpans: Map<number, {
++        from: number;
++        to: number;
++        run: number;
++    }>;
+     /** Correction mode: settled verdicts align the tracker's last stretch through
+      * the end of its ayah when the cursor stopped within this many words of it
+      * (0 = off), so a word dropped near the end does not pull the last word's
+@@ -26,7 +42,8 @@ export declare class VerdictTracer {
+     slipHead: SlipHead | null;
+     constructor(tracker: Tracker, table: CostTable, cfg?: EngineConfig);
+     get cursorWordIndex(): number;
+-    verdicts(settled?: boolean): WordVerdict[];
++    /** @param withGaps - Also report extra sounds between words (`gapReport`). */
++    verdicts(settled?: boolean, withGaps?: boolean): WordVerdict[];
+     /** Ref cell just past the ayah holding `cell`, when `cell` lies within the
+      * last `anchorAyahEnd` words of that ayah; else `cell`. */
+     private ayahEndCell;
+@@ -43,6 +60,7 @@ export declare class VerdictTracer {
+     private segment;
+     private alignSegment;
+     private judge;
++    private attachGaps;
+     private lastRun;
+     private makeVerdict;
+ }
+diff --git a/node_modules/@tilawa/core/dist/recitation/verdicts.js b/node_modules/@tilawa/core/dist/recitation/verdicts.js
+index 96da26c..2651dc3 100644
+--- a/node_modules/@tilawa/core/dist/recitation/verdicts.js
++++ b/node_modules/@tilawa/core/dist/recitation/verdicts.js
+@@ -1,9 +1,10 @@
+ import { DEFAULT_CONFIG } from "./config.js";
+ import { alignGlobal, normalizedDistance } from "./alignment.js";
+-import { encodePhonemeSpan, encodePhonemes, pairScores, wordGop } from "./posteriors.js";
++import { encodePhonemeSpan, encodePhonemes, forcedLogLik, freeLogLik, pairScores, wordGop } from "./posteriors.js";
+ import { poolEncoderSpan, slipProbability, wordSpansFromTrail } from "./slipHead.js";
+ import { BLANK_ID } from "./tokens.js";
+ const SEGMENT_CUT = 300;
++const RECENT_SEGMENTS = 4;
+ const CONTEXT_CHARS = 6;
+ const TANWEEN = ["ً", "ٌ", "ٍ"];
+ const CLUSTER = new Set(["ن", "ں", "م", "۾", "و", "ۥ", "ي", "ۦ", "ل", "ر"]);
+@@ -52,6 +53,118 @@ function stopBoundary(heard, from, to, settleFrames) {
+     }
+     return -1;
+ }
++/** The text with each repeated sound once, and where each kept sound was. */
++function squeeze(text) {
++    let out = "";
++    const at = [];
++    for (let i = 0; i < text.length; i++) {
++        if (i === 0 || text[i] !== text[i - 1]) {
++            out += text[i];
++            at.push(i);
++        }
++    }
++    return { text: out, at };
++}
++/** Cost of matching `e` against each prefix of `h`: last row of the edit table. */
++function prefixCosts(h, e, table) {
++    const n = h.length;
++    let prev = new Float32Array(n + 1);
++    let cur = new Float32Array(n + 1);
++    for (let i = 0; i <= n; i++)
++        prev[i] = i;
++    for (let r = 1; r <= e.length; r++) {
++        cur[0] = r;
++        for (let i = 1; i <= n; i++) {
++            let x = prev[i - 1] + table.cost(h[i - 1], e[r - 1]);
++            if (prev[i] + 1 < x)
++                x = prev[i] + 1;
++            if (cur[i - 1] + 1 < x)
++                x = cur[i - 1] + 1;
++            cur[i] = x;
++        }
++        const tmp = prev;
++        prev = cur;
++        cur = tmp;
++    }
++    return prev;
++}
++/** Splits heard sounds into the left word [0, i), a run [i, j) and the right
++ * word [j, k), at the lowest edit cost. A run's sounds cost next to nothing, or
++ * the right word could always bend over the run's first sounds at less than the
++ * run's price; what follows k costs nothing. */
++function splitPair(heard, eL, eR, table, runCost) {
++    const h = table.encode(heard.text);
++    const left = table.encode(eL);
++    const right = table.encode(eR);
++    const n = h.length;
++    const m = right.length;
++    const A = prefixCosts(h, left, table);
++    const base = new Float64Array(n + 1);
++    const start = new Int32Array(n + 1);
++    base[0] = A[0];
++    let cost = new Float64Array(m + 1);
++    let gs = new Int32Array(m + 1);
++    let ge = new Int32Array(m + 1);
++    cost[0] = base[0];
++    for (let r = 1; r <= m; r++)
++        cost[r] = cost[r - 1] + 1;
++    let best = cost[m];
++    let bi = 0;
++    let bj = 0;
++    let bk = 0;
++    for (let i = 1; i <= n; i++) {
++        const run = base[i - 1] + runCost;
++        if (run <= A[i]) {
++            base[i] = run;
++            start[i] = start[i - 1];
++        }
++        else {
++            base[i] = A[i];
++            start[i] = i;
++        }
++        const nc = new Float64Array(m + 1);
++        const ngs = new Int32Array(m + 1);
++        const nge = new Int32Array(m + 1);
++        nc[0] = base[i];
++        ngs[0] = start[i];
++        nge[0] = i;
++        for (let r = 1; r <= m; r++) {
++            let x = cost[r - 1] + table.cost(h[i - 1], right[r - 1]);
++            let a = gs[r - 1];
++            let b = ge[r - 1];
++            if (cost[r] + 1 < x) {
++                x = cost[r] + 1;
++                a = gs[r];
++                b = ge[r];
++            }
++            if (nc[r - 1] + 1 < x) {
++                x = nc[r - 1] + 1;
++                a = ngs[r - 1];
++                b = nge[r - 1];
++            }
++            nc[r] = x;
++            ngs[r] = a;
++            nge[r] = b;
++        }
++        if (nc[m] < best - 1e-9) {
++            best = nc[m];
++            bi = ngs[m];
++            bj = nge[m];
++            bk = i;
++        }
++        cost = nc;
++        gs = ngs;
++        ge = nge;
++    }
++    return {
++        i: bi,
++        j: bj,
++        k: bk,
++        at: heard.at,
++        fitL: A[bi] / Math.max(bi, left.length, 1),
++        fitR: (best - base[bj]) / Math.max(bk - bj, m, 1),
++    };
++}
+ export class VerdictTracer {
+     tracker;
+     table;
+@@ -61,6 +174,15 @@ export class VerdictTracer {
+     gopCache = new Map();
+     idsCache = new Map();
+     pairCache = new Map();
++    gapCache = new Map();
++    gapRevision = -1;
++    /** The last stretch's alignment: several calls a chunk read the same one. */
++    openKey = null;
++    openGot = null;
++    /** Each word's span in the last verdicts() call. */
++    lastSpans = new Map();
++    /** The same from its last few segments only: what was heard just now. */
++    recentSpans = new Map();
+     /** Correction mode: settled verdicts align the tracker's last stretch through
+      * the end of its ayah when the cursor stopped within this many words of it
+      * (0 = off), so a word dropped near the end does not pull the last word's
+@@ -79,11 +201,19 @@ export class VerdictTracer {
+     get cursorWordIndex() {
+         return this.tracker.cursorWordIndex;
+     }
+-    verdicts(settled = false) {
++    verdicts(settled = false, withGaps = false) {
+         const t = this.tracker;
++        // Tracking mode calls this several times per chunk with the same
++        // inputs; reuse the result until the tracker hears something new.
++        const memoKey = this.posteriors || (this.encoder && this.slipHead)
++            ? null
++            : `${t.revision}:${t.heard.length}:${settled}:${this.anchorAyahEnd}`;
++        if (memoKey !== null && this.memoTracker === t && this.memoKey === memoKey)
++            return this.memoOut;
+         if (this.cacheRevision !== t.revision) {
+             this.cache.clear();
+             this.gopCache.clear();
++            this.openKey = null;
+             this.cacheRevision = t.revision;
+         }
+         const segs = this.segment(t.trail);
+@@ -94,6 +224,7 @@ export class VerdictTracer {
+                 last.refTo = end;
+         }
+         const spans = new Map();
++        const recent = new Map();
+         for (let s = 0; s < segs.length; s++) {
+             const seg = segs[s];
+             const open = s === segs.length - 1;
+@@ -106,17 +237,33 @@ export class VerdictTracer {
+                     this.cache.set(key, got);
+                 }
+             }
++            else if (this.openKey === key) {
++                got = this.openGot;
++            }
+             else {
+                 got = { spans: this.alignSegment(seg) };
++                this.openKey = key;
++                this.openGot = got;
+             }
+-            for (const [w, sp] of got.spans)
++            for (const [w, sp] of got.spans) {
+                 spans.set(w, sp);
++                if (s >= segs.length - RECENT_SEGMENTS)
++                    recent.set(w, sp);
++            }
+         }
++        this.lastSpans = spans;
++        this.recentSpans = recent;
+         const out = this.judge(spans, settled);
+-        if (this.posteriors)
++        if (this.posteriors) {
+             this.score(out, spans);
++            if (withGaps && this.cfg.gapReport)
++                this.attachGaps(out, spans, this.cfg.gapReport);
++        }
+         if (this.encoder && this.slipHead)
+             this.attachSlip(out);
++        this.memoTracker = memoKey === null ? null : t;
++        this.memoKey = memoKey;
++        this.memoOut = out;
+         return out;
+     }
+     /** Ref cell just past the ayah holding `cell`, when `cell` lies within the
+@@ -151,6 +298,78 @@ export class VerdictTracer {
+             v.slip = slipProbability(head, pooled.mean, pooled.max);
+         }
+     }
++    /** Extra heard sounds between two neighbouring words. Everything heard from
++     * the left word on is split into the left word, one unbroken run, and the
++     * right word, ignoring what follows, so an alignment tie or a long run cannot
++     * hide the extra word inside a neighbour's span. Reported on the right word
++     * as `gap`. Lengthened sounds count once: a reader's madd is not extra. */
++    attachGaps(out, spans, opts) {
++        const t = this.tracker;
++        const heard = t.heard;
++        const c = t.corpus;
++        const post = this.posteriors;
++        if (this.gapRevision !== t.revision) {
++            this.gapCache = new Map();
++            this.gapRevision = t.revision;
++        }
++        const byWord = new Map(out.map((v) => [v.wordIndex - t.firstWord, v]));
++        const words = [...spans.keys()].sort((a, b) => a - b);
++        for (let n = 1; n < words.length; n++) {
++            const lw = words[n - 1];
++            const rw = words[n];
++            const v = byWord.get(rw);
++            if (!v || v.state === "pending" || rw !== lw + 1)
++                continue;
++            const lv = byWord.get(lw);
++            const L = spans.get(lw);
++            const R = spans.get(rw);
++            const R2 = spans.get(words[Math.min(n + 2, words.length - 1)]);
++            const from = L.from;
++            const to = Math.min(heard.length, Math.max(R.to, R2.to) + opts.lookAhead);
++            if (to - from > opts.maxRegion)
++                continue;
++            const eL = c.wordPhonemes(t.firstWord + lw);
++            const eR = c.wordPhonemes(t.firstWord + rw);
++            if (v.state === "ok" && lv?.state === "ok"
++                && R.to - from - eL.length - eR.length < 2 && R.from - L.to < 2)
++                continue;
++            const key = `${from}:${L.to}:${R.from}:${R.to}:${to}`;
++            let split = this.gapCache.get(key);
++            if (split === undefined) {
++                let hs = "";
++                for (let i = from; i < to; i++)
++                    hs += heard[i].ch;
++                split = splitPair(squeeze(hs), squeeze(eL).text, squeeze(eR).text, this.table, opts.runCost);
++                split.noGap = null;
++                this.gapCache.set(key, split);
++            }
++            if (split.j - split.i < 2)
++                continue;
++            const at = (x) => from + (x < split.at.length ? split.at[x] : to - from);
++            const gFrom = at(split.i);
++            const gTo = at(split.j);
++            const f0 = heard[from].frame;
++            const f1 = heard[at(split.k) - 1].frame + 1;
++            if (split.noGap === null) {
++                const once = encodePhonemes(eL + eR);
++                if (!once?.length || !post.has(f0, f1))
++                    continue;
++                split.noGap = (forcedLogLik(post, once, f0, f1) - freeLogLik(post, f0, f1)) / once.length;
++            }
++            else if (!post.has(f0, f1))
++                continue;
++            v.gap = {
++                from: gFrom,
++                to: gTo,
++                chars: heard.slice(gFrom, gTo).map((h) => h.ch).join(""),
++                prev: gFrom > 0 ? heard[gFrom - 1].ch : "",
++                fitL: split.fitL,
++                fitR: split.fitR,
++                leftWord: t.firstWord + lw,
++                noGap: split.noGap,
++            };
++        }
++    }
+     /** Attach GOP scores to settled words whose two neighbours were heard. The
+      * acoustic window is the frames strictly between the previous word's last
+      * token (and its continuation) and the next word's first token. */
+@@ -256,6 +475,7 @@ export class VerdictTracer {
+         let runStart = 0;
+         let segStart = 0;
+         let prevSegStart = 0;
++        let afterJump = false;
+         const push = (to) => {
+             if (to <= segStart)
+                 return;
+@@ -264,9 +484,18 @@ export class VerdictTracer {
+                 ? 0
+                 : tWordStart(this.tracker, this.tracker.localWordOfPos[cell - 1]);
+             const firstOfRun = segStart === runStart;
+-            const contextFrom = firstOfRun && run === 0
++            let contextFrom = (firstOfRun && run === 0) || afterJump
+                 ? segStart
+                 : Math.max(prevSegStart, segStart - CONTEXT_CHARS);
++            if (!firstOfRun && !afterJump && this.cfg.wholeWordAtCut) {
++                // A length cut inside a word: give the word all its heard chars.
++                const wordAt = (i) => (trail[i] <= 0 ? 0 : this.tracker.localWordOfPos[trail[i] - 1]);
++                const w0 = wordAt(segStart);
++                let i = segStart;
++                while (i > prevSegStart && wordAt(i - 1) === w0)
++                    i--;
++                contextFrom = Math.min(contextFrom, i);
++            }
+             segs.push({
+                 heardFrom: segStart,
+                 heardTo: to,
+@@ -279,14 +508,19 @@ export class VerdictTracer {
+         };
+         for (let g = 1; g <= n; g++) {
+             const newRun = g < n && trail[g] < trail[g - 1];
++            // A long jump forward: one stretch across it would align its sounds against
++            // all the text jumped over, seconds of work a chunk on a long surah.
++            const jump = g < n && this.cfg.cutAtJump !== null
++                && trail[g] - trail[g - 1] > this.cfg.cutAtJump;
+             const cut = g - segStart >= SEGMENT_CUT;
+-            if (newRun || cut || g === n) {
++            if (newRun || jump || cut || g === n) {
+                 push(g);
+                 if (newRun) {
+                     run++;
+                     runStart = g;
+                 }
+                 segStart = g;
++                afterJump = jump;
+             }
+         }
+         return segs;
