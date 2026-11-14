@@ -49,7 +49,6 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => ({
     getPageForVerse: () => undefined,
     switchRewayah: jest.fn(() => Promise.resolve()),
     subscribeCacheChanges: () => () => undefined,
-    getCacheVersion: () => 0,
   },
 }));
 

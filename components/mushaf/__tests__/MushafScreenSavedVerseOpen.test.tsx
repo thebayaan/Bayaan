@@ -17,13 +17,11 @@ const mockViewer: {props: {pageNumber: number} | null} = {props: null};
 const mockDk: {
   initialized: boolean;
   rewayah: string;
-  version: number;
   listeners: Set<() => void>;
   finishSwitch: (() => void) | null;
 } = {
   initialized: false,
   rewayah: 'hafs',
-  version: 0,
   listeners: new Set(),
   finishSwitch: null,
 };
@@ -35,7 +33,6 @@ const mockVersePages: Record<string, Record<string, number>> = {
 };
 
 function mockNotify(): void {
-  mockDk.version += 1;
   for (const listener of [...mockDk.listeners]) listener();
 }
 
@@ -73,7 +70,6 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => ({
     get rewayah() {
       return mockDk.rewayah;
     },
-    getRewayahLoadState: () => 'loading',
     getSurahStartPages: () => ({1: 1, 2: 2}),
     getPageForVerse: (key: string) => mockVersePages[mockDk.rewayah]?.[key],
     switchRewayah: jest.fn(
@@ -90,7 +86,6 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => ({
       mockDk.listeners.add(listener);
       return () => mockDk.listeners.delete(listener);
     },
-    getCacheVersion: () => mockDk.version,
   },
 }));
 
@@ -223,9 +218,12 @@ it('opens during the load, then shows the page of the verse', async () => {
   expect(selectedKeys()).toEqual(['2:255']);
 });
 
-it('opens with the data ready: the page of the verse at once', () => {
+it('opens with the data ready: the page of the verse, with no wait', async () => {
   mockDk.initialized = true;
   open(HAFS_BOOKMARK);
+  // restoreSavedRewayah returns at once: the rewayah is already Hafs.
+  await act(async () => undefined);
+  expect(switchRewayah).not.toHaveBeenCalled();
   expect(shownPage()).toBe(42);
 });
 

@@ -1,7 +1,8 @@
 // @ai-generated
 // The Mushaf data loads after the splash (RFC-023 step 1), so a screen that
-// reads it waits for one state, with one retry.
-import {useCallback, useState, useSyncExternalStore} from 'react';
+// reads it can open first. It starts the load if nothing did, and waits for one
+// state, with one retry.
+import {useCallback, useEffect, useState, useSyncExternalStore} from 'react';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
 
@@ -32,6 +33,9 @@ export function useMushafData(): {
   retry: () => void;
 } {
   const state = useSyncExternalStore(subscribeMushafData, readMushafDataState);
+  useEffect(() => {
+    mushafPreloadService.startIfIdle();
+  }, []);
   const [retrying, setRetrying] = useState(false);
   const retry = useCallback(() => {
     setRetrying(true);
