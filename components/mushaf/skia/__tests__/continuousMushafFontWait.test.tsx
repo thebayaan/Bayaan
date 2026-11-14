@@ -3,7 +3,8 @@
  * An item of the continuous view has no height until the fonts are there, and
  * the fonts finish after the data. So the view mounts no list until then: a
  * list mounted earlier mounts all 604 pages to fill the screen, and draws all
- * of them when the fonts arrive.
+ * of them when the fonts arrive. The view reports its first content once, when
+ * the list has drawn (RFC-023 step 5).
  */
 
 import React, {act} from 'react';
@@ -147,10 +148,12 @@ function fontsArrive(): void {
 
 describe('ContinuousMushafView while the fonts load', () => {
   let renderer: TestRenderer.ReactTestRenderer;
+  const onFirstContent = jest.fn();
 
   beforeEach(() => {
     mockFonts.current = null;
     mockList.mounts = [];
+    onFirstContent.mockClear();
     act(() => {
       renderer = TestRenderer.create(
         <ContinuousMushafView
@@ -158,6 +161,7 @@ describe('ContinuousMushafView while the fonts load', () => {
           dividerColor="#666666"
           initialPage={68}
           metrics={getMushafLayout({width: 390, height: 844, isTablet: false})}
+          onFirstContent={onFirstContent}
         />,
       );
     });
@@ -175,5 +179,16 @@ describe('ContinuousMushafView while the fonts load', () => {
     fontsArrive();
     expect(mockList.mounts).toHaveLength(1);
     expect(mockList.mounts[0].initialScrollIndex).toBe(67);
+  });
+
+  it('reports its first content once, when the list has drawn', () => {
+    fontsArrive();
+    expect(onFirstContent).not.toHaveBeenCalled();
+    const {onLoad} = mockList.mounts[0] as {
+      onLoad?: (info: {elapsedTimeInMs: number}) => void;
+    };
+    act(() => onLoad?.({elapsedTimeInMs: 1}));
+    act(() => onLoad?.({elapsedTimeInMs: 1}));
+    expect(onFirstContent).toHaveBeenCalledTimes(1);
   });
 });

@@ -7,10 +7,13 @@
  * Skia is a recorder: the test reads what the page asks it to draw. Checks
  * the features the page shares with the DigitalKhatt pages: the selection
  * band, a mistake in red with its underline, hidden words while memorising,
- * and the mistake sheet on a tap of a marked word.
+ * and the mistake sheet on a tap of a marked word. Also when the page reports
+ * its first content (RFC-023 step 5): its lines, or its error state with a
+ * retry when the page font cannot load (offline).
  */
 import * as path from 'path';
 import React, {act} from 'react';
+import {ActivityIndicator, Text} from 'react-native';
 import TestRenderer from 'react-test-renderer';
 import {readTtfMetrics} from '@/services/mushaf/__fixtures__/ttfMetrics';
 import {hasNodeSqlite} from '@/services/mushaf/__fixtures__/bundledDkSqlite';
@@ -506,5 +509,72 @@ run('Mushaf 1440 page', () => {
     await draw();
     expect(mockLoader.ensure).toHaveBeenCalledWith(PAGE, 'v4');
     expect(mockLoader.ensure).toHaveBeenCalledWith(PAGE, 'v4-mono');
+  });
+
+  describe('its first content', () => {
+    const onFirstContent = jest.fn();
+    beforeEach(() => onFirstContent.mockClear());
+
+    const page = () => (
+      <QCFPage
+        pageNumber={PAGE}
+        textColor={TEXT}
+        dividerColor="#888"
+        frame={FRAME}
+        onFirstContent={onFirstContent}
+      />
+    );
+
+    async function mount(): Promise<TestRenderer.ReactTestRenderer> {
+      let tree!: TestRenderer.ReactTestRenderer;
+      await act(async () => {
+        tree = TestRenderer.create(page());
+      });
+      mounted = tree;
+      return tree;
+    }
+
+    const ofType = (tree: TestRenderer.ReactTestRenderer, type: unknown) =>
+      tree.root.findAll(node => node.type === type);
+
+    it('reports nothing during a download, then once when the lines are there', async () => {
+      let finish = () => undefined as void;
+      mockLoader.ensure.mockImplementationOnce(
+        (_page: number, variant: string) =>
+          new Promise(resolve => {
+            finish = () => {
+              const typeface = mockTypeface(variant);
+              mockTypefaces.set(variant, typeface);
+              resolve(typeface);
+            };
+          }),
+      );
+      const tree = await mount();
+      expect(ofType(tree, ActivityIndicator)).toHaveLength(1);
+      expect(onFirstContent).not.toHaveBeenCalled();
+
+      await act(async () => finish());
+      expect(ofType(tree, ActivityIndicator)).toHaveLength(0);
+      expect(onFirstContent).toHaveBeenCalledTimes(1);
+
+      act(() => tree.update(page()));
+      expect(onFirstContent).toHaveBeenCalledTimes(1);
+    });
+
+    it('reports its error state once when the font cannot load, also after a retry', async () => {
+      mockLoader.ensure.mockRejectedValueOnce(new Error('offline'));
+      const tree = await mount();
+      const texts = ofType(tree, Text).map(node => node.props.children);
+      expect(texts).toContain('Unable to load this page.');
+      expect(onFirstContent).toHaveBeenCalledTimes(1);
+
+      const retry = tree.root.find(
+        node =>
+          node.props.accessibilityRole === 'button' && !!node.props.onPress,
+      );
+      await act(async () => retry.props.onPress());
+      expect(ofType(tree, Text)).toHaveLength(0);
+      expect(onFirstContent).toHaveBeenCalledTimes(1);
+    });
   });
 });
