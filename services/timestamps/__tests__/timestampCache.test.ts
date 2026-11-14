@@ -8,10 +8,15 @@
 // verses, counted as cached for good, and the downloads that hit this were
 // thrown away. Saves must run one after another, a surah counts as cached
 // only once all of it is saved, and a failed save must not lose the timings.
-jest.mock('expo-sqlite', () => ({
-  ...require('@/test-utils/mockExpoSqlite').expoSqliteModule,
-  deleteDatabaseAsync: jest.fn(async () => undefined),
-}));
+jest.mock('expo-sqlite', () => {
+  const sqlite = require('@/test-utils/mockExpoSqlite').expoSqliteModule;
+  return {
+    ...sqlite,
+    // A mock, so a test can make opening the cache fail.
+    openDatabaseAsync: jest.fn(sqlite.openDatabaseAsync),
+    deleteDatabaseAsync: jest.fn(async () => undefined),
+  };
+});
 jest.mock('@/config/branding', () => ({__esModule: true, default: {}}));
 jest.mock('@/data/reciterData', () => ({
   RECITERS: [
@@ -64,7 +69,7 @@ const upTo = (count: number): number[] =>
 
 describe('the verse timings cache', () => {
   let mock: MockModule;
-  let sqlite: {deleteDatabaseAsync: jest.Mock};
+  let sqlite: {deleteDatabaseAsync: jest.Mock; openDatabaseAsync: jest.Mock};
   let database: DatabaseService;
   let fetchService: FetchService;
   let service: Service;
@@ -402,5 +407,43 @@ describe('the verse timings cache', () => {
 
     expect(ayahs(reloaded)).toEqual(upTo(7));
     expect(version).toBe(VERSION);
+  });
+
+  describe('when the cache could not be opened at launch', () => {
+    let error: jest.SpyInstance;
+
+    beforeEach(async () => {
+      // A launch whose open failed: fresh services, nothing opened yet.
+      await database.close();
+      await mock.resetDatabases();
+      loadServices();
+      error = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+      sqlite.openDatabaseAsync.mockRejectedValueOnce(
+        new Error('disk I/O error'),
+      );
+      await expect(database.initialize()).rejects.toThrow('disk I/O error');
+    });
+
+    afterEach(() => {
+      error.mockRestore();
+    });
+
+    it('opens it on the next load, and keeps what it downloads', async () => {
+      serveSample();
+
+      expect(ayahs(await service.getTimestampsForSurah(REWAYAT, 107))).toEqual(
+        upTo(7),
+      );
+      expect(await database.isSurahCached(REWAYAT, 107)).toBe(true);
+    });
+
+    it('still downloads the timings while it cannot be opened', async () => {
+      sqlite.openDatabaseAsync.mockRejectedValue(new Error('disk I/O error'));
+      serveSample();
+
+      expect(ayahs(await service.getTimestampsForSurah(REWAYAT, 107))).toEqual(
+        upTo(7),
+      );
+    });
   });
 });

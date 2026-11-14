@@ -61,23 +61,33 @@ class TimestampService {
   ): Promise<AyahTimestamp[] | null> {
     // @ai-end
     try {
-      // 2. SQLite cache
-      const dbTimestamps = await timestampDatabaseService.getTimestampsForSurah(
-        rewayatId,
-        surahNumber,
-      );
-
       // @ai-start
-      // Timings cached before TIMESTAMP_DATA_VERSION was bumped (they were
-      // regenerated) are fetched again; they are only used while the new
-      // ones cannot be fetched (offline), and not kept in memory so a later
-      // load tries again.
-      const stale =
-        dbTimestamps.length > 0 &&
-        (await timestampDatabaseService.getCachedDataVersion(
+      // 2. SQLite cache. Opened here if it could not be at launch: every
+      // lookup used to fail then, with no download either, so no surah had
+      // verse tracking until the app was restarted. If it still cannot be
+      // read, the timings are downloaded (and played without being kept).
+      let dbTimestamps: AyahTimestamp[] = [];
+      let stale = false;
+      try {
+        await timestampDatabaseService.initialize();
+        dbTimestamps = await timestampDatabaseService.getTimestampsForSurah(
           rewayatId,
           surahNumber,
-        )) !== TIMESTAMP_DATA_VERSION;
+        );
+
+        // Timings cached before TIMESTAMP_DATA_VERSION was bumped (they were
+        // regenerated) are fetched again; they are only used while the new
+        // ones cannot be fetched (offline), and not kept in memory so a later
+        // load tries again.
+        stale =
+          dbTimestamps.length > 0 &&
+          (await timestampDatabaseService.getCachedDataVersion(
+            rewayatId,
+            surahNumber,
+          )) !== TIMESTAMP_DATA_VERSION;
+      } catch (error) {
+        console.warn('[Timestamps] Cache unavailable, downloading:', error);
+      }
       // @ai-end
 
       if (dbTimestamps.length > 0 && !stale) {
