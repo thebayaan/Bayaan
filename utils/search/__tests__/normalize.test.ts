@@ -1,5 +1,8 @@
 // @ai-generated
 import {
+  ARABIC_MARKS, // @ai
+  foldArabicLetters, // @ai
+  foldHamzaCarriers, // @ai
   latinSkeleton,
   normalizeSearchText,
   toSearchKey,
@@ -37,7 +40,36 @@ describe('toSearchKey', () => {
   ])('%s -> %s', (input, expected) => {
     expect(toSearchKey(input)).toBe(expected);
   });
+
+  // @ai-start
+  it('removes open tanween and the grapheme joiner inside a word', () => {
+    // عَرَبِيࣰّا (12:2:4): U+08F0 used to split the word in two.
+    expect(toSearchKey('ع\u{064E}ر\u{064E}ب\u{0650}ي\u{08F0}\u{0651}ا')).toBe(
+      'عربيا',
+    );
+    expect(toSearchKey('ب\u{034F}ر')).toBe('بر');
+    expect(normalizeSearchText('ع\u{064E}ر\u{064E}ب\u{0650}ي\u{08F0}ا')).toBe(
+      'عربيا',
+    );
+  });
+  // @ai-end
 });
+
+// @ai-start
+describe('shared Arabic folds', () => {
+  it('folds letters and hamza carriers like the catalogue keys', () => {
+    expect(foldArabicLetters('ٱأإآ ىی ک ة')).toBe('اااا يي ك ه');
+    expect(foldHamzaCarriers('مؤمن شاطئ سماء')).toBe('مومن شاطي سما');
+  });
+
+  it('lists every mark the keys drop', () => {
+    const marks =
+      '\u{034F}\u{0610}\u{064B}\u{0652}\u{0653}\u{0654}\u{0670}\u{06D6}\u{06DD}\u{06ED}\u{08F0}\u{08FF}\u{0640}';
+    expect(`ب${marks}ر`.replace(ARABIC_MARKS, '')).toBe('بر');
+    expect('ابجد'.replace(ARABIC_MARKS, '')).toBe('ابجد');
+  });
+});
+// @ai-end
 
 describe('tokenize', () => {
   it('splits keys on spaces and returns [] for empty keys', () => {
