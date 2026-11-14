@@ -17,6 +17,7 @@ import {
   useMushafOpenTarget,
   type MushafOpenTarget,
 } from '@/hooks/useMushafOpenTarget'; // @ai
+import {useFirstContent} from '@/hooks/useFirstContent'; // @ai
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
 // @ai-start
 import {
@@ -79,13 +80,14 @@ export default function MushafScreen() {
   // The data loads after the splash, so this screen can open first. The reader
   // mounts when the data, the fonts and its page are ready.
   const open = useMushafOpenTarget(params);
-  // The restore of this launch (app/_layout.tsx) waits for the first content
-  // of the page that the reader opens on.
+  // The restore of this launch (app/_layout.tsx) waits for the first content:
+  // the page that the reader opens on, or the failed view.
   const reportRestore = useContext(ReaderRestoreContext);
   const onFirstContent = useCallback(
     () => reportRestore('content'),
     [reportRestore],
   );
+  useFirstContent(open.state === 'failed', onFirstContent);
   // @ai-end
 
   // Phones may turn to landscape while the mushaf screen is open and go back
