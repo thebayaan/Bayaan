@@ -83,6 +83,13 @@ export const QURAN_TEXT_FIXTURES: readonly QuranTextFixture[] = [
   {query: 'الأرض', includes: ['2:11']},
   // Vocative يا, ها
   {query: 'يا أيها', includes: ['2:21']},
+  // A vocative typed with its conjunction is one Uthmani word (وَيَٰقَوْمِ).
+  {query: 'ويا قوم', includes: ['11:29', '11:85', '40:32']},
+  {query: 'ويا سماء أقلعي', includes: ['11:44']},
+  // A final hamza on a seat after a long vowel (وَإِيتَآئِ, وَرَآئِ, تَبُوٓأَ).
+  {query: 'وإيتاء ذي القربى', includes: ['16:90']},
+  {query: 'أو من وراء حجاب', includes: ['42:51']},
+  {query: 'أن تبوء بإثمي', includes: ['5:29']},
   {query: 'ياأيها', includes: ['2:21']},
   {query: 'يا أيها الذين آمنوا', first: '2:104', count: 89},
   {query: 'يا قوم', includes: ['2:54']},

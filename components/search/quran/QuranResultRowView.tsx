@@ -11,6 +11,7 @@ import {Feather} from '@expo/vector-icons';
 import Color from 'color';
 import {useTranslation} from 'react-i18next';
 import {useHover} from '@/hooks/useHover';
+import {useResponsive} from '@/hooks/useResponsive';
 import {useTheme} from '@/hooks/useTheme';
 import type {QuranRoot} from '@/services/search/QuranSearchDataService';
 import {flipX, latinLetterSpacing} from '@/utils/rtl';
@@ -33,6 +34,8 @@ export interface QuranResultRowViewProps {
   inset?: boolean;
 }
 
+const WIDE_WINDOW = 900; // @ai (as in VerseHitRow)
+
 /** Wraps data (Arabic root letters, a query) in a first-strong isolate. */
 function isolate(value: string): string {
   return `\u{2068}${value}\u{2069}`;
@@ -43,14 +46,17 @@ function RootSuggestion({
   onPress,
   styles,
   theme,
+  inset,
 }: {
   root: QuranRoot;
   onPress: (root: QuranRoot) => void;
   styles: Styles;
   theme: Theme;
+  inset: boolean;
 }) {
   const {t} = useTranslation('reader');
   const {hovered, hoverProps} = useHover();
+  const {isTablet, width: windowWidth} = useResponsive(); // @ai
   const title = t('quranSearch.rootSuggestion', {root: isolate(root.root)});
   return (
     <Pressable
@@ -61,6 +67,16 @@ function RootSuggestion({
       {...hoverProps}
       style={({pressed}) => [
         styles.suggestion,
+        // @ai-start
+        // Tablets: inset from the pane edge with a rounded fill, like the
+        // ayah rows (ipad-standards §5.2).
+        isTablet && styles.suggestionTablet,
+        isTablet &&
+          inset &&
+          (windowWidth >= WIDE_WINDOW
+            ? styles.suggestionInsetWide
+            : styles.suggestionInset),
+        // @ai-end
         (pressed || hovered) && styles.pressed,
       ]}>
       <View style={styles.fill}>
@@ -165,6 +181,7 @@ export const QuranResultRowView: React.FC<QuranResultRowViewProps> = ({
           onPress={onRootPress}
           styles={styles}
           theme={theme}
+          inset={inset}
         />
       );
     case 'quran-root-header':
@@ -280,6 +297,18 @@ const createStyles = (theme: Theme) => {
       paddingHorizontal: moderateScale(16),
       paddingVertical: moderateScale(10),
     },
+    // @ai-start
+    suggestionTablet: {
+      paddingHorizontal: 12,
+      borderRadius: 12,
+    },
+    suggestionInset: {
+      marginHorizontal: 24,
+    },
+    suggestionInsetWide: {
+      marginHorizontal: 32,
+    },
+    // @ai-end
     suggestionTitle: {
       fontSize: moderateScale(15),
       fontFamily: theme.fonts.semiBold,
