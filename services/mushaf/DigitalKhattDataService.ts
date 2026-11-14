@@ -35,6 +35,7 @@ const DK_DB_ASSETS = {
   'dk_words_qaloon.db': require('../../data/mushaf/digitalkhatt/dk_words_qaloon.db'),
   'dk_words_doori.db': require('../../data/mushaf/digitalkhatt/dk_words_doori.db'),
   'dk_words_soosi.db': require('../../data/mushaf/digitalkhatt/dk_words_soosi.db'),
+  'dk_readings.db': require('../../data/mushaf/digitalkhatt/dk_readings.db'), // @ai
 } as const;
 
 type DkDbAssetFile = keyof typeof DK_DB_ASSETS;
@@ -140,6 +141,33 @@ function requireRewayahAssets(rewayah: RewayahId): RewayahAssetConfig {
 export function getRewayahFontFamily(rewayah: RewayahId): string | null {
   return REWAYAH_DATA[rewayah]?.fontFamily ?? null;
 }
+
+// @ai-start
+// ── Auxiliary DBs ───────────────────────────────────────────────────────────
+//
+// Bundled DBs that are neither a rewayah's words nor the layout. They are
+// delivered exactly like those (content-addressed copy, md5 check once per
+// session, delete and re-import once when unreadable, stale-copy sweeps,
+// resetDatabases) but are only ever read on demand through readAuxDb, never
+// into the main or side caches.
+export type DkAuxDbId = 'readings';
+
+interface AuxDbConfig {
+  dbName: string; // on-device name without the content hash
+  assetFile: DkDbAssetFile;
+  table: 'slots'; // a table every good copy has (checked before reading)
+}
+
+const AUX_DB_DATA: Readonly<Record<DkAuxDbId, AuxDbConfig>> = {
+  // How each of the 8 rewayat reads every Hafs word
+  // (scripts/rewayah/build_readings_index.py, services/mushaf/WordReadingsService.ts).
+  readings: {
+    dbName: 'dk_readings.db',
+    assetFile: 'dk_readings.db',
+    table: 'slots',
+  },
+};
+// @ai-end
 
 // @ai-start
 // The Hafs basmala (layout DB has NULL word IDs for basmallah lines). Other
@@ -333,8 +361,39 @@ export function getCurrentDbNamesByBase(): Map<string, string> {
       byBase.set(base, name);
     }
   }
+  // @ai-start
+  // The auxiliary DBs too, so stale-copy sweeps and resetDatabases cover
+  // their old copies. One without a manifest entry is left out instead of
+  // stopping the sweeps of every words copy; readAuxDb reports it.
+  for (const cfg of Object.values(AUX_DB_DATA)) {
+    const sha256 = REWAYAH_DATA_MANIFEST[cfg.assetFile];
+    if (!sha256) continue;
+    const base = dbBaseName(cfg.dbName);
+    const name = contentAddressedDbName(cfg.dbName, sha256);
+    const existing = byBase.get(base);
+    if (existing !== undefined && existing !== name) {
+      throw new Error(
+        `[DigitalKhatt] On-device DB base "${base}" maps to two assets`,
+      );
+    }
+    byBase.set(base, name);
+  }
+  // @ai-end
   return byBase;
 }
+
+// @ai-start
+/** First 8 hex chars of an auxiliary DB's sha256: its data version. */
+export function getAuxDbIdentity(id: DkAuxDbId): string {
+  return assetSha256(AUX_DB_DATA[id].assetFile).slice(0, SHA8_LENGTH);
+}
+
+/** sha256 of a bundled Digital Khatt DB asset (the generated manifest), or
+ *  null when the manifest has no such file. */
+export function getBundledAssetSha256(file: string): string | null {
+  return REWAYAH_DATA_MANIFEST[file] ?? null;
+}
+// @ai-end
 
 interface BundledDbSpec {
   name: string; // content-addressed on-device file name
@@ -342,7 +401,7 @@ interface BundledDbSpec {
   assetId: number;
   assetFile: DkDbAssetFile;
   sha8: string;
-  table: 'words' | 'pages';
+  table: 'words' | 'pages' | 'slots'; // @ai
 }
 
 function bundledDbSpec(
@@ -1370,6 +1429,36 @@ export class DigitalKhattDataService {
       return result;
     });
   }
+
+  // @ai-start
+  /**
+   * Runs `read` on the verified on-device copy of an auxiliary DB: the
+   * content-addressed copy is imported on first use, checked against the
+   * bundled asset's md5 once per session, and deleted and re-imported once
+   * when it cannot be read. The copy is opened for this call only, under the
+   * same per-file lock as the words DBs, and closed afterwards. Rejects when
+   * it stays unreadable (or `read` keeps throwing). Never touches the main
+   * cache, the side caches or the cache version.
+   */
+  readAuxDb<T>(
+    id: DkAuxDbId,
+    read: (db: SQLite.SQLiteDatabase) => Promise<T>,
+  ): Promise<T> {
+    const cfg = AUX_DB_DATA[id];
+    if (!cfg) {
+      return Promise.reject(
+        new Error(`[DigitalKhatt] Unknown auxiliary DB "${String(id)}"`),
+      );
+    }
+    let spec: BundledDbSpec;
+    try {
+      spec = bundledDbSpec(cfg.dbName, cfg.assetFile, cfg.table);
+    } catch (error) {
+      return Promise.reject(error);
+    }
+    return this.readBundledDb(spec, read);
+  }
+  // @ai-end
 
   private async readBundledDbLocked<T>(
     spec: BundledDbSpec,

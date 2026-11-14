@@ -14,6 +14,8 @@ export const REWAYAH_DATA_MANIFEST: Readonly<Record<string, string>> = {
     'bca39e611d305a6261e99c1b501a855f18861f9e58044825db0fd8d598e29728',
   'digital-khatt-v2.db':
     '071c0f43e30819b8b6427194c2f4c97ff05340da3808092c590967913b0382a6',
+  'dk_readings.db':
+    'f5ac69eb20eda8e5627705cd45bc21594a350abd3e0c2d390fe6fdd43e58ea94',
   'dk_words_bazzi.db':
     'b74167b16291c8aca09da1b24ca7c7608b27d9d7f7f79b77a92dca38ca022265',
   'dk_words_doori.db':
@@ -37,6 +39,7 @@ export const REWAYAH_DATA_MANIFEST: Readonly<Record<string, string>> = {
 export const REWAYAH_DATA_MD5: Readonly<Record<string, string>> = {
   'digital-khatt-15-lines.db': 'b52a3dd59f9cdf985b896a607c259953',
   'digital-khatt-v2.db': '9b4feda111e1daacf8e477feb9126ce2',
+  'dk_readings.db': '98f04a0e114bb4a68bc922a03c62636a',
   'dk_words_bazzi.db': '545bacc4c9e4aff83c5c2e7b36ea3f32',
   'dk_words_doori.db': '91e04c3d80c84158c91cd36ff8a0148a',
   'dk_words_qaloon.db': '6297bacbf75ceee82bd07487df44ac72',
