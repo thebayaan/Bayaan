@@ -22,6 +22,7 @@ import {
 import Color from 'color';
 import type {DKWordInfo} from '@/services/mushaf/DigitalKhattDataService';
 import {wbwDataService, type WBWWord} from '@/services/wbw/WBWDataService';
+import {alignDkWithWbw} from '@/services/wbw/wordAlignment'; // @ai
 import {useRewayahWords} from '@/hooks/useRewayahWords';
 import {useTheme} from '@/hooks/useTheme';
 import {mediumHaptics} from '@/utils/haptics';
@@ -139,15 +140,6 @@ interface ComputedLayout {
 }
 
 // --- Helpers ---
-
-/** Strip Arabic diacritics for fuzzy text comparison between DK and WBW words */
-const ARABIC_DIACRITICS =
-  // eslint-disable-next-line no-misleading-character-class
-  /[\u064B-\u065F\u0670\u06D6-\u06ED\u0617-\u061A\u08D3-\u08FF\u0640\u06E5\u06E6\u0653-\u0655\u065F\uFE70-\uFE7F\u0610-\u0615\u0656-\u065E\u0660-\u066F]/g;
-
-function stripDiacritics(text: string): string {
-  return text.replace(ARABIC_DIACRITICS, '').trim();
-}
 
 function buildParagraph(
   text: string,
@@ -401,10 +393,10 @@ export const WBWVerseView = memo<WBWVerseViewProps>(
     const sliceFirst = wordRange?.first; // @ai
     const sliceLast = wordRange?.last; // @ai
 
-    // Match DK words with WBW words using text-aware sequential alignment.
-    // DK sometimes splits compound words (e.g. "بَعْدَ مَا") into two tokens
-    // while Quran.com keeps them as one, so position-based matching would
-    // misalign all subsequent words. This handles both 1:1 and N:1 cases.
+    // @ai-start
+    // Pair the DK slots with the WBW words (services/wbw/wordAlignment.ts):
+    // 1:1 in order, except where DK writes one WBW word as two slots
+    // ("بَعْدَ مَا" in 2:181, 8:6 and 13:37). The end marker is never paired.
     const {matchedWords, verseEndMarker} = useMemo(() => {
       if (!wbwWords || wbwWords.length === 0)
         return {
@@ -412,44 +404,12 @@ export const WBWVerseView = memo<WBWVerseViewProps>(
           verseEndMarker: null as DKWordInfo | null,
         };
 
-      const result: MatchedWord[] = [];
-      let endMarker: DKWordInfo | null = null;
-      let wbwIdx = 0;
-      let accumulated = '';
+      const {pairs, endMarker} = alignDkWithWbw(dkWords, wbwWords);
+      const result: MatchedWord[] = pairs.map(pair => ({
+        dkWord: pair.dk,
+        wbwWord: pair.wbw,
+      }));
 
-      for (let dkIdx = 0; dkIdx < dkWords.length; dkIdx++) {
-        const dkWord = dkWords[dkIdx];
-
-        if (wbwIdx >= wbwWords.length) {
-          endMarker = dkWord;
-          continue;
-        }
-
-        const wbwWord = wbwWords[wbwIdx];
-        const dkNorm = stripDiacritics(dkWord.text);
-        const wbwNorm = stripDiacritics(wbwWord.textUthmani);
-
-        // Build accumulated DK text for current WBW word
-        accumulated = accumulated ? accumulated + ' ' + dkNorm : dkNorm;
-
-        if (accumulated === wbwNorm || !wbwNorm) {
-          // Exact match (1:1 or end of N:1 merge) — pair and advance WBW
-          result.push({dkWord, wbwWord});
-          wbwIdx++;
-          accumulated = '';
-        } else if (wbwNorm.startsWith(accumulated + ' ')) {
-          // DK word is a prefix of the WBW word — pair but don't advance WBW
-          // (the next DK word will continue accumulating into the same WBW word)
-          result.push({dkWord, wbwWord});
-        } else {
-          // No text match — fallback to direct pairing and advance
-          result.push({dkWord, wbwWord});
-          wbwIdx++;
-          accumulated = '';
-        }
-      }
-
-      // @ai-start
       // A verse row's slice: the words (and the end marker) of its own slots.
       if (sliceFirst !== undefined && sliceLast !== undefined) {
         const inRange = (w: DKWordInfo) =>
