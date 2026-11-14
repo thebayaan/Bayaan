@@ -5,15 +5,16 @@
  */
 import 'react-native-gesture-handler/jestSetup';
 import React, {act} from 'react';
-import {View} from 'react-native';
+import {Text, View} from 'react-native';
 import TestRenderer, {type ReactTestRenderer} from 'react-test-renderer';
-import {router, type NavigationState} from 'expo-router';
+import {router, useRoute, type NavigationState} from 'expo-router';
 import {Tabs} from 'expo-router/js-tabs';
 import Stack from 'expo-router/build/layouts/JSStack';
 import {ExpoRoot} from 'expo-router/build/ExpoRoot';
 import {navigationRef} from 'expo-router/build/global-state/navigationRef';
 import {getMockContext} from 'expo-router/build/testing-library/mock-config';
 import {TabletSidebar} from '../TabletSidebar';
+import {useIsStackRoot} from '../useIsStackRoot';
 import {useTabletSidebarStore} from '@/store/tabletSidebarStore';
 import {
   pressKeyForTests,
@@ -62,6 +63,16 @@ jest.mock('@/config/branding', () => ({
 }));
 
 const Blank = () => null;
+
+/**
+ * A Collection screen. Says whether it is the first screen of its stack,
+ * which is when the real screens leave their back arrow out.
+ */
+const Section = () => {
+  const isStackRoot = useIsStackRoot();
+  const {name} = useRoute();
+  return <Text testID={name}>{isStackRoot ? 'first' : 'pushed'}</Text>;
+};
 
 const StackLayout = () => <Stack screenOptions={{headerShown: false}} />;
 
@@ -117,7 +128,10 @@ const APP = {
   '(tabs)/(b.search)/index': Blank,
   '(tabs)/(c.collection)/_layout': TabStackLayout,
   ...Object.fromEntries(
-    COLLECTION_SCREENS.map(name => [`(tabs)/(c.collection)/${name}`, Blank]),
+    COLLECTION_SCREENS.map(name => [
+      `(tabs)/(c.collection)/${name}`,
+      name === 'index' ? Blank : Section,
+    ]),
   ),
   '(tabs)/(d.settings)/_layout': TabStackLayout,
   '(tabs)/(d.settings)/index': Blank,
@@ -409,6 +423,59 @@ describe('icon rail', () => {
 
     press(r, 'Collection');
     expect(stackOf('(c.collection)')).toEqual(['index']);
+  });
+});
+
+describe('back arrow on a Collection section', () => {
+  /** What the screen of this route says about its place in the stack. */
+  function place(r: ReactTestRenderer, name: string): string {
+    const [screen] = r.root.findAllByProps({testID: name});
+    if (!screen) throw new Error(`no screen ${name}`);
+    return screen.props.children;
+  }
+
+  it('has nothing to go back to when the sidebar opened the section', () => {
+    const r = renderApp();
+    press(r, 'Loved');
+    expect(place(r, 'collection/loved')).toBe('first');
+
+    // Why the arrow must go: back is not the stack's to handle here, and
+    // the tab navigator answers it by showing Home.
+    act(() => router.back());
+    act(() => jest.runOnlyPendingTimers());
+    expect(onShow()).toEqual(['(a.home)', 'index']);
+  });
+
+  it('keeps the arrow on a screen opened from a section', () => {
+    const r = renderApp();
+    press(r, 'Playlists');
+    push('/playlist/1');
+    expect(place(r, 'playlist/[id]')).toBe('pushed');
+    expect(place(r, 'collection/playlists')).toBe('first');
+  });
+
+  it('keeps the arrow on a section opened from the Collection home', () => {
+    mockWidth = 744;
+    const r = renderApp();
+    press(r, 'Collection');
+    push('/collection/loved');
+    expect(place(r, 'collection/loved')).toBe('pushed');
+
+    act(() => router.back());
+    act(() => jest.runOnlyPendingTimers());
+    expect(onShow()).toEqual(['(c.collection)', 'index']);
+  });
+
+  it('gets the arrow once the Collection home is put under the section', () => {
+    mockWidth = 1133;
+    const r = renderApp();
+    press(r, 'Downloads');
+    expect(place(r, 'collection/downloads')).toBe('first');
+    // The iPad turns to portrait, and Collection is pressed in the rail.
+    mockWidth = 744;
+    press(r, 'Home');
+    press(r, 'Collection');
+    expect(place(r, 'collection/downloads')).toBe('pushed');
   });
 });
 
