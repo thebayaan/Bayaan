@@ -12,13 +12,13 @@ import {
   Group,
   Skia,
   BlendMode,
-  useFonts,
 } from '@shopify/react-native-skia';
 import {useTheme} from '@/hooks/useTheme';
 import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {getQCFSurahNameChar} from '@/constants/surahNameGlyphs';
 import {useResponsive} from '@/hooks/useResponsive';
+import {useMushafFontMgr} from '@/hooks/useMushafFontMgr'; // @ai
 import {usePlayerA11y} from '@/hooks/usePlayerA11y'; // @ai
 
 const fallbackSurahNames: Record<number, string> = {};
@@ -54,9 +54,9 @@ export const Header: React.FC<HeaderProps> = ({onOptionsPress}) => {
     ? parseInt(currentTrack.surahId, 10)
     : undefined;
 
-  const fontMgr = useFonts({
-    SurahNameQCF: [require('@/data/mushaf/surah-name-qcf.ttf')],
-  });
+  // @ai The preloaded provider has SurahNameQCF. `useFonts` read the file again
+  // at each mount. Until the fonts load, the header shows the name in text.
+  const fontMgr = useMushafFontMgr();
 
   const qcfChar = useMemo(
     () => (surahNumber ? getQCFSurahNameChar(surahNumber) : ''),
