@@ -6,6 +6,8 @@ import React from 'react';
 import TestRenderer, {act} from 'react-test-renderer';
 import type {Reciter} from '@/data/reciterData';
 import {SURAHS, type Surah} from '@/data/surahData';
+import type {UploadedRecitation} from '@/types/uploads';
+import type {NativeMenuEntry} from '@/components/native/menuTypes';
 
 jest.mock('@react-native-async-storage/async-storage', () => ({
   getItem: jest.fn(() => Promise.resolve(null)),
@@ -18,22 +20,38 @@ jest.mock('@/services/player/store/playerStore', () => ({
 jest.mock('react-native-actions-sheet', () => ({
   SheetManager: {show: jest.fn(), hide: jest.fn()},
 }));
-jest.mock('expo-router', () => ({useRouter: () => ({push: jest.fn()})}));
+const mockPush = jest.fn();
+jest.mock('expo-router', () => ({useRouter: () => ({push: mockPush})}));
 jest.mock('@/hooks/useFavoriteReciters', () => ({
   useFavoriteReciters: () => ({
     isFavoriteReciter: () => false,
     toggleFavorite: jest.fn(),
   }),
 }));
+const mockToggleLoved = jest.fn();
 jest.mock('@/hooks/useLoved', () => ({
-  useLoved: () => ({isLovedWithRewayat: () => false, toggleLoved: jest.fn()}),
+  useLoved: () => ({
+    isLovedWithRewayat: () => false,
+    toggleLoved: mockToggleLoved,
+  }),
 }));
+const mockAddToQueue = jest.fn();
 jest.mock('@/hooks/usePlayerActions', () => ({
-  usePlayerActions: () => ({addToQueue: jest.fn()}),
+  usePlayerActions: () => ({addToQueue: mockAddToQueue}),
 }));
+const mockGetSurahById = jest.fn();
 jest.mock('@/services/dataService', () => ({
   getReciterById: jest.fn(),
-  getSurahById: () => undefined,
+  getSurahById: (id: number) => mockGetSurahById(id),
+}));
+let mockUploads: UploadedRecitation[] = [];
+jest.mock('@/store/uploadsStore', () => ({
+  useUploadsStore: (
+    select: (state: {recitations: UploadedRecitation[]}) => unknown,
+  ) => select({recitations: mockUploads}),
+}));
+jest.mock('@/utils/track', () => ({
+  createUserUploadTrack: (r: {id: string}) => ({id: `upload:${r.id}`}),
 }));
 jest.mock('@/utils/audioUtils', () => ({generateSmartAudioUrl: jest.fn()}));
 jest.mock('@/utils/artworkUtils', () => ({getReciterArtwork: jest.fn()}));
@@ -42,15 +60,21 @@ jest.mock('@/utils/shareUtils', () => ({
   reciterShareUrl: jest.fn(),
   shareUrl: jest.fn(),
 }));
+let mockMenuEntries: NativeMenuEntry[] = [];
 jest.mock('../OptionsMenu', () => ({
-  OptionsMenuView: () => null,
-  useNativeOptionsMenu: () => false,
+  OptionsMenuView: ({model}: {model: {entries: NativeMenuEntry[]}}) => {
+    mockMenuEntries = model.entries;
+    return null;
+  },
+  useNativeOptionsMenu: () => true,
 }));
 
 import {
+  HomeCardOptionsMenu,
   useHomeCardOptions,
   type HomeCardOptionsPayload,
 } from '../homeCardOptions';
+import {SheetManager} from 'react-native-actions-sheet';
 import {findRecentIndex} from '@/components/cards/recentCardEntry';
 import {
   useRecentlyPlayedStore,
@@ -115,6 +139,8 @@ const cards = () =>
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockGetSurahById.mockReturnValue(undefined);
+  mockUploads = [];
   setRecents([]);
 });
 
@@ -201,5 +227,135 @@ describe('findRecentIndex', () => {
     setRecents([entry('A', 2), warsh]);
 
     expect(indexOf('A', 2, 'A-warsh')).toBe(1);
+  });
+});
+
+describe("an upload's card", () => {
+  const upload = (
+    id: string,
+    tags: Partial<UploadedRecitation> = {},
+  ): UploadedRecitation => ({
+    id,
+    filePath: `${id}.mp3`,
+    originalFilename: `${id}.mp3`,
+    duration: null,
+    dateAdded: 0,
+    type: null,
+    surahNumber: null,
+    startVerse: null,
+    endVerse: null,
+    title: null,
+    category: null,
+    reciterId: null,
+    customReciterId: null,
+    isPersonal: false,
+    rewayah: null,
+    style: null,
+    recordingType: 'studio',
+    ...tags,
+  });
+  /** What RecitersView hands the card for an untagged upload. */
+  const untaggedCard: HomeCardOptionsPayload = {
+    reciterId: '__uploads__',
+    reciterName: 'My Recitations',
+    surahId: 0,
+    userRecitationId: 'u1',
+    variant: 'recent',
+  };
+  const menuIds = (payload: HomeCardOptionsPayload) => {
+    act(() => {
+      TestRenderer.create(<HomeCardOptionsMenu payload={payload} />);
+    });
+    return mockMenuEntries.map(e => e.id);
+  };
+
+  it('queues the upload itself and closes, even untagged', async () => {
+    mockUploads = [upload('u1')];
+    open(untaggedCard);
+
+    await act(() => options.handleAddToQueue());
+
+    expect(mockAddToQueue).toHaveBeenCalledWith([{id: 'upload:u1'}]);
+    expect(close).toHaveBeenCalledTimes(1);
+  });
+
+  it('offers only what applies to an untagged upload', () => {
+    mockUploads = [upload('u1')];
+
+    expect(menuIds(untaggedCard)).toEqual(['continue', 'queue', 'destructive']);
+  });
+
+  it('acts on the reciter and surah the upload is tagged with now', () => {
+    jest.useFakeTimers();
+    mockUploads = [
+      upload('u1', {type: 'surah', reciterId: 'A', surahNumber: 2}),
+    ];
+    mockGetSurahById.mockImplementation((id: number) => surah(id));
+    // Played while untagged, tagged since.
+    open(untaggedCard);
+
+    act(() => options.handleToggleLoved());
+    expect(mockToggleLoved).toHaveBeenCalledWith('A', 2, '', 'u1');
+
+    act(() => options.handleAddToPlaylist());
+    act(() => options.handleGoToReciter());
+    act(() => jest.advanceTimersByTime(300));
+    expect(SheetManager.show).toHaveBeenCalledWith('select-playlist', {
+      payload: {
+        surah: surah(2),
+        reciterId: 'A',
+        rewayatId: undefined,
+        userRecitationId: 'u1',
+      },
+    });
+    expect(mockPush).toHaveBeenCalledWith({
+      pathname: '/(tabs)/(a.home)/reciter/[id]',
+      params: {id: 'A'},
+    });
+    jest.useRealTimers();
+
+    expect(menuIds(untaggedCard)).toEqual([
+      'continue',
+      'queue',
+      'reciter',
+      'favorite',
+      'love',
+      'collection',
+      'destructive',
+    ]);
+  });
+
+  it('hides Love and Add to collection with only a reciter tag', () => {
+    mockUploads = [upload('u1', {reciterId: 'A'})];
+
+    expect(menuIds(untaggedCard)).toEqual([
+      'continue',
+      'queue',
+      'reciter',
+      'favorite',
+      'destructive',
+    ]);
+  });
+
+  it('queues nothing once the upload has been deleted', async () => {
+    open(untaggedCard);
+
+    await act(() => options.handleAddToQueue());
+
+    expect(mockAddToQueue).not.toHaveBeenCalled();
+    expect(menuIds(untaggedCard)).toEqual(['continue', 'destructive']);
+  });
+
+  it("keeps every row on a catalogue recording's card", () => {
+    expect(menuIds(cardFor(entry('A', 2)))).toEqual([
+      'continue',
+      'queue',
+      'reciter',
+      'favorite',
+      'love',
+      'collection',
+      'share',
+      'destructive',
+    ]);
   });
 });
