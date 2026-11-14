@@ -10,7 +10,7 @@
  * store's `rewayah` is what every label shows, so after a failure it is
  * re-aligned with the text the service actually serves.
  */
-import i18n from 'i18next';
+import i18n from '@/i18n'; // @ai the app's instance, set up on import
 import {
   digitalKhattDataService,
   isRewayahSwitchSuperseded,
