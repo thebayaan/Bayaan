@@ -6,7 +6,12 @@
  */
 import path from 'path';
 import Database from 'better-sqlite3';
-import {decodeEntries, decodeMorph} from '../irabFormat';
+import {
+  decodeEntries,
+  decodeMorph,
+  MORPH_LEMMA_LABEL, // @ai
+  MORPH_ROOT_LABEL, // @ai
+} from '../irabFormat';
 
 const DB = path.join(__dirname, '../../../assets/data/irab-v1.db');
 const WBW = path.join(__dirname, '../../../data/wbw/wbw-en.db');
@@ -186,4 +191,36 @@ describe('morphology', () => {
     expect(word('3:52:12').morph['العدد والجنس']).toBe('جمع مذكر سالم');
     expect(word('10:13:3').morph['العدد والجنس']).toBe('جمع تكسير');
   });
+
+  // @ai-start
+  it('writes each root as 3 or 4 spaced letters, with one root and one lemma at most', () => {
+    const rows = db
+      .prepare('SELECT verse_key, position, morph FROM word_irab')
+      .all() as {
+      verse_key: string;
+      position: number;
+      morph: string;
+    }[];
+    const bad: string[] = [];
+    let roots = 0;
+    for (const r of rows) {
+      const facts = decodeMorph(r.morph, texts);
+      const root = facts.filter(f => f.label === MORPH_ROOT_LABEL);
+      const lemma = facts.filter(f => f.label === MORPH_LEMMA_LABEL);
+      roots += root.length;
+      if (root.length > 1 || lemma.length > 1) {
+        bad.push(`${r.verse_key}:${r.position} repeats a root or lemma`);
+      }
+      for (const f of root) {
+        if (!/^[ء-ي]( [ء-ي]){2,3}$/.test(f.value)) {
+          bad.push(`${r.verse_key}:${r.position} ${f.value}`);
+        }
+      }
+    }
+    expect(bad).toEqual([]);
+    expect(roots).toBeGreaterThan(0);
+    expect(word('1:4:1').morph[MORPH_ROOT_LABEL]).toBe('م ل ك');
+    expect(word('1:4:1').morph[MORPH_LEMMA_LABEL]).toBe('مَٰلِك');
+  });
+  // @ai-end
 });
