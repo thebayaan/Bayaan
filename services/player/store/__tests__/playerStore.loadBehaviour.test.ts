@@ -186,7 +186,13 @@ describe('addToQueue() on a player with no current track', () => {
     expect(state.queue.currentIndex).toBe(0);
     expect(state.queue.tracks.map(t => t.id)).toEqual(['a', 'b']);
     expect(state.playback.state).toBe('paused');
-    expect(audio.loadTrack).not.toHaveBeenCalled();
+    // @ai-start
+    // It is handed to the player too, without playing: the player otherwise
+    // still holds what it played before its queue was emptied (see
+    // playerStore.intent.test.ts). This used to pin that nothing was loaded.
+    expect(audio.loadTrack).toHaveBeenCalledWith(makeTrack('a').url);
+    expect(audio.play).not.toHaveBeenCalled();
+    // @ai-end
   });
 
   it('leaves the current track alone when there is one', async () => {

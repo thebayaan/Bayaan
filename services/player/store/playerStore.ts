@@ -97,6 +97,12 @@ const END_OF_TRACK_SECONDS = 0.5;
 // when the load finishes.
 let pauseEpoch = 0;
 
+// The value pauseEpoch had at the last play(). A pause up to it has been
+// answered by a later play and holds no load back any more. Without this,
+// pause then play while a track was loading ended in silence: the load saw
+// that a pause had landed and paused again, after the play.
+let answeredPauseEpoch = 0;
+
 /**
  * What loadTrackAtIndex() did: 'superseded' (a newer action owns the state,
  * write nothing), 'played' (loaded and playing), or 'loaded' (loaded and
@@ -296,10 +302,10 @@ async function loadTrackAtIndex(
       return 'superseded';
     }
     // @ai-start
-    // A pause landed while this was loading: leave it loaded and paused.
-    // Pause again, because on iOS the player resumes by itself when a source
+    // A pause landed while this was loading, and no play came after it:
+    // leave it loaded and paused. Pause again, because on iOS the player resumes by itself when a source
     // that replaced a playing one becomes ready, whatever was asked since.
-    if (pausesAtStart !== pauseEpoch) {
+    if (pausesAtStart !== pauseEpoch && pauseEpoch !== answeredPauseEpoch) {
       await expoAudioService.pause();
       return 'loaded';
     }
@@ -374,6 +380,11 @@ export const usePlayerStore = create<PlayerStoreState>()(
       // Playback Actions
       play: async () => {
         try {
+          // @ai-start
+          // This play answers every pause so far (see answeredPauseEpoch).
+          const pausesAtPlay = pauseEpoch;
+          answeredPauseEpoch = pauseEpoch;
+          // @ai-end
           set(state => ({
             loading: {...state.loading, trackLoading: true},
           }));
@@ -384,6 +395,13 @@ export const usePlayerStore = create<PlayerStoreState>()(
           // Let the launch restore finish its load and seek, so this play
           // neither starts at 0:00 under it nor reloads what it is loading.
           await pendingRestoreLoad();
+          // A pause that arrived during that wait is the later request.
+          if (pauseEpoch !== pausesAtPlay) {
+            set(state => ({
+              loading: {...state.loading, trackLoading: false},
+            }));
+            return;
+          }
 
           // The native play() below only resumes a source that is loaded and
           // not at its end. On anything else it is silent while the controls
@@ -401,9 +419,14 @@ export const usePlayerStore = create<PlayerStoreState>()(
             const duration = ready
               ? expoAudioService.getDuration()
               : playback.duration;
+            // 'ended' is a queue that finished: its last track sits rewound
+            // at the start. Once the listener has moved in it (the slider,
+            // +15 s, the lock screen) that is a place to resume from. Counted
+            // as finished whatever the position, a scrub to 4:10 followed by
+            // play started the queue over.
             const finished =
-              playback.state === 'ended' ||
-              (duration > 0 && position >= duration - END_OF_TRACK_SECONDS);
+              (duration > 0 && position >= duration - END_OF_TRACK_SECONDS) ||
+              (playback.state === 'ended' && position <= END_OF_TRACK_SECONDS);
 
             // This track's load failed a moment ago and the user has been
             // told. This play() is the tail of the same tap, not a retry.
@@ -684,9 +707,20 @@ export const usePlayerStore = create<PlayerStoreState>()(
           }
 
           await expoAudioService.seekTo(position);
+          // @ai-start
+          // Seeking in a queue that had finished makes it a paused track
+          // again: the controls stop showing it as ended.
           set(state => ({
-            playback: {...state.playback, position},
+            playback: {
+              ...state.playback,
+              position,
+              state:
+                state.playback.state === 'ended'
+                  ? ('paused' as StorePlaybackState)
+                  : state.playback.state,
+            },
           }));
+          // @ai-end
         } catch (error) {
           console.error('[PlayerStore] Seek failed:', error);
           if (error instanceof Error) {
@@ -780,6 +814,16 @@ export const usePlayerStore = create<PlayerStoreState>()(
           // @ai The load above also started playback, so say so. 'ready'
           // here showed a play button over audible audio until the next
           // native status update.
+          // @ai-start
+          // A start at the very end was moved to the beginning by the load
+          // (see loadTrackAtIndex): show where it really is.
+          const loadedDuration = expoAudioService.getDuration() || 0;
+          const shownPosition =
+            loadedDuration > 0 &&
+            startPosition >= loadedDuration - END_OF_TRACK_SECONDS
+              ? 0
+              : startPosition;
+          // @ai-end
           set(state => ({
             loading: {
               ...state.loading,
@@ -790,8 +834,8 @@ export const usePlayerStore = create<PlayerStoreState>()(
             playback: {
               ...state.playback,
               state: outcome === null ? 'ready' : stateAfterLoad(outcome), // @ai
-              position: startPosition,
-              duration: expoAudioService.getDuration() || 0,
+              position: shownPosition, // @ai
+              duration: loadedDuration, // @ai
               buffering: false,
             },
           }));
@@ -820,10 +864,12 @@ export const usePlayerStore = create<PlayerStoreState>()(
           // With nothing in the player (first use, or after its queue was
           // cleared) there is no current track, so no player was shown and
           // the added tracks could not be reached. Make the first one
-          // current and leave it paused: play() loads it.
+          // current and leave it paused.
+          let madeCurrent = false;
           set(state => {
             const hadCurrent =
               state.queue.tracks[state.queue.currentIndex] !== undefined;
+            madeCurrent = !hadCurrent && tracks.length > 0;
             return {
               queue: {
                 ...state.queue,
@@ -846,6 +892,18 @@ export const usePlayerStore = create<PlayerStoreState>()(
                     },
             };
           });
+          // Hand it to the player as well, paused. A player whose queue was
+          // emptied still holds the last thing it played, and play on the
+          // lock screen or headphones goes straight to the native player:
+          // it started the removed track under the new one's title. Not
+          // awaited (adding to the queue does not wait for the network), and
+          // a failure is left for play() to retry and report.
+          if (madeCurrent) {
+            const {tracks: queued, currentIndex} = get().queue;
+            loadTrackAtIndex(queued, currentIndex, 0, false).catch(() => {
+              lastLoadFailure = null;
+            });
+          }
           // @ai-end
 
           if (__DEV__)
@@ -875,7 +933,10 @@ export const usePlayerStore = create<PlayerStoreState>()(
           const {tracks, index, outcome} = computeQueueRemoval(queue, indices);
           // @ai Read the autoplay intent before the reload. 'loading' means
           // that a load which plays is in flight: only those loads write it.
-          const autoPlay = ['playing', 'loading'].includes(playback.state);
+          // 'buffering' is a player that wants to play and waits for data.
+          const autoPlay = ['playing', 'loading', 'buffering'].includes(
+            playback.state,
+          );
 
           // @ai The state that this op settles; null leaves it to its owner.
           let settled: StorePlaybackState | null = null;
@@ -1217,10 +1278,10 @@ export const playerStore = usePlayerStore;
  * while the app is in the background: with the screen off the ticker alone
  * never fired, and the audio played on until the app was opened again.
  */
-export function checkSleepTimer(now: number = Date.now()): void {
+export function checkSleepTimer(now: number = Date.now()): boolean {
   const {settings, playback} = usePlayerStore.getState();
   const end = settings.sleepTimerEnd;
-  if (!end || now < end) return;
+  if (!end || now < end) return false;
 
   if (__DEV__) console.log('[PlayerStore] Sleep timer expired');
   // Clear it first, so a second caller in the same moment finds no timer.
@@ -1246,6 +1307,7 @@ export function checkSleepTimer(now: number = Date.now()): void {
   }
   // The timer is set in the main player, but it means "stop the recitation".
   audioCoordinator.pauseMushaf?.();
+  return true;
 }
 
 /** Starts the 1 s ticker that checks the sleep timer; stops by itself. */
