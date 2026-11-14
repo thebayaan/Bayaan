@@ -143,3 +143,34 @@ describe('back and forward 15 seconds', () => {
     expect(mockSeekBy).not.toHaveBeenCalled();
   });
 });
+
+describe('next', () => {
+  // `isLastTrack` is what greys Next out (PlayerParts.test.tsx).
+  it('has nowhere to go from the last track', async () => {
+    const transport = mountTransport();
+    expect(transport().isLastTrack).toBe(false);
+
+    setPlayer({currentIndex: 2});
+    expect(transport().isLastTrack).toBe(true);
+    await act(async () => {
+      await transport().next();
+    });
+    expect(mockActions.skipToNext).not.toHaveBeenCalled();
+
+    // Repeat One does not wrap either: the store's next does nothing there.
+    setPlayer({currentIndex: 2, repeatMode: 'track'});
+    expect(transport().isLastTrack).toBe(true);
+  });
+
+  // The end of a track and Previous both wrap with Repeat All; Next was
+  // greyed out all the same.
+  it('wraps to the first track with Repeat All', async () => {
+    setPlayer({currentIndex: 2, repeatMode: 'queue'});
+    const transport = mountTransport();
+    expect(transport().isLastTrack).toBe(false);
+    await act(async () => {
+      await transport().next();
+    });
+    expect(mockActions.skipToNext).toHaveBeenCalledTimes(1);
+  });
+});

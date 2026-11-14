@@ -31,6 +31,13 @@ export const Controls = () => {
   const currentIndex = usePlayerStore(s => s.queue.currentIndex);
   const tracksLength = usePlayerStore(s => s.queue.tracks.length);
   const trackLoading = usePlayerStore(s => s.loading.trackLoading);
+  const repeatMode = usePlayerStore(s => s.settings.repeatMode);
+  // Next has nowhere to go from the last track, unless Repeat All takes it
+  // round to the first one, as the end of a track and Previous already do.
+  // It used to be greyed out on the last track with Repeat All on.
+  const nextDisabled =
+    trackLoading ||
+    (currentIndex === tracksLength - 1 && repeatMode !== 'queue');
 
   // Optimistic state for play/pause. A stalled stream ('buffering') still
   // counts as playing, so the button shows Pause and the first tap pauses.
@@ -70,9 +77,9 @@ export const Controls = () => {
   }, [trackLoading, skipToPrevious]);
 
   const handleNext = useCallback(async () => {
-    if (trackLoading || currentIndex === tracksLength - 1) return;
+    if (nextDisabled) return;
     await skipToNext();
-  }, [trackLoading, currentIndex, tracksLength, skipToNext]);
+  }, [nextDisabled, skipToNext]);
 
   // seekBy() jumps from where the audio really is; the store's position can
   // be two seconds old.
@@ -85,8 +92,6 @@ export const Controls = () => {
     if (trackLoading) return;
     await seekBy(SEEK_INTERVAL);
   }, [trackLoading]);
-
-  const isLastTrack = currentIndex === tracksLength - 1;
 
   return (
     <View style={[styles.container, forceLTR]}>
@@ -143,11 +148,13 @@ export const Controls = () => {
         </View>
         <Pressable
           onPress={handleNext}
-          {...a11y.next(isLastTrack || trackLoading)}
-          style={[styles.sideButton, isLastTrack && styles.disabledButton]}
-          disabled={isLastTrack || trackLoading}>
+          {...a11y.next(nextDisabled)}
+          style={[styles.sideButton, nextDisabled && styles.disabledButton]}
+          disabled={nextDisabled}>
           <NextIcon
-            color={isLastTrack ? theme.colors.textSecondary : theme.colors.text}
+            color={
+              nextDisabled ? theme.colors.textSecondary : theme.colors.text
+            }
             size={moderateScale(16)}
           />
         </Pressable>

@@ -339,7 +339,10 @@ export function TransportRow({
           (trackLoading || isLastTrack) && styles.disabled,
           pressed && styles.pressed,
         ]}>
-        <NextIcon color={isLastTrack ? muted : text} size={22} />
+        <NextIcon
+          color={trackLoading || isLastTrack ? muted : text}
+          size={22}
+        />
       </Pressable>
       <Pressable
         onPress={transport.seekForward}

@@ -25,7 +25,11 @@ export function usePlayerTransport() {
   const progress = useProgress();
 
   const currentTrack = queue?.tracks?.[queue?.currentIndex ?? -1];
-  const isLastTrack = queue.currentIndex === queue.tracks.length - 1;
+  // Next has nowhere to go from the last track, unless Repeat All takes it
+  // round to the first one, as the end of a track and Previous already do.
+  // It used to be greyed out on the last track with Repeat All on.
+  const isLastTrack =
+    queue.currentIndex === queue.tracks.length - 1 && repeatMode !== 'queue';
 
   // A stalled stream ('buffering') still counts as playing, so the button
   // shows Pause and the first tap pauses.

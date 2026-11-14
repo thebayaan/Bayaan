@@ -2,6 +2,7 @@
 // The phone player's transport row: back 15, previous, play / pause, next,
 // forward 15.
 import React from 'react';
+import {StyleSheet} from 'react-native';
 import TestRenderer, {act} from 'react-test-renderer';
 
 jest.mock('@/hooks/useTheme', () => ({
@@ -149,5 +150,51 @@ describe('back and forward 15 seconds', () => {
     await press(r, 'Forward 15 seconds');
     await press(r, 'Back 15 seconds');
     expect(mockSeekBy).not.toHaveBeenCalled();
+  });
+});
+
+describe('next', () => {
+  const next = (r: Renderer) => button(r, 'Next');
+  const dimmed = (r: Renderer) =>
+    StyleSheet.flatten(next(r).props.style).opacity === 0.5;
+
+  it('goes to the next track', async () => {
+    const r = mount();
+    expect(next(r).props.disabled).toBe(false);
+    expect(dimmed(r)).toBe(false);
+    await press(r, 'Next');
+    expect(mockActions.skipToNext).toHaveBeenCalledTimes(1);
+  });
+
+  it('is greyed out on the last track', async () => {
+    setPlayer({currentIndex: 2});
+    const r = mount();
+    expect(next(r).props.disabled).toBe(true);
+    expect(dimmed(r)).toBe(true);
+    await press(r, 'Next');
+    expect(mockActions.skipToNext).not.toHaveBeenCalled();
+
+    // Repeat One does not wrap either: the store's next does nothing there.
+    setPlayer({currentIndex: 2, repeatMode: 'track'});
+    expect(next(r).props.disabled).toBe(true);
+  });
+
+  // The end of a track and Previous both wrap with Repeat All; Next was
+  // greyed out all the same.
+  it('wraps to the first track with Repeat All', async () => {
+    setPlayer({currentIndex: 2, repeatMode: 'queue'});
+    const r = mount();
+    expect(next(r).props.disabled).toBe(false);
+    expect(dimmed(r)).toBe(false);
+    await press(r, 'Next');
+    expect(mockActions.skipToNext).toHaveBeenCalledTimes(1);
+  });
+
+  it('is greyed out while a track loads, like Previous', () => {
+    setPlayer({state: 'loading', trackLoading: true});
+    const r = mount();
+    expect(next(r).props.disabled).toBe(true);
+    expect(dimmed(r)).toBe(true);
+    expect(next(r).props.accessibilityState).toEqual({disabled: true});
   });
 });

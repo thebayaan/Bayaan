@@ -175,6 +175,18 @@ describe('TransportRow', () => {
       ['Forward 15 seconds', false],
     ]);
   });
+
+  // @ai-start
+  // `isLastTrack` is false on the last track when Repeat All wraps to the
+  // first one (usePlayerTransport.test.tsx): Next then stays available.
+  it('keeps next when there is a track to go to', () => {
+    const r = mount(<TransportRow transport={transport()} />);
+    const next = pressables(r).find(
+      p => p.props.accessibilityLabel === 'Next',
+    );
+    expect(next?.props.disabled).toBe(false);
+  });
+  // @ai-end
 });
 
 describe('useListeningTools', () => {
