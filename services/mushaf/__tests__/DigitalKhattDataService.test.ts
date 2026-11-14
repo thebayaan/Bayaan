@@ -151,7 +151,7 @@ jest.mock('expo-sqlite', () => {
           const has = table === 'words';
           return has ? {name: table} : null;
         },
-        async getAllAsync(sql: string) {
+        async getAllAsync() {
           const file = state.files.get(name);
           if (!file) throw new Error(`no such file ${name}`);
           const held = state.gates.get(file.base);
@@ -163,8 +163,6 @@ jest.mock('expo-sqlite', () => {
           }
           if (file.state !== 'ok') throw new Error('no such table');
           state.log.push(`read:${name}`);
-          // @ai-start
-          // @ai-end
           return mockWordRows(file.base, file.version);
         },
         // @ai-start
