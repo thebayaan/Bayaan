@@ -135,16 +135,22 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
     const isCurrentTrack = useMemo(() => {
       if (!currentTrack) return false;
 
-      // For upload tracks, match by userRecitationId
-      if (userRecitationId && currentTrack.userRecitationId) {
+      // For upload tracks, match by userRecitationId. An upload's row is
+      // that upload only, never the reciter's own recording of the surah.
+      if (userRecitationId) {
         return userRecitationId === currentTrack.userRecitationId;
       }
 
       if (!reciterId || !surahId) return false;
 
+      // A row saved without a rewayah (older Loved and Downloads entries)
+      // plays the reciter's first one, so that is the one to compare. The
+      // playing track always names its rewayah, so such a row was never
+      // shown as playing.
+      const rowRewayatId = rewayatId || reciter?.rewayat?.[0]?.id;
       const rewayatMatches =
-        rewayatId && currentTrack.rewayatId
-          ? rewayatId === currentTrack.rewayatId
+        rowRewayatId && currentTrack.rewayatId
+          ? rowRewayatId === currentTrack.rewayatId
           : !rewayatId && !currentTrack.rewayatId;
 
       return (
@@ -152,7 +158,14 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
         currentTrack.surahId === surahId &&
         rewayatMatches
       );
-    }, [reciterId, surahId, rewayatId, userRecitationId, currentTrack]);
+    }, [
+      reciterId,
+      surahId,
+      rewayatId,
+      userRecitationId,
+      currentTrack,
+      reciter,
+    ]);
 
     // @ai-start
     const options = useSurahOptionsContext();
