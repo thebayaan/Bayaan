@@ -818,6 +818,7 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
     surah: number,
     hafsAyah: number | null,
     unit: AudioUnitTarget | null = null, // @ai
+    keepPaused = false, // @ai Load and cue it, but do not start the audio.
   ) => {
     const session = playbackSession;
     const {rewayatId} = get();
@@ -857,6 +858,10 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
         set({timestampError: RANGE_UNPLAYABLE_ERROR});
         return;
       }
+      if (keepPaused) {
+        set({playbackState: 'paused'});
+        return;
+      }
       // @ai-end
       mushafAudioService.play();
       set({playbackState: 'playing'});
@@ -867,13 +872,24 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
   };
 
   /** Jump back to the range start (reloading its surah if needed). */
-  const loopToRangeStart = (surah: number, resume: boolean) => {
+  const loopToRangeStart = (
+    surah: number,
+    resume: boolean,
+    keepPaused = false, // @ai See playSurahFrom.
+  ) => {
     const state = get();
     const start = state.rangeStart!;
     if (start.surah !== surah) {
       // A range of verse units restarts at its first unit (@ai).
       const units = activeRangeUnits(state);
-      void playSurahFrom(start.surah, start.ayah, units ? units.first : null);
+      // @ai-start
+      void playSurahFrom(
+        start.surah,
+        start.ayah,
+        units ? units.first : null,
+        keepPaused,
+      );
+      // @ai-end
       return;
     }
     const entry = rangeStartEntry(state, state._numbering, surah);
@@ -978,6 +994,12 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
     const numbering = state._numbering;
     const surah = state.currentSurah;
     const versesKnown = !numbering || numbering.mode !== 'disabled';
+    // @ai-start
+    // Next on the last verse while paused: go where it leads (the range
+    // start, the next surah) and stay paused there, as Next does on any
+    // other verse, instead of starting the audio.
+    const keepPaused = reason === 'skipped' && state.playbackState === 'paused';
+    // @ai-end
 
     // Verse repeat of the surah's last verse (its end is the audio's end)
     if (
@@ -1008,7 +1030,7 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
     if (state.rangeEnd && state.rangeStart && state.rangeEnd.surah <= surah) {
       if (state.rangeRepeatCount === 0) {
         set({_versePlayCount: 1});
-        loopToRangeStart(surah, true);
+        loopToRangeStart(surah, !keepPaused, keepPaused); // @ai
         return;
       }
       if (state._rangePlayCount < state.rangeRepeatCount) {
@@ -1016,7 +1038,7 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
           _rangePlayCount: state._rangePlayCount + 1,
           _versePlayCount: 1,
         });
-        loopToRangeStart(surah, true);
+        loopToRangeStart(surah, !keepPaused, keepPaused); // @ai
         return;
       }
       // Range exhausted
@@ -1031,7 +1053,7 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
       return;
     }
     set({_versePlayCount: 1});
-    void playSurahFrom(nextSurah, null);
+    void playSurahFrom(nextSurah, null, null, keepPaused); // @ai
   };
 
   // @ai-start

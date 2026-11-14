@@ -1407,5 +1407,53 @@ describe('Next on the last verse of a surah', () => {
       entry('hafs-clean', 2, 1).timestampFrom / 1000,
     ]);
   });
+
+  it('while paused, cues the next surah and stays paused', async () => {
+    await play('hafs-clean', 1, '1:7');
+    mushafAudioService.pause();
+    st().setPlaybackState('paused');
+    st().nextVerse();
+    await flush();
+    expect(st()).toMatchObject({
+      playbackState: 'paused',
+      currentSurah: 2,
+      currentVerseKey: '2:1',
+    });
+    expect(player().playing).toBe(false);
+    expect(mushafAudioService.getIsPlaying()).toBe(false);
+    expect(player().seeks).toEqual([
+      entry('hafs-clean', 2, 1).timestampFrom / 1000,
+    ]);
+    // Play resumes from there
+    mushafAudioService.play();
+    st().setPlaybackState('playing');
+    expect(player().playing).toBe(true);
+    at(entry('hafs-clean', 2, 2).timestampFrom + 50);
+    expect(st().currentVerseKey).toBe('2:2');
+  });
+
+  it('while paused at the end of a looping range, goes back to its start and stays paused', async () => {
+    st().setRange({surah: 112, ayah: 3}, {surah: 112, ayah: 4});
+    st().setRangeRepeatCount(0);
+    await play('hafs-clean', 604, '112:3');
+    at(entry('hafs-clean', 112, 4).timestampFrom + 50);
+    mushafAudioService.pause();
+    st().setPlaybackState('paused');
+    st().nextVerse();
+    await flush();
+    expect(st()).toMatchObject({
+      playbackState: 'paused',
+      currentVerseKey: '112:3',
+    });
+    expect(player().playing).toBe(false);
+  });
+
+  it('while playing, the next surah plays', async () => {
+    await play('hafs-clean', 1, '1:7');
+    st().nextVerse();
+    await flush();
+    expect(st()).toMatchObject({playbackState: 'playing', currentSurah: 2});
+    expect(player().playing).toBe(true);
+  });
 });
 // @ai-end
