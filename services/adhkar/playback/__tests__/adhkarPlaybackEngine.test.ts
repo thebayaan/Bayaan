@@ -1,4 +1,4 @@
-import {AppState} from 'react-native';
+import {AppState, Platform} from 'react-native'; // @ai
 import {
   startAdhkarPlaybackEngine,
   resetAdhkarEngineForTests,
@@ -30,6 +30,12 @@ function fakePlayer() {
     loop: false,
     currentTime: 0,
     duration: 10,
+    // @ai-start
+    // The player's live state, as the engine reads it on iOS. Not tied to
+    // emit(): an update can be older than what the player does now.
+    playing: false,
+    isBuffering: false,
+    // @ai-end
     replace: jest.fn(),
     play: jest.fn(),
     pause: jest.fn(),
@@ -460,6 +466,101 @@ describe('restored position', () => {
 });
 
 // @ai-start
+describe('a swipe or skip while a clip plays', () => {
+  const session = () => useAdhkarSessionStore.getState().session;
+
+  // Clip a plays, the user swipes to b, and an update of clip a that was
+  // sent just before the swap arrives after it.
+  function swipedWithAnUpdateInFlight(): void {
+    dispatch({type: 'pressPlayAll', source: src});
+    player.playing = true;
+    player.emit({playing: true, currentTime: 1});
+    dispatch({type: 'swipedTo', listId: src.listId, dhikrId: 'b'});
+    expect(player.replace).toHaveBeenCalledTimes(2);
+    // The swap stopped clip a; clip b is not ready yet.
+    player.playing = false;
+    player.isBuffering = true;
+    player.emit({playing: true, currentTime: 4});
+    // It confirmed clip b too early.
+    expect(session()).toMatchObject({index: 1, status: 'playing'});
+    player.pause.mockClear();
+  }
+
+  it('does not pause the new clip on the "not playing" update of the swap', () => {
+    swipedWithAnUpdateInFlight();
+    player.emit({playing: false, currentTime: 0});
+    expect(session()).toMatchObject({index: 1, status: 'playing'});
+    expect(player.pause).not.toHaveBeenCalled();
+    // Clip b starts.
+    player.playing = true;
+    player.isBuffering = false;
+    player.emit({playing: true, currentTime: 0.1});
+    jest.advanceTimersByTime(5000);
+    expect(session()).toMatchObject({index: 1, status: 'playing'});
+    expect(player.pause).not.toHaveBeenCalled();
+  });
+
+  it('ignores a "not playing" update handled after the clip started', () => {
+    swipedWithAnUpdateInFlight();
+    player.playing = true;
+    player.isBuffering = false;
+    player.emit({playing: false, currentTime: 0});
+    jest.advanceTimersByTime(5000);
+    expect(session()?.status).toBe('playing');
+    expect(player.pause).not.toHaveBeenCalled();
+  });
+
+  it('still follows a pause from the lock screen right after the swap', () => {
+    swipedWithAnUpdateInFlight();
+    // Loaded, and paused from outside before it played.
+    player.isBuffering = false;
+    player.emit({playing: false, currentTime: 0});
+    expect(session()).toMatchObject({index: 1, status: 'paused'});
+  });
+
+  it('follows a pause that lands while the clip is still loading', () => {
+    swipedWithAnUpdateInFlight();
+    player.emit({playing: false, currentTime: 0});
+    expect(session()?.status).toBe('playing');
+    // Ready now, and it stayed paused.
+    player.isBuffering = false;
+    jest.advanceTimersByTime(250);
+    expect(session()).toMatchObject({index: 1, status: 'paused'});
+  });
+
+  it('shows paused when the new clip never starts', () => {
+    swipedWithAnUpdateInFlight();
+    player.emit({playing: false, currentTime: 0});
+    jest.advanceTimersByTime(1499);
+    expect(session()?.status).toBe('playing');
+    jest.advanceTimersByTime(250);
+    expect(session()).toMatchObject({index: 1, status: 'paused'});
+    expect(player.pause).toHaveBeenCalledTimes(1);
+  });
+
+  it('drops the pending check when the session moves on', () => {
+    swipedWithAnUpdateInFlight();
+    player.emit({playing: false, currentTime: 0});
+    dispatch({type: 'stop'});
+    dispatch({type: 'pressPlayAll', source: src});
+    player.isBuffering = false;
+    jest.advanceTimersByTime(250);
+    // The new session is still starting; the old check must not pause it.
+    expect(session()).toMatchObject({index: 0, status: 'loading'});
+  });
+
+  it('is left as it was on Android, which reports playing through a swap', () => {
+    const os = jest.replaceProperty(Platform, 'OS', 'android');
+    try {
+      swipedWithAnUpdateInFlight();
+      player.emit({playing: false, currentTime: 0});
+      expect(session()).toMatchObject({index: 1, status: 'paused'});
+    } finally {
+      os.restore();
+    }
+  });
+});
+
 describe('position shown and seeked while the clip is not the loaded one', () => {
   function pausedOnAThenSwipedToB(): void {
     dispatch({type: 'pressPlayAll', source: src});

@@ -2,7 +2,7 @@
 // app, made with keepAudioSessionActive so iOS keeps the audio session
 // between clips (a new player per clip could not restart in the background).
 // It follows useAdhkarSessionStore and reports player events back to it.
-import {AppState} from 'react-native';
+import {AppState, Platform} from 'react-native'; // @ai
 import {createAudioPlayer} from 'expo-audio';
 import type {AudioPlayer} from 'expo-audio';
 import {useAdhkarSessionStore} from '@/store/adhkarSessionStore';
@@ -12,6 +12,8 @@ import {skipAdhkarTrack, type TrackDirection} from './trackControls';
 import type {AdhkarSession} from './types';
 
 const PLAY_CONFIRM_MS = 1500;
+// @ai: how often a clip that is still starting is looked at again (iOS)
+const STARTING_RECHECK_MS = 250;
 
 interface PlayerStatus {
   playing: boolean;
@@ -28,6 +30,12 @@ export interface EnginePlayer {
   loop: boolean;
   currentTime: number;
   duration: number;
+  // @ai-start
+  // What the player is doing right now, read live. A status update can be
+  // older than the last command sent to the player.
+  readonly playing: boolean;
+  readonly isBuffering: boolean;
+  // @ai-end
   replace(source: number): void;
   play(): void;
   pause(): void;
@@ -106,6 +114,8 @@ let confirmedToken: number | null = null;
 // A restored position to re-apply once the loaded clip reports isLoaded:
 // a seek sent right after replace() can land before the clip is ready.
 let pendingSeek: {token: number; seconds: number} | null = null;
+// @ai: when the loaded clip was put in the player (epoch ms)
+let loadedAt = 0;
 
 export function resetAdhkarEngineForTests(): void {
   activePlayer = null;
@@ -113,6 +123,7 @@ export function resetAdhkarEngineForTests(): void {
   loadedToken = null;
   confirmedToken = null;
   pendingSeek = null;
+  loadedAt = 0; // @ai
 }
 
 // @ai-start
@@ -168,6 +179,7 @@ export function startAdhkarPlaybackEngine(
   let subscription: {remove(): void} | null = null;
   let trackSubscription: {remove(): void} | null = null;
   let confirmTimer: ReturnType<typeof setTimeout> | null = null;
+  let startingTimer: ReturnType<typeof setTimeout> | null = null; // @ai
   let retried = false;
   let lockScreenToken: number | null = null;
 
@@ -228,6 +240,10 @@ export function startAdhkarPlaybackEngine(
     const p = ensurePlayer();
     p.replace(source);
     loadedToken = session.trackToken;
+    // @ai-start
+    loadedAt = Date.now();
+    clearStartingCheck();
+    // @ai-end
     confirmedToken = null;
     pendingSeek = null;
     if (session.positionSec > 0) {
@@ -267,6 +283,41 @@ export function startAdhkarPlaybackEngine(
       if (__DEV__) console.warn('[AdhkarEngine] seek failed', error);
     }
   }
+
+  // @ai-start
+  function clearStartingCheck(): void {
+    if (startingTimer) clearTimeout(startingTimer);
+    startingTimer = null;
+  }
+
+  // The player reported "not playing" while the session plays.
+  function onNotPlaying(token: number): void {
+    // iOS: that is only a pause from outside (lock screen, headphones, a
+    // phone call) when the player is paused right now. After a swipe or
+    // skip during playback it is not: an update of the previous clip that
+    // was already on its way reports playing and confirms the new clip too
+    // early, and the swap's own "not playing" updates follow. Taking those
+    // as a pause made the engine really pause the new dhikr, which then
+    // showed Play and stayed silent. Android reports playing through a swap.
+    if (Platform.OS === 'ios' && activePlayer) {
+      if (activePlayer.playing) return;
+      // Still getting the new clip ready: look again shortly, for as long
+      // as a first play is given to start.
+      if (activePlayer.isBuffering && Date.now() - loadedAt < PLAY_CONFIRM_MS) {
+        clearStartingCheck();
+        startingTimer = setTimeout(() => {
+          startingTimer = null;
+          const s = store.getState().session;
+          if (s && s.trackToken === token && s.status === 'playing')
+            onNotPlaying(token);
+        }, STARTING_RECHECK_MS);
+        return;
+      }
+    }
+    savePosition();
+    store.getState().dispatch({type: 'playerPaused'});
+  }
+  // @ai-end
 
   // Another source took over and our pause has not reached the player yet:
   // its playing updates are stale, not a remote resume.
@@ -312,10 +363,7 @@ export function startAdhkarPlaybackEngine(
       store.getState().dispatch({type: 'trackEnded', token: s.trackToken});
       return;
     }
-    if (s.status === 'playing') {
-      savePosition();
-      store.getState().dispatch({type: 'playerPaused'});
-    }
+    if (s.status === 'playing') onNotPlaying(s.trackToken); // @ai
   }
 
   function follow(
@@ -324,6 +372,7 @@ export function startAdhkarPlaybackEngine(
   ): void {
     if (!session) {
       clearConfirm();
+      clearStartingCheck(); // @ai
       if (prev && activePlayer) {
         activePlayer.pause();
         deps.lockScreen.clear(activePlayer);
@@ -420,5 +469,6 @@ export function startAdhkarPlaybackEngine(
     trackSubscription?.remove();
     trackSubscription = null;
     clearConfirm();
+    clearStartingCheck(); // @ai
   };
 }
