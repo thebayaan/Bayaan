@@ -49,6 +49,12 @@ interface FakeSqliteState {
   chunkFaults: Map<string, 'throw' | 'short' | 'blank'>;
   // @ai The opens with no connection of their own.
   sharedOpens: string[];
+  // @ai-start
+  // The most connections a DB name had open at once, and a close that waits
+  // on a promise of its base (a slow native close).
+  maxOpen: Map<string, number>;
+  closeGates: Map<string, Promise<void>>;
+  // @ai-end
 }
 
 jest.mock('expo-sqlite', () => {
@@ -61,6 +67,8 @@ jest.mock('expo-sqlite', () => {
     readFailures: new Map(),
     chunkFaults: new Map(), // @ai
     sharedOpens: [], // @ai
+    maxOpen: new Map(), // @ai
+    closeGates: new Map(), // @ai
   };
   const baseOf = (name: string) =>
     name.replace(/\.db$/, '').replace(/\.[0-9a-f]{8}$/, '');
@@ -82,6 +90,12 @@ jest.mock('expo-sqlite', () => {
         });
       }
       state.open.set(name, openCount(name) + 1);
+      // @ai-start
+      state.maxOpen.set(
+        name,
+        Math.max(state.maxOpen.get(name) ?? 0, openCount(name)),
+      );
+      // @ai-end
       let closed = false;
       // @ai-start
       // The words of an open copy (the WordStore's synchronous reads and its
@@ -150,8 +164,13 @@ jest.mock('expo-sqlite', () => {
         async closeAsync() {
           if (closed) throw new Error('already closed');
           closed = true;
+          // @ai-start
+          const held = state.closeGates.get(baseOf(name));
+          if (held) await held;
+          // @ai-end
           state.open.set(name, openCount(name) - 1);
           if (openCount(name) <= 0) state.open.delete(name);
+          state.log.push(`closed:${name}`); // @ai
         },
       };
     },
@@ -418,7 +437,11 @@ beforeEach(() => {
   fake.violations.length = 0;
   fake.gates.clear();
   fake.readFailures.clear();
-  fake.chunkFaults.clear(); // @ai
+  // @ai-start
+  fake.chunkFaults.clear();
+  fake.maxOpen.clear();
+  fake.closeGates.clear();
+  // @ai-end
   store.rewayah = 'hafs';
   store.mushafRenderer = 'dk_v2';
   store.setRewayah.mockClear();
@@ -565,16 +588,18 @@ describe('delivery to installed apps', () => {
     fake.open.delete('dk_words.db');
   });
 
-  // @ai Android: with a shared connection, the garbage collection of the old
-  // store's JS object closes the native connection under the new store.
+  // @ai A store closes in the background, so a new open of the same copy can
+  // overlap that close. With a shared connection, the close, or the garbage
+  // collection of the old JS object (Android), closes it under the new store.
   it('gives each open a connection of its own', async () => {
     fake.sharedOpens.length = 0;
     const service = await initialized();
-    seed(N.warsh, 'dk_words_warsh', 'asset');
-    await service.switchRewayah('warsh');
-    // Hafs loads again while its store is open in the side cache.
-    await service.switchRewayah('hafs');
-    expect(service.rewayah).toBe('hafs');
+    await service.ensureRewayahLoaded('warsh');
+    fake.closeGates.set('dk_words_warsh', new Promise(() => undefined));
+    await service.ensureRewayahLoaded('qalun'); // Warsh closes, and hangs
+    await service.ensureRewayahLoaded('warsh');
+    expect(fake.open.get(N.warsh)).toBe(2);
+    expect(texts(service, '1:1', 'warsh')).toEqual(W);
     expect(fake.sharedOpens).toEqual([]);
   });
 
@@ -958,6 +983,41 @@ describe('side cache', () => {
     expect(texts(service, '1:1')[0]).toBe('Q1');
   });
 
+  // @ai-start
+  it('a switch back to the rewayah before reuses its open store', async () => {
+    const service = await initialized();
+    await service.switchRewayah('warsh'); // Hafs stays open, idle
+    expect(fake.open.get(N.hafs)).toBe(1);
+    fake.maxOpen.set(N.hafs, 1);
+    fake.log.length = 0;
+
+    await service.switchRewayah('hafs');
+    await flush();
+
+    expect(service.rewayah).toBe('hafs');
+    expect(fake.maxOpen.get(N.hafs)).toBe(1);
+    // No open, no verse index read, no close.
+    expect(fake.log.filter(e => e.includes(N.hafs))).toEqual([]);
+    expect(texts(service, '1:1')).toEqual(H);
+  });
+
+  it('a switch to the rewayah the player has open reuses its store', async () => {
+    const service = await initialized();
+    await service.ensureRewayahLoaded('warsh');
+    const release = service.retainRewayah('warsh');
+    fake.maxOpen.set(N.warsh, 1);
+    fake.log.length = 0;
+
+    await service.switchRewayah('warsh');
+    await flush();
+
+    expect(service.rewayah).toBe('warsh');
+    expect(fake.maxOpen.get(N.warsh)).toBe(1);
+    expect(fake.log.filter(e => e.includes(N.warsh))).toEqual([]);
+    release();
+  });
+  // @ai-end
+
   it('keeps the previously active rewayah readable after a switch (one retained copy)', async () => {
     const service = await initialized();
     await service.switchRewayah('warsh');
@@ -1209,6 +1269,28 @@ describe('chunk reads (WordStore)', () => {
 // @ai-end
 
 describe('resetDatabases', () => {
+  // @ai-start
+  it('waits for a close already in flight before it deletes that copy', async () => {
+    const service = await initialized();
+    await service.ensureRewayahLoaded('warsh');
+    let endClose: () => void = () => undefined;
+    fake.closeGates.set(
+      'dk_words_warsh',
+      new Promise<void>(resolve => (endClose = resolve)),
+    );
+    // One idle store stays open: Qalun closes Warsh, slowly.
+    await service.ensureRewayahLoaded('qalun');
+    expect(service.getRewayahLoadState('warsh')).toBe('idle');
+
+    const reset = service.resetDatabases();
+    await flush();
+    expect(fake.files.has(N.warsh)).toBe(true);
+    endClose();
+    await reset;
+    expect(fake.files.has(N.warsh)).toBe(false); // no violation either
+  });
+  // @ai-end
+
   it('deletes every managed copy, empties the caches and notifies', async () => {
     seed('dk_words_warsh.db', 'dk_words_warsh', 'old');
     seed('wbw-en.db', 'wbw-en', 'old');

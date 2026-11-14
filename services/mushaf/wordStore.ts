@@ -155,9 +155,9 @@ function verseIndexOfWord(index: VerseIndex, wordId: number): number {
 }
 
 /**
- * The words of one words DB, read on demand from an open connection. The data
- * service owns it: close() releases the connection (and the DB name's open
- * count), after which every read returns nothing.
+ * The words of one words DB, read on demand from an open connection. The
+ * registry (wordStores.ts) owns it: close() releases the connection (and the
+ * DB name's open count), after which every read returns nothing.
  *
  * The first failed read stops the store: `''` is also a real word text (7 of
  * the 8 words DBs have such words), so a getter cannot report a failure, and a
@@ -167,7 +167,8 @@ function verseIndexOfWord(index: VerseIndex, wordId: number): number {
 export class WordStore {
   private chunks = new Map<number, WordChunk>();
   private verseSlots = new Map<string, DKWordInfo[]>();
-  private closed = false;
+  // Set by close(): a closed store reads nothing.
+  private closing: Promise<void> | null = null;
   private failed = false;
 
   constructor(
@@ -224,7 +225,7 @@ export class WordStore {
       return cached;
     }
     const i = this.index.byKey.get(verseKey);
-    if (i === undefined || this.closed) return undefined;
+    if (i === undefined || this.closing) return undefined;
     const slots: DKWordInfo[] = [];
     for (let id = this.index.first[i]; id <= this.index.last[i]; id++) {
       const info = this.info(id);
@@ -273,12 +274,14 @@ export class WordStore {
     }
   }
 
+  /** Releases the connection. Each call gives the same promise. */
   close(): Promise<void> {
-    if (this.closed) return Promise.resolve();
-    this.closed = true;
-    this.chunks.clear();
-    this.verseSlots.clear();
-    return this.release(this.dbName, this.db);
+    if (!this.closing) {
+      this.chunks.clear();
+      this.verseSlots.clear();
+      this.closing = this.release(this.dbName, this.db);
+    }
+    return this.closing;
   }
 
   private chunkFor(wordId: number): WordChunk | null {
@@ -310,7 +313,7 @@ export class WordStore {
 
   // The texts of ids start..end, or null after a failed read.
   private readChunk(start: number, end: number): string[] | null {
-    if (this.closed || this.failed) return null;
+    if (this.closing || this.failed) return null;
     try {
       const row = this.db.getFirstSync<{texts: string | null}>(
         WORD_CHUNK_QUERY,
