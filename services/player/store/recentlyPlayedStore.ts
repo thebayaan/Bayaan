@@ -22,6 +22,10 @@ export interface RecentlyPlayedTrack {
   uploadArtist?: string;
 }
 
+// @ai How long after a new head card a tick for an older card's own surah
+// is taken as that card's last report, not as what is playing now.
+const STALE_TICK_WINDOW_MS = 5000;
+
 interface RecentlyPlayedState {
   recentTracks: RecentlyPlayedTrack[];
   progressMap: Record<string, number>;
@@ -212,56 +216,86 @@ export const useRecentlyPlayedStore = create<RecentlyPlayedState>()(
             durationMap: {...state.durationMap, [key]: duration},
           };
 
-          if (state.recentTracks.length === 0) {
-            return maps;
-          }
+          // @ai-start
+          // The ticker reports the player's current track, so its rewayah is
+          // the one that is playing.
+          const playerState = usePlayerStore.getState();
+          const currentTrack =
+            playerState.queue.tracks[playerState.queue.currentIndex];
+          const playingRewayatId =
+            currentTrack?.reciterId === reciterId &&
+            currentTrack?.surahId === String(surahId)
+              ? currentTrack.rewayatId
+              : undefined;
 
-          const head = state.recentTracks[0];
+          const head: RecentlyPlayedTrack | undefined = state.recentTracks[0];
 
-          // Same reciter — update [0] in place (handles surah auto-advance)
-          if (head.reciter.id === reciterId) {
+          // Same reciter — update [0] in place (handles surah auto-advance).
+          // The rewayah follows the track too: a queue can hold the same
+          // reciter in two rewayat. An upload's card is never the same
+          // recitation as a catalogue track, whoever it is tagged with.
+          if (head && !head.isUserUpload && head.reciter.id === reciterId) {
             const surah =
               head.surah.id === surahId
                 ? head.surah
                 : (SURAHS.find(s => s.id === surahId) ?? head.surah);
             return {
               recentTracks: [
-                {...head, surah, progress, duration},
+                {
+                  ...head,
+                  surah,
+                  rewayatId: playingRewayatId ?? head.rewayatId,
+                  progress,
+                  duration,
+                },
                 ...state.recentTracks.slice(1),
               ],
               ...maps,
             };
           }
 
-          // Different reciter at [0].
-          // Check if this reciterId already exists below [0] — if so, it's a
-          // stale transition update (startNewChain already ran, old reciter was
-          // pushed down). Just update that existing entry's progress quietly.
+          // A different card is at [0], and this reciter has one further
+          // down. Right after startNewChain() pushed that card down, the old
+          // track can still report a last tick before the new one loads:
+          // that tick only updates its own card. It is recognised by being
+          // for the surah that the card already shows, just after a new
+          // head was made.
           const belowIndex = state.recentTracks.findIndex(
-            (t, i) => i > 0 && t.reciter.id === reciterId,
+            (t, i) => i > 0 && !t.isUserUpload && t.reciter.id === reciterId,
           );
-          if (belowIndex !== -1) {
+          const below =
+            belowIndex === -1 ? undefined : state.recentTracks[belowIndex];
+          if (
+            below &&
+            head &&
+            below.surah.id === surahId &&
+            Date.now() - head.timestamp < STALE_TICK_WINDOW_MS
+          ) {
             const updated = [...state.recentTracks];
-            updated[belowIndex] = {
-              ...updated[belowIndex],
-              progress,
-              duration,
-            };
+            updated[belowIndex] = {...below, progress, duration};
             return {recentTracks: updated, ...maps};
           }
 
-          // Genuinely new reciter from queue auto-advance — create new entry
-          const newReciter = RECITERS.find(r => r.id === reciterId);
+          // Otherwise this is what is playing now, reached without a new
+          // chain: a queue that mixes reciters (Loved, a playlist, Downloads)
+          // moved on to this track, or playback began from a screen that
+          // starts no chain. It becomes the head. This used to write the
+          // progress onto the reciter's old card, leaving that card on
+          // another surah with this track's position, and leaving a track
+          // that had finished as the one that the app restored on launch.
+          const newReciter =
+            RECITERS.find(r => r.id === reciterId) ?? below?.reciter;
           const newSurah = SURAHS.find(s => s.id === surahId);
           if (!newReciter || !newSurah) {
             return maps;
           }
 
-          const playerState = usePlayerStore.getState();
-          const currentTrack =
-            playerState.queue.tracks[playerState.queue.currentIndex];
           const rewayatId =
-            currentTrack?.rewayatId ?? newReciter.rewayat[0]?.id ?? '';
+            playingRewayatId ??
+            (below?.surah.id === surahId ? below.rewayatId : undefined) ??
+            newReciter.rewayat[0]?.id ??
+            '';
+          // @ai-end
 
           // Remove any existing entry for this reciter (one card per reciter)
           const withoutDupe = state.recentTracks.filter(
