@@ -57,7 +57,9 @@ jest.mock('@/hooks/useQuranSearch', () => ({
   isQuranQuery: (query: string) =>
     jest.requireActual('@/utils/search/quranText').parseQuranQuery(query)
       .kind !== 'none',
+  prefetchQuranSearch: () => mockPrefetch(),
 }));
+const mockPrefetch = jest.fn();
 jest.mock('@/components/search/quran/QuranResultRowView', () => {
   const ReactActual = jest.requireActual('react');
   return {
@@ -243,6 +245,7 @@ beforeEach(async () => {
   // @ai-start
   mockQuranStates.clear();
   mockQuranCalls.length = 0;
+  mockPrefetch.mockClear();
   useMushafWordFlashStore.getState().clear();
   // @ai-end
 });
@@ -551,6 +554,13 @@ describe('Quran text search: the Ayahs section', () => {
       'quran-verse-1:1',
     ]);
     expect(mockQuranCalls).toContainEqual({query: 'الرحمن', enabled: true});
+  });
+
+  it('opens the index when search mode starts, not while browsing', async () => {
+    await renderSearch(false);
+    expect(mockPrefetch).not.toHaveBeenCalled();
+    await renderSearch(true);
+    expect(mockPrefetch).toHaveBeenCalledTimes(1);
   });
 
   it('commands do not run the Quran search', async () => {
