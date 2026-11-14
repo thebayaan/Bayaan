@@ -1,4 +1,4 @@
-import React, {useCallback, useMemo, useRef} from 'react';
+import React, {useCallback, useMemo} from 'react'; // @ai
 import {View, Text, Pressable, StyleSheet} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {usePlayerActions} from '@/hooks/usePlayerActions';
@@ -37,24 +37,22 @@ export const TabletDockedPlayer: React.FC<TabletDockedPlayerProps> = React.memo(
     const playbackState = usePlayerStore(state => state.playback.state);
     const queueTracks = usePlayerStore(state => state.queue.tracks);
     const currentIndex = usePlayerStore(state => state.queue.currentIndex);
-    const trackLoading = usePlayerStore(state => state.loading.trackLoading);
     const stateRestoring = usePlayerStore(
       state => state.loading.stateRestoring,
     );
-    const prevTrackIdRef = useRef<string | null>(null);
 
     const currentTrack = useMemo(
       () => queueTracks?.[currentIndex],
       [queueTracks, currentIndex],
     );
 
-    const isLoadingNewTrack = useMemo(() => {
-      const isTrackChanging = currentTrack?.id !== prevTrackIdRef.current;
-      if (currentTrack?.id) {
-        prevTrackIdRef.current = currentTrack.id;
-      }
-      return (trackLoading && isTrackChanging) || playbackState === 'buffering';
-    }, [trackLoading, playbackState, currentTrack?.id]);
+    // The spinner follows the store: 'loading' for the whole of a load, and
+    // 'buffering' while a stalled stream catches up. It used to compare track
+    // ids kept in a ref, which held for one render only, so loading the same
+    // track again (a replay after it ended, the same surah in another
+    // rewayah) showed a play button and no spinner.
+    const isLoadingTrack = playbackState === 'loading';
+    const showSpinner = isLoadingTrack || playbackState === 'buffering';
 
     // No swipe up: it doesn't fit a sidebar.
     const {anchorRef} = useMiniPlayerAnchor({radius: dockRadius});
@@ -64,12 +62,16 @@ export const TabletDockedPlayer: React.FC<TabletDockedPlayerProps> = React.memo(
     }, []);
 
     const handlePlayPause = useCallback(async () => {
+      // A load starts playing by itself when it is done. A play() during it
+      // marked the track as playing, and unlocked the full player's controls,
+      // before there was any audio.
+      if (isLoadingTrack) return;
       if (playbackState === 'playing') {
         await pause();
       } else {
         await play();
       }
-    }, [playbackState, pause, play]);
+    }, [isLoadingTrack, playbackState, pause, play]);
 
     if (stateRestoring || !currentTrack) return null;
 
@@ -77,7 +79,7 @@ export const TabletDockedPlayer: React.FC<TabletDockedPlayerProps> = React.memo(
     // VoiceOver treats the whole dock as one element (the play button is
     // nested inside it), so expose play/pause as an action on the dock too.
     const isPlaying = playbackState === 'playing';
-    const playPauseA11y = a11y.playPause(isPlaying);
+    const playPauseA11y = a11y.playPause(isPlaying, isLoadingTrack);
     const dockA11y = {
       ...a11y.openPlayer(
         getTrackDisplayTitle(currentTrack),
@@ -118,7 +120,7 @@ export const TabletDockedPlayer: React.FC<TabletDockedPlayerProps> = React.memo(
             {...playPauseA11y} // @ai
             hitSlop={8}
             style={styles.compactPlay}>
-            {isLoadingNewTrack ? (
+            {showSpinner ? (
               <LoadingIndicator color={theme.colors.text} />
             ) : playbackState === 'playing' ? (
               <PauseIcon color={theme.colors.text} size={16} />
@@ -155,7 +157,7 @@ export const TabletDockedPlayer: React.FC<TabletDockedPlayerProps> = React.memo(
           {...playPauseA11y} // @ai
           hitSlop={8}
           style={styles.playButton}>
-          {isLoadingNewTrack ? (
+          {showSpinner ? (
             <LoadingIndicator color={theme.colors.text} />
           ) : playbackState === 'playing' ? (
             <PauseIcon color={theme.colors.text} size={20} />

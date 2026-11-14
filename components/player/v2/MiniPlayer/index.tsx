@@ -1,4 +1,4 @@
-import React, {useCallback, useMemo, useRef} from 'react';
+import React, {useCallback, useMemo} from 'react'; // @ai
 import {View, Text, Pressable, StyleSheet} from 'react-native';
 import {
   GestureDetector,
@@ -29,30 +29,32 @@ function MiniPlayerInner() {
   const playbackState = usePlayerStore(state => state.playback.state);
   const queueTracks = usePlayerStore(state => state.queue.tracks);
   const currentIndex = usePlayerStore(state => state.queue.currentIndex);
-  const trackLoading = usePlayerStore(state => state.loading.trackLoading);
   const stateRestoring = usePlayerStore(state => state.loading.stateRestoring);
-  const prevTrackIdRef = useRef<string | null>(null);
 
   const currentTrack = useMemo(
     () => queueTracks?.[currentIndex],
     [queueTracks, currentIndex],
   );
 
-  const isLoadingNewTrack = useMemo(() => {
-    const isTrackChanging = currentTrack?.id !== prevTrackIdRef.current;
-    if (currentTrack?.id) {
-      prevTrackIdRef.current = currentTrack.id;
-    }
-    return (trackLoading && isTrackChanging) || playbackState === 'buffering';
-  }, [trackLoading, playbackState, currentTrack?.id]);
+  // The spinner follows the store: 'loading' for the whole of a load, and
+  // 'buffering' while a stalled stream catches up. It used to compare track
+  // ids kept in a ref, which held for one render only, so loading the same
+  // track again (a replay after it ended, the same surah in another rewayah)
+  // showed a play button and no spinner.
+  const isLoadingTrack = playbackState === 'loading';
+  const showSpinner = isLoadingTrack || playbackState === 'buffering';
 
   const handlePlayPause = useCallback(async () => {
+    // A load starts playing by itself when it is done. A play() during it
+    // marked the track as playing, and unlocked the full player's controls,
+    // before there was any audio.
+    if (isLoadingTrack) return;
     if (playbackState === 'playing') {
       await pause();
     } else {
       await play();
     }
-  }, [playbackState, pause, play]);
+  }, [isLoadingTrack, playbackState, pause, play]);
 
   // The bottom accessory is a capsule; the player surface grows out of it.
   const {anchorRef, openGesture} = useMiniPlayerAnchor({
@@ -109,12 +111,13 @@ function MiniPlayerInner() {
             style={styles.playButton}
             hitSlop={10}
             accessibilityRole="button"
+            accessibilityState={{disabled: isLoadingTrack}}
             accessibilityLabel={t(
               playbackState === 'playing'
                 ? 'common:actions.pause'
                 : 'common:actions.play',
             )}>
-            {isLoadingNewTrack ? (
+            {showSpinner ? (
               <LoadingIndicator color={textColor} />
             ) : playbackState === 'playing' ? (
               <PauseIcon color={textColor} size={22} />
