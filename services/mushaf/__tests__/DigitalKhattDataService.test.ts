@@ -13,7 +13,7 @@
  * older release left on the device.
  */
 import {
-  LAYOUT_SOURCE_SHA256,
+  MUSHAF_TABLES_SHA256,
   REWAYAH_DATA_MANIFEST,
 } from '../rewayahDataManifest';
 import {
@@ -399,7 +399,7 @@ const store = (
 
 type AssetFile = keyof typeof REWAYAH_DATA_MANIFEST;
 const sha8 = (file: AssetFile) => REWAYAH_DATA_MANIFEST[file].slice(0, 8);
-const LAYOUT_SHA8 = LAYOUT_SOURCE_SHA256.slice(0, 8);
+const LAYOUT_SHA8 = MUSHAF_TABLES_SHA256.slice(0, 8);
 const copyName = (dbName: string, file: AssetFile) =>
   contentAddressedDbName(dbName, REWAYAH_DATA_MANIFEST[file]);
 

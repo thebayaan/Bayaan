@@ -43,8 +43,8 @@ export const REWAYAH_DATA_MD5: Readonly<Record<string, string>> = {
   'dk_words_warsh.db': 'b7ad41282b8b303c269d8d05e50610a0',
 };
 
-// sha256 of digital-khatt-15-lines.db. It is not bundled: the page lines are
-// generated from it (mushafTables.generated.ts). This names the layout in
-// the data identity keys, so saved layouts stay valid until it changes.
-export const LAYOUT_SOURCE_SHA256 =
-  'bca39e611d305a6261e99c1b501a855f18861f9e58044825db0fd8d598e29728';
+// sha256 of mushafTables.generated.ts: the verse index and the page lines
+// the app ships. It names the layout in the data identity keys, so saved
+// layouts stay valid until the tables change.
+export const MUSHAF_TABLES_SHA256 =
+  '917f839163f767271d18de787a180ae5f8e5a3782b9296b5974493c97e4670c9';

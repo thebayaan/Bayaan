@@ -2,7 +2,17 @@
 //
 // The verse index and the page lines of the Mushaf (the same for every
 // rewayah). services/mushaf/mushafTables.ts decodes them on first use.
-// services/mushaf/__tests__/mushafTables.alldbs.test.ts fails when stale.
+// Generated from these files (sha256); gen-manifest.mjs fails when one
+// of them changes:
+//   bca39e611d305a6261e99c1b501a855f18861f9e58044825db0fd8d598e29728 digital-khatt-15-lines.db
+//   d6f5ffbd13ed208d735a8cf569b8b889993f8f086e55f7354533ae4f784d3798 digital-khatt-v2.db
+//   25f3c178e4b7018e2f3adde10442576a05cac816b5bcb2ee1a1dc667e1319a70 dk_words_shouba.db
+//   4cd66022127aef9c059d0197548e65ef93c28e19021de4476f846cedcf138099 dk_words_bazzi.db
+//   25d64ef5f443f78d7187dc6c3bb5fcdc83bbd475d445e84606461c4eeed45f3c dk_words_qumbul.db
+//   de226764cf3c2eaa708b8e409ab583e101b53cb1de079dafe15fd3bd8c30cc83 dk_words_warsh.db
+//   ecf5cf88a3379bb35b0e54bab91c20a1b4900715e03749d371fc455e3b6358e5 dk_words_qaloon.db
+//   2b6a35a3dc0c385a99b08901df399a2c7c50e5268c022f0a2ad352accb48d829 dk_words_doori.db
+//   ece4016e2b5c3a5f21dc8f50b411641872761594d910e5a185dd627d517bed43 dk_words_soosi.db
 
 export const SURAH_VERSE_COUNTS: readonly number[] = [
   7, 286, 200, 176, 120, 165, 206, 75, 129, 109, 123, 111, 43, 52, 99, 128, 111,

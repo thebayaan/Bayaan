@@ -3,13 +3,11 @@
  * LOCAL-ONLY unless BAYAAN_OVERLAY_DB_DIR is set (CI sets it); needs Node >=
  * 22.13 for node:sqlite. The generated tables must give exactly what the
  * databases give, on all 8 words DBs and the layout DB.
+ * rewayahDataManifest.test.ts runs gen-mushaf-tables.mjs --check.
  */
-import {spawnSync} from 'child_process';
-import path from 'path';
 import {loadPageLineRows, loadVerseIndex} from '../mushafTables';
 import {bundledDkFile, hasNodeSqlite} from '../__fixtures__/bundledDkSqlite';
 
-const REPO_ROOT = path.resolve(__dirname, '..', '..', '..');
 const WORDS_BASES = [
   'dk_words',
   'dk_words_shouba',
@@ -74,17 +72,5 @@ run('the generated Mushaf tables', () => {
       surah_number: row.surah_number || 0,
     }));
     expect(loadPageLineRows()).toEqual(rows);
-  });
-
-  it('the module is not stale', () => {
-    const result = spawnSync(
-      process.execPath,
-      ['scripts/rewayah/gen-mushaf-tables.mjs', '--check'],
-      {cwd: REPO_ROOT, encoding: 'utf8'},
-    );
-    expect(
-      result.stderr.replace(/\(node:.*\n|.*--trace-warnings.*\n/g, ''),
-    ).toBe('');
-    expect(result.status).toBe(0);
   });
 });

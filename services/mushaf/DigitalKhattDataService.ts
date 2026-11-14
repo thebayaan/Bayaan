@@ -6,7 +6,7 @@ import {
 } from '@/store/mushafSettingsStore';
 import {migratePersistedId} from '@/services/rewayah/RewayahIdentity';
 import {
-  LAYOUT_SOURCE_SHA256,
+  MUSHAF_TABLES_SHA256,
   REWAYAH_DATA_MANIFEST,
   REWAYAH_DATA_MD5,
 } from './rewayahDataManifest';
@@ -283,7 +283,7 @@ export function getRewayahDataIdentity(
   return makeDataIdentity(
     rewayah,
     assetSha256(cfg.wordsAssetFile).slice(0, SHA8_LENGTH),
-    LAYOUT_SOURCE_SHA256.slice(0, SHA8_LENGTH),
+    MUSHAF_TABLES_SHA256.slice(0, SHA8_LENGTH),
   );
   // @ai-end
 }
@@ -1066,7 +1066,7 @@ export class DigitalKhattDataService {
       identity: makeDataIdentity(
         target,
         wordsSpec.sha8,
-        LAYOUT_SOURCE_SHA256.slice(0, SHA8_LENGTH),
+        MUSHAF_TABLES_SHA256.slice(0, SHA8_LENGTH),
       ), // @ai
     };
   }

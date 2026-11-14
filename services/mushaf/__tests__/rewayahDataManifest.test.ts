@@ -4,10 +4,15 @@
  * bundles. On-device copies are named from these hashes, so a stale manifest
  * would let installed apps keep reading an outdated copy of corrected text.
  *
- * Fix a failure with: node scripts/rewayah/gen-manifest.mjs
+ * The manifest also keys the saved layouts on the generated tables
+ * (mushafTables.generated.ts), and gen-manifest.mjs fails while the tables are
+ * stale against the DBs they were generated from.
+ *
+ * Fix a failure with: node scripts/rewayah/gen-mushaf-tables.mjs (when the
+ * tables are stale), then node scripts/rewayah/gen-manifest.mjs
  *
  * Plain Node APIs only (fs, crypto, child_process), so it runs under the
- * Node 20 CI job.
+ * Node 20 CI job; only the full tables check needs node:sqlite (Node >= 22.13).
  */
 jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
@@ -30,10 +35,11 @@ import os from 'os';
 import path from 'path';
 
 import {
-  LAYOUT_SOURCE_SHA256,
+  MUSHAF_TABLES_SHA256,
   REWAYAH_DATA_MANIFEST,
   REWAYAH_DATA_MD5,
 } from '../rewayahDataManifest';
+import {hasNodeSqlite} from '../__fixtures__/bundledDkSqlite';
 import {
   getBundledDkDbAssetFiles,
   getCurrentDbNamesByBase,
@@ -117,7 +123,7 @@ describe('rewayahDataManifest (contract C4)', () => {
       const identity = getRewayahDataIdentity(rewayah);
       expect(identity).not.toBeNull();
       expect(identity?.wordsSha8).toMatch(/^[0-9a-f]{8}$/);
-      expect(identity?.layoutSha8).toBe(LAYOUT_SOURCE_SHA256.slice(0, 8));
+      expect(identity?.layoutSha8).toBe(MUSHAF_TABLES_SHA256.slice(0, 8));
     }
     // Throws if two assets would share an on-device base name.
     const names = getCurrentDbNamesByBase();
@@ -159,11 +165,14 @@ describe('rewayahDataManifest (contract C4)', () => {
     }
   });
 
-  it('fails the check once a bundled DB changes without a new manifest', () => {
-    const root = mkdtempSync(path.join(os.tmpdir(), 'gen-manifest-'));
-    try {
-      const assetDir = path.join(root, 'data', 'mushaf', 'digitalkhatt');
-      const script = path.join(root, 'scripts', 'rewayah', 'gen-manifest.mjs');
+  describe('in a copy of the scripts', () => {
+    let root = '';
+    let assetDir = '';
+    let script = '';
+    beforeEach(() => {
+      root = mkdtempSync(path.join(os.tmpdir(), 'gen-manifest-'));
+      assetDir = path.join(root, 'data', 'mushaf', 'digitalkhatt');
+      script = path.join(root, 'scripts', 'rewayah', 'gen-manifest.mjs');
       mkdirSync(assetDir, {recursive: true});
       mkdirSync(path.dirname(script), {recursive: true});
       mkdirSync(path.join(root, 'services', 'mushaf'), {recursive: true});
@@ -180,28 +189,99 @@ describe('rewayahDataManifest (contract C4)', () => {
         path.join(assetDir, 'digital-khatt-15-lines.db'),
         'the layout source',
       );
-      const run = (...args: string[]) =>
-        spawnSync(process.execPath, [script, ...args], {
-          cwd: root,
-          encoding: 'utf8',
-        });
+      writeTables('tables 1');
+    });
+    afterEach(() => rmSync(root, {recursive: true, force: true}));
 
+    // What gen-mushaf-tables.mjs writes: the tables and the sha256 of each DB
+    // they come from.
+    function writeTables(data: string) {
+      const source = (file: string) =>
+        `//   ${createHash('sha256')
+          .update(readFileSync(path.join(assetDir, file)))
+          .digest('hex')} ${file}`;
+      writeFileSync(
+        path.join(root, 'services', 'mushaf', 'mushafTables.generated.ts'),
+        [source('digital-khatt-15-lines.db'), source('a.db'), data, ''].join(
+          '\n',
+        ),
+      );
+    }
+    const run = (...args: string[]) =>
+      spawnSync(process.execPath, [script, ...args], {
+        cwd: root,
+        encoding: 'utf8',
+      });
+    const tablesKey = () =>
+      /MUSHAF_TABLES_SHA256 =\s*'([0-9a-f]{64})'/.exec(
+        readFileSync(
+          path.join(root, 'services', 'mushaf', 'rewayahDataManifest.ts'),
+          'utf8',
+        ),
+      )?.[1];
+
+    it('fails the check once the tables change without a new manifest', () => {
       expect(run().status).toBe(0);
       expect(run('--check').status).toBe(0);
 
-      writeFileSync(path.join(assetDir, 'a.db'), 'corrected version');
+      writeTables('tables 2');
       const stale = run('--check');
       expect(stale.status).toBe(1);
-      expect(stale.stderr).toContain('is stale');
-    } finally {
-      rmSync(root, {recursive: true, force: true});
-    }
+      expect(stale.stderr).toContain('rewayahDataManifest.ts is stale');
+    });
+
+    it.each(['digital-khatt-15-lines.db', 'a.db'])(
+      'fails every run once %s changes, until the tables are generated again',
+      file => {
+        expect(run().status).toBe(0);
+        const key = tablesKey();
+
+        writeFileSync(path.join(assetDir, file), 'corrected version');
+        for (const stale of [run(), run('--check')]) {
+          expect(stale.status).toBe(1);
+          expect(stale.stderr).toContain(
+            `mushafTables.generated.ts is stale: ${file} changed`,
+          );
+        }
+
+        writeTables('tables 2');
+        expect(run().status).toBe(0);
+        expect(run('--check').status).toBe(0);
+        expect(tablesKey()).not.toBe(key);
+      },
+    );
   });
   // @ai-end
 });
 
-describe('LAYOUT_SOURCE_SHA256', () => {
-  it('is the hash of the layout database the page lines come from', () => {
-    expect(LAYOUT_SOURCE_SHA256).toBe(sha256('digital-khatt-15-lines.db'));
+describe('MUSHAF_TABLES_SHA256', () => {
+  const TABLES = path.join(
+    REPO_ROOT,
+    'services',
+    'mushaf',
+    'mushafTables.generated.ts',
+  );
+
+  it('is the hash of the generated tables', () => {
+    expect(MUSHAF_TABLES_SHA256).toBe(
+      createHash('sha256').update(readFileSync(TABLES)).digest('hex'),
+    );
   });
+
+  // The full check: the tables are what the DBs give now.
+  (hasNodeSqlite() ? it : it.skip)(
+    'names tables that gen-mushaf-tables.mjs generates from the DBs',
+    () => {
+      const result = spawnSync(
+        process.execPath,
+        [
+          path.join(REPO_ROOT, 'scripts', 'rewayah', 'gen-mushaf-tables.mjs'),
+          '--check',
+        ],
+        {cwd: REPO_ROOT, encoding: 'utf8'},
+      );
+      expect(result.stderr).not.toContain('[gen-mushaf-tables]');
+      expect(result.status).toBe(0);
+    },
+  );
 });
