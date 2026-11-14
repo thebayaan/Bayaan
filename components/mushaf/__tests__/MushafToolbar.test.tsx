@@ -8,7 +8,9 @@
  *    currentVerseLabel), never "S:0", and says when verse tracking is off;
  *  - previous / next ayah are disabled when there is no verse tracking, and
  *    ask the store to skip (it tells a skip from the reciter moving on);
- *  - refused playback requests and untracked surahs surface as notices.
+ *  - refused playback requests and untracked surahs surface as notices;
+ *  - after Stop, Play and the options open for the page on screen (the store
+ *    kept it), not for page 1.
  */
 
 import React, {act} from 'react';
@@ -88,8 +90,9 @@ jest.mock('@/services/mushaf/MushafSessionStore', () => ({
   mushafSessionStore: {setLastScreenWasMushaf: jest.fn()},
 }));
 
+const mockShowSheet = jest.fn();
 jest.mock('react-native-actions-sheet', () => ({
-  SheetManager: {show: jest.fn()},
+  SheetManager: {show: (...args: unknown[]) => mockShowSheet(...args)},
 }));
 
 jest.mock('@/utils/toastUtils', () => ({
@@ -148,6 +151,7 @@ function setPlayer(state: object) {
 
 beforeEach(() => {
   mockShowToast.mockClear();
+  mockShowSheet.mockClear();
   useMushafPlayerStore.setState({
     playbackState: 'idle',
     currentSurah: 0,
@@ -252,6 +256,28 @@ describe('previous / next ayah', () => {
     act(() => button('backward.end.fill').onPress?.());
     expect(previousVerse).toHaveBeenCalledTimes(1);
     expect(nextVerse).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('after Stop', () => {
+  it('Play and the options open for the page on screen, not page 1', () => {
+    setPlayer({
+      playbackState: 'playing',
+      currentSurah: 16,
+      numberingMode: 'hafs',
+      currentPage: 300,
+    });
+    act(() => button('stop.fill').onPress?.());
+    expect(useMushafPlayerStore.getState().playbackState).toBe('idle');
+    act(() => button('play.fill').onPress?.());
+    expect(mockShowSheet).toHaveBeenLastCalledWith('mushaf-player-options', {
+      payload: {currentPage: 300},
+    });
+    mockShowSheet.mockClear();
+    act(() => button('ellipsis.circle').onPress?.());
+    expect(mockShowSheet).toHaveBeenLastCalledWith('mushaf-player-options', {
+      payload: {currentPage: 300},
+    });
   });
 });
 

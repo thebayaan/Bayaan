@@ -173,6 +173,13 @@ export interface MushafPlayerStoreState {
   // @ai-end
   /** Numbering of the loaded surah ('disabled' = no follow-along / seeking). */
   numberingMode: TimingNumberingMode | null;
+  // @ai-start
+  /**
+   * The mushaf page on screen, mirrored by the viewer whether or not
+   * something plays (null until a mushaf has been opened). Not the page of
+   * the verse being recited.
+   */
+  // @ai-end
   currentPage: number | null;
   timestamps: AyahTimestamp[] | null;
   rangeStart: RangeEndpoint | null;
@@ -1230,7 +1237,9 @@ export const useMushafPlayerStore = create<MushafPlayerStoreState>()(
             currentSurah: 0,
             numberingMode: null,
             _numbering: null,
-            currentPage: null,
+            // @ai currentPage stays: it is the page on screen, which the
+            // iOS 26 toolbar reads for the next Play (it opened for page 1
+            // after Stop when this was reset here).
             timestamps: null,
             rangeUnits: null, // @ai
             rangeStart: null,

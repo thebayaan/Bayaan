@@ -1222,11 +1222,16 @@ export default function MushafViewer({
   const isPlayerActive = mushafPlaybackState !== 'idle';
 
   // Update mushaf player store with current page for auto-page-turn
+  // @ai-start
+  // Also while nothing plays, and again whenever playback starts or stops:
+  // the iOS 26 toolbar opens Play, the play options and Recite for the page
+  // it reads from the store. Mirrored only during playback, they opened for
+  // page 1 after Stop, and in the scrolling layouts before the first page
+  // turn.
   useEffect(() => {
-    if (isPlayerActive) {
-      useMushafPlayerStore.setState({currentPage: currentPage});
-    }
+    useMushafPlayerStore.setState({currentPage: currentPage});
   }, [currentPage, isPlayerActive]);
+  // @ai-end
 
   // Android back handler — exit search mode instead of popping screen
   useEffect(() => {

@@ -576,6 +576,16 @@ describe('playback requests', () => {
       _entryAyah: 0,
     });
   });
+
+  // @ai-start
+  it('stop keeps the page on screen for the next Play', async () => {
+    await play('hafs-clean', 2);
+    // the viewer mirrors the page the reader turned to
+    useMushafPlayerStore.setState({currentPage: 300});
+    st().stop();
+    expect(st().currentPage).toBe(300);
+  });
+  // @ai-end
 });
 
 // @ai-start
