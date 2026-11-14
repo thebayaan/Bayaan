@@ -112,6 +112,18 @@ describe('createAyahTicker', () => {
     expect(published).toHaveLength(2);
   });
 
+  it('publishes a new text for the same ayah', async () => {
+    let text = 'old';
+    const {ticker, published} = setup(undefined, undefined, () => text);
+    ticker.onSnapshot(nowPlayingSnapshot({positionSec: 10}, START));
+    await settle();
+    expect(published.at(-1)?.text).toBe('old');
+
+    text = 'new';
+    ticker.tick();
+    expect(published.at(-1)).toEqual({number: 1, count: 110, text: 'new'});
+  });
+
   it('schedules nothing while paused', async () => {
     const {ticker, published} = setup();
     ticker.onSnapshot(

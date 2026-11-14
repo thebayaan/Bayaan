@@ -1,11 +1,4 @@
-import React, {
-  useEffect,
-  useMemo,
-  useCallback,
-  useRef, // @ai
-  useState, // @ai
-  useSyncExternalStore, // @ai
-} from 'react';
+import React, {useEffect, useCallback} from 'react';
 import {
   View,
   ActivityIndicator,
@@ -16,11 +9,10 @@ import {
 import {Stack, useLocalSearchParams} from 'expo-router';
 import {usePhoneOrientation} from '@/hooks/usePhoneOrientation'; // @ai
 import {useTheme} from '@/hooks/useTheme';
-import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
-import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService'; // @ai
-import {useMushafData} from '@/hooks/useMushafData'; // @ai
-import {isRewayahId, type RewayahId} from '@/services/rewayah/RewayahIdentity'; // @ai
-import {restoreSavedRewayah} from '@/services/verse-annotations/restoreSavedRewayah'; // @ai
+import {
+  useMushafOpenTarget,
+  type MushafOpenTarget,
+} from '@/hooks/useMushafOpenTarget'; // @ai
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
 // @ai-start
 import {
@@ -42,6 +34,13 @@ import {SheetManager} from 'react-native-actions-sheet';
 import {SURAHS} from '@/data/surahData';
 import MushafViewer from '@/components/mushaf/main';
 import {USE_GLASS} from '@/hooks/useGlassProps';
+import {
+  peekOnPage,
+  LIVE_MIC_COLOR,
+  useRecitationMic,
+  useRecitationStatusText,
+} from '@/components/mushaf/RecitationMicButton';
+import {stopRecitationTracking} from '@/services/recitation/RecitationTrackingService';
 // @ai-start
 import {playbackNoticeText} from '@/i18n/playback';
 import {useTranslation} from 'react-i18next';
@@ -68,101 +67,14 @@ export type MushafScreenParams = {
 };
 
 export default function MushafScreen() {
-  const {surah, page, ayah, anchor, rewayah, playerOptions} =
-    useLocalSearchParams<MushafScreenParams>(); // @ai
+  const params = useLocalSearchParams<MushafScreenParams>(); // @ai
   const {theme} = useTheme();
   const {t} = useTranslation(['reader', 'common']); // @ai
-
   // @ai-start
-  // The data loads after the splash, so this screen can open first. It starts
-  // the load if nothing did, and waits for it.
-  const {state: dataState, retry: retryLoad} = useMushafData();
-  const dkCacheVersion = useSyncExternalStore(
-    subscribeDkCache,
-    getDkCacheVersion,
-  );
-  useEffect(() => {
-    mushafPreloadService.startIfIdle();
-  }, []);
-  const dkReady = dataState === 'ready';
-  // A saved verse brings its rewayah. It is restored after the load, and the
-  // loading view stays until then: no page of another rewayah meanwhile.
-  const savedRewayah = isRewayahId(rewayah) ? rewayah : undefined;
-  const [restoringRewayah, setRestoringRewayah] = useState(() =>
-    needsRewayahRestore(savedRewayah),
-  );
-  useEffect(() => {
-    if (!restoringRewayah || !dkReady) return;
-    let cancelled = false;
-    restoreSavedRewayah(savedRewayah).finally(() => {
-      if (!cancelled) setRestoringRewayah(false);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [restoringRewayah, dkReady, savedRewayah]);
-  const contentReady = dkReady && !restoringRewayah;
+  // The data loads after the splash, so this screen can open first. The reader
+  // mounts when the data, the fonts and its page are ready.
+  const open = useMushafOpenTarget(params);
   // @ai-end
-  const surahStartPages = dkReady
-    ? digitalKhattDataService.getSurahStartPages()
-    : {};
-
-  // Resolve page number from params
-  const pageNumber = useMemo(() => {
-    if (page) {
-      const p = parseInt(page, 10);
-      if (!isNaN(p) && p >= 1 && p <= 604) return p;
-    }
-    // @ai-start
-    // A verse with no page: the page of the verse, in the restored rewayah.
-    if (contentReady && surah && ayah) {
-      const versePage = digitalKhattDataService.getPageForVerse(
-        `${parseInt(surah, 10)}:${parseInt(ayah, 10)}`,
-      );
-      if (versePage) return versePage;
-    }
-    // @ai-end
-    if (surah) {
-      const s = parseInt(surah, 10);
-      if (!isNaN(s) && surahStartPages[s]) return surahStartPages[s];
-    }
-    return 1;
-    // dkCacheVersion: the same verse has another page after a rewayah switch.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, surah, ayah, surahStartPages, contentReady, dkCacheVersion]);
-
-  // @ai-start
-  // The surah the user asked for, when the page was resolved from it. A page
-  // can hold the end of one surah and the start of another (or three, on
-  // 601-604), so the page number alone cannot name the surah — this keeps
-  // the header honest until the reader turns the page.
-  const initialSurahId = useMemo(() => {
-    if (page || !surah) return undefined;
-    const s = parseInt(surah, 10);
-    return !isNaN(s) && surahStartPages[s] ? s : undefined;
-  }, [page, surah, surahStartPages]);
-  // @ai-end
-
-  // @ai-start
-  // The options of the player's Repeat need the page, so they open here, once,
-  // when the page of the verse is known (VerseActionsSheet).
-  const playerOptionsShownRef = useRef(false);
-  useEffect(() => {
-    if (playerOptions !== '1' || !contentReady) return;
-    if (playerOptionsShownRef.current) return;
-    playerOptionsShownRef.current = true;
-    useMushafPlayerStore.setState({currentPage: pageNumber});
-    SheetManager.show('mushaf-player-options', {
-      payload: {currentPage: pageNumber},
-    });
-  }, [playerOptions, contentReady, pageNumber]);
-  // @ai-end
-
-  // Build initial verse key for highlight
-  const initialVerseKey = useMemo(() => {
-    if (surah && ayah) return `${surah}:${ayah}`;
-    return undefined;
-  }, [surah, ayah]);
 
   // Phones may turn to landscape while the mushaf screen is open and go back
   // to portrait on exit. iPads aren't locked, so leaving the reader in
@@ -183,46 +95,86 @@ export default function MushafScreen() {
   }, []);
 
   // @ai-start
-  // Mushaf 1440 (qcf_v2) draws Hafs only and the settings store pins the
-  // rewayah to Hafs there. The DigitalKhatt data service must agree: its
-  // words feed the QCF Allah-name highlights now, and the DigitalKhatt pages
-  // and their saved layouts after a later switch back. A path that switched
-  // the service without the store (opening a bookmark saved in another
-  // rewayah used to) would otherwise leave that rewayah's text under a Hafs
-  // header, so put the service back on the store's rewayah.
-  const mushafRenderer = useMushafSettingsStore(s => s.mushafRenderer);
-  const settingsRewayah = useMushafSettingsStore(s => s.rewayah);
-  useEffect(() => {
-    if (mushafRenderer !== 'qcf_v2') return;
-    if (!digitalKhattDataService.initialized) return;
-    if (digitalKhattDataService.rewayah === settingsRewayah) return;
-    digitalKhattDataService.switchRewayah(settingsRewayah).catch(error => {
-      console.error('[MushafScreen] Failed to resync rewayah:', error);
-    });
-  }, [mushafRenderer, settingsRewayah]);
-  // @ai-end
+  if (open.state === 'ready') {
+    return (
+      <MushafReader
+        target={open.target}
+        playerOptions={params.playerOptions === '1'}
+      />
+    );
+  }
 
-  // @ai-start
+  // When the mushaf text cannot be loaded (e.g. no storage left to copy it
+  // to the device), say so and offer a retry, not an endless spinner.
+  if (open.state === 'failed') {
+    return (
+      <View
+        style={[styles.loading, {backgroundColor: theme.colors.background}]}
+        accessibilityRole="alert">
+        <Text style={[styles.errorTitle, {color: theme.colors.text}]}>
+          {t('reader:mushaf.loadFailedTitle')}
+        </Text>
+        <Text style={[styles.errorBody, {color: theme.colors.text}]}>
+          {t('reader:mushaf.loadFailedBody')}
+        </Text>
+        <Pressable
+          onPress={open.retry}
+          accessibilityRole="button"
+          hitSlop={8}
+          style={({pressed}) => [
+            styles.retryButton,
+            {borderColor: theme.colors.text},
+            pressed && styles.retryButtonPressed,
+          ]}>
+          <Text style={[styles.retryText, {color: theme.colors.text}]}>
+            {t('common:actions.tryAgain')}
+          </Text>
+        </Pressable>
+      </View>
+    );
+  }
+  // @ai-end
+  return (
+    <View style={[styles.loading, {backgroundColor: theme.colors.background}]}>
+      <ActivityIndicator size="large" color={theme.colors.text} />
+    </View>
+  );
+}
+
+// @ai-start
+// The reader at its open target. The target is fixed, so each effect here runs
+// once: the player options open once, and the verse flashes once.
+function MushafReader({
+  target,
+  playerOptions,
+}: {
+  target: MushafOpenTarget;
+  /** The player's Repeat opened the reader: show the player options. */
+  playerOptions: boolean;
+}) {
+  const {theme} = useTheme();
+  const {page, anchor, verseKey} = target;
+
+  // The options of the player's Repeat need the page (VerseActionsSheet).
+  useEffect(() => {
+    if (!playerOptions) return;
+    useMushafPlayerStore.setState({currentPage: page});
+    SheetManager.show('mushaf-player-options', {payload: {currentPage: page}});
+  }, [playerOptions, page]);
+
   // Set verse highlight on mount, auto-clear after 3s, clear on unmount
   useEffect(() => {
-    // @ai-start
-    // Not before the page is known and on screen.
-    if (!contentReady) return;
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | null = null;
     const flash = () => {
       // The unit a stored anchor names, in the shown rewayah's numbering.
       const unitSelection = anchor ? selectionForAnchor(anchor) : null;
-      if (!unitSelection && !initialVerseKey) return;
+      if (!unitSelection && !verseKey) return;
       const selection = useMushafVerseSelectionStore.getState();
       if (unitSelection) {
-        selection.selectUnits(
-          unitSelection.rewayah,
-          unitSelection.units,
-          pageNumber,
-        );
-      } else if (initialVerseKey) {
-        selection.selectVerse(initialVerseKey, pageNumber);
+        selection.selectUnits(unitSelection.rewayah, unitSelection.units, page);
+      } else if (verseKey) {
+        selection.selectVerse(verseKey, page);
       }
       timer = setTimeout(() => {
         useMushafVerseSelectionStore.getState().clearSelection();
@@ -235,7 +187,7 @@ export default function MushafScreen() {
     // of a Hafs verse starts once the pages can paint it (no verse layer is
     // painted while the units build) instead of running out unseen.
     if (
-      (anchor || initialVerseKey) &&
+      (anchor || verseKey) &&
       mushafVerseMapService.isShownVerseUnitsPending()
     ) {
       whenShownVerseUnitsResolved().then(() => {
@@ -249,79 +201,27 @@ export default function MushafScreen() {
       if (timer !== null) clearTimeout(timer);
       useMushafVerseSelectionStore.getState().clearSelection();
     };
-    // @ai-end
-  }, [anchor, initialVerseKey, pageNumber, contentReady]); // @ai: anchor, contentReady
-
-  if (!contentReady) {
-    // @ai-start
-    // When the mushaf text cannot be loaded (e.g. no storage left to copy it
-    // to the device), say so and offer a retry, not an endless spinner.
-    if (dataState === 'failed') {
-      return (
-        <View
-          style={[styles.loading, {backgroundColor: theme.colors.background}]}
-          accessibilityRole="alert">
-          <Text style={[styles.errorTitle, {color: theme.colors.text}]}>
-            {t('reader:mushaf.loadFailedTitle')}
-          </Text>
-          <Text style={[styles.errorBody, {color: theme.colors.text}]}>
-            {t('reader:mushaf.loadFailedBody')}
-          </Text>
-          <Pressable
-            onPress={retryLoad}
-            accessibilityRole="button"
-            hitSlop={8}
-            style={({pressed}) => [
-              styles.retryButton,
-              {borderColor: theme.colors.text},
-              pressed && styles.retryButtonPressed,
-            ]}>
-            <Text style={[styles.retryText, {color: theme.colors.text}]}>
-              {t('common:actions.tryAgain')}
-            </Text>
-          </Pressable>
-        </View>
-      );
-    }
-    // @ai-end
-    return (
-      <View
-        style={[styles.loading, {backgroundColor: theme.colors.background}]}>
-        <ActivityIndicator size="large" color={theme.colors.text} />
-      </View>
-    );
-  }
+  }, [anchor, verseKey, page]);
 
   return (
     <View
       style={[styles.container, {backgroundColor: theme.colors.background}]}>
       {USE_GLASS && <MushafToolbar />}
       <MushafViewer
-        pageNumber={pageNumber}
-        initialSurahId={initialSurahId} // @ai
-        initialVerseKey={initialVerseKey}
+        pageNumber={page}
+        initialSurahId={target.surahId}
+        initialVerseKey={verseKey}
       />
     </View>
   );
 }
+// @ai-end
 
 // ============================================================================
 // iOS Native Toolbar (Stack.Toolbar)
 // ============================================================================
 
 // @ai-start
-const subscribeDkCache = (listener: () => void): (() => void) =>
-  digitalKhattDataService.subscribeCacheChanges(listener);
-const getDkCacheVersion = () => digitalKhattDataService.getCacheVersion();
-
-function needsRewayahRestore(saved: RewayahId | undefined): boolean {
-  if (!saved) return false;
-  return (
-    saved !== useMushafSettingsStore.getState().rewayah ||
-    saved !== digitalKhattDataService.rewayah
-  );
-}
-
 const surahNameOf = (surah: number): string =>
   surah >= 1 && surah <= 114 ? getSurahDisplayName(SURAHS[surah - 1]) : '';
 // @ai-end
@@ -334,6 +234,12 @@ export function MushafToolbar() {
   const {t} = useTranslation(['reader', 'common']);
   const playbackState = useMushafPlayerStore(s => s.playbackState);
   const currentPage = useMushafPlayerStore(s => s.currentPage);
+  const mic = useRecitationMic(currentPage || 1);
+  const recitationText = useRecitationStatusText();
+  const hideText = useMushafSettingsStore(s => s.recitationHideText);
+  const toggleHideText = useMushafSettingsStore(
+    s => s.toggleRecitationHideText,
+  );
   const currentSurah = useMushafPlayerStore(s => s.currentSurah);
   // @ai-start
   const currentVerseLabel = useMushafPlayerStore(s => s.currentVerseLabel);
@@ -421,6 +327,51 @@ export function MushafToolbar() {
   // Hide toolbar in immersive or search mode
   if (isImmersive || isSearchMode) return null;
 
+  if (recitationText !== null) {
+    // Reciting: [Stop], peek icons when hiding, the live mic, then [eye].
+    return (
+      <Stack.Toolbar>
+        <Stack.Toolbar.Button
+          icon="stop.fill"
+          onPress={() => void stopRecitationTracking()}>
+          {t('recitation.stop')}
+        </Stack.Toolbar.Button>
+        <Stack.Toolbar.Spacer />
+        {hideText && (
+          <Stack.Toolbar.Button
+            icon="chevron.left.2"
+            accessibilityLabel={t('recitation.nextAyah')}
+            onPress={() => peekOnPage('ayah', currentPage || 1)}>
+            {t('recitation.nextAyah')}
+          </Stack.Toolbar.Button>
+        )}
+        {hideText && (
+          <Stack.Toolbar.Button
+            icon="chevron.left"
+            accessibilityLabel={t('recitation.nextWord')}
+            onPress={() => peekOnPage('word', currentPage || 1)}>
+            {t('recitation.nextWord')}
+          </Stack.Toolbar.Button>
+        )}
+        <Stack.Toolbar.Button
+          icon="mic.fill"
+          tintColor={LIVE_MIC_COLOR}
+          accessibilityLabel={t('recitation.listeningLabel', {
+            status: recitationText,
+          })}
+          onPress={() => void stopRecitationTracking()}>
+          {t('recitation.listening')}
+        </Stack.Toolbar.Button>
+        <Stack.Toolbar.Spacer />
+        <Stack.Toolbar.Button
+          icon={hideText ? 'eye.slash' : 'eye'}
+          onPress={toggleHideText}>
+          {hideText ? t('recitation.showText') : t('recitation.hideText')}
+        </Stack.Toolbar.Button>
+      </Stack.Toolbar>
+    );
+  }
+
   if (isIdle) {
     // Idle: [Search] — spacer — [Play] — spacer — [Options]
     return (
@@ -432,6 +383,22 @@ export function MushafToolbar() {
         <Stack.Toolbar.Button icon="play.fill" onPress={handlePlay}>
           {t('common:actions.play')}
         </Stack.Toolbar.Button>
+        {mic.enabled && (
+          <Stack.Toolbar.Button
+            icon={
+              mic.busy
+                ? 'hourglass'
+                : mic.status === 'listening'
+                  ? 'mic.fill'
+                  : mic.status === 'paused'
+                    ? 'mic.slash'
+                    : 'mic'
+            }
+            onPress={mic.toggle}
+            disabled={mic.busy}>
+            {t('recitation.recite')}
+          </Stack.Toolbar.Button>
+        )}
         <Stack.Toolbar.Spacer />
         <Stack.Toolbar.Button icon="ellipsis.circle" onPress={handleOptions}>
           {t('toolbar.options')}

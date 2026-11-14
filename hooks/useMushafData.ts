@@ -1,19 +1,22 @@
 // @ai-generated
 // The Mushaf data loads after the splash (RFC-023 step 1), so a screen that
-// reads it waits for one state, with one retry that knows which load to redo.
-import {useCallback, useState, useSyncExternalStore} from 'react';
+// reads it can open first. It starts the load if nothing did, and waits for one
+// state, with one retry.
+import {useCallback, useEffect, useState, useSyncExternalStore} from 'react';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
 
 export type MushafDataState = 'ready' | 'loading' | 'failed';
 
+// Ready means the data and the fonts: a page that mounts before the fonts
+// draws without them. The preload fails when either fails, and the pages stay
+// blank either way, so both offer the retry.
 function readMushafDataState(): MushafDataState {
-  const dk = digitalKhattDataService;
-  if (dk.initialized) return 'ready';
-  const failed =
-    mushafPreloadService.state === 'failed' ||
-    dk.getRewayahLoadState(dk.rewayah) === 'error';
-  return failed ? 'failed' : 'loading';
+  const preload = mushafPreloadService;
+  if (preload.state === 'failed') return 'failed';
+  return preload.initialized && digitalKhattDataService.initialized
+    ? 'ready'
+    : 'loading';
 }
 
 function subscribeMushafData(listener: () => void): () => void {
@@ -25,25 +28,20 @@ function subscribeMushafData(listener: () => void): () => void {
   };
 }
 
-// A failed preload redoes the data and the fonts. Else the preload finished,
-// and only the data of the active rewayah needs its load again.
-function retryMushafLoad(): Promise<void> {
-  if (mushafPreloadService.state === 'failed') {
-    return mushafPreloadService.initialize();
-  }
-  const dk = digitalKhattDataService;
-  return dk.ensureRewayahLoaded(dk.rewayah, {retry: true});
-}
-
 export function useMushafData(): {
   state: MushafDataState;
   retry: () => void;
 } {
   const state = useSyncExternalStore(subscribeMushafData, readMushafDataState);
+  useEffect(() => {
+    mushafPreloadService.startIfIdle();
+  }, []);
   const [retrying, setRetrying] = useState(false);
   const retry = useCallback(() => {
     setRetrying(true);
-    retryMushafLoad()
+    // The preload redoes the data and the fonts.
+    mushafPreloadService
+      .initialize()
       .catch(() => undefined)
       .finally(() => setRetrying(false));
   }, []);

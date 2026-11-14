@@ -24,6 +24,7 @@ import {
 import {Feather} from '@expo/vector-icons';
 import {ReciterItem} from '@/components/ReciterItem';
 import {SurahItem} from '@/components/SurahItem';
+import {ReciteToSearchRow} from '@/components/search/ReciteToSearchRow';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale} from '@/utils/scale';
 import {LoadingIndicator} from '@/components/LoadingIndicator';
@@ -496,6 +497,7 @@ export function SearchView({
               {paddingBottom: Math.max(keyboardHeight, bottomInset)},
             ]}
             keyboardShouldPersistTaps="handled">
+            {!Platform.isTV && <ReciteToSearchRow />}
             {recentSearches.length > 0 ? (
               <View>
                 <View style={styles.sectionHeader}>

@@ -28,6 +28,13 @@ import {
   SearchPerformedProps,
   TranslationViewedProps,
   AppBackgroundedProps,
+  RecitationTrackingStartedProps,
+  RecitationTrackingLockedProps,
+  RecitationTrackingStoppedProps,
+  RecitationModelDownloadedProps,
+  RecitationTrackingErrorProps,
+  RecitationIdentifyStartedProps,
+  RecitationIdentifyEndedProps,
 } from './events';
 import {localAggregationStore} from './LocalAggregationStore';
 import {MeaningfulListenTracker} from './MeaningfulListenTracker';
@@ -344,6 +351,38 @@ class AnalyticsServiceImpl {
     // generic event), so it must honor the same opt-out / hydration gate.
     if (!isConsentGranted()) return;
     this.posthog?.identify(userId);
+  }
+
+  // --- Recitation follow-along ---
+
+  trackRecitationTrackingStarted(props: RecitationTrackingStartedProps): void {
+    this.capture(ANALYTICS_EVENTS.RECITATION_TRACKING_STARTED, {...props});
+  }
+
+  trackRecitationTrackingLocked(props: RecitationTrackingLockedProps): void {
+    this.capture(ANALYTICS_EVENTS.RECITATION_TRACKING_LOCKED, {...props});
+  }
+
+  trackRecitationTrackingStopped(props: RecitationTrackingStoppedProps): void {
+    this.capture(ANALYTICS_EVENTS.RECITATION_TRACKING_STOPPED, {...props});
+  }
+
+  trackRecitationModelDownloaded(props: RecitationModelDownloadedProps): void {
+    this.capture(ANALYTICS_EVENTS.RECITATION_MODEL_DOWNLOADED, {...props});
+  }
+
+  trackRecitationTrackingError(props: RecitationTrackingErrorProps): void {
+    this.capture(ANALYTICS_EVENTS.RECITATION_TRACKING_ERROR, {...props});
+  }
+
+  // --- Which ayah? ---
+
+  trackRecitationIdentifyStarted(props: RecitationIdentifyStartedProps): void {
+    this.capture(ANALYTICS_EVENTS.RECITATION_IDENTIFY_STARTED, {...props});
+  }
+
+  trackRecitationIdentifyEnded(props: RecitationIdentifyEndedProps): void {
+    this.capture(ANALYTICS_EVENTS.RECITATION_IDENTIFY_ENDED, {...props});
   }
 
   // --- Helpers ---
