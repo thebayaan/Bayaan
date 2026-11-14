@@ -8,13 +8,18 @@
  *  - Play starts the page on screen: a range or a start verse left in the
  *    store by an earlier request must not decide where it starts;
  *  - Next / Previous ayah go through the store, which tells a skip from the
- *    reciter reaching the next verse (verse repeat used to undo the skip).
+ *    reciter reaching the next verse (verse repeat used to undo the skip);
+ *  - an error that playing again may clear is a notice and leaves Play in
+ *    the bar; one that needs another reciter replaces the bar with a row.
  */
 
 import React, {act} from 'react';
 import TestRenderer from 'react-test-renderer';
 
-jest.mock('@/utils/toastUtils', () => ({showToast: jest.fn()}));
+const mockShowToast = jest.fn();
+jest.mock('@/utils/toastUtils', () => ({
+  showToast: (...args: unknown[]) => mockShowToast(...args),
+}));
 jest.mock('@/hooks/useTheme', () => ({
   useTheme: () => ({
     theme: {colors: {text: '#111111', textSecondary: '#555555'}},
@@ -59,6 +64,9 @@ jest.mock('@/components/mushaf/RecitationMicButton', () => ({
 
 import {MushafPlayerBar} from '@/components/mushaf/MushafPlayerBar';
 import {
+  AUDIO_LOAD_FAILED_ERROR,
+  TIMESTAMPS_LOAD_FAILED_ERROR,
+  TIMESTAMPS_UNAVAILABLE_ERROR,
   useMushafPlayerStore,
   type MushafPlayerStoreState,
 } from '@/store/mushafPlayerStore';
@@ -106,8 +114,14 @@ function spyOnStart(): StartSnapshot[] {
   return starts;
 }
 
+const labels = (): string[] =>
+  renderer!.root
+    .findAll(n => typeof n.props.accessibilityLabel === 'string')
+    .map(n => n.props.accessibilityLabel as string);
+
 beforeEach(() => {
   mockShowSheet.mockClear();
+  mockShowToast.mockClear();
   useMushafPlayerStore.setState(initial, true);
   act(() => {
     renderer = TestRenderer.create(<MushafPlayerBar currentPage={PAGE} />);
@@ -174,5 +188,53 @@ describe('Next / Previous ayah', () => {
     press('Previous ayah');
     expect(previousVerse).toHaveBeenCalledTimes(1);
     expect(nextVerse).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('errors', () => {
+  it.each([
+    [
+      'the timings could not be fetched',
+      TIMESTAMPS_LOAD_FAILED_ERROR,
+      "Couldn't load the verse timings. Check your internet connection and try again.",
+    ],
+    [
+      'the audio could not be played',
+      AUDIO_LOAD_FAILED_ERROR,
+      "Couldn't play the audio for this surah. Check your internet connection and try again.",
+    ],
+  ])('%s: a notice, and Play stays in the bar', (_name, error, message) => {
+    act(() => {
+      useMushafPlayerStore.setState({
+        rewayatId: 'hafs-clean',
+        playbackState: 'idle',
+        timestampError: error,
+      });
+    });
+    expect(mockShowToast).toHaveBeenCalledTimes(1);
+    expect(mockShowToast).toHaveBeenCalledWith(
+      'Playback unavailable',
+      message,
+      'error',
+    );
+    expect(labels()).toContain('Play');
+    expect(labels()).not.toContain('Change reciter');
+    // and Play tries again
+    const starts = spyOnStart();
+    press('Play');
+    expect(starts.map(s => s.page)).toEqual([PAGE]);
+  });
+
+  it('the reciter has no timings for the surah: the row offering another reciter', () => {
+    act(() => {
+      useMushafPlayerStore.setState({
+        rewayatId: 'hafs-clean',
+        playbackState: 'idle',
+        timestampError: TIMESTAMPS_UNAVAILABLE_ERROR,
+      });
+    });
+    expect(mockShowToast).not.toHaveBeenCalled();
+    expect(labels()).toContain('Change reciter');
+    expect(labels()).not.toContain('Play');
   });
 });

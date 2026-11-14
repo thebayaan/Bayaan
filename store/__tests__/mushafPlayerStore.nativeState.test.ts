@@ -13,7 +13,10 @@
  *    store says 'playing' and the chosen speed is applied again (iOS resumes
  *    at 1x);
  *  - statuses that are old, buffering, or the surah ending are not taken for
- *    a pause or a start.
+ *    a pause or a start;
+ *  - audio that cannot be loaded stops playback with a message instead of a
+ *    bar that shows the verse as playing over silence, and timings that
+ *    could not be fetched are told apart from timings the reciter lacks.
  */
 import type {AyahTimestamp} from '@/types/timestamps';
 
@@ -55,6 +58,8 @@ const mockPlayers: MockPlayer[] = [];
 const mockPageKeys: Record<number, string[]> = {};
 // The OS refuses play() without an error (no audio focus, silent mode).
 const mockNative = {refusePlay: false};
+// Whether the reciter has timings for a surah (the catalogue's answer).
+const mockCatalogue = {covered: true};
 const mockCoordinator = {mushafWillPlay: jest.fn(), sourceDidStop: jest.fn()};
 
 jest.mock('expo-audio', () => ({
@@ -137,7 +142,10 @@ jest.mock('@/services/timestamps/TimestampService', () => ({
 }));
 
 jest.mock('@/services/timestamps/TimestampFetchService', () => ({
-  timestampFetchService: {hasSurah: () => true, hasSource: () => true},
+  timestampFetchService: {
+    hasSurah: () => mockCatalogue.covered,
+    hasSource: () => true,
+  },
 }));
 
 jest.mock('@/services/mushaf/MushafVerseMapService', () => ({
@@ -156,8 +164,17 @@ jest.mock('@/utils/playbackVerseUnits', () => ({
   subscribeVerseUnitsChanges: () => () => undefined,
 }));
 
-import {useMushafPlayerStore} from '../mushafPlayerStore';
+import {
+  AUDIO_LOAD_FAILED_ERROR,
+  TIMESTAMPS_LOAD_FAILED_ERROR,
+  TIMESTAMPS_UNAVAILABLE_ERROR,
+  getPlaybackNotice,
+  getPlayerBarNotice,
+  isRetryablePlaybackError,
+  useMushafPlayerStore,
+} from '../mushafPlayerStore';
 import {mushafAudioService} from '@/services/audio/MushafAudioService';
+import {timestampService} from '@/services/timestamps/TimestampService';
 import {timingNumberingService} from '@/services/timestamps/TimingNumberingService';
 import {loadTimings} from '@/services/timestamps/__fixtures__/timingFixtures';
 
@@ -229,6 +246,10 @@ beforeAll(() => {
   jest.spyOn(console, 'warn').mockImplementation(() => undefined);
 });
 
+const getTimestampsForSurah =
+  timestampService.getTimestampsForSurah as jest.Mock;
+const fixtureTimings = getTimestampsForSurah.getMockImplementation()!;
+
 beforeEach(() => {
   st().stop();
   st().setVerseRepeatCount(1);
@@ -237,6 +258,8 @@ beforeEach(() => {
   st().setRate(1);
   mockPlayers.length = 0;
   mockNative.refusePlay = false;
+  mockCatalogue.covered = true;
+  getTimestampsForSurah.mockImplementation(fixtureTimings);
   mockCoordinator.mushafWillPlay.mockClear();
   timingNumberingService.reset();
 });
@@ -437,5 +460,117 @@ describe('a player that was replaced', () => {
     );
     expect(st().playbackState).toBe('playing');
     expect(mushafAudioService.getIsPlaying()).toBe(true);
+  });
+});
+
+describe('the audio cannot be played', () => {
+  /** Every notice the store's updates give the toolbar and the bar. */
+  function watchNotices() {
+    const toolbar: string[] = [];
+    const bar: string[] = [];
+    const unsubscribe = useMushafPlayerStore.subscribe((next, prev) => {
+      const forToolbar = getPlaybackNotice(prev, next, () => '');
+      if (forToolbar) toolbar.push(forToolbar.message);
+      const forBar = getPlayerBarNotice(prev, next, () => '');
+      if (forBar) bar.push(forBar.message);
+    });
+    return {toolbar, bar, unsubscribe};
+  }
+
+  it('a failed load: playback stops and says so, never "playing" over silence', async () => {
+    st().setReciter('hafs-clean', 'Test Reciter');
+    await st().startPlayback(5, '2:30');
+    const failed = player();
+    const notices = watchNotices();
+    // offline: the player reports that its source failed
+    failed.playing = false;
+    failed.emit({error: 'The Internet connection appears to be offline.'});
+    notices.unsubscribe();
+    expect(st()).toMatchObject({
+      playbackState: 'idle',
+      timestampError: AUDIO_LOAD_FAILED_ERROR,
+      currentVerseKey: null,
+    });
+    expect(failed.removed).toBe(true);
+    expect(mushafAudioService.getIsPlaying()).toBe(false);
+    expect(mushafAudioService.hasPlayer()).toBe(false);
+    // the toolbar and the bar both say it; the bar keeps Play to try again
+    expect(notices.toolbar).toEqual([AUDIO_LOAD_FAILED_ERROR]);
+    expect(notices.bar).toEqual([AUDIO_LOAD_FAILED_ERROR]);
+    expect(isRetryablePlaybackError(st().timestampError)).toBe(true);
+  });
+
+  it('a stream that breaks mid-way stops the same way', async () => {
+    await playing();
+    player().emit({error: 'Source error'});
+    expect(st()).toMatchObject({
+      playbackState: 'idle',
+      timestampError: AUDIO_LOAD_FAILED_ERROR,
+    });
+    // nothing is left running that would report a verse later
+    jest.advanceTimersByTime(5000);
+    expect(st().currentVerseKey).toBeNull();
+  });
+
+  it('Play again clears the message and plays when the audio loads', async () => {
+    await playing();
+    player().emit({error: 'Source error'});
+    await st().startPlayback(5);
+    expect(st()).toMatchObject({
+      playbackState: 'playing',
+      timestampError: null,
+      currentVerseKey: '2:30',
+    });
+  });
+
+  it('the failed audio of a playback being replaced is not reported', async () => {
+    await playing();
+    const old = player();
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>(resolve => (release = resolve));
+    getTimestampsForSurah.mockImplementation(
+      async (set: string, surah: number) => {
+        await gate;
+        return fixtureTimings(set, surah);
+      },
+    );
+    const start = st().startPlayback(2, '2:1');
+    old.emit({error: 'Source error'});
+    expect(st()).toMatchObject({
+      playbackState: 'loading',
+      timestampError: null,
+    });
+    release();
+    await start;
+    expect(st()).toMatchObject({
+      playbackState: 'playing',
+      timestampError: null,
+      currentVerseKey: '2:1',
+    });
+  });
+});
+
+describe('no timings to play', () => {
+  it('they could not be fetched: a connection problem, and Play stays available', async () => {
+    getTimestampsForSurah.mockImplementation(async () => null);
+    st().setReciter('hafs-clean', 'Test Reciter');
+    await st().startPlayback(5, '2:30');
+    expect(st()).toMatchObject({
+      playbackState: 'idle',
+      timestampError: TIMESTAMPS_LOAD_FAILED_ERROR,
+    });
+    expect(isRetryablePlaybackError(st().timestampError)).toBe(true);
+  });
+
+  it('the reciter has none for this surah: try another reciter', async () => {
+    getTimestampsForSurah.mockImplementation(async () => null);
+    mockCatalogue.covered = false;
+    st().setReciter('hafs-clean', 'Test Reciter');
+    await st().startPlayback(5, '2:30');
+    expect(st()).toMatchObject({
+      playbackState: 'idle',
+      timestampError: TIMESTAMPS_UNAVAILABLE_ERROR,
+    });
+    expect(isRetryablePlaybackError(st().timestampError)).toBe(false);
   });
 });

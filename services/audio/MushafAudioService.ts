@@ -72,6 +72,8 @@ type SurahEndCallback = (reason: SurahEndReason) => void;
  * app taking the audio, the lock screen's buttons.
  */
 type PlayingChangeCallback = (playing: boolean) => void;
+/** The loaded surah's audio cannot be played (the player's own message). */
+type AudioErrorCallback = (message: string) => void;
 // @ai-end
 
 class MushafAudioService {
@@ -113,6 +115,7 @@ class MushafAudioService {
   private onSurahEnd: SurahEndCallback | null = null;
   private onIntroChange: IntroChangeCallback | null = null; // @ai
   private onPlayingChange: PlayingChangeCallback | null = null; // @ai
+  private onAudioError: AudioErrorCallback | null = null; // @ai
 
   private constructor() {}
 
@@ -154,6 +157,14 @@ class MushafAudioService {
    */
   setOnPlayingChange(callback: PlayingChangeCallback): void {
     this.onPlayingChange = callback;
+  }
+
+  /**
+   * Called when the loaded surah's audio fails (no connection, a missing
+   * file): nothing will play until a surah is loaded again.
+   */
+  setOnAudioError(callback: AudioErrorCallback): void {
+    this.onAudioError = callback;
   }
   // @ai-end
 
@@ -470,6 +481,19 @@ class MushafAudioService {
    */
   private handleStatus(player: AudioPlayer, status: AudioStatus): void {
     if (player !== this.player) return;
+
+    // The audio could not be loaded, or broke mid-way (expo-audio reports it
+    // as an `error` string on a status, on both platforms). The bar used to
+    // show the verse as playing over silence, for good.
+    if (typeof status.error === 'string' && status.error.length > 0) {
+      console.warn('[MushafAudio] Audio failed:', status.error);
+      this.isPlaying = false;
+      this.pausedFromOutside = false;
+      this.clearStartCheck();
+      this.stopAyahTracking();
+      this.onAudioError?.(status.error);
+      return;
+    }
 
     if (status.didJustFinish) {
       if (this.isPlaying || this.pausedFromOutside) {

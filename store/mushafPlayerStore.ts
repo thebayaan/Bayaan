@@ -104,6 +104,42 @@ export interface UnitRange {
 export const TIMESTAMPS_UNAVAILABLE_ERROR =
   'Timestamps unavailable for this reciter on this surah. Try a different reciter.';
 
+// @ai-start
+/**
+ * Shown when the reciter has verse timings for the surah but they could not
+ * be loaded (no connection): playing again may work, another reciter is not
+ * the answer.
+ */
+export const TIMESTAMPS_LOAD_FAILED_ERROR =
+  "Couldn't load the verse timings. Check your internet connection and try again.";
+
+/** Shown when the surah's audio could not be loaded or broke mid-way. */
+export const AUDIO_LOAD_FAILED_ERROR =
+  "Couldn't play the audio for this surah. Check your internet connection and try again.";
+
+/**
+ * Errors that playing again may clear. The player bar keeps its Play button
+ * for these (they are shown as a notice) instead of the row that only offers
+ * another reciter.
+ */
+export function isRetryablePlaybackError(message: string | null): boolean {
+  return (
+    message === TIMESTAMPS_LOAD_FAILED_ERROR ||
+    message === AUDIO_LOAD_FAILED_ERROR
+  );
+}
+
+/**
+ * Why `surah` has no timings to play: the reciter has none for it, or they
+ * could not be fetched (as store/timestampStore.ts tells the two apart).
+ */
+function timingsErrorFor(rewayatId: string, surah: number): string {
+  return timestampFetchService.hasSurah(rewayatId, surah)
+    ? TIMESTAMPS_LOAD_FAILED_ERROR
+    : TIMESTAMPS_UNAVAILABLE_ERROR;
+}
+// @ai-end
+
 /** Shown when a repeat / loop is requested on a surah without verse timing. */
 export const VERSE_TIMING_UNAVAILABLE_ERROR =
   "Verse-by-verse playback isn't available for this reciter on this surah. Try a different reciter.";
@@ -1005,11 +1041,26 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
   };
   // @ai-end
 
+  // @ai-start
+  /**
+   * The surah's audio could not be loaded or broke mid-way: stop and say so,
+   * instead of a bar that shows the verse as playing over silence.
+   */
+  const handleAudioError = () => {
+    if (get().playbackState === 'idle') return;
+    // The audio of a playback a new start is replacing: it goes anyway.
+    if (audioSession !== playbackSession) return;
+    finishPlayback();
+    set({timestampError: AUDIO_LOAD_FAILED_ERROR});
+  };
+  // @ai-end
+
   const registerCallbacks = () => {
     mushafAudioService.setOnAyahChange(handleEntryChange);
     mushafAudioService.setOnSurahEnd(handleSurahEnd);
     mushafAudioService.setOnIntroChange(handleIntroChange); // @ai
     mushafAudioService.setOnPlayingChange(handlePlayingChange); // @ai
+    mushafAudioService.setOnAudioError(handleAudioError); // @ai
   };
 
   return {
@@ -1181,7 +1232,8 @@ export const useMushafPlayerStore = create<MushafPlayerStoreState>()(
               );
               set({
                 playbackState: 'idle',
-                timestampError: TIMESTAMPS_UNAVAILABLE_ERROR,
+                // @ai Not covered, or a fetch that failed (no connection).
+                timestampError: timingsErrorFor(rewayatId, surahNumber),
               });
               return;
             }
@@ -1568,7 +1620,9 @@ export function getPlaybackNotice(
 /**
  * The notices the player bar shows as toasts: it shows refusals and
  * "Verse tracking unavailable" inline, but not that a requested start verse
- * was skipped because the surah plays from its beginning.
+ * was skipped because the surah plays from its beginning. An error that
+ * playing again may clear (the timings or the audio could not be loaded) is
+ * a notice too, so the bar keeps its Play button to try again with.
  */
 export function getPlayerBarNotice(
   prev: NoticeState,
@@ -1576,6 +1630,12 @@ export function getPlayerBarNotice(
   surahName: (surah: number) => string,
   text?: PlaybackNoticeText,
 ): PlaybackNotice | null {
+  if (
+    next.timestampError !== prev.timestampError &&
+    isRetryablePlaybackError(next.timestampError)
+  ) {
+    return getPlaybackNotice(prev, next, surahName, text);
+  }
   if (!next.ignoredStartVerseKey) return null;
   return untrackedSurahNotice(prev, next, surahName, text);
 }
