@@ -114,7 +114,6 @@ declare module 'react-native-actions-sheet' {
     'select-reciter': SheetDefinition<{
       payload: {
         surahId: string;
-        source?: 'search' | 'home';
       };
     }>;
     'select-playlist': SheetDefinition<{
