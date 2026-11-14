@@ -122,8 +122,11 @@ export function readStoredLineFit(key: string): StoredLineFit | undefined {
   try {
     const parts = kv.getString(hashKey(key))?.split(',');
     if (parts?.length !== 2) return undefined;
-    const wordSize = parseFloat(parts[0]);
-    const spaceExtra = parseFloat(parts[1]);
+    // Number, not parseFloat, which reads '20abc' as 20. Number reads '' as 0,
+    // so an empty half is not a number either.
+    const [wordSize, spaceExtra] = parts.map(part =>
+      part.trim() === '' ? NaN : Number(part),
+    );
     return isUsableFit(wordSize, spaceExtra)
       ? {wordSize, spaceExtra}
       : undefined;
