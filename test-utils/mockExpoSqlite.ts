@@ -50,6 +50,20 @@ export async function resetDatabases(): Promise<void> {
   // @ai-end
 }
 
+// @ai-start
+// Bundled databases: the file importDatabaseFromAssetAsync copies for an
+// asset id (the number `require('x.db')` gives in the app).
+const assetFiles = new Map<unknown, string>();
+
+export function registerAssetFile(assetId: unknown, file: string): void {
+  assetFiles.set(assetId, file);
+}
+
+export function clearAssetFiles(): void {
+  assetFiles.clear();
+}
+// @ai-end
+
 export const expoSqliteModule = {
   openDatabaseAsync: async (name: string): Promise<AdapterDatabase> => {
     const existing = open.get(name);
@@ -65,6 +79,44 @@ export const expoSqliteModule = {
     open.set(name, db);
     return db;
   },
+  // @ai-start
+  // Copies the registered file into the database folder. Like expo-sqlite,
+  // it does nothing when the database file already exists (unless
+  // forceOverwrite), and fails for an asset it cannot find.
+  importDatabaseFromAssetAsync: async (
+    name: string,
+    source: {assetId: unknown; forceOverwrite?: boolean},
+  ): Promise<void> => {
+    const file = assetFiles.get(source.assetId);
+    if (!file) {
+      throw new Error(
+        `Unable to get the localUri from asset ${String(source.assetId)}`,
+      );
+    }
+    const target = path.join(databaseDir(), name);
+    if (fs.existsSync(target) && !source.forceOverwrite) return;
+    fs.copyFileSync(file, target);
+  },
+  // Like expo-sqlite's native module: an open database or a missing file
+  // cannot be deleted.
+  deleteDatabaseAsync: async (name: string): Promise<void> => {
+    if (open.has(name)) {
+      throw new Error(
+        `Unable to delete database '${name}' that is currently open. Close it prior to deletion.`,
+      );
+    }
+    const target = path.join(databaseDir(), name);
+    if (!fs.existsSync(target)) {
+      throw new Error(`Database '${name}' not found`);
+    }
+    fs.rmSync(target);
+  },
+  // @ai-end
 };
 
 export const openDatabaseAsync = expoSqliteModule.openDatabaseAsync;
+// @ai-start
+export const importDatabaseFromAssetAsync =
+  expoSqliteModule.importDatabaseFromAssetAsync;
+export const deleteDatabaseAsync = expoSqliteModule.deleteDatabaseAsync;
+// @ai-end
